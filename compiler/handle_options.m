@@ -648,8 +648,19 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 		{ Target = java },
 		{ BackendForeignLanguage = foreign_language_string(c) }
 	),
-	globals__io_set_option(backend_foreign_language,
-		string(BackendForeignLanguage)),
+
+		% only set the backend foreign language if it is unset
+	globals__io_lookup_string_option(backend_foreign_language,
+		CurrentBackendForeignLanguage),
+	( 
+		{ CurrentBackendForeignLanguage = "" }
+	->
+		globals__io_set_option(backend_foreign_language,
+			string(BackendForeignLanguage))
+	;
+		[]
+	),
+
 	% The default foreign language we use is the same as the backend.
 	globals__io_lookup_string_option(use_foreign_language,
 		UseForeignLanguage),

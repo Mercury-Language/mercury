@@ -77,33 +77,6 @@ mlds_to_java__output_mlds(MLDS) -->
 	{ Indent = 0 },
 	output_to_file(JavaSourceFile, output_java_src_file(Indent, MLDS)).
 
-:- pred output_to_file(string, pred(io__state, io__state), 
-		io__state, io__state).
-:- mode output_to_file(in, pred(di, uo) is det, di, uo) is det.
-
-output_to_file(FileName, Action) -->
-	%
-	% XXX This duplicates some code in the high level C backend.
-	%
-	globals__io_lookup_bool_option(verbose, Verbose),
-	globals__io_lookup_bool_option(statistics, Stats),
-	maybe_write_string(Verbose, "% Writing to file `"),
-	maybe_write_string(Verbose, FileName),
-	maybe_write_string(Verbose, "'...\n"),
-	maybe_flush_output(Verbose),
-	io__tell(FileName, Res),
-	( { Res = ok } ->
-		Action,
-		io__told,
-		maybe_write_string(Verbose, "% done.\n"),
-		maybe_report_stats(Stats)
-	;
-		maybe_write_string(Verbose, "\n"),
-		{ string__append_list(["can't open file `",
-			FileName, "' for output."], ErrorMessage) },
-		report_error(ErrorMessage)
-	).
-
 %-----------------------------------------------------------------------------%
 %
 % Utility predicates for various purposes. 
@@ -461,7 +434,8 @@ generate_wrapper_method(ModuleName, Defn0, Defn) :-
 		% Create new argument.
 		% There is only one as "call" takes an array of Object.
 		%
-	        Arg = data(var("args")) - mlds__array_type(mlds__generic_type),
+	        Arg = data(var(var_name("args", no))) - 
+				mlds__array_type(mlds__generic_type),
 		Args = [Arg],
 		%
 		% Create new declarations for old arguments and assign
@@ -506,7 +480,8 @@ generate_wrapper_decls(ModuleName, Context, [Arg | Args],
 	Arg = Name - Type,
 	Flags = ml_gen_local_var_decl_flags,
 	ArrayIndex = const(int_const(Count)),		
-	NewVarName = qual(mercury_module_name_to_mlds(ModuleName), "args"),
+	NewVarName = qual(mercury_module_name_to_mlds(ModuleName), 
+		var_name("args", no)),
 	NewArgLval = var(NewVarName, mlds__generic_type),
 	%	
 	% Package everything together.
@@ -1174,11 +1149,20 @@ output_pred_label(special_pred(PredName, MaybeTypeModule,
 :- pred output_data_name(mlds__data_name, io__state, io__state).
 :- mode output_data_name(in, di, uo) is det.
 
-output_data_name(var(Name)) -->
-	output_mangled_name(Name).
+output_data_name(var(VarName)) -->
+	output_mlds_var_name(VarName).
+
 output_data_name(common(Num)) -->
 	io__write_string("common_"),
 	io__write_int(Num).
+
+:- pred output_mlds_var_name(mlds__var_name, io__state, io__state).
+:- mode output_mlds_var_name(in, di, uo) is det.
+output_mlds_var_name(var_name(Name, no)) -->
+	output_mangled_name(Name).
+output_mlds_var_name(var_name(Name, yes(Num))) -->
+	output_mangled_name(string__format("%s_%d", [s(Name), i(Num)])).
+
 %==============================================================================%
 % XXX Most of this code doesn't yet work/hasn't been implemented in the Java
 % backend.
@@ -1584,7 +1568,7 @@ output_stmt(Indent, FuncInfo, return(Results), _Context) -->
 	   		{ Rval = mlds__lval(Lval) },
 	   		{ Lval = var(VarName, _) },
 	   		{ VarName = qual(_, UnqualName) },
-	   		{ UnqualName = "dummy_var" } 
+	   		{ UnqualName = var_name("dummy_var", no) } 
 		->
 			[]
 		;
@@ -1817,7 +1801,11 @@ output_atomic_stmt(_Indent, _FuncInfo, trail_op(_TrailOp), _) -->
 	% foreign language interfacing
 	%
 output_atomic_stmt(_Indent, _FuncInfo, 
-		target_code(_TargetLang, _Components), _Context) -->
+		inline_target_code(_TargetLang, _Components), _Context) -->
+	{ error("mlds_to_java.m: sorry, foreign language interfacing not implemented") }.
+
+output_atomic_stmt(_Indent, _FuncInfo, 
+		outline_foreign_proc(_TargetLang, _Lvals, _Code), _Context) -->
 	{ error("mlds_to_java.m: sorry, foreign language interfacing not implemented") }.
 
 %------------------------------------------------------------------------------%
@@ -1954,7 +1942,7 @@ output_lval(mem_ref(Rval, _Type)) -->
 	output_bracketed_rval(Rval).
 
 output_lval(var(qual(_ModuleName, Name), _VarType)) -->
-	io__write_string(Name).
+	output_mlds_var_name(Name).
 		
 :- pred output_mangled_name(string, io__state, io__state).
 :- mode output_mangled_name(in, di, uo) is det.

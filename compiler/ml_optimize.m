@@ -264,7 +264,9 @@ generate_assign_args(OptInfo,
 			% value of a parameter after it has already been
 			% clobbered by the new value.
 
-			string__append(VarName, "__tmp_copy", TempName),
+			VarName = mlds__var_name(VarNameStr, MaybeNum),
+			TempName = mlds__var_name(VarNameStr ++ "__tmp_copy",
+				MaybeNum),
 			QualTempName = qual(OptInfo ^ module_name, 
 				TempName),
 			Initializer = init_obj(Arg),

@@ -54,13 +54,15 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	%	MR_String str;
 	%
 	ml_gen_info_new_cond_var(SlotVarSeq),
-	{ SlotVarName = string__format("slot_%d", [i(SlotVarSeq)]) },
+	{ SlotVarName = mlds__var_name(
+		string__format("slot_%d", [i(SlotVarSeq)]), no) },
 	{ SlotVarDefn = ml_gen_mlds_var_decl(var(SlotVarName),
 		mlds__native_int_type, MLDS_Context) },
 	ml_gen_var_lval(SlotVarName, mlds__native_int_type, SlotVarLval),
 
 	ml_gen_info_new_cond_var(StringVarSeq),
-	{ StringVarName = string__format("str_%d", [i(StringVarSeq)]) },
+	{ StringVarName = mlds__var_name(
+		string__format("str_%d", [i(StringVarSeq)]), no) },
 	{ StringVarDefn = ml_gen_mlds_var_decl(var(StringVarName),
 		ml_string_type, MLDS_Context) },
 	ml_gen_var_lval(StringVarName, ml_string_type, StringVarLval),

@@ -59,7 +59,13 @@
 :- pred convert_prolog_dialect(string::in, prolog_dialect::out) is semidet.
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
 
+	% A string representation of the foreign language suitable 
+	% for use in human-readable error messages
 :- func foreign_language_string(foreign_language) = string.
+
+	% A string representation of the foreign language suitable 
+	% for use in machine-readable name mangling.
+:- func simple_foreign_language_string(foreign_language) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -183,31 +189,39 @@
 :- implementation.
 
 :- import_module exprn_aux.
-:- import_module map, std_util, require.
+:- import_module map, std_util, require, string.
 
-	% XXX we should probably just convert to lower case and then
-	% test against known strings.
-convert_target("java", java).
-convert_target("Java", java).
-convert_target("asm", asm).
-convert_target("Asm", asm).
-convert_target("ASM", asm).
-convert_target("il", il).
-convert_target("IL", il).
-convert_target("c", c).
-convert_target("C", c).
+convert_target(String, Target) :-
+	convert_target_2(string__to_lower(String), Target).
 
-	% XXX we should probably just convert to lower case and then
-	% test against known strings.
-convert_foreign_language("C", c).
-convert_foreign_language("c", c).
-convert_foreign_language("MC++", managed_cplusplus).
-convert_foreign_language("mc++", managed_cplusplus).
-convert_foreign_language("Managed C++", managed_cplusplus).
-convert_foreign_language("ManagedC++", managed_cplusplus).
+:- pred convert_target_2(string::in, compilation_target::out) is semidet.
+
+convert_target_2("java", java).
+convert_target_2("asm", asm).
+convert_target_2("il", il).
+convert_target_2("c", c).
+
+convert_foreign_language(String, ForeignLanguage) :-
+	convert_foreign_language_2(string__to_lower(String), ForeignLanguage).
+
+:- pred convert_foreign_language_2(string::in, foreign_language::out)
+	is semidet.
+
+convert_foreign_language_2("c", c).
+convert_foreign_language_2("mc++", managed_cplusplus).
+convert_foreign_language_2("managedc++", managed_cplusplus).
+convert_foreign_language_2("managed c++", managed_cplusplus).
+convert_foreign_language_2("c#", csharp).
+convert_foreign_language_2("csharp", csharp).
+convert_foreign_language_2("c sharp", csharp).
 
 foreign_language_string(c) = "C".
-foreign_language_string(managed_cplusplus) = "ManagedC++".
+foreign_language_string(managed_cplusplus) = "Managed C++".
+foreign_language_string(csharp) = "C#".
+
+simple_foreign_language_string(c) = "c".
+simple_foreign_language_string(managed_cplusplus) = "cpp". % XXX mcpp is better
+simple_foreign_language_string(csharp) = "csharp".
 
 convert_gc_method("none", none).
 convert_gc_method("conservative", conservative).

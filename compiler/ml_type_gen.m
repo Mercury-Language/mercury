@@ -162,7 +162,7 @@ ml_gen_enum_type(TypeId, TypeDefn, Ctors, TagValues,
 
 :- func ml_gen_enum_value_member(prog_context) = mlds__defn.
 ml_gen_enum_value_member(Context) =
-	mlds__defn(data(var("value")),
+	mlds__defn(data(var(mlds__var_name("value", no))),
 		mlds__make_context(Context),
 		ml_gen_member_decl_flags,
 		mlds__data(mlds__native_int_type, no_initializer)).
@@ -189,7 +189,7 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 	% generate an MLDS definition for this enumeration constant.
 	%
 	unqualify_name(Name, UnqualifiedName),
-	MLDS_Defn = mlds__defn(data(var(UnqualifiedName)),
+	MLDS_Defn = mlds__defn(data(var(mlds__var_name(UnqualifiedName, no))),
 		mlds__make_context(Context),
 		ml_gen_enum_constant_decl_flags,
 		mlds__data(mlds__native_int_type, init_obj(ConstValue))).
@@ -345,9 +345,9 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
 	%
 	% Generate the declaration for the field that holds the secondary tag.
 	%
-:- func ml_gen_tag_member(mlds__var_name, prog_context) = mlds__defn.
+:- func ml_gen_tag_member(string, prog_context) = mlds__defn.
 ml_gen_tag_member(Name, Context) =
-	mlds__defn(data(var(Name)),
+	mlds__defn(data(var(mlds__var_name(Name, no))),
 		mlds__make_context(Context),
 		ml_gen_member_decl_flags,
 		mlds__data(mlds__native_int_type, no_initializer)).
@@ -371,7 +371,8 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
 		Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args),
 		unqualify_name(Name, UnqualifiedName),
 		ConstValue = const(int_const(SecondaryTag)),
-		MLDS_Defn = mlds__defn(data(var(UnqualifiedName)),
+		MLDS_Defn = mlds__defn(data(var(mlds__var_name(
+				UnqualifiedName, no))),
 			mlds__make_context(Context),
 			ml_gen_enum_constant_decl_flags,
 			mlds__data(mlds__native_int_type,
@@ -543,8 +544,8 @@ ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, MLDS_Defn,
 		MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type)
 	),
 	FieldName = ml_gen_field_name(MaybeFieldName, ArgNum0),
-	MLDS_Defn = ml_gen_mlds_field_decl(var(FieldName), MLDS_Type,
-		mlds__make_context(Context)),
+	MLDS_Defn = ml_gen_mlds_field_decl(var(mlds__var_name(FieldName, no)),
+		MLDS_Type, mlds__make_context(Context)),
 	ArgNum = ArgNum0 + 1.
 
 

@@ -107,7 +107,7 @@
 :- type foreign_language
 	--->	c
 % 	;	cplusplus
-% 	;	csharp
+ 	;	csharp
  	;	managed_cplusplus
 % 	;	java
 % 	;	il

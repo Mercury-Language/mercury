@@ -64,8 +64,9 @@
 :- interface.
 
 :- import_module mlds, ilasm, ilds.
-:- import_module io, list, bool, std_util.
+:- import_module io, list, bool, std_util, set.
 :- import_module hlds_pred. % for `pred_proc_id'.
+:- import_module prog_data. % for `foreign_language'.
 
 %-----------------------------------------------------------------------------%
 
@@ -74,7 +75,8 @@
 	%
 	% This is where all the action is for the IL backend.
 	%
-:- pred generate_il(mlds, list(ilasm:decl), bool, io__state, io__state).
+:- pred generate_il(mlds, list(ilasm:decl), set(foreign_language),
+		io__state, io__state).
 :- mode generate_il(in, out, out, di, uo) is det.
 
 
@@ -138,11 +140,10 @@
 
 :- import_module ilasm, il_peephole.
 :- import_module ml_util, ml_code_util, error_util.
-:- import_module mlds_to_c. /* to output C code for .cpp files */
 :- import_module ml_type_gen.
-:- use_module llds. /* for user_c_code */
+:- use_module llds. /* for user_foreign_code */
 
-:- import_module bool, int, map, string, list, assoc_list, term.
+:- import_module bool, int, map, string, set, list, assoc_list, term.
 :- import_module library, require, counter.
 
 	% We build up lists of instructions using a tree to make
@@ -155,20 +156,21 @@
 	module_name 	:: mlds_module_name,	% the module name
 	assembly_name 	:: assembly_name,	% the assembly name
 	imports 	:: mlds__imports,	% the imports
-	file_c_code	:: bool,		% file contains c_code
+	file_foreign_langs :: set(foreign_language), % file foreign code
 	il_data_rep	:: il_data_rep,		% data representation.
 		% class-wide attributes (all accumulate)
 	alloc_instrs	:: instr_tree,		% .cctor allocation instructions
 	init_instrs	:: instr_tree,		% .cctor init instructions
 	classdecls	:: list(classdecl),	% class methods and fields 
 	has_main	:: bool,		% class contains main
-	class_c_code	:: bool,		% class contains c_code
+	class_foreign_langs :: set(foreign_language),% class foreign code
 		% method-wide attributes (accumulating)
 	locals 		:: locals_map,		% The current locals
 	instr_tree 	:: instr_tree,		% The instruction tree (unused)
 	label_counter 	:: counter,		% the label counter
 	block_counter 	:: counter,		% the block counter
-	method_c_code	:: bool,		% method contains c_code
+	method_foreign_lang :: maybe(foreign_language),
+						% method contains foreign code
 		% method-wide attributes (static)
 	arguments 	:: arguments_map, 	% The arguments 
 	method_name	:: member_name,		% current method name
@@ -182,7 +184,7 @@
 
 %-----------------------------------------------------------------------------%
 
-generate_il(MLDS, ILAsm, ContainsCCode, IO0, IO) :-
+generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 	MLDS = mlds(MercuryModuleName, _ForeignCode, Imports, Defns),
 	ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
 	SymName = mlds_module_name_to_sym_name(ModuleName),
@@ -193,8 +195,12 @@ generate_il(MLDS, ILAsm, ContainsCCode, IO0, IO) :-
 
 		% Generate code for all the methods in this module.
 	list__foldl(generate_method_defn, Defns, Info0, Info1),
-	bool__or(Info1 ^ file_c_code, Info1 ^ method_c_code, ContainsCCode),
-	Info2 = Info1 ^ file_c_code := ContainsCCode,
+	( Info1 ^ method_foreign_lang = yes(SomeLang) ->
+		Info2 = Info1 ^ file_foreign_langs :=
+			set__insert(Info1 ^ file_foreign_langs, SomeLang)
+	;
+		Info2 = Info1
+	),
 	ClassDecls = Info2 ^ classdecls,
 	InitInstrs = list__condense(tree__flatten(Info2 ^ init_instrs)),
 	AllocInstrs = list__condense(tree__flatten(Info2 ^ alloc_instrs)),
@@ -213,6 +219,7 @@ generate_il(MLDS, ILAsm, ContainsCCode, IO0, IO) :-
 		% assembly in a separate step during the build (using
 		% AL.EXE).  
 
+	Info3 ^ file_foreign_langs = ForeignLangs,
 	(
 		SymName = qualified(unqualified("mercury"), _)
 	->
@@ -221,16 +228,12 @@ generate_il(MLDS, ILAsm, ContainsCCode, IO0, IO) :-
 	;
 		ThisAssembly = [assembly(AssemblyName)],
 			% If not in the library, but we have C code,
-			% declare the __c_code module as an assembly we
+			% declare the foreign module as an assembly we
 			% reference
-		( 
-			Info3 ^ file_c_code = yes,
-			mangle_dataname_module(no, ModuleName, CCodeModuleName),
-			AssemblerRefs = [CCodeModuleName | Imports]
-		;
-			Info3 ^ file_c_code = no,
-			AssemblerRefs = Imports
-		)
+		list__map(mangle_foreign_code_module(ModuleName),
+			set__to_sorted_list(ForeignLangs),
+			ForeignCodeAssemblerRefs),
+		AssemblerRefs = list__append(ForeignCodeAssemblerRefs, Imports)
 	),
 
 		% Turn the MLDS module names we import into a list of
@@ -310,7 +313,7 @@ generate_method_defn(FunctionDefn) -->
 				% If there is no function body,
 				% generate forwarding code instead.
 				% This can happen with :- external
-			atomic_statement_to_il(target_code(lang_C, []),
+			atomic_statement_to_il(inline_target_code(lang_C, []),
 				InstrsTree0),
 				% The code might reference locals...
 			il_info_add_locals(["succeeded" - 
@@ -543,7 +546,7 @@ generate_defn_initializer(defn(Name, Context, _DeclFlags, Entity),
 					MLDSType) },
 				get_load_store_lval_instrs(Lval,
 					LoadMemRefInstrs, StoreLvalInstrs),
-				{ NameString = VarName }
+				{ NameString = mangle_mlds_var_name(VarName) }
 			;
 				{ LoadMemRefInstrs = throw_unimplemented(
 					"initializer_for_non_var_data_name") },
@@ -958,10 +961,60 @@ atomic_statement_to_il(restore_hp(_), node(Instrs)) -->
 	{ Instrs = [comment(
 		"restore hp -- not relevant for this backend")] }.
 
-atomic_statement_to_il(target_code(_Lang, _Code), node(Instrs)) --> 
+atomic_statement_to_il(outline_foreign_proc(Lang, ReturnLvals, _Code),
+		Instrs) --> 
 	il_info_get_module_name(ModuleName),
-	( no =^ method_c_code  ->
-		^ method_c_code := yes,
+	( no =^ method_foreign_lang  ->
+		^ method_foreign_lang := yes(Lang),
+		{ mangle_foreign_code_module(ModuleName, Lang,
+			OutlineLangModuleName) },
+		{ ClassName = mlds_module_name_to_class_name(
+			OutlineLangModuleName) },
+		signature(_, RetType, Params) =^ signature, 
+
+		( { ReturnLvals = [] } ->
+			% If there is a return type, but no return value, it
+			% must be a semidet predicate so put it in succeeded.
+			% XXX it would be better to get the code generator
+			% to tell us this is the case directly
+			{ LoadInstrs = empty },
+			{ RetType = void ->
+				StoreInstrs = empty
+			;
+				StoreInstrs = instr_node(
+					stloc(name("succeeded")))
+			}
+		; { ReturnLvals = [ReturnLval] } ->
+			get_load_store_lval_instrs(ReturnLval,
+				LoadInstrs, StoreInstrs)
+		;
+			{ sorry(this_file, "multiple return values") }
+		),
+		MethodName =^ method_name,
+		{ assoc_list__keys(Params, TypeParams) },
+		{ list__map_foldl((pred(_::in, Instr::out,
+			Num::in, Num + 1::out) is det :-
+				Instr = ldarg(index(Num))),
+			TypeParams, LoadArgInstrs, 0, _) },
+		{ Instrs = tree__list([
+			comment_node(
+ 			    "outline foreign proc -- call handwritten version"),
+			LoadInstrs,
+			node(LoadArgInstrs),
+			instr_node(call(get_static_methodref(
+				ClassName, MethodName, RetType, TypeParams))),
+			StoreInstrs
+			]) }
+	;
+		{ Instrs = comment_node(
+			"outline foreign proc -- already called") }
+	).
+
+atomic_statement_to_il(inline_target_code(_Lang, _Code), node(Instrs)) --> 
+	il_info_get_module_name(ModuleName),
+	( no =^ method_foreign_lang  ->
+			% XXX we hardcode managed C++ here
+		^ method_foreign_lang := yes(managed_cplusplus),
 		{ mangle_dataname_module(no, ModuleName, NewModuleName) },
 		{ ClassName = mlds_module_name_to_class_name(NewModuleName) },
 		signature(_, RetType, Params) =^ signature, 
@@ -980,14 +1033,14 @@ atomic_statement_to_il(target_code(_Lang, _Code), node(Instrs)) -->
 				Instr = ldarg(index(Num))),
 			TypeParams, LoadInstrs, 0, _) },
 		{ list__condense(
-			[[comment("target code -- call handwritten version")],
+			[[comment("inline target code -- call handwritten version")],
 			LoadInstrs,
 			[call(get_static_methodref(ClassName, MethodName, 
 				RetType, TypeParams))],
 			StoreReturnInstr	
 			], Instrs) }
 	;
-		{ Instrs = [comment("target code -- already called")] }
+		{ Instrs = [comment("inline target code -- already called")] }
 	).
 
 
@@ -1189,7 +1242,7 @@ load(lval(Lval), Instrs) -->
 		=(Info),
 		{ is_local(MangledVarStr, Info) ->
 			Instrs = instr_node(ldloc(name(MangledVarStr)))
-		; is_argument(Var, Info) ->
+		; is_argument(MangledVarStr, Info) ->
 			Instrs = instr_node(ldarg(name(MangledVarStr)))
 		;
 			FieldRef = make_fieldref_for_handdefined_var(DataRep,
@@ -1275,7 +1328,7 @@ load(mem_addr(Lval), Instrs) -->
 		=(Info),
 		{ is_local(MangledVarStr, Info) ->
 			Instrs = instr_node(ldloca(name(MangledVarStr)))
-		; is_argument(Var, Info) ->
+		; is_argument(MangledVarStr, Info) ->
 			Instrs = instr_node(ldarga(name(MangledVarStr)))
 		;
 			FieldRef = make_fieldref_for_handdefined_var(DataRep,
@@ -1316,7 +1369,7 @@ store(var(Var, VarType), Instrs) -->
 	=(Info),
 	{ is_local(MangledVarStr, Info) ->
 		Instrs = instr_node(stloc(name(MangledVarStr)))
-	; is_argument(Var, Info) ->
+	; is_argument(MangledVarStr, Info) ->
 		Instrs = instr_node(starg(name(MangledVarStr)))
 	;
 		FieldRef = make_fieldref_for_handdefined_var(DataRep, Var,
@@ -1792,12 +1845,10 @@ params_to_il_signature(DataRep, ModuleName, FuncParams) = ILSignature :-
 
 :- func input_param_to_ilds_type(il_data_rep, mlds_module_name, 
 		pair(entity_name, mlds__type)) = ilds__param.
-input_param_to_ilds_type(DataRep, ModuleName, EntityName - MldsType) 
+input_param_to_ilds_type(DataRep, _ModuleName, EntityName - MldsType) 
 		= ILType - yes(Id) :-
-	mangle_entity_name(EntityName, VarName),
-	mangle_mlds_var(qual(ModuleName, VarName), Id),
+	mangle_entity_name(EntityName, Id),
 	ILType = mlds_type_to_ilds_type(DataRep, MldsType).
-	
 
 :- func mlds_type_to_ilds_simple_type(il_data_rep, mlds__type) =
 	 ilds__simple_type.
@@ -1974,6 +2025,24 @@ make_fieldref_for_handdefined_var(DataRep, Var, VarType) = FieldRef :-
 		mlds_type_to_ilds_type(DataRep, VarType), ClassName,
 		MangledVarStr).
 
+:- pred mangle_foreign_code_module(mlds_module_name, foreign_language, 
+	mlds_module_name).
+:- mode mangle_foreign_code_module(in, in, out) is det.
+
+mangle_foreign_code_module(ModuleName0, Lang, ModuleName) :-
+	LangStr = globals__simple_foreign_language_string(Lang),
+	SymName0 = mlds_module_name_to_sym_name(ModuleName0),
+	( 
+		SymName0 = qualified(Q, M0),
+		M = string__format("%s__%s_code", [s(M0), s(LangStr)]),
+		SymName = qualified(Q, M)
+	; 
+		SymName0 = unqualified(M0),
+		M = string__format("%s__%s_code", [s(M0), s(LangStr)]),
+		SymName = unqualified(M)
+	),
+	ModuleName = mercury_module_name_to_mlds(SymName).
+
 	% When generating references to RTTI, we need to mangle the
 	% module name if the RTTI is defined in C code by hand.
 	% If no data_name is provided, always do the mangling.
@@ -2042,7 +2111,8 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 :- pred mangle_dataname(mlds__data_name, string).
 :- mode mangle_dataname(in, out) is det.
 
-mangle_dataname(var(Name), Name).
+mangle_dataname(var(MLDSVarName), Name) :-
+	Name = mangle_mlds_var_name(MLDSVarName).
 mangle_dataname(common(Int), MangledName) :-
 	string__format("common_%s", [i(Int)], MangledName).
 mangle_dataname(rtti(RttiTypeId, RttiName), MangledName) :-
@@ -2080,7 +2150,13 @@ mangle_entity_name(export(_), _MangledName) :-
 	% We quote all identifiers before we output them, so
 	% even funny characters should be fine.
 mangle_mlds_var(qual(_ModuleName, VarName), Str) :-
-	Str = VarName.
+	Str = mangle_mlds_var_name(VarName).
+
+:- func mangle_mlds_var_name(mlds__var_name) = string.
+mangle_mlds_var_name(mlds__var_name(Name, yes(Num))) = 
+	string__format("%s_%d", [s(Name), i(Num)]).
+mangle_mlds_var_name(mlds__var_name(Name, no)) = Name.
+
 
 :- pred mlds_to_il__sym_name_to_string(sym_name, string).
 :- mode mlds_to_il__sym_name_to_string(in, out) is det.
@@ -2133,12 +2209,12 @@ sym_name_to_class_name_2(unqualified(Name), [Name]).
 %
 
 
-:- pred is_argument(mlds__var, il_info).
+:- pred is_argument(ilds__id, il_info).
 :- mode is_argument(in, in) is semidet.
-is_argument(qual(_, VarName), Info) :-
+is_argument(VarName, Info) :-
 	list__member(VarName - _, Info ^ arguments).
 
-:- pred is_local(string, il_info).
+:- pred is_local(ilds__id, il_info).
 :- mode is_local(in, in) is semidet.
 is_local(VarName, Info) :-
 	map__contains(Info ^ locals, VarName).
@@ -2299,7 +2375,8 @@ defn_to_local(ModuleName,
 	( Name = data(DataName),
 	  Entity = mlds__data(MLDSType0, _Initializer) ->
 		mangle_dataname(DataName, MangledDataName),
-		mangle_mlds_var(qual(ModuleName, MangledDataName), Id),
+		mangle_mlds_var(qual(ModuleName,
+			var_name(MangledDataName, no)), Id),
 		MLDSType0 = MLDSType
 	;
 		error("definition name was not data/1")
@@ -2473,8 +2550,6 @@ mercury_runtime_name(Name) =
 :- func mercury_runtime_class_name = ilds__class_name.
 mercury_runtime_class_name = structured_name("mercury",
 	["mercury", "runtime"]).
-
-%-----------------------------------------------------------------------------
 
 %-----------------------------------------------------------------------------
 
@@ -2667,8 +2742,8 @@ runtime_init_method_name = id("init_runtime").
 		il_data_rep) = il_info.
 
 il_info_init(ModuleName, AssemblyName, Imports, ILDataRep) =
-	il_info(ModuleName, AssemblyName, Imports, no, ILDataRep,
-		empty, empty, [], no, no,
+	il_info(ModuleName, AssemblyName, Imports, set__init, ILDataRep,
+		empty, empty, [], no, set__init,
 		map__init, empty, counter__init(1), counter__init(1), no,
 		Args, MethodName, DefaultSignature) :-
 	Args = [],
@@ -2680,18 +2755,25 @@ il_info_init(ModuleName, AssemblyName, Imports, ILDataRep) =
 	il_info, il_info).
 :- mode il_info_new_method(in, in, in, in, out) is det.
 
-il_info_new_method(ILArgs, ILSignature, MethodName,
-		% XXX TYSE: fixme to use accessors.
-	il_info(ModuleName, AssemblyName,Imports, FileCCode, ILDataRep,
-		AllocInstrs, InitInstrs, ClassDecls, HasMain, ClassCCode,
-		__Locals, _InstrTree, _LabelCounter, _BlockCounter, MethodCCode,
-		_Args, _Name, _Signature),
-	il_info(ModuleName, AssemblyName,Imports, NewFileCCode, ILDataRep,
-		AllocInstrs, InitInstrs, ClassDecls, HasMain, NewClassCCode,
-		map__init, empty, counter__init(1), counter__init(1), no,
-		ILArgs, MethodName, ILSignature)) :-
-	bool__or(ClassCCode, MethodCCode, NewClassCCode),
-	bool__or(FileCCode, MethodCCode, NewFileCCode).
+il_info_new_method(ILArgs, ILSignature, MethodName) -->
+	=(Info),
+	( yes(SomeLang) =^ method_foreign_lang ->
+		^ file_foreign_langs := 
+			set__insert(Info ^ file_foreign_langs, SomeLang),
+		^ class_foreign_langs := 
+			set__insert(Info ^ class_foreign_langs, SomeLang)
+	;
+		[]
+	),
+	^ locals := map__init,
+	^ instr_tree := empty,
+	^ label_counter := counter__init(1),
+	^ block_counter := counter__init(1),
+	^ method_foreign_lang := no,
+	^ arguments := ILArgs,
+	^ method_name := MethodName,
+	^ signature := ILSignature.
+
 
 :- pred il_info_set_arguments(assoc_list(ilds__id, mlds__type), 
 	il_info, il_info).

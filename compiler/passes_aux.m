@@ -156,7 +156,20 @@ about unbound type variables.
 :- pred report_pred_name_mode(pred_or_func, string, list((mode)),
 				io__state, io__state).
 :- mode report_pred_name_mode(in, in, in, di, uo) is det.
-	
+
+	% Write to a given filename, giving appropriate status
+	% messages and error messages if the file cannot be opened.
+:- pred output_to_file(string, pred(io__state, io__state),
+		io__state, io__state).
+:- mode output_to_file(in, pred(di, uo) is det, di, uo) is det.
+
+	% Same as output_to_file/4 above, but allow the writing predicate
+	% to generate some output.
+:- pred output_to_file(string, pred(T, io__state, io__state),
+				maybe(T), io__state, io__state).
+:- mode output_to_file(in, pred(out, di, uo) is det, out, di, uo) is det.
+
+
 %-----------------------------------------------------------------------------%
 
 :- type quote_char
@@ -552,5 +565,33 @@ report_pred_name_mode(function, FuncName, ArgModes) -->
 	),
 	io__write_string(" = "),
 	mercury_output_mode(FuncRetMode, InstVarSet).
+
+%-----------------------------------------------------------------------------%
+
+output_to_file(FileName, Action) -->
+	{ NewAction = (pred(0::out, di, uo) is det --> Action ) },
+	output_to_file(FileName, NewAction, _Result).
+
+output_to_file(FileName, Action, Result) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
+	maybe_write_string(Verbose, "% Writing to file `"),
+	maybe_write_string(Verbose, FileName),
+	maybe_write_string(Verbose, "'...\n"),
+	maybe_flush_output(Verbose),
+	io__tell(FileName, Res),
+	( { Res = ok } ->
+		Action(ActionResult),
+		io__told,
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats),
+		{ Result = yes(ActionResult) }
+	;
+		maybe_write_string(Verbose, "\n"),
+		{ string__append_list(["can't open file `",
+			FileName, "' for output."], ErrorMessage) },
+		report_error(ErrorMessage),
+		{ Result = no }
+	).
 
 %-----------------------------------------------------------------------------%

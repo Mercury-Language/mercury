@@ -1011,7 +1011,7 @@ XXX Full exception handling support is not yet implemented.
 	;	mark_hp(mlds__lval)
 			% Tell the heap sub-system to store a marker
 			% (for later use in restore_hp/1 instructions)
-			% in the specified lval
+			% in the specified lval.
 			%
 			% It's OK for the target to treat this as a no-op,
 			% and probably that is what most targets will do.
@@ -1034,12 +1034,33 @@ XXX Full exception handling support is not yet implemented.
 	% foreign language interfacing
 	%
 
-	;	target_code(target_lang, list(target_code_component))
+	;	inline_target_code(target_lang, list(target_code_component))
 			% Do whatever is specified by the
 			% target_code_components, which can be any piece
 			% of code in the specified target language (C,
 			% assembler, or whatever) that does not have any
 			% non-local flow of control.
+			% This is implemented by embedding the target
+			% code in the output stream of instructions or
+			% statements.
+	;	outline_foreign_proc(
+				foreign_language,
+					% the foreign language this code is
+					% written in.
+				list(mlds__lval),
+					% where to store return value(s)
+				string
+					% the user's foreign language code
+					% fragment
+		)
+			% Do whatever is specified by the string, which
+			% can be any piece of code in the specified
+			% foreign language (C#, managed C++, or
+			% whatever).
+			% This is implemented by calling an externally
+			% defined function, which the backend must
+			% generate the definition for (in some other
+			% file perhaps) and calling it.
 	.
 
 	%
@@ -1125,7 +1146,10 @@ XXX Full exception handling support is not yet implemented.
 	% An mlds__var represents a variable or constant.
 	%
 :- type mlds__var == mlds__fully_qualified_name(mlds__var_name).
-:- type mlds__var_name == string.
+:- type mlds__var_name ---> 
+		mlds__var_name(string, maybe(int)). 
+		% var name and perhaps a unique number to be added as a
+		% suffix where necessary.
 
 	%
 	% An lval represents a data location or variable that can be used

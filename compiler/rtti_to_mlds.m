@@ -568,7 +568,7 @@ gen_init_builtin_const(Name) = init_obj(Rval) :-
 	% Perhaps we should be using an enumeration type here,
 	% rather than `mlds__native_int_type'.
 	Type = mlds__native_int_type,
-	Rval = lval(var(qual(MLDS_Module, Name), Type)).
+	Rval = lval(var(qual(MLDS_Module, var_name(Name, no)), Type)).
 
 %-----------------------------------------------------------------------------%
 %

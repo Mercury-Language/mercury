@@ -326,10 +326,12 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, EnvPtrTypeName,
 		%
 		QualVarName = qual(ModuleName, VarName),
 		EnvModuleName = ml_env_module_name(ClassType),
-		FieldName = named_field(qual(EnvModuleName, VarName),
+		FieldNameString = ml_var_name_to_string(VarName),
+		FieldName = named_field(qual(EnvModuleName, FieldNameString),
 			EnvPtrTypeName),
 		Tag = yes(0),
-		EnvPtr = lval(var(qual(ModuleName, "env_ptr"),
+		EnvPtr = lval(var(qual(ModuleName,
+				mlds__var_name("env_ptr", no)),
 			EnvPtrTypeName)),
 		EnvArgLval = field(Tag, EnvPtr, FieldName, FieldType, 
 			EnvPtrTypeName),
@@ -386,7 +388,7 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	%
 	%	struct <EnvClassName> env;
 	%
-	EnvVarName = data(var("env")),
+	EnvVarName = data(var(var_name("env", no))),
 	EnvVarFlags = ml_gen_local_var_decl_flags,
 	EnvVarDefnBody = mlds__data(EnvTypeName, no_initializer),
 	EnvVarDecl = mlds__defn(EnvVarName, Context, EnvVarFlags,
@@ -396,7 +398,7 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	% declare the `env_ptr' var, and
 	% initialize the `env_ptr' with the address of `env'
 	%
-	EnvVar = qual(ModuleName, "env"),
+	EnvVar = qual(ModuleName, mlds__var_name("env", no)),
 	globals__get_target(Globals, Target),
 		% IL uses classes instead of structs, so the code
 		% generated needs to be a little different.
@@ -464,10 +466,12 @@ ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
 		DefnBody0 = mlds__function(PredProcId, Params, yes(FuncBody0)),
-		statement_contains_var(FuncBody0, qual(ModuleName, "env_ptr"))
+		statement_contains_var(FuncBody0, qual(ModuleName,
+			mlds__var_name("env_ptr", no)))
 	->
-		EnvPtrVal = lval(var(qual(ModuleName, "env_ptr_arg"),
-			mlds__generic_env_ptr_type)),
+		EnvPtrVal = lval(var(qual(ModuleName,
+				mlds__var_name("env_ptr_arg", no)),
+				mlds__generic_env_ptr_type)),
 		ml_init_env(TypeName, EnvPtrVal, Context, ModuleName, Globals,
 			EnvPtrDecl, InitEnvPtr),
 		FuncBody = mlds__statement(block([EnvPtrDecl],
@@ -497,7 +501,7 @@ ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 	%
 	%	<EnvTypeName> *env_ptr;
 	%
-	EnvPtrVarName = data(var("env_ptr")),
+	EnvPtrVarName = data(var(mlds__var_name("env_ptr", no))),
 	EnvPtrVarFlags = ml_gen_local_var_decl_flags,
 	globals__get_target(Globals, Target),
 		% IL uses classes instead of structs, so the type
@@ -520,7 +524,7 @@ ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 	%
 	% XXX Do we need the cast? If so, why?
 	%
-	EnvPtrVar = qual(ModuleName, "env_ptr"),
+	EnvPtrVar = qual(ModuleName, mlds__var_name("env_ptr", no)),
 	AssignEnvPtr = assign(var(EnvPtrVar, EnvPtrVarType),
 		unop(cast(EnvPtrVarType), EnvPtrVal)),
 	InitEnvPtr = mlds__statement(atomic(AssignEnvPtr), Context).
@@ -925,10 +929,12 @@ fixup_atomic_stmt(restore_hp(Rval0), restore_hp(Rval)) -->
 	fixup_rval(Rval0, Rval).
 fixup_atomic_stmt(trail_op(TrailOp0), trail_op(TrailOp)) -->
 	fixup_trail_op(TrailOp0, TrailOp).
-fixup_atomic_stmt(target_code(Lang, Components0),
-		target_code(Lang, Components)) -->
+fixup_atomic_stmt(inline_target_code(Lang, Components0),
+		inline_target_code(Lang, Components)) -->
 	list__map_foldl(fixup_target_code_component,
 		Components0, Components).
+fixup_atomic_stmt(outline_foreign_proc(Lang, Lvals, Code),
+		outline_foreign_proc(Lang, Lvals, Code)) --> [].
 
 :- pred fixup_case_cond(mlds__case_match_cond, mlds__case_match_cond,
 		elim_info, elim_info).
@@ -1053,10 +1059,12 @@ fixup_var(ThisVar, ThisVarType, Lval, ElimInfo, ElimInfo) :-
 			),
 		solutions(IsLocalVar, [FieldType])
 	->
-		EnvPtr = lval(var(qual(ModuleName, "env_ptr"),
+		EnvPtr = lval(var(qual(ModuleName,
+			mlds__var_name("env_ptr", no)),
 			EnvPtrVarType)),
 		EnvModuleName = ml_env_module_name(ClassType),
-		FieldName = named_field(qual(EnvModuleName, ThisVarName),
+		ThisVarFieldName = ml_var_name_to_string(ThisVarName),
+		FieldName = named_field(qual(EnvModuleName, ThisVarFieldName),
 			EnvPtrVarType),
 		Tag = yes(0),
 		Lval = field(Tag, EnvPtr, FieldName, FieldType, ClassType)
@@ -1427,7 +1435,7 @@ atomic_stmt_contains_var(restore_hp(Rval), Name) :-
 	rval_contains_var(Rval, Name).
 atomic_stmt_contains_var(trail_op(TrailOp), Name) :-
 	trail_op_contains_var(TrailOp, Name).
-atomic_stmt_contains_var(target_code(_Lang, Components), Name) :-
+atomic_stmt_contains_var(inline_target_code(_Lang, Components), Name) :-
 	list__member(Component, Components),
 	target_code_component_contains_var(Component, Name).
 

@@ -1014,6 +1014,7 @@ long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("type-layout",		type_layout).
 long_option("use-foreign-language",	use_foreign_language).
+long_option("backend-foreign-language",	backend_foreign_language).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).

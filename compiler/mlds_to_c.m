@@ -96,36 +96,12 @@ mlds_to_c__output_mlds(MLDS) -->
 	module_name_to_file_name(ModuleSymName, ".h.tmp", yes, TmpHeaderFile),
 	module_name_to_file_name(ModuleSymName, ".h", yes, HeaderFile),
 	{ Indent = 0 },
-	mlds_output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)),
-	mlds_output_to_file(TmpHeaderFile, mlds_output_hdr_file(Indent, MLDS)),
+	output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)),
+	output_to_file(TmpHeaderFile, mlds_output_hdr_file(Indent, MLDS)),
 	update_interface(HeaderFile).
 	%
 	% XXX at some point we should also handle output of any non-C
 	%     foreign code (Ada, Fortran, etc.) to appropriate files.
-
-:- pred mlds_output_to_file(string, pred(io__state, io__state),
-				io__state, io__state).
-:- mode mlds_output_to_file(in, pred(di, uo) is det, di, uo) is det.
-
-mlds_output_to_file(FileName, Action) -->
-	globals__io_lookup_bool_option(verbose, Verbose),
-	globals__io_lookup_bool_option(statistics, Stats),
-	maybe_write_string(Verbose, "% Writing to file `"),
-	maybe_write_string(Verbose, FileName),
-	maybe_write_string(Verbose, "'...\n"),
-	maybe_flush_output(Verbose),
-	io__tell(FileName, Res),
-	( { Res = ok } ->
-		Action,
-		io__told,
-		maybe_write_string(Verbose, "% done.\n"),
-		maybe_report_stats(Stats)
-	;
-		maybe_write_string(Verbose, "\n"),
-		{ string__append_list(["can't open file `",
-			FileName, "' for output."], ErrorMessage) },
-		report_error(ErrorMessage)
-	).
 
 	%
 	% Generate the header file
@@ -560,6 +536,8 @@ mlds_output_c_defn(_Indent, user_foreign_code(c, Code, Context)) -->
 	mlds_to_c__output_context(mlds__make_context(Context)),
 	io__write_string(Code).
 mlds_output_c_defn(_Indent, user_foreign_code(managed_cplusplus, _, _)) -->
+	{ sorry(this_file, "foreign code other than C") }.
+mlds_output_c_defn(_Indent, user_foreign_code(csharp, _, _)) -->
 	{ sorry(this_file, "foreign code other than C") }.
 
 :- pred mlds_output_pragma_export_decl(mlds_module_name, indent,
@@ -1035,7 +1013,8 @@ is_static_member(Defn) :-
 :- mode mlds_make_base_class(in, in, out, in, out) is det.
 
 mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
-	BaseName = string__format("base_%d", [i(BaseNum0)]),
+	BaseName = mlds__var_name(string__format("base_%d", [i(BaseNum0)]),
+		no),
 	Type = ClassId,
 	MLDS_Defn = mlds__defn(data(var(BaseName)), Context,
 		ml_gen_public_field_decl_flags, data(Type, no_initializer)),
@@ -1475,7 +1454,7 @@ mlds_output_pred_label(special_pred(PredName, MaybeTypeModule,
 :- mode mlds_output_data_name(in, di, uo) is det.
 
 mlds_output_data_name(var(Name)) -->
-	mlds_output_mangled_name(Name).
+	mlds_output_mangled_name(ml_var_name_to_string(Name)).
 mlds_output_data_name(common(Num)) -->
 	io__write_string("common_"),
 	io__write_int(Num).
@@ -2481,15 +2460,19 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo, trail_op(_TrailOp), _) -->
 	%
 	% foreign language interfacing
 	%
-mlds_output_atomic_stmt(_Indent, _FuncInfo, target_code(TargetLang, Components),
-		Context) -->
+mlds_output_atomic_stmt(_Indent, _FuncInfo,
+	inline_target_code(TargetLang, Components), Context) -->
 	( { TargetLang = lang_C } ->
 		list__foldl(
 			mlds_output_target_code_component(Context),
 			Components)
 	;
-		{ error("mlds_to_c.m: sorry, target_code only works for lang_C") }
+		{ error("mlds_to_c.m: sorry, inline_target_code only works for lang_C") }
 	).
+
+mlds_output_atomic_stmt(_Indent, _FuncInfo,
+	outline_foreign_proc(_ForeignLang, _Lvals, _Code), _Context) -->
+		{ error("mlds_to_c.m: outline_foreign_proc is not used in C backend") }.
 
 :- pred mlds_output_target_code_component(mlds__context, target_code_component,
 		io__state, io__state).
@@ -2626,7 +2609,12 @@ mlds_output_lval(var(VarName, _VarType)) -->
 :- mode mlds_output_var(in, di, uo) is det.
 
 mlds_output_var(VarName) -->
-	mlds_output_fully_qualified(VarName, mlds_output_mangled_name).
+	mlds_output_fully_qualified(VarName, mlds_output_var_name).
+
+:- pred mlds_output_var_name(mlds__var_name, io__state, io__state).
+:- mode mlds_output_var_name(in, di, uo) is det.
+mlds_output_var_name(VarName) -->
+	mlds_output_mangled_name(ml_var_name_to_string(VarName)).
 
 :- pred mlds_output_mangled_name(string, io__state, io__state).
 :- mode mlds_output_mangled_name(in, di, uo) is det.
