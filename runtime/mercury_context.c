@@ -12,6 +12,8 @@ ENDINIT
 
 #include "mercury_imp.h"
 
+#include <stdio.h>
+#include <unistd.h>		/* for getpid() and fork() */
 #ifdef MR_THREAD_SAFE
   #include "mercury_thread.h"
 #endif
@@ -19,16 +21,6 @@ ENDINIT
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
 #include "mercury_engine.h"	/* for `memdebug' */
-
-/*
-** stdio.h must be included _after_ mercury_context.h because of an
-** incompatibility with FreeBSD (2.2.x).  FreeBSD defines an inline
-** function in stdio.h, so it cannot be included until after global
-** registers have been declared, otherwise GCC complains.
-*/
-
-#include <stdio.h>
-#include <unistd.h>		/* for getpid() and fork() */
 
 MR_Context	*MR_runqueue;
 #ifdef	MR_THREAD_SAFE
