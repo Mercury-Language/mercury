@@ -116,6 +116,11 @@
 :- pred bag__contains(bag(T), T).
 :- mode bag__contains(in, in) is semidet.
 
+	% Count how many occurrences of the value the bag contains.
+	%
+:- pred bag__count_value(bag(T), T, int).
+:- mode bag__count_value(in, in, out) is det.
+
 	% bag__subtract(Bag0, SubBag, Bag)
 	% subtracts SubBag from Bag0 to produce Bag
 	% each element in SubBag is removed from Bag0 to produce Bag.
@@ -302,6 +307,15 @@ bag__delete_all(Bag0, Item, Bag) :-	% det
 
 bag__contains(Bag, Item) :-
 	map__contains(Bag, Item).
+
+%---------------------------------------------------------------------------%
+
+bag__count_value(Bag, Item, Count) :-
+	( map__search(Bag, Item, Count0) ->
+		Count = Count0
+	;
+		Count = 0
+	).
 
 %---------------------------------------------------------------------------%
 

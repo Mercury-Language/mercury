@@ -1,3 +1,5 @@
 NEWS since Mercury release 0.8:
 -------------------------------
 
+* We've added a new predicate to the Mercury standard library:
+	bag__count_value/3.	
