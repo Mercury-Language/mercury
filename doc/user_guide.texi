@@ -2803,7 +2803,7 @@ of execution events of various kinds.
 The four kinds of events supported by most Prolog systems (their @emph{ports})
 are
 
-@table @var
+@table @emph
 @item call events
 A call event occurs just after a procedure has been called,
 and control has just reached the start of the body of the procedure.
@@ -2828,7 +2828,7 @@ depend on the determinism of the procedure.
 The possible event sequences for procedures of the various determinisms
 are as follows.
 
-@table @var
+@table @emph
 @item nondet procedures
 a call event, zero or more repeats of (exit event, redo event), and a fail event
 @item multi procedures
@@ -2850,7 +2850,7 @@ that report on what is happening @emph{internal} to a call.
 Each of these internal event types has an associated parameter called a path.
 The internal event types are:
 
-@table @var
+@table @emph
 @item then events
 A then event occurs when execution reaches
 the start of the then part of an if-then-else.
@@ -2918,7 +2918,7 @@ or whether to give control back to the executable.
 
 Every module can be compiled with one of several trace levels.
 
-@table @var
+@table @emph
 @item trace level none
 A procedure compiled with trace level none
 will never generate any events.
@@ -2940,7 +2940,7 @@ has trace level deep or shallow.
 @c XXX explain --trace
 @c XXX --debug and not --debug
 
-@table @var
+@table @samp
 @item --trace minimum
 With --require-tracing, this sets the trace level to shallow;
 with --no-require-tracing, it sets the trace level to none.
@@ -2979,7 +2979,7 @@ mdb @var{prog} @var{arg1} ...
 The operation of the Mercury debugger @samp{mdb}
 is based on the following concepts.
 
-@table @var
+@table @emph
 @item break points
 The user may associate a break point
 with some events that occur inside a procedure;
