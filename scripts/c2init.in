@@ -41,6 +41,9 @@ Options:
 		(declared in \"init.h\") that can be called from C code.
 		(A more fine-grained interface is also available;
 		see \"init.h\" for details.)
+	-I <directory>, --init-file-directory <directory>
+		Include <directory> in the list of directories searched to
+		locate \`.init' files.
 	-w <label>, --entry-point <label>
 		Set entry point to <label>.
 		(Default value is \`mercury__main_2_0'.)
@@ -88,6 +91,7 @@ trace_opt=""
 library_opt=""
 extra_inits_opt=""
 aditi_opt=""
+extra_init_dirs=""
 
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
@@ -112,6 +116,9 @@ while true; do
 
 	-l-|--no-library)
 		library_opt="";;
+
+	-I|--init-file-directory)
+		extra_init_dirs="$extra_init_dirs -I $2"; shift;;
 
 	-w|--entry-point)
 		defentry="$2"; shift;;
@@ -176,10 +183,10 @@ esac
 case $# in
 	0) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt -w"$defentry" $extra_inits_opt \
-		$MERCURY_MOD_LIB_MODS
+		$extra_init_dirs $EXTRA_INIT_FILES $MERCURY_MOD_LIB_MODS
 	   ;;
 	*) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
-		$library_opt -w"$defentry" $extra_inits_opt "$@" \
-		$MERCURY_MOD_LIB_MODS
+		$library_opt -w"$defentry" $extra_inits_opt \
+		$extra_init_dirs "$@" $EXTRA_INIT_FILES $MERCURY_MOD_LIB_MODS
 	   ;;
 esac

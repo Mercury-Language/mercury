@@ -530,6 +530,18 @@ specified in @code{GRADEFLAGS} and @code{C2INITARGS}, respectively.)
 Extra files to be processed by c2init.  These variables should not be
 used for specifying flags to c2init (that's what @code{C2INITFLAGS} is for)
 since they are also used to derive extra dependency information.
+
+@item EXTRA_LIBRARIES
+A list of extra Mercury libraries to link into any programs or libraries
+that you are building.
+Libraries should be specified using their base name; that is, without any
+@samp{lib} prefix or extension.
+For example the library including the files @file{libfoo.a} and
+@file{foo.init} would be referred to as just @samp{foo}.
+
+@item EXTRA_LIB_DIRS
+A list of extra Mercury library directory hierarchies to search when
+looking for extra libraries.
 @end table
 
 Other variables also exist - see
@@ -582,6 +594,7 @@ and, on many platforms, it supports shared object libraries.
 * Building libraries::
 * Installing libraries::
 * Using libraries::
+* Supporting multiple grades and architectures::
 @end menu
 
 @node Writing libraries
@@ -778,6 +791,45 @@ shared object library, interface files and initialization file
 for each Mercury library being used are all put in a single directory,
 which is probably the simplest way of organizing things, but the
 Mercury implementation does not require that.
+
+@node Supporting multiple grades and architectures
+@section Supporting multiple grades and architectures
+
+In order to better support using and installing libraries in multiple
+grades, @samp{mmake} now has some support for alternative library directory
+hierarchies.
+These have the same structure as the @file{@var{prefix}/lib/mercury} tree,
+including the different subdirectories for different grades and different
+machine architectures.
+
+Automatically installing a library and all its associated files to such a
+tree is not yet supported, but until it is the user can use the same
+techniques used for building and installing the core Mercury libraries.
+
+Once a library is installed in such a hierarchy, using it is easy.
+Suppose the user wishes to use the library @samp{mypackage} (installed
+in the tree rooted at @samp{/some/directory/mypackage}) and the library
+@samp{myotherlib} (installed in the tree rooted at
+@samp{/some/directory/myotherlib}).
+The user need only set the following Mmake variables:
+
+@example
+EXTRA_LIB_DIRS = /some/directory/mypackage /some/directory/myotherlib
+EXTRA_LIBRARIES = mypackage myotherlib
+@end example
+
+Mmake will then ensure that the appropriate directories are searched for
+the relevant interface files, module initialisation files, compiled
+libraries, etc.
+
+One can specify extra libraries to be used on a program-by-program
+basis.  For instance, if the program @samp{foo} also uses the library
+@samp{mylib4foo}, but the other programs governed by the Mmakefile don't,
+then one can declare:
+
+@example
+EXTRA_LIBRARIES-foo = mylib4foo
+@end example
 
 @node Debugging
 @chapter Debugging
