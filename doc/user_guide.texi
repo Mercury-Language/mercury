@@ -3481,8 +3481,8 @@ which could have been stricter.
 @item --no-warn-inferred-erroneous
 @findex --no-warn-inferred-erroneous
 @findex --warn-inferred-erroneous
-Don't warn about determinism declaration which are inferred erroneous
-but whose declarations are more lax.
+Don't warn about procedures whose determinism is inferred erroneous
+but whose determinism declarations are laxer.
 
 @sp 1
 @item --no-warn-nothing-exported
