@@ -66,3 +66,14 @@ make install
 #	   sparc, alpha, and i386 (see runtime/regs.h and runtime/machdeps/*).
 #	   If you want to use Mercury on some other CPU, contact us and
 #	   we'll add support for gcc global registers for that CPU.
+#
+# De-installation:
+# ----------------
+#
+# You may eventually want to uninstall this version of Mercury
+# (to free up disk space so you can install the next version ;-).
+# If you installed in the default location, you can simply
+# use `rm -rf /usr/local/mercury-0.4' to uninstall.
+# If you installed in a location such as `/usr/local' that also
+# contains other files which you do not want removed, then
+# run the command `make uninstall' in this directory.
