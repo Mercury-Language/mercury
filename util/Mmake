@@ -34,9 +34,6 @@ install: mkinit
 
 #-----------------------------------------------------------------------------#
 
-# suppress the default Mmake rule which removes all the .c files
-CLEAN_C =
-
 clean:
 	-rm -f mkinit.o
 
