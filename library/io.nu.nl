@@ -347,8 +347,7 @@ io__do_open(File, Mode, Result, Stream) -->
 	{ name(FileName, File) },
 	( { open(FileName, Mode, Stream0) } ->
 		{ Result = 0 },
-		{ Stream = Stream0 },
-		io__insert_stream_name(Stream, File)
+		{ Stream = Stream0 }
 	;
 		{ Result = -1 },
 		{ Stream = garbage }

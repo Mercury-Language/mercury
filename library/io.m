@@ -609,7 +609,8 @@ io__write_strings(Stream, [S|Ss]) -->
 io__open_input(FileName, Result) -->
 	io__do_open_input(FileName, Result0, NewStream),
 	( { Result0 \= -1 } ->
-		{ Result = ok(NewStream) }
+		{ Result = ok(NewStream) },
+		io__insert_stream_name(NewStream, FileName)
 	;
 		% XXX improve error message
 		{ Result = error("can't open input file") }
@@ -618,7 +619,8 @@ io__open_input(FileName, Result) -->
 io__open_output(FileName, Result) -->
 	io__do_open_output(FileName, Result0, NewStream),
 	( { Result0 \= -1 } ->
-		{ Result = ok(NewStream) }
+		{ Result = ok(NewStream) },
+		io__insert_stream_name(NewStream, FileName)
 	;
 		% XXX improve error message
 		{ Result = error("can't open output file") }
@@ -627,7 +629,8 @@ io__open_output(FileName, Result) -->
 io__open_append(FileName, Result) -->
 	io__do_open_append(FileName, Result0, NewStream),
 	( { Result0 \= -1 } ->
-		{ Result = ok(NewStream) }
+		{ Result = ok(NewStream) },
+		io__insert_stream_name(NewStream, FileName)
 	;
 		% XXX improve error message
 		{ Result = error("can't append to file") }
