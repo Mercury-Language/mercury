@@ -30,9 +30,9 @@ NONDET_PROGS = \
 
 ifneq "$(findstring .gc,$(GRADE))" ""
 	ifneq "$(findstring .mm,$(GRADE))" ""
-		PROGS=$(SIMPLE_PROGS)
-	else
 		PROGS=$(SIMPLE_PROGS) $(NONDET_PROGS)
+	else
+		PROGS=$(SIMPLE_PROGS)
 	endif
 else
 	PROGS=
