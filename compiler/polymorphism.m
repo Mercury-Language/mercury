@@ -357,8 +357,7 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
 		term__var_list_to_term_list(PredTypeVars, PredTypes0),
 		term__apply_rec_substitution_to_list(PredTypes0, TypeSubst,
 			PredTypes),
-		module_info_get_unify_pred_map(ModuleInfo, UnifyPredMap),
-		polymorphism__make_vars(PredTypes, UnifyPredMap, UnifyProcMap,
+		polymorphism__make_vars(PredTypes, ModuleInfo, UnifyProcMap,
 				VarSet0, VarTypes0,
 				ExtraVars, ExtraGoals, VarSet, VarTypes),
 		list__append(ExtraVars, ArgVars0, ArgVars),
@@ -368,20 +367,18 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
 
 %---------------------------------------------------------------------------%
 
-:- pred polymorphism__make_vars(list(type), map(type_id, pred_id),
+:- pred polymorphism__make_vars(list(type), module_info,
 				map(tvar, var), varset, map(var, type),
 				list(var), list(hlds__goal),
 				varset, map(var, type)).
 :- mode polymorphism__make_vars(in, in, in, in, in, out, out, out, out) is det.
 
 polymorphism__make_vars([], _, _, VarSet, VarTypes, [], [], VarSet, VarTypes).
-/*###378 [cc] In clause for predicate `polymorphism__make_vars/9':%%%*/
-/*###378 [cc] error: wrong number of arguments in call to pred `type_to_type_id'.%%%*/
-polymorphism__make_vars([Type|Types], UnifyPredMap, UnifyProcMap,
+polymorphism__make_vars([Type|Types], ModuleInfo, UnifyProcMap,
 				VarSet0, VarTypes0,
 				ExtraVars, ExtraGoals, VarSet, VarTypes) :-
 	(
-		type_to_type_id(Type, TypeId, TypeArgs)
+		type_to_type_id(Type, _TypeId, TypeArgs)
 	->
 		% This occurs for code where a predicate calls a polymorphic
 		% predicate with a known value of the type variable.
@@ -402,15 +399,15 @@ polymorphism__make_vars([Type|Types], UnifyPredMap, UnifyProcMap,
 
 		% create a term which holds the unification pred for
 		% the type, processing any argument types recursively
-		polymorphism__make_vars(TypeArgs, UnifyPredMap, UnifyProcMap,
+		polymorphism__make_vars(TypeArgs, ModuleInfo, UnifyProcMap,
 			VarSet0, VarTypes0,
 			ArgVars, ExtraGoals0, VarSet1, VarTypes1),
 		term__var_list_to_term_list(ArgVars, Args),
 		Functor = term__atom("="), 
 		term__context_init(0, Context),
 		ValTerm = term__functor(Functor, Args, Context),
-		map__lookup(UnifyPredMap, TypeId, UnifyPredId),
-		ConsId = pred_const(UnifyPredId, 0),
+		classify_type(Type, ModuleInfo, TypeCategory),
+		polymorphism__get_unify_proc(TypeCategory, ModuleInfo, ConsId),
 		
 		% introduce new variable
 		varset__new_var(VarSet1, Var, VarSet2),
@@ -524,9 +521,51 @@ polymorphism__make_vars([Type|Types], UnifyPredMap, UnifyProcMap,
 	),
 	ExtraVars = [Var | ExtraVars1],
 	list__append(ExtraGoals1, ExtraGoals2, ExtraGoals),
-	polymorphism__make_vars(Types, UnifyPredMap, UnifyProcMap,
+	polymorphism__make_vars(Types, ModuleInfo, UnifyProcMap,
 				VarSet2, VarTypes2,
 				ExtraVars1, ExtraGoals2, VarSet, VarTypes).
+
+:- pred polymorphism__get_unify_proc(builtin_type, module_info, cons_id).
+:- mode polymorphism__get_unify_proc(in, in, out) is det.
+
+polymorphism__get_unify_proc(inttype, ModuleInfo, ConsId) :-
+	polymorphism__get_proc("builtin_unify_int", ModuleInfo, ConsId).
+polymorphism__get_unify_proc(chartype, ModuleInfo, ConsId) :-
+	polymorphism__get_proc("builtin_unify_int", ModuleInfo, ConsId).
+polymorphism__get_unify_proc(enumtype, ModuleInfo, ConsId) :-
+	polymorphism__get_proc("builtin_unify_int", ModuleInfo, ConsId).
+polymorphism__get_unify_proc(strtype, ModuleInfo, ConsId) :-
+	polymorphism__get_proc("builtin_unify_string", ModuleInfo, ConsId).
+/*
+polymorphism__get_unify_proc(floattype, ModuleInfo, ConsId) :-
+	polymorphism__get_proc("builtin_unify_float", ModuleInfo, ConsId).
+*/
+polymorphism__get_unify_proc(predtype, ModuleInfo, ConsId) :-
+	polymorphism__get_proc("builtin_unify_pred", ModuleInfo, ConsId).
+polymorphism__get_unify_proc(usertype(Type), ModuleInfo, ConsId) :-
+	module_info_get_unify_pred_map(ModuleInfo, UnifyPredMap),
+	( type_to_type_id(Type, TypeId, _TypeArgs) ->
+		map__lookup(UnifyPredMap, TypeId, UnifyPredId),
+		ConsId = pred_const(UnifyPredId, 0)
+	;
+		error("polymorphism__get_unify_proc: type_to_type_id failed")
+	).
+
+	% find the unification procedure with the specified name
+
+:- pred polymorphism__get_proc(string, module_info, cons_id).
+:- mode polymorphism__get_proc(in, in, out) is det.
+
+polymorphism__get_proc(Name, ModuleInfo, ConsId) :-
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	(
+		predicate_table_search_name_arity(PredicateTable, Name, 2,
+			[PredId])
+	->
+		ConsId = pred_const(PredId, 0)
+	;
+		error("polymorphism__get_proc: lookup failed")
+	).
 
 :- pred polymorphism__make_head_vars(list(tvar), tvarset,
 				varset, map(var, type),

@@ -121,10 +121,24 @@
 
 %-----------------------------------------------------------------------------%
 
-:- implementation.
+% The following are used by the compiler, to implement polymorphism.
+% They should not be used in programs.
 
-% All the predicates defined in this module are builtin.
-% The compiler generates code for them inline.
+:- pred builtin_unify_int(int::in, int::in) is semidet.
+
+:- pred builtin_unify_string(string::in, string::in) is semidet.
+/*
+:- pred builtin_unify_float(float::in, float::in) is semidet.
+*/
+:- pred builtin_unify_pred(int::in, int::in) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module require, std_util.
+
+% Many of the predicates defined in this module are builtin -
+% the compiler generates code for them inline.
 
 	% A temporary hack until we implement call/N (N>1) properly
 	% The way this works is magic ;-)
@@ -134,6 +148,14 @@ call(Pred, T) :-
 
 call(Pred, T1, T2) :-
 	call(call(Pred, T1, T2)).
+
+builtin_unify_int(X, X).
+
+builtin_unify_string(S, S).
+
+builtin_unify_pred(_Pred1, _Pred2) :-
+	error("attempted higher-order unification"),
+	fail. % suppress determinism warning
 
 :- end_module mercury_builtin.
 
