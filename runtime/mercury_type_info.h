@@ -342,8 +342,17 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
     ((MR_Integer)(*(MR_Word **)(tci))[4])
 #define MR_typeclass_info_class_method(tci, n)                      \
     ((MR_Code *)(*(MR_Word **)tci)[(n+4)])
-#define	MR_typeclass_info_arg_typeclass_info(tci, n)                \
-    (((MR_Word *)(tci))[(n)])
+
+/*
+** The following have the same definitions. This is because
+** the call to MR_typeclass_info_arg_typeclass_info must already
+** have the number of unconstrained type variables for the instance
+** added to it.
+*/
+#define MR_typeclass_info_arg_typeclass_info(tci, n)                \
+    (((Word *)(tci))[(n)])
+#define MR_typeclass_info_unconstrained_type_info(tci, n)           \
+    (((Word *)(tci))[(n)])
 
 /*
 ** The following have the same definitions. This is because

@@ -256,6 +256,14 @@ typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 :- pred type_info_from_typeclass_info(typeclass_info(_), int, type_info(T)).
 :- mode type_info_from_typeclass_info(in, in, out) is det.
 
+	% unconstrained_type_info_from_typeclass_info(TypeClassInfo, 
+	%               Index, TypeInfo)
+	% extracts the TypeInfo for the Indexth unconstrained type variable
+	% from the instance represented by TypeClassInfo.
+:- pred unconstrained_type_info_from_typeclass_info(typeclass_info(_),
+		int, type_info(_)).
+:- mode unconstrained_type_info_from_typeclass_info(in, in, out) is det.
+
 	% superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass)
 	% extracts SuperClass from TypeClassInfo where SuperClass is the
 	% Indexth superclass of the class.
@@ -267,6 +275,9 @@ typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 	%       InstanceConstraintTypeClassInfo)
 	% extracts the typeclass_info for the Indexth typeclass constraint
 	% of the instance described by TypeClassInfo.
+	%
+	% Note: Index must be equal to the number of the desired constraint
+	% plus the number of unconstrained type variables for this instance.
 :- pred instance_constraint_from_typeclass_info(
 		typeclass_info(_), int, typeclass_info(_)).
 :- mode instance_constraint_from_typeclass_info(in, in, out) is det.
@@ -386,6 +397,13 @@ void sys_init_type_info_module(void) {
 	TypeInfo::out), [will_not_call_mercury, thread_safe],
 "
 	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
+").
+
+:- pragma c_code(unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
+	Index::in, TypeInfo::out), [will_not_call_mercury, thread_safe],
+"
+	TypeInfo = MR_typeclass_info_unconstrained_type_info(TypeClassInfo,
+			Index);
 ").
 
 :- pragma c_code(superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,

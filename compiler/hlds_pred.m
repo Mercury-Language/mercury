@@ -1881,8 +1881,10 @@ no_type_info_builtin_2(private_builtin, "unsafe_type_cast", 2).
 no_type_info_builtin_2(builtin, "unsafe_promise_unique", 2).
 no_type_info_builtin_2(private_builtin, "superclass_from_typeclass_info", 3).
 no_type_info_builtin_2(private_builtin,
-				"instance_constraint_from_typeclass_info", 3).
+			"instance_constraint_from_typeclass_info", 3).
 no_type_info_builtin_2(private_builtin, "type_info_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+			"unconstrained_type_info_from_typeclass_info", 3).
 no_type_info_builtin_2(private_builtin, "table_restore_any_ans", 3).
 no_type_info_builtin_2(private_builtin, "table_lookup_insert_enum", 4).
 
