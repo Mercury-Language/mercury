@@ -14,7 +14,8 @@ include $(MERCURY_DIR)/Mmake.common
 #-----------------------------------------------------------------------------#
 
 INCPATH		= -I$(MERCURY_DIR)/runtime -I$(MERCURY_DIR)/boehm_gc -I.
-CFLAGS		= -g $(EXTRA_CFLAGS) -D_POSIX_SOURCE $(INCPATH)
+LIBPATH		= -L$(MERCURY_DIR)/runtime -L$(MERCURY_DIR)/boehm_gc
+CFLAGS		= -g $(EXTRA_CFLAGS) -D_POSIX_SOURCE $(INCPATH) -static
 MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= $(CFLAGS) 
 
@@ -32,6 +33,8 @@ ORIG_CS		= bytecode.c disasm.c machine.c mbi.c mdis.c mem.c \
 		  static_data.c template.c util.c
 OBJS		= $(ORIG_CS:.c=.o)
 
+LIBS		= -lmer -lgc
+
 #-----------------------------------------------------------------------------#
 
 $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
@@ -43,10 +46,10 @@ $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
 all: mdis mbi
 
 mdis: bytecode.o disasm.o mdis.o mem.o util.o
-	$(MGNUC) $(CFLAGS) -o mdis $^
+	$(MGNUC) $(CFLAGS) -o mdis $^ $(LIBPATH) $(LIBS)
 
 mbi: bytecode.o mbi.o mem.o util.o
-	$(MGNUC) $(CFLAGS) -o mbi $^
+	$(MGNUC) $(CFLAGS) -o mbi $^ $(LIBPATH) $(LIBS)
 
 tags: $(ORIG_CS)
 	ctags $(ORIG_CS)
