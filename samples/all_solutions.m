@@ -7,7 +7,7 @@
 % predicates are not yet implemented, so if you pass an incorrect argument
 % to solutions/2, you will probably get a core dump.
 
-:- module all_solutionns.
+:- module all_solutions.
 :- interface.
 :- import_module io.
 
