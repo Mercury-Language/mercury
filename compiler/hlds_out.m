@@ -426,6 +426,7 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 :- mode hlds_out__write_pred(in, in, in, in, di, uo) is det.
 
 hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
+	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 	{ pred_info_procedures(PredInfo, ProcTable) },
@@ -434,7 +435,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_import_status(PredInfo, ImportStatus) },
 	{ pred_info_get_marker_list(PredInfo, Markers) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	mercury_output_pred_type(TVarSet, unqualified(PredName), ArgTypes,
+	mercury_output_pred_type(TVarSet, qualified(Module, PredName), ArgTypes,
 		no, Context),
 	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses) },
 	hlds_out__write_indent(Indent),
