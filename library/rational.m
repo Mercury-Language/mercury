@@ -1,8 +1,7 @@
-
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-1998 The University of Melbourne.
-% This file may only be copied under the terms of the GNU General
-% Public License - see the file COPYING in the Mercury distribution.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
 % file: rational.m
