@@ -159,7 +159,21 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 			map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
 			list__append(ArgTypes0, [TypeOfX], ArgTypes),
 			typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
-				TVarSet, ArgTypes, PredId, QualifiedFuncName)
+				TVarSet, ArgTypes, PredId, QualifiedFuncName),
+
+			%
+			% We don't do this for compiler-generated predicates;
+			% they are assumed to have been generated with all
+			% functions already expanded.
+			% If we did this check for compiler-generated
+			% predicates, it would cause the wrong behaviour
+			% in the case where there is a user-defined function
+			% whose type is exactly the same as the type of
+			% a constructor.  (Normally that would cause
+			% a type ambiguity error, but compiler-generated
+			% predicates are not type-checked.)
+			%
+			\+ code_util__compiler_generated(PredInfo)
 		;
 			PredName = qualified(FuncModule, UnqualName),
 			predicate_table_search_func_m_n_a(PredTable,
