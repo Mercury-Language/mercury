@@ -31,6 +31,7 @@ DECLARATIVE_PROGS=		\
 	input_term_dep		\
 	ite_2			\
 	lpe_example		\
+	mapinit			\
 	neg_conj		\
 	negation		\
 	oracle_db		\
@@ -197,6 +198,9 @@ ite_2.out: ite_2 ite_2.inp
 
 lpe_example.out: lpe_example lpe_example.inp
 	$(MDB) ./lpe_example < lpe_example.inp > lpe_example.out 2>&1
+
+mapinit.out: mapinit mapinit.inp
+	$(MDB) ./mapinit < mapinit.inp > mapinit.out 2>&1
 
 neg_conj.out: neg_conj neg_conj.inp
 	$(MDB) ./neg_conj < neg_conj.inp > neg_conj.out 2>&1

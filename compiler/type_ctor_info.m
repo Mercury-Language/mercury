@@ -253,8 +253,13 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 		)
 	),
 	Flags0 = set__init,
-	( TypeBody ^ du_type_reserved_tag = yes ->
-		Flags = set__insert(Flags0, reserve_tag_flag)
+	( TypeBody = du_type(_, _, _, _, _, _) ->
+		Flags1 = set__insert(Flags0, kind_of_du_flag),
+		( TypeBody ^ du_type_reserved_tag = yes ->
+			Flags = set__insert(Flags1, reserve_tag_flag)
+		;
+			Flags = Flags1
+		)
 	;
 		Flags = Flags0
 	),

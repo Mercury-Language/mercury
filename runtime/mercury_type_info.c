@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2002 The University of Melbourne.
+** Copyright (C) 1995-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,8 +15,9 @@
   #include "mercury_imp.h"
 #endif
 #include "mercury_type_info.h"
-#include "mercury_misc.h"	/* for MR_fatal_error() */
-#include "mercury_heap.h"	/* for incr_saved_hp() */
+#include "mercury_misc.h"		/* for MR_fatal_error() */
+#include "mercury_heap.h"		/* for incr_saved_hp() */
+#include "mercury_builtin_types.h"	/* for void/0's type_ctor_info */
 
 /*---------------------------------------------------------------------------*/
 

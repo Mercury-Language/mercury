@@ -1061,9 +1061,7 @@ struct MR_TypeCtorInfo_Struct {
     MR_TypeFunctors     MR_type_ctor_functors;
     MR_TypeLayout       MR_type_ctor_layout;
     MR_int_least32_t    MR_type_ctor_num_functors;
-#ifdef  MR_TYPE_CTOR_INFO_HAS_FLAG
     MR_int_least16_t    MR_type_ctor_flags;
-#endif
 
 /*
 ** The following fields will be added later, once we can exploit them:
@@ -1096,10 +1094,34 @@ struct MR_TypeCtorInfo_Struct {
 /*
 ** The flag bits here must agree with the ones in encode_type_ctor_flag
 ** in compiler/rtti.m.
+**
+** The reserve tag flag is set iff the type constructor has reserved the
+** standard primary tag value for representing a variable.
+**
+** The variable arity flag is set for builting constructors whose arity is
+** variable: at moment, this means functions, predicates and tuples.
+**
+** The kind of du flag is set for all discriminated union types, even if
+** their representation is specialized (as enumerations, notag types, reserved
+** address types etc).
+**
+** The typeinfo fake arity flag is set for types whose arity *should* be zero,
+** but whose declared arity is one.
 */
 
+#define MR_TYPE_CTOR_FLAG_RESERVE_TAG           0x1
+#define MR_TYPE_CTOR_FLAG_VARIABLE_ARITY        0x2
+#define MR_TYPE_CTOR_FLAG_KIND_OF_DU            0x4
+#define MR_TYPE_CTOR_FLAG_TYPEINFO_FAKE_ARITY   0x8
+
 #define MR_type_ctor_has_reserve_tag(tci)                                   \
-    ((tci)->MR_type_ctor_flags & 0x1)
+    ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_RESERVE_TAG)
+#define MR_type_ctor_has_variable_arity(tci)                                \
+    ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_VARIABLE_ARITY)
+#define MR_type_ctor_is_kind_of_du(tci)                                     \
+    ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_KIND_OF_DU)
+#define MR_type_ctor_is_typeinfo_fake_arity(tci)                            \
+    ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_TYPEINFO_FAKE_ARITY)
 
 /*---------------------------------------------------------------------------*/
 
@@ -1149,12 +1171,6 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
 ** structures for builtin and special types.
 */
 
-#ifdef  MR_TYPE_CTOR_INFO_HAS_FLAG
-  #define MR_INIT_TYPE_CTOR_FLAG    , 0
-#else
-  #define MR_INIT_TYPE_CTOR_FLAG
-#endif
-
 #ifdef MR_HIGHLEVEL_CODE
 
   #define MR_DEFINE_TYPE_CTOR_INFO_TYPE                                 \
@@ -1194,35 +1210,11 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
     extern MR_PASTE2(MR_UnifyFunc_, a) u;                               \
     extern MR_PASTE2(MR_CompareFunc_, a) c;
 
-  #define MR_DEFINE_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)              \
-    {                                                                   \
-        a,                                                              \
-        MR_RTTI_VERSION__COMPACT,                                       \
-        -1,                                                             \
-        MR_PASTE2(MR_TYPECTOR_REP_, cr),                                \
-        (MR_Box) u,                                                     \
-        (MR_Box) c,                                                     \
-        MR_STRINGIFY(m),                                                \
-        MR_STRINGIFY(n),                                                \
-        { 0 },                                                          \
-        { 0 },                                                          \
-        -1                                                              \
-        MR_INIT_TYPE_CTOR_FLAG                                          \
-    }
+  #define MR_DEFINE_TYPE_CTOR_INFO_CODE(p)                              \
+        (MR_Box) p
 
-  #define MR_DEFINE_TYPE_CTOR_INFO_FULL(m, n, a, cr, u, c)              \
-    MR_DEFINE_TYPE_CTOR_INFO_DECLARE_ADDRS(u, c, a)                     \
-    MR_DEFINE_TYPE_CTOR_INFO_TYPE                                       \
-    MR_TYPE_CTOR_INFO_NAME(m, n, a) =                                   \
-    MR_DEFINE_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)
-
-  #define MR_DEFINE_TYPE_CTOR_INFO_PRED(m, n, a, cr, lu, lc, mu, mc)    \
-        MR_DEFINE_TYPE_CTOR_INFO_FULL(m, n, a, cr, mu, mc)
-
-  #define MR_DEFINE_TYPE_CTOR_INFO(m, n, a, cr)                         \
-    MR_DEFINE_TYPE_CTOR_INFO_FULL(m, n, a, cr,                          \
-        MR_TYPE_UNIFY_FUNC(m, n, a),                                    \
-        MR_TYPE_COMPARE_FUNC(m, n, a))                                  \
+  #define MR_DEFINE_TYPE_CTOR_INFO_STRING(s)                            \
+        MR_STRINGIFY(s)
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
@@ -1245,44 +1237,15 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
   #define MR_TYPE_COMPARE_FUNC(m, n, a)                                 \
     MR_PASTE7(mercury____Compare___, m, __, n, _, a, _0)
 
-  #define MR_DEFINE_TYPE_CTOR_INFO_DECLARE_ADDRS(u, c)                  \
+  #define MR_DEFINE_TYPE_CTOR_INFO_DECLARE_ADDRS(u, c, a)               \
     MR_declare_entry(u);                                                \
     MR_declare_entry(c);
 
-  #define MR_DEFINE_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)              \
-    {                                                                   \
-        a,                                                              \
-        MR_RTTI_VERSION__REP,                                           \
-        -1,                                                             \
-        MR_PASTE2(MR_TYPECTOR_REP_, cr),                                \
-        MR_MAYBE_STATIC_CODE(MR_ENTRY(u)),                              \
-        MR_MAYBE_STATIC_CODE(MR_ENTRY(c)),                              \
-        MR_string_const(MR_STRINGIFY(m), sizeof(MR_STRINGIFY(m))-1),    \
-        MR_string_const(MR_STRINGIFY(n), sizeof(MR_STRINGIFY(n))-1),    \
-        { 0 },                                                          \
-        { 0 },                                                          \
-        -1                                                              \
-        MR_INIT_TYPE_CTOR_FLAG                                          \
-    }
+  #define MR_DEFINE_TYPE_CTOR_INFO_CODE(p)                              \
+        MR_MAYBE_STATIC_CODE(MR_ENTRY(p))
 
-  #define MR_DEFINE_TYPE_CTOR_INFO_FULL(m, n, a, cr, u, c)              \
-    MR_DEFINE_TYPE_CTOR_INFO_DECLARE_ADDRS(u, c)                        \
-    MR_DEFINE_TYPE_CTOR_INFO_TYPE                                       \
-    MR_TYPE_CTOR_INFO_NAME(m, n, a) =                                   \
-    MR_DEFINE_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)
-
-  #define MR_DEFINE_TYPE_CTOR_INFO_PRED(m, n, a, cr, lu, lc, mu, mc)    \
-    MR_DEFINE_TYPE_CTOR_INFO_FULL(m, n, a, cr, lu, lc)
-
-  #define MR_DEFINE_TYPE_CTOR_INFO(m, n, a, cr)                         \
-    MR_DEFINE_TYPE_CTOR_INFO_FULL(m, n, a, cr,                          \
-        MR_TYPE_UNIFY_FUNC(m, n, a),                                    \
-        MR_TYPE_COMPARE_FUNC(m, n, a))                                  \
-
-  #define MR_DEFINE_TYPE_CTOR_INFO_UNUSED(m, n, a, cr)                  \
-    MR_DEFINE_TYPE_CTOR_INFO_FULL(m, m, n, a, cr,                       \
-        mercury__unused_0_0,                                            \
-        mercury__unused_0_0)
+  #define MR_DEFINE_TYPE_CTOR_INFO_STRING(s)                            \
+        MR_string_const(MR_STRINGIFY(s), sizeof(MR_STRINGIFY(s))-1)
 
   #define MR_UNIFY_COMPARE_DECLS(m, n, a)                               \
         MR_declare_entry(MR_TYPE_UNIFY_FUNC(m, n, a));                  \
@@ -1313,6 +1276,42 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
   #endif /* MR_DEEP_PROFILING */
 
 #endif /* MR_HIGHLEVEL_CODE */
+
+#define MR_DEFINE_TYPE_CTOR_INFO_BODY_FLAG(m, n, a, cr, u, c, f)        \
+    {                                                                   \
+        a,                                                              \
+        MR_RTTI_VERSION__FLAG,                                          \
+        -1,                                                             \
+        MR_PASTE2(MR_TYPECTOR_REP_, cr),                                \
+        MR_DEFINE_TYPE_CTOR_INFO_CODE(u),                               \
+        MR_DEFINE_TYPE_CTOR_INFO_CODE(c),                               \
+        MR_DEFINE_TYPE_CTOR_INFO_STRING(m),                             \
+        MR_DEFINE_TYPE_CTOR_INFO_STRING(n),                             \
+        { 0 },                                                          \
+        { 0 },                                                          \
+        -1,                                                             \
+        f                                                               \
+    }
+
+#define MR_DEFINE_TYPE_CTOR_INFO_FULL_FLAG(m, n, a, cr, u, c, f)        \
+    MR_DEFINE_TYPE_CTOR_INFO_DECLARE_ADDRS(u, c, a)                     \
+    MR_DEFINE_TYPE_CTOR_INFO_TYPE                                       \
+    MR_TYPE_CTOR_INFO_NAME(m, n, a) =                                   \
+    MR_DEFINE_TYPE_CTOR_INFO_BODY_FLAG(m, n, a, cr, u, c, f)
+
+#define MR_DEFINE_TYPE_CTOR_INFO_FLAG(m, n, a, cr, f)                   \
+    MR_DEFINE_TYPE_CTOR_INFO_FULL_FLAG(m, n, a, cr,                     \
+        MR_TYPE_UNIFY_FUNC(m, n, a), MR_TYPE_COMPARE_FUNC(m, n, a), f)
+
+#define MR_DEFAULT_TYPE_CTOR_INFO_FLAG  0
+
+#define MR_DEFINE_TYPE_CTOR_INFO_FULL(m, n, a, cr, u, c)                \
+    MR_DEFINE_TYPE_CTOR_INFO_FULL_FLAG(m, n, a, cr, u, c,               \
+        MR_DEFAULT_TYPE_CTOR_INFO_FLAG)
+
+#define MR_DEFINE_TYPE_CTOR_INFO(m, n, a, cr)                           \
+    MR_DEFINE_TYPE_CTOR_INFO_FLAG(m, n, a, cr,                          \
+        MR_DEFAULT_TYPE_CTOR_INFO_FLAG)
 
 /*---------------------------------------------------------------------------*/
 

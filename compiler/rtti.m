@@ -108,8 +108,14 @@
 			tcr_rep_details		:: type_ctor_details
 		).
 
+	% Each of the following values corresponds to one of the
+	% MR_TYPE_CTOR_FLAG_* macros in runtime/mercury_type_info.h.
+	% Their meanings are documented there.
 :- type type_ctor_flag
-	--->	reserve_tag_flag.
+	--->	reserve_tag_flag
+	;	variable_arity_flag
+	;	kind_of_du_flag
+	;	typeinfo_fake_arity_flag.
 
 	% A type_ctor_details structure contains all the information that the
 	% runtime system needs to know about the data representation scheme
@@ -636,7 +642,10 @@ encode_type_ctor_flags(FlagSet) =
 :- func encode_type_ctor_flag(type_ctor_flag, int) = int.
 
 	% The encoding here must match the one in runtime/mercury_type_info.h.
-encode_type_ctor_flag(reserve_tag_flag, N) = N + 1.
+encode_type_ctor_flag(reserve_tag_flag, N) 		= N + 1.
+encode_type_ctor_flag(variable_arity_flag, N)		= N + 2.
+encode_type_ctor_flag(kind_of_du_flag, N)		= N + 4.
+encode_type_ctor_flag(typeinfo_fake_arity_flag, N)	= N + 8.
 
 rtti_data_to_name(type_ctor_info(TypeCtorData), RttiTypeCtor,
 		type_ctor_info) :-
