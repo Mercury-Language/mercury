@@ -63,7 +63,7 @@ case "$GRADE" in
 		;;
 esac
 
-LIBS=${MERCURY_LIBS="-lmer -lmercury -lmer $LIBGC"}
+LIBS=${MERCURY_LIBS="-lmer -lmercury -lmer $LIBGC -lm"}
 
 case @FULLARCH@ in
 	*-solaris*)
