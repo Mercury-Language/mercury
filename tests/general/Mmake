@@ -6,6 +6,13 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
+ifeq ($(HAVE_NUPROLOG),yes)
+%.exp: %.nu
+	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
+endif
+
+#-----------------------------------------------------------------------------#
+
 NONDETPROGS=	commit_bug disj_disj dnf hello_again interpreter \
 		nasty_nondet nondet_disj nondet_ite nondet_ite_2 \
 		nondetlive partition semidet_lambda
