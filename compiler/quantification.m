@@ -68,8 +68,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module instmap, goal_util.
+
 :- import_module term, varset.
-:- import_module std_util, bool, goal_util, require.
+:- import_module std_util, bool, require.
 
 	% The `outside vars', `lambda outside vars', and `quant vars'
 	% fields are inputs; the `nonlocals' field is output; and
@@ -168,7 +171,16 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 		{ Goal = Goal1 },
 		{ GoalInfo1 = GoalInfo0 }
 	),
-	{ goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo) }.
+	{ goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo2) },
+	%
+	% If the non-locals set has shrunk (e.g. because some optimization
+	% optimizes away the other occurrences of a variable, causing it
+	% to become local when previously it was non-local),
+	% then we may need to likewise shrink the instmap delta.
+	%
+	{ goal_info_get_instmap_delta(GoalInfo2, InstMapDelta0) },
+	{ instmap_delta_restrict(InstMapDelta0, NonLocalVars, InstMapDelta) },
+	{ goal_info_set_instmap_delta(GoalInfo2, InstMapDelta, GoalInfo) }.
 
 :- pred implicitly_quantify_goal_2(hlds_goal_expr, prog_context,
 				hlds_goal_expr, quant_info, quant_info).
