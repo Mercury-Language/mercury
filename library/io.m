@@ -3773,35 +3773,40 @@ MR_MercuryFile
 static mercury_open(MR_String filename, MR_String openmode,
 	ML_file_encoding_kind file_encoding)
 {
-        MR_MercuryFile mf = new MR_MercuryFileStruct();
-        System::IO::FileMode fa;
+        System::IO::FileMode mode;
+        System::IO::FileAccess access;
+        System::IO::FileShare share;
         System::IO::Stream *stream = 0;
 
 	try {
-			// XXX get this right...
 		if (System::String::op_Equality(openmode, ""r"")) {
-			fa = System::IO::FileMode::Open;
-		} else if (System::String::op_Equality(openmode, ""a"")) {
-			fa = System::IO::FileMode::Append;
+			// Like '<' in Bourne shell.
+			// Read a file.  The file must exist already.
+			mode   = System::IO::FileMode::Open;
+			access = System::IO::FileAccess::Read;
 		} else if (System::String::op_Equality(openmode, ""w"")) {
-			fa = System::IO::FileMode::Truncate;
+			// Like '>' in Bourne shell.
+			// Overwrite an existing file, or create a new file.
+			mode   = System::IO::FileMode::Create;
+			access = System::IO::FileAccess::Write;
+		} else if (System::String::op_Equality(openmode, ""a"")) {
+			// Like '>>' in Bourne shell.
+			// Append to an existing file, or create a new file.
+			mode   = System::IO::FileMode::Append;
+			access = System::IO::FileAccess::Write;
 		} else {
-			MR_String msg;
-			msg = System::String::Concat(
+			mercury::runtime::Errors::SORRY(System::String::Concat(
 				""foreign code for this function, open mode:"",
-				openmode);
-			mercury::runtime::Errors::SORRY(msg);
-
-			// fa = XXX;
+				openmode));
 		}
 
-		if (fa == System::IO::FileMode::Truncate &&
-				!System::IO::File::Exists(filename))
-		{
-			stream = System::IO::File::Create(filename);
-		} else {
-			stream = System::IO::File::Open(filename, fa);
-		}
+		// For Unix compatibility, we allow files
+		// to be read or written by multiple processes
+		// simultaneously.  XXX Is this a good idea?
+		share = System::IO::FileShare::ReadWrite;
+
+		stream = System::IO::File::Open(filename, mode, access, share);
+
 	} catch (System::IO::IOException* e) {
 		MR_io_exception = e;
 	}
@@ -3809,12 +3814,11 @@ static mercury_open(MR_String filename, MR_String openmode,
         if (!stream) {
                 return 0;
         } else {
-		stream = new System::IO::BufferedStream(stream);
-		
 		// we initialize the `reader' and `writer' fields to null;
 		// they will be filled in later if they are needed.
-                mf = mercury_file_init(stream, NULL, NULL, file_encoding);
-                return mf;
+                return mercury_file_init(
+			new System::IO::BufferedStream(stream),
+			NULL, NULL, file_encoding);
         }
 }
 
