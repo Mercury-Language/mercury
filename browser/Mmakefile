@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2003 The University of Melbourne.
+# Copyright (C) 1998-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -125,6 +125,7 @@ $(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
 	exit $$status
 
 lib$(BROWSER_LIB_NAME).so: lib$(MDBCOMP_LIB_NAME).so
+lib$(BROWSER_LIB_NAME): lib$(MDBCOMP_LIB_NAME)
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
