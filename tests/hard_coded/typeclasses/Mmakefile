@@ -17,13 +17,19 @@ PROGS=	\
 	multi_parameter \
 	nondet_class_method \
 	operator_classname \
-	superclass_call
+	superclass_call \
+	typeclass_test_6
 
 # implied_instance_missing_constraint is not yet included as there is a bug
 # stopping it from working.
 # 
 # Actually, there is a bug, but it isn't in that test case. I'm trying to
 # find exactly how to trigger the bug. Oh well...
+
+# we do not yet pass the following tests:
+#       typeclass_test_5.m (this is really a WISHLIST item)
+#
+#
 
 #-----------------------------------------------------------------------------#
 
