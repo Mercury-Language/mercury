@@ -617,11 +617,11 @@ struct fact_table_hash_entry_i {
 
 
 #if TAGBITS >= 2
-	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   mkword(mktag(t), mkbody(i))
-	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) mkword(mktag(t), p)
-	#define FACT_TABLE_HASH_ENTRY_TYPE(p)       tag((Word)((p).index))
-	#define FACT_TABLE_HASH_INDEX(w)            unmkbody(w)
-	#define FACT_TABLE_HASH_POINTER(w)          body(w,tag(w))
+	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   MR_mkword(MR_mktag(t), MR_mkbody(i))
+	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) MR_mkword(MR_mktag(t), p)
+	#define FACT_TABLE_HASH_ENTRY_TYPE(p)       MR_tag((Word)((p).index))
+	#define FACT_TABLE_HASH_INDEX(w)            MR_unmkbody(w)
+	#define FACT_TABLE_HASH_POINTER(w)          MR_body(w,tag(w))
 #else
 	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   ((const Word *) i), (t)
 	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) ((const Word *) p), (t)
@@ -2535,11 +2535,11 @@ BEGIN_MODULE(%s_module)
 	init_label(%s_i1);
 BEGIN_CODE
 Define_entry(%s);
-	mkframe(""%s/%d"", 1, LABEL(%s_i1));
+	MR_mkframe(""%s/%d"", 1, LABEL(%s_i1));
 	MR_framevar(1) = (Integer) 0;
 	GOTO(LABEL(%s_i1));
 Define_label(%s_i1);
-	if (MR_framevar(1) >= %s) fail();
+	if (MR_framevar(1) >= %s) MR_fail();
 	{
 		/* declare argument vars */
 %s
@@ -2550,7 +2550,7 @@ Define_label(%s_i1);
 %s
 	}
 	MR_framevar(1)++;
-	succeed();
+	MR_succeed();
 END_MODULE
 
 extern ModuleFunc %s_module;
@@ -2611,8 +2611,8 @@ generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 	** then jump to the code where the work is actually done.
 	*/
 
-	maxfr = curprevfr;
-	curfr = cursuccfr;
+	MR_maxfr = MR_prevfr_slot(MR_curfr)
+	MR_curfr = MR_succfr_slot(MR_curfr)
 	{
 		Declare_entry(%s);
 		GOTO(ENTRY(%s));
@@ -3045,10 +3045,10 @@ Declare_label(%s_i1);
 
 	BEGIN_MODULE(%s_module)
 	init_entry(%s);
-	init_label(%s_i);
+	init_label(%s_i1);
 BEGIN_CODE
 Define_entry(%s);
-	mkframe(""%s/%d"", %d, LABEL(%s_i1));
+	MR_mkframe(""%s/%d"", %d, LABEL(%s_i1));
 	{
 		/* create argument vars */
 %s
@@ -3066,13 +3066,13 @@ Define_entry(%s);
 		/* save output args to registers */
 %s
 		MR_framevar(1) = ind + 1;
-		succeed();
+		MR_succeed();
 	failure_code_%s:
-		fail();
+		MR_fail();
 	}
 Define_label(%s_i1);
 	if (MR_framevar(1) >= %s) 
-		fail();
+		MR_fail();
 	{
 		/* create argument vars */
 %s
@@ -3089,7 +3089,7 @@ Define_label(%s_i1);
 %s
 	}
 	MR_framevar(1)++;
-	succeed();
+	MR_succeed();
 END_MODULE
 
 extern ModuleFunc %s_module;
@@ -3345,10 +3345,10 @@ Declare_label(%s_i1);
 
 BEGIN_MODULE(%s_module)
 	init_entry(%s);
-	init_label(%s_i);
+	init_label(%s_i1);
 BEGIN_CODE
 Define_entry(%s);
-	mkframe(""%s/%d"", 4, LABEL(%s_i1));
+	MR_mkframe(""%s/%d"", 4, LABEL(%s_i1));
 	{
 		/* create argument vars */
 %s
@@ -3368,9 +3368,9 @@ Define_entry(%s);
 		MR_framevar(2) = (Word) current_table;
 		MR_framevar(3) = (Word) keytype;
 		MR_framevar(4) = current_key;
-		succeed();
+		MR_succeed();
 	failure_code_%s:
-		fail();
+		MR_fail();
 	}
 Define_label(%s_i1);
 	{
@@ -3403,9 +3403,9 @@ Define_label(%s_i1);
 %s
 		if (hashval == -1) succeed_discard();
 		MR_framevar(1) = hashval;
-		succeed();
+		MR_succeed();
 	failure_code_%s:
-		fail();
+		MR_fail();
 	}
 END_MODULE
 

@@ -365,7 +365,7 @@ const struct mercury_data___type_ctor_layout_trail_ptr_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_trail_ptr_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_TRAIL_PTR_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TRAIL_PTR_VALUE))
 };
 
 	/* type_ctor_layout for `ticket' (only used by agc and debugger) */
@@ -375,7 +375,7 @@ const struct mercury_data___type_ctor_layout_ticket_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_ticket_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_TICKET_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TICKET_VALUE))
 };
 
 	/* type_ctor_functors definitions */
