@@ -712,6 +712,13 @@ code_exprn__expr_is_constant(const(Const), _Vars,
 			)
 		)
 	;
+		Const = float_const(_)
+	->
+		% Floating point constants are currently boxed by default;
+		% the memory allocation means that they are not constant
+		% expressions.
+		fail
+	;
 		true
 	),
 	Rval = const(Const).
