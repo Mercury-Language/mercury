@@ -6,7 +6,7 @@ TODO LIST:
 followvars.nl
 -------------
 
-- Make it work.
+- Make it work.  (??? Very low priority???)
 
 code_gen.nl
 ----------
@@ -49,10 +49,9 @@ general
 - tail recursion optimization (vanilla) and also pass-by-reference
   tail recursion.
 
-- (modes.nl, make_hlds.nl, hlds.nl, codegen.nl): 
+- modes.nl:
   split construct/deconstruct unifications into their atomic
-  "micro-unification" pieces: functor construct/deconstruct and
-  argument get/put.
+  "micro-unification" pieces when necessary.
 
 - warn about predicates with no clauses.
 
