@@ -38,4 +38,6 @@ mdb> \ \ \ .
 Unknown command `   .'. Give the command `help' for help.
 mdb> '\ \\\''
 Unknown command ` \''. Give the command `help' for help.
-mdb> quit -y
+mdb> '
+> unmatched quote.
+mdb> mdb: are you sure you want to quit? 
