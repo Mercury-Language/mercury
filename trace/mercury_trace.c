@@ -58,7 +58,7 @@ static	Code	*MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
 			const char *path, int max_r_num);
 static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
-			Word *saved_regs, uint_least16_t var_num,
+			Word *saved_regs, MR_uint_least16_t var_num,
 			bool *succeeded);
 
 /*
@@ -423,7 +423,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
 static Word
 MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
-	uint_least16_t var_num, bool *succeeded)
+	MR_uint_least16_t var_num, bool *succeeded)
 {
 	const MR_Stack_Layout_Vars	*vars;
 	int				i;
