@@ -27,7 +27,8 @@ SCRIPT_FILES	= ../scripts/*.in ../scripts/Mmake.rules
 
 CONFIG_FILES	= ../config.sub ../config.guess ../install-sh
 
-MISC_FILES	= INSTALL README build_vars Makefile.in configure configure.in
+MISC_FILES	= INSTALL README README.MS-Windows \
+		  build_vars Makefile.in configure configure.in
 
 #-----------------------------------------------------------------------------#
 
@@ -48,7 +49,7 @@ binary_distribution: bindist.configure bindist.build_vars
 	# (XXX don't use redirection or pipes, because on gnu-win32
 	# stdout defaults to text mode, which breaks tar and gzip)
 	(dir=`pwd` && cd $(INSTALL_LIB_DIR)/mercury && \
-		tar -cf $$dir/$(MERCURY_VERSION)/lib $(LIB_FILES) && \
+		tar -cf $$dir/$(MERCURY_VERSION)/lib.tar $(LIB_FILES) && \
 		gzip $$dir/$(MERCURY_VERSION)/lib.tar)
 	(dir=`pwd` && cd $(INSTALL_INFO_DIR)/.. && \
 		tar -cf $$dir/$(MERCURY_VERSION)/info.tar info && \
