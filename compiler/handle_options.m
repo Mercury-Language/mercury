@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -85,13 +85,15 @@ handle_options(MaybeError, Args, Link) -->
 			TargetCodeOnly),
 		globals__io_get_target(Target),
 		{ GenerateIL = (if Target = il then yes else no) },
+		{ GenerateJava = (if Target = java then yes else no) },
 		globals__io_lookup_bool_option(compile_only, CompileOnly),
 		globals__io_lookup_bool_option(aditi_only, AditiOnly),
 		{ bool__or_list([GenerateDependencies, MakeInterface,
 			MakePrivateInterface, MakeShortInterface,
 			MakeOptimizationInt, MakeTransOptInt,
 			ConvertToMercury, ConvertToGoedel, TypecheckOnly,
-			ErrorcheckOnly, TargetCodeOnly, GenerateIL,
+			ErrorcheckOnly, TargetCodeOnly,
+			GenerateIL, GenerateJava,
 			CompileOnly, AditiOnly],
 			NotLink) },
 		{ bool__not(NotLink, Link) }
@@ -216,7 +218,7 @@ postprocess_options(ok(OptionTable), Error) -->
             { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
 	)
     ;
-        { Error = yes("Invalid target option (must be `c' or `il')") }
+        { Error = yes("Invalid target option (must be `c', `il', or `java')") }
     ).
     
 
@@ -293,7 +295,21 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	;
 		[]
 	),
-
+	% Generating Java implies high-level code, turning off nested functions,
+	% using copy-out for both det and nondet output arguments,
+	% using no tags and no static ground terms.
+	% XXX no static ground terms should be eliminated in a later
+	%     version.
+	( { Target = java } ->
+		globals__io_set_option(highlevel_code, bool(yes)),
+		globals__io_set_option(gcc_nested_functions, bool(no)),
+		globals__io_set_option(nondet_copy_out, bool(yes)),
+		globals__io_set_option(det_copy_out, bool(yes)),
+		globals__io_set_option(num_tag_bits, int(0)),
+		globals__io_set_option(static_ground_terms, bool(no))
+	;
+		[]
+	),
 	% Generating assembler via the gcc back-end requires
 	% using high-level code.
 	( { Target = asm } ->
@@ -310,7 +326,7 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	;
 		[]
 	),
-
+	
 	% --high-level-code disables the use of low-level gcc extensions
 	option_implies(highlevel_code, gcc_non_local_gotos, bool(no)),
 	option_implies(highlevel_code, gcc_global_registers, bool(no)),
@@ -936,6 +952,14 @@ grade_component_table("ilc", gcc_ext, [
 		gcc_nested_functions	- bool(no),
 		highlevel_data		- bool(no),
 		target			- string("il")]).
+grade_component_table("java", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(no),
+		gcc_global_registers	- bool(no),
+		gcc_nested_functions	- bool(no),
+		highlevel_code		- bool(yes),
+		highlevel_data		- bool(yes),
+		target			- string("java")]).
 
 	% Parallelism/multithreading components.
 grade_component_table("par", par, [parallel - bool(yes)]).

@@ -39,9 +39,9 @@ case $stack_trace,$require_tracing,$use_minimal_model in
 esac
 
 #
-# --target asm or IL implies --high-level-code
+# --target asm, IL or Java implies --high-level-code
 #
-case $target in asm|il)
+case $target in asm|il|java)
 	highlevel_code=true ;;
 esac
 

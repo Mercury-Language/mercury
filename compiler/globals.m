@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,12 +26,11 @@
 	;	il	% Generate IL assembler code
 			% IL is the Microsoft .NET Intermediate Language
 	;	java	% Generate Java
-			% (this target is not yet implemented)
+			% (Work in progress)
 	;	asm. 	% Compile directly to assembler via the GCC back-end.
 			% Do not go via C, instead generate GCC's internal
 			% `tree' data structure.
 			% (Work in progress.)
-
 :- type gc_method
 	--->	none
 	;	conservative

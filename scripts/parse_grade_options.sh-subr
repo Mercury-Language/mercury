@@ -28,6 +28,8 @@
 				target=c ;;
 			il|IL)
 				target=il ;;
+			java|Java)
+				target=java ;;
 			*)
 				echo "$0: invalid target \`$1'" 1>&2
 				exit 1
@@ -207,6 +209,15 @@
 					highlevel_code=true
 					gcc_nested_functions=false
 					highlevel_data=false
+					;;
+				java)
+					target=java
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=false
+					highlevel_data=true
 					;;
 				hl)
 					asm_labels=false

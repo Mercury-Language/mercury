@@ -62,6 +62,7 @@
 :- import_module ml_elim_nested, ml_tailcall.	% MLDS -> MLDS
 :- import_module ml_optimize.			% MLDS -> MLDS
 :- import_module mlds_to_c.			% MLDS -> C
+:- import_module mlds_to_java.			% MLDS -> Java
 :- import_module mlds_to_ilasm.			% MLDS -> IL assembler
 :- import_module maybe_mlds_to_gcc.		% MLDS -> GCC back-end
 
@@ -484,6 +485,14 @@ mercury_compile(Module) -->
 				mercury_compile__mlds_to_il_assembler(MLDS),
 				mercury_compile__il_assemble(ModuleName,
 					HasMain)
+			)
+		    ; { Target = java } ->
+			mercury_compile__mlds_backend(HLDS50, MLDS),
+			mercury_compile__mlds_to_java(MLDS),
+			( { TargetCodeOnly = yes } ->
+				[]
+			;
+				mercury_compile__compile_java_file(ModuleName)
 			)
 		    ; { Target = asm } ->
 		    	% compile directly to assembler using the gcc back-end
@@ -2582,6 +2591,18 @@ mercury_compile__mlds_to_high_level_c(MLDS) -->
 	maybe_write_string(Verbose, "% Finished converting MLDS to C.\n"),
 	maybe_report_stats(Stats).
 
+:- pred mercury_compile__mlds_to_java(mlds, io__state, io__state).
+:- mode mercury_compile__mlds_to_java(in, di, uo) is det.
+
+mercury_compile__mlds_to_java(MLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
+
+	maybe_write_string(Verbose, "% Converting MLDS to Java...\n"),
+	mlds_to_java__output_mlds(MLDS),
+	maybe_write_string(Verbose, "% Finished converting MLDS to Java.\n"),
+	maybe_report_stats(Stats).
+
 :- pred mercury_compile__maybe_mlds_to_gcc(mlds, bool, io__state, io__state).
 :- mode mercury_compile__maybe_mlds_to_gcc(in, out, di, uo) is det.
 
@@ -2917,6 +2938,48 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem compiling C file.")
+	;
+		[]
+	).
+
+:- pred mercury_compile__compile_java_file(module_name, io__state, io__state).
+:- mode mercury_compile__compile_java_file(in, di, uo) is det.
+
+mercury_compile__compile_java_file(ModuleName) -->
+	module_name_to_file_name(ModuleName, ".java", no, JavaFile),
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Compiling `"),
+	maybe_write_string(Verbose, JavaFile),
+	maybe_write_string(Verbose, "':\n"),
+	globals__io_lookup_string_option(java_compiler, JavaCompiler),
+	globals__io_lookup_accumulating_option(java_flags, JavaFlagsList),
+	{ join_string_list(JavaFlagsList, "", "", " ", JAVAFLAGS) },
+
+	globals__io_lookup_accumulating_option(java_classpath,
+	 	Java_Incl_Dirs),
+	( { Java_Incl_Dirs = [] } ->
+		{ InclOpt = "" }
+	;
+		% XXX PathSeparator should be ";" on Windows
+		{ PathSeparator = ":" },
+		{ join_string_list(Java_Incl_Dirs, "", "",
+			PathSeparator, ClassPath) },
+		{ InclOpt = string__append_list([
+			"-classpath ", ClassPath, " "]) }
+	),
+	globals__io_lookup_bool_option(target_debug, Target_Debug),
+	{ Target_Debug = yes ->
+		Target_DebugOpt = "-g "
+	;
+		Target_DebugOpt = ""
+	},
+	% Be careful with the order here!  Some options may override others.
+	% Also be careful that each option is separated by spaces.
+	{ string__append_list([JavaCompiler, " ", InclOpt,
+		Target_DebugOpt, JAVAFLAGS, JavaFile], Command) },
+	invoke_system_command(Command, Succeeded),
+	( { Succeeded = no } ->
+		report_error("problem compiling Java file.")
 	;
 		[]
 	).
