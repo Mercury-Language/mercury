@@ -153,11 +153,11 @@
 ** MR_hash_string(s):
 **	Given a Mercury string `s', return a hash value for that string.
 */
-int	MR_hash_string(MR_ConstString);
+MR_Integer	MR_hash_string(MR_ConstString);
 
 #ifdef __GNUC__
 #define MR_hash_string(s)						\
-	({ int hash_string_result;					\
+	({ MR_Integer hash_string_result;				\
 	   MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
 	   MR_do_hash_string(hash_string_result, s);			\
 	   hash_string_result;						\
@@ -171,7 +171,7 @@ int	MR_hash_string(MR_ConstString);
 */
 
 #define MR_HASH_STRING_FUNC_BODY					\
-	   int hash_string_result;					\
+	   MR_Integer hash_string_result;				\
 	   MR_do_hash_string(hash_string_result, s);			\
 	   return hash_string_result;
 

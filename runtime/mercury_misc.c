@@ -104,17 +104,3 @@ MR_fatal_error(const char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
-/*
-**  Note that MR_hash_string is actually defined as a macro in mercury_imp.h,
-**  if we're using GNU C.  We define it here whether or not we're using
-**  gcc, so that users can easily switch between gcc and cc without
-**  rebuilding the libraries.
-*/
-
-#undef MR_hash_string
-
-int 
-MR_hash_string(MR_ConstString s)
-{
-	MR_HASH_STRING_FUNC_BODY
-}
