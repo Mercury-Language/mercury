@@ -17,7 +17,7 @@ string__replace_all("aaa bbbb ccccc aaa", "aab", "**", Result)
 string__replace_all("aaa bbbb ccccc aaa", "aaaa", "**", Result) 
 	"aaa bbbb ccccc aaa"
 string__replace_all("aaa bbbb ccccc aaa", "", "**", Result) 
-	"aaa bbbb ccccc aaa"
+	"**a**a**a** **b**b**b**b** **c**c**c**c**c** **a**a**a**"
 string__replace_all("aaa bbbb ccccc aaa", "aaa", "", Result) 
 	" bbbb ccccc "
 string__replace_all("aaa bbbb ccccc aaa", "cc", "**", Result) 
