@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,24 +22,18 @@
 	% addition
 :- func float + imag = complex.
 :- mode in    + in   = uo  is det.
-:- mode uo    + uo   = in  is det.
 
 	% subtraction
 :- func float - imag = complex.
 :- mode in    - in   = uo  is det.
-:- mode uo    - uo   = in  is det.
 
 	% multiplication
 :- func float * imag = imag.
 :- mode in    * in   = uo  is det.
-:- mode in    * uo   = in  is det.
-:- mode uo    * in   = in  is det.
 
 	% division
 :- func float / imag = imag.
 :- mode in    / in   = uo  is det.
-:- mode in    / uo   = in  is det.
-:- mode uo    / in   = in  is det.
 
 %---------------------------------------------------------------------------%
 

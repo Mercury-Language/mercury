@@ -27,8 +27,8 @@ Changes to the Mercury standard library:
   out-of-bounds array accesses.
 
 * We've removed the buggy reverse modes of the arithmetic functions in
-  float.m (because of rounding errors the functions aren't actually
-  reversible).
+  float.m and extras/complex_numbers (because of rounding errors the
+  functions aren't actually reversible).
  
 * The exception module has a new predicate `try_store', which is
   like `try_io', but which works with stores rather than io__states.
