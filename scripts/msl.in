@@ -86,6 +86,14 @@ if $debug; then
 	assert((mercury_do_save :-
 		on_exception(Error, (
 		  ( prolog_flag(compiling, _, fastcode) -> true ; true ),
+		  % if we're running SICStus version 3, then we need to
+		  % disable character escapes (since the sed script in
+		  % msc assumes that SICStus doesn't have them)
+		  ( prolog_flag(argv, _) ->
+			prolog_flag(character_escapes, _, off)
+		  ;
+			true
+		  ),
 		  ( prolog_flag(argv, Files) -> true ; unix(argv(Files)) ),
 		  load(Files),
 		  abolish(mercury_do_save),
@@ -105,6 +113,14 @@ else
 	cat > $tmp << EOF
 	on_exception(Error, (
 	  ( prolog_flag(compiling, _, fastcode) -> true ; true ),
+	  % if we're running SICStus version 3, then we need to
+	  % disable character escapes (since the sed script in
+	  % msc assumes that SICStus doesn't have them)
+	  ( prolog_flag(argv, _) ->
+		prolog_flag(character_escapes, _, off)
+	  ;
+		true
+	  ),
 	  ( prolog_flag(argv, Files) -> true ; unix(argv(Files)) ),
 	  load(Files),
 	  garbage_collect,
