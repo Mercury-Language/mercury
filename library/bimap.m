@@ -63,6 +63,7 @@
 :- pred bimap__from_assoc_list(assoc_list(K,V), bimap(K,V)).
 :- mode bimap__from_assoc_list(in, out) is det.
 
+/****
 	% delete a key-value pair from a bimap
 :- pred bimap__delete(bimap(K,V), K, V, bimap(K,V)).
 :- mode bimap__delete(in, in, out, out) is det.
@@ -70,6 +71,7 @@
 
 :- pred bimap__from_corresponding_lists(list(K), list(V), bimap(K, V)).
 :- mode bimap__from_corresponding_lists(in, in, out) is det.
+****/
 
 %-----------------------------------------------------------------------------%
 
