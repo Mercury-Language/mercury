@@ -585,6 +585,8 @@ moduleinfo_incr_warnings(ModuleInfo0, ModuleInfo) :-
 :- pred predinfo_context(pred_info, term__context).
 :- mode predinfo_context(input, output).
 
+:- pred predinfo_is_imported(pred_info::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -625,6 +627,10 @@ predinfo_modes(PredInfo, Modes) :-
 
 predinfo_context(PredInfo, Context) :-
 	PredInfo = predicate(_, _, _, _, _, Context).
+
+predinfo_is_imported(PredInfo) :-
+	predinfo_clauses_info(PredInfo, ClauseInfo),
+	ClauseInfo = clauses_info(_, _, _, []).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
