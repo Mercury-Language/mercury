@@ -51,6 +51,7 @@ portray2(Term) :-
 	).
 
 spyHook(_, Term) :-
+	!,
 	interactive_display(1, Term).
 
 interactive_display(Depth, Term) :-
