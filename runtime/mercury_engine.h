@@ -201,6 +201,12 @@ typedef struct MR_mercury_engine_struct {
 	MemoryZone	*solutions_heap_zone;
 	MemoryZone	*global_heap_zone;
 #endif
+#ifdef	NATIVE_GC
+	MemoryZone	*heap_zone2;
+  #ifdef MR_DEBUG_AGC_PRINT_VARS
+	MemoryZone	*debug_heap_zone;
+  #endif
+#endif
 #ifndef	SPEED
 	MemoryZone	*dumpstack_zone;
 	int		dumpindex;

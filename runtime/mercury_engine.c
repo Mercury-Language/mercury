@@ -81,6 +81,16 @@ init_engine(MercuryEngine *eng)
 			heap_zone_size, default_handler);
 	eng->e_hp = eng->heap_zone->min;
 
+#ifdef	NATIVE_GC
+	eng->heap_zone2 = create_zone("heap2", 1, heap_size, next_offset(),
+			heap_zone_size, default_handler);
+
+  #ifdef MR_DEBUG_AGC_PRINT_VARS
+	eng->debug_heap_zone = create_zone("debug_heap", 1, debug_heap_size,
+			next_offset(), debug_heap_zone_size, default_handler);
+  #endif
+#endif
+
 	eng->solutions_heap_zone = create_zone("solutions_heap", 1,
 			solutions_heap_size, next_offset(),
 			solutions_heap_zone_size, default_handler);

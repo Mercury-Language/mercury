@@ -102,4 +102,34 @@ Code	*MR_stack_trace_bottom;
 
 Word	*MR_nondet_stack_trace_bottom;
 
+
+typedef        enum {
+	STEP_ERROR_BEFORE,      /* the current entry_layout has no valid info */
+	STEP_ERROR_AFTER,       /* the current entry_layout has valid info,
+				   but the next one does not */
+	STEP_OK                 /* both have valid info */
+} MR_Stack_Walk_Step_Result;
+
+/*
+** MR_stack_walk_step:
+**	This function takes the entry_layout for the current stack
+**	frame (which is the topmost stack frame from the two stack
+**	pointers given), and moves down one stack frame, setting the
+**	stack pointers to their new levels. 
+**      
+**	return_label_layout will be set to the stack_layout of the
+**	continuation label, or NULL if the bottom of the stack has
+**	been reached.
+**
+**	The meaning of the return value for MR_stack_walk_step is
+**	described in its type definiton above.  If an error is
+**	encountered, problem_ptr will be set to a string representation
+**	of the error.
+*/
+extern  MR_Stack_Walk_Step_Result
+MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
+		const MR_Stack_Layout_Label **return_label_layout,
+		Word **stack_trace_sp_ptr, Word **stack_trace_curfr_ptr,
+		const char **problem_ptr);
+
 #endif /* MERCURY_STACK_TRACE_H */

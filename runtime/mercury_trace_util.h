@@ -28,4 +28,10 @@ extern	bool	MR_trace_get_type_and_value_base(const MR_Stack_Layout_Var *var,
 			bool saved_regs_valid, Word *base_sp, Word *base_curfr,
 			Word *type_params, Word *type_info, Word *value);
 
+/*
+** MR_trace_write_variable:
+**	Write a variable to stdout.
+*/
+extern	void	MR_trace_write_variable(Word type_info, Word value);
+
 #endif	/* MERCURY_TRACE_UTIL_H */

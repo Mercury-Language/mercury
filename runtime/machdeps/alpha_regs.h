@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1997 The University of Melbourne.
+** Copyright (C) 1994-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -31,6 +31,14 @@ register	Word	mr3 __asm__("$12");	/* register s3 */
 register	Word	mr4 __asm__("$13");	/* register s4 */
 register	Word	mr5 __asm__("$14");	/* register s5 */
 register	Word	mr6 __asm__("$15");	/* the frame pointer (fp) */
+
+#define MR_real_reg_number_mr0	9
+#define MR_real_reg_number_mr1	10
+#define MR_real_reg_number_mr2	11
+#define MR_real_reg_number_mr3	12
+#define MR_real_reg_number_mr4	13
+#define MR_real_reg_number_mr5	14
+#define MR_real_reg_number_mr6	15
 
 #define save_regs_to_mem(save_area)	(	\
 	save_area[0] = mr0,			\

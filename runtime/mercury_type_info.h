@@ -662,7 +662,7 @@ typedef struct {
 	*/
 
 #define MR_TYPEINFO_GET_BASE_TYPEINFO(TypeInfo)				\
-		((*TypeInfo) ? ((Word *) *TypeInfo) : TypeInfo)
+		((*TypeInfo) ? (Word *) *TypeInfo : (Word *) (Word) TypeInfo)
 
 #define MR_TYPEINFO_GET_HIGHER_ARITY(TypeInfo)				\
 		((Integer) (Word *) (TypeInfo)[TYPEINFO_OFFSET_FOR_PRED_ARITY]) 
@@ -795,8 +795,8 @@ struct MR_MemoryCellNode {
 };
 typedef struct MR_MemoryCellNode *MR_MemoryList;
 
-Word * MR_make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
-	MR_MemoryList *allocated);
+Word * MR_make_type_info(const Word *term_type_info, 
+	const Word *arg_pseudo_type_info, MR_MemoryList *allocated);
 void MR_deallocate(MR_MemoryList allocated_memory_cells);
 
 /*---------------------------------------------------------------------------*/

@@ -27,6 +27,8 @@ void *init_thread(void *unused);
 
 Declare_entry(do_runnext);
 
+MR_MAKE_STACK_LAYOUT_ENTRY(do_runnext)
+
 #ifdef MR_THREAD_SAFE
 MercuryThread *
 create_thread(int x)

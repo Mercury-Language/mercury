@@ -105,5 +105,16 @@ void *checked_realloc(void *old, size_t n);
 extern size_t          unit;
 extern size_t          page_size;
 
+/*
+** Users need to call MR_add_root() for any global variable which
+** contains pointers to the Mercury heap.  This information is only
+** used for agc grades.
+*/
+#ifdef NATIVE_GC
+  #define MR_add_root(root_ptr, type_info) \
+	MR_agc_add_root((root_ptr), (type_info))
+#else
+  #define MR_add_root(root_ptr, type_info) /* nothing */
+#endif
 
 #endif /* not MERCURY_MEMORY_H */

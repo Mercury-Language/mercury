@@ -24,12 +24,14 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 #		  keep this list in alphabetical order, please
 HDRS		=	\
 			mercury_accurate_gc.h	\
+			mercury_agc_debug.h	\
 			mercury_calls.h		\
 			mercury_conf.h		\
 			mercury_conf_param.h	\
 			mercury_context.h	\
 			mercury_debug.h		\
 			mercury_deep_copy.h	\
+			mercury_deep_copy_body.h \
 			mercury_dummy.h		\
 			mercury_dlist.h		\
 		  	mercury_engine.h	\
@@ -92,7 +94,10 @@ MACHHDRS	= 	machdeps/no_regs.h	\
 
 
 #		  keep this list in alphabetical order, please
-CFILES		= 	mercury_context.c	\
+CFILES		= 	\
+			mercury_accurate_gc.c	\
+			mercury_agc_debug.c	\
+			mercury_context.c	\
 			mercury_deep_copy.c	\
 			mercury_dlist.c		\
 			mercury_dummy.c		\

@@ -98,8 +98,6 @@
 
 /*---------------------------------------------------------------------------*/
 
-static	void	setup_mprotect(void);
-
 #ifdef	HAVE_SIGINFO
   static	bool	try_munprotect(void *address, void *context);
   static	char	*explain_context(void *context);
@@ -144,6 +142,8 @@ init_memory(void)
 	solutions_heap_size = 0;
 	global_heap_zone_size = 0;
 	global_heap_size    = 0;
+	debug_heap_zone_size = 0;
+	debug_heap_size = 0;
 #else
 	heap_zone_size      = round_up(heap_zone_size * 1024, unit);
 	heap_size           = round_up(heap_size * 1024, unit);
@@ -152,8 +152,9 @@ init_memory(void)
 	solutions_heap_size = round_up(solutions_heap_size * 1024, unit);
 	global_heap_zone_size = round_up(global_heap_zone_size * 1024, unit);
 	global_heap_size    = round_up(global_heap_size * 1024, unit);
+	debug_heap_zone_size = round_up(debug_heap_zone_size * 1024, unit);
+	debug_heap_size    = round_up(debug_heap_size * 1024, unit);
 #endif
-
 	detstack_size       = round_up(detstack_size * 1024, unit);
 	detstack_zone_size  = round_up(detstack_zone_size * 1024, unit);
 	nondstack_size      = round_up(nondstack_size * 1024, unit);

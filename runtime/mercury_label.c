@@ -109,8 +109,9 @@ MR_insert_entry_label(const char *name, Code *addr,
 
 	if (entry_array_next >= entry_array_size) {
 		entry_array_size *= 2;
-		if (realloc(entry_array, entry_array_size * sizeof(MR_Entry))
-				== NULL) {
+		entry_array = realloc(entry_array, 
+				entry_array_size * sizeof(MR_Entry));
+		if (entry_array == NULL) {
 			fatal_error("run out of memory for entry label array");
 		}
 	}
@@ -152,6 +153,9 @@ MR_prev_entry_by_addr(const Code *addr)
 	int	hi;
 	int	mid;
 	int	i;
+
+	MR_do_init_label_tables();
+	do_init_modules();
 
 	if (!entry_array_sorted) {
 		qsort(entry_array, entry_array_next, sizeof(MR_Entry),
