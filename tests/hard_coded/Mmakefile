@@ -81,6 +81,7 @@ ORDINARY_PROGS=	\
 	integer_test \
 	intermod_c_code \
 	intermod_multimode_main \
+	intermod_pragma_clause \
 	intermod_type_qual \
 	join_list \
 	mapped_module \
@@ -92,6 +93,7 @@ ORDINARY_PROGS=	\
 	name_mangling \
 	no_fully_strict \
 	no_inline \
+	no_warn_singleton \
 	nondet_ctrl_vn \
 	nondet_copy_out \
 	nullary_ho_func \
@@ -250,10 +252,12 @@ MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-impure_foreign	=	--optimize-duplicate-calls
 MCFLAGS-intermod_c_code =	--intermodule-optimization
 MCFLAGS-intermod_c_code2 =	--intermodule-optimization
+MCFLAGS-intermod_pragma_clause = --intermodule-optimization
 MCFLAGS-intermod_type_qual =	--intermodule-optimization
 MCFLAGS-intermod_type_qual2 =	--intermodule-optimization
 MCFLAGS-intermod_multimode =	--intermodule-optimization
 MCFLAGS-intermod_multimode_main = --intermodule-optimization
+MCFLAGS-no_warn_singleton =	--halt-at-warn
 MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out
 MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
