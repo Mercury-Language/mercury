@@ -17,15 +17,10 @@
 #
 # Step 4.  mmake install
 #
-#	   Set the MERCURY_COMPILER environment variable below to point
-#	   to the compiler executable to use for bootstrapping.
 #	   If you just want to do a `make' rather than a `make install',
 #	   then comment out the `mmake install' line below.
 #	   If you don't want to do a parallel make, comment out the
 #	   `parallel=-j3' line below.
-
-# MERCURY_COMPILER=/usr/local/contrib/lib/mercury/bin/`fullarch`/mercury_compile
-# export MERCURY_COMPILER
 
 parallel=-j3
 
