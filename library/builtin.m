@@ -547,7 +547,7 @@ void copy_2_m1(MR_TypeInfo TypeInfo_for_T,
 
 :- pragma foreign_code("MC++", "
 
-static MR_Integer unify_2_p_0(MR_TypeInfo TypeInfo_for_T, MR_Box X, MR_Box Y) 
+static MR_Integer unify_2_p(MR_TypeInfo TypeInfo_for_T, MR_Box X, MR_Box Y) 
 {
 	int			SUCCESS_INDICATOR;
         MR_TypeInfo             type_info;
