@@ -9,9 +9,9 @@
 #ifndef MERCURY_GOTO_H
 #define MERCURY_GOTO_H
 
+#include "mercury_conf.h"
 #include "mercury_types.h"	/* for `Code *' */
 #include "mercury_debug.h"	/* for debuggoto() */
-#include "mercury_accurate_gc.h"
 
 #define paste(a,b) a##b
 #define stringify(string) #string
@@ -19,10 +19,10 @@
 #define skip(label) paste(skip_,label)
 
 #ifdef MR_USE_STACK_LAYOUTS
- #define MR_STACK_LAYOUT(label)        (Word *) (Word) \
+  #define MR_STACK_LAYOUT(label)        (Word *) (Word) \
 	&(paste(mercury_data__stack_layout__,label))
 #else
- #define MR_STACK_LAYOUT(label) (Word *) NULL
+  #define MR_STACK_LAYOUT(label) (Word *) NULL
 #endif /* MR_USE_STACK_LAYOUTS */
 
 
@@ -34,24 +34,23 @@
 ** accurate garbage collection.
 */
 
-#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(NATIVE_GC)
-#define	make_label(n, a, l)	/* nothing */
+#if defined(MR_INSERT_LABELS)
+  #define	make_label(n, a, l)	make_entry(n, a, l)
 #else
-#define	make_label(n, a, l)	make_entry(n, a, l)
+  #define	make_label(n, a, l)	/* nothing */
 #endif
 
-#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(PROFILE_CALLS) \
-			&& !defined(NATIVE_GC)
-#define make_local(n, a, l)	/* nothing */
+#if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
+  #define make_local(n, a, l)	make_entry(n, a, l)
 #else 
-#define make_local(n, a, l)	make_entry(n, a, l)
+  #define make_local(n, a, l)	/* nothing */
 #endif
 
-#if defined(SPEED) && !defined(DEBUG_LABELS) && !defined(DEBUG_GOTOS) \
-			&& !defined(PROFILE_CALLS) && !defined(NATIVE_GC)
-#define make_entry(n, a, l)	/* nothing */
+#if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS) \
+		|| defined(DEBUG_LABELS)
+  #define make_entry(n, a, l)	insert_entry(n, a, MR_STACK_LAYOUT(l))
 #else
-#define make_entry(n, a, l)	insert_entry(n, a, MR_STACK_LAYOUT(l))
+  #define make_entry(n, a, l)	/* nothing */
 #endif
 
 
@@ -517,7 +516,7 @@
   #define init_local(label)	make_local(stringify(label), &&label, label)
   #define Define_label(label)	Define_local(label)
   #define Declare_label(label)	/* no declaration required */
-  #ifdef NATIVE_GC
+  #ifdef MR_INSERT_LABELS
    #define init_label(label)	\
 	make_label(stringify(label), &&entry(label), label)
   #else

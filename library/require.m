@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -47,7 +47,10 @@ require(Goal, Message) :-
 
 /* error/1, from require.m */
 
-:- pragma c_header_code("#include <stdio.h>").
+:- pragma c_header_code("
+#include <stdio.h>
+#include ""mercury_stack_trace.h""
+").
 
 % Hopefully error/1 won't be called often (!), so no point inlining it.
 :- pragma no_inline(error/1). 
@@ -55,6 +58,7 @@ require(Goal, Message) :-
 :- pragma c_code(error(Message::in), "
 	fflush(stdout);
 	fprintf(stderr, ""Software error: %s\\n"", Message);
+	MR_dump_stack(MR_succip, MR_sp);
 	exit(1);
 #ifndef USE_GCC_NONLOCAL_GOTOS
 	return 0;	/* suppress some dumb warnings */

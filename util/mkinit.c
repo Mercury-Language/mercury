@@ -174,10 +174,7 @@ static const char main_func[] =
 
 
 static const char if_need_to_init[] = 
-	"#if (defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)) \\\n"
-	"	|| defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"
-	"	|| defined(DEBUG_LABELS) || defined(NATIVE_GC) \\\n"
-	"	|| !defined(SPEED)\n\n"
+	"#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"
 	;
 
 

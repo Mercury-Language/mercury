@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -31,11 +31,11 @@
 #define MR_PASTE2(p1,p2)	MR_PASTE2_2(p1,p2)
 #define MR_PASTE2_2(p1,p2)	p1##p2
 
-/* paste 9 macros together */
-#define MR_PASTE10(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10) \
-				MR_PASTE10_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)
-#define MR_PASTE10_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10) \
-				p1##p2##p3##p4##p5##p6##p7##p8##p9##p10
+/* paste 11 macros together */
+#define MR_PASTE11(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11) \
+				MR_PASTE11_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11)
+#define MR_PASTE11_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11) \
+				p1##p2##p3##p4##p5##p6##p7##p8##p9##p10##p11
 
 /*
 ** Here we build up the MR_GRADE macro part at a time,
@@ -151,7 +151,19 @@
   #define MR_GRADE_PART_10
 #endif
 
-#define MR_GRADE		MR_PASTE10(			\
+/*
+** Stack traces aren't strictly binary incompatible - but if you
+** try to do a stack trace you might find it doesn't work very
+** well unless all modules are compiled in with --stack-trace.
+** Hence we consider it effectively binary incompatible.
+*/
+#if defined(MR_STACK_TRACE)
+  #define MR_GRADE_PART_11	_strce
+#else
+  #define MR_GRADE_PART_11
+#endif
+
+#define MR_GRADE		MR_PASTE11(			\
 					MR_GRADE_PART_1,	\
 					MR_GRADE_PART_2,	\
 					MR_GRADE_PART_3,	\
@@ -161,7 +173,8 @@
 					MR_GRADE_PART_7,	\
 					MR_GRADE_PART_8,	\
 					MR_GRADE_PART_9,	\
-					MR_GRADE_PART_10	\
+					MR_GRADE_PART_10,	\
+					MR_GRADE_PART_11	\
 				)
 
 #define MR_GRADE_VAR		MR_PASTE2(MR_grade_,MR_GRADE)

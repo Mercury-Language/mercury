@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1997 The University of Melbourne.
+** Copyright (C) 1993-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -41,7 +41,9 @@
 #include	"mercury_types.h"
 #include	"mercury_string.h"
 #include	"mercury_float.h"
+#include	"mercury_stack_trace.h"
 #include	"mercury_accurate_gc.h"
+#include	"mercury_stack_layout.h"
 
 #include	"mercury_tags.h"
 #include	"mercury_goto.h"

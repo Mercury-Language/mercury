@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -7,7 +7,8 @@
 /*
 ** mercury_conf.h.in -
 **	Various configuration parameters, determined automatically by
-**	the auto-configuration script.
+**	the auto-configuration script.  Implications of configuration 
+**	parameters, and combinations of paramters.
 */
 
 /*
@@ -197,5 +198,50 @@
 ** (True for SunOS 4.x.)
 */
 #undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
+
+/*
+** Implications of configuration parameters.
+**
+** Meaning of parameters:
+**
+** MR_USE_STACK_LAYOUTS -- stack layouts are in use, generate stack
+**                         layout structures.
+** MR_INSERT_LABELS     -- labels need to be inserted into the label table. 
+**			   (this also means the initialization code needs
+**			   to be run).
+** MR_NEED_INITIALIZATION_CODE -- the module specific initialization code
+**				  is needed (doesn't actually run the code,
+**				  however).
+*/
+
+#if defined(MR_STACK_TRACE) || defined(NATIVE_GC)
+  #define MR_USE_STACK_LAYOUTS
+  #define MR_INSERT_LABELS
+#endif
+
+#if !defined(SPEED) || defined(DEBUG_GOTOS)
+  #define MR_INSERT_LABELS
+#endif
+
+/*
+** Static code addresses are available unless using gcc non-local gotos,
+** without assembler labels.
+*/
+#if	(defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS))
+	#undef MR_STATIC_CODE_ADDRESSES
+#else
+	#define MR_STATIC_CODE_ADDRESSES
+#endif
+
+/*
+** You need to run initialization code for grades without static
+** code addresses, for profiling, and any time you need to insert
+** labels into the label table.
+*/
+#if !defined(MR_STATIC_CODE_ADDRESSES) || defined(PROFILE_CALLS) \
+	|| defined(DEBUG_LABELS) || defined(MR_INSERT_LABELS)
+  #define MR_NEED_INITIALIZATION_CODE
+#endif
+
 
 #endif /* MERCURY_CONF_H */
