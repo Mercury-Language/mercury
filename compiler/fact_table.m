@@ -2532,7 +2532,7 @@ Declare_label(%s_i1);
 
 BEGIN_MODULE(%s_module)
 	init_entry(%s);
-	init_label(%s_i);
+	init_label(%s_i1);
 BEGIN_CODE
 Define_entry(%s);
 	mkframe(""%s/%d"", 1, LABEL(%s_i1));
