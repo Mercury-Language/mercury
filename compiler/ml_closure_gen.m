@@ -362,11 +362,10 @@ convert_to_local(mlds__defn(Name, Context, Flags0, Body)) =
 	mlds__rval::out, mlds__type::out, mlds__defns::out) is det.
 
 ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName, Context,
-		TVarLocnMap, MLDS_Rval, PtrType, MLDS_Defns) :-
-	PtrType = mlds__ptr_type(mlds__native_int_type),
+		TVarLocnMap, MLDS_Rval, ArrayType, MLDS_Defns) :-
 	ArrayType = mlds__array_type(mlds__native_int_type),
 	( map__is_empty(TVarLocnMap) ->
-		MLDS_Rval = const(null(PtrType)),
+		MLDS_Rval = const(null(ArrayType)),
 		MLDS_Defns = []
 	;
 		Access = local,
@@ -379,7 +378,7 @@ ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName, Context,
 		module_info_name(ModuleInfo, ModuleName),
 		MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
 		MLDS_Rval = lval(var(qual(MLDS_ModuleName, TvarVectorName),
-			PtrType))
+			ArrayType))
 	).
 
 :- pred ml_stack_layout_construct_tvar_rvals(map(tvar, set(layout_locn))::in,
