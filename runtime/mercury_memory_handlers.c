@@ -21,39 +21,7 @@
 
 #include <stdio.h>
 #include <string.h>
-
-/*
-** XXX This code is duplicated in three files:
-** mercury_memory.c, mercury_memory_handlers.c, and mercury_signal.c.
-*/
-#ifdef HAVE_SIGCONTEXT_STRUCT
-  /*
-  ** Some versions of Linux call it struct sigcontext_struct, some call it
-  ** struct sigcontext.  The following #define eliminates the differences.
-  */
-  #define sigcontext_struct sigcontext /* must be before #include <signal.h> */
-  struct sigcontext; /* this forward decl avoids a gcc warning in signal.h */
-
-  /*
-  ** On some systems (e.g. most versions of Linux) we need to #define
-  ** __KERNEL__ to get sigcontext_struct from <signal.h>.
-  ** This stuff must come before anything else that might include <signal.h>,
-  ** otherwise the #define __KERNEL__ may not work.
-  */
-  #define __KERNEL__
-  #include <signal.h>	/* must come third */
-  #undef __KERNEL__
-
-  /*
-  ** Some versions of Linux define it in <signal.h>, others define it in
-  ** <asm/sigcontext.h>.  We try both.
-  */
-  #ifdef HAVE_ASM_SIGCONTEXT
-    #include <asm/sigcontext.h>
-  #endif 
-#else
-  #include <signal.h>
-#endif
+#include "mercury_signal.h"
 
 #ifdef HAVE_SYS_SIGINFO
   #include <sys/siginfo.h>
@@ -76,8 +44,6 @@
   #include <sys/ucontext.h>
 #endif
 
-#include "mercury_imp.h"
-#include "mercury_signal.h"
 #include "mercury_trace_base.h"
 #include "mercury_memory_zones.h"
 #include "mercury_memory_handlers.h"

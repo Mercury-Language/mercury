@@ -17,6 +17,35 @@
 #include "mercury_std.h"
 #include "mercury_conf.h"
 
+#ifdef HAVE_SIGCONTEXT_STRUCT
+  /*
+  ** Some versions of Linux call it struct sigcontext_struct, some call it
+  ** struct sigcontext.  The following #define eliminates the differences.
+  */
+  #define sigcontext_struct sigcontext /* must be before #include <signal.h> */
+  struct sigcontext; /* this forward decl avoids a gcc warning in signal.h */
+
+  /*
+  ** On some systems (e.g. most versions of Linux) we need to #define
+  ** __KERNEL__ to get sigcontext_struct from <signal.h>.
+  ** This stuff must come before anything else that might include <signal.h>,
+  ** otherwise the #define __KERNEL__ may not work.
+  */
+  #define __KERNEL__
+  #include <signal.h>	/* must come third */
+  #undef __KERNEL__
+
+  /*
+  ** Some versions of Linux define it in <signal.h>, others define it in
+  ** <asm/sigcontext.h>.  We try both.
+  */
+  #ifdef HAVE_ASM_SIGCONTEXT
+    #include <asm/sigcontext.h>
+  #endif 
+#else
+  #include <signal.h>
+#endif
+
 #ifdef HAVE_SIGACTION
 typedef struct sigaction	MR_signal_action;
 #else
