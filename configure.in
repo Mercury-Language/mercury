@@ -1157,7 +1157,7 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # see Mmake.common.in for documentation on the meaning of these variables
 LINK_SHARED_OBJ="$CC -shared"
 SHARED_LIBS='`gcc -print-libgcc-file-name` -lm -lc'
-CFLAGS_FOR_PIC=-fpic
+CFLAGS_FOR_PIC="-fpic -DPIC"
 EXT_FOR_PIC_OBJECTS=pic_o
 EXT_FOR_SHARED_LIB=a
 
@@ -1176,7 +1176,7 @@ case "$host" in
 		AC_MSG_RESULT(yes)
 		SHARED_LIBS="-lm -lc"	# don't link in libgcc.a
 		LINK_SHARED_OBJ="$CC -G"
-		CFLAGS_FOR_PIC=-fpic -DPIC	# used only for libgc.{a,so}
+		CFLAGS_FOR_PIC="-fpic -DPIC"	# used only for libgc.{a,so}
 		EXT_FOR_PIC_OBJECTS=o
 		#
 		# Note that despite the above definition of CFLAGS_FOR_PIC,
