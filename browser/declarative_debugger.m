@@ -62,6 +62,8 @@
 :- import_module mdbcomp__program_representation.
 :- import_module mdb.browser_info.
 
+:- import_module term_rep.
+
 :- import_module io, list, std_util, string.
 
 	% This type represents the possible truth values for nodes
@@ -214,7 +216,7 @@
 			final_io_actions	:: list(io_action)
 		).
 
-:- type decl_exception == univ.
+:- type decl_exception == term_rep.
 
 	% The diagnoser eventually responds with a value of this type
 	% after it is called.

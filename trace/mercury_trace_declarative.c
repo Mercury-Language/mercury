@@ -733,10 +733,10 @@ MR_trace_decl_excp(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_TRACE_CALL_MERCURY(
 		last_interface = MR_DD_call_node_get_last_interface(
 				(MR_Word) call);
-		node = (MR_Trace_Node) MR_DD_construct_excp_node(
+		MR_DD_construct_excp_node(
 				(MR_Word) prev, (MR_Word) call, last_interface,
 				MR_trace_get_exception_value(),
-				(MR_Word) event_info->MR_event_number);
+				(MR_Word) event_info->MR_event_number, &node);
 		MR_DD_call_node_set_last_interface(
 				(MR_Word) call, (MR_Word) node);
 	);
@@ -1143,9 +1143,10 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 			);
 
 			MR_TRACE_CALL_MERCURY(
-				atom = MR_DD_add_trace_atom_arg_value(atom,
+				MR_DD_add_trace_atom_arg_value(
 					(MR_Word) hv + 1, hlds_num,
-					is_prog_visible_headvar, arg);
+					is_prog_visible_headvar, arg, atom,
+					&atom);
 			);
 		}
 	}

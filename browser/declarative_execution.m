@@ -21,7 +21,7 @@
 :- import_module mdb__util.
 :- import_module mdbcomp__program_representation.
 
-:- import_module list, std_util, io, bool.
+:- import_module list, std_util, io, bool, term_rep.
 
 	% This type represents a port in the annotated trace.
 	% The type R is the type of references to other nodes
@@ -97,7 +97,7 @@
 						% Call event.
 			excp_redo		:: R,
 						% Previous redo, if any.
-			excp_value		:: univ,
+			excp_value		:: term_rep,
 						% Exception thrown.
 			excp_event		:: event_number
 						% Trace event number.
@@ -173,7 +173,7 @@
 						% programmer visible headvar
 						% (as opposed to a variable
 						% created by the compiler).
-			arg_value		:: maybe(univ)
+			arg_value		:: maybe(term_rep)
 		).
 
 :- type trace_atom
@@ -1127,13 +1127,15 @@ construct_redo_node(Preceding, Exit, Event) = redo(Preceding, Exit, Event).
 construct_fail_node(Preceding, Call, Redo, EventNo) =
 		fail(Preceding, Call, Redo, EventNo).
 
-:- func construct_excp_node(trace_node_id, trace_node_id, trace_node_id,
-		univ, event_number) = trace_node(trace_node_id).
-:- pragma export(construct_excp_node(in, in, in, in, in) = out,
+:- pred construct_excp_node(trace_node_id::in, trace_node_id::in, 
+	trace_node_id::in, univ::in, event_number::in, 
+	trace_node(trace_node_id)::out) is cc_multi.
+:- pragma export(construct_excp_node(in, in, in, in, in, out),
 		"MR_DD_construct_excp_node").
 
-construct_excp_node(Preceding, Call, MaybeRedo, Exception, EventNo) =
-		excp(Preceding, Call, MaybeRedo, Exception, EventNo).
+construct_excp_node(Preceding, Call, MaybeRedo, Exception, EventNo, Excp) :-
+		term_rep.univ_to_rep(Exception, ExceptionRep),
+		Excp = excp(Preceding, Call, MaybeRedo, ExceptionRep, EventNo).
 
 :- func construct_switch_node(trace_node_id, goal_path_string)
 		= trace_node(trace_node_id).
@@ -1227,18 +1229,20 @@ null_trace_node_id(_) :-
 construct_trace_atom(ProcLabel, Arity) = atom(ProcLabel, Args) :-
 	list__duplicate(Arity, dummy_arg_info, Args).
 
-	% add_trace_atom_arg_value(Atom0, ArgNum, HldsNum, ProgVis, Val):
+	% add_trace_atom_arg_value(ArgNum, HldsNum, ProgVis, Val, !Atom):
 	% Register the fact that argument number ArgNum in Atom is the HLDS
 	% variable whose number is HldsNum and whose value is Val. ProgVis
 	% is a C boolean, which is true iff variable HldsNum is a user visible
 	% variable.
-:- func add_trace_atom_arg_value(trace_atom, int, int, int, univ) = trace_atom.
-:- pragma export(add_trace_atom_arg_value(in, in, in, in, in) = out,
+:- pred add_trace_atom_arg_value(int::in, int::in, int::in, univ::in, 
+	trace_atom::in, trace_atom::out) is cc_multi.
+:- pragma export(add_trace_atom_arg_value(in, in, in, in, in, out),
 		"MR_DD_add_trace_atom_arg_value").
 
-add_trace_atom_arg_value(atom(P, Args0), ArgNum, HldsNum, ProgVis, Val)
-		= atom(P, Args) :-
-	Arg = arg_info(c_bool_to_merc_bool(ProgVis), HldsNum, yes(Val)),
+add_trace_atom_arg_value(ArgNum, HldsNum, ProgVis, Val, atom(P, Args0),
+		atom(P, Args)) :-
+	term_rep.univ_to_rep(Val, Rep),
+	Arg = arg_info(c_bool_to_merc_bool(ProgVis), HldsNum, yes(Rep)),
 	list__replace_nth_det(Args0, ArgNum, Arg, Args).
 
 	% Like add_trace_atom_arg_value, except that the specified variable

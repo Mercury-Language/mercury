@@ -74,6 +74,8 @@
 :- import_module mdbcomp__program_representation.
 :- import_module mdb.parse.
 
+:- import_module term_rep.
+
 :- import_module std_util, char, string, bool, int, deconstruct, getopt, list.
 
 :- type user_state
@@ -397,7 +399,8 @@ browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeMark, !User, !IO) :-
 	(
 		list__index1(Args, ArgNum, ArgInfo),
 		ArgInfo = arg_info(_, _, MaybeArg),
-		MaybeArg = yes(Arg)
+		MaybeArg = yes(ArgRep),
+		term_rep.rep_to_univ(ArgRep, Arg)
 	->
 		browse_browser_term(univ_to_browser_term(Arg),
 			!.User ^ instr, !.User ^ outstr,
@@ -477,7 +480,8 @@ get_user_arg_values([arg_info(UserVisible, _, MaybeValue) | Args], Values) :-
 		UserVisible = yes
 	->
 		(
-			MaybeValue = yes(Value)
+			MaybeValue = yes(ValueRep),
+			term_rep.rep_to_univ(ValueRep, Value)
 		;
 			MaybeValue = no,
 			Value = univ('_'`with_type`unbound)
@@ -510,7 +514,8 @@ print_atom_argument(Atom, ArgNum, User, OK, !IO) :-
 	(
 		list__index1(Args, ArgNum, ArgInfo),
 		ArgInfo = arg_info(_, _, MaybeArg),
-		MaybeArg = yes(Arg)
+		MaybeArg = yes(ArgRep),
+		term_rep.rep_to_univ(ArgRep, Arg)
 	->
 		print_browser_term(univ_to_browser_term(Arg), User ^ outstr,
 			decl_caller_type, User ^ browser, !IO),
@@ -787,9 +792,10 @@ write_decl_question(missing_answer(_, Call, Solns), User) -->
 		list__foldl(write_decl_final_atom(User, "\t", print_all), Solns)
 	).
 
-write_decl_question(unexpected_exception(_, Call, Exception), User) -->
+write_decl_question(unexpected_exception(_, Call, ExceptionRep), User) -->
 	write_decl_init_atom(User, "Call ", decl_caller_type, Call),
 	io__write_string(User ^ outstr, "Throws "),
+	{ term_rep.rep_to_univ(ExceptionRep, Exception) },
 	io__write(User ^ outstr, include_details_cc, univ_value(Exception)),
 	io__nl(User ^ outstr).
 
@@ -809,9 +815,10 @@ write_decl_bug(e_bug(EBug), User) -->
 				"Found partially uncovered atom:\n"),
 		write_decl_init_atom(User, "", decl_caller_type, Atom)
 	;
-		{ EBug = unhandled_exception(Atom, Exception, _) },
+		{ EBug = unhandled_exception(Atom, ExceptionRep, _) },
 		io__write_string(User ^ outstr, "Found unhandled exception:\n"),
 		write_decl_init_atom(User, "", decl_caller_type, Atom),
+		{ term_rep.rep_to_univ(ExceptionRep, Exception) },
 		io__write(User ^ outstr, include_details_cc,
 				univ_value(Exception)),
 		io__nl(User ^ outstr)
@@ -863,7 +870,8 @@ write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
 trace_atom_arg_to_univ(TraceAtomArg, Univ) :-
 	MaybeUniv = TraceAtomArg ^ arg_value,
 	(
-		MaybeUniv = yes(Univ)
+		MaybeUniv = yes(Rep),
+		term_rep.rep_to_univ(Rep, Univ)
 	;
 		MaybeUniv = no,
 		Univ = univ('_' `with_type` unbound)
