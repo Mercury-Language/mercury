@@ -656,7 +656,24 @@ string__foldl(Closure, String, Acc0, Acc) :-
 	string__length(String, Length),
 	string__foldl_substring(Closure, String, 0, Length, Acc0, Acc).
 
-string__foldl_substring(Closure, String, I, Count, Acc0, Acc) :-
+string__foldl_substring(Closure, String, Start0, Count0, Acc0, Acc) :-
+	Start = max(0, Start0),
+	Count = min(Count0, length(String) - Start),
+	string__foldl_substring_2(Closure, String,Start, Count, Acc0, Acc).
+
+:- pred string__foldl_substring_2(pred(char, T, T), string, int, int, T, T).
+:- mode string__foldl_substring_2(pred(in, in, out) is det, in, in, in,
+		in, out) is det.
+:- mode string__foldl_substring_2(pred(in, di, uo) is det, in, in, in,
+		di, uo) is det.
+:- mode string__foldl_substring_2(pred(in, in, out) is semidet, in, in, in,
+		in, out) is semidet.
+:- mode string__foldl_substring_2(pred(in, in, out) is nondet, in, in, in,
+		in, out) is nondet.
+:- mode string__foldl_substring_2(pred(in, in, out) is multi, in, in, in,
+		in, out) is multi.
+
+string__foldl_substring_2(Closure, String, I, Count, Acc0, Acc) :-
 	( if 0 < Count then
 		Closure(string__unsafe_index(String, I), Acc0, Acc1),
 		string__foldl_substring(Closure, String, I + 1, Count - 1,
