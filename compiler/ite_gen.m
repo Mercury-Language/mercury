@@ -125,8 +125,8 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
 		% generate the semi-deterministic test goal
-	code_gen__generate_semi_goal(CondGoal, CondCode),
 	code_info__get_instmap(InstMap),
+	code_gen__generate_semi_goal(CondGoal, CondCode),
 	code_info__grab_code_info(CodeInfo),
 	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
 	code_info__pop_failure_cont,
@@ -216,9 +216,9 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	;
 		{ EnsureCode = empty }
 	),
+	code_info__get_instmap(InstMap),
 	code_gen__generate_non_goal(CondGoal, CondCode0),
 	{ CondCode = tree(EnsureCode, CondCode0) },
-	code_info__get_instmap(InstMap),
 	code_info__grab_code_info(CodeInfo),
 	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
 	code_info__pop_failure_cont,

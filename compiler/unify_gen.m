@@ -500,7 +500,9 @@ unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
 	unify_gen__generate_tag_test(Var, Tag, ElseLab, CodeA),
 	unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes, CodeB),
 	code_info__get_next_label(SkipLab),
+	code_info__grab_code_info(CodeInfo),
 	code_info__generate_failure(FailCode),
+	code_info__slap_code_info(CodeInfo), % XXX
 	{ CodeC = tree(
 		node([
 			goto(label(SkipLab), label(SkipLab)) -
