@@ -1072,7 +1072,13 @@ recompute_instmap_delta(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
 		InstMap0, InstMapDelta) -->
 	( 
 		{ RecomputeAtomic = no },
-		{ goal_is_atomic(Goal0) }
+		( 
+			{ goal_is_atomic(Goal0) }
+		;
+			% Lambda expressions always need to be processed.
+			{ Goal0 = unify(_, Rhs, _, _, _) },
+			{ Rhs \= lambda_goal(_, _, _, _, _, _) }
+		)
 	->
 		{ Goal = Goal0 },
 		{ GoalInfo = GoalInfo0 },
@@ -1149,10 +1155,28 @@ recompute_instmap_delta_2(_, call(PredId, ProcId, Args, D, E, F), _,
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, InstMap, InstMapDelta).
 
-recompute_instmap_delta_2(_, unify(A, B, UniMode0, Uni, E), GoalInfo, 
-		unify(A, B, UniMode, Uni, E), InstMap, InstMapDelta) -->
-	recompute_instmap_delta_unify(Uni, UniMode0, UniMode,
-		GoalInfo, InstMap, InstMapDelta).
+recompute_instmap_delta_2(Atomic, unify(A, Rhs0, UniMode0, Uni, E), GoalInfo, 
+		unify(A, Rhs, UniMode, Uni, E), InstMap0, InstMapDelta) -->
+	(
+		{ Rhs0 = lambda_goal(PorF, NonLocals,
+			LambdaVars, Modes, Det, Goal0) }
+	->
+		=(ModuleInfo0),
+		{ instmap__pre_lambda_update(ModuleInfo0, LambdaVars, Modes,
+			InstMap0, InstMap) },
+		recompute_instmap_delta(Atomic, Goal0, Goal, InstMap),
+		{ Rhs = lambda_goal(PorF, NonLocals, LambdaVars,
+			 Modes, Det, Goal) }
+	;
+		{ Rhs = Rhs0 }
+	),
+	( { Atomic = yes } ->
+		recompute_instmap_delta_unify(Uni, UniMode0, UniMode,
+			GoalInfo, InstMap0, InstMapDelta)
+	;
+		{ UniMode = UniMode0 },
+		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) }
+	).
 
 recompute_instmap_delta_2(_, pragma_c_code(A, PredId, ProcId, Args, E, F,
 		G), _, pragma_c_code(A, PredId, ProcId, Args, E, F, G),
