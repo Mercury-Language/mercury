@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,103 +31,107 @@
 :- import_module std_util, int, string, array, assoc_list, set, map, require.
 % :- import_module unsafe.
 
-read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream, Res) -->
+read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream, Res,
+		!IO) :-
 	(
-		{ DataFileNames = [] },
+		DataFileNames = [],
 		% This should have been caught and reported by main.
-		{ error("read_and_startup: no data files") }
+		error("read_and_startup: no data files")
 	;
-		{ DataFileNames = [DataFileName] },
-		maybe_report_stats(MaybeOutputStream),
+		DataFileNames = [DataFileName],
+		maybe_report_stats(MaybeOutputStream, !IO),
 		maybe_report_msg(MaybeOutputStream,
-			"  Reading graph data...\n"),
-		read_call_graph(DataFileName, Res0),
+			"  Reading graph data...\n", !IO),
+		read_call_graph(DataFileName, Res0, !IO),
 		maybe_report_msg(MaybeOutputStream,
-			"  Done.\n"),
-		maybe_report_stats(MaybeOutputStream),
+			"  Done.\n", !IO),
+		maybe_report_stats(MaybeOutputStream, !IO),
 		(
-			{ Res0 = ok(InitDeep) },
+			Res0 = ok(InitDeep),
 			startup(Machine, DataFileName, Canonical,
-				MaybeOutputStream, InitDeep, Deep),
-			{ Res = ok(Deep) }
+				MaybeOutputStream, InitDeep, Deep, !IO),
+			Res = ok(Deep)
 		;
-			{ Res0 = error(Error) },
-			{ Res = error(Error) }
+			Res0 = error(Error),
+			Res = error(Error)
 		)
 	;
-		{ DataFileNames = [_, _ | _] },
-		{ error("mdprof_server: merging of data files is not yet implemented") }
+		DataFileNames = [_, _ | _],
+		error("mdprof_server: merging of data files " ++
+			"is not yet implemented")
 	).
 
 :- pred startup(string::in, string::in, bool::in, maybe(io__output_stream)::in,
 	initial_deep::in, deep::out, io__state::di, io__state::uo) is det.
 
-startup(Machine, DataFileName, Canonical, MaybeOutputStream, InitDeep0, Deep)
-		-->
-	{ InitDeep0 = initial_deep(InitStats, Root,
+startup(Machine, DataFileName, Canonical, MaybeOutputStream, InitDeep0, Deep,
+		!IO) :-
+	InitDeep0 = initial_deep(InitStats, Root,
 		CallSiteDynamics0, ProcDynamics,
-		CallSiteStatics0, ProcStatics0) },
+		CallSiteStatics0, ProcStatics0),
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Mapping static call sites to containing procedures...\n"),
-	{ array_foldl2_from_1(record_css_containers_module_procs, ProcStatics0,
+		"  Mapping static call sites to containing procedures...\n",
+		!IO),
+	array_foldl2_from_1(record_css_containers_module_procs, ProcStatics0,
 		u(CallSiteStatics0), CallSiteStatics,
-		map__init, ModuleProcs) },
+		map__init, ModuleProcs),
 	maybe_report_msg(MaybeOutputStream,
-		"  Done.\n"),
-	maybe_report_stats(MaybeOutputStream),
+		"  Done.\n", !IO),
+	maybe_report_stats(MaybeOutputStream, !IO),
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Mapping dynamic call sites to containing procedures...\n"),
-	{ array_foldl2_from_1(record_csd_containers_zeroed_pss, ProcDynamics,
+		"  Mapping dynamic call sites to containing procedures...\n",
+		!IO),
+	array_foldl2_from_1(record_csd_containers_zeroed_pss, ProcDynamics,
 		u(CallSiteDynamics0), CallSiteDynamics,
-		u(ProcStatics0), ProcStatics) },
+		u(ProcStatics0), ProcStatics),
 	maybe_report_msg(MaybeOutputStream,
-		"  Done.\n"),
-	maybe_report_stats(MaybeOutputStream),
+		"  Done.\n", !IO),
+	maybe_report_stats(MaybeOutputStream, !IO),
 
-	{ InitDeep1 = initial_deep(InitStats, Root,
+	InitDeep1 = initial_deep(InitStats, Root,
 		CallSiteDynamics, ProcDynamics,
-		CallSiteStatics, ProcStatics) },
+		CallSiteStatics, ProcStatics),
 
 	(
-		{ Canonical = no },
-		{ InitDeep = InitDeep1 }
+		Canonical = no,
+		InitDeep = InitDeep1
 	;
-		{ Canonical = yes },
+		Canonical = yes,
 		maybe_report_msg(MaybeOutputStream,
-			"  Canonicalizing cliques...\n"),
-		{ canonicalize_cliques(InitDeep1, InitDeep) },
+			"  Canonicalizing cliques...\n", !IO),
+		canonicalize_cliques(InitDeep1, InitDeep),
 		maybe_report_msg(MaybeOutputStream,
-			"  Done.\n"),
-		maybe_report_stats(MaybeOutputStream)
+			"  Done.\n", !IO),
+		maybe_report_stats(MaybeOutputStream, !IO)
 	),
 
-	{ array__max(InitDeep ^ init_proc_dynamics, PDMax) },
-	{ NPDs = PDMax + 1 },
-	{ array__max(InitDeep ^ init_call_site_dynamics, CSDMax) },
-	{ NCSDs = CSDMax + 1 },
-	{ array__max(InitDeep ^ init_proc_statics, PSMax) },
-	{ NPSs = PSMax + 1 },
-	{ array__max(InitDeep ^ init_call_site_statics, CSSMax) },
-	{ NCSSs = CSSMax + 1 },
+	array__max(InitDeep ^ init_proc_dynamics, PDMax),
+	NPDs = PDMax + 1,
+	array__max(InitDeep ^ init_call_site_dynamics, CSDMax),
+	NCSDs = CSDMax + 1,
+	array__max(InitDeep ^ init_proc_statics, PSMax),
+	NPSs = PSMax + 1,
+	array__max(InitDeep ^ init_call_site_statics, CSSMax),
+	NCSSs = CSSMax + 1,
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Finding cliques...\n"),
-	{ find_cliques(InitDeep, CliqueList) },
+		"  Finding cliques...\n", !IO),
+	find_cliques(InitDeep, CliqueList),
 	maybe_report_msg(MaybeOutputStream,
-		"  Done.\n"),
-	maybe_report_stats(MaybeOutputStream),
+		"  Done.\n", !IO),
+	maybe_report_stats(MaybeOutputStream, !IO),
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Constructing clique indexes...\n"),
-	{ make_clique_indexes(NPDs, CliqueList, Cliques, CliqueIndex) },
+		"  Constructing clique indexes...\n", !IO),
+	make_clique_indexes(NPDs, CliqueList, Cliques, CliqueIndex),
 	maybe_report_msg(MaybeOutputStream,
-		"  Done.\n"),
-	maybe_report_stats(MaybeOutputStream),
+		"  Done.\n", !IO),
+	maybe_report_stats(MaybeOutputStream, !IO),
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Constructing clique parent map...\n"),
+		"  Constructing clique parent map...\n", !IO),
 
 		% For each CallSiteDynamic pointer, if it points to
 		% a ProcDynamic which is in a different clique to
@@ -136,83 +140,83 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, InitDeep0, Deep)
 		% the [lower] clique. We need to compute this information
 		% so that we can print clique-based timing summaries in
 		% the browser.
-	{ array__max(Cliques, CliqueMax) },
-	{ NCliques = CliqueMax + 1 },
-	{ array__init(NCliques, call_site_dynamic_ptr(-1), CliqueParents0) },
-	{ array__init(NCSDs, no, CliqueMaybeChildren0) },
-	{ array_foldl2_from_1(construct_clique_parents(InitDeep, CliqueIndex),
+	array__max(Cliques, CliqueMax),
+	NCliques = CliqueMax + 1,
+	array__init(NCliques, call_site_dynamic_ptr(-1), CliqueParents0),
+	array__init(NCSDs, no, CliqueMaybeChildren0),
+	array_foldl2_from_1(construct_clique_parents(InitDeep, CliqueIndex),
 		CliqueIndex,
 		CliqueParents0, CliqueParents,
-		CliqueMaybeChildren0, CliqueMaybeChildren) },
+		CliqueMaybeChildren0, CliqueMaybeChildren),
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Done.\n"),
-	maybe_report_stats(MaybeOutputStream),
+		"  Done.\n", !IO),
+	maybe_report_stats(MaybeOutputStream, !IO),
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Finding procedure callers...\n"),
-	{ array__init(NPSs, [], ProcCallers0) },
-	{ array_foldl_from_1(construct_proc_callers(InitDeep),
-		CallSiteDynamics, ProcCallers0, ProcCallers) },
+		"  Finding procedure callers...\n", !IO),
+	array__init(NPSs, [], ProcCallers0),
+	array_foldl_from_1(construct_proc_callers(InitDeep),
+		CallSiteDynamics, ProcCallers0, ProcCallers),
 	maybe_report_msg(MaybeOutputStream,
-		"  Done.\n"),
-	maybe_report_stats(MaybeOutputStream),
+		"  Done.\n", !IO),
+	maybe_report_stats(MaybeOutputStream, !IO),
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Constructing call site static map...\n"),
-	{ array__init(NCSDs, call_site_static_ptr(-1), CallSiteStaticMap0) },
-	{ array_foldl_from_1(construct_call_site_caller(InitDeep),
-		ProcDynamics, CallSiteStaticMap0, CallSiteStaticMap) },
+		"  Constructing call site static map...\n", !IO),
+	array__init(NCSDs, call_site_static_ptr(-1), CallSiteStaticMap0),
+	array_foldl_from_1(construct_call_site_caller(InitDeep),
+		ProcDynamics, CallSiteStaticMap0, CallSiteStaticMap),
 	maybe_report_msg(MaybeOutputStream,
-		"  Done.\n"),
-	maybe_report_stats(MaybeOutputStream),
+		"  Done.\n", !IO),
+	maybe_report_stats(MaybeOutputStream, !IO),
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Finding call site calls...\n"),
-	{ array__init(NCSSs, map__init, CallSiteCalls0) },
-	{ array_foldl_from_1(construct_call_site_calls(InitDeep),
-		ProcDynamics, CallSiteCalls0, CallSiteCalls) },
+		"  Finding call site calls...\n", !IO),
+	array__init(NCSSs, map__init, CallSiteCalls0),
+	array_foldl_from_1(construct_call_site_calls(InitDeep),
+		ProcDynamics, CallSiteCalls0, CallSiteCalls),
 	maybe_report_msg(MaybeOutputStream,
-		"  Done.\n"),
-	maybe_report_stats(MaybeOutputStream),
+		"  Done.\n", !IO),
+	maybe_report_stats(MaybeOutputStream, !IO),
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Propagating time up call graph...\n"),
+		"  Propagating time up call graph...\n", !IO),
 
-	{ array__init(NCSDs, zero_inherit_prof_info, CSDDesc0) },
-	{ array__init(NPDs, zero_own_prof_info, PDOwn0) },
-	{ array_foldl_from_1(sum_call_sites_in_proc_dynamic,
-		CallSiteDynamics, PDOwn0, PDOwn) },
-	{ array__init(NPDs, zero_inherit_prof_info, PDDesc0) },
-	{ array__init(NPSs, zero_own_prof_info, PSOwn0) },
-	{ array__init(NPSs, zero_inherit_prof_info, PSDesc0) },
-	{ array__init(NCSSs, zero_own_prof_info, CSSOwn0) },
-	{ array__init(NCSSs, zero_inherit_prof_info, CSSDesc0) },
-	{ array__init(NPDs, map__init, PDCompTable0) },
-	{ array__init(NCSDs, map__init, CSDCompTable0) },
+	array__init(NCSDs, zero_inherit_prof_info, CSDDesc0),
+	array__init(NPDs, zero_own_prof_info, PDOwn0),
+	array_foldl_from_1(sum_call_sites_in_proc_dynamic,
+		CallSiteDynamics, PDOwn0, PDOwn),
+	array__init(NPDs, zero_inherit_prof_info, PDDesc0),
+	array__init(NPSs, zero_own_prof_info, PSOwn0),
+	array__init(NPSs, zero_inherit_prof_info, PSDesc0),
+	array__init(NCSSs, zero_own_prof_info, CSSOwn0),
+	array__init(NCSSs, zero_inherit_prof_info, CSSDesc0),
+	array__init(NPDs, map__init, PDCompTable0),
+	array__init(NCSDs, map__init, CSDCompTable0),
 
-	{ ModuleData = map__map_values(initialize_module_data, ModuleProcs) },
-	{ Deep0 = deep(InitStats, Machine, DataFileName, Root,
+	ModuleData = map__map_values(initialize_module_data, ModuleProcs),
+	Deep0 = deep(InitStats, Machine, DataFileName, Root,
 		CallSiteDynamics, ProcDynamics, CallSiteStatics, ProcStatics,
 		CliqueIndex, Cliques, CliqueParents, CliqueMaybeChildren,
 		ProcCallers, CallSiteStaticMap, CallSiteCalls,
 		PDOwn, PDDesc0, CSDDesc0,
 		PSOwn0, PSDesc0, CSSOwn0, CSSDesc0,
-		PDCompTable0, CSDCompTable0, ModuleData) },
+		PDCompTable0, CSDCompTable0, ModuleData),
 
-	{ array_foldl_from_1(propagate_to_clique, Cliques, Deep0, Deep1) },
+	array_foldl_from_1(propagate_to_clique, Cliques, Deep0, Deep1),
 	maybe_report_msg(MaybeOutputStream,
-		"  Done.\n"),
-	maybe_report_stats(MaybeOutputStream),
+		"  Done.\n", !IO),
+	maybe_report_stats(MaybeOutputStream, !IO),
 
 	maybe_report_msg(MaybeOutputStream,
-		"  Summarizing information...\n"),
-	{ summarize_proc_dynamics(Deep1, Deep2) },
-	{ summarize_call_site_dynamics(Deep2, Deep3) },
-	{ summarize_modules(Deep3, Deep) },
+		"  Summarizing information...\n", !IO),
+	summarize_proc_dynamics(Deep1, Deep2),
+	summarize_call_site_dynamics(Deep2, Deep3),
+	summarize_modules(Deep3, Deep),
 	maybe_report_msg(MaybeOutputStream,
-		"  Done.\n"),
-	maybe_report_stats(MaybeOutputStream).
+		"  Done.\n", !IO),
+	maybe_report_stats(MaybeOutputStream, !IO).
 
 :- pred count_quanta(int::in, call_site_dynamic::in, int::in, int::out) is det.
 
@@ -728,8 +732,8 @@ propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr, PDPtr, Deep0, Deep,
 	PSPtr = PD ^ pd_proc_static,
 	deep_lookup_proc_statics(Deep2, PSPtr, PS),
 	( PS ^ ps_is_zeroed = zeroed ->
-		OverrideTable = add_to_override(OverrideTable0,
-			PSPtr, ProcTotal)
+		OverrideTable = add_to_override(OverrideTable0, PSPtr,
+			ProcTotal)
 	;
 		OverrideTable = OverrideTable0
 	),
@@ -873,17 +877,17 @@ gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
 %
 % The stats are needed only when writing the deep profiling paper anyway.
 
-maybe_report_stats(yes(_OutputStream)) --> [].
-	% io__report_stats("standard").
-maybe_report_stats(no) --> [].
+maybe_report_stats(yes(_OutputStream), !IO).
+	% io__report_stats("standard", !IO).
+maybe_report_stats(no, !IO).
 
 :- pred maybe_report_msg(maybe(io__output_stream)::in, string::in,
 	io__state::di, io__state::uo) is det.
 
-maybe_report_msg(yes(OutputStream), Msg) -->
-	io__write_string(OutputStream, Msg),
-	flush_output(OutputStream).
-maybe_report_msg(no, _) --> [].
+maybe_report_msg(yes(OutputStream), Msg, !IO) :-
+	io__write_string(OutputStream, Msg, !IO),
+	flush_output(OutputStream, !IO).
+maybe_report_msg(no, _, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -892,73 +896,72 @@ maybe_report_msg(no, _) --> [].
 % :- pred print_pdis(initial_deep::in, list(int)::in,
 % 	io__state::di, io__state::uo) is det.
 % 
-% print_pdis(InitDeep, PDIs) -->
-% 	io__nl,
-% 	io__write_list(PDIs, "", print_pdi_nl(InitDeep)).
+% print_pdis(InitDeep, PDIs, !IO) :-
+% 	io__nl(!IO),
+% 	io__write_list(PDIs, "", print_pdi_nl(InitDeep), !IO).
 % 
 % :- pred print_pdi_nl(initial_deep::in, int::in, io__state::di, io__state::uo)
 % 	is det.
 % 
-% print_pdi_nl(InitDeep, PDI) -->
-% 	print_pdi(InitDeep, PDI),
-% 	io__nl.
+% print_pdi_nl(InitDeep, PDI, !IO) :-
+% 	print_pdi(InitDeep, PDI, !IO),
+% 	io__nl(!IO).
 % 
 % :- pred print_pdi(initial_deep::in, int::in, io__state::di, io__state::uo)
 % 	is det.
 % 
-% print_pdi(InitDeep, PDI) -->
-% 	{ PDIsTmp = InitDeep ^ init_proc_dynamics },
-% 	{ lookup_proc_dynamics(PDIsTmp, proc_dynamic_ptr(PDI), PD) },
-% 	io__format("pd %d: ", [i(PDI)]),
-% 	io__write(PD),
-% 	io__nl,
-% 	{ proc_static_ptr(PSI) = PD ^ pd_proc_static },
-% 	{ PSIsTmp = InitDeep ^ init_proc_statics },
-% 	{ lookup_proc_statics(PSIsTmp, proc_static_ptr(PSI), PS) },
-% 	io__format("ps %d: ", [i(PSI)]),
-% 	io__write(PS),
-% 	io__nl.
+% print_pdi(InitDeep, PDI, !IO) :-
+% 	PDIsTmp = InitDeep ^ init_proc_dynamics,
+% 	lookup_proc_dynamics(PDIsTmp, proc_dynamic_ptr(PDI), PD),
+% 	io__format("pd %d: ", [i(PDI)], !IO),
+% 	io__write(PD, !IO),
+% 	io__nl(!IO),
+% 	proc_static_ptr(PSI) = PD ^ pd_proc_static,
+% 	PSIsTmp = InitDeep ^ init_proc_statics,
+% 	lookup_proc_statics(PSIsTmp, proc_static_ptr(PSI), PS),
+% 	io__format("ps %d: ", [i(PSI)], !IO),
+% 	io__write(PS, !IO),
+% 	io__nl(!IO).
 % 
 % :- pred print_csdis(initial_deep::in, list(int)::in,
 % 	io__state::di, io__state::uo) is det.
 % 
-% print_csdis(InitDeep, CSDIs) -->
-% 	io__nl,
-% 	io__write_list(CSDIs, "", print_csdi_nl(InitDeep)).
+% print_csdis(InitDeep, CSDIs, !IO) :-
+% 	io__nl(!IO),
+% 	io__write_list(CSDIs, "", print_csdi_nl(InitDeep), !IO).
 % 
 % :- pred print_csdi_nl(initial_deep::in, int::in, io__state::di, io__state::uo)
 % 	is det.
 % 
-% print_csdi_nl(InitDeep, CSDI) -->
-% 	print_csdi(InitDeep, CSDI),
-% 	io__nl.
+% print_csdi_nl(InitDeep, CSDI, !IO) :-
+% 	print_csdi(InitDeep, CSDI, !IO),
+% 	io__nl(!IO).
 % 
 % :- pred print_csdi(initial_deep::in, int::in, io__state::di, io__state::uo)
 % 	is det.
 % 
-% print_csdi(InitDeep, CSDI) -->
-% 	{ CSDIsTmp = InitDeep ^ init_call_site_dynamics },
-% 	{ lookup_call_site_dynamics(CSDIsTmp, call_site_dynamic_ptr(CSDI),
-% 		CSD) },
-% 	io__format("csd %d: ", [i(CSDI)]),
-% 	io__write(CSD),
-% 	io__nl,
-% 	io__write_string("caller pd:\n"),
-% 	{ proc_dynamic_ptr(CallerPDI) = CSD ^ csd_caller },
-% 	print_pdi(InitDeep, CallerPDI),
-% 	io__write_string("callee pd:\n"),
-% 	{ proc_dynamic_ptr(CalleePDI) = CSD ^ csd_callee },
-% 	print_pdi(InitDeep, CalleePDI).
+% print_csdi(InitDeep, CSDI, !IO) :-
+% 	CSDIsTmp = InitDeep ^ init_call_site_dynamics,
+% 	lookup_call_site_dynamics(CSDIsTmp, call_site_dynamic_ptr(CSDI), CSD),
+% 	io__format("csd %d: ", [i(CSDI)], !IO),
+% 	io__write(CSD, !IO),
+% 	io__nl(!IO),
+% 	io__write_string("caller pd:\n", !IO),
+% 	proc_dynamic_ptr(CallerPDI) = CSD ^ csd_caller,
+% 	print_pdi(InitDeep, CallerPDI, !IO),
+% 	io__write_string("callee pd:\n", !IO),
+% 	proc_dynamic_ptr(CalleePDI) = CSD ^ csd_callee,
+% 	print_pdi(InitDeep, CalleePDI, !IO).
 % 
 % :- pred write_pdi_cn_csd(int::in, int::in, int::in,
 % 	io__state::di, io__state::uo) is det.
 % 
-% write_pdi_cn_csd(PDI, CN, CSDI) -->
-% 	io__write_string("pdi "),
-% 	io__write_int(PDI),
-% 	io__write_string(", cn "),
-% 	io__write_int(CN),
-% 	io__write_string(", csdi "),
-% 	io__write_int(CSDI),
-% 	io__nl,
-% 	io__flush_output.
+% write_pdi_cn_csd(PDI, CN, CSDI, !IO) :-
+% 	io__write_string("pdi ", !IO),
+% 	io__write_int(PDI, !IO),
+% 	io__write_string(", cn ", !IO),
+% 	io__write_int(CN, !IO),
+% 	io__write_string(", csdi ", !IO),
+% 	io__write_int(CSDI, !IO),
+% 	io__nl(!IO),
+% 	io__flush_output(!IO).

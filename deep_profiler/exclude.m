@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -74,66 +74,66 @@
 					% module.
 				
 
-read_exclude_file(FileName, Deep, Res) -->
-	io__open_input(FileName, Res0),
+read_exclude_file(FileName, Deep, Res, !IO) :-
+	io__open_input(FileName, Res0, !IO),
 	(
-		{ Res0 = ok(InputStream) },
-		read_exclude_lines(FileName, InputStream, [], Res1),
-		io__close_input(InputStream),
+		Res0 = ok(InputStream),
+		read_exclude_lines(FileName, InputStream, [], Res1, !IO),
+		io__close_input(InputStream, !IO),
 		(
-			{ Res1 = ok(Specs) },
-			{ validate_exclude_lines(FileName, Specs, Deep, Res) }
+			Res1 = ok(Specs),
+			validate_exclude_lines(FileName, Specs, Deep, Res)
 		;
-			{ Res1 = error(Msg) },
-			{ Res = error(Msg) }
+			Res1 = error(Msg),
+			Res = error(Msg)
 		)
 	;
-		{ Res0 = error(Err) },
-		{ io__error_message(Err, Msg) },
-		{ Res = error(Msg) }
+		Res0 = error(Err),
+		io__error_message(Err, Msg),
+		Res = error(Msg)
 	).
 
 :- pred read_exclude_lines(string::in, io__input_stream::in,
 	list(exclude_spec)::in, maybe_error(list(exclude_spec))::out,
 	io__state::di, io__state::uo) is det.
 
-read_exclude_lines(FileName, InputStream, RevSpecs0, Res) -->
-	io__read_line_as_string(InputStream, Res0),
+read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
+	io__read_line_as_string(InputStream, Res0, !IO),
 	(
-		{ Res0 = ok(Line0) },
-		{ string__remove_suffix(Line0, "\n", LinePrime) ->
+		Res0 = ok(Line0),
+		( string__remove_suffix(Line0, "\n", LinePrime) ->
 			Line = LinePrime
 		;
 			Line = Line0
-		},
+		),
 		(
-			{ Words = string__words(char__is_whitespace, Line) },
-			{ Words = [Scope, ModuleName] },
-			{
+			Words = string__words(char__is_whitespace, Line),
+			Words = [Scope, ModuleName],
+			(
 				Scope = "all",
 				ExclType = all_procedures
 			;
 				Scope = "internal",
 				ExclType = internal_procedures
-			}
+			)
 		->
-			{ Spec = exclude_spec(ModuleName, ExclType) },
-			{ RevSpecs1 = [Spec | RevSpecs0] },
+			Spec = exclude_spec(ModuleName, ExclType),
+			RevSpecs1 = [Spec | RevSpecs0],
 			read_exclude_lines(FileName, InputStream, RevSpecs1,
-				Res)
+				Res, !IO)
 		;
-			{ Msg = string__format(
+			Msg = string__format(
 				"file %s contains badly formatted line: %s",
-				[s(FileName), s(Line)]) },
-			{ Res = error(Msg) }
+				[s(FileName), s(Line)]),
+			Res = error(Msg)
 		)
 	;
-		{ Res0 = eof },
-		{ Res = ok(RevSpecs0) }
+		Res0 = eof,
+		Res = ok(RevSpecs0)
 	;
-		{ Res0 = error(Err) },
-		{ io__error_message(Err, Msg) },
-		{ Res = error(Msg) }
+		Res0 = error(Err),
+		io__error_message(Err, Msg),
+		Res = error(Msg)
 	).
 
 :- pred validate_exclude_lines(string::in, list(exclude_spec)::in, deep::in,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,76 +32,76 @@
 % only if QUERY_STRING isn't set, which means that the program was invoked
 % from the command line for debugging.
 
-main -->
-	write_html_header,
-	io__get_environment_var("QUERY_STRING", MaybeQueryString),
+main(!IO) :-
+	write_html_header(!IO),
+	io__get_environment_var("QUERY_STRING", MaybeQueryString, !IO),
 	(
-		{ MaybeQueryString = yes(QueryString0) },
-		{ getopt__process_options(option_ops(short, long, defaults),
-			[], _, MaybeOptions) },
-		{
+		MaybeQueryString = yes(QueryString0),
+		getopt__process_options(option_ops(short, long, defaults),
+			[], _, MaybeOptions),
+		(
 			MaybeOptions = ok(Options)
 		;
 			MaybeOptions = error(_Msg),
 			error("mdprof_cgi: error parsing empty command line")
-		},
-		{ split(QueryString0, query_separator_char, Pieces) },
-		( { Pieces = [CmdStr, PrefStr, FileName] } ->
-			{ Cmd = url_component_to_cmd(CmdStr, menu) },
+		),
+		split(QueryString0, query_separator_char, Pieces),
+		( Pieces = [CmdStr, PrefStr, FileName] ->
+			Cmd = url_component_to_cmd(CmdStr, menu),
 			process_query(Cmd, yes(PrefStr), FileName,
-				Options)
-		; { Pieces = [CmdStr, FileName] } ->
-			{ Cmd = url_component_to_cmd(CmdStr, menu) },
-			process_query(Cmd, no, FileName, Options)
-		; { Pieces = [FileName] } ->
-			process_query(menu, no, FileName, Options)
+				Options, !IO)
+		; Pieces = [CmdStr, FileName] ->
+			Cmd = url_component_to_cmd(CmdStr, menu),
+			process_query(Cmd, no, FileName, Options, !IO)
+		; Pieces = [FileName] ->
+			process_query(menu, no, FileName, Options, !IO)
 		;
-			io__set_exit_status(1),
+			io__set_exit_status(1, !IO),
 			% Give the simplest URL in the error message.
-			io__write_string("Bad URL; expected filename\n")
+			io__write_string("Bad URL; expected filename\n", !IO)
 		)
 	;
-		{ MaybeQueryString = no },
-		process_command_line
+		MaybeQueryString = no,
+		process_command_line(!IO)
 	).
 
 
 :- pred process_command_line(io__state::di, io__state::uo) is cc_multi.
 
-process_command_line -->
-	io__progname_base(mdprof_cgi_progname, ProgName),
-	io__command_line_arguments(Args0),
-	% io__write_string("Args0: "),
-	% io__write_list(Args0, " ", write_bracketed_string),
-	% io__nl,
-	{ getopt__process_options(option_ops(short, long, defaults),
-		Args0, Args, MaybeOptions) },
+process_command_line(!IO) :-
+	io__progname_base(mdprof_cgi_progname, ProgName, !IO),
+	io__command_line_arguments(Args0, !IO),
+	% io__write_string("Args0: ", !IO),
+	% io__write_list(Args0, " ", write_bracketed_string, !IO),
+	% io__nl(!IO),
+	getopt__process_options(option_ops(short, long, defaults),
+		Args0, Args, MaybeOptions),
 	(
-		{ MaybeOptions = ok(Options) },
-		{ lookup_bool_option(Options, help, Help) },
-		{ lookup_bool_option(Options, version, Version) },
+		MaybeOptions = ok(Options),
+		lookup_bool_option(Options, help, Help),
+		lookup_bool_option(Options, version, Version),
 		(
-			{ Help = yes },
-			write_help_message(ProgName)
+			Help = yes,
+			write_help_message(ProgName, !IO)
 		;
-			{ Help = no }
+			Help = no
 		),
 		(
-			{ Version = yes },
-			write_version_message(ProgName)
+			Version = yes,
+			write_version_message(ProgName, !IO)
 		;
-			{ Version = no }
+			Version = no
 		),
-		( { Help = no, Version = no } ->
-			process_args(ProgName, Args, Options)
+		( Help = no, Version = no ->
+			process_args(ProgName, Args, Options, !IO)
 		;
-			[]
+			true
 		)
 	;
-		{ MaybeOptions = error(Msg) },
-		io__set_exit_status(1),
+		MaybeOptions = error(Msg),
+		io__set_exit_status(1, !IO),
 		io__format("%s: error parsing options: %s\n",
-			[s(ProgName), s(Msg)])
+			[s(ProgName), s(Msg)], !IO)
 	).
 
 :- func mdprof_cgi_progname = string.
@@ -110,40 +110,40 @@ mdprof_cgi_progname = "mdprof_cgi".
 
 :- pred write_version_message(string::in, io__state::di, io__state::uo) is det.
 
-write_version_message(ProgName) -->
-	{ library__version(Version) },
-	io__write_string(ProgName),
-	io__write_string(": Mercury deep profiler"),
-	io__nl,
-	io__write_string(Version),
-	io__nl.
+write_version_message(ProgName, !IO) :-
+	library__version(Version) ,
+	io__write_string(ProgName, !IO),
+	io__write_string(": Mercury deep profiler", !IO),
+	io__nl(!IO),
+	io__write_string(Version, !IO),
+	io__nl(!IO).
 
 :- pred write_help_message(string::in, io__state::di, io__state::uo) is det.
 
-write_help_message(ProgName) -->
+write_help_message(ProgName, !IO) :-
 	% The options are deliberately not documented; they change
 	% quite rapidly, based on the debugging needs of the moment.
 	% The optional filename argument is also for implementors only.
-	io__format("Usage: %s\n", [s(ProgName)]),
-	io__format("This program doesn't expect any arguments;\n", []),
-	io__format("instead it decides what to do based on the\n", []),
-	io__format("QUERY_STRING environment variable.\n", []).
+	io__format("Usage: %s\n", [s(ProgName)], !IO),
+	io__format("This program doesn't expect any arguments;\n", [], !IO),
+	io__format("instead it decides what to do based on the\n", [], !IO),
+	io__format("QUERY_STRING environment variable.\n", [], !IO).
 
 %-----------------------------------------------------------------------------%
 
 :- pred process_args(string::in, list(string)::in, option_table::in,
 	io__state::di, io__state::uo) is cc_multi.
 
-process_args(ProgName, Args, Options) -->
-	( { Args = [FileName] } ->
+process_args(ProgName, Args, Options, !IO) :-
+	( Args = [FileName] ->
 		% Although this mode of usage is not intended for production
 		% use, allowing the filename and a limited range of commands
 		% to be supplied on the command line makes debugging very much
 		% easier.
-		process_query(default_cmd(Options), no, FileName, Options)
+		process_query(default_cmd(Options), no, FileName, Options, !IO)
 	;
-		io__set_exit_status(1),
-		write_help_message(ProgName)
+		io__set_exit_status(1, !IO),
+		write_help_message(ProgName, !IO)
 		% io__write_list(Args, " ", write_bracketed_string)
 	).
 
@@ -153,16 +153,16 @@ process_args(ProgName, Args, Options) -->
 % :- pred write_bracketed_string(string::in, io__state::di, io__state::uo)
 % 	is det.
 % 
-% write_bracketed_string(S) -->
-% 	io__write_string("<"),
-% 	io__write_string(S),
-% 	io__write_string(">").
+% write_bracketed_string(S, !IO) :-
+% 	io__write_string("<", !IO),
+% 	io__write_string(S, !IO),
+% 	io__write_string(">", !IO).
 
 :- pred write_html_header(io__state::di, io__state::uo) is det.
 
-write_html_header -->
-	io__write_string(html_header_text),
-	io__flush_output.
+write_html_header(!IO) :-
+	io__write_string(html_header_text, !IO),
+	io__flush_output(!IO).
 
 :- func html_header_text = string.
 
@@ -173,50 +173,50 @@ html_header_text = "Content-type: text/html\n\n".
 :- pred process_query(cmd::in, maybe(string)::in, string::in,
 	option_table::in, io__state::di, io__state::uo) is cc_multi.
 
-process_query(Cmd, MaybePrefStr, DataFileName, Options) -->
-	{
+process_query(Cmd, MaybePrefStr, DataFileName, Options, !IO) :-
+	(
 		MaybePrefStr = yes(PrefStr),
 		MaybePref = url_component_to_maybe_pref(PrefStr)
 	;
 		MaybePrefStr = no,
 		MaybePref = no
-	},
-	{
+	),
+	(
 		MaybePref = yes(Pref)
 	;
 		MaybePref = no,
 		Pref = default_preferences
-	},
-	{ ToServerPipe = to_server_pipe_name(DataFileName) },
-	{ FromServerPipe = from_server_pipe_name(DataFileName) },
-	{ StartupFile = server_startup_name(DataFileName) },
-	{ MutexFile = mutex_file_name(DataFileName) },
-	{ lookup_bool_option(Options, debug, Debug) },
-	{ WantFile = want_file_name },
-	make_want_file(WantFile),
-	get_lock(Debug, MutexFile),
+	),
+	ToServerPipe = to_server_pipe_name(DataFileName),
+	FromServerPipe = from_server_pipe_name(DataFileName),
+	StartupFile = server_startup_name(DataFileName),
+	MutexFile = mutex_file_name(DataFileName),
+	lookup_bool_option(Options, debug, Debug),
+	WantFile = want_file_name,
+	make_want_file(WantFile, !IO),
+	get_lock(Debug, MutexFile, !IO),
 	(
-		{ Debug = yes }
+		Debug = yes
 		% Do not set up any cleanups; leave all files around,
 		% since they may be needed for postmortem examination.
 	;
-		{ Debug = no },
-		setup_signals(MutexFile, want_dir, want_prefix)
+		Debug = no,
+		setup_signals(MutexFile, want_dir, want_prefix, !IO)
 	),
-	check_for_existing_fifos(ToServerPipe, FromServerPipe, FifoCount),
-	( { FifoCount = 0 } ->
+	check_for_existing_fifos(ToServerPipe, FromServerPipe, FifoCount, !IO),
+	( FifoCount = 0 ->
 		handle_query_from_new_server(Cmd, Pref, DataFileName,
 			ToServerPipe, FromServerPipe, StartupFile,
-			MutexFile, WantFile, Options)
-	; { FifoCount = 2 } ->
+			MutexFile, WantFile, Options, !IO)
+	; FifoCount = 2 ->
 		handle_query_from_existing_server(Cmd, Pref,
 			ToServerPipe, FromServerPipe,
-			MutexFile, WantFile, Options)
+			MutexFile, WantFile, Options, !IO)
 	;
-		release_lock(Debug, MutexFile),
-		remove_want_file(WantFile),
-		io__set_exit_status(1),
-		io__write_string("mdprof internal error: bad fifo count")
+		release_lock(Debug, MutexFile, !IO),
+		remove_want_file(WantFile, !IO),
+		io__set_exit_status(1, !IO),
+		io__write_string("mdprof internal error: bad fifo count", !IO)
 	).
 
 % Handle the given query using the existing server. Delete the mutex and want
@@ -227,20 +227,20 @@ process_query(Cmd, MaybePrefStr, DataFileName, Options) -->
 	io__state::di, io__state::uo) is det.
 
 handle_query_from_existing_server(Cmd, Pref, ToServerPipe, FromServerPipe,
-		MutexFile, WantFile, Options) -->
-	{ lookup_bool_option(Options, debug, Debug) },
-	send_term(ToServerPipe, Debug, cmd_pref(Cmd, Pref)),
-	release_lock(Debug, MutexFile),
-	remove_want_file(WantFile),
-	recv_string(FromServerPipe, Debug, ResponseFileName),
-	{ CatCmd = string__format("cat %s", [s(ResponseFileName)]) },
-	io__call_system(CatCmd, _),
+		MutexFile, WantFile, Options, !IO) :-
+	lookup_bool_option(Options, debug, Debug),
+	send_term(ToServerPipe, Debug, cmd_pref(Cmd, Pref), !IO),
+	release_lock(Debug, MutexFile, !IO),
+	remove_want_file(WantFile, !IO),
+	recv_string(FromServerPipe, Debug, ResponseFileName, !IO),
+	CatCmd = string__format("cat %s", [s(ResponseFileName)]),
+	io__call_system(CatCmd, _, !IO),
 	(
-		{ Debug = yes }
+		Debug = yes
 		% Leave the response file to be examined.
 	;
-		{ Debug = no },
-		io__remove_file(ResponseFileName, _)
+		Debug = no,
+		io__remove_file(ResponseFileName, _, !IO)
 	).
 
 % Handle the given query and then become the new server. Delete the mutex
@@ -251,75 +251,75 @@ handle_query_from_existing_server(Cmd, Pref, ToServerPipe, FromServerPipe,
 	option_table::in, io__state::di, io__state::uo) is cc_multi.
 
 handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
-		StartupFile, MutexFile, WantFile, Options) -->
-	server_name(Machine),
-	{ lookup_bool_option(Options, canonical_clique, Canonical) },
-	{ lookup_bool_option(Options, server_process, ServerProcess) },
-	{ lookup_bool_option(Options, debug, Debug) },
-	{ lookup_bool_option(Options, record_startup, RecordStartup) },
+		StartupFile, MutexFile, WantFile, Options, !IO) :-
+	server_name(Machine, !IO),
+	lookup_bool_option(Options, canonical_clique, Canonical),
+	lookup_bool_option(Options, server_process, ServerProcess),
+	lookup_bool_option(Options, debug, Debug),
+	lookup_bool_option(Options, record_startup, RecordStartup),
 	( 
-		{ RecordStartup = yes },
-		io__open_output(StartupFile, StartupStreamRes),
+		RecordStartup = yes,
+		io__open_output(StartupFile, StartupStreamRes, !IO),
 		(
-			{ StartupStreamRes = ok(StartupStream0) },
-			{ MaybeStartupStream = yes(StartupStream0) },
-			register_file_for_cleanup(StartupFile)
+			StartupStreamRes = ok(StartupStream0),
+			MaybeStartupStream = yes(StartupStream0),
+			register_file_for_cleanup(StartupFile, !IO)
 		;
-			{ StartupStreamRes = error(_) },
-			{ error("cannot create startup file") }
+			StartupStreamRes = error(_),
+			error("cannot create startup file")
 		)
 	;
-		{ RecordStartup = no },
-		{ MaybeStartupStream = no }
+		RecordStartup = no,
+		MaybeStartupStream = no
 	),
 	read_and_startup(Machine, [FileName], Canonical, MaybeStartupStream,
-		Res),
+		Res, !IO),
 	(
-		{ Res = ok(Deep) },
-		try_exec(Cmd, Pref, Deep, HTML),
+		Res = ok(Deep),
+		try_exec(Cmd, Pref, Deep, HTML, !IO),
 		(
-			{ MaybeStartupStream = yes(StartupStream1) },
+			MaybeStartupStream = yes(StartupStream1),
 			io__format(StartupStream1, "query 0 output:\n%s\n",
-				[s(HTML)]),
+				[s(HTML)], !IO),
 			% If we don't flush the output before the fork, it will
 			% be flushed twice, once by the parent process and
 			% once by the child process.
-			io__flush_output(StartupStream1)
+			io__flush_output(StartupStream1, !IO)
 		;
-			{ MaybeStartupStream = no }
+			MaybeStartupStream = no
 		),
 		(
-			{ ServerProcess = no },
+			ServerProcess = no,
 			% --no-server process should be specified only during
 			% debugging.
-			release_lock(Debug, MutexFile),
-			remove_want_file(WantFile),
-			io__write_string(HTML)
+			release_lock(Debug, MutexFile, !IO),
+			remove_want_file(WantFile, !IO),
+			io__write_string(HTML, !IO)
 		;
-			{ ServerProcess = yes },
-			make_pipes(FileName, Success),
+			ServerProcess = yes,
+			make_pipes(FileName, Success, !IO),
 			(
-				{ Success = yes },
-				io__write_string(HTML),
-				io__flush_output,
+				Success = yes,
+				io__write_string(HTML, !IO),
+				io__flush_output(!IO),
 				start_server(Options,
 					ToServerPipe, FromServerPipe,
 					MaybeStartupStream,
-					MutexFile, WantFile, Deep)
+					MutexFile, WantFile, Deep, !IO)
 			;
-				{ Success = no },
-				release_lock(Debug, MutexFile),
-				remove_want_file(WantFile),
-				io__set_exit_status(1),
-				io__write_string("could not make pipes\n")
+				Success = no,
+				release_lock(Debug, MutexFile, !IO),
+				remove_want_file(WantFile, !IO),
+				io__set_exit_status(1, !IO),
+				io__write_string("could not make pipes\n", !IO)
 			)
 		)
 	;
-		{ Res = error(Error) },
-		release_lock(Debug, MutexFile),
-		remove_want_file(WantFile),
-		io__set_exit_status(1),
-		io__format("error reading data file: %s\n", [s(Error)])
+		Res = error(Error),
+		release_lock(Debug, MutexFile, !IO),
+		remove_want_file(WantFile, !IO),
+		io__set_exit_status(1, !IO),
+		io__format("error reading data file: %s\n", [s(Error)], !IO)
 	).
 
 % Become the new server. Delete the mutex and want files when we get out
@@ -330,30 +330,30 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
 	io__state::di, io__state::uo) is cc_multi.
 
 start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
-		MutexFile, WantFile, Deep) -->
-	{ lookup_bool_option(Options, detach_process, DetachProcess) },
-	{ lookup_bool_option(Options, record_loop, RecordLoop) },
-	{ lookup_bool_option(Options, debug, Debug) },
+		MutexFile, WantFile, Deep, !IO) :-
+	lookup_bool_option(Options, detach_process, DetachProcess),
+	lookup_bool_option(Options, record_loop, RecordLoop),
+	lookup_bool_option(Options, debug, Debug),
 	(
-		{ DetachProcess = no },
+		DetachProcess = no,
 		% We behave as if we were in the child, to allow the server
 		% loop to be debugged.
-		{ DetachRes = in_child(child_has_no_parent) }
+		DetachRes = in_child(child_has_no_parent)
 	;
-		{ DetachProcess = yes },
-		detach_process(DetachRes)
+		DetachProcess = yes,
+		detach_process(DetachRes, !IO)
 	),
 	(
-		{ DetachRes = in_child(ChildHasParent) } ->
+		DetachRes = in_child(ChildHasParent) ->
 		% We are in the child; start serving queries.
 		(
-			{ ChildHasParent = child_has_parent },
+			ChildHasParent = child_has_parent,
 			% Our parent process will perform the file removals
 			% needed to exit the critical section; we don't
 			% want to duplicate them. We also don't want to delete
 			% the pipes we need or the startup file.
-			unregister_file_for_cleanup(MutexFile),
-			unregister_file_for_cleanup(WantFile),
+			unregister_file_for_cleanup(MutexFile, !IO),
+			unregister_file_for_cleanup(WantFile, !IO),
 
 			% We need to close stdout and stderr to let the web
 			% server know that there will be no further outputs
@@ -363,44 +363,44 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
 			% The binary streams are clones of the text streams,
 			% and we must close them too to let the web server
 			% finish displaying the page.
-			io__stdin_stream(StdIn),
-			io__close_input(StdIn),
-			io__stdout_stream(StdOut),
-			io__close_output(StdOut),
-			io__stderr_stream(StdErr),
-			io__close_output(StdErr),
-			io__binary_input_stream(BinaryStdIn),
-			io__close_binary_input(BinaryStdIn),
-			io__binary_output_stream(BinaryStdOut),
-			io__close_binary_output(BinaryStdOut)
+			io__stdin_stream(StdIn, !IO),
+			io__close_input(StdIn, !IO),
+			io__stdout_stream(StdOut, !IO),
+			io__close_output(StdOut, !IO),
+			io__stderr_stream(StdErr, !IO),
+			io__close_output(StdErr, !IO),
+			io__binary_input_stream(BinaryStdIn, !IO),
+			io__close_binary_input(BinaryStdIn, !IO),
+			io__binary_output_stream(BinaryStdOut, !IO),
+			io__close_binary_output(BinaryStdOut, !IO)
 		;
-			{ ChildHasParent = child_has_no_parent },
+			ChildHasParent = child_has_no_parent,
 			% We don't actually have a parent process, so we need
 			% to perform the file removals needed to exit the
 			% critical section ourselves.
-			release_lock(Debug, MutexFile),
-			remove_want_file(WantFile)
+			release_lock(Debug, MutexFile, !IO),
+			remove_want_file(WantFile, !IO)
 		),
 		(
-			{ RecordLoop = yes },
-			{ MaybeDebugStream = MaybeStartupStream }
+			RecordLoop = yes,
+			MaybeDebugStream = MaybeStartupStream
 		;
-			{ RecordLoop = no },
-			{ MaybeDebugStream = no }
+			RecordLoop = no,
+			MaybeDebugStream = no
 		),
-		{ lookup_int_option(Options, timeout, TimeOut) },
-		{ lookup_bool_option(Options, canonical_clique, Canonical) },
+		lookup_int_option(Options, timeout, TimeOut),
+		lookup_bool_option(Options, canonical_clique, Canonical),
 		server_loop(ToServerPipe, FromServerPipe, TimeOut,
-			MaybeDebugStream, Debug, Canonical, 0, Deep)
+			MaybeDebugStream, Debug, Canonical, 0, Deep, !IO)
 	;
-		{ DetachRes = in_parent } ->
+		DetachRes = in_parent ->
 		% We are in the parent after we spawned the child. We cause
 		% the process to exit simply by not calling server_loop.
 		% 
 		% We leave the pipes and the startup file; we clean up only
 		% the files involved in the critical section.
-		release_lock(Debug, MutexFile),
-		remove_want_file(WantFile)
+		release_lock(Debug, MutexFile, !IO),
+		remove_want_file(WantFile, !IO)
 	;
 		% We are in the parent because the fork failed. Again we cause
 		% the process to exit simply by not calling server_loop, but we
@@ -410,8 +410,8 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
 		%
 		% This deletes all the files created by the process, including
 		% WantFile and MutexFile, with MutexFile being deleted last.
-		delete_cleanup_files,
-		io__set_exit_status(1)
+		delete_cleanup_files(!IO),
+		io__set_exit_status(1, !IO)
 	).
 
 :- pred server_loop(string::in, string::in, int::in,
@@ -419,101 +419,103 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
 	io__state::di, io__state::uo) is cc_multi.
 
 server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
-		Debug, Canonical, QueryNum0, Deep0) -->
-	setup_timeout(TimeOut0),
-	{ QueryNum = QueryNum0 + 1 },
-	recv_term(ToServerPipe, Debug, CmdPref0),
+		Debug, Canonical, QueryNum0, Deep0, !IO) :-
+	setup_timeout(TimeOut0, !IO),
+	QueryNum = QueryNum0 + 1,
+	recv_term(ToServerPipe, Debug, CmdPref0, !IO),
 	(
-		{ MaybeStartupStream = yes(StartupStream0) },
+		MaybeStartupStream = yes(StartupStream0),
 		io__format(StartupStream0, "server loop query %d\n",
-			[i(QueryNum)]),
-		io__write(StartupStream0, CmdPref0),
-		io__nl(StartupStream0),
-		io__flush_output(StartupStream0)
+			[i(QueryNum)], !IO),
+		io__write(StartupStream0, CmdPref0, !IO),
+		io__nl(StartupStream0, !IO),
+		io__flush_output(StartupStream0, !IO)
 	;
-		{ MaybeStartupStream = no }
+		MaybeStartupStream = no
 	),
-	{ CmdPref0 = cmd_pref(Cmd0, Pref0) },
-	( { Cmd0 = restart } ->
+	CmdPref0 = cmd_pref(Cmd0, Pref0),
+	( Cmd0 = restart ->
 		read_and_startup(Deep0 ^ server_name, [Deep0 ^ data_file_name],
-			Canonical, MaybeStartupStream, MaybeDeep),
+			Canonical, MaybeStartupStream, MaybeDeep, !IO),
 		(
-			{ MaybeDeep = ok(Deep) },
-			{ MaybeMsg = no },
-			{ Cmd = menu }
+			MaybeDeep = ok(Deep),
+			MaybeMsg = no,
+			Cmd = menu
 		;
-			{ MaybeDeep = error(ErrorMsg) },
-			{ MaybeMsg = yes(ErrorMsg) },
-			{ Deep = Deep0 },
-			{ Cmd = quit }
+			MaybeDeep = error(ErrorMsg),
+			MaybeMsg = yes(ErrorMsg),
+			Deep = Deep0,
+			Cmd = quit
 		)
 	;
-		{ Deep = Deep0 },
-		{ MaybeMsg = no },
-		{ Cmd = Cmd0 }
+		Deep = Deep0,
+		MaybeMsg = no,
+		Cmd = Cmd0
 	),
 	(
-		{ MaybeMsg = yes(HTML) }
+		MaybeMsg = yes(HTML)
 	;
-		{ MaybeMsg = no },
-		try_exec(Cmd, Pref0, Deep, HTML)
+		MaybeMsg = no,
+		try_exec(Cmd, Pref0, Deep, HTML, !IO)
 	),
 
-	{ ResponseFileName =
-		response_file_name(Deep0 ^ data_file_name, QueryNum) },
-	io__open_output(ResponseFileName, ResponseRes),
+	ResponseFileName =
+		response_file_name(Deep0 ^ data_file_name, QueryNum),
+	io__open_output(ResponseFileName, ResponseRes, !IO),
 	(
-		{ ResponseRes = ok(ResponseStream) }
+		ResponseRes = ok(ResponseStream)
 	;
-		{ ResponseRes = error(_) },
-		{ error("cannot open response file") }
+		ResponseRes = error(_),
+		error("cannot open response file")
 	),
-	io__write_string(ResponseStream, HTML),
-	io__close_output(ResponseStream),
+	io__write_string(ResponseStream, HTML, !IO),
+	io__close_output(ResponseStream, !IO),
 
-	send_string(FromServerPipe, Debug, ResponseFileName),
+	send_string(FromServerPipe, Debug, ResponseFileName, !IO),
 
 	(
-		{ MaybeStartupStream = yes(StartupStream1) },
+		MaybeStartupStream = yes(StartupStream1),
 		io__format(StartupStream1, "query %d output:\n%s\n",
-			[i(QueryNum), s(HTML)]),
-		io__flush_output(StartupStream1)
+			[i(QueryNum), s(HTML)], !IO),
+		io__flush_output(StartupStream1, !IO)
 	;
-		{ MaybeStartupStream = no }
+		MaybeStartupStream = no
 	),
 
-	( { Cmd = quit } ->
+	( Cmd = quit ->
 		% The lack of a recursive call here shuts down the server.
 		%
 		% This deletes all the files created by the process, including
 		% WantFile and MutexFile, with MutexFile being deleted last.
-		delete_cleanup_files
-	; { Cmd = timeout(TimeOut) } ->
+		delete_cleanup_files(!IO)
+	; Cmd = timeout(TimeOut) ->
 		server_loop(ToServerPipe, FromServerPipe, TimeOut,
-			MaybeStartupStream, Debug, Canonical, QueryNum, Deep)
+			MaybeStartupStream, Debug, Canonical, QueryNum, Deep,
+			!IO)
 	;
 		server_loop(ToServerPipe, FromServerPipe, TimeOut0,
-			MaybeStartupStream, Debug, Canonical, QueryNum, Deep)
+			MaybeStartupStream, Debug, Canonical, QueryNum, Deep,
+			!IO)
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred make_pipes(string::in, bool::out, io__state::di, io__state::uo) is det.
 
-make_pipes(FileName, Success) -->
-	{ ToServerPipe = to_server_pipe_name(FileName) },
-	{ FromServerPipe = from_server_pipe_name(FileName) },
-	{ MakeToServerPipeCmd = make_pipe_cmd(ToServerPipe) },
-	{ MakeFromServerPipeCmd = make_pipe_cmd(FromServerPipe) },
-	io__call_system(MakeToServerPipeCmd, ToServerRes),
-	io__call_system(MakeFromServerPipeCmd, FromServerRes),
+make_pipes(FileName, Success, !IO) :-
+	ToServerPipe = to_server_pipe_name(FileName),
+	FromServerPipe = from_server_pipe_name(FileName),
+	MakeToServerPipeCmd = make_pipe_cmd(ToServerPipe),
+	MakeFromServerPipeCmd = make_pipe_cmd(FromServerPipe),
+	io__call_system(MakeToServerPipeCmd, ToServerRes, !IO),
+	io__call_system(MakeFromServerPipeCmd, FromServerRes, !IO),
 	(
-		{ ToServerRes = ok(0) },
-		{ FromServerRes = ok(0) }
+		ToServerRes = ok(0),
+		FromServerRes = ok(0)
 	->
-		register_file_for_cleanup(ToServerPipe),
-		register_file_for_cleanup(FromServerPipe),
-		{ Success = yes }
+		register_file_for_cleanup(ToServerPipe, !IO),
+		register_file_for_cleanup(FromServerPipe, !IO),
+		Success = yes
 	;
 		% In case one of the pipes *was* created. We ignore the
 		% return values because at least one of these calls *will*
@@ -521,9 +523,9 @@ make_pipes(FileName, Success) -->
 		% remove a named pipe we did succeed in creating, then
 		% something is so screwed up that probably there is nothing
 		% we can do to fix the situation.
-		io__remove_file(ToServerPipe, _),
-		io__remove_file(FromServerPipe, _),
-		{ Success = no }
+		io__remove_file(ToServerPipe, _, !IO),
+		io__remove_file(FromServerPipe, _, !IO),
+		Success = no
 	).
 
 %-----------------------------------------------------------------------------%
@@ -578,15 +580,15 @@ make_pipes(FileName, Success) -->
 :- pred detach_process(detach_process_result::out,
 	io__state::di, io__state::uo) is cc_multi.
 
-detach_process(Result) -->
-	raw_detach_process(ResCode),
-	{ ResCode < 0 ->
+detach_process(Result, !IO) :-
+	raw_detach_process(ResCode, !IO),
+	( ResCode < 0 ->
 		Result = fork_failed
 	; ResCode > 0 ->
 		Result = in_parent
 	;
 		Result = in_child(child_has_parent)
-	}.
+	).
 
 % Raw_detach_process performs a fork.
 %

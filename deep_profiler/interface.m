@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -358,102 +358,102 @@ filename_mangle_2([First | Rest]) = MangledChars :-
 		MangledChars = [First | MangledRest]
 	).
 
-send_term(ToPipeName, Debug, Data) -->
-	io__open_output(ToPipeName, Res),
-	( { Res = ok(ToStream) } ->
-		io__write(ToStream, Data),
-		io__write_string(ToStream, ".\n"),
-		io__close_output(ToStream)
+send_term(ToPipeName, Debug, Data, !IO) :-
+	io__open_output(ToPipeName, Res, !IO),
+	( Res = ok(ToStream) ->
+		io__write(ToStream, Data, !IO),
+		io__write_string(ToStream, ".\n", !IO),
+		io__close_output(ToStream, !IO)
 	;
-		{ error("send_term: couldn't open pipe") }
+		error("send_term: couldn't open pipe")
 	),
 	(
-		{ Debug = yes },
-		io__open_output("/tmp/.send_term", Res2),
-		( { Res2 = ok(DebugStream) } ->
-			io__write(DebugStream, Data),
-			io__write_string(DebugStream, ".\n"),
-			io__close_output(DebugStream)
+		Debug = yes,
+		io__open_output("/tmp/.send_term", Res2, !IO),
+		( Res2 = ok(DebugStream) ->
+			io__write(DebugStream, Data, !IO),
+			io__write_string(DebugStream, ".\n", !IO),
+			io__close_output(DebugStream, !IO)
 		;
-			{ error("send_term: couldn't debug") }
+			error("send_term: couldn't debug")
 		)
 	;
-		{ Debug = no }
+		Debug = no
 	).
 
-send_string(ToPipeName, Debug, Data) -->
-	io__open_output(ToPipeName, Res),
-	( { Res = ok(ToStream) } ->
-		io__write_string(ToStream, Data),
-		io__close_output(ToStream)
+send_string(ToPipeName, Debug, Data, !IO) :-
+	io__open_output(ToPipeName, Res, !IO),
+	( Res = ok(ToStream) ->
+		io__write_string(ToStream, Data, !IO),
+		io__close_output(ToStream, !IO)
 	;
-		{ error("send_string: couldn't open pipe") }
+		error("send_string: couldn't open pipe")
 	),
 	(
-		{ Debug = yes },
-		io__open_output("/tmp/.send_string", Res2),
-		( { Res2 = ok(DebugStream) } ->
-			io__write_string(DebugStream, Data),
-			io__close_output(DebugStream)
+		Debug = yes,
+		io__open_output("/tmp/.send_string", Res2, !IO),
+		( Res2 = ok(DebugStream) ->
+			io__write_string(DebugStream, Data, !IO),
+			io__close_output(DebugStream, !IO)
 		;
-			{ error("send_string: couldn't debug") }
+			error("send_string: couldn't debug")
 		)
 	;
-		{ Debug = no }
+		Debug = no
 	).
 
-recv_term(FromPipeName, Debug, Resp) -->
-	io__open_input(FromPipeName, Res0),
-	( { Res0 = ok(FromStream) } ->
-		io__read(FromStream, Res1),
-		( { Res1 = ok(Resp0) } ->
-			{ Resp = Resp0 }
+recv_term(FromPipeName, Debug, Resp, !IO) :-
+	io__open_input(FromPipeName, Res0, !IO),
+	( Res0 = ok(FromStream) ->
+		io__read(FromStream, Res1, !IO),
+		( Res1 = ok(Resp0) ->
+			Resp = Resp0
 		;
-			{ error("recv_term: read failed") }
+			error("recv_term: read failed")
 		),
-		io__close_input(FromStream),
+		io__close_input(FromStream, !IO),
 		(
-			{ Debug = yes },
-			io__open_output("/tmp/.recv_term", Res2),
-			( { Res2 = ok(DebugStream) } ->
-				io__write(DebugStream, Res1),
-				io__write_string(DebugStream, ".\n"),
-				io__close_output(DebugStream)
+			Debug = yes,
+			io__open_output("/tmp/.recv_term", Res2, !IO),
+			( Res2 = ok(DebugStream) ->
+				io__write(DebugStream, Res1, !IO),
+				io__write_string(DebugStream, ".\n", !IO),
+				io__close_output(DebugStream, !IO)
 			;
-				{ error("recv_term: couldn't debug") }
+				error("recv_term: couldn't debug")
 			)
 		;
-			{ Debug = no }
+			Debug = no
 		)
 	;
-		{ error("recv_term: couldn't open pipe") }
+		error("recv_term: couldn't open pipe")
 	).
 
-recv_string(FromPipeName, Debug, Resp) -->
-	io__open_input(FromPipeName, Res0),
-	( { Res0 = ok(FromStream) } ->
-		io__read_file_as_string(FromStream, Res1),
-		( { Res1 = ok(Resp0) } ->
-			{ Resp = Resp0 }
+recv_string(FromPipeName, Debug, Resp, !IO) :-
+	io__open_input(FromPipeName, Res0, !IO),
+	( Res0 = ok(FromStream) ->
+		io__read_file_as_string(FromStream, Res1, !IO),
+		( Res1 = ok(Resp0) ->
+			Resp = Resp0
 		;
-			{ error("recv_string: read failed") }
+			error("recv_string: read failed")
 		),
-		io__close_input(FromStream),
+		io__close_input(FromStream, !IO),
 		(
-			{ Debug = yes },
-			io__open_output("/tmp/.recv_string", Res2),
-			( { Res2 = ok(DebugStream) } ->
-				io__write(DebugStream, Res1),
-				io__write_string(DebugStream, ".\n"),
-				io__close_output(DebugStream)
+			Debug = yes,
+			io__open_output("/tmp/.recv_string", Res2, !IO),
+			( Res2 = ok(DebugStream) ->
+				io__write(DebugStream, Res1, !IO),
+				io__write_string(DebugStream, ".\n", !IO),
+				io__close_output(DebugStream, !IO)
 			;
-				{ error("recv_string: couldn't debug") }
+				error("recv_string: couldn't debug")
 			)
 		;
-			{ Debug = no }
+			Debug = no
 		)
 	;
-		{ error("recv_term: couldn't open pipe") }
+		error("recv_term: couldn't open pipe")
 	).
 
 %-----------------------------------------------------------------------------%

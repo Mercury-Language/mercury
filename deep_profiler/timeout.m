@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -592,20 +592,20 @@ MP_do_release_lock(const char *mutex_file)
 
 %-----------------------------------------------------------------------------%
 
-get_lock(Debug, MutexFile) -->
+get_lock(Debug, MutexFile, !IO) :-
 	(
-		{ Debug = yes }
+		Debug = yes
 	;
-		{ Debug = no },
-		do_get_lock(MutexFile)
+		Debug = no,
+		do_get_lock(MutexFile, !IO)
 	).
 
-release_lock(Debug, MutexFile) -->
+release_lock(Debug, MutexFile, !IO) :-
 	(
-		{ Debug = yes }
+		Debug = yes
 	;
-		{ Debug = no },
-		do_release_lock(MutexFile)
+		Debug = no,
+		do_release_lock(MutexFile, !IO)
 	).
 
 :- pred do_get_lock(string::in, io__state::di, io__state::uo) is det.

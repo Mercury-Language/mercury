@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -235,40 +235,40 @@ add_arcs_to([From | FromList], To, Graph0, Graph) :-
 % :- pred write_graph(graph::in, io__state::di, io__state::uo)
 % 	is det.
 % 
-% write_graph(Graph) -->
-% 	{ Graph = graph(Size, Array) },
-% 	io__format("graph size: %d\n", [i(Size)]),
-% 	write_graph_nodes(0, Size, Array).
+% write_graph(Graph, !IO) :-
+% 	Graph = graph(Size, Array),
+% 	io__format("graph size: %d\n", [i(Size)], !IO),
+% 	write_graph_nodes(0, Size, Array, !IO).
 % 
 % :- pred write_graph_nodes(int::in, int::in, array(set(int))::in,
 % 	io__state::di, io__state::uo) is det.
 % 
-% write_graph_nodes(Cur, Max, Array) -->
-% 	( { Cur =< Max } ->
-% 		io__format("%d -> ", [i(Cur)]),
-% 		{ array__lookup(Array, Cur, SuccSet) },
-% 		{ set__to_sorted_list(SuccSet, Succs) },
-% 		io__write_list(Succs, ", ", io__write_int),
-% 		io__nl,
-% 		write_graph_nodes(Cur + 1, Max, Array)
+% write_graph_nodes(Cur, Max, Array, !IO) :-
+% 	( Cur =< Max ->
+% 		io__format("%d -> ", [i(Cur)], !IO),
+% 		array__lookup(Array, Cur, SuccSet),
+% 		set__to_sorted_list(SuccSet, Succs),
+% 		io__write_list(Succs, ", ", io__write_int, !IO),
+% 		io__nl(!IO),
+% 		write_graph_nodes(Cur + 1, Max, Array, !IO)
 % 	;
-% 		[]
+% 		true
 % 	).
 % 
 % :- pred write_dfs(list(int)::in, io__state::di, io__state::uo)
 % 	is det.
 % 
-% write_dfs(Dfs) -->
-% 	io__write_list(Dfs, "\n", io__write_int).
+% write_dfs(Dfs, !IO) :-
+% 	io__write_list(Dfs, "\n", io__write_int, !IO).
 % 
 % :- pred write_cliques(list(set(int))::in, io__state::di, io__state::uo)
 % 	is det.
 % 
-% write_cliques(Cliques) -->
-% 	io__write_list(Cliques, "\n", io__write).
+% write_cliques(Cliques, !IO) :-
+% 	io__write_list(Cliques, "\n", io__write, !IO).
 % 
 % :- pred write_clique(list(int)::in, io__state::di, io__state::uo)
 % 	is det.
 % 
-% write_clique(Nodes) -->
-% 	io__write_list(Nodes, "\n", io__write_int).
+% write_clique(Nodes, !IO) :-
+% 	io__write_list(Nodes, "\n", io__write_int, !IO).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,78 +24,79 @@
 
 :- import_module int, string, list, array, exception, require, library.
 
-main -->
-	io__progname_base("mdprof_test", ProgName),
-	io__command_line_arguments(Args0),
-	{ getopt__process_options(option_ops(short, long, defaults),
-		Args0, Args, MaybeOptions) },
+main(!IO) :-
+	io__progname_base("mdprof_test", ProgName, !IO),
+	io__command_line_arguments(Args0, !IO),
+	getopt__process_options(option_ops(short, long, defaults),
+		Args0, Args, MaybeOptions),
 	(
-		{ MaybeOptions = ok(Options) },
-		{ lookup_bool_option(Options, help, Help) },
-		{ lookup_bool_option(Options, version, Version) },
+		MaybeOptions = ok(Options),
+		lookup_bool_option(Options, help, Help),
+		lookup_bool_option(Options, version, Version),
 		(
-			{ Help = yes },
-			write_help_message(ProgName)
+			Help = yes,
+			write_help_message(ProgName, !IO)
 		;
-			{ Help = no }
+			Help = no
 		),
 		(
-			{ Version = yes },
-			write_version_message(ProgName)
+			Version = yes,
+			write_version_message(ProgName, !IO)
 		;
-			{ Version = no }
+			Version = no
 		),
-		( { Help = no, Version = no } ->
-			main2(ProgName, Args, Options)
+		( Help = no, Version = no ->
+			main2(ProgName, Args, Options, !IO)
 		;
-			[]
+			true
 		)
 	;
-		{ MaybeOptions = error(Msg) },
-		io__set_exit_status(1),
+		MaybeOptions = error(Msg),
+		io__set_exit_status(1, !IO),
 		io__format("%s: error parsing options: %s\n",
-			[s(ProgName), s(Msg)])
+			[s(ProgName), s(Msg)], !IO)
 	).
 
 :- pred main2(string::in, list(string)::in, option_table::in,
 	io__state::di, io__state::uo) is cc_multi.
 
-main2(ProgName, Args, Options) -->
-	( { Args = [FileName] } ->
-		{ lookup_bool_option(Options, canonical_clique, Canonical) },
-		server_name(Machine),
-		read_and_startup(Machine, [FileName], Canonical, no, Res),
+main2(ProgName, Args, Options, !IO) :-
+	( Args = [FileName] ->
+		lookup_bool_option(Options, canonical_clique, Canonical),
+		server_name(Machine, !IO),
+		read_and_startup(Machine, [FileName], Canonical, no, Res, !IO),
 		(
-			{ Res = ok(Deep) },
-			{ lookup_bool_option(Options, test, Test) },
+			Res = ok(Deep),
+			lookup_bool_option(Options, test, Test),
 			(
-				{ Test = no }
+				Test = no
 			;
-				{ Test = yes },
-				{ lookup_string_option(Options, test_dir,
-					TestDir) },
-				test_server(TestDir, default_preferences, Deep)
+				Test = yes,
+				lookup_string_option(Options, test_dir,
+					TestDir),
+				test_server(TestDir, default_preferences, Deep,
+					!IO)
 			)
 		;
-			{ Res = error(Error) },
-			io__set_exit_status(1),
+			Res = error(Error),
+			io__set_exit_status(1, !IO),
 			io__format("%s: error reading data file: %s\n",
-				[s(ProgName), s(Error)])
+				[s(ProgName), s(Error)], !IO)
 		)
 	;
-		io__set_exit_status(1),
-		write_help_message(ProgName)
+		io__set_exit_status(1, !IO),
+		write_help_message(ProgName, !IO)
 	).
 
 :- pred write_version_message(string::in, io__state::di, io__state::uo) is det.
 
-write_version_message(ProgName) -->
-	{ library__version(Version) },
-	io__write_string(ProgName),
-	io__write_string(": Mercury deep profiler"),
-	io__nl,
-	io__write_string(Version),
-	io__nl.
+write_version_message(ProgName, !IO) :-
+	library__version(Version),
+	io__write_string(ProgName, !IO),
+	io__write_string(": Mercury deep profiler", !IO),
+	io__nl(!IO),
+	io__write_string(Version, !IO),
+	io__nl(!IO).
 
 :- pred write_help_message(string::in, io__state::di, io__state::uo) is det.
 
@@ -118,72 +119,72 @@ write_help_message(ProgName) -->
 :- pred test_server(string::in, preferences::in, deep::in,
 	io__state::di, io__state::uo) is cc_multi.
 
-test_server(DirName, Pref, Deep) -->
-	{ string__format("test -d %s || mkdir -p %s",
-		[s(DirName), s(DirName)], Cmd) },
-	io__call_system(Cmd, _),
-	{ array__max(Deep ^ clique_members, NumCliques) },
-	test_cliques(1, NumCliques, DirName, Pref, Deep),
-	{ array__max(Deep ^ proc_statics, NumProcStatics) },
-	test_procs(1, NumProcStatics, DirName, Pref, Deep).
+test_server(DirName, Pref, Deep, !IO) :-
+	string__format("test -d %s || mkdir -p %s",
+		[s(DirName), s(DirName)], Cmd),
+	io__call_system(Cmd, _, !IO),
+	array__max(Deep ^ clique_members, NumCliques),
+	test_cliques(1, NumCliques, DirName, Pref, Deep, !IO),
+	array__max(Deep ^ proc_statics, NumProcStatics),
+	test_procs(1, NumProcStatics, DirName, Pref, Deep, !IO).
 
 :- pred test_cliques(int::in, int::in, string::in, preferences::in, deep::in,
 	io__state::di, io__state::uo) is cc_multi.
 
-test_cliques(Cur, Max, DirName, Pref, Deep) -->
-	( { Cur =< Max } ->
-		try_exec(clique(Cur), Pref, Deep, HTML),
-		write_test_html(DirName, "clique", Cur, HTML),
-		test_cliques(Cur + 1, Max, DirName, Pref, Deep)
+test_cliques(Cur, Max, DirName, Pref, Deep, !IO) :-
+	( Cur =< Max ->
+		try_exec(clique(Cur), Pref, Deep, HTML, !IO),
+		write_test_html(DirName, "clique", Cur, HTML, !IO),
+		test_cliques(Cur + 1, Max, DirName, Pref, Deep, !IO)
 	;
-		[]
+		true
 	).
 
 :- pred test_procs(int::in, int::in, string::in, preferences::in, deep::in,
 	io__state::di, io__state::uo) is cc_multi.
 
-test_procs(Cur, Max, DirName, Pref, Deep) -->
-	( { Cur =< Max } ->
-		try_exec(proc(Cur), Pref, Deep, HTML),
-		write_test_html(DirName, "proc", Cur, HTML),
-		test_procs(Cur + 1, Max, DirName, Pref, Deep)
+test_procs(Cur, Max, DirName, Pref, Deep, !IO) :-
+	( Cur =< Max ->
+		try_exec(proc(Cur), Pref, Deep, HTML, !IO),
+		write_test_html(DirName, "proc", Cur, HTML, !IO),
+		test_procs(Cur + 1, Max, DirName, Pref, Deep, !IO)
 	;
-		[]
+		true
 	).
 
 :- pred write_test_html(string::in, string::in, int::in, string::in,
 	io__state::di, io__state::uo) is det.
 
-write_test_html(DirName, BaseName, Num, HTML) -->
+write_test_html(DirName, BaseName, Num, HTML, !IO) :-
 	% For large programs such as the Mercury compiler, the profiler data
 	% file may contain hundreds of thousands of cliques. We therefore put
 	% each batch of pages in a different subdirectory, thus limiting the
 	% number of files/subdirs in each directory.
 	%
 	% XXX consider splitting up this predicate
-	{ Bunch = (Num - 1) // 1000 },
-	{ string__format("%s/%s_%04d",
-		[s(DirName), s(BaseName), i(Bunch)], BunchName) },
-	( { (Num - 1) rem 1000 = 0 } ->
-		{ string__format("test -d %s || mkdir -p %s",
-			[s(BunchName), s(BunchName)], Cmd) },
-		io__call_system(Cmd, _)
+	Bunch = (Num - 1) // 1000,
+	string__format("%s/%s_%04d",
+		[s(DirName), s(BaseName), i(Bunch)], BunchName),
+	( (Num - 1) rem 1000 = 0 ->
+		string__format("test -d %s || mkdir -p %s",
+			[s(BunchName), s(BunchName)], Cmd),
+		io__call_system(Cmd, _, !IO)
 	;
-		[]
+		true
 	),
-	{ string__format("%s/%s_%06d.html",
-		[s(BunchName), s(BaseName), i(Num)], FileName) },
-	io__open_output(FileName, Res),
+	string__format("%s/%s_%06d.html",
+		[s(BunchName), s(BaseName), i(Num)], FileName),
+	io__open_output(FileName, Res, !IO),
 	(
-		{ Res = ok(Stream) },
-		io__write_string(Stream, HTML),
-		io__close_output(Stream),
-		{ string__format("gzip %s", [s(FileName)], GzipCmd) },
-		io__call_system(GzipCmd, _)
+		Res = ok(Stream),
+		io__write_string(Stream, HTML, !IO),
+		io__close_output(Stream, !IO),
+		string__format("gzip %s", [s(FileName)], GzipCmd),
+		io__call_system(GzipCmd, _, !IO)
 	;
-		{ Res = error(Err) },
-		{ io__error_message(Err, ErrMsg) },
-		{ error(ErrMsg) }
+		Res = error(Err),
+		io__error_message(Err, ErrMsg),
+		error(ErrMsg)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -144,16 +144,16 @@ index_clique_member(CliqueNum, PDPtr, CliqueIndex0, CliqueIndex) :-
 % :- pred write_arc(int::in, int::in, int::in, io__state::di, io__state::uo)
 % 	is det.
 % 
-% write_arc(FromPDI, ToPDI, CSDI) -->
+% write_arc(FromPDI, ToPDI, CSDI, !IO) :-
 % 	io__format("arc from pd %d to pd %d through csd %d\n",
-% 		[i(FromPDI), i(ToPDI), i(CSDI)]).
+% 		[i(FromPDI), i(ToPDI), i(CSDI)], !IO).
 % 
 % :- pred write_pdi_cn(int::in, int::in, io__state::di, io__state::uo) is det.
 % 
-% write_pdi_cn(PDI, CN) -->
-% 	io__write_string("pdi "),
-% 	io__write_int(PDI),
-% 	io__write_string(" -> clique "),
-% 	io__write_int(CN),
-% 	io__nl,
-% 	io__flush_output.
+% write_pdi_cn(PDI, CN, !IO) :-
+% 	io__write_string("pdi ", !IO),
+% 	io__write_int(PDI, !IO),
+% 	io__write_string(" -> clique ", !IO),
+% 	io__write_int(CN, !IO),
+% 	io__nl(!IO),
+% 	io__flush_output(!IO).
