@@ -59,7 +59,8 @@ export CVSROOT
 {
 tm_dir=$TOPDIR/test_mercury
 
-cd $TOPDIR/test_mercury/scripts;
+[ -d $TOPDIR/test_mercury/scripts ] || mkdir -p $TOPDIR/test_mercury/scripts
+cd $TOPDIR/test_mercury/scripts
 cvs checkout mercury/tools/test_mercury
 cp mercury/tools/test_mercury $tmpscript
 
