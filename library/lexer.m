@@ -52,7 +52,7 @@
 :- pred lexer__get_token_list(token_list, io__state, io__state).
 :- mode lexer__get_token_list(out, di, uo) is det.
 %	Read a list of tokens from the current input stream.
-%	Keep reading until either we encounter either an `end' token
+%	Keep reading until we encounter either an `end' token
 %	(i.e. a full stop followed by whitespace) or the end-of-file.
 
 % The type `offset' represents a (zero-based) offset into a string.
