@@ -662,6 +662,8 @@ inst_gteq_2(free, free, _).
 inst_gteq_2(bound(_List), free, _).
 inst_gteq_2(bound(ListA), bound(ListB), ModuleInfo) :-
 	bound_inst_list_gteq(ListA, ListB, ModuleInfo).
+inst_gteq_2(bound(List), ground, ModuleInfo) :-
+	bound_inst_list_is_ground(List, ModuleInfo).
 inst_gteq_2(ground, _, _).
 inst_gteq_2(abstract_inst(_Name, _Args), free, _).
 
