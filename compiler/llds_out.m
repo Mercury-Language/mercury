@@ -143,8 +143,8 @@ output_c_file_init(BaseName, Modules) -->
 		{ library__version(Version) },
 		io__write_strings(
 			["/*\n** Automatically generated from `", BaseName,
-			".m' by the\n** Mercury compiler, version ", Version,
-			".  Do not edit.\n*/\n"]),
+			".m' by the Mercury compiler,\n** version ", Version,
+			".\n** Do not edit.\n*/\n"]),
 		io__write_string("/*\n"),
 		io__write_string("INIT "),
 		output_init_name(BaseName),
@@ -152,6 +152,7 @@ output_c_file_init(BaseName, Modules) -->
 		io__write_string("ENDINIT\n"),
 		io__write_string("*/\n\n"),
 		io__write_string("#include ""imp.h""\n"),
+		io__write_string("\n"),
 		output_c_module_init_list(BaseName, Modules),
 		io__told
 	;
@@ -182,8 +183,8 @@ output_single_c_file(c_file(BaseName, C_HeaderLines, Modules), SplitFiles)
 		{ library__version(Version) },
 		io__write_strings(
 			["/*\n** Automatically generated from `", BaseName,
-			".m' by the\n** Mercury compiler, version ", Version,
-			".  Do not edit.\n*/\n"]),
+			".m' by the Mercury compiler,\n** version ", Version,
+			".\n** Do not edit.\n*/\n"]),
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
@@ -259,7 +260,12 @@ output_c_module_init_list(BaseName, Modules) -->
 	io__write_string("\t}\n"),
 	io__write_string("#endif\n"),
 	output_c_data_init_list(Modules),
-	io__write_string("}\n").
+	io__write_string("}\n"),
+	io__write_string("\n"),
+	io__write_string(
+		"/* ensure everything is compiled with the same grade */\n"),
+	io__write_string(
+		"static const void *const MR_grade = &MR_GRADE_VAR;\n").
 
 :- pred output_c_module_init_list_2(list(c_module), string, int, int, int, int,
 	io__state, io__state).
