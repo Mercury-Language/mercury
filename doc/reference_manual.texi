@@ -918,7 +918,7 @@ type classes (@pxref{Type classes}), and existentially quantified types
 @menu
 * Builtin types::
 * User-defined types::
-* Predicate and function types::
+* Predicate and function type declarations::
 @end menu
 
 @node Builtin types
@@ -1110,8 +1110,8 @@ named in the interface section of the module.
 Abstract types may be defined as either discriminated union types
 or as equivalence types.
 
-@node Predicate and function types
-@section Predicate and function types
+@node Predicate and function type declarations
+@section Predicate and function type declarations
 
 The argument types of each predicate
 must be explicitly declared with a @samp{:- pred} declaration.
