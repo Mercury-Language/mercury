@@ -380,6 +380,9 @@ moduleinfo_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
 :- pred predinfo_modes(pred_info, list(pred_mode_id)).
 :- mode predinfo_modes(input, output).
 
+:- pred predinfo_arg_types(pred_info, varset, list(type)).
+:- mode predinfo_arg_types(input, output, output).
+
 :- mode predinfo_procedures(input, output).
 :- mode predinfo_procedures(input, output).
 
@@ -399,6 +402,9 @@ predinfo_modes(PredInfo, Modes) :-
 
 predinfo_procedures(PredInfo, Procs) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs).
+
+predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
+	PredInfo = predicate(TypeVars, ArgTypes, _Cond, _Clauses, _Procs).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
