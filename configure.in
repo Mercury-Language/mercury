@@ -261,8 +261,6 @@ if test "$ac_microsoft" = "yes" ; then
 
 	CYGPATH="cygpath -w"
 
-	AC_DEFINE(MR_WIN32)
-
 		# MS doesn't use a ranlib.
 	RANLIB="echo"
 	AC_SUBST(RANLIB)

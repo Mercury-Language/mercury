@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -36,5 +36,31 @@ ZoneHandler null_handler;
 */
 
 void	setup_signals(void);
+
+#ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
+/*
+** Filter a Win32 exception (to be called in the __except filter
+** part).
+** Possible return values are:
+**
+** EXCEPTION_CONTINUE_EXECUTION (-1)
+**  Exception is dismissed. Continue execution at the point where
+**  the exception occurred.
+**
+** EXCEPTION_CONTINUE_SEARCH (0)
+**  Exception is not recognized. Continue to search up the stack for
+**  a handler, first for containing try-except statements, then for
+**  handlers with the next highest precedence.
+**
+** EXCEPTION_EXECUTE_HANDLER (1)
+**  Exception is recognized. Transfer control to the exception handler
+**  by executing the __except compound statement, then continue
+**  execution at the assembly instruction that was executing
+**  when the exception was raised. 
+*/
+#include <windows.h>
+
+int MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs);
+#endif
 
 #endif /* not MERCURY_MEMORY_HANDLERS_H */

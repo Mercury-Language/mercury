@@ -346,12 +346,6 @@
 #undef  HAVE_READLINE_READLINE
 #undef  HAVE_READLINE_HISTORY
 
-/*
-** MR_WIN32
-**	Set this if you are using Microsoft Visual C++ as your C compiler.
-*/	
-#undef	MR_WIN32
-
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_conf_param.h"

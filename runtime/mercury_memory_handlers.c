@@ -132,7 +132,7 @@ static	Word	*get_sp_from_context(void *the_context);
 static bool 
 try_munprotect(void *addr, void *context)
 {
-#ifndef HAVE_SIGINFO
+#if !(defined(HAVE_SIGINFO) || defined(MR_WIN32_VIRTUAL_ALLOC))
 	return FALSE;
 #else
 	Word *    fault_addr;
@@ -221,8 +221,8 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 	    zone->name, zone->id, (void *) zone->redzone, (void *) new_zone,
 	    (int)zone_size);
 	}
-	if (mprotect((char *)zone->redzone, zone_size,
-	    PROT_READ|PROT_WRITE) < 0)
+	if (MR_protect_pages((char *)zone->redzone, zone_size,
+		PROT_READ|PROT_WRITE) < 0)
 	{
 	    char buf[2560];
 	    sprintf(buf, "Mercury runtime: cannot unprotect %s#%d zone",
@@ -262,12 +262,19 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 void
 setup_signals(void)
 {
-#ifdef SIGBUS
+/*
+** When using Microsoft Visual C structured exceptions don't set any
+** signal handlers.
+** See mercury_wrapper.c for the reason why.
+*/
+#ifndef MR_MSVC_STRUCTURED_EXCEPTIONS
+  #ifdef SIGBUS
 	MR_setup_signal(SIGBUS, (Code *) bus_handler, TRUE,
 		"Mercury runtime: cannot set SIGBUS handler");
-#endif
+  #endif
 	MR_setup_signal(SIGSEGV, (Code *) segv_handler, TRUE,
 		"Mercury runtime: cannot set SIGSEGV handler");
+#endif
 }
 
 static char *
@@ -547,6 +554,281 @@ simple_sighandler(int sig)
 }
 
 #endif /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
+
+#ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
+static const char *MR_find_exception_name(DWORD exception_code);
+static void MR_explain_exception_record(EXCEPTION_RECORD *rec);
+static void MR_dump_exception_record(EXCEPTION_RECORD *rec);
+static bool MR_exception_record_is_access_violation(EXCEPTION_RECORD *rec,
+		void **address_ptr, int *access_mode_ptr);
+
+/*
+** Exception code and their string representation
+*/
+#define DEFINE_EXCEPTION_NAME(a)   {a,#a}
+
+typedef struct
+{
+	DWORD		exception_code;
+	const char	*exception_name;
+} MR_ExceptionName;
+
+static const
+MR_ExceptionName MR_exception_names[] =
+{
+	DEFINE_EXCEPTION_NAME(EXCEPTION_ACCESS_VIOLATION),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_DATATYPE_MISALIGNMENT),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_BREAKPOINT),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_SINGLE_STEP),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_ARRAY_BOUNDS_EXCEEDED),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_FLT_DENORMAL_OPERAND),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_FLT_DIVIDE_BY_ZERO),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_FLT_INEXACT_RESULT),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_FLT_INVALID_OPERATION),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_FLT_OVERFLOW),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_FLT_STACK_CHECK),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_FLT_UNDERFLOW),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_INT_DIVIDE_BY_ZERO),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_INT_OVERFLOW),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_PRIV_INSTRUCTION),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_IN_PAGE_ERROR),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_ILLEGAL_INSTRUCTION),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_NONCONTINUABLE_EXCEPTION),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_STACK_OVERFLOW),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_INVALID_DISPOSITION),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_GUARD_PAGE),
+	DEFINE_EXCEPTION_NAME(EXCEPTION_INVALID_HANDLE)
+};
+
+
+/*
+** Retrieve the name of a Win32 exception code as a string
+*/
+static const char *
+MR_find_exception_name(DWORD exception_code)
+{
+	int i;
+	for (i = 0; i < sizeof(MR_exception_names)
+			/ sizeof(MR_ExceptionName); i++)
+	{
+		if (MR_exception_names[i].exception_code == exception_code) {
+			return MR_exception_names[i].exception_name;
+		}
+	}
+	return "Unknown exception code";
+}
+
+/*
+** Was a page accessed read/write?  The MSDN documentation doens't define
+** symbolic constants for these alternatives.
+*/
+#define READ	0
+#define WRITE	1
+
+/*
+** Explain an EXCEPTION_RECORD content into stderr.
+*/
+static void
+MR_explain_exception_record(EXCEPTION_RECORD *rec)
+{
+	fprintf(stderr, "\n");
+	fprintf(stderr, "\n*** Explanation of the exception record");
+	if (rec == NULL) {
+		fprintf(stderr, "\n***   Cannot explain because it is NULL");
+		return;
+	} else {
+		void *address;
+		int access_mode;
+		
+		/* If the exception is an access violation */
+		if (MR_exception_record_is_access_violation(rec,
+					&address, &access_mode))
+		{
+			MemoryZone *zone;
+
+			/* Display AV address and access mode */
+			fprintf(stderr, "\n***   An access violation occured"
+					" at address 0x%08lx, while attempting"
+					" to ", (unsigned long) address);
+			
+			if (access_mode == READ) {
+				fprintf(stderr, "\n***   read "
+						"inaccessible data");
+			} else if (access_mode == WRITE) {
+				fprintf(stderr, "\n***   write to an "
+						"inaccessible (or protected)"
+						" address");
+			} else {
+				fprintf(stderr, "\n***   ? [unknown access "
+						"mode %d (strange...)]",
+						access_mode);
+			}
+				
+			fprintf(stderr, "\n***   Trying to see if this "
+					"stands within a mercury zone...");
+			/*
+			** Browse the mercury memory zones to see if the
+			** AV address references one of them.
+			*/
+			zone = get_used_memory_zones();
+			while(zone != NULL) {
+				fprintf(stderr,
+						"\n***    Checking zone %s#%d: "
+						"0x%08lx - 0x%08lx - 0x%08lx",
+						zone->name, zone->id,
+						(unsigned long) zone->bottom,
+						(unsigned long) zone->redzone,
+						(unsigned long) zone->top);
+
+				if ((zone->redzone <= address) &&
+						(address <= zone->top))
+				{
+					fprintf(stderr,
+						"\n***     Address is within"
+						" redzone of "
+						"%s#%d (!!zone overflowed!!)\n",
+						zone->name, zone->id);
+				} else if ((zone->bottom <= address) &&
+						(address <= zone->top))
+				{
+					fprintf(stderr, "\n***     Address is"
+							" within zone %s#%d\n",
+							zone->name, zone->id);
+				}
+				/*
+				** Don't need to call handler, because it
+				** has much less information than we do.
+				*/
+				/* return zone->handler(fault_addr,
+				 		zone, rec); */
+				zone = zone->next;
+			}
+		}
+		return;
+	}
+}
+
+/*
+** Dump an EXCEPTION_RECORD content into stderr.
+*/
+static void
+MR_dump_exception_record(EXCEPTION_RECORD *rec)
+{
+	int i;
+	
+	if (rec == NULL) {
+		return;
+	}
+	
+	fprintf(stderr, "\n***   Exception record at 0x%08lx:",
+			(unsigned long) rec);
+	fprintf(stderr, "\n***    Code        : 0x%08lx (%s)",
+			(unsigned long) rec->ExceptionCode,
+			MR_find_exception_name(rec->ExceptionCode));
+	fprintf(stderr, "\n***    Flags       : 0x%08lx",
+			(unsigned long) rec->ExceptionFlags);
+	fprintf(stderr, "\n***    Address     : 0x%08lx",
+			(unsigned long) rec->ExceptionAddress);
+
+	for (i = 0; i < rec->NumberParameters; i++) {
+		fprintf(stderr, "\n***    Parameter %d : 0x%08lx", i,
+				(unsigned long) rec->ExceptionInformation[i]);
+	}
+	fprintf(stderr, "\n***    Next record : 0x%08lx",
+			(unsigned long) rec->ExceptionRecord);
+	
+	/* Try to explain the exception more "gracefully" */
+	MR_explain_exception_record(rec);
+	MR_dump_exception_record(rec->ExceptionRecord);
+}
+
+
+/*
+** Return TRUE iff exception_ptrs indicates an access violation.
+** If TRUE, the dereferenced address_ptr is set to the accessed address and
+** the dereferenced access_mode_ptr is set to the desired access
+** (0 = read, 1 = write)
+*/
+static bool
+MR_exception_record_is_access_violation(EXCEPTION_RECORD *rec,
+		void **address_ptr, int *access_mode_ptr)
+{
+	if (rec->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
+		if (rec->NumberParameters >= 2) {
+			(*access_mode_ptr) = (int) rec->ExceptionInformation[0];
+			(*address_ptr) = (void *) rec->ExceptionInformation[1];
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+
+/*
+** Filter a Win32 exception (to be called in the __except filter part).
+** Possible return values are:
+**
+** EXCEPTION_CONTINUE_EXECUTION (-1)
+**  Exception is dismissed. Continue execution at the point where
+**  the exception occurred.
+**
+** EXCEPTION_CONTINUE_SEARCH (0)
+**  Exception is not recognized. Continue to search up the stack for
+**  a handler, first for containing try-except statements, then for
+**  handlers with the next highest precedence.
+**
+** EXCEPTION_EXECUTE_HANDLER (1)
+**  Exception is recognized. Transfer control to the exception handler
+**  by executing the __except compound statement, then continue
+**  execution at the assembly instruction that was executing
+**  when the exception was raised. 
+*/
+int
+MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs)
+{
+	void *address;
+	int access_mode;
+
+		/* If the exception is an access violation */
+	if (MR_exception_record_is_access_violation(
+			exception_ptrs->ExceptionRecord,
+			&address, &access_mode))
+	{
+
+			/* If we can unprotect the memory zone */
+		if (try_munprotect(address, exception_ptrs)) {
+			if (MR_memdebug) {
+				fprintf(stderr, "returning from "
+						"signal handler\n\n");
+			}
+				/* Continue execution where it stopped */
+			return  EXCEPTION_CONTINUE_EXECUTION;
+		}
+	}
+		
+	/*
+	** We can't handle the exception. Just dump all the information we got
+	*/
+	fflush(stdout);
+	fprintf(stderr, "\n*** Mercury runtime: Unhandled exception ");
+	MR_dump_exception_record(exception_ptrs->ExceptionRecord);
+
+	print_dump_stack();
+	dump_prev_locations();
+	
+	fprintf(stderr, "\n\n*** Now passing exception to default handler\n\n");
+	fflush(stderr);
+		  
+	/*
+	** Pass exception back to upper handler. In most cases, this
+	** means activating UnhandledExceptionFilter, which will display
+	** a dialog box asking to user ro activate the Debugger or simply
+	** to kill the application
+	*/
+	return  EXCEPTION_CONTINUE_SEARCH;
+}
+#endif /* MR_MSVC_STRUCTURED_EXCEPTIONS */
+
 
 /*
 ** get_pc_from_context:

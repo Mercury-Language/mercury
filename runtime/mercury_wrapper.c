@@ -32,6 +32,10 @@ ENDINIT
 #include	<stdio.h>
 #include	<string.h>
 
+#ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
+  #include <excpt.h>
+#endif
+
 #include	"mercury_getopt.h"
 #include	"mercury_timing.h"
 #include	"mercury_init.h"
@@ -894,6 +898,30 @@ mercury_runtime_main(void)
 
 	static	int	repcounter;
 
+#ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
+	/*
+	** Under Win32 we use the following construction to handle exceptions.
+	**   __try
+	**   {
+	**     <various stuff>
+	**   }
+	**   __except(MR_filter_win32_exception(GetExceptionInformation())
+	**   {
+	**   }
+	**
+	** This type of contruction allows us to retrieve all the information
+	** we need (exception type, address, etc) to display a "meaningful"
+	** message to the user.  Using signal() in Win32 is less powerful,
+	** since we can only trap a subset of all possible exceptions, and
+	** we can't retrieve the exception address.  The VC runtime implements
+	** signal() by surrounding main() with a __try __except block and
+	** calling the signal handler in the __except filter, exactly the way
+	** we do it here.
+	*/
+	__try
+	{
+#endif
+
 	/*
 	** Save the C callee-save registers
 	** and restore the Mercury registers
@@ -989,6 +1017,14 @@ mercury_runtime_main(void)
 	*/
 	save_registers();
 	restore_regs_from_mem(c_regs);
+
+#ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
+	}
+	__except(MR_filter_win32_exception(GetExceptionInformation()))
+	{
+		/* Everything is done in MR_filter_win32_exception */
+	}
+#endif
 
 } /* end mercury_runtime_main() */
 

@@ -96,7 +96,19 @@
 #if defined(HAVE_SYSCONF) && defined(_SC_PAGESIZE)
   #define	getpagesize()	sysconf(_SC_PAGESIZE)
 #elif !defined(HAVE_GETPAGESIZE)
-  #define	getpagesize()	8192
+  #if defined(MR_WIN32_GETSYSTEMINFO)
+    #include <windows.h>
+
+    static size_t
+    getpagesize(void)
+    {
+	SYSTEM_INFO SysInfo;
+	GetSystemInfo(&SysInfo);
+	return (size_t) SysInfo.dwPageSize;
+    }
+  #else
+    #define	getpagesize()	8192
+  #endif
 #endif
 
 /*---------------------------------------------------------------------------*/

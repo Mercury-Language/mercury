@@ -345,8 +345,48 @@
   #define MR_CAN_GET_PC_AT_SIGNAL
 #endif
 
-#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
+/*
+** MR_CHECK_OVERFLOW_VIA_MPROTECT  --	Can check for overflow of various
+**					memory zones using mprotect() like
+**					functionality.
+*/
+#if (defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)) || defined(_WIN32)
   #define MR_CHECK_OVERFLOW_VIA_MPROTECT
+#endif
+
+/*
+** MR_PROTECTPAGE   -- 	MR_protect_pages() can be defined to provide the same
+**			functionality as the system call mprotect().
+*/
+#if defined(HAVE_MPROTECT) || defined(_WIN32)
+  #define MR_PROTECTPAGE
+#endif
+
+/*
+** MR_MSVC_STRUCTURED_EXCEPTIONS
+** 	Use Microsoft Visual C structured exceptions for signal handling.
+*/
+#if defined(_MSC_VER)
+  #define MR_MSVC_STRUCTURED_EXCEPTIONS
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Win32 API specific.
+*/
+
+/*
+** MR_WIN32 -- The Win32 API is available.
+**
+** MR_WIN32_GETSYSTEMINFO -- Is GetSystemInfo() available?
+**
+** MR_WIN32_VIRTUAL_ALLOC -- Is VirtualAlloc() available?
+*/
+#if _WIN32
+  #define MR_WIN32
+  #define MR_WIN32_GETSYSTEMINFO
+  #define MR_WIN32_VIRTUAL_ALLOC
 #endif
 
 /*---------------------------------------------------------------------------*/
