@@ -10,14 +10,19 @@
 ** by gcc, or asm fragments in the GNU headers.
 */
 
-#include	"mercury_conf.h"
-#include	"mercury_reg_workarounds.h"
+#include "mercury_conf.h"
+#include "mercury_reg_workarounds.h"
 
 #ifdef	MR_CAN_DO_PENDING_IO
+
+#include <sys/types.h>	/* for fd_set and FD_ZERO() */
+#include <sys/time.h>	/* for FD_ZERO() */
+#include <unistd.h>	/* for FD_ZERO() */
+
 void
 MR_fd_zero(fd_set *fdset)
 {
 	FD_ZERO(fdset);
 }
-#endif
 
+#endif /* MR_CAN_DO_PENDING_IO */
