@@ -27,10 +27,10 @@ vars
      Prints the names of all the known variables in the current
      environment, together with an ordinal number for each variable.
 mdb> 
-*           --pretty    -f          -v          exception   
---flat      --verbose   -p          HeadVar__1  goal        
-p --flat HeadVar__1 
-       HeadVar__1             	state('<<c_pointer>>')
+*          --pretty   -f         -v         exception  
+--flat     --verbose  -p         DCG_0      goal       
+p --flat DCG_0 
+       DCG_0 (arg 1)          	state('<<c_pointer>>')
 mdb> 
 stack       stack_regs  
 stack --detailed 
