@@ -547,7 +547,10 @@ list__partition([Head|Tail], Partition, Low, High) :-
 :- pred list__merge_sort(list(T), list(T)).
 :- mode list__merge_sort(in, out) is det.
 
+list__merge_sort([], []).
+list__merge_sort([X], [X]).
 list__merge_sort(List, SortedList) :-
+	List = [_,_|_],
 	list__length(List, Length),
 	HalfLength is Length // 2,
 	( list__split_list(HalfLength, List, Front, Back) ->
