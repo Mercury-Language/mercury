@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -605,9 +605,7 @@
 :- import_module goal_util, type_util, mode_util, builtin_ops.
 :- import_module passes_aux.
 
-:- import_module string.
-:- import_module list, map, set.
-:- import_module require, std_util.
+:- import_module bool, string, list, map, set, require, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -766,7 +764,7 @@ ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo,
 		Defns0, Defns) :-
 	proc_info_eval_method(ProcInfo, EvalMethod),
 	(
-		EvalMethod \= eval_normal
+		eval_method_uses_table(EvalMethod) = yes
 	->
 		ml_gen_pred_label(ModuleInfo, PredId, ProcId,
 			MLDS_PredLabel, _MLDS_PredModule),

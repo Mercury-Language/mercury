@@ -2373,6 +2373,11 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 :- pred eval_method_need_stratification(eval_method).
 :- mode eval_method_need_stratification(in) is semidet.
 
+	% Return true if the given evaluation method uses a table.
+	% If so, the back-end must generate a declaration for the
+	% variable to hold the table.
+:- func eval_method_uses_table(eval_method) = bool.
+
 	% Return the change a given evaluation method can do to a given 
 	% determinism.
 :- pred eval_method_change_determinism(eval_method, determinism, 
@@ -2401,6 +2406,11 @@ eval_method_to_string(eval_loop_check,		"loop_check").
 eval_method_to_string(eval_minimal, 		"minimal_model").
 	
 eval_method_need_stratification(eval_minimal).
+
+eval_method_uses_table(eval_normal) = no.
+eval_method_uses_table(eval_memo) = yes.
+eval_method_uses_table(eval_loop_check) = yes.
+eval_method_uses_table(eval_minimal) = yes.
 
 eval_method_change_determinism(eval_normal, Detism, Detism).
 eval_method_change_determinism(eval_memo, Detism, Detism).

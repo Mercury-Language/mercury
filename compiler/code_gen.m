@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -271,7 +271,7 @@ maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
 		GlobalData0, GlobalData) :-
 	proc_info_eval_method(ProcInfo, EvalMethod),
 	(
-		EvalMethod \= eval_normal
+		eval_method_uses_table(EvalMethod) = yes
 	->
 		code_util__make_proc_label(ModuleInfo, PredId, ProcId,
 			ProcLabel),
