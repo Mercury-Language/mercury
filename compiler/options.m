@@ -3110,17 +3110,14 @@ options_help_compilation_model -->
 		"\tSee the Debugging chapter of the Mercury User's Guide",
 		"\tfor details.",
 		"\tThis option is not yet supported for the `--high-level-code'",
+		"\tback-ends.",
+		"--decl-debug\t\t\t\t(grade modifier: `.decldebug')",
+		"\tEnable full support for declarative debugging.",
+		"\tThis allows subterm dependency tracking in the declarative debugger.",
+		"\tSee the Debugging chapter of the Mercury User's Guide",
+		"\tfor details.",
+		"\tThis option is not yet supported for the `--high-level-code'",
 		"\tback-ends."
-% The --decl-debug option is not documented because the .decldebug grade
-% is not installed by default, and because the .decldebug grade is not
-% usefully different from the .debug grade.
-%		"--decl-debug\t\t\t\t(grade modifier: `.decldebug')",
-%		"\tEnable full support for declarative debugging.",
-%		"\tThis ensures that .",
-%		"\tSee the Debugging chapter of the Mercury User's Guide",
-%		"\tfor details.",
-%		"\tThis option is not yet supported for the `--high-level-code'",
-%		"\tback-ends."
 	]),
 	io__write_string("      Profiling\n"),
 	write_tabbed_lines([
