@@ -317,7 +317,7 @@ defn_is_commit_type_var(Defn) :-
 
 defn_is_public(Defn) :-
 	Defn = mlds__defn(_Name, _Context, Flags, _Body),
-	access(Flags) \= private.
+	access(Flags) = public.
 
 %-----------------------------------------------------------------------------%
 %

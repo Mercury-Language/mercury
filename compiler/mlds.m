@@ -654,8 +654,8 @@
 				% access: accessible to anything defined
 				% in the same package.
 	%
-	% used for entities defined in a block/2 statement,
-	% i.e. local variables and nested functions
+	% Used for entities defined in a block/2 statement,
+	% i.e. local variables and nested functions.
 	%
 	;	local		% only accessible within the block
 				% in which the entity (variable or

@@ -191,6 +191,12 @@ ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 		%
 		list__filter(ml_decl_is_static_const, Locals,
 			LocalStatics, LocalVars),
+		%
+		% Fix up access flags on the statics that we're going to hoist:
+		% convert "local" to "private"
+		%
+		HoistedStatics = list__map(convert_local_to_global, LocalStatics),
+
 
 		%
 		% if there were no nested functions, then we just
@@ -198,7 +204,7 @@ ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 		%
 		( NestedFuncs0 = [] ->
 			FuncBody = FuncBody1,
-			HoistedDefns = LocalStatics
+			HoistedDefns = HoistedStatics
 		;
 			%
 			% Create a struct to hold the local variables,
@@ -215,7 +221,7 @@ ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 					no, InsertedEnv),
 
 			% Hoist out the local statics and the nested functions
-			HoistedDefns0 = list__append(LocalStatics, NestedFuncs),
+			HoistedDefns0 = list__append(HoistedStatics, NestedFuncs),
 
 			% 
 			% It's possible that none of the nested
@@ -266,6 +272,7 @@ ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 				HoistedDefns = HoistedDefns0
 			)
 		),
+
 		DefnBody = mlds__function(PredProcId, Params,
 			defined_here(FuncBody)),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody),
@@ -459,6 +466,18 @@ convert_local_to_field(mlds__defn(Name, Context, Flags0, Body)) =
 		mlds__defn(Name, Context, Flags, Body) :-
 	( access(Flags0) = local ->
 		Flags = set_access(Flags0, public)
+	;
+		Flags = Flags0
+	).
+
+	% Similarly, when converting local statics into
+	% global statics, we need to change `local' access
+	% to something else -- we use `private'.
+:- func convert_local_to_global(mlds__defn) = mlds__defn.
+convert_local_to_global(mlds__defn(Name, Context, Flags0, Body)) =
+		mlds__defn(Name, Context, Flags, Body) :-
+	( access(Flags0) = local ->
+		Flags = set_access(Flags0, private)
 	;
 		Flags = Flags0
 	).
@@ -868,9 +887,20 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 		=(ElimInfo),
 		{ ModuleName = elim_info_get_module_name(ElimInfo) },
 		(
-			{ Name = data(var(VarName)) },
-			{ ml_should_add_local_data(ModuleName, VarName,
-				FollowingDefns, FollowingStatements) }
+			(
+				% For IL and Java, we need to hoist all
+				% static constants out to the top level,
+				% so that they can be initialized in the
+				% class constructor.
+				% To keep things consistent (and reduce
+				% the testing burden), we do the same for
+				% the other back-ends too.
+				{ ml_decl_is_static_const(Defn0) }
+			;
+				{ Name = data(var(VarName)) },
+				{ ml_should_add_local_data(ModuleName, VarName,
+					FollowingDefns, FollowingStatements) }
+			)
 		->
 			elim_info_add_local_data(Defn0),
 			{ Defns = [] }
@@ -898,15 +928,16 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 	%
 	% This checks for a nested function definition
 	% or static initializer that references the variable.
-	% This is conservative; we only need to hoist out
+	% This is conservative; for the MLDS->C and MLDS->GCC
+	% back-ends, we only need to hoist out
 	% static variables if they are referenced by
 	% static initializers which themselves need to be
 	% hoisted because they are referenced from a nested
 	% function.  But checking the last part of that
-	% is tricky, so currently we just hoist more
-	% of the static consts than we strictly need to.
-	% Perhaps it would be simpler to just hoist *all*
-	% static consts.
+	% is tricky, and for the Java and IL back-ends we
+	% need to hoist out all static constants anyway,
+	% so to keep things simple we do the same for the
+	% C back-end to, i.e. we always hoist all static constants.
 	%
 :- pred ml_should_add_local_data(mlds_module_name, mlds__var_name,
 		mlds__defns, mlds__statements).

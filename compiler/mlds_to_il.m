@@ -711,11 +711,13 @@ generate_method(ClassName, _, defn(Name, Context, Flags, Entity), ClassDecl) -->
 		% and instructions to initialize it.
 		% See the comments about class constructors to
 		% find out why we do this.
-	data_initializer_to_instrs(DataInitializer, AllocInstrsTree,
+	data_initializer_to_instrs(DataInitializer, Type, AllocInstrsTree,
 			InitInstrTree),
 
 		% Make a field reference for the field
-	{ FieldRef = make_fieldref(il_array_type, ClassName, FieldName) },
+	DataRep =^ il_data_rep,
+	{ ILType = mlds_type_to_ilds_type(DataRep, Type) },
+	{ FieldRef = make_fieldref(ILType, ClassName, FieldName) },
 
 		% If we had to allocate memory, the code
 		% we generate looks like this:
@@ -783,12 +785,10 @@ generate_method(ClassName, _, defn(Name, Context, Flags, Entity), ClassDecl) -->
 	il_info_add_alloc_instructions(AllocInstrs),
 	il_info_add_init_instructions(InitInstrs),
 
-	DataRep =^ il_data_rep,
-	{ IlType = mlds_type_to_ilds_type(DataRep, Type) },
 	{ MaybeOffset = no },
 	{ Initializer = none },
 
-	{ ClassDecl = field(Attrs, IlType, FieldName,
+	{ ClassDecl = field(Attrs, ILType, FieldName,
 			MaybeOffset, Initializer) }.
 
 generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
@@ -970,8 +970,8 @@ generate_defn_initializer(defn(Name, Context, _DeclFlags, Entity),
 				{ StoreLvalInstrs = node([]) },
 				{ NameString = "unknown" }
 			),
-			data_initializer_to_instrs(Initializer, AllocInstrs,
-				InitInstrs),
+			data_initializer_to_instrs(Initializer, MLDSType,
+				AllocInstrs, InitInstrs),
 			{ string__append("initializer for ", NameString, 
 				Comment) },
 			{ Tree = tree__list([
@@ -991,21 +991,37 @@ generate_defn_initializer(defn(Name, Context, _DeclFlags, Entity),
 	% initialize this value, leave it on the stack.
 	% XXX the code generator doesn't box these values
 	% we need to look ahead at them and box them appropriately.
-:- pred data_initializer_to_instrs(mlds__initializer::in,
+:- pred data_initializer_to_instrs(mlds__initializer::in, mlds__type::in,
 	instr_tree::out, instr_tree::out, il_info::in, il_info::out) is det.
-data_initializer_to_instrs(init_obj(Rval), node([]), InitInstrs) --> 
+data_initializer_to_instrs(init_obj(Rval), _Type, node([]), InitInstrs) --> 
 	load(Rval, InitInstrs).
 
 	% Currently, structs are the same as arrays.
-data_initializer_to_instrs(init_struct(InitList), AllocInstrs, InitInstrs) --> 
-	data_initializer_to_instrs(init_array(InitList), AllocInstrs, 
-		InitInstrs).
+data_initializer_to_instrs(init_struct(InitList), Type,
+		AllocInstrs, InitInstrs) --> 
+	data_initializer_to_instrs(init_array(InitList), Type,
+		AllocInstrs, InitInstrs).
 
 	% Put the array allocation in AllocInstrs.
 	% For sub-initializations, we don't worry about keeping AllocInstrs
 	% and InitInstrs apart, since we are only interested in top level
 	% allocations.
-data_initializer_to_instrs(init_array(InitList), AllocInstrs, InitInstrs) -->
+data_initializer_to_instrs(init_array(InitList), Type,
+		AllocInstrs, InitInstrs) -->
+		%
+		% figure out the array element type
+		%
+	DataRep =^ il_data_rep,
+	( { Type = mlds__array_type(ElemType0) } ->
+		{ ElemType = ElemType0 },
+		{ ILElemType = mlds_type_to_ilds_type(DataRep, ElemType) }
+	;
+		% XXX we assume struct fields have type mlds__generic_type
+		% This is probably wrong for --high-level-data
+		{ ElemType = mlds__generic_type },
+		{ ILElemType = il_generic_type }
+	),
+	{ ILElemType = ilds__type(_, ILElemSimpleType) },
 
 		% To initialize an array, we generate the following
 		% code:
@@ -1022,21 +1038,29 @@ data_initializer_to_instrs(init_array(InitList), AllocInstrs, InitInstrs) -->
 		%
 		% The initialization will leave the array on the stack.
 		%	
-	{ AllocInstrs = node([ldc(int32, i(list__length(InitList))), 
-		newarr(il_generic_type)]) },
+	{ AllocInstrs = node([
+		ldc(int32, i(list__length(InitList))), 
+		newarr(ILElemType)]) },
 	{ AddInitializer = 
 		(pred(Init0::in, X0 - Tree0::in, (X0 + 1) - Tree::out,
 				in, out) is det -->
-			maybe_box_initializer(Init0, Init),
-			data_initializer_to_instrs(Init, ATree1, ITree1),
+			% we may need to box the arguments
+			% XXX is this right?
+			( { ElemType = mlds__generic_type } ->
+				maybe_box_initializer(Init0, Init)
+			;
+				{ Init = Init0 }
+			),
+			data_initializer_to_instrs(Init, ElemType,
+				ATree1, ITree1),
 			{ Tree = tree(tree(Tree0, node(
 					[dup, ldc(int32, i(X0))])), 
 				tree(tree(ATree1, ITree1), 
-					node([stelem(il_generic_simple_type)]
+					node([stelem(ILElemSimpleType)]
 				))) }
 		) },
 	list__foldl2(AddInitializer, InitList, 0 - empty, _ - InitInstrs).
-data_initializer_to_instrs(no_initializer, node([]), node([])) --> [].
+data_initializer_to_instrs(no_initializer, _, node([]), node([])) --> [].
 
 	% If we are initializing an array or struct, we need to box
 	% all the things inside it.
@@ -1622,8 +1646,7 @@ load(lval(Lval), Instrs) -->
 		; is_argument(MangledVarStr, Info) ->
 			Instrs = instr_node(ldarg(name(MangledVarStr)))
 		;
-			FieldRef = make_fieldref_for_handdefined_var(DataRep,
-				Var, VarType),
+			FieldRef = make_static_fieldref(DataRep, Var, VarType),
 			Instrs = instr_node(ldsfld(FieldRef))
 		}
 	; { Lval = field(_MaybeTag, Rval, FieldNum, FieldType, ClassType) },
@@ -1708,8 +1731,7 @@ load(mem_addr(Lval), Instrs) -->
 		; is_argument(MangledVarStr, Info) ->
 			Instrs = instr_node(ldarga(name(MangledVarStr)))
 		;
-			FieldRef = make_fieldref_for_handdefined_var(DataRep,
-				Var, VarType),
+			FieldRef = make_static_fieldref(DataRep, Var, VarType),
 			Instrs = instr_node(ldsfld(FieldRef))
 		}
 	; { Lval = field(_MaybeTag, Rval, FieldNum, FieldType, ClassType) },
@@ -1751,8 +1773,7 @@ store(var(Var, VarType), Instrs) -->
 	; is_argument(MangledVarStr, Info) ->
 		Instrs = instr_node(starg(name(MangledVarStr)))
 	;
-		FieldRef = make_fieldref_for_handdefined_var(DataRep, Var,
-			VarType),
+		FieldRef = make_static_fieldref(DataRep, Var, VarType),
 		Instrs = instr_node(stsfld(FieldRef))
 	}.
 
@@ -2466,18 +2487,18 @@ predlabel_to_id(special_pred(PredName, MaybeModuleName, TypeName, Arity),
 
 
 	% If an mlds__var is not an argument or a local, what is it?
-	% We assume the given variable is a handwritten RTTI reference or a
+	% We assume the given variable is a static field;
+	% either a compiler-generated static,
+	% or possibly a handwritten RTTI reference or a
 	% reference to some hand-written code in the
-	% modulename__cpp_code class.  This is OK so long as the
-	% code generator uses real 'field' lvals to reference
-	% fields in the modulename class.
+	% modulename__cpp_code class.
 
-:- func make_fieldref_for_handdefined_var(il_data_rep, mlds__var, mlds__type)
+:- func make_static_fieldref(il_data_rep, mlds__var, mlds__type)
 	 = fieldref.
-make_fieldref_for_handdefined_var(DataRep, Var, VarType) = FieldRef :-
-	Var = qual(ModuleName, _),
+make_static_fieldref(DataRep, Var, VarType) = FieldRef :-
+	Var = qual(ModuleName, VarName),
 	mangle_mlds_var(Var, MangledVarStr),
-	mangle_dataname_module(no, ModuleName, NewModuleName),
+	mangle_dataname_module(yes(var(VarName)), ModuleName, NewModuleName),
 	ClassName = mlds_module_name_to_class_name(NewModuleName),
 	FieldRef = make_fieldref(
 		mlds_type_to_ilds_type(DataRep, VarType), ClassName,
@@ -2548,35 +2569,40 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 		SymName = mlds_module_name_to_sym_name(ModuleName0),
 		SymName = qualified(qualified(unqualified("mercury"),
 			LibModuleName0), wrapper_class_name),
-		DataName = rtti(rtti_type_id(_, Name, Arity),
-			_RttiName),
-		( LibModuleName0 = "builtin",
-			( 
-			  Name = "int", Arity = 0 
-			; Name = "string", Arity = 0
-			; Name = "float", Arity = 0
-			; Name = "character", Arity = 0
-			; Name = "void", Arity = 0
-			; Name = "c_pointer", Arity = 0
-			; Name = "pred", Arity = 0
-			; Name = "func", Arity = 0
-			)
-		; LibModuleName0 = "array", 
-			(
-			  Name = "array", Arity = 1
-			)
-		; LibModuleName0 = "std_util",
-			( 
-			  Name = "type_desc", Arity = 0
-			)
-		; LibModuleName0 = "private_builtin",
-			( 
-			  Name = "type_ctor_info", Arity = 1
-			; Name = "type_info", Arity = 1
-			; Name = "base_typeclass_info", Arity = 1
-			; Name = "typeclass_info", Arity = 1
-			)
-		)		  
+		(
+			DataName = rtti(rtti_type_id(_, Name, Arity),
+				_RttiName),
+			( LibModuleName0 = "builtin",
+				( 
+				  Name = "int", Arity = 0 
+				; Name = "string", Arity = 0
+				; Name = "float", Arity = 0
+				; Name = "character", Arity = 0
+				; Name = "void", Arity = 0
+				; Name = "c_pointer", Arity = 0
+				; Name = "pred", Arity = 0
+				; Name = "func", Arity = 0
+				)
+			; LibModuleName0 = "array", 
+				(
+				  Name = "array", Arity = 1
+				)
+			; LibModuleName0 = "std_util",
+				( 
+				  Name = "type_desc", Arity = 0
+				)
+			; LibModuleName0 = "private_builtin",
+				( 
+				  Name = "type_ctor_info", Arity = 1
+				; Name = "type_info", Arity = 1
+				; Name = "base_typeclass_info", Arity = 1
+				; Name = "typeclass_info", Arity = 1
+				)
+			)		  
+		;
+			DataName = var(_),
+			LibModuleName0 = "private_builtin"
+		)
 	->
 		string__append(LibModuleName0, "__cpp_code",
 			LibModuleName),
