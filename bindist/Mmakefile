@@ -42,7 +42,7 @@ bindist: binary_distribution
 .PHONY: binary_distribution
 binary_distribution: bindist.configure bindist.build_vars
 	# Make a quick check that there is a mercury installation in
-	# $(INSTALL_DIR) by looking for mmc and mercury_compile.
+	# $(INSTALL_PREFIX) by looking for mmc and mercury_compile.
 	test -f $(INSTALL_BINDIR)/mmc
 	test -f $(INSTALL_MERC_BIN_DIR)/mercury_compile
 	# create a temporary directory in which to assemble the distribution
@@ -82,13 +82,21 @@ binary_distribution: bindist.configure bindist.build_vars
 	-cd ../extras/graphics/samples/maze; mmake realclean
 	-cd ../extras/trailed_update; mmake realclean
 	-cd ../extras/trailed_update/samples; mmake realclean
-	-cd ../tests; mmake realclean
+	-if [ -d ../tests ]; then					\
+		cd ../tests; mmake realclean;				\
+	else								\
+		cd ../../tests; mmake realclean;			\
+	fi
 	cp -r ../samples $(MERCURY_VERSION)/samples
 	cp -r ../extras $(MERCURY_VERSION)/extras
-	cp -r ../tests $(MERCURY_VERSION)/tests
-	for file in $(MISC_FILES); do \
-		sed	-e 's/<VERSION>/$(VERSION)/g' \
-			-e 's/<FULLARCH>/$(FULLARCH)/g' \
+	if [ -d ../tests ]; then					\
+		cp -r ../tests $(MERCURY_VERSION)/tests;		\
+	else								\
+		cp -r ../../tests $(MERCURY_VERSION)/tests;		\
+	fi
+	for file in $(MISC_FILES); do					\
+		sed	-e 's/<VERSION>/$(VERSION)/g'			\
+			-e 's/<FULLARCH>/$(FULLARCH)/g'			\
 			bindist.$$file > $(MERCURY_VERSION)/$$file || exit 1; \
 	done
 	# (XXX don't use redirection or pipes, because on gnu-win32
