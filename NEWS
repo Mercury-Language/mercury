@@ -51,6 +51,14 @@ NEWS since Mercury release 0.8:
 	float__min_exponent/1,
 	float__max_exponent/1.
 
+* We've added support for optional lazy evaluation.
+
+  The extras distribution now includes a new module `lazy',
+  which provides support for optional lazy evaluation
+  via a type `lazy(T)', with `delay' and `force' operations.
+  There's also a `lazy_list' module which uses the `lazy' module.
+  See the files in extras/lazy_evaluation for details.
+
 * The extras distribution now includes support for dynamic linking.
 
   The interface is based on the C functions dlopen(), dlsym(), and co.,
