@@ -33,6 +33,7 @@ SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
 SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
 SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 TMPDIR=${TMPDIR=/tmp}
+MATH_LIB=${MERCURY_MATH_LIB="@MATH_LIB@"}
 
 # When compiling in the hlc.gc grade using the Microsoft Visual C
 # compiler, the default maximum stack size of 4Mb is too low for a
@@ -589,7 +590,7 @@ case $make_shared_lib in
 	UNDEF_OPT=""
 	RPATH_OPT="$EXE_RPATH_OPT"
 	RPATH_SEP="$EXE_RPATH_SEP"
-	STDLIBS="-lm $THREAD_LIBS"
+	STDLIBS="$MATH_LIB $THREAD_LIBS"
 	;;
 esac
 

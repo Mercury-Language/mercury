@@ -51,7 +51,7 @@ MLLIBS  =	$(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
 			*.gc*.prof*)	echo $(BOEHM_GC_DIR)/libgc_prof.$A ;; \
 			*.gc*)		echo $(BOEHM_GC_DIR)/libgc.$A ;; \
 		    esac \
-		` -lm
+		` $(MATH_LIB)
 MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
 MNLFLAGS =	-u 6000
 MTAGS	=	$(SCRIPTS_DIR)/mtags
