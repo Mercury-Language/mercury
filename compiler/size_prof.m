@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003 The University of Melbourne.
+% Copyright (C) 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -219,8 +219,8 @@ process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
 
 process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 	Simplifications = [],
-	simplify__proc_2(Simplifications, PredId, ProcId, !ModuleInfo,
-		!ProcInfo, _Msgs),
+	simplify__proc_return_msgs(Simplifications, PredId, ProcId,
+		!ModuleInfo, !ProcInfo, _Msgs),
 
 	proc_info_goal(!.ProcInfo, Goal0),
 	proc_info_varset(!.ProcInfo, VarSet0),
