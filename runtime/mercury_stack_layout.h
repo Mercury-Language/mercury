@@ -342,8 +342,11 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 } MR_Label_Layout_No_Var_Info;
 
 #define	MR_label_goal_path(layout)					    \
-	((layout)->MR_sll_entry->MR_sle_module_layout->MR_ml_string_table   \
-	+ (layout)->MR_sll_goal_path)
+	((MR_PROC_LAYOUT_HAS_EXEC_TRACE((layout)->MR_sll_entry)) ?	    \
+		((layout)->MR_sll_entry->MR_sle_module_layout		    \
+		 	->MR_ml_string_table				    \
+		+ (layout)->MR_sll_goal_path)				    \
+	: "")
 
 #define	MR_SHORT_COUNT_BITS	10
 #define	MR_SHORT_COUNT_MASK	((1 << MR_SHORT_COUNT_BITS) - 1)
