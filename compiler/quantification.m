@@ -151,7 +151,8 @@ implicitly_quantify_goal_2(call(A, B, HeadVars, D, E, F, G),
 implicitly_quantify_goal_2(unify(A, B0, X, Y, Z),
 			OutsideVars, QuantVars,
 			unify(A, B, X, Y, Z), NonLocalVars) :-
-	implicitly_quantify_unify_rhs(B0, OutsideVars, QuantVars, B, VarsB),
+	set__insert(OutsideVars, A, OutsideVars1),
+	implicitly_quantify_unify_rhs(B0, OutsideVars1, QuantVars, B, VarsB),
 	set__insert(VarsB, A, GoalVars),
 	set__intersect(GoalVars, OutsideVars, NonLocalVars).
 

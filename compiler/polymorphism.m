@@ -361,8 +361,17 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 			{ error("polymorphism: type_to_type_id failed") }
 		)
 	;
-		% ordinary unifications are left unchanged
-		{ Goal = unify(XVar, Y, Mode, Unification, Context) - GoalInfo }
+	        % ordinary unifications are left unchanged,
+	        % except that we must recursively traverse any goals in
+	        % lambda expressions
+		( { Y = lambda_goal(Vars, Modes, LambdaGoal0) } ->
+			polymorphism__process_goal(LambdaGoal0, LambdaGoal),
+			{ Y1 = lambda_goal(Vars, Modes, LambdaGoal) }
+		;
+			{ Y1 = Y }
+		),
+		{ Goal = unify(XVar, Y1, Mode, Unification, Context)
+				- GoalInfo }
 	).
 
 	% the rest of the clauses just process goals recursively
