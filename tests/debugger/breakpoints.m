@@ -7,13 +7,27 @@
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is cc_multi.
 :- func string / string = string.
+
 :- implementation.
+
 :- include_module breakpoints__print_list.
-:- import_module list, int, string, breakpoints__print_list.
+:- include_module breakpoints__a.
+:- include_module breakpoints__b.
+:- import_module breakpoints__print_list.
+:- import_module breakpoints__a.
+:- import_module breakpoints__b.
+:- import_module breakpoints__a__testmod.
+:- import_module breakpoints__b__testmod.
+
+:- import_module list, int, string.
 
 main -->
 	( { queen(data, Out) } ->
-		print_list(Out)
+		print_list(Out),
+		io__write(test_in_a),
+		io__nl,
+		io__write(test_in_b),
+		io__nl
 	;
 		io__write_string("No solution\n")
 	).
@@ -77,3 +91,8 @@ nodiag(B, D, [N|L]) :-
 	nodiag(B, D1, L).
 
 X / _ = X.
+
+:- pred test_in_both(io::di, io::uo) is det.
+
+test_in_both(!IO) :-
+	io__write_string("test_in_both in breakpoints\n", !IO).

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2003 The University of Melbourne.
+** Copyright (C) 1998-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,6 +15,7 @@
 #include "mercury_label.h"
 #include "mercury_array_macros.h"
 #include "mercury_stack_trace.h"
+#include "mercury_dlist.h"
 
 #include "mercury_trace_tables.h"
 #include "mercury_trace_internal.h"
@@ -24,18 +25,41 @@
 #include <string.h>
 #include <ctype.h>
 
+/*
+** We record module layout structures in two tables. The MR_module_infos
+** array contains one pointer to every module layout structure, and is ordered
+** by the fully qualified module name. The MR_module_nickname array contains
+** one reference to every module layout structure by every one of the module's
+** (zero or more) less-than-fully-qualified names (which we call `nickname'
+** here), ordered by the nickname.
+*/
+
+typedef struct {
+	const char		*MR_nick_name;
+	MR_Dlist		*MR_nick_layouts;
+				/* the list entries are MR_Module_Layouts */
+} MR_Module_Nick;
+
 static	const MR_Module_Layout	**MR_module_infos;
 static	int			MR_module_info_next = 0;
 static	int			MR_module_info_max  = 0;
+
+static	MR_Module_Nick		*MR_module_nicks;
+static	int			MR_module_nick_next = 0;
+static	int			MR_module_nick_max  = 0;
+
 static	int			MR_module_info_proc_count = 0;
 
 #define	INIT_MODULE_TABLE_SIZE	10
 
-static	const MR_Module_Layout	*MR_search_module_info(const char *name);
-static	void	MR_insert_module_info(const MR_Module_Layout *);
+static	const MR_Module_Layout
+		*MR_search_module_info_by_name(const char *name);
+static	MR_Dlist
+		*MR_search_module_info_by_nickname(const char *name);
+static	void	MR_insert_module_info(const MR_Module_Layout *module);
 static	void	MR_process_matching_procedures_in_module(
 			const MR_Module_Layout *module, MR_Proc_Spec *spec,
-			void f(void *, const MR_Proc_Layout *), void *);
+			void f(void *, const MR_Proc_Layout *), void *data);
 static	void	MR_process_line_layouts(const MR_Module_File_Layout
 			*file_layout, int line,
 			MR_file_line_callback callback_func, int callback_arg);
@@ -125,13 +149,13 @@ MR_register_module_layout_real(const MR_Module_Layout *module)
 	** already exists in the table is really only for paranoia.
 	*/
 
-	if (MR_search_module_info(module->MR_ml_name) == NULL) {
+	if (MR_search_module_info_by_name(module->MR_ml_name) == NULL) {
 		MR_insert_module_info(module);
 	}
 }
 
 static const MR_Module_Layout *
-MR_search_module_info(const char *name)
+MR_search_module_info_by_name(const char *name)
 {
 	int	slot;
 	MR_bool	found;
@@ -145,10 +169,27 @@ MR_search_module_info(const char *name)
 	}
 }
 
+static MR_Dlist *
+MR_search_module_info_by_nickname(const char *name)
+{
+	int	slot;
+	MR_bool	found;
+
+	MR_bsearch(MR_module_nick_next, slot, found,
+		strcmp(MR_module_nicks[slot].MR_nick_name, name));
+	if (found) {
+		return MR_module_nicks[slot].MR_nick_layouts;
+	} else {
+		return NULL;
+	}
+}
+
 static void
 MR_insert_module_info(const MR_Module_Layout *module)
 {
-	int	slot;
+	int		slot;
+	MR_bool		found;
+	const char	*nickname;
 
 	MR_ensure_room_for_next(MR_module_info, const MR_Module_Layout *,
 		INIT_MODULE_TABLE_SIZE);
@@ -158,6 +199,32 @@ MR_insert_module_info(const MR_Module_Layout *module)
 
 	MR_module_infos[slot] = module;
 	MR_module_info_proc_count += module->MR_ml_proc_count;
+
+	nickname = strchr(module->MR_ml_name, '.');
+	while (nickname != NULL) {
+		nickname++;	/* step over the '.' */
+		MR_bsearch(MR_module_nick_next, slot, found,
+			strcmp(MR_module_nicks[slot].MR_nick_name, nickname));
+		if (found) {
+			MR_module_nicks[slot].MR_nick_layouts =
+				MR_dlist_addtail(
+					MR_module_nicks[slot].MR_nick_layouts,
+					module);
+		} else {
+			MR_ensure_room_for_next(MR_module_nick,
+				MR_Module_Nick, INIT_MODULE_TABLE_SIZE);
+			MR_prepare_insert_into_sorted(MR_module_nicks,
+				MR_module_nick_next,
+				slot,
+				strcmp(MR_module_nicks[slot].MR_nick_name,
+					nickname));
+			MR_module_nicks[slot].MR_nick_name = nickname;
+			MR_module_nicks[slot].MR_nick_layouts =
+				MR_dlist_makelist(module);
+		}
+
+		nickname = strchr(nickname, '.');
+	}
 }
 
 void
@@ -243,16 +310,29 @@ void
 MR_dump_module_procs(FILE *fp, const char *name)
 {
 	const MR_Module_Layout		*module;
+	const MR_Dlist			*modules;
+	const MR_Dlist			*element_ptr;
 	int				j;
 
-	module = MR_search_module_info(name);
-	if (module == NULL) {
-		fprintf(fp, "There is no debugging info about module `%s'\n",
-				name);
-	} else {
+	module = MR_search_module_info_by_name(name);
+	if (module != NULL) {
 		fprintf(fp, "List of procedures in module `%s'\n\n", name);
 		for (j = 0; j < module->MR_ml_proc_count; j++) {
 			MR_print_proc_id_and_nl(fp, module->MR_ml_procs[j]);
+		}
+	} else {
+		modules = MR_search_module_info_by_nickname(name);
+		if (modules == NULL) {
+			fprintf(fp, "There is no debugging info "
+				"about module `%s'\n", name);
+		} else {
+			fprintf(fp, "Module name `%s' is ambiguous.\n", name);
+			fprintf(fp, "The matches are:\n");
+			MR_for_dlist (element_ptr, modules) {
+				module = (const MR_Module_Layout *)
+					MR_dlist_data(element_ptr);
+				fprintf(fp, "%s\n", module->MR_ml_name);
+			}
 		}
 	}
 }
@@ -480,10 +560,22 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 	if (spec->MR_proc_module != NULL) {
 		const MR_Module_Layout	*module;
 
-		module = MR_search_module_info(spec->MR_proc_module);
+		module = MR_search_module_info_by_name(spec->MR_proc_module);
 		if (module != NULL) {
 			MR_process_matching_procedures_in_module(
 				module, spec, f, data);
+		} else {
+			const MR_Dlist		*modules;
+			const MR_Dlist	*element_ptr;
+
+			modules = MR_search_module_info_by_nickname(
+				spec->MR_proc_module);
+			MR_for_dlist (element_ptr, modules) {
+				module = (const MR_Module_Layout *)
+					MR_dlist_data(element_ptr);
+				MR_process_matching_procedures_in_module(
+					module, spec, f, data);
+			}
 		}
 	} else {
 		int	i;

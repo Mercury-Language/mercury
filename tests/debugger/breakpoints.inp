@@ -44,4 +44,18 @@ ignore -E4 0
 continue
 print *
 delete *
+break -O test_in_both
+break breakpoints.test_in_both
+break breakpoints.print_list.test_in_both
+delete *
+break print_list.test_in_both
+break print_list.test_only_in_printlist
+delete *
+break test_only_in_printlist
+delete *
+procedures testmod
+break -O test_in_ab
+break -O testmod.test_in_ab
+break -O a.testmod.test_in_ab
+break -O b.testmod.test_in_ab
 continue
