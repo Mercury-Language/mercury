@@ -68,10 +68,17 @@
 	label:	\
 		__asm__("entry_" stringify(label) ":");	\
 	{
+    /*
+       The dummy asm statement below tells gcc that `&&label' gets used,
+       thus preventing an over-zealous gcc from optimizing away `label'
+       and the code that followed.  We used to use
+       `volatile_global_pointer = &&label' to suppress optimization,
+       but this way is better because it doesn't generate any code.
+    */
     #define init_entry(label)	\
-	/* prevent over-zealous optimization */	\
-	volatile_global_pointer = &&label;	\
+	__asm__("" :: "g"(&&label)); \
 	make_entry(stringify(label), label)
+
     #define ENTRY(label) 	(&label)
 
   #else

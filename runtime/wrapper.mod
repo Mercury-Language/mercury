@@ -4,6 +4,16 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+/*
+** file: wrapper.mod
+** main authors: zs, fjh
+**
+**	This file contains the startup code for the Mercury runtime.
+**	It defines main().  The code initializes various things,
+**	processes options (which are specified via an environment variable)
+**	and then invokes call_engine() to start execution.
+*/
+
 #include	"imp.h"
 #include	"timing.h"
 #include	"getopt.h"
@@ -41,10 +51,9 @@ static	bool	use_own_timer = FALSE;
 static	int	repeats = 1;
 static	Code	*which = NULL;
 
-/* misc. */
+static int	repcounter;
 
-int		repcounter = 1;
-char		scratchbuf[256];
+/* misc. */
 
 static	int	start_time;
 static	int	finish_time;
@@ -62,7 +71,8 @@ int		mercury_exit_status = 0;
 #endif
 
 static	void	process_args(int argc, char **argv);
-static	void	process_options(void);
+static	void	process_environment_options(void);
+static	void	process_options(int argc, char **argv);
 static	void	usage(void);
 static	void	run_code(void);
 static	void	make_argv(const char *, char **, char ***, int *);
@@ -103,9 +113,10 @@ int main(int argc, char **argv)
 	}
 #endif
 
-	/* process the command line options, save results in global vars */
+	/* process the command line and the options in the environment
+	   variable MERCURY_OPTIONS, and save results in global vars */
 	process_args(argc, argv);
-	process_options();
+	process_environment_options();
 
 #if (defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)) || \
 		defined(PROFILE_CALLS) || defined(PROFILE_TIME)
@@ -131,19 +142,11 @@ void do_init_modules(void)
 
 	do_init_entries();
 
-	if (! done)
-	{
+	if (! done) {
 		init_modules();
 		done = TRUE;
 	}
 }
-
-
-
-/****
- ****  The function make_argv() is by fjh.
- ****/
-
 
 /*
 ** Given a string, parse it into arguments and create an argv vector for it.
@@ -261,9 +264,9 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 
 
 /**  
- **  process_args is a function that sets some global variables from the
- **  command line.  mercury_arg[cv] are arg[cv] without the program name,
- **  runtime options or "--".  progname is (hopefully) self explainatory.
+ **  process_args() is a function that sets some global variables from the
+ **  command line.  `mercury_arg[cv]' are `arg[cv]' without the program name.
+ **  `progname' is program name.
  **/
 
 static void
@@ -281,273 +284,278 @@ process_args( int argc, char ** argv)
 	 * has to work with both command-line options, and environmental 
 	 * options, for the time being.
 	 */
-	if (!strcmp(mercury_argv[0], "--"))
-		{
+	if (!strcmp(mercury_argv[0], "--")) {
 		mercury_argc--;
 		mercury_argv++;
-		}
+	}
 }
 
 
 /**
- **  process_options is a function to parse the MERCURY_OPTIONS
- **  environmental variable.  The program name is added to the front (run
- **  _after_ get_args()) of the options list, which is then chopped up by
- **  make_args and browsed by getopt().
+ **  process_environment_options() is a function to parse the MERCURY_OPTIONS
+ **  environment variable.  
  **/ 
 
 static void
-process_options()
+process_environment_options(void)
 {
 	char*	options;
-	int	c;
-	int	i;
-	int	val;
-	List	*ptr;
-	List	*label_list;
-
-	for (i = 0; i < MAXFLAG; i++)
-		debugflag[i] = FALSE;
 
 	if (default_entry != NULL)
 		which = default_entry;
 
 	options = getenv("MERCURY_OPTIONS");
-
-	if (options != NULL)
-	{
+	if (options != NULL) {
 		char	*arg_str, **argv;
-		char	*opts_0;
+		char	*dummy_command_line;
 		int	argc;
+		int	c;
 
-		opts_0 = make_many(char, (strlen(progname) + strlen(options) + 2));
-		strcpy(opts_0, progname);
-		strcat(opts_0, " ");
-		strcat(opts_0, options);
+		/*
+		   getopt() expects the options to start in argv[1],
+		   not argv[0], so we need to insert a dummy program
+		   name (we use "x") at the start of the options before
+		   passing them to make_argv() and then to getopt().
+		*/
+		dummy_command_line = make_many(char, strlen(options) + 3);
+		strcpy(dummy_command_line, "x ");
+		strcat(dummy_command_line, options);
 		
-		make_argv(opts_0, &arg_str, &argv, &argc);
-		oldmem(opts_0);
+		make_argv(dummy_command_line, &arg_str, &argv, &argc);
+		oldmem(dummy_command_line);
 
-		while ((c = getopt(argc, argv, "acd:hlp:r:s:tw:xz:1:2:3:")) != EOF)
-		{
-			switch (c)
-			{
+		process_options(argc, argv);
 
-			case 'a':	benchmark_all_solns = TRUE;
-					break;
-
-			case 'c':	check_space = TRUE;
-					break;
-
-			case 'd':	if (streq(optarg, "b"))
-						nondstackdebug = TRUE;
-					else if (streq(optarg, "c"))
-						calldebug    = TRUE;
-					else if (streq(optarg, "d"))
-						detaildebug  = TRUE;
-					else if (streq(optarg, "g"))
-						gotodebug    = TRUE;
-					else if (streq(optarg, "G"))
-	#ifdef CONSERVATIVE_GC
-						GC_quiet = FALSE;
-	#else
-						fatal_error("-dG: GC not enabled");
-	#endif
-					else if (streq(optarg, "s"))
-						detstackdebug   = TRUE;
-					else if (streq(optarg, "h"))
-						heapdebug    = TRUE;
-					else if (streq(optarg, "f"))
-						finaldebug   = TRUE;
-					else if (streq(optarg, "p"))
-						progdebug   = TRUE;
-					else if (streq(optarg, "m"))
-						memdebug    = TRUE;
-					else if (streq(optarg, "r"))
-						sregdebug    = TRUE;
-					else if (streq(optarg, "t"))
-						tracedebug   = TRUE;
-					else if (streq(optarg, "a"))
-					{
-						calldebug      = TRUE;
-						nondstackdebug = TRUE;
-						detstackdebug  = TRUE;
-						heapdebug      = TRUE;
-						gotodebug      = TRUE;
-						sregdebug      = TRUE;
-						finaldebug     = TRUE;
-						tracedebug     = TRUE;
-	#ifdef CONSERVATIVE_GC
-						GC_quiet = FALSE;
-	#endif
-					}
-					else
-						usage();
-
-					use_own_timer = FALSE;
-					break;
-
-			case 'h':	usage();
-					break;
-
-			case 'l':	label_list = get_all_labels();
-					for_list (ptr, label_list)
-					{
-						Label	*label;
-						label = (Label *) ldata(ptr);
-						printf("%lu %lx %s\n",
-							(unsigned long) label->e_addr,
-							(unsigned long) label->e_addr,
-							label->e_name);
-					}
-
-					exit(0);
-
-			case 'p':	if (sscanf(optarg, "%d", &pcache_size) != 1)
-						usage();
-
-					if (pcache_size < 512)
-						pcache_size *= 1024;
-
-					break;
-
-			case 'r':	if (sscanf(optarg, "%d", &repeats) != 1)
-						usage();
-
-					break;
-
-			case 's':	if (sscanf(optarg+1, "%d", &val) != 1)
-						usage();
-
-					if (optarg[0] == 'h')
-						heap_size = val;
-					else if (optarg[0] == 'd')
-						detstack_size = val;
-					else if (optarg[0] == 'n')
-						nondstack_size = val;
-					else if (optarg[0] == 'l')
-						entry_table_size = val *
-							1024 / (2 * sizeof(List *));
-					else
-						usage();
-
-					break;
-
-			case 't':	use_own_timer = TRUE;
-
-					calldebug      = FALSE;
-					nondstackdebug = FALSE;
-					detstackdebug  = FALSE;
-					heapdebug      = FALSE;
-					gotodebug      = FALSE;
-					sregdebug      = FALSE;
-					finaldebug     = FALSE;
-					break;
-
-			case 'w':
-					{
-						Label *which_label;
-
-						do_init_modules();
-						which_label = lookup_label_name(optarg);
-						if (which_label == NULL)
-						{
-							fprintf(stderr, "predicate name %s unknown\n", optarg);
-							exit(1);
-						}
-
-						which = which_label->e_addr;
-					}
-
-					break;
-
-			case 'x':
-	#ifdef CONSERVATIVE_GC
-					GC_dont_gc = 1;
-	#endif
-
-					break;
-
-			case 'z':	if (sscanf(optarg+1, "%d", &val) != 1)
-						usage();
-
-					if (optarg[0] == 'h')
-						heap_zone_size = val;
-					else if (optarg[0] == 'd')
-						detstack_zone_size = val;
-					else if (optarg[0] == 'n')
-						nondstack_zone_size = val;
-					else
-						usage();
-
-					break;
-
-			case '1':	if (sscanf(optarg, "%d", &r1val) != 1)
-						usage();
-
-					break;
-
-			case '2':	if (sscanf(optarg, "%d", &r2val) != 1)
-						usage();
-
-					break;
-
-			case '3':	if (sscanf(optarg, "%d", &r3val) != 1)
-						usage();
-
-					break;
-
-			default:	usage();
-
-			}
-		}
 		oldmem(arg_str);
 		oldmem(argv);
 	}
 
-	if (which == NULL)
-	{
-		fprintf(stderr, "Mercury runtime: no entry point supplied "
+	if (which == NULL) {
+		fatal_error("no entry point supplied "
 				"on command line or by default\n");
-		exit(1);
 	}
 }
 
+static void
+process_options(int argc, char **argv)
+{
+	int c;
+	while ((c = getopt(argc, argv, "acd:hlp:r:s:tw:xz:1:2:3:")) != EOF)
+	{
+		switch (c)
+		{
+
+		case 'a':	benchmark_all_solns = TRUE;
+				break;
+
+		case 'c':	check_space = TRUE;
+				break;
+
+		case 'd':	if (streq(optarg, "b"))
+					nondstackdebug = TRUE;
+				else if (streq(optarg, "c"))
+					calldebug    = TRUE;
+				else if (streq(optarg, "d"))
+					detaildebug  = TRUE;
+				else if (streq(optarg, "g"))
+					gotodebug    = TRUE;
+				else if (streq(optarg, "G"))
+#ifdef CONSERVATIVE_GC
+					GC_quiet = FALSE;
+#else
+					fatal_error("-dG: GC not enabled");
+#endif
+				else if (streq(optarg, "s"))
+					detstackdebug   = TRUE;
+				else if (streq(optarg, "h"))
+					heapdebug    = TRUE;
+				else if (streq(optarg, "f"))
+					finaldebug   = TRUE;
+				else if (streq(optarg, "p"))
+					progdebug   = TRUE;
+				else if (streq(optarg, "m"))
+					memdebug    = TRUE;
+				else if (streq(optarg, "r"))
+					sregdebug    = TRUE;
+				else if (streq(optarg, "t"))
+					tracedebug   = TRUE;
+				else if (streq(optarg, "a"))
+				{
+					calldebug      = TRUE;
+					nondstackdebug = TRUE;
+					detstackdebug  = TRUE;
+					heapdebug      = TRUE;
+					gotodebug      = TRUE;
+					sregdebug      = TRUE;
+					finaldebug     = TRUE;
+					tracedebug     = TRUE;
+#ifdef CONSERVATIVE_GC
+					GC_quiet = FALSE;
+#endif
+				}
+				else
+					usage();
+
+				use_own_timer = FALSE;
+				break;
+
+		case 'h':	usage();
+				break;
+
+		case 'l':	{
+				List	*ptr;
+				List	*label_list;
+
+				label_list = get_all_labels();
+				for_list (ptr, label_list)
+				{
+					Label	*label;
+					label = (Label *) ldata(ptr);
+					printf("%lu %lx %s\n",
+						(unsigned long) label->e_addr,
+						(unsigned long) label->e_addr,
+						label->e_name);
+				}
+
+				exit(0);
+		}
+
+		case 'p':	if (sscanf(optarg, "%d", &pcache_size) != 1)
+					usage();
+
+				if (pcache_size < 512)
+					pcache_size *= 1024;
+
+				break;
+
+		case 'r':	if (sscanf(optarg, "%d", &repeats) != 1)
+					usage();
+
+				break;
+
+		case 's':	{
+				int val;
+				if (sscanf(optarg+1, "%d", &val) != 1)
+					usage();
+
+				if (optarg[0] == 'h')
+					heap_size = val;
+				else if (optarg[0] == 'd')
+					detstack_size = val;
+				else if (optarg[0] == 'n')
+					nondstack_size = val;
+				else if (optarg[0] == 'l')
+					entry_table_size = val *
+						1024 / (2 * sizeof(List *));
+				else
+					usage();
+
+				break;
+		}
+		case 't':	use_own_timer = TRUE;
+
+				calldebug      = FALSE;
+				nondstackdebug = FALSE;
+				detstackdebug  = FALSE;
+				heapdebug      = FALSE;
+				gotodebug      = FALSE;
+				sregdebug      = FALSE;
+				finaldebug     = FALSE;
+				break;
+
+		case 'w': {
+				Label *which_label;
+
+				which_label = lookup_label_name(optarg);
+				if (which_label == NULL)
+				{
+					fprintf(stderr,
+			"Mercury runtime: label name `%s' unknown\n",
+						optarg);
+					exit(1);
+				}
+
+				which = which_label->e_addr;
+
+				break;
+		}
+		case 'x':
+#ifdef CONSERVATIVE_GC
+				GC_dont_gc = 1;
+#endif
+
+				break;
+
+		case 'z': {
+				int val;
+				if (sscanf(optarg+1, "%d", &val) != 1)
+					usage();
+
+				if (optarg[0] == 'h')
+					heap_zone_size = val;
+				else if (optarg[0] == 'd')
+					detstack_zone_size = val;
+				else if (optarg[0] == 'n')
+					nondstack_zone_size = val;
+				else
+					usage();
+
+				break;
+		}
+		case '1':	if (sscanf(optarg, "%d", &r1val) != 1)
+					usage();
+
+				break;
+
+		case '2':	if (sscanf(optarg, "%d", &r2val) != 1)
+					usage();
+
+				break;
+
+		case '3':	if (sscanf(optarg, "%d", &r3val) != 1)
+					usage();
+
+				break;
+
+		default:	usage();
+
+		}
+	}
+}
 
 static void usage(void)
 {
-	printf("Mercury runtime useage: \n"
-		"environmental variable \n"
-		"MERCURY_OPTIONS = [-hclt] [-d[abcdghs]] [-[sz][hdn]#]\n"
-		"                  [-p#] [-r#] [-1#] [-2#] [-3#] [-w name] \n");
-	printf("-h \t\tprint this usage message\n");
-	printf("-c \t\tcheck cross-function stack usage\n");
-	printf("-l \t\tprint all labels\n");
-	printf("-t \t\tuse own timer\n");
-	printf("-x \t\tdisable garbage collection\n");
-	printf("-dg \t\tdebug gotos\n");
-	printf("-dc \t\tdebug calls\n");
-	printf("-db \t\tdebug backtracking\n");
-	printf("-dh \t\tdebug heap\n");
-	printf("-ds \t\tdebug detstack\n");
-	printf("-df \t\tdebug final success/failure\n");
-	printf("-da \t\tdebug all\n");
-	printf("-dm \t\tdebug memory allocation\n");
-	printf("-dG \t\tdebug garbage collection\n");
-	printf("-dd \t\tdetailed debug\n");
-	printf("-sh<n> \t\tallocate n kb for the heap\n");
-	printf("-sd<n> \t\tallocate n kb for the det stack\n");
-	printf("-sn<n> \t\tallocate n kb for the nondet stack\n");
-	printf("-sl<n> \t\tallocate n kb for the label table\n");
-	printf("-zh<n> \t\tallocate n kb for the heap redzone\n");
-	printf("-zd<n> \t\tallocate n kb for the det stack redzone\n");
-	printf("-zn<n> \t\tallocate n kb for the nondet stack redzone\n");
-	printf("-p<n> \t\tprimary cache size in (k)bytes\n");
-	printf("-r<n> \t\trepeat n times\n");
-	printf("-w<name> \tcall predicate with given name\n");
-	printf("-1<x> \t\tinitialize register r1 with value x\n");
-	printf("-2<x> \t\tinitialize register r2 with value x\n");
-	printf("-3<x> \t\tinitialize register r3 with value x\n");
+	printf("Mercury runtime usage:\n"
+		"MERCURY_OPTIONS=\"[-hclt] [-d[abcdghs]] [-[sz][hdn]#]\n"
+		"                 [-p#] [-r#] [-1#] [-2#] [-3#] [-w name]\"\n"
+		"-h \t\tprint this usage message\n"
+		"-c \t\tcheck cross-function stack usage\n"
+		"-l \t\tprint all labels\n"
+		"-t \t\tuse own timer\n"
+		"-x \t\tdisable garbage collection\n"
+		"-dg \t\tdebug gotos\n"
+		"-dc \t\tdebug calls\n"
+		"-db \t\tdebug backtracking\n"
+		"-dh \t\tdebug heap\n"
+		"-ds \t\tdebug detstack\n"
+		"-df \t\tdebug final success/failure\n"
+		"-da \t\tdebug all\n"
+		"-dm \t\tdebug memory allocation\n"
+		"-dG \t\tdebug garbage collection\n"
+		"-dd \t\tdetailed debug\n"
+		"-sh<n> \t\tallocate n kb for the heap\n"
+		"-sd<n> \t\tallocate n kb for the det stack\n"
+		"-sn<n> \t\tallocate n kb for the nondet stack\n"
+		"-sl<n> \t\tallocate n kb for the label table\n"
+		"-zh<n> \t\tallocate n kb for the heap redzone\n"
+		"-zd<n> \t\tallocate n kb for the det stack redzone\n"
+		"-zn<n> \t\tallocate n kb for the nondet stack redzone\n"
+		"-p<n> \t\tprimary cache size in (k)bytes\n"
+		"-r<n> \t\trepeat n times\n"
+		"-w<name> \tcall predicate with given name\n"
+		"-1<x> \t\tinitialize register r1 with value x\n"
+		"-2<x> \t\tinitialize register r2 with value x\n"
+		"-3<x> \t\tinitialize register r3 with value x\n");
 	fflush(stdout);
 	exit(1);
 }
@@ -598,9 +606,7 @@ void run_code(void)
 
 	if (detaildebug)
 	{
-		sprintf(scratchbuf,
-			"after final call");
-		debugregs(scratchbuf);
+		debugregs("after final call");
 	}
 
 #ifndef	SPEED

@@ -28,7 +28,4 @@ extern	int	r3val;
 
 extern	bool	check_space;
 
-extern	int	repcounter;
-extern	char	scratchbuf[];
-
 #endif
