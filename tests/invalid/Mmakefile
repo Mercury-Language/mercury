@@ -35,6 +35,7 @@ SINGLEMODULE_PROGS= \
 	builtin_int \
 	builtin_proc \
 	circ_type \
+	circ_type2 \
 	constrained_poly_insts \
 	constructor_warning \
 	det_errors \
