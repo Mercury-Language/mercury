@@ -481,27 +481,14 @@ mercury_check_for_functions \
 		access
 
 #-----------------------------------------------------------------------------#
-# This is also used by MERCURY_CHECK_READLINE in aclocal.m4.
-mercury_check_for_headers () {
-    for mercury_cv_header in "$@"
-    do
-	mercury_cv_header_define="MR_HAVE_`echo $mercury_cv_header | \
-		tr abcdefghijklmnopqrstuvwxyz./ ABCDEFGHIJKLMNOPQRSTUVWXYZ__`"
-	AC_CHECK_HEADER($mercury_cv_header, [
-		AC_DEFINE_UNQUOTED($mercury_cv_header_define)
-		eval "$mercury_cv_header_define=1"
-	])
-    done
-}
-
-mercury_check_for_headers \
+MERCURY_CHECK_FOR_HEADERS( \
 		unistd.h sys/wait.h sys/siginfo.h sys/signal.h ucontext.h \
 		asm/sigcontext.h sys/param.h sys/time.h sys/times.h \
 		sys/types.h sys/stat.h fcntl.h termios.h sys/ioctl.h \
-		sys/stropts.h
+		sys/stropts.h)
 
 if test "$MR_HAVE_UCONTEXT_H" != 1; then
-	mercury_check_for_headers sys/ucontext.h
+	MERCURY_CHECK_FOR_HEADERS(sys/ucontext.h)
 fi
 #-----------------------------------------------------------------------------#
 #
@@ -3040,7 +3027,7 @@ AC_ARG_ENABLE(dynamic-link,
 [  --disable-dynamic-link  disable the use of dynamic linking],
 mercury_cv_enable_dynamic_link="$enableval",mercury_cv_enable_dynamic_link=yes)
 if test "$mercury_cv_enable_dynamic_link" = "yes"; then
-	mercury_check_for_headers dlfcn.h
+	MERCURY_CHECK_FOR_HEADERS(dlfcn.h)
 	AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
 	AC_SUBST(DL_LIBRARY)
 

@@ -12,6 +12,18 @@
 # bindist/bindist.configure.in into this file...
 #
 #-----------------------------------------------------------------------------#
+AC_DEFUN(MERCURY_CHECK_FOR_HEADERS,
+[
+    for mercury_cv_header in $1; do
+	mercury_cv_header_define="MR_HAVE_`echo $mercury_cv_header | \
+		tr abcdefghijklmnopqrstuvwxyz./ ABCDEFGHIJKLMNOPQRSTUVWXYZ__`"
+	AC_CHECK_HEADER($mercury_cv_header, [
+		AC_DEFINE_UNQUOTED($mercury_cv_header_define)
+		eval "$mercury_cv_header_define=1"
+	])
+    done
+])
+#-----------------------------------------------------------------------------#
 #
 # Turn off MacOS's so-called "smart" C preprocessor, if present,
 # since it causes lots of spurious warning messages,
@@ -82,7 +94,7 @@ mercury_cv_with_readline="$withval", mercury_cv_with_readline=yes)
 if test "$mercury_cv_with_readline" = yes; then
 
 	# check for the readline header files
-	mercury_check_for_headers readline/readline.h readline/history.h
+	MERCURY_CHECK_FOR_HEADERS(readline/readline.h readline/history.h)
 
 	# check for the libraries that readline depends on
 	MERCURY_MSG('looking for termcap or curses (needed by readline)...')
