@@ -6,9 +6,9 @@
 
 % This module defines some predicates that manipulate characters.
 
-% At the moment we are using 'character' rather than 'char'
-% because 'char' is already used by NU-Prolog to mean something
-% different.
+% Originally we used `character' rather than `char' for the type name
+% because `char' was used by NU-Prolog to mean something different.
+% But now we use `char' and the use of `character' is discouraged.
 %
 % NU-Prolog atoms can only include 7-bit ASCII chars, so the current
 % implementation does not support 8-bit characters.
@@ -23,64 +23,66 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred char_to_int(character, int).
+:- type char == character.
+
+:- pred char_to_int(char, int).
 :- mode char_to_int(in, out) is det.
 :- mode char_to_int(in, in) is semidet.	% implied
 :- mode char_to_int(out, in) is semidet.
 	% Convert a character to it's corresponding numerical code.
 
-:- pred char__to_upper(character, character).
+:- pred char__to_upper(char, char).
 :- mode char__to_upper(in, out) is det.
 	% Convert a character to uppercase.
 
-:- pred char__to_lower(character, character).
+:- pred char__to_lower(char, char).
 :- mode char__to_lower(in, out) is det.
 	% Convert a character to lowercase.
 
-:- pred char__lower_upper(character, character).
+:- pred char__lower_upper(char, char).
 :- mode char__lower_upper(in, out) is semidet.
 :- mode char__lower_upper(out, in) is semidet.
 	% char__lower_upper(Lower, Upper) is true iff
 	% Lower is a lower-case letter and Upper is the corresponding
 	% upper-case letter.
 
-:- pred char__is_upper(character).
+:- pred char__is_upper(char).
 :- mode char__is_upper(in) is semidet.
 	% True iff the character is an uppercase letter.
 
-:- pred char__is_lower(character).
+:- pred char__is_lower(char).
 :- mode char__is_lower(in) is semidet.
 	% True iff the character is a lowercase letter.
 
-:- pred char__is_alpha(character).
+:- pred char__is_alpha(char).
 :- mode char__is_alpha(in) is semidet.
 	% True iff the character is a letter.
 
-:- pred char__is_alnum(character).
+:- pred char__is_alnum(char).
 :- mode char__is_alnum(in) is semidet.
 	% True iff the character is a letter or digit.
 
-:- pred char__is_alpha_or_underscore(character).
+:- pred char__is_alpha_or_underscore(char).
 :- mode char__is_alpha_or_underscore(in) is semidet.
 	% True iff the character is a letter or an underscore.
 
-:- pred char__is_alnum_or_underscore(character).
+:- pred char__is_alnum_or_underscore(char).
 :- mode char__is_alnum_or_underscore(in) is semidet.
 	% True iff the character is a letter, a digit or an underscore.
 
-:- pred char__is_digit(character).
+:- pred char__is_digit(char).
 :- mode char__is_digit(in) is semidet.
 	% True iff the character is a decimal digit (0-9).
 
-:- pred char__is_binary_digit(character).
+:- pred char__is_binary_digit(char).
 :- mode char__is_binary_digit(in) is semidet.
 	% True iff the character is a binary digit (0 or 1).
 
-:- pred char__is_octal_digit(character).
+:- pred char__is_octal_digit(char).
 :- mode char__is_octal_digit(in) is semidet.
 	% True iff the character is a octal digit (0-7).
 
-:- pred char__is_hex_digit(character).
+:- pred char__is_hex_digit(char).
 :- mode char__is_hex_digit(in) is semidet.
 	% True iff the character is a hexadecimal digit (0-9, a-f, A-F).
 
