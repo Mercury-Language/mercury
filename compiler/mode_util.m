@@ -297,6 +297,12 @@ mode_is_unused(ModuleInfo, Mode) :-
 %-----------------------------------------------------------------------------%
 
 mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
+	mode_to_arg_mode_2(ModuleInfo, Mode, Type, [], ArgMode).
+
+:- pred mode_to_arg_mode_2(module_info, mode, type, list(type_id), arg_mode).
+:- mode mode_to_arg_mode_2(in, in, in, in, out) is det.
+
+mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
 	%
 	% We need to handle no_tag types (types which have
 	% exactly one constructor, and whose one constructor
@@ -308,7 +314,10 @@ mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
 	(
 		% is this a no_tag type?
 		type_constructors(Type, ModuleInfo, Constructors),
-		type_is_no_tag_type(Constructors, FunctorName, ArgType)
+		type_is_no_tag_type(Constructors, FunctorName, ArgType),
+		% avoid infinite recursion
+		type_to_type_id(Type, TypeId, _TypeArgs),
+		\+ list__member(TypeId, ContainingTypes)
 	->
 		% the arg_mode will be determined by the mode and
 		% type of the functor's argument,
@@ -321,14 +330,15 @@ mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
 		get_single_arg_inst(FinalInst, ModuleInfo, ConsId,
 			FinalArgInst),
 		ModeOfArg = (InitialArgInst -> FinalArgInst),
-		mode_to_arg_mode(ModuleInfo, ModeOfArg, ArgType, ArgMode)
+		mode_to_arg_mode_2(ModuleInfo, ModeOfArg, ArgType,
+			[TypeId | ContainingTypes], ArgMode)
 	;
-		mode_to_arg_mode_2(ModuleInfo, Mode, ArgMode)
+		base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode)
 	).
 
-:- pred mode_to_arg_mode_2(module_info, mode, arg_mode).
-:- mode mode_to_arg_mode_2(in, in, out) is det.
-mode_to_arg_mode_2(ModuleInfo, Mode, ArgMode) :-
+:- pred base_mode_to_arg_mode(module_info, mode, arg_mode).
+:- mode base_mode_to_arg_mode(in, in, out) is det.
+base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 	( inst_is_bound(ModuleInfo, InitialInst) ->
 		ArgMode = top_in

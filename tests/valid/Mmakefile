@@ -107,6 +107,7 @@ OTHER_SOURCES= \
 	pred_with_no_modes.m \
 	qualified_cons_id.m \
 	quantifier_warning.m \
+	recursive_no_tag_type.m \
 	same_length_2.m \
 	semidet_disj.m \
 	shape_type.m \
