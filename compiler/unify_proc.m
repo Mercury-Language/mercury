@@ -300,37 +300,62 @@ modecheck_queued_procs(HowToCheckGoal, ModuleInfo0, ModuleInfo, Changed) -->
 			Requests1) },
 		{ module_info_set_proc_requests(ModuleInfo0, Requests1,
 			ModuleInfo1) },
-		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-		( { VeryVerbose = yes } ->
-			( { HowToCheckGoal = check_unique_modes } ->
-				io__write_string(
-	"% Mode-checking, determinism-checking, and unique-mode-checking\n% ")
-			;
-				io__write_string("% Mode-checking ")
-			),
-			{ PredProcId = proc(PredId, ProcId) },
-			hlds_out__write_pred_proc_id(ModuleInfo1,
-				PredId, ProcId),
-			io__write_string("\n")
-			/*****
-			{ mode_list_get_initial_insts(Modes, ModuleInfo1,
-				InitialInsts) },
-			io__write_string("% Initial insts: `"),
-			{ varset__init(InstVarSet) },
-			mercury_output_inst_list(InitialInsts, InstVarSet),
-			io__write_string("'\n")
-			*****/
+		%
+		% Check that the procedure is valid (i.e. type-correct),
+		% before we attempt to do mode analysis on it.
+		% This check is necessary to avoid internal errors
+		% caused by doing mode analysis on type-incorrect code.
+		% XXX inefficient! This is O(N*M).
+		%
+		{ PredProcId = proc(PredId, _ProcId) },
+		{ module_info_predids(ModuleInfo1, ValidPredIds) },
+		( { list__member(PredId, ValidPredIds) } ->
+			queued_proc_progress_message(PredProcId,
+				HowToCheckGoal, ModuleInfo1),
+			modecheck_queued_proc(HowToCheckGoal, PredProcId,
+				ModuleInfo1, ModuleInfo2, Changed1)
 		;
-			[]
+			{ ModuleInfo2 = ModuleInfo1 },
+			{ Changed1 = no }
 		),
-		modecheck_queued_proc(HowToCheckGoal, PredProcId,
-			ModuleInfo1, ModuleInfo2, Changed1),
 		modecheck_queued_procs(HowToCheckGoal, ModuleInfo2, ModuleInfo,
 			Changed2),
 		{ bool__or(Changed1, Changed2, Changed) }
 	;
 		{ ModuleInfo = ModuleInfo0 },
 		{ Changed = no }
+	).
+
+:- pred queued_proc_progress_message(pred_proc_id, how_to_check_goal,
+			module_info, io__state, io__state).
+:- mode queued_proc_progress_message(in, in, in, di, uo) is det.
+
+queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo) -->
+	globals__io_lookup_bool_option(very_verbose,
+		VeryVerbose),
+	( { VeryVerbose = yes } ->
+		%
+		% print progress message
+		%
+		( { HowToCheckGoal = check_unique_modes } ->
+			io__write_string(
+		    "% Analyzing modes, determinism, and unique-modes for\n% ")
+		;
+			io__write_string("% Mode-analyzing ")
+		),
+		{ PredProcId = proc(PredId, ProcId) },
+		hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId),
+		io__write_string("\n")
+		/*****
+		{ mode_list_get_initial_insts(Modes, ModuleInfo1,
+			InitialInsts) },
+		io__write_string("% Initial insts: `"),
+		{ varset__init(InstVarSet) },
+		mercury_output_inst_list(InitialInsts, InstVarSet),
+		io__write_string("'\n")
+		*****/
+	;
+		[]
 	).
 
 :- pred modecheck_queued_proc(how_to_check_goal, pred_proc_id,
