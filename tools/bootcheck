@@ -730,12 +730,12 @@ then
 	fi
 
 	test_status=0
-	if test -d ../tests
-	then
-		tests_prefix="../"
-	elif test -d tests
+	if test -d tests
 	then
 		tests_prefix=""
+	elif test -d ../tests
+	then
+		tests_prefix="../"
 	else
 		echo "cannot find test directory"
 		test_status=1
