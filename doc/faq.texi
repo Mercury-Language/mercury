@@ -17,27 +17,28 @@ END-INFO-DIR-ENTRY
 @c @finalout
 @setchapternewpage odd
 @ifinfo
-This file documents the Mercury implementation.
+This file is the Mercury Frequently Asked Questions list.
+It contains a list of frequently asked questions about Mercury, with answers.
 
 Copyright (C) 1995 University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
-this manual provided the copyright notice and this permission notice
+this FAQ list provided the copyright notice and this permission notice
 are preserved on all copies.
 
 @ignore
 Permission is granted to process this file through Tex and print the
 results, provided the printed document carries copying permission
 notice identical to this one except for the removal of this paragraph
-(this paragraph not being relevant to the printed manual).
+(this paragraph not being relevant to the printed FAQ list).
 
 @end ignore
 Permission is granted to copy and distribute modified versions of this
-manual under the conditions for verbatim copying, provided also that
+FAQ list under the conditions for verbatim copying, provided also that
 the entire resulting derived work is distributed under the terms of a
 permission notice identical to this one.
 
-Permission is granted to copy and distribute translations of this manual
+Permission is granted to copy and distribute translations of this FAQ list
 into another language, under the above conditions for modified versions.
 @end ifinfo
 
@@ -53,15 +54,15 @@ into another language, under the above conditions for modified versions.
 Copyright @copyright{} 1995 University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
-this manual provided the copyright notice and this permission notice
+this FAQ list provided the copyright notice and this permission notice
 are preserved on all copies.
 
 Permission is granted to copy and distribute modified versions of this
-manual under the conditions for verbatim copying, provided also that
+FAQ list under the conditions for verbatim copying, provided also that
 the entire resulting derived work is distributed under the terms of a
 permission notice identical to this one.
 
-Permission is granted to copy and distribute translations of this manual
+Permission is granted to copy and distribute translations of this FAQ list
 into another language, under the above conditions for modified versions.
 @end titlepage
 @page
@@ -71,18 +72,18 @@ into another language, under the above conditions for modified versions.
 @chapter The Mercury Frequently Asked Questions list - BETA TEST version, July 1995
 @end ifinfo
 @menu
-* Modules::         Common problems with the module system
 * Programming::     Common programming errors
 * Unimplemented::   Problems caused by unimplemented Mercury features
 * Last resort::     What to do when all else fails
 @end menu
 
-@node Modules, Programming,, Top
-@section Common problems with the module system
+@node Programming, Unimplemented,, Top
+@section Common programming errors
 
-@table @emph
+@enumerate
 
-@item What does the error message ``undefined symbol @samp{'.'/2}'' mean?
+@item
+@emph{What does the error message ``undefined symbol @samp{'.'/2}'' mean?}
 
 You need to explicitly import the @samp{list} module
 
@@ -93,80 +94,110 @@ You need to explicitly import the @samp{list} module
 @noindent
 if your code uses lists.
 
-@end table
-
-@node Programming, Unimplemented, Modules, Top
-@section Common programming errors
-
-@table @emph
-
-@item Why doesn't @samp{X <= 3} work?
+@item
+@emph{Why doesn't @samp{X <= 3} work?}
 
 In Mercury, less-than-or-equal to is written as @samp{=<} not
 as @samp{<=}, which is used for reverse implication.
 
-@item I get a mode error (or a "scope error") in an if-then-else. I checked and both branches bind the same variables. What is the error?
+@item
+@emph{I get a ``scope error'' in an if-then-else.
+I checked and both branches bind the same variables. What is the error?}
 
-A common cause of this sort of error is trying to bind non-local variables
-in the @emph{condition} of the if-then-else. Since
+This error is generally happens if you attempt bind non-local variables
+in the @emph{condition} of the if-then-else.  For example, the following
+code attempts to bind @samp{Value} in the call to @samp{map__search},
+but @samp{Value} occurs outside of the if-then-else --- in particular,
+it occurs in the head of the clause.
 
 @example
-(
-	Cond
-->
-	Then
-;
-	Else
-)
+:- pred map__search(map(K, V), K, V).
+:- mode map__search(in, in, out) is semidet.
+
+:- pred lookup(map(string, int), string, int).
+:- mode lookup(in, in, out) is det.
+
+lookup(Map, Key, Value) :-
+        (if map__search(Map, Key, Value) then
+                true
+        else
+                Value = -1
+        ).
+@end example
+
+Binding non-local variables in the condition of an if-then-else
+is forbidden since it would be unsound; it would lead to inconsistent
+results.  For example, @samp{(X = 1 -> Y = 1 ; Y = 2), X = 2} would fail,
+but @samp{X = 2, (X = 1 -> Y = 1 ; Y = 2)} would succeed --- breaking
+one of the fundamental laws of logic, @samp{(P, Q) <=> (Q, P)}.
+
+Mode analysis therefore rejects such programs. 
+(In certain rare circumstances, the compiler may report this as a
+``mode error'' rather than a ``scope error''.)
+The way to fix such errors is to avoid binding non-local
+variables in the @emph{condition}, and instead bind them in the @emph{then}
+part of the if-then-else.  So in the above example, you should introduce
+a new local variable, which we will call @samp{Value1}:
+
+@example
+lookup(Map, Key, Value) :-
+        (if some [Value1]
+		map__search(Map, Key, Value1)
+	then
+                Value = Value1
+        ;
+                Value = -1
+        ).
 @end example
 
 @noindent
-is equivalent to
+The explicit existential quantifier is optional; if you
+prefer a slightly more succinct style you can write this as
 
 @example
-(
-	Cond,
-	Then
-;
-	not Cond,
-	Else
-)
+lookup(Map, Key, Value) :-
+        ( map__search(Map, Key, Value1) ->
+                Value = Value1
+        ;
+                Value = -1
+        ).
 @end example
 
-@noindent
-attempting to bind in Cond a variable that occurs outside Cond and Then
-would lead to an unsound negation.
-Mode analysis therefore rejects such programs.
-
-@end table
+@end enumerate
 
 @node Unimplemented, Last resort, Programming, Top
 @section Problems caused by unimplemented Mercury features
 
-@table @emph
-@item How can I avoid getting a compile-time error when I try to fill in a partially instantiated data structure?
+@enumerate
+@item
+@emph{How can I avoid getting a compile-time error when I try to
+fill in a partially instantiated data structure?}
 
 At the moment, you can't if XXX.
 The reason is that XXX
 
-@end table
+@end enumerate
 
 @node Last resort,, Unimplemented, Top
 @section What to do when all else fails
 
-@table @emph
+@enumerate
 
-@item I'm getting an error message that I don't understand.  What can I do?
+@item
+@emph{I'm getting an error message that I don't understand.  What can I do?}
 
 Try compiling with the @samp{-e} (@samp{--verbose-errors}) option.
 This option causes the compiler to give even more verbose descriptions
 than usual.
 
-@item I followed the instructions in the user's guide, but it still didn't work.  What do I do next?
+@item
+@emph{I followed the instructions in the user's guide, but it still didn't
+work.  What do I do next?}
 
-Send mail to mercury-bugs@@cs.mu.oz.au, and we'll try to solve your problem.
+Send email to @code{mercury-bugs@@cs.mu.oz.au}, and we'll try to solve your
+problem.
 
-@end table
+@end enumerate
 
 @contents
 @bye
