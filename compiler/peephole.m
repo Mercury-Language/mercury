@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1998,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,8 +25,8 @@
 
 :- implementation.
 
-:- import_module map, string, std_util.
-:- import_module code_util, opt_util, opt_debug.
+:- import_module builtin_ops, code_util, opt_util, opt_debug.
+:- import_module int, map, string, std_util.
 
 	% Patterns that can be switched off.
 
@@ -84,6 +84,45 @@ peephole__opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
 
 %-----------------------------------------------------------------------------%
 
+	% Build a map that associates each label in a computed goto with the
+	% values of the switch rval that cause a jump to it.
+
+:- pred peephole__build_jump_label_map(list(label)::in, int::in,
+	map(label, list(int))::in, map(label, list(int))::out) is det.
+
+peephole__build_jump_label_map([], _, LabelMap, LabelMap).
+peephole__build_jump_label_map([Label | Labels], Val, LabelMap0, LabelMap) :-
+	( map__search(LabelMap0, Label, Vals0) ->
+		map__det_update(LabelMap0, Label, [Val | Vals0], LabelMap1)
+	;
+		map__det_insert(LabelMap0, Label, [Val], LabelMap1)
+	),
+	peephole__build_jump_label_map(Labels, Val + 1, LabelMap1, LabelMap).
+
+	% If one of the two labels has only one associated value, return it and
+	% the associated value as the first two output arguments, and the
+	% remaining label as the last output argument.
+
+:- pred peephole__pick_one_val_label(pair(label, list(int))::in,
+	pair(label, list(int))::in, label::out, int::out, label::out)
+	is semidet.
+
+peephole__pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
+		OtherLabel) :-
+	LabelVals1 = Label1 - Vals1,
+	LabelVals2 = Label2 - Vals2,
+	( Vals1 = [Val1] ->
+		OneValLabel = Label1,
+		Val = Val1,
+		OtherLabel = Label2
+	; Vals2 = [Val2] ->
+		OneValLabel = Label2,
+		Val = Val2,
+		OtherLabel = Label1
+	;
+		fail
+	).
+
 	% Look for code patterns that can be optimized, and optimize them.
 
 :- pred peephole__match(instr, string, list(pattern),
@@ -92,11 +131,33 @@ peephole__opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
 
 	% A `computed_goto' with all branches pointing to the same
 	% label can be replaced with an unconditional goto.
+	%
+	% A `computed_goto' with all branches but one pointing to the same
+	% label can be replaced with a conditional branch followed by an
+	% unconditional goto.
 
-peephole__match(computed_goto(_, Labels), Comment, _, Instrs0, Instrs) :-
-	list__all_same(Labels),
-	Labels = [Target|_],
-	Instrs = [goto(label(Target)) - Comment | Instrs0].
+peephole__match(computed_goto(SelectorRval, Labels), Comment, _,
+		Instrs0, Instrs) :-
+	peephole__build_jump_label_map(Labels, 0, map__init, LabelMap),
+	map__to_assoc_list(LabelMap, LabelValsList),
+	(
+		LabelValsList = [Label - _]
+	->
+		GotoInstr = goto(label(Label)) - Comment,
+		Instrs = [GotoInstr | Instrs0]
+	;
+		LabelValsList = [LabelVals1, LabelVals2],
+		peephole__pick_one_val_label(LabelVals1, LabelVals2,
+			OneValLabel, Val, OtherLabel)
+	->
+		CondRval = binop(eq, SelectorRval, const(int_const(Val))),
+		CommentInstr = comment(Comment) - "",
+		BranchInstr = if_val(CondRval, label(OneValLabel)) - "",
+		GotoInstr = goto(label(OtherLabel)) - Comment,
+		Instrs = [CommentInstr, BranchInstr, GotoInstr | Instrs0]
+	;
+		fail
+	).
 
 	% A conditional branch whose condition is constant
 	% can be either eliminated or replaced by an unconditional goto.
