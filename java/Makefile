@@ -1,0 +1,26 @@
+
+# Copyright (C) 2002 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#
+# This Makefile sets up some symbolic links so that for the moment we can just
+# include this directory (mercury/java) in our CLASSPATH to be able to compile
+# some mercury files to java.
+#
+# The files in mercury/java/library are some hacked up versions of parts of
+# the mercury library written in java. These are classes such as mercury.list,
+# which require them to be in the CLASSPATH in a "mercury" directory, hence
+# the first link.
+# 
+# The files in mercury/java/runtime are the mercury runtime classes such as
+# mercury.runtime.MethodPtr. These should be in the CLASSPATH under the 
+# directory "mercury/runtime", hence the second link.
+#
+
+links:		
+		ln -s library mercury
+		(cd library && ln -s ../runtime runtime)
+
+clean:
+		rm -f mercury library/runtime
+

@@ -1,0 +1,19 @@
+//
+// Copyright (C) 2002 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+//
+//
+
+package mercury;
+
+public class mer_int
+ {
+    public static int mod_2_f_0(int val1, int val2)
+     {
+        return val1 % val2;
+     }
+ 
+
+ }
+
