@@ -428,7 +428,7 @@ trace__setup(_ModuleInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo) -->
 		CallFromFullSlot = llds__stack_slot_num_to_lval(
 			CodeModel, NextSlotAfterRedoLayout),
 		MaybeFromFullSlotLval = yes(CallFromFullSlot),
-		NextSlotAfterFromFull is NextSlotAfterRedoLayout + 1
+		NextSlotAfterFromFull = NextSlotAfterRedoLayout + 1
 	},
 	{
 		TraceTableIo = yes,
