@@ -645,8 +645,6 @@ write_parser(Where, NT, Decl, _TT, InAtom, OutAtom, !IO) :-
 	write_element(nolines, ParseResultType, !IO),
 	io__nl(!IO),
 	io__format("\
-:- import_module list.
-
 :- pred parse(parse_result, P, P) <= parser_state(P).
 :- mode parse(out, %s, %s) is det.
 
