@@ -130,31 +130,6 @@ open(FileName, Mode, Scope, Result) -->
 #endif
 }").
 
-	% closures for the LLDS backend
-:- type ll_closure
-	--->	ll_closure(
-			c_pointer,	% really MR_Closure_Layout
-			c_pointer,	% the address of the procedure to call
-			int		% the number of curried arguments;
-					% always zero, for closures created
-					% by dl.m
-		).
-
-	% closures for the --high-level-code (MLDS) backend
-:- type hl_closure
-	--->	hl_closure(
-			c_pointer,	% really MR_Closure_Layout
-			c_pointer,	% the wrapper function;
-					% this gets passed the closure
-					% as an argument
-			int,		% the number of curried arguments;
-					% always one, for closures created
-					% by dl.m
-			c_pointer	% the real function, which gets
-					% called by the wrapper function
-		).
-
-
 mercury_sym(Handle, MercuryProc0, Result) -->
 	{ check_proc_spec_matches_result_type(Result, _,
 		MercuryProc0, MercuryProc1) },
@@ -172,15 +147,15 @@ mercury_sym(Handle, MercuryProc0, Result) -->
 		( high_level_code ->
 			NumCurriedInputArgs = 1,
 			ClosureLayout = make_closure_layout,
-			HL_Closure = hl_closure(ClosureLayout,
+			HL_Closure = make_closure(ClosureLayout,
 				dl__generic_closure_wrapper,
 				NumCurriedInputArgs, Address),
 			private_builtin__unsafe_type_cast(HL_Closure, Value)
 		;
 			NumCurriedInputArgs = 0,
 			ClosureLayout = make_closure_layout,
-			LL_Closure = ll_closure(ClosureLayout, Address,
-				NumCurriedInputArgs),
+			LL_Closure = make_closure(ClosureLayout, Address,
+				NumCurriedInputArgs, Address),
 			private_builtin__unsafe_type_cast(LL_Closure, Value)
 		),
 		Result = ok(Value)
@@ -236,6 +211,34 @@ int	ML_DL_closure_counter = 0;
 	closure_layout->MR_closure_dl_num_all_args = 0;
 
 	ClosureLayout = (MR_Word) closure_layout;
+}").
+
+:- func make_closure(c_pointer, c_pointer, int, c_pointer) = c_pointer.
+
+:- pragma foreign_proc("C", make_closure(ClosureLayout::in,
+	Address::in, NumArgs::in, FirstArg::in) = (Closure::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
+	MR_Closure	*closure;
+	/*
+	** XXX All the allocations in this code should use malloc
+	** in deep profiling grades, perhaps?
+	*/
+	MR_incr_hp(MR_LVALUE_CAST(MR_Word, closure), 3 + NumArgs);
+	closure->MR_closure_layout = (MR_Closure_Layout *) ClosureLayout;
+	closure->MR_closure_code = (MR_Code *) Address;
+	closure->MR_closure_num_hidden_args = NumArgs;
+	switch (NumArgs) {
+	case 0:
+		break;
+	case 1:
+		closure->MR_closure_hidden_args(1) = FirstArg;
+		break;
+	default:
+		/* Not supported. */
+		MR_fatal_error(""dl.m: make_closure: NumArgs > 1"");
+	}
+	Closure = (MR_Word) closure;
 }").
 
 :- pragma c_header_code("
