@@ -9,8 +9,9 @@
 :- module opt_debug.
 
 :- interface.
-:- import_module llds, value_number, vn_util, opt_util, atsort.
-:- import_module list, std_util, int.
+
+:- import_module vn_type, vn_table, vn_util, opt_util.
+:- import_module llds, atsort, list, std_util, int.
 
 :- pred opt_debug__write(string).
 :- mode opt_debug__write(in) is det.
