@@ -69,6 +69,7 @@
 :- op(701, xfx, (is)).
 
 :- op(400, yfx, (rem)).
+:- op(400, yfx, (div)).
 
 % Use term_expansion/2 to prevent warnings about undefined predicates
 % when the interpreter tries to execute the new declarations.

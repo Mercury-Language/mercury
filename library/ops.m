@@ -160,6 +160,7 @@ ops__op_table("\\==", after, xfx, 700).
 ops__op_table("^", after, xfy, 200).
 ops__op_table("all", before, fxy, 950).
 ops__op_table("and", after, xfy, 720).
+ops__op_table("div", after, yfx, 400).
 ops__op_table("else", after, xfy, 1170).
 ops__op_table("end_module", before, fx, 1199).
 ops__op_table("export_adt", before, fx, 1199).
