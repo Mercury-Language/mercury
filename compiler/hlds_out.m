@@ -446,6 +446,18 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		;
 			[]
 		),
+		{ goal_info_cont_lives(GoalInfo, MaybeContLives) },
+		(
+			{ MaybeContLives = yes(ContLives) },
+			{ set__to_sorted_list(ContLives, ContList) },
+			{ ContList \= [] }
+		->
+			io__write_string("% cont-lives: "),
+			mercury_output_vars(ContList, VarSet),
+			mercury_output_newline(Indent)
+		;
+			[]
+		),
 		io__write_string("% determinism: "),
 		{ goal_info_get_determinism(GoalInfo, Determinism) },
 		hlds_out__write_determinism(Determinism),
