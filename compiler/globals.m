@@ -17,7 +17,7 @@
 
 :- interface.
 :- import_module options, trace_params, prog_data.
-:- import_module bool, getopt, list.
+:- import_module bool, getopt, list, io.
 
 :- type globals.
 
@@ -183,7 +183,7 @@
 :- implementation.
 
 :- import_module exprn_aux.
-:- import_module map, std_util, io, require.
+:- import_module map, std_util, require.
 
 	% XXX we should probably just convert to lower case and then
 	% test against known strings.

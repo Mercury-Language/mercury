@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,8 @@
 
 :- import_module hlds_data, hlds_pred, hlds_module, hlds_goal.
 :- import_module prog_data, mode_info, (inst).
-:- import_module bool, set, assoc_list, list.
+
+:- import_module bool, set, assoc_list, list, io.
 
 %-----------------------------------------------------------------------------%
 
@@ -184,8 +185,9 @@
 
 :- import_module hlds_out.
 :- import_module mode_info, mode_util, prog_out, mercury_to_mercury.
-:- import_module options, globals, varset, term.
-:- import_module int, map, io, term_io.
+:- import_module options, globals.
+
+:- import_module int, map, term_io, varset, term.
 :- import_module std_util, require.
 
 	% just dispatch on the diffferent sorts of mode errors

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1998, 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,6 +18,7 @@
 :- interface.
 :- import_module options, diff_out.
 :- import_module getopt, bool, int, string, list.
+:- import_module io.
 
 :- type globals.
 

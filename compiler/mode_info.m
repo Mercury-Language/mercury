@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
 :- import_module prog_data, mode_errors, delay_info, (inst).
-:- import_module map, list, set, bool, assoc_list, std_util.
+:- import_module map, list, set, bool, assoc_list, std_util, io.
 
 :- interface.
 
