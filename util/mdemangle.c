@@ -27,6 +27,9 @@
 #include <stdio.h>
 #include "mercury_std.h"
 
+/* We used this for the size of fixed-length buffers in a few places <sigh> */
+#define MAX_SYMBOL_LENGTH 1000
+
 static void demangle(const char *name);
 static const char *strip_module_name(char **start_ptr, char *end,
 		const char *trailing_context[]);
@@ -67,7 +70,7 @@ main(int argc, char **argv)
 		** every valid C identifier in the input
 		*/
 		for (;;) {
-			char buf[1000];
+			char buf[MAX_SYMBOL_LENGTH];
 			size_t len = 0;
 			int c = getchar();
 			while (c != EOF && (isalnum(c) || c == '_')) {
@@ -143,7 +146,7 @@ demangle(const char *orig_name)
 		NULL
 	};
 
-	char name[1000];
+	char name[MAX_SYMBOL_LENGTH];
 	char *start = name;
 	const char *module = "";	/* module name */
 	char *end = name + strlen(orig_name);
@@ -164,7 +167,7 @@ demangle(const char *orig_name)
 	enum { COMMON, INFO, LAYOUT, FUNCTORS } data_category;
 	const char * class_name;
 	int class_arity;
-	char class_arg_buf[1000];
+	char class_arg_buf[MAX_SYMBOL_LENGTH];
 	int class_arg_num;
 	const char* class_arg;
 
@@ -785,7 +788,7 @@ fix_mangled_ascii(char *str, char **real_end)
 	** ASCII codes back into an identifier.
 	*/
 	if (strncmp(str, "f_", 2) == 0) {
-		char buf[1000];
+		char buf[MAX_SYMBOL_LENGTH];
 		char *num = str + 2;
 		int count = 0;
 		while (num < end) {
