@@ -86,9 +86,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred gc_call(pred).
-:- mode gc_call(in) is nondet.
-
 :- pred solutions(pred(T), list(T)).
 :- mode solutions(complicated_mode, out) is det.
 
@@ -132,7 +129,6 @@
 
 :- external(report_stats/0).
 :- external(type_to_univ/2).
-:- external(gc_call/1).		% currently only implemented for Prolog
 :- external(semidet_fail/0).
 :- external(semidet_succeed/0).
 

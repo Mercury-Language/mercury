@@ -37,12 +37,17 @@ report_stats :-
 
 %-----------------------------------------------------------------------------%
 
+/***
+This is no longer used.  It would require polymorphic higher-order
+pred modes to be useful.
+
 :- pred gc_call(pred).
 :- mode gc_call(pred_call).
 
 gc_call(Goal) :-
 	findall(Goal, Goal, List),
 	my_member(Goal, List).
+***/
 
 %-----------------------------------------------------------------------------%
 
