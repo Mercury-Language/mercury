@@ -55,6 +55,14 @@
 :- mode call_gen__generate_complicated_unify(in, in, in, in, out, in, out)
 	is det.
 
+:- pred call_gen__input_arg_locs(list(pair(var, arg_info)), 
+				list(pair(var, arg_loc))).
+:- mode call_gen__input_arg_locs(in, out) is det.
+
+:- pred call_gen__output_arg_locs(list(pair(var, arg_info)), 
+				list(pair(var, arg_loc))).
+:- mode call_gen__output_arg_locs(in, out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -82,8 +90,9 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
-	{ call_gen__output_args(Args, OutputArguments) },
-	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
+	{ call_gen__output_arg_locs(Args, OutputArguments) },
+	call_gen__generate_return_livevals(OutArgs, OutputArguments,
+		OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
 	{ CodeC1 = node([
 		call(Address, label(ReturnLabel), OutLiveVals, det)
@@ -140,8 +149,9 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
-	{ call_gen__output_args(Args, OutputArguments) },
-	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
+	{ call_gen__output_arg_locs(Args, OutputArguments) },
+	call_gen__generate_return_livevals(OutArgs, OutputArguments,	
+		OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
         { CodeC1 = node([
                 call(Address, label(ReturnLabel), OutLiveVals, semidet)
@@ -170,13 +180,14 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
-	{ call_gen__output_args(Args, OutputArguments) },
-	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
+	{ call_gen__output_arg_locs(Args, OutputArguments) },
+	call_gen__generate_return_livevals(OutArgs, OutputArguments,
+		OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
 	code_info__failure_cont(failure_cont(IsKnown, _, FailureMap)),
 	(
 		{ IsKnown = known(_) },
-		{ FailureMap = [_ - do_fail|_] }
+		{ FailureMap = [_ - do_fail | _] }
 	->
 		{ TailCallable = nondet(yes) }
 	;
@@ -207,7 +218,7 @@ call_gen__save_variables(Args, Code) -->
 :- mode call_gen__save_variables_2(in, out, in, out) is det.
 
 call_gen__save_variables_2([], empty) --> [].
-call_gen__save_variables_2([Var|Vars], Code) -->
+call_gen__save_variables_2([Var | Vars], Code) -->
 	code_info__save_variable_on_stack(Var, CodeA),
         call_gen__save_variables_2(Vars, CodeB),
         { Code = tree(CodeA, CodeB) }.
@@ -227,7 +238,7 @@ call_gen__rebuild_registers(Args) -->
 :- mode call_gen__rebuild_registers_2(in, in, out) is det.
 
 call_gen__rebuild_registers_2([]) --> [].
-call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode)|Args]) -->
+call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode) | Args]) -->
 	(
 		{ Mode = top_out }
 	->
@@ -301,15 +312,15 @@ call_gen__generate_nondet_builtin(_PredId, _ProcId, _Args, _Code) -->
 :- mode call_gen__partition_args(in, out, out) is det.
 
 call_gen__partition_args([], [], []).
-call_gen__partition_args([arg_info(_Loc,Mode) - V|Rest], Ins, Outs) :-
+call_gen__partition_args([arg_info(_Loc,Mode) - V | Rest], Ins, Outs) :-
 	(
 		Mode = top_in
 	->
 		call_gen__partition_args(Rest, Ins0, Outs),
-		Ins = [V|Ins0]
+		Ins = [V | Ins0]
 	;
 		call_gen__partition_args(Rest, Ins, Outs0),
-		Outs = [V|Outs0]
+		Outs = [V | Outs0]
 	).
 
 %---------------------------------------------------------------------------%
@@ -334,7 +345,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 		{ call_gen__input_args(ArgInfo, InputArguments) },
 		call_gen__generate_call_livevals(OutArgs, InputArguments,
 			CodeC0),
-		{ call_gen__output_args(Args, OutputArguments) },
+		{ call_gen__output_arg_locs(Args, OutputArguments) },
 		call_gen__generate_return_livevals(OutArgs, OutputArguments, 
 						OutLiveVals),
 		{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum,
@@ -402,7 +413,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 
 call_gen__select_out_args([], Out) :-
 	set__init(Out).
-call_gen__select_out_args([V - arg_info(_Loc, Mode)|Rest], Out) :-
+call_gen__select_out_args([V - arg_info(_Loc, Mode) | Rest], Out) :-
 	call_gen__select_out_args(Rest, Out0),
 	(
 		Mode = top_out
@@ -430,20 +441,27 @@ call_gen__input_args([arg_info(Loc, Mode) | Args], Vs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__output_args(list(pair(var, arg_info)), 
-				list(pair(var, arg_loc))).
-:- mode call_gen__output_args(in, out) is det.
-
-call_gen__output_args([], []).
-call_gen__output_args([Var - arg_info(Loc, Mode)|Args], Vs) :-
+call_gen__input_arg_locs([], []).
+call_gen__input_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 	(
-		Mode = top_out
+		Mode = top_in
 	->
-		Vs = [Var - Loc|Vs0]
+		Vs = [Var - Loc | Vs0]
 	;
 		Vs = Vs0
 	),
-	call_gen__output_args(Args, Vs0).
+	call_gen__input_arg_locs(Args, Vs0).
+
+call_gen__output_arg_locs([], []).
+call_gen__output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
+	(
+		Mode = top_out
+	->
+		Vs = [Var - Loc | Vs0]
+	;
+		Vs = Vs0
+	),
+	call_gen__output_arg_locs(Args, Vs0).
 
 %---------------------------------------------------------------------------%
 
@@ -465,7 +483,7 @@ call_gen__generate_call_livevals(OutArgs, InputArgs, Code) -->
 :- mode call_gen__insert_arg_livevals(in, in, out) is det.
 
 call_gen__insert_arg_livevals([], LiveVals, LiveVals).
-call_gen__insert_arg_livevals([L|As], LiveVals0, LiveVals) :-
+call_gen__insert_arg_livevals([L | As], LiveVals0, LiveVals) :-
 	code_util__arg_loc_to_register(L, R),
 	set__insert(LiveVals0, reg(R), LiveVals1),
 	call_gen__insert_arg_livevals(As, LiveVals1, LiveVals).
@@ -497,7 +515,7 @@ call_gen__generate_return_livevals(OutArgs, OutputArgs, LiveVals, Code0, Code)
 					in, out) is det.
 
 call_gen__insert_arg_livelvals([], _, LiveVals, LiveVals, C, C, S, S).
-call_gen__insert_arg_livelvals([Var - L|As], Module_Info, LiveVals0, LiveVals,
+call_gen__insert_arg_livelvals([Var - L | As], Module_Info, LiveVals0, LiveVals,
 				 	Code0, Code, S_Tab0, S_Tab) :-
 	code_util__arg_loc_to_register(L, R),
 	code_info__variable_type(Var, Type, Code0, Code1),
@@ -507,7 +525,7 @@ call_gen__insert_arg_livelvals([Var - L|As], Module_Info, LiveVals0, LiveVals,
 			S_Tab0, S_Tab1, S_Number),
 	LiveVal = live_lvalue(reg(R), num(S_Number)),
 	call_gen__insert_arg_livelvals(As, Module_Info, 
-			[LiveVal|LiveVals0], LiveVals, Code1,
+			[LiveVal | LiveVals0], LiveVals, Code1,
 			 Code, S_Tab1, S_Tab).
 
 %---------------------------------------------------------------------------%
@@ -561,7 +579,7 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 		{ FirstArg = 1 }
 	),
 	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
-	{ call_gen__output_args(OutArguments, OutLocs) },
+	{ call_gen__output_arg_locs(OutArguments, OutLocs) },
 	call_gen__generate_return_livevals(OutArgs, OutLocs, OutLiveVals),
 	code_info__produce_variable(PredVar, PredVarCode, PredRVal),
 	(
@@ -596,7 +614,7 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 		code_info__failure_cont(failure_cont(IsKnown, _, FailureMap)),
 		(
 			{ IsKnown = known(_) },
-			{ FailureMap = [_ - do_fail|_] }
+			{ FailureMap = [_ - do_fail | _] }
 		->
 			{ TailCallable = yes }
 		;
@@ -635,7 +653,7 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 :- mode call_gen__generate_immediate_args(in, in, out, out, in, out) is det.
 
 call_gen__generate_immediate_args([], _N, [], empty) --> [].
-call_gen__generate_immediate_args([V|Vs], N0, [Lval|Lvals], Code) -->
+call_gen__generate_immediate_args([V | Vs], N0, [Lval | Lvals], Code) -->
 	{ Lval = reg(r(N0)) },
 	code_info__place_var(V, Lval, Code0),
 	{ N1 is N0 + 1 },
@@ -648,7 +666,7 @@ call_gen__generate_immediate_args([V|Vs], N0, [Lval|Lvals], Code) -->
 :- mode call_gen__outvars_to_outargs(in, in, out) is det.
 
 call_gen__outvars_to_outargs([], _N, []).
-call_gen__outvars_to_outargs([V|Vs], N0, [V - Arg|ArgInfos]) :-
+call_gen__outvars_to_outargs([V | Vs], N0, [V - Arg | ArgInfos]) :-
 	Arg = arg_info(N0, top_out),
 	N1 is N0 + 1,
 	call_gen__outvars_to_outargs(Vs, N1, ArgInfos).

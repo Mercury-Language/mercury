@@ -413,7 +413,10 @@ vn_block__new_ctrl_node(Vn_instr, Livemap, Params, LabelsSoFar,
 		vn_block__new_if_node(TargetAddr, Livemap, Params,
 			Ctrlmap0, Ctrl0, VnTables0, VnTables, Liveset0, Liveset,
 			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels1),
-		( set__member(Label, LabelsSoFar) ->
+		(
+			TargetAddr = label(Label),
+			set__member(Label, LabelsSoFar)
+		->
 			Parallels = []
 		;
 			Parallels = Parallels1

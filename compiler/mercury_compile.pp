@@ -32,8 +32,8 @@
 :- import_module handle_options, prog_io, modules, make_hlds.
 :- import_module undef_types, typecheck, undef_modes, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module simplify, (lambda), polymorphism, higher_order, inlining.
-:- import_module common, dnf.
+:- import_module simplify, bytecode_gen, bytecode, (lambda), polymorphism.
+:- import_module higher_order, inlining, common, dnf.
 :- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
 :- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
 :- import_module code_gen, optimize, export, llds_out.
@@ -221,7 +221,7 @@ mercury_compile(Module) -->
 	    ;
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
-		mercury_compile__middle_pass(HLDS25, HLDS50),
+		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50),
 		globals__io_lookup_bool_option(highlevel_c, HighLevelC),
 		( { HighLevelC = yes } ->
 			{ string__append(ModuleName, ".c", C_File) },
@@ -467,17 +467,19 @@ mercury_compile__frontend_pass_2_by_preds(HLDS0, HLDS, FoundError) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__middle_pass(module_info, module_info,
+:- pred mercury_compile__middle_pass(string, module_info, module_info,
 					io__state, io__state).
-% :- mode mercury_compile__middle_pass(di, uo, di, uo) is det.
-:- mode mercury_compile__middle_pass(in, out, di, uo) is det.
+% :- mode mercury_compile__middle_pass(in, di, uo, di, uo) is det.
+:- mode mercury_compile__middle_pass(in, in, out, di, uo) is det.
 
-mercury_compile__middle_pass(HLDS25, HLDS50) -->
+mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
 	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS28),
 	mercury_compile__maybe_dump_hlds(HLDS28, "28", "polymorphism"),
+
+	mercury_compile__maybe_bytecodes(HLDS28, ModuleName, Verbose, Stats),
 
 	mercury_compile__maybe_higher_order(HLDS28, Verbose, Stats, HLDS31),
 	mercury_compile__maybe_dump_hlds(HLDS31, "31", "higher_order"),
@@ -897,6 +899,42 @@ mercury_compile__maybe_polymorphism(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_report_stats(Stats)
 	;
 		{ HLDS = HLDS0 }
+	).
+
+:- pred mercury_compile__maybe_bytecodes(module_info, string, bool, bool,
+	io__state, io__state).
+:- mode mercury_compile__maybe_bytecodes(in, in, in, in, di, uo) is det.
+
+mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats) -->
+	globals__io_lookup_bool_option(generate_bytecode, GenBytecode),
+	( { GenBytecode = yes } ->
+		globals__io_get_args_method(Args),
+		{ generate_arg_info(HLDS0, Args, HLDS1) },
+		maybe_write_string(Verbose,
+			"% Generating bytecodes..."),
+		maybe_flush_output(Verbose),
+		bytecode_gen__module(HLDS1, Bytecode),
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats),
+		{ string__append(ModuleName, ".bytecode", BytecodeFile) },
+		maybe_write_string(Verbose,
+			"% Writing byecodes to `"),
+		maybe_write_string(Verbose, BytecodeFile),
+		maybe_write_string(Verbose, "'..."),
+		maybe_flush_output(Verbose),
+		output_bytecode_file(BytecodeFile, Bytecode),
+		maybe_write_string(Verbose, " done.\n"),
+		{ string__append(ModuleName, ".bytedebug", BytedebugFile) },
+		maybe_write_string(Verbose,
+			"% Writing byecodes to `"),
+		maybe_write_string(Verbose, BytedebugFile),
+		maybe_write_string(Verbose, "'..."),
+		maybe_flush_output(Verbose),
+		debug_bytecode_file(BytedebugFile, Bytecode),
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		[]
 	).
 
 :- pred mercury_compile__maybe_higher_order(module_info, bool, bool,

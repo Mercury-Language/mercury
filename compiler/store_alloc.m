@@ -94,7 +94,7 @@ store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 :- mode store_alloc_in_goal(in, in, in, out, out) is det.
 
 store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
-		Goal - GoalInfo, Liveness) :-
+		Goal - GoalInfo0, Liveness) :-
 	goal_info_pre_delta_liveness(GoalInfo0, PreDelta),
 	PreDelta = PreBirths - PreDeaths,
 	goal_info_post_delta_liveness(GoalInfo0, PostDelta),
@@ -122,7 +122,6 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 		set__to_sorted_list(OutputVars, LiveVarList),
 		store_alloc_allocate_storage(LiveVarList, 1, FollowVars,
 			StoreMap),
-		goal_info_set_store_map(GoalInfo0, yes(StoreMap), GoalInfo),
 		Goal = disj(Disjuncts, StoreMap)
 	;
 		Goal1 = switch(Var, CanFail, Cases, FollowVars)
@@ -130,7 +129,6 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 		set__to_sorted_list(Liveness, LiveVarList),
 		store_alloc_allocate_storage(LiveVarList, 1, FollowVars,
 			StoreMap),
-		goal_info_set_store_map(GoalInfo0, yes(StoreMap), GoalInfo),
 		Goal = switch(Var, CanFail, Cases, StoreMap)
 	;
 		Goal1 = if_then_else(Vars, Cond, Then, Else, FollowVars)
@@ -138,11 +136,9 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 		set__to_sorted_list(Liveness, LiveVarList),
 		store_alloc_allocate_storage(LiveVarList, 1, FollowVars,
 			StoreMap),
-		goal_info_set_store_map(GoalInfo0, yes(StoreMap), GoalInfo),
 		Goal = if_then_else(Vars, Cond, Then, Else, StoreMap)
 	;
-		Goal = Goal1,
-		goal_info_set_store_map(GoalInfo0, no, GoalInfo)
+		Goal = Goal1
 	).
 
 %-----------------------------------------------------------------------------%

@@ -40,8 +40,8 @@
 		% Create a new code_info structure.
 :- pred code_info__init(varset, liveness_info, call_info, bool, globals,
 			pred_id, proc_id, proc_info, code_model, instmap,
-			follow_vars, module_info, shape_table, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, in, out)
+			module_info, shape_table, code_info).
+:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, out)
 			is det.
 
 		% Generate the next local label in sequence.
@@ -499,7 +499,7 @@
 
 code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, CodeModel, Requests,
-		_FollowVars, ModuleInfo, Shapes, C) :-
+		ModuleInfo, Shapes, C) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
 	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, Args),
@@ -772,10 +772,7 @@ code_info__variable_is_live(Var) -->
 
 code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo) -->
 	code_info__get_module_info(ModuleInfo),
-	{ module_info_preds(ModuleInfo, Preds) },
-	{ map__lookup(Preds, PredId, PredInfo) },
-	{ pred_info_procedures(PredInfo, Procs) },
-	{ map__lookup(Procs, ProcId, ProcInfo) },
+	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo) },
 	{ proc_info_arg_info(ProcInfo, ArgInfo) }.
 
 %---------------------------------------------------------------------------%

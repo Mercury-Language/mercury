@@ -100,10 +100,9 @@ find_follow_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) -->
 
 	find_final_follow_vars(ProcInfo0, FollowVars0),
 	find_follow_vars_in_goal(Goal0, ArgsMethod, ModuleInfo, FollowVars0,
-		Goal, FollowVars),
+		Goal, _FollowVars),
 
-	proc_info_set_follow_vars(ProcInfo0, FollowVars, ProcInfo1),
-	proc_info_set_goal(ProcInfo1, Goal, ProcInfo)
+	proc_info_set_goal(ProcInfo0, Goal, ProcInfo)
 	}.
 
 %-----------------------------------------------------------------------------%
@@ -212,6 +211,7 @@ find_follow_vars_in_goal_2(call(A,B,C,D,E,F,_), _ArgsMethod, ModuleInfo,
 	->
 		FollowVars = FollowVars0
 	;
+		% XXX this code should pay attention to ArgsMethod
 		find_follow_vars_in_call(A, B, C, ModuleInfo, FollowVars0,
 			FollowVars)
 	).

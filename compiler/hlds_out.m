@@ -619,19 +619,6 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 			hlds_out__write_indent(Indent)
 		;
 			[]
-		),
-		{ goal_info_store_map(GoalInfo, StoreMap) },
-		(
-			{ StoreMap = yes(VarLocMap) },
-			{ map__to_assoc_list(VarLocMap, VarLocList) },
-			{ VarLocList \= [] }
-		->
-			io__write_string("% store map:\n"),
-			hlds_out__write_var_to_lvals(VarLocList,
-				VarSet, Indent),
-			hlds_out__write_indent(Indent)
-		;
-			[]
 		)
 	;
 		[]

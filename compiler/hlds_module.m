@@ -694,6 +694,9 @@ hlds__dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 :- mode invalid_pred_id(out) is det.
 :- mode invalid_pred_id(in) is semidet.
 
+:- pred predicate_id(module_info, pred_id, module_name, string, arity).
+:- mode predicate_id(in, in, out, out, out) is det.
+
 :- pred predicate_module(module_info, pred_id, module_name).
 :- mode predicate_module(in, in, out) is det.
 
@@ -873,10 +876,17 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 
 invalid_pred_id(-1).
 
-predicate_module(ModuleInfo, PredId, Module) :-
+predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_module(PredInfo, Module).
+	pred_info_module(PredInfo, ModuleName),
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, Arity).
+
+predicate_module(ModuleInfo, PredId, ModuleName) :-
+	module_info_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	pred_info_module(PredInfo, ModuleName).
 
 predicate_name(ModuleInfo, PredId, PredName) :-
 	module_info_preds(ModuleInfo, Preds),

@@ -33,7 +33,7 @@
 middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 	Goal = GoalExpr - GoalInfo,
 	(
-		GoalExpr = switch(Var, cannot_fail, [Case1, Case2], _),
+		GoalExpr = switch(Var, cannot_fail, [Case1, Case2], FV),
 		Case1 = case(ConsId1, Goal1),
 		Case2 = case(ConsId2, Goal2),
 		(
@@ -42,19 +42,19 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 				CodeInfo0, _)
 		->
 			middle_rec__generate_switch(Var, ConsId1, Goal1, Goal2,
-				GoalInfo, Instrs, CodeInfo0, CodeInfo)
+				FV, GoalInfo, Instrs, CodeInfo0, CodeInfo)
 		;
 			code_aux__contains_only_builtins(Goal2),
 			code_aux__contains_simple_recursive_call(Goal1,
 				CodeInfo0, _)
 		->
 			middle_rec__generate_switch(Var, ConsId2, Goal2, Goal1,
-				GoalInfo, Instrs, CodeInfo0, CodeInfo)
+				FV, GoalInfo, Instrs, CodeInfo0, CodeInfo)
 		;
 			fail
 		)
 	;
-		GoalExpr = if_then_else(Vars, Cond, Then, Else, _),
+		GoalExpr = if_then_else(Vars, Cond, Then, Else, FV),
 		(
 			code_aux__contains_only_builtins(Cond),
 			code_aux__contains_only_builtins(Then),
@@ -63,7 +63,8 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 		->
 			semidet_fail,
 			middle_rec__generate_ite(Vars, Cond, Then, Else,
-				in_else, GoalInfo, Instrs, CodeInfo0, CodeInfo)
+				in_else, FV, GoalInfo, Instrs,
+				CodeInfo0, CodeInfo)
 		;
 			code_aux__contains_only_builtins(Cond),
 			code_aux__contains_simple_recursive_call(Then,
@@ -72,7 +73,8 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 		->
 			semidet_fail,
 			middle_rec__generate_ite(Vars, Cond, Then, Else,
-				in_then, GoalInfo, Instrs, CodeInfo0, CodeInfo)
+				in_then, FV, GoalInfo, Instrs,
+				CodeInfo0, CodeInfo)
 		;
 			fail
 		)
@@ -83,10 +85,12 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred middle_rec__generate_ite(list(var), hlds__goal, hlds__goal,
-	hlds__goal, ite_rec, hlds__goal_info, code_tree, code_info, code_info).
-:- mode middle_rec__generate_ite(in, in, in, in, in, in, out, in, out) is det.
+	hlds__goal, ite_rec, follow_vars, hlds__goal_info,
+	code_tree, code_info, code_info).
+:- mode middle_rec__generate_ite(in, in, in, in, in, in, in, out, in, out)
+	is det.
 
-middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo,
+middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _FV,
 		Instrs) -->
 	( { semidet_fail } ->
 		{ Instrs = empty }
@@ -97,18 +101,13 @@ middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo,
 %---------------------------------------------------------------------------%
 
 :- pred middle_rec__generate_switch(var, cons_id, hlds__goal, hlds__goal,
-	hlds__goal_info, code_tree, code_info, code_info).
-:- mode middle_rec__generate_switch(in, in, in, in, in, out, in, out) is det.
+	follow_vars, hlds__goal_info, code_tree, code_info, code_info).
+:- mode middle_rec__generate_switch(in, in, in, in, in, in, out, in, out)
+	is det.
 
-middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
-		Instrs) -->
-	{ goal_info_store_map(SwitchGoalInfo, StoreMap0) },
-	( { StoreMap0 = yes(StoreMap) } ->
-		code_info__push_store_map(StoreMap)
-	;
-		{ true }
-	),
-
+middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
+		SwitchGoalInfo, Instrs) -->
+	code_info__push_store_map(FollowVars),
 	code_info__get_call_info(CallInfo),
 	code_info__get_varset(VarSet),
 	{ code_aux__explain_call_info(CallInfo, VarSet, CallInfoComment) },
@@ -132,12 +131,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 
 	code_aux__post_goal_update(SwitchGoalInfo),
 	code_info__remake_with_store_map,
-
-	( { StoreMap0 = yes(_StoreMap) } ->
-		code_info__pop_store_map
-	;
-		{ true }
-	),
+	code_info__pop_store_map,
 
 	code_info__get_arginfo(ArgModes),
 	code_info__get_headvars(HeadVars),
@@ -148,7 +142,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 
 	{ BaseCode = tree(BaseCodeFrag, EpilogFrag) },
 	{ RecCode = tree(RecCodeFrag, EpilogFrag) },
-	{ LiveValCode = [ livevals(LiveArgs) - "" ] },
+	{ LiveValCode = [livevals(LiveArgs) - ""] },
 
 	{ tree__flatten(BaseCode, BaseListList) },
 	{ list__condense(BaseListList, BaseList) },
@@ -172,31 +166,31 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 	{ StackSlots = 0 ->
 		MaybeIncrSp = [],
 		MaybeDecrSp = [],
-		InitAuxReg = [ assign(AuxReg, const(int_const(0)))
-				- "initialize counter register" ],
-		IncrAuxReg = [ assign(AuxReg, binop((+),
+		InitAuxReg = [assign(AuxReg, const(int_const(0)))
+				- "initialize counter register"],
+		IncrAuxReg = [assign(AuxReg, binop((+),
 				lval(AuxReg),
 				const(int_const(1))))
-				- "increment loop counter" ],
-		DecrAuxReg = [ assign(AuxReg, binop((-),
+				- "increment loop counter"],
+		DecrAuxReg = [assign(AuxReg, binop((-),
 				lval(AuxReg),
 				const(int_const(1))))
-				- "decrement loop counter" ],
-		TestAuxReg = [ if_val(binop((>),
+				- "decrement loop counter"],
+		TestAuxReg = [if_val(binop((>),
 				lval(AuxReg), const(int_const(0))),
 				label(Loop2Label))
-				- "test on upward loop" ]
+				- "test on upward loop"]
 	;
 		MaybeIncrSp = [incr_sp(StackSlots) - ""],
 		MaybeDecrSp = [decr_sp(StackSlots) - ""],
-		InitAuxReg = [ assign(AuxReg, lval(sp))
-				- "initialize counter register" ],
+		InitAuxReg =  [assign(AuxReg, lval(sp))
+				- "initialize counter register"],
 		IncrAuxReg = [],
 		DecrAuxReg = [],
-		TestAuxReg = [ if_val(binop((>),
+		TestAuxReg = [if_val(binop((>),
 				lval(sp), lval(AuxReg)),
 				label(Loop2Label))
-				- "test on upward loop" ]
+				- "test on upward loop"]
 	},
 
 	% Even though the recursive call is followed by some goals

@@ -55,6 +55,12 @@
 :- mode goal_util__create_variables(in, in, in, in, in, in, out, out, out)
 		is det.
 
+	% Return all the variables in the goal.
+	% Unlike quantification:goal_vars, this predicate returns
+	% even the explicitly quantified variables.
+:- pred goal_util__goal_vars(hlds__goal, set(var)).
+:- mode goal_util__goal_vars(in, out) is det.
+
 	% See whether the goal is a branched structure.
 :- pred goal_util__goal_is_branched(hlds__goal_expr).
 :- mode goal_util__goal_is_branched(in) is semidet.
@@ -211,7 +217,7 @@ goal_util__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Must, Subn,
 	goal_util__rename_unify_rhs(TermR0, Must, Subn, TermR),
 	goal_util__rename_unify(Unify0, Must, Subn, Unify).
 
-goal_util__name_apart_2(pragma_c_code(A,B,C,Vars0,ArgNameMap0), Must, Subn, 
+goal_util__name_apart_2(pragma_c_code(A,B,C,Vars0,ArgNameMap0), Must, Subn,
 		pragma_c_code(A,B,C,Vars,ArgNameMap)) :-
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 		% also update the arg/name map since the vars have changed
@@ -350,18 +356,7 @@ goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
 	;
 		MaybeInstMap = MaybeInstMap0
 	),
-	goal_info_set_instmap_delta(GoalInfo3, MaybeInstMap, GoalInfo4),
-
-	goal_info_store_map(GoalInfo4, MaybeStoreMap0),
-	(
-		MaybeStoreMap0 = yes(StoreMap0)
-	->
-		goal_util__rename_follow_vars(StoreMap0, Must, Subn, StoreMap),
-		MaybeStoreMap = yes(StoreMap)
-	;
-		MaybeStoreMap = MaybeStoreMap0
-	),
-	goal_info_set_store_map(GoalInfo4, MaybeStoreMap, GoalInfo).
+	goal_info_set_instmap_delta(GoalInfo3, MaybeInstMap, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -372,6 +367,80 @@ goal_util__name_apart_set(Vars0, Must, Subn, Vars) :-
 	set__to_sorted_list(Vars0, VarsList0),
 	goal_util__rename_var_list(VarsList0, Must, Subn, VarsList),
 	set__list_to_set(VarsList, Vars).
+
+%-----------------------------------------------------------------------------%
+
+goal_util__goal_vars(Goal - _GoalInfo, Set) :-
+	set__init(Set0),
+	goal_util__goal_vars_2(Goal, Set0, Set).
+
+:- pred goal_util__goal_vars_2(hlds__goal_expr, set(var), set(var)).
+:- mode goal_util__goal_vars_2(in, in, out) is det.
+
+goal_util__goal_vars_2(unify(Var, RHS, _, _, _), Set0, Set) :-
+	set__insert(Set0, Var, Set1),
+	goal_util__rhs_goal_vars(RHS, Set1, Set).
+
+goal_util__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _),
+		Set0, Set) :-
+	set__insert_list(Set0, [PredVar | ArgVars], Set).
+
+goal_util__goal_vars_2(call(_, _, ArgVars, _, _, _, _), Set0, Set) :-
+	set__insert_list(Set0, ArgVars, Set).
+
+goal_util__goal_vars_2(conj(Goals), Set0, Set) :-
+	goal_util__goals_goal_vars(Goals, Set0, Set).
+
+goal_util__goal_vars_2(disj(Goals, _), Set0, Set) :-
+	goal_util__goals_goal_vars(Goals, Set0, Set).
+
+goal_util__goal_vars_2(switch(Var, _Det, Cases, _), Set0, Set) :-
+	set__insert(Set0, Var, Set1),
+	goal_util__cases_goal_vars(Cases, Set1, Set).
+
+goal_util__goal_vars_2(some(Vars, Goal - _), Set0, Set) :-
+	set__insert_list(Set0, Vars, Set1),
+	goal_util__goal_vars_2(Goal, Set1, Set).
+
+goal_util__goal_vars_2(not(Goal - _GoalInfo), Set0, Set) :-
+	goal_util__goal_vars_2(Goal, Set0, Set).
+
+goal_util__goal_vars_2(if_then_else(Vars, A - _, B - _, C - _, _), Set0, Set) :-
+	set__insert_list(Set0, Vars, Set1),
+	goal_util__goal_vars_2(A, Set1, Set2),
+	goal_util__goal_vars_2(B, Set2, Set3),
+	goal_util__goal_vars_2(C, Set3, Set).
+
+goal_util__goal_vars_2(pragma_c_code(_, _, _, ArgVars, _), Set0, Set) :-
+	set__insert_list(Set0, ArgVars, Set).
+
+:- pred goal_util__goals_goal_vars(list(hlds__goal), set(var), set(var)).
+:- mode goal_util__goals_goal_vars(in, in, out) is det.
+
+goal_util__goals_goal_vars([], Set, Set).
+goal_util__goals_goal_vars([Goal - _ | Goals], Set0, Set) :-
+	goal_util__goal_vars_2(Goal, Set0, Set1),
+	goal_util__goals_goal_vars(Goals, Set1, Set).
+
+:- pred goal_util__cases_goal_vars(list(case), set(var), set(var)).
+:- mode goal_util__cases_goal_vars(in, in, out) is det.
+
+goal_util__cases_goal_vars([], Set, Set).
+goal_util__cases_goal_vars([case(_, Goal - _) | Cases], Set0, Set) :-
+	goal_util__goal_vars_2(Goal, Set0, Set1),
+	goal_util__cases_goal_vars(Cases, Set1, Set).
+
+:- pred goal_util__rhs_goal_vars(unify_rhs, set(var), set(var)).
+:- mode goal_util__rhs_goal_vars(in, in, out) is det.
+
+goal_util__rhs_goal_vars(var(X), Set0, Set) :-
+	set__insert(Set0, X, Set).
+goal_util__rhs_goal_vars(functor(_Functor, ArgVars), Set0, Set) :-
+	set__insert_list(Set0, ArgVars, Set).
+goal_util__rhs_goal_vars(lambda_goal(LambdaVars, _Modes, _Detism, Goal - _),
+		Set0, Set) :-
+	set__insert_list(Set0, LambdaVars, Set1),
+	goal_util__goal_vars_2(Goal, Set1, Set).
 
 %-----------------------------------------------------------------------------%
 

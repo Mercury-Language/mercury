@@ -77,6 +77,7 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
 
+	proc_info_headvars(ProcInfo, ArgVars),
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, Args),
 
@@ -88,9 +89,10 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
 	proc_info_goal(ProcInfo, Goal),
 	bytecode_gen__init_byte_info(ModuleInfo, Goal, ByteInfo),
+
 	bytecode_gen__goal(Goal, ByteInfo, 0, N, GoalCode),
 
-	proc_info_determinism(ProcInfo, Detism),
+	proc_info_interface_determinism(ProcInfo, Detism),
 	Code = tree(
 		tree(
 			node([enter_proc(ProcId, Detism, N)]),
@@ -114,7 +116,7 @@ bytecode_gen__goal(GoalExpr - _GoalInfo, ByteInfo, N0, N, Code) :-
 
 bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 	(
-		GoalExpr = higher_order_call(_, _, _, _, _, _, _),
+		GoalExpr = higher_order_call(_, _, _, _, _, _),
 		error("we do not handle higher order calls yet")
 	;
 		GoalExpr = call(PredId, ProcId, Args, IsBuiltin, _, _, _),
@@ -170,7 +172,7 @@ bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 				DisjCode),
 			node([endof_switch, label(N1)]))
 	;
-		GoalExpr = if_then_else(Vars, Cond, Then, Else, _),
+		GoalExpr = if_then_else(_Vars, Cond, Then, Else, _),
 		bytecode_gen__goal(Cond, ByteInfo, N0, N1, CondCode),
 		bytecode_gen__goal(Then, ByteInfo, N1, N2, ThenCode),
 		N3 is N2 + 1,
@@ -180,7 +182,7 @@ bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 			tree(
 				tree(
 					node([enter_if(N2, N4)]),
-					ThenCode),
+					CondCode),
 				tree(
 					node([enter_then]),
 					ThenCode)),
@@ -188,10 +190,11 @@ bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 				node([endof_then, label(N2)]),
 				tree(
 					ElseCode,
-					node([endof_else, label(N4])))))
+					node([endof_else, label(N4)]))))
 	;
 		GoalExpr = pragma_c_code(_, _, _, _, _),
-		Code = node([pragma_c_code])
+		Code = node([pragma_c_code]),
+		N = N0
 	).
 
 %---------------------------------------------------------------------------%
@@ -276,12 +279,12 @@ bytecode_gen__unify(construct(Var, ConsId, Args, Modes), _, _, ByteInfo,
 		Code) :-
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
-	Code = node([construct(ByteVar, ConsId, Tag, ByteArgs)]).
+	Code = node([construct(ByteVar, ConsId, ByteArgs)]).
 bytecode_gen__unify(deconstruct(Var, ConsId, Args, Modes, _), _, _, ByteInfo,
 		Code) :-
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
-	Code = node([deconstruct(ByteVar, ConsId, Tag, ByteArgs)]).
+	Code = node([deconstruct(ByteVar, ConsId, ByteArgs)]).
 bytecode_gen__unify(assign(Target, Source), _, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Target, ByteTarget),
 	bytecode_gen__map_var(ByteInfo, Source, ByteSource),
@@ -291,7 +294,7 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var2, ByteVar2),
 	Code = node([test(ByteVar1, ByteVar2)]).
 bytecode_gen__unify(complicated_unify(_, _, _), _Var, _RHS, _ByteInfo, _Code) :-
-	error("we do not handle complicated unifications yet")
+	error("we do not handle complicated unifications yet").
 
 %---------------------------------------------------------------------------%
 
@@ -340,7 +343,7 @@ bytecode_gen__switch([case(ConsId, Goal) | Cases], ByteInfo, N0, N, Code) :-
 	bytecode_gen__switch(Cases, ByteInfo, N2, N, OtherCode),
 	Code = tree(
 		tree(
-			node([enter_switch_arm(ConsId, Tag, N1)]),
+			node([enter_switch_arm(ConsId, N1)]),
 			ThisCode),
 		tree(
 			node([endof_switch_arm, label(N1)]),
