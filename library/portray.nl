@@ -58,7 +58,7 @@ interactive_display(Depth, Term) :-
 		write(Depth),
 		write('> select arg to display (h for help): '),
 		flushOutput(user_output),
-		read(Num),
+		read(user_input, Num),
 		( Num = 'a' ->
 			write(Term), writeln('.')
 		; Num = 'e' ->
