@@ -474,12 +474,12 @@ install_split_library: scripts dep_library
 	# runs the newly installed compiler, rather than using the
 	# bootstrap compiler.
 	#
-	cd library && \
+	+cd library && \
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
 	{ mv -f *.dir *.dep *.h *.c *.$O *.pic_o *.$A *.so \
 		Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; } && \
-	+for grade in $(GRADE) $(LIBGRADES); do \
+	for grade in $(GRADE) $(LIBGRADES); do \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
 			{ scripts/mercury_cleanup_install; exit 1; }; \
