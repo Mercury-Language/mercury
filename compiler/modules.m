@@ -481,10 +481,10 @@
 :- implementation.
 :- import_module llds_out, passes_aux, prog_out, prog_util, mercury_to_mercury.
 :- import_module prog_io_util, globals, options, intermod, module_qual.
-:- import_module term, varset.
 
 :- import_module string, set, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.
+:- import_module getopt, term, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -949,7 +949,8 @@ warn_no_exports(ModuleName) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_interface_file(module_name, string, item_list, io__state, io__state).
+:- pred write_interface_file(module_name, string, item_list,
+	io__state, io__state).
 :- mode write_interface_file(in, in, in, di, uo) is det.
 
 write_interface_file(ModuleName, Suffix, InterfaceItems) -->
@@ -967,7 +968,10 @@ write_interface_file(ModuleName, Suffix, InterfaceItems) -->
 	{ InterfaceDeclaration = module_defn(VarSet, interface) - Context },
 	{ InterfaceItems1 = [InterfaceDeclaration | InterfaceItems] },
 
+	globals__io_lookup_bool_option(line_numbers, LineNumbers),
+	globals__io_set_option(line_numbers, bool(no)),
 	convert_to_mercury(ModuleName, TmpOutputFileName, InterfaceItems1),
+	globals__io_set_option(line_numbers, bool(LineNumbers)),
 	update_interface(OutputFileName).
 
 		% invoke the shell script `mercury_update_interface'
