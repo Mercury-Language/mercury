@@ -460,7 +460,7 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		  transform(VarSet, Args, Body, NewVarSet, HeadVars, Goal),
 		  map__init(VarTypes),
 		  Clauses = [clause(ModeIds, NewVarSet, VarTypes,
-				HeadVars, Goal) | Clauses0],
+				HeadVars, Goal, Context) | Clauses0],
 		  PredInfo = predicate(TVarSet, Types, Cond, Clauses, Procs,
 				TContext),
 		  map__set(Preds0, PredId, PredInfo, Preds) }
