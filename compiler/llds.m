@@ -58,9 +58,8 @@
 
 :- type label 		--->	entrylabel(string, string, integer, integer)
 				%	 module, predicate, arity, mode #
-			;	label(string, string, int, int, int, int).
-				% module, predicate, arity, mode #,
-				% 			clause #, prog point #
+			;	label(string, string, int, int, int).
+				% module, predicate, arity, mode #, #
 
 :- type tag		=	integer.
 
@@ -230,7 +229,7 @@ output_label(entrylabel(Module, Pred, Arity, Mode)) -->
 	io__write_int(Arity),
 	io__write_string("_"),
 	io__write_int(Mode).
-output_label(label(Module, Pred, Arity, Mode, Clause, Num)) -->
+output_label(label(Module, Pred, Arity, Mode, Num)) -->
 	io__write_string(Module),
 	io__write_string("__"),
 	io__write_string(Pred),
@@ -239,9 +238,6 @@ output_label(label(Module, Pred, Arity, Mode, Clause, Num)) -->
 	io__write_string("_"),
 	io__write_int(Mode),
 	io__write_string("_"),
-	{ Clause1 is Clause - 1,
-	  clause_num_to_string(Clause1, ClauseLetter) },
-	io__write_string(ClauseLetter),
 	io__write_int(Num).
 
 :- pred output_reg(reg, io__state, io__state).
