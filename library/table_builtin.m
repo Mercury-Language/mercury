@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 The University of Melbourne.
+% Copyright (C) 1998-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -537,7 +537,7 @@ table_simple_mark_as_inactive(_) :-
 
 #ifdef	MR_DEBUG_RETRY
 			if (MR_io_tabling_debug) {
-				printf("" in range\n"");
+				printf("" in range\\n"");
 			}
 #endif
 
@@ -546,7 +546,7 @@ table_simple_mark_as_inactive(_) :-
 
 #ifdef	MR_DEBUG_RETRY
 			if (MR_io_tabling_debug) {
-				printf("" not in range\n"");
+				printf("" not in range\\n"");
 			}
 #endif
 			SUCCESS_INDICATOR = MR_FALSE;
