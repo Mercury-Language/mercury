@@ -170,17 +170,8 @@ lookup_switch__figure_out_output_vars(GoalInfo, OutVars) -->
 			% If a variable has a final inst, then it changed
 			% instantiatedness during the switch.
 			map__member(InstMapAfter, Var, Final),
-			(
-				% If the variable's initial inst was bound
-				% then check to see if it has an output mode.
-				CurrentInstMap = reachable(InstMapping),
-				map__search(InstMapping, Var, Initial)
-			->
-				ModeInitial = Initial
-			;
-				ModeInitial = free
-			),
-			mode_is_output(ModuleInfo, (ModeInitial -> Final))
+			instmap_lookup_var(CurrentInstMap, Var, Initial),
+			mode_is_output(ModuleInfo, (Initial -> Final))
 		)) },
 		{ solutions(Lambda, OutVars) }
 	).
