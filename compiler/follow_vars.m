@@ -19,9 +19,9 @@
 % to reflect where variables should be to make the setting up of the arguments
 % of the call as efficient as possible.
 
-% See notes/ALLOCATION for a description of the framework that this pass
-% operates within, and for a description of which goals have their follow_vars
-% field filled in.
+% See compiler/notes/allocation.html for a description of the framework that
+% this pass operates within, and for a description of which goals have their
+% follow_vars field filled in.
 
 %-----------------------------------------------------------------------------%
 

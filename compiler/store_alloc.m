@@ -17,8 +17,8 @@
 % If the appropriate option is set, the code calls the follow_vars module
 % to help guide its decisions.
 
-% See notes/ALLOCATION for a description of the framework that this pass
-% operates within.
+% See compiler/notes/allocation.html for a description of the framework that
+% this pass operates within.
 
 %-----------------------------------------------------------------------------%
 

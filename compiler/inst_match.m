@@ -521,7 +521,7 @@ inst_matches_final_3(any(UniqA), any(UniqB), _, _) :-
 inst_matches_final_3(free, any(Uniq), _, _) :-
 	% We do not yet allow `free' to match `any',
 	% unless the `any' is `clobbered_any' or `mostly_clobbered_any'.
-	% Amoung other things, changing this would break compare_inst
+	% Among other things, changing this would break compare_inst
 	% in modecheck_call.m.
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
 inst_matches_final_3(free, free, _, _).
@@ -529,7 +529,7 @@ inst_matches_final_3(bound(UniqA, ListA), any(UniqB), ModuleInfo, _) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo),
 	% We do not yet allow `free' to match `any'.
-	% Amoung other things, changing this would break compare_inst
+	% Among other things, changing this would break compare_inst
 	% in modecheck_call.m.
 	bound_inst_list_is_ground_or_any(ListA, ModuleInfo).
 inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,

@@ -410,7 +410,7 @@
 
 	% Note: `is_live' records liveness in the sense used by
 	% mode analysis.  This is not the same thing as the notion of liveness
-	% used by code generation.  See compiler/notes/GLOSSARY.
+	% used by code generation.  See compiler/notes/glossary.html.
 :- type is_live		--->	live ; dead.
 
 	% Unifications of insts fall into two categories, "real" and "fake".

@@ -1125,10 +1125,11 @@ modecheck_conj_list(Goals0, Goals) -->
 	{ mode_info_get_errors(ModeInfo0, OldErrors) },
 	mode_info_set_errors([]),
 
-	{ mode_info_get_live_vars(ModeInfo0, LiveVars0) },
-	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
-	{ delay_info__enter_conj(DelayInfo0, DelayInfo1) },
-	mode_info_set_delay_info(DelayInfo1),
+	=(ModeInfo1),
+	{ mode_info_get_live_vars(ModeInfo1, LiveVars1) },
+	{ mode_info_get_delay_info(ModeInfo1, DelayInfo1) },
+	{ delay_info__enter_conj(DelayInfo1, DelayInfo2) },
+	mode_info_set_delay_info(DelayInfo2),
 	mode_info_add_goals_live_vars(Goals0),
 
 	modecheck_conj_list_2(Goals0, [], Goals, RevImpurityErrors),
@@ -1138,7 +1139,8 @@ modecheck_conj_list(Goals0, Goals) -->
 	{ list__append(OldErrors, NewErrors, Errors) },
 	mode_info_set_errors(Errors),
 
-	{ mode_info_get_delay_info(ModeInfo3, DelayInfo4) },
+	=(ModeInfo4),
+	{ mode_info_get_delay_info(ModeInfo4, DelayInfo4) },
 	{ delay_info__leave_conj(DelayInfo4, DelayedGoals, DelayInfo5) },
 	mode_info_set_delay_info(DelayInfo5),
 
@@ -1146,7 +1148,7 @@ modecheck_conj_list(Goals0, Goals) -->
 		% the variables in the delayed goals should not longer
 		% be considered live (the conjunction itself will
 		% delay, and its nonlocals will be made live)
-		mode_info_set_live_vars(LiveVars0)
+		mode_info_set_live_vars(LiveVars1)
 	;
 		[]
 	),
@@ -1157,10 +1159,10 @@ modecheck_conj_list(Goals0, Goals) -->
 		% (making sure we report the errors in the correct order)
 		%
 		{ list__reverse(RevImpurityErrors, ImpurityErrors) },
-		=(ModeInfo4),
-		{ mode_info_get_errors(ModeInfo4, Errors4) },
-		{ list__append(Errors4, ImpurityErrors, Errors5) },
-		mode_info_set_errors(Errors5)
+		=(ModeInfo5),
+		{ mode_info_get_errors(ModeInfo5, Errors5) },
+		{ list__append(Errors5, ImpurityErrors, Errors6) },
+		mode_info_set_errors(Errors6)
 	; { DelayedGoals = [delayed_goal(_DVars, Error, _DGoal)] } ->
 		mode_info_add_error(Error)
 	;

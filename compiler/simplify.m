@@ -563,6 +563,14 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = unify(LT0, RT0, M, U0, C),
 	(
+		% A unification of the form X = X can safely be
+		% optimised away.
+
+		RT0 = var(LT0)
+	->
+		true_goal(Goal - GoalInfo),
+		Info = Info0
+	;
 		RT0 = lambda_goal(PredOrFunc, NonLocals, Vars, 
 			Modes, LambdaDeclaredDet, LambdaGoal0)
 	->
