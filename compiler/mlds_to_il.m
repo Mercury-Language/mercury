@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,16 +34,13 @@
 % [ ] RTTI (io__write -- about half the work required for this is done)
 % [ ] High-level RTTI data
 % [ ] Test unused mode (we seem to create a byref for it)
-% [ ] Char (test unicode support)
 % [ ] auto dependency generation for IL and assembler
 % [ ] build environment improvements (support
 % 	libraries/packages/namespaces better)
 % [ ] verifiable code
 % 	[ ] verifiable function pointers
 % [ ] omit empty cctors
-% [ ] Convert to "high-level data"
 % [ ] Computed gotos need testing.
-% [ ] :- extern doesn't work -- it needs to be treated like pragma c code.
 % [ ] nested modules need testing
 % [ ] Fix issues with abstract types so that we can implement C
 %     pointers as MR_Box rather than MR_Word.
