@@ -138,6 +138,13 @@ disj_gen__generate_semi_disj_2(Goals, _FollowVars, Code) -->
 	},
 	code_info__maybe_save_hp(RestoreHeap, HPSaveCode),
 */
+	code_info__get_globals(Globals),
+		% If we are using constraints, save the current solver state
+		% before the first disjunct.
+	{ globals__lookup_bool_option(Globals,
+			constraints, SaveTicket) },
+
+	code_info__maybe_save_ticket(SaveTicket, SaveTicketCode),
 	code_info__get_next_label(EndLabel),
 	disj_gen__generate_semi_cases(Goals, EndLabel, GoalsCode),
 	code_info__remake_with_store_map,
@@ -145,12 +152,6 @@ disj_gen__generate_semi_disj_2(Goals, _FollowVars, Code) -->
 	code_info__maybe_restore_hp(RestoreHeap, HPRestoreCode),
 	{ Code = tree(HPSaveCode, tree(GoalsCode, HPRestoreCode)) }.
 */
-	code_info__get_globals(Globals),
-		% If we are using constraints, save the current solver state
-		% before the first disjunct.
-	{ globals__lookup_bool_option(Globals,
-			constraints, SaveTicket) },
-	code_info__maybe_save_ticket(SaveTicket, SaveTicketCode),
 	{ Code = tree(SaveTicketCode, GoalsCode) }.
 
 :- pred disj_gen__generate_semi_cases(list(hlds__goal), label,
