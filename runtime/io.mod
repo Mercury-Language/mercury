@@ -484,6 +484,15 @@ mercury____Index___univ_0_0:
 	r2 = -1;
 	proceed();
 
+/* semidet_succeed and semidet_fail, from std_util.nl */
+
+mercury__semidet_succeed_0_0:
+	r1 = TRUE;
+	proceed();
+mercury__semidet_fail_0_0:
+	r1 = FALSE;
+	proceed();
+
 /*---------------------------------------------------------------------------*/
 
 /* from string.nl */
