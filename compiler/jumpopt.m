@@ -183,11 +183,10 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			Mod0 = yes
 		;
 			CallModel = semidet,
-			map__search(Forkmap, RetLabel, Between0),
+			map__search(Forkmap, RetLabel, Between),
 			PrevInstr = livevals(Livevals) 
 		->
-			opt_util__filter_out_livevals(Between0, Between1),
-			list__append(Between1, [livevals(Livevals) - "",
+			list__append(Between, [livevals(Livevals) - "",
 				goto(Proc) - Redirect], NewInstrs),
 			Mod0 = yes
 		;

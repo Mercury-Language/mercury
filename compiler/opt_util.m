@@ -118,7 +118,11 @@
 :- mode opt_util__is_succeed_next(in, out) is semidet.
 
  	% Is the following code a test of r1, followed in both continuations
-	% by a semidet proceed with the same value of r1?
+	% by a semidet proceed? Is the code in both continuations the same,
+	% modulo livevals annotations and the value assigned to r1? Is TRUE
+	% assigned to r1 in the success continuation and FALSE in the failure
+	% continuation? If the answer is yes to all these questions, return
+	% the code shared by the two continuations.
 
 :- pred opt_util__is_forkproceed_next(list(instruction), tailmap,
 	list(instruction)).
@@ -562,16 +566,20 @@ opt_util__is_succeed_next(Instrs0, InstrsBetweenIncl) :-
 opt_util__is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
-	( Instr1 = if_val(lval(reg(r, 1)), label(BranchLabel)) - _ ->
-		map__search(Sdprocmap, BranchLabel, BetweenBranch),
-		opt_util__filter_out_r1(BetweenBranch, yes(true), Between),
+	( Instr1 = if_val(lval(reg(r, 1)), label(JumpLabel)) - _ ->
+		map__search(Sdprocmap, JumpLabel, BetweenJump),
 		opt_util__is_sdproceed_next(Instrs2, BetweenFall),
-		opt_util__filter_out_r1(BetweenFall, yes(false), Between)
-	; Instr1 = if_val(unop(not, lval(reg(r, 1))), label(BranchLabel)) - _ ->
-		map__search(Sdprocmap, BranchLabel, BetweenBranch),
-		opt_util__filter_out_r1(BetweenBranch, yes(false), Between),
+		opt_util__filter_out_r1(BetweenJump, yes(true), BetweenTrue0),
+		opt_util__filter_out_livevals(BetweenTrue0, Between),
+		opt_util__filter_out_r1(BetweenFall, yes(false), BetweenFalse0),
+		opt_util__filter_out_livevals(BetweenFalse0, Between)
+	; Instr1 = if_val(unop(not, lval(reg(r, 1))), label(JumpLabel)) - _ ->
+		map__search(Sdprocmap, JumpLabel, BetweenJump),
 		opt_util__is_sdproceed_next(Instrs2, BetweenFall),
-		opt_util__filter_out_r1(BetweenFall, yes(true), Between)
+		opt_util__filter_out_r1(BetweenJump, yes(false), BetweenFalse0),
+		opt_util__filter_out_livevals(BetweenFalse0, Between),
+		opt_util__filter_out_r1(BetweenFall, yes(true), BetweenTrue0),
+		opt_util__filter_out_livevals(BetweenTrue0, Between)
 	;
 		fail
 	).
