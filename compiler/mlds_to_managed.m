@@ -157,6 +157,13 @@ generate_code(Lang, MLDS) -->
 		io::di, io::uo) is det.
 
 output_language_specific_header_code(csharp, _ModuleName, _Imports) -->
+	get_il_data_rep(DataRep),
+	( { DataRep = il_data_rep(yes, _) } ->
+		io__write_string("#define MR_HIGHLEVEL_DATA\n")
+	;
+		[]
+	),
+
 	io__write_strings([
 		% XXX We may be able to drop the mercury namespace soon,
 		% as there doesn't appear to be any llds generated code
