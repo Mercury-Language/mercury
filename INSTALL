@@ -1,31 +1,58 @@
-Installation instructions:
+#!/bin/sh
+#
+# Installation instructions:
+# 
+# 0.  The source will be distributed with the .dep files and Makefile
+#     already created and up-to-date.  But if you obtained the source
+#     using `cvs checkout', you will need GNU make and you will need to
+#     type
+#
+#	make depend
 
-0.  The source will be distributed with the .dep files and Makefile
-    already created and up-to-date.  But if you obtained the source
-    using `cvs checkout', you will need GNU make and you will need to
-    type
+MAKE="${MAKE:-make} MERCC=mc"
 
-	make depend
+if $MAKE --version 2>&1 | grep "GNU Make"; then
+	GNUMAKE=true
+else
+	GNUMAKE=false
+fi
 
-    When using GNU make, the individual file dependencies are automatically
-    generated on the fly, but the above command is necessary so that
-    the system can determine which files need to be linked in to produce
-    the main executable.
+if $GNUMAKE; then
+	: $MAKE depend
+else
+	cat Makefile.common Makefile.mercury > Makefile.tmp
+	$MAKE -f Makefile.tmp Makefile
+fi
 
-1.  If you don't have GNU make, then type
+$MAKE install_scripts
+ 
+#     When using GNU make, the individual file dependencies are automatically
+#     generated on the fly, but the above command is necessary so that
+#     the system can determine which files need to be linked in to produce
+#     the main executable.
+# 
+# 1.  If you don't have GNU make, then type
+# 
+# 	make ints
 
-	make ints
+if $GNUMAKE; then
+	true
+else
+	$MAKE ints
+fi
 
-    This is necessary because ordinary make doesn't handle transitive
-    dependencies.
+#     This is necessary because ordinary make doesn't handle transitive
+#     dependencies.
+# 
+# 2.  Type
+# 
+# 	make install
 
-2.  Type
+$MAKE install
 
-	make install
-
-3.  (Optional) 
-    Type
-
-	make clean
-
-That's it.
+# 3.  (Optional) 
+#     Type
+# 
+# 	make clean
+# 
+# That's it.
