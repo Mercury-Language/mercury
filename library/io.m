@@ -1087,12 +1087,22 @@
 :- pred io__write_univ(univ, io__state, io__state).
 :- mode io__write_univ(in, di, uo) is det.
 
+% This is the same as io__read_from_string, except that an integer
+% is allowed where a character is expected. This is needed by
+% extras/aditi/aditi.m because Aditi does not have a builtin
+% character type.
+
+:- pred io__read_from_string_with_int_instead_of_char(string, string, int,
+			io__read_result(T), posn, posn).
+:- mode io__read_from_string_with_int_instead_of_char(in, in, in,
+			out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
-:- import_module int, parser, exception.
+:- import_module bool, int, parser, exception.
 :- use_module table_builtin.
 
 :- type io__state ---> io__state(c_pointer).
@@ -1718,20 +1728,48 @@ io__read_anything(Result) -->
 io__read(Result) -->
 	term_io__read_term(ReadResult),
 	io__get_line_number(LineNumber),
-	{ io__process_read_term(ReadResult, LineNumber, Result) }.
+	{ IntInsteadOfChar = no },
+	{ io__process_read_term(IntInsteadOfChar, ReadResult, LineNumber,
+		Result) }.
+
+io__read_from_string_with_int_instead_of_char(FileName, String, Len, Result,
+		Posn0, Posn) :-
+	IntInsteadOfChar = yes,
+	io__read_from_string(IntInsteadOfChar, FileName, String, Len, Result,
+		Posn0, Posn).
 
 io__read_from_string(FileName, String, Len, Result, Posn0, Posn) :-
-	parser__read_term_from_string(FileName, String, Len, Posn0, Posn, ReadResult),
+	IntInsteadOfChar = no,
+	io__read_from_string(IntInsteadOfChar, FileName, String, Len,
+		Result, Posn0, Posn). 
+
+:- pred io__read_from_string(bool, string, string, int, io__read_result(T),
+				posn, posn).
+:- mode io__read_from_string(in, in, in, in, out, in, out) is det.
+
+io__read_from_string(IntInsteadOfChar, FileName, String, Len,
+		Result, Posn0, Posn) :-
+	parser__read_term_from_string(FileName, String, Len,
+		Posn0, Posn, ReadResult),
 	Posn = posn(LineNumber, _, _),
-	io__process_read_term(ReadResult, LineNumber, Result).
+	io__process_read_term(IntInsteadOfChar, ReadResult, LineNumber, Result).
 
-:- pred io__process_read_term(read_term, int, io__read_result(T)).
-:- mode io__process_read_term(in, in, out) is det.
+:- pred io__process_read_term(bool, read_term, int, io__read_result(T)).
+:- mode io__process_read_term(in, in, in, out) is det.
 
-io__process_read_term(ReadResult, LineNumber, Result) :-
+io__process_read_term(IntInsteadOfChar, ReadResult, LineNumber, Result) :-
 	(	
 		ReadResult = term(_VarSet, Term),
-		( term_to_type(Term, Type) ->
+		( 
+			(
+				IntInsteadOfChar = yes,
+				term_to_type_with_int_instead_of_char(Term,
+					Type)
+			;
+				IntInsteadOfChar = no,
+				term_to_type(Term, Type)
+			)
+		->
 			Result = ok(Type)
 		;
 			( \+ term__is_ground(Term) ->
