@@ -167,7 +167,8 @@ detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0), ExtraLives0, Liveness0,
 detect_live_vars_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0),
 		ExtraLives0, Liveness0, LiveSets0, Category,
 			ModuleInfo, ExtraLives, Liveness, LiveSets) :-
-	detect_live_vars_in_goal(Cond0, ExtraLives0, Liveness0, LiveSets0,
+	set__insert(LiveSets0, Liveness0, LiveSets0A),
+	detect_live_vars_in_goal(Cond0, ExtraLives0, Liveness0, LiveSets0A,
 			Category,ModuleInfo, ExtraLives1, Liveness1, LiveSets1),
 	detect_live_vars_in_goal(Then0, ExtraLives1, Liveness1, LiveSets1,
 			Category,ModuleInfo,ExtraLives2, _Liveness2, LiveSets2),
@@ -176,7 +177,8 @@ detect_live_vars_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0),
 
 detect_live_vars_in_goal_2(not(Goal0), ExtraLives0, Liveness0, LiveSets0,
 		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
-	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
+	set__insert(LiveSets0, Liveness0, LiveSets1),
+	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets1,
 		Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(some(_Vs, Goal0), ExtraLives0, Liveness0, LiveSets0,

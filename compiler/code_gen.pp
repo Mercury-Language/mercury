@@ -528,11 +528,18 @@ code_gen__generate_det_prolog(EntryCode, SUsed) -->
 :- mode code_gen__generate_det_epilog(out, in, out) is det.
 
 code_gen__generate_det_epilog(ExitCode) -->
+	code_info__get_instmap(Instmap),
 	code_info__get_arginfo(ArgModes),
 	code_info__get_headvars(HeadVars),
+	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args)},
+	(
+		{ Instmap = unreachable }
+	->
+		{ CodeA = empty }
+	;
+		code_info__setup_call(Args, HeadVars, callee, CodeA)
+	),
 	code_info__get_succip_used(Used),
-	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
-	code_info__setup_call(Args, HeadVars, callee, CodeA),
 	code_info__get_total_stackslot_count(NS0),
 	(
 		{ Used = yes }
@@ -620,11 +627,18 @@ code_gen__generate_semi_prolog(EntryCode, SUsed) -->
 :- mode code_gen__generate_semi_epilog(out, in, out) is det.
 
 code_gen__generate_semi_epilog(Instr) -->
+	code_info__get_instmap(Instmap),
 	code_info__get_arginfo(ArgModes),
 	code_info__get_headvars(HeadVars),
+	{assoc_list__from_corresponding_lists(HeadVars,ArgModes,Args) },
+	(
+		{ Instmap = unreachable }
+	->
+		{ CodeA = empty }
+	;
+		code_info__setup_call(Args, HeadVars, callee, CodeA)
+	),
 	code_info__get_succip_used(Used),
-	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
-	code_info__setup_call(Args, HeadVars, callee, CodeA),
 	code_info__get_total_stackslot_count(NS0),
 	code_info__failure_cont(FailCont),
 	{ code_gen__output_args(Args, LiveArgs0) },
@@ -731,10 +745,17 @@ code_gen__generate_non_prolog(EntryCode, no) -->
 :- mode code_gen__generate_non_epilog(out, in, out) is det.
 
 code_gen__generate_non_epilog(Instr) -->
+	code_info__get_instmap(Instmap),
 	code_info__get_arginfo(ArgModes),
 	code_info__get_headvars(HeadVars),
-	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
-	code_info__setup_call(Args, HeadVars, callee, CodeA),
+	{assoc_list__from_corresponding_lists(HeadVars,ArgModes,Args) },
+	(
+		{ Instmap = unreachable }
+	->
+		{ CodeA = empty }
+	;
+		code_info__setup_call(Args, HeadVars, callee, CodeA)
+	),
 	{ code_gen__output_args(Args, LiveArgs) },
 	{ LiveValCode = node([
 		livevals(LiveArgs) - ""
@@ -918,17 +939,19 @@ code_gen__generate_negation(Goal, Code) -->
 	code_info__get_next_label(SuccLab),
 	code_info__push_failure_cont(known(SuccLab)),
 	code_info__maybe_save_hp(Reclaim, SaveHeapCode),
+	code_info__generate_nondet_saves(SaveCode),
 		% The contained goal cannot be nondet, because if it's
 		% mode-correct, it won't have any output vars, and so
 		% it will be semi-det.
 	code_gen__generate_semi_goal(Goal, GoalCode),
+	code_info__remake_with_call_info,
 	code_info__maybe_restore_hp(Reclaim, RestoreHeapCode),
 	code_info__pop_failure_cont,
 	code_info__generate_failure(FailCode),
 	{ SuccessCode = node([
 		label(SuccLab) - "negated goal failed, so proceed"
 	]) },
-	{ Code = tree(tree(SaveHeapCode, GoalCode),
+	{ Code = tree(tree(tree(SaveHeapCode, SaveCode), GoalCode),
 			tree(FailCode, tree(SuccessCode, RestoreHeapCode))) }.
 
 %---------------------------------------------------------------------------%
