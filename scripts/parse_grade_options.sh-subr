@@ -19,9 +19,9 @@
 #
 #---------------------------------------------------------------------------#
 
-	--high-level-code)
+	--high-level-code|-H)
 		highlevel_code=true ;;
-	--no-high-level-code)
+	--no-high-level-code|-H-)
 		highlevel_code=false ;;
 
 	--high-level-data)
