@@ -988,6 +988,11 @@ negatively through some path along its call graph.
 Disable warnings about constructs which are so
 simple that they are likely to be programming errors.
 
+@sp 1
+@item --warn-duplicate-calls
+Warn about multiple calls to a predicate with the same
+input arguments.
+
 @end table
 
 @node Verbosity options
