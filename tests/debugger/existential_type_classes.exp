@@ -29,15 +29,15 @@ mdb> P
 mdb> continue -a
       10:      6  2 CALL pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		blah
+       HeadVar__1           		"blah"
 mdb> 
       11:      7  3 CALL pred existential_type_classes:foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		blah
+       HeadVar__1           		"blah"
 mdb> 
       12:      8  4 CALL pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__string_0_____existential_type_classes__foo_2/2-0 (det) 
 mdb> P
-       HeadVar__1           		blah
+       HeadVar__1           		"blah"
 mdb> continue -a
       13:      9  5 CALL pred existential_type_classes:string_foo/2-0 (det) 
       14:      9  5 EXIT pred existential_type_classes:string_foo/2-0 (det) 
@@ -45,7 +45,7 @@ mdb> continue -a
       16:      7  3 EXIT pred existential_type_classes:foo/2-0 (det) 
       17:      6  2 EXIT pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		blah
+       HeadVar__1           		"blah"
        HeadVar__2           		4
 mdb> continue -a
       18:     10  2 CALL func existential_type_classes:my_exist_t/1-0 (det) 
@@ -137,7 +137,7 @@ mdb> continue -a
       57:     28  2 EXIT func existential_type_classes:call_my_univ_value/2-0 (det) 
       58:     30  2 CALL pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		something
+       HeadVar__1           		"something"
 mdb> continue -S
 84
 4

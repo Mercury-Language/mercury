@@ -9,7 +9,7 @@ mdb> vars
         1 HeadVar__2
         2 HeadVar__4
 mdb> print *
-       HeadVar__1           		interpreter.m
+       HeadVar__1           		"interpreter.m"
        HeadVar__2           		[]
        HeadVar__4           		state('<<c_pointer>>')
 mdb> goto 30
@@ -18,7 +18,7 @@ Consulting file `interpreter.m'...
 mdb> print *
        HeadVar__1           		two('<<c_pointer>>', "<standard input>", empty, empty)
        HeadVar__2           		'<<c_pointer>>'
-       HeadVar__3           		interpreter.m
+       HeadVar__3           		"interpreter.m"
 mdb> finish -a
       31:     17  9 THEN pred tree234:set2/4-1 (det) c2;t;
       32:     17  9 SWTC pred tree234:set2/4-1 (det) c2;t;c2;s1;
@@ -26,7 +26,7 @@ mdb> finish -a
 mdb> print *
        HeadVar__1           		two('<<c_pointer>>', "<standard input>", empty, empty)
        HeadVar__2           		'<<c_pointer>>'
-       HeadVar__3           		interpreter.m
+       HeadVar__3           		"interpreter.m"
        HeadVar__4           		three('<<c_pointer>>', "interpreter.m", '<<c_pointer>>', "<standard input>", empty, empty, empty)
 mdb> 
       34:     16  8 EXIT pred tree234:set/4-1 (det) 

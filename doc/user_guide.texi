@@ -3535,15 +3535,14 @@ together with an ordinal number for each variable.
 @itemx print @var{num}
 Prints the value of the variable in the current environment
 with the given name, or with the given ordinal number.
-@sp 1
-At the moment this command prints the entire value of the variable,
-even if this is very big.
+This is a non-interactive version of the @samp{browse}
+command (see below).  Various settings
+which affect the way that terms are printed out
+(including e.g. the maximum term depth) can be set using
+the @samp{set} command in the browser.
 @sp 1
 @item print *
 Prints the values of all the known variables in the current environment.
-@sp 1
-At the moment this command prints the entire value of every variable,
-even if this is very big.
 @sp 1
 @item browse @var{name}
 @itemx browse @var{num}
@@ -3551,13 +3550,15 @@ Invokes an interactive term browser to browse the value of the
 variable in the current environment with the given ordinal number or
 with the given name.
 @sp 1
-Unlike the @samp{print} command, the depth and size of printed terms
-may be controlled.  The interactive term browser allows you
+The interactive term browser allows you
 to selectively examine particular subterms. 
+The depth and size of printed terms
+may be controlled. 
 The displayed terms may also be clipped to fit
 within a single screen.
 @sp 1
 For further documentation on the interactive term browser,
+invoke the @samp{browse} command from within @samp{mdb} and then
 type @samp{help} at the @samp{browser>} prompt.
 @sp 1
 @item stack [-d]

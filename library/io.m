@@ -1030,6 +1030,11 @@
 :- pred io__set_op_table(ops__table, io__state, io__state).
 :- mode io__set_op_table(di, di, uo) is det.
 
+% For use by browser/browse.m:
+
+:- pred io__write_univ(univ, io__state, io__state).
+:- mode io__write_univ(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1790,9 +1795,6 @@ io__write(Stream, X) -->
 io__write(Term) -->
 	{ type_to_univ(Term, Univ) },
 	io__write_univ(Univ).
-
-:- pred io__write_univ(univ, io__state, io__state).
-:- mode io__write_univ(in, di, uo) is det.
 
 io__write_univ(Univ) -->
 	{ ops__max_priority(MaxPriority) },

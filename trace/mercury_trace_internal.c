@@ -15,6 +15,7 @@
 #include "mercury_trace_internal.h"
 #include "mercury_trace_alias.h"
 #include "mercury_trace_help.h"
+#include "mercury_trace_browse.h"
 #include "mercury_trace_spy.h"
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
@@ -1756,15 +1757,10 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	/*
 	** XXX The printing of type_infos is buggy at the moment
 	** due to the fake arity of the type private_builtin:typeinfo/1.
-	**
-	** XXX The printing of large data structures is painful
-	** at the moment due to the lack of a true browser.
 	*/
 
 	if ((strncmp(name, "TypeInfo", 8) == 0)
-	|| (strncmp(name, "TypeClassInfo", 13) == 0)
-	|| (strncmp(name, "ModuleInfo", 10) == 0)
-	|| (strncmp(name, "HLDS", 4) == 0))
+	|| (strncmp(name, "TypeClassInfo", 13) == 0))
 		return;
 
 	/* The initial blanks are to visually separate */
@@ -1791,20 +1787,13 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 			base_sp, base_curfr, type_params, &type_info, &value);
 	if (print_value) {
 		if (browse) {
-			MR_TRACE_CALL_MERCURY(
-				ML_browse(type_info, value);
-			);
+			MR_trace_browse(type_info, value);
 		} else {
 			printf("\t");
 			fflush(stdout);
-			MR_TRACE_CALL_MERCURY(
-				MR_write_variable(type_info, value);
-			);
+			MR_trace_print(type_info, value);
 		}
 	}
-
-	/* XXX if browse? */
-	printf("\n");
 }
 
 static const char *
