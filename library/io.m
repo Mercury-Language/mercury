@@ -705,9 +705,6 @@
 :- type io__input_stream ==	io__stream.
 :- type io__output_stream ==	io__stream.
 
-:- type io__binary_stream_names ==	map(io__stream, string).
-:- type io__binary_stream_putback ==	map(io__stream, list(char)).
-
 :- type io__binary_input_stream ==	io__stream.
 :- type io__binary_output_stream ==	io__stream.
 
