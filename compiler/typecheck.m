@@ -5367,16 +5367,14 @@ report_error_undef_pred(TypeCheckInfo, PredOrFunc - PredCallId) -->
 
 maybe_report_missing_import(TypeCheckInfo, ModuleQualifier) -->
 	{ typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo) },
-	{ module_info_name(ModuleInfo, ThisModule) },
-	{ module_info_get_imported_module_specifiers(ModuleInfo,
-		ImportedModules) },
 	(
-		% the visible modules are the current module, any
-		% imported modules, and any ancestor modules.
-		{ ModuleQualifier \= ThisModule },
-		{ \+ set__member(ModuleQualifier, ImportedModules) },
-		{ get_ancestors(ThisModule, ParentModules) },
-		{ \+ list__member(ModuleQualifier, ParentModules) }
+		% if the module qualifier couldn't match any of the
+		% visible modules, then we report that the module
+		% has not been imported
+		\+ (
+			{ visible_module(VisibleModule, ModuleInfo) },
+			{ match_sym_name(ModuleQualifier, VisibleModule) }
+		)
 	->
 		io__write_string("\n"),
 		{ typecheck_info_get_context(TypeCheckInfo, Context) },
@@ -5386,6 +5384,25 @@ maybe_report_missing_import(TypeCheckInfo, ModuleQualifier) -->
 		io__write_string("' has not been imported).\n")
 	;
 		io__write_string(".\n")
+	).
+
+:- pred visible_module(module_name, module_info).
+:- mode visible_module(out, in) is multi.
+
+visible_module(VisibleModule, ModuleInfo) :-
+	module_info_name(ModuleInfo, ThisModule),
+	module_info_get_imported_module_specifiers(ModuleInfo, ImportedModules),
+	%
+	% the visible modules are the current module, any
+	% imported modules, and any ancestor modules.
+	%
+	(
+		VisibleModule = ThisModule
+	;
+		set__member(VisibleModule, ImportedModules)
+	;
+		get_ancestors(ThisModule, ParentModules),
+		list__member(VisibleModule, ParentModules)
 	).
 
 :- pred report_error_func_instead_of_pred(typecheck_info, pred_or_func,

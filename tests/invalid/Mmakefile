@@ -72,6 +72,7 @@ SOURCES= \
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
 	undef_mode.m \
+	undef_mod_qual.m \
 	undef_symbol.m \
 	undef_type.m \
 	unify_mode_error.m \

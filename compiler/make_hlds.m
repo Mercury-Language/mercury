@@ -231,7 +231,7 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 	; { ModuleDefn = import(module(Specifiers)) } ->
 		{ Status = Status0 },
 		{ Status = item_status(IStat, _) },
-		( { IStat = local ; IStat = exported } ->
+		( { status_defined_in_this_module(IStat, yes) } ->
 			{ module_add_imported_module_specifiers(Specifiers,
 				Module0, Module) }
 		;
@@ -240,7 +240,7 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 	; { ModuleDefn = use(module(Specifiers)) } ->
 		{ Status = Status0 },
 		{ Status = item_status(IStat, _) },
-		( { IStat = local ; IStat = exported } ->
+		( { status_defined_in_this_module(IStat, yes) } ->
 			{ module_add_imported_module_specifiers(Specifiers,
 				Module0, Module) }
 		;
