@@ -6531,7 +6531,14 @@ split_into_submodules(ModuleName, Items0, ModuleList, !IO) :-
 	InParentInterface = no,
 	split_into_submodules_2(ModuleName, Items0, InParentInterface,
 		Items, ModuleList, !IO),
-	require(unify(Items, []), "modules.m: items after end_module"),
+	%
+	% Check that there are no items after the end_module declaration.
+	%
+	( Items = [ _ - Context | _] ->
+		report_items_after_end_module(Context, !IO)
+	;
+		true
+	),
 	%
 	% check for modules declared as both nested and separate sub-modules
 	%
@@ -6743,6 +6750,13 @@ report_error_duplicate_module_decl(ModuleName - Context) -->
 	prog_out__write_context(Context),
 	io__write_string("  a separate sub-module and a nested sub-module.\n"),
 	io__set_exit_status(1).
+
+:- pred report_items_after_end_module(prog_context::in, io::di, io::uo) is det.
+
+report_items_after_end_module(Context, !IO) :-
+	ErrorPieces = [words("Error: item(s) after end_module delcaration.")],
+	write_error_pieces(Context, 0, ErrorPieces, !IO),
+	io.set_exit_status(1, !IO).		
 
 	% Given a module (well, a list of items), extract the interface
 	% part of that module, i.e. all the items between `:- interface'

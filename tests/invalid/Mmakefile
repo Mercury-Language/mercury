@@ -31,6 +31,7 @@ MULTIMODULE_PROGS= \
 	undef_mod_qual
 
 SINGLEMODULE= \
+	after_end_module \
 	any_mode \
 	any_should_not_match_bound \
 	assert_in_interface \
