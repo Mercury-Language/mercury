@@ -17,23 +17,8 @@
 %		least as deterministic as their declaration. This uses
 %		a form of the local analysis pass.
 
-% As originally written, this module had a major design flaw.
-% The interface
-%
-% 	:- pred determinism_pass(module_info::in, module_info::out).
-%
-% did not cater for the following:
-%
-%	o The determinism pass needs to output error and/or warning
-%	  messages
-%	o The determinism pass needs access to the command-line options
-%	  (eg. in order to determine the verbosity of its messages)
-%	o The determinism pass should also record whether or not
-%	  any errors occurred (although perhaps this should be recorded as
-%	  part of the module_info).
-
-% Also, if we are to avoid global analysis for predicates with
-% declarations, then it must be an _error_, not just a warning,
+% If we are to avoid global analysis for predicates with
+% declarations, then it must be an error, not just a warning,
 % if the determinism checking step detects that the determinism
 % annotation was wrong.  If we were to issue just a warning, then
 % we would have to override the determinism annotation, and that
@@ -44,6 +29,8 @@
 % have to _make_ the predicate deterministic (or semideterministic)
 % by inserting run-time checking code which calls error/1 if the
 % predicate really isn't deterministic (semideterministic).
+
+% XXX we should record errors by calling moduleinfo_incr_errors
 
 %-----------------------------------------------------------------------------%
 
@@ -66,11 +53,11 @@ determinism_pass(ModuleInfo0, ModuleInfo) -->
 	{ determinism_declarations(ModuleInfo0, DeclaredProcs,
 		UndeclaredProcs) },
 	lookup_option(verbose, bool(Verbose)),
-	maybe_write_string(Verbose, "Doing determinism analysis passes "),
+	maybe_write_string(Verbose, "% Doing determinism analysis pass(es) "),
 	maybe_flush_output(Verbose),
 	global_analysis_pass(ModuleInfo0, UndeclaredProcs, ModuleInfo1),
 	maybe_write_string(Verbose, " done\n"),
-	maybe_write_string(Verbose, "Doing determinism checking pass... "),
+	maybe_write_string(Verbose, "% Doing determinism checking pass... "),
 	maybe_flush_output(Verbose),
 	global_checking_pass(ModuleInfo1, DeclaredProcs, ModuleInfo),
 	maybe_write_string(Verbose, " done\n").
@@ -154,12 +141,12 @@ segregate_procs_2(ModuleInfo, [PredId - PredMode|PredProcs],
 	predinfo_procedures(Pred, Procs),
 	map__lookup(Procs, PredMode, Proc),
 	procinfo_declared_determinism(Proc, Category),
-	(if
+	(
 		Category = unspecified
-	then
+	->
 		UndeclaredProcs1 = [PredId - PredMode|UndeclaredProcs0],
 		DeclaredProcs1 = DeclaredProcs0
-	else
+	;
 		DeclaredProcs1 = [PredId - PredMode|DeclaredProcs0],
 		UndeclaredProcs1 = UndeclaredProcs0
 	),
@@ -192,7 +179,7 @@ global_analysis_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 				module_info, maybe_changed).
 :- mode global_analysis_single_pass(input, input, input, output, output).
 
-:- global_analysis_single_pass(_, A, _, _) when A.	% NU-Prolog indexing.
+:- global_analysis_single_pass(_, A, _, _, _) when A.	% NU-Prolog indexing.
 
 global_analysis_single_pass(ModuleInfo, [], Changed, ModuleInfo, Changed).
 global_analysis_single_pass(ModuleInfo0, [PredId - PredMode|PredProcs], State0,
@@ -212,7 +199,7 @@ global_analysis_single_pass(ModuleInfo0, [PredId - PredMode|PredProcs], State0,
 
 det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 		% Get the procinfo structure for this procedure
-	moduleinfo_preds(ModuleInfo, Preds0),
+	moduleinfo_preds(ModuleInfo0, Preds0),
 	map__lookup(Preds0, PredId, Pred0),
 	predinfo_procedures(Pred0, Procs0),
 	map__lookup(Procs0, PredMode, Proc0),

@@ -1346,8 +1346,9 @@ unravel_unification(term_functor(F, As, C), term_variable(Y), MC, SC,
 
 	% If we find a unification of the form `f1(...) = f2(...)',
 	% then we replace it with `NewVars1 = ..., NewVars2 = ...,
-	% f1(NewVars1) = f2(NewVars2)'.  Note that we can't simplify it
-	% yet, because we might simplify away type errors.
+	% Tmp = f1(NewVars1), Tmp = f2(NewVars2)'. 
+	% Note that we can't simplify it yet, because we might simplify
+	% away type errors.
 
 unravel_unification(term_functor(LeftF, LeftAs, LeftC),
 			term_functor(RightF, RightAs, RightC),
@@ -1362,13 +1363,19 @@ unravel_unification(term_functor(LeftF, LeftAs, LeftC),
 	make_functor_cons_id(RightF, RightArity, RightConsId),
 	LeftArgContext = functor(LeftConsId, MainContext, SubContext),
 	RightArgContext = functor(RightConsId, MainContext, SubContext),
-	create_atomic_unification(term_functor(LeftF, LeftHeadArgs, LeftC),
-			term_functor(RightF, RightHeadArgs, RightC),
+	varset__new_var(VarSet2, TmpVar, VarSet3),
+	create_atomic_unification(term_variable(TmpVar),
+			term_functor(LeftF, LeftHeadArgs, LeftC),
 			MainContext, SubContext, Goal0),
-	insert_arg_unifications(RightHeadVars, RightAs, RightArgContext, Goal0,
-				VarSet2, Goal1, VarSet3),
-	insert_arg_unifications(LeftHeadVars, LeftAs, LeftArgContext, Goal1,
-				VarSet3, Goal, VarSet).
+	create_atomic_unification(term_variable(TmpVar),
+			term_functor(RightF, RightHeadArgs, RightC),
+			MainContext, SubContext, Goal1),
+	goalinfo_init(GoalInfo),
+	Goal2 = conj([Goal0, Goal1]) - GoalInfo,
+	insert_arg_unifications(RightHeadVars, RightAs, RightArgContext,
+				Goal2, VarSet3, Goal3, VarSet4),
+	insert_arg_unifications(LeftHeadVars, LeftAs, LeftArgContext, Goal3,
+				VarSet4, Goal, VarSet).
 
 	% create the hlds__goal for a unification which cannot be
 	% further simplified, filling in all the as yet

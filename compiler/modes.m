@@ -1094,9 +1094,15 @@ modecheck_unification(term_functor(_, _, _), term_functor(_, _, _),
 
 bind_args(ground, Args, InstMap0, InstMap) :-
 	ground_args(Args, InstMap0, InstMap).
-
-bind_args(bound([functor(_, InstList)]), Args, InstMap0, InstMap) :-
-	bind_args_2(Args, InstList, InstMap0, InstMap).
+bind_args(bound(List), Args, InstMap0, InstMap) :-
+	( List = [] ->
+		% the code is unreachable - in an attempt to avoid spurious
+		% mode errors, we ground the arguments
+		ground_args(Args, InstMap0, InstMap)
+	;
+		List = [functor(_, InstList)],
+		bind_args_2(Args, InstList, InstMap0, InstMap)
+	).
 
 :- pred bind_args_2(list(term), list(inst), instmap, instmap).
 :- mode bind_args_2(in, in, in, out).
@@ -1123,8 +1129,16 @@ ground_args([Arg | Args], InstMap0, InstMap) :-
 
 get_mode_of_args(ground, ArgInsts, ArgModes) :-
 	mode_ground_args(ArgInsts, ArgModes).
-get_mode_of_args(bound([functor(_Name, ArgInstsB)]), ArgInstsA, ArgModes) :-
-	get_mode_of_args_2(ArgInstsA, ArgInstsB, ArgModes).
+get_mode_of_args(bound(List), ArgInstsA, ArgModes) :-
+	( List = [] ->
+		% the code is unreachable, so in an attempt to
+		% avoid spurious mode errors we assume that the
+		% args are ground
+		mode_ground_args(ArgInstsA, ArgModes)
+	;
+		List = [functor(_Name, ArgInstsB)],
+		get_mode_of_args_2(ArgInstsA, ArgInstsB, ArgModes)
+	).
 
 :- pred get_mode_of_args_2(list(inst), list(inst), list(mode)).
 :- mode get_mode_of_args_2(in, in, out).
