@@ -261,8 +261,8 @@ containing calls to automatically generated initialization functions
 contained in the C code of the modules of the program:
 
 @example
-c2init @var{module1}.c @var{module2}.c ... > @var{main_module}_init.c,
-mgnuc -c @var{main_module}_init.c
+c2init @var{module1}.c @var{module2}.c ... > @var{main-module}_init.c,
+mgnuc -c @var{main-module}_init.c
 @end example
 
 The @samp{c2init} command line must contain
@@ -278,7 +278,7 @@ You then link the object code of each module
 with the object code of the initialization file to yield the executable:
 
 @example
-ml -o @var{main_module} @var{module1}.o @var{module2}.o ... @var{main_module}_init.o
+ml -o @var{main-module} @var{module1}.o @var{module2}.o ... @var{main_module}_init.o
 @end example
 
 @samp{ml}, the Mercury linker, is another shell script
@@ -289,7 +289,7 @@ so that error messages refer to predicate and function names from
 the Mercury source code rather than to the names used in the intermediate
 C code.
 
-The above command puts the executable in the file @file{@var{main_module}}.
+The above command puts the executable in the file @file{@var{main-module}}.
 The same command line without the @samp{-o} option
 would put the executable into the file @file{a.out}.
 
@@ -953,7 +953,7 @@ you will be assured of being able to get control
 at every execution point that represents a potential trace event,
 which is very convenient.
 
-The two drawbacks of using a debugging grade,
+The two drawbacks of using a debugging grade
 are the large size of the resulting executables,
 and the fact that often you discover that you need to debug a big program
 only after having built it in a non-debugging grade.
@@ -990,19 +990,19 @@ has trace level @samp{deep} or @samp{shallow}.
 
 The intended uses of these trace levels are as follows.
 
-@table @emph
-@item
+@table @samp
+@item deep
 You should compile a module with trace level @samp{deep}
 if you suspect there may be a bug in the module,
 or if you think that being able to examine what happens inside that module
 can help you locate a bug.
-@item
+@item shallow
 You should compile a module with trace level @samp{shallow}
 if you believe the code of the module is reliable and unlikely to have bugs,
 but you still want to be able to get control at calls to and returns from
 any predicates and functions defined in the module,
 and if you want to be able to see the arguments of those calls.
-@item
+@item none
 You should compile a module with trace level @samp{none}
 only if you are reasonably confident that the module is reliable,
 and if you believe that knowing what calls other modules make to this module
@@ -1151,7 +1151,7 @@ to specify the command line of the program later.
 
 When the debugger starts up, as part of its initialization
 it executes commands from the following three sources, in order:
-@table @emph
+@enumerate
 @item
 The file named by the @samp{MERCURY_DEBUGGER_INIT} environment variable.
 Usually, @samp{mdb} sets this variable to point to a file
@@ -1169,7 +1169,7 @@ You can put your usual aliases and settings here.
 @item
 The file named @samp{.mdbrc} in the current working directory.
 You can put program-specific aliases and settings here.
-@end table
+@end enumerate
 
 @node Mercury debugger concepts
 @section Mercury debugger concepts
@@ -1598,7 +1598,7 @@ have since scrolled off the screen.
 @subsection Breakpoint commands
 @sp 1
 @table @code
-@item break [-PSaei] @var{proc_spec}
+@item break [-PSaei] @var{proc-spec}
 @c <module name> <predicate name> [<arity> [<mode> [<predfunc>]]]
 Puts a break point on the specified procedure.
 @sp 1
@@ -1704,7 +1704,7 @@ which should correspond to the number of lines available on the terminal.
 @item scroll
 Reports whether user scroll control is enabled and what the window size is.
 @sp 1
-@item alias @var{name} @var{command} [@var{command_parameter} ...]
+@item alias @var{name} @var{command} [@var{command-parameter} ...]
 Introduces @var{name} as an alias
 for the given command with the given parameters.
 Whenever a command line has @var{name} as its first word,
@@ -2560,7 +2560,7 @@ don't try to infer the determinism, just report an error.
 
 @sp 1
 @item --type-inference-iteration-limit @var{n}
-Perform at most @var{n} passes of mode inference (default: 60).
+Perform at most @var{n} passes of type inference (default: 60).
 
 @sp 1
 @item --mode-inference-iteration-limit @var{n}
@@ -3391,7 +3391,7 @@ rather than in the current directory.
 
 @sp 1
 @item -?
-@item -h
+@itemx -h
 @itemx --help
 Print a usage message.
 
@@ -3600,10 +3600,10 @@ if the program was built in a parallel grade.
 @c and to print the result of this time measurement.
 
 @sp 1
-@item -T @var{time_method}
+@item -T @var{time-method}
 If the executable was compiled in a grade that includes time profiling,
 this option specifies what time is counted in the profile.
-@var{time_method} must have one of the following values:
+@var{time-method} must have one of the following values:
 
 @sp 1
 @table @code
@@ -3766,7 +3766,7 @@ stored in files with a @file{.no} suffix.
 You can link these together using the command
 
 @example
-mnl -o @var{main_module} @var{filename1}.no ...
+mnl -o @var{main-module} @var{filename1}.no ...
 @end example
 
 Ignore any warnings such as
@@ -3779,11 +3779,11 @@ Warning: !/0 redefined
 
 @samp{mnl}, the Mercury NU-Prolog linker,
 will put the executable (actually a shell script invoking a save file)
-into the file @file{@var{main_module}.nu}.
+into the file @file{@var{main-module}.nu}.
 This can be executed normally using
 
 @example
-./@var{main_module}.nu @var{arguments}
+./@var{main-module}.nu @var{arguments}
 @end example
 
 Alternatively, one can execute such programs using @samp{mnp},
