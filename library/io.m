@@ -211,23 +211,20 @@
 :- mode io__write_many(in, in, di, uo) is det.
 %	writes a polyglot to a specified stream.
 
-:- pred io__write_anything(T, io__state, io__state).
-:- mode io__write_anything(in, di, uo) is det.
+:- pred io__write(T, io__state, io__state).
+:- mode io__write(in, di, uo) is det.
 %		Writes its argument to the current output stream.
 %		The argument may be of (almost) any type.
 %		(Any type except a higher-order predicate type,
 %		or some of the builtin types such as io__state itself.)
-%		XXX io__write_anything is NOT YET IMPLEMENTED.
-%		It will probably also be renamed `io__write'.
+%		XXX Not all quoting of atoms is done correctly.
 
-:- pred io__write_anything(io__output_stream, T, io__state, io__state).
-:- mode io__write_anything(in, in, di, uo) is det.
+:- pred io__write(io__output_stream, T, io__state, io__state).
+:- mode io__write(in, in, di, uo) is det.
 %		Writes its argument to the specified stream.
 %		The argument may be of (almost) any type.
 %		(Any type except a higher-order predicate type,
 %		or some of the builtin types such as io__state itself.)
-%		XXX io__write_anything is NOT YET IMPLEMENTED.
-%		It will probably also be renamed `io__write'.
 
 :- pred io__flush_output(io__state, io__state).
 :- mode io__flush_output(di, uo) is det.
@@ -985,16 +982,9 @@ io__write_many( Stream, [ f(F) | Rest ]) -->
 	io__write_float(Stream, F),
 	io__write_many(Stream, Rest).
 
-io__write_anything(X) -->
-	{ type_to_term(X, Term) },
-	{ varset__init(VarSet) },
-	term_io__write_term(VarSet, Term).
-
-io__write_anything(Stream, X) -->
-	{ type_to_term(X, Term) },
-	{ varset__init(VarSet) },
+io__write(Stream, X) -->
 	io__set_output_stream(Stream, OrigStream),
-	term_io__write_term(VarSet, Term),
+	io__write(X),
 	io__set_output_stream(OrigStream, _Stream).
 
 %-----------------------------------------------------------------------------%
@@ -1625,6 +1615,11 @@ void sys_init_io_run_module(void) {
 	update_io(IO0, IO);
 }").
 
+:- pragma(c_code, io__write(Anything::in, IO0::di, IO::uo), "{
+	mercury_print_type((Word *) TypeInfo_for_T, Anything);
+	update_io(IO0, IO);
+}").
+
 :- pragma(c_code, io__flush_output(IO0::di, IO::uo), "
 	if (fflush(mercury_current_text_output->file) < 0) {
 		mercury_output_error(mercury_current_text_output);
@@ -2044,3 +2039,420 @@ void sys_init_unify_external_state_module(void) {
 }
 
 ").
+
+/*---------------------------------------------------------------------------*/
+
+% Code for io__write.
+
+:- pragma(c_code, "
+
+	/* Prototypes */
+
+void mercury_print_const(Word data_value, Word entry_value);
+void mercury_print_enum(Word data_value, Word entry_value);
+void mercury_print_simple(Word data_value, Word entry_value, Word * type_info);
+void mercury_print_builtin(Word data_value, Word entry_value);
+void mercury_print_complicated(Word data_value, Word entry_value, 
+		Word * type_info);
+
+void mercury_print_type(Word *type_info, Word data_value);
+Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
+	int *allocated);
+
+
+	/* 
+	 * Given a type_info (term_type_info) which contains a
+	 * base_type_info pointer and possibly other type_infos
+	 * giving the values of the type parameters of this type,
+	 * and a pseudo-type_info (arg_pseudo_type_info), which contains a
+	 * base_type_info pointer and possibly other type_infos
+	 * giving EITHER
+	 * 	- the values of the type parameters of this type,
+	 * or	- an indication of the type parameter of the
+	 * 	  term_type_info that should be substituted here
+	 *
+	 * This returns a fully instantiated type_info, a version of the
+	 * arg_pseudo_type_info with all the type variables filled in.
+	 * If there are no type variables to fill in, we return the
+	 * arg_pseudo_type_info, unchanged. Otherwise, we allocate
+	 * memory using malloc().  If memory is allocated, the integer
+	 * argument (passed by reference) is set to 1, otherwise it is
+	 * set to 0.  It is the caller's responsibility to check whether 
+	 * the call to make_type_info allocated memory, and if so, free
+	 * it.
+	 *
+	 * This code could be tighter. In general, we want to
+	 * handle our own allocations rather than using malloc().
+	 * Also, we might be able to do only one traversal.
+	 */
+
+Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
+	int *allocated) 
+{
+	int arity, i;
+	Word base_type_info;
+	Word *type_info;
+
+	*allocated = 0;
+
+		/* The arg_pseudo_type_info might be a polymorphic variable */
+
+	if ((Word) arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
+		return (Word *) term_type_info[(Word) arg_pseudo_type_info];
+	}
+
+
+	base_type_info = arg_pseudo_type_info[0];
+
+		/* no arguments - optimise common case */
+	if (base_type_info == 0) {
+		return arg_pseudo_type_info;
+	} else {
+		arity = ((Word *) base_type_info)[0];
+	}
+
+	for (i = arity; i > 0; i--) {
+		if (arg_pseudo_type_info[i] < TYPELAYOUT_MAX_VARINT) {
+			break;
+		}
+	}
+
+		/* 
+		 * See if any of the arguments were polymorphic.
+		 * If so, substitute.
+		 */
+	if (i > 0) {
+		type_info = checked_malloc(arity * sizeof(Word));
+		*allocated = 1;
+		for (i = 0; i <= arity; i++) {
+			if (arg_pseudo_type_info[i] < TYPELAYOUT_MAX_VARINT) {
+				type_info[i] = term_type_info[arg_pseudo_type_info[i]];
+				if (type_info[i] < TYPELAYOUT_MAX_VARINT) {
+					fatal_error(""Error! Can't instantiate type variable."");
+				}
+			} else {
+				type_info[i] = arg_pseudo_type_info[i];
+			}
+		}
+		return type_info;
+	} else {
+		return arg_pseudo_type_info;
+	}
+
+}
+
+/*
+ * Print a constant value
+ */
+
+void
+mercury_print_const(Word data_value, Word entry_value) 
+{
+
+#ifdef DEBUG_IO__WRITE
+	printf(""This is a constant functor, %ld of %ld with this tag\n"",
+            data_value + 1, ((Word *) entry_value)[1]); 
+#endif
+
+	/* the functors are stored after the enum_indicator and
+	 * the number of functors
+	 */
+	printf(""%s"", (char *) ((Word *) entry_value)[data_value + 2]);	
+}
+
+void
+mercury_print_enum(Word data_value, Word entry_value) 
+{
+
+#ifdef DEBUG_IO__WRITE
+	printf(""This is a constant functor, %ld of %ld in this enum\n"",
+            data_value + 1, entry_value[1]); 
+#endif
+
+	/* the functors are stored after the enum_indicator and
+	 * the number of functors
+	 */
+
+	printf(""%s"", (char *) ((Word *) entry_value)[data_value + 2]);	
+}
+
+
+/* 
+ * Simple tags - type_layout points to an array containing
+ * the arity, then a pseudo-typeinfo for each argument.
+ *
+ * Data word points to an array of argument data.
+ */
+void
+mercury_print_simple(Word data_value, Word entry_value, Word * type_info) 
+{
+	int num_args, i;
+	int allocated = 0;
+
+	num_args = field(0, (Word *) entry_value, 0);
+
+#ifdef DEBUG_IO__WRITE
+	printf(""This functor has %d arguments.\n"", num_args); 
+#endif
+	
+	printf(""%s("", (char *) ((Word *) entry_value)[num_args + 1]);
+
+	for (i = 0; i < num_args ; i++) {
+		Word * arg_pseudo_type_info;
+		Word * arg_type_info;
+
+		if (i != 0) {
+			printf("", "");
+		}
+
+#ifdef DEBUG_IO__WRITE
+		printf(""Argument %d of %d is:\n"", i+1, num_args);
+#endif
+
+		arg_pseudo_type_info = (Word *) ((Word *) entry_value)[i + 1];
+
+#ifdef DEBUG_IO__WRITE
+		printf(""Entry %ld Data %ld "", (Word) entry_type_info,
+			((Word *) data_value)[i]); 
+#endif
+		arg_type_info = make_type_info(type_info, (Word *) 
+			arg_pseudo_type_info, &allocated);
+
+#ifdef DEBUG_IO__WRITE
+		printf(""Typeinfo %ld\n"", (Word) entry_type_info);
+#endif
+		mercury_print_type(arg_type_info, ((Word *) data_value)[i]);
+
+		if (allocated) {
+			free(arg_type_info);
+		}
+
+	}
+
+	printf("")"");
+}
+
+/*
+ * Complicated tags - entry_value points to a vector containing: 
+ *	The number of sharers of this tag
+ *	A pointer to a simple tag structure (see mercury_print_simple)
+ *	for each sharer.
+ *
+ *	The data_value points to the actual sharer of this tag, 
+ *	which should be used as an index into the vector of pointers
+ *	into simple tag structures. The next n words the data_value
+ *	points to are the arguments of the functor.
+ */
+
+void
+mercury_print_complicated(Word data_value, Word entry_value, Word * type_info) 
+{
+	Word new_data_value, new_entry_value, new_entry_body,
+		new_entry_tag, secondary_tag;
+
+	secondary_tag = ((Word *) data_value)[0];
+
+#ifdef DEBUG_IO__WRITE
+	printf(""This is %ld of %ld functors sharing this tag\n"",
+		secondary_tag + 1, ((Word *) entry_value)[0]); 
+#endif
+
+	new_entry_value = ((Word *) entry_value)[secondary_tag + 1];
+	new_entry_tag = tag(new_entry_value);
+	new_entry_body = body(new_entry_value, new_entry_tag);
+	new_data_value = (Word) ((Word *) data_value + 1);
+
+	mercury_print_simple(new_data_value, new_entry_body, type_info);
+}
+
+void
+mercury_print_builtin(Word data_value, Word entry_value) 
+{
+
+	switch ((int) entry_value) {
+	
+	case TYPELAYOUT_UNASSIGNED_VALUE:
+		fatal_error(""Attempt to use an UNASSIGNED tag in io__write."");
+		break;
+
+	case TYPELAYOUT_UNUSED_VALUE:
+		fatal_error(""Attempt to use an UNUSED tag in io__write."");
+		break;
+
+	case TYPELAYOUT_STRING_VALUE:
+		if (fprintf(mercury_current_text_output->file, 
+			""%c%s%c"", '""', (char *) data_value, '""') < 0) {
+			mercury_output_error(mercury_current_text_output);
+		}
+		break;
+
+	case TYPELAYOUT_FLOAT_VALUE:
+	{
+		Float f;
+		f = word_to_float(data_value);
+		if (fprintf(mercury_current_text_output->file, 
+			""%#.15g"", f) < 0) {
+			mercury_output_error(mercury_current_text_output);
+		}
+	}
+	break;
+
+	case TYPELAYOUT_INT_VALUE:
+		if (fprintf(mercury_current_text_output->file, ""%ld"", 
+			(long) data_value) < 0) {
+			mercury_output_error(mercury_current_text_output);
+		}
+	break;
+
+	case TYPELAYOUT_CHARACTER_VALUE:
+		if (fprintf(mercury_current_text_output->file, ""\'%c\'"",
+			(char) data_value) < 0) {
+			mercury_output_error(mercury_current_text_output);
+		}
+		if (data_value == '\\n') {
+			mercury_current_text_output->line_number++;
+		}
+		break;
+
+	case TYPELAYOUT_UNIV_VALUE:
+
+#ifdef DEBUG_IO__WRITE
+	printf(""This is a univ, it is really a:\n"");
+#endif
+		/* Univ is a two word structure, containing
+		 * type_info and data.
+		 */
+		mercury_print_type((Word *) ((Word *) data_value)[0], 
+			((Word *) data_value)[1]);
+		break;
+
+	case TYPELAYOUT_PREDICATE_VALUE:
+		if (fprintf(mercury_current_text_output->file, 
+			""<<predicate>>"") < 0) { 
+			mercury_output_error(mercury_current_text_output);
+		}
+		break;
+
+	default:
+		fatal_error(""Invalid tag value in io__write"");
+		break;
+	}
+
+}
+
+	/*
+	 * Print out Mercury data, given its type_info, and the data 
+	 * itself.
+	 *
+	 * Note: The variable entry_value and data_value are used
+	 * for a number of purposes, as depending on the type of the
+	 * data, they can be represent many things.
+	 *
+	 *
+	 */
+
+void
+mercury_print_type(Word *type_info, Word data_word) 
+{
+	Word *base_type_info, *arg_type_info, *base_type_layout;
+	Word data_value, entry_value, base_type_layout_entry;
+	int entry_tag, data_tag; 
+
+	base_type_info = (Word *) type_info[0];
+
+		/* 
+		 * Find the base_type_info - type_infos for types with no args 
+		 * are themselves base_type_infos
+		 */
+
+	if(base_type_info == 0) {
+		base_type_info = type_info;
+	}
+
+		/* Retrieve base_type_layout */
+	base_type_layout = (Word *) base_type_info[OFFSET_FOR_BASE_TYPE_LAYOUT];
+
+	data_tag = tag(data_word);
+	data_value = body(data_word, data_tag);
+	
+	base_type_layout_entry = base_type_layout[data_tag];
+
+	entry_tag = tag(base_type_layout_entry);
+	entry_value = body(base_type_layout_entry, entry_tag);
+	
+	switch(entry_tag) {
+
+	case TYPELAYOUT_CONST_TAG: /* case TYPELAYOUT_COMP_CONST_TAG: */
+
+		/* Is it a builtin or a constant/enum? */ 
+
+		if (entry_value > TYPELAYOUT_MAX_VARINT) {
+
+			/* Check enum indicator */
+
+			if (((Word *) entry_value)[0]) {
+				mercury_print_enum(data_word, entry_value);
+			} else {
+				data_value = unmkbody(data_value);
+				mercury_print_const(data_value, entry_value);
+			}
+		} else {
+			entry_value = unmkbody(entry_value);
+			mercury_print_builtin(data_word, entry_value);
+		}
+		break;
+
+	case TYPELAYOUT_SIMPLE_TAG:
+		mercury_print_simple(data_value, entry_value, type_info);
+		break;
+
+	case TYPELAYOUT_COMPLICATED_TAG:
+		mercury_print_complicated(data_value, entry_value, type_info);
+		break;
+
+	case TYPELAYOUT_EQUIV_TAG: /* case TYPELAYOUT_NO_TAG: */
+	{
+		int allocated = 0; 
+
+#ifdef DEBUG_IO__WRITE
+		printf(""Equivalent to:\n""); 
+#endif
+
+		/* is it equivalent to a type variable? */
+
+		if (entry_value < TYPELAYOUT_MAX_VARINT) {
+			arg_type_info = make_type_info(type_info, 
+				(Word *) entry_value, &allocated);
+			mercury_print_type(arg_type_info, data_word);
+			if (allocated) {
+				free(arg_type_info);
+			}
+		}
+			/* is it a no_tag type? */
+		else if (((Word *) entry_value)[0]) {
+			mercury_print_simple((Word) &data_word, entry_value, 
+				type_info);
+		}
+			/* is it an equivalent type */
+		else {
+			arg_type_info = make_type_info(type_info, 
+				(Word *) ((Word *) entry_value)[1], &allocated);
+			mercury_print_type(arg_type_info, data_word);
+			if (allocated) {
+				free(arg_type_info);
+			}
+		}
+
+	}
+	break;
+
+	default:
+		/* If this happens, the layout data is corrupt */
+
+		fatal_error(""Found unused tag value in io__write"");
+	}
+}
+
+
+").
+
