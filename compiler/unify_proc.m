@@ -9,10 +9,14 @@
 %	This module encapsulates access to the unify_requests table,
 %	and constructs the clauses for out-of-line complicated
 %	unification procedures.
+%	It also generates the code for other compiler-generated type-specific
+%	predicates such as compare/3.
 %
-% During mode analysis, we notice each different complicated unification and 
-% record in the `unify_requests' table that we need to eventually generate
-% code for that out-of-line unification procedure.
+% During mode analysis, we notice each different complicated unification
+% that occurs.  For each one we add a new mode to the out-of-line
+% unification predicate for that type, and we record in the `unify_requests'
+% table that we need to eventually modecheck that mode of the unification
+% procedure.
 %
 % After we've done mode analysis for all the ordinary predicates, we then
 % do mode analysis for the out-of-line unification procedures.  Note that
@@ -259,7 +263,7 @@ modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
 		( { VeryVerbose = yes } ->
 			{ UnifyProcId = TypeId - UniMode },
 			io__write_string(
-				"% Generating unification proc for type `"),
+				"% Mode-checking unification proc for type `"),
 			hlds_out__write_type_id(TypeId),
 			io__write_string("'\n"),
 			io__write_string("% with insts `"),
@@ -272,18 +276,18 @@ modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
 		;
 			[]
 		),
-		modecheck_generate_unification(UnifyProcId, ModuleInfo1,
+		modecheck_unification_proc(UnifyProcId, ModuleInfo1,
 			ModuleInfo2),
 		modecheck_unify_procs(ModuleInfo2, ModuleInfo)
 	;
 		{ ModuleInfo = ModuleInfo0 }
 	).
 
-:- pred modecheck_generate_unification(unify_proc_id, module_info, module_info,
+:- pred modecheck_unification_proc(unify_proc_id, module_info, module_info,
 					io__state, io__state).
-:- mode modecheck_generate_unification(in, in, out, di, uo) is det.
+:- mode modecheck_unification_proc(in, in, out, di, uo) is det.
 
-modecheck_generate_unification(UnifyProcId, ModuleInfo0, ModuleInfo) -->
+modecheck_unification_proc(UnifyProcId, ModuleInfo0, ModuleInfo) -->
 	{
 	%
 	% lookup the pred_id for the unification procedure
@@ -298,36 +302,17 @@ modecheck_generate_unification(UnifyProcId, ModuleInfo0, ModuleInfo) -->
 	%
 	module_info_get_unify_requests(ModuleInfo0, Requests0),
 	unify_proc__get_req_map(Requests0, ReqMap),
-	map__lookup(ReqMap, UnifyProcId, ProcId),
-
-	%
-	% lookup the proc_info
-	%
-	module_info_preds(ModuleInfo0, Preds0),
-	map__lookup(Preds0, PredId, PredInfo0),
-	pred_info_procedures(PredInfo0, Procs0),
-	map__lookup(Procs0, ProcId, ProcInfo0)
+	map__lookup(ReqMap, UnifyProcId, ProcId)
 	},
 
 	%
 	% modecheck the procedure
 	%
-	modecheck_proc(ProcId, PredId, ModuleInfo0, ProcInfo0,
-			ModuleInfo1, ProcInfo, NumErrors),
-	{
-	( NumErrors \= 0 ->
+	modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, NumErrors),
+	{ NumErrors \= 0 ->
 		error("mode error in compiler-generated unification predicate")
 	;
 		true
-	),
-
-	%
-	% save the mode-checked procedure back in the module_info
-	%
-	map__set(Procs0, ProcId, ProcInfo, Procs),
-	pred_info_set_procedures(PredInfo0, Procs, PredInfo),
-	map__set(Preds0, PredId, PredInfo, Preds),
-	module_info_set_preds(ModuleInfo1, Preds, ModuleInfo)
 	}.
 
 %-----------------------------------------------------------------------------%

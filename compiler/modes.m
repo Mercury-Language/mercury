@@ -86,9 +86,9 @@ a local variable, then report the error [this idea not yet implemented].
 	int, io__state, io__state).
 :- mode modecheck_pred_mode(in, in, di, uo, out, di, uo) is det.
 
-:- pred modecheck_proc(proc_id, pred_id, module_info, proc_info,
-			module_info, proc_info, int, io__state, io__state).
-:- mode modecheck_proc(in, in, in, in, out, out, out, di, uo) is det.
+:- pred modecheck_proc(proc_id, pred_id, module_info, module_info, int,
+			io__state, io__state).
+:- mode modecheck_proc(in, in, in, out, out, di, uo) is det.
 
 	% inst_merge should probably be moved to mode_util
 :- pred inst_merge(inst, inst, module_info, inst, module_info).
@@ -174,63 +174,58 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 
 %-----------------------------------------------------------------------------%
 
-modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0, ModuleInfo, Errs) -->
-	modecheck_procs(PredId, ModuleInfo0, PredInfo0, ModuleInfo1,
-			PredInfo, Errs),
-	{ module_info_preds(ModuleInfo1, Preds0) },
-	{ map__set(Preds0, PredId, PredInfo, Preds) },
-	{ module_info_set_preds(ModuleInfo1, Preds, ModuleInfo) }.
-
-%-----------------------------------------------------------------------------%
-
-:- pred modecheck_procs(pred_id, module_info, pred_info, module_info,
-			pred_info, int, io__state, io__state).
-:- mode modecheck_procs(in, in, in, out, out, out, di, uo) is det.
-
-modecheck_procs(PredId, ModuleInfo0, PredInfo0,
-			ModuleInfo, PredInfo, NumErrors) -->
+modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0, ModuleInfo, NumErrors) -->
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ map__keys(Procs0, ProcIds) },
 	( { ProcIds = [] } ->
 		report_warning_no_modes(PredId, PredInfo0, ModuleInfo0),
 		{ ModuleInfo = ModuleInfo0 },
-		{ PredInfo = PredInfo0 },
 		{ NumErrors = 0 }
 	;
-		modecheck_procs_2(ProcIds, PredId, ModuleInfo0, Procs0, 0,
-					ModuleInfo, Procs, NumErrors),
-		{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) }
+		modecheck_procs(ProcIds, PredId, ModuleInfo0, 0,
+					ModuleInfo, NumErrors)
 	).
 
 	% Iterate over the list of modes for a predicate.
 
-:- pred modecheck_procs_2(list(proc_id), pred_id,
-				module_info, proc_table, int,
-				module_info, proc_table, int,
-				io__state, io__state).
-:- mode modecheck_procs_2(in, in, in, in, in, out, out, out, di, uo) is det.
+:- pred modecheck_procs(list(proc_id), pred_id, module_info, int,
+				module_info, int, io__state, io__state).
+:- mode modecheck_procs(in, in, in, in, out, out, di, uo) is det.
 
-modecheck_procs_2([], _PredId,  ModuleInfo, Procs, Errs,
-				ModuleInfo, Procs, Errs) --> [].
-modecheck_procs_2([ProcId|ProcIds], PredId, ModuleInfo0, Procs0, Errs0,
-					ModuleInfo, Procs, Errs) -->
-		% lookup the proc_info
-	{ map__lookup(Procs0, ProcId, ProcInfo0) },
+modecheck_procs([], _PredId,  ModuleInfo, Errs, ModuleInfo, Errs) --> [].
+modecheck_procs([ProcId|ProcIds], PredId, ModuleInfo0, Errs0,
+					ModuleInfo, Errs) -->
 		% mode-check that mode of the predicate
-	modecheck_proc(ProcId, PredId, ModuleInfo0, ProcInfo0,
-			ModuleInfo1, ProcInfo, NumErrors),
+	modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo1, NumErrors),
 	{ Errs1 is Errs0 + NumErrors },
-		% save the proc_info
-	{ map__set(Procs0, ProcId, ProcInfo, Procs1) },
 		% recursively process the remaining modes
-	modecheck_procs_2(ProcIds, PredId, ModuleInfo1, Procs1, Errs1,
-				ModuleInfo, Procs, Errs).
+	modecheck_procs(ProcIds, PredId, ModuleInfo1, Errs1, ModuleInfo, Errs).
 
 %-----------------------------------------------------------------------------%
 
 	% Mode-check the code for predicate in a given mode.
 
-modecheck_proc(ProcId, PredId, ModuleInfo0, ProcInfo0,
+modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, NumErrors) -->
+		% get the proc_info from the module_info
+	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+					_PredInfo0, ProcInfo0) },
+		% modecheck it
+	modecheck_proc_2(ProcId, PredId, ModuleInfo0, ProcInfo0,
+				ModuleInfo1, ProcInfo, NumErrors),
+		% save the proc_info back in the module_info
+	{ module_info_preds(ModuleInfo1, Preds1) },
+	{ map__lookup(Preds1, PredId, PredInfo1) },
+	{ pred_info_procedures(PredInfo1, Procs1) },
+	{ map__set(Procs1, ProcId, ProcInfo, Procs) },
+	{ pred_info_set_procedures(PredInfo1, Procs, PredInfo) },
+	{ map__set(Preds1, PredId, PredInfo, Preds) },
+	{ module_info_set_preds(ModuleInfo1, Preds, ModuleInfo) }.
+
+:- pred modecheck_proc_2(proc_id, pred_id, module_info, proc_info,
+			module_info, proc_info, int, io__state, io__state).
+:- mode modecheck_proc_2(in, in, in, in, out, out, out, di, uo) is det.
+
+modecheck_proc_2(ProcId, PredId, ModuleInfo0, ProcInfo0,
 				ModuleInfo, ProcInfo, NumErrors,
 				IOState0, IOState) :-
 		% extract the useful fields in the proc_info

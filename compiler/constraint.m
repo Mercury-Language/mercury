@@ -53,22 +53,13 @@ constraint_propagation2([C | Cs], ModuleInfo0, ModuleInfo) -->
 constraint_propagation3([], ModuleInfo, ModuleInfo) --> [].
 constraint_propagation3([Pred - Proc | Rest], ModuleInfo0, ModuleInfo) -->
 	constraint__transform_proc_1(Pred, Proc, ModuleInfo0, ModuleInfo1),
-	{ module_info_pred_proc_info(ModuleInfo1, Pred, Proc, PredInfo0,
-			 ProcInfo0) },
-	modecheck_proc(Proc, Pred, ModuleInfo1, ProcInfo0,
-			ModuleInfo2, ProcInfo, Errs),
-	( { Errs = 0 } ->
+	modecheck_proc(Proc, Pred, ModuleInfo1, ModuleInfo2, Errs),
+	( { Errs \= 0 } ->
 	    { error("constraint_propagation3") }
 	;
 	    []
 	),
-	{ pred_info_procedures(PredInfo0, ProcTable0) },
-	{ map__set(ProcTable0, Proc, ProcInfo, ProcTable) },
-	{ pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) },
-	{ module_info_preds(ModuleInfo2, Preds0) },
-	{ map__set(Preds0, Pred, PredInfo, Preds) },
-	{ module_info_set_preds(ModuleInfo2, Preds, ModuleInfo3) },
-	constraint_propagation3(Rest, ModuleInfo3, ModuleInfo).
+	constraint_propagation3(Rest, ModuleInfo2, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -76,8 +76,8 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 		),
 		{ module_info_preds(ModuleInfo1, PredTable1) },
 		{ map__lookup(PredTable1, PredId, PredInfo1) },
-		modecheck_pred_mode(PredId, PredInfo1,
-			ModuleInfo1, ModuleInfo2, Errs),
+		modecheck_pred_mode(PredId, PredInfo1, ModuleInfo1,
+				ModuleInfo2, Errs),
 		{ Errs > 0 ->
 			error("mode check fails when repeated")
 		;
