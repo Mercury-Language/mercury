@@ -65,15 +65,13 @@ SOURCES= \
 #	parent.undeclared_child.m (just not yet implemented)
 #	sub_b.m and sub_c.m (bug with dependencies & nested modules)
 #	freefree.m 	(need bromage's aliasing stuff)
-#
-# we do a very bad job on the following tests:
-#	typeclass_test_4.m (awful error message)
 
 MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-any_mode	=	--infer-types
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-missing_interface_import = --make-interface
 MCFLAGS-no_exports = 		--halt-at-warn
+MCFLAGS-sub_c = 		--verbose-error-messages
 
 # The bug is caught when generating dependencies, so it is
 # easiest just to do that step.
