@@ -800,6 +800,14 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			\+ pred_info_is_imported(PredInfo), 
 			\+ pred_info_import_status(PredInfo, opt_imported)
 		;
+			% Don't eliminate predicates declared in this module
+			% with a `:- external' or `:- pragma base_relation'
+			% declaration.
+			% magic.m will change the import_status to
+			% `exported' when it generates the interface
+			% procedure for a base relation.
+			module_info_name(ModuleInfo, PredModule)
+		;
 			% Don't eliminate <foo>_init_any/1 predicates;
 			% modes.m may insert calls to them to initialize
 			% variables from inst `free' to inst `any'.
