@@ -119,6 +119,8 @@ unless this is necessary due to the use of long string literals.
 If-then-elses should always be parenthesized,
 except that an if-then-else that occurs as the else
 part of another if-then-else doesn't need to be parenthesized.
+The semicolon of a disjunction should never be at the
+end of a line -- put it at the start of the next line instead.
 The condition of an if-then-else can either be on the same
 line as the opening parenthesis and the `->',
 
