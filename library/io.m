@@ -1620,10 +1620,10 @@ io__check_err(Stream, Res) -->
 }").
 
 :- pragma foreign_proc("MC++", 
-	make_err_msg(_Msg0::in, _Msg::out, _IO0::di, _IO::uo),
+	make_err_msg(Msg0::in, Msg::out, _IO0::di, _IO::uo),
 		will_not_call_mercury,
 "{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	Msg = System::String::Concat(Msg0, MR_io_exception->Message);
 }").
 
 
@@ -3176,6 +3176,8 @@ static MR_MercuryFile mercury_current_binary_input =
 static MR_MercuryFile mercury_current_binary_output =
         new_mercury_file(0, 1);
 
+static System::IO::IOException *MR_io_exception;
+
 ").
 
 
@@ -3231,7 +3233,7 @@ static mercury_open(MR_String filename, MR_String type)
 			stream = System::IO::File::Open(filename, fa);
 		}
 	} catch (System::IO::IOException* e) {
-		System::Console::WriteLine(e->Message);
+		MR_io_exception = e;
 	}
 
         if (!stream) {
