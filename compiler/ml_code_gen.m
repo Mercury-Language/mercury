@@ -2467,7 +2467,7 @@ ml_gen_outline_args([ml_c_arg(Var, MaybeVarMode, OrigType) | Args],
 	out, out, in, out) is det.
 
 ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
-	PredId, ProcId, ArgVars, _ArgDatas, OrigArgTypes,
+	PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 	ForeignCode, Context, MLDS_Decls, MLDS_Statements) -->
 
 	{ MLDSContext = mlds__make_context(Context) },
@@ -2487,6 +2487,7 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 	{ module_info_name(ModuleInfo, ModuleName) },
 	{ MLDSModuleName = mercury_module_name_to_mlds(ModuleName) },
 
+	{ ArgVarDataMap = map__from_corresponding_lists(ArgVars, ArgDatas) },
 
 	% XXX in the code to marshall parameters, fjh says:
 	% we need to handle the case where the types in the procedure interface
@@ -2501,7 +2502,6 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 		(pred(Var::in, Statement::out) is semidet :- 
 			map__lookup(HeadVarTypes, Var, Type),
 			not type_util__is_dummy_argument_type(Type),
-			VarName = mlds__var_name(VarNameString, _MangleInt),
 			MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type),
 
 			VarName = ml_gen_var_name(VarSet, Var),
@@ -2509,7 +2509,10 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 			OutputVarLval = mem_ref(lval(
 				var(QualVarName, MLDSType)), MLDSType),
 
-			NonMangledVarName = mlds__var_name(VarNameString, no),
+			map__lookup(ArgVarDataMap, Var, MaybeVarName),
+			MaybeVarName = yes(UserVarNameString - _),
+			NonMangledVarName = 
+				mlds__var_name(UserVarNameString, no),
 			QualLocalVarName= qual(MLDSModuleName,
 				NonMangledVarName),
 			LocalVarLval = var(QualLocalVarName, MLDSType),
@@ -2523,7 +2526,6 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 		(pred(Var::in, Statement::out) is semidet :- 
 			map__lookup(HeadVarTypes, Var, Type),
 			not type_util__is_dummy_argument_type(Type),
-			VarName = mlds__var_name(VarNameString, _MangleInt),
 			MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type),
 
 			VarName = ml_gen_var_name(VarSet, Var),
@@ -2531,7 +2533,10 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 				% this line differs from above
 			OutputVarLval = var(QualVarName, MLDSType),
 
-			NonMangledVarName = mlds__var_name(VarNameString, no),
+			map__lookup(ArgVarDataMap, Var, MaybeVarName),
+			MaybeVarName = yes(UserVarNameString - _),
+			NonMangledVarName =
+				mlds__var_name(UserVarNameString, no),
 			QualLocalVarName= qual(MLDSModuleName,
 				NonMangledVarName),
 			LocalVarLval = var(QualLocalVarName, MLDSType),
@@ -2547,8 +2552,15 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 		(pred(Var::in, MLDS_Defn::out, Box0::in, Box::out) is det :- 
 			map__lookup(HeadVarTypes, Var, Type),
 			VarName = ml_gen_var_name(VarSet, Var),
-			VarName = mlds__var_name(VarNameString, _MangleInt),
-			NonMangledVarName = mlds__var_name(VarNameString, no),
+
+			map__lookup(ArgVarDataMap, Var, MaybeVarName),
+			( MaybeVarName = yes(UserVarNameString - _) ->
+				NonMangledVarName = 
+					mlds__var_name(UserVarNameString, no)
+			;
+				sorry(this_file, "no variable name for var")
+			),
+
 				% Dummy arguments are just mapped to integers,
 				% since they shouldn't be used in any
 				% way that requires them to have a real value.
