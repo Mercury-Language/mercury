@@ -88,8 +88,8 @@ $(TESTS_SHOULD_FAIL:%=%.runtest): %.runtest:
 clean_local:
 
 realclean_local:
-	for module in $(PROGS); do \
-		rm -rf $$module.m $${module}_2.m ;\
+	for module in $(PROGS) x; do \
+		rm -f $$module.m $${module}_2.m ;\
 	done
 
 should_run_recompilation_tests:
