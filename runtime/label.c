@@ -37,33 +37,97 @@ void do_init_entries(void)
 	}
 }
 
+#if defined(NATIVE_GC)
+void insert_gc_entry(const char *name, int det, int offset)
+{
+	Label	*entry;
+
+	do_init_entries();
+
+	if ((entry = lookup_label_name(name)) != NULL) {
+#ifndef SPEED
+		if (progdebug)
+			printf("adding det %d offset %d to label %s\n", det, 
+				offset, name);
+#endif /* SPEED */
+
+
+		/* Same entry for both tables */
+
+		entry->e_det = det;
+		entry->e_offset = offset;
+	}
+	else {
+		entry = make(Label);
+		entry->e_name  = name;
+		entry->e_det  = det;
+		entry->e_offset = offset;
+#ifndef	SPEED
+		if (progdebug)
+			printf("inserting label %s det %d offset %d %s\n", 
+				name, det, offset);
+#endif /* SPEED */
+		if (insert_table(entry_name_table, entry))
+			printf("duplicated label name %s\n", name);
+
+		/* We don't have the address, so we don't insert an */
+		/* entry into the entry_addr_table table */
+	}
+}
+#endif /* NATIVE_GC */
+
+
 Label *insert_entry(const char *name, Code *addr)
 {
 	Label	*entry;
 
 	do_init_entries();
 
+#ifdef	PROFILE_CALLS
+	prof_output_addr_decls(name, addr);
+#endif
+	
+#if !defined(NATIVE_GC)
+
 	entry = make(Label);
 	entry->e_name  = name;
 	entry->e_addr  = addr;
 
-#ifdef	PROFILE_CALLS
-	prof_output_addr_decls(name, addr);
-#endif
-
 #ifndef	SPEED
 	if (progdebug)
 		printf("inserting label %s at %p\n", name, addr);
-#endif
+#endif /* SPEED */
 
 	if (insert_table(entry_name_table, entry))
 		printf("duplicated label name %s\n", name);
-
+	
 	/* two labels at same location will happen quite often */
 	/* when the code generated between them turns out to be empty */
 
 	(void) insert_table(entry_addr_table, entry);
 
+#else /* NATIVE_GC is defined */
+	if ((entry = lookup_label_name(name)) != NULL) {
+#ifndef SPEED
+		if (progdebug)
+			printf("adding address %p to label %s\n", addr, name);
+#endif /* SPEED */
+		entry->e_addr = addr;
+		(void) insert_table(entry_addr_table, entry);
+	}
+	else {
+		entry = make(Label);
+		entry->e_name  = name;
+		entry->e_addr  = addr;
+#ifndef	SPEED
+		if (progdebug)
+			printf("inserting label %s at %p\n", name, addr);
+#endif /* SPEED */
+		if (insert_table(entry_name_table, entry))
+			printf("duplicated label name %s\n", name);
+		(void) insert_table(entry_addr_table, entry);
+	}
+#endif /* NATIVE_GC */
 	return entry;
 }
 

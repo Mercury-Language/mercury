@@ -19,14 +19,15 @@
 #define	make_label(n, a)	make_entry(n, a)
 #endif
 
-#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(PROFILE_CALLS)
+#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(PROFILE_CALLS) \
+			&& !defined(NATIVE_GC)
 #define make_local(n, a)	/* nothing */
 #else 
 #define make_local(n, a)	make_entry(n, a)
 #endif
 
 #if defined(SPEED) && !defined(DEBUG_LABELS) && !defined(DEBUG_GOTOS) \
-			&& !defined(PROFILE_CALLS)
+			&& !defined(PROFILE_CALLS) && !defined(NATIVE_GC)
 #define make_entry(n, a)	/* nothing */
 #else
 #define make_entry(n, a)	insert_entry(n, a)

@@ -13,6 +13,10 @@
 extern	void		init_gc(void);
 #endif
 
+#ifdef NATIVE_GC
+extern  void		gc_continuation_table_init(void);
+#endif
+
 extern	void		do_init_modules(void);
 extern	void		init_modules(void);
 extern	Code		*entry_point;
