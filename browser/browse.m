@@ -590,15 +590,20 @@ term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
 	->
 		RemainingSize = MaxSize
 	;
-		limited_deconstruct_cc(univ_value(Univ), MaxSize,
-			Functor, Arity, Args)
-	->
-		string__length(Functor, FunctorSize),
-		% "()", plus Arity-1 times ", "
-		PrincipalSize = FunctorSize + Arity * 2,
-		MaxArgsSize = MaxSize - PrincipalSize,
-		list__foldl(term_size_left_from_max,
-			Args, MaxArgsSize, RemainingSize)
+		std_util__limited_deconstruct_cc(univ_value(Univ), MaxSize,
+				MaybeFunctorArityArgs),
+		(
+			MaybeFunctorArityArgs = yes({Functor, Arity, Args})
+		->
+			string__length(Functor, FunctorSize),
+			% "()", plus Arity-1 times ", "
+			PrincipalSize = FunctorSize + Arity * 2,
+			MaxArgsSize = MaxSize - PrincipalSize,
+			list__foldl(term_size_left_from_max,
+				Args, MaxArgsSize, RemainingSize)
+		;
+			RemainingSize = -1
+		)
 	;
 		RemainingSize = -1
 	).
