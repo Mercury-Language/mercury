@@ -1,0 +1,7 @@
+echo on
+goto 9
+dd_wrong
+n
+y
+continue -a
+

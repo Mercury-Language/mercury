@@ -27,6 +27,7 @@ LARGE_DECLARATIVE_PROGS= 	\
 SMALL_DECLARATIVE_PROGS= 	\
 	gcf			\
 	if_then_else		\
+	oracle_db		\
 	propositional
 
 MCFLAGS = --trace deep --trace-decl
@@ -72,6 +73,9 @@ gcf.out: gcf gcf.inp
 
 if_then_else.out: if_then_else if_then_else.inp
 	$(MDB) ./if_then_else < if_then_else.inp > if_then_else.out 2>&1
+
+oracle_db.out: oracle_db oracle_db.inp
+	$(MDB) ./oracle_db < oracle_db.inp > oracle_db.out 2>&1
 
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
