@@ -809,7 +809,8 @@ base_type_layout__generate_pseudo_type_info(Type, LayoutInfo0, LayoutInfo,
 	->
 		term__var_to_int(Var, VarInt),
 		base_type_layout__max_varint(MaxVarInt),
-		require(VarInt < MaxVarInt, 
+		Lambda = lambda([] is semidet, (VarInt < MaxVarInt -> semidet_succeed ; fail)),
+		require(Lambda,
 			"base_type_layout: type variable representation exceeds limit"),
 		Pseudo = yes(const(int_const(VarInt))),
 		LayoutInfo = LayoutInfo0
