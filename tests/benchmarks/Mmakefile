@@ -36,11 +36,14 @@ include Mercury.options
 
 SS=	$(PROGS:%=%.s)
 CS=	$(PROGS:%=%.c)
+ILS=	$(PROGS:%=%.il)
 TIMES=	$(PROGS:%=%.time)
 
 cs:	$(CS)
 
 ss:	$(SS)
+
+ils:	$(ILS)
 
 times:	$(TIMES)
 
