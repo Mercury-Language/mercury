@@ -1,0 +1,134 @@
+#!/bin/sh
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2004 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+#
+# This script builds RPMs for the stable and unstable release-of-the-day
+# distributions.
+#
+# This script should be run by root, from a root crontab.
+# It uses the already-built .tar.gz source distributions
+# from the Mercury web site, and uses the "latest-stable-version"
+# and "latest-unstable-version" files to tell it which versions
+# to build RPMs for.
+#
+# XXX currently uses hard-coded spec file (see below)
+#
+# XXX building "unstable" RPMS not yet tested...
+#
+#-----------------------------------------------------------------------------#
+
+# output from the whole script below is redirected to mail...
+{
+
+#-----------------------------------------------------------------------------#
+
+# Parse the command-line arguments
+case "$#:$1" in
+	1:stable|1:unstable)
+		stability=$1 ;;
+	*) 
+		echo "Usage: $0 [stable|unstable]" 1>&2; exit 1 ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+#
+# Set some hard-coded path names.
+#
+
+# The place to install files for the web site.
+# This is also used to find the .tar.gz source distribution and the
+# "latest-stable-version" and "latest-unstable-version" files.
+WEBDIR=/home/mercury/public/installed_w3/download/files
+BETA_WEBDIR=$WEBDIR/beta-releases/rotd
+
+# Place to install files for the FTP site
+FTP_HOST=ftp.mercury.cs.mu.oz.au
+FTPDIR=$FTP_HOST:/home/ftp/pub/mercury
+BETA_FTPDIR=$FTPDIR/beta-releases/rotd
+
+# Place to record log file (rpmbuild.out)
+LOGDIR=/home/mercury/public/test_mercury/logs
+
+# Directory to use as a temporary installation root
+# (Beware, anything in this directory will get deleted by "rm -rf"!)
+BUILD_ROOT=/tmp/mercury_rpm_root
+
+#-----------------------------------------------------------------------------#
+#
+# Subroutines for error-reporting.
+#
+
+failed() {
+	echo "*** $0: $@ failed" 1>&2
+}
+
+fatal_error() {
+	failed "$@"
+	exit 1
+}
+
+#-----------------------------------------------------------------------------#
+#
+# The main program -- build the RPMs and install them.
+#
+
+#
+# Figure out which version we are going to build
+#
+
+case $stability in
+stable)   version=`cat $BETA_WEBDIR/latest-stable-version` ;;
+unstable) version=`cat $BETA_WEBDIR/latest-unstable-version`-unstable ;;
+esac
+
+#
+# Get the .tar.gz distribution, and use that to build the RPMs
+#
+
+cp $BETA_WEBDIR/mercury-compiler-$version.tar.gz \
+	/usr/src/redhat/SOURCES || fatal_error "copying source dist"
+rm -rf $BUILD_ROOT
+mkdir -p $BUILD_ROOT
+# XXX temp hack (proper version commented out below)
+rpmbuild --buildroot=$BUILD_ROOT --verbose -ba \
+	/root/mercury/mercury-compiler.spec >& /root/mercury/rpmbuild.out || \
+	fatal_error "rpmbuild"
+# XXX need to wait until we have a newly built .tar.gz (containing
+#     updated .spec file) before we can uncomment this version
+#rpm --build-root=$BUILD_ROOT --verbose -ta \
+#	/usr/src/redhat/SOURCES/mercury-compiler-$version \
+#	>& /root/mercury/rpmbuild.out || fatal_error "rpmbuild"
+rm -rf $BUILD_ROOT
+fgrep '**' /root/mercury/rpmbuild.out > /root/mercury/rpmbuild.out.errs
+# Because $LOGDIR is NFS-mounted with root-squash, root doesn't have
+# permission to copy to it.  So we need to su to "mercury".
+su mercury -c "cp /root/mercury/rpmbuild.out $LOGDIR" || failed "copying log"
+su mercury -c "cp /root/mercury/rpmbuild.out.errs $LOGDIR" \
+	|| failed "copying log errs"
+
+#
+# Copy the RPMs that we just built to the web site and the FTP site.
+#
+
+version_with_underscores=`echo $version | sed 's/-/_/g'`
+su mercury -c "\
+cp /usr/src/redhat/RPMS/*/mercury-compiler-$version_with_underscores-*.rpm \
+   /usr/src/redhat/SRPMS/mercury-compiler-$version_with_underscores-*.src.rpm \
+	$BETA_WEBDIR" || failed "copying RPMs to web site"
+su mercury -c "\
+scp /usr/src/redhat/RPMS/*/mercury-compiler-$version_with_underscores-*.rpm \
+   /usr/src/redhat/SRPMS/mercury-compiler-$version_with_underscores-*.src.rpm \
+	$BETA_FTPDIR" || failed "copying RPMs to ftp site"
+
+#-----------------------------------------------------------------------------#
+
+# output from the whole script above is redirected to mail...
+} >& /tmp/build_rpm$$
+mutt -s "output from $0 $@" fjh@cs.mu.oz.au < /tmp/build_rpm$$
+rm -f /tmp/build_rpm$$
+
+#-----------------------------------------------------------------------------#
