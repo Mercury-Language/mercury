@@ -314,9 +314,12 @@ These arguments are fresh variables which we shall call
 @var{V_in} and @var{V_out}.
 The @var{Body} must be a valid DCG-goal,
 and is an abbreviation for an ordinary goal.
-The next section defines a function
+The next section defines a mathematical function
 @samp{DCG-transform(@var{V_in}, @var{V_out}, @var{DCG-goal})}
-which specifies how DCG goals are transformed into ordinary goals.
+which specifies the semantics of how DCG goals are transformed into
+ordinary goals.  (The @samp{DCG-transform} function is purely for the
+purposes of exposition, to define the semantics --- it is not part of the
+language.)
 
 @node DCG-goals, Implicit quantification, DCG-rules, Syntax
 @section DCG-goals
@@ -641,6 +644,8 @@ but the constructors (functors) for these types will not be exported.
 The implementation section of a module
 must have give the definition of all the abstract types
 named in the interface section of the module.
+Abstract types may be defined as either discriminated union types
+or as equivalence types.
 
 @end itemize
 
@@ -1069,10 +1074,10 @@ in which case its determinism is either det or failure
 depending on whether the two function symbols are the same or not.
 A unification that tests two variables for equality
 is semideterministic,
-unless the compiler knows the two variables to be aliases for one another,
+unless the compiler knows that the two variables are aliases for one another,
 in which case the unification is deterministic,
-or unless the compiler knows the two variables
-to have different function symbols in the same position,
+or unless the compiler knows that the two variables
+have different function symbols in the same position,
 in which case the unification has a determinism of failure.
 
 The compiler knows the top function symbol of a variable
@@ -1345,7 +1350,11 @@ then it must explicitly import those modules
 using one or more @code{import_module} declarations.
 These declarations may occur
 either in the interface or the implementation section.
-@c XXX guidance as to which is appropriate in which cases?
+If the imported entities are used in the interface section,
+then the corresponding @code{import_module} declaration must
+also be in the interface section.  If the imported entites are only
+used in the implementation section, the @code{import_module}
+declaration should be in the implementation section.
 
 One module most export a predicate @samp{main}, which
 must be declared as either
@@ -1390,7 +1399,8 @@ For example, here is the definition of a simple module for managing queues:
 
 % Queues are implemented as lists. We need the `list' module
 % for the declaration of the type list(T), with its constructors
-% '[]'/0 % and '.'/2, and for the declaration of the predicate append/3.
+% '[]'/0 % and '.'/2, and for the declaration of the predicate
+% list__append/3.
 
 :- import_module list.
 
@@ -1403,7 +1413,7 @@ For example, here is the definition of a simple module for managing queues:
 empty_queue([]).
 
 put(Queue0, Elem, Queue) :-
-         append(Queue0, [Elem], Queue).
+         list__append(Queue0, [Elem], Queue).
 
 get([Elem | Queue], Elem, Queue).
 
