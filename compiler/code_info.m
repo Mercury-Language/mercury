@@ -1083,7 +1083,7 @@ code_info__succip_is_used -->
 		).
 
 :- type failure_cont_info
-	--->	semidet		
+	--->	semidet
 	;	nondet(
 			is_known,	% Says whether on failure we can branch
 					% directly to one of the labels in
@@ -1797,10 +1797,11 @@ code_info__do_soft_cut(TheFrame, Code) -->
 
 code_info__generate_semi_pre_commit(RedoLabel, PreCommit) -->
 	code_info__generate_pre_commit_saves(SaveCode),
-	code_info__top_failure_cont(FailureCont),
-	{ FailureCont = failure_cont(_, FailureMap0) },
-	code_info__clone_failure_cont(FailureMap0, FailureMap),
-	code_info__push_failure_cont(failure_cont(nondet(known, no), FailureMap)),
+	code_info__top_failure_cont(FailureCont0),
+	{ FailureCont0 = failure_cont(_, FailureMap0) },
+	code_info__clone_resume_maps(FailureMap0, FailureMap),
+	{ FailureCont = failure_cont(nondet(known, no), FailureMap) },
+	code_info__push_failure_cont(FailureCont),
 	code_info__get_next_label(RedoLabel),
 	{ HijackCode = node([
 		assign(redoip(lval(maxfr)),
@@ -1857,9 +1858,21 @@ code_info__generate_semi_commit(RedoLabel, Commit) -->
 %---------------------------------------------------------------------------%
 
 code_info__generate_det_pre_commit(PreCommit) -->
-	code_info__generate_pre_commit_saves(PreCommit).
+	code_info__generate_pre_commit_saves(PreCommit),
+	% Since the code we are cutting is model_non, it will call
+	% unset_failure_cont. If the current top entry on the failure stack
+	% at the time is semidet, this would cause unset_failure_cont to abort.
+	% We therefore push a dummy nondet failure continuation onto the
+	% failure stack. Since the code we are cutting across is multi,
+	% the failure continuation will never actually be used.
+	{ map__init(Empty) },
+	{ FailureCont = failure_cont(nondet(known, no),
+		stack_only(Empty, do_fail)) },
+	code_info__push_failure_cont(FailureCont).
 
 code_info__generate_det_commit(Commit) -->
+	% Remove the dummy failure continuation pushed by det_pre_commit.
+	code_info__pop_failure_cont,
 	code_info__undo_pre_commit_saves(RestoreMaxfr, RestoreRedoip,
 		RestoreCurfr, PopCode),
 	{ Commit = tree(RestoreMaxfr,
@@ -1945,11 +1958,11 @@ code_info__undo_pre_commit_saves(RestoreMaxfr, RestoreRedoip,
 			"Restore nondet frame pointer"
 	]) }.
 
-:- pred code_info__clone_failure_cont(resume_maps, resume_maps,
+:- pred code_info__clone_resume_maps(resume_maps, resume_maps,
 	code_info, code_info).
-:- mode code_info__clone_failure_cont(in, out, in, out) is det.
+:- mode code_info__clone_resume_maps(in, out, in, out) is det.
 
-code_info__clone_failure_cont(ResumeMaps0, ResumeMaps) -->
+code_info__clone_resume_maps(ResumeMaps0, ResumeMaps) -->
 	(
 		{ ResumeMaps0 = orig_only(Map1, _) },
 		code_info__get_next_label(Label1),
