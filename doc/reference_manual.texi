@@ -1,16 +1,10 @@
 \input texinfo
 @setfilename mercury_ref.info
 @settitle The Mercury Language Reference Manual
-
-@c @ignore
-@ifinfo
-@format
-START-INFO-DIR-ENTRY
-* Mercury: (mercury_ref).        The Mercury Language Reference Manual
-END-INFO-DIR-ENTRY
-@end format
-@end ifinfo
-@c @end ignore
+@dircategory The Mercury Programming Language
+@direntry
+* Mercury Language: (mercury_ref).  The Mercury Language Reference Manual.
+@end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
 @c @set aditi

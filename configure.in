@@ -218,6 +218,9 @@ if test "$MKTEMP" = ""; then
 fi
 AC_SUBST(MKTEMP)
 #-----------------------------------------------------------------------------#
+AC_PATH_PROG(INSTALL_INFO,install-info)
+AC_SUBST(INSTALL_INFO)
+#-----------------------------------------------------------------------------#
 AC_PROG_CC
 AC_SUBST(CC)
 

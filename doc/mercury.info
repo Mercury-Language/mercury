@@ -1,4 +1,9 @@
 
+INFO-DIR-SECTION Development
+START-INFO-DIR-ENTRY
+* Mercury: (mercury).                The Mercury Programming Language.
+END-INFO-DIR-ENTRY
+
 
 File: mercury.info,  Node: Top,  Up: (DIR)
 

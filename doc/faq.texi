@@ -1,16 +1,10 @@
 \input texinfo
 @setfilename mercury_faq.info
 @settitle The Mercury FAQ list
-
-@ignore
-@ifinfo
-@format
-START-INFO-DIR-ENTRY
-* Mercury FAQ: (mercury_faq).      The Mercury Frequently Asked Questions list
-END-INFO-DIR-ENTRY
-@end format
-@end ifinfo
-@end ignore
+@dircategory The Mercury Programming Language
+@direntry
+* Mercury FAQ: (mercury_faq). The Mercury Frequently Asked Questions list.
+@end direntry
 
 @c failed attempt to control spacing
 @c @tex

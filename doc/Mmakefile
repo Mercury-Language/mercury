@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1998 The University of Melbourne.
+# Copyright (C) 1996-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -18,6 +18,8 @@ MAKEINFO=makeinfo
 TEXI2HTML=perl texi2html
 TEXI2HTML_SPLIT=perl texi2html -split
 DVIPS=dvips
+
+# INSTALL_INFO is defined in ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
@@ -173,7 +175,11 @@ install: install_info install_html install_dvi install_manpages install_mdb_doc
 .PHONY: install_info
 install_info: info
 	-[ -d $(INSTALL_INFO_DIR) ] || mkdir -p $(INSTALL_INFO_DIR)
-	cp *.info* $(INSTALL_INFO_DIR)
+	-cp *.info* $(INSTALL_INFO_DIR)
+	# Update the .../info/dir file.
+	-if [ -x "$(INSTALL_INFO)" ]; then				\
+		$(INSTALL_INFO) $(INSTALL_INFO_DIR)/mercury.info;	\
+	fi
 
 .PHONY: install_html
 install_html: html
