@@ -111,9 +111,9 @@ SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
 #	sub_b.m and sub_c.m (bug with dependencies & nested modules)
 #	freefree.m 	(need bromage's aliasing stuff)
 #	typeclass_test_8.m (minor formatting error in the output --
-#			the type class name should be in quotes;
-#			also a software_error)
+#			the type class name should be in quotes)
 #	typeclass_mode_{2,3,4}.m (compiler calls error/1)
+#	cyclic_typeclass.m (compiler goes into an infinite loop)
 
 MCFLAGS-aditi_errors =		--aditi
 MCFLAGS-aditi_state_errors =	--aditi
