@@ -28,6 +28,7 @@
 :- implementation.
 :- import_module list, string, term, varset, term_io, require, std_util.
 :- import_module store, tr_store, map, multi_map.
+:- import_module unsafe.
 
 main -->
 	io__write_string("Pure Prolog Interpreter.\n\n"),
@@ -68,10 +69,39 @@ main_loop_2(term(VarSet, Goal), Database) -->
 	{ store__init(Store0) },
 	{ map__init(VarMap0) },
 	{ term_to_my_term(Goal, MyGoal, VarMap0, VarMap, Store0, Store1) },
-	unsorted_aggregate(solve(Database, MyGoal, Store1),
-		write_solution(VarSet, VarMap, MyGoal)),
-	io__write_string("No (more) solutions.\n"),
+	print_solutions(VarSet, VarMap, MyGoal, Store1, Database),
 	main_loop(Database).
+
+:- pred print_solutions(varset, map(var, my_var(S)), my_term(S),
+		store(S), database, io__state, io__state).
+:- mode print_solutions(in, in, in, mdi, in, di, uo) is det.
+
+/***
+% Alas, the following code gets a (spurious) unique mode error,
+% because the compiler thinks that `Store0' has inst `ground'
+% rather than `mostly_unique' when it is passed as a curried
+% argument of a higher-order term.  The compiler doesn't know
+% that unsorted_aggregate will only call its higher-order argument
+% once per forward execution.
+%
+% Instead, we use the impure code below.
+%
+print_solutions(VarSet, VarMap, MyGoal, Store0, Database) -->
+	unsorted_aggregate(
+		solve(Database, MyGoal, Store0),
+		write_solution(VarSet, VarMap, MyGoal)),
+	io__write_string("No (more) solutions.\n").
+***/
+
+:- pragma promise_pure(print_solutions/7).
+print_solutions(VarSet, VarMap, MyGoal, Store0, Database) -->
+	(
+		{ solve(Database, MyGoal, Store0, Store1) },
+		{ impure write_solution(VarSet, VarMap, MyGoal, Store1) },
+		{ fail }
+	;
+		io__write_string("No (more) solutions.\n")
+	).
 
 :- pred write_solution(varset, map(var, my_var(S)), my_term(S), store(S),
 			io__state, io__state).
@@ -84,6 +114,18 @@ write_solution(VarSet0, VarToMyVarMap, MyGoal, Store0) -->
 	{ my_term_to_term(MyGoal, Goal, VarSet0, VarSet, VarMap0, _VarMap,
 			Store0, _Store) },
 	term_io__write_term_nl(VarSet, Goal).
+
+:- impure pred write_solution(varset, map(var, my_var(S)), my_term(S),
+			store(S)).
+:- mode write_solution(in, in, in, mdi) is det.
+
+write_solution(VarSet0, VarToMyVarMap, MyGoal, Store0) :-
+	map__keys(VarToMyVarMap, Vars),
+	map__values(VarToMyVarMap, MyVars),
+	map__from_corresponding_lists(MyVars, Vars, VarMap0),
+	my_term_to_term(MyGoal, Goal, VarSet0, VarSet, VarMap0, _VarMap,
+			Store0, _Store),
+	impure unsafe_perform_io(term_io__write_term_nl(VarSet, Goal)).
 
 %-----------------------------------------------------------------------------%
 
