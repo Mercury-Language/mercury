@@ -525,9 +525,11 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 			AllArgModes, Detism, LambdaGoal, LambdaContext,
 			TVarMap, TCVarMap, address_is_taken, ProcInfo),
 
+		set__init(Assertions),
+
 		pred_info_create(ModuleName, PredName, TVarSet, ExistQVars,
 			ArgTypes, true, LambdaContext, local, LambdaMarkers,
-			PredOrFunc, Constraints, Owner, ProcInfo,
+			PredOrFunc, Constraints, Owner, Assertions, ProcInfo,
 			ProcId, PredInfo),
 
 		% save the new predicate in the predicate table

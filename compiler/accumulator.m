@@ -575,6 +575,7 @@ accumulator__acc_pred_info(NewTypes, NewProcInfo, PredInfo,
 	pred_info_get_class_context(PredInfo, ClassContext),
 	pred_info_get_aditi_owner(PredInfo, Owner),
 
+	set__init(Assertions),
 
 	proc_info_context(NewProcInfo, Context),
 	term__context_line(Context, Line),
@@ -587,7 +588,7 @@ accumulator__acc_pred_info(NewTypes, NewProcInfo, PredInfo,
 
 	pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types,
 			Cond, PredContext, local, Markers, PredOrFunc,
-			ClassContext, Owner, NewProcInfo, NewProcId,
+			ClassContext, Owner, Assertions, NewProcInfo, NewProcId,
 			NewPredInfo).
 
 %-----------------------------------------------------------------------------%

@@ -461,10 +461,10 @@
 
 :- pred pred_info_create(module_name, sym_name, tvarset, existq_tvars,
 	list(type), condition, prog_context, import_status, pred_markers,
-	pred_or_func, class_constraints, aditi_owner, proc_info,
-	proc_id, pred_info).
+	pred_or_func, class_constraints, aditi_owner, set(assert_id),
+	proc_info, proc_id, pred_info).
 :- mode pred_info_create(in, in, in, in, in, in, in, in, in, in, in, in, in,
-	out, out) is det.
+		in, out, out) is det.
 
 :- pred pred_info_module(pred_info, module_name).
 :- mode pred_info_module(in, out) is det.
@@ -627,6 +627,12 @@
 
 :- pred pred_info_set_indexes(pred_info, list(index_spec), pred_info).
 :- mode pred_info_set_indexes(in, in, out) is det.
+
+:- pred pred_info_get_assertions(pred_info, set(assert_id)).
+:- mode pred_info_get_assertions(in, out) is det.
+
+:- pred pred_info_set_assertions(pred_info, set(assert_id), pred_info).
+:- mode pred_info_set_assertions(in, in, out) is det.
 
 :- pred pred_info_get_purity(pred_info, purity).
 :- mode pred_info_get_purity(in, out) is det.
@@ -794,10 +800,13 @@ status_defined_in_this_module(local,			yes).
 					% it is an Aditi predicate. Set to
 					% the value of --aditi-user if no
 					% `:- pragma owner' declaration exists.
-			list(index_spec)
+			list(index_spec),
 					% Indexes if this predicate is
 					% an Aditi base relation, ignored
 					% otherwise.
+			set(assert_id)
+					% List of assertions which
+					% mention this predicate.
 		).
 
 pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
@@ -810,15 +819,16 @@ pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
 	UnprovenBodyConstraints = [],
 	Indexes = [],
+	set__init(Assertions),
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet, 
 		GoalType, Markers, PredOrFunc, ClassContext, ClassProofs,
 		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
-		Indexes).
+		Indexes, Assertions).
 
 pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 		Context, Status, Markers, PredOrFunc, ClassContext, User,
-		ProcInfo, ProcId, PredInfo) :-
+		Assertions, ProcInfo, ProcId, PredInfo) :-
 	map__init(Procs0),
 	proc_info_declared_determinism(ProcInfo, MaybeDetism),
 	next_mode_id(Procs0, MaybeDetism, ProcId),
@@ -843,11 +853,11 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 		Context, ModuleName, PredName, Arity, Status, TypeVarSet, 
 		clauses, Markers, PredOrFunc, ClassContext, ClassProofs,
 		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
-		Indexes).
+		Indexes, Assertions).
 
 pred_info_procids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, 
-		_, _, _, _, _, _, _, _, _),
+		_, _, _, _, _, _, _, _, _, _),
 	map__keys(Procs, ProcIds).
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
@@ -880,57 +890,57 @@ pred_info_exported_procids(PredInfo, ProcIds) :-
 
 pred_info_clauses_info(PredInfo, Clauses) :-
 	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _).
 
 pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K, 
-		L, M, N, O, P, Q, R, S, T, U).
+		L, M, N, O, P, Q, R, S, T, U, V).
 
 pred_info_arg_types(PredInfo, ArgTypes) :-
 	pred_info_arg_types(PredInfo, _TypeVars, _ExistQVars, ArgTypes).
 
 pred_info_arg_types(PredInfo, TypeVars, ExistQVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, ExistQVars, _, _, _, _).
+		_, _, _, _, _, ExistQVars, _, _, _, _, _).
 
 pred_info_set_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes,
 		PredInfo) :-
 	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		_, R, S, T, U),
+		_, R, S, T, U, V),
 	PredInfo = predicate(TypeVarSet, ArgTypes, C, D, E, F, G, H, I, J, K,
-		L, M, N, O, P, ExistQVars, R, S, T, U).
+		L, M, N, O, P, ExistQVars, R, S, T, U, V).
 
 pred_info_procedures(PredInfo, Procs) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K, L, M, 
-		N, O, P, Q, R, S, T, U).
+		N, O, P, Q, R, S, T, U, V).
 
 pred_info_context(PredInfo, Context) :-
 	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_module(PredInfo, Module) :-
 	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_name(PredInfo, PredName) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_arity(PredInfo, Arity) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _, 
-		_, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_import_status(PredInfo, ImportStatus) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _, _,
-				_, _, _, _, _, _, _, _).
+				_, _, _, _, _, _, _, _, _).
 
 pred_info_is_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, imported).
@@ -963,35 +973,35 @@ procedure_is_exported(PredInfo, ProcId) :-
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L, M, 
-		N, O, P, Q, R, S, T, U).
+		N, O, P, Q, R, S, T, U, V).
 
 pred_info_set_import_status(PredInfo0, Status, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, 
-		L, M, N, O, P, Q, R, S, T, U).
+		L, M, N, O, P, Q, R, S, T, U, V).
 
 pred_info_typevarset(PredInfo, TypeVarSet) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet, _, _, 
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _).
 
 pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L, M,
-				N, O, P, Q, R, S, T, U).
+				N, O, P, Q, R, S, T, U, V).
 
 pred_info_get_goal_type(PredInfo, GoalType) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, GoalType, _, 
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _).
 
 pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, GoalType, M, 
-		N, O, P, Q, R, S, T, U).
+		N, O, P, Q, R, S, T, U, V).
 
 pred_info_requested_inlining(PredInfo0) :-
 	pred_info_get_markers(PredInfo0, Markers),
@@ -1025,41 +1035,41 @@ purity_to_markers(impure, [impure]).
 
 pred_info_get_markers(PredInfo, Markers) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers, 
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _).
 
 pred_info_set_markers(PredInfo0, Markers, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, Markers, 
-		N, O, P, Q, R, S, T, U).
+		N, O, P, Q, R, S, T, U, V).
 
 pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _,
-			IsPredOrFunc, _, _, _, _, _, _, _).
+			IsPredOrFunc, _, _, _, _, _, _, _, _).
 
 pred_info_set_class_context(PredInfo0, ClassContext, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		ClassContext, P, Q, R, S, T, U).
+		ClassContext, P, Q, R, S, T, U, V).
 
 pred_info_get_class_context(PredInfo, ClassContext) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		ClassContext, _, _, _, _, _, _).
+		ClassContext, _, _, _, _, _, _, _).
 
 pred_info_set_constraint_proofs(PredInfo0, Proofs, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, Proofs, Q, R, S, T, U).
+		O, Proofs, Q, R, S, T, U, V).
 
 pred_info_get_constraint_proofs(PredInfo, ConstraintProofs) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		ConstraintProofs, _, _, _, _, _).
+		ConstraintProofs, _, _, _, _, _, _).
 
 pred_info_get_exist_quant_tvars(PredInfo, ExistQVars) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, ExistQVars, _, _, _, _).
+		_, ExistQVars, _, _, _, _, _).
 
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 	pred_info_arg_types(PredInfo, ArgTypes),
@@ -1070,45 +1080,55 @@ pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 
 pred_info_get_head_type_params(PredInfo, HeadTypeParams) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, HeadTypeParams, _, _, _).
+		_, _, HeadTypeParams, _, _, _, _).
 
 pred_info_set_head_type_params(PredInfo0, HeadTypeParams, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, _, S, T, U),
+		Q, _, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, HeadTypeParams, S, T, U).
+		Q, HeadTypeParams, S, T, U, V).
 
 pred_info_get_unproven_body_constraints(PredInfo, UnprovenBodyConstraints) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, UnprovenBodyConstraints, _, _).
+		_, _, UnprovenBodyConstraints, _, _, _).
 
 pred_info_set_unproven_body_constraints(PredInfo0, UnprovenBodyConstraints,
 		PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, _, T, U),
+		Q, R, _, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, UnprovenBodyConstraints, T, U).
+		Q, R, UnprovenBodyConstraints, T, U, V).
 
 
 pred_info_get_aditi_owner(PredInfo, Owner) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, Owner, _).
+		_, _, _, _, Owner, _, _).
 
 pred_info_set_aditi_owner(PredInfo0, Owner, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
-		O, P, Q, R, S, _, U),
+		O, P, Q, R, S, _, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, P, Q, R, S, Owner, U).
+		O, P, Q, R, S, Owner, U, V).
 
 pred_info_get_indexes(PredInfo, Indexes) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, Indexes).
+		_, _, _, _, _, Indexes, _).
 
 pred_info_set_indexes(PredInfo0, Indexes, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
-		O, P, Q, R, S, T, _),
+		O, P, Q, R, S, T, _, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, P, Q, R, S, T, Indexes).
+		O, P, Q, R, S, T, Indexes, V).
+
+pred_info_get_assertions(PredInfo, Assertions) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, _, _, _, _, _, Assertions).
+
+pred_info_set_assertions(PredInfo0, Assertions, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
+		O, P, Q, R, S, T, U, _),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
+		O, P, Q, R, S, T, U, Assertions).
 
 %-----------------------------------------------------------------------------%
 
@@ -1245,9 +1265,11 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 		Context, TVarMap, TCVarMap, IsAddressTaken, ProcInfo0),
 	proc_info_set_maybe_termination_info(ProcInfo0, TermInfo, ProcInfo),
 
+	set__init(Assertions),
+
 	pred_info_create(ModuleName, SymName, TVarSet, ExistQVars, ArgTypes,
 		true, Context, local, Markers, predicate, ClassContext, 
-		Owner, ProcInfo, ProcId, PredInfo),
+		Owner, Assertions, ProcInfo, ProcId, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_insert(PredTable0, PredInfo, PredId,

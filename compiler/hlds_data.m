@@ -827,8 +827,8 @@ determinism_to_code_model(failure,     model_semi).
 
 :- pred assertion_table_init(assertion_table::out) is det.
 
-:- pred assertion_table_add_assertion(pred_id::in,
-		assertion_table::in, assertion_table::out) is det.
+:- pred assertion_table_add_assertion(pred_id::in, assertion_table::in,
+		assert_id::out, assertion_table::out) is det.
 
 :- pred assertion_table_lookup(assertion_table::in, assert_id::in,
 		pred_id::out) is det.
@@ -844,7 +844,7 @@ determinism_to_code_model(failure,     model_semi).
 assertion_table_init(assertion_table(0, AssertionMap)) :-
 	map__init(AssertionMap).
 
-assertion_table_add_assertion(Assertion, AssertionTable0, AssertionTable) :-
+assertion_table_add_assertion(Assertion, AssertionTable0, Id, AssertionTable) :-
 	AssertionTable0 = assertion_table(Id, AssertionMap0),
 	map__det_insert(AssertionMap0, Id, Assertion, AssertionMap),
 	AssertionTable = assertion_table(Id + 1, AssertionMap).

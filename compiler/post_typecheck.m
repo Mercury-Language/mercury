@@ -107,7 +107,8 @@
 
 :- implementation.
 
-:- import_module typecheck, clause_to_proc, mode_util, inst_match, (inst).
+:- import_module (assertion), typecheck, clause_to_proc.
+:- import_module mode_util, inst_match, (inst).
 :- import_module mercury_to_mercury, prog_out, hlds_data, hlds_out, type_util.
 :- import_module globals, options.
 
@@ -594,11 +595,25 @@ post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
 		PredInfo0, PredInfo).
 
+	%
+	% Remove the assertion from the list of pred ids to be processed
+	% in the future and place the pred_info associated with the
+	% assertion into the assertion table.
+	% Also records for each predicate that is used in an assertion
+	% which assertion it is used in.
+	% 
 post_typecheck__finish_assertion(Module0, PredId, Module) :-
-	module_info_assertion_table(Module0, AssertionTable0),
-	assertion_table_add_assertion(PredId, AssertionTable0, AssertionTable),
-	module_info_set_assertion_table(Module0, AssertionTable, Module1),
-	module_info_remove_predid(Module1, PredId, Module).
+		% store into assertion table.
+	module_info_assertion_table(Module0, AssertTable0),
+	assertion_table_add_assertion(PredId, AssertTable0, Id, AssertTable),
+	module_info_set_assertion_table(Module0, AssertTable, Module1),
+		
+		% Remove from further processing.
+	module_info_remove_predid(Module1, PredId, Module2),
+
+		% record which predicates are used in assertions
+	assertion__goal(Id, Module2, Goal),
+	assertion__record_preds_used_in(Goal, Id, Module2, Module).
 	
 
 	% 
