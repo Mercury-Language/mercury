@@ -1753,6 +1753,25 @@ AC_TRY_CPP([
 AC_MSG_RESULT($mercury_cv_profiling)
 
 #-----------------------------------------------------------------------------#
+#
+# Add an option that disables the deep profiler.
+#
+AC_MSG_CHECKING(whether to enable the deep profiler)
+
+    # This test may need to be made more specific at a later date.
+    # Currently it only distinguishes between systems which have
+    # unistd.h or not, but at a later date we may also need to test for
+    # other posix features.
+if test "$HAVE_UNISTD_H" = 1; then
+    mercury_cv_enable_deep_profiler=yes
+else
+    mercury_cv_enable_deep_profiler=no
+fi
+
+AC_MSG_RESULT($mercury_cv_enable_deep_profiler)
+ENABLE_DEEP_PROFILER=$mercury_cv_enable_deep_profiler
+AC_SUBST(ENABLE_DEEP_PROFILER)
+#-----------------------------------------------------------------------------#
 
 # Figure out which flavour of pthreads to use, since none of the
 # implementations seem to be exactly the same
@@ -1981,7 +2000,6 @@ fi
 
 if test "$enable_prof_grades" = yes; then
 	# add `.prof' (--profiling) grades, if time profiling is supported,
-	# and a `.memprof' (--memory-profiling) grade.
 	if test $mercury_cv_profiling = yes; then
 		if test "$enable_nogc_grades" = yes; then
 			DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
@@ -1998,7 +2016,15 @@ if test "$enable_prof_grades" = yes; then
 			fi
 		fi
 	fi
-	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof $DEFAULT_GRADE.profdeep"
+
+	# add a `.memprof' (--memory-profiling) grade
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof"
+
+	# add a `.profdeep' (--deep-profiling) grade,
+	# if deep profiling is enabled.
+	if test $mercury_cv_enable_deep_profiler = yes; then
+		LIBGRADES="$LIBGRADES $DEFAULT_GRADE.profdeep"
+	fi
 fi
 
 if test "$enable_trail_grades" = yes; then
@@ -2105,25 +2131,6 @@ mercury_cv_enable_decl_debug="$enableval",mercury_cv_enable_decl_debug=yes)
 if test "$mercury_cv_enable_decl_debug" = "no"; then
 	AC_DEFINE(MR_DISABLE_DECLARATIVE_DEBUGGER)
 fi
-#-----------------------------------------------------------------------------#
-#
-# Add an option that disables the deep profiler.
-#
-AC_MSG_CHECKING(whether to enable the deep profiler)
-
-    # This test may need to be made more specific at a later date.
-    # Currently it only distinguishes between systems which have
-    # unistd.h or not, but at a later date we may also need to test for
-    # other posix features.
-if test "$HAVE_UNISTD_H" = 1; then
-    mercury_cv_enable_deep_profiler=yes
-else
-    mercury_cv_enable_deep_profiler=no
-fi
-
-AC_MSG_RESULT($mercury_cv_enable_deep_profiler)
-ENABLE_DEEP_PROFILER=$mercury_cv_enable_deep_profiler
-AC_SUBST(ENABLE_DEEP_PROFILER)
 #-----------------------------------------------------------------------------#
 
 # Determine how many of the r registers (r1, r2, ...) are real registers.
