@@ -2546,10 +2546,10 @@ maybe_tag_rval(yes(Tag), Type, Rval) = unop(cast(Type), mkword(Tag, Rval)).
 			% for calls to private_builtin__gc_trace)
 			%
 
-			module_info	:: module_info,
+			module_info	:: module_info,	
 			pred_id		:: pred_id,
 			proc_id		:: proc_id,
-			varset		:: prog_varset,
+			varset		:: prog_varset,	
 			var_types	:: map(prog_var, prog_type),
 			byref_output_vars :: list(prog_var),
 					% output arguments that are passed by
@@ -2565,7 +2565,7 @@ maybe_tag_rval(yes(Tag), Type, Rval) = unop(cast(Type), mkword(Tag, Rval)).
 
 			func_label	:: counter,
 			commit_label	:: counter,
-			label		:: counter,
+			label		:: counter, 
 			cond_var	:: counter,
 			conv_var	:: counter,
 			const_num	:: counter,
@@ -2593,9 +2593,16 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
 		VarTypes),
 	ValueOutputVars = [],
 
-	counter__init(0, LabelCounter),
-	counter__init(0, FuncLabelCounter),
+	% XXX This needs to start at 1 rather than 0 otherwise the
+	% transformation for adding the shadow stack for accurate garbage
+	% collection does not work properly and we will end up generating
+	% two C functions with the same name.
+	%
+	% ( See ml_elim_nested.gen_gc_trace_func/8 for details).
+	% 
+ 	counter__init(1, FuncLabelCounter),
 	counter__init(0, CommitLabelCounter),
+	counter__init(0, LabelCounter),
 	counter__init(0, CondVarCounter),
 	counter__init(0, ConvVarCounter),
 	counter__init(0, ConstCounter),
@@ -2606,15 +2613,15 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
 
 	Info = ml_gen_info(
 			ModuleInfo,
-			PredId,
-			ProcId,
-			VarSet,
+			PredId,		
+			ProcId,	
+			VarSet,	
 			VarTypes,
 			ByRefOutputVars,
 			ValueOutputVars,
-			LabelCounter,
 			FuncLabelCounter,
 			CommitLabelCounter,
+			LabelCounter, 
 			CondVarCounter,
 			ConvVarCounter,
 			ConstCounter,
@@ -2658,7 +2665,7 @@ ml_gen_info_get_globals(Info, Globals) :-
 ml_gen_info_new_label(Label, Info0, Info) :-
 	Counter0 = Info0 ^ label,
 	counter__allocate(Label, Counter0, Counter),
-	Info = Info0 ^ label := Counter.
+	Info = Info0 ^ label := Counter. 
 
 ml_gen_info_new_func_label(Label, Info0, Info) :-
 	Counter0 = Info0 ^ func_label,
