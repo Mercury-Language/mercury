@@ -4785,6 +4785,16 @@ This allows the compiler to use a slightly more efficient calling convention.
 (If you use this form, and the C code @emph{does} invoke Mercury code,
 then the behaviour is undefined --- your program may misbehave or crash.)
 
+If there are both Mercury definitions and foreign_proc definitions for 
+a procedure and/or foreign_proc definitions for different languages,
+it is implementation defined which definition is used.
+All such Mercury definitions must use mode-specific clauses (even if
+there is only a single mode for the predicate).
+
+For pure and semipure procedures, the declarative semantics of the
+foreign_proc definitions must be the same as that of the Mercury code.
+The only thing that is allowed to differ is the efficiency (including
+the possibility of non-termination) and the order of solutions.
 
 @node Foreign code attributes
 @subsection Foreign code attributes
@@ -4910,6 +4920,8 @@ foreign language and occur in in the same Mercury module.
 
 All Mercury implementations should support interfacing with C.
 The set of other languages supported is implementation-defined.
+A suitable compiler or assembler for the foreign language
+must be available on the system.
 
 The University of Melbourne Mercury implementation supports
 interfacing with the following languages:

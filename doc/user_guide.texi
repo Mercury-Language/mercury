@@ -5724,6 +5724,20 @@ code with @samp{--no-static-ground-terms}.
 @node Foreign language interface
 @chapter Foreign language interface
 
+The Mercury foreign language interfaces allows pragma foreign_proc to
+specify multiple implementations (in different foreign programming
+languages) for a procedure.
+
+If the compiler generates code for a procedure using a back-end for which 
+there are multiple applicable foreign languages, it will choose the
+foreign language to use for each procedure according to a builtin ordering. 
+
+If the language specified in a foreign_proc is not available for a
+particular backend, it will be ignored. 
+
+If there are no suitable foreign_proc clauses for a particular
+procedure but there are Mercury clauses, they will be used instead.
+
 @table @asis
 
 @item @samp{C}
@@ -5731,32 +5745,23 @@ This is the default foreign language on all backends which compile to C
 or assembler.
 Only available on backends that compile to C or assembler.
 
-@item @samp{Managed C++}
-Managed Extensions for C++ is a language based on C++ that
-provide support for writing .NET components, by adding extra
-keywords and syntax.
-
-This is the default foreign language on all backends which compile to IL.
-In the current implementation, this is only available on backends that
-compile to IL.
-Requires a Managed Extensions for C++ compiler installed.
-
-
 @item @samp{C#}
 Only available on backends that compile to IL.
-Requires a C# compiler installed.
-To use it pass mmc @samp{--use-foreign-language csharp} and
-@samp{--backend-foreign-language csharp}.
+This is the second preferred foreign language for IL code generation.
 
 @item @samp{IL}
 IL (or CIL) is the intermediate language of the .NET Common Language
 Runtime.
-
-Use the string "IL" to set the foreign language to IL.
 Only available on backends that compile to IL.
-Requires an IL assembler installed.
-To use it pass mmc @samp{--use-foreign-language il} and
-@samp{--backend-foreign-language il}.
+This is the preferred foreign language for IL code generation.
+
+@item @samp{Managed C++}
+Managed Extensions for C++ is a language based on C++ that
+provide support for writing .NET components, by adding extra
+keywords and syntax.
+Only available on backends that compile to IL.
+This is the third preferred foreign language for IL code generation.
+
 
 @end table
 

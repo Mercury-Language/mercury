@@ -424,7 +424,7 @@ puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
 	( { pred_info_get_goal_type(PredInfo0, pragmas) } ->
 		{ WorstPurity = (impure) },
 		{ IsPragmaCCode = yes },
-			% This is where we assume pragma C code is
+			% This is where we assume pragma foreign_proc is
 			% pure.
 		{ Purity = pure },
 		{ PredInfo = PredInfo0 },

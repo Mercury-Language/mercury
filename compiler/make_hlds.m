@@ -985,8 +985,10 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 		map__init(TI_VarMap),
 		map__init(TCI_VarMap),
 		map__init(TVarNameMap),
+		HasForeignClauses = no,
 		Clauses = clauses_info(ArgVarSet, VarTypes0, TVarNameMap,
-			VarTypes0, Args, [Clause], TI_VarMap, TCI_VarMap),
+			VarTypes0, Args, [Clause], TI_VarMap, TCI_VarMap,
+			HasForeignClauses),
 		pred_info_get_markers(PredInfo0, Markers),
 		map__init(Proofs),
 
@@ -2949,8 +2951,10 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 	map__init(TVarNameMap),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
+	HasForeignClauses = no,
 	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-				HeadVars, ClauseList, TI_VarMap, TCI_VarMap),
+				HeadVars, ClauseList, TI_VarMap, TCI_VarMap,
+				HasForeignClauses),
 	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
 
 %-----------------------------------------------------------------------------%
@@ -3579,15 +3583,20 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredOrFunc, PredName, Args, Body,
 		PredInfo1 = PredInfo0
 	},
 	(
-		{ pred_info_get_goal_type(PredInfo1, pragmas) }
+		{ pred_info_pragma_goal_type(PredInfo1) },
+		{ get_mode_annotations(Args, _, empty, ModeAnnotations) },
+		{ ModeAnnotations = empty ; ModeAnnotations = none }
 	->
+			% If we have a pragma foreign_proc for this procedure
+			% already, and we are trying to add a non-mode specific
+			% Mercury clause 
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		prog_out__write_context(Context),
-		io__write_string("Error: clause for "),
+		io__write_string("Error: non mode-specific clause for "),
 		hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity),
 		io__write_string("\n"),
 		prog_out__write_context(Context),
-		io__write_string("  with `:- pragma c_code' declaration preceding.\n"),
+		io__write_string("  with `:- pragma foreign_proc' declaration preceding.\n"),
 		{ Info = Info0 }
 	;
 		%
@@ -3869,8 +3878,10 @@ produce_instance_method_clauses(name(InstancePredName), PredOrFunc, PredArity,
 	map__init(TVarNameMap),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
+	HasForeignClauses = no,
 	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-		HeadVars, [IntroducedClause], TI_VarMap, TCI_VarMap).
+		HeadVars, [IntroducedClause], TI_VarMap, TCI_VarMap,
+		HasForeignClauses).
 
 	% handle the arbitrary clauses syntax
 produce_instance_method_clauses(clauses(InstanceClauses), PredOrFunc,
@@ -4003,7 +4014,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 		io__write_string(".\n"),
 		{ Info = Info0 }
 	;	
-		{ pred_info_get_goal_type(PredInfo1, clauses) }
+		{ pred_info_clause_goal_type(PredInfo1) }
 	->
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		prog_out__write_context(Context),
@@ -4161,20 +4172,23 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 		io__write_string(".\n"),
 		{ Info = Info0 }
 	;	
-		{ pred_info_get_goal_type(PredInfo1, clauses) }
+		{ pred_info_clause_goal_type(PredInfo1) },
+		{ pred_info_clauses_info(PredInfo1, CInfo) },
+		{ clauses_info_clauses(CInfo, ClauseList) },
+		{ list__member(clause([], _, mercury, _), ClauseList) }
+
 	->
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		prog_out__write_context(Context),
-		io__write_string("Error: `:- pragma foreign_code' (or `pragma c_code')\n"),
+		io__write_string("Error: `:- pragma foreign_proc' (or `pragma c_code')\n"),
 		prog_out__write_context(Context),
 		io__write_string("declaration for "),
 		hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity),
 		io__write_string("\n"),
 		prog_out__write_context(Context),
-		io__write_string("  with preceding clauses.\n"),
+		io__write_string("  with preceding non-mode specific clauses.\n"),
 		{ Info = Info0 }
 	;
-
 			% Don't add clauses for foreign languages other
 			% than the ones we can generate code for.
 		{ not list__member(PragmaForeignLanguage, BackendForeignLangs) }
@@ -4202,8 +4216,13 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 				ModuleInfo2, Info0, Info),
 			{ pred_info_set_clauses_info(PredInfo1, Clauses, 
 				PredInfo2) },
-			{ pred_info_set_goal_type(PredInfo2, pragmas, 
-				PredInfo) },
+			{ pred_info_clause_goal_type(PredInfo2) ->
+				pred_info_set_goal_type(PredInfo2,
+					clauses_and_pragmas, PredInfo)
+			;
+				pred_info_set_goal_type(PredInfo2, pragmas,
+					PredInfo)
+			},
 			{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 			{ predicate_table_set_preds(PredicateTable1, Preds, 
 				PredicateTable) },
@@ -5143,8 +5162,9 @@ clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
 	varset__init(VarSet),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
+	HasForeignClauses = no,
 	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-		HeadVars, [], TI_VarMap, TCI_VarMap).
+		HeadVars, [], TI_VarMap, TCI_VarMap, HasForeignClauses).
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
 
@@ -5155,8 +5175,10 @@ clauses_info_init(Arity, ClausesInfo) :-
 	make_n_fresh_vars("HeadVar__", Arity, VarSet0, HeadVars, VarSet),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
+	HasForeignClauses = no,
 	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap,
-		VarTypes, HeadVars, [], TI_VarMap, TCI_VarMap).
+		VarTypes, HeadVars, [], TI_VarMap, TCI_VarMap,
+		HasForeignClauses).
 
 :- pred clauses_info_add_clause(clauses_info::in,
 		list(proc_id)::in, prog_varset::in, tvarset::in,
@@ -5167,13 +5189,13 @@ clauses_info_init(Arity, ClausesInfo) :-
 		module_info::in, module_info::out, qual_info::in,
 		qual_info::out, io__state::di, io__state::uo) is det.
 
-clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, TVarSet0,
+clauses_info_add_clause(ClausesInfo0, ModeIds0, CVarSet, TVarSet0,
 		Args, Body, Context, Status, PredOrFunc, Arity, IsAssertion,
 		Goal, VarSet, TVarSet, ClausesInfo, Warnings, Module0, Module,
 		Info0, Info) -->
 	{ ClausesInfo0 = clauses_info(VarSet0, ExplicitVarTypes0, TVarNameMap0,
 				InferredVarTypes, HeadVars, ClauseList0,
-				TI_VarMap, TCI_VarMap) },
+				TI_VarMap, TCI_VarMap, HasForeignClauses) },
 	{ ClauseList0 = [] ->
 		% Create the mapping from type variable name, used to
 		% rename type variables occurring in explicit type
@@ -5209,16 +5231,45 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, TVarSet0,
 		{ FoundError = no },
 		{ Goal = Goal0 },
 
+			% If we have foreign clauses, we should only
+			% add this clause for modes *not* covered by the 
+			% foreign clauses.
+		{ HasForeignClauses = yes ->
+			ForeignModeIds = list__condense(list__filter_map(
+				(func(C) = ProcIds is semidet :-
+					C = clause(ProcIds, _, ClauseLang, _),
+					not ClauseLang = mercury
+				),
+				ClauseList0)),
+			ModeIds = list__delete_elems(ModeIds0, ForeignModeIds),
+			( ModeIds = [] ->
+				ClauseList = ClauseList0
+			;
+				% XXX we should avoid append - this gives O(N*N)
+				list__append(ClauseList0, 
+					[clause(ModeIds, Goal, mercury,
+						Context)], ClauseList)
+			)
+		;
 			% XXX we should avoid append - this gives O(N*N)
-		{ list__append(ClauseList0, [clause(ModeIds, Goal, mercury,
-			Context)], ClauseList) },
+			list__append(ClauseList0, [clause(ModeIds0, Goal,
+				mercury, Context)], ClauseList)
+		},
 		{ qual_info_get_var_types(Info, ExplicitVarTypes) },
 		{ ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
 				TVarNameMap, InferredVarTypes, HeadVars,
-				ClauseList, TI_VarMap, TCI_VarMap) }
+				ClauseList, TI_VarMap, TCI_VarMap,
+				HasForeignClauses) }
 	).
 
 %-----------------------------------------------------------------------------
+
+:- type foreign_proc_action
+	--->	ignore
+	;	add
+	; 	split_add(int, clause)
+	;	replace(int).
+
 
 % Add the pragma_foreign_proc goal to the clauses_info for this procedure.
 % To do so, we must also insert unifications between the variables in the
@@ -5239,85 +5290,89 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 		ModuleInfo, Info0, Info) -->
 
 	{ ClausesInfo0 = clauses_info(VarSet0, VarTypes, TVarNameMap,
-		VarTypes1, HeadVars, ClauseList, TI_VarMap, TCI_VarMap) },
+		VarTypes1, HeadVars, ClauseList, TI_VarMap, TCI_VarMap,
+		_HasForeignClauses) },
 
 
 		% Find all the exising clauses for this mode, and
 		% extract their implementation language and clause number
 		% (that is, their index in the list).
 	{ foreign_language(Attributes0, NewLang) },
-	{ list__foldl2(
-		(pred(C::in, Res0::in, Res::out, N0::in, N::out) is det :-
-			( 
-				C = clause(ProcIds, _, ClauseLang, _),
-				list__member(ProcId, ProcIds)
-			->
-				Res = [ClauseLang - N0 | Res0],
-				N = N0 + 1
-			;
-				Res = Res0,
-				N = N0 + 1
-			)
-		), ClauseList, [], LangClauses, 1, _) },
 
 	globals__io_get_globals(Globals),
 	globals__io_get_target(Target),
 
-		% Figure out what to do with this new clause.
-		% We can either add it to the list of clauses, ignore it,
-		% or replace the existing clause with it.
-		%
-		% We create a closure called UpdateClauses which does the
-		% appropriate action at the end of this predicate.
-		%
-		% In the rare case of multiple foreign language
-		% implementations we might do some unnecessary work only
-		% to ignore the new clause.
-	{ 
-		% no clauses -- add it
-		LangClauses = [],
-		UpdateClauses = (pred(NewCl::in, Cs::out) is det :- 
-			Cs = [NewCl|ClauseList])
-	;
-		% was implemented in Mercury, do nothing
-		% XXX if we want to make Mercury implementations a fallback
-		% we should consider making this a replace instead of an
-		% ignore.
-		LangClauses = [mercury - _ | Rest],
-		( Rest = [] ->
-			UpdateClauses = (pred(_NewCl::in, Cs::out) is det :- 
-				Cs = ClauseList)
-		;
-			error("unexpected: multiple matches for foreign " ++
-				"language clauses")
-		)
 
-	; 
-		LangClauses = [ForeignLang - ClauseNumber | Rest], 
-		ForeignLang = foreign_language(OldLang),
-		( Rest = [] ->
-			PreferNewLang = foreign__prefer_foreign_language(
-				Globals, Target, OldLang, NewLang),
+		% We traverse the clauses, and decide which action to perform.
+		%
+		% If there are no clauses, we will simply add this clause.
+		%
+		% If there are matching foreign_proc clauses for this proc_id,
+		% we will either replace them or ignore the new clause
+		% (depending on the preference of the two foreign languages).
+		%
+		% If there is a matching Mercury clause for this proc_id, we
+		% will either
+		% 	- replace it if there is only one matching mode in its
+		% 	  proc_id list.
+		%	- remove the matching proc_id from its proc_id list,
+		%	  and add this clause as a new clause for this mode.
+
+
+	{ list__foldl2(
+		(pred(C::in, Action0::in, Action::out, N0::in, N::out) is det :-
+			C = clause(ProcIds, B, ClauseLang, D),
 			( 
-				% This language is preferred to the old
-				% language, so we should replace it
-				PreferNewLang = yes ->
-				UpdateClauses = 
-					(pred(NewCl::in, Cs::out) is det :-
-					list__replace_nth_det(ClauseList,
-						ClauseNumber, NewCl, Cs))
+				ClauseLang = mercury,
+				ProcIds = [ProcId]
+			->
+				Action = replace(N0)
 			;
-				% Just ignore it.
-				UpdateClauses = 
-					(pred(_NewCl::in, Cs::out) is det :- 
-						Cs = ClauseList)
-			)
-		;
-			error("unexpected: multiple matches for foreign " ++
-				"language clauses")
+				ClauseLang = mercury,
+				list__delete_first(ProcIds, ProcId,
+					MercuryProcIds)
+			->
+				NewMercuryClause = clause(
+					MercuryProcIds, B, ClauseLang, D),
+				Action = split_add(N0, NewMercuryClause)	
+			;
+				ClauseLang = foreign_language(OldLang),
+				list__member(ProcId, ProcIds)
+			->
+				(
+					yes = foreign__prefer_foreign_language(
+						Globals, Target, OldLang,
+						NewLang)
+				->
+
+					% This language is preferred to the old
+					% language, so we should replace it
+					Action = replace(N0)
+				;
+					% Just ignore it.
+					Action = ignore
+				)
+			;
+				Action = Action0
+			),
+			N = N0 + 1
+		), ClauseList, add, FinalAction, 1, _) },
+
+	{ UpdateClauses = (pred(NewCl::in, Cs::out) is det :-
+		( FinalAction = ignore,
+			Cs = ClauseList
+		; FinalAction = add,
+			Cs = [NewCl | ClauseList]
+		; FinalAction = replace(X),
+			list__replace_nth_det(ClauseList, X, NewCl, Cs)
+		; FinalAction = split_add(X, Clause),
+			list__replace_nth_det(ClauseList, X, Clause, Cs1),
+			Cs = [NewCl | Cs1]
 		)
-	},
-	
+	) },
+
+
+
 	globals__io_get_backend_foreign_languages(BackendForeignLanguages),
 	{ 
 	pragma_get_vars(PVars, Args0),
@@ -5409,9 +5464,10 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 		NewClause = clause([ProcId], HldsGoal,
 			foreign_language(NewLang), Context),
 		UpdateClauses(NewClause, NewClauseList),
+		HasForeignClauses = yes,
 		ClausesInfo =  clauses_info(VarSet, VarTypes, TVarNameMap,
 			VarTypes1, HeadVars, NewClauseList,
-			TI_VarMap, TCI_VarMap)
+			TI_VarMap, TCI_VarMap, HasForeignClauses)
 		}
 	).
 

@@ -1035,7 +1035,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 			pred_info_is_pseudo_imported(CalleePredInfo),
 			hlds_pred__in_in_unification_proc_id(CalledProc)
 		;
-			pred_info_get_goal_type(CalleePredInfo, pragmas)
+			pred_info_pragma_goal_type(CalleePredInfo)
 		)
 	->
 		Info = Info0,
@@ -2500,7 +2500,7 @@ create_new_pred(Request, NewPred, Info0, Info, IOState0, IOState) :-
 	% hlds dumps if it's filled in.
 	ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
 		EmptyTVarNameMap, EmptyVarTypes, [], [],
-		EmptyTIMap, EmptyTCIMap),
+		EmptyTIMap, EmptyTCIMap, no),
 	pred_info_init(PredModule, SymName, Arity, ArgTVarSet, ExistQVars,
 		Types, true, Context, ClausesInfo, Status, MarkerList, GoalType,
 		PredOrFunc, ClassContext, EmptyProofs, Owner, NewPredInfo0),

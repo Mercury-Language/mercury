@@ -252,7 +252,7 @@ intermod__gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
 			{ module_info_set_preds(ModuleInfo0, PredTable,
 					ModuleInfo) },
 			intermod_info_get_preds(Preds0),
-			( { pred_info_get_goal_type(PredInfo, pragmas) } ->
+			( { pred_info_clause_goal_type(PredInfo) } ->
 				% The header code must be written since
 				% it could be used by the pragma_foreign_code.
 				intermod_info_set_write_header
@@ -1304,6 +1304,11 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 		% if `T' is written as `T_1' in the pred declaration.
 		AppendVarNums = no
 	;
+		GoalType = clauses_and_pragmas,
+		% Because pragmas may be present, we treat this case like
+		% pragmas above.
+		AppendVarNums = no
+	;
 		GoalType = clauses,
 		AppendVarNums = yes
 	;
@@ -1393,12 +1398,7 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ clauses_info_headvars(ClausesInfo, HeadVars) },
 	{ clauses_info_clauses(ClausesInfo, Clauses) },
 
-		% handle pragma foreign_code(...) separately
-	( { pred_info_get_goal_type(PredInfo, pragmas) } ->
-		{ pred_info_procedures(PredInfo, Procs) },
-		intermod__write_foreign_code(SymName, PredOrFunc, HeadVars,
-			VarSet, Clauses, Procs)
-	;
+	(
 		{ pred_info_get_goal_type(PredInfo, assertion) }
 	->
 		(
@@ -1410,19 +1410,19 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 		;
 			{ error("intermod__write_preds: assertion not a single clause.") }
 		)
-	;
-		% { pred_info_typevarset(PredInfo, TVarSet) },
+	;	
 		list__foldl(intermod__write_clause(ModuleInfo, PredId, VarSet,
-			HeadVars, PredOrFunc), Clauses)
+			HeadVars, PredOrFunc, SymName), Clauses)
 	),
 	intermod__write_preds(ModuleInfo, PredIds).
 
 :- pred intermod__write_clause(module_info::in, pred_id::in, prog_varset::in,
-		list(prog_var)::in, pred_or_func::in, clause::in,
+		list(prog_var)::in, pred_or_func::in, sym_name::in, clause::in,
 		io__state::di, io__state::uo) is det.
 
 intermod__write_clause(ModuleInfo, PredId, VarSet, HeadVars,
-		PredOrFunc, Clause0) -->
+		PredOrFunc, _SymName, Clause0) -->
+	{ Clause0 = clause(_, _, mercury, _) },
 	{ strip_headvar_unifications(HeadVars, Clause0,
 		ClauseHeadVars, Clause) },
 	% Variable numbers need to be appended for the case
@@ -1431,6 +1431,54 @@ intermod__write_clause(ModuleInfo, PredId, VarSet, HeadVars,
 	{ AppendVarNums = yes },
 	hlds_out__write_clause(1, ModuleInfo, PredId, VarSet, AppendVarNums,
 		ClauseHeadVars, PredOrFunc, Clause, no).
+
+intermod__write_clause(ModuleInfo, PredId, VarSet, _HeadVars,
+		PredOrFunc, SymName, Clause) -->
+	{ Clause = clause(ProcIds, Goal, foreign_language(_), _) },
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_procedures(PredInfo, Procs) },
+	(
+		(
+			% Pull the foreign code out of the goal.
+			{ Goal = conj(Goals) - _ },
+			{ list__filter(
+				lambda([X::in] is semidet, (
+				    X = foreign_proc(_,_,_,_,_,_,_) - _
+				)),
+				Goals, [ForeignCodeGoal]) },
+			{ ForeignCodeGoal = foreign_proc(Attributes,
+				_, _, Vars, Names, _, PragmaCode) - _ }
+		;
+			{ Goal = foreign_proc(Attributes,
+				_, _, Vars, Names, _, PragmaCode) - _ }
+		)
+	->	
+		list__foldl(intermod__write_foreign_clause(Procs,
+			PredOrFunc, PragmaCode, Attributes, Vars, 
+			VarSet, Names, SymName), ProcIds)
+	;
+		{ error("foreign_proc expected within this goal") }
+	).
+
+
+:- pred intermod__write_foreign_clause(proc_table::in, 
+		pred_or_func::in, pragma_foreign_code_impl::in,
+		pragma_foreign_proc_attributes::in, list(prog_var)::in,
+		prog_varset::in, list(maybe(pair(string, mode)))::in,
+		sym_name::in, proc_id::in, io__state::di, io__state::uo) is det.
+intermod__write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
+		Attributes, Vars, VarSet0, Names, SymName, ProcId) -->
+	{ map__lookup(Procs, ProcId, ProcInfo) },
+	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
+	( { MaybeArgModes = yes(ArgModes) } ->
+		{ get_pragma_foreign_code_vars(Vars, Names, VarSet0,
+			ArgModes, VarSet, PragmaVars) },
+		mercury_output_pragma_foreign_code(Attributes, SymName,
+			PredOrFunc, PragmaVars, VarSet, PragmaImpl)
+	;
+		{ error("intermod__write_clause: no mode declaration") }
+	).
+
 
 	% Strip the `Headvar__n = Term' unifications from each clause,
 	% except if the `Term' is a lambda expression.
@@ -1613,64 +1661,6 @@ intermod__should_output_marker(check_termination, no).
 intermod__should_output_marker(generate_inline, _) :-
 	% This marker should only occur after the magic sets transformation.
 	error("intermod__should_output_marker: generate_inline").
-
-	% Some pretty kludgy stuff to get foreign code written correctly.
-:- pred intermod__write_foreign_code(sym_name::in, pred_or_func::in, 
-	list(prog_var)::in, prog_varset::in,
-	list(clause)::in, proc_table::in, io__state::di, io__state::uo) is det.
-
-intermod__write_foreign_code(_, _, _, _, [], _) --> [].
-intermod__write_foreign_code(SymName, PredOrFunc, HeadVars, Varset, 
-		[Clause | Clauses], Procs) -->
-	{ Clause = clause(ProcIds, Goal, _, _) },
-	(
-		(
-			% Pull the foreign code out of the goal.
-			{ Goal = conj(Goals) - _ },
-			{ list__filter(
-				lambda([X::in] is semidet, (
-				    X = foreign_proc(_,_,_,_,_,_,_) - _
-				)),
-				Goals, [ForeignCodeGoal]) },
-			{ ForeignCodeGoal = foreign_proc(Attributes,
-				_, _, Vars, Names, _, PragmaCode) - _ }
-		;
-			{ Goal = foreign_proc(Attributes,
-				_, _, Vars, Names, _, PragmaCode) - _ }
-		)
-	->	
-		intermod__write_foreign_clauses(Procs, ProcIds, PredOrFunc,
-			PragmaCode, Attributes, Vars, Varset, Names,
-			SymName)
-	;
-		{ error("intermod__write_foreign_code called with non foreign_code goal") }
-	),
-	intermod__write_foreign_code(SymName, PredOrFunc, HeadVars, Varset, 
-				Clauses, Procs).
-
-:- pred intermod__write_foreign_clauses(proc_table::in, list(proc_id)::in, 
-		pred_or_func::in, pragma_foreign_code_impl::in,
-		pragma_foreign_proc_attributes::in, list(prog_var)::in,
-		prog_varset::in, list(maybe(pair(string, mode)))::in,
-		sym_name::in, io__state::di, io__state::uo) is det.
-
-intermod__write_foreign_clauses(_, [], _, _, _, _, _, _, _) --> [].
-intermod__write_foreign_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
-		PragmaImpl, Attributes, Vars, Varset0, Names, SymName) -->
-	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
-	( { MaybeArgModes = yes(ArgModes) } ->
-		{ get_pragma_foreign_code_vars(Vars, Names, Varset0, ArgModes,
-			Varset, PragmaVars) },
-		mercury_output_pragma_foreign_code(Attributes, SymName,
-			PredOrFunc, PragmaVars, Varset, PragmaImpl),
-		intermod__write_foreign_clauses(Procs, ProcIds, PredOrFunc,
-			PragmaImpl, Attributes, Vars, Varset, Names,
-			SymName)
-	;
-		{ error(
-			"intermod__write_foreign_clauses: no mode declaration") }
-	).
 
 :- pred get_pragma_foreign_code_vars(list(prog_var)::in,
 		list(maybe(pair(string, mode)))::in, prog_varset::in,

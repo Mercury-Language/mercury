@@ -147,7 +147,10 @@
 							% fields are computed
 							% by polymorphism.m
 			clause_type_info_varmap	:: type_info_varmap,
-			clause_typeclass_info_varmap :: typeclass_info_varmap
+			clause_typeclass_info_varmap :: typeclass_info_varmap,
+			have_foreign_clauses	::	bool
+							% do we have foreign
+							% language clauses?
 		).
 
 :- type vartypes == map(prog_var, type).
@@ -210,6 +213,7 @@
 :- mode clauses_info_set_typeclass_info_varmap(in, in, out) is det.
 
 
+	% XXX we should use field names for clause
 :- type clause		--->	clause(
 					list(proc_id),	% modes for which
 							% this clause applies
@@ -231,8 +235,10 @@
 
 	% The type of goals that have been given for a pred.
 
-:- type goal_type 	--->	pragmas		% pragma foreign_code(...)
+:- type goal_type 	--->	pragmas		% pragma foreign_proc(...)
 			;	clauses		
+			;	clauses_and_pragmas 
+						% both clauses and pragmas
 			;	(assertion)
 			;	none.
 
@@ -673,6 +679,18 @@
 :- pred pred_info_get_goal_type(pred_info, goal_type).
 :- mode pred_info_get_goal_type(in, out) is det.
 
+	% Do we have a clause goal type?
+	% (this means either "clauses" or "clauses_and_pragmas")
+	
+:- pred pred_info_clause_goal_type(pred_info).
+:- mode pred_info_clause_goal_type(in) is semidet.
+
+	% Do we have a pragma goal type?
+	% (this means either "pragmas" or "clauses_and_pragmas")
+
+:- pred pred_info_pragma_goal_type(pred_info).
+:- mode pred_info_pragma_goal_type(in) is semidet.
+
 :- pred pred_info_set_goal_type(pred_info, goal_type, pred_info).
 :- mode pred_info_set_goal_type(in, in, out) is det.
 
@@ -969,8 +987,10 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 	% The empty list of clauses is a little white lie.
 	Clauses = [],
 	map__init(TVarNameMap),
+	HasForeignClauses = no,
 	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap,
-		VarTypes, HeadVars, Clauses, TypeInfoMap, TypeClassInfoMap),
+		VarTypes, HeadVars, Clauses, TypeInfoMap, TypeClassInfoMap,
+		HasForeignClauses),
 	map__init(ClassProofs),
 	term__vars_list(Types, TVars),
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
@@ -1130,6 +1150,16 @@ pred_info_typevarset(PredInfo, PredInfo^typevarset).
 pred_info_set_typevarset(PredInfo, X, PredInfo^typevarset := X).
 
 pred_info_get_goal_type(PredInfo, PredInfo^goal_type).
+
+pred_info_clause_goal_type(PredInfo) :- 
+	( PredInfo ^ goal_type = clauses 
+	; PredInfo ^ goal_type = clauses_and_pragmas
+	).
+
+pred_info_pragma_goal_type(PredInfo) :- 
+	( PredInfo ^ goal_type = pragmas 
+	; PredInfo ^ goal_type = clauses_and_pragmas
+	).
 
 pred_info_set_goal_type(PredInfo, X, PredInfo^goal_type := X).
 

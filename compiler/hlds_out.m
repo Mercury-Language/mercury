@@ -792,7 +792,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		[]
 	),
 	{ ClausesInfo = clauses_info(VarSet, _, _, VarTypes, HeadVars, Clauses,
-		TypeInfoMap, TypeClassInfoMap) },
+		TypeInfoMap, TypeClassInfoMap, _) },
 	( { string__contains_char(Verbose, 'C') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% pred id: "),
