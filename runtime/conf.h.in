@@ -29,7 +29,6 @@
 **	HAVE_SIGACTION		the machine has the sigaction() syscall.
 **	SIGACTION_FIELD		the name of the field in the sigaction struct
 **				(either sa_handler or sa_sigaction).
-**	HAVE_CWD_DECL		<unistd.h> contains a declaration for cwd().
 */
 
 #undef	WORD_TYPE
@@ -48,4 +47,3 @@
 #undef	PC_INDEX
 #undef	HAVE_SIGACTION
 #undef	SIGACTION_FIELD
-#undef	HAVE_CWD_DECL

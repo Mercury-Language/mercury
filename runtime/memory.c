@@ -34,9 +34,6 @@
 
 #include <stdio.h>
 
-FILE	*popen(const char *command, const char *type);
-int	pclose(FILE *stream);
-
 #ifdef	HAVE_MPROTECT
 #include <sys/mman.h>
 #endif
