@@ -2341,7 +2341,14 @@ MR_Spy_Point	spied_procs[2];
 
 int main() {
 	spied_procs[1] = spied_procs[0];
+#if __GNUC__ >= 3
+	/* gcc 3.1 seems to have problems with structure assignment
+	   and global registers, but which this simple test case
+	   doesn't trigger.  So just force the test to fail for gcc 3.x. */
+	exit(1);
+#else
 	exit(0);
+#endif
 changequote([,]) 
 }],
 [mercury_cv_cannot_use_structure_assignment=no],
