@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -7,10 +7,10 @@
 % File: ml_switch_gen.m
 % Author: fjh (adapted from switch_gen.m)
 %
-% This module handles the generation of code for switches for the MLDS back-end.
-% Switches are disjunctions that do not require backtracking.  They are
-% detected in switch_detection.m.  This is the module that determines what
-% sort of indexing to use for each switch and then actually generates the
+% This module handles the generation of code for switches for the MLDS
+% back-end. Switches are disjunctions that do not require backtracking.
+% They are detected in switch_detection.m.  This is the module that determines
+% what sort of indexing to use for each switch and then actually generates the
 % code.  The code here is quite similar to the code in switch_gen.m, which
 % does the same thing for the LLDS back-end.
 %
@@ -33,7 +33,7 @@
 %	    we generate an MLDS switch statement.
 %
 % 2.	For switches on strings, there are several possibilities.
-%	a)  If the target supports indirect gotos, we should we lookup the
+%	a)  If the target supports indirect gotos, we should look up the
 %           address to jump to in a hash table (e.g. using open addressing to
 %           resolve hash collisions), and then jump to it using an indirect
 %	    goto, unless the target supports string switch statements and
@@ -121,14 +121,14 @@ ml_gen_switch(CaseVar, CanFail, Cases, CodeModel, Context,
 	{ list__sort_and_remove_dups(TaggedCases0, TaggedCases) },
 
 	%
-	% Figure out what kind of switch this is
+	% Figure out what kind of switch this is.
 	%
 	ml_switch_gen__determine_category(CaseVar, SwitchCategory),
 	ml_gen_info_get_globals(Globals),
 	{ globals__lookup_bool_option(Globals, smart_indexing, Indexing) },
 	(
 		% Check for a switch on a type whose representation
-		% uses reserved addresses 
+		% uses reserved addresses.
 		{ list__member(Case, TaggedCases) },	
 		{ Case = case(_Priority, Tag, _ConsId, _Goal) },
 		{
@@ -137,7 +137,7 @@ ml_gen_switch(CaseVar, CanFail, Cases, CodeModel, Context,
 			Tag = shared_with_reserved_addresses(_, _)
 		}
 	->
-		% XXX This may be be inefficient in some cases.
+		% XXX This may be inefficient in some cases.
 		ml_switch_generate_if_else_chain(TaggedCases, CaseVar,
 			CodeModel, CanFail, Context,
 			MLDS_Decls, MLDS_Statements)
@@ -170,7 +170,7 @@ they should probably be handled in ml_simplify_switch rather than here.
 	;
 **************/
 		%
-		% Try using a string hash switch
+		% Try using a string hash switch.
 		%
 		{ Indexing = yes },
 		{ SwitchCategory = string_switch },
@@ -201,7 +201,7 @@ they should probably be handled in ml_simplify_switch rather than here.
 			CanFail, Context, MLDS_Decls, MLDS_Statements)
 	;
 		%
-		% Try using a tag switch
+		% Try using a tag switch.
 		%
 		{ Indexing = yes },
 		{ SwitchCategory = tag_switch },
