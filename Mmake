@@ -102,46 +102,58 @@ bootstrap_check: stage_1 stage_2 stage_3
 .PHONY: stage_1
 stage_1: all
 	[ -d stage1 ] || mkdir stage1
-	cp compiler/mercury_compile stage1
+	mv compiler/mercury_compile stage1
+	mv compiler/*.mod library/*.mod stage1
+	mv compiler/*.c library/*.c stage1
+	mv compiler/*.o library/*.o stage1
 	cd compiler && rm -f *.mod *.c *.o *.pic_o mercury_compile
 	cd library && rm -f *.mod *.c *.o *.pic_o *.a *.so
 
 .PHONY: stage_2
 stage_2:
 	cd library && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile" \
+	MERCURY_COMPILER="`pwd`/../stage1/mercury_compile" \
 	$(SUBDIR_MMAKE)
 	cd compiler && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile" \
+	MERCURY_COMPILER="`pwd`/../stage1/mercury_compile" \
 	$(SUBDIR_MMAKE)
-	[ -d stage_2 ] || mkdir stage2
-	cp compiler/mercury_compile compiler/*.c library/*.c stage2
+	[ -d stage2 ] || mkdir stage2
+	mv compiler/mercury_compile stage2
+	mv compiler/*.mod library/*.mod stage2
+	mv compiler/*.c library/*.c stage2
+	mv compiler/*.o library/*.o stage2
 	cd compiler && rm -f *.mod *.c *.o *.pic_o mercury_compile
 	cd library && rm -f *.mod *.c *.o *.pic_o *.a *.so
 
 .PHONY: stage_3
 stage_3:
 	cd library && \
-	MERCURY_COMPILER="`pwd`/stage2/mercury_compile" \
+	MERCURY_COMPILER="`pwd`/../stage2/mercury_compile" \
 	$(SUBDIR_MMAKE)
 	cd compiler && \
-	MERCURY_COMPILER="`pwd`/stage2/mercury_compile" \
+	MERCURY_COMPILER="`pwd`/../stage2/mercury_compile" \
 	$(SUBDIR_MMAKE)
-	[ -d stage_3 ] || mkdir stage3
-	cp compiler/mercury_compile compiler/*.c library/*.c stage3
+	[ -d stage3 ] || mkdir stage3
+	mv compiler/mercury_compile stage3
+	mv compiler/*.mod library/*.mod stage3
+	mv compiler/*.c library/*.c stage3
+	mv compiler/*.o library/*.o stage3
 	cd compiler && rm -f *.mod *.c *.o *.pic_o mercury_compile
 	cd library && rm -f *.mod *.c *.o *.pic_o *.a *.so
 
 .PHONY: stage_4
 stage_4:
 	cd library && \
-	MERCURY_COMPILER="`pwd`/stage3/mercury_compile" \
+	MERCURY_COMPILER="`pwd`/../stage3/mercury_compile" \
 	$(SUBDIR_MMAKE)
 	cd compiler && \
-	MERCURY_COMPILER="`pwd`/stage3/mercury_compile" \
+	MERCURY_COMPILER="`pwd`/../stage3/mercury_compile" \
 	$(SUBDIR_MMAKE)
-	[ -d stage_4 ] || mkdir stage4
-	cp compiler/mercury_compile compiler/*.c library/*.c stage4
+	[ -d stage4 ] || mkdir stage4
+	mv compiler/mercury_compile stage4
+	mv compiler/*.mod library/*.mod stage4
+	mv compiler/*.c library/*.c stage4
+	mv compiler/*.o library/*.o stage4
 	cd compiler && rm -f *.mod *.c *.o *.pic_o mercury_compile
 	cd library && rm -f *.mod *.c *.o *.pic_o *.a *.so
 
