@@ -1869,6 +1869,14 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody)
 	->
 		io__write_string("extern ")
 	;
+		% forward declarations for GNU C nested functions need
+		% to be prefixed with "auto"
+		{ DeclOrDefn = forward_decl },
+		{ Name = function(_, _, _, _) },
+		{ Access = local }
+	->
+		io__write_string("auto ")
+	;
 		[]
 	).
 
@@ -1932,6 +1940,19 @@ mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements), Context) -->
 	( { Defns \= [] } ->
 		{ FuncInfo = func_info(FuncName, _) },
 		{ FuncName = qual(ModuleName, _) },
+
+		% output forward declarations for any nested functions
+		% defined in this block, in case they are referenced before
+		% they are defined
+		{ list__filter(defn_is_function, Defns, NestedFuncDefns) },
+		( { NestedFuncDefns \= [] } ->
+			mlds_output_decls(Indent + 1, ModuleName,
+				NestedFuncDefns),
+			io__write_string("\n")
+		;
+			[]
+		),
+
 		mlds_output_defns(Indent + 1, ModuleName, Defns),
 		io__write_string("\n")
 	;
