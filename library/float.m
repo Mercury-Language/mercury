@@ -61,21 +61,16 @@
 %	XXXX This function could be more efficient, with an int_mod pred, to
 %	reduce O(N) to O(logN) of the exponent.
 float__pow( X, Exp, Ans) :-
-	( Exp < 0
-	->
+	( Exp < 0 ->
 		error("float__pow taken with exponent < 0\n")
-	;
-	( Exp  = 1 
-	->
+	; Exp = 1 ->
 		Ans =  X
-	;
-	( Exp = 0
-	->
+	; Exp = 0 ->
 		Ans = 1.0
 	;
 		New_e is Exp - 1,
 		float__pow(X, New_e, A2),
 		builtin_float_times(X, A2, Ans)
-	))).
+	).
 
 %---------------------------------------------------------------------------%
