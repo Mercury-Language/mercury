@@ -52,3 +52,4 @@ ho_order
 no_inline
 impossible_unify
 erroneous_liveness
+mode_choice
