@@ -223,22 +223,41 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 		% In the alias branch this is necessary anyway.
 		RecomputeAtomic = yes,
 
-		simplify_info_get_module_info(Info3, ModuleInfo1),
+		simplify_info_get_module_info(Info3, ModuleInfo3),
 		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
-			InstMap0, ModuleInfo1, ModuleInfo),
-		simplify_info_set_module_info(Info3, ModuleInfo, Info)
+			InstMap0, ModuleInfo3, ModuleInfo4),
+		simplify_info_set_module_info(Info3, ModuleInfo4, Info4)
 	;
 		Goal3 = Goal1,
-		Info = Info1
+		Info4 = Info1
 	),
-	( simplify_info_rerun_det(Info) ->
+	( simplify_info_rerun_det(Info4) ->
 		Goal0 = _ - GoalInfo0,
 		goal_info_get_determinism(GoalInfo0, Det),
 		det_get_soln_context(Det, SolnContext),
+
+		% det_infer_goal looks up the proc_info in the module_info
+		% for the vartypes, so we'd better stick them back in the
+		% module_info.
+		simplify_info_get_module_info(Info4, ModuleInfo5),
+		simplify_info_get_varset(Info4, VarSet4),
+		simplify_info_get_var_types(Info4, VarTypes4),
+		simplify_info_get_det_info(Info4, DetInfo4),
+		det_info_get_pred_id(DetInfo4, PredId),
+		det_info_get_proc_id(DetInfo4, ProcId),
+		module_info_pred_proc_info(ModuleInfo5, PredId, ProcId,
+			PredInfo, ProcInfo0),
+		proc_info_set_vartypes(ProcInfo0, VarTypes4, ProcInfo1),
+		proc_info_set_varset(ProcInfo1, VarSet4, ProcInfo),
+		module_info_set_pred_proc_info(ModuleInfo5, PredId, ProcId,
+			PredInfo, ProcInfo, ModuleInfo6),
+		simplify_info_set_module_info(Info4, ModuleInfo6, Info),
+
 		simplify_info_get_det_info(Info, DetInfo),
 		det_infer_goal(Goal3, InstMap0, SolnContext,
 			DetInfo, Goal, _, _)
 	;
+		Info = Info4,
 		Goal = Goal3
 	).
 

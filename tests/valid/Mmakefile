@@ -26,6 +26,7 @@ OTHER_SOURCES= \
 	complicated_unify.m \
 	constructor_arg_names.m \
 	dcg_test.m \
+	deforest_rerun_det.m \
 	det_condition.m \
 	det_inference.m \
 	det_switch.m \
@@ -156,6 +157,7 @@ MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all
 MCFLAGS-vn_float		= -O5
+MCFLAGS-deforest_rerun_det	= -O3 --check-termination
 
 # intermod_lambda.m needs inter-module optimization
 intermod_lambda.c:
