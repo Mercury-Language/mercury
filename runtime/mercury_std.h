@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997-2001 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -259,6 +259,10 @@ typedef	char		MR_bool;
 */
 #define MR_CHECK_EXPR_TYPE(expr, type) \
 	((void) sizeof(*(type *)NULL = (expr)))
+
+/*---------------------------------------------------------------------------*/
+
+#define MR_SORRY(msg) MR_fatal_error("Sorry, not yet implemented: " msg);
 
 /*---------------------------------------------------------------------------*/
 

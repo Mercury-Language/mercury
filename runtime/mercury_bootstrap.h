@@ -108,12 +108,38 @@
 ** of builtin types.
 */
 
-#define	mercury_data_builtin__type_ctor_info_func_0 \
-	mercury_data___type_ctor_info_func_0
-#define	mercury_data_builtin__type_ctor_info_pred_0 \
-	mercury_data___type_ctor_info_pred_0
-#define	mercury_data_builtin__type_ctor_info_tuple_0 \
-	mercury_data___type_ctor_info_tuple_0
+#define	mercury_data___type_ctor_info_int_0 \
+	mercury_data_builtin__type_ctor_info_int_0
+#define	mercury_data___type_ctor_info_string_0 \
+	mercury_data_builtin__type_ctor_info_string_0
+#define	mercury_data___type_ctor_info_float_0 \
+	mercury_data_builtin__type_ctor_info_float_0
+#define	mercury_data___type_ctor_info_character_0 \
+	mercury_data_builtin__type_ctor_info_character_0
+#define	mercury_data___type_ctor_info_void_0 \
+	mercury_data_builtin__type_ctor_info_void_0
+#define	mercury_data___type_ctor_info_c_pointer_0 \
+	mercury_data_builtin__type_ctor_info_c_pointer_0
+#define	mercury_data___type_ctor_info_func_0 \
+	mercury_data_builtin__type_ctor_info_func_0
+#define	mercury_data___type_ctor_info_pred_0 \
+	mercury_data_builtin__type_ctor_info_pred_0
+#define	mercury_data___type_ctor_info_tuple_0 \
+	mercury_data_builtin__type_ctor_info_tuple_0
+#define	mercury_data___type_ctor_info_hp_0 \
+	mercury_data_builtin__type_ctor_info_hp_0
+#define	mercury_data___type_ctor_info_curfr_0 \
+	mercury_data_builtin__type_ctor_info_curfr_0
+#define	mercury_data___type_ctor_info_maxfr_0 \
+	mercury_data_builtin__type_ctor_info_maxfr_0
+#define	mercury_data___type_ctor_info_redofr_0 \
+	mercury_data_builtin__type_ctor_info_redofr_0
+#define	mercury_data___type_ctor_info_redoip_0 \
+	mercury_data_builtin__type_ctor_info_redoip_0
+#define	mercury_data___type_ctor_info_trailptr_0 \
+	mercury_data_builtin__type_ctor_info_trailptr_0
+#define	mercury_data___type_ctor_info_ticket_0 \
+	mercury_data_builtin__type_ctor_info_ticket_0
 
 /*
 ** This stuff is enabled by default,

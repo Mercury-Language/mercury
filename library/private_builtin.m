@@ -12,8 +12,8 @@
 % module.  It is intended for builtins that are just implementation details,
 % such as procedures that the compiler generates implicit calls to when
 % implementing polymorphism, unification, compare/3, etc.
-% Note that the builtins used for tabling are in a separate module
-% (table_builtin.m).
+% Note that the builtins used for tabling and deep profiling are in separate
+% modules (table_builtin.m and profiling_builtin.m).
 
 % This module is a private part of the Mercury implementation;
 % user modules should never explicitly import this module.
@@ -262,7 +262,6 @@ typed_compare(R, X, Y) :-
 		R = R0
 	).
 
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -349,213 +348,12 @@ typed_compare(R, X, Y) :-
 
 	% The definitions for type_ctor_info/1 and type_info/1.
 
-:- pragma c_header_code("
-#ifdef MR_DEEP_PROFILING
-#include ""mercury_deep_profiling.h""
-#endif
-").
-
-:- pragma foreign_code("C", "
-
-/* forward decls, to suppress gcc -Wmissing-decl warnings */
-void sys_init_type_info_module_init(void);
-void sys_init_type_info_module_init_type_tables(void);
-#ifdef	MR_DEEP_PROFILING
-void sys_init_type_info_module_write_out_proc_statics(FILE *fp);
-#endif
-
-#ifndef MR_HIGHLEVEL_CODE
-
-	/*
-	** For most purposes, type_ctor_info can be treated just like
-	** type_info.  The code that handles type_infos can also handle
-	** type_ctor_infos.
-	*/
-
-#ifdef	MR_DEEP_PROFILING
-MR_proc_static_compiler_empty(private_builtin, __Unify__,   type_info,
-	1, 0, ""private_builtin.m"", 0, MR_TRUE);
-MR_proc_static_compiler_empty(private_builtin, __Compare__, type_info,
-	1, 0, ""private_builtin.m"", 0, MR_TRUE);
-MR_proc_static_compiler_empty(private_builtin, __Unify__,   typeclass_info,
-	1, 0, ""private_builtin.m"", 0, MR_TRUE);
-MR_proc_static_compiler_empty(private_builtin, __Compare__, typeclass_info,
-	1, 0, ""private_builtin.m"", 0, MR_TRUE);
-#endif
-
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, type_ctor_info, 1,
-	MR_TYPECTOR_REP_TYPECTORINFO,
-	mercury____Unify___private_builtin__type_info_1_0,
-	mercury____Compare___private_builtin__type_info_1_0);
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_info, 1,
-	MR_TYPECTOR_REP_TYPEINFO);
-
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, base_typeclass_info, 1,
-	MR_TYPECTOR_REP_BASETYPECLASSINFO,
-	mercury____Unify___private_builtin__typeclass_info_1_0,
-	mercury____Compare___private_builtin__typeclass_info_1_0);
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
-	MR_TYPECTOR_REP_TYPECLASSINFO);
-
-MR_define_extern_entry(mercury____Unify___private_builtin__type_info_1_0);
-MR_define_extern_entry(mercury____Compare___private_builtin__type_info_1_0);
-MR_define_extern_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
-MR_define_extern_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
-
-MR_BEGIN_MODULE(type_info_module)
-	MR_init_entry(mercury____Unify___private_builtin__type_info_1_0);
-	MR_init_entry(mercury____Compare___private_builtin__type_info_1_0);
-	MR_init_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
-	MR_init_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
-#ifdef	MR_DEEP_PROFILING
-	MR_init_label(mercury____Unify___private_builtin__type_info_1_0_i1);
-	MR_init_label(mercury____Unify___private_builtin__type_info_1_0_i2);
-	MR_init_label(mercury____Unify___private_builtin__type_info_1_0_i3);
-	MR_init_label(mercury____Unify___private_builtin__type_info_1_0_i4);
-	MR_init_label(mercury____Compare___private_builtin__type_info_1_0_i1);
-	MR_init_label(mercury____Compare___private_builtin__type_info_1_0_i2);
-	MR_init_label(mercury____Unify___private_builtin__typeclass_info_1_0_i1);
-	MR_init_label(mercury____Unify___private_builtin__typeclass_info_1_0_i2);
-	MR_init_label(mercury____Unify___private_builtin__typeclass_info_1_0_i3);
-	MR_init_label(mercury____Unify___private_builtin__typeclass_info_1_0_i4);
-	MR_init_label(mercury____Compare___private_builtin__typeclass_info_1_0_i1);
-	MR_init_label(mercury____Compare___private_builtin__typeclass_info_1_0_i2);
-#endif
-MR_BEGIN_CODE
-
-#define	proc_label	mercury____Unify___private_builtin__type_info_1_0
-#define	proc_static	MR_proc_static_compiler_name(private_builtin,	\
-				__Unify__, type_info, 1, 0)
-#define	body_code	do {						\
-				int	comp;				\
-									\
-				MR_save_transient_registers();		\
-				comp = MR_compare_type_info(		\
-					(MR_TypeInfo) MR_r1,		\
-					(MR_TypeInfo) MR_r2);		\
-				MR_restore_transient_registers();	\
-				MR_r1 = (comp == MR_COMPARE_EQUAL);	\
-			} while (0)
-
-#include ""mercury_hand_unify_body.h""
-
-#undef	proc_label
-#undef	proc_static
-#undef	body_code
-
-#define	proc_label	mercury____Compare___private_builtin__type_info_1_0
-#define	proc_static	MR_proc_static_compiler_name(private_builtin,	\
-				__Compare__, type_info, 1, 0)
-#define	body_code	do {						\
-				int	comp;				\
-									\
-				MR_save_transient_registers();		\
-				comp = MR_compare_type_info(		\
-					(MR_TypeInfo) MR_r1,		\
-					(MR_TypeInfo) MR_r2);		\
-				MR_restore_transient_registers();	\
-				MR_r1 = comp;				\
-			} while (0)
-
-#include ""mercury_hand_compare_body.h""
-
-#undef	proc_label
-#undef	proc_static
-#undef	body_code
-
-#define	proc_label	mercury____Unify___private_builtin__typeclass_info_1_0
-#define	proc_static	MR_proc_static_compiler_name(private_builtin,	\
-				__Unify__, typeclass_info, 1, 0)
-#define	body_code	do {						\
-				MR_fatal_error(""attempt to unify typeclass_info""); \
-			} while (0)
-
-#include ""mercury_hand_unify_body.h""
-
-#undef	proc_label
-#undef	proc_static
-#undef	body_code
-
-#define	proc_label	mercury____Compare___private_builtin__typeclass_info_1_0
-#define	proc_static	MR_proc_static_compiler_name(private_builtin,	\
-				__Compare__, typeclass_info, 1, 0)
-#define	body_code	do {						\
-				MR_fatal_error(""attempt to compare typeclass_info""); \
-			} while (0)
-
-#include ""mercury_hand_compare_body.h""
-
-#undef	proc_label
-#undef	proc_static
-#undef	body_code
-
-MR_END_MODULE
-
-/* Ensure that the initialization code for the above module gets run. */
-/*
-INIT sys_init_type_info_module
-*/
-MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc type_info_module;
-
-#endif /* ! MR_HIGHLEVEL_CODE */
-
-void
-sys_init_type_info_module_init(void)
-{
-#ifndef	MR_HIGHLEVEL_CODE
-	type_info_module();
-
-	MR_INIT_TYPE_CTOR_INFO(
-	  mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
-	  private_builtin__type_info_1_0);
-	MR_INIT_TYPE_CTOR_INFO(
-	  mercury_data_private_builtin__type_ctor_info_type_info_1,
-	  private_builtin__type_info_1_0);
-	MR_INIT_TYPE_CTOR_INFO(
-	  mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
-	  private_builtin__typeclass_info_1_0);
-	MR_INIT_TYPE_CTOR_INFO(
-	  mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
-	  private_builtin__typeclass_info_1_0);
-#endif
-}
-
-void
-sys_init_type_info_module_init_type_tables(void)
-{
-#ifndef	MR_HIGHLEVEL_CODE
-	MR_register_type_ctor_info(
-	  &mercury_data_private_builtin__type_ctor_info_type_ctor_info_1);
-	MR_register_type_ctor_info(
-	  &mercury_data_private_builtin__type_ctor_info_type_info_1);
-	MR_register_type_ctor_info(
-	  &mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1);
-	MR_register_type_ctor_info(
-	  &mercury_data_private_builtin__type_ctor_info_typeclass_info_1);
-#endif
-}
-
-#ifdef	MR_DEEP_PROFILING
-void
-sys_init_type_info_module_write_out_proc_statics(FILE *fp)
-{
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_compiler_name(private_builtin,
-			__Unify__, type_info, 1, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_compiler_name(private_builtin,
-			__Compare__, type_info, 1, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_compiler_name(private_builtin,
-			__Unify__, typeclass_info, 1, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_compiler_name(private_builtin,
-			__Compare__, typeclass_info, 1, 0));
-}
-#endif
-
-").
-
+	% XXX probably redundant
+% :- pragma c_header_code("
+% #ifdef MR_DEEP_PROFILING
+% #include ""mercury_deep_profiling.h""
+% #endif
+% ").
 
 :- pragma foreign_code("MC++", "
 
@@ -662,7 +460,6 @@ static int MR_SECTAG_NONE				= 0;
 static int MR_SECTAG_LOCAL				= 1;
 static int MR_SECTAG_REMOTE				= 2;
 static int MR_SECTAG_VARIABLE				= 3;
-
 
 static int
 __Unify____type_info_1_0(
@@ -902,7 +699,6 @@ instance_constraint_from_typeclass_info(_, _, _) :-
 	% matching foreign_proc version.
 	sorry("instance_constraint_from_typeclass_info").
 
-
 %-----------------------------------------------------------------------------%
 
 	% This section of the module contains predicates that are used
@@ -1113,7 +909,6 @@ prune_ticket :-
 #endif
 ").
 
-
 trailed_nondet_pragma_foreign_code :-
 	Msg = string__append_list([
 		"Sorry, not implemented:\n",
@@ -1280,122 +1075,8 @@ reclaim_heap_nondet_pragma_foreign_code :-
 
 %-----------------------------------------------------------------------------%
 
-% Code to define the `heap_pointer' type for the LLDS and .NET back-ends.
-% (For the MLDS->C back-end, this type is defined in runtime/mercury.c.)
-
-:- pragma foreign_code("C", "
-
-#include ""mercury_deep_profiling_hand.h""
-
-/* Ensure that the initialization code for the module below gets run. */
-/*
-INIT sys_init_heap_pointer_module
-*/
-
-/* duplicate declarations to suppress gcc -Wmissing-decl warning */
-void sys_init_heap_pointer_module_init(void);
-void sys_init_heap_pointer_module_init_type_tables(void);
-#ifdef	MR_DEEP_PROFILING
-void sys_init_heap_pointer_module_write_out_proc_statics(FILE *fp);
-#endif
-
-#ifndef MR_HIGHLEVEL_CODE
-
-#ifdef	MR_DEEP_PROFILING
-MR_proc_static_compiler_empty(private_builtin, __Unify__,   heap_pointer,
-	0, 0, ""private_builtin.m"", 0, MR_TRUE);
-MR_proc_static_compiler_empty(private_builtin, __Compare__, heap_pointer,
-	0, 0, ""private_builtin.m"", 0, MR_TRUE);
-#endif
-
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, heap_pointer, 0,
-	MR_TYPECTOR_REP_HP,
-	mercury____Unify___private_builtin__heap_pointer_0_0,
-	mercury____Compare___private_builtin__heap_pointer_0_0);
-
-MR_declare_entry(mercury____Unify___private_builtin__heap_pointer_0_0);
-MR_declare_entry(mercury____Index___private_builtin__heap_pointer_0_0);
-MR_declare_entry(mercury____Compare___private_builtin__heap_pointer_0_0);
-
-MR_BEGIN_MODULE(heap_pointer_module)
-	MR_init_entry(mercury____Unify___private_builtin__heap_pointer_0_0);
-	MR_init_entry(mercury____Compare___private_builtin__heap_pointer_0_0);
-#ifdef	MR_DEEP_PROFILING
-	MR_init_label(mercury____Unify___private_builtin__heap_pointer_0_0_i1);
-	MR_init_label(mercury____Unify___private_builtin__heap_pointer_0_0_i2);
-	MR_init_label(mercury____Unify___private_builtin__heap_pointer_0_0_i3);
-	MR_init_label(mercury____Unify___private_builtin__heap_pointer_0_0_i4);
-	MR_init_label(mercury____Compare___private_builtin__heap_pointer_0_0_i1);
-	MR_init_label(mercury____Compare___private_builtin__heap_pointer_0_0_i2);
-#endif
-MR_BEGIN_CODE
-
-#define	proc_label	mercury____Unify___private_builtin__heap_pointer_0_0
-#define	proc_static	MR_proc_static_compiler_name(private_builtin, \
-				__Unify__, heap_pointer, 0, 0)
-#define	body_code	MR_fatal_error( \
-		""called unify for type `private_builtin:heap_pointer'"")
-
-#include ""mercury_hand_unify_body.h""
-
-#undef	body_code
-#undef	proc_static
-#undef	proc_label
-
-#define	proc_label	mercury____Compare___private_builtin__heap_pointer_0_0
-#define	proc_static	MR_proc_static_compiler_name(private_builtin, \
-				__Compare__, heap_pointer, 0, 0)
-#define	body_code	MR_fatal_error( \
-		""called compare/3 for type `private_builtin:heap_pointer'"")
-
-#include ""mercury_hand_compare_body.h""
-
-#undef	body_code
-#undef	proc_static
-#undef	proc_label
-
-MR_END_MODULE
-
-MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc heap_pointer_module;
-
-#endif /* ! MR_HIGHLEVEL_CODE */
-
-void
-sys_init_heap_pointer_module_init(void)
-{
-#ifndef	MR_HIGHLEVEL_CODE
-	heap_pointer_module();
-
-	MR_INIT_TYPE_CTOR_INFO(
-		mercury_data_private_builtin__type_ctor_info_heap_pointer_0,
-		private_builtin__heap_pointer_0_0);
-#endif
-}
-
-void
-sys_init_heap_pointer_module_init_type_tables(void)
-{
-#ifndef	MR_HIGHLEVEL_CODE
-	MR_register_type_ctor_info(
-		&mercury_data_private_builtin__type_ctor_info_heap_pointer_0);
-#endif
-}
-
-#ifdef	MR_DEEP_PROFILING
-void
-sys_init_heap_pointer_module_write_out_proc_statics(FILE *fp)
-{
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_compiler_name(private_builtin, __Unify__,
-			heap_pointer, 0, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_compiler_name(private_builtin, __Compare__,
-			heap_pointer, 0, 0));
-}
-#endif
-
-").
-
+% Code to define the `heap_pointer' type for the .NET back-end.
+% (For the C back-ends, it is defined in runtime/mercury_builtin_types.[ch].)
 
 :- pragma foreign_code("MC++", "
 	

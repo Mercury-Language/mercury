@@ -22,6 +22,7 @@ ENDINIT
 #include "mercury_deep_profiling.h"
 #include "mercury_deep_profiling_hand.h"
 #include "mercury_layout_util.h"
+#include "mercury_builtin_types.h"	/* for unify/compare of pred/func */
 
 #ifdef	MR_DEEP_PROFILING
   #ifdef MR_DEEP_PROFILING_STATISTICS
@@ -77,45 +78,271 @@ ENDINIT
 		MR_proc_static_user_builtin_name(predname, 3, 0),	\
 		MR_own_exits)
 
-MR_proc_static_user_builtin_empty(integer_unify, 2, 0,
+  MR_proc_static_user_builtin_empty(integer_unify, 2, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(integer_compare, 3, 0,
+  MR_proc_static_user_builtin_empty(integer_compare, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(float_unify, 2, 0,
+  MR_proc_static_user_builtin_empty(float_unify, 2, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(float_compare, 3, 0,
+  MR_proc_static_user_builtin_empty(float_compare, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(string_unify, 2, 0,
+  MR_proc_static_user_builtin_empty(string_unify, 2, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(string_compare, 3, 0,
+  MR_proc_static_user_builtin_empty(string_compare, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(c_pointer_unify, 2, 0,
+  MR_proc_static_user_builtin_empty(c_pointer_unify, 2, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(c_pointer_compare, 3, 0,
+  MR_proc_static_user_builtin_empty(c_pointer_compare, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(typeinfo_unify, 2, 0,
+  MR_proc_static_user_builtin_empty(typeinfo_unify, 2, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(typeinfo_compare, 3, 0,
+  MR_proc_static_user_builtin_empty(typeinfo_compare, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(typectorinfo_unify, 2, 0,
+  MR_proc_static_user_builtin_empty(typectorinfo_unify, 2, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(typectorinfo_compare, 3, 0,
+  MR_proc_static_user_builtin_empty(typectorinfo_compare, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(typedesc_unify, 2, 0,
+  MR_proc_static_user_builtin_empty(typedesc_unify, 2, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(typedesc_compare, 3, 0,
+  MR_proc_static_user_builtin_empty(typedesc_compare, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(typectordesc_unify, 2, 0,
+  MR_proc_static_user_builtin_empty(typectordesc_unify, 2, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(typectordesc_compare, 3, 0,
+  MR_proc_static_user_builtin_empty(typectordesc_compare, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
 
-MR_proc_static_user_empty(std_util, compare_representation, 3, 0,
+  MR_proc_static_user_empty(std_util, compare_representation, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
 
 #endif
 
-#ifndef MR_HIGHLEVEL_CODE
+#ifdef MR_HIGHLEVEL_CODE
+
+static MR_bool MR_CALL
+unify_tuples(MR_Mercury_Type_Info ti, MR_Tuple x, MR_Tuple y)
+{
+	int		i, arity;
+	MR_bool		result;
+	MR_TypeInfo	type_info;
+	MR_TypeInfo	arg_type_info;
+
+	type_info = (MR_TypeInfo) ti;
+	arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
+
+	for (i = 0; i < arity; i++) {
+		/* type_infos are counted starting at one. */
+		arg_type_info =
+			MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[i + 1];
+		result = mercury__builtin__unify_2_p_0(
+			(MR_Mercury_Type_Info) arg_type_info, x[i], y[i]);
+		if (result == MR_FALSE) {
+			return MR_FALSE;
+		}
+	}
+	return MR_TRUE;
+}
+
+static void MR_CALL
+compare_tuples(MR_Mercury_Type_Info ti, MR_Comparison_Result *result,
+	MR_Tuple x, MR_Tuple y)
+{
+	int		i, arity;
+	MR_TypeInfo	type_info;
+	MR_TypeInfo	arg_type_info;
+
+	type_info = (MR_TypeInfo) ti;
+	arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
+
+	for (i = 0; i < arity; i++) {
+		/* type_infos are counted starting at one. */
+		arg_type_info =
+			MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[i + 1];
+		mercury__builtin__compare_3_p_0(
+			(MR_Mercury_Type_Info) arg_type_info,
+			result, x[i], y[i]);
+		if (*result != MR_COMPARE_EQUAL) {
+			return;
+		}
+	}
+	*result = MR_COMPARE_EQUAL;
+}
+
+/*
+** Define the generic unify/2 and compare/3 functions.
+*/
+
+MR_bool MR_CALL
+mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info ti, MR_Box x, MR_Box y)
+{
+	MR_TypeInfo		type_info;
+	MR_TypeCtorInfo		type_ctor_info;
+	MR_TypeCtorRep		type_ctor_rep;
+	int			arity;
+	MR_TypeInfoParams	params;
+	MR_Mercury_Type_Info	*args;
+
+	type_info = (MR_TypeInfo) ti;
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+
+	/*
+	** Tuple and higher-order types do not have a fixed arity,
+	** so they need to be special cased here.
+	*/
+	type_ctor_rep = MR_type_ctor_rep(type_ctor_info);
+	if (type_ctor_rep == MR_TYPECTOR_REP_TUPLE) {
+		return unify_tuples(ti, (MR_Tuple) x, (MR_Tuple) y);
+	} else if (type_ctor_rep == MR_TYPECTOR_REP_PRED) {
+		return mercury__builtin____Unify____pred_0_0((MR_Pred) x,
+			(MR_Pred) y);
+	} else if (type_ctor_rep == MR_TYPECTOR_REP_FUNC) {
+		return mercury__builtin____Unify____pred_0_0((MR_Pred) x,
+			(MR_Pred) y);
+	}
+
+	arity = type_ctor_info->MR_type_ctor_arity;
+	params = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
+	args = (MR_Mercury_Type_Info *) params;
+
+	switch(arity) {
+		/*
+		** cast type_ctor_info->unify_pred to the right type
+		** and then call it, passing the right number of
+		** type_info arguments
+		*/
+		case 0: return ((MR_UnifyFunc_0 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
+				(x, y);
+		case 1: return ((MR_UnifyFunc_1 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
+				(args[1], x, y);
+		case 2: return ((MR_UnifyFunc_2 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
+				(args[1], args[2], x, y);
+		case 3: return ((MR_UnifyFunc_3 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
+				(args[1], args[2], args[3],
+				 x, y);
+		case 4: return ((MR_UnifyFunc_4 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
+				(args[1], args[2], args[3],
+				 args[4], x, y);
+		case 5: return ((MR_UnifyFunc_5 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
+				(args[1], args[2], args[3],
+				 args[4], args[5], x, y);
+		default:
+			MR_fatal_error(
+				"unify/2: type arity > 5 not supported");
+	}
+}
+
+void MR_CALL
+mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info ti,
+	MR_Comparison_Result *res, MR_Box x, MR_Box y)
+{
+	MR_TypeInfo		type_info;
+	MR_TypeCtorInfo		type_ctor_info;
+	MR_TypeCtorRep		type_ctor_rep;
+	int			arity;
+	MR_TypeInfoParams	params;
+	MR_Mercury_Type_Info	*args;
+
+	type_info = (MR_TypeInfo) ti;
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+
+	/*
+	** Tuple and higher-order types do not have a fixed arity,
+	** so they need to be special cased here.
+	*/
+	type_ctor_rep = MR_type_ctor_rep(type_ctor_info);
+	if (type_ctor_rep == MR_TYPECTOR_REP_TUPLE) {
+		compare_tuples(ti, res, (MR_Tuple) x, (MR_Tuple) y);
+		return;
+	} else if (type_ctor_rep == MR_TYPECTOR_REP_PRED) {
+		mercury__builtin____Compare____pred_0_0(res,
+			(MR_Pred) x, (MR_Pred) y);
+		return;
+	} else if (type_ctor_rep == MR_TYPECTOR_REP_FUNC) {
+		mercury__builtin____Compare____pred_0_0(res,
+			(MR_Pred) x, (MR_Pred) y);
+	    	return;
+	}
+
+	arity = type_ctor_info->MR_type_ctor_arity;
+	params = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
+	args = (MR_Mercury_Type_Info *) params;
+
+	switch(arity) {
+		/*
+		** cast type_ctor_info->compare to the right type
+		** and then call it, passing the right number of
+		** type_info arguments
+		*/
+		case 0: ((MR_CompareFunc_0 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
+			 (res, x, y);
+			 break;
+		case 1: ((MR_CompareFunc_1 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
+			 (args[1], res, x, y);
+			 break;
+		case 2: ((MR_CompareFunc_2 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
+			 (args[1], args[2], res, x, y);
+			 break;
+		case 3: ((MR_CompareFunc_3 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
+			 (args[1], args[2], args[3], res, x, y);
+			 break;
+		case 4: ((MR_CompareFunc_4 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
+			 (args[1], args[2], args[3],
+			  args[4], res, x, y);
+			 break;
+		case 5: ((MR_CompareFunc_5 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
+			 (args[1], args[2], args[3],
+			  args[4], args[5], res, x, y);
+			 break;
+		default:
+			MR_fatal_error(
+				"index/2: type arity > 5 not supported");
+	}
+}
+
+void MR_CALL
+mercury__builtin__compare_3_p_1(
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *res,
+	MR_Box x, MR_Box y)
+{
+	mercury__builtin__compare_3_p_0(type_info, res, x, y);
+}
+
+void MR_CALL
+mercury__builtin__compare_3_p_2(
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *res,
+	MR_Box x, MR_Box y)
+{
+	mercury__builtin__compare_3_p_0(type_info, res, x, y);
+}
+
+void MR_CALL
+mercury__builtin__compare_3_p_3(
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *res,
+	MR_Box x, MR_Box y)
+{
+	mercury__builtin__compare_3_p_0(type_info, res, x, y);
+}
+
+void MR_CALL
+mercury__std_util__compare_representation_3_p_0(MR_Mercury_Type_Info ti,
+	MR_Comparison_Result *res, MR_Box x, MR_Box y)
+{
+	MR_SORRY("compare_representation/3 for HIGHLEVEL_CODE");
+}
+
+#else	/* ! MR_HIGHLEVEL_CODE */
+
 static	MR_Word	MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 static	MR_Word	MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 static	MR_Word	MR_generic_compare_representation(MR_TypeInfo type_info,

@@ -425,14 +425,17 @@ lower bounds other than zero are not supported
 
 #include ""mercury_deep_profiling_hand.h""
 
+
+#ifdef	MR_DEEP_PROFILING
+MR_proc_static_compiler_plain(array, __Unify__,   array, 1, 0,
+	array, array_equal,   2, 0, ""array.m"", 99, MR_TRUE);
+MR_proc_static_compiler_plain(array, __Compare__, array, 1, 0,
+	array, array_compare, 3, 0, ""array.m"", 99, MR_TRUE);
+#endif
+
+MR_DEFINE_TYPE_CTOR_INFO(array, array, 1, ARRAY);
+
 #ifdef MR_HIGHLEVEL_CODE
-
-MR_define_type_ctor_info(array, array, 1, MR_TYPECTOR_REP_ARRAY);
-
-/* forward decl, to suppress gcc -Wmissing-decl warning */
-void sys_init_array_module_builtins(void);
-void sys_init_array_module_builtins_init(void);
-void sys_init_array_module_builtins_init_type_tables(void);
 
 MR_bool MR_CALL
 mercury__array__do_unify__array_1_0(MR_Mercury_Type_Info type_info,
@@ -467,15 +470,6 @@ mercury__array____Compare____array_1_0(
 }
 
 #else
-
-#ifdef	MR_DEEP_PROFILING
-MR_proc_static_compiler_plain(array, __Unify__,   array, 1, 0,
-	array, array_equal,   2, 0, ""array.m"", 99, MR_TRUE);
-MR_proc_static_compiler_plain(array, __Compare__, array, 1, 0,
-	array, array_compare, 3, 0, ""array.m"", 99, MR_TRUE);
-#endif
-
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 
 MR_declare_entry(mercury__array__array_equal_2_0);
 MR_declare_entry(mercury__array__array_compare_3_0);
@@ -556,6 +550,10 @@ MR_define_entry(mercury____Compare___array__array_1_0);
 
 MR_END_MODULE
 
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc array_module_builtins;
+
+#endif /* ! MR_HIGHLEVEL_CODE */
+
 /* Ensure that the initialization code for the above module gets run. */
 /*
 INIT sys_init_array_module_builtins
@@ -567,10 +565,6 @@ void sys_init_array_module_builtins_init_type_tables(void);
 #ifdef	MR_DEEP_PROFILING
 void sys_init_array_module_builtins_write_out_proc_statics(FILE *fp);
 #endif
-
-MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc array_module_builtins;
-
-#endif /* ! MR_HIGHLEVEL_CODE */
 
 void
 sys_init_array_module_builtins_init(void)

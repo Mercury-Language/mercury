@@ -33,6 +33,7 @@ HDRS		=	\
 			mercury_accurate_gc.h	\
 			mercury_agc_debug.h	\
 			mercury_array_macros.h	\
+			mercury_builtin_types.h	\
 			mercury_bootstrap.h	\
 			mercury_calls.h		\
 			mercury_conf.h		\
@@ -58,6 +59,7 @@ HDRS		=	\
 			mercury_hash_table.h	\
 			mercury_heap.h		\
 			mercury_heap_profile.h	\
+			mercury_hlc_types.h	\
 			mercury_ho_call.h	\
 			mercury_imp.h		\
 			mercury_init.h		\
@@ -72,6 +74,7 @@ HDRS		=	\
 			mercury_prof.h		\
 			mercury_prof_mem.h	\
 			mercury_prof_time.h	\
+			mercury_profiling_builtin.h	\
 			mercury_reg_workarounds.h	\
 			mercury_regorder.h	\
 			mercury_regs.h		\
@@ -139,6 +142,7 @@ CFILES		= 	\
 			mercury_accurate_gc.c	\
 			mercury_agc_debug.c	\
 			mercury_bootstrap.c	\
+			mercury_builtin_types.c	\
 			mercury_construct.c	\
 			mercury_context.c	\
 			mercury_debug.c		\
@@ -159,12 +163,13 @@ CFILES		= 	\
 			mercury_label.c		\
 			mercury_layout_util.c	\
 			mercury_memory.c	\
-			mercury_memory_zones.c	\
 			mercury_memory_handlers.c	\
+			mercury_memory_zones.c	\
 			mercury_misc.c		\
 			mercury_prof.c		\
 			mercury_prof_mem.c	\
 			mercury_prof_time.c	\
+			mercury_profiling_builtin.c	\
 			mercury_reg_workarounds.c	\
 			mercury_regs.c		\
 			mercury_runtime_util.c	\
@@ -228,15 +233,29 @@ endif
 
 $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
 
+mercury_builtin_types.$(O):	mercury_hand_unify_compare_body.h
+mercury_builtin_types.(O):	mercury_hand_unify_body.h mercury_hand_compare_body.h
 mercury_deconstruct.$(O):	mercury_ml_expand_body.h
 mercury_deep_copy.$(O):		mercury_deep_copy_body.h
 mercury_type_info.$(O):		mercury_make_type_info_body.h
 mercury_ho_call.$(O):		mercury_unify_compare_body.h
+mercury_type_info.$(O):		mercury_make_type_info_body.h
 
+mercury_builtin_types.$(EXT_FOR_PIC_OBJECTS):	mercury_hand_unify_compare_body.h
+mercury_builtin_types.(EXT_FOR_PIC_OBJECTS):	mercury_hand_unify_body.h mercury_hand_compare_body.h
 mercury_deconstruct.$(EXT_FOR_PIC_OBJECTS):	mercury_ml_expand_body.h
 mercury_deep_copy.$(EXT_FOR_PIC_OBJECTS):	mercury_deep_copy_body.h
 mercury_type_info.$(EXT_FOR_PIC_OBJECTS):	mercury_make_type_info_body.h
 mercury_ho_call.$(EXT_FOR_PIC_OBJECTS):		mercury_unify_compare_body.h
+mercury_type_info.$(EXT_FOR_PIC_OBJECTS):	mercury_make_type_info_body.h
+
+# ../tools/make_port_code makes both the .c and the .h file of the
+# mercury_profiling_builtin module.
+mercury_profiling_builtin.h:	mercury_deep_call_port_body.h \
+				mercury_deep_redo_port_body.h \
+				mercury_deep_leave_port_body.h \
+				../tools/make_port_code
+	../tools/make_port_code
 
 #-----------------------------------------------------------------------------#
 

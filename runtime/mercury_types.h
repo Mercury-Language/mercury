@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab
+*/
+/*
 ** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -33,57 +36,57 @@
 ** definitions after mercury_types.h.
 */
 
-typedef unsigned MR_WORD_TYPE		MR_uintptr_t;
-typedef MR_WORD_TYPE			MR_intptr_t;
+typedef unsigned MR_WORD_TYPE           MR_uintptr_t;
+typedef MR_WORD_TYPE                    MR_intptr_t;
 
-#ifdef	MR_INT_LEAST64_TYPE
-typedef unsigned MR_INT_LEAST64_TYPE	MR_uint_least64_t;
-typedef MR_INT_LEAST64_TYPE		MR_int_least64_t;
+#ifdef  MR_INT_LEAST64_TYPE
+typedef unsigned MR_INT_LEAST64_TYPE    MR_uint_least64_t;
+typedef MR_INT_LEAST64_TYPE             MR_int_least64_t;
 #endif
 
-typedef unsigned MR_INT_LEAST32_TYPE	MR_uint_least32_t;
-typedef MR_INT_LEAST32_TYPE		MR_int_least32_t;
-typedef unsigned MR_INT_LEAST16_TYPE	MR_uint_least16_t;
-typedef MR_INT_LEAST16_TYPE		MR_int_least16_t;
-typedef unsigned char			MR_uint_least8_t;
-typedef signed char			MR_int_least8_t;
+typedef unsigned MR_INT_LEAST32_TYPE    MR_uint_least32_t;
+typedef MR_INT_LEAST32_TYPE             MR_int_least32_t;
+typedef unsigned MR_INT_LEAST16_TYPE    MR_uint_least16_t;
+typedef MR_INT_LEAST16_TYPE             MR_int_least16_t;
+typedef unsigned char                   MR_uint_least8_t;
+typedef signed char                     MR_int_least8_t;
 
 /* 
 ** This section defines the basic types that we use.
 ** Note that we require 
-** 	sizeof(MR_Word) == sizeof(MR_Integer) == sizeof(MR_Code*).
+**      sizeof(MR_Word) == sizeof(MR_Integer) == sizeof(MR_Code*).
 */
 
-typedef	MR_uintptr_t		MR_Word;
-typedef	MR_intptr_t		MR_Integer;
-typedef	MR_uintptr_t		MR_Unsigned;
+typedef MR_uintptr_t            MR_Word;
+typedef MR_intptr_t             MR_Integer;
+typedef MR_uintptr_t            MR_Unsigned;
 
 /*
 ** Convert a size in bytes to a size in words, rounding up if necessary.
 */
 
-#define MR_bytes_to_words(x)	(((x) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
+#define MR_bytes_to_words(x)    (((x) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
 
 /*
 ** `MR_Code *' is used as a generic pointer-to-label type that can point
 ** to any label defined using the Define_* macros in mercury_goto.h.
 */
 
-typedef void			MR_Code;
+typedef void                    MR_Code;
 
 /*
 ** MR_Float64 is required for the bytecode.
 ** XXX: We should also check for IEEE-754 compliance.
 */
 
-#if	MR_FLOAT_IS_64_BIT
-	typedef	float			MR_Float64;
-#elif	MR_DOUBLE_IS_64_BIT
-	typedef	double			MR_Float64;
-#elif	MR_LONG_DOUBLE_IS_64_BIT
-	typedef	long double		MR_Float64;
+#if     MR_FLOAT_IS_64_BIT
+        typedef float                   MR_Float64;
+#elif   MR_DOUBLE_IS_64_BIT
+        typedef double                  MR_Float64;
+#elif   MR_LONG_DOUBLE_IS_64_BIT
+        typedef long double             MR_Float64;
 #else
-	#error	"For Mercury bytecode, we require 64-bit IEEE-754 floating point"
+        #error  "For Mercury bytecode, we require 64-bit IEEE-754 floating point"
 #endif
 
 /*
@@ -108,6 +111,24 @@ typedef const MR_Char *MR_ConstString;
 #endif
 
 /*
+** These typedefs are forward declarations, used to avoid circular dependencies
+** between header files.
+*/
+
+typedef struct MR_Closure_Struct                MR_Closure;
+typedef const MR_Closure                        *MR_ClosurePtr;
+
+typedef struct MR_CallSiteStatic_Struct         MR_CallSiteStatic;
+typedef struct MR_CallSiteDynamic_Struct        MR_CallSiteDynamic;
+typedef struct MR_User_ProcStatic_Struct        MR_User_ProcStatic;
+typedef struct MR_Compiler_ProcStatic_Struct    MR_Compiler_ProcStatic;
+typedef struct MR_ProcStatic_Struct             MR_ProcStatic;
+typedef struct MR_ProcDynamic_Struct            MR_ProcDynamic;
+typedef struct MR_ProfilingMetrics_Struct       MR_ProfilingMetrics;
+
+typedef struct MR_CallSiteDynList_Struct        MR_CallSiteDynList;
+
+/*
 ** The MR_Box type is used for representing polymorphic types.
 ** Currently this is only used in the MLDS C backend.
 **
@@ -116,9 +137,9 @@ typedef const MR_Char *MR_ConstString;
 */
 
 #ifdef MR_HIGHLEVEL_CODE
-typedef void 	*MR_Box;
+  typedef void      *MR_Box;
 #else
-typedef MR_Word MR_Box;
+  typedef MR_Word   MR_Box;
 #endif
 
 #endif /* not MERCURY_TYPES_H */

@@ -747,11 +747,7 @@ MR_trace_headvar_num(int var_number, int *arg_pos)
 ** current typeinfo optimization scheme.
 */
 
-#ifdef  MR_HIGHLEVEL_CODE
-  #define unbound_ctor_name mdb__util__mdb__util__type_ctor_info_unbound_0
-#else
-  #define unbound_ctor_name MR_type_ctor_info_name(mdb__util, unbound, 0)
-#endif
+#define unbound_ctor_name MR_NONSTD_TYPE_CTOR_INFO_NAME(mdb__util, unbound, 0)
 
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(unbound_ctor_name);
 

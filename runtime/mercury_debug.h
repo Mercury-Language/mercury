@@ -10,7 +10,6 @@
 #define MERCURY_DEBUG_H
 
 #include "mercury_types.h"		/* for MR_Word and MR_Code */
-#include "mercury_deep_profiling.h"	/* for MR_CallSiteDynamic */
 #include <stdio.h>			/* for FILE */
 
 /*---------------------------------------------------------------------------*/
@@ -136,12 +135,12 @@
 #endif /* MR_LOWLEVEL_DEBUG */
 
 #define	MR_print_deep_prof_vars(fp, msg)				\
-	do {								     \
+	do {								\
 		fprintf(fp, "%s\n", msg);				\
 		MR_print_deep_prof_var(fp, "current_call_site_dynamic", \
-			MR_current_call_site_dynamic);			     \
+			MR_current_call_site_dynamic);			\
 		MR_print_deep_prof_var(fp, "next_call_site_dynamic",	\
-			MR_next_call_site_dynamic);			     \
+			MR_next_call_site_dynamic);			\
 	} while (0)
 
 /*---------------------------------------------------------------------------*/

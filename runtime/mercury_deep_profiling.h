@@ -23,16 +23,6 @@ typedef enum {
 	MR_callback
 } MR_CallSite_Kind;
 
-typedef struct MR_CallSiteStatic_Struct		MR_CallSiteStatic;
-typedef struct MR_CallSiteDynamic_Struct	MR_CallSiteDynamic;
-typedef struct MR_User_ProcStatic_Struct	MR_User_ProcStatic;
-typedef struct MR_Compiler_ProcStatic_Struct	MR_Compiler_ProcStatic;
-typedef struct MR_ProcStatic_Struct		MR_ProcStatic;
-typedef struct MR_ProcDynamic_Struct		MR_ProcDynamic;
-typedef struct MR_ProfilingMetrics_Struct	MR_ProfilingMetrics;
-
-typedef struct MR_CallSiteDynList_Struct	MR_CallSiteDynList;
-
 struct MR_ProfilingMetrics_Struct {
 #ifdef MR_DEEP_PROFILING_PORT_COUNTS
   #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS

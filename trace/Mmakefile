@@ -20,7 +20,7 @@ Mmake.trace.params: ;
 #-----------------------------------------------------------------------------#
 
 CFLAGS		+= -I$(BROWSER_DIR) -g $(DLL_CFLAGS) \
-			-DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
+			-DMR_NO_BACKWARDS_COMPAT -DMERCURY_CONF_BOOTSTRAP_H
 MGNUCFLAGS	+= --no-ansi
 
 #-----------------------------------------------------------------------------#
