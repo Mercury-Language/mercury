@@ -27,8 +27,8 @@ To install gnu-win32, make a directory say D:\CYGNUS and unpack the archives
 there.  Make sure that you have C:\tmp and C:\bin directories.
 Copy sh.exe from D:\CYGNUS\H-i386-cygnus\bin to C:\bin.
 Make sure C:\bin is first in your PATH and D:\CYGNUS\H-i386-cygnus\bin
-is somewhere in your path (before any other directory containing a
-`make' command).  Also set these environment variables:
+is second.  Make sure that "." is somewhere in your path.
+Also set these environment variables:
 
 	GCC_EXEC_PREFIX=//D/CYGNUS/H-i386-cygnus/lib/gcc-lib
 	C_INCLUDE_PATH=//D/CYGNUS/H-i386-cygnus/i386-cygwin32/include
@@ -42,33 +42,27 @@ or <http://www.cygnus.com/misc/gnu-win32/>.
 
 RUNNING CONFIGURE
 
-There seems to be a problem with environment variable passing
-not yet working in gnu-win32, so you need to modify the
-configure script before you start.  Add the following lines
-somewhere near the top.
+Configure as follows:
 
-	suppress_log_file_recursion=yes
-	mercury_cv_bits_per_word=32
-	mercury_cv_bytes_per_word=4
-	mercury_cv_word_type=int
-	mercury_cv_low_tag_bits=2
-	mercury_cv_asm_labels=yes
-	mercury_cv_gcc_labels=yes
-	mercury_cv_model_reg=yes
-	mercury_cv_model_fast=yes
+	sh CC="gcc -Wl,--force-exe-suffix" configure i386-ms-win95
 
-When you run configure, you need to explicitly pass in the
-system name:
+I don't think the CC="gcc -Wl,--force-exe-suffix" bit is needed on NT,
+so configuring with just
 
-	sh configure i386-ms-win95	# (or -winnt)
+	sh configure i386-ms-winnt
 
-It is "normal" for Windows to pop up a dialogue box complaining
-than an application crashed; just hit the "OK" button, and it
-will keep on going.
+should work on NT -- but I haven't tested it.
 
 -----------------------------------------------------------------------------
 
 RUNNING MAKE
+
+The datestamps seem to get screwed up by gnu-win32;
+if you get an error about `mercury_compile not found',
+then it means that you need to do
+
+	touch library/*.date* compiler/*.date*
+	touch library/*.c compiler/*.c
 
 Apparently the gnu-win32 gcc is a bit buggier than the Linux gcc; it
 will crash on a few files if you use the default -O2.  You need to put
