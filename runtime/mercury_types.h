@@ -63,6 +63,7 @@ typedef	MR_intptr_t		MR_Bool;
 ** `MR_Code *' is used as a generic pointer-to-label type that can point
 ** to any label defined using the Define_* macros in mercury_goto.h.
 */
+
 typedef void			MR_Code;
 
 /*

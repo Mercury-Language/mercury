@@ -12,7 +12,7 @@
 #include <string.h>	/* for strcmp() etc. */
 #include <stdarg.h>
 
-#include "mercury_heap.h"	/* for incr_hp_atomic */
+#include "mercury_heap.h"	/* for MR_incr_hp_atomic */
 
 /*
 ** Mercury characters are given type `MR_Char', which is a typedef for `char'.
@@ -86,7 +86,7 @@
 		MR_Word make_aligned_string_tmp;			\
 		char * make_aligned_string_ptr;				\
 									\
-	  	incr_hp_atomic(make_aligned_string_tmp,			\
+	  	MR_incr_hp_atomic(make_aligned_string_tmp,		\
 	    	    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word)); \
 	    	make_aligned_string_ptr =				\
 		    (char *) make_aligned_string_tmp;			\
