@@ -284,7 +284,8 @@ then
 	# on the size of argument vectors.
 
 	ln -s $root/compiler/[a-h]*.m .
-	ln -s $root/compiler/[i-s]*.m .
+	ln -s $root/compiler/[i-o]*.m .
+	ln -s $root/compiler/[p-s]*.m .
 	ln -s $root/compiler/[t-z]*.m .
 	ln -s $root/compiler/*.pp .	
 
@@ -486,7 +487,8 @@ then
 	# This is needed to cope with small limits
 	# on the size of argument vectors.
 	ln -s $root/compiler/[a-h]*.m .
-	ln -s $root/compiler/[i-s]*.m .
+	ln -s $root/compiler/[i-o]*.m .
+	ln -s $root/compiler/[p-s]*.m .
 	ln -s $root/compiler/[t-z]*.m .
 	ln -s $root/compiler/*.pp .	
 
