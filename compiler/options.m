@@ -130,6 +130,7 @@
 		;	trace_table_io_decl
 		;	trace_table_io_states
 		;	trace_table_io_require
+		;	trace_table_io_all
 		;	delay_death
 		;	suppress_trace
 		;	stack_trace_higher_order
@@ -699,6 +700,7 @@ option_defaults_2(aux_output_option, [
 	trace_table_io_decl	-	bool(no),
 	trace_table_io_states	-	bool(no),
 	trace_table_io_require	-	bool(no),
+	trace_table_io_all	-	bool(no),
 	suppress_trace		-	string(""),
 	delay_death		-	bool(yes),
 	stack_trace_higher_order -	bool(no),
@@ -1265,6 +1267,7 @@ long_option("trace-table-io",		trace_table_io).
 long_option("trace-table-io-decl",	trace_table_io_decl).
 long_option("trace-table-io-states",	trace_table_io_states).
 long_option("trace-table-io-require",	trace_table_io_require).
+long_option("trace-table-io-all",	trace_table_io_all).
 long_option("suppress-trace",		suppress_trace).
 long_option("delay-death",		delay_death).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
@@ -2415,7 +2418,8 @@ options_help_aux_output -->
 %		"\tSuppress the named aspects of the execution tracing system.",
 		"--trace-optimized",
 		"\tDo not disable optimizations that can change the trace.",
-% tabling io is not documented yet, since it is still experimental
+% tabling io is documented yet, since it is mean to be switched on only
+% automatically (in certain grades)
 %		"--trace-table-io",
 %		"\tEnable the tabling of I/O actions, to allow the debugger",
 %		"\tto execute retry commands across I/O actions.",
@@ -2430,6 +2434,11 @@ options_help_aux_output -->
 %		"\tRequire the tabling of I/O actions, i.e. generate an error",
 %		"\tif an I/O primitive does not have the tabled_for_io",
 %		"\tannotation.",
+%		"--trace-table-io-all",
+%		"\tTable all I/O actions even in the absence of annotations.",
+%		"\tIf a primitive has no annotation specifying the type of",
+%		"\ttabling required, deduce it from the values of the other",
+%		"\tannotations.",
 		"--no-delay-death",
 		"\tWhen the trace level is `deep', the compiler normally",
 		"\tpreserves the values of variables as long as possible, even",

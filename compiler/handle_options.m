@@ -626,6 +626,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		[]
 	),
 
+	% In debugging grades, we want to generate executables in which
+	% one can do retries across I/O safely.
+	option_implies(require_tracing, trace_table_io_all, bool(yes)),
+
 	% --trace-table-io-decl is an extension of --trace-table-io
 	option_implies(trace_table_io_decl, trace_table_io, bool(yes)),
 	% --trace-table-io-require is compulsory application of --trace-table-io

@@ -335,12 +335,14 @@ table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
 %				[i(PredIdInt)]),
 %			error(Msg)
 %		),
+		globals__lookup_bool_option(Globals, trace_table_io_all,
+			TransformAll),
 		globals__lookup_bool_option(Globals, trace_table_io_require,
 			Require),
 		proc_info_goal(ProcInfo0, BodyGoal),
 		predicate_module(ModuleInfo0, PredId, PredModuleName),
-		should_io_procedure_be_transformed(Require, BodyGoal,
-			PredModuleName, AnnotationIsMissing,
+		should_io_procedure_be_transformed(TransformAll, Require,
+			BodyGoal, PredModuleName, AnnotationIsMissing,
 			TransformPrimitive),
 		(
 			AnnotationIsMissing = yes,
@@ -380,11 +382,11 @@ table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred should_io_procedure_be_transformed(bool::in, hlds_goal::in,
+:- pred should_io_procedure_be_transformed(bool::in, bool::in, hlds_goal::in,
 	sym_name::in, bool::out, maybe(table_io_is_unitize)::out) is det.
 
-should_io_procedure_be_transformed(Require, BodyGoal, PredModuleName,
-		AnnotationIsMissing, TransformInfo) :-
+should_io_procedure_be_transformed(TransformAll, Require, BodyGoal,
+		PredModuleName, AnnotationIsMissing, TransformInfo) :-
 	tabled_for_io_attributes(BodyGoal, TabledForIoAttrs),
 	( TabledForIoAttrs = [] ->
 		AnnotationIsMissing = no,
@@ -396,11 +398,28 @@ should_io_procedure_be_transformed(Require, BodyGoal, PredModuleName,
 				Require = yes,
 				\+ any_mercury_builtin_module(PredModuleName)
 			->
-				AnnotationIsMissing = yes
+				AnnotationIsMissing = yes,
+				TransformInfo = no
 			;
-				AnnotationIsMissing = no
-			),
-			TransformInfo = no
+				AnnotationIsMissing = no,
+				(
+					TransformAll = no,
+					TransformInfo = no
+				;
+					TransformAll = yes,
+					may_call_mercury_attributes(BodyGoal,
+						MayCallMercuryAttrs),
+					(
+						MayCallMercuryAttrs =
+							[may_call_mercury]
+					->
+						TransformInfo = no
+					;
+						TransformInfo =
+							yes(table_io_alone)
+					)
+				)
+			)
 		;
 			TabledForIoAttr = tabled_for_descendant_io,
 			AnnotationIsMissing = no,
@@ -420,6 +439,23 @@ should_io_procedure_be_transformed(Require, BodyGoal, PredModuleName,
 		% Since table_gen is run before inlining, each procedure
 		% should contain at most one foreign_proc goal.
 		error("should_io_procedure_be_transformed: different tabled_for_io attributes in one procedure")
+	).
+
+:- pred may_call_mercury_attributes(hlds_goal::in, list(may_call_mercury)::out)
+	is det.
+
+may_call_mercury_attributes(Goal, MayCallMercuryAttrs) :-
+	solutions(subgoal_may_call_mercury_attribute(Goal),
+		MayCallMercuryAttrs).
+
+:- pred subgoal_may_call_mercury_attribute(hlds_goal::in,
+	may_call_mercury::out) is nondet.
+
+subgoal_may_call_mercury_attribute(Goal, MayCallMercuryAttr) :-
+	some [SubGoal,Attrs] (
+		goal_contains_goal(Goal, SubGoal),
+		SubGoal = foreign_proc(Attrs, _,_,_,_,_,_) - _,
+		may_call_mercury(Attrs, MayCallMercuryAttr)
 	).
 
 :- pred tabled_for_io_attributes(hlds_goal::in, list(tabled_for_io)::out)
