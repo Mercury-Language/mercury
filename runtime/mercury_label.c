@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1998 The University of Melbourne.
+** Copyright (C) 1994-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,8 +87,6 @@ MR_do_init_label_tables(void)
 
 #ifdef	MR_NEED_ENTRY_LABEL_INFO
 
-static	int	compare_entry_addr(const void *e1, const void *e2);
-
 void
 MR_insert_entry_label(const char *name, Code *addr,
 	const MR_Stack_Layout_Entry *entry_layout)
@@ -106,7 +104,6 @@ MR_insert_entry_label(const char *name, Code *addr,
 #endif
 
 #ifdef	MR_NEED_ENTRY_LABEL_ARRAY
-
 	if (entry_array_next >= entry_array_size) {
 		entry_array_size *= 2;
 		entry_array = realloc(entry_array, 
@@ -127,6 +124,8 @@ MR_insert_entry_label(const char *name, Code *addr,
 #endif
 
 #ifdef	MR_NEED_ENTRY_LABEL_ARRAY
+
+static	int	compare_entry_addr(const void *e1, const void *e2);
 
 static int
 compare_entry_addr(const void *e1, const void *e2)
