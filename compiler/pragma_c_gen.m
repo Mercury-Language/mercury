@@ -581,10 +581,25 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		     LaterTraceCode))
 	},
 
-	{
-	SaveRegs	 = "\tsave_registers();\n",
-	RestoreRegs	 = "\trestore_registers();\n",
+	%
+	% save_registers(); /* see notes (1) and (2) above */
+	%
+	{ MayCallMercury = will_not_call_mercury ->
+		SaveRegs = ""
+	;
+		SaveRegs = "\tsave_registers();\n"
+	},
 
+	%
+	% restore_registers(); /* see notes (1) and (3) above */
+	%
+	{ MayCallMercury = will_not_call_mercury ->
+		RestoreRegs = ""
+	;
+		RestoreRegs = "\trestore_registers();\n"
+	},
+
+	{
 	Succeed	 = "\tsucceed();\n",
 	SucceedDiscard = "\tsucceed_discard();\n",
 
