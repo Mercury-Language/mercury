@@ -2,7 +2,7 @@
 #include	"table.h"
 #include	"prof.h"
 
-#define	ENTRY_TABLE_SIZE	512
+#define	ENTRY_TABLE_SIZE	(1 << 16)	/* 64k */
 
 static	const void	*entry_name(const void *entry);
 static	const void	*entry_addr(const void *entry);
