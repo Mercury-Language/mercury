@@ -66,29 +66,36 @@ main_2(ok(OptionTable0), Args) -->
 	    % enumeration types, initialize the global data, and then
 	    % process the modules
 
-	    { map__lookup(OptionTable0, gc, GC_Method0) },
-	    (
-		{ GC_Method0 = string(GC_Method_String) },
-		{ convert_gc_method(GC_Method_String, GC_Method) }
+	    { map__lookup(OptionTable0, grade, GradeOpt) },
+	    (   
+		{ GradeOpt = string(GradeString) },
+		{ convert_gc_grade_option(GradeString, OptionTable0,
+			OptionTable) }
 	    ->
-			
-	        { map__lookup(OptionTable0, tags, Tags_Method0) },
-	        ( 
-		    { Tags_Method0 = string(Tags_Method_String) },
-		    { convert_tags_method(Tags_Method_String, Tags_Method1) }
-		->
-		    { map__lookup(OptionTable0, grade, GradeOpt) },
-		    (   
-			{ GradeOpt = string(GradeString) },
-		        { convert_gc_grade_option(GradeString, OptionTable0,
-				OptionTable) }
+	        { map__lookup(OptionTable, gc, GC_Method0) },
+	        (
+		    { GC_Method0 = string(GC_Method_String) },
+		    { convert_gc_method(GC_Method_String, GC_Method) }
+	        ->
+	            { map__lookup(OptionTable, tags, Tags_Method0) },
+	            ( 
+		        { Tags_Method0 = string(Tags_Method_String) },
+		        { convert_tags_method(Tags_Method_String,
+				Tags_Method1) }
 		    ->
+			% --gc conservative implies --tags none
 			{ GC_Method = conservative ->
 				Tags_Method = none
 			;
 				Tags_Method = Tags_Method1
 			},
 		        globals__io_init(OptionTable, GC_Method, Tags_Method),
+			% --tags none implies --num-tag-bits 0
+			( { Tags_Method = none } ->
+				globals__io_set_option(num_tag_bits, int(0))
+			;	
+				[]
+			),
 		        { strip_module_suffixes(Args, ModuleNames) },
 		        process_module_list(ModuleNames),
 			globals__io_lookup_bool_option(link, Link),
@@ -99,17 +106,17 @@ main_2(ok(OptionTable0), Args) -->
 			    []
 			)
 		    ;
-			usage_error("Invalid grade option")
+		        usage_error(
+			    "Invalid tags option (must be `none', `low' or `high')"
+		        )
 		    )
-		;
+	        ;
 		    usage_error(
-			"Invalid tags option (must be `none', `low' or `high')"
+	    "Invalid GC option (must be `none', `conservative' or `accurate')"
 		    )
-		)
+	        )
 	    ;
-		usage_error(
-	"Invalid GC option (must be `none', `conservative' or `accurate')"
-		)
+		usage_error("Invalid grade option")
 	    )
 	).
 
@@ -470,7 +477,7 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".objs = "),
+	io__write_string(DepStream, ".nos = "),
 	write_dependencies_list(Modules, ".no", DepStream),
 	io__write_string(DepStream, "\n"),
 
@@ -518,12 +525,36 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, " : $("),
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".objs)\n"),
+	io__write_string(DepStream, ".os) "),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, "_init.o\n"),
+	io__write_string(DepStream, "\t$(ML) $(MLFLAGS) -o "),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, " "),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, "_init.o $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".os)\n\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, "_init.c : $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".cs)\n"),
+	io__write_string(DepStream, "\t$(MOD2INIT) $(MOD2INITFLAGS) $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".cs) > $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, "_init.c\n\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".nu : $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".nos)\n"),
 	io__write_string(DepStream, "\t$(MNL) $(MNLFLAGS) -o "),
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, " $("),
+	io__write_string(DepStream, ".nu $("),
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".objs)\n\n"),
+	io__write_string(DepStream, ".nos)\n\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".check : $("),
@@ -1650,6 +1681,21 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 	;
 		AsmOpt = ""
 	},
+	globals__io_get_gc_method(GC_Method),
+	{ GC_Method = conservative ->
+		GC_Opt = "-DCONSERVATIVE_GC "
+	;
+		GC_Opt = ""
+	},
+	globals__io_get_tags_method(Tags_Method),
+	{ Tags_Method = high ->
+		TagsOpt = "-DHIGHTAGS "
+	;
+		TagsOpt = ""
+	},
+	globals__io_lookup_int_option(num_tag_bits, NumTagBits),
+	{ string__int_to_string(NumTagBits, NumTagBitsString) },
+	{ string__append("-DTAGBITS=", NumTagBitsString, NumTagBitsOpt) },
 	globals__io_lookup_bool_option(debug, Debug),
 	{ Debug = yes ->
 		DebugOpt = "-g "
@@ -1663,6 +1709,7 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 		OptimizeOpt = ""
 	},
 	{ string__append_list( [CC, " ", InclOpt, RegOpt, GotoOpt, AsmOpt,
+		GC_Opt, TagsOpt, NumTagBitsOpt,
 		DebugOpt, OptimizeOpt, CFLAGS, " -c ", C_File],
 		Command) },
 	mercury_compile__invoke_system_command(Command, Succeeded),
