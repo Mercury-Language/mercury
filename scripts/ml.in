@@ -139,7 +139,20 @@ EOF
 		shift
 		;;
 	-static|--static)
-		STATIC_OR_SHARED_OPT=-static
+		case $FULLARCH in
+		    *-linux*)
+		    	# On Linux, if we're linking statically, we need to
+		    	# pass `-defsym _DYNAMIC=0' to the linker, to avoid
+		    	# undefined references to _DYNAMIC in
+		    	# boehm_gc/dyn_load.c.
+		    	# (We might eventually need similar treatment
+		    	# for other OSs too)
+			STATIC_OR_SHARED_OPT="-static -Wl,-defsym,_DYNAMIC=0"
+			;;
+		    *)
+			STATIC_OR_SHARED_OPT=-static
+			;;
+		esac
 		case $mercury_libs in shared)
 			mercury_libs=static ;;
 		esac
