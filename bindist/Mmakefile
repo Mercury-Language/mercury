@@ -105,7 +105,7 @@ binary_distribution: bindist.configure bindist.build_vars
 	(dir=`pwd` && cd .. && \
 		tar -cf $$dir/$(MERCURY_VERSION)/extras.tar extras && \
 		gzip $$dir/$(MERCURY_VERSION)/extras.tar)
-	# Aditi isn't ready for distribution yet.
+	# This code is provided in the Aditi distribution.
 	rm -rf $(MERCURY_VERSION)/extras/aditi
 	if [ -d ../tests ]; then					\
 		(dir=`pwd` && cd .. && \
@@ -121,6 +121,8 @@ binary_distribution: bindist.configure bindist.build_vars
 			-e 's/<FULLARCH>/$(FULLARCH)/g'			\
 			bindist.$$file > $(MERCURY_VERSION)/$$file || exit 1; \
 	done
+	# Ensure the configure file is executable.
+	chmod +x $(MERCURY_VERSION)/configure
 	# (XXX don't use redirection or pipes, because on gnu-win32
 	# stdout defaults to text mode, which breaks tar and gzip)
 	tar -cf ../$(MERCURY_VERSION).tar $(MERCURY_VERSION)
