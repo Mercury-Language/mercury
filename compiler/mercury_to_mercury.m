@@ -567,12 +567,6 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 		{ construct_qualified_term(MercuryTypeSymName,
 			MercuryTypeArgs, MercuryType) },
 		mercury_output_term(MercuryType, TVarSet, no),
-		( { MaybeEqCompare = yes(_) } ->
-			io__write_string(" ")
-		;
-			[]
-		),
-		mercury_output_equality_compare_preds(MaybeEqCompare),
 		io__write_string(", \""),
 		{ ForeignType = il(il(RefOrVal,
 				ForeignLocStr, ForeignTypeName)),
@@ -588,7 +582,14 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 		; ForeignType = java(java(ForeignTypeStr))
 		},
 		io__write_string(ForeignTypeStr),
-		io__write_string("\").\n")
+		io__write_string("\")"),
+		( { MaybeEqCompare = yes(_) } ->
+			io__write_string(" ")
+		;
+			[]
+		),
+		mercury_output_equality_compare_preds(MaybeEqCompare),
+		io__write_string(".\n")
 	;
 		{ Pragma = import(Pred, PredOrFunc, ModeList, Attributes,
 			C_Function) },
