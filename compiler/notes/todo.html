@@ -113,10 +113,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> allow explicit type qualifications `X : Type'
 	[already done, but need to change module qualifier op to `.' first]
 
-<li> allow existential types at the top level of func or pred declarations,
-     e.g. <samp>:- some [T] (func univ_value(univ) = T).</samp>.
-
-<li> allow existential types in data structures
+<li> improve support for existential types
 
 <li> remove limitation that higher-order terms are monomorphic.
      i.e. allow universal quantifiers at the top level of
@@ -180,6 +177,14 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
      arguments, and to have unique modes for curried arguments.
  
 <li> allow taking the address of a predicate with multiple modes
+
+<li> improve support for higher-order programming, eg. by providing
+     operators in the standard library which do things like:
+     <ul>
+     <li>compose functions
+     <li>take a predicate with one output argument and treat it like a function.
+     ie. <tt>:- func (pred(T)) = T.</tt>
+     </ul>
 </ul>
 
 <h2> module system: </h2>
@@ -334,6 +339,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-09-02 07:02:19 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-09-22 08:04:17 $ by $Author: dgj $@cs.mu.oz.au. <br>
 </body>
 </html>
