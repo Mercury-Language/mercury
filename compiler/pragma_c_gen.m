@@ -304,13 +304,13 @@
 %	Of course we also need to #undef it afterwards.
 
 pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, _GoalInfo,
+		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, GoalInfo,
 		PragmaImpl, Code) -->
 	(
 		{ PragmaImpl = ordinary(C_Code, Context) },
 		pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-			C_Code, Context, Code)
+			C_Code, Context, GoalInfo, Code)
 	;
 		{ PragmaImpl = nondet(
 			Fields, FieldsContext, First, FirstContext,
@@ -320,12 +320,13 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 			Fields, FieldsContext, First, FirstContext,
 			Later, LaterContext, Treat, Shared, SharedContext,
 			Code)
-	;	{ PragmaImpl = import(Name, HandleReturn, Vars, Context) },
+	;
+		{ PragmaImpl = import(Name, HandleReturn, Vars, Context) },
 		{ C_Code = string__append_list([HandleReturn, " ",
 				Name, "(", Vars, ");"]) },
 		pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-			C_Code, Context, Code)
+			C_Code, Context, GoalInfo, Code)
 	).
 
 %---------------------------------------------------------------------------%
@@ -333,12 +334,12 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 :- pred pragma_c_gen__ordinary_pragma_c_code(code_model::in,
 	pragma_foreign_code_attributes::in, pred_id::in, proc_id::in,
 	list(prog_var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
-	string::in, maybe(prog_context)::in, code_tree::out,
-	code_info::in, code_info::out) is det.
+	string::in, maybe(prog_context)::in, hlds_goal_info::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-		C_Code, Context, Code) -->
+		C_Code, Context, GoalInfo, Code) -->
 	
 	%
 	% Extract the attributes
@@ -354,8 +355,9 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	{ pragma_select_in_args(Args, InArgs) },
 	{ pragma_select_out_args(Args, OutArgs) },
 
+	{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
 	{ set__init(DeadVars0) },
-	find_dead_input_vars(InArgs, DeadVars0, DeadVars),
+	{ find_dead_input_vars(InArgs, PostDeaths, DeadVars0, DeadVars) },
 
 	%
 	% Generate code to <save live variables on stack>
@@ -1108,17 +1110,17 @@ make_pragma_decls([Arg | Args], Decls) :-
 %---------------------------------------------------------------------------%
 
 :- pred find_dead_input_vars(list(c_arg)::in, set(prog_var)::in,
-	set(prog_var)::out, code_info::in, code_info::out) is det.
+	set(prog_var)::in, set(prog_var)::out) is det.
 
-find_dead_input_vars([], DeadVars, DeadVars) --> [].
-find_dead_input_vars([Arg | Args], DeadVars0, DeadVars) -->
-	{ Arg = c_arg(Var, _MaybeName, _Type, _ArgInfo) },
-	( code_info__variable_is_forward_live(Var) ->
-		{ DeadVars1 = DeadVars0 }
+find_dead_input_vars([], _, DeadVars, DeadVars).
+find_dead_input_vars([Arg | Args], PostDeaths, DeadVars0, DeadVars) :-
+	Arg = c_arg(Var, _MaybeName, _Type, _ArgInfo),
+	( set__member(Var, PostDeaths) ->
+		set__insert(DeadVars0, Var, DeadVars1)
 	;
-		{ set__insert(DeadVars0, Var, DeadVars1) }
+		DeadVars1 = DeadVars0
 	),
-	find_dead_input_vars(Args, DeadVars1, DeadVars).
+	find_dead_input_vars(Args, PostDeaths, DeadVars1, DeadVars).
 
 %---------------------------------------------------------------------------%
 

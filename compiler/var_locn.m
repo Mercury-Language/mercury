@@ -1464,11 +1464,8 @@ var_locn__var_becomes_dead(Var, FirstTime) -->
 			var_locn__set_var_state_map(VarStateMap)
 		)
 	;
-		[]
-		% With the current liveness pass, this can fail.
-		% XXX This should be fixed.
-		% { require(unify(FirstTime, no),
-		% 	"var_locn__var_becomes_dead: premature deletion") }
+		{ require(unify(FirstTime, no),
+			"var_locn__var_becomes_dead: premature deletion") }
 	).
 
 % Given a set of lvals, return the set of root lvals among them and inside

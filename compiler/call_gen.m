@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -74,6 +74,7 @@ call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code) -->
 		% Save the necessary vars on the stack and move the input args
 		% to their registers.
 	code_info__setup_call(GoalInfo, ArgsInfos, LiveVals, SetupCode),
+	call_gen__kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs),
 
 		% Figure out what the call model is.
 	call_gen__prepare_for_call(CodeModel, CallModel, TraceCode),
@@ -104,7 +105,8 @@ call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code) -->
 
 		% Update the code generator state to reflect the situation
 		% after the call.
-	call_gen__handle_return(ArgsInfos, ReturnInstMap, ReturnLiveLvalues),
+	call_gen__handle_return(ArgsInfos, GoalInfo, NonLiveOutputs,
+		ReturnInstMap, ReturnLiveLvalues),
 
 		% If the call can fail, generate code to check for and
 		% handle the failure.
@@ -156,6 +158,7 @@ call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args0,
 		% Save the necessary vars on the stack and move the input args
 		% defined by variables to their registers.
 	code_info__setup_call(GoalInfo, ArgInfos, LiveVals0, SetupCode),
+	call_gen__kill_dead_input_vars(ArgInfos, GoalInfo, NonLiveOutputs),
 
 		% Move the input args not defined by variables to their
 		% registers. Setting up these arguments last results in
@@ -192,8 +195,8 @@ call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args0,
 
 		% Update the code generator state to reflect the situation
 		% after the call.
-	call_gen__handle_return(OutArgsInfos, ReturnInstMap,
-		ReturnLiveLvalues),
+	call_gen__handle_return(OutArgsInfos, GoalInfo, NonLiveOutputs,
+		ReturnInstMap, ReturnLiveLvalues),
 
 		% If the call can fail, generate code to check for and
 		% handle the failure.
@@ -549,61 +552,85 @@ call_gen__call_comment(model_non,  "branch to nondet procedure").
 
 %---------------------------------------------------------------------------%
 
-	% We must update the code generator state to reflect
-	% the situation after the call before building
-	% the return liveness info.
-	%
-	% It is possible for some output arguments to be local
-	% to this goal, i.e. for it not to appear in later code.
-	% In such cases, we consider them to be live at the point
-	% of the return, so that if debugging is enabled, their
-	% values can be inspected (or if they are typeinfos, their
-	% values can be used to inspect other variables), but then
-	% kill them so that they are not live beyond this goal.
-	%
+	% After we have placed all the input variables in their registers,
+	% we will want to clear all the registers so we can start updating
+	% the code generator state to reflect their contents after the call.
+	% (In the case of higher order calls, we may place some constant
+	% input arguments in registers before clearing them.) The register
+	% clearing code complains if it is asked to dispose of the last copy
+	% of a still live variable, so before we clear the registers, we must
+	% make forward-dead all the variables that are in this goal's
+	% post-death set. However, a variable may be in this set even if it
+	% is not live before the call, if it is bound by the call. (This can
+	% happen when the caller ignores some of the output arguments of the
+	% called procedure.) We handle such variables not by making them
+	% forward-dead but by simply never making them forward-live in the
+	% first place.
+
 	% ArgsInfos should list all the output arguments of the call.
-	% (It may contain the input arguments as well; handle_return
-	% ignores them.)
+	% It may contain the input arguments as well; kill_dead_input_vars
+	% and handle_return ignore them.
+
+:- pred call_gen__kill_dead_input_vars(assoc_list(prog_var, arg_info)::in,
+	hlds_goal_info::in, set(prog_var)::out,
+	code_info::in, code_info::out) is det.
+
+call_gen__kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs) -->
+	code_info__get_forward_live_vars(Liveness),
+	{ call_gen__find_nonlive_outputs(ArgsInfos, Liveness,
+		set__init, NonLiveOutputs) },
+	{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
+	{ set__difference(PostDeaths, NonLiveOutputs, ImmediatePostDeaths) },
+	code_info__make_vars_forward_dead(ImmediatePostDeaths).
 
 :- pred call_gen__handle_return(assoc_list(prog_var, arg_info)::in,
-	instmap::in, list(liveinfo)::out,
-	code_info::in, code_info::out) is det.
+	hlds_goal_info::in, set(prog_var)::in, instmap::in,
+	list(liveinfo)::out, code_info::in, code_info::out) is det.
 
-call_gen__handle_return(ArgsInfos, ReturnInstMap, ReturnLiveLvalues) -->
-	call_gen__rebuild_registers(ArgsInfos, KillSet),
-	{ call_gen__output_arg_locs(ArgsInfos, OutputArgLocs) },
-	code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
-		ReturnLiveLvalues),
-	code_info__make_vars_forward_dead(KillSet).
-
-:- pred call_gen__rebuild_registers(assoc_list(prog_var, arg_info)::in,
-	set(prog_var)::out, code_info::in, code_info::out) is det.
-
-call_gen__rebuild_registers(Args, KillSet) -->
+call_gen__handle_return(ArgsInfos, _GoalInfo, _NonLiveOutputs, ReturnInstMap,
+		ReturnLiveLvalues) -->
 	code_info__clear_all_registers,
 	code_info__get_forward_live_vars(Liveness),
-	{ set__init(KillSet0) },
-	call_gen__rebuild_registers_2(Args, Liveness, KillSet0, KillSet).
+	call_gen__rebuild_registers(ArgsInfos, Liveness, OutputArgLocs),
+	code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
+		ReturnLiveLvalues).
 
-:- pred call_gen__rebuild_registers_2(assoc_list(prog_var, arg_info)::in,
-	set(prog_var)::in, set(prog_var)::in, set(prog_var)::out,
+:- pred call_gen__find_nonlive_outputs(assoc_list(prog_var, arg_info)::in,
+	set(prog_var)::in, set(prog_var)::in, set(prog_var)::out) is det.
+
+call_gen__find_nonlive_outputs([], _, NonLiveOutputs, NonLiveOutputs).
+call_gen__find_nonlive_outputs([Var - arg_info(_ArgLoc, Mode) | Args],
+		Liveness, NonLiveOutputs0, NonLiveOutputs) :-
+	( Mode = top_out ->
+		( set__member(Var, Liveness) ->
+			NonLiveOutputs1 = NonLiveOutputs0
+		;
+			set__insert(NonLiveOutputs0, Var, NonLiveOutputs1)
+		)
+	;
+		NonLiveOutputs1 = NonLiveOutputs0
+	),
+	call_gen__find_nonlive_outputs(Args, Liveness,
+		NonLiveOutputs1, NonLiveOutputs).
+
+:- pred call_gen__rebuild_registers(assoc_list(prog_var, arg_info)::in,
+	set(prog_var)::in, assoc_list(prog_var, arg_loc)::out,
 	code_info::in, code_info::out) is det.
 
-call_gen__rebuild_registers_2([], _, KillSet, KillSet) --> [].
-call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode) | Args], Liveness,
-		KillSet0, KillSet) -->
-	( { Mode = top_out } ->
+call_gen__rebuild_registers([], _, []) --> [].
+call_gen__rebuild_registers([Var - arg_info(ArgLoc, Mode) | Args], Liveness,
+		OutputArgLocs) -->
+	call_gen__rebuild_registers(Args, Liveness, OutputArgLocs1),
+	(
+		{ Mode = top_out },
+		{ set__member(Var, Liveness) }
+	->
 		{ code_util__arg_loc_to_register(ArgLoc, Register) },
 		code_info__set_var_location(Var, Register),
-		{ set__member(Var, Liveness) ->
-			KillSet1 = KillSet0
-		;
-			set__insert(KillSet0, Var, KillSet1)
-		}
+		{ OutputArgLocs = [Var - ArgLoc | OutputArgLocs1] }
 	;
-		{ KillSet1 = KillSet0 }
-	),
-	call_gen__rebuild_registers_2(Args, Liveness, KillSet1, KillSet).
+		{ OutputArgLocs = OutputArgLocs1 }
+	).
 
 %---------------------------------------------------------------------------%
 

@@ -565,6 +565,11 @@ code_info__set_created_temp_frame(MR, CI,
 :- pred code_info__post_goal_update(hlds_goal_info, code_info, code_info).
 :- mode code_info__post_goal_update(in, in, out) is det.
 
+	% Find out whether the body of the current procedure should use
+	% typeinfo liveness.
+:- pred code_info__body_typeinfo_liveness(bool::out,
+	code_info::in, code_info::out) is det.
+
 	% Find out the type of the given variable.
 :- pred code_info__variable_type(prog_var, type, code_info, code_info).
 :- mode code_info__variable_type(in, out, in, out) is det.
@@ -763,6 +768,14 @@ code_info__post_goal_update(GoalInfo) -->
 	code_info__set_instmap(InstMap).
 
 %---------------------------------------------------------------------------%
+
+code_info__body_typeinfo_liveness(TypeInfoLiveness) -->
+	code_info__get_module_info(ModuleInfo),
+	code_info__get_pred_id(PredId),
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	code_info__get_globals(Globals),
+	{ body_should_use_typeinfo_liveness(PredInfo, Globals,
+		TypeInfoLiveness) }.
 
 :- pred code_info__get_var_types(map(prog_var, type), code_info, code_info).
 :- mode code_info__get_var_types(out, in, out) is det.
@@ -3567,13 +3580,13 @@ code_info__setup_call(GoalInfo, ArgInfos, LiveLocs, Code) -->
 			VarLocnInfo0, VarLocnInfo) },
 		code_info__set_var_locns_info(var_locn_info(VarLocnInfo)),
 		{ assoc_list__values(AllLocs, LiveLocList) },
-		{ set__list_to_set(LiveLocList, LiveLocs) },
+		{ set__list_to_set(LiveLocList, LiveLocs) }
 
-		{ assoc_list__keys(InArgLocs, InArgVars) },
-		{ set__init(DeadVars0) },
-		code_info__which_variables_are_forward_live(InArgVars,
-			DeadVars0, DeadVars),
-		code_info__make_vars_forward_dead(DeadVars)
+		% { assoc_list__keys(InArgLocs, InArgVars) },
+		% { set__init(DeadVars0) },
+		% code_info__which_variables_are_forward_live(InArgVars,
+		% 	DeadVars0, DeadVars),
+		% code_info__make_vars_forward_dead(DeadVars)
 	).
 
 :- pred code_info__setup_call_args(assoc_list(prog_var, arg_info)::in,
@@ -3805,12 +3818,7 @@ code_info__save_variables_on_stack(Vars, Code) -->
 code_info__compute_forward_live_var_saves(OutArgs, VarLocs) -->
 	code_info__get_known_variables(Variables0),
 	{ set__list_to_set(Variables0, Vars0) },
-	code_info__get_module_info(ModuleInfo),
-	code_info__get_pred_id(PredId),
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	code_info__get_globals(Globals),
-	{ body_should_use_typeinfo_liveness(PredInfo, Globals,
-		TypeInfoLiveness) },
+	code_info__body_typeinfo_liveness(TypeInfoLiveness),
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ proc_info_typeinfo_varmap(ProcInfo, TVarMap) },
