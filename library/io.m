@@ -1667,7 +1667,7 @@ io__check_err(Stream, Res) -->
 	char *buffer = (Char *) Buffer0;
 	int items_read;
 
-	MR_READ(*f, buffer + Pos0, Size - Pos0);
+	items_read = MR_READ(*f, buffer + Pos0, Size - Pos0);
 
 	Buffer = (Word) buffer;
 	Pos = Pos0 + items_read;

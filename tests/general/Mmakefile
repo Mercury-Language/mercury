@@ -37,6 +37,7 @@ PROGS=		\
 		higher_order \
 		intermod_type \
 		interpreter \
+		io_regression \
 		liveness \
 		liveness2 \
 		mode_inf \
