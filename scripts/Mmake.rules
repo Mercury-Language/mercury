@@ -113,53 +113,10 @@ main_target: $(MAIN_TARGET)
 
 #-----------------------------------------------------------------------------#
 
-# Clean up some mess
+# The actions for `mmake clean' etc. are in the `.d' files.
 
-# You can attach new dependencies to the `clean' and `realclean' targets
-# to make them clean up more than just the stuff listed here.
+.PHONY: clean realclean clean_nu clean_sicstus
 
-.PHONY: clean
-clean: sub_clean
-
-.PHONY: sub_clean
-sub_clean:
-	for dep in *.dep ; do \
-		if test "$$dep" != '*.dep' ; then \
-			mmake "`basename $$dep .dep`.clean" ; \
-		fi ; \
-	done
-
-.PHONY: realclean
-realclean: sub_realclean
-
-.PHONY: sub_realclean
-sub_realclean:
-	for dep in *.dep ; do \
-		if test "$$dep" != '*.dep' ; then \
-			mmake "`basename $$dep .dep`.realclean" ; \
-		fi ; \
-	done
-
-.PHONY: clean_nu
-clean_nu: sub_clean_nu
-
-.PHONY: sub_clean_nu
-sub_clean_nu:
-	for dep in *.dep ; do \
-		if test "$$dep" != '*.dep' ; then \
-			mmake "`basename $$dep .dep`.clean_nu" ; \
-		fi ; \
-	done
-
-.PHONY: clean_sicstus
-clean_sicstus: sub_clean_sicstus
-
-.PHONY: sub_clean_sicstus
-sub_clean_sicstus:
-	for dep in *.dep ; do \
-		if test "$$dep" != '*.dep' ; then \
-			mmake "`basename $$dep .dep`.clean_sicstus" ; \
-		fi ; \
-	done
+realclean: clean
 
 #-----------------------------------------------------------------------------#
