@@ -2410,9 +2410,15 @@ ml_gen_disj([], CodeModel, Context, [], Statements) -->
 	% handle singleton disjunctions
 	% (the HLDS should not contain singleton disjunctions,
 	% but this code is needed to handle recursive calls to ml_gen_disj)
+	% Note that each arm of the model_non disjunction is placed into
+	% a block.  This avoids a problem where ml_join_decls can create
+	% block nesting proportional to the size of the disjunction.
+	% The nesting can hit fixed limit problems in some C compilers.
 	%
-ml_gen_disj([SingleGoal], CodeModel, _, MLDS_Decls, MLDS_Statements) -->
-	ml_gen_goal(CodeModel, SingleGoal, MLDS_Decls, MLDS_Statements).
+ml_gen_disj([SingleGoal], CodeModel, Context, [], [MLDS_Statement]) -->
+	ml_gen_goal(CodeModel, SingleGoal, Goal_Decls, Goal_Statements),
+	{ MLDS_Statement = ml_gen_block(Goal_Decls, Goal_Statements,
+			Context) }.
 
 ml_gen_disj([First | Rest], CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
@@ -2429,9 +2435,18 @@ ml_gen_disj([First | Rest], CodeModel, Context,
 		ml_gen_goal(model_non, First, FirstDecls, FirstStatements),
 		ml_gen_disj(Rest, model_non, Context,
 			RestDecls, RestStatements),
-		{ ml_join_decls(FirstDecls, FirstStatements,
-			RestDecls, RestStatements, Context,
-			MLDS_Decls, MLDS_Statements) }
+
+		(
+			{ RestDecls = [] }
+		->
+			{ FirstBlock = ml_gen_block(FirstDecls,
+					FirstStatements, Context) },
+			{ MLDS_Decls = [] },
+			{ MLDS_Statements = [FirstBlock | RestStatements] }
+		;
+			{ error("ml_gen_disj: RestDecls not empty.") }
+		)
+
 	; /* CodeModel is model_det or model_semi */
 		%
 		% model_det/model_semi disj:
