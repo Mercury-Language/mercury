@@ -342,17 +342,26 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%	  representation (`object[]') for all data types,
 	%	  which is required to avoid type errors for code using
 	%	  abstract data types.
-	%	  XXX It should not be needed once we have a general solution
-	%	  to the abstract equivalence type problem.
+	%	  XXX It should not be needed now that we have a general
+	%	  solution to the abstract equivalence type problem
+	%	  (intermodule optimization).
+	%	  But currently it is still needed, otherwise
+	%         RTTI (e.g. construct, deconstruct) doesn't work
+	%	  for these types.
+	%   - XXX it should also imply num_reserved_addresses = 1
+	%     (we can use null pointers), but currently it doesn't,
+	%     again because this causes problems with RTTI
 	%   - no static ground terms
 	%         XXX Previously static ground terms used to not work with
 	%             --high-level-data.  But this has been (mostly?) fixed now.
 	%             So we should investigate re-enabling static ground terms.
+	%	      Currently mlds_to_il.m doesn't support them yet?
 	%   - intermodule optimization
 	%	  This is only required for high-level data and is needed
 	%	  so that abstract equivalence types can be expanded.  They
 	%	  need to be expanded because .NET requires that the structural
 	%	  representation of a type is known at all times.
+
 	( { Target = il } ->
 		globals__io_set_gc_method(none),
 		globals__io_set_option(reclaim_heap_on_nondet_failure,
@@ -365,6 +374,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(num_tag_bits, int(0)),
 		globals__io_set_option(unboxed_enums, bool(no)),
 		globals__io_set_option(unboxed_no_tag_types, bool(no)),
+		% globals__io_set_option(num_reserved_addresses, int(1))
 		globals__io_set_option(static_ground_terms, bool(no)),
 
 		( { HighLevelData = yes, AutoIntermodOptimization = yes } ->
@@ -877,19 +887,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	->
 		usage_error("--gc accurate is incompatible with " ++
 			"--put-nondet-env-on-heap")
-	;
-		[]
-	),
-	% ml_gen_cont_params in ml_call_gen.m will call sorry/1
-	% if --gc accurate and --nondet-copy-out are both enabled.
-	globals__io_lookup_bool_option(nondet_copy_out, NondetCopyOut),
-	(
-		{ HighLevel = yes },
-		{ GC_Method = accurate },
-		{ NondetCopyOut = yes }
-	->
-		usage_error("--gc accurate is incompatible with " ++
-			"--nondet-copy-out")
 	;
 		[]
 	),

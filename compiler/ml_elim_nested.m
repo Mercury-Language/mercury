@@ -240,8 +240,6 @@
 
 % Various optional features of Mercury are not yet supported, e.g.
 %
-%	- `--nondet-copy-out' (see comment in flatten_nested_defn)
-%
 %	- `--high-level-data' (fixup_newobj_in_atomic_statement
 %	  gets the types wrong; see comment in ml_code_util.m)
 %

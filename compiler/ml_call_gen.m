@@ -113,6 +113,10 @@
         % Generate the appropriate MLDS type for a continuation function
         % for a nondet procedure whose output arguments have the
         % specified types.
+	%
+	% WARNING: this does not fill in the maybe_gc_trace_code for the
+	% function parameters.  It is the caller's responsibility to fill
+	% these in properly if needed.
         %
 :- pred ml_gen_cont_params(list(mlds__type), mlds__func_params,
 		ml_gen_info, ml_gen_info).
@@ -565,7 +569,13 @@ ml_gen_success_cont(OutputArgTypes, OutputArgLvals, Context,
 		% 
 		% Create a new continuation function
 		% that just copies the outputs to locals
-		% and then calls the original current continuation
+		% and then calls the original current continuation.
+		%
+		% Note that ml_gen_cont_params does not fill in the
+		% maybe_gc_trace_code for the parameters.  This is OK,
+		% because the parameters of the continuation function
+		% will not be live across any heap allocations or
+		% procedure calls.
 		%
 		ml_gen_cont_params(OutputArgTypes, Params),
 		ml_gen_new_func_label(yes(Params),
@@ -605,20 +615,12 @@ ml_gen_cont_params(OutputArgTypes, Params) -->
 ml_gen_cont_params_2([], _, []) --> [].
 ml_gen_cont_params_2([Type | Types], ArgNum, [Argument | Arguments]) -->
 	{ ArgName = ml_gen_arg_name(ArgNum) },
-	% XXX Figuring out the correct GC code here is difficult,
+	% Figuring out the correct GC code here is difficult,
 	% since doing that requires knowing the HLDS types, but
-	% here we only have the MLDS types.
-	% Fortunately this code should only get executed
-	% if --nondet-copy-out is enabled, which is not normally
-	% the case when --gc accurate is enabled, so handling this
-	% is not very important.
-	ml_gen_info_get_globals(Globals),
-	{ globals__get_gc_method(Globals, GC) },
-	( { GC = accurate } ->
-		{ sorry(this_file, "--gc accurate & --nondet-copy-out") }
-	;
-		{ Maybe_GC_TraceCode = no }
-	),
+	% here we only have the MLDS types.  So here we just
+	% leave it blank.  The caller of ml_gen_cont_param has the
+	% reponsibility of fillling this in properly if needed.
+	{ Maybe_GC_TraceCode = no },
 	{ Argument = mlds__argument(data(var(ArgName)), Type,
 		Maybe_GC_TraceCode) },
 	ml_gen_cont_params_2(Types, ArgNum + 1, Arguments).

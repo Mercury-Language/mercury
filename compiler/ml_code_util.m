@@ -1986,6 +1986,13 @@ ml_gen_call_current_success_cont_indirectly(Context, MLDS_Statement) -->
 		% All we do is change the call rvals to be the input
 		% variables, and the func rval to be the input variable
 		% for the continuation.
+		%
+		% Note that ml_gen_cont_params does not fill in the
+		% gc_trace_code for the parameters.  This is OK, because
+		% the parameters will not be used again after the call.
+		% (Also currently this is only used for IL, for which GC
+		% is the .NET CLR implementation's problem, not ours.)
+		% 
 	ml_gen_cont_params(ArgTypes0, InnerFuncParams0),
 	{ InnerFuncParams0 = func_params(InnerArgs0, Rets) },
 	{ InnerArgRvals = list__map(
