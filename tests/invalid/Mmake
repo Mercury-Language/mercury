@@ -25,6 +25,7 @@ SOURCES= \
 	pragma_c_code_and_clauses2.m \
 	prog_io_erroneous.m \
 	types.m \
+	undef_lambda_mode.m\
 	undef_type.m
 
 DEPS=		$(SOURCES:%.m=%.dep)

@@ -4,7 +4,7 @@ main_target: check
 
 #-----------------------------------------------------------------------------#
 
-PROGS= pragma_c_code_unused_var unused_args_test singleton_test
+PROGS= pragma_c_code_unused_var unused_args_test singleton_test unused_import_test
 
 #-----------------------------------------------------------------------------#
 
@@ -21,8 +21,12 @@ RESS=	$(PROGS:%=%.res)
 #-----------------------------------------------------------------------------#
 
 unused_args_test.err:
-	$(MC) -C --warn-unused-args unused_args_test > unused_args_test.err 2>&1
-	-rm -f unused_args_test.c
+	$(MC) -C --warn-unused-args --errorcheck-only \
+		unused_args_test > unused_args_test.err 2>&1
+
+unused_import_test.err:
+	$(MC) -C --warn-interface-imports --errorcheck-only \
+		unused_import_test > unused_import_test.err 2>&1
 
 depend:	$(DEPENDS)
 
