@@ -10,10 +10,11 @@ MAIN_TARGET=lib
 
 MERCURY_DIR=..
 include ../Mmake.common
+GRADE=debug.gc
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS		= -I$(MERCURY_DIR)/runtime -I $(MERCURY_DIR)/boehm_gc -g
+CFLAGS		= -I$(MERCURY_DIR)/runtime -I $(MERCURY_DIR)/boehm_gc -g -DDEBUG_GOTOS
 MGNUC		= MERCURY_C_INCL_DIR=. mgnuc
 MGNUCFLAGS	= $(CFLAGS)
 

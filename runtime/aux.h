@@ -31,7 +31,7 @@ extern	void	printstring(const char *s);
 extern	void	printheap(const Word *h);
 extern	void	printdetstack(const Word *s);
 extern	void	printnondstack(const Word *s);
-extern	void	dumpframe(const Word *);
+extern	void	dumpframe(/* const */ Word *);
 extern	void	dumpnondstack(void);
 extern	void	printlist(Word p);
 extern	void	printlabel(/* const */ Code *w);

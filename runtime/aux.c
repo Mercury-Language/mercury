@@ -212,7 +212,7 @@ void printnondstack(const Word *s)
 #endif
 }
 
-void dumpframe(const Word *fr)
+void dumpframe(/* const */ Word *fr)
 {
 	reg	int	i;
 
