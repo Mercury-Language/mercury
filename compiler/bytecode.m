@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module hlds_data, llds, tree.
+:- import_module hlds_data, llds, llds_out, tree.
 :- import_module list, std_util, io.
 
 :- type byte_tree	==	tree(list(byte_code)).
@@ -729,7 +729,7 @@ debug_cons_id(int_const(IntVal)) -->
 	debug_int(IntVal).
 debug_cons_id(string_const(StringVal)) -->
 	debug_string("string_const"),
-	debug_string(StringVal).
+	debug_cstring(StringVal).
 debug_cons_id(float_const(FloatVal)) -->
 	debug_string("float_const"),
 	debug_float(FloatVal).
@@ -1058,6 +1058,23 @@ unop_debug((not),		"not").
 output_string(Val) -->
 	io__write_bytes(Val),
 	io__write_byte(0).
+
+
+/*
+**	debug_cstring prints a string quoted in the manner of C.
+*/
+
+:- pred debug_cstring(string, io__state, io__state).
+:- mode debug_cstring(in, di, uo) is det.
+
+debug_cstring(Str) -->
+	io__write_char('"'),
+	output_c_quoted_string(Str),
+	% XXX: We need the trailing space in case something follows
+	% the string as a bytecode argument. This is not very elegant.
+	io__write_char('"'),
+	io__write_char(' ').
+	
 
 :- pred output_byte(int, io__state, io__state).
 :- mode output_byte(in, di, uo) is det.
