@@ -72,7 +72,11 @@ keep_stage_2=false
 keep_stage_3=false
 keep_stage_2_sicstus=false
 test_sicstus=false
-use_subdirs=${MMAKE_USE_SUBDIRS=no}
+if [ -d compiler/Mercury ]; then
+	use_subdirs=${MMAKE_USE_SUBDIRS=yes}
+else
+	use_subdirs=${MMAKE_USE_SUBDIRS=no}
+fi
 
 # If you change these, you will also need to change scripts/ml.in,
 # scripts/c2init.in, Mmake.common.in, tools/binary, tools/binary_step
