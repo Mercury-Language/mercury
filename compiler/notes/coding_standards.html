@@ -161,18 +161,24 @@ error message should include the filename.
 
 <h2> Layout </h2>
 
+<p>
+
 Code should be indented consistently.
 Tabs should be every 8 spaces.
 Indentation should be one tab per level of indentation.
 except for highly intended code which may be
 indented at 4 spaces per level of indentation.
+
+<p>
+
 Each line should not extend beyond 79 characters,
 unless this is necessary due to the use of long string literals.
+
+<p>
+
 If-then-elses should always be parenthesized,
 except that an if-then-else that occurs as the else
 part of another if-then-else doesn't need to be parenthesized.
-The semicolon of a disjunction should never be at the
-end of a line -- put it at the start of the next line instead.
 The condition of an if-then-else can either be on the same
 line as the opening parenthesis and the `->',
 
@@ -212,6 +218,14 @@ or, if the test is complicated, it can be on a line of its own:
 
 </pre>
 
+<p>
+
+Disjunctions should always be parenthesized.
+The semicolon of a disjunction should never be at the
+end of a line -- put it at the start of the next line instead.
+
+<p>
+
 Type definitions should be formatted in the following style:
 
 <pre>
@@ -231,6 +245,8 @@ Type definitions should be formatted in the following style:
 		;	quux.
 
 </pre>
+
+<p>
 
 If an individual clause is long, it should be broken into sections,
 and each section should have a "block comment" describing what it does;
@@ -264,6 +280,8 @@ or an "inline" comment
 </pre>
 
 should be used.
+
+<p>
 	
 At a higher level, code should be grouped into bunches of related
 predicates, functions, etc., and sections of code that are conceptually
@@ -282,6 +300,7 @@ Double-dashed lines, i.e.
 
 can also be used to indicate divisions into major sections.
 
+<p>
 
 <h2> Testing </h2>
 
@@ -325,6 +344,6 @@ The file "REVIEWS" contains more information on review policy.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2000-11-28 05:08:47 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-03-19 05:24:27 $ by $Author: dougl $@cs.mu.oz.au. <br>
 </body>
 </html>
