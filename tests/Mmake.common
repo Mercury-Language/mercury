@@ -226,8 +226,9 @@ endif
 endif
 
 ifdef TESTS_TO_RUN
-THIS_DIR_TESTS_TO_RUN := $(patsubst $(THIS_DIR)/%,%,\
-		$(filter $(THIS_DIR)/%,$(TESTS_TO_RUN)))
+THIS_DIR_TESTS_TO_RUN := $(shell echo $(patsubst $(THIS_DIR)/%,%,\
+		$(filter $(THIS_DIR)/%,$(TESTS_TO_RUN))) \
+		| tr ' ' '\n' | grep -v /)
 else
 THIS_DIR_TESTS_TO_RUN := $(TESTS)
 endif
