@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,6 +61,7 @@
 
 :- interface.
 
+:- import_module backend_libs__proc_label.
 :- import_module ll_backend__llds.
 :- import_module list, counter.
 
@@ -69,8 +70,10 @@
 
 :- implementation.
 
-:- import_module ll_backend__basic_block, ll_backend__livemap.
-:- import_module ll_backend__exprn_aux, ll_backend__code_util.
+:- import_module ll_backend__basic_block.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__exprn_aux.
+:- import_module ll_backend__livemap.
 :- import_module ll_backend__opt_util.
 
 :- import_module int, set, map, std_util, require.

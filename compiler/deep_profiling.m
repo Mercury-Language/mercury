@@ -595,7 +595,7 @@ transform_det_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		PredProcId = proc(PredId, ProcId)
 	),
 
-	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
+	RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
 	IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
 	ProcStatic = proc_static_data(RttiProcLabel, FileName, LineNumber,
 		IsInInterface, CallSites),
@@ -683,7 +683,7 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		PredProcId = proc(PredId, ProcId)
 	),
 
-	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
+	RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
 	IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
 	ProcStatic = proc_static_data(RttiProcLabel, FileName, LineNumber,
 		IsInInterface, CallSites),
@@ -785,7 +785,7 @@ transform_non_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 	CallSites = DeepInfo ^ call_sites,
 
 	PredProcId = proc(PredId, ProcId),
-	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
+	RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
 	IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
 	ProcStatic = proc_static_data(RttiProcLabel, FileName, LineNumber,
 		IsInInterface, CallSites),
@@ -1116,7 +1116,7 @@ wrap_call(GoalPath, Goal0, Goal, DeepInfo0, DeepInfo) :-
 			PredProcId = DeepInfo1 ^ pred_proc_id
 		->
 			OuterPredProcId = proc(OuterPredId, OuterProcId),
-			RttiProcLabel = rtti__make_proc_label(ModuleInfo,
+			RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo,
 				OuterPredId, OuterProcId)
 		;
 			MaybeRecInfo = yes(RecInfo2),
@@ -1125,10 +1125,10 @@ wrap_call(GoalPath, Goal0, Goal, DeepInfo0, DeepInfo) :-
 		->
 			OuterPredProcId = DeepInfo1 ^ pred_proc_id,
 			OuterPredProcId = proc(OuterPredId, OuterProcId),
-			RttiProcLabel = rtti__make_proc_label(ModuleInfo,
+			RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo,
 				OuterPredId, OuterProcId)
 		;
-			RttiProcLabel = rtti__make_proc_label(ModuleInfo,
+			RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo,
 				PredId, ProcId)
 		),
 		CallSite = normal_call(RttiProcLabel, TypeSubst,

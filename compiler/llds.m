@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,12 +16,17 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, parse_tree__inst.
-:- import_module hlds__hlds_pred, hlds__hlds_goal, hlds__hlds_data.
-:- import_module backend_libs__foreign, backend_libs__code_model.
-:- import_module backend_libs__rtti, backend_libs__builtin_ops.
-:- import_module ll_backend__layout.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__code_model.
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__proc_label.
+:- import_module backend_libs__rtti.
+:- import_module hlds__hlds_goal, hlds__hlds_data.
+:- import_module hlds__hlds_pred.
 :- import_module libs__tree.
+:- import_module ll_backend__layout.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, list, assoc_list, map, set, std_util, counter, term.
 
@@ -955,31 +960,6 @@
 	;	do_aditi_bulk_delete
 	;	do_aditi_bulk_modify
 	;	do_not_reached.		% We should never jump to this address.
-
-	% A proc_label is a label used for the entry point to a procedure.
-	% The defining module is the module that provides the code for the
-	% predicate, the declaring module contains the `:- pred' declaration.
-	% When these are different, as for specialised versions of predicates
-	% from `.opt' files, the defining module's name is added as a
-	% qualifier to the label.
-:- type proc_label
-	--->	proc(
-			module_name,	% defining module
-			pred_or_func,
-			module_name,	% declaring module
-			string,		% name
-			int,		% arity
-			proc_id		% mode number
-		)
-			
-	;	special_proc(
-			module_name,	% defining module
-			string,		% pred name
-			module_name,	% type module
-			string,		% type name
-			int,		% type arity
-			proc_id		% mode number
-		).
 
 	% A tag (used in mkword, create and field expressions
 	% and in incr_hp instructions) is a small integer.

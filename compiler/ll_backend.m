@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002,2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,9 +9,14 @@
 %
 :- module ll_backend.
 :- interface.
-:- import_module transform_hlds, check_hlds. % are these needed?
-:- import_module hlds, parse_tree, libs, backend_libs.
-:- import_module aditi_backend. % XXX for rl_file, used in llds_out.
+
+:- import_module aditi_backend.		% XXX for rl_file, used in llds_out.
+:- import_module backend_libs.
+:- import_module check_hlds. 		% is this needed?
+:- import_module hlds.
+:- import_module libs.
+:- import_module parse_tree.
+:- import_module transform_hlds.	% is this needed?
 
 %-----------------------------------------------------------------------------%
 
@@ -34,13 +39,18 @@
 
 % The HLDS->LLDS code generator.
 :- include_module code_gen.
-   :- include_module ite_gen, call_gen, disj_gen, unify_gen, commit_gen.
+   :- include_module ite_gen.
+   :- include_module call_gen.
+   :- include_module disj_gen.
+   :- include_module unify_gen.
+   :- include_module commit_gen.
    :- include_module switch_gen.
       :- include_module dense_switch.
       :- include_module lookup_switch.
       :- include_module string_switch.
       :- include_module tag_switch.
-   :- include_module pragma_c_gen, par_conj_gen.
+   :- include_module pragma_c_gen.
+   :- include_module par_conj_gen.
    :- include_module middle_rec.
    :- include_module trace.
 
@@ -57,15 +67,22 @@
 %:- module llds_rtti.
    :- include_module ll_pseudo_type_info.
    :- include_module layout.
-   :- include_module stack_layout, prog_rep.
+   :- include_module stack_layout.
+   :- include_module prog_rep.
    :- include_module static_term.
 %:- end_module llds_rtti.
 
 % LLDS->LLDS optimization passes.
 :- include_module optimize.
-   :- include_module jumpopt, dupelim, frameopt, delay_slot, labelopt.
+   :- include_module jumpopt.
+   :- include_module dupelim.
+   :- include_module frameopt.
+   :- include_module delay_slot.
+   :- include_module labelopt.
    :- include_module peephole.
-   :- include_module reassign, wrap_blocks, use_local_vars.
+   :- include_module reassign.
+   :- include_module wrap_blocks.
+   :- include_module use_local_vars.
 %   :- include_module value_number.
 %      :- include_module vn_block.
 %      :- include_module vn_cost.

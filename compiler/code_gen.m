@@ -30,9 +30,12 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
 :- import_module backend_libs__code_model.
-:- import_module ll_backend__llds, ll_backend__code_info.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module ll_backend__code_info.
+:- import_module ll_backend__llds.
 
 :- import_module list, io, counter.
 
@@ -67,28 +70,42 @@
 :- implementation.
 
 % Parse tree modules
-:- import_module parse_tree__prog_data, parse_tree__prog_out.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
 % HLDS modules
-:- import_module hlds__hlds_llds, hlds__hlds_out.
-:- import_module hlds__instmap, hlds__goal_util, hlds__special_pred.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_llds.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
+:- import_module hlds__passes_aux.
+:- import_module hlds__special_pred.
 
 % LLDS code generator modules.
-:- import_module ll_backend__call_gen, ll_backend__unify_gen.
-:- import_module ll_backend__ite_gen, ll_backend__switch_gen.
-:- import_module ll_backend__disj_gen.
-:- import_module ll_backend__par_conj_gen, ll_backend__pragma_c_gen.
+:- import_module ll_backend__call_gen.
+:- import_module ll_backend__code_aux.
+:- import_module ll_backend__code_util.
 :- import_module ll_backend__commit_gen.
-:- import_module ll_backend__continuation_info, ll_backend__trace.
-:- import_module ll_backend__code_aux, ll_backend__code_util.
-:- import_module ll_backend__middle_rec, ll_backend__llds_out.
+:- import_module ll_backend__continuation_info.
+:- import_module ll_backend__disj_gen.
+:- import_module ll_backend__ite_gen.
+:- import_module ll_backend__llds_out.
+:- import_module ll_backend__middle_rec.
+:- import_module ll_backend__par_conj_gen.
+:- import_module ll_backend__pragma_c_gen.
+:- import_module ll_backend__switch_gen.
+:- import_module ll_backend__trace.
+:- import_module ll_backend__unify_gen.
 
 % Misc compiler modules
-:- import_module backend_libs__builtin_ops, hlds__passes_aux.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
-:- import_module libs__globals, libs__options.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module libs__trace_params.
 
 % Standard library modules
@@ -336,7 +353,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		)
 	->
 			% Create the procedure layout structure.
-		RttiProcLabel = rtti__make_proc_label(ModuleInfo,
+		RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo,
 			PredId, ProcId),
 		code_info__get_layout_info(InternalMap, CodeInfo, _),
 		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
@@ -373,7 +390,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 	code_info__get_closure_layouts(ClosureLayouts, CodeInfo, _),
 	global_data_add_new_closure_layouts(GlobalData1, ClosureLayouts,
 		GlobalData2),
-	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
+	ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
 	maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
 		ProcLabel, GlobalData2, GlobalData),
 

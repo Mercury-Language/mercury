@@ -18,10 +18,12 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__hlds_data.
 :- import_module backend_libs__code_model.
-:- import_module ll_backend__llds, ll_backend__code_info.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module ll_backend__code_info.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
 
 :- type test_sense
 	--->	branch_on_success
@@ -38,16 +40,28 @@
 
 :- implementation.
 
-:- import_module backend_libs__rtti, ll_backend__layout.
+:- import_module aditi_backend__rl.
 :- import_module backend_libs__builtin_ops.
-:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__prog_data.
-:- import_module parse_tree__prog_out, ll_backend__code_util.
-:- import_module check_hlds__mode_util, check_hlds__type_util.
-:- import_module ll_backend__code_aux, hlds__hlds_out, libs__tree.
+:- import_module backend_libs__proc_label.
+:- import_module backend_libs__rtti.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__tree.
 :- import_module ll_backend__arg_info.
-:- import_module libs__globals, libs__options, ll_backend__continuation_info.
+:- import_module ll_backend__code_aux.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__continuation_info.
+:- import_module ll_backend__layout.
 :- import_module ll_backend__stack_layout.
-:- import_module aditi_backend__rl, ll_backend__trace, hlds__error_util.
+:- import_module ll_backend__trace.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
 
 :- import_module term, bool, string, int, list, map, require, std_util.
 
@@ -412,7 +426,7 @@ unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
 		{ error("unify_gen: tabling pointer constant has args") }
 	),
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) },
+	{ ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId) },
 	{ module_info_name(ModuleInfo, ModuleName) },
 	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
 	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -136,7 +136,7 @@ base_typeclass_info__gen_body(yes(PredProcIds0), Types, Constraints,
 base_typeclass_info__construct_proc_labels([], _, []).
 base_typeclass_info__construct_proc_labels([proc(PredId, ProcId) | Procs],
 		ModuleInfo, [ProcLabel | ProcLabels]) :-
-	ProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
+	ProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
 	base_typeclass_info__construct_proc_labels(Procs, ModuleInfo,
 		ProcLabels).
 

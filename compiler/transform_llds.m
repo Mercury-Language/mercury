@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 The University of Melbourne.
+% Copyright (C) 1998-2001,2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,8 @@
 
 :- interface.
 
-:- import_module ll_backend__llds, io.
+:- import_module ll_backend__llds.
+:- import_module io.
 
 :- pred transform_llds(c_file, c_file, io__state, io__state).
 :- mode transform_llds(in, out, di, uo) is det.
@@ -31,8 +32,13 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops, libs__globals, libs__options.
-:- import_module ll_backend__opt_util, parse_tree__prog_data.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__proc_label.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__opt_util.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, int, list, require, std_util, counter.
 
 transform_llds(LLDS0, LLDS) -->

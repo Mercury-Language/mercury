@@ -17,11 +17,16 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_pred.
-:- import_module hlds__hlds_goal, hlds__hlds_data.
-:- import_module backend_libs__rtti, ll_backend__llds.
+:- import_module backend_libs__proc_label.
+:- import_module backend_libs__rtti.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
 
-:- import_module bool, list, std_util.
+:- import_module list, std_util.
 
 	% Create a code address which holds the address of the specified
 	% procedure.
@@ -59,26 +64,6 @@
 :- pred code_util__make_internal_label(module_info, pred_id, proc_id, int,
 		label).
 :- mode code_util__make_internal_label(in, in, in, in, out) is det.
-
-:- pred code_util__make_proc_label(module_info, pred_id, proc_id, proc_label).
-:- mode code_util__make_proc_label(in, in, in, out) is det.
-
-:- func code_util__make_proc_label_from_rtti(rtti_proc_label) = proc_label.
-
-	% code_util__make_user_proc_label(ModuleName, PredIsImported,
-	%	PredOrFunc, ModuleName, PredName, Arity, ProcId, Label):
-	% Make a proc_label for a user-defined procedure.
-	%
-	% The PredIsImported argument should be the result of
-	% calling pred_info_is_imported.
-
-:- pred code_util__make_user_proc_label(module_name, bool,
-	pred_or_func, module_name, string, arity, proc_id, proc_label).
-:- mode code_util__make_user_proc_label(in, in,
-	in, in, in, in, in, out) is det.
-
-:- pred code_util__make_uni_label(module_info, type_ctor, proc_id, proc_label).
-:- mode code_util__make_uni_label(in, in, in, out) is det.
 
 :- pred code_util__extract_proc_label_from_code_addr(code_addr, proc_label).
 :- mode code_util__extract_proc_label_from_code_addr(in, out) is det.
@@ -175,18 +160,21 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_util, check_hlds__type_util.
-:- import_module hlds__special_pred, backend_libs__builtin_ops.
+:- import_module backend_libs__builtin_ops.
 :- import_module backend_libs__code_model.
-:- import_module libs__options, libs__globals.
+:- import_module check_hlds__type_util.
+:- import_module hlds__special_pred.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__prog_util.
 
-:- import_module char, int, string, set, map, term, varset.
+:- import_module bool, char, int, string, set, map, term, varset.
 :- import_module require, std_util, assoc_list.
 
 %---------------------------------------------------------------------------%
 
 code_util__make_entry_label(ModuleInfo, PredId, ProcId, Immed, ProcAddr) :-
-	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
+	RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
 	code_util__make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr).
 
 code_util__make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr) :-
@@ -200,8 +188,7 @@ code_util__make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr) :-
 				RttiProcLabel^proc_id)
 		)
 	->
-		code_util__make_proc_label_from_rtti(RttiProcLabel)
-			= ProcLabel,
+		ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
 		ProcAddr = imported(ProcLabel)
 	;
 		code_util__make_local_entry_label_from_rtti(RttiProcLabel,
@@ -210,7 +197,7 @@ code_util__make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr) :-
 	).
 
 code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
-	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
+	RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
 	code_util__make_local_entry_label_from_rtti(RttiProcLabel,
 		Immed, Label).
 
@@ -219,7 +206,7 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
 :- mode code_util__make_local_entry_label_from_rtti(in, in, out) is det.
 
 code_util__make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
-	code_util__make_proc_label_from_rtti(RttiProcLabel) = ProcLabel,
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
 	(
 		Immed = no,
 		% If we want to define the label or use it to put it
@@ -236,7 +223,6 @@ code_util__make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
 			RttiProcLabel^pred_id, RttiProcLabel^proc_id,
 			ProcLabel, Label)
 	).
-
 
 :- pred choose_local_label_type(int, pred_id, proc_id,
 		pred_id, proc_id, proc_label, label).
@@ -264,92 +250,8 @@ choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
 %-----------------------------------------------------------------------------%
 
 code_util__make_internal_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
-	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
+	ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
 	Label = local(LabelNum, ProcLabel).
-
-code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
-	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
-	code_util__make_proc_label_from_rtti(RttiProcLabel) = ProcLabel.
-
-code_util__make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
-	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule,
-		PredModule, PredName, PredArity, ArgTypes, _PredId, ProcId,
-		_HeadVarsWithNames, _ArgModes, _CodeModel,
-		IsImported, _IsPseudoImported, _IsExported,
-		IsSpecialPredInstance),
-	(
-		IsSpecialPredInstance = yes
-	->
-		(
-			special_pred_get_type(PredName, ArgTypes, Type),
-			type_to_ctor_and_args(Type, TypeCtor, _),
-			% All type_ctors other than tuples here should be
-			% module qualified, since builtin types are
-			% handled separately in polymorphism.m.
-			(
-				TypeCtor = unqualified(TypeName) - _,
-				type_ctor_is_tuple(TypeCtor),
-				mercury_public_builtin_module(TypeModule)
-			;
-				TypeCtor = qualified(TypeModule, TypeName) - _
-			)
-		->
-			TypeCtor = _ - TypeArity,
-			(
-				ThisModule \= TypeModule,
-				PredName = "__Unify__",
-				\+ hlds_pred__in_in_unification_proc_id(ProcId)
-			->
-				DefiningModule = ThisModule
-			;
-				DefiningModule = TypeModule
-			),
-			ProcLabel = special_proc(DefiningModule, PredName,
-				TypeModule, TypeName, TypeArity, ProcId)
-		;
-			string__append_list(["code_util__make_proc_label:\n",
-				"cannot make label for special pred `",
-				PredName, "'"], ErrorMessage),
-			error(ErrorMessage)
-		)
-	;
-		code_util__make_user_proc_label(ThisModule, IsImported,
-			PredOrFunc, PredModule, PredName, PredArity,
-			ProcId, ProcLabel)
-	).
-
-code_util__make_user_proc_label(ThisModule, PredIsImported,
-		PredOrFunc, PredModule, PredName, PredArity,
-		ProcId, ProcLabel) :-
-
-	(
-		% Work out which module supplies the code for
-		% the predicate.
-		ThisModule \= PredModule,
-		PredIsImported = no
-	->
-		% This predicate is a specialized version of 
-		% a pred from a `.opt' file.
-		DefiningModule = ThisModule
-	;	
-		DefiningModule = PredModule
-	),
-	ProcLabel = proc(DefiningModule, PredOrFunc,
-		PredModule, PredName, PredArity, ProcId).
-
-code_util__make_uni_label(ModuleInfo, TypeCtor, UniModeNum, ProcLabel) :-
-	module_info_name(ModuleInfo, ModuleName),
-	( TypeCtor = qualified(TypeModule, TypeName) - Arity ->
-		( hlds_pred__in_in_unification_proc_id(UniModeNum) ->
-			Module = TypeModule
-		;
-			Module = ModuleName
-		),
-		ProcLabel = special_proc(Module, "__Unify__", TypeModule,
-			TypeName, Arity, UniModeNum)
-	;
-		error("code_util__make_uni_label: unqualified type_ctor")
-	).
 
 code_util__extract_proc_label_from_code_addr(CodeAddr, ProcLabel) :-
 	( code_util__proc_label_from_code_addr(CodeAddr, ProcLabelPrime) ->

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,8 +18,10 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, hlds__hlds_module.
 :- import_module backend_libs__foreign.
+:- import_module hlds__hlds_module.
+:- import_module parse_tree__prog_data.
+
 :- import_module io.
 
 	% From the module_info, get a list of foreign_export_decls,
@@ -43,7 +45,6 @@
 					io__state, io__state).
 :- mode export__produce_header_file(in, in, di, uo) is det.
 
-
 %-----------------------------------------------------------------------------%
 
 % Utilities for generating C code which interfaces with Mercury.  
@@ -66,14 +67,19 @@
 
 :- implementation.
 
-:- import_module backend_libs__foreign.
-:- import_module parse_tree__modules.
-:- import_module hlds__hlds_pred, check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module backend_libs__code_model.
-:- import_module ll_backend__code_gen, ll_backend__code_util.
-:- import_module ll_backend__llds_out, ll_backend__arg_info.
-:- import_module libs__globals, libs__options.
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__proc_label.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__arg_info.
+:- import_module ll_backend__code_gen.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__llds_out.
+:- import_module parse_tree__modules.
 
 :- import_module term, varset.
 :- import_module library, map, int, string, std_util, assoc_list, require.
@@ -233,7 +239,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	get_input_args(ArgInfoTypes, 0, Module, InputArgs),
 	copy_output_args(ArgInfoTypes, 0, Module, OutputArgs),
 	
-	code_util__make_proc_label(Module, PredId, ProcId, ProcLabel),
+	ProcLabel = make_proc_label(Module, PredId, ProcId),
 	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
 
 	string__append_list([

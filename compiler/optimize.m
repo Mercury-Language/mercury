@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,15 +27,24 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_pred, hlds__passes_aux.
-:- import_module ll_backend__jumpopt, ll_backend__labelopt.
-:- import_module ll_backend__dupelim, ll_backend__peephole.
-:- import_module ll_backend__frameopt, ll_backend__delay_slot.
-:- import_module ll_backend__use_local_vars, ll_backend__reassign.
-:- import_module ll_backend__opt_util, ll_backend__opt_debug.
+:- import_module backend_libs__proc_label.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__continuation_info.
+:- import_module ll_backend__delay_slot.
+:- import_module ll_backend__dupelim.
+:- import_module ll_backend__frameopt.
+:- import_module ll_backend__jumpopt.
+:- import_module ll_backend__labelopt.
+:- import_module ll_backend__llds_out.
+:- import_module ll_backend__opt_debug.
+:- import_module ll_backend__opt_util.
+:- import_module ll_backend__peephole.
+:- import_module ll_backend__reassign.
+:- import_module ll_backend__use_local_vars.
 :- import_module ll_backend__wrap_blocks.
-:- import_module ll_backend__llds_out, ll_backend__continuation_info.
-:- import_module libs__options, libs__globals.
 
 :- import_module bool, int, string.
 :- import_module map, bimap, set, std_util, require, counter.

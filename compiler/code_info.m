@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,26 +29,36 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
-:- import_module hlds__hlds_data, hlds__hlds_llds, hlds__instmap.
-:- import_module ll_backend__llds, ll_backend__continuation_info.
-:- import_module ll_backend__trace.
 :- import_module backend_libs__code_model.
+:- import_module backend_libs__proc_label.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
 :- import_module libs__globals.
+:- import_module ll_backend__continuation_info.
+:- import_module ll_backend__llds.
+:- import_module ll_backend__trace.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, set, list, map, std_util, assoc_list, counter.
 
 :- implementation.
 
-:- import_module parse_tree__prog_out.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
-:- import_module ll_backend__arg_info, ll_backend__code_util.
-:- import_module ll_backend__code_exprn, ll_backend__exprn_aux.
-:- import_module ll_backend__var_locn.
-:- import_module ll_backend__llds_out.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module libs__options.
 :- import_module libs__trace_params.
-:- import_module libs__options, libs__tree.
+:- import_module libs__tree.
+:- import_module ll_backend__arg_info.
+:- import_module ll_backend__code_exprn.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__exprn_aux.
+:- import_module ll_backend__llds_out.
+:- import_module ll_backend__var_locn.
+:- import_module parse_tree__prog_out.
 
 :- import_module term, varset.
 :- import_module set, stack.
@@ -949,7 +959,7 @@ code_info__get_cur_proc_label(ProcLabel) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
-	{ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) }.
+	{ ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId) }.
 
 code_info__get_next_closure_seq_no(SeqNo) -->
 	code_info__get_closure_seq_counter(C0),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2002 The University of Melbourne.
+% Copyright (C) 1995-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,6 +43,7 @@
 
 :- interface.
 
+:- import_module backend_libs__proc_label.
 :- import_module ll_backend__llds.
 :- import_module list, counter.
 
@@ -53,7 +54,9 @@
 
 :- implementation.
 
-:- import_module ll_backend__basic_block, ll_backend__opt_util.
+:- import_module ll_backend__basic_block.
+:- import_module ll_backend__opt_util.
+
 :- import_module bool, std_util, assoc_list, set, map, require.
 
 	% A std_map maps a list of standardized instructions to the list

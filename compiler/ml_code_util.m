@@ -16,8 +16,10 @@
 :- interface.
 
 :- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_module, hlds__hlds_pred.
-:- import_module backend_libs__builtin_ops, backend_libs__rtti.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__rtti.
 :- import_module backend_libs__code_model.
 :- import_module ml_backend__mlds.
 :- import_module libs__globals.
@@ -801,14 +803,22 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_io.
-:- import_module hlds__hlds_goal, (parse_tree__inst), hlds__instmap.
-:- import_module check_hlds__polymorphism.
 :- import_module backend_libs__foreign.
-:- import_module parse_tree__prog_util, check_hlds__type_util.
-:- import_module check_hlds__mode_util, hlds__special_pred, hlds__error_util.
-:- import_module ml_backend__ml_code_gen, ml_backend__ml_call_gen.
-:- import_module libs__globals, libs__options.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__polymorphism.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__instmap.
+:- import_module hlds__special_pred.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ml_backend__ml_call_gen.
+:- import_module ml_backend__ml_code_gen.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_util.
 
 :- import_module counter, stack, string, require, set, term, varset.
 
@@ -1430,7 +1440,7 @@ ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval) -->
 	% for a given procedure.
 	%
 ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
-	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
+	RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
 	ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel,
 		MLDS_PredLabel, MLDS_Module).
 

@@ -17,10 +17,14 @@
 
 :- interface.
 
-:- import_module ll_backend__llds, backend_libs__builtin_ops.
-:- import_module parse_tree__prog_data, hlds__hlds_data.
 :- import_module aditi_backend__rl_file.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__proc_label.
+:- import_module hlds__hlds_data.
 :- import_module libs__globals.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, std_util, list, map, io.
 
 	% Given a 'c_file' structure, output the LLDS code inside it

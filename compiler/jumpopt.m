@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,6 +14,7 @@
 
 :- interface.
 
+:- import_module backend_libs__proc_label.
 :- import_module ll_backend__llds.
 :- import_module list, set, bool, counter.
 
@@ -49,8 +50,10 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops, ll_backend__code_util.
+:- import_module backend_libs__builtin_ops.
+:- import_module ll_backend__code_util.
 :- import_module ll_backend__opt_util.
+
 :- import_module int, std_util, map, string, require.
 
 % We first build up a bunch of tables giving information about labels.

@@ -535,7 +535,8 @@
 :- func rtti_name_is_exported(rtti_name) = bool.
 
 	% Construct an rtti_proc_label for a given procedure.
-:- func rtti__make_proc_label(module_info, pred_id, proc_id) = rtti_proc_label.
+:- func rtti__make_rtti_proc_label(module_info, pred_id, proc_id)
+	= rtti_proc_label.
 
 	% Construct an rtti_proc_label for a given procedure.
 :- pred rtti__proc_label_pred_proc_id(rtti_proc_label::in,
@@ -737,7 +738,7 @@ pseudo_type_info_is_exported(plain_pseudo_type_info(_, _))	= no.
 pseudo_type_info_is_exported(var_arity_pseudo_type_info(_, _))	= no.
 pseudo_type_info_is_exported(type_var(_))			= no.
 
-rtti__make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
+rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	module_info_name(ModuleInfo, ThisModule),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo),

@@ -197,9 +197,9 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 	TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
 		TypeArity, _Status, HldsDefn, UnifyPredProcId,
 		ComparePredProcId),
-	type_ctor_info__make_proc_label(UnifyPredProcId, ModuleInfo,
+	type_ctor_info__make_rtti_proc_label(UnifyPredProcId, ModuleInfo,
 		UnifyProcLabel),
-	type_ctor_info__make_proc_label(ComparePredProcId, ModuleInfo,
+	type_ctor_info__make_rtti_proc_label(ComparePredProcId, ModuleInfo,
 		CompareProcLabel),
 	type_to_univ(UnifyProcLabel, UnifyUniv),
 	type_to_univ(CompareProcLabel, CompareUniv),
@@ -267,12 +267,12 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 		UnifyUniv, CompareUniv, Flags, Details),
 	RttiData = type_ctor_info(TypeCtorData).
 
-:- pred type_ctor_info__make_proc_label(pred_proc_id::in, module_info::in,
+:- pred type_ctor_info__make_rtti_proc_label(pred_proc_id::in, module_info::in,
 	rtti_proc_label::out) is det.
 
-type_ctor_info__make_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
+type_ctor_info__make_rtti_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
 	PredProcId = proc(PredId, ProcId),
-	ProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId).
+	ProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId).
 
 %---------------------------------------------------------------------------%
 

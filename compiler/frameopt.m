@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2001,2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -88,6 +88,7 @@
 
 :- interface.
 
+:- import_module backend_libs__proc_label.
 :- import_module ll_backend__llds.
 :- import_module bool, list, counter.
 
@@ -104,9 +105,12 @@
 
 :- implementation.
 
-:- import_module ll_backend__livemap, parse_tree__prog_data.
-:- import_module ll_backend__opt_util, ll_backend__code_util.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__livemap.
 :- import_module ll_backend__opt_debug.
+:- import_module ll_backend__opt_util.
+:- import_module parse_tree__prog_data.
+
 :- import_module int, string, require, std_util, assoc_list, set, map, queue.
 
 frameopt_main(Instrs0, ProcLabel, C0, C, Instrs, Mod, Jumps) :-

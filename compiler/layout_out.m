@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,7 +21,11 @@
 
 :- interface.
 
-:- import_module ll_backend__layout, ll_backend__llds, ll_backend__llds_out.
+:- import_module backend_libs__proc_label.
+:- import_module ll_backend__layout.
+:- import_module ll_backend__llds.
+:- import_module ll_backend__llds_out.
+
 :- import_module bool, io.
 
 	% Given a Mercury representation of a layout structure, output its
@@ -77,9 +81,15 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_out, hlds__hlds_pred.
-:- import_module libs__trace_params, backend_libs__c_util.
-:- import_module backend_libs__rtti, ll_backend__trace, ll_backend__code_util.
+:- import_module backend_libs__c_util.
+:- import_module backend_libs__rtti.
+:- import_module hlds__hlds_pred.
+:- import_module libs__trace_params.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__trace.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+
 :- import_module int, char, string, require, std_util, list.
 
 output_layout_data_defn(label_layout_data(Label, ProcLayoutAddr,
@@ -262,32 +272,32 @@ output_layout_name(module_layout(ModuleName)) -->
 output_layout_name(proc_static(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_proc_static__"),
-	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
 	output_proc_label(ProcLabel).
 output_layout_name(proc_static_call_sites(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_proc_static_call_sites__"),
-	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
 	output_proc_label(ProcLabel).
 output_layout_name(table_io_decl(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_table_io_decl__"),
-	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
 	output_proc_label(ProcLabel).
 output_layout_name(table_gen_info(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_table_gen__"),
-	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
 	output_proc_label(ProcLabel).
 output_layout_name(table_gen_enum_params(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_table_enum_params__"),
-	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
 	output_proc_label(ProcLabel).
 output_layout_name(table_gen_steps(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_table_steps__"),
-	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
 	output_proc_label(ProcLabel).
 
 output_layout_name_storage_type_name(label_layout(Label, LabelVars),
@@ -1212,7 +1222,7 @@ output_proc_static_data_defn(RttiProcLabel, FileName, LineNumber,
 	io__write_string("\n"),
 	output_layout_name_storage_type_name(LayoutName, yes),
 	io__write_string(" = {\n"),
-	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
 	output_layout_proc_id_group(ProcLabel),
 	io__write_string("\t"),
 	quote_and_write_string(FileName),
@@ -1328,7 +1338,7 @@ output_table_io_decl(RttiProcLabel, ProcLayoutKind, NumPTIs,
 		PTIVectorRval, TypeParamsRval, DeclSet0, DeclSet) -->
 	output_rval_decls(PTIVectorRval, "", "", 0, _, DeclSet0, DeclSet1),
 	{ LayoutName = table_io_decl(RttiProcLabel) },
-	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
 	{ ProcLayoutName = proc_layout(ProcLabel, ProcLayoutKind) },
 	output_layout_decl(ProcLayoutName, DeclSet1, DeclSet2),
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,11 +32,14 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__hlds_pred.
-:- import_module ll_backend__llds.
+:- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
 :- import_module libs__trace_params.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, std_util, list, assoc_list.
 
 	% This type is for strings which may contain embedded null characters.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 University of Melbourne.
+% Copyright (C) 1998-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,9 +17,13 @@
 
 :- interface.
 
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
 :- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_module.
-:- import_module hlds__hlds_pred, hlds__instmap.
+
 :- import_module assoc_list, list, std_util, map, set.
 
 %-----------------------------------------------------------------------------%
@@ -671,12 +675,19 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module parse_tree__prog_util, parse_tree__prog_out.
+:- import_module backend_libs__proc_label.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
 :- import_module hlds__goal_form.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
-:- import_module ll_backend__llds, ll_backend__llds_out.
-:- import_module ll_backend__code_util, ll_backend__code_aux.
-:- import_module libs__globals, libs__options.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__code_aux.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__llds.
+:- import_module ll_backend__llds_out.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+
 :- import_module bool, int, require, string.
 
 rl__default_temporary_state(ModuleInfo, TmpState) :-
@@ -1077,8 +1088,8 @@ rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo, PredName, Arity,
 	pred_info_module(PredInfo, PredModule),
 	pred_info_get_aditi_owner(PredInfo, Owner),
 	IsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
-	code_util__make_user_proc_label(ModuleName, IsImported,
-		PredOrFunc, PredModule, PredName, Arity, ProcId, ProcLabel),
+	ProcLabel = make_user_proc_label(ModuleName, IsImported,
+		PredOrFunc, PredModule, PredName, Arity, ProcId),
 	llds_out__get_proc_label(ProcLabel, no, ProcLabelStr),
 	prog_out__sym_name_to_string(PredModule, PredModuleStr),
 	ProcName = rl_proc_name(Owner, PredModuleStr, ProcLabelStr, 2).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,9 +14,13 @@
 
 :- interface.
 
-:- import_module ll_backend__llds, ll_backend__livemap.
-:- import_module backend_libs__code_model, backend_libs__rtti.
-:- import_module ll_backend__layout, backend_libs__builtin_ops.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__code_model.
+:- import_module backend_libs__proc_label.
+:- import_module backend_libs__rtti.
+:- import_module ll_backend__layout.
+:- import_module ll_backend__livemap.
+:- import_module ll_backend__llds.
 
 :- import_module io, bool, list, assoc_list, std_util.
 
@@ -120,11 +124,13 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_out.
 :- import_module hlds__hlds_pred.
-:- import_module ll_backend__llds_out, ll_backend__code_util.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__llds_out.
 :- import_module ll_backend__opt_util.
-:- import_module libs__globals, libs__options.
+:- import_module parse_tree__prog_out.
 
 :- import_module int, set, map, string.
 
@@ -483,28 +489,28 @@ opt_debug__dump_layout_name(module_layout(ModuleName), Str) :-
 	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
 	string__append_list(["module_layout(", ModuleNameStr, ")"], Str).
 opt_debug__dump_layout_name(proc_static(RttiProcLabel), Str) :-
-	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["proc_static(", ProcLabelStr, ")"], Str).
 opt_debug__dump_layout_name(proc_static_call_sites(RttiProcLabel), Str) :-
-	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["proc_static_call_sites(", ProcLabelStr, ")"],
 		Str).
 opt_debug__dump_layout_name(table_io_decl(RttiProcLabel), Str) :-
-	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["table_io_decl(", ProcLabelStr, ")"], Str).
 opt_debug__dump_layout_name(table_gen_info(RttiProcLabel), Str) :-
-	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["table_gen_info(", ProcLabelStr, ")"], Str).
 opt_debug__dump_layout_name(table_gen_enum_params(RttiProcLabel), Str) :-
-	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["table_gen_enum_params(", ProcLabelStr, ")"], Str).
 opt_debug__dump_layout_name(table_gen_steps(RttiProcLabel), Str) :-
-	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["table_gen_steps(", ProcLabelStr, ")"], Str).
 

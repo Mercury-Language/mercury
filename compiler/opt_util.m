@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,8 +13,8 @@
 :- module ll_backend__opt_util.
 
 :- interface.
-:- import_module bool, map, list, std_util.
 :- import_module ll_backend__llds.
+:- import_module bool, map, list, std_util.
 
 :- type instrmap == map(label, instruction).
 :- type lvalmap == map(label, maybe(instruction)).
@@ -321,8 +321,12 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops, ll_backend__exprn_aux.
-:- import_module ll_backend__llds_out, hlds__hlds_pred.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__proc_label.
+:- import_module hlds__hlds_pred.
+:- import_module ll_backend__exprn_aux.
+:- import_module ll_backend__llds_out.
+
 :- import_module int, string, set, require.
 
 opt_util__get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-

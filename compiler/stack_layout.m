@@ -29,8 +29,12 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, ll_backend__continuation_info.
-:- import_module hlds__hlds_module, ll_backend__llds.
+:- import_module backend_libs__proc_label.
+:- import_module hlds__hlds_module.
+:- import_module ll_backend__continuation_info.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
+
 :- import_module std_util, list, map, counter.
 
 :- pred stack_layout__generate_llds(module_info::in, module_info::out,
@@ -49,15 +53,26 @@
 
 :- implementation.
 
-:- import_module libs__globals, libs__options, ll_backend__llds_out.
-:- import_module libs__trace_params, ll_backend__trace.
-:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_pred.
-:- import_module parse_tree__prog_util, parse_tree__prog_out, hlds__instmap.
-:- import_module ll_backend__prog_rep, ll_backend__static_term.
-:- import_module ll_backend__layout_out.
-:- import_module backend_libs__rtti, ll_backend__layout.
-:- import_module ll_backend__ll_pseudo_type_info, (parse_tree__inst).
+:- import_module backend_libs__rtti.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__trace_params.
 :- import_module ll_backend__code_util.
+:- import_module ll_backend__layout.
+:- import_module ll_backend__layout_out.
+:- import_module ll_backend__ll_pseudo_type_info.
+:- import_module ll_backend__llds_out.
+:- import_module ll_backend__prog_rep.
+:- import_module ll_backend__static_term.
+:- import_module ll_backend__trace.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+
 :- import_module assoc_list, bool, char, string, int, require.
 :- import_module map, term, set, varset.
 
