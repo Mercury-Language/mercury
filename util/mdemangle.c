@@ -70,12 +70,14 @@ int main(int argc, char **argv)
 ** It ought to be rewritten (preferably in a language
 ** with better string-handling facilities than C!)
 */
+
 static void demangle(char *name) {
-	static const char entry[] = "entry_";
+	static const char entry[]   = "entry_";
 	static const char mercury[] = "mercury__";
-	static const char unify[] = "__Unify___";
+	static const char unify[]   = "__Unify___";
 	static const char compare[] = "__Compare___";
-	static const char index[] = "__Index___";
+	static const char mindex[]  = "__Index___";
+	/* avoid a naming conflict with strchr's alter ego */
 	char *start = name;
 	char *end = name + strlen(name);
 	char buf[1000];
@@ -119,8 +121,8 @@ static void demangle(char *name) {
 		start += sizeof(compare) - 1;
 		category = COMPARE;
 		if (mode_num != 0) goto wrong_format;
-	} else if (strncmp(start, index, sizeof(index) - 1) == 0) {
-		start += sizeof(index) - 1;
+	} else if (strncmp(start, mindex, sizeof(mindex) - 1) == 0) {
+		start += sizeof(mindex) - 1;
 		category = INDEX;
 		if (mode_num != 0) goto wrong_format;
 	} else {
