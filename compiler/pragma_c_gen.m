@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -382,14 +382,20 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% Code fragments to obtain and release the global lock
 	%
+	code_info__get_module_info(ModuleInfo),
 	{ ThreadSafe = thread_safe ->
 		ObtainLock = pragma_c_raw_code(""),
 		ReleaseLock = pragma_c_raw_code("")
 	;
-		ObtainLock =
-			pragma_c_raw_code("\tMR_OBTAIN_GLOBAL_C_LOCK();\n"),
-		ReleaseLock =
-			pragma_c_raw_code("\tMR_RELEASE_GLOBAL_C_LOCK();\n")
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_name(PredInfo, Name),
+		llds_out__quote_c_string(Name, MangledName),
+		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
+			MangledName, """);\n"], ObtainLockStr),
+		ObtainLock = pragma_c_raw_code(ObtainLockStr),
+		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
+			MangledName, """);\n"], ReleaseLockStr),
+		ReleaseLock = pragma_c_raw_code(ReleaseLockStr)
 	},
 
 	%
@@ -447,7 +453,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	% join all the components of the pragma_c together
 	%
 	{ Components = [InputComp, SaveRegsComp, ObtainLock, C_Code_Comp,
-			CheckR1_Comp, ReleaseLock, RestoreRegsComp,
+			ReleaseLock, CheckR1_Comp, RestoreRegsComp,
 			OutputComp] },
 	{ PragmaCCode = node([
 		pragma_c(Decls, Components, MayCallMercury, MaybeFailLabel, no)
@@ -531,8 +537,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	{ pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId,
 		StructName) },
 	{ SaveStructDecl = pragma_c_struct_ptr_decl(StructName, "LOCALS") },
-	{ string__format("\tLOCALS = (struct %s *) (
-		(char *) (curfr - MR_ORDINARY_SLOTS - MR_NONDET_FIXED_SIZE)
+	{ string__format("\tLOCALS = (struct %s *) ((char *)
+		(MR_curfr + 1 - MR_ORDINARY_SLOTS - MR_NONDET_FIXED_SIZE)
 		- sizeof(struct %s));\n",
 		[s(StructName), s(StructName)],
 		InitSaveStruct) },
@@ -575,10 +581,25 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		     LaterTraceCode))
 	},
 
-	{
-	SaveRegs	 = "\tsave_registers();\n",
-	RestoreRegs	 = "\trestore_registers();\n",
+	%
+	% save_registers(); /* see notes (1) and (2) above */
+	%
+	{ MayCallMercury = will_not_call_mercury ->
+		SaveRegs = ""
+	;
+		SaveRegs = "\tsave_registers();\n"
+	},
 
+	%
+	% restore_registers(); /* see notes (1) and (3) above */
+	%
+	{ MayCallMercury = will_not_call_mercury ->
+		RestoreRegs = ""
+	;
+		RestoreRegs = "\trestore_registers();\n"
+	},
+
+	{
 	Succeed	 = "\tsucceed();\n",
 	SucceedDiscard = "\tsucceed_discard();\n",
 

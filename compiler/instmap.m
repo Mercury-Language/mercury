@@ -1438,7 +1438,11 @@ instmap_delta_apply_sub_2([V - I | AL], Must, Sub, IM0, IM) :-
 		( Must = no,
 			N = V
 		; Must = yes,
-			error("instmap_delta_apply_sub_2: no substitute")
+			term__var_to_int(V, VInt),
+			string__format(
+			"instmap_delta_apply_sub_2: no substitute for var %i", 
+				[i(VInt)], Msg),
+			error(Msg)
 		)
 	),
 	% XXX temporary hack alert XXX

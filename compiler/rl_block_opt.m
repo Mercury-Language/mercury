@@ -40,7 +40,7 @@
 :- implementation.
 
 :- import_module goal_util, hlds_goal, hlds_module, hlds_pred, inlining.
-:- import_module prog_data, rl, rl_key.
+:- import_module prog_data, rl, rl_key, instmap, mode_util.
 :- import_module assoc_list, bool, int, map, multi_map.
 :- import_module relation, require, set, std_util, string.
 
@@ -1054,11 +1054,14 @@ rl_block_opt__get_single_projects(Node, Index0, FoundSingle0, FoundSingle,
 			{ NodeInfo = node_info(Instr, [ProjOutputRel]) },
 			{ Instr = project(_, [ProjGoal], _) }
 		->
-			dag_get_rl_opt_info(RLOptInfo),
-			{ rl_opt_info_get_module_info(ModuleInfo,
-				RLOptInfo, _) },
-			{ rl_block_opt__conjoin_goals(ModuleInfo,
-				Goal0, ProjGoal, Goal) },
+			dag_get_rl_opt_info(RLOptInfo0),
+			{ rl_opt_info_get_module_info(ModuleInfo0,
+				RLOptInfo0, RLOptInfo1) },
+			{ rl_block_opt__conjoin_goals(Goal0, ProjGoal, Goal,
+				ModuleInfo0, ModuleInfo) },
+			{ rl_opt_info_set_module_info(ModuleInfo,
+				RLOptInfo1, RLOptInfo) },
+			dag_set_rl_opt_info(RLOptInfo),
 			{ FoundSingle1 = yes },
 			{ OutputRel = ProjOutputRel },
 
@@ -1094,13 +1097,14 @@ rl_block_opt__get_single_projects(Node, Index0, FoundSingle0, FoundSingle,
 		FoundSingle1, FoundSingle, Goals0, Goals,
 		OutputRels0, OutputRels).
 
-:- pred rl_block_opt__conjoin_goals(module_info::in, rl_goal::in,
-		rl_goal::in, rl_goal::out) is det.
+:- pred rl_block_opt__conjoin_goals(rl_goal::in, rl_goal::in, rl_goal::out,
+		module_info::in, module_info::out) is det.
 
-rl_block_opt__conjoin_goals(ModuleInfo, RLGoal1, RLGoal2, RLGoal) :-
-	RLGoal1 = rl_goal(_, VarSet1, VarTypes1, InstMap0,
+rl_block_opt__conjoin_goals(RLGoal1, RLGoal2, RLGoal,
+		ModuleInfo0, ModuleInfo) :-
+	RLGoal1 = rl_goal(_, VarSet1, VarTypes1, InstMap0, InstTable1,
 			Inputs1, Outputs1, Goals1, _),
-	RLGoal2 = rl_goal(_, VarSet2, VarTypes2, _,
+	RLGoal2 = rl_goal(_, VarSet2, VarTypes2, _, _,
 			Inputs2, Outputs2, Goals2, _),
 	(
 		Outputs1 = no,
@@ -1134,17 +1138,47 @@ rl_block_opt__conjoin_goals(ModuleInfo, RLGoal1, RLGoal2, RLGoal) :-
 		Outputs = no
 	),
 
+	(
+		Inputs1 = no_inputs,
+		set__init(NonLocals1)
+	;
+		Inputs1 = one_input(NonLocalsList0),
+		set__list_to_set(NonLocalsList0, NonLocals1)
+	;
+		Inputs1 = two_inputs(NonLocalsList0, NonLocalsList1),
+		set__list_to_set(NonLocalsList0, NonLocals0),
+		set__insert_list(NonLocals0, NonLocalsList1, NonLocals1)
+	),	
+	(
+		Outputs = yes(NonLocalsList2),
+		set__insert_list(NonLocals1, NonLocalsList2, NonLocals)
+	;
+		Outputs = no,
+		NonLocals = NonLocals1
+	),
+
 	( RenamedGoal = conj(RenamedGoals2) - _ ->
 		% XXX do some simplification, constraint propagation etc.
-		list__append(Goals1, RenamedGoals2, Goals)
+		list__append(Goals1, RenamedGoals2, RenamedGoals),
+		goal_list_determinism(RenamedGoals, Detism),
+		instmap_delta_init_reachable(Delta),
+		goal_info_init(NonLocals, Delta, Detism, GoalInfo),
+		conj_list_to_goal(RenamedGoals, GoalInfo, Goal0)
 	;
 		error("rl_block_opt__conjoin_goals")
 	),
 
+	set__to_sorted_list(NonLocals, NonLocalsList),
+	list__length(NonLocalsList, NumNonLocals),
+	list__duplicate(NumNonLocals, live, IsLives),
+	recompute_instmap_delta(NonLocalsList, IsLives, VarTypes, Goal0, Goal,
+		InstMap0, InstTable1, InstTable, _, ModuleInfo0, ModuleInfo),
+	goal_to_conj_list(Goal, Goals),
+
 	rl_key__extract_indexing(Inputs1, Goals, ModuleInfo, VarTypes, Bounds),
 
-	RLGoal = rl_goal(no, VarSet, VarTypes, InstMap0, Inputs1,
-			Outputs, Goals, Bounds).
+	RLGoal = rl_goal(no, VarSet, VarTypes, InstMap0, InstTable,
+		Inputs1, Outputs, Goals, Bounds).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -86,10 +86,10 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 			NumTagBits = 0
 		->
 			( Ctors = [_SingleCtor] ->
-				assign_simple_tags(Ctors, 0, 1,
+				assign_unshared_tags(Ctors, 0, 1,
 					CtorTags0, CtorTags)
 			;
-				assign_complicated_tags(Ctors, 0, 0,
+				assign_shared_remote_tags(Ctors, 0, 0,
 					CtorTags0, CtorTags)
 			)
 		;
@@ -98,7 +98,7 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 			split_constructors(Ctors, Constants, Functors),
 			assign_constant_tags(Constants, CtorTags0,
 						CtorTags1, NextTag),
-			assign_simple_tags(Functors, NextTag, MaxTag,
+			assign_unshared_tags(Functors, NextTag, MaxTag,
 						CtorTags1, CtorTags)
 		)
 	).
@@ -122,12 +122,12 @@ assign_enum_constants([Ctor | Rest], Val, CtorTags0, CtorTags) :-
 
 	% If there's no constants, don't do anything.  Otherwise,
 	% allocate the first tag for the constants, and give
-	% them all complicated tags with that tag as the
+	% them all shared local tags with that tag as the
 	% primary tag, and different secondary tags starting from
 	% zero.
 	% Note that if there's a single constant, we still give it a
-	% complicated_constant_tag rather than a simple_tag.  That's
-	% because deconstruction of the complicated_constant_tag
+	% shared_local_tag rather than a unshared_tag.  That's
+	% because deconstruction of the shared_local_tag
 	% is more efficient.
 
 assign_constant_tags(Constants, CtorTags0, CtorTags1, NextTag) :-
@@ -136,58 +136,58 @@ assign_constant_tags(Constants, CtorTags0, CtorTags1, NextTag) :-
 		CtorTags1 = CtorTags0
 	;
 		NextTag = 1,
-		assign_complicated_constant_tags(Constants,
+		assign_shared_local_tags(Constants,
 			0, 0, CtorTags0, CtorTags1)
 	).
 
-:- pred assign_simple_tags(list(constructor), int, int, cons_tag_values,
+:- pred assign_unshared_tags(list(constructor), int, int, cons_tag_values,
 				cons_tag_values).
-:- mode assign_simple_tags(in, in, in, in, out) is det.
+:- mode assign_unshared_tags(in, in, in, in, out) is det.
 
-assign_simple_tags([], _, _, CtorTags, CtorTags).
-assign_simple_tags([Ctor | Rest], Val, MaxTag, CtorTags0, CtorTags) :-
+assign_unshared_tags([], _, _, CtorTags, CtorTags).
+assign_unshared_tags([Ctor | Rest], Val, MaxTag, CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
 	create_cons_id(Name, Args, ConsId),
-		% if we're about to run out of simple tags, start assigning
-		% complicated tags instead
+		% if we're about to run out of unshared tags, start assigning
+		% shared remote tags instead
 	( Val = MaxTag, Rest \= [] ->
-		assign_complicated_tags([Ctor | Rest], MaxTag, 0,
+		assign_shared_remote_tags([Ctor | Rest], MaxTag, 0,
 			CtorTags0, CtorTags)
 	;
-		Tag = simple_tag(Val),
+		Tag = unshared_tag(Val),
 		map__set(CtorTags0, ConsId, Tag, CtorTags1),
 		Val1 is Val + 1,
-		assign_simple_tags(Rest, Val1, MaxTag, CtorTags1, CtorTags)
+		assign_unshared_tags(Rest, Val1, MaxTag, CtorTags1, CtorTags)
 	).
 
-:- pred assign_complicated_tags(list(constructor), int, int, cons_tag_values,
+:- pred assign_shared_remote_tags(list(constructor), int, int, cons_tag_values,
 				cons_tag_values).
-:- mode assign_complicated_tags(in, in, in, in, out) is det.
+:- mode assign_shared_remote_tags(in, in, in, in, out) is det.
 
-assign_complicated_tags([], _, _, CtorTags, CtorTags).
-assign_complicated_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
+assign_shared_remote_tags([], _, _, CtorTags, CtorTags).
+assign_shared_remote_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 		CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
 	create_cons_id(Name, Args, ConsId),
-	Tag = complicated_tag(PrimaryVal, SecondaryVal),
+	Tag = shared_remote_tag(PrimaryVal, SecondaryVal),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	SecondaryVal1 is SecondaryVal + 1,
-	assign_complicated_tags(Rest, PrimaryVal, SecondaryVal1,
+	assign_shared_remote_tags(Rest, PrimaryVal, SecondaryVal1,
 		CtorTags1, CtorTags).
 
-:- pred assign_complicated_constant_tags(list(constructor), int, int,
+:- pred assign_shared_local_tags(list(constructor), int, int,
 				cons_tag_values, cons_tag_values).
-:- mode assign_complicated_constant_tags(in, in, in, in, out) is det.
+:- mode assign_shared_local_tags(in, in, in, in, out) is det.
 
-assign_complicated_constant_tags([], _, _, CtorTags, CtorTags).
-assign_complicated_constant_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
+assign_shared_local_tags([], _, _, CtorTags, CtorTags).
+assign_shared_local_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 			CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
 	create_cons_id(Name, Args, ConsId),
-	Tag = complicated_constant_tag(PrimaryVal, SecondaryVal),
+	Tag = shared_local_tag(PrimaryVal, SecondaryVal),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	SecondaryVal1 is SecondaryVal + 1,
-	assign_complicated_constant_tags(Rest, PrimaryVal, SecondaryVal1,
+	assign_shared_local_tags(Rest, PrimaryVal, SecondaryVal1,
 		CtorTags1, CtorTags).
 
 %-----------------------------------------------------------------------------%

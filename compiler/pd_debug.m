@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -131,7 +131,7 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 	hlds_out__write_instmap(InstMap1, VarSet, yes, 1, InstTable),
 	io__nl,
 	hlds_out__write_goal(Goal - GoalInfo, InstMap, InstTable, ModuleInfo,
-		VarSet, no, 1, ""),
+		VarSet, no, 1, "\n"),
 	io__nl,
 	io__write_string("Parents: "),
 	{ set__to_sorted_list(Parents, ParentsList) },
@@ -144,7 +144,7 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 			ProcInstMap) },
 		io__write_string("Unfolded goal\n"),
 		hlds_out__write_goal(ProcGoal, ProcInstMap, InstTable,
-			ModuleInfo, VarSet, no, 1, ""),
+			ModuleInfo, VarSet, no, 1, "\n"),
 		io__nl
 	;
 		[]
@@ -194,7 +194,7 @@ pd_debug__output_goal(Msg, Goal - GoalInfo) -->
 			IO1, IO2),
 		io__nl(IO2, IO3),
 		hlds_out__write_goal(Goal - GoalInfo, InstMap, InstTable,
-			ModuleInfo, VarSet, yes, 1, "", IO3, IO4),
+			ModuleInfo, VarSet, yes, 1, "\n", IO3, IO4),
 		io__nl(IO4, IO5),
 		io__flush_output(IO5, IO)
 		},

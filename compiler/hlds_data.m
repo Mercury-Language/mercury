@@ -34,7 +34,7 @@
 				% Used for constructing type_infos.
 				% Note that a pred_const is for a closure
 				% whereas a code_addr_const is just an address.
-			;	base_type_info_const(module_name, string, int)
+			;	type_ctor_info_const(module_name, string, int)
 				% module name, type name, type arity
 			;	base_typeclass_info_const(module_name,
 					class_id, int, string)
@@ -45,6 +45,11 @@
 				% class instance, a string encoding the type
 				% names and arities of the arguments to the
 				% instance declaration 
+			;	tabling_pointer_const(pred_id, proc_id)
+				% The address of the static variable
+				% that points to the table that implements
+				% memoization, loop checking or the minimal
+				% model semantics for the given procedure.
 			.
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
@@ -72,13 +77,13 @@
 
 	% Given a cons_id and a list of argument terms, convert it into a
 	% term. Fails if the cons_id is a pred_const, code_addr_const or
-	% base_type_info_const.
+	% type_ctor_info_const.
 
 :- pred cons_id_and_args_to_term(cons_id, list(term(T)), term(T)).
 :- mode cons_id_and_args_to_term(in, in, out) is semidet.
 
 	% Get the arity of a cons_id, aborting on pred_const, code_addr_const
-	% and base_type_info_const.
+	% and type_ctor_info_const.
 
 :- pred cons_id_arity(cons_id, arity).
 :- mode cons_id_arity(in, out) is det.
@@ -123,10 +128,12 @@ cons_id_arity(pred_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of pred_const").
 cons_id_arity(code_addr_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of code_addr_const").
-cons_id_arity(base_type_info_const(_, _, _), _) :-
-	error("cons_id_arity: can't get arity of base_type_info_const").
+cons_id_arity(type_ctor_info_const(_, _, _), _) :-
+	error("cons_id_arity: can't get arity of type_ctor_info_const").
 cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
+cons_id_arity(tabling_pointer_const(_, _), _) :-
+	error("cons_id_arity: can't get arity of tabling_pointer_const").
 
 make_functor_cons_id(term__atom(Name), Arity,
 		cons(unqualified(Name), Arity)).
@@ -200,7 +207,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 
 	% An `hlds_type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
-	% eqv_type = equivalence type (a type defined to be equivalen
+	% eqv_type = equivalence type (a type defined to be equivalent
 	% to some other type)
 
 :- type hlds_type_body
@@ -255,8 +262,8 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% (used for constructing type_infos).
 			% The word just contains the address of the
 			% specified procedure.
-	;	base_type_info_constant(module_name, string, arity)
-			% This is how we refer to base_type_info structures
+	;	type_ctor_info_constant(module_name, string, arity)
+			% This is how we refer to type_ctor_info structures
 			% represented as global data. The args are
 			% the name of the module the type is defined in,
 			% and the name of the type, and its arity.
@@ -268,23 +275,32 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% third is the string which uniquely identifies the
 			% instance declaration (it is made from the type of
 			% the arguments to the instance decl).
-	;	simple_tag(tag_bits)
-			% This is for constants or functors which only
-			% require a simple tag.  (A "simple" tag is one
-			% which fits on the bottom of a pointer - i.e.
-			% two bits for 32-bit architectures, or three bits
-			% for 64-bit architectures).
+	;	tabling_pointer_constant(pred_id, proc_id)
+			% This is how we refer to tabling pointer variables
+			% represented as global data. The word just contains
+			% the address of the tabling pointer of the
+			% specified procedure.
+	;	unshared_tag(tag_bits)
+			% This is for constants or functors which can be
+			% distinguished with just a primary tag.
+			% An "unshared" tag is one which fits on the
+			% bottom of a pointer (i.e.  two bits for
+			% 32-bit architectures, or three bits for 64-bit
+			% architectures), and is used for just one
+			% functor.
 			% For constants we store a tagged zero, for functors
 			% we store a tagged pointer to the argument vector.
-	;	complicated_tag(tag_bits, int)
+	;	shared_remote_tag(tag_bits, int)
 			% This is for functors or constants which
 			% require more than just a two-bit tag. In this case,
 			% we use both a primary and a secondary tag.
+			% Several functors share the primary tag and are
+			% distinguished by the secondary tag.
 			% The secondary tag is stored as the first word of
 			% the argument vector. (If it is a constant, then
 			% in this case there is an argument vector of size 1
 			% which just holds the secondary tag.)
-	;	complicated_constant_tag(tag_bits, int)
+	;	shared_local_tag(tag_bits, int)
 			% This is for constants which require more than a
 			% two-bit tag. In this case, we use both a primary
 			% and a secondary tag, but this time the secondary
@@ -295,7 +311,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% In this case, we don't need to store the functor,
 			% and instead we store the argument directly.
 
-	% The type `tag_bits' holds a simple tag value.
+	% The type `tag_bits' holds a primary tag value.
 
 :- type tag_bits	==	int.	% actually only 2 (or maybe 3) bits
 
@@ -829,7 +845,7 @@ determinism_to_code_model(failure,     model_semi).
 			prog_context,		% context of declaration
 			list(class_constraint), % Constraints
 			list(type), 		% ClassTypes 
-			instance_interface, 	% Methods
+			instance_body, 		% Methods
 			maybe(hlds_class_interface),
 						% After check_typeclass, we 
 						% will know the pred_ids and

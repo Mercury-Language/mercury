@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -78,9 +78,23 @@
 	%
 	% Create a predicate name with context, e.g. for introduced
 	% lambda or deforestation predicates.
+:- pred make_pred_name(module_name, string, maybe(pred_or_func),
+		string, new_pred_id, sym_name).
+:- mode make_pred_name(in, in, in, in, in, out) is det.
+
+	% make_pred_name_with_context(ModuleName, Prefix, PredOrFunc, PredName,
+	%	Line, Counter, SymName).
+	%
+	% Create a predicate name with context, e.g. for introduced
+	% lambda or deforestation predicates.
 :- pred make_pred_name_with_context(module_name, string, pred_or_func,
 		string, int, int, sym_name).
 :- mode make_pred_name_with_context(in, in, in, in, in, in, out) is det.
+
+:- type new_pred_id
+	--->	counter(int, int)		% Line number, Counter
+	;	type_subst(tvarset, type_subst)
+	.
 
 %-----------------------------------------------------------------------------%
 
@@ -113,8 +127,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module (inst).
-:- import_module bool, string, int, map.
+:- import_module mercury_to_mercury, (inst).
+:- import_module bool, string, int, map, varset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -306,15 +320,62 @@ match_sym_name(unqualified(Name), qualified(_, Name)).
 
 make_pred_name_with_context(ModuleName, Prefix,
 		PredOrFunc, PredName, Line, Counter, SymName) :-
+	make_pred_name(ModuleName, Prefix, yes(PredOrFunc), PredName,
+		counter(Line, Counter), SymName).
+
+make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
+		NewPredId, SymName) :-
 	(
-		PredOrFunc = predicate,
-		PFS = "pred"
+		MaybePredOrFunc = yes(PredOrFunc),
+		(
+			PredOrFunc = predicate,
+			PFS = "pred"
+		;
+			PredOrFunc = function,
+			PFS = "func"
+		)
 	;
-		PredOrFunc = function,
-		PFS = "func"
+		MaybePredOrFunc = no,
+		PFS = "pred_or_func"
 	),
-	string__format("%s__%s__%s__%d__%d",
-		[s(Prefix), s(PFS), s(PredName), i(Line), i(Counter)], Name),
+	(
+		NewPredId = counter(Line, Counter),
+		string__format("%d__%d", [i(Line), i(Counter)], PredIdStr)
+	;
+		NewPredId = type_subst(VarSet, TypeSubst),
+		SubstToString = lambda([SubstElem::in, SubstStr::out] is det, (
+			SubstElem = Var - Type,
+			varset__lookup_name(VarSet, Var, VarName),
+			mercury_type_to_string(VarSet, Type, TypeString),
+			string__append_list([VarName, " = ", TypeString],
+				SubstStr)
+		)),
+		list_to_string(SubstToString, TypeSubst, PredIdStr)
+	),
+
+	string__format("%s__%s__%s__%s",
+		[s(Prefix), s(PFS), s(PredName), s(PredIdStr)], Name),
 		SymName = qualified(ModuleName, Name).
+
+:- pred list_to_string(pred(T, string), list(T), string).
+:- mode list_to_string(pred(in, out) is det, in, out) is det.
+
+list_to_string(Pred, List, String) :-
+	list_to_string_2(Pred, List, Strings, ["]"]),
+	string__append_list(["[" | Strings], String).
+
+:- pred list_to_string_2(pred(T, string), list(T), list(string), list(string)).
+:- mode list_to_string_2(pred(in, out) is det, in, out, in) is det.
+
+list_to_string_2(_, []) --> [].
+list_to_string_2(Pred, [T | Ts]) -->
+	{ call(Pred, T, String) },
+	[String],
+	( { Ts = [] } ->
+		[]
+	;
+		[", "],
+		list_to_string_2(Pred, Ts)
+	).
 
 %-----------------------------------------------------------------------------%

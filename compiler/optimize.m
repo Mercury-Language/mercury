@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,56 +14,71 @@
 
 :- interface.
 
-:- import_module llds, io, list.
+:- import_module llds, hlds_module.
+:- import_module io, list.
 
-:- pred optimize_main(list(c_procedure), list(c_procedure),
-	io__state, io__state).
-:- mode optimize_main(in, out, di, uo) is det.
+:- pred optimize_main(list(c_procedure)::in, global_data::in,
+	list(c_procedure)::out, io__state::di, io__state::uo) is det.
 
-:- pred optimize__proc(c_procedure, c_procedure, io__state, io__state).
-:- mode optimize__proc(in, out, di, uo) is det.
+:- pred optimize__proc(c_procedure::in, global_data::in,
+	c_procedure::out, io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bool, map, bimap, int, std_util.
-
 :- import_module jumpopt, labelopt, dupelim, peephole.
 :- import_module frameopt, delay_slot, value_number, options.
 :- import_module globals, passes_aux, opt_util, opt_debug, vn_debug.
+:- import_module continuation_info.
 
-optimize_main([], []) --> [].
-optimize_main([Proc0|Procs0], [Proc|Procs]) -->
-	optimize__proc(Proc0, Proc), !,
-	optimize_main(Procs0, Procs).
+:- import_module bool, int, map, bimap, set, std_util.
 
-optimize__proc(c_procedure(Name, Arity, PredProcId, Instrs0),
-		   c_procedure(Name, Arity, PredProcId, Instrs)) -->
+optimize_main([], _, []) --> [].
+optimize_main([Proc0 | Procs0], GlobalData, [Proc | Procs]) -->
+	optimize__proc(Proc0, GlobalData, Proc), !,
+	optimize_main(Procs0, GlobalData, Procs).
+
+optimize__proc(CProc0, GlobalData, CProc) -->
+	{ CProc0 = c_procedure(Name, Arity, PredProcId, Instrs0) },
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	opt_debug__msg(DebugOpt, "before optimization"),
 	opt_debug__dump_instrs(DebugOpt, Instrs0),
 	globals__io_lookup_int_option(optimize_repeat, AllRepeat),
 	globals__io_lookup_int_option(optimize_vnrepeat, VnRepeat),
 	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
+	{
+		global_data_maybe_get_proc_layout(GlobalData, PredProcId,
+			ProcLayout)
+	->
+		ProcLayout = proc_layout_info(_, _, _, _, _, _, _, LabelMap),
+		map__sorted_keys(LabelMap, LayoutLabels),
+		set__sorted_list_to_set(LayoutLabels, LayoutLabelSet)
+	;
+		set__init(LayoutLabelSet)
+	},
 	( { ValueNumber = yes } ->
 		{ NovnRepeat is AllRepeat - VnRepeat },
-		optimize__repeat(NovnRepeat, no,  Instrs0, Instrs1),
-		optimize__middle(Instrs1, no, Instrs2),
-		optimize__repeat(VnRepeat, yes, Instrs2, Instrs3)
+		optimize__repeat(NovnRepeat, no,  LayoutLabelSet,
+			Instrs0, Instrs1),
+		optimize__middle(Instrs1, no, LayoutLabelSet, Instrs2),
+		optimize__repeat(VnRepeat, yes, LayoutLabelSet,
+			Instrs2, Instrs3)
 	;
-		optimize__repeat(AllRepeat, no,  Instrs0, Instrs1),
-		optimize__middle(Instrs1, yes, Instrs3)
+		optimize__repeat(AllRepeat, no,  LayoutLabelSet,
+			Instrs0, Instrs1),
+		optimize__middle(Instrs1, yes, LayoutLabelSet, Instrs3)
 	),
-	optimize__last(Instrs3, Instrs).
+	optimize__last(Instrs3, LayoutLabelSet, Instrs),
+	{ CProc = c_procedure(Name, Arity, PredProcId, Instrs) }.
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize__repeat(int, bool, list(instruction), list(instruction),
-	io__state, io__state).
-:- mode optimize__repeat(in, in, in, out, di, uo) is det.
+:- pred optimize__repeat(int::in, bool::in, set(label)::in,
+	list(instruction)::in, list(instruction)::out,
+	io__state::di, io__state::uo) is det.
 
-optimize__repeat(Iter0, DoVn, Instrs0, Instrs) -->
+optimize__repeat(Iter0, DoVn, LayoutLabelSet, Instrs0, Instrs) -->
 	(
 		{ Iter0 > 0 }
 	->
@@ -73,9 +88,11 @@ optimize__repeat(Iter0, DoVn, Instrs0, Instrs) -->
 		;
 			{ Final = no }
 		),
-		optimize__repeated(Instrs0, DoVn, Final, Instrs1, Mod),
+		optimize__repeated(Instrs0, DoVn, Final, LayoutLabelSet,
+			Instrs1, Mod),
 		( { Mod = yes } ->
-			optimize__repeat(Iter1, DoVn, Instrs1, Instrs)
+			optimize__repeat(Iter1, DoVn, LayoutLabelSet,
+				Instrs1, Instrs)
 		;
 			{ Instrs = Instrs1 }
 		)
@@ -86,11 +103,11 @@ optimize__repeat(Iter0, DoVn, Instrs0, Instrs) -->
 	% We short-circuit jump sequences before normal peepholing
 	% to create more opportunities for use of the tailcall macro.
 
-:- pred optimize__repeated(list(instruction), bool, bool,
-	list(instruction), bool, io__state, io__state).
-:- mode optimize__repeated(in, in, in, out, out, di, uo) is det.
+:- pred optimize__repeated(list(instruction)::in, bool::in, bool::in,
+	set(label)::in, list(instruction)::out, bool::out,
+	io__state::di, io__state::uo) is det.
 
-optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
+optimize__repeated(Instrs0, DoVn, Final, LayoutLabelSet, Instrs, Mod) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	{ opt_util__find_first_label(Instrs0, Label) },
@@ -105,7 +122,7 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 		;
 			[]
 		),
-		value_number_main(Instrs0, Instrs1),
+		value_number_main(Instrs0, LayoutLabelSet, Instrs1),
 		( { Instrs1 = Instrs0 } ->
 			[]
 		;
@@ -166,7 +183,8 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ labelopt_main(Instrs3, Final, Instrs4, Mod3) },
+		{ labelopt_main(Instrs3, Final, LayoutLabelSet,
+			Instrs4, Mod3) },
 		( { Mod3 = yes } ->
 			opt_debug__msg(DebugOpt, "after label optimization"),
 			opt_debug__dump_instrs(DebugOpt, Instrs4)
@@ -204,11 +222,10 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
 
-:- pred optimize__middle(list(instruction), bool, list(instruction),
-	io__state, io__state).
-:- mode optimize__middle(in, in, out, di, uo) is det.
+:- pred optimize__middle(list(instruction)::in, bool::in, set(label)::in,
+	list(instruction)::out, io__state::di, io__state::uo) is det.
 
-optimize__middle(Instrs0, Final, Instrs) -->
+optimize__middle(Instrs0, Final, LayoutLabelSet, Instrs) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	{ opt_util__find_first_label(Instrs0, Label) },
@@ -239,7 +256,8 @@ optimize__middle(Instrs0, Final, Instrs) -->
 			;
 				[]
 			),
-			{ jumpopt_main(Instrs1, FullJumpopt, Final, Instrs2, Mod2) },
+			{ jumpopt_main(Instrs1, FullJumpopt, Final,
+				Instrs2, Mod2) },
 			( { Mod2 = yes } ->
 				opt_debug__msg(DebugOpt, "after jump optimization"),
 				opt_debug__dump_instrs(DebugOpt, Instrs2)
@@ -257,7 +275,8 @@ optimize__middle(Instrs0, Final, Instrs) -->
 			;
 				[]
 			),
-			{ labelopt_main(Instrs2, Final, Instrs, Mod3) },
+			{ labelopt_main(Instrs2, Final, LayoutLabelSet,
+				Instrs, Mod3) },
 			( { Mod3 = yes } ->
 				opt_debug__msg(DebugOpt, "after label optimization"),
 				opt_debug__dump_instrs(DebugOpt, Instrs)
@@ -271,11 +290,10 @@ optimize__middle(Instrs0, Final, Instrs) -->
 		{ Instrs = Instrs0 }
 	).
 
-:- pred optimize__last(list(instruction), list(instruction),
-	io__state, io__state).
-:- mode optimize__last(in, out, di, uo) is det.
+:- pred optimize__last(list(instruction)::in, set(label)::in,
+	list(instruction)::out, io__state::di, io__state::uo) is det.
 
-optimize__last(Instrs0, Instrs) -->
+optimize__last(Instrs0, LayoutLabelSet, Instrs) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	{ opt_util__find_first_label(Instrs0, Label) },
@@ -293,7 +311,7 @@ optimize__last(Instrs0, Instrs) -->
 		;
 			[]
 		),
-		{ labelopt_main(Instrs0, no, Instrs1, Mod1) },
+		{ labelopt_main(Instrs0, no, LayoutLabelSet, Instrs1, Mod1) },
 		( { Mod1 = yes } ->
 			opt_debug__msg(DebugOpt, "after label optimization"),
 			opt_debug__dump_instrs(DebugOpt, Instrs1)

@@ -390,6 +390,7 @@
 		prog_varset,
 		map(prog_var, type),
 		instmap,	% instmap before goal
+		inst_table,
 		rl_goal_inputs,
 		rl_goal_outputs,
 		list(hlds_goal),
@@ -608,7 +609,7 @@ rl__attr_list_2(Index, [_ | Types], [Index | Attrs]) :-
 %-----------------------------------------------------------------------------%
 
 rl__goal_is_independent_of_input(InputNo, RLGoal0, RLGoal) :-
-	RLGoal0 = rl_goal(A, B, C, D, Inputs0, MaybeOutputs, Goals, H),
+	RLGoal0 = rl_goal(A, B, C, D, E, Inputs0, MaybeOutputs, Goals, I),
 	rl__select_input_args(InputNo, Inputs0, Inputs, InputArgs),
 	set__list_to_set(InputArgs, InputArgSet),
 	\+ (
@@ -624,7 +625,7 @@ rl__goal_is_independent_of_input(InputNo, RLGoal0, RLGoal) :-
 		set__intersect(NonLocals, InputArgSet, Intersection),
 		\+ set__empty(Intersection)  
 	),
-	RLGoal = rl_goal(A, B, C, D, Inputs, MaybeOutputs, Goals, H).
+	RLGoal = rl_goal(A, B, C, D, E, Inputs, MaybeOutputs, Goals, I).
 
 :- pred rl__select_input_args(tuple_num::in, rl_goal_inputs::in,
 		rl_goal_inputs::out, list(prog_var)::out) is det.
@@ -640,16 +641,16 @@ rl__select_input_args(two, two_inputs(Args1, Args),
 		one_input(Args1), Args).
 
 rl__swap_goal_inputs(RLGoal0, RLGoal) :-
-	RLGoal0 = rl_goal(A, B, C, D, Inputs0, F, G, H),
+	RLGoal0 = rl_goal(A, B, C, D, E, Inputs0, F, G, H),
 	( Inputs0 = two_inputs(Inputs1, Inputs2) ->
-		RLGoal = rl_goal(A, B, C, D, two_inputs(Inputs2, Inputs1),
+		RLGoal = rl_goal(A, B, C, D, E, two_inputs(Inputs2, Inputs1),
 			F, G, H)
 	;
 		error("rl__swap_inputs: goal does not have two inputs to swap")
 	).
 
 rl__goal_produces_tuple(RLGoal) :-
-	RLGoal = rl_goal(_, _, _, _, _, yes(_), _, _).
+	RLGoal = rl_goal(_, _, _, _, _, _, yes(_), _, _).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 :- interface.
 :- import_module llds, livemap, options.
-:- import_module bool, getopt, map, set, list, std_util.
+:- import_module getopt, map, set, list, std_util.
 
 :- type vn == int.
 
@@ -42,7 +42,8 @@
 			;	vn_mkword(tag, vn)
 			;	vn_const(rval_const)
 			;	vn_create(tag, list(maybe(rval)),
-					bool, int, string)
+					create_arg_types, static_or_dynamic,
+					int, string)
 			;	vn_unop(unary_op, vn)
 			;	vn_binop(binary_op, vn, vn)
 			;	vn_stackvar_addr(int)
@@ -177,7 +178,7 @@ vn_type__costof_heapref(vn_params(_, _, _, _, _, _, _, _, HeapCost),
 
 vn_type__vnrval_type(vn_origlval(Lval), Type) :-
 	vn_type__vnlval_type(Lval, Type).
-vn_type__vnrval_type(vn_create(_, _, _, _, _), data_ptr).
+vn_type__vnrval_type(vn_create(_, _, _, _, _, _), data_ptr).
 vn_type__vnrval_type(vn_mkword(_, _), data_ptr). % see comment in llds.m
 vn_type__vnrval_type(vn_const(Const), Type) :-
 	llds__const_type(Const, Type).

@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Mercury Coding Standard for the Mercury Project</title>
+<title>Release Checklist for the Mercury Project</title>
 </head>
 
 <body bgcolor="#ffffff" text="#000000">
@@ -15,19 +15,17 @@ taken when releasing a new version of Mercury.
 <!-------------------------->
 
 <ol>
-<li> Items for the next version (0.8) only:
+<li> Items for the next version (0.9) only:
 	<ol>
+	<li>
+	Remove the bootstrap-only code from runtime/mercury_ho_call.c,
+	which are (a) three closure call routines, (b) three method
+	call routines, and (c) a backward compatibility check in the
+	new closure call routine.
 	<li>
 	Make sure that the runtime headers contain no symbols (function names,
 	variable names, type names, struct/enum tags or macros) that do not
 	begin with MR_.
-	<li>
-	When replacing detstackvars with MR_stackvars and framevars with
-	MR_framevars, make sure that the distinction between stackvars
-	starting at 1 and framevars starting at 0 is erased.
-	<li>
-	Make sure nondet pragma C codes, tabling and the debugger
-	are documented.
 	<li>
 	Ask Philip to check in muz, preferably with documentation.
 	</ol>
@@ -40,7 +38,9 @@ taken when releasing a new version of Mercury.
      releases.
      The HISTORY file should include the NEWS files from previous releases.
 
-<li> Update the WWW documentation in the `www' directory.
+<li> Update the WWW documentation in the `w3' directory.
+     Note that the sources for these HTML documents are in the files named
+     include/*.inc files.
      <ul>
      <li> For minor releases, update release.html with a new entry about
 	  this release (put it at the top of the page), and provide a
@@ -94,7 +94,7 @@ taken when releasing a new version of Mercury.
 
     If it passes all the tests, it should put the resulting tar file in
     /home/mercury/public/test_mercury/test_dirs/mercury-latest-stable and
-    ftp://turiel.cs.mu.oz.au/pub/mercury/beta-releases.
+    ftp://ftp.mercury.cs.mu.oz.au/pub/mercury/beta-releases.
 
 <li>  Test it on lots of architectures. <br>
 
@@ -103,14 +103,32 @@ taken when releasing a new version of Mercury.
     directories.
 
 <li>  Build binary distributions for those architectures.
+      This step is now automated as part of tools/test_mercury,
+      with the resulting binaries going in
+      /home/mercury/public/test_mercury/test_dirs/$HOST/mercury-latest-{un,}stable.
 
 <li>  Move the gzipped tar files from the /pub/mercury/beta-releases directory
-      to the main /pub/mercury directory on the turiel ftp site
-      ftp://turiel.cs.mu.oz.au/pub/mercury. <br>
-    Email kostis@cs.sunysb.edu (Konstantinos Sagonas) to tell him
-    to make copies of it on ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
-    respectively. XXX Kostis is now at Leuven, so this won't work. <br>
-    The mirror on ftp://ftp.csd.uu.se/pub/Mercury is supposedly automated.
+      to the main /pub/mercury directory on the Mercury ftp site
+      ftp://ftp.mercury.cs.mu.oz.au/pub/mercury.
+      Copy the binary distributions to the same place.
+      <p>
+
+    The mirror at ftp://ftp.ntua.gr/pub/lang/mercury is automated; it should
+    automatically mirror the Mercury ftp site at ftp.mercury.cs.mu.oz.au
+    on a nightly basis (or thereabouts).  But in case
+    anything should need changing, the person to contact there is
+    Yiorgos Adamopoulos <adamo@dblab.ece.ntua.gr> and/or <ftpam@ntua.gr>). <p>
+
+    For the Stonybrook mirror, email Konstantinos Sagonas <Kostis.Sagonas@cs.kuleuven.ac.be>
+    to tell him to copy them to <ftp://ftp.cs.sunysb.edu/pub/XSB/mercury>. <p>
+    Unfortunately this mirror is not automated, so don't worry about it except for
+    major releases or important bug fixes. <p>
+
+    The mirror at ftp://ftp.csd.uu.se/pub/Mercury is also supposedly automated;
+    however, it seems to be often quite out-of-date (due to the connection
+    dropping and/or timing out over the rather slow link to Sweden?).
+    The person to contact regarding this one is Thomas Lindgren <thomasl@csd.uu.se>.
+    XXX Currently it is mirroring turiel, not ftp.mercury.
 
 <li> Prepare a new "mercury-VERSION.lsm" file for this Mercury release
      (use the one already uploaded to
@@ -118,7 +136,14 @@ taken when releasing a new version of Mercury.
      version number, date, file sizes, and file names need to be updated
      for a new release.
 
-<li> Upload "mercury-VERSION-core.tar.gz" and "mercury-VERSION.lsm" to
+<li> Create new binary packages for Linux packaging systems.
+     The .spec file can be used to create .rpm packages.
+     The command <i>dpkg-buildpackage -rfakeroot</i> on hydra can be
+     used to create .deb packages, although you should probably
+     let (or make) the official maintainer do this so it can be
+     PGP signed and uploaded.
+
+<li> Upload "mercury-VERSION-compiler.tar.gz" and "mercury-VERSION.lsm" to
      ftp://sunsite.unc.edu/incoming/Linux. They will be moved to
      /pub/Linux/Incoming fairly quickly, and eventually should be moved
      to /pub/linux/devel/lang/mercury.
@@ -132,7 +157,7 @@ taken when releasing a new version of Mercury.
     comp.lang.misc, comp.lang.prolog, comp.lang.functional, comp.object.logic,
     and for major releases also to comp.compilers and gnu.announce.
 
-<li>  Update the Mercury WWW home page (/local/dept/www/mercury/mercury.html)
+<li>  Update the Mercury WWW home page (/local/dept/w3/unsupported/docs/mercury/*)
       by commiting the changes you made earlier.
 
 </ol>
@@ -141,6 +166,6 @@ taken when releasing a new version of Mercury.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-07-31 06:31:25 $ by $Author: dmo $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-05-05 01:26:44 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

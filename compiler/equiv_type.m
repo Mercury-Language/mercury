@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,9 +36,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, require, std_util, map.
+:- import_module assoc_list, bool, require, std_util, map, term, varset.
 :- import_module hlds_data, type_util, prog_data, prog_util, prog_out.
-:- import_module term, varset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -155,15 +154,21 @@ equiv_type__replace_in_item(
 
 equiv_type__replace_in_item(
 			instance(Constraints0, ClassName, Ts0, 
-				InstanceInterface, VarSet0),
+				InstanceBody, VarSet0),
 			EqvMap,
 			instance(Constraints, ClassName, Ts, 
-				InstanceInterface, VarSet),
+				InstanceBody, VarSet),
 			no) :-
 	equiv_type__replace_in_class_constraint_list(Constraints0, VarSet0, 
 				EqvMap, Constraints, VarSet1),
 	equiv_type__replace_in_type_list(Ts0, VarSet1, EqvMap, Ts, VarSet, _).
 
+equiv_type__replace_in_item(
+			pragma(type_spec(A, B, C, D, E, Subst0, VarSet0)),
+			EqvMap,
+			pragma(type_spec(A, B, C, D, E, Subst, VarSet)), no) :-
+	equiv_type__replace_in_subst(Subst0, VarSet0, EqvMap, Subst, VarSet).
+	
 :- pred equiv_type__replace_in_type_defn(type_defn, tvarset, eqv_map,
 					type_defn, tvarset, bool).
 :- mode equiv_type__replace_in_type_defn(in, in, in, out, out, out) is semidet.
@@ -272,6 +277,18 @@ equiv_type__replace_in_class_method(_,
 equiv_type__replace_in_class_method(_, 
 			func_mode(A,B,C,D,E,F,G),
 			func_mode(A,B,C,D,E,F,G)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred equiv_type__replace_in_subst(assoc_list(tvar, type), tvarset,
+		eqv_map, assoc_list(tvar, type), tvarset).
+:- mode equiv_type__replace_in_subst(in, in, in, out, out) is det.
+
+equiv_type__replace_in_subst([], VarSet, _EqvMap, [], VarSet).
+equiv_type__replace_in_subst([Var - Type0 | Subst0], VarSet0,
+		EqvMap, [Var - Type | Subst], VarSet) :-
+	equiv_type__replace_in_type(Type0, VarSet0, EqvMap, Type, VarSet1),
+	equiv_type__replace_in_subst(Subst0, VarSet1, EqvMap, Subst, VarSet).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -10,6 +10,9 @@
 % This module provides the facility to evaluate calls at compile time -
 % transforming them to simpler goals such as construction unifications.
 %
+% XXX We should check for overflow.
+% XXX Some of this code should be shared with vn_util__simplify_vnrval.
+% 
 %------------------------------------------------------------------------------%
 
 :- module const_prop.
@@ -193,16 +196,38 @@ evaluate_builtin_tri("int", "//", 2, X, Y, Z, Y, int_const(YVal)) :-
 	YVal is XVal // ZVal.
 ****/
 
+	% This isn't actually a builtin.
 evaluate_builtin_tri("int", "mod", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
+	YVal \= 0,
 	ZVal is XVal mod YVal.
 
+evaluate_builtin_tri("int", "rem", 0, X, Y, Z, Z, int_const(ZVal)) :-
+	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
+	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
+	YVal \= 0,
+	ZVal is XVal rem YVal.
+
+evaluate_builtin_tri("int", "unchecked_left_shift",
+		0, X, Y, Z, Z, int_const(ZVal)) :-
+	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
+	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
+	ZVal is unchecked_left_shift(XVal, YVal).
+
+	% This isn't actually a builtin.
 evaluate_builtin_tri("int", "<<", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
 	ZVal is XVal << YVal.
 
+evaluate_builtin_tri("int", "unchecked_right_shift",
+		0, X, Y, Z, Z, int_const(ZVal)) :-
+	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
+	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
+	ZVal is unchecked_right_shift(XVal, YVal).
+
+	% This isn't actually a builtin.
 evaluate_builtin_tri("int", ">>", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
@@ -369,16 +394,13 @@ evaluate_builtin_test("float", ">=", 0, Args, Result) :-
 
 %------------------------------------------------------------------------------%
 
+	% recompute_instmap_delta is run by simplify.m if anything changes,
+	% so the insts are not important here.
 :- pred make_construction(pair(prog_var, inst), cons_id, hlds_goal_expr).
 :- mode make_construction(in, in, out) is det.
 
-make_construction(Var - VarInst, ConsId, Goal) :-
-	RHS = functor(ConsId, []),
-	CInst = bound(unique, [functor(ConsId, [])]),
-	Mode =  (VarInst - CInst) - (CInst - CInst),
-	Unification = construct(Var, ConsId, [], []),
-	Context = unify_context(explicit, []),
-	Goal = unify(Var, RHS, Mode, Unification, Context).
+make_construction(Var - _, ConsId, Goal) :-
+	make_const_construction(Var, ConsId, Goal - _).
 
 %------------------------------------------------------------------------------%
 

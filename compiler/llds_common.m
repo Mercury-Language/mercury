@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,7 +31,6 @@
 :- implementation.
 
 :- import_module llds_out.
-
 :- import_module bool, int, assoc_list, map, std_util, require.
 
 :- type cell_info
@@ -39,13 +38,17 @@
 			int		% what is the number of the cell?
 		).
 
+:- type cell_content	==	pair(list(maybe(rval)), create_arg_types).
+:- type cell_map	==	map(cell_content, cell_info).
+:- type cell_list	==	assoc_list(cell_content, cell_info).
+
 :- type common_info
 	--->	common_info(
 			module_name,	% base file name
 			int,		% next cell number
-			map(list(maybe(rval)), cell_info)
-					% map cell contents to cell declaration
-					% information
+			cell_map
+					% map cell contents (including types)
+					% to cell declaration information
 		).
 
 llds_common(Procedures0, Data0, BaseName, Procedures, Data) :-
@@ -64,24 +67,26 @@ llds_common(Procedures0, Data0, BaseName, Procedures, Data) :-
 	llds_common__cell_pairs_to_modules(CellPairs, BaseName, CommonData),
 	list__append(CommonData, Data1, Data).
 
-:- pred llds_common__cell_pairs_to_modules(
-	assoc_list(list(maybe(rval)), cell_info)::in, module_name::in,
+:- pred llds_common__cell_pairs_to_modules(cell_list::in, module_name::in,
 	list(comp_gen_c_data)::out) is det.
 
 llds_common__cell_pairs_to_modules([], _, []).
-llds_common__cell_pairs_to_modules([Args - CellInfo | CellPairs], BaseName,
-		[Common | Commons]) :-
+llds_common__cell_pairs_to_modules([CellContent - CellInfo | CellPairs],
+		BaseName, [Common | Commons]) :-
 	CellInfo = cell_info(VarNum),
-	Common = comp_gen_c_data(BaseName, common(VarNum), no, Args, []),
+	CellContent = Args - ArgTypes,
+	Common = comp_gen_c_data(BaseName, common(VarNum), no,
+		Args, ArgTypes, []),
 	llds_common__cell_pairs_to_modules(CellPairs, BaseName, Commons).
 
 :- pred llds_common__process_create(tag::in, list(maybe(rval))::in,
-	rval::out, common_info::in, common_info::out) is det.
+	create_arg_types::in, rval::out, common_info::in, common_info::out)
+	is det.
 
-llds_common__process_create(Tag, Args0, Rval, Info0, Info) :-
+llds_common__process_create(Tag, Args0, ArgTypes, Rval, Info0, Info) :-
 	llds_common__process_maybe_rvals(Args0, Args, Info0, Info1),
 	Info1 = common_info(BaseName, NextCell0, CellMap0),
-	( map__search(CellMap0, Args, CellInfo0) ->
+	( map__search(CellMap0, Args - ArgTypes, CellInfo0) ->
 		CellInfo0 = cell_info(VarNum),
 		DataConst = data_addr_const(
 			data_addr(BaseName, common(VarNum))),
@@ -93,7 +98,7 @@ llds_common__process_create(Tag, Args0, Rval, Info0, Info) :-
 		Rval = mkword(Tag, const(DataConst)),
 		CellInfo = cell_info(NextCell0),
 		NextCell is NextCell0 + 1,
-		map__det_insert(CellMap0, Args, CellInfo, CellMap),
+		map__det_insert(CellMap0, Args - ArgTypes, CellInfo, CellMap),
 		Info = common_info(BaseName, NextCell, CellMap)
 	).
 
@@ -114,10 +119,14 @@ llds_common__process_datas([Data0 | Datas0], [Data | Datas], Info0, Info) :-
 	common_info::in, common_info::out) is det.
 
 llds_common__process_data(
-		comp_gen_c_data(Name, DataName, Export, Args0, Refs),
-		comp_gen_c_data(Name, DataName, Export, Args, Refs),
+		comp_gen_c_data(Name, DataName, Export, Args0, ArgTypes, Refs),
+		comp_gen_c_data(Name, DataName, Export, Args, ArgTypes, Refs),
 		Info0, Info) :-
 	llds_common__process_maybe_rvals(Args0, Args, Info0, Info).
+llds_common__process_data(
+		trace_call_info(Label, Path, MaxRegInUse, Port),
+		trace_call_info(Label, Path, MaxRegInUse, Port),
+		Info, Info).
 
 :- pred llds_common__process_procs(list(c_procedure)::in,
 	list(c_procedure)::out, common_info::in, common_info::out) is det.
@@ -271,9 +280,9 @@ llds_common__process_rval(Rval0, Rval, Info0, Info) :-
 		Rval0 = var(_),
 		error("var rval found in llds_common__process_rval")
 	;
-		Rval0 = create(Tag, Args, Unique, _LabelNo, _Msg),
-		( Unique = no ->
-			llds_common__process_create(Tag, Args, Rval,
+		Rval0 = create(Tag, Args, ArgTypes, StatDyn, _LabelNo, _Msg),
+		( StatDyn \= must_be_dynamic ->
+			llds_common__process_create(Tag, Args, ArgTypes, Rval,
 				Info0, Info)
 		;
 			Rval = Rval0,

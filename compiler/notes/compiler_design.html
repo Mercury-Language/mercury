@@ -35,9 +35,9 @@ stages:
 <li> parsing (source files -&gt; HLDS)
 <li> semantic analysis and error checking (HLDS -&gt; annotated HLDS)
 <li> high-level transformations (annotated HLDS -&gt; annotated HLDS)
-<li> code generation (annotated HLDS -&gt; LLDS)
-<li> low-level optimizations (LLDS -&gt; LLDS)
-<li> output C code (LLDS -&gt; C)
+<li> code generation (annotated HLDS -&gt; LLDS or RL)
+<li> low-level optimizations (LLDS -&gt; LLDS or RL -&gt; RL)
+<li> output code (LLDS -&gt; C or RL -&gt; bytecode)
 </ol>
 
 <p>
@@ -136,16 +136,14 @@ stored in the io__state, using the type globals defined in globals.m.
  	  are module qualified during type checking.
  	<li> predicate and function calls and constructors within goals 
  	  are module qualified during mode analysis.
- 	<li> predicate and function names in typeclass instance declarations
-	  are qualified in check_typeclass.m (after mode analysis).
 	</ul>
  
 
 <li> reading and writing of optimization interfaces (intermod.m). <br>
 	
 	&lt;module&gt;.opt contains clauses for exported preds suitable for
-	inlining or higher-order specialization. The .opt file for the
-	current module is written after type-checking. .opt files
+	inlining or higher-order specialization. The `.opt' file for the
+	current module is written after type-checking. `.opt' files
 	for imported modules are read here.
 
 <li> expansion of equivalence types (equiv_type.m) <br>
@@ -205,6 +203,26 @@ so that the compiler does the right thing for options such as
 	<dd>
 	quantification.m handles implicit quantification and computes
 	the set of non-local variables for each sub-goal
+
+<dt> checking typeclass instances (check_typeclass.m)
+	<dd>
+	check_typeclass.m both checks that instance declarations satisfy all 
+	the appropriate superclass constraints and
+	performs a source-to-source transformation on the
+	methods methods from the instance declarations.
+	The transformed code is checked for type, mode, uniqueness, purity
+	and determinism correctness by the later passes, which has the effect
+	of checking the correctness of the instance methods themselves
+	(ie. that the instance methods match those expected by the typeclass
+	declaration).
+	During the transformation,
+	pred_ids and proc_ids are assigned to the methods for each instance. 
+
+	In
+	addition, while checking that the superclasses of a class are satisfied
+	by the instance declaration, a set of constraint_proofs are built up 
+	for the superclass constraints. These are used by polymorphism.m when
+	generating the base_typeclass_info for the instance.
 
 <dt> type checking
 
@@ -326,19 +344,6 @@ so that the compiler does the right thing for options such as
 	what modes.m does, and unique_modes calls lots of predicates
 	defined in modes.m to do it.
 
-<dt> checking typeclass instances (check_typeclass.m)
-	<dd>
-	check_typeclass.m checks that, each instance declaration, that the
-	types, modes and determinism of each predicate/function that is a
-	method of the class is correct (ie. that it matches the typeclass
-	declaration). This pass is performed at the end of semantic analysis
-	because it needs mode and determinism information. In this pass,
-	pred_ids and proc_ids are assigned to the methods for each instance. In
-	addition, while checking that the superclasses of a class are satisfied
-	by the instance declaration, a set of constraint_proofs are built up 
-	for the superclass constraints. These are used by polymorphism.m when
-	generating the base_typeclass_info for the instance.
-
 <dt> simplification (simplify.m)
 
 	<dd>
@@ -453,15 +458,21 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <li> issue warnings about unused arguments from predicates, and create
   specialized versions without them (unused_args.m); type_infos are
-  often unused
+  often unused.
 
 <li> elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
   specialization and the elimination of unused args can make procedures dead
   even the user doesn't, and automatically constructed unification and
   comparison predicates are often dead as well.
 
-<li> elimination of useless assignments, assignments that merely introduce
-  another name for an already existing variable (excess.m).
+<li> conversion of Aditi procedures into disjunctive normal form (dnf.m).
+  The supplementary magic sets and context transformations are only defined
+  for predicates in DNF.
+
+<li> supplementary magic sets or supplementary context transformation of
+	Aditi procedures (magic.m, magic_util.m, context.m).
+  The magic sets or context transformations must be applied to convert the
+  program to a form for which Aditi-RL bytecode can be generated.
 
 <li> reducing the number of variables that have to be saved across
   procedure calls (saved_vars.m). We do this by putting the code that
@@ -476,14 +487,6 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 The module transform.m contains stuff that is supposed to be useful
 for high-level optimizations (but which is not yet used).
-
-<p>
-
-Eventually we plan to make Mercury the programming language of the Aditi
-deductive database system. When this happens, we will need to be able to
-apply the magic set transformation, which is defined for predicates
-whose definitions are disjunctive normal form. The module dnf.m translates
-definitions into DNF, introducing auxiliary predicates as necessary.
 
 <p>
 
@@ -738,6 +741,67 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
 <li> Final generation of C code is done in llds_out.m.
 </ul>
 
+<p>
+
+<h3> 7. Aditi-RL generation </h3>
+
+<ul>
+<li> rl_gen.m converts HLDS to RL.
+
+<li> rl_info.m defines a state type.
+
+<li> rl.m defines the the representation of Aditi-RL used within the
+Mercury compiler. There are some slight differences between rl.m
+and Aditi-RL to make optimization easier.
+
+<li> rl_dump.m contains predicates to write the types defined in rl.m.
+</ul>
+
+<h3> 8. Aditi-RL optimization </h3>
+
+<ul>
+<li> rl_block.m converts an RL procedure into basic blocks, and performs
+  other tasks such as detecting the loops in those basic blocks.
+
+<li> rl_analyse.m contains a generic data-flow analysis procedure for
+  RL procedures.
+
+<li> rl_liveness.m uses rl_analyse.m to insert code to initialise relations
+  and clear references to them when they are no longer needed.
+
+<li> rl_loop.m moves invariants out of loops.
+
+<li> rl_block_opt.m performs common subexpression elimination and instruction
+  merging on basic blocks.
+
+<li> rl_key.m computes upper and lower bounds on the non-locals of a goal
+  for which the goal could succeed, which is useful for determining when
+  an index could be used for a relational operation.
+
+<li> rl_sort.m introduces sort-merge and indexed versions of relational
+  operations where possible, and optimizes away unnecessary sorting and
+  indexing.
+
+<li> rl_stream.m detects relations which do not need to be materialised.
+</ul>  
+
+<h3> 9. Output Aditi-RL code </h3>
+
+<ul>
+<li> rl_out.m converts from the instructions defined in rl.m
+  to bytecode either as data in the &lt;module&gt;.c file or
+  to &lt;module&gt;.rlo and outputs a text representation to
+  &lt;module&gt;.rla.
+
+<li> rl_exprn.m is called from rl_out.m to convert top down Mercury
+  code (in HLDS form) to Aditi bytecode.
+
+<li> rl_code.m contains the definition of the bytecodes interpreted
+  by Aditi. This file is automatically generated from the Aditi sources.
+ 
+<li> rl_file.m contains routines to output the bytecodes defined in rl_code.m.
+</ul>
+
 <hr>
 <!-------------------------->
 
@@ -755,8 +819,8 @@ completed.
 <ul>
 <li> bytecode.m defines the internal representation of bytecodes, and contains
   the predicates to emit them in two forms. The raw bytecode form is emitted
-  into &lt;filename&gt;.bytecode for interpretation, while a human-readable form
-  is emitted into &lt;filename&gt;.bytedebug for visual inspection.
+  into &lt;filename&gt;.bytecode for interpretation, while a human-readable
+  form is emitted into &lt;filename&gt;.bytedebug for visual inspection.
 
 <li> bytecode_gen.m contains the predicates that translate HLDS into bytecode.
 </ul>
@@ -821,6 +885,15 @@ Some of them are obsolete; other are work-in-progress.
 (For some of them its hard to say which!)
 
 	<dl>
+
+	<dt> excess.m:
+		<dd>
+		This eliminates assignments that merely introduce another
+		name for an already existing variable. The functionality of
+		this module has been included in simplify.m, however sometime
+		in the future it may be necessary to provide a version which
+		maintains superhomogeneous form.
+
 	<dt> lco.m:
 		<dd>
 		This finds predicates whose implementations would benefit
@@ -846,6 +919,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-09-25 01:11:03 $ by $Author: dmo $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-05-05 01:26:42 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

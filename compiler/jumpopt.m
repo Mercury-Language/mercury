@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -641,8 +641,8 @@ jumpopt__short_labels_rval(lval(Lval0), Instrmap, lval(Lval)) :-
 	jumpopt__short_labels_lval(Lval0, Instrmap, Lval).
 jumpopt__short_labels_rval(var(_), _, _) :-
 	error("var rval in jumpopt__short_labels_rval").
-jumpopt__short_labels_rval(create(Tag, Rvals0, Unique, Cell, Type), Instrmap,
-		create(Tag, Rvals, Unique, Cell, Type)) :-
+jumpopt__short_labels_rval(create(Tag, Rvals0, ArgTypes, StatDyn, Cell, Type),
+		Instrmap, create(Tag, Rvals, ArgTypes, StatDyn, Cell, Type)) :-
 	jumpopt__short_labels_maybe_rvals(Rvals0, Instrmap, Rvals).
 jumpopt__short_labels_rval(mkword(Tag, Rval0), Instrmap,
 		mkword(Tag, Rval)) :-

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,13 +22,15 @@
 	% If the instruction before the label branches away, we also
 	% remove the instruction block following the label.
 
-:- pred labelopt_main(list(instruction), bool, list(instruction), bool).
-:- mode labelopt_main(in, in, out, out) is det.
+:- pred labelopt_main(list(instruction)::in, bool::in, set(label)::in,
+	list(instruction)::out, bool::out) is det.
 
-	% Build up a set showing which labels are branched to.
+	% Build up a set showing which labels are referred to.
+	% The input set is the list of labels referred to from outside
+	% the given list of instructions.
 
-:- pred labelopt__build_useset(list(instruction), set(label)).
-:- mode labelopt__build_useset(in, out) is det.
+:- pred labelopt__build_useset(list(instruction)::in, set(label)::in,
+	set(label)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -37,30 +39,23 @@
 :- import_module opt_util.
 :- import_module std_util.
 
-labelopt_main(Instrs0, Final, Instrs, Mod) :-
-	labelopt__build_useset(Instrs0, Useset),
+labelopt_main(Instrs0, Final, LayoutLabelSet, Instrs, Mod) :-
+	labelopt__build_useset(Instrs0, LayoutLabelSet, Useset),
 	labelopt__instr_list(Instrs0, yes, Useset, Instrs1, Mod),
 	( Final = yes, Mod = yes ->
-		labelopt_main(Instrs1, Final, Instrs, _)
+		labelopt_main(Instrs1, Final, LayoutLabelSet, Instrs, _)
 	;
 		Instrs = Instrs1
 	).
 
 %-----------------------------------------------------------------------------%
 
-labelopt__build_useset(Instrs, Useset) :-
-	set__init(Useset0),
-	labelopt__build_useset_2(Instrs, Useset0, Useset).
-
-:- pred labelopt__build_useset_2(list(instruction), set(label), set(label)).
-:- mode labelopt__build_useset_2(in, in, out) is det.
-
-labelopt__build_useset_2([], Useset, Useset).
-labelopt__build_useset_2([Instr | Instructions], Useset0, Useset) :-
+labelopt__build_useset([], Useset, Useset).
+labelopt__build_useset([Instr | Instructions], Useset0, Useset) :-
 	Instr = Uinstr - _Comment,
 	opt_util__instr_labels(Uinstr, Labels, _CodeAddresses),
 	set__insert_list(Useset0, Labels, Useset1),
-	labelopt__build_useset_2(Instructions, Useset1, Useset).
+	labelopt__build_useset(Instructions, Useset1, Useset).
 
 %-----------------------------------------------------------------------------%
 
@@ -70,9 +65,8 @@ labelopt__build_useset_2([Instr | Instructions], Useset0, Useset) :-
 	% If not, we delete it. We delete the following code as well if
 	% the label was preceded by code that cannot fall through.
 
-:- pred labelopt__instr_list(list(instruction), bool, set(label),
-	list(instruction), bool).
-:- mode labelopt__instr_list(in, in, in, out, out) is det.
+:- pred labelopt__instr_list(list(instruction)::in, bool::in, set(label)::in,
+	list(instruction)::out, bool::out) is det.
 
 labelopt__instr_list([], _Fallthrough, _Useset, [], no).
 labelopt__instr_list([Instr0 | MoreInstrs0],
@@ -121,8 +115,8 @@ labelopt__instr_list([Instr0 | MoreInstrs0],
 	% field on the instruction is often enough to deduce what the
 	% eliminated instruction was.
 
-:- pred labelopt__eliminate(instruction, maybe(bool), list(instruction), bool).
-:- mode labelopt__eliminate(in, in, out, out) is det.
+:- pred labelopt__eliminate(instruction::in, maybe(bool)::in,
+	list(instruction)::out, bool::out) is det.
 
 labelopt__eliminate(Uinstr0 - Comment0, Label, Instr, Mod) :-
 	labelopt_eliminate_total(Total),
@@ -154,8 +148,7 @@ labelopt__eliminate(Uinstr0 - Comment0, Label, Instr, Mod) :-
 		Instr = [Uinstr - Comment]
 	).
 
-:- pred labelopt_eliminate_total(bool).
-:- mode labelopt_eliminate_total(out) is det.
+:- pred labelopt_eliminate_total(bool::out) is det.
 
 labelopt_eliminate_total(yes).
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -82,11 +82,13 @@ handle_options(MaybeError, Args, Link) -->
 		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 		globals__io_lookup_bool_option(compile_to_c, CompileToC),
 		globals__io_lookup_bool_option(compile_only, CompileOnly),
+		globals__io_lookup_bool_option(aditi_only, AditiOnly),
 		{ bool__or_list([GenerateDependencies, MakeInterface,
 			MakePrivateInterface, MakeShortInterface,
 			MakeOptimizationInt, MakeTransOptInt,
 			ConvertToMercury, ConvertToGoedel, TypecheckOnly,
-			ErrorcheckOnly, CompileToC, CompileOnly], NotLink) },
+			ErrorcheckOnly, CompileToC, CompileOnly, AditiOnly],
+			NotLink) },
 		{ bool__not(NotLink, Link) }
 	).
 
@@ -162,8 +164,8 @@ postprocess_options(ok(OptionTable), Error) -->
                                 ->
                                     postprocess_options_2(OptionTable,
                                         GC_Method, TagsMethod, ArgsMethod,
-                                        PrologDialect, TermNorm, TraceLevel),
-                                    { Error = no }
+                                        PrologDialect, TermNorm, TraceLevel,
+					Error)
                                 ;
                                     { DumpAliasOption = string(DumpAlias) },
                                     { convert_dump_alias(DumpAlias,
@@ -173,8 +175,8 @@ postprocess_options(ok(OptionTable), Error) -->
                                         string(DumpOptions), NewOptionTable) },
                                     postprocess_options_2(NewOptionTable,
                                         GC_Method, TagsMethod, ArgsMethod,
-                                        PrologDialect, TermNorm, TraceLevel),
-                                    { Error = no }
+                                        PrologDialect, TermNorm, TraceLevel,
+					Error)
                                 ;
                                     { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
                                 )
@@ -202,18 +204,11 @@ postprocess_options(ok(OptionTable), Error) -->
 
 :- pred postprocess_options_2(option_table, gc_method, tags_method,
 	args_method, prolog_dialect, termination_norm, trace_level,
-	io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, in, di, uo) is det.
+	maybe(string), io__state, io__state).
+:- mode postprocess_options_2(in, in, in, in, in, in, in, out, di, uo) is det.
 
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
-		PrologDialect, TermNorm, TraceLevel) -->
-	% work around for NU-Prolog problems
-	( { map__search(OptionTable, heap_space, int(HeapSpace)) } ->
-		io__preallocate_heap_space(HeapSpace)
-	;
-		[]
-	),
-
+		PrologDialect, TermNorm, TraceLevel, Error) -->
 	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
 		PrologDialect, TermNorm, TraceLevel),
@@ -283,8 +278,20 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
 
+	% Minimal model tabling is not compatible with trailing;
+	% see the comment in runtime/mercury_tabling.c.
+
+	globals__io_lookup_bool_option(use_trail, UseTrail),
+	globals__io_lookup_bool_option(use_minimal_model, UseMinimalModel),
+	{ UseTrail = yes, UseMinimalModel = yes ->
+		Error = yes("trailing and minimal model tabling are not compatible")
+	;
+		Error = no
+	},
+
 	% The `.debug' grade (i.e. --stack-trace plus --require-tracing)
-	% implies --use-trail.
+	% implies --use-trail, except with --use-minimal-model, which is
+	% not compatible with --use-trail.
 	%
 	% The reason for this is to avoid unnecessary proliferation in
 	% the number of different grades.  If you're using --debug,
@@ -294,7 +301,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	globals__io_lookup_bool_option(stack_trace, StackTrace),
 	globals__io_lookup_bool_option(require_tracing, RequireTracing),
-	( { StackTrace = yes, RequireTracing = yes } ->
+	( { StackTrace = yes, RequireTracing = yes, UseMinimalModel = no } ->
 		globals__io_set_option(use_trail, bool(yes))
 	;
 		[]
@@ -321,6 +328,8 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 			globals__io_set_option(optimize_unused_args, bool(no)),
 			globals__io_set_option(optimize_higher_order, bool(no)),
 			globals__io_set_option(type_specialization, bool(no)),
+			globals__io_set_option(user_guided_type_specialization,
+				bool(no)),
 			globals__io_set_option(deforestation, bool(no)),
 			globals__io_set_option(optimize_duplicate_calls,
 				bool(no)),
@@ -396,6 +405,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% --use-trail.
 	option_implies(use_trail, optimize_value_number, bool(no)),
 
+	% Minimal model tabling needs to be able to rewrite all the redoips
+	% in a given nondet stack segments. If we allow hijacks, some of these
+	% redoips may have been saved in ordinary framevars, which means that
+	% tabling can't find them without label layout info. Since we want
+	% to allow tabling in grades that do not have label layout info,
+	% we disable hijacks instead.
+	option_implies(use_minimal_model, allow_hijacks, bool(no)),
+
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -404,6 +421,11 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	;
 		[]
 	),
+
+	% If we are doing type-specialization, we may as well take
+	% advantage of the declarations supplied by the programmer.
+	option_implies(type_specialization, user_guided_type_specialization,
+		bool(yes)),
 
 	% --intermod-unused-args implies --intermodule-optimization and
 	% --optimize-unused-args.
@@ -420,6 +442,24 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% is only available while generating the dependencies.
 	option_implies(generate_module_order, generate_dependencies,
 		bool(yes)),
+
+	% --aditi-only implies --aditi.
+	option_implies(aditi_only, aditi, bool(yes)),
+
+	% Set --aditi-user to the value of $USER if it is not set already.
+	% If $USER is not set, use the string "guest".
+	globals__io_lookup_string_option(aditi_user, User0),
+	( { User0 = "" } ->
+		io__get_environment_var("USER", MaybeUser),
+		( { MaybeUser = yes(User1) } ->
+			{ User = User1 }
+		;
+			{ User = "guest" }
+		),
+		globals__io_set_option(aditi_user, string(User))
+	;
+		[]
+	),
 
 	% If --use-search-directories-for-intermod is true, append the
 	% search directories to the list of directories to search for
@@ -490,7 +530,7 @@ usage -->
 	{ library__version(Version) },
  	io__write_strings(StdErr, [
 		"Mercury Compiler, version ", Version, "\n",
-		"Copyright (C) 1993-1998 The University of Melbourne\n",
+		"Copyright (C) 1993-1999 The University of Melbourne\n",
 		"Usage: mmc [<options>] <arguments>\n",
 		"Use `mmc --help' for more information.\n"
 	]).
@@ -498,7 +538,7 @@ usage -->
 long_usage -->
 	{ library__version(Version) },
  	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string("Copyright (C) 1993-1998 The University of Melbourne\n"),
+ 	io__write_string("Copyright (C) 1993-1999 The University of Melbourne\n"),
 	io__write_string("Usage: mmc [<options>] <arguments>\n"),
 	io__write_string("Arguments:\n"),
 	io__write_string("\tArguments ending in `.m' are assumed to be source file names.\n"),
@@ -534,6 +574,7 @@ long_usage -->
 	;	gc		% the kind of GC to use
 	;	prof		% what profiling options to use
 	;	trail		% whether or not to use trailing
+	;	minimal_model	% whether we set up for minimal model tabling
 	;	args		% argument passing convention
 	;	trace		% tracing/debugging options
 	;	par		% parallelism / multithreading
@@ -652,7 +693,7 @@ grade_component_table("proftime", prof, [profile_time - bool(yes),
 grade_component_table("profcalls", prof, [profile_time - bool(no),
 	profile_calls - bool(yes), profile_memory - bool(no)]).
 grade_component_table("memprof", prof, [profile_time - bool(no),
-	profile_calls - bool(no), profile_memory - bool(yes)]).
+	profile_calls - bool(yes), profile_memory - bool(yes)]).
 grade_component_table("profall", prof, [profile_time - bool(yes),
 	profile_calls - bool(yes), profile_memory - bool(yes)]).
 
@@ -666,6 +707,10 @@ grade_component_table("strace", trace,
 
 	% Trailing components
 grade_component_table("tr", trail, [use_trail - bool(yes)]).
+
+	% Mimimal model tabling components
+grade_component_table("mm", minimal_model,
+	[use_minimal_model - bool(yes)]).
 
 :- pred reset_grade_options(option_table, option_table).
 :- mode reset_grade_options(in, out) is det.
@@ -693,6 +738,7 @@ grade_start_values(profile_memory - bool(no)).
 grade_start_values(stack_trace - bool(no)).
 grade_start_values(require_tracing - bool(no)).
 grade_start_values(use_trail - bool(no)).
+grade_start_values(use_minimal_model - bool(no)).
 
 :- pred split_grade_string(string, list(string)).
 :- mode split_grade_string(in, out) is semidet.
@@ -742,3 +788,4 @@ convert_dump_alias("all", "abcdfgilmnprstuvCMPT").
 convert_dump_alias("codegen", "dfnprsu").
 convert_dump_alias("vanessa", "ltuCIU").
 convert_dump_alias("paths", "cP").
+convert_dump_alias("petdr", "din").

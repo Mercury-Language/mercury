@@ -18,9 +18,8 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_pred, (inst), purity, term_util.
-:- import_module varset, term.
-:- import_module list, map, term, std_util.
+:- import_module hlds_data, hlds_pred, (inst), purity, rl, term_util.
+:- import_module assoc_list, list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -87,7 +86,7 @@
 		%	ClassMethods, VarNames
 
 	;	instance(list(class_constraint), class_name, list(type),
-			instance_interface, tvarset)
+			instance_body, tvarset)
 		%	DerivingClass, ClassName, Types, 
 		%	MethodInstances, VarNames
 
@@ -115,6 +114,13 @@
 			%	whether or not the C code is thread-safe
 			% PredName, Predicate or Function, Vars/Mode, 
 			% VarNames, C Code Implementation Info
+	
+	;	type_spec(sym_name, sym_name, arity, maybe(pred_or_func),
+			maybe(argument_modes), type_subst, tvarset)
+			% PredName, SpecializedPredName, Arity,
+			% PredOrFunc, Modes if a specific procedure was
+			% specified, type substitution (using the variable
+			% names from the pred declaration), TVarSet
 
 	;	inline(sym_name, arity)
 			% Predname, Arity
@@ -151,6 +157,45 @@
 	;	fact_table(sym_name, arity, string)
 			% Predname, Arity, Fact file name.
 
+	;	aditi(sym_name, arity)
+			% Predname, Arity
+
+	;	base_relation(sym_name, arity)
+			% Predname, Arity
+			%
+			% Eventually, these should only occur in 
+			% automatically generated database interface 
+			% files, but for now there's no such thing, 
+			% so they can occur in user programs.
+
+	;	aditi_index(sym_name, arity, index_spec)
+			% PredName, Arity, IndexType, Attributes
+			%
+			% Specify an index on a base relation.
+
+	;	naive(sym_name, arity)
+			% Predname, Arity
+			% Use naive evaluation.
+
+	;	psn(sym_name, arity)
+			% Predname, Arity
+			% Use predicate semi-naive evaluation.
+
+	;	aditi_memo(sym_name, arity)
+			% Predname, Arity
+
+	;	aditi_no_memo(sym_name, arity)
+			% Predname, Arity
+
+	;	supp_magic(sym_name, arity)
+			% Predname, Arity
+
+	;	context(sym_name, arity)
+			% Predname, Arity
+
+	;	owner(sym_name, arity, string)
+			% PredName, Arity, String.
+
 	;	tabled(eval_method, sym_name, int, maybe(pred_or_func), 
 				maybe(argument_modes))
 			% Tabling type, Predname, Arity, PredOrFunc?, Mode?
@@ -179,6 +224,9 @@
 
 	;	check_termination(sym_name, arity).
 			% Predname, Arity
+
+	% The type substitution for a `pragma type_spec' declaration.
+:- type type_subst == assoc_list(tvar, type).
 
 	% This type holds information about the implementation details
 	% of procedures defined via `pragma c_code'.
@@ -306,7 +354,11 @@
 				% Line number of declaration
 	.
 
-:- type instance_interface ==	list(instance_method).
+:- type instance_body
+	--->	abstract
+	;	concrete(instance_methods).
+
+:- type instance_methods ==	list(instance_method).
 
 		% an abstract type for representing a set of
 		% `pragma_c_code_attribute's.

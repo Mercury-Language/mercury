@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -441,7 +441,7 @@ standardize_rval(Rval1, Rval) :-
 		Rval1 = var(_),
 		error("var in standardize_rval")
 	;
-		Rval1 = create(_, _, _, _, _),
+		Rval1 = create(_, _, _, _, _, _),
 		Rval = Rval1
 	;
 		Rval1 = mkword(_, _),
@@ -735,7 +735,7 @@ most_specific_rval(Rval1, Rval2, Rval) :-
 		Rval1 = var(_),
 		error("var in most_specific_rval")
 	;
-		Rval1 = create(_, _, _, _, _),
+		Rval1 = create(_, _, _, _, _, _),
 		Rval2 = Rval1,
 		Rval = Rval1
 	;
@@ -896,8 +896,8 @@ dupelim__replace_labels_lval(mem_ref(Rval0), ReplMap, mem_ref(Rval)) :-
 dupelim__replace_labels_rval(lval(Lval0), ReplMap, lval(Lval)) :-
 	dupelim__replace_labels_lval(Lval0, ReplMap, Lval).
 dupelim__replace_labels_rval(var(Var), _, var(Var)).
-dupelim__replace_labels_rval(create(Tag, Rvals, Unique, N, Msg), _,
-		create(Tag, Rvals, Unique, N, Msg)).
+dupelim__replace_labels_rval(create(Tag, Rvals, ArgTypes, StatDyn, N, Msg), _,
+		create(Tag, Rvals, ArgTypes, StatDyn, N, Msg)).
 dupelim__replace_labels_rval(mkword(Tag, Rval0), ReplMap, mkword(Tag, Rval)) :-
 	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
 dupelim__replace_labels_rval(const(Const0), ReplMap, const(Const)) :-
@@ -946,14 +946,14 @@ dupelim__replace_labels_code_addr(do_succeed(Last), _, do_succeed(Last)).
 dupelim__replace_labels_code_addr(do_redo, _, do_redo).
 dupelim__replace_labels_code_addr(do_fail, _, do_fail).
 dupelim__replace_labels_code_addr(do_trace_redo_fail, _, do_trace_redo_fail).
-dupelim__replace_labels_code_addr(do_det_closure, _, do_det_closure).
-dupelim__replace_labels_code_addr(do_semidet_closure, _, do_semidet_closure).
-dupelim__replace_labels_code_addr(do_nondet_closure, _, do_nondet_closure).
-dupelim__replace_labels_code_addr(do_det_class_method, _, do_det_class_method).
-dupelim__replace_labels_code_addr(do_semidet_class_method, _,
-	do_semidet_class_method).
-dupelim__replace_labels_code_addr(do_nondet_class_method, _,
-	do_nondet_class_method).
+dupelim__replace_labels_code_addr(do_call_closure, _, do_call_closure).
+dupelim__replace_labels_code_addr(do_call_class_method, _,
+	do_call_class_method).
+dupelim__replace_labels_code_addr(do_det_aditi_call, _, do_det_aditi_call).
+dupelim__replace_labels_code_addr(do_semidet_aditi_call, _,
+		do_semidet_aditi_call).
+dupelim__replace_labels_code_addr(do_nondet_aditi_call, _,
+		do_nondet_aditi_call).
 dupelim__replace_labels_code_addr(do_not_reached, _, do_not_reached).
 
 :- pred dupelim__replace_labels_label_list(list(label)::in,

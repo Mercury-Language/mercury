@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -44,8 +44,11 @@
 :- pred type_id_is_higher_order(type_id, pred_or_func).
 :- mode type_id_is_higher_order(in, out) is semidet.
 
+:- pred type_is_aditi_state(type).
+:- mode type_is_aditi_state(in) is semidet.
+
 	% A test for types that are defined by hand (not including
-	% the builtin types).  Don't generate base_type_*
+	% the builtin types).  Don't generate type_ctor_*
 	% for these types.
 
 :- pred type_id_is_hand_defined(type_id).
@@ -84,6 +87,12 @@
 
 :- pred construct_type(type_id, list(type), prog_context, (type)).
 :- mode construct_type(in, in, in, out) is det.
+
+	% Construct builtin types.
+:- func int_type = (type).
+:- func string_type = (type).
+:- func float_type = (type).
+:- func char_type = (type).
 
 	% Given a constant and an arity, return a type_id.
 	% Fails if the constant is not an atom.
@@ -263,7 +272,7 @@ type_util__var(term__variable(Var), Var).
 
 type_id_is_hand_defined(qualified(PrivateBuiltin, "type_info") - 1) :-
 	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "base_type_info") - 1) :-
+type_id_is_hand_defined(qualified(PrivateBuiltin, "type_ctor_info") - 1) :-
 	mercury_private_builtin_module(PrivateBuiltin).
 type_id_is_hand_defined(qualified(PrivateBuiltin, "typeclass_info") - 1) :-
 	mercury_private_builtin_module(PrivateBuiltin).
@@ -319,6 +328,10 @@ type_id_is_higher_order(SymName - Arity, PredOrFunc) :-
 		Arity = 2,
 		PredOrFunc = function
 	).
+
+type_is_aditi_state(Type) :-
+        type_to_type_id(Type,
+		qualified(unqualified("aditi"), "state") - 0, []).
 
 :- pred type_id_is_enumeration(type_id, module_info).
 :- mode type_id_is_enumeration(in, in) is semidet.
@@ -379,6 +392,11 @@ construct_type(TypeId, Args, Context, Type) :-
 	TypeId = SymName - _,
 	construct_qualified_term(SymName, NewArgs, Context, Type).
 
+int_type = Type :- construct_type(unqualified("int") - 0, [], Type).
+string_type = Type :- construct_type(unqualified("string") - 0, [], Type).
+float_type = Type :- construct_type(unqualified("float") - 0, [], Type).
+char_type = Type :- construct_type(unqualified("character") - 0, [], Type).
+
 %-----------------------------------------------------------------------------%
 
 	% Given a constant and an arity, return a type_id.
@@ -429,7 +447,7 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 
 %-----------------------------------------------------------------------------%
 
-	% The checks for type_info and base_type_info
+	% The checks for type_info and type_ctor_info
 	% are needed because those types lie about their
 	% arity; it might be cleaner to change that in
 	% private_builtin.m, but that would cause some
@@ -446,7 +464,7 @@ type_is_no_tag_type(Ctors, Ctor, Type) :-
 	ExistQVars = [],
 	unqualify_name(Ctor, Name),
 	Name \= "type_info",
-	Name \= "base_type_info",
+	Name \= "type_ctor_info",
 	Name \= "typeclass_info",
 	Name \= "base_typeclass_info".
 

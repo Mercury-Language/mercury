@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -484,7 +484,7 @@ middle_rec__find_used_registers_rval(Rval, Used0, Used) :-
 		Rval = var(_),
 		error("var found in middle_rec__find_used_registers_rval")
 	;
-		Rval = create(_, MaybeRvals, _, _, _),
+		Rval = create(_, MaybeRvals, _, _, _, _),
 		middle_rec__find_used_registers_maybe_rvals(MaybeRvals,
 			Used0, Used)
 	;

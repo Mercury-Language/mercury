@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -33,6 +33,7 @@
 
 :- implementation.
 
+:- import_module prog_io, prog_out.
 :- import_module hlds_data, hlds_pred, hlds_out.
 :- import_module code_util, globals, options, term.
 :- import_module bool, string, map, std_util, require, assoc_list.
@@ -74,9 +75,10 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 	base_typeclass_info__gen_infos_for_instance_list(ClassId - Is,
 		ModuleName, ModuleInfo, CModules1),
 	InstanceDefn = hlds_instance_defn(ImportStatus, _TermContext,
-				InstanceConstraints, InstanceTypes, _Interface,
+				InstanceConstraints, InstanceTypes, Body,
 				PredProcIds, _Varset, _SuperClassProofs),
 	(
+		Body = concrete(_),
 			% Only make the base_typeclass_info if the instance
 			% declaration originally came from _this_ module.
 		status_defined_in_this_module(ImportStatus, yes)
@@ -104,11 +106,11 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 		Status = yes,
 
 		CModule = comp_gen_c_data(ModuleName, DataName,
-			Status, Rvals, Procs),
+			Status, Rvals, uniform(no), Procs),
 		CModules = [CModule | CModules1]
 	;
-			% The instance decl is from another module, so
-			% we don't bother including it.
+			% The instance decl is from another module,
+			% or is abstract, so we don't bother including it.
 		CModules = CModules1
 	).
 
@@ -181,11 +183,10 @@ base_typeclass_info__gen_superclass_rvals(ClassId, ModuleInfo, InstanceTypes,
 	list__map(GetRval, SuperClassConstraints, SuperClassRvals).
 	
 %----------------------------------------------------------------------------%
-	% XXX this version of base_typeclass_info__make_instance_string 
-	% handles non-qualified types, even though everything should be
-	% qualified by now. Unfortunately, for some reason builtins are
-	% not qualified. The version that aborts when given an unqualified
-	% type is included at the end.
+
+	% Note that for historical reasons, builtin types
+	% are treated as being unqualified (`int') rather than
+	% being qualified (`builtin:int') at this point.
 
 base_typeclass_info__make_instance_string(InstanceTypes, InstanceString) :-
 	list__map(base_typeclass_info__type_to_string, 
@@ -196,77 +197,15 @@ base_typeclass_info__make_instance_string(InstanceTypes, InstanceString) :-
 :- mode base_typeclass_info__type_to_string(in, out) is det.
 
 base_typeclass_info__type_to_string(Type, String) :-
-	(
-		Type = term__functor(Name, Args, _),
-		(
-			Name = term__atom(":"),
-			Args = [ModuleName, TypeName]
-		->
-			base_typeclass_info__type_to_string(ModuleName,
-				ModuleString),
-			base_typeclass_info__type_to_string(TypeName,
-				TypeString),
-			string__append(ModuleString, TypeString, String)
-		;
-			Name = term__atom(NameString)
-		->
-			list__length(Args, Arity),
-			string__int_to_string(Arity, ArityString),
-			string__append_list([NameString, "_", ArityString, "_"],
-				String)
-		;
-			error("instance functor not an atom")
-		)
+	( sym_name_and_args(Type, TypeName, TypeArgs) ->
+		prog_out__sym_name_to_string(TypeName, "__", TypeNameString),
+		list__length(TypeArgs, TypeArity),
+		string__int_to_string(TypeArity, TypeArityString),
+		string__append_list(
+			[TypeNameString, "__arity", TypeArityString, "__"],
+			String)
 	;
-		Type = term__variable(_),
-		error("instance type should be a single functor with variables as args")
+		error("base_typeclass_info__type_to_string: invalid type")
 	).
-	
-/******************************* 
- *
- * This is the non-working version of base_typeclass_info__type_to_string,
- * enforces the rule that every type be qualified. Unfortunately this doesn't
- * seem to be the case
-
-:- pred base_typeclass_info__type_to_string(type, string).
-:- mode base_typeclass_info__type_to_string(in, out) is det.
-
-base_typeclass_info__type_to_string(Type, String) :-
-	(
-		Type = term__functor(Name, Args, _),
-		Name = term__atom(":"),
-		Args = [ModuleName, TypeName]
-	->
-		base_typeclass_info__unqualified_type_to_string(ModuleName,
-			ModuleString),
-		base_typeclass_info__unqualified_type_to_string(TypeName,
-			TypeString),
-		string__append(ModuleString, TypeString, String)
-	;
-		error("type not qualified")
-	).
-
-:- pred base_typeclass_info__unqualified_type_to_string(type, string).
-:- mode base_typeclass_info__unqualified_type_to_string(in, out) is det.
-
-base_typeclass_info__unqualified_type_to_string(Type, String) :-
-	(
-		Type = term__functor(Name, Args, _),
-		(
-			Name = term__atom(NameString)
-		->
-			list__length(Args, Arity),
-			string__int_to_string(Arity, ArityString),
-			string__append_list([NameString, "_", ArityString, "_"],
-				String)
-		;
-			error("instance functor not an atom")
-		)
-	;
-		Type = term__variable(_),
-		error("instance type should be a single functor with variables as args")
-	).
-
-**********************************/
-	
+		
 %----------------------------------------------------------------------------%

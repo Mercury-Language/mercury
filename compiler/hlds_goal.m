@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred, llds, prog_data, (inst), instmap.
-:- import_module list, set, map, std_util.
+:- import_module char, list, set, map, std_util.
 
 	% Here is how goals are represented
 
@@ -249,7 +249,7 @@
 	% these with various special cases (construct/deconstruct/assign/
 	% simple_test/complicated_unify).
 	% The cons_id for functor/2 cannot be a pred_const, code_addr_const,
-	% or base_type_info_const, since none of these can be created when
+	% or type_ctor_info_const, since none of these can be created when
 	% the unify_rhs field is used.
 :- type unify_rhs
 	--->	var(prog_var)
@@ -754,12 +754,80 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_list_determinism(list(hlds_goal), determinism).
 :- mode goal_list_determinism(in, out) is det.
 
+	%
+	% Produce a goal to construct a given constant.
+	% These predicates all fill in the non-locals, instmap_delta
+	% and determinism fields of the goal_info of the returned goal.
+	% With alias tracking, the instmap_delta will be correct
+	% only if the variable being assigned to has no aliases.
+	%
+
+:- pred make_int_const_construction(prog_var, int, hlds_goal).
+:- mode make_int_const_construction(in, in, out) is det.
+
+:- pred make_string_const_construction(prog_var, string, hlds_goal).
+:- mode make_string_const_construction(in, in, out) is det.
+
+:- pred make_float_const_construction(prog_var, float, hlds_goal).
+:- mode make_float_const_construction(in, in, out) is det.
+
+:- pred make_char_const_construction(prog_var, char, hlds_goal).
+:- mode make_char_const_construction(in, in, out) is det.
+
+:- pred make_const_construction(prog_var, cons_id, hlds_goal).
+:- mode make_const_construction(in, in, out) is det.
+
+:- pred make_int_const_construction(int, hlds_goal, prog_var,
+		map(prog_var, type), map(prog_var, type),
+		prog_varset, prog_varset).
+:- mode make_int_const_construction(in, out, out, in, out, in, out) is det.
+
+:- pred make_string_const_construction(string, hlds_goal, prog_var,
+		map(prog_var, type), map(prog_var, type),
+		prog_varset, prog_varset).
+:- mode make_string_const_construction(in, out, out, in, out, in, out) is det.
+
+:- pred make_float_const_construction(float, hlds_goal, prog_var,
+		map(prog_var, type), map(prog_var, type),
+		prog_varset, prog_varset).
+:- mode make_float_const_construction(in, out, out, in, out, in, out) is det.
+
+:- pred make_char_const_construction(char, hlds_goal, prog_var,
+		map(prog_var, type), map(prog_var, type),
+		prog_varset, prog_varset).
+:- mode make_char_const_construction(in, out, out, in, out, in, out) is det.
+
+:- pred make_const_construction(cons_id, (type), hlds_goal, prog_var,
+		map(prog_var, type), map(prog_var, type),
+		prog_varset, prog_varset).
+:- mode make_const_construction(in, in, out, out, in, out, in, out) is det.
+
+:- pred make_int_const_construction(int, hlds_goal, prog_var,
+		proc_info, proc_info).
+:- mode make_int_const_construction(in, out, out, in, out) is det.
+
+:- pred make_string_const_construction(string, hlds_goal, prog_var,
+		proc_info, proc_info).
+:- mode make_string_const_construction(in, out, out, in, out) is det.
+
+:- pred make_float_const_construction(float, hlds_goal, prog_var,
+		proc_info, proc_info).
+:- mode make_float_const_construction(in, out, out, in, out) is det.
+
+:- pred make_char_const_construction(char, hlds_goal, prog_var,
+		proc_info, proc_info).
+:- mode make_char_const_construction(in, out, out, in, out) is det.
+
+:- pred make_const_construction(cons_id, (type), hlds_goal, prog_var,
+		proc_info, proc_info).
+:- mode make_const_construction(in, in, out, out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module det_analysis, term.
-:- import_module require.
+:- import_module det_analysis, type_util.
+:- import_module require, string, term, varset.
 
 goal_info_init(GoalInfo) :-
 	Detism = erroneous,
@@ -1080,6 +1148,82 @@ goal_list_determinism(Goals, Determinism) :-
                        det_conjunction_detism(Det0, Det1, Det)
                )),
        list__foldl(ComputeDeterminism, Goals, det, Determinism).
+
+%-----------------------------------------------------------------------------%
+
+make_int_const_construction(Int, Goal, Var, ProcInfo0, ProcInfo) :-
+	proc_info_create_var_from_type(ProcInfo0, int_type, Var, ProcInfo),
+	make_int_const_construction(Var, Int, Goal).
+
+make_string_const_construction(String, Goal, Var, ProcInfo0, ProcInfo) :-
+	proc_info_create_var_from_type(ProcInfo0, string_type, Var, ProcInfo),
+	make_string_const_construction(Var, String, Goal).
+
+make_float_const_construction(Float, Goal, Var, ProcInfo0, ProcInfo) :-
+	proc_info_create_var_from_type(ProcInfo0, float_type, Var, ProcInfo),
+	make_float_const_construction(Var, Float, Goal).
+
+make_char_const_construction(Char, Goal, Var, ProcInfo0, ProcInfo) :-
+	proc_info_create_var_from_type(ProcInfo0, char_type, Var, ProcInfo),
+	make_char_const_construction(Var, Char, Goal).
+
+make_const_construction(ConsId, Type, Goal, Var, ProcInfo0, ProcInfo) :-
+	proc_info_create_var_from_type(ProcInfo0, Type, Var, ProcInfo),
+	make_const_construction(Var, ConsId, Goal).
+
+make_int_const_construction(Int, Goal, Var, VarTypes0, VarTypes,
+		VarSet0, VarSet) :-
+	varset__new_var(VarSet0, Var, VarSet),
+	map__det_insert(VarTypes0, Var, int_type, VarTypes),
+	make_int_const_construction(Var, Int, Goal).
+
+make_string_const_construction(String, Goal, Var, VarTypes0, VarTypes,
+		VarSet0, VarSet) :-
+	varset__new_var(VarSet0, Var, VarSet),
+	map__det_insert(VarTypes0, Var, string_type, VarTypes),
+	make_string_const_construction(Var, String, Goal).
+
+make_float_const_construction(Float, Goal, Var, VarTypes0, VarTypes,
+		VarSet0, VarSet) :-
+	varset__new_var(VarSet0, Var, VarSet),
+	map__det_insert(VarTypes0, Var, float_type, VarTypes),
+	make_float_const_construction(Var, Float, Goal).
+
+make_char_const_construction(Char, Goal, Var, VarTypes0, VarTypes,
+		VarSet0, VarSet) :-
+	varset__new_var(VarSet0, Var, VarSet),
+	map__det_insert(VarTypes0, Var, char_type, VarTypes),
+	make_char_const_construction(Var, Char, Goal).
+
+make_const_construction(ConsId, Type, Goal, Var, VarTypes0, VarTypes,
+		VarSet0, VarSet) :-
+	varset__new_var(VarSet0, Var, VarSet),
+	map__det_insert(VarTypes0, Var, Type, VarTypes),
+	make_const_construction(Var, ConsId, Goal).
+
+make_int_const_construction(Var, Int, Goal) :-
+	make_const_construction(Var, int_const(Int), Goal).
+
+make_string_const_construction(Var, String, Goal) :-
+	make_const_construction(Var, string_const(String), Goal).
+
+make_float_const_construction(Var, Float, Goal) :-
+	make_const_construction(Var, float_const(Float), Goal).
+
+make_char_const_construction(Var, Char, Goal) :-
+	string__char_to_string(Char, String),
+	make_const_construction(Var, cons(unqualified(String), 0), Goal).
+
+make_const_construction(Var, ConsId, Goal - GoalInfo) :-
+	RHS = functor(ConsId, []),
+	Inst = bound(unique, [functor(ConsId, [])]),
+	Mode = (free(unique) - Inst) - (Inst - Inst),
+	Unification = construct(Var, ConsId, [], []),
+	Context = unify_context(explicit, []),
+	Goal = unify(Var, RHS, Mode, Unification, Context),
+	set__singleton_set(NonLocals, Var),
+	instmap_delta_from_assoc_list([Var - Inst], InstMapDelta),
+	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

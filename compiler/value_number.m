@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,15 +14,15 @@
 
 :- interface.
 
-:- import_module list, io.
 :- import_module llds.
+:- import_module list, set, io.
 
 	% Find straight-line code sequences and optimize them using
 	% value numbering.
 
-:- pred value_number_main(list(instruction), list(instruction),
+:- pred value_number_main(list(instruction), set(label), list(instruction),
 	io__state, io__state).
-:- mode value_number_main(in, out, di, uo) is det.
+:- mode value_number_main(in, in, out, di, uo) is det.
 
 	% The main value numbering pass introduces references to temporary
 	% variables whose values need be preserved only within an extended
@@ -39,24 +39,24 @@
 
 :- implementation.
 
-:- import_module set, map, bimap, require, int, string, std_util, assoc_list.
-:- import_module bool.
-
 :- import_module vn_type, vn_table, vn_block, vn_order, vn_flush, vn_temploc. 
 :- import_module vn_cost, vn_debug, vn_util, vn_verify, vn_filter.
 :- import_module opt_debug, opt_util, peephole, labelopt.
 :- import_module globals, options, livemap, code_util.
 
+:- import_module map, bimap, require, int, string, std_util, assoc_list.
+:- import_module bool.
+
 	% We can't find out what variables are used by C code sequences,
 	% so we don't optimize any predicates containing them.
 
-value_number_main(Instrs0, Instrs) -->
+value_number_main(Instrs0, LayoutLabelSet, Instrs) -->
 	{ opt_util__get_prologue(Instrs0, ProcLabel,
 		LabelInstr, Comments, Instrs1) },
 	{ opt_util__new_label_no(Instrs1, 1000, N0) },
 	{ value_number__prepare_for_vn([LabelInstr | Instrs1], ProcLabel,
 		no, AllocSet, BreakSet, N0, N, Instrs2) },
-	{ labelopt__build_useset(Instrs2, UseSet) },
+	{ labelopt__build_useset(Instrs2, LayoutLabelSet, UseSet) },
 	{ livemap__build(Instrs2, MaybeLiveMap) },
 	(
 		{ MaybeLiveMap = yes(LiveMap) },

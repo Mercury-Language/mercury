@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -176,22 +176,22 @@ dead_proc_elim__initialize_base_gen_infos([], Queue, Queue, Needed, Needed).
 dead_proc_elim__initialize_base_gen_infos([BaseGenInfo | BaseGenInfos],
 		Queue0, Queue, Needed0, Needed) :-
 	BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName,
-		Arity, _Status, _Elim, _Procs),
+		Arity, _Status, _Elim, _Procs, _HldsDefn),
 	(
 		% XXX: We'd like to do this, but there are problems.
 		% status_is_exported(Status, yes)
 		%
 		% We need to do more thorough analysis of the
 		% reachability of the special predicates, in general,
-		% because using arg/3 allows us to get at base_type_info
-		% via the base_type_layout. The base_type_infos of
+		% because using arg/3 allows us to get at type_ctor_info
+		% via the type_ctor_layout. The type_ctor_infos of
 		% arguments of functors may have had their special preds
 		% eliminated, but they can still be called. In addition,
 		% it would be nice for pragma C code to have some
 		% support for using compiler generated data structures
 		% and preds, so that they aren't just eliminated.
 		%
-		% So presently, all base_type_infos will be treated
+		% So presently, all type_ctor_infos will be treated
 		% as exported, and hence no special preds will be
 		% eliminated.
 		semidet_succeed
@@ -322,7 +322,7 @@ dead_proc_elim__find_base_gen_info(ModuleName, TypeName, TypeArity,
 		[BaseGenInfo | BaseGenInfos], Refs) :-
 	(
 		BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName,
-			TypeArity, _Status, _Elim, Refs0)
+			TypeArity, _Status, _Elim, Refs0, _HldsDefn)
 	->
 		Refs = Refs0
 	;
@@ -477,7 +477,7 @@ dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
 			ConsId = code_addr_const(PredId, ProcId),
 			Entity = proc(PredId, ProcId)
 		;
-			ConsId = base_type_info_const(Module, TypeName, Arity),
+			ConsId = type_ctor_info_const(Module, TypeName, Arity),
 			Entity = base_gen_info(Module, TypeName, Arity)
 		)
 	->
@@ -626,7 +626,7 @@ dead_proc_elim__eliminate_base_gen_infos([BaseGenInfo0 | BaseGenInfos0], Needed,
 	dead_proc_elim__eliminate_base_gen_infos(BaseGenInfos0, Needed,	
 		BaseGenInfos1),
 	BaseGenInfo0 = base_gen_info(TypeId, ModuleName, TypeName,
-		Arity, Status, Elim0, Procs),
+		Arity, Status, Elim0, Procs, HldsDefn),
 	(
 		Entity = base_gen_info(ModuleName, TypeName, Arity),
 		map__search(Needed, Entity, _)
@@ -645,7 +645,8 @@ dead_proc_elim__eliminate_base_gen_infos([BaseGenInfo0 | BaseGenInfos0], Needed,
 			NumProcs = ProcsLength
 		),
 		NeuteredBaseGenInfo = base_gen_info(TypeId, ModuleName, 
-			TypeName, Arity, Status, yes(NumProcs), []),
+			TypeName, Arity, Status, yes(NumProcs), [],
+			HldsDefn),
 		BaseGenInfos = [NeuteredBaseGenInfo | BaseGenInfos1]
 	).
 
@@ -686,12 +687,37 @@ dead_pred_elim(ModuleInfo0, ModuleInfo) :-
 	list__foldl(dead_pred_elim_initialize, PredIds, 
 		DeadInfo0, DeadInfo1),
 	dead_pred_elim_analyze(DeadInfo1, DeadInfo),
-	DeadInfo = dead_pred_info(ModuleInfo1, _, _, NeededPreds, _),
+	DeadInfo = dead_pred_info(ModuleInfo1, _, _, NeededPreds2, _),
+
+	%
+	% If a predicate is not needed, predicates which were added in
+	% make_hlds.m to force type specialization are also not needed.
+	% Here we add in those which are needed.
+	%
+	module_info_type_spec_info(ModuleInfo1,
+		type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
+			SpecMap0, PragmaMap0)),
+	set__to_sorted_list(NeededPreds2, NeededPredList2),
+	list__foldl(
+	    lambda([NeededPred::in, AllPreds0::in, AllPreds::out] is det, (
+		( map__search(SpecMap0, NeededPred, NewNeededPreds) ->
+			set__insert_list(AllPreds0, NewNeededPreds, AllPreds)
+		;
+			AllPreds = AllPreds0
+		)
+	)), NeededPredList2, NeededPreds2, NeededPreds),
+	set__intersect(TypeSpecForcePreds0, NeededPreds, TypeSpecForcePreds),
+
+	module_info_set_type_spec_info(ModuleInfo1,
+		type_spec_info(TypeSpecProcs0, TypeSpecForcePreds, 
+			SpecMap0, PragmaMap0),
+		ModuleInfo2),
+
 	set__list_to_set(PredIds, PredIdSet),
 	set__difference(PredIdSet, NeededPreds, DeadPreds),
 	set__to_sorted_list(DeadPreds, DeadPredList),
 	list__foldl(module_info_remove_predicate, DeadPredList,
-		ModuleInfo1, ModuleInfo).
+		ModuleInfo2, ModuleInfo).
 
 :- pred dead_pred_elim_add_entity(entity::in, queue(pred_id)::in,
 	queue(pred_id)::out, set(pred_id)::in, set(pred_id)::out) is det.

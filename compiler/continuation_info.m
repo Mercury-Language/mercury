@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -8,10 +8,10 @@
 % Main author: trd.
 % Extensive modifications by zs.
 %
-% This file defines the continuation_info data structure, which the code
-% generator uses to collect information that will later be converted into
-% stack_layout tables for accurate garbage collection, for stack tracing,
-% execution tracing and perhaps other purposes.
+% This file defines the data structures the code generator uses to collect
+% information that will later be converted into layout tables for accurate
+% garbage collection, for stack tracing, execution tracing and perhaps
+% other purposes.
 %
 % Information is collected in several passes. 
 %
@@ -22,20 +22,26 @@
 %
 %	2 During code generation for the procedure, provided the option
 %	  trace_stack_layouts is set, we add layout information for labels
-%	  that represent trace ports to the code generator state.
+%	  that represent trace ports to the code generator state. If
+%	  agc_stack_layouts is set, we add layout information for the stack
+%	  label in each resumption point. And regardless of option settings,
+%	  we also generate layouts to be attached to any closures we create.
 %
 % 	3 After we finish generating code for a procedure, we record
 %	  all the static information about the procedure (some of which
 %	  is available only after code generation), together with the
 %	  info about internal labels accumulated in the code generator state,
-%	  in the continuation_info structure (which is part of HLDS).
+%	  in the global_data structure (which is part of HLDS).
 %
 % 	4 If agc_stack_layouts is set, we make a pass over the
 % 	  optimized code recorded in the final LLDS instructions.
 %	  In this pass, we collect information from call instructions
 %	  about the internal labels to which calls can return.
-%	  This info will also go straight into the continuation_info
+%	  This info will also go straight into the global_data
 %	  in the HLDS.
+%
+% This module defines the data structures used by all passes. It also
+% implements the whole of pass 4, and various fractions of the other passes.
 %
 % stack_layout.m converts the information collected in this module into
 % stack_layout tables.
@@ -47,16 +53,8 @@
 :- interface.
 
 :- import_module llds, hlds_module, hlds_pred, hlds_data, prog_data.
-:- import_module trace, globals.
-:- import_module set, map, list, std_util, bool.
-
-	%
-	% Information used by the continuation_info module.
-	% This is an abstract data type - when processing is finished
-	% use continuation_info__get_all_entries to retrieve the
-	% completed proc_layout_infos.
-	%
-:- type continuation_info.
+:- import_module (inst), instmap, trace, globals.
+:- import_module std_util, bool, list, assoc_list, set, map.
 
 	%
 	% Information for any procedure, includes information about the
@@ -169,102 +167,97 @@
 			live_value_type % info about the variable
 		).
 
-	% Return an initialized continuation info structure.
+:- type closure_layout_info
+	--->	closure_layout_info(
+			list(closure_arg_info),
+				% there is one closure_arg_info for each
+				% argument of the called procedure,
+				% even the args which are not in the closure
+			map(tvar, set(layout_locn))
+				% locations of polymorphic type vars,
+				% encoded so that rN refers to argument N
+		).
 
-:- pred continuation_info__init(continuation_info::out) is det.
+:- type closure_arg_info
+	--->	closure_arg_info(
+			type,	% The type of the argument.
+			(inst)	% The initial inst of the argument.
 
-	%
-	% Add all the information accumulated by the first three passes
-	% above for a single procedure.
-	%
-	% Takes the pred_proc_id, entry label, the number of stack slots,
-	% the determinism of the proc, the stack slot of the succip
-	% in this proc (if there is one), the label of the call event
-	% (if there is such an event), info about the tracing slots of this
-	% proc, a flag saying whether we definitely need a procedure id
-	% section in the procedure layout, as well as the layouts at all
-	% the trace event labels.
-	%
-:- pred continuation_info__add_proc_info(pred_proc_id::in, label::in,
-	int::in, determinism::in, maybe(int)::in, maybe(label)::in,
-	trace_slot_info::in, bool::in, proc_label_layout_info::in,
-	continuation_info::in, continuation_info::out) is det.
+				% It may be useful in the future to include
+				% info about the final insts and about
+				% the determinism. This would allow us
+				% to implement checked dynamic inst casts,
+				% which may be helpful for dynamic loading.
+				% It may also be useful for printing
+				% closures and for providing user-level
+				% RTTI access.
+		).
 
-	%
+:- type slot_contents 
+	--->	ticket			% a ticket (trail pointer)
+	;	ticket_counter		% a copy of the ticket counter
+	;	trace_data
+	;	sync_term		% a syncronization term used
+					% at the end of par_conjs.
+					% see par_conj_gen.m for details.
+	;	lval(lval).
+
 	% Call continuation_info__maybe_process_proc_llds on the code
 	% of every procedure in the list.
-	%
 :- pred continuation_info__maybe_process_llds(list(c_procedure)::in,
-	module_info::in, continuation_info::in, continuation_info::out) is det.
+	module_info::in, global_data::in, global_data::out) is det.
 
-	%
 	% Check whether this procedure ought to have any layout structures
-	% generated for it. If yes, then update the continuation_info to
+	% generated for it. If yes, then update the global_data to
 	% include all the continuation labels within a proc. Whether or not
 	% the information about a continuation label includes the variables
 	% live at that label depends on the values of options.
-	%
 :- pred continuation_info__maybe_process_proc_llds(list(instruction)::in,
 	pred_proc_id::in, module_info::in,
-	continuation_info::in, continuation_info::out) is det.
+	global_data::in, global_data::out) is det.
 
-	%
-	% Get the finished list of proc_layout_infos.
-	%
-:- pred continuation_info__get_all_proc_layouts(continuation_info::in,
-	list(proc_layout_info)::out) is det.
-
-	%
 	% Check whether the given procedure should have at least (a) a basic
 	% stack layout, and (b) a procedure id layout generated for it.
 	% The two bools returned answer these two questions respectively.
-	%
 :- pred continuation_info__basic_stack_layout_for_proc(pred_info::in,
 	globals::in, bool::out, bool::out) is det.
+
+	% Generate the layout information we need for the return point
+	% of a call.
+:- pred continuation_info__generate_return_live_lvalues(
+	assoc_list(prog_var, arg_loc)::in, instmap::in, inst_table::in,
+	list(prog_var)::in, map(prog_var, set(rval))::in,
+	assoc_list(lval, slot_contents)::in, proc_info::in,
+	globals::in, list(liveinfo)::out) is det.
+
+	% Generate the layout information we need for a resumption point,
+	% a label where forward execution can restart after backtracking.
+:- pred continuation_info__generate_resume_layout(
+	map(prog_var, set(val_or_ref))::in,
+	assoc_list(lval, slot_contents)::in, instmap::in, inst_table::in,
+	proc_info::in, layout_label_info::out) is det.
+
+	% Generate the layout information we need to include in a closure.
+:- pred continuation_info__generate_closure_layout(module_info::in,
+	pred_id::in, proc_id::in, closure_layout_info::out) is det.
+
+	% For each type variable in the given list, find out where the
+	% typeinfo var for that type variable is.
+:- pred continuation_info__find_typeinfos_for_tvars(list(tvar)::in,
+	map(prog_var, set(rval))::in, proc_info::in,
+	map(tvar, set(layout_locn))::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module options, type_util.
-:- import_module require.
-
-	% The continuation_info data structure
-:- type continuation_info	==	map(pred_proc_id, proc_layout_info).
+:- import_module hlds_goal, code_info, code_util, type_util, options.
+:- import_module string, require, varset, term.
 
 %-----------------------------------------------------------------------------%
 
 	% Exported predicates.
-
-	%
-	% Initialize the continuation_info
-	%
-
-continuation_info__init(ContInfo) :-
-	map__init(ContInfo).
-
-	%
-	% Add the info for this proc (a proc_layout_info) to the
-	% continuation_info. 
-	%
-continuation_info__add_proc_info(PredProcId, EntryLabel, StackSize,
-		Detism, SuccipLocation, MaybeTraceCallLabel, TraceSlotInfo,
-		ForceProcId, InternalMap, ContInfo0, ContInfo) :-
-	( map__contains(ContInfo0, PredProcId) ->
-		error("duplicate continuation_info for proc.")
-	;
-		LayoutInfo = proc_layout_info(EntryLabel, Detism, StackSize,
-			SuccipLocation, MaybeTraceCallLabel,
-			TraceSlotInfo, ForceProcId, InternalMap),
-		map__det_insert(ContInfo0, PredProcId, LayoutInfo, ContInfo)
-	).
-
-	%
-	% Get all the proc_layout_infos.
-	%
-continuation_info__get_all_proc_layouts(ContInfo, Entries) :-
-	map__values(ContInfo, Entries).
 
 continuation_info__maybe_process_llds([], _) --> [].
 continuation_info__maybe_process_llds([Proc | Procs], ModuleInfo) -->
@@ -290,17 +283,17 @@ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
 
 	%
 	% Process the list of instructions for this proc, adding
-	% all internal label information to the continuation_info.
+	% all internal label information to global_data.
 	%
 :- pred continuation_info__process_proc_llds(pred_proc_id::in,
 	list(instruction)::in, bool::in,
-	continuation_info::in, continuation_info::out) is det.
+	global_data::in, global_data::out) is det.
 
 continuation_info__process_proc_llds(PredProcId, Instructions,
-		WantReturnInfo, ContInfo0, ContInfo) :-
+		WantReturnInfo, GlobalData0, GlobalData) :-
 
 		% Get all the continuation info from the call instructions.
-	map__lookup(ContInfo0, PredProcId, ProcLayoutInfo0),
+	global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo0),
 	ProcLayoutInfo0 = proc_layout_info(A, B, C, D, E, F, G, Internals0),
 	GetCallLivevals = lambda([Instr::in, Pair::out] is semidet, (
 		Instr = call(_, label(Label), LiveInfo, _) - _Comment,
@@ -313,7 +306,8 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 		Calls, Internals0, Internals),
 
 	ProcLayoutInfo = proc_layout_info(A, B, C, D, E, F, G, Internals),
-	map__det_update(ContInfo0, PredProcId, ProcLayoutInfo, ContInfo).
+	global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo,
+		GlobalData).
 
 %-----------------------------------------------------------------------------%
 
@@ -421,5 +415,270 @@ continuation_info__some_arg_is_higher_order(PredInfo) :-
 		list__member(Type, ArgTypes),
 		type_is_higher_order(Type, _, _)
 	)).
+
+%-----------------------------------------------------------------------------%
+
+continuation_info__generate_return_live_lvalues(OutputArgLocs, InstTable,
+		ReturnInstMap, Vars, VarLocs, Temps, ProcInfo,
+		Globals, LiveLvalues) :-
+	globals__want_return_var_layouts(Globals, WantReturnVarLayout),
+	proc_info_stack_slots(ProcInfo, StackSlots),
+	continuation_info__find_return_var_lvals(Vars, StackSlots,
+		OutputArgLocs, VarLvals),
+	continuation_info__generate_var_live_lvalues(VarLvals, InstTable,
+		ReturnInstMap, VarLocs, ProcInfo,
+		WantReturnVarLayout, VarLiveLvalues),
+	continuation_info__generate_temp_live_lvalues(Temps, TempLiveLvalues),
+	list__append(VarLiveLvalues, TempLiveLvalues, LiveLvalues).
+
+:- pred continuation_info__find_return_var_lvals(list(prog_var)::in,
+	stack_slots::in, assoc_list(prog_var, arg_loc)::in,
+	assoc_list(prog_var, lval)::out) is det.
+
+continuation_info__find_return_var_lvals([], _, _, []).
+continuation_info__find_return_var_lvals([Var | Vars], StackSlots,
+		OutputArgLocs, [Var - Lval | VarLvals]) :-
+	( assoc_list__search(OutputArgLocs, Var, ArgLoc) ->
+		% On return, output arguments are in their registers.
+		code_util__arg_loc_to_register(ArgLoc, Lval)
+	;
+		% On return, other live variables are in their stack slots.
+		map__lookup(StackSlots, Var, Lval)
+	),
+	continuation_info__find_return_var_lvals(Vars, StackSlots,
+		OutputArgLocs, VarLvals).
+
+:- pred continuation_info__generate_temp_live_lvalues(
+	assoc_list(lval, slot_contents)::in, list(liveinfo)::out) is det.
+
+continuation_info__generate_temp_live_lvalues([], []).
+continuation_info__generate_temp_live_lvalues([Temp | Temps], [Live | Lives]) :-
+	Temp = Slot - Contents,
+	continuation_info__live_value_type(Contents, LiveLvalueType),
+	map__init(Empty),
+	Live = live_lvalue(direct(Slot), LiveLvalueType, Empty),
+	continuation_info__generate_temp_live_lvalues(Temps, Lives).
+
+:- pred continuation_info__generate_var_live_lvalues(
+	assoc_list(prog_var, lval)::in, instmap::in, inst_table::in,
+	map(prog_var, set(rval))::in, proc_info::in,
+	bool::in, list(liveinfo)::out) is det.
+
+continuation_info__generate_var_live_lvalues([], _, _, _, _, _, []).
+continuation_info__generate_var_live_lvalues([Var - Lval | VarLvals],
+		InstMap, InstTable, VarLocs, ProcInfo,
+		WantReturnVarLayout, [Live | Lives]) :-
+	( WantReturnVarLayout = yes ->
+		continuation_info__generate_layout_for_var(Var, InstMap,
+			InstTable, ProcInfo, LiveValueType, TypeVars),
+		continuation_info__find_typeinfos_for_tvars(TypeVars,
+			VarLocs, ProcInfo, TypeParams),
+		Live = live_lvalue(direct(Lval), LiveValueType, TypeParams)
+	;
+		map__init(Empty),
+		Live = live_lvalue(direct(Lval), unwanted, Empty)
+	),
+	continuation_info__generate_var_live_lvalues(VarLvals, InstMap,
+		InstTable, VarLocs, ProcInfo, WantReturnVarLayout, Lives).
+
+%---------------------------------------------------------------------------%
+
+continuation_info__generate_resume_layout(ResumeMap, Temps,
+		InstMap, InstTable, ProcInfo, Layout) :-
+	map__to_assoc_list(ResumeMap, ResumeList),
+	set__init(TVars0),
+	continuation_info__generate_resume_layout_for_vars(ResumeList,
+		InstMap, InstTable, ProcInfo, VarInfos, TVars0, TVars),
+	set__list_to_set(VarInfos, VarInfoSet),
+	set__to_sorted_list(TVars, TVarList),
+
+	% Typeinfos should never be passed by reference.
+	code_info__resume_map_to_variable_locations(ResumeMap, ResumeVarLocs),
+	continuation_info__find_typeinfos_for_tvars(TVarList, ResumeVarLocs,
+		ProcInfo, TVarInfoMap),
+	continuation_info__generate_temp_var_infos(Temps, TempInfos),
+	set__list_to_set(TempInfos, TempInfoSet),
+	set__union(VarInfoSet, TempInfoSet, AllInfoSet),
+	Layout = layout_label_info(AllInfoSet, TVarInfoMap).
+
+:- pred continuation_info__generate_resume_layout_for_vars(
+	assoc_list(prog_var, set(val_or_ref))::in, instmap::in, inst_table::in,
+	proc_info::in, list(var_info)::out,
+	set(tvar)::in, set(tvar)::out) is det.
+
+continuation_info__generate_resume_layout_for_vars([], _, _, _,
+		[], TVars, TVars).
+continuation_info__generate_resume_layout_for_vars([Var - RvalSet | VarRvals],
+		InstMap, InstTable, ProcInfo, [VarInfo | VarInfos],
+		TVars0, TVars) :-
+	continuation_info__generate_resume_layout_for_var(Var, RvalSet,
+		InstMap, InstTable, ProcInfo, VarInfo, TypeVars),
+	set__insert_list(TVars0, TypeVars, TVars1),
+	continuation_info__generate_resume_layout_for_vars(VarRvals,
+		InstMap, InstTable, ProcInfo, VarInfos, TVars1, TVars).
+
+:- pred continuation_info__generate_resume_layout_for_var(prog_var::in,
+	set(val_or_ref)::in, instmap::in, inst_table::in, proc_info::in,
+	var_info::out, list(tvar)::out) is det.
+
+continuation_info__generate_resume_layout_for_var(Var, ValOrRefSet, InstMap,
+		InstTable, ProcInfo, VarInfo, TypeVars) :-
+	set__to_sorted_list(ValOrRefSet, VarOrRefList),
+	( VarOrRefList = [ValOrRefPrime] ->
+		ValOrRef = ValOrRefPrime
+	;
+		error("var has more than one rval in stack resume map")
+	),
+	(
+		ValOrRef = value(Rval),
+		( Rval = lval(LvalPrime) ->
+			Lval = LvalPrime
+		;
+			error("var rval is not lval in stack resume map")
+		)
+	;
+		ValOrRef = reference(Lval)
+	),
+	continuation_info__generate_layout_for_var(Var, InstMap, InstTable,
+		ProcInfo, LiveValueType, TypeVars),
+	VarInfo = var_info(direct(Lval), LiveValueType).
+
+:- pred continuation_info__generate_temp_var_infos(
+	assoc_list(lval, slot_contents)::in, list(var_info)::out) is det.
+
+continuation_info__generate_temp_var_infos([], []).
+continuation_info__generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
+	Temp = Slot - Contents,
+	continuation_info__live_value_type(Contents, LiveLvalueType),
+	Live = var_info(direct(Slot), LiveLvalueType),
+	continuation_info__generate_temp_var_infos(Temps, Lives).
+
+%---------------------------------------------------------------------------%
+
+:- pred continuation_info__generate_layout_for_var(prog_var::in,
+	instmap::in, inst_table::in, proc_info::in,
+	live_value_type::out, list(tvar)::out) is det.
+
+continuation_info__generate_layout_for_var(Var, InstMap, InstTable, ProcInfo,
+		LiveValueType, TypeVars) :-
+	proc_info_varset(ProcInfo, VarSet),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	varset__lookup_name(VarSet, Var, "V_", Name),
+	instmap__lookup_var(InstMap, Var, Inst),
+	map__lookup(VarTypes, Var, Type),
+	LiveValueType = var(Var, Name, Type, qualified_inst(InstTable, Inst)),
+	type_util__vars(Type, TypeVars).
+
+%---------------------------------------------------------------------------%
+
+continuation_info__generate_closure_layout(ModuleInfo, PredId, ProcId,
+		ClosureLayout) :-
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_headvars(ProcInfo, HeadVars),
+	proc_info_arg_info(ProcInfo, ArgInfos),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
+	proc_info_inst_table(ProcInfo, InstTable),
+	map__init(VarLocs0),
+	set__init(TypeVars0),
+	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, VarArgInfos),
+	continuation_info__build_closure_info(VarArgInfos, ArgLayouts,
+		VarTypes, InstMap, InstTable, VarLocs0, VarLocs,
+		TypeVars0, TypeVars),
+	set__to_sorted_list(TypeVars, TypeVarsList),
+	continuation_info__find_typeinfos_for_tvars(TypeVarsList, VarLocs,
+		ProcInfo, TypeInfoDataMap),
+	ClosureLayout = closure_layout_info(ArgLayouts, TypeInfoDataMap).
+
+:- pred continuation_info__build_closure_info(
+	assoc_list(prog_var, arg_info)::in,  list(closure_arg_info)::out,
+	map(prog_var, type)::in, instmap::in, inst_table::in,
+	map(prog_var, set(rval))::in, map(prog_var, set(rval))::out,
+	set(tvar)::in, set(tvar)::out) is det.
+
+continuation_info__build_closure_info([], [], _, _, _, VarLocs, VarLocs,
+		TypeVars, TypeVars).
+continuation_info__build_closure_info([Var - ArgInfo | VarArgInfos],
+		[Layout | Layouts], VarTypes, InstMap, InstTable,
+		VarLocs0, VarLocs, TypeVars0, TypeVars) :-
+	ArgInfo = arg_info(ArgLoc, _ArgMode),
+	map__lookup(VarTypes, Var, Type),
+	instmap__lookup_var(InstMap, Var, Inst),
+	Layout = closure_arg_info(Type, Inst),
+	set__singleton_set(Locations, lval(reg(r, ArgLoc))),
+	map__det_insert(VarLocs0, Var, Locations, VarLocs1),
+	type_util__vars(Type, VarTypeVars),
+	set__insert_list(TypeVars0, VarTypeVars, TypeVars1),
+	continuation_info__build_closure_info(VarArgInfos, Layouts,
+		VarTypes, InstMap, InstTable, VarLocs1, VarLocs,
+		TypeVars1, TypeVars).
+
+%---------------------------------------------------------------------------%
+
+continuation_info__find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo,
+		TypeInfoDataMap) :-
+	proc_info_varset(ProcInfo, VarSet),
+	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
+	map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns),
+	FindLocn = lambda([TypeInfoLocn::in, Locns::out] is det, (
+		type_info_locn_var(TypeInfoLocn, TypeInfoVar),
+		(
+			map__search(VarLocs, TypeInfoVar, TypeInfoRvalSet)
+		->
+			ConvertRval = lambda([Locn::out] is nondet, (
+				set__member(Rval, TypeInfoRvalSet),
+				Rval = lval(Lval),
+				( 
+					TypeInfoLocn = typeclass_info(_,
+						FieldNum),
+					Locn = indirect(Lval, FieldNum)
+				;
+					TypeInfoLocn = type_info(_),
+					Locn = direct(Lval)
+				)
+			)),
+			solutions_set(ConvertRval, Locns)
+		;
+			varset__lookup_name(VarSet, TypeInfoVar,
+				VarString),
+			string__format("%s: %s %s",
+				[s("code_info__find_typeinfos_for_tvars"),
+				s("can't find lval for type_info var"),
+				s(VarString)], ErrStr),
+			error(ErrStr)
+		)
+	)),
+	list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
+	map__from_corresponding_lists(TypeVars, TypeInfoVarLocns,
+		TypeInfoDataMap).
+
+%-----------------------------------------------------------------------------%
+
+:- pred continuation_info__live_value_type(slot_contents::in,
+	live_value_type::out) is det.
+
+continuation_info__live_value_type(lval(succip), succip).
+continuation_info__live_value_type(lval(hp), hp).
+continuation_info__live_value_type(lval(maxfr), maxfr).
+continuation_info__live_value_type(lval(curfr), curfr).
+continuation_info__live_value_type(lval(succfr(_)), unwanted).
+continuation_info__live_value_type(lval(prevfr(_)), unwanted).
+continuation_info__live_value_type(lval(redofr(_)), unwanted).
+continuation_info__live_value_type(lval(redoip(_)), unwanted).
+continuation_info__live_value_type(lval(succip(_)), unwanted).
+continuation_info__live_value_type(lval(sp), unwanted).
+continuation_info__live_value_type(lval(lvar(_)), unwanted).
+continuation_info__live_value_type(lval(field(_, _, _)), unwanted).
+continuation_info__live_value_type(lval(temp(_, _)), unwanted).
+continuation_info__live_value_type(lval(reg(_, _)), unwanted).
+continuation_info__live_value_type(lval(stackvar(_)), unwanted).
+continuation_info__live_value_type(lval(framevar(_)), unwanted).
+continuation_info__live_value_type(lval(mem_ref(_)), unwanted).	% XXX
+continuation_info__live_value_type(ticket, unwanted). % XXX we may need to
+					% modify this, if the GC is going
+					% to garbage-collect the trail.
+continuation_info__live_value_type(ticket_counter, unwanted).
+continuation_info__live_value_type(sync_term, unwanted).
+continuation_info__live_value_type(trace_data, unwanted).
 
 %-----------------------------------------------------------------------------%

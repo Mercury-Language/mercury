@@ -1,11 +1,11 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
 % This module generates the LLDS code that defines global constants
-% to hold the `base_type_layout' and `base_type_functors' structures 
+% to hold the `type_ctor_layout' and `type_ctor_functors' structures 
 % of the types defined by the current module.
 %
 % It requires that type_infos are generated using the
@@ -24,7 +24,7 @@
 %
 %---------------------------------------------------------------------------%
 %
-% NOTE: If the representation of base_type_layouts changes, the
+% NOTE: If the representation of type_ctor_layouts changes, the
 % following modules must also be examined to see whether they need to
 % be updated. 
 %
@@ -38,7 +38,7 @@
 % 		mercury_deep_copy.{c,h}	- deep_copy
 %		mercury_table_any.c	- tabling
 % 		
-% Any module that uses base_type_layouts should register itself here.
+% Any module that uses type_ctor_layouts should register itself here.
 % Changes can by minimized by using the macros in type_info.h.
 %
 %---------------------------------------------------------------------------%
@@ -73,16 +73,16 @@
 % 					  vector.
 %
 % enum vector:
-%	- 1 or 0 (1 = enumeration, 0 = complicated constant)
+%	- 1 or 0 (1 = enumeration, 0 = shared local)
 %	- S, the number of constants sharing this tag
 %	- S strings (functor names)
 %
 % Note that tag 0 value 0 is presently unassigned. This may be used
 % in future for some common case optimization.
 %
-% Tag 1 - 	SIMPLE  Word = pointer to simple vector
+% Tag 1 - 	UNSHARED  Word = pointer to functor descriptor
 %
-% SIMPLE: Simple vector contains 
+% UNSHARED: Functor descriptor contains 
 % 	  - the arity of the functor (N)
 % 	  - N pointers to pseudo-typeinfos (of each argument),
 % 	  - a pointer to a string containing the name of this
@@ -100,17 +100,17 @@
 %         No further indexing is required. The data word points to a
 %         vector of its argument data.
 %
-% Tag 2 - 	COMPLIC Word = pointer to multiple argument vector
+% Tag 2 - 	SHARED Word = pointer to functor descriptor vector
 %
-% COMPLIC: Multi-argument vector contains F, the number of sharing
-% 	   functors, then F pointers to argument vectors. Data word
-% 	   contains a pointer to a secondary tag word, then argument
-% 	   data. Use the secondary tag to index into the F argument
-% 	   pointers, which point to an argument vector just as in
-% 	   SIMPLE above. 
+% SHARED:  Multi-argument vector contains F, the number of sharing
+% 	   functors, then F pointers to functor descriptors.
+%	   Data word contains a pointer to a secondary tag word, then
+%	   argument data. Use the secondary tag to index into the F
+%	   argument pointers, which point to a functors descriptors just
+%	   as in UNSHARED above. 
 %
 % Tag 3 - 	VAR/EQ  Word = type variable number, or pointer to 
-% 		 		indicator, equivalent base_type_info
+% 		 		indicator, equivalent type_ctor_info
 % 		 		and maybe functor.
 %
 % VAR/EQ:  There are 3 cases covered by this tag, all of them forms
@@ -134,8 +134,7 @@
 %	   the same as an equivalence - the data word has a type
 %	   given by the pseudo-typeinfo (it might be worth taking
 %	   advantage of the fact that the vector for a no_tag type
-%	   is exactly the same vector that a simple tag type would
-%	   have - one argument, type of argument, functor).
+%	   is exactly the same as a functors descriptor).
 %
 % 	   In any case, you need to look at the equivalent type
 % 	   to find out what the data word represents.
@@ -162,9 +161,9 @@
 %
 % Data representation: Functors Tables
 %
-% base_type_functors tables are generated, one for each type. These
+% type_ctor_functors tables are generated, one for each type. These
 % contain information about the functors of discriminated union (du)
-% types. The same information is available in the base_type_layouts, but
+% types. The same information is available in the type_ctor_layouts, but
 % is quite difficult to obtain, because the functors tables are designed
 % for easy indexing via primary and secondary tag. 
 %
@@ -174,11 +173,11 @@
 % For discriminated unions, the tables contain:
 % 	- disc. union indicator
 % 	- number of functors this type has
-% 	- vector of pointers to a simple vector, one for each functor
+% 	- vector of pointers to functor descriptors, one for each functor
 %
 % For no_tag types, the tables contain:
 % 	- no_tag indicator
-% 	- pointers to a simple vector, for the functor
+% 	- pointers to a functor descriptor, for the functor
 %
 % For enumerations, the tables contain:
 % 	- enumeration indicator
@@ -193,22 +192,22 @@
 %
 % Note: Future Work
 %
-% 	Because the indicator in the base_type_functors duplicates
-% 	information present in the base_type_layouts, it would be good
-% 	to simplify the encoding of base_type_layouts by removing the
+% 	Because the indicator in the type_ctor_functors duplicates
+% 	information present in the type_ctor_layouts, it would be good
+% 	to simplify the encoding of type_ctor_layouts by removing the
 % 	redundant information. For example:
 % 	
 % 	- You don't need any information about equivalences,
-% 	  no_tag types, or enumerations in the base_type_layouts,
+% 	  no_tag types, or enumerations in the type_ctor_layouts,
 % 	  since the same information is already in the 
-% 	  base_type_functors.
+% 	  type_ctor_functors.
 % 	- If you add a little more information about specials
-% 	  to the base_type_functors, you would no longer need the
+% 	  to the type_ctor_functors, you would no longer need the
 % 	  information in the layout tables (eg, is it an int, a float,
 % 	  etc).
 %
 % 	This means the only information needed in the layout tables is
-% 	the simple and complicated tag meanings for discriminated unions
+% 	the unshared and shared tag meanings for discriminated unions
 % 	that don't fall into any of the above categories (not no_tag and
 % 	not enum). In addition, the code for testing which category a 
 % 	particular type belongs to could be greatly simplified.
@@ -228,11 +227,14 @@
 		list(comp_gen_c_data)).
 :- mode base_type_layout__generate_llds(in, out, out) is det.
 
-	% stack_layout.m uses this.
+	% Given a Mercury type, this predicate returns an rval giving the
+	% pseudo type info for that type, plus the llds_type of that rval.
 	% The int arguments are label numbers for generating `create' rvals
 	% with.
-:- pred base_type_layout__construct_pseudo_type_info(type, rval, int, int).
-:- mode base_type_layout__construct_pseudo_type_info(in, out, in, out) is det.
+:- pred base_type_layout__construct_typed_pseudo_type_info(type,
+	rval, llds_type, int, int).
+:- mode base_type_layout__construct_typed_pseudo_type_info(in,
+	out, out, in, out) is det.
 
 :- implementation.
 
@@ -251,9 +253,9 @@
 		list(comp_gen_c_data)	% generated data
 	).
 
-:- type tag_category	--->	simple 		% tagged pointer
-			; 	complicated 	% shared tagged pointer
-			;	comp_const	% shared constants
+:- type tag_category	--->	unshared 	% tagged pointer
+			; 	shared_remote 	% shared tagged pointer
+			;	shared_local	% shared constants
 			; 	no_tag 		% special case of equivalence 
 			; 	unused.		% unused tag
 
@@ -309,7 +311,7 @@ base_type_layout__gen_base_gen_layouts([TypeId | TypeIds], TypeTable,
 
 		SymName = unqualified(TypeName),
 		string__append_list(["unqualified type ", TypeName,
-			"found in base_type_layout"], Msg),
+			"found in type_ctor_layout"], Msg),
 		error(Msg)
 	).
 
@@ -352,7 +354,7 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 	hlds_data__get_type_defn_body(HldsType, TypeBody),
 	(
 		TypeBody = uu_type(_Alts),
-		error("base_type_layout: sorry, undiscriminated union unimplemented\n")
+		error("type_ctor_layout: sorry, undiscriminated union unimplemented\n")
 	;
 		TypeBody = eqv_type(Type),
 		base_type_layout__layout_eqv(Type, LayoutInfo1, 
@@ -368,8 +370,8 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 		TypeBody = du_type(Ctors, ConsTagMap, Enum, _EqualityPred),
 
 			% sort list on tags, so that 
-			% enums, complicated constants and
-			% complicated tags have their shared
+			% enums, shared local tag and
+			% shared remote tags have their shared
 			% functors in the right order.
 		map__to_assoc_list(ConsTagMap, UnsortedConsTags),
 		assoc_list__reverse_members(UnsortedConsTags, RevConsList),
@@ -404,11 +406,11 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 	),	
 
 	%
-	% Note: base_type_layouts and base_type_functors are never exported,
-	% because they should only be accessed via the base_type_info in
+	% Note: type_ctor_layouts and type_ctor_functors are never exported,
+	% because they should only be accessed via the type_ctor_info in
 	% the same module.
-	% Accesses to the base_type_layout for a type exported from a
-	% different module should be done via that type's base_type_info,
+	% Accesses to the type_ctor_layout for a type exported from a
+	% different module should be done via that type's type_ctor_info,
 	% which will be exported if the type was exported/abstract_exported.
 	%
 	Exported = no,
@@ -419,12 +421,12 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 	->
 		LayoutInfo5 = LayoutInfo3
 	;
-		LayoutDataName = base_type(layout, TypeName, TypeArity),
+		LayoutDataName = type_ctor(layout, TypeName, TypeArity),
 		LayoutCData = comp_gen_c_data(ModuleName, LayoutDataName,
-			Exported, LayoutTypeData, []),
-		FunctorsDataName = base_type(functors, TypeName, TypeArity),
+			Exported, LayoutTypeData, uniform(no), []),
+		FunctorsDataName = type_ctor(functors, TypeName, TypeArity),
 		FunctorsCData = comp_gen_c_data(ModuleName, FunctorsDataName,
-			Exported, FunctorsTypeData, []),
+			Exported, FunctorsTypeData, uniform(no), []),
 		base_type_layout__add_c_data(LayoutInfo3, LayoutCData, 
 			LayoutInfo4),
 		base_type_layout__add_c_data(LayoutInfo4, FunctorsCData, 
@@ -478,9 +480,9 @@ base_type_layout__max_varint(1024).
 	% Tag values
 	
 :- pred base_type_layout__tag_value(tag_category::in, int::out) is det.
-base_type_layout__tag_value(comp_const, 0).
-base_type_layout__tag_value(simple, 1).
-base_type_layout__tag_value(complicated, 2).
+base_type_layout__tag_value(shared_local, 0).
+base_type_layout__tag_value(unshared, 1).
+base_type_layout__tag_value(shared_remote, 2).
 base_type_layout__tag_value(no_tag, 3).
 base_type_layout__tag_value(unused, 0).
 
@@ -490,7 +492,7 @@ base_type_layout__tag_value_const(0).
 :- pred base_type_layout__tag_value_equiv(int::out) is det.
 base_type_layout__tag_value_equiv(3).
 
-	% Constants for base_type_functors
+	% Constants for type_ctor_functors
 
 :- type functors_category 	--->	du
 				;	enum
@@ -530,23 +532,23 @@ base_type_layout__encode_mkword(LayoutInfo, Tag, Rval, Rvals) :-
 	% containing the tag and one containing the pointer.
 	
 :- pred base_type_layout__encode_create(layout_info, int, list(maybe(rval)),
-		bool, int, list(maybe(rval))).
+	static_or_dynamic, int, list(maybe(rval))).
 :- mode base_type_layout__encode_create(in, in, in, in, in, out) is det.
-base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, Unique, CellNumber, 
+base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, StatDyn, CellNumber, 
 		Rvals) :-
 	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
 	(
 		MaxTags < 4
 	->
 		Rvals = [yes(const(int_const(Tag))), 
-			yes(create(0, Rvals0, Unique, CellNumber,
-				"type_layout"))]
+			yes(create(0, Rvals0, uniform(no), StatDyn,
+				CellNumber, "type_layout"))]
 	;
-		Rvals = [yes(create(Tag, Rvals0, Unique, CellNumber,
-			"type_layout"))]
+		Rvals = [yes(create(Tag, Rvals0, uniform(no), StatDyn,
+			CellNumber, "type_layout"))]
 	).
 
-	% Encode a cons tag (simple or complicated) in rvals.
+	% Encode a cons tag (unshared or shared) in rvals.
 
 :- pred base_type_layout__encode_cons_tag(cons_tag, list(maybe(rval)), 
 	layout_info, layout_info).
@@ -554,20 +556,20 @@ base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, Unique, CellNumber,
 base_type_layout__encode_cons_tag(ConsTag, ConsTagRval, LayoutInfo, 
 		LayoutInfo) :-
 	( 
-		ConsTag = simple_tag(Tag0) 
+		ConsTag = unshared_tag(Tag0) 
 	->
 		SecTag = 0, Tag = Tag0
 	; 
-		ConsTag = complicated_tag(Tag0, SecTag0) 
+		ConsTag = shared_remote_tag(Tag0, SecTag0) 
 	->
 		SecTag = SecTag0, Tag = Tag0
 	;
-		ConsTag = complicated_constant_tag(Tag0, SecTag0) 
+		ConsTag = shared_local_tag(Tag0, SecTag0) 
 	->
 		SecTag = SecTag0, Tag = Tag0
 	; 
 		error(
-		"base_type_layout: cons_tag not simple or complicated in du")
+		"type_ctor_layout: cons_tag not shared or unshared in du")
 	),
 	base_type_layout__encode_mkword(LayoutInfo, Tag, 
 		const(int_const(SecTag)), ConsTagRval).
@@ -600,13 +602,13 @@ base_type_layout__layout_special(_ConsId - ConsTag, LayoutInfo,
 			const(int_const(Value)), Rval)
 	;
 		ConsTag = pred_closure_tag(_, _),
-		error("base_type_layout: Unexpected tag - pred_closure_tag/2")
+		error("type_ctor_layout: Unexpected tag - pred_closure_tag/2")
 	;
 		ConsTag = code_addr_constant(_, _),
-		error("base_type_layout: Unexpected constant - code_addr_constant/2")
+		error("type_ctor_layout: Unexpected constant - code_addr_constant/2")
 	;
-		ConsTag = base_type_info_constant(_, _, _),
-		error("base_type_layout: Unexpected constant - base_type_into_constant/3")
+		ConsTag = type_ctor_info_constant(_, _, _),
+		error("type_ctor_layout: Unexpected constant - type_ctor_info_constant/3")
 	),
 	list__duplicate(MaxTags, Rval, RvalsList),
 	list__condense(RvalsList, Rvals).
@@ -629,7 +631,7 @@ base_type_layout__layout_enum(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 		LayoutInfo),
 	base_type_layout__tag_value_const(Tag),
 	base_type_layout__encode_create(LayoutInfo, Tag, 
-		VectorRvals, no, NextCellNumber, Rval),
+		VectorRvals, must_be_static, NextCellNumber, Rval),
 
 		% Duplicate it MaxTags times.
 	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
@@ -651,7 +653,7 @@ base_type_layout__layout_enum_vector(ConsList, Rvals) :-
 			unqualify_name(SymName, CtorName),
 			CtorRval = yes(const(string_const(CtorName)))
 		    ;
-			error("base_type_layout: constant has no constructor")
+			error("type_ctor_layout: constant has no constructor")
 		    )
 		)),
 		ConsList, CtorNameRvals),
@@ -680,7 +682,7 @@ base_type_layout__layout_no_tag(SymName, Type, LayoutInfo0,
 	base_type_layout__tag_value_equiv(Tag),
 
 	base_type_layout__encode_create(LayoutInfo, Tag, 
-			VectorRvals, no, NextCellNumber, Rval),
+			VectorRvals, must_be_static, NextCellNumber, Rval),
 
 	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
 	list__duplicate(MaxTags, Rval, RvalsList),
@@ -715,7 +717,7 @@ base_type_layout__layout_no_tag_vector(SymName, Type, LayoutInfo0,
 		% since it's a no_tag, we'll give it a tag value of 0
 		% to be consistent, but this doesn't really have any
 		% meaning.
-	base_type_layout__encode_cons_tag(simple_tag(0), ConsTagRvals, 
+	base_type_layout__encode_cons_tag(unshared_tag(0), ConsTagRvals, 
 		LayoutInfo1, LayoutInfo),
 
 	Rvals = [Rval0, Rval1, Rval2 | ConsTagRvals].
@@ -751,7 +753,8 @@ base_type_layout__layout_eqv(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 		base_type_layout__get_next_cell_number(NextCellNumber, 
 			LayoutInfo1, LayoutInfo),
 		base_type_layout__encode_create(LayoutInfo, Tag, 
-			[IndicatorRval, Rval0], no, NextCellNumber, Rval)
+			[IndicatorRval, Rval0], must_be_static,
+			NextCellNumber, Rval)
 	),
 	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
 	list__duplicate(MaxTags, Rval, RvalsList),
@@ -760,7 +763,7 @@ base_type_layout__layout_eqv(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 
 	% For discriminated unions:
 	%
-	% Mixture of simple, complicated and complicated_constant
+	% Mixture of unshared, shared_local and shared_remote
 	% tags. For each primary tag value, we have a word that
 	% describes what it represents. The list of words will
 	% form an array that can be indexed by primary tag.
@@ -769,7 +772,7 @@ base_type_layout__layout_eqv(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 	layout_info, layout_info, list(maybe(rval))).
 :- mode base_type_layout__layout_du(in, in, out, out) is det.
 base_type_layout__layout_du([], _, _, []) :-
-	error("base_type_layout: type with no cons_tag information").
+	error("type_ctor_layout: type with no cons_tag information").
 base_type_layout__layout_du(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 	ConsList = [ConsPair | _],
 	base_type_layout__get_max_tags(LayoutInfo0, MaxTags),
@@ -798,24 +801,24 @@ base_type_layout__generate_rvals([], LayoutInfo, LayoutInfo, Rvals, Rvals).
 base_type_layout__generate_rvals([Tag - ConsList | Rest], LayoutInfo0,
 		LayoutInfo, Rvals0, Rvals) :-
 	(
-		Tag = simple,
-		base_type_layout__handle_simple(ConsList, LayoutInfo0, 
+		Tag = unshared,
+		base_type_layout__handle_unshared(ConsList, LayoutInfo0, 
 			LayoutInfo1, Rval),
 		list__append(Rval, Rvals0, Rvals1)
 	;
-		Tag = complicated,
-		base_type_layout__handle_complicated(ConsList, LayoutInfo0, 
+		Tag = shared_remote,
+		base_type_layout__handle_shared_remote(ConsList, LayoutInfo0, 
 			LayoutInfo1, Rval),
 		list__append(Rval, Rvals0, Rvals1)
 
 	;
-		Tag = comp_const,
-		base_type_layout__handle_comp_const(ConsList, LayoutInfo0, 
+		Tag = shared_local,
+		base_type_layout__handle_shared_local(ConsList, LayoutInfo0, 
 			LayoutInfo1, Rval),
 		list__append(Rval, Rvals0, Rvals1)
 	;
 		Tag = no_tag,
-		error("base_type_layout: unexpected no_tag")
+		error("type_ctor_layout: unexpected no_tag")
 	;
 		Tag = unused,
 		LayoutInfo1 = LayoutInfo0,
@@ -829,20 +832,21 @@ base_type_layout__generate_rvals([Tag - ConsList | Rest], LayoutInfo0,
 		Rvals1, Rvals).
 
 
-	% For complicated constants:
+	% For shared local tags:
 	%
 	% tag is 0, rest of word is pointer to 
 	% 	- enum indicator (no, this isn't an enum)
 	% 	- S, the number of constants sharing this tag 
 	% 	- S strings of constant names
 
-:- pred base_type_layout__handle_comp_const(list(pair(cons_id, cons_tag)), 
+:- pred base_type_layout__handle_shared_local(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
-:- mode base_type_layout__handle_comp_const(in, in, out, out) is det.
+:- mode base_type_layout__handle_shared_local(in, in, out, out) is det.
 
-base_type_layout__handle_comp_const([], _, _, _) :-
-	error("base_type_layout: no constructors for complicated constant tag").
-base_type_layout__handle_comp_const([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
+base_type_layout__handle_shared_local([], _, _, _) :-
+	error("type_ctor_layout: no constructors for shared local tag").
+base_type_layout__handle_shared_local([C | Cs], LayoutInfo0, LayoutInfo,
+		Rval) :-
 	list__length([C | Cs], NumCtors), 		% Number of sharers
 	Rval1 = yes(const(int_const(NumCtors))),
 
@@ -855,55 +859,55 @@ base_type_layout__handle_comp_const([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
 			unqualify_name(SymName, CtorName),
 			CtorRval = yes(const(string_const(CtorName)))
 		;
-			error("base_type_layout: constant has no constructor")
+			error("type_ctor_layout: constant has no constructor")
 		))),
 	    [C | Cs], CtorNameRvals),
 
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo0,
 		LayoutInfo),
-	base_type_layout__tag_value(comp_const, Tag),
+	base_type_layout__tag_value(shared_local, Tag),
 	base_type_layout__encode_create(LayoutInfo, Tag, 
-		[Rval0, Rval1 | CtorNameRvals], no, NextCellNumber, Rval).
+		[Rval0, Rval1 | CtorNameRvals], must_be_static,
+		NextCellNumber, Rval).
 
-
-	% For simple tags:
+	% For unshared tags:
 	%
-	% Tag 1, with a pointer to a simple vector.
+	% Tag 1, with a pointer to a functor descriptor
 
-:- pred base_type_layout__handle_simple(list(pair(cons_id, cons_tag)), 
+:- pred base_type_layout__handle_unshared(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
-:- mode base_type_layout__handle_simple(in, in, out, out) is det.
+:- mode base_type_layout__handle_unshared(in, in, out, out) is det.
 
-base_type_layout__handle_simple(ConsList, LayoutInfo0, LayoutInfo, Rval) :-
-	base_type_layout__simple_vector(ConsList, LayoutInfo0, LayoutInfo1,
+base_type_layout__handle_unshared(ConsList, LayoutInfo0, LayoutInfo, Rval) :-
+	base_type_layout__functor_descriptor(ConsList, LayoutInfo0, LayoutInfo1,
 		EndRvals),
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo1,
 		LayoutInfo),
-	base_type_layout__tag_value(simple, Tag),
-	base_type_layout__encode_create(LayoutInfo, Tag, EndRvals, no, 
-		NextCellNumber, Rval).
+	base_type_layout__tag_value(unshared, Tag),
+	base_type_layout__encode_create(LayoutInfo, Tag, EndRvals,
+		must_be_static, NextCellNumber, Rval).
 
-	% Create a simple vector.
+	% Create a functor descriptor.
 	%
 	%	N - the arity of this functor 
 	%	N pseudo-typeinfos (of the arguments)
 	%	- a string constant (the name of the functor)
 	%	- tag information
 
-:- pred base_type_layout__simple_vector(list(pair(cons_id, cons_tag)), 
+:- pred base_type_layout__functor_descriptor(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
-:- mode base_type_layout__simple_vector(in, in, out, out) is det.
+:- mode base_type_layout__functor_descriptor(in, in, out, out) is det.
 
-base_type_layout__simple_vector([], _, _, _) :-
-	error("base_type_layout: no constructors for simple tag").
-base_type_layout__simple_vector([ConsId - ConsTag | _], LayoutInfo0, 
+base_type_layout__functor_descriptor([], _, _, _) :-
+	error("type_ctor_layout: no constructors for unshared tag").
+base_type_layout__functor_descriptor([ConsId - ConsTag | _], LayoutInfo0, 
 		LayoutInfo, EndRvals) :-
 	( 
 		ConsId = cons(SymName, _Arity)
 	->
 		unqualify_name(SymName, ConsString)
 	;
-		error("base_type_layout: simple tag with no constructor")
+		error("type_ctor_layout: unshared tag with no constructor")
 	),
 	base_type_layout__get_cons_args(LayoutInfo0, ConsId, ConsArgs),
 	list__length(ConsArgs, NumArgs),
@@ -916,20 +920,20 @@ base_type_layout__simple_vector([ConsId - ConsTag | _], LayoutInfo0,
 		EndRvals).
 
 
-	% For complicated tags:
+	% For shared remote tags:
 	%
 	% Tag 2, with a pointer to an array containing:
 	% 	F - the number of functors sharing this tag
-	% 	F pointers to vectors, with the same info as
-	% 		a functor with a simple tag.
+	% 	F pointers to functor descriptors
 
-:- pred base_type_layout__handle_complicated(list(pair(cons_id, cons_tag)), 
+:- pred base_type_layout__handle_shared_remote(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
-:- mode base_type_layout__handle_complicated(in, in, out, out) is det.
+:- mode base_type_layout__handle_shared_remote(in, in, out, out) is det.
 
-base_type_layout__handle_complicated([], _, _, _) :-
-	error("base_type_layout: no constructors for complicated tag").
-base_type_layout__handle_complicated([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
+base_type_layout__handle_shared_remote([], _, _, _) :-
+	error("type_ctor_layout: no constructors for shared remote tag").
+base_type_layout__handle_shared_remote([C | Cs], LayoutInfo0, LayoutInfo,
+		Rval) :-
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo0,
 		LayoutInfo1),
 
@@ -938,11 +942,11 @@ base_type_layout__handle_complicated([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
 	NumSharersRval = yes(const(int_const(NumCtors))),
 
 		% Create rvals for sharers
-		% (just like a lot of simples)
+		% (just like a series of unshared tags)
 	list__foldr(
 		lambda([Cons::in, Acc::in, NewAcc::out] is det, (
 			Acc = Rvals0 - LayoutInfoA,
-			base_type_layout__handle_simple([Cons], LayoutInfoA,
+			base_type_layout__handle_unshared([Cons], LayoutInfoA,
 				LayoutInfoB, Rval1),
 			list__append(Rval1, Rvals0, Rvals1),
 			NewAcc = Rvals1 - LayoutInfoB)),
@@ -950,16 +954,17 @@ base_type_layout__handle_complicated([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
 		[] - LayoutInfo1, 
 		SharedRvals - LayoutInfo),
 
-	base_type_layout__tag_value(complicated, Tag),
+	base_type_layout__tag_value(shared_remote, Tag),
 	base_type_layout__encode_create(LayoutInfo, Tag, 
-		[NumSharersRval | SharedRvals], no, NextCellNumber, Rval).
+		[NumSharersRval | SharedRvals], must_be_static,
+		NextCellNumber, Rval).
 
 %---------------------------------------------------------------------------%
 
-	% Code to create the contents of base_type_functors.
+	% Code to create the contents of type_ctor_functors.
 
 
-	% base_type_functors of an equivalence type:
+	% type_ctor_functors of an equivalence type:
 	%
 	% - equivalence indicator
 	% - pointer to equivalent pseudo_type_info
@@ -977,7 +982,7 @@ base_type_layout__functors_eqv(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 	EqvRval = yes(const(int_const(EqvIndicator))),
 	Rvals = [EqvRval, Rvals0].
 
-	% base_type_functors of an enumeration:
+	% type_ctor_functors of an enumeration:
 	%
 	% - enumeration indicator
 	% - pointer to enumeration vector
@@ -996,16 +1001,14 @@ base_type_layout__functors_enum(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 		LayoutInfo),
 	base_type_layout__functors_value(enum, EnumIndicator),
 	EnumRval = yes(const(int_const(EnumIndicator))),
-	CreateRval = yes(create(0, VectorRvals, no, NextCellNumber,
-		"type_layout")),
+	CreateRval = yes(create(0, VectorRvals, uniform(no), must_be_static,
+		NextCellNumber, "type_layout")),
 	Rvals = [EnumRval, CreateRval].
 
-	% base_type_functors of a no_tag:
+	% type_ctor_functors of a no_tag:
 	%
 	% - no_tag indicator
-	% - pointer to simple vector (same as for simple tag functors
-	% 			in base_type_layouts).
-	% (the simple vector describes the functor).
+	% - pointer to functor descriptor
 
 :- pred base_type_layout__functors_no_tag(sym_name, type, layout_info, 
 		layout_info, list(maybe(rval))).
@@ -1018,21 +1021,19 @@ base_type_layout__functors_no_tag(SymName, Type, LayoutInfo0,
 
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo1,
 		LayoutInfo),
-	CreateRval = yes(create(0, VectorRvals, no, NextCellNumber,
-		"type_layout")),
+	CreateRval = yes(create(0, VectorRvals, uniform(no), must_be_static,
+		NextCellNumber, "type_layout")),
 
 	base_type_layout__functors_value(no_tag, NoTagIndicator),
 	NoTagRval = yes(const(int_const(NoTagIndicator))),
 
 	Rvals = [NoTagRval, CreateRval].
 
-	% base_type_functors of a du:
+	% type_ctor_functors of a du:
 	%
 	% - du indicator
 	% - number of functors
-	% - vector of pointers to simple vector (same as for simple tag 
-	% 			functors in base_type_layouts).
-	% (each simple vector describes a functor).
+	% - vector of pointers to functor descriptor 
 
 :- pred base_type_layout__functors_du(assoc_list(cons_id, cons_tag), 
 	layout_info, layout_info, list(maybe(rval))).
@@ -1045,18 +1046,19 @@ base_type_layout__functors_du(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 	list__foldr(
 		lambda([ConsPair::in, Acc::in, NewAcc::out] is det, (
 			Acc = Rvals0 - LayoutInfoA,
-			base_type_layout__simple_vector([ConsPair], LayoutInfoA,
-				LayoutInfoB, VectorRvalList),
+			base_type_layout__functor_descriptor([ConsPair],
+				LayoutInfoA, LayoutInfoB, VectorRvalList),
 			base_type_layout__get_next_cell_number(NextCellNumber,
 				LayoutInfoB, LayoutInfoC),
-			VectorRval = yes(create(0, VectorRvalList, no, 
-				NextCellNumber, "type_layout")),
+			VectorRval = yes(create(0, VectorRvalList, uniform(no),
+				must_be_static, NextCellNumber,
+				"type_layout")),
 			Rvals1 = [VectorRval | Rvals0],
 			NewAcc = Rvals1 - LayoutInfoC)),
 		ConsList, [] - LayoutInfo0, VectorRvals - LayoutInfo),
 	Rvals = [DuIndicatorRval, LengthRval | VectorRvals].
 
-	% base_type_functors of a special:
+	% type_ctor_functors of a special:
 	%
 	% - special indicator
 	
@@ -1082,12 +1084,19 @@ base_type_layout__functors_special(_ConsId - ConsTag, Rvals) :-
 base_type_layout__generate_pseudo_type_info(Type, yes(Rval), LayoutInfo0, 
 		LayoutInfo) :-
 	base_type_layout__get_cell_number(LayoutInfo0, CellNumber0),
-	base_type_layout__construct_pseudo_type_info(Type, Rval, 
+	base_type_layout__construct_pseudo_type_info(Type, Rval,
 		CellNumber0, CellNumber),
 	base_type_layout__set_cell_number(CellNumber, LayoutInfo0, LayoutInfo).
 
+:- pred base_type_layout__construct_pseudo_type_info(type, rval, int, int).
+:- mode base_type_layout__construct_pseudo_type_info(in, out, in, out) is det.
 
 base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
+	base_type_layout__construct_typed_pseudo_type_info(Type, Pseudo, _,
+		CNum0, CNum).
+
+base_type_layout__construct_typed_pseudo_type_info(Type, Pseudo, LldsType,
+		CNum0, CNum) :-
 	(
 		type_to_type_id(Type, TypeId, TypeArgs0)
 	->
@@ -1106,7 +1115,7 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 		),
 		( 
 			% For higher order types: they all refer to the
-			% defined pred_0 base_type_info, have an extra
+			% defined pred_0 type_ctor_info, have an extra
 			% argument for their real arity, and then type
 			% arguments according to their types. 
 			% polymorphism.m has a detailed explanation.
@@ -1126,7 +1135,8 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 			RealArityArg = []
 		),
 		Pseudo0 = yes(const(data_addr_const(data_addr(TypeModule,
-			base_type(info, TypeName, Arity))))),
+			type_ctor(info, TypeName, Arity))))),
+		LldsType = data_ptr,
 		CNum1 = CNum0 + 1,
 
 			% generate args, but remove one level of create()s.
@@ -1137,19 +1147,20 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 
 		list__append(RealArityArg, PseudoArgs1, PseudoArgs),
 
-		Pseudo = create(0, [Pseudo0 | PseudoArgs], no, 
-			CNum0, "type_layout")
+		Pseudo = create(0, [Pseudo0 | PseudoArgs], uniform(no),
+			must_be_static, CNum0, "type_layout")
 	;
 		type_util__var(Type, Var)
 	->
 		term__var_to_int(Var, VarInt),
 		base_type_layout__max_varint(MaxVarInt),
 		require(VarInt < MaxVarInt, 
-			"base_type_layout: type variable representation exceeds limit"),
+			"type_ctor_layout: type variable representation exceeds limit"),
 		Pseudo = const(int_const(VarInt)),
+		LldsType = integer,
 		CNum = CNum0
 	;
-		error("base_type_layout: type neither var nor non-var")
+		error("type_ctor_layout: type neither var nor non-var")
 	).
 
 
@@ -1160,7 +1171,7 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 
 base_type_layout__remove_create(Rval0, Rval) :-
 	(
-		Rval0 = create(_, [PTI], _, _, _)
+		Rval0 = create(_, [PTI], _, _, _, _)
 	->
 		Rval = PTI
 	;
@@ -1215,19 +1226,22 @@ base_type_layout__get_tags([ConsPair | ConsRest], Tag, TagList, TagType) :-
 :- pred base_type_layout__tag_type_and_value(cons_tag, int, tag_category).
 :- mode base_type_layout__tag_type_and_value(in, out, out) is det.
 
-base_type_layout__tag_type_and_value(simple_tag(Tag), Tag, simple).
-base_type_layout__tag_type_and_value(complicated_tag(Tag, _), Tag, complicated).
-base_type_layout__tag_type_and_value(complicated_constant_tag(Tag, _), Tag, 
-	comp_const).
+base_type_layout__tag_type_and_value(unshared_tag(Tag), Tag, unshared).
+base_type_layout__tag_type_and_value(shared_remote_tag(Tag, _), Tag,
+	shared_remote).
+base_type_layout__tag_type_and_value(shared_local_tag(Tag, _), Tag, 
+	shared_local).
 base_type_layout__tag_type_and_value(no_tag, -1, no_tag). 
 base_type_layout__tag_type_and_value(string_constant(_), -1, unused). 
 base_type_layout__tag_type_and_value(float_constant(_), -1, unused). 
 base_type_layout__tag_type_and_value(int_constant(_), -1, unused). 
 base_type_layout__tag_type_and_value(pred_closure_tag(_, _), -1, unused). 
 base_type_layout__tag_type_and_value(code_addr_constant(_, _), -1, unused).
-base_type_layout__tag_type_and_value(base_type_info_constant(_, _, _), -1,
+base_type_layout__tag_type_and_value(type_ctor_info_constant(_, _, _), -1,
 	unused). 
 base_type_layout__tag_type_and_value(base_typeclass_info_constant(_, _, _), -1,
+	unused). 
+base_type_layout__tag_type_and_value(tabling_pointer_constant(_, _), -1,
 	unused). 
 
 	% Get the arguments of this constructor of the current type.
@@ -1247,12 +1261,12 @@ base_type_layout__get_cons_args(LayoutInfo, ConsId, TypeArgs) :-
 	->
 		TypeArgs = TypeArgs0
 	;
-		error("base_type_layout: no matching cons definition")
+		error("type_ctor_layout: no matching cons definition")
 	).
 
 %---------------------------------------------------------------------------%
 
-	% access to the base_type_layout data structure.
+	% access to the type_ctor_layout data structure.
 
 :- pred base_type_layout__get_module_name(layout_info, module_name).
 :- mode base_type_layout__get_module_name(in, out) is det.

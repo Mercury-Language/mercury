@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,9 +22,9 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, hlds_pred, term_util, term_errors.
-:- import_module hlds_data.
-:- import_module int, string, std_util, bool, require.
+:- import_module prog_io, prog_io_goal, prog_util, hlds_data, hlds_pred.
+:- import_module term_util, term_errors, rl.
+:- import_module int, map, string, std_util, bool, require.
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 	(
@@ -61,12 +61,12 @@ parse_pragma_type(_, "source_file", PragmaTerms, ErrorTerm, _VarSet, Result) :-
 		Result = ok(pragma(source_file(SourceFile)))
 	    ;
 		Result = error(
-		"string expected in `pragma source_file' declaration",
+		"string expected in `:- pragma source_file' declaration",
 				SourceFileTerm)
 	    )
 	;
 	    Result = error(
-		"wrong number of arguments in `pragma source_file' declaration",
+	"wrong number of arguments in `:- pragma source_file' declaration",
 			ErrorTerm)
 	).
 
@@ -84,7 +84,7 @@ parse_pragma_type(_, "c_header_code", PragmaTerms,
 	    )
 	;
 	    Result = error(
-"wrong number of arguments in `pragma c_header_code(...) declaration", 
+"wrong number of arguments in `:- pragma c_header_code' declaration", 
 			    ErrorTerm)
         ).
 
@@ -211,148 +211,44 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 		    ErrorTerm)
 	).
 
-parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm,
-		_VarSet, Result) :-
-       (
-	    PragmaTerms = [PredAndModesTerm, FlagsTerm,
-			C_FunctionTerm]
-       ->
+parse_pragma_type(ModuleName, "import", PragmaTerms,
+			ErrorTerm, _VarSet, Result) :-
+	(
 	    (
-		PredAndModesTerm = term__functor(_, _, _),
-		C_FunctionTerm = term__functor(term__string(C_Function), [], _)
-	    ->
-		(
-		    PredAndModesTerm = term__functor(term__atom("="),
-				[FuncAndArgModesTerm, RetModeTerm], _)
-		->
-		    parse_implicitly_qualified_term(ModuleName,
-		    	FuncAndArgModesTerm, PredAndModesTerm,
-			"pragma import declaration", FuncAndArgModesResult),  
-		    (
-			FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
-			(
-		    	    convert_mode_list(ArgModeTerms, ArgModes),
-			    convert_mode(RetModeTerm, RetMode)
-			->
-			    list__append(ArgModes, [RetMode], Modes),
-			    (
-				parse_pragma_c_code_attributes_term(FlagsTerm,
-					Flags)
-			    ->
-			    	inst_table_init(InstTable),
-			    	ArgumentModes = argument_modes(InstTable,
-					Modes),
-			        Result = ok(pragma(import(FuncName, function,
-				    ArgumentModes, Flags, C_Function)))
-			    ;
-				Result = error("invalid second argument in `:- pragma import/3' declaration -- expecting C code attribute or list of attributes'",
-					FlagsTerm)
-			    )
-			;
-	   		    Result = error(
-"expected pragma import(FuncName(ModeList) = Mode, Attributes, C_Function)",
-				PredAndModesTerm)
-			)
-		    ;
-			FuncAndArgModesResult = error(Msg, Term),
-			Result = error(Msg, Term)
-		    )
+		PragmaTerms = [PredAndModesTerm, FlagsTerm, C_FunctionTerm],
+		( parse_pragma_c_code_attributes_term(FlagsTerm, Flags) ->
+			FlagsResult = ok(Flags)
 		;
-		    parse_implicitly_qualified_term(ModuleName,
-		    	PredAndModesTerm, ErrorTerm,
-			"pragma import declaration", PredAndModesResult),  
-		    (
-			PredAndModesResult = ok(PredName, ModeTerms),
-			(
-		    	    convert_mode_list(ModeTerms, Modes)
-			->
-			    (
-				parse_pragma_c_code_attributes_term(FlagsTerm,
-					Flags)
-			    ->
-			    	inst_table_init(InstTable),
-			    	ArgumentModes = argument_modes(InstTable,
-					Modes),
-			        Result = ok(pragma(import(PredName, predicate,
-				    ArgumentModes, Flags, C_Function)))
-			    ;
-				Result = error("invalid second argument in `:- pragma import/3' declaration -- expecting C code attribute or list of attributes'",
+			FlagsResult = error("invalid second argument in `:- pragma import/3' declaration -- expecting C code attribute or list of attributes'",
 					FlagsTerm)
-			    )
-			;
-	   		    Result = error(
-"expected pragma import(PredName(ModeList), Attributes, C_Function)",
-				PredAndModesTerm)
-			)
-		    ;
-			PredAndModesResult = error(Msg, Term),
-			Result = error(Msg, Term)
-		    )
-		)
+	        )
 	    ;
-	    	Result = error(
-"expected pragma import(PredName(ModeList), Attributes, C_Function)",
-		     PredAndModesTerm)
-	    )
-	;
-	    PragmaTerms = [PredAndModesTerm, C_FunctionTerm]
-	->
-	    default_attributes(Attributes),
+		PragmaTerms = [PredAndModesTerm, C_FunctionTerm],
+		default_attributes(Flags),
+		FlagsResult = ok(Flags)
+	    )	
+ 	-> 
 	    (
-		PredAndModesTerm = term__functor(_, _, _),
 		C_FunctionTerm = term__functor(term__string(C_Function), [], _)
 	    ->
+		parse_pred_or_func_and_arg_modes(yes(ModuleName),
+			PredAndModesTerm, ErrorTerm,
+			"`:- pragma import' declaration",
+			PredAndArgModesResult),
 		(
-		    PredAndModesTerm = term__functor(term__atom("="),
-				[FuncAndArgModesTerm, RetModeTerm], _)
-		->
-		    parse_implicitly_qualified_term(ModuleName,
-		    	FuncAndArgModesTerm, PredAndModesTerm,
-			"pragma import declaration", FuncAndArgModesResult),  
+		    PredAndArgModesResult = ok(PredName - PredOrFunc,
+				ArgModes),
 		    (
-			FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
-			(
-		    	    convert_mode_list(ArgModeTerms, ArgModes),
-			    convert_mode(RetModeTerm, RetMode)
-			->
-			    list__append(ArgModes, [RetMode], Modes),
-			    inst_table_init(InstTable),
-			    ArgumentModes = argument_modes(InstTable,
-					Modes),
-			    Result = ok(pragma(import(FuncName, function,
-				    ArgumentModes, Attributes, C_Function)))
-			;
-	   		    Result = error(
-"expected pragma import(FuncName(ModeList) = Mode, C_Function)",
-				PredAndModesTerm)
-			)
+			FlagsResult = ok(Attributes),
+			Result = ok(pragma(import(PredName, PredOrFunc,
+				ArgModes, Attributes, C_Function)))
 		    ;
-			FuncAndArgModesResult = error(Msg, Term),
+			FlagsResult = error(Msg, Term),
 			Result = error(Msg, Term)
 		    )
 		;
-		    parse_implicitly_qualified_term(ModuleName,
-		    	PredAndModesTerm, ErrorTerm,
-			"pragma import declaration", PredAndModesResult),  
-		    (
-			PredAndModesResult = ok(PredName, ModeTerms),
-			(
-		    	    convert_mode_list(ModeTerms, Modes)
-			->
-			    inst_table_init(InstTable),
-			    ArgumentModes = argument_modes(InstTable,
-					Modes),
-			    Result = ok(pragma(import(PredName, predicate,
-				    ArgumentModes, Attributes, C_Function)))
-			;
-	   		    Result = error(
-	"expected pragma import(PredName(ModeList), C_Function)",
-				PredAndModesTerm)
-			)
-		    ;
-			PredAndModesResult = error(Msg, Term),
+			PredAndArgModesResult = error(Msg, Term),
 			Result = error(Msg, Term)
-		    )
 		)
 	    ;
 	    	Result = error(
@@ -362,71 +258,28 @@ parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm,
 	;
 	    Result = 
 	    	error(
-		"wrong number of arguments in `pragma import(...)' declaration",
+		"wrong number of arguments in `:- pragma import' declaration",
 		ErrorTerm)
-       ).
+	).
 
-parse_pragma_type(_ModuleName, "export", PragmaTerms, ErrorTerm,
-		_VarSet, Result) :-
+parse_pragma_type(_ModuleName, "export", PragmaTerms,
+		ErrorTerm, _VarSet, Result) :-
        (
 	    PragmaTerms = [PredAndModesTerm, C_FunctionTerm]
        ->
 	    (
-                PredAndModesTerm = term__functor(_, _, _),
 	        C_FunctionTerm = term__functor(term__string(C_Function), [], _)
 	    ->
+		parse_pred_or_func_and_arg_modes(no, PredAndModesTerm,
+			ErrorTerm, "`:- pragma export' declaration",
+			PredAndModesResult),
 		(
-		    PredAndModesTerm = term__functor(term__atom("="),
-				[FuncAndArgModesTerm, RetModeTerm], _)
-		->
-		    parse_qualified_term(FuncAndArgModesTerm,
-		    	PredAndModesTerm, "pragma export declaration",
-			FuncAndArgModesResult),  
-		    (
-		        FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
-		        (
-		    	    convert_mode_list(ArgModeTerms, ArgModes),
-			    convert_mode(RetModeTerm, RetMode)
-		        ->
-			    list__append(ArgModes, [RetMode], Modes),
-			    inst_table_init(InstTable),
-			    ArgumentModes = argument_modes(InstTable,
-					Modes),
-			    Result =
-			    ok(pragma(export(FuncName, function,
-				ArgumentModes, C_Function)))
-		        ;
-	   		    Result = error(
-	"expected pragma export(FuncName(ModeList) = Mode, C_Function)",
-				PredAndModesTerm)
-		        )
-		    ;
-		        FuncAndArgModesResult = error(Msg, Term),
-		        Result = error(Msg, Term)
-		    )
-		;
-		    parse_qualified_term(PredAndModesTerm, ErrorTerm,
-			"pragma export declaration", PredAndModesResult),  
-		    (
-		        PredAndModesResult = ok(PredName, ModeTerms),
-		        (
-		    	    convert_mode_list(ModeTerms, Modes)
-		        ->
-			    inst_table_init(InstTable),
-			    ArgumentModes = argument_modes(InstTable,
-					Modes),
-			    Result = 
-			    ok(pragma(export(PredName, predicate,
-			    	ArgumentModes, C_Function)))
-		        ;
-	   		    Result = error(
-	"expected pragma export(PredName(ModeList), C_Function)",
-				PredAndModesTerm)
-		        )
-		    ;
-		        PredAndModesResult = error(Msg, Term),
-		        Result = error(Msg, Term)
-		    )
+			PredAndModesResult = ok(PredName - PredOrFunc, Modes),
+		    	Result = ok(pragma(export(PredName, PredOrFunc,
+					Modes, C_Function)))
+		;    
+			PredAndModesResult = error(Msg, Term),
+			Result = error(Msg, Term)
 		)
 	    ;
 	    	Result = error(
@@ -436,7 +289,7 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms, ErrorTerm,
 	;
 	    Result = 
 	    	error(
-		"wrong number of arguments in `pragma export(...)' declaration",
+		"wrong number of arguments in `:- pragma export' declaration",
 		ErrorTerm)
        ).
 
@@ -476,8 +329,8 @@ parse_pragma_type(ModuleName, "obsolete", PragmaTerms, ErrorTerm,
 
 	% pragma unused_args should never appear in user programs,
 	% only in .opt files.
-parse_pragma_type(_ModuleName, "unused_args", PragmaTerms, ErrorTerm,
-		_VarSet, Result) :-
+parse_pragma_type(ModuleName, "unused_args", PragmaTerms,
+		ErrorTerm, _VarSet, Result) :-
 	(
 		PragmaTerms = [
 			PredOrFuncTerm,
@@ -496,8 +349,9 @@ parse_pragma_type(_ModuleName, "unused_args", PragmaTerms, ErrorTerm,
 					term__atom("function"), [], _),
 			PredOrFunc = function 
 		),
-		parse_qualified_term(PredNameTerm, ErrorTerm,
-			"predicate name", PredNameResult),
+		parse_implicitly_qualified_term(ModuleName, PredNameTerm,
+			ErrorTerm, "`:- pragma unused_args' declaration",
+			PredNameResult),
 		PredNameResult = ok(PredName, []),
 		convert_int_list(UnusedArgsTerm, UnusedArgsResult),
 		UnusedArgsResult = ok(UnusedArgs)
@@ -505,7 +359,65 @@ parse_pragma_type(_ModuleName, "unused_args", PragmaTerms, ErrorTerm,
 		Result = ok(pragma(unused_args(PredOrFunc, PredName,
 				Arity, ProcId, UnusedArgs)))
 	;
-		Result = error("error in pragma unused_args", ErrorTerm)
+		Result = error("error in `:- pragma unused_args'", ErrorTerm)
+	).
+
+parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm, 
+		VarSet0, Result) :-
+	(
+	    (
+	        PragmaTerms = [PredAndModesTerm, TypeSubnTerm],
+		MaybeName = no
+	    ;
+		PragmaTerms = [PredAndModesTerm, TypeSubnTerm, SpecNameTerm],
+		SpecNameTerm = term__functor(_, _, SpecContext),
+
+		% This form of the pragma should not appear in source files.
+		term__context_file(SpecContext, FileName),
+		\+ string__remove_suffix(FileName, ".m", _),	
+
+		parse_implicitly_qualified_term(ModuleName,
+			SpecNameTerm, ErrorTerm, "", NameResult),
+		NameResult = ok(SpecName, []),
+		MaybeName = yes(SpecName)
+	    )
+	->
+	    parse_arity_or_modes(ModuleName, PredAndModesTerm, ErrorTerm,
+			"`:- pragma type_spec' declaration",
+			ArityOrModesResult),
+	    (
+		ArityOrModesResult = ok(arity_or_modes(PredName,
+			 Arity, MaybePredOrFunc, MaybeModes)),
+		conjunction_to_list(TypeSubnTerm, TypeSubnList),
+
+		% The varset is actually a tvarset.
+		varset__coerce(VarSet0, TVarSet),
+		( list__map(convert_type_spec_pair, TypeSubnList, TypeSubn) ->
+			( MaybeName = yes(SpecializedName0) ->
+				SpecializedName = SpecializedName0
+		    	;
+				unqualify_name(PredName, UnqualName),
+				make_pred_name(ModuleName, "TypeSpecOf",
+					MaybePredOrFunc, UnqualName,
+					type_subst(TVarSet, TypeSubn),
+					SpecializedName)
+		    	),
+		   	Result = ok(pragma(type_spec(PredName,
+				SpecializedName, Arity, MaybePredOrFunc,
+				MaybeModes, TypeSubn, TVarSet)))
+		    ;
+			Result = error(
+	"expected type substitution in `:- pragma type_spec' declaration",
+				TypeSubnTerm)
+		)
+	    ;
+		    ArityOrModesResult = error(Msg, Term),
+		    Result = error(Msg, Term)
+	    )
+	;
+	    Result = error(
+	"wrong number of arguments in `:- pragma type_spec' declaration", 
+		ErrorTerm)
 	).
 
 parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm,
@@ -513,42 +425,141 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm,
 	(
 	    PragmaTerms = [PredAndArityTerm, FileNameTerm]
 	->
+	    parse_pred_name_and_arity(ModuleName, "fact_table",
+	    	PredAndArityTerm, ErrorTerm, NameArityResult),
 	    (
-		PredAndArityTerm = term__functor(term__atom("/"), 
-			[PredNameTerm, ArityTerm], _)
-	    ->
-	    	(
-		    parse_implicitly_qualified_term(ModuleName,
-		    	    PredNameTerm, PredAndArityTerm,
-			    "pragma fact_table declaration", ok(PredName, [])),
-		    ArityTerm = term__functor(term__integer(Arity), [], _)
+		NameArityResult = ok(PredName, Arity),
+		(
+		    FileNameTerm = term__functor(term__string(FileName), [], _)
 		->
-		    (
-			FileNameTerm = 
-				term__functor(term__string(FileName), [], _)
-		    ->
-			Result = ok(pragma(fact_table(PredName, Arity, 
-				FileName)))
-		    ;
-			Result = error(
-			    "expected string for fact table filename",
-			    FileNameTerm)
-		    )
+		    Result = ok(pragma(fact_table(PredName, Arity, FileName)))
 		;
-		    Result = error(
-		    "expected predname/arity for `pragma fact_table(..., ...)'",
-		    	PredAndArityTerm)
+		    Result = error("expected string for fact table filename",
+			    FileNameTerm)
 		)
 	    ;
-		Result = error(
-		    "expected predname/arity for `pragma fact_table(..., ...)'",
-		    PredAndArityTerm)
+		NameArityResult = error(ErrorMsg, _),
+		Result = error(ErrorMsg, PredAndArityTerm)
 	    )
 	;
 	    Result = 
 		error(
-	"wrong number of arguments in pragma fact_table(..., ...) declaration",
+	"wrong number of arguments in `:- pragma fact_table' declaration",
 		ErrorTerm)
+	).
+
+parse_pragma_type(ModuleName, "aditi", PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "aditi",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = aditi(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "base_relation", PragmaTerms, 
+		ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "base_relation",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = base_relation(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "aditi_index", PragmaTerms,
+		ErrorTerm, _, Result) :-
+	( PragmaTerms = [PredNameArityTerm, IndexTypeTerm, AttributesTerm] ->
+	    parse_pred_name_and_arity(ModuleName, "aditi_index",
+	    	PredNameArityTerm, ErrorTerm, NameArityResult),
+	    (
+	        NameArityResult = ok(PredName, PredArity),
+		(
+		    IndexTypeTerm = term__functor(term__atom(IndexTypeStr),
+		    		[], _),
+		    (
+			IndexTypeStr = "unique_B_tree",
+			IndexType = unique_B_tree
+		    ;
+			IndexTypeStr = "non_unique_B_tree",
+		    	IndexType = non_unique_B_tree
+		    )
+		->
+		    convert_int_list(AttributesTerm, AttributeResult),
+		    (
+			AttributeResult = ok(Attributes),
+			Result = ok(pragma(aditi_index(PredName, PredArity,
+			    		index_spec(IndexType, Attributes))))
+		    ;
+			AttributeResult = error(_, AttrErrorTerm),
+			Result = error(
+	"expected attribute list for `:- pragma aditi_index' declaration", 
+				AttrErrorTerm)	
+		    )
+	    	;
+		    Result = error(
+	"expected index type for `:- pragma aditi_index' declaration",
+	    			IndexTypeTerm)	
+	        )
+	    ;
+		NameArityResult = error(NameErrorMsg, NameErrorTerm),
+		Result = error(NameErrorMsg, NameErrorTerm)
+	    )
+	;
+	    Result = error(
+	"wrong number of arguments in `:- pragma aditi_index' declaration",
+		ErrorTerm)
+	).
+
+parse_pragma_type(ModuleName, "naive", PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "naive",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = naive(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "psn", PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "psn",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = psn(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "aditi_memo",
+		PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "aditi_memo",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = aditi_memo(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "aditi_no_memo",
+		PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "aditi_no_memo",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = aditi_no_memo(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "supp_magic", 
+		PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "supp_magic",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = supp_magic(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "context",
+		PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "context",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = context(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "owner",
+		PragmaTerms, ErrorTerm, _, Result) :-
+	( PragmaTerms = [SymNameAndArityTerm, OwnerTerm] ->
+	    ( OwnerTerm = term__functor(term__atom(Owner), [], _) ->
+		parse_simple_pragma(ModuleName, "owner",
+			lambda([Name::in, Arity::in, Pragma::out] is det,
+				Pragma = owner(Name, Arity, Owner)),
+			[SymNameAndArityTerm], ErrorTerm, Result)
+	    ;
+	ErrorMsg = "expected owner name for `:- pragma owner' declaration",
+	        Result = error(ErrorMsg, OwnerTerm)
+	    )
+	;
+    ErrorMsg = "wrong number of arguments in `:- pragma owner' declaration",
+	    Result = error(ErrorMsg, ErrorTerm)
 	).
 
 parse_pragma_type(ModuleName, "promise_pure", PragmaTerms, ErrorTerm,
@@ -566,75 +577,46 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 	    ArgSizeTerm,
 	    TerminationTerm
 	],
-	( 
-	    PredAndModesTerm0 = term__functor(Const, Terms0, _) 
-	->
-	    ( 
-		Const = term__atom("="),
-		Terms0 = [FuncAndModesTerm, FuncResultTerm0]
-	    ->
-		% function
-		PredOrFunc = function,
-		PredAndModesTerm = FuncAndModesTerm,
-		FuncResultTerm = [FuncResultTerm0]
-	    ;
-		% predicate
-		PredOrFunc = predicate,
-		PredAndModesTerm = PredAndModesTerm0,
-		FuncResultTerm = []
-	    ),
-	    parse_implicitly_qualified_term(ModuleName,
-	    	PredAndModesTerm, ErrorTerm,
-		"`pragma termination_info' declaration", PredNameResult),
-	    PredNameResult = ok(PredName, ModeListTerm0),
-	    (
-		PredOrFunc = predicate,
-		ModeListTerm = ModeListTerm0
-	    ;
-		PredOrFunc = function,
-		list__append(ModeListTerm0, FuncResultTerm, ModeListTerm)
-	    ),
-	    convert_mode_list(ModeListTerm, ModeList),
-	    (			
+	parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
+		ErrorTerm, "`:- pragma termination_info' declaration",
+		NameAndModesResult),
+	NameAndModesResult = ok(PredName - PredOrFunc, ModeList),
+	(			
 		ArgSizeTerm = term__functor(term__atom("not_set"), [], _),
 		MaybeArgSizeInfo = no
-	    ;
+	;
 		ArgSizeTerm = term__functor(term__atom("infinite"), [],
 			ArgSizeContext),
 		MaybeArgSizeInfo = yes(infinite(
 			[ArgSizeContext - imported_pred]))
-	    ;
+	;
 		ArgSizeTerm = term__functor(term__atom("finite"),
 			[IntTerm, UsedArgsTerm], _),
 		IntTerm = term__functor(term__integer(Int), [], _),
 		convert_bool_list(UsedArgsTerm, UsedArgs),
 		MaybeArgSizeInfo = yes(finite(Int, UsedArgs))
-	    ),
-	    (
+	),
+	(
 		TerminationTerm = term__functor(term__atom("not_set"), [], _),
 		MaybeTerminationInfo = no
-	    ;
+	;
 		TerminationTerm = term__functor(term__atom("can_loop"),
 			[], TermContext),
 		MaybeTerminationInfo = yes(can_loop(
 			[TermContext - imported_pred]))
-	    ;
+	;
 		TerminationTerm = term__functor(term__atom("cannot_loop"),
 			[], _),
 		MaybeTerminationInfo = yes(cannot_loop)
-	    ),
-	    inst_table_init(InstTable),
-	    ArgumentModes = argument_modes(InstTable, ModeList),
-	    Result0 = ok(pragma(termination_info(PredOrFunc, PredName, 
-	    	ArgumentModes, MaybeArgSizeInfo, MaybeTerminationInfo)))
-	;
-	    Result0 = error("unexpected variable in pragma termination_info",
-						ErrorTerm)
-	)
+	),
+	Result0 = ok(pragma(termination_info(PredOrFunc, PredName, 
+	ModeList, MaybeArgSizeInfo, MaybeTerminationInfo)))
     ->
 	Result = Result0
     ;
-	Result = error("syntax error in `pragma termination_info'", ErrorTerm)
+	Result = error(
+		"syntax error in `:- pragma termination_info' declaration",
+		ErrorTerm)
     ).
 			
 parse_pragma_type(ModuleName, "terminates", PragmaTerms,
@@ -666,36 +648,50 @@ parse_pragma_type(ModuleName, "check_termination", PragmaTerms,
 
 parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 				PragmaTerms, ErrorTerm, Result) :-
-       (
-            PragmaTerms = [PredAndArityTerm]
-       ->
+	( PragmaTerms = [PredAndArityTerm] ->
+	    parse_pred_name_and_arity(ModuleName, PragmaType,
+		PredAndArityTerm, ErrorTerm, NameArityResult),
 	    (
-                PredAndArityTerm = term__functor(term__atom("/"), 
-	    		[PredNameTerm, ArityTerm], _)
-	    ->
-		(
-		    parse_implicitly_qualified_term(ModuleName,
-		    	PredNameTerm, ErrorTerm, "", ok(PredName, [])),
-		    ArityTerm = term__functor(term__integer(Arity), [], _)
-		->
-		    call(MakePragma, PredName, Arity, Pragma),
-		    Result = ok(pragma(Pragma))
-		;
-		    string__append_list(
-			["expected predname/arity for `pragma ",
-			 PragmaType, "(...)' declaration"], ErrorMsg),
-	    	    Result = error(ErrorMsg, PredAndArityTerm)
-		)
+	    	NameArityResult = ok(PredName, Arity),
+		call(MakePragma, PredName, Arity, Pragma),
+		Result = ok(pragma(Pragma))
 	    ;
-	        string__append_list(["expected predname/arity for `pragma ",
-			 PragmaType, "(...)' declaration"], ErrorMsg),
+		NameArityResult = error(ErrorMsg, _),
 	        Result = error(ErrorMsg, PredAndArityTerm)
 	    )
 	;
-	    string__append_list(["wrong number of arguments in `pragma ",
-		 PragmaType, "(...)' declaration"], ErrorMsg),
+	    string__append_list(["wrong number of arguments in `:- pragma ",
+		 PragmaType, "' declaration"], ErrorMsg),
 	    Result = error(ErrorMsg, ErrorTerm)
        ).
+
+:- pred parse_pred_name_and_arity(module_name, string, term, term,
+		maybe2(sym_name, arity)).
+:- mode parse_pred_name_and_arity(in, in, in, in, out) is det.
+
+parse_pred_name_and_arity(ModuleName, PragmaType, PredAndArityTerm,
+		ErrorTerm, Result) :-
+    (
+	PredAndArityTerm = term__functor(term__atom("/"), 
+		[PredNameTerm, ArityTerm], _)
+    ->
+	(
+	    parse_implicitly_qualified_term(ModuleName,
+		PredNameTerm, ErrorTerm, "", ok(PredName, [])),
+	    ArityTerm = term__functor(term__integer(Arity), [], _)
+	->
+	    Result = ok(PredName, Arity)
+	;
+	    string__append_list(
+		["expected predname/arity for `:- pragma ",
+		 PragmaType, "' declaration"], ErrorMsg),
+	    Result = error(ErrorMsg, PredAndArityTerm)
+	)
+    ;
+	string__append_list(["expected predname/arity for `:- pragma ",
+		 PragmaType, "' declaration"], ErrorMsg),
+	Result = error(ErrorMsg, PredAndArityTerm)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -802,55 +798,37 @@ parse_threadsafe(term__functor(term__atom("not_thread_safe"), [], _),
 :- mode parse_pragma_c_code(in, in, in, in, in, out) is det.
 
 parse_pragma_c_code(ModuleName, Flags, PredAndVarsTerm0, PragmaImpl,
-	VarSet, Result) :-
+	VarSet0, Result) :-
+    parse_pred_or_func_and_args(yes(ModuleName), PredAndVarsTerm0,
+    	PredAndVarsTerm0, "`:- pragma c_code' declaration", PredAndArgsResult),
     (
-	PredAndVarsTerm0 = term__functor(Const, Terms0, _)
-    ->
+    	PredAndArgsResult = ok(PredName, VarList0 - MaybeRetTerm),
     	(
 	    % is this a function or a predicate?
-	    Const = term__atom("="),
-	    Terms0 = [FuncAndVarsTerm, FuncResultTerm0]
+	    MaybeRetTerm = yes(FuncResultTerm0)
 	->
 	    % function
 	    PredOrFunc = function,
-	    PredAndVarsTerm = FuncAndVarsTerm,
-	    FuncResultTerms = [FuncResultTerm0]
+	    list__append(VarList0, [FuncResultTerm0], VarList)
 	;
 	    % predicate
 	    PredOrFunc = predicate,
-	    PredAndVarsTerm = PredAndVarsTerm0,
-	    FuncResultTerms = []
+	    VarList = VarList0
 	),
-	parse_implicitly_qualified_term(ModuleName,
-	    PredAndVarsTerm, PredAndVarsTerm0,
-	    "pragma c_code declaration", PredNameResult),
+	parse_pragma_c_code_varlist(VarSet0, VarList, PragmaVars, Error),
 	(
-	    PredNameResult = ok(PredName, VarList0),
-	    (
-	    	PredOrFunc = predicate,
-	    	VarList = VarList0
-	    ;
-	    	PredOrFunc = function,
-	    	list__append(VarList0, FuncResultTerms, VarList)
-	    ),
-	    varset__coerce(VarSet, ProgVarSet),
-	    parse_pragma_c_code_varlist(VarSet, VarList, PragmaVars,
-	    	Error),
-	    (
-		Error = no,
-		Result = ok(pragma(c_code(Flags, PredName,
-		    PredOrFunc, PragmaVars, ProgVarSet, PragmaImpl)))
-	    ;
-		Error = yes(ErrorMessage),
-		Result = error(ErrorMessage, PredAndVarsTerm)
-	    )
-        ;
-	    PredNameResult = error(Msg, Term),
-	    Result = error(Msg, Term)
+	    Error = no,
+	    varset__coerce(VarSet0, VarSet),
+	    Result = ok(pragma(c_code(Flags, PredName,
+		    PredOrFunc, PragmaVars, VarSet, PragmaImpl)))
+	;
+	    Error = yes(ErrorMessage),
+	    Result = error(ErrorMessage, PredAndVarsTerm0)
+
 	)
     ;
-	Result = error("unexpected variable in `pragma c_code' declaration",
-		PredAndVarsTerm0)
+	PredAndArgsResult = error(Msg, Term),
+	Result = error(Msg, Term)
     ).
 
 	% parse the variable list in the pragma c code declaration.
@@ -902,7 +880,36 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
     (
         PragmaTerms = [PredAndModesTerm0]
     ->
+	string__append_list(["`:- pragma ", PragmaName, "' declaration"],
+		ParseMsg),
+	parse_arity_or_modes(ModuleName, PredAndModesTerm0,
+		ErrorTerm, ParseMsg, ArityModesResult),
         (
+	    ArityModesResult = ok(arity_or_modes(PredName,
+	    	Arity, MaybePredOrFunc, MaybeModes)),
+            Result = ok(pragma(tabled(TablingType, PredName, Arity, 
+                MaybePredOrFunc, MaybeModes)))
+	;
+	    ArityModesResult = error(Msg, Term),
+	    Result = error(Msg, Term)
+	)
+    ;
+    	string__append_list(["wrong number of arguments in `:- pragma ", 
+            PragmaName, "' declaration"], ErrorMessage),
+        Result = error(ErrorMessage, ErrorTerm)
+    ).
+
+:- type arity_or_modes
+	--->	arity_or_modes(sym_name, arity,
+			maybe(pred_or_func), maybe(argument_modes)).
+
+:- pred parse_arity_or_modes(module_name, term, term,
+		string, maybe1(arity_or_modes)).
+:- mode parse_arity_or_modes(in, in, in, in, out) is det.
+
+parse_arity_or_modes(ModuleName, PredAndModesTerm0,
+		ErrorTerm, ErrorMsg, Result) :-
+	(
                 % Is this a simple pred/arity pragma
             PredAndModesTerm0 = term__functor(term__atom("/"),
                 [PredNameTerm, ArityTerm], _)
@@ -912,106 +919,106 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
 			PredNameTerm, PredAndModesTerm0, "", ok(PredName, [])),
                 ArityTerm = term__functor(term__integer(Arity), [], _)
             ->
-                Result = ok(pragma(tabled(TablingType, PredName, Arity, 
-		    no, no)))    
+		Result = ok(arity_or_modes(PredName, Arity, no, no))
             ;
-                string__append_list(
-                    ["expected predname/arity for `pragma ",
-                    PragmaName, "(...)' declaration"], ErrorMsg),
-                Result = error(ErrorMsg, PredAndModesTerm0)
+                string__append("expected predname/arity for", ErrorMsg, Msg),
+                Result = error(Msg, ErrorTerm)
             )
         ;
-                % Is this a specific mode pragma
-            PredAndModesTerm0 = term__functor(Const, Terms0, _)
-        ->
-            (
-                % is this a function or a predicate?
-                Const = term__atom("="),
-                Terms0 = [FuncAndModesTerm, FuncResultTerm0]
-            ->
-                % function
-                PredOrFunc = function,
-                PredAndModesTerm = FuncAndModesTerm,
-                FuncResultTerms = [ FuncResultTerm0 ]
-            ;
-                % predicate
-                PredOrFunc = predicate,
-                PredAndModesTerm = PredAndModesTerm0,
-                FuncResultTerms = []
-            ),
-            string__append_list(["`pragma ", PragmaName, "(...)' declaration"],
-	    	ParseMsg), 
-	    parse_qualified_term(PredAndModesTerm, PredAndModesTerm0, 
-                ParseMsg, PredNameResult),
-            (
-                PredNameResult = ok(PredName, ModeList0),
-                (
-                    PredOrFunc = predicate,
-                    ModeList = ModeList0
+	    parse_pred_or_func_and_arg_modes(yes(ModuleName),
+	    	PredAndModesTerm0, PredAndModesTerm0, ErrorMsg,
+		PredAndModesResult),
+	    (
+	    	PredAndModesResult = ok(PredName - PredOrFunc, Modes),
+		Modes = argument_modes(_, ArgModes),
+                list__length(ArgModes, Arity0),
+                ( PredOrFunc = function ->
+                    Arity is Arity0 - 1
                 ;
-                    PredOrFunc = function,
-                    list__append(ModeList0, FuncResultTerms, ModeList)
+                    Arity = Arity0
                 ),
-                (
-                    convert_mode_list(ModeList, Modes)
-                ->
-                    list__length(Modes, Arity0),
-                    (
-                        PredOrFunc = function
-                    ->
-                        Arity is Arity0 - 1
-                    ;
-                       Arity = Arity0
-                    ),
-                    inst_table_init(InstTable),
-                    Result = ok(pragma(tabled(TablingType, PredName, Arity, 
-                        yes(PredOrFunc), 
-                        yes(argument_modes(InstTable, Modes)))))
-                ;
-                    string__append_list(["syntax error in pragma '", 
-		        PragmaName, "(...)' declaration"],ErrorMessage),
-                    Result = error(ErrorMessage, PredAndModesTerm)
-                )
+	    	Result = ok(arity_or_modes(PredName, Arity,
+			yes(PredOrFunc), yes(Modes)))
             ;
-                PredNameResult = error(Msg, Term),
+		PredAndModesResult = error(Msg, Term),
                 Result = error(Msg, Term)
             )
-        ;
-            string__append_list(["unexpected variable in `pragma ", PragmaName,
-                "'"], ErrorMessage),
-            Result = error(ErrorMessage, PredAndModesTerm0)
-        )
-    ;
-    	string__append_list(["wrong number of arguments in `pragma ", 
-            PragmaName, "(...)' declaration"], ErrorMessage),
-        Result = error(ErrorMessage, ErrorTerm)
-    ).
+	).
 
-:- pred convert_int_list(term::in, maybe1(list(int))::out) is det.
+:- type maybe_pred_or_func_modes ==
+		maybe2(pair(sym_name, pred_or_func), argument_modes).
+:- type maybe_pred_or_func(T) == maybe2(sym_name, pair(list(T), maybe(T))).
 
-convert_int_list(term__variable(V),
-			error("variable in int list", term__variable(V))).
-convert_int_list(term__functor(Functor, Args, Context), Result) :-
-	( 
-		Functor = term__atom("."),
-		Args = [term__functor(term__integer(Int), [], _), RestTerm]
-	->	
-		convert_int_list(RestTerm, RestResult),
+:- pred parse_pred_or_func_and_arg_modes(maybe(module_name), term, term,
+		string, maybe_pred_or_func_modes).
+:- mode parse_pred_or_func_and_arg_modes(in, in, in, in, out) is det.
+
+parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
+		ErrorTerm, Msg, Result) :-
+	parse_pred_or_func_and_args(MaybeModuleName, PredAndModesTerm,
+		ErrorTerm, Msg, PredAndArgsResult),
+	(
+	    PredAndArgsResult =
+		ok(PredName, ArgModeTerms - MaybeRetModeTerm),
+	    ( convert_mode_list(ArgModeTerms, ArgModes0) ->
 		(
-			RestResult = ok(List0),
-			Result = ok([Int | List0])
+		    MaybeRetModeTerm = yes(RetModeTerm),
+		    ( convert_mode(RetModeTerm, RetMode) ->
+			list__append(ArgModes0, [RetMode], ArgModes),
+			inst_table_init(InstTable),
+			Result = ok(PredName - function,
+				argument_modes(InstTable, ArgModes))
+		    ;
+			string__append("error in return mode in ",
+				Msg, ErrorMsg),
+		    	Result = error(ErrorMsg, ErrorTerm)
+		    )
 		;
-			RestResult = error(_, _),
-			Result = RestResult
+		    MaybeRetModeTerm = no,
+		    inst_table_init(InstTable),
+		    Result = ok(PredName - predicate,
+		    	argument_modes(InstTable, ArgModes0))
 		)
+	    ;
+		string__append("error in argument modes in ", Msg,
+			ErrorMsg),
+	    	Result = error(ErrorMsg, ErrorTerm)
+	    )
 	;
-		Functor = term__atom("[]"),
-		Args = []
+		PredAndArgsResult = error(ErrorMsg, Term),
+		Result = error(ErrorMsg, Term)
+	).
+
+:- pred parse_pred_or_func_and_args(maybe(sym_name), term, term, string,
+		maybe_pred_or_func(term)).
+:- mode parse_pred_or_func_and_args(in, in, in, in, out) is det.
+
+parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
+		Msg, PredAndArgsResult) :-
+	(
+		PredAndArgsTerm = term__functor(term__atom("="),
+			[FuncAndArgsTerm, FuncResultTerm], _)
 	->
-		Result = ok([])
+		FunctorTerm = FuncAndArgsTerm,
+		MaybeFuncResult = yes(FuncResultTerm)
 	;
-		Result = error("error in int list",
-				term__functor(Functor, Args, Context))
+		FunctorTerm = PredAndArgsTerm,
+		MaybeFuncResult = no
+	),
+	(
+		MaybeModuleName = yes(ModuleName),
+		parse_implicitly_qualified_term(ModuleName, FunctorTerm,
+			ErrorTerm, Msg, Result)
+	;
+		MaybeModuleName = no,
+		parse_qualified_term(FunctorTerm, ErrorTerm, Msg, Result)
+	),
+	(
+		Result = ok(SymName, Args),
+		PredAndArgsResult = ok(SymName, Args - MaybeFuncResult)
+	;
+		Result = error(ErrorMsg, Term),
+		PredAndArgsResult = error(ErrorMsg, Term)
 	).
 
 :- pred convert_bool_list(term::in, list(bool)::out) is semidet.
@@ -1034,3 +1041,56 @@ convert_bool_list(term__functor(Functor, Args, _), Bools) :-
 		Args = [],
 		Bools = []
 	).
+
+:- pred convert_int_list(term::in, maybe1(list(int))::out) is det.
+
+convert_int_list(ListTerm, Result) :-
+	convert_list(ListTerm,
+		lambda([Term::in, Int::out] is semidet, (
+			Term = term__functor(term__integer(Int), [], _)
+		)), Result).
+
+	%
+	% convert_list(T, P, M) will convert a term T into a list of
+	% type X where P is a predicate that converts each element of
+	% the list into the correct type.  M will hold the list if the
+	% conversion succeded for each element of M, otherwise it will
+	% hold the error.
+	%
+:- pred convert_list(term, pred(term, T), maybe1(list(T))).
+:- mode convert_list(in, pred(in, out) is semidet, out) is det.
+
+convert_list(term__variable(V),_, error("variable in list", term__variable(V))).
+convert_list(term__functor(Functor, Args, Context), Pred, Result) :-
+	( 
+		Functor = term__atom("."),
+		Args = [Term, RestTerm],
+		call(Pred, Term, Element)
+	->	
+		convert_list(RestTerm, Pred, RestResult),
+		(
+			RestResult = ok(List0),
+			Result = ok([Element | List0])
+		;
+			RestResult = error(_, _),
+			Result = RestResult
+		)
+	;
+		Functor = term__atom("[]"),
+		Args = []
+	->
+		Result = ok([])
+	;
+		Result = error("error in list",
+				term__functor(Functor, Args, Context))
+	).
+
+:- pred convert_type_spec_pair(term::in, pair(tvar, type)::out) is semidet.
+
+convert_type_spec_pair(Term, TypeSpec) :-
+	Term = term__functor(term__atom("="), [TypeVarTerm, SpecTypeTerm0], _),
+	TypeVarTerm = term__variable(TypeVar0),
+	term__coerce_var(TypeVar0, TypeVar),
+	term__coerce(SpecTypeTerm0, SpecType),
+	TypeSpec = TypeVar - SpecType.
+

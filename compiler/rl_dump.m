@@ -588,7 +588,7 @@ rl_dump__write_project_output(ModuleInfo, RelationInfo,
 		io__state::di, io__state::uo) is det.
 
 rl_dump__write_goal(ModuleInfo, RLGoal) -->
-	{ RLGoal = rl_goal(_, VarSet, _, _, Inputs,
+	{ RLGoal = rl_goal(_, VarSet, _, InstMap, InstTable, Inputs,
 			MaybeOutputs, GoalList, Bounds) },
 	(
 		{ Inputs = no_inputs }
@@ -627,7 +627,7 @@ rl_dump__write_goal(ModuleInfo, RLGoal) -->
 	;	
 		[]
 	),
-	hlds_out__write_goal_list(GoalList, ModuleInfo,
+	hlds_out__write_goal_list(GoalList, InstMap, InstTable, ModuleInfo,
 		VarSet, yes, 2, ",\n", no).
 
 :- pred rl_dump__write_bounds(module_info::in, prog_varset::in,

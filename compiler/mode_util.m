@@ -134,6 +134,10 @@
 	% may need to insert new merge_insts into the merge_inst table.
 	% If the first argument is yes, the instmap_deltas for calls
 	% and deconstruction unifications are also recomputed.
+:- pred recompute_instmap_delta_proc(proc_info, proc_info,
+		module_info, module_info).
+:- mode recompute_instmap_delta_proc(in, out, in, out) is det.
+
 :- pred recompute_instmap_delta(list(prog_var), list(is_live),
 		map(prog_var, type), hlds_goal, hlds_goal, instmap, inst_table,
 		inst_table, bool, module_info, module_info).
@@ -211,6 +215,13 @@
 	%
 :- pred get_live_vars(list(prog_var), list(is_live), list(prog_var)).
 :- mode get_live_vars(in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+	% Partition a list of arguments into inputs and others.
+:- pred partition_args(instmap, inst_table, module_info, list(mode),
+		list(T), list(T), list(T)).
+:- mode partition_args(in, in, in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1258,33 +1269,6 @@ mode_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 	mode_apply_substitution(A0, Subst, A),
 	mode_list_apply_substitution(As0, Subst, As).
 
-:- pred recompute_instmap_delta_par_conj(list(hlds_goal), list(hlds_goal),
-		instmap, list(pair(instmap, set(prog_var))),
-		list(pair(instmap, set(prog_var))), recompute_info,
-		recompute_info).
-:- mode recompute_instmap_delta_par_conj(in, out, in, in, out, in, out) is det.
-
-recompute_instmap_delta_par_conj([], [], _, IMNonLocals, IMNonLocals) --> [].
-recompute_instmap_delta_par_conj([Goal0], [Goal],
-		InstMap0, IMNonLocals0, IMNonLocals) -->
-	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _),
-	{ instmap__vars(InstMap0, OuterNonLocals) },
-	{ Goal0 = _ - GoalInfo0 },
-	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
-	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
-	{ IMNonLocals = [InstMap - NonLocals | IMNonLocals0] }.
-recompute_instmap_delta_par_conj([Goal0 | Goals0], [Goal | Goals],
-		InstMap0, IMNonLocals0, IMNonLocals) -->
-	{ Goals0 = [_|_] },
-	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _),
-	{ instmap__vars(InstMap0, OuterNonLocals) },
-	{ Goal0 = _ - GoalInfo0 },
-	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
-	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
-	{ IMNonLocals1 = [InstMap - NonLocals | IMNonLocals0] },
-	recompute_instmap_delta_par_conj(Goals0, Goals, InstMap,
-			IMNonLocals1, IMNonLocals).
-
 %-----------------------------------------------------------------------------%
 
 	% In case we later decided to change the representation
@@ -1420,6 +1404,19 @@ recompute_info_var_is_live(RI, Var, IsLive) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+recompute_instmap_delta_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
+	proc_info_headvars(ProcInfo0, HeadVars),
+	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
+	proc_info_vartypes(ProcInfo0, VarTypes),
+	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_inst_table(ProcInfo0, InstTable0),
+	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
+	recompute_instmap_delta(HeadVars, ArgLives, VarTypes, Goal0, Goal,
+		InstMap0, InstTable0, InstTable, _GoalChanged,
+		ModuleInfo0, ModuleInfo),
+	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
+	proc_info_set_inst_table(ProcInfo1, InstTable, ProcInfo).
 
 recompute_instmap_delta(ArgVars, ArgLives, VarTypes, Goal0, Goal, Instmap,
 		InstTable0, InstTable, GoalChanged, M0, M) :-
@@ -1682,6 +1679,35 @@ recompute_instmap_delta_conj([Goal0 | Goals0], [Goal | Goals],
 		{ instmap_delta_apply_instmap_delta(InstMapDelta0,
 				InstMapDelta1, InstMapDelta) }
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred recompute_instmap_delta_par_conj(list(hlds_goal), list(hlds_goal),
+		instmap, list(pair(instmap, set(prog_var))),
+		list(pair(instmap, set(prog_var))), recompute_info,
+		recompute_info).
+:- mode recompute_instmap_delta_par_conj(in, out, in, in, out, in, out) is det.
+
+recompute_instmap_delta_par_conj([], [], _, IMNonLocals, IMNonLocals) --> [].
+recompute_instmap_delta_par_conj([Goal0], [Goal],
+		InstMap0, IMNonLocals0, IMNonLocals) -->
+	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _),
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ Goal0 = _ - GoalInfo0 },
+	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+	{ IMNonLocals = [InstMap - NonLocals | IMNonLocals0] }.
+recompute_instmap_delta_par_conj([Goal0 | Goals0], [Goal | Goals],
+		InstMap0, IMNonLocals0, IMNonLocals) -->
+	{ Goals0 = [_|_] },
+	recompute_instmap_delta_2(Goal0, Goal, InstMap0, InstMap, _),
+	{ instmap__vars(InstMap0, OuterNonLocals) },
+	{ Goal0 = _ - GoalInfo0 },
+	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
+	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+	{ IMNonLocals1 = [InstMap - NonLocals | IMNonLocals0] },
+	recompute_instmap_delta_par_conj(Goals0, Goals, InstMap,
+			IMNonLocals1, IMNonLocals).
 
 %-----------------------------------------------------------------------------%
 
@@ -2478,6 +2504,25 @@ get_live_vars([Var|Vars], [IsLive|IsLives], LiveVars) :-
 		LiveVars = LiveVars0
 	),
 	get_live_vars(Vars, IsLives, LiveVars0).
+
+%-----------------------------------------------------------------------------%
+
+partition_args(_, _, _, [], [_|_], _, _) :-
+        error("partition_args").
+partition_args(_, _, _, [_|_], [], _, _) :-
+	error("partition_args").
+partition_args(_, _, _, [], [], [], []).
+partition_args(InstMap, InstTable, ModuleInfo, [ArgMode | ArgModes],
+		[Arg | Args], InputArgs, OutputArgs) :-
+	partition_args(InstMap, InstTable, ModuleInfo, ArgModes,
+		Args, InputArgs1, OutputArgs1),
+	( mode_is_input(InstMap, InstTable, ModuleInfo, ArgMode) ->
+		InputArgs = [Arg | InputArgs1],
+		OutputArgs = OutputArgs1
+	;
+		InputArgs = InputArgs1,
+		OutputArgs = [Arg | OutputArgs1]
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

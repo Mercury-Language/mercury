@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -73,6 +73,8 @@
 		;	debug_opt
 		;	debug_vn	% vn = value numbering
 		;	debug_pd	% pd = partial deduction/deforestation
+		;	debug_rl_gen
+		;	debug_rl_opt
 	% Output options
 		;	make_short_interface
 		;	make_interface
@@ -87,6 +89,7 @@
 		;	errorcheck_only
 		;	compile_to_c
 		;	compile_only
+		;	aditi_only
 		;	output_grade_string
 	% Auxiliary output options
 		;	assume_gmake
@@ -106,6 +109,10 @@
 		;	dump_hlds
 		;	dump_hlds_alias
 		;	dump_hlds_options
+		;	verbose_dump_hlds
+		;	generate_schemas
+		;	dump_rl
+		;	dump_rl_bytecode
 	% Language semantics options
 		;	reorder_conj
 		;	reorder_disj
@@ -134,6 +141,7 @@
 		;	stack_trace
 		;	require_tracing
 		;	use_trail
+		;	use_minimal_model
 		;	pic_reg
 		;	tags
 		;	num_tag_bits
@@ -155,7 +163,6 @@
 		;	unboxed_float
 		;	sync_term_size % in words
 		;	type_layout
-		;	max_jump_table_size
 	% Options for internal use only
 	% (the values of these options are implied by the
 	% settings of other options)
@@ -183,6 +190,7 @@
 		;	reclaim_heap_on_semidet_failure
 		;	reclaim_heap_on_nondet_failure
 		;	lazy_code
+		;	call_trace_struct
 		;	have_delay_slot
 		;	num_real_r_regs
 		;	num_real_f_regs
@@ -194,7 +202,7 @@
 		;	cflags_for_gotos
 		;	c_debug
 		;	c_include_directory
-		;	aditi
+		;	max_jump_table_size
 		;	fact_table_max_array_size
 				% maximum number of elements in a single 
 				% fact table data array
@@ -227,6 +235,7 @@
 		;	intermod_unused_args
 		;	optimize_higher_order
 		;	type_specialization
+		;	user_guided_type_specialization
 		;	higher_order_size_limit
 		;	optimize_constructor_last_call
 		;	optimize_duplicate_calls
@@ -277,6 +286,12 @@
 		;	optimize_vnrepeat
 		;	pred_value_number
 		;	vn_fudge
+	%	- RL
+		;	optimize_rl
+		;	optimize_rl_cse
+		;	optimize_rl_invariants
+		;	optimize_rl_index
+		;	detect_rl_streams
 	%	- C
 		;	use_macro_for_redo_fail
 		;	emit_c_loops
@@ -291,11 +306,13 @@
 		;	link_libraries
 		;	link_objects
 	% Miscellaneous Options
-		;	heap_space
 		;	search_directories
 		;	intermod_directories
 		;	use_search_directories_for_intermod
+		;	filenames_from_stdin
 		;	use_subdirs
+		;	aditi
+		;	aditi_user
 		;	help.
 
 :- implementation.
@@ -361,7 +378,9 @@ option_defaults_2(verbosity_option, [
 	debug_det		- 	bool(no),
 	debug_opt		- 	bool(no),
 	debug_vn		- 	int(0),
-	debug_pd		-	bool(no)
+	debug_pd		-	bool(no),
+	debug_rl_gen		-	bool(no),
+	debug_rl_opt		-	bool(no)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -378,6 +397,7 @@ option_defaults_2(output_option, [
 	errorcheck_only		-	bool(no),
 	compile_to_c		-	bool(no),
 	compile_only		-	bool(no),
+	aditi_only		-	bool(no),
 	output_grade_string	-	bool(no)
 ]).
 option_defaults_2(aux_output_option, [
@@ -393,12 +413,16 @@ option_defaults_2(aux_output_option, [
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
 	prolog_dialect		-	string("default"),
-	line_numbers		-	bool(no),
+	line_numbers		-	bool(yes),
 	auto_comments		-	bool(no),
 	show_dependency_graph	-	bool(no),
 	dump_hlds		-	accumulating([]),
 	dump_hlds_alias		-	string(""),
-	dump_hlds_options	-	string("")
+	dump_hlds_options	-	string(""),
+	verbose_dump_hlds	-	string(""),
+	dump_rl			-	bool(no),
+	dump_rl_bytecode	-	bool(no),
+	generate_schemas	-	bool(no)
 ]).
 option_defaults_2(language_semantics_option, [
 	strict_sequential	-	special,
@@ -434,6 +458,7 @@ option_defaults_2(compilation_model_option, [
 	require_tracing		-	bool(no),
 	stack_trace		-	bool(no),
 	use_trail		-	bool(no),
+	use_minimal_model	-	bool(no),
 	pic_reg			-	bool(no),
 	tags			-	string("low"),
 	num_tag_bits		-	int(-1),
@@ -456,8 +481,6 @@ option_defaults_2(compilation_model_option, [
 					% of writing) - will usually be over-
 					% ridden by a value from configure.
 	type_layout		-	bool(yes),
-	max_jump_table_size	-	int(0),
-					% 0 indicates any size.
 	basic_stack_layout	-	bool(no),
 	agc_stack_layout	-	bool(no),
 	procid_stack_layout	-	bool(no),
@@ -475,6 +498,7 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_failure	-	bool_special,
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
+	call_trace_struct		-	bool(no),
 	have_delay_slot		-	bool(no),
 					% the `mmc' script may override the
 					% above default if configure says
@@ -501,7 +525,8 @@ option_defaults_2(code_gen_option, [
 					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
-	aditi			-	bool(no),
+	max_jump_table_size	-	int(0),
+					% 0 indicates any size.
 	fact_table_max_array_size -	int(1024),
 	fact_table_hash_percent_full - 	int(90)
 ]).
@@ -555,6 +580,7 @@ option_defaults_2(optimization_option, [
 	intermod_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
 	type_specialization	-	bool(no),
+	user_guided_type_specialization	-	bool(no),
 	higher_order_size_limit	-	int(20),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
@@ -604,7 +630,13 @@ option_defaults_2(optimization_option, [
 	procs_per_c_function	-	int(1),
 	everything_in_one_c_function -	special,
 	c_optimize		-	bool(no),
-	inline_alloc		-	bool(no)
+	inline_alloc		-	bool(no),
+% RL
+	optimize_rl		- 	bool(no),
+	optimize_rl_cse		-	bool(no),
+	optimize_rl_invariants	-	bool(no),
+	optimize_rl_index	-	bool(no),
+	detect_rl_streams	-	bool(no)
 ]).
 option_defaults_2(link_option, [
 		% Link Options
@@ -619,12 +651,14 @@ option_defaults_2(link_option, [
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
-	heap_space		-	int(0),
+	filenames_from_stdin	-	bool(no),
 	search_directories 	-	accumulating(["."]),
 	intermod_directories	-	accumulating([]),
 	use_search_directories_for_intermod
 				-	bool(yes),
 	use_subdirs		-	bool(no),
+	aditi			-	bool(no),
+	aditi_user		-	string(""),
 	help 			-	bool(no)
 ]).
 
@@ -643,7 +677,6 @@ short_option('l', 			link_libraries).
 short_option('L', 			link_library_directories).
 short_option('M', 			generate_dependencies).
 short_option('N', 			debug_modes).
-short_option('n', 			line_numbers).
 short_option('o', 			output_file_name).
 short_option('O', 			opt_level).
 short_option('p', 			profiling).
@@ -688,6 +721,8 @@ long_option("debug-det",		debug_det).
 long_option("debug-opt",		debug_opt).
 long_option("debug-vn",			debug_vn).
 long_option("debug-pd",			debug_pd).
+long_option("debug-rl-gen",		debug_rl_gen).
+long_option("debug-rl-opt",		debug_rl_opt).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
@@ -718,6 +753,7 @@ long_option("errorcheck-only",		errorcheck_only).
 long_option("compile-to-c",		compile_to_c).
 long_option("compile-to-C",		compile_to_c).
 long_option("compile-only",		compile_only).
+long_option("aditi-only",		aditi_only).
 long_option("output-grade-string",	output_grade_string).
 
 % aux output options
@@ -740,6 +776,10 @@ long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
 long_option("dump-hlds-alias",		dump_hlds_alias).
 long_option("dump-hlds-options",	dump_hlds_options).
+long_option("verbose-dump-hlds",	verbose_dump_hlds).
+long_option("dump-rl",			dump_rl).
+long_option("dump-rl-bytecode",		dump_rl_bytecode).
+long_option("generate-schemas",		generate_schemas).
 
 % language semantics options
 long_option("reorder-conj",		reorder_conj).
@@ -776,6 +816,7 @@ long_option("debug",			debug).
 % long_option("stack-trace",		stack_trace).
 % long_option("require-tracing",	require_tracing).
 long_option("use-trail",		use_trail).
+long_option("use-minimal-model",	use_minimal_model).
 long_option("pic-reg",			pic_reg).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
@@ -785,7 +826,6 @@ long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
 long_option("arg-convention",		args).
 long_option("type-layout",		type_layout).
-long_option("max-jump-table-size",	max_jump_table_size).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
@@ -807,6 +847,7 @@ long_option("reclaim-heap-on-semidet-failure",
 					reclaim_heap_on_semidet_failure).
 long_option("reclaim-heap-on-nondet-failure",
 					reclaim_heap_on_nondet_failure).
+long_option("call-trace-struct",	call_trace_struct).
 long_option("branch-delay-slot",	have_delay_slot).
 long_option("have-delay-slot",		have_delay_slot).
 long_option("num-real-r-regs",		num_real_r_regs).
@@ -820,6 +861,7 @@ long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
 long_option("c-debug",			c_debug).
 long_option("c-include-directory",	c_include_directory).
+long_option("max-jump-table-size",	max_jump_table_size).
 long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",
 					fact_table_hash_percent_full).
@@ -870,6 +912,10 @@ long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
 long_option("type-specialization",	type_specialization).
 long_option("type-specialisation",	type_specialization).
+long_option("user-guided-type-specialization",
+					user_guided_type_specialization).
+long_option("user-guided-type-specialisation",
+					user_guided_type_specialization).
 long_option("higher-order-size-limit",	higher_order_size_limit).
 long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
@@ -941,6 +987,17 @@ long_option("optimise-vnrepeat",	optimize_vnrepeat).
 long_option("pred-value-number",	pred_value_number).
 long_option("vn-fudge",			vn_fudge).
 
+% RL optimizations
+long_option("optimize-rl",		optimize_rl).
+long_option("optimise-rl",		optimize_rl).
+long_option("optimize-rl-cse",		optimize_rl_cse).
+long_option("optimise-rl-cse",		optimize_rl_cse).
+long_option("optimize-rl-invariants",	optimize_rl_invariants).
+long_option("optimise-rl-invariants",	optimize_rl_invariants).
+long_option("optimize-rl-index",	optimize_rl_index).
+long_option("optimise-rl-index",	optimize_rl_index).
+long_option("detect-rl-streams", 	detect_rl_streams).
+
 % LLDS->C optimizations
 long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
 long_option("emit-c-loops",		emit_c_loops).
@@ -963,12 +1020,14 @@ long_option("link-object",		link_objects).
 
 % misc options
 long_option("help",			help).
-long_option("heap-space",		heap_space).
 long_option("search-directory",		search_directories).
 long_option("intermod-directory",	intermod_directories).
 long_option("use-search-directories-for-intermod",
 					use_search_directories_for_intermod).	
+long_option("filenames-from-stdin",	filenames_from_stdin).
 long_option("use-subdirs",		use_subdirs).	
+long_option("aditi",			aditi).
+long_option("aditi-user",		aditi_user).
 
 %-----------------------------------------------------------------------------%
 
@@ -1160,7 +1219,9 @@ opt_level(2, _, [
 	inline_simple		-	bool(yes),
 	inline_single_use	-	bool(yes),
 	inline_compound_threshold -	int(10),
-	common_struct		-	bool(no),	% YYY
+	%common_struct		-	bool(yes),	% YYY
+	%user_guided_type_specialization		% YYY 
+	%			-	bool(yes),
 /****
 % XXX optimize_duplicate_calls is broken --
 % it doesn't take type information into account.
@@ -1242,6 +1303,7 @@ options_help -->
 	options_help_hlds_hlds_optimization,
 	options_help_hlds_llds_optimization,
 	options_help_llds_llds_optimization,
+	options_help_rl_rl_optimization,
 	options_help_output_optimization,
 	options_help_object_optimization,
 	options_help_link,
@@ -1335,6 +1397,12 @@ options_help_verbosity -->
 		"--debug-pd",
 		"\tOutput detailed debugging traces of the partial",
 		"\tdeduction and deforestation process."
+/***** ADITI is not yet useful 
+		"--debug-rl-gen",
+		"\tOutput detailed debugging traces of Aditi-RL code generation.",
+		"--debug-rl-opt",
+		"\tOutput detailed debugging traces of Aditi-RL optimization."
+*****/
 	]).
 
 :- pred options_help_output(io__state::di, io__state::uo) is det.
@@ -1390,7 +1458,12 @@ options_help_output -->
 		"-c, --compile-only",
 		"\tGenerate C code in `<module>.c' and object code in `<module>.o'",
 		"\tbut do not attempt to link the named modules.",
-		"\t--output-grade-string",
+/***** ADITI is not yet useful.
+		"--aditi-only"),
+		"\tWrite Aditi-RL bytecode to `<module>.rlo' and",
+		"\tdo not compile to C.",
+*****/
+		"--output-grade-string",
 		"\tCompute the grade of the library to link with based on",
 		"\tthe command line options, and print it to the standard",
 		"\toutput."
@@ -1399,7 +1472,7 @@ options_help_output -->
 :- pred options_help_aux_output(io__state::di, io__state::uo) is det.
 
 options_help_aux_output -->
-	io__write_string("\n Auxiliary Output Options:\n"),
+	io__write_string("\nAuxiliary Output Options:\n"),
 	write_tabbed_lines([
 		"--no-assume-gmake",
 		"\tWhen generating `.dep' files, generate Makefile",
@@ -1437,9 +1510,11 @@ options_help_aux_output -->
 		"\tor `<module>.nl' (depending on the dialect).",
 		"--prolog-dialect {sicstus,nu}",
 		"\tTarget the named dialect if generating Prolog code.",
-		"-l, --line-numbers",
-		"\tOutput line numbers in the generated code.",
-		"\tOnly works with the `-G' and `-P' options.",
+		"--no-line-numbers",
+		"\tDo not put source line numbers in the generated code.",
+		"\tThe generated code may be in C (the usual case),",
+		"\tin Goedel (with the option --convert-to-goedel)",
+		"\tor in Mercury (with the option --convert-to-mercury).",
 		"--auto-comments",
 		"\tOutput comments in the `<module>.c' file.",
 		"\t(The code may be easier to understand if you also",
@@ -1461,6 +1536,22 @@ options_help_aux_output -->
 		"\tEach type of detail is included in the dump if its",
 		"\tcorresponding letter occurs in the option argument",
 		"\t(see the Mercury User's Guide for details)."
+/***** ADITI is not yet useful.
+		"--dump-rl",
+		"\tOutput a human readable form of the compiler's internal",
+		"\trepresentation of the generated Aditi-RL code to",
+		"\t`<module>.rl_dump'.",
+		"--dump-rl-bytecode",
+		"\tOutput a human readable representation of the generated",
+		"\tAditi-RL bytecodes to `<module>.rla'.",
+		"\tAditi-RL bytecodes are directly executed by the Aditi system.",
+		"--generate-schemas",
+		"\tOutput schema strings for Aditi base relations",
+		"\tto `<module>.base_schema' and for Aditi derived",
+		"\trelations to `<module>.derived_schema'.",
+		"\tA schema string is a representation of the types",
+		"\tof a relation."
+*****/
 	]).
 
 :- pred options_help_semantics(io__state::di, io__state::uo) is det.
@@ -1607,14 +1698,18 @@ your program compiled with different options.
 ********************/
 		"--debug\t\t\t\t(grade modifier: `.debug')",
 		"\tEnable Mercury-level debugging.",
-		"\tSee the [XXX not yet written!] chapter of the",
-		"\tMercury User's Guide for details.",
+		"\tSee the Debugging chapter of the Mercury User's Guide",
+		"\tfor details.",
 		"--pic-reg\t\t\t(grade modifier: `.pic_reg')",
 		"[For Unix with intel x86 architecture only]",
 		"\tSelect a register usage convention that is compatible,",
 		"\twith position-independent code (gcc's `-fpic' option).",
 		"\tThis is necessary when using shared libraries on Intel x86",
-		"\tsystems running Unix.  On other systems it has no effect.",
+		"\tsystems running Unix.  On other systems it has no effect."
+	]),
+
+	io__write_string("\n    Developer compilation model options:\n"),
+	write_tabbed_lines([
 		"--tags {none, low, high}\t(This option is not for general use.)",
 		"\tSpecify whether to use the low bits or the high bits of ",
 		"\teach word as tag bits (default: low).",
@@ -1631,20 +1726,6 @@ your program compiled with different options.
 		% The --bytes-per-word option is intended for use
 		% by the `mmc' script; it is deliberately not documented.
 
-		"--branch-delay-slot\t\t(This option is not for general use.)",
-		"\tAssume that branch instructions have a delay slot.",
-		"--num-real-r-regs <n>\t\t(This option is not for general use.)",
-		"\tAssume registers r1 up to r<n> are real general purpose",
-		"\tregisters.",
-		"--num-real-f-regs <n>\t\t(This option is not for general use.)",
-		"\tAssume registers f1 up to f<n> are real floating point",
-		"\tregisters.",
-		"--num-real-r-temps <n>\t\t(This option is not for general use.)",
-		"\tAssume that <n> non-float temporaries will fit into",
-		"\treal machine registers.",
-		"--num-real-f-temps <n>\t\t(This option is not for general use.)",
-		"\tAssume that <n> float temporaries will fit into",
-		"\treal machine registers.",
 		"--args {simple, compact}",
 		"--arg-convention {simple, compact}",
 		"(This option is not for general use.)",
@@ -1660,15 +1741,9 @@ your program compiled with different options.
 
 		"--no-type-layout",
 		"(This option is not for general use.)",
-		"\tDon't output base_type_layout structures or references",
+		"\tDon't output type_ctor_layout structures or references",
 		"\tto them. (The C code also needs to be compiled with",
 		"\t`-DNO_TYPE_LAYOUT').",
-
-		"--max-jump-table-size",
-		"\tThe maximum number of entries a jump table can have.",
-		"\tThe special value 0 indicates the table size is unlimited.",
-		"\tThis option can be useful to avoid exceeding fixed limits",
-		"\timposed by some C compilers.\n",
 
 		% This is a developer only option.
 %		"--basic-stack-layout",
@@ -1701,6 +1776,10 @@ your program compiled with different options.
 %		"\tKeeps typeinfo variables around for as long as any data",
 %		"\tthat has a type that contains that type variable is live",
 %
+		"--use-minimal-model",
+		"(This option is not for general use.)",
+		"\tEnable the use of minimal model tabling.",
+
 		"--unboxed-float",
 		"(This option is not for general use.)",
 		"\tDon't box floating point numbers.",
@@ -1740,6 +1819,10 @@ options_help_code_generation -->
 		"\tDon't reclaim heap on backtracking in semidet code.",
 		"--no-reclaim-heap-on-failure",
 		"\tCombines the effect of the two options above.",
+
+		"--call-trace-struct\t\t(This option is not for general use.)",
+		"\tPass information to the tracing system in one struct.",
+
 		"--cc <compiler-name>",
 		"\tSpecify which C compiler to use.",
 		"--c-include-directory <dir>",
@@ -1755,13 +1838,37 @@ options_help_code_generation -->
 		"\t(This has the same effect as",
 		"\t`--cflags ""-g"" --link-flags ""--no-strip""'.)",
 
+		"--max-jump-table-size",
+		"\tThe maximum number of entries a jump table can have.",
+		"\tThe special value 0 indicates the table size is unlimited.",
+		"\tThis option can be useful to avoid exceeding fixed limits",
+		"\timposed by some C compilers.\n",
+
 		"--fact-table-max-array-size <n>",
 		"\tSpecify the maximum number of elements in a single",
-		"\t`pragma fact_table' data array (default: 1024).",
+		"\t`:- pragma fact_table' data array (default: 1024).",
 		"--fact-table-hash-percent-full <percentage>",
-		"\tSpecify how full the `pragma fact_table' hash tables should be",
-		"\tallowed to get.  Given as an integer percentage",
+		"\tSpecify how full the `:- pragma fact_table' hash tables",
+		"\tshould be allowed to get.  Given as an integer percentage",
 		"\t(valid range: 1 to 100, default: 90)."
+	]),
+
+	io__write_string("\n    Code generation target options:\n"),
+	write_tabbed_lines([
+		"--branch-delay-slot\t\t(This option is not for general use.)",
+		"\tAssume that branch instructions have a delay slot.",
+		"--num-real-r-regs <n>\t\t(This option is not for general use.)",
+		"\tAssume registers r1 up to r<n> are real general purpose",
+		"\tregisters.",
+		"--num-real-f-regs <n>\t\t(This option is not for general use.)",
+		"\tAssume registers f1 up to f<n> are real floating point",
+		"\tregisters.",
+		"--num-real-r-temps <n>\t\t(This option is not for general use.)",
+		"\tAssume that <n> non-float temporaries will fit into",
+		"\treal machine registers.",
+		"--num-real-f-temps <n>\t\t(This option is not for general use.)",
+		"\tAssume that <n> float temporaries will fit into",
+		"\treal machine registers."
 	]).
 
 :- pred options_help_optimization(io__state::di, io__state::uo) is det.
@@ -1867,7 +1974,11 @@ options_help_hlds_hlds_optimization -->
 		"--optimize-higher-order",
 		"\tEnable specialization of higher-order predicates.",
 		"--type-specialization",
-		"\tEnable specialization of polymorphic predicates.",
+		"\tEnable specialization of polymorphic predicates where the",
+		"\tpolymorphic types are known.",
+		"--user-guided-type-specialization",
+		"\tEnable specialization of polymorphic predicates for which",
+		"\tthere are `:- pragma type_spec' declarations.",
 		"--higher-order-size-limit",
 		"\tSet the maximum goal size of specialized versions created by",
 		"\t`--optimize-higher-order' and `--type-specialization'.",
@@ -1927,6 +2038,9 @@ options_help_hlds_llds_optimization -->
 		"--no-static-ground-terms",
 		"\tDisable the optimization of constructing constant ground terms",
 		"\tat compile time and storing them as static constants.",
+		"\tNote that auxiliarity data structures created by the compiler",
+		"\tfor purposes such as debugging will still be created as",
+		"\tstatic constants.",
 		"--no-middle-rec",
 		"\tDisable the middle recursion optimization.",
 		"--no-simple-neg",
@@ -1973,6 +2087,29 @@ options_help_llds_llds_optimization -->
 		"--pred-value-number",
 		"\tExtend value numbering to entire predicates."
 	]).
+
+:- pred options_help_rl_rl_optimization(io__state::di, io__state::uo) is det.
+
+options_help_rl_rl_optimization -->
+	[].
+/***** ADITI is not yet useful
+	io__write_string("\n    Aditi-RL optimizations:\n"),
+	write_tabbed_lines([
+		"--optimize-rl",
+		"\tEnable the optimizations of Aditi-RL procedures",
+		"\tdescribed below.",
+		"--optimize-rl-cse",
+		"\tOptimize common subexpressions in Aditi-RL procedures.",
+		"\t--optimize-rl-invariants",
+		"\tOptimize loop invariants in Aditi-RL procedures.",
+		"\t--optimize-rl-index",
+		"\tUse indexing to optimize access to relations in Aditi-RL".
+		"\tprocedures.",
+		"\t--detect-rl-streams",
+		"\tDetect cases where intermediate results in Aditi-RL",
+		"\tprocedures do not need to be materialised."
+	]).
+*****/
 
 :- pred options_help_output_optimization(io__state::di, io__state::uo) is det.
 
@@ -2039,13 +2176,6 @@ options_help_link -->
 options_help_misc -->
 	io__write_string("\nMiscellaneous Options:\n"),
 	write_tabbed_lines([
-	% 	"\t-H <n>, --heap-space <n>",
-	% 	"\t\tPre-allocate <n> kilobytes of heap space.",
-	% 	"\t\tThis option is now obsolete.  In the past it",
-	% 	"\t\twas used to avoid NU-Prolog's",
-	% 	"\t\t\t""Panic: growing stacks has required shifting the heap""",
-	% 	"\t\tmessage.",
-
 		"-I <dir>, --search-directory <dir>",
 		"\tAdd <dir> to the list of directories to be searched for \n\t\timported modules.",
 		"--intermod-directory <dir>",
@@ -2057,7 +2187,27 @@ options_help_misc -->
 		"\tdirectories given by `--intermod-directory'.",
 		"--use-subdirs",
 		"\tGenerate intermediate files in a `Mercury' subdirectory,",
-		"\trather than generating them in the current directory."
+		"\trather than generating them in the current directory.",
+		"--filenames-from-stdin",
+		"\tRead then compile a newline terminated module name or",
+		"\tfile name from the standard input. Repeat this until EOF",
+		"\tis reached. (This allows a program or user to interactively",
+		"\tcompile several modules without the overhead of process",
+		"\tcreation for each one.)"
+/***** ADITI is not yet useful.
+		"--aditi",
+		"\tEnable Aditi compilation. You need to enable this",
+		"\toption if you are making use of the Aditi deductive",
+		"\tdatabase interface.",
+		"--aditi-user",
+		"\tSpecify the Aditi login of the owner of the predicates",
+		"\tin any Aditi RL files produced. The owner field is",
+		"\tused along with module, name and arity to identify",
+		"\tpredicates, and is also used for security checks.",
+		"\tDefaults to the value of the `USER' environment",
+		"\tvariable. If `$USER' is not set, `--aditi-user'",
+		"\tdefaults to the string ""guest"".".
+*****/
 	]).
 
 :- pred write_tabbed_lines(list(string), io__state, io__state).

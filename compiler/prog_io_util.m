@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,13 +32,11 @@
 :- type maybe2(T1, T2)	--->	error(string, term)
 			;	ok(T1, T2).
 
-:- type maybe1(T)	--->	error(string, term)
-			;	ok(T).
-
+:- type maybe1(T)	== 	maybe1(T, generic).
 :- type maybe1(T, U)	--->	error(string, term(U))
 			;	ok(T).
 
-:- type maybe_functor	== 	maybe2(sym_name, list(term)).
+:- type maybe_functor	== 	maybe_functor(generic).
 :- type maybe_functor(T) == 	maybe2(sym_name, list(term(T))).
 
 :- type maybe_item_and_context

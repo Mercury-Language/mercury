@@ -549,7 +549,7 @@ rl_key__extract_key_range_disj(Cnstrs0, [Goal | Goals], Maps0, Maps) -->
 rl_key__extract_key_range_switch(_, _Var, [], Maps, Maps) --> [].
 rl_key__extract_key_range_switch(Cnstrs0, Var, [Case | Cases],
 		Maps0, Maps) -->
-	{ Case = case(ConsId, Goal) },
+	{ Case = case(ConsId, _, Goal) },
 	key_info_set_constraints(Cnstrs0),
 	rl_key__add_functor_constraint(Var, ConsId),
 	rl_key__extract_key_range(Goal),

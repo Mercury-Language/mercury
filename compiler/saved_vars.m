@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,7 +57,8 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	{ proc_info_headvars(ProcInfo0, HeadVars) },
 	{ proc_info_inst_table(ProcInfo0, InstTable0) },
 
-	% hlds_out__write_goal(Goal1, InstTable0, ModuleInfo0, Varset1, no, 0, ""),
+	% hlds_out__write_goal(Goal1, InstTable0,
+	%	ModuleInfo0, Varset1, no, 0, "\n"),
 
 	% recompute the nonlocals for each goal
 	{ implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
@@ -67,7 +68,7 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	{ recompute_instmap_delta(HeadVars, ArgLives, VarTypes, Goal2, Goal,
 		InstMap0, InstTable0, InstTable, _, ModuleInfo0, ModuleInfo) },
 
-	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, ""),
+	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, "\n"),
 
 	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo1) },
 	{ proc_info_set_varset(ProcInfo1, Varset, ProcInfo2) },

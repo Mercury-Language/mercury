@@ -358,7 +358,7 @@ convert_equations_2([Path | Paths], PPVars0, PPVars, Varset0, Varset,
 lookup_coeff(PPIds, Soln, PPId, PPId - ICoeff) :-
 	map__lookup(PPIds, PPId, Var),
 	map__lookup(Soln, Var, Coeff),
-	float__ceiling_to_int(Coeff, ICoeff).
+	ICoeff = float__ceiling_to_int(Coeff).
 
 :- pred pred_proc_var(pred_proc_id::in, var::out, varset::in, varset::out,
 	map(pred_proc_id, var)::in, map(pred_proc_id, var)::out) is det.

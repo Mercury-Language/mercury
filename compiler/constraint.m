@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -368,10 +368,8 @@ mode_info_write_goal(Goal, Indent, ModeInfo0, ModeInfo) :-
 	( semidet_succeed ->
 		mode_info_get_module_info(ModeInfo0, ModuleInfo),
 		mode_info_get_varset(ModeInfo0, VarSet),
-		mode_info_get_inst_table(ModeInfo0, InstTable),
-		mode_info_get_instmap(ModeInfo0, InstMap),
 		hlds_out__write_goal(Goal, InstMap, InstTable, ModuleInfo,
-			VarSet, no, Indent, "", IOState1, IOState)
+			VarSet, no, Indent, "\n", IOState1, IOState)
 	;
 		IOState = IOState1
 	),

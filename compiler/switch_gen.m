@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -204,15 +204,16 @@ switch_gen__lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
 
 switch_gen__priority(no_tag, 0).			% should never occur
 switch_gen__priority(int_constant(_), 1).
-switch_gen__priority(complicated_constant_tag(_, _), 1).
-switch_gen__priority(simple_tag(_), 2).
+switch_gen__priority(shared_local_tag(_, _), 1).
+switch_gen__priority(unshared_tag(_), 2).
 switch_gen__priority(float_constant(_), 3).
-switch_gen__priority(complicated_tag(_, _), 4).
+switch_gen__priority(shared_remote_tag(_, _), 4).
 switch_gen__priority(string_constant(_), 5).
 switch_gen__priority(pred_closure_tag(_, _), 6).	% should never occur
 switch_gen__priority(code_addr_constant(_, _), 6).	% should never occur
-switch_gen__priority(base_type_info_constant(_, _, _), 6).% should never occur
+switch_gen__priority(type_ctor_info_constant(_, _, _), 6).% should never occur
 switch_gen__priority(base_typeclass_info_constant(_, _, _), 6).% shouldn't occur
+switch_gen__priority(tabling_pointer_constant(_, _), 6). % shouldn't occur
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
