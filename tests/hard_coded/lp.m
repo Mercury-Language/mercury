@@ -263,8 +263,11 @@ simplex(N, M, A0, A, Result, IO0, IO) :-
 				Max0 = yes(_ - MaxVal0),
 				index(A0, N, M, Row, Q, CellVal),
 				index(A0, N, M, Row, M, MVal),
-				MaxVal1 is MVal/CellVal,
-				( CellVal > 0.0, MaxVal1 =< MaxVal0 ->
+				(
+					CellVal > 0.0,
+					MaxVal1 is MVal/CellVal,
+					MaxVal1 =< MaxVal0
+				->
 					Max = yes(Row - MaxVal1)
 				;
 					Max = Max0
