@@ -102,37 +102,29 @@ Word	virtual_reg_map[MAX_REAL_REG] = VIRTUAL_REG_MAP_BODY;
 
 Word	num_uses[MAX_RN];
 
-Word	*heap;
-Word	*detstack;
-Word	*nondstack;
+MemoryZone zone_table[MAX_ZONES];
 
-Word	*heapmin;
-Word	*detstackmin;
-Word	*nondstackmin;
+MemoryZone *used_memory_zones;
+MemoryZone *free_memory_zones;
 
-Word	*heapmax;
-Word	*detstackmax;
-Word	*nondstackmax;
-
-Word	*heapend;
-Word	*detstackend;
-Word	*nondstackend;
-
-char *	heap_zone;
-char *	detstack_zone;
-char *	nondstack_zone;
-
-int	heap_zone_left = 0;
-int	detstack_zone_left = 0;
-int	nondstack_zone_left = 0;
-
+MemoryZone *detstack_zone;
 #ifndef	SPEED
-const char	**dumpstack;
-int		dumpindex;
+MemoryZone *dumpstack_zone;
+#endif
+MemoryZone *nondetstack_zone;
+#ifndef CONSERVATIVE_GC
+MemoryZone *heap_zone;
 #endif
 
 static	unsigned	unit;
 static	unsigned	page_size;
+
+MemoryZone	*construct_zone(const char *name, Word *base, unsigned size,
+			unsigned offset, unsigned redsize);
+MemoryZone	*create_zone(const char *name, unsigned size, unsigned offset,
+			unsigned redsize);
+MemoryZone	*get_zone(void);
+void		unget_zone(MemoryZone *zone);
 
 void init_memory(void)
 {
@@ -142,6 +134,36 @@ void init_memory(void)
 	unsigned	heap_offset;
 	unsigned	detstack_offset;
 	unsigned	nondstack_offset;
+	int		i;
+	Word		*detstack_base;
+	Word		*nondetstack_base;
+#ifndef	CONSERVATIVE_GC
+	Word		*heap_base;
+#endif
+
+	/*
+	** Initialize the MemoryZone table.
+	*/
+	used_memory_zones = NULL;
+	free_memory_zones = zone_table;
+	for(i=0; i < MAX_ZONES; i++)
+	{
+		strcpy(zone_table[i].name, "unused");
+		zone_table[i].bottom = NULL;
+		zone_table[i].top = NULL;
+		zone_table[i].min = NULL;
+#ifndef SPEED
+		zone_table[i].max = NULL;
+#endif
+#ifdef	HAVE_MPROTECT
+		zone_table[i].redzone = NULL;
+		zone_table[i].hardmax = NULL;
+#endif
+		if (i+1 < MAX_ZONES)
+			zone_table[i].next = &(zone_table[i+1]);
+		else
+			zone_table[i].next = NULL;
+	}
 
 	/*
 	** Convert all the sizes are from kilobytes to bytes and
@@ -180,7 +202,6 @@ void init_memory(void)
 	if (nondstack_zone_size >= nondstack_size)
 		nondstack_zone_size = unit;
 
-
 	/*
 	** Calculate how much memory to allocate, then allocate it
 	** and divide it up among the areas.
@@ -207,55 +228,52 @@ void init_memory(void)
 	detstack_offset = (heap_offset + pcache_size / 4) % pcache_size;
 	nondstack_offset = (detstack_offset + pcache_size / 4) % pcache_size;
 
-#ifdef CONSERVATIVE_GC
-	heap    = 0;
-	heapmin = 0;
-	heapend = 0;
+#ifndef CONSERVATIVE_GC
+	heap_base	 = (Word *) arena;
+	detstack_base	 = round_up((Unsigned)heap_base+heap_size+unit, unit);
 #else
-	heap    = (Word *) arena;
-	heapmin = (Word *) ((char *) heap + heap_offset);
-	heapend = (Word *) ((char *) heap + heap_size + unit);
-	assert(((Unsigned) heapend) % unit == 0);
+	detstack_base	 = (Word *) arena;
+#endif
+	nondetstack_base = (Word *)
+		round_up((Unsigned)detstack_base+detstack_size+unit, unit);
+
+
+	fake_reg_offset = (Unsigned) fake_reg % pcache_size;
+	heap_offset = (fake_reg_offset + pcache_size / 4) % pcache_size;
+	detstack_offset = (heap_offset + pcache_size / 4) % pcache_size;
+	nondstack_offset = (detstack_offset + pcache_size / 4) % pcache_size;
+
+	/*
+	** Create memory zones for the heap, det stack and nondet stack.
+	*/
+
+	detstack_zone = construct_zone("det stack", detstack_base,
+			detstack_size, detstack_offset, detstack_zone_size);
+	nondetstack_zone = construct_zone("nondet stack", nondetstack_base,
+			nondstack_size, nondstack_offset, nondstack_zone_size);
+#ifndef CONSERVATIVE_GC
+	heap_zone = construct_zone("heap", heap_base, heap_size, heap_offset,
+			heap_zone_size);
 #endif
 
-#ifdef CONSERVATIVE_GC
-	detstack    = (Word *) arena;
-#else
-	detstack    = heapend;
-#endif
-	detstackmin = (Word *) ((char *) detstack + detstack_offset);
-	detstackend = (Word *) ((char *) detstack + detstack_size + unit);
-	assert(((Unsigned) detstackend) % unit == 0);
-
-	nondstack    = detstackend;
-	nondstackmin = (Word *) ((char *) nondstack + nondstack_offset);
-	nondstackend = (Word *) ((char *) nondstack + nondstack_size + unit);
-	assert(((Unsigned) nondstackend) % unit == 0);
 
 #ifndef	SPEED
-	nondstackmin[PREDNM] = (Word) "bottom";
+	nondetzone->min[PREDNM] = (Word) "bottom";
 #endif
-
-	if (arena + total_size <= (char *) nondstackend)
-	{
-		fprintf(stderr, "Mercury runtime: internal error: "
-				"allocated too much memory\n");
-		exit(1);
-	}
 
 #ifndef	SPEED
 	/* We allocate as mach char *s as there are words in the detstack. */
 	/* In the worst-case, all detstack frames have only one word. */
-	dumpstack = (char **) memalign(unit,
-		detstack_size * (sizeof(char *) / (sizeof(Word))));
-	dumpindex = 0;
+	dumpstak_zone = create_zone("dumpstack",
+		detstack_size * (sizeof(char *) / (sizeof(Word))), 0, 0);
 #endif
 
-	setup_mprotect();
 	setup_signal();
 
 	if (memdebug)
 	{
+		MemoryZone	*zone;
+
 		fprintf(stderr, "\n");
 		fprintf(stderr, "pcache_size  = %d (0x%x)\n",
 			pcache_size, pcache_size);
@@ -269,128 +287,148 @@ void init_memory(void)
 			(void *) fake_reg, (long) fake_reg & (unit-1));
 		fprintf(stderr, "\n");
 
-#ifndef CONSERVATIVE_GC
-		fprintf(stderr, "heap           = %p (offset %ld)\n",
-			(void *) heap, (long) heap & (unit-1));
-		fprintf(stderr, "heapmin        = %p (offset %ld)\n",
-			(void *) heapmin, (long) heapmin & (unit-1));
-		fprintf(stderr, "heapend        = %p (offset %ld)\n",
-			(void *) heapend, (long) heapend & (unit-1));
-		fprintf(stderr, "heap_zone      = %p (offset %ld)\n",
-			(void *) heap_zone, (long) heap_zone & (unit-1));
+		for (zone = used_memory_zones; zone; zone = zone->next)
+		{
+			fprintf(stderr, "%-16s-base	= %p\n",
+				zone->name, (void *) zone->bottom);
+			fprintf(stderr, "%-16s-min		= %p\n",
+				zone->name, (void *) zone->min);
+			fprintf(stderr, "%-16s-top		= %p\n",
+				zone->name, (void *) zone->top);
+#ifdef	HAVE_MPROTECT
+			fprintf(stderr, "%-16s-redzone		= %p\n",
+				zone->name, (void *) zone->redzone);
+			fprintf(stderr, "%-16s-hardmax		= %p\n",
+				zone->name, (void *) zone->hardmax);
 #endif
-
-		fprintf(stderr, "\n");
-		fprintf(stderr, "detstack       = %p (offset %ld)\n",
-			(void *) detstack, (long) detstack & (unit-1));
-		fprintf(stderr, "detstackmin    = %p (offset %ld)\n",
-			(void *) detstackmin, (long) detstackmin & (unit-1));
-		fprintf(stderr, "detstackend    = %p (offset %ld)\n",
-			(void *) detstackend, (long) detstackend & (unit-1));
-		fprintf(stderr, "detstack_zone  = %p (offset %ld)\n",
-			(void *) detstack_zone, (long) detstack_zone & (unit-1));
-
-		fprintf(stderr, "\n");
-		fprintf(stderr, "nondstack      = %p (offset %ld)\n",
-			(void *) nondstack, (long) nondstack & (unit-1));
-		fprintf(stderr, "nondstackmin   = %p (offset %ld)\n",
-			(void *) nondstackmin, (long) nondstackmin & (unit-1));
-		fprintf(stderr, "nondstackend   = %p (offset %ld)\n",
-			(void *) nondstackend, (long) nondstackend & (unit-1));
-		fprintf(stderr, "nondstack_zone = %p (offset %ld)\n",
-			(void *) nondstack_zone,
-			(long) nondstack_zone & (unit-1));
-
-		fprintf(stderr, "\n");
-		fprintf(stderr, "arena start    = %p (offset %ld)\n",
-			(void *) arena, (long) arena & (unit-1));
-		fprintf(stderr, "arena end      = %p (offset %ld)\n",
-			(void *) (arena+total_size),
-			(long) (arena+total_size) & (unit-1));
-
-		fprintf(stderr, "\n");
-#ifndef CONSERVATIVE_GC
-		fprintf(stderr, "heap size      = %ld (0x%lx)\n",
-			(long) ((char *) heapend - (char *) heapmin),
-			(long) ((char *) heapend - (char *) heapmin));
-#endif
-		fprintf(stderr, "detstack size  = %ld (0x%lx)\n",
-			(long) ((char *) detstackend - (char *) detstackmin),
-			(long) ((char *) detstackend - (char *) detstackmin));
-		fprintf(stderr, "nondstack size = %ld (0x%lx)\n",
-			(long) ((char *) nondstackend - (char *) nondstackmin),
-			(long) ((char *) nondstackend - (char *) nondstackmin));
-		fprintf(stderr, "arena size     = %ld (0x%lx)\n",
-			(long) total_size, (long) total_size);
+			fprintf(stderr, "%-16s-size		= %ld\n",
+				zone->name,
+				(char *)zone->hardmax - (char *)zone->min);
+			fprintf(stderr, "\n");
+		}
 	}
+}
+
+MemoryZone *get_zone()
+{
+	MemoryZone *zone;
+
+	/*
+	** unlink the first zone on the free-list,
+	** link it onto the used-list and return it.
+	*/
+	zone = free_memory_zones;
+	if (zone == NULL)
+	{
+		fatal_error("no more memory zones");
+	}
+	free_memory_zones = free_memory_zones->next;
+
+	zone->next = used_memory_zones;
+	used_memory_zones = zone;
+
+	return zone;
+}
+
+void unget_zone(MemoryZone *zone)
+{
+	MemoryZone *prev, *tmp;
+
+	/*
+	** Find the zone on the used list, and unlink it from
+	** the list, then link it onto the start of the free-list.
+	*/
+	for(prev = NULL, tmp = used_memory_zones;
+		tmp && tmp != zone; prev = tmp, tmp = tmp->next) ;
+	if (tmp == NULL)
+		fatal_error("memory zone not found!");
+	if (prev == NULL)
+	{
+		used_memory_zones = used_memory_zones->next;
+	}
+	else
+	{
+		prev->next = tmp->next;
+	}
+
+	zone->next = free_memory_zones;
+	free_memory_zones = zone;
+}
+
+MemoryZone *create_zone(const char *name, unsigned size, unsigned offset,
+		unsigned redsize)
+{
+	Word		*base;
+	unsigned	total_size;
+
+		/*
+		** total allocation is:
+		**	unit		(roundup to page boundary)
+		**	size		(including redzone)
+		**	unit		(an extra page for protection if
+		**			 mprotect is being used)
+		*/
+#ifdef	HAVE_MPROTECT
+	total_size = size+2*unit;
+#else
+	total_size = size+unit;
+#endif
+
+	base = memalign(unit, total_size);
+	if (base == NULL)
+		fatal_error("failed to allocate zone");
+
+	return construct_zone(name, base, size, offset, redsize);
+}
+
+MemoryZone *construct_zone(const char *name, Word *base, unsigned size,
+		unsigned offset, unsigned redsize)
+{
+	MemoryZone	*zone;
+	unsigned	total_size;
+
+	if (base == NULL)
+		fatal_error("construct_zone called with NULL pointer");
+
+	zone = get_zone();
+
+	strncpy(zone->name, name, MAX_ZONE_NAME);
+
+	zone->bottom = base;
+
+#ifdef 	HAVE_MPROTECT
+	total_size = size+unit;
+#else
+	total_size = size;
+#endif
+
+	zone->top = (Word *) ((char *)base+total_size);
+	zone->min = (Word *) ((char *)base+offset);
+#ifndef SPEED
+	zone->max = zone->min;
+#endif
+
+#ifdef	HAVE_MPROTECT
+	/*
+	** setup the redzone+hardzone
+	*/
+	zone->redzone = (Word *)
+			round_up((Unsigned)base+size-redsize, unit);
+	if (mprotect(zone->redzone, redsize+unit, MY_PROT) < 0)
+	{
+		char buf[2560];
+		sprintf(buf, "unable to set %s redzone\n"
+			"base=%p, redzone=%p",
+			zone->name, zone->bottom, zone->redzone);
+		fatal_error(buf);
+	}
+	zone->hardmax = (Word *) ((char *)zone->top-unit);
+#endif
+
+	return zone;
 }
 
 #ifdef	HAVE_MPROTECT
-
-/*
-** DESCRIPTION
-**  The function mprotect() changes the  access  protections  on
-**  the mappings specified by the range [addr, addr + len) to be
-**  that specified by prot.  Legitimate values for prot are  the
-**  same  as  those  permitted  for  mmap  and  are  defined  in
-**  <sys/mman.h> as:
-**
-** PROT_READ    page can be read 
-** PROT_WRITE   page can be written
-** PROT_EXEC    page can be executed
-** PROT_NONE    page can not be accessed
-*/
-
-#ifdef CONSERVATIVE_GC
-	/*
-	** The conservative garbage collectors scans through
-	** all these areas, so we need to allow reads.
-	** XXX This probably causes efficiency problems:
-	** too much memory for the GC to scan, and it probably
-	** all gets paged in.
-	*/
-#define MY_PROT PROT_READ
-#else
-#define MY_PROT PROT_NONE
-#endif
-
-/* The BSDI BSD/386 1.1 headers don't define PROT_NONE */
-#ifndef PROT_NONE
-#define PROT_NONE 0
-#endif
-
-static void setup_mprotect(void)
-{
-	heap_zone_left = heap_zone_size;
-	heap_zone = (char *) (heapend) - heap_zone_size;
-	if (heap_zone_size > 0
-	&& mprotect(heap_zone, heap_zone_size, MY_PROT) < 0)
-	{
-		if (memdebug)
-			perror("Mercury runtime: warning: "
-				"cannot protect heap redzone");
-	}
-
-	detstack_zone_left = detstack_zone_size;
-	detstack_zone = (char *) (detstackend) - detstack_zone_size;
-	if (detstack_zone_size > 0
-	&& mprotect(detstack_zone, detstack_zone_size, MY_PROT) < 0)
-	{
-		if (memdebug)
-			perror("Mercury runtime: warning: "
-				"cannot protect detstack redzone");
-	}
-
-	nondstack_zone_left = nondstack_zone_size;
-	nondstack_zone = (char *) (nondstackend) - nondstack_zone_size;
-	if (nondstack_zone_size > 0
-	&& mprotect(nondstack_zone, nondstack_zone_size, MY_PROT) < 0)
-	{
-		if (memdebug)
-			perror("Mercury runtime: warning: "
-				"cannot protect nondstack redzone");
-	}
-}
 
 #ifdef HAVE_SIGINFO	/* try_munprotect is only useful if we have SIGINFO */
 
@@ -424,16 +462,19 @@ static void print_dump_stack(void)
 		i++;
 
 		while (i < dumpindex &&
-			strcmp(dumpstack[i], dumpstack[start]) == 0)
+			strcmp(((char **)(dumpstack_zone->min))[i],
+				((char **)(dumpstack_zone->min))[start]) == 0)
 		{
 			count++;
 			i++;
 		}
 
 		if (count > 1)
-			sprintf(buf, "%s * %d\n", dumpstack[start], count);
+			sprintf(buf, "%s * %d\n",
+				((char **)(dumpstack_zone->min)[start], count);
 		else
-			sprintf(buf, "%s\n", dumpstack[start]);
+			sprintf(buf, "%s\n",
+				((char **)(dumpstack_zone->min)[start]);
 
 		write(STDERR, buf, strlen(buf));
 	}
@@ -467,160 +508,87 @@ static void fatal_abort(void *context, const char *main_msg, int dump)
 
 static bool try_munprotect(void *addr, void *context)
 {
-	char *	fault_addr;
-	char *	new_zone;
+    Word *    fault_addr;
+    Word *    new_zone;
+    MemoryZone *zone;
+    unsigned zone_size;
 
-	fault_addr = (char *) addr;
+    fault_addr = (Word *) addr;
 
-	if (heap_zone != NULL && heap_zone <= fault_addr
-	&& fault_addr <= heap_zone + heap_zone_size)
+    zone = used_memory_zones;
+
+    if (memdebug)
+	fprintf(stderr, "caught fault at %p\n", (void *)addr);
+
+    while(zone != NULL)
+    {
+	if (memdebug)
 	{
-		if (memdebug)
-			fprintf(stderr, "address is in heap red zone\n");
-
-		new_zone = (char *) round_up((Unsigned) fault_addr +
-							sizeof(Word), unit);
-		if (new_zone <= heap_zone + heap_zone_left)
-		{
-			if (new_zone >= (char *) heapend)
-			{
-				if (memdebug)
-				{
-					fprintf(stderr, "can't unprotect last page\n");
-					fflush(stdout);
-				}
-
-				fatal_abort(context, "\nMercury runtime: heap overflow\n", FALSE);
-			}
-
-			if (memdebug)
-				fprintf(stderr, "trying to unprotect from %p to %p\n",
-					(void *) heap_zone, (void *) new_zone);
-
-			if (mprotect(heap_zone, new_zone-heap_zone,
-				PROT_READ|PROT_WRITE) < 0)
-			{
-				perror("Mercury runtime: cannot unprotect heap");
-				exit(1);
-			}
-
-			heap_zone_left -= new_zone-heap_zone;
-			heap_zone = new_zone;
-			if (memdebug)
-			{
-				fprintf(stderr, "successful, heap_zone now %p\n",
-					(void *) heap_zone);
-				/* fprintf(stderr, "value at fault addr %p is %d\n",
-					(void *) addr, * ((Word *) addr)); */
-			}
-
-			return TRUE;
-		}
-	}
-	else if (detstack_zone != NULL && detstack_zone <= fault_addr
-	&& fault_addr <= detstack_zone + detstack_zone_size)
-	{
-		if (memdebug)
-			fprintf(stderr, "address is in detstack red zone\n");
-
-		new_zone = (char *) round_up((Unsigned) fault_addr +
-							sizeof(Word), unit);
-		if (new_zone <= detstack_zone + detstack_zone_left)
-		{
-			if (memdebug)
-				fprintf(stderr, "trying to unprotect from %p to %p\n",
-					(void *) detstack_zone, (void *) new_zone);
-
-			if (new_zone >= (char *) detstackend)
-			{
-				if (memdebug)
-				{
-					fprintf(stderr, "cannot unprotect last page\n");
-					fflush(stdout);
-				}
-
-				fatal_abort(context, "\nMercury runtime: det stack overflow\n", TRUE);
-			}
-
-			if (mprotect(detstack_zone, new_zone-detstack_zone,
-				PROT_READ|PROT_WRITE) < 0)
-			{
-				perror("Mercury runtime: cannot unprotect detstack");
-				exit(1);
-			}
-
-			detstack_zone_left -= new_zone-detstack_zone;
-			detstack_zone = new_zone;
-			if (memdebug)
-			{
-				fprintf(stderr, "successful, detstack_zone now %p\n",
-					(void *) detstack_zone);
-				/* fprintf(stderr, "value at fault addr %p is %d\n",
-					(void *) addr, * ((Word *) addr)); */
-			}
-
-			return TRUE;
-		}
-	}
-	else if (nondstack_zone != NULL && nondstack_zone <= fault_addr
-	&& fault_addr <= nondstack_zone + nondstack_zone_size)
-	{
-		if (memdebug)
-			fprintf(stderr, "address is in nondstack red zone\n");
-
-		new_zone = (char *) round_up((Unsigned) fault_addr +
-							sizeof(Word), unit);
-		if (new_zone <= nondstack_zone + nondstack_zone_left)
-		{
-			if (memdebug)
-				fprintf(stderr, "trying to unprotect from %p to %p\n",
-					(void *) nondstack_zone, (void *) new_zone);
-
-			if (new_zone >= (char *) nondstackend)
-			{
-				if (memdebug)
-				{
-					fprintf(stderr, "cannot unprotect last page\n");
-					fflush(stdout);
-				}
-
-				fatal_abort(context, "\nMercury runtime: nondet stack overflow\n", FALSE);
-			}
-
-			if (mprotect(nondstack_zone, new_zone-nondstack_zone,
-				PROT_READ|PROT_WRITE) < 0)
-			{
-				perror("Mercury runtime: cannot unprotect nondstack\n");
-				exit(1);
-			}
-
-			nondstack_zone_left -= new_zone-nondstack_zone;
-			nondstack_zone = new_zone;
-			if (memdebug)
-			{
-				fprintf(stderr, "successful, nondstack_zone now %p\n",
-					(void *) nondstack_zone);
-				/* fprintf(stderr, "value at fault addr %p is %d\n",
-					(void *) addr, * ((Word *) addr)); */
-			}
-
-			return TRUE;
-		}
+		fprintf(stderr, "checking %s: %p - %p\n",
+			zone->name, (void *) zone->redzone, (void *) zone->top);
 	}
 
-	return FALSE;
+        if (zone->redzone <= fault_addr
+            && fault_addr <= zone->top)
+	{
+
+            if (memdebug)
+                fprintf(stderr, "address is in %s red zone\n", zone->name);
+
+            new_zone = (Word *) round_up((Unsigned) fault_addr +
+                            sizeof(Word), unit);
+        
+            if (new_zone <= zone->hardmax)
+	    {
+                zone_size = (char *)new_zone - (char *)zone->redzone;
+
+                if (memdebug)
+		{
+                    fprintf(stderr, "trying to unprotect %s from %p to %p (%x)\n",
+                    zone->name, (void *) zone->redzone, (void *) new_zone,
+		    zone_size);
+		}
+                if (mprotect(zone->redzone, zone_size,
+                    PROT_READ|PROT_WRITE) < 0)
+                {
+                    perror("Mercury runtime: cannot unprotect zone");
+                    exit(1);
+                }
+
+		zone->redzone = new_zone;
+
+                if (memdebug)
+		{
+                    fprintf(stderr, "successful: %s redzone now %p to %p\n",
+                        zone->name, (void *) zone->redzone,
+			(void *) zone->top);
+		}
+                return TRUE;
+            }
+	    else
+	    {
+                if (memdebug)
+                {
+                    fprintf(stderr, "can't unprotect last page of %s\n",
+			zone->name);
+                    fflush(stdout);
+                }
+
+                fatal_abort(context, "\nMercury runtime: zone overflow\n", FALSE);
+            }
+        }
+        zone = zone->next;
+    }
+
+    if (memdebug)
+	fprintf(stderr, "address not in any redzone.\n");
+
+    return FALSE;
 }
 
 #endif /* HAVE_SIGINFO */
 
 #else /* not HAVE_MPROTECT */
-
-static void setup_mprotect(void)
-{
-	heap_zone      = NULL;
-	detstack_zone  = NULL;
-	nondstack_zone = NULL;
-}
 
 #ifdef HAVE_SIGINFO	/* try_munprotect is only useful if we have SIGINFO */
 

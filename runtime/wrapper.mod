@@ -622,8 +622,8 @@ void run_code(void)
 
 #ifndef SPEED
 	heapmax      = heapmin;
-	detstackmax  = detstackmin;
-	nondstackmax = nondstackmin;
+	detstack_zone->max  = detstack_zone->min;
+	nondetstack_zone->max = nondetstack_zone->min;
 #endif
 
 	time_at_start = get_run_time();
@@ -658,9 +658,9 @@ void run_code(void)
 		printf("max heap used:      %6ld words\n",
 			(long) (heapmax - heapmin));
 		printf("max detstack used:  %6ld words\n",
-			(long)(detstackmax - detstackmin));
+			(long)(detstack_zone->max - detstack_zone->min));
 		printf("max nondstack used: %6ld words\n",
-			(long) (nondstackmax - nondstackmin));
+			(long) (nondetstack_zone->max - nondetstack_zone->min));
 	}
 #endif
 

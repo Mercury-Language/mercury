@@ -211,17 +211,17 @@ void printheap(const Word *h)
 void printdetstack(const Word *s)
 {
 	printf("ptr 0x%p, offset %3ld words\n",
-		(const void *) s, (long) (Integer) (s - detstackmin));
+		(const void *) s, (long) (Integer) (s - detstack_zone->min));
 }
 
 void printnondstack(const Word *s)
 {
 #ifdef	SPEED
 	printf("ptr 0x%p, offset %3ld words\n",
-		(const void *) s, (long) (Integer) (s - nondstackmin));
+		(const void *) s, (long) (Integer) (s - nondetstack_zone->min));
 #else
 	printf("ptr 0x%p, offset %3ld words, procedure %s\n",
-		(const void *) s, (long) (Integer) (s - nondstackmin),
+		(const void *) s, (long) (Integer) (s - nondetstack_zone->min),
 		(const char *) s[PREDNM]);
 #endif
 }
@@ -231,7 +231,7 @@ void dumpframe(/* const */ Word *fr)
 	reg	int	i;
 
 	printf("frame at ptr 0x%p, offset %3ld words\n",
-		(const void *) fr, (long) (Integer) (fr - nondstackmin));
+		(const void *) fr, (long) (Integer) (fr - nondetstack_zone->min));
 #ifndef	SPEED
 	printf("\t predname  %s\n", bt_prednm(fr));
 #endif
@@ -251,7 +251,7 @@ void dumpnondstack(void)
 	reg	Word	*fr;
 
 	printf("\nnondstack dump\n");
-	for (fr = maxfr; fr > nondstackmin; fr = bt_prevfr(fr))
+	for (fr = maxfr; fr > nondetstack_zone->min; fr = bt_prevfr(fr))
 		dumpframe(fr);
 }
 

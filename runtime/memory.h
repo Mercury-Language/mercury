@@ -32,40 +32,107 @@ extern	Word	virtual_reg_map[MAX_REAL_REG];
 /* used for counting register usage */
 extern	Word 	num_uses[MAX_RN];
 
-/* beginning of allocated areas */
-extern	Word	*heap;
-extern	Word	*detstack;
-extern	Word	*nondstack;
+/*
+ * The Mercury runtime uses a number of memory areas or *zones*. These
+ * hold the detstack, the nondetstack, the heap, and potentially other
+ * areas such as a trail, a "solutions"-heap, and so on.
+ * These memory areas are each represented by a structure that contains
+ * the following fields:
+ *	bottom	- the address of the bottom of the allocated area
+ *			(should be on a page boundary)
+ *	top	- the address one word past the top of the allocated area
+ *			(should be on a page boundary)
+ *	min	- the address of the lowest part of the allocated that
+ *			will be used. This may be different to `bottom'
+ *			so that the use of different memory zones doesn't
+ *			beat the cache.
+ *	max	- the highest address in this memory area that has been
+ *			used so far. This is only defined in debugging grades.
+ *	redzone	- the address of the start of the region that has been
+ *			mprotected as a redzone.
+ *			(should be on a page boundary)
+ *	hardmax	- the address of the bottom of the last page of the allocated
+ *			area. This is one higher than the highest address that
+ *			can be used in this zone. We never unprotect the
+ *			last page of a zone so that we retain protection
+ *			against overrunning the end of the zone.
+ *			(should be on a page boundary)
+ */
 
-/* beginning of used areas */
-extern	Word	*heapmin;
-extern	Word	*detstackmin;
-extern	Word	*nondstackmin;
+#define MAX_ZONE_NAME	64
 
-/* highest locations actually used */
-extern	Word	*heapmax;
-extern	Word	*detstackmax;
-extern	Word	*nondstackmax;
+typedef struct MEMORY_ZONE {
+	struct MEMORY_ZONE *next;
+	char	name[MAX_ZONE_NAME+1];
+	Word	*bottom;	/* beginning of the allocated area */
+	Word	*top;		/* end of the allocated area */
+	Word	*min;		/* lowest word of the area to be used */
+#ifndef SPEED
+	Word	*max;		/* highest word of the area to be used */
+#endif
+#ifdef HAVE_MPROTECT
+/*
+	Word	*redzone_base;	beginning of the original redzone
+*/
+	Word	*redzone;	/* beginning of the current redzone */
+	Word	*hardmax;	/* last page of the zone which can't be
+				   unprotected */
+#endif
+} MemoryZone;
 
-/* end of allocated areas */
-extern	Word	*heapend;
-extern	Word	*detstackend;
-extern	Word	*nondstackend;
+#define MAX_ZONES	16
 
-/* beginning of redzones */
-extern	char *	heap_zone;
-extern	char *	detstack_zone;
-extern	char *	nondstack_zone;
+extern MemoryZone	zone_table[MAX_ZONES];
 
-extern	int	heap_zone_left;
-extern	int	detstack_zone_left;
-extern	int	nondstack_zone_left;
+extern MemoryZone	*free_memory_zones;
+extern MemoryZone	*used_memory_zones;
+
+extern MemoryZone	*detstack_zone;
+extern MemoryZone	*nondetstack_zone;
+#ifndef CONSERVATIVE_GC
+extern MemoryZone	*heap_zone;
+#endif
 
 #ifndef	SPEED
-extern	const char	**dumpstack;
+extern	MemoryZone	*dumpstack_zone;
 extern	int		dumpindex;
 #endif
 
 extern	void	init_memory(void);
+
+/*
+** DESCRIPTION
+**  The function mprotect() changes the  access  protections  on
+**  the mappings specified by the range [addr, addr + len) to be
+**  that specified by prot.  Legitimate values for prot are  the
+**  same  as  those  permitted  for  mmap  and  are  defined  in
+**  <sys/mman.h> as:
+**
+** PROT_READ    page can be read
+** PROT_WRITE   page can be written
+** PROT_EXEC    page can be executed
+** PROT_NONE    page can not be accessed
+*/
+#ifdef  HAVE_MPROTECT
+
+#ifdef CONSERVATIVE_GC
+	/*
+	** The conservative garbage collectors scans through
+	** all these areas, so we need to allow reads.
+	** XXX This probably causes efficiency problems:
+	** too much memory for the GC to scan, and it probably
+	** all gets paged in.
+	*/
+#define MY_PROT PROT_READ
+#else
+#define MY_PROT PROT_NONE
+#endif
+
+/* The BSDI BSD/386 1.1 headers don't define PROT_NONE */
+#ifndef PROT_NONE
+#define PROT_NONE 0
+#endif
+
+#endif
 
 #endif

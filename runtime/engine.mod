@@ -46,14 +46,16 @@ void init_engine(void)
 
 static void init_registers(void)
 {
-	hp = heapmin;					
-	sp = detstackmin;					
-	maxfr = curfr = nondstackmin;		
+#ifndef CONSERVATIVE_GC
+	hp = heap_zone->min;					
+#endif
+	sp = detstack_zone->min;
+	maxfr = curfr = nondetstack_zone->min;		
 							
 	/* set up a buffer zone */			
 	succip = ENTRY(do_not_reached);			
 	mkframe("buffer_zone", 0, ENTRY(do_not_reached));		
-	nondstackmin = maxfr;				
+	nondetstack_zone->min = maxfr;				
 
 	save_transient_registers();
 }
