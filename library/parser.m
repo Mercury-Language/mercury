@@ -218,7 +218,7 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 		;
 			% check for binary prefix op
 			{ Token = name(Op) },
-			\+ parser__get_token(open_ct),
+			\+ parser__peek_token(open_ct),
 			parser__get_ops_table(OpTable),
 			{ ops__lookup_binary_prefix_op(OpTable, Op,
 				BinOpPriority, RightAssoc, RightRightAssoc) },
@@ -253,7 +253,7 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 		;
 			% check for unary prefix op
 			{ Token = name(Op) },
-			\+ parser__get_token(open_ct),
+			\+ parser__peek_token(open_ct),
 			parser__get_ops_table(OpTable),
 			{ ops__lookup_prefix_op(OpTable, Op, UnOpPriority,
 							RightAssoc) },
