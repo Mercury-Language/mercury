@@ -14,7 +14,7 @@
 
 :- implementation.
 
-:- import_module grammar, lalr, tables, check, mercury, misc, options.
+:- import_module grammar, lalr, tables, check, mercury_syntax, misc, options.
 :- import_module array, bool, getopt, int, list, map, require.
 :- import_module set, std_util, string, term, term_io, varset.
 

@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
 
-:- module mercury.
+:- module mercury_syntax.
 
 :- interface.
 
@@ -152,7 +152,7 @@ classify(Term, VarSet, Element) :-
 		Element = mode(ModeDecl, VarSet)
 	;
 		Args = [functor(atom("type"), [TypeTerm], _)],
-		( mercury:term_to_type(TypeTerm, TypeDecl) ->
+		( mercury_syntax__term_to_type(TypeTerm, TypeDecl) ->
 			Element = type(TypeDecl, VarSet)
 		;
 			Element = misc(Term, VarSet)
