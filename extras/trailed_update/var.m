@@ -536,7 +536,7 @@ ML_var_report_goal_floundered(ML_var_delayed_conj *old_goal)
 
 	/* XXX should improve error message */
 	fflush(stdout);
-	fprintf(stderr, ""var.m: warning: goal floundered.\n"");
+	fprintf(stderr, ""var.m: warning: goal floundered.\\n"");
 
 	num_delayed_goals = 0; 
 	while (last && last != old_goal) {
@@ -545,7 +545,7 @@ ML_var_report_goal_floundered(ML_var_delayed_conj *old_goal)
 		}
 		last = last->prev;
 	}
-	fprintf(stderr, ""       %d outstanding delayed goal%s.\n"",
+	fprintf(stderr, ""       %d outstanding delayed goal%s.\\n"",
 		num_delayed_goals, (num_delayed_goals == 1 ? """" : ""s""));
 }
 ").
