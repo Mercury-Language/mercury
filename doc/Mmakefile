@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2002 The University of Melbourne.
+# Copyright (C) 1996-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -12,6 +12,23 @@ MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
+
+# Man pages are built automatically, by the `make_manpage' program,
+# which runs the program with `--help' and then munges the result.
+# This variable specifies which programs to create man pages for.
+
+MANPAGE_PROGS = c2init mmc mgnuc ml mmake mdb mprof mprof_merge_runs mtags
+
+# This variable specifies the (top-level) TexInfo files.
+# The mapping of these names to `.info' file names is not regular,
+# so we also need to specify the names of the `.info' files.
+
+TEXINFO_FILES = user_guide reference_manual library faq transition_guide
+TEXINFO_INFO_FILES = mercury_ref.info mercury_user_guide.info \
+	mercury_library.info mercury_faq.info mercury_trans_guide.info
+
+# The following variables specify which programs should be used to
+# to format the documentation.
 
 TEXI2HTML=$(PERL) texi2html
 TEXI2HTML_SPLIT=$(PERL) texi2html -split
@@ -46,8 +63,6 @@ else
 	INFOPAGES=info
 endif
 
-
-
 #-----------------------------------------------------------------------------#
 
 .SUFFIXES: .in .texi_pp .texi .dvi .ps .text
@@ -67,11 +82,21 @@ endif
 %_1.html: %.texi_pp
 	$(TEXI2HTML_SPLIT) $<
 
-%.1: ../scripts/% make_manpage
+M_ENV = \
 	MERCURY_PROFILER=../profiler/mercury_profile \
 	MERCURY_COMPILER=../compiler/mercury_compile \
-	MERCURY_MKINIT=../util/mkinit \
-	./make_manpage $< > $@
+	MERCURY_MKINIT=../util/mkinit
+
+%.1: ../scripts/% make_manpage
+	$(M_ENV) ./make_manpage $< > $@
+
+%.man: %.1
+	nroff -man $< > $@
+
+# .help files just contain the output of running the command with `--help'.
+# They are sometimes useful for debugging "make_manpage".
+%.help: ../scripts/%
+	$(M_ENV) $< --help > $@ 2>&1
 
 SED_CMD = sed -e "s/<VERSION>/$(VERSION)/g" < $< > $@
 
@@ -87,16 +112,17 @@ mercury.info: mercury.info.in
 #-----------------------------------------------------------------------------#
 
 	# Currently `mmake all' does not build the PostScript or plain-text
-	# versions of the documentation.  But it might make sense to add them.
+	# versions of the documentation.  Nor does it build the formatted
+	# versions of the man pages.
+	# But it might make sense to add them.
 .PHONY: all
 all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC) 
-#all: ps text
+#all: ps text formatted_manpages
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: dvi
-dvi: user_guide.dvi reference_manual.dvi library.dvi faq.dvi \
-	transition_guide.dvi
+dvi: $(TEXINFO_FILES:%=%.dvi)
 
 .PHONY: warn_no_dvi
 warn_no_dvi: 
@@ -104,8 +130,7 @@ warn_no_dvi:
 	# This is probably due to a missing `texi2dvi'
 
 .PHONY: info
-info: mercury.info mercury_ref.info mercury_user_guide.info \
-	mercury_library.info mercury_faq.info mercury_trans_guide.info
+info: mercury.info $(TEXINFO_INFO_FILES)
 
 .PHONY: warn_no_info
 warn_no_info: 
@@ -113,8 +138,7 @@ warn_no_info:
 	# This is probably due to a missing `makeinfo'
 
 .PHONY: html
-html: mercury.html user_guide_toc.html reference_manual_toc.html \
-	library_toc.html faq_toc.html transition_guide_toc.html
+html: mercury.html $(TEXINFO_FILES:%=%_toc.html)
 
 .PHONY: warn_no_html
 warn_no_html: 
@@ -122,7 +146,7 @@ warn_no_html:
 	# This is probably due to a missing `perl'
 
 .PHONY: ps
-ps: user_guide.ps reference_manual.ps library.ps faq.ps transition_guide.ps
+ps: $(TEXINFO_FILES:%=%.ps)
 
 .PHONY: warn_no_ps
 warn_no_ps: 
@@ -130,16 +154,19 @@ warn_no_ps:
 	# This is probably due to a missing `dvips' or `text2dvi'
 
 .PHONY: text
-text: user_guide.text reference_manual.text library.text faq.text \
-	transition_guide.text
+text: $(TEXINFO_FILES:%=%.text)
 
 .PHONY: split_html
-split_html: mercury.html user_guide_1.html reference_manual_1.html \
-	library_1.html faq_1.html transition_guide_1.html
+split_html: mercury.html $(TEXINFO_FILES:%=%_1.html)
 
 .PHONY: manpages
-manpages: c2init.1 mmc.1 mgnuc.1 ml.1 mmake.1 mdb.1 mprof.1 \
-	mprof_merge_runs.1 mtags.1
+manpages: $(MANPAGE_PROGS:%=%.1)
+
+.PHONY: formatted_manpages
+formatted_manpages: $(MANPAGE_PROGS:%=%.man)
+
+.PHONY: help
+help: $(MANPAGE_PROGS:%=%.help)
 
 #-----------------------------------------------------------------------------#
 
