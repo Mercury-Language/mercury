@@ -1030,8 +1030,10 @@ process_decl(DefaultModuleName, VarSet0, "end_module", [ModuleName],
 	),
 	check_no_attributes(Result1, Attributes, Result).
 
-	% NU-Prolog `when' declarations are silently ignored for
-	% backwards compatibility.
+	% NU-Prolog `when' declarations used to be silently ignored for
+	% backwards compatibility.  We now issue a warning that they
+	% are deprecated.  We should eventually drop support for them
+	% entirely.
 process_decl(_ModuleName, _VarSet, "when", [_Goal, _Cond], Attributes,
 		Result) :-
 	Result0 = ok(nothing),

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -489,8 +489,6 @@ list__append([], Ys, Ys).
 list__append([X | Xs], Ys, [X | Zs]) :-
 	list__append(Xs, Ys, Zs).
 
-:- list__remove_suffix(_List, Suffix, _Prefix) when Suffix.
-
 list__remove_suffix(List, Suffix, Prefix) :-
 	list__length(List, ListLength),
 	list__length(Suffix, SuffixLength),
@@ -814,8 +812,6 @@ list__zip([A|As], Bs, [A|Cs]) :-
 
 :- pred list__zip2(list(T), list(T), list(T)).
 :- mode list__zip2(in, in, out) is det.
-
-:- list__zip2(_, Bs, _) when Bs. % NU-Prolog indexing
 
 list__zip2(As, [], As).
 list__zip2(As, [B|Bs], [B|Cs]) :-

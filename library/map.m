@@ -267,12 +267,8 @@ map__contains(Map, K) :-
 map__member(Map, K, V) :-
 	tree234__member(Map, K, V).
 
-:- map__search(_Map, K, _V) when K.	% required by bimap.m
-
 map__search(Map, K, V) :-
 	tree234__search(Map, K, V).
-
-:- map__lookup(_Map, K, _V) when K.	% required by bimap.m
 
 map__lookup(Map, K, V) :-
 	( tree234__search(Map, K, V1) ->

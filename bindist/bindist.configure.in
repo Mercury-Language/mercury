@@ -82,50 +82,6 @@ else
 fi
 AC_SUBST(GNU_MAKE)
 #-----------------------------------------------------------------------------#
-INSTALL_SICSTUS=
-SICSTUS=
-SP=
-echo "looking for SICStus Prolog..."
-AC_PROGRAMS_CHECK(SP,sp sicstus prolog)
-if test "$SP" != ""; then
-	case "`echo 'prolog_flag(version, V, V), write(V), nl, halt.' |
-			$SP 2>&1`" in
-		SICStus*)
-			INSTALL_SICSTUS=install_sicstus
-			SICSTUS=sicstus
-			;;
-	esac
-fi
-if test "$INSTALL_SICSTUS" = ""; then
-	AC_MSG_WARN(SICStus Prolog not found)
-else
-	echo "found SICStus Prolog: $SP"
-fi
-AC_SUBST(INSTALL_SICSTUS)
-AC_SUBST(SICSTUS)
-#-----------------------------------------------------------------------------#
-INSTALL_NUPROLOG=
-NUPROLOG=
-NP=
-
-echo "looking for NU-Prolog..."
-AC_PROGRAMS_CHECK(NP,np)
-if test "$NP" != ""; then
-	case "`$NP < /dev/null 2>&1`" in
-		NU-Prolog*)
-			INSTALL_NUPROLOG=install_nuprolog
-			NUPROLOG=nuprolog
-			;;
-	esac
-fi
-if test "$INSTALL_NUPROLOG" = ""; then
-	AC_MSG_WARN(NU-Prolog not found)
-else
-	echo "found NU-Prolog: $NP"
-fi
-AC_SUBST(NUPROLOG)
-AC_SUBST(INSTALL_NUPROLOG)
-#-----------------------------------------------------------------------------#
 echo "looking for a way to create named pipes..."
 
 save_PATH="$PATH"
@@ -271,8 +227,7 @@ AC_SUBST(SOCKET_LIBRARY)
 #-----------------------------------------------------------------------------#
 AC_OUTPUT(Makefile scripts/mmc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/ml
-scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
-scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
+scripts/mmake scripts/c2init scripts/sicstus_conv
 scripts/mkfifo_using_mknod scripts/Mmake.vars
 scripts/mdb scripts/mdbrc
 ,

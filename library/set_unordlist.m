@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -191,8 +191,6 @@ set_unordlist__sorted_list_to_set(List, List).
 set_unordlist__to_sorted_list(Set, List) :-
 	list__sort_and_remove_dups(Set, List).
 
-:- set_unordlist__insert_list(_, Xs, _) when Xs.	% NU-Prolog indexing.
-
 set_unordlist__insert_list(Set0, List, Set) :-
 	list__append(List, Set0, Set).
 
@@ -226,8 +224,6 @@ set_unordlist__is_member(E, S, R) :-
 		R = no
 	).
 
-:- set_unordlist__delete_list(_, Xs, _) when Xs.
-
 set_unordlist__delete_list(S, [], S).
 set_unordlist__delete_list(S0, [X | Xs], S) :-
 	set_unordlist__delete(S0, X, S1),
@@ -235,8 +231,6 @@ set_unordlist__delete_list(S0, [X | Xs], S) :-
 
 set_unordlist__delete(S0, E, S) :-
 	list__delete_all(S0, E, S).
-
-:- set_unordlist__remove_list(_, Xs, _) when Xs.
 
 set_unordlist__remove_list(S, [], S).
 set_unordlist__remove_list(S0, [X | Xs], S) :-

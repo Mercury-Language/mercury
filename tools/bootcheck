@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne.
+# Copyright (C) 1995-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -32,10 +32,6 @@ Options:
 		Copy the profiler directory instead of linking it.
 		This is sometimes necessary for bootstrapping
 		changes.
-	-s, --sicstus
-		As well as running the normal bootcheck, also build a SICStus
-		Prolog version of the compiler and check it against the
-		stage 2 directory.
 	-t, --no-test-suite
 		By default, bootcheck will also run the test quite.
 		This option prevents that.
@@ -49,10 +45,6 @@ Options:
 	-3, --keep-stage-3
 		Don't rebuild the stage 3 directory from scratch after
 		building stage 1.  Instead use the existing stage 3 directory.
-	--keep-stage-2-sicstus
-		Don't rebuild the SICStus stage 2 directory from scratch after
-		building stage 1.  Instead use the existing SICStus stage 2
-		directory.
 	--use-subdirs
 		Assume intermediate files are built in subdirectories.
 		(Same as the \`--use-subdirs' option to mmake and mmc.)
@@ -70,8 +62,6 @@ copy_boehm_gc=false
 copy_profiler=false
 keep_stage_2=false
 keep_stage_3=false
-keep_stage_2_sicstus=false
-test_sicstus=false
 if [ -d compiler/Mercury ]; then
 	use_subdirs=${MMAKE_USE_SUBDIRS=yes}
 else
@@ -125,9 +115,6 @@ while [ $# -gt 0 ]; do
 	-g|--copy-boehm-gc)
 		copy_boehm_gc=true ;;
 
-	-s|--sicstus)
-		test_sicstus=true ;;
-
 	-t|--no-test-suite)
 		runtests=false ;;
 
@@ -139,9 +126,6 @@ while [ $# -gt 0 ]; do
 
 	-3|--keep-stage-3)
 		keep_stage_3=true ;;
-
-	--keep-stage-2-sicstus)
-		keep_stage_2_sicstus=true ;;
 
 	--use-subdirs)
 		use_subdirs=yes ;;
@@ -204,227 +188,6 @@ export PATH
 if test "$RMSTAGECMD" = ""
 then
 	RMSTAGECMD="/bin/rm -fr"
-fi
-
-if $test_sicstus
-then
-	echo "Building SICStus stage 1..." 1>&2
-	if
-		cd $root/library &&
-		mmake $mmake_opts $jfactor sicstus &&
-		cd $root/compiler &&
-		mmake $mmake_opts $jfactor sicstus &&
-		cd $root
-	then
-		echo "building of SICStus stage 1 successful"
-	else
-		echo "building of SICStus stage 1 not successful"
-		exit 1
-	fi
-
-	MERCURY_COMPILER=$root/compiler/mercury_compile.sicstus
-	export MERCURY_COMPILER
-	MERCURY_INT_DIR=$root/stage2_sicstus/library
-	export MERCURY_INT_DIR
-
-	[ -d stage2_sicstus ] || mkdir stage2_sicstus
-	if $keep_stage_2_sicstus
-	then
-		echo keeping existing stage2_sicstus
-	else
-		# We try to do the removal of the stage 2 directory in parallel
-		# since recursive rm's across NFS can be quite slow ...
-		$RMSTAGECMD $root/stage2_sicstus/compiler < /dev/null &
-		$RMSTAGECMD $root/stage2_sicstus/library < /dev/null &
-		wait
-		$RMSTAGECMD $root/stage2_sicstus/* < /dev/null
-		/bin/rm -fr $root/stage2_sicstus/* < /dev/null
-		/bin/rm -fr $root/stage2_sicstus/.[a-zA-Z]* < /dev/null
-	fi
-
-	set +x
-	echo linking SICStus stage 2... 1>&2
-	cd stage2_sicstus
-	mkdir compiler
-	cd compiler
-	# Break up the links into several chunks.
-	# This is needed to cope with small limits on the size of argument
-	# vectors.
-
-	ln -s $root/compiler/[a-h]*.m .
-	ln -s $root/compiler/[i-s]*.m .
-	ln -s $root/compiler/[t-z]*.m .
-	cp $root/compiler/Mmake* .
-	cd $root/stage2_sicstus
-	mkdir library
-	cd library
-	ln -s $root/library/library.nu.nl.in .
-	ln -s $root/library/[a-l]*.m .
-	ln -s $root/library/[m-z]*.m .
-	ln -s $root/library/*.nl .
-	cp $root/library/Mmake* .
-	ln -s $root/library/$STD_LIB_NAME.init .
-	cd $root/stage2_sicstus
-	mkdir browser
-	cd browser
-	ln -s $root/browser/*.m .
-	cp $root/browser/Mmake* .
-	ln -s $root/browser/$BROWSER_LIB_NAME.init .
-	cd $root/stage2_sicstus
-	if "$copy_runtime"
-	then
-		# Remove symbolic link to the stage 1 runtime if it's present,
-		# which it can be with the -2 option.
-		rm runtime
-		mkdir runtime
-		cd runtime
-		ln -s $root/runtime/*.h .
-		ln -s $root/runtime/*.c .
-		ln -s $root/runtime/*.in .
-		cp $root/runtime/Mmake* .
-		ln -s $root/runtime/machdeps .
-		cd $root/stage2_sicstus
-		rm trace
-		mkdir trace
-		cd trace
-		ln -s $root/trace/*.h .
-		ln -s $root/trace/*.c .
-		cp $root/trace/Mmake* .
-		cd $root/stage2_sicstus
-	else
-		ln -s $root/runtime .
-		ln -s $root/trace .
-	fi
-	if "$copy_boehm_gc"
-	then
-		# Remove symbolic link to the stage 1 boehm_gc if it's present,
-		# which it can be with the -2 option.
-		rm boehm_gc
-		mkdir boehm_gc
-		cd boehm_gc
-		ln -s $root/boehm_gc/*.h .
-		ln -s $root/boehm_gc/*.c .
-		ln -s $root/boehm_gc/*.s .
-		ln -s $root/boehm_gc/include .
-		cp $root/boehm_gc/Mmake* .
-		cp $root/boehm_gc/Makefile .
-		cd $root/stage2_sicstus
-	else
-		ln -s $root/boehm_gc .
-	fi
-	ln -s $root/doc .
-	ln -s $root/scripts .
-	ln -s $root/util .
-	if "$copy_profiler"
-	then
-		mkdir profiler
-		cd profiler
-		ln -s $root/profiler/*.m .
-		cp $root/profiler/Mmake* .
-		cd $root/stage2_sicstus
-	else
-		ln -s $root/profiler .
-	fi
-	ln -s $root/conf* .
-	ln -s $root/VERSION .
-	ln -s $root/.README.in .
-	ln -s $root/.INSTALL.in .
-	rm -f config*.log
-	cp $root/Mmake* .
-	if test -f $root/Mmake.stage.params
-	then
-		/bin/rm -f Mmake.params
-		cp $root/Mmake.stage.params Mmake.params
-	fi
-	cd $root
-
-	set -x
-
-	if
-		cd stage2_sicstus &&
-		mmake $mmake_opts depend_library depend_browser \
-			depend_compiler depend_profiler &&
-		cd $root
-	then
-		echo "building of SICStus stage 2 dependencies successful"
-	else
-		echo "building of SICStus stage 2 dependencies not successful"
-		exit 1
-	fi
-
-	MMAKE_VPATH=.
-	export MMAKE_VPATH
-	MMAKE_DIR=$root/scripts
-	export MMAKE_DIR
-
-	if
-		cd stage2_sicstus/library &&
-		mmake $mmake_opts $jfactor all-ints &&
-		mmake $mmake_opts $jfactor cs
-	then
-		echo "building of SICStus stage 2 library successful"
-	else
-		echo "building of SICStus stage 2 library not successful"
-		exit 1
-	fi
-	cd $root
-
-	if
-		cd stage2_sicstus/browser &&
-		mmake $mmake_opts $jfactor cs
-	then
-		echo "building of SICStus stage 2 browser successful"
-	else
-		echo "building of SICStus stage 2 browser not successful"
-		exit 1
-	fi
-	cd $root
-
-	if
-		cd stage2_sicstus/compiler &&
-		mmake $mmake_opts $jfactor cs
-	then
-		echo "building of SICStus stage 2 compiler successful"
-	else
-		echo "building of SICStus stage 2 compiler not successful"
-		exit 1
-	fi
-	cd $root
-
-	sicstus_diff_status=0
-
-	exec 3>&1		# save stdout in fd 3
-	if [ -n "$outfile" ]
-	then
-		exec > "$outfile"	# redirect stdout to $outfile
-	fi
-
-	for dir in library browser compiler; do
-	    for file in stage2/$dir/${cs_subdir}*.c; do
-		diff -u $file \
-			stage2_sicstus/${cs_subdir}$dir/`basename $file` ||
-				sicstus_diff_status=1
-	    done
-	done
-
-	exec >&3		# restore stdout from fd 3
-	if [ $sicstus_diff_status -ne 0 ]; then
-		echo "error - SICStus stage 2 and Mercury stage 2 differ!"
-		exit 1
-	else
-		echo "SICStus stage 2 and Mercury stage 2 compare ok"
-		echo "removing SICStus stage 2..."
-		# We try to do the removal of the SICStus stage 2 directory
-		# in parallel since recursive rm's across NFS can be quite
-		# slow ...
-		$RMSTAGECMD $root/stage2_sicstus/compiler < /dev/null &
-		$RMSTAGECMD $root/stage2_sicstus/library < /dev/null &
-		wait
-		$RMSTAGECMD $root/stage2_sicstus/* < /dev/null
-		/bin/rm -fr $root/stage2_sicstus/* < /dev/null
-		/bin/rm -fr $root/stage2_sicstus/.[a-zA-Z]* < /dev/null
-		exit 0
-	fi
 fi
 
 if $do_bootcheck

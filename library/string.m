@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -516,7 +516,6 @@ string__remove_suffix(A, B, C) :-
 string__prefix(String, Prefix) :-
 	string__append(Prefix, _, String).
 
-:- string__char_to_string(Char, String) when Char or String.
 string__char_to_string(Char, String) :-
 	string__to_int_list(String, [Code]),
 	char__to_int(Char, Code).

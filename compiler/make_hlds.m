@@ -277,7 +277,24 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 		io__set_output_stream(OldStream, _)
 	).
 
-add_item_decl_pass_1(nothing, _, Status, Module, Status, Module) --> [].
+add_item_decl_pass_1(nothing, Context, Status, Module, Status, Module) -->
+	%
+	% Currently "nothing" is used only for NU-Prolog `when' declarations,
+	% which we used to quietly ignore.  We want to eventually drop support
+	% for them, but to ease the transition, for now we just issue
+	% a warning message.
+	%
+	prog_out__write_context(Context),
+	report_warning(
+		"Warning: NU-Prolog `when' declarations are deprecated.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		prog_out__write_context(Context),
+		io__write_string("Future releases of the Mercury system "),
+		io__write_string("will not support `when' declarations.\n")
+	;
+		[]
+	).
 
 add_item_decl_pass_1(typeclass(Constraints, Name, Vars, Interface, VarSet), 
 		Context, Status, Module0, Status, Module) -->

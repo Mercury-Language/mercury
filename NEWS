@@ -15,3 +15,27 @@ NEWS since Mercury release 0.8:
   See the "Interactive query commands" subsection of the "Debugger commands"
   section of the "Debugging" chapter of the Mercury User's Guide for details.
 
+* We've removed the support for using a Prolog debugger on Mercury programs.
+
+  Now that we have a working Mercury debugger, there's no longer any need to
+  use a Prolog debugger for debugging Mercury code.
+
+  Normally we would warn at least one or two releases in advance, if
+  any feature is to be removed.  However, in this case
+
+  	- it was an implementation feature rather than a language feature;
+	- the cost of maintaining the feature was quite high;
+	- the feature was already broken is various ways [one being that it
+	  doesn't work with the latest versions of SICStus Prolog, due to
+	  those versions removing support for a SICStus Prolog feature
+	  (save/1), apparently without any advance notice]; and
+	- a simple work-around is available if anything breaks as a result
+	  of the feature being removed. 
+
+  In the unlikely event that anyone happened to have any makefiles or
+  scripts that depended on the support for using Prolog, they can
+  install the latest Mercury distribution and still continue to use the
+  Prolog support from Mercury 0.8, just by including the `bin'
+  directories for both versions in their PATH, with the more recent one
+  first, of course.
+
