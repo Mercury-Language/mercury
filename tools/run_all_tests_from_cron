@@ -12,15 +12,11 @@
 # should be updated manually.
 
 #-----------------------------------------------------------------------------#
+
 tmpfile=/tmp/run_test$$
 tmpscript=/tmp/test_mercury$$
 mail_subject=/tmp/test_mercury_mail$$
 trap 'rm -f $tmpfile $tmpscript $mail_subject; exit 1' 1 2 3 13 15
-
-# Redirect all output to $tmpfile to stop cron mailing
-# content-free messages to mercury@cs.mu.oz.au.
-{
-tm_dir=/home/mercury/public/test_mercury
 
 #-----------------------------------------------------------------------------#
 
@@ -69,6 +65,13 @@ export PATH
 
 CVSROOT=/home/mercury1/repository
 export CVSROOT
+
+#-----------------------------------------------------------------------------#
+
+# Redirect all output to $tmpfile to stop cron mailing
+# content-free messages to mercury@cs.mu.oz.au.
+{
+tm_dir=/home/mercury/public/test_mercury
 
 cd /home/mercury/public/test_mercury/scripts;
 cvs checkout mercury/tools/test_mercury
