@@ -44,7 +44,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, prog_io, prog_out, std_util.
+:- import_module list, map, set, prog_io, prog_out, std_util.
 :- import_module globals, options, io.
 
 %-----------------------------------------------------------------------------%
@@ -390,24 +390,21 @@ det_infer_goal_2(unify(LT, RT, M, U, C), MiscInfo, _, _,
 	% need to pass NonLocals and DeltaInstMap in order to
 	% determine whether or not we can generate a commit after
 	% the "Then" part, which can make the if-then-else as a whole
-	% semi-deterministic rather than deterministic.
+	% semi-deterministic rather than non-deterministic.
 
 det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), MiscInfo,
-		NonLocals, DeltaInstMap,
+		_NonLocals, _DeltaInstMap,
 		if_then_else(Vars, Cond, Then, Else), D) :-
 	det_infer_goal(Cond0, MiscInfo, Cond, DCond),
 	det_infer_goal(Then0, MiscInfo, Then, DThen),
 	det_infer_goal(Else0, MiscInfo, Else, DElse),
-	max_category(DCond, DThen, DIf0),
-	(
-		DIf0 = nondeterministic,
-		no_output_vars(NonLocals, DeltaInstMap, MiscInfo)
-	->
-		DIf = semideterministic
+	( DCond = deterministic ->
+		D = DThen
+	; DCond = semideterministic ->
+		max_category(DThen, DElse, D)
 	;
-		DIf = DIf0
-	),
-	max_category(DIf, DElse, D).
+		D = nondeterministic
+	).
 
 	% Negations are always semideterministic.  It is an error for
 	% a negation to further instantiate any non-local variable. Such
@@ -438,8 +435,24 @@ det_infer_goal_2(all(Vars, Goal0), MiscInfo, _, _, all(Vars, Goal), D) :-
 :- pred no_output_vars(set(var), instmap_delta, misc_info).
 :- mode no_output_vars(in, in, in) is semidet.
 
-no_output_vars(_, _, _) :-
-	fail.	% XXX stub only!
+no_output_vars(Vars, InstMapDelta, _MiscInfo) :-
+	set__to_sorted_list(Vars, VarList),
+	no_output_vars_2(VarList, InstMapDelta).
+
+:- pred no_output_vars_2(list(var), instmap_delta).
+:- mode no_output_vars_2(in, in) is semidet.
+
+no_output_vars_2([], _).
+no_output_vars_2([Var | Vars], InstMapDelta) :-
+		% XXX this is a safe approximation, but it is not
+		% precise enough.  The instmap delta may contain the
+		% variable, but the variable may not be output, if
+		% the change is just an increase in information rather
+		% than an increase in instantiatedness.
+		% This means that we will consider some goals as nondet
+		% when they are really semidet.
+	\+ map__contains(InstMapDelta, Var),
+	no_output_vars_2(Vars, InstMapDelta).
 
 :- pred det_infer_conj(list(hlds__goal), misc_info, list(hlds__goal), category).
 :- mode det_infer_conj(in, in, out, out).
