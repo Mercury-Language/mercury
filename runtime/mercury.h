@@ -379,7 +379,6 @@ bool MR_CALL mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y);
 bool MR_CALL mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y); 
 bool MR_CALL mercury__builtin____Unify____tuple_0_0(
 	MR_Mercury_Type_Info type_info, MR_Tuple x, MR_Tuple y); 
-bool MR_CALL mercury__std_util____Unify____univ_0_0(MR_Univ x, MR_Univ y); 
 bool MR_CALL mercury__std_util____Unify____type_desc_0_0(
 	MR_Type_Desc x, MR_Type_Desc y); 
 bool MR_CALL mercury__private_builtin____Unify____type_ctor_info_1_0(
@@ -414,8 +413,6 @@ void MR_CALL mercury__builtin____Compare____pred_0_0(
 void MR_CALL mercury__builtin____Compare____tuple_0_0(
 	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
 	MR_Tuple x, MR_Tuple y); 
-void MR_CALL mercury__std_util____Compare____univ_0_0(
-	MR_Comparison_Result *result, MR_Univ x, MR_Univ y);
 void MR_CALL mercury__std_util____Compare____type_desc_0_0(
 	MR_Comparison_Result *result, MR_Type_Desc x, MR_Type_Desc y);
 void MR_CALL mercury__private_builtin____Compare____type_ctor_info_1_0(
