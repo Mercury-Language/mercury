@@ -167,12 +167,12 @@ $(cs_subdir)%.c : %.m
 ifneq ($(RM_C),:)
 
 $(os_subdir)%.o : %.m
-	$(MMAKE_MAKE_CMD) $(MFLAGS) $(cs_subdir)$*.c
+	$(MMAKE_MAKE_CMD) $(MFLAGS) GRADEFLAGS="$(GRADEFLAGS)" $(cs_subdir)$*.c
 	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $(cs_subdir)$*.c -o $@
 	$(RM_C) $(cs_subdir)$*.c
 
 $(os_subdir)%.pic_o : %.m
-	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $(cs_subdir)$*.c
+	$(MMAKE_MAKE_CMD) $(MFLAGS) GRADEFLAGS="$(GRADEFLAGS)" $(cs_subdir)$*.c
 	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
 		-c $(cs_subdir)$*.c -o $@
 
