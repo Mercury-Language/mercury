@@ -941,12 +941,12 @@ relation__rtc(Rel, Rtc) :-
 	relation__domain_sorted_list(Rel, DomList),
 	list__length(DomList, DomLen),
 	map__init(Map0),
-	rtc__init_map(Map0, DomList, Map),
+	relation__rtc_init_map(Map0, DomList, Map),
 	relation__init(RtcIn),
 	Inf is (DomLen + 2) * 2,	% This is close enough to infinity.
 	relation__rtc_2(Inf, Rel, DomList, Map, RtcIn, Rtc).
 
-	% rtc__init_map takes a domain Xs and creates a map
+	% relation__rtc_init_map takes a domain Xs and creates a map
 	% Map such that:
 	%
 	%	all [X]
@@ -961,13 +961,13 @@ relation__rtc(Rel, Rtc) :-
 	% and a "map" would be the ease of initialisation,
 	% and the semi-static nature of the domain.  (Arrays
 	% can be resized.)
-:- pred rtc__init_map(map(relation_key, int), list(relation_key),
+:- pred relation__rtc_init_map(map(relation_key, int), list(relation_key),
 		map(relation_key, int)).
-:- mode rtc__init_map(in, in, out) is det.
-rtc__init_map(Map, [], Map).
-rtc__init_map(MapIn, [ X | Xs ], MapOut) :-
+:- mode relation__rtc_init_map(in, in, out) is det.
+relation__rtc_init_map(Map, [], Map).
+relation__rtc_init_map(MapIn, [ X | Xs ], MapOut) :-
 	map__det_insert(MapIn, X, 0, Map1),
-	rtc__init_map(Map1, Xs, MapOut).
+	relation__rtc_init_map(Map1, Xs, MapOut).
 
 :- pred relation__rtc_2(int, relation(T), list(relation_key),
 		map(relation_key, int), relation(T), relation(T)).

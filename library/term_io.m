@@ -314,16 +314,16 @@ term_io__quote_single_char(Char) -->
 	; { is_mercury_source_char(Char) } ->
 		io__write_char(Char)
 	;
-		{ mercury__escape_char(Char, String) },
+		{ mercury_escape_char(Char, String) },
 		io__write_string(String)
 	).
 
-:- pred mercury__escape_char(character, string).
-:- mode mercury__escape_char(in, out) is det.
+:- pred mercury_escape_char(character, string).
+:- mode mercury_escape_char(in, out) is det.
 
 	% Convert a character to the corresponding octal escape code.
 
-mercury__escape_char(Char, EscapeCode) :-
+mercury_escape_char(Char, EscapeCode) :-
 	char__to_int(Char, Int),
 	string__int_to_base_string(Int, 8, OctalString0),
 	string__pad_left(OctalString0, '0', 3, OctalString),
