@@ -1892,10 +1892,74 @@ hlds_out__write_classes(Indent, ClassTable) -->
 		% XXX fix this up.
 	hlds_out__write_indent(Indent),
 	io__write_string("%-------- Classes --------\n"),
+	{ map__to_assoc_list(ClassTable, ClassTableList) },
+	io__write_list(ClassTableList, "\n",
+		hlds_out__write_class_defn(Indent)),
+	io__nl.
+
+:- pred hlds_out__write_class_defn(int, pair(class_id, hlds_class_defn), 
+			io__state, io__state).
+:- mode hlds_out__write_class_defn(in, in, di, uo) is det.
+
+hlds_out__write_class_defn(Indent, ClassId - ClassDefn) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% "),
-	io__print(ClassTable),
+
+	{ ClassId = class_id(SymName, Arity) },
+	prog_out__write_sym_name(SymName),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string(":\n"),
+
+	{ ClassDefn = hlds_class_defn(Constraints, Vars, Interface, VarSet,
+				Context) },
+
+	{ term__context_file(Context, FileName) },
+	{ term__context_line(Context, LineNumber) },
+	( { FileName \= "" } ->
+		hlds_out__write_indent(Indent),
+		io__write_string("% context: file `"),
+		io__write_string(FileName),
+		io__write_string("', line "),
+		io__write_int(LineNumber),
+		io__write_string("\n")
+	;
+		[]
+	),
+
+		% curry the varset for term_io__write_variable/4
+	{ PrintVar = lambda([VarName::in, IO0::di, IO::uo] is det,
+			term_io__write_variable(VarName, VarSet, IO0, IO)
+		) },
+	hlds_out__write_indent(Indent),
+	io__write_string("% Vars: "),
+	io__write_list(Vars, ", ", PrintVar),
+	io__nl,
+
+	hlds_out__write_indent(Indent),
+	io__write_string("% Constraints: "),
+	io__write_list(Constraints, ", ",  mercury_output_constraint(VarSet)),
+	io__nl,
+
+	hlds_out__write_indent(Indent),
+	io__write_string("% Class Methods: "),
+	io__write_list(Interface, ", ", hlds_out__write_class_proc),
 	io__nl.
+
+	% Just output the class methods as pred_ids and proc_ids because
+	% its probably not that useful to have the names. If that information
+	% is needed, it shouldn't be a very difficult fix.
+:- pred hlds_out__write_class_proc(hlds_class_proc, io__state, io__state).
+:- mode hlds_out__write_class_proc(in, di, uo) is det.
+
+hlds_out__write_class_proc(hlds_class_proc(PredId, ProcId)) -->
+	io__write_string("hlds_class_proc(pred_id:"),
+	{ pred_id_to_int(PredId, PredInt) },
+	io__write_int(PredInt),
+	io__write_string(", proc_id:"),
+	{ proc_id_to_int(ProcId, ProcInt) },
+	io__write_int(ProcInt),
+	io__write_char(')').
 
 %-----------------------------------------------------------------------------%
 
