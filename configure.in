@@ -73,17 +73,6 @@ case "$host" in
 esac
 #-----------------------------------------------------------------------------#
 
-# When statically linked on Compaq Tru64 UNIX V5.1, the conftest executable
-# fails with message "sh: Cannot allocate space for bss."
-case "$host" in
-	alpha*-osf5*)
-		link_flags=
-		;;
-	*)	
-		link_flags='--link-flags "--static"'
-		;;
-esac
-	
 MERCURY_MSG("looking for an already installed Mercury compiler to bootstrap with...")
 AC_PATH_PROG(BOOTSTRAP_MC,mmc)
 if test "$BOOTSTRAP_MC" != ""; then
@@ -124,7 +113,7 @@ EOF
 		echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
 		$BOOTSTRAP_MC \
 			--generate-mmc-deps \
-			--halt-at-warn $link_flags conftest \
+			--halt-at-warn --link-flags --static conftest \
 			</dev/null >&AC_FD_CC 2>&1 &&
 		test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
 		$BOOTSTRAP_MC --output-grade-string --no-mercury-stdlib-dir \
