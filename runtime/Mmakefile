@@ -210,6 +210,11 @@ Mmake.runtime.params: ;
 #-----------------------------------------------------------------------------#
 
 CFLAGS	+= $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
+
+# We intentionally compile with C level debugging enabled so that problems
+# in the runtime can be debugged without having to recompile it.  The cost
+# of doing this is negligible.  The runtime can be compiled without 
+# debugging enabled by removing the `--c-debug' flag below. 
 MGNUCFLAGS	+= --c-debug --no-ansi
 
 #-----------------------------------------------------------------------------#
@@ -457,7 +462,7 @@ endif
 
 mercury_dotnet.cs : mercury_dotnet.cs.in
 	CONFIG_FILES=$@ CONFIG_HEADERS= $(MERCURY_DIR)/config.status
-	# check to ensure there were no mispelt autoconf variable names
+	# check to ensure there were no misspelt autoconf variable names
 	if grep -n '[^$$]@.*@' $@; then false; else true; fi
 
 #-----------------------------------------------------------------------------#
