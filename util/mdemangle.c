@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -37,6 +37,7 @@ static bool check_for_suffix(char *start, char *position, const char *suffix,
 		int sizeof_suffix, int *mode_num2);
 static char *fix_mangled_ascii(char *str, char **end);
 static bool fix_mangled_special_case(char *str, char **end);
+static bool find_double_underscore(char **str, char *end);
 static bool cut_at_double_underscore(char **str, char *end);
 static bool cut_trailing_integer(char *str, char **end, int *num);
 static bool cut_trailing_underscore_integer(char *str, char **end, int *num);
@@ -155,8 +156,10 @@ demangle(const char *orig_name)
 	static const char introduced[]  = "IntroducedFrom__";
 	static const char deforestation[]  = "DeforestationIn__";
 	static const char accumulator[]  = "AccFrom__";
+	static const char type_spec[]  = "TypeSpecOf__";
 	static const char pred[]  = "pred__";
 	static const char func[]  = "func__";
+	static const char porf[]  = "pred_or_func__";
 
 	static const char ua_suffix[] = "__ua"; /* added by unused_args.m */
 	static const char ua_suffix2[] = "__uab"; /* added by unused_args.m */
@@ -178,6 +181,7 @@ demangle(const char *orig_name)
 		introduced,
 		deforestation,
 		accumulator,
+		type_spec,
 		NULL
 	};
 
@@ -206,19 +210,22 @@ demangle(const char *orig_name)
 	bool unused_args = FALSE; /* does this proc have any unused arguments */
 	bool higher_order = FALSE; /* has this proc been specialized */
 	int internal = -1;
+	char *name_before_prefixes = NULL;
 	int lambda_line = 0;
 	int lambda_seq_number = 0;
 	char *lambda_pred_name = NULL;
+	char *end_of_lambda_pred_name = NULL;
 	const char *lambda_kind = NULL;
 	enum { ORDINARY, UNIFY, COMPARE, INDEX,
-		LAMBDA, DEFORESTATION, ACCUMULATOR }
+		LAMBDA, DEFORESTATION, ACCUMULATOR, TYPE_SPEC }
 		category;
 	enum { COMMON, INFO, LAYOUT, FUNCTORS } data_category;
 	const char * class_name;
 	int class_arity;
 	char class_arg_buf[MAX_SYMBOL_LENGTH];
 	int class_arg_num;
-	const char* class_arg;
+	const char * class_arg;
+	const char * type_spec_sub;
 
 	/*
 	** copy orig_name to a local buffer which we can modify,
@@ -404,7 +411,12 @@ demangle(const char *orig_name)
 
 	/*
 	** look for "IntroducedFrom" or "DeforestationIn" or "AccFrom"
+	** of "TypeSpecOf"
+	** XXX This don't yet handle multiple prefixes. If we get an
+	** error after this point, just treat predicate name as an
+	** ordinary predicate.
 	*/
+	name_before_prefixes = start;
 	if (category == ORDINARY) {
 		if (strip_prefix(&start, introduced)) {
 			category = LAMBDA;
@@ -412,36 +424,98 @@ demangle(const char *orig_name)
 			category = DEFORESTATION;
 		} else if (strip_prefix(&start, accumulator)) {
 			category = ACCUMULATOR;
+		} else if (strip_prefix(&start, type_spec)) {
+			category = TYPE_SPEC;
 		}
 	}
 
 	if (category == LAMBDA || category == DEFORESTATION || 
-			category == ACCUMULATOR) 
+			category == ACCUMULATOR || category == TYPE_SPEC) 
 	{
 		if (strip_prefix(&start, pred)) {
 			lambda_kind = "pred";
 		} else if (strip_prefix(&start, func)) {
 			lambda_kind = "func";
+		} else if (category == TYPE_SPEC
+				&& strip_prefix(&start, porf))
+		{
+			lambda_kind = "";
 		} else {
 			goto wrong_format;
 		}
 		lambda_pred_name = start;
-		if (!cut_at_double_underscore(&start, end)) {
-			goto wrong_format;
+		if (!find_double_underscore(&start, end)) {
+			category = ORDINARY;
+			start = name_before_prefixes;
+		} else {
+			end_of_lambda_pred_name = start;
+			start += 2;
 		}
-		lambda_line = 0;
-		while (start < end && MR_isdigit(*start)) {
-			lambda_line = lambda_line * 10 + (*start - '0');
-			start++;
-		}
-		if (!cut_at_double_underscore(&start, end)) {
-			goto wrong_format;
-		}
-		lambda_seq_number = 0;
-		while (start < end && MR_isdigit(*start)) {
-			lambda_seq_number = lambda_seq_number * 10 +
-				(*start - '0');
-			start++;
+		if (category == TYPE_SPEC) {
+			if (start < end && *start == '[') {
+				int nest_level = 1;
+
+				type_spec_sub = start;
+				start++;		
+				/*
+				** Handle matched brackets in type names.
+				*/
+				while (start < end) {
+					if (*start == '[') {
+						nest_level++;
+					}
+					if (*start == ']') {
+						nest_level--;
+					}
+					if (nest_level == 0) {
+						*(start + 1) = '\0';
+						break;
+					}
+					start++;
+				} 
+				if (nest_level != 0) {
+					category = ORDINARY;
+					start = name_before_prefixes;
+				} else {
+					*end_of_lambda_pred_name = '\0';
+					start = lambda_pred_name;
+				}
+			} else {	
+				category = ORDINARY;
+				start = name_before_prefixes;
+			}
+		} else if (category != ORDINARY) {
+			lambda_line = 0;
+
+			if (start >= end || !MR_isdigit(*start)) {
+				category == ORDINARY;
+				start = name_before_prefixes;
+			}
+
+			while (start < end && MR_isdigit(*start)) {
+				lambda_line = lambda_line * 10 +
+					(*start - '0');
+				start++;
+			}
+			if (strip_prefix(&start, "__")) {
+
+			    if (start < end && MR_isdigit(*start)) {
+				lambda_seq_number = 0;
+				while (start < end && MR_isdigit(*start)) {
+					lambda_seq_number =
+						lambda_seq_number * 10 +
+						(*start - '0');
+					start++;
+				}
+				*end_of_lambda_pred_name = '\0';
+			    } else {
+				category == ORDINARY;
+				start = name_before_prefixes;
+			    }
+			} else {
+				category = ORDINARY;
+				start = name_before_prefixes;
+			}
 		}
 	}
 
@@ -476,6 +550,7 @@ demangle(const char *orig_name)
 			lambda_seq_number, lambda_pred_name,
 			module, lambda_line);
 		break;
+	case TYPE_SPEC:
 	default:
 		if (*module == '\0') {
 			printf("%s '%s'/%d mode %d",
@@ -484,6 +559,9 @@ demangle(const char *orig_name)
 			printf("%s '%s:%s'/%d mode %d",
 				pred_or_func, module, start, arity, mode_num);
 		}
+	}
+	if (category == TYPE_SPEC) {
+		printf(" (type specialized %s)", type_spec_sub);	
 	}
 	if (higher_order) {
 		printf(" (specialized)");
@@ -805,6 +883,22 @@ cut_trailing_underscore_integer(char *str, char **real_end,
 static bool
 cut_at_double_underscore(char **start, char *end) 
 {
+	if (! find_double_underscore(start, end)) {
+		return FALSE;
+	}
+
+	**start = '\0';
+	*start = *start + 2;
+	return TRUE;
+}
+
+	/*
+	** Scan for `__' and return a pointer to the first `_'.
+	** Returns TRUE if `__' was found, FALSE otherwise.
+	*/
+static bool
+find_double_underscore(char **start, char *end) 
+{
 	char *str = *start;
 
 	while (*str != '_' || *(str + 1) != '_') {
@@ -814,8 +908,7 @@ cut_at_double_underscore(char **start, char *end)
 		str++;
 	}
 
-	*str = '\0';
-	*start = str + 2;
+	*start = str;
 	return TRUE;
 }
 
