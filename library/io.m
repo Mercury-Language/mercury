@@ -4286,17 +4286,8 @@ io__progname_base(DefaultName, PrognameBase) -->
 	{ PrognameBase = dir__basename_det(Progname) }.
 
 
-	% XXX we call a pred version of io__get_stream_id, which is a
-	% bit inelegant.  We should either fix the MC++ interface so you
-	% can implement functions, or implement everything in this
-	% module in C#.
-
-io__get_stream_id(Stream) = Id :- io__get_stream_id(Stream, Id).
-
-:- pred io__get_stream_id(io__stream::in, io__stream_id::out) is det.
-
 :- pragma foreign_proc("C",
-	io__get_stream_id(Stream::in, Id::out), 
+	io__get_stream_id(Stream::in) = (Id::out), 
 	[will_not_call_mercury, promise_pure],
 "
 
@@ -4316,7 +4307,7 @@ io__get_stream_id(Stream) = Id :- io__get_stream_id(Stream, Id).
 ").
 
 :- pragma foreign_proc("C#",
-	io__get_stream_id(Stream::in, Id::out), 
+	io__get_stream_id(Stream::in) = (Id::out), 
 	[will_not_call_mercury, promise_pure],
 "
 	Id = Stream.id;
