@@ -58,7 +58,7 @@
 :- import_module backend_libs__rtti, ll_backend__layout.
 :- import_module ll_backend__ll_pseudo_type_info, (parse_tree__inst).
 :- import_module ll_backend__code_util.
-:- import_module assoc_list, bool, string, int, require.
+:- import_module assoc_list, bool, char, string, int, require.
 :- import_module map, term, set, varset.
 
 %---------------------------------------------------------------------------%
@@ -151,8 +151,11 @@ stack_layout__data_addr_to_maybe_rval(DataAddr, yes(Rval)) :-
 
 %---------------------------------------------------------------------------%
 
+	% concat_string_list appends a list of strings together,
+	% appending a null character after each string.
+	% The resulting string will contain embedded null characters.
 :- pred stack_layout__concat_string_list(list(string)::in, int::in,
-	string::out) is det.
+	string_with_0s::out) is det.
 
 :- pragma c_header_code("
 	#include ""mercury_tags.h""	/* for MR_list_*() */
@@ -192,6 +195,25 @@ stack_layout__data_addr_to_maybe_rval(DataAddr, yes(Rval)) :-
 		MR_fatal_error(msg);
 	}
 }").
+
+% This version is only used if there is no matching foreign_proc version.
+% Note that this version only works if the Mercury implementation's
+% string representation allows strings to contain embedded null
+% characters.  So we check that.
+concat_string_list(StringsList, _Len, string_with_0s(StringWithNulls)) :-
+	(	
+		char__to_int(NullChar, 0),
+		NullCharString = string__char_to_string(NullChar),
+		string__length(NullCharString, 1)
+	->
+		StringsWithNullsList = list__map(func(S) = S ++ NullCharString,
+			StringsList),
+		StringWithNulls = string__append_list(StringsWithNullsList)
+	;
+		% the Mercury implementation's string representation
+		% doesn't support strings containing null characters
+		private_builtin.sorry("stack_layout.concat_string_list")
+	).
 
 %---------------------------------------------------------------------------%
 

@@ -39,6 +39,9 @@
 :- import_module libs__trace_params.
 :- import_module bool, std_util, list, assoc_list.
 
+	% This type is for strings which may contain embedded null characters.
+:- type string_with_0s ---> string_with_0s(string).
+
 :- type layout_data
 	--->	label_layout_data(		% defines MR_Label_Layout
 			label			:: label,
@@ -56,7 +59,7 @@
 	;	module_layout_data(		% defines MR_Module_Layout
 			module_name		:: module_name,
 			string_table_size	:: int,
-			string_table		:: string,
+			string_table		:: string_with_0s,
 			proc_layout_names	:: list(layout_name),
 			file_layouts		:: list(file_layout_data),
 			trace_level		:: trace_level,

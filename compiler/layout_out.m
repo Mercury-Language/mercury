@@ -931,7 +931,7 @@ output_proc_id(ProcLabel) -->
 %-----------------------------------------------------------------------------%
 
 :- pred output_module_layout_data_defn(module_name::in, int::in,
-	string::in, list(layout_name)::in, list(file_layout_data)::in,
+	string_with_0s::in, list(layout_name)::in, list(file_layout_data)::in,
 	trace_level::in, int::in, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
@@ -1006,7 +1006,7 @@ output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
 	% empty string.
 
 :- pred output_module_string_table(module_name::in,
-	int::in, string::in, decl_set::in, decl_set::out,
+	int::in, string_with_0s::in, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
 output_module_string_table(ModuleName, StringTableSize, StringTable,
@@ -1020,15 +1020,16 @@ output_module_string_table(ModuleName, StringTableSize, StringTable,
 	{ decl_set_insert(DeclSet0, data_addr(layout_addr(TableName)),
 		DeclSet) }.
 
-:- pred output_module_string_table_chars(int::in, int::in, string::in,
+:- pred output_module_string_table_chars(int::in, int::in, string_with_0s::in,
 	io__state::di, io__state::uo) is det.
 
-output_module_string_table_chars(CurIndex, MaxIndex, String) -->
+output_module_string_table_chars(CurIndex, MaxIndex, StringWithNulls) -->
 	( { CurIndex mod 16 = 0 } ->
 		io__write_string("\n\t")
 	;
 		[]
 	),
+	{ StringWithNulls = string_with_0s(String) },
 	{ string__unsafe_index(String, CurIndex, Char) },
 	io__write_char(''''),
 	c_util__output_quoted_char(Char),
@@ -1036,7 +1037,7 @@ output_module_string_table_chars(CurIndex, MaxIndex, String) -->
 	( { CurIndex < MaxIndex } ->
 		io__write_string(", "),
 		output_module_string_table_chars(CurIndex + 1, MaxIndex,
-			String)
+			StringWithNulls)
 	;
 		[]
 	).
