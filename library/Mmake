@@ -143,7 +143,9 @@ sicstus_compile: sp_builtin.pl
 	  echo "  compile(sp_builtin),				"; \
 	  echo "  garbage_collect,				"; \
 	  echo "  save('$@', 1),				"; \
-	  echo "  unix(argv(Args)),				"; \
+	  echo "  (prolog_flag(argv,Args)->                     "; \
+	  echo "         prolog_flag(character_escapes, _, off) "; \
+	  echo "  ;unix(argv(Args))),                           "; \
 	  echo "  ( Args = [CompileMode|Files] ->		"; \
 	  echo "(prolog_flag(compiling, _, CompileMode) -> true ; true),"; \
 	  echo "      fcompile(Files)				"; \
