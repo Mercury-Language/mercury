@@ -41,6 +41,7 @@ DETPROGS=	arithmetic \
 		liveness \
 		liveness2 \
 		mode_inf_bug \
+		mu \
 		parse_list \
 		petdr1 \
 		semidet_map \
