@@ -12,6 +12,26 @@
 % The RTTI data structures are used for static data that is used
 % for handling RTTI, polymorphism, and typeclasses.
 %
+% XXX There are problems with these definitions for the Java back-end.
+% Under the current system, the definitions are output as static variables
+% with static initializers, ordered so that subdefinitions always appear before
+% the definition which uses them.  This is neccessary because in Java, static
+% initializers are performed at runtime in textual order, and if a definition
+% relies on another static variable for its constructor but said variable has
+% not been initialized, then it is treated as `null' by the JVM with no
+% warning.
+% The problem with this approach is that it won't work for cyclic definitions.
+% eg:
+%	:- type foo ---> f(bar) ; g.
+%	:- type bar ---> f2(foo) ; g2
+% At some point this should be changed so that initialization is performed by 2
+% phases: first allocate all of the objects, then fill in the fields.
+%
+% XXX In the absence of this fix, there are still several places in the code
+% below which use list__append.  If possible these lists should instead be
+% manipulated through some use of prepending and/or list__reverse instead, so
+% that the algorithm stays O(N).
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend__rtti_to_mlds.
@@ -80,7 +100,7 @@ rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
 			Initializer, ExtraDefns),
 		rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
 			MLDS_Defn),
-		MLDS_Defns = [MLDS_Defn | ExtraDefns]
+		MLDS_Defns = list__append(ExtraDefns, [MLDS_Defn])
 	).
 
 :- pred rtti_name_and_init_to_defn(rtti_type_ctor::in, ctor_rtti_name::in,
@@ -501,7 +521,8 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
 			enum_value_ordered_table),
 		FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
 			enum_name_ordered_table),
-		Defns = [ByValueDefn, ByNameDefn | EnumFunctorDescs]
+		Defns = list__append(
+			EnumFunctorDescs, [ByValueDefn, ByNameDefn])
 	;
 		TypeCtorDetails = du(_, DuFunctors, DuByPtag, DuByName),
 		DuFunctorDefnLists = list__map(
@@ -516,8 +537,8 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
 			du_ptag_ordered_table),
 		FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
 			du_name_ordered_table),
-		Defns = [ByNameDefn |
-			list__append(ByPtagDefns, DuFunctorDefns)]
+		Defns = list__append(
+			DuFunctorDefns, [ByNameDefn | ByPtagDefns])
 	;
 		TypeCtorDetails = reserved(_, MaybeResFunctors, ResFunctors,
 			DuByPtag, MaybeResByName),
@@ -599,7 +620,7 @@ gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctorDesc)
 		gen_init_maybe(ml_string_type, gen_init_string, MaybeArgName)
 	]),
 	rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-	MLDS_Defns = [MLDS_Defn | SubDefns].
+	MLDS_Defns = list__append(SubDefns, [MLDS_Defn]).
 
 :- func gen_du_functor_desc(module_info, rtti_type_ctor, du_functor)
 	= list(mlds__defn).
@@ -686,7 +707,7 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
 		ExistInfoInit
 	]),
 	rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-	MLDS_Defns = [MLDS_Defn | SubDefns].
+	MLDS_Defns = list__append(SubDefns, [MLDS_Defn]).
 
 :- func gen_res_addr_functor_desc(module_info, rtti_type_ctor,
 	reserved_functor) = mlds__defn.
@@ -844,7 +865,7 @@ gen_field_types(ModuleInfo, RttiTypeCtor, Ordinal, Types) = MLDS_Defns :-
 	gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, Init, SubDefns),
 	RttiName = field_types(Ordinal),
 	rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn),
-	MLDS_Defns = [MLDS_Defn | SubDefns].
+	MLDS_Defns = list__append(SubDefns, [MLDS_Defn]).
 
 %-----------------------------------------------------------------------------%
 
@@ -911,7 +932,7 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
 	RttiName = du_ptag_ordered_table,
  	Init = init_array(list__append(PtagInitPrefix, PtagInits)),
 	rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn),
-	MLDS_Defns = [MLDS_Defn | SubDefns].
+	MLDS_Defns = list__append(SubDefns, [MLDS_Defn]).
 
 :- func gen_du_ptag_ordered_table_body(module_name, rtti_type_ctor,
 	assoc_list(int, sectag_table), int) = list(mlds__initializer).
@@ -998,7 +1019,7 @@ gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor, ResFunctors,
 			du_ptag_ordered_table)
 	]),
 	rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-	MLDS_Defns = [MLDS_Defn | SubDefns].
+	MLDS_Defns = list__append(SubDefns, [MLDS_Defn]).
 
 :- func gen_res_addr_functor_table(module_name, rtti_type_ctor,
 	list(reserved_functor)) = mlds__defn.

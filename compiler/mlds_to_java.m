@@ -37,6 +37,23 @@
 %	Generate names of classes etc. correctly (mostly same as IL backend)
 %	General code cleanup
 %	handle static ground terms(?)
+%	RTTI: XXX There are problems with the RTTI definitions for the Java
+%		back-end.  Under the current system, the definitions are output
+%		as static variables with static initializers, ordered so that
+%		subdefinitions always appear before the definition which uses
+%		them.  This is neccessary because in Java, static initializers
+%		are performed at runtime in textual order, and if a definition
+%		relies on another static variable for its constructor but said
+%		variable has not been initialized, then it is treated as `null'
+%		by the JVM with no warning.
+%		The problem with this approach is that it won't work for cyclic
+%		definitions.  eg:
+%			:- type foo ---> f(bar) ; g.
+%			:- type bar ---> f2(foo) ; g2
+%		At some point this should be changed so that initialization is
+%		performed by 2 phases: first allocate all of the objects, then
+%		fill in the fields.
+%
 %	support foreign_import_module for Java
 %	handle foreign code written in C 
 %
