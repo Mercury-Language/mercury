@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -74,7 +74,8 @@
 	IF (heapdebug, (save_transient_registers(), cr2_msg(val0, val1, hp)))
 
 #define	debugincrhp(val, hp) \
-	IF (heapdebug, (save_transient_registers(), incr_hp_msg((val), (hp))))
+	IF (heapdebug, \
+		(save_transient_registers(), incr_hp_debug_msg((val), (hp))))
 
 #define	debugincrsp(val, sp) \
 	IF (detstackdebug, (save_transient_registers(), incr_sp_msg((val), (sp))))
