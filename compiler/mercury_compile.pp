@@ -1341,8 +1341,14 @@ mercury_compile(Module) -->
 		( { ErrorcheckOnly = no, Proceed3 = yes } ->
 			globals__io_lookup_bool_option(highlevel_c, HighLevelC),
 			( { HighLevelC = yes } ->
+
+		globals__io_lookup_bool_option(statistics, Statistics),
+		mercury_compile__maybe_remove_excess_assigns(HLDS12, HLDS13),
+		maybe_report_stats(Statistics),
+		mercury_compile__maybe_dump_hlds(HLDS13, "13", "excessassign"),
+
 				{ string__append(ModuleName, ".c", C_File) },
-				mercury_compile__gen_hlds(C_File, HLDS12),
+				mercury_compile__gen_hlds(C_File, HLDS13),
 				globals__io_lookup_bool_option(compile_to_c,
 					CompileToC),
 				( { CompileToC = no } ->
