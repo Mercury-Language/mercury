@@ -822,8 +822,7 @@ code_util__count_recursive_calls_conj([Goal | Goals], PredId, ProcId,
 	pred_id, proc_id, int, int).
 :- mode code_util__count_recursive_calls_disj(in, in, in, out, out) is det.
 
-code_util__count_recursive_calls_disj([], _, _, _, _) :-
-	error("empty disj in code_util__count_recursive_calls_disj").
+code_util__count_recursive_calls_disj([], _, _, 0, 0).
 code_util__count_recursive_calls_disj([Goal | Goals], PredId, ProcId,
 		Min, Max) :-
 	( Goals = [] ->
