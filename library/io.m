@@ -5632,9 +5632,6 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	io__command_line_arguments(Args::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io,
 			thread_safe], "
-#ifdef MR_HIGHLEVEL_DATA
-	mercury::runtime::Errors::SORRY(""io__command_line_arguments"");
-#else
 	MR_String arg_vector __gc[] = System::Environment::GetCommandLineArgs();
 	int i = arg_vector->Length;
 	MR_list_nil(Args);
@@ -5643,7 +5640,6 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 		MR_list_cons(Args, arg_vector[i], Args);
 	}
 	MR_update_io(IO0, IO);
-#endif
 ").
 
 :- pragma foreign_proc("MC++",

@@ -219,6 +219,13 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 // Note that this is very dependent on the data representation chosen
 // by the compiler.
 
+#ifdef MR_HIGHLEVEL_DATA
+#define MR_list_nil(List)					\
+	List = mercury::list::mercury_code::ML_empty_list(NULL)
+
+#define MR_list_cons(List, Head, Tail)				\
+	List = mercury::list::mercury_code::ML_cons(NULL, Head, Tail)
+#else
 #define MR_list_cons(List, Head, Tail)				\
     	do {							\
 		MR_Word _tmp;					\
@@ -230,6 +237,7 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 
 #define MR_list_nil(List)					\
     	MR_newobj(List, 0, 0);
+#endif
 
 #define MR_list_is_cons(List)	\
 	(System::Convert::ToInt32((List)->GetValue(0)))

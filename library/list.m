@@ -1518,6 +1518,16 @@ list__merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- func empty_list = list(T).
+:- pragma export(empty_list = out, "ML_empty_list").
+empty_list = [].
+
+:- func cons(T, list(T)) = list(T).
+:- pragma export((cons(in, in) = (out)), "ML_cons").
+cons(H, T) = [H | T].
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cam.sri.com> 27/04/99
 %       Function forms added.
