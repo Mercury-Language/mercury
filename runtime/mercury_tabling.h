@@ -657,6 +657,8 @@ struct MR_SubgoalStruct {
 						/* call to the generator */
 };
 
+#endif	/* MR_USE_MINIMAL_MODEL */
+
 	/* 
 	** Cast a Word to a MR_Subgoal*: saves on typing and improves 
 	** readability. 
@@ -664,7 +666,5 @@ struct MR_SubgoalStruct {
 #define MR_SUBGOAL(T)  (*(MR_Subgoal **) T)
 
 /*---------------------------------------------------------------------------*/
-
-#endif	/* MR_USE_MINIMAL_MODEL */
 
 #endif	/* not MERCURY_TABLING_H */
