@@ -13,13 +13,27 @@
 #include        "prof.h"
 #include        "std.h"
 
-#include	<signal.h>
-#include	<sys/param.h>
-#include	<sys/time.h>
 #include	<unistd.h>
 #include	<errno.h>
 #include	<string.h>
 
+#if defined(PROFILE_TIME)
+
+#include	<signal.h>
+
+#ifdef HAVE_SYS_PARAM
+#include	<sys/param.h>
+#endif
+
+#ifdef HAVE_SYS_TIME
+#include	<sys/time.h>
+#endif
+
+#if !defined(HZ) || !defined(SIGPROF) || !defined(HAVE_SETITIMER)
+#error "Time profiling not supported on this system"
+#endif
+
+#endif	/* PROFILE_TIME */
 
 /*******************
   Need to make these command line options
@@ -69,9 +83,13 @@ typedef struct s_prof_time_node
 */
 static	FILE	 	*declfptr = NULL;
 static	prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
+#ifdef PROFILE_TIME
 static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
+#endif
 
 /* ======================================================================== */
+
+#ifdef PROFILE_TIME
 
 /*
 **	prof_init_time_profile:
@@ -107,6 +125,8 @@ void prof_init_time_profile()
 	signal(SIGPROF, prof_time_profile);
 	setitimer(ITIMER_PROF, itime, NULL);
 }
+
+#endif /* PROFILE_TIME */
 
 /* ======================================================================== */
 
@@ -156,6 +176,8 @@ void prof_call_profile(Code *Callee, Code *Caller)
 }
 
 /* ======================================================================== */
+
+#ifdef PROFILE_TIME
 
 /*
 **	prof_time_profile:
@@ -224,6 +246,8 @@ void prof_turn_off_time_profiling()
         setitimer(ITIMER_PROF, itime, NULL);
 }
 	
+#endif /* PROFILE_TIME */
+
 /* ======================================================================== */
 
 /*
@@ -287,6 +311,8 @@ void prof_output_addr_decls(const char *name, const Code *address)
 
 /* ======================================================================== */
 
+#ifdef PROFILE_TIME
+
 /*
 **	prof_output_addr_table:
 **		Outputs the addresses saved whenever SIGPROF is received to
@@ -316,3 +342,5 @@ void prof_output_addr_table()
 		exit(1);
 	}
 }
+
+#endif /* PROFILE_TIME */
