@@ -31,8 +31,10 @@ Changes to the standard library:
   Use `int__xor/2' and `integer__xor/2' instead.
   The operator `^' is now used for record syntax.
 
-* There's a new predicate `random__permutation', for
+* There is a new predicate `random__permutation', for
   computing a random permutation of a list.
+
+* There is a new library module for managing counters.
 
 * Four new parametric instantiations `maybe/1', `maybe_error/1',
   `pair/2' and `pair/1' have been added to the `std_util' library
