@@ -90,11 +90,9 @@
 % if all your cuts are green cuts.
 
 :- pred ! is det.
-!.
 
 :- pred !(T, T).
 :- mode !(in, out) is det.
-!(X, X).
 
 % The call/N family.  Note that the compiler (make_hlds.nl) will transform
 % goals which are not atoms (e.g. goals which are free variables) into
@@ -145,6 +143,9 @@
 
 :- implementation.
 :- import_module require, std_util.
+
+!.
+!(X, X).
 
 % Many of the predicates defined in this module are builtin -
 % the compiler generates code for them inline.
