@@ -4745,7 +4745,7 @@ namespace mercury {
 					""Invalid file opening mode"");
 			}
 			try {
-				randomacces = new java.io.RandomAccessFile(
+				randomaccess = new java.io.RandomAccessFile(
 					file, openstring);
 				if (mode == 'a') {
 					seek(SEEK_END, 0);
