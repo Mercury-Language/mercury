@@ -12,13 +12,14 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module dense_switch.
+:- module ll_backend__dense_switch.
 
 :- interface.
 
-:- import_module prog_data, hlds_data, hlds_goal, code_model.
-:- import_module switch_util, type_util.
-:- import_module llds, code_info.
+:- import_module parse_tree__prog_data, hlds__hlds_data, hlds__hlds_goal.
+:- import_module backend_libs__code_model.
+:- import_module backend_libs__switch_util, check_hlds__type_util.
+:- import_module ll_backend__llds, ll_backend__code_info.
 
 	% Should this switch be implemented as a dense jump table?
 	% If so, we return the starting and ending values for the table,
@@ -51,9 +52,10 @@
 
 :- implementation.
 
-:- import_module builtin_ops, hlds_module, code_gen, trace.
+:- import_module backend_libs__builtin_ops, hlds__hlds_module.
+:- import_module ll_backend__code_gen, ll_backend__trace.
 
-:- import_module char, map, tree, int, std_util, require, list.
+:- import_module char, map, libs__tree, int, std_util, require, list.
 
 dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
 		FirstVal, LastVal, CanFail) -->

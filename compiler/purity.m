@@ -121,10 +121,11 @@
 %
 
 
-:- module purity.
+:- module check_hlds__purity.
 :- interface.
 
-:- import_module prog_data, hlds_module, hlds_goal, hlds_pred.
+:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
 :- import_module io, bool, list.
 
 % The purity type itself is defined in prog_data.m as follows:
@@ -205,12 +206,16 @@
 
 :- implementation.
 
-:- import_module hlds_data, prog_io_util.
-:- import_module type_util, mode_util, code_util, prog_data, unify_proc.
-:- import_module globals, options, mercury_to_mercury, hlds_out.
-:- import_module passes_aux, typecheck, module_qual, clause_to_proc.
-:- import_module inst_util, prog_out.
-:- import_module post_typecheck.
+:- import_module hlds__hlds_data, parse_tree__prog_io_util.
+:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module ll_backend__code_util, parse_tree__prog_data.
+:- import_module check_hlds__unify_proc.
+:- import_module libs__globals, libs__options, parse_tree__mercury_to_mercury.
+:- import_module hlds__hlds_out.
+:- import_module hlds__passes_aux, check_hlds__typecheck.
+:- import_module parse_tree__module_qual, check_hlds__clause_to_proc.
+:- import_module check_hlds__inst_util, parse_tree__prog_out.
+:- import_module check_hlds__post_typecheck.
 
 :- import_module map, varset, term, string, require, std_util.
 :- import_module assoc_list, bool, int, set.

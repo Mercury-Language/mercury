@@ -45,14 +45,14 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module trans_opt.
+:- module transform_hlds__trans_opt.
 
 %-----------------------------------------------------------------------------%
 
 :- interface.
 
 :- import_module io, bool, list.
-:- import_module hlds_module, modules, prog_data.
+:- import_module hlds__hlds_module, parse_tree__modules, parse_tree__prog_data.
 
 :- pred trans_opt__write_optfile(module_info, io__state, io__state).
 :- mode trans_opt__write_optfile(in, di, uo) is det.
@@ -70,9 +70,11 @@
 
 :- implementation.
 
-:- import_module intermod, hlds_pred, mercury_to_mercury.
-:- import_module prog_io, globals, code_util.
-:- import_module passes_aux, prog_out, options, termination.
+:- import_module transform_hlds__intermod, hlds__hlds_pred.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_io, libs__globals, ll_backend__code_util.
+:- import_module hlds__passes_aux, parse_tree__prog_out, libs__options.
+:- import_module transform_hlds__termination.
 
 :- import_module set, string, list, map, varset, term, std_util.
 

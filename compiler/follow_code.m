@@ -9,11 +9,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module follow_code.
+:- module ll_backend__follow_code.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
 :- import_module list.
 
 :- pred move_follow_code_in_proc(pred_info::in, proc_info::in, proc_info::out,
@@ -28,8 +28,10 @@
 
 :- implementation.
 
-:- import_module hlds_data, goal_util, mode_util, prog_data.
-:- import_module globals, options, det_analysis, quantification.
+:- import_module hlds__hlds_data, hlds__goal_util, check_hlds__mode_util.
+:- import_module parse_tree__prog_data.
+:- import_module libs__globals, libs__options, check_hlds__det_analysis.
+:- import_module hlds__quantification.
 :- import_module bool, map, set, term, std_util, require.
 
 %-----------------------------------------------------------------------------%

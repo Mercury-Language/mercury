@@ -20,10 +20,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_simplify_switch.
+:- module ml_backend__ml_simplify_switch.
 :- interface.
 
-:- import_module mlds, ml_code_util.
+:- import_module ml_backend__mlds, ml_backend__ml_code_util.
 
 :- pred ml_simplify_switch(mlds__stmt::in, mlds__context::in,
 		mlds__statement::out,
@@ -33,8 +33,9 @@
 
 :- implementation.
 
-:- import_module ml_switch_gen, builtin_ops, type_util.
-:- import_module globals, options.
+:- import_module ml_backend__ml_switch_gen, backend_libs__builtin_ops.
+:- import_module check_hlds__type_util.
+:- import_module libs__globals, libs__options.
 
 :- import_module bool, int, list, map, require, std_util.
 

@@ -8,12 +8,13 @@
 
 % Main authors: fjh, conway.
 
-:- module hlds_goal.
+:- module hlds__hlds_goal.
 
 :- interface.
 
-:- import_module hlds_data, hlds_pred, prog_data, (inst), instmap.
-:- import_module llds.	% XXX needed for `lval'
+:- import_module hlds__hlds_data, hlds__hlds_pred, parse_tree__prog_data.
+:- import_module (parse_tree__inst), hlds__instmap.
+:- import_module ll_backend__llds.	% XXX needed for `lval'
 :- import_module bool, char, list, set, map, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -1158,7 +1159,8 @@
 
 :- implementation.
 
-:- import_module det_analysis, prog_util, type_util.
+:- import_module check_hlds__det_analysis, parse_tree__prog_util.
+:- import_module check_hlds__type_util.
 :- import_module require, string, term, varset.
 
 %-----------------------------------------------------------------------------%

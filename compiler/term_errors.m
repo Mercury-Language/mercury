@@ -12,11 +12,11 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module term_errors.
+:- module transform_hlds__term_errors.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__prog_data.
 
 :- import_module io, bag, std_util, list, assoc_list.
 
@@ -128,9 +128,11 @@
 
 :- implementation.
 
-:- import_module hlds_out, prog_out, passes_aux, error_util.
+:- import_module hlds__hlds_out, parse_tree__prog_out, hlds__passes_aux.
+:- import_module hlds__error_util.
 :- import_module term, varset.
-:- import_module mercury_to_mercury, term_util, options, globals.
+:- import_module parse_tree__mercury_to_mercury, transform_hlds__term_util.
+:- import_module libs__options, libs__globals.
 
 :- import_module bool, int, string, map, bag, require.
 

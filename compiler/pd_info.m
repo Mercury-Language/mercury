@@ -9,12 +9,13 @@
 % Types for deforestation.
 %-----------------------------------------------------------------------------%
 
-:- module pd_info.
+:- module transform_hlds__pd_info.
 
 :- interface.
 
-:- import_module pd_term, hlds_module, hlds_pred, options, hlds_data, instmap.
-:- import_module hlds_goal, prog_data.
+:- import_module transform_hlds__pd_term, hlds__hlds_module, hlds__hlds_pred.
+:- import_module libs__options, hlds__hlds_data, hlds__instmap.
+:- import_module hlds__hlds_goal, parse_tree__prog_data.
 :- import_module bool, map, list, io, set, std_util, getopt.
 
 :- type pd_info 
@@ -158,8 +159,11 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds_pred, prog_data, pd_debug, pd_util, det_util, globals.
-:- import_module inst_match, hlds_goal, prog_util, term.
+:- import_module hlds__hlds_pred, parse_tree__prog_data.
+:- import_module transform_hlds__pd_debug, transform_hlds__pd_util.
+:- import_module check_hlds__det_util, libs__globals.
+:- import_module check_hlds__inst_match, hlds__hlds_goal.
+:- import_module parse_tree__prog_util, term.
 :- import_module assoc_list, bool, int, require, string.
 
 pd_info_init(ModuleInfo, ProcArgInfos, IO, PdInfo) :-

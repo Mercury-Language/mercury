@@ -39,11 +39,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module dupelim.
+:- module ll_backend__dupelim.
 
 :- interface.
 
-:- import_module llds.
+:- import_module ll_backend__llds.
 :- import_module list, counter.
 
 :- pred dupelim_main(list(instruction)::in, proc_label::in,
@@ -53,7 +53,7 @@
 
 :- implementation.
 
-:- import_module basic_block, opt_util.
+:- import_module ll_backend__basic_block, ll_backend__opt_util.
 :- import_module bool, std_util, assoc_list, set, map, require.
 
 	% A std_map maps a list of standardized instructions to the list

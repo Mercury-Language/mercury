@@ -10,11 +10,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module opt_util.
+:- module ll_backend__opt_util.
 
 :- interface.
 :- import_module bool, map, list, std_util.
-:- import_module llds.
+:- import_module ll_backend__llds.
 
 :- type instrmap == map(label, instruction).
 :- type lvalmap == map(label, maybe(instruction)).
@@ -321,7 +321,8 @@
 
 :- implementation.
 
-:- import_module builtin_ops, exprn_aux, llds_out, hlds_pred.
+:- import_module backend_libs__builtin_ops, ll_backend__exprn_aux.
+:- import_module ll_backend__llds_out, hlds__hlds_pred.
 :- import_module int, string, set, require.
 
 opt_util__get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-

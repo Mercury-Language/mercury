@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module mercury_compile.
+:- module top_level__mercury_compile.
 :- interface.
 
 :- import_module io, list.
@@ -35,59 +35,83 @@
 	%
 
 	% semantic analysis
-:- import_module handle_options, prog_io, prog_out, modules, module_qual.
-:- import_module equiv_type, make_hlds, typecheck, purity, polymorphism, modes.
-:- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module stratify, simplify.
-:- import_module pprint.
+:- import_module libs__handle_options, parse_tree__prog_io.
+:- import_module parse_tree__prog_out, parse_tree__modules.
+:- import_module parse_tree__module_qual.
+:- import_module parse_tree__equiv_type, hlds__make_hlds.
+:- import_module check_hlds__typecheck, check_hlds__purity.
+:- import_module check_hlds__polymorphism, check_hlds__modes.
+:- import_module check_hlds__switch_detection, check_hlds__cse_detection.
+:- import_module check_hlds__det_analysis, check_hlds__unique_modes.
+:- import_module check_hlds__stratify, check_hlds__simplify.
 
 	% high-level HLDS transformations
-:- import_module check_typeclass, intermod, trans_opt, table_gen, (lambda).
-:- import_module type_ctor_info, termination, higher_order, accumulator.
-:- import_module inlining, deforest, dnf, magic, dead_proc_elim.
-:- import_module delay_construct, unused_args, unneeded_code, lco.
-:- import_module deep_profiling.
+:- import_module check_hlds__check_typeclass, transform_hlds__intermod.
+:- import_module transform_hlds__trans_opt, transform_hlds__table_gen.
+:- import_module (transform_hlds__lambda).
+:- import_module backend_libs__type_ctor_info, transform_hlds__termination.
+:- import_module transform_hlds__higher_order, transform_hlds__accumulator.
+:- import_module transform_hlds__inlining, transform_hlds__deforest.
+:- import_module aditi_backend__dnf, aditi_backend__magic.
+:- import_module transform_hlds__dead_proc_elim.
+:- import_module transform_hlds__delay_construct, transform_hlds__unused_args.
+:- import_module transform_hlds__unneeded_code, transform_hlds__lco.
+:- import_module ll_backend__deep_profiling.
 
 	% the LLDS back-end
-:- import_module saved_vars, liveness.
-:- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
-:- import_module code_gen, optimize, foreign, export.
-:- import_module base_typeclass_info.
-:- import_module llds_common, transform_llds, llds_out.
-:- import_module continuation_info, stack_layout.
+:- import_module ll_backend__saved_vars, ll_backend__liveness.
+:- import_module ll_backend__follow_code, ll_backend__live_vars.
+:- import_module ll_backend__arg_info, ll_backend__store_alloc.
+:- import_module check_hlds__goal_path.
+:- import_module ll_backend__code_gen, ll_backend__optimize.
+:- import_module backend_libs__foreign, backend_libs__export.
+:- import_module backend_libs__base_typeclass_info.
+:- import_module ll_backend__llds_common, ll_backend__transform_llds.
+:- import_module ll_backend__llds_out.
+:- import_module ll_backend__continuation_info, ll_backend__stack_layout.
 
 	% the Aditi-RL back-end
-:- import_module rl_gen, rl_opt, rl_out.
+:- import_module aditi_backend__rl_gen, aditi_backend__rl_opt.
+:- import_module aditi_backend__rl_out.
 
 	% the bytecode back-end
-:- import_module bytecode_gen, bytecode.
+:- import_module bytecode_backend__bytecode_gen, bytecode_backend__bytecode.
 
 	% the MLDS back-end
-:- import_module add_trail_ops, add_heap_ops.	% HLDS -> HLDS
-:- import_module mark_static_terms.		% HLDS -> HLDS
-:- import_module mlds.				% MLDS data structure
-:- import_module ml_code_gen, rtti_to_mlds.	% HLDS/RTTI -> MLDS
-:- import_module ml_elim_nested.		% MLDS -> MLDS
-:- import_module ml_tailcall.			% MLDS -> MLDS
-:- import_module ml_optimize.			% MLDS -> MLDS
-:- import_module mlds_to_c.			% MLDS -> C
-:- import_module mlds_to_java.			% MLDS -> Java
-:- import_module mlds_to_ilasm.			% MLDS -> IL assembler
-:- import_module maybe_mlds_to_gcc.		% MLDS -> GCC back-end
-:- import_module ml_util.			% MLDS utility predicates 
+:- import_module ml_backend__add_trail_ops.	% HLDS -> HLDS
+:- import_module ml_backend__add_heap_ops.	% HLDS -> HLDS
+:- import_module ml_backend__mark_static_terms.	% HLDS -> HLDS
+:- import_module ml_backend__mlds.		% MLDS data structure
+:- import_module ml_backend__ml_code_gen.
+:- import_module ml_backend__rtti_to_mlds.	% HLDS/RTTI -> MLDS
+:- import_module ml_backend__ml_elim_nested.	% MLDS -> MLDS
+:- import_module ml_backend__ml_tailcall.	% MLDS -> MLDS
+:- import_module ml_backend__ml_optimize.	% MLDS -> MLDS
+:- import_module ml_backend__mlds_to_c.		% MLDS -> C
+:- import_module ml_backend__mlds_to_java.	% MLDS -> Java
+:- import_module ml_backend__mlds_to_ilasm.	% MLDS -> IL assembler
+:- import_module ml_backend__maybe_mlds_to_gcc.	% MLDS -> GCC back-end
+:- import_module ml_backend__ml_util.		% MLDS utility predicates 
 
 	% miscellaneous compiler modules
-:- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
-:- import_module mercury_to_mercury, hlds_data.
-:- import_module layout, dependency_graph, prog_util, rl_dump, rl_file.
-:- import_module options, globals, trace_params, passes_aux.
-:- import_module recompilation, recompilation_usage, recompilation_check.
-:- import_module options_file, make, timestamp, compile_target_code.
+:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_out, ll_backend__llds, aditi_backend__rl.
+:- import_module parse_tree__mercury_to_mercury, hlds__hlds_data.
+:- import_module ll_backend__layout, transform_hlds__dependency_graph.
+:- import_module parse_tree__prog_util, aditi_backend__rl_dump.
+:- import_module aditi_backend__rl_file.
+:- import_module libs__options, libs__globals, libs__trace_params.
+:- import_module hlds__passes_aux.
+:- import_module recompilation, recompilation__usage.
+:- import_module recompilation__check.
+:- import_module libs__timestamp.
+:- import_module make, make__options_file, backend_libs__compile_target_code.
 
 	% library modules
 :- import_module int, list, map, set, std_util, require, string, bool, dir.
 :- import_module library, getopt, set_bbbtree, term, varset, assoc_list.
 :- import_module gc.
+:- import_module pprint.
 
 %-----------------------------------------------------------------------------%
 
@@ -688,7 +712,7 @@ process_module(FileOrModule, ModulesToLink) -->
 				Globals, FindTargetFiles) },
 			{ find_timestamp_files(ModuleName, Globals,
 				FindTimestampFiles) },
-			recompilation_check__should_recompile(ModuleName,
+			recompilation__check__should_recompile(ModuleName,
 				FindTargetFiles, FindTimestampFiles,
 				ModulesToRecompile0, ReadModules),
 			{
@@ -1154,7 +1178,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 			mercury_compile__output_pass(HLDS, GlobalData, LLDS,
 				MaybeRLFile, ModuleName, _CompileErrors)
 		    ),
-		    recompilation_usage__write_usage_file(HLDS,
+		    recompilation__usage__write_usage_file(HLDS,
 		    	NestedSubModules, MaybeTimestamps),
 		    FindTimestampFiles(ModuleName, TimestampFiles),
 		    list__foldl(touch_datestamp, TimestampFiles)
@@ -3203,13 +3227,16 @@ make_foreign_import_header_code(
 		{ Include = foreign_decl_code(c, IncludeString, Context) }
 	;
 		{ Lang = csharp },
-		{ error("sorry, not yet implemented: `:- pragma foreign_import_module' for C#") }
+		{ error("sorry.
+:- import_module not yet implemented: `:- pragma foreign_import_module' for C#") }
 	;
 		{ Lang = managed_cplusplus },
-		{ error("sorry, not yet implemented: `:- pragma foreign_import_module' for Managed C++") }
+		{ error("sorry.
+:- import_module not yet implemented: `:- pragma foreign_import_module' for Managed C++") }
 	;
 		{ Lang = il },
-		{ error("sorry, not yet implemented: `:- pragma foreign_import_module' for IL") }
+		{ error("sorry.
+:- import_module not yet implemented: `:- pragma foreign_import_module' for IL") }
 	).
 
 :- pred get_c_body_code(foreign_body_info, list(user_foreign_code)).

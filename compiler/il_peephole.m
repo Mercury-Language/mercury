@@ -30,12 +30,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module il_peephole.
+:- module ml_backend__il_peephole.
 
 :- interface.
 
 :- import_module list.
-:- import_module ilasm.
+:- import_module ml_backend__ilasm.
 
 	% Peephole optimize a list of instructions.
 
@@ -47,7 +47,7 @@
 :- type instrs == list(instr).
 
 :- import_module assoc_list, bool, map, string, std_util, int.
-:- import_module ilds, require.
+:- import_module ml_backend__ilds, require.
 
 	% We zip down to the end of the instruction list, and start attempting
 	% to optimize instruction sequences. As long as we can continue

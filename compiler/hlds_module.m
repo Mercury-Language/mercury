@@ -17,19 +17,21 @@
 
 % Main authors: fjh, conway.
 
-:- module hlds_module.
+:- module hlds__hlds_module.
 
 :- interface.
 
-:- import_module prog_data, module_qual, recompilation.
-:- import_module hlds_pred, hlds_data, unify_proc, special_pred.
-:- import_module globals, foreign.
+:- import_module parse_tree__prog_data, parse_tree__module_qual.
+:- import_module recompilation.
+:- import_module hlds__hlds_pred, hlds__hlds_data, check_hlds__unify_proc.
+:- import_module hlds__special_pred.
+:- import_module libs__globals, backend_libs__foreign.
 :- import_module relation, map, std_util, list, set, multi_map, counter.
 
 :- implementation.
 
-:- import_module hlds_out, prog_out, prog_util.
-:- import_module typecheck, modules.
+:- import_module hlds__hlds_out, parse_tree__prog_out, parse_tree__prog_util.
+:- import_module check_hlds__typecheck, parse_tree__modules.
 :- import_module bool, require, int, string.
 
 %-----------------------------------------------------------------------------%

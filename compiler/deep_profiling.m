@@ -12,11 +12,11 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module deep_profiling.
+:- module ll_backend__deep_profiling.
 
 :- interface.
 
-:- import_module hlds_module, layout.
+:- import_module hlds__hlds_module, ll_backend__layout.
 :- import_module io, list.
 
 :- pred apply_deep_profiling_transformation(module_info::in, module_info::out,
@@ -26,10 +26,14 @@
 
 :- implementation.
 
-:- import_module (inst), instmap, hlds_data, hlds_pred, hlds_goal, prog_data.
-:- import_module code_model, code_util, prog_util, type_util, mode_util.
-:- import_module quantification, dependency_graph, rtti, trace.
-:- import_module options, globals.
+:- import_module (parse_tree__inst), hlds__instmap, hlds__hlds_data.
+:- import_module hlds__hlds_pred, hlds__hlds_goal, parse_tree__prog_data.
+:- import_module backend_libs__code_model, ll_backend__code_util.
+:- import_module parse_tree__prog_util, check_hlds__type_util.
+:- import_module check_hlds__mode_util.
+:- import_module hlds__quantification, transform_hlds__dependency_graph.
+:- import_module backend_libs__rtti, ll_backend__trace.
+:- import_module libs__options, libs__globals.
 :- import_module bool, int, list, assoc_list, map, require, set.
 :- import_module std_util, string, term, varset, counter.
 

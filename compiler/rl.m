@@ -13,12 +13,13 @@
 % Output to RL bytecodes by rl_out.m.
 %
 %-----------------------------------------------------------------------------%
-:- module rl. 
+:- module aditi_backend__rl. 
 
 :- interface.
 
-:- import_module hlds_data, hlds_goal, hlds_module, hlds_pred.
-:- import_module instmap, prog_data.
+:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap, parse_tree__prog_data.
 :- import_module assoc_list, list, std_util, map, set.
 
 %-----------------------------------------------------------------------------%
@@ -670,8 +671,10 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module code_util, code_aux, globals, llds_out, options, prog_out.
-:- import_module mode_util, prog_util, type_util, llds.
+:- import_module ll_backend__code_util, ll_backend__code_aux, libs__globals.
+:- import_module ll_backend__llds_out, libs__options, parse_tree__prog_out.
+:- import_module check_hlds__mode_util, parse_tree__prog_util.
+:- import_module check_hlds__type_util, ll_backend__llds.
 :- import_module bool, int, require, string.
 
 rl__default_temporary_state(ModuleInfo, TmpState) :-

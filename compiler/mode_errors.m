@@ -13,12 +13,14 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module mode_errors.
+:- module check_hlds__mode_errors.
 
 :- interface.
 
-:- import_module hlds_data, hlds_pred, hlds_module, hlds_goal.
-:- import_module prog_data, mode_info, (inst).
+:- import_module hlds__hlds_data, hlds__hlds_pred, hlds__hlds_module.
+:- import_module hlds__hlds_goal.
+:- import_module parse_tree__prog_data, check_hlds__mode_info.
+:- import_module (parse_tree__inst).
 
 :- import_module bool, set, assoc_list, list, io.
 
@@ -186,9 +188,10 @@
 
 :- implementation.
 
-:- import_module hlds_out.
-:- import_module mode_info, mode_util, prog_out, mercury_to_mercury.
-:- import_module options, globals.
+:- import_module hlds__hlds_out.
+:- import_module check_hlds__mode_info, check_hlds__mode_util.
+:- import_module parse_tree__prog_out, parse_tree__mercury_to_mercury.
+:- import_module libs__options, libs__globals.
 
 :- import_module int, map, term_io, varset, term.
 :- import_module std_util, require.

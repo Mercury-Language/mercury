@@ -44,12 +44,12 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module check_typeclass.
+:- module check_hlds__check_typeclass.
 
 
 :- interface.
 
-:- import_module hlds_module, make_hlds.
+:- import_module hlds__hlds_module, hlds__make_hlds.
 :- import_module bool, io.
 
 :- pred check_typeclass__check_instance_decls(module_info, qual_info,
@@ -59,12 +59,15 @@
 
 :- implementation.
 
-:- import_module prog_data, prog_out, prog_util.
-:- import_module hlds_pred, hlds_data, hlds_goal, hlds_out.
-:- import_module type_util, typecheck, mode_util, inst_match.
-:- import_module base_typeclass_info.
-:- import_module mercury_to_mercury, error_util.
-:- import_module globals, options. 
+:- import_module parse_tree__prog_data, parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+:- import_module hlds__hlds_pred, hlds__hlds_data, hlds__hlds_goal.
+:- import_module hlds__hlds_out.
+:- import_module check_hlds__type_util, check_hlds__typecheck.
+:- import_module check_hlds__mode_util, check_hlds__inst_match.
+:- import_module backend_libs__base_typeclass_info.
+:- import_module parse_tree__mercury_to_mercury, hlds__error_util.
+:- import_module libs__globals, libs__options. 
 
 :- import_module int, string.
 :- import_module list, assoc_list, map, set, term, varset.

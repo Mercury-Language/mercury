@@ -10,11 +10,11 @@
 % This module handles the parsing of clauses in Definite Clause Grammar
 % notation.
 
-:- module prog_io_dcg.
+:- module parse_tree__prog_io_dcg.
 
 :- interface.
 
-:- import_module prog_data, prog_io_util.
+:- import_module parse_tree__prog_data, parse_tree__prog_io_util.
 :- import_module varset, term.
 
 :- pred parse_dcg_clause(module_name, varset, term, term,
@@ -33,7 +33,8 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, prog_util, purity.
+:- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_util, check_hlds__purity.
 :- import_module int, map, string, std_util, list.
 
 %-----------------------------------------------------------------------------%

@@ -17,14 +17,14 @@
 % The scheme for model_non pragma_c_codes is substantially different,
 % so we handle them separately.
 
-:- module pragma_c_gen.
+:- module ll_backend__pragma_c_gen.
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_goal, hlds_pred.
-:- import_module code_model.
-:- import_module llds, code_info.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_pred.
+:- import_module backend_libs__code_model.
+:- import_module ll_backend__llds, ll_backend__code_info.
 
 :- import_module list, std_util.
 
@@ -41,9 +41,10 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, llds_out, trace, tree.
-:- import_module code_util, foreign.
-:- import_module options, globals.
+:- import_module hlds__hlds_module, hlds__hlds_pred, ll_backend__llds_out.
+:- import_module ll_backend__trace, libs__tree.
+:- import_module ll_backend__code_util, backend_libs__foreign.
+:- import_module libs__options, libs__globals.
 
 :- import_module bool, string, int, assoc_list, set, map, require, term.
 

@@ -4,11 +4,11 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
 
-:- module exprn_aux.
+:- module ll_backend__exprn_aux.
 
 :- interface.
 
-:- import_module llds, options, prog_data.
+:- import_module ll_backend__llds, libs__options, parse_tree__prog_data.
 :- import_module list, std_util, bool, assoc_list.
 
 :- type exprn_opts
@@ -102,7 +102,7 @@
 
 :- implementation.
 
-:- import_module options.
+:- import_module libs__options.
 :- import_module int, set, require, getopt.
 
 exprn_aux__init_exprn_opts(Options, ExprnOpts) :-

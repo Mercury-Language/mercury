@@ -9,11 +9,11 @@
 % Output a human readable representation of RL for debugging.
 %
 %-----------------------------------------------------------------------------%
-:- module rl_dump.
+:- module aditi_backend__rl_dump.
 
 :- interface.
 
-:- import_module hlds_module, rl.
+:- import_module hlds__hlds_module, aditi_backend__rl.
 :- import_module io.
 
 :- pred rl_dump__write_procedure(module_info, rl_proc, io__state, io__state). 
@@ -26,7 +26,8 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds_out, hlds_pred, mercury_to_mercury, prog_data.
+:- import_module hlds__hlds_out, hlds__hlds_pred.
+:- import_module parse_tree__mercury_to_mercury, parse_tree__prog_data.
 :- import_module bool, list, map, require, set, std_util.
 :- import_module term, term_io, varset.
 

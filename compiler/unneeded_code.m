@@ -53,11 +53,11 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module unneeded_code.
+:- module transform_hlds__unneeded_code.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds__hlds_module, hlds__hlds_pred.
 :- import_module io.
 
 :- pred unneeded_code__process_proc_msg(pred_id::in, proc_id::in,
@@ -69,10 +69,12 @@
 
 :- implementation.
 
-:- import_module prog_data, hlds_goal, prog_data.
-:- import_module inst_match, instmap, mode_util.
-:- import_module passes_aux, hlds_out, globals, options.
-:- import_module code_aux, goal_path, quantification.
+:- import_module parse_tree__prog_data, hlds__hlds_goal, parse_tree__prog_data.
+:- import_module check_hlds__inst_match, hlds__instmap, check_hlds__mode_util.
+:- import_module hlds__passes_aux, hlds__hlds_out, libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__code_aux, check_hlds__goal_path.
+:- import_module hlds__quantification.
 :- import_module std_util, bool, int, list, assoc_list, map, set, require.
 
 	% The branch_alts and branch_point types record the information the

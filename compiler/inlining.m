@@ -6,7 +6,7 @@
 
 % Main author: conway.
 
-:- module inlining.
+:- module transform_hlds__inlining.
 
 	% This module inlines
 	%
@@ -83,7 +83,8 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_module, hlds_pred, prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
 :- import_module bool, io, list, map.
 
 :- pred inlining(module_info, module_info, io__state, io__state).
@@ -147,15 +148,19 @@
 :- implementation.
 
 % Parse tree modules
-:- import_module prog_data.
+:- import_module parse_tree__prog_data.
 
 % HLDS modules
-:- import_module hlds_data, type_util, mode_util, goal_util, det_analysis.
-:- import_module quantification, code_aux, dead_proc_elim, dependency_graph.
-:- import_module passes_aux, purity.
+:- import_module hlds__hlds_data, check_hlds__type_util.
+:- import_module check_hlds__mode_util, hlds__goal_util.
+:- import_module check_hlds__det_analysis.
+:- import_module hlds__quantification, ll_backend__code_aux.
+:- import_module transform_hlds__dead_proc_elim.
+:- import_module transform_hlds__dependency_graph.
+:- import_module hlds__passes_aux, check_hlds__purity.
 
 % Misc
-:- import_module globals, options, trace_params.
+:- import_module libs__globals, libs__options, libs__trace_params.
 
 % Standard library modules
 :- import_module bool, int, list, assoc_list, set, std_util, require.

@@ -28,9 +28,9 @@
 % your transformer upset the ordering in a conjunction.
 %-----------------------------------------------------------------------------%
 
-:- module transform.
+:- module transform_hlds__transform.
 :- interface.
-:- import_module hlds_goal, mode_info.
+:- import_module hlds__hlds_goal, check_hlds__mode_info.
 :- import_module list.
 
 %:- pred unfold__in_proc(pred_id, proc_id, hlds_goal_expr,
@@ -46,8 +46,9 @@
 
 :- implementation.
 :- import_module map, set, std_util.
-:- import_module mode_util, delay_info, term, require.
-:- import_module varset, code_aux, prog_data, instmap.
+:- import_module check_hlds__mode_util, check_hlds__delay_info, term, require.
+:- import_module varset, ll_backend__code_aux, parse_tree__prog_data.
+:- import_module hlds__instmap.
 
 %-----------------------------------------------------------------------------%
 

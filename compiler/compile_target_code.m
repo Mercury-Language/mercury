@@ -9,11 +9,13 @@
 % Code to compile the generated `.c', `.s', `.o', etc, files.
 %
 %-----------------------------------------------------------------------------%
-:- module compile_target_code.
+:- module backend_libs__compile_target_code.
 
 :- interface.
 
-:- import_module modules, prog_data, prog_io.
+:- import_module parse_tree__prog_data, parse_tree__prog_io.
+:- import_module parse_tree__modules.
+
 :- import_module bool, list, io, std_util.
 
 	% compile_c_file(ErrorStream, CFile, ObjFile, Succeeded).
@@ -111,8 +113,9 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module modules, globals, options, handle_options.
-:- import_module passes_aux, trace_params.
+:- import_module libs__globals, libs__options, libs__handle_options.
+:- import_module hlds__passes_aux, libs__trace_params.
+
 :- import_module dir, int, require, string.
 
 il_assemble(ErrorStream, ModuleName,

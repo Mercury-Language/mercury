@@ -19,11 +19,13 @@
 
 % WISHLIST - we should handle explicit module quantification
 
-:- module make_hlds.
+:- module hlds__make_hlds.
 :- interface.
 
-:- import_module prog_data, hlds_data, hlds_module, hlds_pred.
-:- import_module equiv_type, module_qual, special_pred.
+:- import_module parse_tree__prog_data, hlds__hlds_data, hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__equiv_type, parse_tree__module_qual.
+:- import_module hlds__special_pred.
 
 :- import_module io, std_util, list, bool.
 
@@ -95,14 +97,24 @@
 
 :- implementation.
 
-:- import_module hlds_goal.
-:- import_module prog_io, prog_io_goal, prog_io_dcg, prog_io_util, prog_out.
-:- import_module modules, module_qual, prog_util, options, hlds_out, typecheck.
-:- import_module make_tags, quantification, (inst), globals.
-:- import_module code_util, unify_proc, type_util, mode_util, mode_errors.
-:- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
-:- import_module fact_table, purity, goal_util, term_util, export, llds.
-:- import_module error_util, foreign.
+:- import_module hlds__hlds_goal.
+:- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_io_dcg, parse_tree__prog_io_util.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__modules, parse_tree__module_qual.
+:- import_module parse_tree__prog_util, libs__options, hlds__hlds_out.
+:- import_module check_hlds__typecheck.
+:- import_module hlds__make_tags, hlds__quantification, (parse_tree__inst).
+:- import_module libs__globals.
+:- import_module ll_backend__code_util, check_hlds__unify_proc.
+:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module check_hlds__mode_errors.
+:- import_module parse_tree__mercury_to_mercury, hlds__passes_aux.
+:- import_module check_hlds__clause_to_proc, check_hlds__inst_match.
+:- import_module ll_backend__fact_table, check_hlds__purity, hlds__goal_util.
+:- import_module transform_hlds__term_util, backend_libs__export.
+:- import_module ll_backend__llds.
+:- import_module hlds__error_util, backend_libs__foreign.
 :- import_module recompilation.
 
 :- import_module string, char, int, set, bintree, map, multi_map, require.

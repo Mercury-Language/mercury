@@ -29,10 +29,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_optimize.
+:- module ml_backend__ml_optimize.
 :- interface.
 
-:- import_module mlds, io.
+:- import_module ml_backend__mlds, io.
 
 :- pred optimize(mlds, mlds, io__state, io__state).
 :- mode optimize(in, out, di, uo) is det.
@@ -41,9 +41,10 @@
 
 :- implementation.
 
-:- import_module ml_util, ml_code_util.
-:- import_module prog_data, prog_util.
-:- import_module builtin_ops, globals, options, error_util.
+:- import_module ml_backend__ml_util, ml_backend__ml_code_util.
+:- import_module parse_tree__prog_data, parse_tree__prog_util.
+:- import_module backend_libs__builtin_ops, libs__globals, libs__options.
+:- import_module hlds__error_util.
 
 :- import_module bool, int, list, require, std_util, string.
 
@@ -196,7 +197,7 @@ optimize_in_default(OptInfo, default_case(Statement0)) =
 %-----------------------------------------------------------------------------%
 
 :- inst g == ground.
-:- inst call ---> mlds__call(g, g, g, g, g, g).
+:- inst call ---> ml_backend__mlds__call(g, g, g, g, g, g).
 
 :- func optimize_in_call_stmt(opt_info, mlds__stmt) = mlds__stmt.
 :- mode optimize_in_call_stmt(in, in(call)) = out is det.

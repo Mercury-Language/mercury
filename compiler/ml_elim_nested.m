@@ -344,11 +344,11 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module ml_elim_nested.
+:- module ml_backend__ml_elim_nested.
 
 :- interface.
 
-:- import_module mlds.
+:- import_module ml_backend__mlds.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
@@ -369,13 +369,13 @@
 :- implementation.
 :- import_module bool, counter, int, list, std_util, string, require.
 
-:- import_module ml_code_util, ml_util.
-:- import_module prog_util, type_util.
+:- import_module ml_backend__ml_code_util, ml_backend__ml_util.
+:- import_module parse_tree__prog_util, check_hlds__type_util.
 
 % the following imports are needed for mangling pred names
-:- import_module hlds_pred, prog_data, prog_out.
+:- import_module hlds__hlds_pred, parse_tree__prog_data, parse_tree__prog_out.
 
-:- import_module globals, options.
+:- import_module libs__globals, libs__options.
 
 	% Perform the specified action on the whole MLDS.
 	%

@@ -39,11 +39,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module mercury_to_mercury.
+:- module parse_tree__mercury_to_mercury.
 :- interface.
 
-:- import_module prog_data, (inst).
-:- import_module hlds_goal, hlds_data.
+:- import_module parse_tree__prog_data, (parse_tree__inst).
+:- import_module hlds__hlds_goal, hlds__hlds_data.
+:- import_module libs__globals.
 
 :- import_module bool, std_util, list, io, varset, term.
 
@@ -326,9 +327,12 @@
 
 :- implementation.
 
-:- import_module prog_out, prog_util, hlds_pred, hlds_out, instmap.
-:- import_module recompilation_version, purity, term_util.
-:- import_module globals, options, termination, foreign.
+:- import_module parse_tree__prog_out, parse_tree__prog_util, hlds__hlds_pred.
+:- import_module hlds__hlds_out, hlds__instmap.
+:- import_module recompilation__version, check_hlds__purity.
+:- import_module transform_hlds__term_util.
+:- import_module libs__options, transform_hlds__termination.
+:- import_module backend_libs__foreign.
 
 :- import_module assoc_list, char, int, string, set, lexer, ops, require.
 :- import_module term, term_io, varset.
@@ -877,7 +881,7 @@ mercury_output_module_defn(_VarSet, ModuleDefn, _Context) -->
 		io__write_string(", "),
 		mercury_output_bracketed_sym_name(Module),
 		io__write_string(",\n"),
-		recompilation_version__write_version_numbers(VersionNumbers),
+		recompilation__version__write_version_numbers(VersionNumbers),
 		io__write_string(").\n")
 	;
 		% XXX unimplemented

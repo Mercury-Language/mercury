@@ -26,11 +26,12 @@
 %
 % See David Kemp's PhD thesis (available from http://www.cs.mu.oz.au/~kemp).
 %-----------------------------------------------------------------------------%
-:- module context.
+:- module aditi_backend__context.
 
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, magic_util, prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_pred, aditi_backend__magic_util.
+:- import_module parse_tree__prog_data.
 :- import_module list.
 
 	% context__process_disjuncts(OrigPredProcId, Inputs, Outputs,
@@ -47,8 +48,9 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds_data, hlds_module, (inst), instmap.
-:- import_module goal_util.
+:- import_module hlds__hlds_data, hlds__hlds_module, (parse_tree__inst).
+:- import_module hlds__instmap.
+:- import_module hlds__goal_util.
 :- import_module assoc_list, bool, map, require, set, std_util, term, varset.
 
 context__process_disjuncts(OldPredProcId, Inputs, Outputs,

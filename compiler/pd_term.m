@@ -31,11 +31,12 @@
 % 	useful (necessary?) if we start propagating equality constraints.
 %
 %-----------------------------------------------------------------------------%
-:- module pd_term.
+:- module transform_hlds__pd_term.
 
 :- interface.
 
-:- import_module hlds_goal, hlds_module, hlds_pred, instmap, pd_info.
+:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__instmap, transform_hlds__pd_info.
 :- import_module list, std_util.
 
 	% pd_term__global_check(Module, CallGoal1, BetweenGoals, CallGoal2,
@@ -86,7 +87,8 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds_pred, (inst), mode_util, prog_data, pd_util.
+:- import_module hlds__hlds_pred, (parse_tree__inst), check_hlds__mode_util.
+:- import_module parse_tree__prog_data, transform_hlds__pd_util.
 :- import_module assoc_list, bool, int, map, require, set.
 
 :- type global_term_info

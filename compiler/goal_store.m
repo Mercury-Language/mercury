@@ -14,11 +14,12 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module goal_store.
+:- module transform_hlds__goal_store.
 
 :- interface.
 
-:- import_module hlds_goal, hlds_module, hlds_pred, instmap.
+:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__instmap.
 :- import_module bool, set, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -44,7 +45,7 @@
 
 :- implementation.
 
-:- import_module goal_util.
+:- import_module hlds__goal_util.
 :- import_module int, list, map, require.
 
 :- type goal_store(T) == map__map(T, goal).

@@ -8,7 +8,7 @@
 %
 % Timestamp representation for smart recompilation.
 %-----------------------------------------------------------------------------%
-:- module timestamp.
+:- module libs__timestamp.
 
 :- interface.
 

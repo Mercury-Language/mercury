@@ -14,11 +14,11 @@
 
 % Main author: fjh.
 
-:- module mark_static_terms.
+:- module ml_backend__mark_static_terms.
 
 :- interface.
 
-:- import_module hlds_pred, hlds_module.
+:- import_module hlds__hlds_pred, hlds__hlds_module.
 
 :- pred mark_static_terms(proc_info::in, module_info::in, proc_info::out)
 	is det.
@@ -26,7 +26,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_data, hlds_goal, hlds_data.
+:- import_module parse_tree__prog_data, hlds__hlds_goal, hlds__hlds_data.
 :- import_module map, list, bool.
 
 %
@@ -36,7 +36,7 @@
 %
 :- type static_info == map(prog_var, static_cons).
 
-:- import_module hlds_goal.
+:- import_module hlds__hlds_goal.
 :- import_module int, list, std_util, require.
 
 mark_static_terms(Proc0, _ModuleInfo, Proc) :-

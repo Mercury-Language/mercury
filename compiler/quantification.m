@@ -34,11 +34,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module quantification.
+:- module hlds__quantification.
 
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_pred, parse_tree__prog_data.
 :- import_module list, set.
 
 	%
@@ -120,7 +120,7 @@
 
 :- implementation.
 
-:- import_module instmap, goal_util.
+:- import_module hlds__instmap, hlds__goal_util.
 
 :- import_module map, term, varset.
 :- import_module std_util, bool, require.

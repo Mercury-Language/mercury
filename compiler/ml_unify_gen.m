@@ -12,13 +12,13 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_unify_gen.
+:- module ml_backend__ml_unify_gen.
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_module, hlds_data, hlds_goal.
-:- import_module code_model.
-:- import_module mlds, ml_code_util.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_data, hlds__hlds_goal.
+:- import_module backend_libs__code_model.
+:- import_module ml_backend__mlds, ml_backend__ml_code_util.
 
 :- import_module bool, list, std_util.
 
@@ -83,15 +83,17 @@
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_out, builtin_ops.
-:- import_module ml_code_gen, ml_call_gen, ml_type_gen, ml_closure_gen.
-:- import_module prog_util, type_util, mode_util.
-:- import_module rtti, error_util.
-:- import_module globals, options.
+:- import_module hlds__hlds_pred, hlds__hlds_out, backend_libs__builtin_ops.
+:- import_module ml_backend__ml_code_gen, ml_backend__ml_call_gen.
+:- import_module ml_backend__ml_type_gen, ml_backend__ml_closure_gen.
+:- import_module parse_tree__prog_util, check_hlds__type_util.
+:- import_module check_hlds__mode_util.
+:- import_module backend_libs__rtti, hlds__error_util.
+:- import_module libs__globals, libs__options.
 
 % XXX The following modules depend on the LLDS,
 % so ideally they should not be used here.
-:- import_module code_util. 	    % needed for `cons_id_to_tag'.
+:- import_module ll_backend__code_util. 	    % needed for `cons_id_to_tag'.
 
 :- import_module int, string, map, require, term, varset.
 :- import_module assoc_list, set.

@@ -13,11 +13,12 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module constraint.
+:- module transform_hlds__constraint.
 
 :- interface.
 
-:- import_module hlds_goal, hlds_module, instmap, prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__instmap.
+:- import_module parse_tree__prog_data.
 :- import_module bool, map.
 
 :- type constraint_info.
@@ -44,9 +45,12 @@
 
 :- implementation.
 
-:- import_module goal_util, hlds_pred, hlds_module, hlds_data.
-:- import_module mode_util, passes_aux, code_aux, inst_match, purity.
-:- import_module options, globals.
+:- import_module hlds__goal_util, hlds__hlds_pred, hlds__hlds_module.
+:- import_module hlds__hlds_data.
+:- import_module check_hlds__mode_util, hlds__passes_aux.
+:- import_module ll_backend__code_aux, check_hlds__inst_match.
+:- import_module check_hlds__purity.
+:- import_module libs__options, libs__globals.
 
 :- import_module assoc_list, list, require, set, std_util.
 :- import_module string, term, varset.

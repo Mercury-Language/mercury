@@ -9,28 +9,30 @@
 
 % Main authors: fjh, conway.
 
-:- module hlds_pred.
+:- module hlds__hlds_pred.
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_data, hlds_goal, hlds_module, instmap, term_util.
-:- import_module mode_errors.
-:- import_module globals.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_module.
+:- import_module hlds__instmap, transform_hlds__term_util.
+:- import_module check_hlds__mode_errors.
+:- import_module libs__globals.
 
 :- import_module bool, list, set, map, std_util, term, varset.
 
 :- implementation.
 
 % Parse tree modules.
-:- import_module prog_util.
+:- import_module parse_tree__prog_util.
 
 % HLDS modules.
-:- import_module code_aux, goal_util, make_hlds.
-:- import_module inst_match, mode_util, type_util.
+:- import_module ll_backend__code_aux, hlds__goal_util, hlds__make_hlds.
+:- import_module check_hlds__inst_match, check_hlds__mode_util.
+:- import_module check_hlds__type_util.
 
 % Misc
-:- import_module options.
+:- import_module libs__options.
 
 % Standard library modules.
 :- import_module int, string, require, assoc_list.
@@ -1840,7 +1842,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_is_valid_mode(proc_info::in) is semidet.
 
 :- implementation.
-:- import_module mode_errors.
+:- import_module check_hlds__mode_errors.
 
 :- type proc_info
 	--->	procedure(
@@ -2749,7 +2751,7 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 
 :- implementation.
 
-:- import_module det_analysis.
+:- import_module check_hlds__det_analysis.
 
 valid_determinism_for_eval_method(eval_normal, _).
 valid_determinism_for_eval_method(eval_loop_check, _).

@@ -24,12 +24,13 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module simplify.
+:- module check_hlds__simplify.
 
 :- interface.
 
-:- import_module hlds_goal, hlds_module, hlds_pred, det_report, det_util.
-:- import_module common, instmap, globals.
+:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
+:- import_module check_hlds__det_report, check_hlds__det_util.
+:- import_module check_hlds__common, hlds__instmap, libs__globals.
 :- import_module io, bool, list, map.
 
 :- pred simplify__pred(list(simplification), pred_id, module_info, module_info,
@@ -73,11 +74,18 @@
 
 :- implementation.
 
-:- import_module code_aux, det_analysis, follow_code, goal_util, const_prop.
-:- import_module hlds_module, hlds_data, (inst), inst_match, varset.
-:- import_module options, passes_aux, prog_data, mode_util, type_util.
-:- import_module code_util, quantification, modes, purity, pd_cost.
-:- import_module prog_util, unify_proc, special_pred, polymorphism.
+:- import_module ll_backend__code_aux, check_hlds__det_analysis.
+:- import_module ll_backend__follow_code, hlds__goal_util.
+:- import_module transform_hlds__const_prop.
+:- import_module hlds__hlds_module, hlds__hlds_data, (parse_tree__inst).
+:- import_module check_hlds__inst_match, varset.
+:- import_module libs__options, hlds__passes_aux, parse_tree__prog_data.
+:- import_module check_hlds__mode_util, check_hlds__type_util.
+:- import_module ll_backend__code_util, hlds__quantification.
+:- import_module check_hlds__modes, check_hlds__purity.
+:- import_module transform_hlds__pd_cost.
+:- import_module parse_tree__prog_util, check_hlds__unify_proc.
+:- import_module hlds__special_pred, check_hlds__polymorphism.
 
 :- import_module set, require, std_util, int, term.
 
@@ -2100,7 +2108,7 @@ simplify_info_reinit(Simplifications, InstMap0) -->
 	% exported for common.m
 :- interface.
 
-:- import_module prog_data.
+:- import_module parse_tree__prog_data.
 :- import_module set.
 
 :- pred simplify_info_init(det_info::in, list(simplification)::in, instmap::in,

@@ -18,11 +18,12 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module modecheck_call.
+:- module check_hlds__modecheck_call.
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, hlds_module.
-:- import_module prog_data, modes, mode_info.
+:- import_module hlds__hlds_goal, hlds__hlds_pred, hlds__hlds_module.
+:- import_module parse_tree__prog_data, check_hlds__modes.
+:- import_module check_hlds__mode_info.
 :- import_module list, std_util.
 
 :- pred modecheck_call_pred(pred_id, proc_id, list(prog_var),
@@ -69,10 +70,14 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds_data, instmap, prog_data, (inst), inst_util, type_util.
-:- import_module mode_info, mode_debug, modes, mode_util, mode_errors.
-:- import_module clause_to_proc, inst_match.
-:- import_module det_report, unify_proc.
+:- import_module hlds__hlds_data, hlds__instmap, parse_tree__prog_data.
+:- import_module (parse_tree__inst), check_hlds__inst_util.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__mode_info, check_hlds__mode_debug.
+:- import_module check_hlds__modes, check_hlds__mode_util.
+:- import_module check_hlds__mode_errors.
+:- import_module check_hlds__clause_to_proc, check_hlds__inst_match.
+:- import_module check_hlds__det_report, check_hlds__unify_proc.
 :- import_module int, map, bool, set, require, term, varset.
 
 modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Modes, Det,

@@ -227,11 +227,11 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module table_gen.
+:- module transform_hlds__table_gen.
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds__hlds_module.
 
 :- pred table_gen__process_module(module_info::in, module_info::out) is det.
 
@@ -239,13 +239,20 @@
 
 :- implementation.
 
-:- import_module hlds_out, prog_out.
-:- import_module hlds_pred, instmap, polymorphism.
-:- import_module code_aux, det_analysis, follow_code, goal_util, const_prop.
-:- import_module hlds_module, hlds_goal, hlds_data, (inst), inst_match.
-:- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
-:- import_module code_util, quantification, modes, purity, prog_util.
-:- import_module code_model, continuation_info, rtti, llds.
+:- import_module hlds__hlds_out, parse_tree__prog_out.
+:- import_module hlds__hlds_pred, hlds__instmap, check_hlds__polymorphism.
+:- import_module ll_backend__code_aux, check_hlds__det_analysis.
+:- import_module ll_backend__follow_code, hlds__goal_util.
+:- import_module transform_hlds__const_prop.
+:- import_module hlds__hlds_module, hlds__hlds_goal, hlds__hlds_data.
+:- import_module (parse_tree__inst), check_hlds__inst_match.
+:- import_module libs__globals, libs__options, hlds__passes_aux.
+:- import_module parse_tree__prog_data, check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module ll_backend__code_util, hlds__quantification.
+:- import_module check_hlds__modes, check_hlds__purity, parse_tree__prog_util.
+:- import_module backend_libs__code_model, ll_backend__continuation_info.
+:- import_module backend_libs__rtti, ll_backend__llds.
 
 :- import_module term, varset.
 :- import_module bool, int, string, list, assoc_list.

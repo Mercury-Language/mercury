@@ -13,13 +13,13 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module string_switch.
+:- module ll_backend__string_switch.
 
 :- interface.
 
-:- import_module prog_data, hlds_data, hlds_goal.
-:- import_module switch_util, code_model.
-:- import_module llds, code_info.
+:- import_module parse_tree__prog_data, hlds__hlds_data, hlds__hlds_goal.
+:- import_module backend_libs__switch_util, backend_libs__code_model.
+:- import_module ll_backend__llds, ll_backend__code_info.
 
 :- pred string_switch__generate(cases_list, prog_var, code_model,
 	can_fail, store_map, label, branch_end, branch_end, code_tree,
@@ -31,7 +31,8 @@
 
 :- implementation.
 
-:- import_module builtin_ops, code_gen, trace, tree.
+:- import_module backend_libs__builtin_ops, ll_backend__code_gen.
+:- import_module ll_backend__trace, libs__tree.
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,

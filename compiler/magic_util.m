@@ -10,11 +10,12 @@
 %
 % Note: this module contains multiple interface sections.
 %-----------------------------------------------------------------------------%
-:- module magic_util.
+:- module aditi_backend__magic_util.
 
 :- interface.
 
-:- import_module hlds_goal, hlds_module, hlds_pred, prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
 :- import_module bool, io, list, map, set, std_util.
 
 	% Check that the argument types and modes are legal for
@@ -117,9 +118,12 @@
 
 :- implementation.
 
-:- import_module hlds_data, code_util, type_util, mode_util, inst_match.
-:- import_module instmap, goal_util, prog_out, hlds_out, error_util, prog_util.
-:- import_module (inst), polymorphism.
+:- import_module hlds__hlds_data, ll_backend__code_util.
+:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module check_hlds__inst_match.
+:- import_module hlds__instmap, hlds__goal_util, parse_tree__prog_out.
+:- import_module hlds__hlds_out, hlds__error_util, parse_tree__prog_util.
+:- import_module (parse_tree__inst), check_hlds__polymorphism.
 
 :- import_module assoc_list, int, require, string, term, varset.
 

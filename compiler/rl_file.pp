@@ -9,7 +9,7 @@
 % Definitions for the RLO file format.
 %
 %-----------------------------------------------------------------------------%
-:- module rl_file.
+:- module aditi_backend__rl_file.
 
 :- interface.
 
@@ -25,7 +25,7 @@
 		int::out, io__state::di, io__state::uo) is det. 
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
-:- import_module rl_code.
+:- import_module aditi_backend__rl_code.
 :- import_module assoc_list, list.
 
 	% Write a text representation of an RL file to the current

@@ -47,12 +47,14 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module continuation_info.
+:- module ll_backend__continuation_info.
 
 :- interface.
 
-:- import_module llds, hlds_module, hlds_pred, hlds_goal, prog_data.
-:- import_module (inst), instmap, trace, rtti, globals.
+:- import_module ll_backend__llds, hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_goal, parse_tree__prog_data.
+:- import_module (parse_tree__inst), hlds__instmap, ll_backend__trace.
+:- import_module backend_libs__rtti, libs__globals.
 :- import_module bool, std_util, list, assoc_list, set, map.
 
 	%
@@ -318,7 +320,8 @@
 
 :- implementation.
 
-:- import_module hlds_goal, code_util, type_util, inst_match, options.
+:- import_module hlds__hlds_goal, ll_backend__code_util.
+:- import_module check_hlds__type_util, check_hlds__inst_match, libs__options.
 :- import_module string, require, term, varset.
 
 %-----------------------------------------------------------------------------%

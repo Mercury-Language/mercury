@@ -13,10 +13,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module c_util.
+:- module backend_libs__c_util.
 :- interface.
 :- import_module io, char, string, int.
-:- import_module builtin_ops.
+:- import_module backend_libs__builtin_ops.
 
 %-----------------------------------------------------------------------------%
 
@@ -107,7 +107,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module globals, options.
+:- import_module libs__globals, libs__options.
 :- import_module list, bool.
 
 %-----------------------------------------------------------------------------%

@@ -8,11 +8,11 @@
 %
 % Call the RL optimization passes.
 %-----------------------------------------------------------------------------%
-:- module rl_opt.
+:- module aditi_backend__rl_opt.
 
 :- interface.
 
-:- import_module hlds_module, rl.
+:- import_module hlds__hlds_module, aditi_backend__rl.
 :- import_module io, list.
 
 :- pred rl_opt__procs(module_info, list(rl_proc), list(rl_proc),
@@ -22,9 +22,11 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module globals, options, passes_aux, prog_out.
-:- import_module rl_block, rl_liveness.
-:- import_module rl_block_opt, rl_loop, rl_sort, rl_stream.
+:- import_module libs__globals, libs__options, hlds__passes_aux.
+:- import_module parse_tree__prog_out.
+:- import_module aditi_backend__rl_block, aditi_backend__rl_liveness.
+:- import_module aditi_backend__rl_block_opt, aditi_backend__rl_loop.
+:- import_module aditi_backend__rl_sort, aditi_backend__rl_stream.
 :- import_module bool, list.
 
 rl_opt__procs(ModuleInfo, Procs0, Procs) -->

@@ -31,14 +31,15 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module intermod.
+:- module transform_hlds__intermod.
 
 %-----------------------------------------------------------------------------%
 
 :- interface.
 
 :- import_module io, bool.
-:- import_module hlds_module, modules, prog_io, prog_data.
+:- import_module hlds__hlds_module, parse_tree__modules, parse_tree__prog_io.
+:- import_module parse_tree__prog_data.
 
 :- pred intermod__write_optfile(module_info, module_info,
 				io__state, io__state).
@@ -86,11 +87,18 @@
 :- import_module assoc_list, dir, getopt, int, list, map, multi_map, require.
 :- import_module set, std_util, string, term, varset.
 
-:- import_module code_util, globals, goal_util, term, varset.
-:- import_module hlds_data, hlds_goal, hlds_pred, hlds_out, inlining, llds.
-:- import_module mercury_to_mercury, mode_util, modules.
-:- import_module options, passes_aux, prog_data, prog_io, prog_out, prog_util.
-:- import_module special_pred, typecheck, type_util, instmap, (inst), foreign.
+:- import_module ll_backend__code_util, libs__globals, hlds__goal_util, term.
+:- import_module varset.
+:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_pred.
+:- import_module hlds__hlds_out, transform_hlds__inlining, ll_backend__llds.
+:- import_module parse_tree__mercury_to_mercury, check_hlds__mode_util.
+:- import_module parse_tree__modules.
+:- import_module libs__options, hlds__passes_aux, parse_tree__prog_data.
+:- import_module parse_tree__prog_io, parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+:- import_module hlds__special_pred, check_hlds__typecheck.
+:- import_module check_hlds__type_util, hlds__instmap, (parse_tree__inst).
+:- import_module backend_libs__foreign.
 
 %-----------------------------------------------------------------------------%
 

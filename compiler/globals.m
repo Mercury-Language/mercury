@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module globals.
+:- module libs__globals.
 
 % Main author: fjh.
 
@@ -16,7 +16,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module options, trace_params, prog_data.
+:- import_module libs__options, libs__trace_params.
 :- import_module bool, getopt, list, io, std_util.
 
 :- type globals.
@@ -31,6 +31,15 @@
 			% Do not go via C, instead generate GCC's internal
 			% `tree' data structure.
 			% (Work in progress.)
+
+:- type foreign_language
+	--->	c
+% 	;	cplusplus
+ 	;	csharp
+ 	;	managed_cplusplus
+% 	;	java
+ 	;	il
+	.
 
 	% The GC method specifies how we do garbage collection.
 	% This is only relevant for the C and asm back-ends;
@@ -194,7 +203,7 @@
 
 :- implementation.
 
-:- import_module exprn_aux.
+:- import_module ll_backend__exprn_aux.
 :- import_module map, std_util, require, string.
 
 convert_target(String, Target) :-

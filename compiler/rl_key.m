@@ -13,11 +13,12 @@
 % traverse the relation in sorted order to the upper bound.
 %
 %-----------------------------------------------------------------------------%
-:- module rl_key.
+:- module aditi_backend__rl_key.
 
 :- interface.
 
-:- import_module hlds_goal, hlds_module, prog_data, rl.
+:- import_module hlds__hlds_goal, hlds__hlds_module, parse_tree__prog_data.
+:- import_module aditi_backend__rl.
 :- import_module list, map.
 
 	% Work out the upper and lower bounds for the inputs to an
@@ -51,7 +52,8 @@
 
 :- implementation.
 
-:- import_module hlds_data, hlds_pred, prog_util, type_util.
+:- import_module hlds__hlds_data, hlds__hlds_pred, parse_tree__prog_util.
+:- import_module check_hlds__type_util.
 :- import_module assoc_list, bool, int, require, set, std_util.
 
 rl_key__extract_indexing(no_inputs, _, _, _, []). 

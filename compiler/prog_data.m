@@ -14,7 +14,7 @@
 % Simplifications are done only by make_hlds.m, which transforms
 % the parse tree which we built here into the HLDS.
 
-:- module prog_data.
+:- module parse_tree__prog_data.
 
 :- interface.
 
@@ -22,7 +22,7 @@
 % Any types which are needed in both the parse tree and in the HLDS
 % should be defined here, rather than in hlds*.m.
 
-:- import_module (inst), options.
+:- import_module (parse_tree__inst), libs__options, libs__globals.
 :- import_module recompilation.
 :- import_module bool, list, assoc_list, map, set, varset, term, std_util.
 
@@ -117,15 +117,6 @@
 :- type type_and_mode	
 	--->	type_only(type)
 	;	type_and_mode(type, mode).
-
-:- type foreign_language
-	--->	c
-% 	;	cplusplus
- 	;	csharp
- 	;	managed_cplusplus
-% 	;	java
- 	;	il
-	.
 
 :- type pred_or_func
 	--->	predicate
@@ -1063,7 +1054,7 @@
 :- implementation.
 
 :- import_module string.
-:- import_module purity.
+:- import_module check_hlds__purity.
 
 :- type pragma_foreign_proc_attributes
 	--->	attributes(

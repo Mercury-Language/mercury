@@ -19,11 +19,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module live_vars.
+:- module ll_backend__live_vars.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds__hlds_module, hlds__hlds_pred.
 
 :- pred allocate_stack_slots_in_proc(proc_info::in, pred_id::in,
 	module_info::in, proc_info::out) is det.
@@ -34,20 +34,22 @@
 :- implementation.
 
 % Parse tree modules
-:- import_module prog_data.
+:- import_module parse_tree__prog_data.
 
 % HLDS modules
-:- import_module hlds_goal, hlds_data, mode_util, instmap, code_aux.
-:- import_module liveness.
+:- import_module hlds__hlds_goal, hlds__hlds_data, check_hlds__mode_util.
+:- import_module hlds__instmap, ll_backend__code_aux.
+:- import_module ll_backend__liveness.
 
 % Modules shared between different back-ends.
-:- import_module code_model.
+:- import_module backend_libs__code_model.
 
 % LLDS modules
-:- import_module llds, arg_info, trace_params, trace.
+:- import_module ll_backend__llds, ll_backend__arg_info, libs__trace_params.
+:- import_module ll_backend__trace.
 
 % Misc
-:- import_module globals, options, graph_colour.
+:- import_module libs__globals, libs__options, libs__graph_colour.
 
 
 % Standard library modules

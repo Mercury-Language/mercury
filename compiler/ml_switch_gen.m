@@ -58,15 +58,15 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module ml_switch_gen.
+:- module ml_backend__ml_switch_gen.
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_goal, hlds_data.
-:- import_module code_model.
-:- import_module mlds, ml_code_util.
-:- import_module globals.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_data.
+:- import_module backend_libs__code_model.
+:- import_module ml_backend__mlds, ml_backend__ml_code_util.
+:- import_module libs__globals.
 
 :- import_module list.
 
@@ -96,12 +96,13 @@
 
 :- implementation.
 
-:- import_module ml_tag_switch, ml_string_switch.
-:- import_module ml_code_gen, ml_unify_gen, ml_code_util, ml_simplify_switch.
-:- import_module switch_util, type_util.
-:- import_module foreign, options.
+:- import_module ml_backend__ml_tag_switch, ml_backend__ml_string_switch.
+:- import_module ml_backend__ml_code_gen, ml_backend__ml_unify_gen.
+:- import_module ml_backend__ml_code_util, ml_backend__ml_simplify_switch.
+:- import_module backend_libs__switch_util, check_hlds__type_util.
+:- import_module backend_libs__foreign, libs__options.
 
-:- import_module bool, int, string, map, tree, std_util, require.
+:- import_module bool, int, string, map, libs__tree, std_util, require.
 
 %-----------------------------------------------------------------------------%
 

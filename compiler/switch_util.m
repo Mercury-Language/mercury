@@ -12,9 +12,10 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module switch_util.
+:- module backend_libs__switch_util.
 :- interface.
-:- import_module prog_data, hlds_goal, hlds_data, hlds_module, type_util.
+:- import_module parse_tree__prog_data, hlds__hlds_goal, hlds__hlds_data.
+:- import_module hlds__hlds_module, check_hlds__type_util.
 :- import_module list, assoc_list, map, std_util.
 
 %-----------------------------------------------------------------------------%

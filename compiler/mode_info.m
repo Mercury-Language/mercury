@@ -12,12 +12,14 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module mode_info.
+:- module check_hlds__mode_info.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
-:- import_module prog_data, mode_errors, delay_info, (inst).
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module hlds__hlds_data, hlds__instmap.
+:- import_module parse_tree__prog_data, check_hlds__mode_errors.
+:- import_module check_hlds__delay_info, (parse_tree__inst).
 :- import_module map, list, set, bool, assoc_list, std_util, io.
 
 :- interface.
@@ -339,7 +341,8 @@
 
 :- implementation.
 
-:- import_module delay_info, mode_errors, mode_util.
+:- import_module check_hlds__delay_info, check_hlds__mode_errors.
+:- import_module check_hlds__mode_util.
 :- import_module term, varset.
 :- import_module require, std_util, queue.
 

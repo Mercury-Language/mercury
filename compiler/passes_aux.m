@@ -9,11 +9,11 @@
 
 % Author: zs
 
-:- module passes_aux.
+:- module hlds__passes_aux.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__prog_data.
 :- import_module io, std_util, list, bool.
 
 %-----------------------------------------------------------------------------%
@@ -211,8 +211,10 @@ about unbound type variables.
 
 :- implementation.
 
-:- import_module options, globals, hlds_out, prog_out, mode_util.
-:- import_module mercury_to_mercury, process_util.
+:- import_module libs__options, libs__globals, hlds__hlds_out.
+:- import_module parse_tree__prog_out, check_hlds__mode_util.
+:- import_module parse_tree__mercury_to_mercury, libs__process_util.
+
 :- import_module int, string, map, require, varset.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
@@ -536,7 +538,7 @@ make_command_string(String0, QuoteType, String) :-
 			Quote = " '"
 		;
 			QuoteType = double,
-			Quote = " \""
+			Quote = " """
 		),
 		string__append_list(["sh -c ", Quote, String0, Quote], String)
 	;

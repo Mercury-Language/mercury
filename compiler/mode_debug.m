@@ -12,11 +12,11 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module mode_debug.
+:- module check_hlds__mode_debug.
 
 :- interface.
 
-:- import_module mode_info.
+:- import_module check_hlds__mode_info.
 
 	% Print a debugging message which includes the port, message string,
 	% and the current instmap (but only if `--debug-modes' was enabled).
@@ -35,8 +35,10 @@
 :- implementation.
 :- import_module std_util, list, assoc_list, io, bool, map.
 :- import_module term, varset.
-:- import_module modes, globals, options, mercury_to_mercury, passes_aux.
-:- import_module hlds_goal, hlds_module, instmap, prog_data, (inst).
+:- import_module check_hlds__modes, libs__globals, libs__options.
+:- import_module parse_tree__mercury_to_mercury, hlds__passes_aux.
+:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__instmap.
+:- import_module parse_tree__prog_data, (parse_tree__inst).
 
 %-----------------------------------------------------------------------------%
 

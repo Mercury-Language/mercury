@@ -12,10 +12,10 @@
 % generating output, while mlds_to_il takes care of generated IL from
 % MLDS.
 
-:- module mlds_to_ilasm.
+:- module ml_backend__mlds_to_ilasm.
 :- interface.
 
-:- import_module mlds.
+:- import_module ml_backend__mlds.
 :- import_module io.
 
 	% Convert the MLDS to IL and write it to a file.
@@ -28,22 +28,24 @@
 
 :- implementation.
 
-:- import_module globals, options, passes_aux.
-:- import_module builtin_ops, c_util, modules, tree.
-:- import_module hlds_pred. % for `pred_proc_id'.
-:- import_module prog_data, prog_out, llds_out.
-:- import_module rtti, type_util, error_util.
+:- import_module libs__globals, libs__options, hlds__passes_aux.
+:- import_module backend_libs__builtin_ops, backend_libs__c_util.
+:- import_module parse_tree__modules, libs__tree.
+:- import_module hlds__hlds_pred. % for `pred_proc_id'.
+:- import_module parse_tree__prog_data, parse_tree__prog_out.
+:- import_module ll_backend__llds_out.
+:- import_module backend_libs__rtti, check_hlds__type_util, hlds__error_util.
 
-:- import_module ilds, ilasm, il_peephole.
-:- import_module ml_util, ml_code_util.
-:- import_module mlds_to_csharp. /* to output C sharp code */
-:- import_module mlds_to_mcpp. /* to output MC++ code */
-:- use_module llds. /* for user_c_code */
+:- import_module ml_backend__ilds, ml_backend__ilasm, ml_backend__il_peephole.
+:- import_module ml_backend__ml_util, ml_backend__ml_code_util.
+:- import_module ml_backend__mlds_to_csharp. /* to output C sharp code */
+:- import_module ml_backend__mlds_to_mcpp. /* to output MC++ code */
+:- use_module ll_backend__llds. /* for user_c_code */
 
 :- import_module bool, int, map, string, set, list, assoc_list, term, std_util.
 :- import_module library, require, counter.
 
-:- import_module mlds_to_il.
+:- import_module ml_backend__mlds_to_il.
 
 %-----------------------------------------------------------------------------%
 

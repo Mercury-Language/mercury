@@ -10,12 +10,13 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module opt_debug.
+:- module ll_backend__opt_debug.
 
 :- interface.
 
-:- import_module llds, livemap.
-:- import_module code_model, rtti, layout, builtin_ops.
+:- import_module ll_backend__llds, ll_backend__livemap.
+:- import_module backend_libs__code_model, backend_libs__rtti.
+:- import_module ll_backend__layout, backend_libs__builtin_ops.
 
 :- import_module io, bool, list, assoc_list, std_util.
 
@@ -119,10 +120,11 @@
 
 :- implementation.
 
-:- import_module prog_out.
-:- import_module hlds_pred.
-:- import_module llds_out, code_util, opt_util.
-:- import_module globals, options.
+:- import_module parse_tree__prog_out.
+:- import_module hlds__hlds_pred.
+:- import_module ll_backend__llds_out, ll_backend__code_util.
+:- import_module ll_backend__opt_util.
+:- import_module libs__globals, libs__options.
 
 :- import_module int, set, map, string.
 

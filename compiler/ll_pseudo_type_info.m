@@ -19,11 +19,11 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module ll_pseudo_type_info.
+:- module ll_backend__ll_pseudo_type_info.
 
 :- interface.
 
-:- import_module prog_data, llds.
+:- import_module parse_tree__prog_data, ll_backend__llds.
 :- import_module counter.
 
 	% ll_pseudo_type_info__construct_typed_pseudo_type_info(Type,
@@ -57,7 +57,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module pseudo_type_info, rtti.
+:- import_module backend_libs__pseudo_type_info, backend_libs__rtti.
 :- import_module std_util, list, bool, int.
 
 ll_pseudo_type_info__construct_llds_pseudo_type_info(Type, NumUnivQTvars,

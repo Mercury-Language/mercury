@@ -43,12 +43,13 @@
 % 			
 %----------------------------------------------------------------------------%
 
-:- module termination.
+:- module transform_hlds__termination.
 
 :- interface.
 
 :- import_module io, bool, std_util, list.
-:- import_module prog_data, hlds_module, hlds_pred, term_util.
+:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_pred.
+:- import_module transform_hlds__term_util.
 
 	% Perform termination analysis on the module.
 
@@ -84,12 +85,17 @@
 
 :- implementation.
 
-:- import_module term_pass1, term_pass2, term_errors.
-:- import_module inst_match, passes_aux, options, globals.
-:- import_module hlds_data, hlds_goal, dependency_graph, varset.
-:- import_module mode_util, hlds_out, code_util, prog_out, prog_util.
-:- import_module mercury_to_mercury, type_util, special_pred.
-:- import_module modules.
+:- import_module transform_hlds__term_pass1, transform_hlds__term_pass2.
+:- import_module transform_hlds__term_errors.
+:- import_module check_hlds__inst_match, hlds__passes_aux, libs__options.
+:- import_module libs__globals.
+:- import_module hlds__hlds_data, hlds__hlds_goal.
+:- import_module transform_hlds__dependency_graph, varset.
+:- import_module check_hlds__mode_util, hlds__hlds_out, ll_backend__code_util.
+:- import_module parse_tree__prog_out, parse_tree__prog_util.
+:- import_module parse_tree__mercury_to_mercury, check_hlds__type_util.
+:- import_module hlds__special_pred.
+:- import_module parse_tree__modules.
 
 :- import_module map, int, char, string, relation.
 :- import_module require, bag, set, term.

@@ -10,12 +10,13 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module mode_util.
+:- module check_hlds__mode_util.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module (inst), instmap.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module hlds__hlds_data, parse_tree__prog_data.
+:- import_module (parse_tree__inst), hlds__instmap.
 :- import_module bool, list.
 
 	% mode_get_insts returns the initial instantiatedness and
@@ -227,8 +228,10 @@
 
 :- implementation.
 :- import_module require, int, map, set, std_util, assoc_list, varset.
-:- import_module prog_util, prog_io, type_util.
-:- import_module inst_match, inst_util, mode_info.
+:- import_module parse_tree__prog_util, parse_tree__prog_io.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__inst_match, check_hlds__inst_util.
+:- import_module check_hlds__mode_info.
 :- import_module require, int, map, set, term, std_util, assoc_list, varset.
 
 %-----------------------------------------------------------------------------%

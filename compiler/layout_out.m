@@ -17,11 +17,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module layout_out.
+:- module ll_backend__layout_out.
 
 :- interface.
 
-:- import_module layout, llds, llds_out.
+:- import_module ll_backend__layout, ll_backend__llds, ll_backend__llds_out.
 :- import_module bool, io.
 
 	% Given a Mercury representation of a layout structure, output its
@@ -77,8 +77,9 @@
 
 :- implementation.
 
-:- import_module prog_data, prog_out, hlds_pred, trace_params, c_util.
-:- import_module rtti, trace, code_util.
+:- import_module parse_tree__prog_data, parse_tree__prog_out, hlds__hlds_pred.
+:- import_module libs__trace_params, backend_libs__c_util.
+:- import_module backend_libs__rtti, ll_backend__trace, ll_backend__code_util.
 :- import_module int, char, string, require, std_util, list.
 
 output_layout_data_defn(label_layout_data(Label, ProcLayoutAddr,

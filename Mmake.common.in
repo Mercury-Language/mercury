@@ -256,12 +256,12 @@ BOEHMGC_MAKEFILE=@BOEHMGC_MAKEFILE@
 
 # This rule helps to check that header files is self-contained, i.e. that each
 # header file foo.h includes any other header files that define types
-# used by foo.h. It creates a foo.check.c file that contains only a single
-# `#include' statement that includes foo.h; compiling foo.check.c will fail
+# used by foo.h. It creates a foo.check_hdr.c file that contains only a single
+# `#include' statement that includes foo.h; compiling foo.check_hdr.c will fail
 # if foo.h is not self-contained.
 
-%.check.c : %.h
-	echo "#include \"$*.h\"" > $*.check.c
+%.check_hdr.c : %.h
+	echo "#include \"$*.h\"" > $*.check_hdr.c
 
 # This rule checks whether a header file defines any macros it shouldn't.
 # It generates the list of macros defined in the header file, and filters this
@@ -270,10 +270,10 @@ BOEHMGC_MAKEFILE=@BOEHMGC_MAKEFILE@
 # the HEADER_CLEAN_FILTER make variable to contain this command.
 
 AWK = awk
-%.check.macros: %.h %.check.c
+%.check.macros: %.h %.check_hdr.c
 	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
 		-DMERCURY_BOOTSTRAP_H -DMR_NO_CONF_BACKWARDS_COMPAT \
-		-E $*.check.c \
+		-E $*.check_hdr.c \
 		-nostdinc -dN \
 		2> /dev/null | $(AWK) '/^#define/ { print $$2; }' | \
 		$(HEADER_CLEAN_FILTER) | sort -u > $@

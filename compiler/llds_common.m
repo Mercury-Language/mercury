@@ -16,12 +16,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module llds_common.
+:- module ll_backend__llds_common.
 
 :- interface.
 
-:- import_module llds.
-:- import_module prog_data. % for module_name
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data. % for module_name
 :- import_module list.
 
 :- pred llds_common(list(c_procedure)::in, list(comp_gen_c_data)::in,
@@ -30,7 +30,7 @@
 
 :- implementation.
 
-:- import_module rtti, layout, llds_out.
+:- import_module backend_libs__rtti, ll_backend__layout, ll_backend__llds_out.
 :- import_module bool, int, assoc_list, map, std_util, require.
 
 :- type cell_info

@@ -11,7 +11,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module atsort.
+:- module libs__atsort.
 
 :- interface.
 :- import_module map, list.

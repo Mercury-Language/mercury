@@ -13,11 +13,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module trace_params.
+:- module libs__trace_params.
 
 :- interface.
 
-:- import_module llds.
+:- import_module ll_backend__llds. % XXX for trace_port
 :- import_module bool.
 
 :- type trace_level.

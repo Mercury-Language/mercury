@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-:- module module_qual.
+:- module parse_tree__module_qual.
 %	Main authors: stayl, fjh.
 %
 %	Module qualifies types, insts and modes within declaration items.
@@ -19,7 +19,7 @@
 %
 :- interface.
 
-:- import_module prog_data, recompilation.
+:- import_module parse_tree__prog_data, recompilation.
 :- import_module bool, list, std_util, io.
 
 	% module_qualify_items(Items0, Items, ModuleName, ReportUndefErrors,
@@ -111,10 +111,12 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module type_util, prog_io, prog_out, hlds_out.
-:- import_module prog_util, mercury_to_mercury, modules, globals, options.
-:- import_module (inst), instmap.
-:- import_module hlds_data.	% for cons_id.
+:- import_module check_hlds__type_util, parse_tree__prog_io.
+:- import_module parse_tree__prog_out, hlds__hlds_out.
+:- import_module parse_tree__prog_util, parse_tree__mercury_to_mercury.
+:- import_module parse_tree__modules, libs__globals, libs__options.
+:- import_module (parse_tree__inst), hlds__instmap.
+:- import_module hlds__hlds_data.	% for cons_id.
 
 :- import_module int, map, require, set, string, term, varset.
 :- import_module assoc_list.

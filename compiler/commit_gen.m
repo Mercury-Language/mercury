@@ -12,18 +12,19 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module commit_gen.
+:- module ll_backend__commit_gen.
 
 :- interface.
 
-:- import_module hlds_goal, code_model, llds, code_info.
+:- import_module hlds__hlds_goal, backend_libs__code_model, ll_backend__llds.
+:- import_module ll_backend__code_info.
 
 :- pred commit_gen__generate_commit(code_model::in, hlds_goal::in,
 	code_tree::out, code_info::in, code_info::out) is det.
 
 :- implementation.
 
-:- import_module code_gen, tree.
+:- import_module ll_backend__code_gen, libs__tree.
 :- import_module std_util, require.
 
 commit_gen__generate_commit(OuterCodeModel, Goal, Code) -->

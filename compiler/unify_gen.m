@@ -14,14 +14,14 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module unify_gen.
+:- module ll_backend__unify_gen.
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_goal, hlds_data.
-:- import_module code_model.
-:- import_module llds, code_info.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_data.
+:- import_module backend_libs__code_model.
+:- import_module ll_backend__llds, ll_backend__code_info.
 
 :- type test_sense
 	--->	branch_on_success
@@ -38,11 +38,16 @@
 
 :- implementation.
 
-:- import_module rtti, layout, builtin_ops.
-:- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
-:- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
-:- import_module globals, options, continuation_info, stack_layout.
-:- import_module rl, trace, error_util.
+:- import_module backend_libs__rtti, ll_backend__layout.
+:- import_module backend_libs__builtin_ops.
+:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__prog_data.
+:- import_module parse_tree__prog_out, ll_backend__code_util.
+:- import_module check_hlds__mode_util, check_hlds__type_util.
+:- import_module ll_backend__code_aux, hlds__hlds_out, libs__tree.
+:- import_module ll_backend__arg_info.
+:- import_module libs__globals, libs__options, ll_backend__continuation_info.
+:- import_module ll_backend__stack_layout.
+:- import_module aditi_backend__rl, ll_backend__trace, hlds__error_util.
 
 :- import_module term, bool, string, int, list, map, require, std_util.
 

@@ -151,11 +151,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module liveness.
+:- module ll_backend__liveness.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__prog_data.
 :- import_module set, io.
 
 	% Add liveness annotations to the goal of the procedure.
@@ -176,16 +176,18 @@
 :- implementation.
 
 % Parse tree modules
-:- import_module prog_util, (inst).
+:- import_module parse_tree__prog_util, (parse_tree__inst).
 % HLDS modules
-:- import_module hlds_goal, hlds_data, hlds_out, instmap, mode_util.
-:- import_module quantification, polymorphism.
+:- import_module hlds__hlds_goal, hlds__hlds_data, hlds__hlds_out.
+:- import_module hlds__instmap, check_hlds__mode_util.
+:- import_module hlds__quantification, check_hlds__polymorphism.
 % Modules shared between different back-ends.
-:- import_module code_model, passes_aux.
+:- import_module backend_libs__code_model, hlds__passes_aux.
 % LLDS modules
-:- import_module llds, code_util, trace_params, trace.
+:- import_module ll_backend__llds, ll_backend__code_util, libs__trace_params.
+:- import_module ll_backend__trace.
 % Misc
-:- import_module globals, options.
+:- import_module libs__globals, libs__options.
 
 % Standard library modules
 :- import_module bool, string, map, std_util, list, assoc_list, require.

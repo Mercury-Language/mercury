@@ -10,12 +10,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module labelopt.
+:- module ll_backend__labelopt.
 
 :- interface.
 
 :- import_module bool, list, set.
-:- import_module llds.
+:- import_module ll_backend__llds.
 
 	% Build up a set showing which labels are branched to,
 	% then traverse the instruction list removing unnecessary labels.
@@ -36,7 +36,7 @@
 
 :- implementation.
 
-:- import_module opt_util.
+:- import_module ll_backend__opt_util.
 :- import_module std_util.
 
 labelopt_main(Instrs0, Final, LayoutLabelSet, Instrs, Mod) :-

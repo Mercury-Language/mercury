@@ -10,11 +10,13 @@
 % This module handles the parsing of typeclass declarations.
 % Perhaps some of this should go into prog_io_util.m?
 
-:- module prog_io_typeclass.
+:- module parse_tree__prog_io_typeclass.
 
 :- interface.
 
-:- import_module prog_data, prog_io_util, (inst).
+:- import_module parse_tree__prog_data, parse_tree__prog_io_util.
+:- import_module (parse_tree__inst).
+
 :- import_module list, varset, term.
 
 	% parse a typeclass declaration. 
@@ -40,9 +42,11 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, prog_util, hlds_pred.
+:- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_util, check_hlds__type_util, hlds__hlds_pred.
+
 :- import_module term, varset.
-:- import_module int, string, std_util, require, type_util, set, map.
+:- import_module int, string, std_util, require, set, map.
 
 parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
 		%XXX should return an error if we get more than one arg,

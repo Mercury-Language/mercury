@@ -20,12 +20,12 @@
 %	    (events, properties, etc).
 %	[ ] Fix up all the XXXs.
 
-:- module ilasm.
+:- module ml_backend__ilasm.
 
 :- interface.
 
 :- import_module io, list, term, std_util, bool, integer.
-:- import_module ilds.
+:- import_module ml_backend__ilds.
 
 :- pred ilasm__output(
 	list(decl)::in, io__state::di, io__state::uo) is det.
@@ -273,7 +273,7 @@
 
 :- import_module char, string, pprint, getopt.
 :- import_module require, int, term_io, varset, bool.
-:- import_module globals, options, error_util.
+:- import_module libs__globals, libs__options, hlds__error_util.
 
 
 	% Some versions of the IL assembler enforce a rule that if you output 

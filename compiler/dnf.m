@@ -41,11 +41,11 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module dnf.
+:- module aditi_backend__dnf.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds__hlds_module, hlds__hlds_pred.
 :- import_module set, list, bool, std_util.
 
 :- pred dnf__transform_module(module_info::in, bool::in,
@@ -60,8 +60,10 @@
 
 :- implementation.
 
-:- import_module code_aux, code_util, hlds_goal, hlds_data, prog_data, instmap.
-:- import_module dependency_graph, det_analysis, mode_util.
+:- import_module ll_backend__code_aux, ll_backend__code_util, hlds__hlds_goal.
+:- import_module hlds__hlds_data, parse_tree__prog_data, hlds__instmap.
+:- import_module transform_hlds__dependency_graph, check_hlds__det_analysis.
+:- import_module check_hlds__mode_util.
 :- import_module require, map, list, string, int, bool, std_util, term, varset.
 
 	% Traverse the module structure.

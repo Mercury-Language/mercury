@@ -27,9 +27,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module add_trail_ops.
+:- module ml_backend__add_trail_ops.
 :- interface.
-:- import_module hlds_pred, hlds_module.
+:- import_module hlds__hlds_pred, hlds__hlds_module.
 
 :- pred add_trail_ops(proc_info::in, module_info::in, proc_info::out) is det.
 
@@ -37,10 +37,12 @@
 
 :- implementation.
 
-:- import_module prog_data, prog_util, (inst).
-:- import_module hlds_goal, hlds_data.
-:- import_module goal_util, quantification, modules, type_util.
-:- import_module code_model, instmap.
+:- import_module parse_tree__prog_data, parse_tree__prog_util.
+:- import_module (parse_tree__inst).
+:- import_module hlds__hlds_goal, hlds__hlds_data.
+:- import_module hlds__goal_util, hlds__quantification, parse_tree__modules.
+:- import_module check_hlds__type_util.
+:- import_module backend_libs__code_model, hlds__instmap.
 
 :- import_module bool, string.
 :- import_module assoc_list, list, map, set, varset, std_util, require, term.

@@ -15,9 +15,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module arg_info.
+:- module ll_backend__arg_info.
 :- interface. 
-:- import_module prog_data, hlds_module, hlds_pred, code_model, llds.
+:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_pred.
+:- import_module backend_libs__code_model, ll_backend__llds.
 :- import_module list, assoc_list.
 
 	% Annotate every non-aditi procedure in the module with information
@@ -64,7 +65,7 @@
 
 :- implementation.
 
-:- import_module code_util, mode_util.
+:- import_module ll_backend__code_util, check_hlds__mode_util.
 :- import_module std_util, map, int, require.
 
 %-----------------------------------------------------------------------------%

@@ -84,11 +84,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module frameopt.
+:- module ll_backend__frameopt.
 
 :- interface.
 
-:- import_module llds.
+:- import_module ll_backend__llds.
 :- import_module bool, list, counter.
 
 	% The first bool output says whether we performed any modifications.
@@ -104,7 +104,9 @@
 
 :- implementation.
 
-:- import_module livemap, prog_data, opt_util, code_util, opt_debug.
+:- import_module ll_backend__livemap, parse_tree__prog_data.
+:- import_module ll_backend__opt_util, ll_backend__code_util.
+:- import_module ll_backend__opt_debug.
 :- import_module int, string, require, std_util, assoc_list, set, map, queue.
 
 frameopt_main(Instrs0, ProcLabel, C0, C, Instrs, Mod, Jumps) :-

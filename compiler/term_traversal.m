@@ -16,12 +16,13 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module term_traversal.
+:- module transform_hlds__term_traversal.
 
 :- interface.
 
-:- import_module term_util, term_errors.
-:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
+:- import_module transform_hlds__term_util, transform_hlds__term_errors.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module parse_tree__prog_data.
 :- import_module list, bag, map, std_util, set.
 
 :- type traversal_info
@@ -96,7 +97,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, type_util.
+:- import_module hlds__hlds_data, check_hlds__type_util.
 :- import_module bool, int, require.
 
 traverse_goal(Goal, Params, Info0, Info) :-

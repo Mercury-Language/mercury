@@ -10,13 +10,13 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module tag_switch.
+:- module ll_backend__tag_switch.
 
 :- interface.
 
-:- import_module prog_data, hlds_goal, hlds_data.
-:- import_module switch_util, code_model.
-:- import_module llds, code_info.
+:- import_module parse_tree__prog_data, hlds__hlds_goal, hlds__hlds_data.
+:- import_module backend_libs__switch_util, backend_libs__code_model.
+:- import_module ll_backend__llds, ll_backend__code_info.
 
 :- import_module list.
 
@@ -30,10 +30,12 @@
 
 :- implementation.
 
-:- import_module builtin_ops, hlds_module, hlds_pred, code_gen, trace.
-:- import_module options, globals, type_util, prog_data.
+:- import_module backend_libs__builtin_ops, hlds__hlds_module.
+:- import_module hlds__hlds_pred, ll_backend__code_gen, ll_backend__trace.
+:- import_module libs__options, libs__globals, check_hlds__type_util.
+:- import_module parse_tree__prog_data.
 
-:- import_module assoc_list, map, tree, bool, int, string.
+:- import_module assoc_list, map, libs__tree, bool, int, string.
 :- import_module require, std_util.
 
 %-----------------------------------------------------------------------------%

@@ -158,11 +158,11 @@
 % not need to handle them.
 % 
 %-----------------------------------------------------------------------------%
-:- module magic.
+:- module aditi_backend__magic.
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds__hlds_module.
 :- import_module io.
 
 :- pred magic__process_module(module_info, module_info, io__state, io__state).
@@ -171,14 +171,18 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module magic_util, context.
-:- import_module dependency_graph, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module passes_aux, mode_util, (inst), instmap, rl_gen, rl.
-:- import_module globals, options, hlds_out, prog_out, goal_util, type_util.
-:- import_module polymorphism, quantification, saved_vars, dead_proc_elim.
+:- import_module aditi_backend__magic_util, aditi_backend__context.
+:- import_module transform_hlds__dependency_graph, hlds__hlds_pred.
+:- import_module hlds__hlds_goal, hlds__hlds_data, parse_tree__prog_data.
+:- import_module hlds__passes_aux, check_hlds__mode_util, (parse_tree__inst).
+:- import_module hlds__instmap, aditi_backend__rl_gen, aditi_backend__rl.
+:- import_module libs__globals, libs__options, hlds__hlds_out.
+:- import_module parse_tree__prog_out, hlds__goal_util, check_hlds__type_util.
+:- import_module check_hlds__polymorphism, hlds__quantification.
+:- import_module ll_backend__saved_vars, transform_hlds__dead_proc_elim.
 
 :- import_module int, list, map, require, set, std_util, string, term, varset.
-:- import_module assoc_list, bool, simplify.
+:- import_module assoc_list, bool, check_hlds__simplify.
 
 magic__process_module(ModuleInfo0, ModuleInfo) -->
 

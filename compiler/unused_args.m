@@ -38,12 +38,12 @@
 %  The predicates are then fixed up. Unused variables and unifications are
 %	removed.
 
-:- module unused_args.
+:- module transform_hlds__unused_args.
 
 %-------------------------------------------------------------------------------
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds__hlds_module.
 :- import_module io.
 
 :- pred unused_args__process_module(module_info::in, module_info::out,
@@ -52,10 +52,15 @@
 %-------------------------------------------------------------------------------
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data, hlds_out, type_util, instmap.
-:- import_module code_util, globals, make_hlds, mercury_to_mercury, mode_util.
-:- import_module options, prog_data, prog_out, quantification, special_pred.
-:- import_module passes_aux, inst_match, modules, polymorphism, goal_util.
+:- import_module hlds__hlds_pred, hlds__hlds_goal, hlds__hlds_data.
+:- import_module hlds__hlds_out, check_hlds__type_util, hlds__instmap.
+:- import_module ll_backend__code_util, libs__globals, hlds__make_hlds.
+:- import_module parse_tree__mercury_to_mercury, check_hlds__mode_util.
+:- import_module libs__options, parse_tree__prog_data, parse_tree__prog_out.
+:- import_module hlds__quantification, hlds__special_pred.
+:- import_module hlds__passes_aux, check_hlds__inst_match.
+:- import_module parse_tree__modules, check_hlds__polymorphism.
+:- import_module hlds__goal_util.
 
 :- import_module assoc_list, bool, char, int, list, map, require.
 :- import_module set, std_util, string.

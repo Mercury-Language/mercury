@@ -12,12 +12,13 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module det_util.
+:- module check_hlds__det_util.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, globals.
-:- import_module instmap, prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module hlds__hlds_data, libs__globals.
+:- import_module hlds__instmap, parse_tree__prog_data.
 :- import_module bool, set, list.
 
 :- type maybe_changed	--->	changed ; unchanged.
@@ -96,7 +97,8 @@
 
 :- implementation.
 
-:- import_module inst_match, mode_util, type_util, options, term.
+:- import_module check_hlds__inst_match, check_hlds__mode_util.
+:- import_module check_hlds__type_util, libs__options, term.
 :- import_module map, require, std_util.
 
 update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-

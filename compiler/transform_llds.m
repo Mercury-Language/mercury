@@ -18,11 +18,11 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module transform_llds.
+:- module ll_backend__transform_llds.
 
 :- interface.
 
-:- import_module llds, io.
+:- import_module ll_backend__llds, io.
 
 :- pred transform_llds(c_file, c_file, io__state, io__state).
 :- mode transform_llds(in, out, di, uo) is det.
@@ -31,7 +31,8 @@
 
 :- implementation.
 
-:- import_module builtin_ops, globals, options, opt_util, prog_data.
+:- import_module backend_libs__builtin_ops, libs__globals, libs__options.
+:- import_module ll_backend__opt_util, parse_tree__prog_data.
 :- import_module bool, int, list, require, std_util, counter.
 
 transform_llds(LLDS0, LLDS) -->

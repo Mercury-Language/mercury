@@ -10,11 +10,11 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module middle_rec.
+:- module ll_backend__middle_rec.
 
 :- interface.
 
-:- import_module hlds_goal, llds, code_info.
+:- import_module hlds__hlds_goal, ll_backend__llds, ll_backend__code_info.
 
 :- pred middle_rec__match_and_generate(hlds_goal, code_tree,
 	code_info, code_info).
@@ -25,11 +25,15 @@
 
 :- implementation.
 
-:- import_module builtin_ops, hlds_module, hlds_data, prog_data, prog_out.
-:- import_module code_gen, unify_gen, code_util, code_aux, opt_util.
-:- import_module code_model.
+:- import_module backend_libs__builtin_ops, hlds__hlds_module.
+:- import_module hlds__hlds_data, parse_tree__prog_data, parse_tree__prog_out.
+:- import_module ll_backend__code_gen, ll_backend__unify_gen.
+:- import_module ll_backend__code_util, ll_backend__code_aux.
+:- import_module ll_backend__opt_util.
+:- import_module backend_libs__code_model.
 
-:- import_module bool, set, int, std_util, tree, list, assoc_list, require.
+:- import_module bool, set, int, std_util, libs__tree, list, assoc_list.
+:- import_module require.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

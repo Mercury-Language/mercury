@@ -14,10 +14,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module maybe_mlds_to_gcc.
+:- module ml_backend__maybe_mlds_to_gcc.
 :- interface.
 
-:- import_module mlds, bool.
+:- import_module ml_backend__mlds, bool.
 :- use_module io.
 
 :- type frontend_callback(T) == pred(T, io__state, io__state).
@@ -55,7 +55,7 @@ maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 
 #else
 
-:- import_module passes_aux.
+:- import_module hlds__passes_aux.
 :- import_module string.
 
 maybe_mlds_to_gcc__run_gcc_backend(_ModuleName, CallBack, CallBackOutput) -->

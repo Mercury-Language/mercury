@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module code_model.
+:- module backend_libs__code_model.
 
 % This module defines the `code_model' data type, and associated procedures.
 % The `code_model' type is a simplified version of the `determinism' type
@@ -20,8 +20,8 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module prog_data.
-:- import_module hlds_pred, hlds_goal.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_pred, hlds__hlds_goal.
 
 :- type code_model
 	--->	model_det		% functional & total

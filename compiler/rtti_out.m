@@ -19,12 +19,12 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module rtti_out.
+:- module ll_backend__rtti_out.
 
 :- interface.
 
-:- import_module prog_data, hlds_data.
-:- import_module rtti, llds_out.
+:- import_module parse_tree__prog_data, hlds__hlds_data.
+:- import_module backend_libs__rtti, ll_backend__llds_out.
 :- import_module bool, io.
 
 	% output a C expression holding the address of the C name of
@@ -87,9 +87,10 @@
 
 :- implementation.
 
-:- import_module pseudo_type_info, code_util, llds, prog_out, c_util.
-:- import_module error_util.
-:- import_module options, globals.
+:- import_module backend_libs__pseudo_type_info, ll_backend__code_util.
+:- import_module ll_backend__llds, parse_tree__prog_out, backend_libs__c_util.
+:- import_module hlds__error_util.
+:- import_module libs__options, libs__globals.
 :- import_module int, string, list, require, std_util.
 
 %-----------------------------------------------------------------------------%

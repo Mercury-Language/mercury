@@ -12,14 +12,16 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module llds.
+:- module ll_backend__llds.
 
 :- interface.
 
-:- import_module prog_data, (inst).
-:- import_module hlds_pred, hlds_goal, hlds_data.
-:- import_module foreign, code_model, rtti, layout, builtin_ops.
-:- import_module tree.
+:- import_module parse_tree__prog_data, (parse_tree__inst).
+:- import_module hlds__hlds_pred, hlds__hlds_goal, hlds__hlds_data.
+:- import_module backend_libs__foreign, backend_libs__code_model.
+:- import_module backend_libs__rtti, ll_backend__layout.
+:- import_module backend_libs__builtin_ops.
+:- import_module libs__tree.
 
 :- import_module bool, assoc_list, list, map, set, std_util, counter, term.
 
@@ -41,7 +43,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- import_module continuation_info.
+:- import_module ll_backend__continuation_info.
 
 :- type global_data.
 

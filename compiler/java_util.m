@@ -13,10 +13,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module java_util.
+:- module ml_backend__java_util.
 :- interface.
 :- import_module string.
-:- import_module builtin_ops.
+:- import_module backend_libs__builtin_ops.
 
 %-----------------------------------------------------------------------------%
 
@@ -72,7 +72,7 @@
 
 :- implementation.
 :- import_module list.
-:- import_module error_util.
+:- import_module hlds__error_util.
 
 %-----------------------------------------------------------------------------%
 

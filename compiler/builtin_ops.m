@@ -14,9 +14,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module builtin_ops.
+:- module backend_libs__builtin_ops.
 :- interface.
-:- import_module prog_data, hlds_pred.
+:- import_module parse_tree__prog_data, hlds__hlds_pred.
 :- import_module list.
 
 

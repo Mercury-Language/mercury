@@ -41,11 +41,13 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module switch_gen.
+:- module ll_backend__switch_gen.
 
 :- interface.
 
-:- import_module prog_data, hlds_goal, hlds_data, code_model, code_info, llds.
+:- import_module parse_tree__prog_data, hlds__hlds_goal, hlds__hlds_data.
+:- import_module backend_libs__code_model, ll_backend__code_info.
+:- import_module ll_backend__llds.
 :- import_module list.
 
 :- pred switch_gen__generate_switch(code_model, prog_var, can_fail, list(case),
@@ -57,12 +59,14 @@
 
 :- implementation.
 
-:- import_module dense_switch, string_switch, tag_switch, lookup_switch.
-:- import_module code_gen, unify_gen, code_aux, code_util.
-:- import_module switch_util, type_util.
-:- import_module trace, globals, options.
+:- import_module ll_backend__dense_switch, ll_backend__string_switch.
+:- import_module ll_backend__tag_switch, ll_backend__lookup_switch.
+:- import_module ll_backend__code_gen, ll_backend__unify_gen.
+:- import_module ll_backend__code_aux, ll_backend__code_util.
+:- import_module backend_libs__switch_util, check_hlds__type_util.
+:- import_module ll_backend__trace, libs__globals, libs__options.
 
-:- import_module bool, int, string, map, tree, std_util, require.
+:- import_module bool, int, string, map, libs__tree, std_util, require.
 
 %---------------------------------------------------------------------------%
 

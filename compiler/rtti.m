@@ -20,13 +20,13 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module rtti.
+:- module backend_libs__rtti.
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_module, hlds_pred, hlds_data.
-:- import_module pseudo_type_info, code_model.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
+:- import_module backend_libs__pseudo_type_info, backend_libs__code_model.
 
 :- import_module bool, list, std_util.
 
@@ -489,9 +489,9 @@
 
 :- implementation.
 
-:- import_module code_util.	% for code_util__compiler_generated
-:- import_module llds_out.	% for name_mangle and sym_name_mangle
-:- import_module hlds_data, type_util, mode_util.
+:- import_module ll_backend__code_util.	% for code_util__compiler_generated
+:- import_module ll_backend__llds_out.	% for name_mangle and sym_name_mangle
+:- import_module hlds__hlds_data, check_hlds__type_util, check_hlds__mode_util.
 
 :- import_module string, require.
 

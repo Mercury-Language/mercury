@@ -25,25 +25,29 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module code_info.
+:- module ll_backend__code_info.
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
-:- import_module code_model.
-:- import_module llds, continuation_info, trace.
-:- import_module globals.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module hlds__hlds_data, hlds__instmap.
+:- import_module backend_libs__code_model.
+:- import_module ll_backend__llds, ll_backend__continuation_info.
+:- import_module ll_backend__trace.
+:- import_module libs__globals.
 
 :- import_module bool, set, list, map, std_util, assoc_list, counter.
 
 :- implementation.
 
-:- import_module prog_out.
-:- import_module type_util, mode_util.
-:- import_module arg_info, code_util, code_exprn, exprn_aux, var_locn.
-:- import_module trace_params, llds_out.
-:- import_module options, tree.
+:- import_module parse_tree__prog_out.
+:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module ll_backend__arg_info, ll_backend__code_util.
+:- import_module ll_backend__code_exprn, ll_backend__exprn_aux.
+:- import_module ll_backend__var_locn.
+:- import_module libs__trace_params, ll_backend__llds_out.
+:- import_module libs__options, libs__tree.
 
 :- import_module term, varset.
 :- import_module set, stack.

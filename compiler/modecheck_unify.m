@@ -17,10 +17,10 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module modecheck_unify.
+:- module check_hlds__modecheck_unify.
 :- interface.
 
-:- import_module hlds_goal, prog_data, mode_info.
+:- import_module hlds__hlds_goal, parse_tree__prog_data, check_hlds__mode_info.
 
 	% Modecheck a unification
 :- pred modecheck_unification(prog_var, unify_rhs, unification, unify_context,
@@ -40,12 +40,19 @@
 
 :- implementation.
 
-:- import_module llds, prog_util, type_util, module_qual, instmap.
-:- import_module hlds_module, hlds_goal, hlds_pred, hlds_data, hlds_out.
-:- import_module mode_debug, mode_util, mode_info, modes, mode_errors.
-:- import_module inst_match, inst_util, unify_proc, code_util, unique_modes.
-:- import_module typecheck, modecheck_call, (inst), quantification, make_hlds.
-:- import_module polymorphism.
+:- import_module ll_backend__llds, parse_tree__prog_util.
+:- import_module check_hlds__type_util, parse_tree__module_qual, hlds__instmap.
+:- import_module hlds__hlds_module, hlds__hlds_goal, hlds__hlds_pred.
+:- import_module hlds__hlds_data, hlds__hlds_out.
+:- import_module check_hlds__mode_debug, check_hlds__mode_util.
+:- import_module check_hlds__mode_info, check_hlds__modes.
+:- import_module check_hlds__mode_errors.
+:- import_module check_hlds__inst_match, check_hlds__inst_util.
+:- import_module check_hlds__unify_proc, ll_backend__code_util.
+:- import_module check_hlds__unique_modes.
+:- import_module check_hlds__typecheck, check_hlds__modecheck_call.
+:- import_module (parse_tree__inst), hlds__quantification, hlds__make_hlds.
+:- import_module check_hlds__polymorphism.
 
 :- import_module bool, list, map, std_util, int, set, require.
 :- import_module string, assoc_list.

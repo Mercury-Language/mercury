@@ -10,13 +10,13 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module det_report.
+:- module check_hlds__det_report.
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_module, hlds_pred, hlds_goal.
-:- import_module det_util.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module check_hlds__det_util.
 
 :- import_module io, list.
 
@@ -135,11 +135,12 @@
 
 :- implementation.
 
-:- import_module prog_out. 
-:- import_module hlds_data, type_util, mode_util, inst_match.
-:- import_module hlds_out, mercury_to_mercury.
-:- import_module code_util, passes_aux.
-:- import_module globals, options.
+:- import_module parse_tree__prog_out. 
+:- import_module hlds__hlds_data, check_hlds__type_util.
+:- import_module check_hlds__mode_util, check_hlds__inst_match.
+:- import_module hlds__hlds_out, parse_tree__mercury_to_mercury.
+:- import_module ll_backend__code_util, hlds__passes_aux.
+:- import_module libs__globals, libs__options.
 
 :- import_module assoc_list, bool, int, map, set, std_util, require, string.
 :- import_module getopt, term, varset.

@@ -28,11 +28,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module layout.
+:- module ll_backend__layout.
 
 :- interface.
 
-:- import_module prog_data, trace_params, llds, rtti, hlds_goal.
+:- import_module parse_tree__prog_data, libs__trace_params, ll_backend__llds.
+:- import_module backend_libs__rtti, hlds__hlds_goal.
 :- import_module bool, std_util, list, assoc_list.
 
 :- type layout_data

@@ -8,11 +8,12 @@
 %
 % Check whether a module should be recompiled.
 %-----------------------------------------------------------------------------%
-:- module recompilation_check.
+:- module recompilation__check.
 
 :- interface.
 
-:- import_module modules, prog_io, prog_data.
+:- import_module parse_tree__modules, parse_tree__prog_io.
+:- import_module parse_tree__prog_data.
 :- import_module list, io.
 
 :- type modules_to_recompile
@@ -30,7 +31,7 @@
 :- inst find_timestamp_file_names ==
 		(pred(in, out, di, uo) is det).
 
-	% recompilation_check__should_recompile(ModuleName, FindTargetFiles,
+	% recompilation__check__should_recompile(ModuleName, FindTargetFiles,
 	%	FindTimestampFiles, ModulesToRecompile, ReadModules)
 	%
 	% Process the `.used'  files for the given module and all its
@@ -43,7 +44,7 @@
 	% `ReadModules' is the list of interface files read during
 	% recompilation checking, returned to avoid rereading them
 	% if recompilation is required.
-:- pred recompilation_check__should_recompile(module_name::in,
+:- pred recompilation__check__should_recompile(module_name::in,
 	find_target_file_names::in(find_target_file_names),
 	find_timestamp_file_names::in(find_timestamp_file_names),
 	modules_to_recompile::out, read_modules::out,
@@ -53,18 +54,20 @@
 
 :- implementation.
 
-:- import_module recompilation, recompilation_usage, recompilation_version.
-:- import_module timestamp.
-:- import_module prog_io_util, prog_util, prog_out, error_util.
-:- import_module globals, options.
-:- import_module hlds_pred.	% for field_access_function_name,
+:- import_module recompilation__usage.
+:- import_module recompilation__version.
+:- import_module libs__timestamp.
+:- import_module parse_tree__prog_io_util, parse_tree__prog_util.
+:- import_module parse_tree__prog_out, hlds__error_util.
+:- import_module libs__globals, libs__options.
+:- import_module hlds__hlds_pred.	% for field_access_function_name,
 				% type pred_id.
-:- import_module hlds_data.	% for type field_access_type
+:- import_module hlds__hlds_data.	% for type field_access_type
 
 :- import_module assoc_list, bool, exception, int, map, parser, require.
 :- import_module set, std_util, string, term, term_io.
 
-recompilation_check__should_recompile(ModuleName, FindTargetFiles,
+recompilation__check__should_recompile(ModuleName, FindTargetFiles,
 		FindTimestampFiles, Info ^ modules_to_recompile,
 		Info ^ read_modules) -->
 	globals__io_lookup_bool_option(find_all_recompilation_reasons,
@@ -72,16 +75,16 @@ recompilation_check__should_recompile(ModuleName, FindTargetFiles,
 	{ Info0 = recompilation_check_info(ModuleName, no, [], map__init,
 			init_item_id_set(map__init, map__init, map__init),
 			set__init, some([]), FindAll, []) },
-	recompilation_check__should_recompile_2(no, FindTargetFiles,
+	recompilation__check__should_recompile_2(no, FindTargetFiles,
 		FindTimestampFiles, ModuleName, Info0, Info).
 	
-:- pred recompilation_check__should_recompile_2(bool::in,
+:- pred recompilation__check__should_recompile_2(bool::in,
 	find_target_file_names::in(find_target_file_names),
 	find_timestamp_file_names::in(find_timestamp_file_names),
 	module_name::in, recompilation_check_info::in,
 	recompilation_check_info::out, io__state::di, io__state::uo) is det.	
 
-recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
+recompilation__check__should_recompile_2(IsSubModule, FindTargetFiles,
 		FindTimestampFiles, ModuleName, Info0, Info) -->
 	{ Info1 = (Info0 ^ module_name := ModuleName)
 			^ sub_modules := [] },
@@ -95,7 +98,7 @@ recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
 		    (pred(R::out, di, uo) is cc_multi -->
 			try_io(
 			    (pred(Info2::out, di, uo) is det -->
-				recompilation_check__should_recompile_3(
+				recompilation__check__should_recompile_3(
 					IsSubModule, FindTargetFiles,
 					Info1, Info2)
 		    	    ), R)
@@ -106,7 +109,7 @@ recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
 			{ Reasons = Info3 ^ recompilation_reasons }
 		;
 			{ Result = failed },
-			{ error("recompilation_check__should_recompile_2") }
+			{ error("recompilation__check__should_recompile_2") }
 		;
 			{ Result = exception(Exception) },
 			{ univ_to_type(Exception, RecompileException0) ->
@@ -146,7 +149,7 @@ recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
 		;
 			{ Info5 = Info4 ^ is_inline_sub_module := yes },
 			list__foldl2(
-				recompilation_check__should_recompile_2(yes,
+				recompilation__check__should_recompile_2(yes,
 					FindTargetFiles, FindTimestampFiles),
 				Info5 ^ sub_modules, Info5, Info)
 		)
@@ -161,12 +164,12 @@ recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
 		{ Info = Info1 ^ modules_to_recompile := (all) }
 	).
 
-:- pred recompilation_check__should_recompile_3(bool::in,
+:- pred recompilation__check__should_recompile_3(bool::in,
 		find_target_file_names::in(find_target_file_names),
 		recompilation_check_info::in, recompilation_check_info::out,
 		io__state::di, io__state::uo) is det.
 
-recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
+recompilation__check__should_recompile_3(IsSubModule, FindTargetFiles,
 		Info0, Info) -->
 
 	%
@@ -729,7 +732,7 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
 		UsedItemsTerm, NewVersionNumbers,
 		Items) -->
 
-	{ recompilation_version__parse_version_numbers(UsedItemsTerm,
+	{ recompilation__version__parse_version_numbers(UsedItemsTerm,
 		UsedItemsResult) },
 	=(Info0),
 	{

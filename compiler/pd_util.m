@@ -9,12 +9,14 @@
 % Utility predicates for deforestation and partial evaluation.
 %
 %-----------------------------------------------------------------------------%
-:- module pd_util.
+:- module transform_hlds__pd_util.
 
 :- interface.
 
-:- import_module pd_info, hlds_goal, hlds_module, hlds_pred, mode_errors.
-:- import_module prog_data, simplify, (inst).
+:- import_module transform_hlds__pd_info, hlds__hlds_goal, hlds__hlds_module.
+:- import_module hlds__hlds_pred, check_hlds__mode_errors.
+:- import_module parse_tree__prog_data, check_hlds__simplify.
+:- import_module (parse_tree__inst).
 :- import_module bool, list, map, set, std_util.
 
 	% Pick out the pred_proc_ids of the calls in a list of atomic goals.
@@ -138,11 +140,17 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module det_analysis, constraint, pd_cost, hlds_data, instmap.
-:- import_module unused_args, inst_match, (inst), quantification, mode_util.
-:- import_module code_aux, purity, mode_info, unique_modes, pd_debug.
-:- import_module type_util, det_util, det_analysis, options, goal_util.
-:- import_module det_report, inst_util.
+:- import_module check_hlds__det_analysis, transform_hlds__constraint.
+:- import_module transform_hlds__pd_cost, hlds__hlds_data, hlds__instmap.
+:- import_module transform_hlds__unused_args, check_hlds__inst_match.
+:- import_module (parse_tree__inst), hlds__quantification.
+:- import_module check_hlds__mode_util.
+:- import_module ll_backend__code_aux, check_hlds__purity.
+:- import_module check_hlds__mode_info, check_hlds__unique_modes.
+:- import_module transform_hlds__pd_debug.
+:- import_module check_hlds__type_util, check_hlds__det_util.
+:- import_module check_hlds__det_analysis, libs__options, hlds__goal_util.
+:- import_module check_hlds__det_report, check_hlds__inst_util.
 :- import_module assoc_list, int, require, set, term.
 
 pd_util__goal_get_calls(Goal0, CalledPreds) :-

@@ -16,10 +16,10 @@
 %
 % This code converts the MLDS representation of foreign language code into MC++ 
 
-:- module mlds_to_mcpp.
+:- module ml_backend__mlds_to_mcpp.
 :- interface.
 
-:- import_module mlds.
+:- import_module ml_backend__mlds.
 :- import_module io.
 
 	% Convert the MLDS to MC++ and write it to a file.
@@ -40,21 +40,24 @@
 
 :- implementation.
 
-:- import_module globals, options, passes_aux.
-:- import_module builtin_ops, c_util, modules, tree.
-:- import_module hlds_pred. % for `pred_proc_id'.
-:- import_module prog_data, prog_out, llds_out.
-:- import_module foreign, rtti, type_util, error_util.
+:- import_module libs__globals, libs__options, hlds__passes_aux.
+:- import_module backend_libs__builtin_ops, backend_libs__c_util.
+:- import_module parse_tree__modules, libs__tree.
+:- import_module hlds__hlds_pred. % for `pred_proc_id'.
+:- import_module parse_tree__prog_data, parse_tree__prog_out.
+:- import_module ll_backend__llds_out.
+:- import_module backend_libs__foreign, backend_libs__rtti.
+:- import_module check_hlds__type_util, hlds__error_util.
 
-:- import_module ilds, ilasm, il_peephole.
-:- import_module ml_util, ml_code_util.
-:- import_module mlds_to_c. /* to output C code for .cpp files */
-:- use_module llds. /* for user_c_code */
+:- import_module ml_backend__ilds, ml_backend__ilasm, ml_backend__il_peephole.
+:- import_module ml_backend__ml_util, ml_backend__ml_code_util.
+:- import_module ml_backend__mlds_to_c. /* to output C code for .cpp files */
+:- use_module ll_backend__llds. /* for user_c_code */
 
 :- import_module bool, int, map, string, list, assoc_list, term, std_util.
 :- import_module library, require, counter.
 
-:- import_module mlds_to_il.
+:- import_module ml_backend__mlds_to_il.
 
 %-----------------------------------------------------------------------------%
 

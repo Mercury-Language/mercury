@@ -29,11 +29,11 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module rl_stream.
+:- module aditi_backend__rl_stream.
 
 :- interface.
 
-:- import_module rl_block.
+:- import_module aditi_backend__rl_block.
 
 :- pred rl_stream__detect_streams(rl_opt_info, rl_opt_info).
 :- mode rl_stream__detect_streams(in, out) is det.
@@ -41,7 +41,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module rl.
+:- import_module aditi_backend__rl.
 :- import_module assoc_list, bag, int, list, map, multi_map.
 :- import_module relation, require, set, std_util.
 

@@ -21,11 +21,11 @@
 % To do -
 % push selections through union, sort etc.
 %-----------------------------------------------------------------------------%
-:- module rl_block_opt.
+:- module aditi_backend__rl_block_opt.
 
 :- interface.
 
-:- import_module rl_block.
+:- import_module aditi_backend__rl_block.
 :- import_module io, list.
 
 :- pred rl_block_opt(list(opt_flag)::in, rl_opt_info::in, rl_opt_info::out,
@@ -39,8 +39,10 @@
 
 :- implementation.
 
-:- import_module goal_util, hlds_goal, hlds_module, hlds_pred, inlining.
-:- import_module prog_data, rl, rl_key, globals, options.
+:- import_module hlds__goal_util, hlds__hlds_goal, hlds__hlds_module.
+:- import_module hlds__hlds_pred, transform_hlds__inlining.
+:- import_module parse_tree__prog_data, aditi_backend__rl.
+:- import_module aditi_backend__rl_key, libs__globals, libs__options.
 :- import_module assoc_list, bool, int, map, multi_map.
 :- import_module relation, require, set, std_util, string.
 

@@ -22,11 +22,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module store_alloc.
+:- module ll_backend__store_alloc.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds__hlds_module, hlds__hlds_pred.
 
 :- pred store_alloc_in_proc(proc_info, pred_id, module_info, proc_info).
 :- mode store_alloc_in_proc(in, in, in, out) is det.
@@ -36,9 +36,11 @@
 
 :- implementation.
 
-:- import_module follow_vars, liveness, hlds_goal, llds, prog_data.
-:- import_module options, globals, trace_params, trace.
-:- import_module goal_util, mode_util, instmap.
+:- import_module ll_backend__follow_vars, ll_backend__liveness.
+:- import_module hlds__hlds_goal, ll_backend__llds, parse_tree__prog_data.
+:- import_module libs__options, libs__globals, libs__trace_params.
+:- import_module ll_backend__trace.
+:- import_module hlds__goal_util, check_hlds__mode_util, hlds__instmap.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module bool, int, require.
 

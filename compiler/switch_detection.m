@@ -12,11 +12,12 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module switch_detection.
+:- module check_hlds__switch_detection.
 
 :- interface.
 
-:- import_module hlds_goal, hlds_module, hlds_pred, prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
 :- import_module bool, io, list.
 
 :- pred detect_switches(module_info::in, module_info::out,
@@ -47,9 +48,11 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_data, instmap, inst_match.
-:- import_module modes, mode_util, type_util, det_util.
-:- import_module passes_aux, term.
+:- import_module hlds__hlds_goal, hlds__hlds_data, parse_tree__prog_data.
+:- import_module hlds__instmap, check_hlds__inst_match.
+:- import_module check_hlds__modes, check_hlds__mode_util.
+:- import_module check_hlds__type_util, check_hlds__det_util.
+:- import_module hlds__passes_aux, term.
 :- import_module char, int, assoc_list, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%

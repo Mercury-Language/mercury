@@ -21,11 +21,11 @@
 % if it is not.  The `Term' there should be the term which
 % is syntactically incorrect.
 
-:- module prog_io_util.
+:- module parse_tree__prog_io_util.
 
 :- interface.
 
-:- import_module prog_data, (inst).
+:- import_module parse_tree__prog_data, (parse_tree__inst).
 :- import_module list, map, std_util, term, io.
 
 :- type maybe2(T1, T2)	--->	error(string, term)
@@ -161,12 +161,13 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, options, globals.
+:- import_module parse_tree__prog_io, parse_tree__prog_io_goal, libs__options.
+:- import_module libs__globals.
 
 % XXX we should not need to import hlds*.m here.
 % But currently we need to import hlds_data.m for the `cons_id' type
 % that is used in insts.
-:- import_module hlds_data.
+:- import_module hlds__hlds_data.
 
 :- import_module bool, string, std_util, term, set.
 

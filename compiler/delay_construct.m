@@ -23,11 +23,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module delay_construct.
+:- module transform_hlds__delay_construct.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds__hlds_module, hlds__hlds_pred.
 :- import_module io.
 
 :- pred delay_construct_proc(pred_id::in, proc_id::in, module_info::in,
@@ -37,8 +37,9 @@
 
 :- implementation.
 
-:- import_module prog_data, hlds_data, hlds_goal, passes_aux, globals.
-:- import_module instmap, inst_match.
+:- import_module parse_tree__prog_data, hlds__hlds_data, hlds__hlds_goal.
+:- import_module hlds__passes_aux, libs__globals.
+:- import_module hlds__instmap, check_hlds__inst_match.
 :- import_module bool, list, set, std_util, require.
 
 %-----------------------------------------------------------------------------%

@@ -28,7 +28,7 @@
 % introduce new variables as part of the solving algorithm.
 %
 %------------------------------------------------------------------------------%
-:- module lp.
+:- module transform_hlds__lp.
 
 :- interface.
 

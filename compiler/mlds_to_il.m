@@ -58,13 +58,13 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module mlds_to_il.
+:- module ml_backend__mlds_to_il.
 :- interface.
 
-:- import_module mlds, ilasm, ilds.
+:- import_module ml_backend__mlds, ml_backend__ilasm, ml_backend__ilds.
 :- import_module io, list, bool, std_util, set.
-:- import_module hlds_pred. % for `pred_proc_id'.
-:- import_module prog_data. % for `foreign_language'.
+:- import_module hlds__hlds_pred. % for `pred_proc_id'.
+:- import_module libs__globals. % for `foreign_language'.
 
 %-----------------------------------------------------------------------------%
 
@@ -135,16 +135,21 @@
 
 :- implementation.
 
-:- import_module globals, options, passes_aux.
-:- import_module builtin_ops, c_util, modules, tree.
-:- import_module prog_data, prog_out, prog_util, llds_out.
-:- import_module pseudo_type_info, rtti, type_util, code_model, foreign.
+:- import_module libs__globals, libs__options, hlds__passes_aux.
+:- import_module backend_libs__builtin_ops, backend_libs__c_util.
+:- import_module parse_tree__modules, libs__tree.
+:- import_module parse_tree__prog_data, parse_tree__prog_out.
+:- import_module parse_tree__prog_util, ll_backend__llds_out.
+:- import_module backend_libs__pseudo_type_info, backend_libs__rtti.
+:- import_module check_hlds__type_util, backend_libs__code_model.
+:- import_module backend_libs__foreign.
 
-:- import_module ilasm, il_peephole.
-:- import_module ml_util, ml_code_util, error_util.
-:- import_module ml_type_gen.
-:- import_module foreign.
-:- use_module llds. /* for user_foreign_code */
+:- import_module ml_backend__il_peephole.
+:- import_module ml_backend__ml_util, ml_backend__ml_code_util.
+:- import_module hlds__error_util.
+:- import_module ml_backend__ml_type_gen.
+:- import_module backend_libs__foreign.
+:- use_module ll_backend__llds. /* for user_foreign_code */
 
 :- import_module bool, int, map, string, set, list, assoc_list, term.
 :- import_module library, require, counter.

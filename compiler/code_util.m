@@ -13,12 +13,13 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module code_util.
+:- module ll_backend__code_util.
 
 :- interface.
 
-:- import_module prog_data, hlds_module, hlds_pred, hlds_goal, hlds_data.
-:- import_module rtti, llds.
+:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_goal, hlds__hlds_data.
+:- import_module backend_libs__rtti, ll_backend__llds.
 
 :- import_module bool, list, std_util.
 
@@ -188,7 +189,9 @@
 
 :- implementation.
 
-:- import_module prog_util, type_util, special_pred, builtin_ops, code_model.
+:- import_module parse_tree__prog_util, check_hlds__type_util.
+:- import_module hlds__special_pred, backend_libs__builtin_ops.
+:- import_module backend_libs__code_model.
 
 :- import_module char, int, string, set, map, term, varset.
 :- import_module require, std_util, assoc_list.

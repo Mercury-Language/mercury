@@ -10,12 +10,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module peephole.
+:- module ll_backend__peephole.
 
 :- interface.
 
 :- import_module bool, list.
-:- import_module llds, globals.
+:- import_module ll_backend__llds, libs__globals.
 
 	% Peephole optimize a list of instructions.
 
@@ -25,7 +25,8 @@
 
 :- implementation.
 
-:- import_module builtin_ops, code_util, opt_util, opt_debug.
+:- import_module backend_libs__builtin_ops, ll_backend__code_util.
+:- import_module ll_backend__opt_util, ll_backend__opt_debug.
 :- import_module int, map, string, std_util.
 
 	% Patterns that can be switched off.

@@ -92,11 +92,12 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module par_conj_gen.
+:- module ll_backend__par_conj_gen.
 
 :- interface.
 
-:- import_module hlds_goal, code_model, llds, code_info.
+:- import_module hlds__hlds_goal, backend_libs__code_model, ll_backend__llds.
+:- import_module ll_backend__code_info.
 :- import_module list.
 
 :- pred par_conj_gen__generate_par_conj(list(hlds_goal), hlds_goal_info,
@@ -107,10 +108,12 @@
 
 :- implementation.
 
-:- import_module hlds_data, code_gen, code_util, options, globals, prog_data.
-:- import_module hlds_module, (inst), instmap, mode_util, code_info.
-:- import_module continuation_info.
-:- import_module set, tree, list, map, std_util, require, int.
+:- import_module hlds__hlds_data, ll_backend__code_gen, ll_backend__code_util.
+:- import_module libs__options, libs__globals, parse_tree__prog_data.
+:- import_module hlds__hlds_module, (parse_tree__inst), hlds__instmap.
+:- import_module check_hlds__mode_util, ll_backend__code_info.
+:- import_module ll_backend__continuation_info.
+:- import_module set, libs__tree, list, map, std_util, require, int.
 
 %---------------------------------------------------------------------------%
 

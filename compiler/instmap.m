@@ -15,12 +15,14 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module instmap.
+:- module hlds__instmap.
 
 :- interface.
 
-:- import_module hlds_module, prog_data, mode_info, (inst), mode_errors.
-:- import_module hlds_data, hlds_pred.
+:- import_module hlds__hlds_module, parse_tree__prog_data.
+:- import_module check_hlds__mode_info, (parse_tree__inst).
+:- import_module check_hlds__mode_errors.
+:- import_module hlds__hlds_data, hlds__hlds_pred.
 
 :- import_module map, bool, set, list, assoc_list, std_util.
 
@@ -306,8 +308,9 @@
 
 :- implementation.
 
-:- import_module mode_util, inst_match, prog_data, goal_util, type_util.
-:- import_module hlds_data, inst_util.
+:- import_module check_hlds__mode_util, check_hlds__inst_match.
+:- import_module parse_tree__prog_data, hlds__goal_util, check_hlds__type_util.
+:- import_module hlds__hlds_data, check_hlds__inst_util.
 
 :- import_module std_util, require, string, term.
 

@@ -98,11 +98,12 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module typecheck.
+:- module check_hlds__typecheck.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_data, prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
+:- import_module parse_tree__prog_data.
 :- import_module bool, io, list, map.
 
 	% typecheck(Module0, Module, FoundError,
@@ -152,10 +153,15 @@
 
 :- implementation.
 
-:- import_module hlds_goal, prog_util, type_util, modules, code_util.
-:- import_module prog_io, prog_io_util, prog_out, hlds_out, error_util.
-:- import_module mercury_to_mercury, mode_util, options, getopt, globals.
-:- import_module passes_aux, clause_to_proc, special_pred, inst_match.
+:- import_module hlds__hlds_goal, parse_tree__prog_util.
+:- import_module check_hlds__type_util, parse_tree__modules.
+:- import_module ll_backend__code_util.
+:- import_module parse_tree__prog_io, parse_tree__prog_io_util.
+:- import_module parse_tree__prog_out, hlds__hlds_out, hlds__error_util.
+:- import_module parse_tree__mercury_to_mercury, check_hlds__mode_util.
+:- import_module libs__options, getopt, libs__globals.
+:- import_module hlds__passes_aux, check_hlds__clause_to_proc.
+:- import_module hlds__special_pred, check_hlds__inst_match.
 
 :- import_module int, set, string, require, multi_map.
 :- import_module assoc_list, std_util, term, varset, term_io.
@@ -3679,8 +3685,8 @@ typecheck_info_set_pred_import_status(TypeCheckInfo, Status,
 	% Note: changes here may require changes to
 	% post_typecheck__resolve_unify_functor,
 	% intermod__module_qualify_unify_rhs,
-	% recompilation_usage__find_matching_constructors
-	% and recompilation_check__check_functor_ambiguities.
+	% recompilation__usage__find_matching_constructors
+	% and recompilation__check__check_functor_ambiguities.
 :- pred typecheck_info_get_ctor_list(typecheck_info, cons_id, int, 
 			list(cons_type_info), list(invalid_field_update)).
 :- mode typecheck_info_get_ctor_list(typecheck_info_ui,

@@ -11,12 +11,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_util.
+:- module ml_backend__ml_util.
 :- interface.
 
-:- import_module mlds.
+:- import_module ml_backend__mlds.
 :- import_module list, std_util.
-:- import_module prog_data.  % for foreign_language
+:- import_module libs__globals.  % for foreign_language
 
 %-----------------------------------------------------------------------------%
 	% succeeds iff the definitions contain the entry point to
@@ -149,8 +149,8 @@
 
 :- implementation.
 
-:- import_module rtti.
-:- import_module bool, list, std_util, prog_data.
+:- import_module backend_libs__rtti.
+:- import_module bool, list, std_util, parse_tree__prog_data.
 
 %-----------------------------------------------------------------------------%
 

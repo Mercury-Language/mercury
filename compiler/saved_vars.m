@@ -21,11 +21,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module saved_vars.
+:- module ll_backend__saved_vars.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds__hlds_module, hlds__hlds_pred.
 :- import_module io.
 
 :- pred saved_vars_proc(pred_id::in, proc_id::in,
@@ -39,8 +39,9 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_out, goal_util, quantification, passes_aux.
-:- import_module mode_util, prog_data, term, varset.
+:- import_module hlds__hlds_goal, hlds__hlds_out, hlds__goal_util.
+:- import_module hlds__quantification, hlds__passes_aux.
+:- import_module check_hlds__mode_util, parse_tree__prog_data, term, varset.
 :- import_module bool, list, set, map, std_util, require.
 
 %-----------------------------------------------------------------------------%

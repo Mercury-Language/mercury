@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-:- module higher_order.
+:- module transform_hlds__higher_order.
 % Main author: stayl
 %
 % Specializes calls to higher order or polymorphic predicates where the value
@@ -25,7 +25,7 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds__hlds_module.
 :- import_module io.
 
 :- pred specialize_higher_order(module_info::in, module_info::out,
@@ -35,11 +35,15 @@
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data, instmap, (inst).
-:- import_module code_util, globals, mode_util, goal_util.
-:- import_module type_util, options, prog_data, prog_out, quantification.
-:- import_module mercury_to_mercury, inlining, polymorphism, prog_util.
-:- import_module special_pred, unify_proc, passes_aux.
+:- import_module hlds__hlds_pred, hlds__hlds_goal, hlds__hlds_data.
+:- import_module hlds__instmap, (parse_tree__inst).
+:- import_module ll_backend__code_util, libs__globals, check_hlds__mode_util.
+:- import_module hlds__goal_util.
+:- import_module check_hlds__type_util, libs__options, parse_tree__prog_data.
+:- import_module parse_tree__prog_out, hlds__quantification.
+:- import_module parse_tree__mercury_to_mercury, transform_hlds__inlining.
+:- import_module check_hlds__polymorphism, parse_tree__prog_util.
+:- import_module hlds__special_pred, check_hlds__unify_proc, hlds__passes_aux.
 
 :- import_module assoc_list, bool, char, int, list, map, require, set.
 :- import_module std_util, string, varset, term.

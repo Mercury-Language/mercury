@@ -15,11 +15,12 @@
 
 %----------------------------------------------------------------------------%
 
-:- module var_locn.
+:- module ll_backend__var_locn.
 
 :- interface.
 
-:- import_module prog_data, hlds_goal, llds, options.
+:- import_module parse_tree__prog_data, hlds__hlds_goal, ll_backend__llds.
+:- import_module libs__options.
 :- import_module bool, map, set, list, assoc_list, std_util.
 
 :- type var_locn_info.
@@ -317,7 +318,8 @@
 
 :- implementation.
 
-:- import_module code_util, exprn_aux, options, tree.
+:- import_module ll_backend__code_util, ll_backend__exprn_aux, libs__options.
+:- import_module libs__tree.
 :- import_module getopt, int, string, bag, require, varset, term.
 
 :- type dead_or_alive	--->	dead ; alive.

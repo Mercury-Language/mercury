@@ -10,11 +10,12 @@
 % Produce a flow graph. 
 % See the Dragon Book for details.
 %-----------------------------------------------------------------------------%
-:- module rl_block.
+:- module aditi_backend__rl_block.
 
 :- interface.
 
-:- import_module rl, hlds_pred, hlds_module, prog_data.
+:- import_module aditi_backend__rl, hlds__hlds_pred, hlds__hlds_module.
+:- import_module parse_tree__prog_data.
 :- import_module bool, io, int, list, map, relation, set, std_util.
 
 :- pred rl_block__create_flow_graph(bool::in, module_info::in, 
@@ -36,7 +37,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds_module, rl_dump.
+:- import_module hlds__hlds_module, aditi_backend__rl_dump.
 :- import_module queue, require, string.
 
 rl_block__create_flow_graph(Debug, ModuleInfo, Proc, Info) -->

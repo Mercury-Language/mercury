@@ -9,7 +9,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module (inst).
+:- module (parse_tree__inst).
 :- interface.
 
 % This module should NOT import hlds*.m.  Any types which are needed in
@@ -22,7 +22,7 @@
 %     of the `cons_id' type, and so we could define a new type
 %     `abstract_cons_id' and use that here instead of `cons_id'.
 
-:- import_module prog_data, hlds_data.
+:- import_module parse_tree__prog_data, hlds__hlds_data.
 :- import_module list, map, set.
 
 %-----------------------------------------------------------------------------%

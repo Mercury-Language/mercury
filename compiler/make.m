@@ -24,7 +24,11 @@
 
 :- interface.
 
-:- import_module modules, options_file, prog_io.
+:- include_module make__options_file.
+
+:- import_module parse_tree.
+
+:- import_module make__options_file, parse_tree__modules, parse_tree__prog_io.
 :- import_module io, list.
 
 	% make__process_args(OptionArgs, NonOptionArgs).
@@ -42,13 +46,19 @@
 :- include_module make__dependencies, make__module_dep_file.
 :- include_module make__module_target, make__program_target, make__util.
 
+:- import_module hlds, libs, backend_libs.
+:- import_module top_level. % XXX unwanted dependency
+
 :- import_module make__dependencies, make__module_dep_file.
 :- import_module make__module_target, make__program_target, make__util.
 
-:- import_module globals, options, handle_options, modules.
-:- import_module prog_data, foreign, mercury_compile, mercury_to_mercury.
-:- import_module prog_io, prog_out, prog_io_util, timestamp.
-:- import_module compile_target_code, process_util.
+:- import_module parse_tree__prog_data, parse_tree__prog_io.
+:- import_module parse_tree__modules, parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_out, parse_tree__prog_io_util.
+:- import_module backend_libs__foreign, backend_libs__compile_target_code.
+:- import_module libs__timestamp, libs__process_util.
+:- import_module libs__globals, libs__options, libs__handle_options.
+:- import_module top_level__mercury_compile. % XXX unwanted dependency
 
 :- import_module assoc_list, bool, char, dir, exception, getopt, int, list.
 :- import_module map, parser, require, set, std_util, string, term, term_io.

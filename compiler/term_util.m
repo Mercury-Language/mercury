@@ -15,12 +15,13 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module term_util.
+:- module transform_hlds__term_util.
 
 :- interface.
 
-:- import_module term_errors, prog_data.
-:- import_module hlds_module, hlds_pred, hlds_data, hlds_goal.
+:- import_module transform_hlds__term_errors, parse_tree__prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
+:- import_module hlds__hlds_goal.
 
 :- import_module std_util, bool, int, list, map, bag.
 
@@ -207,8 +208,9 @@
 
 :- implementation.
 
-:- import_module inst_match, prog_out, mode_util, type_util.
-:- import_module globals, options.
+:- import_module check_hlds__inst_match, parse_tree__prog_out.
+:- import_module check_hlds__mode_util, check_hlds__type_util.
+:- import_module libs__globals, libs__options.
 
 :- import_module assoc_list, require.
 

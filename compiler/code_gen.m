@@ -26,13 +26,13 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module code_gen.
+:- module ll_backend__code_gen.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal.
-:- import_module code_model.
-:- import_module llds, code_info.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module backend_libs__code_model.
+:- import_module ll_backend__llds, ll_backend__code_info.
 
 :- import_module list, io, counter.
 
@@ -63,24 +63,33 @@
 :- implementation.
 
 % Parse tree modules
-:- import_module prog_data, prog_out, prog_util.
+:- import_module parse_tree__prog_data, parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 % HLDS modules
-:- import_module hlds_out, instmap, type_util, mode_util, goal_util.
+:- import_module hlds__hlds_out, hlds__instmap, check_hlds__type_util.
+:- import_module check_hlds__mode_util, hlds__goal_util.
 
 % LLDS code generator modules.
-:- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
-:- import_module par_conj_gen, pragma_c_gen, commit_gen.
-:- import_module continuation_info, trace, trace_params.
-:- import_module code_aux, code_util, middle_rec, llds_out.
+:- import_module ll_backend__call_gen, ll_backend__unify_gen.
+:- import_module ll_backend__ite_gen, ll_backend__switch_gen.
+:- import_module ll_backend__disj_gen.
+:- import_module ll_backend__par_conj_gen, ll_backend__pragma_c_gen.
+:- import_module ll_backend__commit_gen.
+:- import_module ll_backend__continuation_info, ll_backend__trace.
+:- import_module libs__trace_params.
+:- import_module ll_backend__code_aux, ll_backend__code_util.
+:- import_module ll_backend__middle_rec, ll_backend__llds_out.
 
 % Misc compiler modules
-:- import_module builtin_ops, passes_aux, rtti.
-:- import_module globals, options.
+:- import_module backend_libs__builtin_ops, hlds__passes_aux.
+:- import_module backend_libs__rtti.
+:- import_module libs__globals, libs__options.
 
 % Standard library modules
 :- import_module bool, char, int, string.
-:- import_module map, assoc_list, set, term, tree, std_util, require, varset.
+:- import_module map, assoc_list, set, term, libs__tree, std_util, require.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 

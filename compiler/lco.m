@@ -11,11 +11,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module lco.
+:- module transform_hlds__lco.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds__hlds_module, hlds__hlds_pred.
 :- import_module io.
 
 :- pred lco_modulo_constructors(pred_id, proc_id, module_info,
@@ -27,7 +27,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, passes_aux, hlds_out.
+:- import_module hlds__hlds_goal, hlds__passes_aux, hlds__hlds_out.
 :- import_module list, require, std_util.
 
 %-----------------------------------------------------------------------------%

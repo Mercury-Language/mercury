@@ -3,16 +3,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: recompilation_usage.m
+% File: recompilation.usage.m
 % Main author: stayl
 %
 % Write the file recording which imported items were used by a compilation.
 %-----------------------------------------------------------------------------%
-:- module recompilation_usage.
+:- module recompilation__usage.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, modules, recompilation, prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__modules.
+:- import_module parse_tree__prog_data.
+
 :- import_module assoc_list, io, list, map, set, std_util.
 
 	%
@@ -63,7 +65,7 @@
 		)
 	.
 
-:- pred recompilation_usage__write_usage_file(module_info::in,
+:- pred recompilation__usage__write_usage_file(module_info::in,
 		list(module_name)::in, maybe(module_timestamps)::in,
 		io__state::di, io__state::uo) is det.
 
@@ -75,15 +77,17 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds_data, hlds_pred, prog_util, type_util, (inst).
-:- import_module hlds_out, mercury_to_mercury, passes_aux, prog_data.
-:- import_module globals, options.
-:- import_module recompilation_version, timestamp.
+:- import_module hlds__hlds_data, hlds__hlds_pred, parse_tree__prog_util.
+:- import_module check_hlds__type_util, (parse_tree__inst).
+:- import_module hlds__hlds_out, parse_tree__mercury_to_mercury.
+:- import_module hlds__passes_aux, parse_tree__prog_data.
+:- import_module libs__globals, libs__options.
+:- import_module recompilation__version, libs__timestamp.
 
 :- import_module assoc_list, bool, int, require.
 :- import_module queue, std_util, string.
 
-recompilation_usage__write_usage_file(ModuleInfo, NestedSubModules,
+recompilation__usage__write_usage_file(ModuleInfo, NestedSubModules,
 		MaybeTimestamps) -->
 	{ module_info_get_maybe_recompilation_info(ModuleInfo,
 		MaybeRecompInfo) },
@@ -101,7 +105,7 @@ recompilation_usage__write_usage_file(ModuleInfo, NestedSubModules,
 		(
 			{ FileResult = ok(Stream0) },
 			io__set_output_stream(Stream0, OldStream),
-			recompilation_usage__write_usage_file_2(ModuleInfo,
+			recompilation__usage__write_usage_file_2(ModuleInfo,
 				NestedSubModules, RecompInfo, Timestamps),
 			io__set_output_stream(OldStream, Stream),
 			io__close_output(Stream)
@@ -119,11 +123,11 @@ recompilation_usage__write_usage_file(ModuleInfo, NestedSubModules,
 		[]
 	).
 
-:- pred recompilation_usage__write_usage_file_2(module_info::in,
+:- pred recompilation__usage__write_usage_file_2(module_info::in,
 		list(module_name)::in, recompilation_info::in,
 		module_timestamps::in, io__state::di, io__state::uo) is det.
 
-recompilation_usage__write_usage_file_2(ModuleInfo, NestedSubModules,
+recompilation__usage__write_usage_file_2(ModuleInfo, NestedSubModules,
 		RecompInfo, Timestamps) -->
 	io__write_int(usage_file_version_number),
 	io__write_string(","),
@@ -149,7 +153,7 @@ recompilation_usage__write_usage_file_2(ModuleInfo, NestedSubModules,
 	),
 
 	{ UsedItems = RecompInfo ^ used_items },
-	{ recompilation_usage__find_all_used_imported_items(ModuleInfo,
+	{ recompilation__usage__find_all_used_imported_items(ModuleInfo,
 		UsedItems, RecompInfo ^ dependencies, ResolvedUsedItems,
 		UsedClasses, ImportedItems, ModuleInstances) },
 
@@ -245,7 +249,7 @@ recompilation_usage__write_usage_file_2(ModuleInfo, NestedSubModules,
 			{ ModuleUsedVersionNumbers =
 				version_numbers(ModuleUsedItemVersions,
 						ModuleUsedInstanceVersions) },
-			recompilation_version__write_version_numbers(
+			recompilation__version__write_version_numbers(
 				ModuleUsedVersionNumbers),
 			io__write_string(".\n")
 	   	;
@@ -466,12 +470,12 @@ usage_file_version_number = 2.
 	% Go over the set of imported items found to be used and
 	% find the transitive closure of the imported items they use.
 	%
-:- pred recompilation_usage__find_all_used_imported_items(module_info::in,
+:- pred recompilation__usage__find_all_used_imported_items(module_info::in,
 	used_items::in, map(item_id, set(item_id))::in,
 	resolved_used_items::out, set(item_name)::out, imported_items::out,
 	map(module_name, set(item_name))::out) is det.
 
-recompilation_usage__find_all_used_imported_items(ModuleInfo,
+recompilation__usage__find_all_used_imported_items(ModuleInfo,
 		UsedItems, Dependencies, ResolvedUsedItems, UsedTypeClasses,
 		ImportedItems, ModuleInstances) :-
 
@@ -514,7 +518,7 @@ recompilation_usage__find_all_used_imported_items(ModuleInfo,
 		ImportedItems2, ModuleUsedClasses, Dependencies,
 		ResolvedUsedItems0, UsedClasses0),
 
-	recompilation_usage__find_all_used_imported_items_2(UsedItems,
+	recompilation__usage__find_all_used_imported_items_2(UsedItems,
 		Info0, Info),
 
 	ImportedItems = Info ^ imported_items,
@@ -522,10 +526,10 @@ recompilation_usage__find_all_used_imported_items(ModuleInfo,
 	UsedTypeClasses = Info ^ used_typeclasses,
 	ResolvedUsedItems = Info ^ used_items.
 
-:- pred recompilation_usage__find_all_used_imported_items_2(used_items::in,
+:- pred recompilation__usage__find_all_used_imported_items_2(used_items::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_all_used_imported_items_2(UsedItems) -->
+recompilation__usage__find_all_used_imported_items_2(UsedItems) -->
 		
 	%
 	% Find items used by imported instances for local classes.
@@ -538,10 +542,10 @@ recompilation_usage__find_all_used_imported_items_2(UsedItems) -->
 		=(Info),
 		{ NameArity = Name - Arity },
 		( { item_is_local(Info, NameArity) } ->
-		    recompilation_usage__record_expanded_items_used_by_item(
+		    recompilation__usage__record_expanded_items_used_by_item(
 		    	(typeclass), NameArity),
 		    list__foldl(
-		    	recompilation_usage__find_items_used_by_instance(
+		    	recompilation__usage__find_items_used_by_instance(
 				NameArity),
 			InstanceDefns)
 		;
@@ -550,83 +554,83 @@ recompilation_usage__find_all_used_imported_items_2(UsedItems) -->
 	    ), Instances),
 
 	{ Predicates = UsedItems ^ predicates },
-	recompilation_usage__find_items_used_by_preds(predicate, Predicates),
+	recompilation__usage__find_items_used_by_preds(predicate, Predicates),
 
 	{ Functions = UsedItems ^ functions },
-	recompilation_usage__find_items_used_by_preds(function, Functions),
+	recompilation__usage__find_items_used_by_preds(function, Functions),
 		
 	{ Constructors = UsedItems ^ functors },
-	recompilation_usage__find_items_used_by_functors(Constructors),
+	recompilation__usage__find_items_used_by_functors(Constructors),
 
 	{ Types = UsedItems ^ types },
-	recompilation_usage__find_items_used_by_simple_item_set((type), Types),
+	recompilation__usage__find_items_used_by_simple_item_set((type), Types),
 
 	{ TypeBodies = UsedItems ^ type_bodies },
-	recompilation_usage__find_items_used_by_simple_item_set((type_body),
+	recompilation__usage__find_items_used_by_simple_item_set((type_body),
 		TypeBodies),
 
 	{ Modes = UsedItems ^ modes },
-	recompilation_usage__find_items_used_by_simple_item_set((mode), Modes),
+	recompilation__usage__find_items_used_by_simple_item_set((mode), Modes),
 
 	{ Classes = UsedItems ^ typeclasses },
-	recompilation_usage__find_items_used_by_simple_item_set((typeclass),
+	recompilation__usage__find_items_used_by_simple_item_set((typeclass),
 		Classes),
 
 	{ Insts = UsedItems ^ insts },
-	recompilation_usage__find_items_used_by_simple_item_set((inst), Insts),
+	recompilation__usage__find_items_used_by_simple_item_set((inst), Insts),
 
-	recompilation_usage__process_imported_item_queue.
+	recompilation__usage__process_imported_item_queue.
 
-:- pred recompilation_usage__process_imported_item_queue(
+:- pred recompilation__usage__process_imported_item_queue(
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__process_imported_item_queue -->
+recompilation__usage__process_imported_item_queue -->
 	Queue0 =^ item_queue,
 	^ item_queue := queue__init,
-	recompilation_usage__process_imported_item_queue_2(Queue0),
+	recompilation__usage__process_imported_item_queue_2(Queue0),
 	Queue =^ item_queue,
 	( { queue__is_empty(Queue) } ->
 		[]
 	;
-		recompilation_usage__process_imported_item_queue
+		recompilation__usage__process_imported_item_queue
 	).
 
-:- pred recompilation_usage__process_imported_item_queue_2(
+:- pred recompilation__usage__process_imported_item_queue_2(
 		queue(item_id)::in, recompilation_usage_info::in,
 		recompilation_usage_info::out) is det.
 
-recompilation_usage__process_imported_item_queue_2(Queue0) -->
+recompilation__usage__process_imported_item_queue_2(Queue0) -->
 	( { queue__get(Queue0, Item, Queue) } ->
 		{ Item = item_id(ItemType, ItemId) },
-		recompilation_usage__find_items_used_by_item(ItemType, ItemId),
-		recompilation_usage__process_imported_item_queue_2(Queue)
+		recompilation__usage__find_items_used_by_item(ItemType, ItemId),
+		recompilation__usage__process_imported_item_queue_2(Queue)
 	;
 		[]
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred recompilation_usage__record_used_pred_or_func(pred_or_func::in,
+:- pred recompilation__usage__record_used_pred_or_func(pred_or_func::in,
 	pair(sym_name, arity)::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__record_used_pred_or_func(PredOrFunc, Id) -->
+recompilation__usage__record_used_pred_or_func(PredOrFunc, Id) -->
 	{ ItemType = pred_or_func_to_item_type(PredOrFunc) },
 	ItemSet0 =^ used_items,
 	{ IdSet0 = extract_pred_or_func_set(ItemSet0, ItemType) },
 	{ Id = SymName - Arity },
 	record_resolved_item(SymName, Arity,
-		recompilation_usage__do_record_used_pred_or_func(PredOrFunc),
+		recompilation__usage__do_record_used_pred_or_func(PredOrFunc),
 		IdSet0, IdSet),
 	{ ItemSet = update_pred_or_func_set(ItemSet0, ItemType, IdSet) },
 	^ used_items := ItemSet.
 
-:- pred recompilation_usage__do_record_used_pred_or_func(pred_or_func::in,
+:- pred recompilation__usage__do_record_used_pred_or_func(pred_or_func::in,
 	module_qualifier::in, sym_name::in, arity::in, bool::out,
 	resolved_pred_or_func_map::in, resolved_pred_or_func_map::out,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
+recompilation__usage__do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
 		SymName, Arity, Recorded, MatchingNames0, MatchingNames) -->
 	ModuleInfo =^ module_info,
 	(
@@ -647,7 +651,7 @@ recompilation_usage__do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
 			PredModules, MatchingNames) },
 		{ unqualify_name(SymName, Name) },
 		set__fold(
-			recompilation_usage__find_items_used_by_pred(
+			recompilation__usage__find_items_used_by_pred(
 		    		PredOrFunc, Name - Arity),
 			PredModules)
 	;
@@ -657,32 +661,32 @@ recompilation_usage__do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
 
 %-----------------------------------------------------------------------------%
 
-:- pred recompilation_usage__record_used_functor(pair(sym_name, arity)::in,
+:- pred recompilation__usage__record_used_functor(pair(sym_name, arity)::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__record_used_functor(SymName - Arity) -->
+recompilation__usage__record_used_functor(SymName - Arity) -->
 	ItemSet0 =^ used_items,
 	{ IdSet0 = ItemSet0 ^ functors },
 	record_resolved_item(SymName, Arity,
-		recompilation_usage__do_record_used_functor,
+		recompilation__usage__do_record_used_functor,
 		IdSet0, IdSet),
 	{ ItemSet = ItemSet0 ^ functors := IdSet },
 	^ used_items := ItemSet.
 
-:- pred recompilation_usage__do_record_used_functor(module_qualifier::in,
+:- pred recompilation__usage__do_record_used_functor(module_qualifier::in,
 	sym_name::in, arity::in, bool::out, resolved_functor_map::in,
 	resolved_functor_map::out, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__do_record_used_functor(ModuleQualifier, SymName, Arity,
+recompilation__usage__do_record_used_functor(ModuleQualifier, SymName, Arity,
 		Recorded, ResolvedCtorMap0, ResolvedCtorMap) -->
 	ModuleInfo =^ module_info,
 
-	{ recompilation_usage__find_matching_functors(ModuleInfo,
+	{ recompilation__usage__find_matching_functors(ModuleInfo,
 		SymName, Arity, MatchingCtors) },
 	{ unqualify_name(SymName, Name) },
 	set__fold(
-		recompilation_usage__find_items_used_by_functor(
+		recompilation__usage__find_items_used_by_functor(
 			Name, Arity),
 		MatchingCtors),
 	
@@ -695,10 +699,10 @@ recompilation_usage__do_record_used_functor(ModuleQualifier, SymName, Arity,
 			MatchingCtors, ResolvedCtorMap)
 	}.
 
-:- pred recompilation_usage__find_matching_functors(module_info::in,
+:- pred recompilation__usage__find_matching_functors(module_info::in,
 	sym_name::in, arity::in, set(resolved_functor)::out) is det.
 
-recompilation_usage__find_matching_functors(ModuleInfo, SymName, Arity,
+recompilation__usage__find_matching_functors(ModuleInfo, SymName, Arity,
 		ResolvedConstructors) :-
 	%
 	% Is it a constructor.
@@ -731,7 +735,7 @@ recompilation_usage__find_matching_functors(ModuleInfo, SymName, Arity,
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	( predicate_table_search_sym(PredicateTable, SymName, PredIds) ->
 		MatchingPreds = list__filter_map(
-			recompilation_usage__get_pred_or_func_ctors(ModuleInfo,
+			recompilation__usage__get_pred_or_func_ctors(ModuleInfo,
 				SymName, Arity),
 			PredIds)
 	;
@@ -767,10 +771,10 @@ recompilation_usage__find_matching_functors(ModuleInfo, SymName, Arity,
 		[MatchingConstructors, MatchingPreds, MatchingFields])
 	). 
 
-:- func recompilation_usage__get_pred_or_func_ctors(module_info, sym_name,
+:- func recompilation__usage__get_pred_or_func_ctors(module_info, sym_name,
 		arity, pred_id) = resolved_functor is semidet.
 
-recompilation_usage__get_pred_or_func_ctors(ModuleInfo, _SymName, Arity,
+recompilation__usage__get_pred_or_func_ctors(ModuleInfo, _SymName, Arity,
 		PredId) = ResolvedCtor :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),	
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
@@ -821,7 +825,7 @@ record_resolved_item(SymName, Arity, RecordItem, IdSet0, IdSet) -->
 	;
 		MatchingNames1 = []
 	},
-	recompilation_usage__record_resolved_item_2(ModuleQualifier, SymName,
+	recompilation__usage__record_resolved_item_2(ModuleQualifier, SymName,
 		Arity, RecordItem, Recorded,
 		MatchingNames1, MatchingNames),
 	{ Recorded = yes ->
@@ -830,28 +834,28 @@ record_resolved_item(SymName, Arity, RecordItem, IdSet0, IdSet) -->
 		IdSet = IdSet0
 	}.
 
-:- pred recompilation_usage__record_resolved_item_2(
+:- pred recompilation__usage__record_resolved_item_2(
 	module_qualifier::in, sym_name::in, arity::in,
 	record_resolved_item(T)::in(record_resolved_item),
 	bool::out, resolved_item_list(T)::in, resolved_item_list(T)::out,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__record_resolved_item_2(ModuleQualifier,
+recompilation__usage__record_resolved_item_2(ModuleQualifier,
 		SymName, Arity, RecordItem, Recorded, [], List) -->
 	{ map__init(Map0) },
-	recompilation_usage__record_resolved_item_3(ModuleQualifier,
+	recompilation__usage__record_resolved_item_3(ModuleQualifier,
 		SymName, Arity, RecordItem, Recorded, Map0, Map),
 	{ Recorded = yes ->
 		List = [Arity - Map]
 	;
 		List = []
 	}.
-recompilation_usage__record_resolved_item_2(ModuleQualifier,
+recompilation__usage__record_resolved_item_2(ModuleQualifier,
 		SymName, Arity, RecordItem, Recorded, List0, List) -->
 	{ List0 = [ThisArity - ArityMap0 | ListRest0] },
 	( { Arity < ThisArity } ->
 		{ map__init(NewArityMap0) },
-		recompilation_usage__record_resolved_item_3(ModuleQualifier,
+		recompilation__usage__record_resolved_item_3(ModuleQualifier,
 			SymName, Arity, RecordItem, Recorded,
 			NewArityMap0, NewArityMap),
 		{ Recorded = yes ->
@@ -860,7 +864,7 @@ recompilation_usage__record_resolved_item_2(ModuleQualifier,
 			List = List0
 		}
 	; { Arity = ThisArity } ->
-		recompilation_usage__record_resolved_item_3(ModuleQualifier,
+		recompilation__usage__record_resolved_item_3(ModuleQualifier,
 			SymName, Arity, RecordItem, Recorded,
 			ArityMap0, ArityMap),
 		{ Recorded = yes ->
@@ -869,7 +873,7 @@ recompilation_usage__record_resolved_item_2(ModuleQualifier,
 			List = List0
 		}
 	;
-		recompilation_usage__record_resolved_item_2(ModuleQualifier,
+		recompilation__usage__record_resolved_item_2(ModuleQualifier,
 			SymName, Arity, RecordItem, Recorded,
 			ListRest0, ListRest),
 		{ Recorded = yes ->
@@ -879,13 +883,13 @@ recompilation_usage__record_resolved_item_2(ModuleQualifier,
 		}
 	).
 
-:- pred recompilation_usage__record_resolved_item_3(
+:- pred recompilation__usage__record_resolved_item_3(
 	module_qualifier::in, sym_name::in, arity::in,
 	record_resolved_item(T)::in(record_resolved_item), bool::out,
 	resolved_item_map(T)::in, resolved_item_map(T)::out,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__record_resolved_item_3(ModuleQualifier, SymName, Arity,
+recompilation__usage__record_resolved_item_3(ModuleQualifier, SymName, Arity,
 		RecordItem, Recorded, ResolvedMap0, ResolvedMap) -->
 	( { map__contains(ResolvedMap0, ModuleQualifier) } ->
 		{ Recorded = no },
@@ -897,11 +901,11 @@ recompilation_usage__record_resolved_item_3(ModuleQualifier, SymName, Arity,
 
 %-----------------------------------------------------------------------------%
 
-:- pred recompilation_usage__find_items_used_by_item(item_type::in,
+:- pred recompilation__usage__find_items_used_by_item(item_type::in,
 	item_name::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_item((type), TypeCtor) -->
+recompilation__usage__find_items_used_by_item((type), TypeCtor) -->
 	ModuleInfo =^ module_info,
 	{ module_info_types(ModuleInfo, Types) },
 	{ map__lookup(Types, TypeCtor, TypeDefn) },
@@ -909,30 +913,30 @@ recompilation_usage__find_items_used_by_item((type), TypeCtor) -->
 	( { TypeBody = eqv_type(Type) } ->
 		% If we use an equivalence type we also use the
 		% type it is equivalent to.
-		recompilation_usage__find_items_used_by_type(Type)
+		recompilation__usage__find_items_used_by_type(Type)
 	;
 		[]
 	).
-recompilation_usage__find_items_used_by_item(type_body, TypeCtor) -->
+recompilation__usage__find_items_used_by_item(type_body, TypeCtor) -->
 	ModuleInfo =^ module_info,
 	{ module_info_types(ModuleInfo, Types) },
 	{ map__lookup(Types, TypeCtor, TypeDefn) },
 	{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
-	recompilation_usage__find_items_used_by_type_body(TypeBody).
-recompilation_usage__find_items_used_by_item((mode), ModeId) -->
+	recompilation__usage__find_items_used_by_type_body(TypeBody).
+recompilation__usage__find_items_used_by_item((mode), ModeId) -->
 	ModuleInfo =^ module_info,
 	{ module_info_modes(ModuleInfo, Modes) },
 	{ mode_table_get_mode_defns(Modes, ModeDefns) },
 	{ map__lookup(ModeDefns, ModeId, ModeDefn) },
-	recompilation_usage__find_items_used_by_mode_defn(ModeDefn).
-recompilation_usage__find_items_used_by_item((inst), InstId) -->
+	recompilation__usage__find_items_used_by_mode_defn(ModeDefn).
+recompilation__usage__find_items_used_by_item((inst), InstId) -->
 	ModuleInfo =^ module_info,
 	{ module_info_insts(ModuleInfo, Insts) },
 	{ inst_table_get_user_insts(Insts, UserInsts) },
 	{ user_inst_table_get_inst_defns(UserInsts, UserInstDefns) },
 	{ map__lookup(UserInstDefns, InstId, InstDefn) },
-	recompilation_usage__find_items_used_by_inst_defn(InstDefn).
-recompilation_usage__find_items_used_by_item((typeclass), ClassItemId) -->
+	recompilation__usage__find_items_used_by_inst_defn(InstDefn).
+recompilation__usage__find_items_used_by_item((typeclass), ClassItemId) -->
 	{ ClassItemId = ClassName - ClassArity },
 	{ ClassId = class_id(ClassName, ClassArity) },
 	ModuleInfo =^ module_info,
@@ -940,37 +944,37 @@ recompilation_usage__find_items_used_by_item((typeclass), ClassItemId) -->
 	{ map__lookup(Classes, ClassId, ClassDefn) },
 	{ ClassDefn = hlds_class_defn(_, Constraints, _, ClassInterface,
 				_, _, _) },
-	recompilation_usage__find_items_used_by_class_constraints(
+	recompilation__usage__find_items_used_by_class_constraints(
 		Constraints),
 	(
 		{ ClassInterface = abstract }
 	;
 		{ ClassInterface = concrete(Methods) },
 		list__foldl(
-			recompilation_usage__find_items_used_by_class_method,
+			recompilation__usage__find_items_used_by_class_method,
 			Methods)
 	),
 	{ module_info_instances(ModuleInfo, Instances) },
 	( { map__search(Instances, ClassId, InstanceDefns) } ->
 		list__foldl(
-		    recompilation_usage__find_items_used_by_instance(
+		    recompilation__usage__find_items_used_by_instance(
 			ClassItemId), InstanceDefns)
 	;
 		[]
 	).
 
-recompilation_usage__find_items_used_by_item(predicate, ItemId) --> 
-	recompilation_usage__record_used_pred_or_func(predicate, ItemId).
-recompilation_usage__find_items_used_by_item(function, ItemId) -->
-	recompilation_usage__record_used_pred_or_func(function, ItemId).
-recompilation_usage__find_items_used_by_item(functor, _) -->
-	{ error("recompilation_usage__find_items_used_by_item: functor") }.
+recompilation__usage__find_items_used_by_item(predicate, ItemId) --> 
+	recompilation__usage__record_used_pred_or_func(predicate, ItemId).
+recompilation__usage__find_items_used_by_item(function, ItemId) -->
+	recompilation__usage__record_used_pred_or_func(function, ItemId).
+recompilation__usage__find_items_used_by_item(functor, _) -->
+	{ error("recompilation__usage__find_items_used_by_item: functor") }.
 
-:- pred recompilation_usage__find_items_used_by_instance(item_name::in,
+:- pred recompilation__usage__find_items_used_by_instance(item_name::in,
 	hlds_instance_defn::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_instance(ClassId,
+recompilation__usage__find_items_used_by_instance(ClassId,
 		hlds_instance_defn(InstanceModuleName, _, _, Constraints,
 			ArgTypes, _, _, _, _)) -->
 	% XXX handle interface (currently not needed because
@@ -982,9 +986,9 @@ recompilation_usage__find_items_used_by_instance(ClassId,
 	->
 		[]
 	;
-		recompilation_usage__find_items_used_by_class_constraints(
+		recompilation__usage__find_items_used_by_class_constraints(
 			Constraints),
-		recompilation_usage__find_items_used_by_types(ArgTypes),
+		recompilation__usage__find_items_used_by_types(ArgTypes),
 		ModuleInstances0 =^ module_instances,
 		{
 			map__search(ModuleInstances0, InstanceModuleName,
@@ -1000,14 +1004,14 @@ recompilation_usage__find_items_used_by_instance(ClassId,
 		^ module_instances := ModuleInstances
 	).
 
-:- pred recompilation_usage__find_items_used_by_class_method(
+:- pred recompilation__usage__find_items_used_by_class_method(
 	class_method::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_class_method(
+recompilation__usage__find_items_used_by_class_method(
 		pred_or_func(_, _, _, _, _, ArgTypesAndModes, _,
 			_, _, _, _, Constraints, _)) -->
-	recompilation_usage__find_items_used_by_class_context(
+	recompilation__usage__find_items_used_by_class_context(
 		Constraints),
 	list__foldl(
 	    (pred(TypeAndMode::in, in, out) is det -->
@@ -1015,74 +1019,74 @@ recompilation_usage__find_items_used_by_class_method(
 			{ TypeAndMode = type_only(Type) }
 		;
 			{ TypeAndMode = type_and_mode(Type, Mode) },
-			recompilation_usage__find_items_used_by_mode(Mode)
+			recompilation__usage__find_items_used_by_mode(Mode)
 		),	
-		recompilation_usage__find_items_used_by_type(Type)
+		recompilation__usage__find_items_used_by_type(Type)
 	    ), ArgTypesAndModes).
-recompilation_usage__find_items_used_by_class_method(
+recompilation__usage__find_items_used_by_class_method(
 		pred_or_func_mode(_, _, _, Modes, _, _, _, _)) -->
-	recompilation_usage__find_items_used_by_modes(Modes).
+	recompilation__usage__find_items_used_by_modes(Modes).
 
-:- pred recompilation_usage__find_items_used_by_type_body(hlds_type_body::in,
+:- pred recompilation__usage__find_items_used_by_type_body(hlds_type_body::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_type_body(du_type(Ctors, _, _, _)) -->
+recompilation__usage__find_items_used_by_type_body(du_type(Ctors, _, _, _)) -->
 	list__foldl(
 	    (pred(Ctor::in, in, out) is det -->
 		{ Ctor = ctor(_, Constraints, _, CtorArgs) },
-		recompilation_usage__find_items_used_by_class_constraints(
+		recompilation__usage__find_items_used_by_class_constraints(
 			Constraints),
 		list__foldl(
 		    (pred(CtorArg::in, in, out) is det -->
 			{ CtorArg = _ - ArgType },
-			recompilation_usage__find_items_used_by_type(ArgType)
+			recompilation__usage__find_items_used_by_type(ArgType)
 		    ), CtorArgs)
 	    ), Ctors).
-recompilation_usage__find_items_used_by_type_body(eqv_type(Type)) -->
-	recompilation_usage__find_items_used_by_type(Type).
-recompilation_usage__find_items_used_by_type_body(abstract_type) --> [].
-recompilation_usage__find_items_used_by_type_body(foreign_type(_, _, _)) --> [].
+recompilation__usage__find_items_used_by_type_body(eqv_type(Type)) -->
+	recompilation__usage__find_items_used_by_type(Type).
+recompilation__usage__find_items_used_by_type_body(abstract_type) --> [].
+recompilation__usage__find_items_used_by_type_body(foreign_type(_, _, _)) --> [].
 
-:- pred recompilation_usage__find_items_used_by_mode_defn(hlds_mode_defn::in,
+:- pred recompilation__usage__find_items_used_by_mode_defn(hlds_mode_defn::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_mode_defn(
+recompilation__usage__find_items_used_by_mode_defn(
 		hlds_mode_defn(_, _, eqv_mode(Mode), _, _, _)) -->
-	recompilation_usage__find_items_used_by_mode(Mode).
+	recompilation__usage__find_items_used_by_mode(Mode).
 
-:- pred recompilation_usage__find_items_used_by_inst_defn(hlds_inst_defn::in,
+:- pred recompilation__usage__find_items_used_by_inst_defn(hlds_inst_defn::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_inst_defn(
+recompilation__usage__find_items_used_by_inst_defn(
 		hlds_inst_defn(_, _, InstBody, _, _, _)) -->
 	(
 		{ InstBody = eqv_inst(Inst) },
-		recompilation_usage__find_items_used_by_inst(Inst)
+		recompilation__usage__find_items_used_by_inst(Inst)
 	;
 		{ InstBody = abstract_inst }
 	).
 
-:- pred recompilation_usage__find_items_used_by_preds(pred_or_func::in,
+:- pred recompilation__usage__find_items_used_by_preds(pred_or_func::in,
 		pred_or_func_set::in, recompilation_usage_info::in,
 		recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_preds(PredOrFunc, Set) -->
+recompilation__usage__find_items_used_by_preds(PredOrFunc, Set) -->
 	map__foldl(
 	    (pred((Name - Arity)::in, MatchingPredMap::in, in, out) is det -->
 		map__foldl(
 		    (pred(ModuleQualifier::in, _::in, in, out) is det -->
 			{ SymName = module_qualify_name(ModuleQualifier,
 					Name) },
-			recompilation_usage__record_used_pred_or_func(
+			recompilation__usage__record_used_pred_or_func(
 				PredOrFunc, SymName - Arity)
 		    ), MatchingPredMap)
 	    ), Set).
 
-:- pred recompilation_usage__find_items_used_by_pred(pred_or_func::in,
+:- pred recompilation__usage__find_items_used_by_pred(pred_or_func::in,
 	pair(string, arity)::in, pair(pred_id, module_name)::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_pred(PredOrFunc, Name - Arity,
+recompilation__usage__find_items_used_by_pred(PredOrFunc, Name - Arity,
 		PredId - PredModule) -->
 	=(Info0),
 	{ ItemType = pred_or_func_to_item_type(PredOrFunc) },
@@ -1091,10 +1095,10 @@ recompilation_usage__find_items_used_by_pred(PredOrFunc, Name - Arity,
 	(
 		{ ItemId = qualified(PredModule, Name) - Arity },
 		{
-			recompilation_usage__item_is_recorded_used(Info0,
+			recompilation__usage__item_is_recorded_used(Info0,
 				ItemType, ItemId)
 		;
-			recompilation_usage__item_is_local(Info0, ItemId)
+			recompilation__usage__item_is_local(Info0, ItemId)
 		}
 	->
 		% We've already recorded the items used by this predicate.
@@ -1122,24 +1126,24 @@ recompilation_usage__find_items_used_by_pred(PredOrFunc, Name - Arity,
 		;
 			error("class method with no class constraints")
 		},
-		recompilation_usage__maybe_record_item_to_process(
+		recompilation__usage__maybe_record_item_to_process(
 			typeclass, ClassName - ClassArity)
 	;
 		{ NameArity = qualified(PredModule, Name) - Arity },
-		recompilation_usage__record_expanded_items_used_by_item(
+		recompilation__usage__record_expanded_items_used_by_item(
 			ItemType, NameArity),
-		recompilation_usage__record_imported_item(ItemType, NameArity),
+		recompilation__usage__record_imported_item(ItemType, NameArity),
 		{ pred_info_arg_types(PredInfo, ArgTypes) },
-		recompilation_usage__find_items_used_by_types(ArgTypes), 
+		recompilation__usage__find_items_used_by_types(ArgTypes), 
 		{ pred_info_procedures(PredInfo, Procs) },
 		map__foldl(
 			(pred(_::in, ProcInfo::in, in, out) is det -->
 				{ proc_info_argmodes(ProcInfo, ArgModes) },
-				recompilation_usage__find_items_used_by_modes(
+				recompilation__usage__find_items_used_by_modes(
 					ArgModes)
 			), Procs),
 		{ pred_info_get_class_context(PredInfo, ClassContext) },
-		recompilation_usage__find_items_used_by_class_context(
+		recompilation__usage__find_items_used_by_class_context(
 			ClassContext),
 
 		%
@@ -1149,83 +1153,83 @@ recompilation_usage__find_items_used_by_pred(PredOrFunc, Name - Arity,
 		{ TypeSpecInfo = type_spec_info(_, _, _, PragmaMap) },
 		( { map__search(PragmaMap, PredId, TypeSpecPragmas) } ->
 			list__foldl(
-			    recompilation_usage__find_items_used_by_type_spec,
+			    recompilation__usage__find_items_used_by_type_spec,
 			    TypeSpecPragmas)
 		;
 			[]
 		)
 	).
 
-:- pred recompilation_usage__find_items_used_by_type_spec(pragma_type::in, 
+:- pred recompilation__usage__find_items_used_by_type_spec(pragma_type::in, 
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_type_spec(Pragma) -->
+recompilation__usage__find_items_used_by_type_spec(Pragma) -->
 	( { Pragma = type_spec(_, _, _, _, MaybeModes, Subst, _, _) } ->
 		( { MaybeModes = yes(Modes) } ->
-			recompilation_usage__find_items_used_by_modes(Modes)
+			recompilation__usage__find_items_used_by_modes(Modes)
 		;
 			[]
 		),
 		{ assoc_list__values(Subst, SubstTypes) },
-		recompilation_usage__find_items_used_by_types(SubstTypes)
+		recompilation__usage__find_items_used_by_types(SubstTypes)
 	;
 		{ error(
-"recompilation_usage__find_items_used_by_type_spec: unexpected pragma type") }
+"recompilation__usage__find_items_used_by_type_spec: unexpected pragma type") }
 	).
 
-:- pred recompilation_usage__find_items_used_by_functors(
+:- pred recompilation__usage__find_items_used_by_functors(
 	functor_set::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_functors(Set) -->
+recompilation__usage__find_items_used_by_functors(Set) -->
 	map__foldl(
 	    (pred((Name - Arity)::in, MatchingCtorMap::in, in, out) is det -->
 		map__foldl(
 		    (pred(Qualifier::in, _::in, in, out) is det -->
 			 { SymName = module_qualify_name(Qualifier, Name) },
-			 recompilation_usage__record_used_functor(
+			 recompilation__usage__record_used_functor(
 			 	SymName - Arity)
 		    ), MatchingCtorMap)
 	    ), Set).
 
-:- pred recompilation_usage__find_items_used_by_functor(
+:- pred recompilation__usage__find_items_used_by_functor(
 	string::in, arity::in, resolved_functor::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_functor(Name, _Arity,
+recompilation__usage__find_items_used_by_functor(Name, _Arity,
 		pred_or_func(PredId, PredModule, PredOrFunc, PredArity)) -->
-	recompilation_usage__find_items_used_by_pred(PredOrFunc,
+	recompilation__usage__find_items_used_by_pred(PredOrFunc,
 		Name - PredArity, PredId - PredModule).
-recompilation_usage__find_items_used_by_functor(_, _,
+recompilation__usage__find_items_used_by_functor(_, _,
 		constructor(TypeCtor)) -->
-	recompilation_usage__maybe_record_item_to_process(type_body, TypeCtor).
-recompilation_usage__find_items_used_by_functor(_, _, field(TypeCtor, _)) -->
-	recompilation_usage__maybe_record_item_to_process(type_body, TypeCtor).
+	recompilation__usage__maybe_record_item_to_process(type_body, TypeCtor).
+recompilation__usage__find_items_used_by_functor(_, _, field(TypeCtor, _)) -->
+	recompilation__usage__maybe_record_item_to_process(type_body, TypeCtor).
 
-:- pred recompilation_usage__find_items_used_by_simple_item_set(
+:- pred recompilation__usage__find_items_used_by_simple_item_set(
 	item_type::in, simple_item_set::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_simple_item_set(ItemType, Set) -->
+recompilation__usage__find_items_used_by_simple_item_set(ItemType, Set) -->
 	map__foldl(
 	    (pred((Name - Arity)::in, MatchingIdMap::in, in, out) is det -->
 		map__foldl(
 		    (pred(_::in, Module::in, in, out) is det -->
-			    recompilation_usage__maybe_record_item_to_process(
+			    recompilation__usage__maybe_record_item_to_process(
 				ItemType, qualified(Module, Name) - Arity)
 		    ), MatchingIdMap)
 	    ), Set).
 	
-:- pred recompilation_usage__find_items_used_by_types(list(type)::in,
+:- pred recompilation__usage__find_items_used_by_types(list(type)::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_types(Types) -->
-	list__foldl(recompilation_usage__find_items_used_by_type, Types).
+recompilation__usage__find_items_used_by_types(Types) -->
+	list__foldl(recompilation__usage__find_items_used_by_type, Types).
 
-:- pred recompilation_usage__find_items_used_by_type((type)::in,
+:- pred recompilation__usage__find_items_used_by_type((type)::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_type(Type) -->
+recompilation__usage__find_items_used_by_type(Type) -->
 	(
 		{ type_to_ctor_and_args(Type, TypeCtor, TypeArgs) }
 	->
@@ -1234,149 +1238,149 @@ recompilation_usage__find_items_used_by_type(Type) -->
 			{ TypeCtor = qualified(_, _) - _ },
 			\+ { type_ctor_is_higher_order(TypeCtor, _, _) }
 		->
-			recompilation_usage__maybe_record_item_to_process(
+			recompilation__usage__maybe_record_item_to_process(
 				(type), TypeCtor)
 		;
 			[]
 		),
-		recompilation_usage__find_items_used_by_types(TypeArgs)
+		recompilation__usage__find_items_used_by_types(TypeArgs)
 	;
 		[]
 	).
 
-:- pred recompilation_usage__find_items_used_by_modes(list(mode)::in,
+:- pred recompilation__usage__find_items_used_by_modes(list(mode)::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_modes(Modes) -->
-	list__foldl(recompilation_usage__find_items_used_by_mode, Modes).
+recompilation__usage__find_items_used_by_modes(Modes) -->
+	list__foldl(recompilation__usage__find_items_used_by_mode, Modes).
 
-:- pred recompilation_usage__find_items_used_by_mode((mode)::in,
+:- pred recompilation__usage__find_items_used_by_mode((mode)::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_mode((Inst1 -> Inst2)) -->
-	recompilation_usage__find_items_used_by_inst(Inst1),
-	recompilation_usage__find_items_used_by_inst(Inst2).
-recompilation_usage__find_items_used_by_mode(
+recompilation__usage__find_items_used_by_mode((Inst1 -> Inst2)) -->
+	recompilation__usage__find_items_used_by_inst(Inst1),
+	recompilation__usage__find_items_used_by_inst(Inst2).
+recompilation__usage__find_items_used_by_mode(
 		user_defined_mode(ModeName, ArgInsts)) -->
 	{ list__length(ArgInsts, ModeArity) },
-	recompilation_usage__maybe_record_item_to_process((mode),
+	recompilation__usage__maybe_record_item_to_process((mode),
 		ModeName - ModeArity),
-	recompilation_usage__find_items_used_by_insts(ArgInsts).
+	recompilation__usage__find_items_used_by_insts(ArgInsts).
 
-:- pred recompilation_usage__find_items_used_by_insts(list(inst)::in,
+:- pred recompilation__usage__find_items_used_by_insts(list(inst)::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_insts(Modes) -->
-	list__foldl(recompilation_usage__find_items_used_by_inst, Modes).
+recompilation__usage__find_items_used_by_insts(Modes) -->
+	list__foldl(recompilation__usage__find_items_used_by_inst, Modes).
 
-:- pred recompilation_usage__find_items_used_by_inst((inst)::in,
+:- pred recompilation__usage__find_items_used_by_inst((inst)::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_inst(any(_)) --> [].
-recompilation_usage__find_items_used_by_inst(free) --> [].
-recompilation_usage__find_items_used_by_inst(free(_)) --> [].
-recompilation_usage__find_items_used_by_inst(bound(_, BoundInsts)) -->
+recompilation__usage__find_items_used_by_inst(any(_)) --> [].
+recompilation__usage__find_items_used_by_inst(free) --> [].
+recompilation__usage__find_items_used_by_inst(free(_)) --> [].
+recompilation__usage__find_items_used_by_inst(bound(_, BoundInsts)) -->
 	list__foldl(
 	    (pred(BoundInst::in, in, out) is det -->
 		{ BoundInst = functor(ConsId, ArgInsts) },
 		( { ConsId = cons(Name, Arity) } ->
-			recompilation_usage__record_used_functor(
+			recompilation__usage__record_used_functor(
 				Name - Arity)
 		;
 		[]
 		),
-		recompilation_usage__find_items_used_by_insts(ArgInsts)
+		recompilation__usage__find_items_used_by_insts(ArgInsts)
 	    ), BoundInsts).
-recompilation_usage__find_items_used_by_inst(ground(_, GroundInstInfo)) -->
+recompilation__usage__find_items_used_by_inst(ground(_, GroundInstInfo)) -->
 	(
 		{ GroundInstInfo = higher_order(pred_inst_info(_, Modes, _)) },
-		recompilation_usage__find_items_used_by_modes(Modes)
+		recompilation__usage__find_items_used_by_modes(Modes)
 	;
 		{ GroundInstInfo = none }
 	).
-recompilation_usage__find_items_used_by_inst(not_reached) --> [].
-recompilation_usage__find_items_used_by_inst(inst_var(_)) --> [].
-recompilation_usage__find_items_used_by_inst(constrained_inst_vars(_, Inst)) -->
-	recompilation_usage__find_items_used_by_inst(Inst).
-recompilation_usage__find_items_used_by_inst(defined_inst(InstName)) -->
-	recompilation_usage__find_items_used_by_inst_name(InstName).
-recompilation_usage__find_items_used_by_inst(
+recompilation__usage__find_items_used_by_inst(not_reached) --> [].
+recompilation__usage__find_items_used_by_inst(inst_var(_)) --> [].
+recompilation__usage__find_items_used_by_inst(constrained_inst_vars(_, Inst)) -->
+	recompilation__usage__find_items_used_by_inst(Inst).
+recompilation__usage__find_items_used_by_inst(defined_inst(InstName)) -->
+	recompilation__usage__find_items_used_by_inst_name(InstName).
+recompilation__usage__find_items_used_by_inst(
 		abstract_inst(Name, ArgInsts)) -->
 	{ list__length(ArgInsts, Arity) },
-	recompilation_usage__maybe_record_item_to_process((inst),
+	recompilation__usage__maybe_record_item_to_process((inst),
 		Name - Arity),
-	recompilation_usage__find_items_used_by_insts(ArgInsts).
+	recompilation__usage__find_items_used_by_insts(ArgInsts).
 
-:- pred recompilation_usage__find_items_used_by_inst_name(inst_name::in, 
+:- pred recompilation__usage__find_items_used_by_inst_name(inst_name::in, 
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_inst_name(
+recompilation__usage__find_items_used_by_inst_name(
 		user_inst(Name, ArgInsts)) -->
 	{ list__length(ArgInsts, Arity) },
-	recompilation_usage__maybe_record_item_to_process((inst),
+	recompilation__usage__maybe_record_item_to_process((inst),
 		Name - Arity),
-	recompilation_usage__find_items_used_by_insts(ArgInsts).
-recompilation_usage__find_items_used_by_inst_name(
+	recompilation__usage__find_items_used_by_insts(ArgInsts).
+recompilation__usage__find_items_used_by_inst_name(
 		merge_inst(Inst1, Inst2)) -->
-	recompilation_usage__find_items_used_by_inst(Inst1),
-	recompilation_usage__find_items_used_by_inst(Inst2).
-recompilation_usage__find_items_used_by_inst_name(
+	recompilation__usage__find_items_used_by_inst(Inst1),
+	recompilation__usage__find_items_used_by_inst(Inst2).
+recompilation__usage__find_items_used_by_inst_name(
 		unify_inst(_, Inst1, Inst2, _)) -->
-	recompilation_usage__find_items_used_by_inst(Inst1),
-	recompilation_usage__find_items_used_by_inst(Inst2).
-recompilation_usage__find_items_used_by_inst_name(
+	recompilation__usage__find_items_used_by_inst(Inst1),
+	recompilation__usage__find_items_used_by_inst(Inst2).
+recompilation__usage__find_items_used_by_inst_name(
 		ground_inst(InstName, _, _, _)) -->
-	recompilation_usage__find_items_used_by_inst_name(InstName).
-recompilation_usage__find_items_used_by_inst_name(
+	recompilation__usage__find_items_used_by_inst_name(InstName).
+recompilation__usage__find_items_used_by_inst_name(
 		any_inst(InstName, _, _, _)) -->
-	recompilation_usage__find_items_used_by_inst_name(InstName).
-recompilation_usage__find_items_used_by_inst_name(shared_inst(InstName)) -->
-	recompilation_usage__find_items_used_by_inst_name(InstName).
-recompilation_usage__find_items_used_by_inst_name(
+	recompilation__usage__find_items_used_by_inst_name(InstName).
+recompilation__usage__find_items_used_by_inst_name(shared_inst(InstName)) -->
+	recompilation__usage__find_items_used_by_inst_name(InstName).
+recompilation__usage__find_items_used_by_inst_name(
 		mostly_uniq_inst(InstName)) -->
-	recompilation_usage__find_items_used_by_inst_name(InstName).
-recompilation_usage__find_items_used_by_inst_name(typed_ground(_, Type)) -->
-	recompilation_usage__find_items_used_by_type(Type).
-recompilation_usage__find_items_used_by_inst_name(
+	recompilation__usage__find_items_used_by_inst_name(InstName).
+recompilation__usage__find_items_used_by_inst_name(typed_ground(_, Type)) -->
+	recompilation__usage__find_items_used_by_type(Type).
+recompilation__usage__find_items_used_by_inst_name(
 		typed_inst(Type, InstName)) -->
-	recompilation_usage__find_items_used_by_type(Type),
-	recompilation_usage__find_items_used_by_inst_name(InstName).
+	recompilation__usage__find_items_used_by_type(Type),
+	recompilation__usage__find_items_used_by_inst_name(InstName).
 
-:- pred recompilation_usage__find_items_used_by_class_context(
+:- pred recompilation__usage__find_items_used_by_class_context(
 	class_constraints::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 		
-recompilation_usage__find_items_used_by_class_context(
+recompilation__usage__find_items_used_by_class_context(
 		constraints(Constraints1, Constraints2)) -->
-	recompilation_usage__find_items_used_by_class_constraints(
+	recompilation__usage__find_items_used_by_class_constraints(
 		Constraints1),
-	recompilation_usage__find_items_used_by_class_constraints(
+	recompilation__usage__find_items_used_by_class_constraints(
 		Constraints2).
 
-:- pred recompilation_usage__find_items_used_by_class_constraints(
+:- pred recompilation__usage__find_items_used_by_class_constraints(
 	list(class_constraint)::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_class_constraints(Constraints) -->
-	list__foldl(recompilation_usage__find_items_used_by_class_constraint,
+recompilation__usage__find_items_used_by_class_constraints(Constraints) -->
+	list__foldl(recompilation__usage__find_items_used_by_class_constraint,
 		Constraints).
 
-:- pred recompilation_usage__find_items_used_by_class_constraint(
+:- pred recompilation__usage__find_items_used_by_class_constraint(
 	class_constraint::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_class_constraint(
+recompilation__usage__find_items_used_by_class_constraint(
 		constraint(ClassName, ArgTypes)) -->
 	{ ClassArity = list__length(ArgTypes) },
-	recompilation_usage__maybe_record_item_to_process((typeclass),
+	recompilation__usage__maybe_record_item_to_process((typeclass),
 		ClassName - ClassArity),
-	recompilation_usage__find_items_used_by_types(ArgTypes).
+	recompilation__usage__find_items_used_by_types(ArgTypes).
 
-:- pred recompilation_usage__maybe_record_item_to_process(item_type::in,
+:- pred recompilation__usage__maybe_record_item_to_process(item_type::in,
 	pair(sym_name, arity)::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__maybe_record_item_to_process(ItemType, NameArity) -->
+recompilation__usage__maybe_record_item_to_process(ItemType, NameArity) -->
 	( { ItemType = (typeclass) } ->
 		Classes0 =^ used_typeclasses,
 		{ set__insert(Classes0, NameArity, Classes) },
@@ -1402,8 +1406,8 @@ recompilation_usage__maybe_record_item_to_process(ItemType, NameArity) -->
 		{ queue__put(Queue0, item_id(ItemType, NameArity), Queue) },
 		^ item_queue := Queue,
 
-		recompilation_usage__record_imported_item(ItemType, NameArity),
-		recompilation_usage__record_expanded_items_used_by_item(
+		recompilation__usage__record_imported_item(ItemType, NameArity),
+		recompilation__usage__record_expanded_items_used_by_item(
 			ItemType, NameArity)
 	).
 
@@ -1425,17 +1429,17 @@ item_is_local(Info, NameArity) :-
 	NameArity = qualified(ModuleName, _) - _,
 	module_info_name(Info ^ module_info, ModuleName).
 
-:- pred recompilation_usage__record_imported_item(item_type::in,
+:- pred recompilation__usage__record_imported_item(item_type::in,
 	pair(sym_name, arity)::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__record_imported_item(ItemType, SymName - Arity) -->
+recompilation__usage__record_imported_item(ItemType, SymName - Arity) -->
 	{ SymName = qualified(Module0, Name0) ->
 		Module = Module0,
 		Name = Name0
 	;
 		error(
-"recompilation_usage__maybe_record_item_to_process: unqualified item")
+"recompilation__usage__maybe_record_item_to_process: unqualified item")
 	},
 
 	ImportedItems0 =^ imported_items,
@@ -1453,11 +1457,11 @@ recompilation_usage__record_imported_item(ItemType, SymName - Arity) -->
 	% Uses of equivalence types have been expanded away by equiv_type.m.
 	% equiv_type.m records which equivalence types were used by each
 	% imported item.
-:- pred recompilation_usage__record_expanded_items_used_by_item(
+:- pred recompilation__usage__record_expanded_items_used_by_item(
 		item_type::in, item_name::in, recompilation_usage_info::in,
 		recompilation_usage_info::out) is det.
 
-recompilation_usage__record_expanded_items_used_by_item(ItemType,
+recompilation__usage__record_expanded_items_used_by_item(ItemType,
 			NameArity) -->
 	Dependencies =^ dependencies,
 	(
@@ -1467,7 +1471,7 @@ recompilation_usage__record_expanded_items_used_by_item(ItemType,
 		list__foldl(
 		    (pred(Item::in, in, out) is det -->
 			{ Item = item_id(DepItemType, DepItemId) },
-			recompilation_usage__maybe_record_item_to_process(
+			recompilation__usage__maybe_record_item_to_process(
 				DepItemType, DepItemId)
 		    ), set__to_sorted_list(EquivTypes))
 	;

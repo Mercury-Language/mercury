@@ -47,11 +47,13 @@
 % to specify which constructor to use.
 %
 %-----------------------------------------------------------------------------%
-:- module rl_exprn.
+:- module aditi_backend__rl_exprn.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, rl, rl_code, rl_file, prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, aditi_backend__rl.
+:- import_module aditi_backend__rl_code, aditi_backend__rl_file.
+:- import_module parse_tree__prog_data.
 :- import_module list.
 
 	% rl_exprn__generate_compare_exprn(ModuleInfo, SortSpec,
@@ -124,10 +126,13 @@
 
 :- implementation.
 
-:- import_module code_util, hlds_pred, hlds_data, inst_match.
-:- import_module instmap, mode_util, tree, type_util, prog_out.
-:- import_module rl_out, inlining, hlds_goal, prog_util, error_util.
-:- import_module builtin_ops.
+:- import_module ll_backend__code_util, hlds__hlds_pred, hlds__hlds_data.
+:- import_module check_hlds__inst_match.
+:- import_module hlds__instmap, check_hlds__mode_util, libs__tree.
+:- import_module check_hlds__type_util, parse_tree__prog_out.
+:- import_module aditi_backend__rl_out, transform_hlds__inlining.
+:- import_module hlds__hlds_goal, parse_tree__prog_util, hlds__error_util.
+:- import_module backend_libs__builtin_ops.
 
 :- import_module assoc_list, bool, char, int, map.
 :- import_module require, set, std_util, string, term, varset.

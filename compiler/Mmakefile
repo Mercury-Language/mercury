@@ -98,11 +98,11 @@ endif
 # module can't really benefit from those algorithms anyway. With -O1, the 26
 # minutes drops to less than 26 seconds.
 
-CFLAGS-rl_code=-O1
+CFLAGS-aditi_backend.rl_code=-O1
 
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.
-MGNUCFLAGS-process_util = --no-ansi
+MGNUCFLAGS-libs.process_util = --no-ansi
 
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.
@@ -196,13 +196,16 @@ $(PREPROCESSED_M_FILES): %.m: $(dates_subdir)%.pp_date
 #-----------------------------------------------------------------------------#
 
 # targets
-#
+
+# specify the name of the top-level module to build
+MC_PROG = top_level
+
 # mercury_compile
 
 .PHONY: depend
-depend:		mercury_compile.depend
+depend:		$(MC_PROG).depend
 
-mercury_compile.depend: regenerate_preprocessed_files
+$(MC_PROG).depend: regenerate_preprocessed_files
 
 .PHONY: all
 all:		mercury
@@ -212,6 +215,24 @@ mercury:	mercury_compile
 
 .PHONY: libmmc
 libmmc:		libmercury_compile.a mercury_compile_init.$O
+
+# The executable was previous known as `mercury_compile',
+# but now we generate it as `mc'.  For compatibility with
+# various existing code, we make links to the old names.
+
+LN = ln
+
+mercury_compile: $(MC_PROG)
+	rm -f mercury_compile$(EXT_FOR_EXE)
+	$(LN) $(MC_PROG) mercury_compile$(EXT_FOR_EXE)
+
+libmercury_compile.a: lib$(MC_PROG).a
+	rm -f libmercury_compile.a
+	$(LN) lib$(MC_PROG).a libmercury_compile.a
+
+mercury_compile_init.$O: $(MC_PROG)_init.$O
+	rm -f mercury_compile_init.$O
+	$(LN) $(MC_PROG)_init.$O mercury_compile_init.$O
 
 #-----------------------------------------------------------------------------#
 
@@ -239,47 +260,47 @@ cs: 		$(cs_subdir)mlds_to_gcc.c $(cs_subdir)gcc.c
 # Add some additional dependencies, so that Mmake knows to remake the
 # compiler if one of the libraries changes.
 
-mercury_compile: ../main.$O
-mercury_compile: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mercury_compile: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mercury_compile: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
-mercury_compile: $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A
+$(MC_PROG): ../main.$O
+$(MC_PROG): $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+$(MC_PROG): $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+$(MC_PROG): $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+$(MC_PROG): $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A
 # Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
 # if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
 # so just leave it out.
-mercury_compile: $(GCC_MAIN_LIBS)
+$(MC_PROG): $(GCC_MAIN_LIBS)
 
-mercury_compile_init.c: $(UTIL_DIR)/mkinit
+$(MC_PROG)_init.c: $(UTIL_DIR)/mkinit
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: check
-check		: mercury_compile.check
+check		: $(MC_PROG).check
 
 .PHONY: ints 
-ints		: mercury_compile.ints
+ints		: $(MC_PROG).ints
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
-	$(MTAGS) $(MTAGSFLAGS) $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
+tags		: $(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m
+	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m
 
-mercury_compile.stats : source_stats.awk $(mercury_compile.ms)
+$(MC_PROG).stats : source_stats.awk $($(MC_PROG).ms)
 	awk -f `vpath_find source_stats.awk` \
-		`vpath_find $(mercury_compile.ms)` > $@
+		`vpath_find $($(MC_PROG).ms)` > $@
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
 dates		:
-	touch $(mercury_compile.dates)
+	touch $($(MC_PROG).dates)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs ss
-os: $(mercury_compile.os) $(os_subdir)mercury_compile_init.$O
-cs: $(mercury_compile.cs) $(cs_subdir)mercury_compile_init.c
-ss: $(mercury_compile.ss)
+os: $($(MC_PROG).os) $(os_subdir)$(MC_PROG)_init.$O
+cs: $($(MC_PROG).cs) $(cs_subdir)$(MC_PROG)_init.c
+ss: $($(MC_PROG).ss)
 
 #-----------------------------------------------------------------------------#
 
@@ -287,7 +308,7 @@ clean_local:
 	rm -f ../main.$O $(PREPROCESSED_M_FILES) $(PP_DATE_FILES)
 
 realclean_local:
-	rm -f tags mercury_compile.stats
+	rm -f tags $(MC_PROG).stats
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#

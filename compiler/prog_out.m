@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module prog_out.
+:- module parse_tree__prog_out.
 
 % Main author: fjh.
 
@@ -18,7 +18,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module prog_data.
+:- import_module parse_tree__prog_data.
 :- import_module list, io.
 
 :- pred prog_out__write_messages(message_list, io__state, io__state).

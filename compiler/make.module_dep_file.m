@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module modules.
+:- import_module parse_tree__modules.
 :- import_module std_util, io.
 
 	% Get the dependencies for a given module.

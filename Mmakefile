@@ -68,9 +68,9 @@ browser/$(deps_subdir)mdb.dep:
 	+cd browser && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
-dep_compiler: compiler/$(deps_subdir)mercury_compile.dep
+dep_compiler: compiler/$(deps_subdir)top_level.dep
 
-compiler/$(deps_subdir)mercury_compile.dep: library/$(deps_subdir)library.dep
+compiler/$(deps_subdir)top_level.dep: library/$(deps_subdir)library.dep
 	+cd compiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_profiler
@@ -80,8 +80,12 @@ profiler/$(deps_subdir)mercury_profile.dep: library/$(deps_subdir)library.dep
 	+cd profiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_deep_profiler
+ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
 dep_deep_profiler: deep_profiler/$(deps_subdir)mdprof_cgi.dep \
 		deep_profiler/$(deps_subdir)mdprof_server.dep
+else
+dep_deep_profiler:
+endif
 
 deep_profiler/$(deps_subdir)mdprof_cgi.dep: library/$(deps_subdir)library.dep
 	+cd deep_profiler && $(SUBDIR_MMAKE) mdprof_cgi.depend

@@ -14,11 +14,11 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module cse_detection.
+:- module check_hlds__cse_detection.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, io.
+:- import_module hlds__hlds_module, hlds__hlds_pred, io.
 
 :- pred detect_cse(module_info::in, module_info::out,
 	io__state::di, io__state::uo) is det.
@@ -32,10 +32,13 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, options, globals, goal_util, hlds_out.
-:- import_module type_util, modes, mode_util, quantification, instmap.
-:- import_module prog_data, switch_detection, det_util, inst_match.
-:- import_module switch_detection, term, varset.
+:- import_module hlds__hlds_goal, hlds__hlds_data, libs__options.
+:- import_module libs__globals, hlds__goal_util, hlds__hlds_out.
+:- import_module check_hlds__type_util, check_hlds__modes.
+:- import_module check_hlds__mode_util, hlds__quantification, hlds__instmap.
+:- import_module parse_tree__prog_data, check_hlds__switch_detection.
+:- import_module check_hlds__det_util, check_hlds__inst_match.
+:- import_module check_hlds__switch_detection, term, varset.
 
 :- import_module int, bool, list, assoc_list, map, multi_map.
 :- import_module set, std_util, require.

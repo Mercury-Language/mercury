@@ -29,11 +29,11 @@
 % <http://www.cs.mu.oz.au/research/mercury/information/papers/stayl_hons.ps.gz>
 %
 %-----------------------------------------------------------------------------%
-:- module deforest.
+:- module transform_hlds__deforest.
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds__hlds_module.
 :- import_module io.
 
 :- pred deforestation(module_info::in, module_info::out,
@@ -43,13 +43,22 @@
 
 :- implementation.
 
-:- import_module pd_cost, pd_debug, pd_info, pd_term, pd_util.
-:- import_module hlds_pred, hlds_goal, inlining, passes_aux.
-:- import_module (inst), instmap, inst_match, simplify.
-:- import_module dependency_graph, hlds_data, det_analysis, globals.
-:- import_module mode_util, goal_util, prog_data, prog_util, purity.
-:- import_module modes, mode_info, unique_modes, options, hlds_out.
-:- import_module prog_out, quantification, det_report.
+:- import_module transform_hlds__pd_cost, transform_hlds__pd_debug.
+:- import_module transform_hlds__pd_info, transform_hlds__pd_term.
+:- import_module transform_hlds__pd_util.
+:- import_module hlds__hlds_pred, hlds__hlds_goal, transform_hlds__inlining.
+:- import_module hlds__passes_aux.
+:- import_module (parse_tree__inst), hlds__instmap, check_hlds__inst_match.
+:- import_module check_hlds__simplify.
+:- import_module transform_hlds__dependency_graph, hlds__hlds_data.
+:- import_module check_hlds__det_analysis, libs__globals.
+:- import_module check_hlds__mode_util, hlds__goal_util.
+:- import_module parse_tree__prog_data, parse_tree__prog_util.
+:- import_module check_hlds__purity.
+:- import_module check_hlds__modes, check_hlds__mode_info.
+:- import_module check_hlds__unique_modes, libs__options, hlds__hlds_out.
+:- import_module parse_tree__prog_out, hlds__quantification.
+:- import_module check_hlds__det_report.
 
 :- import_module assoc_list, bool, getopt, int, list, map, require.
 :- import_module set, std_util, string, term, varset.

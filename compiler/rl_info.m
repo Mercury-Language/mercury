@@ -8,11 +8,12 @@
 %
 % State type + access predicates for the Aditi-RL code generator.
 %-----------------------------------------------------------------------------%
-:- module rl_info.
+:- module aditi_backend__rl_info.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, prog_data, rl, tree.
+:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__prog_data.
+:- import_module aditi_backend__rl, libs__tree.
 :- import_module bool, io, list, map, set, std_util, string.
 
 :- type rl_info.
@@ -235,8 +236,9 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module code_util, globals, llds_out, mode_util, options, type_util.
-:- import_module hlds_goal, prog_out.
+:- import_module ll_backend__code_util, libs__globals, ll_backend__llds_out.
+:- import_module check_hlds__mode_util, libs__options, check_hlds__type_util.
+:- import_module hlds__hlds_goal, parse_tree__prog_out.
 :- import_module int, require.
 
 :- type rl_info

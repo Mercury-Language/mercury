@@ -24,11 +24,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module follow_vars.
+:- module ll_backend__follow_vars.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module parse_tree__prog_data.
 :- import_module map.
 
 :- pred find_final_follow_vars(proc_info::in, follow_vars_map::out, int::out)
@@ -43,11 +44,12 @@
 
 :- implementation.
 
-:- import_module prog_data.
-:- import_module hlds_data, quantification, mode_util.
-:- import_module code_model.
-:- import_module llds, call_gen, code_util, arg_info.
-:- import_module globals.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_data, hlds__quantification, check_hlds__mode_util.
+:- import_module backend_libs__code_model.
+:- import_module ll_backend__llds, ll_backend__call_gen.
+:- import_module ll_backend__code_util, ll_backend__arg_info.
+:- import_module libs__globals.
 
 :- import_module bool, int, list, assoc_list, map, set, std_util, require.
 

@@ -13,12 +13,14 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module llds_out.
+:- module ll_backend__llds_out.
 
 :- interface.
 
-:- import_module llds, builtin_ops, prog_data, hlds_data, rl_file.
-:- import_module globals.
+:- import_module ll_backend__llds, backend_libs__builtin_ops.
+:- import_module parse_tree__prog_data, hlds__hlds_data.
+:- import_module aditi_backend__rl_file.
+:- import_module libs__globals.
 :- import_module bool, std_util, list, map, io.
 
 	% Given a 'c_file' structure, output the LLDS code inside it
@@ -260,10 +262,14 @@
 
 :- implementation.
 
-:- import_module rtti, rtti_out, layout, layout_out, options, trace_params.
-:- import_module exprn_aux, prog_util, prog_out, hlds_pred.
-:- import_module export, mercury_to_mercury, modules, passes_aux.
-:- import_module c_util, foreign, compile_target_code.
+:- import_module backend_libs__rtti, ll_backend__rtti_out, ll_backend__layout.
+:- import_module ll_backend__layout_out, libs__options, libs__trace_params.
+:- import_module ll_backend__exprn_aux, parse_tree__prog_util.
+:- import_module parse_tree__prog_out, hlds__hlds_pred.
+:- import_module backend_libs__export, parse_tree__mercury_to_mercury.
+:- import_module parse_tree__modules, hlds__passes_aux.
+:- import_module backend_libs__c_util, backend_libs__foreign.
+:- import_module backend_libs__compile_target_code.
 
 :- import_module int, char, string, std_util.
 :- import_module set, bintree_set, assoc_list, require.

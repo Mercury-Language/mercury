@@ -14,11 +14,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module export.
+:- module backend_libs__export.
 
 :- interface.
 
-:- import_module prog_data, hlds_module, foreign.
+:- import_module parse_tree__prog_data, hlds__hlds_module.
+:- import_module backend_libs__foreign.
 :- import_module io.
 
 	% From the module_info, get a list of foreign_export_decls,
@@ -65,12 +66,13 @@
 
 :- implementation.
 
-:- import_module foreign.
-:- import_module modules.
-:- import_module hlds_pred, type_util.
-:- import_module code_model.
-:- import_module code_gen, code_util, llds_out.
-:- import_module globals, options.
+:- import_module backend_libs__foreign.
+:- import_module parse_tree__modules.
+:- import_module hlds__hlds_pred, check_hlds__type_util.
+:- import_module backend_libs__code_model.
+:- import_module ll_backend__code_gen, ll_backend__code_util.
+:- import_module ll_backend__llds_out.
+:- import_module libs__globals, libs__options.
 
 :- import_module term, varset.
 :- import_module library, map, int, string, std_util, assoc_list, require.

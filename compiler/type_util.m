@@ -14,11 +14,12 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module type_util.
+:- module check_hlds__type_util.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_data, prog_data, globals.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
+:- import_module parse_tree__prog_data, libs__globals.
 :- import_module term.
 :- import_module std_util, list, map.
 
@@ -485,7 +486,8 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, prog_util, options, globals.
+:- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_util, libs__options, libs__globals.
 :- import_module bool, char, int, string.
 :- import_module assoc_list, require, varset.
 

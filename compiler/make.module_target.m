@@ -29,7 +29,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module passes_aux.
+:- import_module hlds__passes_aux.
 
 :- pred make_module_target(dependency_file::in, bool::in, bool::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.

@@ -14,9 +14,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module pseudo_type_info.
+:- module backend_libs__pseudo_type_info.
 :- interface.
-:- import_module prog_data, rtti.
+:- import_module parse_tree__prog_data, backend_libs__rtti.
 :- import_module list.
 
 	% pseudo_type_info__construct_pseudo_type_info(Type,
@@ -74,7 +74,7 @@
 
 :- implementation.
 
-:- import_module prog_util, type_util.
+:- import_module parse_tree__prog_util, check_hlds__type_util.
 :- import_module int, list, term, std_util, require.
 
 %---------------------------------------------------------------------------%

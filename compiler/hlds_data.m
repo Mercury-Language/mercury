@@ -9,11 +9,12 @@
 
 % Main authors: fjh, conway.
 
-:- module hlds_data.
+:- module hlds__hlds_data.
 
 :- interface.
 
-:- import_module hlds_pred, prog_data, (inst), rtti.
+:- import_module hlds__hlds_pred, parse_tree__prog_data, (parse_tree__inst).
+:- import_module backend_libs__rtti.
 :- import_module bool, list, map, std_util, term.
 
 %-----------------------------------------------------------------------------%
@@ -165,7 +166,7 @@
 
 :- implementation.
 
-:- import_module prog_util, varset.
+:- import_module parse_tree__prog_util, varset.
 :- import_module require.
 
 cons_id_and_args_to_term(int_const(Int), [], Term) :-

@@ -204,8 +204,8 @@ THREADLIBS	= \
 		  esac							\
 		`
 
-HDR_CHECK_CS = $(HDRS:.h=.check.c)
-HDR_CHECK_OBJS = $(HDRS:.h=.check.$O)
+HDR_CHECK_CS = $(HDRS:.h=.check_hdr.c)
+HDR_CHECK_OBJS = $(HDRS:.h=.check_hdr.$O)
 HDR_CHECK_MACROS = $(HDRS:.h=.check.macros)
 OBJ_CHECKS = $(OBJS:%=%.obj_check)
 

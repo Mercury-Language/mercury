@@ -14,7 +14,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module bytecode_data.
+:- module backend_libs__bytecode_data.
 
 :- interface.
 

@@ -28,14 +28,15 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds_out.
+:- module hlds__hlds_out.
 
 :- interface.
 
 % Parse tree modules
-:- import_module prog_data, (inst).
+:- import_module parse_tree__prog_data, (parse_tree__inst).
 % HLDS modules
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module hlds__hlds_data, hlds__instmap.
 
 :- import_module io, bool, list, term.
 
@@ -256,20 +257,24 @@
 :- implementation.
 
 % Parse tree modules.
-:- import_module prog_out, prog_util, (inst).
+:- import_module parse_tree__prog_out, parse_tree__prog_util.
+:- import_module (parse_tree__inst).
 
 % HLDS modules.
-:- import_module mercury_to_mercury, purity, special_pred, instmap.
-:- import_module termination, term_errors, check_typeclass, rtti.
+:- import_module parse_tree__mercury_to_mercury, check_hlds__purity.
+:- import_module hlds__special_pred, hlds__instmap.
+:- import_module transform_hlds__termination, transform_hlds__term_errors.
+:- import_module check_hlds__check_typeclass, backend_libs__rtti.
 
 % RL back-end modules (XXX should avoid using those here).
-:- import_module rl.
+:- import_module aditi_backend__rl.
 
 % LLDS back-end modules (XXX should avoid using those here).
-:- import_module code_util, llds, llds_out, trace.
+:- import_module ll_backend__code_util, ll_backend__llds.
+:- import_module ll_backend__llds_out, ll_backend__trace.
 
 % Misc
-:- import_module globals, options, foreign.
+:- import_module libs__globals, libs__options, backend_libs__foreign.
 
 % Standard library modules
 :- import_module int, string, set, assoc_list, map, multi_map.

@@ -14,11 +14,11 @@
 % Make sure the inputs to uniondiff and insert instructions have at most
 % one reference by inserting copy or make_unique instructions.
 %-----------------------------------------------------------------------------%
-:- module rl_liveness.
+:- module aditi_backend__rl_liveness.
 
 :- interface.
 
-:- import_module rl_block.
+:- import_module aditi_backend__rl_block.
 :- import_module io.
 
 :- pred rl_liveness(rl_opt_info, rl_opt_info, io__state, io__state).
@@ -27,7 +27,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module rl, rl_analyse.
+:- import_module aditi_backend__rl, aditi_backend__rl_analyse.
 :- import_module bool, int, list, map, relation, require, set, std_util.
 
 rl_liveness(Opt0, Opt, IO0, IO) :-

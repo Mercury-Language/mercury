@@ -53,9 +53,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_tailcall.
+:- module ml_backend__ml_tailcall.
 :- interface.
-:- import_module mlds.
+:- import_module ml_backend__mlds.
 :- import_module io.
 
 	% Traverse the MLDS, marking all optimizable tail calls
@@ -74,7 +74,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_data, hlds_pred, hlds_out, error_util, ml_util.
+:- import_module parse_tree__prog_data, hlds__hlds_pred, hlds__hlds_out.
+:- import_module hlds__error_util, ml_backend__ml_util.
 :- import_module string, int, list, std_util.
 
 ml_mark_tailcalls(MLDS0, MLDS) -->

@@ -14,11 +14,12 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module ite_gen.
+:- module ll_backend__ite_gen.
 
 :- interface.
 
-:- import_module hlds_goal, code_model, llds, code_info.
+:- import_module hlds__hlds_goal, backend_libs__code_model, ll_backend__llds.
+:- import_module ll_backend__code_info.
 
 :- pred ite_gen__generate_ite(code_model::in, hlds_goal::in, hlds_goal::in,
 	hlds_goal::in, store_map::in, code_tree::out,
@@ -31,8 +32,10 @@
 
 :- implementation.
 
-:- import_module prog_data, tree, builtin_ops.
-:- import_module code_gen, code_util, trace, options, globals, instmap.
+:- import_module parse_tree__prog_data, libs__tree, backend_libs__builtin_ops.
+:- import_module ll_backend__code_gen, ll_backend__code_util.
+:- import_module ll_backend__trace, libs__options, libs__globals.
+:- import_module hlds__instmap.
 
 :- import_module bool, set, term, list, map, std_util, require.
 

@@ -8,11 +8,12 @@
 %
 % Generate intermediate code for relational operations.
 %-----------------------------------------------------------------------------%
-:- module rl_relops.
+:- module aditi_backend__rl_relops.
 
 :- interface.
 
-:- import_module hlds_goal, instmap, prog_data, rl, rl_info.
+:- import_module hlds__hlds_goal, hlds__instmap, parse_tree__prog_data.
+:- import_module aditi_backend__rl, aditi_backend__rl_info.
 :- import_module bool, list, std_util.
 
 /*
@@ -95,8 +96,10 @@
 
 :- implementation.
 
-:- import_module code_aux, hlds_data, hlds_module, hlds_pred, mode_util.
-:- import_module tree, rl_key, globals, options.
+:- import_module ll_backend__code_aux, hlds__hlds_data, hlds__hlds_module.
+:- import_module hlds__hlds_pred, check_hlds__mode_util.
+:- import_module libs__tree, aditi_backend__rl_key, libs__globals.
+:- import_module libs__options.
 :- import_module int, map, require, set.
 
 %-----------------------------------------------------------------------------%

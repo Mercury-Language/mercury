@@ -35,11 +35,12 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module modules.
+:- module parse_tree__modules.
 
 :- interface.
 
-:- import_module foreign, prog_data, prog_io, globals, timestamp.
+:- import_module backend_libs__foreign, parse_tree__prog_data.
+:- import_module parse_tree__prog_io, libs__globals, libs__timestamp.
 :- import_module std_util, bool, list, map, set, io.
 
 %-----------------------------------------------------------------------------%
@@ -666,9 +667,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module llds_out, passes_aux, prog_out, prog_util, mercury_to_mercury.
-:- import_module prog_io_util, options, module_qual, foreign.
-:- import_module make, recompilation_version.
+:- import_module ll_backend__llds_out, hlds__passes_aux, parse_tree__prog_out.
+:- import_module parse_tree__prog_util, parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_io_util, libs__options.
+:- import_module parse_tree__module_qual, backend_libs__foreign.
+:- import_module recompilation__version.
+:- import_module make. % XXX undesirable dependency
 
 :- import_module string, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.
@@ -1339,7 +1343,7 @@ write_interface_file(_SourceFileName, ModuleName, Suffix,
 				% modification time of the source file.
 				{ MaybeOldItems = no }
 			),
-			{ recompilation_version__compute_version_numbers(
+			{ recompilation__version__compute_version_numbers(
 				Timestamp, InterfaceItems0, MaybeOldItems,
 				VersionNumbers) },
 			{ VersionNumberItem = module_defn(VarSet,

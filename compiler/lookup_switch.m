@@ -37,14 +37,14 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module lookup_switch.
+:- module ll_backend__lookup_switch.
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_goal, hlds_data, switch_util.
-:- import_module code_model.
-:- import_module llds, code_info.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_data, backend_libs__switch_util.
+:- import_module backend_libs__code_model.
+:- import_module ll_backend__llds, ll_backend__code_info.
 
 :- import_module std_util, map, set, list.
 
@@ -69,11 +69,12 @@
 
 :- implementation.
 
-:- import_module prog_data.
-:- import_module type_util, mode_util, instmap.
-:- import_module builtin_ops.
-:- import_module dense_switch, code_gen, exprn_aux.
-:- import_module globals, options, tree.
+:- import_module parse_tree__prog_data.
+:- import_module check_hlds__type_util, check_hlds__mode_util, hlds__instmap.
+:- import_module backend_libs__builtin_ops.
+:- import_module ll_backend__dense_switch, ll_backend__code_gen.
+:- import_module ll_backend__exprn_aux.
+:- import_module libs__globals, libs__options, libs__tree.
 
 :- import_module int, require, bool, assoc_list.
 

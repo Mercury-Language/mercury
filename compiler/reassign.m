@@ -94,18 +94,18 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module reassign.
+:- module ll_backend__reassign.
 
 :- interface.
 
-:- import_module llds.
+:- import_module ll_backend__llds.
 :- import_module list.
 
 :- pred remove_reassign(list(instruction)::in, list(instruction)::out) is det.
 
 :- implementation.
 
-:- import_module code_util.
+:- import_module ll_backend__code_util.
 :- import_module std_util, set, map, require.
 
 %-----------------------------------------------------------------------------%

@@ -10,11 +10,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module optimize.
+:- module ll_backend__optimize.
 
 :- interface.
 
-:- import_module llds.
+:- import_module ll_backend__llds.
 :- import_module io, list.
 
 :- pred optimize_main(list(c_procedure)::in, global_data::in,
@@ -27,10 +27,15 @@
 
 :- implementation.
 
-:- import_module jumpopt, labelopt, dupelim, peephole.
-:- import_module frameopt, delay_slot, use_local_vars, reassign.
-:- import_module options, globals, passes_aux, opt_util, opt_debug.
-:- import_module wrap_blocks, hlds_pred, llds_out, continuation_info.
+:- import_module hlds__hlds_pred, hlds__passes_aux.
+:- import_module ll_backend__jumpopt, ll_backend__labelopt.
+:- import_module ll_backend__dupelim, ll_backend__peephole.
+:- import_module ll_backend__frameopt, ll_backend__delay_slot.
+:- import_module ll_backend__use_local_vars, ll_backend__reassign.
+:- import_module ll_backend__opt_util, ll_backend__opt_debug.
+:- import_module ll_backend__wrap_blocks.
+:- import_module ll_backend__llds_out, ll_backend__continuation_info.
+:- import_module libs__options, libs__globals.
 
 :- import_module bool, int, string.
 :- import_module map, bimap, set, std_util, require, counter.

@@ -48,11 +48,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module use_local_vars.
+:- module ll_backend__use_local_vars.
 
 :- interface.
 
-:- import_module llds.
+:- import_module ll_backend__llds.
 :- import_module list, counter.
 
 :- pred use_local_vars__main(list(instruction)::in, list(instruction)::out,
@@ -60,7 +60,8 @@
 
 :- implementation.
 
-:- import_module basic_block, livemap, exprn_aux, opt_util.
+:- import_module ll_backend__basic_block, ll_backend__livemap.
+:- import_module ll_backend__exprn_aux, ll_backend__opt_util.
 :- import_module int, set, map, counter, std_util, require.
 
 %-----------------------------------------------------------------------------%

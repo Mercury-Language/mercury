@@ -31,11 +31,11 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module type_ctor_info.
+:- module backend_libs__type_ctor_info.
 
 :- interface.
 
-:- import_module hlds_module, rtti.
+:- import_module hlds__hlds_module, backend_libs__rtti.
 :- import_module list.
 
 :- pred type_ctor_info__generate_hlds(module_info::in, module_info::out)
@@ -46,11 +46,13 @@
 
 :- implementation.
 
-:- import_module rtti, pseudo_type_info.
-:- import_module hlds_data, hlds_pred, hlds_out.
-:- import_module make_tags, prog_data, prog_util, prog_out.
-:- import_module code_util, special_pred, type_util, globals, options.
-:- import_module builtin_ops, error_util.
+:- import_module backend_libs__rtti, backend_libs__pseudo_type_info.
+:- import_module hlds__hlds_data, hlds__hlds_pred, hlds__hlds_out.
+:- import_module hlds__make_tags, parse_tree__prog_data.
+:- import_module parse_tree__prog_util, parse_tree__prog_out.
+:- import_module ll_backend__code_util, hlds__special_pred.
+:- import_module check_hlds__type_util, libs__globals, libs__options.
+:- import_module backend_libs__builtin_ops, hlds__error_util.
 
 :- import_module bool, string, int, map, std_util, assoc_list, require.
 :- import_module term.

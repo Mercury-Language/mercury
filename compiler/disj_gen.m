@@ -13,11 +13,12 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module disj_gen.
+:- module ll_backend__disj_gen.
 
 :- interface.
 
-:- import_module hlds_goal, code_model, llds, code_info.
+:- import_module hlds__hlds_goal, backend_libs__code_model, ll_backend__llds.
+:- import_module ll_backend__code_info.
 :- import_module list.
 
 :- pred disj_gen__generate_disj(code_model::in, list(hlds_goal)::in,
@@ -27,10 +28,11 @@
 
 :- implementation.
 
-:- import_module prog_data, hlds_data, code_gen, code_util, trace.
-:- import_module options, globals, tree.
+:- import_module parse_tree__prog_data, hlds__hlds_data, ll_backend__code_gen.
+:- import_module ll_backend__code_util, ll_backend__trace.
+:- import_module libs__options, libs__globals, libs__tree.
 
-:- import_module bool, set, tree, map, std_util, term, require.
+:- import_module bool, set, libs__tree, map, std_util, term, require.
 
 disj_gen__generate_disj(CodeModel, Goals, StoreMap, Code) -->
 	(

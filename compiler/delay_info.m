@@ -16,11 +16,12 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module delay_info.
+:- module check_hlds__delay_info.
 
 :- interface.
 
-:- import_module hlds_goal, prog_data, mode_errors.
+:- import_module hlds__hlds_goal, parse_tree__prog_data.
+:- import_module check_hlds__mode_errors.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -90,7 +91,7 @@
 
 :- implementation.
 :- import_module int, stack, set, map, require, std_util.
-:- import_module mode_errors.	% for the mode_error_info and delay_info
+:- import_module check_hlds__mode_errors.	% for the mode_error_info and delay_info
 				% types.
 
 	% The delay_info structure is a tangled web of substructures

@@ -31,9 +31,10 @@
 % were found by previous passes.
 %
 
-:- module post_typecheck.
+:- module check_hlds__post_typecheck.
 :- interface.
-:- import_module hlds_data, hlds_goal, hlds_module, hlds_pred, prog_data.
+:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_module.
+:- import_module hlds__hlds_pred, parse_tree__prog_data.
 :- import_module list, io, bool, std_util.
 
 	% check_type_bindings(PredId, PredInfo, ModuleInfo, ReportErrors):
@@ -132,10 +133,13 @@
 
 :- implementation.
 
-:- import_module (assertion), code_util, typecheck, clause_to_proc.
-:- import_module mode_util, inst_match, (inst), prog_util, error_util.
-:- import_module mercury_to_mercury, prog_out, hlds_out, type_util, goal_util.
-:- import_module globals, options.
+:- import_module (hlds__assertion), ll_backend__code_util.
+:- import_module check_hlds__typecheck, check_hlds__clause_to_proc.
+:- import_module check_hlds__mode_util, check_hlds__inst_match.
+:- import_module (parse_tree__inst), parse_tree__prog_util, hlds__error_util.
+:- import_module parse_tree__mercury_to_mercury, parse_tree__prog_out.
+:- import_module hlds__hlds_out, check_hlds__type_util, hlds__goal_util.
+:- import_module libs__globals, libs__options.
 
 :- import_module map, set, assoc_list, term, require, int.
 :- import_module string, varset.

@@ -10,11 +10,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module jumpopt.
+:- module ll_backend__jumpopt.
 
 :- interface.
 
-:- import_module llds, trace_params.
+:- import_module ll_backend__llds, libs__trace_params.
 :- import_module list, set, bool, counter.
 
 	% Take an instruction list and optimize jumps. This includes jumps
@@ -49,7 +49,8 @@
 
 :- implementation.
 
-:- import_module builtin_ops, code_util, opt_util.
+:- import_module backend_libs__builtin_ops, ll_backend__code_util.
+:- import_module ll_backend__opt_util.
 :- import_module int, std_util, map, string, require.
 
 % We first build up a bunch of tables giving information about labels.

@@ -125,11 +125,11 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module accumulator.
+:- module transform_hlds__accumulator.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, io.
+:- import_module hlds__hlds_module, hlds__hlds_pred, io.
 
 :- pred accumulator__process_proc(pred_id::in, proc_id::in, proc_info::in,
 		proc_info::out, module_info::in, module_info::out,
@@ -140,10 +140,14 @@
 
 :- implementation.
 
-:- import_module (assertion), error_util, goal_store, goal_util, globals.
-:- import_module hlds_data, hlds_goal, hlds_out, (inst).
-:- import_module inst_match, instmap, mode_util, options.
-:- import_module prog_data, prog_util, quantification.
+:- import_module (hlds__assertion), hlds__error_util.
+:- import_module transform_hlds__goal_store, hlds__goal_util, libs__globals.
+:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_out.
+:- import_module (parse_tree__inst).
+:- import_module check_hlds__inst_match, hlds__instmap, check_hlds__mode_util.
+:- import_module libs__options.
+:- import_module parse_tree__prog_data, parse_tree__prog_util.
+:- import_module hlds__quantification.
 
 :- import_module assoc_list, bool, int, list, map, multi_map.
 :- import_module require, set, std_util, string, term, varset.

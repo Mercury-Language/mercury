@@ -13,11 +13,11 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module static_term.
+:- module ll_backend__static_term.
 
 :- interface.
 
-:- import_module llds.
+:- import_module ll_backend__llds.
 :- import_module counter, std_util.
 
 :- pred static_term__term_to_rval(univ::in, maybe(rval)::out,
@@ -27,7 +27,7 @@
 
 :- implementation.
 
-:- import_module builtin_ops.
+:- import_module backend_libs__builtin_ops.
 :- import_module deconstruct, list, require.
 
 static_term__term_to_rval(Univ, Rval, CellCounter0, CellCounter) :-

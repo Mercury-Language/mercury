@@ -11,14 +11,14 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_tag_switch.
+:- module ml_backend__ml_tag_switch.
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_data, switch_util.
-:- import_module code_model.
-:- import_module mlds, ml_code_util.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_data, backend_libs__switch_util.
+:- import_module backend_libs__code_model.
+:- import_module ml_backend__mlds, ml_backend__ml_code_util.
 
 :- import_module list.
 
@@ -31,9 +31,10 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_module.
-:- import_module ml_code_gen, ml_switch_gen, ml_unify_gen, ml_simplify_switch.
-:- import_module builtin_ops, type_util.
+:- import_module hlds__hlds_goal, hlds__hlds_module.
+:- import_module ml_backend__ml_code_gen, ml_backend__ml_switch_gen.
+:- import_module ml_backend__ml_unify_gen, ml_backend__ml_simplify_switch.
+:- import_module backend_libs__builtin_ops, check_hlds__type_util.
 
 :- import_module assoc_list, map, int, string, require, std_util.
 

@@ -26,10 +26,11 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module common.
+:- module check_hlds__common.
 :- interface.
 
-:- import_module hlds_pred, hlds_goal, prog_data, simplify.
+:- import_module hlds__hlds_pred, hlds__hlds_goal, parse_tree__prog_data.
+:- import_module check_hlds__simplify.
 :- import_module list.
 
 	% If we find a deconstruction or a construction we cannot optimize,
@@ -80,9 +81,12 @@
 
 :- implementation.
 
-:- import_module quantification, mode_util, type_util, prog_util.
-:- import_module det_util, det_report, globals, options, inst_match, instmap.
-:- import_module hlds_data, hlds_module, (inst), pd_cost, term.
+:- import_module hlds__quantification, check_hlds__mode_util.
+:- import_module check_hlds__type_util, parse_tree__prog_util.
+:- import_module check_hlds__det_util, check_hlds__det_report, libs__globals.
+:- import_module libs__options, check_hlds__inst_match, hlds__instmap.
+:- import_module hlds__hlds_data, hlds__hlds_module, (parse_tree__inst).
+:- import_module transform_hlds__pd_cost, term.
 :- import_module bool, map, set, eqvclass, require, std_util, string.
 
 :- type structure

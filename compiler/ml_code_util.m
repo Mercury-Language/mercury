@@ -12,14 +12,15 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_code_util.
+:- module ml_backend__ml_code_util.
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_module, hlds_pred.
-:- import_module builtin_ops, rtti, code_model.
-:- import_module mlds.
-:- import_module globals.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module backend_libs__builtin_ops, backend_libs__rtti.
+:- import_module backend_libs__code_model.
+:- import_module ml_backend__mlds.
+:- import_module libs__globals.
 
 :- import_module bool, int, list, map, std_util.
 
@@ -784,13 +785,15 @@
 
 :- implementation.
 
-:- import_module prog_data, prog_io.
-:- import_module hlds_goal, (inst), instmap, polymorphism.
-:- import_module foreign.
-:- import_module prog_util, type_util, mode_util, special_pred, error_util.
-:- import_module code_util. % XXX for `code_util__compiler_generated'.
-:- import_module ml_code_gen, ml_call_gen.
-:- import_module globals, options.
+:- import_module parse_tree__prog_data, parse_tree__prog_io.
+:- import_module hlds__hlds_goal, (parse_tree__inst), hlds__instmap.
+:- import_module check_hlds__polymorphism.
+:- import_module backend_libs__foreign.
+:- import_module parse_tree__prog_util, check_hlds__type_util.
+:- import_module check_hlds__mode_util, hlds__special_pred, hlds__error_util.
+:- import_module ll_backend__code_util. % XXX for `code_util__compiler_generated'.
+:- import_module ml_backend__ml_code_gen, ml_backend__ml_call_gen.
+:- import_module libs__globals, libs__options.
 
 :- import_module counter, stack, string, require, set, term, varset.
 

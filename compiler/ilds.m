@@ -17,7 +17,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module ilds.
+:- module ml_backend__ilds.
 
 :- interface.
 
@@ -387,7 +387,7 @@
 :- implementation.
 
 :- import_module int, require.
-:- import_module error_util.
+:- import_module hlds__error_util.
 
 get_class_suffix(structured_name(_, OuterClassFullName, NestedClass))
 		= SuffixName :-

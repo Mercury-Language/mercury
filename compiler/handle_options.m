@@ -14,11 +14,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module handle_options.
+:- module libs__handle_options.
 
 :- interface.
 :- import_module list, bool, std_util, io.
-:- import_module globals, options.
+:- import_module libs__globals, libs__options.
 
 	% handle_options(Args, MaybeError, OptionArgs, NonOptionArgs, Link).
 :- pred handle_options(list(string), maybe(string), list(string),
@@ -56,8 +56,9 @@
 
 :- implementation.
 
-:- import_module options, globals, prog_io_util, trace_params, unify_proc.
-:- import_module prog_data, foreign.
+:- import_module libs__options, libs__globals, parse_tree__prog_io_util.
+:- import_module libs__trace_params, check_hlds__unify_proc.
+:- import_module parse_tree__prog_data, backend_libs__foreign.
 :- import_module char, dir, int, string, map, set, getopt, library.
 
 handle_options(Args0, MaybeError, OptionArgs, Args, Link) -->
@@ -311,8 +312,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%	  abstract data types.
 	%	  XXX It should not be needed once we have a general solution
 	%	  to the abstract equivalence type problem.
-	%   - store nondet environments on the heap
-	%         Because Java has no way of allocating structs on the stack.
 	%   - no static ground terms
 	%         XXX Previously static ground terms used to not work with
 	%             --high-level-data.  But this has been (mostly?) fixed now.

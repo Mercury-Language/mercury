@@ -8,22 +8,23 @@
 %
 % Compute version numbers for program items in interface files.
 %-----------------------------------------------------------------------------%
-:- module recompilation_version.
+:- module recompilation__version.
 
 :- interface.
 
-:- import_module recompilation, prog_data, prog_io_util, timestamp.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io_util, libs__timestamp.
 :- import_module io, std_util, term.
 
-	% recompilation_version__compute_version_numbers(SourceFileModTime,
+	% recompilation__version__compute_version_numbers(SourceFileModTime,
 	%	NewItems, MaybeOldItems, VersionNumbers).
-:- pred recompilation_version__compute_version_numbers(timestamp::in,
+:- pred recompilation__version__compute_version_numbers(timestamp::in,
 	item_list::in, maybe(item_list)::in, version_numbers::out) is det.
 
-:- pred recompilation_version__write_version_numbers(version_numbers::in,
+:- pred recompilation__version__write_version_numbers(version_numbers::in,
 	io__state::di, io__state::uo) is det.
 
-:- pred recompilation_version__parse_version_numbers(term::in,
+:- pred recompilation__version__parse_version_numbers(term::in,
 	maybe1(version_numbers)::out) is det.
 
 	% The version number for the format of the version numbers
@@ -33,14 +34,18 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module mercury_to_mercury, mode_util, prog_io, prog_util, type_util.
-:- import_module hlds_out, (inst).
+:- import_module parse_tree__mercury_to_mercury, check_hlds__mode_util.
+:- import_module parse_tree__prog_io, parse_tree__prog_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_out, (parse_tree__inst).
+
 :- import_module assoc_list, bool, list, map, require, string, varset.
 
-recompilation_version__compute_version_numbers(SourceFileTime, Items,
+
+recompilation__version__compute_version_numbers(SourceFileTime, Items,
 		MaybeOldItems,
 		version_numbers(ItemVersionNumbers, InstanceVersionNumbers)) :-
-	recompilation_version__gather_items(Items,
+	recompilation__version__gather_items(Items,
 		GatheredItems, InstanceItems),
 	(
 		MaybeOldItems = yes(OldItems0),
@@ -50,7 +55,7 @@ recompilation_version__compute_version_numbers(SourceFileTime, Items,
 	->
 		OldVersionNumbers = version_numbers(OldItemVersionNumbers,
 					OldInstanceVersionNumbers),
-		recompilation_version__gather_items(OldItems, GatheredOldItems,
+		recompilation__version__gather_items(OldItems, GatheredOldItems,
 			OldInstanceItems)
 	;
 		% There were no old version numbers, so every item
@@ -61,19 +66,19 @@ recompilation_version__compute_version_numbers(SourceFileTime, Items,
 		map__init(OldInstanceVersionNumbers)
 	),
 	
-	recompilation_version__compute_item_version_numbers(SourceFileTime,
+	recompilation__version__compute_item_version_numbers(SourceFileTime,
 		GatheredItems, GatheredOldItems, OldItemVersionNumbers,
 		ItemVersionNumbers),
 		
-	recompilation_version__compute_instance_version_numbers(SourceFileTime,
+	recompilation__version__compute_instance_version_numbers(SourceFileTime,
 		InstanceItems, OldInstanceItems, OldInstanceVersionNumbers,
 		InstanceVersionNumbers).
 
-:- pred recompilation_version__compute_item_version_numbers(timestamp::in,
+:- pred recompilation__version__compute_item_version_numbers(timestamp::in,
 	gathered_items::in, gathered_items::in,
 	item_version_numbers::in, item_version_numbers::out) is det.
 
-recompilation_version__compute_item_version_numbers(SourceFileTime,
+recompilation__version__compute_item_version_numbers(SourceFileTime,
 		GatheredItems, GatheredOldItems,
 		OldVersionNumbers, VersionNumbers) :-
 	VersionNumbers = map_ids(
@@ -100,11 +105,11 @@ recompilation_version__compute_item_version_numbers(SourceFileTime,
 	    map__init
 	).
 
-:- pred recompilation_version__compute_instance_version_numbers(timestamp::in,
+:- pred recompilation__version__compute_instance_version_numbers(timestamp::in,
 	instance_item_map::in, instance_item_map::in, 
 	instance_version_numbers::in, instance_version_numbers::out) is det.
 
-recompilation_version__compute_instance_version_numbers(SourceFileTime,
+recompilation__version__compute_instance_version_numbers(SourceFileTime,
 		InstanceItems, OldInstanceItems,
 		OldInstanceVersionNumbers, InstanceVersionNumbers) :-
 	InstanceVersionNumbers =
@@ -124,14 +129,14 @@ recompilation_version__compute_instance_version_numbers(SourceFileTime,
 		InstanceItems
 	    ).
 
-:- pred recompilation_version__gather_items(item_list::in,
+:- pred recompilation__version__gather_items(item_list::in,
 		gathered_items::out, instance_item_map::out) is det.
 
-recompilation_version__gather_items(Items, GatheredItems, Instances) :-
+recompilation__version__gather_items(Items, GatheredItems, Instances) :-
 	list__reverse(Items, RevItems),
 	Info0 = gathered_item_info(init_item_id_set(map__init),
 			[], [], map__init),
-	list__foldl(recompilation_version__gather_items_2, RevItems,
+	list__foldl(recompilation__version__gather_items_2, RevItems,
 			Info0, Info1),
 
 	%
@@ -168,17 +173,17 @@ distribute_pragma_items(ItemId - ItemAndContext,
 	(
 		MaybePredOrFunc = yes(PredOrFunc),
 		ItemType = pred_or_func_to_item_type(PredOrFunc),
-		recompilation_version__add_gathered_item(Item,
+		recompilation__version__add_gathered_item(Item,
 			item_id(ItemType, SymName - Arity),
 			ItemContext, AddIfNotExisting,
 			GatheredItems0, GatheredItems2)
 	;
 		MaybePredOrFunc = no,
-		recompilation_version__add_gathered_item(Item,
+		recompilation__version__add_gathered_item(Item,
 			item_id(predicate, SymName - Arity),
 			ItemContext, AddIfNotExisting,
 			GatheredItems0, GatheredItems1),
-		recompilation_version__add_gathered_item(Item,
+		recompilation__version__add_gathered_item(Item,
 			item_id(function, SymName - Arity),
 			ItemContext, AddIfNotExisting,
 			GatheredItems1, GatheredItems2)
@@ -234,10 +239,10 @@ distribute_pragma_items(ItemId - ItemAndContext,
 :- type gathered_items == item_id_set(gathered_item_map).
 :- type gathered_item_map == map(pair(string, arity), item_list).
 
-:- pred recompilation_version__gather_items_2(item_and_context::in,
+:- pred recompilation__version__gather_items_2(item_and_context::in,
 		gathered_item_info::in, gathered_item_info::out) is det.
 
-recompilation_version__gather_items_2(ItemAndContext) -->
+recompilation__version__gather_items_2(ItemAndContext) -->
 	{ ItemAndContext = Item - ItemContext },
 	(
 		{ Item = type_defn(VarSet, Name, Args, Body, Cond) }
@@ -263,10 +268,10 @@ recompilation_version__gather_items_2(ItemAndContext) -->
 		),
 		{ TypeCtor = Name - list__length(Args) },
 		GatheredItems0 =^ gathered_items,
-		{ recompilation_version__add_gathered_item(NameItem,
+		{ recompilation__version__add_gathered_item(NameItem,
 			item_id((type), TypeCtor), ItemContext,
 			yes, GatheredItems0, GatheredItems1) },
-		{ recompilation_version__add_gathered_item(BodyItem,
+		{ recompilation__version__add_gathered_item(BodyItem,
 			item_id(type_body, TypeCtor), ItemContext,
 			yes, GatheredItems1, GatheredItems) },
 		^ gathered_items := GatheredItems
@@ -299,10 +304,10 @@ recompilation_version__gather_items_2(ItemAndContext) -->
 	->
 		GatheredItems0 =^ gathered_items,
 		{ ItemName = SymName - list__length(Modes) },
-		{ recompilation_version__add_gathered_item(Item,
+		{ recompilation__version__add_gathered_item(Item,
 			item_id(predicate, ItemName), ItemContext,
 			yes, GatheredItems0, GatheredItems1) },
-		{ recompilation_version__add_gathered_item(Item,
+		{ recompilation__version__add_gathered_item(Item,
 			item_id(function, ItemName), ItemContext,
 			yes, GatheredItems1, GatheredItems) },
 		^ gathered_items := GatheredItems
@@ -311,7 +316,7 @@ recompilation_version__gather_items_2(ItemAndContext) -->
 		{ item_to_item_id(Item, ItemId) }
 	->
 		GatheredItems0 =^ gathered_items,
-		{ recompilation_version__add_gathered_item(Item, ItemId,
+		{ recompilation__version__add_gathered_item(Item, ItemId,
 			ItemContext, yes, GatheredItems0, GatheredItems) },
 		^ gathered_items := GatheredItems
 	;
@@ -325,11 +330,11 @@ recompilation_version__gather_items_2(ItemAndContext) -->
 		^ other_items := [ItemAndContext | OtherItems]
 	).
 
-:- pred recompilation_version__add_gathered_item(item::in, item_id::in,
+:- pred recompilation__version__add_gathered_item(item::in, item_id::in,
 		prog_context::in, bool::in, gathered_items::in,
 		gathered_items::out) is det.
 
-recompilation_version__add_gathered_item(Item, ItemId, ItemContext,
+recompilation__version__add_gathered_item(Item, ItemId, ItemContext,
 		AddIfNotExisting, GatheredItems0, GatheredItems) :-
 	ItemId = item_id(ItemType, Id),
 	Id = SymName - Arity,
@@ -344,16 +349,16 @@ recompilation_version__add_gathered_item(Item, ItemId, ItemContext,
 	( MatchingItems = [], AddIfNotExisting = no ->
 		GatheredItems = GatheredItems0
 	;
-		recompilation_version__add_gathered_item_2(Item, ItemType,
+		recompilation__version__add_gathered_item_2(Item, ItemType,
 			NameArity, ItemContext, MatchingItems,
 			GatheredItems0, GatheredItems)
 	).
 
-:- pred recompilation_version__add_gathered_item_2(item::in, item_type::in,
+:- pred recompilation__version__add_gathered_item_2(item::in, item_type::in,
 		pair(string, arity)::in, prog_context::in, item_list::in,
 		gathered_items::in, gathered_items::out) is det.
 
-recompilation_version__add_gathered_item_2(Item, ItemType, NameArity,
+recompilation__version__add_gathered_item_2(Item, ItemType, NameArity,
 		ItemContext, MatchingItems0, GatheredItems0, GatheredItems) :-
 
 	% mercury_to_mercury.m splits combined pred and mode
@@ -943,7 +948,7 @@ class_methods_are_unchanged([Method1 | Methods1], [Method2 | Methods2]) :-
 
 %-----------------------------------------------------------------------------%
 
-recompilation_version__write_version_numbers(
+recompilation__version__write_version_numbers(
 		version_numbers(VersionNumbers, InstanceVersionNumbers)) -->
 	{ VersionNumbersList = list__filter_map(
 		(func(ItemType) = (ItemType - ItemVersions) is semidet :-

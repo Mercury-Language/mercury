@@ -11,11 +11,12 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module code_aux.
+:- module ll_backend__code_aux.
 
 :- interface.
 
-:- import_module code_info, hlds_module, hlds_goal, prog_data.
+:- import_module ll_backend__code_info, hlds__hlds_module, hlds__hlds_goal.
+:- import_module parse_tree__prog_data.
 :- import_module bool.
 
 	% code_aux__contains_only_builtins(G) is true if G is a leaf procedure,
@@ -65,7 +66,8 @@
 
 :- implementation.
 
-:- import_module hlds_pred, llds, llds_out, varset, type_util, term_util.
+:- import_module hlds__hlds_pred, ll_backend__llds, ll_backend__llds_out.
+:- import_module varset, check_hlds__type_util, transform_hlds__term_util.
 :- import_module string, set, std_util, assoc_list, require.
 :- import_module list, map.
 

@@ -15,14 +15,14 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_string_switch.
+:- module ml_backend__ml_string_switch.
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module hlds_data, switch_util.
-:- import_module code_model.
-:- import_module mlds, ml_code_util.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_data, backend_libs__switch_util.
+:- import_module backend_libs__code_model.
+:- import_module ml_backend__mlds, ml_backend__ml_code_util.
 
 :- pred ml_string_switch__generate(cases_list::in, prog_var::in,
 		code_model::in, can_fail::in, prog_context::in,
@@ -33,9 +33,10 @@
 
 :- implementation.
 
-:- import_module ml_code_gen, ml_switch_gen, ml_simplify_switch.
-:- import_module builtin_ops, type_util.
-:- import_module globals, options.
+:- import_module ml_backend__ml_code_gen, ml_backend__ml_switch_gen.
+:- import_module ml_backend__ml_simplify_switch.
+:- import_module backend_libs__builtin_ops, check_hlds__type_util.
+:- import_module libs__globals, libs__options.
 
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 

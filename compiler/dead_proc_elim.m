@@ -14,11 +14,11 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module dead_proc_elim.
+:- module transform_hlds__dead_proc_elim.
 
 :- interface.
 
-:- import_module prog_data, hlds_module, hlds_pred.
+:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_pred.
 :- import_module map, std_util, io.
 
 :- pred dead_proc_elim(module_info, module_info, io__state, io__state).
@@ -50,8 +50,10 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_util, llds.
-:- import_module passes_aux, globals, options, code_util.
+:- import_module hlds__hlds_goal, hlds__hlds_data, parse_tree__prog_util.
+:- import_module ll_backend__llds.
+:- import_module hlds__passes_aux, libs__globals, libs__options.
+:- import_module ll_backend__code_util.
 
 :- import_module int, string, list, set, queue, bool, require.
 

@@ -48,10 +48,10 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module make_tags.
+:- module hlds__make_tags.
 :- interface.
 
-:- import_module prog_data, hlds_data, globals.
+:- import_module parse_tree__prog_data, hlds__hlds_data, libs__globals.
 :- import_module bool, list.
 
 % assign_constructor_tags(Constructors, TypeCtor, Globals, TagValues, IsEnum):
@@ -69,7 +69,8 @@
 
 :- implementation.
 
-:- import_module prog_util, type_util, error_util, globals, options.
+:- import_module parse_tree__prog_util, check_hlds__type_util.
+:- import_module hlds__error_util, libs__globals, libs__options.
 :- import_module int, map, std_util, require.
 
 %-----------------------------------------------------------------------------%

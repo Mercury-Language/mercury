@@ -42,12 +42,13 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module trace.
+:- module ll_backend__trace.
 
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, hlds_module.
-:- import_module globals, prog_data, llds, code_info.
+:- import_module hlds__hlds_goal, hlds__hlds_pred, hlds__hlds_module.
+:- import_module libs__globals, parse_tree__prog_data, ll_backend__llds.
+:- import_module ll_backend__code_info.
 :- import_module map, std_util, set.
 
 	% The kinds of external ports for which the code we generate will
@@ -218,9 +219,12 @@
 
 :- implementation.
 
-:- import_module continuation_info, trace_params, llds_out, layout_out, tree.
-:- import_module type_util, (inst), instmap, inst_match, mode_util.
-:- import_module code_model, code_util, options.
+:- import_module ll_backend__continuation_info, libs__trace_params.
+:- import_module ll_backend__llds_out, ll_backend__layout_out, libs__tree.
+:- import_module check_hlds__type_util, (parse_tree__inst), hlds__instmap.
+:- import_module check_hlds__inst_match, check_hlds__mode_util.
+:- import_module backend_libs__code_model, ll_backend__code_util.
+:- import_module libs__options.
 
 :- import_module list, bool, int, string, map, std_util, require, term, varset.
 

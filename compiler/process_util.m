@@ -8,7 +8,7 @@
 %
 % Process and signal handling, mainly for use by make.m and its sub-modules.
 %-----------------------------------------------------------------------------%
-:- module process_util.
+:- module libs__process_util.
 
 :- interface.
 
@@ -72,7 +72,7 @@
 
 :- implementation.
 
-:- import_module globals, options.
+:- import_module libs__globals, libs__options.
 :- import_module std_util.
 
 build_with_check_for_interrupt(Build, Cleanup, Succeeded, Info0, Info) -->

@@ -14,9 +14,9 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module rtti_to_mlds.
+:- module ml_backend__rtti_to_mlds.
 :- interface.
-:- import_module hlds_module, rtti, mlds.
+:- import_module hlds__hlds_module, backend_libs__rtti, ml_backend__mlds.
 :- import_module list.
 
 	% return a list of MLDS definitions for the given rtti_data list.
@@ -30,9 +30,11 @@
 :- func mlds_rtti_type_name(rtti_name) = string.
 
 :- implementation.
-:- import_module foreign, prog_data, hlds_data.
-:- import_module pseudo_type_info, prog_util, prog_out, type_util.
-:- import_module ml_code_util, ml_unify_gen, ml_closure_gen.
+:- import_module backend_libs__foreign, parse_tree__prog_data, hlds__hlds_data.
+:- import_module backend_libs__pseudo_type_info, parse_tree__prog_util.
+:- import_module parse_tree__prog_out, check_hlds__type_util.
+:- import_module ml_backend__ml_code_util, ml_backend__ml_unify_gen.
+:- import_module ml_backend__ml_closure_gen.
 :- import_module bool, list, std_util, string, term, require.
 
 rtti_data_list_to_mlds(ModuleInfo, RttiDatas) =

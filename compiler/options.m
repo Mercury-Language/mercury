@@ -16,7 +16,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module options.
+:- module libs__options.
 :- interface.
 :- import_module char, io, getopt.
 
@@ -544,7 +544,7 @@
 
 :- import_module string, bool, int, map, std_util, assoc_list, require, list.
 :- import_module dir.
-:- import_module handle_options.
+:- import_module libs__handle_options.
 
 :- type option_category
 	--->	warning_option

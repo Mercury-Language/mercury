@@ -9,11 +9,12 @@
 % Code to deal with options for `mmc --make', including code to parse
 % an Mmakefile equivalent.
 %-----------------------------------------------------------------------------%
-:- module options_file.
+:- module make__options_file.
 
 :- interface.
 
-:- import_module list, io, prog_data, std_util.
+:- import_module parse_tree__prog_data.
+:- import_module list, io, std_util.
 
 :- type options_variables.
 
@@ -45,7 +46,9 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module error_util, globals, options, prog_io, prog_out.
+:- import_module parse_tree__prog_io, parse_tree__prog_out.
+:- import_module hlds__error_util, libs__globals, libs__options.
+
 :- import_module assoc_list, bool, char, dir, exception, map.
 :- import_module require, string, term.
 

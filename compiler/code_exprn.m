@@ -32,11 +32,12 @@
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
-:- module code_exprn.
+:- module ll_backend__code_exprn.
 
 :- interface.
 
-:- import_module prog_data, hlds_goal, llds, options.
+:- import_module parse_tree__prog_data, hlds__hlds_goal, ll_backend__llds.
+:- import_module libs__options.
 :- import_module map, set, list, assoc_list.
 
 :- type exprn_info.
@@ -254,7 +255,8 @@
 
 :- implementation.
 
-:- import_module code_util, exprn_aux, tree, varset, term.
+:- import_module ll_backend__code_util, ll_backend__exprn_aux, libs__tree.
+:- import_module varset, term.
 :- import_module bool, bag, require, int, string, std_util.
 
 :- type var_stat	--->	evaled(set(rval))

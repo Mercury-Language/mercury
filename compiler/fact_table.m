@@ -45,12 +45,12 @@
 % floats.
 
 
-:- module fact_table.
+:- module ll_backend__fact_table.
 
 :- interface.
 
 :- import_module io, list.
-:- import_module prog_data, hlds_pred, hlds_module.
+:- import_module parse_tree__prog_data, hlds__hlds_pred, hlds__hlds_module.
 
 	% compile the fact table into a separate .c file.
 	% fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, 
@@ -92,15 +92,19 @@
 :- import_module parser, term, term_io.
 
 % Parse tree modules
-:- import_module prog_util, prog_io, prog_out, modules.
+:- import_module parse_tree__prog_util, parse_tree__prog_io.
+:- import_module parse_tree__prog_out, parse_tree__modules.
 % HLDS modules
-:- import_module hlds_out, hlds_data, mode_util, inst_match.
+:- import_module hlds__hlds_out, hlds__hlds_data, check_hlds__mode_util.
+:- import_module check_hlds__inst_match.
 % LLDS back-end modules
-:- import_module arg_info, llds, llds_out, code_util, export, foreign.
+:- import_module ll_backend__arg_info, ll_backend__llds, ll_backend__llds_out.
+:- import_module ll_backend__code_util, backend_libs__export.
+:- import_module backend_libs__foreign.
 % Modules shared between different back-ends.
-:- import_module passes_aux, code_model.
+:- import_module hlds__passes_aux, backend_libs__code_model.
 % Misc
-:- import_module globals, options.
+:- import_module libs__globals, libs__options.
 
 :- type fact_result
 	--->	ok ; error.

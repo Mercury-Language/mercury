@@ -24,7 +24,15 @@
 
 :- interface.
 
-:- import_module prog_data, timestamp.
+:- import_module parse_tree.
+:- import_module hlds.
+:- import_module libs.
+
+:- include_module recompilation__check.
+:- include_module recompilation__usage.
+:- include_module recompilation__version.
+
+:- import_module parse_tree__prog_data, libs__timestamp.
 :- import_module io, map, set, std_util, term.
 
 	% Identify a particular version of a program item.
@@ -234,8 +242,9 @@
 
 :- implementation.
 
-:- import_module prog_util.
-:- import_module globals, options, passes_aux, modules.
+:- import_module parse_tree__prog_util.
+:- import_module libs__globals, libs__options, hlds__passes_aux.
+:- import_module parse_tree__modules.
 :- import_module int, time, bool, list, require, string.
 
 %-----------------------------------------------------------------------------%

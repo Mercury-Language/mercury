@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module dependency_graph.
+:- module transform_hlds__dependency_graph.
 % Main author: bromage, conway, stayl.
 
 % The dependency_graph records which procedures depend on which other
@@ -20,7 +20,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds__hlds_module, hlds__hlds_pred.
 :- import_module bool, list, io.
 
 	% Ensure that the module_info contains a version of the
@@ -98,14 +98,15 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_data.
-:- import_module mode_util, globals, options, code_util, goal_util.
-:- import_module mercury_to_mercury.
+:- import_module hlds__hlds_goal, hlds__hlds_data, parse_tree__prog_data.
+:- import_module check_hlds__mode_util, libs__globals, libs__options.
+:- import_module ll_backend__code_util, hlds__goal_util.
+:- import_module parse_tree__mercury_to_mercury.
 
 % XXX we should not import llds here -- this should depend only on the HLDS,
 % not on the LLDS.  But the LLDS stuff is unfortunately needed for producing
 % the LLDS labels used for dependency_graph__write_prof_dependency_graph.
-:- import_module llds, llds_out.
+:- import_module ll_backend__llds, ll_backend__llds_out.
 
 :- import_module term, varset.
 :- import_module int, bool, term, require, string.

@@ -14,11 +14,12 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module prog_rep.
+:- module ll_backend__prog_rep.
 
 :- interface.
 
-:- import_module hlds_pred, hlds_goal, hlds_module, instmap.
+:- import_module hlds__hlds_pred, hlds__hlds_goal, hlds__hlds_module.
+:- import_module hlds__instmap.
 :- import_module mdb, mdb__program_representation.
 
 :- pred prog_rep__represent_goal(hlds_goal::in, instmap::in, vartypes::in,
@@ -26,7 +27,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, prog_data.
+:- import_module hlds__hlds_data, parse_tree__prog_data.
 :- import_module string, list, set, std_util, require, term.
 
 :- type prog_rep__info

@@ -51,11 +51,13 @@
 %     be det and should return a meaningful indication of where an
 %     error occured).
 
-:- module prog_io.
+:- module parse_tree__prog_io.
 
 :- interface.
 
-:- import_module prog_data, prog_io_util, timestamp, (inst).
+:- import_module parse_tree__prog_data, parse_tree__prog_io_util.
+:- import_module libs__timestamp, (parse_tree__inst).
+
 :- import_module bool, varset, term, list, io, std_util. 
 
 %-----------------------------------------------------------------------------%
@@ -215,11 +217,13 @@
 
 :- implementation.
 
-:- import_module prog_io_goal, prog_io_dcg, prog_io_pragma, prog_io_util.
-:- import_module prog_io_typeclass.
-:- import_module hlds_data, hlds_pred, prog_util, prog_out.
-:- import_module globals, options.
-:- import_module recompilation, recompilation_version.
+:- import_module parse_tree__prog_io_goal, parse_tree__prog_io_dcg.
+:- import_module parse_tree__prog_io_pragma, parse_tree__prog_io_util.
+:- import_module parse_tree__prog_io_typeclass.
+:- import_module hlds__hlds_data, hlds__hlds_pred, parse_tree__prog_util.
+:- import_module parse_tree__prog_out.
+:- import_module libs__globals, libs__options.
+:- import_module recompilation, recompilation__version.
 
 :- import_module int, string, std_util, parser, term_io, dir, require.
 :- import_module assoc_list, map, time, set.
@@ -1193,7 +1197,7 @@ process_decl(ModuleName, VarSet0, "version_numbers",
 		(
 			ModuleNameResult = ok(ModuleName)
 		->
-			recompilation_version__parse_version_numbers(
+			recompilation__version__parse_version_numbers(
 				VersionNumbersTerm, Result0),
 			(
 				Result0 = ok(VersionNumbers),

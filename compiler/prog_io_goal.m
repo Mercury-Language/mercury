@@ -9,11 +9,11 @@
 %
 % This module defines the predicates that parse goals.
 
-:- module prog_io_goal.
+:- module parse_tree__prog_io_goal.
 
 :- interface.
 
-:- import_module prog_data.
+:- import_module parse_tree__prog_data.
 :- import_module list, term.
 
 	% Convert a single term into a goal.
@@ -95,7 +95,9 @@
 
 :- implementation.
 
-:- import_module mode_util, purity, prog_io, prog_io_util, term_util.
+:- import_module check_hlds__mode_util, check_hlds__purity.
+:- import_module parse_tree__prog_io, parse_tree__prog_io_util.
+:- import_module transform_hlds__term_util.
 :- import_module term.
 :- import_module int, map, string, std_util.
 

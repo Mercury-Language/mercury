@@ -14,11 +14,13 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module call_gen.
+:- module ll_backend__call_gen.
 
 :- interface.
 
-:- import_module prog_data, hlds_pred, hlds_goal, code_model, llds, code_info.
+:- import_module parse_tree__prog_data, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module backend_libs__code_model, ll_backend__llds.
+:- import_module ll_backend__code_info.
 :- import_module list, assoc_list.
 
 :- pred call_gen__generate_call(code_model::in, pred_id::in, proc_id::in,
@@ -53,14 +55,16 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data.
-:- import_module polymorphism, type_util, mode_util, unify_proc, instmap.
-:- import_module builtin_ops.
-:- import_module arg_info, code_util, trace.
-:- import_module rl.
-:- import_module globals, options.
+:- import_module hlds__hlds_module, hlds__hlds_data.
+:- import_module check_hlds__polymorphism, check_hlds__type_util.
+:- import_module check_hlds__mode_util, check_hlds__unify_proc, hlds__instmap.
+:- import_module backend_libs__builtin_ops.
+:- import_module ll_backend__arg_info, ll_backend__code_util.
+:- import_module ll_backend__trace.
+:- import_module aditi_backend__rl.
+:- import_module libs__globals, libs__options.
 
-:- import_module std_util, bool, int, tree, map, set.
+:- import_module std_util, bool, int, libs__tree, map, set.
 :- import_module varset, require, string.
 
 %---------------------------------------------------------------------------%

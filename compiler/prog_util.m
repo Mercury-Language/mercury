@@ -9,11 +9,11 @@
 % various utility predicates acting on the parse tree data
 % structure defined in prog_data.m.
 
-:- module prog_util.
+:- module parse_tree__prog_util.
 
 :- interface.
 
-:- import_module prog_data, term.
+:- import_module parse_tree__prog_data, term.
 :- import_module std_util, list.
 
 %-----------------------------------------------------------------------------%
@@ -199,7 +199,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mercury_to_mercury, (inst).
+:- import_module parse_tree__mercury_to_mercury, (parse_tree__inst).
 :- import_module bool, string, int, map, varset.
 
 %-----------------------------------------------------------------------------%

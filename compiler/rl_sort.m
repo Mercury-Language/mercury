@@ -30,11 +30,11 @@
 % the same way - I'm not sure if this is a good idea.
 %
 %-----------------------------------------------------------------------------%
-:- module rl_sort.
+:- module aditi_backend__rl_sort.
 
 :- interface.
 
-:- import_module rl_block.
+:- import_module aditi_backend__rl_block.
 :- import_module io.
 
 :- pred rl_sort__proc(rl_opt_info, rl_opt_info, io__state, io__state).
@@ -44,7 +44,8 @@
 
 :- implementation.
 
-:- import_module hlds_module, prog_data, rl, rl_analyse, rl_key.
+:- import_module hlds__hlds_module, parse_tree__prog_data, aditi_backend__rl.
+:- import_module aditi_backend__rl_analyse, aditi_backend__rl_key.
 :- import_module assoc_list, bool, int, list, map, relation, require, set.
 :- import_module std_util.
 

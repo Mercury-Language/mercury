@@ -10,10 +10,10 @@
 
 % main author: fjh
 
-:- module equiv_type.
+:- module parse_tree__equiv_type.
 :- interface.
 :- import_module bool, list, io, std_util.
-:- import_module recompilation, prog_data.
+:- import_module recompilation, parse_tree__prog_data.
 
 %-----------------------------------------------------------------------------%
 
@@ -54,10 +54,12 @@
 
 :- implementation.
 :- import_module assoc_list, bool, require, std_util, map, set, term, varset.
-:- import_module prog_data, prog_util, prog_out, (inst), mode_util, error_util.
+:- import_module parse_tree__prog_data, parse_tree__prog_util.
+:- import_module parse_tree__prog_out, parse_tree__inst.
 
 % XXX we shouldn't import the HLDS here.
-:- import_module hlds_data, type_util.
+:- import_module hlds__error_util, check_hlds__mode_util.
+:- import_module hlds__hlds_data, check_hlds__type_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

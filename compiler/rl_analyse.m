@@ -9,11 +9,11 @@
 % Generic flow graph analysis for RL instructions.
 % This is mostly as described in the Dragon Book, chapter 10.
 %-----------------------------------------------------------------------------%
-:- module rl_analyse.
+:- module aditi_backend__rl_analyse.
 
 :- interface.
 
-:- import_module rl_block.
+:- import_module aditi_backend__rl_block.
 :- import_module io, list, map, set, std_util.
 
 	% rl_analyse(Blocks, Direction, Init, Confluence, Update, Results,
@@ -106,7 +106,7 @@
 
 :- implementation.
 
-:- import_module globals, options.
+:- import_module libs__globals, libs__options.
 :- import_module assoc_list, bool, relation, require, string.  
 
 rl_analyse(Blocks, Analysis, BlockDataMap0, BlockDataMap,
