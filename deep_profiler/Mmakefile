@@ -6,21 +6,21 @@
 
 # Mmake - this is Mmake file for building the Mercury deep profiler
 
--include Mmake.deep.params
-
 MERCURY_DIR=..
 LINK_STATIC=yes
 include $(MERCURY_DIR)/Mmake.common
+
+-include Mmake.deep.params
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
 include Mercury.options
 
 ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
-	MAIN_TARGET=mdprof_cgi mdprof_server
-	MERCURY_MAIN_MODULES=mdprof_cgi mdprof_server
-	DEPEND=mdprof_cgi.depend mdprof_server.depend
-	INSTALL=install_deep
+	MAIN_TARGET=all
+	MERCURY_MAIN_MODULES=mdprof_cgi mdprof_test
+	DEPEND=mdprof_cgi.depend mdprof_test.depend
+	INSTALL=install_cgi_progs
 else
 	MAIN_TARGET=nothing
 	MERCURY_MAIN_MODULES=
@@ -44,7 +44,7 @@ nothing:
 depend:	$(DEPEND)
 
 .PHONY: all
-all:	mdprof_cgi mdprof_server
+all:	mdprof_cgi mdprof_test
 
 #-----------------------------------------------------------------------------#
 
@@ -53,22 +53,22 @@ all:	mdprof_cgi mdprof_server
 
 mdprof_cgi:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mdprof_cgi:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mdprof_server:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdprof_server:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mdprof_test:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mdprof_test:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 # Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
 # if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
 # so just leave it out.
 
 $(cs_subdir)mdprof_cgi_init.c:		$(UTIL_DIR)/mkinit
-$(cs_subdir)mdprof_server_init.c:	$(UTIL_DIR)/mkinit
+$(cs_subdir)mdprof_test_init.c:		$(UTIL_DIR)/mkinit
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: check
-check:	mdprof_cgi.check mdprof_server.check
+check:	mdprof_cgi.check mdprof_test.check
 
 .PHONY: ints 
-ints:	mdprof_cgi.ints mdprof_server.ints
+ints:	mdprof_cgi.ints mdprof_test.ints
 
 #-----------------------------------------------------------------------------#
 
@@ -80,23 +80,23 @@ ints:	mdprof_cgi.ints mdprof_server.ints
 .PHONY: tags
 tags:		.deep.tags
 
-.deep.tags:	$(MTAGS) $(mdprof_cgi.ms) $(mdprof_server.ms) $(LIBRARY_DIR)/*.m
-		$(MTAGS) $(mdprof_cgi.ms) $(mdprof_server.ms) $(LIBRARY_DIR)/*.m
+.deep.tags:	$(MTAGS) $(mdprof_cgi.ms) $(mdprof_test.ms) $(LIBRARY_DIR)/*.m
+		$(MTAGS) $(mdprof_cgi.ms) $(mdprof_test.ms) $(LIBRARY_DIR)/*.m
 		touch .deep.tags
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
 dates:
-	touch $(mdprof_cgi.dates) $(mdprof_server.dates)
+	touch $(mdprof_cgi.dates) $(mdprof_test.dates)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs
 os: $(mdprof_cgi.os) $(os_subdir)mdprof_cgi_init.o
-os: $(mdprof_server.os) $(os_subdir)mdprof_server_init.o
+os: $(mdprof_test.os) $(os_subdir)mdprof_test_init.o
 cs: $(mdprof_cgi.cs) $(cs_subdir)mdprof_cgi_init.c
-cs: $(mdprof_server.cs) $(cs_subdir)mdprof_server_init.c
+cs: $(mdprof_test.cs) $(cs_subdir)mdprof_test_init.c
 
 #-----------------------------------------------------------------------------#
 
@@ -110,12 +110,37 @@ realclean_local:
 .PHONY: install
 install: $(INSTALL)
 
-.PHONY: install_deep
-install_deep: mdprof_cgi mdprof_server
-	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
-	cp `vpath_find mdprof_cgi$(EXT_FOR_EXE)` \
-		$(INSTALL_MERC_BIN_DIR)/mdprof_cgi
-	cp `vpath_find mdprof_server$(EXT_FOR_EXE)`\
-		$(INSTALL_MERC_BIN_DIR)/mdprof_server
+# We don't install mdprof_test, since it is not for users.
+
+# The code of the install_cgi_progs target is duplicated in
+# bindist/bindist.Makefile.in, though the two rules refer to mdprof_cgi
+# by different paths.
+
+.PHONY: install_cgi_progs
+install_cgi_progs: mdprof_cgi
+	# $(INSTALL_CGI_DIR) is likely to be writeable only by root or
+	# the www system administrator, which is why we don't consider a
+	# failure of this action to be an error. If the command fails,
+	# the install action in ../Mmakefile will remind the user to do
+	# the copy later.
+	#
+	# The mv before the cp is there in case the executable is being
+	# executed when we do the install. The mv is of course expected to
+	# fail during a first-time installation.
+	-if test $(ENABLE_DEEP_PROFILER) = yes ; then \
+		mv $(INSTALL_CGI_DIR)/mdprof_cgi \
+			$(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
+		cp mdprof_cgi $(INSTALL_CGI_DIR) ; \
+	fi
+
+uninstall:
+	# We try to uninstall mdprof_cgi, but failure to do so is not an
+	# error for two reasons: because we may simply lack permission to
+	# update the directory, and because the deep profiler installation
+	# may not have been enabled in the first place. (Looking at the current
+	# value of $(ENABLE_DEEP_PROFILER) to check for the latter wouldn't
+	# necessarily do any good, since its setting may have changed since
+	# the original install.)
+	-rm $(INSTALL_CGI_DIR)/mdprof_cgi
 
 #-----------------------------------------------------------------------------#

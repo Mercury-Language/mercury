@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,6 +23,8 @@
 	% The name of the server on which mdprof is being run.
 :- pred server_name(string::out, io__state::di, io__state::uo) is det.
 
+:- func getpid = int.
+
 :- implementation.
 
 :- import_module string, list, require.
@@ -42,33 +44,36 @@ server_name(ServerName) -->
 		string__format("%s > %s", [s(HostnameCmd), s(TmpFile)]) },
 	io__call_system(ServerRedirectCmd, Res1),
 	( { Res1 = ok(0) } ->
-		io__see(TmpFile, Res2),
-		( { Res2 = ok } ->
-			io__read_file(Res3),
-			( { Res3 = ok(ServerNameChars0) } ->
+		io__open_input(TmpFile, TmpRes),
+		( { TmpRes = ok(TmpStream) } ->
+			io__read_file_as_string(TmpStream, TmpReadRes),
+			{
+				TmpReadRes = ok(ServerNameNl),
 				(
-					{ list__remove_suffix(ServerNameChars0,
-						['\n'], ServerNameChars) }
+					string__remove_suffix(ServerNameNl,
+						"\n", ServerNamePrime)
 				->
-					{ string__from_char_list(
-						ServerNameChars, ServerName) },
-					io__seen
+					ServerName = ServerNamePrime
 				;
-					{ error("malformed server name") }
+					error("malformed server name")
 				)
 			;
-				{ error("cannot read server's name") }
-			)
+				TmpReadRes = error(_, _),
+				error("cannot read server's name")
+			},
+			io__close_input(TmpStream)
 		;
-			{ error("cannot open file to out the server's name") }
-		)
+			{ error("cannot open file to find the server's name") }
+		),
+		io__remove_file(TmpFile, _)
 	;
-		{ error("cannot execute cmd to find out the server's name") }
+		{ error("cannot execute cmd to find the server's name") }
 	).
 
 :- pred mkfifo_cmd(string::out) is det.
 
-:- pragma foreign_proc("C", mkfifo_cmd(Mkfifo::out),
+:- pragma foreign_proc("C",
+	mkfifo_cmd(Mkfifo::out),
 	[will_not_call_mercury, promise_pure],
 "
 	/* shut up warnings about casting away const */
@@ -77,9 +82,29 @@ server_name(ServerName) -->
 
 :- pred hostname_cmd(string::out) is det.
 
-:- pragma foreign_proc("C", hostname_cmd(Hostname::out),
+:- pragma foreign_proc("C",
+	hostname_cmd(Hostname::out),
 	[will_not_call_mercury, promise_pure],
 "
 	/* shut up warnings about casting away const */
 	Hostname = (MR_String) (MR_Integer) MR_HOSTNAMECMD;
+").
+
+:- pragma foreign_decl("C",
+"
+#ifdef	MR_DEEP_PROFILER_ENABLED
+#include	<sys/types.h>
+#include	<unistd.h>
+#endif
+").
+
+:- pragma foreign_proc("C",
+	getpid = (Pid::out),
+	[will_not_call_mercury, promise_pure],
+"
+#ifdef	MR_DEEP_PROFILER_ENABLED
+	Pid = getpid();
+#else
+	MR_fatal_error(""the deep profiler is not supported"");
+#endif
 ").

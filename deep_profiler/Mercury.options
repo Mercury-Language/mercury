@@ -5,3 +5,33 @@
 #-----------------------------------------------------------------------------#
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
+
+# --optimize-duplicate-calls interacts badly with the current definition
+# of the mode `array_uo'. `array_uo' is supposed to be a unique output,
+# but is currently defined as plain, nonunique output. This allows the
+# duplicate call optimization to merge two calls that generate separate arrays,
+# even though those arrays will be updated destructively later on.
+#
+# At the moment, this causes the compiler to miscompile topological_sort/2
+# in cliques.m, which (after inlining dfs_graph) has two seemingly identical
+# calls to dense_bitset__init, whose output has mode `array_uo'.
+#
+# We therefore turn off this optimization in all modules that may deal
+# with arrays. This should not cause any performance problem, since there
+# are no known duplicate calls in any performance critical predicates.
+#
+# XXX These flags should be deleted when the problem is fixed.
+
+MCFLAGS-array_util =	--no-optimize-duplicate-calls
+MCFLAGS-callgraph = 	--no-optimize-duplicate-calls
+MCFLAGS-canonical =	--no-optimize-duplicate-calls
+MCFLAGS-cliques = 	--no-optimize-duplicate-calls
+MCFLAGS-dense_bitset = 	--no-optimize-duplicate-calls
+MCFLAGS-exclude = 	--no-optimize-duplicate-calls
+MCFLAGS-html_format = 	--no-optimize-duplicate-calls
+MCFLAGS-measurements = 	--no-optimize-duplicate-calls
+MCFLAGS-profile = 	--no-optimize-duplicate-calls
+MCFLAGS-query = 	--no-optimize-duplicate-calls
+MCFLAGS-read_profile = 	--no-optimize-duplicate-calls
+MCFLAGS-startup = 	--no-optimize-duplicate-calls
+MCFLAGS-top_procs = 	--no-optimize-duplicate-calls

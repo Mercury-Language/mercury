@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,8 +16,8 @@
 :- import_module profile, interface.
 :- import_module io.
 
-:- pred exec(cmd::in, preferences::in, deep::in, string::out,
-	io__state::di, io__state::uo) is det.
+:- pred try_exec(cmd::in, preferences::in, deep::in, string::out,
+	io__state::di, io__state::uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -25,9 +25,31 @@
 
 :- import_module measurements, top_procs, html_format, exclude.
 :- import_module std_util, bool, int, float, char, string.
-:- import_module array, list, assoc_list, set, map, require.
+:- import_module array, list, assoc_list, set, map, exception, require.
 
 %-----------------------------------------------------------------------------%
+
+try_exec(Cmd, Pref, Deep, HTML, IO0, IO) :-
+	try_io(exec(Cmd, Pref, Deep), Result, IO0, IO),
+	(
+		Result = succeeded(HTML)
+	;
+		Result = exception(Exception),
+		( univ_to_type(Exception, MsgPrime) ->
+			Msg = MsgPrime
+		; univ_to_type(Exception, software_error(MsgPrime)) ->
+			Msg = MsgPrime
+		;
+			Msg = "unknown exception"
+		),
+		HTML =
+			string__format(
+				"<H3>AN EXCEPTION HAS OCCURRED: %s</H3>\n",
+				[s(Msg)])
+	).
+
+:- pred exec(cmd::in, preferences::in, deep::in, string::out,
+	io__state::di, io__state::uo) is det.
 
 exec(restart, _Pref, _Deep, _HTML, IO, IO) :-
 	% Our caller is supposed to filter out restart commands.

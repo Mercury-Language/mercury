@@ -1847,6 +1847,8 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 				MR_dump_stack(MR_succip, MR_sp, MR_curfr,
 					MR_FALSE);
 			}
+
+			MR_perform_registered_exception_cleanups();
 			exit(1);
 		}
 	}

@@ -1,32 +1,20 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
 % Author: zs.
 %
-% This module implements timeouts for the deep profiler.
+% This module implements timeouts and cleanup for the deep profiler.
 %
-% The deep profiler uses timeouts to shut down the server process if the
-% programmer has not sent it queries in a while. Before shutdown, we remove the
-% named pipes that the CGI script and the server process use to communicate.
-% Any later invocation of the CGI script will take the absence of the named
-% pipes as indicating that there is no server process for the given data file,
-% and will create a new server process, which will recreate the named pipes.
+% The timeout design we use and its rationale are given in the file DESIGN.
 %
-% Since the receipt of the alarm signal, the removal the pipes and exiting
-% is not an atomic action, there is a potential race condition. However,
-% there is no simple, portable way to eliminate the race condition, and the
-% window of vulnerability is quite small.
-%
-% This module also sets up the automatic execution of the timeout action
-% when the process exits, for use both when the user explicitly requests
-% the shutdown of the server (which will of course happen after startup)
-% and in case of program aborts (which may happen both before and after
-% startup). However, immediately after startup is complete, the server
-% process forks, with the parent exiting to let mdprof_cgi's wait finish,
-% and the child entering a loop waiting for requests.
+% The cleanup system consists of an array of filenames. When the profiler
+% creates a temporary file, it adds its name to the array; when it deletes
+% the temporary file, it deletes its name from the array. When we get an
+% unexpected signal, we clean up by deleting all the temporary files named
+% in the array. The 
 %
 % We establish the exit action to clean up the files as soon as they are
 % created, but we don't want the parent process after the fork to delete them
@@ -37,12 +25,58 @@
 
 :- interface.
 
-:- import_module io.
+:- import_module bool, io.
 
-:- pred setup_exit(string::in, string::in, string::in,
+% Add the given file name to the list of files to be cleaned up.
+
+:- pred register_file_for_cleanup(string::in, io__state::di, io__state::uo)
+	is det.
+
+% Remove the given file name from the list of files to be cleaned up.
+
+:- pred unregister_file_for_cleanup(string::in, io__state::di, io__state::uo)
+	is det.
+
+% Remove all file names from the list of files to be cleaned up.
+
+:- pred unregister_all_files_for_cleanup(io__state::di, io__state::uo) is det.
+
+% Delete all the files on the cleanup list.
+
+:- pred delete_cleanup_files(io__state::di, io__state::uo) is det.
+
+% Set up signal handlers for all the signals we can catch. The three strings
+% specify the name of the mutex file, the name of the directory containing the
+% `want' files, and the prefix of the names of the `want' files.
+
+:- pred setup_signals(string::in, string::in, string::in,
 	io__state::di, io__state::uo) is det.
 
+% Set up a timeout for the given number of minutes in the future.
+
 :- pred setup_timeout(int::in, io__state::di, io__state::uo) is det.
+
+% Get the lock on the named mutex file if the bool is `no'.
+% (The mutex file exists iff some process holds the lock.)
+% If the bool is `yes', meaning debugging is enabled, do nothing.
+
+:- pred get_lock(bool::in, string::in,
+	io__state::di, io__state::uo) is det.
+
+% Release the lock on the named mutex file if the bool is `no'.
+% (The mutex file exists iff some process holds the lock.)
+% If the bool is `yes', meaning debugging is enabled, do nothing.
+
+:- pred release_lock(bool::in, string::in,
+	io__state::di, io__state::uo) is det.
+
+% Create the `want' file with the given name.
+
+:- pred make_want_file(string::in, io__state::di, io__state::uo) is det.
+
+% Delete the `want' file with the given name.
+
+:- pred remove_want_file(string::in, io__state::di, io__state::uo) is det.
 
 :- implementation.
 
@@ -51,29 +85,200 @@
 
 :- pragma foreign_decl("C",
 "
-#include <stdio.h>
+#ifdef	MR_DEEP_PROFILER_ENABLED
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>	/* for O_CREAT, O_EXCL */
 #include <signal.h>	/* for signal numbers */
 #include <unistd.h>	/* for alarm() */
-#include <stdlib.h>	/* for atexit() */
+#include <stdio.h>
+#include <errno.h>	/* for EEXIST etc */
+#include	<dirent.h>
 #include ""mercury_signal.h""
 
-extern	char		*MP_timeout_file1;
-extern	char		*MP_timeout_file2;
-extern	char		*MP_timeout_file3;
+#define	MP_MAX_CLEANUP_FILES	20	/* this should be plenty */
 
-extern	const int	MP_signal_numbers[];
+extern	const char	*MP_cleanup_files[MP_MAX_CLEANUP_FILES];
+extern	int		MP_cleanup_file_next;
 
-extern	void		MP_delete_timeout_files(void);
-extern	void		MP_delete_timeout_files_and_exit_success(void);
-extern	void		MP_delete_timeout_files_and_exit_failure(void);
+extern	void		MP_maybe_print_cleanup_files(const char *msg);
+extern	void		MP_register_cleanup_file(const char *filename);
+extern	void		MP_unregister_cleanup_file(const char *filename);
+extern	void		MP_handle_fatal_exception(void *data);
+extern	void		MP_delete_cleanup_files(void);
+extern	void		MP_delete_cleanup_files_and_exit_failure(
+				const char *signal_name);
+
+extern	int		MP_timeout_seconds;
+extern	const char	*MP_timeout_mutex_file;
+extern	const char	*MP_timeout_want_dir;
+extern	const char	*MP_timeout_want_prefix;
+
+typedef	struct
+{
+	int	MP_signum;
+	void	(*MP_handler)(void);
+} MP_sig_handler;
+
+extern	const MP_sig_handler	MP_signal_structs[];
+
+extern	void	MP_handle_timeout(void);
+
+extern	void	MP_handle_sig_term(void);
+extern	void	MP_handle_sig_hup(void);
+extern	void	MP_handle_sig_int(void);
+extern	void	MP_handle_sig_quit(void);
+extern	void	MP_handle_sig_ill(void);
+extern	void	MP_handle_sig_abrt(void);
+extern	void	MP_handle_sig_bus(void);
+extern	void	MP_handle_sig_fpe(void);
+extern	void	MP_handle_sig_segv(void);
+extern	void	MP_handle_sig_pipe(void);
+
+extern	MR_bool	MP_do_try_get_lock(const char *mutex_file);
+extern	void	MP_do_get_lock(const char *mutex_file);
+extern	void	MP_do_release_lock(const char *mutex_file);
+
+#endif
 ").
 
 :- pragma foreign_code("C",
 "
-MR_bool	MP_process_is_detached_server = MR_FALSE;
-char	*MP_timeout_file1;
-char	*MP_timeout_file2;
-char	*MP_timeout_file3;
+#ifdef	MR_DEEP_PROFILER_ENABLED
+
+#include	<sys/types.h>
+
+const char	*MP_cleanup_files[MP_MAX_CLEANUP_FILES];
+int		MP_cleanup_file_next = 0;
+
+int		MP_timeout_seconds = 30 * 60;
+const char	*MP_timeout_mutex_file = NULL;
+const char	*MP_timeout_want_dir = NULL;
+const char	*MP_timeout_want_prefix = NULL;
+
+/* set this variable to MR_TRUE to debug the code cleanup array */
+MR_bool		MP_print_cleanup_files = MR_FALSE;
+
+void
+MP_maybe_print_cleanup_files(const char *msg)
+{
+	int	i;
+
+	if (MP_print_cleanup_files) {
+		fprintf(stderr, ""\n%s cleanup files:\n"", msg);
+		for (i = 0; i < MP_cleanup_file_next; i++) {
+			fprintf(stderr, ""%i %s\n"", i, MP_cleanup_files[i]);
+		}
+	}
+}
+
+void
+MP_register_cleanup_file(const char *filename)
+{
+	int	i;
+
+	if (MP_cleanup_file_next >= MP_MAX_CLEANUP_FILES - 1) {
+		MR_fatal_error(""MP_register_cleanup_file: too many entries"");
+	}
+
+	for (i = 0; i < MP_cleanup_file_next; i++) {
+		if (MR_streq(filename, MP_cleanup_files[i])) {
+			MR_fatal_error(""MP_register_cleanup_file: duplicate"");
+		}
+	}
+
+	MP_cleanup_files[MP_cleanup_file_next] = filename;
+	MP_cleanup_file_next++;
+	MP_maybe_print_cleanup_files(""register"");
+}
+
+void
+MP_unregister_cleanup_file(const char *filename)
+{
+	int	i;
+	int	j;
+
+	for (i = 0; i < MP_cleanup_file_next; i++) {
+		if (MR_streq(filename, MP_cleanup_files[i])) {
+			/* shift the array entries above index i down one */
+			for (j = i + 1; j < MP_cleanup_file_next; j++) {
+				MP_cleanup_files[j - 1] = MP_cleanup_files[j];
+			}
+
+			MP_cleanup_file_next--;
+			MP_maybe_print_cleanup_files(""unregister"");
+			return;
+		}
+	}
+
+	MR_fatal_error(""MP_unregister_cleanup_file: not found"");
+}
+
+void
+MP_handle_fatal_exception(void *data)
+{
+	/* we ignore data */
+	MP_delete_cleanup_files();
+}
+
+void
+MP_delete_cleanup_files(void)
+{
+	int	i;
+	MR_bool	delayed_mutex_file;
+
+	/*
+	** We want to remove the mutex file only after we have removed the
+	** files manipulated by the critical section it was protecting.
+	*/
+
+	MP_maybe_print_cleanup_files(""delete"");
+
+	delayed_mutex_file = MR_FALSE;
+	for (i = 0; i < MP_cleanup_file_next; i++) {
+		if (MR_streq(MP_timeout_mutex_file, MP_cleanup_files[i])) {
+			delayed_mutex_file = MR_TRUE;
+		} else {
+			if (remove(MP_cleanup_files[i]) != 0) {
+				perror(MP_cleanup_files[i]);
+			}
+		}
+	}
+
+	if (delayed_mutex_file) {
+		if (remove(MP_timeout_mutex_file) != 0) {
+			perror(MP_timeout_mutex_file);
+		}
+	}
+
+	MP_cleanup_file_next = 0;
+}
+
+void
+MP_delete_cleanup_files_and_exit_failure(const char *signal_name)
+{
+	FILE	*fp;
+	char	buf[1024];	/* that should be big enough */
+
+#ifdef	MP_DEBUG_MDPROF_SIGNAL
+	fp = fopen(""/tmp/mdprof_signal"", ""w"");
+	if (fp != NULL) {
+		fprintf(fp, ""%s\n"", signal_name);
+		(void) fclose(fp);
+	}
+#endif
+
+	MP_delete_cleanup_files();
+
+#ifdef	MP_DEBUG_MDPROF_SIGNAL
+	sprintf(buf, ""Mercury deep profiler: received unexpected signal %s"",
+		signal_name);
+	MR_fatal_error(buf);
+#else
+	exit(EXIT_FAILURE);
+#endif
+}
 
 /*
 ** SIGALRM alarm signal indicates a timeout. SIGTERM usually indicates the
@@ -93,113 +298,373 @@ char	*MP_timeout_file3;
 ** its actions even when the program exits after a signal.
 */
 
-const int	MP_signal_numbers[] =
+const MP_sig_handler MP_signal_structs[] =
 {
-	SIGALRM,
+	{ SIGALRM,	MP_handle_timeout },
 #ifdef SIGTERM
-	SIGTERM,
+	{ SIGTERM,	MP_handle_sig_term },
 #endif
 #ifdef SIGHUP
-	SIGHUP,
+	{ SIGHUP,	MP_handle_sig_hup },
 #endif
 #ifdef SIGINT
-	SIGINT,
+	{ SIGINT,	MP_handle_sig_int },
 #endif
 #ifdef SIGQUIT
-	SIGQUIT,
+	{ SIGQUIT,	MP_handle_sig_quit },
 #endif
 #ifdef SIGILL
-	SIGILL,
+	{ SIGILL,	MP_handle_sig_ill },
 #endif
 #ifdef SIGABRT
-	SIGABRT,
+	{ SIGABRT,	MP_handle_sig_abrt },
 #endif
 #ifdef SIGBUS
-	SIGBUS,
+	{ SIGBUS,	MP_handle_sig_bus },
 #endif
 #ifdef SIGFPE
-	SIGFPE,
+	{ SIGFPE,	MP_handle_sig_fpe },
 #endif
 #ifdef SIGSEGV
-	SIGSEGV,
+	{ SIGSEGV,	MP_handle_sig_segv },
 #endif
 #ifdef SIGPIPE
-	SIGPIPE,
+	{ SIGPIPE,	MP_handle_sig_pipe },
 #endif
-	-1
+	{ -1, 		NULL }
 };
 
 void
-MP_delete_timeout_files(void)
+MP_handle_timeout(void)
 {
-	if (! MP_process_is_detached_server) {
-		if (remove(MP_timeout_file1) != 0) {
-			perror(MP_timeout_file1);
-		}
+	DIR		*dir;
+	struct	dirent	*dirent;
+	int		matchlen;
+	MR_bool		success;
 
-		if (remove(MP_timeout_file2) != 0) {
-			perror(MP_timeout_file2);
-		}
+	if (MP_timeout_want_dir == NULL || MP_timeout_want_prefix == NULL) {
+		MR_fatal_error(""MP_handle_timeout: null dir or prefix"");
+	}
 
+	matchlen = strlen(MP_timeout_want_prefix);
+
+	success = MP_do_try_get_lock(MP_timeout_mutex_file);
+	if (! success) {
 		/*
-		if (remove(MP_timeout_file3) != 0) {
-			perror(MP_timeout_file3);
-		}
+		** We could not get the lock, so some other process holds it.
+		** We therefore abort the timeout, but schedule the next one.
 		*/
+
+		(void) alarm(MP_timeout_seconds);
+		return;
+	}
+
+	dir = opendir(MP_timeout_want_dir);
+	if (dir == NULL) {
+		MR_fatal_error(""MP_handle_timeout: opendir failed"");
+	}
+
+	while ((dirent = readdir(dir)) != NULL) {
+		if (MR_strneq(dirent->d_name, MP_timeout_want_prefix,
+			matchlen))
+		{
+			/* abort the timeout */
+			(void) closedir(dir);
+			(void) alarm(MP_timeout_seconds);
+			return;
+		}
+	}
+
+	(void) closedir(dir);
+
+	/*
+	** This call will delete the mutex file last, releasing the mutex
+	*/
+	MP_delete_cleanup_files();
+	exit(EXIT_SUCCESS);
+
+}
+
+void
+MP_handle_sig_term(void)
+{
+	MP_delete_cleanup_files_and_exit_failure(""SIGTERM"");
+}
+
+void
+MP_handle_sig_hup(void)
+{
+	MP_delete_cleanup_files_and_exit_failure(""SIGHUP"");
+}
+
+void
+MP_handle_sig_int(void)
+{
+	MP_delete_cleanup_files_and_exit_failure(""SIGINT"");
+}
+
+void
+MP_handle_sig_quit(void)
+{
+	MP_delete_cleanup_files_and_exit_failure(""SIGQUIT"");
+}
+
+void
+MP_handle_sig_ill(void)
+{
+	MP_delete_cleanup_files_and_exit_failure(""SIGILL"");
+}
+
+void
+MP_handle_sig_abrt(void)
+{
+	MP_delete_cleanup_files_and_exit_failure(""SIGABRT"");
+}
+
+void
+MP_handle_sig_bus(void)
+{
+	MP_delete_cleanup_files_and_exit_failure(""SIGBUS"");
+}
+
+void
+MP_handle_sig_fpe(void)
+{
+	MP_delete_cleanup_files_and_exit_failure(""SIGFPE"");
+}
+
+void
+MP_handle_sig_segv(void)
+{
+	MP_delete_cleanup_files_and_exit_failure(""SIGSEGV"");
+}
+
+void
+MP_handle_sig_pipe(void)
+{
+	MP_delete_cleanup_files_and_exit_failure(""SIGPIPE"");
+}
+
+MR_bool
+MP_do_try_get_lock(const char *mutex_file)
+{
+	int	res;
+	MR_bool	success;
+
+	res = open(mutex_file, O_CREAT | O_EXCL, 0);
+	if (res >= 0) {
+		(void) close(res);
+		MP_register_cleanup_file(mutex_file);
+		success = MR_TRUE;
+	} else if (res < 0 && errno == EEXIST) {
+		success = MR_FALSE;
+	} else {
+		MR_fatal_error(""MP_do_try_get_lock failed"");
+	}
+
+	return res;
+}
+
+void
+MP_do_get_lock(const char *mutex_file)
+{
+	int	res;
+
+	for (;;) {
+		res = open(mutex_file, O_CREAT | O_EXCL, 0);
+		if (res >= 0) {
+			(void) close(res);
+			MP_register_cleanup_file(mutex_file);
+			return;
+		} else if (res < 0 && errno == EEXIST) {
+			sleep(5);
+			continue;
+		} else {
+			MR_fatal_error(""MP_do_get_lock failed"");
+		}
 	}
 }
 
 void
-MP_delete_timeout_files_and_exit_success(void)
+MP_do_release_lock(const char *mutex_file)
 {
-	MP_delete_timeout_files();
-	exit(EXIT_SUCCESS);
+	MP_unregister_cleanup_file(mutex_file);
+	(void) unlink(mutex_file);
 }
 
-void
-MP_delete_timeout_files_and_exit_failure(void)
-{
-	MP_delete_timeout_files();
-	exit(EXIT_FAILURE);
-}
+#endif	/* MR_DEEP_PROFILER_ENABLED */
 ").
 
 :- pragma foreign_proc("C",
-	setup_exit(File1::in, File2::in, File3::in, IO0::di, IO::uo),
+	register_file_for_cleanup(File::in, S0::di, S::uo),
 	[will_not_call_mercury, promise_pure],
 "
+#ifdef	MR_DEEP_PROFILER_ENABLED
+	MP_register_cleanup_file(File);
+	S = S0;
+#else
+	MR_fatal_error(""deep profiler not enabled"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+	unregister_file_for_cleanup(File::in, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+#ifdef	MR_DEEP_PROFILER_ENABLED
+	MP_unregister_cleanup_file(File);
+	S = S0;
+#else
+	MR_fatal_error(""deep profiler not enabled"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+	unregister_all_files_for_cleanup(S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+#ifdef	MR_DEEP_PROFILER_ENABLED
+	MP_cleanup_file_next = 0;
+	S = S0;
+#else
+	MR_fatal_error(""deep profiler not enabled"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+	delete_cleanup_files(S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+#ifdef	MR_DEEP_PROFILER_ENABLED
+	MP_delete_cleanup_files();
+	S = S0;
+#else
+	MR_fatal_error(""deep profiler not enabled"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+	setup_signals(MutexFile::in, WantDir::in, WantPrefix::in,
+		S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+#ifdef	MR_DEEP_PROFILER_ENABLED
 	int	i;
-	void	(*handler)(void);
 
-	MP_timeout_file1 = File1;
-	MP_timeout_file2 = File2;
-	MP_timeout_file3 = File3;
+	MP_timeout_mutex_file = MutexFile;
+	MP_timeout_want_dir = WantDir;
+	MP_timeout_want_prefix = WantPrefix;
 
-	for (i = 0; MP_signal_numbers[i] >= 0; i++) {
-		if (MP_signal_numbers[i] == SIGALRM) {
-			handler = MP_delete_timeout_files_and_exit_success;
-		} else {
-			handler = MP_delete_timeout_files_and_exit_failure;
-		}
-
-		MR_setup_signal(MP_signal_numbers[i], handler, MR_FALSE,
+	for (i = 0; MP_signal_structs[i].MP_signum >= 0; i++) {
+		MR_setup_signal(MP_signal_structs[i].MP_signum,
+			MP_signal_structs[i].MP_handler, MR_FALSE,
 			""Mercury deep profiler: cannot setup signal exit"");
 	}
 
-	if (atexit(MP_delete_timeout_files) != 0) {
-		MR_fatal_error(""Mercury deep profiler: cannot setup exit"");
-	}
+	/*
+	** Mercury exceptions do not cause signals. The default exception
+	** handler prints and error message and exits. To ensure that
+	** we delete up the files we need to clean up, we get the exit
+	** library function to invoke MP_delete_cleanup_files through
+	** MP_handle_fatal_exception.
+	*/
 
-	IO = IO0;
+	MR_register_exception_cleanup(MP_handle_fatal_exception, NULL);
+
+	S = S0;
+#else
+	MR_fatal_error(""deep profiler not enabled"");
+#endif
 ").
 
 :- pragma foreign_proc("C",
-	setup_timeout(Minutes::in, IO0::di, IO::uo),
+	setup_timeout(Minutes::in, S0::di, S::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	int	seconds;
+#ifdef	MR_DEEP_PROFILER_ENABLED
+	MP_timeout_seconds = Minutes * 60;
+	(void) alarm(MP_timeout_seconds);
+	S = S0;
+#else
+	MR_fatal_error(""deep profiler not enabled"");
+#endif
+").
 
-	seconds = Minutes * 60;
-	(void) alarm(seconds);
-	IO = IO0;
+%-----------------------------------------------------------------------------%
+
+get_lock(Debug, MutexFile) -->
+	(
+		{ Debug = yes }
+	;
+		{ Debug = no },
+		do_get_lock(MutexFile)
+	).
+
+release_lock(Debug, MutexFile) -->
+	(
+		{ Debug = yes }
+	;
+		{ Debug = no },
+		do_release_lock(MutexFile)
+	).
+
+:- pred do_get_lock(string::in, io__state::di, io__state::uo) is det.
+
+:- pragma foreign_proc("C",
+	do_get_lock(MutexFile::in, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"
+#ifdef	MR_DEEP_PROFILER_ENABLED
+	MP_do_get_lock(MutexFile);
+	S = S0;
+#else
+	MR_fatal_error(""deep profiler not enabled"");
+#endif
+").
+
+:- pred do_release_lock(string::in, io__state::di, io__state::uo)
+	is det.
+
+:- pragma foreign_proc("C",
+	do_release_lock(MutexFile::in, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"
+#ifdef	MR_DEEP_PROFILER_ENABLED
+	MP_do_release_lock(MutexFile);
+	S = S0;
+#else
+	MR_fatal_error(""deep profiler not enabled"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+	make_want_file(WantFileName::in, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+#ifdef	MR_DEEP_PROFILER_ENABLED
+	int	fd;
+
+	fd = open(WantFileName, O_CREAT, 0);
+	if (fd < 0) {
+		MR_fatal_error(""make_want_file: open failed"");
+	}
+	(void) close(fd);
+	MP_register_cleanup_file(WantFileName);
+	S = S0;
+#else
+	MR_fatal_error(""deep profiler not enabled"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+	remove_want_file(WantFileName::in, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+#ifdef	MR_DEEP_PROFILER_ENABLED
+	MP_unregister_cleanup_file(WantFileName);
+	(void) unlink(WantFileName);
+	S = S0;
+#else
+	MR_fatal_error(""deep profiler not enabled"");
+#endif
 ").

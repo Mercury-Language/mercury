@@ -227,6 +227,10 @@
 ** MR_DEBUG_LVAL_REP
 ** 	Enables low-level debugging messages from routines concerned with
 ** 	the representation of lvals in the RTTI system.
+**
+** MP_DEBUG_MDPROF_SIGNAL
+**	Enables low-level debugging messages from the signal handling
+**	functions in the deep profiler.
 */
 
 #ifdef	MR_HIGHLEVEL_CODE

@@ -33,6 +33,8 @@ SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/canonical_grade \
 		  ../scripts/gud.el
 
+CGI_PROG	= ../deep_profiler/mdprof_cgi
+
 VIM_FILES	= ../vim/*
 
 CONFIG_FILES	= ../config.sub ../config.guess ../install-sh
@@ -73,6 +75,8 @@ binary_distribution: bindist.configure bindist.build_vars
 	cp $(SCRIPT_FILES) $(MERCURY_VERSION)/scripts
 	test -d $(MERCURY_VERSION)/util || mkdir $(MERCURY_VERSION)/util
 	cp $(UTILS) $(MERCURY_VERSION)/util
+	test -d $(MERCURY_VERSION)/cgi || mkdir $(MERCURY_VERSION)/cgi
+	cp $(CGI_PROG) $(MERCURY_VERSION)/cgi
 	test -d $(MERCURY_VERSION)/vim || mkdir $(MERCURY_VERSION)/vim
 	cp -R $(VIM_FILES) $(MERCURY_VERSION)/vim
 	cp $(CONFIG_FILES) $(MERCURY_VERSION)

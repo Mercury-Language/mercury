@@ -4148,34 +4148,25 @@ static const MercuryFile MR_closed_stream = {
 void
 mercury_close(MercuryFile* mf)
 {
-	if (mf == &mercury_stdin ||
-	    mf == &mercury_stdout ||
-	    mf == &mercury_stderr ||
-	    mf == &mercury_stdin_binary ||
-	    mf == &mercury_stdout_binary)
-	{
-		mercury_io_error(mf,
-			""attempt to close stdin, stdout or stderr"");	
-	} else {
-		if (MR_CLOSE(*mf) < 0) {
-			mercury_io_error(mf, ""error closing file: %s"",
-				strerror(errno));
-		}
+	if (MR_CLOSE(*mf) < 0) {
+		mercury_io_error(mf, ""error closing file: %s"",
+			strerror(errno));
+	}
 
 #ifdef MR_NEW_MERCURYFILE_STRUCT
 
-		/*
-		** MR_closed_stream is a dummy stream object containing
-		** pointers to functions that always return an error
-		** indication.
-		** Doing this ensures that future accesses to the file
-		** will fail nicely.
-		*/
-		/*
-		** gcc 2.95.2 barfs on `*mf = MR_closed_stream;'
-		** so we use MR_memcpy() instead.
-		*/
-		MR_memcpy(mf, &MR_closed_stream, sizeof(*mf));
+	/*
+	** MR_closed_stream is a dummy stream object containing
+	** pointers to functions that always return an error
+	** indication.
+	** Doing this ensures that future accesses to the file
+	** will fail nicely.
+	*/
+	/*
+	** gcc 2.95.2 barfs on `*mf = MR_closed_stream;'
+	** so we use MR_memcpy() instead.
+	*/
+	MR_memcpy(mf, &MR_closed_stream, sizeof(*mf));
 
 /*
 ** XXX it would be nice to have an autoconf check
@@ -4186,28 +4177,38 @@ mercury_close(MercuryFile* mf)
 
 /****
 #elif defined(HAVE_FOPENCOOKIE)
-		MR_file(*mf) = MR_closed_file;
+	MR_file(*mf) = MR_closed_file;
 ****/
 
 #else
 
-		/*
-		** We want future accesses to the file to fail nicely.
-		** Ideally they would throw an exception, but that would
-		** require a check at every I/O operation, and for simple
-		** operations like putchar() or getchar(), that would be
-		** too expensive.  Instead we just set the file pointer
-		** to NULL; on systems which trap null pointer dereferences,
-		** or if library/io.m is compiled with MR_assert assertions
-		** enabled (i.e. -DMR_LOWLEVEL_DEBUG), this will ensure that
-		** accessing closed files traps immediately rather than
-		** causing problems at some later point.
-		*/
-		MR_mercuryfile_init(NULL, 0, mf);
+	/*
+	** We want future accesses to the file to fail nicely.
+	** Ideally they would throw an exception, but that would
+	** require a check at every I/O operation, and for simple
+	** operations like putchar() or getchar(), that would be
+	** too expensive.  Instead we just set the file pointer
+	** to NULL; on systems which trap null pointer dereferences,
+	** or if library/io.m is compiled with MR_assert assertions
+	** enabled (i.e. -DMR_LOWLEVEL_DEBUG), this will ensure that
+	** accessing closed files traps immediately rather than
+	** causing problems at some later point.
+	*/
+	MR_mercuryfile_init(NULL, 0, mf);
 
 #endif /* ! MR_NEW_MERCURYFILE_STRUCT */
 
 #ifndef MR_CONSERVATIVE_GC
+	if (mf == &mercury_stdin ||
+	    mf == &mercury_stdout ||
+	    mf == &mercury_stderr ||
+	    mf == &mercury_stdin_binary ||
+	    mf == &mercury_stdout_binary)
+	{
+		/*
+		** The memory for these streams is allocated statically,
+		** so there is nothing to free.
+	} else {
   		/*
 		** For the accurate GC or no GC cases,
 		** we need to explicitly deallocate the memory here,
@@ -4217,9 +4218,8 @@ mercury_close(MercuryFile* mf)
 		** as a foreign_type.
 		*/
   		MR_GC_free(mf);
-#endif /* !MR_CONSERVATIVE_GC */
-
 	}
+#endif /* !MR_CONSERVATIVE_GC */
 }
 
 ").
@@ -4229,18 +4229,8 @@ mercury_close(MercuryFile* mf)
 static void
 mercury_close(MR_MercuryFile mf)
 {
-        if (mf == mercury_stdin ||
-            mf == mercury_stdout ||
-            mf == mercury_stderr ||
-            mf == mercury_stdin_binary ||
-            mf == mercury_stdout_binary)
-        {
-                // XXX We should throw an exception here.
-                ;	
-        } else {
-                mf->stream->Close();
-                mf->stream = NULL;
-        }
+	mf->stream->Close();
+	mf->stream = NULL;
 }
 
 ").

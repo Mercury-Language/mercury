@@ -3932,16 +3932,16 @@ This is also true for @samp{mdprof}.
 To display the information contained in a deep profiling data file
 (which will be called @file{Deep.data} unless you renamed it),
 start up your browser and give it a URL of the form
-@file{http://server.domain.name/cgi-bin/mdprof?/full/path/name/Deep.data}.
+@file{http://server.domain.name/cgi-bin/mdprof_cgi?/full/path/name/Deep.data}.
 The @file{server.domain.name} part should be the name of a machine
 with the following qualifications:
 it should have a web server running on it,
-and it should have the @samp{mdprof} program installed
+and it should have the @samp{mdprof_cgi} program installed
 in its @file{/usr/lib/cgi-bin} directory.
 The @file{/full/path/name/Deep.data} part
 should be the full path name of the deep profiling data file
 whose data you wish to explore.
-The name of this file must not have dollar signs in it.
+The name of this file must not have percent signs in it.
 
 @node Profiling and shared libraries
 @section Profiling and shared libraries

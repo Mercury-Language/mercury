@@ -127,6 +127,7 @@
 **	MR_HAVE_SYS_STROPTS_H	we have <sys/stropts.h>
 **	MR_HAVE_WINDOWS_H	we have <windows.h>
 **	MR_HAVE_IEEEFP_H	we have <ieeefp.h>
+**	MR_HAVE_DIRENT_H	we have <dirent.h>
 */
 #undef	MR_HAVE_SYS_SIGINFO_H
 #undef	MR_HAVE_SYS_SIGNAL_H
@@ -147,6 +148,7 @@
 #undef	MR_HAVE_SYS_STROPTS_H
 #undef	MR_HAVE_WINDOWS_H
 #undef	MR_HAVE_IEEEFP_H
+#undef	MR_HAVE_DIRENT_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
@@ -222,6 +224,9 @@
 **	MR_HAVE_ISNANF		we have the isnanf() function.
 **	MR_HAVE_ISINF		we have the isinf() function.
 **	MR_HAVE_ISINFF		we have the isinff() function.
+**	MR_HAVE_OPENDIR		we have the opendir() function.
+**	MR_HAVE_READDIR		we have the readdir() function.
+**	MR_HAVE_CLOSEDIR	we have the closedir() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -269,6 +274,9 @@
 #undef	MR_HAVE_ISNANF
 #undef	MR_HAVE_ISINF
 #undef	MR_HAVE_ISINFF
+#undef	MR_HAVE_OPENDIR
+#undef	MR_HAVE_READDIR
+#undef	MR_HAVE_CLOSEDIR
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.
@@ -363,6 +371,11 @@
 #undef	MR_LITTLE_ENDIAN
 
 /*
+** Do we have the O_CREAT and O_EXCL macros?
+*/
+#undef	MR_HAVE_OCREAT_OEXCL
+
+/*
 ** Which version of Mercury is this?  (Taken from the file ../VERSION.)
 */
 #define MR_VERSION "unknown"
@@ -405,6 +418,14 @@
 **	See trace/mercury_trace_external.c.
 */
 #undef  MR_USE_EXTERNAL_DEBUGGER
+
+/*
+** MR_DEEP_PROFILER_ENABLED
+**	Enable the deep profiler. This should be defined only if all the
+**	features (header files and system calls) needed by the deep profiler
+**	ara available on this platform.
+*/
+#undef  MR_DEEP_PROFILER_ENABLED
 
 /*
 ** MR_NO_USE_READLINE

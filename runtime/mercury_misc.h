@@ -27,4 +27,20 @@ extern	void	MR_mdb_perror(const char *msg);
 
 extern	void	MR_fatal_error(const char *msg, ...) MR_NO_RETURN;
 
+/*
+** Register a function to be called (as func(data)) when the program is
+** about to be terminated due to an uncaught exception. 
+*/
+
+extern	void	MR_register_exception_cleanup(void (*func)(void *),
+			void *data);
+
+/*
+** Call all the functions registered with MR_register_exception_cleanup.
+** Should be invoked only when the program is about to be terminated
+** due to an uncaught exception. 
+*/
+
+extern	void	MR_perform_registered_exception_cleanups(void);
+
 #endif /* not MERCURY_MISC_H */

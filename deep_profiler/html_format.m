@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1839,7 +1839,8 @@ clique_ptr_to_html_ref(Pref, Deep, ProcName, CliquePtr) = HTML :-
 		[s(URL), s(ProcName)]).
 
 deep_cmd_pref_to_url(Pref, Deep, Cmd) =
-	cmd_pref_to_url(Deep ^ server_name, Deep ^ data_file_name, Cmd, Pref).
+	machine_datafile_cmd_pref_to_url(Deep ^ server_name,
+		Deep ^ data_file_name, Cmd, Pref).
 
 %-----------------------------------------------------------------------------%
 

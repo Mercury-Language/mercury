@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,6 +30,7 @@
 
 :- import_module profile, cliques, array_util.
 :- import_module int, set.
+% :- import_module io, string, unsafe, require.
 
 find_cliques(InitDeep, BottomUpPDPtrCliqueList) :-
 	make_graph(InitDeep, Graph),
@@ -95,12 +96,15 @@ add_call_site_arcs(InitDeep, FromPDI, CallSiteSlot, Graph0, Graph) :-
 :- pred add_csd_arcs(initial_deep::in, int::in, call_site_dynamic_ptr::in,
 	graph::in, graph::out) is det.
 
+% :- pragma promise_pure(add_csd_arcs/5).
+
 add_csd_arcs(InitDeep, FromPDI, CSDPtr, Graph0, Graph) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
 	( CSDI > 0 ->
 		array__lookup(InitDeep ^ init_call_site_dynamics, CSDI, CSD),
 		ToPDPtr = CSD ^ csd_callee,
 		ToPDPtr = proc_dynamic_ptr(ToPDI),
+		% impure unsafe_perform_io(write_arc(FromPDI, ToPDI, CSDI)),
 		add_arc(Graph0, FromPDI, ToPDI, Graph)
 	;
 		Graph = Graph0
@@ -126,6 +130,30 @@ index_clique(CliqueNum, CliqueMembers, CliqueIndex0, CliqueIndex) :-
 :- pred index_clique_member(int::in, proc_dynamic_ptr::in,
 	array(clique_ptr)::array_di, array(clique_ptr)::array_uo) is det.
 
+% :- pragma promise_pure(index_clique_member/4).
+
 index_clique_member(CliqueNum, PDPtr, CliqueIndex0, CliqueIndex) :-
 	PDPtr = proc_dynamic_ptr(PDI),
+	% impure unsafe_perform_io(write_pdi_cn(PDI, CliqueNum)),
 	array__set(CliqueIndex0, PDI, clique_ptr(CliqueNum), CliqueIndex).
+
+%-----------------------------------------------------------------------------%
+
+% Predicates for use in debugging.
+
+% :- pred write_arc(int::in, int::in, int::in, io__state::di, io__state::uo)
+% 	is det.
+% 
+% write_arc(FromPDI, ToPDI, CSDI) -->
+% 	io__format("arc from pd %d to pd %d through csd %d\n",
+% 		[i(FromPDI), i(ToPDI), i(CSDI)]).
+% 
+% :- pred write_pdi_cn(int::in, int::in, io__state::di, io__state::uo) is det.
+% 
+% write_pdi_cn(PDI, CN) -->
+% 	io__write_string("pdi "),
+% 	io__write_int(PDI),
+% 	io__write_string(" -> clique "),
+% 	io__write_int(CN),
+% 	io__nl,
+% 	io__flush_output.
