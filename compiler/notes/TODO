@@ -5,7 +5,7 @@ TODO LIST:
 
 write a language reference manual!
 
-write a users guide!
+improve the users guide
 
 typechecking
 ------------
@@ -48,9 +48,6 @@ general
 
 - other specializations, e.g. if argument is known to be bound to
   f(X,Y), then just pass X and Y in registers
-
-- handle abstract insts in the same way abstract types are handled (a research
-  issue)
 
 - improve efficiency of the implicit quantification pass (currently O(N^2))
 
@@ -98,6 +95,9 @@ mode analysis:
 --------------
 
 - handle polymorphic modes (some research issues?)
+
+- handle abstract insts in the same way abstract types are handled (a research
+  issue - is this possible at all?)
 
 code generation:
 ----------------
