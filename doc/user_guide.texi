@@ -1350,7 +1350,7 @@ or by typing @samp{quit.}.
 The module names @var{module1}, @var{module2}, @dots{} specify
 which modules will be imported.  Note that you can also
 add new modules to the list of imports directly at the query prompt,
-by using a command of the form @samp{["@var{module}"]}, e.g. @samp{["int"]}.
+by using a command of the form @samp{[@var{module}]}, e.g. @samp{[int]}.
 You need to import all the modules that define symbols used in your query.
 Queries can only use symbols that are exported from a module;
 entities which are declared in a module's implementation section
