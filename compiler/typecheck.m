@@ -3689,9 +3689,11 @@ typecheck_info_get_ctor_list(TypeCheckInfo, Functor, Arity,
 		% has supplied type or mode declarations, the
 		% goal should only contain an application of the
 		% field access function, not constructor applications
-		% or function calls.
+		% or function calls. The clauses in `.opt' files will
+		% already have been expanded into unifications.
 		%
-		TypeCheckInfo ^ is_field_access_function = yes
+		TypeCheckInfo ^ is_field_access_function = yes,
+		TypeCheckInfo ^ import_status \= opt_imported
 	->
 		(
 			builtin_field_access_function_type(TypeCheckInfo,
