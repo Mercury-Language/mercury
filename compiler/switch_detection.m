@@ -78,7 +78,8 @@ detect_switches_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 
 %-----------------------------------------------------------------------------%
 
-	% This version doesn't return the resulting instmap
+	% Given a goal, and the instmap on entry to that goal,
+	% replace disjunctions with switches where-ever possible.
 
 :- pred detect_switches_in_goal(hlds__goal, instmap, module_info,
 				hlds__goal).
@@ -90,9 +91,10 @@ detect_switches_in_goal(Goal0 - GoalInfo, InstMap0, ModuleInfo,
 	detect_switches_in_goal_2(Goal0, GoalInfo, InstMap0, InstMapDelta,
 			ModuleInfo, Goal).
 
-	% This version is the same as the above except that it
-	% does return the resulting instmap, which is computed
-	% by applying the instmap delta specified in the goal's goalinfo.
+	% This version is the same as the above except that it returns
+	% the resulting instmap on exit from the goal, which is
+	% computed by applying the instmap delta specified in the
+	% goal's goalinfo.
 
 :- pred detect_switches_in_goal(hlds__goal, instmap, module_info,
 				hlds__goal, instmap).
@@ -169,7 +171,7 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, InstMap, InstMapDelta,
 		inst_is_bound(ModuleInfo, VarInst0),
 		partition_disj(Goals0, Var, GoalInfo, Cases0)
 	->
-		% XXX it might be a good idea to convert switches
+		% It might be a good idea to convert switches
 		% with only one case into something simpler
 		detect_switches_in_cases(Cases0, InstMap, ModuleInfo,
 			Cases),
@@ -181,7 +183,9 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, InstMap, InstMapDelta,
 
 %-----------------------------------------------------------------------------%
 
-:- type cases == map(cons_id, list(hlds__goal)).
+	% partition_disj(Goals, Var, GoalInfo, Cases):
+	%	Attempts to partition the disjunction `Goals' into a switch
+	%	on `Var'.  If successful, returns the resulting `Cases'.
 
 :- pred partition_disj(list(hlds__goal), var, hlds__goal_info, list(case)).
 :- mode partition_disj(in, in, in, out) is semidet.
@@ -192,14 +196,18 @@ partition_disj(Goals0, Var, GoalInfo, CaseList) :-
 	map__to_assoc_list(Cases, CasesAssocList),
 	CasesAssocList \= [_],
 	fix_case_list(CasesAssocList, GoalInfo, CaseList).
-	
+
+:- type cases == map(cons_id, list(hlds__goal)).
+
 :- pred partition_disj_2(list(hlds__goal), var, cases, cases).
 :- mode partition_disj_2(in, in, in, out) is semidet.
 
 partition_disj_2([], _Var, Cases, Cases).
-partition_disj_2([Goal | Goals], Var, Cases0, Cases) :-
-	goal_to_conj_list(Goal, ConjList),
-	find_unify_var_functor(ConjList, Var, Functor),	% may fail
+partition_disj_2([Goal0 | Goals], Var, Cases0, Cases) :-
+	goal_to_conj_list(Goal0, ConjList0),
+	Goal0 = _ - GoalInfo,
+	find_unify_var_functor(ConjList0, Var, Functor, ConjList), % may fail
+	conj_list_to_goal(ConjList, GoalInfo, Goal),
 	( map__search(Cases0, Functor, DisjList0) ->
 		DisjList1 = [Goal | DisjList0]
 	;
@@ -208,15 +216,32 @@ partition_disj_2([Goal | Goals], Var, Cases0, Cases) :-
 	map__set(Cases0, Functor, DisjList1, Cases1),
 	partition_disj_2(Goals, Var, Cases1, Cases).
 
-:- pred find_unify_var_functor(list(hlds__goal), var, cons_id).
-:- mode find_unify_var_functor(in, in, out) is semidet.
+	% find_unify_var_functor(Goals0, Var, ConsId, Goals):
+	%	Searches through Goals0 looking for a deconstruction
+	%	unification with `Var'.  If successful, returns the
+	%	functor which `Var' gets unified with as `ConsId',
+	%	sets `Goals' to be `Goals0' with that deconstruction
+	%	unification made deterministic.
 
-find_unify_var_functor([Goal - _GoalInfo | Goals], Var, Functor) :-
-	( Goal = unify(_, _, _, UnifyInfo, _) ->
-		( UnifyInfo = deconstruct(Var, Functor0, _, _, _) ->
-			Functor = Functor0
+:- pred find_unify_var_functor(list(hlds__goal), var, cons_id,
+				list(hlds__goal)).
+:- mode find_unify_var_functor(in, in, out, out) is semidet.
+
+find_unify_var_functor([Goal0 - GoalInfo | Goals0], Var, Functor,
+		[Goal - GoalInfo | Goals]) :-
+	( Goal0 = unify(A, B, C, UnifyInfo0, E) ->
+		( UnifyInfo0 = deconstruct(Var, Functor0, F, G, _Det) ->
+			Functor = Functor0,
+				% The deconstruction unification now becomes
+				% deterministic, since the test will get
+				% carried out in the switch.
+			UnifyInfo = deconstruct(Var, Functor, F, G,
+					deterministic),
+			Goal = unify(A, B, C, UnifyInfo, E),
+			Goals = Goals0
 		;
-			find_unify_var_functor(Goals, Var, Functor)
+			Goal = Goal0,
+			find_unify_var_functor(Goals0, Var, Functor, Goals)
 		)
 	;
 		fail
