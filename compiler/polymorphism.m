@@ -1035,41 +1035,9 @@ polymorphism__process_goal_expr(GoalExpr0, GoalInfo0, Goal) -->
 		{ Goal = GoalExpr0 - GoalInfo0 }
 	).
 
-polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
-		Builtin, UnifyContext, Name0), GoalInfo, Goal) -->
-	% Check for a call to a special predicate like compare/3
-	% for which the type is known at compile-time.
-	% Replace such calls with calls to the particular version
-	% for that type.
-	% (Note: higher_order.m also performs the same optimization.
-	% Is there really much advantage in doing it here too?)
-	(
-		{ Name0 = qualified(ModuleName, PredName0) },
-		{ mercury_public_builtin_module(ModuleName) },
-		{ list__length(ArgVars0, Arity) },
-		{ special_pred_name_arity(SpecialPredId, PredName0,
-						MangledPredName, Arity) },
-		=(Info0),
-		{ poly_info_get_var_types(Info0, VarTypes) },
-		{ special_pred_get_type(MangledPredName, ArgVars0, MainVar) },
-		{ map__lookup(VarTypes, MainVar, Type) },
-		{ Type \= term__variable(_) },
-
-		% don't try this for any special preds if they're not
-		% implemented
-
-		{ special_pred_list(SpecialPredIds) },
-		{ list__member(SpecialPredId, SpecialPredIds) }
-	->
-		{ poly_info_get_module_info(Info0, ModuleInfo) },
-		{ polymorphism__get_special_proc(Type, SpecialPredId,
-			ModuleInfo, Name, PredId, ProcId) }
-	;
-		{ PredId = PredId0 },
-		{ ProcId = ProcId0 },
-		{ Name = Name0 }
-	),
-
+polymorphism__process_goal_expr(Goal0, GoalInfo, Goal) -->
+	{ Goal0 = call(PredId, ProcId, ArgVars0, Builtin,
+			UnifyContext, Name) },
 	polymorphism__process_call(PredId, ArgVars0, GoalInfo,
 		ArgVars, _ExtraVars, CallGoalInfo, ExtraGoals),
 
