@@ -291,9 +291,10 @@ getopt__process_arguments([Option | Args0], Args, OptionOps,
 			LongOption = LongOptionStr,
 			MaybeArg = no
 		),
+		OptionName = "--" ++ LongOption,
 	  	( call(LongOptionPred, LongOption, Flag) ->
 			( map__search(OptionTable0, Flag, OptionData) ->
-				getopt__handle_long_option(Option, Flag,
+				getopt__handle_long_option(OptionName, Flag,
 					OptionData, MaybeArg, Args0, Args,
 					OptionOps, [Option | OptionArgs0],
 					OptionArgs, OptionTable0, Result)
@@ -305,7 +306,8 @@ getopt__process_arguments([Option | Args0], Args, OptionOps,
 				Args = Args0
 			)
 		;
-			string__append("unrecognized option `", Option, Tmp),
+			string__append("unrecognized option `", OptionName,
+				Tmp),
 			string__append(Tmp, "'", ErrorMsg),
 			Result = error(ErrorMsg),
 			OptionArgs = OptionArgs0,
@@ -403,6 +405,16 @@ getopt__handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
 		OptionArgs = OptionArgs1,
 		string__append_list(["option `", Option,
 			"' needs an argument"],
+			ErrorMsg),
+		Result = error(ErrorMsg)
+	;
+		getopt__need_arg(OptionData, no),
+		MaybeOptionArg = yes(_)
+	->
+		Args = Args0,
+		OptionArgs = OptionArgs1,
+		string__append_list(["option `", Option,
+			"' does not allow an argument"],
 			ErrorMsg),
 		Result = error(ErrorMsg)
 	;
