@@ -186,8 +186,10 @@ clean: clean_subdirs
 clean_subdirs:
 	rm -rf runtime/tmp_dir library/tmp_dir
 	for dir in $(SUBDIRS); do \
+		if [ "$$dir" = scripts ]; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
 	done
+	cd scripts; $(SUBDIR_MMAKE) clean
 
 realclean: realclean_subdirs
 
@@ -195,7 +197,9 @@ realclean: realclean_subdirs
 realclean_subdirs:
 	rm -rf stage[1-4]
 	for dir in $(SUBDIRS); do \
+		if [ "$$dir" = scripts ]; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) realclean) \
 	done
+	cd scripts; $(SUBDIR_MMAKE) realclean
 
 #-----------------------------------------------------------------------------#
