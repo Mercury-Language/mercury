@@ -1062,9 +1062,44 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		Goal = FuncCall - GoalInfo0
 	;
 		%
+		% Is the function symbol a higher-order predicate
+		% or function constant?
+		%
+		ConsId0 = cons(Name, _),
+		type_is_higher_order(TypeOfX, PredOrFunc,
+			EvalMethod, HOArgTypes),
+
+		%
+		% We don't do this for the clause introduced by the
+		% compiler for a field access function -- that needs
+		% to be expanded into unifications below.
+		%
+		\+ pred_info_is_field_access_function(ModuleInfo, PredInfo0),
+
+		%
+		% Find the pred_id of the constant.
+		%
+		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
+		AllArgTypes = ArgTypes0 ++ HOArgTypes,
+		pred_info_typevarset(PredInfo0, TVarSet),
+		get_pred_id(Name, PredOrFunc, TVarSet, AllArgTypes,
+			ModuleInfo, PredId)
+	->
+		get_proc_id(ModuleInfo, PredId, ProcId),
+		ConsId = pred_const(PredId, ProcId, EvalMethod),
+		Goal = unify(X0, functor(ConsId, ArgVars0), Mode0,
+			Unification0, UnifyContext) - GoalInfo0,
+		PredInfo = PredInfo0,
+		VarTypes = VarTypes0,
+		VarSet = VarSet0
+	;
+		%
 		% Is it a call to an automatically generated field access
-		% function. This test must be after conversion of function
-		% calls into predicate calls above.
+		% function. This test must come after the tests for
+		% function calls and higher-order terms above.
+		% It's done that way because it's easier to check
+		% that the types match for functions calls and
+		% higher-order terms.
 		%
 		ConsId0 = cons(Name, Arity),
 		is_field_access_function_name(ModuleInfo, Name, Arity,
@@ -1091,33 +1126,6 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 			PredInfo0, PredInfo, VarTypes0, VarTypes,
 			VarSet0, VarSet, AccessType, FieldName,
 			UnifyContext, X0, ArgVars0, GoalInfo0, Goal)
-	;
-		%
-		% Is the function symbol a higher-order predicate
-		% or function constant?
-		% This test needs to come after the test to recognise
-		% function calls and field access function calls
-		% to avoid being confused by functions that return
-		% higher-order terms.
-		%
-		ConsId0 = cons(Name, _),
-		type_is_higher_order(TypeOfX, PredOrFunc,
-			EvalMethod, HOArgTypes)
-	->
-		%
-		% Find the pred_id and proc_id of the constant.
-		%
-		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
-		AllArgTypes = ArgTypes0 ++ HOArgTypes,
-		pred_info_typevarset(PredInfo0, TVarSet),
-		get_pred_id_and_proc_id(Name, PredOrFunc, TVarSet,
-			AllArgTypes, ModuleInfo, PredId, ProcId),
-		ConsId = pred_const(PredId, ProcId, EvalMethod),
-		Goal = unify(X0, functor(ConsId, ArgVars0), Mode0,
-			Unification0, UnifyContext) - GoalInfo0,
-		PredInfo = PredInfo0,
-		VarTypes = VarTypes0,
-		VarSet = VarSet0
 	;
 		%
 		% Module qualify ordinary construction/deconstruction
