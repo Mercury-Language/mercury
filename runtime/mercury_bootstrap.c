@@ -65,7 +65,6 @@ mercury_data_private_builtin__base_type_info_base_typeclass_info_1_struct {
 	(const Word *) string_const("base_typeclass_info", 19)
 };
 
-
 MR_STATIC_CODE_CONST struct
 mercury_data_private_builtin__base_type_info_typeclass_info_1_struct {
 	Integer f1;
@@ -92,7 +91,6 @@ mercury_data_private_builtin__base_type_info_typeclass_info_1_struct {
 	(const Word *) string_const("typeclass_info", 14)
 };
 
-
 const struct
 mercury_data_private_builtin__base_type_layout_typeclass_info_1_struct {
 	TYPE_LAYOUT_FIELDS
@@ -107,17 +105,10 @@ const struct mercury_data_private_builtin__base_type_functors_typeclass_info_1_s
 	MR_TYPEFUNCTORS_SPECIAL
 };
 
-
-MR_MAKE_STACK_LAYOUT_ENTRY(
-	mercury____Unify___private_builtin__typeclass_info_1_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(
-	mercury____Index___private_builtin__typeclass_info_1_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(
-	mercury____Compare___private_builtin__typeclass_info_1_0)
 BEGIN_MODULE(typeclass_info_module)
-	init_entry_sl(mercury____Unify___private_builtin__typeclass_info_1_0);
-	init_entry_sl(mercury____Index___private_builtin__typeclass_info_1_0);
-	init_entry_sl(mercury____Compare___private_builtin__typeclass_info_1_0);
+	init_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+	init_entry(mercury____Index___private_builtin__typeclass_info_1_0);
+	init_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 BEGIN_CODE
 Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 {
@@ -144,5 +135,3 @@ void sys_init_typeclass_info_module(void);
 void sys_init_typeclass_info_module(void) {
 	typeclass_info_module();
 }
-
-

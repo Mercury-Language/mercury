@@ -8,7 +8,6 @@ ENDINIT
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#define		MR_STACK_TRACE_THIS_MODULE
 #include	"mercury_imp.h"
 
 #include	<stdio.h>
@@ -34,7 +33,6 @@ static	void	call_engine_inner(Code *entry_point);
 #ifndef USE_GCC_NONLOCAL_GOTOS
   static Code	*engine_done(void);
   static Code	*engine_init_registers(void);
-  MR_MAKE_STACK_LAYOUT_ENTRY(engine_done)
 #endif
 
 bool	MR_debugflag[MR_MAXFLAG];
@@ -532,18 +530,12 @@ Define_extern_entry(do_succeed);
 Define_extern_entry(do_last_succeed);
 Define_extern_entry(do_not_reached);
 
-MR_MAKE_STACK_LAYOUT_ENTRY(do_redo)
-MR_MAKE_STACK_LAYOUT_ENTRY(do_fail)
-MR_MAKE_STACK_LAYOUT_ENTRY(do_succeed)
-MR_MAKE_STACK_LAYOUT_ENTRY(do_last_succeed)
-MR_MAKE_STACK_LAYOUT_ENTRY(do_not_reached)
-
 BEGIN_MODULE(special_labels_module)
-	init_entry(do_redo);
-	init_entry(do_fail);
-	init_entry(do_succeed);
-	init_entry(do_last_succeed);
-	init_entry(do_not_reached);
+	init_entry_ai(do_redo);
+	init_entry_ai(do_fail);
+	init_entry_ai(do_succeed);
+	init_entry_ai(do_last_succeed);
+	init_entry_ai(do_not_reached);
 BEGIN_CODE
 
 Define_entry(do_redo);

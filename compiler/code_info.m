@@ -3126,8 +3126,8 @@ code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
 	code_info__generate_var_livelvals(VarList, LiveVals0, LiveVals1),
 	{ set__to_sorted_list(LiveVals1, LiveVals2) },
 	code_info__get_globals(Globals),
-	{ globals__want_return_layouts(Globals, WantReturnLayout) },
-	code_info__livevals_to_livelvals(LiveVals2, WantReturnLayout, 
+	{ globals__want_return_var_layouts(Globals, WantReturnVarLayout) },
+	code_info__livevals_to_livelvals(LiveVals2, WantReturnVarLayout, 
 		AfterCallInstMap, LiveVals3),
 	code_info__get_temps_in_use(TempsInUse),
 	code_info__get_temp_content_map(TempContentMap),
@@ -3162,11 +3162,11 @@ code_info__generate_temp_livelvals([Slot - StoredLval | Slots], LiveInfo0,
 :- mode code_info__livevals_to_livelvals(in, in, in, out, in, out) is det.
 
 code_info__livevals_to_livelvals([], _, _, []) --> [].
-code_info__livevals_to_livelvals([Lval - Var | Ls], WantReturnLayout,
+code_info__livevals_to_livelvals([Lval - Var | Ls], WantReturnVarLayout,
 		AfterCallInstMap, [LiveLval | Lives]) -->
 	code_info__get_varset(VarSet),
 	(
-		{ WantReturnLayout = yes }
+		{ WantReturnVarLayout = yes }
 	->
 		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
 		{ varset__lookup_name(VarSet, Var, Name) },
@@ -3180,7 +3180,7 @@ code_info__livevals_to_livelvals([Lval - Var | Ls], WantReturnLayout,
 		{ map__init(Empty) },
 		{ LiveLval = live_lvalue(direct(Lval), unwanted, Empty) }
 	),
-	code_info__livevals_to_livelvals(Ls, WantReturnLayout,
+	code_info__livevals_to_livelvals(Ls, WantReturnVarLayout,
 		AfterCallInstMap, Lives).
 
 :- pred code_info__get_live_value_type(slot_contents, live_value_type).

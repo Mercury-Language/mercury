@@ -103,9 +103,10 @@
 
 :- pred globals__have_static_code_addresses(globals::in, bool::out) is det.
 
-	% Check if we should generate stack layouts at call return sites.
+	% Check if we should include variable information in the layout
+	% structures of call return sites.
 
-:- pred globals__want_return_layouts(globals::in, bool::out) is det.
+:- pred globals__want_return_var_layouts(globals::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -296,7 +297,7 @@ globals__have_static_code_addresses_2(OptionTable, IsConst) :-
 	getopt__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
 	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 
-globals__want_return_layouts(Globals, WantReturnLayouts) :-
+globals__want_return_var_layouts(Globals, WantReturnLayouts) :-
 	% We need to generate layout info for call return labels
 	% if we are using accurate gc or if the user wants uplevel printing.
 	(
