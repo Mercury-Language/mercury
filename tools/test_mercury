@@ -362,10 +362,12 @@ cd ..
 case $HOST in
 	kryten)
 		(cd mercury/extras/clpr &&
+		 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
 		 mmake depend	$PARALLEL MMAKEFLAGS=$PARALLEL &&
 		 mmake 		$PARALLEL MMAKEFLAGS=$PARALLEL &&
 		 mmake check	$PARALLEL MMAKEFLAGS=$PARALLEL &&
-		 mmake install	$PARALLEL MMAKEFLAGS=$PARALLEL) ||
+		 mmake install	$PARALLEL MMAKEFLAGS=$PARALLEL &&
+		 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 			status=1
 		;;
 esac
