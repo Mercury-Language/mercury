@@ -48,7 +48,7 @@
 
 :- implementation.
 :- import_module string, char, int, set, bintree, list, map, require, std_util.
-:- import_module term, term_io, varset.
+:- import_module assoc_list, term, term_io, varset.
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification, shapes.

@@ -97,6 +97,8 @@
 		;	simple_neg
 		;	tags
 		;	num_tag_bits
+		;	num_real_regs
+		;	excess_assign
 		;	prev_code
 		;	follow_code
 		;	follow_vars
@@ -190,7 +192,7 @@ option_defaults_2(verbosity_option, [
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
-	vndebug			- 	int(3)
+	vndebug			- 	int(0)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -219,6 +221,7 @@ option_defaults_2(code_gen_option, [
 	tags			-	string("low"),
 	polymorphism		-	bool(yes),
 	highlevel_c		-	bool(no),
+	excess_assign		-	bool(yes),
 	prev_code		-	bool(no),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
@@ -231,6 +234,7 @@ option_defaults_2(code_gen_option, [
 					% -1 is a special value which means
 					% use the autoconf-determined value
 					% instead
+	num_real_regs		-	int(5),
 	gc			-	string("conservative"),
 	cc			-	string("gcc"),
 	cflags			-	string(""),
@@ -356,6 +360,7 @@ long_option("debug-modes",		debug_modes).
 long_option("vndebug",			vndebug).
 long_option("generate-dependencies",	generate_dependencies).
 long_option("tags",			tags).
+long_option("excess-assign",		excess_assign).
 long_option("prev-code",		prev_code).
 long_option("follow-code",		follow_code).
 long_option("follow-vars",		follow_vars).
@@ -371,6 +376,7 @@ long_option("reclaim-heap-on-nondet-failure",
 long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
 long_option("simple_neg",		simple_neg).
 long_option("num-tag-bits",		num_tag_bits).
+long_option("num-real-regs",		num_real_regs).
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
 long_option("compile-to-c",		compile_to_c).
@@ -574,6 +580,9 @@ options_help -->
 	io__write_string("\t--num-tag-bits <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tUse <n> tag bits.\n"),
+	io__write_string("\t--num-real-regs <n>\t"),
+	io__write_string("\t(This option is not for general use.)\n"),
+	io__write_string("\t\tAssume r1 up to rn are real machine registers.\n"),
 	io__write_string("\t--profiling\t\t"),
 	io__write_string("\t(grades: any grade ending in `.prof')\n"),
 	io__write_string("\t\tEnable profiling.  Insert profiling hooks in the\n"),
@@ -598,6 +607,8 @@ options_help -->
 	% io__write_string("\t\tDon't handle polymorphic types.\n"),
 	% io__write_string("\t\t(Generates slightly more efficient code, but stops\n"),
 	% io__write_string("\t\tpolymorphism from working except in special cases.)\n"),
+	io__write_string("\t--excess-assign\n"),
+	io__write_string("\t\tRemove excess assignment unifications.\n"),
 	io__write_string("\t--prev-code\n"),
 	io__write_string("\t\tMigrate into the start of branched goals.\n"),
 	io__write_string("\t--no-follow-code\n"),

@@ -25,7 +25,7 @@
 :- module code_gen.
 
 :- interface.
-:- import_module hlds, llds, code_info, shapes, io.
+:- import_module list, assoc_list, hlds, llds, code_info, shapes, io.
 
 		% Translate a HLDS structure into an LLDS
 
@@ -230,9 +230,9 @@ generate_category_code(model_det, Goal, Instrs, Used) -->
 	(
 		code_info__get_globals(Globals),
 		{ globals__lookup_bool_option(Globals, middle_rec, yes) },
-		middle_rec__match_det(Goal, Switch)
+		middle_rec__match_and_generate(Goal, MiddleRecInstrs)
 	->
-		middle_rec__gen_det(Switch, Instrs),
+		{ Instrs = MiddleRecInstrs },
 		{ Used = no }
 	;
 		% Make a new failure cont (not model_non)

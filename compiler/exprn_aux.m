@@ -9,7 +9,7 @@
 :- interface.
 
 :- import_module llds.
-:- import_module list, std_util.
+:- import_module list, std_util, assoc_list.
 
 :- pred exprn_aux__rval_contains_lval(rval, lval).
 :- mode exprn_aux__rval_contains_lval(in, in) is semidet.

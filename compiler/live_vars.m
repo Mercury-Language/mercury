@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- import_module list, map, set, std_util.
+:- import_module list, map, set, std_util, assoc_list.
 :- import_module mode_util, int, term, require.
 :- import_module graph_colour.
 

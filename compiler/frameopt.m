@@ -39,7 +39,7 @@
 :- implementation.
 
 :- import_module peephole, livemap, opt_util, code_util, opt_debug.
-:- import_module map, bintree_set, set, int, string, require, std_util.
+:- import_module map, set, int, string, require, std_util, assoc_list.
 
 	% The first part of this code steps over the procedure prolog.
 	% The second part starts by checking for the start of a detstack-using

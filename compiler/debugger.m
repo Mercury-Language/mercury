@@ -11,7 +11,7 @@
 :- import_module hlds_out, prog_io, mercury_to_mercury.
 :- import_module mode_util, prog_util, debug_util.
 %  modules in library directory
-:- import_module map, list, term, std_util, varset, require, string.
+:- import_module map, list, term, std_util, assoc_list, varset, require, string.
 
 % already defined in debug_util.m
 % :- type highinfo ---> highinfo(module_info,list(var)).

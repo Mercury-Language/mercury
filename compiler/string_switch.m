@@ -28,7 +28,8 @@
 
 :- implementation.
 
-:- import_module code_gen, string, map, tree, std_util, int, require.
+:- import_module string, map, tree, std_util, assoc_list, int, require.
+:- import_module code_gen.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 	code_info__produce_variable(Var, VarCode, VarRval),

@@ -15,7 +15,7 @@
 
 :- module mode_errors.
 :- interface.
-:- import_module set, hlds, prog_io.
+:- import_module set, hlds, prog_io, assoc_list.
 :- import_module mode_info.
 
 %-----------------------------------------------------------------------------%

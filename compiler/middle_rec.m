@@ -15,234 +15,236 @@
 :- interface.
 :- import_module hlds, llds, code_info.
 
-:- pred middle_rec__match_det(hlds__goal, hlds__goal, code_info, code_info).
-:- mode middle_rec__match_det(in, out, in, out) is semidet.
-
-:- pred middle_rec__gen_det(hlds__goal, code_tree, code_info, code_info).
-:- mode middle_rec__gen_det(in, out, in, out) is det.
+:- pred middle_rec__match_and_generate(hlds__goal, code_tree,
+	code_info, code_info).
+:- mode middle_rec__match_and_generate(in, out, in, out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module code_gen, unify_gen, set, int.
-:- import_module code_util, code_aux, opt_util, std_util, tree, list, require.
+:- import_module set, int, std_util, tree, list, assoc_list, require.
+:- import_module code_gen, unify_gen, code_util, code_aux, opt_util.
 
 %---------------------------------------------------------------------------%
 
-middle_rec__match_det(Goal, Switch, CodeInfo, CodeInfo) :-
+middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 	Goal = GoalExpr - GoalInfo,
-	GoalExpr = switch(Var, CanFail, [Case1, Case2]),
-	CanFail = cannot_fail,		% we are in trouble if this fails
-	Case1 = case(ConsId1, Goal1),
-	Case2 = case(ConsId2, Goal2),
 	(
-		code_aux__contains_only_builtins(Goal1),
-		code_aux__contains_simple_recursive_call(Goal2, CodeInfo, no)
-	->
-		Switch = switch(Var, cannot_fail, [
-			case(ConsId1, Goal1),
-			case(ConsId2, Goal2)
-		]) - GoalInfo
+		GoalExpr = switch(Var, cannot_fail, [Case1, Case2]),
+		Case1 = case(ConsId1, Goal1),
+		Case2 = case(ConsId2, Goal2),
+		(
+			code_aux__contains_only_builtins(Goal1),
+			code_aux__contains_simple_recursive_call(Goal2,
+				CodeInfo0, no)
+		->
+			middle_rec__generate_switch(Var, ConsId1, Goal1, Goal2,
+				GoalInfo, Instrs, CodeInfo0, CodeInfo)
+		;
+			code_aux__contains_only_builtins(Goal2),
+			code_aux__contains_simple_recursive_call(Goal1,
+				CodeInfo0, no)
+		->
+			middle_rec__generate_switch(Var, ConsId2, Goal2, Goal1,
+				GoalInfo, Instrs, CodeInfo0, CodeInfo)
+		;
+			fail
+		)
 	;
-		code_aux__contains_only_builtins(Goal2),
-		code_aux__contains_simple_recursive_call(Goal1, CodeInfo, no)
-	->
-		Switch = switch(Var, cannot_fail, [
-			case(ConsId2, Goal2),
-			case(ConsId1, Goal1)
-		]) - GoalInfo
-	;
-		fail
+		GoalExpr = if_then_else(Vars, Cond, Then, Else),
+		middle_rec__generate_ite(Vars, Cond, Then, Else,
+			GoalInfo, Instrs, CodeInfo0, CodeInfo)
 	).
 
-middle_rec__gen_det(Goal, Instrs) -->
-	(
-		{ Goal = switch(Var, cannot_fail, [Case1, Case2])
-			- SwitchGoalInfo},
-		{ Case1 = case(NonrecConsId, Base) },
-		{ Case2 = case(_RecConsId, Recursive) }
-	->
+%---------------------------------------------------------------------------%
 
-		{ goal_info_store_map(SwitchGoalInfo, StoreMap0) },
-		(
-			{ StoreMap0 = yes(StoreMap) }
-		->
-			code_info__push_store_map(StoreMap)
-		;
-			{ true }
-		),
+:- pred middle_rec__generate_ite(list(var), hlds__goal, hlds__goal, hlds__goal,
+	hlds__goal_info, code_tree, code_info, code_info).
+:- mode middle_rec__generate_ite(in, in, in, in, in, out, in, out) is semidet.
 
-		code_info__get_call_info(CallInfo),
-		code_info__get_varset(VarSet),
-		{ code_aux__explain_call_info(CallInfo, VarSet,
-			CallInfoComment) },
-		code_info__get_module_info(ModuleInfo),
-		code_info__get_pred_id(PredId),
-		code_info__get_proc_id(ProcId),
-		{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
-			Entry) },
+middle_rec__generate_ite(_Vars, Cond, Then, _Else, _IteGoalInfo, Instrs) -->
+	{ Cond = Then },
+	{ Instrs = node([comment("ha ha") - ""]) }.
 
-		code_aux__pre_goal_update(SwitchGoalInfo),
+%---------------------------------------------------------------------------%
 
-		unify_gen__generate_tag_test(Var, NonrecConsId, BaseLabel,
-								NegTestCode),
-		{ tree__flatten(NegTestCode, NegTestListList) },
-		{ list__condense(NegTestListList, NegTestList) },
-		{ code_util__negate_the_test(NegTestList, EntryTestList) },
+:- pred middle_rec__generate_switch(var, cons_id, hlds__goal, hlds__goal,
+	hlds__goal_info, code_tree, code_info, code_info).
+:- mode middle_rec__generate_switch(in, in, in, in, in, out, in, out) is det.
 
-		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_forced_goal(model_det,
-			Base, BaseCodeFrag),
-		code_info__slap_code_info(CodeInfo),
-		code_gen__generate_forced_goal(model_det,
-			Recursive, RecCodeFrag),
-
-		code_aux__post_goal_update(SwitchGoalInfo),
-		code_info__remake_with_store_map,
-
-		(
-			{ StoreMap0 = yes(_StoreMap) }
-		->
-			code_info__pop_store_map
-		;
-			{ true }
-		),
-
-		code_info__get_arginfo(ArgModes),
-		code_info__get_headvars(HeadVars),
-		{ assoc_list__from_corresponding_lists(HeadVars, ArgModes,
-			Args) },
-		code_info__setup_call(Args, callee, EpilogFrag),
-
-		{ code_gen__output_args(Args, LiveArgs) },
-
-		{ BaseCode = tree(BaseCodeFrag, EpilogFrag) },
-		{ RecCode = tree(RecCodeFrag, EpilogFrag) },
-		{ LiveValCode = [ livevals(LiveArgs) - "" ] },
-
-		{ tree__flatten(RecCode, RecListList) },
-		{ list__condense(RecListList, RecList) },
-		{ middle_rec__split_rec_code(RecList, BeforeList0, AfterList) },
-		{ list__append(BeforeList0, AfterList, RecCodeList) },
-		{ middle_rec__find_unused_register(RecCodeList, AuxReg) },
-		{ middle_rec__add_counter_to_livevals(BeforeList0, AuxReg,
-			BeforeList) },
-
-		{ tree__flatten(BaseCode, BaseListList) },
-		{ list__condense(BaseListList, BaseList) },
-
-		{ middle_rec__generate_downloop_test(EntryTestList,
-			Loop1Label, Loop1Test) },
-
-		code_info__get_next_label(Loop1Label),
-		code_info__get_next_label(Loop2Label),
-		code_info__get_total_stackslot_count(StackSlots),
-
-		( { StackSlots = 0 } ->
-			{ MaybeIncrSp = [] },
-			{ MaybeDecrSp = [] },
-			{ InitAuxReg = [ assign(AuxReg, const(int_const(0)))
-					- "initialize counter register" ] },
-			{ IncrAuxReg = [ assign(AuxReg, binop((+),
-					lval(AuxReg),
-					const(int_const(1))))
-					- "increment loop counter" ] },
-			{ DecrAuxReg = [ assign(AuxReg, binop((-),
-					lval(AuxReg),
-					const(int_const(1))))
-					- "decrement loop counter" ] },
-			{ TestAuxReg = [ if_val(binop((>),
-					lval(AuxReg), const(int_const(0))),
-					label(Loop2Label))
-					- "test on upward loop" ] }
-		;
-			{ MaybeIncrSp = [incr_sp(StackSlots) - ""] },
-			{ MaybeDecrSp = [decr_sp(StackSlots) - ""] },
-			{ InitAuxReg = [ assign(AuxReg, lval(sp))
-					- "initialize counter register" ] },
-			{ IncrAuxReg = [] },
-			{ DecrAuxReg = [] },
-			{ TestAuxReg = [ if_val(binop((>),
-					lval(sp), lval(AuxReg)),
-					label(Loop2Label))
-					- "test on upward loop" ] }
-		),
-
-		% Even though the recursive call is followed by some goals
-		% in the HLDS, these goals may generate no LLDS code, so
-		% it is in fact possible for AfterList to be empty.
-		% There is no point in testing BeforeList for empty,
-		% since if it is, the code is an infinite loop anyway.
-
-		{ AfterList = [] ->
-			list__condense([
-				[
-					label(Entry) - "Procedure entry point",
-					comment(CallInfoComment) - ""
-				],
-				EntryTestList,
-				[
-					label(Loop1Label)
-						- "start of the down loop"
-				],
-				BeforeList,
-				Loop1Test,
-				[
-					label(BaseLabel)
-						- "start of base case"
-				],
-				BaseList,
-				LiveValCode,
-				[
-					goto(succip)	
-					- "exit from base case"
-				]
-			], InstrList)
-		;
-			list__condense([
-				[
-					label(Entry) - "Procedure entry point",
-					comment(CallInfoComment) - ""
-				],
-				EntryTestList,
-				InitAuxReg,
-				[
-					label(Loop1Label)
-						- "start of the down loop"
-				],
-				MaybeIncrSp,
-				IncrAuxReg,
-				BeforeList,
-				Loop1Test,
-				BaseList,
-				[
-					label(Loop2Label) - ""
-				],
-				AfterList,
-				MaybeDecrSp,
-				DecrAuxReg,
-				TestAuxReg,
-				LiveValCode,
-				[
-					goto(succip)	
-						- "exit from recursive case",
-					label(BaseLabel)
-						- "start of base case"
-				],
-				BaseList,
-				LiveValCode,
-				[
-					goto(succip)	
-					- "exit from base case"
-				]
-			], InstrList)
-		},
-		{ Instrs = node(InstrList) }
+middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
+		Instrs) -->
+	{ goal_info_store_map(SwitchGoalInfo, StoreMap0) },
+	( { StoreMap0 = yes(StoreMap) } ->
+		code_info__push_store_map(StoreMap)
 	;
-		{ error("middle_rec__gen_det match failed") }
-	).
+		{ true }
+	),
+
+	code_info__get_call_info(CallInfo),
+	code_info__get_varset(VarSet),
+	{ code_aux__explain_call_info(CallInfo, VarSet, CallInfoComment) },
+	code_info__get_module_info(ModuleInfo),
+	code_info__get_pred_id(PredId),
+	code_info__get_proc_id(ProcId),
+	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
+		Entry) },
+
+	code_aux__pre_goal_update(SwitchGoalInfo),
+
+	unify_gen__generate_tag_test(Var, BaseConsId, BaseLabel, NegTestCode),
+	{ tree__flatten(NegTestCode, NegTestListList) },
+	{ list__condense(NegTestListList, NegTestList) },
+	{ code_util__negate_the_test(NegTestList, EntryTestList) },
+
+	code_info__grab_code_info(CodeInfo),
+	code_gen__generate_forced_goal(model_det, Base, BaseCodeFrag),
+	code_info__slap_code_info(CodeInfo),
+	code_gen__generate_forced_goal(model_det, Recursive, RecCodeFrag),
+
+	code_aux__post_goal_update(SwitchGoalInfo),
+	code_info__remake_with_store_map,
+
+	( { StoreMap0 = yes(_StoreMap) } ->
+		code_info__pop_store_map
+	;
+		{ true }
+	),
+
+	code_info__get_arginfo(ArgModes),
+	code_info__get_headvars(HeadVars),
+	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
+	code_info__setup_call(Args, callee, EpilogFrag),
+
+	{ code_gen__output_args(Args, LiveArgs) },
+
+	{ BaseCode = tree(BaseCodeFrag, EpilogFrag) },
+	{ RecCode = tree(RecCodeFrag, EpilogFrag) },
+	{ LiveValCode = [ livevals(LiveArgs) - "" ] },
+
+	{ tree__flatten(RecCode, RecListList) },
+	{ list__condense(RecListList, RecList) },
+	{ middle_rec__split_rec_code(RecList, BeforeList0, AfterList) },
+	{ list__append(BeforeList0, AfterList, RecCodeList) },
+	{ middle_rec__find_unused_register(RecCodeList, AuxReg) },
+	{ middle_rec__add_counter_to_livevals(BeforeList0, AuxReg,
+		BeforeList) },
+
+	{ tree__flatten(BaseCode, BaseListList) },
+	{ list__condense(BaseListList, BaseList) },
+
+	{ middle_rec__generate_downloop_test(EntryTestList,
+		Loop1Label, Loop1Test) },
+
+	code_info__get_next_label(Loop1Label),
+	code_info__get_next_label(Loop2Label),
+	code_info__get_total_stackslot_count(StackSlots),
+
+	{ StackSlots = 0 ->
+		MaybeIncrSp = [],
+		MaybeDecrSp = [],
+		InitAuxReg = [ assign(AuxReg, const(int_const(0)))
+				- "initialize counter register" ],
+		IncrAuxReg = [ assign(AuxReg, binop((+),
+				lval(AuxReg),
+				const(int_const(1))))
+				- "increment loop counter" ],
+		DecrAuxReg = [ assign(AuxReg, binop((-),
+				lval(AuxReg),
+				const(int_const(1))))
+				- "decrement loop counter" ],
+		TestAuxReg = [ if_val(binop((>),
+				lval(AuxReg), const(int_const(0))),
+				label(Loop2Label))
+				- "test on upward loop" ]
+	;
+		MaybeIncrSp = [incr_sp(StackSlots) - ""],
+		MaybeDecrSp = [decr_sp(StackSlots) - ""],
+		InitAuxReg = [ assign(AuxReg, lval(sp))
+				- "initialize counter register" ],
+		IncrAuxReg = [],
+		DecrAuxReg = [],
+		TestAuxReg = [ if_val(binop((>),
+				lval(sp), lval(AuxReg)),
+				label(Loop2Label))
+				- "test on upward loop" ]
+	},
+
+	% Even though the recursive call is followed by some goals
+	% in the HLDS, these goals may generate no LLDS code, so
+	% it is in fact possible for AfterList to be empty.
+	% There is no point in testing BeforeList for empty,
+	% since if it is, the code is an infinite loop anyway.
+
+	{ AfterList = [] ->
+		list__condense([
+			[
+				label(Entry) - "Procedure entry point",
+				comment(CallInfoComment) - ""
+			],
+			EntryTestList,
+			[
+				label(Loop1Label)
+					- "start of the down loop"
+			],
+			BeforeList,
+			Loop1Test,
+			[
+				label(BaseLabel)
+					- "start of base case"
+			],
+			BaseList,
+			LiveValCode,
+			[
+				goto(succip)	
+				- "exit from base case"
+			]
+		], InstrList)
+	;
+		list__condense([
+			[
+				label(Entry) - "Procedure entry point",
+				comment(CallInfoComment) - ""
+			],
+			EntryTestList,
+			InitAuxReg,
+			[
+				label(Loop1Label)
+					- "start of the down loop"
+			],
+			MaybeIncrSp,
+			IncrAuxReg,
+			BeforeList,
+			Loop1Test,
+			BaseList,
+			[
+				label(Loop2Label) - ""
+			],
+			AfterList,
+			MaybeDecrSp,
+			DecrAuxReg,
+			TestAuxReg,
+			LiveValCode,
+			[
+				goto(succip)	
+					- "exit from recursive case",
+				label(BaseLabel)
+					- "start of base case"
+			],
+			BaseList,
+			LiveValCode,
+			[
+				goto(succip)	
+				- "exit from base case"
+			]
+		], InstrList)
+	},
+	{ Instrs = node(InstrList) }.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred middle_rec__generate_downloop_test(list(instruction), label,
 	list(instruction)).

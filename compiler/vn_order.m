@@ -29,7 +29,7 @@
 :- implementation.
 
 :- import_module vn_util, vn_debug, opt_util.
-:- import_module atsort, map, set, string, int, require, std_util.
+:- import_module atsort, map, set, string, int, require, std_util, assoc_list.
 
 %-----------------------------------------------------------------------------%
 

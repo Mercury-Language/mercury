@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module list, hlds, llds, switch_gen, code_info.
+:- import_module list, assoc_list, hlds, llds, switch_gen, code_info.
 
 	% Generate intelligent indexing code for tag based switches.
 
@@ -67,6 +67,7 @@
 tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 	% group the cases based on primary tag value
 	% and find out how many constructors share each primary tag value
+
 	tag_switch__get_tag_counts(Var, TagCountMap),
 	{ map__to_assoc_list(TagCountMap, TagCountList) },
 	{ map__init(TagCaseMap0) },
@@ -74,18 +75,44 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 	{ tag_switch__order_tags(TagCountList, TagCaseMap, TagCaseList) },
 
 	% We get a register for holding the tag. The tag is needed only
-	% by the switch, and noe other code gets control between producing
+	% by the switch, and no other code gets control between producing
 	% the tag value and all uses of it, so we can release the register
 	% for use by the code of the various cases.
+
+	% We forgo using the register if only one primary tag is used,
+	% or if the "register" we get is likely to be slower than
+	% recomputing the tag from scratch.
+
 	code_info__produce_variable_in_reg(Var, VarCode, VarRval),
 	code_info__acquire_reg(TagReg),
 	code_info__release_reg(TagReg),
-	{ TagCode = node([assign(reg(TagReg), unop(tag, VarRval))
-			- "compute tag to switch on"]) },
-	{ TagRval = lval(reg(TagReg)) },
+	code_info__get_globals(Globals),
+	{
+		TagCaseList = [_, _ | _],	% at least two primary tags
+		globals__lookup_int_option(Globals, num_real_regs, NumRealRegs),
+		(
+			NumRealRegs = 0
+		;
+			(
+				TagReg = r(TagRegNo)
+			;
+				TagReg = f(_),
+				error("float reg in tag switch")
+			),
+			TagRegNo =< NumRealRegs
+		)
+	->
+		TagCode = node([assign(reg(TagReg), unop(tag, VarRval))
+				- "compute tag to switch on"]),
+		TagRval = lval(reg(TagReg))
+	;
+		TagCode = empty,
+		TagRval = unop(tag, VarRval)
+	},
 
 	% we generate FailCode and EndCode here because the last case within
 	% a primary tag may not be the last case overall
+
 	code_info__get_next_label(FailLabel),
 	(
 		{ CanFail = cannot_fail },
@@ -187,8 +214,8 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary,
 	;
 		code_info__get_globals(Globals),
 		{ globals__lookup_int_option(Globals, dense_switch_size,
-			Size) },
-		{ MaxSecondary < Size }
+			DenseSwitchSize) },
+		{ MaxSecondary >= DenseSwitchSize }
 	->
 		code_info__acquire_reg(SecTagReg),
 		code_info__release_reg(SecTagReg),

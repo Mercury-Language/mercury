@@ -100,6 +100,18 @@ vn__fragment_msg(Instr) -->
 		{ Flag = no }
 	).
 
+vn__restart_msg(Instr) -->
+	vn__start_msg_flag(Flag),
+	(
+		{ Flag = yes },
+		{ opt_debug__dump_fullinstr(Instr, I_str) },
+		io__write_string("starting again at "),  
+		io__write_string(I_str),
+		io__write_string("\n")
+	;
+		{ Flag = no }
+	).
+
 vn__failure_msg(Instr, Cause) -->
 	vn__failure_msg_flag(Flag),
 	(
@@ -296,18 +308,6 @@ vn__cost_detail_msg(Uinstr, InstrCost, CostNow) -->
 		io__write_string(CostNowStr),
 		io__write_string("\t"),
 		output_instruction(Uinstr),
-		io__write_string("\n")
-	;
-		{ Flag = no }
-	).
-
-vn__restart_msg(Instr) -->
-	vn__start_msg_flag(Flag),
-	(
-		{ Flag = yes },
-		{ opt_debug__dump_fullinstr(Instr, I_str) },
-		io__write_string("starting again at "),  
-		io__write_string(I_str),
 		io__write_string("\n")
 	;
 		{ Flag = no }

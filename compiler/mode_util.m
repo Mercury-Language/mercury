@@ -153,7 +153,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, map, set, term, std_util.
+:- import_module require, map, set, term, std_util, assoc_list.
 :- import_module prog_util, type_util.
 :- import_module inst_match.
 

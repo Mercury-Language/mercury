@@ -38,7 +38,7 @@
 :- type gc_label_info 	--->	gc_label_info(code_addr, det, num_slots, 
 					list(liveinfo)).
 
-:- type num_slots == int.
+:- type num_slots	==	int.
 
 :- type det		---> 	deterministic
 			;	nondeterministic
@@ -54,6 +54,8 @@
 :- mode garbage_out__do_garbage_out(in, in, di, uo) is det.
 
 :- implementation.
+
+:- import_module assoc_list.
 
 %-----------------------------------------------------------------------------%
 % Out main predicate, it just collects and outputs the garbage.

@@ -18,8 +18,9 @@
 :- import_module vn_type, livemap.
 :- import_module llds, list, io.
 
-:- pred vn__divide_into_blocks(list(instruction), list(list(instruction))).
-:- mode vn__divide_into_blocks(in, out) is det.
+:- pred vn__divide_into_blocks(list(instruction), set(label),
+	list(list(instruction))).
+:- mode vn__divide_into_blocks(in, in, out) is det.
 
 :- pred vn__build_block_info(list(instruction), livemap, list(parentry), int,
 	vn_tables, vnlvalset, bool, vn_ctrl_tuple).
@@ -34,19 +35,19 @@
 :- implementation.
 
 :- import_module vn_table, vn_util, vn_cost, opt_util, opt_debug.
-:- import_module map, set, int, string, require, std_util.
+:- import_module map, set, int, string, require, std_util, assoc_list.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-vn__divide_into_blocks(Instrs, Blocks) :-
-	vn__divide_into_blocks_2(Instrs, [], [], Blocks).
+vn__divide_into_blocks(Instrs, Usemap, Blocks) :-
+	vn__divide_into_blocks_2(Instrs, [], [], Usemap, Blocks).
 
 :- pred vn__divide_into_blocks_2(list(instruction), list(instruction),
-	list(list(instruction)), list(list(instruction))).
-:- mode vn__divide_into_blocks_2(in, in, in, out) is det.
+	list(list(instruction)), set(label), list(list(instruction))).
+:- mode vn__divide_into_blocks_2(in, in, in, in, out) is det.
 
-vn__divide_into_blocks_2([], BlockInstrs, PrevBlocks, Blocks) :-
+vn__divide_into_blocks_2([], BlockInstrs, PrevBlocks, _Usemap, Blocks) :-
 	( BlockInstrs = [] ->
 		list__reverse(PrevBlocks, Blocks)
 	;
@@ -57,13 +58,19 @@ vn__divide_into_blocks_2([], BlockInstrs, PrevBlocks, Blocks) :-
 		list__reverse(BlockInstrs, ThisBlock),
 		list__reverse([ThisBlock | PrevBlocks], Blocks)
 	).
-vn__divide_into_blocks_2([Instr0|Instrs0], BlockInstrs0, PrevBlocks0, Blocks) :-
+vn__divide_into_blocks_2([Instr0|Instrs0], BlockInstrs0, PrevBlocks0, Usemap,
+		Blocks) :-
 	Instr0 = Uinstr0 - _Comment0,
-	( opt_util__can_instr_fall_through(Uinstr0, no) ->
+	(
+		opt_util__can_instr_fall_through(Uinstr0, no)
+	->
 		BlockInstrs = [],
 		list__reverse([Instr0 | BlockInstrs0], ThisBlock),
 		PrevBlocks = [ThisBlock | PrevBlocks0]
-	; Uinstr0 = label(Label) ->
+	;
+		Uinstr0 = label(Label),
+		set__member(Label, Usemap)
+	->
 		BlockInstrs = [Instr0],
 		( BlockInstrs0 = [] ->
 			PrevBlocks = PrevBlocks0
@@ -76,7 +83,8 @@ vn__divide_into_blocks_2([Instr0|Instrs0], BlockInstrs0, PrevBlocks0, Blocks) :-
 		BlockInstrs = [Instr0 | BlockInstrs0],
 		PrevBlocks = PrevBlocks0
 	),
-	vn__divide_into_blocks_2(Instrs0, BlockInstrs, PrevBlocks, Blocks).
+	vn__divide_into_blocks_2(Instrs0, BlockInstrs, PrevBlocks, Usemap,
+		Blocks).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

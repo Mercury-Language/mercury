@@ -38,10 +38,10 @@
 
 :- implementation.
 
-:- import_module vn_table, vn_block, vn_order, vn_flush.
-:- import_module vn_temploc, vn_cost, vn_debug, vn_util, opt_debug.
+:- import_module vn_table, vn_block, vn_order, vn_flush, vn_temploc. 
+:- import_module vn_cost, vn_debug, vn_util, opt_debug, labelopt.
 :- import_module globals, options, peephole, livemap, code_util, opt_util.
-:- import_module set, map, bimap, require, int, string, std_util.
+:- import_module set, map, bimap, require, int, string, std_util, assoc_list.
 
 	% We can't find out what variables are used by C code sequences,
 	% so we don't optimize any predicates containing them.
@@ -50,11 +50,12 @@ value_number__main(Instrs0, Instrs) -->
 	{ opt_util__get_prologue(Instrs0, ProcLabel, Comments, Instrs1) },
 	{ opt_util__new_label_no(Instrs1, 1000, N0) },
 	{ vn__prepare_for_vn(Instrs1, ProcLabel, N0, Instrs2) },
+	{ labelopt__build_usemap(Instrs2, Usemap) },
 	{ livemap__build(Instrs2, Ccode, Livemap) },
 	vn__livemap_msg(Livemap),
 	(
 		{ Ccode = no },
-		vn__procedure(Instrs2, Livemap, Instrs3),
+		vn__procedure(Instrs2, Livemap, Usemap, Instrs3),
 		{ list__append(Comments, Instrs3, Instrs) }
 	;
 		% Don't perform value numbering if there is a c_code or a 
@@ -153,14 +154,14 @@ vn__breakup_complex_if(Test, TrueAddr, FalseAddr, NextAddr,
 
 	% Optimize the code of a procedure.
 
-:- pred vn__procedure(list(instruction), livemap, list(instruction),
+:- pred vn__procedure(list(instruction), livemap, set(label), list(instruction),
 	io__state, io__state).
-:- mode vn__procedure(in, in, out, di, uo) is det.
+:- mode vn__procedure(in, in, in, out, di, uo) is det.
 
-vn__procedure(Instrs0, Livemap, OptInstrs) -->
+vn__procedure(Instrs0, Livemap, Usemap, OptInstrs) -->
 	{ opt_util__new_label_no(Instrs0, 1000, LabelNo0) },
 	{ opt_util__gather_comments(Instrs0, Comments, Instrs1) },
-	{ vn__divide_into_blocks(Instrs1, Blocks) },
+	{ vn__divide_into_blocks(Instrs1, Usemap, Blocks) },
 	vn__optimize_blocks(Blocks, Livemap, LabelNo0, OptBlocks0,
 		[], RevTuples),
 	globals__io_lookup_bool_option(pred_value_number, PredVn),

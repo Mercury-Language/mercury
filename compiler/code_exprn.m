@@ -71,7 +71,7 @@
 
 :- interface.
 
-:- import_module llds, list, varset, std_util, tree, options.
+:- import_module llds, list, varset, std_util, assoc_list, tree, options.
 
 :- type exprn_info.
 

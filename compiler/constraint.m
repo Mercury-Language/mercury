@@ -22,7 +22,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, set, std_util, string.
+:- import_module list, map, set, std_util, assoc_list, string.
 :- import_module mode_util, term, require.
 :- import_module varset, code_aux, prog_io.
 :- import_module delay_info, mode_info, inst_match, modes.

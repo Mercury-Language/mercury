@@ -34,7 +34,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, set, std_util, require.
+:- import_module list, map, set, std_util, assoc_list, require.
 :- import_module modes, mode_util, type_util, term.
 
 %-----------------------------------------------------------------------------%

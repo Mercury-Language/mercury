@@ -95,9 +95,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, map, list, require, std_util, term, term_io, prog_out.
-:- import_module mercury_to_mercury, prog_io, globals, options, set, varset.
-:- import_module prog_util.
+:- import_module string, map, list, require, std_util, term, assoc_list.
+:- import_module mercury_to_mercury, globals, options, set, varset.
+:- import_module term_io, prog_io, prog_out, prog_util.
 
 hlds_out__write_type_id(Name - Arity) -->
 	prog_out__write_sym_name(Name),

@@ -41,7 +41,7 @@
 
 :- interface.
 
-:- import_module hlds, det_report.
+:- import_module hlds, io.
 
 :- pred determinism_pass(module_info, module_info, io__state, io__state).
 :- mode determinism_pass(in, out, di, uo) is det.
@@ -55,9 +55,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, set, prog_io, prog_out, hlds_out, std_util.
-:- import_module globals, options, io, mercury_to_mercury, varset, int, term.
-:- import_module type_util, mode_util, quantification, inst_match, require.
+
+:- import_module list, map, set, std_util, require.
+:- import_module det_report, prog_io, mode_util, globals, options.
 
 %-----------------------------------------------------------------------------%
 

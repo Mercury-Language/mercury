@@ -12,6 +12,10 @@
 :- interface.
 :- import_module hlds, llds.
 
+:- pred goal_util__rename_vars_in_goals(list(hlds__goal), map(var, var),
+	list(hlds__goal)).
+:- mode goal_util__rename_vars_in_goals(in, in, out) is det.
+
 :- pred goal_util__rename_vars_in_goal(hlds__goal, map(var, var), hlds__goal).
 :- mode goal_util__rename_vars_in_goal(in, in, out) is det.
 
@@ -27,9 +31,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, set, std_util.
-:- import_module mode_util, term, require.
-:- import_module varset, code_aux, prog_io.
+:- import_module list, map, set, std_util, assoc_list, term, require, varset.
+:- import_module mode_util, code_aux, prog_io.
 
 %-----------------------------------------------------------------------------%
 
@@ -93,6 +96,11 @@ goal_util__rename_var(V, Subn, N) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+goal_util__rename_vars_in_goals([], _, []).
+goal_util__rename_vars_in_goals([Goal0 | Goals0], Subn, [Goal | Goals]) :-
+	goal_util__rename_vars_in_goal(Goal0, Subn, Goal),
+	goal_util__rename_vars_in_goals(Goals0, Subn, Goals).
 
 goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Subn, Goal - GoalInfo) :-
 	goal_util__name_apart_2(Goal0, Subn, Goal),

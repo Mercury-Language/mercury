@@ -69,9 +69,9 @@
 
 :- implementation.
 
-:- import_module list, map, set, prog_io, prog_out, hlds_out, std_util.
-:- import_module globals, options, mercury_to_mercury, varset, int, term.
-:- import_module type_util, mode_util, quantification, inst_match, require.
+:- import_module int, list, map, set, varset, std_util, term, require.
+:- import_module globals, options, prog_out, hlds_out, mercury_to_mercury.
+:- import_module type_util, mode_util, inst_match.
 
 %-----------------------------------------------------------------------------%
 
@@ -422,12 +422,28 @@ det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
 	{ bool__or(Diagnosed2, Diagnosed3, Diagnosed23) },
 	{ bool__or(Diagnosed1, Diagnosed23, Diagnosed) }.
 
-det_diagnose_goal_2(not(_), GoalInfo, _, _, _, _, yes) -->
-	{ goal_info_context(GoalInfo, Context) },
-	prog_out__write_context(Context),
-	io__write_string("  It should be impossible to get a determinism error\n"),
-	prog_out__write_context(Context),
-	io__write_string("  with a negated goal that stays a negation.\n").
+det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed) -->
+	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
+	{ determinism_components(Actual, ActualCanFail, ActualSolns) },
+	(
+		{ DesiredCanFail = cannot_fail },
+		{ ActualCanFail = can_fail }
+	->
+		{ goal_info_context(GoalInfo, Context) },
+		prog_out__write_context(Context),
+		io__write_string("  Negated goal can succeed.\n"),
+		{ Diagnosed = yes }
+	;
+		{ DesiredSolns = at_most_zero },
+		{ ActualSolns \= at_most_zero }
+	->
+		{ goal_info_context(GoalInfo, Context) },
+		prog_out__write_context(Context),
+		io__write_string("  Negated goal can fail.\n"),
+		{ Diagnosed = yes }
+	;
+		{ Diagnosed = no }
+	).
 
 det_diagnose_goal_2(some(_Vars, Goal), _, Desired, Actual,
 		SwitchContext, MiscInfo, Diagnosed) -->

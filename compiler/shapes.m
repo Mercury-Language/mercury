@@ -86,6 +86,8 @@
 
 :- implementation.
 
+:- import_module assoc_list.
+
 :- type bit_number --->  bit_zero; bit_one; bit_two; bit_three.
 
 %-----------------------------------------------------------------------------%

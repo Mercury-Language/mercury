@@ -19,7 +19,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, set, std_util.
+:- import_module list, map, set, std_util, assoc_list.
 :- import_module mode_util, term, require.
 :- import_module varset, code_aux, prog_io.
 

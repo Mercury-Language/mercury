@@ -31,8 +31,8 @@
 
 :- interface.
 
-:- import_module hlds, llds.
-:- import_module code_util, tree, set, std_util, globals, unify_proc.
+:- import_module hlds, llds, code_util, globals, unify_proc.
+:- import_module tree, set, std_util, assoc_list.
 
 :- type code_info.
 
@@ -1056,7 +1056,17 @@ code_info__make_vars_live_2([V|Vs]) -->
 	->
 		{ Lval = Lval0 }
 	;
-		{ error("I don't know where to put this variable") }
+		code_info__get_varset(Varset),
+		{ varset__lookup_name(Varset, V, Name) ->
+			Name_str = Name
+		;
+			term__var_to_int(V, Id),
+			string__int_to_string(Id, V_str),
+			string__append("V_", V_str, Name_str)
+		},
+		{ string__append("I don't know where to put variable ",
+			Name_str, Msg) },
+		{ error(Msg) }
 	),
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__maybe_set_var_location(V, Lval, Exprn0, Exprn) },

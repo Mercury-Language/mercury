@@ -24,17 +24,19 @@
 :- pred labelopt__main(list(instruction), bool, list(instruction), bool).
 :- mode labelopt__main(in, in, out, out) is det.
 
+	% Build up a set showing which labels are branched to.
+
+:- pred labelopt__build_usemap(list(instruction), set(label)).
+:- mode labelopt__build_usemap(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module opt_util, std_util, bintree_set.
+:- import_module opt_util, std_util, set.
 
-:- type usemap == bintree_set(label).
-
-labelopt__main(Instrs0, _Final, Instrs, Mod) :-
-	bintree_set__init(Usemap0),
-	labelopt__build_usemap(Instrs0, Usemap0, Usemap),
+labelopt__main(Instrs0, Final, Instrs, Mod) :-
+	labelopt__build_usemap(Instrs0, Usemap),
 	labelopt__instr_list(Instrs0, yes, Usemap, Instrs1, Mod),
 	( Final = yes, Mod = yes ->
 		labelopt__main(Instrs1, Final, Instrs, _)
@@ -44,41 +46,44 @@ labelopt__main(Instrs0, _Final, Instrs, Mod) :-
 
 %-----------------------------------------------------------------------------%
 
-	% Build up a set showing which labels are branched to.
+labelopt__build_usemap(Instrs, Usemap) :-
+	set__init(Usemap0),
+	labelopt__build_usemap_2(Instrs, Usemap0, Usemap).
 
-:- pred labelopt__build_usemap(list(instruction), usemap, usemap).
-:- mode labelopt__build_usemap(in, di, uo) is det.
+:- pred labelopt__build_usemap_2(list(instruction), set(label), set(label)).
+:- mode labelopt__build_usemap_2(in, di, uo) is det.
 
-labelopt__build_usemap([], Usemap, Usemap).
-labelopt__build_usemap([Instr | Instructions], Usemap0, Usemap) :-
+labelopt__build_usemap_2([], Usemap, Usemap).
+labelopt__build_usemap_2([Instr | Instructions], Usemap0, Usemap) :-
 	Instr = Uinstr - _Comment,
 	opt_util__instr_labels(Uinstr, Labels, CodeAddresses),
 	labelopt__label_list_build_usemap(Labels, Usemap0, Usemap1),
 	labelopt__code_addr_list_build_usemap(CodeAddresses, Usemap1, Usemap2),
-	labelopt__build_usemap(Instructions, Usemap2, Usemap).
+	labelopt__build_usemap_2(Instructions, Usemap2, Usemap).
 
 	% We are not interested in code addresses that are not labels.
 
-:- pred labelopt__code_addr_list_build_usemap(list(code_addr), usemap, usemap).
+:- pred labelopt__code_addr_list_build_usemap(list(code_addr),
+	set(label), set(label)).
 :- mode labelopt__code_addr_list_build_usemap(in, di, uo) is det.
 
 labelopt__code_addr_list_build_usemap([], Usemap, Usemap).
 labelopt__code_addr_list_build_usemap([Code_addr | Rest], Usemap0, Usemap) :-
 	( Code_addr = label(Label) ->
 		copy(Label, Label1),
-		bintree_set__insert(Usemap0, Label1, Usemap1)
+		set__insert(Usemap0, Label1, Usemap1)
 	;
 		Usemap1 = Usemap0
 	),
 	labelopt__code_addr_list_build_usemap(Rest, Usemap1, Usemap).
 
-:- pred labelopt__label_list_build_usemap(list(label), usemap, usemap).
+:- pred labelopt__label_list_build_usemap(list(label), set(label), set(label)).
 :- mode labelopt__label_list_build_usemap(in, di, uo) is det.
 
 labelopt__label_list_build_usemap([], Usemap, Usemap).
 labelopt__label_list_build_usemap([Label | Labels], Usemap0, Usemap) :-
 	copy(Label, Label1),
-	bintree_set__insert(Usemap0, Label1, Usemap1),
+	set__insert(Usemap0, Label1, Usemap1),
 	labelopt__label_list_build_usemap(Labels, Usemap1, Usemap).
 
 %-----------------------------------------------------------------------------%
@@ -89,8 +94,8 @@ labelopt__label_list_build_usemap([Label | Labels], Usemap0, Usemap) :-
 	% If not, we delete it. We delete the following code as well if
 	% the label was preceded by code that cannot fall through.
 
-:- pred labelopt__instr_list(list(instruction),
-	bool, usemap, list(instruction), bool).
+:- pred labelopt__instr_list(list(instruction), bool, set(label),
+	list(instruction), bool).
 :- mode labelopt__instr_list(in, in, in, out, out) is det.
 
 labelopt__instr_list([], _Fallthrough, _Usemap, [], no).
@@ -99,10 +104,10 @@ labelopt__instr_list([Instr0 | MoreInstrs0],
 	Instr0 = Uinstr0 - _Comment,
 	( Uinstr0 = label(Label) ->
 		(
-		    (   Label = exported(_)
-		    ;	Label = local(_)
-		    ;   bintree_set__is_member(Label, Usemap)
-		    )
+			( Label = exported(_)
+			; Label = local(_)
+			; set__member(Label, Usemap)
+			)
 		->
 			ReplInstrs = [Instr0],
 			Fallthrough1 = yes,
