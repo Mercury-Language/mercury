@@ -1034,11 +1034,16 @@ output_instr(end_block(try, Id), I, I) -->
 	io__write_string(" (try block)").
 
 output_instr(context(File, Line), I, I) -->
-	io__write_string("\n\t.line "),
-	io__write_int(Line),
-	io__write_string(" '"),
-	io__write_string(File),
-	io__write_string("'").
+	io_lookup_bool_option(line_numbers, LineNumbers),
+	( { LineNumbers = yes } ->
+		io__write_string("\n\t.line "),
+		io__write_int(Line),
+		io__write_string(" '"),
+		io__write_string(File),
+		io__write_string("'")
+	;
+		[]
+	).
 
 output_instr(call(MethodRef), Info0, Info) --> 
 	io__write_string("call\t"),
