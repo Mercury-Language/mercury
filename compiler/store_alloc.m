@@ -28,8 +28,8 @@
 
 :- import_module hlds_module, hlds_pred.
 
-:- pred store_alloc_in_proc(proc_info, module_info, proc_info).
-:- mode store_alloc_in_proc(in, in, out) is det.
+:- pred store_alloc_in_proc(proc_info, pred_id, module_info, proc_info).
+:- mode store_alloc_in_proc(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -51,7 +51,7 @@
 
 %-----------------------------------------------------------------------------%
 
-store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
+store_alloc_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, follow_vars, ApplyFollowVars),
 	( ApplyFollowVars = yes ->
@@ -67,7 +67,7 @@ store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	;
 		proc_info_goal(ProcInfo0, Goal2)
 	),
-	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
+	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
 	globals__get_trace_level(Globals, TraceLevel),
 	( ( TraceLevel = interface ; TraceLevel = full ) ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)

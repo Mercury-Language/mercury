@@ -20,6 +20,8 @@
 
 :- type task	--->	update_proc(pred(
 				proc_info, module_info, proc_info))
+		;	update_proc_predid(pred(
+				proc_info, pred_id, module_info, proc_info))
 		;	update_proc_io(pred(
 				pred_id, proc_id, module_info,
 				proc_info, proc_info, io__state, io__state))
@@ -73,6 +75,7 @@ about unbound type variables.
 ****************/
 
 :- inst task =	bound(( update_proc(pred(in, in, out) is det)
+		;	update_proc_predid(pred(in, in, in, out) is det)
 		;	update_proc_io(pred(in, in, in, in, out, di, uo) is det)
 		;	update_proc_error(pred(in, in, in, out, in, out,
 				out, out, di, uo) is det)
@@ -121,7 +124,6 @@ about unbound type variables.
 				io__state, io__state).
 :- mode report_pred_name_mode(in, in, in, di, uo) is det.
 	
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -186,6 +188,12 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 	;
 		Task0 = update_proc(Closure),
 		call(Closure, Proc0, ModuleInfo0, Proc),
+		ModuleInfo8 = ModuleInfo0,
+		Task1 = Task0,
+		State9 = State0
+	;
+		Task0 = update_proc_predid(Closure),
+		call(Closure, Proc0, PredId, ModuleInfo0, Proc),
 		ModuleInfo8 = ModuleInfo0,
 		Task1 = Task0,
 		State9 = State0

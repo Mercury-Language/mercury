@@ -28,7 +28,7 @@
 :- import_module int, list, map, set, std_util, dir, require, string, bool.
 :- import_module library, getopt, term, set_bbbtree, varset.
 
-	% the main compiler passes (in order of execution)
+	% the main compiler passes (mostly in order of execution)
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
 :- import_module equiv_type, make_hlds, typecheck, purity, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
@@ -45,7 +45,7 @@
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
-:- import_module dependency_graph.
+:- import_module dependency_graph, prog_util.
 :- import_module options, globals, passes_aux.
 
 %-----------------------------------------------------------------------------%
@@ -225,17 +225,42 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 		{ ModulesToLink = [] }
 	;
 		{ split_into_submodules(ModuleName, Items, SubModuleList) },
-		list__foldl(compile(FileName), SubModuleList),
-		list__map_foldl(module_to_link, SubModuleList, ModulesToLink)
+		(
+			{ mercury_private_builtin_module(ModuleName)
+			; mercury_public_builtin_module(ModuleName)
+			}
+		->
+			% Some predicates in the builtin modules are missing
+			% typeinfo arguments, which means that execution
+			% tracing will not work on them. Predicates defined
+			% there should never be part of an execution trace
+			% anyway; they are effectively language primitives.
+			% (They may still be parts of stack traces.)
+			globals__io_lookup_bool_option(trace_stack_layout, TSL),
+			globals__io_get_trace_level(TraceLevel),
 
-		% XXX it would be better to do something like
-		%
-		%	list__map_foldl(compile_to_llds, SubModuleList,
-		%		LLDS_FragmentList),
-		%	merge_llds_fragments(LLDS_FragmentList, LLDS),
-		%	output_pass(LLDS_FragmentList)
-		%
-		% i.e. compile nested modules to a single C file.
+			globals__io_set_option(trace_stack_layout, bool(no)),
+			globals__io_set_trace_level(minimal),
+
+			% XXX it would be better to do something like
+			%
+			%	list__map_foldl(compile_to_llds, SubModuleList,
+			%		LLDS_FragmentList),
+			%	merge_llds_fragments(LLDS_FragmentList, LLDS),
+			%	output_pass(LLDS_FragmentList)
+			%
+			% i.e. compile nested modules to a single C file.
+			list__foldl(compile(FileName), SubModuleList),
+			list__map_foldl(module_to_link, SubModuleList,
+				ModulesToLink),
+
+			globals__io_set_option(trace_stack_layout, bool(TSL)),
+			globals__io_set_trace_level(TraceLevel)
+		;
+			list__foldl(compile(FileName), SubModuleList),
+			list__map_foldl(module_to_link, SubModuleList,
+				ModulesToLink)
+		)
 	).
 
 :- pred make_interface(file_name, pair(module_name, item_list),
@@ -1073,14 +1098,15 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	),
 	write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
 		ModuleInfo3),
-	{ detect_liveness_proc(ProcInfo3, ModuleInfo3, ProcInfo4) },
+	{ detect_liveness_proc(ProcInfo3, PredId, ModuleInfo3, ProcInfo4) },
 	write_proc_progress_message("% Allocating stack slots in ", PredId,
 		                ProcId, ModuleInfo3),
-	{ allocate_stack_slots_in_proc(ProcInfo4, ModuleInfo3, ProcInfo5) },
+	{ allocate_stack_slots_in_proc(ProcInfo4, PredId, ModuleInfo3,
+		ProcInfo5) },
 	write_proc_progress_message(
 		"% Allocating storage locations for live vars in ",
 				PredId, ProcId, ModuleInfo3),
-	{ store_alloc_in_proc(ProcInfo5, ModuleInfo3, ProcInfo6) },
+	{ store_alloc_in_proc(ProcInfo5, PredId, ModuleInfo3, ProcInfo6) },
 	globals__io_get_trace_level(TraceLevel),
 	( { TraceLevel = interface ; TraceLevel = full } ->
 		write_proc_progress_message(
@@ -1684,7 +1710,7 @@ mercury_compile__maybe_followcode(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__compute_liveness(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Computing liveness...\n"),
 	maybe_flush_output(Verbose),
-	process_all_nonimported_procs(update_proc(detect_liveness_proc),
+	process_all_nonimported_procs(update_proc_predid(detect_liveness_proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
@@ -1696,7 +1722,8 @@ mercury_compile__compute_liveness(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__compute_stack_vars(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Computing stack vars..."),
 	maybe_flush_output(Verbose),
-	process_all_nonimported_procs(update_proc(allocate_stack_slots_in_proc),
+	process_all_nonimported_procs(
+		update_proc_predid(allocate_stack_slots_in_proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
@@ -1708,7 +1735,7 @@ mercury_compile__compute_stack_vars(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Allocating store map..."),
 	maybe_flush_output(Verbose),
-	process_all_nonimported_procs(update_proc(store_alloc_in_proc),
+	process_all_nonimported_procs(update_proc_predid(store_alloc_in_proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
@@ -1882,15 +1909,7 @@ mercury_compile__chunk_llds(C_InterfaceInfo, Procedures, BaseTypeData,
 			ProcModules) }
 	),
 	maybe_add_header_file_include(C_ExportDecls, ModuleName, C_HeaderCode0,
-		C_HeaderCode1),
-	globals__io_get_trace_level(TraceLevel),
-	( { TraceLevel = interface ; TraceLevel = full } ->
-		{ term__context_init(Context) },
-		{ TraceInclude = "#include ""mercury_trace.h""\n" - Context },
-		{ list__append(C_HeaderCode1, [TraceInclude], C_HeaderCode) }
-	;
-		{ C_HeaderCode = C_HeaderCode1 }
-	),
+		C_HeaderCode),
 	{ list__condense([C_BodyCode, BaseTypeData, CommonDataModules,
 		ProcModules, [c_export(C_ExportDefns)]], ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.

@@ -25,9 +25,9 @@
 
 :- import_module hlds_module, hlds_pred.
 
-:- pred allocate_stack_slots_in_proc(proc_info, module_info, proc_info).
-% :- mode allocate_stack_slots_in_proc(di, in, uo) is det.
-:- mode allocate_stack_slots_in_proc(in, in, out) is det.
+:- pred allocate_stack_slots_in_proc(proc_info, pred_id, module_info,
+	proc_info).
+:- mode allocate_stack_slots_in_proc(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -42,11 +42,11 @@
 
 %-----------------------------------------------------------------------------%
 
-allocate_stack_slots_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
+allocate_stack_slots_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_interface_code_model(ProcInfo0, CodeModel),
 
-	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
+	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
 	set__init(LiveSets0),
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_trace_level(Globals, TraceLevel),

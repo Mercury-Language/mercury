@@ -9,7 +9,7 @@ ENDINIT
 */
 
 /*
-** file: wrapper.mod
+** file: mercury_wrapper.c
 ** main authors: zs, fjh
 **
 **	This file contains the startup and termination entry points
@@ -236,8 +236,7 @@ mercury_runtime_init(int argc, char **argv)
 	saved_trace_enabled = MR_trace_enabled;
 	MR_trace_enabled = FALSE;
 
-#if (defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)) || \
-		defined(PROFILE_CALLS) || defined(PROFILE_TIME)
+#ifdef MR_NEED_INITIALIZATION_AT_START
 	do_init_modules();
 #endif
 
@@ -917,6 +916,8 @@ Define_entry(do_interpreter);
 	if (program_entry_point == NULL) {
 		fatal_error("no program entry point supplied");
 	}
+
+	MR_stack_trace_bottom = LABEL(global_success);
 
 #ifdef  PROFILE_TIME
 	if (MR_profiling) MR_prof_turn_on_time_profiling();

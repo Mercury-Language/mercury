@@ -171,18 +171,14 @@ MR_trace_lookup_live_lval(MR_Live_Lval locn, bool *succeeded)
 		case MR_LVAL_TYPE_STACKVAR:
 			if (MR_trace_print_locn)
 				printf("stackvar%d", locn_num);
-			/* XXX BUG! detstackvar() will give wrong results
-			   because MR_sp is not valid */
-			value = detstackvar(locn_num);
+			value = saved_detstackvar(MR_saved_regs, locn_num);
 			*succeeded = TRUE;
 			break;
 
 		case MR_LVAL_TYPE_FRAMEVAR:
 			if (MR_trace_print_locn)
 				printf("framevar%d", locn_num);
-			/* XXX BUG! detstackvar() will give wrong results
-			   because MR_currfr is not valid */
-			value = framevar(locn_num);
+			value = saved_framevar(MR_saved_regs, locn_num);
 			*succeeded = TRUE;
 			break;
 

@@ -21,7 +21,10 @@
 :- import_module set_bbbtree, bool, io.
 
 	% Given a 'c_file' structure, open the appropriate .c file
-	% and output the code into that file.
+	% and output the code into that file. The bool says whether
+	% this Mercury module was compiled with any flavor of execution
+	% tracing; the third argument gives the set of labels that have
+	% layout structures.
 
 :- pred output_c_file(c_file, set_bbbtree(label), io__state, io__state).
 :- mode output_c_file(in, in, di, uo) is det.
@@ -142,8 +145,8 @@ output_c_file(C_File, StackLayoutLabels) -->
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
 		output_c_file_init(ModuleName, C_Modules),
-		output_c_file_list(C_Modules, 1, ModuleName, C_HeaderInfo,
-			StackLayoutLabels)
+		output_c_file_list(C_Modules, 1, ModuleName,
+			C_HeaderInfo, StackLayoutLabels)
 	;
 		output_single_c_file(C_File, no, StackLayoutLabels)
 	).
@@ -194,7 +197,7 @@ output_c_file_init(ModuleName, C_Modules) -->
 		io__write_string("\n"),
 		io__write_string("ENDINIT\n"),
 		io__write_string("*/\n\n"),
-		io__write_string("#include ""mercury_imp.h""\n"),
+		output_c_file_mercury_headers,
 		io__write_string("\n"),
 		output_c_module_init_list(ModuleName, C_Modules),
 		io__told
@@ -206,6 +209,19 @@ output_c_file_init(ModuleName, C_Modules) -->
 		io__write_string(FileName),
 		io__write_string("' for output\n"),
 		io__set_exit_status(1)
+	).
+
+:- pred output_c_file_mercury_headers(io__state, io__state).
+:- mode output_c_file_mercury_headers(di, uo) is det.
+
+output_c_file_mercury_headers -->
+	globals__io_get_trace_level(TraceLevel),
+	( { TraceLevel = interface ; TraceLevel = full } ->
+		io__write_string("#define MR_STACK_TRACE_THIS_MODULE\n"),
+		io__write_string("#include ""mercury_imp.h""\n"),
+		io__write_string("#include ""mercury_trace.h""\n")
+	;
+		io__write_string("#include ""mercury_imp.h""\n")
 	).
 
 :- pred output_single_c_file(c_file, maybe(int), set_bbbtree(label),
@@ -243,7 +259,7 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
 			io__write_string("ENDINIT\n"),
 			io__write_string("*/\n\n")
 		),
-		io__write_string("#include ""mercury_imp.h""\n"),
+		output_c_file_mercury_headers,
 		output_c_header_include_lines(C_HeaderLines),
 		io__write_string("\n"),
 		{ gather_c_file_labels(Modules, Labels) },
@@ -275,7 +291,7 @@ output_c_module_init_list(ModuleName, Modules) -->
 
 		% Output initialization functions, bunched into groups
 		% of 40.
-	io__write_string("#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"),
+	io__write_string("#if defined(MR_MAY_NEED_INITIALIZATION)\n\n"),
 	io__write_string("static void "),
 	output_bunch_name(ModuleName, 0),
 	io__write_string("(void)\n"),
@@ -293,7 +309,7 @@ output_c_module_init_list(ModuleName, Modules) -->
 	output_init_name(ModuleName),
 	io__write_string("(void)\n"),
 	io__write_string("{\n"),
-	io__write_string("#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"),
+	io__write_string("#if defined(MR_MAY_NEED_INITIALIZATION)\n\n"),
 	io__write_string("\tstatic bool done = FALSE;\n"),
 	io__write_string("\tif (!done) {\n"),
 	io__write_string("\t\tdone = TRUE;\n"),
