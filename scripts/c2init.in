@@ -37,10 +37,10 @@ Environment variables:
 "
 
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
-MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS=\
+MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
 				$MERCURY_MOD_LIB_DIR/libmercury.init\
 				$MERCURY_MOD_LIB_DIR/runtime.init\
-			}
+			"}
 MKINIT=${MERCURY_MKINIT=mkinit}
 
 # maximum number of calls to put in a single function
