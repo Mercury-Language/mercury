@@ -222,13 +222,12 @@ static void demangle(char *name) {
 	if (check_for_suffix(start, position, ua_suffix,
 			sizeof(ua_suffix), &mode_num2)) {
 		unused_args = TRUE;
-		end = position + 2 - sizeof(ua_suffix);
+		end = position + 1 - (sizeof(ua_suffix) - 1);
 		mode_num = mode_num2 % 10000;
-	}	
-	else if (check_for_suffix(start, position, ua_suffix2,
+	} else if (check_for_suffix(start, position, ua_suffix2,
 			sizeof(ua_suffix2), &mode_num2)) {
 		unused_args = TRUE;
-		end = position + 2 - sizeof(ua_suffix2);
+		end = position + 1 - (sizeof(ua_suffix2) - 1);
 		mode_num = mode_num2 % 10000;
 	}
 
@@ -246,7 +245,7 @@ static void demangle(char *name) {
 	} while (isdigit((unsigned char)*position));
 	if (check_for_suffix(start, position, ho_suffix,
 			sizeof(ho_suffix), &mode_num2)) {
-		end = position + 2 - sizeof(ho_suffix);
+		end = position + 1 - (sizeof(ho_suffix) - 1);
 		higher_order = TRUE;
 	}
 
@@ -329,13 +328,11 @@ not_plain_mercury:
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
 			goto wrong_format;
 		}
-		*end = '\0';
 	} else if (strip_prefix(&start, base_type_layout)) {
 		data_category = LAYOUT;
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
 			goto wrong_format;
 		}
-		*end = '\0';
 	} else if (strip_prefix(&start, common)) {
 		data_category = COMMON;
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
@@ -398,7 +395,7 @@ static bool strip_prefix(char **str, const char *prefix)
 	len = strlen(prefix);
 
 	if (strncmp(*str, prefix, len) == 0) {
-		*str = *str + len;
+		*str += len;
 		return TRUE;
 	}
 	return FALSE;
@@ -469,9 +466,7 @@ static char *cut_at_double_underscore(char *str, char *end)
 	}
 
 	*str = '\0';
-	str += 2;
-
-	return str;
+	return str + 2;
 }
 
 	/*
@@ -527,13 +522,12 @@ static char *fix_mangled_ascii(char *str, char **real_end)
 static bool check_for_suffix(char *start, char *position, const char *suffix,
 		int sizeof_suffix, int *mode_num2)
 {
-	const size_t suffix_len = sizeof_suffix - 1;
+	const int suffix_len = sizeof_suffix - 1;
 
 	return (
 		position - suffix_len >= start 
 		&& sscanf(position + 1, "%d", mode_num2) == 1
-		&& strncmp(position - suffix_len + 1,
-			suffix, suffix_len) == 0
+		&& strncmp(position - suffix_len + 1, suffix, suffix_len) == 0
 	);
 }
 	
