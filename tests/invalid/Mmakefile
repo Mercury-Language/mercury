@@ -76,6 +76,7 @@ SINGLEMODULE_PROGS= \
 	invalid_typeclass \
 	io_in_ite_cond \
 	lambda_syntax_error \
+	make_opt_error \
 	merge_ground_any \
 	method_impl \
 	missing_det_decls \
@@ -236,7 +237,17 @@ duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m
 # For these test cases, the bug is caught when generating dependencies,
 # so it is easiest just to do that step.
 nested_impl_in_int.err duplicate_module_test.err: %.err: %.m
-	if $(MC) --generate-dependencies $* > $*.err 2>&1; \
+	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+			--generate-dependencies $* > $*.err 2>&1; \
+	then false; \
+	else true; \
+	fi
+
+# This test case tests that we set the error status correctly
+# when building the `.opt' files.
+make_opt_error.err: make_opt_error.m
+	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+			--make-optimization-interface $* > $*.err 2>&1; \
 	then false; \
 	else true; \
 	fi

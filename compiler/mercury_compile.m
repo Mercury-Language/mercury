@@ -1301,7 +1301,15 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 		)
 	    )
 	;
-	    []
+	    	% If the number of errors is > 0, make sure that
+		% the compiler exits with a non-zero exit
+		% status.
+	    io__get_exit_status(ExitStatus),
+	    ( { ExitStatus = 0 } ->
+	    	io__set_exit_status(1)
+	    ;
+	    	[]
+	    )
 	).
 
 	% return `yes' iff this module defines the main/2 entry point.
@@ -1528,7 +1536,8 @@ mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats,
 	parse_tree_to_hlds(Prog, MQInfo, EqvMap, HLDS, QualInfo,
 		UndefTypes, UndefModes),
 	{ module_info_num_errors(HLDS, NumErrors) },
-	( { NumErrors > 0 } ->
+	io__get_exit_status(Status),
+	( { Status \= 0 ; NumErrors > 0 } ->
 		{ FoundSemanticError = yes },
 		io__set_exit_status(1)
 	;
