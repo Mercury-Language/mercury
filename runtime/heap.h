@@ -10,10 +10,59 @@
 
 #include "gc.h"
 
-#define	tag_incr_hp(dest,tag,count) \
-	((dest) = mkword(tag, (Word)GC_MALLOC(count * sizeof(Word))))
+#define	tag_incr_hp_n(dest,tag,count) \
+	((dest) = mkword((tag), (Word)GC_MALLOC((count) * sizeof(Word))))
 #define	tag_incr_hp_atomic(dest,tag,count) \
-	((dest) = mkword(tag, (Word)GC_MALLOC_ATOMIC(count * sizeof(Word))))
+	((dest) = mkword((tag), (Word)GC_MALLOC_ATOMIC((count) * sizeof(Word))))
+
+#ifdef INLINE_ALLOC
+
+/*
+** The following stuff uses the macros in the `gc_inl.h' header file in the
+** Boehm garbage collector.  They improve performance a little for
+** highly allocation-intensive programs (e.g. the `nrev' benchmark).
+** You'll probably need to fool around with the `-I' options to get this
+** to work.  Also, you must make sure that you compile with the same
+** setting for -DSILENT that the boehm_gc directory was compiled with.
+**
+** We only want to inline allocations if the allocation size is a compile-time
+** constant.  This should be true for almost all the code that we generate,
+** but with GCC we can use the `__builtin_constant_p()' extension to find out.
+**
+** The inline allocation macros are used only for allocating amounts
+** of less than 16 words, to avoid fragmenting memory by creating too
+** many distinct free lists.  The garbage collector also requires that
+** if we're allocating more than one word, we round up to an even number
+** of words.
+*/
+
+#ifndef __GNUC__
+/*
+** Without the gcc extensions __builtin_constant_p() and ({...}),
+** INLINE_ALLOC would probably be a performance _loss_.
+*/
+#error "INLINE_ALLOC requires the use of GCC"
+#endif
+
+#include "include/gc_inl.h"
+#define	tag_incr_hp(dest,tag,count) 					\
+	( __builtin_constant_p(count) && (count) < 16 			\
+	? ({ 	void * temp; 						\
+		/* if size > 1, round up to an even number of words */	\
+		Word num_words = ((count) == 1 ? 1 : 2 * (((count) + 1) / 2)); \
+		GC_MALLOC_WORDS(temp, num_words);			\
+		(dest) = mkword((tag), temp);				\
+	  })								\
+	: tag_incr_hp_n((dest),(tag),(count))				\
+	)
+
+#else
+
+#define	tag_incr_hp(dest,tag,count) \
+	tag_incr_hp_n((dest),(tag),(count))
+
+#endif
+
 #define	mark_hp(dest)	((void)0)
 #define	restore_hp(src)	((void)0)
 
@@ -23,6 +72,7 @@
 			(incr_hp_atomic(hp,(count)), hp += (count), (void)0)
 
 #else
+/* ! CONSERVATIVE_GC */
 
 #define	tag_incr_hp(dest,tag,count)	(			\
 				(dest) = mkword(tag, (Word)hp),	\
