@@ -23,6 +23,10 @@ export PATH
 CVSROOT=/home/staff/zs/imp
 export CVSROOT
 
+# tell gcc to use /tmp, not /usr/tmp
+TMPDIR=/tmp
+export TMPDIR
+
 #-----------------------------------------------------------------------------#
 
 case $HOST in
@@ -274,10 +278,7 @@ case $HOST in
 			jump.gc fast.gc asm_jump.gc
 			asm_fast.gc asm_fast.gc.prof asm_fast.prof"
 		;;
-	munta)
-		GRADES="reg.gc reg.gc.prof"
-		;;
-	muse)
+	muse|munta)
 		GRADES="reg.gc asm_fast asm_fast.gc
 			reg.gc.prof asm_fast.gc.prof"
 		;;
