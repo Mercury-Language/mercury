@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2042,7 +2042,7 @@ ml_type_might_contain_pointers(mlds__native_int_type) = no.
 ml_type_might_contain_pointers(mlds__native_float_type) = no.
 ml_type_might_contain_pointers(mlds__native_bool_type) = no.
 ml_type_might_contain_pointers(mlds__native_char_type) = no.
-ml_type_might_contain_pointers(mlds__foreign_type(_, _)) = yes.
+ml_type_might_contain_pointers(mlds__foreign_type(_, _, _)) = yes.
 ml_type_might_contain_pointers(mlds__class_type(_, _, Category)) =
 	(if Category = mlds__enum then no else yes).
 ml_type_might_contain_pointers(mlds__ptr_type(_)) = yes.

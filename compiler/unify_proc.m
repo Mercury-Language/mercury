@@ -760,7 +760,7 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 		unify_proc__quantify_clauses_body([H1, H2], Goal, Context,
 			Clauses)
 	;
-		{ TypeBody = foreign_type(_, _) },
+		{ TypeBody = foreign_type(_, _, _) },
 			% XXX Is this the correct thing to do?
 			% I assume at code gen time I could examine the types
 			% of the unification and output different code because
@@ -823,7 +823,7 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 		% invoked.
 		{ error("trying to create index proc for eqv type") }
 	;
-		{ TypeBody = foreign_type(_, _) },
+		{ TypeBody = foreign_type(_, _, _) },
 		{ error("trying to create index proc for a foreign type") }
 	;
 		{ TypeBody = uu_type(_) },
@@ -903,7 +903,7 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 		unify_proc__quantify_clauses_body([Res, H1, H2], Goal, Context,
 			Clauses)
 	;
-		{ TypeBody = foreign_type(_, _) },
+		{ TypeBody = foreign_type(_, _, _) },
 		% XXX
 		% I think we should delay handling this for foreign types until
 		% code gen time.

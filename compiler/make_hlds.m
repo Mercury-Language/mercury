@@ -397,11 +397,19 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 	;	
 		{ Pragma = foreign_type(ForeignType, _MercuryType, Name) },
 
-		{ ForeignType = il(ForeignTypeLocation, ForeignTypeName) },
+		{ ForeignType = il(RefOrVal,
+				ForeignTypeLocation, ForeignTypeName) },
+
+		{ RefOrVal = reference,
+			IsBoxed = yes
+		; RefOrVal = value,
+			IsBoxed = no
+		},
 
 		{ varset__init(VarSet) },
 		{ Args = [] },
-		{ Body = foreign_type(ForeignTypeName, ForeignTypeLocation) },
+		{ Body = foreign_type(IsBoxed,
+				ForeignTypeName, ForeignTypeLocation) },
 		{ Cond = true },
 
 		{ TypeId = Name - 0 },

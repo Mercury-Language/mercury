@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1683,7 +1683,7 @@ build_type(mercury_array_type(_ElemType), _, _, GCC_Type) -->
 	).
 build_type(mercury_type(Type, TypeCategory, _), _, _, GCC_Type) -->
 	build_mercury_type(Type, TypeCategory, GCC_Type).
-build_type(mlds__foreign_type(_, _), _, _, _) --> 
+build_type(mlds__foreign_type(_, _, _), _, _, _) --> 
 	{ sorry(this_file, "foreign_type not implemented") }.
 build_type(mlds__native_int_type, _, _, gcc__integer_type_node) --> [].
 build_type(mlds__native_float_type, _, _, gcc__double_type_node) --> [].

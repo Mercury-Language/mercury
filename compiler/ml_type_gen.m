@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -126,7 +126,7 @@ ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred),
 			Ctors, TagValues, MaybeEqualityMembers)
 	).
 	% XXX Fixme!  Same issues here as for eqv_type/1.
-ml_gen_type_2(foreign_type(_, _), _, _, _) --> [].
+ml_gen_type_2(foreign_type(_, _, _), _, _, _) --> [].
 
 %-----------------------------------------------------------------------------%
 %

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -294,10 +294,16 @@
 	% Currently we only support foreign_language_types for IL.
 	%
 
+:- type ref_or_val
+	--->	reference
+	;	value.
+
 :- type foreign_language_type
+			% An indicator of whether the type is a
+			% reference of value type.
 			% The location of the .NET name (the assembly),
 			% and the .NET type name (represented as a sym_name)
-	--->	il(string, sym_name).
+	--->	il(ref_or_val, string, sym_name).
 
 %
 % Stuff for tabling pragmas

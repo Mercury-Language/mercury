@@ -2468,12 +2468,7 @@ unaryop_to_il(unbox(UnboxedType), Rval, Instrs) -->
 	}.
 
 :- pred already_boxed(ilds__type::in) is semidet.
-already_boxed(ilds__type(_, class(Name))) :-
-		% XXX Value classes are not already boxed, this call
-		% catches some of the value classes (which can be
-		% introduced by a :- pragma foreign_type), but not all
-		% possible values classes.
-	\+ name_to_simple_type(Name, value(_)).
+already_boxed(ilds__type(_, class(_))).
 already_boxed(ilds__type(_, '[]'(_, _))).
 
 :- pred binaryop_to_il(binary_op, instr_tree, il_info,
@@ -2927,11 +2922,16 @@ mlds_type_to_ilds_type(_, mlds__native_int_type) = ilds__type([], int32).
 
 mlds_type_to_ilds_type(_, mlds__native_float_type) = ilds__type([], float64).
 
-mlds_type_to_ilds_type(_, mlds__foreign_type(ForeignType, Assembly))
+mlds_type_to_ilds_type(_, mlds__foreign_type(IsBoxed, ForeignType, Assembly))
 	= ilds__type([], Class) :-
 	sym_name_to_class_name(ForeignType, ForeignClassName),
-	Class = class(structured_name(assembly(Assembly),
-			ForeignClassName, [])).
+	( IsBoxed = yes,
+		Class = class(structured_name(assembly(Assembly),
+				ForeignClassName, []))
+	; IsBoxed = no,
+		Class = value_class(structured_name(assembly(Assembly),
+				ForeignClassName, []))
+	).
 
 mlds_type_to_ilds_type(ILDataRep, mlds__ptr_type(MLDSType)) =
 	ilds__type([], '&'(mlds_type_to_ilds_type(ILDataRep, MLDSType))).
@@ -3680,14 +3680,10 @@ simple_type_to_value_class(string) = _ :-
 	error("no value class for System.String").
 simple_type_to_value_class(refany) = _ :-
 	error("no value class for refany").
-simple_type_to_value_class(class(Name)) = Result :-
-	( name_to_simple_type(Name, value(Simple)) ->
-		Result = simple_type_to_value_class(Simple)
-	;
-		error("no value class for class")
-	).
-simple_type_to_value_class(value_class(_)) = _ :-
-	error("no value class for value_class").
+simple_type_to_value_class(class(Name)) = _ :-
+	error("no value class for class").
+simple_type_to_value_class(value_class(Name)) =
+	ilds__type([], value_class(Name)).
 simple_type_to_value_class(interface(_)) = _ :-
 	error("no value class for interface").
 simple_type_to_value_class('[]'(_, _)) = _ :-

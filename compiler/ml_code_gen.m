@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -858,7 +858,7 @@ ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
 	module_info_types(ModuleInfo, Types),
 	list__filter_map((pred(TypeDefn::in, Import::out) is semidet :-
 			hlds_data__get_type_defn_body(TypeDefn, Body),
-			Body = foreign_type(_, Location),
+			Body = foreign_type(_, _, Location),
 			Name = il_assembly_name(mercury_module_name_to_mlds(
 					unqualified(Location))),
 			Import = foreign_import(Name)

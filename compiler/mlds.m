@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -627,6 +627,7 @@
 		% This is a type of the MLDS target language.  Currently
 		% this is only used by the il backend.
 	;	mlds__foreign_type(
+			bool,		% is type already boxed?
 			sym_name,	% structured name representing the type
 			string		% location of the type (ie assembly)
 		)
@@ -1602,9 +1603,10 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 		module_info_types(ModuleInfo, Types),
 		map__search(Types, TypeId, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
-		Body = foreign_type(ForeignType, ForeignLocation)
+		Body = foreign_type(IsBoxed, ForeignType, ForeignLocation)
 	->
-		MLDSType = mlds__foreign_type(ForeignType, ForeignLocation)
+		MLDSType = mlds__foreign_type(IsBoxed,
+				ForeignType, ForeignLocation)
 	;
 		classify_type(Type, ModuleInfo, Category),
 		ExportedType = to_exported_type(ModuleInfo, Type),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 University of Melbourne.
+% Copyright (C) 1998-2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1379,7 +1379,7 @@ magic_util__check_type_defn(eqv_type(_), _, _, _) -->
 	{ error("magic_util__check_type_defn: eqv_type") }.
 magic_util__check_type_defn(abstract_type, _, Errors0, Errors) -->
 	{ set__insert(Errors0, abstract, Errors) }.
-magic_util__check_type_defn(foreign_type(_, _), _, _, _) -->
+magic_util__check_type_defn(foreign_type(_, _, _), _, _, _) -->
 	{ error("magic_util__check_type_defn: foreign_type") }.
 
 :- pred magic_util__check_ctor(set(type_id)::in, constructor::in, 

@@ -1218,7 +1218,7 @@ intermod__write_type(TypeId - TypeDefn) -->
 		{ Body = abstract_type },
 		{ TypeBody = abstract_type }
 	;
-		{ Body = foreign_type(_, _) },
+		{ Body = foreign_type(_, _, _) },
 		{ TypeBody = abstract_type },
 			% XXX trd
 			% Also here we need to output the pragma

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2669,7 +2669,7 @@ hlds_out__write_type_body(_Indent, Tvarset, eqv_type(Type)) -->
 hlds_out__write_type_body(_Indent, _Tvarset, abstract_type) -->
 	io__write_string(".\n").
 
-hlds_out__write_type_body(_Indent, _Tvarset, foreign_type(_, _)) -->
+hlds_out__write_type_body(_Indent, _Tvarset, foreign_type(_, _, _)) -->
 	{ error("hlds_out__write_type_body: foreign type body found") }.
 
 :- pred hlds_out__write_constructors(int, tvarset, list(constructor),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -292,6 +292,7 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 	;	uu_type(list(type))	% not yet implemented!
 	;	eqv_type(type)
 	;	foreign_type(
+			bool,		% is the type already boxed
 			sym_name,	% structured name of foreign type
 					% which represents the mercury type.
 			string		% Location of the definition for this

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -261,7 +261,7 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 		TypeTables = [],
 		NumPtags = -1
 	;
-		TypeBody = foreign_type(_, _),
+		TypeBody = foreign_type(_, _, _),
 		TypeCtorRep = unknown,
 		NumFunctors = -1,
 		FunctorsInfo = no_functors,

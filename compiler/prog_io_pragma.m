@@ -238,7 +238,15 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
 		string__left(String1, Index, AssemblyName),
 		string__split(String1, Index + 1, _, TypeNameStr),
 		string_to_sym_name(TypeNameStr, ".", TypeSymName),
-		ForeignType = ok(il(AssemblyName, TypeSymName))
+		ForeignType = ok(il(reference, AssemblyName, TypeSymName))
+	;
+		string__append("valuetype [", String1, String0),
+		string__sub_string_search(String1, "]", Index)
+	->
+		string__left(String1, Index, AssemblyName),
+		string__split(String1, Index + 1, _, TypeNameStr),
+		string_to_sym_name(TypeNameStr, ".", TypeSymName),
+		ForeignType = ok(il(value, AssemblyName, TypeSymName))
 	;
 		ForeignType = error(
 			"invalid foreign language type description", ErrorTerm)
