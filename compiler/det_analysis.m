@@ -38,7 +38,7 @@
 :- import_module hlds.
 
 :- pred determinism_pass(module_info, module_info, io__state, io__state).
-:- mode determinism_pass(in, out, di, uo).
+:- mode determinism_pass(in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -98,7 +98,7 @@ get_all_pred_procs(ModuleInfo, PredProcs) :-
 
 :- pred get_all_pred_procs_2(pred_table, list(pred_id),
 				predproclist, predproclist).
-:- mode get_all_pred_procs_2(in, in, in, out).
+:- mode get_all_pred_procs_2(in, in, in, out) is det.
 
 get_all_pred_procs_2(_Preds, [], PredProcs, PredProcs).
 get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
@@ -112,7 +112,7 @@ get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
 	get_all_pred_procs_2(Preds, PredIds, PredProcs1, PredProcs).
 
 :- pred fold_pred_modes(pred_id, list(proc_id), predproclist, predproclist).
-:- mode fold_pred_modes(in, in, in, out).
+:- mode fold_pred_modes(in, in, in, out) is det.
 
 fold_pred_modes(_PredId, [], PredProcs, PredProcs).
 fold_pred_modes(PredId, [ProcId|ProcIds], PredProcs0, PredProcs) :-
@@ -124,7 +124,7 @@ fold_pred_modes(PredId, [ProcId|ProcIds], PredProcs0, PredProcs) :-
 	% UndeclaredProcs.
 
 :- pred segregate_procs(module_info, predproclist, predproclist, predproclist).
-:- mode segregate_procs(in, in, out, out).
+:- mode segregate_procs(in, in, out, out) is det.
 
 segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs) :-
 	segregate_procs_2(ModuleInfo, PredProcs, [], DeclaredProcs,
@@ -132,7 +132,7 @@ segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs) :-
 
 :- pred segregate_procs_2(module_info, predproclist, predproclist,
 			predproclist, predproclist, predproclist).
-:- mode segregate_procs_2(in, in, in, out, in, out).
+:- mode segregate_procs_2(in, in, in, out, in, out) is det.
 
 segregate_procs_2(_ModuleInfo, [], DeclaredProcs, DeclaredProcs,
 				UndeclaredProcs, UndeclaredProcs).
@@ -160,7 +160,7 @@ segregate_procs_2(ModuleInfo, [PredId - PredMode|PredProcs],
 
 :- pred global_analysis_pass(module_info, predproclist, module_info,
 				io__state, io__state).
-:- mode global_analysis_pass(in, in, out, di, uo).
+:- mode global_analysis_pass(in, in, out, di, uo) is det.
 
 	% Iterate until a fixpoint is reached
 
@@ -180,7 +180,7 @@ global_analysis_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 
 :- pred global_analysis_single_pass(module_info, predproclist, maybe_changed,
 				module_info, maybe_changed).
-:- mode global_analysis_single_pass(in, in, in, out, out).
+:- mode global_analysis_single_pass(in, in, in, out, out) is det.
 
 :- global_analysis_single_pass(_, A, _, _, _) when A.	% NU-Prolog indexing.
 
@@ -198,7 +198,7 @@ global_analysis_single_pass(ModuleInfo0, [PredId - PredMode|PredProcs], State0,
 
 :- pred det_infer_proc(module_info, pred_id, proc_id, maybe_changed,
 				module_info, maybe_changed).
-:- mode det_infer_proc(in, in, in, in, out, out).
+:- mode det_infer_proc(in, in, in, in, out, out) is det.
 
 det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 		% Get the proc_info structure for this procedure
@@ -239,7 +239,7 @@ det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 
 :- pred global_checking_pass(module_info, predproclist, module_info,
 				io__state, io__state).
-:- mode global_checking_pass(in, in, out, di, uo).
+:- mode global_checking_pass(in, in, out, di, uo) is det.
 
 global_checking_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 	{ global_analysis_single_pass(ModuleInfo0, ProcList, unchanged,
@@ -247,7 +247,7 @@ global_checking_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 	global_checking_pass_2(ProcList, ModuleInfo).
 
 :- pred global_checking_pass_2(predproclist, module_info, io__state, io__state).
-:- mode global_checking_pass_2(in, in, di, uo).
+:- mode global_checking_pass_2(in, in, di, uo) is det.
 
 global_checking_pass_2([], _ModuleInfo) --> [].
 global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo) -->
@@ -283,7 +283,7 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo) -->
 
 :- pred report_determinism_error(pred_id, proc_id, category, category,
 				module_info, io__state, io__state).
-:- mode report_determinism_error(in, in, in, in, in, di, uo).
+:- mode report_determinism_error(in, in, in, in, in, di, uo) is det.
 
 report_determinism_error(PredId, ModeId, Category, DeclaredCategory,
 		ModuleInfo) -->
@@ -303,7 +303,7 @@ report_determinism_error(PredId, ModeId, Category, DeclaredCategory,
 
 :- pred report_determinism_warning(pred_id, proc_id, category, category,
 				module_info, io__state, io__state).
-:- mode report_determinism_warning(in, in, in, in, in, di, uo).
+:- mode report_determinism_warning(in, in, in, in, in, di, uo) is det.
 
 report_determinism_warning(PredId, ModeId, Category, DeclaredCategory,
 		ModuleInfo) -->
@@ -331,7 +331,7 @@ report_determinism_warning(PredId, ModeId, Category, DeclaredCategory,
 	% and returns the annotated goal in `Goal'.
 
 :- pred det_infer_goal(hlds__goal, misc_info, hlds__goal, category).
-:- mode det_infer_goal(in, in, out, out).
+:- mode det_infer_goal(in, in, out, out) is det.
 
 det_infer_goal(Goal0 - GoalInfo0, MiscInfo, Goal - GoalInfo, Category) :-
 	goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
@@ -355,7 +355,7 @@ det_infer_goal(Goal0 - GoalInfo0, MiscInfo, Goal - GoalInfo, Category) :-
 
 :- pred det_infer_goal_2(hlds__goal_expr, misc_info, set(var), instmap_delta,
 				hlds__goal_expr, category).
-:- mode det_infer_goal_2(in, in, in, in, out, out).
+:- mode det_infer_goal_2(in, in, in, in, out, out) is det.
 
 	% the category of a conjunction is the worst case of the elements
 	% of that conjuction.
@@ -464,14 +464,14 @@ no_output_vars_2([Var | Vars], InstMapDelta) :-
 	no_output_vars_2(Vars, InstMapDelta).
 
 :- pred det_infer_conj(list(hlds__goal), misc_info, list(hlds__goal), category).
-:- mode det_infer_conj(in, in, out, out).
+:- mode det_infer_conj(in, in, out, out) is det.
 
 det_infer_conj(Goals0, MiscInfo, Goals, D) :-
 	det_infer_conj_2(Goals0, MiscInfo, deterministic, Goals, D).
 
 :- pred det_infer_conj_2(list(hlds__goal), misc_info,
 			category, list(hlds__goal), category).
-:- mode det_infer_conj_2(in, in, in, out, out).
+:- mode det_infer_conj_2(in, in, in, out, out) is det.
 
 det_infer_conj_2([], _MiscInfo, D, [], D).
 det_infer_conj_2([Goal0|Goals0], MiscInfo, D0, [Goal|Goals], D) :-
@@ -480,7 +480,7 @@ det_infer_conj_2([Goal0|Goals0], MiscInfo, D0, [Goal|Goals], D) :-
 	det_infer_conj_2(Goals0, MiscInfo, D2, Goals, D).
 
 :- pred det_infer_disj(list(hlds__goal), misc_info, list(hlds__goal)).
-:- mode det_infer_disj(in, in, out).
+:- mode det_infer_disj(in, in, out) is det.
 
 det_infer_disj([], _MiscInfo, []).
 det_infer_disj([Goal0|Goals0], MiscInfo, [Goal|Goals]) :-
@@ -488,7 +488,7 @@ det_infer_disj([Goal0|Goals0], MiscInfo, [Goal|Goals]) :-
 	det_infer_disj(Goals0, MiscInfo, Goals).
 
 :- pred det_infer_unify(unification, misc_info, category).
-:- mode det_infer_unify(in, in, out).
+:- mode det_infer_unify(in, in, out) is det.
 
 det_infer_unify(assign(_, _), _MiscInfo, deterministic).
 
@@ -507,7 +507,7 @@ det_infer_unify(complicated_unify(_, _, _), _MiscInfo, semideterministic).
 
 :- pred det_infer_switch(list(case), misc_info, list(case), 
 			list(cons_id), category).
-:- mode det_infer_switch(in, in, out, out, out).
+:- mode det_infer_switch(in, in, out, out, out) is det.
 
 det_infer_switch(Cases0, MiscInfo, Cases, Cons, D1) :-
 	det_infer_switch_2(Cases0, MiscInfo, Cases, [], Cons, 
@@ -518,7 +518,7 @@ det_infer_switch(Cases0, MiscInfo, Cases, Cons, D1) :-
 
 :- pred det_infer_switch_2(list(case), misc_info, list(case), list(cons_id),
 			list(cons_id), category, category).
-:- mode det_infer_switch_2(in, in, out, in, out, in, out).
+:- mode det_infer_switch_2(in, in, out, in, out, in, out) is det.
 
 det_infer_switch_2([], _MiscInfo, [], Cons, Cons, D, D).
 det_infer_switch_2([Case0|Cases0], MiscInfo, [Case|Cases], Cons0, Cons,
@@ -536,7 +536,7 @@ det_infer_switch_2([Case0|Cases0], MiscInfo, [Case|Cases], Cons0, Cons,
 %-----------------------------------------------------------------------------%
 
 :- pred max_category(category, category, category).
-:- mode max_category(in, in, out).
+:- mode max_category(in, in, out) is det.
 
 :- max_category(X, Y, _) when X and Y.	% NU-Prolog indexing.
 
@@ -574,9 +574,9 @@ detism_lookup(MiscInfo, PredId, ModeId, Category) :-
 
 :- pred test_to_see_that_all_constructors_are_tested(list(cons_id),
 		misc_info, category).
-:- mode test_to_see_that_all_constructors_are_tested(in, in, out).
+:- mode test_to_see_that_all_constructors_are_tested(in, in, out) is semidet.
 	
-test_to_see_that_all_constructors_are_tested(_, _, semideterministic).
-	% XXX stub only!
+test_to_see_that_all_constructors_are_tested(_, _, semideterministic) :-
+	semidet_succeed.  % XXX stub only!
 	
 %-----------------------------------------------------------------------------%

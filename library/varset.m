@@ -222,8 +222,7 @@ varset__merge_subst(VarSet0, varset(MaxId, Names, Vals), VarSet, Subst) :-
 
 :- pred varset__merge_subst_2(var_supply, var_supply, bimap(var, string),
 	map(var, term), varset, substitution, varset, substitution).
-:- mode varset__merge_subst_2(in, in, in, in, in, in,
-	out, out).
+:- mode varset__merge_subst_2(in, in, in, in, in, in, out, out) is det.
 
 varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 	( N = Max ->
@@ -239,7 +238,7 @@ varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 		;
 			VarSet2 = VarSet1
 		),
-		map__insert(Subst0, VarN, term__variable(VarId), Subst1),
+		map__set(Subst0, VarN, term__variable(VarId), Subst1),
 		varset__merge_subst_2(N1, Max, Names, Vals, VarSet2, Subst1,
 				VarSet, Subst)
 	).

@@ -234,7 +234,7 @@ mercury_output_inst(not_reached, _) -->
 	io__write_string("not_reached").
 
 :- pred mercury_output_inst_name(inst_name, varset, io__state, io__state).
-:- mode mercury_output_inst_name(in, in, di, uo).
+:- mode mercury_output_inst_name(in, in, di, uo) is det.
 
 mercury_output_inst_name(user_inst(Name, Args), VarSet) -->
 	( { Args = [] } ->

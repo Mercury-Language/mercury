@@ -245,8 +245,8 @@ string__to_char_list(String, CharList) :-
 	string__int_list_to_char_list(IntList, CharList).
 
 :- pred string__int_list_to_char_list(list(int), list(character)).
-:- mode string__int_list_to_char_list(in, out).
-:- mode string__int_list_to_char_list(out, in).
+:- mode string__int_list_to_char_list(in, out) is semidet.
+:- mode string__int_list_to_char_list(out, in) is semidet.
 
 string__int_list_to_char_list([], []).
 string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-

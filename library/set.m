@@ -230,7 +230,7 @@ set__intersect(S0, S1, S) :-
 	set__intersect_2(S0, S1, [], S).
 
 :- pred set__intersect_2(set(T), set(T), set(T), set(T)).
-:- mode set__intersect_2(in, in, in, out).
+:- mode set__intersect_2(in, in, in, out) is det.
 
 set__intersect_2([], _, S, S).
 set__intersect_2([E|S0], S1, S2, S) :-

@@ -340,11 +340,17 @@ bintree__balance(Tree0, Tree) :-
 %-----------------------------------------------------------------------------%
 
 bintree__from_corresponding_lists(Keys, Values, Tree) :-
-	bintree__from_corresponding_lists_2(Keys, Values, empty, Tree).
+	( bintree__from_corresponding_lists_2(Keys, Values, empty, Tree0) ->
+		Tree = Tree0
+	;
+		% Either the list weren't the same length, or the
+		% key list contained duplicates
+		error("bintree__from_corresponding_lists")
+	).
 
 :- pred bintree__from_corresponding_lists_2(list(K), list(V), bintree(K,V),
 						bintree(K,V)).
-:- mode bintree__from_corresponding_lists_2(in, in, in, out).
+:- mode bintree__from_corresponding_lists_2(in, in, in, out) is semidet.
 
 bintree__from_corresponding_lists_2([], [], Tree, Tree).
 bintree__from_corresponding_lists_2([K | Ks], [V | Vs], Tree0, Tree) :-

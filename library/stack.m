@@ -57,7 +57,7 @@
 	% containing `Depth' elements.
 
 :- pred stack__depth(stack(T), int).
-:- mode stack__depth(in, out).
+:- mode stack__depth(in, out) is det.
 
 %--------------------------------------------------------------------------%
 

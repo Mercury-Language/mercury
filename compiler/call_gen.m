@@ -125,7 +125,7 @@ call_gen__save_variables_2([Var|Vars], Code) -->
 
 :- pred call_gen__rebuild_registers(assoc_list(var, arg_info),
 							code_info, code_info).
-:- mode call_gen__rebuild_registers(in, in, out).
+:- mode call_gen__rebuild_registers(in, in, out) is det.
 
 call_gen__rebuild_registers(Args) -->
 	code_info__clear_all_registers,
@@ -133,7 +133,7 @@ call_gen__rebuild_registers(Args) -->
 
 :- pred call_gen__rebuild_registers_2(assoc_list(var, arg_info),
 							code_info, code_info).
-:- mode call_gen__rebuild_registers_2(in, in, out).
+:- mode call_gen__rebuild_registers_2(in, in, out) is det.
 
 call_gen__rebuild_registers_2([]) --> [].
 call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode)|Args]) -->

@@ -141,8 +141,7 @@ goedel_replace_eqv_type_defn(du_type(TName, TArgs, TBody0),
 
 :- pred goedel_replace_eqv_type_uu(list(type), string, list(type_param),
 					type, bool, list(type), bool).
-:- mode goedel_replace_eqv_type_uu(in, in, in, in, in,
-					out, out).
+:- mode goedel_replace_eqv_type_uu(in, in, in, in, in, out, out) is det.
 
 goedel_replace_eqv_type_uu([], _Name, _Args, _Body, Found, [], Found).
 goedel_replace_eqv_type_uu([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
@@ -193,8 +192,7 @@ goedel_replace_eqv_type_type(term__functor(F, TArgs0, Context), Name, Args,
 
 :- pred goedel_replace_eqv_type_pred(list(type_and_mode), string,
 	list(type_param), type, bool, list(type_and_mode), bool).
-:- mode goedel_replace_eqv_type_pred(in, in, in, in, in,
-					out, out).
+:- mode goedel_replace_eqv_type_pred(in, in, in, in, in, out, out) is det.
 
 goedel_replace_eqv_type_pred([], _Name, _Args, _Body, Found, [], Found).
 goedel_replace_eqv_type_pred([TM0|TMs0], Name, Args, Body, Found0,
@@ -204,8 +202,7 @@ goedel_replace_eqv_type_pred([TM0|TMs0], Name, Args, Body, Found0,
 					TMs, Found).
 :- pred goedel_replace_eqv_type_tm(type_and_mode, string, list(type_param),
 				type, bool, type_and_mode, bool).
-:- mode goedel_replace_eqv_type_tm(in, in, in, in, in,
-					out, out).
+:- mode goedel_replace_eqv_type_tm(in, in, in, in, in, out, out) is det.
 
 goedel_replace_eqv_type_tm(type_only(Type0), Name, Args, Body, Found0,
 				type_only(Type), Found) :-

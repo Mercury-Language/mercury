@@ -192,9 +192,9 @@ map__inverse_search(Map, V, K) :-
 	% bootstrap this thing ASAP.
 
 :- pred assoc_list_member(K, V, list(pair(K,V))).
-:- mode assoc_list_member(in, out, in).
-:- mode assoc_list_member(out, in, in).
-:- mode assoc_list_member(in, in, in).
+:- mode assoc_list_member(in, out, in) is nondet.
+:- mode assoc_list_member(out, in, in) is nondet.
+:- mode assoc_list_member(in, in, in) is semidet.
 assoc_list_member(K, V, [K - V | _]).
 assoc_list_member(K, V, [_ | Xs]) :-
 	assoc_list_member(K, V, Xs).

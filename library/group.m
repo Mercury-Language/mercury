@@ -155,8 +155,9 @@ group__remove_elements([I|Is], Es0, Es) :-
 
 group__same_group(G, E0, E1) :-
 	group__get_elements(G, Es),
-	map__lookup(Es, E0, GK),
-	map__lookup(Es, E1, GK).
+	map__lookup(Es, E0, GK1),
+	map__lookup(Es, E1, GK2),
+	GK1 = GK2.	% work around bug in determinism analysis
 
 group__largest_group_key(G, GK) :-
 	group__get_sets(G, Ss),
@@ -166,7 +167,7 @@ group__largest_group_key(G, GK) :-
 
 :- pred group__largest_group_key_2(assoc_list(group__key, set(T)), int,
 							group__key, group__key).
-:- mode group__largest_group_key_2(in, in, in, out).
+:- mode group__largest_group_key_2(in, in, in, out) is det.
 
 group__largest_group_key_2([], _, GK, GK).
 group__largest_group_key_2([GK0-S0|Ss], Sz0, GK1, GK) :-
@@ -193,39 +194,39 @@ group__group_keys(G, Ks) :-
 %---------------------------------------------------------------------------%
 
 :- pred group__get_group_count(group(T), int).
-:- mode group__get_group_count(in, out).
+:- mode group__get_group_count(in, out) is det.
 
 group__get_group_count(G, C) :-
 	G = group(C, _, _).
 
 :- pred group__get_sets(group(T), map(group__key, set(T))).
-:- mode group__get_sets(in, out).
+:- mode group__get_sets(in, out) is det.
 
 group__get_sets(G, S) :-
 	G = group(_, S, _).
 
 :- pred group__get_elements(group(T), map(T, group__key)).
-:- mode group__get_elements(in, out).
+:- mode group__get_elements(in, out) is det.
 
 group__get_elements(G, E) :-
 	G = group(_, _, E).
 
 :- pred group__set_group_count(group(T), int, group(T)).
-:- mode group__set_group_count(in, in, out).
+:- mode group__set_group_count(in, in, out) is det.
 
 group__set_group_count(G0, C, G) :-
 	G0 = group(_, S, E),
 	G = group(C, S, E).
 
 :- pred group__set_sets(group(T), map(group__key, set(T)), group(T)).
-:- mode group__set_sets(in, in, out).
+:- mode group__set_sets(in, in, out) is det.
 
 group__set_sets(G0, S, G) :-
 	G0 = group(C, _, E),
 	G = group(C, S, E).
 
 :- pred group__set_elements(group(T), map(T, group__key), group(T)).
-:- mode group__set_elements(in, in, out).
+:- mode group__set_elements(in, in, out) is det.
 
 group__set_elements(G0, E, G) :-
 	G0 = group(C, S, _),

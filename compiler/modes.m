@@ -183,7 +183,7 @@ copy_clauses_to_procs(PredInfo0, PredInfo) :-
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
 :- pred copy_clauses_to_procs_2(list(proc_id)::in, clauses_info::in,
-				proc_table::in, proc_table::out).
+				proc_table::in, proc_table::out) is det.
 
 copy_clauses_to_procs_2([], _, Procs, Procs).
 copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-

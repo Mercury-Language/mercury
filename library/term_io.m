@@ -27,20 +27,20 @@
 
 :- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fyx; fyy.
 :- pred term_io__op(int, op_type, string, io__state, io__state).
-:- mode term_io__op(in, in, in, di, uo).
+:- mode term_io__op(in, in, in, di, uo) is det.
 %	term_io__op(Prec, Type, OpName, IOState0, IOState1).
 %		Define an operator as per Prolog op/3 for future calls to
 %		io__read_term.
 
 :- type op_details ---> op(int, op_type, string).
 :- pred term_io__current_ops(list(op_details), io__state, io__state).
-:- mode term_io__current_ops(out, di, uo).
+:- mode term_io__current_ops(out, di, uo) is det.
 %		Return a list containing all the current operator definitions.
 %		Does not modify the io__state.
 
 :- type read_term ---> eof ; error(string, int) ; term(varset, term).
 :- pred term_io__read_term(read_term, io__state, io__state).
-:- mode term_io__read_term(out, di, uo).
+:- mode term_io__read_term(out, di, uo) is det.
 
 %	term_io__read_term(Result, IO0, IO1).
 %		Read a term from standard input. Similar to NU-Prolog
@@ -49,38 +49,38 @@
 %		`term(VarSet, Term)', or `error(Message, LineNumber)'.
 
 :- pred term_io__write_term(varset, term, io__state, io__state).
-:- mode term_io__write_term(in, in, di, uo).
+:- mode term_io__write_term(in, in, di, uo) is det.
 %		Writes a term to standard output.
 
 :- pred io__write_term_nl(varset, term, io__state, io__state).
-:- mode io__write_term_nl(in, in, di, uo).
+:- mode io__write_term_nl(in, in, di, uo) is det.
 %		As above, except it appends a period and new-line.
 
 :- pred term_io__write_constant(const, io__state, io__state).
-:- mode term_io__write_constant(in, di, uo).
+:- mode term_io__write_constant(in, di, uo) is det.
 %		Writes a constant (integer, float, or atom) to stdout.
 
 :- pred term_io__write_variable(var, varset, io__state, io__state).
-:- mode term_io__write_variable(in, in, di, uo).
+:- mode term_io__write_variable(in, in, di, uo) is det.
 %		Writes a variable to stdout.
 
 :- pred term_io__quote_string(string, io__state, io__state).
-:- mode term_io__quote_string(in, di, uo).
+:- mode term_io__quote_string(in, di, uo) is det.
 	% Given a string S, write S in double-quotes, with characters
 	% escaped if necessary, to stdout.
 
 :- pred term_io__quote_atom(string, io__state, io__state).
-:- mode term_io__quote_atom(in, di, uo).
+:- mode term_io__quote_atom(in, di, uo) is det.
 	% Given an atom-name A, write A, enclosed in single-quotes if necessary,
 	% with characters escaped if necessary, to stdout.
 
 :- pred term_io__quote_char(character, io__state, io__state).
-:- mode term_io__quote_char(in, di, uo).
+:- mode term_io__quote_char(in, di, uo) is det.
 	% Given a character C, write C in single-quotes,
 	% escaped if necessary, to stdout.
 
 :- pred term_io__quote_single_char(character, io__state, io__state).
-:- mode term_io__quote_single_char(in, di, uo).
+:- mode term_io__quote_single_char(in, di, uo) is det.
 	% Given a character C, write C, escaped if necessary, to stdout.
 	% The character is not enclosed in quotes.
 
@@ -111,7 +111,7 @@ term_io__write_variable(Variable, VarSet) -->
 
 :- pred io__write_variable_2(var, varset, int, varset, int,
 				io__state, io__state).
-:- mode io__write_variable_2(in, in, in, out, out, di, uo).
+:- mode io__write_variable_2(in, in, in, out, out, di, uo) is det.
 
 io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
 	(
@@ -144,7 +144,7 @@ term_io__write_term(VarSet, Term) -->
 	io__write_term_2(Term, VarSet, 0, _, _).
 
 :- pred io__write_term_2(term, varset, int, varset, int, io__state, io__state).
-:- mode io__write_term_2(in, in, in, out, out, di, uo).
+:- mode io__write_term_2(in, in, in, out, out, di, uo) is det.
 
 io__write_term_2(term__variable(Id), VarSet0, N0, VarSet, N) -->
 	io__write_variable_2(Id, VarSet0, N0, VarSet, N).
@@ -213,7 +213,7 @@ io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 
 :- pred io__write_list_tail(term, varset, int, varset, int,
 				io__state, io__state).
-:- mode io__write_list_tail(in, in, in, out, out, di, uo).
+:- mode io__write_list_tail(in, in, in, out, out, di, uo) is det.
 
 io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 	( 
@@ -238,13 +238,13 @@ io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 	).
 
 :- pred io__infix_op(const, bool, io__state, io__state).
-:- mode io__infix_op(in, out, di, uo).
+:- mode io__infix_op(in, out, di, uo) is det.
 
 :- pred io__unary_prefix_op(const, bool, io__state, io__state).
-:- mode io__unary_prefix_op(in, out, di, uo).
+:- mode io__unary_prefix_op(in, out, di, uo) is det.
 
 :- pred io__unary_postfix_op(const, bool, io__state, io__state).
-:- mode io__unary_postfix_op(in, out, di, uo).
+:- mode io__unary_postfix_op(in, out, di, uo) is det.
 
 /*
 :- external("NU-Prolog", io__infix_op/3).
@@ -256,7 +256,7 @@ io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 
 :- pred io__write_term_args(list(term), varset, int, varset, int,
 				io__state, io__state).
-:- mode io__write_term_args(in, in, in, out, out, di, uo).
+:- mode io__write_term_args(in, in, in, out, out, di, uo) is det.
 
 	% write the remaining arguments
 io__write_term_args([], VarSet, N, VarSet, N) --> [].
@@ -385,7 +385,7 @@ is_mercury_punctuation_char('|').
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_quote_special_char(character, character).
-:- mode mercury_quote_special_char(in, out).
+:- mode mercury_quote_special_char(in, out) is semidet.
 
 mercury_quote_special_char('\'', '\'').
 mercury_quote_special_char('\"', '"').

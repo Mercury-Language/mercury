@@ -480,7 +480,7 @@ output_c_quoted_string(S0) -->
 	).
 
 :- pred quote_c_char(character, character).
-:- mode quote_c_char(in, out).
+:- mode quote_c_char(in, out) is semidet.
 
 quote_c_char('\"', '"').
 quote_c_char('\\', '\\').
@@ -520,7 +520,7 @@ output_operator(>=) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred clause_num_to_string(int::in, string::out).
+:- pred clause_num_to_string(int::in, string::out) is det.
 
 clause_num_to_string(N, Str) :-
 	(
