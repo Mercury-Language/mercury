@@ -238,7 +238,7 @@ Check that the version of @samp{gcc} in your PATH is version 2.6.3 or later.
 @emph{I'm getting an error message that I don't understand.  What can I do?}
 @sp 1
 
-Try compiling with the @samp{-E} (@samp{--verbose-errors}) option.
+Try compiling with the @samp{-E} (@samp{--verbose-error-messages}) option.
 This option causes the compiler to give even more verbose descriptions
 than usual.
 
