@@ -125,7 +125,7 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct	*MR_PseudoTypeInfo;
 **
 ** This scheme relies on the bit patterns of these integers corresponding
 ** to memory that is either inaccessible (due to the first page of virtual
-** memory being invalid) or is guaranteed to contains something other than
+** memory being invalid) or is guaranteed to contain something other than
 ** type_ctor_info structures (such as the code of the program).
 */
 
