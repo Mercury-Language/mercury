@@ -127,7 +127,7 @@ do_semidet_closure_return:
 	save_registers();
 
 	for (i=1; i<= num_out_args; i++)
-		virtual_reg(i+1) = virtual_reg(i+num_in_args);
+		virtual_reg(i+1) = virtual_reg(i+1+num_in_args);
 
 	restore_registers();
 
