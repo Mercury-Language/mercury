@@ -121,6 +121,13 @@ esac
 
 #-----------------------------------------------------------------------------#
 
+# Sometimes, bootstrapping problems mean that we need to install
+# even if the bootstrap check failed.
+
+install_anyway=true	# because of changes to integer division/remainder
+
+#-----------------------------------------------------------------------------#
+
 : checkout sources and run bootcheck
 
 echo "test_mercury starting cvs checkout at `date`" 1>&2
@@ -150,7 +157,7 @@ rm -f config.cache
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
 mmake depend $PARALLEL || { false; exit 1; }
 mmake clean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
-tools/bootcheck -r -t $PARALLEL || { false; exit 1; }
+tools/bootcheck -r -t $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
 #-----------------------------------------------------------------------------#
@@ -159,7 +166,7 @@ cd .. || { false; exit 1; }
 # with a new compiler, so we'll install the libraries first (so
 # long as we bootcheck), then run all the tests in all the grades.
 #
-# Eventually, when we add more support for builing multiple grades,
+# Eventually, when we add more support for building multiple grades,
 # we can test in all grades _before_ installing, but presently this
 # is quite difficult.
 
@@ -169,7 +176,11 @@ echo "test_mercury starting installation at `date`" 1>&2
 echo "current directory `pwd`" 1>&2
 
 case $status in 0)
-    cd mercury/stage2 || { false; exit 1; }
+    case $install_anyway in
+        true)	cd mercury/stage2 || { false; exit 1; } ;;
+        false)	cd mercury || { false; exit 1; } ;;
+    esac
+
     case $HOST in
 	muse|munta)
 		# see README.IRIX for an explanation of these contortions
@@ -221,7 +232,10 @@ case $status in 0)
 			|| status=1
 		;;
     esac
-    cd ../.. || status=1
+    case $install_anyway in
+        true)	cd ../.. || status=1
+        false)	cd .. || status=1
+    esac
 esac
 
 
