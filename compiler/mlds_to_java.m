@@ -1026,17 +1026,28 @@ maybe_write_main_driver(Indent, JavaSafeModuleName, Defns) -->
 		io__write_string("(java.lang.String[] args)\n"),
 		indent_line(Indent),
 		io__write_string("{\n"), 
-		indent_line(Indent + 1),	
 		%		
-		% Save the command line arguments in the class variable
-		% `mercury.runtime.JavaInternal.args'.
+		% Save the progname and command line arguments in the class
+		% variables of `mercury.runtime.JavaInternal', as well as
+		% setting the default exit status.
 		%
+		{ unqualify_name(JavaSafeModuleName, ClassName) },
+		indent_line(Indent + 1),	
+		io__write_string("mercury.runtime.JavaInternal.progname = """),
+		io__write_string(ClassName),
+		io__write_string(""";\n"),
+		indent_line(Indent + 1),	
 		io__write_string("mercury.runtime.JavaInternal.args = args;\n"),
+		indent_line(Indent + 1),	
+		io__write_string("mercury.runtime.JavaInternal.exit_status = "),
+		io__write_string("0;\n"),
 		indent_line(Indent + 1),
 		prog_out__write_sym_name(JavaSafeModuleName),
 		io__write_string(".main_2_p_0();\n"),
 		indent_line(Indent + 1),
-		io__write_string("return;\n"), 
+		io__write_string("java.lang.System.exit"),
+		io__write_string("(mercury.runtime.JavaInternal.exit_status);"),
+		io__nl,
 		indent_line(Indent),
 		io__write_string("}\n") 
 	;
