@@ -17,6 +17,7 @@
 namespace mercury {
 
 typedef int		MR_Integer;
+typedef unsigned int	MR_Unsigned;
 typedef System::Int32	MR_BoxedInt;
 typedef System::Boolean	MR_Bool;
 typedef System::Boolean	MR_bool;
