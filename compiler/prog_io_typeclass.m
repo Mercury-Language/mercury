@@ -165,7 +165,7 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 
 parse_superclass_constraints(ModuleName, Constraints, Result) :-
 	parse_simple_class_constraints(ModuleName, Constraints,
-		"constraints on class declaration may only constrain " ++
+		"constraints on class declarations may only constrain " ++
 		"type variables and ground types", Result).
 
 :- pred parse_unconstrained_class(module_name::in, term::in, tvarset::in,
@@ -270,97 +270,124 @@ find_errors([X|Xs], Result) :-
 	).
 
 %-----------------------------------------------------------------------------%
+%
+% Predicates for parsing various kinds of constraints.
+%
 
-% Parse constraints on a pred or func declaration,
-% or on an existentially quantified type definition.
-
+	% Parse constraints on a pred or func declaration, or on an
+	% existentially quantified type definition.  Currently all such
+	% constraints must be simple.
+	%
 parse_class_constraints(ModuleName, ConstraintsTerm, Result) :-
+	ErrorMessage = "sorry, not implemented:" ++
+		" constraints may only constrain type variables" ++
+		" and ground types",
 	parse_simple_class_constraints(ModuleName, ConstraintsTerm,
-		"sorry, not implemented: constraints may only constrain type variables and ground types",
-		Result).
-
-parse_class_and_inst_constraints(ModuleName, ConstraintsTerm, Result) :-
-	parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm,
-		Result).
-
-% Parse constraints which can only constrain type variables and ground types.
+		ErrorMessage, Result).
 
 :- pred parse_simple_class_constraints(module_name::in, term::in, string::in,
 	maybe1(list(prog_constraint))::out) is det.
 
-parse_simple_class_constraints(ModuleName, ConstraintsTerm, ErrorMessage,
+parse_simple_class_constraints(_ModuleName, ConstraintsTerm, ErrorMessage,
 		Result) :-
-	parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm,
-		ErrorMessage, Result0),
-	extract_class_constraints(Result0, Result).
-
-:- pred parse_simple_class_and_inst_constraints(module_name::in, term::in,
-	string::in, maybe_class_and_inst_constraints::out) is det.
-
-parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm,
-		ErrorMessage, Result) :-
-	parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm,
-		Result0),
+	parse_arbitrary_constraints(ConstraintsTerm, Result0),
 	(
-		Result0 = ok(ConstraintList, _),
+		Result0 = ok(ArbitraryConstraints),
 		(
-			list__member(Constraint, ConstraintList),
-			Constraint = constraint(_, Types),
-			list__member(Type, Types),
-			\+ prog_type__var(Type, _),
-			\+ term__is_ground(Type)
+			list.map(get_simple_constraint, ArbitraryConstraints,
+				Constraints)
 		->
-			Result = error(ErrorMessage, ConstraintsTerm)
+			Result = ok(Constraints)
 		;
-			Result = Result0
+			Result = error(ErrorMessage, ConstraintsTerm)
 		)
 	;
-		Result0 = error(_, _),
-		Result = Result0
+		Result0 = error(String, Term),
+		Result = error(String, Term)
 	).
 
-% Parse constraints which can constrain arbitrary types
+:- pred get_simple_constraint(arbitrary_constraint::in, prog_constraint::out)
+	is semidet.
 
-:- pred parse_arbitrary_class_and_inst_constraints(module_name::in, term::in,
-	maybe_class_and_inst_constraints::out) is det.
+get_simple_constraint(simple(Constraint), Constraint).
 
-parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm,
-		Result) :-
-	conjunction_to_list(ConstraintsTerm, ConstraintList),
-	parse_class_and_inst_constraint_list(ModuleName, ConstraintList,
-		Result).
+parse_class_and_inst_constraints(_ModuleName, ConstraintsTerm, Result) :-
+	parse_arbitrary_constraints(ConstraintsTerm, Result0),
+	(
+		Result0 = ok(ArbitraryConstraints),
+		collect_class_and_inst_constraints(ArbitraryConstraints,
+			ProgConstraints, InstVarSub),
+		Result = ok(ProgConstraints, InstVarSub)
+	;
+		Result0 = error(Msg, Term),
+		Result = error(Msg, Term)
+	).
 
-:- pred parse_class_and_inst_constraint_list(module_name::in, list(term)::in,
-	maybe_class_and_inst_constraints::out) is det.
+:- pred collect_class_and_inst_constraints(list(arbitrary_constraint)::in,
+	list(prog_constraint)::out, inst_var_sub::out) is det.
 
-parse_class_and_inst_constraint_list(_, [], ok([], map__init)).
-parse_class_and_inst_constraint_list(ModuleName, [C0|C0s], Result) :-
-	parse_class_or_inst_constraint(ModuleName, C0, Result0),
-	parse_class_and_inst_constraint_list(ModuleName, C0s, Result1),
-	Result = combine_class_and_inst_constraints(Result0, Result1).
+collect_class_and_inst_constraints([], [], map.init).
+collect_class_and_inst_constraints([Constraint | Constraints],
+		ProgConstraints, InstVarSub) :-
+	collect_class_and_inst_constraints(Constraints, ProgConstraints0,
+		InstVarSub0),
+	(
+		Constraint = simple(SimpleConstraint),
+		ProgConstraints = [SimpleConstraint | ProgConstraints0],
+		InstVarSub = InstVarSub0
+	;
+		Constraint = class(ClassConstraint),
+		ProgConstraints = [ClassConstraint | ProgConstraints0],
+		InstVarSub = InstVarSub0
+	;
+		Constraint = inst_constraint(InstVar, Inst),
+		map.set(InstVarSub0, InstVar, Inst, InstVarSub),
+		ProgConstraints = ProgConstraints0
+	).
 
-:- func combine_class_and_inst_constraints(maybe1(class_or_inst_constraint),
-	maybe_class_and_inst_constraints) = maybe_class_and_inst_constraints.
+:- type arbitrary_constraint
+	--->	simple(prog_constraint)
+			% A class constraint whose arguments are either
+			% variables or ground terms.
 
-combine_class_and_inst_constraints(error(String, Term), _) =
-	error(String, Term).
-combine_class_and_inst_constraints(ok(_), error(String, Term)) =
-	error(String, Term).
-combine_class_and_inst_constraints(ok(class_constraint(ClassConstraint)),
-		ok(ClassConstraints, InstConstraints)) =
-	ok([ClassConstraint | ClassConstraints], InstConstraints).
-combine_class_and_inst_constraints(ok(inst_constraint(InstVar, Inst)),
-		ok(ClassConstraints, InstConstraints)) =
-	ok(ClassConstraints, InstConstraints ^ elem(InstVar) := Inst).
+	;	class(prog_constraint)
+			% An arbitrary class constraint not matching the
+			% description of "simple".
 
-:- type class_or_inst_constraint
-	--->	class_constraint(prog_constraint)
 	;	inst_constraint(inst_var, inst).
+			% A constraint on an inst variable (that is, one
+			% whose head is '=<'/2).
 
-:- pred parse_class_or_inst_constraint(module_name::in, term::in,
-	maybe1(class_or_inst_constraint)::out) is det.
+:- type arbitrary_constraints == list(arbitrary_constraint).
 
-parse_class_or_inst_constraint(_ModuleName, ConstraintTerm, Result) :-
+:- pred parse_arbitrary_constraints(term::in,
+	maybe1(arbitrary_constraints)::out) is det.
+
+parse_arbitrary_constraints(ConstraintsTerm, Result) :-
+	conjunction_to_list(ConstraintsTerm, ConstraintList),
+	parse_arbitrary_constraint_list(ConstraintList, Result).
+
+:- pred parse_arbitrary_constraint_list(list(term)::in,
+	maybe1(arbitrary_constraints)::out) is det.
+
+parse_arbitrary_constraint_list([], ok([])).
+parse_arbitrary_constraint_list([Term | Terms], Result) :-
+	parse_arbitrary_constraint(Term, Result0),
+	parse_arbitrary_constraint_list(Terms, Result1),
+	Result = combine_parse_results(Result0, Result1).
+
+:- func combine_parse_results(maybe1(arbitrary_constraint),
+	maybe1(arbitrary_constraints)) = maybe1(arbitrary_constraints).
+
+combine_parse_results(error(String, Term), _) = error(String, Term).
+combine_parse_results(ok(_), error(String, Term)) = error(String, Term).
+combine_parse_results(ok(Constraint), ok(Constraints)) =
+	ok([Constraint | Constraints]).
+
+:- pred parse_arbitrary_constraint(term::in, maybe1(arbitrary_constraint)::out)
+	is det.
+
+parse_arbitrary_constraint(ConstraintTerm, Result) :-
 	(
 		parse_inst_constraint(ConstraintTerm, InstVar, Inst)
 	->
@@ -373,7 +400,14 @@ parse_class_or_inst_constraint(_ModuleName, ConstraintTerm, Result) :-
 		% constraints do not contain any info in their prog_context
 		% fields
 		list__map(convert_type, Args0, Args),
-		Result = ok(class_constraint(constraint(ClassName, Args)))
+		Constraint = constraint(ClassName, Args),
+		(
+			constraint_is_not_simple(Constraint)
+		->
+			Result = ok(class(Constraint))
+		;
+			Result = ok(simple(Constraint))
+		)
 	;
 		Result = error("expected atom as class name or inst constraint",
 			ConstraintTerm)
@@ -387,11 +421,14 @@ parse_inst_constraint(Term, InstVar, Inst) :-
 	term__coerce_var(InstVar0, InstVar),
 	convert_inst(no_allow_constrained_inst_var, Arg2, Inst).
 
-:- pred extract_class_constraints(maybe_class_and_inst_constraints::in,
-	maybe1(list(prog_constraint))::out) is det.
+:- pred constraint_is_not_simple(prog_constraint::in) is semidet.
 
-extract_class_constraints(ok(ClassConstraints, _), ok(ClassConstraints)).
-extract_class_constraints(error(String, Term), error(String, Term)).
+constraint_is_not_simple(constraint(_Name, Types)) :-
+	some [Type] (
+		list__member(Type, Types),
+		\+ prog_type__var(Type, _),
+		\+ term__is_ground(Type)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -459,7 +496,8 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet,
 
 parse_instance_constraints(ModuleName, Constraints, Result) :-
 	parse_simple_class_constraints(ModuleName, Constraints,
-		"constraints on instance declaration may only constrain type variables and ground types",
+		"constraints on instance declarations may only constrain" ++
+		" type variables and ground types",
 		Result).
 
 :- pred parse_underived_instance(module_name::in, term::in, tvarset::in,

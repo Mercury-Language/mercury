@@ -1,0 +1,4 @@
+typeclass_test_11.m:004: Error: constraints on class declarations may only constrain type variables and ground types: _1 =< blah(_2).
+typeclass_test_11.m:001: Warning: interface for module `typeclass_test_11' does
+typeclass_test_11.m:001:   not export anything.
+For more information, try recompiling with `-E'.
