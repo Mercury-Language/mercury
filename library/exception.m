@@ -2062,7 +2062,7 @@ report_uncaught_exception(Exception) -->
 report_uncaught_exception_2(Exception, unit) -->
 	io__flush_output,
 	io__stderr_stream(StdErr),
-	io__write_string(StdErr, "Uncaught exception:\n"),
+	io__write_string(StdErr, "Uncaught Mercury exception:\n"),
 	( { univ_to_type(Exception, software_error(Message)) } ->
 		io__format(StdErr, "Software Error: %s\n", [s(Message)])
 	;
