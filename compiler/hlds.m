@@ -54,7 +54,7 @@
 					varset,		% variable names
 					map(var_id, type), % variable types
 					list(var_id),	% head vars
-					goal  % Body
+					hlds__goal  % Body
 				).
 
 :- export_type proc_table.
@@ -66,7 +66,7 @@
 					map(var_id, type), % variable types
 					list(var_id),	% head vars
 					list(mode),
-					goal  % Body
+					hlds__goal  % Body
 				).
 
 :- export_type category.
@@ -121,11 +121,11 @@
 
 	% Here's how goals are represented
 
-:- export_type goal.
-:- type goal		--->	goal_expr - goal_info.
+:- export_type hlds__goal.
+:- type hlds__goal		--->	hlds__goal_expr - hlds__goal_info.
 
-:- export_type goal_expr.
-:- type goal_expr    	--->	conj(goals)
+:- export_type hlds__goal_expr.
+:- type hlds__goal_expr    	--->	conj(hlds__goals)
 
 				% Initially only the pred_id and arguments
 				% are filled in.  Mode analysis fills in the
@@ -149,12 +149,12 @@
 			% The remainder aren't used as yet, since
 			% we only handle deterministic code.
 
-			;	disj(goals)
-			;	not(vars,goal)
+			;	disj(hlds__goals)
+			;	not(vars,hlds__goal)
 					% could use if_then_else instead
-			;	all(vars,goal)
-			;	some(vars,goal)
-			;	if_then_else(vars,goal,goal,goal)
+			;	all(vars,hlds__goal)
+			;	some(vars,hlds__goal)
+			;	if_then_else(vars,hlds__goal,hlds__goal,hlds__goal)
 			;	error.
 
 	% Record whether a call is a builtin or not, and if so, which one.
@@ -168,7 +168,7 @@
 				% etc.	XXX
 
 :- export_type case.
-:- type case		--->	case(const, list(var), goal).
+:- type case		--->	case(const, list(var), hlds__goal).
 			%	functor to match with, arguments to extract,
 			%	goal to execute if match succeeds.
 
@@ -203,8 +203,8 @@
 				% type & mode.
 			;	complicated_unify(unify_mode, var, var).
 
-:- export_type goals.
-:- type goals		==	list(goal).
+:- export_type hlds__goals.
+:- type hlds__goals		==	list(hlds__goal).
 
 :- export_type vars.
 :- type vars		==	list(variable).
@@ -440,6 +440,9 @@ procinfo_goal(ProcInfo, Goal) :-
 
 goalinfo_liveness(GoalInfo, Liveness) :-
 	GoalInfo = goalinfo(Liveness).
+
+liveness_livevars(Liveness, LiveVars) :-
+	findall([X], map__search(Liveness, X, live), LiveVars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
