@@ -114,13 +114,13 @@ ops__lookup_op(_OpTable, Name) :-
 :- mode ops__op_table(in, out, out, out) is nondet.
 
 ops__op_table("*", after, yfx, 400).
-ops__op_table("**", after, xfy, 300).
+ops__op_table("**", after, xfy, 200).
 ops__op_table("+", after, yfx, 500).
 ops__op_table("+", before, fx, 500).
 ops__op_table(",", after, xfy, 1000).
 ops__op_table("&", after, xfy, 1025).
 ops__op_table("-", after, yfx, 500).
-ops__op_table("-", before, fx, 500).
+ops__op_table("-", before, fx, 200).
 ops__op_table("--->", after, xfy, 1179).
 ops__op_table("-->", after, xfx, 1200).
 ops__op_table("->", after, xfy, 1050).
@@ -129,7 +129,6 @@ ops__op_table("/", after, yfx, 400).
 ops__op_table("//", after, yfx, 400).
 ops__op_table("/\\", after, yfx, 500).
 ops__op_table(":", after, xfy, 600).
-% ops__op_table(":", before, fx, 1175).
 ops__op_table(":-", after, xfx, 1200).
 ops__op_table(":-", before, fx, 1200).
 ops__op_table("::", after, xfx, 1175).
@@ -139,30 +138,28 @@ ops__op_table("<<", after, yfx, 400).
 ops__op_table("<=", after, xfy, 920).
 ops__op_table("<=>", after, xfy, 920).
 ops__op_table("=", after, xfx, 700).
-% ops__op_table("=..", after, xfx, 700).
-% ops__op_table("=:=", after, xfx, 700).
+ops__op_table("=..", after, xfx, 700).
+ops__op_table("=:=", after, xfx, 700).
 ops__op_table("=<", after, xfx, 700).
 ops__op_table("==", after, xfx, 700).
 ops__op_table("=>", after, xfy, 920).
-% ops__op_table("=\\=", after, xfx, 700).
+ops__op_table("=\\=", after, xfx, 700).
 ops__op_table(">", after, xfx, 700).
 ops__op_table(">=", after, xfx, 700).
 ops__op_table(">>", after, yfx, 400).
-% ops__op_table("?-", before, fx, 1200).
-% ops__op_table("@<", after, xfx, 700).
-% ops__op_table("@=<", after, xfx, 700).
-% ops__op_table("@>", after, xfx, 700).
-% ops__op_table("@>=", after, xfx, 700).
-ops__op_table("\\", before, fx, 500).
+ops__op_table("?-", before, fx, 1200).
+ops__op_table("@<", after, xfx, 700).
+ops__op_table("@=<", after, xfx, 700).
+ops__op_table("@>", after, xfx, 700).
+ops__op_table("@>=", after, xfx, 700).
+ops__op_table("\\", before, fx, 200).
 ops__op_table("\\+", before, fy, 900).
 ops__op_table("\\/", after, yfx, 500).
 ops__op_table("\\=", after, xfx, 700).
-% ops__op_table("\\==", after, xfx, 700).
+ops__op_table("\\==", after, xfx, 700).
 ops__op_table("^", after, xfy, 200).
 ops__op_table("all", before, fxy, 950).
 ops__op_table("and", after, xfy, 720).
-% ops__op_table("delete", before, fy, 1175).
-% ops__op_table("dynamic", before, fy, 1150).
 ops__op_table("else", after, xfy, 1170).
 ops__op_table("end_module", before, fx, 1199).
 ops__op_table("export_adt", before, fx, 1199).
@@ -173,8 +170,6 @@ ops__op_table("export_pred", before, fx, 1199).
 ops__op_table("export_sym", before, fx, 1199).
 ops__op_table("export_type", before, fx, 1199).
 ops__op_table("func", before, fx, 1180).
-% ops__op_table("gAll", before, fxy, 950).
-% ops__op_table("gSome", before, fxy, 950).
 ops__op_table("if", before, fx, 1160).
 ops__op_table("import_adt", before, fx, 1199).
 ops__op_table("import_cons", before, fx, 1199).
@@ -183,34 +178,21 @@ ops__op_table("import_op", before, fx, 1199).
 ops__op_table("import_pred", before, fx, 1199).
 ops__op_table("import_sym", before, fx, 1199).
 ops__op_table("import_type", before, fx, 1199).
-% ops__op_table("in", after, xfx, 1172).
-% ops__op_table("insert", before, fy, 1175).
 ops__op_table("inst", before, fx, 1199).
 ops__op_table("is", after, xfx, 701).
 ops__op_table("lambda", before, fxy, 950).
-% ops__op_table("lib", before, fy, 900).
-% ops__op_table("listing", before, fy, 900).
-% ops__op_table("man", before, fy, 900).
-ops__op_table("mod", after, xfx, 300).
+ops__op_table("mod", after, yfx, 400).
 ops__op_table("mode", before, fx, 1199).
 ops__op_table("module", before, fx, 1199).
-% ops__op_table("nospy", before, fy, 900).
 ops__op_table("not", before, fy, 900).
-% ops__op_table("once", before, fy, 900).
 ops__op_table("or", after, xfy, 740).
 ops__op_table("pragma", before, fx, 1199).
 ops__op_table("pred", before, fx, 1180).
-% ops__op_table("pure", before, fy, 1150).
+ops__op_table("rem", after, yfx, 400).
 ops__op_table("rule", before, fx, 1199).
 ops__op_table("some", before, fxy, 950).
-% ops__op_table("sorted", after, xf, 1171).	% can't support this
-% ops__op_table("sorted", after, xfx, 1171).
-% ops__op_table("spy", before, fy, 900).
 ops__op_table("then", after, xfx, 1150).
-% ops__op_table("to", after, xfx, 980).
 ops__op_table("type", before, fx, 1180).
-% ops__op_table("update", before, fy, 1175).
-% ops__op_table("useIf", before, fx, 1180).
 ops__op_table("use_adt", before, fx, 1199).
 ops__op_table("use_cons", before, fx, 1199).
 ops__op_table("use_module", before, fx, 1199).
@@ -218,11 +200,10 @@ ops__op_table("use_op", before, fx, 1199).
 ops__op_table("use_pred", before, fx, 1199).
 ops__op_table("use_sym", before, fx, 1199).
 ops__op_table("use_type", before, fx, 1199).
-% ops__op_table("wait", before, fy, 900).
 ops__op_table("when", after, xfx, 900).
 ops__op_table("where", after, xfx, 1175).
 ops__op_table("~", before, fy, 900).
-% ops__op_table("~=", after, xfx, 700).
+ops__op_table("~=", after, xfx, 700).
 
 ops__init_op_table(ops__table).
 

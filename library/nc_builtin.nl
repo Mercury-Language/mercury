@@ -52,6 +52,8 @@
 
 :- op(950, fxy, (lambda)).
 
+:- op(400, yfx, (rem)).
+
 % In NU-Prolog, ':' has precedence 1175, whereas according to the
 % ISO Prolog modules standard it should have precedence 600.
 % Hence we need to override the original precedence for it.
