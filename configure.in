@@ -2414,6 +2414,23 @@ esac
 # enable conservative garbage collection by default.
 # We also allow users to override the default grade by setting
 # "DEFAULT_GRADE" in the environment before invoking configure.
+
+AC_ARG_WITH(default-grade,
+    AS_HELP_STRING([--with-default-grade=GRADE],
+                   [Have the built compiler default to using GRADE instead of the default asm_fast.gc]),
+    [case "$withval" in
+      # Handle `--with-default-grade' (no `=GRADE') and
+      # `--without-default-grade' flags.
+      yes|no)
+        AC_MSG_ERROR([Must supply a valid grade if using --with-default-grade.])
+        ;;
+      *)
+        # Perhaps do better checking on the supplied value here.
+        DEFAULT_GRADE="$withval"
+        export DEFAULT_GRADE
+        ;;
+     esac], [])
+
 if test "$DEFAULT_GRADE" = ""; then                                             
 	DEFAULT_GRADE=$DEFAULT_BASE_GRADE.gc
 fi
