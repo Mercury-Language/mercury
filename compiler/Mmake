@@ -13,10 +13,9 @@ MAIN_TARGET=mercury_compile
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params
 
-# MC	=	MERCURY_INT_DIR=. mc
-MC	=	MERCURY_INT_DIR=../library mc
+MC	=	MERCURY_INT_DIR=. mc
 MCG	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
-		MERCURY_INT_DIR=../library mc -g
+		MERCURY_INT_DIR=$(LIBRARY_DIR) mc -g
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
 MGNUCFLAGS =	-I $(BOEHM_GC_DIR)
 MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
