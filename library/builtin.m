@@ -675,7 +675,6 @@ namespace mercury.builtin {
 	}
 }
 ").
-
 :- pragma foreign_code("Java", "
 	public static class void_0
 	{
@@ -685,30 +684,146 @@ namespace mercury.builtin {
 		{
 		}
 	}
-
-	public static class tuple_0
-	{
-		// stub only
-	}
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("Java", "
 
-    public static boolean unify_2_p_0(mercury.private_builtin.type_info_1 ti,
-		    java.lang.Object x, java.lang.Object y)
-    {
-      throw new java.lang.Error(""unify/3 not implemented"");
-    }
+	//
+	// Definitions of builtin types
+	//
 
-    public static comparison_result_0 compare_3_p_0(
-	mercury.private_builtin.type_info_1 ti,
-	java.lang.Object x, java.lang.Object y)
-    {
-      throw new java.lang.Error(""compare/3 not implemented"");
-    }
+	public static class tuple_0
+	{
+		// stub only
+	}
 
+	public static class func_0
+	{
+		// stub only
+	}
+
+	public static class c_pointer_0
+	{
+		// stub only
+	}
+
+	//
+	// Generic unification/comparison routines
+	//
+
+	public static boolean
+	unify_2_p_0 (mercury.runtime.TypeInfo_Struct ti,
+		     java.lang.Object x, java.lang.Object y)
+	{
+		// stub only
+		throw new java.lang.Error (""unify/3 not implemented"");
+	}
+
+	public static comparison_result_0
+	compare_3_p_0 (mercury.runtime.TypeInfo_Struct ti,
+		       java.lang.Object x, java.lang.Object y)
+	{
+		// stub only
+		throw new java.lang.Error (""compare/3 not implemented"");
+	}
+
+	public static comparison_result_0
+	compare_3_p_1 (mercury.runtime.TypeInfo_Struct ti,
+		       java.lang.Object x, java.lang.Object y)
+	{
+		return compare_3_p_0(ti, x, y);
+	}
+
+	public static comparison_result_0
+	compare_3_p_2 (mercury.runtime.TypeInfo_Struct ti,
+		       java.lang.Object x, java.lang.Object y)
+	{
+		return compare_3_p_0(ti, x, y);
+	}
+
+	public static comparison_result_0
+	compare_3_p_3 (mercury.runtime.TypeInfo_Struct ti,
+		       java.lang.Object x, java.lang.Object y)
+	{
+		return compare_3_p_0(ti, x, y);
+	}
+
+	//
+	// Type-specific unification routines for builtin types
+	//
+
+	public static boolean
+	__Unify____tuple_0_0
+		(mercury.builtin.tuple_0 x, mercury.builtin.tuple_0 y)
+	{
+		// stub only
+		throw new java.lang.Error (""unify/2 for tuple types not implemented"");
+	}
+
+	public static boolean
+	__Unify____func_0_0
+		(mercury.builtin.func_0 x, mercury.builtin.func_0 y)
+	{
+		// stub only
+		throw new java.lang.Error (""unify/2 for tuple types not implemented"");
+	}
+
+
+	public static boolean
+	__Unify____c_pointer_0_0
+		(java.lang.Object x, java.lang.Object y)
+	{
+		// XXX should we try calling a Java comparison routine?
+		throw new java.lang.Error (""unify/2 called for c_pointer type"");
+	}
+
+	public static boolean
+	__Unify____void_0_0
+		(mercury.builtin.void_0 x, mercury.builtin.void_0 y)
+	{
+		// there should never be any values of type void/0
+		throw new java.lang.Error (""unify/2 called for void type"");
+	}
+
+	//
+	// Type-specific comparison routines for builtin types
+	//
+
+	public static comparison_result_0
+	__Compare____tuple_0_0
+		(mercury.builtin.tuple_0 x, mercury.builtin.tuple_0 y)
+	{
+		// stub only
+		throw new java.lang.Error
+			(""compare/3 for tuple types not implemented"");
+	}
+
+	public static comparison_result_0
+	__Compare____func_0_0
+		(mercury.builtin.func_0 x, mercury.builtin.func_0 y)
+	{
+		// comparing values of higher-order types is a run-time error
+		throw new java.lang.Error (""compare/3 called for func type"");
+	}
+
+	public static comparison_result_0
+	__Compare____c_pointer_0_0
+		(java.lang.Object x, java.lang.Object y)
+	{
+		// XXX should we try calling a Java comparison routine?
+		throw new java.lang.Error
+			(""compare/3 called for c_pointer type"");
+	}
+
+	public static comparison_result_0
+	__Compare____void_0_0
+		(mercury.builtin.void_0 x, mercury.builtin.void_0 y)
+	{
+		// there should never be any values of type void/0
+		throw new java.lang.Error (""compare/3 called for void type"");
+	}
 ").
 
 :- end_module builtin.

@@ -456,20 +456,20 @@ try_all(semidet, Goal, ResultList) :-
 	).
 try_all(multi, Goal, ResultList) :-
 	unsorted_solutions((pred(Result::out) is multi :-
-		builtin_catch((pred(R::out) is multi :-
+		catch_impl((pred(R::out) is multi :-
 				wrap_success(Goal, R)),
 			wrap_exception, Result)),
 		ResultList).
 try_all(nondet, Goal, ResultList) :-
 	unsorted_solutions((pred(Result::out) is nondet :-
-		builtin_catch((pred(R::out) is nondet :-
+		catch_impl((pred(R::out) is nondet :-
 				wrap_success(Goal, R)),
 			wrap_exception, Result)),
 		ResultList).
 
 incremental_try_all(Goal, AccPred, Acc0, Acc) :-
 	unsorted_aggregate((pred(Result::out) is nondet :-
-		builtin_catch((pred(R::out) is nondet :-
+		catch_impl((pred(R::out) is nondet :-
 				wrap_success(Goal, R)),
 			wrap_exception, Result)),
 		AccPred, Acc0, Acc).
@@ -557,11 +557,15 @@ very_unsafe_perform_io(Goal, Result) :-
 		[will_not_call_mercury, thread_safe], "").
 :- pragma foreign_proc("C#", make_io_state(_IO::uo),
 		[will_not_call_mercury, thread_safe], "").
+:- pragma foreign_proc("Java", make_io_state(_IO::uo),
+		[will_not_call_mercury, thread_safe], "").
 
 :- impure pred consume_io_state(io__state::di) is det.
 :- pragma foreign_proc("C", consume_io_state(_IO::di),
 		[will_not_call_mercury, thread_safe], "").
 :- pragma foreign_proc("C#", consume_io_state(_IO::di),
+		[will_not_call_mercury, thread_safe], "").
+:- pragma foreign_proc("Java", consume_io_state(_IO::di),
 		[will_not_call_mercury, thread_safe], "").
 
 :- pred wrap_exception(univ::in, exception_result(T)::out) is det.
@@ -1317,6 +1321,75 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 
 /*
 *******/
+
+:- pragma foreign_proc("Java", throw_impl(_T::in),
+		[will_not_call_mercury, promise_pure], "
+	throw new java.lang.Error(""throw_impl not yet implemented"");
+").
+
+:- pragma foreign_proc("Java", 
+	catch_impl(_Pred::pred(out) is det, _Handler::in(handler), _T::out),
+		[will_not_call_mercury, promise_pure], "
+{
+	// the shenanigans with `if (always)' are to avoid errors from
+	// the Java compiler about unreachable code.
+	boolean always = true;
+	if (always) {
+		throw new java.lang.Error(""catch_impl not yet implemented"");
+	}
+}
+").
+:- pragma foreign_proc("Java", 
+	catch_impl(_Pred::pred(out) is semidet, _Handler::in(handler), T::out),
+		[will_not_call_mercury, promise_pure], "
+{
+	// the shenanigans with `if (always)' are to avoid errors from
+	// the Java compiler about unreachable code.
+	boolean always = true;
+	if (always) {
+		throw new java.lang.Error(""catch_impl not yet implemented"");
+	}
+	T = null;
+}
+").
+:- pragma foreign_proc("Java", 
+	catch_impl(_Pred::pred(out) is cc_multi, _Handler::in(handler),
+		T::out),
+		[will_not_call_mercury, promise_pure], "
+{
+	// the shenanigans with `if (always)' are to avoid errors from
+	// the Java compiler about unreachable code.
+	boolean always = true;
+	if (always) {
+		throw new java.lang.Error(""catch_impl not yet implemented"");
+	}
+	T = null;
+}
+").
+:- pragma foreign_proc("Java", 
+	catch_impl(_Pred::pred(out) is cc_nondet, _Handler::in(handler),
+		T::out),
+		[will_not_call_mercury, promise_pure], "
+{
+	// the shenanigans with `if (always)' are to avoid errors from
+	// the Java compiler about unreachable code.
+	boolean always = true;
+	if (always) {
+		throw new java.lang.Error(""catch_impl not yet implemented"");
+	}
+	T = null;
+}
+").
+:- pragma foreign_proc("Java", 
+	catch_impl(_Pred::pred(out) is multi, _Handler::in(handler), _T::out),
+		[will_not_call_mercury, promise_pure], "
+	throw new java.lang.Error(""catch_impl not yet implemented"");
+").
+:- pragma foreign_proc("Java", 
+	catch_impl(_Pred::pred(out) is nondet, _Handler::in(handler), _T::out),
+		[will_not_call_mercury, promise_pure], "
+	throw new java.lang.Error(""catch_impl not yet implemented"");
+").
 
 %-----------------------------------------------------------------------------%
 %

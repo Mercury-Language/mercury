@@ -235,7 +235,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util.
+:- import_module std_util, require.
 
 :- typeclass store(T) where [].
 :- instance store(store(S)) where []. 
@@ -249,7 +249,15 @@
 	% XXX we use `mkstore' here rather than `store' to work
 	%     around a bug with the Java back-end: it generates
 	%     invalid Java code if we use `store'.
-:- type store(S) ---> mkstore(c_pointer).
+:- type store(S) ---> mkstore(c_pointer)
+	where equality is store_equal, comparison is store_compare.
+
+:- pred store_equal(store(S)::in, store(S)::in) is semidet.
+store_equal(_, _) :- error("attempt to unify two stores").
+
+:- pred store_compare(comparison_result::uo, store(S)::in, store(S)::in)
+	is det.
+store_compare(_, _, _) :- error("attempt to compare two stores").
 
 % Mutvars and references are each represented as a pointer to a single word
 % on the heap.
@@ -268,6 +276,10 @@ store__init(S) :-
 :- mode store__do_init(uo) is det.
 
 :- pragma foreign_proc("C", store__do_init(_S0::uo),
+	[will_not_call_mercury, promise_pure], "").
+:- pragma foreign_proc("C#", store__do_init(_S0::uo),
+	[will_not_call_mercury, promise_pure], "").
+:- pragma foreign_proc("Java", store__do_init(_S0::uo),
 	[will_not_call_mercury, promise_pure], "").
 
 /* 

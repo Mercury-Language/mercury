@@ -542,11 +542,48 @@ get_type_info_for_type_info = TypeDesc :-
 
 :- pragma foreign_code("Java", "
 	public class type_desc_0 {
-		// ...
+		// stub only
 	}
 	public class type_ctor_desc_0 {
-		// ...
+		// stub only
 	}
+
+	public static boolean
+	__Unify____type_desc_0_0(mercury.type_desc.type_desc_0 x,
+		mercury.type_desc.type_desc_0 y)
+	{
+		// stub only
+		throw new java.lang.Error
+			(""unify/2 called for type_desc type not implemented"");
+	}
+
+	public static boolean
+	__Unify____type_ctor_desc_0_0(mercury.type_desc.type_ctor_desc_0 x,
+		mercury.type_desc.type_ctor_desc_0 y)
+	{
+		// stub only
+		throw new java.lang.Error
+			(""unify/2 for type_ctor_desc type not implemented"");
+	}
+
+	public static mercury.builtin.comparison_result_0
+	__Compare____type_desc_0_0(mercury.type_desc.type_desc_0 x,
+		mercury.type_desc.type_desc_0 y)
+	{
+		// stub only
+		throw new java.lang.Error
+			(""compare/3 for type_desc type implemented"");
+	}
+
+	public static mercury.builtin.comparison_result_0
+	__Compare____type_ctor_desc_0_0(mercury.type_desc.type_ctor_desc_0 x,
+		mercury.type_desc.type_ctor_desc_0 y)
+	{
+		// stub only
+		throw new java.lang.Error
+			(""compare/3 for type_ctor_desc type implemented"");
+	}
+
 ").
 
 %-----------------------------------------------------------------------------%
