@@ -951,7 +951,10 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
      their maximum size limited to avoid a fixed limit in lcc.
 
 <li> Final generation of C code is done in llds_out.m, which subcontracts the
-     output of RTTI structures to rtti_out.m.
+     output of RTTI structures to rtti_out.m and of other static
+     compiler-generated data structures (such as those used by the debugger,
+     the deep profiler, and in the future by the garbage collector)
+     to layout_out.m.
 </ul>
 
 <p>
@@ -1263,6 +1266,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2003-05-07 00:50:25 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2003-05-07 06:32:34 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
