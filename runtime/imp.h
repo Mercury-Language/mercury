@@ -16,7 +16,7 @@
 /* GENERAL DEFINITIONS */
 
 typedef	uint	Word;
-typedef void	Code;
+typedef void	Code;		/* should be `typedef function_t Code' */
 
 #define	WORDSIZE	sizeof(Word)
 
@@ -61,13 +61,20 @@ typedef void	Code;
 	{ static Code *jump_table[] = {			\
 		labels					\
 	  };						\
-	  goto *jump_table[val];			\
+	  GOTO(jump_table[val]);			\
 	}
 #define AND ,	/* used to separate the labels */
 
 #include	"engine.h"
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
+
+#define	localcall(label, succcont)				\
+			do {					\
+				debugcall(LABEL(label), (succcont)); \
+				succip = (succcont);		\
+				GOTO_LABEL(label);		\
+			} while (0)
 
 #define	call(proc, succcont)					\
 			do {					\
@@ -76,17 +83,26 @@ typedef void	Code;
 				GOTO(proc);			\
 			} while (0)
 
+	/* used only by the hand-written example programs, not by
+	   the automatically generated code */
 #define	callentry(procname, succcont)				\
 			do {					\
 				extern EntryPoint ENTRY(procname); \
 				call(ENTRY(procname), succcont); \
 			} while (0)
 
+#define	localtailcall(label)					\
+			do {					\
+				debugtailcall(LABEL(proc));	\
+				GOTO_LABEL(label);		\
+			} while (0)
 #define	tailcall(proc)	do {					\
 				debugtailcall(proc);		\
 				GOTO(proc);			\
 			} while (0)
 
+	/* used only by the hand-written example programs, not by
+	   the automatically generated code */
 #define	tailcallentry(procname)					\
 			do {					\
 				extern EntryPoint ENTRY(procname); \
@@ -113,6 +129,8 @@ typedef void	Code;
 ** gcc's expression statements here
 */
 
+	/* used only by the hand-written example programs, not by
+	   the automatically generated code */
 #define create1(w1)	(					\
 				hp = hp + 1,			\
 				hp[-1] = (Word) (w1),		\
@@ -121,6 +139,8 @@ typedef void	Code;
 				/* return */ (Word) (hp - 1)	\
 			)
 
+	/* used only by the hand-written example programs, not by
+	   the automatically generated code */
 #define create2(w1, w2)	(					\
 				hp = hp + 2,			\
 				hp[-2] = (Word) (w1),		\
