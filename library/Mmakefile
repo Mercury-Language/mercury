@@ -200,7 +200,7 @@ endif
 # The ilc and il grades target Microsoft's .NET frameworks.  
 ifeq ($(findstring il,$(GRADE)),il)        
 
-lib_std: mercury.dll
+lib_std: mercury.dll lib$(STD_LIB_NAME)
 
 # We have to hardcode the names of the runtime DLL files.
 RUNTIME_DLLS=mercury_mcpp.dll mercury_il.dll
@@ -225,6 +225,15 @@ library_strong_name.sn:
 mercury.dll: $($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
 		$(RUNTIME_DLLS) library_strong_name.sn
 	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll \
+		$($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
+		$(RUNTIME_DLLS) 
+
+# This is useful for running PEverify on the library.
+# For multi-file assemblies, PEverify only works on executables,
+# not on libraries.
+mercury_exe.exe: $($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
+		$(RUNTIME_DLLS) library_strong_name.sn
+	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury_exe.exe \
 		$($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
 		$(RUNTIME_DLLS) 
 

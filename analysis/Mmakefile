@@ -88,15 +88,17 @@ dates		:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs ss
+.PHONY: os cs ss ils
 ifeq ($(MMAKE_USE_MMC_MAKE),no)
 os: $($(ANALYSIS_LIB_NAME).os)
 cs: $($(ANALYSIS_LIB_NAME).cs)
 ss: $($(ANALYSIS_LIB_NAME).ss)
+ils: $($(ANALYSIS_LIB_NAME).ils)
 else
 os: $(ANALYSIS_LIB_NAME).os
 cs: $(ANALYSIS_LIB_NAME).cs
 ss: $(ANALYSIS_LIB_NAME).ss
+ils: $(ANALYSIS_LIB_NAME).ils
 endif
 
 #-----------------------------------------------------------------------------#

@@ -281,16 +281,18 @@ dates		:
 #-----------------------------------------------------------------------------#
 
 # Note that the cs and os targets don't build top_level_init.{c,o}
-.PHONY: os cs ss
+.PHONY: os cs ss ils
 ifeq ($(MMAKE_USE_MMC_MAKE),no)
 os: $($(MC_PROG).os)
 cs: $($(MC_PROG).cs)
 ss: $($(MC_PROG).ss)
+ils: $($(MC_PROG).ils)
 opts: $($(MC_PROG).opts)
 else
 os: $(MC_PROG).os
 cs: $(MC_PROG).cs
 ss: $(MC_PROG).ss
+ils: $(MC_PROG).ils
 opts: $(MC_PROG).opts
 endif
 

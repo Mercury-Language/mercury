@@ -120,15 +120,17 @@ dates		:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs ss
+.PHONY: os cs ss ils
 ifeq ($(MMAKE_USE_MMC_MAKE),no)
 os: $($(BROWSER_LIB_NAME).os)
 cs: $($(BROWSER_LIB_NAME).cs)
 ss: $($(BROWSER_LIB_NAME).ss)
+ils: $($(BROWSER_LIB_NAME).ils)
 else
 os: $(BROWSER_LIB_NAME).os
 cs: $(BROWSER_LIB_NAME).cs
 ss: $(BROWSER_LIB_NAME).ss
+ils: $(BROWSER_LIB_NAME).ils
 endif
 
 #-----------------------------------------------------------------------------#
