@@ -2563,14 +2563,12 @@ maybe_tag_rval(yes(Tag), Type, Rval) = unop(cast(Type), mkword(Tag, Rval)).
 			% each procedure
 			%
 
-				% XXX we should use the standard library
-				% `counter' type here
-			func_label	:: mlds__func_sequence_num,
-			commit_label	:: commit_sequence_num,
-			label		:: label_num,
-			cond_var	:: cond_seq,
-			conv_var	:: conv_seq,
-			const_num	:: const_seq,
+			func_label	:: counter,
+			commit_label	:: counter,
+			label		:: counter,
+			cond_var	:: counter,
+			conv_var	:: counter,
+			const_num	:: counter,
 			const_num_map	:: map(prog_var, const_seq),
 			success_cont_stack :: stack(success_cont),
 					% a partial mapping from vars to lvals,
@@ -2595,12 +2593,12 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
 		VarTypes),
 	ValueOutputVars = [],
 
-	LabelCounter = 0,
-	FuncLabelCounter = 0,
-	CommitLabelCounter = 0,
-	CondVarCounter = 0,
-	ConvVarCounter = 0,
-	ConstCounter = 0,
+	counter__init(0, LabelCounter),
+	counter__init(0, FuncLabelCounter),
+	counter__init(0, CommitLabelCounter),
+	counter__init(0, CondVarCounter),
+	counter__init(0, ConvVarCounter),
+	counter__init(0, ConstCounter),
 	map__init(ConstNumMap),
 	stack__init(SuccContStack),
 	map__init(VarLvals),
@@ -2657,28 +2655,45 @@ ml_gen_info_get_globals(Info, Globals) :-
 	ml_gen_info_get_module_info(Info, ModuleInfo),
 	module_info_globals(ModuleInfo, Globals).
 
-ml_gen_info_new_label(Label, Info, Info ^ label := Label) :-
-	Label = Info ^ label + 1.
+ml_gen_info_new_label(Label, Info0, Info) :-
+	Counter0 = Info0 ^ label,
+	counter__allocate(Label, Counter0, Counter),
+	Info = Info0 ^ label := Counter.
 
-ml_gen_info_new_func_label(Label, Info, Info ^ func_label := Label) :-
-	Label = Info ^ func_label + 1.
+ml_gen_info_new_func_label(Label, Info0, Info) :-
+	Counter0 = Info0 ^ func_label,
+	counter__allocate(Label, Counter0, Counter),
+	Info = Info0 ^ func_label := Counter.
 
-ml_gen_info_bump_counters(Info,
-	(Info ^ func_label := Info ^ func_label + 10000)
-	      ^ const_num := Info ^ const_num + 10000).
+ml_gen_info_bump_counters(Info0, Info) :-
+	FuncLabelCounter0 = Info0 ^ func_label,
+	ConstNumCounter0 = Info0 ^ const_num,
+	counter__allocate(FuncLabel, FuncLabelCounter0, _),
+	counter__allocate(ConstNum, ConstNumCounter0, _),
+	FuncLabelCounter = counter__init(FuncLabel + 10000),
+	ConstNumCounter = counter__init(ConstNum + 10000),
+	Info = ((Info0 ^ func_label := FuncLabelCounter)
+	      ^ const_num := ConstNumCounter).
 
-ml_gen_info_new_commit_label(CommitLabel, Info,
-		Info ^ commit_label := CommitLabel) :-
-	CommitLabel = Info ^ commit_label + 1.
+ml_gen_info_new_commit_label(CommitLabel, Info0, Info) :-
+	Counter0 = Info0 ^ commit_label,
+	counter__allocate(CommitLabel, Counter0, Counter),
+	Info = Info0 ^ commit_label := Counter.
 
-ml_gen_info_new_cond_var(CondVar, Info, Info ^ cond_var := CondVar) :-
-	CondVar = Info ^ cond_var + 1.
+ml_gen_info_new_cond_var(CondVar, Info0, Info) :-
+	Counter0 = Info0 ^ cond_var,
+	counter__allocate(CondVar, Counter0, Counter),
+	Info = Info0 ^ cond_var := Counter.
 
-ml_gen_info_new_conv_var(ConvVar, Info, Info ^ conv_var := ConvVar) :-
-	ConvVar = Info ^ conv_var + 1.
+ml_gen_info_new_conv_var(ConvVar, Info0, Info) :-
+	Counter0 = Info0 ^ conv_var,
+	counter__allocate(ConvVar, Counter0, Counter),
+	Info = Info0 ^ conv_var := Counter.
 
-ml_gen_info_new_const(ConstVar, Info, Info ^ const_num := ConstVar) :-
-	ConstVar = Info ^ const_num + 1.
+ml_gen_info_new_const(ConstVar, Info0, Info) :-
+	Counter0 = Info0 ^ const_num,
+	counter__allocate(ConstVar, Counter0, Counter),
+	Info = Info0 ^ const_num := Counter.
 
 ml_gen_info_set_const_num(Var, ConstVar, Info,
 	Info ^ const_num_map := map__set(Info ^ const_num_map, Var, ConstVar)).
