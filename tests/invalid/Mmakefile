@@ -65,6 +65,7 @@ SINGLEMODULE= \
 	ext_type_bug \
 	exported_mode \
 	field_syntax_error \
+	foreign_decl_line_number \
 	foreign_singleton \
 	foreign_type_2 \
 	foreign_type_visibility \
@@ -175,8 +176,10 @@ RESERVE_TAG_MODULES = \
 
 
 # XXX we do not yet pass the following tests:
-#	foreign_decl_line_number (due to some errors being reported in .c
-#		files and .mh files rather than in .m files)
+#	foreign_type_line_number (due to some errors being reported in .c
+#		files and .mh files rather than in .m files,
+#		or being reported in .m files but at the line number of
+#		the pragma foreign_proc rather than the pragma foreign_type)
 #	duplicate_instance_3 (the error is only detected when doing
 #		normal static linking; the error goes undetected
 #		when doing dynamic linking, or when the library
@@ -234,6 +237,7 @@ include Mercury.options
 # We also pipe it through sed to remove "Mercury/cs/"; this
 # avoids spurious failures with --use-subdirs.
 foreign_decl_line_number.err: foreign_decl_line_number.m
+	rm -f foreign_decl_line_number.err
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 		foreign_decl_line_number.m \
 		> foreign_decl_line_number.err.orig 2>&1; \
@@ -241,6 +245,19 @@ foreign_decl_line_number.err: foreign_decl_line_number.m
 	grep '#error' foreign_decl_line_number.err.orig | \
 		sed 's@Mercury/cs/@@g' | sort -u \
 		> foreign_decl_line_number.err
+
+# Similarly for foreign_type_line_number, although in this case we
+# use "long short int" rather than #error, so we need to grep for that
+# instead.
+foreign_type_line_number.err: foreign_type_line_number.m
+	rm -f foreign_type_line_number.err
+	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		foreign_type_line_number.m \
+		> foreign_type_line_number.err.orig 2>&1; \
+	then false; else true; fi
+	grep 'long.*short' foreign_type_line_number.err.orig | \
+		sed 's@Mercury/cs/@@g' | sort -u \
+		> foreign_type_line_number.err
 
 # For duplicate_instance_{1,2}, the error is only caught at link time.
 # So we need to use a different rule for that.

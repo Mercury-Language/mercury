@@ -32,6 +32,7 @@ MCFLAGS-exported_unify =	--no-intermodule-optimization \
 MCFLAGS-exported_unify3 =	--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers --compile-only
+MCFLAGS-foreign_type_line_number = --no-errorcheck-only --line-numbers --compile-only
 MCFLAGS-foreign_singleton =	--halt-at-warn
 MCFLAGS-foreign_type =		--compile-only
 MCFLAGS-foreign_type_2 =	--no-intermodule-optimization \

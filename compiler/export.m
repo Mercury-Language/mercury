@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -75,6 +75,7 @@
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__name_mangle.
 :- import_module backend_libs__proc_label.
+:- import_module backend_libs__c_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
 :- import_module hlds__hlds_pred.
@@ -704,10 +705,14 @@ export__produce_header_file_2([E|ExportedProcs]) -->
 
 :- pred output_foreign_decl(foreign_decl_code::in, io::di, io::uo) is det.
 
-export__output_foreign_decl(foreign_decl_code(Lang, Code, _Context)) -->
+export__output_foreign_decl(foreign_decl_code(Lang, Code, Context)) -->
 	( { Lang = c } ->
+		{ term__context_file(Context, File) },
+		{ term__context_line(Context, Line) },
+		c_util__set_line_num(File, Line),
 		io__write_string(Code),
-		io__nl
+		io__nl,
+		c_util__reset_line_num
 	;
 		[]
 	).
