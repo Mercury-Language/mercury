@@ -881,7 +881,7 @@ MR_print_label(FILE *fp, /* const */ MR_Code *w)
 		if (internal->i_name != NULL) {
 			fprintf(fp, "label %s", internal->i_name);
 		} else {
-			fprintf(fp, "unnamed label");
+			fprintf(fp, "unnamed label %p", internal->i_addr);
 		}
 	} else {
 #ifdef	MR_NEED_ENTRY_LABEL_ARRAY
@@ -892,13 +892,14 @@ MR_print_label(FILE *fp, /* const */ MR_Code *w)
 			if (entry->e_name != NULL) {
 				fprintf(fp, "entry label %s", entry->e_name);
 			} else {
-				fprintf(fp, "unnamed entry label");
+				fprintf(fp, "unnamed entry label %p",
+					entry->e_addr);
 			}
 		} else {
-			fprintf(fp, "label UNKNOWN");
+			fprintf(fp, "label UNKNOWN %p", w);
 		}
 #else
-		fprintf(fp, "label UNKNOWN");
+		fprintf(fp, "label UNKNOWN %p", w);
 #endif	/* not MR_NEED_ENTRY_LABEL_ARRAY */
 	}
 

@@ -30,6 +30,16 @@ static  void	dump_live_variables(const MR_Label_Layout *layout,
 
 /*---------------------------------------------------------------------------*/
 
+/*
+** Currently this variable is never modified by the Mercury runtime code,
+** but it can be modified manually in gdb.
+** XXX it would be nicer to set it based on a runtime option setting.
+*/
+#ifdef MR_DEBUG_AGC_PRINT_VARS
+  static MR_bool MR_debug_agc_print_vars = MR_TRUE;
+#else
+  static MR_bool MR_debug_agc_print_vars = MR_FALSE;
+#endif
 
 void
 MR_agc_dump_roots(MR_RootList roots)
@@ -40,32 +50,34 @@ MR_agc_dump_roots(MR_RootList roots)
 	fflush(NULL);
 	fprintf(stderr, "Dumping roots\n");
 
-  #ifdef MR_DEBUG_AGC_PRINT_VARS
-	while (roots != NULL) {
+  	if (MR_debug_agc_print_vars) {
+		while (roots != NULL) {
 
 
-		/*
-		** Restore the registers, because we need to save them
-		** to a more permanent backing store (we are going to
-		** call Mercury soon, and we don't want it messing with
-		** the saved registers).
-		*/
-		MR_restore_registers();
-		MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1, saved_regs);
+			/*
+			** Restore the registers, because we need to save them
+			** to a more permanent backing store (we are going to
+			** call Mercury soon, and we don't want it messing with
+			** the saved registers).
+			*/
+			MR_restore_registers();
+			MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1,
+				saved_regs);
 
-		MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
-		MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
+			MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
+			MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
 
-		fflush(NULL);
-		MR_write_variable(roots->type_info, *roots->root);
-		fflush(NULL);
-		fprintf(stderr, "\n");
+			fflush(NULL);
+			MR_write_variable(roots->type_info, *roots->root);
+			fflush(NULL);
+			fprintf(stderr, "\n");
 
-		MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG - 1, saved_regs);
-		MR_save_registers();
-		roots = roots->next;
+			MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG - 1,
+				saved_regs);
+			MR_save_registers();
+			roots = roots->next;
+		}
 	}
-  #endif /* MR_DEBUG_AGC_PRINT_VARS */
 #endif /* MR_NATIVE_GC */
 }
 
@@ -148,7 +160,8 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 				dump_live_variables(label->i_layout, heap_zone,
 					registers_valid, stack_pointer,
 					MR_redofr_slot(max_frame));
-				fprintf(stderr, " this label: %s\n", label->i_name);
+				fprintf(stderr, " this label: %s\n",
+					label->i_name);
 			}
 		}
 
@@ -187,7 +200,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 		if (label->i_name != NULL) {
 			fprintf(stderr, "    label: %s\n", label->i_name);
 		} else {
-			fprintf(stderr, "    label: unknown\n");
+			fprintf(stderr, "    label: %p\n", label->i_addr);
 		}
 
 		if (success_ip == MR_stack_trace_bottom) {
@@ -270,26 +283,25 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 		fprintf(stderr, "\n");
 		fflush(NULL);
 
-#ifdef MR_DEBUG_AGC_PRINT_VARS
-		/*
-		** Call Mercury but use the debugging heap.
-		*/
+		if (MR_debug_agc_print_vars) {
+			/*
+			** Call Mercury but use the debugging heap.
+			*/
 
-		MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
-		MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
+			MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
+			MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
 
-		if (MR_get_type_and_value_base(label_layout, i,
-				current_regs, stack_pointer,
-				current_frame, type_params,
-				&type_info, &value)) {
-			printf("\t");
-			MR_write_variable(type_info, value);
-			printf("\n");
+			if (MR_get_type_and_value_base(label_layout, i,
+					current_regs, stack_pointer,
+					current_frame, type_params,
+					&type_info, &value)) {
+				printf("\t");
+				MR_write_variable(type_info, value);
+				printf("\n");
+			}
+
+			fflush(NULL);
 		}
-
-#endif	/* MR_DEBUG_AGC_PRINT_VARS */
-
-		fflush(NULL);
 	}
 
 	for (; i < short_var_count; i++) {
@@ -303,26 +315,25 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 		fprintf(stderr, "\n");
 		fflush(NULL);
 
-#ifdef MR_DEBUG_AGC_PRINT_VARS
-		/*
-		** Call Mercury but use the debugging heap.
-		*/
+		if (MR_debug_agc_print_vars) {
+			/*
+			** Call Mercury but use the debugging heap.
+			*/
 
-		MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
-		MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
+			MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
+			MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
 
-		if (MR_get_type_and_value_base(label_layout, i,
-				current_regs, stack_pointer,
-				current_frame, type_params,
-				&type_info, &value)) {
-			printf("\t");
-			MR_write_variable(type_info, value);
-			printf("\n");
+			if (MR_get_type_and_value_base(label_layout, i,
+					current_regs, stack_pointer,
+					current_frame, type_params,
+					&type_info, &value)) {
+				printf("\t");
+				MR_write_variable(type_info, value);
+				printf("\n");
+			}
+
+			fflush(NULL);
 		}
-
-#endif	/* MR_DEBUG_AGC_PRINT_VARS */
-
-		fflush(NULL);
 	}
 
 
