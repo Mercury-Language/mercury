@@ -35,25 +35,23 @@
 %
 % The predicates fall into three categories:
 %
-% (1)	Predicates that manage the tabling of simple subgoals.
-%	A subgoal is simple if its predicate is model_det or model_semi,
-%	which means that its evaluation method must be something
-%	other than minimal model.
+% (1)	Predicates that manage the tabling of model_det and model_semi
+%	predicates, whose evaluation method must be something other than
+%	minimal model.
 %
-% (2)	Predicates that manage the tabling of model_non subgoals,
-%	which usually means that its evaluation method is minimal model.
+% (2)	Predicates that manage the tabling of model_non predicates,
+%	whose evaluation method is usually minimal model.
 %
-% (3)	Utility predicates that are needed in the tabling of both
-%	simple and nondet subgoals.
+% (3)	Utility predicates that are needed in the tabling of all predicates.
 %
 % The utility predicates that handle tries are combined lookup/insert
 % operations; if the item being searched for is not already in the trie,
-% they insert it. These predicates are used to implement both subgoal tables,
+% they insert it. These predicates are used to implement both call tables,
 % in which case the items inserted are input arguments of a tabled predicate,
 % and answer tables, in which case the items inserted are output arguments
 % of a tabled predicate.
 %
-% The subgoal table trie is used for detecting duplicate calls,
+% The call table trie is used for detecting duplicate calls,
 % while the answer table trie is used for detecting duplicate answers.
 % However, storing answers only in the answer table trie is not sufficient,
 % for two reasons. First, while the trie encodes the values of the output
@@ -67,13 +65,13 @@
 % concerned. To handle the second problem, for model_non procedures
 % we chain these answer blocks together in a chronological list.
 %
-% For simple goals, the word at the end of the subgoal table trie is used
+% For simple goals, the word at the end of the call table trie is used
 % first as a status indication (of type MR_SimpletableStatus), and later on
 % as a pointer to an answer block (if the goal succeeded). This is OK, because
 % we can distinguish the two, and because an answer block pointer can be
 % associated with only one status value.
 %
-% For nondet goals, the word at the end of the subgoal table trie always
+% For nondet goals, the word at the end of the call table trie always
 % points to a subgoal structure, with several fields. The status of the
 % subgoal and the list of answers are two of these fields. Other fields,
 % described in runtime/mercury_tabling.h, are used in the implementation
@@ -84,40 +82,17 @@
 % this causes the predicates to become impure. The predicates with the semipure
 % directive only examine the tabling structures, but do not modify them.
 
-	% This type is used as a generic table: it can in fact represent two
-	% types, either a subgoal_table or an answer_table. The subgoal_table
-	% and answer_table types are differentiated by what they have at the
-	% table nodes but not by the actual underlying trie structure.
-:- type ml_table.
+	% This type represents the interior pointers of both call
+	% tables and ansswer tables.
+:- type ml_trie_node.
 
-	% This type is used in contexts where a node of a subgoal table is
-	% expected.
-:- type ml_subgoal_table_node.
+	% This type represents the data structure at the tips of the call table
+	% in model_non predicates.
+:- type ml_subgoal.
 
-	% This type is used in contexts where a node of an answer table is
-	% expected.
-:- type ml_answer_table_node.
-
-	% This type is used in contexts where an answer slot is expected.
-:- type ml_answer_slot.
-
-	% This type is used in contexts where an answer block is expected.
+	% This type represents a block of memory that contains one word
+	% for each output argument of a procedure.
 :- type ml_answer_block.
-
-	% These equivalences should be local to private_builtin. However,
-	% at the moment table_gen.m assumes that it can use a single variable
-	% sometimes as an ml_table and other times as an ml_subgoal_table_node
-	% (e.g. by giving the output of table_lookup_insert_int as input to
-	% table_have_all_ans). The proper fix would be for table_gen.m to
-	% use additional variables and insert unsafe casts. However, this
-	% would require significant work for no real gain, so for now
-	% we fix the problem by exposing the equivalences to code generated
-	% by table_gen.m.
-:- type ml_subgoal_table_node == ml_table.
-:- type ml_answer_table_node == ml_table.
-:- type ml_answer_slot == ml_table.
-:- type ml_answer_block == ml_table.
-:- type ml_table.
 
 :- implementation.
 
@@ -127,9 +102,20 @@
 % to make this module compile cleanly on the Java and .NET backends
 % respectively.
 
-:- type ml_table --->	ml_table(c_pointer).
-:- pragma foreign_type("C", ml_table, "MR_TrieNode").
-:- pragma foreign_type(il,  ml_table, "class [mscorlib]System.Object").
+	% This type represents a list of answers of a model_non predicate.
+:- type ml_answer_list.
+
+:- type ml_trie_node --->	ml_trie_node(c_pointer).
+:- pragma foreign_type("C", ml_trie_node, "MR_TrieNode").
+:- pragma foreign_type(il,  ml_trie_node, "class [mscorlib]System.Object").
+
+:- type ml_subgoal --->		ml_subgoal(c_pointer).
+:- pragma foreign_type("C", ml_subgoal, "MR_SubgoalPtr").
+:- pragma foreign_type(il,  ml_subgoal, "class [mscorlib]System.Object").
+
+:- type ml_answer_block --->	ml_answer_block(c_pointer).
+:- pragma foreign_type("C", ml_answer_block, "MR_AnswerBlock").
+:- pragma foreign_type(il,  ml_answer_block, "class [mscorlib]System.Object").
 
 :- type ml_answer_list --->	ml_answer_list(c_pointer).
 :- pragma foreign_type("C", ml_answer_list, "MR_AnswerList").
@@ -140,46 +126,46 @@
 :- interface.
 
 %
-% Predicates that manage the tabling of simple subgoals.
+% Predicates that manage the tabling of model_det and model_semi predicates.
 %
 
-	% Return true if the subgoal represented by the given table has an
+	% Return true if the call represented by the given table has an
 	% answer.
-:- semipure pred table_simple_is_complete(ml_subgoal_table_node::in)
-	is semidet.
+:- semipure pred table_simple_is_complete(ml_trie_node::in) is semidet.
 
-	% Return true if the subgoal represented by the given table has a
+	% Return true if the call represented by the given table has a
 	% true answer.
-:- semipure pred table_simple_has_succeeded(ml_subgoal_table_node::in)
-	is semidet.
+:- semipure pred table_simple_has_succeeded(ml_trie_node::in) is semidet.
 
-	% Return true if the subgoal represented by the given table has
+	% Return true if the call represented by the given table has
 	% failed.
-:- semipure pred table_simple_has_failed(ml_subgoal_table_node::in) is semidet.
+:- semipure pred table_simple_has_failed(ml_trie_node::in) is semidet.
 
-	% Return true if the subgoal represented by the given table is
+	% Return true if the call represented by the given table is
 	% currently being evaluated (working on an answer).
-:- semipure pred table_simple_is_active(ml_subgoal_table_node::in) is semidet.
+:- semipure pred table_simple_is_active(ml_trie_node::in) is semidet.
 
-	% Return false if the subgoal represented by the given table is
+	% Return false if the call represented by the given table is
 	% currently being evaluated (working on an answer).
-:- semipure pred table_simple_is_inactive(ml_subgoal_table_node::in)
-	is semidet.
+:- semipure pred table_simple_is_inactive(ml_trie_node::in) is semidet.
 
-	% Save the fact the the subgoal has succeeded in the given table.
-:- impure pred table_simple_mark_as_succeeded(ml_subgoal_table_node::in)
-	is det.
+	% Save the fact the the call has succeeded in the given table.
+:- impure pred table_simple_mark_as_succeeded(ml_trie_node::in) is det.
 
-	% Save the fact the the subgoal has failed in the given table.
-:- impure pred table_simple_mark_as_failed(ml_subgoal_table_node::in) is det.
+	% Save the fact the the call has failed in the given table.
+:- impure pred table_simple_mark_as_failed(ml_trie_node::in) is det.
 
-	% Mark the subgoal represented by the given table as currently
+	% Mark the call represented by the given table as currently
 	% being evaluated (working on an answer).
-:- impure pred table_simple_mark_as_active(ml_subgoal_table_node::in) is det.
+:- impure pred table_simple_mark_as_active(ml_trie_node::in) is det.
 
-	% Mark the subgoal represented by the given table as currently
+	% Mark the call represented by the given table as currently
 	% not being evaluated (working on an answer).
-:- impure pred table_simple_mark_as_inactive(ml_subgoal_table_node::in) is det.
+:- impure pred table_simple_mark_as_inactive(ml_trie_node::in) is det.
+
+	% Return the answer block for the given call.
+:- semipure pred table_simple_get_answer_block(ml_trie_node::in,
+	ml_answer_block::out) is det.
 
 	% N.B. interface continued below
 
@@ -191,162 +177,142 @@
 	table_simple_is_complete(T::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = T;
-
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf(""checking if simple %p is complete: %ld (%lx)\\n"",
-			table, (long) table->MR_simpletable_status,
-			(long) table->MR_simpletable_status);
+			T, (long) T->MR_simpletable_status,
+			(long) T->MR_simpletable_status);
 	}
 #endif
 	SUCCESS_INDICATOR = 
-		((table->MR_simpletable_status == MR_SIMPLETABLE_FAILED)
-		|| (table->MR_simpletable_status >= MR_SIMPLETABLE_SUCCEEDED));
+		((T->MR_simpletable_status == MR_SIMPLETABLE_FAILED)
+		|| (T->MR_simpletable_status >= MR_SIMPLETABLE_SUCCEEDED));
 ").
 
 :- pragma foreign_proc("C",
 	table_simple_has_succeeded(T::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = T;
-
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf(""checking if simple %p is succeeded: %ld (%lx)\\n"",
-			table, (long) table->MR_simpletable_status,
-			(long) table->MR_simpletable_status);
+			T, (long) T->MR_simpletable_status,
+			(long) T->MR_simpletable_status);
 	}
 #endif
 	SUCCESS_INDICATOR =
-		(table->MR_simpletable_status >= MR_SIMPLETABLE_SUCCEEDED);
+		(T->MR_simpletable_status >= MR_SIMPLETABLE_SUCCEEDED);
 ").
 
 :- pragma foreign_proc("C",
 	table_simple_has_failed(T::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = T;
-
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf(""checking if simple %p is failed: %ld (%lx)\\n"",
-			table, (long) table->MR_simpletable_status,
-			(long) table->MR_simpletable_status);
+			T, (long) T->MR_simpletable_status,
+			(long) T->MR_simpletable_status);
 	}
 #endif
 	SUCCESS_INDICATOR =
-		(table->MR_simpletable_status == MR_SIMPLETABLE_FAILED);
+		(T->MR_simpletable_status == MR_SIMPLETABLE_FAILED);
 ").
 
 :- pragma foreign_proc("C",
 	table_simple_is_active(T::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = T;
-
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf(""checking if simple %p is active: %ld (%lx)\\n"",
-			table, (long) table->MR_simpletable_status,
-			(long) table->MR_simpletable_status);
+			T, (long) T->MR_simpletable_status,
+			(long) T->MR_simpletable_status);
 	}
 #endif
 	SUCCESS_INDICATOR =
-		(table->MR_simpletable_status == MR_SIMPLETABLE_WORKING);
+		(T->MR_simpletable_status == MR_SIMPLETABLE_WORKING);
 ").
 
 :- pragma foreign_proc("C",
 	table_simple_is_inactive(T::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = T;
-
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf(""checking if simple %p is inactive: %ld (%lx)\\n"",
-			table, (long) table->MR_simpletable_status,
-			(long) table->MR_simpletable_status);
+			T, (long) T->MR_simpletable_status,
+			(long) T->MR_simpletable_status);
 	}
 #endif
 	SUCCESS_INDICATOR =
-		(table->MR_simpletable_status != MR_SIMPLETABLE_WORKING);
+		(T->MR_simpletable_status != MR_SIMPLETABLE_WORKING);
 ").
 
 :- pragma foreign_proc("C",
 	table_simple_mark_as_succeeded(T::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = T;
-
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""marking %p as succeeded\\n"", table);
+		printf(""marking %p as succeeded\\n"", T);
 	}
 #endif
-	table->MR_simpletable_status = MR_SIMPLETABLE_SUCCEEDED;
+	T->MR_simpletable_status = MR_SIMPLETABLE_SUCCEEDED;
 ").
 
 :- pragma foreign_proc("C",
 	table_simple_mark_as_failed(T::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = T;
-
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""marking %p as failed\\n"", table);
+		printf(""marking %p as failed\\n"", T);
 	}
 #endif
-	table->MR_simpletable_status = MR_SIMPLETABLE_FAILED;
+	T->MR_simpletable_status = MR_SIMPLETABLE_FAILED;
 ").
 
 :- pragma foreign_proc("C",
 	table_simple_mark_as_active(T::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = T;
-
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""marking %p as working\\n"", table);
+		printf(""marking %p as working\\n"", T);
 	}
 #endif
-	table->MR_simpletable_status = MR_SIMPLETABLE_WORKING;
+	T->MR_simpletable_status = MR_SIMPLETABLE_WORKING;
 ").
 
 :- pragma foreign_proc("C",
 	table_simple_mark_as_inactive(T::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = T;
-
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""marking %p as uninitialized\\n"", table);
+		printf(""marking %p as uninitialized\\n"", T);
 	}
 #endif
-	table->MR_simpletable_status = MR_SIMPLETABLE_UNINITIALIZED;
+	T->MR_simpletable_status = MR_SIMPLETABLE_UNINITIALIZED;
 ").
 
+:- pragma foreign_proc("C",
+	table_simple_get_answer_block(T::in, AB::out),
+	[will_not_call_mercury, promise_semipure],
+"
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""getting answer block %p -> %p\\n"",
+			T, T->MR_answerblock);
+	}
+
+	if (T->MR_simpletable_status <= MR_SIMPLETABLE_SUCCEEDED) {
+		MR_fatal_error(""table_simple_get_answer_block: no block"");
+	}
+#endif
+	AB = T->MR_answerblock;
+").
 
 :- pragma promise_semipure(table_simple_is_complete/1).
 table_simple_is_complete(_) :-
@@ -406,6 +372,13 @@ table_simple_mark_as_inactive(_) :-
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("table_simple_mark_as_inactive").
+
+table_simple_get_answer_block(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_simple_get_answer_block").
+
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -430,7 +403,8 @@ table_simple_mark_as_inactive(_) :-
 	% where Start is the I/O action number of the first tabled action.
 	% The three output parameters together specify this location.
 
-:- impure pred table_io_in_range(ml_table::out, int::out, int::out) is semidet.
+:- impure pred table_io_in_range(ml_trie_node::out, int::out, int::out)
+	is semidet.
 
 	% This procedure should be called exactly once for each I/O action
 	% for which table_io_in_range returns true. Given the trie node
@@ -438,7 +412,7 @@ table_simple_mark_as_inactive(_) :-
 	% been carried out before (i.e. the action is now being reexecuted
 	% after a retry command in the debugger).
 
-:- impure pred table_io_has_occurred(ml_table::in) is semidet.
+:- impure pred table_io_has_occurred(ml_trie_node::in) is semidet.
 
 	% This predicate simply copies the input I/O state to become the output
 	% I/O state. It is used only because it is easier to get the insts
@@ -635,54 +609,52 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 	% Save the information that will be needed later about this
 	% nondet subgoal in a data structure. If we have already seen
 	% this subgoal before, do nothing.
-:- impure pred table_nondet_setup(ml_subgoal_table_node::in,
-	ml_subgoal_table_node::out) is det.
+:- impure pred table_nondet_setup(ml_trie_node::in, ml_subgoal::out) is det.
 
 	% Save the state of the current subgoal and fail. Sometime later,
 	% when the subgoal has some solutions, table_nondet_resume will
 	% restore the saved state. At the time, table_nondet_suspend will
 	% succeed, and return an answer block as its second argument.
-:- impure pred table_nondet_suspend(ml_subgoal_table_node::in,
+:- impure pred table_nondet_suspend(ml_subgoal::in,
 	ml_answer_block::out) is nondet.
 
 	% Resume all suspended subgoal calls. This predicate will resume each
 	% of the suspended subgoals that depend on it in turn until it reaches
 	% a fixed point, at which all depended suspended subgoals have had
 	% all available answers returned to them.
-:- impure pred table_nondet_resume(ml_subgoal_table_node::in) is det.
+:- impure pred table_nondet_resume(ml_subgoal::in) is det.
 
 	% Succeed if we have finished generating all answers for
 	% the given nondet subgoal.
-:- semipure pred table_nondet_is_complete(ml_subgoal_table_node::in)
-	is semidet.
+:- semipure pred table_nondet_is_complete(ml_subgoal::in) is semidet.
 
 	% Succeed if the given nondet subgoal is active,
 	% i.e. the process of computing all its answers is not yet complete.
-:- semipure pred table_nondet_is_active(ml_subgoal_table_node::in) is semidet.
+:- semipure pred table_nondet_is_active(ml_subgoal::in) is semidet.
 
 	% Mark a table as being active.
-:- impure pred table_nondet_mark_as_active(ml_subgoal_table_node::in) is det.
+:- impure pred table_nondet_mark_as_active(ml_subgoal::in) is det.
 
 	% Return the table of answers already returned to the given nondet
 	% table.
-:- impure pred table_nondet_get_ans_table(ml_subgoal_table_node::in,
-	ml_table::out) is det.
+:- impure pred table_nondet_get_ans_table(ml_subgoal::in, ml_trie_node::out)
+	is det.
 
 	% If the answer represented by the given answer table
 	% has not been generated before by this subgoal,
 	% succeed and remember the answer as having been generated.
 	% If the answer has been generated before, fail.
-:- impure pred table_nondet_answer_is_not_duplicate(ml_answer_table_node::in)
+:- impure pred table_nondet_answer_is_not_duplicate(ml_trie_node::in)
 	is semidet.
 
 	% Create a new slot in the answer list.
-:- impure pred table_nondet_new_ans_slot(ml_subgoal_table_node::in,
-	ml_answer_slot::out) is det.
+:- impure pred table_nondet_new_ans_slot(ml_subgoal::in, ml_trie_node::out)
+	is det.
 
 	% Return all of the answer blocks stored in the given table.
-:- semipure pred table_nondet_return_all_ans(ml_subgoal_table_node::in,
+:- semipure pred table_nondet_return_all_ans(ml_subgoal::in,
 	ml_answer_block::out) is nondet.
-:- semipure pred table_multi_return_all_ans(ml_subgoal_table_node::in,
+:- semipure pred table_multi_return_all_ans(ml_subgoal::in,
 	ml_answer_block::out) is multi.
 
 	% This type should correspond exactly to the type MR_SubgoalStatus
@@ -693,8 +665,8 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 	;	active
 	;	complete.
 
-:- semipure pred table_subgoal_status(ml_subgoal_table_node::in,
-	subgoal_status::out) is det.
+:- semipure pred table_subgoal_status(ml_subgoal::in, subgoal_status::out)
+	is det.
 
 	% N.B. interface continued below
 
@@ -703,7 +675,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 :- implementation.
 
 :- pragma foreign_proc("C",
-	table_nondet_setup(T0::in, T::out),
+	table_nondet_setup(T::in, Subgoal::out),
 	[will_not_call_mercury],
 "
 #ifndef	MR_USE_MINIMAL_MODEL
@@ -715,10 +687,6 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 #ifdef	MR_HIGHLEVEL_CODE
 #error ""Sorry, not yet implemented: minimal model tabling with high level code""
 #endif
-	MR_TrieNode	table;
-
-	table = T0;
-
 	/*
 	** Initialize the subgoal if this is the first time we see it.
 	** If the subgoal structure already exists but is marked inactive,
@@ -727,11 +695,12 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 	** In that case, we want to forget all about the old generator.
 	*/
 
-	if (table->MR_subgoal == NULL) {
+	if (T->MR_subgoal == NULL) {
 		MR_Subgoal	*subgoal;
 
 		subgoal = MR_TABLE_NEW(MR_Subgoal);
 
+		subgoal->MR_sg_back_ptr = T;
 		subgoal->MR_sg_status = MR_SUBGOAL_INACTIVE;
 		subgoal->MR_sg_leader = NULL;
 		subgoal->MR_sg_followers = MR_TABLE_NEW(MR_SubgoalListNode);
@@ -739,7 +708,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 		subgoal->MR_sg_followers->MR_sl_next = NULL;
 		subgoal->MR_sg_followers_tail =
 			&(subgoal->MR_sg_followers->MR_sl_next);
-		subgoal->MR_sg_answer_table = (MR_Word) NULL;
+		subgoal->MR_sg_answer_table.MR_integer = 0;
 		subgoal->MR_sg_num_ans = 0;
 		subgoal->MR_sg_answer_list = NULL;
 		subgoal->MR_sg_answer_list_tail =
@@ -768,7 +737,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 
 		if (MR_tabledebug) {
 			printf(""setting up subgoal %p -> %s, "",
-				table, MR_subgoal_addr_name(subgoal));
+				T, MR_subgoal_addr_name(subgoal));
 			printf(""answer slot %p\\n"",
 				subgoal->MR_sg_answer_list_tail);
 			if (subgoal->MR_sg_proc_layout != NULL) {
@@ -785,9 +754,9 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 		}
 #endif
 		subgoal->MR_sg_generator_fr = MR_curfr;
-		table->MR_subgoal = subgoal;
+		T->MR_subgoal = subgoal;
 	}
-	T = T0;
+	Subgoal = T->MR_subgoal;
 #endif /* MR_USE_MINIMAL_MODEL */
 ").
 
@@ -825,62 +794,52 @@ XXX :- external stops us from using these two definitions
 */
 
 :- pragma foreign_proc("C",
-	table_nondet_is_complete(T::in), [will_not_call_mercury], "
+	table_nondet_is_complete(Subgoal::in),
+	[will_not_call_mercury],
+"
 #ifdef	MR_USE_MINIMAL_MODEL
-	MR_TrieNode	table;
-
-	table = T;
-
-	SUCCESS_INDICATOR =
-		(table->MR_subgoal->MR_sg_status == MR_SUBGOAL_COMPLETE);
+	SUCCESS_INDICATOR = (Subgoal->MR_sg_status == MR_SUBGOAL_COMPLETE);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
 :- pragma foreign_proc("C",
-	table_nondet_is_active(T::in),
+	table_nondet_is_active(Subgoal::in),
 	[will_not_call_mercury],
 "
 #ifdef	MR_USE_MINIMAL_MODEL
-	MR_TrieNode	table;
-
-	table = T;
-
-	SUCCESS_INDICATOR =
-		(table->MR_subgoal->MR_sg_status == MR_SUBGOAL_ACTIVE);
+	SUCCESS_INDICATOR = (Subgoal->MR_sg_status == MR_SUBGOAL_ACTIVE);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
 :- pragma foreign_proc("C",
-	table_nondet_mark_as_active(T::in),
+	table_nondet_mark_as_active(Subgoal::in),
 	[will_not_call_mercury],
 "
 #ifdef	MR_USE_MINIMAL_MODEL
-	MR_TrieNode	table;
-
-	table = T;
-
-	MR_push_generator(MR_curfr, table);
-	MR_register_generator_ptr(table);
-	table->MR_subgoal->MR_sg_status = MR_SUBGOAL_ACTIVE;
+	MR_push_generator(MR_curfr, Subgoal);
+	MR_register_generator_ptr(Subgoal);
+	Subgoal->MR_sg_status = MR_SUBGOAL_ACTIVE;
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
 :- pragma foreign_proc("C",
-	table_nondet_get_ans_table(T::in, AT::out),
+	table_nondet_get_ans_table(Subgoal::in, AT::out),
 	[will_not_call_mercury],
 "
 #ifdef	MR_USE_MINIMAL_MODEL
-	MR_TrieNode	table;
-
-	table = T;
-
-	AT = (MR_TrieNode) &(table->MR_subgoal->MR_sg_answer_table);
+  #ifdef MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""getting answer table %p -> %p\\n"",
+			Subgoal, &(Subgoal->MR_sg_answer_table));
+	}
+  #endif
+	AT = &(Subgoal->MR_sg_answer_table);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -893,38 +852,31 @@ XXX :- external stops us from using these two definitions
 #ifndef	MR_USE_MINIMAL_MODEL
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #else
-	MR_TrieNode	table;
 	MR_bool		is_new_answer;
-
-	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf(""checking if %p is a duplicate answer: %ld\\n"",
-			table, (long) table->MR_integer);
+			T, (long) T->MR_integer);
 	}
 #endif
 
-	is_new_answer = (table->MR_integer == 0);
-	table->MR_integer = 1;	/* any nonzero value will do */
+	is_new_answer = (T->MR_integer == 0);
+	T->MR_integer = 1;	/* any nonzero value will do */
 	SUCCESS_INDICATOR = is_new_answer;
 #endif
 ").
 
 :- pragma foreign_proc("C",
-	table_nondet_new_ans_slot(T::in, Slot::out),
+	table_nondet_new_ans_slot(Subgoal::in, Slot::out),
 	[will_not_call_mercury],
 "
 #ifndef	MR_USE_MINIMAL_MODEL
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #else
-	MR_TrieNode		table;
-	MR_Subgoal		*subgoal;
 	MR_AnswerListNode	*answer_node;
 
-	table = T;
-	subgoal = table->MR_subgoal;
-	subgoal->MR_sg_num_ans++;
+	Subgoal->MR_sg_num_ans++;
 
 	/*
 	**
@@ -934,25 +886,25 @@ XXX :- external stops us from using these two definitions
 	*/
 
 	answer_node = MR_TABLE_NEW(MR_AnswerListNode);
-	answer_node->MR_aln_answer_num = subgoal->MR_sg_num_ans;
+	answer_node->MR_aln_answer_num = Subgoal->MR_sg_num_ans;
 	answer_node->MR_aln_answer_data.MR_integer = 0;
 	answer_node->MR_aln_next_answer = NULL;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf(""%s: new answer slot %d at %p(%p)\\n"",
-			MR_subgoal_addr_name(subgoal),
-			subgoal->MR_sg_num_ans, answer_node,
+			MR_subgoal_addr_name(Subgoal),
+			Subgoal->MR_sg_num_ans, answer_node,
 			&answer_node->MR_aln_answer_data);
 		printf(""\tstoring into %p\\n"",
-			subgoal->MR_sg_answer_list_tail);
+			Subgoal->MR_sg_answer_list_tail);
 	}
 #endif
 
-	*(subgoal->MR_sg_answer_list_tail) = answer_node;
-	subgoal->MR_sg_answer_list_tail = &(answer_node->MR_aln_next_answer);
+	*(Subgoal->MR_sg_answer_list_tail) = answer_node;
+	Subgoal->MR_sg_answer_list_tail = &(answer_node->MR_aln_next_answer);
 
-	Slot = (MR_TrieNode) &(answer_node->MR_aln_answer_data);
+	Slot = &(answer_node->MR_aln_answer_data);
 #endif
 ").
 
@@ -984,23 +936,21 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 		semipure table_nondet_return_all_ans_2(CurNode1, Answer)
 	).
 
-:- semipure pred pickup_answer_list(ml_subgoal_table_node::in,
-	ml_answer_list::out) is det.
+:- semipure pred pickup_answer_list(ml_subgoal::in, ml_answer_list::out)
+	is det.
 
 :- pragma foreign_proc("C",
-	pickup_answer_list(T::in, CurNode::out),
+	pickup_answer_list(Subgoal::in, CurNode::out),
 	[will_not_call_mercury],
 "
 #ifdef MR_USE_MINIMAL_MODEL
-	MR_TrieNode	table;
-
-	table = T;
-	CurNode = table->MR_subgoal->MR_sg_answer_list;
+	CurNode = Subgoal->MR_sg_answer_list;
 
   #ifdef MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""restoring all answers in %p -> %s\\n"",
-			table, MR_subgoal_addr_name(table->MR_subgoal));
+		printf(""picking up all answers in %p -> %s\\n"",
+			Subgoal->MR_sg_back_ptr,
+			MR_subgoal_addr_name(Subgoal));
 	}
   #endif
 #else
@@ -1019,7 +969,7 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 	if (CurNode0 == NULL) {
 		SUCCESS_INDICATOR = MR_FALSE;
 	} else {
-		AnswerBlock = &CurNode0->MR_aln_answer_data;
+		AnswerBlock = CurNode0->MR_aln_answer_data.MR_answerblock;
 		CurNode = CurNode0->MR_aln_next_answer;
 		SUCCESS_INDICATOR = MR_TRUE;
 	}
@@ -1029,11 +979,11 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 ").
 
 :- pragma foreign_proc("C",
-	table_subgoal_status(T::in, Status::out),
+	table_subgoal_status(Subgoal::in, Status::out),
 	[will_not_call_mercury],
 "
 #ifdef MR_USE_MINIMAL_MODEL
-	Status = MR_CONVERT_C_ENUM_CONSTANT(T->MR_subgoal->MR_sg_status);
+	Status = MR_CONVERT_C_ENUM_CONSTANT(Subgoal->MR_sg_status);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -1115,36 +1065,36 @@ table_subgoal_status(_, _) :-
 %
 
 	% Lookup or insert an integer in the given table.
-:- impure pred table_lookup_insert_int(ml_table::in, int::in, ml_table::out)
-	is det.
+:- impure pred table_lookup_insert_int(ml_trie_node::in, int::in,
+	ml_trie_node::out) is det.
 
 	% Lookup or insert an integer in the given table.
-:- impure pred table_lookup_insert_start_int(ml_table::in, int::in, int::in,
-	ml_table::out) is det.
+:- impure pred table_lookup_insert_start_int(ml_trie_node::in, int::in,
+	int::in, ml_trie_node::out) is det.
 
 	% Lookup or insert a character in the given trie.
-:- impure pred table_lookup_insert_char(ml_table::in, character::in,
-	ml_table::out) is det.
+:- impure pred table_lookup_insert_char(ml_trie_node::in, character::in,
+	ml_trie_node::out) is det.
 
 	% Lookup or insert a string in the given trie.
-:- impure pred table_lookup_insert_string(ml_table::in, string::in,
-	ml_table::out) is det.
+:- impure pred table_lookup_insert_string(ml_trie_node::in, string::in,
+	ml_trie_node::out) is det.
 
 	% Lookup or insert a float in the current trie.
-:- impure pred table_lookup_insert_float(ml_table::in, float::in,
-	ml_table::out) is det.
+:- impure pred table_lookup_insert_float(ml_trie_node::in, float::in,
+	ml_trie_node::out) is det.
 
 	% Lookup or inert an enumeration type in the given trie.
-:- impure pred table_lookup_insert_enum(ml_table::in, int::in, T::in,
-	ml_table::out) is det.
+:- impure pred table_lookup_insert_enum(ml_trie_node::in, int::in, T::in,
+	ml_trie_node::out) is det.
 
 	% Lookup or insert a monomorphic user defined type in the given trie.
-:- impure pred table_lookup_insert_user(ml_table::in, T::in, ml_table::out)
-	is det.
+:- impure pred table_lookup_insert_user(ml_trie_node::in, T::in,
+	ml_trie_node::out) is det.
 
 	% Lookup or insert a polymorphic user defined type in the given trie.
-:- impure pred table_lookup_insert_poly(ml_table::in, T::in, ml_table::out)
-	is det.
+:- impure pred table_lookup_insert_poly(ml_trie_node::in, T::in,
+	ml_trie_node::out) is det.
 
 	% Save an integer answer in the given answer block at the given
 	% offset.
@@ -1208,7 +1158,7 @@ table_subgoal_status(_, _) :-
 
 	% Create an answer block with the given number of slots and add it
 	% to the given table.
-:- impure pred table_create_ans_block(ml_subgoal_table_node::in, int::in,
+:- impure pred table_create_ans_block(ml_trie_node::in, int::in,
 	ml_answer_block::out) is det.
 
 	% Report statistics on the operation of the tabling system to stderr.
@@ -1240,8 +1190,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 	table_lookup_insert_start_int(T0::in, S::in, I::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_DEBUG_NEW_TABLE_START_INT(T, T0,
-		(MR_Integer) S, (MR_Integer) I);
+	MR_DEBUG_NEW_TABLE_START_INT(T, T0, (MR_Integer) S, (MR_Integer) I);
 ").
 
 :- pragma foreign_proc("C",
@@ -1287,109 +1236,109 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 ").
 
 :- pragma foreign_proc("C",
-	table_save_int_ans(T::in, Offset::in, I::in),
+	table_save_int_ans(AB::in, Offset::in, I::in),
 	[will_not_call_mercury],
 "
-	MR_TABLE_SAVE_ANSWER(T, Offset, I,
+	MR_TABLE_SAVE_ANSWER(AB, Offset, I,
 		&MR_TYPE_CTOR_INFO_NAME(builtin, int, 0));
 ").
 
 :- pragma foreign_proc("C",
-	table_save_char_ans(T::in, Offset::in, C::in),
+	table_save_char_ans(AB::in, Offset::in, C::in),
 	[will_not_call_mercury],
 "
-	MR_TABLE_SAVE_ANSWER(T, Offset, C,
+	MR_TABLE_SAVE_ANSWER(AB, Offset, C,
 		&MR_TYPE_CTOR_INFO_NAME(builtin, character, 0));
 ").
 
 :- pragma foreign_proc("C",
-	table_save_string_ans(T::in, Offset::in, S::in),
+	table_save_string_ans(AB::in, Offset::in, S::in),
 	[will_not_call_mercury],
 "
-	MR_TABLE_SAVE_ANSWER(T, Offset, (MR_Word) S,
+	MR_TABLE_SAVE_ANSWER(AB, Offset, (MR_Word) S,
 		&MR_TYPE_CTOR_INFO_NAME(builtin, string, 0));
 ").
 
 :- pragma foreign_proc("C",
-	table_save_float_ans(T::in, Offset::in, F::in),
+	table_save_float_ans(AB::in, Offset::in, F::in),
 	[will_not_call_mercury],
 "
 #ifdef MR_HIGHLEVEL_CODE
-	MR_TABLE_SAVE_ANSWER(T, Offset, (MR_Word) MR_box_float(F),
+	MR_TABLE_SAVE_ANSWER(AB, Offset, (MR_Word) MR_box_float(F),
 		&MR_TYPE_CTOR_INFO_NAME(builtin, float, 0));
 #else
-	MR_TABLE_SAVE_ANSWER(T, Offset, MR_float_to_word(F),
+	MR_TABLE_SAVE_ANSWER(AB, Offset, MR_float_to_word(F),
 		&MR_TYPE_CTOR_INFO_NAME(builtin, float, 0));
 #endif
 ").
 
 :- pragma foreign_proc("C",
-	table_save_io_state_ans(T::in, Offset::in, S::ui),
+	table_save_io_state_ans(AB::in, Offset::in, S::ui),
 	[will_not_call_mercury],
 "
-	MR_TABLE_SAVE_ANSWER(T, Offset, (MR_Word) S,
+	MR_TABLE_SAVE_ANSWER(AB, Offset, (MR_Word) S,
 		&MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 ").
 
 :- pragma foreign_proc("C", 
-	table_save_any_ans(T::in, Offset::in, V::in),
+	table_save_any_ans(AB::in, Offset::in, V::in),
 	[will_not_call_mercury],
 "
-	MR_TABLE_SAVE_ANSWER(T, Offset, V, TypeInfo_for_T);
+	MR_TABLE_SAVE_ANSWER(AB, Offset, V, TypeInfo_for_T);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_int_ans(T::in, Offset::in, I::out),
+	table_restore_int_ans(AB::in, Offset::in, I::out),
 	[will_not_call_mercury, promise_semipure],
 "
-	I = (MR_Integer) MR_TABLE_GET_ANSWER(T, Offset);
+	I = (MR_Integer) MR_TABLE_GET_ANSWER(AB, Offset);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_char_ans(T::in, Offset::in, C::out),
+	table_restore_char_ans(AB::in, Offset::in, C::out),
 	[will_not_call_mercury, promise_semipure],
 "
-	C = (MR_Char) MR_TABLE_GET_ANSWER(T, Offset);
+	C = (MR_Char) MR_TABLE_GET_ANSWER(AB, Offset);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_string_ans(T::in, Offset::in, S::out),
+	table_restore_string_ans(AB::in, Offset::in, S::out),
 	[will_not_call_mercury, promise_semipure],
 "
-	S = (MR_String) MR_TABLE_GET_ANSWER(T, Offset);
+	S = (MR_String) MR_TABLE_GET_ANSWER(AB, Offset);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_float_ans(T::in, Offset::in, F::out),
+	table_restore_float_ans(AB::in, Offset::in, F::out),
 	[will_not_call_mercury, promise_semipure],
 "
 #ifdef MR_HIGHLEVEL_CODE
-	F = MR_unbox_float(MR_TABLE_GET_ANSWER(T, Offset));
+	F = MR_unbox_float(MR_TABLE_GET_ANSWER(AB, Offset));
 #else
-	F = MR_word_to_float(MR_TABLE_GET_ANSWER(T, Offset));
+	F = MR_word_to_float(MR_TABLE_GET_ANSWER(AB, Offset));
 #endif
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_io_state_ans(T::in, Offset::in, V::uo),
+	table_restore_io_state_ans(AB::in, Offset::in, V::uo),
 	[will_not_call_mercury, promise_semipure],
 "
-	V = (MR_Word) MR_TABLE_GET_ANSWER(T, Offset);
+	V = (MR_Word) MR_TABLE_GET_ANSWER(AB, Offset);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_any_ans(T::in, Offset::in, V::out),
+	table_restore_any_ans(AB::in, Offset::in, V::out),
 	[will_not_call_mercury, promise_semipure],
 "
-	V = (MR_Word) MR_TABLE_GET_ANSWER(T, Offset);
+	V = (MR_Word) MR_TABLE_GET_ANSWER(AB, Offset);
 ").
 
 :- pragma foreign_proc("C",
-	table_create_ans_block(T0::in, Size::in, T::out),
+	table_create_ans_block(T::in, Size::in, AB::out),
 	[will_not_call_mercury],
 "
-	MR_TABLE_CREATE_ANSWER_BLOCK(T0, Size);
-	T = T0;
+	MR_TABLE_CREATE_ANSWER_BLOCK(T, Size);
+	AB = T->MR_answerblock;
 ").
 
 table_loopcheck_error(Message) :-

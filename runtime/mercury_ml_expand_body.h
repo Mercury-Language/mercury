@@ -1148,7 +1148,20 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             break;
 
         case MR_TYPECTOR_REP_FOREIGN:
+#ifdef  MR_USE_MINIMAL_MODEL
+            if (MR_streq(type_ctor_info->MR_type_ctor_name, "ml_subgoal") &&
+                MR_streq(type_ctor_info->MR_type_ctor_module_name,
+                    "table_builtin") &&
+                (noncanon == MR_NONCANON_CC))
+            {
+                handle_functor_name(MR_subgoal_addr_name(
+                    (MR_SubgoalPtr) *data_word_ptr));
+            } else {
+                handle_functor_name("<<foreign>>");
+            }
+#else
             handle_functor_name("<<foreign>>");
+#endif
             handle_zero_arity_args();
             break;
 

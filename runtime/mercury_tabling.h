@@ -113,6 +113,9 @@
 ** MR_type_table field.
 */
 
+typedef	MR_Word		*MR_AnswerBlock;
+typedef	MR_Subgoal	*MR_SubgoalPtr;
+
 union MR_TableNode_Union {
 	MR_Integer	MR_integer;
 	MR_HashTable	*MR_hash_table;
@@ -120,7 +123,7 @@ union MR_TableNode_Union {
 	MR_TableNode	*MR_start_table;
 	MR_Unsigned	MR_simpletable_status;
 	MR_Subgoal	*MR_subgoal;
-	MR_Word		*MR_answerblock;
+	MR_AnswerBlock	MR_answerblock;
 	MR_Dlist	*MR_type_table;
 };
 

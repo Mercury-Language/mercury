@@ -121,7 +121,7 @@ static	int	MR_pneg_cut_depth = 0;
 static	void	MR_print_gen_stack_entry(FILE *fp, MR_Integer i,
 			MR_GenStackFrame *p);
 
-static	void	MR_cleanup_generator_ptr(MR_TrieNode generator_ptr);
+static	void	MR_cleanup_generator_ptr(MR_SubgoalPtr generator_ptr);
 static	void	MR_print_cut_stack_entry(FILE *fp, MR_Integer i,
 			MR_CutStackFrame *p);
 
@@ -132,10 +132,10 @@ static	void	MR_print_pneg_stack_entry(FILE *fp, MR_Integer i,
 /***************************************************************************/
 
 void
-MR_push_generator(MR_Word *frame_addr, MR_TrieNode table_addr)
+MR_push_generator(MR_Word *frame_addr, MR_SubgoalPtr subgoal)
 {
-	MR_gen_stack[MR_gen_next].MR_generator_frame = frame_addr;
-	MR_gen_stack[MR_gen_next].MR_generator_table = table_addr;
+	MR_gen_stack[MR_gen_next].MR_gen_frame = frame_addr;
+	MR_gen_stack[MR_gen_next].MR_gen_subgoal = subgoal;
 	MR_gen_next++;
 
 #ifdef	MR_TABLE_DEBUG
@@ -158,7 +158,7 @@ MR_top_generator_table(void)
 	}
 #endif
 
-	return MR_gen_stack[MR_gen_next - 1].MR_generator_table->MR_subgoal;
+	return MR_gen_stack[MR_gen_next - 1].MR_gen_subgoal;
 }
 
 void
@@ -199,9 +199,8 @@ MR_print_gen_stack_entry(FILE *fp, MR_Integer i, MR_GenStackFrame *p)
 	MR_SubgoalDebug	*subgoal_debug;
 
 	fprintf(fp, "gen %ld = <", (long) i);
-	MR_print_nondstackptr(fp, p->MR_generator_frame);
-	subgoal_debug = MR_lookup_subgoal_debug_addr(
-		p->MR_generator_table->MR_subgoal);
+	MR_print_nondstackptr(fp, p->MR_gen_frame);
+	subgoal_debug = MR_lookup_subgoal_debug_addr(p->MR_gen_subgoal);
 	fprintf(fp, ", %s>\n", MR_subgoal_debug_name(subgoal_debug));
 }
 
@@ -272,7 +271,7 @@ MR_commit_cut(void)
 }
 
 void
-MR_register_generator_ptr(MR_TrieNode generator_ptr)
+MR_register_generator_ptr(MR_SubgoalPtr subgoal)
 {
 	struct MR_CutGeneratorListNode	*node;
 
@@ -281,7 +280,7 @@ MR_register_generator_ptr(MR_TrieNode generator_ptr)
 	}
 
 	node = MR_GC_NEW(struct MR_CutGeneratorListNode);
-	node->MR_cut_generator_ptr = generator_ptr;
+	node->MR_cut_generator_ptr = subgoal;
 	node->MR_cut_next_generator =
 		MR_cut_stack[MR_cut_next - 1].MR_cut_generators;
 	MR_cut_stack[MR_cut_next - 1].MR_cut_generators = node;
@@ -290,23 +289,22 @@ MR_register_generator_ptr(MR_TrieNode generator_ptr)
 	if (MR_tabledebug) {
 		printf("registering generator %p -> %s "
 			"at commit stack level %d\n",
-			generator_ptr,
-			MR_subgoal_addr_name(generator_ptr->MR_subgoal),
+			subgoal, MR_subgoal_addr_name(subgoal),
 			MR_cut_next - 1);
 	}
 #endif
 }
 
 static void
-MR_cleanup_generator_ptr(MR_TrieNode generator_ptr)
+MR_cleanup_generator_ptr(MR_SubgoalPtr subgoal)
 {
-	if (generator_ptr->MR_subgoal->MR_sg_status == MR_SUBGOAL_COMPLETE) {
+	if (subgoal->MR_sg_status == MR_SUBGOAL_COMPLETE) {
 		/* there is nothing to do, everything is OK */
 #ifdef	MR_TABLE_DEBUG
 		if (MR_tabledebug) {
 			printf("no cleanup: generator %p -> %s is complete\n",
-				generator_ptr, MR_subgoal_addr_name(
-					generator_ptr->MR_subgoal));
+				subgoal->MR_sg_back_ptr,
+				MR_subgoal_addr_name(subgoal));
 		}
 #endif
 	} else {
@@ -314,12 +312,12 @@ MR_cleanup_generator_ptr(MR_TrieNode generator_ptr)
 #ifdef	MR_TABLE_DEBUG
 		if (MR_tabledebug) {
 			printf("cleanup: generator %p -> %s deleted\n",
-				generator_ptr, MR_subgoal_addr_name(
-					generator_ptr->MR_subgoal));
+				subgoal->MR_sg_back_ptr,
+				MR_subgoal_addr_name(subgoal));
 		}
 #endif
 
-		generator_ptr->MR_subgoal = NULL;
+		subgoal->MR_sg_back_ptr->MR_subgoal = NULL;
 	}
 }
 
@@ -357,7 +355,7 @@ MR_print_cut_stack_entry(FILE *fp, MR_Integer i, MR_CutStackFrame *p)
 			fprintf(fp, " <NULL>");
 		} else {
 			subgoal_debug = MR_lookup_subgoal_debug_addr(
-				gen_list->MR_cut_generator_ptr->MR_subgoal);
+				gen_list->MR_cut_generator_ptr);
 			fprintf(fp, " <%s>",
 				MR_subgoal_debug_name(subgoal_debug));
 		}
@@ -371,7 +369,7 @@ MR_print_cut_stack_entry(FILE *fp, MR_Integer i, MR_CutStackFrame *p)
 /***************************************************************************/
 
 void
-MR_register_suspension(MR_Subgoal *subgoal)
+MR_register_suspension(MR_SubgoalPtr subgoal)
 {
 	MR_PNegConsumerList	node_ptr;
 

@@ -463,12 +463,12 @@ typedef struct MR_Exception_Handler_Frame_struct {
 /* DEFINITIONS FOR GENERATOR STACK FRAMES */
 
 struct MR_GenStackFrameStruct {
-	MR_Word			*MR_generator_frame;
-	MR_TrieNode		MR_generator_table;
+	MR_Word			*MR_gen_frame;
+	MR_SubgoalPtr		MR_gen_subgoal;
 };
 
 extern	void			MR_push_generator(MR_Word *frame_addr,
-					MR_TrieNode table_addr);
+					MR_SubgoalPtr subgoal);
 extern	MR_Subgoal		*MR_top_generator_table(void);
 extern	void			MR_pop_generator(void);
 extern	void			MR_print_gen_stack(FILE *fp);
@@ -480,7 +480,7 @@ extern	void			MR_print_any_gen_stack(FILE *fp,
 
 typedef struct MR_CutGeneratorListNode *MR_CutGeneratorList;
 struct MR_CutGeneratorListNode {
-	MR_TrieNode		MR_cut_generator_ptr;
+	MR_SubgoalPtr		MR_cut_generator_ptr;
 	MR_CutGeneratorList	MR_cut_next_generator;
 };
 
@@ -494,7 +494,7 @@ struct MR_CutStackFrameStruct {
 extern	void			MR_commit_mark(void);
 extern	void			MR_commit_cut(void);
 
-extern	void			MR_register_generator_ptr(MR_TrieNode);
+extern	void			MR_register_generator_ptr(MR_SubgoalPtr);
 extern	void			MR_print_cut_stack(FILE *fp);
 extern	void			MR_print_any_cut_stack(FILE *fp,
 					MR_Integer cut_next,

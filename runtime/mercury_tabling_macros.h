@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000,2002 The University of Melbourne.
+** Copyright (C) 1997-2000,2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -371,25 +371,22 @@
 				(int) (num_slots));			\
 	} while(0)
 
-#define MR_TABLE_GET_ANSWER(table, offset)				\
+#define MR_TABLE_GET_ANSWER(ab, offset)					\
 	(( MR_tabledebug ?						\
-		printf("using answer block: %p -> %p, slot %d\n",	\
-			(table), (table)->MR_answerblock,		\
-			(int) (offset))					\
+		printf("using answer block: %p, slot %d\n",		\
+			(ab), (int) (offset))				\
 	:								\
 		(void) 0 /* do nothing */				\
 	),								\
-	((table)->MR_answerblock)[(offset)])
+	(ab)[(offset)])
 
-#define MR_TABLE_SAVE_ANSWER(table, offset, value, type_info)		\
+#define MR_TABLE_SAVE_ANSWER(ab, offset, value, type_info)		\
 	do {								\
 		if (MR_tabledebug)					\
-			printf("saving to answer block: %p -> %p, "	\
+			printf("saving to answer block: %p, "		\
 				"slot %d = %lx\n",			\
-				(table), (table)->MR_answerblock,	\
-				(int) (offset), (long) (value));	\
-		(table)->MR_answerblock[offset] =			\
-			MR_make_permanent((value),			\
+				(ab), (int) (offset), (long) (value));	\
+		(ab)[offset] =	MR_make_permanent((value),		\
 					(MR_TypeInfo) (type_info));	\
 	} while(0)
 
@@ -398,17 +395,16 @@
 #define MR_TABLE_CREATE_ANSWER_BLOCK(table, num_slots)	 		\
 	do {								\
 		(table)->MR_answerblock = MR_TABLE_NEW_ARRAY(MR_Word,	\
-						(num_slots));		\
+			(num_slots));					\
 	} while(0)
 
-#define MR_TABLE_GET_ANSWER(table, offset)				\
-	((table)->MR_answerblock)[(offset)]
+#define MR_TABLE_GET_ANSWER(ab, offset)					\
+	(ab)[(offset)]
 
-#define MR_TABLE_SAVE_ANSWER(table, offset, value, type_info)		\
+#define MR_TABLE_SAVE_ANSWER(ab, offset, value, type_info)		\
 	do {								\
-		(table)->MR_answerblock[offset] =			\
-			MR_make_permanent((value),			\
-					(MR_TypeInfo) (type_info));	\
+		(ab)[offset] = MR_make_permanent((value),		\
+			(MR_TypeInfo) (type_info));			\
 	} while(0)
 
 #endif

@@ -160,12 +160,13 @@ struct MR_SubgoalListNode_Struct {
 */
 
 struct MR_Subgoal_Struct {
+	MR_TrieNode		MR_sg_back_ptr;
 	MR_SubgoalStatus	MR_sg_status;
 	MR_Subgoal		*MR_sg_leader;
 	MR_SubgoalList		MR_sg_followers;
 	MR_SubgoalList		*MR_sg_followers_tail;
 	MR_ResumeInfo		*MR_sg_resume_info;
-	MR_Word			MR_sg_answer_table;
+	MR_TableNode		MR_sg_answer_table;
 	MR_Integer		MR_sg_num_ans;
 	MR_Integer		MR_sg_num_committed_ans;
 	MR_AnswerList		MR_sg_answer_list;
@@ -179,6 +180,8 @@ struct MR_Subgoal_Struct {
 };
 
 /*---------------------------------------------------------------------------*/
+
+#ifdef	MR_USE_MINIMAL_MODEL
 
 extern	const MR_Proc_Layout	*MR_subgoal_debug_cur_proc;
 
@@ -208,6 +211,7 @@ extern	void		MR_print_consumer_debug(FILE *fp,
 extern	void		MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc,
 				MR_Consumer *consumer);
 
+#endif	/* MR_USE_MINIMAL_MODEL */
 
 #ifndef	MR_HIGHLEVEL_CODE
 

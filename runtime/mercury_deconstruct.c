@@ -18,6 +18,7 @@
 #include "mercury_deconstruct.h"
 #include "mercury_deconstruct_macros.h"
 #include "mercury_type_desc.h"
+#include "mercury_minimal_model.h"
 
 static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 

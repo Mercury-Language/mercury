@@ -1267,7 +1267,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
         record_ptrs[record_ptr_next].found_leader_generator = MR_FALSE;
         record_ptr_next++;
 
-        if (cur_maxfr == MR_gen_stack[cur_gen].MR_generator_frame) {
+        if (cur_maxfr == MR_gen_stack[cur_gen].MR_gen_frame) {
             for (i = 0; i < record_ptr_next; i++) {
                 if (record_ptrs[i].record_leader == subgoal) {
                     record_ptrs[i].found_leader_generator = MR_TRUE;

@@ -528,7 +528,7 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
     }
 
     if (MR_tablestackdebug) {
-        MR_dump_nondet_stack(stdout, MR_maxfr);
+        MR_dump_nondet_stack(stdout, 0, MR_maxfr);
     }
   #endif /* MR_TABLE_DEBUG */
 
@@ -579,7 +579,7 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
     }
 
     if (MR_tablestackdebug) {
-        MR_dump_nondet_stack_from_layout(stdout, MR_maxfr, NULL,
+        MR_dump_nondet_stack_from_layout(stdout, 0, MR_maxfr, NULL,
             MR_sp, MR_curfr);
     }
   #endif /* MR_TABLE_DEBUG */
@@ -1030,8 +1030,7 @@ MR_define_entry(MR_SUSPEND_ENTRY);
     */
 
 {
-    MR_TrieNode     table;
-    MR_Subgoal      *subgoal;
+    MR_SubgoalPtr   subgoal;
     MR_Consumer     *consumer;
     MR_ConsumerList listnode;
     MR_Integer      cur_gen;
@@ -1052,8 +1051,7 @@ MR_define_entry(MR_SUSPEND_ENTRY);
     */
     MR_mkframe(MR_STRINGIFY(MR_SUSPEND_ENTRY), 1, MR_ENTRY(MR_do_fail));
 
-    table = (MR_TrieNode) MR_r1;
-    subgoal = table->MR_subgoal;
+    subgoal = (MR_SubgoalPtr) MR_r1;
     MR_register_suspension(subgoal);
     consumer = MR_table_allocate_struct(MR_Consumer);
     consumer->MR_cns_remaining_answer_list_ptr = &subgoal->MR_sg_answer_list;
@@ -1090,10 +1088,8 @@ MR_define_entry(MR_SUSPEND_ENTRY);
         }
 #endif
 
-        if (fr == MR_gen_stack[cur_gen].MR_generator_frame) {
-            if (MR_gen_stack[cur_gen].MR_generator_table->MR_subgoal
-                == subgoal)
-            {
+        if (fr == MR_gen_stack[cur_gen].MR_gen_frame) {
+            if (MR_gen_stack[cur_gen].MR_gen_subgoal == subgoal) {
                 /*
                 ** This is the nondet stack frame of the
                 ** generator corresponding to this consumer.
@@ -1134,7 +1130,7 @@ MR_define_entry(MR_SUSPEND_ENTRY);
 
                 MR_save_transient_registers();
                 make_subgoal_follow_leader(MR_gen_stack[cur_gen].
-                    MR_generator_table->MR_subgoal, subgoal);
+                    MR_gen_subgoal, subgoal);
                 MR_restore_transient_registers();
             }
 
@@ -1423,7 +1419,8 @@ MR_define_label(RESUME_LABEL(ReturnAnswer));
     */
 
     MR_r1 = (MR_Word)
-        &resume_info->MR_ri_cur_consumer_answer_list->MR_aln_answer_data;
+        resume_info->MR_ri_cur_consumer_answer_list->MR_aln_answer_data.
+        MR_answerblock;
     resume_info->MR_ri_cur_consumer->MR_cns_remaining_answer_list_ptr =
         &(resume_info->MR_ri_cur_consumer_answer_list->MR_aln_next_answer);
     resume_info->MR_ri_cur_consumer_answer_list =
