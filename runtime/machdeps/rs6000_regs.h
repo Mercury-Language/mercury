@@ -8,13 +8,13 @@
 #define RS6000_REGS_H
 
 /*
-** Machine registers mr0 - mr36 for the Alpha architecture.
+** Machine registers mr0 - mr36 for the RS/6000 architecture.
 **
 ** The first NUM_REAL_REGS of these are real machine registers.
 ** The others are just slots in a global array.
 **
-** At the moment we're only using the callee-save registers.
-** We should modify this to optionally use the caller-save registers.
+** For the RS/6000, registers r13 to r31 are callee-save.
+** Currently we're just using r13-r22 and leaving r23-r31 for gcc.
 */
 
 #define NUM_REAL_REGS 10
@@ -30,36 +30,36 @@ register	Word	mr7 __asm__("r20");
 register	Word	mr8 __asm__("r21");
 register	Word	mr9 __asm__("r22");
 
-#define save_registers()	(	\
-	fake_reg[0] = mr0,			\
-	fake_reg[1] = mr1,			\
-	fake_reg[2] = mr2,			\
-	fake_reg[3] = mr3,			\
-	fake_reg[4] = mr4,			\
-	fake_reg[5] = mr5,			\
-	fake_reg[6] = mr6,			\
-	fake_reg[7] = mr7,			\
-	fake_reg[8] = mr8,			\
-	fake_reg[9] = mr9,			\
+#define save_regs_to_mem(save_area) (		\
+	save_area[0] = mr0,			\
+	save_area[1] = mr1,			\
+	save_area[2] = mr2,			\
+	save_area[3] = mr3,			\
+	save_area[4] = mr4,			\
+	save_area[5] = mr5,			\
+	save_area[6] = mr6,			\
+	save_area[7] = mr7,			\
+	save_area[8] = mr8,			\
+	save_area[9] = mr9,			\
 	(void)0					\
 )
 
-#define restore_registers()	(	\
-	mr0 = fake_reg[0],			\
-	mr1 = fake_reg[1],			\
-	mr2 = fake_reg[2],			\
-	mr3 = fake_reg[3],			\
-	mr4 = fake_reg[4],			\
-	mr5 = fake_reg[5],			\
-	mr6 = fake_reg[6],			\
-	mr7 = fake_reg[7],			\
-	mr8 = fake_reg[8],			\
-	mr9 = fake_reg[9],			\
+#define restore_regs_from_mem(save_area) (	\
+	mr0 = save_area[0],			\
+	mr1 = save_area[1],			\
+	mr2 = save_area[2],			\
+	mr3 = save_area[3],			\
+	mr4 = save_area[4],			\
+	mr5 = save_area[5],			\
+	mr6 = save_area[6],			\
+	mr7 = save_area[7],			\
+	mr8 = save_area[8],			\
+	mr9 = save_area[9],			\
 	(void)0					\
 )
 
-#define save_transient_registers()	((void)0)
-#define restore_transient_registers()	((void)0)
+#define save_transient_regs_to_area(save_area)		((void)0)
+#define restore_transient_reg_from_area(save_area)	((void)0)
 
 #define	mr10	fake_reg[10]
 #define	mr11	fake_reg[11]

@@ -27,32 +27,32 @@ register	Word	mr5 __asm__("s5");
 register	Word	mr6 __asm__("s6");
 register	Word	mr7 __asm__("s7");
 
-#define save_registers()	(	\
-	fake_reg[0] = mr0,			\
-	fake_reg[1] = mr1,			\
-	fake_reg[2] = mr2,			\
-	fake_reg[3] = mr3,			\
-	fake_reg[4] = mr4,			\
-	fake_reg[5] = mr5,			\
-	fake_reg[6] = mr6,			\
-	fake_reg[7] = mr7,			\
+#define save_regs_to_mem(save_area)	(	\
+	save_area[0] = mr0,			\
+	save_area[1] = mr1,			\
+	save_area[2] = mr2,			\
+	save_area[3] = mr3,			\
+	save_area[4] = mr4,			\
+	save_area[5] = mr5,			\
+	save_area[6] = mr6,			\
+	save_area[7] = mr7,			\
 	(void)0					\
 )
 
-#define restore_registers()	(	\
-	mr0 = fake_reg[0],			\
-	mr1 = fake_reg[1],			\
-	mr2 = fake_reg[2],			\
-	mr3 = fake_reg[3],			\
-	mr4 = fake_reg[4],			\
-	mr5 = fake_reg[5],			\
-	mr6 = fake_reg[6],			\
-	mr7 = fake_reg[7],			\
+#define restore_regs_from_mem(save_area) (	\
+	mr0 = save_area[0],			\
+	mr1 = save_area[1],			\
+	mr2 = save_area[2],			\
+	mr3 = save_area[3],			\
+	mr4 = save_area[4],			\
+	mr5 = save_area[5],			\
+	mr6 = save_area[6],			\
+	mr7 = save_area[7],			\
 	(void)0					\
 )
 
-#define save_transient_registers()	((void)0)
-#define restore_transient_registers()	((void)0)
+#define save_transient_regs_to_mem(save_area)		((void)0)
+#define restore_transient_regs_from_mem(save_area)	((void)0)
 
 #define	mr8	fake_reg[8]
 #define	mr9	fake_reg[9]

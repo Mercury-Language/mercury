@@ -20,22 +20,22 @@
 #define NUM_REAL_REGS 0
 
 /* A pair of macros to save/restore all of the physical machine
-   registers.  They should copy/restore the windowed
-   registers to/from the corresponding fake_reg[n].
-   This is used so that the register n can be simply addressed
-   as fake_reg[n] without requiring a switch.
+   registers.  They should copy/restore the physical machine
+   registers to/from the memory pointed to by the supplied `save_area'
+   parameter (which should be a pointer of type `Word *').
 */
-#define save_registers()		((void)0)
-#define restore_registers()		((void)0)
+#define save_regs_to_mem(save_area)		((void)0)
+#define restore_regs_from_mem(save_area)	((void)0)
 
 /* A pair of macros to save/restore any of the physical machine
    registers that get clobbered by calling a C function.  This is used
    for machines with register windows.  They should copy/restore the windowed
-   registers to/from the corresponding fake_reg[n].
+   registers to/from the memory pointed to by the supplied `save_area'
+   parameter (which should be a pointer of type `Word *').
 */
 
-#define save_transient_registers()	((void)0)
-#define restore_transient_registers()	((void)0)
+#define save_transient_regs_to_mem(save_area)		((void)0)
+#define restore_transient_regs_from_mem(save_area)	((void)0)
 
 /* mr0, ..., mr36 are macros that map to either the underlying physical
    machine register, if there is one, or otherwise to fake_reg[n].

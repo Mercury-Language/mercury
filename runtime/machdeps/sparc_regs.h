@@ -39,42 +39,44 @@ register	Word	mr9 __asm__("l4");
 /* we could use l5, l6, and l7 as well, */
 /* but for the moment at least I'll leave them for gcc */
 
-#define save_registers()			\
+#define save_regs_to_mem(save_area)		\
 	(					\
-		fake_reg[0] = mr0,		\
-		fake_reg[1] = mr1,		\
-		fake_reg[2] = mr2,		\
-		fake_reg[3] = mr3,		\
-		fake_reg[4] = mr4,		\
-		fake_reg[5] = mr5,		\
-		fake_reg[6] = mr6,		\
-		fake_reg[7] = mr7,		\
-		fake_reg[8] = mr8,		\
-		fake_reg[9] = mr9,		\
+		save_area[0] = mr0,		\
+		save_area[1] = mr1,		\
+		save_area[2] = mr2,		\
+		save_area[3] = mr3,		\
+		save_area[4] = mr4,		\
+		save_area[5] = mr5,		\
+		save_area[6] = mr6,		\
+		save_area[7] = mr7,		\
+		save_area[8] = mr8,		\
+		save_area[9] = mr9,		\
 		(void)0				\
 	)
 
-#define restore_registers()			\
+#define restore_regs_from_mem(save_area)	\
 	(					\
-		mr0 = fake_reg[0],		\
-		mr1 = fake_reg[1],		\
-		mr2 = fake_reg[2],		\
-		mr3 = fake_reg[3],		\
-		mr4 = fake_reg[4],		\
-		mr5 = fake_reg[5],		\
-		mr6 = fake_reg[6],		\
-		mr7 = fake_reg[7],		\
-		mr8 = fake_reg[8],		\
-		mr9 = fake_reg[9],		\
+		mr0 = save_area[0],		\
+		mr1 = save_area[1],		\
+		mr2 = save_area[2],		\
+		mr3 = save_area[3],		\
+		mr4 = save_area[4],		\
+		mr5 = save_area[5],		\
+		mr6 = save_area[6],		\
+		mr7 = save_area[7],		\
+		mr8 = save_area[8],		\
+		mr9 = save_area[9],		\
 		(void)0				\
 	)
 
-/* for save_transient_registers(), we probably don't have to save
+/* for save_transient_regs_to_area(), we probably don't have to save
   the registers marked above as `potentially non-clobbered', but
   I haven't verified that yet */
 
-#define save_transient_registers() save_registers()
-#define restore_transient_registers() restore_registers()
+#define save_transient_regs_to_area(save_area) \
+	save_regs_to_area(save_area)
+#define restore_transient_regs_from_area(save_area) \
+	restore_regs_from_area(save_area)
 
 #define	mr10	fake_reg[10]
 #define	mr11	fake_reg[11]

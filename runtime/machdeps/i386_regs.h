@@ -38,22 +38,22 @@ register	Word	mr0 __asm__("esi");	/* sp */
 register	Word	mr1 __asm__("ebx");	/* succip */
 register	Word	mr2 __asm__("edi");	/* r1 */
 
-#define save_registers()	(		\
-	fake_reg[0] = mr0,			\
-	fake_reg[1] = mr1,			\
-	fake_reg[2] = mr2,			\
+#define save_regs_to_mem(save_area) (		\
+	save_area[0] = mr0,			\
+	save_area[1] = mr1,			\
+	save_area[2] = mr2,			\
 	(void)0					\
 )
 
-#define restore_registers()	(		\
-	mr0 = fake_reg[0],			\
-	mr1 = fake_reg[1],			\
-	mr2 = fake_reg[2],			\
+#define restore_regs_from_mem(save_area) (	\
+	mr0 = save_area[0],			\
+	mr1 = save_area[1],			\
+	mr2 = save_area[2],			\
 	(void)0					\
 )
 
-#define save_transient_registers()	((void)0)
-#define restore_transient_registers()	((void)0)
+#define save_transient_regs_to_mem(save_area)		((void)0)
+#define restore_transient_regs_from_mem(save_area)	((void)0)
 
 #define	mr3	fake_reg[3]
 #define	mr4	fake_reg[4]
