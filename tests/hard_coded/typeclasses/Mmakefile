@@ -17,6 +17,7 @@ TYPECLASS_PROGS=	\
 	ho_map \
 	implied_instance \
 	implied_instance_multi_constraint \
+	implied_instance_missing_constraint \
 	implied_instance_poly \
 	inference_test \
 	inference_test_2 \
@@ -51,14 +52,6 @@ else
         endif
     endif
 endif
-
-
-
-# implied_instance_missing_constraint is not yet included as there is a bug
-# stopping it from working.
-# 
-# Actually, there is a bug, but it isn't in that test case. I'm trying to
-# find exactly how to trigger the bug. Oh well...
 
 MCFLAGS-extra_typeinfo = --optimize-higher-order --no-type-specialization \
 				--body-typeinfo-liveness

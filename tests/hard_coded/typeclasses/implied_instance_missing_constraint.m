@@ -50,8 +50,12 @@ foo_list(X, Y) :-
 	).
 
 main -->
+	{ zzz(-2, A) },
+	p(A),
 	{ zzz([1,2,3], X) },
 	p(X),
+	{ zzz([1,1,2,3], Y) },
+	p(Y),
 	io__nl.
 
 :- pred zzz(T, T) <= printable(T).
