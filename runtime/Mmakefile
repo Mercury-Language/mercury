@@ -60,8 +60,8 @@ HDRS		=	\
 			mercury_table.h		\
 			mercury_table_any.h	\
 			mercury_table_enum.h	\
-			mercury_table_int_float_string.h \
-			mercury_table_type_info.h\
+			mercury_table_builtins.h \
+			mercury_table_type_info.h \
 			mercury_tabling.h	\
 			mercury_tags.h		\
 			mercury_thread.h	\
@@ -115,8 +115,8 @@ CFILES		= 	mercury_context.c	\
 			mercury_thread.c	\
 			mercury_table_any.c	\
 			mercury_table_enum.c	\
-			mercury_table_int_float_string.c\
-			mercury_table_type_info.c\
+			mercury_table_builtins.c \
+			mercury_table_type_info.c \
 			mercury_timing.c	\
 			mercury_trace.c		\
 			mercury_trace_base.c	\

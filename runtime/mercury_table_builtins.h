@@ -4,8 +4,8 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#ifndef MERCURY_TABLE_INT_FLOAT_STRING_H
-#define MERCURY_TABLE_INT_FLOAT_STRING_H
+#ifndef MERCURY_TABLE_BUILTINS_H
+#define MERCURY_TABLE_BUILTINS_H
 
 
 /* 
@@ -32,4 +32,4 @@ TrieNode MR_float_hash_lookup_or_add(TrieNode Table, Float Key);
 **/
 TrieNode MR_string_hash_lookup_or_add(TrieNode Table, String Key);
 
-#endif /* not MERCURY_TABLE_INT_FLOAT_STRING_H */
+#endif /* not MERCURY_TABLE_BUILTINS_H */

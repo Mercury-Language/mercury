@@ -21,7 +21,7 @@ typedef Word ** AnswerBlock;
 #include "mercury_table_enum.h"
 #include "mercury_table_any.h"
 #include "mercury_table_type_info.h"
-#include "mercury_table_int_float_string.h"
+#include "mercury_table_builtins.h"
 
 
 #define MR_TABLE_WORD(Table, Value)					\
