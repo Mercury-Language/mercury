@@ -6,14 +6,11 @@
 
 package mercury.runtime;
 
-public class EnumFunctorDesc {
-	
-	public java.lang.String enum_functor_name;
-	public int              enum_functor_ordinal;
-
-	public EnumFunctorDesc(String name, int ordinal) {
-		enum_functor_name = name;
-		enum_functor_ordinal = ordinal;
+public class VA_PseudoTypeInfo_Struct4 extends PseudoTypeInfo {
+	public VA_PseudoTypeInfo_Struct4(
+			int arity,
+			TypeCtorInfo_Struct type_ctor_info,
+			Object[] args) {
+		// XXX stub only
 	}
-
 }

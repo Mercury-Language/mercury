@@ -1279,12 +1279,28 @@ rtti_id_java_type(tc_rtti_id(TCRttiName), JavaTypeName, IsArray) :-
 	tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray).
 
 ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
-	ctor_rtti_name_type(RttiName, GenTypeName, IsArray),
-	JavaTypeName = string__append("mercury.runtime.", GenTypeName).
+	ctor_rtti_name_type(RttiName, GenTypeName0, IsArray),
+	(
+		% Java doesn't have typedefs (or "const"),
+		% so we need to use "String" rather than "ConstString"
+		GenTypeName0 = "ConstString"
+	->
+		JavaTypeName = "java.lang.String"
+	;
+		% In Java, every non-builtin type is a pointer,
+		% so there's no need for the "Ptr" suffixes.
+		string__remove_suffix(GenTypeName0, "Ptr", GenTypeName1)
+	->
+		JavaTypeName = string__append("mercury.runtime.", GenTypeName1)
+	;
+		JavaTypeName = string__append("mercury.runtime.", GenTypeName0)
+	).
 
-tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
-	tc_rtti_name_type(TCRttiName, GenTypeName, IsArray),
-	JavaTypeName = string__append("mercury.runtime.", GenTypeName).
+tc_rtti_name_java_type(_TCRttiName, JavaTypeName, IsArray) :-
+	JavaTypeName = "java.lang.Integer",
+	IsArray = yes.
+	% tc_rtti_name_type(TCRttiName, _GenTypeName, IsArray),
+	% JavaTypeName = string__append("mercury.runtime.", GenTypeName).
 
 	% ctor_rtti_name_type(RttiName, Type, IsArray):
 :- pred ctor_rtti_name_type(ctor_rtti_name::in, string::out, bool::out) is det.
