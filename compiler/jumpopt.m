@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -76,23 +76,21 @@
 %		test r1, and to execute the the success or failure epilog
 %		depending on the result) to the epilog.
 %
-% If we are not doing full jump optimization, Blockmap will be empty.
-% Even with full jump optimization, Blockmap will not contain the initial
-% block of the procedure unless Recjump is set. The intention is that
-% Recjump will not be set until optimizations such as frameopt and value
-% numbering, which can do a better job of optimizing this block, have
+% Blockmap will not contain the initial block of the procedure unless
+% Recjump is set. The intention is that Recjump will not be set until
+% frameopt, which can do a better job of optimizing this block, have
 % been applied.
 
 jumpopt_main(Instrs0, LayoutLabels, MayAlterRtti, ProcLabel, C0, C,
-		Blockopt, Recjump, PessimizeTailCalls, CheckedNondetTailCall,
-		Instrs, Mod) :-
+		Fulljumpopt, Recjump, PessimizeTailCalls,
+		CheckedNondetTailCall, Instrs, Mod) :-
 	map__init(Instrmap0),
 	map__init(Lvalmap0),
 	map__init(Procmap0),
 	map__init(Sdprocmap0),
 	map__init(Succmap0),
 	map__init(Blockmap0),
-	jumpopt__build_maps(Instrs0, Blockopt, Recjump, Instrmap0, Instrmap,
+	jumpopt__build_maps(Instrs0, Recjump, Instrmap0, Instrmap,
 		Blockmap0, Blockmap, Lvalmap0, Lvalmap,
 		Procmap0, Procmap1, Sdprocmap0, Sdprocmap1,
 		Succmap0, Succmap1),
@@ -116,8 +114,9 @@ jumpopt_main(Instrs0, LayoutLabels, MayAlterRtti, ProcLabel, C0, C,
 		CheckedNondetTailCallInfo0 = yes(ProcLabel - C0),
 		jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap,
 			Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap,
-			LayoutLabels, MayAlterRtti, CheckedNondetTailCallInfo0,
-			CheckedNondetTailCallInfo, Instrs1),
+			LayoutLabels, Fulljumpopt, MayAlterRtti,
+			CheckedNondetTailCallInfo0, CheckedNondetTailCallInfo,
+			Instrs1),
 		( CheckedNondetTailCallInfo = yes(_ - Cprime) ->
 			C = Cprime
 		;
@@ -128,8 +127,8 @@ jumpopt_main(Instrs0, LayoutLabels, MayAlterRtti, ProcLabel, C0, C,
 		CheckedNondetTailCallInfo0 = no,
 		jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap,
 			Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap,
-			LayoutLabels, MayAlterRtti, CheckedNondetTailCallInfo0,
-			_, Instrs1),
+			LayoutLabels, Fulljumpopt, MayAlterRtti,
+			CheckedNondetTailCallInfo0, _, Instrs1),
 		C = C0
 	),
 	opt_util__filter_out_bad_livevals(Instrs1, Instrs),
@@ -141,14 +140,14 @@ jumpopt_main(Instrs0, LayoutLabels, MayAlterRtti, ProcLabel, C0, C,
 
 %-----------------------------------------------------------------------------%
 
-:- pred jumpopt__build_maps(list(instruction)::in, bool::in, bool::in,
+:- pred jumpopt__build_maps(list(instruction)::in, bool::in,
 	instrmap::in, instrmap::out, tailmap::in, tailmap::out,
 	lvalmap::in, lvalmap::out, tailmap::in, tailmap::out,
 	tailmap::in, tailmap::out, tailmap::in, tailmap::out) is det.
 
-jumpopt__build_maps([], _, _, !Instrmap, !Blockmap, !Lvalmap, !Procmap,
+jumpopt__build_maps([], _, !Instrmap, !Blockmap, !Lvalmap, !Procmap,
 		!Sdprocmap, !Succmap).
-jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Recjump, !Instrmap,
+jumpopt__build_maps([Instr0 | Instrs0], Recjump, !Instrmap,
 		!Blockmap, !Lvalmap, !Procmap, !Sdprocmap, !Succmap) :-
 	Instr0 = Uinstr0 - _,
 	( Uinstr0 = label(Label) ->
@@ -183,7 +182,11 @@ jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Recjump, !Instrmap,
 		),
 		% put the start of the procedure into Blockmap
 		% only after frameopt and value_number have had a shot at it
-		( Blockopt = yes, ( Label = local(_, _) ; Recjump = yes ) ->
+		(
+			( Label = local(_, _)
+			; Recjump = yes
+			)
+		->
 			opt_util__find_no_fallthrough(Instrs1, Block),
 			map__det_insert(!.Blockmap, Label, Block, !:Blockmap)
 		;
@@ -192,7 +195,7 @@ jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Recjump, !Instrmap,
 	;
 		true
 	),
-	jumpopt__build_maps(Instrs0, Blockopt, Recjump, !Instrmap,
+	jumpopt__build_maps(Instrs0, Recjump, !Instrmap,
 		!Blockmap, !Lvalmap, !Procmap, !Sdprocmap, !Succmap).
 
 	% Find labels followed by a test of r1 where both paths set r1 to
@@ -239,16 +242,17 @@ jumpopt__build_forkmap([Instr - _Comment|Instrs], Sdprocmap, !Forkmap) :-
 
 :- pred jumpopt__instr_list(list(instruction)::in, instr::in, instrmap::in,
 	tailmap::in, lvalmap::in, tailmap::in, tailmap::in, tailmap::in,
-	tailmap::in, set(label)::in, may_alter_rtti::in,
+	tailmap::in, set(label)::in, bool::in, may_alter_rtti::in,
 	maybe(pair(proc_label, counter))::in,
 	maybe(pair(proc_label, counter))::out, list(instruction)::out) is det.
 
 jumpopt__instr_list([], _PrevInstr, _Instrmap, _Blockmap, _Lvalmap,
 		_Procmap, _Sdprocmap, _Forkmap, _Succmap, _LayoutLabels,
-		_, !CheckedNondetTailCallInfo, []).
+		_Fulljumpopt, _MayAlterRtti, !CheckedNondetTailCallInfo, []).
 jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
-		MayAlterRtti, !CheckedNondetTailCallInfo, Instrs) :-
+		Fulljumpopt, MayAlterRtti, !CheckedNondetTailCallInfo,
+		Instrs) :-
 	Instr0 = Uinstr0 - Comment0,
 	(
 		Uinstr0 = call(Proc, label(RetLabel), LiveInfos, Context,
@@ -408,14 +412,14 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			% always want to replace jumps to them, whereas
 			% other blocks may be long, so we want to replace
 			% jumps to them only if the fulljumps option
-			% was given (if it wasn't, Blockmap will be empty).
-			% Second, non-epilog blocks may contain branches to
-			% other labels in this procedure, and we want to
-			% make sure that these are short-circuited.
+			% was given. Second, non-epilog blocks may contain
+			% branches to other labels in this procedure, and
+			% we want to make sure that these are short-circuited.
 			% This short-circuiting is necessary because
 			% another optimization below eliminates labels,
 			% which is correct only if jumps to those labels
 			% are short-circuited everywhere.
+			Fulljumpopt = yes,
 			map__search(Instrmap, TargetLabel, TargetInstr),
 			jumpopt__final_dest(Instrmap, TargetLabel, DestLabel,
 				TargetInstr, _DestInstr),
@@ -432,8 +436,8 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			jumpopt__instr_list(AdjustedBlock, comment(""),
 				Instrmap, CrippledBlockmap, Lvalmap, Procmap,
 				Sdprocmap, Forkmap, Succmap, LayoutLabels,
-				MayAlterRtti, !CheckedNondetTailCallInfo,
-				NewInstrs),
+				Fulljumpopt, MayAlterRtti,
+				!CheckedNondetTailCallInfo, NewInstrs),
 			RemainInstrs = Instrs0
 		;
 			% Short-circuit the goto.
@@ -626,7 +630,8 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 	),
 	jumpopt__instr_list(RemainInstrs, NewPrevInstr, Instrmap, Blockmap,
 		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
-		MayAlterRtti, !CheckedNondetTailCallInfo, Instrs9),
+		Fulljumpopt, MayAlterRtti, !CheckedNondetTailCallInfo,
+		Instrs9),
 	list__append(NewInstrs, Instrs9, Instrs).
 
 :- func redirect_comment(string) = string.
