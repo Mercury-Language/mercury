@@ -262,7 +262,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 		;
 			{ error("special_pred_get_type failed!") }
 		)
-	; { string__prefix(Name, "Introduced predicate for ") } ->
+	; { string__prefix(Name, "Introduced_pred_for_") } ->
 		io__write_string("type class method implementation")
 	;
 		hlds_out__write_pred_or_func(PredOrFunc),
