@@ -303,9 +303,9 @@ in an HLDS goal.
 	It also warns the programmer about any constructs that are so simple
 	that they should not have been included in the program in the first
 	place.
-	simplify.m calls common.m which looks for construction unifications
-	which constructs a term that is the same as one that already exists,
-	or repeated calls to a predicate with the same inputs and replaces
+	simplify.m calls common.m which looks for (a) construction unifications
+	that construct a term that is the same as one that already exists,
+	or (b) repeated calls to a predicate with the same inputs, and replaces
 	them with assignment unifications.
 
 </dl>
@@ -727,6 +727,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-04-28 07:27:31 $ by $Author: aet $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-06-25 05:23:57 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
