@@ -466,6 +466,12 @@
 		;	link_library_directories
 		;	link_libraries
 		;	link_objects
+		;	mercury_library_directories
+		;	mercury_library_directory_special
+		;	mercury_libraries
+		;	mercury_library_special
+		;	init_file_directories
+		;	init_files
 	% Miscellaneous Options
 		;	make
 		;	keep_going
@@ -479,11 +485,14 @@
 					% "Auxiliary output options"
 					% section
 		;	aditi_user
-		;	help.
+		;	help
+		;	fullarch
+		.
 
 :- implementation.
 
 :- import_module string, bool, int, map, std_util, assoc_list, require, list.
+:- import_module dir.
 :- import_module handle_options.
 
 :- type option_category
@@ -911,7 +920,14 @@ option_defaults_2(link_option, [
 	link_flags		-	accumulating([]),
 	link_library_directories -	accumulating([]),
 	link_libraries		-	accumulating([]),
-	link_objects		-	accumulating([])
+	link_objects		-	accumulating([]),
+	mercury_library_directory_special -
+					string_special,
+	mercury_library_directories -	accumulating([]),
+	mercury_library_special -	string_special,
+	mercury_libraries -		accumulating([]),
+	init_file_directories -		accumulating([]),
+	init_files -			accumulating([])
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
@@ -926,7 +942,8 @@ option_defaults_2(miscellaneous_option, [
 	use_subdirs		-	bool(no),
 	aditi			-	bool(no),
 	aditi_user		-	string(""),
-	help 			-	bool(no)
+	help 			-	bool(no),
+	fullarch		-	string("")
 ]).
 
 	% please keep this in alphabetic order
@@ -1405,6 +1422,10 @@ long_option("link-flags",		link_flags).
 long_option("library-directory",	link_library_directories).
 long_option("library",			link_libraries).
 long_option("link-object",		link_objects).
+long_option("mercury-library",		mercury_library_special).
+long_option("mercury-library-directory", mercury_library_directory_special).
+long_option("init-file-directory",	init_file_directories).
+long_option("init-file",		init_files).
 
 % misc options
 long_option("help",			help).
@@ -1419,6 +1440,7 @@ long_option("filenames-from-stdin",	filenames_from_stdin).
 long_option("use-subdirs",		use_subdirs).	
 long_option("aditi",			aditi).
 long_option("aditi-user",		aditi_user).
+long_option("fullarch",			fullarch).
 
 %-----------------------------------------------------------------------------%
 
@@ -1529,6 +1551,35 @@ special_handler(opt_level, int(N0), OptionTable0, ok(OptionTable)) :-
 		N = N0
 	),
 	set_opt_level(N, OptionTable0, OptionTable).
+special_handler(mercury_library_directory_special, string(Dir),
+			OptionTable0, ok(OptionTable)) :-
+	% The link_library_directories for Mercury libraries are grade
+	% dependent, so they need to be handled in handle_options.m
+	% when we know the grade.
+	OptionTable =
+	    list__foldl(append_to_accumulating_option, [
+	    	search_directories - dir__make_path_name(Dir, "ints"),
+		c_include_directory - dir__make_path_name(Dir, "inc"),
+		init_file_directories - dir__make_path_name(Dir, "modules"),
+		mercury_library_directories - Dir
+		], OptionTable0).
+special_handler(mercury_library_special, string(Lib),
+			OptionTable0, ok(OptionTable)) :-
+	OptionTable =
+	    list__foldl(append_to_accumulating_option, [
+	    	link_libraries - Lib,
+		mercury_libraries - Lib,
+		init_files - (Lib ++ ".init")
+		], OptionTable0).
+	  
+:- func append_to_accumulating_option(pair(option, string),
+		option_table) = option_table.
+
+append_to_accumulating_option(Option - Value, OptionTable0) =
+	OptionTable0 ^ elem(Option) :=
+	    accumulating(
+		getopt__lookup_accumulating_option(OptionTable0, Option)
+		++ [Value]).
 
 :- pred set_opt_level(int, option_table, option_table).
 :- mode set_opt_level(in, in, out) is det.
@@ -2934,7 +2985,21 @@ options_help_link -->
 		"-l <library>, --library <library>",
 		"\tLink with the specified library.",
 		"--link-object <object-file>",
-		"\tLink with the specified object file."
+		"\tLink with the specified object file.",
+		"--mercury-library-directory <directory>",
+		"\tAppend <directory> to the list of directories to",
+		"\tbe searched for Mercury libraries. This will add",
+		"\t`--search-directory', `--library-directory',",
+		"\t`--init-file-directory' and `--c-include-directory'",
+		"\toptions as needed.",
+		"--mercury-library <library>",
+		"\tLink with the specified Mercury library.",
+		"--init-file-directory <directory>",
+		"\tAppend <directory> to the list of directories to",
+		"\tbe searched for `.init' files by c2init.",
+		"--init-file <init-file>",
+		"\tAppend <init-file> to the list of `.init' files to",
+		"\tbe passed to c2init."
 	]).
 
 :- pred options_help_misc(io__state::di, io__state::uo) is det.
@@ -2983,6 +3048,9 @@ options_help_misc -->
 		"\tDefaults to the value of the `USER' environment",
 		"\tvariable. If `$USER' is not set, `--aditi-user'",
 		"\tdefaults to the string ""guest""."
+
+		% The `--fullarch' option is reserved for
+		% use by the mmc script.
 	]).
 
 :- pred write_tabbed_lines(list(string), io__state, io__state).

@@ -3777,9 +3777,21 @@ mercury_compile__link_module_list(Modules) -->
 	    ;
 		TraceOpt = ""
 	    },
-	    join_module_list(Modules, ".c", ["-o ", InitCFileName], MkInitCmd0),
-	    { string__append_list(["c2init ", TraceOpt | MkInitCmd0],
-	    	MkInitCmd) },
+
+	    globals__io_lookup_accumulating_option(init_file_directories,
+			InitFileDirsList),
+	    { join_string_list(InitFileDirsList, "-I ", "",
+			" ", InitFileDirs) },
+
+	    globals__io_lookup_accumulating_option(init_files,
+			InitFileNamesList),
+	    { join_string_list(InitFileNamesList, "", "",
+			" ", InitFileNames) },
+
+	    join_module_list(Modules, ".c", [], CFileNames),
+	    { MkInitCmd = string__append_list(
+	    	["c2init ", TraceOpt, " -o ", InitCFileName, " ",
+		InitFileDirs, " ", InitFileNames, " " | CFileNames]) },
 	    invoke_shell_command(MkInitCmd, MkInitOK),
 	    maybe_report_stats(Stats),
 	    ( { MkInitOK = no } ->

@@ -5594,7 +5594,8 @@ Specify options to be passed to @samp{ml}, the Mercury linker.
 @findex --library-directory
 @cindex Directories for libraries
 @cindex Search path for libraries
-Append @var{dir} to the list of directories in which to search for libraries.
+Append @var{directory} to the list of directories in which
+to search for libraries.
 
 @item -l @var{library}
 @itemx --library @var{library}
@@ -5607,6 +5608,31 @@ Link with the specified library.
 @findex --link-object
 @cindex Object files, linking with
 Link with the specified object file.
+
+@item --mercury-library-directory @var{directory}
+@findex --mercury-library-directory
+@cindex Directories for libraries
+@cindex Search path for libraries
+Append @var{directory} to the list of directories to
+be searched for Mercury libraries. This will add
+@samp{--search-directory}, @samp{--library-directory},
+@samp{--init-file-directory} and @samp{--c-include-directory}
+options as needed.
+
+@item --mercury-library @var{library}
+@findex --mercury-library
+@cindex Libraries, linking with
+Link with the specified Mercury library.
+
+@item --init-file-directory @var{directory}
+@findex --init-file-directory
+Append @var{directory} to the list of directories to
+be searched for @samp{.init} files by @samp{c2init}.
+
+@item --init-file @var{file}
+@findex --init-file
+Append @var{file} to the list of @samp{.init} files
+to be passed to @samp{c2init}.
 
 @end table
 
