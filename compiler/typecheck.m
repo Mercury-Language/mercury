@@ -1187,18 +1187,11 @@ typecheck_var_has_arg_type_list([Var|Vars], ArgNum, ArgTypeAssignSet0) -->
 
 convert_args_type_assign_set([], []).
 convert_args_type_assign_set(
-			[args(TypeAssign0, Args, Constraints0)|ArgTypeAssigns],
+			[ArgTypeAssign|ArgTypeAssigns],
 			[TypeAssign | TypeAssigns]) :-
+	ArgTypeAssign = args(_, Args, _),
 	( Args = [] ->
-		type_assign_get_typeclass_constraints(TypeAssign0,
-			OldConstraints),
-		type_assign_get_type_bindings(TypeAssign0, Bindings),
-		apply_rec_subst_to_constraints(Bindings, Constraints0,
-			Constraints),
-
-		list__append(Constraints, OldConstraints, NewConstraints),
-		type_assign_set_typeclass_constraints(TypeAssign0,
-			NewConstraints, TypeAssign)
+		convert_args_type_assign(ArgTypeAssign, TypeAssign)
 	;
 		% this should never happen, since the arguments should
 		% all have been processed at this point
@@ -1206,10 +1199,27 @@ convert_args_type_assign_set(
 	),
 	convert_args_type_assign_set(ArgTypeAssigns, TypeAssigns).
 
-:- pred conv_args_type_assign(pair(type_assign, list(type)), type_assign).
-:- mode conv_args_type_assign(in, out) is det.
+:- pred conv_args_type_assign_set(args_type_assign_set, type_assign_set).
+:- mode conv_args_type_assign_set(in, out) is det.
 
-conv_args_type_assign(TypeAssign - _ArgTypes, TypeAssign).
+	% Same as conv_args_type_assign_set, but does not abort when the args
+	% are empty
+conv_args_type_assign_set([], []).
+conv_args_type_assign_set([X|Xs], [Y|Ys]) :-
+	convert_args_type_assign(X, Y),
+	conv_args_type_assign_set(Xs, Ys).
+                 
+:- pred convert_args_type_assign(args_type_assign, type_assign).
+:- mode convert_args_type_assign(in, out) is det.
+
+convert_args_type_assign(args(TypeAssign0, _, Constraints0), TypeAssign) :-
+	type_assign_get_typeclass_constraints(TypeAssign0, OldConstraints),
+	type_assign_get_type_bindings(TypeAssign0, Bindings),
+	apply_rec_subst_to_constraints(Bindings, Constraints0, Constraints),
+
+	list__append(Constraints, OldConstraints, NewConstraints),
+	type_assign_set_typeclass_constraints(TypeAssign0,
+		NewConstraints, TypeAssign).
 
 :- pred typecheck_var_has_arg_type(var, 
 				args_type_assign_set, args_type_assign_set,
@@ -3599,7 +3609,7 @@ report_error_functor_arg_types(TypeCheckInfo, Var, ConsDefnList,
 		report_mismatched_args(Mismatches, yes, VarSet, Context)
 	;
 
-		{ convert_args_type_assign_set(ArgsTypeAssignSet,
+		{ conv_args_type_assign_set(ArgsTypeAssignSet,
 			TypeAssignSet) },
 
 		%
