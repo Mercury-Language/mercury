@@ -257,6 +257,7 @@ hlds_out__write_hlds(Indent, Module) -->
 		module_info_insts(Module, InstTable),
 		module_info_modes(Module, ModeTable)
 	},
+
 	hlds_out__write_header(Indent, Module),
 	io__write_string("\n"),
 	hlds_out__write_types(Indent, TypeTable),
@@ -294,7 +295,7 @@ hlds_out__write_footer(Indent, Module) -->
 :- mode hlds_out__write_preds(in, in, in, di, uo) is det.
 
 hlds_out__write_preds(Indent, ModuleInfo, PredTable) -->
-	io__write_string("% predicates\n"),
+	io__write_string("%-------- Predicates --------\n\n"),
 	hlds_out__write_indent(Indent),
 	{ map__keys(PredTable, PredIds) },
 	hlds_out__write_preds_2(Indent, ModuleInfo, PredIds, PredTable).
@@ -1031,26 +1032,186 @@ hlds_out__write_call_info_2([Var - Slot | Vars], Indent, VarSet) -->
 	io__write_string("\n"),
 	hlds_out__write_call_info_2(Vars, Indent, VarSet).
 
+%-----------------------------------------------------------------------------%
+
 :- pred hlds_out__write_types(int, type_table, io__state, io__state).
 :- mode hlds_out__write_types(in, in, di, uo) is det.
 
-hlds_out__write_types(Indent, _X) -->
+hlds_out__write_types(Indent, TypeTable) -->
 	hlds_out__write_indent(Indent),
-	io__write_string("% types (sorry, output of types not implemented)\n").
+	io__write_string("%-------- Types --------\n"),
+	{ map__to_assoc_list(TypeTable, TypeAL) },
+	hlds_out__write_indent(Indent),
+	hlds_out__write_types_2(Indent, TypeAL).
+
+:- pred hlds_out__write_types_2(int, assoc_list(type_id, hlds__type_defn),
+			io__state, io__state).
+:- mode hlds_out__write_types_2(in, in, di, uo) is det.
+
+hlds_out__write_types_2(_Indent, []) --> [].
+hlds_out__write_types_2(Indent, [TypeId - TypeDefn | Types]) -->
+	{ TypeDefn = hlds__type_defn(TVarSet, TypeParams, TypeBody,
+					_Condition, Context) },
+	io__write_char('\n'),
+        hlds_out__write_indent(Indent),
+
+	% Write the context
+
+	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
+	( { Verbose = yes } ->
+		{ term__context_file(Context, FileName) },
+		{ term__context_line(Context, LineNumber) },
+		( { FileName \= "" } ->
+			io__write_string("% context: file `"),
+			io__write_string(FileName),
+			io__write_string("', line "),
+			io__write_int(LineNumber),
+			io__write_char('\n'),
+        		hlds_out__write_indent(Indent)
+		;
+			[]
+		)
+	;
+		[]
+	),
+
+	io__write_string(":- type "),
+	hlds_out__write_type_name(TypeId),
+	hlds_out__write_type_params(TVarSet, TypeParams),
+	{ Indent1 is Indent + 1 },
+	hlds_out__write_type_body(Indent1, TVarSet, TypeBody),
+	io__write_string(".\n"),
+	hlds_out__write_types_2(Indent, Types).
+
+:- pred hlds_out__write_type_name(type_id, io__state, io__state).
+:- mode hlds_out__write_type_name(in, di, uo) is det.
+
+hlds_out__write_type_name(Name - _Arity) -->
+	prog_out__write_sym_name(Name).
+
+:- pred hlds_out__write_type_params(tvarset, list(type_param),
+			io__state, io__state).
+:- mode hlds_out__write_type_params(in, in, di, uo) is det.
+
+hlds_out__write_type_params(_Tvarset, []) --> [].
+hlds_out__write_type_params(Tvarset, [P]) -->
+	io__write_string("("),
+	term_io__write_term(Tvarset, P),
+	io__write_string(")").
+hlds_out__write_type_params(Tvarset, [P | Ps]) -->
+	{ Ps = [_ | _] },
+	io__write_string("("),
+        term_io__write_term(Tvarset, P),
+	hlds_out__write_type_params_2(Tvarset, Ps).
+
+:- pred hlds_out__write_type_params_2(tvarset, list(type_param),
+                        io__state, io__state).
+:- mode hlds_out__write_type_params_2(in, in, di, uo) is det.
+
+hlds_out__write_type_params_2(_Tvarset, []) -->
+        io__write_string(")").
+hlds_out__write_type_params_2(Tvarset, [P | Ps]) -->
+	io__write_string(", "),
+	term_io__write_term(Tvarset, P),
+        hlds_out__write_type_params_2(Tvarset, Ps).
+
+:- pred hlds_out__write_type_body(int, tvarset, hlds__type_body,
+				io__state, io__state).
+:- mode hlds_out__write_type_body(in, in, in, di, uo) is det.
+
+hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, _Tags, _Enum)) -->
+	io__write_string(" --->\n"),
+	hlds_out__write_constructors(Indent, Tvarset, Ctors).
+hlds_out__write_type_body(_Indent, _Tvarset, uu_type(_)) -->
+	{ error("hlds_out__write_type_body: undiscriminated union found") }.
+hlds_out__write_type_body(_Indent, Tvarset, eqv_type(Type)) -->
+	io__write_string(" == "),
+	term_io__write_term(Tvarset, Type).
+hlds_out__write_type_body(_Indent, _Tvarset, abstract_type) -->
+	[].
+
+:- pred hlds_out__write_constructors(int, tvarset, list(constructor),
+				io__state, io__state).
+:- mode hlds_out__write_constructors(in, in, in, di, uo) is det.
+
+hlds_out__write_constructors(_Indent, _Tvarset, []) -->
+	{ error("hlds_out__write_constructors: empty constructor list?") }.
+hlds_out__write_constructors(Indent, Tvarset, [C]) -->
+	hlds_out__write_indent(Indent),
+	hlds_out__write_constructor(Tvarset, C).
+hlds_out__write_constructors(Indent, Tvarset, [C | Cs]) -->
+	{ Cs = [_ | _] },
+	hlds_out__write_indent(Indent),
+	io__write_char('\t'),
+	hlds_out__write_constructor(Tvarset, C),
+	hlds_out__write_constructors_2(Indent, Tvarset, Cs).
+
+:- pred hlds_out__write_constructors_2(int, tvarset, list(constructor),
+                                io__state, io__state).
+:- mode hlds_out__write_constructors_2(in, in, in, di, uo) is det.
+
+hlds_out__write_constructors_2(_Indent, _Tvarset, []) --> [].
+hlds_out__write_constructors_2(Indent, Tvarset, [C | Cs]) -->
+	io__write_char('\n'),
+	hlds_out__write_indent(Indent),
+	io__write_string(";\t"),
+        hlds_out__write_constructor(Tvarset, C),
+	hlds_out__write_constructors_2(Indent, Tvarset, Cs).
+
+:- pred hlds_out__write_constructor(tvarset, constructor, io__state, io__state).
+:- mode hlds_out__write_constructor(in, in, di, uo) is det.
+
+hlds_out__write_constructor(Tvarset, Name - Args) -->
+	prog_out__write_sym_name(Name),
+	hlds_out__write_term_list(Tvarset, Args).
+
+:- pred hlds_out__write_term_list(varset, list(term), io__state, io__state).
+:- mode hlds_out__write_term_list(in, in, di, uo) is det.
+
+hlds_out__write_term_list(_Varset, []) --> [].
+hlds_out__write_term_list(Varset, [T]) -->
+	io__write_char('('),
+	mercury_output_term(T, Varset),
+	io__write_char(')').
+hlds_out__write_term_list(Varset, [T | Ts]) -->
+	{ Ts = [_ | _] },
+	io__write_char('('),
+	mercury_output_term(T, Varset),
+	hlds_out__write_term_list_2(Varset, Ts).
+
+:- pred hlds_out__write_term_list_2(varset, list(term), io__state, io__state).
+:- mode hlds_out__write_term_list_2(in, in, di, uo) is det.
+
+hlds_out__write_term_list_2(_Varset, []) -->
+        io__write_char(')').
+hlds_out__write_term_list_2(Varset, [T | Ts]) -->
+	io__write_string(", "),
+	mercury_output_term(T, Varset),
+        hlds_out__write_term_list_2(Varset, Ts).
+
+%-----------------------------------------------------------------------------%
 
 :- pred hlds_out__write_insts(int, inst_table, io__state, io__state).
 :- mode hlds_out__write_insts(in, in, di, uo) is det.
 
 hlds_out__write_insts(Indent, _X) -->
 	hlds_out__write_indent(Indent),
-	io__write_string("% insts (sorry, output of insts not implemented)\n").
+	io__write_string("%-------- Insts --------\n"),
+	hlds_out__write_indent(Indent),
+	io__write_string("%%% Not yet implemented, sorry\n").
+
+%-----------------------------------------------------------------------------%
 
 :- pred hlds_out__write_modes(int, mode_table, io__state, io__state).
 :- mode hlds_out__write_modes(in, in, di, uo) is det.
 
 hlds_out__write_modes(Indent, _X) -->
 	hlds_out__write_indent(Indent),
-	io__write_string("% modes (sorry, output of modes not implemented)\n").
+	io__write_string("%-------- Modes --------\n"),
+	hlds_out__write_indent(Indent),
+	io__write_string("%%% Not yet implemented, sorry\n").
+
+%-----------------------------------------------------------------------------%
 
 :- pred hlds_out__write_mode_list(int, list(mode), io__state, io__state).
 :- mode hlds_out__write_mode_list(in, in, di, uo) is det.
@@ -1059,6 +1220,8 @@ hlds_out__write_mode_list(Indent, _X) -->
 	hlds_out__write_indent(Indent),
 	% XXX
 	io__write_string("\n").
+
+%-----------------------------------------------------------------------------%
 
 :- pred hlds_out__write_procs(int, module_info, pred_id, import_status,
 		proc_table, io__state, io__state).
