@@ -505,7 +505,17 @@ mercury_runtime_init(int argc, char **argv)
  	MR_init_thread_stuff();
 #endif
 
-#if defined(MR_HIGHLEVEL_CODE) && defined(MR_CONSERVATIVE_GC)
+	/*
+	** XXX The condition here used to be 
+	** #if defined(MR_HIGHLEVEL_CODE) && defined(MR_CONSERVATIVE_GC)
+	** and was part of a change by Fergus to remove an unnecessary
+	** dependency on the complicated Mercury engine code.  Unfortunately
+	** this is no longer the case because other such dependencies have
+	** since crept in.  Using the original condition would cause hlc.par
+	** programs to immediately SEGFAULT via reference to an uninitialised
+	** Mercury engine.
+	*/
+#if 0
 	MR_init_memory();
   #ifdef MR_USE_TRAIL
 	/* initialize the trail */

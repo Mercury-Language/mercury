@@ -271,6 +271,11 @@ Changes to the Mercury standard library:
 
 Changes to the Mercury compiler:
 
+* Due to personnel changes and semantic problems in the design of
+  POSIX threads and problems in the implementations thereof that we have tried,
+  we cannot guarantee that we will be able to fix low-level concurrency bugs in
+  .par grades.
+
 * We have added optional support for a new type-accurate garbage collector
   as an alternative to using the Boehm et al conservative collector.
 
