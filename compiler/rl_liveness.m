@@ -426,7 +426,7 @@ rl_liveness__insert_unset_instructions(Instr0, Instrs0, Instrs,
 		set__difference(OutputSet, LiveRels0, StillBornRels),
 		set__union(KilledRels0, StillBornRels, KilledRels1),
 		set__to_sorted_list(KilledRels1, KilledRels),
-		list__map(rl_liveness__drop_rel, KilledRels, PostInstrs),
+		list__map(rl_liveness__drop_rel, KilledRels, PostInstrs0),
 
 		(
 			% Attach to the call the set of relations which
@@ -437,6 +437,7 @@ rl_liveness__insert_unset_instructions(Instr0, Instrs0, Instrs,
 			set__list_to_set(Inputs, InputSet),
 			set__intersect(LiveRels1, InputSet, LiveInputs),
 			PreInstrs = [],
+			PostInstrs1 = [],
 			Instr = call(ProcInputs, CallInputs, CallOutputs,
 					LiveInputs) - Comment
 		;
@@ -452,7 +453,8 @@ rl_liveness__insert_unset_instructions(Instr0, Instrs0, Instrs,
 			),
 			CopyRel = output_rel(CopyRelation, _),
 			Instr = union_diff(UoOutput, CopyRelation,
-				Input, Diff, Index, no) - Comment
+				Input, Diff, Index, no) - Comment,
+			PostInstrs1 = [unset(CopyRelation) - ""]
 		;
 			% Make sure there is only one reference to the
 			% destructively updated input to an insert.
@@ -466,15 +468,24 @@ rl_liveness__insert_unset_instructions(Instr0, Instrs0, Instrs,
 			),
 			CopyRel = output_rel(CopyRelation, _),
 			Instr = insert(UoOutput, CopyRelation,
-				Input, InsertType, no) - Comment
+				Input, InsertType, no) - Comment,
+			PostInstrs1 = [unset(CopyRelation) - ""]
 		;
 			Instr = Instr0,
-			PreInstrs = []
+			PreInstrs = [],
+			PostInstrs1 = []
 		),
 
 		% Add the instructions to unset the newly dead 
 		% relation variables after the instruction.
-		list__condense([PreInstrs, [Instr | PostInstrs], Instrs0],
+		list__condense(
+			[
+			PreInstrs,
+			[Instr],
+			PostInstrs0,
+			PostInstrs1,
+			Instrs0
+			],
 			Instrs)
 	).
 
