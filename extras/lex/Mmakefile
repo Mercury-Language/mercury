@@ -4,7 +4,7 @@
 #   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
 #   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
 
-# Do the following:
+# To build, do the following:
 #
 # $ mmake depend
 # $ mmake
@@ -30,6 +30,12 @@
 #
 #EXTRA_LIBRARIES = lex
 
+-include ../Mmake.params
+
 MAIN_TARGET = liblex
 depend: lex.depend
 install: $(MAIN_TARGET).install
+
+check: liblex
+	true
+
