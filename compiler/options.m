@@ -292,7 +292,7 @@ option_defaults_2(optimization_option, [
 	common_struct		-	bool(yes),
 	common_goal		-	bool(yes),
 	constraint_propagation	-	bool(no),
-	excess_assign		-	bool(no),
+	excess_assign		-	bool(yes),
 	prev_code		-	bool(no),
 	follow_code		-	bool(yes),
 	optimize_unused_args	-	bool(no),
@@ -599,7 +599,8 @@ opt_level(0, [
 	middle_rec		-	bool(no),
 	inlining		-	bool(no),
 	common_struct		-	bool(no),
-	constraint_propagation	-	bool(no)
+	constraint_propagation	-	bool(no),
+	excess_assign		-	bool(no)
 ]).
 opt_level(1, [
 	c_optimize		-	bool(yes),
@@ -623,7 +624,8 @@ opt_level(1, [
 	middle_rec		-	bool(yes),
 	inlining		-	bool(no),
 	common_struct		-	bool(yes),
-	constraint_propagation	-	bool(no)
+	constraint_propagation	-	bool(no),
+	excess_assign		-	bool(no)
 ]).
 opt_level(2, [
 	c_optimize		-	bool(yes),
