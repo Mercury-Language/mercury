@@ -1920,10 +1920,10 @@ case "$host" in
 		;;
 	alpha-dec-osf*)
 		AC_MSG_RESULT(yes)
-		LINK_SHARED_OBJ='gcc -shared \
-		-Wl,-O3,-update_registry,$(SO_LOCATIONS_DIR)so_locations'
-		LINK_SHARED_OBJ_SH='gcc -shared \
-		-Wl,-O3,-update_registry,${SO_LOCATIONS_DIR}so_locations'
+		LINK_SHARED_OBJ="gcc -shared \
+		-Wl,-O3,-update_registry,\$(SO_LOCATIONS_DIR)so_locations"
+		LINK_SHARED_OBJ_SH="gcc -shared \
+		-Wl,-O3,-update_registry,\${SO_LOCATIONS_DIR}so_locations"
 		ERROR_UNDEFINED="-Wl,-error_unresolved"
 		EXE_RPATH_OPT="-Wl,-rpath,"
 		EXE_RPATH_SEP=":"
@@ -1935,12 +1935,12 @@ case "$host" in
 		EXT_FOR_PIC_OBJECTS=o
 		;;
 	mips-sgi-irix5.*)
-		LINK_SHARED_OBJ='ld -shared \
-			-update_registry $(SO_LOCATIONS_DIR)so_locations \
-			-quickstart_info -rdata_shared'
-		LINK_SHARED_OBJ_SH='ld -shared \
-			-update_registry ${SO_LOCATIONS_DIR}so_locations \
-			-quickstart_info -rdata_shared'
+		LINK_SHARED_OBJ="ld -shared \
+			-update_registry \$(SO_LOCATIONS_DIR)so_locations \
+			-quickstart_info -rdata_shared"
+		LINK_SHARED_OBJ_SH="ld -shared \
+			-update_registry \${SO_LOCATIONS_DIR}so_locations \
+			-quickstart_info -rdata_shared"
 		ERROR_UNDEFINED="-no_unresolved"
 		EXE_RPATH_OPT="-Wl,-rpath,"
 		EXE_RPATH_SEP=":"
