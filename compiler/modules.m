@@ -788,6 +788,14 @@
 :- pred check_for_no_exports(item_list, module_name, io__state, io__state).
 :- mode check_for_no_exports(in, in, di, uo) is det.
 
+	% create_java_shell_script:
+	%	Create a shell script with the same name as the given module
+	%	to invoke Java with the appropriate options on the class of the
+	%	same name.
+	
+:- pred create_java_shell_script(module_name::in, bool::out,
+		io__state::di, io__state::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -3666,6 +3674,19 @@ generate_dependencies(ModuleName, DepsMap0) -->
 		generate_dependencies_write_d_files(DepsList,
 			IntDepsRel, ImplDepsRel, IndirectDepsRel,
 			IndirectOptDepsRel, TransOptDepsOrdering, DepsMap)
+	),
+	%
+	% For Java, the main target is actually a shell script which will
+	% set CLASSPATH appropriately and invoke java on the appropriate
+	% .class file.  Rather than generating an Mmake rule to build this
+	% file when it is needed, we just generate this file "mmake depend"
+	% time, since that is simpler and probably more efficient anyway.
+	%
+	globals__io_get_target(Target),
+	( { Target = java } ->
+		create_java_shell_script(ModuleName, _Succeeded)
+	;
+		[]
 	).
 
 /*
@@ -7157,6 +7178,63 @@ report_modification_time_warning(SourceFileName, Error) -->
 		)
 	;
 		[]
+	).
+
+%-----------------------------------------------------------------------------%
+
+create_java_shell_script(MainModuleName, Succeeded) -->
+	% XXX Extension should be ".bat" on Windows
+	{ Extension = "" },
+	module_name_to_file_name(MainModuleName, Extension, no, FileName),
+
+        globals__io_lookup_bool_option(verbose, Verbose),
+        maybe_write_string(Verbose, "% Generating shell script `" ++
+			FileName ++ "':\n"),
+
+	module_name_to_file_name(MainModuleName, ".class", no, ClassFileName),
+	{ DirName = dir.dirname(ClassFileName) },
+
+	% XXX PathSeparator should be ";" on Windows
+	{ PathSeparator = ":" },
+	% XXX The correct classpath needs to be set somewhere.
+	%     It should take the form:
+	%     DirName:<path>/mer_std.jar:<path>/mer_std.runtime.jar:.
+	%     Currently this variable is empty, which causes problems, so
+	%     we prepend the .class files' directory and the current CLASSPATH.
+	globals__io_lookup_accumulating_option(java_classpath, Java_Incl_Dirs0),
+	{ Java_Incl_Dirs = [DirName, "$CLASSPATH" | Java_Incl_Dirs0] },
+	{ ClassPath = string.join_list(PathSeparator, Java_Incl_Dirs) },
+
+	globals__io_lookup_string_option(java_interpreter, Java),
+	module_name_to_file_name(MainModuleName, "", no, Name_No_Extn),
+
+	io__open_output(FileName, OpenResult),
+	(
+		{ OpenResult = ok(ShellScript) },
+		% XXX On Windows we should output a .bat file instead
+		io__write_string(ShellScript, "#!/bin/sh\n"),
+		io__write_string(ShellScript, "CLASSPATH=" ++ ClassPath ++ " "),
+		io__write_string(ShellScript, Java ++ " "),
+		io__write_string(ShellScript, Name_No_Extn ++ "\n"),
+		io__close_output(ShellScript),
+		io__call_system("chmod a+x " ++ FileName, ChmodResult),
+		(
+			{ ChmodResult = ok(Status) },
+			{ Status = 0 ->
+				Succeeded = yes
+			;
+				error("chmod exit status != 0"),
+				Succeeded = no
+			}
+		;
+			{ ChmodResult = error(Message) },
+			{ error(io__error_message(Message)) },
+			{ Succeeded = no }
+		)
+	;
+		{ OpenResult = error(Message) },
+		{ error(io__error_message(Message)) },
+		{ Succeeded = no }
 	).
 
 %-----------------------------------------------------------------------------%
