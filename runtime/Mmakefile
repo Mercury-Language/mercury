@@ -266,6 +266,15 @@ mercury_profiling_builtin.h:	mercury_deep_call_port_body.h \
 
 #-----------------------------------------------------------------------------#
 
+ifeq ($(findstring java,$(GRADE)),java)        
+#
+# For grade java, there's nothing to do
+
+.PHONY: runtime
+runtime:
+	@echo "No Mercury runtime needed for grade=java"
+
+else
 ifeq ($(findstring il,$(GRADE)),il)        
 
 # Managed C++ files compiled in this directory should not be put in an
@@ -311,6 +320,7 @@ lib$(RT_LIB_NAME).so: $(PIC_OBJS)
 		$(SHARED_LIBS)
 
 endif
+endif
 
 $(RT_LIB_NAME).init: $(CFILES)
 	cat `vpath_find $(CFILES)` | grep '^INIT ' > $(RT_LIB_NAME).init
@@ -345,6 +355,20 @@ install_dirs:
 	-[ -d $(INSTALL_RECONF_DIR)/runtime ] || \
 		mkdir -p $(INSTALL_RECONF_DIR)/runtime
 
+ifeq ($(findstring java,$(GRADE)),java)        
+
+# For grade java, there's nothing to do
+
+.PHONY: install_headers 
+install_headers:
+
+.PHONY: install_init 
+install_init:
+
+.PHONY: install_init 
+install_init:
+
+else
 ifeq ($(findstring il,$(GRADE)),il)        
 
 .PHONY: install_headers 
@@ -389,6 +413,7 @@ install_lib: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 		$(INSTALL_MERC_LIB_DIR)
 	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(RT_LIB_NAME).$A
 
+endif
 endif
 
 #-----------------------------------------------------------------------------#
