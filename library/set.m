@@ -117,6 +117,12 @@
 :- pred set__union(set(T), set(T), set(T)).
 :- mode set__union(in, in, out) is det.
 
+	% `set__power_union(A, B)' is true iff `B' is the union of
+	% all the sets in `A'
+
+:- pred set__power_union(set(set(T)), set(T)).
+:- mode set__power_union(in, out) is det.
+
 	% `set_intersect(SetA, SetB, Set)' is true iff `Set' is the
 	% intersection of `SetA' and `SetB'.
 
@@ -187,6 +193,19 @@ set__remove(Set0, Elem, Set) :-
 
 set__union(Set0, Set1, Set) :-
 	append(Set1, Set0, Set).
+
+set__power_union(PS, S) :-
+	set__to_sorted_list(PS, SL),
+	set__init(S0),
+	set__power_union_2(SL, S0, S).
+
+:- pred set__power_union_2(list(set(T)), set(T), set(T)).
+:- mode set__power_union_2(in, in, out) is det.
+
+set__power_union_2([], S, S).
+set__power_union_2([T|Ts], S0, S) :-
+	set__union(T, S0, S1),
+	set__power_union_2(Ts, S1, S).
 
 set__intersect(S0, S1, S) :-
 	set__intersect_2(S0, S1, [], S).
