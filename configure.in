@@ -498,7 +498,19 @@ AC_SUBST(PERL)
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(HOSTNAMECMD,hostname uname)
 case "$HOSTNAMECMD" in
-	*hostname)	HOSTNAMECMD="$HOSTNAMECMD -f" ;;
+	*hostname)
+		# OS X uses BSD's hostname command which outputs
+		# the fully qualified domain name by default. It
+		# doesn't have a `-f' flag.
+		# XXX We should probably check that the user isn't
+		# using GNU's hostname on OS X instead.
+		case "$host" in 
+			powerpc*apple*darwin*)
+				HOSTNAMECMD="$HOSTNAMECMD" ;;
+			*)
+				HOSTNAMECMD="$HOSTNAMECMD -f" ;;
+		esac
+		;;
 esac
 AC_DEFINE_UNQUOTED(MR_HOSTNAMECMD, "$HOSTNAMECMD")
 #-----------------------------------------------------------------------------#
@@ -2207,7 +2219,15 @@ case "$host" in i*86-*-*)
     esac ;;
 esac
 
-mercury_cv_default_cgi_dir=/usr/lib/cgi-bin
+case "$host" in
+    powerpc*apple*darwin*)
+        mercury_cv_default_cgi_dir=/Library/WebServer/CGI-Executables
+        ;;
+    *)
+        mercury_cv_default_cgi_dir=/usr/lib/cgi-bin
+        ;;
+esac
+
 case $enable_deep_profiler in
 	default)
 		if test -d $mercury_cv_default_cgi_dir; then
