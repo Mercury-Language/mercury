@@ -373,9 +373,6 @@ make_rl_data_name(ModuleName) = RLDataConstName :-
 
 output_tabling_pointer_var_name(ProcLabel, !IO) :-
 	io__write_string("mercury_var__table_root__", !IO),
-/* ### In clause for predicate `backend_libs.name_mangle.output_tabling_pointer_var_name/3': */
-/* ###   error: wrong number of arguments (3; should be 4) */
-/* ###   in call to predicate `output_proc_label'. */
 	output_proc_label(ProcLabel, !IO).
 
 %-----------------------------------------------------------------------------%

@@ -2832,9 +2832,6 @@ output_goto(label(Label), CallerLabel, !IO) :-
 	).
 output_goto(imported(ProcLabel), CallerLabel, !IO) :-
 	io__write_string("MR_tailcall(MR_ENTRY(", !IO),
-/* ### In clause for predicate `ll_backend.llds_out.output_goto/4': */
-/* ###   error: wrong number of arguments (3; should be 4) */
-/* ###   in call to predicate `output_proc_label'. */
 	output_proc_label(ProcLabel, !IO),
 	io__write_string("),\n\t\t", !IO),
 	output_label_as_code_addr(CallerLabel, !IO),
@@ -2966,9 +2963,6 @@ output_code_addr(label(Label), !IO) :-
 	output_label_as_code_addr(Label, !IO).
 output_code_addr(imported(ProcLabel), !IO) :-
 	io__write_string("MR_ENTRY(", !IO),
-/* ### In clause for predicate `ll_backend.llds_out.output_code_addr/3': */
-/* ###   error: wrong number of arguments (3; should be 4) */
-/* ###   in call to predicate `output_proc_label'. */
 	output_proc_label(ProcLabel, !IO),
 	io__write_string(")", !IO).
 output_code_addr(succip, !IO) :-
