@@ -960,11 +960,6 @@
 :- pred io__report_full_memory_stats(io__state, io__state).
 :- mode io__report_full_memory_stats(di, uo) is det.
 
-	% Preallocate heap space (to avoid NU-Prolog panic).
-
-:- pred io__preallocate_heap_space(int, io__state, io__state).
-:- mode io__preallocate_heap_space(in, di, uo) is det.
-
 /*** no longer supported, sorry
 :- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
 :- mode io__gc_call(pred(di, uo) is det, di, uo) is det.
@@ -3165,14 +3160,6 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(io__set_exit_status(ExitStatus::in, IO0::di, IO::uo),
 		will_not_call_mercury, "
 	mercury_exit_status = ExitStatus;
-	update_io(IO0, IO);
-").
-
-:- pragma c_code(io__preallocate_heap_space(HeapSpace::in, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
-	/* HeapSpace not used */
-	/* don't do anything - preallocate_heap_space was just a
-	   hack for NU-Prolog */
 	update_io(IO0, IO);
 ").
 

@@ -304,7 +304,6 @@
 		;	link_libraries
 		;	link_objects
 	% Miscellaneous Options
-		;	heap_space
 		;	search_directories
 		;	intermod_directories
 		;	use_search_directories_for_intermod
@@ -648,7 +647,6 @@ option_defaults_2(link_option, [
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
-	heap_space		-	int(0),
 	filenames_from_stdin	-	bool(no),
 	search_directories 	-	accumulating(["."]),
 	intermod_directories	-	accumulating([]),
@@ -1016,7 +1014,6 @@ long_option("link-object",		link_objects).
 
 % misc options
 long_option("help",			help).
-long_option("heap-space",		heap_space).
 long_option("search-directory",		search_directories).
 long_option("intermod-directory",	intermod_directories).
 long_option("use-search-directories-for-intermod",
@@ -2166,13 +2163,6 @@ options_help_link -->
 options_help_misc -->
 	io__write_string("\nMiscellaneous Options:\n"),
 	write_tabbed_lines([
-	% 	"\t-H <n>, --heap-space <n>",
-	% 	"\t\tPre-allocate <n> kilobytes of heap space.",
-	% 	"\t\tThis option is now obsolete.  In the past it",
-	% 	"\t\twas used to avoid NU-Prolog's",
-	% 	"\t\t\t""Panic: growing stacks has required shifting the heap""",
-	% 	"\t\tmessage.",
-
 		"-I <dir>, --search-directory <dir>",
 		"\tAdd <dir> to the list of directories to be searched for \n\t\timported modules.",
 		"--intermod-directory <dir>",

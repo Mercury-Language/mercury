@@ -3635,13 +3635,6 @@ rather than in the current directory.
 @itemx --help
 Print a usage message.
 
-@c @item -H @var{n}
-@c @itemx --heap-space @var{n}
-@c Pre-allocate @var{n} kilobytes of heap space.
-@c This option is now obsolete.  In the past it was used to avoid
-@c NU-Prolog's "Panic: growing stacks has required shifting the heap"
-@c message.
-
 @sp 1
 @item --filenames-from-stdin
 Read then compile a newline terminated module name or file name from the

@@ -209,13 +209,6 @@ postprocess_options(ok(OptionTable), Error) -->
 
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		PrologDialect, TermNorm, TraceLevel, Error) -->
-	% work around for NU-Prolog problems
-	( { map__search(OptionTable, heap_space, int(HeapSpace)) } ->
-		io__preallocate_heap_space(HeapSpace)
-	;
-		[]
-	),
-
 	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
 		PrologDialect, TermNorm, TraceLevel),
