@@ -671,7 +671,7 @@
 :- implementation.
 
 :- import_module code_util, code_aux, globals, llds_out, options, prog_out.
-:- import_module prog_util, type_util, llds.
+:- import_module mode_util, prog_util, type_util, llds.
 :- import_module bool, int, require, string.
 
 rl__default_temporary_state(ModuleInfo, TmpState) :-
@@ -1106,20 +1106,25 @@ rl__get_c_interface_proc_name(ModuleInfo, PredProcId, PredName) :-
 	pred_info_name(PredInfo, PredName0),
 	proc_id_to_int(ProcId, ProcInt),
 	string__int_to_string(ProcInt, ProcStr),
+	pred_info_arg_types(PredInfo, ArgTypes),
+	list__length(ArgTypes, Arity),
+	string__int_to_string(Arity, ArityStr),
 	string__append_list(["Aditi_C_Interface_Proc_For_Mode_", ProcStr,
-		"_Of_", PredName0], PredName).
+		"_Of_", PredName0, "_", ArityStr], PredName).
 
 rl__get_c_interface_rl_proc_name(ModuleInfo, PredProcId, ProcName) :-
 	rl__get_c_interface_proc_name(ModuleInfo, PredProcId, PredName),
-	PredProcId = proc(PredId, _),
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_arg_types(PredInfo, ArgTypes),
-	list__filter(type_is_aditi_state, ArgTypes, AditiStates),
-	list__length(AditiStates, NumAditiStates),
-	list__length(ArgTypes, OrigArity),
+	module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+	pred_info_arg_types(PredInfo, ArgTypes0),
+	proc_info_argmodes(ProcInfo, ArgModes0),
+	type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes),
+	partition_args(ModuleInfo, ArgModes, ArgModes, _, OutputArgModes),
 
-	% The plus one is for the input closure argument.
-	InterfaceArity = OrigArity - NumAditiStates + 1,
+	% The interface procedure includes only the output arguments
+	% from the original procedure and the input closure argument
+	% introduced by magic.m.
+	list__length(OutputArgModes, NumOutputArgs),
+	InterfaceArity = NumOutputArgs + 1,
 	rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo,
 		PredName, InterfaceArity, ProcName).
 			
