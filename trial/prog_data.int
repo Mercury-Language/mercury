@@ -1,0 +1,170 @@
+:- module prog_data.
+:- interface.
+:- import_module hlds_data, hlds_pred, (inst).
+:- import_module term_util, list, map, varset, term, std_util.
+:- type (prog_data:message_list) == (list:list((std_util:pair(string, (term:term))))).
+:- type (prog_data:program)
+	--->	prog_data:module((prog_data:module_name), (prog_data:item_list)).
+:- type (prog_data:item_list) == (list:list((prog_data:item_and_context))).
+:- type (prog_data:item_and_context) == (std_util:pair((prog_data:item), (term:context))).
+:- type (prog_data:item)
+	--->	prog_data:pred_clause((varset:varset), (prog_data:sym_name), (list:list((term:term))), (prog_data:goal))
+	;	prog_data:func_clause((varset:varset), (prog_data:sym_name), (list:list((term:term))), (term:term), (prog_data:goal))
+	;	prog_data:type_defn((varset:varset), (prog_data:type_defn), (prog_data:condition))
+	;	prog_data:inst_defn((varset:varset), (prog_data:inst_defn), (prog_data:condition))
+	;	prog_data:mode_defn((varset:varset), (prog_data:mode_defn), (prog_data:condition))
+	;	prog_data:module_defn((varset:varset), (prog_data:module_defn))
+	;	prog_data:pred((varset:varset), (prog_data:sym_name), (list:list((prog_data:type_and_mode))), (std_util:maybe((hlds_data:determinism))), (prog_data:condition))
+	;	prog_data:func((varset:varset), (prog_data:sym_name), (list:list((prog_data:type_and_mode))), (prog_data:type_and_mode), (std_util:maybe((hlds_data:determinism))), (prog_data:condition))
+	;	prog_data:pred_mode((varset:varset), (prog_data:sym_name), (list:list((prog_data:(mode)))), (std_util:maybe((hlds_data:determinism))), (prog_data:condition))
+	;	prog_data:func_mode((varset:varset), (prog_data:sym_name), (list:list((prog_data:(mode)))), (prog_data:(mode)), (std_util:maybe((hlds_data:determinism))), (prog_data:condition))
+	;	prog_data:pragma((prog_data:pragma_type))
+	;	prog_data:nothing.
+:- type (prog_data:type_and_mode)
+	--->	prog_data:type_only((prog_data:(type)))
+	;	prog_data:type_and_mode((prog_data:(type)), (prog_data:(mode))).
+:- type (prog_data:pragma_type)
+	--->	prog_data:c_header_code(string)
+	;	prog_data:c_code(string)
+	;	prog_data:c_code((prog_data:may_call_mercury), (prog_data:sym_name), (hlds_pred:pred_or_func), (list:list((prog_data:pragma_var))), (varset:varset), string)
+	;	prog_data:c_code((prog_data:may_call_mercury), (prog_data:sym_name), (hlds_pred:pred_or_func), (list:list((prog_data:pragma_var))), (list:list(string)), (list:list(string)), (varset:varset), string)
+	;	prog_data:memo((prog_data:sym_name), (prog_data:arity))
+	;	prog_data:inline((prog_data:sym_name), (prog_data:arity))
+	;	prog_data:no_inline((prog_data:sym_name), (prog_data:arity))
+	;	prog_data:obsolete((prog_data:sym_name), (prog_data:arity))
+	;	prog_data:export((prog_data:sym_name), (hlds_pred:pred_or_func), (list:list((prog_data:(mode)))), string)
+	;	prog_data:source_file(string)
+	;	prog_data:unused_args((hlds_pred:pred_or_func), (prog_data:sym_name), int, (hlds_pred:proc_id), (list:list(int)))
+	;	prog_data:fact_table((prog_data:sym_name), (prog_data:arity), string)
+	;	prog_data:termination_info((hlds_pred:pred_or_func), (prog_data:sym_name), (list:list((prog_data:(mode)))), (term_util:termination))
+	;	prog_data:terminates((prog_data:sym_name), (prog_data:arity))
+	;	prog_data:does_not_terminate((prog_data:sym_name), (prog_data:arity))
+	;	prog_data:check_termination((prog_data:sym_name), (prog_data:arity)).
+:- type (prog_data:may_call_mercury)
+	--->	prog_data:may_call_mercury
+	;	prog_data:will_not_call_mercury.
+:- type (prog_data:pragma_var)
+	--->	prog_data:pragma_var((term:var), string, (prog_data:(mode))).
+:- type (prog_data:goal) == (std_util:pair((prog_data:goal_expr), (term:context))).
+:- type (prog_data:goal_expr)
+	--->	prog_data:','((prog_data:goal), (prog_data:goal))
+	;	prog_data:true
+	;	prog_data:;((prog_data:goal), (prog_data:goal))
+	;	prog_data:fail
+	;	prog_data:not((prog_data:goal))
+	;	prog_data:some((prog_data:vars), (prog_data:goal))
+	;	prog_data:all((prog_data:vars), (prog_data:goal))
+	;	prog_data:implies((prog_data:goal), (prog_data:goal))
+	;	prog_data:equivalent((prog_data:goal), (prog_data:goal))
+	;	prog_data:if_then((prog_data:vars), (prog_data:goal), (prog_data:goal))
+	;	prog_data:if_then_else((prog_data:vars), (prog_data:goal), (prog_data:goal), (prog_data:goal))
+	;	prog_data:call((prog_data:sym_name), (list:list((term:term))))
+	;	prog_data:unify((term:term), (term:term)).
+:- type (prog_data:goals) == (list:list((prog_data:goal))).
+:- type (prog_data:vars) == (list:list((term:var))).
+:- type (prog_data:type_defn)
+	--->	prog_data:du_type((prog_data:sym_name), (list:list((prog_data:type_param))), (list:list((prog_data:constructor))), (std_util:maybe((prog_data:equality_pred))))
+	;	prog_data:uu_type((prog_data:sym_name), (list:list((prog_data:type_param))), (list:list((prog_data:(type)))))
+	;	prog_data:eqv_type((prog_data:sym_name), (list:list((prog_data:type_param))), (prog_data:(type)))
+	;	prog_data:abstract_type((prog_data:sym_name), (list:list((prog_data:type_param)))).
+:- type (prog_data:constructor) == (std_util:pair((prog_data:sym_name), (list:list((prog_data:constructor_arg))))).
+:- type (prog_data:constructor_arg) == (std_util:pair(string, (prog_data:(type)))).
+:- type (prog_data:equality_pred) == (prog_data:sym_name).
+:- type (prog_data:type_param) == (term:term).
+:- type (prog_data:(type)) == (term:term).
+:- type (prog_data:tvar) == (term:var).
+:- type (prog_data:tvarset) == (varset:varset).
+:- type (prog_data:tsubst) == (map:map((prog_data:tvar), (prog_data:(type)))).
+:- type (prog_data:condition)
+	--->	prog_data:true
+	;	prog_data:where((term:term)).
+:- type (prog_data:inst_defn)
+	--->	prog_data:eqv_inst((prog_data:sym_name), (list:list((prog_data:inst_param))), ((inst):(inst)))
+	;	prog_data:abstract_inst((prog_data:sym_name), (list:list((prog_data:inst_param)))).
+:- type (prog_data:inst_param) == (term:term).
+:- type (prog_data:inst_name)
+	--->	prog_data:user_inst((prog_data:sym_name), (list:list(((inst):(inst)))))
+	;	prog_data:merge_inst(((inst):(inst)), ((inst):(inst)))
+	;	prog_data:unify_inst((prog_data:is_live), ((inst):(inst)), ((inst):(inst)), (prog_data:unify_is_real))
+	;	prog_data:ground_inst((prog_data:inst_name), (prog_data:is_live), ((inst):uniqueness), (prog_data:unify_is_real))
+	;	prog_data:any_inst((prog_data:inst_name), (prog_data:is_live), ((inst):uniqueness), (prog_data:unify_is_real))
+	;	prog_data:shared_inst((prog_data:inst_name))
+	;	prog_data:mostly_uniq_inst((prog_data:inst_name))
+	;	prog_data:typed_ground(((inst):uniqueness), (prog_data:(type)))
+	;	prog_data:typed_inst((prog_data:(type)), (prog_data:inst_name)).
+:- type (prog_data:is_live)
+	--->	prog_data:live
+	;	prog_data:dead.
+:- type (prog_data:unify_is_real)
+	--->	prog_data:real_unify
+	;	prog_data:fake_unify.
+:- type (prog_data:mode_defn)
+	--->	prog_data:eqv_mode((prog_data:sym_name), (list:list((prog_data:inst_param))), (prog_data:(mode))).
+:- type (prog_data:(mode))
+	--->	prog_data:'->'(((inst):(inst)), ((inst):(inst)))
+	;	prog_data:user_defined_mode((prog_data:sym_name), (list:list(((inst):(inst))))).
+:- type (prog_data:module_defn)
+	--->	prog_data:module((prog_data:module_name))
+	;	prog_data:interface
+	;	prog_data:implementation
+	;	prog_data:imported
+	;	prog_data:used
+	;	prog_data:external((prog_data:sym_name_specifier))
+	;	prog_data:opt_imported
+	;	prog_data:end_module((prog_data:module_name))
+	;	prog_data:export((prog_data:sym_list))
+	;	prog_data:import((prog_data:sym_list))
+	;	prog_data:use((prog_data:sym_list)).
+:- type (prog_data:sym_list)
+	--->	prog_data:sym((list:list((prog_data:sym_specifier))))
+	;	prog_data:pred((list:list((prog_data:pred_specifier))))
+	;	prog_data:func((list:list((prog_data:func_specifier))))
+	;	prog_data:cons((list:list((prog_data:cons_specifier))))
+	;	prog_data:op((list:list((prog_data:op_specifier))))
+	;	prog_data:adt((list:list((prog_data:adt_specifier))))
+	;	prog_data:type((list:list((prog_data:type_specifier))))
+	;	prog_data:module((list:list((prog_data:module_specifier)))).
+:- type (prog_data:sym_specifier)
+	--->	prog_data:sym((prog_data:sym_name_specifier))
+	;	prog_data:typed_sym((prog_data:typed_cons_specifier))
+	;	prog_data:pred((prog_data:pred_specifier))
+	;	prog_data:func((prog_data:func_specifier))
+	;	prog_data:cons((prog_data:cons_specifier))
+	;	prog_data:op((prog_data:op_specifier))
+	;	prog_data:adt((prog_data:adt_specifier))
+	;	prog_data:type((prog_data:type_specifier))
+	;	prog_data:module((prog_data:module_specifier)).
+:- type (prog_data:pred_specifier)
+	--->	prog_data:sym((prog_data:sym_name_specifier))
+	;	prog_data:name_args((prog_data:sym_name), (list:list((prog_data:(type))))).
+:- type (prog_data:func_specifier) == (prog_data:cons_specifier).
+:- type (prog_data:cons_specifier)
+	--->	prog_data:sym((prog_data:sym_name_specifier))
+	;	prog_data:typed((prog_data:typed_cons_specifier)).
+:- type (prog_data:typed_cons_specifier)
+	--->	prog_data:name_args((prog_data:sym_name), (list:list((prog_data:(type)))))
+	;	prog_data:name_res((prog_data:sym_name_specifier), (prog_data:(type)))
+	;	prog_data:name_args_res((prog_data:sym_name), (list:list((prog_data:(type)))), (prog_data:(type))).
+:- type (prog_data:adt_specifier) == (prog_data:sym_name_specifier).
+:- type (prog_data:type_specifier) == (prog_data:sym_name_specifier).
+:- type (prog_data:op_specifier)
+	--->	prog_data:sym((prog_data:sym_name_specifier))
+	;	prog_data:fixity((prog_data:sym_name_specifier), (prog_data:fixity)).
+:- type (prog_data:fixity)
+	--->	prog_data:infix
+	;	prog_data:prefix
+	;	prog_data:postfix
+	;	prog_data:binary_prefix
+	;	prog_data:binary_postfix.
+:- type (prog_data:sym_name_specifier)
+	--->	prog_data:name((prog_data:sym_name))
+	;	prog_data:name_arity((prog_data:sym_name), (prog_data:arity)).
+:- type (prog_data:sym_name)
+	--->	prog_data:unqualified(string)
+	;	prog_data:qualified((prog_data:module_specifier), string).
+:- type (prog_data:module_specifier) == string.
+:- type (prog_data:module_name) == string.
+:- type (prog_data:arity) == int.
+:- type (prog_data:need_qualifier)
+	--->	prog_data:must_be_qualified
+	;	prog_data:may_be_unqualified.

@@ -1,0 +1,103 @@
+:- module string.
+:- interface.
+:- import_module list, char.
+:- pred string:length(string, int).
+:- mode string:length(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:append(string, string, string).
+:- mode string:append(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode string:append(mercury_builtin:in, mercury_builtin:out, mercury_builtin:in) is semidet.
+:- mode string:append(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- mode string:append(mercury_builtin:out, mercury_builtin:out, mercury_builtin:in) is multi.
+:- pred string:remove_suffix(string, string, string).
+:- mode string:remove_suffix(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred string:prefix(string, string).
+:- mode string:prefix(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode string:prefix(mercury_builtin:in, mercury_builtin:out) is multi.
+:- pred string:char_to_string((char:char), string).
+:- mode string:char_to_string(mercury_builtin:in, mercury_builtin:out) is det.
+:- mode string:char_to_string(mercury_builtin:out, mercury_builtin:in) is semidet.
+:- pred string:int_to_string(int, string).
+:- mode string:int_to_string(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:int_to_base_string(int, int, string).
+:- mode string:int_to_base_string(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:float_to_string(float, string).
+:- mode string:float_to_string(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:first_char(string, (char:char), string).
+:- mode string:first_char(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode string:first_char(mercury_builtin:in, mercury_builtin:out, mercury_builtin:in) is semidet.
+:- mode string:first_char(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- mode string:first_char(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- mode string:first_char(mercury_builtin:out, mercury_builtin:in, mercury_builtin:in) is det.
+:- pred string:replace(string, string, string, string).
+:- mode string:replace(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred string:replace_all(string, string, string, string).
+:- mode string:replace_all(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:to_lower(string, string).
+:- mode string:to_lower(mercury_builtin:in, mercury_builtin:out) is det.
+:- mode string:to_lower(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred string:to_upper(string, string).
+:- mode string:to_upper(mercury_builtin:in, mercury_builtin:out) is det.
+:- mode string:to_upper(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred string:capitalize_first(string, string).
+:- mode string:capitalize_first(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:uncapitalize_first(string, string).
+:- mode string:uncapitalize_first(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:to_char_list(string, (list:list((char:char)))).
+:- mode string:to_char_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:from_char_list((list:list((char:char))), string).
+:- mode string:from_char_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- mode string:from_char_list(mercury_builtin:out, mercury_builtin:in) is semidet.
+:- pred string:from_rev_char_list((list:list((char:char))), string).
+:- mode string:from_rev_char_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:to_int(string, int).
+:- mode string:to_int(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred string:base_string_to_int(int, string, int).
+:- mode string:base_string_to_int(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred string:to_float(string, float).
+:- mode string:to_float(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred string:is_alpha(string).
+:- mode string:is_alpha(mercury_builtin:in) is semidet.
+:- pred string:is_alpha_or_underscore(string).
+:- mode string:is_alpha_or_underscore(mercury_builtin:in) is semidet.
+:- pred string:is_alnum_or_underscore(string).
+:- mode string:is_alnum_or_underscore(mercury_builtin:in) is semidet.
+:- pred string:pad_left(string, (char:char), int, string).
+:- mode string:pad_left(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:pad_right(string, (char:char), int, string).
+:- mode string:pad_right(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:duplicate_char((char:char), int, string).
+:- mode string:duplicate_char(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:contains_char(string, (char:char)).
+:- mode string:contains_char(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred string:index(string, int, (char:char)).
+:- mode string:index(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred string:index_det(string, int, (char:char)).
+:- mode string:index_det(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:foldl(pred((char:char), T, T), string, T, T).
+:- mode string:foldl((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- mode string:foldl((pred(mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det), mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- mode string:foldl((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- mode string:foldl((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is nondet), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is nondet.
+:- mode string:foldl((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is multi), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is multi.
+:- pred string:split(string, int, string, string).
+:- mode string:split(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred string:left(string, int, string).
+:- mode string:left(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:right(string, int, string).
+:- mode string:right(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:substring(string, int, int, string).
+:- mode string:substring(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:append_list((list:list(string)), string).
+:- mode string:append_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- mode string:append_list(mercury_builtin:out, mercury_builtin:in) is multi.
+:- pred string:hash(string, int).
+:- mode string:hash(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred string:sub_string_search(string, string, int).
+:- mode string:sub_string_search(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred string:format(string, (list:list((string:poly_type))), string).
+:- mode string:format(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- type (string:poly_type)
+	--->	string:f(float)
+	;	string:i(int)
+	;	string:s(string)
+	;	string:c((char:char)).

@@ -1,0 +1,19 @@
+:- module prog_util.
+:- interface.
+:- import_module list, term.
+:- import_module prog_data.
+:- pred prog_util:unqualify_name((prog_data:sym_name), string).
+:- mode prog_util:unqualify_name(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred prog_util:sym_name_get_module_name((prog_data:sym_name), (prog_data:module_name), (prog_data:module_name)).
+:- mode prog_util:sym_name_get_module_name(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred prog_util:construct_qualified_term((prog_data:sym_name), (list:list((term:term))), (term:term)).
+:- mode prog_util:construct_qualified_term(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred prog_util:construct_qualified_term((prog_data:sym_name), (list:list((term:term))), (term:context), (term:term)).
+:- mode prog_util:construct_qualified_term(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- type (prog_util:maybe_modes) == (std_util:maybe((list:list((prog_data:(mode)))))).
+:- pred prog_util:split_types_and_modes((list:list((prog_data:type_and_mode))), (list:list((prog_data:(type)))), (prog_util:maybe_modes)).
+:- mode prog_util:split_types_and_modes(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred prog_util:split_type_and_mode((prog_data:type_and_mode), (prog_data:(type)), (std_util:maybe((prog_data:(mode))))).
+:- mode prog_util:split_type_and_mode(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred prog_util:rename_in_goal((prog_data:goal), (term:var), (term:var), (prog_data:goal)).
+:- mode prog_util:rename_in_goal(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.

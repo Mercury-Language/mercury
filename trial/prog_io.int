@@ -1,0 +1,14 @@
+:- module prog_io.
+:- interface.
+:- import_module prog_data.
+:- import_module list, io.
+:- type (prog_io:module_error)
+	--->	prog_io:no
+	;	prog_io:yes
+	;	prog_io:fatal.
+:- pred prog_io:read_module(string, string, (bool:bool), (prog_io:module_error), (prog_data:message_list), (prog_data:item_list), (io:state), (io:state)).
+:- mode prog_io:read_module(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred prog_io:read_opt_file(string, string, (bool:bool), (prog_io:module_error), (prog_data:message_list), (prog_data:item_list), (io:state), (io:state)).
+:- mode prog_io:read_opt_file(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred prog_io:search_for_file((list:list(string)), string, (bool:bool), (io:state), (io:state)).
+:- mode prog_io:search_for_file(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.

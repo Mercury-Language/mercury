@@ -1,0 +1,13 @@
+:- module clause_to_proc.
+:- interface.
+:- import_module hlds_pred, hlds_module.
+:- pred clause_to_proc:copy_module_clauses_to_procs((list:list((hlds_pred:pred_id))), (hlds_module:module_info), (hlds_module:module_info)).
+:- mode clause_to_proc:copy_module_clauses_to_procs(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred clause_to_proc:copy_clauses_to_procs((hlds_pred:pred_info), (hlds_pred:pred_info)).
+:- mode clause_to_proc:copy_clauses_to_procs(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred clause_to_proc:copy_clauses_to_proc((hlds_pred:proc_id), (hlds_pred:clauses_info), (hlds_pred:proc_info), (hlds_pred:proc_info)).
+:- mode clause_to_proc:copy_clauses_to_proc(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred clause_to_proc:maybe_add_default_modes((list:list((hlds_pred:pred_id))), (hlds_module:pred_table), (hlds_module:pred_table)).
+:- mode clause_to_proc:maybe_add_default_modes(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred clause_to_proc:maybe_add_default_mode((hlds_pred:pred_info), (hlds_pred:pred_info)).
+:- mode clause_to_proc:maybe_add_default_mode(mercury_builtin:in, mercury_builtin:out) is det.

@@ -1,0 +1,49 @@
+:- module term_util.
+:- interface.
+:- import_module list, bool, bag, int, hlds_module, hlds_pred, hlds_data.
+:- import_module term_errors, io, hlds_goal, term, prog_data, map.
+:- type (term_util:termination)
+	--->	term_util:term((term_util:constant), (term_util:terminates), (std_util:maybe((list:list((bool:bool))))), (std_util:maybe((term_errors:error)))).
+:- type (term_util:constant)
+	--->	term_util:inf((term_errors:error))
+	;	term_util:not_set
+	;	term_util:set(int).
+:- type (term_util:terminates)
+	--->	term_util:dont_know
+	;	term_util:not_set
+	;	term_util:yes.
+:- type (term_util:functor_algorithm)
+	--->	term_util:simple
+	;	term_util:total
+	;	term_util:use_map((term_util:weight_table))
+	;	term_util:use_map_and_args((term_util:weight_table)).
+:- type (term_util:result(T))
+	--->	term_util:ok
+	;	term_util:error(T).
+:- type (term_util:unify_info) == (std_util:pair((map:map((term:var), (prog_data:(type)))), (term_util:functor_info))).
+:- type (term_util:functor_info) == (term_util:functor_algorithm).
+:- type (term_util:weight_info)
+	--->	term_util:weight(int, (list:list((bool:bool)))).
+:- type (term_util:weight_table) == (map:map((std_util:pair((hlds_data:type_id), (hlds_data:cons_id))), (term_util:weight_info))).
+:- pred term_util:init((term_util:termination)).
+:- mode term_util:init(mercury_builtin:out) is det.
+:- pred term_util:find_weights((hlds_module:module_info), (term_util:weight_table)).
+:- mode term_util:find_weights(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term_util:functor_norm((term_util:functor_info), (hlds_data:type_id), (hlds_data:cons_id), (hlds_module:module_info), int, (list:list((term:var))), (list:list((term:var))), (list:list((hlds_goal:uni_mode))), (list:list((hlds_goal:uni_mode)))).
+:- mode term_util:functor_norm(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:in, mercury_builtin:out, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term_util:do_ppid_check_terminates((list:list((hlds_pred:pred_proc_id))), (term_errors:error), (hlds_module:module_info), (hlds_module:module_info), (io:state), (io:state)).
+:- mode term_util:do_ppid_check_terminates(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred term_util:make_bool_list((list:list(_T)), (list:list((bool:bool))), (list:list((bool:bool)))).
+:- mode term_util:make_bool_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term_util:partition_call_args((hlds_module:module_info), (list:list((prog_data:(mode)))), (list:list((term:var))), (list:list((term:var))), (list:list((term:var)))).
+:- mode term_util:partition_call_args(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred term_util:remove_unused_args((bag:bag((term:var))), (list:list((term:var))), (list:list((bool:bool))), (bag:bag((term:var)))).
+:- mode term_util:remove_unused_args(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term_util:set_pred_proc_ids_const((list:list((hlds_pred:pred_proc_id))), (term_util:constant), (hlds_module:module_info), (hlds_module:module_info)).
+:- mode term_util:set_pred_proc_ids_const(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term_util:set_pred_proc_ids_terminates((list:list((hlds_pred:pred_proc_id))), (term_util:terminates), (std_util:maybe((term_errors:error))), (hlds_module:module_info), (hlds_module:module_info)).
+:- mode term_util:set_pred_proc_ids_terminates(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term_util:check_horder_args((list:list((term:var))), (map:map((term:var), (prog_data:(type))))).
+:- mode term_util:check_horder_args(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred term_util:split_unification_vars((list:list((term:var))), (list:list((hlds_goal:uni_mode))), (hlds_module:module_info), (bag:bag((term:var))), (bag:bag((term:var)))).
+:- mode term_util:split_unification_vars(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.

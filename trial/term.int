@@ -1,0 +1,103 @@
+:- module term.
+:- interface.
+:- import_module list, map.
+:- type (term:term)
+	--->	term:functor((term:const), (list:list((term:term))), (term:context))
+	;	term:variable((term:var)).
+:- type (term:const)
+	--->	term:atom(string)
+	;	term:integer(int)
+	;	term:string(string)
+	;	term:float(float).
+:- type (term:context)
+	--->	term:context(string, int).
+:- type (term:var).
+:- type (term:var_supply).
+:- type (term:term_to_type_result(T))
+	--->	term:ok(T)
+	;	term:error((term:term_to_type_error)).
+:- pred term:try_term_to_type((term:term), (term:term_to_type_result(T))).
+:- mode term:try_term_to_type(mercury_builtin:in, mercury_builtin:out) is det.
+:- type (term:term_to_type_error)
+	--->	term:type_error((term:term), (std_util:type_info), (term:context), (term:term_to_type_context))
+	;	term:mode_error((term:var), (term:term_to_type_context)).
+:- type (term:term_to_type_context) == (list:list((term:term_to_type_arg_context))).
+:- type (term:term_to_type_arg_context)
+	--->	term:arg_context((term:const), int, (term:context)).
+:- pred term:term_to_type((term:term), T).
+:- mode term:term_to_type(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred term:det_term_to_type((term:term), T).
+:- mode term:det_term_to_type(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:type_to_term(T, (term:term)).
+:- mode term:type_to_term(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:univ_to_term((std_util:univ), (term:term)).
+:- mode term:univ_to_term(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:vars((term:term), (list:list((term:var)))).
+:- mode term:vars(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:vars_2((term:term), (list:list((term:var))), (list:list((term:var)))).
+:- mode term:vars_2(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:vars_list((list:list((term:term))), (list:list((term:var)))).
+:- mode term:vars_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:contains_var((term:term), (term:var)).
+:- mode term:contains_var(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode term:contains_var(mercury_builtin:in, mercury_builtin:out) is nondet.
+:- pred term:contains_var_list((list:list((term:term))), (term:var)).
+:- mode term:contains_var_list(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode term:contains_var_list(mercury_builtin:in, mercury_builtin:out) is nondet.
+:- type (term:substitution) == (map:map((term:var), (term:term))).
+:- pred term:unify((term:term), (term:term), (term:substitution), (term:substitution)).
+:- mode term:unify(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred term:substitute((term:term), (term:var), (term:term), (term:term)).
+:- mode term:substitute(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:substitute_list((list:list((term:term))), (term:var), (term:term), (list:list((term:term)))).
+:- mode term:substitute_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:substitute_corresponding((list:list((term:var))), (list:list((term:term))), (term:term), (term:term)).
+:- mode term:substitute_corresponding(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:substitute_corresponding_list((list:list((term:var))), (list:list((term:term))), (list:list((term:term))), (list:list((term:term)))).
+:- mode term:substitute_corresponding_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:apply_rec_substitution((term:term), (term:substitution), (term:term)).
+:- mode term:apply_rec_substitution(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:apply_rec_substitution_to_list((list:list((term:term))), (term:substitution), (list:list((term:term)))).
+:- mode term:apply_rec_substitution_to_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:apply_substitution((term:term), (term:substitution), (term:term)).
+:- mode term:apply_substitution(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:apply_substitution_to_list((list:list((term:term))), (term:substitution), (list:list((term:term)))).
+:- mode term:apply_substitution_to_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:occurs((term:term), (term:var), (term:substitution)).
+:- mode term:occurs(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred term:occurs_list((list:list((term:term))), (term:var), (term:substitution)).
+:- mode term:occurs_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred term:relabel_variable((term:term), (term:var), (term:var), (term:term)).
+:- mode term:relabel_variable(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:relabel_variables((list:list((term:term))), (term:var), (term:var), (list:list((term:term)))).
+:- mode term:relabel_variables(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:apply_variable_renaming((term:term), (map:map((term:var), (term:var))), (term:term)).
+:- mode term:apply_variable_renaming(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:apply_variable_renaming_to_list((list:list((term:term))), (map:map((term:var), (term:var))), (list:list((term:term)))).
+:- mode term:apply_variable_renaming_to_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:is_ground((term:term), (term:substitution)).
+:- mode term:is_ground(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred term:is_ground((term:term)).
+:- mode term:is_ground(mercury_builtin:in) is semidet.
+:- pred term:compare((mercury_builtin:comparison_result), (term:term), (term:term), (term:substitution)).
+:- mode term:compare(mercury_builtin:out, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred term:init_var_supply((term:var_supply)).
+:- mode term:init_var_supply(mercury_builtin:out) is det.
+:- mode term:init_var_supply(mercury_builtin:in) is semidet.
+:- pred term:create_var((term:var_supply), (term:var), (term:var_supply)).
+:- mode term:create_var(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred term:var_to_int((term:var), int).
+:- mode term:var_to_int(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:context_line((term:context), int).
+:- mode term:context_line(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:context_file((term:context), string).
+:- mode term:context_file(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:context_init((term:context)).
+:- mode term:context_init(mercury_builtin:out) is det.
+:- pred term:context_init(string, int, (term:context)).
+:- mode term:context_init(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:term_list_to_var_list((list:list((term:term))), (list:list((term:var)))).
+:- mode term:term_list_to_var_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred term:var_list_to_term_list((list:list((term:var))), (list:list((term:term)))).
+:- mode term:var_list_to_term_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- mode term:var_list_to_term_list(mercury_builtin:out, mercury_builtin:in) is semidet.

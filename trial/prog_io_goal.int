@@ -1,0 +1,22 @@
+:- module prog_io_goal.
+:- interface.
+:- import_module prog_data, prog_io_util.
+:- import_module list, term, varset.
+:- pred prog_io_goal:parse_goal((term:term), (varset:varset), (prog_data:goal), (varset:varset)).
+:- mode prog_io_goal:parse_goal(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred prog_io_goal:parse_some_vars_goal((term:term), (varset:varset), (prog_data:vars), (prog_data:goal), (varset:varset)).
+:- mode prog_io_goal:parse_some_vars_goal(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred prog_io_goal:parse_lambda_expression((term:term), (list:list((term:term))), (list:list((prog_data:(mode)))), (hlds_data:determinism)).
+:- mode prog_io_goal:parse_lambda_expression(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred prog_io_goal:parse_pred_expression((term:term), (list:list((term:term))), (list:list((prog_data:(mode)))), (hlds_data:determinism)).
+:- mode prog_io_goal:parse_pred_expression(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred prog_io_goal:parse_dcg_pred_expression((term:term), (list:list((term:term))), (list:list((prog_data:(mode)))), (hlds_data:determinism)).
+:- mode prog_io_goal:parse_dcg_pred_expression(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred prog_io_goal:parse_func_expression((term:term), (list:list((term:term))), (list:list((prog_data:(mode)))), (hlds_data:determinism)).
+:- mode prog_io_goal:parse_func_expression(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred prog_io_goal:sym_name_and_args((term:term), (prog_data:sym_name), (list:list((term:term)))).
+:- mode prog_io_goal:sym_name_and_args(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred prog_io_goal:parse_qualified_term((term:term), (term:term), string, (prog_io_util:maybe_functor)).
+:- mode prog_io_goal:parse_qualified_term(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred prog_io_goal:parse_qualified_term(string, (term:term), (term:term), string, (prog_io_util:maybe_functor)).
+:- mode prog_io_goal:parse_qualified_term(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.

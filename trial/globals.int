@@ -1,0 +1,113 @@
+:- module globals.
+:- interface.
+:- import_module bool, getopt, list.
+:- import_module options.
+:- type (globals:globals).
+:- type (globals:gc_method)
+	--->	globals:none
+	;	globals:conservative
+	;	globals:accurate.
+:- type (globals:tags_method)
+	--->	globals:none
+	;	globals:low
+	;	globals:high.
+:- type (globals:args_method)
+	--->	globals:simple
+	;	globals:compact.
+:- type (globals:type_info_method)
+	--->	globals:shared_one_or_two_cell.
+:- type (globals:prolog_dialect)
+	--->	globals:default
+	;	globals:nu
+	;	globals:sicstus.
+:- type (globals:termination_norm)
+	--->	globals:simple
+	;	globals:total
+	;	globals:num_data_elems
+	;	globals:size_data_elems.
+:- pred globals:convert_gc_method(string, (globals:gc_method)).
+:- mode globals:convert_gc_method(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred globals:convert_tags_method(string, (globals:tags_method)).
+:- mode globals:convert_tags_method(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred globals:convert_args_method(string, (globals:args_method)).
+:- mode globals:convert_args_method(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred globals:convert_type_info_method(string, (globals:type_info_method)).
+:- mode globals:convert_type_info_method(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred globals:convert_prolog_dialect(string, (globals:prolog_dialect)).
+:- mode globals:convert_prolog_dialect(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred globals:convert_termination_norm(string, (globals:termination_norm)).
+:- mode globals:convert_termination_norm(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred globals:init((options:option_table), (globals:gc_method), (globals:tags_method), (globals:args_method), (globals:type_info_method), (globals:prolog_dialect), (globals:termination_norm), (globals:globals)).
+:- mode globals:init(mercury_builtin:di, mercury_builtin:di, mercury_builtin:di, mercury_builtin:di, mercury_builtin:di, mercury_builtin:di, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:get_options((globals:globals), (options:option_table)).
+:- mode globals:get_options(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:get_gc_method((globals:globals), (globals:gc_method)).
+:- mode globals:get_gc_method(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:get_tags_method((globals:globals), (globals:tags_method)).
+:- mode globals:get_tags_method(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:get_args_method((globals:globals), (globals:args_method)).
+:- mode globals:get_args_method(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:get_type_info_method((globals:globals), (globals:type_info_method)).
+:- mode globals:get_type_info_method(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:get_prolog_dialect((globals:globals), (globals:prolog_dialect)).
+:- mode globals:get_prolog_dialect(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:get_termination_norm((globals:globals), (globals:termination_norm)).
+:- mode globals:get_termination_norm(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:set_options((globals:globals), (options:option_table), (globals:globals)).
+:- mode globals:set_options(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:set_gc_method((globals:globals), (globals:gc_method), (globals:globals)).
+:- mode globals:set_gc_method(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:set_tags_method((globals:globals), (globals:tags_method), (globals:globals)).
+:- mode globals:set_tags_method(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:set_args_method((globals:globals), (globals:args_method), (globals:globals)).
+:- mode globals:set_args_method(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:set_type_info_method((globals:globals), (globals:type_info_method), (globals:globals)).
+:- mode globals:set_type_info_method(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:set_prolog_dialect((globals:globals), (globals:prolog_dialect), (globals:globals)).
+:- mode globals:set_prolog_dialect(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:set_termination_norm((globals:globals), (globals:termination_norm), (globals:globals)).
+:- mode globals:set_termination_norm(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:lookup_option((globals:globals), (options:option), (getopt:option_data)).
+:- mode globals:lookup_option(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:lookup_bool_option((globals:globals), (options:option), (bool:bool)).
+:- mode globals:lookup_bool_option(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- mode globals:lookup_bool_option(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred globals:lookup_int_option((globals:globals), (options:option), int).
+:- mode globals:lookup_int_option(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:lookup_string_option((globals:globals), (options:option), string).
+:- mode globals:lookup_string_option(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:lookup_accumulating_option((globals:globals), (options:option), (list:list(string))).
+:- mode globals:lookup_accumulating_option(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:have_static_code_addresses((globals:globals), (bool:bool)).
+:- mode globals:have_static_code_addresses(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred globals:io_init((options:option_table), (globals:gc_method), (globals:tags_method), (globals:args_method), (globals:type_info_method), (globals:prolog_dialect), (globals:termination_norm), (io:state), (io:state)).
+:- mode globals:io_init(mercury_builtin:di, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_get_gc_method((globals:gc_method), (io:state), (io:state)).
+:- mode globals:io_get_gc_method(mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_get_tags_method((globals:tags_method), (io:state), (io:state)).
+:- mode globals:io_get_tags_method(mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_get_args_method((globals:args_method), (io:state), (io:state)).
+:- mode globals:io_get_args_method(mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_get_type_info_method((globals:type_info_method), (io:state), (io:state)).
+:- mode globals:io_get_type_info_method(mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_get_prolog_dialect((globals:prolog_dialect), (io:state), (io:state)).
+:- mode globals:io_get_prolog_dialect(mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_get_termination_norm((globals:termination_norm), (io:state), (io:state)).
+:- mode globals:io_get_termination_norm(mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_get_globals((globals:globals), (io:state), (io:state)).
+:- mode globals:io_get_globals(mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_set_globals((globals:globals), (io:state), (io:state)).
+:- mode globals:io_set_globals(mercury_builtin:di, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_lookup_option((options:option), (getopt:option_data), (io:state), (io:state)).
+:- mode globals:io_lookup_option(mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_set_option((options:option), (getopt:option_data), (io:state), (io:state)).
+:- mode globals:io_set_option(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_lookup_bool_option((options:option), (bool:bool), (io:state), (io:state)).
+:- mode globals:io_lookup_bool_option(mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- mode globals:io_lookup_bool_option(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is semidet.
+:- pred globals:io_lookup_int_option((options:option), int, (io:state), (io:state)).
+:- mode globals:io_lookup_int_option(mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_lookup_string_option((options:option), string, (io:state), (io:state)).
+:- mode globals:io_lookup_string_option(mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred globals:io_lookup_accumulating_option((options:option), (list:list(string)), (io:state), (io:state)).
+:- mode globals:io_lookup_accumulating_option(mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
