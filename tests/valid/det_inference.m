@@ -1,6 +1,6 @@
 :- module det_inference.
 
-:- pred p1.
+:- pred p1 is det.
 :- pred p2.
 :- pred p3.
 :- pred p4.

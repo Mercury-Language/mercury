@@ -8,25 +8,42 @@ include ../Mmake
 
 #-----------------------------------------------------------------------------#
 
-SOURCES=			\
-	assoc_list.nl		\
-	det_inference.nl	\
-	det_switch.nl		\
-	easy_nondet_test.nl	\
-	easy_nondet_test_2.nl	\
-	mode_merge_insts.nl	\
-	name_mangling.nl	\
-	same_length_2.nl	\
-	same_length_3.nl	\
-	indexing.nl		\
-	tiny.nl
+SOURCES= \
+	complicated_unify.m \
+	dcg_test.m \
+	det_condition.m \
+	det_inference.m \
+	det_switch.m \
+	easy_nondet_test.m \
+	easy_nondet_test_2.m \
+	error.m \
+	followcode_det_problem.m \
+	higher_order.m \
+	implied_mode.m \
+	indexing.m \
+	loop.m \
+	name_mangling.m \
+	semidet_disj.m \
+	stack_alloc.m \
+	switches.m \
+	unreachable_code.m
 
-OBJS=	$(SOURCES:%.nl=%.o)
-NOS =	$(SOURCES:%.nl=%.no)
-PROGS =	$(SOURCES:%.nl=%)
+# The mode system can't handle the following test cases yet:
+#	assoc_list.m
+#	determinism.m
+#	mode_merge_insts.m
+# There is a bug which prevents us from passing this test case:
+#	same_length_2.m
 
-depend: tiny.depend
+OBJS=	$(SOURCES:%.m=%.o)
+NOS =	$(SOURCES:%.m=%.no)
+PROGS =	$(SOURCES:%.m=%)
 
-all:	$(OBJS) tiny
+all: objs
+check: objs
+objs: $(OBJS)
+depend:
+clean:
+	rm -f *.c *.o *.err2 *.d
 
 #-----------------------------------------------------------------------------#

@@ -5,7 +5,7 @@
 :- pred p(enum, int) is det.
 :- mode p(in, out) is det.
 :- mode p(out, in) is semidet.
-:- mode p(out, out) is nondet.
+:- mode p(out, out) is multi.
 
 p(a, 1).
 p(b, 2).

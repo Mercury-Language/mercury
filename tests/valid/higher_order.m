@@ -1,11 +1,8 @@
 :- module higher_order.
 :- import_module list, int.
 
-:- pred call(pred(T1, T2), T1, T2).
-:- mode call(in, in, out) is det.
-
 :- pred map_list(pred(T1, T2), list(T1), list(T2)).
-:- mode map_list(in, in, out) is det.
+:- mode map_list(pred(in, out) is det, in, out) is det.
 
 map_list(_P, [], []).
 map_list(P, [X|Xs], [Y|Ys]) :-
@@ -28,6 +25,6 @@ t.
 f :- fail.
 
 :- pred test(pred).
-:- mode test(out) is nondet.
+:- mode test(out((pred) is semidet)) is nondet.
 test(t).
 test(f).

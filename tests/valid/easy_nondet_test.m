@@ -5,7 +5,7 @@
 q(X) :-
 	p(X).
 
-:- pred p(int::out) is nondet.
+:- pred p(int::out) is multi.
 
 p(X) :- 
 	X = 1 ; X = 2.

@@ -2,15 +2,17 @@
 
 :- type triple ---> triple(int, int, int).
 
-:- type list(T) ---> [] ; [T | list(T)].
-
 :- inst triple1	= bound(triple(ground, free, free)).
 :- inst triple2	= bound(triple(free, ground, free)).
 :- inst triple12 = bound(triple(ground, ground, free)).
 
-:- pred p1(list(triple) :: free -> triple1) is det.
-:- pred p2(list(triple) :: free -> triple2) is det.
-:- pred q(list(triple) :: triple12 -> triple12) is det.
+:- pred p1(triple :: free -> triple1) is det.
+:- pred p2(triple :: free -> triple2) is det.
+:- pred q(triple :: triple12 -> triple12) is det.
+
+:- external(p1/1).
+:- external(p2/1).
+:- external(q/1).
 
 :- pred p is det.
 
