@@ -1006,24 +1006,46 @@ unused :-
 
 :- implementation.
 
-:- pragma c_code(var(X::ui), [thread_safe, will_not_call_mercury], "
-	/* X */
+:- pragma foreign_code("C", var(_X::ui),
+		[thread_safe, will_not_call_mercury], "
 	SUCCESS_INDICATOR = FALSE;
 ").
-:- pragma c_code(var(X::in), [thread_safe, will_not_call_mercury], "
-	/* X */
+:- pragma foreign_code("C", var(_X::in),
+		[thread_safe, will_not_call_mercury], "
 	SUCCESS_INDICATOR = FALSE;
 ").
-:- pragma c_code(var(X::unused), [thread_safe, will_not_call_mercury], "
-	/* X */
+:- pragma foreign_code("C", var(_X::unused),
+		[thread_safe, will_not_call_mercury], "").
+
+:- pragma foreign_code("C", nonvar(_X::ui),
+		[thread_safe, will_not_call_mercury], "").
+:- pragma foreign_code("C", nonvar(_X::in),
+		[thread_safe, will_not_call_mercury], "").
+:- pragma foreign_code("C", nonvar(_X::unused),
+		[thread_safe, will_not_call_mercury], "
+	SUCCESS_INDICATOR = FALSE;
 ").
 
-:- pragma c_code(nonvar(X::ui), [thread_safe, will_not_call_mercury], "/*X*/").
-:- pragma c_code(nonvar(X::in), [thread_safe, will_not_call_mercury], "/*X*/").
-:- pragma c_code(nonvar(X::unused), [thread_safe, will_not_call_mercury], "
-	/* X */
+:- pragma foreign_code("MC++", var(_X::ui),
+		[thread_safe, will_not_call_mercury], "
 	SUCCESS_INDICATOR = FALSE;
 ").
+:- pragma foreign_code("MC++", var(_X::in),
+		[thread_safe, will_not_call_mercury], "
+	SUCCESS_INDICATOR = FALSE;
+").
+:- pragma foreign_code("MC++", var(_X::unused),
+		[thread_safe, will_not_call_mercury], "").
+
+:- pragma foreign_code("MC++", nonvar(_X::ui),
+		[thread_safe, will_not_call_mercury], "").
+:- pragma foreign_code("MC++", nonvar(_X::in),
+		[thread_safe, will_not_call_mercury], "").
+:- pragma foreign_code("MC++", nonvar(_X::unused),
+		[thread_safe, will_not_call_mercury], "
+	SUCCESS_INDICATOR = FALSE;
+").
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
