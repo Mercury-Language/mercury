@@ -1116,7 +1116,7 @@ containing the executable being debugged.")
 
 	       ;; Regexp to match a procedure specification,
 	       ;; i.e. "<module>:<sub-module>:<name>/<arity>-<mode> "
-	       (proc-regexp "([^:]+:)+[^:/]+/[0-9]+-[0-9]+ ")
+	       (proc-regexp "\\(?:[^:]+:\\)+[^:/]+/[0-9]+-[0-9]+ ")
 	       
 	       ;; Regexp to match "(<detism>) "
 	       (detism-regexp "([a-z]+) ")
