@@ -292,7 +292,6 @@
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__rtti.
 :- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
@@ -700,8 +699,8 @@
 	;	mlds__type_info_type
 
 	;	mlds__pseudo_type_info_type
-	
-	;	mlds__rtti_type(rtti_name)
+
+	;	mlds__rtti_type(rtti_id)
 
 		% A type used by the ML code generator for references 
 		% to variables that have yet to be declared.  This occurs 
@@ -1562,14 +1561,7 @@ XXX Full exception handling support is not yet implemented.
 	%
 	% Stuff for handling polymorphism/RTTI and type classes.
 	%
-	;	rtti(rtti_type_ctor, rtti_name)
-	;	base_typeclass_info(
-			hlds_data__class_id,	% class name & class arity,
-			string			% a mangled string that encodes
-						% the names and arities of the
-						% types in the instance
-						% declaration
-		)
+	;	rtti(rtti_id)
 	%
 	% Stuff for handling debugging and accurate garbage collection.
 	% (Those features are not yet implemented for the MLDS back-end,
@@ -1662,6 +1654,7 @@ XXX Full exception handling support is not yet implemented.
 
 :- import_module backend_libs__foreign.
 :- import_module hlds__error_util.
+:- import_module hlds__hlds_data.
 :- import_module libs__globals.
 :- import_module parse_tree__modules.
 

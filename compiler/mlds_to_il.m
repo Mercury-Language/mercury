@@ -1271,10 +1271,8 @@ mangle_dataname(var(MLDSVarName))
 	= mangle_mlds_var_name(MLDSVarName).
 mangle_dataname(common(Int))
 	= string__format("common_%s", [i(Int)]).
-mangle_dataname(rtti(RttiTypeCtor, RttiName)) = MangledName :-
-	rtti__addr_to_string(RttiTypeCtor, RttiName, MangledName).
-mangle_dataname(base_typeclass_info(ClassId, InstanceStr)) =
-        make_base_typeclass_info_name(ClassId, InstanceStr).
+mangle_dataname(rtti(RttiId)) = MangledName :-
+	rtti__id_to_c_identifier(RttiId, MangledName).
 mangle_dataname(module_layout) = _MangledName :-
 	error("unimplemented: mangling module_layout").
 mangle_dataname(proc_layout(_)) = _MangledName :-
@@ -3327,7 +3325,8 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 		SymName = qualified(qualified(unqualified("mercury"),
 			LibModuleName0), wrapper_class_name),
 		(
-			DataName = rtti(RttiTypeCtor, RttiName),
+			DataName = rtti(RttiId),
+			RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
 			RttiTypeCtor = rtti_type_ctor(_, Name, Arity),
 
 			% Only the type_ctor_infos for the following
@@ -3336,12 +3335,13 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 				RttiName = type_ctor_info
 			;
 				RttiName = type_info(TypeInfo),
-				TypeInfo =
-					plain_arity_zero_type_info(RttiTypeCtor)
+				TypeInfo = plain_arity_zero_type_info(
+					RttiTypeCtor)
 			;
 				RttiName = pseudo_type_info(PseudoTypeInfo),
 				PseudoTypeInfo =
-					plain_arity_zero_pseudo_type_info(RttiTypeCtor)
+					plain_arity_zero_pseudo_type_info(
+						RttiTypeCtor)
 			),
 			( LibModuleName0 = "builtin",
 				( 
@@ -3397,10 +3397,8 @@ mangle_dataname(var(MLDSVarName), Name) :-
 	Name = mangle_mlds_var_name(MLDSVarName).
 mangle_dataname(common(Int), MangledName) :-
 	string__format("common_%s", [i(Int)], MangledName).
-mangle_dataname(rtti(RttiTypeCtor, RttiName), MangledName) :-
-	rtti__addr_to_string(RttiTypeCtor, RttiName, MangledName).
-mangle_dataname(base_typeclass_info(ClassId, InstanceStr), MangledName) :-
-	MangledName = make_base_typeclass_info_name(ClassId, InstanceStr).
+mangle_dataname(rtti(RttiId), MangledName) :-
+	rtti__id_to_c_identifier(RttiId, MangledName).
 mangle_dataname(module_layout, _MangledName) :-
 	error("unimplemented: mangling module_layout").
 mangle_dataname(proc_layout(_), _MangledName) :-

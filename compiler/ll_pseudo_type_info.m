@@ -79,7 +79,8 @@ convert_pseudo_type_info(Pseudo, Rval, LldsType) :-
 		LldsType = integer
 	;
 		Pseudo = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
-		DataAddr = rtti_addr(RttiTypeCtor, pseudo_type_info(Pseudo)),
+		DataAddr = rtti_addr(
+			ctor_rtti_id(RttiTypeCtor, pseudo_type_info(Pseudo))),
 		Rval = const(data_addr_const(DataAddr)),
 		LldsType = data_ptr
 	;
@@ -101,7 +102,8 @@ convert_pseudo_type_info(Pseudo, Rval, LldsType) :-
 convert_plain_type_info(TypeInfo, Rval, LldsType) :-
 	(
 		TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
-		DataAddr = rtti_addr(RttiTypeCtor, type_info(TypeInfo)),
+		DataAddr = rtti_addr(
+			ctor_rtti_id(RttiTypeCtor, type_info(TypeInfo))),
 		Rval = const(data_addr_const(DataAddr)),
 		LldsType = data_ptr
 	;
@@ -123,7 +125,8 @@ convert_plain_type_info(TypeInfo, Rval, LldsType) :-
 
 convert_compound_pseudo_type_info(RttiTypeCtor, ArgRvals0, Args,
 		Rval, LldsType) :-
-	TypeCtorInfoDataAddr = rtti_addr(RttiTypeCtor, type_ctor_info),
+	TypeCtorInfoDataAddr = rtti_addr(
+		ctor_rtti_id(RttiTypeCtor, type_ctor_info)),
 	TypeCtorInfoRval = yes(const(data_addr_const(TypeCtorInfoDataAddr))),
 	LldsType = data_ptr,
 	list__map((pred(A::in, yes(AR)::out) is det :-
@@ -144,9 +147,9 @@ convert_compound_pseudo_type_info(RttiTypeCtor, ArgRvals0, Args,
 	list(rtti_type_info)::in, rval::out, llds_type::out) is det.
 
 convert_compound_type_info(RttiTypeCtor, ArgRvals0, Args, Rval, LldsType) :-
-	TypeCtorInfoData =
-		type_info(plain_arity_zero_type_info(RttiTypeCtor)),
-	TypeCtorInfoDataAddr = rtti_addr(RttiTypeCtor, TypeCtorInfoData),
+	TypeCtorInfoData = type_info(plain_arity_zero_type_info(RttiTypeCtor)),
+	TypeCtorInfoDataAddr = rtti_addr(
+		ctor_rtti_id(RttiTypeCtor, TypeCtorInfoData)),
 	TypeCtorInfoRval = yes(const(data_addr_const(TypeCtorInfoDataAddr))),
 	LldsType = data_ptr,
 	list__map((pred(A::in, yes(AR)::out) is det :-

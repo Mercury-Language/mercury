@@ -72,8 +72,11 @@
 :- pred opt_debug__dump_rtti_type_ctor(rtti_type_ctor, string).
 :- mode opt_debug__dump_rtti_type_ctor(in, out) is det.
 
-:- pred opt_debug__dump_rtti_name(rtti_name, string).
+:- pred opt_debug__dump_rtti_name(ctor_rtti_name, string).
 :- mode opt_debug__dump_rtti_name(in, out) is det.
+
+:- pred opt_debug__dump_tc_rtti_name(tc_rtti_name, string).
+:- mode opt_debug__dump_tc_rtti_name(in, out) is det.
 
 :- pred opt_debug__dump_layout_name(layout_name, string).
 :- mode opt_debug__dump_layout_name(in, out) is det.
@@ -342,11 +345,17 @@ opt_debug__dump_data_addr(data_addr(ModuleName, DataName), Str) :-
 	opt_debug__dump_data_name(DataName, DataName_str),
 	string__append_list(
 		["data_addr(", ModuleName_str, ", ", DataName_str, ")"], Str).
-opt_debug__dump_data_addr(rtti_addr(RttiTypeCtor, DataName), Str) :-
+opt_debug__dump_data_addr(rtti_addr(ctor_rtti_id(RttiTypeCtor, DataName)),
+		Str) :-
 	opt_debug__dump_rtti_type_ctor(RttiTypeCtor, RttiTypeCtor_str),
 	opt_debug__dump_rtti_name(DataName, DataName_str),
 	string__append_list(
 		["rtti_addr(", RttiTypeCtor_str, ", ", DataName_str, ")"],
+		Str).
+opt_debug__dump_data_addr(rtti_addr(tc_rtti_id(TCDataName)), Str) :-
+	opt_debug__dump_tc_rtti_name(TCDataName, TCDataName_str),
+	string__append_list(
+		["tc_rtti_addr(", TCDataName_str, ")"],
 		Str).
 opt_debug__dump_data_addr(layout_addr(LayoutName), Str) :-
 	opt_debug__dump_layout_name(LayoutName, LayoutName_str),
@@ -356,8 +365,6 @@ opt_debug__dump_data_name(common(CellNum, TypeNum), Str) :-
 	string__int_to_string(CellNum, C_str),
 	string__int_to_string(TypeNum, T_str),
 	string__append_list(["common(", C_str, ", ", T_str, ")"], Str).
-opt_debug__dump_data_name(base_typeclass_info(ClassId, InstanceNum), Str) :-
-	Str = make_base_typeclass_info_name(ClassId, InstanceNum).
 opt_debug__dump_data_name(tabling_pointer(ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["tabling_pointer(", ProcLabelStr, ")"], Str).
@@ -414,9 +421,6 @@ opt_debug__dump_rtti_name(res_name_ordered_table, Str) :-
 	Str = "res_name_ordered_table".
 opt_debug__dump_rtti_name(type_ctor_info, Str) :-
 	Str = "type_ctor_info".
-opt_debug__dump_rtti_name(base_typeclass_info(_ModuleName, ClassId,
-		InstanceStr), Str) :-
-	Str = make_base_typeclass_info_name(ClassId, InstanceStr).
 opt_debug__dump_rtti_name(type_info(_TypeInfo), Str) :-
 	% XXX should give more info than this
 	Str = "type_info".
@@ -425,6 +429,10 @@ opt_debug__dump_rtti_name(pseudo_type_info(_PseudoTypeInfo), Str) :-
 	Str = "pseudo_type_info".
 opt_debug__dump_rtti_name(type_hashcons_pointer, Str) :-
 	Str = "type_hashcons_pointer".
+
+opt_debug__dump_tc_rtti_name(base_typeclass_info(_ModuleName, ClassId,
+		InstanceStr), Str) :-
+	Str = make_base_typeclass_info_name(ClassId, InstanceStr).
 
 opt_debug__dump_layout_name(label_layout(Label, LabelVars), Str) :-
 	opt_debug__dump_label(Label, LabelStr),

@@ -55,38 +55,35 @@ base_typeclass_info__generate_rtti(ModuleInfo, RttiDataList) :-
 	module_info_instances(ModuleInfo, InstanceTable),
 	map__to_assoc_list(InstanceTable, AllInstances),
 	base_typeclass_info__gen_infos_for_classes(AllInstances, ModuleName,
-		ModuleInfo, RttiDataList).
+		ModuleInfo, [], RttiDataList).
 
-:- pred base_typeclass_info__gen_infos_for_classes(assoc_list(class_id,
-	list(hlds_instance_defn)), module_name, module_info,
-	list(rtti_data)).
-:- mode base_typeclass_info__gen_infos_for_classes(in, in, in, out) is det.
+:- pred base_typeclass_info__gen_infos_for_classes(
+	assoc_list(class_id, list(hlds_instance_defn))::in, module_name::in,
+	module_info::in, list(rtti_data)::in, list(rtti_data)::out) is det.
 
-base_typeclass_info__gen_infos_for_classes([], _ModuleName, _ModuleInfo, []).
+base_typeclass_info__gen_infos_for_classes([], _ModuleName, _ModuleInfo,
+		RttiDataList, RttiDataList).
 base_typeclass_info__gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo, 
-		RttiDataList) :-
+		RttiDataList0, RttiDataList) :-
 	base_typeclass_info__gen_infos_for_instance_list(C, ModuleName,
-		ModuleInfo, RttiDataList1),
+		ModuleInfo, RttiDataList0, RttiDataList1),
 	base_typeclass_info__gen_infos_for_classes(Cs, ModuleName,
-		ModuleInfo, RttiDataList2),
-	% XXX make it use an accumulator
-	list__append(RttiDataList1, RttiDataList2, RttiDataList).
+		ModuleInfo, RttiDataList1, RttiDataList).
 
 	% XXX make it use an accumulator
 :- pred base_typeclass_info__gen_infos_for_instance_list(
-	pair(class_id, list(hlds_instance_defn)), module_name, module_info,
-	list(rtti_data)).
-:- mode base_typeclass_info__gen_infos_for_instance_list(in, in, in, out) 
-	is det.
+	pair(class_id, list(hlds_instance_defn))::in, module_name::in,
+	module_info::in, list(rtti_data)::in, list(rtti_data)::out) is det.
 
-base_typeclass_info__gen_infos_for_instance_list(_ - [], _, _, []).
+base_typeclass_info__gen_infos_for_instance_list(_ - [], _, _,
+		RttiDataList, RttiDataList).
 base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is], 
-		ModuleName, ModuleInfo, RttiDataList) :-
+		ModuleName, ModuleInfo, RttiDataList0, RttiDataList) :-
 	base_typeclass_info__gen_infos_for_instance_list(ClassId - Is,
-		ModuleName, ModuleInfo, RttiDataList1),
+		ModuleName, ModuleInfo, RttiDataList0, RttiDataList1),
 	InstanceDefn = hlds_instance_defn(InstanceModule, ImportStatus,
-			_TermContext, InstanceConstraints, InstanceTypes, Body,
-			PredProcIds, _Varset, _SuperClassProofs),
+		_TermContext, InstanceConstraints, InstanceTypes, Body,
+		PredProcIds, _Varset, _SuperClassProofs),
 	(
 		Body = concrete(_),
 			% Only make the base_typeclass_info if the instance
@@ -110,8 +107,8 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 %----------------------------------------------------------------------------%
 
 :- pred base_typeclass_info__gen_body(maybe(list(hlds_class_proc)),
-		list(type), list(class_constraint), module_info, class_id,
-		base_typeclass_info).
+	list(type), list(class_constraint), module_info, class_id,
+	base_typeclass_info).
 :- mode base_typeclass_info__gen_body(in, in, in, in, in, out) is det.
 
 base_typeclass_info__gen_body(no, _, _, _, _, _) :-
@@ -132,7 +129,7 @@ base_typeclass_info__gen_body(yes(PredProcIds0), Types, Constraints,
 	base_typeclass_info__construct_proc_labels(PredProcIds, ModuleInfo,
 		ProcLabels),
 	base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo,
-			SuperClassCount, ClassArity),
+		SuperClassCount, ClassArity),
 	list__length(ProcLabels, NumMethods),
 	BaseTypeClassInfo = base_typeclass_info(NumExtra, NumConstraints,
 		SuperClassCount, ClassArity, NumMethods, ProcLabels).
@@ -151,7 +148,7 @@ base_typeclass_info__construct_proc_labels([proc(PredId, ProcId) | Procs],
 %----------------------------------------------------------------------------%
 
 :- pred base_typeclass_info__gen_superclass_count(class_id, module_info, 
-		int, int).
+	int, int).
 :- mode base_typeclass_info__gen_superclass_count(in, in, out, out) is det.
 
 base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo, 

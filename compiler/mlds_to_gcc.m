@@ -1931,25 +1931,32 @@ initializer_array_size(init_array(Elems)) = array_size(list__length(Elems)).
 % XXX it would be more efficient to construct these types once,
 % at initialization time, rather than every time they are used.
 
-:- pred build_rtti_type(rtti_name, initializer_array_size, gcc__type,
-		io__state, io__state).
-:- mode build_rtti_type(in, in, out, di, uo) is det.
+:- pred build_rtti_type(rtti_id::in, initializer_array_size::in,
+	gcc__type::out, io__state::di, io__state::uo) is det.
 
-build_rtti_type(exist_locns(_), Size, GCC_Type) -->
+build_rtti_type(ctor_rtti_id(_, RttiName), Size, GCC_Type) -->
+	build_rtti_type_name(RttiName, Size, GCC_Type).
+build_rtti_type(tc_rtti_id(TCRttiName), Size, GCC_Type) -->
+	build_rtti_type_tc_name(TCRttiName, Size, GCC_Type).
+
+:- pred build_rtti_type_name(ctor_rtti_name::in, initializer_array_size::in,
+	gcc__type::out, io__state::di, io__state::uo) is det.
+
+build_rtti_type_name(exist_locns(_), Size, GCC_Type) -->
 	build_du_exist_locn_type(MR_DuExistLocn),
 	build_sized_array_type(MR_DuExistLocn, Size, GCC_Type).
-build_rtti_type(exist_info(_), _, MR_DuExistInfo) -->
+build_rtti_type_name(exist_info(_), _, MR_DuExistInfo) -->
 	build_du_exist_info_type(MR_DuExistInfo).
-build_rtti_type(field_names(_), Size, GCC_Type) -->
+build_rtti_type_name(field_names(_), Size, GCC_Type) -->
 	build_sized_array_type('MR_ConstString', Size, GCC_Type).
-build_rtti_type(field_types(_), Size, GCC_Type) -->
+build_rtti_type_name(field_types(_), Size, GCC_Type) -->
 	build_sized_array_type('MR_PseudoTypeInfo', Size, GCC_Type).
-build_rtti_type(res_addrs, Size, GCC_Type) -->
+build_rtti_type_name(res_addrs, Size, GCC_Type) -->
 	build_sized_array_type(gcc__ptr_type_node, Size, GCC_Type).
-build_rtti_type(res_addr_functors, Size, GCC_Type) -->
+build_rtti_type_name(res_addr_functors, Size, GCC_Type) -->
 	{ MR_ReservedAddrFunctorDescPtr = gcc__ptr_type_node },
 	build_sized_array_type(MR_ReservedAddrFunctorDescPtr, Size, GCC_Type).
-build_rtti_type(enum_functor_desc(_), _, GCC_Type) -->
+build_rtti_type_name(enum_functor_desc(_), _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString      MR_enum_functor_name;
 	%     MR_int_least32_t    MR_enum_functor_ordinal;
@@ -1958,7 +1965,7 @@ build_rtti_type(enum_functor_desc(_), _, GCC_Type) -->
 		['MR_ConstString'	- "MR_enum_functor_name",
 		 'MR_int_least32_t'	- "MR_enum_functor_ordinal"],
 		GCC_Type).
-build_rtti_type(notag_functor_desc, _, GCC_Type) -->
+build_rtti_type_name(notag_functor_desc, _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString      MR_notag_functor_name;
 	%     MR_PseudoTypeInfo   MR_notag_functor_arg_type;
@@ -1969,7 +1976,7 @@ build_rtti_type(notag_functor_desc, _, GCC_Type) -->
 		 'MR_PseudoTypeInfo'	- "MR_notag_functor_arg_type",
 		 'MR_ConstString'	- "MR_notag_functor_arg_name"],
 		GCC_Type).
-build_rtti_type(du_functor_desc(_), _, GCC_Type) -->
+build_rtti_type_name(du_functor_desc(_), _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString          MR_du_functor_name;
 	%     MR_int_least16_t        MR_du_functor_orig_arity;
@@ -1998,7 +2005,7 @@ build_rtti_type(du_functor_desc(_), _, GCC_Type) -->
 		 MR_ConstStringPtr	- "MR_du_functor_arg_names",
 		 MR_DuExistInfoPtr	- "MR_du_functor_exist_info"],
 		GCC_Type).
-build_rtti_type(res_functor_desc(_), _, GCC_Type) -->
+build_rtti_type_name(res_functor_desc(_), _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString      MR_ra_functor_name;
 	%     MR_int_least32_t    MR_ra_functor_ordinal;
@@ -2009,19 +2016,19 @@ build_rtti_type(res_functor_desc(_), _, GCC_Type) -->
 		 'MR_int_least32_t'	- "MR_ra_functor_ordinal",
 		 gcc__ptr_type_node	- "MR_ra_functor_reserved_addr"],
 		GCC_Type).
-build_rtti_type(enum_name_ordered_table, Size, GCC_Type) -->
+build_rtti_type_name(enum_name_ordered_table, Size, GCC_Type) -->
 	{ MR_EnumFunctorDescPtr = gcc__ptr_type_node },
 	build_sized_array_type(MR_EnumFunctorDescPtr, Size, GCC_Type).
-build_rtti_type(enum_value_ordered_table, Size, GCC_Type) -->
+build_rtti_type_name(enum_value_ordered_table, Size, GCC_Type) -->
 	{ MR_EnumFunctorDescPtr = gcc__ptr_type_node },
 	build_sized_array_type(MR_EnumFunctorDescPtr, Size, GCC_Type).
-build_rtti_type(du_name_ordered_table, Size, GCC_Type) -->
+build_rtti_type_name(du_name_ordered_table, Size, GCC_Type) -->
 	{ MR_DuFunctorDescPtr = gcc__ptr_type_node },
 	build_sized_array_type(MR_DuFunctorDescPtr, Size, GCC_Type).
-build_rtti_type(du_stag_ordered_table(_), Size, GCC_Type) -->
+build_rtti_type_name(du_stag_ordered_table(_), Size, GCC_Type) -->
 	{ MR_DuFunctorDescPtr = gcc__ptr_type_node },
 	build_sized_array_type(MR_DuFunctorDescPtr, Size, GCC_Type).
-build_rtti_type(du_ptag_ordered_table, Size, GCC_Type) -->
+build_rtti_type_name(du_ptag_ordered_table, Size, GCC_Type) -->
 	% typedef struct {
 	%     MR_int_least32_t        MR_sectag_sharers;
 	%     MR_Sectag_Locn          MR_sectag_locn;
@@ -2033,7 +2040,7 @@ build_rtti_type(du_ptag_ordered_table, Size, GCC_Type) -->
 		 gcc__ptr_type_node	- "MR_sectag_alternatives"],
 		MR_DuPtagLayout),
 	build_sized_array_type(MR_DuPtagLayout, Size, GCC_Type).
-build_rtti_type(res_value_ordered_table, _, GCC_Type) -->
+build_rtti_type_name(res_value_ordered_table, _, GCC_Type) -->
 	% typedef struct {
 	%     MR_int_least16_t    MR_ra_num_res_numeric_addrs;
 	%     MR_int_least16_t    MR_ra_num_res_symbolic_addrs;
@@ -2048,7 +2055,7 @@ build_rtti_type(res_value_ordered_table, _, GCC_Type) -->
 		 gcc__ptr_type_node	- "MR_ra_constants",
 		 gcc__ptr_type_node	- "MR_ra_other_functors"
 		], GCC_Type).
-build_rtti_type(res_name_ordered_table, _, GCC_Type) -->
+build_rtti_type_name(res_name_ordered_table, _, GCC_Type) -->
 	% typedef union {
     	%	MR_DuFunctorDesc            *MR_maybe_res_du_ptr;
     	%	MR_ReservedAddrFunctorDesc  *MR_maybe_res_res_ptr;
@@ -2069,7 +2076,7 @@ build_rtti_type(res_name_ordered_table, _, GCC_Type) -->
 		 'MR_bool'		- "MR_maybe_res_is_res",
 		 MR_MaybeResAddrFunctorDesc	- "MR_maybe_res_ptr"
 		], GCC_Type).
-build_rtti_type(type_ctor_info, _, GCC_Type) -->
+build_rtti_type_name(type_ctor_info, _, GCC_Type) -->
 	% MR_Integer          MR_type_ctor_arity;
 	% MR_int_least8_t     MR_type_ctor_version;
 	% MR_int_least8_t     MR_type_ctor_num_ptags;         /* if DU */
@@ -2105,21 +2112,25 @@ build_rtti_type(type_ctor_info, _, GCC_Type) -->
 		 'MR_int_least32_t'	- "MR_type_ctor_num_functors",
 		 'MR_int_least16_t'	- "MR_type_ctor_flags"],
 		GCC_Type).
-build_rtti_type(base_typeclass_info(_, _, _), Size, GCC_Type) -->
-	{ MR_BaseTypeclassInfo = gcc__ptr_type_node },
-	build_sized_array_type(MR_BaseTypeclassInfo, Size, GCC_Type).
-build_rtti_type(type_info(TypeInfo), _, GCC_Type) -->
+build_rtti_type_name(type_info(TypeInfo), _, GCC_Type) -->
 	build_type_info_type(TypeInfo, GCC_Type).
-build_rtti_type(pseudo_type_info(PseudoTypeInfo), _, GCC_Type) -->
+build_rtti_type_name(pseudo_type_info(PseudoTypeInfo), _, GCC_Type) -->
 	build_pseudo_type_info_type(PseudoTypeInfo, GCC_Type).
-build_rtti_type(type_hashcons_pointer, _, MR_TableNodePtrPtr) -->
+build_rtti_type_name(type_hashcons_pointer, _, MR_TableNodePtrPtr) -->
 	{ MR_TableNodePtrPtr = gcc__ptr_type_node }.
 
+:- pred build_rtti_type_tc_name(tc_rtti_name::in, initializer_array_size::in,
+	gcc__type::out, io__state::di, io__state::uo) is det.
+
+build_rtti_type_tc_name(base_typeclass_info(_, _, _), Size, GCC_Type) -->
+	{ MR_BaseTypeclassInfo = gcc__ptr_type_node },
+	build_sized_array_type(MR_BaseTypeclassInfo, Size, GCC_Type).
+
 :- pred build_type_info_type(rtti_type_info::in,
-		gcc__type::out, io__state::di, io__state::uo) is det.
+	gcc__type::out, io__state::di, io__state::uo) is det.
 
 build_type_info_type(plain_arity_zero_type_info(_), GCC_Type) -->
-	build_rtti_type(type_ctor_info, no_size, GCC_Type).
+	build_rtti_type_name(type_ctor_info, no_size, GCC_Type).
 build_type_info_type(plain_type_info(_TypeCtor, ArgTypes),
 		GCC_Type) -->
 	{ Arity = list__length(ArgTypes) },
@@ -2161,7 +2172,7 @@ build_pseudo_type_info_type(type_var(_), _) -->
 	% rather than pointers, so there is no pointed-to type
 	{ error("mlds_rtti_type: type_var") }.
 build_pseudo_type_info_type(plain_arity_zero_pseudo_type_info(_), GCC_Type) -->
-	build_rtti_type(type_ctor_info, no_size, GCC_Type).
+	build_rtti_type_name(type_ctor_info, no_size, GCC_Type).
 build_pseudo_type_info_type(plain_pseudo_type_info(_TypeCtor, ArgTypes),
 		GCC_Type) -->
 	{ Arity = list__length(ArgTypes) },
@@ -2336,7 +2347,7 @@ maybe_add_module_qualifier(QualifiedName, AsmName0, AsmName) :-
 			% instance decls, even if they are in a different
 			% module
 			%
-			Name = data(base_typeclass_info(_, _))
+			Name = data(rtti(tc_rtti_id(_)))
 		;
 			% We don't module qualify pragma export names.
 			Name = export(_)
@@ -2368,12 +2379,9 @@ build_name(export(Name)) = Name.
 build_data_name(var(Name)) = name_mangle(ml_var_name_to_string(Name)).
 build_data_name(common(Num)) =
 	string__format("common_%d", [i(Num)]).
-build_data_name(rtti(RttiTypeCtor0, RttiName0)) = RttiAddrName :-
-	RttiTypeCtor = fixup_rtti_type_ctor(RttiTypeCtor0),
-	RttiName = fixup_rtti_name(RttiName0),
-	rtti__addr_to_string(RttiTypeCtor, RttiName, RttiAddrName).
-build_data_name(base_typeclass_info(ClassId, InstanceStr)) =
-	make_base_typeclass_info_name(ClassId, InstanceStr).
+build_data_name(rtti(RttiId0)) = RttiAddrName :-
+	RttiId = fixup_rtti_id(RttiId0),
+	rtti__id_to_c_identifier(RttiId, RttiAddrName).
 build_data_name(module_layout) = _ :-
 	sorry(this_file, "module_layout").
 build_data_name(proc_layout(_ProcLabel)) = _ :-
@@ -2390,6 +2398,14 @@ build_data_name(tabling_pointer(ProcLabel)) = TablingPointerName :-
 	get_func_name(Name, _FuncName, AsmFuncName),
 	TablingPointerName = string__append("table_for_", AsmFuncName).
 
+:- func fixup_rtti_id(rtti_id) = rtti_id.
+
+fixup_rtti_id(ctor_rtti_id(RttiTypeCtor0, RttiName0))
+		= ctor_rtti_id(RttiTypeCtor, RttiName) :-
+	RttiTypeCtor = fixup_rtti_type_ctor(RttiTypeCtor0),
+	RttiName = fixup_rtti_name(RttiName0).
+fixup_rtti_id(tc_rtti_id(TCRttiName)) = tc_rtti_id(TCRttiName).
+
 	% XXX sometimes earlier stages of the compiler forget to add
 	% the appropriate qualifiers for stuff in the `builtin' module;
 	% we fix that here.
@@ -2405,7 +2421,7 @@ fixup_rtti_type_ctor(RttiTypeCtor0) = RttiTypeCtor :-
 		RttiTypeCtor = RttiTypeCtor0
 	).
 
-:- func fixup_rtti_name(rtti_name) = rtti_name.
+:- func fixup_rtti_name(ctor_rtti_name) = ctor_rtti_name.
 fixup_rtti_name(RttiTypeCtor0) = RttiTypeCtor :-
 	(
 		RttiTypeCtor0 = pseudo_type_info(PseudoTypeInfo)
@@ -3486,7 +3502,7 @@ build_data_var_name(ModuleName, DataName) =
 		% instance decls, even if they are in a different
 		% module
 		%
-		DataName = base_typeclass_info(_, _)
+		DataName = rtti(tc_rtti_id(_))
 	->
 		ModuleQualifier = ""
 	;

@@ -419,7 +419,7 @@ ml_gen_constant(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
 	{ RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity) },
 	{ DataAddr = data_addr(MLDS_Module,
-		rtti(RttiTypeCtor, type_ctor_info)) },
+		rtti(ctor_rtti_id(RttiTypeCtor, type_ctor_info))) },
 	{ Rval = unop(cast(MLDS_VarType),
 			const(data_addr_const(DataAddr))) }.
 
@@ -427,8 +427,8 @@ ml_gen_constant(base_typeclass_info_constant(ModuleName, ClassId,
 			Instance), VarType, Rval) -->
 	ml_gen_type(VarType, MLDS_VarType),
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ DataAddr = data_addr(MLDS_Module,
-		base_typeclass_info(ClassId, Instance)) },
+	{ DataAddr = data_addr(MLDS_Module, rtti(tc_rtti_id(
+		base_typeclass_info(ModuleName, ClassId, Instance)))) },
 	{ Rval = unop(cast(MLDS_VarType),
 			const(data_addr_const(DataAddr))) }.
 

@@ -397,7 +397,7 @@ type_ctor_info__make_notag_details(TypeArity, SymName, ArgType, MaybeArgName,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- type name_sort_info == assoc_list(pair(string, int), rtti_name).
+:- type name_sort_info == assoc_list(pair(string, int), ctor_rtti_name).
 
 % Make the functor and layout tables for an enum type.
 
@@ -463,8 +463,10 @@ type_ctor_info__make_enum_maps(EnumFunctor, ValueMap0, ValueMap,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- type tag_map == map(int, pair(sectag_locn, map(int, rtti_name))).
-:- type tag_list == assoc_list(int, pair(sectag_locn, map(int, rtti_name))).
+:- type tag_map == map(int,
+	pair(sectag_locn, map(int, ctor_rtti_name))).
+:- type tag_list == assoc_list(int,
+	pair(sectag_locn, map(int, ctor_rtti_name))).
 
 :- type reserved_addr_map == map(reserved_address, rtti_data).
 

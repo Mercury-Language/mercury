@@ -1637,7 +1637,7 @@ mlds_output_fully_qualified_name(QualifiedName) -->
 			% instance decls, even if they are in a different
 			% module
 			%
-			{ Name = data(base_typeclass_info(_, _)) }
+			{ Name = data(rtti(tc_rtti_id(_))) }
 		;
 			% We don't module qualify pragma export names.
 			{ Name = export(_) }
@@ -1749,12 +1749,9 @@ mlds_output_data_name(var(Name)) -->
 mlds_output_data_name(common(Num)) -->
 	io__write_string("common_"),
 	io__write_int(Num).
-mlds_output_data_name(rtti(RttiTypeCtor, RttiName)) -->
-	{ rtti__addr_to_string(RttiTypeCtor, RttiName, RttiAddrName) },
+mlds_output_data_name(rtti(RttiId)) -->
+	{ rtti__id_to_c_identifier(RttiId, RttiAddrName) },
 	io__write_string(RttiAddrName).
-mlds_output_data_name(base_typeclass_info(ClassId, InstanceStr)) -->
-        { Name = make_base_typeclass_info_name(ClassId, InstanceStr) },
-	io__write_string(Name).
 mlds_output_data_name(module_layout) -->
 	{ error("mlds_to_c.m: NYI: module_layout") }.
 mlds_output_data_name(proc_layout(_ProcLabel)) -->
@@ -1874,8 +1871,8 @@ mlds_output_type_prefix(mlds__commit_type) -->
 	;
 		io__write_string("jmp_buf")
 	).
-mlds_output_type_prefix(mlds__rtti_type(RttiName)) -->
-	{ rtti_name_c_type(RttiName, CType, _IsArray) },
+mlds_output_type_prefix(mlds__rtti_type(RttiId)) -->
+	{ rtti_id_c_type(RttiId, CType, _IsArray) },
 	io__write_string(CType).
 mlds_output_type_prefix(mlds__unknown_type) -->
 	{ error("mlds_to_c.m: prefix has unknown type") }.
@@ -2010,8 +2007,8 @@ mlds_output_type_suffix(mlds__cont_type(ArgTypes), _) -->
 		io__write_string(")")
 	).
 mlds_output_type_suffix(mlds__commit_type, _) --> [].
-mlds_output_type_suffix(mlds__rtti_type(RttiName), ArraySize) -->
-	( { rtti_name_has_array_type(RttiName) = yes } ->
+mlds_output_type_suffix(mlds__rtti_type(RttiId), ArraySize) -->
+	( { rtti_id_has_array_type(RttiId) = yes } ->
 		mlds_output_array_type_suffix(ArraySize)
 	;
 		[]
@@ -3435,7 +3432,7 @@ mlds_output_rval_const(code_addr_const(CodeAddr)) -->
 mlds_output_rval_const(data_addr_const(DataAddr)) -->
 	mlds_output_data_addr(DataAddr).
 mlds_output_rval_const(null(_)) -->
-       io__write_string("NULL").
+	io__write_string("NULL").
 
 %-----------------------------------------------------------------------------%
 
@@ -3474,8 +3471,8 @@ mlds_output_data_addr(data_addr(ModuleName, DataName)) -->
 	(
 		% if its an array type, then we just use the name,
 		% otherwise we must prefix the name with `&'.
-		{ DataName = rtti(_, RttiName) },
-		{ rtti_name_has_array_type(RttiName) = yes }
+		{ DataName = rtti(RttiId) },
+		{ rtti_id_has_array_type(RttiId) = yes }
 	->
 		mlds_output_data_var_name(ModuleName, DataName)
 	;
@@ -3499,7 +3496,7 @@ mlds_output_data_var_name(ModuleName, DataName) -->
 		% instance decls, even if they are in a different
 		% module
 		%
-		{ DataName = base_typeclass_info(_, _) }
+		{ DataName = rtti(tc_rtti_id(_)) }
 	->
 		[]
 	;

@@ -1647,11 +1647,9 @@ output_mlds_var_name(var_name(Name, yes(Num))) -->
 % XXX Most of this code doesn't yet work/hasn't been implemented in the Java
 % backend.
 %
-output_data_name(rtti(RttiTypeCtor, RttiName)) -->
-	{ rtti__addr_to_string(RttiTypeCtor, RttiName, RttiAddrName) },
+output_data_name(rtti(RttiId)) -->
+	{ rtti__id_to_c_identifier(RttiId, RttiAddrName) },
 	io__write_string(RttiAddrName).
-output_data_name(base_typeclass_info(ClassId, InstanceStr)) -->
-	io__write_string(make_base_typeclass_info_name(ClassId, InstanceStr)).
 output_data_name(module_layout) -->
 	{ error("mlds_to_java.m: NYI: module_layout") }.
 output_data_name(proc_layout(_ProcLabel)) -->
@@ -1734,8 +1732,8 @@ output_type(mlds__commit_type) -->
 % XXX The RTTI data should actually be static but it isn't being
 % generated as such.
 %
-output_type(mlds__rtti_type(RttiName)) -->
-	{ rtti_name_java_type(RttiName, JavaTypeName, _IsArray) },
+output_type(mlds__rtti_type(RttiId)) -->
+	{ rtti_id_java_type(RttiId, JavaTypeName, _IsArray) },
 	io__write_string("static "),
 	io__write_string(JavaTypeName).
 output_type(mlds__unknown_type) -->

@@ -1211,53 +1211,43 @@ stack_layout__construct_table_arg_pti_rval(ClosureArg,
 	llds_type, stack_layout_info, stack_layout_info).
 :- mode stack_layout__represent_live_value_type(in, out, out, in, out) is det.
 
-stack_layout__represent_live_value_type(succip, Rval, data_ptr) -->
-	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "succip", 0) },
-	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
-	{ Rval = const(data_addr_const(DataAddr)) }.
-stack_layout__represent_live_value_type(hp, Rval, data_ptr) -->
-	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "hp", 0) },
-	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
-	{ Rval = const(data_addr_const(DataAddr)) }.
-stack_layout__represent_live_value_type(curfr, Rval, data_ptr) -->
-	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "curfr", 0) },
-	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
-	{ Rval = const(data_addr_const(DataAddr)) }.
-stack_layout__represent_live_value_type(maxfr, Rval, data_ptr) -->
-	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "maxfr", 0) },
-	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
-	{ Rval = const(data_addr_const(DataAddr)) }.
-stack_layout__represent_live_value_type(redofr, Rval, data_ptr) -->
-	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "redofr", 0) },
-	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
-	{ Rval = const(data_addr_const(DataAddr)) }.
-stack_layout__represent_live_value_type(redoip, Rval, data_ptr) -->
-	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "redoip", 0) },
-	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
-	{ Rval = const(data_addr_const(DataAddr)) }.
-stack_layout__represent_live_value_type(trail_ptr, Rval, data_ptr) -->
-	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "trail_ptr", 0) },
-	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
-	{ Rval = const(data_addr_const(DataAddr)) }.
-stack_layout__represent_live_value_type(ticket, Rval, data_ptr) -->
-	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "ticket", 0) },
-	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
-	{ Rval = const(data_addr_const(DataAddr)) }.
-stack_layout__represent_live_value_type(unwanted, Rval, data_ptr) -->
-	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "unwanted", 0) },
-	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
-	{ Rval = const(data_addr_const(DataAddr)) }.
-stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
-		-->
+stack_layout__represent_live_value_type(succip, Rval, data_ptr, !Info) :-
+	stack_layout__represent_special_live_value_type("succip", Rval).
+stack_layout__represent_live_value_type(hp, Rval, data_ptr, !Info) :-
+	stack_layout__represent_special_live_value_type("hp", Rval).
+stack_layout__represent_live_value_type(curfr, Rval, data_ptr, !Info) :-
+	stack_layout__represent_special_live_value_type("curfr", Rval).
+stack_layout__represent_live_value_type(maxfr, Rval, data_ptr, !Info) :-
+	stack_layout__represent_special_live_value_type("maxfr", Rval).
+stack_layout__represent_live_value_type(redofr, Rval, data_ptr, !Info) :-
+	stack_layout__represent_special_live_value_type("redofr", Rval).
+stack_layout__represent_live_value_type(redoip, Rval, data_ptr, !Info) :-
+	stack_layout__represent_special_live_value_type("redoip", Rval).
+stack_layout__represent_live_value_type(trail_ptr, Rval, data_ptr, !Info) :-
+	stack_layout__represent_special_live_value_type("trail_ptr", Rval).
+stack_layout__represent_live_value_type(ticket, Rval, data_ptr, !Info) :-
+	stack_layout__represent_special_live_value_type("ticket", Rval).
+stack_layout__represent_live_value_type(unwanted, Rval, data_ptr, !Info) :-
+	stack_layout__represent_special_live_value_type("unwanted", Rval).
+stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType,
+		!Info) :-
 		% For a stack layout, we can treat all type variables as
 		% universally quantified. This is not the argument of a
 		% constructor, so we do not need to distinguish between type
 		% variables that are and aren't in scope; we can take the
 		% variable number directly from the procedure's tvar set.
-	{ ExistQTvars = [] },
-	{ NumUnivQTvars = -1 },
-	{ ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
-		NumUnivQTvars, ExistQTvars, Rval, LldsType) }.
+	ExistQTvars = [],
+	NumUnivQTvars = -1,
+	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
+		NumUnivQTvars, ExistQTvars, Rval, LldsType).
+
+:- pred stack_layout__represent_special_live_value_type(string::in, rval::out)
+	is det.
+
+stack_layout__represent_special_live_value_type(SpecialTypeName, Rval) :-
+	RttiTypeCtor = rtti_type_ctor(unqualified(""), SpecialTypeName, 0),
+	DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor, type_ctor_info)),
+	Rval = const(data_addr_const(DataAddr)).
 
 %---------------------------------------------------------------------------%
 

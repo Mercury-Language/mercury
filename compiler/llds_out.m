@@ -2368,8 +2368,8 @@ output_const_term_decl_or_defn(ArgsTypes, ModuleName, CellNum, TypeNum,
 
 data_addr_may_include_non_static_code_address(data_addr(_, DataName)) =
 	data_name_may_include_non_static_code_address(DataName).
-data_addr_may_include_non_static_code_address(rtti_addr(_, RttiName)) =
-	rtti_name_would_include_code_addr(RttiName).
+data_addr_may_include_non_static_code_address(rtti_addr(RttiId)) =
+	rtti_id_would_include_code_addr(RttiId).
 data_addr_may_include_non_static_code_address(layout_addr(LayoutName)) =
 	layout_name_would_include_code_addr(LayoutName).
 
@@ -2378,7 +2378,6 @@ data_addr_may_include_non_static_code_address(layout_addr(LayoutName)) =
 % Common structures can include code addresses, but only in grades with
 % static code addresses.
 data_name_may_include_non_static_code_address(common(_, _)) =  no.
-data_name_may_include_non_static_code_address(base_typeclass_info(_, _)) = yes.
 data_name_may_include_non_static_code_address(tabling_pointer(_)) = no.
 
 :- pred output_decl_id(decl_id, io__state, io__state).
@@ -2400,11 +2399,11 @@ output_decl_id(pragma_c_struct(_Name)) -->
 
 output_cons_arg_types([], _, _) --> [].
 output_cons_arg_types([Type | Types], Indent, ArgNum) -->
-			io__write_string(Indent),
-			output_llds_type(Type),
-			io__write_string(" f"),
-			io__write_int(ArgNum),
-			io__write_string(";\n"),
+	io__write_string(Indent),
+	output_llds_type(Type),
+	io__write_string(" f"),
+	io__write_int(ArgNum),
+	io__write_string(";\n"),
 	output_cons_arg_types(Types, Indent, ArgNum + 1).
 
 	% Given an rval, figure out the type it would have as
@@ -2672,9 +2671,8 @@ output_data_addr_decls_2(DataAddr, FirstIndent, LaterIndent, N0, N) -->
 		output_data_addr_storage_type_name(ModuleName, DataVarName, no,
 			LaterIndent)
 	;
-		{ DataAddr = rtti_addr(RttiTypector, RttiVarName) },
-		output_rtti_addr_storage_type_name(RttiTypector, RttiVarName,
-			no)
+		{ DataAddr = rtti_addr(RttiId) },
+		output_rtti_id_storage_type_name(RttiId, no)
 	;
 		{ DataAddr = layout_addr(LayoutName) },
 		output_layout_name_storage_type_name(LayoutName, no)
@@ -2736,35 +2734,29 @@ c_data_const_string(Globals, InclCodeAddr, ConstStr) :-
 
 output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 		LaterIndent) -->
-	( { DataVarName = base_typeclass_info(ClassId, Instance) } ->
-		output_base_typeclass_info_storage_type_name(
-			ModuleName, ClassId, Instance, no)
-	;
-		{ data_name_linkage(DataVarName, Linkage) },
-		globals__io_get_globals(Globals),
-		{ LinkageStr = c_data_linkage_string(Globals, Linkage,
-			no, BeingDefined) },
-		io__write_string(LinkageStr),
+	{ data_name_linkage(DataVarName, Linkage) },
+	globals__io_get_globals(Globals),
+	{ LinkageStr = c_data_linkage_string(Globals, Linkage, no,
+		BeingDefined) },
+	io__write_string(LinkageStr),
 
-		{ InclCodeAddr =
-			data_name_may_include_non_static_code_address(
-				DataVarName) },
-		{ c_data_const_string(Globals, InclCodeAddr, ConstStr) },
-		io__write_string(ConstStr),
+	{ InclCodeAddr =
+		data_name_may_include_non_static_code_address(
+			DataVarName) },
+	{ c_data_const_string(Globals, InclCodeAddr, ConstStr) },
+	io__write_string(ConstStr),
 
-		io__write_string("struct "),
-		output_data_addr(ModuleName, DataVarName),
-		io__write_string("_struct\n"),
-		io__write_string(LaterIndent),
-		io__write_string("\t"),
-		output_data_addr(ModuleName, DataVarName)
-	).
+	io__write_string("struct "),
+	output_data_addr(ModuleName, DataVarName),
+	io__write_string("_struct\n"),
+	io__write_string(LaterIndent),
+	io__write_string("\t"),
+	output_data_addr(ModuleName, DataVarName).
 
 :- pred data_name_linkage(data_name::in, linkage::out) is det.
 
-data_name_linkage(common(_, _),              static).
-data_name_linkage(base_typeclass_info(_, _), extern).
-data_name_linkage(tabling_pointer(_),        static).
+data_name_linkage(common(_, _),       static).
+data_name_linkage(tabling_pointer(_), static).
 
 %-----------------------------------------------------------------------------%
 
@@ -3027,8 +3019,8 @@ output_data_addrs([DataAddr | DataAddrs]) -->
 
 output_data_addr(data_addr(ModuleName, DataName)) -->
 	output_data_addr(ModuleName, DataName).
-output_data_addr(rtti_addr(RttiTypeCtor, RttiName)) -->
-	output_rtti_addr(RttiTypeCtor, RttiName).
+output_data_addr(rtti_addr(RttiId)) -->
+	output_rtti_id(RttiId).
 output_data_addr(layout_addr(LayoutName)) -->
 	output_layout_name(LayoutName).
 
@@ -3043,14 +3035,6 @@ output_data_addr(ModuleName, VarName) -->
 		io__write_string(MangledModuleName),
 		io__write_string("__common_"),
 		io__write_int(CellNum)
-	;
-			% We don't want to include the module name as part
-			% of the name if it is a base_typeclass_info, since
-			% we _want_ to cause a link error for overlapping
-			% instance decls, even if they are in a different
-			% module
-		{ VarName = base_typeclass_info(ClassId, TypeNames) },
-		output_base_typeclass_info_name(ClassId, TypeNames)
 	;
 		{ VarName = tabling_pointer(ProcLabel) },
 		output_tabling_pointer_var_name(ProcLabel)

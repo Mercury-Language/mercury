@@ -59,7 +59,7 @@ rtti_data_list_to_mlds(ModuleInfo, RttiDatas) = MLDS_Defns :-
 mlds_defn_is_potentially_duplicated(MLDS_Defn) :-
 	MLDS_Defn = mlds__defn(EntityName, _, _, _),
 	EntityName = data(DataName),
-	DataName = rtti(_, RttiName),
+	DataName = rtti(ctor_rtti_id(_, RttiName)),
 	( RttiName = type_info(_)
 	; RttiName = pseudo_type_info(_)
 	).
@@ -74,40 +74,28 @@ rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
 		% Also rtti_data_to_name/3 does not handle this case.
 		MLDS_Defns = []
     	;
-		%
-		% Generate the name
-		%
-		(
-			RttiData = base_typeclass_info(InstanceModule,
-				ClassId, InstanceStr, _)
-		->
-			RttiName = base_typeclass_info(InstanceModule,
-				ClassId, InstanceStr),
-			Name = data(base_typeclass_info(ClassId, InstanceStr))
-		;
-			rtti_data_to_name(RttiData, RttiTypeCtor, RttiName),
-			Name = data(rtti(RttiTypeCtor, RttiName))
-		),
-
+		rtti_data_to_id(RttiData, RttiId),
+		Name = data(rtti(RttiId)),
 		gen_init_rtti_data_defn(RttiData, ModuleInfo, Initializer,
 			ExtraDefns),
-		rtti_entity_name_and_init_to_defn(Name, RttiName, Initializer,
+		rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
 			MLDS_Defn),
 		MLDS_Defns = [MLDS_Defn | ExtraDefns]
 	).
 
-:- pred rtti_name_and_init_to_defn(rtti_type_ctor::in, rtti_name::in,
+:- pred rtti_name_and_init_to_defn(rtti_type_ctor::in, ctor_rtti_name::in,
 	mlds__initializer::in, mlds__defn::out) is det.
 
 rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer, MLDS_Defn) :-
-	Name = data(rtti(RttiTypeCtor, RttiName)),
-	rtti_entity_name_and_init_to_defn(Name, RttiName, Initializer,
+	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
+	Name = data(rtti(RttiId)),
+	rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
 		MLDS_Defn).
 
-:- pred rtti_entity_name_and_init_to_defn(mlds__entity_name::in, rtti_name::in,
+:- pred rtti_entity_name_and_init_to_defn(mlds__entity_name::in, rtti_id::in,
 	mlds__initializer::in, mlds__defn::out) is det.
 
-rtti_entity_name_and_init_to_defn(Name, RttiName, Initializer, MLDS_Defn) :-
+rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, MLDS_Defn) :-
 	%
 	% Generate the context
 	%
@@ -120,7 +108,7 @@ rtti_entity_name_and_init_to_defn(Name, RttiName, Initializer, MLDS_Defn) :-
 	%
 	% Generate the declaration flags
 	%
-	Exported = rtti_name_is_exported(RttiName),
+	Exported = rtti_id_is_exported(RttiId),
 	Flags = rtti_data_decl_flags(Exported),
 
 	% The GC never needs to trace these definitions,
@@ -132,7 +120,7 @@ rtti_entity_name_and_init_to_defn(Name, RttiName, Initializer, MLDS_Defn) :-
 	% Generate the declaration body,
 	% i.e. the type and the initializer
 	%
-	MLDS_Type = rtti_type(RttiName),
+	MLDS_Type = rtti_type(RttiId),
 	DefnBody = mlds__data(MLDS_Type, Initializer, GC_TraceCode),
 	MLDS_Defn = mlds__defn(Name, MLDS_Context, Flags, DefnBody).
 
@@ -437,7 +425,8 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
 		ArgInfos = [],
 		ArgTypeDefns = [],
 		ArgTypeInit = gen_init_null_pointer(
-			mlds__rtti_type(field_types(0)))
+			mlds__rtti_type(
+				ctor_rtti_id(RttiTypeCtor, field_types(0))))
 	),
 	(
 		ArgNames = [_ | _],
@@ -450,7 +439,8 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
 		ArgNames = [],
 		ArgNameDefns = [],
 		ArgNameInit = gen_init_null_pointer(
-			mlds__rtti_type(field_names(0)))
+			mlds__rtti_type(
+				ctor_rtti_id(RttiTypeCtor, field_names(0))))
 	),
 	(
 		MaybeExistInfo = yes(ExistInfo),
@@ -462,7 +452,8 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
 		MaybeExistInfo = no,
 		ExistInfoDefns = [],
 		ExistInfoInit = gen_init_null_pointer(
-			mlds__rtti_type(exist_info(0)))
+			mlds__rtti_type(
+				ctor_rtti_id(RttiTypeCtor, exist_info(0))))
 	),
 	SubDefns = list__condense([ArgTypeDefns, ArgNameDefns,
 		ExistInfoDefns]),
@@ -642,7 +633,8 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
 			gen_init_int(0),
 			gen_init_builtin_const("MR_SECTAG_VARIABLE"),
 			gen_init_null_pointer(
-				mlds__rtti_type(du_stag_ordered_table(0)))
+				mlds__rtti_type(ctor_rtti_id(RttiTypeCtor,
+					du_stag_ordered_table(0))))
 		])],
 		FirstPtag = 1
 	; PtagList = [0 - _ | _] ->
@@ -809,7 +801,7 @@ gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor,
 %-----------------------------------------------------------------------------%
 
 :- func gen_init_rtti_names_array(module_name, rtti_type_ctor,
-		list(rtti_name)) = mlds__initializer.
+		list(ctor_rtti_name)) = mlds__initializer.
 gen_init_rtti_names_array(ModuleName, RttiTypeCtor, RttiNames) =
 	gen_init_array(gen_init_rtti_name(ModuleName, RttiTypeCtor), RttiNames).
 
@@ -841,20 +833,22 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
 		RttiData = base_typeclass_info(InstanceModuleName, ClassId,
 			InstanceString, _)
 	->
-		% rtti_data_to_name/3 does not handle this case
-		SrcType = rtti_type(base_typeclass_info(InstanceModuleName,
-			ClassId, InstanceString)),
+		SrcType = rtti_type(tc_rtti_id(
+			base_typeclass_info(InstanceModuleName,
+			ClassId, InstanceString))),
 		MLDS_ModuleName = mercury_module_name_to_mlds(
 			InstanceModuleName),
-		MLDS_DataName = base_typeclass_info(ClassId, InstanceString),
+		MLDS_DataName = rtti(tc_rtti_id(
+			base_typeclass_info(InstanceModuleName,
+				ClassId, InstanceString))),
 		DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
 		Rval = const(data_addr_const(DataAddr)),
 		Initializer = init_obj(unop(gen_cast(SrcType, DestType),
 			Rval))
 	;
-		rtti_data_to_name(RttiData, RttiTypeCtor, RttiName),
-		Initializer = gen_init_cast_rtti_name(DestType,
-			ModuleName, RttiTypeCtor, RttiName)
+		rtti_data_to_id(RttiData, RttiId),
+		Initializer = gen_init_cast_rtti_id(DestType,
+			ModuleName, RttiId)
 	).
 
 	% currently casts only store the destination type
@@ -866,30 +860,55 @@ gen_cast(_SrcType, DestType) = cast(DestType).
 :- func gen_init_rtti_data(module_name, rtti_data) = mlds__initializer.
 
 gen_init_rtti_data(ModuleName, RttiData) = Initializer :-
-	rtti_data_to_name(RttiData, RttiTypeCtor, RttiName),
-	Initializer = gen_init_rtti_name(ModuleName, RttiTypeCtor, RttiName).
+	rtti_data_to_id(RttiData, RttiId),
+	Initializer = gen_init_rtti_id(ModuleName, RttiId).
+
+	% Generate an MLDS initializer comprising just the
+	% the rval for a given rtti_id
+:- func gen_init_rtti_id(module_name, rtti_id) =
+	mlds__initializer.
+
+gen_init_rtti_id(ModuleName, ctor_rtti_id(RttiTypeCtor, RttiName)) =
+	gen_init_rtti_name(ModuleName, RttiTypeCtor, RttiName).
+gen_init_rtti_id(ModuleName, tc_rtti_id(TCRttiName)) =
+	gen_init_tc_rtti_name(ModuleName, TCRttiName).
 
 	% Generate an MLDS initializer comprising just the
 	% the rval for a given rtti_name
-:- func gen_init_rtti_name(module_name, rtti_type_ctor, rtti_name) =
+:- func gen_init_rtti_name(module_name, rtti_type_ctor, ctor_rtti_name) =
 	mlds__initializer.
 
 gen_init_rtti_name(ModuleName, RttiTypeCtor, RttiName) =
 	init_obj(gen_rtti_name(ModuleName, RttiTypeCtor, RttiName)).
 
+	% Generate an MLDS initializer comprising just the
+	% the rval for a given tc_rtti_name
+:- func gen_init_tc_rtti_name(module_name, tc_rtti_name) =
+	mlds__initializer.
+
+gen_init_tc_rtti_name(ModuleName, TCRttiName) =
+	init_obj(gen_tc_rtti_name(ModuleName, TCRttiName)).
+
 	% Generate the MLDS initializer comprising the rtti_name
 	% for a given rtti_name, converted to the given type.
-:- func gen_init_cast_rtti_name(mlds__type, module_name, rtti_type_ctor,
-	rtti_name) = mlds__initializer.
+:- func gen_init_cast_rtti_id(mlds__type, module_name, rtti_id)
+	= mlds__initializer.
 
-gen_init_cast_rtti_name(DestType, ModuleName, RttiTypeCtor, RttiName) =
-		Initializer :-
-	SrcType = rtti_type(RttiName), 
+gen_init_cast_rtti_id(DestType, ModuleName, RttiId) = Initializer :-
+	SrcType = rtti_type(RttiId), 
 	Initializer = init_obj(unop(gen_cast(SrcType, DestType),
-		gen_rtti_name(ModuleName, RttiTypeCtor, RttiName))).
+		gen_rtti_id(ModuleName, RttiId))).
 
-	% Generate the MLDS rval for an rtti_name.
-:- func gen_rtti_name(module_name, rtti_type_ctor, rtti_name) = mlds__rval.
+	% Generate the MLDS rval for an rtti_id.
+:- func gen_rtti_id(module_name, rtti_id) = mlds__rval.
+
+gen_rtti_id(ThisModuleName, ctor_rtti_id(RttiTypeCtor, RttiName)) =
+	gen_rtti_name(ThisModuleName, RttiTypeCtor, RttiName).
+gen_rtti_id(ThisModuleName, tc_rtti_id(TCRttiName)) =
+	gen_tc_rtti_name(ThisModuleName, TCRttiName).
+
+:- func gen_rtti_name(module_name, rtti_type_ctor, ctor_rtti_name)
+	= mlds__rval.
 
 gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
 	%
@@ -931,7 +950,16 @@ gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
 		)
 	),
 	MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-	MLDS_DataName = rtti(RttiTypeCtor, RttiName),
+	MLDS_DataName = rtti(ctor_rtti_id(RttiTypeCtor, RttiName)),
+	DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
+	Rval = const(data_addr_const(DataAddr)).
+
+:- func gen_tc_rtti_name(module_name, tc_rtti_name) = mlds__rval.
+
+gen_tc_rtti_name(_ThisModuleName, TCRttiName) = Rval :-
+	TCRttiName = base_typeclass_info(InstanceModuleName, _, _),
+	MLDS_ModuleName = mercury_module_name_to_mlds(InstanceModuleName),
+	MLDS_DataName = rtti(tc_rtti_id(TCRttiName)),
 	DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
 	Rval = const(data_addr_const(DataAddr)).
 

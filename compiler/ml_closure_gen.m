@@ -361,6 +361,7 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type,
 			RttiTypeCtor0 = rtti_type_ctor(ModuleName0, _, _),
 			ModuleName = fixup_builtin_module(ModuleName0),
 			RttiTypeCtor = RttiTypeCtor0,
+			RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
 			MLDS_Defns = MLDS_Defns0
 		;
 			% for other types, we need to generate a definition
@@ -368,7 +369,7 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type,
 			% in the the current module
 			module_info_name(ModuleInfo, ModuleName),
 			RttiData = pseudo_type_info(PseudoTypeInfo),
-			rtti_data_to_name(RttiData, RttiTypeCtor, RttiName),
+			rtti_data_to_id(RttiData, RttiId),
 			RttiDefns0 = rtti_data_list_to_mlds(ModuleInfo,
 				[RttiData]),
 			% rtti_data_list_to_mlds assumes that the result
@@ -387,8 +388,8 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type,
 		),
 		MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
 		Rval = const(data_addr_const(data_addr(MLDS_ModuleName,
-			rtti(RttiTypeCtor, RttiName)))),
-		Type = mlds__rtti_type(RttiName)
+			rtti(RttiId)))),
+		Type = mlds__rtti_type(RttiId)
 	).
 
 :- pred ml_gen_type_info(module_info::in, rtti_type_info::in,
@@ -403,14 +404,14 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type,
 		RttiName = type_ctor_info,
 		RttiTypeCtor0 = rtti_type_ctor(ModuleName0, _, _),
 		ModuleName = fixup_builtin_module(ModuleName0),
-		RttiTypeCtor = RttiTypeCtor0,
+		RttiId = ctor_rtti_id(RttiTypeCtor0, RttiName),
 		MLDS_Defns = MLDS_Defns0
 	;
 		% for other types, we need to generate a definition
 		% of the type_info for that type, in the the current module
 		module_info_name(ModuleInfo, ModuleName),
 		RttiData = type_info(TypeInfo),
-		rtti_data_to_name(RttiData, RttiTypeCtor, RttiName),
+		rtti_data_to_id(RttiData, RttiId),
 		RttiDefns0 = rtti_data_list_to_mlds(ModuleInfo, [RttiData]),
 		% rtti_data_list_to_mlds assumes that the result
 		% will be at file scope, but here we're generating it
@@ -426,8 +427,8 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type,
 	),
 	MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
 	Rval = const(data_addr_const(data_addr(MLDS_ModuleName,
-		rtti(RttiTypeCtor, RttiName)))),
-	Type = mlds__rtti_type(RttiName).
+		rtti(RttiId)))),
+	Type = mlds__rtti_type(RttiId).
 
 :- func arg_maybe_pseudo_type_infos(rtti_pseudo_type_info)
 	= list(rtti_maybe_pseudo_type_info).

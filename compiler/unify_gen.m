@@ -406,7 +406,7 @@ unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
 		{ error("unify_gen: type-info constant has args") }
 	),
 	{ RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity) },
-	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
+	{ DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor, type_ctor_info)) },
 	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 		ClassId, Instance), Var, Args, _Modes, _, _, empty) -->
@@ -415,8 +415,9 @@ unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 	;
 		{ error("unify_gen: typeclass-info constant has args") }
 	),
-	code_info__assign_const_to_var(Var, const(data_addr_const(data_addr(
-		ModuleName, base_typeclass_info(ClassId, Instance))))).
+	code_info__assign_const_to_var(Var, const(data_addr_const(
+		rtti_addr(tc_rtti_id(base_typeclass_info(ModuleName, ClassId,
+			Instance)))))).
 unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
 		Var, Args, _Modes, _, _, empty) -->
 	( { Args = [] } ->

@@ -21,7 +21,6 @@
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
 :- import_module libs__tree.
@@ -870,17 +869,13 @@
 :- type data_addr
 	--->	data_addr(module_name, data_name)
 			% module name; which var
-	;	rtti_addr(rtti_type_ctor, rtti_name)
-			% type id; which var
+	;	rtti_addr(rtti_id)
 	;	layout_addr(layout_name).
 
 :- type data_name
 	--->	common(int, int)
 			% The first int is the cell number; the second is the
 			% cell type number.
-	;	base_typeclass_info(class_id, string)
-			% class name & class arity, names and arities of the
-			% types
 	;	tabling_pointer(proc_label).
 			% A variable that contains a pointer that points to
 			% the table used to implement memoization, loopcheck
