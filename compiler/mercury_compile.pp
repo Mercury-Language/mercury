@@ -31,7 +31,7 @@
 :- import_module prof.
 :- import_module prog_out, prog_util, hlds_out.
 :- import_module mercury_to_mercury, mercury_to_goedel.
-:- import_module getopt, options, globals.
+:- import_module conf, getopt, options, globals.
 :- import_module int, map, set, std_util, dir, tree234, term, varset, hlds.
 :- import_module negation, dependency_graph, constraint.
 :- import_module common, require.
@@ -68,7 +68,7 @@ postprocess_options(ok(OptionTable0), Error) -->
 			( 
 				{ Tags_Method0 = string(Tags_Method_String) },
 				{ convert_tags_method(Tags_Method_String,
-					Tags_Method) }
+					Tags_Method1) }
 			->
 				% work around for NU-Prolog problems
 				( { map__search(OptionTable0, heap_space,
@@ -77,6 +77,11 @@ postprocess_options(ok(OptionTable0), Error) -->
 					io__preallocate_heap_space(HeapSpace)
 				;
 					[]
+				),
+				( { Tags_Method1 = low, conf__low_tag_bits(0) } ->
+					{ Tags_Method = none }
+				;
+					{ Tags_Method = Tags_Method1 }
 				),
 				globals__io_init(OptionTable, GC_Method,
 					Tags_Method),
@@ -94,11 +99,24 @@ postprocess_options(ok(OptionTable0), Error) -->
 					[]
 				),
 				% --tags none implies --num-tag-bits 0
-				( { Tags_Method = none } ->
+				% --tags low implies using autoconf result
+				(
+					{ Tags_Method = none },
 					globals__io_set_option(num_tag_bits,
 						int(0))
+				;
+					{ Tags_Method = low },
+					{ conf__low_tag_bits(LowTagBits) },
+					globals__io_set_option(num_tag_bits,
+						int(LowTagBits))
 				;	
-					[]
+					{ Tags_Method = high },
+					globals__io_lookup_int_option(num_tag_bits,
+						NumTagBits0),
+					{ int__max(NumTagBits0, 0, NumTagBits1) },
+					{ int__min(NumTagBits1, 6, HighTagBits) },
+					globals__io_set_option(num_tag_bits,
+						int(HighTagBits))
 				),
 				% --very-verbose implies --verbose
 				globals__io_lookup_bool_option(very_verbose,
@@ -119,21 +137,15 @@ postprocess_options(ok(OptionTable0), Error) -->
 				;
 					[]
 				),
-				% --link implies --compile
-				globals__io_lookup_bool_option(link, Link),
-				( { Link = yes } ->
-					globals__io_set_option(compile,
-						bool(yes))
-				;	
-					[]
-				),
-				% --compile implies --generate-code
-				globals__io_lookup_bool_option(compile,
-					Compile),
-				( { Compile = yes } ->
-					globals__io_set_option(generate_code,
-						bool(yes))
-				;	
+				globals__io_lookup_bool_option(inhibit_warnings, InhibitWarnings),
+				( { InhibitWarnings = yes } ->
+					globals__io_set_option(warn_singleton_vars,
+						bool(no)),
+					globals__io_set_option(warn_missing_det_decls,
+						bool(no)),
+					globals__io_set_option(warn_det_decls_too_lax,
+						bool(no))
+				;
 					[]
 				),
 				{ Error = no }
@@ -291,9 +303,26 @@ main_2(no, Args) -->
         ;
 		{ strip_module_suffixes(Args, ModuleNames) },
 		process_module_list(ModuleNames),
-		globals__io_lookup_bool_option(link, Link),
+		globals__io_lookup_bool_option(generate_dependencies, GenerateDependencies),
+		globals__io_lookup_bool_option(make_interface, MakeInterface),
+		globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
+		globals__io_lookup_bool_option(convert_to_goedel, ConvertToGoedel),
+		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
+		globals__io_lookup_bool_option(compile_to_c, CompileToC),
+		globals__io_lookup_bool_option(compile_only, CompileOnly),
 		io__get_exit_status(ExitStatus),
-		( { Link = yes, ExitStatus = 0 } ->
+		(
+			{
+				GenerateDependencies = no,
+				MakeInterface = no,
+				ConvertToMercury = no,
+				ConvertToGoedel = no,
+				ErrorcheckOnly = no,
+				CompileToC = no,
+				CompileOnly = no,
+				ExitStatus = 0
+			}
+		->
 			mercury_compile__link_module_list(ModuleNames)
 		;
 			[]
@@ -534,6 +563,35 @@ generate_dependencies(Module) -->
 				io__output_stream, io__state, io__state).
 :- mode generate_dependencies_2(in, in, in, in, di, uo) is det.
 
+generate_dependencies_2([Module | Modules], ModuleName, DepsMap0, DepStream) -->
+		% Look up the module's dependencies, and determine whether
+		% it has been processed yet.
+	lookup_dependencies(Module, DepsMap0, Done, Error, ImplDeps, IntDeps,
+				DepsMap1),
+		% If the module hadn't been processed yet, compute its
+		% transitive dependencies (we already know its primary ones),
+		% (1) output a line for this module to the dependency file
+		% (if the file exists), (2) add its imports to the list of
+		% dependencies we need to generate, and (3) mark it as having
+		% been processed.
+	( { Done = no } ->
+		{ map__set(DepsMap1, Module,
+			deps(yes, Error, IntDeps, ImplDeps), DepsMap2) },
+		transitive_dependencies(IntDeps, DepsMap2, SecondaryDeps,
+			DepsMap),
+		( { Error \= fatal } ->
+			write_dependency_file(Module, ImplDeps, SecondaryDeps)
+		;
+			[]
+		),
+		{ list__append(ImplDeps, Modules, Modules2) }
+	;
+		{ DepsMap = DepsMap1 },
+		{ Modules2 = Modules }
+	),
+		% Recursively process the remaining modules
+	generate_dependencies_2(Modules2, ModuleName, DepsMap, DepStream).
+
 generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream,
 		"# automatically generated dependencies for module `"),
@@ -656,18 +714,61 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".qls)\n\n"),
 
-	io__write_string(DepStream, "clean_progs: clean_prog_"),
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, ".check : $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".errs)\n\n"),
 
-	io__write_string(DepStream, "clean_prog_"),
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ":\n"),
+	io__write_string(DepStream, ".ints : $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".dates)\n\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".clean :\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".cs)\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".ss)\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".os)\n\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".nos)\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".qls)\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".realclean : "),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".clean\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".errs)\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".dates)\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".ints)\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".deps)\n"),
 	io__write_string(DepStream, "\t-rm -f "),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, " "),
 	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".dep "),
+	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".nu "),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".nu.save "),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".nu.debug.save "),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".nu.debug "),
 	io__write_string(DepStream, ModuleName),
@@ -677,49 +778,16 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n\n"),
 
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".check : $("),
+	io__write_string(DepStream, ".clean_nu :\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".errs)\n\n"),
+	io__write_string(DepStream, ".nos)\n\n"),
 
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".ints : $("),
+	io__write_string(DepStream, ".clean_sicstus :\n"),
+	io__write_string(DepStream, "\t-rm -f $("),
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".dates)\n").
-
-generate_dependencies_2([Module | Modules], ModuleName, DepsMap0, DepStream) -->
-	%
-	% Look up the module's dependencies, and determine whether
-	% it has been processed yet.
-	%
-	lookup_dependencies(Module, DepsMap0, Done, Error, ImplDeps, IntDeps,
-				DepsMap1),
-	%
-	% If the module hadn't been processed yet, compute its
-	% transitive dependencies (we already know its primary dependencies),
-	% output a line for this module to the dependency file
-	% (if the file exists),
-	% add its imports to the list of dependencies we need to
-	% generate, and mark it as having been processed.
-	%
-	( { Done = no } ->
-		{ map__set(DepsMap1, Module,
-			deps(yes, Error, IntDeps, ImplDeps), DepsMap2) },
-		transitive_dependencies(IntDeps, DepsMap2, SecondaryDeps,
-			DepsMap),
-		( { Error \= fatal } ->
-			write_dependency_file(Module, ImplDeps, SecondaryDeps)
-		;
-			[]
-		),
-		{ list__append(ImplDeps, Modules, Modules2) }
-	;
-		{ DepsMap = DepsMap1 },
-		{ Modules2 = Modules }
-	),
-	%
-	% Recursively process the remaining modules
-	%
-	generate_dependencies_2(Modules2, ModuleName, DepsMap, DepStream).
+	io__write_string(DepStream, ".qls)\n\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -1151,14 +1219,13 @@ mercury_compile(Module) -->
 	(
 		{ Proceed2 = yes },
 		mercury_compile__middle_pass(HLDS9, HLDS11, Proceed3),
-		globals__io_lookup_bool_option(generate_code, GenerateCode),
-		{ bool__and(GenerateCode, Proceed3, Proceed4) },
-		(
-			{ Proceed4 = yes },
+		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
+		( { ErrorcheckOnly = no, Proceed3 = yes } ->
 			mercury_compile__backend_pass(HLDS11, HLDS16, LLDS2),
-			mercury_compile__output_pass(HLDS16, LLDS2, ModuleName)
+			mercury_compile__output_pass(HLDS16, LLDS2, ModuleName,
+				_CompileErrors)
 		;
-			{ Proceed4 = no }
+			[]
 		)
 	;
 		{ Proceed2 = no }
@@ -1564,15 +1631,15 @@ mercury_compile__semantic_pass_by_preds(HLDS1, HLDS9, Proceed0, Proceed) -->
 
 mercury_compile__middle_pass(HLDS9, HLDS11, Proceed) -->
 	globals__io_lookup_bool_option(trad_passes, TradPasses),
-	globals__io_lookup_bool_option(generate_code, GenerateCode),
+	globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 	(
 		{ TradPasses = no },
 		mercury_compile__middle_pass_by_phases(HLDS9, HLDS11,
-			GenerateCode, Proceed)
+			ErrorcheckOnly, Proceed)
 	;
 		{ TradPasses = yes },
 		mercury_compile__middle_pass_by_preds(HLDS9, HLDS11,
-			GenerateCode, Proceed)
+			ErrorcheckOnly, Proceed)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1581,16 +1648,13 @@ mercury_compile__middle_pass(HLDS9, HLDS11, Proceed) -->
 	bool, bool, io__state, io__state).
 :- mode mercury_compile__middle_pass_by_phases(di, uo, in, out, di, uo) is det.
 
-mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, GenerateCode, Proceed) -->
+mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, ErrorcheckOnly, Proceed) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
 	mercury_compile__check_determinism(HLDS9, HLDS10, FoundError),
 	maybe_report_stats(Statistics),
 	mercury_compile__maybe_dump_hlds(HLDS10, "10", "determinism"),
-	(
-		{ GenerateCode = yes },
-		{ FoundError = no }
-	->
+	( { ErrorcheckOnly = no, FoundError = no } ->
 		mercury_compile__maybe_propagate_constraints(HLDS10, HLDS10a),
 		mercury_compile__maybe_dump_hlds(HLDS10a, "50", "constraint"),
 
@@ -1657,8 +1721,8 @@ mercury_compile__map_args_to_regs(HLDS0, HLDS) -->
 	bool, bool, io__state, io__state).
 :- mode mercury_compile__middle_pass_by_preds(di, uo, in, out, di, uo) is det.
 
-mercury_compile__middle_pass_by_preds(HLDS9, HLDS11, GenerateCode, Proceed) -->
-	mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, GenerateCode,
+mercury_compile__middle_pass_by_preds(HLDS9, HLDS11, ErrorcheckOnly, Proceed) -->
+	mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, ErrorcheckOnly,
 		Proceed).
 
 %-----------------------------------------------------------------------------%
@@ -1912,10 +1976,10 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId, ModuleInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__output_pass(module_info, list(c_procedure), string,
-	io__state, io__state).
-:- mode mercury_compile__output_pass(in, in, in, di, uo) is det.
+	bool, io__state, io__state).
+:- mode mercury_compile__output_pass(in, in, in, out, di, uo) is det.
 
-mercury_compile__output_pass(HLDS16, LLDS2, ModuleName) -->
+mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
 	mercury_compile__chunk_llds(HLDS16, LLDS2, LLDS3),
@@ -1923,18 +1987,19 @@ mercury_compile__output_pass(HLDS16, LLDS2, ModuleName) -->
 	maybe_report_stats(Statistics),
 
 	mercury_compile__maybe_find_abstr_exports(HLDS16, HLDS17), 
-	% maybe_report_stats(Statistics),
+	maybe_report_stats(Statistics),
 
 	{ module_info_shape_info(HLDS17, Shape_Info) },
 	mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS3),
-	% maybe_report_stats(Statistics),
+	maybe_report_stats(Statistics),
 
-	globals__io_lookup_bool_option(compile, Compile),
-	( { Compile = yes } ->
+	globals__io_lookup_bool_option(compile_to_c, CompileToC),
+	( { CompileToC = no } ->
 		{ string__append(ModuleName, ".c", C_File) },
-		mercury_compile__c_to_obj(C_File, _Compile_went_OK)
+		mercury_compile__c_to_obj(C_File, CompileOK),
+		{ bool__not(CompileOK, CompileErrors) }
 	;
-		[]
+		{ CompileErrors = no }
 	).
 
 	% Split the code up into bite-size chunks for the C compiler.

@@ -607,9 +607,10 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 	;
 		invalid_pred_id(PredId),
 		type_info_get_io_state(TypeInfo1, IOState0),
-		( predicate_table_search_name(PredicateTable, Name, _) ->
+		( predicate_table_search_name(PredicateTable, Name, OtherIds) ->
+			typecheck_find_arities(ModuleInfo, OtherIds, Arities),
 			report_error_pred_num_args(TypeInfo1, PredCallId,
-				IOState0, IOState)
+				Arities, IOState0, IOState)
 		;
 			report_error_undef_pred(TypeInfo1, PredCallId,
 				IOState0, IOState)
@@ -617,6 +618,14 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 		type_info_set_io_state(TypeInfo1, IOState, TypeInfo2),
 		type_info_set_found_error(TypeInfo2, yes, TypeInfo)
 	).
+
+:- pred typecheck_find_arities(module_info, list(pred_id), list(int)).
+:- mode typecheck_find_arities(in, in, out) is det.
+
+typecheck_find_arities(_ModuleInfo, [], []).
+typecheck_find_arities(ModuleInfo, [PredId | PredIds], [Arity | Aritis]) :-
+	predicate_arity(ModuleInfo, PredId, Arity),
+	typecheck_find_arities(ModuleInfo, PredIds, Aritis).
 
 %-----------------------------------------------------------------------------%
 
@@ -2545,17 +2554,34 @@ report_error_undef_pred(TypeInfo, PredId) -->
 	hlds_out__write_pred_call_id(PredId),
 	io__write_string("'.\n").
 
-:- pred report_error_pred_num_args(type_info, pred_call_id,
+:- pred report_error_pred_num_args(type_info, pred_call_id, list(int),
 					io__state, io__state).
-:- mode report_error_pred_num_args(type_info_no_io, in, di, uo) is det.
+:- mode report_error_pred_num_args(type_info_no_io, in, in, di, uo) is det.
 
-report_error_pred_num_args(TypeInfo, Name / _Arity) -->
+report_error_pred_num_args(TypeInfo, Name / Arity, Arities) -->
 	write_type_info_context(TypeInfo),
-	io__write_string(
-		"  error: wrong number of arguments in call to pred `"
-	),
+	io__write_string("  error: wrong number of arguments ("),
+	io__write_int(Arity),
+	io__write_string(") in call to pred `"),
 	prog_out__write_sym_name(Name),
-	io__write_string("'.\n").
+	io__write_string("'; should be "),
+	report_error_pred_num_right_args(Arities),
+	io__write_string(".\n").
+
+:- pred report_error_pred_num_right_args(list(int), io__state, io__state).
+:- mode report_error_pred_num_right_args(in, di, uo) is det.
+
+report_error_pred_num_right_args([]) --> [].
+report_error_pred_num_right_args([Arity | Arities]) -->
+	io__write_int(Arity),
+	( { Arities = [] } ->
+		[]
+	; { Arities = [_] } ->
+		io__write_string(" or ")
+	;
+		io__write_string(", ")
+	),
+	report_error_pred_num_right_args(Arities).
 
 :- pred report_error_undef_cons(type_info, const, int, io__state, io__state).
 :- mode report_error_undef_cons(type_info_no_io, in, in, di, uo) is det.

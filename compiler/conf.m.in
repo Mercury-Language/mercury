@@ -1,0 +1,19 @@
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+
+% File: conf.m.in
+% Author: zs
+
+:- module conf.
+
+:- interface.
+
+:- pred conf__low_tag_bits(int).
+:- mode conf__low_tag_bits(out) is det.
+
+:- implementation.
+
+conf__low_tag_bits(@LOW_TAG_BITS@).

@@ -543,8 +543,8 @@ output_c_procedure_list([P|Ps]) -->
 :- mode output_c_procedure(in, di, uo) is det.
 
 output_c_procedure(c_procedure(Name,Arity,ModeNum0,Instructions)) -->
-	globals__io_lookup_bool_option(mod_comments, PrintModComments),
-	( { PrintModComments = yes } ->
+	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
+	( { PrintAutoComments = yes } ->
 		io__write_string("\n/*-------------------------------------"),
 		io__write_string("------------------------------------*/\n")
 	;
@@ -565,8 +565,8 @@ output_c_procedure(c_procedure(Name,Arity,ModeNum0,Instructions)) -->
 
 output_instruction_list([]) --> [].
 output_instruction_list([Inst - Comment|Instructions]) -->
-	globals__io_lookup_bool_option(mod_comments, PrintModComments),
-	( { PrintModComments = no, Inst = comment(_) } ->
+	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
+	( { PrintAutoComments = no, Inst = comment(_) } ->
 		[]
 	;
 		output_instruction(Inst),
@@ -574,7 +574,7 @@ output_instruction_list([Inst - Comment|Instructions]) -->
 	),
 	(
 		{ Comment \= "" },
-		{ PrintModComments = yes }
+		{ PrintAutoComments = yes }
 	->
 		io__write_string("\t\t/* "),
 		io__write_string(Comment),
@@ -585,10 +585,10 @@ output_instruction_list([Inst - Comment|Instructions]) -->
 	output_instruction_list(Instructions).
 
 output_instruction(comment(Comment)) -->
-	globals__io_lookup_bool_option(mod_comments, PrintModComments),
+	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
 	(
 		{ Comment \= "" },
-		{ PrintModComments = yes }
+		{ PrintAutoComments = yes }
 	->
 		io__write_strings(["/* ", Comment, " */"])
 	;
@@ -596,9 +596,9 @@ output_instruction(comment(Comment)) -->
 	).
 
 output_instruction(livevals(LiveVals)) -->
-	globals__io_lookup_bool_option(mod_comments, PrintModComments),
+	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
 	(
-		{ PrintModComments = yes }
+		{ PrintAutoComments = yes }
 	->
 		io__write_string("/*\n * Live lvalues:\n"),
 		{ set__to_sorted_list(LiveVals, LiveValsList) },
@@ -757,8 +757,8 @@ output_livevals([Lval|Lvals]) -->
 :- mode output_gc_livevals(in, di, uo) is det.
 
 output_gc_livevals(LiveVals) -->
-	globals__io_lookup_bool_option(mod_comments, PrintModComments),
-	( { PrintModComments = yes } ->
+	globals__io_lookup_bool_option(auto_comments, PrintAutoComments),
+	( { PrintAutoComments = yes } ->
 		io__write_string("/*\n"),
 		io__write_string(" * Garbage collection livevals info\n"),
 		output_gc_livevals_2(LiveVals),
@@ -939,7 +939,7 @@ output_lval_decls(temp(_)) --> [].
 output_code_addr_decls(succip) --> [].
 output_code_addr_decls(do_succeed(_)) --> [].
 output_code_addr_decls(do_fail) -->
-	{ use_macro_for_redo_fail(UseMacro) },
+	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes }
 	;
@@ -949,7 +949,7 @@ output_code_addr_decls(do_fail) -->
 		io__write_string(");\n\t  ")
 	).
 output_code_addr_decls(do_redo) -->
-	{ use_macro_for_redo_fail(UseMacro) },
+	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes }
 	;
@@ -1005,22 +1005,22 @@ output_goto(do_succeed(Last), _) -->
 		io__write_string("succeed_discard();")
 	).
 output_goto(do_fail, _) -->
-	{ use_macro_for_redo_fail(UseMacro) },
+	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes },
 		io__write_string("fail();")
 	;
 		{ UseMacro = no },
-		io__write_string("GOTO_LABEL(do_fail);")
+		io__write_string("GOTO(ENTRY(do_fail));")
 	).
 output_goto(do_redo, _) -->
-	{ use_macro_for_redo_fail(UseMacro) },
+	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes },
 		io__write_string("redo();")
 	;
 		{ UseMacro = no },
-		io__write_string("GOTO_LABEL(do_redo);")
+		io__write_string("GOTO(ENTRY(do_redo));")
 	).
 output_goto(imported(ProcLabel), CallerAddr) -->
 	io__write_string("tailcall(ENTRY("),
@@ -1822,13 +1822,6 @@ gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
 		Labels1 = Labels0
 	),
 	gather_labels_from_instrs(Instrs, Labels1, Labels).
-
-:- pred use_macro_for_redo_fail(bool).
-:- mode use_macro_for_redo_fail(out) is det.
-
-% this ought to be a compiler option...
-
-use_macro_for_redo_fail(yes).
 
 :- end_module llds.
 

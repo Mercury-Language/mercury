@@ -418,26 +418,30 @@ vn__substitute_sub_vns(vn_binop(Op, _, _), [R1, R2], _, binop(Op, R1, R2)).
 vn__verify_tags(Instrs) :-
 	list__reverse(Instrs, RevInstrs),
 	set__init(NoDeref),
-	vn__verify_tags_2(RevInstrs, NoDeref).
+	set__init(Tested),
+	vn__verify_tags_2(RevInstrs, NoDeref, Tested).
 
-:- pred vn__verify_tags_2(list(instruction), set(rval)).
-:- mode vn__verify_tags_2(in, in) is semidet.
+:- pred vn__verify_tags_2(list(instruction), set(rval), set(rval)).
+:- mode vn__verify_tags_2(in, in, in) is semidet.
 
-vn__verify_tags_2([], _).
-vn__verify_tags_2([Instr0 - _| RevInstrs], NoDeref0) :-
-	vn__verify_tags_instr(Instr0, NoDeref0, NoDeref1),
-	vn__verify_tags_2(RevInstrs, NoDeref1).
+vn__verify_tags_2([], _, _).
+vn__verify_tags_2([Instr0 - _| RevInstrs], NoDeref0, Tested0) :-
+	vn__verify_tags_instr(Instr0, NoDeref0, NoDeref1, Tested0, Tested1),
+	vn__verify_tags_2(RevInstrs, NoDeref1, Tested1).
 
-:- pred vn__verify_tags_instr(instr, set(rval), set(rval)).
-:- mode vn__verify_tags_instr(in, di, uo) is semidet.
+:- pred vn__verify_tags_instr(instr, set(rval), set(rval),
+	set(rval), set(rval)).
+:- mode vn__verify_tags_instr(in, di, uo, di, uo) is semidet.
 
-vn__verify_tags_instr(Instr, NoDeref0, NoDeref) :-
+vn__verify_tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 	(
 		Instr = comment(_),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = livevals(_),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = block(_, _),
 		error("found block in vn__verify_tags_instr")
@@ -449,56 +453,77 @@ vn__verify_tags_instr(Instr, NoDeref0, NoDeref) :-
 			set__member(lval(Lval), NoDeref0),
 			Rval = lval(_)
 		->
-			set__insert(NoDeref0, Rval, NoDeref)
+			set__insert(NoDeref0, Rval, NoDeref1)
 		;
-			NoDeref = NoDeref0
+			NoDeref1 = NoDeref0
+		),
+		(
+			set__member(lval(Lval), Tested0)
+		->
+			vn__verify_tags_cond(Rval, NoDeref1, NoDeref,
+				Tested0, Tested)
+		;
+			NoDeref = NoDeref1,
+			Tested = Tested0
 		)
 	;
 		Instr = call(_, _, _, _),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = call_closure(_, _, _),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = mkframe(_, _, _),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = modframe(_),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = label(_),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = goto(_, _),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = computed_goto(_, _),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = c_code(_),
 		error("found c_code in vn__verify_tags_instr")
 	;
 		Instr = if_val(Rval, _),
-		vn__verify_tags_cond(Rval, NoDeref0, NoDeref)
+		vn__verify_tags_cond(Rval, NoDeref0, NoDeref, Tested0, Tested)
 	;
 		Instr = incr_hp(Lval, _, Rval),
 		vn__verify_tags_lval(Lval, NoDeref0),
 		vn__verify_tags_rval(Rval, NoDeref0),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = mark_hp(Lval),
 		vn__verify_tags_lval(Lval, NoDeref0),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = restore_hp(Rval),
 		vn__verify_tags_rval(Rval, NoDeref0),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = incr_sp(_),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	;
 		Instr = decr_sp(_),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		Tested = Tested0
 	).
 
 :- pred vn__verify_tags_lval(lval, set(rval)).
@@ -543,14 +568,16 @@ vn__verify_tags_rval(binop(_, Rval1, Rval2), NoDeref) :-
 	vn__verify_tags_rval(Rval1, NoDeref),
 	vn__verify_tags_rval(Rval2, NoDeref).
 
-:- pred vn__verify_tags_cond(rval, set(rval), set(rval)).
-:- mode vn__verify_tags_cond(in, di, uo) is semidet.
+:- pred vn__verify_tags_cond(rval, set(rval), set(rval), set(rval), set(rval)).
+:- mode vn__verify_tags_cond(in, di, uo, di, uo) is semidet.
 
-vn__verify_tags_cond(Cond, NoDeref0, NoDeref) :-
+vn__verify_tags_cond(Cond, NoDeref0, NoDeref, Tested0, Tested) :-
 	( Cond = binop(Binop, Rval1, Rval2) ->
 		( ( Binop = (and) ; Binop = (or) ) ->
-			vn__verify_tags_cond(Rval2, NoDeref0, NoDeref1),
-			vn__verify_tags_cond(Rval1, NoDeref1, NoDeref)
+			vn__verify_tags_cond(Rval2, NoDeref0, NoDeref1,
+				Tested0, Tested1),
+			vn__verify_tags_cond(Rval1, NoDeref1, NoDeref,
+				Tested1, Tested)
 		;
 			( Binop = eq ; Binop = ne ),
 			% at most one of the next two ifs should be taken
@@ -565,18 +592,22 @@ vn__verify_tags_cond(Cond, NoDeref0, NoDeref) :-
 			;
 				vn__verify_tags_rval(Rval2, NoDeref1),
 				NoDeref = NoDeref1
-			)
+			),
+			Tested = Tested0
 		)
 	; Cond = unop(Unop, Rval1) ->
 		( Unop = (not) ->
-			vn__verify_tags_cond(Rval1, NoDeref0, NoDeref)
+			vn__verify_tags_cond(Rval1, NoDeref0, NoDeref,
+				Tested0, Tested)
 		;
 			vn__verify_tags_rval(Cond, NoDeref0),
-			NoDeref = NoDeref0
+			NoDeref = NoDeref0,
+			set__insert(Tested0, Rval1, Tested)
 		)
 	;
 		vn__verify_tags_rval(Cond, NoDeref0),
-		NoDeref = NoDeref0
+		NoDeref = NoDeref0,
+		set__insert(Tested0, Cond, Tested)
 	).
 
 :- pred vn__verify_tags_is_base(rval, rval).

@@ -364,8 +364,8 @@ report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst) -->
 		% This "error" message is really a "sorry, not implemented"
 		% message.  We only print the message if we are actually
 		% going to generating code.
-	globals__io_lookup_bool_option(generate_code, GenerateCode),
-	( { GenerateCode = yes } ->
+	globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
+	( { ErrorcheckOnly = no } ->
 		{ mode_info_get_context(ModeInfo, Context) },
 		{ mode_info_get_varset(ModeInfo, VarSet) },
 		{ mode_info_get_instvarset(ModeInfo, InstVarSet) },

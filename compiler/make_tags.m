@@ -60,12 +60,10 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 	globals__get_options(Globals, OptionTable),
 	map__lookup(OptionTable, num_tag_bits, OptionData),
 	( OptionData = int(NumTagBits0) ->
-		NumTagBits1 = NumTagBits0
+		NumTagBits = NumTagBits0
 	;
 		error("assign_constructor_tags: invalid int option")
 	),
-	globals__get_tags_method(Globals, TagMethod),
-	adjust_num_tag_bits(TagMethod, NumTagBits1, NumTagBits),
 
 		% now assign them
 	map__init(CtorTags0),
@@ -94,14 +92,6 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 						CtorTags1, CtorTags)
 		)
 	).
-
-:- pred adjust_num_tag_bits(tags_method, int, int).
-:- mode adjust_num_tag_bits(in, in, out) is det.
-
-adjust_num_tag_bits(none, _, 0).
-adjust_num_tag_bits(low, Num0, Num) :-
-	int__min(Num0, 2, Num).  % assuming at least a 32-bit architecture
-adjust_num_tag_bits(high, Num, Num).
 
 :- pred assign_enum_constants(list(constructor), int, cons_tag_values,
 				cons_tag_values).

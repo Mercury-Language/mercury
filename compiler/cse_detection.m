@@ -71,8 +71,14 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 		{ ModuleInfo = ModuleInfo1 }
 	;
 		{ Redo = yes },
-		globals__io_lookup_bool_option(verbose, Verbose),
-		maybe_write_string(Verbose, "% Repeating mode check.\n"),
+		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+		( { VeryVerbose = yes } ->
+			io__write_string("% Repeating mode check for "),
+			hlds_out__write_pred_id(ModuleInfo0, PredId),
+			io__write_string("\n")
+		;
+			[]
+		),
 		{ module_info_preds(ModuleInfo1, PredTable1) },
 		{ map__lookup(PredTable1, PredId, PredInfo1) },
 		modecheck_pred_mode(PredId, PredInfo1,
@@ -83,12 +89,25 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 			true
 		},
 
-		maybe_write_string(Verbose, "% Repeating switch detection.\n"),
+		( { VeryVerbose = yes } ->
+			io__write_string("% Repeating switch detection for "),
+			hlds_out__write_pred_id(ModuleInfo0, PredId),
+			io__write_string("\n")
+		;
+			[]
+		),
 		{ module_info_preds(ModuleInfo2, PredTable2) },
 		{ map__lookup(PredTable2, PredId, PredInfo2) },
 		detect_switches_in_pred(PredId, PredInfo2,
 			ModuleInfo2, ModuleInfo3),
 
+		( { VeryVerbose = yes } ->
+			io__write_string("% Repeating common deconstruction detection for "),
+			hlds_out__write_pred_id(ModuleInfo0, PredId),
+			io__write_string("\n")
+		;
+			[]
+		),
 		{ module_info_preds(ModuleInfo3, PredTable3) },
 		{ map__lookup(PredTable3, PredId, PredInfo3) },
 		detect_cse_in_pred(PredId, PredInfo3, ModuleInfo3, ModuleInfo)
