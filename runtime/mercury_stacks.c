@@ -92,7 +92,7 @@ MR_commit_mark(void)
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf("commit stack top up to %ld\n", (long) MR_cut_next - 1);
+		printf("commit stack next up to %ld\n", (long) MR_cut_next);
 	}
 #endif
 
@@ -108,14 +108,25 @@ MR_commit_cut(void)
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf("commit stack pointer down to %ld\n",
+		printf("commit stack next down to %ld\n",
 			(long) MR_cut_next);
 		if (MR_gen_next != MR_cut_stack[MR_cut_next].gen_next) {
-			assert(MR_gen_next >
-				MR_cut_stack[MR_cut_next].gen_next);
-			printf("setting generator stack pointer back to %ld\n",
-				(long) MR_cut_stack[MR_cut_next].gen_next);
+			if (MR_gen_next <= MR_cut_stack[MR_cut_next].gen_next)
+			{
+				printf("MR_gen_next %ld, MR_cut_next %ld, "
+					"MR_cut_stack[MR_cut_next].gen_next "
+					"%ld\n",
+					(long) MR_gen_next,
+					(long) MR_cut_next,
+					(long) MR_cut_stack[MR_cut_next].
+						gen_next);
+				fatal_error("GEN_NEXT ASSERTION FAILURE");
+			}
 		}
+
+		printf("setting generator stack next back to %ld from %ld\n",
+			(long) MR_cut_stack[MR_cut_next].gen_next,
+			(long) MR_gen_next);
 	}
 #endif
 
