@@ -15,15 +15,15 @@
 
 :- interface.
 
-:- import_module list, set, bool.
 :- import_module llds, vn_table, vn_type, livemap.
+:- import_module list, set, bool, counter.
 
 :- pred vn_block__divide_into_blocks(list(instruction), set(label),
 	list(list(instruction))).
 :- mode vn_block__divide_into_blocks(in, in, out) is det.
 
 :- pred vn_block__build_block_info(list(instruction), livemap, vn_params,
-	list(parentry), int, vn_tables, vnlvalset, bool, vn_ctrl_tuple).
+	list(parentry), counter, vn_tables, vnlvalset, bool, vn_ctrl_tuple).
 :- mode vn_block__build_block_info(in, in, in, in, in, out, out, out, out)
 	is det.
 
@@ -90,7 +90,7 @@ vn_block__divide_into_blocks_2([Instr0 | Instrs0], BlockInstrs0, PrevBlocks0,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-vn_block__build_block_info(Instrs, Livemap, Params, ParEntries, LabelNo0,
+vn_block__build_block_info(Instrs, Livemap, Params, ParEntries, C0,
 		VnTables, Liveset, SeenIncr, Tuple) :-
 	vn_table__init_tables(VnTables0),
 	vn_block__build_from_parallel(ParEntries, VnTables0, VnTables1),
@@ -98,7 +98,7 @@ vn_block__build_block_info(Instrs, Livemap, Params, ParEntries, LabelNo0,
 	map__init(Ctrlmap0),
 	map__init(Flushmap0),
 	map__init(Parmap0),
-	Tuple0 = tuple(0, Ctrlmap0, Flushmap0, LabelNo0, Parmap0),
+	Tuple0 = tuple(0, Ctrlmap0, Flushmap0, C0, Parmap0),
 	vn_block__handle_instrs(Instrs, Livemap, Params, VnTables1, VnTables,
 		Liveset0, Liveset, no, SeenIncr, Tuple0, Tuple).
 
@@ -405,8 +405,8 @@ vn_block__handle_instr(join_and_continue(_, _),
 
 vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		VnTables0, VnTables, Liveset0, Liveset,
-		tuple(Ctrl0, Ctrlmap0, Flushmap0, LabelNo0, Parmap0),
-		tuple(Ctrl,  Ctrlmap,  Flushmap,  LabelNo,  Parmap)) :-
+		tuple(Ctrl0, Ctrlmap0, Flushmap0, C0, Parmap0),
+		tuple(Ctrl,  Ctrlmap,  Flushmap,  C,  Parmap)) :-
 	map__init(FlushEntry0),
 	(
 		VnInstr = vn_livevals(Livevals),
@@ -415,27 +415,27 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 			Liveset0, Liveset),
 		VnTables = VnTables0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_call(_, _, _, _, _),
 		vn_block__record_at_call(VnTables0, VnTables, Liveset0, Liveset,
 			FlushEntry0, FlushEntry),
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_mkframe(_, _),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_label(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_goto(TargetAddr),
@@ -446,44 +446,44 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 			vn_block__record_one_label(Label, Livemap, Params,
 				VnTables0, VnTables, Liveset0, Liveset,
 				FlushEntry0, FlushEntry,
-				LabelNo0, LabelNo, Parallels)
+				C0, C, Parallels)
 		;
 			vn_block__record_at_call(VnTables0, VnTables,
 				Liveset0, Liveset, FlushEntry0, FlushEntry),
-			LabelNo = LabelNo0,
+			C = C0,
 			Parallels = []
 		)
 	;
 		VnInstr = vn_computed_goto(_, Labels),
 		vn_block__record_several_labels(Labels, Livemap, Params,
 			VnTables0, VnTables, Liveset0, Liveset,
-			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels)
+			FlushEntry0, FlushEntry, C0, C, Parallels)
 	;
 		VnInstr = vn_if_val(_, TargetAddr),
 		vn_block__new_if_node(TargetAddr, Livemap, Params,
 			Ctrlmap0, Ctrl0, VnTables0, VnTables, Liveset0, Liveset,
-			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels)
+			FlushEntry0, FlushEntry, C0, C, Parallels)
 	;
 		VnInstr = vn_mark_hp(Vnlval),
 		vn_util__rval_to_vn(lval(hp), Vn, VnTables0, VnTables1),
 		vn_table__set_desired_value(Vnlval, Vn, VnTables1, VnTables),
 		set__insert(Liveset0, Vnlval, Liveset),
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_restore_hp(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_free_heap(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_store_ticket(Vnlval),
@@ -497,28 +497,28 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		vn_table__set_desired_value(Vnlval, Vn, VnTables1, VnTables),
 		set__insert(Liveset0, Vnlval, Liveset),
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_reset_ticket(_, _),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_discard_ticket,
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_prune_ticket,
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_mark_ticket_stack(Vnlval),
@@ -532,28 +532,28 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		vn_table__set_desired_value(Vnlval, Vn, VnTables1, VnTables),
 		set__insert(Liveset0, Vnlval, Liveset),
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_prune_tickets_to(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_incr_sp(_, _),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		VnInstr = vn_decr_sp(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	),
 	Ctrl is Ctrl0 + 1,
@@ -563,13 +563,13 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 
 :- pred vn_block__new_if_node(code_addr, livemap, vn_params, ctrlmap, int,
 	vn_tables, vn_tables, vnlvalset, vnlvalset,
-	flushmapentry, flushmapentry, int, int, list(parallel)).
+	flushmapentry, flushmapentry, counter, counter, list(parallel)).
 :- mode vn_block__new_if_node(in, in, in, in, in, in, out, in, out, in, out, in,
 	out, out) is det.
 
 vn_block__new_if_node(TargetAddr, Livemap, Params, Ctrlmap0, Ctrl0,
 		VnTables0, VnTables, Liveset0, Liveset, FlushEntry0, FlushEntry,
-		LabelNo0, LabelNo, Parallels) :-
+		C0, C, Parallels) :-
 	(
 		TargetAddr = label(Label),
 		map__search(Livemap, Label, _)
@@ -577,7 +577,7 @@ vn_block__new_if_node(TargetAddr, Livemap, Params, Ctrlmap0, Ctrl0,
 		vn_block__record_one_label(Label, Livemap, Params,
 			VnTables0, VnTables1, Liveset0, Liveset1,
 			FlushEntry0, FlushEntry1,
-			LabelNo0, LabelNoPrime, ParallelsPrime),
+			C0, CPrime, ParallelsPrime),
 		vn_block__record_compulsory_lvals(VnTables1, Liveset1, Liveset2,
 			FlushEntry1, FlushEntry2),
 		(
@@ -592,13 +592,13 @@ vn_block__new_if_node(TargetAddr, Livemap, Params, Ctrlmap0, Ctrl0,
 				VnTables1, VnTables,
 				Liveset2, Liveset,
 				FlushEntry2, FlushEntry),
-			LabelNo = LabelNo0,
+			C = C0,
 			Parallels = []
 		;
 			VnTables = VnTables1,
 			Liveset = Liveset2,
 			FlushEntry = FlushEntry2,
-			LabelNo = LabelNoPrime,
+			C = CPrime,
 			Parallels = ParallelsPrime
 		)
 	;
@@ -607,7 +607,7 @@ vn_block__new_if_node(TargetAddr, Livemap, Params, Ctrlmap0, Ctrl0,
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		TargetAddr = do_redo
@@ -615,13 +615,13 @@ vn_block__new_if_node(TargetAddr, Livemap, Params, Ctrlmap0, Ctrl0,
 		vn_block__record_compulsory_lvals(VnTables0, Liveset0, Liveset,
 			FlushEntry0, FlushEntry),
 		VnTables = VnTables0,
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	;
 		set__to_sorted_list(Liveset0, Vnlivelist),
 		vn_block__record_livevnlvals(Vnlivelist, VnTables0, VnTables,
 			Liveset0, Liveset, FlushEntry0, FlushEntry),
-		LabelNo = LabelNo0,
+		C = C0,
 		Parallels = []
 	).
 
@@ -658,7 +658,7 @@ vn_block__record_at_call(VnTables0, VnTables, Livevals0, Livevals,
 
 :- pred vn_block__record_several_labels(list(label), livemap, vn_params,
 	vn_tables, vn_tables, vnlvalset, vnlvalset,
-	flushmapentry, flushmapentry, int, int, list(parallel)).
+	flushmapentry, flushmapentry, counter, counter, list(parallel)).
 % :- mode vn_block__record_several_labels(in, in, in, di, uo, di, uo, di, uo,
 %	in, out, out) is det.
 :- mode vn_block__record_several_labels(in, in, in, in, out, in, out, in, out,
@@ -666,25 +666,25 @@ vn_block__record_at_call(VnTables0, VnTables, Livevals0, Livevals,
 
 vn_block__record_several_labels(Labels, Livemap, Params, VnTables0, VnTables,
 		Livevals0, Livevals, FlushEntry0, FlushEntry,
-		LabelNo0, LabelNo, Parallels) :-
+		C0, C, Parallels) :-
 	vn_block__record_labels(Labels, Livemap, Params, VnTables0, VnTables,
 		Livevals0, Livevals1, FlushEntry0, FlushEntry1,
-		LabelNo0, LabelNo, Parallels),
+		C0, C, Parallels),
 	vn_block__record_compulsory_lvals(VnTables, Livevals1, Livevals,
 		FlushEntry1, FlushEntry).
 
 :- pred vn_block__record_one_label(label, livemap, vn_params,
 	vn_tables, vn_tables, vnlvalset, vnlvalset,
-	flushmapentry, flushmapentry, int, int, list(parallel)).
+	flushmapentry, flushmapentry, counter, counter, list(parallel)).
 :- mode vn_block__record_one_label(in, in, in, in, out, in, out, in, out, in,
 	out, out) is det.
 
 vn_block__record_one_label(Label, Livemap, Params, VnTables0, VnTables,
 		Livevals0, Livevals, FlushEntry0, FlushEntry,
-		LabelNo0, LabelNo, Parallels) :-
+		C0, C, Parallels) :-
 	vn_block__record_label(Label, Livemap, Params, VnTables0, VnTables,
 		Livevals0, Livevals1, FlushEntry0, FlushEntry1,
-		LabelNo0, LabelNo, Parallels),
+		C0, C, Parallels),
 	vn_block__record_compulsory_lvals(VnTables, Livevals1, Livevals,
 		FlushEntry1, FlushEntry).
 
@@ -692,28 +692,28 @@ vn_block__record_one_label(Label, Livemap, Params, VnTables0, VnTables,
 
 :- pred vn_block__record_labels(list(label), livemap, vn_params,
 	vn_tables, vn_tables, vnlvalset, vnlvalset,
-	flushmapentry, flushmapentry, int, int, list(parallel)).
+	flushmapentry, flushmapentry, counter, counter, list(parallel)).
 % :- mode vn_block__record_labels(in, in, in, di, uo, di, uo, di, uo, in,
 %	 out, out) is det.
 :- mode vn_block__record_labels(in, in, in, in, out, in, out, in, out, in,
 	out, out) is det.
 
 vn_block__record_labels([], _, _, VnTables, VnTables, Livevals, Livevals,
-	FlushEntry, FlushEntry, LabelNo, LabelNo, []).
+	FlushEntry, FlushEntry, C, C, []).
 vn_block__record_labels([Label | Labels], Livemap, Params, VnTables0, VnTables,
 		Livevals0, Livevals, FlushEntry0, FlushEntry,
-		LabelNo0, LabelNo, Parallels) :-
+		C0, C, Parallels) :-
 	vn_block__record_label(Label, Livemap, Params, VnTables0, VnTables1,
 		Livevals0, Livevals1, FlushEntry0, FlushEntry1,
-		LabelNo0, LabelNo1, Parallels0),
+		C0, C1, Parallels0),
 	vn_block__record_labels(Labels, Livemap, Params, VnTables1, VnTables,
 		Livevals1, Livevals, FlushEntry1, FlushEntry,
-		LabelNo1, LabelNo, Parallels1),
+		C1, C, Parallels1),
 	list__append(Parallels0, Parallels1, Parallels).
 
 :- pred vn_block__record_label(label, livemap, vn_params, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, flushmapentry, flushmapentry,
-	int, int, list(parallel)).
+	counter, counter, list(parallel)).
 % :- mode vn_block__record_label(in, in, in, di, uo, di, uo, di, uo, in,
 %	 out, out) is det.
 :- mode vn_block__record_label(in, in, in, in, out, in, out, in, out, in,
@@ -721,23 +721,23 @@ vn_block__record_labels([Label | Labels], Livemap, Params, VnTables0, VnTables,
 
 vn_block__record_label(Label, Livemap, Params, VnTables0, VnTables,
 		Livevals0, Livevals, FlushEntry0, FlushEntry,
-		LabelNo0, LabelNo, Parallels) :-
+		C0, C, Parallels) :-
 	( map__search(Livemap, Label, Liveset) ->
 		set__to_sorted_list(Liveset, Livelist),
 		vn_block__record_livevals(Livelist, Params, VnTables0, VnTables,
 			Livevals0, Livevals, FlushEntry0, FlushEntry,
 			ParEntries),
 		( ParEntries = [] ->
-			LabelNo = LabelNo0,
+			C = C0,
 			Parallels = []
 		;
 			( Label = local(ProcLabel, _) ->
-				LabelNo is LabelNo0 + 1,
-				NewLabel = local(ProcLabel, LabelNo),
+				counter__allocate(N, C0, C),
+				NewLabel = local(ProcLabel, N),
 				Parallels = [parallel(Label, NewLabel,
 					ParEntries)]
 			;
-				LabelNo = LabelNo0,
+				C = C0,
 				Parallels = []
 			)
 		)

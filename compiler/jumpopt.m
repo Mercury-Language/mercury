@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module llds, globals.
-:- import_module list, set, bool.
+:- import_module list, set, bool, counter.
 
 	% Take an instruction list and optimize jumps. This includes jumps
 	% implicit in procedure returns.
@@ -39,8 +39,9 @@
 	% by the optimization.
 
 :- pred jumpopt_main(list(instruction)::in, set(label)::in, trace_level::in,
-	bool::in, bool::in, bool::in, list(instruction)::out, bool::out)
-	is det.
+	proc_label::in, counter::in, counter::out,
+	bool::in, bool::in, bool::in,
+	list(instruction)::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -75,8 +76,8 @@
 % numbering, which can do a better job of optimizing this block, have
 % been applied.
 
-jumpopt_main(Instrs0, LayoutLabels, TraceLevel, Blockopt, Recjump,
-		MostlyDetTailCall, Instrs, Mod) :-
+jumpopt_main(Instrs0, LayoutLabels, TraceLevel, ProcLabel, C0, C,
+		Blockopt, Recjump, MostlyDetTailCall, Instrs, Mod) :-
 	map__init(Instrmap0),
 	map__init(Lvalmap0),
 	map__init(Procmap0),
@@ -89,15 +90,24 @@ jumpopt_main(Instrs0, LayoutLabels, TraceLevel, Blockopt, Recjump,
 	map__init(Forkmap0),
 	jumpopt__build_forkmap(Instrs0, Sdprocmap, Forkmap0, Forkmap),
 	( MostlyDetTailCall = yes ->
-		opt_util__get_prologue(Instrs0, ProcLabel, _, _, _),
-		opt_util__new_label_no(Instrs0, 500, LabelNum),
-		CheckedNondetTailCallInfo = yes(ProcLabel - LabelNum)
+		CheckedNondetTailCallInfo0 = yes(ProcLabel - C0),
+		jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap,
+			Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap,
+			LayoutLabels, TraceLevel, CheckedNondetTailCallInfo0,
+			CheckedNondetTailCallInfo, Instrs1),
+		( CheckedNondetTailCallInfo = yes(_ - Cprime) ->
+			C = Cprime
+		;
+			error("jumpopt_main: lost the next label number")
+		)
 	;
-		CheckedNondetTailCallInfo = no
+		CheckedNondetTailCallInfo0 = no,
+		jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap,
+			Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap,
+			LayoutLabels, TraceLevel, CheckedNondetTailCallInfo0,
+			_, Instrs1),
+		C = C0
 	),
-	jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap, Lvalmap,
-		Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
-		TraceLevel, CheckedNondetTailCallInfo, _, Instrs1),
 	opt_util__filter_out_bad_livevals(Instrs1, Instrs),
 	( Instrs = Instrs0 ->
 		Mod = no
@@ -216,7 +226,7 @@ jumpopt__build_forkmap([Instr - _Comment|Instrs], Sdprocmap,
 
 :- pred jumpopt__instr_list(list(instruction), instr, instrmap, tailmap,
 	lvalmap, tailmap, tailmap, tailmap, tailmap, set(label), trace_level,
-	maybe(pair(proc_label, int)), maybe(pair(proc_label, int)),
+	maybe(pair(proc_label, counter)), maybe(pair(proc_label, counter)),
 	list(instruction)).
 :- mode jumpopt__instr_list(in, in, in, in, in, in, in, in, in, in, in,
 	in, out, out) is det.
@@ -289,14 +299,15 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			% a runtime check.
 			CallModel = nondet(checked_tail_call),
 			CheckedNondetTailCallInfo0 =
-				yes(ProcLabel - LabelNum0),
+				yes(ProcLabel - Counter0),
 			map__search(Succmap, RetLabel, BetweenIncl),
 			BetweenIncl = [livevals(_) - _, goto(_) - _],
 			PrevInstr = livevals(Livevals),
 			TraceLevel = none,
 			not set__member(RetLabel, LayoutLabels)
 		->
-			NewLabel = local(ProcLabel, LabelNum0),
+			counter__allocate(LabelNum, Counter0, Counter1),
+			NewLabel = local(ProcLabel, LabelNum),
 			NewInstrs = [
 				if_val(binop(ne, lval(curfr), lval(maxfr)),
 					label(NewLabel))
@@ -313,8 +324,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				Instr0
 			],
 			RemainInstrs = Instrs0,
-			LabelNum1 is LabelNum0 + 1,
-			CheckedNondetTailCallInfo1 = yes(ProcLabel - LabelNum1)
+			CheckedNondetTailCallInfo1 = yes(ProcLabel - Counter1)
 		;
 			% Short circuit the return label if possible.
 			map__search(Instrmap, RetLabel, RetInstr),

@@ -43,9 +43,11 @@
 
 :- interface.
 
-:- import_module list, llds.
+:- import_module llds.
+:- import_module list, counter.
 
-:- pred dupelim_main(list(instruction)::in, list(instruction)::out) is det.
+:- pred dupelim_main(list(instruction)::in, proc_label::in,
+	counter::in, counter::out, list(instruction)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -65,8 +67,8 @@
 	% OtherLabels must be nonempty.
 :- type cluster		--->	cluster(label, list(label)).
 
-dupelim_main(Instrs0, Instrs) :-
-	create_basic_blocks(Instrs0, Comments, _ProcLabel, _N,
+dupelim_main(Instrs0, ProcLabel, C0, C, Instrs) :-
+	create_basic_blocks(Instrs0, Comments, ProcLabel, C0, C,
 		LabelSeq0, BlockMap0),
 	map__init(StdMap0),
 	set__init(Fixed0),

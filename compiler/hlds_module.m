@@ -24,7 +24,7 @@
 :- import_module prog_data, module_qual.
 :- import_module hlds_pred, hlds_data, unify_proc, special_pred.
 :- import_module globals, llds.
-:- import_module relation, map, std_util, list, set, multi_map.
+:- import_module relation, map, std_util, list, set, multi_map, counter.
 
 :- implementation.
 
@@ -203,11 +203,11 @@
 
 	% The cell count is used as a unique cell number for
 	% constants in the generated C code.
-:- pred module_info_get_cell_count(module_info, int).
-:- mode module_info_get_cell_count(in, out) is det.
+:- pred module_info_get_cell_counter(module_info, counter).
+:- mode module_info_get_cell_counter(in, out) is det.
 
-:- pred module_info_set_cell_count(module_info, int, module_info).
-:- mode module_info_set_cell_count(in, in, out) is det.
+:- pred module_info_set_cell_counter(module_info, counter, module_info).
+:- mode module_info_set_cell_counter(in, in, out) is det.
 
 :- pred module_add_imported_module_specifiers(list(module_specifier),
 		module_info, module_info).
@@ -454,7 +454,7 @@
 		superclass_table ::		superclass_table,
 		assertion_table ::		assertion_table,
 		ctor_field_table ::		ctor_field_table,
-		cell_count ::			int
+		cell_counter ::			counter
 					% cell count, passed into code_info
 					% and used to generate unique label
 					% numbers for constant terms in the
@@ -539,7 +539,7 @@ module_info_init(Name, Globals, QualifierInfo, ModuleInfo) :-
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable,
-		FieldNameTable, 0).
+		FieldNameTable, counter__init(1)).
 
 %-----------------------------------------------------------------------------%
 
@@ -558,7 +558,7 @@ module_info_instances(MI, MI^instance_table).
 module_info_superclasses(MI, MI^superclass_table).
 module_info_assertion_table(MI, MI^assertion_table).
 module_info_ctor_field_table(MI, MI^ctor_field_table).
-module_info_get_cell_count(MI, MI^cell_count).
+module_info_get_cell_counter(MI, MI^cell_counter).
 
 %-----------------------------------------------------------------------------%
 
@@ -578,7 +578,7 @@ module_info_set_instances(MI, I, MI^instance_table := I).
 module_info_set_superclasses(MI, S, MI^superclass_table := S).
 module_info_set_assertion_table(MI, A, MI^assertion_table := A).
 module_info_set_ctor_field_table(MI, CF, MI^ctor_field_table := CF).
-module_info_set_cell_count(MI, CC, MI^cell_count := CC).
+module_info_set_cell_counter(MI, CC, MI^cell_counter := CC).
 
 %-----------------------------------------------------------------------------%
 

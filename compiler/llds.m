@@ -19,7 +19,7 @@
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
 :- import_module rtti, builtin_ops.
 
-:- import_module bool, assoc_list, list, map, set, std_util.
+:- import_module bool, assoc_list, list, map, set, std_util, counter.
 
 %-----------------------------------------------------------------------------%
 
@@ -171,6 +171,8 @@
 			int,			% arity
 			pred_proc_id,		% the pred_proc_id this code
 			list(instruction),	% the code for this procedure
+			proc_label,		% proc_label of this procedure
+			counter,		% source for new label numbers
 			contains_reconstruction	% value numbering needs
 						% to handle goals that
 						% perform structure reuse

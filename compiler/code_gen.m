@@ -32,7 +32,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info.
 :- import_module globals.
-:- import_module list, io.
+:- import_module list, io, counter.
 
 		% Translate a HLDS module to LLDS.
 
@@ -47,7 +47,7 @@
 
 :- pred generate_proc_code(pred_info::in, proc_info::in,
 	proc_id::in, pred_id::in, module_info::in, globals::in,
-	global_data::in, global_data::out, int::in, int::out,
+	global_data::in, global_data::out, counter::in, counter::out,
 	c_procedure::out) is det.
 
 		% Translate a HLDS goal to LLDS.
@@ -133,32 +133,33 @@ generate_pred_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
 	;
 		[]
 	),
-	{ module_info_get_cell_count(ModuleInfo0, CellCount0) },
+	{ module_info_get_cell_counter(ModuleInfo0, CellCounter0) },
 	globals__io_get_globals(Globals),
 	{ generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		Globals, GlobalData0, GlobalData, CellCount0, CellCount,
+		Globals, GlobalData0, GlobalData, CellCounter0, CellCounter,
 		[], Code) },
-	{ module_info_set_cell_count(ModuleInfo0, CellCount, ModuleInfo) }.
+	{ module_info_set_cell_counter(ModuleInfo0, CellCounter, ModuleInfo) }.
 
 	% Translate all the procedures of a HLDS predicate to LLDS.
 
 :- pred generate_proc_list_code(list(proc_id)::in, pred_id::in, pred_info::in,
 	module_info::in, globals::in, global_data::in, global_data::out,
-	int::in, int::out, list(c_procedure)::in, list(c_procedure)::out)
-	is det.
+	counter::in, counter::out,
+	list(c_procedure)::in, list(c_procedure)::out) is det.
 
 generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo, _Globals,
-		GlobalData, GlobalData, CellCount, CellCount, Procs, Procs).
+		GlobalData, GlobalData, CellCounter, CellCounter,
+		Procs, Procs).
 generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
-		Globals, GlobalData0, GlobalData, CellCount0, CellCount,
+		Globals, GlobalData0, GlobalData, CellCounter0, CellCounter,
 		Procs0, Procs) :-
 	pred_info_procedures(PredInfo, ProcInfos),
 	map__lookup(ProcInfos, ProcId, ProcInfo),
 	generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo0,
-		Globals, GlobalData0, GlobalData1, CellCount0, CellCount1,
+		Globals, GlobalData0, GlobalData1, CellCounter0, CellCounter1,
 		Proc),
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		Globals, GlobalData1, GlobalData, CellCount1, CellCount,
+		Globals, GlobalData1, GlobalData, CellCounter1, CellCounter,
 		[Proc | Procs0], Procs).
 
 %---------------------------------------------------------------------------%
@@ -181,7 +182,7 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 %---------------------------------------------------------------------------%
 
 generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
-		GlobalData0, GlobalData, CellCount0, CellCount, Proc) :-
+		GlobalData0, GlobalData, CellCounter0, CellCounter, Proc) :-
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_goal(ProcInfo, Goal),
@@ -209,7 +210,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% needed for model_non procedures only if we are doing
 		% execution tracing.
 	code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo,
-		FollowVars, ModuleInfo, CellCount0, OutsideResumePoint,
+		FollowVars, ModuleInfo, CellCounter0, OutsideResumePoint,
 		TraceSlotInfo, CodeInfo0),
 
 		% Generate code for the procedure.
@@ -217,7 +218,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		TraceSlotInfo, CodeTree, MaybeTraceCallLabel, FrameInfo,
 		CodeInfo0, CodeInfo),
 	code_info__get_max_reg_in_use_at_trace(MaxTraceReg, CodeInfo, _),
-	code_info__get_cell_count(CellCount, CodeInfo, _),
+	code_info__get_cell_counter(CellCounter, CodeInfo, _),
 
 		% Turn the code tree into a list.
 	tree__flatten(CodeTree, FragmentList),
@@ -255,8 +256,9 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	code_info__get_non_common_static_data(NonCommonStatics, CodeInfo, _),
 	global_data_add_new_non_common_static_datas(GlobalData1,
 		NonCommonStatics, GlobalData2),
+	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
 	maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
-		GlobalData2, GlobalData),
+		ProcLabel, GlobalData2, GlobalData),
 
 	pred_info_name(PredInfo, Name),
 	pred_info_arity(PredInfo, Arity),
@@ -268,19 +270,18 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	),
 
 		% Construct a c_procedure structure with all the information.
-	Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
-		Instructions, ContainsReconstruction).
+	code_info__get_label_counter(LabelCounter, CodeInfo, _),
+	Proc = c_procedure(Name, Arity, proc(PredId, ProcId), Instructions,
+		ProcLabel, LabelCounter, ContainsReconstruction).
 
 :- pred maybe_add_tabling_pointer_var(module_info, pred_id, proc_id, proc_info,
-		global_data, global_data).
-:- mode maybe_add_tabling_pointer_var(in, in, in, in, in, out) is det.
+	proc_label, global_data, global_data).
+:- mode maybe_add_tabling_pointer_var(in, in, in, in, in, in, out) is det.
 
-maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
+maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
 		GlobalData0, GlobalData) :-
 	proc_info_eval_method(ProcInfo, EvalMethod),
 	( eval_method_has_per_proc_tabling_pointer(EvalMethod) = yes ->
-		code_util__make_proc_label(ModuleInfo, PredId, ProcId,
-			ProcLabel),
 		module_info_name(ModuleInfo, ModuleName),
 		Var = tabling_pointer_var(ModuleName, ProcLabel),
 		global_data_add_new_proc_var(GlobalData0,

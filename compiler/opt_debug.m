@@ -19,8 +19,8 @@
 
 :- import_module io, bool, list, assoc_list, std_util.
 
-:- pred opt_debug__msg(bool, string, io__state, io__state).
-:- mode opt_debug__msg(in, in, di, uo) is det.
+:- pred opt_debug__msg(bool, int, string, io__state, io__state).
+:- mode opt_debug__msg(in, in, in, di, uo) is det.
 
 :- pred opt_debug__dump_instrs(bool, list(instruction), io__state, io__state).
 :- mode opt_debug__dump_instrs(in, in, di, uo) is det.
@@ -199,11 +199,17 @@
 
 :- import_module int, set, map, string.
 
-opt_debug__msg(OptDebug, Msg) -->
+opt_debug__msg(OptDebug, LabelNo, Msg) -->
 	(
 		{ OptDebug = yes },
 		io__write_string("\n"),
 		io__write_string(Msg),
+		( { LabelNo >= 0 } ->
+			io__write_string(", next label no: "),
+			io__write_int(LabelNo)
+		;
+			[]
+		),
 		io__write_string("\n")
 	;
 		{ OptDebug = no }

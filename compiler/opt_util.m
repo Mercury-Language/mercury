@@ -21,9 +21,9 @@
 :- type tailmap == map(label, list(instruction)).
 :- type succmap == map(label, bool).
 
-:- pred opt_util__get_prologue(list(instruction), proc_label, instruction,
+:- pred opt_util__get_prologue(list(instruction), instruction,
 	list(instruction), list(instruction)).
-:- mode opt_util__get_prologue(in, out, out, out, out) is det.
+:- mode opt_util__get_prologue(in, out, out, out) is det.
 
 :- pred opt_util__gather_comments(list(instruction),
 	list(instruction), list(instruction)).
@@ -220,12 +220,6 @@
 :- pred opt_util__possible_targets(instr, list(label)).
 :- mode opt_util__possible_targets(in, out) is det.
 
-	% Find a label number that does not occur in the instruction list,
-	% starting the search at a given number.
-
-:- pred opt_util__new_label_no(list(instruction), int, int).
-:- mode opt_util__new_label_no(in, in, out) is det.
-
 	% Find the maximum temp variable number used.
 
 :- pred opt_util__count_temps_instr_list(list(instruction), int, int, int, int).
@@ -330,20 +324,13 @@
 :- import_module builtin_ops, exprn_aux, llds_out, hlds_pred.
 :- import_module int, string, set, require.
 
-opt_util__get_prologue(Instrs0, ProcLabel, LabelInstr, Comments, Instrs) :-
+opt_util__get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-
 	opt_util__gather_comments(Instrs0, Comments1, Instrs1),
 	(
 		Instrs1 = [Instr1 | Instrs2],
-		Instr1 = label(FirstLabel) - _
+		Instr1 = label(_) - _
 	->
 		LabelInstr = Instr1,
-		( FirstLabel = exported(ProcLabelPrime) ->
-			ProcLabel = ProcLabelPrime
-		; FirstLabel = local(ProcLabelPrime) ->
-			ProcLabel = ProcLabelPrime
-		;
-			error("procedure begins with bad label type")
-		),
 		opt_util__gather_comments(Instrs2, Comments2, Instrs),
 		list__append(Comments1, Comments2, Comments)
 	;
@@ -991,18 +978,6 @@ opt_util__is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
 	Op = eq,
 	Rval1 = Rval2,
 	Taken = yes.
-
-opt_util__new_label_no([], N, N).
-opt_util__new_label_no([Instr0 | Instrs0], N0, N) :-
-	(
-		Instr0 = label(local(_, K)) - _,
-		K >= N0
-	->
-		N1 is K + 1
-	;
-		N1 = N0
-	),
-	opt_util__new_label_no(Instrs0, N1, N).
 
 opt_util__can_instr_branch_away(comment(_), no).
 opt_util__can_instr_branch_away(livevals(_), no).

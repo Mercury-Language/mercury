@@ -1146,7 +1146,7 @@ output_c_procedure_list([Proc | Procs], PrintComments, EmitCLoops) -->
 :- mode output_c_procedure_decls(in, in, out, di, uo) is det.
 
 output_c_procedure_decls(Proc, DeclSet0, DeclSet) -->
-	{ Proc = c_procedure(_Name, _Arity, _PredProcId, Instrs, _Recons) },
+	{ Proc = c_procedure(_Name, _Arity, _PredProcId, Instrs, _, _, _) },
 	output_instruction_list_decls(Instrs, DeclSet0, DeclSet).
 
 :- pred output_c_procedure(c_procedure, bool, bool,
@@ -1154,8 +1154,7 @@ output_c_procedure_decls(Proc, DeclSet0, DeclSet) -->
 :- mode output_c_procedure(in, in, in, di, uo) is det.
 
 output_c_procedure(Proc, PrintComments, EmitCLoops) -->
-	{ Proc = c_procedure(Name, Arity, proc(_PredId, ProcId),
-			Instrs, _Recons) },
+	{ Proc = c_procedure(Name, Arity, proc(_, ProcId), Instrs, _, _, _) },
 	{ proc_id_to_int(ProcId, ModeNum) },
 	( { PrintComments = yes } ->
 		io__write_string("\n/*-------------------------------------"),
@@ -4282,7 +4281,7 @@ gather_labels_from_c_module(comp_gen_c_module(_, Procs), Labels0, Labels) :-
 	list(label)::in, list(label)::out) is det.
 
 gather_labels_from_c_procs([], Labels, Labels).
-gather_labels_from_c_procs([c_procedure(_, _, _, Instrs, _) | Procs],
+gather_labels_from_c_procs([c_procedure(_, _, _, Instrs, _, _, _) | Procs],
 		Labels0, Labels) :-
 	gather_labels_from_instrs(Instrs, Labels0, Labels1),
 	gather_labels_from_c_procs(Procs, Labels1, Labels).

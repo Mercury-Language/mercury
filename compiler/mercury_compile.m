@@ -1332,9 +1332,9 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	write_proc_progress_message(
 		"% Generating low-level (LLDS) code for ",
 				PredId, ProcId, ModuleInfo3),
-	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
+	{ module_info_get_cell_counter(ModuleInfo3, CellCounter0) },
 	{ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo3,
-		Globals, GlobalData0, GlobalData1, CellCount0, CellCount,
+		Globals, GlobalData0, GlobalData1, CellCounter0, CellCounter,
 		Proc0) },
 	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
 	( { Optimize = yes } ->
@@ -1342,13 +1342,13 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	;
 		{ Proc = Proc0 }
 	),
-	{ Proc = c_procedure(_, _, PredProcId, Instructions, _) },
+	{ Proc = c_procedure(_, _, PredProcId, Instructions, _, _, _) },
 	write_proc_progress_message(
 		"% Generating call continuation information for ",
 			PredId, ProcId, ModuleInfo3),
 	{ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
 		ModuleInfo3, GlobalData1, GlobalData) },
-	{ module_info_set_cell_count(ModuleInfo3, CellCount, ModuleInfo) }.
+	{ module_info_set_cell_counter(ModuleInfo3, CellCounter, ModuleInfo) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

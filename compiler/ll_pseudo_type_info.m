@@ -24,6 +24,7 @@
 :- interface.
 
 :- import_module prog_data, llds.
+:- import_module counter.
 
 	% ll_pseudo_type_info__construct_typed_pseudo_type_info(Type,
 	% 	NumUnivQTvars, ExistQVars, Rval, LldsType, LabelNum0, LabelNum)
@@ -44,13 +45,14 @@
 
 :- pred ll_pseudo_type_info__construct_typed_llds_pseudo_type_info((type)::in,
 	int::in, existq_tvars::in, rval::out, llds_type::out,
-	int::in, int::out) is det.
+	counter::in, counter::out) is det.
 
 	% This is the same as the previous predicate, but does not return
 	% the LLDS type.
 
 :- pred ll_pseudo_type_info__construct_llds_pseudo_type_info((type)::in,
-	int::in, existq_tvars::in, rval::out, int::in, int::out) is det.
+	int::in, existq_tvars::in, rval::out, counter::in, counter::out)
+	is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -59,58 +61,58 @@
 :- import_module std_util, list, bool, int.
 
 ll_pseudo_type_info__construct_llds_pseudo_type_info(Type, NumUnivQTvars,
-		ExistQTvars, Pseudo, CNum0, CNum) :-
+		ExistQTvars, Pseudo, C0, C) :-
 	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
-		NumUnivQTvars, ExistQTvars, Pseudo, _LldsType, CNum0, CNum).
+		NumUnivQTvars, ExistQTvars, Pseudo, _LldsType, C0, C).
 
 ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type, NumUnivQTvars,
-		ExistQTvars, PseudoRval, LldsType, CNum0, CNum) :-
+		ExistQTvars, PseudoRval, LldsType, C0, C) :-
 	pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 			ExistQTvars, Pseudo),
-	convert_pseudo(Pseudo, PseudoRval, LldsType, CNum0, CNum).
+	convert_pseudo(Pseudo, PseudoRval, LldsType, C0, C).
 
-:- pred convert_pseudo(pseudo_type_info, rval, llds_type, int, int).
+:- pred convert_pseudo(pseudo_type_info, rval, llds_type, counter, counter).
 :- mode convert_pseudo(in, out, out, in, out) is det.
 
-convert_pseudo(Pseudo, Rval, LldsType, CNum0, CNum) :-
+convert_pseudo(Pseudo, Rval, LldsType, C0, C) :-
 	(
 		Pseudo = type_var(Int),
 		Rval = const(int_const(Int)),
 		LldsType = integer,
-		CNum = CNum0
+		C = C0
 	;
 		Pseudo = type_ctor_info(RttiTypeId),
 		DataAddr = rtti_addr(RttiTypeId, pseudo_type_info(Pseudo)),
 		Rval = const(data_addr_const(DataAddr)),
 		LldsType = data_ptr,
-		CNum = CNum0
+		C = C0
 	;
 		Pseudo = type_info(RttiTypeId, Args),
 		convert_compound_pseudo(RttiTypeId, [], Args, Rval, LldsType,
-			CNum0, CNum)
+			C0, C)
 	;
 		Pseudo = higher_order_type_info(RttiTypeId, Arity, Args),
 		ArityArg = yes(const(int_const(Arity))),
 		convert_compound_pseudo(RttiTypeId, [ArityArg], Args, Rval,
-			LldsType, CNum0, CNum)
+			LldsType, C0, C)
 	).
 
 :- pred convert_compound_pseudo(rtti_type_id, list(maybe(rval)),
-		list(pseudo_type_info), rval, llds_type, int, int).
+		list(pseudo_type_info), rval, llds_type, counter, counter).
 :- mode convert_compound_pseudo(in, in, in, out, out, in, out) is det.
 
 convert_compound_pseudo(RttiTypeId, ArgRvals0, Args,
-		Rval, LldsType, CNum0, CNum) :-
+		Rval, LldsType, C0, C) :-
 	TypeCtorInfoPseudo = pseudo_type_info(type_ctor_info(RttiTypeId)),
 	TypeCtorInfoDataAddr = rtti_addr(RttiTypeId, TypeCtorInfoPseudo),
 	TypeCtorInfoRval = yes(const(data_addr_const(TypeCtorInfoDataAddr))),
 	LldsType = data_ptr,
-	CNum1 = CNum0 + 1,
-	list__map_foldl((pred(A::in, yes(AR)::out, C0::in, C::out) is det :-
-		convert_pseudo(A, AR, _LldsType, C0, C)
-	), Args, ArgRvals1, CNum1, CNum),
+	counter__allocate(CNum, C0, C1),
+	list__map_foldl((pred(A::in, yes(AR)::out, CS0::in, CS::out) is det :-
+		convert_pseudo(A, AR, _LldsType, CS0, CS)
+	), Args, ArgRvals1, C1, C),
 	list__append(ArgRvals0, ArgRvals1, ArgRvals),
 	Reuse = no,
 	Rval = create(0, [TypeCtorInfoRval | ArgRvals],
-		uniform(no), must_be_static, CNum1, "type_info",
+		uniform(no), must_be_static, CNum, "type_info",
 		Reuse).

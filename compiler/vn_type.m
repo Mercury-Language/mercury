@@ -14,7 +14,7 @@
 
 :- interface.
 :- import_module llds, builtin_ops, livemap, options.
-:- import_module getopt, map, set, list, std_util.
+:- import_module getopt, map, set, list, std_util, counter.
 
 :- type vn == int.
 
@@ -99,7 +99,7 @@
 :- type flushmapentry	==	map(vnlval, vn).
 :- type parmap		==	map(int, list(parallel)).
 
-:- type vn_ctrl_tuple	--->	tuple(int, ctrlmap, flushmap, int, parmap).
+:- type vn_ctrl_tuple	--->	tuple(int, ctrlmap, flushmap, counter, parmap).
 
 :- type vn_params.
 

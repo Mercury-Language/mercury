@@ -297,7 +297,7 @@
 
 continuation_info__maybe_process_llds([], _) --> [].
 continuation_info__maybe_process_llds([Proc | Procs], ModuleInfo) -->
-	{ Proc = c_procedure(_, _, PredProcId, Instrs, _) },
+	{ Proc = c_procedure(_, _, PredProcId, Instrs, _, _, _) },
 	continuation_info__maybe_process_proc_llds(Instrs, PredProcId,
 		ModuleInfo),
 	continuation_info__maybe_process_llds(Procs, ModuleInfo).
