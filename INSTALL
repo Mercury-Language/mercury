@@ -1,8 +1,23 @@
 Installation instructions:
 
-1.  If `make' is not GNU make, then type
+0.  The source will be distributed with the .dep files and Makefile
+    already created and up-to-date.  But if you obtained the source
+    using `cvs checkout', you will need GNU make and you will need to
+    type
+
+	make depend
+
+    When using GNU make, the individual file dependencies are automatically
+    generated on the fly, but the above command is necessary so that
+    the system can determine which files need to be linked in to produce
+    the main executable.
+
+1.  If you don't have GNU make, then type
 
 	make ints
+
+    This is necessary because ordinary make doesn't handle transitive
+    dependencies.
 
 2.  Type
 
