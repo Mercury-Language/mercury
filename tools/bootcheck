@@ -74,6 +74,14 @@ echo "starting at `date`"
 
 set -x
 
+if (cd profiler ; mmake $mmake_opts depend)
+then
+	echo "building of profiler dependencies successful"
+else
+	echo "building of profiler dependencies not successful"
+	exit 1
+fi
+
 if mmake $mmake_opts MMAKEFLAGS=$jfactor all
 then
 	echo "building of stage 1 successful"
@@ -105,7 +113,7 @@ ln -s $root/compiler/*.m stage2/compiler
 ln -s $root/compiler/*.m.in stage2/compiler
 ln -s $root/compiler/Mmake* stage2/compiler
 ln -s $root/library/*.m stage2/library
-ln -s $root/library/*.m.in stage2/library
+# ln -s $root/library/*.m.in stage2/library
 ln -s $root/library/*.nl stage2/library
 ln -s $root/library/Mmake* stage2/library
 ln -s $root/library/library.init stage2/library
@@ -192,7 +200,7 @@ ln -s $root/stage2/compiler/*.m stage3/compiler
 ln -s $root/stage2/compiler/*.m.in stage3/compiler
 ln -s $root/stage2/compiler/Mmake* stage3/compiler
 ln -s $root/stage2/library/*.m stage3/library
-ln -s $root/stage2/library/*.m.in stage3/library
+# ln -s $root/stage2/library/*.m.in stage3/library
 ln -s $root/stage2/library/*.nl stage3/library
 ln -s $root/stage2/library/Mmake* stage3/library
 ln -s $root/stage2/library/library.init stage3/library
