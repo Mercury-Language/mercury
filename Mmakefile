@@ -47,6 +47,8 @@ SUBSUBDIR_MMAKE = PATH=../../scripts:../../util:$$PATH \
 		MMAKE_DIR=../../scripts \
 		../../scripts/mmake $(MMAKEFLAGS)
 
+GENERATED_DOCS = README INSTALL WORK_IN_PROGRESS TODO
+
 #-----------------------------------------------------------------------------#
 
 # `mmake dep' ensures that the .dep files exist;
@@ -126,7 +128,7 @@ depend_deep_profiler:
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: README INSTALL mercury-compiler.spec $(SUBDIRS)
+all: $(GENERATED_DOCS) mercury-compiler.spec $(SUBDIRS)
 
 .PHONY: util
 util: scripts
@@ -243,6 +245,14 @@ README: .README.in VERSION
 INSTALL: .INSTALL.in VERSION
 	sed 's/@VERSION@/$(VERSION)/g' .INSTALL.in > INSTALL
 
+TEXT_TO_HTML = TERM=vt100 lynx -dump
+
+WORK_IN_PROGRESS: compiler/notes/work_in_progress.html
+	$(TEXT_TO_HTML) compiler/notes/work_in_progress.html > WORK_IN_PROGRESS
+
+TODO: compiler/notes/todo.html
+	$(TEXT_TO_HTML) compiler/notes/todo.html > TODO
+
 mercury-compiler.spec: .mercury-compiler.spec.in VERSION
 	version_with_underscores=`echo $(VERSION) | sed 's/-/_/g'`; \
 	maybe_beta=`case $(VERSION) in rotd*|*beta*) \
@@ -258,7 +268,7 @@ mercury-compiler.spec: .mercury-compiler.spec.in VERSION
 # Generally you should do a `mmake realclean' before doing `mmake tar'.
 
 .PHONY: tar
-tar: README INSTALL
+tar: $(GENERATED_DOCS)
 	touch Mmake.params
 	cd util && mmake
 	+cd runtime && $(SUBDIR_MMAKE) cs $(RT_LIB_NAME).init
@@ -584,7 +594,7 @@ clean_tests:
 realclean: realclean_subdirs realclean_local realclean_tests
 
 .PHONY: realclean_local
-realclean_local: realclean_config
+realclean_local: realclean_config realclean_docs
 
 .PHONY: realclean_subdirs
 realclean_subdirs: clean_subdirs
@@ -594,6 +604,10 @@ realclean_subdirs: clean_subdirs
 		(cd $$dir; $(SUBDIR_MMAKE) realclean) \
 	done
 	+cd scripts; $(SUBDIR_MMAKE) realclean
+
+.PHONY: realclean_docs
+realclean_docs:
+	rm -f $(GENERATED_DOCS)
 
 .PHONY: realclean_config
 realclean_config:
