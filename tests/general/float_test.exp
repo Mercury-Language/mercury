@@ -12,5 +12,5 @@ X * Y:   -123
 X - Y:     44
 X / Y:    -13
 Float max: 1.797e+308
-Float min: 0.000e+0
-Float epsilon: 1.192e-7
+Float min: 2.225e-308
+Float epsilon: 2.220e-16
