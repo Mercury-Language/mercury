@@ -347,6 +347,14 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
 			Command = cd(Path)
 		)
 	;
+		CmdToken = name("cdr")
+	->
+		ArgTokens = [num(Repetitions) | TokenPath],
+		list.duplicate(Repetitions, TokenPath, DupTokenPath),
+		list.condense(DupTokenPath, RepeatedTokenPath),
+		parse_path(RepeatedTokenPath, RepeatedPath),
+		Command = cd(RepeatedPath)
+	;
 		CmdToken = name("pwd")
 	->
 		ArgTokens = [],

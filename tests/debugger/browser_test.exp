@@ -94,6 +94,17 @@ big(
   big(big(small, 1, small), 2, small), 
   3, 
   big(big(small, 4, big(small, 5, small)), 6, small))
+browser> cdr 100 2
+error: in subdir 2: there is no subterm 2
+browser> cdr 3 1
+browser> ls
+small
+browser> cdr 3 ../1/..
+browser> ls
+big(
+  big(big(small, 1, small), 2, small), 
+  3, 
+  big(big(small, 4, big(small, 5, small)), 6, small))
 browser> quit
 mdb> set -A -f depth 1
 mdb> print *

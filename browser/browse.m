@@ -556,6 +556,7 @@ help(Debugger) -->
 "\t[print|p|ls] [format_options] [path]\n",
 "\t               -- print the specified subterm using the `browse' params\n",
 "\tcd [path]      -- cd to the specified subterm (default is root)\n",
+"\tcdr n path     -- repeatedly apply the cd command n times\n",
 "\tpwd            -- print the path to the current subterm\n",
 "\tset [setting_options] var value\n",
 "\t               -- set a parameter value\n",
@@ -1471,34 +1472,35 @@ not_slash(C) :-
 
 	% Remove "/dir/../" sequences from a list of directories to yield
 	% a form that lacks ".." entries.
-	% NB: This can be done more efficiently than simple iteration
-	% to a limit.
+	%
 :- pred simplify_dirs(list(dir)::in, list(dir)::out) is det.
 
 simplify_dirs(Dirs, SimpleDirs) :-
-	util__limit(simplify, Dirs, SimpleDirs).
+	list.reverse(Dirs, RevDirs),
+	simplify_rev_dirs(RevDirs, 0, [], SimpleDirs).
 
-	% If possible, remove a single occurence of
-	% either:
-	%	- "dir/../"
-	% or:
-	%	- "/.." (parent of root is root)
+	% simplify_rev_dirs(RevDirs, N, SoFar, SimpleDirs).
+	% Assumes a reverse list of directories and removes redundant `..'
+	% entries by scanning from the bottom most directory to the top,
+	% counting how many `..' occured (N) and removing entries accordingly.
+	% SoFar accumulates the simplified dirs processed so far so we can be
+	% tail recursive.
 	%
-:- pred simplify(list(dir)::in, list(dir)::out) is det.
+:- pred simplify_rev_dirs(list(dir)::in, int::in, list(dir)::in, 
+	list(dir)::out) is det.
 
-simplify([], []).
-simplify([First | Rest], Simplified) :-
-	( First = parent ->
-		Simplified = Rest
-	; Rest = [] ->
-		Simplified = [First]
-	; Rest = [parent | Tail] ->
-		Simplified = Tail
+simplify_rev_dirs([], _, SimpleDirs, SimpleDirs).
+simplify_rev_dirs([Dir | Dirs], N, SoFar, SimpleDirs) :-
+	( Dir = parent ->
+		simplify_rev_dirs(Dirs, N+1, SoFar, SimpleDirs)
 	;
-		simplify(Rest, SimplifiedRest),
-		Simplified = [First | SimplifiedRest]
+		( N > 0 ->
+			simplify_rev_dirs(Dirs, N-1, SoFar, SimpleDirs)
+		;
+			simplify_rev_dirs(Dirs, N, [Dir | SoFar], SimpleDirs)
+		)
 	).
-
+	
 :- func dir_to_string(dir) = string.
 
 dir_to_string(parent) = "..".
