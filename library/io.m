@@ -1637,7 +1637,7 @@ io__read_line_as_string(Result) -->
 	io__read_line_as_string(Stream, Result).
 
 io__read_line_as_string(Stream, Result, IO0, IO) :-
-	io__read_line_as_string_2(Stream, Res, String, IO0, IO1),
+	io__read_line_as_string_2(Stream, yes, Res, String, IO0, IO1),
 	( Res < 0 ->
 		( Res = -1 ->
 			Result = eof,
@@ -1651,11 +1651,12 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 		IO = IO1
 	).
 
-:- pred io__read_line_as_string_2(io__input_stream, int, string,
+:- pred io__read_line_as_string_2(io__input_stream, bool, int, string,
 		io__state, io__state).
-:- mode io__read_line_as_string_2(in, out, out, di, uo) is det.
+:- mode io__read_line_as_string_2(in, in, out, out, di, uo) is det.
 
-:- pragma foreign_proc("C", io__read_line_as_string_2(File::in, Res :: out,
+:- pragma foreign_proc("C", io__read_line_as_string_2(File::in,
+			_Bool::in, Res :: out,
 			RetString::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure,
 			tabled_for_io, thread_safe],
@@ -1714,10 +1715,30 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 	MR_update_io(IO0, IO);
 ").
 
-io__read_line_as_string_2(_, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__read_line_as_string_2") }.
+	% XXX This is terribly inefficient, a better approach would be to
+	% use a buffer like what is done for io__read_file_as_string.
+io__read_line_as_string_2(Stream, FirstCall, Res, String) -->
+	io__read_char(Stream, Result),
+	( { Result = ok(Char) },
+		( { Char = '\n' } ->
+			{ Res = 0 },
+			{ String = "\n" }
+		;
+			io__read_line_as_string_2(Stream, no, Res, String0),
+			{ string__first_char(String, Char, String0) } 
+		)
+	; { Result = eof },
+		{ FirstCall = yes ->
+			String = "",
+			Res = -1
+		;
+			String = "",
+			Res = 0
+		}
+	; { Result = error(_) },
+		{ String = "" },
+		{ Res = -2 }
+	).
 
 io__read_file(Result) -->
 	io__input_stream(Stream),
