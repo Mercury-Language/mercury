@@ -759,11 +759,11 @@ long_option("profile-calls",		profile_calls).
 long_option("profile-time",		profile_time).
 long_option("profile-memory",		profile_memory).
 long_option("debug",			debug).
-long_option("stack-trace",		stack_trace).
 % The following options are not allowed, because they're
 % not very useful and would probably only confuse people.
+% long_option("stack-trace",		stack_trace).
 % long_option("require-tracing",	require_tracing).
-% long_option("use-trail",		use_trail).
+long_option("use-trail",		use_trail).
 long_option("pic-reg",			pic_reg).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
