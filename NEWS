@@ -67,7 +67,7 @@ Changes to the Mercury language:
 Changes to the standard library:
 
 * We've added new predicates map__foldl2, tree234__foldl2 and
-  std_util__aggregate2.
+  std_util__aggregate2, and builtin__promise_only_solution_io.
 
 * We've added function versions of std_util__solutions,
   std_util__solutions_set, std_util__aggregate, map__search,

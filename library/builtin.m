@@ -147,6 +147,23 @@
 :- mode promise_only_solution(pred(out) is cc_multi) = out is det.
 :- mode promise_only_solution(pred(out) is cc_nondet) = out is semidet.
 
+% `promise_only_solution_io' is like `promise_only_solution', but
+% for procedures with unique modes (e.g. those that do IO).
+%
+% A call to `promise_only_solution_io(P, X, IO0, IO)' constitutes
+% a promise on the part of the caller that for the given IO0,
+% there is only one value of `X' and `IO' for which `P(X, IO0, IO)' is true.
+% `promise_only_solution_io(P, X, IO0, IO)' presumes that this assumption
+% is satisfied, and returns the X and IO for which `P(X, IO0, IO)' is true.
+%
+% Note that misuse of this predicate may lead to unsound results:
+% if the assumption is not satisfied, the behaviour is undefined.
+% (If you lie to the compiler, the compiler will get its revenge!)
+
+:- pred promise_only_solution_io(pred(T, IO, IO), T, IO, IO).
+:- mode promise_only_solution_io(pred(out, di, uo) is cc_multi,
+		out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 
@@ -218,6 +235,18 @@ promise_only_solution(Pred) = OutVal :-
                 "Y = X;").
 :- pragma c_code(cc_cast(X :: (pred(out) is cc_nondet)) =
                         (Y :: out(pred(out) is semidet)),
+                [will_not_call_mercury, thread_safe],
+                "Y = X;").
+
+promise_only_solution_io(Pred, X) -->
+	call(cc_cast_io(Pred), X).
+
+:- func cc_cast_io(pred(T, IO, IO)) = pred(T, IO, IO).
+:- mode cc_cast_io(pred(out, di, uo) is cc_multi) =
+	out(pred(out, di, uo) is det) is det.
+
+:- pragma c_code(cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
+                        (Y :: out(pred(out, di, uo) is det)),
                 [will_not_call_mercury, thread_safe],
                 "Y = X;").
 
