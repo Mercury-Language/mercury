@@ -502,7 +502,8 @@ MR_trace_decl_exit(MR_Event_Info *event_info, MR_Trace_Node prev)
 		node = (MR_Trace_Node) MR_DD_construct_exit_node(
 				(MR_Word) prev, (MR_Word) call, last_interface,
 				atom, (MR_Word) event_info->MR_event_number);
-		MR_DD_call_node_set_last_interface((MR_Word) call, (MR_Word) node);
+		MR_DD_call_node_set_last_interface((MR_Word) call,
+				(MR_Word) node);
 	);
 
 	return node;
@@ -547,7 +548,8 @@ MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev)
 		node = (MR_Trace_Node) MR_DD_construct_redo_node(
 					(MR_Word) prev,
 					last_interface);
-		MR_DD_call_node_set_last_interface((MR_Word) call, (MR_Word) node);
+		MR_DD_call_node_set_last_interface((MR_Word) call,
+					(MR_Word) node);
 	);
 
 	return node;
@@ -584,9 +586,11 @@ MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_TRACE_CALL_MERCURY(
 		redo = MR_DD_call_node_get_last_interface( (MR_Word) call);
 		node = (MR_Trace_Node) MR_DD_construct_fail_node(
-					(MR_Word) prev, (MR_Word) call, (MR_Word) redo,
+					(MR_Word) prev, (MR_Word) call,
+					(MR_Word) redo,
 					(MR_Word) event_info->MR_event_number);
-		MR_DD_call_node_set_last_interface((MR_Word) call, (MR_Word) node);
+		MR_DD_call_node_set_last_interface((MR_Word) call,
+					(MR_Word) node);
 	);
 	return node;
 }
@@ -608,12 +612,13 @@ MR_trace_decl_excp(MR_Event_Info *event_info, MR_Trace_Node prev)
 
 	MR_TRACE_CALL_MERCURY(
 		last_interface = MR_DD_call_node_get_last_interface(
-				(Word) call);
+				(MR_Word) call);
 		node = (MR_Trace_Node) MR_DD_construct_excp_node(
-				(Word) prev, (Word) call, last_interface,
+				(MR_Word) prev, (MR_Word) call, last_interface,
 				MR_trace_get_exception_value(),
-				(Word) event_info->MR_event_number);
-		MR_DD_call_node_set_last_interface((Word) call, (Word) node);
+				(MR_Word) event_info->MR_event_number);
+		MR_DD_call_node_set_last_interface(
+				(MR_Word) call, (MR_Word) node);
 	);
 
 	return node;
@@ -1036,7 +1041,8 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
 		arity = entry->MR_sle_user.MR_user_arity;
 	}
 	MR_TRACE_CALL_MERCURY(
-		atom = MR_DD_construct_trace_atom((MR_String) name, (MR_Word) arity);
+		atom = MR_DD_construct_trace_atom((MR_String) name,
+				(MR_Word) arity);
 	);
 
 	arg_count = MR_trace_var_count();
@@ -1367,7 +1373,8 @@ MR_trace_node_path(MR_Trace_Node node)
 
 	MR_trace_node_store++;
 	MR_TRACE_CALL_MERCURY(
-		path = MR_DD_trace_node_path(MR_trace_node_store, (MR_Word) node);
+		path = MR_DD_trace_node_path(MR_trace_node_store,
+				(MR_Word) node);
 	);
 	return path;
 }
@@ -1407,7 +1414,8 @@ MR_trace_node_first_disj(MR_Trace_Node node)
 	MR_Trace_Node		first;
 
 	MR_TRACE_CALL_MERCURY(
-		if (!MR_DD_trace_node_first_disj((MR_Word) node, (MR_Word *) &first))
+		if (!MR_DD_trace_node_first_disj((MR_Word) node,
+				(MR_Word *) &first))
 		{
 			MR_fatal_error("MR_trace_node_first_disj: "
 				"not a DISJ event");
