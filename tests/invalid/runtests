@@ -5,6 +5,7 @@
 . ../handle_options
 
 mmake $jfactor realclean > /dev/null 2>&1
+mmake $jfactor depend || exit 1
 eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
 checkstatus=$?
 

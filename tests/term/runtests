@@ -3,8 +3,6 @@
 # is working right.
 # Return a status of 0 (true) if everything is all right, and 1 otherwise.
 
-set -x
-
 . ../handle_options
 
 mmake $jfactor clean > /dev/null 2>&1
