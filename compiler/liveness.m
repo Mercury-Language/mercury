@@ -35,7 +35,7 @@
 :- implementation.
 
 :- import_module hlds_goal, llds, mode_util, term, quantification, instmap.
-:- import_module list, map, set, std_util, assoc_list, globals.
+:- import_module list, map, set, std_util, assoc_list, globals, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -605,33 +605,38 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
 	goal_info_post_deaths(GoalInfo0, PostDeaths0),
 
 	set__difference(Liveness0, PreDeaths0, Liveness1),
+	set__union(Liveness1, PreBirths0, Liveness2),
 
 	goal_info_get_code_model(GoalInfo0, GoalModel),
 	(
 		GoalModel = model_non,
 		Goal0 = disj(_, _)
 	->
+		% It is an invariant that for compound goals, the
+		% prebirths set should be empty
+		require(set__empty(PreBirths0), "Nonempty prebirth set in disj"),
 		% If the goal is a nondet disj then all the variables
 		% that are live at the start of the disj will be
 		% needed at later disjuncts (a conservative approximation)
-		set__union(Extras0, Liveness1, Extras1)
+		set__union(Extras0, Liveness2, Extras1)
 	;
 		GoalModel = model_non,
-		Goal0 = call(_,_,_,_,_,_)
+		(
+			Goal0 = call(_,_,_,_,_,_)
+		;
+			Goal0 = higher_order_call(_,_,_,_,_)
+		)
 	->
 		% If the goal is a nondet call then all the variables
 		% that are live across the call become nondet live.
-		set__difference(Liveness1, PostDeaths0, LivenessAcross),
+		set__difference(Liveness2, PostDeaths0, LivenessAcross),
 		set__union(Extras0, LivenessAcross, Extras1)
 	;
 		Extras1 = Extras0
 	),
 
-	set__union(Liveness1, PreBirths0, Liveness2),
-
 	add_nondet_lives_to_goal_2(Goal0, Liveness2, Extras1,
 				GoalModel, Goal, Liveness3, Extras),
-
 
 	set__difference(Liveness3, PostDeaths0, Liveness4),
 	set__union(Liveness4, PostBirths0, Liveness),
@@ -687,7 +692,7 @@ add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
 	stuff_liveness_residue_after_goal(Else1, ThenOnlyExtras, Else).
 
 	% Nondet lives cannot escape from a commit
-	% so we have to work if if this quantifier is a commit or not.
+	% so we have to work out if this quantifier is a commit or not.
 add_nondet_lives_to_goal_2(some(Vars, Goal0), Liveness0, Extras0, OuterModel,
 				some(Vars, Goal), Liveness, Extras) :-
 	add_nondet_lives_to_goal(Goal0, Liveness0, Extras0,
@@ -758,7 +763,7 @@ add_nondet_lives_to_disj([], Liveness, _Extras0, [], Liveness, Extras, Extras).
 	% For the last disjunct, we optimize what variables are nondet-
 	% live by observing that in the last disjunct we no longer need
 	% to save the inputs onto the stack for later disjuncts (since
-	% there aren't any.
+	% there aren't any).
 add_nondet_lives_to_disj([G0], Liveness0, Extras0,
 					[G], Liveness, ExtrasAcc, Extras) :-
 	add_nondet_lives_to_goal(G0, Liveness0, Extras0,
