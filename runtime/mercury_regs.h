@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2001 The University of Melbourne.
+** Copyright (C) 1993-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -102,7 +102,7 @@
     #include "machdeps/alpha_regs.h"
   #elif defined(__hppa__)
     #include "machdeps/pa_regs.h"
-  #elif defined(_POWER) || defined(__powerpc__)
+  #elif defined(_POWER) || defined(__powerpc__) || defined(__ppc__)
     #include "machdeps/rs6000_regs.h"
   #else
     #error "MR_USE_GCC_GLOBAL_REGISTERS not yet supported on this machine."
