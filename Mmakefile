@@ -327,6 +327,10 @@ version:
 fullarch:
 	@echo $(FULLARCH)
 
+.PHONY: echo_libgrades
+echo_libgrades:
+	@echo $(LIBGRADES)
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: install

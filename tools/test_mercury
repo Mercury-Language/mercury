@@ -15,28 +15,45 @@ case $# in
 	*)	echo "Usage: $0 host arch fullarch branch c_compiler" 1>&2; exit 1 ;;
 esac
 
-PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/mercury/public/cron/.path`"
-PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
-PATH="/home/$HOST/public/mercury-latest/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/egcs-1.1b/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/autoconf-2.13/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/autoconf-2.52/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/$FULLARCH:$PATH"
-PATH="/home/mercury/public/$HOST:$PATH"
-# generate_index_html needs to be in our PATH too
-PATH="`pwd`:$PATH"
+if [ -d /home/mercury/public/. ]; then
+	TOPDIR=/home/mercury/public
+	PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' $TOPDIR/cron/.path`"
+	PATH="$TOPDIR/mercury-latest/$FULLARCH/bin:$PATH"
+	PATH="/home/$HOST/public/mercury-latest/$FULLARCH/bin:$PATH"
+	PATH="$TOPDIR/autoconf-2.13/$FULLARCH/bin:$PATH"
+	PATH="$TOPDIR/autoconf-2.52/$FULLARCH/bin:$PATH"
+	PATH="$TOPDIR/$FULLARCH:$PATH"
+	PATH="$TOPDIR/$HOST:$PATH"
+	# generate_index_html needs to be in our PATH too
+	PATH="$TOPDIR/test_mercury/scripts:$PATH"
+else
+	TOPDIR=$HOME/public
+	PATH=$TOPDIR/mercury-latest/$FULLARCH/bin:$PATH
+	PATH="$TOPDIR/$FULLARCH:$PATH"
+	PATH="$TOPDIR/$HOST:$PATH"
+fi
 export PATH
 
+# Use NFS if we can, otherwise use anonymous cvs (pserver).
 CVSROOT=/home/mercury1/repository
+if [ -d $CVSROOT/. ]; then
+	:
+else
+	CVSROOT=":pserver:guest@cvs.mercury.cs.mu.oz.au:$CVSROOT"
+fi
 export CVSROOT
 
-# tell gcc to use /tmp, not /usr/tmp
+# Tell gcc to use /tmp, not /usr/tmp
 TMPDIR=/tmp
 export TMPDIR
 
 # Make the files writable by group mercury.
-umask 002
+# But only do this for machines on the Mercury network.
+if [ d /home/mercury/public/. ]; then
+	umask 002
+else
+	umask 022
+fi
 
 # Stop looping tests after 5 minutes of CPU time.
 ulimit -S -t 300
@@ -49,7 +66,7 @@ ulimit -S -d 250000
 
 # directories to use
 
-TESTDIR=/home/mercury/public/test_mercury
+TESTDIR=$TOPDIR/test_mercury
 HOSTDIR=$TESTDIR/test_dirs/$HOST
 DIR=$HOSTDIR/build.$BRANCH.$C_COMPILER
 
@@ -222,7 +239,7 @@ case $HOST in
 	hg|ender|roy|venus|earth|mars|ceres) 	
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
-		INSTALL_DIR=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH ;;
+		INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH ;;
 esac
 case "$C_COMPILER" in
 	gcc)	;;
@@ -237,16 +254,17 @@ BETA_WEBDIR_TOP=/home/mercury5/installed_w3/download/files
 STABLE=$HOSTDIR/$INSTALL_DIR_NAME-stable
 UNSTABLE=$HOSTDIR/$INSTALL_DIR_NAME-unstable
 
+# XXX This probably isn't needed anymore. -fjh.
 case $ARCH in
 	alpha)
 		# due to a bug in the DEC loader, INSTALL_DIR should be
 		# as short as possible, to avoid overflow of fixed length
 		# buffers for -rpath options. The above definition is too long.
 		case $BRANCH in
-		latest) INSTALL_DIR=/home/mercury/public/.a ;;
-		0.8)	INSTALL_DIR=/home/mercury/public/.b ;;
-		0.9)	INSTALL_DIR=/home/mercury/public/.c ;;
-		0.10)	INSTALL_DIR=/home/mercury/public/.d ;;
+		latest) INSTALL_DIR=$TOPDIR/.a ;;
+		0.8)	INSTALL_DIR=$TOPDIR/.b ;;
+		0.9)	INSTALL_DIR=$TOPDIR/.c ;;
+		0.10)	INSTALL_DIR=$TOPDIR/.d ;;
 		*)
 			echo "unknown BRANCH \`$BRANCH'!"
 			exit 1
@@ -276,15 +294,18 @@ case $HOST in
 	*)		PARALLEL= ;;
 esac
 
-# version of the mercury compiler to use for bootstrapping
-case $HOST in
-	hg|ender|roy|venus|earth|ceres)
-		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
-		;;
-	*)
-		BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
-		;;
-esac
+# Version of the mercury compiler to use for bootstrapping
+# Normally we use the compiler from same location that we will install in.
+# But occaisionally this setting will get overridden below.
+BOOTSTRAP_MERCURY_COMPILER=$INSTALL_DIR/lib/mercury/bin/$FULLARCH/mercury_compile
+
+# The following can be edited and uncommented if you need to use
+# a different bootstrap compiler to re-bootstrap a host which
+# has gotten too out-of-date.
+#case $HOST in mars)
+#	BOOTSTRAP_MERCURY_COMPILER=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+#		;;
+#esac
 
 # df (disk free) command
 DF=df
@@ -425,7 +446,7 @@ esac
 	# The deep profiler needs to be included in the source distribution.
 case $HOST in $ROTD_HOST)
 	CONFIG_OPTS="$CONFIG_OPTS \
-	    --enable-deep-profiler=/home/mercury/public/installed_w3/cgi-bin"
+	    --enable-deep-profiler=$TOPDIR/installed_w3/cgi-bin"
 	;;
 esac
 
@@ -886,6 +907,9 @@ case $HOST in
 		# Don't bother with these, otherwise it would take forever...
 		#	asm_fast.gc.prof asm_fast.prof
 		#	asm_fast.gc.memprof asm_fast.gc.tr"
+		;;
+	*)
+		GRADES="`mmake echo_libgrades`"
 		;;
 esac
 

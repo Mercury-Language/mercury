@@ -31,49 +31,38 @@ case $# in
 	*)	echo "Usage: $0 host [c-compiler] [branch]" 1>&2; exit 1 ;;
 esac
 
-case $HOST in
-	munta) 		ARCH=sgi	FULLARCH=mips-sgi-irix5.2 ;;
-	muse) 		ARCH=sgi	FULLARCH=mips-sgi-irix5.3 ;;
-	kryten) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.5 ;;
-	taifun) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.7 ;;
-	mundroo)	ARCH=i686	FULLARCH=i386-pc-solaris2.8 ;;
-	murlibobo) 	ARCH=alpha	FULLARCH=alphaev5-dec-osf5.1 ;;
-	mundook) 	ARCH=alpha	FULLARCH=alpha-dec-osf3.2 ;;
-	quicksilver) 	ARCH=i586	FULLARCH=i586-pc-linux-gnu ;;
-	hg) 		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
-	hydra)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
-	ender)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
-	roy)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
-	venus)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
-	earth)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
-	mars)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
-	ceres)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
-	*)		echo "$0: unknown HOST $HOST" 1>&2; exit 1 ;;
-esac
-
 #-----------------------------------------------------------------------------#
 
-PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/mercury/public/cron/.path`"
-PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/nuprolog/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/egcs-1.1b/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/autoconf-2.4/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/sicstus3/$HOST:$PATH"
-PATH="/home/mercury/public/$HOST:$PATH"
+if [ -d /home/mercury/public/. ]; then
+	TOPDIR=/home/mercury/public
+	PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' $TOPDIR/cron/.path`"
+else
+	TOPDIR=$HOME/public
+fi
+PATH="$TOPDIR/mercury-latest/$FULLARCH/bin:$PATH"
+PATH="$TOPDIR/$HOST:$PATH"
+PATH="$HOME/bin:$PATH"
 export PATH
 
 CVSROOT=/home/mercury1/repository
+if [ -d $CVSROOT/. ]; then
+	:
+else
+	CVSROOT=:pserver:guest@cvs.mercury.cs.mu.oz.au:$CVSROOT
+fi
 export CVSROOT
+
+FULLARCH="`config.guess`"
+ARCH="`expr $FULLARCH : '\([^-]*\)-.*' `"
 
 #-----------------------------------------------------------------------------#
 
 # Redirect all output to $tmpfile to stop cron mailing
 # content-free messages to mercury@cs.mu.oz.au.
 {
-tm_dir=/home/mercury/public/test_mercury
+tm_dir=$TOPDIR/test_mercury
 
-cd /home/mercury/public/test_mercury/scripts;
+cd $TOPDIR/test_mercury/scripts;
 cvs checkout mercury/tools/test_mercury
 cp mercury/tools/test_mercury $tmpscript
 
