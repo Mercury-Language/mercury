@@ -21,8 +21,8 @@ MAIN_TARGET=mercury
 MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" \
 		$(SCRIPTS_DIR)/mnc
 MNL	=	MERCURY_NU_LIB_DIR=. \
-	MERCURY_NU_LIB_NOS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
-		$(SCRIPTS_DIR)/mnl
+	MERCURY_NU_LIB_OBJS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
+		$(SCRIPTS_DIR)/mnl -v
 
 MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
 MSL	=	MERCURY_SP_LIB_DIR=. MERCURY_SICSTUS_PROLOG=sp \
