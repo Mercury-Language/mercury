@@ -809,15 +809,19 @@ ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
 				PredName = "__Unify__",
 				\+ hlds_pred__in_in_unification_proc_id(ProcId)
 			->
-				DeclaringModule = yes(TypeModule)
+				% This is a locally-defined instance
+				% of a unification procedure for a type
+				% defined in some other module
+				DefiningModule = ThisModule,
+				MaybeDeclaringModule = yes(TypeModule)
 			;
 				% the module declaring the type is the same as
 				% the module defining this special pred
-				DeclaringModule = no
+				DefiningModule = TypeModule,
+				MaybeDeclaringModule = no
 			),
 			MLDS_PredLabel = special_pred(PredName,
-				DeclaringModule, TypeName, TypeArity),
-			MLDS_Module = mercury_module_name_to_mlds(TypeModule)
+				MaybeDeclaringModule, TypeName, TypeArity)
 		;
 			string__append_list(["ml_gen_pred_label:\n",
 				"cannot make label for special pred `",
@@ -833,16 +837,18 @@ ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
 		->
 			% This predicate is a specialized version of 
 			% a pred from a `.opt' file.
+			DefiningModule = ThisModule,
 			MaybeDeclaringModule = yes(PredModule)
 		;	
 			% The predicate was declared in the same module
 			% that it is defined in
+			DefiningModule = PredModule,
 			MaybeDeclaringModule = no
 		),
 		MLDS_PredLabel = pred(PredOrFunc, MaybeDeclaringModule,
-				PredName, PredArity),
-		MLDS_Module = mercury_module_name_to_mlds(PredModule)
-	).
+				PredName, PredArity)
+	),
+	MLDS_Module = mercury_module_name_to_mlds(DefiningModule).
 
 %-----------------------------------------------------------------------------%
 %
