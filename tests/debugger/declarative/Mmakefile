@@ -5,8 +5,6 @@ main_target:	check
 include ../../Mmake.common
 -include ../../Mmake.params
 
-RM_C=:
-
 #-----------------------------------------------------------------------------#
 
 # We suppress the printing of the banner, because different workspaces

@@ -34,12 +34,6 @@ MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 
 #-----------------------------------------------------------------------------#
 
-# If we're going to generate both `.$O' files and `.pic_o' files, then
-# don't remove the intermediate `.c' files.
-RM_C	=	$(LIBRARY_RM_C)
-
-#-----------------------------------------------------------------------------#
-
 # Specify which options to use to compile the library.
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params.

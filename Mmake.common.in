@@ -51,13 +51,6 @@ CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
 # just reuse the .o files.
 EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
 
-# Set LIBRARY_RM_C as `:' if EXT_FOR_PIC_OBJECTS is `pic_o', or `rm'
-# otherwise.  This is used to ensure that in cases when we're building
-# both `.o' and `.pic_o' files, we don't remove the intermediate `.c' files.
-# This avoids compiling things to C twice, and also avoids problems when
-# bootstrapping from the source distribution.
-LIBRARY_RM_C		= @LIBRARY_RM_C@
-
 # This specifies the path to the so_locations file (or its equivalent),
 # which is used by the linker to help it to map different shared objects
 # to different virtual memory addresses at static link time, so as to avoid 

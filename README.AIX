@@ -21,14 +21,7 @@ in resolving them.
     This works around a fixed limit on the size of the TOC (Table of Contents)
     in the RS/6000 object file format.
 
-2.  Also add the following line to Mmake.params:
-
-    	RM_C=:
-
-    This prevents the intermediate C files from being removed,
-    which will make it easier to debug things later.
-
-3.  Follow the instructions in the INSTALL file.
+2.  Follow the instructions in the INSTALL file.
 
 The last version of Mercury which was known to work on AIX was
 Mercury 0.6 -- actually a version just prior to 0.6, namely
@@ -39,7 +32,7 @@ For that version, following the steps above would result in
 an error message from the assembler, so the following additional
 step was needed.
 
-4. Change directory to the `compiler' directory, and run the command
+3. Change directory to the `compiler' directory, and run the command
 
 	sh ../scripts/rs6000_hack
 

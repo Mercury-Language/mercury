@@ -6,8 +6,6 @@ main_target:	check
 # This file is copied from the Mercury tests repository
 include ./Mmake.common
 
-
-RM_C=:
 #-----------------------------------------------------------------------------#
 
 MORPHINE = ../scripts/morphine  --no-banner

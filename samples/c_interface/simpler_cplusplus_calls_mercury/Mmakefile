@@ -35,9 +35,6 @@ MLFLAGS=-g
 # not a main program
 C2INITFLAGS=--library
 
-# tell Mmake not to remove the `.c' files, so we can look at them (e.g. in gdb)
-RM_C=:
-
 OBJECTS = cpp_main.o mercury_lib_init.o $(mercury_lib.os)
 
 #-----------------------------------------------------------------------------#

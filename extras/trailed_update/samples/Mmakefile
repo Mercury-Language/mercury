@@ -13,7 +13,6 @@ MCFLAGS = --infer-all
 
 # Enable C debugging
 CFLAGS=-g
-RM_C=:
 MLFLAGS=-g
 
 # Link in the trailed_update library from ..

@@ -7,7 +7,6 @@
 GRADEFLAGS += --use-trail
 
 # enable C debugging
-RM_C = :
 MGNUCFLAGS = -g
 MLFLAGS = -g
 

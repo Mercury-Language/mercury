@@ -23,9 +23,6 @@ MGNUCFLAGS=-g
 # not a main program
 C2INITFLAGS=--library
 
-# keep the `.c' files around, for debugging
-RM_C=:
-
 #-----------------------------------------------------------------------------#
 
 c_main.o: mercury_lib.h c_main.c

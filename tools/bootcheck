@@ -530,9 +530,7 @@ then
 		exit 1
 	fi
 
-	# the `RM_C=:' ensures that the `.c' files do not get deleted
-
-	if (cd stage2/library && $MMAKE $mmake_opts $jfactor RM_C=: mercury)
+	if (cd stage2/library && $MMAKE $mmake_opts $jfactor mercury)
 	then
 		echo "building of stage 2 library successful"
 	else
@@ -540,7 +538,7 @@ then
 		exit 1
 	fi
 
-	if (cd stage2/browser && $MMAKE $mmake_opts $jfactor RM_C=: library)
+	if (cd stage2/browser && $MMAKE $mmake_opts $jfactor library)
 	then
 		echo "building of stage 2 browser successful"
 	else
@@ -556,8 +554,7 @@ then
 		exit 1
 	fi
 
-	if (cd stage2/compiler && $MMAKE $mmake_opts $jfactor RM_C=: \
-		mercury_compile)
+	if (cd stage2/compiler && $MMAKE $mmake_opts $jfactor mercury_compile)
 	then
 		echo "building of stage 2 compiler successful"
 	else

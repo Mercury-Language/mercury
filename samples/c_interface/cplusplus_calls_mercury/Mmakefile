@@ -30,9 +30,6 @@ CXXFLAGS=-g
 MGNUCFLAGS=-g
 MLFLAGS=-g
 
-# tell Mmake not to remove the `.c' files, so we can look at them (e.g. in gdb)
-RM_C=:
-
 # tell the Mercury linker to link in cpp_main.o and mercury_lib.o
 MLLIBS=cpp_main.o mercury_lib.o
 

@@ -1,6 +1,4 @@
 
-#RM_C=:
-
 MAIN_TARGET	= all
 
 MLOBJS		= togl.o 
