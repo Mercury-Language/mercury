@@ -165,6 +165,13 @@
 :- pred term__context_init(string, int, term__context).
 :- mode term__context_init(input, input, output).
 
+	% Convert a list of terms which are all vars into a list
+	% of vars (or vice versa).
+
+:- pred term_list_to_var_list(list(term), list(var)).
+:- mode term_list_to_var_list(input, output) is semidet.
+:- mode term_list_to_var_list(output, input) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -521,6 +528,14 @@ term__relabel_variables([], _, _, []).
 term__relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
 	term__relabel_variable(Term0, OldVar, NewVar, Term),
 	term__relabel_variables(Terms0, OldVar, NewVar, Terms).
+
+%-----------------------------------------------------------------------------%
+
+:- term_list_to_var_list(Terms, Vars) when Terms or Vars. % Indexing
+
+term_list_to_var_list([], []).
+term_list_to_var_list([term_variable(Var) | Terms], [Var | Vars]) :-
+	term_list_to_var_list(Terms, Vars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

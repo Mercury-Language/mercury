@@ -80,7 +80,7 @@ a local variable, then report the error.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, varset, prog_out, string, require, std_util.
+:- import_module list, map, varset, term, prog_out, string, require, std_util.
 :- import_module globals, options, mercury_to_mercury, hlds_out.
 
 %-----------------------------------------------------------------------------%
@@ -604,16 +604,6 @@ modecheck_call_pred(PredId, Args, ProcId, ModeInfo0, ModeInfo) :-
 				ModeInfo0, ModeInfo1),
 	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 	modecheck_set_var_inst_list(ArgVars, FinalInsts, ModeInfo1, ModeInfo).
-
-:- pred term_list_to_var_list(list(term), list(var)).
-:- mode term_list_to_var_list(input, output) is semidet.
-:- mode term_list_to_var_list(output, input) is det.
-
-:- term_list_to_var_list(Terms, Vars) when Terms or Vars. % Indexing
-
-term_list_to_var_list([], []).
-term_list_to_var_list([term_variable(Var) | Terms], [Var | Vars]) :-
-	term_list_to_var_list(Terms, Vars).
 
 %-----------------------------------------------------------------------------%
 
