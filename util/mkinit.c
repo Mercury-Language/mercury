@@ -42,6 +42,7 @@ static int maxcalls = MAXCALLS;
 static int num_files;
 static char **files;
 static bool output_main_func = TRUE;
+static bool c_files_contain_extra_inits = FALSE;
 
 static int num_modules = 0;
 static int num_errors = 0;
@@ -204,7 +205,7 @@ static	int getline(FILE *file, char *line, int line_max);
 ** Apparently SunOS 4.1.3 doesn't have strerror()
 **	(!%^&!^% non-ANSI systems, grumble...)
 **
-** This code is duplicated in runtime/prof.c.
+** This code is duplicated in runtime/mercury_prof.c.
 */
 
 extern int sys_nerr;
@@ -254,7 +255,7 @@ static void
 parse_options(int argc, char *argv[])
 {
 	int	c;
-	while ((c = getopt(argc, argv, "c:w:l")) != EOF) {
+	while ((c = getopt(argc, argv, "c:w:lx")) != EOF) {
 		switch (c) {
 		case 'c':
 			if (sscanf(optarg, "%d", &maxcalls) != 1)
@@ -267,6 +268,10 @@ parse_options(int argc, char *argv[])
 
 		case 'l':
 			output_main_func = FALSE;
+			break;
+
+		case 'x':
+			c_files_contain_extra_inits = TRUE;
 			break;
 
 		default:
@@ -283,7 +288,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-		"Usage: mkinit [-c maxcalls] [-w entry] [-l] files...\n");
+		"Usage: mkinit [-c maxcalls] [-w entry] [-l] [-x] files...\n");
 	exit(1);
 }
 
@@ -356,29 +361,44 @@ static void
 process_file(char *filename)
 {
 	int len = strlen(filename);
+	/*
+	** XXX the following three lines are needed only for bootstrapping;
+	** they should be deleted once the new compiler has been installed
+	** everywhere.
+	*/
 	if (len >= 2 && strcmp(filename + len - 2, ".m") == 0) {
-		process_m_file(filename);
+		process_c_file(filename);
+	} else
+	if (len >= 2 && strcmp(filename + len - 2, ".c") == 0) {
+		if (c_files_contain_extra_inits) {
+			process_init_file(filename);
+		} else {
+			process_c_file(filename);
+		}
 	} else if (len >= 5 && strcmp(filename + len - 5, ".init") == 0) {
-		process_init_file(filename);
-	} else if (len >= 2 && strcmp(filename + len - 2, ".c") == 0) {
 		process_init_file(filename);
 	} else {
 		fprintf(stderr,
-			"%s: filename `%s' must end in `.m', `.c' or `.init'\n",
+			"%s: filename `%s' must end in `.c' or `.init'\n",
 			progname, filename);
 		num_errors++;
 	}
 }
 
 static void
-process_m_file(char *filename)
+process_c_file(char *filename)
 {
 	char func_name[1000];
 
-	char *dot;
+	char *position;
 
-	/* remove the trailing ".m" */
+	/* remove the trailing ".c" */
 	filename[strlen(filename) - 2] = '\0';	
+
+	/* remove the directory name, if any */
+	if ((position = strrchr(filename, '/')) != NULL) {
+		filename = position + 1;
+	}
 
 	/*
 	** The func name is "mercury__<modulename>__init",
@@ -386,10 +406,10 @@ process_m_file(char *filename)
 	** `.'s replaced with `__'.
 	*/
 	strcpy(func_name, "mercury");
-	while ((dot = strchr(filename, '.')) != NULL) {
+	while ((position = strchr(filename, '.')) != NULL) {
 		strcat(func_name, "__");
-		strncat(func_name, filename, dot - filename);
-		filename = dot + 1;
+		strncat(func_name, filename, position - filename);
+		filename = position + 1;
 	}
 	strcat(func_name, "__");
 	strcat(func_name, filename);

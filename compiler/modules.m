@@ -2222,8 +2222,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_strings(DepStream, [
-		InitCFileName, " :\n",
-		"\t$(C2INIT) $(C2INITFLAGS) $(", MakeVarName, ".ms) > ",
+		InitCFileName, " : ", DepFileName, "\n",
+		"\t$(C2INIT) $(C2INITFLAGS) $(", MakeVarName, ".cs) > ",
 			InitCFileName, "\n\n"
 	]),
 
