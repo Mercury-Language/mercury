@@ -10,13 +10,16 @@
 ** This is used to get the linker to ensure that different object files
 ** were compiled with consistent grades.
 **
-** Any condition compilation macros that affect link compatibility
-** should be included here.
-** For documentation on the meaning of these macros, see
+** Any condition compilation macros that affect link compatibility should be
+** included here. For documentation on the meaning of these macros, see
 ** runtime/mercury_conf_param.h.
 **
 ** IMPORTANT: any changes here may also require changes to
+**	runtime/mercury_conf_param.h
+** 	scripts/init_grade_options.sh-subr
 ** 	scripts/parse_grade_options.sh-subr
+** 	scripts/final_grade_options.sh-subr
+** 	scripts/mgnuc.in
 ** 	scripts/ml.in
 **	compiler/handle_options.m
 **	compiler/mercury_compile.m
@@ -24,6 +27,8 @@
 
 #ifndef MERCURY_GRADES_H
 #define MERCURY_GRADES_H
+
+#include "mercury_tags.h" /* for TAGBITS */
 
 /* convert a macro to a string */
 #define MR_STRINGIFY(x)		MR_STRINGIFY_2(x)
@@ -47,8 +52,14 @@
 ** binary backwards compatibility.
 ** Note that the binary compatibility version number has no direct
 ** relationship with the source release number (which is in ../VERSION).
+**
+** It is a good idea to inspect all code for RTTI version number checks
+** and remove them when increasing the binary compatibility version number.   
+** Searching for MR_RTTI_VERSION__ should find all code related to the
+** RTTI version number.
 */
-#define MR_GRADE_PART_0		v1_
+
+#define MR_GRADE_PART_0		v2_
 
 #ifdef USE_ASM_LABELS
   #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, asm_)
@@ -75,6 +86,7 @@
 #else
   #define MR_GRADE_PART_3	MR_GRADE_PART_2
 #endif
+
 #ifdef CONSERVATIVE_GC
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _gc)
 #elif defined(NATIVE_GC)

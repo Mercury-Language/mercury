@@ -11,9 +11,6 @@
 
 % This modules provides basic string handling facilities.
 
-% Beware that char_to_string/2 won't work with NU-Prolog 1.5.33 because
-% of a NU-Prolog bug (fixed in NU-Prolog 1.5.35).
-
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -607,7 +604,9 @@ string__from_char_list(CharList, String) :-
 ** allocate (length + 1) bytes of heap space for string
 ** i.e. (length + 1 + sizeof(Word) - 1) / sizeof(Word) words
 */
-	incr_hp_atomic(str_ptr, size / sizeof(Word));
+	incr_hp_atomic_msg(str_ptr, size / sizeof(Word),
+		MR_PROC_LABEL,
+		""string:string/0"");
 	Str = (char *) str_ptr;
 /*
 ** set size to be the offset of the end of the string
@@ -753,7 +752,7 @@ string__hash(String, HashVal) :-
 	string__length(String, Length),
 	string__to_int_list(String, CodeList),
 	string__hash_2(CodeList, 0, HashVal0),
-	HashVal is HashVal0 ^ Length.
+	HashVal = HashVal0 `xor` Length.
 
 :- pred string__hash_2(list(int), int, int).
 :- mode string__hash_2(in, in, out) is det.
@@ -767,9 +766,9 @@ string__hash_2([X | Xs], HashVal0, HashVal) :-
 :- mode string__combine_hash(in, in, out) is det.
 
 string__combine_hash(H0, X, H) :-
-	H1 is H0 << 5,
-	H2 is H1 ^ H0,
-	H is H2 ^ X.
+	H1 = H0 << 5,
+	H2 = H1 `xor` H0,
+	H = H2 `xor` X.
 
 %-----------------------------------------------------------------------------%
 
@@ -1561,7 +1560,8 @@ string__special_precision_and_width(-1).
 	char buf[500];
 	Word tmp;
 	sprintf(buf, ""%#.15g"", FloatVal);
-	incr_hp_atomic(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word));
+	incr_hp_atomic_msg(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word),
+		MR_PROC_LABEL, ""string:string/0"");
 	FloatString = (char *)tmp;
 	strcpy(FloatString, buf);
 }").
@@ -1576,7 +1576,8 @@ string__special_precision_and_width(-1).
 	char buf[500];
 	Word tmp;
 	sprintf(buf, ""%.15f"", FloatVal);
-	incr_hp_atomic(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word));
+	incr_hp_atomic_msg(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word),
+		MR_PROC_LABEL, ""string:string/0"");
 	FloatString = (char *)tmp;
 	strcpy(FloatString, buf);
 }").
@@ -1602,10 +1603,11 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__to_int_list(Str::in, IntList::out),
 		[will_not_call_mercury, thread_safe], "{
 	const char *p = Str + strlen(Str);
-	IntList = MR_list_empty();
+	IntList = MR_list_empty_msg(MR_PROC_LABEL);
 	while (p > Str) {
 		p--;
-		IntList = MR_list_cons((UnsignedChar) *p, IntList);
+		IntList = MR_list_cons_msg((UnsignedChar) *p, IntList,
+			MR_PROC_LABEL);
 	}
 }").
 
@@ -1629,7 +1631,8 @@ string__special_precision_and_width(-1).
 ** allocate (length + 1) bytes of heap space for string
 ** i.e. (length + 1 + sizeof(Word) - 1) / sizeof(Word) words
 */
-	incr_hp_atomic(str_ptr, size / sizeof(Word));
+	incr_hp_atomic_msg(str_ptr, size / sizeof(Word),
+		MR_PROC_LABEL, ""string:string/0"");
 	Str = (char *) str_ptr;
 /*
 ** loop to copy the characters from the int_list to the string
@@ -1731,7 +1734,8 @@ string__special_precision_and_width(-1).
 		** We need to make a copy to ensure that the pointer is
 		** word-aligned.
 		*/
-		incr_hp_atomic(tmp, (len_2 + sizeof(Word)) / sizeof(Word));
+		incr_hp_atomic_msg(tmp, (len_2 + sizeof(Word)) / sizeof(Word),
+			MR_PROC_LABEL, ""string:string/0"");
 		S2 = (char *) tmp;
 		strcpy(S2, S3 + len_1);
 		SUCCESS_INDICATOR = TRUE;
@@ -1747,7 +1751,8 @@ string__special_precision_and_width(-1).
 	Word tmp;
 	len_1 = strlen(S1);
 	len_2 = strlen(S2);
-	incr_hp_atomic(tmp, (len_1 + len_2 + sizeof(Word)) / sizeof(Word));
+	incr_hp_atomic_msg(tmp, (len_1 + len_2 + sizeof(Word)) / sizeof(Word),
+		MR_PROC_LABEL, ""string:string/0"");
 	S3 = (char *) tmp;
 	strcpy(S3, S1);
 	strcpy(S3 + len_1, S2);
@@ -1771,14 +1776,16 @@ string__special_precision_and_width(-1).
 	common_code("
 		Word	temp;
 
-		incr_hp_atomic(temp,
-			(LOCALS->count + sizeof(Word)) / sizeof(Word));
+		incr_hp_atomic_msg(temp,
+			(LOCALS->count + sizeof(Word)) / sizeof(Word),
+			MR_PROC_LABEL, ""string:string/0"");
 		S1 = (String) temp;
 		memcpy(S1, LOCALS->s, LOCALS->count);
 		S1[LOCALS->count] = '\\0';
-		incr_hp_atomic(temp,
+		incr_hp_atomic_msg(temp,
 			(LOCALS->len - LOCALS->count + sizeof(Word))
-			/ sizeof(Word));
+				/ sizeof(Word),
+			MR_PROC_LABEL, ""string:string/0"");
 		S2 = (String) temp;
 		strcpy(S2, LOCALS->s + LOCALS->count);
 
@@ -1806,12 +1813,14 @@ string__special_precision_and_width(-1).
 	Word tmp;
 	if (Start < 0) Start = 0;
 	if (Count <= 0) {
-		make_aligned_string(LVALUE_CAST(ConstString, SubString), """");
+		MR_make_aligned_string(LVALUE_CAST(ConstString, SubString),
+			"""");
 	} else {
 		len = strlen(Str);
 		if (Start > len) Start = len;
 		if (Count > len - Start) Count = len - Start;
-		incr_hp_atomic(tmp, (Count + sizeof(Word)) / sizeof(Word));
+		incr_hp_atomic_msg(tmp, (Count + sizeof(Word)) / sizeof(Word),
+			MR_PROC_LABEL, ""string:string/0"");
 		SubString = (char *) tmp;
 		memcpy(SubString, Str + Start, Count);
 		SubString[Count] = '\\0';
@@ -1831,7 +1840,8 @@ string__special_precision_and_width(-1).
 "{
 	Integer len;
 	Word tmp;
-	incr_hp_atomic(tmp, (Count + sizeof(Word)) / sizeof(Word));
+	incr_hp_atomic_msg(tmp, (Count + sizeof(Word)) / sizeof(Word),
+		MR_PROC_LABEL, ""string:string/0"");
 	SubString = (char *) tmp;
 	memcpy(SubString, Str + Start, Count);
 	SubString[Count] = '\\0';
@@ -1853,12 +1863,13 @@ string__special_precision_and_width(-1).
 	Integer len;
 	Word tmp;
 	if (Count <= 0) {
-		make_aligned_string(LVALUE_CAST(ConstString, Left), """");
+		MR_make_aligned_string(LVALUE_CAST(ConstString, Left), """");
 		Right = Str;
 	} else {
 		len = strlen(Str);
 		if (Count > len) Count = len;
-		incr_hp_atomic(tmp, (Count + sizeof(Word)) / sizeof(Word));
+		incr_hp_atomic_msg(tmp, (Count + sizeof(Word)) / sizeof(Word),
+			MR_PROC_LABEL, ""string:string/0"");
 		Left = (char *) tmp;
 		memcpy(Left, Str, Count);
 		Left[Count] = '\\0';
@@ -1866,8 +1877,9 @@ string__special_precision_and_width(-1).
 		** We need to make a copy to ensure that the pointer is
 		** word-aligned.
 		*/
-		incr_hp_atomic(tmp,
-			(len - Count + sizeof(Word)) / sizeof(Word));
+		incr_hp_atomic_msg(tmp,
+			(len - Count + sizeof(Word)) / sizeof(Word),
+			MR_PROC_LABEL, ""string:string/0"");
 		Right = (char *) tmp;
 		strcpy(Right, Str + Count);
 	}
@@ -1922,8 +1934,9 @@ string__special_precision_and_width(-1).
 		** We need to make a copy to ensure that the pointer is
 		** word-aligned.
 		*/
-		incr_hp_atomic(tmp,
-			(strlen(Str) + sizeof(Word)) / sizeof(Word));
+		incr_hp_atomic_msg(tmp,
+			(strlen(Str) + sizeof(Word)) / sizeof(Word),
+			MR_PROC_LABEL, ""string:string/0"");
 		Rest = (char *) tmp;
 		strcpy(Rest, Str);
 		SUCCESS_INDICATOR = TRUE;
@@ -1945,8 +1958,9 @@ string__special_precision_and_width(-1).
 		** We need to make a copy to ensure that the pointer is
 		** word-aligned.
 		*/
-		incr_hp_atomic(tmp,
-			(strlen(Str) + sizeof(Word)) / sizeof(Word));
+		incr_hp_atomic_msg(tmp,
+			(strlen(Str) + sizeof(Word)) / sizeof(Word),
+			MR_PROC_LABEL, ""string:string/0"");
 		Rest = (char *) tmp;
 		strcpy(Rest, Str);
 		SUCCESS_INDICATOR = TRUE;
@@ -1960,7 +1974,8 @@ string__special_precision_and_width(-1).
 		[will_not_call_mercury, thread_safe], "{
 	size_t len = strlen(Rest) + 1;
 	Word tmp;
-	incr_hp_atomic(tmp, (len + sizeof(Word)) / sizeof(Word));
+	incr_hp_atomic_msg(tmp, (len + sizeof(Word)) / sizeof(Word),
+		MR_PROC_LABEL, ""string:string/0"");
 	Str = (char *) tmp;
 	Str[0] = First;
 	strcpy(Str + 1, Rest);

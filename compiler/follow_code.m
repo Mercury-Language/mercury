@@ -57,7 +57,7 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 			Varset0, VarTypes0, Goal2, Varset, VarTypes, _Warnings),
 		proc_info_get_initial_instmap(ProcInfo0,
 			ModuleInfo0, InstMap0),
-		recompute_instmap_delta(no, Goal2, Goal, InstMap0,
+		recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstMap0,
 			ModuleInfo0, ModuleInfo)
 	;
 		Goal = Goal0,
@@ -124,6 +124,10 @@ move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).
 
 move_follow_code_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), 
 			pragma_c_code(A,B,C,D,E,F,G), _, R, R).
+
+move_follow_code_in_goal_2(bi_implication(_, _), _, _, _, _) :-
+	% these should have been expanded out by now
+	error("move_follow_code_in_goal_2: unexpected bi_implication").
 
 %-----------------------------------------------------------------------------%
 

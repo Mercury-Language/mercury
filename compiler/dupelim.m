@@ -83,7 +83,8 @@ dupelim_main(Instrs0, Instrs) :-
 		process_clusters(Clusters, LabelSeq0, LabelSeq,
 			BlockMap0, BlockMap, ReplMap0, ReplMap),
 		flatten_basic_blocks(LabelSeq, BlockMap, Instrs1),
-		dupelim__replace_labels_instr_list(Instrs1, ReplMap, Instrs2),
+		opt_util__replace_labels_instruction_list(Instrs1,
+			ReplMap, yes, Instrs2),
 		list__append(Comments, Instrs2, Instrs)
 	).
 
@@ -114,8 +115,8 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 	),
 	AddPragmaReferredLabels = lambda(
 		[Instr::in, FoldFixed0::in, FoldFixed::out] is det, (
-		( Instr = pragma_c(_, _, _, yes(PragmaLabel), _) - _ ->
-			set__insert(FoldFixed0, PragmaLabel, FoldFixed)
+		( Instr = pragma_c(_, _, _, yes(FixedLabel), _, _) - _ ->
+			set__insert(FoldFixed0, FixedLabel, FoldFixed)
 		;
 			FoldFixed = FoldFixed0
 		)
@@ -291,7 +292,7 @@ standardize_instr(Instr1, Instr) :-
 		standardize_rval(Rval1, Rval),
 		Instr = assign(Lval, Rval)
 	;
-		Instr1 = call(_, _, _, _),
+		Instr1 = call(_, _, _, _, _),
 		Instr = Instr1
 	;
 		Instr1 = mkframe(_, _),
@@ -366,7 +367,7 @@ standardize_instr(Instr1, Instr) :-
 		standardize_lval(Lval1, Lval),
 		Instr = join_and_continue(Lval, N)
 	;
-		Instr1 = pragma_c(_, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _, _),
 		Instr = Instr1
 	).
 
@@ -558,7 +559,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		most_specific_rval(Rval1, Rval2, Rval),
 		Instr = assign(Lval, Rval)
 	;
-		Instr1 = call(_, _, _, _),
+		Instr1 = call(_, _, _, _, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
@@ -635,7 +636,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = pragma_c(_, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	).
@@ -761,230 +762,6 @@ most_specific_rval(Rval1, Rval2, Rval) :-
 		Rval1 = mem_addr(_),
 		Rval2 = Rval1,
 		Rval = Rval1
-	).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% The code in this section is concerned with replacing all references
-	% to one given label with a reference to another given label.
-
-:- pred dupelim__replace_labels_instr_list(list(instruction)::in,
-	map(label, label)::in, list(instruction)::out) is det.
-
-dupelim__replace_labels_instr_list([], _ReplMap, []).
-dupelim__replace_labels_instr_list([Instr0 - Comment | Instrs0],
-		ReplMap, [Instr - Comment | Instrs]) :-
-	dupelim__replace_labels_instr(Instr0, ReplMap, Instr),
-	dupelim__replace_labels_instr_list(Instrs0, ReplMap, Instrs).
-
-:- pred dupelim__replace_labels_instr(instr::in, map(label, label)::in,
-	instr::out) is det.
-
-dupelim__replace_labels_instr(comment(Comment), _, comment(Comment)).
-dupelim__replace_labels_instr(livevals(Livevals), _, livevals(Livevals)).
-dupelim__replace_labels_instr(block(R, F, Instrs0), ReplMap,
-		block(R, F, Instrs)) :-
-	dupelim__replace_labels_instr_list(Instrs0, ReplMap, Instrs).
-dupelim__replace_labels_instr(assign(Lval0, Rval0), ReplMap,
-		assign(Lval, Rval)) :-
-	dupelim__replace_labels_lval(Lval0, ReplMap, Lval),
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_instr(call(Target, Return0, LiveInfo, CM),
-		ReplMap, call(Target, Return, LiveInfo, CM)) :-
-	dupelim__replace_labels_code_addr(Return0, ReplMap, Return).
-dupelim__replace_labels_instr(mkframe(NondetFrameInfo, Redoip0), ReplMap,
-		mkframe(NondetFrameInfo, Redoip)) :-
-	dupelim__replace_labels_code_addr(Redoip0, ReplMap, Redoip).
-dupelim__replace_labels_instr(label(Label), ReplMap, label(Label)) :-
-	( map__search(ReplMap, Label, _) ->
-		error("found eliminated label in dupelim__replace_labels_instr")
-	;
-		true
-	).
-dupelim__replace_labels_instr(goto(Target0), ReplMap, goto(Target)) :-
-	dupelim__replace_labels_code_addr(Target0, ReplMap, Target).
-dupelim__replace_labels_instr(computed_goto(Rval0, Labels0), ReplMap,
-		computed_goto(Rval, Labels)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval),
-	dupelim__replace_labels_label_list(Labels0, ReplMap, Labels).
-dupelim__replace_labels_instr(c_code(Code), _, c_code(Code)).
-dupelim__replace_labels_instr(if_val(Rval0, Target0), ReplMap,
-		if_val(Rval, Target)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval),
-	dupelim__replace_labels_code_addr(Target0, ReplMap, Target).
-dupelim__replace_labels_instr(incr_hp(Lval0, MaybeTag, Rval0, Msg), ReplMap,
-		incr_hp(Lval, MaybeTag, Rval, Msg)) :-
-	dupelim__replace_labels_lval(Lval0, ReplMap, Lval),
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_instr(mark_hp(Lval0), ReplMap, mark_hp(Lval)) :-
-	dupelim__replace_labels_lval(Lval0, ReplMap, Lval).
-dupelim__replace_labels_instr(restore_hp(Rval0), ReplMap, restore_hp(Rval)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_instr(store_ticket(Lval0), ReplMap, 
-		store_ticket(Lval)) :-
-	dupelim__replace_labels_lval(Lval0, ReplMap, Lval).
-dupelim__replace_labels_instr(reset_ticket(Rval0, Reason), ReplMap, 
-		reset_ticket(Rval, Reason)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_instr(discard_ticket, _, discard_ticket).
-dupelim__replace_labels_instr(mark_ticket_stack(Lval0), ReplMap, 
-		mark_ticket_stack(Lval)) :-
-	dupelim__replace_labels_lval(Lval0, ReplMap, Lval).
-dupelim__replace_labels_instr(discard_tickets_to(Rval0), ReplMap, 
-		discard_tickets_to(Rval)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_instr(incr_sp(Size, Msg), _, incr_sp(Size, Msg)).
-dupelim__replace_labels_instr(decr_sp(Size), _, decr_sp(Size)).
-dupelim__replace_labels_instr(init_sync_term(T, N), _, init_sync_term(T, N)).
-dupelim__replace_labels_instr(fork(Child0, Parent0, SlotCount), Replmap,
-		fork(Child, Parent, SlotCount)) :-
-	dupelim__replace_labels_label(Child0, Replmap, Child),
-	dupelim__replace_labels_label(Parent0, Replmap, Parent).
-dupelim__replace_labels_instr(join_and_terminate(Lval0), Replmap, join_and_terminate(Lval)) :-
-	dupelim__replace_labels_lval(Lval0, Replmap, Lval).
-dupelim__replace_labels_instr(join_and_continue(Lval0, Label0),
-		Replmap, join_and_continue(Lval, Label)) :-
-	dupelim__replace_labels_label(Label0, Replmap, Label),
-	dupelim__replace_labels_lval(Lval0, Replmap, Lval).
-
-:- pred dupelim__replace_labels_lval(lval, map(label, label), lval).
-:- mode dupelim__replace_labels_lval(in, in, out) is det.
-
-dupelim__replace_labels_instr(pragma_c(A,B,C,D,E), ReplMap,
-		pragma_c(A,B,C,D,E)) :-
-	(
-		D = no
-	;
-		D = yes(Label0),
-		dupelim__replace_labels_label(Label0, ReplMap, Label),
-			% We cannot replace the label in the C code string
-			% itself.
-		require(unify(Label0, Label), "trying to replace Mercury label in C code")
-	).
-
-dupelim__replace_labels_lval(reg(RegType, RegNum), _, reg(RegType, RegNum)).
-dupelim__replace_labels_lval(stackvar(N), _, stackvar(N)).
-dupelim__replace_labels_lval(framevar(N), _, framevar(N)).
-dupelim__replace_labels_lval(succip, _, succip).
-dupelim__replace_labels_lval(maxfr, _, maxfr).
-dupelim__replace_labels_lval(curfr, _, curfr).
-dupelim__replace_labels_lval(succip(Rval0), ReplMap, succip(Rval)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_lval(redoip(Rval0), ReplMap, redoip(Rval)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_lval(redofr(Rval0), ReplMap, redofr(Rval)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_lval(succfr(Rval0), ReplMap, succfr(Rval)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_lval(prevfr(Rval0), ReplMap, prevfr(Rval)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_lval(hp, _, hp).
-dupelim__replace_labels_lval(sp, _, sp).
-dupelim__replace_labels_lval(field(Tag, Base0, Offset0), ReplMap,
-		field(Tag, Base, Offset)) :-
-	dupelim__replace_labels_rval(Base0, ReplMap, Base),
-	dupelim__replace_labels_rval(Offset0, ReplMap, Offset).
-dupelim__replace_labels_lval(lvar(Var), _, lvar(Var)).
-dupelim__replace_labels_lval(temp(Type, Num), _, temp(Type, Num)).
-dupelim__replace_labels_lval(mem_ref(Rval0), ReplMap, mem_ref(Rval)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-
-:- pred dupelim__replace_labels_rval(rval::in, map(label, label)::in,
-	rval::out) is det.
-
-dupelim__replace_labels_rval(lval(Lval0), ReplMap, lval(Lval)) :-
-	dupelim__replace_labels_lval(Lval0, ReplMap, Lval).
-dupelim__replace_labels_rval(var(Var), _, var(Var)).
-dupelim__replace_labels_rval(create(Tag, Rvals, ArgTypes, StatDyn, N, Msg), _,
-		create(Tag, Rvals, ArgTypes, StatDyn, N, Msg)).
-dupelim__replace_labels_rval(mkword(Tag, Rval0), ReplMap, mkword(Tag, Rval)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_rval(const(Const0), ReplMap, const(Const)) :-
-	dupelim__replace_labels_rval_const(Const0, ReplMap, Const).
-dupelim__replace_labels_rval(unop(Op, Rval0), ReplMap, unop(Op, Rval)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-dupelim__replace_labels_rval(binop(Op, LRval0, RRval0), ReplMap,
-		binop(Op, LRval, RRval)) :-
-	dupelim__replace_labels_rval(LRval0, ReplMap, LRval),
-	dupelim__replace_labels_rval(RRval0, ReplMap, RRval).
-dupelim__replace_labels_rval(mem_addr(MemRef0), ReplMap, mem_addr(MemRef)) :-
-	dupelim__replace_labels_mem_ref(MemRef0, ReplMap, MemRef).
-
-:- pred dupelim__replace_labels_mem_ref(mem_ref::in, map(label, label)::in,
-	mem_ref::out) is det.
-
-dupelim__replace_labels_mem_ref(stackvar_ref(N), _, stackvar_ref(N)).
-dupelim__replace_labels_mem_ref(framevar_ref(N), _, framevar_ref(N)).
-dupelim__replace_labels_mem_ref(heap_ref(Rval0, Tag, N), ReplMap,
-		heap_ref(Rval, Tag, N)) :-
-	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
-
-:- pred dupelim__replace_labels_rval_const(rval_const::in,
-	map(label, label)::in, rval_const::out) is det.
-
-dupelim__replace_labels_rval_const(true, _, true).
-dupelim__replace_labels_rval_const(false, _, false).
-dupelim__replace_labels_rval_const(int_const(N), _, int_const(N)).
-dupelim__replace_labels_rval_const(float_const(N), _, float_const(N)).
-dupelim__replace_labels_rval_const(string_const(S), _, string_const(S)).
-dupelim__replace_labels_rval_const(multi_string_const(L, S), _,
-	multi_string_const(L, S)).
-dupelim__replace_labels_rval_const(code_addr_const(Addr0), ReplMap,
-		code_addr_const(Addr)) :-
-	dupelim__replace_labels_code_addr(Addr0, ReplMap, Addr).
-dupelim__replace_labels_rval_const(data_addr_const(DataAddr), _,
-		data_addr_const(DataAddr)).
-dupelim__replace_labels_rval_const(label_entry(Label), _, label_entry(Label)).
-
-:- pred dupelim__replace_labels_code_addr(code_addr::in, map(label, label)::in,
-	code_addr::out) is det.
-
-dupelim__replace_labels_code_addr(label(Label0), ReplMap, label(Label)) :-
-	dupelim__replace_labels_label(Label0, ReplMap, Label).
-dupelim__replace_labels_code_addr(imported(Proc), _, imported(Proc)).
-dupelim__replace_labels_code_addr(succip, _, succip).
-dupelim__replace_labels_code_addr(do_succeed(Last), _, do_succeed(Last)).
-dupelim__replace_labels_code_addr(do_redo, _, do_redo).
-dupelim__replace_labels_code_addr(do_fail, _, do_fail).
-dupelim__replace_labels_code_addr(do_trace_redo_fail_shallow, _,
-	do_trace_redo_fail_shallow).
-dupelim__replace_labels_code_addr(do_trace_redo_fail_deep, _,
-	do_trace_redo_fail_deep).
-dupelim__replace_labels_code_addr(do_call_closure, _, do_call_closure).
-dupelim__replace_labels_code_addr(do_call_class_method, _,
-	do_call_class_method).
-dupelim__replace_labels_code_addr(do_det_aditi_call, _, do_det_aditi_call).
-dupelim__replace_labels_code_addr(do_semidet_aditi_call, _,
-		do_semidet_aditi_call).
-dupelim__replace_labels_code_addr(do_nondet_aditi_call, _,
-		do_nondet_aditi_call).
-dupelim__replace_labels_code_addr(do_aditi_insert, _, do_aditi_insert).
-dupelim__replace_labels_code_addr(do_aditi_delete, _, do_aditi_delete).
-dupelim__replace_labels_code_addr(do_aditi_bulk_insert, _,
-		do_aditi_bulk_insert).
-dupelim__replace_labels_code_addr(do_aditi_bulk_delete, _,
-		do_aditi_bulk_delete).
-dupelim__replace_labels_code_addr(do_aditi_modify, _, do_aditi_modify).
-dupelim__replace_labels_code_addr(do_not_reached, _, do_not_reached).
-
-:- pred dupelim__replace_labels_label_list(list(label)::in,
-	map(label, label)::in, list(label)::out) is det.
-
-dupelim__replace_labels_label_list([], _ReplMap, []).
-dupelim__replace_labels_label_list([Label0 | Labels0], ReplMap,
-		[Label | Labels]) :-
-	dupelim__replace_labels_label(Label0, ReplMap, Label),
-	dupelim__replace_labels_label_list(Labels0, ReplMap, Labels).
-
-:- pred dupelim__replace_labels_label(label::in, map(label, label)::in,
-	label::out) is det.
-
-dupelim__replace_labels_label(Label0, ReplMap, Label) :-
-	( map__search(ReplMap, Label0, NewLabel) ->
-		Label = NewLabel
-	;
-		Label = Label0
 	).
 
 %-----------------------------------------------------------------------------%

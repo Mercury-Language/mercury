@@ -154,7 +154,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		DontValueNumber = DontValueNumber0
 	;
-		Uinstr0 = call(_, _, _, _),
+		Uinstr0 = call(_, _, _, _, _),
 		livemap__look_for_livevals(Instrs0, Instrs,
 			Livevals0, Livevals, "call", yes, _),
 		Livemap = Livemap0,
@@ -356,7 +356,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		DontValueNumber = yes
 	;
 		% XXX we shouldn't just give up here
-		Uinstr0 = pragma_c(_, _, _, _, _),
+		Uinstr0 = pragma_c(_, _, _, _, _, _),
 		Livemap = Livemap0,
 		Livevals = Livevals0,
 		Instrs = Instrs0,

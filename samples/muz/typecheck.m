@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -207,7 +207,8 @@ par_check0(Par, triple(Par, S, P)) -->
 		)},
 	list__foldl(P0, EL),
 	{ F = [] ->
-		P1 = (pred(I-T::in, I-e(0, ztapply(S, T))::out) is det),
+		P1 = (pred(I-T::in, U::out) is det :-
+			U = I - e(0, ztapply(S, T))),
 		list__map(P1, LG0, LG)
 	;	makeGeneric(S, F, LG0, LG)
 	},
@@ -305,7 +306,9 @@ declL_checkCT(C, [H|L], DTL, TTL) -->
 decl_checkCT(decl(L0, X), L, TL) -->
 	set_check("Declaration expression", X, T),
 	{list__sort(L0, L1), list__remove_adjacent_dups(L1, L2),
-	list__map(pred(I::in, I-T::out) is det, L2, L)},
+	list__map((pred(I::in, O::out) is det :-
+		O = I - T
+	), L2, L)},
 	{list__length(L0, N), list__duplicate(N, T, TL)}.
 decl_checkCT(include(S), T, [schemaT(T)]) -->
 	sexpr_check(S, T).
@@ -495,7 +498,7 @@ expr_check(X, T) -->
 % 5.16 Function Application
 :- import_module higher_order.
 expr_check(X, ResultT) -->
-	{X = zapply(Ref, Function, Actual)-C},
+	{X = zapply(_Ref, Function, Actual)-C},
 	expr_check(Function, FunctionT), expr_check(Actual, ActualT),
 	% If FunctionT has generic parameters and
 	% not (Function is an ident and the ident is tame)

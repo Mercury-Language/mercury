@@ -20,7 +20,11 @@
 #   define _longjmp(b,v) longjmp(b,v)
 # endif
 # ifdef AMIGA
-#   include <dos.h>
+#   ifndef __GNUC__
+#     include <dos/dos.h>
+#   else
+#     include <machine/reg.h>
+#   endif
 # endif
 
 #if defined(__MWERKS__) && !defined(POWERPC)
@@ -64,6 +68,7 @@ asm static void PushMacRegisters()
 /* on your architecture.  Run the test_setjmp program to see whether    */
 /* there is any chance it will work.                                    */
 
+#ifndef USE_GENERIC_PUSH_REGS
 void GC_push_regs()
 {
 #       ifdef RT
@@ -125,9 +130,28 @@ void GC_push_regs()
 	  asm("addq.w &0x4,%sp");	/* put stack back where it was	*/
 #       endif /* M68K HP */
 
-#       ifdef AMIGA
-	/*  AMIGA - could be replaced by generic code 			*/
-	  /* a0, a1, d0 and d1 are caller save */
+#	if defined(M68K) && defined(AMIGA)
+ 	 /*  AMIGA - could be replaced by generic code 			*/
+ 	 /* a0, a1, d0 and d1 are caller save */
+
+#        ifdef __GNUC__
+	  asm("subq.w &0x4,%sp");	/* allocate word on top of stack */
+
+	  asm("mov.l %a2,(%sp)"); asm("jsr _GC_push_one");
+	  asm("mov.l %a3,(%sp)"); asm("jsr _GC_push_one");
+	  asm("mov.l %a4,(%sp)"); asm("jsr _GC_push_one");
+	  asm("mov.l %a5,(%sp)"); asm("jsr _GC_push_one");
+	  asm("mov.l %a6,(%sp)"); asm("jsr _GC_push_one");
+	  /* Skip frame pointer and stack pointer */
+	  asm("mov.l %d2,(%sp)"); asm("jsr _GC_push_one");
+	  asm("mov.l %d3,(%sp)"); asm("jsr _GC_push_one");
+	  asm("mov.l %d4,(%sp)"); asm("jsr _GC_push_one");
+	  asm("mov.l %d5,(%sp)"); asm("jsr _GC_push_one");
+	  asm("mov.l %d6,(%sp)"); asm("jsr _GC_push_one");
+	  asm("mov.l %d7,(%sp)"); asm("jsr _GC_push_one");
+
+	  asm("addq.w &0x4,%sp");	/* put stack back where it was	*/
+#        else /* !__GNUC__ */
 	  GC_push_one(getreg(REG_A2));
 	  GC_push_one(getreg(REG_A3));
 	  GC_push_one(getreg(REG_A4));
@@ -140,7 +164,8 @@ void GC_push_regs()
 	  GC_push_one(getreg(REG_D5));
 	  GC_push_one(getreg(REG_D6));
 	  GC_push_one(getreg(REG_D7));
-#       endif
+#	 endif /* !__GNUC__ */
+#       endif /* AMIGA */
 
 #	if defined(M68K) && defined(MACOS)
 #	if defined(THINK_C)
@@ -169,8 +194,10 @@ void GC_push_regs()
 #   endif	/* MACOS */
 
 #       if defined(I386) &&!defined(OS2) &&!defined(SVR4) &&!defined(MSWIN32) \
-	&& !defined(SCO) && !defined(SCO_ELF) && !((defined(LINUX) \
-          || defined(__FreeBSD__)) && defined(__ELF__)) && !defined(DOS4GW)
+	&& !defined(SCO) && !defined(SCO_ELF) \
+ 	&& !(defined(LINUX)       && defined(__ELF__)) \
+	&& !(defined(__FreeBSD__) && defined(__ELF__)) \
+	&& !defined(DOS4GW)
 	/* I386 code, generic code does not appear to work */
 	/* It does appear to work under OS2, and asms dont */
 	/* This is used for some 38g UNIX variants and for CYGWIN32 */
@@ -183,9 +210,11 @@ void GC_push_regs()
 	  asm("pushl %ebx");  asm("call _GC_push_one"); asm("addl $4,%esp");
 #       endif
 
-#	if defined(I386) && (defined(LINUX) || defined(__FreeBSD__)) \
-          && defined(__ELF__)
+#	if ( defined(I386) && defined(LINUX) && defined(__ELF__) ) \
+	|| ( defined(I386) && defined(__FreeBSD__) && defined(__ELF__) )
+
 	/* This is modified for Linux with ELF (Note: _ELF_ only) */
+	/* This section handles FreeBSD with ELF. */
 	  asm("pushl %eax");  asm("call GC_push_one"); asm("addl $4,%esp");
 	  asm("pushl %ecx");  asm("call GC_push_one"); asm("addl $4,%esp");
 	  asm("pushl %edx");  asm("call GC_push_one"); asm("addl $4,%esp");
@@ -305,7 +334,21 @@ void GC_push_regs()
 #       endif /* M68K/SYSV */
 
 
-#     if defined(HP_PA) || defined(M88K) || defined(POWERPC) || (defined(I386) && (defined(OS2) || defined(USE_GENERIC))) || defined(UTS4)
+      /* other machines... */
+#       if !(defined M68K) && !(defined VAX) && !(defined RT) 
+#	if !(defined SPARC) && !(defined I386) && !(defined NS32K)
+#	if !defined(POWERPC) && !defined(UTS4)
+	    --> bad news <--
+#       endif
+#       endif
+#       endif
+}
+#endif /* !USE_GENERIC_PUSH_REGS */
+
+#if defined(USE_GENERIC_PUSH_REGS)
+void GC_generic_push_regs(cold_gc_frame)
+ptr_t cold_gc_frame;
+{
 	/* Generic code                          */
 	/* The idea is due to Parag Patel at HP. */
 	/* We're not sure whether he would like  */
@@ -325,21 +368,10 @@ void GC_push_regs()
 #	    else
 	        (void) _setjmp(regs);
 #	    endif
-	    GC_push_all_stack((ptr_t)regs, lim);
+	    GC_push_current_stack(cold_gc_frame);
 	}
-#     endif
-
-      /* other machines... */
-#       if !(defined M68K) && !(defined VAX) && !(defined RT) 
-#	if !(defined SPARC) && !(defined I386) && !(defined NS32K)
-#	if !defined(HP_PA) && !defined(M88K) && !defined(POWERPC)
-#	if !defined(UTS4)
-	    --> bad news <--
-# 	endif
-#       endif
-#       endif
-#       endif
 }
+#endif /* USE_GENERIC_PUSH_REGS */
 
 /* On register window machines, we need a way to force registers into 	*/
 /* the stack.	Return sp.						*/

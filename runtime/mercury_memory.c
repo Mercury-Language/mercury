@@ -103,6 +103,10 @@
   static	char	*explain_context(void *context);
 #endif /* HAVE_SIGINFO */
 
+/*
+** Define the memory zones used by the Mercury runtime.
+** (The trail zone is declared in mercury_trail.c.)
+*/
 MemoryZone *detstack_zone;
 MemoryZone *nondetstack_zone;
 #ifndef CONSERVATIVE_GC
@@ -216,79 +220,39 @@ init_memory(void)
 	if (MR_memdebug) debug_memory();
 } /* end init_memory() */
 
-#ifdef	CONSERVATIVE_GC
-
-void *
-allocate_bytes(size_t numbytes)
-{
-	void	*tmp;
-
-	tmp = GC_MALLOC(numbytes);
-	
-	if (tmp == NULL) {
-		fatal_error("could not allocate memory");
-	}
-
-	return tmp;
-}
-
-#else /* not CONSERVATIVE_GC */
-
-void *
-allocate_bytes(size_t numbytes)
-{
-	void	*tmp;
-
-	tmp = malloc(numbytes);
-	
-	if (tmp == NULL) {
-		fatal_error("could not allocate memory");
-	}
-
-	return tmp;
-}
-
-#endif
-
-void 
-deallocate_memory(void *ptr)
-{
-#ifdef CONSERVATIVE_GC
-	GC_FREE(ptr);
-#else
-	free(ptr);
-#endif
-}
+/*---------------------------------------------------------------------------*/
 
 /*
-** Note: checked_malloc()ed structures never contain pointers into GCed memory,
-** so we don't need to GC_malloc() them. (cf. newmem())
+** These routines allocate memory that will NOT be scanned by the
+** conservative garbage collector.  You MUST NOT uses these to
+** store pointers into GC'ed memory.
+** 
 */
 
 void *
-checked_malloc(size_t n)
+MR_malloc(size_t n)
 {
-	reg     void    *p;
+	void    *ptr;
 
-	p = malloc(n);
-	if (p == NULL && n != 0) {
+	ptr = malloc(n);
+	if (ptr == NULL && n != 0) {
 		fatal_error("ran out of memory");
 	}
 
-	return p;
+	return ptr;
 }
 
 void *
-checked_realloc(void *old, size_t n)
+MR_realloc(void *old_ptr, size_t num_bytes)
 {
-	reg     void    *p;
+	void    *ptr;
 
-	p = realloc(old, n);
-	if (p == NULL && n != 0) {
+	ptr = realloc(old_ptr, num_bytes);
+	if (ptr == NULL && num_bytes != 0) {
 		fatal_error("ran out of memory");
 	}
 
-	return p;
+	return ptr;
 }
 
 char *
@@ -298,7 +262,51 @@ MR_copy_string(const char *s)
 	char	*copy;
 
 	len = strlen(s);
-	copy = checked_malloc(len + 1);
+	copy = MR_malloc(len + 1);
 	strcpy(copy, s);
 	return copy;
 }
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** These routines allocate memory that will be scanned by the
+** conservative garbage collector.
+*/
+
+void *
+MR_GC_malloc(size_t num_bytes)
+{
+	void	*ptr;
+
+#ifdef	CONSERVATIVE_GC
+	ptr = GC_MALLOC(num_bytes);
+#else
+	ptr = malloc(num_bytes);
+#endif
+	
+	if (ptr == NULL && num_bytes != 0) {
+		fatal_error("could not allocate memory");
+	}
+
+	return ptr;
+}
+
+void *
+MR_GC_realloc(void *old_ptr, size_t num_bytes)
+{
+	void    *ptr;
+
+#ifdef	CONSERVATIVE_GC
+	ptr = GC_REALLOC(old_ptr, num_bytes);
+#else
+	ptr = realloc(old_ptr, num_bytes);
+#endif
+	if (ptr == NULL && num_bytes != 0) {
+		fatal_error("ran out of memory");
+	}
+
+	return ptr;
+}
+
+/*---------------------------------------------------------------------------*/

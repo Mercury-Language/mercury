@@ -28,7 +28,7 @@
 :- mode ml_base_type_info__generate_mlds(in, out) is det.
 
 :- implementation.
-:- import_module base_type_info, ml_code_util.
+:- import_module base_type_info, ml_code_gen.
 
 :- import_module base_typeclass_info.
 :- import_module prog_data, prog_util, prog_out.
@@ -89,7 +89,7 @@ ml_base_type_info__construct_type_ctor_infos([BaseGenInfo | BaseGenInfos],
 		TypeLayoutOption = yes
 	->
 		ml_base_type_info__construct_type_ctor_representation(HLDS_TypeDefn,
-			TypeCtorArg),
+			Globals, TypeCtorArg),
 		/*****
 		% XXX generation of the base_type_layout and base_type_functors
 		% is not yet implemented for the MLDS back-end
@@ -268,10 +268,12 @@ ml_base_type_info__type_ctor_rep_to_int(array,		18).
 ml_base_type_info__type_ctor_rep_to_int(unknown,	19).
 
 :- pred ml_base_type_info__construct_type_ctor_representation(hlds_type_defn,
-		mlds__rval).
-:- mode ml_base_type_info__construct_type_ctor_representation(in, out) is det.
+		globals, mlds__rval).
+:- mode ml_base_type_info__construct_type_ctor_representation(in, in, out)
+		is det.
 
-ml_base_type_info__construct_type_ctor_representation(HldsType, Rvals) :-
+ml_base_type_info__construct_type_ctor_representation(HldsType, Globals,
+		Rvals) :-
 	hlds_data__get_type_defn_body(HldsType, TypeBody),
 	(
 		TypeBody = uu_type(_Alts),
@@ -296,7 +298,8 @@ ml_base_type_info__construct_type_ctor_representation(HldsType, Rvals) :-
 		;
 			Enum = no,
 			( 
-				type_is_no_tag_type(Ctors, _Name, _TypeArg)
+				type_is_no_tag_type(Ctors, Globals,
+						_Name, _TypeArg)
 			->
 				(
 					EqualityPred = yes(_),

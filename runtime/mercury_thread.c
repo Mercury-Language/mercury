@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -33,7 +33,7 @@ create_thread(MR_ThreadGoal *goal)
 	pthread_attr_t attrs;
 	int err;
 
-	thread = make(MercuryThread);
+	thread = MR_GC_NEW(MercuryThread);
 	pthread_attr_init(&attrs);
 	err = pthread_create(thread, &attrs, create_thread_2, (void *) goal);
 
@@ -102,7 +102,7 @@ init_thread(MR_when_to_use when_to_use)
 
 	switch (when_to_use) {
 		case MR_use_later :
-			call_engine(ENTRY(do_runnext));
+			(void) MR_call_engine(ENTRY(do_runnext), FALSE);
 
 			destroy_engine(eng);
 			return;

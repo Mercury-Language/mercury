@@ -431,8 +431,9 @@ mercury_data_private_builtin__type_ctor_info_type_ctor_info_1 = {
 	    mercury_data_private_builtin__type_ctor_functors_type_info_1,
 	(MR_TypeCtorLayout) &
 		mercury_data_private_builtin__type_ctor_layout_type_info_1,
-	string_const(""private_builtin"", 15),
-	string_const(""type_ctor_info"", 14)
+	MR_string_const(""private_builtin"", 15),
+	MR_string_const(""type_ctor_info"", 14),
+	MR_RTTI_VERSION
 };
 
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
@@ -457,8 +458,9 @@ mercury_data_private_builtin__type_ctor_info_type_info_1 = {
 		mercury_data_private_builtin__type_ctor_functors_type_info_1,
 	(MR_TypeCtorLayout) &
 		mercury_data_private_builtin__type_ctor_layout_type_info_1,
-	string_const(""private_builtin"", 15),
-	string_const(""type_info"", 9)
+	MR_string_const(""private_builtin"", 15),
+	MR_string_const(""type_info"", 9),
+	MR_RTTI_VERSION
 };
 
 
@@ -466,7 +468,7 @@ const struct mercury_data_private_builtin__type_ctor_layout_type_info_1_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_private_builtin__type_ctor_layout_type_info_1 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG,
-		mkbody(MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE))
 };
 
 const struct mercury_data_private_builtin__type_ctor_functors_type_info_1_struct {
@@ -514,8 +516,9 @@ mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1 = {
 	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
 	(MR_TypeCtorLayout) &
 	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
-	string_const(""private_builtin"", 15),
-	string_const(""base_typeclass_info"", 19)
+	MR_string_const(""private_builtin"", 15),
+	MR_string_const(""base_typeclass_info"", 19),
+	MR_RTTI_VERSION
 };
 
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
@@ -540,8 +543,9 @@ mercury_data_private_builtin__type_ctor_info_typeclass_info_1 = {
 	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
 	(MR_TypeCtorLayout) &
 	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
-	string_const(""private_builtin"", 15),
-	string_const(""typeclass_info"", 14)
+	MR_string_const(""private_builtin"", 15),
+	MR_string_const(""typeclass_info"", 14),
+	MR_RTTI_VERSION
 };
 
 const struct
@@ -549,7 +553,7 @@ mercury_data_private_builtin__type_ctor_layout_typeclass_info_1_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_private_builtin__type_ctor_layout_typeclass_info_1 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_TYPECLASSINFO_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TYPECLASSINFO_VALUE))
 };
 
 const struct mercury_data_private_builtin__type_ctor_functors_typeclass_info_1_struct {
@@ -593,7 +597,7 @@ Define_entry(mercury____Unify___private_builtin__type_info_1_0);
 	save_transient_registers();
 	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
-	r1 = (comp == COMPARE_EQUAL);
+	r1 = (comp == MR_COMPARE_EQUAL);
 	proceed();
 }
 
@@ -676,10 +680,23 @@ END_MODULE
 /*
 INIT sys_init_type_info_module
 */
-extern ModuleFunc type_info_module;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc type_info_module;
 void sys_init_type_info_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_type_info_module(void) {
 	type_info_module();
+
+	MR_INIT_TYPE_CTOR_INFO(
+	    mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
+	    private_builtin__type_info_1_0);
+	MR_INIT_TYPE_CTOR_INFO(
+	    mercury_data_private_builtin__type_ctor_info_type_info_1,
+	    private_builtin__type_info_1_0);
+	MR_INIT_TYPE_CTOR_INFO(
+	    mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
+	    private_builtin__typeclass_info_1_0);
+	MR_INIT_TYPE_CTOR_INFO(
+	    mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
+	    private_builtin__typeclass_info_1_0);
 }
 
 ").
@@ -1051,13 +1068,13 @@ unused :-
 			table_allocate_bytes(sizeof(MR_Subgoal));
 #ifdef	MR_TABLE_DEBUG
 		if (MR_tabledebug) {
-			printf(""setting up table %p -> %p\n"",
+			printf(""setting up table %p -> %p\\n"",
 				(MR_Subgoal **) T0, subgoal);
 		}
 #endif
 		subgoal->status = MR_SUBGOAL_INACTIVE;
 		subgoal->leader = NULL;
-		subgoal->followers = make(struct MR_SubgoalListNode);
+		subgoal->followers = MR_GC_NEW(struct MR_SubgoalListNode);
 		subgoal->followers->item = subgoal;
 		subgoal->followers->next = NULL;
 		subgoal->followers_tail = &(subgoal->followers->next);
@@ -1069,7 +1086,7 @@ unused :-
 		subgoal->consumer_list_tail = &subgoal->consumer_list;
 #ifdef	MR_TABLE_DEBUG
 		if (MR_maxfr != MR_curfr) {
-			fatal_error(""MR_maxfr != MR_curfr at table setup\n"");
+			fatal_error(""MR_maxfr != MR_curfr at table setup\\n"");
 		}
 #endif
 		subgoal->generator_maxfr = MR_prevfr_slot(MR_maxfr);
@@ -1182,6 +1199,9 @@ unused :-
 	local_vars("
 #ifdef MR_USE_MINIMAL_MODEL
 		MR_AnswerList	cur_node;
+#else
+		/* ensure local var struct is non-empty */
+		char	bogus;
 #endif
 	"),
 	first_code("

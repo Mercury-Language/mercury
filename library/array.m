@@ -16,12 +16,12 @@
 % disable some of the checking by compiling with `--intermodule-optimization'
 % and with the C macro symbol `ML_OMIT_ARRAY_BOUNDS_CHECKS'
 % defined, e.g. by using `MCFLAGS=--intermodule-optimization' and
-% `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmakefile,
+% `CFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmakefile,
 % or by compiling with the command
 % `mmc --intermodule-optimization --cflags -DML_OMIT_ARRAY_BOUNDS_CHECKS'.
 %
 % For maximum performance, all bounds checking can be disabled by
-% recompiling this module using `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS'
+% recompiling this module using `CFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS'
 % or `mmc --cflags -DML_OMIT_ARRAY_BOUNDS_CHECKS' as above. You can
 % either recompile the entire library, or just copy `array.m' to your
 % application's source directory and link with it directly instead of as
@@ -290,36 +290,11 @@ Define_extern_entry(mercury____Init___array__array_1_0);
 #endif
 
 MR_MODULE_STATIC_OR_EXTERN 
-const struct mercury_data_array__type_ctor_functors_array_1_struct
-	mercury_data_array__type_ctor_functors_array_1;
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_array__type_ctor_layout_array_1_struct
-	mercury_data_array__type_ctor_layout_array_1;
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data_array__type_ctor_info_array_1 = {
-	(Integer) 1,
-	ENTRY(mercury____Unify___array__array_1_0),
-	ENTRY(mercury____Index___array__array_1_0),
-	ENTRY(mercury____Compare___array__array_1_0),
-#ifdef MR_USE_SOLVE_EQUAL
-	ENTRY(mercury____SolveEqual___array__array_1_0),
-#endif
-#ifdef MR_USE_INIT
-	ENTRY(mercury____Init___array__array_1_0),
-#endif
-	MR_TYPECTOR_REP_ARRAY,
-	(Word *) &mercury_data_array__type_ctor_functors_array_1,
-	(Word *) &mercury_data_array__type_ctor_layout_array_1,
-	string_const(""array"", 5),
-	string_const(""array"", 5)
-};
-
-MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_array__type_ctor_layout_array_1_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_array__type_ctor_layout_array_1 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE))
 };
 
 MR_MODULE_STATIC_OR_EXTERN
@@ -328,6 +303,27 @@ const struct mercury_data_array__type_ctor_functors_array_1_struct {
 } mercury_data_array__type_ctor_functors_array_1 = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
+
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_array__type_ctor_info_array_1 = {
+	(Integer) 1,
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___array__array_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___array__array_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___array__array_1_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____SolveEqual___array__array_1_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Init___array__array_1_0)),
+#endif
+	MR_TYPECTOR_REP_ARRAY,
+	(Word *) &mercury_data_array__type_ctor_functors_array_1,
+	(Word *) &mercury_data_array__type_ctor_layout_array_1,
+	MR_string_const(""array"", 5),
+	MR_string_const(""array"", 5),
+	MR_RTTI_VERSION
+};
+
 
 Declare_entry(mercury__array__array_equal_2_0);
 Declare_entry(mercury__array__array_compare_3_0);
@@ -378,11 +374,16 @@ END_MODULE
 /*
 INIT sys_init_array_module_builtins
 */
+
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc array_module_builtins;
+
 void sys_init_array_module_builtins(void);
 		/* suppress gcc -Wmissing-decl warning */
 void sys_init_array_module_builtins(void) {
-	extern ModuleFunc array_module;
 	array_module_builtins();
+	MR_INIT_TYPE_CTOR_INFO(
+		mercury_data_array__type_ctor_info_array_1,
+		array__array_1_0);
 }
 
 ").
@@ -616,7 +617,7 @@ ML_resize_array(MR_ArrayType *old_array, Integer array_size,
 		elements_to_copy = array_size;
 	}
 
-	array = (MR_ArrayType *) make_many(Word, array_size + 1);
+	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < elements_to_copy; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -629,7 +630,7 @@ ML_resize_array(MR_ArrayType *old_array, Integer array_size,
 	** since the mode on the old array is `array_di', it is safe to
 	** deallocate the storage for it
 	*/
-	oldmem(old_array);
+	MR_GC_free(old_array);
 
 	return array;
 }
@@ -662,7 +663,7 @@ ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
 		fatal_error(""array__shrink: can't shrink to a larger size"");
 	}
 
-	array = (MR_ArrayType *) make_many(Word, array_size + 1);
+	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < array_size; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -672,7 +673,7 @@ ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
 	** since the mode on the old array is `array_di', it is safe to
 	** deallocate the storage for it
 	*/
-	oldmem(old_array);
+	MR_GC_free(old_array);
 
 	return array;
 }

@@ -16,7 +16,7 @@ This means if you want to recompile this package, you need to have
 a working Mercury compiler already installed (not to mention a working
 C compiler and other tools).  This can be done by installing the
 Debian binary package, or installing the compiler from the tar file
-shown above.
+shown above (however see README.Debian for updates to this procedure).
 
 Copyright:
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -152,3 +152,35 @@ pqueue__assoc_list_to_pqueue([K - V | L], Q) :-
 	pqueue__insert(Q0, K, V, Q).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Functional forms added.
+
+:- interface.
+
+:- func pqueue__init = pqueue(_K, _V).
+
+:- func pqueue__insert(pqueue(K, V), K, V) = pqueue(K, V).
+
+:- func pqueue__to_assoc_list(pqueue(K, V)) = assoc_list(K, V).
+
+:- func pqueue__assoc_list_to_pqueue(assoc_list(K, V)) = pqueue(K, V).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+pqueue__init = PQ :-
+	pqueue__init(PQ).
+
+pqueue__insert(PQ1, K, V) = PQ2 :-
+	pqueue__insert(PQ1, K, V, PQ2).
+
+pqueue__to_assoc_list(PQ) = AL :-
+	pqueue__to_assoc_list(PQ, AL).
+
+pqueue__assoc_list_to_pqueue(AL) = PQ2 :-
+	pqueue__assoc_list_to_pqueue(AL, PQ2).
+
+

@@ -49,6 +49,7 @@ main -->
 
 main_loop(Database) -->
 	io__write_string("?- "),
+	io__flush_output,
 	term_io__read_term(ReadTerm),
 	main_loop_2(ReadTerm, Database).
 

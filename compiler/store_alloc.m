@@ -206,6 +206,10 @@ store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, _, _,
 store_alloc_in_goal_2(pragma_c_code(A, B, C, D, E, F, G), Liveness, _, _,
 		_, pragma_c_code(A, B, C, D, E, F, G), Liveness).
 
+store_alloc_in_goal_2(bi_implication(_, _), _, _, _, _, _, _) :-
+	% these should have been expanded out by now
+	error("store_alloc_in_goal_2: unexpected bi_implication").
+
 %-----------------------------------------------------------------------------%
 
 :- pred store_alloc_in_conj(list(hlds_goal), liveness_info, set(prog_var),

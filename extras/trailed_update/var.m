@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -490,6 +490,7 @@ ML_var_untrail_func(ML_var_delayed_conj *old_goal, MR_untrail_reason reason)
 	switch (reason) {
 		case MR_exception:
 		case MR_undo:
+		case MR_retry:
 			/* just undo the update */
 			ML_var_last_goal.prev = old_goal;
 			break;
@@ -907,7 +908,7 @@ destructively_update_binding(VarPtr, NewBinding) :-
 	setarg(MercuryTerm::in(any), ArgNum::in, NewValue::in(any)),
 	will_not_call_mercury,
 "{
-	Word *ptr = (Word *) strip_tag(MercuryTerm); /* strip off tag bits */
+	Word *ptr = (Word *) MR_strip_tag(MercuryTerm); /* strip off tag bits */
 	MR_trail_current_value(&ptr[ArgNum - 1]);
 	ptr[ArgNum - 1] = NewValue;
 }").
@@ -921,7 +922,7 @@ destructively_update_binding(VarPtr, NewBinding) :-
 	untrailed_setarg(MercuryTerm::in(any), ArgNum::in, NewValue::in(any)),
 	will_not_call_mercury,
 "{
-	Word *ptr = (Word *) strip_tag(MercuryTerm); /* strip off tag bits */
+	Word *ptr = (Word *) MR_strip_tag(MercuryTerm); /* strip off tag bits */
 	ptr[ArgNum - 1] = NewValue;
 }").
 

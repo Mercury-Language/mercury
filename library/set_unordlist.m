@@ -306,3 +306,100 @@ set_unordlist__difference_2([E|Es], A, C) :-
 	set_unordlist__difference_2(Es, B, C).
 
 %--------------------------------------------------------------------------%
+%--------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cam.sri.com> 24/04/99
+%	Function forms added.
+
+:- interface.
+
+:- func set_unordlist__list_to_set(list(T)) = set_unordlist(T).
+
+:- func set_unordlist__sorted_list_to_set(list(T)) = set_unordlist(T).
+
+:- func set_unordlist__to_sorted_list(set_unordlist(T)) = list(T).
+
+:- func set_unordlist__init = set_unordlist(T).
+
+:- func set_unordlist__make_singleton_set(T) = set_unordlist(T).
+
+:- func set_unordlist__insert(set_unordlist(T), T) = set_unordlist(T).
+
+:- func set_unordlist__insert_list(set_unordlist(T), list(T)) = set_unordlist(T).
+
+:- func set_unordlist__delete(set_unordlist(T), T) = set_unordlist(T).
+
+:- func set_unordlist__delete_list(set_unordlist(T), list(T)) = set_unordlist(T).
+
+:- func set_unordlist__union(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
+
+:- func set_unordlist__power_union(set_unordlist(set_unordlist(T))) = set_unordlist(T).
+
+:- func set_unordlist__intersect(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
+
+:- func set_unordlist__power_intersect(set_unordlist(set_unordlist(T))) = set_unordlist(T).
+
+:- func set_unordlist__difference(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
+
+:- func set_unordlist__map(func(T1) = T2, set_unordlist(T1)) = set_unordlist(T2).
+
+:- func set_unordlist__filter_map(func(T1) = T2, set_unordlist(T1)) = set_unordlist(T2).
+:- mode set_unordlist__filter_map(func(in) = out is semidet, in) = out is det.
+
+:- func set_unordlist__fold(func(T1, T2) = T2, set_unordlist(T1), T2) = T2.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+set_unordlist__list_to_set(Xs) = S :-
+	set_unordlist__list_to_set(Xs, S).
+
+set_unordlist__sorted_list_to_set(Xs) = S :-
+	set_unordlist__sorted_list_to_set(Xs, S).
+
+set_unordlist__to_sorted_list(S) = Xs :-
+	set_unordlist__to_sorted_list(S, Xs).
+
+set_unordlist__init = S :-
+	set_unordlist__init(S).
+
+set_unordlist__make_singleton_set(T) = S :-
+	set_unordlist__singleton_set(S, T).
+
+set_unordlist__insert(S1, T) = S2 :-
+	set_unordlist__insert(S1, T, S2).
+
+set_unordlist__insert_list(S1, Xs) = S2 :-
+	set_unordlist__insert_list(S1, Xs, S2).
+
+set_unordlist__delete(S1, T) = S2 :-
+	set_unordlist__delete(S1, T, S2).
+
+set_unordlist__delete_list(S1, Xs) = S2 :-
+	set_unordlist__delete_list(S1, Xs, S2).
+
+set_unordlist__union(S1, S2) = S3 :-
+	set_unordlist__union(S1, S2, S3).
+
+set_unordlist__power_union(SS) = S :-
+	set_unordlist__power_union(SS, S).
+
+set_unordlist__intersect(S1, S2) = S3 :-
+	set_unordlist__intersect(S1, S2, S3).
+
+set_unordlist__power_intersect(SS) = S :-
+	set_unordlist__power_intersect(SS, S).
+
+set_unordlist__difference(S1, S2) = S3 :-
+	set_unordlist__difference(S1, S2, S3).
+
+set_unordlist__map(F, S1) = S2 :-
+	S2 = set_unordlist__list_to_set(list__map(F, set_unordlist__to_sorted_list(S1))).
+
+set_unordlist__filter_map(PF, S1) = S2 :-
+	S2 = set_unordlist__list_to_set(list__filter_map(PF, set_unordlist__to_sorted_list(S1))).
+
+set_unordlist__fold(F, S, A) = B :-
+	B = list__foldl(F, set_unordlist__to_sorted_list(S), A).
+

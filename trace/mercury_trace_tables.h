@@ -37,6 +37,21 @@ extern	void		MR_register_module_layout_real(const MR_Module_Layout
 				*module);
 
 /*
+** MR_process_file_line_layouts searches all the module layout structures
+** of the program for label layout structures corresponding to the given
+** filename/linenumber combination. For all such labels, it calls the supplied
+** callback function with a pointer to the label's layout structure and
+** with the supplied integer callback argument.
+*/
+
+typedef	void		(*MR_file_line_callback)(const MR_Stack_Layout_Label *,
+				int);
+
+extern	void		MR_process_file_line_layouts(const char *file,
+				int line, MR_file_line_callback callback_func,
+				int callback_arg);
+
+/*
 ** These functions print (parts of) the module info table.
 **
 ** MR_dump_module_tables lists all procedures in all modules.

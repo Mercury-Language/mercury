@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -48,7 +48,7 @@ MR_trace_add_cat(const char *category, int slot, const char *text)
 
 	MR_trace_help_ensure_init();
 	MR_TRACE_USE_HP(
-		path = list_empty();
+		path = MR_list_empty();
 	);
 	return MR_trace_help_add_node(path, category, slot, text);
 }
@@ -65,8 +65,8 @@ MR_trace_add_item(const char *category, const char *item, int slot,
 
 	MR_TRACE_USE_HP(
 		make_aligned_string_copy(category_on_heap, category);
-		path = list_empty();
-		path = list_cons(category_on_heap, path);
+		path = MR_list_empty();
+		path = MR_list_cons(category_on_heap, path);
 	);
 
 	return MR_trace_help_add_node(path, item, slot, text);
@@ -141,9 +141,9 @@ MR_trace_help_cat_item(const char *category, const char *item)
 	MR_TRACE_USE_HP(
 		make_aligned_string_copy(category_on_heap, category);
 		make_aligned_string_copy(item_on_heap, item);
-		path = list_empty();
-		path = list_cons(item_on_heap, path);
-		path = list_cons(category_on_heap, path);
+		path = MR_list_empty();
+		path = MR_list_cons(item_on_heap, path);
+		path = MR_list_cons(category_on_heap, path);
 	);
 
 	MR_TRACE_CALL_MERCURY(

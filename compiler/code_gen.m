@@ -107,7 +107,7 @@ generate_pred_list_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
 	;
 		generate_pred_code(ModuleInfo0, ModuleInfo1,
 				GlobalData0, GlobalData1,
-				PredId, PredInfo, ProcIds, Predicates0) 
+				PredId, PredInfo, ProcIds, Predicates0)
 	),
 	{ list__append(Predicates0, Predicates1, Predicates) },
 		% and generate the code for the rest of the predicates
@@ -194,12 +194,13 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		map__init(FollowVars)
 	),
 	continuation_info__basic_stack_layout_for_proc(PredInfo, Globals,
-		BasicStackLayout, ForceProcId),
+	BasicStackLayout, ForceProcId),
 	( BasicStackLayout = yes ->
 		SaveSuccip = yes
 	;
 		SaveSuccip = no
 	),
+
 		% Initialise the code_info structure. Generate_category_code
 		% below will use the returned OutsideResumePoint as the
 		% entry to the code that handles the failure of the procedure,
@@ -213,7 +214,9 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 
 		% Generate code for the procedure.
 	generate_category_code(CodeModel, Goal, OutsideResumePoint,
-		CodeTree, MaybeTraceCallLabel, FrameInfo, CodeInfo0, CodeInfo),
+		TraceSlotInfo, CodeTree, MaybeTraceCallLabel, FrameInfo,
+		CodeInfo0, CodeInfo),
+	code_info__get_max_reg_in_use_at_trace(MaxTraceReg, CodeInfo, _),
 	code_info__get_cell_count(CellCount, CodeInfo, _),
 
 		% Turn the code tree into a list.
@@ -234,19 +237,21 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	;
 		Instructions = Instructions0
 	),
+
 	( BasicStackLayout = yes ->
 			% Create the procedure layout structure.
 		code_info__get_layout_info(InternalMap, CodeInfo, _),
 		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 			no, EntryLabel),
 		ProcLayout = proc_layout_info(EntryLabel, Detism, TotalSlots,
-			MaybeSuccipSlot, MaybeTraceCallLabel,
+			MaybeSuccipSlot, MaybeTraceCallLabel, MaxTraceReg,
 			TraceSlotInfo, ForceProcId, InternalMap),
 		global_data_add_new_proc_layout(GlobalData0,
 			proc(PredId, ProcId), ProcLayout, GlobalData1)
 	;
 		GlobalData1 = GlobalData0
 	),
+
 	code_info__get_non_common_static_data(NonCommonStatics, CodeInfo, _),
 	global_data_add_new_non_common_static_datas(GlobalData1,
 		NonCommonStatics, GlobalData2),
@@ -325,10 +330,11 @@ maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
 	% for the failure continuation at all times.)
 
 :- pred generate_category_code(code_model::in, hlds_goal::in,
-	resume_point_info::in, code_tree::out, maybe(label)::out,
-	frame_info::out, code_info::in, code_info::out) is det.
+	resume_point_info::in, trace_slot_info::in, code_tree::out,
+	maybe(label)::out, frame_info::out, code_info::in, code_info::out)
+	is det.
 
-generate_category_code(model_det, Goal, ResumePoint, Code,
+generate_category_code(model_det, Goal, ResumePoint, TraceSlotInfo, Code,
 		MaybeTraceCallLabel, FrameInfo) -->
 		% generate the code for the body of the clause
 	(
@@ -340,10 +346,13 @@ generate_category_code(model_det, Goal, ResumePoint, Code,
 		{ MaybeTraceCallLabel = no },
 		{ FrameInfo = frame(0, no, no) }
 	;
+		{ Goal = _ - GoalInfo },
+		{ goal_info_get_context(GoalInfo, BodyContext) },
 		code_info__get_maybe_trace_info(MaybeTraceInfo),
 		( { MaybeTraceInfo = yes(TraceInfo) } ->
 			trace__generate_external_event_code(call, TraceInfo,
-				TraceCallLabel, _TypeInfos, TraceCallCode),
+				BodyContext, TraceCallLabel, _TypeInfos,
+				TraceCallCode),
 			{ MaybeTraceCallLabel = yes(TraceCallLabel) }
 		;
 			{ TraceCallCode = empty },
@@ -352,7 +361,8 @@ generate_category_code(model_det, Goal, ResumePoint, Code,
 		code_gen__generate_goal(model_det, Goal, BodyCode),
 		code_gen__generate_entry(model_det, Goal, ResumePoint,
 			FrameInfo, EntryCode),
-		code_gen__generate_exit(model_det, FrameInfo, _, ExitCode),
+		code_gen__generate_exit(model_det, FrameInfo, TraceSlotInfo,
+			BodyContext, _, ExitCode),
 		{ Code =
 			tree(EntryCode,
 			tree(TraceCallCode,
@@ -361,7 +371,7 @@ generate_category_code(model_det, Goal, ResumePoint, Code,
 		}
 	).
 
-generate_category_code(model_semi, Goal, ResumePoint, Code,
+generate_category_code(model_semi, Goal, ResumePoint, TraceSlotInfo, Code,
 		MaybeTraceCallLabel, FrameInfo) -->
 	{ set__singleton_set(FailureLiveRegs, reg(r, 1)) },
 	{ FailCode = node([
@@ -369,23 +379,28 @@ generate_category_code(model_semi, Goal, ResumePoint, Code,
 		livevals(FailureLiveRegs) - "",
 		goto(succip) - "Return from procedure call"
 	]) },
+	{ Goal = _ - GoalInfo },
+	{ goal_info_get_context(GoalInfo, BodyContext) },
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
 		trace__generate_external_event_code(call, TraceInfo,
-			TraceCallLabel, _TypeInfos, TraceCallCode),
+			BodyContext, TraceCallLabel, _TypeInfos,
+			TraceCallCode),
 		{ MaybeTraceCallLabel = yes(TraceCallLabel) },
 		code_gen__generate_goal(model_semi, Goal, BodyCode),
 		code_gen__generate_entry(model_semi, Goal, ResumePoint,
 			FrameInfo, EntryCode),
-		code_gen__generate_exit(model_semi, FrameInfo,
-			RestoreDeallocCode, ExitCode),
+		code_gen__generate_exit(model_semi, FrameInfo, TraceSlotInfo,
+			BodyContext, RestoreDeallocCode, ExitCode),
 
 		code_info__generate_resume_point(ResumePoint, ResumeCode),
 		{ code_info__resume_point_vars(ResumePoint, ResumeVarList) },
 		{ set__list_to_set(ResumeVarList, ResumeVars) },
 		code_info__set_forward_live_vars(ResumeVars),
-		trace__generate_external_event_code(fail, TraceInfo, _, _,
-			TraceFailCode),
+			% XXX A context that gives the end of the procedure
+			% definition would be better than BodyContext.
+		trace__generate_external_event_code(fail, TraceInfo,
+			BodyContext, _, _, TraceFailCode),
 		{ Code =
 			tree(EntryCode,
 			tree(TraceCallCode,
@@ -401,8 +416,8 @@ generate_category_code(model_semi, Goal, ResumePoint, Code,
 		code_gen__generate_goal(model_semi, Goal, BodyCode),
 		code_gen__generate_entry(model_semi, Goal, ResumePoint,
 			FrameInfo, EntryCode),
-		code_gen__generate_exit(model_semi, FrameInfo,
-			RestoreDeallocCode, ExitCode),
+		code_gen__generate_exit(model_semi, FrameInfo, TraceSlotInfo,
+			BodyContext, RestoreDeallocCode, ExitCode),
 		code_info__generate_resume_point(ResumePoint, ResumeCode),
 		{ Code =
 			tree(EntryCode,
@@ -414,24 +429,37 @@ generate_category_code(model_semi, Goal, ResumePoint, Code,
 		}
 	).
 
-generate_category_code(model_non, Goal, ResumePoint, Code,
+generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 		MaybeTraceCallLabel, FrameInfo) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	{ Goal = _ - GoalInfo },
+	{ goal_info_get_context(GoalInfo, BodyContext) },
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
 		trace__generate_external_event_code(call, TraceInfo,
-			TraceCallLabel, _TypeInfos, TraceCallCode),
+			BodyContext, TraceCallLabel, _TypeInfos,
+			TraceCallCode),
 		{ MaybeTraceCallLabel = yes(TraceCallLabel) },
 		code_gen__generate_goal(model_non, Goal, BodyCode),
 		code_gen__generate_entry(model_non, Goal, ResumePoint,
 			FrameInfo, EntryCode),
-		code_gen__generate_exit(model_non, FrameInfo, _, ExitCode),
+		code_gen__generate_exit(model_non, FrameInfo, TraceSlotInfo,
+			BodyContext, _, ExitCode),
 
 		code_info__generate_resume_point(ResumePoint, ResumeCode),
 		{ code_info__resume_point_vars(ResumePoint, ResumeVarList) },
 		{ set__list_to_set(ResumeVarList, ResumeVars) },
 		code_info__set_forward_live_vars(ResumeVars),
-		trace__generate_external_event_code(fail, TraceInfo, _, _,
-			TraceFailCode),
+			% XXX A context that gives the end of the procedure
+			% definition would be better than BodyContext.
+		trace__generate_external_event_code(fail, TraceInfo,
+			BodyContext, _, _, TraceFailCode),
+		{ TraceSlotInfo = trace_slot_info(_, _, yes(_)) ->
+			DiscardTraceTicketCode = node([
+				discard_ticket - "discard retry ticket"
+			])
+		;
+			DiscardTraceTicketCode = empty
+		},
 		{ FailCode = node([
 			goto(do_fail) - "fail after fail trace port"
 		]) },
@@ -442,14 +470,16 @@ generate_category_code(model_non, Goal, ResumePoint, Code,
 			tree(ExitCode,
 			tree(ResumeCode,
 			tree(TraceFailCode,
-			     FailCode))))))
+			tree(DiscardTraceTicketCode,
+			     FailCode)))))))
 		}
 	;
 		{ MaybeTraceCallLabel = no },
 		code_gen__generate_goal(model_non, Goal, BodyCode),
 		code_gen__generate_entry(model_non, Goal, ResumePoint,
 			FrameInfo, EntryCode),
-		code_gen__generate_exit(model_non, FrameInfo, _, ExitCode),
+		code_gen__generate_exit(model_non, FrameInfo, TraceSlotInfo,
+			BodyContext, _, ExitCode),
 		{ Code =
 			tree(EntryCode,
 			tree(BodyCode,
@@ -482,8 +512,8 @@ generate_category_code(model_non, Goal, ResumePoint, Code,
 	resume_point_info::in, frame_info::out, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint,
-		FrameInfo, EntryCode) -->
+code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
+		EntryCode) -->
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
 	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
@@ -556,7 +586,7 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint,
 				mkframe(NondetFrameInfo, OutsideResumeAddress)
 					- "Allocate stack frame",
 				pragma_c([], DefineComponents,
-					will_not_call_mercury, no, no)
+					will_not_call_mercury, no, no, no)
 					- ""
 			]) },
 			{ NondetPragma = yes }
@@ -613,7 +643,8 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint,
 	% our caller; this is why we return RestoreDeallocCode.
 	%
 	% At the moment the only special slots are the succip slot, and
-	% the slots holding the call number and call depth for tracing.
+	% the tracing slots (holding the call sequence number, call event
+	% number, call depth, from-full indication, and trail state).
 	%
 	% Not all frames will have all these components. For example, for
 	% nondet procedures we don't deallocate the stack frame before
@@ -625,9 +656,11 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint,
 	% we need only #undef a macro defined by the procedure prologue.
 
 :- pred code_gen__generate_exit(code_model::in, frame_info::in,
-	code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
+	trace_slot_info::in, prog_context::in, code_tree::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, ExitCode) -->
+code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
+		RestoreDeallocCode, ExitCode) -->
 	{ StartComment = node([
 		comment("Start of procedure epilogue") - ""
 	]) },
@@ -640,7 +673,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, ExitCode) -->
 		{ UndefComponents = [pragma_c_raw_code(UndefStr)] },
 		{ UndefCode = node([
 			pragma_c([], UndefComponents,
-				will_not_call_mercury, no, no)
+				will_not_call_mercury, no, no, no)
 				- ""
 		]) },
 		{ RestoreDeallocCode = empty },	% always empty for nondet code
@@ -662,31 +695,49 @@ code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, ExitCode) -->
 		;
 			code_info__setup_call(Args, callee, FlushCode)
 		),
-		(
-			{ MaybeSuccipSlot = yes(SuccipSlot) }
+		{
+			MaybeSuccipSlot = yes(SuccipSlot)
 		->
-			{ RestoreSuccipCode = node([
+			RestoreSuccipCode = node([
 				assign(succip, lval(stackvar(SuccipSlot))) -
 					"restore the success ip"
-			]) }
+			])
 		;
-			{ RestoreSuccipCode = empty }
-		),
-		(
-			{ TotalSlots = 0 ; CodeModel = model_non }
+			RestoreSuccipCode = empty
+		},
+		{
+			( TotalSlots = 0 ; CodeModel = model_non )
 		->
-			{ DeallocCode = empty }
+			DeallocCode = empty
 		;
-			{ DeallocCode = node([
+			DeallocCode = node([
 				decr_sp(TotalSlots) - "Deallocate stack frame"
-			]) }
-		),
-		{ RestoreDeallocCode = tree(RestoreSuccipCode, DeallocCode ) },
+			])
+		},
+		{
+			TraceSlotInfo = trace_slot_info(_, _, yes(_)),
+			CodeModel \= model_non
+		->
+			DiscardTraceTicketCode = node([
+				discard_ticket - "discard retry ticket"
+			])
+		;
+			DiscardTraceTicketCode = empty
+		},
+
+		{ RestoreDeallocCode =
+			tree(RestoreSuccipCode,
+			tree(DeallocCode,
+			     DiscardTraceTicketCode))
+		},
 
 		code_info__get_maybe_trace_info(MaybeTraceInfo),
 		( { MaybeTraceInfo = yes(TraceInfo) } ->
+				% XXX A context that gives the end of the
+				% procedure definition would be better than
+				% CallContext.
 			trace__generate_external_event_code(exit, TraceInfo,
-				_, TypeInfoDatas, TraceExitCode),
+				BodyContext, _, TypeInfoDatas, TraceExitCode),
 			{ map__values(TypeInfoDatas, TypeInfoLocnSets) },
 			{ FindBaseLvals = lambda([Lval::out] is nondet, (
 				list__member(LocnSet, TypeInfoLocnSets),
@@ -841,7 +892,7 @@ code_gen__generate_goal_2(generic_call(GenericCall, Args, Modes, Det),
 		GoalInfo, CodeModel, Code) -->
 	call_gen__generate_generic_call(CodeModel, GenericCall, Args,
 		Modes, Det, GoalInfo, Code).
-		
+
 code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		GoalInfo, CodeModel, Code) -->
 	(
@@ -859,6 +910,9 @@ code_gen__generate_goal_2(pragma_c_code(Attributes,
 	pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
 		PragmaCode, Instr).
+code_gen__generate_goal_2(bi_implication(_, _), _, _, _) -->
+	% these should have been expanded out by now
+	{ error("code_gen__generate_goal_2: unexpected bi_implication") }.
 
 %---------------------------------------------------------------------------%
 
@@ -912,7 +966,7 @@ code_gen__select_args_with_mode([Var - ArgInfo | Args], DesiredMode, Vs, Ls) :-
 	list(instruction)::out) is det.
 
 code_gen__add_saved_succip([], _StackLoc, []).
-code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc, 
+code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 		[Instrn - Comment | Instrns]) :-
 	(
 		Instrn0 = livevals(LiveVals0),
@@ -923,13 +977,12 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 		set__insert(LiveVals0, stackvar(StackLoc), LiveVals1),
 		Instrn = livevals(LiveVals1)
         ;
-		Instrn0 = call(Target, ReturnLabel, LiveVals0, CM)
+		Instrn0 = call(Target, ReturnLabel, LiveVals0, Context, CM)
 	->
 		map__init(Empty),
-		Instrn  = call(Target, ReturnLabel, 
-			[live_lvalue(direct(stackvar(StackLoc)),
-				succip, Empty) |
-			LiveVals0], CM)
+		LiveVals  = [live_lvalue(direct(stackvar(StackLoc)),
+				succip, Empty) | LiveVals0],
+		Instrn = call(Target, ReturnLabel, LiveVals, Context, CM)
 	;
 		Instrn = Instrn0
 	),

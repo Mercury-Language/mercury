@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -110,8 +110,31 @@ struct MEMORY_ZONE {
 	Word	*redzone;	/* beginning of the current redzone */
 	ZoneHandler *handler;   /* handler for page faults in the redzone */
 #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
+
+	/*
+	** MR_zone_end specifies the end of the 
+	** area accessible without a page fault.
+	** It is used by MR_clear_zone_for_GC().
+	*/
+#ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
+	#define MR_zone_end	redzone
+#elif defined(HAVE_MPROTECT)
+	#define MR_zone_end	hardmax
+#else
+	#define MR_zone_end	top
+#endif
 };
 
+/*
+** MR_clear_zone_for_GC(MemoryZone *zone, void *start_address):
+**	Zero out the (hopefully unused) portion of the zone
+**	from the specified `start_address' to the end of the zone.
+**	This is used to avoid unwanted memory retition due to 
+**	false hits in the conservative garbage collector.
+*/
+#define MR_clear_zone_for_GC(zone, start_address) \
+	((void) memset((start_address), 0, \
+		(char*)((zone)->MR_zone_end) - (char *)(start_address)))
 
 /*
 ** init_memory_arena() allocates (if necessary) the top-level memory pool

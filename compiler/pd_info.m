@@ -269,7 +269,10 @@ pd_info_lookup_bool_option(Option, Value) -->
 pd_info_bind_var_to_functor(Var, ConsId) -->
 	pd_info_get_instmap(InstMap0),
 	pd_info_get_module_info(ModuleInfo0),
-	{ instmap__bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
+	pd_info_get_proc_info(ProcInfo),
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	{ map__lookup(VarTypes, Var, Type) },
+	{ instmap__bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
 		ModuleInfo0, ModuleInfo) },
 	pd_info_set_instmap(InstMap),
 	pd_info_set_module_info(ModuleInfo).

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1998 The University of Melbourne.
+** Copyright (C) 1994-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,11 +20,14 @@
 
 #include "mercury_memory_zones.h"
 
-#include <stdlib.h>		/* for size_t */
+#include <stddef.h>		/* for size_t */
 
 #include "mercury_types.h"	/* for Word */
-#include "mercury_std.h"		/* for bool */
-
+#include "mercury_std.h"	/* for bool */
+#include "mercury_conf.h"	/* for CONSERVATIVE_GC, etc. */
+#ifdef CONSERVATIVE_GC
+  #include "gc.h"		/* for GC_FREE */
+#endif
 
 #ifdef	MR_LOWLEVEL_DEBUG
 extern	MemoryZone	*dumpstack_zone;
@@ -45,54 +48,104 @@ extern	int		dumpindex;
 
 extern	void	init_memory(void);
 extern	void	init_heap(void);
-extern	void	debug_memory(void);
+
+#ifdef CONSERVATIVE_GC
+  extern void	MR_init_conservative_GC(void);
+#endif
+
+/*---------------------------------------------------------------------------*/
 
 /*
-** allocate_bytes() allocates the given number of bytes.
-**
-** allocate_object(type) allocates space for an object of the specified type.
-**
-** allocate_array(type, num) allocates space for an array of objects of the
-** specified type.
-**
-** If shared memory is being used, these allocation routines will allocate
-** in shared memory.
-*/
-
-extern	void	*allocate_bytes(size_t numbytes);
-
-#define allocate_object(type) \
-	((type *)allocate_bytes(sizeof(type)))
-
-#define allocate_array(type, num) \
-	((type *)allocate_bytes((num) * sizeof(type)))
-
-/*
-** deallocate_memory() deallocates the memory allocated by one of the
-** allocate_* functions.
-*/
-
-void deallocate_memory(void *);
-
-/*
-** checked_malloc() and checked_realloc() are like the standard C
+** MR_malloc() and MR_realloc() are like the standard C
 ** malloc() and realloc() functions, except that the return values
 ** are checked.
 **
-** NOTE: checked_malloc()ed and checked_realloc()ed structures must
-** never contain pointers into GCed memory, otherwise those pointers
-** will never be traced.
+** Structures allocated with MR_malloc() and MR_realloc()
+** must NOT contain pointers into GC'ed memory, because those
+** pointers will never be traced by the conservative GC.
+** Use MR_GC_malloc() for that.
+**
+** MR_NEW(type):
+**	allocates space for an object of the specified type.
+**
+** MR_NEW_ARRAY(type, num):
+**	allocates space for an array of objects of the specified type.
+**
+** MR_RESIZE_ARRAY(ptr, type, num):
+**	resizes the array, as with realloc().
+**
+** MR_malloc(bytes):
+**	allocates the given number of bytes.
+**
+** MR_free(ptr):
+**	deallocates the memory.
 */
 
-#include <stddef.h>	/* for size_t */
-void	*checked_malloc(size_t n);
-void	*checked_realloc(void *old, size_t n);
+void	*MR_malloc(size_t n);
+void	*MR_realloc(void *old, size_t n);
+#define MR_free(ptr) free(ptr)
+
+#define MR_NEW(type) \
+	((type *) MR_malloc(sizeof(type)))
+
+#define MR_NEW_ARRAY(type, num) \
+	((type *) MR_malloc((num) * sizeof(type)))
+
+#define MR_RESIZE_ARRAY(ptr, type, num) \
+	((type *) MR_realloc((ptr), (num) * sizeof(type)))
+
 
 /*
-** MR_copy_string makes a copy of the given string with checked_malloc.
+** These routines all allocate memory that will be traced by the 
+** conservative garbage collector, if conservative GC is enabled.
+** (For the native GC, you need to call MR_add_root() to register roots.)
+** These routines all check for a null return value themselves,
+** so the caller need not check.
+**
+** MR_GC_NEW(type):
+**	allocates space for an object of the specified type.
+**
+** MR_GC_NEW_ARRAY(type, num):
+**	allocates space for an array of objects of the specified type.
+**
+** MR_GC_RESIZE_ARRAY(ptr, type, num):
+**	resizes the array, as with realloc().
+**
+** MR_GC_malloc(bytes):
+**	allocates the given number of bytes.
+**
+** MR_GC_free(ptr):
+**	deallocates the memory.
+*/
+
+extern	void	*MR_GC_malloc(size_t num_bytes);
+extern	void	*MR_GC_realloc(void *ptr, size_t num_bytes);
+
+#define MR_GC_NEW(type) \
+	((type *) MR_GC_malloc(sizeof(type)))
+
+#define MR_GC_NEW_ARRAY(type, num) \
+	((type *) MR_GC_malloc((num) * sizeof(type)))
+
+#define MR_GC_RESIZE_ARRAY(ptr, type, num) \
+	((type *) MR_GC_realloc((ptr), (num) * sizeof(type)))
+
+#ifdef CONSERVATIVE_GC
+  #define MR_GC_free(ptr) GC_FREE(ptr)
+#else
+  #define MR_GC_free(ptr) free(ptr)
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** MR_copy_string makes a copy of the given string,
+** using memory allocated with MR_malloc().
 */
 
 char	*MR_copy_string(const char *s);
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** `unit' is the size of the minimum unit of memory we allocate (in bytes).
@@ -101,6 +154,8 @@ char	*MR_copy_string(const char *s);
 
 extern	size_t          unit;
 extern	size_t          page_size;
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** Users need to call MR_add_root() for any global variable which
@@ -113,5 +168,7 @@ extern	size_t          page_size;
 #else
   #define MR_add_root(root_ptr, type_info) /* nothing */
 #endif
+
+/*---------------------------------------------------------------------------*/
 
 #endif /* not MERCURY_MEMORY_H */

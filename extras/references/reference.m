@@ -21,10 +21,10 @@
 %  exceptional circumstances.
 %
 %  This module is implemented using the trailing features described in the
-%  "Trailing" subsection of the "C interface" section of the "Pragmas" chapter
-%  of the Mercury Language Reference Manual.  This means that in order to use
-%  this module, you *must* compile with the --use-trail switch.  The easiest
-%  way to do this is to include the line
+%  "Trailing" section of the "C interface" chapter of the Mercury Language
+%  Reference Manual.  This means that in order to use this module, you *must*
+%  compile with the --use-trail switch.  The easiest way to do this is to
+%  include the line
 %
 %	GRADEFLAGS=--use-trail
 %

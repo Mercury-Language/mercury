@@ -12,6 +12,30 @@
 # Type `c2init --help' for usage message.
 #
 
+# If you change these, you will also need to change Mmake.common.in,
+# scripts/ml.in, tools/bootcheck, tools/binary, tools/binary_step and
+# tools/linear.
+RT_LIB_NAME=mer_rt
+STD_LIB_NAME=mer_std
+TRACE_LIB_NAME=mer_trace
+BROWSER_LIB_NAME=mer_browser
+
+MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
+MKINIT=${MERCURY_MKINIT=mkinit}
+
+# maximum number of calls to put in a single function
+maxcalls=40
+defentry=mercury__main_2_0
+init_opt=""
+trace_opt=""
+library_opt=""
+extra_inits_opt=""
+aditi_opt=""
+extra_init_dirs=""
+
+# include the file `init_grade_options.sh-subr'
+@INIT_GRADE_OPTIONS@
+
 # IMPORTANT: the manpage is produced automatically from this help
 # message, so if you change the help message, don't forget to check
 # that the manpage still looks OK.
@@ -53,48 +77,12 @@ Options:
 		hand-coded C code with \`INIT' comments, rather than
 		containing only C code that was automatically generated
 		by the Mercury compiler.)
-	-s <grade>, --grade <grade>
-	--asm-labels
-	--gcc-non-local-gotos
-	--gcc-global-registers
-	--gc {conservative, accurate, none}
-	-p, --profiling
-	--profile-calls
-	--profile-time
-	--profile-memory
-	--debug
-	--use-trail
-	--pic-reg
-		See the documentation in the \"Invocation\" section
-		of the Mercury User's Guide.
+
+$grade_usage
 
 Environment variables:
 	MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS, MERCURY_MKINIT.
 "
-
-# If you change these, you will also need to change Mmake.common.in,
-# scripts/ml.in, tools/bootcheck, tools/binary, tools/binary_step and
-# tools/linear.
-RT_LIB_NAME=mer_rt
-STD_LIB_NAME=mer_std
-TRACE_LIB_NAME=mer_trace
-BROWSER_LIB_NAME=mer_browser
-
-MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
-MKINIT=${MERCURY_MKINIT=mkinit}
-
-# maximum number of calls to put in a single function
-maxcalls=40
-defentry=mercury__main_2_0
-init_opt=""
-trace_opt=""
-library_opt=""
-extra_inits_opt=""
-aditi_opt=""
-extra_init_dirs=""
-
-# include the file `init_grade_options.sh-subr'
-@INIT_GRADE_OPTIONS@
 
 while true; do
 	case "$1" in

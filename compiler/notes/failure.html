@@ -197,6 +197,13 @@ The answer is yes if there is no nondet code between
 the establishment of the tightest enclosing resume point
 and the start of the current goal.
 
+If the resume point is known,
+the compiler state also records whether
+the redoip slot of the top nondet stack frame
+is known to contain the address of this resume point.
+XXX The rest of this document has not been updated
+to reflect how we handle this extra component of the failure handling state.
+
 <p>
 
 <li>
@@ -732,6 +739,6 @@ and thus do not need to set any redoips or hijack anything.
 
 <hr>
 <!-------------------------->
-Last update was $Date: 1999-01-21 03:56:52 $ by $Author: warwick $@cs.mu.oz.au. <br>
+Last update was $Date: 2000-01-12 05:42:57 $ by $Author: warwick $@cs.mu.oz.au. <br>
 </body>
 </html>

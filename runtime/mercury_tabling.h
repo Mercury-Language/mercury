@@ -470,7 +470,7 @@ MR_TrieNode MR_table_type(MR_TrieNode Table, Word *type_info, Word data_value);
   #define table_free(pointer)						\
 	GC_FREE(pointer)
 
-  #define MR_table_list_cons(h, t) list_cons((h), (t))
+  #define MR_table_list_cons(h, t) MR_list_cons((h), (t))
 
 #else /* not CONSERVATIVE_GC */
 

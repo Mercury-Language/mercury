@@ -66,11 +66,11 @@
 
 #define	MR_mkword(t, p)			((Word *)((char *)(p) + (t)))
 
-#define	MR_field(t, p, i)		((Word *) body((p), (t)))[i]
-#define	MR_const_field(t, p, i)		((const Word *) body((p), (t)))[i]
+#define	MR_field(t, p, i)		((Word *) MR_body((p), (t)))[i]
+#define	MR_const_field(t, p, i)		((const Word *) MR_body((p), (t)))[i]
 
-#define	MR_mask_field(p, i)		((Word *) strip_tag(p))[i]
-#define	MR_const_mask_field(p, i)	((const Word *) strip_tag(p))[i]
+#define	MR_mask_field(p, i)		((Word *) MR_strip_tag(p))[i]
+#define	MR_const_mask_field(p, i)	((const Word *) MR_strip_tag(p))[i]
 
 /*
 ** the following MR_list_* macros are used by handwritten C code
@@ -105,6 +105,12 @@
 #define	MR_list_empty()		((Word) MR_mkword(MR_TAG_NIL, MR_mkbody(0)))
 #define	MR_list_cons(head,tail)	((Word) MR_mkword(MR_TAG_CONS, \
 					create2((head),(tail))))
+#define	MR_list_empty_msg(proclabel)	\
+				((Word) MR_mkword(MR_TAG_NIL, MR_mkbody(0)))
+#define	MR_list_cons_msg(head,tail,proclabel) \
+				((Word) MR_mkword(MR_TAG_CONS, \
+					MR_create2_msg((head),(tail), \
+						proclabel, "list:list/1")))
 
 #else
 
@@ -117,6 +123,15 @@
 #define	MR_list_cons(head,tail)	((Word) MR_mkword(MR_mktag(0), \
 					create3(MR_RAW_TAG_CONS, \
 						(head), (tail))))
+#define	MR_list_empty_msg(proclabel) \
+				((Word) MR_mkword(MR_mktag(0), \
+					MR_create1_msg(MR_RAW_TAG_NIL, \
+						proclabel, "list:list/1")))
+#define	MR_list_cons_msg(head,tail,proclabel) \
+				((Word) MR_mkword(MR_mktag(0), \
+					MR_create3_msg(MR_RAW_TAG_CONS, \
+						(head), (tail), \
+						proclabel, "list:list/1")))
 
 #endif
 

@@ -14,6 +14,70 @@
 #
 # Environment variables: MERCURY_C_LIB_DIR, MERCURY_DEFAULT_GRADE, ...
 
+FULLARCH=@FULLARCH@
+NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
+DEFAULT_LIBDIR=@LIBDIR@/lib
+LIBDIR=${MERCURY_C_LIB_DIR=$DEFAULT_LIBDIR}
+DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
+# DEMANGLER=${MERCURY_DEMANGLER=@LIBDIR@/bin/@FULLARCH@/mdemangle}
+DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
+CC=${MERCURY_C_COMPILER="@CC@"}
+MKFIFO=${MERCURY_MKFIFO="@MKFIFO@"}
+ERROR_UNDEFINED="@ERROR_UNDEFINED@"
+ALLOW_UNDEFINED="@ALLOW_UNDEFINED@"
+EXE_RPATH_OPT=${MERCURY_EXE_RPATH_OPT="@EXE_RPATH_OPT@"}
+EXE_RPATH_SEP=${MERCURY_EXE_RPATH_SEP="@EXE_RPATH_SEP@"}
+EXT_FOR_SHARED_LIB=${MERCURY_EXT_FOR_SHARED_LIB="@EXT_FOR_SHARED_LIB@"}
+LINK_SHARED_OBJ=${MERCURY_LINK_SHARED_OBJ="@LINK_SHARED_OBJ_SH@"}
+SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
+SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
+SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
+TMPDIR=${TMPDIR=/tmp}
+
+# On some systems (Solaris for exemple), we need libraries to be able to 
+# use sockets. The name of the needed libraries is determined by autoconf
+# and passed through this variable.
+SOCKET_LIBRARY="@SOCKET_LIBRARY@"
+NSL_LIBRARY="@NSL_LIBRARY@"
+
+# Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
+DL_LIBRARY="@DL_LIBRARY@"
+
+# Likewise for -lreadline -l{termcap,curses,ncurses}
+READLINE_LIBRARIES="@READLINE_LIBRARIES@"
+
+# If you change these, you will also need to change Mmake.common.in,
+# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
+# and tools/linear.
+RT_LIB_NAME=mer_rt
+STD_LIB_NAME=mer_std
+TRACE_LIB_NAME=mer_trace
+BROWSER_LIB_NAME=mer_browser
+
+verbose=false
+allow_undefined=false
+trace=false
+readline=true
+case $FULLARCH in
+	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
+		# `gcc -s' is broken in gnu-win32
+		strip=false
+		;;
+	*)
+		strip=true
+		;;
+esac
+mercury_libs=default
+all_libs=default
+demangle=true
+MAYBE_STATIC_OPT=""
+make_shared_lib=false
+leave_shlib_dirs_relative=false
+user_shlib_dirs=""
+
+# include the file `init_grade_options.sh-subr'
+@INIT_GRADE_OPTIONS@
+
 Help="\
 Name: ml - Mercury Linker
 Usage: ml [<ml options>] [-- <gcc options>] files...
@@ -84,87 +148,7 @@ Debugging options:
 	-g, --c-debug, --no-strip
 		Do not strip C debugging information.
 
-Grade options:
-	-s <grade>, --grade <grade>
-	--asm-labels
-	--gcc-non-local-gotos
-	--gcc-global-registers
-	--gc {conservative, accurate, none}
-	-p, --profiling
-	--profile-calls
-	--profile-time
-	--profile-memory
-	--debug
-	--low-level-debug
-	--use-trail
-	--reserve-tag
-	--use-solve-equal
-	--use-init
-	--pic-reg
-		See the documentation in the \"Invocation\" section
-		of the Mercury User's Guide."
-
-FULLARCH=@FULLARCH@
-NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
-DEFAULT_LIBDIR=@LIBDIR@/lib
-LIBDIR=${MERCURY_C_LIB_DIR=$DEFAULT_LIBDIR}
-DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
-# DEMANGLER=${MERCURY_DEMANGLER=@LIBDIR@/bin/@FULLARCH@/mdemangle}
-DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
-CC=${MERCURY_C_COMPILER="@CC@"}
-MKFIFO=${MERCURY_MKFIFO="@MKFIFO@"}
-ERROR_UNDEFINED="@ERROR_UNDEFINED@"
-ALLOW_UNDEFINED="@ALLOW_UNDEFINED@"
-EXE_RPATH_OPT=${MERCURY_EXE_RPATH_OPT="@EXE_RPATH_OPT@"}
-EXE_RPATH_SEP=${MERCURY_EXE_RPATH_SEP="@EXE_RPATH_SEP@"}
-EXT_FOR_SHARED_LIB=${MERCURY_EXT_FOR_SHARED_LIB="@EXT_FOR_SHARED_LIB@"}
-LINK_SHARED_OBJ=${MERCURY_LINK_SHARED_OBJ="@LINK_SHARED_OBJ@"}
-SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
-SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
-SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
-
-# On some systems (Solaris for exemple), we need libraries to be able to 
-# use sockets. The name of the needed libraries is determined by autoconf
-# and passed through this variable.
-SOCKET_LIBRARY="@SOCKET_LIBRARY@"
-
-# Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
-DL_LIBRARY="@DL_LIBRARY@"
-
-# Likewise for -lreadline -l{termcap,curses,ncurses}
-READLINE_LIBRARIES="@READLINE_LIBRARIES@"
-
-# If you change these, you will also need to change Mmake.common.in,
-# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
-# and tools/linear.
-RT_LIB_NAME=mer_rt
-STD_LIB_NAME=mer_std
-TRACE_LIB_NAME=mer_trace
-BROWSER_LIB_NAME=mer_browser
-
-verbose=false
-allow_undefined=false
-trace=false
-readline=true
-case $FULLARCH in
-	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
-		# `gcc -s' is broken in gnu-win32
-		strip=false
-		;;
-	*)
-		strip=true
-		;;
-esac
-mercury_libs=default
-all_libs=default
-demangle=true
-MAYBE_STATIC_OPT=""
-make_shared_lib=false
-leave_shlib_dirs_relative=false
-user_shlib_dirs=""
-
-# include the file `init_grade_options.sh-subr'
-@INIT_GRADE_OPTIONS@
+$grade_usage"
 
 while : ; do
     case "$1" in
@@ -353,7 +337,7 @@ case $all_libs in static)
 			# boehm_gc/dyn_load.c.
 			# (We might eventually need similar treatment
 			# for other OSs too)
-			MAYBE_STATIC_OPT="-static -Wl,-defsym,_DYNAMIC=0"
+			MAYBE_STATIC_OPT="-static -Wl-defsym -Wl_DYNAMIC=0"
 			;;
 		*)
 			MAYBE_STATIC_OPT=-static
@@ -374,6 +358,10 @@ esac
 case $asm_labels in
 	true)		GRADE="asm_$GRADE" ;;
 	false)		;;
+esac
+case $thread_safe in
+	true)	GRADE="$GRADE.par" ;;
+	false)	;;
 esac
 case $gc_method in
 	conservative)	GRADE="$GRADE.gc" ;;
@@ -408,15 +396,21 @@ case $use_init in
 	true)		GRADE="$GRADE.init" ;;
 	false)		;;
 esac
+case $use_minimal_model in
+	true)	GRADE="$GRADE.mm" ;;
+	false)	;;
+esac
+# We ignore the value of $picreg in computing the name of the grade
+# that we will use as a directory name below.
+# case $picreg in
+# 	true)	GRADE="$GRADE.picreg" ;;
+# 	false)	;;
+# esac
 case $stack_trace,$require_tracing in
 	true,true)	GRADE="$GRADE.debug" ;;
 	false,true)	GRADE="$GRADE.trace" ;;
 	true,false)	GRADE="$GRADE.strce" ;;
 	false,false)	;;
-esac
-case $thread_safe in
-	true)	GRADE="$GRADE.par" ;;
-	false)	;;
 esac
 
 case "$GRADE" in
@@ -442,7 +436,7 @@ esac
 
 case $trace in
 	true)	TRACE_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME"
-		TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $DL_LIBRARY \
+		TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $NSL_LIBRARY $DL_LIBRARY \
 			$READLINE_LIBRARIES"
 		TRACE_STATIC_LIBS="\
 			$LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.a \
@@ -605,33 +599,50 @@ case $demangle in
 		# create the pipe, making sure we remove it if interrupted
 	old_umask=`umask`
 	umask 022
-	ML_TMPDIR=/tmp/ml$$
-	PIPE=$ML_TMPDIR/pipe
-	trap 'rmdir $ML_TMPDIR >/dev/null 2>&1; exit 1' 1 2 3 13 15 
-	if mkdir $ML_TMPDIR ; then
-		true
-	else
-		echo "Unable to create temporary pipe" 1>&2
-		exit 1
-	fi
+	try=0
+	until 
+		ML_TMPDIR=$TMPDIR/ml$$
+		PIPE=$ML_TMPDIR/pipe
+		trap 'rmdir $ML_TMPDIR >/dev/null 2>&1; exit 1' 1 2 3 13 15 
+		mkdir $ML_TMPDIR
+	do
+		try="`expr $try + 1`"
+		# give up after 20 tries
+		case "$try" in 20)
+			echo "ml: unable to create temporary directory" \
+				"for pipe" 1>&2
+			exit 1
+		esac
+	done
 	trap 'rm -rf $ML_TMPDIR; exit 1' 1 2 3 13 15 
 	umask $old_umask
 	$MKFIFO $PIPE
 		# execute the demangler in the background, with stdin 
 		# coming from the pipe and with stdout redirected to stderr
-	exec $DEMANGLER 1>&2 < $PIPE &
-		# redirect our stdout and stderr into the pipe
-	exec >$PIPE 2>&1
-		# now we can remove the pipe; since is an open file, it will
-		# stay around until $CC and $DEMANGLER exit
-	rm -rf $ML_TMPDIR
-		# finally execute $CC; stdout & stderr will
+	exec $DEMANGLER --explain-link-errors 1>&2 < $PIPE &
+		# execute $CC with stdout & stderr redirected to
 		# go via the pipe to $DEMANGLER and then to stderr
+	case $# in
+		0) $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+			$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS >$PIPE 2>&1 ;;
+
+		*) $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS >$PIPE 2>&1 ;;
+	esac
+	linker_status=$?
+		# now we can remove the pipe; since is an open file, it will
+		# stay around until $DEMANGLER exits
+	rm -rf $ML_TMPDIR
+		# wait for the demangler to exit before exiting ourselves
+	wait
+	exit $linker_status
 	;;
-esac
-case $# in
-	0) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-		$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
-	*) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-		$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS ;;
+false)
+	case $# in
+		0) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+			$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
+		*) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS ;;
+	esac
+	;;
 esac

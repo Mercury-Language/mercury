@@ -6,10 +6,16 @@
 #
 # parse_grade_options.sh-subr:
 #	An `sh' subroutine for parsing grade-related options.
-#	Used by the `ml' and `mgnuc' scripts.
+#	Used by the `ml', `mgnuc' and `c2init' scripts.
 #
-#	The code here should be inserted in the case statement in a scripts
+#	The code here should be inserted in the case statement in a script's
 #	option-parsing loop.
+#
+# IMPORTANT: any changes to the handling of grades here may also require
+# changes to all the files indicated by runtime/mercury_grade.h.
+#
+# This file should handle the setting of all the shell variables defined by
+# init_grade_options.sh-subr.
 #
 #---------------------------------------------------------------------------#
 
@@ -27,26 +33,6 @@
 		global_regs=true ;;
 	--no-gcc-global-registers)
 		global_regs=false ;;
-
-	--debug)
-		stack_trace=true 
-		require_tracing=true
-		;;
-	--no-debug)
-		stack_trace=false 
-		require_tracing=false
-		;;
-# The following more fine-grained options have been omitted
-# since they are not very useful and would probably only
-# confuse people.
-#	--stack-trace)
-#		stack_trace=true ;;
-#	--no-stack-trace)
-#		stack_trace=false ;;
-#	--require-tracing)
-#		require_tracing=true ;;
-#	--no-require-tracing)
-#		require_tracing=false ;;
 
 	--gc)
 		shift
@@ -67,16 +53,25 @@
 		profile_time=true
 		profile_calls=true
 		profile_memory=false
+		profile_deep=false
 		;;
 	--memory-profiling)
 		profile_time=false
 		profile_calls=true
 		profile_memory=true
+		profile_deep=false
+		;;
+	--deep-profiling)
+		profile_time=true
+		profile_calls=false
+		profile_memory=false
+		profile_deep=true
 		;;
 	-p-|--no-profiling)
 		profile_time=false
 		profile_calls=false
 		profile_memory=false
+		profile_deep=false
 		;;
 	--profile-time)
 		profile_time=true ;;
@@ -90,6 +85,10 @@
 		profile_memory=true ;;
 	--no-profile-memory)
 		profile_memory=false ;;
+	--profile-deep)
+		profile_deep=true ;;
+	--no-profile-deep)
+		profile_deep=false ;;
 
 	--use-trail)
 		use_trail=true ;;
@@ -121,6 +120,24 @@
 	--no-pic-reg)
 		pic_reg=false ;;
 
+# The following more fine-grained options have been omitted
+# since they are not very useful and would probably only confuse people.
+#	--stack-trace)
+#		stack_trace=true ;;
+#	--no-stack-trace)
+#		stack_trace=false ;;
+#	--require-tracing)
+#		require_tracing=true ;;
+#	--no-require-tracing)
+#		require_tracing=false ;;
+
+	--debug)
+		stack_trace=true
+		require_tracing=true ;;
+	--no-debug)
+		stack_trace=false
+		require_tracing=false ;;
+
 	-s|--grade)
 		shift
 		grade="$1";
@@ -128,121 +145,151 @@
 		# Convert a grade to a set of options.
 		#
 		# IMPORTANT: any changes to the handling of grades here
-		# may also require changes to
-		#	runtime/mercury_grade.h
-		#	compiler/handle_options.m
-		#	scripts/ml.in
+		# may also require changes to all the files indicated by
+		# runtime/mercury_grade.h.
 
-	    asm_labels=false
-	    non_local_gotos=false
-	    global_regs=false
-	    gc_method=none
-	    profile_time=false
-	    profile_calls=false
-	    profile_memory=false
-	    use_trail=false
-	    reserve_tag=false
-	    use_solve_equal=false
-	    use_init=false
-	    use_minimal_model=false
-	    stack_trace=false
-	    require_tracing=false
-	    low_level_debug=false
-	    thread_safe=false
+		asm_labels=false
+		non_local_gotos=false
+		global_regs=false
+		thread_safe=false
+		gc_method=none
+		profile_time=false
+		profile_calls=false
+		profile_memory=false
+		profile_deep=false
+		use_trail=false
+		reserve_tag=false
+		use_solve_equal=false
+		use_init=false
+		use_minimal_model=false
+		pic_reg=false
+		stack_trace=false
+		require_tracing=false
 
-	    grade_pieces=`echo $grade | tr '.' ' '`
-	    for grade_piece in $grade_pieces
-	    do
-		case "$grade_piece" in
-			debug)
-				stack_trace=true
-				require_tracing=true
-				;;
-# The following alternatives have been omitted since
-# they're not very useful and would probably just confuse people.
-#			trace)
-#				stack_trace=false
-#				require_tracing=true
-#				;;
-#			strce)
-#				stack_trace=true
-#				require_tracing=false
-#				;;
-			tr)	use_trail=true
-				;;
-			rt)	reserve_tag=true
-				;;
-			se)	use_solve_equal=true
-				;;
-			init)	use_init=true
-				;;
-			mm)	use_minimal_model=true
-				;;
-			memprof)
-				profile_time=false
-				profile_calls=true
-				profile_memory=true
-				;;
-			prof)
-				profile_time=true
-				profile_calls=true
-				profile_memory=false
-				;;
-			proftime)	
-				profile_time=true
-				profile_calls=false
-				profile_memory=false
-				;;
-			profcalls)	
-				profile_time=false
-				profile_calls=true
-				profile_memory=false
-				;;
-			profall)
-				profile_time=true
-				profile_calls=true
-				profile_memory=true
-				;;
-			agc)	gc_method=accurate
-				;;
-			gc)	gc_method=conservative
-				;;
-			nogc)	gc_method=none
-				;;
-			par)	thread_safe=true
-				;;
-			asm_fast)
-				asm_labels=true
-				non_local_gotos=true
-				global_regs=true
-				;;
-			asm_jump)
-				asm_labels=true
-				non_local_gotos=true
-				;;
-			fast)
-				asm_labels=false
-				non_local_gotos=true
-				global_regs=true
-				;;
-			jump)
-				asm_labels=false
-				non_local_gotos=true
-				global_regs=false
-				;;
-			reg)
-				asm_labels=false
-				non_local_gotos=false
-				global_regs=true
-				;;
-			none)
-				asm_labels=false
-				non_local_gotos=false
-				global_regs=false
-				;;
-		esac
-	    done
-	    ;;
+		grade_pieces=`echo $grade | tr '.' ' '`
+		for grade_piece in $grade_pieces
+		do
+			case "$grade_piece" in
+				asm_fast)
+					asm_labels=true
+					non_local_gotos=true
+					global_regs=true
+					;;
+				asm_jump)
+					asm_labels=true
+					non_local_gotos=true
+					global_regs=false
+					;;
+				fast)
+					asm_labels=false
+					non_local_gotos=true
+					global_regs=true
+					;;
+				jump)
+					asm_labels=false
+					non_local_gotos=true
+					global_regs=false
+					;;
+				reg)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=true
+					;;
+				none)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					;;
+
+				par)
+					thread_safe=true
+					;;
+
+				agc)
+					gc_method=accurate
+					;;
+				gc)
+					gc_method=conservative
+					;;
+				nogc)
+					gc_method=none
+					;;
+
+				memprof)
+					profile_time=false
+					profile_calls=true
+					profile_memory=true
+					profile_deep=false
+					;;
+				prof)
+					profile_time=true
+					profile_calls=true
+					profile_memory=false
+					profile_deep=false
+					;;
+				proftime)	
+					profile_time=true
+					profile_calls=false
+					profile_memory=false
+					profile_deep=false
+					;;
+				profcalls)	
+					profile_time=false
+					profile_calls=true
+					profile_memory=false
+					profile_deep=false
+					;;
+				profall)
+					profile_time=true
+					profile_calls=true
+					profile_memory=true
+					profile_deep=false
+					;;
+				profdeep)
+					profile_time=true
+					profile_calls=false
+					profile_memory=false
+					profile_deep=true
+					;;
+
+				tr)
+					use_trail=true
+					;;
+
+				rt)	reserve_tag=true
+					;;
+
+				se)	use_solve_equal=true
+					;;
+
+				init)	use_init=true
+					;;
+
+				mm)
+					use_minimal_model=true
+					;;
+
+				picreg)
+					pic_reg=true
+					;;
+
+# The following more fine-grained options have been omitted
+# since they are not very useful and would probably only confuse people.
+#				trace)
+#					stack_trace=false
+#					require_tracing=true
+#
+#				strce)
+#					stack_trace=true
+#					require_tracing=false
+
+				debug)
+					stack_trace=true
+					require_tracing=true
+					;;
+			esac
+		done
+		;;
 
 	-s*)
 		grade="` expr $1 : '-s\(.*\)' `"

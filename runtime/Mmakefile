@@ -305,7 +305,7 @@ RM_C=:
 
 #-----------------------------------------------------------------------------#
 
-clean: clean_o clean_check
+clean_local: clean_o clean_check
 
 .PHONY: clean_o
 clean_o:
@@ -315,7 +315,7 @@ clean_o:
 clean_check:
 	rm -f $(HDR_CHECK_OBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
 
-realclean:
+realclean_local:
 	rm -f lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).so $(RT_LIB_NAME).init
 	rm -f mercury_conf.h mercury_conf.h.date
 

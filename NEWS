@@ -1,8 +1,66 @@
-NEWS since Mercury release 0.8:
--------------------------------
+NEWS for Mercury release 0.9:
+-----------------------------
+
+HIGHLIGHTS
+==========
+
+Changes to the Mercury language:
+* The Mercury type system now supports existentially quantified types.
+* We now allow abstract instance declarations.
+* We now support a simple form of user-defined infix operators.
+
+Changes to the Mercury standard library:
+* Exception handling support is now part of the standard library.
+* There are two new standard library modules `time' and `gc'.
+* We've added function versions of many of the predicates in the
+  Mercury standard library.
+
+New library packages in the Mercury extras distribution:
+* We've added support for optional lazy evaluation.
+* The extras distribution now includes support for dynamic linking.
+* We've added some bindings to POSIX.3 functionality.
+
+Changes to the Mercury implementation:
+* Mmake, the Mercury make tool, now includes better support for
+  installing libraries.
+* The Mercury debugger (mdb) is much improved.
+  It now includes support for interactive queries, command-line editing
+  and command-line history, display of source line numbers, and
+  setting breakpoints on source line numbers.
+  The GNU Emacs interface provides a source-linked debugger.
+* We've removed the support for using a Prolog debugger on Mercury programs.
+* We've added support for user-guided type specialization.
+* Numerous bug fixes.
+
+DETAILED LISTING
+================
 
 Changes to the Mercury language:
 ********************************
+
+* The Mercury type system now supports existentially quantified types.
+
+  Existential types let you create heterogenous collections (e.g. lists
+  containing objects of different types).  In combination with type
+  classes, they allow you to write code in an OOP-like style.
+  See the "Existential types" chapter of the Mercury Language Reference
+  Manual for details.
+
+  Our current implementation still has a couple of important limitations;
+  see the "Known bugs and limitations" section of the "Existential types"
+  chapter of the Mercury Language Reference Manual.
+
+* We now allow abstract instance declarations.
+
+  You can declare in the interface of a module that a type is an
+  instance of a particular type class, and provide the definition
+  of that instance in the implementation section of that module.
+
+* We now support a simple form of user-defined infix operators.
+  
+  Terms in the form of x `fun` y are transformed into fun(x, y).  `fun`
+  is parsed as an infix operator with the highest possible precedence
+  and left associativity.
 
 * We've made a small change to the rule for quantification of lambda
   expressions.  
@@ -11,7 +69,7 @@ Changes to the Mercury language:
   expressions are treated as locally quantified to that lambda expression.
   For function lambda expressions, variables in the result term
   use the normal quantification rules.  See the "Data-terms" section
-  of the "Syntax" chapter of the Mercury language reference manual
+  of the "Syntax" chapter of the Mercury Language Reference Manual
   for details.
   
   Previously, the exact quantification rule for lambda expressions was
@@ -36,22 +94,56 @@ Changes to the Mercury language:
   instead.  The compiler still supports the old-style syntax, but
   we plan to eventually drop this support in some future release.
 
-* Terms in the form of x `fun` y are transformed into fun(x, y).  `fun`
-  is parsed as an infix operator with the highest possible precedence
-  and left associativity.
-
 Changes to the Mercury standard library:
 ****************************************
 
+* Exception handling support is now part of the standard library.
+
+  The module `exception', which was previously part of the "extras"
+  distribution, has been moved into the standard library.
+  The predicate error/1 now throws an exception rather than just
+  terminating execution.
+
+  However, many of the operations in the standard library still handle
+  errors by aborting execution rather than by throwing exceptions.
+
+* There's a new standard library module `time'.
+
+  The `time' module provides an interface to the ANSI/ISO C <time.h>
+  functions, and to the POSIX times() function.  Thanks to Tomas By
+  for contributing the original version of this module.
+
+* There's a new standard library module `gc', for controlling the
+  garbage collector.
+
+  Currently it contains only one predicate, `garbage_collect',
+  which forces a garbage collection.  We may add more later.
+
 * We've added some new predicates to the Mercury standard library:
 	array__map/3,
-	bag__count_value/3.
+	bag__count_value/3,
+	std_util__do_while/4.
+
+* We've added function versions of many of the predicates in the
+  Mercury standard library.
+
+  One small drawback of this change is that it is not completely
+  backwards compatible; in certain circumstances, there is a potential
+  ambiguity between a function call and a partially applied predicate,
+  and for some occurrences of this the compiler may not be able to
+  resolve the ambiguity unless the user provides additional type
+  declarations (or the like).  But such cases should be quite rare,
+  and when they do occur the fix is easy, so we thought the clear
+  advantages of using a functional syntax were well worth this minor
+  glitch in backwards compatibility.
 
 * The following predicates have been replaced by functions with
   the same names, and will be removed in a future release.
+
   The predicate versions were intended for use in programs which needed
   to work in both Prolog and Mercury, but executing Mercury programs using
   Prolog is no longer supported.
+
 	float__ceiling_to_int/2,
 	float__floor_to_int/2,
 	float__round_to_int/2,
@@ -77,6 +169,10 @@ Changes to the Mercury standard library:
   and `int:unchecked_right_shift/2' that, like the previous implementations
   of `int:>>/2' and `int:<</2', do not check for these cases.
 
+* `int:^/2' and `integer:^/2' have been replaced by `int__xor/2' and
+  `integer__xor/2', and will be removed in a future release.
+  The operator `^' will be used by record syntax.
+
 New library packages in the Mercury extras distribution:
 ********************************************************
 
@@ -94,8 +190,39 @@ New library packages in the Mercury extras distribution:
   which are supported by most modern Unix systems.
   See the files in extras/dynamic_linking for details.
 
+* We've added some bindings to POSIX.3 functionality.
+
+  At this stage it's quite incomplete.
+  See the files in extras/posix for details.
+
 Changes to the Mercury implementation:
 **************************************
+
+* Mmake, the Mercury make tool, now includes better support for
+  installing libraries.
+
+  It's now much easier to build and install libraries in several
+  different grades (e.g. for debugging, time profiling, and memory
+  profiling) or for more than one architecture.
+
+  See the "Supporting multiple grades and architectures" section
+  of the "Libraries" chapter of the Mercury User's Guide.
+
+* We've fixed a bug in switch detection.
+
+  This change may break some code written for Mercury 0.8. Some
+  disjunctions which Mercury 0.8 found to have determinism `det'
+  now have determinism `nondet'.
+
+  Mercury 0.8 (but not Mercury 0.7) allowed switches where a unification
+  to test the switched-on variable against a function symbol occurred after
+  the first call in the disjunct. Doing this may remove infinite loops,
+  violating the strict sequential semantics (see the "Semantics" chapter
+  of the Mercury Language Reference Manual).
+
+  To fix switches for which determinism errors are now reported, simply
+  reorder the goals in each disjunct so that only unifications occur
+  before the test of the switched-on variable.
 
 * The Mercury debugger (mdb) now includes support for interactive queries.
 
@@ -113,6 +240,12 @@ Changes to the Mercury implementation:
   need to install GNU readline in order to use the debugger.
 
   For information on where to obtain GNU Readline, see the INSTALL file.
+
+* The Mercury debugger (mdb) now displays source line numbers and allows
+  setting breakpoints on source line numbers.
+
+  The GNU Emacs interface takes advantage of this to provide a
+  source-linked debugger.
 
 * We've removed the support for using a Prolog debugger on Mercury programs.
 
@@ -142,4 +275,6 @@ Changes to the Mercury implementation:
 
   See the "Type specialization" section of the "Pragmas" chapter of the
   Mercury Language Reference Manual for details.
+
+* Numerous bug fixes.
 

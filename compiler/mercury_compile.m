@@ -27,6 +27,7 @@
 	% library modules
 :- import_module int, list, map, set, std_util, dir, require, string, bool.
 :- import_module library, getopt, set_bbbtree, term, varset.
+:- import_module gc.
 
 	% the main compiler passes (mostly in order of execution)
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
@@ -44,9 +45,11 @@
 :- import_module llds_common, transform_llds, llds_out.
 :- import_module continuation_info, stack_layout.
 
+:- import_module mlds, ml_code_gen, ml_elim_nested, ml_tailcall, mlds_to_c.
+
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
-:- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
+:- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module dependency_graph, prog_util, rl_dump, rl_file.
 :- import_module options, globals, passes_aux.
 
@@ -124,6 +127,7 @@ process_arg_list(Args, Modules) -->
 :- mode process_stdin_arg_list(in, out, di, uo) is det.
 
 process_stdin_arg_list(Modules0, Modules) -->
+	( { Modules0 \= [] } -> garbage_collect ; [] ),
 	io__read_line_as_string(FileResult),
 	( 
 		{ FileResult = ok(Line) },
@@ -154,6 +158,7 @@ process_stdin_arg_list(Modules0, Modules) -->
 process_arg_list_2([], []) --> [].
 process_arg_list_2([Arg | Args], [Modules | ModulesList]) -->
 	process_arg(Arg, Modules), !,
+	( { Args \= [] } -> garbage_collect ; [] ),
 	process_arg_list_2(Args, ModulesList).
 
 	% Figure out whether the argument is a module name or a file name.
@@ -424,11 +429,12 @@ mercury_compile(Module) -->
 		    ( { AditiOnly = yes } ->
 		    	[]
 		    ; { HighLevelC = yes } ->
-			module_name_to_file_name(ModuleName, ".c", no, C_File),
-			mercury_compile__gen_hlds(C_File, HLDS50),
+			mercury_compile__mlds_backend(HLDS50),
 			globals__io_lookup_bool_option(compile_to_c, 
 				CompileToC),
 			( { CompileToC = no } ->
+				module_name_to_file_name(ModuleName, ".c", no,
+					C_File),
 				module_name_to_file_name(ModuleName, ".o", yes,
 					O_File),
 				mercury_compile__single_c_to_obj(
@@ -707,7 +713,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	        % Run purity checking
 	        %
 		mercury_compile__puritycheck(FoundTypeError, HLDS3,
-			Verbose, Stats, HLDS4),
+			Verbose, Stats, HLDS4, FoundPostTypecheckError),
 		mercury_compile__maybe_dump_hlds(HLDS4, "04", "puritycheck"),
 
 	        %
@@ -718,7 +724,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		    { HLDS = HLDS4 },
 		    { bool__or(FoundTypeError, FoundTypeclassError,
 		    	FoundError) }
-	        ; { FoundTypeError = yes } ->
+	        ; { FoundTypeError = yes ; FoundPostTypecheckError = yes } ->
 		    %
 		    % XXX it would be nice if we could go on and mode-check
 		    % the predicates which didn't have type errors, but
@@ -1278,12 +1284,13 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__puritycheck(bool, module_info, bool, bool,
-				module_info, io__state, io__state).
-:- mode mercury_compile__puritycheck(in, in, in, in, out, di, uo) is det.
+				module_info, bool, io__state, io__state).
+:- mode mercury_compile__puritycheck(in, in, in, in, out, out, di, uo) is det.
 
-mercury_compile__puritycheck(FoundTypeError, HLDS0, Verbose, Stats, HLDS) -->
+mercury_compile__puritycheck(FoundTypeError, HLDS0, Verbose, Stats,
+		HLDS, FoundPostTypecheckError) -->
 	{ module_info_num_errors(HLDS0, NumErrors0) },
-	puritycheck(FoundTypeError, HLDS0, HLDS),
+	puritycheck(FoundTypeError, HLDS0, FoundPostTypecheckError, HLDS),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors \= NumErrors0 } ->
 		maybe_write_string(Verbose,
@@ -2053,6 +2060,7 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 		ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
+	globals__io_lookup_bool_option(common_data, CommonData),
 	{ base_type_info__generate_llds(HLDS0, TypeCtorInfos) },
 	{ base_type_layout__generate_llds(HLDS0, HLDS1, TypeCtorLayouts) },
 	{ stack_layout__generate_llds(HLDS1, HLDS, GlobalData,
@@ -2062,7 +2070,13 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	{ global_data_get_all_non_common_static_data(GlobalData,
 		NonCommonStaticData) },
 	{ list__append(StaticLayouts, TypeCtorLayouts, StaticData0) },
-	{ llds_common(Procs0, StaticData0, ModuleName, Procs1, StaticData1) },
+	(  { CommonData = yes } ->
+		{ llds_common(Procs0, StaticData0, ModuleName, Procs1,
+			StaticData1) }
+	;
+		{ StaticData1 = StaticData0 },
+		{ Procs1 = Procs0 }
+	),
 	{ list__append(StaticData1, NonCommonStaticData, StaticData) },
 	{ list__condense([TypeCtorInfos, PossiblyDynamicLayouts, StaticData],
 		AllData) },
@@ -2204,30 +2218,44 @@ mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels, MaybeRLFile,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% The `--high-level-C' alternative backend
+% The `--high-level-C' MLDS-based alternative backend
 
-:- pred mercury_compile__gen_hlds(string, module_info, io__state, io__state).
-:- mode mercury_compile__gen_hlds(in, in, di, uo) is det.
+:- pred mercury_compile__mlds_backend(module_info, io__state, io__state).
+:- mode mercury_compile__mlds_backend(in, di, uo) is det.
 
-mercury_compile__gen_hlds(DumpFile, HLDS) -->
+mercury_compile__mlds_backend(HLDS50) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
-	maybe_write_string(Verbose, "% Dumping out HLDS to `"),
-	maybe_write_string(Verbose, DumpFile),
-	maybe_write_string(Verbose, "'..."),
-	maybe_flush_output(Verbose),
-	io__tell(DumpFile, Res),
-	( { Res = ok } ->
-		mercury_to_c__gen_hlds(0, HLDS),
-		io__told,
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Stats)
+
+	mercury_compile__simplify(HLDS50, no, yes, Verbose, Stats, 
+		process_all_nonimported_nonaditi_procs, HLDS53),
+	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"),
+
+	{ HLDS = HLDS53 },
+
+	maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n"),
+	ml_code_gen(HLDS, MLDS0),
+	maybe_write_string(Verbose, "% done.\n"),
+	maybe_report_stats(Stats),
+
+	% XXX this pass should be conditional on a compilation option
+
+	maybe_write_string(Verbose, "% Detecting tail calls...\n"),
+	ml_mark_tailcalls(MLDS0, MLDS1),
+
+	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs),
+	( { NestedFuncs = no } ->
+		maybe_write_string(Verbose,
+			"% Flattening nested functions...\n"),
+		ml_elim_nested(MLDS1, MLDS)
 	;
-		maybe_write_string(Verbose, "\n"),
-		{ string__append_list(["can't open file `",
-			DumpFile, "' for output."], ErrorMessage) },
-		report_error(ErrorMessage)
-	).
+		{ MLDS = MLDS1 }
+	),
+
+	maybe_write_string(Verbose, "% Converting MLDS to C...\n"),
+	mlds_to_c__output_mlds(MLDS),
+	maybe_write_string(Verbose, "% Finished converting MLDS to C.\n"),
+	maybe_report_stats(Stats).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2427,6 +2455,12 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		UseInitOpt = ""
 	},
+	globals__io_lookup_bool_option(use_minimal_model, MinimalModel),
+	{ MinimalModel = yes ->
+		MinimalModelOpt = "-DMR_USE_MINIMAL_MODEL "
+	;
+		MinimalModelOpt = ""
+	},
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	{ TypeLayoutOption = no ->
 		TypeLayoutOpt = "-DNO_TYPE_LAYOUT "
@@ -2477,7 +2511,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		C_DebugOpt, LL_DebugOpt,
 		StackTraceOpt, RequireTracingOpt,
 		UseTrailOpt, ReserveTagOpt, UseSolveEqualOpt, UseInitOpt,
-		TypeLayoutOpt,
+		MinimalModelOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),

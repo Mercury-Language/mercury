@@ -17,11 +17,11 @@
 #include <stddef.h>	/* for size_t */
 
 /*
-** MR_prof_malloc() allocates memory in large chunks using newmem(),
+** MR_prof_malloc() allocates memory in large chunks using MR_GC_malloc(),
 ** and then doles out portions of these chunks one at a time.
-** We use prof_malloc() to reduce the chance of calling newmem()
-** from a profiling interrupt that interrupted another call to newmem().
-** Doing that is bad news, because newmem() is not re-entrant.
+** We use MR_prof_malloc() to reduce the chance of calling MR_GC_malloc()
+** from a profiling interrupt that interrupted another call to MR_GC_malloc().
+** Doing that is bad news, because MR_GC_malloc() is not re-entrant.
 **
 ** Note that the current implementation of MR_prof_malloc only guarantees
 ** that the memory will be Word-aligned; if you want to allocate types

@@ -112,10 +112,10 @@
 	% the optimized goal can be compared with the original in HLDS dumps.
 :- type clauses_info	--->	clauses_info(
 					prog_varset,	% variable names
-					map(prog_var, type),
+					vartypes,
 						% variable types from
 						% explicit qualifications
-					map(prog_var, type),
+					vartypes,
 						% variable types
 						% inferred by typecheck.m.
 					list(prog_var),	% head vars
@@ -127,17 +127,19 @@
 					typeclass_info_varmap
 				).
 
+:- type vartypes == map(prog_var, type).
+
 :- pred clauses_info_varset(clauses_info, prog_varset).
 :- mode clauses_info_varset(in, out) is det.
 
 	% This partial map holds the types specified by any explicit
 	% type qualifiers in the clauses.
-:- pred clauses_info_explicit_vartypes(clauses_info, map(prog_var, type)).
+:- pred clauses_info_explicit_vartypes(clauses_info, vartypes).
 :- mode clauses_info_explicit_vartypes(in, out) is det.
 
 	% This map contains the types of all the variables, as inferred
 	% by typecheck.m.
-:- pred clauses_info_vartypes(clauses_info, map(prog_var, type)).
+:- pred clauses_info_vartypes(clauses_info, vartypes).
 :- mode clauses_info_vartypes(in, out) is det.
 
 :- pred clauses_info_type_info_varmap(clauses_info, type_info_varmap).
@@ -164,13 +166,13 @@
 
 	% This partial map holds the types specified by any explicit
 	% type qualifiers in the clauses.
-:- pred clauses_info_set_explicit_vartypes(clauses_info, map(prog_var, type),
+:- pred clauses_info_set_explicit_vartypes(clauses_info, vartypes,
 		clauses_info).
 :- mode clauses_info_set_explicit_vartypes(in, in, out) is det.
 
 	% This map contains the types of all the variables, as inferred
 	% by typecheck.m.
-:- pred clauses_info_set_vartypes(clauses_info, map(prog_var, type),
+:- pred clauses_info_set_vartypes(clauses_info, vartypes,
 		clauses_info).
 :- mode clauses_info_set_vartypes(in, in, out) is det.
 
@@ -229,7 +231,8 @@
 	% Only types can have status abstract_exported or abstract_imported.
 
 :- type import_status
-	--->	imported	% defined in the interface of some other module
+	--->	imported(section)
+				% defined in the interface of some other module
 				% or `external' (in some other language)
 	;	opt_imported	% defined in the optimization 
 				% interface of another module
@@ -348,6 +351,11 @@
 
 	;	class_method	% Requests that this predicate be transformed
 				% into the appropriate call to a class method
+	;	class_instance_method
+				% This predicate was automatically
+				% generated for the implementation of
+				% a class method for an instance.
+
 	;	(impure)	% Requests that no transformation that would
 				% be inappropriate for impure code be
 				% performed on calls to this predicate.  This
@@ -442,7 +450,7 @@
 	% type_infos and typeclass_infos required by typeinfo liveness
 	% which were added to the front of the argument list.
 :- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(prog_var),
-		list(prog_var), instmap, string, tvarset, map(prog_var, type),
+		list(prog_var), instmap, string, tvarset, vartypes,
 		class_constraints, type_info_varmap, typeclass_info_varmap,
 		prog_varset, pred_markers, aditi_owner, is_address_taken,
 		module_info, module_info, pred_proc_id).
@@ -702,7 +710,7 @@ invalid_pred_id(-1).
 
 invalid_proc_id(-1).
 
-status_is_exported(imported,			no).
+status_is_exported(imported(_),			no).
 status_is_exported(abstract_imported,		no).
 status_is_exported(pseudo_imported,		no).
 status_is_exported(opt_imported,		no).
@@ -716,7 +724,7 @@ status_is_imported(Status, Imported) :-
 	status_defined_in_this_module(Status, InThisModule),
 	bool__not(InThisModule, Imported).
 
-status_defined_in_this_module(imported,			no).
+status_defined_in_this_module(imported(_),		no).
 status_defined_in_this_module(abstract_imported,	no).
 status_defined_in_this_module(pseudo_imported,		no).
 status_defined_in_this_module(opt_imported,		no).
@@ -860,7 +868,7 @@ pred_info_procids(PredInfo, ProcIds) :-
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
 	pred_info_import_status(PredInfo, ImportStatus),
-	( ImportStatus = imported ->
+	( ImportStatus = imported(_) ->
 		ProcIds = []
 	; ImportStatus = pseudo_imported ->
 		pred_info_procids(PredInfo, ProcIds0),
@@ -941,7 +949,7 @@ pred_info_import_status(PredInfo, ImportStatus) :-
 				_, _, _, _, _, _, _, _, _).
 
 pred_info_is_imported(PredInfo) :-
-	pred_info_import_status(PredInfo, imported).
+	pred_info_import_status(PredInfo, imported(_)).
 
 pred_info_is_pseudo_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
@@ -970,10 +978,20 @@ procedure_is_exported(PredInfo, ProcId) :-
 	).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
-		Q, R, S, T, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L, M, 
-		N, O, P, Q, R, S, T, U, V).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, ImportStatus,
+		K, L, M, N, O, P, Q, R, S, T, U, V),
+	status_is_exported(ImportStatus, Exported),
+	(
+		Exported = yes,
+		PredInfo = predicate(A, B, C, D, E, F, G, H, I,
+				imported(interface), K, L, M, N, O,
+				P, Q, R, S, T, U, V)
+	;
+		Exported = no,
+		PredInfo = predicate(A, B, C, D, E, F, G, H, I,
+				imported(implementation), K, L, M, N, O,
+				P, Q, R, S, T, U, V)
+	).
 
 pred_info_set_import_status(PredInfo0, Status, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
@@ -1166,10 +1184,10 @@ marker_list_to_markers(Markers, Markers).
 
 % :- type clauses_info	--->	clauses_info(
 % 					prog_varset,	% variable names
-% 					map(prog_var, type),
+% 					vartypes,
 % 						% variable types from
 % 						% explicit qualifications
-% 					map(prog_var, type),
+% 					vartypes,
 % 						% variable types
 % 						% inferred by typecheck.m.
 % 					list(prog_var),	% head vars
@@ -1281,7 +1299,7 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 	Goal = GoalExpr - GoalInfo,
 	PredProcId = proc(PredId, ProcId).
 
-:- pred compute_arg_types_modes(list(prog_var)::in, map(prog_var, type)::in,
+:- pred compute_arg_types_modes(list(prog_var)::in, vartypes::in,
 	instmap::in, instmap::in, list(type)::out, list(mode)::out) is det.
 
 compute_arg_types_modes([], _, _, _, [], []).
@@ -1310,7 +1328,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 	is_address_taken, proc_info).
 :- mode proc_info_init(in, in, in, in, in, in, in, in, out) is det.
 
-:- pred proc_info_set(maybe(determinism), prog_varset, map(prog_var, type),
+:- pred proc_info_set(maybe(determinism), prog_varset, vartypes,
 	list(prog_var), list(mode), maybe(list(is_live)), hlds_goal,
 	prog_context, stack_slots, determinism, bool, list(arg_info),
 	liveness_info, type_info_varmap, typeclass_info_varmap,
@@ -1319,12 +1337,12 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
 	in, in, in, in, out) is det.
 
-:- pred proc_info_create(prog_varset, map(prog_var, type), list(prog_var),
+:- pred proc_info_create(prog_varset, vartypes, list(prog_var),
 	list(mode), determinism, hlds_goal, prog_context,
 	type_info_varmap, typeclass_info_varmap, is_address_taken, proc_info).
 :- mode proc_info_create(in, in, in, in, in, in, in, in, in, in, out) is det.
 
-:- pred proc_info_set_body(proc_info, prog_varset, map(prog_var, type),
+:- pred proc_info_set_body(proc_info, prog_varset, vartypes,
 		list(prog_var), hlds_goal, type_info_varmap,
 		typeclass_info_varmap, proc_info).
 :- mode proc_info_set_body(in, in, in, in, in, in, in, out) is det.
@@ -1354,10 +1372,10 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set_varset(proc_info, prog_varset, proc_info).
 :- mode proc_info_set_varset(in, in, out) is det.
 
-:- pred proc_info_vartypes(proc_info, map(prog_var, type)).
+:- pred proc_info_vartypes(proc_info, vartypes).
 :- mode proc_info_vartypes(in, out) is det.
 
-:- pred proc_info_set_vartypes(proc_info, map(prog_var, type), proc_info).
+:- pred proc_info_set_vartypes(proc_info, vartypes, proc_info).
 :- mode proc_info_set_vartypes(in, in, out) is det.
 
 :- pred proc_info_headvars(proc_info, list(prog_var)).
@@ -1523,8 +1541,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% _declared_ determinism
 					% or `no' if there was no detism decl
 			prog_varset,	% variable names
-			map(prog_var, type),
-					% variable types
+			vartypes,	% variable types
 			list(prog_var),	% head vars
 			list(mode), 	% modes of args
 			maybe(list(is_live)),

@@ -11,11 +11,7 @@
 % This module does the final parts of type analysis:
 %
 %	- it resolves predicate overloading
-%	  (perhaps it ought to also resolve function overloading,
-%	  converting unifications that are function calls into
-%	  HLDS call instructions, but currently that is done
-%	  in polymorphism.m)
-%
+%	- it resolves function overloading
 %	- it checks for unbound type variables and if there are any,
 %	  it reports an error (or a warning, binding them to the type `void').
 %
@@ -100,14 +96,14 @@
 	% remove it from further processing and store it in the
 	% assertion_table.
 :- pred post_typecheck__finish_assertion(module_info, pred_id,
-		module_info) is det.
-:- mode post_typecheck__finish_assertion(in, in, out) is det.
+		module_info, io__state, io__state) is det.
+:- mode post_typecheck__finish_assertion(in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module (assertion), typecheck, clause_to_proc.
+:- import_module (assertion), code_util, typecheck, clause_to_proc.
 :- import_module mode_util, inst_match, (inst).
 :- import_module mercury_to_mercury, prog_out, hlds_data, hlds_out, type_util.
 :- import_module globals, options.
@@ -567,14 +563,14 @@ check_base_relation(Context, PredInfo, Builtin, CallId) -->
 %-----------------------------------------------------------------------------%
 
 	% 
-	% Add a default mode for functions if none was specified, and
-	% ensure that all constructors occurring in predicate mode 
+	% Ensure that all constructors occurring in predicate mode 
 	% declarations are module qualified.
 	% 
 post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo) -->
-	{ maybe_add_default_mode(PredInfo0, PredInfo1, _) },
 	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
-		PredInfo1, PredInfo).
+			PredInfo0, PredInfo1),
+	{ post_typecheck__resolve_func_overloading(PredInfo1, ModuleInfo,
+			PredInfo) }.
 
 	%
 	% For ill-typed preds, we just need to set the modes up correctly
@@ -583,7 +579,8 @@ post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo) -->
 	%
 post_typecheck__finish_ill_typed_pred(ModuleInfo, PredId,
 			PredInfo0, PredInfo) -->
-	post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo).
+	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
+			PredInfo0, PredInfo).
 
 	% 
 	% For imported preds, we just need to ensure that all
@@ -592,28 +589,59 @@ post_typecheck__finish_ill_typed_pred(ModuleInfo, PredId,
 	% 
 post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 		PredInfo0, PredInfo) -->
+	% Make sure the var-types field in the clauses_info is
+	% valid for imported predicates.
+	% Unification procedures have clauses generated, so
+	% they already have valid var-types.
+	{ pred_info_is_pseudo_imported(PredInfo0) ->
+		PredInfo1 = PredInfo0
+	;
+		pred_info_clauses_info(PredInfo0, ClausesInfo0),
+		clauses_info_headvars(ClausesInfo0, HeadVars),
+		pred_info_arg_types(PredInfo0, ArgTypes),
+		map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
+		clauses_info_set_vartypes(ClausesInfo0, VarTypes, ClausesInfo),
+		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1)
+	},
 	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
-		PredInfo0, PredInfo).
+		PredInfo1, PredInfo).
 
 	%
-	% Remove the assertion from the list of pred ids to be processed
-	% in the future and place the pred_info associated with the
+	% Now that the assertion has finished being typechecked,
+	% and has had all of its pred_ids identified,
+	% remove the assertion from the list of pred ids to be processed
+	% in the future and place the pred_id associated with the
 	% assertion into the assertion table.
-	% Also records for each predicate that is used in an assertion
+	% For each assertion that is in the interface, you need to check
+	% that it doesn't refer to any symbols which are local to that
+	% module.
+	% Also record for each predicate that is used in an assertion
 	% which assertion it is used in.
 	% 
-post_typecheck__finish_assertion(Module0, PredId, Module) :-
+post_typecheck__finish_assertion(Module0, PredId, Module) -->
 		% store into assertion table.
-	module_info_assertion_table(Module0, AssertTable0),
-	assertion_table_add_assertion(PredId, AssertTable0, Id, AssertTable),
-	module_info_set_assertion_table(Module0, AssertTable, Module1),
+	{ module_info_assertion_table(Module0, AssertTable0) },
+	{ assertion_table_add_assertion(PredId,
+			AssertTable0, AssertionId, AssertTable) },
+	{ module_info_set_assertion_table(Module0, AssertTable, Module1) },
 		
 		% Remove from further processing.
-	module_info_remove_predid(Module1, PredId, Module2),
+	{ module_info_remove_predid(Module1, PredId, Module2) },
+
+		% If the assertion is in the interface, then ensure that
+		% it doesn't refer to any local symbols.
+	{ module_info_pred_info(Module2, PredId, PredInfo) },
+	{ assertion__goal(AssertionId, Module2, Goal) },
+	(
+		{ pred_info_is_exported(PredInfo) }
+	->
+		assertion__in_interface_check(Goal, PredInfo, Module2, Module3)
+	;
+		{ Module3 = Module2 }
+	),
 
 		% record which predicates are used in assertions
-	assertion__goal(Id, Module2, Goal),
-	assertion__record_preds_used_in(Goal, Id, Module2, Module).
+	{ assertion__record_preds_used_in(Goal, AssertionId, Module3, Module) }.
 	
 
 	% 
@@ -718,4 +746,243 @@ report_multiple_aditi_states(PredInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("  with multiple `aditi:state' arguments.\n").
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+	%
+	% post_typecheck__resolve_func_overloading
+	%
+	% Convert unifications that are function calls into HLDS call
+	% instructions.
+	%
+:- pred post_typecheck__resolve_func_overloading(pred_info::in,
+		module_info::in, pred_info::out) is det.
+
+post_typecheck__resolve_func_overloading(PredInfo0, ModuleInfo, PredInfo) :-
+
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	clauses_info_clauses(ClausesInfo0, Clauses0),
+
+	list__map(post_typecheck__resolve_func_overloading_clauses(PredInfo0,
+				ModuleInfo),
+			Clauses0, Clauses),
+
+	clauses_info_set_clauses(ClausesInfo0, Clauses, ClausesInfo),
+	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
+
+:- pred post_typecheck__resolve_func_overloading_clauses(pred_info::in,
+		module_info::in, clause::in, clause::out) is det.
+
+post_typecheck__resolve_func_overloading_clauses(PredInfo, ModuleInfo,
+		Clause0, Clause) :-
+	Clause0 = clause(ProcIds, Goal0, Context),
+	post_typecheck__resolve_data_cons_and_funcs(Goal0, ModuleInfo,
+			PredInfo, Goal),
+	Clause = clause(ProcIds, Goal, Context).
+
+%-----------------------------------------------------------------------------%
+
+	%
+	% post_typecheck__resolve_data_cons_and_funcs
+	%
+	% Traverse the hlds_goal structure transforming the unifications
+	% that are function application into the correct calls.
+	%
+:- pred post_typecheck__resolve_data_cons_and_funcs(hlds_goal::in,
+		module_info::in, pred_info::in,
+		hlds_goal::out) is det.
+
+post_typecheck__resolve_data_cons_and_funcs(
+		unify(XVar, Y, Mode, Unification, UnifyContext) - GoalInfo,
+		ModuleInfo, PredInfo, Goal) :-
+	(
+		Y = functor(ConsId, Args),
+		post_typecheck__resolve_unify_functor(XVar, ConsId,
+				Args, Mode, Unification, UnifyContext,
+				GoalInfo, ModuleInfo, PredInfo, Goal)
+	;
+		Y = lambda_goal(A, B, C, D, E, F, G, LambdaGoal0),
+		post_typecheck__resolve_data_cons_and_funcs(LambdaGoal0,
+				ModuleInfo, PredInfo, LambdaGoal),
+		NewY = lambda_goal(A, B, C, D, E, F, G, LambdaGoal),
+		Goal = unify(XVar, NewY, Mode, Unification, UnifyContext)
+				- GoalInfo
+	;
+		Y = var(_),
+		Goal = unify(XVar, Y, Mode, Unification, UnifyContext)
+				- GoalInfo
+	).
+
+	% Goals which simply traverse the hlds_goal structure.
+post_typecheck__resolve_data_cons_and_funcs(call(A,B,C,D,E,F) - GoalInfo,
+		_, _, call(A,B,C,D,E,F) - GoalInfo).
+post_typecheck__resolve_data_cons_and_funcs(generic_call(A,B,C,D) - GoalInfo,
+		_, _, generic_call(A,B,C,D) - GoalInfo).
+post_typecheck__resolve_data_cons_and_funcs(pragma_c_code(A,B,C,D,E,F,G) -
+		GoalInfo, _, _, pragma_c_code(A,B,C,D,E,F,G) - GoalInfo).
+post_typecheck__resolve_data_cons_and_funcs(conj(Goals0) - GoalInfo,
+		ModuleInfo, PredInfo, conj(Goals) - GoalInfo) :-
+	post_typecheck__resolve_data_cons_and_funcs_list(Goals0,
+			ModuleInfo, PredInfo, Goals).
+post_typecheck__resolve_data_cons_and_funcs(switch(A,B,Cases0,D) - GoalInfo,
+		ModuleInfo, PredInfo,
+		switch(A,B,Cases,D) - GoalInfo) :-
+	post_typecheck__resolve_data_cons_and_funcs_cases(Cases0,
+			ModuleInfo, PredInfo, Cases).
+post_typecheck__resolve_data_cons_and_funcs(disj(Goals0,B) - GoalInfo,
+		ModuleInfo, PredInfo, disj(Goals,B) - GoalInfo) :-
+	post_typecheck__resolve_data_cons_and_funcs_list(Goals0,
+			ModuleInfo, PredInfo, Goals).
+post_typecheck__resolve_data_cons_and_funcs(not(Goal0) - GoalInfo,
+		ModuleInfo, PredInfo, not(Goal) - GoalInfo) :-
+	post_typecheck__resolve_data_cons_and_funcs(Goal0,
+			ModuleInfo, PredInfo, Goal).
+post_typecheck__resolve_data_cons_and_funcs(some(A,B,Goal0) - GoalInfo,
+		ModuleInfo, PredInfo, some(A,B,Goal) - GoalInfo) :-
+	post_typecheck__resolve_data_cons_and_funcs(Goal0,
+			ModuleInfo, PredInfo, Goal).
+post_typecheck__resolve_data_cons_and_funcs(par_conj(Goals0,B) - GoalInfo,
+		ModuleInfo, PredInfo, par_conj(Goals,B) - GoalInfo) :-
+	post_typecheck__resolve_data_cons_and_funcs_list(Goals0,
+			ModuleInfo, PredInfo, Goals).
+post_typecheck__resolve_data_cons_and_funcs(if_then_else(A,If0,Then0,Else0,E)
+		- GoalInfo, ModuleInfo, PredInfo,
+		if_then_else(A,If,Then,Else,E) - GoalInfo) :-
+	post_typecheck__resolve_data_cons_and_funcs(If0, 
+			ModuleInfo, PredInfo, If),
+	post_typecheck__resolve_data_cons_and_funcs(Then0,
+			ModuleInfo, PredInfo, Then),
+	post_typecheck__resolve_data_cons_and_funcs(Else0,
+			ModuleInfo, PredInfo, Else).
+post_typecheck__resolve_data_cons_and_funcs(bi_implication(_, _) - _, _, _, _) :-
+	% these should have been expanded out by now
+	error("post_typecheck__resolve_data_cons_and_funcs: unexpected bi_implication").
+	
+:- pred post_typecheck__resolve_data_cons_and_funcs_list(list(hlds_goal)::in,
+		module_info::in, pred_info::in, list(hlds_goal)::out) is det.
+
+post_typecheck__resolve_data_cons_and_funcs_list([], _, _, []).
+post_typecheck__resolve_data_cons_and_funcs_list([Goal0 | Goal0s],
+		ModuleInfo, PredInfo, [Goal | Goals]) :-
+	post_typecheck__resolve_data_cons_and_funcs(Goal0,
+			ModuleInfo, PredInfo, Goal),
+	post_typecheck__resolve_data_cons_and_funcs_list(Goal0s,
+			ModuleInfo, PredInfo, Goals).
+
+:- pred post_typecheck__resolve_data_cons_and_funcs_cases(list(case)::in,
+		module_info::in, pred_info::in, list(case)::out) is det.
+
+post_typecheck__resolve_data_cons_and_funcs_cases([], _, _, []).
+post_typecheck__resolve_data_cons_and_funcs_cases([Case0 | Case0s],
+		ModuleInfo, PredInfo, [Case | Cases]) :-
+	Case0 = case(ConsId, Goal0),
+	post_typecheck__resolve_data_cons_and_funcs(Goal0,
+			ModuleInfo, PredInfo, Goal),
+	Case = case(ConsId, Goal),
+	post_typecheck__resolve_data_cons_and_funcs_cases(Case0s,
+			ModuleInfo, PredInfo, Cases).
+
+%-----------------------------------------------------------------------------%
+
+:- pred post_typecheck__resolve_unify_functor(prog_var, cons_id, list(prog_var),
+		unify_mode, unification, unify_context, hlds_goal_info,
+		module_info, pred_info, hlds_goal).
+:- mode post_typecheck__resolve_unify_functor(in, in, in, in, in, in,
+		in, in, in, out) is det.
+
+post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
+		Unification0, UnifyContext, GoalInfo0,
+		ModuleInfo0, PredInfo, Goal) :-
+
+        pred_info_clauses_info(PredInfo, ClausesInfo),
+        clauses_info_vartypes(ClausesInfo, VarTypes0),
+
+	map__lookup(VarTypes0, X0, TypeOfX),
+	list__length(ArgVars0, Arity),
+	(
+		%
+		% is the function symbol apply/N or ''/N,
+		% representing a higher-order function call?
+		%
+		ConsId0 = cons(unqualified(ApplyName), _),
+		( ApplyName = "apply" ; ApplyName = "" ),
+		Arity >= 1,
+		ArgVars0 = [FuncVar | FuncArgVars]
+	->
+		%
+		% Convert the higher-order function call (apply/N)
+		% into a higher-order predicate call
+		% (i.e., replace `X = apply(F, A, B, C)'
+		% with `call(F, A, B, C, X)')
+		%
+		list__append(FuncArgVars, [X0], ArgVars),
+		Modes = [],
+		Det = erroneous,
+		adjust_func_arity(function, Arity, FullArity),
+		HOCall = generic_call(
+			higher_order(FuncVar, function, FullArity),
+			ArgVars, Modes, Det),
+
+		Goal = HOCall - GoalInfo0
+	;
+		%
+		% is the function symbol a user-defined function, rather
+		% than a functor which represents a data constructor?
+		%
+
+		% Find the set of candidate predicates which have the
+		% specified name and arity (and module, if module-qualified)
+		ConsId0 = cons(PredName, _),
+
+		%
+		% We don't do this for compiler-generated predicates;
+		% they are assumed to have been generated with all
+		% functions already expanded.
+		% If we did this check for compiler-generated
+		% predicates, it would cause the wrong behaviour
+		% in the case where there is a user-defined function
+		% whose type is exactly the same as the type of
+		% a constructor.  (Normally that would cause
+		% a type ambiguity error, but compiler-generated
+		% predicates are not type-checked.)
+		%
+		\+ code_util__compiler_generated(PredInfo),
+
+		module_info_get_predicate_table(ModuleInfo0, PredTable),
+		predicate_table_search_func_sym_arity(PredTable,
+			PredName, Arity, PredIds),
+
+		% Check if any of the candidate functions have
+		% argument/return types which subsume the actual
+		% argument/return types of this function call
+
+		pred_info_typevarset(PredInfo, TVarSet),
+		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
+		list__append(ArgTypes0, [TypeOfX], ArgTypes),
+		typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
+			TVarSet, ArgTypes, PredId, QualifiedFuncName)
+	->
+		%
+		% Convert function calls into predicate calls:
+		% replace `X = f(A, B, C)'
+		% with `f(A, B, C, X)'
+		%
+		invalid_proc_id(ProcId),
+		list__append(ArgVars0, [X0], ArgVars),
+		FuncCallUnifyContext = call_unify_context(X0,
+			functor(ConsId0, ArgVars0), UnifyContext),
+		FuncCall = call(PredId, ProcId, ArgVars, not_builtin,
+			yes(FuncCallUnifyContext), QualifiedFuncName),
+
+		Goal = FuncCall - GoalInfo0
+	;
+		%
+		% ordinary construction/deconstruction unifications
+		% we leave alone
+		%
+		Goal = unify(X0, functor(ConsId0, ArgVars0), Mode0,
+				Unification0, UnifyContext) - GoalInfo0
+	).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

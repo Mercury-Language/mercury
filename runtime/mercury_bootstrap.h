@@ -15,18 +15,22 @@
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
 
-#define	uintptr_t		MR_uintptr_t
-#define	intptr_t		MR_intptr_t
-#define	uint_least64_t		MR_uint_least64_t
-#define	int_least64_t		MR_int_least64_t
-#define	uint_least32_t		MR_uint_least32_t
-#define	int_least32_t		MR_int_least32_t
-#define	uint_least16_t		MR_uint_least16_t
-#define	int_least16_t		MR_int_least16_t
-#define	uint_least8_t		MR_uint_least8_t
-#define	int_least8_t		MR_int_least8_t
+/*---------------------------------------------------------------------------*/
+/*
+** This stuff is enabled by default,
+** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
+*/
 
-#ifndef	MR_NO_BACKWARDS_COMPAT
+#ifndef MR_NO_BACKWARDS_COMPAT
+
+#define	COMPARE_EQUAL		MR_COMPARE_EQUAL
+#define	COMPARE_LESS		MR_COMPARE_LESS
+#define	COMPARE_GREATER		MR_COMPARE_GREATER
+
+#define make_aligned_string_copy(a,b)	MR_make_aligned_string_copy((a),(b))
+#define make_aligned_string(a,b)	MR_make_aligned_string((a),(b))
+#define string_equal(a,b)		MR_string_equal((a),(b))
+#define string_const(a,b)		MR_string_const((a),(b))
 
 /*
 ** The list manipulation macros are available for use by ordinary Mercury
@@ -40,6 +44,15 @@
 #define	list_tail(l)		MR_list_tail(l)
 #define	list_empty()		MR_list_empty()
 #define	list_cons(h, t)		MR_list_cons((h), (t))
+
+#endif	/* MR_NO_BACKWARDS_COMPAT */
+
+/*---------------------------------------------------------------------------*/
+/*
+** This stuff is not enabled by default.
+** To enable it, you must explicitly define MR_EXTRA_BACKWARDS_COMPAT.
+*/
+#ifdef	MR_EXTRA_BACKWARDS_COMPAT
 
 #define succip			MR_succip
 #define hp			MR_hp
@@ -244,6 +257,6 @@
 #define mercury_data___type_ctor_info_func_0_struct \
 	MR_TypeCtorInfo_struct
 
-#endif	/* not MR_NO_BACKWARDS_COMPAT */
+#endif	/* MR_EXTRA_BACKWARDS_COMPAT */
 
 #endif	/* MERCURY_BOOTSTRAP_H */

@@ -15,20 +15,17 @@
 /*
 ** The following enum gives the possible modes that the declarative
 ** debugger can be in (see trace/mercury_trace_declarative.{c,h}).
-** MR_TRACE_INTERACTIVE indicates the usual operation of the internal
-** debugger.  The other modes refer to what type of analysis is
-** being performed.
 */
 
 typedef enum {
-	MR_TRACE_INTERACTIVE,
-	MR_TRACE_WRONG_ANSWER
+	MR_TRACE_INTERACTIVE,	 	/* Use internal debugger. */
+	MR_TRACE_DECL_DEBUG,		/* Normal declarative debugging. */
+	MR_TRACE_DECL_DEBUG_TEST	/* Test mode declarative debugging. */
 } MR_Trace_Mode;
 
 /*
 ** This variable is modified whenever we start or stop collecting
-** an EDT for a particular type of analysis (see
-** trace/mercury_trace_declarative.c).
+** an execution tree.
 */
 
 extern	MR_Trace_Mode	MR_trace_decl_mode;
@@ -54,6 +51,12 @@ extern	Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 extern FILE *MR_mdb_in;
 extern FILE *MR_mdb_out;
 extern FILE *MR_mdb_err;
+
+/*
+** This just prints to MR_mdb_out a message telling the user
+** that the debugger caught an interrupt.
+*/
+extern	void	MR_trace_interrupt_message(void);
 
 extern	char	*MR_trace_getline(const char *prompt, FILE *mdb_in,
 				FILE *mdb_out);

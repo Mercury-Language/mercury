@@ -90,16 +90,9 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 		DataName = base_typeclass_info(ClassId, InstanceString),
 
 		base_typeclass_info__gen_rvals_and_procs(PredProcIds,
-			InstanceConstraints, ModuleInfo, Rvals0, Procs),
-
-		/*
-		base_typeclass_info__gen_superclass_rvals(ClassId, ModuleInfo,
-			InstanceTypes, SuperClassRvals),
-
-		list__append(Rvals0, SuperClassRvals, Rvals),
-		*/
-		Rvals = Rvals0,
-
+			InstanceConstraints, ModuleInfo, ClassId, 
+			Rvals, Procs),
+		
 			% XXX Need we always export it from the module?
 			% (Note that linkage/2 in llds_out.m assumes
 			% that we do.)
@@ -117,14 +110,15 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 %----------------------------------------------------------------------------%
 
 :- pred base_typeclass_info__gen_rvals_and_procs(maybe(list(hlds_class_proc)),
-	list(class_constraint), module_info, list(maybe(rval)),
+	list(class_constraint), module_info, class_id, list(maybe(rval)),
 	list(pred_proc_id)).
-:- mode base_typeclass_info__gen_rvals_and_procs(in, in, in, out, out) is det.
+:- mode base_typeclass_info__gen_rvals_and_procs(in, in, in, in, 
+	out, out) is det.
 
-base_typeclass_info__gen_rvals_and_procs(no, _, _, [], []) :-
+base_typeclass_info__gen_rvals_and_procs(no, _, _, _, [], []) :-
 	error("pred_proc_ids should have been filled in by check_typeclass.m").
 base_typeclass_info__gen_rvals_and_procs(yes(PredProcIds0), Constraints,
-		ModuleInfo, Rvals, PredProcIds) :-
+		ModuleInfo, ClassId, Rvals, PredProcIds) :-
 	list__length(Constraints, InstanceArity),
 	ArityArg = yes(const(int_const(InstanceArity))),
 	ExtractPredProcId = lambda([HldsPredProc::in, PredProc::out] is det,
@@ -135,7 +129,9 @@ base_typeclass_info__gen_rvals_and_procs(yes(PredProcIds0), Constraints,
 	list__map(ExtractPredProcId, PredProcIds0, PredProcIds),
 	base_typeclass_info__construct_pred_addrs(PredProcIds, ModuleInfo,
 		PredAddrArgs),
-	Rvals = [ArityArg|PredAddrArgs].
+	base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo,
+			SuperClassCount, ClassArity),
+	Rvals = [ ArityArg, SuperClassCount, ClassArity | PredAddrArgs ].
 
 :- pred base_typeclass_info__construct_pred_addrs(list(pred_proc_id),
 	module_info, list(maybe(rval))).
@@ -151,6 +147,23 @@ base_typeclass_info__construct_pred_addrs([proc(PredId, ProcId) | Procs],
 
 %----------------------------------------------------------------------------%
 
+:- pred base_typeclass_info__gen_superclass_count(class_id, module_info, 
+		maybe(rval), maybe(rval)).
+:- mode base_typeclass_info__gen_superclass_count(in, in, out, out) is det.
+
+base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo, 
+		SuperArg, ArityArg) :-
+	module_info_classes(ModuleInfo, ClassTable),
+	map__lookup(ClassTable, ClassId, ClassDefn),
+	ClassDefn = hlds_class_defn(_, SuperClassConstraints, ClassVars,
+			_, _, _, _),
+	list__length(SuperClassConstraints, NumSuper),
+	list__length(ClassVars, NumVars),
+	SuperArg = yes(const(int_const(NumSuper))),
+	ArityArg = yes(const(int_const(NumVars))).
+
+%----------------------------------------------------------------------------%
+
 :- pred base_typeclass_info__gen_superclass_rvals(class_id, module_info, 
 		list(type), list(maybe(rval))).
 :- mode base_typeclass_info__gen_superclass_rvals(in, in, in, out) is det.
@@ -159,7 +172,8 @@ base_typeclass_info__gen_superclass_rvals(ClassId, ModuleInfo, InstanceTypes,
 		SuperClassRvals) :-
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),
-	ClassDefn = hlds_class_defn(SuperClassConstraints, ClassVars, _, _, _),
+	ClassDefn = hlds_class_defn(_, SuperClassConstraints, ClassVars,
+			_, _, _, _),
 	map__from_corresponding_lists(ClassVars, InstanceTypes, VarToType),
 	GetRval = lambda([Constraint::in, Rval::out] is det,
 		(

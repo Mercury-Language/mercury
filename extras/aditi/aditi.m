@@ -570,8 +570,8 @@ MADITI_do_call(void)
 
 	/* create temporary relation to hold the input tuple */
 	DEBUG(printf(""creating input temporary...""));
-	input_ticket = (ticket *) checked_malloc(sizeof(ticket));
-	output_ticket = (ticket *) checked_malloc(sizeof(ticket));
+	input_ticket = MR_NEW(ticket);
+	output_ticket = MR_NEW(ticket);
 	MADITI_check(ADITI_NAME(tmp_create)(&MADITI_ticket,
 		input_schema, input_ticket));
 	DEBUG(printf(""done\\n""));
@@ -582,7 +582,7 @@ MADITI_do_call(void)
 	** registers around each call to MADITI__attr_to_string,
 	** which calls back into Mercury. 
 	*/
-	input_save_area = make_many(Word, num_input_args * 2);
+	input_save_area = MR_GC_NEW_ARRAY(Word, num_input_args * 2);
 	save_registers();	
 	for (i = 0; i < num_input_args * 2; i++) {
 		input_save_area[i] = virtual_reg(MADITI_FIRST_INPUT + i);
@@ -616,7 +616,7 @@ MADITI_do_call(void)
 	/*
 	** We're done with the saved input arguments.
 	*/
-	oldmem(input_save_area);
+	MR_GC_free(input_save_area);
 
 	/* insert the input tuple into the relation */
 	DEBUG(printf(""adding input tuple...%s"", tuple));
@@ -632,12 +632,12 @@ MADITI_do_call(void)
 	/* drop the input relation */
 	DEBUG(printf(""dropping input temporary...""));
 	MADITI_check(ADITI_NAME(tmp_destroy)(input_ticket));
-	free(input_ticket);
+	MR_free(input_ticket);
 	DEBUG(printf(""done\\n""));
 
 	/* create cursor on the output relation */
 	DEBUG(printf(""opening output cursor...""));
-	cursor = (ticket *) checked_malloc(sizeof(ticket));
+	cursor = MR_NEW(ticket);
 	MADITI_check(ADITI_NAME(tmp_cursor_create)(output_ticket, cursor));
 	MADITI_check(ADITI_NAME(cursor_open)(cursor, CUR_FORWARD));
 	DEBUG(printf(""done\\n""));
@@ -698,7 +698,7 @@ MADITI_get_output_tuple(int first_reg)
 		** Allocate some space to hold the output arguments
 		** before we put them in registers. 
 		*/
-		output_save_area = make_many(Word, num_output_args);
+		output_save_area = MR_GC_NEW_ARRAY(Word, num_output_args);
 	
 		/* convert tuple, put output args in stack slots */
 		MADITI__init_posn(&pos);
@@ -721,7 +721,7 @@ MADITI_get_output_tuple(int first_reg)
 			virtual_reg(first_reg + i) = output_save_area[i];
 		}
 		restore_registers();
-		oldmem(output_save_area);
+		MR_GC_free(output_save_area);
 
 		found_result = TRUE;
 	}
@@ -744,12 +744,12 @@ MADITI_cleanup()
 	/* destroy cursor */
 	MADITI_check(ADITI_NAME(cursor_destroy)(
 		(ticket *)MADITI_saved_cursor));
-	free((ticket *)MADITI_saved_cursor);
+	MR_free((ticket *)MADITI_saved_cursor);
 
 	/* destroy output temporary */
 	MADITI_check(ADITI_NAME(tmp_destroy)(
 		(ticket *)MADITI_saved_output_rel));
-	free((ticket *)MADITI_saved_output_rel);
+	MR_free((ticket *)MADITI_saved_output_rel);
 
 	save_transient_registers();
 }

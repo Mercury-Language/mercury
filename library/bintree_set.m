@@ -255,3 +255,60 @@ bintree_set__intersect(S0, S1, S) :-
 	bintree_set__delete_list(S0, L1, S).
 
 %--------------------------------------------------------------------------%
+%--------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func bintree_set__list_to_set(list(T)) = bintree_set(T).
+
+:- func bintree_set__sorted_list_to_set(list(T)) = bintree_set(T).
+
+:- func bintree_set__to_sorted_list(bintree_set(T)) = list(T).
+
+:- func bintree_set__insert(bintree_set(T), T) = bintree_set(T).
+
+:- func bintree_set__insert_list(bintree_set(T), list(T)) = bintree_set(T).
+
+:- func bintree_set__delete(bintree_set(T), T) = bintree_set(T).
+
+:- func bintree_set__delete_list(bintree_set(T), list(T)) = bintree_set(T).
+
+:- func bintree_set__union(bintree_set(T), bintree_set(T)) = bintree_set(T).
+
+:- func bintree_set__intersect(bintree_set(T), bintree_set(T)) = bintree_set(T).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+bintree_set__list_to_set(Xs) = BT :-
+	bintree_set__list_to_set(Xs, BT).
+
+bintree_set__sorted_list_to_set(Xs) = BT :-
+	bintree_set__sorted_list_to_set(Xs, BT).
+
+bintree_set__to_sorted_list(BT) = Xs :-
+	bintree_set__to_sorted_list(BT, Xs).
+
+bintree_set__insert(BT1, X) = BT2 :-
+	bintree_set__insert(BT1, X, BT2).
+
+bintree_set__insert_list(BT1, Xs) = BT2 :-
+	bintree_set__insert_list(BT1, Xs, BT2).
+
+bintree_set__delete(BT1, X) = BT2 :-
+	bintree_set__delete(BT1, X, BT2).
+
+bintree_set__delete_list(BT1, Xs) = BT2 :-
+	bintree_set__delete_list(BT1, Xs, BT2).
+
+bintree_set__union(BT1, BT2) = BT3 :-
+	bintree_set__union(BT1, BT2, BT3).
+
+bintree_set__intersect(BT1, BT2) = BT3 :-
+	bintree_set__intersect(BT1, BT2, BT3).
+
+

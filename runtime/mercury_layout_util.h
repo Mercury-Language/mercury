@@ -33,8 +33,8 @@ extern	void	MR_copy_saved_regs_to_regs(int max_mr_num, Word *saved_regs);
 ** pseudo-typeinfo in the MR_Stack_Layout_Vars structure, with this typeinfo
 ** being the pseudo-typeinfo with the runtime-only information substituted in.
 ** Since type variable numbers start at one, the element of this array at
-** index zero will be unused. This means that the array will itself look
-** like a typeinfo.
+** index zero will not have a type_info in it.  We store a dummy type_ctor_info
+** there, so that the array will itself look like a typeinfo.
 ** 
 ** The vector returned by MR_materialize_typeinfos is from malloc;
 ** it should be freed after last use.

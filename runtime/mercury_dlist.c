@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995, 1997 The University of Melbourne.
+** Copyright (C) 1995, 1997, 1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -8,8 +8,9 @@
 **	Linked list module.
 */
 
+#include	"mercury_imp.h"
 #include	<stdio.h>
-#include	"mercury_std.h"
+#include	"mercury_memory.h"
 #include	"mercury_dlist.h"
 
 /*
@@ -21,7 +22,7 @@ makelist0(void)
 {
 	reg	List	*list;
 
-	list = make(List);
+	list = MR_GC_NEW(List);
 	ldata(list) = NULL;
 	next(list) = list;
 	prev(list) = list;
@@ -57,7 +58,7 @@ list_addhead(List *list, void *data)
 		list = makelist0();
 	}
 
-	item = make(List);
+	item = MR_GC_NEW(List);
 	ldata(item) = data;
 	llength(list)++;
 
@@ -84,7 +85,7 @@ list_addtail(List *list, void *data)
 		list = makelist0();
 	}
 
-	item = make(List);
+	item = MR_GC_NEW(List);
 	ldata(item) = data;
 	llength(list)++;
 
@@ -134,7 +135,7 @@ addlist(List *list1, List *list2)
 		}
 	}
 
-	oldmem(list2);
+	MR_GC_free(list2);
 	return list1;
 }
 
@@ -173,7 +174,7 @@ list_insert_before(List *list, List *where, void *data)
 {
 	reg	List	*item;
 
-	item = make(List);
+	item = MR_GC_NEW(List);
 	ldata(item) = data;
 	llength(list)++;
 
@@ -194,7 +195,7 @@ list_insert_after(List *list, List *where, void *data)
 {
 	reg	List	*item;
 
-	item = make(List);
+	item = MR_GC_NEW(List);
 	ldata(item) = data;
 	llength(list)++;
 
@@ -246,7 +247,7 @@ dlist_delete(List *list, List *item, void (* func)(void *))
 	next(prev(item)) = next(item);
 	prev(next(item)) = prev(item);
 
-	oldmem(item);
+	MR_GC_free(item);
 
 	return;
 }
@@ -254,7 +255,7 @@ dlist_delete(List *list, List *item, void (* func)(void *))
 /*
 **	Free a whole list, including the header and maybe the data
 **	pointed to by the list. Of course, if they were not allocated
-**	by newmem, then all Hell will break loose.
+**	by MR_GC_malloc, then all Hell will break loose.
 */
 
 void 
@@ -276,10 +277,10 @@ oldlist(List *list, void (* func)(void *))
 			func(ldata(item));
 		}
  
-		oldmem(item);
+		MR_GC_free(item);
 	}
 	 
-	oldmem(list);
+	MR_GC_free(list);
 
 	return;
 }

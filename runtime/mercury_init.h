@@ -120,9 +120,6 @@ extern	void	ML_io_print_to_stream(Word, Word, Word);
 /* in trace/mercury_trace_internal.h */
 extern	char	*MR_trace_getline(const char *, FILE *mdb_in, FILE *mdb_out);
 
-/* in trace/mercury_trace_declarative.h */
-extern	void	MR_edt_root_node(Word EDT, Word *Node);
-
 /* in trace/mercury_trace_external.h */
 extern	void	MR_trace_init_external(void);
 extern	void	MR_trace_final_external(void);
@@ -147,12 +144,11 @@ extern	void	ML_DI_read_request_from_socket(Word, Word *, Integer *);
 extern	String	ML_type_name(Word);
 
 /* in runtime/mercury_trace_base.c */
-extern	Code	*MR_trace_fake(const MR_Stack_Layout_Label *, MR_Trace_Port,
-			Unsigned, Unsigned, const char *, int);
+extern	Code	*MR_trace_fake(const MR_Stack_Layout_Label *);
 
 /* in trace/mercury_trace.c */
-extern	Code	*MR_trace_real(const MR_Stack_Layout_Label *, MR_Trace_Port,
-			Unsigned, Unsigned, const char *, int);
+extern	Code	*MR_trace_real(const MR_Stack_Layout_Label *);
+extern	void	MR_trace_interrupt_handler(void);
 
 /* in trace/mercury_trace_tables.c */
 extern	void	MR_register_module_layout_real(const MR_Module_Layout *);

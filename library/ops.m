@@ -172,7 +172,6 @@ ops__op_table("aditi_bottom_up", before, fx, 500). % Mercury extension
 ops__op_table("aditi_top_down", before, fx, 500). % Mercury extension
 ops__op_table("all", before, fxy, 950).		% Mercury/NU-Prolog extension
 ops__op_table("and", after, xfy, 720).		% NU-Prolog extension
-ops__op_table("assertion", before, fx, 1199).	% Mercury extension
 ops__op_table("div", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("else", after, xfy, 1170).	% Mercury/NU-Prolog extension
 ops__op_table("end_module", before, fx, 1199).	% Mercury extension
@@ -205,6 +204,7 @@ ops__op_table("not", before, fy, 900).		% Mercury/NU-Prolog extension
 ops__op_table("or", after, xfy, 740).		% NU-Prolog extension
 ops__op_table("pragma", before, fx, 1199).	% Mercury extension
 ops__op_table("pred", before, fx, 800).		% Mercury/NU-Prolog extension
+ops__op_table("promise", before, fx, 1199).	% Mercury extension
 ops__op_table("rem", after, xfx, 400).		% Standard ISO Prolog
 ops__op_table("rule", before, fx, 1199).	% NU-Prolog extension
 ops__op_table("semipure", before, fy, 800).	% Mercury extension

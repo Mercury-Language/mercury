@@ -6,7 +6,7 @@
 ;; Keywords: unix, tools
 
 ;; Copyright (C) 1992, 1993, 1994, 1995, 1996 Free Software Foundation, Inc.
-;; Copyright (C) 1998 Fergus Henderson.
+;; Copyright (C) 1998-1999 Fergus Henderson.
 
 ;; This file is part of GNU Emacs.
 
@@ -121,6 +121,7 @@ optional doc string DOC.  Certain %-escapes in the string arguments
 are interpreted specially if present.  These are:
 
   %f	name (without directory) of current source file. 
+  %b	base name (without directory or extension) of current source file. 
   %d	directory of current source file. 
   %l	number of current source line
   %e	text of the C lvalue or function-call expression surrounding point.
@@ -1060,6 +1061,28 @@ and source-file directory for your debugger."
 (defun gud-mdb-massage-args (file args)
   args)
 
+(defvar gud-mdb-directories nil
+  "*A list of directories that mdb should search for source code.
+If nil, only source files in the program directory
+will be known to mdb.
+
+The file names should be absolute, or relative to the directory
+containing the executable being debugged.")
+
+(defun gud-mdb-file-name (f)
+  "Transform a relative pathname to a full pathname in mdb mode"
+  (let ((result nil))
+    (if (file-exists-p f)
+        (setq result (expand-file-name f))
+      (let ((directories gud-mdb-directories))
+        (while directories
+          (let ((path (concat (car directories) "/" f)))
+            (if (file-exists-p path)
+                (setq result (expand-file-name path)
+                      directories nil)))
+          (setq directories (cdr directories)))))
+    result))
+
 ;; There's no guarantee that Emacs will hand the filter the entire
 ;; marker at once; it could be broken up across several strings.  We
 ;; might even receive a big chunk with several markers in it.  If we
@@ -1074,59 +1097,99 @@ and source-file directory for your debugger."
     (if (or (string-match comint-prompt-regexp string)
             (string-match "^browser> " string)
             (string-match "^cat> " string)
+            (string-match "^--more-- " string)
             (string-match "^mdb: are you sure you want to quit? " string)
             (string-match ".*\012" string))
         (setq result (concat gud-marker-acc string)
               gud-marker-acc "")
       (setq gud-marker-acc (concat gud-marker-acc string)))
-;; mdb's status line looks like so:
-;;        2:      2  2 CALL pred io:read_line/3-0 (det)
-;; We need to extend mdb so that it can report file names & line numbers,
-;; like gdb does with the `--fullname' option.  Currently we just
-;; extract the module name and procedure name, and then use those to
-;; look up the procedure in the tags table.
     (if result
+;; mdb's status line looks like so:
+;;        2:      2  2 CALL pred io:read_line/3-0 (det) c5;t; io.m:123 (foo.m:456)
+;; We extract the file name and line number from this.
+    	(let (
+	       ;; Regexp to match "  <seq num>:  <event num>  <depth> "
+	       (nums-regexp " *[0-9]+: *[0-9]+ *[0-9]+ ")
+
+	       ;; Regexp to match "<event> "
+	       (event-regexp "[A-Z]+ ")
+
+	       ;; Regexp to match a procedure specification,
+	       ;; i.e. "<module>:<name>/<arity>-<mode> "
+	       (proc-regexp "[^:]+:[^:/]+/[0-9]+-[0-9]+ ")
+	       
+	       ;; Regexp to match "(<detism>) "
+	       (detism-regexp "([a-z]+) ")
+
+	       ;; Regexp to match an optional goal path
+	       (maybe-path-regexp "\\(.*; \\)?")
+
+	       ;; Regexp to match a source context, i.e. "<filename>:<line number>"
+	       ;; We use \(...\) here to allow the filename and line number that we
+	       ;; matched with to be retrieved if a match is found.
+	       (context-regexp "\\([^:]+\\):\\([0-9]+\\)")
+
+	       ;; Regexp to match anything except newline
+	       (junk-regexp "[^\012]*"))
         (if (or (string-match
-            " *[0-9]+: *[0-9]+ *[0-9]+ \\([A-Z]+ pred \\([^:]+\\):\\([^:/]+\\)/[^\012]*\\)"
-			      result)
+		  ;; match pred with caller context
+	          (concat nums-regexp "\\(" event-regexp "pred" proc-regexp
+		          detism-regexp maybe-path-regexp "\\)" context-regexp
+			  " (" context-regexp junk-regexp ")")
+		  result)
                 (string-match
-            " *[0-9]+: *[0-9]+ *[0-9]+ \\([A-Z]+ func \\([^:]+\\):\\([^:/]+\\)/[^\012]*\\)"
-                              result))
+		  ;; match func with caller context
+		  (concat nums-regexp "\\(" event-regexp "func" proc-regexp
+		  	  detism-regexp maybe-path-regexp "\\)" context-regexp
+			  " (" context-regexp junk-regexp ")")
+		  result))
 	    (let
 		((msg (substring result (match-beginning 1) (match-end 1)))
-		 (module (substring result (match-beginning 2) (match-end 2)))
-		 (proc (substring result (match-beginning 3) (match-end 3))))
-	      (let*
-		  ((buf (save-excursion
-			  (condition-case nil
-			      (find-tag-noselect (concat module "__" proc))
-			    (error (find-tag-noselect proc)))))
-		   (line (gud-linenum buf)))
+		 ;; match 2 is for the optional path
+		 (caller-file
+		   (substring result (match-beginning 3) (match-end 3)))
+		 (caller-line
+		   (substring result (match-beginning 4) (match-end 4)))
+		 (file (substring result (match-beginning 5) (match-end 5)))
+		 (line (substring result (match-beginning 6) (match-end 6))))
+	      (message "%s" msg)
+              (save-excursion
+                (let ((abs-caller-file (gud-mdb-file-name caller-file))
+                      (abs-file (gud-mdb-file-name file)))
+                  (cond
+                    (abs-caller-file
+	              (setq gud-last-frame
+                        (cons (find-file-noselect abs-caller-file)
+                               (string-to-int caller-line))))
+                    (abs-file
+	              (setq gud-last-frame
+                        (cons (find-file-noselect abs-file)
+                               (string-to-int line))))))))
+	  (if (or (string-match
+		    ;; match pred without caller context
+	            (concat nums-regexp "\\(" event-regexp "pred" proc-regexp
+		    	    detism-regexp maybe-path-regexp "\\)" context-regexp
+			    junk-regexp)
+		    result)
+		  ;; match func without caller context
+		  (string-match
+		    (concat nums-regexp "\\(" event-regexp "func" proc-regexp
+		    	    detism-regexp maybe-path-regexp "\\)" context-regexp
+			    junk-regexp)
+		    result))
+	      (let
+		  ((msg (substring result (match-beginning 1) (match-end 1)))
+		   ;; match 2 is for the optional path
+		   (file (substring result (match-beginning 3) (match-end 3)))
+		   (line (substring result (match-beginning 4) (match-end 4))))
 		(message "%s" msg)
-		(setq gud-last-frame (cons buf line))))))
+		(save-excursion
+		  (let ((abs-file (gud-mdb-file-name file)))
+		    (if abs-file
+			(setq gud-last-frame
+			      (cons (find-file-noselect abs-file)
+				    (string-to-int line)))))))))))
     string))
-
-(defun gud-mdb-nexttag ()
-  "Move the arrow to the next matching location"
-  (interactive (gud-mdb-find-tag nil t)))
-
-(defun gud-mdb-prevtag ()
-  "Move the arrow to the previous matching location"
-  (interactive (gud-mdb-find-tag nil '-)))
-
-(defun gud-mdb-find-tag (tag next) "Find and display the specified tag"
-  (let (frame cur-buf old-buf new-buf)
-    (setq frame (or gud-last-frame gud-last-last-frame)
-	  old-buf (if (consp frame) (car frame)
-		     (error "Source location not yet known"))
-	  cur-buf (current-buffer))
-    (unwind-protect
-	(progn (set-buffer old-buf)
-	       (setq new-buf (find-tag-noselect tag next))
-	       (set-buffer new-buf)
-	       (setq gud-last-frame (cons new-buf (gud-linenum new-buf)))
-	       (gud-display-frame))
-      (set-buffer cur-buf))))
 
 (defun gud-mdb-new-keymap (map name)
   "Return a new keymap which inherits from MAP and has name MDB NAME'."
@@ -1135,38 +1198,47 @@ and source-file directory for your debugger."
 (defvar gud-mdb-menu-map (make-sparse-keymap "MDB") nil)
 
 (defun gud-mdb-define-menu-entries ()
+  ;; queries
+  (gud-def gud-mdb-query "query %b" nil "Find all solutions to query.")
+  (gud-def gud-mdb-cc-query "cc_query %b" nil "Find single solution to query.")
+  (gud-def gud-mdb-io-query "io_query %b" nil "Run I/O command.")
+
   ;; forward movement
   (gud-def gud-mdb-step   "step"      "\C-s" "Step to next trace event.")
   (gud-def gud-mdb-cont   "continue"  "\C-r" "Continue execution.")
   (gud-def gud-mdb-finish "finish"    "\C-f" "Finish executing current function.")
   (gud-def gud-mdb-forward "forward"  nil    "Forward (skip backtracking).")
   (gud-def gud-mdb-return "return"    nil    "Return (skip exits).")
+  ;; NYI: goto
 
   ;; backward movement
   (gud-def gud-mdb-retry  "retry"    nil     "Retry")
 
   ;; data browsing
-  (gud-def gud-mdb-stack  "stack"     "\C-d" "Show stack")
+  (gud-def gud-mdb-stack  "stack"     "\C-d" "Show stack.")
   (gud-def gud-mdb-up     "up %p"     "<"    "Up N stack frames (numeric arg).")
   (gud-def gud-mdb-down   "down %p"   ">"    "Down N stack frames (numeric arg).")
-  (gud-def gud-mdb-vars   "vars"      "\C-v" "Show variables")
+  (gud-def gud-mdb-vars   "vars"      "\C-v" "Show variables.")
   (gud-def gud-mdb-print  "print %i"  "\C-p" "Print Mercury variable at point.")
-  (gud-def gud-mdb-browse "browse %i" "\C-b" "Browse Mercury variable at point.")
+  (gud-def gud-mdb-browse "browse %i" "\C-i" "Browse Mercury variable at point.")
   (gud-def gud-mdb-modules "modules"  nil    "List debuggable modules.")
   (gud-def gud-mdb-procs "procedures %i" nil "List procedures in a module.")
   ;; NYI: level, current
 
   ;; breakpoints
-  (gud-def gud-mdb-break  "break %i" "\C-b" "Set procedure breakpoint.")
+  (gud-def gud-mdb-break  "break %i" "\C-p" "Set breakpoint on procedure.")
+  (gud-def gud-mdb-break-line  "break %f:%l" "\C-l" "Set breakpoint on line.")
+  (gud-def gud-mdb-breakpoints  "break info" nil "Show current breakpoints.")
 
   ;; option settings
+  (gud-def gud-mdb-aliases "alias" nil "Show aliases.")
   (gud-def gud-mdb-printlevel-none "printlevel none" nil "Set printlevel none.")
   (gud-def gud-mdb-printlevel-some "printlevel some" nil "Set printlevel some.")
   (gud-def gud-mdb-printlevel-all "printlevel all" nil "Set printlevel all.")
   (gud-def gud-mdb-printlevel "printlevel" nil "Show printlevel.")
-  (gud-def gud-mdb-echo-on "echo on" nil "Set echo on")
-  (gud-def gud-mdb-echo-off "echo off" nil "Set echo off")
-  (gud-def gud-mdb-echo "echo" nil "Show echoing")
+  (gud-def gud-mdb-echo-on "echo on" nil "Set echo on.")
+  (gud-def gud-mdb-echo-off "echo off" nil "Set echo off.")
+  (gud-def gud-mdb-echo "echo" nil "Show echoing.")
   ;; NYI: scroll
 
   ;; NYI: help category
@@ -1204,27 +1276,34 @@ and source-file directory for your debugger."
   ;; misc
   (gud-mdb-add-menu [menu-bar debug misc] "Miscellaneous Commands")
   (local-set-key [menu-bar debug misc quit] '("Quit" . gud-mdb-quit))
-  (local-set-key [menu-bar debug misc prevtag]
-		 '("Previous location matching tag" . gud-mdb-prevtag))
-  (local-set-key [menu-bar debug misc nexttag]
-		 '("Next location matching tag" . gud-mdb-nexttag))
+  ;; The following settings commands are not yet implemented because
+  ;; they take parameters: source
 
   ;; settings
   (gud-mdb-add-menu [menu-bar debug settings] "Option Settings")
+  (local-set-key [menu-bar debug settings aliases]
+		 '("Show Aliases" . gud-mdb-aliases))
   (local-set-key [menu-bar debug settings printlevel]
 		 '("Show Printlevel" . gud-mdb-printlevel))
   (local-set-key [menu-bar debug settings printlevel-none]
 		 '("Set Printlevel None" . gud-mdb-printlevel-all))
   (local-set-key [menu-bar debug settings printlevel-some]
-		 '("Show Printlevel Some" . gud-mdb-printlevel-some))
+		 '("Set Printlevel Some" . gud-mdb-printlevel-some))
   (local-set-key [menu-bar debug settings printlevel-all]
-		 '("Show Printlevel All" . gud-mdb-printlevel-all))
-  ;; not useful: echo
+		 '("Set Printlevel All" . gud-mdb-printlevel-all))
+  ;; The following settings commands are not yet implemented because
+  ;; they take parameters: alias, unalias, mmc_options
+  ;; The following settings commands are not implemented because
+  ;; they are not useful in an Emacs environment: echo, scroll
 
   ;; breakpoints
   (gud-mdb-add-menu [menu-bar debug breakpoints] "Breakpoint Commands")
-  (local-set-key [menu-bar debug breakpoints break]
-		 '("Procedure breakpoint" . gud-mdb-break))
+  (local-set-key [menu-bar debug breakpoints break-procedure]
+		 '("Set breakpoint on procedure" . gud-mdb-break))
+  (local-set-key [menu-bar debug breakpoints break-line]
+		 '("Set breakpoint on line" . gud-mdb-break-line))
+  (local-set-key [menu-bar debug breakpoints breakpoints]
+		 '("Show current breakpoints" . gud-mdb-breakpoints))
 
   ;; browsing
   (gud-mdb-add-menu [menu-bar debug browsing] "Data Browsing Commands")
@@ -1243,17 +1322,27 @@ and source-file directory for your debugger."
 
   ;; forward
   (gud-mdb-add-menu [menu-bar debug forward] "Forward Movement Commands")
+  (local-set-key [menu-bar debug forward return]
+		 '("Return (skip exits)" . gud-mdb-return))
+  (local-set-key [menu-bar debug forward forward]
+		 '("Forward (skip backtracking)" . gud-mdb-forward))
   (local-set-key [menu-bar debug forward finish]
 		 '("Finish procedure" . gud-mdb-finish))
   (local-set-key [menu-bar debug forward continue]
 		 '("Continue execution" . gud-mdb-cont))
   (local-set-key [menu-bar debug forward step]
 		 '("Step to next trace event" . gud-mdb-step))
-  (local-set-key [menu-bar debug forward forward]
-		 '("Forward (skip backtracking)" . gud-mdb-forward))
-  (local-set-key [menu-bar debug forward return]
-		 '("Return (skip exits)" . gud-mdb-return))
-  ;; NYI: mindepth, maxdepth, goto
+  ;; The following commands are not yet implemented because
+  ;; they take parameters: mindepth, maxdepth, goto
+  
+  ;; queries
+  (gud-mdb-add-menu [menu-bar debug query] "Interactive Query Commands")
+  (local-set-key [menu-bar debug query query]
+		 '("Find all solutions to query" . gud-mdb-query))
+  (local-set-key [menu-bar debug query cc-query]
+		 '("Find single solution to query" . gud-mdb-cc-query))
+  (local-set-key [menu-bar debug query io-query]
+		 '("Run I/O command" . gud-mdb-io-query))
 
   )
 
@@ -1282,11 +1371,6 @@ and source-file directory for your debugger."
 			       nil nil
 			       '(gud-mdb-history . 1))))
 
-;  (if (not (and (boundp 'tags-file-name)
-;		(stringp tags-file-name)
-;		(file-exists-p tags-file-name)))
-;      (error "The mdb support requires a valid tags table to work."))
-
   (setq gud-menu-name "MDB")
   (setq gud-buffer-name-prefix "mdb")
   (setq gud-show-commands t)
@@ -1299,6 +1383,7 @@ and source-file directory for your debugger."
   (gud-mdb-add-menu-entries)
   (save-excursion
     (set-buffer gud-prog-buffer)
+    (display-buffer gud-prog-buffer)
     (gud-mdb-add-menu-entries))
 
   (setq comint-prompt-regexp "^mdb> ")
@@ -1500,8 +1585,8 @@ comint mode, which see."
     (if gud-redirect-io
 	;; Create window for I/O, and insert "--tty" option in args
 	(let* ((buf-tty (gud-start-io-window prog-buf-name))
-	       (buf (first buf-tty))
-	       (tty (second buf-tty)))
+	       (buf (car buf-tty))
+	       (tty (car (cdr buf-tty))))
 	  (setq prog-buf-name base-file)
 	  (setq debugger-buf buf)
 	  (setq args (cons "--tty" (cons tty args)))))
@@ -1706,7 +1791,7 @@ Obeying it means displaying in another window the specified file and line."
   (let ((insource (not (eq (current-buffer) gud-comint-buffer)))
 	(frame (or gud-last-frame gud-last-last-frame))
 	result match2)
-    (while (and str (string-match "\\([^%]*\\)%\\([adefilp]\\)" str))
+    (while (and str (string-match "\\([^%]*\\)%\\([abdefilp]\\)" str))
       (let* ((key (string-to-char (substring str (match-beginning 2))))
 	     (match1 (substring str (match-beginning 1) (match-end 1)))
 	     subst)
@@ -1715,11 +1800,25 @@ Obeying it means displaying in another window the specified file and line."
 	 ((eq key ?f)
 	  (setq subst (file-name-nondirectory (if insource
 						  (buffer-file-name)
-						(car frame)))))
+						(save-excursion
+						  (set-buffer (car frame))
+						  (buffer-file-name))))))
+	 ((eq key ?b)
+	  (let ((filename (file-name-nondirectory (if insource
+						      (buffer-file-name)
+						    (save-excursion
+						      (set-buffer (car frame))
+						      (buffer-file-name))))))
+	    ;; (message "Filename: %s" filename)
+	    (if (string-match "\\(.*\\)\\..*" filename)
+	      (setq subst (substring filename (match-beginning 1) (match-end 1)))
+	      (setq subst filename))))
 	 ((eq key ?d)
 	  (setq subst (file-name-directory (if insource
 					       (buffer-file-name)
-					     (car frame)))))
+					     (save-excursion
+					       (set-buffer (car frame))
+					       (buffer-file-name))))))
 	 ((eq key ?l)
 	  (setq subst (if insource
 			  (save-excursion

@@ -65,9 +65,9 @@ typedef struct {
 ** where a program point is defined as the combination of a debugger
 ** event and an ancestor level.
 **
-** The top_layout and top_saved_regs fields together describe the abstract
-** machine state at the current debugger event. The problem field points 
-** to a string containing an error message describing why the debugger
+** The top_layout, top_saved_regs and top_port fields together describe the
+** abstract machine state at the current debugger event. The problem field
+** points to a string containing an error message describing why the debugger
 ** can't print any variables at the current point. It will of course be
 ** NULL if the debugger can do so, which requires not only that the
 ** debugger have all the information it needs about the current point.
@@ -92,9 +92,12 @@ typedef struct {
 typedef struct {
 	const MR_Stack_Layout_Label	*MR_point_top_layout;
 	Word				*MR_point_top_saved_regs;
+	MR_Trace_Port			MR_point_top_port;
 	const char			*MR_point_problem;
 	int				MR_point_level;
 	const MR_Stack_Layout_Entry	*MR_point_level_entry;
+	const char			*MR_point_level_filename;
+	int				MR_point_level_linenumber;
 	Word				*MR_point_level_base_sp;
 	Word				*MR_point_level_base_curfr;
 	int				MR_point_var_count;
@@ -194,10 +197,11 @@ MR_trace_type_is_ignored(Word type_info_as_word)
 
 void
 MR_trace_init_point_vars(const MR_Stack_Layout_Label *top_layout,
-	Word *saved_regs)
+	Word *saved_regs, MR_Trace_Port port)
 {
 	MR_point.MR_point_top_layout = top_layout;
 	MR_point.MR_point_top_saved_regs = saved_regs;
+	MR_point.MR_point_top_port = port;
 	MR_point.MR_point_level = 0;
 	MR_point.MR_point_problem = MR_trace_set_level(0);
 }
@@ -227,6 +231,8 @@ MR_trace_set_level(int ancestor_level)
 	const char			*name;
 	const char			*string_table;
 	Integer				string_table_size;
+	const char			*filename;
+	int				linenumber;
 
 	problem = NULL;
 	top_layout = MR_point.MR_point_top_layout;
@@ -255,6 +261,11 @@ MR_trace_set_level(int ancestor_level)
 		return "there is no information about live variables";
 	}
 
+	if (! MR_find_context(level_layout, &filename, &linenumber)) {
+		filename = "";
+		linenumber = 0;
+	}
+
 	/*
 	** After this point, we cannot find any more problems
 	** that would prevent us from assembling an accurate picture
@@ -265,6 +276,8 @@ MR_trace_set_level(int ancestor_level)
 	MR_point.MR_point_problem = NULL;
 	MR_point.MR_point_level = ancestor_level;
 	MR_point.MR_point_level_entry = entry;
+	MR_point.MR_point_level_filename = filename;
+	MR_point.MR_point_level_linenumber = linenumber;
 	MR_point.MR_point_level_base_sp = base_sp;
 	MR_point.MR_point_level_base_curfr = base_curfr;
 
@@ -289,7 +302,9 @@ MR_trace_set_level(int ancestor_level)
 		return "there are no names for the live variables";
 	}
 
-	if (ancestor_level == 0) {
+	if (ancestor_level == 0 &&
+			MR_point.MR_point_top_port != MR_PORT_EXCEPTION)
+	{
 		valid_saved_regs = MR_point.MR_point_top_saved_regs;
 	} else {
 		valid_saved_regs = NULL;
@@ -484,6 +499,7 @@ MR_trace_current_level(void)
 
 void
 MR_trace_current_level_details(const MR_Stack_Layout_Entry **entry_ptr,
+	const char **filename_ptr, int *linenumber_ptr,
 	Word **base_sp_ptr, Word **base_curfr_ptr)
 {
 	if (MR_point.MR_point_problem != NULL) {
@@ -492,6 +508,14 @@ MR_trace_current_level_details(const MR_Stack_Layout_Entry **entry_ptr,
 
 	if (entry_ptr != NULL) {
 		*entry_ptr = MR_point.MR_point_level_entry;
+	}
+
+	if (filename_ptr != NULL) {
+		*filename_ptr = MR_point.MR_point_level_filename;
+	}
+
+	if (linenumber_ptr != NULL) {
+		*linenumber_ptr = MR_point.MR_point_level_linenumber;
 	}
 
 	if (base_sp_ptr != NULL) {

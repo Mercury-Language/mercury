@@ -139,7 +139,7 @@ doc: scripts util
 	cd doc && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
-profiler: dep_profiler scripts util boehm_gc runtime library
+profiler: dep_profiler scripts util boehm_gc runtime library browser trace
 	cd profiler && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
@@ -216,7 +216,7 @@ tar: README INSTALL
 	cd util && mmake realclean
 	cd doc && mmake distclean
 	-rm -f errs errs2 update.log
-	-rm -f config.status config.cache config.log configure.log
+	-rm -f config.status config.cache config.log configure.log a.out
 	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
 	-rm -f Mmake.common
 	chmod -R a+r *
@@ -235,6 +235,8 @@ tar: README INSTALL
 		mv $$ROOTNAME/trial	stuff-to-exclude;		\
 		mv $$ROOTNAME/bytecode	stuff-to-exclude;		\
 		mv $$ROOTNAME/lp_solve	stuff-to-exclude;		\
+		mv $$ROOTNAME/extras/morphine	stuff-to-exclude;	\
+		mv $$ROOTNAME/extras/opium_m	stuff-to-exclude;	\
 		mv $$ROOTNAME/extras/aditi stuff-to-exclude;		\
 		mv $$ROOTNAME/extras	mercury-extras-$(VERSION);	\
 		mv $$ROOTNAME		mercury-compiler-$(VERSION);	\
@@ -248,6 +250,8 @@ tar: README INSTALL
 		mv mercury-compiler-$(VERSION)	$$ROOTNAME;		\
 		mv mercury-extras-$(VERSION)	$$ROOTNAME/extras;	\
 		mv mercury-tests-$(VERSION)	tests;			\
+		mv stuff-to-exclude/opium_m	$$ROOTNAME/extras/opium_m;\
+		mv stuff-to-exclude/morphine	$$ROOTNAME/extras/morphine;\
 		mv stuff-to-exclude/aditi	$$ROOTNAME/extras/aditi;\
 		mv stuff-to-exclude/*		$$ROOTNAME;		\
 		rmdir stuff-to-exclude;					\
@@ -338,9 +342,11 @@ install_grades: scripts dep_library dep_browser
 	cd runtime && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
 	cd library && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.c *.o *.pic_o *.a *.so tmp_dir || true; }
+		{ mv -f *.c *.o *.pic_o *.a *.so \
+			Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; }
 	cd browser && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.c *.o *.pic_o *.a *.so tmp_dir || true; }
+		{ mv -f *.c *.o *.pic_o *.a *.so \
+			Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; }
 	cd trace && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
 	for grade in x $(LIBGRADES); do \
@@ -373,17 +379,23 @@ install_grades: scripts dep_library dep_browser
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
 		( cd boehm_gc && rm -f *.o *.pic_o *.a *.so ) && \
 		( cd runtime && rm -f *.o *.pic_o *.a *.so ) && \
-		( cd library && rm -f *.c *.o *.pic_o *.a *.so ) && \
-		( cd browser && rm -f *.c *.o *.pic_o *.a *.so ) && \
+		( cd library && rm -f *.c *.o *.pic_o *.a *.so \
+				Mercury/cs/*.c Mercury/os/*.o ) && \
+		( cd browser && rm -f *.c *.o *.pic_o *.a *.so \
+				Mercury/cs/*.c Mercury/os/*.o ) && \
 		( cd trace && rm -f *.o *.pic_o *.a *.so ) && \
 		true \
-		|| exit 1; \
+		|| { scripts/mercury_cleanup_install; exit 1; }; \
 	    fi; \
 	done
 	cd boehm_gc && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd runtime  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
-	cd library  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
-	cd browser  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd library  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
+			 [ -d Mercury/os ] && mv tmp_dir/*.o Mercury/os; \
+			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd browser  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
+			 [ -d Mercury/os ] && mv tmp_dir/*.o Mercury/os; \
+			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd trace    && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 
 .PHONY: install_split_library
@@ -391,12 +403,17 @@ install_split_library: scripts dep_library
 	cd library && \
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f *.dir *.c *.o *.pic_o *.a *.so tmp_dir || true; } && \
+	{ mv -f *.dir *.c *.o *.pic_o *.a *.so \
+		Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; } && \
 	for grade in $(GRADE) $(LIBGRADES); do \
-	        $(SUBDIR_MMAKE) GRADE=$$grade install_split_library || exit 1; \
-	        rm -rf *.dir *.c *.o *.pic_o *.a *.so; \
+	        $(SUBDIR_MMAKE) GRADE=$$grade install_split_library || \
+			{ scripts/mercury_cleanup_install; exit 1; }; \
+	        rm -rf *.dir *.c *.o *.pic_o *.a *.so \
+			Mercury/cs/*.c Mercury/os/*.o; \
 	done && \
-	{ mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	{ [ -d Mercury/cs ] && mv tmp_dir/cs/*.c Mercury/cs; \
+	  [ -d Mercury/os ] && mv tmp_dir/os/*.o Mercury/os; \
+	  mv tmp_dir/* . ; rmdir tmp_dir; true; }
 
 #-----------------------------------------------------------------------------#
 #
@@ -461,7 +478,10 @@ clean_subdirs:
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
 	done
 
-realclean: realclean_subdirs realclean_config
+realclean: realclean_subdirs realclean_local
+
+.PHONY: realclean_local
+realclean_local: realclean_config
 
 .PHONY: realclean_subdirs
 realclean_subdirs: clean_subdirs

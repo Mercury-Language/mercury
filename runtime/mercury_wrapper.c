@@ -21,7 +21,7 @@ ENDINIT
 **	processes options (which are specified via an environment variable).
 **
 **	It also defines mercury_runtime_main(), which invokes
-**	call_engine(do_interpreter), which invokes main/2.
+**	MR_call_engine(do_interpreter), which invokes main/2.
 **
 **	It also defines mercury_runtime_terminate(), which performs
 **	various cleanups that are needed to terminate cleanly.
@@ -110,6 +110,14 @@ int		mercury_exit_status = 0;
 
 bool		MR_profiling = TRUE;
 
+#ifdef	MR_CTOR_REP_STATS
+#include	"mercury_type_info.h"
+
+long		MR_ctor_rep_unify[MR_TYPECTOR_REP_UNKNOWN + 1];
+long		MR_ctor_rep_index[MR_TYPECTOR_REP_UNKNOWN + 1];
+long		MR_ctor_rep_compare[MR_TYPECTOR_REP_UNKNOWN + 1];
+#endif
+
 /*
 ** EXTERNAL DEPENDENCIES
 **
@@ -143,10 +151,6 @@ char *	(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
 #ifdef	MR_USE_EXTERNAL_DEBUGGER
 void	(*MR_address_of_trace_init_external)(void);
 void	(*MR_address_of_trace_final_external)(void);
-#endif
-
-#ifdef	MR_USE_DECLARATIVE_DEBUGGER
-void	(*MR_address_of_edt_root_node)(Word, Word *);
 #endif
 
 #ifdef CONSERVATIVE_GC
@@ -183,8 +187,9 @@ void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
 
 Code	*MR_library_trace_browser;
 
-Code	*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *, MR_Trace_Port,
-		Unsigned, Unsigned, const char *, int);
+Code	*(*volatile MR_trace_func_ptr)(const MR_Stack_Layout_Label *);
+
+void	(*MR_address_of_trace_interrupt_handler)(void);
 
 void	(*MR_register_module_layout)(const MR_Module_Layout *);
 
@@ -266,7 +271,7 @@ mercury_runtime_init(int argc, char **argv)
 		int i;
 
 		for (i = 1; i < (1 << TAGBITS); i++) {
-			GC_register_displacement(i);
+			GC_REGISTER_DISPLACEMENT(i);
 		}
 	}
 #endif
@@ -342,7 +347,7 @@ mercury_runtime_init(int argc, char **argv)
 	*/
 	restore_regs_from_mem(c_regs);
 
-} /* end runtime_mercury_main() */
+} /* end runtime_mercury_init() */
 
 void 
 do_init_modules(void)
@@ -357,8 +362,8 @@ do_init_modules(void)
 
 /*
 ** Given a string, parse it into arguments and create an argv vector for it.
-** Returns args, argv, and argc.  It is the caller's responsibility to oldmem()
-** args and argv when they are no longer needed.
+** Returns args, argv, and argc.  It is the caller's responsibility to
+** MR_GC_free() args and argv when they are no longer needed.
 */
 
 static void
@@ -420,8 +425,8 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 	/*
 	** Allocate the space
 	*/
-	args = make_many(char, args_len);
-	argv = make_many(char *, argc + 1);
+	args = MR_GC_NEW_ARRAY(char, args_len);
+	argv = MR_GC_NEW_ARRAY(char *, argc + 1);
 
 	/*
 	** Now do a pass over the string, copying the arguments into `args'
@@ -501,7 +506,6 @@ process_environment_options(void)
 		char		*arg_str, **argv;
 		char		*dummy_command_line;
 		int		argc;
-		int		c;
 
 		/*
 		** getopt() expects the options to start in argv[1],
@@ -511,18 +515,18 @@ process_environment_options(void)
 		** to getopt().
 		*/
 		cmd = "mercury_runtime ";
-		dummy_command_line = make_many(char,
+		dummy_command_line = MR_GC_NEW_ARRAY(char,
 					strlen(options) + strlen(cmd) + 1);
 		strcpy(dummy_command_line, cmd);
 		strcat(dummy_command_line, options);
 		
 		make_argv(dummy_command_line, &arg_str, &argv, &argc);
-		oldmem(dummy_command_line);
+		MR_GC_free(dummy_command_line);
 
 		process_options(argc, argv);
 
-		oldmem(arg_str);
-		oldmem(argv);
+		MR_GC_free(arg_str);
+		MR_GC_free(argv);
 	}
 }
 
@@ -859,8 +863,8 @@ mercury_runtime_main(void)
 
 	for (repcounter = 0; repcounter < repeats; repcounter++) {
 		debugmsg0("About to call engine\n");
-		call_engine(ENTRY(do_interpreter));
-		debugmsg0("Returning from call_engine()\n");
+		(void) MR_call_engine(ENTRY(do_interpreter), FALSE);
+		debugmsg0("Returning from MR_call_engine()\n");
 	}
 
         if (use_own_timer) {
@@ -906,6 +910,189 @@ mercury_runtime_main(void)
 		printf("%8.3fu ",
 			((double) (time_at_finish - time_at_start)) / 1000);
 	}
+
+#ifdef	MR_CTOR_REP_STATS
+	{
+		FILE	*fp;
+
+		fp = fopen(MR_CTOR_REP_STATS, "a");
+		if (fp != NULL) {
+			fprintf(fp, "UNIFY ENUM %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_ENUM]);
+			fprintf(fp, "UNIFY ENUM_USEREQ %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_ENUM_USEREQ]);
+			fprintf(fp, "UNIFY DU %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_DU]);
+			fprintf(fp, "UNIFY DU_USEREQ %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_DU_USEREQ]);
+			fprintf(fp, "UNIFY NOTAG %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_NOTAG]);
+			fprintf(fp, "UNIFY NOTAG_USEREQ %ld\n",
+				MR_ctor_rep_unify[
+					MR_TYPECTOR_REP_NOTAG_USEREQ]);
+			fprintf(fp, "UNIFY EQUIV %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_EQUIV]);
+			fprintf(fp, "UNIFY EQUIV_VAR %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_EQUIV_VAR]);
+			fprintf(fp, "UNIFY INT %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_INT]);
+			fprintf(fp, "UNIFY CHAR %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_CHAR]);
+			fprintf(fp, "UNIFY FLOAT %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_FLOAT]);
+			fprintf(fp, "UNIFY STRING %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_STRING]);
+			fprintf(fp, "UNIFY PRED %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_PRED]);
+			fprintf(fp, "UNIFY UNIV %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_UNIV]);
+			fprintf(fp, "UNIFY VOID %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_VOID]);
+			fprintf(fp, "UNIFY C_POINTER %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_C_POINTER]);
+			fprintf(fp, "UNIFY TYPEINFO %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_TYPEINFO]);
+			fprintf(fp, "UNIFY TYPECLASSINFO %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_TYPECLASSINFO]);
+			fprintf(fp, "UNIFY ARRAY %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_ARRAY]);
+			fprintf(fp, "UNIFY SUCCIP %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_SUCCIP]);
+			fprintf(fp, "UNIFY HP %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_HP]);
+			fprintf(fp, "UNIFY CURFR %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_CURFR]);
+			fprintf(fp, "UNIFY MAXFR %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_MAXFR]);
+			fprintf(fp, "UNIFY REDOFR %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_REDOFR]);
+			fprintf(fp, "UNIFY REDOIP %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_REDOIP]);
+			fprintf(fp, "UNIFY TRAIL_PTR %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_TRAIL_PTR]);
+			fprintf(fp, "UNIFY TICKET %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_TICKET]);
+			fprintf(fp, "UNIFY UNKNOWN %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_UNKNOWN]);
+
+			fprintf(fp, "INDEX ENUM %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_ENUM]);
+			fprintf(fp, "INDEX ENUM_USEREQ %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_ENUM_USEREQ]);
+			fprintf(fp, "INDEX DU %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_DU]);
+			fprintf(fp, "INDEX DU_USEREQ %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_DU_USEREQ]);
+			fprintf(fp, "INDEX NOTAG %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_NOTAG]);
+			fprintf(fp, "INDEX NOTAG_USEREQ %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_NOTAG_USEREQ]);
+			fprintf(fp, "INDEX EQUIV %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_EQUIV]);
+			fprintf(fp, "INDEX EQUIV_VAR %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_EQUIV_VAR]);
+			fprintf(fp, "INDEX INT %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_INT]);
+			fprintf(fp, "INDEX CHAR %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_CHAR]);
+			fprintf(fp, "INDEX FLOAT %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_FLOAT]);
+			fprintf(fp, "INDEX STRING %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_STRING]);
+			fprintf(fp, "INDEX PRED %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_PRED]);
+			fprintf(fp, "INDEX UNIV %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_UNIV]);
+			fprintf(fp, "INDEX VOID %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_VOID]);
+			fprintf(fp, "INDEX C_POINTER %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_C_POINTER]);
+			fprintf(fp, "INDEX TYPEINFO %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_TYPEINFO]);
+			fprintf(fp, "INDEX TYPECLASSINFO %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_TYPECLASSINFO]);
+			fprintf(fp, "INDEX ARRAY %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_ARRAY]);
+			fprintf(fp, "INDEX SUCCIP %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_SUCCIP]);
+			fprintf(fp, "INDEX HP %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_HP]);
+			fprintf(fp, "INDEX CURFR %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_CURFR]);
+			fprintf(fp, "INDEX MAXFR %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_MAXFR]);
+			fprintf(fp, "INDEX REDOFR %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_REDOFR]);
+			fprintf(fp, "INDEX REDOIP %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_REDOIP]);
+			fprintf(fp, "INDEX TRAIL_PTR %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_TRAIL_PTR]);
+			fprintf(fp, "INDEX TICKET %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_TICKET]);
+			fprintf(fp, "INDEX UNKNOWN %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_UNKNOWN]);
+
+			fprintf(fp, "COMPARE ENUM %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_ENUM]);
+			fprintf(fp, "COMPARE ENUM_USEREQ %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_ENUM_USEREQ]);
+			fprintf(fp, "COMPARE DU %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_DU]);
+			fprintf(fp, "COMPARE DU_USEREQ %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_DU_USEREQ]);
+			fprintf(fp, "COMPARE NOTAG %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_NOTAG]);
+			fprintf(fp, "COMPARE NOTAG_USEREQ %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_NOTAG_USEREQ]);
+			fprintf(fp, "COMPARE EQUIV %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_EQUIV]);
+			fprintf(fp, "COMPARE EQUIV_VAR %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_EQUIV_VAR]);
+			fprintf(fp, "COMPARE INT %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_INT]);
+			fprintf(fp, "COMPARE CHAR %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_CHAR]);
+			fprintf(fp, "COMPARE FLOAT %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_FLOAT]);
+			fprintf(fp, "COMPARE STRING %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_STRING]);
+			fprintf(fp, "COMPARE PRED %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_PRED]);
+			fprintf(fp, "COMPARE UNIV %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_UNIV]);
+			fprintf(fp, "COMPARE VOID %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_VOID]);
+			fprintf(fp, "COMPARE C_POINTER %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_C_POINTER]);
+			fprintf(fp, "COMPARE TYPEINFO %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_TYPEINFO]);
+			fprintf(fp, "COMPARE TYPECLASSINFO %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_TYPECLASSINFO]);
+			fprintf(fp, "COMPARE ARRAY %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_ARRAY]);
+			fprintf(fp, "COMPARE SUCCIP %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_SUCCIP]);
+			fprintf(fp, "COMPARE HP %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_HP]);
+			fprintf(fp, "COMPARE CURFR %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_CURFR]);
+			fprintf(fp, "COMPARE MAXFR %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_MAXFR]);
+			fprintf(fp, "COMPARE REDOFR %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_REDOFR]);
+			fprintf(fp, "COMPARE REDOIP %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_REDOIP]);
+			fprintf(fp, "COMPARE TRAIL_PTR %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_TRAIL_PTR]);
+			fprintf(fp, "COMPARE TICKET %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_TICKET]);
+			fprintf(fp, "COMPARE UNKNOWN %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_UNKNOWN]);
+
+			(void) fclose(fp);
+		}
+	}
+#endif
 
 	/*
 	** Save the Mercury registers and
@@ -999,10 +1186,11 @@ BEGIN_MODULE(interpreter_module)
 BEGIN_CODE
 
 Define_entry(do_interpreter);
-	MR_incr_sp(3);
+	MR_incr_sp(4);
 	MR_stackvar(1) = (Word) MR_hp;
 	MR_stackvar(2) = (Word) MR_succip;
 	MR_stackvar(3) = (Word) MR_maxfr;
+	MR_stackvar(4) = (Word) MR_curfr;
 
 	MR_mkframe("interpreter", 1, LABEL(global_fail));
 
@@ -1030,7 +1218,7 @@ Define_label(global_success);
 #endif
 
 	if (benchmark_all_solns)
-		redo();
+		MR_redo();
 	else
 		GOTO_LABEL(all_done);
 
@@ -1054,7 +1242,8 @@ Define_label(all_done);
 	MR_hp     = (Word *) MR_stackvar(1);
 	MR_succip = (Code *) MR_stackvar(2);
 	MR_maxfr  = (Word *) MR_stackvar(3);
-	MR_decr_sp(3);
+	MR_curfr  = (Word *) MR_stackvar(4);
+	MR_decr_sp(4);
 
 #ifdef MR_LOWLEVEL_DEBUG
 	if (MR_finaldebug && MR_detaildebug) {

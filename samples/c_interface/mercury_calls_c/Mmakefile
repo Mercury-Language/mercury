@@ -14,5 +14,5 @@ MLLIBS=c_main.o
 mercury_main: c_main.o
 
 # make sure that `mmake clean' removes c_main.o
-clean:
+clean_local:
 	rm -f c_main.o

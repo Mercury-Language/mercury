@@ -19,7 +19,7 @@
 
 /*
 ** MR_dump_stack:
-** 	Given the succip, det stack pointer and current frame, generate a 
+** 	Given the succip, det stack pointer and current frame, generate a
 ** 	stack dump showing the name of each active procedure on the
 ** 	stack. If include_trace_data data is set, also print the
 **	call event number, call sequence number and depth for every
@@ -27,7 +27,7 @@
 ** 	NOTE: MR_dump_stack will assume that the succip is for the
 ** 	topmost stack frame.  If you call MR_dump_stack from some
 ** 	pragma c_code, that may not be the case.
-** 	Due to some optimizations (or lack thereof) the MR_dump_stack call 
+** 	Due to some optimizations (or lack thereof) the MR_dump_stack call
 ** 	may end up inside code that has a stack frame allocated, but
 ** 	that has a succip for the previous stack frame.
 ** 	Don't call MR_dump_stack from Mercury pragma c_code (calling
@@ -46,20 +46,29 @@ extern	void	MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 /*
 ** MR_dump_stack_from_layout:
 **	This function does the same job and makes the same assumptions
-**	as MR_dump_stack, but instead of the succip, it takes the entry
-**	layout of the current procedure as input. It also takes a parameter
-**	that tells it where to put the stack dump. If the entire stack
-**	was printed successfully, the return value is NULL; otherwise,
-**	it is a string indicating why the dump was cut short.
+**	as MR_dump_stack, but instead of the succip, it takes the label
+**	layout of the current point in the current procedure as input.
+**	It also takes a parameter that tells it where to put the stack dump
+**	and flags that say whether to include execution trace data and/or
+**	line numbers.
+**
+**	If the entire stack was printed successfully, the return value is NULL;
+**	otherwise, it is a string indicating why the dump was cut short.
 */
 
+typedef	void		(*MR_Print_Stack_Record)(FILE *fp,
+				const MR_Stack_Layout_Entry * proc_layout,
+				int count, int level,
+				Word *base_sp, Word * base_curfr,
+				const char *filename, int linenumber,
+				bool context_mismatch);
+
 extern	const char	*MR_dump_stack_from_layout(FILE *fp,
-				const MR_Stack_Layout_Entry *entry_layout,
+				const MR_Stack_Layout_Label *label_layout,
 				Word *det_stack_pointer, Word *current_frame,
 				bool include_trace_data,
-				void (*print_stack_record)(FILE *, 
-					const MR_Stack_Layout_Entry *, 
-					int, int, Word *, Word *));
+				bool include_contexts,
+				MR_Print_Stack_Record print_stack_record);
 
 /*
 ** MR_dump_nondet_stack_from_layout:
@@ -95,8 +104,8 @@ extern	const MR_Stack_Layout_Label *MR_find_nth_ancestor(
 **	This function takes the entry_layout for the current stack
 **	frame (which is the topmost stack frame from the two stack
 **	pointers given), and moves down one stack frame, setting the
-**	stack pointers to their new levels. 
-**      
+**	stack pointers to their new levels.
+**
 **	return_label_layout will be set to the stack_layout of the
 **	continuation label, or NULL if the bottom of the stack has
 **	been reached.
@@ -126,7 +135,7 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 ** reach a stack frame whose saved succip slot contains this address.
 */
 
-extern Code	*MR_stack_trace_bottom;
+extern	Code	*MR_stack_trace_bottom;
 
 /*
 ** MR_nondet_stack_trace_bottom should be set to the address of the buffer
@@ -135,37 +144,77 @@ extern Code	*MR_stack_trace_bottom;
 ** the redoip and redofr slots of this frame may be hijacked.
 */
 
-extern Word	*MR_nondet_stack_trace_bottom;
+extern	Word	*MR_nondet_stack_trace_bottom;
 
 /*
-** The different Mercury determinisms are internally represented by integers. 
-** This array gives the correspondance with the internal representation and 
+** The different Mercury determinisms are internally represented by integers.
+** This array gives the correspondance with the internal representation and
 ** the names that are usually used to denote determinisms.
 */
 
-extern const char * MR_detism_names[];
+extern	const char *MR_detism_names[];
+
+/*
+** MR_find_context attempts to look up the file name and line number
+** corresponding to a label identified by its layout structure. If successful,
+** it fills in *fileptr and *lineptr accordingly, and returns TRUE; otherwise,
+** it returns FALSE.
+*/
+
+extern	bool	MR_find_context(const MR_Stack_Layout_Label *label,
+			const char **fileptr, int *lineptr);
+
+/*
+** If the procedure has trace layout information and the relevant one of
+** base_sp and base_curfr is not NULL, MR_print_call_trace_info prints
+** the call event number, call sequence number and call depth of the call
+** stored in the stack frame of the procedure.
+*/
+
+extern	void	MR_print_call_trace_info(FILE *fp,
+			const MR_Stack_Layout_Entry *entry,
+			Word *base_sp, Word *base_curfr);
 
 /*
 ** MR_print_proc_id prints an identification of the given procedure,
 ** consisting of "pred" or "func", module name, pred or func name, arity,
-** mode number and determinism, followed by an optional extra string,
-** and a newline.
-**
-** If the procedure has trace layout information and the relevant one of
-** base_sp and base_curfr is not NULL, it also prints the call event number,
-** call sequence number and call depth of the call.
+** mode number and determinism. It does not output a newline, so that
+** the caller can put something else after the procedure id on the same line.
 */
 
-void	MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
-			const char *extra, Word *base_sp, Word *base_curfr);
+extern	void	MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry);
 
 /*
-** MR_dump_stack_record_print() simply wraps the call of MR_print_proc_id() with
-** the printing of an adequate number of blank lines.
+** MR_print_proc_id_trace_and_context prints an identification of the given
+** procedure, together with call trace information (if available), a context
+** within the procedure, and possibly a context identifying the caller.
+** The position argument says where (if anywhere) the contexts should appear.
 */
 
-void	MR_dump_stack_record_print(FILE *fp, 
-			const MR_Stack_Layout_Entry *entry_layout, int count, 
-			int start_level, Word *base_sp, Word *base_curfr);
+typedef	enum {
+	MR_CONTEXT_NOWHERE,
+	MR_CONTEXT_BEFORE,
+	MR_CONTEXT_AFTER,
+	MR_CONTEXT_PREVLINE,
+	MR_CONTEXT_NEXTLINE
+} MR_Context_Position;
+
+extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
+			MR_Context_Position pos,
+			const MR_Stack_Layout_Entry *entry,
+			Word *base_sp, Word *base_curfr, const char *path,
+			const char *filename, int lineno, bool print_parent,
+			const char *parent_filename, int parent_lineno,
+			int indent);
+
+/*
+** MR_dump_stack_record_print() prints one line of a stack dump.
+*/
+
+extern	void	MR_dump_stack_record_print(FILE *fp,
+			const MR_Stack_Layout_Entry *entry_layout, int count,
+			int start_level, Word *base_sp, Word *base_curfr,
+			const char *filename, int linenumber,
+			bool context_mismatch);
 
 #endif /* MERCURY_STACK_TRACE_H */

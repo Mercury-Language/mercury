@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -627,3 +627,73 @@ ra_list_slow_drop(N, As, Bs) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func bt_array__make_empty_array(int) = bt_array(T).
+
+:- func bt_array__init(int, int, T) = bt_array(T).
+
+:- func bt_array__min(bt_array(_T)) = int.
+
+:- func bt_array__max(bt_array(_T)) = int.
+
+:- func bt_array__size(bt_array(_T)) = int.
+
+:- func bt_array__lookup(bt_array(T), int) = T.
+
+:- func bt_array__set(bt_array(T), int, T) = bt_array(T).
+
+:- func bt_array__resize(bt_array(T), int, int, T) = bt_array(T).
+
+:- func bt_array__shrink(bt_array(T), int, int) = bt_array(T).
+
+:- func bt_array__from_list(int, list(T)) = bt_array(T).
+
+:- func bt_array__to_list(bt_array(T)) = list(T).
+
+:- func bt_array__fetch_items(bt_array(T), int, int) = list(T).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+bt_array__make_empty_array(N) = BTA :-
+	bt_array__make_empty_array(N, BTA).
+
+bt_array__init(N1, N2, T) = BTA :-
+	bt_array__init(N1, N2, T, BTA).
+
+bt_array__min(BTA) = N :-
+	bt_array__min(BTA, N).
+
+bt_array__max(BTA) = N :-
+	bt_array__max(BTA, N).
+
+bt_array__size(BTA) = N :-
+	bt_array__size(BTA, N).
+
+bt_array__lookup(BTA, N) = T :-
+	bt_array__lookup(BTA, N, T).
+
+bt_array__set(BT1A, N, T) = BTA2 :-
+	bt_array__set(BT1A, N, T, BTA2).
+
+bt_array__resize(BT1A, N1, N2, T) = BTA2 :-
+	bt_array__resize(BT1A, N1, N2, T, BTA2).
+
+bt_array__shrink(BT1A, N1, N2) = BTA2 :-
+	bt_array__shrink(BT1A, N1, N2, BTA2).
+
+bt_array__from_list(N, Xs) = BTA :-
+	bt_array__from_list(N, Xs, BTA).
+
+bt_array__to_list(BTA) = Xs :-
+	bt_array__to_list(BTA, Xs).
+
+bt_array__fetch_items(BTA, N1, N2) = Xs :-
+	bt_array__fetch_items(BTA, N1, N2, Xs).
+

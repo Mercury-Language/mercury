@@ -1,3 +1,15 @@
+We've had a report from Marko Schuetz <marko@ki.informatik.uni-frankfurt.de>
+that on FreeBSD you need to pass the `--disable-extern-debug' to configure:
+
+	> From: Marko Schuetz <marko@ki.informatik.uni-frankfurt.de>
+	> Date: 13 Oct 1999
+	...
+	> I grabbed mercury-compiler-1999-10-12. It compiles and
+	> installs when configured with --disable-extern-debug.
+	> Without --disable-extern-debug the compile fails in
+	> trace/mercury_trace_external.c in the include files
+	> <arpa/inet.h> and <netdb.h> (??!?!?)
+
 For FreeBSD, the Boehm conservative garbage collector does not yet support
 shared libraries.  So Mercury does not yet support shared libraries on FreeBSD,
 except in the (not very useful) case where you compile with GC disabled,

@@ -181,8 +181,7 @@ modecheck_call_pred(PredId, ProcId0, ArgVars0, DeterminismKnown,
 
 	mode_info_get_preds(ModeInfo0, Preds),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	map__lookup(Preds, PredId, PredInfo0),
-	maybe_add_default_mode(PredInfo0, PredInfo, _),
+	map__lookup(Preds, PredId, PredInfo),
 	pred_info_procedures(PredInfo, Procs),
 
 	( MayChangeCalledProc = may_not_change_called_proc ->

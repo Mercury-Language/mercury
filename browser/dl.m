@@ -221,11 +221,11 @@ sym(handle(Handle), Name, Result) -->
 	msg = dlerror();
 	if (msg == NULL) msg = """";
 #else
-	make_aligned_string(msg, ""sorry, not implemented: ""
+	MR_make_aligned_string(msg, ""sorry, not implemented: ""
 		""dynamic linking not supported on this platform"");
 #endif
 
-	make_aligned_string_copy(ErrorMsg, msg);
+	MR_make_aligned_string_copy(ErrorMsg, msg);
 }").
 
 close(handle(Handle), Result) -->

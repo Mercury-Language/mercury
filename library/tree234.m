@@ -2472,3 +2472,70 @@ tree234__count(four(_, _, _, _, _, _, T0, T1, T2, T3), N) :-
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
+%       Function forms added.
+
+:- interface.
+
+:- func tree234__init = tree234(K, V).
+
+:- func tree234__lookup(tree234(K, V), K) = V.
+
+:- func tree234__set(tree234(K, V), K, V) = tree234(K, V).
+
+:- func tree234__delete(tree234(K, V), K) = tree234(K, V).
+
+:- func tree234__keys(tree234(K, V)) = list(K).
+
+:- func tree234__values(tree234(K, V)) = list(V).
+
+:- func tree234__count(tree234(K, V)) = int.
+
+:- func tree234__assoc_list_to_tree234(assoc_list(K, V)) = tree234(K, V).
+
+:- func tree234__tree234_to_assoc_list(tree234(K, V)) = assoc_list(K, V).
+
+:- func tree234__foldl(func(K, V, T) = T, tree234(K, V), T) = T.
+
+:- func tree234__map_values(func(K, V) = W, tree234(K, V)) = tree234(K, W).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+tree234__init = T :-
+	tree234__init(T).
+
+tree234__lookup(T, K) = V :-
+	tree234__lookup(T, K, V).
+
+tree234__set(T1, K, V) = T2 :-
+	tree234__set(T1, K, V, T2).
+
+tree234__delete(T1, K) = T2 :-
+	tree234__delete(T1, K, T2).
+
+tree234__keys(T) = Ks :-
+	tree234__keys(T, Ks).
+
+tree234__values(T) = Vs :-
+	tree234__values(T, Vs).
+
+tree234__count(T) = N :-
+	tree234__count(T, N).
+
+tree234__assoc_list_to_tree234(AL) = T :-
+	tree234__assoc_list_to_tree234(AL, T).
+
+tree234__tree234_to_assoc_list(T) = AL :-
+	tree234__tree234_to_assoc_list(T, AL).
+
+tree234__foldl(F, T, A) = B :-
+	P = ( pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
+	tree234__foldl(P, T, A, B).
+
+tree234__map_values(F, T1) = T2 :-
+	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+	tree234__map_values(P, T1, T2).
+

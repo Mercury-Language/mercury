@@ -168,6 +168,7 @@ not             fy              900
 or              xfy             740
 pragma          fx              1199
 pred            fx              800
+promise         fx              1199
 rule            fx              1199
 semipure        fy              800
 some            fxy             950

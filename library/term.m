@@ -423,27 +423,6 @@ term__try_term_to_univ_2(Term, Type, Context, Result) :-
 		term(T)::in(bound(term__functor(ground, ground, ground))),
 		type_info::in, term_to_type_context::in,
 		term_to_type_result(univ, T)::out) is semidet.
-/*
-** XXX the following clauses for mercury_builtin:* are
-** for bootstrapping only, and should eventually be deleted
-*/
-term__term_to_univ_special_case("mercury_builtin", "character", [],
-		Term, _, _, ok(Univ)) :-
-	Term = term__functor(term__atom(FunctorName), [], _),
-	string__first_char(FunctorName, Char, ""),
-	type_to_univ(Char, Univ).
-term__term_to_univ_special_case("mercury_builtin", "int", [],
-		Term, _, _, ok(Univ)) :-
-	Term = term__functor(term__integer(Int), [], _),
-	type_to_univ(Int, Univ).
-term__term_to_univ_special_case("mercury_builtin", "string", [],
-		Term, _, _, ok(Univ)) :-
-	Term = term__functor(term__string(String), [], _),
-	type_to_univ(String, Univ).
-term__term_to_univ_special_case("mercury_builtin", "float", [],
-		Term, _, _, ok(Univ)) :-
-	Term = term__functor(term__float(Float), [], _),
-	type_to_univ(Float, Univ).
 
 term__term_to_univ_special_case("builtin", "character", [],
 		Term, _, _, ok(Univ)) :-
@@ -493,12 +472,30 @@ term__term_to_univ_special_case("array", "array", [ElemType], Term, _Type,
 term__term_to_univ_special_case("builtin", "c_pointer", _, _, _, 
 		_, _) :-
 	fail.
-term__term_to_univ_special_case("std_util", "univ", _, _, _, _, _) :-
+term__term_to_univ_special_case("std_util", "univ", [], Term, _, _, Result) :-
 	% Implementing this properly would require keeping a
 	% global table mapping from type names to type_infos
 	% for all of the types in the program...
-	% so for the moment, we don't allow it.
-	fail.
+	% so for the moment, we only allow it for basic types.
+	Term = term__functor(term__atom("univ"), [Arg], _),
+	Arg = term__functor(term__atom(":"), [Value, Type], _),
+	(
+		Type = term__functor(term__atom("int"), [], _),
+		Value = term__functor(term__integer(Int), [], _),
+		Univ = univ(Int)
+	;
+		Type = term__functor(term__atom("string"), [], _),
+		Value = term__functor(term__string(String), [], _),
+		Univ = univ(String)
+	;
+		Type = term__functor(term__atom("float"), [], _),
+		Value = term__functor(term__float(Float), [], _),
+		Univ = univ(Float)
+	),
+	% The result is a `univ', but it is also wrapped in a `univ'
+	% like all the other results returned from this procedure.
+	Result = ok(univ(Univ)).
+
 term__term_to_univ_special_case("std_util", "type_info", _, _, _, _, _) :-
 	% ditto
 	fail.
@@ -601,24 +598,6 @@ term__univ_to_term(Univ, Term) :-
 		list(type_info)::in, univ::in, term__context::in,
 		term(T)::out) is semidet.
 
-/*
-** XXX the following clauses for mercury_builtin:* are
-** for bootstrapping only, and should eventually be deleted
-*/
-term__univ_to_term_special_case("mercury_builtin", "int", [], Univ, Context,
-		term__functor(term__integer(Int), [], Context)) :-
-	det_univ_to_type(Univ, Int).
-term__univ_to_term_special_case("mercury_builtin", "float", [], Univ, Context,
-		term__functor(term__float(Float), [], Context)) :-
-	det_univ_to_type(Univ, Float).
-term__univ_to_term_special_case("mercury_builtin", "character", [], Univ, 
-		Context, term__functor(term__atom(CharName), [], Context)) :-
-	det_univ_to_type(Univ, Character),
-	string__char_to_string(Character, CharName).
-term__univ_to_term_special_case("mercury_builtin", "string", [], Univ, Context,
-		term__functor(term__string(String), [], Context)) :-
-	det_univ_to_type(Univ, String).
-
 term__univ_to_term_special_case("builtin", "int", [], Univ, Context,
 		term__functor(term__integer(Int), [], Context)) :-
 	det_univ_to_type(Univ, Int).
@@ -676,11 +655,7 @@ type_info_to_term(Context, TypeInfo, Term) :-
 	ModuleName = type_ctor_name(TypeCtor),
 	list__map(type_info_to_term(Context), ArgTypes, ArgTerms),
 
-	/*
-	** XXX the test for mercury_builtin is for bootstrapping only,
-	** and should eventually be deleted
-	*/
-	( (ModuleName = "mercury_builtin" ; ModuleName = "builtin") ->
+	( ModuleName = "builtin" ->
 		Term = term__functor(term__atom(TypeName), ArgTerms, Context)
 	;
 		Term = term__functor(term__atom(":"),
@@ -1112,4 +1087,166 @@ term__coerce(term__functor(Cons, Args0, Ctxt),
 term__coerce_var(var(V), var(V)).
 
 term__coerce_var_supply(var_supply(Supply), var_supply(Supply)).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+% Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func term__context_init = term__context.
+
+:- func term__init_var_supply = var_supply(T).
+
+:- func term__try_term_to_type(term(U)) = term_to_type_result(T, U).
+
+:- func term__det_term_to_type(term(_)) = T.
+
+:- func term__type_to_term(T) = term(_).
+
+:- func term__univ_to_term(univ) = term(_).
+
+:- func term__vars(term(T)) = list(var(T)).
+
+:- func term__vars_2(term(T), list(var(T))) = list(var(T)).
+
+:- func term__vars_list(list(term(T))) = list(var(T)).
+
+:- func term__substitute(term(T), var(T), term(T)) = term(T).
+
+:- func term__substitute_list(list(term(T)), var(T), term(T)) = list(term(T)).
+
+:- func term__substitute_corresponding(list(var(T)), list(term(T)), term(T)) = term(T).
+
+:- func term__substitute_corresponding_list(list(var(T)), list(term(T)), list(term(T))) = list(term(T)).
+
+:- func term__apply_rec_substitution(term(T), substitution(T)) = term(T).
+
+:- func term__apply_rec_substitution_to_list(list(term(T)), substitution(T)) = list(term(T)).
+
+:- func term__apply_substitution(term(T), substitution(T)) = term(T).
+
+:- func term__apply_substitution_to_list(list(term(T)), substitution(T)) = list(term(T)).
+
+:- func term__relabel_variable(term(T), var(T), var(T)) = term(T).
+
+:- func term__relabel_variables(list(term(T)), var(T), var(T)) = list(term(T)).
+
+:- func term__apply_variable_renaming(term(T), map(var(T), var(T))) = term(T).
+
+:- func term__apply_variable_renaming_to_list(list(term(T)), map(var(T), var(T))) = list(term(T)).
+
+:- func term__var_to_int(var(T)) = int.
+
+:- func term__context_line(term__context) = int.
+
+:- func term__context_file(term__context) = string.
+
+:- func term__context_init(string, int) = term__context.
+
+:- func term__term_list_to_var_list(list(term(T))) = list(var(T)).
+
+:- func term__var_list_to_term_list(list(var(T))) = list(term(T)).
+
+:- func term__coerce(term(T)) = term(U).
+
+:- func term__coerce_var(var(T)) = var(U).
+
+:- func term__coerce_var_supply(var_supply(T)) = var_supply(U).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+term__context_init = C :-
+	term__context_init(C).
+
+term__init_var_supply = VS :-
+	term__init_var_supply(VS).
+
+term__try_term_to_type(T) = TTTR :-
+	term__try_term_to_type(T, TTTR).
+
+term__det_term_to_type(T1) = T2 :-
+	term__det_term_to_type(T1, T2).
+
+term__type_to_term(T1) = T2 :-
+	term__type_to_term(T1, T2).
+
+term__univ_to_term(U) = T :-
+	term__univ_to_term(U, T).
+
+term__vars(T) = Vs :-
+	term__vars(T, Vs).
+
+term__vars_2(T, Vs1) = Vs2 :-
+	term__vars_2(T, Vs1, Vs2).
+
+term__vars_list(Ts) = Vs :-
+	term__vars_list(Ts, Vs).
+
+term__substitute(T1, V, T2) = T3 :-
+	term__substitute(T1, V, T2, T3).
+
+term__substitute_list(Ts1, V, T) = Ts2 :-
+	term__substitute_list(Ts1, V, T, Ts2).
+
+term__substitute_corresponding(Vs, T1s, T) = T2 :-
+	term__substitute_corresponding(Vs, T1s, T, T2).
+
+term__substitute_corresponding_list(Vs, Ts1, Ts2) = Ts3 :-
+	term__substitute_corresponding_list(Vs, Ts1, Ts2, Ts3).
+
+term__apply_rec_substitution(T1, S) = T2 :-
+	term__apply_rec_substitution(T1, S, T2).
+
+term__apply_rec_substitution_to_list(Ts1, S) = Ts2 :-
+	term__apply_rec_substitution_to_list(Ts1, S, Ts2).
+
+term__apply_substitution(T1, S) = T2 :-
+	term__apply_substitution(T1, S, T2).
+
+term__apply_substitution_to_list(Ts1, S) = Ts2 :-
+	term__apply_substitution_to_list(Ts1, S, Ts2).
+
+term__relabel_variable(T1, V1, V2) = T2 :-
+	term__relabel_variable(T1, V1, V2, T2).
+
+term__relabel_variables(Ts1, V1, V2) = Ts2 :-
+	term__relabel_variables(Ts1, V1, V2, Ts2).
+
+term__apply_variable_renaming(T1, M) = T2 :-
+	term__apply_variable_renaming(T1, M, T2).
+
+term__apply_variable_renaming_to_list(Ts1, M) = Ts2 :-
+	term__apply_variable_renaming_to_list(Ts1, M, Ts2).
+
+term__var_to_int(V) = N :-
+	term__var_to_int(V, N).
+
+term__context_line(C) = N :-
+	term__context_line(C, N).
+
+term__context_file(C) = S :-
+	term__context_file(C, S).
+
+term__context_init(S, N) = C :-
+	term__context_init(S, N, C).
+
+term__term_list_to_var_list(Ts) = Vs :-
+	term__term_list_to_var_list(Ts, Vs).
+
+term__var_list_to_term_list(Vs) = Ts :-
+	term__var_list_to_term_list(Vs, Ts).
+
+term__coerce(T1) = T2 :-
+	term__coerce(T1, T2).
+
+term__coerce_var(V1) = V2 :-
+	term__coerce_var(V1, V2).
+
+term__coerce_var_supply(VS1) = VS2 :-
+	term__coerce_var_supply(VS1, VS2).
 

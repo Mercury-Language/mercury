@@ -15,6 +15,9 @@
 #include "mercury_debug.h"
 #include "mercury_goto.h"
 #include "mercury_tabling.h"
+#include "mercury_engine.h"
+
+/*---------------------------------------------------------------------------*/
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
@@ -52,6 +55,8 @@
 				detstack_underflow_check(),	\
 				(void)0				\
 			)
+
+/*---------------------------------------------------------------------------*/
 
 /* DEFINITIONS FOR NONDET STACK FRAMES */
 
@@ -93,6 +98,8 @@
 #define	MR_based_framevar(fr, n) (((Word *) (fr))[MR_SAVEVAL + 1 - (n)])
 
 #define	MR_framevar(n)		MR_based_framevar(MR_curfr, n)
+
+/*---------------------------------------------------------------------------*/
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
@@ -202,6 +209,147 @@
 				MR_curfr = MR_redofr_slot(MR_maxfr);	\
 				GOTO(MR_redoip_slot(MR_maxfr));		\
 			} while (0)
+
+/*---------------------------------------------------------------------------*/
+
+/* DEFINITIONS FOR EXCEPTION HANDLING */
+
+#ifdef CONSERVATIVE_GC
+  #define MR_IF_NOT_CONSERVATIVE_GC(x)
+#else
+  #define MR_IF_NOT_CONSERVATIVE_GC(x) x
+#endif
+
+#ifdef MR_USE_TRAIL
+  #define MR_IF_USE_TRAIL(x) x
+#else
+  #define MR_IF_USE_TRAIL(x)
+#endif
+
+/*
+** This enum specifies the kind of handler in an exception handler
+** nondet stack frame.
+*/
+enum MR_HandlerCodeModel {
+	/* 
+	** For these three values, the exception handler is a Mercury closure
+	** with the specified determinism.  If an exception occurs, then
+	** after the Mercury stacks have been unwound, the closure will
+	** be called.
+	*/
+	MR_MODEL_DET_HANDLER,
+	MR_MODEL_SEMI_HANDLER,
+	MR_MODEL_NON_HANDLER,
+	/*
+	** For this value, the exception will be handled by C code using
+	** setjmp/longjmp.  If an exception occurs, then after the Mercury
+	** stacks have been unwound, `MR_longjmp(MR_ENGINE(e_jmp_buf))' will
+	** be called.
+	*/
+	MR_C_LONGJMP_HANDLER
+};
+
+
+/*
+** Define a struct for the framevars that we use in an exception handler
+** nondet stack frame.  This struct gets allocated on the nondet stack
+** using mkpragmaframe(), with a special redoip of
+** `exception_handler_do_fail'.
+*/
+typedef struct MR_Exception_Handler_Frame_struct {
+	/*
+	** The `code_model' field is used to identify what kind of
+	** handler it is. It holds values of type MR_HandlerCodeModel
+	** (see above), but it is declared to have type `Word' to ensure
+	** that everything remains word-aligned.
+	*/
+	Word code_model;
+
+	/*
+	** If code_model is MR_MODEL_*_HANDLER, then
+	** the `handler' field holds the Mercury closure for the handler,
+	** which will be a closure of the specified determinism.
+	** If code_model is MR_C_LONGJMP, then this field is unused.
+	*/
+	Word handler;
+
+	/*
+	** The remaining fields hold stuff that must be saved in order
+	** to unwind the Mercury stacks.
+	*/
+
+	/* the det stack pointer */
+	Word *stack_ptr;
+
+	/* the trail state */
+	MR_IF_USE_TRAIL(
+		Word trail_ptr;
+		Word ticket_counter;
+	)
+
+	/* the heap state */
+	MR_IF_NOT_CONSERVATIVE_GC(
+		Word *heap_ptr;
+		Word *solns_heap_ptr;
+		MemoryZone *heap_zone;
+	)
+} MR_Exception_Handler_Frame;
+
+#define MR_EXCEPTION_FRAMEVARS \
+    (((MR_Exception_Handler_Frame *) (MR_curfr - MR_NONDET_FIXED_SIZE)) - 1)
+
+#define MR_create_exception_handler(name,				      \
+		handler_code_model, handler_closure, redoip)		      \
+	do {								      \
+		/*							      \
+		** Create a handler on the stack with the special redoip      \
+		** of `exception_handler_do_fail' (we'll look for this        \
+		** redoip when unwinding the nondet stack in		      \
+		** builtin_throw/1), and save the stuff we will		      \
+		** need if an exception is thrown.			      \
+		*/							      \
+		MR_mkpragmaframe((name), 0,	      		      	      \
+			MR_Exception_Handler_Frame_struct,		      \
+			ENTRY(exception_handler_do_fail));		      \
+		/* record the handler's code model */			      \
+		MR_EXCEPTION_FRAMEVARS->code_model = (handler_code_model);    \
+		/* save the handler's closure */			      \
+		MR_EXCEPTION_FRAMEVARS->handler = (handler_closure);	      \
+		/* save the det stack pointer */			      \
+		MR_EXCEPTION_FRAMEVARS->stack_ptr = MR_sp;		      \
+		MR_IF_NOT_CONSERVATIVE_GC(				      \
+			/* save the heap and solutions heap pointers */	      \
+			MR_EXCEPTION_FRAMEVARS->heap_ptr = MR_hp;	      \
+			MR_EXCEPTION_FRAMEVARS->solns_heap_ptr = MR_sol_hp;   \
+			MR_EXCEPTION_FRAMEVARS->heap_zone = MR_heap_zone;     \
+		)							      \
+		MR_IF_USE_TRAIL(					      \
+			/* save the trail state */			      \
+			MR_mark_ticket_stack(				      \
+				MR_EXCEPTION_FRAMEVARS->ticket_counter);      \
+			MR_store_ticket(MR_EXCEPTION_FRAMEVARS->trail_ptr);   \
+		)							      \
+									      \
+		/*							      \
+		** Now we need to create another frame.			      \
+		** This is so that we can be sure that no-one will hijack     \
+		** the redoip of the special frame we created above.	      \
+		** (The compiler sometimes generates ``hijacking'' code       \
+		** that saves the topmost redoip on the stack, and	      \
+		** temporarily replaces it with a new redoip that will	      \
+		** do some processing on failure before restoring the	      \
+		** original redoip.  This would cause problems when	      \
+		** doing stack unwinding in builtin_throw/1, because	      \
+		** we wouldn't be able to find the special redoip.	      \
+		** But code will only ever hijack the topmost frame,	      \
+		** so we can avoid this by creating a second frame	      \
+		** above the special frame.)				      \
+		*/							      \
+		MR_mktempframe(redoip);				      	      \
+	} while (0)
+
+
+/*---------------------------------------------------------------------------*/
 
 #ifdef	MR_USE_MINIMAL_MODEL
 

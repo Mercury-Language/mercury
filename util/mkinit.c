@@ -82,6 +82,7 @@ static const char header2[] =
 	"\n"
 	"#include <stddef.h>\n"
 	"#include \"mercury_init.h\"\n"
+	"#include \"mercury_grade.h\"\n"
 	"\n"
 	"/*\n"
 	"** Work around a bug in the Solaris 2.X (X<=4) linker;\n"
@@ -161,32 +162,24 @@ static const char mercury_funcs[] =
 	"	MR_io_print_to_cur_stream = ML_io_print_to_cur_stream;\n"
 	"	MR_io_print_to_stream = ML_io_print_to_stream;\n"
 	"#if MR_TRACE_ENABLED\n"
-	"	MR_address_of_trace_getline = MR_trace_getline;\n"
-	"#else\n"
-	"	MR_address_of_trace_getline = NULL;\n"
-	"#endif\n"
-	"#ifdef MR_USE_EXTERNAL_DEBUGGER\n"
-	"  #if MR_TRACE_ENABLED\n"
-	"	MR_address_of_trace_init_external = MR_trace_init_external;\n"
-	"	MR_address_of_trace_final_external = MR_trace_final_external;\n"
-	"  #else\n"
-	"	MR_address_of_trace_init_external = NULL;\n"
-	"	MR_address_of_trace_final_external = NULL;\n"
-	"  #endif\n"
-	"#endif\n"
-	"#ifdef MR_USE_DECLARATIVE_DEBUGGER\n"
-	"  #if MR_TRACE_ENABLED\n"
-	"	MR_address_of_edt_root_node = MR_edt_root_node;\n"
-	"  #else\n"
-	"	MR_address_of_edt_root_node = NULL;\n"
-	"  #endif\n"
-	"#endif\n"
-	"#if MR_TRACE_ENABLED\n"
 	"	MR_trace_func_ptr = MR_trace_real;\n"
 	"	MR_register_module_layout = MR_register_module_layout_real;\n"
+	"	MR_address_of_trace_getline = MR_trace_getline;\n"
+	"	MR_address_of_trace_interrupt_handler =\n"
+	"		MR_trace_interrupt_handler;\n"
+	"  #ifdef MR_USE_EXTERNAL_DEBUGGER\n"
+	"	MR_address_of_trace_init_external = MR_trace_init_external;\n"
+	"	MR_address_of_trace_final_external = MR_trace_final_external;\n"
+	"  #endif\n"
 	"#else\n"
 	"	MR_trace_func_ptr = MR_trace_fake;\n"
 	"	MR_register_module_layout = NULL;\n"
+	"	MR_address_of_trace_getline = NULL;\n"
+	"	MR_address_of_trace_interrupt_handler = NULL;\n"
+	"  #ifdef MR_USE_EXTERNAL_DEBUGGER\n"
+	"	MR_address_of_trace_init_external = NULL;\n"
+	"	MR_address_of_trace_final_external = NULL;\n"
+	"  #endif\n"
 	"#endif\n"
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
 	"	do_init_modules();\n"
@@ -217,6 +210,9 @@ static const char mercury_funcs[] =
 	"	mercury_call_main();\n"
 	"	return mercury_terminate();\n"
 	"}\n"
+	"\n"
+	"/* ensure that everything gets compiled in the same grade */\n"
+	"static const void *const MR_grade = &MR_GRADE_VAR;\n"
 	;
 
 static const char main_func[] =
@@ -563,6 +559,7 @@ process_c_file(const char *filename)
 {
 	char func_name[1000];
 	char *position;
+	int i;
 
 	/* remove the directory name, if any */
 	if ((position = strrchr(filename, '/')) != NULL) {
@@ -571,19 +568,44 @@ process_c_file(const char *filename)
 
 	/*
 	** The func name is "mercury__<modulename>__init",
-	** where <modulename> is the base filename with all
-	** `.'s replaced with `__'.
+	** where <modulename> is the base filename with
+	** all `.'s replaced with `__', and with each
+	** component of the module name mangled according
+	** to the algorithm in llds_out__name_mangle/2
+	** in compiler/llds_out.m. 
+	**
+	** XXX We don't handle the full name mangling algorithm here;
+	** instead we use a simplified version:
+	** - if there are no special charaters, but the
+	**   name starts with `f_', then replace the leading
+	**   `f_' with `f__'
+	** - if there are any special characters, give up
 	*/
+
+	/* check for special characters */
+	for (i = 0; filename[i] != '\0'; i++) {
+		if (filename[i] != '.' && !MR_isalnumunder(filename[i])) {
+			fprintf(stderr, "mkinit: sorry, file names containing "
+				"special characters are not supported.\n");
+			fprintf(stderr, "File name `%s' contains special "
+				"character `%c'.\n", filename, filename[i]);
+			exit(1);
+		}
+	}
 	strcpy(func_name, "mercury");
 	while ((position = strchr(filename, '.')) != NULL) {
 		strcat(func_name, "__");
+		/* replace `f_' with `f__' */
+		if (strncmp(filename, "f_", 2) == 0) {
+			strcat(func_name, "f__");
+			filename += 2;
+		}
 		strncat(func_name, filename, position - filename);
 		filename = position + 1;
 	}
 	/*
 	** The trailing stuff after the last `.' should just be the `c' suffix.
 	*/
-
 	strcat(func_name, "__init");
 
 	output_init_function(func_name);
@@ -700,6 +722,7 @@ output_aditi_load_function(void)
 
 	printf("\n/*\n** Load the Aditi-RL code for the program into the\n");
 	printf("** currently connected database.\n*/\n");
+	printf("#include \"aditi_api_config.h\"\n");
 	printf("#include \"aditi_clnt.h\"\n");
 
 	/*

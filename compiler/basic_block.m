@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -141,58 +141,6 @@ get_fallthrough_from_seq(LabelSeq, MaybeFallThrough) :-
 		MaybeFallThrough = no
 	).
 
-%-----------------------------------------------------------------------------%
-
-	% Given an instruction, find the set of labels to which it can cause
-	% control to transfer. In the case of calls, this includes transfer
-	% via return from the called procedure.
-
-:- pred possible_targets(instr::in, list(label)::out) is det.
-
-possible_targets(comment(_), []).
-possible_targets(livevals(_), []).
-possible_targets(block(_, _, _), _) :-
-	error("block in possible_targets").
-possible_targets(assign(_, _), []).
-possible_targets(call(_, ReturnAddr, _, _), Labels) :-
-	( ReturnAddr = label(Label) ->
-		Labels = [Label]
-	;
-		Labels = []
-	).
-possible_targets(mkframe(_, _), []).
-possible_targets(label(_), []).
-possible_targets(goto(CodeAddr), Targets) :-
-	( CodeAddr = label(Label) ->
-		Targets = [Label]
-	;
-		Targets = []
-	).
-possible_targets(computed_goto(_, Targets), Targets).
-possible_targets(c_code(_), []).
-possible_targets(if_val(_, CodeAddr), Targets) :-
-	( CodeAddr = label(Label) ->
-		Targets = [Label]
-	;
-		Targets = []
-	).
-possible_targets(incr_hp(_, _, _, _), []).
-possible_targets(mark_hp(_), []).
-possible_targets(restore_hp(_), []).
-possible_targets(store_ticket(_), []).
-possible_targets(reset_ticket(_, _), []).
-possible_targets(discard_ticket, []).
-possible_targets(mark_ticket_stack(_), []).
-possible_targets(discard_tickets_to(_), []).
-possible_targets(incr_sp(_, _), []).
-possible_targets(decr_sp(_), []).
-possible_targets(init_sync_term(_, _), []).
-possible_targets(fork(P, C, _), [P, C]).
-possible_targets(join_and_terminate(_), []).
-possible_targets(join_and_continue(_, L), [L]).
-possible_targets(pragma_c(_, _, _, _, _), []).
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 flatten_basic_blocks([], _, []).

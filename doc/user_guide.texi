@@ -326,7 +326,8 @@ The most useful of these are the options that set the size of the stacks.
 The det stack and the nondet stack
 are allocated fixed sizes at program start-up.
 The default size is 512k for the det stack and 128k for the nondet stack,
-but these can be overridden with the @samp{-sd} and @samp{-sn} options,
+but these can be overridden with the
+@samp{--detstack-size} and @samp{--nondetstack-size} options,
 whose arguments are the desired sizes of the det and nondet stacks
 respectively, in units of kilobytes.
 On operating systems that provide the appropriate support,
@@ -339,7 +340,7 @@ and will be dynamically expanded as needed,
 When not using conservative garbage collection,
 the heap has a fixed size like the stacks.
 The default size is 4 Mb, but this can be overridden
-with the @samp{-sh} option.
+with the @samp{--heap-size} option.
 
 @node Using Mmake
 @chapter Using Mmake
@@ -426,6 +427,15 @@ Builds a library whose top-level module is @var{main-module}.
 This will build a static object library, a shared object library
 (for platforms that support it), and the necessary interface files.
 For more information, see @ref{Libraries}.
+
+@item lib@var{main-module}.install
+Builds and installs a library whose top-level module is @var{main-module}.
+This target will build and install a static object library and
+(for platforms that support it) a shared object library,
+for the default grade and also for the additional grades specified
+in the LIBGRADES variable.  It will also build and install the
+necessary interface files.
+For more information, see @ref{Supporting multiple grades and architectures}.
 
 @item @var{main-module}.clean
 Removes the automatically generated files
@@ -561,6 +571,20 @@ For example the library including the files @file{libfoo.a} and
 @item EXTRA_LIB_DIRS
 A list of extra Mercury library directory hierarchies to search when
 looking for extra libraries.
+
+@item INSTALL_PREFIX
+The path to the root of the directory hierarchy where the libraries,
+etc. you are building should be installed.  The default is to install in
+the same location as the Mercury compiler being used to do the install.
+
+@item LIBGRADES
+A list of additional grades which should be built when installing libraries.
+The default is to install the Mercury compiler's default set of grades.
+Note that this may not be the set of grades in which the standard libraries
+were actually installed.
+Note also that any @code{GRADEFLAGS} settings will also be applied when
+the library is built in each of the listed grades, so you may not get what
+you expect if those options are not subsumed by each of the grades listed.
 @end table
 
 Other variables also exist - see
@@ -684,7 +708,8 @@ will look something like this:
 
 @example
 libmypackage: libmypackage.a libmypackage.so \
-		$(mypackage.ints) $(mypackage.opts) mypackage.init
+		$(mypackage.ints) $(mypackage.int3s) \
+		$(mypackage.opts) $(mypackage.trans_opts) mypackage.init
 
 libmypackage.a: $(mypackage.os)
 	rm -f libmypackage.a
@@ -714,15 +739,18 @@ the library, while the @samp{MLLIBS} variable should contain a list of
 
 Note that to use a library, as well as the shared or static object library,
 you also need the interface files.  That's why the
-@samp{libmypackage} target builds @samp{$(mypackage.ints)}.
+@samp{libmypackage} target builds @samp{$(mypackage.ints)} and
+@samp{$(mypackage.int3s)}.
 If the people using the library are going to use intermodule
 optimization, you will also need the intermodule optimization interfaces.
-That's why the @samp{libmypackage} target builds @samp{$(mypackage.opts)}.
-If the people using the library are going to use transitive intermodule
-optimization, you will also need the transitive intermodule optimization
-interfaces.  Currently these are @emph{not} built by default; if
-you want to build them, you will need to include @samp{--trans-intermod-opt}
-in your @samp{MCFLAGS} variable.
+The @samp{libmypackage} target will build @samp{$(mypackage.opts)} if
+@samp{--intermodule-optimization} is specified in your @samp{MCFLAGS}
+variable (this is recommended).
+Similarly, if the people using the library are going to use transitive
+intermodule optimization, you will also need the transitive intermodule
+optimization interfaces (@samp{$(mypackage.trans_opt)}).
+These will be built if @samp{--trans-intermod-opt} is specified in your
+@samp{MCFLAGS} variable.
 
 In addition, with certain compilation grades, programs will need to
 execute some startup code to initialize the library; the
@@ -815,15 +843,41 @@ Mercury implementation does not require that.
 @section Supporting multiple grades and architectures
 
 In order to better support using and installing libraries in multiple
-grades, @samp{mmake} now has some support for alternative library directory
+grades, @samp{mmake} now has support for alternative library directory
 hierarchies.
 These have the same structure as the @file{@var{prefix}/lib/mercury} tree,
 including the different subdirectories for different grades and different
 machine architectures.
 
-Automatically installing a library and all its associated files to such a
-tree is not yet supported, but until it is the user can use the same
-techniques used for building and installing the core Mercury libraries.
+In order to support the installation of a library into such a tree, you
+simply need to specify (e.g. in your @file{Mmakefile}) the path prefix
+and the list of grades to install:
+
+@example
+INSTALL_PREFIX = /my/install/dir
+LIBGRADES = asm_fast asm_fast.gc.tr.debug
+@end example
+
+This specifies that libraries should be installed in
+@file{/my/install/dir/lib/mercury}, in the default grade plus
+@samp{asm_fast} and @samp{asm_fast.gc.tr.debug}.
+If @samp{INSTALL_PREFIX} is not specified, @samp{mmake} will attempt to
+install the library in the same place as the standard Mercury libraries.
+If @samp{LIBGRADES} is not specified, @samp{mmake} will use the Mercury
+compiler's default set of grades, which may or may not correspond to the
+actual set of grades in which the standard Mercury libraries were installed.
+
+To actually install a library @samp{lib@var{foo}}, use the @samp{mmake}
+target @samp{lib@var{foo}.install}.
+This also installs all the needed interface files, and (if intermodule
+optimisation is enabled) the relevant intermodule optimisation files.
+
+One can override the list of grades to install for a given library
+@samp{lib@var{foo}} by setting the @samp{LIBGRADES-@var{foo}} variable,
+or add to it by setting @samp{EXTRA_LIBGRADES-@var{foo}}.
+
+Note that currently it is not possible to set the installation prefix
+on a library-by-library basis.
 
 Once a library is installed in such a hierarchy, using it is easy.
 Suppose the user wishes to use the library @samp{mypackage} (installed
@@ -833,7 +887,8 @@ in the tree rooted at @samp{/some/directory/mypackage}) and the library
 The user need only set the following Mmake variables:
 
 @example
-EXTRA_LIB_DIRS = /some/directory/mypackage /some/directory/myotherlib
+EXTRA_LIB_DIRS = /some/directory/mypackage/lib/mercury \
+		/some/directory/myotherlib/lib/mercury
 EXTRA_LIBRARIES = mypackage myotherlib
 @end example
 
@@ -854,6 +909,8 @@ EXTRA_LIBRARIES-foo = mylib4foo
 @chapter Debugging
 
 @menu
+* Quick overview::
+* GNU Emacs interface::
 * Tracing of Mercury programs::
 * Preparing a program for debugging::
 * Selecting trace events::
@@ -861,6 +918,228 @@ EXTRA_LIBRARIES-foo = mylib4foo
 * Mercury debugger concepts::
 * Debugger commands::
 @end menu
+
+@node Quick overview
+@section Quick overview
+
+This section gives a quick and simple guide to getting
+started with the debugger.  The remainder of this chapter
+contains more detailed documentation.
+
+To use the debugger, you must
+first compile your program with debugging enabled.
+You can do this by using the @samp{--debug} option to @samp{mmc},
+or by including @samp{GRADEFLAGS = --debug} in your @file{Mmakefile}.
+
+@example
+bash$ mmc --debug hello.m
+@end example
+
+Once you've compiled with debugging enabled, you can use the @samp{mdb}
+command to invoke your program under the debugger:
+
+@example
+bash$ mdb ./hello arg1 arg2 ...
+@end example
+
+Any arguments (such as @samp{arg1 arg2 ...} in this example)
+that you pass after the program name will be given as arguments
+to the program.
+
+The debugger will print a start-up message
+and will then show you the first trace event,
+namely the call to @code{main/2}:
+
+@example
+       1:      1  1 CALL pred hello:main/2-0 (det)
+                         hello.m:13
+mdb>
+@end example
+
+By hitting enter at the @samp{mdb>} prompt, you can step through
+the execution of your program to the next trace event:
+
+@example
+       2:      2  2 CALL pred io:write_string/3-0 (det)
+                         io.m:2837 (hello.m:14)
+mdb>
+Hello, world
+       3:      2  2 EXIT pred io:write_string/3-0 (det)
+                         io.m:2837 (hello.m:14)
+mdb>
+
+@end example
+
+For each trace event, the debugger prints out several pieces of
+information.  The three numbers at the start of the display are the
+event number, the call sequence number, and the call depth. 
+(You don't really need to pay too much attention to those.)
+They are followed by the event type (e.g. @samp{CALL} or @samp{EXIT}).
+After that comes the identification of the procedure
+in which the event occurred, consisting of the module-qualified name
+of the predicate or function to which the procedure belongs,
+followed by its arity, mode number and determinism.
+This may sometimes be followed by a "path"
+(@pxref{Tracing of Mercury programs}).
+At the end is the file name and line number of the
+called procedure and (if available) also the file name
+and line number of the call.
+
+The most useful @code{mdb} commands have single-letter abbreviations.
+The @samp{alias} command will show these abbreviations:
+
+@example
+mdb> alias
+?      =>    help
+EMPTY  =>    step
+NUMBER =>    step
+P      =>    print *
+b      =>    break
+c      =>    continue
+d      =>    stack
+f      =>    finish
+g      =>    goto
+h      =>    help
+p      =>    print
+r      =>    retry
+s      =>    step
+v      =>    vars
+@end example
+
+The @samp{P} or @samp{print *} command will display the values
+of any live variables in scope.
+The @samp{f} or @samp{finish} command can be used if you want
+to skip over a call.
+The @samp{b} or @samp{break} command can be used to set break-points.
+The @samp{d} or @samp{stack} command will display the call stack.
+The @samp{quit} command will exit the debugger.
+
+That should be enough to get you started.
+But if you have GNU Emacs installed, you should strongly
+consider using the Emacs interface to @samp{mdb} --- see
+the following section.
+
+For more information about the available commands,
+use the @samp{?} or @samp{help} command, or see @ref{Debugger commands}.
+
+@node GNU Emacs interface
+@section GNU Emacs interface
+
+As well as the command-line debugger, mdb, there is also an Emacs
+interface to this debugger.  Note that the Emacs interface only
+works with GNU Emacs, not with XEmacs.
+
+With the Emacs interface, the debugger will display your source code
+as you trace through it, marking the line that is currently being
+executed, and allowing you to easily set breakpoints on particular
+lines in your source code.  You can have separate windows for
+the debugger prompt, the source code being executed, and for
+the output of the program being executed.
+In addition, most of the mdb commands are accessible via menus.
+
+To start the Emacs interface, you first need to put the following
+text in the file @file{.emacs} in your home directory,
+replacing "/usr/local/mercury-1.0" with the directory
+that your Mercury implementation was installed in.
+
+@example
+(setq load-path (cons (expand-file-name
+  "/usr/local/mercury-1.0/lib/mercury/elisp")
+  load-path))
+(autoload 'mdb "gud" "Invoke the Mercury debugger" t)
+@end example
+
+Build your program with debugging enabled, as described
+in @ref{Quick overview} or @ref{Preparing a program for debugging}.
+Then start up Emacs, e.g. using the command @samp{emacs},
+and type @kbd{M-x mdb @key{RET}}. Emacs will then prompt you for
+the mdb command to invoke
+
+@example
+Run mdb (like this): mdb 
+@end example
+
+@noindent
+and you should type in the name of the program that you want to debug
+and any arguments that you want to pass to it:
+
+@example
+Run mdb (like this): mdb ./hello arg1 arg2 ...
+@end example
+
+Emacs will then create several "buffers": one for the debugger prompt,
+one for the input and output of the program being executed, and one or more
+for the source files.  By default, Emacs will split the display into two
+parts, called "windows", so that two of these buffers will be visible.
+You can use the command @kbd{C-x o} to switch between windows,
+and you can use the command @kbd{C-x 2} to split a window into two
+windows.  You can use the "Buffers" menu to select which buffer is
+displayed in each window.
+
+If you're using X-Windows, then it is a good idea
+to set the Emacs variable @samp{pop-up-frames} to @samp{t}
+before starting mdb, since this will cause each buffer to be
+displayed in a new "frame" (i.e. a new X window).
+You can set this variable interactively using the
+@samp{set-variable} command, i.e.
+@kbd{M-x set-variable @key{RET} pop-up-frames @key{RET} t @key{RET}}.
+Or you can put @samp{(setq pop-up-frames t)} in the @file{.emacs}
+file in your home directory.
+
+For more information on buffers, windows, and frames,
+see the Emacs documentation.
+
+Another useful Emacs variable is @samp{gud-mdb-search-directories}.
+This specifies the list of directories to search for source files.
+You can use a command such as
+
+@example
+M-x set-variable @key{RET}
+gud-mdb-search-directories @key{RET}
+(list "/foo/bar" "../other" "/home/guest") @key{RET}
+@end example
+
+@noindent
+to set it interactively, or you can put a command like
+
+@example
+(setq gud-mdb-search-directories
+  (list "/foo/bar" "../other" "/home/guest"))
+@end example
+
+@noindent
+in your @file{.emacs} file.
+
+At each trace event, the debugger will search for the
+source file corresponding to that event, first in the
+same directory as the program, and then in the directories
+specified by the @samp{gud-mdb-search-directories} variable.
+It will display the source file, with the line number
+corresponding to that trace event marked by
+an arrow (@samp{=>}) at the start of the line.
+
+Several of the debugger features can be accessed by moving
+the cursor to the relevant part of the source code and then
+selecting a command from the menu.
+You can set a break point on a line by moving the cursor to the
+appropriate line in your source code (e.g. with the arrow keys,
+or by clicking the mouse there), and then selecting
+the "Set breakpoint on line" command from the "Breakpoints"
+sub-menu of the "MDB" menu.  You can set a breakpoint on
+a procedure by moving the cursor over the procedure name
+and then selecting the "Set breakpoint on procedure"
+command from the same menu.  And you can display the value of
+a variable by moving the cursor over the variable name
+and then selecting the "Print variable" command from the
+"Data browsing" sub-menu of the "MDB" menu.
+Most of the menu commands also have keyboard short-cuts,
+which are displayed on the menu.
+
+Note that mdb's @samp{context} command should not be used if
+you are using the Emacs interface, otherwise the Emacs
+interface won't be able to parse the file names and
+line numbers that mdb outputs, and so it won't be able to
+highlight the correct location in the source code.
 
 @node Tracing of Mercury programs
 @section Tracing of Mercury programs
@@ -1470,6 +1749,19 @@ directory, so make sure you don't name your source file @file{query.m}.
 Note that dynamic linking may not be supported on some systems;
 if you are using a system for which dynamic linking is not supported,
 you will get an error message when you try to run these commands.
+@sp 1
+You may also need to build your program using shared libraries
+for interactive queries to work.
+With Linux on the Intel x86 architecture, the default is for
+executables to be statically linked, which means that dynamic
+linking won't work, and hence interactive queries won't work either
+(the error message is rather obscure: the dynamic linker complains
+about the symbol @samp{__data_start} being undefined).
+To build with shared libraries, you can use
+@samp{MGNUCFLAGS=--pic-reg} and @samp{MLFLAGS=--shared} in your
+Mmakefile.  See the @file{README.Linux} file in the Mercury
+distribution for more details.
+
 @end table
 
 @node Forward movement commands
@@ -1703,7 +1995,7 @@ if the call is to a procedure that is being execution traced.
 This command will report an error if there is no stack trace
 information available about any ancestor.
 @sp 1
-@item up [@var{num}]
+@item up [-d] [@var{num}]
 Sets the current environment to the stack frame
 of the @var{num}'th level ancestor of the current environment
 (the immediate caller is the first-level ancestor).
@@ -1716,7 +2008,12 @@ or if there is no execution trace information about the requested ancestor,
 or if there is no stack trace information about any of the ancestors
 between the current environment and the requested ancestor.
 @sp 1
-@item down [@var{num}]
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
+@sp 1
+@item down [-d] [@var{num}]
 Sets the current environment to the stack frame
 of the @var{num}'th level descendant of the current environment
 (the procedure called by the current environment
@@ -1727,7 +2024,12 @@ If @var{num} is not specified, the default value is one.
 This command will report an error
 if there is no execution trace information about the requested descendant.
 @sp 1
-@item level [@var{num}]
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
+@sp 1
+@item level [-d] [@var{num}]
 Sets the current environment to the stack frame of the @var{num}'th
 level ancestor of the call to which the current event belongs.
 The zero'th ancestor is the call of the event itself.
@@ -1737,6 +2039,11 @@ if the current environment doesn't have the required number of ancestors,
 or if there is no execution trace information about the requested ancestor,
 or if there is no stack trace information about any of the ancestors
 between the current environment and the requested ancestor.
+@sp 1
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
 @sp 1
 @item current
 Prints the current event.
@@ -1749,6 +2056,16 @@ have since scrolled off the screen.
 @subsection Breakpoint commands
 @sp 1
 @table @code
+@item break [-PS] @var{filename}:@var{linenumber}
+Puts a break point on the specified line of the specified source file,
+if there is an event or a call at that position.
+If the filename is omitted,
+it defaults to the filename from the context of the current event.
+@sp 1
+The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
+specify the action to be taken at the break point.
+@sp 1
+By default, the initial state of the break point is @samp{stop}.
 @item break [-PSaei] @var{proc-spec}
 @c <module name> <predicate name> [<arity> [<mode> [<predfunc>]]]
 Puts a break point on the specified procedure.
@@ -1788,6 +2105,13 @@ Reports an error if there is no break point with that number.
 @sp 1
 @item enable *
 Enables all break points.
+@sp 1
+@item delete @var{num}
+Deletes the break point with the given number.
+Reports an error if there is no break point with that number.
+@sp 1
+@item delete *
+Deletes all break points.
 @sp 1
 @item modules
 Lists all the debuggable modules
@@ -1861,6 +2185,39 @@ which should correspond to the number of lines available on the terminal.
 @sp 1
 @item scroll
 Reports whether user scroll control is enabled and what the window size is.
+@sp 1
+@item context none
+When reporting events or ancestor levels,
+does not print contexts (filename/line number pairs).
+@sp 1
+@item context before
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs)
+before the identification of the event or call to which they refer,
+on the same line.
+With long fully qualified predicate and function names,
+this may make the line wrap around.
+@sp 1
+@item context after
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs)
+after the identification of the event or call to which they refer,
+on the same line.
+With long fully qualified predicate and function names,
+this may make the line wrap around.
+@sp 1
+@item context prevline
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs) on a separate line
+before the identification of the event or call to which they refer.
+@sp 1
+@item context nextline
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs) on a separate line
+after the identification of the event or call to which they refer.
+@sp 1
+@item context
+Reports where contexts are being printed.
 @sp 1
 @item alias @var{name} @var{command} [@var{command-parameter} ...]
 Introduces @var{name} as an alias
@@ -2366,7 +2723,7 @@ e.g. @samp{--no-verbose}.
 Disable all warning messages.
 
 @sp 1
-@item --halt-at-warn.
+@item --halt-at-warn
 This option causes the compiler to treat all
 warnings as if they were errors.  This means that
 if any warning is issued, the compiler will not
@@ -2374,7 +2731,7 @@ generate code --- instead, it will return a
 non-zero exit status.
 
 @sp 1
-@item --halt-at-syntax-error.
+@item --halt-at-syntax-error
 This option causes the compiler to halt immediately
 after syntax checking and not do any semantic checking
 if it finds any syntax errors in the program.
@@ -2413,6 +2770,10 @@ used in the interface.
 @sp 1
 @item --warn-missing-opt-files
 Warn about @samp{.opt} files that cannot be opened.
+
+@sp 1
+@item --warn-missing-trans-opt-files
+Warn about @samp{.trans_opt} files that cannot be opened.
 
 @sp 1
 @item --warn-non-stratification
@@ -2666,15 +3027,6 @@ Do not disable optimizations that can change the trace.
 Enable stack traces through predicates and functions with
 higher-order arguments, even if stack tracing is not
 supported in general.
-
-@item --generate-bytecode
-@c Output a bytecode version of the module
-@c into the @file{@var{module}.bytecode} file,
-@c and a human-readable version of the bytecode
-@c into the @file{@var{module}.bytedebug} file.
-@c The bytecode is for an experimental debugger.
-Output a bytecode form of the module for use
-by an experimental debugger.
 
 @item --generate-bytecode
 @c Output a bytecode version of the module
@@ -3165,11 +3517,6 @@ Don't reclaim heap on backtracking in semidet code.
 Combines the effect of the two options above.
 
 @sp 1
-@item @code{--call-trace-struct}
-(This option is not intended for general use.)
-Pass information to the tracing system in one struct.
-
-@sp 1
 @item --cc @var{compiler-name}
 Specify which C compiler to use.
 
@@ -3454,7 +3801,7 @@ Enable the optimization of ``last'' calls that are followed by
 constructor application.
 
 @sp 1
-@item --optimize-dead-procs.
+@item --optimize-dead-procs
 Enable dead predicate elimination.
 
 @sp 1
@@ -3560,6 +3907,9 @@ These optimizations are transformations that are applied to our
 low-level intermediate code before emitting C code.
 
 @table @code
+@item --no-common-data
+Disable optimization of common data structures.
+
 @item --no-llds-optimize
 Disable the low-level optimization passes.
 
@@ -3574,6 +3924,12 @@ Disable elimination of jumps to jumps.
 @sp 1
 @item --no-optimize-fulljumps
 Disable elimination of jumps to ordinary code.
+
+@sp 1
+@item --checked-nondet-tailcalls
+Convert nondet calls into tail calls whenever possible, even
+when this requires a runtime check. This option tries to
+minimize stack consumption, possibly at the expense of speed.
 
 @sp 1
 @item --no-optimize-labels

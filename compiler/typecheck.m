@@ -978,6 +978,10 @@ typecheck_goal_2(pragma_c_code(A, PredId, C, Args, E, F, G),
 		OrigTypeAssignSet) },
 	typecheck_call_pred_id(PredId, Args),
 	perform_context_reduction(OrigTypeAssignSet).
+typecheck_goal_2(bi_implication(LHS0, RHS0), bi_implication(LHS, RHS)) -->
+	checkpoint("<=>"),
+	typecheck_goal(LHS0, LHS),
+	typecheck_goal(RHS0, RHS).
 
 %-----------------------------------------------------------------------------%
 
@@ -4128,7 +4132,7 @@ report_error_no_clauses(PredId, PredInfo, ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("Error: no clauses for "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
-	io__write_string("\n").
+	io__write_string(".\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -5165,7 +5169,25 @@ report_error_undef_cons(TypeCheckInfo, Functor, Arity) -->
 		"  see the ""Creating higher-order terms"" section of the\n"),
 				prog_out__write_context(Context),
 				io__write_string(
-		"  Mercury Language Reference Manual.\n")
+		"  Mercury Language Reference Manual.\n"),
+				prog_out__write_context(Context),
+				io__write_string(
+		"  If you really are trying to use `call' as an expression\n"),
+				prog_out__write_context(Context),
+				io__write_string(
+		"  and not as an application of the language builtin\n"),
+				prog_out__write_context(Context),
+				io__write_string(
+		"  call/N, make sure that you have the arity correct, and\n"),
+				prog_out__write_context(Context),
+				io__write_string(
+		"  that the functor `call' is actually defined (if it is\n"),
+				prog_out__write_context(Context),
+				io__write_string(
+		"  defined in a separate module, check that the module is\n"),
+				prog_out__write_context(Context),
+				io__write_string(
+		"  correctly imported).\n")
 			;
 			    []
 			)

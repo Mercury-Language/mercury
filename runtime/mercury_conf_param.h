@@ -54,7 +54,6 @@
 **		--gcc-asm-labels
 **		--gc conservative
 **		--gc accurate		[not yet working]
-**		--args compact
 **		--no-type-layout
 **		--unboxed-float
 **		--use-trail
@@ -74,6 +73,11 @@
 **
 ** MR_NO_BACKWARDS_COMPAT
 **	Disable backwards compatibility with C code using obsolete low-level
+**	constructs, e.g. referring to variables and macros without their MR_
+**	prefixes.
+**
+** MR_EXTRA_BACKWARDS_COMPAT
+**	Add extra backwards compatibility with C code using obsolete low-level
 **	constructs, e.g. referring to variables and macros without their MR_
 **	prefixes.
 */
@@ -184,6 +188,13 @@
 ** MR_TRACE_HISTOGRAM
 ** Enable this if you want to count the number of execution tracing events
 ** at various call depths.
+**
+** MR_CTOR_REP_STATS
+** If you want to keep statistics on the number of times the generic unify,
+** index and compare functions are invoked with type constructors of the
+** various kinds of representations, then set this macro to a string giving
+** the name of the file to which the statistics should be appended when the
+** program exits.
 */
 
 /*---------------------------------------------------------------------------*/

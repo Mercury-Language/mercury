@@ -17,39 +17,36 @@ TEXI2HTML=$(PERL) texi2html
 TEXI2HTML_SPLIT=$(PERL) texi2html -split
 
 ifeq ("$(PERL)","")
-	HTML=
-	INSTALL_HTML=
+	HTML=warn_no_html
 else
 	HTML=html
-	INSTALL_HTML=install_html
 endif
 
 ifeq ("$(TEXI2DVI)","")
-	DVI=
-	INSTALL_DVI=
+	DVI=warn_no_dvi
+	PS=warn_no_ps
 else
 	DVI=dvi
-	INSTALL_HTML=install_dvi
+	ifeq ("$(DVIPS)","")
+		PS=warn_no_ps
+	else
+		PS=ps
+	endif
 endif
 
 ifeq ("$(MAKEINFO)","")
-	INFO=
-	INSTALL_INFO=
-	MDB_DOC=
+	INFOPAGES=warn_no_info
+	MDB_DOC=warn_no_mdb_doc
 else
-	INFO=info
-	INSTALL_INFO=install_info
-	MDB_DOC=mdb_doc mdb_command_list mdb_command_test.inp
-	INSTALL_MDB_DOC=install_mdb_doc
+	ifeq ("$(INFO)","")
+		MDB_DOC=warn_no_mdb_doc
+	else
+		MDB_DOC=mdb_doc mdb_command_list mdb_command_test.inp
+	endif
+	INFOPAGES=info
 endif
 
-ifeq ("$(DVIPS)","")
-	PS=
-	INSTALL_PS=
-else
-	PS=ps
-	INSTALL_PS=install_ps
-endif
+
 
 #-----------------------------------------------------------------------------#
 
@@ -61,9 +58,6 @@ endif
 .texi.text:
 	$(MAKEINFO) --no-headers -o $@ $<
 
-.dvi.ps:
-	$(DVIPS) -o $@ $<
- 
 %.html %_toc.html: %.texi
 	$(TEXI2HTML) $<
 
@@ -81,7 +75,7 @@ endif
 	# Currently `mmake all' does not build the PostScript or plain-text
 	# versions of the documentation.  But it might make sense to add them.
 .PHONY: all
-all: $(INFO) $(DVI) $(HTML) manpages $(MDB_DOC) 
+all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC) 
 #all: ps text
 
 #-----------------------------------------------------------------------------#
@@ -90,16 +84,36 @@ all: $(INFO) $(DVI) $(HTML) manpages $(MDB_DOC)
 dvi: user_guide.dvi reference_manual.dvi library.dvi faq.dvi \
 	transition_guide.dvi
 
+.PHONY: warn_no_dvi
+warn_no_dvi: 
+	# Warning: Unable to build .dvi files.
+	# This is probably due to a missing `texi2dvi'
+
 .PHONY: info
 info: mercury.info mercury_ref.info mercury_user_guide.info \
 	mercury_library.info mercury_faq.info mercury_trans_guide.info
+
+.PHONY: warn_no_info
+warn_no_info: 
+	# Warning: Unable to build .info files.
+	# This is probably due to a missing `makeinfo'
 
 .PHONY: html
 html: mercury.html user_guide_toc.html reference_manual_toc.html \
 	library_toc.html faq_toc.html transition_guide_toc.html
 
+.PHONY: warn_no_html
+warn_no_html: 
+	# Warning: Unable to build .html files.
+	# This is probably due to a missing `perl'
+
 .PHONY: ps
 ps: user_guide.ps reference_manual.ps library.ps faq.ps transition_guide.ps
+
+.PHONY: warn_no_ps
+warn_no_ps: 
+	# Warning: Unable to build .ps files.
+	# This is probably due to a missing `dvips' or `text2dvi'
 
 .PHONY: text
 text: user_guide.text reference_manual.text library.text faq.text \
@@ -127,6 +141,11 @@ mercury_library.info: library.texi
 	$(MAKEINFO) $<
 
 #-----------------------------------------------------------------------------#
+
+.PHONY: warn_no_mdb_doc
+warn_no_mdb_doc: 
+	# Warning: Unable to build mdb documentation.
+	# This is probably due to a missing `makeinfo' or `info'
 
 mdb_doc: generate_mdb_doc mercury_user_guide.info mdb_categories
 	./generate_mdb_doc
@@ -204,8 +223,8 @@ doc.ps.tar.gz: ps
 	# versions of the documentation.  If they are added they should
 	# be installed here.
 .PHONY: install
-install: $(INSTALL_INFO) $(INSTALL_HTML) $(INSTALL_DVI) install_manpages \
-	$(INSTALL_MDB_DOC) 
+install: install_info install_html install_dvi install_manpages \
+	install_mdb_doc
 	# install_text install_ps
 
 .PHONY: install_dirs
@@ -221,36 +240,41 @@ install_dirs:
 	-[ -d $(INSTALL_WEBPAGE_DIR) ] || mkdir -p $(INSTALL_WEBPAGE_DIR)
 
 .PHONY: install_info
-install_info: info install_dirs
+install_info: $(INFOPAGES) install_dirs
 	-cp *.info* $(INSTALL_INFO_DIR)
 	# Update the .../info/dir file.
 	-if [ -x "$(INSTALL_INFO)" ]; then				\
 		$(INSTALL_INFO) $(INSTALL_INFO_DIR)/mercury.info;	\
 	fi
 
+.PHONY: warn_no_install_info
+warn_no_install_info:
+	# Warning: Unable to install .info files.
+	# This is probably due to a missing `install-info'
+
 .PHONY: install_html
-install_html: html install_dirs
-	cp *.html $(INSTALL_HTML_DIR)
+install_html: $(HTML) install_dirs
+	-cp *.html $(INSTALL_HTML_DIR)
 
 .PHONY: install_dvi
-install_dvi: dvi install_dirs
-	cp *.dvi $(INSTALL_DVI_DIR)
+install_dvi: $(DVI) install_dirs
+	-cp *.dvi $(INSTALL_DVI_DIR)
 
 .PHONY: install_text
 install_text: text install_dirs
 	cp *.txt $(INSTALL_TEXT_DIR)
 
 .PHONY: install_ps
-install_ps: ps install_dirs
-	cp *.ps $(INSTALL_PS_DIR)
+install_ps: $(PS) install_dirs
+	-cp *.ps $(INSTALL_PS_DIR)
 
 .PHONY: install_manpages
 install_manpages: manpages install_dirs
 	cp *.1 $(INSTALL_MAN_DIR)/man1
 
 .PHONY: install_mdb_doc
-install_mdb_doc: mdb_doc install_dirs
-	cp mdb_doc $(INSTALL_MDB_DOC_DIR)
+install_mdb_doc: $(MDB_DOC) install_dirs
+	-cp mdb_doc $(INSTALL_MDB_DOC_DIR)
 
 # The uninstall rule here only removes the info files; the others
 # are removed by the top-level uninstall rule.
@@ -274,7 +298,7 @@ install_webpage: library-chapters.texi split_html ps  install_dirs
 
 #-----------------------------------------------------------------------------#
 
-clean: distclean clean_texi
+clean_local: distclean clean_texi
 
 .PHONY: distclean
 distclean:
@@ -284,7 +308,7 @@ distclean:
 clean_texi:
 	rm -f library-menu.texi library-chapters.texi
 
-realclean: realclean_texi realclean_manpages
+realclean_local: realclean_texi realclean_manpages
 
 .PHONY: realclean_texi
 realclean_texi:

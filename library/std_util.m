@@ -21,19 +21,13 @@
 
 :- interface.
 
-:- import_module list, set.
+:- import_module list, set, bool.
 
 %-----------------------------------------------------------------------------%
 
 % The universal type `univ'.
 % An object of type `univ' can hold the type and value of an object of any
 % other type.
-%
-% Note that the current NU-Prolog/SICStus Prolog implementation of
-% univ_to_type is buggy in that it always succeeds, even if the types didn't
-% match, so until this gets implemented correctly, don't use
-% univ_to_type unless you are sure that the types will definitely match,
-% or you don't care about debugging with Prolog.
 
 :- type univ.
 
@@ -86,10 +80,7 @@
 
 	% univ_value(Univ):
 	%	returns the value of the object stored in Univ.
-	%
-	% Warning: support for existential types is still experimental.
-	%
-:- some([T], func univ_value(univ) = T).
+:- some [T] func univ_value(univ) = T.
 
 %-----------------------------------------------------------------------------%
 
@@ -190,6 +181,37 @@
 :- mode unsorted_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
 		di, uo) is cc_multi.
 
+	% This is a generalization of unsorted_aggregate which allows the
+	% iteration to stop before all solutions have been found.
+	% Declaratively, the specification is as follows:
+	%
+	%	do_while(Generator, Filter) -->
+	%		{ unsorted_solutions(Generator, Solutions) },
+	%		do_while_2(Solutions, Filter).
+	%
+	%	do_while_2([], _) --> [].
+	%	do_while_2([X|Xs], Filter) -->
+	%		Filter(X, More),
+	%		(if { More = yes } then
+	%			do_while_2(Xs, Filter)
+	%		else
+	%			{ true }
+	%		).
+	%
+	% Operationally, however, do_while/4 will call the Filter
+	% predicate for each solution as it is obtained, rather than
+	% first building a list of all the solutions.
+	%  
+:- pred do_while(pred(T), pred(T, bool, T2, T2), T2, T2).
+:- mode do_while(pred(out) is multi, pred(in, out, in, out) is det, in, out)
+	is cc_multi.
+:- mode do_while(pred(out) is nondet, pred(in, out, in, out) is det, in, out)
+	is cc_multi.
+:- mode do_while(pred(out) is multi, pred(in, out, di, uo) is det, di, uo)
+	is cc_multi.
+:- mode do_while(pred(out) is nondet, pred(in, out, di, uo) is det, di, uo)
+	is cc_multi.
+
 %-----------------------------------------------------------------------------%
 
 	% maybe_pred(Pred, X, Y) takes a closure Pred which transforms an
@@ -248,10 +270,7 @@
 	% inverse to the function type_of/1.  It constrains the type
 	% of the first argument to be the type represented by the
 	% second argument.
-	%
-	% Warning: support for existential types is still experimental.
-	%
-:- some([T], pred has_type(T::unused, type_info::in) is det).
+:- some [T] pred has_type(T::unused, type_info::in) is det.
 
 	% type_name(Type) returns the name of the specified type
 	% (e.g. type_name(type_of([2,3])) = "list:list(int)").
@@ -490,6 +509,13 @@ maybe_pred(Pred, X, Y) :-
 
 %-----------------------------------------------------------------------------%
 
+/*
+** This section defines builtin_aggregate/4 which takes a closure of type
+** pred(T) in which the remaining argument is output, and backtracks over
+** solutions for this, using the second argument to aggregate them however the
+** user wishes.  This is basically a generalization of solutions/2.
+*/
+ 
 :- pred builtin_aggregate(pred(T), pred(T, U, U), U, U).
 :- mode builtin_aggregate(pred(out) is multi, pred(in, in, out) is det,
 		in, out) is det. /* really cc_multi */
@@ -503,98 +529,6 @@ maybe_pred(Pred, X, Y) :-
 		in, out) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
 		di, uo) is det. /* really cc_multi */
-
-:- external(builtin_aggregate/4).
-	% builtin_aggregate is implemented in c_code.
-
-:- pragma c_code("
- 
-/*
-** This module defines builtin_aggregate/4 which takes a closure of type
-** pred(T) in which the remaining argument is output, and backtracks over
-** solutions for this, using the second argument to aggregate them however the
-** user wishes.  This is basically a generalization of solutions/2.
-*/
- 
-#include ""mercury_imp.h""
-#include ""mercury_deep_copy.h""
-
-Declare_entry(mercury__do_call_closure);
-
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_0);
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_1);
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_2);
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_3);
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_4);
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_5);
-Declare_label(mercury__std_util__builtin_aggregate_4_0_i1);
-Declare_label(mercury__std_util__builtin_aggregate_4_0_i2);
-Declare_label(mercury__std_util__builtin_aggregate_4_0_i3);
-
-MR_MAKE_PROC_LAYOUT(mercury__std_util__builtin_aggregate_4_0,
-	MR_DETISM_MULTI, MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, ""std_util"", ""builtin_aggregate"", 4, 0);
-
-MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 1);
-MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 2);
-MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 3);
-
-BEGIN_MODULE(builtin_aggregate_module)
-	init_entry_sl(mercury__std_util__builtin_aggregate_4_0);
-	MR_INIT_PROC_LAYOUT_ADDR(mercury__std_util__builtin_aggregate_4_0);
-	init_entry(mercury__std_util__builtin_aggregate_4_1);
-	init_entry(mercury__std_util__builtin_aggregate_4_2);
-	init_entry(mercury__std_util__builtin_aggregate_4_3);
-	init_entry(mercury__std_util__builtin_aggregate_4_4);
-	init_entry(mercury__std_util__builtin_aggregate_4_5);
-	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i1);
-	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i2);
-	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i3);
-BEGIN_CODE
-
-/*
-** :- pred builtin_aggregate(pred(T), pred(T,T2,T2), T2, T2).
-** :- mode builtin_aggregate(pred([out/muo]) is [multi/nondet],
-**		pred([in/mdi],[in/di],[out/uo]) is det, in, out) is cc_multi.
-**
-** Polymorphism will add two extra input parameters, type_infos for T and T2,
-** which we don't use at the moment (later they could be used to find
-** the address of the respective deep copy routines).
-**
-** The type_info structures will be in r1 and r2, the closures will be in
-** r3 and r4, and the 'initial value' will be in r5.
-*/
- 
-#ifdef PROFILE_CALLS
-  #define fallthru(target, caller) { tailcall((target), (caller)); }
-#else
-  #define fallthru(target, caller)
-#endif
-
-Define_entry(mercury__std_util__builtin_aggregate_4_1);
-fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
-			LABEL(mercury__std_util__builtin_aggregate_4_1))
-Define_entry(mercury__std_util__builtin_aggregate_4_2);
-fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
-			LABEL(mercury__std_util__builtin_aggregate_4_2))
-Define_entry(mercury__std_util__builtin_aggregate_4_3);
-fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
-			LABEL(mercury__std_util__builtin_aggregate_4_3))
-Define_entry(mercury__std_util__builtin_aggregate_4_4);
-fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
-			LABEL(mercury__std_util__builtin_aggregate_4_4))
-Define_entry(mercury__std_util__builtin_aggregate_4_5);
-fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
-			LABEL(mercury__std_util__builtin_aggregate_4_5))
-Define_entry(mercury__std_util__builtin_aggregate_4_0);
-
-#ifndef CONSERVATIVE_GC
-
-#ifndef USE_TYPE_LAYOUT
-	fatal_error(""builtin_aggregate/4 not supported with this grade ""
-		    ""on this system.\\n""
-		""Try using a `.gc' (conservative gc) grade.\\n"");
-#endif
 
 /*
 ** In order to implement any sort of code that requires terms to survive
@@ -633,305 +567,286 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 ** are 'swapped.'  This will work out fine, because the real heap isn't needed
 ** while the collector pred is executing, and by the time the nested do_ is
 ** completed, the 'real' heap pointer will have been reset.
+**
+** If the collector predicate throws an exception while they are swapped,
+** then the code for builtin_throw/1 will unswap the heaps.
+** So we don't need to create our own exception handlers to here to
+** cover that case.
+**
+** If we're using conservative GC, then all of the heap-swapping
+** and copying operations are no-ops, so we get a "zero-copy" solution.
 */
 
-/* Define a macro to swap the heap and solutions heap */
-#define swap_heap_and_solutions_heap()				\
-    do {							\
-	Word temp;						\
-	temp = (Word) MR_ENGINE(heap_zone);			\
-	MR_ENGINE(heap_zone) = MR_ENGINE(solutions_heap_zone);	\
-	LVALUE_CAST(Word, MR_ENGINE(solutions_heap_zone)) = temp;	\
-	temp = (Word) MR_hp;					\
-	MR_hp = MR_sol_hp;				\
-	LVALUE_CAST(Word, MR_sol_hp) = temp;		\
-    } while (0)
- 
-/*
-** Define some framevars we will be using - we need to keep the
-** value of hp and the solutions hp (solhp) before we entered 
-** solutions, so we can reset the hp after each solution, and
-** reset the solhp after all solutions have been found.
-** To do a deep copy, we need the type_info of the type of a solution,
-** so we save the type_info in type_info_fv.
-** Finally, we store the collection of solutions so far in sofar_fv.
-*/
+% Note that the code for builtin_aggregate is very similar to the code
+% for do_while (below).
 
-#ifdef MR_USE_TRAIL
-  #define num_framevars		7
-#else
-  #define num_framevars		6
-#endif
+:- pragma promise_pure(builtin_aggregate/4).
+builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
+	% Save some of the Mercury virtual machine registers
+	impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
 
-#define saved_hp_fv		(MR_framevar(1))
-#define saved_solhp_fv		(MR_framevar(2))
-#define collector_pred_fv	(MR_framevar(3))
-#define sofar_fv		(MR_framevar(4))
-#define element_type_info_fv	(MR_framevar(5))
-#define collection_type_info_fv	(MR_framevar(6))
-#ifdef MR_USE_TRAIL
-  #define saved_trail_ticket_fv	(MR_framevar(7))
-#endif
+	% Initialize the accumulator
+	% /* Mutvar := Accumulator0 */
+	impure new_mutvar(Accumulator0, Mutvar),
 
-	/*
-	** Create a nondet frame and set the failure continuation.
-	** The frame slots are used to hold heap and trail states and the
-	** collector pred and the collection, and type infos for copying
-	** each solution, and for copying the collection back to the heap
-	** when we're done.
-	*/
-	mkframe(""builtin_aggregate"", num_framevars,
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i3));
- 
+	(
+		% Get a solution
+		GeneratorPred(Answer0),
+
+		% Check that the generator didn't leave any
+		% delayed goals outstanding
+		impure check_for_floundering(TrailPtr),
+
+		% Update the accumulator
+		% /* MutVar := CollectorPred(MutVar) */
+		impure swap_heap_and_solutions_heap,
+		impure partial_deep_copy(HeapPtr, Answer0, Answer),
+		impure get_mutvar(Mutvar, Acc0),
+		CollectorPred(Answer, Acc0, Acc1),
+		impure set_mutvar(Mutvar, Acc1),
+		impure swap_heap_and_solutions_heap,
+
+		% Force backtracking, so that we get the next solution.
+		% This will automatically reset the heap and trail.
+		fail
+	;
+		% There are no more solutions.
+		% So now we just need to copy the final value
+		% of the accumulator from the solutions heap
+		% back onto the ordinary heap, and then we can
+		% reset the solutions heap pointer.
+		% /* Accumulator := MutVar */
+		impure get_mutvar(Mutvar, Accumulator1),
+		impure partial_deep_copy(SolutionsHeapPtr, Accumulator1,
+			Accumulator),
+		impure reset_solutions_heap(SolutionsHeapPtr)
+	).
+
+% The code for do_while/4 is essentially the same as the code for
+% builtin_aggregate (above).  See the detailed comments above.
+%
+% XXX It would be nice to avoid the code duplication here,
+% but it is a bit tricky -- we can't just use a lambda expression,
+% because we'd need to specify the mode, but we want it to work
+% for multiple modes.  An alternative would be to use a typeclass,
+% but typeclasses still don't work in `jump' or `fast' grades.
+
+:- pragma promise_pure(do_while/4).
+do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
+	impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
+	impure new_mutvar(Accumulator0, Mutvar),
+	(
+		GeneratorPred(Answer0),
+
+		impure check_for_floundering(TrailPtr),
+
+		impure swap_heap_and_solutions_heap,
+		impure partial_deep_copy(HeapPtr, Answer0, Answer),
+		impure get_mutvar(Mutvar, Acc0),
+		CollectorPred(Answer, More, Acc0, Acc1),
+		impure set_mutvar(Mutvar, Acc1),
+		impure swap_heap_and_solutions_heap,
+
+		% if More = yes, then backtrack for the next solution.
+		% if More = no, then we're done.
+		More = no
+	;
+		true
+	),
+	impure get_mutvar(Mutvar, Accumulator1),
+	impure partial_deep_copy(SolutionsHeapPtr, Accumulator1, Accumulator),
+	impure reset_solutions_heap(SolutionsHeapPtr).
+
+:- type heap_ptr ---> heap_ptr(c_pointer).
+:- type trail_ptr ---> trail_ptr(c_pointer).
+
+%
+% Save the state of the Mercury heap and trail registers,
+% for later use in partial_deep_copy/3 and reset_solutions_heap/1.
+%
+:- impure pred get_registers(heap_ptr::out, heap_ptr::out, trail_ptr::out)
+	is det.
+:- pragma c_code(get_registers(HeapPtr::out, SolutionsHeapPtr::out,
+		TrailPtr::out), will_not_call_mercury,
+"
 	/* save heap states */
- 	saved_solhp_fv = (Word) MR_sol_hp; 
- 	mark_hp(saved_hp_fv);
-
-#ifdef MR_USE_TRAIL
-	/* save trail state */
-	MR_store_ticket(saved_trail_ticket_fv);
+#ifndef CONSERVATIVE_GC
+ 	HeapPtr = MR_hp; 
+ 	SolutionsHeapPtr = MR_sol_hp; 
+#else
+	HeapPtr = SolutionsHeapPtr = 0;
 #endif
 
-	/* save arguments into framevars */
-	collector_pred_fv = r4;
-	sofar_fv = r5;
-	element_type_info_fv = r1;
-	collection_type_info_fv = r2;
+	/* save trail state */
+#ifdef MR_USE_TRAIL
+	MR_store_ticket(TrailPtr);
+#else
+	TrailPtr = 0;
+#endif
+").
 
-	/* we do not (yet) need the type_info we are passed in r1 */
-	/* call the higher-order pred closure that we were passed in r3 */
-	r1 = r3;
-	r2 = (Word) 0;	/* the higher-order call has 0 extra input arguments */
-	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
-
-	call(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-{
-	Word copied_solution, solution;
-
-	/* we found a solution (in r1) */
-	solution = r1;
-
+:- impure pred check_for_floundering(trail_ptr::in) is det.
+:- pragma c_code(check_for_floundering(TrailPtr::in), [will_not_call_mercury],
+"
 #ifdef MR_USE_TRAIL
 	/* check for outstanding delayed goals (``floundering'') */
-	MR_reset_ticket(saved_trail_ticket_fv, MR_solve);
+	MR_reset_ticket(TrailPtr, MR_solve);
 #endif
+").
 
-	/* swap heaps so we build on solution heap */
-	swap_heap_and_solutions_heap();
- 
-	/*
-	** deep copy solution to the solutions heap, up to the saved_hp.
-	** Note that we need to save/restore the hp register, if it
-	** is transient, before/after calling deep_copy().
-	*/
-	save_transient_registers();
-	copied_solution = deep_copy(&solution, (Word *) element_type_info_fv,
-			(Word *) saved_hp_fv,
-			MR_ENGINE(solutions_heap_zone)->top);
-	restore_transient_registers();
+%
+% Swap the heap with the solutions heap
+%
+:- impure pred swap_heap_and_solutions_heap is det.
+:- pragma c_code(swap_heap_and_solutions_heap,
+	will_not_call_mercury,
+"
+#ifndef CONSERVATIVE_GC
+    {
+	MemoryZone *temp_zone;
+	Word *temp_hp;
 
-	/* call the collector closure */
-	r1 = collector_pred_fv;
-	r2 = (Word) 2;	/* higher-order call has 2 extra input args */
-	r3 = (Word) 1;	/* higher-order call has 1 extra output arg */
-	r4 = copied_solution;
-	r5 = sofar_fv;
-	call(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-}
-Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-	sofar_fv = r1;
- 
-	/* swap heaps back the way they were */
-	swap_heap_and_solutions_heap();
- 
-	/* look for the next solution */
-	redo();
-	
-Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-{
-	Word copied_collection;
-
-	/* there were no more solutions */
-
-	/* reset heap */
-	restore_hp(saved_hp_fv);
-
-#ifdef MR_USE_TRAIL
-	/*
-	** Reset the trail.  This is necessary to undo any updates performed
-	** by the called goal before it failed, and to avoid leaking memory
-	** on the trail.
-	*/
-	MR_reset_ticket(saved_trail_ticket_fv, MR_undo);
+	temp_zone = MR_ENGINE(heap_zone);
+	MR_ENGINE(heap_zone) = MR_ENGINE(solutions_heap_zone);
+	MR_ENGINE(solutions_heap_zone) = temp_zone;
+	temp_hp = MR_hp;
+	MR_hp = MR_sol_hp;
+	MR_sol_hp = temp_hp;
+    }
 #endif
+").
 
-	/*
-	** deep_copy() the result to the mercury heap, copying
-	** everything between where we started on the solutions
-	** heap, and the top of the solutions heap.
-	** Note that we need to save/restore the hp register, if it
-	** is transient, before/after calling deep_copy().
-	**/
-	save_transient_registers();
-	copied_collection = deep_copy(&sofar_fv,
-		    (Word *) collection_type_info_fv,
-		    (Word *) saved_solhp_fv,
-		    MR_ENGINE(solutions_heap_zone)->top);
-	restore_transient_registers();
+%
+% partial_deep_copy(SolutionsHeapPtr, OldVal, NewVal):
+%	Make a copy of all of the parts of OldVar that occur between
+%	SolutionsHeapPtr and the top of the current solutions heap.
+%
+:- impure pred partial_deep_copy(heap_ptr, T, T) is det.
+:-        mode partial_deep_copy(in, di, uo) is det.
+:-        mode partial_deep_copy(in, mdi, muo) is det.
+:-        mode partial_deep_copy(in, in, out) is det.
 
-	r1 = copied_collection;
+:- pragma c_header_code("
 
- 	/* reset solutions heap to where it was before call to solutions  */
- 	MR_sol_hp = (Word *) saved_solhp_fv;
- 	
-	/* discard the frame we made */
-	succeed_discard();
-}
+#include ""mercury_deep_copy.h""
 
-#undef num_framevars
-#undef saved_hp_fv
-#undef saved_solhp_fv
-#undef collector_pred_fv
-#undef sofar_fv
-#undef element_type_info_fv
-#undef collection_type_info_fv
-#undef saved_trail_ticket_fv
-
+#ifdef CONSERVATIVE_GC
+  /* for conservative GC, shallow copies suffice */
+  #define MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr,			\\
+  		OldVar, NewVal, TypeInfo_for_T)				\\
+  	do {								\\
+		NewVal = OldVal;					\\
+	} while (0)
 #else
-
-/*
-** The following algorithm is very straight-forward implementation
-** but only works with `--gc conservative'.
-** Since with conservative gc, we don't reclaim any memory on failure,
-** but instead leave it to the garbage collector, there is no need to
-** make deep copies of the solutions.  This is a `copy-zero' implementation ;-)
-*/
-
-#ifdef MR_USE_TRAIL
-  #define num_framevars		3
-#else
-  #define num_framevars		2
+  /*
+  ** Note that we need to save/restore the MR_hp register, if it
+  ** is transient, before/after calling deep_copy().
+  */
+  #define MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr,			\\
+  		OldVar, NewVal, TypeInfo_for_T)				\\
+  	do {								\\
+		save_transient_hp();					\\
+		NewVal = deep_copy(&OldVal, TypeInfo_for_T,		\\
+				SolutionsHeapPtr,			\\
+				MR_ENGINE(solutions_heap_zone)->top);	\\
+		restore_transient_hp();					\\
+	} while (0)
 #endif
-
-#define collector_pred_fv	(MR_framevar(1))
-#define sofar_fv		(MR_framevar(2))
-#ifdef MR_USE_TRAIL
-  #define saved_trail_ticket_fv	(MR_framevar(3))
-#endif
-
-	/* create a nondet stack frame with two slots, to hold the collector
-	   pred and the collection, and set the failure continuation */
-	mkframe(""builtin_aggregate"", num_framevars,
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i3));
-
-#ifdef MR_USE_TRAIL
-	/* save trail state */
-	MR_store_ticket(saved_trail_ticket_fv);
-#endif
-
-	/* save our arguments in framevars */
-	collector_pred_fv = r4;
-	sofar_fv = r5;
- 
-	/* we do not (yet) need the type_info we are passed in r1 */
-	/* call the higher-order pred closure that we were passed in r3 */
-	r1 = r3;
-	r2 = (Word) 0;	/* the higher-order call has 0 extra input arguments */
-	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
-	call(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-	/* we found a solution (in r1) */
-
-#ifdef MR_USE_TRAIL
-	/* check for outstanding delayed goals (``floundering'') */
-	MR_reset_ticket(saved_trail_ticket_fv, MR_solve);
-#endif
-
-	/* setup for calling the collector closure */
-	r4 = r1;	/* put solution to be collected where we need it */
-	r1 = collector_pred_fv;
-	r2 = (Word) 2;	/* the higher-order call has 2 extra input arguments */
-	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
-	r5 = sofar_fv;
-
-	call(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-	/*
-	** we inserted the solution into the collection,
-	** and we've now got a new collection (in r1)
-	*/
-	sofar_fv = r1;
-
-	/* look for the next solution */
- 	redo();
- 
-Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-	/* no more solutions */
-
-#ifdef MR_USE_TRAIL
-	/*
-	** Reset the trail.  This is necessary to undo any updates performed
-	** by the called goal before it failed, and to avoid leaking memory
-	** on the trail.
-	*/
-	MR_reset_ticket(saved_trail_ticket_fv, MR_undo);
-#endif
-
-	/* return the collection and discard the frame we made */
-	r1 = sofar_fv;
- 	succeed_discard();
- 
-#undef num_framevars
-#undef collector_pred_fv
-#undef sofar_fv
-#undef saved_trail_ticket_fv
-
-#endif
-
-END_MODULE
-
-#undef swap_heap_and_solutions_heap
-
-/* Ensure that the initialization code for the above module gets run. */
-/*
-INIT sys_init_builtin_aggregate_module
-*/
-extern ModuleFunc builtin_aggregate_module;
-/* the extra declaration is to suppress a gcc -Wmissing-decl warning */
-void sys_init_builtin_aggregate_module(void);
-void sys_init_builtin_aggregate_module(void) {
-	builtin_aggregate_module();
-}
 
 ").
+
+:- pragma c_code(partial_deep_copy(SolutionsHeapPtr::in,
+			OldVal::in, NewVal::out), will_not_call_mercury,
+"
+	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
+").
+:- pragma c_code(partial_deep_copy(SolutionsHeapPtr::in,
+			OldVal::mdi, NewVal::muo), will_not_call_mercury,
+"
+	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
+").
+:- pragma c_code(partial_deep_copy(SolutionsHeapPtr::in,
+			OldVal::di, NewVal::uo), will_not_call_mercury,
+"
+	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
+").
+
+%
+% reset_solutions_heap(SolutionsHeapPtr):
+%	Reset the solutions heap pointer to the specified value,
+%	thus deallocating everything allocated on the solutions
+%	heap since that value was obtained via get_registers/3.
+%
+:- impure pred reset_solutions_heap(heap_ptr::in) is det.
+:- pragma c_code(reset_solutions_heap(SolutionsHeapPtr::in),
+	will_not_call_mercury,
+"
+#ifndef CONSERVATIVE_GC
+	MR_sol_hp = SolutionsHeapPtr;
+#endif
+").
+
+%-----------------------------------------------------------------------------%
+
+%%% :- module mutvar.
+%%% :- interface.
+
+%  A non-backtrackably destructively modifiable reference type
+:- type mutvar(T).
+
+%  Create a new mutvar given a term for it to reference.
+:- impure pred new_mutvar(T, mutvar(T)).
+:-        mode new_mutvar(in, out) is det.
+:-        mode new_mutvar(di, uo) is det.
+
+%  Get the value currently referred to by a reference.
+:- impure pred get_mutvar(mutvar(T), T) is det.
+:-        mode get_mutvar(in, uo) is det.	% XXX this is a work-around
+/*
+XXX `ui' modes don't work yet
+:-        mode get_mutvar(in, uo) is det.
+:-        mode get_mutvar(ui, uo) is det.	% unsafe, but we use it safely
+*/
+
+%  destructively modify a reference to refer to a new object.
+:- impure pred set_mutvar(mutvar(T), T) is det.
+:-        mode set_mutvar(in, in) is det.
+/*
+XXX `ui' modes don't work yet
+:-        pred set_mutvar(ui, di) is det.
+*/
+
+%%% :- implementation.
+
+%  This type is implemented in C.
+:- type mutvar(T) ---> mutvar(c_pointer).
+
+:- pragma inline(new_mutvar/2).
+:- pragma c_code(new_mutvar(X::in, Ref::out), will_not_call_mercury,
+"
+	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
+	*(Word *) Ref = X;
+").
+:- pragma c_code(new_mutvar(X::di, Ref::uo), will_not_call_mercury,
+"
+	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
+	*(Word *) Ref = X;
+").
+
+:- pragma inline(get_mutvar/2).
+:- pragma c_code(get_mutvar(Ref::in, X::uo), will_not_call_mercury,
+"
+	X = *(Word *) Ref;
+").
+
+:- pragma inline(set_mutvar/2).
+:- pragma c_code(set_mutvar(Ref::in, X::in), will_not_call_mercury, "
+	*(Word *) Ref = X;
+").
+
+%%% end_module mutvar.
+
+%-----------------------------------------------------------------------------%
 
 solutions(Pred, List) :-
 	builtin_solutions(Pred, UnsortedList),
@@ -1006,8 +921,8 @@ det_univ_to_type(Univ, X) :-
 	).
 
 :- pragma c_code(univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
-	TypeInfo_for_T = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
-	Value = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
+	TypeInfo_for_T = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
+	Value = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
 ").
 
 :- pragma c_header_code("
@@ -1034,20 +949,18 @@ det_univ_to_type(Univ, X) :-
 	% of the type_info for this type, and then store the input argument
 	% in the second field.
 :- pragma c_code(type_to_univ(Type::di, Univ::uo), will_not_call_mercury, "
-	incr_hp(Univ, 2);
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = (Word) TypeInfo_for_T;
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = (Word) Type;
+	incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO)
+		= (Word) TypeInfo_for_T;
+	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA)
+		= (Word) Type;
 ").
 :- pragma c_code(type_to_univ(Type::in, Univ::out), will_not_call_mercury, "
-	incr_hp(Univ, 2);
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = (Word) TypeInfo_for_T;
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = (Word) Type;
-").
-:- pragma c_code(type_to_univ(Type::in(any), Univ::out(any)),
-		will_not_call_mercury, "
-	incr_hp(Univ, 2);
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = (Word) TypeInfo_for_T;
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = (Word) Type;
+	incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO)
+		= (Word) TypeInfo_for_T;
+	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA)
+		= (Word) Type;
 ").
 
 	% Backward mode - convert from univ to type.
@@ -1058,12 +971,12 @@ det_univ_to_type(Univ, X) :-
 	Word	univ_type_info;
 	int	comp;
 
-	univ_type_info = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
+	univ_type_info = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
 	save_transient_registers();
 	comp = MR_compare_type_info(univ_type_info, TypeInfo_for_T);
 	restore_transient_registers();
-	if (comp == COMPARE_EQUAL) {
-		Type = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
+	if (comp == MR_COMPARE_EQUAL) {
+		Type = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
 		SUCCESS_INDICATOR = TRUE;
 	} else {
 		SUCCESS_INDICATOR = FALSE;
@@ -1071,7 +984,13 @@ det_univ_to_type(Univ, X) :-
 }").
 
 :- pragma c_code(univ_type(Univ::in) = (TypeInfo::out), will_not_call_mercury, "
-	TypeInfo = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
+	TypeInfo = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
+").
+:- pragma c_code(type_to_univ(Type::in(any), Univ::out(any)),
+		will_not_call_mercury, "
+	incr_hp(Univ, 2);
+	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = (Word) TypeInfo_for_T;
+	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = (Word) Type;
 ").
 
 :- pragma c_code("
@@ -1093,46 +1012,38 @@ Declare_entry(mercury____Init___std_util__univ_0_0);
 #endif
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_std_util__type_ctor_functors_univ_0_struct
-	mercury_data_std_util__type_ctor_functors_univ_0;
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_std_util__type_ctor_layout_univ_0_struct
-	mercury_data_std_util__type_ctor_layout_univ_0;
-
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data_std_util__type_ctor_info_univ_0 = {
-	(Integer) 0,
-	ENTRY(mercury____Unify___std_util__univ_0_0),
-	ENTRY(mercury____Index___std_util__univ_0_0),
-	ENTRY(mercury____Compare___std_util__univ_0_0),
-#ifdef MR_USE_SOLVE_EQUAL
-	ENTRY(mercury____SolveEqual___std_util__univ_0_0),
-#endif
-#ifdef MR_USE_INIT
-	ENTRY(mercury____Init___std_util__univ_0_0),
-#endif
-	MR_TYPECTOR_REP_UNIV,
-	(Word *) &mercury_data_std_util__type_ctor_functors_univ_0,
-	(Word *) &mercury_data_std_util__type_ctor_layout_univ_0,
-	string_const(""std_util"", 8),
-	string_const(""univ"", 4)
+const struct mercury_data_std_util__type_ctor_functors_univ_0_struct {
+	Integer f1;
+} mercury_data_std_util__type_ctor_functors_univ_0 = {
+	MR_TYPE_CTOR_FUNCTORS_UNIV
 };
-
 
 MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_std_util__type_ctor_layout_univ_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_std_util__type_ctor_layout_univ_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_UNIV_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_UNIV_VALUE))
 };
 
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_std_util__type_ctor_functors_univ_0_struct {
-	Integer f1;
-} mercury_data_std_util__type_ctor_functors_univ_0 = {
-	MR_TYPE_CTOR_FUNCTORS_UNIV
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_std_util__type_ctor_info_univ_0 = {
+	(Integer) 0,
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___std_util__univ_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___std_util__univ_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___std_util__univ_0_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____SolveEqual___std_util__univ_0_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Init___std_util__univ_0_0)),
+#endif
+	MR_TYPECTOR_REP_UNIV,
+	(Word *) &mercury_data_std_util__type_ctor_functors_univ_0,
+	(Word *) &mercury_data_std_util__type_ctor_layout_univ_0,
+	MR_string_const(""std_util"", 8),
+	MR_string_const(""univ"", 4),
+	MR_RTTI_VERSION
 };
 
 MR_MODULE_STATIC_OR_EXTERN
@@ -1141,7 +1052,7 @@ const struct mercury_data_std_util__type_ctor_layout_type_info_0_struct
 	TYPE_LAYOUT_FIELDS
 } mercury_data_std_util__type_ctor_layout_type_info_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE))
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE))
 };
 
 MR_MODULE_STATIC_OR_EXTERN
@@ -1152,16 +1063,35 @@ mercury_data_std_util__type_ctor_functors_type_info_0_struct {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
-#ifndef	COMPACT_ARGS
-
-Declare_label(mercury____Compare___std_util__univ_0_0_i1);
-
-MR_MAKE_PROC_LAYOUT(mercury____Compare___std_util__univ_0_0,
-	MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR(1),
-	MR_PREDICATE, ""std_util"", ""compare_univ"", 3, 0);
-MR_MAKE_INTERNAL_LAYOUT(mercury____Compare___std_util__univ_0_0, 1);
-
+Declare_entry(mercury____Unify___std_util__type_info_0_0);
+Declare_entry(mercury____Index___std_util__type_info_0_0);
+Declare_entry(mercury____Compare___std_util__type_info_0_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Declare_entry(mercury____SolveEqual___std_util__type_info_0_0);
 #endif
+#ifdef MR_USE_INIT
+Declare_entry(mercury____Init___std_util__type_info_0_0);
+#endif
+
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_std_util__type_ctor_info_type_info_0 = {
+	(Integer) 0,
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___std_util__type_info_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___std_util__type_info_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___std_util__type_info_0_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____SolveEqual___std_util__type_info_0_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Init___std_util__type_info_0_0)),
+#endif
+	(Integer) 15,
+	(Word *) &mercury_data_std_util__type_ctor_functors_type_info_0,
+	(Word *) &mercury_data_std_util__type_ctor_layout_type_info_0,
+	MR_string_const(""std_util"", 8),
+	MR_string_const(""type_info"", 9),
+	MR_RTTI_VERSION
+};
 
 Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
 Define_extern_entry(mercury____Index___std_util__type_info_0_0);
@@ -1211,12 +1141,12 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	univ2 = r2;
 
 	/* First check the type_infos compare equal */
-	typeinfo1 = field(mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
-	typeinfo2 = field(mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
+	typeinfo1 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
+	typeinfo2 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
 	save_transient_registers();
 	comp = MR_compare_type_info(typeinfo1, typeinfo2);
 	restore_transient_registers();
-	if (comp != COMPARE_EQUAL) {
+	if (comp != MR_COMPARE_EQUAL) {
 		r1 = FALSE;
 		proceed();
 	}
@@ -1226,8 +1156,8 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	** unwrapped args
 	*/
 	r1 = typeinfo1;
-	r2 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
-	r3 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
+	r2 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
+	r3 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	{
 		Declare_entry(mercury__unify_2_0);
 		tailcall(ENTRY(mercury__unify_2_0),
@@ -1256,12 +1186,12 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	univ2 = r2;
 
 	/* First compare the type_infos */
-	typeinfo1 = field(mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
-	typeinfo2 = field(mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
+	typeinfo1 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
+	typeinfo2 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
 	save_transient_registers();
 	comp = MR_compare_type_info(typeinfo1, typeinfo2);
 	restore_transient_registers();
-	if (comp != COMPARE_EQUAL) {
+	if (comp != MR_COMPARE_EQUAL) {
 		r1 = comp;
 		proceed();
 	}
@@ -1272,8 +1202,8 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	*/
 
 	r1 = typeinfo1;
-	r2 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
-	r3 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
+	r2 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
+	r3 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	{
 		Declare_entry(mercury__compare_3_0);
 		tailcall(ENTRY(mercury__compare_3_0),
@@ -1299,8 +1229,8 @@ Define_entry(mercury____SolveEqual___std_util__univ_0_0);
 	univ2 = r2;
 
 	/* First check the type_infos compare equal */
-	typeinfo1 = field(mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
-	typeinfo2 = field(mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
+	typeinfo1 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
+	typeinfo2 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
 	save_transient_registers();
 	comp = MR_compare_type_info(typeinfo1, typeinfo2);
 	restore_transient_registers();
@@ -1314,8 +1244,8 @@ Define_entry(mercury____SolveEqual___std_util__univ_0_0);
 	** unwrapped args
 	*/
 	r1 = typeinfo1;
-	r2 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
-	r3 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
+	r2 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
+	r3 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	{
 		Declare_entry(mercury__solve_equal_2_0);
 		tailcall(ENTRY(mercury__solve_equal_2_0),
@@ -1345,7 +1275,7 @@ Define_entry(mercury____Unify___std_util__type_info_0_0);
 	save_transient_registers();
 	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
-	r1 = (comp == COMPARE_EQUAL);
+	r1 = (comp == MR_COMPARE_EQUAL);
 	proceed();
 }
 
@@ -1403,10 +1333,15 @@ END_MODULE
 /*
 INIT sys_init_unify_univ_module
 */
-extern ModuleFunc unify_univ_module;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc unify_univ_module;
 void sys_init_unify_univ_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_unify_univ_module(void) {
 	unify_univ_module();
+
+	MR_INIT_TYPE_CTOR_INFO(mercury_data_std_util__type_ctor_info_univ_0,
+		std_util__univ_0_0);
+	MR_INIT_TYPE_CTOR_INFO(mercury_data_std_util__type_ctor_info_type_info_0,
+		std_util__type_info_0_0);
 }
 
 ").
@@ -1483,11 +1418,7 @@ type_name(Type) = TypeName :-
 	( Arity = 0 ->
 		UnqualifiedTypeName = Name
 	;
-		% XXX the test for mercury_builtin is for bootstrapping
-		% only; it should eventually be deleted.
-		( ModuleName = "mercury_builtin", Name = "func" -> 
-			IsFunc = yes 
-		; ModuleName = "builtin", Name = "func" -> 
+		( ModuleName = "builtin", Name = "func" -> 
 			IsFunc = yes 
 		;
 		 	IsFunc = no 
@@ -1506,9 +1437,7 @@ type_name(Type) = TypeName :-
 				UnqualifiedTypeName)
 		)
 	),
-		% XXX the test for mercury_builtin is for bootstrapping
-		% only; it should eventually be deleted.
-	( (ModuleName = "mercury_builtin" ; ModuleName = "builtin") ->
+	( ModuleName = "builtin" ->
 		TypeName = UnqualifiedTypeName
 	;
 		string__append_list([ModuleName, ":", 
@@ -1759,7 +1688,7 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 		*/
 
 	if (success) {
-		make_aligned_string(FunctorName, (String) (Word) 
+		MR_make_aligned_string(FunctorName, (String) (Word) 
 				info.functor_name);
 		Arity = info.arity;
 		save_transient_registers();
@@ -1823,7 +1752,7 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 
 				term_vector = (Word) &new_data;
 
-			} else if (tag(layout_entry) == 
+			} else if (MR_tag(layout_entry) == 
 					TYPE_CTOR_LAYOUT_SHARED_REMOTE_TAG) {
 
 				/*
@@ -1831,11 +1760,14 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 				** secondary tag, and the term_vector will
 				** be the rest of the words.
 				*/
-				incr_hp(new_data, info.arity + 1);
-				field(0, new_data, 0) = info.secondary_tag;
+				incr_hp_msg(new_data, info.arity + 1,
+					MR_PROC_LABEL, ""<unknown type from ""
+					""std_util:construct/3>"");
+				MR_field(MR_mktag(0), new_data, 0)
+					= info.secondary_tag;
 				term_vector = (Word) (new_data + sizeof(Word));
 
-			} else if (tag(layout_entry) == TYPE_CTOR_LAYOUT_CONST_TAG) {
+			} else if (MR_tag(layout_entry) == TYPE_CTOR_LAYOUT_CONST_TAG) {
 
 				/* 
 				** If it's a du, and this tag is
@@ -1843,7 +1775,7 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 				** tag. 
 				*/
 
-				new_data = mkbody(info.secondary_tag);
+				new_data = MR_mkbody(info.secondary_tag);
 				term_vector = (Word) NULL;
 
 			} else {
@@ -1853,7 +1785,9 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 				** create arguments.
 				*/
 
-				incr_hp(new_data, info.arity);
+				incr_hp_msg(new_data, info.arity,
+					MR_PROC_LABEL, ""<unknown type from ""
+					""std_util:construct/3>"");
 				term_vector = (Word) new_data; 
 			}
 
@@ -1867,7 +1801,7 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 				/* 
 				** Add tag to new_data.
 				*/
-			new_data = (Word) mkword(mktag(info.primary_tag), 
+			new_data = (Word) MR_mkword(MR_mktag(info.primary_tag), 
 				new_data);
 		}
 
@@ -1875,10 +1809,11 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 		** Create a univ.
 		*/
 
-		incr_hp(Term, 2);
-		field(mktag(0), Term, UNIV_OFFSET_FOR_TYPEINFO) = 
+		incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+		MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_TYPEINFO) = 
 			(Word) TypeInfo;
-		field(mktag(0), Term, UNIV_OFFSET_FOR_DATA) = (Word) new_data;
+		MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_DATA) =
+			(Word) new_data;
 	}
 
 	SUCCESS_INDICATOR = success;
@@ -1905,7 +1840,7 @@ static int 	ML_get_functor_info(Word type_info, int functor_number,
 	** calls to this function.
 	*/
 
-int 
+static int 
 ML_get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 {
 	Word *type_ctor_functors;
@@ -1938,11 +1873,11 @@ ML_get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 		info->argument_vector =
 			MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(
 				info->functor_descriptor);
-		info->primary_tag = tag(
+		info->primary_tag = MR_tag(
 			MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TAG(
 				info->functor_descriptor));
-		info->secondary_tag = unmkbody(
-			body(MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TAG(
+		info->secondary_tag = MR_unmkbody(
+			MR_body(MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TAG(
 				info->functor_descriptor), info->primary_tag));
 		info->functor_name =
 			MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(
@@ -1985,7 +1920,7 @@ ML_get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 	/*
 	** ML_typecheck_arguments:
 	**
-	** Given a list of univs (`arg_list'), and an vector of
+	** Given a list of univs (`arg_list'), and a vector of
 	** type_infos (`arg_vector'), checks that they are all of the
 	** same type; if so, returns TRUE, otherwise returns FALSE;
 	** `arg_vector' may contain type variables, these
@@ -2010,14 +1945,14 @@ ML_typecheck_arguments(Word type_info, int arity, Word arg_list,
 		if (MR_list_is_empty(arg_list)) {
 			return FALSE;
 		}
-		list_arg_type_info = field(0, MR_list_head(arg_list), 
-			UNIV_OFFSET_FOR_TYPEINFO);
+		list_arg_type_info = MR_field(MR_mktag(0),
+			MR_list_head(arg_list), UNIV_OFFSET_FOR_TYPEINFO);
 
 		arg_type_info = (Word) MR_create_type_info(
 			(Word *) type_info, (Word *) arg_vector[i]);
 
 		comp = MR_compare_type_info(list_arg_type_info, arg_type_info);
-		if (comp != COMPARE_EQUAL) {
+		if (comp != MR_COMPARE_EQUAL) {
 			return FALSE;
 		}
 		arg_list = MR_list_tail(arg_list);
@@ -2043,8 +1978,8 @@ ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
 	int i;
 
 	for (i = 0; i < arity; i++) {
-		field(mktag(0), term_vector, i) = 
-			field(mktag(0), MR_list_head(arg_list), 
+		MR_field(MR_mktag(0), term_vector, i) = 
+			MR_field(MR_mktag(0), MR_list_head(arg_list), 
 				UNIV_OFFSET_FOR_DATA);
 		arg_list = MR_list_tail(arg_list);
 	}
@@ -2090,15 +2025,16 @@ ML_make_type(int arity, MR_TypeCtorInfo type_ctor, Word arg_types_list)
 		Word *type_info;
 
 		restore_transient_registers();
+		/* XXX should use incr_hp_msg() here */
 		incr_hp(LVALUE_CAST(Word, type_info), arity + extra_args);
 		save_transient_registers();
 		
-		field(mktag(0), type_info, 0) = type_ctor_info;
+		MR_field(MR_mktag(0), type_info, 0) = type_ctor_info;
 		if (MR_TYPECTOR_IS_HIGHER_ORDER(type_ctor)) {
-			field(mktag(0), type_info, 1) = (Word) arity;
+			MR_field(MR_mktag(0), type_info, 1) = (Word) arity;
 		}
 		for (i = 0; i < arity; i++) {
-			field(mktag(0), type_info, i + extra_args) = 
+			MR_field(MR_mktag(0), type_info, i + extra_args) = 
 				MR_list_head(arg_types_list);
 			arg_types_list = MR_list_tail(arg_types_list);
 		}
@@ -2276,6 +2212,7 @@ ML_get_num_functors(Word type_info)
 typedef struct ML_Expand_Info_Struct {
 	ConstString functor;
 	int arity;
+	int num_extra_args;
 	Word *argument_vector;
 	Word *type_info_vector;
 	bool non_canonical_type;
@@ -2303,13 +2240,13 @@ Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 ** Expand the given data using its type_info, find its
 ** functor, arity, argument vector and type_info vector.
 ** 
-** The info.type_info_vector is allocated using newmem().
-** (We need to use newmem() rather than malloc(), since this
-** vector may contain pointers into the Mercury heap, and
-** memory allocated with malloc will not be traced by the
+** The info.type_info_vector is allocated using MR_GC_malloc().
+** (We need to use MR_GC_malloc() rather than MR_malloc() or malloc(),
+** since this vector may contain pointers into the Mercury heap, and
+** memory allocated with MR_malloc() or malloc() will not be traced by the
 ** Boehm collector.)
-** It is the responsibility of the  caller to deallocate this
-** memory (using oldmem()), and to copy any fields of this vector to
+** It is the responsibility of the caller to deallocate this
+** memory (using MR_GC_free()), and to copy any fields of this vector to
 ** the Mercury heap. The type_infos that the elements of
 ** this vector point to are either
 ** 	- already allocated on the heap.
@@ -2335,13 +2272,15 @@ Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 void 
 ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 {
-    MR_TypeCtorInfo type_ctor_info;
-    MR_TypeCtorLayout type_ctor_layout;
-    MR_TypeCtorFunctors type_ctor_functors;
-    Code *compare_pred;
-    Word layout_for_tag, layout_vector_for_tag;
-    Word data_value, data_word;
-    int data_tag; 
+    MR_TypeCtorInfo	type_ctor_info;
+    MR_TypeCtorLayout	type_ctor_layout;
+    MR_TypeCtorFunctors	type_ctor_functors;
+    Code		*compare_pred;
+    Word		layout_for_tag;
+    Word		layout_vector_for_tag;
+    Word		data_value;
+    Word		data_word;
+    int			data_tag; 
     MR_DiscUnionTagRepresentation tag_rep;
 
 
@@ -2355,84 +2294,38 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
         ENTRY(mercury__builtin_compare_non_canonical_type_3_0) );
 
     data_word = *data_word_ptr;
-    data_tag = tag(data_word);
-    data_value = body(data_word, data_tag);
+    data_tag = MR_tag(data_word);
+    data_value = MR_body(data_word, data_tag);
 
-#ifdef MR_RESERVE_TAG
     /*
-    ** Catch unbound Herbrand variables.
-    ** Should fix the test --- I have no idea of the real origin of
-    ** the RHS, so it may not work in all cases...
-    ** (In fact, it doesn't in some polymorphic cases.)
+    ** XXX - Need to do check for Herbrand variables here.
     */
 
-    if (data_tag == MR_TAG_VAR &&
-	    MR_TYPE_CTOR_FUNCTORS_INDICATOR(type_ctor_functors) ==
-		    MR_TYPE_CTOR_FUNCTORS_DU) {
-	/*
-	** We assume this is a Herbrand variable.  First check whether
-	** it is really a variable by performing one dereference step
-	** and checking the tag.  If it's still tagged as a variable,
-	** return something printable; otherwise continue with the
-	** dereferenced data.
-	*/
-
-	data_word = *(Word *) data_value;
-	data_tag = tag(data_word);
-
-	if (data_tag == MR_TAG_VAR) {
-	    char buf[500];
-	    char *str;
-	    Word *min_ptr;
-	    Word *tmp_ptr;
-
-	    /* Chase the cycle to find the smallest entry */
-	    min_ptr = (Word *) data_value;
-	    tmp_ptr = (Word *) body(data_word, MR_TAG_VAR);
-	    while (tmp_ptr != (Word *) data_value) {
-		if (tmp_ptr < min_ptr)
-		    min_ptr = tmp_ptr;
-		MR_assert(tag(*tmp_ptr) == MR_TAG_VAR);
-	    	tmp_ptr = (Word *) body(*tmp_ptr, MR_TAG_VAR);
-	    }
-
-	    sprintf(buf, ""unbound(%p)"", min_ptr);
-	    incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
-                    (strlen(buf) + sizeof(Word)) / sizeof(Word));
-	    strcpy(str, buf);
-
-	    info->functor = str;
-	    info->argument_vector = NULL;
-	    info->type_info_vector = NULL;
-	    info->arity = 0;
-	    return;
-	}
-
-	data_value = body(data_word, data_tag);
-    }
-#endif
-
     layout_for_tag = type_ctor_layout[data_tag];
-    layout_vector_for_tag = (Word *) strip_tag(layout_for_tag);
+    layout_vector_for_tag = MR_strip_tag(layout_for_tag);
 
     switch(type_ctor_info->type_ctor_rep) {
 
         case MR_TYPECTOR_REP_ENUM:
+        case MR_TYPECTOR_REP_ENUM_USEREQ:
             info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
                 layout_vector_for_tag, data_word);
             info->arity = 0;
+            info->num_extra_args = 0;
             info->argument_vector = NULL;
             info->type_info_vector = NULL;	
             break;
 
         case MR_TYPECTOR_REP_DU:
+        case MR_TYPECTOR_REP_DU_USEREQ:
             tag_rep = MR_get_tag_representation((Word) layout_for_tag);
-            switch(tag_rep) {
+            switch (tag_rep) {
             case MR_DISCUNIONTAG_SHARED_LOCAL:
-                data_value = unmkbody(data_value);
+                data_value = MR_unmkbody(data_value);
                 info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
                     layout_vector_for_tag, data_value);
                 info->arity = 0;
+                info->num_extra_args = 0;
                 info->argument_vector = NULL;
                 info->type_info_vector = NULL;	
                 break;
@@ -2451,7 +2344,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                 layout_for_tag = (Word)
                 MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR(
                     layout_vector_for_tag, secondary_tag);
-                layout_vector_for_tag = strip_tag(layout_for_tag);
+                layout_vector_for_tag = MR_strip_tag(layout_for_tag);
             }   /* fallthru */
 
             case MR_DISCUNIONTAG_UNSHARED: /* fallthru */
@@ -2461,9 +2354,12 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
     
                 info->arity =
 	        MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(functor_descriptor);
+
+                info->num_extra_args = 
+		    MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_VARCOUNT(functor_descriptor);
 	
                 if (info->need_functor) {
-                    make_aligned_string(info->functor, 
+                    MR_make_aligned_string(info->functor, 
                         MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(
                         functor_descriptor));
                 }
@@ -2471,16 +2367,20 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                 if (info->need_args) {
                     info->argument_vector = (Word *) data_value;
     
-                    info->type_info_vector = newmem(info->arity * sizeof(Word));
+                    info->type_info_vector = MR_GC_NEW_ARRAY(Word,
+		    				info->arity);
 
                     for (i = 0; i < info->arity ; i++) {
                         Word *arg_pseudo_type_info;
 
                         arg_pseudo_type_info = (Word *)
                             MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(
-				    functor_descriptor)[i];
-                        info->type_info_vector[i] = (Word) MR_create_type_info(
-                            type_info, arg_pseudo_type_info);
+				    	functor_descriptor)[i];
+                        info->type_info_vector[i] = 
+			    (Word) MR_create_type_info_maybe_existq(
+                                	type_info, arg_pseudo_type_info, 
+					(Word *) data_value,
+					functor_descriptor);
                     }
                 }
                 break;
@@ -2489,6 +2389,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 	break;
 
         case MR_TYPECTOR_REP_NOTAG:
+        case MR_TYPECTOR_REP_NOTAG_USEREQ:
         {
             int i;
 	    Word * functor_descriptor = (Word *) layout_vector_for_tag;
@@ -2497,9 +2398,10 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
             info->arity = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(
 	    	functor_descriptor);
+            info->num_extra_args = 0;
 	
             if (info->need_functor) {
-                make_aligned_string(info->functor, 
+                MR_make_aligned_string(info->functor, 
                     MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(
                     functor_descriptor));
             }
@@ -2512,7 +2414,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                      */
                 info->argument_vector = (Word *) data_word_ptr;
 
-                info->type_info_vector = newmem(info->arity * sizeof(Word));
+                info->type_info_vector = MR_GC_NEW_ARRAY(Word,
+						info->arity);
 
                 for (i = 0; i < info->arity ; i++) {
                     Word *arg_pseudo_type_info;
@@ -2520,8 +2423,11 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                     arg_pseudo_type_info = (Word *)
                         MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(
 				functor_descriptor)[i];
-                    info->type_info_vector[i] = (Word) MR_create_type_info(
-                        type_info, arg_pseudo_type_info);
+                    info->type_info_vector[i] = 
+		    	(Word) MR_create_type_info_maybe_existq(
+                            type_info, arg_pseudo_type_info, 
+					(Word *) data_value,
+					functor_descriptor);
                 }
             }
             break;
@@ -2529,7 +2435,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
         case MR_TYPECTOR_REP_EQUIV: {
             Word *equiv_type_info;
 
-			equiv_type_info = MR_create_type_info(type_info, 
+			equiv_type_info = MR_create_type_info(
+				type_info, 
 				(Word *) MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(
 					layout_vector_for_tag));
 			ML_expand(equiv_type_info, data_word_ptr, info);
@@ -2538,7 +2445,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
         case MR_TYPECTOR_REP_EQUIV_VAR: {
             Word *equiv_type_info;
 
-			equiv_type_info = MR_create_type_info(type_info, 
+			equiv_type_info = MR_create_type_info(
+				type_info, 
 				(Word *) layout_vector_for_tag);
 			ML_expand(equiv_type_info, data_word_ptr, info);
             break;
@@ -2558,6 +2466,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_CHAR:
@@ -2573,6 +2482,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_FLOAT:
@@ -2591,6 +2501,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_STRING:
@@ -2607,15 +2518,17 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_PRED:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<predicate>>"");
+                MR_make_aligned_string(info->functor, ""<<predicate>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_UNIV:
@@ -2635,33 +2548,127 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 	    */
 	    fatal_error(""ML_expand: cannot expand void types"");
 
-        case MR_TYPECTOR_REP_ARRAY:
+        case MR_TYPECTOR_REP_C_POINTER:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<array>>"");
+                MR_make_aligned_string(info->functor, ""<<c_pointer>>"");
             }
-	    /* XXX should we return the arguments here? */
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_TYPEINFO:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<typeinfo>>"");
+                MR_make_aligned_string(info->functor, ""<<typeinfo>>"");
             }
 	    /* XXX should we return the arguments here? */
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
-        case MR_TYPECTOR_REP_C_POINTER:
+        case MR_TYPECTOR_REP_TYPECLASSINFO:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<c_pointer>>"");
+                MR_make_aligned_string(info->functor, ""<<typeclassinfo>>"");
+            }
+	    /* XXX should we return the arguments here? */
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            info->num_extra_args = 0;
+            break;
+
+        case MR_TYPECTOR_REP_ARRAY:
+            if (info->need_functor) {
+                MR_make_aligned_string(info->functor, ""<<array>>"");
+            }
+	    /* XXX should we return the arguments here? */
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            info->num_extra_args = 0;
+            break;
+
+        case MR_TYPECTOR_REP_SUCCIP:
+            if (info->need_functor) {
+                MR_make_aligned_string(info->functor, ""<<succip>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
+            break;
+
+        case MR_TYPECTOR_REP_HP:
+            if (info->need_functor) {
+                MR_make_aligned_string(info->functor, ""<<hp>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            info->num_extra_args = 0;
+            break;
+
+        case MR_TYPECTOR_REP_CURFR:
+            if (info->need_functor) {
+                MR_make_aligned_string(info->functor, ""<<curfr>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            info->num_extra_args = 0;
+            break;
+
+        case MR_TYPECTOR_REP_MAXFR:
+            if (info->need_functor) {
+                MR_make_aligned_string(info->functor, ""<<maxfr>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            info->num_extra_args = 0;
+            break;
+
+        case MR_TYPECTOR_REP_REDOFR:
+            if (info->need_functor) {
+                MR_make_aligned_string(info->functor, ""<<redofr>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            info->num_extra_args = 0;
+            break;
+
+        case MR_TYPECTOR_REP_REDOIP:
+            if (info->need_functor) {
+                MR_make_aligned_string(info->functor, ""<<redoip>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            info->num_extra_args = 0;
+            break;
+
+        case MR_TYPECTOR_REP_TRAIL_PTR:
+            if (info->need_functor) {
+                MR_make_aligned_string(info->functor, ""<<trail_ptr>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            info->num_extra_args = 0;
+            break;
+
+        case MR_TYPECTOR_REP_TICKET:
+            if (info->need_functor) {
+                MR_make_aligned_string(info->functor, ""<<ticket>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_UNKNOWN:    /* fallthru */
@@ -2722,7 +2729,7 @@ ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
 	** Free the allocated type_info_vector, since we just copied
 	** the stuff we want out of it.
 	*/
-	oldmem(info.type_info_vector);
+	MR_GC_free(info.type_info_vector);
 
 	return success;
 }
@@ -2761,7 +2768,8 @@ ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
 	}
 
 		/* Copy functor onto the heap */
-	make_aligned_string(LVALUE_CAST(ConstString, Functor), info.functor);
+	MR_make_aligned_string(LVALUE_CAST(ConstString, Functor),
+		info.functor);
 
 	Arity = info.arity;
 }").
@@ -2788,7 +2796,7 @@ ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
 		/* compare the actual type with the expected type */
 		comparison_result =
 			MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT);
-		success = (comparison_result == COMPARE_EQUAL);
+		success = (comparison_result == MR_COMPARE_EQUAL);
 
 		if (success) {
 			Argument = *argument_ptr;
@@ -2816,10 +2824,12 @@ ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
 
 	if (success) {
 		/* Allocate enough room for a univ */
-		incr_hp(ArgumentUniv, 2);
-		field(0, ArgumentUniv, UNIV_OFFSET_FOR_TYPEINFO) =
+		incr_hp_msg(ArgumentUniv, 2, MR_PROC_LABEL,
+			""std_util:univ/0"");
+		MR_field(MR_mktag(0), ArgumentUniv, UNIV_OFFSET_FOR_TYPEINFO) =
 			arg_type_info;
-		field(0, ArgumentUniv, UNIV_OFFSET_FOR_DATA) = *argument_ptr;
+		MR_field(MR_mktag(0), ArgumentUniv, UNIV_OFFSET_FOR_DATA)
+			= *argument_ptr;
 	}
 
 	SUCCESS_INDICATOR = success;
@@ -2879,22 +2889,24 @@ det_argument(Type, ArgumentIndex) = Argument :-
 	}
 
 		/* Get functor */
-	make_aligned_string(LVALUE_CAST(ConstString, Functor), info.functor);
+	MR_make_aligned_string(LVALUE_CAST(ConstString, Functor),
+		info.functor);
 
 		/* Get arity */
 	Arity = info.arity;
 
 		/* Build argument list */
-	Arguments = MR_list_empty();
+	Arguments = MR_list_empty_msg(MR_PROC_LABEL);
 	i = info.arity;
 
 	while (--i >= 0) {
 
 			/* Create an argument on the heap */
-		incr_hp(Argument, 2);
+		incr_hp_msg(Argument, 2, MR_PROC_LABEL, ""std_util:univ/0"");
 
 			/* Join the argument to the front of the list */
-		Arguments = MR_list_cons(Argument, Arguments);
+		Arguments = MR_list_cons_msg(Argument, Arguments,
+			MR_PROC_LABEL);
 
 			/* Fill in the arguments */
 		arg_pseudo_type_info = info.type_info_vector[i];
@@ -2902,24 +2914,26 @@ det_argument(Type, ArgumentIndex) = Argument :-
 		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
 
 				/* It's a type variable, get its value */
-			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
+			MR_field(MR_mktag(0), Argument,
+				UNIV_OFFSET_FOR_TYPEINFO) = 
 				((Word *) TypeInfo_for_T)[arg_pseudo_type_info];
 		}
 		else {
 				/* It's already a type_info */
-			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
+			MR_field(MR_mktag(0), Argument,
+				UNIV_OFFSET_FOR_TYPEINFO) = 
 				arg_pseudo_type_info;
 		}
 			/* Fill in the data */
-		field(0, Argument, UNIV_OFFSET_FOR_DATA) = 
-			info.argument_vector[i];
+		MR_field(MR_mktag(0), Argument, UNIV_OFFSET_FOR_DATA) = 
+			info.argument_vector[i + info.num_extra_args];
 	}
 
 	/* Free the allocated type_info_vector, since we just copied
 	 * all its arguments onto the heap. 
 	 */
 
-	oldmem(info.type_info_vector);
+	MR_GC_free(info.type_info_vector);
 
 }").
 
@@ -2937,18 +2951,6 @@ det_argument(Type, ArgumentIndex) = Argument :-
 get_type_info_for_type_info(TypeInfo) :-
 	Type = type_of(1),
 	TypeInfo = type_of(Type).
-
-%-----------------------------------------------------------------------------%
-
-% This is a generalization of unsorted_aggregate which allows the
-% iteration to stop before all solutions have been found.
-% NOT YET IMPLEMENTED
-%  
-% :- pred do_while(pred(T), pred(T,T2,T2,bool), T2, T2).
-% :- mode do_while(pred(out) is multi, pred(in,in,out,out) is det, in, out) is
-% 	cc_multi.
-% :- mode do_while(pred(out) is nondet, pred(in,in,out,out) is det, in, out) is
-% 	cc_multi.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -55,10 +55,6 @@
 	io__state, io__state).
 :- mode check_typeclass__check_instance_decls(in, out, out, di, uo) is det.
 
-	% The prefix added to the class method name for the predicate
-	% used to call a class method for a specific instance.
-:- func check_typeclass__introduced_pred_name_prefix = string.
-
 :- implementation.
 
 :- import_module map, list, std_util, hlds_pred, hlds_data, prog_data, require.
@@ -111,8 +107,8 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 	ClassId - InstanceDefns, ModuleInfo0, ModuleInfo) :-
 
 	map__lookup(ClassTable, ClassId, ClassDefn),
-	ClassDefn = hlds_class_defn(SuperClasses, ClassVars, ClassInterface,
-		ClassVarSet, _TermContext),
+	ClassDefn = hlds_class_defn(_, SuperClasses, ClassVars, _,
+		ClassInterface, ClassVarSet, _TermContext),
 	solutions(
 		lambda([PredId::out] is nondet, 
 			(
@@ -146,7 +142,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		ModuleInfo1 = ModuleInfo0,
 		Errors2 = Errors0
 	;
-		InstanceBody = concrete(Methods),
+		InstanceBody = concrete(InstanceMethods),
 		list__foldl2(
 			check_instance_pred(ClassId, Vars, ClassInterface), 
 			PredIds, InstanceDefn0, InstanceDefn1,
@@ -178,7 +174,17 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 				_, MaybePredProcs, _, _),
 		(
 			MaybePredProcs = yes(PredProcs),
-			list__same_length(PredProcs, Methods)
+
+				% Check that we wind with a procedure for each
+				% proc in the type class interface.
+			list__same_length(PredProcs, ClassInterface),
+
+				% Check that we wind with a pred for each
+				% pred in the instance class interface.
+			list__map((pred(PP::in, P::out) is det :-
+				PP = hlds_class_proc(P, _)), PredProcs, Preds0),
+			list__remove_dups(Preds0, Preds),
+			list__same_length(Preds, InstanceMethods)
 		->
 			Errors2 = Errors1
 		;
@@ -473,7 +479,7 @@ produce_auxiliary_procs(ClassVars,
 
 	Info0 = instance_method_info(ModuleInfo0, PredName, PredArity, 
 		ExistQVars0, ArgTypes0, ClassContext0, ArgModes, Errors,
-		ArgTypeVars0, Status, PredOrFunc),
+		ArgTypeVars0, Status0, PredOrFunc),
 
 		% Rename the instance variables apart from the class variables
 	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars1,
@@ -513,7 +519,8 @@ produce_auxiliary_procs(ClassVars,
 
 	Cond = true,
 	map__init(Proofs),
-	init_markers(Markers),
+	init_markers(Markers0),
+	add_marker(Markers0, class_instance_method, Markers),
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_string_option(Globals, aditi_user, User),
 
@@ -528,6 +535,12 @@ produce_auxiliary_procs(ClassVars,
 	map__init(TCI_VarMap),
 	ClausesInfo0 = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
 		DummyClause, TI_VarMap, TCI_VarMap),
+
+	( status_is_imported(Status0, yes) ->
+		Status = opt_imported
+	;
+		Status = Status0
+	),
 
 	pred_info_init(ModuleName, PredName, PredArity, ArgTypeVars, 
 		ExistQVars, ArgTypes, Cond, Context, ClausesInfo0, Status,
@@ -626,6 +639,10 @@ make_introduced_pred_name(ClassId, MethodName, PredArity,
 		PredArityString], 
 		PredNameString),
 	PredName = unqualified(PredNameString).
+
+	% The prefix added to the class method name for the predicate
+	% used to call a class method for a specific instance.
+:- func check_typeclass__introduced_pred_name_prefix = string.
 
 check_typeclass__introduced_pred_name_prefix = "Introduced_pred_for_".
 

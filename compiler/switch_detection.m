@@ -218,6 +218,9 @@ detect_switches_in_goal_2(switch(Var, CanFail, Cases0, SM), _, InstMap,
 
 detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, _, _, _,
 		pragma_c_code(A,B,C,D,E,F,G)).
+detect_switches_in_goal_2(bi_implication(_, _), _, _, _, _, _) :-
+	% these should have been expanded out by now
+	error("detect_switches_in_goal_2: unexpected bi_implication").
 
 %-----------------------------------------------------------------------------%
 
@@ -508,7 +511,7 @@ find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal, Substitution0,
 		Substitution = Substitution0,
 		Result = Result0,
 		Info = Info0,
-		Continue = yes
+		Continue = no
 	).
 
 :- pred conj_find_bind_var(prog_var, process_unify(Result, Info), 

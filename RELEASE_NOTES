@@ -1,5 +1,5 @@
 
-We are pleased to announce the release of version 0.8 of the Mercury system.
+We are pleased to announce the release of version 0.9 of the Mercury system.
 
 Mercury is a new general-purpose programming language, designed and
 implemented by a small group of researchers at the University of
@@ -33,10 +33,7 @@ The main features of Mercury are:
 	Mercury handles dynamic data structures not through Prolog's
 	assert/retract but by providing several abstract data types in
 	the standard Mercury library that manage collections of items
-	with different operations and tradeoffs.  Being a compiled
-	language, Mercury does not have any means for altering the
-	program at runtime, although we may later provide facilities
-	for adding code to a running program.
+	with different operations and tradeoffs.
 
      o  Mercury is a strongly typed language.  Mercury's type system is
 	based on many-sorted logic with parametric polymorphism, very
@@ -128,10 +125,12 @@ The main features of Mercury are:
 	provide the compiler with the information it needs to generate
 	very efficient code.
 
-The Mercury compiler is written in Mercury itself.  It was bootstrapped
-using NU-Prolog and SICStus Prolog.  This was possible because after
-stripping away the declarations of a Mercury program, the syntax of the
-remaining part of the program is mostly compatible with Prolog syntax.
+The Mercury compiler is written in Mercury itself.  It was originally
+bootstrapped using NU-Prolog and SICStus Prolog.  This was possible
+because if you stick to an appropriate subset of Mercury, then
+after stripping away the declarations of a Mercury program,
+the syntax of the remaining part of the program is mostly compatible
+with Prolog syntax.
 
 The Mercury compiler compiles Mercury programs to C, which it uses as a
 portable assembler.  The system can exploit some GNU C extensions to the
@@ -152,8 +151,8 @@ please report them to <mercury-bugs@cs.mu.oz.au> (see the BUGS file).
 The current source distribution uses gcc as the compiler.  We require gcc
 version 2.6.3 or higher.  You will also need GNU make version 3.69 or higher.
 
-The Mercury distribution contains:
-
+The Mercury distribution is split into three parts.
+The "mercury-compiler" distribution contains:
      o  an autoconfiguration script
      o  the Mercury source for the compiler
      o  the Mercury source for the standard library
@@ -171,26 +170,30 @@ The Mercury distribution contains:
      o  the Mercury frequently asked questions list
      o  the Prolog to Mercury transition guide
      o  some sample Mercury programs
-     o  some extra libraries for
-	- processing HTML forms using the CGI interface
-	- arithmetic on complex and imaginary numbers
-	- graphics using Tk and OpenGL
-	- exception handling
-	- backtrackable (trailed) destructive update
-	- an ODBC database interface
-	- a CLP(R) interface, i.e. constraint solving over real numbers
-     o  a test suite
 
-The Mercury distribution is available via anonymous ftp or WWW
-from the following locations:
+The "mercury-extras" distribution contains some extra libraries for:
+     o  processing HTML forms using the CGI interface
+     o  arithmetic on complex and imaginary numbers
+     o  graphics using Tk and OpenGL
+     o  lazy evaluation
+     o  dynamic linking
+     o  POSIX interface
+     o  backtrackable (trailed) destructive update
+     o  an ODBC database interface
+     o  a CLP(R) interface, i.e. constraint solving over real numbers
+
+The "mercury-tests" distribution contains a test suite.
+
+The three components of the Mercury distribution are available
+via anonymous ftp or WWW from the following locations:
 
 	Australia:
-		ftp://turiel.cs.mu.oz.au/pub/mercury
+		ftp://ftp.mercury.cs.mu.oz.au/pub/mercury
 
 We hope to be able to make it available at the following sites
 too, eventually:
 
-	Sunsite and mirrors: (source distribution only)
+	Sunsite and mirrors: (mercury-compiler source distribution only)
 		ftp://sunsite.unc.edu/pub/Linux/Incoming
 		ftp://sunsite.unc.edu/pub/linux/devel/lang/mercury
 
@@ -200,8 +203,9 @@ too, eventually:
 	Europe:
 		ftp://ftp.csd.uu.se/pub/Mercury
 
-The home page of the project on the Web is <http://www.cs.mu.oz.au/mercury>.
+The home page of the project on the Web is <http://www.cs.mu.oz.au/mercury/>.
 
 --
 The Mercury Team <http://www.cs.mu.oz.au/mercury/people.html>
-Department of Computer Science, The University of Melbourne, Australia
+Department of Computer Science and Software Engineering
+The University of Melbourne, Australia

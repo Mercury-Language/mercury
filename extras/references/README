@@ -5,8 +5,8 @@ impure coding.  Generally this sort of coding is not necessary, and it
 can be quite tedious and error-prone, but occasionally it may permit
 greater efficiency than using pure Mercury code, or may permit you to
 write in Mercury what you would otherwise have to write in C.  See
-section 12.2 of the Mercury Language References Manual for more
-information on impurity.
+the "Impurity declarations" chapter of the Mercury Language Reference
+Manual for more information on impurity.
 
 This directory contains
 

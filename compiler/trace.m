@@ -60,6 +60,13 @@
 	;	exit
 	;	fail.
 
+	% These ports are different from other internal ports (even neg_enter)
+	% because their goal path identifies not the goal we are about to enter
+	% but the goal we have just left.
+:- type negation_end_port
+	--->	neg_success
+	;	neg_failure.
+
 :- type nondet_pragma_trace_port
 	--->	nondet_pragma_first
 	;	nondet_pragma_later.
@@ -74,11 +81,20 @@
 					% value of the from-full flag at call.
 					% Otherwise, it will be no.
 
-			maybe(int)	% If --trace-decl is set, this will
+			maybe(int),	% If --trace-decl is set, this will
 					% be yes(M), where stack slots M
 					% and M+1 are reserved for the runtime
 					% system to use in building proof
 					% trees for the declarative debugger.
+					% Otherwise, it will be no.
+
+			maybe(int)	% If --use-trail is set, this will
+					% be yes(M), where stack slots M
+					% and M+1 are the slots that hold the
+					% saved values of the trail pointer
+					% and the ticket counter respectively
+					% at the time of the call. Otherwise,
+					% it will be no.
 		).
 
 	% Return the set of input variables whose values should be preserved
@@ -102,7 +118,7 @@
 :- pred trace__setup(globals::in, trace_slot_info::out, trace_info::out,
 	code_info::in, code_info::out) is det.
 
-	% Generate code to fill in the reserevd stack slots.
+	% Generate code to fill in the reserved stack slots.
 :- pred trace__generate_slot_fill_code(trace_info::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
@@ -117,10 +133,17 @@
 :- pred trace__maybe_generate_internal_event_code(hlds_goal::in,
 	code_tree::out, code_info::in, code_info::out) is det.
 
+	% If we are doing execution tracing, generate code for an trace event
+	% that represents leaving a negated goal (via success or failure).
+:- pred trace__maybe_generate_negated_event_code(hlds_goal::in,
+	negation_end_port::in, code_tree::out, code_info::in, code_info::out)
+	is det.
+
 	% If we are doing execution tracing, generate code for a nondet
 	% pragma C code trace event.
 :- pred trace__maybe_generate_pragma_event_code(nondet_pragma_trace_port::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+	prog_context::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 	% Generate code for an external trace event.
 	% Besides the trace code, we return the label on which we have hung
@@ -128,8 +151,9 @@
 	% liveness information, since some of our callers also need this
 	% information.
 :- pred trace__generate_external_event_code(external_trace_port::in,
-	trace_info::in, label::out, map(tvar, set(layout_locn))::out,
-	code_tree::out, code_info::in, code_info::out) is det.
+	trace_info::in, prog_context::in, label::out,
+	map(tvar, set(layout_locn))::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 	% If the trace level calls for redo events, generate code that pushes
 	% a temporary nondet stack frame whose redoip slot contains the
@@ -145,7 +169,7 @@
 
 :- import_module continuation_info, type_util, llds_out, tree, varset.
 :- import_module (inst), instmap, inst_match, mode_util, options.
-:- import_module list, bool, int, string, map, std_util, require.
+:- import_module list, bool, int, string, map, std_util, require, term.
 
 	% Information specific to a trace port.
 :- type trace_port_info
@@ -155,6 +179,11 @@
 					% this port represents.
 			set(prog_var)	% The pre-death set of this goal.
 		)
+	;	negation_end(
+			goal_path	% The path of the goal whose end
+					% (one way or another) this port
+					% represents.
+		)
 	;	nondet_pragma.
 
 :- type trace_type
@@ -162,26 +191,6 @@
 	;	shallow_trace(lval).	% This holds the saved value of a bool
 					% that is true iff we were called from
 					% code with full tracing.
-
-	% Information for tracing that is valid throughout the execution
-	% of a procedure.
-:- type trace_info
-	--->	trace_info(
-			trace_type,	% The trace level (which cannot be
-					% none), and if it is shallow, the
-					% lval of the slot that holds the
-					% from-full flag.
-			bool,		% The value of --trace-internal.
-			bool,		% The value of --trace-return.
-			maybe(label)	% If we are generating redo events,
-					% this has the label associated with
-					% the fail event, which we then reserve
-					% in advance, so we can put the
-					% address of its layout struct
-					% into the slot which holds the
-					% layout for the redo event (the
-					% two events have identical layouts).
-		).
 
 trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 	proc_info_headvars(ProcInfo, HeadVars),
@@ -198,7 +207,7 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 	).
 
 	% trace__reserved_slots and trace__setup cooperate in the allocation
-	% of stack slots for tracing purposes. The allocation is done in four
+	% of stack slots for tracing purposes. The allocation is done in five
 	% stages.
 	%
 	% stage 1:	Allocate the fixed slots, slots 1, 2 and 3, to hold
@@ -211,11 +220,24 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 	%
 	% stage 3:	If the procedure is shallow traced, allocate the
 	%		next available slot to the saved copy of the
-	%		from-full flag.
+	%		from-full flag. The number of this slot is recorded
+	%		in the maybe_from_full field in the proc layout;
+	%		if there is no such slot, that field will contain -1.
 	%
 	% stage 4:	If --trace-decl is given, allocate the next two
 	%		available slots to hold the pointers to the proof tree
 	%		node of the parent and of this call respectively.
+	%		The number of the first of these two slots is recorded
+	%		in the maybe_decl_debug field in the proc layout;
+	%		if there are no such slots, that field will contain -1.
+	%
+	% stage 5:	If --use-trail is set (given or implied), allocate
+	%		two slots to hold the saved value of the trail pointer
+	%		and the ticket counter at the point of the call, for
+	%		use in implementing retry. The number of the first of
+	%		these two slots is recorded in the maybe_trail field
+	%		in the proc layout; if there are no such slots, that
+	%		field will contain -1.
 	%
 	% The runtime system cannot know whether the stack frame has a slot
 	% that holds the saved from-full flag and whether it has the slots
@@ -266,12 +288,19 @@ trace__reserved_slots(ProcInfo, Globals, ReservedSlots) :-
 		;
 			DeclDebug = 0
 		),
-		ReservedSlots is Fixed + RedoLayout + FromFull + DeclDebug
+		globals__lookup_bool_option(Globals, use_trail, UseTrail),
+		( UseTrail = yes ->
+			Trail = 2
+		;
+			Trail = 0
+		),
+		ReservedSlots is Fixed + RedoLayout + FromFull + DeclDebug +
+			Trail
 	).
 
 trace__setup(Globals, TraceSlotInfo, TraceInfo) -->
 	code_info__get_proc_model(CodeModel),
-	{ globals__lookup_bool_option(Globals, trace_return, TraceReturn) },
+	{ globals__lookup_bool_option(Globals, trace_decl, TraceDecl) },
 	{ globals__lookup_bool_option(Globals, trace_redo, TraceRedo) },
 	(
 		{ TraceRedo = yes },
@@ -304,18 +333,37 @@ trace__setup(Globals, TraceSlotInfo, TraceInfo) -->
 		TraceInternal = no
 	},
 	{ globals__lookup_bool_option(Globals, trace_decl, yes) ->
-		MaybeDeclSlots = yes(NextSlotAfterFromFull)
+		MaybeDeclSlots = yes(NextSlotAfterFromFull),
+		NextSlotAfterDecl = NextSlotAfterFromFull + 2
 	;
-		MaybeDeclSlots = no
+		MaybeDeclSlots = no,
+		NextSlotAfterDecl = NextSlotAfterFromFull
 	},
-	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeDeclSlots) },
-	{ TraceInfo = trace_info(TraceType, TraceInternal, TraceReturn,
-		MaybeRedoLayout) }.
+	{ globals__lookup_bool_option(Globals, use_trail, yes) ->
+		MaybeTrailSlot = yes(NextSlotAfterDecl),
+		( CodeModel = model_non ->
+			TrailLval =  framevar(NextSlotAfterDecl),
+			TicketLval = framevar(NextSlotAfterDecl+1)
+		;
+			TrailLval =  stackvar(NextSlotAfterDecl),
+			TicketLval = stackvar(NextSlotAfterDecl+1)
+		),
+		MaybeTrailLvals = yes(TrailLval - TicketLval)
+	;
+		MaybeTrailSlot = no,
+		MaybeTrailLvals = no
+	},
+	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
+		MaybeDeclSlots, MaybeTrailSlot) },
+	{ init_trace_info(TraceType, TraceInternal, TraceDecl, MaybeTrailLvals,
+		MaybeRedoLayout, TraceInfo) }.
 
 trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 	code_info__get_proc_model(CodeModel),
 	{
-	TraceInfo = trace_info(TraceType, _, _, MaybeRedoLayoutSlot),
+	trace_info_get_trace_type(TraceInfo, TraceType),
+	trace_info_get_maybe_redo_layout_slot(TraceInfo, MaybeRedoLayoutSlot),
+	trace_info_get_maybe_trail_slots(TraceInfo, MaybeTrailLvals),
 	trace__event_num_slot(CodeModel, EventNumLval),
 	trace__call_num_slot(CodeModel, CallNumLval),
 	trace__call_depth_slot(CodeModel, CallDepthLval),
@@ -341,24 +389,41 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		FillFourSlots = FillThreeSlots
 	),
 	(
+		% This could be done by generating proper LLDS instead of C.
+		% However, in shallow traced code we want to execute this
+		% only when the caller is deep traced, and everything inside
+		% that test must be in C code.
+		MaybeTrailLvals = yes(TrailLval - TicketLval),
+		trace__stackref_to_string(TrailLval, TrailLvalStr),
+		trace__stackref_to_string(TicketLval, TicketLvalStr),
+		string__append_list([
+			FillFourSlots, "\n",
+			"\t\tMR_mark_ticket_stack(", TicketLvalStr, ");\n",
+			"\t\tMR_store_ticket(", TrailLvalStr, ");"
+		], FillAllSlots)
+	;
+		MaybeTrailLvals = no,
+		FillAllSlots = FillFourSlots
+	),
+	(
 		TraceType = shallow_trace(CallFromFullSlot),
 		trace__stackref_to_string(CallFromFullSlot,
 			CallFromFullSlotStr),
 		string__append_list([
 			"\t\t", CallFromFullSlotStr, " = MR_trace_from_full;\n",
 			"\t\tif (MR_trace_from_full) {\n",
-			FillFourSlots, "\n",
+			FillAllSlots, "\n",
 			"\t\t} else {\n",
 			"\t\t\t", CallDepthStr, " = MR_trace_call_depth;\n",
 			"\t\t}"
 		], TraceStmt)
 	;
 		TraceType = deep_trace,
-		TraceStmt = FillFourSlots
+		TraceStmt = FillAllSlots
 	),
 	TraceCode = node([
 		pragma_c([], [pragma_c_raw_code(TraceStmt)],
-			will_not_call_mercury, no, yes) - ""
+			will_not_call_mercury, no, no, yes) - ""
 	])
 	}.
 
@@ -368,7 +433,7 @@ trace__prepare_for_call(TraceCode) -->
 	{
 		MaybeTraceInfo = yes(TraceInfo)
 	->
-		TraceInfo = trace_info(TraceType, _, _, _),
+		trace_info_get_trace_type(TraceInfo, TraceType),
 		trace__call_depth_slot(CodeModel, CallDepthLval),
 		trace__stackref_to_string(CallDepthLval, CallDepthStr),
 		string__append_list([
@@ -393,11 +458,10 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	(
 		{ MaybeTraceInfo = yes(TraceInfo) },
-		{ TraceInfo = trace_info(_, yes, _, _) }
+		{ trace_info_get_trace_internal(TraceInfo, yes) }
 	->
 		{ Goal = _ - GoalInfo },
 		{ goal_info_get_goal_path(GoalInfo, Path) },
-		{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
 		{
 			Path = [LastStep | _],
 			(
@@ -407,82 +471,113 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 				LastStep = disj(_),
 				PortPrime = disj
 			;
+				LastStep = ite_cond,
+				PortPrime = ite_cond
+			;
 				LastStep = ite_then,
 				PortPrime = ite_then
 			;
 				LastStep = ite_else,
 				PortPrime = ite_else
+			;
+				LastStep = neg,
+				PortPrime = neg_enter
 			)
 		->
 			Port = PortPrime
 		;
 			error("trace__generate_internal_event_code: bad path")
 		},
-		trace__generate_event_code(Port, internal(Path, PreDeaths),
-			TraceInfo, _, _, Code)
+		(
+			{ ( Port = ite_cond ; Port = neg_enter ) },
+			{ trace_info_get_trace_decl(TraceInfo, no) }
+		->
+			{ Code = empty }
+		;
+			{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
+			{ goal_info_get_context(GoalInfo, Context) },
+			trace__generate_event_code(Port,
+				internal(Path, PreDeaths), TraceInfo,
+				Context, _, _, Code)
+		)
 	;
 		{ Code = empty }
 	).
 
-trace__maybe_generate_pragma_event_code(PragmaPort, Code) -->
+trace__maybe_generate_negated_event_code(Goal, NegPort, Code) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	(
 		{ MaybeTraceInfo = yes(TraceInfo) },
-		{ TraceInfo = trace_info(_, yes, _, _) }
+		{ trace_info_get_trace_internal(TraceInfo, yes) },
+		{ trace_info_get_trace_decl(TraceInfo, yes) }
 	->
-		{ trace__convert_nondet_pragma_port_type(PragmaPort, Port) },
-		trace__generate_event_code(Port, nondet_pragma, TraceInfo,
-			_, _, Code)
+		{
+			NegPort = neg_failure,
+			Port = neg_failure
+		;
+			NegPort = neg_success,
+			Port = neg_success
+		},
+		{ Goal = _ - GoalInfo },
+		{ goal_info_get_goal_path(GoalInfo, Path) },
+		{ goal_info_get_context(GoalInfo, Context) },
+		trace__generate_event_code(Port, negation_end(Path),
+			TraceInfo, Context, _, _, Code)
 	;
 		{ Code = empty }
 	).
 
-trace__generate_external_event_code(ExternalPort, TraceInfo,
+trace__maybe_generate_pragma_event_code(PragmaPort, Context, Code) -->
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	(
+		{ MaybeTraceInfo = yes(TraceInfo) },
+		{ trace_info_get_trace_internal(TraceInfo, yes) }
+	->
+		{ trace__convert_nondet_pragma_port_type(PragmaPort, Port) },
+		trace__generate_event_code(Port, nondet_pragma, TraceInfo,
+			Context, _, _, Code)
+	;
+		{ Code = empty }
+	).
+
+trace__generate_external_event_code(ExternalPort, TraceInfo, Context,
 		Label, TvarDataMap, Code) -->
 	{ trace__convert_external_port_type(ExternalPort, Port) },
 	trace__generate_event_code(Port, external, TraceInfo,
-		Label, TvarDataMap, Code).
+		Context, Label, TvarDataMap, Code).
 
 :- pred trace__generate_event_code(trace_port::in, trace_port_info::in,
-	trace_info::in, label::out, map(tvar, set(layout_locn))::out,
-	code_tree::out, code_info::in, code_info::out) is det.
+	trace_info::in, prog_context::in, label::out,
+	map(tvar, set(layout_locn))::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
-		Code) -->
-	(
-		{ Port = fail },
-		{ TraceInfo = trace_info(_, _, _, yes(RedoLabel)) }
-	->
-		% The layout information for the redo event is the same as
-		% for the fail event; all the non-clobbered inputs in their
-		% stack slots. It is convenient to generate this common layout
-		% when the code generator state is set up for the fail event;
-		% generating it for the redo event would be much harder.
-		% On the other hand, the address of the layout structure
-		% for the redo event should be put into its fixed stack slot
-		% at procedure entry. Therefore trace__setup reserves a label
-		% whose layout structure serves for both the fail and redo
-		% events.
-		{ Label = RedoLabel }
-	;
-		code_info__get_next_label(Label)
-	),
+trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
+		Label, TvarDataMap, Code) -->
+	code_info__get_next_label(Label),
 	code_info__get_known_variables(LiveVars0),
 	(
 		{ PortInfo = external },
 		{ LiveVars = LiveVars0 },
-		{ PathStr = "" }
+		{ Path = [] }
 	;
 		{ PortInfo = internal(Path, PreDeaths) },
 		code_info__current_resume_point_vars(ResumeVars),
 		{ set__difference(PreDeaths, ResumeVars, RealPreDeaths) },
 		{ set__to_sorted_list(RealPreDeaths, RealPreDeathList) },
-		{ list__delete_elems(LiveVars0, RealPreDeathList, LiveVars) },
-		{ trace__path_to_string(Path, PathStr) }
+		{ list__delete_elems(LiveVars0, RealPreDeathList, LiveVars) }
+	;
+		{ PortInfo = negation_end(Path) },
+		{ LiveVars = LiveVars0 }
 	;
 		{ PortInfo = nondet_pragma },
 		{ LiveVars = [] },
-		{ PathStr = "" }
+		{ Port = nondet_pragma_first ->
+			Path = [first]
+		; Port = nondet_pragma_later ->
+			Path = [later]
+		;
+			error("bad nondet pragma port")
+		}
 	),
 	code_info__get_varset(VarSet),
 	code_info__get_instmap(InstMap),
@@ -490,7 +585,12 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 	trace__produce_vars(LiveVars, VarSet, InstMap, TvarSet0, TvarSet,
 		VarInfoList, ProduceCode),
 	code_info__max_reg_in_use(MaxReg),
-	code_info__get_globals(Globals),
+	code_info__get_max_reg_in_use_at_trace(MaxTraceReg0),
+	( { MaxTraceReg0 < MaxReg } ->
+		code_info__set_max_reg_in_use_at_trace(MaxReg)
+	;
+		[]
+	),
 	code_info__variable_locations(VarLocs),
 	code_info__get_proc_info(ProcInfo),
 	{
@@ -503,34 +603,35 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 	DeclStmt = "\t\tCode *MR_jumpaddr;\n",
 	SaveStmt = "\t\tsave_transient_registers();\n",
 	RestoreStmt = "\t\trestore_transient_registers();\n",
-	GotoStmt = "\t\tif (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);",
-	globals__lookup_bool_option(Globals, call_trace_struct,
-		CallTraceStruct)
+	GotoStmt = "\t\tif (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);"
 	},
-	( { CallTraceStruct = yes } ->
-		{ string__append_list([
-			"\t\tMR_jumpaddr = MR_trace_struct(\n",
-			"\t\t\t&mercury_data__tci__", LabelStr, ");\n"],
-			CallStmt) },
-		{ TraceCallInfo = trace_call_info(Label, PathStr,
-			MaxReg, Port) },
-		code_info__add_non_common_static_data(TraceCallInfo)
+	{ string__append_list([
+		"\t\tMR_jumpaddr = MR_trace(\n",
+		"\t\t\t(const MR_Stack_Layout_Label *)\n",
+		"\t\t\t&mercury_data__layout__", LabelStr, ");\n"],
+		CallStmt) },
+	code_info__add_trace_layout_for_label(Label, Context, Port, Path,
+		LayoutLabelInfo),
+	(
+		{ Port = fail },
+		{ trace_info_get_maybe_redo_layout_slot(TraceInfo,
+			yes(RedoLabel)) }
+	->
+		% The layout information for the redo event is the same as
+		% for the fail event; all the non-clobbered inputs in their
+		% stack slots. It is convenient to generate this common layout
+		% when the code generator state is set up for the fail event;
+		% generating it for the redo event would be much harder.
+		% On the other hand, the address of the layout structure
+		% for the redo event should be put into its fixed stack slot
+		% at procedure entry. Therefore trace__setup reserves a label
+		% for the redo event, whose layout information is filled in
+		% when we get to the fail event.
+		code_info__add_trace_layout_for_label(RedoLabel, Context, redo,
+			Path, LayoutLabelInfo)
 	;
-		{
-		Quote = """",
-		Comma = ", ",
-		llds_out__trace_port_to_string(Port, PortStr),
-		string__int_to_string(MaxReg, MaxRegStr),
-		string__append_list([
-			"\t\tMR_jumpaddr = MR_trace(\n",
-			"\t\t\t(const MR_Stack_Layout_Label *)\n",
-			"\t\t\t&mercury_data__layout__", LabelStr, Comma, "\n",
-			"\t\t\t", PortStr, Comma, Quote, PathStr, Quote, Comma,
-			MaxRegStr, ");\n"],
-			CallStmt)
-		}
+		[]
 	),
-	code_info__add_trace_layout_for_label(Label, LayoutLabelInfo),
 	{
 	string__append_list([DeclStmt, SaveStmt, CallStmt, RestoreStmt,
 		GotoStmt], TraceStmt),
@@ -546,15 +647,16 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 				% by another label, and this way we can
 				% eliminate this other label.
 			pragma_c([], [pragma_c_raw_code(TraceStmt)],
-				may_call_mercury, yes(Label), yes)
+				may_call_mercury, yes(Label), no, yes)
 				- ""
 		]),
 	Code = tree(ProduceCode, TraceCode)
 	}.
 
 trace__maybe_setup_redo_event(TraceInfo, Code) :-
-	TraceInfo = trace_info(TraceType, _, _, TraceRedo),
-	( TraceRedo = yes(_) ->
+	trace_info_get_maybe_redo_layout_slot(TraceInfo, TraceRedoLayout),
+	( TraceRedoLayout = yes(_) ->
+		trace_info_get_trace_type(TraceInfo, TraceType),
 		(
 			TraceType = shallow_trace(Lval),
 			% The code in the runtime looks for the from-full
@@ -688,6 +790,8 @@ trace__path_step_to_string(ite_then, "t;").
 trace__path_step_to_string(ite_else, "e;").
 trace__path_step_to_string(neg, "~;").
 trace__path_step_to_string(exist, "q;").
+trace__path_step_to_string(first, "f;").
+trace__path_step_to_string(later, "l;").
 
 :- pred trace__convert_external_port_type(external_trace_port::in,
 	trace_port::out) is det.
@@ -740,3 +844,53 @@ trace__redo_layout_slot(CodeModel, RedoLayoutSlot) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+	% Information for tracing that is valid throughout the execution
+	% of a procedure.
+:- type trace_info
+	--->	trace_info(
+			trace_type,	% The trace level (which cannot be
+					% none), and if it is shallow, the
+					% lval of the slot that holds the
+					% from-full flag.
+			bool,		% The value of --trace-internal.
+			bool,		% The value of --trace-decl.
+			maybe(pair(lval)),
+					% If trailing is enabled, the lvals
+					% of the slots that hold the value
+					% of the trail pointer and the ticket
+					% counter at the time of the call.
+			maybe(label)	% If we are generating redo events,
+					% this has the label associated with
+					% the fail event, which we then reserve
+					% in advance, so we can put the
+					% address of its layout struct
+					% into the slot which holds the
+					% layout for the redo event (the
+					% two events have identical layouts).
+		).
+
+:- pred init_trace_info(trace_type::in, bool::in, bool::in,
+	maybe(pair(lval))::in, maybe(label)::in, trace_info::out) is det.
+
+:- pred trace_info_get_trace_type(trace_info::in, trace_type::out) is det.
+:- pred trace_info_get_trace_internal(trace_info::in, bool::out) is det.
+:- pred trace_info_get_trace_decl(trace_info::in, bool::out) is det.
+:- pred trace_info_get_maybe_trail_slots(trace_info::in,
+	maybe(pair(lval))::out) is det.
+:- pred trace_info_get_maybe_redo_layout_slot(trace_info::in,
+	maybe(label)::out) is det.
+
+init_trace_info(TraceType, TraceInternal, TraceDecl,
+	MaybeTrailSlot, MaybeRedoLayoutSlot,
+	trace_info(TraceType, TraceInternal, TraceDecl,
+		MaybeTrailSlot, MaybeRedoLayoutSlot)).
+
+trace_info_get_trace_type(trace_info(TraceType, _, _, _, _), TraceType).
+trace_info_get_trace_internal(trace_info(_, TraceInternal, _, _, _),
+	TraceInternal).
+trace_info_get_trace_decl(trace_info(_, _, TraceDecl, _, _), TraceDecl).
+trace_info_get_maybe_trail_slots(trace_info(_, _, _, MaybesTrailSlot, _),
+	MaybesTrailSlot).
+trace_info_get_maybe_redo_layout_slot(trace_info(_, _, _, _,
+	MaybeRedoLayoutSlot), MaybeRedoLayoutSlot).

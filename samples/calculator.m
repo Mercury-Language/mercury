@@ -24,6 +24,8 @@
 	;       div(expr, expr).
 
 main --> 
+	io__write_string("calculator> "),
+	io__flush_output,
 	io__read_line(Res),
 	( { Res = error(_) },
 		io__write_string("Error reading from stdin\n")
@@ -31,7 +33,7 @@ main -->
 		io__write_string("EOF\n")
 	; { Res = ok(Line) },
 		( { fullexpr(X,Line,[]) } ->
-			{ evalexpr(X, Num) },
+			{ Num = evalexpr(X) },
 			io__write_int(Num),
 			io__write_string("\n")
 		;
@@ -40,12 +42,12 @@ main -->
 		main	% recursively call ourself for the next line(s)
 	).
 
-:- pred evalexpr(expr::in, int::out) is det.
-evalexpr(number(Num), Num).
-evalexpr(plus(X,Y),  Z) :- evalexpr(X,A), evalexpr(Y,B), Z is A + B.
-evalexpr(minus(X,Y), Z) :- evalexpr(X,A), evalexpr(Y,B), Z is A - B.
-evalexpr(times(X,Y), Z) :- evalexpr(X,A), evalexpr(Y,B), Z is A * B.
-evalexpr(div(X,Y),   Z) :- evalexpr(X,A), evalexpr(Y,B), Z is A // B.
+:- func evalexpr(expr) = int.
+evalexpr(number(Num)) = Num.
+evalexpr(plus(X,Y)) = evalexpr(X) + evalexpr(Y).
+evalexpr(minus(X,Y)) = evalexpr(X) - evalexpr(Y).
+evalexpr(times(X,Y)) = evalexpr(X) * evalexpr(Y).
+evalexpr(div(X,Y)) = evalexpr(X) // evalexpr(Y).
 
 % Simple recursive-descent parser.
 

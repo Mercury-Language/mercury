@@ -15,14 +15,14 @@
 /*
 ** Print the prompt to the `out' file, read a line from the `in' file,
 ** possibly using GNU readline for command-line editing, and return it
-** in a malloc'd buffer holding the line (without the final newline).
+** in a MR_malloc'd buffer holding the line (without the final newline).
 ** If EOF occurs on a nonempty line, treat the EOF as a newline; if EOF
 ** occurs on an empty line, return NULL.
 */
 char *	MR_trace_readline(const char *prompt, FILE *in, FILE *out);
 
 /*
-** Read a line from a file, and return a pointer to a malloc'd buffer
+** Read a line from a file, and return a pointer to a MR_malloc'd buffer
 ** holding the line (without the final newline). If EOF occurs on a
 ** nonempty line, treat the EOF as a newline; if EOF occurs on an empty
 ** line, return NULL.  Don't use GNU readline.

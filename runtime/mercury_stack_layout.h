@@ -95,11 +95,13 @@ typedef	MR_int_least16_t	MR_Determinism;
 **  unknown		10	(The location is not known)
 **
 ** For indirect references, the word exclusive of the tag consists of
-** (a) an integer with MR_LONG_LVAL_OFFSETBITS bits giving the index
-** of the typeinfo inside a type class info (to be interpreted by
-** private_builtin:type_info_from_typeclass_info), and (b) a MR_Long_Lval
-** value giving the location of the pointer to the type class info.
-** This MR_Long_Lval value will *not* have an indirect tag.
+** (a) an integer with MR_LONG_LVAL_OFFSETBITS bits giving the index of
+** the typeinfo inside a type class info (to be interpreted by
+** MR_typeclass_info_type_info or the predicate
+** private_builtin:type_info_from_typeclass_info, which calls it) and
+** (b) a MR_Long_Lval value giving the location of the pointer to the
+** type class info.  This MR_Long_Lval value will *not* have an indirect
+** tag.
 **
 ** This data is generated in stack_layout__represent_locn_as_int,
 ** which must be kept in sync with the constants and macros defined here.
@@ -236,13 +238,27 @@ typedef	struct MR_Var_Name_Struct {
 } MR_Var_Name;
 
 /*
-** The MR_slvs_var_count field should be set to a negative number
-** if there is no information about the variables live at the label.
+** This data structure describes the variables live at a given point.
+** The count of live variables is encoded; it gives separately the counts
+** of variables that have short and long location descriptions, or it may
+** say that there is no information about variables at this point (which is
+** very different from saying that there are no variables live at this point).
+** You can decode the count using the macros below.
+**
+** The last three fields are meaningful only if the MR_has_valid_var_count
+** macro returns true.
+**
+** The names array pointer may be NULL, in which case no information about
+** variable names is available.
+**
+** The type parameters array may also be NULL, but this means that there are
+** no type parameters in the types of the variables live at this point.
+**
+** For further information, see the top of compiler/stack_layout.m.
 */
 
 typedef	struct MR_Stack_Layout_Vars_Struct {
-	void			*MR_slvs_var_count;
-	/* the remaining fields are present only if MR_sll_var_count > 0 */
+	Integer			MR_slvs_var_count;
 	void			*MR_slvs_locns_types;
 	MR_Var_Name		*MR_slvs_names;
 	MR_Type_Param_Locns	*MR_slvs_tvars;
@@ -252,15 +268,16 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 #define	MR_SHORT_COUNT_MASK	((1 << MR_SHORT_COUNT_BITS) - 1)
 
 #define	MR_has_valid_var_count(slvs)					    \
-		(((Integer) ((slvs)->MR_slvs_var_count)) >= 0)
+		(((slvs)->MR_slvs_var_count) >= 0)
 #define	MR_has_valid_var_info(slvs)					    \
-		(((Integer) ((slvs)->MR_slvs_var_count)) > 0)
+		(((slvs)->MR_slvs_var_count) > 0)
 #define	MR_long_desc_var_count(slvs)					    \
-		(((Integer) ((slvs)->MR_slvs_var_count)) >> MR_SHORT_COUNT_BITS)
+		(((slvs)->MR_slvs_var_count) >> MR_SHORT_COUNT_BITS)
 #define	MR_short_desc_var_count(slvs)					    \
-		(((Integer) ((slvs)->MR_slvs_var_count)) & MR_SHORT_COUNT_MASK)
+		(((slvs)->MR_slvs_var_count) & MR_SHORT_COUNT_MASK)
 #define	MR_all_desc_var_count(slvs)					    \
 		(MR_long_desc_var_count(slvs) + MR_short_desc_var_count(slvs))
+
 #define	MR_var_pti(slvs, i)						    \
 		(((MR_PseudoTypeInfo **) ((slvs)->MR_slvs_locns_types))[(i)])
 #define	MR_end_of_var_ptis(slvs)					    \
@@ -331,8 +348,8 @@ typedef struct MR_Stack_Layout_User_Proc_Struct {
 	ConstString		MR_user_decl_module;
 	ConstString		MR_user_def_module;
 	ConstString		MR_user_name;
-	Integer			MR_user_arity;
-	Integer			MR_user_mode;
+	MR_int_least16_t	MR_user_arity;
+	MR_int_least16_t	MR_user_mode;
 } MR_Stack_Layout_User_Proc;
 
 typedef struct MR_Stack_Layout_Compiler_Proc_Struct {
@@ -340,8 +357,8 @@ typedef struct MR_Stack_Layout_Compiler_Proc_Struct {
 	ConstString		MR_comp_type_module;
 	ConstString		MR_comp_def_module;
 	ConstString		MR_comp_pred_name;
-	Integer			MR_comp_arity;
-	Integer			MR_comp_mode;
+	MR_int_least16_t	MR_comp_arity;
+	MR_int_least16_t	MR_comp_mode;
 } MR_Stack_Layout_Compiler_Proc;
 
 typedef union MR_Stack_Layout_Proc_Id_Union {
@@ -364,8 +381,10 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 				*MR_sle_call_label;
 	struct MR_Module_Layout_Struct
 				*MR_sle_module_layout;
-	MR_int_least16_t	MR_sle_maybe_from_full;
-	MR_int_least16_t	MR_sle_maybe_decl_debug;
+	MR_int_least16_t	MR_sle_max_r_num;
+	MR_int_least8_t		MR_sle_maybe_from_full;
+	MR_int_least8_t		MR_sle_maybe_trail;
+	MR_int_least8_t		MR_sle_maybe_decl_debug;
 } MR_Stack_Layout_Entry;
 
 #define	MR_sle_user	MR_sle_proc_id.MR_proc_user
@@ -492,19 +511,10 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 
 typedef	struct MR_Stack_Layout_Label_Struct {
 	MR_Stack_Layout_Entry	*MR_sll_entry;
-#ifdef	MR_LABEL_STRUCTS_INCLUDE_NUMBER
-	Integer			MR_sll_label_num;
-#endif
+	MR_int_least16_t	MR_sll_port;
+	MR_int_least16_t	MR_sll_goal_path;
 	MR_Stack_Layout_Vars	MR_sll_var_info;
 } MR_Stack_Layout_Label;
-
-#ifdef	MR_LABEL_STRUCTS_INCLUDE_NUMBER
-  #define	UNKNOWN_INTERNAL_LABEL_FIELD	Integer f2;
-  #define	UNKNOWN_INTERNAL_LABEL_NUMBER	(Integer) -1,
-#else
-  #define	UNKNOWN_INTERNAL_LABEL_FIELD
-  #define	UNKNOWN_INTERNAL_LABEL_NUMBER
-#endif
 
 /*
 ** Define a stack layout for an internal label.
@@ -527,26 +537,27 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 ** live value information as well to these macros.
 */ 
 
-#define MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(l, e)			\
-	MR_Stack_Layout_Label mercury_data__layout__##l = {		\
-		&mercury_data__layout__##e,				\
-		UNKNOWN_INTERNAL_LABEL_NUMBER				\
+#define MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(label, entry) \
+	MR_Stack_Layout_Label mercury_data__layout__##label = {		\
+		&mercury_data__layout__##entry,				\
+		-1,							\
+		-1,							\
 		{							\
-			(void *) -1,	/* No info about live values */	\
+			-1,		/* No info about live values */	\
 			NULL,						\
 			NULL,						\
 			NULL						\
 		}							\
 	}
 
-#define MR_MAKE_INTERNAL_LAYOUT(e, n)					\
-	MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(e##_i##n, e)
+#define MR_MAKE_INTERNAL_LAYOUT(entry, labelnum)			\
+	MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(entry##_i##labelnum, entry)
 
 /*-------------------------------------------------------------------------*/
 /*
 ** Definitions for MR_Module_Layout
 **
-** The layout struct for a module contains two main components.
+** The layout struct for a module contains three main components.
 **
 ** The first is a string table, which contains strings referred to by other
 ** layout structures in the module (initially only the tables containing
@@ -554,7 +565,25 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 **
 ** The second is a table containing pointers to the proc layout structures
 ** of all the procedures in the module.
+**
+** The third component contains N tables if the module has labels corresponding
+** to contexts that refer to N filenames. For each filename, the table gives
+** the name of the file and the number of labels in that file in this module;
+** for each such label it gives its line number and its label layout struct.
+**
+** The corresponding elements of the label_lineno and label_layout arrays
+** refer to the same label. (The reason why they are not stored together
+** is space efficiency; adding a 16 bit field to a label layout structure would
+** require padding.) The labels are sorted on line number.
 */
+
+typedef struct MR_Module_File_Layout_Struct {
+	String			MR_mfl_filename;
+	Integer			MR_mfl_label_count;
+	/* the following fields point to arrays of size MR_mfl_label_count */
+	MR_int_least16_t	*MR_mfl_label_lineno;
+	MR_Stack_Layout_Label	**MR_mfl_label_layout;
+} MR_Module_File_Layout;
 
 typedef	struct MR_Module_Layout_Struct {
 	String			MR_ml_name;
@@ -562,6 +591,8 @@ typedef	struct MR_Module_Layout_Struct {
 	char			*MR_ml_string_table;
 	Integer			MR_ml_proc_count;
 	MR_Stack_Layout_Entry	**MR_ml_procs;
+	Integer			MR_ml_filename_count;
+	MR_Module_File_Layout	**MR_ml_module_file_layout;
 } MR_Module_Layout;
 
 #endif /* not MERCURY_STACK_LAYOUT_H */

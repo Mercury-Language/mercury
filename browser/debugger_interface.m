@@ -25,14 +25,14 @@
 %	ML_DI_found_match_user
 %	ML_DI_found_match_comp
 %	ML_DI_read_request_from_socket
-% These are used by runtime/mercury_trace_external.c.
+% These are used by trace/mercury_trace_external.c.
 
 :- pred dummy_pred_to_avoid_warning_about_nothing_exported is det.
 
 :- implementation.
 :- import_module io, require.
 :- import_module list, bool, std_util.
-:- import_module interactive_query.
+:- import_module interactive_query, util.
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 
@@ -43,28 +43,6 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 :- type determinism == int. 
 	% encoded as specified in ../runtime/mercury_stack_layout.h
 	% and ../compiler/stack_layout.m.
-
-% The stuff defined below is similar to types goal_path and trace_port
-% defined in modules compiler/hlds_goal.m and compiler/trace.m.
-% This enumeration must be EXACTLY the same as the MR_trace_port enum in
-% runtime/mercury_trace_base.h, and in the same order, since the code
-% assumes the representation is the same.
-
-:- type trace_port_type
-	--->	call
-	;	exit
-	;	redo
-	;	fail
-	;	ite_then
-	;	ite_else
-	;	disj
-	;	switch
-	;	nondet_pragma_first
-	;	nondet_pragma_later
-	;	exception
-	.
-
-:- type goal_path_string == string.
 
 % This enumeration must be EXACTLY the same as the MR_PredFunc enum in
 % runtime/mercury_stack_layout.h, and in the same order, since the code
@@ -171,6 +149,18 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	mmc_options(options)
 			% to call the term browser
 	;	browse(string)
+			% dynamically link the collect module with the 
+			% current execution
+	;	link_collect(string)
+			% execute the collect command
+	;	collect
+			% retrieve the grade the current execution has been 
+			% compiled with
+	;	current_grade
+			% switch the argument collecting on (for collect request)
+	;	collect_arg_on
+			% switch the argument collecting off (for collect request)
+	;	collect_arg_off
 	.
 
 :- type event_number == int.
@@ -192,7 +182,6 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 
 % The debugger_response type is used for response sent
 % to the debugger process from the Mercury program being debugged.
-% This type would need to be extended.
 :- type debugger_response
 	% sending hello
 	--->	hello	% are you there?
@@ -234,17 +223,57 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
  		)
 	% responses to current_vars
 	;	current_vars(list(univ), list(string))
-	% reponse to current_nth_var
+	% responses to current_nth_var
 	;	current_nth_var(univ)
 	% responses to current_live_var_names
 	;	current_live_var_names(list(string), list(string))
 	% response sent when the last event is reached
 	;	last_event
-	% responses to abort_prog or no_trace
+	% responses to a successful browse request session
+	;	browser_end	
+	% responses to a successful mmc_option request
+	;	mmc_option_ok
+	% responses to requests that proceeded successfully
 	;	ok
-	% responses to anything
+	% responses to requests that went wrong
 	;	error(string)
+	% responses to stack 
+	% The protocol between the debugger and the debuggee is described is
+	% trace/mercury_trace_external.c.
+	;	level(int)				% stack level
+	;	proc(string, string, string, int, int)	% compiler generated proc
+	;	proc(string, string, int, int)		% user generated proc
+	;	def_module(string)
+	;	detail(int, int, int)
+	;	(pred)
+	;	(func)
+	;	det(string)
+	;	end_stack
+	% responses to stack_regs
+	;	stack_regs(int, int, int)
+	% responses to link_collect
+	;	link_collect_succeeded
+	;	link_collect_failed
+	% responses to collect
+	;	collect_linked
+	;	collect_not_linked
+	% responses to current_grade
+	;	grade(string)
+	% responses to collect
+	%;	collected(collected_type)
+		% This is commented out because collected_type is unknown at  
+		% compile time since it is defined by users in the dynamically
+		% linked collect module.
+	% sent if the execution is not terminated after a collect request
+	;	execution_continuing
+	% sent if the execution is terminated after a collect request
+	;	execution_terminated
+	% responses to collect_arg_on
+	;	collect_arg_on_ok
+	% responses to collect_arg_off
+	;	collect_arg_off_ok
 	.
+
 
 %-----------------------------------------------------------------------------%
 %	send to the debugger (e.g. Opium) the wanted features.
@@ -565,6 +594,23 @@ get_mmc_options(DebuggerRequest, Options) :-
 	;
 		error("get_mmc_options: not a mmc_options request")
 	).
+%-----------------------------------------------------------------------------%
+
+:- pred get_object_file_name(debugger_request, string).
+:- mode get_object_file_name(in, out) is det.
+
+:- pragma export(get_object_file_name(in, out), "ML_DI_get_object_file_name").
+	% This predicate allows mercury_trace_external.c to retrieve the name 
+	% of the object file to link the current execution with from a 
+	% `link_collect(ObjectFileName)' request.
+get_object_file_name(DebuggerRequest, ObjectFileName) :-
+	(
+		DebuggerRequest = link_collect(ObjectFileName1)
+	->
+		ObjectFileName = ObjectFileName1
+	;
+		error("get_object_file_name: not a link_collect request")
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -618,6 +664,11 @@ classify_request(cc_query(_),14).
 classify_request(io_query(_),15).
 classify_request(mmc_options(_),16).
 classify_request(browse(_),17).
+classify_request(link_collect(_),18).
+classify_request(collect,19).
+classify_request(current_grade,20).
+classify_request(collect_arg_on,21).
+classify_request(collect_arg_off,22).
 
 
 %-----------------------------------------------------------------------------%

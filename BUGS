@@ -13,6 +13,12 @@ fully self-contained.
 Below is a list of the known outstanding bugs.
 We'll try to record any other bugs that are discovered
 on our WWW page <http://www.cs.mu.oz.au/mercury>.
+In addition to the bugs mentioned here, some bugs related
+to the implementation of particular languages features
+(existential types, nested modules, tabling)
+are also mentioned in the language reference manual, and some
+problems related to using Mercury on specific operating systems
+are described in the README.* files.
 See also the LIMITATIONS file.
 
 Note: please do not be alarmed by the fact that this software has some bugs.
@@ -40,19 +46,6 @@ generated C code, because 1E400 == Infinity, which gets printed as `Inf'.
 main -->
 	io__write_float(1E400),
 	io__write_string("\n").
-
------------------------------------------------------------------------------
-Subject: map__lookup failed in profiler
-Date: Tue, 7 May 1996 11:58:08 +1000 (EST)
-
-When profiling programs that have been compiled on the Alpha using
-shared libraries, the profiler will abort with a "Software Error:
-map__lookup failed" message.  The work-around is to link with
-`--static'.
-
-This is actually due to a bug in the Alpha shared library mechanism,
-which does not conform to the ANSI C standard.  There is not much
-we can do about this one.
 
 -----------------------------------------------------------------------------
 Subject: nit in error msg
@@ -135,5 +128,47 @@ test(Args0) :-
 			Index is Index0 + 1
 		)),
 	list__map_foldl(MakeIndex, Args0, _, 0, _).
+
+-----------------------------------------------------------------------------
+
+Subject: Formatted printing of floating point numbers broken
+Date: Thu, 27 May 1999 15:26:58 +1000
+
+It seems as though the formatted printing of floating point numbers is 
+broken if one uses the %g or %G format specifiers.  In particular, if it 
+decides that the %f format should be used, everything after the decimal 
+point is discarded.
+
+Note also that, from inspection of the code, it seems the "#" format 
+modifier is being ignored for the "feEgG" formats, contrary to the 
+documentation for string__format.  It'd also be nice if, by default, the 
+%g/%G format didn't print trailing zeros (as per the C standard [and implied 
+by the Mercury docs] and the reason I was trying to use it in the first 
+place: I don't like outputting 0.500000000000000, but I don't want to be 
+aggressive about pruning the precision in case it's actually significant 
+sometime).
+
+-----------------------------------------------------------------------------
+
+Subject: `:- pragma does_not_terminate'
+Date: Wed, 9 Jun 1999 16:29:09 +1000 (EST)
+
+`:- pragma does_not_terminate' declarations do not work.
+The compiler's termination analysis seems to ignore them.
+
+-----------------------------------------------------------------------------
+
+Date: Wed, 1 Dec 1999 22:52:57 +1100
+Subject: compiler infinite loop for cyclic type classes
+
+According to the language reference manual:
+
+|  Typeclass constraints on type class declarations gives rise to a
+|  superclass relation.  This relation must be acyclic.  That is, it is an
+|  error if a type class is its own (direct or indirect) superclass.
+
+But if you try to compile modules containing cyclic typeclasses,
+the compiler goes into an infinite loop and eventually gets a
+stack overflow, rather than reporting a proper error message.
 
 -----------------------------------------------------------------------------

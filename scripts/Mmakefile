@@ -16,7 +16,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 SCRIPTS = mmake mmc mdb c2init mgnuc ml mprof mprof_merge_runs \
 	  sicstus_conv mtags vpath_find mercury_update_interface \
-	  mkfifo_using_mknod
+	  mkfifo_using_mknod mercury_cleanup_install
 DEBUGGER_SCRIPTS = mdbrc
 EMACS_SCRIPTS = gud.el
 
@@ -78,6 +78,12 @@ install_emacs_scripts: $(EMACS_SCRIPTS) install_dirs
 
 .PHONY: install_debugger_scripts
 install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs
+	# Reportedly old versions of Mercury
+	# used to install mdbrc as read-only.
+	# If that is the case, then we need to make sure
+	# that it gets made writable before we install the
+	# new version.
+	-chmod u+w $(INSTALL_LIBDIR)/mdb/*
 	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb 
 
 #-----------------------------------------------------------------------------#
@@ -90,7 +96,7 @@ uninstall:
 
 #-----------------------------------------------------------------------------#
 
-realclean: clean_scripts
+realclean_local: clean_scripts
 
 .PHONY: clean_scripts
 clean_scripts:

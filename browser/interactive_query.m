@@ -445,7 +445,7 @@ compile_file(Options, Succeeded) -->
 :- pragma c_header_code("#include ""mercury_grade.h""").
 :- pragma c_code(grade_option = (GradeOpt::out),
 	[thread_safe, will_not_call_mercury],
-	"make_aligned_string(GradeOpt, (String) MR_GRADE_OPT);").
+	"MR_make_aligned_string(GradeOpt, (String) MR_GRADE_OPT);").
 
 :- func verbose = bool.
 verbose = no.

@@ -21,6 +21,7 @@ define(MERCURY_MSG,
 [echo $1 1>&AC_FD_MSG])
 #-----------------------------------------------------------------------------#
 AC_INIT(runtime/mercury_wrapper.c)
+TMPDIR=${TMPDIR=/tmp}
 #-----------------------------------------------------------------------------#
 #
 # Ensure that all messages are saved to a file `configure.log' by
@@ -76,15 +77,18 @@ if test "$BOOTSTRAP_MC" != ""; then
 	cat > conftest.m << EOF
 		% this module contains features which didn't work in
 		% previous versions of the Mercury compiler
+		% Use [[ ]] for lists.
 		:- module conftest.
 		:- interface.
 		:- import_module io.
 		:- pred main(io__state::di, io__state::uo) is det.
 		:- implementation.
-		:- import_module int.
+		:- import_module list.
+		% Check that promise declarations can be parsed
+		% and that every variable in the assertion doesn't
+		% need to be explicitly quantified.
+		:- promise all [[H,T,L]] (list__last([[H|T]], L)).
 		main --> 
-			% check that we have unchecked_left_shift
-			{ _X = unchecked_left_shift(2,2) },
 			print("Hello, world\n").
 EOF
 	if
@@ -126,7 +130,7 @@ PATH="$PATH:/etc:/usr/etc:/sbin"
 AC_PATH_PROG(MKFIFO,mkfifo)
 if test "$MKFIFO" != ""; then
 	# check that it really works
-	tmp=/tmp/fifo$$
+	tmp=$TMPDIR/fifo$$
 	trap "rm -f $tmp" 1 2 3 13 15
 	if $MKFIFO $tmp && test -p $tmp; then
 		true
@@ -139,7 +143,7 @@ if test "$MKFIFO" = ""; then
 	AC_PATH_PROG(MKNOD,mknod)
 	if test "$MKNOD" != ""; then
 		# check that it really works
-		tmp=/tmp/fifo$$
+		tmp=$TMPDIR/fifo$$
 		trap "rm -f $tmp" 1 2 3 13 15
 		if $MKNOD $tmp p && test -p $tmp; then
 			MKFIFO=mkfifo_using_mknod
@@ -163,9 +167,9 @@ MERCURY_MSG("looking for a way to create temporary files...")
 AC_PATH_PROG(MKTEMP,mktemp)
 if test "$MKTEMP" != ""; then
 	# check that it really works
-	TMPFILE="`mktemp /tmp/configure.XXXXXX < /dev/null`"
+	TMPFILE="`mktemp $TMPDIR/configure.XXXXXX < /dev/null`"
 	case "$TMPFILE" in 
-		/tmp/configure.*) rm -f $TMPFILE ;;
+		$TMPDIR/configure.*) rm -f $TMPFILE ;;
 		*) MKTEMP="" ;;
 	esac
 fi
@@ -186,6 +190,9 @@ AC_SUBST(DVIPS)
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(MAKEINFO,makeinfo)
 AC_SUBST(MAKEINFO)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(INFO,info)
+AC_SUBST(INFO)
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(PERL,perl)
 AC_SUBST(PERL)
@@ -222,7 +229,8 @@ case "$host" in
 	*-cygwin*)
 		ac_cv_func_mprotect=no ;;
 esac
-AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer strerror memmove)
+AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
+AC_HAVE_FUNCS(strerror memmove fileno fdopen fstat)
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/wait.h, HAVE_SYS_WAIT_H=1)
 if test "$HAVE_SYS_WAIT_H" = 1; then
@@ -260,21 +268,45 @@ if test "$HAVE_SYS_TIME_H" = 1; then
 	AC_DEFINE(HAVE_SYS_TIME)
 fi
 #-----------------------------------------------------------------------------#
-AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
-if test "$HAVE_DLFCN_H" = 1; then
-	AC_DEFINE(HAVE_DLFCN_H)
+AC_CHECK_HEADER(sys/times.h, HAVE_SYS_TIMES_H=1)
+if test "$HAVE_SYS_TIMES_H" = 1; then
+	AC_DEFINE(HAVE_SYS_TIMES_H)
 fi
-AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
-AC_SUBST(DL_LIBRARY)
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/types.h, HAVE_SYS_TYPES_H=1)
+if test "$HAVE_SYS_TYPES_H" = 1; then
+	AC_DEFINE(HAVE_SYS_TYPES_H)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/stat.h, HAVE_SYS_STAT_H=1)
+if test "$HAVE_SYS_STAT_H" = 1; then
+	AC_DEFINE(HAVE_SYS_STAT_H)
+fi
+#-----------------------------------------------------------------------------#
+#
+# Check for dynamic linking, unless the --disable-dynamic-link option
+# was specified.
+#
+AC_ARG_ENABLE(dynamic-link,
+[  --disable-dynamic-link  disable the use of dynamic linking],
+mercury_cv_enable_dynamic_link="$enableval",mercury_cv_enable_dynamic_link=yes)
+if test "$mercury_cv_enable_dynamic_link" = "yes"; then
+	AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
+	if test "$HAVE_DLFCN_H" = 1; then
+		AC_DEFINE(HAVE_DLFCN_H)
+	fi
+	AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
+	AC_SUBST(DL_LIBRARY)
 
-# temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
-save_LIBS="$LIBS"
-LIBS="$LIBS $DL_LIBRARY"
+	# temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
+	save_LIBS="$LIBS"
+	LIBS="$LIBS $DL_LIBRARY"
 
-AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
+	AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
 
-# restore old value of LIBS
-LIBS="$save_LIBS"
+	# restore old value of LIBS
+	LIBS="$save_LIBS"
+fi
 #-----------------------------------------------------------------------------#
 #
 # check the basics of sigaction
@@ -1245,12 +1277,21 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 #-----------------------------------------------------------------------------#
 #
 # On sparc, x86, and probably on other architectures,
-# for egcs 1.1, if we're using non-local gotos, then we need
-# `-fno-gcse -fno-function-cse'.
-# (Actually I don't know if _both_ of these are needed.
-# Maybe you can get away with just one of them.)
-# Earlier versions of gcc will just ignore those arguments,
-# so we don't need to conditionalize that on the gcc version.
+# if we're using non-local gotos, then for egcs 1.1, we need
+# `-fno-gcse -fno-function-cse', and for gcc 2.8 we need `-fno-function-cse'.
+# Otherwise gcc generates code which initializes registers in the function
+# prologue and expects them to be valid later on, which doesn't work with
+# non-local gotos, since we jump directly into the middle of a function.
+# (Actually I don't know if `-fno-functions-cse' is really needed.
+# Maybe you can get away without it.  But better to err on the safe side...)
+#
+# For alpha and for mips, and probably on other architectures, when using
+# non-local gotos we need -fomit-frame-pointer, otherwise when compiling
+# with --no-c-optimize we run into a problem similar to the one above:
+# Gcc generates code which initializes the frame pointer in the
+# function prologue, and then expects it to be valid later on, which
+# doesn't work with non-local gotos, since we jump directly into the
+# middle of a function.
 #
 # For Irix 5, gcc labels don't work with shared libraries,
 # so if we're using gcc labels, we need to use non-shared libraries,
@@ -1277,6 +1318,11 @@ case "$host" in
 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -non_shared -mno-abicalls"
 LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		export LIBRARY_PATH
+		;;
+esac
+case "$host" in
+	mips-*)
+		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
 		;;
 	i?86-*)
 		CC="$CC -fno-builtin -fno-omit-frame-pointer"
@@ -1323,8 +1369,11 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 	void *entry_bar_1;
 	void *succip;
 	int global;
+	void *dummy_identity_function(void *);
 	foo() {
 		entry_foo_1 = && foo_1;
+		goto *dummy_identity_function(&&return_label);
+	return_label:
 		return;
 	foo_1:
 		if (global != 42) exit(1);
@@ -1332,6 +1381,8 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 	}
 	bar() {
 		entry_bar_1 = && bar_1;
+		goto *dummy_identity_function(&&return_label);
+	return_label:
 		return;
 	bar_1:
 		if (global != 42) exit(1);
@@ -1342,12 +1393,18 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 		foo();
 		bar();
 		succip = &&last;
+		goto *dummy_identity_function(&&return_label);
+	return_label:
 		goto *entry_foo_1;
 		exit(1);
 	last:
 		if (global != 42) exit(1);
 		exit(0);
-	}], [mercury_cv_gcc_labels=yes], [mercury_cv_gcc_labels=no],
+	}
+	void *dummy_identity_function(void *p) {
+		return p;
+	}
+	], [mercury_cv_gcc_labels=yes], [mercury_cv_gcc_labels=no],
 		[mercury_cv_gcc_labels=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_labels)
@@ -1745,7 +1802,7 @@ else
 fi
 ])
 AC_MSG_RESULT($mercury_cv_asm_does_full_preprocessing)	
-AC_DEFINE(AS)
+AC_SUBST(AS)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
 AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
@@ -1782,6 +1839,7 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # set up some default values that should work on most systems
 # see Mmake.common.in for documentation on the meaning of these variables
 LINK_SHARED_OBJ="$CC -shared"
+LINK_SHARED_OBJ_SH="$CC -shared"
 SHARED_LIBS='`gcc -print-libgcc-file-name` -lm -lc'
 EXE_RPATH_OPT="-Wl,-rpath,"
 EXE_RPATH_SEP=" -Wl,-rpath,"
@@ -1809,6 +1867,7 @@ case "$host" in
 		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="ld -Bshareable"
+		LINK_SHARED_OBJ_SH="ld -Bshareable"
 		EXT_FOR_SHARED_LIB=so
 		# From Kevet Duncombe <dunc@acm.org> tested on FreeBSD 2.2.5
 		EXE_RPATH_OPT="-R"
@@ -1820,6 +1879,7 @@ case "$host" in
 		AC_MSG_RESULT(yes)
 		SHARED_LIBS="-lm -lc"	# don't link in libgcc.a
 		LINK_SHARED_OBJ="$CC -G"
+		LINK_SHARED_OBJ_SH="$CC -G"
 		ERROR_UNDEFINED="-Wl,-z,defs"
 		EXE_RPATH_OPT="-R"
 		EXE_RPATH_SEP=" -R"
@@ -1861,7 +1921,9 @@ case "$host" in
 	alpha-dec-osf*)
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="gcc -shared \
-			-Wl,-O3,-update_registry,../so_locations"
+		-Wl,-O3,-update_registry,\$(SO_LOCATIONS_DIR)so_locations"
+		LINK_SHARED_OBJ_SH="gcc -shared \
+		-Wl,-O3,-update_registry,\${SO_LOCATIONS_DIR}so_locations"
 		ERROR_UNDEFINED="-Wl,-error_unresolved"
 		EXE_RPATH_OPT="-Wl,-rpath,"
 		EXE_RPATH_SEP=":"
@@ -1873,7 +1935,11 @@ case "$host" in
 		EXT_FOR_PIC_OBJECTS=o
 		;;
 	mips-sgi-irix5.*)
-		LINK_SHARED_OBJ="ld -shared -update_registry ../so_locations\
+		LINK_SHARED_OBJ="ld -shared \
+			-update_registry \$(SO_LOCATIONS_DIR)so_locations \
+			-quickstart_info -rdata_shared"
+		LINK_SHARED_OBJ_SH="ld -shared \
+			-update_registry \${SO_LOCATIONS_DIR}so_locations \
 			-quickstart_info -rdata_shared"
 		ERROR_UNDEFINED="-no_unresolved"
 		EXE_RPATH_OPT="-Wl,-rpath,"
@@ -1952,6 +2018,7 @@ esac
 #-----------------------------------------------------------------------------#
 
 AC_SUBST(LINK_SHARED_OBJ)
+AC_SUBST(LINK_SHARED_OBJ_SH)
 AC_SUBST(ERROR_UNDEFINED)
 AC_SUBST(ALLOW_UNDEFINED)
 AC_SUBST(EXE_RPATH_OPT)
@@ -1990,6 +2057,39 @@ AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 
 #-----------------------------------------------------------------------------#
 #
+# Check for the POSIX struct tms and times() function.
+# This is used for the time__times procedure in library/times.m.
+#
+AC_MSG_CHECKING(for struct tms and times function)
+AC_CACHE_VAL(mercury_cv_have_posix_times,
+AC_TRY_LINK([
+	#include <sys/types.h>
+	#include <sys/times.h>
+],[
+	struct tms t;
+	long Ut, St, CUt, CSt;
+	long Ret;
+
+	Ret = (long) times(&t);
+
+	Ut = (long) t.tms_utime;
+	St = (long) t.tms_stime;
+	CUt = (long) t.tms_cutime;
+	CSt = (long) t.tms_cstime;
+],[mercury_cv_have_posix_times=yes],[mercury_cv_have_posix_times=no]))
+
+#
+# figure out whether the test succeeded
+#
+if test "$mercury_cv_have_posix_times" = yes; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_HAVE_POSIX_TIMES)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#-----------------------------------------------------------------------------#
+#
 # Check whether sockets work (we need them for the external debugger)
 #
 
@@ -1997,18 +2097,22 @@ AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 # check whether we need -lsocket
 #
 AC_CHECK_LIB(socket, socket, SOCKET_LIBRARY=-lsocket, SOCKET_LIBRARY="")
-AC_SUBST(SOCKET_LIBRARY)
+
+#
+# check whether we need -lnsl
+#
+AC_CHECK_LIB(nsl, inet_addr, NSL_LIBRARY=-lnsl, NSL_LIBRARY="")
 
 #
 # temporarily add -lsocket to LIBS, for use by TRY_LINK
 #
 save_LIBS="$LIBS"
-LIBS="$LIBS $SOCKET_LIBRARY"
+LIBS="$LIBS $SOCKET_LIBRARY $NSL_LIBRARY"
 
 #
 # use TRY_LINK to see whether we can use sockets
 #
-AC_MSG_CHECKING(whether we can use sockets (for Opium-M))
+AC_MSG_CHECKING(whether we can use sockets (for Morphine))
 AC_CACHE_VAL(mercury_cv_sockets_work,
 AC_TRY_LINK([
 	changequote(<<,>>) 
@@ -2078,7 +2182,7 @@ AC_TRY_LINK([
 		if (unix_socket) {
 		
 			addr_family = AF_UNIX;
-			memset(&unix_address, 0, sizeof(unix_address));
+			(memset)(&unix_address, 0, sizeof(unix_address));
 			unix_address.sun_family = AF_UNIX;
 			strcpy(unix_address.sun_path, unix_socket);
 			addr = (struct sockaddr *) &unix_address;
@@ -2101,7 +2205,7 @@ AC_TRY_LINK([
 			{
 				fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
 			}
-			host_addr = inet_network(hostname);
+			host_addr = inet_addr(hostname);
 			if (host_addr == -1) {
 				fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
 					"invalid address");
@@ -2204,7 +2308,14 @@ if test "$mercury_cv_enable_extern_debug" = "yes"; then
 	fi		
 else
 	AC_MSG_RESULT(no)
+
+	# don't link with the socket library if we're not going to use it
+	SOCKET_LIBRARY=
+	NSL_LIBRARY=
 fi
+
+AC_SUBST(SOCKET_LIBRARY)
+AC_SUBST(NSL_LIBRARY)
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
@@ -2216,6 +2327,9 @@ if test "$BOOTSTRAP_MC" != "" ; then
     do
         case $c_file in
         */'*.c')
+            ;;
+        */*_init.c)
+            to_keep="$to_keep $c_file"
             ;;
         *)
             sed -e '/END_OF_C_GRADE_INFO/,$d' < $c_file > confscratch

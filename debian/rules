@@ -15,23 +15,28 @@ MERCURY_MANS =	doc/c2init.1 doc/mmc.1 doc/mgnuc.1 doc/ml.1 \
 		doc/mprof.1 
 DEBIAN_DOCS =	debian/README.debian debian/copyright 
 
+PATH	    :=    $(PATH):/usr/local/mercury-DEV/bin:/home/tyson/install/bin
+
 # To build, configure as if we are going to install in /usr,
 # then build the compiler. 
 build:
 	$(checkdir)
+	echo $(PATH)
 	autoconf
-	PATH="/usr/bin:/bin" ./configure --prefix=/usr
+	./configure --prefix=/usr
 	make
 	touch build
 
 clean:
 	$(checkdir)
+	echo $(PATH)
 	-rm -f build
 	autoconf
-	./configure
+	./configure 
 	-mmake realclean
 	-rm -f config.status config.cache config.log configure.log
 	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
+	-rm -f bindist.build_vars bindist/bindist.build_vars
 	-rm -f Mmake.common
 	-rm -f configure
 	-rm -f `find . -name "*~"`
@@ -69,16 +74,17 @@ binary-arch: checkroot build
 # install the manpages
 	install -m 644 $(MERCURY_MANS) debian/tmp/usr/man/man1/
 # compress manpages, info pages, and html
-	gzip -9 `find debian/tmp/usr/man -type f 2>/dev/null`
-	gzip -9 `find debian/tmp/usr/info -type f`
-	gzip -9 `find debian/tmp/usr/doc -type f -size +4k ! -name "*.htm*"`
+	-gzip -9 `find debian/tmp/usr/man -type f 2>/dev/null`
+	-gzip -9 `find debian/tmp/usr/info -type f`
+	-gzip -9 `find debian/tmp/usr/doc -type f -size +4k ! -name "*.htm*"`
 # strip all executables
 	strip `find debian/tmp -type f -perm +111 | xargs file | fgrep ELF | sed 's/^\([^:]*\):.*$$/\1/'`
 # create DEBIAN directory
 	install -d debian/tmp/DEBIAN
 # install necessary scrips into debian directory
 	install -m 755 debian/postinst debian/postrm debian/tmp/DEBIAN/
-	dpkg-shlibdeps `find debian/tmp -type f -perm +111 | xargs file | fgrep ELF | sed 's/^\([^:]*\):.*$$/\1/'`
+	# XXX not entirely sure what to do about the shlibs
+	-dpkg-shlibdeps `find debian/tmp -type f -perm +111 | xargs file | fgrep ELF | sed 's/^\([^:]*\):.*$$/\1/'`
 	md5sum `find debian/tmp/* -type f ! -regex "debian/tmp/DEBIAN/.*"` >debian/tmp/DEBIAN/checksums
 	dpkg-gencontrol
 	chown -R root.root debian/tmp

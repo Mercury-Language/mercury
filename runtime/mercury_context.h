@@ -42,7 +42,7 @@
 #ifndef MERCURY_CONTEXT_H
 #define MERCURY_CONTEXT_H
 
-#include "mercury_regs.h"		/* for hp. Must come before
+#include "mercury_regs.h"		/* for MR_hp, etc. Must come before
 					   system headers. */
 
 #include <stdio.h>
@@ -130,7 +130,7 @@ struct MR_context_struct {
 		/* saved hp for this context */
 	Word		*min_hp_rec;
 		/*
-		** this pointer marks the minimum value of hp to which we can
+		** this pointer marks the minimum value of MR_hp to which we can
 		** truncate the heap on backtracking. See comments before the
 		** set_min_heap_reclamation_point macro (below).
 		*/
@@ -267,26 +267,26 @@ Declare_entry(do_runnext);
 
   /*
   ** To figure out the maximum amount of heap we can reclaim on backtracking,
-  ** we compare hp with the context_hp.
+  ** we compare MR_hp with the context_hp.
   **
   ** If context_hp == NULL then this is the first time this context has been
   ** scheduled, so the furthest back down the heap we can reclaim is to the
-  ** current value of hp. 
+  ** current value of MR_hp. 
   **
-  ** If hp > context_hp, another context has allocated data on the heap since
-  ** we were last scheduled, so the furthest back that we can reclaim is to
-  ** the current value of hp, so we set MR_min_hp_rec and the
+  ** If MR_hp > context_hp, another context has allocated data on the heap
+  ** since we were last scheduled, so the furthest back that we can reclaim is
+  ** to the current value of MR_hp, so we set MR_min_hp_rec and the
   ** field of the same name in our context structure.
   **
-  ** If hp < context_hp, then another context has truncated the heap on failure.
-  ** For this to happen, it must be the case that last time we were scheduled,
+  ** If MR_hp < context_hp, then another context has truncated the heap on
+  ** failure. For this to happen, it must be the case that last time we were
   ** that other context was the last one to allocate data on the heap, and we
-  ** did not allocate any heap during that period of execution. That being the
-  ** case, the furthest back to which we can reset the heap is to the current
-  ** value of hp. This is a conservative approximation - it is possible that
-  ** the current value of hp is the same as some previous value that we held,
-  ** and we are now contiguous with our older data, so this algorithm will lead
-  ** to holes in the heap, though GC will reclaim these.
+  ** scheduled, did not allocate any heap during that period of execution.
+  ** That being the case, the furthest back to which we can reset the heap is
+  ** to the current value of hp. This is a conservative approximation - it is
+  ** possible that the current value of hp is the same as some previous value
+  ** that we held, and we are now contiguous with our older data, so this
+  ** algorithm will lead to holes in the heap, though GC will reclaim these.
   **
   ** If hp == context_hp then no other process has allocated any heap since we
   ** were last scheduled, so we can proceed as if we had not stopped, and the
@@ -294,11 +294,11 @@ Declare_entry(do_runnext);
   ** were executing.
   */
   #define set_min_heap_reclamation_point(ctxt)	do {		\
-		if (hp != (ctxt)->context_hp 			\
+		if (MR_hp != (ctxt)->context_hp 		\
 			|| (ctxt)->context_hp == NULL)		\
 		{						\
-			MR_min_hp_rec = hp;			\
-			(ctxt)->min_hp_rec = hp;		\
+			MR_min_hp_rec = MR_hp;			\
+			(ctxt)->min_hp_rec = MR_hp;		\
 		}						\
 		else						\
 		{						\
@@ -308,7 +308,7 @@ Declare_entry(do_runnext);
 
   #define save_hp_in_context(ctxt)				\
   	do {							\
-		(ctxt)->context_hp = hp;			\
+		(ctxt)->context_hp = MR_hp;			\
 		(ctxt)->min_hp_rec = MR_min_hp_rec;		\
 	} while (0)
 

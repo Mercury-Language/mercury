@@ -66,7 +66,8 @@ void enter_failing(int handle, MR_untrail_reason reason) {
 	switch (reason) {
 	    case MR_exception:
 	    case MR_undo:
-/*		printf(""enter_failing: exception/undo\n""); */
+	    case MR_retry:
+/*		printf(""enter_failing: exception/undo/retry\n""); */
 	        printf(""=> fail back inside: %d\n"", handle);
 		break;
 	    default:
@@ -80,7 +81,8 @@ void leave_failing(int handle, MR_untrail_reason reason) {
 	switch (reason) {
 	    case MR_exception:
 	    case MR_undo:
-/*		printf(""leave_failing: exception/undo\n""); */
+	    case MR_retry:
+/*		printf(""leave_failing: exception/undo/retry\n""); */
 	        printf(""<= fail back outside: %d\n"", handle);
 		break;
 	    case MR_commit:

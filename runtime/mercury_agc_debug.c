@@ -162,7 +162,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 			fflush(NULL);
 
 		}
-		free(type_params);
+		MR_free(type_params);
 
 		/* 
 		** Move to the next stack frame.

@@ -45,6 +45,20 @@
 :- pred type_id_is_higher_order(type_id, pred_or_func, lambda_eval_method).
 :- mode type_id_is_higher_order(in, out, out) is semidet.
 
+	% return true iff there was a `where equality is <predname>'
+	% declaration for the specified type, and return the name of
+	% the equality predicate and the context of the type declaration.
+:- pred type_has_user_defined_equality_pred(module_info, (type), sym_name).
+:- mode type_has_user_defined_equality_pred(in, in, out) is semidet.
+
+	% Certain types, e.g. io__state and store__store(S),
+	% are just dummy types used to ensure logical semantics;
+	% there is no need to actually pass them, and so when
+	% importing or exporting procedures to/from C, we don't
+	% include arguments with these types.
+:- pred type_util__is_dummy_argument_type(type).
+:- mode type_util__is_dummy_argument_type(in) is semidet.
+
 :- pred type_is_aditi_state(type).
 :- mode type_is_aditi_state(in) is semidet.
 
@@ -152,6 +166,7 @@
 :- mode type_constructors(in, in, out) is semidet.
 
 	% Work out the types of the arguments of a functor.
+	% Aborts if the functor is existentially typed.
 :- pred type_util__get_cons_id_arg_types(module_info::in, (type)::in,
 		cons_id::in, list(type)::out) is det.
 
@@ -160,6 +175,9 @@
 	% otherwise fail.
 :- pred type_util__get_existq_cons_defn(module_info::in,
 		(type)::in, cons_id::in, ctor_defn::out) is semidet.
+
+:- pred type_util__is_existq_cons(module_info::in,
+		(type)::in, cons_id::in) is semidet.
 
 	% This type is used to return information about a constructor
 	% definition, extracted from the hlds_type_defn and hlds_cons_defn
@@ -307,11 +325,31 @@
 :- pred strip_prog_contexts(list(term(T))::in, list(term(T))::out) is det.
 :- pred strip_prog_context(term(T)::in, term(T)::out) is det.
 
+	% cons_id_adjusted_arity(ModuleInfo, Type, ConsId):
+	%	Returns the number of arguments of specified constructor id,
+	%	adjusted to include the extra typeclassinfo and typeinfo
+	%	arguments inserted by polymorphism.m for existentially
+	%	typed constructors.
+	%
+:- func cons_id_adjusted_arity(module_info, type, cons_id) = int.
+
+	% constraint_list_get_tvars(Constraints, TVars):
+	%	return the list of type variables contained in a
+	%	list of constraints
+	%
+:- pred constraint_list_get_tvars(list(class_constraint), list(tvar)).
+:- mode constraint_list_get_tvars(in, out) is det.
+
+	% constraint_list_get_tvars(Constraint, TVars):
+	%	return the list of type variables contained in a constraint.
+:- pred constraint_get_tvars(class_constraint, list(tvar)).
+:- mode constraint_get_tvars(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, require, std_util, string.
+:- import_module bool, int, require, std_util, string.
 :- import_module prog_io, prog_io_goal, prog_util, options.
 
 type_util__type_id_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
@@ -444,6 +482,33 @@ type_id_is_higher_order(SymName - _Arity, PredOrFunc, EvalMethod) :-
 		PorFStr = "func",
 		PredOrFunc = function
 	).
+
+type_has_user_defined_equality_pred(ModuleInfo, Type, SymName) :-
+	module_info_types(ModuleInfo, TypeTable),
+	type_to_type_id(Type, TypeId, _TypeArgs),
+	map__search(TypeTable, TypeId, TypeDefn),
+	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+	TypeBody = du_type(_, _, _, yes(SymName)).
+
+	% Certain types, e.g. io__state and store__store(S),
+	% are just dummy types used to ensure logical semantics;
+	% there is no need to actually pass them, and so when
+	% importing or exporting procedures to/from C, we don't
+	% include arguments with these types.
+
+type_util__is_dummy_argument_type(Type) :-
+	Type = term__functor(term__atom(":"), [
+			term__functor(term__atom(ModuleName), [], _),
+			term__functor(term__atom(TypeName), TypeArgs, _)
+		], _),
+	list__length(TypeArgs, TypeArity),
+	type_util__is_dummy_argument_type_2(ModuleName, TypeName, TypeArity).
+
+:- pred type_util__is_dummy_argument_type_2(string::in, string::in, arity::in)
+	is semidet.
+% XXX should we include aditi:state/0 in this list?
+type_util__is_dummy_argument_type_2("io", "state", 0).	 % io:state/0
+type_util__is_dummy_argument_type_2("store", "store", 1). % store:store/1.
 
 type_is_aditi_state(Type) :-
         type_to_type_id(Type,
@@ -606,7 +671,7 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 				ConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
 			)),
 		list__filter(CorrectCons, ConsDefns,
-			[hlds_cons_defn(_ExistQVars0, _Constraints0, ArgTypes0,
+			[hlds_cons_defn(ExistQVars0, _Constraints0, ArgTypes0,
 				_, _)]),
 		ArgTypes0 \= []
 	->
@@ -614,28 +679,43 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 		map__lookup(Types, TypeId, TypeDefn),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
 		term__term_list_to_var_list(TypeDefnParams, TypeDefnVars),
+
 		% XXX handle ExistQVars
+		require(unify(ExistQVars0, []),
+	"type_util__get_cons_id_arg_types: existentially typed cons_id"),
+
 		map__from_corresponding_lists(TypeDefnVars, TypeArgs, TSubst),
 		term__apply_substitution_to_list(ArgTypes0, TSubst, ArgTypes)
 	;
 		ArgTypes = []
 	).
 
-	% Given a type and a cons_id, look up the definition of that
-	% constructor; if it is existentially typed, return its definition,
-	% otherwise fail.
-type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
+type_util__is_existq_cons(ModuleInfo, VarType, ConsId) :-
+	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, _). 
+	
+:- pred type_util__is_existq_cons(module_info::in,
+		(type)::in, cons_id::in, hlds_cons_defn::out) is semidet.
+
+type_util__is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
 	type_to_type_id(VarType, TypeId, _TypeArgs),
 	module_info_ctors(ModuleInfo, Ctors),
 	% will fail for builtin cons_ids.
 	map__search(Ctors, ConsId, ConsDefns),
-	MatchingCons = lambda([ConsDefn::in] is semidet, (
-			ConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
+	MatchingCons = lambda([ThisConsDefn::in] is semidet, (
+			ThisConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
 		)),
-	list__filter(MatchingCons, ConsDefns,
-		[hlds_cons_defn(ExistQVars, Constraints, ArgTypes, _, _)]),
-	ExistQVars \= [],
+	list__filter(MatchingCons, ConsDefns, [ConsDefn]), 
+	ConsDefn = hlds_cons_defn(ExistQVars, _, _, _, _),
+	ExistQVars \= [].
+
+	% Given a type and a cons_id, look up the definition of that
+	% constructor; if it is existentially typed, return its definition,
+	% otherwise fail.
+type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
+	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn),
+	ConsDefn = hlds_cons_defn(ExistQVars, Constraints, ArgTypes, _, _),
 	module_info_types(ModuleInfo, Types),
+	type_to_type_id(VarType, TypeId, _),
 	map__lookup(Types, TypeId, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeVarSet),
 	hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
@@ -1174,4 +1254,35 @@ strip_prog_context(term__functor(F, As0, _C0),
 	strip_prog_contexts(As0, As).
 
 %-----------------------------------------------------------------------------%
+
+cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
+		% figure out the arity of this constructor,
+		% _including_ any type-infos or typeclass-infos
+		% inserted for existential data types.
+	cons_id_arity(ConsId, ConsArity),
+	(
+		type_util__get_existq_cons_defn(ModuleInfo, Type, ConsId,
+			ConsDefn)
+	->
+		ConsDefn = ctor_defn(_TVarSet, ExistQTVars, Constraints,
+				_ArgTypes, _ResultType),
+		list__length(Constraints, NumTypeClassInfos),
+		constraint_list_get_tvars(Constraints, ConstrainedTVars),
+		list__delete_elems(ExistQTVars, ConstrainedTVars,
+				UnconstrainedExistQTVars),
+		list__length(UnconstrainedExistQTVars, NumTypeInfos),
+		AdjustedArity = ConsArity + NumTypeClassInfos + NumTypeInfos
+	;
+		AdjustedArity = ConsArity
+	).
+
+%-----------------------------------------------------------------------------%
+
+constraint_list_get_tvars(Constraints, TVars) :-
+	list__map(constraint_get_tvars, Constraints, TVarsList),
+	list__condense(TVarsList, TVars).
+
+constraint_get_tvars(constraint(_Name, Args), TVars) :-
+	term__vars_list(Args, TVars).
+
 %-----------------------------------------------------------------------------%

@@ -121,8 +121,9 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 		{ proc_info_goal(ProcInfo3, Goal3) },
 		{ proc_info_get_initial_instmap(ProcInfo3,
 			ModuleInfo2, InstMap0) },
+		{ proc_info_vartypes(ProcInfo3, VarTypes) },
 		{ recompute_instmap_delta(yes, Goal3, Goal, 
-			InstMap0, ModuleInfo2, ModuleInfo3) },
+			VarTypes, InstMap0, ModuleInfo2, ModuleInfo3) },
 		pd_info_set_module_info(ModuleInfo3),
 
 		pd_info_get_pred_info(PredInfo),
@@ -217,6 +218,10 @@ deforest__goal(Goal0, Goal) -->
 	
 deforest__goal(Goal, Goal) -->
 	{ Goal = unify(_, _, _, _, _) - _ }.
+
+deforest__goal(bi_implication(_, _) - _, _) -->
+	% these should have been expanded out by now
+	{ error("deforest__goal: unexpected bi_implication") }.
 
 %-----------------------------------------------------------------------------%
 

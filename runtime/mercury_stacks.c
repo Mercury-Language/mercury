@@ -92,7 +92,7 @@ MR_commit_mark(void)
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf("commit stack top up to %ld\n", (long) MR_cut_next - 1);
+		printf("commit stack next up to %ld\n", (long) MR_cut_next);
 	}
 #endif
 
@@ -108,14 +108,25 @@ MR_commit_cut(void)
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf("commit stack pointer down to %ld\n",
+		printf("commit stack next down to %ld\n",
 			(long) MR_cut_next);
 		if (MR_gen_next != MR_cut_stack[MR_cut_next].gen_next) {
-			assert(MR_gen_next >
-				MR_cut_stack[MR_cut_next].gen_next);
-			printf("setting generator stack pointer back to %ld\n",
-				(long) MR_cut_stack[MR_cut_next].gen_next);
+			if (MR_gen_next <= MR_cut_stack[MR_cut_next].gen_next)
+			{
+				printf("MR_gen_next %ld, MR_cut_next %ld, "
+					"MR_cut_stack[MR_cut_next].gen_next "
+					"%ld\n",
+					(long) MR_gen_next,
+					(long) MR_cut_next,
+					(long) MR_cut_stack[MR_cut_next].
+						gen_next);
+				fatal_error("GEN_NEXT ASSERTION FAILURE");
+			}
 		}
+
+		printf("setting generator stack next back to %ld from %ld\n",
+			(long) MR_cut_stack[MR_cut_next].gen_next,
+			(long) MR_gen_next);
 	}
 #endif
 
@@ -134,7 +145,7 @@ MR_register_generator_ptr(MR_Subgoal **generator_ptr)
 {
 	struct MR_CutGeneratorListNode	*node;
 
-	node = make(struct MR_CutGeneratorListNode);
+	node = MR_GC_NEW(struct MR_CutGeneratorListNode);
 	node->generator_ptr = generator_ptr;
 	node->next_generator = MR_cut_stack[MR_cut_next - 1].generators;
 	MR_cut_stack[MR_cut_next - 1].generators = node;
@@ -142,7 +153,7 @@ MR_register_generator_ptr(MR_Subgoal **generator_ptr)
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf("registering generator %p -> %p "
-			"at cut stack level %d\n",
+			"at commit stack level %d\n",
 			generator_ptr, *generator_ptr, MR_cut_next - 1);
 	}
 #endif

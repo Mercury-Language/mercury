@@ -60,7 +60,7 @@
 
 :- interface.
 
-:- import_module io, list.
+:- import_module io, list, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -305,17 +305,9 @@
 
 #include ""isql.h""
 #include ""isqlext.h""
-#include ""odbc_funcs.h""
-#include ""odbc_types.h""
+/* #include ""odbc_funcs.h"" */
+#include ""sqltypes.h""
 
-	/* 
-	** iODBC 2.12 doesn't define SQL_NO_TOTAL, so we define it to
-	** something random. It must be negative because a positive value 
-	** where SQL_NO_TOTAL is returned is the length of the data.
-	*/
-#ifndef SQL_NO_TOTAL
-#define SQL_NO_TOTAL (-1451)
-#endif
 	/*
 	** Again, iODBC 2.12 doesn't define this, so define it to something
 	** harmless.
@@ -892,7 +884,7 @@ odbc__int_to_attribute_type_2(5, null).
 	** Notes on memory allocation:
 	**
 	** C data structures (MODBC_Statement and MODBC_Column) are allocated 
-	** using newmem/oldmem. 
+	** using MR_GC_malloc/MR_GC_free.
 	**
 	** MODBC_Statement contains a statement handle which must be freed 
 	** using SQLFreeStmt.
@@ -905,7 +897,7 @@ odbc__int_to_attribute_type_2(5, null).
 	** it is stored within a MODBC_Column.
 	**
 	** Other data types have a buffer which is allocated once using
-	** newmem.
+	** MR_GC_malloc.
 	*/
 
 	/*
@@ -914,7 +906,7 @@ odbc__int_to_attribute_type_2(5, null).
 	** MODBC_CHUNK_SIZE must be a multiple of sizeof(Word).
 	*/
 #define MODBC_CHUNK_WORDS	1024
-#define MODBC_CHUNK_SIZE	MODBC_CHUNK_WORDS * sizeof(Word)
+#define MODBC_CHUNK_SIZE	(MODBC_CHUNK_WORDS * sizeof(Word))
 
 typedef enum {
 	MODBC_INT	= 0,	/* Word-sized Integer */
@@ -987,7 +979,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 
 
 		/* Doing manual deallocation of the statement object. */
-	statement = make(MODBC_Statement);
+	statement = MR_GC_NEW(MODBC_Statement);
 		
 	statement->num_columns = 0;
 	statement->row = NULL;
@@ -1117,7 +1109,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 	** Allocate an array containing the info for each column.
 	** The extra column is because ODBC counts columns starting from 1.
 	*/
-	statement->row = make_many(MODBC_Column, num_columns + 1);
+	statement->row = MR_GC_NEW_ARRAY(MODBC_Column, num_columns + 1);
 
 	/*
 	** Use SQLBindCol unless there are columns with no set maximum length.
@@ -1188,7 +1180,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 			** Do the buffer allocation once for columns which
 			** have a fixed maximum length. 
 			*/
-			column->data = newmem(column->size);
+			column->data = MR_GC_malloc(column->size);
 		}
 				
 	} /* for */
@@ -1605,13 +1597,13 @@ odbc_do_cleanup_statement(MODBC_Statement *stat)
 			if (! is_variable_length_sql_type(
 				    	stat->row[i].sql_type)) 
 			{
-				oldmem(stat->row[i].data);
+				MR_GC_free(stat->row[i].data);
 			}
 		    }
-		    oldmem(stat->row);
+		    MR_GC_free(stat->row);
 		}
 		rc = SQLFreeStmt(stat->stat_handle, SQL_DROP);
-		oldmem(stat);
+		MR_GC_free(stat);
 		return rc;
 	} else {
 		return SQL_SUCCESS;
@@ -1912,20 +1904,8 @@ odbc__data_sources(MaybeSources - Messages) -->
 			Status::out, Messages::out, IO0::di, IO::uo),
 		may_call_mercury,
 "{
-		/*
-		** Note that iODBC-2.12 doesn't implement 
-		** SQLDataSources, and always returns SQL_SUCCESS, 
-		** causing an infinite loop if we call the stub.
-		*/
-#ifdef MODBC_IODBC
-	Status = SQL_NO_DATA_FOUND;
-	SourceNames = MR_list_empty();
-	SourceDescs = MR_list_empty();
-	Messages = MR_list_empty();
-#else /* !MODBC_IODBC */
 	Status = odbc_do_get_data_sources(&SourceNames, 
 			&SourceDescs, &Messages);
-#endif /* !MODBC_IODBC */
 
 	IO = IO0;
 }").

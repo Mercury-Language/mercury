@@ -50,6 +50,7 @@ AC_SUBST(LOW_TAG_BITS)
 AC_SUBST(CFLAGS_FOR_REGS)
 AC_SUBST(CFLAGS_FOR_GOTOS)
 AC_SUBST(LINK_SHARED_OBJ)
+AC_SUBST(LINK_SHARED_OBJ_SH)
 AC_SUBST(CFLAGS_FOR_PIC)
 AC_SUBST(EXE_RPATH_OPT)
 AC_SUBST(EXE_RPATH_SEP)
@@ -60,6 +61,11 @@ AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(SHARED_LIBS)
 AC_SUBST(HAVE_DELAY_SLOT)
 AC_SUBST(DEFAULT_RM_C)
+AC_SUBST(ALLOW_UNDEFINED)
+AC_SUBST(ERROR_UNDEFINED)
+AC_SUBST(DL_LIBRARY)
+AC_SUBST(SOCKET_LIBRARY)
+AC_SUBST(NSL_LIBRARY)
 
 #-----------------------------------------------------------------------------#
 AC_PROG_RANLIB
@@ -170,7 +176,7 @@ else
 fi
 ])
 AC_MSG_RESULT($mercury_cv_asm_does_full_preprocessing)	
-AC_DEFINE(AS)
+AC_SUBST(AS)
 #-----------------------------------------------------------------------------#
 AC_PROG_CC
 AC_SUBST(CC)
@@ -186,43 +192,6 @@ FINAL_GRADE_OPTIONS=$top/scripts/final_grade_options.sh-subr
 AC_SUBST_FILE(INIT_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
-
-#-----------------------------------------------------------------------------#
-
-AC_MSG_CHECKING(whether we can use sockets (for Opium-M))
-# test if sockets are available to be able to use Opium-M
-# XXX It would be better to use AC_TRY_RUN() to do that
-
-SOCKET_LIBRARY=
-
-case "$host" in
-	i?86-*-linux|i?86-*-linux-gnu)
-		AC_MSG_RESULT(yes)
-		AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
-		;;
-	m68*-linux|m68*-linux-gnu)
-		AC_MSG_RESULT(disabled for now because it is untested)
-		;;
-	i?86-*-freebsd*)
-		AC_MSG_RESULT(disabled for now because it is untested)
-		;;
-	sparc-sun-solaris2.*)
-		AC_MSG_RESULT(yes)        
-		AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
-		SOCKET_LIBRARY=" -lsocket"
-		;;
-	alpha-dec-osf*)
-		AC_MSG_RESULT(disabled for now because it is untested)
-		;;
-	*-cygwin*)
-		AC_MSG_RESULT(disabled for now because it is untested)
-		;;
-	*)
-		AC_MSG_RESULT(unknown system, assuming no)
-		;;
-esac
-
-AC_SUBST(SOCKET_LIBRARY)
 
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE

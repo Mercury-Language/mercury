@@ -546,3 +546,74 @@ bintree__branching_factor(tree(_K, _V, L, R), Ones, Twos) :-
 	).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func bintree__set(bintree(K,V), K, V) = bintree(K,V).
+
+:- func bintree__lookup(bintree(K,V), K) = V.
+
+:- func bintree__delete(bintree(K,V), K) = bintree(K,V).
+
+:- func bintree__keys(bintree(K,_V)) = list(K).
+
+:- func bintree__values(bintree(_K,V)) = list(V).
+
+:- func bintree__from_list(assoc_list(K,V)) = bintree(K,V).
+
+:- func bintree__from_sorted_list(assoc_list(K,V)) = bintree(K,V).
+
+:- func bintree__from_corresponding_lists(list(K), list(V)) = bintree(K,V).
+
+:- func bintree__to_list(bintree(K,V)) = assoc_list(K,V).
+
+:- func bintree__count(bintree(_K,_V)) = int.
+
+:- func bintree__depth(bintree(_K,_V)) = int.
+
+:- func bintree__balance(bintree(K, V)) = bintree(K, V).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+bintree__set(BT1, K, V) = BT2 :-
+	bintree__set(BT1, K, V, BT2).
+
+bintree__lookup(BT, K) = V :-
+	bintree__lookup(BT, K, V).
+
+bintree__delete(BT1, K) = BT2 :-
+	bintree__delete(BT1, K, BT2).
+
+bintree__keys(BT) = Ks :-
+	bintree__keys(BT, Ks).
+
+bintree__values(BT) = Vs :-
+	bintree__values(BT, Vs).
+
+bintree__from_list(AL) = BT :-
+	bintree__from_list(AL, BT).
+
+bintree__from_sorted_list(AL) = BT :-
+	bintree__from_sorted_list(AL, BT).
+
+bintree__from_corresponding_lists(Ks, Vs) = BT :-
+	bintree__from_corresponding_lists(Ks, Vs, BT).
+
+bintree__to_list(BT) = AL :-
+	bintree__to_list(BT, AL).
+
+bintree__count(BT) = N :-
+	bintree__count(BT, N).
+
+bintree__depth(BT) = N :-
+	bintree__depth(BT, N).
+
+bintree__balance(BT1) = BT2 :-
+	bintree__balance(BT1, BT2).
+

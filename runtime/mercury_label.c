@@ -75,8 +75,7 @@ MR_do_init_label_tables(void)
 		entry_array_next = 0;
 		entry_array_size = INIT_ENTRY_SIZE;
 		entry_array_sorted = TRUE;
-		entry_array = checked_malloc(entry_array_size
-					* sizeof(MR_Entry));
+		entry_array = MR_NEW_ARRAY(MR_Entry, entry_array_size);
 #endif
 
 		MR_init_hash_table(internal_addr_table);
@@ -209,7 +208,7 @@ MR_insert_internal_label(const char *name, Code *addr,
 
 	MR_do_init_label_tables();
 
-	internal = make(MR_Internal);
+	internal = MR_GC_NEW(MR_Internal);
 	internal->i_addr = addr;
 	internal->i_layout = label_layout;
 	internal->i_name = name;

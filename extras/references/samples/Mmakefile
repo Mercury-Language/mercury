@@ -9,14 +9,9 @@ MAIN_TARGET = all
 # We need to use a grade with trailing
 GRADEFLAGS += --use-trail
 
-MGNUCFLAGS= -I..
+EXTRA_LIB_DIRS = $(INSTALL_PREFIX)/extras/lib/mercury
 
-# Link in the reference library from ..
-MCFLAGS += -I.. $(EXTRA_MCFLAGS)
-MLFLAGS += -R`pwd`/.. -L.. $(EXTRA_MLFLAGS)
-MLLIBS = -lglobal $(EXTRA_MLLIBS)
-VPATH = ..:$(MMAKE_VPATH)
-C2INITARGS = ../global.init
+EXTRA_LIBRARIES = global
 
 # We need the following to use shared libraries on Linux
 #MGNUCFLAGS += -DPIC_REG
@@ -56,8 +51,8 @@ check: $(RESS)
 .PHONY: cs
 cs: $(CS)
 
-.PHONY: clean
-clean:
+.PHONY: clean_local
+clean_local:
 	rm -f *.out *.res
 
 #-----------------------------------------------------------------------------#

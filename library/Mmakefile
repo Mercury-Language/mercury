@@ -62,8 +62,8 @@ MCOI	=	$(M_ENV) $(MC) --make-opt-int $(INTERMODULE_OPTS) \
 			$(ENABLE_TERM_OPTS)
 MCTOI	=	$(M_ENV) $(MC) --make-trans-opt $(INTERMODULE_OPTS) \
 			$(ENABLE_TERM_OPTS)
-MCG	=	$(M_ENV) $(MC) --compile-to-c $(INTERMODULE_OPTS) \
-			$(CHECK_TERM_OPTS)
+MCG	=	$(M_ENV) $(MC) --compile-to-c --trace minimum \
+			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)" \
 			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
@@ -214,7 +214,7 @@ $(os_subdir)std_util.pic_o \
 
 #-----------------------------------------------------------------------------#
 
-realclean:
+realclean_local:
 	rm -f lib$(STD_LIB_NAME).a lib$(STD_LIB_NAME).so $(STD_LIB_NAME).init
 	rm -f tags
 
@@ -262,9 +262,16 @@ install_ints: $(library.ints) $(library.int3s) \
 		fi; \
 	done
 	# The following is needed to support the `--use-subdirs' option
-	for dir in ints int2s int3s opts trans_opts; do \
+	# We try using `ln -s', but if that fails, then we just use `cp'.
+	for ext in int int2 int3 opt trans_opt; do \
+		dir=$${ext}s; \
 		rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \
-		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir; \
+		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir || { \
+			[ -d $(INSTALL_INT_DIR)/Mercury/$$dir ] || \
+				mkdir -p $(INSTALL_INT_DIR)/Mercury/$$dir; \
+			cp $(INSTALL_INT_DIR)/*.$$ext \
+				$(INSTALL_INT_DIR)/Mercury/$$dir; \
+		} || exit 1; \
 	done
 
 .PHONY: install_init

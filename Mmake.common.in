@@ -21,55 +21,11 @@ include $(MERCURY_DIR)/VERSION
 
 #-----------------------------------------------------------------------------#
 
-# Specify the locations for installing things.
-# These directories can all be modified independantly.
-# In particular, you might want to find a better place for the DVI and
-# HTML files.
-
-# FINAL_INSTALL_PREFIX describes the directory that the installation
-# will finally end up in. It should only be set by the configure 
-# script.  Other FINAL_INSTALL_* variables have a similar meaning.
-#
-# If you want to install to a different directory temporarily (e.g.
-# to build a package, or if you don't have the permissions to install
-# to a final directory), override INSTALL_PREFIX on the command-line.
-# If you have previously configured to the directory you want to
-# finally install to, you will then be able to move the files safely,
-# since any hard-coded paths will be set to their final destination
-# already (note that the installation in the temporary directory may
-# not work until moved into its final destination).
-# e.g.
-#      configure --prefix /usr
-#      make INSTALL_PREFIX=/some/temporary/directory/usr
-
-# If you don't intend to install to a temporary directory, rather than
-# overriding INSTALL_PREFIX you should reconfigure using the configure
-# script, since there are some hardcoded paths created by the configure
-# script (e.g. in the shell scripts mmc, ml, mmake, etc) that will not
-# be updated simply by overriding INSTALL_PREFIX.
-
-INSTALL_PREFIX		= @prefix@
-FINAL_INSTALL_PREFIX	= @prefix@
-INSTALL_BINDIR 		= $(INSTALL_PREFIX)/bin
-INSTALL_LIBDIR 		= $(INSTALL_PREFIX)/lib/mercury
-FINAL_INSTALL_LIBDIR 	= $(FINAL_INSTALL_PREFIX)/lib/mercury
-INSTALL_INFO_DIR 	= $(INSTALL_PREFIX)/info
-INSTALL_DVI_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
-INSTALL_TEXT_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
-INSTALL_PS_DIR 		= $(INSTALL_PREFIX)/lib/mercury/doc
-INSTALL_MAN_DIR 	= $(INSTALL_PREFIX)/man
-INSTALL_HTML_DIR 	= $(INSTALL_PREFIX)/lib/mercury/html
-INSTALL_MDB_DOC_DIR 	= $(INSTALL_PREFIX)/lib/mercury/mdb
-INSTALL_ELISP_DIR 	= $(INSTALL_PREFIX)/lib/mercury/elisp
-
 # Specify the Mercury compiler to use for bootstrapping
 MC			= @BOOTSTRAP_MC@
 
 # Specify the compilation model to use for compiling the compiler
 GRADE			= @GRADE@
-
-# Specify the additional compilation models to install the library for
-LIBGRADES  		= @LIBGRADES@
 
 # Specify EXT_FOR_EXE is `.exe' on MS-Windows and empty elsewhere.
 EXT_FOR_EXE	= @EXT_FOR_EXE@
@@ -102,13 +58,27 @@ EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
 # bootstrapping from the source distribution.
 LIBRARY_RM_C		= @LIBRARY_RM_C@
 
-# Specify the command to link a shared library
+# This specifies the path to the so_locations file (or its equivalent),
+# which is used by the linker to help it to map different shared objects
+# to different virtual memory addresses at static link time, so as to avoid 
+# the need to relocate them at dynamic link time.
+SO_LOCATIONS_DIR	= $(MERCURY_DIR)/
+
+# Specify the Mmake command to link a shared library.
 # This is only used if EXT_FOR_SHARED_LIB was defined as `so' above.
+# This command may reference $(SO_LOCATIONS_DIR).
+#
 # LINK_SHARED_OBJ  	= ld -shared	# for Irix 5
 # LINK_SHARED_OBJ  	= gcc -assert nodefinitions
 #					# for SunOS 4 (completely untested)
 # LINK_SHARED_OBJ  	= gcc -shared	# for Solaris etc.
 LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
+
+# This is the same as LINK_SHARED_OBJ except that it
+# specifies a Bourne shell command rather than an Mmake command,
+# so if it references the SO_LOCATIONS_DIR variable it must use
+# ${SO_LOCATIONS_DIR} rather than $(SO_LOCATIONS_DIR).
+LINK_SHARED_OBJ_SH  	= @LINK_SHARED_OBJ_SH@
 
 # The following variables specify how to pass options to the # $(CC) or
 # $(LINK_SHARED_OBJ) command to specify directories to be searched at
@@ -136,16 +106,8 @@ SHARED_LIBS		= @SHARED_LIBS@
 
 #-----------------------------------------------------------------------------#
 
-INSTALL_MODULE_DIR	= $(INSTALL_LIBDIR)/modules
-INSTALL_INT_DIR		= $(INSTALL_LIBDIR)/ints
-INSTALL_INC_DIR		= $(INSTALL_LIBDIR)/inc
-INSTALL_MMAKE_DIR 	= $(INSTALL_LIBDIR)/mmake
-FULLARCH		= @FULLARCH@
-INSTALL_MERC_BIN_DIR	= $(INSTALL_LIBDIR)/bin/$(FULLARCH)
-INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(FULLARCH)
-FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(FULLARCH)
-INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
-FINAL_INSTALL_MERC_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
+INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_MERC_GRADELESS_LIB_DIR)
+FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
 
 SCRIPTS_DIR = $(MERCURY_DIR)/scripts
 RUNTIME_DIR = $(MERCURY_DIR)/runtime
@@ -155,6 +117,17 @@ BROWSER_DIR = $(MERCURY_DIR)/browser
 BOEHM_GC_DIR = $(MERCURY_DIR)/boehm_gc
 COMPILER_DIR = $(MERCURY_DIR)/compiler
 UTIL_DIR = $(MERCURY_DIR)/util
+
+# By default, GRADESTRING is defined as the result of invoking
+# `mmc --output-grade-string' with $(GRADE) and $(GRADEFLAGS).
+# But when installing the standard library, the compiler will not yet
+# have been installed.  So we need to define GRADESTRING here, in a way
+# that doesn't require invoking mmc.
+#
+# Note that the definition below does _not_ include GRADEFLAGS.
+# So any changes to the grade flags for the standard library or 
+# compiler itself should be done by setting GRADE, not GRADEFLAGS.
+GRADESTRING		= $(GRADE)
 
 # The names of the various libraries.
 # The archives and shared object objects have a "lib" prefix and a ".a" or
@@ -197,6 +170,7 @@ INCLUDE_ADITI_OUTPUT = yes
 #-----------------------------------------------------------------------------#
 
 INSTALL_INFO=@INSTALL_INFO@
+INFO=@INFO@
 TEXI2DVI=@TEXI2DVI@
 DVIPS=@DVIPS@
 MAKEINFO=@MAKEINFO@

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -213,7 +213,9 @@ to_exprL([H|T]) = [to_expr(H)-0|to_exprL(T)].
 ztapply(_, G) = G :- G = given(_).
 ztapply(S, power(T)) = power(ztapply(S, T)).
 ztapply(S, cross(L0)) = cross(L) :-
-	list__map(pred(T::in, ztapply(S, T)::out) is det, L0, L).
+	list__map((pred(T::in, U::out) is det :-
+		U = ztapply(S, T)
+	), L0, L).
 ztapply(S, schema(DL0)) = schema(DL) :-
 	list__map(do_decl(ztapply(S)), DL0, DL).
 ztapply(S, V) = T :- V = var(I),
@@ -222,7 +224,9 @@ ztapply(S, V) = T :- V = var(I),
 ztapply(_, P) = P :- P = parameter(_).
 ztapply(_, unity) = unity.
 ztapply(S, abbreviation(I, L0, D, N, T)) = abbreviation(I, L , D, N, T) :-
-	list__map(pred(IN::in, ztapply(S, IN)::out) is det, L0, L).
+	list__map((pred(IN::in, OUT::out) is det :-
+		OUT = ztapply(S, IN)
+	), L0, L).
 
 :- pred do_decl(func(ztype) = ztype, pair(ident, ztype), pair(ident, ztype)).
 :- mode do_decl(func(in) = out is det, in, out) is det.

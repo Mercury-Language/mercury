@@ -18,11 +18,13 @@ esac
 PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
 PATH="/home/mercury/public/mercury-0.8/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
+PATH="/home/$HOST/public/mercury-latest/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/nuprolog/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/egcs-1.1b/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/autoconf-2.4/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/sicstus3/$HOST:$PATH"
+PATH="/home/mercury/public/$FULLARCH:$PATH"
 PATH="/home/mercury/public/$HOST:$PATH"
 export PATH
 
@@ -56,21 +58,46 @@ case $HOST in
 	murlibobo)	OPTIMIZE=-O5 ;;
 	kryten) 	OPTIMIZE=-O1 ;;
 	taifun) 	OPTIMIZE=-O1 ;;
+	rimmer) 	OPTIMIZE=-O1 ;;
 	quicksilver) 	OPTIMIZE=-O3 ;;
+	hg) 		OPTIMIZE=-O4 ;;
 	hydra)		OPTIMIZE=-O2 ;;
-	muse)		OPTIMIZE=-O0 ;;
 	munta)		OPTIMIZE=-O0 ;;
+esac
+
+# on hg, the file system we're using does not support links
+case $HOST in
+	hg)		LN="cp -r"; LN_S="cp -r" ;;
+	*)		LN="ln"; LN_S="ln -s" ;;
 esac
 
 TEST_MCFLAGS="$OPTIMIZE --opt-space"
 TEST_CFLAGS=""
 
+case $FULLARCH in
+	i?86-*-linux*)
+		# On x86 Linux, we need to set the following flags to enable
+		# shared libraries (and we need to use shared libraries to
+		# avoid running out of disk space...)
+		TEST_MGNUCFLAGS=--pic-reg
+		TEST_MLFLAGS=--shared
+		;;
+	*)
+		# On other platforms shared libraries is the default
+		TEST_MGNUCFLAGS=""
+		TEST_MLFLAGS=""
+		;;
+esac
+
 # directories to use
 
 TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
-INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
-### INSTALL_DIR=/home/mercury/public/mercury-0.8/$FULLARCH
+
+case $HOST in
+	hg)	INSTALL_DIR=/home/hg/public/mercury-latest/$FULLARCH ;;
+	*)	INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH ;;
+esac
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
 BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
@@ -94,23 +121,31 @@ PATH="$INSTALL_DIR/bin:$PATH"
 # $PARALLEL: flag to pass to GNU make for parallel make
 PARALLEL=
 case $HOST in
-	kryten) 	PARALLEL=-j3 ;; # out of four CPUs
-	muse)		PARALLEL=-j2 ;; # out of four CPUs
+	kryten) 	PARALLEL=-j2 ;; # out of three CPUs
+	rimmer) 	PARALLEL=-j2 ;; # out of two CPUs
 	munta)		PARALLEL=-j2 ;; # out of four CPUs
 	mundook) 	PARALLEL=-j1 ;; # out of two CPUs
 	murlibobo)	PARALLEL=-j6 ;; # out of eight CPUs
 	hydra)		PARALLEL=-j2 ;; # out of two CPUs
 	quicksilver) 	PARALLEL= ;; 	# one CPU
+	hg) 		PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
 
 # version of the mercury compiler to use for bootstrapping
-BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+case $HOST in
+	hg)
+		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+		;;
+	*)
+		BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+		;;
+esac
 
 # df (disk free) command
 DF=df
 case $HOST in
-	kryten|taifun)	DF="df -k" ;;
+	kryten|taifun|rimmer)	DF="df -k" ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -154,20 +189,25 @@ status=0
 
 case $HOST in
 	murlibobo)
-		CONFIG_OPTS=--enable-all-grades ;;
+		CONFIG_OPTS="--enable-all-grades" ;;
 	kryten)		
-		CONFIG_OPTS=--enable-all-grades ;;
+		# On kryten & taifun, there is a bug in readline which causes
+		# it to go into an infinite loop when reading from a file.
+		#CONFIG_OPTS="--enable-all-grades --without-readline" ;;
+		CONFIG_OPTS="--without-readline" ;;
 	taifun)		
-		# On taifun, there is a bug in readline which causes
-		# it to go into an infinite loop when reading from
-		# a file.
-		CONFIG_OPTS=--without-readline ;;
+		# On kryten & taifun, there is a bug in readline which causes
+		# it to go into an infinite loop when reading from a file.
+		CONFIG_OPTS="--without-readline" ;;
 	munta)		
 		# On munta, we need to disable the external debugger,
 		# because it uses sockets, and munta doesn't have
 		# the static versions of the socket libraries
-		# installed.
-		CONFIG_OPTS=--disable-extern-debug ;;
+		# installed.  Likewise for the -non_shared version
+		# of the dl library.  Unfortunately our configure script
+		# doesn't detect these problems, so we need to pass these
+		# options manually.
+		CONFIG_OPTS="--disable-extern-debug --disable-dynamic-link" ;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -191,7 +231,8 @@ set -x	# trace execution
 cd $DIR || { false; exit 1; }
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
-	murlibobo|kryten|quicksilver|hydra)
+	murlibobo|kryten|taifun|quicksilver|hg|hydra)
+		[ -d mercury/extras/clpr/CVS ] ||
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
 		;;
@@ -256,7 +297,7 @@ case $status in 0)
     esac
 
     case $HOST in
-	muse|munta)
+	munta)
 		# see README.IRIX for an explanation of these contortions
 		
 		mmake install LIBGRADES="asm_fast.gc.prof asm_fast" \
@@ -270,7 +311,7 @@ case $status in 0)
 		#
 		(cd library && \
 		\
-		PATH=../scripts:../util:$PATH 
+		PATH=../scripts:../util:$PATH \
 		MMAKE_VPATH=. MMAKE_DIR=../scripts \
 		../scripts/mmake EXTRA_CFLAGS="$TEST_CFLAGS -O1" \
 		int.dir/*.o && \
@@ -312,10 +353,11 @@ date >> $TESTDIR/logs/install.$HOST
 
 : test and install the CLPR interface
 case $HOST in
-	kryten|murlibobo)
+	murlibobo)
+		# requires --enable-all-grades
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	quicksilver|hydra)
+	hg|quicksilver|hydra|kryten|taifun)
 		GRADES="asm_fast.gc.tr"
 		;;
 	*)
@@ -420,26 +462,38 @@ case $HOST in
 			asm_fast asm_fast.gc
 			asm_fast.prof asm_fast.gc.prof
 			asm_fast.gc.memprof
+			asm_fast.gc.tr asm_fast.tr asm_fast.gc.prof.tr
+			asm_fast.gc.tr.debug
 			"
 		;;
-	kryten)
-		GRADES="none jump fast asm_jump asm_fast none.gc
-			jump.gc fast.gc asm_jump.gc
-			asm_fast.gc asm_fast.gc.prof asm_fast.prof
-			asm_fast.gc.tr"
-		;;
-	taifun)
+# requires --enable-all-grades
+#	kryten)
+#		GRADES="none jump fast asm_jump asm_fast none.gc
+#			jump.gc fast.gc asm_jump.gc
+#			asm_fast.gc asm_fast.gc.prof asm_fast.prof asm_fast.gc.memprof
+#			asm_fast.gc.tr asm_fast.tr asm_fast.gc.prof.tr asm_fast.gc.tr.debug"
+#		;;
+	kryten|taifun|rimmer)
 		GRADES="asm_fast.gc asm_fast asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.memprof asm_fast.gc.tr
 			asm_fast.gc.tr.debug"
 		;;
-	muse|munta)
+	munta)
 		GRADES="reg.gc asm_fast asm_fast.gc
 			reg.gc.prof asm_fast.gc.prof"
+		# Don't bother with these, otherwise it would take forever...
+		#	reg.prof asm_fast.prof reg.gc.memprof reg.gc.tr reg.gc.tr.debug
 		;;
-	quicksilver|hydra)
-		GRADES="asm_fast.gc asm_fast \
-			asm_fast.gc.prof asm_fast.prof"
+	hg|hydra)
+		GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug"
+		;;
+	quicksilver)
+		GRADES="asm_fast.gc asm_fast asm_fast.gc.tr.debug"
+		# Don't bother with these, otherwise it would take forever...
+		#	asm_fast.gc.prof asm_fast.prof
+		#	asm_fast.gc.memprof asm_fast.gc.tr"
 		;;
 esac
 
@@ -457,6 +511,7 @@ for grade in $GRADES
 do
 	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
 	./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
+		-m "$TEST_MGNUCFLAGS" -l "$TEST_MLFLAGS" \
 		$PARALLEL || status=1
 	case $grade in
 		*.memprof*)
@@ -471,7 +526,7 @@ do
 				EXTRA_MLFLAGS="-static" &&
 			./poly > poly.$grade.out &&
 			mprof -v -m -c > poly.$grade.mprof 2>&1  &&
-			diff -c poly.mprof-exp poly.$grade.mprof &&
+			{ diff -u poly.mprof-exp poly.$grade.mprof || true; } &&
 			cp Prof.CallPair poly.$grade.CallPair &&
 			cp Prof.MemoryWords poly.$grade.MemoryWords &&
 			cp Prof.MemoryCells poly.$grade.MemoryCells &&
@@ -500,24 +555,54 @@ esac
 
 : build the binary distribution
 
+# For the Linux systems, we need to distinguish them based
+# on the version of GNU libc.
+case $HOST in
+	hg)	
+		fullname=i686-pc-linux-libc2.1-gnu
+		;;
+	quicksilver)	
+		fullname=i586-pc-linux-libc2.1-gnu
+		;;
+	hydra)	
+		fullname=i686-pc-linux-libc2.0-gnu
+		;;
+	*)
+		fullname=$fullarch
+		;;
+esac
+# cvs does not allow `.' in tag names, so we use `_' instead
+fullname_tag=`echo $fullname | tr . _`
+
 {
 	cd $DIR/mercury &&
 	mmake bindist &&
 	cd .. &&
-	( [ -d $UNSTABLE ] || mkdir $UNSTABLE ) &&
-	rm -f $UNSTABLE/mercury-*.$fullarch.tar.gz &&
-	mv mercury/mercury-$version.$fullarch.tar.gz $UNSTABLE
+	{ [ -d $UNSTABLE ] || mkdir $UNSTABLE; } &&
+	rm -f $UNSTABLE/mercury-*.$fullname.tar.gz &&
+	mv mercury/mercury-$version.$fullarch.tar.gz \
+		$UNSTABLE/mercury-$version.$fullname.tar.gz &&
+	:
+	echo "test_mercury tagging stable rotd, starting at `date`" 1>&2 &&
+	cvs rtag -d unstable-rotd-$fullname_tag mercury clpr tests &&
+	cvs tag unstable-rotd-$fullname_tag mercury tests &&
+	echo "test_mercury tagging unstable rotd, finished at `date`" 1>&2
 } || status=1
 
 case $status in
     0) {
     	cd $DIR &&
-	( [ -d $STABLE ] || mkdir $STABLE ) &&
-	rm -f $STABLE/mercury-*.$fullarch.tar.gz &&
-	ln $UNSTABLE/mercury-$version.$fullarch.tar.gz $STABLE &&
-	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-*.$fullarch.tar.gz" &&
-	rcp $STABLE/mercury-$version.$fullarch.tar.gz \
-		$BETA_FTPHOST:$BETA_FTPDIR 
+	{ [ -d $STABLE ] || mkdir $STABLE; } &&
+	rm -f $STABLE/mercury-*.$fullname.tar.gz &&
+	$LN $UNSTABLE/mercury-$version.$fullname.tar.gz \
+		$STABLE/mercury-$version.$fullname.tar.gz &&
+	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-*.$fullname.tar.gz" &&
+	rcp $STABLE/mercury-$version.$fullname.tar.gz \
+		$BETA_FTPHOST:$BETA_FTPDIR &&
+	echo "test_mercury tagging stable rotd, starting at `date`" 1>&2 &&
+	cvs rtag -d stable-rotd-$fullname_tag mercury clpr tests &&
+	cvs tag stable-rotd-$fullname_tag mercury tests &&
+	echo "test_mercury tagging stable rotd, finished at `date`" 1>&2
        } || status=1
     ;;
 esac
@@ -535,30 +620,30 @@ case $status in
 	    cd $DIR &&
 		# Only delete the stable rotds.
 	    rm -f $STABLE/mercury-*-rotd-*[0-9].tar.gz &&
-	    ln $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
+	    $LN $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
 	        $STABLE/mercury-compiler-$version.tar.gz &&
-	    ln $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
+	    $LN $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
 	        $STABLE/mercury-extras-$version.tar.gz &&
-	    ln $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
+	    $LN $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
 	        $STABLE/mercury-tests-$version.tar.gz &&
 
 		# Only delete the stable rotds.
 	    rsh $BETA_FTPHOST "\
 	    rm -f $BETA_FTPDIR/mercury-*-rotd-*[0-9].tar.gz &&
-	    ln $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
+	    $LN $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
-	    ln $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
+	    $LN $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-extras-$version.tar.gz &&
-	    ln $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
+	    $LN $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-tests-$version.tar.gz" &&
 
 		# Only delete the stable rotds.
 	    rm -f $BETA_WEBDIR/mercury-*-rotd-*[0-9].tar.gz &&
-	    ln $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
+	    $LN $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_WEBDIR/mercury-compiler-$version.tar.gz &&
-	    ln $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
+	    $LN $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
 	        $BETA_WEBDIR/mercury-extras-$version.tar.gz &&
-	    ln $BETA_WEBDIR/mercury-tests-$version-unstable.tar.gz \
+	    $LN $BETA_WEBDIR/mercury-tests-$version-unstable.tar.gz \
 	        $BETA_WEBDIR/mercury-tests-$version.tar.gz 
 	    ;;
 	esac

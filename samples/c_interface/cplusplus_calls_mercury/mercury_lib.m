@@ -21,7 +21,7 @@
 
 %-----------------------------------------------------------------------------%
 :- implementation.
-:- import_module std_util, int.
+:- import_module std_util, int, list.
 
 % well, this is just a silly example...
 foo(42).

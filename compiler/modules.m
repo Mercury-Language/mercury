@@ -347,7 +347,8 @@
 	%	(unless they've already been read in) and any
 	%	modules that those modules import (transitively),
 	%	from files with filename extension Ext.
-	%	Put them all in a `:- used.' section.
+	%	Put them all in a `:- used.' section, where the section
+	%	is assumed to be in the interface.
 	%
 :- pred process_module_indirect_imports(list(module_name), string,
 		module_imports, module_imports, io__state, io__state).
@@ -563,6 +564,7 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".clean_sicstus"
 		; Ext = ".realclean"
 		; Ext = ".depend"
+		; Ext = ".install_ints"
 		; Ext = ".check"
 		; Ext = ".ints"
 		; Ext = ".int3s"
@@ -696,7 +698,17 @@ make_private_interface(SourceFileName, ModuleName, Items0) -->
 				% Write out the `.int0' file.
 				%
 			{ strip_imported_items(Items2, [], Items3) },
-			{ strip_clauses_from_interface(Items3, Items) },
+			{ strip_clauses_from_interface(Items3, Items4) },
+			{ list__map(
+			    (pred(Item0::in, Item::out) is det :-
+				Item0 = Item1 - Context,
+				( make_abstract_instance(Item1, Item2) ->
+					Item = Item2 - Context
+				;
+					Item = Item0
+				)
+			    ), Items4, Items) },
+				
 			write_interface_file(ModuleName, ".int0", Items),
 			touch_interface_datestamp(ModuleName, ".date0")
 		)
@@ -738,13 +750,16 @@ make_interface(SourceFileName, ModuleName, Items0) -->
 		;
 			%
 			% Strip out the imported interfaces,
+			% assertions are also stripped since they should
+			% only be written to .opt files,
 			% check for some warnings, and then 
 			% write out the `.int' and `int2' files
 			% and touch the `.date' file.
 			%
 			{ strip_imported_items(InterfaceItems2, [],
 							InterfaceItems3) },
-			check_for_clauses_in_interface(InterfaceItems3,
+			{ strip_assertions(InterfaceItems3, InterfaceItems4) },
+			check_for_clauses_in_interface(InterfaceItems4,
 							InterfaceItems),
 			check_int_for_no_exports(InterfaceItems, ModuleName),
 			write_interface_file(ModuleName, ".int",
@@ -761,7 +776,10 @@ make_interface(SourceFileName, ModuleName, Items0) -->
 	% information in the current module and writes out the .int3 file.
 make_short_interface(ModuleName, Items0) -->
 	{ get_interface(Items0, no, InterfaceItems0) },
-	check_for_clauses_in_interface(InterfaceItems0, InterfaceItems),
+		% assertions are also stripped since they should
+		% only be written to .opt files,
+	{ strip_assertions(InterfaceItems0, InterfaceItems1) },
+	check_for_clauses_in_interface(InterfaceItems1, InterfaceItems),
 	{ get_short_interface(InterfaceItems, ShortInterfaceItems0) },
 	module_qual__module_qualify_items(ShortInterfaceItems0,
 			ShortInterfaceItems, ModuleName, no, _, _, _, _),
@@ -776,12 +794,26 @@ make_short_interface(ModuleName, Items0) -->
 strip_imported_items([], Items0, Items) :-
 	list__reverse(Items0, Items). 
 strip_imported_items([Item - Context | Rest], Items0, Items) :-
-	( Item = module_defn(_, imported) ->
+	( Item = module_defn(_, imported(_)) ->
 		list__reverse(Items0, Items)
-	; Item = module_defn(_, used) ->
+	; Item = module_defn(_, used(_)) ->
 		list__reverse(Items0, Items)
 	;
 		strip_imported_items(Rest, [Item - Context | Items0], Items)
+	).
+
+:- pred strip_assertions(item_list::in, item_list::out) is det.
+
+strip_assertions([], []).
+strip_assertions([Item - Context | Rest], Items) :-
+	( 
+		Item = assertion(_, _)
+	->
+		strip_assertions(Rest, Items)
+	; 
+		strip_assertions(Rest, Items0),
+		Items = [Item - Context | Items0]
+
 	).
 
 :- pred check_for_clauses_in_interface(item_list, item_list,
@@ -1038,14 +1070,21 @@ grab_imported_modules(SourceFileName, ModuleName, Items0, Module, Error) -->
 		% Find out which modules this one depends on
 		%
 	{ get_ancestors(ModuleName, AncestorModules) },
-	{ get_dependencies(Items0, ImportedModules0, UsedModules0) },
+	{ get_dependencies(Items0, IntImportedModules0, IntUsedModules0,
+			ImpImportedModules0, ImpUsedModules0) },
+
+	{ list__append(IntImportedModules0, ImpImportedModules0,
+			ImportedModules0) },
+	{ list__append(IntUsedModules0, ImpUsedModules0, UsedModules0) },
 
 	warn_if_import_self_or_ancestor(ModuleName, AncestorModules,
 		ImportedModules0, UsedModules0),
 
 	warn_if_duplicate_use_import_decls(ModuleName,
-		ImportedModules0, ImportedModules1,
-		UsedModules0, UsedModules1),
+			IntImportedModules0, IntImportedModules1, 
+			IntUsedModules0, IntUsedModules1, 
+			ImpImportedModules0, ImpImportedModules, 
+			ImpUsedModules0, ImpUsedModules),
 
 	{ get_fact_table_dependencies(Items0, FactDeps) },
 	{ get_interface(Items0, no, InterfaceItems) },
@@ -1073,32 +1112,47 @@ grab_imported_modules(SourceFileName, ModuleName, Items0, Module, Error) -->
 		% We add a pseudo-declarations `:- imported' at the end
 		% of the item list. Uses of the items with declarations 
 		% following this do not need module qualifiers.
-	{ append_pseudo_decl(Module1, imported, Module2) },
+	{ append_pseudo_decl(Module1, imported(interface), Module2) },
 
 		% Add `builtin' and `private_builtin' to the
 		% list of imported modules
-	{ add_implicit_imports(ImportedModules1, UsedModules1,
-			ImportedModules2, UsedModules2) },
+	{ add_implicit_imports(IntImportedModules1, IntUsedModules1,
+			IntImportedModules2, IntUsedModules2) },
 
 		% Process the ancestor modules
 	process_module_private_interfaces(AncestorModules,
-		ImportedModules2, ImportedModules, UsedModules2, UsedModules,
+		IntImportedModules2, IntImportedModules,
+		IntUsedModules2, IntUsedModules,
 		Module2, Module3),
 
 		% Process the modules imported using `import_module'.
-	{ IndirectImports0 = [] },
-	process_module_long_interfaces(ImportedModules, ".int",
-		IndirectImports0, IndirectImports1, Module3, Module4),
+	{ IntIndirectImports0 = [] },
+	process_module_long_interfaces(IntImportedModules, ".int",
+		IntIndirectImports0, IntIndirectImports1, Module3, Module4),
 
-		% Process the modules imported using `use_module' 
-		% and the short interfaces for indirectly imported
-		% modules. The short interfaces are treated as if
+	{ append_pseudo_decl(Module4, imported(implementation), Module5) },
+
+	{ ImpIndirectImports0 = [] },
+	process_module_long_interfaces(ImpImportedModules, ".int",
+		ImpIndirectImports0, ImpIndirectImports1, Module5, Module6),
+
+		% Process the modules imported using `use_module' .
+	{ append_pseudo_decl(Module6, used(interface), Module7) },
+	process_module_long_interfaces(IntUsedModules, ".int",
+		IntIndirectImports1, IntIndirectImports, Module7, Module8),
+	{ append_pseudo_decl(Module8, used(implementation), Module9) },
+	process_module_long_interfaces(ImpUsedModules, ".int",
+		ImpIndirectImports1, ImpIndirectImports, Module9, Module10),
+
+		% Process the short interfaces for indireclty imported modules.
+		% The short interfaces are treated as if
 		% they are imported using `use_module'.
-	{ append_pseudo_decl(Module4, used, Module5) },
-	process_module_long_interfaces(UsedModules, ".int",
-		IndirectImports1, IndirectImports, Module5, Module6),
-	process_module_short_interfaces_transitively(IndirectImports, ".int2",
-		Module6, Module),
+	{ append_pseudo_decl(Module10, used(interface), Module11) },
+	process_module_short_interfaces_transitively(IntIndirectImports,
+		".int2", Module11, Module12),
+	{ append_pseudo_decl(Module12, used(implementation), Module13) },
+	process_module_short_interfaces_transitively(ImpIndirectImports,
+		".int2", Module13, Module),
 
 	{ module_imports_get_error(Module, Error) }.
 
@@ -1112,7 +1166,8 @@ grab_unqual_imported_modules(SourceFileName, ModuleName, Items0,
 		% Find out which modules this one depends on
 		%
 	{ get_ancestors(ModuleName, ParentDeps) },
-	{ get_dependencies(Items0, ImportDeps0, UseDeps0) },
+	{ get_dependencies(Items0, IntImportDeps0, IntUseDeps0,
+			ImpImportDeps0, ImpUseDeps0) },
 
 		%
 		% Construct the initial module import structure,
@@ -1120,10 +1175,11 @@ grab_unqual_imported_modules(SourceFileName, ModuleName, Items0,
 		%
 	{ init_module_imports(SourceFileName, ModuleName, Items0, [], [],
 		Module0) },
-	{ append_pseudo_decl(Module0, imported, Module1) },
+	{ append_pseudo_decl(Module0, imported(interface), Module1) },
 
 		% Add `builtin' and `private_builtin' to the imported modules.
-	{ add_implicit_imports(ImportDeps0, UseDeps0, ImportDeps1, UseDeps1) },
+	{ add_implicit_imports(IntImportDeps0, IntUseDeps0,
+			IntImportDeps1, IntUseDeps1) },
 
 		%
 		% Get the .int3s and .int0s that the current module depends on.
@@ -1131,22 +1187,42 @@ grab_unqual_imported_modules(SourceFileName, ModuleName, Items0,
 
 		% first the .int0s for parent modules
 	process_module_private_interfaces(ParentDeps,
-			ImportDeps1, ImportDeps, UseDeps1, UseDeps,
+			IntImportDeps1, IntImportDeps, IntUseDeps1, IntUseDeps,
 			Module1, Module2),
 
 		% then the .int3s for `:- import'-ed modules
-	process_module_long_interfaces(ImportDeps, ".int3",
-			[], IndirectImportDeps0, Module2, Module3),
+	process_module_long_interfaces(IntImportDeps, ".int3",
+			[], IntIndirectImportDeps0, Module2, Module3),
 
-		% then (after a `:- used' decl)
-		% the .int3s for `:- use'-ed modules
-		% and indirectly imported modules
-	{ append_pseudo_decl(Module3, used, Module4) },
-	process_module_long_interfaces(UseDeps, ".int3",
-			IndirectImportDeps0, IndirectImportDeps,
+	{ append_pseudo_decl(Module3, imported(implementation), Module4) },
+
+	process_module_private_interfaces(ParentDeps,
+			ImpImportDeps0, ImpImportDeps, ImpUseDeps0, ImpUseDeps,
 			Module4, Module5),
+
+	process_module_long_interfaces(ImpImportDeps, ".int3",
+			[], ImpIndirectImportDeps0, Module5, Module6),
+
+		% then (after appropriate `:- used' decls)
+		% the .int3s for `:- use'-ed modules
+	{ append_pseudo_decl(Module6, used(interface), Module7) },
+	process_module_long_interfaces(IntUseDeps, ".int3",
+			IntIndirectImportDeps0, IntIndirectImportDeps,
+			Module7, Module8),
+	{ append_pseudo_decl(Module8, used(implementation), Module9) },
+	process_module_long_interfaces(ImpUseDeps, ".int3",
+			ImpIndirectImportDeps0, ImpIndirectImportDeps,
+			Module9, Module10),
+
+		% then (after appropriate `:- used' decl)
+		% the .int3s for indirectly imported modules
+	{ append_pseudo_decl(Module10, used(interface), Module11) },
 	process_module_short_interfaces_transitively(
-			IndirectImportDeps, ".int3", Module5, Module),
+			IntIndirectImportDeps, ".int3", Module11, Module12),
+
+	{ append_pseudo_decl(Module12, used(implementation), Module13) },
+	process_module_short_interfaces_transitively(
+			ImpIndirectImportDeps, ".int3", Module13, Module),
 
 	{ module_imports_get_error(Module, Error) }.
 
@@ -1287,6 +1363,37 @@ warn_imported_ancestor(ModuleName, AncestorName) -->
 	;
 		[]
 	).
+
+:- pred warn_if_duplicate_use_import_decls(module_name, list(module_name),
+		list(module_name), list(module_name), list(module_name), 
+		list(module_name), list(module_name), list(module_name), 
+		list(module_name), io__state, io__state).
+:- mode warn_if_duplicate_use_import_decls(in, in, out, in, out, in, out,
+		in, out, di, uo) is det.
+
+% This predicate ensures that all every import_module declaration is
+% checked against every use_module declaration, except for the case
+% where the interface has `:- use_module foo.' and the implementation
+% `:- import_module foo.'.
+% warn_if_duplicate_use_import_decls/7 is called to generate the actual
+% warnings.
+
+warn_if_duplicate_use_import_decls(ModuleName,
+		IntImportedModules0, IntImportedModules, 
+		IntUsedModules0, IntUsedModules, 
+		ImpImportedModules0, ImpImportedModules, 
+		ImpUsedModules0, ImpUsedModules) -->
+
+	warn_if_duplicate_use_import_decls(ModuleName,
+		IntImportedModules0, IntImportedModules1,
+		IntUsedModules0, IntUsedModules),
+	warn_if_duplicate_use_import_decls(ModuleName,
+		IntImportedModules1, IntImportedModules,
+		ImpUsedModules0, ImpUsedModules1),
+
+	warn_if_duplicate_use_import_decls(ModuleName,
+		ImpImportedModules0, ImpImportedModules,
+		ImpUsedModules1, ImpUsedModules).
 
 :- pred warn_if_duplicate_use_import_decls(module_name, list(module_name),
 		list(module_name), list(module_name), list(module_name), 
@@ -2542,12 +2649,25 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		SplitLibFileName, " : $(", MakeVarName, ".dir_os) $(MLOBJS)\n",
 		"\trm -f ", SplitLibFileName, "\n",
 		"\t$(AR) $(ALL_ARFLAGS) ", SplitLibFileName, " $(MLOBJS)\n",
-		"\tfor dir in $(", MakeVarName, ".dirs); do \\\n",
-		"\t	$(AR) q ", SplitLibFileName, " $$dir/*.o; \\\n",
-		"\tdone\n",
+		"\tfind $(", MakeVarName, ".dirs) -name ""*.o"" -print | \\\n",
+		"\t	xargs $(AR) q ", SplitLibFileName, "\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", SplitLibFileName, "\n\n"
 	]),
 
+	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
+	{ Intermod = yes ->
+		string__append_list(["$(", MakeVarName, ".opts) "],
+				MaybeOptsVar)
+	;
+		MaybeOptsVar = ""
+	},
+	globals__io_lookup_bool_option(transitive_optimization, TransOpt),
+	{ TransOpt = yes ->
+		string__append_list(["$(", MakeVarName, ".trans_opts) "],
+				MaybeTransOptsVar)
+	;
+		MaybeTransOptsVar = ""
+	},
 	module_name_to_lib_file_name("lib", ModuleName, "", no, LibTargetName),
 	module_name_to_lib_file_name("lib", ModuleName, ".a", yes, LibFileName),
 	module_name_to_lib_file_name("lib", ModuleName, ".so", yes,
@@ -2561,7 +2681,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		MaybeSharedLibFileName, " \\\n",
 		"\t\t$(", MakeVarName, ".ints) ",
 		"$(", MakeVarName, ".int3s) ",
-		"$(", MakeVarName, ".opts) ",
+		MaybeOptsVar, MaybeTransOptsVar,
 		InitFileName, "\n\n"
 	]),
 
@@ -2624,6 +2744,41 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		SicstusDebugExeFileName, " : $(", MakeVarName, ".qls)\n",
 		"\t$(MSL) --debug $(ALL_MSLFLAGS) -o ", SicstusDebugExeFileName,
 			" $(", MakeVarName, ".qls)\n\n"
+	]),
+
+	module_name_to_lib_file_name("lib", ModuleName, ".install_ints", no,
+				LibInstallIntsTargetName),
+	{ InstallIntsRuleBody =
+"		for file in $$files; do \\
+			target=$(INSTALL_INT_DIR)/`basename $$file`; \\
+			if cmp -s $$file $$target; then \\
+				echo \"$$target unchanged\"; \\
+			else \\
+				echo \"installing $$target\"; \\
+				cp $$file $$target; \\
+			fi; \\
+		done
+		# The following is needed to support the `--use-subdirs' option
+		# We try using `ln -s', but if that fails, then we just use `cp'.
+		for ext in int int2 int3 opt trans_opt; do \\
+			dir=$${ext}s; \\
+			rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \\
+			ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir || { \\
+				mkdir $(INSTALL_INT_DIR)/Mercury/$$dir && \\
+				cp $(INSTALL_INT_DIR)/*.$$ext \\
+					$(INSTALL_INT_DIR)/Mercury/$$dir; \\
+			} || exit 1; \\
+		done\n\n" },
+
+	io__write_strings(DepStream, [
+		".PHONY : ", LibInstallIntsTargetName, "\n",
+		LibInstallIntsTargetName, " : $(", MakeVarName, ".ints) $(",
+			MakeVarName, ".int3s) ", MaybeOptsVar,
+			MaybeTransOptsVar, "install_lib_dirs\n",
+		"\tfiles=""$(", MakeVarName, ".ints) $(", MakeVarName,
+			".int3s) ", MaybeOptsVar, MaybeTransOptsVar,
+			"""; \\\n",
+		InstallIntsRuleBody
 	]),
 
 	module_name_to_file_name(SourceModuleName, ".check", no,
@@ -3355,7 +3510,7 @@ process_module_indirect_imports(IndirectImports, Ext, Module0, Module) -->
 		% Treat indirectly imported items as if they were imported 
 		% using `:- use_module', since all uses of them in the `.int'
 		% files must be module qualified.
-	{ append_pseudo_decl(Module0, used, Module1) },
+	{ append_pseudo_decl(Module0, used(interface), Module1) },
 	process_module_short_interfaces_transitively(IndirectImports,
 		Ext, Module1, Module).
 
@@ -3494,30 +3649,126 @@ get_children_2([Item - _Context | Items], IncludeDeps0, IncludeDeps) :-
 %-----------------------------------------------------------------------------%
 
 get_dependencies(Items, ImportDeps, UseDeps) :-
-	get_dependencies_2(Items, [], ImportDeps, [], UseDeps).
+	get_dependencies_implementation(Items, [], [] , [], [],
+			IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps),
+	list__append(IntImportDeps, ImpImportDeps, ImportDeps),
+	list__append(IntUseDeps, ImpUseDeps, UseDeps).
 
-:- pred get_dependencies_2(item_list, list(module_name), list(module_name), 
-		list(module_name), list(module_name)).
-:- mode get_dependencies_2(in, in, out, in, out) is det.
+	% get_dependencies(Items, IntImportDeps, IntUseDeps,
+	% 		ImpImportDeps, ImpUseDeps).
+	%	Get the list of modules that a list of items depends on.
+	%	IntImportDeps is the list of modules imported using `:-
+	%	import_module' in the interface, and ImpImportDeps those
+	%	modules imported in the implementation. IntUseDeps is the
+	%	list of modules imported using `:- use_module' in the
+	%	interface, and ImpUseDeps those modules imported in the
+	%	implementation.
+	%	N.B. Typically you also need to consider the module's
+	%	parent modules (see get_ancestors/2) and possibly
+	%	also the module's child modules (see get_children/2).
+	%	N.B This predicate assumes that any declaration between
+	%	the `:- module' and the first `:- interface' or
+	%	`:- implementation' are in the implementation.
+	%
+:- pred get_dependencies(item_list::in,
+		list(module_name)::out, list(module_name)::out,
+		list(module_name)::out, list(module_name)::out) is det.
 
-get_dependencies_2([], ImportDeps, ImportDeps, UseDeps, UseDeps).
-get_dependencies_2([Item - _Context | Items], ImportDeps0, ImportDeps,
-		UseDeps0, UseDeps) :-
+get_dependencies(Items, IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps) :-
+	get_dependencies_implementation(Items, [], [] , [], [],
+			IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps).
+
+:- pred get_dependencies_implementation(item_list::in, list(module_name)::in,
+		list(module_name)::in, list(module_name)::in,
+		list(module_name)::in, list(module_name)::out,
+		list(module_name)::out, list(module_name)::out,
+		list(module_name)::out) is det.
+
+get_dependencies_implementation([], IntImportDeps, IntUseDeps,
+		ImpImportDeps, ImpUseDeps, IntImportDeps, IntUseDeps,
+		ImpImportDeps, ImpUseDeps).
+get_dependencies_implementation([Item - _Context | Items],
+		IntImportDeps0, IntUseDeps0,
+		ImpImportDeps0, ImpUseDeps0,
+		IntImportDeps, IntUseDeps,
+		ImpImportDeps, ImpUseDeps) :-
 	( 
-		Item = module_defn(_VarSet, import(module(Modules)))
+		
+		Item = module_defn(_VarSet, interface)
 	->
-		list__append(ImportDeps0, Modules, ImportDeps1),
-		UseDeps1 = UseDeps0
+		get_dependencies_interface(Items,
+				IntImportDeps0, IntUseDeps0,
+				ImpImportDeps0, ImpUseDeps0,
+				IntImportDeps, IntUseDeps,
+				ImpImportDeps, ImpUseDeps)
 	;
-		Item = module_defn(_VarSet, use(module(Modules)))
+		(
+		
+			Item = module_defn(_VarSet, import(module(Modules)))
+		->
+			list__append(ImpImportDeps0, Modules, ImpImportDeps1),
+			ImpUseDeps1 = ImpUseDeps0
+		;
+			Item = module_defn(_VarSet, use(module(Modules)))
+		->
+			list__append(ImpUseDeps0, Modules, ImpUseDeps1),
+			ImpImportDeps1 = ImpImportDeps0
+		;
+			ImpImportDeps1 = ImpImportDeps0,
+			ImpUseDeps1 = ImpUseDeps0
+		),
+		get_dependencies_implementation(Items,
+				IntImportDeps0, IntUseDeps0,
+				ImpImportDeps1, ImpUseDeps1,
+				IntImportDeps, IntUseDeps,
+				ImpImportDeps, ImpUseDeps)
+	).
+
+:- pred get_dependencies_interface(item_list::in, list(module_name)::in,
+		list(module_name)::in, list(module_name)::in,
+		list(module_name)::in, list(module_name)::out,
+		list(module_name)::out, list(module_name)::out,
+		list(module_name)::out) is det.
+
+get_dependencies_interface([], IntImportDeps, IntUseDeps,
+		ImpImportDeps, ImpUseDeps, IntImportDeps, IntUseDeps,
+		ImpImportDeps, ImpUseDeps).
+get_dependencies_interface([Item - _Context | Items],
+		IntImportDeps0, IntUseDeps0,
+		ImpImportDeps0, ImpUseDeps0,
+		IntImportDeps, IntUseDeps,
+		ImpImportDeps, ImpUseDeps) :-
+	( 
+		
+		Item = module_defn(_VarSet, implementation)
 	->
-		list__append(UseDeps0, Modules, UseDeps1),
-		ImportDeps1 = ImportDeps0
+		get_dependencies_implementation(Items,
+				IntImportDeps0, IntUseDeps0,
+				ImpImportDeps0, ImpUseDeps0,
+				IntImportDeps, IntUseDeps,
+				ImpImportDeps, ImpUseDeps)
 	;
-		ImportDeps1 = ImportDeps0,
-		UseDeps1 = UseDeps0
-	),
-	get_dependencies_2(Items, ImportDeps1, ImportDeps, UseDeps1, UseDeps).
+		(
+		
+			Item = module_defn(_VarSet, import(module(Modules)))
+		->
+			list__append(IntImportDeps0, Modules, IntImportDeps1),
+			IntUseDeps1 = IntUseDeps0
+		;
+			Item = module_defn(_VarSet, use(module(Modules)))
+		->
+			list__append(IntUseDeps0, Modules, IntUseDeps1),
+			IntImportDeps1 = IntImportDeps0
+		;
+			IntImportDeps1 = IntImportDeps0,
+			IntUseDeps1 = IntUseDeps0
+		),
+		get_dependencies_interface(Items,
+				IntImportDeps1, IntUseDeps1,
+				ImpImportDeps0, ImpUseDeps0,
+				IntImportDeps, IntUseDeps,
+				ImpImportDeps, ImpUseDeps)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -3715,7 +3966,8 @@ report_error_implementation_in_interface(ModuleName, Context) -->
 	% and `:- implementation'. If IncludeImported is yes, also
 	% include all items after a `:- imported'. This is useful for
 	% making the .int file.
-
+	% The bodies of instance definitions are removed because
+	% the instance methods have not yet been module qualified.
 :- pred get_interface(item_list, bool, item_list).
 :- mode get_interface(in, in, out) is det.
 
@@ -3734,8 +3986,8 @@ get_interface_2([Item - Context | Rest], InInterface0,
 		InInterface1 = yes
 	; 
 		Item = module_defn(_, Defn),
-		( Defn = imported
-		; Defn = used
+		( Defn = imported(_)
+		; Defn = used(_)
 		)
 	->
 		% module_qual.m needs the :- imported declaration.
@@ -3752,7 +4004,12 @@ get_interface_2([Item - Context | Rest], InInterface0,
 		InInterface1 = no
 	;
 		( InInterface0 = yes ->
-			Items1 = [Item - Context | Items0]
+			( make_abstract_instance(Item, Item1) ->
+				ItemToWrite = Item1
+			;
+				ItemToWrite = Item
+			),
+			Items1 = [ItemToWrite - Context | Items0]
 		;
 			Items1 = Items0
 		),
@@ -3836,10 +4093,19 @@ make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _, _), Cond),
 make_abstract_type_defn(type_defn(VarSet, abstract_type(Name, Args), Cond),
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).
 
-	% Given a module (well, a list of items), extract the interface
-	% part of that module, i.e. all the items between `:- interface'
-	% and `:- implementation'. If IncludeImported is yes, also
-	% include all items after a `:- imported'. This is useful for
-	% making the .int file.
+	% All instance declarations must be written
+	% to `.int' files as abstract instance
+	% declarations because the method names
+	% have not yet been module qualified.
+	% This could cause the wrong predicate to be
+	% used if calls to the method are specialized.
+:- pred make_abstract_instance(item, item).
+:- mode make_abstract_instance(in, out) is semidet.
+
+make_abstract_instance(Item, Item1) :-
+	Item = instance(Constraints, Class, ClassTypes, Body0, TVarSet),
+	Body0 = concrete(_),
+	Body = abstract,
+	Item1 = instance(Constraints, Class, ClassTypes, Body, TVarSet).
 
 %-----------------------------------------------------------------------------%

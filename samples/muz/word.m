@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -134,7 +134,9 @@ set_operators(O,
 	flags(zpragma(O, A, M, L), D, P, G)).
 
 add_operators(Op, IdentList, F0, F) :-
-	list__map(pred(I::in, I-Op::out) is det, IdentList, AL),
+	list__map((pred(I::in, O::out) is det :-
+		O = I-Op
+	), IdentList, AL),
 	map__from_assoc_list(AL, M),
 	map__overlay(operators(F0), M, Operators),
 	set_operators(Operators, F0, F).

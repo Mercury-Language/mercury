@@ -90,6 +90,12 @@
 :- pred c_util__unary_prefix_op(unary_op, string).
 :- mode c_util__unary_prefix_op(in, out) is det.
 
+	% The operator returned with be an infix operator.
+	% The arguments should be integer or booleans
+	% and the result will be an integer or a boolean.
+:- pred c_util__binary_infix_op(binary_op, string).
+:- mode c_util__binary_infix_op(in, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -222,5 +228,26 @@ c_util__float_compare_op(float_le, "<=").
 c_util__float_compare_op(float_ge, ">=").
 c_util__float_compare_op(float_lt, "<").
 c_util__float_compare_op(float_gt, ">").
+
+%-----------------------------------------------------------------------------%
+
+c_util__binary_infix_op(+, "+").
+c_util__binary_infix_op(-, "-").
+c_util__binary_infix_op(*, "*").
+c_util__binary_infix_op(/, "/").
+c_util__binary_infix_op(<<, "<<").
+c_util__binary_infix_op(>>, ">>").
+c_util__binary_infix_op(&, "&").
+c_util__binary_infix_op('|', "|").
+c_util__binary_infix_op(^, "^").
+c_util__binary_infix_op(mod, "%").
+c_util__binary_infix_op(eq, "==").
+c_util__binary_infix_op(ne, "!=").
+c_util__binary_infix_op(and, "&&").
+c_util__binary_infix_op(or, "||").
+c_util__binary_infix_op(<, "<").
+c_util__binary_infix_op(>, ">").
+c_util__binary_infix_op(<=, "<=").
+c_util__binary_infix_op(>=, ">=").
 
 %-----------------------------------------------------------------------------%

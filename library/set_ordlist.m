@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -349,3 +349,105 @@ set_ordlist__count(Set, Count) :-
 	list__length(Set, Count).
 
 %--------------------------------------------------------------------------%
+%--------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cam.sri.com> 24/04/99
+%	Function forms added.
+
+:- interface.
+
+:- func set_ordlist__list_to_set(list(T)) = set_ordlist(T).
+
+:- func set_ordlist__sorted_list_to_set(list(T)) = set_ordlist(T).
+
+:- func set_ordlist__to_sorted_list(set_ordlist(T)) = list(T).
+
+:- func set_ordlist__init = set_ordlist(T).
+
+:- func set_ordlist__make_singleton_set(T) = set_ordlist(T).
+
+:- func set_ordlist__insert(set_ordlist(T), T) = set_ordlist(T).
+
+:- func set_ordlist__insert_list(set_ordlist(T), list(T)) = set_ordlist(T).
+
+:- func set_ordlist__delete(set_ordlist(T), T) = set_ordlist(T).
+
+:- func set_ordlist__delete_list(set_ordlist(T), list(T)) = set_ordlist(T).
+
+:- func set_ordlist__union(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
+
+:- func set_ordlist__power_union(set_ordlist(set_ordlist(T))) = set_ordlist(T).
+
+:- func set_ordlist__intersect(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
+
+:- func set_ordlist__power_intersect(set_ordlist(set_ordlist(T))) = set_ordlist(T).
+
+:- func set_ordlist__difference(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
+
+:- func set_ordlist__count(set_ordlist(T)) = int.
+
+:- func set_ordlist__map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
+
+:- func set_ordlist__filter_map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
+:- mode set_ordlist__filter_map(func(in) = out is semidet, in) = out is det.
+
+:- func set_ordlist__fold(func(T1, T2) = T2, set_ordlist(T1), T2) = T2.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+set_ordlist__list_to_set(Xs) = S :-
+	set_ordlist__list_to_set(Xs, S).
+
+set_ordlist__sorted_list_to_set(Xs) = S :-
+	set_ordlist__sorted_list_to_set(Xs, S).
+
+set_ordlist__to_sorted_list(S) = Xs :-
+	set_ordlist__to_sorted_list(S, Xs).
+
+set_ordlist__init = S :-
+	set_ordlist__init(S).
+
+set_ordlist__make_singleton_set(T) = S :-
+	set_ordlist__singleton_set(S, T).
+
+set_ordlist__insert(S1, T) = S2 :-
+	set_ordlist__insert(S1, T, S2).
+
+set_ordlist__insert_list(S1, Xs) = S2 :-
+	set_ordlist__insert_list(S1, Xs, S2).
+
+set_ordlist__delete(S1, T) = S2 :-
+	set_ordlist__delete(S1, T, S2).
+
+set_ordlist__delete_list(S1, Xs) = S2 :-
+	set_ordlist__delete_list(S1, Xs, S2).
+
+set_ordlist__union(S1, S2) = S3 :-
+	set_ordlist__union(S1, S2, S3).
+
+set_ordlist__power_union(SS) = S :-
+	set_ordlist__power_union(SS, S).
+
+set_ordlist__intersect(S1, S2) = S3 :-
+	set_ordlist__intersect(S1, S2, S3).
+
+set_ordlist__power_intersect(SS) = S :-
+	set_ordlist__power_intersect(SS, S).
+
+set_ordlist__difference(S1, S2) = S3 :-
+	set_ordlist__difference(S1, S2, S3).
+
+set_ordlist__count(S) = N :-
+	set_ordlist__count(S, N).
+
+set_ordlist__map(F, S1) = S2 :-
+	S2 = set_ordlist__list_to_set(list__map(F, set_ordlist__to_sorted_list(S1))).
+
+set_ordlist__filter_map(PF, S1) = S2 :-
+	S2 = set_ordlist__list_to_set(list__filter_map(PF, set_ordlist__to_sorted_list(S1))).
+
+set_ordlist__fold(F, S, A) = B :-
+	B = list__foldl(F, set_ordlist__to_sorted_list(S), A).
+

@@ -95,7 +95,8 @@
 
 :- implementation.
 
-:- import_module goal_util, globals, hlds_data, hlds_goal, hlds_out.
+:- import_module (assertion), goal_util, globals.
+:- import_module hlds_data, hlds_goal, hlds_out.
 :- import_module inst_match, instmap, mode_util, options, prog_data, prog_util.
 
 :- import_module assoc_list, bool, list, map, multi_map.
@@ -1637,13 +1638,80 @@ accumulator__is_associative(PredId, ProcId, ModuleInfo,
 		Args0, Args, PossibleStaticVars, Commutative):-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, 
 			PredInfo, ProcInfo),
-	pred_info_module(PredInfo, ModuleName),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, Arity),
+
 	proc_info_argmodes(ProcInfo, Modes),
-	assoc_fact(ModuleName, PredName, Arity, Modes, ModuleInfo, Args0, Args,
-		PossibleStaticVars, Reordered),
-	bool__not(Reordered, Commutative).
+	pred_info_get_assertions(PredInfo, Assertions),
+
+	(
+		commutativity_assertion(set__to_sorted_list(Assertions),
+				ModuleInfo, Args0, PossibleStaticVars0)
+	->
+		check_modes(Args0, PossibleStaticVars0, Modes, ModuleInfo),
+		Args = Args0,
+		PossibleStaticVars = PossibleStaticVars0,
+		Commutative = yes
+	;
+
+			% Check if it is associative
+		pred_info_module(PredInfo, ModuleName),
+		pred_info_name(PredInfo, PredName),
+		pred_info_arity(PredInfo, Arity),
+
+		assoc_fact(ModuleName, PredName, Arity, Modes,
+				ModuleInfo, Args0, Args, PossibleStaticVars),
+		Commutative = no
+	).
+
+	%
+	% commutativity_assertion
+	%
+	% Does there exist one (and only one) commutativity assertion for the 
+	% current predicate.
+	% The 'and only one condition' is required because we currently
+	% don't handle the case of predicates which have individual
+	% parts which are commutative, because then we don't know which
+	% variable is descended from which.
+	%
+:- pred commutativity_assertion(list(assert_id)::in, module_info::in,
+		prog_vars::in, set(prog_var)::out) is semidet.
+
+commutativity_assertion([AssertId | AssertIds], ModuleInfo, Args0,
+		PossibleStaticVars) :-
+	(
+		assertion__is_commutativity_assertion(AssertId, ModuleInfo,
+				Args0, StaticVarA - StaticVarB)
+	->
+		\+ commutativity_assertion(AssertIds, ModuleInfo, Args0, _),
+		PossibleStaticVars = set__list_to_set([StaticVarA, StaticVarB])
+	;
+		commutativity_assertion(AssertIds, ModuleInfo, Args0,
+				PossibleStaticVars)
+	).
+	
+
+	%
+	% check_modes(Vs, CVs, Ms, MI)
+	%
+	% Given a list of variables, Vs, and associated modes, Ms, make
+	% sure that each variable whose order can be rearranged (member of CVs)
+	% has a mode where the instantiatedness of the the variable
+	% doesn't change (ie an in mode).
+	%
+:- pred check_modes(prog_vars::in, set(prog_var)::in,
+		list(mode)::in, module_info::in) is semidet.
+
+check_modes([], _, _, _).
+check_modes([V | Vs], PossibleStaticVars, [M | Ms], ModuleInfo) :-
+	(
+		set__member(V, PossibleStaticVars)
+	->
+		mode_get_insts(ModuleInfo, M, InitialInst, FinalInst),
+		inst_matches_final(InitialInst, FinalInst, ModuleInfo)
+	;
+		true
+	),
+	check_modes(Vs, PossibleStaticVars, Ms, ModuleInfo).
+
 
 	%
 	% XXX this fact table is only a temporary solution to whether or
@@ -1658,23 +1726,11 @@ accumulator__is_associative(PredId, ProcId, ModuleInfo,
 	%
 :- pred assoc_fact(module_name::in, string::in, arity::in,
 		list(mode)::in, module_info::in, prog_vars::in,
-		prog_vars::out, set(prog_var)::out, bool::out) is semidet.
-
-assoc_fact(unqualified("int"), "+", 3, [In, In, Out], ModuleInfo, 
-		[A, B, C], [A, B, C], PossibleStaticVars, no) :-
-	set__list_to_set([A, B], PossibleStaticVars),
-	mode_is_input(ModuleInfo, In),
-	mode_is_output(ModuleInfo, Out).
-
-assoc_fact(unqualified("int"), "*", 3, [In, In, Out], ModuleInfo, 
-		[A, B, C], [A, B, C], PossibleStaticVars, no) :-
-	set__list_to_set([A, B], PossibleStaticVars),
-	mode_is_input(ModuleInfo, In),
-	mode_is_output(ModuleInfo, Out).
+		prog_vars::out, set(prog_var)::out) is semidet.
 
 assoc_fact(unqualified("list"), "append", 3, [TypeInfoIn, In, In, Out], 
 		ModuleInfo, [TypeInfo, A, B, C], 
-		[TypeInfo, B, A, C], PossibleStaticVars, yes) :-
+		[TypeInfo, B, A, C], PossibleStaticVars) :-
 	set__list_to_set([A, B], PossibleStaticVars),
 	mode_is_input(ModuleInfo, TypeInfoIn),
 	mode_is_input(ModuleInfo, In),

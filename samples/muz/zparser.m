@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -592,7 +592,9 @@ default_op(default_defn(C, Op, S, NGen), Tokens) :-
 		[[zSCH, left_brace, OpToken, N, right_brace], ArgTokens,
 		[N], ArgTokens, [zSEMICOLON | N_p], ArgTokens,
 		PredTokens, [zEND]], Tokens0),
-	list__map(pred(I::in, I-C::out) is det, Tokens0, Tokens).
+	list__map((pred(I::in, O::out) is det :-
+		O = I-C
+	), Tokens0, Tokens).
 
 :- pred schema_ref(sexpr, pstate, pstate).
 :- mode schema_ref(out, in, out) is semidet.

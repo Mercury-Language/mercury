@@ -1,4 +1,4 @@
 c2init mmc mercury_update_interface mgnuc mint mkfifo_using_mknod ml
 mmake mnc mnl mnp mprof msc msl msp sicstus_conv
 Mmake.vars
-mdb mdbrc
+mdb mdbrc test_mdbrc

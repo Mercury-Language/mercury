@@ -32,6 +32,7 @@ case $HOST in
 	murlibobo) 	ARCH=alpha	FULLARCH=alpha-dec-osf3.2 ;;
 	mundook) 	ARCH=alpha	FULLARCH=alpha-dec-osf3.2 ;;
 	quicksilver) 	ARCH=i586	FULLARCH=i586-pc-linux-gnu ;;
+	hg) 		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
 	hydra)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
 	*)		echo "$0: unknown HOST $HOST" 1>&2; exit 1 ;;
 esac
@@ -85,11 +86,15 @@ then
 	echo last 10 lines of log file:
 	tail -10 $logfile
 	echo
-	cd /home/mercury/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH
+	case $HOST in
+		hg) base=/home/hg ;;
+		*) base=/home/mercury ;;
+	esac
+	cd $base/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH
 	ls -l mercury_compile
 	size mercury_compile
 	{
-		echo $FULLARCH
+		echo $FULLARCH $HOST
 		ls -l mercury_compile
 		size mercury_compile
 		echo

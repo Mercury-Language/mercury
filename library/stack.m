@@ -127,3 +127,40 @@ stack__depth(Stack, Depth) :-
 	list__length(Stack, Depth).
 
 %--------------------------------------------------------------------------%
+%--------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func stack__init = stack(T).
+
+:- func stack__push(stack(T), T) = stack(T).
+
+:- func stack__push_list(stack(T), list(T)) = stack(T).
+
+:- func stack__top_det(stack(T)) = T.
+
+:- func stack__depth(stack(T)) = int.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+stack__init = S :-
+	stack__init(S).
+
+stack__push(S1, X) = S2 :-
+	stack__push(S1, X, S2).
+
+stack__push_list(S1, Xs) = S2 :-
+	stack__push_list(S1, Xs, S2).
+
+stack__top_det(S) = X :-
+	stack__top_det(S, X).
+
+stack__depth(S) = N :-
+	stack__depth(S, N).
+
+

@@ -397,6 +397,11 @@ build_live_sets_in_goal_2(pragma_c_code(Attributes, PredId, ProcId,
 		)
 	).
 
+build_live_sets_in_goal_2(bi_implication(_, _), _, _, _, _, _, _, _, _, _, _)
+		:-
+	% these should have been expanded out by now
+	error("build_live_sets_in_goal_2: unexpected bi_implication").
+
 %-----------------------------------------------------------------------------%
 
 :- pred build_live_sets_in_conj(list(hlds_goal), set(prog_var), set(prog_var),

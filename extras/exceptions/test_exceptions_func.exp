@@ -1,5 +1,0 @@
-det_throw: exception(univ("det_throw" : string))
-det_succeed: succeeded("det_succeed")
-semidet_throw: exception(univ("semidet_throw" : string))
-semidet_succeed: succeeded("semidet_succeed")
-semidet_fail: failed

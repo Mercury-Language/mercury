@@ -32,16 +32,18 @@
 ** MR_store_ticket()
 **	called when creating a choice point, or before a commit
 ** MR_reset_ticket()
-**	called when resuming forward execution after failing (MR_undo),
-**	or after a commit (MR_commit), or after a "soft commit"
-**	[one that doesn't prune away all the alternative solutions,
-**	but which does require us to commit to this goal being solvable]
-**	in an if-then-else with a nondet condition, or in solutions/2
-**	(MR_solve).
+**	called under the following circumstances, with different parameters:
+**	- when resuming forward execution after failing (MR_undo);
+**	- after a commit (MR_commit);
+**	- after a "soft commit" [one that doesn't prune away all the
+**	  alternative solutions, but which does require us to commit to
+**	  this goal being solvable] in an if-then-else with a nondet condition,
+**	  or in solutions/2 (MR_solve);
+**	- when executing a `retry' command in the debugger (MR_retry).
 ** MR_discard_ticket()
 **	called when cutting away or failing over the topmost choice point
 ** MR_mark_ticket_stack()
-**	called before a commit
+**	called before a commit, and when entering an execution traced procedure
 ** MR_discard_tickets_to()
 **	called after a commit
 */
@@ -147,6 +149,14 @@ typedef enum {
 	MR_exception,  
 
 	/*
+	** MR_retry:
+	** A `retry' command was executed in the debugger.
+	** Behaves as MR_undo, except that function trail entries may
+	** choose to behave differently for retries than for failure.
+	*/
+	MR_retry,  
+
+	/*
 	** MR_gc:
 	** Reserved for future use.
 	** The interface between the trail and accurate
@@ -192,22 +202,22 @@ typedef struct {
 */
 
 #if MR_USE_TAGGED_TRAIL
-  #define MR_func_trail_tag mktag(MR_func_entry)
-  #define MR_value_trail_tag mktag(MR_val_entry)
+  #define MR_func_trail_tag	MR_mktag(MR_func_entry)
+  #define MR_value_trail_tag	MR_mktag(MR_val_entry)
 
   /*
   ** MR_trail_entry_kind MR_get_trail_entry_kind(const MR_trail_entry *);
   */
   #define MR_get_trail_entry_kind(entry)				\
 	((MR_trail_entry_kind)						\
-	  (tag((Word) (entry)->MR_union.MR_val.MR_address)))
+	  (MR_tag((Word) (entry)->MR_union.MR_val.MR_address)))
 
   /*
   ** Word * MR_get_trail_entry_address(const MR_trail_entry *);
   */
   #define MR_get_trail_entry_address(entry) \
 	((Word *)							\
-	  body((entry)->MR_union.MR_val.MR_address, MR_value_trail_tag))
+	  MR_body((entry)->MR_union.MR_val.MR_address, MR_value_trail_tag))
 
   /*
   ** MR_untrail_func_type *
@@ -215,7 +225,7 @@ typedef struct {
   */
   #define MR_get_trail_entry_untrail_func(entry)			\
 	((MR_untrail_func_type *)					\
-	    body((Word) (entry)->MR_union.MR_func.MR_untrail_func,	\
+	    MR_body((Word) (entry)->MR_union.MR_func.MR_untrail_func,	\
 		     MR_func_trail_tag))
 
   /*
@@ -226,7 +236,7 @@ typedef struct {
 	  do {								\
 		(entry)->MR_union.MR_val.MR_address =			\
 			(Word *) (Word)					\
-			  mkword(MR_value_trail_tag, (address));	\
+			  MR_mkword(MR_value_trail_tag, (address));	\
 		(entry)->MR_union.MR_val.MR_value = (value);		\
 	  } while (0)
 
@@ -238,7 +248,7 @@ typedef struct {
 	  do {								\
 		(entry)->MR_union.MR_func.MR_untrail_func =		\
 			(MR_untrail_func_type *) (Word)			\
-			  mkword(MR_func_trail_tag, (func));		\
+			  MR_mkword(MR_func_trail_tag, (func));		\
 		(entry)->MR_union.MR_func.MR_datum = (datum);		\
 	  } while (0)
 #else /* !MR_USE_TAGGED_TRAIL */

@@ -20,7 +20,7 @@
 #if defined(__i386__)
 
   #define MR_GET_FAULT_ADDR(sc) \
-	((void *)(((struct sigcontext_struct)(sc)).cr2))
+	((void *) (sc).cr2)
 
 #elif defined(__mc68000__)
 

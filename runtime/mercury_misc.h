@@ -8,7 +8,6 @@
 ** mercury_misc.h -	debugging messages,
 **			MR_warning(),
 **			fatal_error(),
-**			checked_malloc(),
 **			MR_memcpy
 **			MR_fd_zero
 */
@@ -18,6 +17,7 @@
 
 #include "mercury_types.h"	/* for `Code *' */
 #include <stdlib.h>		/* for `size_t' */
+#include <stdio.h>		/* for `FILE' */
 
 #ifdef MR_LOWLEVEL_DEBUG
 extern	void	mkframe_msg(const char *);

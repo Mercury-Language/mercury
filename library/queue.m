@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997-1998 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -176,3 +176,44 @@ queue__delete_all(On0 - Off0, Elem, On - Off) :-
 	).
 
 %--------------------------------------------------------------------------%
+%--------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func queue__init = queue(T).
+
+:- func queue__put(queue(T), T) = queue(T).
+
+:- func queue__put_list(queue(T), list(T)) = queue(T).
+
+:- func queue__length(queue(T)) = int.
+
+:- func queue__list_to_queue(list(T)) = queue(T).
+
+:- func queue__delete_all(queue(T), T) = queue(T).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+queue__init = Q :-
+	queue__init(Q).
+
+queue__put(Q1, T) = Q2 :-
+	queue__put(Q1, T, Q2).
+
+queue__put_list(Q1, Xs) = Q2 :-
+	queue__put_list(Q1, Xs, Q2).
+
+queue__length(Q) = N :-
+	queue__length(Q, N).
+
+queue__list_to_queue(Xs) = Q :-
+	queue__list_to_queue(Xs, Q).
+
+queue__delete_all(Q1, T) = Q2 :-
+	queue__delete_all(Q1, T, Q2).
+

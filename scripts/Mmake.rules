@@ -321,3 +321,78 @@ realclean_local: clean_local
 clean_local: clean_prof_files
 
 #-----------------------------------------------------------------------------#
+#
+# Targets for building and installing libraries.
+#
+
+# Note: the `lib%.install_ints' rule is generated in each module's `.dep'
+# file so it can be more easily customised based on the desired level of
+# intermodule optimisation.
+
+.PHONY: lib%.install
+lib%.install: lib%.install_ints lib%.install_init lib%.install_library
+	$(MMAKE) lib$*.install_grades || { mercury_cleanup_install && exit 1; }
+
+.PHONY: lib%.install_split
+lib%.install_split: lib%.install_ints lib%.install_init \
+		lib%.install_split_library
+	$(MMAKE) lib$*.install_split_grades || \
+			{ mercury_cleanup_install && exit 1; }
+
+.PHONY: lib%.install_init
+lib%.install_init: %.init install_lib_dirs
+	cp `vpath_find $*.init` $(INSTALL_MODULE_DIR)
+
+.PHONY: lib%.install_library
+lib%.install_library: lib%.a lib%.$(EXT_FOR_SHARED_LIB) install_grade_dirs
+	cp `vpath_find lib$*.a lib$*.$(EXT_FOR_SHARED_LIB)` \
+			$(INSTALL_MERC_LIB_DIR)
+
+lib%.install_split_library: %.split.a install_grade_dirs
+	cp `vpath_find $*.split.a` $(INSTALL_MERC_LIB_DIR)/lib$*.a
+
+lib%.install_grades:
+	rm -rf tmp_dir && \
+	mkdir tmp_dir && \
+	{ mv -f $($*.cs) $($*.os) $($*.pic_os) *.a *.so tmp_dir || true; } && \
+	for grade in x $(ALL_LIBGRADES); do \
+		if [ "$$grade" != "x" ]; then \
+			$(MMAKE) GRADE=$$grade lib$*.install_library || \
+				exit 1; \
+			rm -f $($*.cs) $($*.os) $($*.pic_os) *.a *.so; \
+		fi; \
+	done && \
+	{ mv tmp_dir/*.c $(cs_subdir). ; \
+	  mv tmp_dir/*.o $(os_subdir). ; \
+	  mv tmp_dir/*.pic_o $(os_subdir). ; \
+	  mv tmp_dir/* . ; rmdir tmp_dir ; true }
+
+lib%.install_split_grades:
+	rm -rf tmp_dir && \
+	mkdir tmp_dir && \
+	{ mv -f $($*.dirs) *.a *.so tmp_dir || true; } && \
+	for grade in x $(ALL_LIBGRADES); do \
+		if [ "$$grade" != "x" ]; then \
+			$(MMAKE) GRADE=$$grade lib$*.install_split_library || \
+				exit 1; \
+			rm -rf $($*.dirs) *.a *.so; \
+		fi; \
+	done && \
+	{ mv tmp_dir/*.dir $(dirs_subdir). ; \
+	  mv tmp_dir/* . ; rmdir tmp_dir ; true }
+
+
+.PHONY: install_lib_dirs
+install_lib_dirs:
+	-[ -d $(INSTALL_INT_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
+	-[ -d $(INSTALL_INC_DIR) ] || mkdir -p $(INSTALL_INC_DIR)
+	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	# The following is needed to support the `--use-subdirs' option
+	-[ -d $(INSTALL_INT_DIR)/Mercury ] || \
+		mkdir -p $(INSTALL_INT_DIR)/Mercury
+
+.PHONY: install_grade_dirs
+install_grade_dirs: #install_lib_dirs
+	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+
+#-----------------------------------------------------------------------------#

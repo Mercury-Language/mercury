@@ -445,3 +445,96 @@ bag__subset_compare(Res, A, B) :-
 			Res = (<)
 		)
 	).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func bag__init = bag(T).
+
+:- func bag__insert(bag(T), T) = bag(T).
+
+:- func bag__insert_list(bag(T), list(T)) = bag(T).
+
+:- func bag__from_list(list(T)) = bag(T).
+
+:- func bag__to_list(bag(T)) = list(T).
+
+:- func bag__to_assoc_list(bag(T)) = assoc_list(T, int).
+
+:- func bag__to_list_without_duplicates(bag(T)) = list(T).
+
+:- func bag__det_remove(bag(T), T) = bag(T).
+
+:- func bag__det_remove_list(bag(T), list(T)) = bag(T).
+
+:- func bag__delete(bag(T), T) = bag(T).
+
+:- func bag__delete_all(bag(T), T) = bag(T).
+
+:- func bag__count_value(bag(T), T) = int.
+
+:- func bag__subtract(bag(T), bag(T)) = bag(T).
+
+:- func bag__union(bag(T), bag(T)) = bag(T).
+
+:- func bag__intersect(bag(T), bag(T)) = bag(T).
+
+:- func bag__least_upper_bound(bag(T), bag(T)) = bag(T).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+bag__init = B :-
+	bag__init(B).
+
+bag__insert(B1, X) = B2 :-
+	bag__insert(B1, X, B2).
+
+bag__insert_list(B1, Xs) = B2 :-
+	bag__insert_list(B1, Xs, B2).
+
+bag__from_list(Xs) = B :-
+	bag__from_list(Xs, B).
+
+bag__to_list(B) = Xs :-
+	bag__to_list(B, Xs).
+
+bag__to_assoc_list(B) = AL :-
+	bag__to_assoc_list(B, AL).
+
+bag__to_list_without_duplicates(B) = Xs :-
+	bag__to_list_without_duplicates(B, Xs).
+
+bag__det_remove(B1, X) = B2 :-
+	bag__det_remove(B1, X, B2).
+
+bag__det_remove_list(B1, Xs) = B2 :-
+	bag__det_remove_list(B1, Xs, B2).
+
+bag__delete(B1, X) = B2 :-
+	bag__delete(B1, X, B2).
+
+bag__delete_all(B1, X) = B2 :-
+	bag__delete_all(B1, X, B2).
+
+bag__count_value(B, X) = N :-
+	bag__count_value(B, X, N).
+
+bag__subtract(B1, B2) = B3 :-
+	bag__subtract(B1, B2, B3).
+
+bag__union(B1, B2) = B3 :-
+	bag__union(B1, B2, B3).
+
+bag__intersect(B1, B2) = B3 :-
+	bag__intersect(B1, B2, B3).
+
+bag__least_upper_bound(B1, B2) = B3 :-
+	bag__least_upper_bound(B1, B2, B3).
+

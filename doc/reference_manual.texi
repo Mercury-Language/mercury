@@ -72,6 +72,9 @@ into another language, under the above conditions for modified versions.
 @node Top,,, (mercury)
 @top
 @end ifinfo
+@c XXX Move to after Determinism
+@c * Assertions::        Assertion declarations allow you to declare laws
+@c                       that hold.
 @menu
 * Introduction::      A brief introduction to Mercury.
 * Syntax::            Mercury's syntax is similar to ISO Prolog.
@@ -366,6 +369,7 @@ The allowed declarations are:
 :- typeclass
 :- instance
 :- pragma
+:- promise
 :- module
 :- interface
 :- implementation
@@ -495,6 +499,16 @@ An if-then-else.
 The two different syntaxes have identical semantics.
 @var{CondGoal}, @var{ThenGoal}, and @var{ElseGoal} must be valid goals.
 Note that the ``else'' part is @emph{not} optional.
+
+The declarative semantics of an if-then-else is given by
+@code{( @var{CondGoal}, @var{ThenGoal} ; not(@var{CondGoal}), @var{ElseGoal})},
+but the operational semantics are different, and it is treated
+differently for the purposes of determinism inference (@pxref{Determinism}).
+Operationally, it executes the @var{CondGoal}, and if that succeeds, then
+execution continues with the @var{ThenGoal}; otherwise, i.e. if @var{CondGoal}
+fails, it executes the @var{ElseGoal}.  Note that @var{CondGoal} can be
+nondeterministic -- unlike Prolog, Mercury's if-then-else does not commit
+to the first solution of the condition if the condition succeeds.
 
 @item @code{@var{Term1} = @var{Term2}}
 A unification.
@@ -1861,6 +1875,34 @@ that test the switched-on variable against the same function symbol.
 A switch can succeed at most zero times
 only if all arms of the switch can succeed at most zero times.
 
+Only unifications may occur before the test of the switched-on variable
+in each disjunct. Tests of the switched-on variable may occur within
+existential quantification goals.
+
+The following example is a switch.
+
+@example
+(
+        Out = 1, L = []
+;
+        some [H, T] (
+                L = [H|T],
+                nonempty(H, T, Out)
+        )
+)
+@end example
+
+The following example is not a switch because the call in the first
+disjunct occurs before the test of the switched-on variable.
+
+@example
+(
+        empty(Out), L = []
+;
+        L = [H|T], nonempty(H, T, Out)
+)
+@end example
+
 @item Disjunctions
 The determinism of the empty disjunction (the goal @samp{fail})
 is @code{failure}.
@@ -2130,6 +2172,46 @@ And there are a variety of other applications.
 
 @c XXX fix semantics for I/O + committed choice + mode inference 
 
+@c @node Assertions
+@c @chapter Assertions
+@c 
+@c Mercury supports the declaration of laws that hold for predicates and
+@c functions.  
+@c These laws are only checked for type-correctness,
+@c it is the responsibility of the programmer to ensure overall correctness.
+@c The behaviour of programs with incorrect laws is undefined.
+@c 
+@c A new law is introduced with the @samp{:- assertion} declaration.
+@c 
+@c Here are some examples of @samp{:- assertion} declarations.
+@c The following example declares the function @samp{+} to be commutative.
+@c 
+@c @example
+@c :- assertion
+@c     all [A,B,R] (
+@c         R = A + B
+@c     <=>
+@c         R = B + A
+@c     ).
+@c @end example
+@c 
+@c Note that each variable in the declaration was explicitly quantified.
+@c The current Mercury compiler requires that each assertion begins with
+@c an @samp{all} quantification, and that every variable is explicitly
+@c quantified.
+@c 
+@c Here is a more complicated declaration. It declares that @samp{append} is
+@c associative.
+@c 
+@c @example
+@c :- assertion
+@c     all [A,B,C,ABC] (
+@c         (some [AB] (append(A, B, AB), append(AB, C, ABC)))
+@c     <=>
+@c         (some [BC] (append(B, C, BC), append(A, BC, ABC)))
+@c     ).
+@c @end example
+
 @node Equality preds
 @chapter User-defined equality predicates
 
@@ -2307,7 +2389,7 @@ the following three unifications have the same effect:
 X = (func(Num, List) = NewList :- NewList = scalar_product(Num, List))
 Y = (func(Num::in, List::in) = (NewList::out) is det
         :- NewList = scalar_product(Num, List))
-Z = sum_func
+Z = scalar_product
 @end example
 
 In the above example, the type of @samp{X}, @samp{Y}, and @samp{Z} is
@@ -3482,14 +3564,14 @@ Existential type class constraints are written in the same syntax
 as universal constraints, but using "=>" instead of "<=";
 they signify a constraint that the @emph{callee} must satisfy.
 (If a declaration has both universal and existential constraints,
-then the universal constraints must precede the existential constraints.)
+then the existential constraints must precede the universal constraints.)
 
 For example:
 
 @example
-% Here `c1(T1)' is a universal constraint,
-% and `c2(T2)' is an existential constraint.
-:- all [T1] some [T2] ((pred p(T1, T2) <= c1(T1)) => (c2(T2), c3(T1, T2)).
+% Here `c1(T2)' and `c2(T1, T2)' are existential constraints,
+% and `c3(T1)' is a universal constraint,
+:- all [T1] some [T2] ((pred p(T1, T2) => (c1(T2), c2(T1, T2))) <= c3(T1)).
 @end example
 
 In general, constraints that constrain any existentially quantified
@@ -3504,9 +3586,6 @@ a rather obscure coding style, which we do not recommend.)
 
 @node Existentially typed data types
 @section Existentially typed data types
-
-Note: existentially typed data types are not yet fully supported.
-See @ref{Known bugs in the current implementation} for details.
 
 Type variables occurring in the body of a discriminated union type
 definition may be existentially quantified.  Constructor definitions
@@ -3687,17 +3766,23 @@ harder_example(Name, Showable) :-
 The current implementation does not properly deal with most cases
 that involve both existentially quantified constraints and
 mode reordering due to the modes of type variables.
-The symptom in such cases is spurious mode errors.
-The solution is to write such code in the correct order manually
-rather than relying on the compiler's mode reordering.
+Note that this can easily arise if you're using nested function calls.
+The symptom in such cases is usually spurious mode errors,
+or sometimes internal compiler errors of the form
 
-We have not yet implemented RTTI (run-time type information) support
-for existentially quantified data types.  This means that many of
-the procedures in the Mercury standard library will not work for
-values of those types.  Functions affected include for example
-@samp{io__write}, @samp{io__read}, @samp{std_util__construct},
-and @samp{std_util__deconstruct}.  Likewise, the Mercury debugger
-does not yet support such types.
+@example
+Software error: map__lookup: key not found
+Key Type: prog_data:class_constraint
+Key Functor: constraint/2
+Value Type: hlds_data:constraint_proof
+@end example
+
+@noindent
+The work-around is to write such code in the correct order manually
+rather than relying on the compiler's mode reordering.
+For nested function calls, you may need to split them up using
+temporary variables, e.g. instead of @samp{X = f(g(Y))},
+write @samp{G = g(Y), X = f(G)}.
 
 @node Semantics
 @chapter Semantics
@@ -3972,7 +4057,8 @@ The C code fragment may refer to the specified variables
 (@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
 directly by name.  These variables will have C types corresponding
 to their Mercury types, as determined by the rules specified in
-@ref{Passing data to and from C}.
+@ref{Passing data to and from C}.  It is an error for a variable
+to occur more than once in the argument list.
 
 The C code fragment may declare local variables, but it should not
 declare any labels or static variables unless there is also a Mercury
@@ -4407,7 +4493,7 @@ As illustrated by the example, the values for @samp{MLFLAGS} and
 @samp{MLLIBS} variables are similar to those taken by the Unix linker.
 
 For more information, see the ``Libraries'' chapter of the
-Mercury users guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
+Mercury User's Guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
 
 @node Passing data to and from C
 @section Passing data to and from C
@@ -5135,15 +5221,6 @@ The University of Melbourne Mercury compiler performs user-requested type
 specializations when invoked with @samp{--user-guided-type-specialization},
 which is enabled at optimization level @samp{-O2} or higher.
 
-In the current implementation, the replacement types must be ground.
-Substitutions such as @w{@samp{T = list(U)}} are not supported.
-The compiler will warn about such substitutions, and will ignore
-the request for specialization. This restriction may be lifted in the future.
-@c The main reason for this restriction is that it is tricky to ensure that
-@c any extra typeclass_infos that may be needed are ordered the same way in
-@c different modules. The efficiency gain from replacing a type variable with 
-@c a non-ground type will usually be pretty small anyway.
-
 @node Obsolescence
 @section Obsolescence
 
@@ -5292,22 +5369,25 @@ space to record answers in the table.
 The implementation can optionally also check at runtime for the situation
 where a procedure calls itself recursively with the same arguments,
 which would normally result in a infinite loop; if this situation is
-encountered, it can (at the programmer's option) either report a
-run-time error, or avoid the infinite loop by computing solutions
+encountered, it can (at the programmer's option) either throw an
+exception, or avoid the infinite loop by computing solutions
 using the ``minimal model'' semantics.
 
 The current Mercury implementation thus supports three different
 pragmas for tabling, to cover these three cases: @samp{pragma memo}
 does no loop checking, @samp{pragma loop_check} checks for loops
-and reports runtime errors, while @samp{pragma minimal_model}
-computes the ``minimal model'' semantics.
+and throws an exception if a loop is detected, while
+@samp{pragma minimal_model} computes the ``minimal model'' semantics.
 
 @c XXX we should fix this bug...
 @cartouche
 @strong{Warning:}
 The current implementation of @samp{pragma minimal_model} is broken:
 the generated code sometimes produces incorrect results.  It should
-not be used.
+not be used.  Also the current implementation of all three pragmas
+is broken for procedures with determinism @samp{nondet} or @samp{multi}.
+The @samp{pragma memo} and @samp{pragma loop_check} declarations
+should not be used on such procedures.
 @end cartouche
 
 The syntax for each of these declarations is
@@ -5382,7 +5462,10 @@ or if you select a garbage collection method other than the default
 
 @c XXX we should fix this bug...
 @strong{Reminder}: the current implementation of
-@samp{pragma minimal_model} is broken.
+@samp{pragma minimal_model} is broken,
+and the current implementation of @samp{pragma memo}
+and @samp{pragma loop_check} is broken for procedures
+with determinism @samp{nondet} or @samp{multi}.
 @end cartouche
 
 @node Termination analysis

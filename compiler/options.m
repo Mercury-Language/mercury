@@ -55,6 +55,7 @@
 		;	warn_unused_args
 		;	warn_interface_imports
 		;	warn_missing_opt_files
+		;	warn_missing_trans_opt_files
 		;	warn_missing_trans_opt_deps
 		;	warn_non_stratification
 		;	warn_simple_code
@@ -133,9 +134,11 @@
 		;	profiling		% profile_time + profile_calls
 		;	time_profiling		% profile_time + profile_calls
 		;	memory_profiling	% profime_mem + profile_calls
+		;	deep_profiling	% profile_time + profile_deep
 		;	profile_calls
 		;	profile_time
 		;	profile_memory
+		;	profile_deep
 		;	debug
 		;	stack_trace
 		;	require_tracing
@@ -162,6 +165,7 @@
 				% `--num-tag-bits'.
 		;	args
 		;	highlevel_c
+		;	gcc_nested_functions
 		;	unboxed_float
 		;	sync_term_size % in words
 		;	type_layout
@@ -170,7 +174,7 @@
 	% settings of other options)
 				% Stack layout information required to do
 				% a stack trace.
-		;	basic_stack_layout
+		;       basic_stack_layout
 				% Stack layout information required to do
 				% accurate GC.
 		;	agc_stack_layout
@@ -208,6 +212,9 @@
 				% the predicates deciding interface typeinfo
 				% liveness, should go through there.
 		;	body_typeinfo_liveness
+	% Options for internal use only
+	% (setting these options to non-default values can result in
+	% programs that do not link, or programs that dump core)
 				% Generate unify and compare preds.  For
 				% measurement only. Code generated with
 				% this set to `no' is unlikely to
@@ -228,6 +235,11 @@
 				% off, then you're unlikely to be able
 				% to link.
 		;	type_ctor_functors
+				% Generate line number information in the RTTI
+				% when debugging is enabled. For measurement
+				% only -- if you turn this off, then the
+				% debugger may dereference garbage pointers.
+		;	rtti_line_numbers
 	% Code generation options
 		;	low_level_debug
 		;	trad_passes
@@ -236,7 +248,6 @@
 		;	reclaim_heap_on_semidet_failure
 		;	reclaim_heap_on_nondet_failure
 		;	lazy_code
-		;	call_trace_struct
 		;	have_delay_slot
 		;	num_real_r_regs
 		;	num_real_f_regs
@@ -257,6 +268,8 @@
 				% how full the fact table hash tables should
 				% be allowed to get, given as an integer
 				% percentage.
+
+		;	gcc_local_labels
 
 	% Optimization Options
 		;	opt_level
@@ -319,10 +332,12 @@
 		;	follow_vars
 		;	allow_hijacks
 	%	- LLDS
+		;	common_data
 		;	optimize
 		;	optimize_peep
 		;	optimize_jumps
 		;	optimize_fulljumps
+		;	checked_nondet_tailcalls
 		;	optimize_labels
 		;	optimize_dups
 %%% unused:	;	optimize_copyprop
@@ -407,6 +422,7 @@ option_defaults_2(warning_option, [
 	warn_interface_imports	-	bool(yes),
 	warn_non_stratification -	bool(no),
 	warn_missing_opt_files  -	bool(yes),
+	warn_missing_trans_opt_files -	bool(no),
 	warn_missing_trans_opt_deps  -	bool(yes),
 	warn_simple_code	-	bool(yes),
 	warn_duplicate_calls	-	bool(no),
@@ -497,9 +513,11 @@ option_defaults_2(compilation_model_option, [
 	profiling		-	bool_special,
 	time_profiling		-	special,
 	memory_profiling	-	special,
+	deep_profiling		-	special,
 	profile_calls		-	bool(no),
 	profile_time		-	bool(no),
 	profile_memory		-	bool(no),
+	profile_deep		-	bool(no),
 	debug			-	bool_special,
 	require_tracing		-	bool(no),
 	stack_trace		-	bool(no),
@@ -538,7 +556,9 @@ option_defaults_2(compilation_model_option, [
 	type_ctor_info		-	bool(yes),
 	type_ctor_layout	-	bool(yes),
 	type_ctor_functors	-	bool(yes),
+	rtti_line_numbers	-	bool(yes),
 	highlevel_c		-	bool(no),
+	gcc_nested_functions	-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
 option_defaults_2(code_gen_option, [
@@ -550,7 +570,6 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_failure	-	bool_special,
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
-	call_trace_struct		-	bool(no),
 	have_delay_slot		-	bool(no),
 					% the `mmc' script may override the
 					% above default if configure says
@@ -580,7 +599,8 @@ option_defaults_2(code_gen_option, [
 	max_jump_table_size	-	int(0),
 					% 0 indicates any size.
 	fact_table_max_array_size -	int(1024),
-	fact_table_hash_percent_full - 	int(90)
+	fact_table_hash_percent_full - 	int(90),
+	gcc_local_labels	-	bool(no)
 ]).
 option_defaults_2(special_optimization_option, [
 		% Special optimization options.
@@ -661,10 +681,12 @@ option_defaults_2(optimization_option, [
 	allow_hijacks		-	bool(yes),
 
 % LLDS
+	common_data		-	bool(no),
 	optimize		-	bool(no),
 	optimize_peep		-	bool(no),
 	optimize_jumps		-	bool(no),
 	optimize_fulljumps	-	bool(no),
+	checked_nondet_tailcalls	-	bool(no),
 	optimize_labels		-	bool(no),
 	optimize_dups		-	bool(no),
 %%%	optimize_copyprop	-	bool(no),
@@ -755,6 +777,7 @@ long_option("warn-unused-args",		warn_unused_args).
 long_option("warn-interface-imports",	warn_interface_imports).
 long_option("warn-non-stratification",	warn_non_stratification).
 long_option("warn-missing-opt-files",	warn_missing_opt_files).
+long_option("warn-missing-trans-opt-files",	warn_missing_trans_opt_files).
 long_option("warn-missing-trans-opt-deps",	warn_missing_trans_opt_deps).
 long_option("warn-simple-code",		warn_simple_code).
 long_option("warn-duplicate-calls",	warn_duplicate_calls).
@@ -859,14 +882,16 @@ long_option("parallel",			parallel).
 long_option("profiling",		profiling).
 long_option("time-profiling",		time_profiling).
 long_option("memory-profiling",		memory_profiling).
+long_option("deep-profiling",		deep_profiling).
 long_option("profile-calls",		profile_calls).
 long_option("profile-time",		profile_time).
 long_option("profile-memory",		profile_memory).
+long_option("profile-deep",		profile_deep).
 long_option("debug",			debug).
 % The following options are not allowed, because they're
 % not very useful and would probably only confuse people.
-% long_option("stack-trace",		stack_trace).
-% long_option("require-tracing",	require_tracing).
+% long_option("stack-trace",           stack_trace).
+% long_option("require-tracing",       require_tracing).
 long_option("use-trail",		use_trail).
 long_option("reserve-tag",		reserve_tag).
 long_option("use-solve-equal",		use_solve_equal).
@@ -888,10 +913,12 @@ long_option("special-preds",		special_preds).
 long_option("type-ctor-info",		type_ctor_info).
 long_option("type-ctor-layout",		type_ctor_layout).
 long_option("type-ctor-functors",	type_ctor_functors).
+long_option("rtti-line-numbers",	rtti_line_numbers).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
 long_option("high-level-c",		highlevel_c).
+long_option("gcc-nested-functions",	gcc_nested_functions).
 long_option("unboxed-float",		unboxed_float).
 
 % code generation options
@@ -904,7 +931,6 @@ long_option("reclaim-heap-on-semidet-failure",
 					reclaim_heap_on_semidet_failure).
 long_option("reclaim-heap-on-nondet-failure",
 					reclaim_heap_on_nondet_failure).
-long_option("call-trace-struct",	call_trace_struct).
 long_option("branch-delay-slot",	have_delay_slot).
 long_option("have-delay-slot",		have_delay_slot).
 long_option("num-real-r-regs",		num_real_r_regs).
@@ -922,6 +948,7 @@ long_option("max-jump-table-size",	max_jump_table_size).
 long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",
 					fact_table_hash_percent_full).
+long_option("gcc-local-labels",		gcc_local_labels).
 
 % optimization options
 
@@ -1018,6 +1045,7 @@ long_option("follow-vars",		follow_vars).
 long_option("allow-hijacks",		allow_hijacks).
 
 % LLDS optimizations
+long_option("common-data",		common_data).
 long_option("llds-optimize",		optimize).
 long_option("llds-optimise",		optimize).
 long_option("optimize-peep",		optimize_peep).
@@ -1026,6 +1054,7 @@ long_option("optimize-jumps",		optimize_jumps).
 long_option("optimise-jumps",		optimize_jumps).
 long_option("optimize-fulljumps",	optimize_fulljumps).
 long_option("optimise-fulljumps",	optimize_fulljumps).
+long_option("checked-nondet-tailcalls", checked_nondet_tailcalls).
 long_option("optimize-labels",		optimize_labels).
 long_option("optimise-labels",		optimize_labels).
 long_option("optimize-dups",		optimize_dups).
@@ -1099,15 +1128,23 @@ special_handler(grade, string(Grade), OptionTable0, Result) :-
 special_handler(profiling, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, profile_time, bool(Value), OptionTable1),
 	map__set(OptionTable1, profile_calls, bool(Value), OptionTable2),
-        map__set(OptionTable2, profile_memory, bool(no), OptionTable).
+        map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
+        map__set(OptionTable3, profile_deep, bool(no), OptionTable).
 special_handler(time_profiling, none, OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, profile_time, bool(yes), OptionTable1),
 	map__set(OptionTable1, profile_calls, bool(yes), OptionTable2),
-        map__set(OptionTable2, profile_memory, bool(no), OptionTable).
+        map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
+        map__set(OptionTable3, profile_deep, bool(no), OptionTable).
 special_handler(memory_profiling, none, OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, profile_time, bool(no), OptionTable1),
 	map__set(OptionTable1, profile_calls, bool(yes), OptionTable2),
-        map__set(OptionTable2, profile_memory, bool(yes), OptionTable).
+        map__set(OptionTable2, profile_memory, bool(yes), OptionTable3),
+        map__set(OptionTable3, profile_deep, bool(no), OptionTable).
+special_handler(deep_profiling, none, OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, profile_time, bool(yes), OptionTable1),
+	map__set(OptionTable1, profile_calls, bool(no), OptionTable2),
+        map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
+        map__set(OptionTable3, profile_deep, bool(yes), OptionTable).
 special_handler(debug, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, stack_trace, bool(Value), OptionTable1),
 	map__set(OptionTable1, require_tracing, bool(Value), OptionTable).
@@ -1149,6 +1186,7 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_nothing_exported	-	bool(Enable),
 			warn_interface_imports	-	bool(Enable),
 			warn_missing_opt_files	-	bool(Enable),
+			warn_missing_trans_opt_files -	bool(Enable),
 			warn_missing_trans_opt_deps -	bool(Enable),
 			warn_simple_code	-	bool(Enable),
 			warn_missing_module_name -	bool(Enable),
@@ -1240,6 +1278,7 @@ opt_space([
 % XXX I just guessed.  We should run lots of experiments.
 
 opt_level(0, _, [
+	common_data		-	bool(yes),
 	optimize		-	bool(yes),
 	optimize_repeat		-	int(1),
 	optimize_peep		-	bool(yes),
@@ -1400,6 +1439,9 @@ options_help_warning -->
 		"\twhich are not used in the interface.",
 		"--no-warn-missing-opt-files",
 		"\tDisable warnings about `.opt' files which cannot be opened.",
+		"--warn-missing-trans-opt-files",
+		"\tEnable warnings about `.trans_opt' files which cannot",
+		"\tbe opened.",
 		"--no-warn-missing-trans-opt-deps",
 		"\tDisable warnings produced when the information required",
 		"\tto allow `.trans_opt' files to be read when creating other",
@@ -1695,6 +1737,9 @@ options_help_compilation_model -->
 		"-s <grade>, --grade <grade>",
 		"\tSelect the compilation model. The <grade> should be one of",
 		"\t`none', `reg', `jump', `asm_jump', `fast', `asm_fast',",
+% These grades are not yet implemented.
+% The --high-level-c option is not yet documented.
+%		"\t`ansi', `nest'",
 		"\tor one of those with `.gc', `.prof', `.proftime',",
 		"\t`.profcalls', `.tr', `.sa', `.debug', and/or `.pic_reg'",
 		"\tappended (in that order).",
@@ -1706,14 +1751,31 @@ options_help_compilation_model -->
 		"--no-gcc-global-registers\t(grades: none, jump, asm_jump)",
 		"\tSpecify whether or not to use GNU C's",
 		"\tglobal register variables extension.",
+% The --high-level-c option is not yet documented.
+%		"\tThis option is ignored if the `--high-level-c' option is enabled.",
 		"--gcc-non-local-gotos\t\t(grades: jump, fast, asm_jump, asm_fast)",
 		"--no-gcc-non-local-gotos\t(grades: none, reg)",
 		"\tSpecify whether or not to use GNU C's",
 		"\t""labels as values"" extension.",
+% The --high-level-c option is not yet documented.
+%		"\tThis option is ignored if the `--high-level-c' option is enabled.",
 		"--asm-labels\t\t\t(grades: asm_jump, asm_fast)",
 		"--no-asm-labels\t\t\t(grades: none, reg, jump, fast)",
 		"\tSpecify whether or not to use GNU C's",
 		"\tasm extensions for inline assembler labels.",
+% The --high-level-c option is not yet documented.
+%		"\tThis option is ignored if the `--high-level-c' option is enabled.",
+% The --high-level-c option is not yet documented,
+% because the MLDS back-end is not yet complete enough to be useful.
+%		"--high-level-c\t\t\t(grades: ansi, nest)",
+%		"\tUse an alternative back-end that generates high-level C code",
+%		"\trather than the very low-level C code that is generated by our",
+%		"\toriginal back-end.",
+% The --gcc-nested-functions option is not yet documented,
+% because it is not yet implemented.
+%		"--gcc-nested-functions\t\t(grades: nest)",
+%		"\tSpecify whether or not to use GNU C's nested functions extension.",
+%		"\tThis option is ignored if the `--high-level-c' option is not enabled.",
 		"--gc {none, conservative, accurate}",
 		"--garbage-collection {none, conservative, accurate}",
 		"\t\t\t\t(`.gc' grades use `--gc conservative',",
@@ -1813,7 +1875,7 @@ your program compiled with different options.
 %		"(This option is not for general use.)",
 %		"\tGenerate the stack_layout structures required for",
 %		"\taccurate garbage collection.",
-%
+
 		% This is a developer only option.
 %		"--procid-stack-layout",
 %		"(This option is not for general use.)",
@@ -1875,9 +1937,6 @@ options_help_code_generation -->
 		"--no-reclaim-heap-on-failure",
 		"\tCombines the effect of the two options above.",
 
-		"--call-trace-struct\t\t(This option is not for general use.)",
-		"\tPass information to the tracing system in one struct.",
-
 		"--cc <compiler-name>",
 		"\tSpecify which C compiler to use.",
 		"--c-include-directory <dir>",
@@ -1906,6 +1965,18 @@ options_help_code_generation -->
 		"\tSpecify how full the `:- pragma fact_table' hash tables",
 		"\tshould be allowed to get.  Given as an integer percentage",
 		"\t(valid range: 1 to 100, default: 90)."
+
+% This option is not yet documented because the `--high-level-c' MLDS backend
+% is still not yet complete.
+%		"--gcc-local-labels",
+%		"\tThis option has no effect unless both the `--high-level-c' option",
+%		"\tand the `--gcc-nested-functions' options are enabled.",
+%		"\tIf this option is enabled, the Mercury compiler will generate",
+%		"\tC code that uses GNU C's local labels extension to allow",
+%		"\tGNU C nested functions to exit into their containing function",
+%		"\tvia a `goto'.",
+%		"\tIf this option is not enabled, the default behaviour is to",
+%		"\tuse the standard ANSI/ISO C setjmp() and longjmp() functions."
 	]),
 
 	io__write_string("\n    Code generation target options:\n"),
@@ -2116,6 +2187,8 @@ options_help_hlds_llds_optimization -->
 options_help_llds_llds_optimization -->
 	io__write_string("\n    Low-level (LLDS -> LLDS) optimizations:\n"),
 	write_tabbed_lines([
+		"--no-common-data",
+		"\tDisable optimization of common data structures.",
 		"--no-llds-optimize",
 		"\tDisable the low-level optimization passes.",
 		"--optimize-dead-procs",
@@ -2126,6 +2199,10 @@ options_help_llds_llds_optimization -->
 		"\tDisable elimination of jumps to jumps.",
 		"--no-optimize-fulljumps",
 		"\tDisable elimination of jumps to ordinary code.",
+		"--checked-nondet-tailcalls",
+		"\tConvert nondet calls into tail calls whenever possible, even",
+		"\twhen this requires a runtime check. This option tries to",
+		"\tminimize stack consumption, possibly at the expense of speed.",
 		"--no-optimize-labels",
 		"\tDisable elimination of dead labels and code.",
 		"--optimize-dups",

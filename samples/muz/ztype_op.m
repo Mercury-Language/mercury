@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -306,7 +306,8 @@ formalsMap(F) = M :-
 makeGeneric(Subst, F, DL, GDL) :-
 	list__length(F, FL),
 	M = formalsMap(F),
-	P = (pred(I-T0::in, I-e(FL, T)::out) is det :-
+	P = (pred(I-T0::in, I-O::out) is det :-
+			O = e(FL, T),
 			makeGType(M, ztapply(Subst, T0), T)),
 	list__map(P, DL, GDL).
 

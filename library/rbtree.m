@@ -890,3 +890,65 @@ rbtree__rbtree_to_assoc_list(black(K0, V0, Left, Right), L) :-
 	list__append(L0, [K0 - V0|L1], L).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func rbtree__init = rbtree(K, V).
+
+:- func rbtree__set(rbtree(K, V), K, V) = rbtree(K, V).
+
+:- func rbtree__insert_duplicate(rbtree(K, V), K, V) = rbtree(K, V).
+
+:- func rbtree__lookup(rbtree(K, V), K) = V.
+
+:- func rbtree__delete(rbtree(K, V), K) = rbtree(K, V).
+
+:- func rbtree__keys(rbtree(K, V)) = list(K).
+
+:- func rbtree__values(rbtree(K, V)) = list(V).
+
+:- func rbtree__count(rbtree(K, V)) = int.
+
+:- func rbtree__assoc_list_to_rbtree(assoc_list(K, V)) = rbtree(K, V).
+
+:- func rbtree__rbtree_to_assoc_list(rbtree(K, V)) = assoc_list(K, V).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+rbtree__init = RBT :-
+	rbtree__init(RBT).
+
+rbtree__set(RBT1, K, V) = RBT2 :-
+	rbtree__set(RBT1, K, V, RBT2).
+
+rbtree__insert_duplicate(RBT1, K, V) = RBT2 :-
+	rbtree__insert_duplicate(RBT1, K, V, RBT2).
+
+rbtree__lookup(RBT, K) = V :-
+	rbtree__lookup(RBT, K, V).
+
+rbtree__delete(RBT1, K) = RBT2 :-
+	rbtree__delete(RBT1, K, RBT2).
+
+rbtree__keys(RBT) = Ks :-
+	rbtree__keys(RBT, Ks).
+
+rbtree__values(RBT) = Vs :-
+	rbtree__values(RBT, Vs).
+
+rbtree__count(RBT) = N :-
+	rbtree__count(RBT, N).
+
+rbtree__assoc_list_to_rbtree(AL) = RBT :-
+	rbtree__assoc_list_to_rbtree(AL, RBT).
+
+rbtree__rbtree_to_assoc_list(RBT) = AL :-
+	rbtree__rbtree_to_assoc_list(RBT, AL).
+
+

@@ -82,7 +82,6 @@
 :- mode uo  * in  = in  is semidet.
 :- mode in  * uo  = in  is semidet.
 */
-
 	% subtraction
 :- func int - int = int.
 :- mode in  - in  = uo  is det.
@@ -150,8 +149,15 @@
 :- mode in  \/ in  = uo  is det.
 
 	% bitwise exclusive or (xor)
+:- func int__xor(int, int) = int.
+:- mode int__xor(in, in) = uo is det.
+
+	% bitwise exclusive or (xor)
+	% This version will be removed soon - the operator
+	% is needed for record syntax.
 :- func int ^ int = int.
 :- mode in  ^ in  = uo  is det.
+:- pragma obsolete(('^')/2).
 
 	% bitwise complement
 :- func \ int = int.
@@ -191,6 +197,14 @@
 
 	% Everything below here will not appear in the
 	% Mercury Library Reference Manual.
+
+%-----------------------------------------------------------------------------%
+
+	% commutivity of +
+:- promise all [A,B,C] ( C = B + A <=> C = A + B ).
+
+	% commutivity of *
+:- promise all [A,B,C] ( C = B * A <=> C = A * B ).
 
 %-----------------------------------------------------------------------------%
 

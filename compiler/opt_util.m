@@ -213,6 +213,13 @@
 	list(label), list(code_addr)).
 :- mode opt_util__instr_list_labels(in, out, out) is det.
 
+	% Given an instruction, find the set of labels to which it can cause
+	% control to transfer. In the case of calls, this includes transfer
+	% via return from the called procedure.
+
+:- pred opt_util__possible_targets(instr, list(label)).
+:- mode opt_util__possible_targets(in, out) is det.
+
 	% Find a label number that does not occur in the instruction list,
 	% starting the search at a given number.
 
@@ -298,6 +305,23 @@
 
 :- pred opt_util__propagate_livevals(list(instruction), list(instruction)).
 :- mode opt_util__propagate_livevals(in, out) is det.
+
+	% Replace references to one set of local labels with references
+	% to another set, in one instruction or a list of instructions.
+	% Control references (those that can cause a transfer of control
+	% from the instruction they occur in to the replaced label, either
+	% directly or via return from a called procedure) are always replaced;
+	% references that treat the label as data are replaced iff the third
+	% argument is set to "yes".
+
+:- pred opt_util__replace_labels_instr(instr::in, map(label, label)::in,
+	bool::in, instr::out) is det.
+
+:- pred opt_util__replace_labels_instruction(instruction::in,
+	map(label, label)::in, bool::in, instruction::out) is det.
+
+:- pred opt_util__replace_labels_instruction_list(list(instruction)::in,
+	map(label, label)::in, bool::in, list(instruction)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -769,7 +793,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 			opt_util__block_refers_stackvars(Instrs0, Need)
 		)
 	;
-		Uinstr0 = call(_, _, _, _),
+		Uinstr0 = call(_, _, _, _, _),
 		Need = no
 	;
 		Uinstr0 = mkframe(_, _),
@@ -869,7 +893,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = decr_sp(_),
 		Need = no
 	;
-		Uinstr0 = pragma_c(_, _, _, _, _),
+		Uinstr0 = pragma_c(_, _, _, _, _, _),
 		Need = no
 	;
 		Uinstr0 = init_sync_term(Lval, _),
@@ -973,7 +997,7 @@ opt_util__can_instr_branch_away(comment(_), no).
 opt_util__can_instr_branch_away(livevals(_), no).
 opt_util__can_instr_branch_away(block(_, _, _), yes).
 opt_util__can_instr_branch_away(assign(_, _), no).
-opt_util__can_instr_branch_away(call(_, _, _, _), yes).
+opt_util__can_instr_branch_away(call(_, _, _, _, _), yes).
 opt_util__can_instr_branch_away(mkframe(_, _), no).
 opt_util__can_instr_branch_away(label(_), no).
 opt_util__can_instr_branch_away(goto(_), yes).
@@ -994,7 +1018,7 @@ opt_util__can_instr_branch_away(init_sync_term(_, _), no).
 opt_util__can_instr_branch_away(fork(_, _, _), yes).
 opt_util__can_instr_branch_away(join_and_terminate(_), no).
 opt_util__can_instr_branch_away(join_and_continue(_, _), yes).
-opt_util__can_instr_branch_away(pragma_c(_, Comps, _, _, _), BranchAway) :-
+opt_util__can_instr_branch_away(pragma_c(_, Comps, _, _, _, _), BranchAway) :-
 	opt_util__can_components_branch_away(Comps, BranchAway).
 
 :- pred opt_util__can_components_branch_away(list(pragma_c_component), bool).
@@ -1027,15 +1051,17 @@ opt_util__can_components_branch_away([Component | Components], BranchAway) :-
 opt_util__can_component_branch_away(pragma_c_inputs(_), no).
 opt_util__can_component_branch_away(pragma_c_outputs(_), no).
 opt_util__can_component_branch_away(pragma_c_raw_code(Code), CanBranchAway) :-
-	( Code = "" -> CanBranchAway = yes ; CanBranchAway = no ).
+	( Code = "" -> CanBranchAway = no ; CanBranchAway = yes ).
 opt_util__can_component_branch_away(pragma_c_user_code(_, _), no).
+opt_util__can_component_branch_away(pragma_c_fail_to(_), yes).
+opt_util__can_component_branch_away(pragma_c_noop, no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
 opt_util__can_instr_fall_through(livevals(_), yes).
 opt_util__can_instr_fall_through(block(_, _, Instrs), FallThrough) :-
 	opt_util__can_block_fall_through(Instrs, FallThrough).
 opt_util__can_instr_fall_through(assign(_, _), yes).
-opt_util__can_instr_fall_through(call(_, _, _, _), no).
+opt_util__can_instr_fall_through(call(_, _, _, _, _), no).
 opt_util__can_instr_fall_through(mkframe(_, _), yes).
 opt_util__can_instr_fall_through(label(_), yes).
 opt_util__can_instr_fall_through(goto(_), no).
@@ -1056,7 +1082,7 @@ opt_util__can_instr_fall_through(init_sync_term(_, _), yes).
 opt_util__can_instr_fall_through(fork(_, _, _), no).
 opt_util__can_instr_fall_through(join_and_terminate(_), no).
 opt_util__can_instr_fall_through(join_and_continue(_, _), no).
-opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _), yes).
+opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _, _), yes).
 
 	% Check whether an instruction sequence can possibly fall through
 	% to the next instruction without using its label.
@@ -1079,7 +1105,7 @@ opt_util__can_use_livevals(comment(_), no).
 opt_util__can_use_livevals(livevals(_), no).
 opt_util__can_use_livevals(block(_, _, _), no).
 opt_util__can_use_livevals(assign(_, _), no).
-opt_util__can_use_livevals(call(_, _, _, _), yes).
+opt_util__can_use_livevals(call(_, _, _, _, _), yes).
 opt_util__can_use_livevals(mkframe(_, _), no).
 opt_util__can_use_livevals(label(_), no).
 opt_util__can_use_livevals(goto(_), yes).
@@ -1100,7 +1126,7 @@ opt_util__can_use_livevals(init_sync_term(_, _), no).
 opt_util__can_use_livevals(fork(_, _, _), no).
 opt_util__can_use_livevals(join_and_terminate(_), no).
 opt_util__can_use_livevals(join_and_continue(_, _), no).
-opt_util__can_use_livevals(pragma_c(_, _, _, _, _), no).
+opt_util__can_use_livevals(pragma_c(_, _, _, _, _, _), no).
 
 % determine all the labels and code_addresses that are referenced by Instr
 
@@ -1114,7 +1140,7 @@ opt_util__instr_labels(Instr, Labels, CodeAddrs) :-
 	opt_util__find_label_code_addrs(CodeAddrs, Labels0, Labels).
 
 :- pred opt_util__find_label_code_addrs(list(code_addr),
-	list(label), list(label)). 
+	list(label), list(label)).
 :- mode opt_util__find_label_code_addrs(in, in, out) is det.
 
 	% Find out which code addresses are also labels.
@@ -1140,7 +1166,7 @@ opt_util__instr_labels_2(livevals(_), [], []).
 opt_util__instr_labels_2(block(_, _, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_labels(Instrs, Labels, CodeAddrs).
 opt_util__instr_labels_2(assign(_,_), [], []).
-opt_util__instr_labels_2(call(Target, Ret, _, _), [], [Target, Ret]).
+opt_util__instr_labels_2(call(Target, Ret, _, _, _), [], [Target, Ret]).
 opt_util__instr_labels_2(mkframe(_, Addr), [], [Addr]).
 opt_util__instr_labels_2(label(_), [], []).
 opt_util__instr_labels_2(goto(Addr), [], [Addr]).
@@ -1161,11 +1187,77 @@ opt_util__instr_labels_2(init_sync_term(_, _), [], []).
 opt_util__instr_labels_2(fork(Child, Parent, _), [Child, Parent], []).
 opt_util__instr_labels_2(join_and_terminate(_), [], []).
 opt_util__instr_labels_2(join_and_continue(_, Label), [Label], []).
-opt_util__instr_labels_2(pragma_c(_, _, _, MaybeLabel, _), Labels, []) :-
-	( MaybeLabel = yes(Label) ->
+opt_util__instr_labels_2(pragma_c(_, _, _, MaybeFixLabel, MaybeSubLabel, _),
+		Labels, []) :-
+	( MaybeFixLabel = yes(FixLabel) ->
+		( MaybeSubLabel = yes(SubLabel) ->
+			Labels = [FixLabel, SubLabel]
+		;
+			Labels = [FixLabel]
+		)
+	;
+		( MaybeSubLabel = yes(SubLabel) ->
+			Labels = [SubLabel]
+		;
+			Labels = []
+		)
+	).
+
+opt_util__possible_targets(comment(_), []).
+opt_util__possible_targets(livevals(_), []).
+opt_util__possible_targets(block(_, _, _), _) :-
+	error("block in possible_targets").
+opt_util__possible_targets(assign(_, _), []).
+opt_util__possible_targets(call(_, ReturnAddr, _, _, _), Labels) :-
+	( ReturnAddr = label(Label) ->
 		Labels = [Label]
 	;
 		Labels = []
+	).
+opt_util__possible_targets(mkframe(_, _), []).
+opt_util__possible_targets(label(_), []).
+opt_util__possible_targets(goto(CodeAddr), Targets) :-
+	( CodeAddr = label(Label) ->
+		Targets = [Label]
+	;
+		Targets = []
+	).
+opt_util__possible_targets(computed_goto(_, Targets), Targets).
+opt_util__possible_targets(c_code(_), []).
+opt_util__possible_targets(if_val(_, CodeAddr), Targets) :-
+	( CodeAddr = label(Label) ->
+		Targets = [Label]
+	;
+		Targets = []
+	).
+opt_util__possible_targets(incr_hp(_, _, _, _), []).
+opt_util__possible_targets(mark_hp(_), []).
+opt_util__possible_targets(restore_hp(_), []).
+opt_util__possible_targets(store_ticket(_), []).
+opt_util__possible_targets(reset_ticket(_, _), []).
+opt_util__possible_targets(discard_ticket, []).
+opt_util__possible_targets(mark_ticket_stack(_), []).
+opt_util__possible_targets(discard_tickets_to(_), []).
+opt_util__possible_targets(incr_sp(_, _), []).
+opt_util__possible_targets(decr_sp(_), []).
+opt_util__possible_targets(init_sync_term(_, _), []).
+opt_util__possible_targets(fork(Child, Parent, _), [Child, Parent]).
+opt_util__possible_targets(join_and_terminate(_), []).
+opt_util__possible_targets(join_and_continue(_, L), [L]).
+opt_util__possible_targets(pragma_c(_, _, _, MaybeFixLabel, MaybeSubLabel, _),
+		Labels) :-
+	( MaybeFixLabel = yes(FixLabel) ->
+		( MaybeSubLabel = yes(SubLabel) ->
+			Labels = [FixLabel, SubLabel]
+		;
+			Labels = [FixLabel]
+		)
+	;
+		( MaybeSubLabel = yes(SubLabel) ->
+			Labels = [SubLabel]
+		;
+			Labels = []
+		)
 	).
 
 :- pred opt_util__instr_rvals_and_lvals(instr, list(rval), list(lval)).
@@ -1178,7 +1270,7 @@ opt_util__instr_rvals_and_lvals(livevals(_), [], []).
 opt_util__instr_rvals_and_lvals(block(_, _, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_rvals_and_lvals(Instrs, Labels, CodeAddrs).
 opt_util__instr_rvals_and_lvals(assign(Lval,Rval), [Rval], [Lval]).
-opt_util__instr_rvals_and_lvals(call(_, _, _, _), [], []).
+opt_util__instr_rvals_and_lvals(call(_, _, _, _, _), [], []).
 opt_util__instr_rvals_and_lvals(mkframe(_, _), [], []).
 opt_util__instr_rvals_and_lvals(label(_), [], []).
 opt_util__instr_rvals_and_lvals(goto(_), [], []).
@@ -1199,8 +1291,8 @@ opt_util__instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
 opt_util__instr_rvals_and_lvals(fork(_, _, _), [], []).
 opt_util__instr_rvals_and_lvals(join_and_terminate(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
-opt_util__instr_rvals_and_lvals(pragma_c(_, Comps, _, _, _), Rvals, Lvals) :-
-	pragma_c_components_get_rvals_and_lvals(Comps, Rvals, Lvals).
+opt_util__instr_rvals_and_lvals(pragma_c(_, Cs, _, _, _, _), Rvals, Lvals) :-
+	pragma_c_components_get_rvals_and_lvals(Cs, Rvals, Lvals).
 
 	% extract the rvals and lvals from the pragma_c_components
 :- pred pragma_c_components_get_rvals_and_lvals(list(pragma_c_component),
@@ -1230,6 +1322,10 @@ pragma_c_component_get_rvals_and_lvals(pragma_c_outputs(Outputs),
 pragma_c_component_get_rvals_and_lvals(pragma_c_user_code(_, _),
 		Rvals, Rvals, Lvals, Lvals).
 pragma_c_component_get_rvals_and_lvals(pragma_c_raw_code(_),
+		Rvals, Rvals, Lvals, Lvals).
+pragma_c_component_get_rvals_and_lvals(pragma_c_fail_to(_),
+		Rvals, Rvals, Lvals, Lvals).
+pragma_c_component_get_rvals_and_lvals(pragma_c_noop,
 		Rvals, Rvals, Lvals, Lvals).
 
 	% extract the rvals from the pragma_c_input
@@ -1273,7 +1369,7 @@ opt_util__instr_list_labels([Uinstr - _ | Instrs], Labels, CodeAddrs) :-
 opt_util__livevals_addr(label(Label), Result) :-
 	( Label = local(_, _) ->
 		Result = no
-	;	
+	;
 		Result = yes
 	).
 opt_util__livevals_addr(imported(_), yes).
@@ -1306,7 +1402,7 @@ opt_util__count_temps_instr(block(_, _, _), R, R, F, F).
 opt_util__count_temps_instr(assign(Lval, Rval), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R1, F0, F1),
 	opt_util__count_temps_rval(Rval, R1, R, F1, F).
-opt_util__count_temps_instr(call(_, _, _, _), R, R, F, F).
+opt_util__count_temps_instr(call(_, _, _, _, _), R, R, F, F).
 opt_util__count_temps_instr(mkframe(_, _), R, R, F, F).
 opt_util__count_temps_instr(label(_), R, R, F, F).
 opt_util__count_temps_instr(goto(_), R, R, F, F).
@@ -1340,7 +1436,7 @@ opt_util__count_temps_instr(join_and_terminate(Lval), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R, F0, F).
 opt_util__count_temps_instr(join_and_continue(Lval, _), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R, F0, F).
-opt_util__count_temps_instr(pragma_c(_, _, _, _, _), R, R, F, F).
+opt_util__count_temps_instr(pragma_c(_, _, _, _, _, _), R, R, F, F).
 
 :- pred opt_util__count_temps_lval(lval, int, int, int, int).
 :- mode opt_util__count_temps_lval(in, in, out, in, out) is det.
@@ -1447,7 +1543,7 @@ opt_util__touches_nondet_ctrl_instr(Uinstr, Touch) :-
 		opt_util__touches_nondet_ctrl_lval(Lval, Touch)
 	; Uinstr = restore_hp(Rval) ->
 		opt_util__touches_nondet_ctrl_rval(Rval, Touch)
-	; Uinstr = pragma_c(_, Components, _, _, _) ->
+	; Uinstr = pragma_c(_, Components, _, _, _, _) ->
 		opt_util__touches_nondet_ctrl_components(Components, Touch)
 	;
 		Touch = yes
@@ -1529,6 +1625,8 @@ opt_util__touches_nondet_ctrl_component(pragma_c_inputs(_), no).
 opt_util__touches_nondet_ctrl_component(pragma_c_outputs(_), no).
 opt_util__touches_nondet_ctrl_component(pragma_c_raw_code(_), no).
 opt_util__touches_nondet_ctrl_component(pragma_c_user_code(_, _), yes).
+opt_util__touches_nondet_ctrl_component(pragma_c_fail_to(_), no).
+opt_util__touches_nondet_ctrl_component(pragma_c_noop, no).
 
 %-----------------------------------------------------------------------------%
 
@@ -1622,4 +1720,337 @@ opt_util__propagate_livevals_2([Instr0 | Instrs0], Livevals0,
 	),
 	opt_util__propagate_livevals_2(Instrs0, Livevals, Instrs).
 
+%-----------------------------------------------------------------------------%
+
+	% The code in this section is concerned with replacing all references
+	% to one given label with a reference to another given label.
+
+opt_util__replace_labels_instruction_list([], _, _, []).
+opt_util__replace_labels_instruction_list([Instr0 | Instrs0], ReplMap,
+		ReplData, [Instr | Instrs]) :-
+	opt_util__replace_labels_instruction(Instr0, ReplMap, ReplData, Instr),
+	opt_util__replace_labels_instruction_list(Instrs0, ReplMap, ReplData,
+		Instrs).
+
+opt_util__replace_labels_instruction(Instr0 - Comment, ReplMap, ReplData,
+		Instr - Comment) :-
+	opt_util__replace_labels_instr(Instr0, ReplMap, ReplData, Instr).
+
+opt_util__replace_labels_instr(comment(Comment), _, _, comment(Comment)).
+opt_util__replace_labels_instr(livevals(Livevals), _, _, livevals(Livevals)).
+opt_util__replace_labels_instr(block(R, F, Instrs0), ReplMap, ReplData,
+		block(R, F, Instrs)) :-
+	opt_util__replace_labels_instruction_list(Instrs0, ReplMap, ReplData,
+		Instrs).
+opt_util__replace_labels_instr(assign(Lval0, Rval0), ReplMap, ReplData,
+		assign(Lval, Rval)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_lval(Lval0, ReplMap, Lval),
+		opt_util__replace_labels_rval(Rval0, ReplMap, Rval)
+	;
+		ReplData = no,
+		Lval = Lval0,
+		Rval = Rval0
+	).
+opt_util__replace_labels_instr(call(Target, Return0, LiveInfo, Context, CM),
+		ReplMap, _, call(Target, Return, LiveInfo, Context, CM)) :-
+	opt_util__replace_labels_code_addr(Return0, ReplMap, Return).
+opt_util__replace_labels_instr(mkframe(NondetFrameInfo, Redoip0), ReplMap,
+		ReplData, mkframe(NondetFrameInfo, Redoip)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_code_addr(Redoip0, ReplMap, Redoip)
+	;
+		ReplData = no,
+		Redoip = Redoip0
+	).
+opt_util__replace_labels_instr(label(Label), ReplMap, _, label(Label)) :-
+	( map__search(ReplMap, Label, _) ->
+		% The reason why we are replacing references to this label
+		% is that it is being eliminated, and in fact should have been
+		% already eliminated by the time opt_util__replace_labels_instr
+		% is called.
+		error("eliminated label in opt_util__replace_labels_instr")
+	;
+		true
+	).
+opt_util__replace_labels_instr(goto(Target0), ReplMap, _, goto(Target)) :-
+	opt_util__replace_labels_code_addr(Target0, ReplMap, Target).
+opt_util__replace_labels_instr(computed_goto(Rval0, Labels0), ReplMap,
+		ReplData, computed_goto(Rval, Labels)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_rval(Rval0, ReplMap, Rval)
+	;
+		ReplData = no,
+		Rval = Rval0
+	),
+	opt_util__replace_labels_label_list(Labels0, ReplMap, Labels).
+opt_util__replace_labels_instr(c_code(Code), _, _, c_code(Code)).
+opt_util__replace_labels_instr(if_val(Rval0, Target0), ReplMap, ReplData,
+		if_val(Rval, Target)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_rval(Rval0, ReplMap, Rval)
+	;
+		ReplData = no,
+		Rval = Rval0
+	),
+	opt_util__replace_labels_code_addr(Target0, ReplMap, Target).
+opt_util__replace_labels_instr(incr_hp(Lval0, MaybeTag, Rval0, Msg), ReplMap,
+		ReplData, incr_hp(Lval, MaybeTag, Rval, Msg)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_lval(Lval0, ReplMap, Lval),
+		opt_util__replace_labels_rval(Rval0, ReplMap, Rval)
+	;
+		ReplData = no,
+		Lval = Lval0,
+		Rval = Rval0
+	).
+opt_util__replace_labels_instr(mark_hp(Lval0), ReplMap, ReplData,
+		mark_hp(Lval)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_lval(Lval0, ReplMap, Lval)
+	;
+		ReplData = no,
+		Lval = Lval0
+	).
+opt_util__replace_labels_instr(restore_hp(Rval0), ReplMap, ReplData,
+		restore_hp(Rval)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_rval(Rval0, ReplMap, Rval)
+	;
+		ReplData = no,
+		Rval = Rval0
+	).
+opt_util__replace_labels_instr(store_ticket(Lval0), ReplMap, ReplData,
+		store_ticket(Lval)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_lval(Lval0, ReplMap, Lval)
+	;
+		ReplData = no,
+		Lval = Lval0
+	).
+opt_util__replace_labels_instr(reset_ticket(Rval0, Reason), ReplMap, ReplData,
+		reset_ticket(Rval, Reason)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_rval(Rval0, ReplMap, Rval)
+	;
+		ReplData = no,
+		Rval = Rval0
+	).
+opt_util__replace_labels_instr(discard_ticket, _, _, discard_ticket).
+opt_util__replace_labels_instr(mark_ticket_stack(Lval0), ReplMap, ReplData,
+		mark_ticket_stack(Lval)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_lval(Lval0, ReplMap, Lval)
+	;
+		ReplData = no,
+		Lval = Lval0
+	).
+opt_util__replace_labels_instr(discard_tickets_to(Rval0), ReplMap, ReplData,
+		discard_tickets_to(Rval)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_rval(Rval0, ReplMap, Rval)
+	;
+		ReplData = no,
+		Rval = Rval0
+	).
+opt_util__replace_labels_instr(incr_sp(Size, Msg), _, _, incr_sp(Size, Msg)).
+opt_util__replace_labels_instr(decr_sp(Size), _, _, decr_sp(Size)).
+opt_util__replace_labels_instr(init_sync_term(T, N), _, _,
+		init_sync_term(T, N)).
+opt_util__replace_labels_instr(fork(Child0, Parent0, SlotCount), Replmap, _,
+		fork(Child, Parent, SlotCount)) :-
+	opt_util__replace_labels_label(Child0, Replmap, Child),
+	opt_util__replace_labels_label(Parent0, Replmap, Parent).
+opt_util__replace_labels_instr(join_and_terminate(Lval0), Replmap, _,
+		join_and_terminate(Lval)) :-
+	opt_util__replace_labels_lval(Lval0, Replmap, Lval).
+opt_util__replace_labels_instr(join_and_continue(Lval0, Label0),
+		Replmap, _, join_and_continue(Lval, Label)) :-
+	opt_util__replace_labels_label(Label0, Replmap, Label),
+	opt_util__replace_labels_lval(Lval0, Replmap, Lval).
+opt_util__replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeSub0, F),
+		ReplMap, _, pragma_c(A, Comps, C, MaybeFix, MaybeSub, F)) :-
+	(
+		MaybeFix = no
+	;
+		MaybeFix = yes(FixLabel0),
+		opt_util__replace_labels_label(FixLabel0, ReplMap, FixLabel),
+			% We cannot replace the label in the C code string
+			% itself.
+		require(unify(FixLabel0, FixLabel),
+			"trying to replace Mercury label in C code")
+	),
+	(
+		MaybeSub0 = no,
+		MaybeSub = no,
+		Comps = Comps0
+	;
+		MaybeSub0 = yes(SubLabel0),
+		opt_util__replace_labels_label(SubLabel0, ReplMap, SubLabel),
+		MaybeSub = yes(SubLabel),
+		opt_util__replace_labels_comps(Comps0, ReplMap, Comps)
+	).
+
+:- pred opt_util__replace_labels_comps(list(pragma_c_component),
+	map(label, label), list(pragma_c_component)).
+:- mode opt_util__replace_labels_comps(in, in, out) is det.
+
+opt_util__replace_labels_comps([], _, []).
+opt_util__replace_labels_comps([Comp0 | Comps0], ReplMap, [Comp | Comps]) :-
+	opt_util__replace_labels_comp(Comp0, ReplMap, Comp),
+	opt_util__replace_labels_comps(Comps0, ReplMap, Comps).
+
+:- pred opt_util__replace_labels_comp(pragma_c_component,
+	map(label, label), pragma_c_component).
+:- mode opt_util__replace_labels_comp(in, in, out) is det.
+
+opt_util__replace_labels_comp(pragma_c_inputs(A), _, pragma_c_inputs(A)).
+opt_util__replace_labels_comp(pragma_c_outputs(A), _, pragma_c_outputs(A)).
+opt_util__replace_labels_comp(pragma_c_user_code(A, B), _,
+		pragma_c_user_code(A, B)).
+opt_util__replace_labels_comp(pragma_c_raw_code(A), _, pragma_c_raw_code(A)).
+opt_util__replace_labels_comp(pragma_c_fail_to(Label0), ReplMap,
+		pragma_c_fail_to(Label)) :-
+	opt_util__replace_labels_label(Label0, ReplMap, Label).
+opt_util__replace_labels_comp(pragma_c_noop, _, pragma_c_noop).
+
+:- pred opt_util__replace_labels_lval(lval, map(label, label), lval).
+:- mode opt_util__replace_labels_lval(in, in, out) is det.
+
+opt_util__replace_labels_lval(reg(RegType, RegNum), _, reg(RegType, RegNum)).
+opt_util__replace_labels_lval(stackvar(N), _, stackvar(N)).
+opt_util__replace_labels_lval(framevar(N), _, framevar(N)).
+opt_util__replace_labels_lval(succip, _, succip).
+opt_util__replace_labels_lval(maxfr, _, maxfr).
+opt_util__replace_labels_lval(curfr, _, curfr).
+opt_util__replace_labels_lval(succip(Rval0), ReplMap, succip(Rval)) :-
+	opt_util__replace_labels_rval(Rval0, ReplMap, Rval).
+opt_util__replace_labels_lval(redoip(Rval0), ReplMap, redoip(Rval)) :-
+	opt_util__replace_labels_rval(Rval0, ReplMap, Rval).
+opt_util__replace_labels_lval(redofr(Rval0), ReplMap, redofr(Rval)) :-
+	opt_util__replace_labels_rval(Rval0, ReplMap, Rval).
+opt_util__replace_labels_lval(succfr(Rval0), ReplMap, succfr(Rval)) :-
+	opt_util__replace_labels_rval(Rval0, ReplMap, Rval).
+opt_util__replace_labels_lval(prevfr(Rval0), ReplMap, prevfr(Rval)) :-
+	opt_util__replace_labels_rval(Rval0, ReplMap, Rval).
+opt_util__replace_labels_lval(hp, _, hp).
+opt_util__replace_labels_lval(sp, _, sp).
+opt_util__replace_labels_lval(field(Tag, Base0, Offset0), ReplMap,
+		field(Tag, Base, Offset)) :-
+	opt_util__replace_labels_rval(Base0, ReplMap, Base),
+	opt_util__replace_labels_rval(Offset0, ReplMap, Offset).
+opt_util__replace_labels_lval(lvar(Var), _, lvar(Var)).
+opt_util__replace_labels_lval(temp(Type, Num), _, temp(Type, Num)).
+opt_util__replace_labels_lval(mem_ref(Rval0), ReplMap, mem_ref(Rval)) :-
+	opt_util__replace_labels_rval(Rval0, ReplMap, Rval).
+
+:- pred opt_util__replace_labels_rval(rval::in, map(label, label)::in,
+	rval::out) is det.
+
+opt_util__replace_labels_rval(lval(Lval0), ReplMap, lval(Lval)) :-
+	opt_util__replace_labels_lval(Lval0, ReplMap, Lval).
+opt_util__replace_labels_rval(var(Var), _, var(Var)).
+opt_util__replace_labels_rval(create(Tag, Rvals, ArgTypes, StatDyn, N, Msg), _,
+		create(Tag, Rvals, ArgTypes, StatDyn, N, Msg)).
+opt_util__replace_labels_rval(mkword(Tag, Rval0), ReplMap, mkword(Tag, Rval)) :-
+	opt_util__replace_labels_rval(Rval0, ReplMap, Rval).
+opt_util__replace_labels_rval(const(Const0), ReplMap, const(Const)) :-
+	opt_util__replace_labels_rval_const(Const0, ReplMap, Const).
+opt_util__replace_labels_rval(unop(Op, Rval0), ReplMap, unop(Op, Rval)) :-
+	opt_util__replace_labels_rval(Rval0, ReplMap, Rval).
+opt_util__replace_labels_rval(binop(Op, LRval0, RRval0), ReplMap,
+		binop(Op, LRval, RRval)) :-
+	opt_util__replace_labels_rval(LRval0, ReplMap, LRval),
+	opt_util__replace_labels_rval(RRval0, ReplMap, RRval).
+opt_util__replace_labels_rval(mem_addr(MemRef0), ReplMap, mem_addr(MemRef)) :-
+	opt_util__replace_labels_mem_ref(MemRef0, ReplMap, MemRef).
+
+:- pred opt_util__replace_labels_mem_ref(mem_ref::in, map(label, label)::in,
+	mem_ref::out) is det.
+
+opt_util__replace_labels_mem_ref(stackvar_ref(N), _, stackvar_ref(N)).
+opt_util__replace_labels_mem_ref(framevar_ref(N), _, framevar_ref(N)).
+opt_util__replace_labels_mem_ref(heap_ref(Rval0, Tag, N), ReplMap,
+		heap_ref(Rval, Tag, N)) :-
+	opt_util__replace_labels_rval(Rval0, ReplMap, Rval).
+
+:- pred opt_util__replace_labels_rval_const(rval_const::in,
+	map(label, label)::in, rval_const::out) is det.
+
+opt_util__replace_labels_rval_const(true, _, true).
+opt_util__replace_labels_rval_const(false, _, false).
+opt_util__replace_labels_rval_const(int_const(N), _, int_const(N)).
+opt_util__replace_labels_rval_const(float_const(N), _, float_const(N)).
+opt_util__replace_labels_rval_const(string_const(S), _, string_const(S)).
+opt_util__replace_labels_rval_const(multi_string_const(L, S), _,
+	multi_string_const(L, S)).
+opt_util__replace_labels_rval_const(code_addr_const(Addr0), ReplMap,
+		code_addr_const(Addr)) :-
+	opt_util__replace_labels_code_addr(Addr0, ReplMap, Addr).
+opt_util__replace_labels_rval_const(data_addr_const(DataAddr), _,
+		data_addr_const(DataAddr)).
+opt_util__replace_labels_rval_const(label_entry(Label), _, label_entry(Label)).
+
+:- pred opt_util__replace_labels_code_addr(code_addr::in, map(label, label)::in,
+	code_addr::out) is det.
+
+opt_util__replace_labels_code_addr(label(Label0), ReplMap, label(Label)) :-
+	opt_util__replace_labels_label(Label0, ReplMap, Label).
+opt_util__replace_labels_code_addr(imported(Proc), _, imported(Proc)).
+opt_util__replace_labels_code_addr(succip, _, succip).
+opt_util__replace_labels_code_addr(do_succeed(Last), _, do_succeed(Last)).
+opt_util__replace_labels_code_addr(do_redo, _, do_redo).
+opt_util__replace_labels_code_addr(do_fail, _, do_fail).
+opt_util__replace_labels_code_addr(do_trace_redo_fail_shallow, _,
+	do_trace_redo_fail_shallow).
+opt_util__replace_labels_code_addr(do_trace_redo_fail_deep, _,
+	do_trace_redo_fail_deep).
+opt_util__replace_labels_code_addr(do_call_closure, _, do_call_closure).
+opt_util__replace_labels_code_addr(do_call_class_method, _,
+	do_call_class_method).
+opt_util__replace_labels_code_addr(do_det_aditi_call, _, do_det_aditi_call).
+opt_util__replace_labels_code_addr(do_semidet_aditi_call, _,
+		do_semidet_aditi_call).
+opt_util__replace_labels_code_addr(do_nondet_aditi_call, _,
+		do_nondet_aditi_call).
+opt_util__replace_labels_code_addr(do_aditi_insert, _, do_aditi_insert).
+opt_util__replace_labels_code_addr(do_aditi_delete, _, do_aditi_delete).
+opt_util__replace_labels_code_addr(do_aditi_bulk_insert, _,
+		do_aditi_bulk_insert).
+opt_util__replace_labels_code_addr(do_aditi_bulk_delete, _,
+		do_aditi_bulk_delete).
+opt_util__replace_labels_code_addr(do_aditi_modify, _, do_aditi_modify).
+opt_util__replace_labels_code_addr(do_not_reached, _, do_not_reached).
+
+:- pred opt_util__replace_labels_label_list(list(label)::in,
+	map(label, label)::in, list(label)::out) is det.
+
+opt_util__replace_labels_label_list([], _ReplMap, []).
+opt_util__replace_labels_label_list([Label0 | Labels0], ReplMap,
+		[Label | Labels]) :-
+	opt_util__replace_labels_label(Label0, ReplMap, Label),
+	opt_util__replace_labels_label_list(Labels0, ReplMap, Labels).
+
+:- pred opt_util__replace_labels_label(label::in, map(label, label)::in,
+	label::out) is det.
+
+opt_util__replace_labels_label(Label0, ReplMap, Label) :-
+	( map__search(ReplMap, Label0, NewLabel) ->
+		Label = NewLabel
+	;
+		Label = Label0
+	).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

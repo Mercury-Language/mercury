@@ -83,15 +83,6 @@ extern	void		(*MR_address_of_trace_init_external)(void);
 extern	void		(*MR_address_of_trace_final_external)(void);
 
 /*
-** MR_edt_root_node(Word, Word *) is defined in
-** trace/mercury_trace_declarative.c but is referenced in
-** browser/declarative_debugger.m.  As we can not do direct calls from
-** browse/ to trace/, we do an indirect call via the following pointer.
-*/
-
-extern void		(*MR_address_of_edt_root_node)(Word, Word *);
-
-/*
 ** XXX This is obsolete too.
 ** This variable has been replaced by MR_io_print_to_*_stream,
 ** but the installed mkinit executable may still generate references to it.
@@ -102,16 +93,32 @@ extern void		(*MR_address_of_edt_root_node)(Word, Word *);
 extern	Code		*MR_library_trace_browser;
 
 /*
-** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c), or
-** MR_trace_fake (runtime/mercury_trace_base.c),
+** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c),
+** or MR_trace_fake (runtime/mercury_trace_base.c),
 ** depending on whether tracing was enabled when creating the _init.c
-** file.  It is called from MR_trace (runtime/mercury_trace_base.c).
+** file.  It is also temporarily set to MR_trace_interrupt by
+** MR_trace_interrupt_handler if tracing was enabled and the
+** process receives a SIGINT signal.
+** It is called from MR_trace (runtime/mercury_trace_base.c).
+**
+** Since it is set from a signal handler, it must be declared `volatile'.
 */
 
-extern	Code		*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *,
-				MR_Trace_Port, Unsigned, Unsigned,
-				const char *, int);
+extern	Code		*(*volatile MR_trace_func_ptr)(
+				const MR_Stack_Layout_Label *);
 
+/*
+** If the init file was built with tracing enabled, then
+** MR_address_of_trace_interrupt_handler points to
+** MR_trace_interrupt_handler, otherwise it is NULL.
+*/
+extern	void		(*MR_address_of_trace_interrupt_handler)(void);
+
+/*
+** If the init file was built with tracing enabled, then
+** MR_register_module_layout points to MR_register_module_layout_real,
+** otherwise it is NULL.
+*/
 extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
 
 extern	void		do_init_modules(void);
@@ -167,5 +174,11 @@ extern	enum MR_TimeProfileMethod
 			MR_time_profile_method;
 
 extern	bool MR_profiling;
+
+#ifdef  MR_CTOR_REP_STATS
+extern	long	MR_ctor_rep_unify[];
+extern	long	MR_ctor_rep_index[];
+extern	long	MR_ctor_rep_compare[];
+#endif
 
 #endif /* not MERCURY_WRAPPER_H */

@@ -45,18 +45,22 @@
 #include "mercury_wrapper.h"
 #include "mercury_misc.h"
 #include "mercury_array_macros.h"
+#include "mercury_init.h"
 #include <stdio.h>
 
-static	MR_Trace_Cmd_Info	MR_trace_ctrl = { MR_CMD_GOTO, 0, 0,
-					MR_PRINT_LEVEL_SOME, FALSE };
+static	MR_Trace_Cmd_Info	MR_trace_ctrl = {
+	MR_CMD_GOTO,
+	0,	/* stop depth */
+	0,	/* stop event */
+	MR_PRINT_LEVEL_SOME,
+	FALSE,	/* not strict */
+	TRUE	/* must check */
+};
 
-Code 		*MR_trace_real(const MR_Stack_Layout_Label *layout,
-			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
-			const char *path, int max_r_num);
+Code 		*MR_trace_real(const MR_Stack_Layout_Label *layout);
 static	Code	*MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 			const MR_Stack_Layout_Label *layout,
-			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
-			const char *path, int max_r_num);
+			MR_Trace_Port port, Unsigned seqno, Unsigned depth);
 static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
 			Word *saved_regs, MR_uint_least16_t var_num,
 			bool *succeeded);
@@ -74,11 +78,34 @@ static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label,
 */
 
 Code *
-MR_trace_real(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	Unsigned seqno, Unsigned depth, const char *path, int max_r_num)
+MR_trace_real(const MR_Stack_Layout_Label *layout)
 {
+	Integer		maybe_from_full;
+	Unsigned	seqno;
+	Unsigned	depth;
 	MR_Spy_Action	action;
 	bool		match;
+	MR_Trace_Port	port;
+
+	/* in case MR_sp or MR_curfr is transient */
+	restore_transient_registers();
+
+	maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;
+	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
+		if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {
+			return NULL;
+		}
+
+		seqno = (Unsigned) MR_call_num_stackvar(MR_sp);
+		depth = (Unsigned) MR_call_depth_stackvar(MR_sp);
+	} else {
+		if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {
+			return NULL;
+		}
+
+		seqno = (Unsigned) MR_call_num_framevar(MR_curfr);
+		depth = (Unsigned) MR_call_depth_framevar(MR_curfr);
+	}
 
 	MR_trace_event_number++;
 
@@ -104,62 +131,66 @@ MR_trace_real(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 
 	switch (MR_trace_ctrl.MR_trace_cmd) {
 		case MR_CMD_FINISH:
-			if (MR_trace_ctrl.MR_trace_stop_depth == depth
-					&& MR_port_is_final(port))
-			{
-				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
-			} else {
+			if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
 				goto check_stop_print;
+			} else {
+				port = (MR_Trace_Port) layout->MR_sll_port;
+
+				if (! MR_port_is_final(port)) {
+					goto check_stop_print;
+				} else {
+					return MR_trace_event(&MR_trace_ctrl,
+						TRUE, layout, port,
+						seqno, depth);
+				}
 			}
 
 		case MR_CMD_GOTO:
 			if (MR_trace_event_number >=
 					MR_trace_ctrl.MR_trace_stop_event)
 			{
+				port = (MR_Trace_Port) layout->MR_sll_port;
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			} else {
 				goto check_stop_print;
 			}
 
 		case MR_CMD_RESUME_FORWARD:
+			port = (MR_Trace_Port) layout->MR_sll_port;
 			if (port != MR_PORT_REDO &&
 			    port != MR_PORT_FAIL &&
 			    port != MR_PORT_EXCEPTION)
 			{
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			} else {
 				goto check_stop_print;
 			}
 
 		case MR_CMD_RETURN:
+			port = (MR_Trace_Port) layout->MR_sll_port;
 			if (port != MR_PORT_EXIT) {
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			} else {
 				goto check_stop_print;
 			}
 
 		case MR_CMD_MIN_DEPTH:
 			if (MR_trace_ctrl.MR_trace_stop_depth <= depth) {
+				port = (MR_Trace_Port) layout->MR_sll_port;
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			} else {
 				goto check_stop_print;
 			}
 
 		case MR_CMD_MAX_DEPTH:
 			if (MR_trace_ctrl.MR_trace_stop_depth >= depth) {
+				port = (MR_Trace_Port) layout->MR_sll_port;
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			} else {
 				goto check_stop_print;
 			}
@@ -185,28 +216,27 @@ check_stop_print:
 		** very frequent case that MR_trace_must_check is false.
 		*/
 
+		port = (MR_Trace_Port) layout->MR_sll_port;
 		match = MR_event_matches_spy_point(layout, port, &action);
 		if (! match) {
 			if (MR_trace_ctrl.MR_trace_print_level ==
 					MR_PRINT_LEVEL_ALL)
 			{
 				return MR_trace_event(&MR_trace_ctrl, FALSE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			}
 
 			return NULL;
 		}
 
-		if ((! MR_trace_ctrl.MR_trace_strict)
-				&& action == MR_SPY_STOP)
+		if ((! MR_trace_ctrl.MR_trace_strict) && action == MR_SPY_STOP)
 		{
 			return MR_trace_event(&MR_trace_ctrl, TRUE,
-					layout, port, seqno, depth,
-					path, max_r_num);
+					layout, port, seqno, depth);
 		}
 
-		if (MR_trace_ctrl.MR_trace_print_level != MR_PRINT_LEVEL_NONE) {
+		if (MR_trace_ctrl.MR_trace_print_level != MR_PRINT_LEVEL_NONE)
+		{
 			/*
 			** It doesn't matter whether action is MR_SPY_STOP or
 			** MR_SPY_PRINT; even if it is MR_SPY_STOP, we want
@@ -215,30 +245,87 @@ check_stop_print:
 			*/
 
 			return MR_trace_event(&MR_trace_ctrl, FALSE,
-					layout, port, seqno, depth,
-					path, max_r_num);
+					layout, port, seqno, depth);
 		}
 	}
 
 	return NULL;
 }
 
+/*
+** MR_trace_interrupt() is called via a function pointer from MR_trace()
+** in runtime/mercury_trace_base.c, which in turn is called from
+** compiled code whenever an event to be traced occurs.
+** It is called whenever the user pressed control-C to interrupt the
+** program.
+** This is like MR_trace_real(), except that it _always_ calls
+** MR_trace_event().
+*/
+
+static Code *
+MR_trace_interrupt(const MR_Stack_Layout_Label *layout)
+{
+	Unsigned	seqno;
+	Unsigned	depth;
+	MR_Trace_Port	port;
+
+	/* restore the original MR_trace_func_ptr value */
+	MR_trace_func_ptr = MR_trace_real;
+
+	if (MR_trace_handler == MR_TRACE_INTERNAL) {
+		MR_trace_interrupt_message();
+	}
+
+	/* in case MR_sp or MR_curfr is transient */
+	restore_transient_registers();
+
+	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
+		seqno = (Unsigned) MR_call_num_stackvar(MR_sp);
+		depth = (Unsigned) MR_call_depth_stackvar(MR_sp);
+	} else {
+		seqno = (Unsigned) MR_call_num_framevar(MR_curfr);
+		depth = (Unsigned) MR_call_depth_framevar(MR_curfr);
+	}
+	port = (MR_Trace_Port) layout->MR_sll_port;
+
+	MR_trace_event_number++;
+
+	return MR_trace_event(&MR_trace_ctrl, TRUE, layout, port,
+		seqno, depth);
+}
+
+void
+MR_trace_interrupt_handler(void)
+{
+	/*
+	** This function is a signal handler, so there is not
+	** much that we can safely do here.  We just set the volatile
+	** variable MR_trace_func_ptr; the real work will be done
+	** by MR_trace_interrupt(), which will be called by MR_trace()
+	** at the next debugger event.
+	*/ 
+	MR_trace_func_ptr = MR_trace_interrupt;
+}
+
 static Code *
 MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	Unsigned seqno, Unsigned depth, const char *path, int max_r_num)
+	Unsigned seqno, Unsigned depth)
 {
 	Code		*jumpaddr;
 	MR_Event_Info	event_info;
 	Word		*saved_regs = event_info.MR_saved_regs;
+	int		max_r_num;
 
 	event_info.MR_event_number = MR_trace_event_number;
 	event_info.MR_call_seqno = seqno;
 	event_info.MR_call_depth = depth;
 	event_info.MR_trace_port = port;
 	event_info.MR_event_sll = layout;
-	event_info.MR_event_path = path;
+	event_info.MR_event_path = layout->MR_sll_entry->MR_sle_module_layout
+			->MR_ml_string_table + layout->MR_sll_goal_path;
 
+	max_r_num = layout->MR_sll_entry->MR_sle_max_r_num;
 	if (max_r_num + MR_NUM_SPECIAL_REG > MR_MAX_SPECIAL_REG_MR) {
 		event_info.MR_max_mr_num = max_r_num + MR_NUM_SPECIAL_REG;
 	} else {
@@ -303,9 +390,14 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
 	saved_regs = event_info->MR_saved_regs;
 	entry = event_info->MR_event_sll->MR_sll_entry;
+	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+		message = "Cannot perform retry, because this procedure "
+			"was not compiled with\nexecution tracing enabled.";
+		return message;
+	}
+
 	call_label = entry->MR_sle_call_label;
 	input_args = &call_label->MR_sll_var_info;
-
 	if (input_args->MR_slvs_var_count < 0) {
 		message = "Cannot perform retry because information about "
 		          "the input arguments is not available.";
@@ -378,6 +470,22 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 				MR_LONG_LVAL_NUMBER(location));
 		MR_saved_sp(saved_regs) -= entry->MR_sle_stack_slots;
 		MR_trace_event_number = MR_event_num_stackvar(this_frame);
+
+#ifdef	MR_USE_TRAIL
+		if (entry->MR_sle_maybe_trail >= 0) {
+			Word	ticket_counter;
+			Word	trail_ptr;
+
+			trail_ptr = MR_based_stackvar(this_frame,
+					entry->MR_sle_maybe_trail);
+			ticket_counter = MR_based_stackvar(this_frame,
+					entry->MR_sle_maybe_trail+1);
+			MR_reset_ticket(trail_ptr, MR_retry);
+			MR_discard_tickets_to(ticket_counter);
+		} else {
+			fatal_error("retry cannot restore the trail");
+		}
+#endif
 	} else {
 		Word	*this_frame;
 
@@ -394,6 +502,22 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		MR_saved_curfr(saved_regs) = MR_succfr_slot(this_frame);
 		MR_saved_maxfr(saved_regs) = MR_prevfr_slot(this_frame);
 		MR_trace_event_number = MR_event_num_framevar(this_frame);
+
+#ifdef	MR_USE_TRAIL
+		if (entry->MR_sle_maybe_trail >= 0) {
+			Word	ticket_counter;
+			Word	trail_ptr;
+
+			trail_ptr = MR_based_framevar(this_frame,
+					entry->MR_sle_maybe_trail);
+			ticket_counter = MR_based_framevar(this_frame,
+					entry->MR_sle_maybe_trail+1);
+			MR_reset_ticket(trail_ptr, MR_retry);
+			MR_discard_tickets_to(ticket_counter);
+		} else {
+			fatal_error("retry cannot restore the trail");
+		}
+#endif
 	}
 
 	for (i = 1; i < arg_max; i++) {
@@ -453,4 +577,3 @@ MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
 	*succeeded = FALSE;
 	return 0;
 }
-

@@ -1,7 +1,7 @@
 mercury for DEBIAN
 ------------------
 
-This is Mercury compiler packaged for Debian.
+This is the Mercury compiler packaged for Debian.
 
 Some remarks on compiling the source package:
 Mercury is written in Mercury.  It is normally shipped with pre-compiled
@@ -17,6 +17,9 @@ in /usr/local and build the package using it to download.
 The Mercury compiler tarball with pre-compiled C files can be found on
 the Mercury ftp site: ftp://ftp.mercury.cs.mu.oz.au/pub/mercury/ as
 mercury-compiler-(version).tar.gz
+
+This particular version can be compiled using a release of the day:
+ftp://ftp.mercury.cs.mu.oz.au/pub/mercury/debian/mercury-compiler-rotd-1999-10-25.tar.gz
 
 -- Tyson Dowd <trd@cs.mu.oz.au>  Mon, 22 Mar 1999 16:33:10 +1100
 

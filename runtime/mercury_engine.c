@@ -28,7 +28,7 @@ ENDINIT
 
 #endif
 
-static	void	call_engine_inner(Code *entry_point);
+static	void	call_engine_inner(Code *entry_point) NO_RETURN;
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
   static Code	*engine_done(void);
@@ -137,7 +137,7 @@ MercuryEngine *create_engine(void)
 {
 	MercuryEngine *eng;
 
-	eng = make(MercuryEngine);
+	eng = MR_GC_NEW(MercuryEngine);
 	init_engine(eng);
 	return eng;
 }
@@ -146,19 +146,33 @@ void
 destroy_engine(MercuryEngine *eng)
 {
 	finalize_engine(eng);
-	free(eng);
+	MR_GC_free(eng);
 }
 
 /*---------------------------------------------------------------------------*/
 
 /*
-** call_engine(Code *entry_point)
+** Word *
+** MR_call_engine(Code *entry_point, bool catch_exceptions)
 **
 **	This routine calls a Mercury routine from C.
 **
 **	The called routine should be det/semidet/cc_multi/cc_nondet.
-**	The virtual machine registers must be set up correctly
-**	before the call.  Specifically, the non-transient real registers
+**
+**	If the called routine returns normally (this includes the case of a
+**	semidet/cc_nondet routine failing, i.e. returning with r1 = FALSE),
+**	then MR_call_engine() will return NULL.
+**
+**	If the called routine exits by throwing an exception, then the
+**	behaviour depends on the `catch_exceptions' flag.
+**	if `catch_exceptions' is true, then MR_call_engine() will return the
+**	Mercury exception object thrown.  If `catch_exceptions' is false,
+**	then MR_call_engine() will not return; instead, the code for `throw'
+**	will unwind the stacks (including the C stack) back to the nearest
+**	enclosing exception handler.
+**
+**	The virtual machine registers must be set up correctly before the call
+**	to MR_call_engine().  Specifically, the non-transient real registers
 **	must have valid values, and the fake_reg copies of the transient
 **	(register window) registers must have valid values; call_engine()
 **	will call restore_transient_registers() and will then assume that
@@ -189,12 +203,15 @@ destroy_engine(MercuryEngine *eng)
 **	and another portable version that works on standard ANSI C compilers.
 */
 
-void 
-call_engine(Code *entry_point)
+Word *
+MR_call_engine(Code *entry_point, bool catch_exceptions)
 {
 
 	jmp_buf		curr_jmp_buf;
 	jmp_buf		* volatile prev_jmp_buf;
+#if defined(PROFILE_TIME)
+	Code		* volatile prev_proc;
+#endif
 
 	/*
 	** Preserve the value of MR_ENGINE(e_jmp_buf) on the C stack.
@@ -208,18 +225,105 @@ call_engine(Code *entry_point)
 	MR_ENGINE(e_jmp_buf) = &curr_jmp_buf;
 
 	/*
-	** Mark this as the spot to return to.
-	** On return, restore the registers (since longjmp may clobber
-	** them), restore the saved value of MR_ENGINE(e_jmp_buf), and then
-	** exit.
+	** Create an exception handler frame on the nondet stack
+	** so that we can catch and return Mercury exceptions.
 	*/
-
+	if (catch_exceptions) {
+		MR_create_exception_handler("call_engine",
+			MR_C_LONGJMP_HANDLER, 0, ENTRY(do_fail));
+	}
+		
+	/*
+	** Mark this as the spot to return to.
+	*/
 	if (setjmp(curr_jmp_buf)) {
+		Word	* this_frame;
+		Word	* exception;
+
 		debugmsg0("...caught longjmp\n");
+		/*
+		** On return,
+		** set MR_prof_current_proc to be the caller proc again
+		** (if time profiling is enabled),
+		** restore the registers (since longjmp may clobber them),
+		** and restore the saved value of MR_ENGINE(e_jmp_buf).
+		*/
+		update_prof_current_proc(prev_proc);
 		restore_registers();
 		MR_ENGINE(e_jmp_buf) = prev_jmp_buf;
-		return;
+		if (catch_exceptions) {
+			/*
+			** Figure out whether or not we got an exception.
+			** If we got an exception, then all of the necessary
+			** cleanup such as stack unwinding has already been
+			** done, so all we have to do here is to return the
+			** exception.
+			*/
+			exception = MR_ENGINE(e_exception);
+			if (exception != NULL) {
+				return exception;
+			}
+			/*
+			** If we added an exception hander, but we didn't
+			** get an exception, then we need to remove the
+			** exception handler frames from the nondet stack
+			** and deallocate the trail ticket allocated by
+			** MR_create_exception_handler().
+			*/
+			this_frame = MR_curfr;
+			MR_maxfr = MR_prevfr_slot(this_frame);
+			MR_curfr = MR_succfr_slot(this_frame);
+#ifdef MR_USE_TRAIL
+			MR_discard_ticket();
+#endif
+		}
+		return NULL;
 	}
+
+
+  	MR_ENGINE(e_jmp_buf) = &curr_jmp_buf;
+  
+	/*
+	** If call profiling is enabled, and this is a case of
+	** Mercury calling C code which then calls Mercury,
+	** then we record the Mercury caller / Mercury callee pair
+	** in the table of call counts, if possible.
+	*/
+#ifdef PROFILE_CALLS
+  #ifdef PROFILE_TIME
+	if (MR_prof_current_proc != NULL) {
+		PROFILE(entry_point, MR_prof_current_proc);
+	}
+  #else
+	/*
+	** XXX There's not much we can do in this case
+	** to keep the call counts accurate, since
+	** we don't know who the caller is.
+	*/ 
+  #endif
+#endif /* PROFILE_CALLS */
+
+	/*
+	** If time profiling is enabled, then we need to
+	** save MR_prof_current_proc so that we can restore it
+	** when we return.  We must then set MR_prof_current_proc
+	** to the procedure that we are about to call.
+	**
+	** We do this last thing before calling call_engine_inner(),
+	** since we want to credit as much as possible of the time
+	** in C code to the caller, not to the callee.
+	** Note that setting and restoring MR_prof_current_proc
+	** here in call_engine() means that time in call_engine_inner()
+	** unfortunately gets credited to the callee.
+	** That is not ideal, but we can't move this code into
+	** call_engine_inner() since call_engine_inner() can't
+	** have any local variables and this code needs the
+	** `prev_proc' local variable.
+	*/
+#ifdef PROFILE_TIME
+	prev_proc = MR_prof_current_proc;
+	set_prof_current_proc(entry_point);
+#endif
 
 	call_engine_inner(entry_point);
 }
@@ -228,7 +332,7 @@ call_engine(Code *entry_point)
 
 /* The gcc-specific version */
 
-void 
+static void 
 call_engine_inner(Code *entry_point)
 {
 	/*
@@ -287,7 +391,25 @@ call_engine_inner(Code *entry_point)
 #ifdef MR_LOWLEVEL_DEBUG
 	memset((void *)locals, MAGIC_MARKER, LOCALS_SIZE);
 #endif
-	debugmsg1("in `call_engine', locals at %p\n", (void *)locals);
+	debugmsg1("in `call_engine_inner', locals at %p\n", (void *)locals);
+
+	/*
+	** We need to ensure that there is at least one
+	** real function call in call_engine_inner(), because
+	** otherwise gcc thinks that it doesn't need to
+	** restore the caller-save registers (such as
+	** the return address!) because it thinks call_engine_inner() is
+	** a leaf routine which doesn't call anything else,
+	** and so it thinks that they won't have been clobbered.
+	**
+	** This probably isn't necessary now that we exit from this function
+	** using longjmp(), but it doesn't do much harm, so I'm leaving it in.
+	**
+	** Also for gcc versions >= egcs1.1, we need to ensure that
+	** there is at least one jump to an unknown label.
+	*/
+	goto *dummy_identify_function(&&dummy_label);
+dummy_label:
 
 	/*
 	** Increment the number of times we've entered this
@@ -299,7 +421,7 @@ call_engine_inner(Code *entry_point)
 {
 	MercuryThreadList *new_element;
 
-	new_element = make(MercuryThreadList);
+	new_element = MR_GC_NEW(MercuryThreadList);
 	new_element->thread = MR_ENGINE(this_context)->owner_thread;
 	new_element->next = MR_ENGINE(saved_owners);
 	MR_ENGINE(saved_owners) = new_element;
@@ -336,28 +458,13 @@ Define_label(engine_done);
 	{
 		val = tmp->thread;
 		MR_ENGINE(saved_owners) = tmp->next;
-		oldmem(tmp);
+		MR_GC_free(tmp);
 	} else {
 		val = 0;
 	}
 	MR_ENGINE(this_context)->owner_thread = val;
 }
 #endif
-
-	/*
-	** We need to ensure that there is at least one
-	** real function call in call_engine(), because
-	** otherwise gcc thinks that it doesn't need to
-	** restore the caller-save registers (such as
-	** the return address!) because it thinks call_engine() is
-	** a leaf routine which doesn't call anything else,
-	** and so it thinks that they won't have been clobbered.
-	**
-	** This probably isn't necessary now that we exit from this function
-	** using longjmp(), but it doesn't do much harm, so I'm leaving it in.
-	*/
-
-	dummy_function_call();
 
 	debugmsg1("in label `engine_done', locals at %p\n", locals);
 
@@ -395,6 +502,7 @@ Define_label(engine_done);
 	** Since longjmp() may clobber the registers, we need to
 	** save them first.
 	*/
+	MR_ENGINE(e_exception) = NULL;
 	save_registers();
 	debugmsg0("longjmping out...\n");
 	longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
@@ -424,6 +532,7 @@ dump_prev_locations(void) {}
 static Code *
 engine_done(void)
 {
+	MR_ENGINE(e_exception) = NULL;
 	save_registers();
 	debugmsg0("longjmping out...\n");
 	longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
@@ -529,6 +638,7 @@ Define_extern_entry(do_fail);
 Define_extern_entry(do_succeed);
 Define_extern_entry(do_last_succeed);
 Define_extern_entry(do_not_reached);
+Define_extern_entry(exception_handler_do_fail);
 
 BEGIN_MODULE(special_labels_module)
 	init_entry_ai(do_redo);
@@ -536,6 +646,7 @@ BEGIN_MODULE(special_labels_module)
 	init_entry_ai(do_succeed);
 	init_entry_ai(do_last_succeed);
 	init_entry_ai(do_not_reached);
+	init_entry_ai(exception_handler_do_fail);
 BEGIN_CODE
 
 Define_entry(do_redo);
@@ -551,11 +662,18 @@ Define_entry(do_last_succeed);
 	MR_succeed_discard();
 
 Define_entry(do_not_reached);
-	printf("reached not_reached\n");
-	exit(1);
-#ifndef	USE_GCC_NONLOCAL_GOTOS
-	return 0;
-#endif
+	fatal_error("reached not_reached\n");
+
+Define_entry(exception_handler_do_fail);
+	/*
+	** `exception_handler_do_fail' is the same as `do_fail':
+	** it just invokes fail().  The reason we don't just use
+	** `do_fail' for this is that when unwinding the stack we
+	** check for a redoip of `exception_handler_do_fail' and
+	** handle it specially.
+	*/
+	MR_fail();
+
 END_MODULE
 
 void mercury_sys_init_engine(void); /* suppress gcc warning */

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -155,8 +155,7 @@
 	% Given a reference to a term (Ref), and a value (Value),
 	% update the store so that the term referred to by Ref
 	% is replaced with Value.
-	% (Argument numbers start from zero).
-:- pred store__set_ref_value(ref(T, S), ArgT, store(S), store(S)).
+:- pred store__set_ref_value(ref(T, S), T, store(S), store(S)).
 :- mode store__set_ref_value(in, di, di, uo) is det.
 
 	% Given a reference to a term, return that term.
@@ -237,7 +236,7 @@ I wonder whether it is worth it?  Hmm, probably not.
 :- pragma c_code(new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	incr_hp(Mutvar, 1);
+	incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
 	*(Word *)Mutvar = Val;
 	S = S0;
 ").
@@ -263,7 +262,7 @@ I wonder whether it is worth it?  Hmm, probably not.
 :- pragma c_code(unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	incr_hp(Mutvar, 1);
+	incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
 	S = S0;
 ").
 
@@ -277,7 +276,7 @@ store__new_cyclic_mutvar(Func, MutVar) -->
 :- pragma c_code(new_ref(Val::di, Ref::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	incr_hp(Ref, 1);
+	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""store:ref/2"");
 	*(Word *)Ref = Val;
 	S = S0;
 ").
@@ -327,7 +326,7 @@ ref_functor(Ref, Functor, Arity) -->
 	}
 
 	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
-		COMPARE_EQUAL)
+		MR_COMPARE_EQUAL)
 	{
 		fatal_error(""store__arg_ref: argument has wrong type"");
 	}
@@ -353,7 +352,7 @@ ref_functor(Ref, Functor, Arity) -->
 	}
 
 	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
-		COMPARE_EQUAL)
+		MR_COMPARE_EQUAL)
 	{
 	      fatal_error(""store__new_arg_ref: argument has wrong type"");
 	}
@@ -367,7 +366,7 @@ ref_functor(Ref, Functor, Arity) -->
 	** to copy it to the heap before returning.
 	*/
 	if (arg_ref == &Val) {
-		incr_hp(ArgRef, 1);
+		incr_hp_msg(ArgRef, 1, MR_PROC_LABEL, ""store:ref/2"");
 		*(Word *)ArgRef = Val;
 	} else {
 		ArgRef = (Word) arg_ref;
@@ -401,7 +400,7 @@ ref_functor(Ref, Functor, Arity) -->
 		will_not_call_mercury,
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
-	Word *Ptr = (Word *) strip_tag(Ref);
+	Word *Ptr = (Word *) MR_strip_tag(Ref);
 	ArgRef = (Word) &Ptr[Arg];
 	S = S0;
 }").
@@ -410,7 +409,7 @@ ref_functor(Ref, Functor, Arity) -->
 				S0::di, S::uo), will_not_call_mercury,
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
-	Word *Ptr = (Word *) strip_tag(Val);
+	Word *Ptr = (Word *) MR_strip_tag(Val);
 	ArgRef = (Word) &Ptr[Arg];
 	S = S0;
 }").

@@ -51,6 +51,20 @@ MLLIBS  =	$(TRACE_DIR)/lib$(TRACE_LIB_NAME).a \
 MTAGS	=	$(SCRIPTS_DIR)/mtags
 MTAGSFLAGS =	
 
+#
+# Work-around for a fixed limit: on alpha-dec-osf3.2, if we compile with
+# `-O5', then when linking mercury_compile we get an error message of the form
+#
+#   /usr/bin/ld:
+#	Too many GOT entries in object file '/usr/lib/cmplrs/cc/libexc_init.a';
+#	Found 8190 (6660 locals + 1530 globals) but max is 8189
+#
+# unless we link it statically.
+#
+ifeq ($(FULLARCH),alpha-dec-osf3.2)
+MLFLAGS += --static
+endif
+
 #-----------------------------------------------------------------------------#
 
 # Rules for preprocessing `.pp' files.
@@ -163,14 +177,14 @@ cs: $(mercury_compile.cs) $(cs_subdir)mercury_compile_init.c
 
 #-----------------------------------------------------------------------------#
 
-clean:
+clean_local:
 	for file in *.pp; do \
 		if [ "$$file" != "*.pp" ]; then \
 			rm -f `basename $$file .pp`.m; \
 		fi; \
 	done
 
-realclean:
+realclean_local:
 	rm -f tags mercury_compile.stats $(PP_DATE_FILES)
 
 #-----------------------------------------------------------------------------#
