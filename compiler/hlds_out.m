@@ -1142,19 +1142,27 @@ hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, PredOrFunc),
 	),
 	io__write_string(Follow).
 
-hlds_out__write_goal_2(class_method_call(TCInfoVar, _, ArgVars, _, _, _),
+hlds_out__write_goal_2(	
+		class_method_call(TCInfoVar, MethodNum, ArgVars, _, _, _),
 		_ModuleInfo, VarSet, AppendVarnums, Indent, Follow, _) -->
 		% XXX we should print more info here too
 	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	hlds_out__write_indent(Indent),
 	( { string__contains_char(Verbose, 'l') } ->
-		io__write_string("% class method call"),
+		io__write_string("% class method call\n"),
 		hlds_out__write_indent(Indent)
 	;
 		[]
 	),
-	hlds_out__write_functor(term__atom("class_method_call"),
-			[TCInfoVar|ArgVars], VarSet, AppendVarnums),
+	{ term__context_init(Context) },
+	{ Functor = term__atom("class_method_call") },
+	{ TCInfoTerm = term__variable(TCInfoVar) },
+	{ MethodNumTerm = term__functor(term__integer(MethodNum), [],
+			Context) },
+	{ term__var_list_to_term_list(ArgVars, ArgTerms) },
+	{ Term = term__functor(Functor, [TCInfoTerm, MethodNumTerm | ArgTerms],
+			Context) },
+	mercury_output_term(Term, VarSet, AppendVarnums),
 	io__write_string(Follow).
 
 hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
