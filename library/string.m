@@ -830,16 +830,16 @@ string__suffix(String::in, Suffix::in) :-
 	Len    = length(String),
 	PreLen = length(Suffix),
 	PreLen =< Len,
-	suffix_2_iiii(String, Suffix, Len - PreLen, Len).
+	suffix_2_iiii(String, Suffix, 0, Len - PreLen, PreLen).
 
-:- pred suffix_2_iiii(string, string, int, int).
-:- mode suffix_2_iiii(in, in, in, in) is semidet.
+:- pred suffix_2_iiii(string, string, int, int, int).
+:- mode suffix_2_iiii(in, in, in, in, in) is semidet.
 
-suffix_2_iiii(String, Suffix, I, Len) :-
+suffix_2_iiii(String, Suffix, I, Offset, Len) :-
 	( if I < Len then
-		(String `unsafe_index` I) =
+		(String `unsafe_index` (I + Offset)) =
 			(Suffix `unsafe_index` I) `with_type` char,
-		suffix_2_iiii(String, Suffix, I + 1, Len)
+		suffix_2_iiii(String, Suffix, I + 1, Offset, Len)
 	  else
 	  	true
 	).
