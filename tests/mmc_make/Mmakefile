@@ -10,7 +10,8 @@ MMAKE_USE_MMC_MAKE=yes
 
 PROGS =	\
 		complex_test \
-		hello
+		hello \
+		rebuild
 
 # These tests only work if the workspace was compiled with `--use-subdirs'.
 ifneq ($(origin WORKSPACE),undefined)
@@ -28,6 +29,12 @@ include $(TESTS_DIR)/Mmake.common
 
 complex_test.log: install_libs
 
+# Just test that the executable is rebuilt.
+rebuild.runtest:
+	$(MCM) --rebuild rebuild
+	$(MCM) --rebuild --verbose-make rebuild > rebuild.err2 2>&1
+	grep '^Making rebuild$(EXT_FOR_EXE)$$' rebuild.err2
+
 .PHONY: install_libs
 install_libs: start_runtests_local
 	cd lib; \
@@ -35,7 +42,7 @@ install_libs: start_runtests_local
 			libcomplex_numbers.install
 
 realclean_local:
-	rm -rf install
+	rm -rf install rebuild.err2
 	cd lib; $(MCM) complex_numbers.realclean
 
 #-----------------------------------------------------------------------------#

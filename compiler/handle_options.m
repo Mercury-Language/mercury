@@ -499,6 +499,18 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% the interface files were built using `--use-subdirs').
 	option_implies(make, use_subdirs, bool(yes)),
 	option_implies(invoked_by_mmc_make, use_subdirs, bool(yes)),
+	option_implies(invoked_by_mmc_make, make, bool(no)),
+
+	% --make handles creation of the module dependencies itself,
+	% and they don't need to be recreated when compiling to C.
+	option_implies(invoked_by_mmc_make,
+		generate_mmc_make_module_dependencies, bool(no)),
+
+	% --make does not handle --transitive-intermodule-optimization.
+	% --transitive-intermodule-optimization is in the process of
+	% being rewritten anyway.
+	option_implies(make, transitive_optimization, bool(no)),
+	option_implies(invoked_by_mmc_make, transitive_optimization, bool(no)),
 
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
 	option_implies(check_termination, termination, bool(yes)),
@@ -587,18 +599,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		"`--no-target-code-only'"),
 
 	option_implies(use_grade_subdirs, use_subdirs, bool(yes)),
-
-	% --make handles creation of the module dependencies itself,
-	% and they don't need to be recreated when compiling to C.
-	option_implies(invoked_by_mmc_make,
-		generate_mmc_make_module_dependencies, bool(no)),
-	option_implies(invoked_by_mmc_make, make, bool(no)),
-	option_implies(invoked_by_mmc_make, rebuild, bool(no)),
-
-	% --make does not handle --transitive-intermodule-optimization.
-	% --transitive-intermodule-optimization is in the process of
-	% being rewritten anyway.
-	option_implies(make, transitive_optimization, bool(no)),
 
 	option_implies(very_verbose, verbose, bool(yes)),
 	option_implies(verbose, verbose_commands, bool(yes)),
