@@ -25,6 +25,10 @@
 :- pred set_ordlist__list_to_set(list(T)::in, set_ordlist(T)::out) is det.
 :- func set_ordlist__list_to_set(list(T)) = set_ordlist(T).
 
+	% A synonym for set_ordlist.list_to_set/1.
+	%
+:- func set_ordlist__from_list(list(T)) = set_ordlist(T).
+
 	% `set_ordlist__sorted_list_to_set(List, Set)' is true iff `Set' is
 	% the set containing only the members of `List'.  `List' must be sorted.
 
@@ -32,6 +36,10 @@
 	is det.
 :- func set_ordlist__sorted_list_to_set(list(T)) = set_ordlist(T).
 
+	% A synonym for set_ordrlist.sorted_list_to_set/1.
+	%
+:- func set_ordlist__from_sorted_list(list(T)) = set_ordlist(T).
+	
 	% `set_ordlist__to_sorted_list(Set, List)' is true iff `List' is the
 	% list of all the members of `Set', in sorted order.
 
@@ -265,8 +273,14 @@
 set_ordlist__list_to_set(List0, List) :-
 	list__sort_and_remove_dups(List0, List).
 
+set_ordlist__from_list(List0) = List :-
+	set_ordlist__list_to_set(List0, List).
+
 set_ordlist__sorted_list_to_set(List0, List) :-
 	list__remove_adjacent_dups(List0, List).
+
+set_ordlist__from_sorted_list(List0) = List :-
+	set_ordlist__sorted_list_to_set(List0, List).
 
 set_ordlist__to_sorted_list(List, List).
 

@@ -126,6 +126,11 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We've added functions set.from_list/1 and set.from_sorted_list/1
+  as synonyms for set.list_to_set/1 and set.sorted_list_to_set/1
+  respectively.  Similar additions have also been made to the
+  set_unordlist, set_ordlist and set_bbbtree modules.
+
 * We've added some new higher-order predicates, rbtree.foldl2/6
   rbtree.foldl3 and rbtree.transform_value to the rbtree module.  The
   predicate rbtree.remove/3 has been deprecated.

@@ -26,12 +26,20 @@
 :- pred set__list_to_set(list(T)::in, set(T)::out) is det.
 :- func set__list_to_set(list(T)) = set(T).
 
+	% A synonym for set.list_to_set/1.
+	%
+:- func set__from_list(list(T)) = set(T).
+
 	% `set__sorted_list_to_set(List, Set)' is true iff `Set' is the set
 	% containing only the members of `List'.  `List' must be sorted
 	% and must not contain any duplicates.
 
 :- pred set__sorted_list_to_set(list(T)::in, set(T)::out) is det.
 :- func set__sorted_list_to_set(list(T)) = set(T).
+
+	% A synonym for set.sorted_list_to_set/1.
+	%
+:- func set__from_sorted_list(list(T)) = set(T).
 
 	% `set__to_sorted_list(Set, List)' is true iff `List' is the list
 	% of all the members of `Set', in sorted order without any
@@ -304,8 +312,12 @@
 set__list_to_set(List, Set) :-
 	set_ordlist__list_to_set(List, Set).
 
+set__from_list(List) = set_ordlist__from_list(List).
+
 set__sorted_list_to_set(List, Set) :-
 	set_ordlist__sorted_list_to_set(List, Set).
+
+set__from_sorted_list(List) = set_ordlist__from_sorted_list(List).
 
 set__to_sorted_list(Set, List) :-
 	set_ordlist__to_sorted_list(Set, List).

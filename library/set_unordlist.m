@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997,1999-2002, 2004 The University of Melbourne.
+% Copyright (C) 1995-1997,1999-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,12 +25,20 @@
 :- pred set_unordlist__list_to_set(list(T)::in, set_unordlist(T)::out) is det.
 :- func set_unordlist__list_to_set(list(T)) = set_unordlist(T).
 
+	% A synonym for set_unordlist.list_to_set/1.
+	%
+:- func set_unordlist__from_list(list(T)) = set_unordlist(T).
+
 	% `set_unordlist__sorted_list_to_set(List, Set)' is true iff `Set' is
 	% the set containing only the members of `List'.  `List' must be sorted.
 
 :- pred set_unordlist__sorted_list_to_set(list(T)::in, set_unordlist(T)::out)
 	is det.
 :- func set_unordlist__sorted_list_to_set(list(T)) = set_unordlist(T).
+
+	% A synonym for set_unordlist.sorted_list_to_set/1.
+	%
+:- func set_unordlist__from_sorted_list(list(T)) = set_unordlist(T).
 
 	% `set_unordlist__to_sorted_list(Set, List)' is true iff `List' is the
 	% list of all the members of `Set', in sorted order.
@@ -238,7 +246,11 @@
 
 set_unordlist__list_to_set(List, List).
 
+set_unordlist__from_list(List) = List.
+
 set_unordlist__sorted_list_to_set(List, List).
+
+set_unordlist__from_sorted_list(List) = List.
 
 set_unordlist__to_sorted_list(Set, List) :-
 	list__sort_and_remove_dups(Set, List).

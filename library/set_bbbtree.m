@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2004 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -155,6 +155,10 @@
 
 :- func set_bbbtree__list_to_set(list(T)) = set_bbbtree(T).
 
+	% A synonym for set_bbtree.list_to_set/1.
+	%
+:- func set_bbbtree__from_list(list(T)) = set_bbbtree(T).
+
 	% `set_bbbtree__sorted_list_to_set(List, Set)' is true iff `Set' is the
 	% set containing only the members of `List'.
 	% `List' must be sorted. O(n).
@@ -163,6 +167,10 @@
 	is det.
 
 :- func set_bbbtree__sorted_list_to_set(list(T)) = set_bbbtree(T).
+
+	% A synonym for set_bbbtree.sorted_list_to_set/1.
+	%
+:- func set_bbbtree__from_sorted_list(list(T)) = set_bbbtree(T).
 
 	% `set_bbbtree__sorted_list_to_set_len(List, Set, N)' is true iff
 	% `Set' is the set set containing only the members of `List' and `N'
@@ -573,6 +581,9 @@ set_bbbtree__list_to_set_r(List, Set, Ratio) :-
 	set_bbbtree__init(InitSet),
 	set_bbbtree__insert_list_r(InitSet, List, Set, Ratio).
 
+set_bbbtree__from_list(List) = Set :-
+	set_bbbtree__list_to_set(List, Set).
+
 %------------------------------------------------------------------------------%
 
 % The tree is created by first determining it's length. All lists of length
@@ -655,6 +666,9 @@ set_bbbtree__sorted_list_to_set_len2(List, RestOfList, N, Set) :-
 		RestOfList = List,
 		Set = empty
 	).
+
+set_bbbtree__from_sorted_list(List) = Set :-
+	set_bbbtree__sorted_list_to_set(List, Set).
 
 %------------------------------------------------------------------------------%
 
