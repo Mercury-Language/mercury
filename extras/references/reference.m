@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002-2003 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,7 +63,13 @@ new_reference(X, reference(Ref)) :-
 	MR_incr_hp(Ref, (sizeof(ME_Reference) + sizeof(MR_Word) - 1) / 
 			sizeof(MR_Word));
 	((ME_Reference *) Ref)->value = (void *) X;
-	((ME_Reference *) Ref)->id = MR_current_choicepoint_id();
+		/*
+		** Use MR_null_choicepoint_id here instead of
+		** MR_current_choicepoint_id, in case this is called from
+		** a tabled pred/func -- even if it isn't, this will only
+		** result in one additional (redundant) entry on the trail.
+		*/
+	((ME_Reference *) Ref)->id = MR_null_choicepoint_id();
 ").
 
 :- pragma inline(value/2).

@@ -7856,9 +7856,6 @@ The way these functions are generally used is as follows.
 When you create a mutable data structure, you should call
 @code{MR_current_choicepoint_id()} and save the value it returns
 as a @samp{prev_choicepoint} field in your data structure.
-(If your mutable data structure
-is a C global variable, then you can use MR_null_choicepoint_id()
-for the initial value of this @samp{prev_choicepoint} field.)
 When you are about to modify your mutable data structure,
 you can then call @code{MR_current_choicepoint_id()} again and
 compare the result from that call with the value saved in
@@ -7873,7 +7870,22 @@ But if @code{MR_current_choice_id()} is not newer than the
 @code{prev_choicepoint} field, then you can safely perform
 the update to your data structure without trailing it.
 
-For an example, see the sample module below.
+If your mutable data structure is a C global variable,
+then you can use @code{MR_null_choicepoint_id()}
+for the initial value of the @samp{prev_choicepoint} field.
+If on the other hand your mutable data structure
+is created by a predicate or function that uses tabled evaluation
+(@pxref{Tabled evaluation}),
+then you @emph{should} use @code{MR_null_choicepoint_id()}
+for the initial value of the field.
+Doing so will ensure that the data will be reset to its initial value
+if execution backtracks to a point before
+the mutable data structure was created,
+which is important because this copy of the mutable data structure
+will be tabled and will therefore be produced again
+if later execution attempts to create another instance of it.
+
+For an example of avoiding redundant trailing, see the sample module below.
 
 Note that there is a cost to this --- you have to include
 an extra field in your data structure for each part of
