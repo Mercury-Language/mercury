@@ -120,7 +120,7 @@ termExpansion((:- import_module(_)), (:- fail)).
 % termExpansion((:- export_adt(_)), (:- fail)).
 % termExpansion((:- export_op(_)), (:- fail)).
 
-% termExpansion((:- use_module(_)), (:- fail)).
+termExpansion((:- use_module(_)), (:- fail)).
 % termExpansion((:- use_sym(_)), (:- fail)).
 % termExpansion((:- use_pred(_)), (:- fail)).
 % termExpansion((:- use_cons(_)), (:- fail)).
