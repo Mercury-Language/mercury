@@ -244,6 +244,10 @@ vn_util__vnrval_may_share_vn(Vnrval) :-
 
 	% XXX more simplification opportunities exist
 
+	% XXX we should check for overflow
+
+	% XXX some of this code should be shared with const_prop.m
+
 :- pred vn_util__simplify_vnrval(vnrval, vnrval, vn_tables, vn_tables).
 % :- mode vn_util__simplify_vnrval(in, out, di, uo) is det.
 :- mode vn_util__simplify_vnrval(in, out, in, out) is det.
