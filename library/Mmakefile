@@ -374,7 +374,7 @@ install_library: mercury.dll install_grade_dirs install_gac install_strong_name
 # the following to ../Mmake.params:
 #
 #	EXTRA_MS_ILASMFLAGS=/debug
-#	EXTRA_CSCFLAGS=/debug+ /debug:full
+#	EXTRA_MS_CSCFLAGS=/debug+ /debug:full
 #	EXTRA_MS_CLFLAGS=/Zi
 #
 # XXX Unfortunately, however, this is a problem with AL, which prohibits
