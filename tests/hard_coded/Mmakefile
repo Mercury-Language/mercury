@@ -54,6 +54,7 @@ ORDINARY_PROGS=	\
 	expand \
 	export_test \
 	factt \
+	factt_sort_test \
 	failure_unify \
 	field_syntax \
 	float_field \
