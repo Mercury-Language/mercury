@@ -24,8 +24,9 @@
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds.
-:- import_module passes_aux, call_gen, mode_util, code_util, goal_util, tree.
+:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds, arg_info.
+:- import_module passes_aux, call_gen, mode_util, code_util, goal_util.
+:- import_module globals, tree.
 
 :- import_module bool, int, string, list, assoc_list, set, map, varset.
 :- import_module std_util, require.
@@ -138,15 +139,18 @@ bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo, N0, N, Code) :-
 
 bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 	(
-		GoalExpr = higher_order_call(_, _, _, _, _),
-		error("we do not handle higher order calls yet")
+		GoalExpr = higher_order_call(PredVar, ArgVars, ArgTypes,
+			ArgModes, Detism),
+		bytecode_gen__higher_order_call(PredVar, ArgVars,
+			ArgTypes, ArgModes, Detism, ByteInfo, Code),
+		N = N0
 	;
-		GoalExpr = call(PredId, ProcId, Args, BuiltinState, _, _),
+		GoalExpr = call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 		( BuiltinState = not_builtin ->
-			bytecode_gen__call(PredId, ProcId, Args, ByteInfo,
+			bytecode_gen__call(PredId, ProcId, ArgVars, ByteInfo,
 				Code)
 		;
-			bytecode_gen__builtin(PredId, ProcId, Args, ByteInfo,
+			bytecode_gen__builtin(PredId, ProcId, ArgVars, ByteInfo,
 				Code)
 		),
 		N = N0
@@ -242,6 +246,36 @@ bytecode_gen__gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
 
 %---------------------------------------------------------------------------%
 
+	% Generate bytecode for a higher order call.
+
+:- pred bytecode_gen__higher_order_call(var::in, list(var)::in, list(type)::in,
+	list(mode)::in, determinism::in, byte_info::in, byte_tree::out) is det.
+
+bytecode_gen__higher_order_call(PredVar, ArgVars, ArgTypes, ArgModes, Detism,
+		ByteInfo, Code) :-
+	determinism_to_code_model(Detism, CodeModel),
+	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_args_method(Globals, ArgsMethod),
+	make_arg_infos(ArgsMethod, ArgTypes, ArgModes, CodeModel, ModuleInfo,
+		ArgInfo),
+	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
+
+	call_gen__partition_args(ArgVarsInfos, InVars, OutVars),
+	list__length(InVars, NInVars),
+	list__length(OutVars, NOutVars),
+
+	call_gen__input_arg_locs(ArgVarsInfos, InputArgs),
+	bytecode_gen__gen_places(InputArgs, ByteInfo, PlaceArgs),
+
+	call_gen__output_arg_locs(ArgVarsInfos, OutputArgs),
+	bytecode_gen__gen_pickups(OutputArgs, ByteInfo, PickupArgs),
+
+	bytecode_gen__map_var(ByteInfo, PredVar, BytePredVar),
+	Call = node([higher_order_call(BytePredVar, NInVars, NOutVars,
+		Detism)]),
+	Code = tree(PlaceArgs, tree(Call, PickupArgs)).
+
 	% Generate bytecode for an ordinary call.
 
 :- pred bytecode_gen__call(pred_id::in, proc_id::in, list(var)::in,
@@ -251,12 +285,12 @@ bytecode_gen__call(PredId, ProcId, ArgVars, ByteInfo, Code) :-
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_arg_info(ProcInfo, ArgInfo),
-	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, Args),
+	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
-	call_gen__input_arg_locs(Args, InputArgs),
+	call_gen__input_arg_locs(ArgVarsInfos, InputArgs),
 	bytecode_gen__gen_places(InputArgs, ByteInfo, PlaceArgs),
 
-	call_gen__output_arg_locs(Args, OutputArgs),
+	call_gen__output_arg_locs(ArgVarsInfos, OutputArgs),
 	bytecode_gen__gen_pickups(OutputArgs, ByteInfo, PickupArgs),
 
 	predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
@@ -381,7 +415,7 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var2, ByteVar2),
 	Code = node([test(ByteVar1, ByteVar2)]).
 bytecode_gen__unify(complicated_unify(_, _), _Var, _RHS, _ByteInfo, _Code) :-
-	error("we do not handle complicated unifications yet").
+	error("complicated unifications should have been handled by polymorphism.m").
 
 :- pred bytecode_gen__map_uni_modes(list(uni_mode)::in, list(var)::in,
 	byte_info::in, list(byte_dir)::out) is det.
@@ -535,8 +569,7 @@ bytecode_gen__map_cons_tag(complicated_constant_tag(Primary, Secondary),
 	complicated_constant_tag(Primary, Secondary)).
 bytecode_gen__map_cons_tag(string_constant(_), _) :-
 	error("string_constant cons tag for non-string_constant cons id").
-bytecode_gen__map_cons_tag(int_constant(_), _) :-
-	error("int_constant cons tag for non-int_constant cons id").
+bytecode_gen__map_cons_tag(int_constant(IntVal), enum_tag(IntVal)).
 bytecode_gen__map_cons_tag(float_constant(_), _) :-
 	error("float_constant cons tag for non-float_constant cons id").
 bytecode_gen__map_cons_tag(pred_closure_tag(_, _), _) :-

@@ -50,9 +50,11 @@
 			;	complex_deconstruct(byte_var, byte_cons_id,
 					list(pair(byte_var, byte_dir)))
 			;	place_arg(reg_type, int, byte_var)
+			;	pickup_arg(reg_type, int, byte_var)
 			;	call(byte_module_id, byte_pred_id,
 					arity, byte_proc_id)
-			;	pickup_arg(reg_type, int, byte_var)
+			;	higher_order_call(byte_var, arity, arity,
+					determinism)
 			;	builtin_binop(binary_op, byte_arg, byte_arg,
 					byte_var)
 			;	builtin_unop(unary_op, byte_arg, byte_var)
@@ -80,6 +82,7 @@
 			;	simple_tag(tag_bits)
 			;	complicated_tag(tag_bits, int)
 			;	complicated_constant_tag(tag_bits, int)
+			;	enum_tag(int)
 			.
 
 :- type byte_arg	--->	var(byte_var)
@@ -113,7 +116,7 @@
 
 :- pred bytecode__version(int::out) is det.
 
-bytecode__version(4).
+bytecode__version(5).
 
 output_bytecode_file(FileName, ByteCodes) -->
 	io__tell_binary(FileName, Result),
@@ -154,8 +157,7 @@ debug_bytecode_file(FileName, ByteCodes) -->
 		io__set_exit_status(1)
 	).
 
-:- pred output_bytecode_list(list(byte_code),
-	io__state, io__state).
+:- pred output_bytecode_list(list(byte_code), io__state, io__state).
 :- mode output_bytecode_list(in, di, uo) is det.
 
 output_bytecode_list([]) --> [].
@@ -165,8 +167,7 @@ output_bytecode_list([ByteCode | ByteCodes]) -->
 	output_args(ByteCode),
 	output_bytecode_list(ByteCodes).
 
-:- pred debug_bytecode_list(list(byte_code),
-	io__state, io__state).
+:- pred debug_bytecode_list(list(byte_code), io__state, io__state).
 :- mode debug_bytecode_list(in, di, uo) is det.
 
 debug_bytecode_list([]) --> [].
@@ -246,14 +247,19 @@ output_args(complex_deconstruct(Var, ConsId, VarDirs)) -->
 output_args(place_arg(RegType, RegNum, Var)) -->
 	output_reg(RegType, RegNum),
 	output_var(Var).
+output_args(pickup_arg(RegType, RegNum, Var)) -->
+	output_reg(RegType, RegNum),
+	output_var(Var).
 output_args(call(ModuleId, PredId, Arity, ProcId)) -->
 	output_module_id(ModuleId),
 	output_pred_id(PredId),
 	output_length(Arity),
 	output_proc_id(ProcId).
-output_args(pickup_arg(RegType, RegNum, Var)) -->
-	output_reg(RegType, RegNum),
-	output_var(Var).
+output_args(higher_order_call(PredVar, InVarCount, OutVarCount, Detism)) -->
+	output_var(PredVar),
+	output_length(InVarCount),
+	output_length(OutVarCount),
+	output_determinism(Detism).
 output_args(builtin_binop(Binop, Var1, Var2, Var3)) -->
 	output_binop(Binop),
 	output_arg(Var1),
@@ -343,14 +349,19 @@ debug_args(complex_deconstruct(Var, ConsId, VarDirs)) -->
 debug_args(place_arg(RegType, RegNum, Var)) -->
 	debug_reg(RegType, RegNum),
 	debug_var(Var).
+debug_args(pickup_arg(RegType, RegNum, Var)) -->
+	debug_reg(RegType, RegNum),
+	debug_var(Var).
 debug_args(call(ModuleId, PredId, Arity, ProcId)) -->
 	debug_module_id(ModuleId),
 	debug_pred_id(PredId),
 	debug_length(Arity),
 	debug_proc_id(ProcId).
-debug_args(pickup_arg(RegType, RegNum, Var)) -->
-	debug_reg(RegType, RegNum),
-	debug_var(Var).
+debug_args(higher_order_call(PredVar, InVarCount, OutVarCount, Detism)) -->
+	debug_var(PredVar),
+	debug_length(InVarCount),
+	debug_length(OutVarCount),
+	debug_determinism(Detism).
 debug_args(builtin_binop(Binop, Var1, Var2, Var3)) -->
 	debug_binop(Binop),
 	debug_arg(Var1),
@@ -403,16 +414,14 @@ debug_var_info(var_info(Name, _)) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_determinism(determinism,
-	io__state, io__state).
+:- pred output_determinism(determinism, io__state, io__state).
 :- mode output_determinism(in, di, uo) is det.
 
 output_determinism(Detism) -->
 	{ determinism_code(Detism, Code) },
 	output_byte(Code).
 
-:- pred debug_determinism(determinism,
-	io__state, io__state).
+:- pred debug_determinism(determinism, io__state, io__state).
 :- mode debug_determinism(in, di, uo) is det.
 
 debug_determinism(Detism) -->
@@ -487,8 +496,7 @@ debug_arg(float_const(FloatVal)) -->
 output_var(Var) -->
 	output_two_byte(Var).
 
-:- pred output_vars(list(byte_var),
-	io__state, io__state).
+:- pred output_vars(list(byte_var), io__state, io__state).
 :- mode output_vars(in, di, uo) is det.
 
 output_vars([]) --> [].
@@ -502,8 +510,7 @@ output_vars([Var | Vars]) -->
 debug_var(Var) -->
 	debug_int(Var).
 
-:- pred debug_vars(list(byte_var),
-	io__state, io__state).
+:- pred debug_vars(list(byte_var), io__state, io__state).
 :- mode debug_vars(in, di, uo) is det.
 
 debug_vars([]) --> [].
@@ -553,15 +560,13 @@ debug_var_dirs([Var - Dir | VarDirs]) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_module_id(byte_module_id,
-	io__state, io__state).
+:- pred output_module_id(byte_module_id, io__state, io__state).
 :- mode output_module_id(in, di, uo) is det.
 
 output_module_id(ModuleId) -->
 	output_string(ModuleId).
 
-:- pred debug_module_id(byte_module_id,
-	io__state, io__state).
+:- pred debug_module_id(byte_module_id, io__state, io__state).
 :- mode debug_module_id(in, di, uo) is det.
 
 debug_module_id(ModuleId) -->
@@ -569,15 +574,13 @@ debug_module_id(ModuleId) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_pred_id(byte_pred_id,
-	io__state, io__state).
+:- pred output_pred_id(byte_pred_id, io__state, io__state).
 :- mode output_pred_id(in, di, uo) is det.
 
 output_pred_id(PredId) -->
 	output_string(PredId).
 
-:- pred debug_pred_id(byte_pred_id,
-	io__state, io__state).
+:- pred debug_pred_id(byte_pred_id, io__state, io__state).
 :- mode debug_pred_id(in, di, uo) is det.
 
 debug_pred_id(PredId) -->
@@ -585,16 +588,14 @@ debug_pred_id(PredId) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_proc_id(byte_proc_id,
-	io__state, io__state).
+:- pred output_proc_id(byte_proc_id, io__state, io__state).
 :- mode output_proc_id(in, di, uo) is det.
 
 output_proc_id(ProcId) -->
 	{ ModeId is ProcId mod 10000 },
 	output_byte(ModeId).
 
-:- pred debug_proc_id(byte_proc_id,
-	io__state, io__state).
+:- pred debug_proc_id(byte_proc_id, io__state, io__state).
 :- mode debug_proc_id(in, di, uo) is det.
 
 debug_proc_id(ProcId) -->
@@ -617,8 +618,7 @@ debug_label_id(LabelId) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_cons_id(byte_cons_id,	
-	io__state, io__state).
+:- pred output_cons_id(byte_cons_id, io__state, io__state).
 :- mode output_cons_id(in, di, uo) is det.
 
 output_cons_id(cons(Functor, Arity, Tag)) -->
@@ -653,8 +653,7 @@ output_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
 	output_string(TypeName),
 	output_byte(TypeArity).
 
-:- pred debug_cons_id(byte_cons_id,
-	io__state, io__state).
+:- pred debug_cons_id(byte_cons_id, io__state, io__state).
 :- mode debug_cons_id(in, di, uo) is det.
 
 debug_cons_id(cons(Functor, Arity, Tag)) -->
@@ -691,8 +690,7 @@ debug_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_tag(byte_cons_tag,
-	io__state, io__state).
+:- pred output_tag(byte_cons_tag, io__state, io__state).
 :- mode output_tag(in, di, uo) is det.
 
 output_tag(simple_tag(Primary)) -->
@@ -706,11 +704,13 @@ output_tag(complicated_constant_tag(Primary, Secondary)) -->
 	output_byte(2),
 	output_byte(Primary),
 	output_int(Secondary).
+output_tag(enum_tag(Enum)) -->
+	output_byte(3),
+	output_byte(Enum).
 output_tag(no_tag) -->
-	output_byte(3).
+	output_byte(4).
 
-:- pred debug_tag(byte_cons_tag,
-	io__state, io__state).
+:- pred debug_tag(byte_cons_tag, io__state, io__state).
 :- mode debug_tag(in, di, uo) is det.
 
 debug_tag(simple_tag(Primary)) -->
@@ -724,6 +724,9 @@ debug_tag(complicated_constant_tag(Primary, Secondary)) -->
 	debug_string("complicated_constant_tag"),
 	debug_int(Primary),
 	debug_int(Secondary).
+debug_tag(enum_tag(Enum)) -->
+	debug_string("enum"),
+	debug_int(Enum).
 debug_tag(no_tag) -->
 	debug_string("no_tag").
 
@@ -791,14 +794,15 @@ byte_code(construct(_, _, _),			23).
 byte_code(deconstruct(_, _, _),			24).
 byte_code(complex_deconstruct(_, _, _),		25).
 byte_code(place_arg(_, _, _),			26).
-byte_code(call(_, _, _, _),			27).
-byte_code(pickup_arg(_, _, _),			28).
-byte_code(builtin_binop(_, _, _, _),		29).
-byte_code(builtin_unop(_, _, _),		30).
-byte_code(builtin_bintest(_, _, _),		31).
-byte_code(builtin_untest(_, _),			32).
-byte_code(context(_),				33).
-byte_code(not_supported,			34).
+byte_code(pickup_arg(_, _, _),			27).
+byte_code(call(_, _, _, _),			28).
+byte_code(higher_order_call(_, _, _, _),	29).
+byte_code(builtin_binop(_, _, _, _),		20).
+byte_code(builtin_unop(_, _, _),		31).
+byte_code(builtin_bintest(_, _, _),		32).
+byte_code(builtin_untest(_, _),			33).
+byte_code(context(_),				34).
+byte_code(not_supported,			35).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
@@ -830,8 +834,9 @@ byte_debug(construct(_, _, _),			"construct").
 byte_debug(deconstruct(_, _, _),		"deconstruct").
 byte_debug(complex_deconstruct(_, _, _),	"complex_deconstruct").
 byte_debug(place_arg(_, _, _),			"place_arg").
-byte_debug(call(_, _, _, _),			"call").
 byte_debug(pickup_arg(_, _, _),			"pickup_arg").
+byte_debug(call(_, _, _, _),			"call").
+byte_debug(higher_order_call(_, _, _, _),	"higher_order_call").
 byte_debug(builtin_binop(_, _, _, _),		"builtin_binop").
 byte_debug(builtin_unop(_, _, _),		"builtin_unop").
 byte_debug(builtin_bintest(_, _, _),		"builtin_bintest").

@@ -58,6 +58,10 @@
 	is det.
 */
 
+:- pred call_gen__partition_args(assoc_list(var, arg_info),
+						list(var), list(var)).
+:- mode call_gen__partition_args(in, out, out) is det.
+
 :- pred call_gen__input_arg_locs(list(pair(var, arg_info)), 
 				list(pair(var, arg_loc))).
 :- mode call_gen__input_arg_locs(in, out) is det.
@@ -337,12 +341,8 @@ call_gen__generate_builtin_arg(Rval0, Rval, Code) -->
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__partition_args(assoc_list(arg_info, var),
-						list(var), list(var)).
-:- mode call_gen__partition_args(in, out, out) is det.
-
 call_gen__partition_args([], [], []).
-call_gen__partition_args([arg_info(_Loc,Mode) - V | Rest], Ins, Outs) :-
+call_gen__partition_args([V - arg_info(_Loc,Mode) | Rest], Ins, Outs) :-
 	(
 		Mode = top_in
 	->
@@ -599,7 +599,7 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 	{ globals__get_args_method(Globals, ArgsMethod) },
 	{ make_arg_infos(ArgsMethod, Types, Modes, InnerCodeModel, ModuleInfo,
 		ArgInfo) },
-	{ assoc_list__from_corresponding_lists(ArgInfo, Args, ArgsAndArgInfo) },
+	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgsAndArgInfo) },
 	{ call_gen__partition_args(ArgsAndArgInfo, InVars, OutVars) },
 	call_gen__generate_higher_call(InnerCodeModel, PredVar, InVars, OutVars,
 		Code).
