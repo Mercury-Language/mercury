@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2001 The University of Melbourne.
+# Copyright (C) 1997-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -31,7 +31,17 @@ MLFLAGS += --static
 
 #-----------------------------------------------------------------------------#
 
+# The "vqueens" program does not work in ".rt" grades,
+# since it uses the "var" module which does not work in ".rt" grades.
+# The "interpreter" program does not work in ".rt" grades either,
+# due to a bug with unification of values of type "store__mutvar" in ".rt"
+# grades.
+ifeq "$(findstring .rt,$(GRADE))" ".rt"
+PROGS	=	
+else
 PROGS	=	interpreter vqueens
+endif
+
 
 DEPENDS =	$(PROGS:%=%.depend)
 CS	=	$(PROGS:%=%.c)
@@ -44,8 +54,10 @@ $(PROGS): ../libtrailed_update.a
 %.out: %
 	./$< > $@ 2>&1;
 
+DIFF_OPTS=-c
+
 %.res: %.exp %.out
-	diff -c $*.exp $*.out > $@
+	diff $(DIFF_OPTS) $*.exp $*.out > $@
 
 #-----------------------------------------------------------------------------#
 
@@ -61,12 +73,7 @@ depend: $(DEPENDS)
 all: $(PROGS)
 
 .PHONY: check
-# XXX the test of `interpreter' is disabled,
-# since it fails in grade asm_fast.tr.
-# (It fails due to a bug in value numbering which causes
-# parts of the Mercury library to be miscompiled.)
-check: vqueens.res
-# check: $(RESS)
+check: $(RESS)
 
 .PHONY: cs
 cs: $(CS)
