@@ -616,7 +616,8 @@ hlds_out__write_proc(Indent, PredId, PredModeId, Proc) -->
 			Goal,
 			_ModeContext,
 			_CallInfo,
-			Category
+			Category,
+			_ArgInfo
 		),
 		Indent1 is Indent + 1
 	},
