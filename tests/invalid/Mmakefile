@@ -69,6 +69,7 @@ SINGLEMODULE_PROGS= \
 	foreign_type_visibility \
 	func_errors \
 	funcs_as_preds \
+	freefree \
 	ho_default_func_1 \
 	ho_default_func_3 \
 	ho_type_mode_bug \
@@ -175,7 +176,6 @@ USE_SUBDIR_MODULES = \
 #		when doing dynamic linking, or when the library
 #		was built with `--split-c-files')
 #	parent.undeclared_child (just not yet implemented)
-#	freefree 	(need bromage's aliasing stuff)
 #	typeclass_test_8 (minor formatting error in the output --
 #			the type class name should be in quotes)
 #	typeclass_mode_{2,3,4} (compiler calls error/1)

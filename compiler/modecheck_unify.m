@@ -88,7 +88,21 @@ modecheck_unification(X, var(Y), Unification0, UnifyContext, _GoalInfo,
 			BothLive = dead
 		),
 		abstractly_unify_inst(BothLive, InstOfX, InstOfY,
-			real_unify, ModuleInfo0, UnifyInst, Det1, ModuleInfo1)
+			real_unify, ModuleInfo0, UnifyInst, Det1, ModuleInfo1),
+		% Don't allow free-free unifications if both variables are
+		% locked.  (Normally the checks for binding locked variables
+		% are done in modecheck_set_var_inst, which is called below,
+		% but that won't catch this case, because the inst of the
+		% variable will remain `free'.  XXX are there other cases
+		% like this one?)
+		\+ (
+			UnifyInst = free,
+			mode_info_var_is_locked(ModeInfo0, X, _XLockedReason),
+			mode_info_var_is_locked(ModeInfo0, Y, _YLockedReason),
+			% a unification of the form `X = X' doesn't bind X,
+			% and thus should be allowed even if X is locked
+			X \= Y
+		)
 	->
 		Inst = UnifyInst,
 		Det = Det1,

@@ -120,36 +120,6 @@ later part of the message makes it quite clear what the problem is,
 but I thought I'd point it out to you before I forgot it.
 
 -----------------------------------------------------------------------------
-Subject: missed mode error
-Date: Tue, 28 May 1996 02:27:34 +1000 (EST)
-
-Another one for the bug report file:
-
-The goal `some [X, Y] X \= Y' should be a mode error,
-but the current mode checker doesn't report an error.
-Instead, the compiler goes on to generate code which gives
-the wrong answer.  For example, the following program prints out `no'.
-The same problem also occurs with `some [X, Y] (X = Y -> fail ; true)'.
-
-:- module bug.
-:- interface.
-:- import_module io.
-
-:- pred main(io__state::di, io__state::uo) is det.
-
-:- implementation.
-
-main --> 
-	( { p } -> io__write_string("yes\n") ; io__write_string("no\n") ).
-
-:- pred p is semidet.
-p :-
-	some [X, Y] X \= Y.
-
-The bug occurs only when the variables being unified inside a negated
-context are not live, i.e. when it is the last occurrence of those variables.
-
------------------------------------------------------------------------------
 Subject: bug with PC values on Alpha
 Date: Wed, 12 Jun 1996 15:45:59 +1000
 
