@@ -326,8 +326,8 @@ qcheck(TestFunction, Name, TestCount, SpecificFrequency,
 :- func generate_seed_from_time(time_t) = int.
 :- mode generate_seed_from_time(in) = out.
 generate_seed_from_time(CurrentTime) =  Seed :-
-        tm(Seconds, Minutes, Hours, _Weekday, Yearday, _Month, Year, _DST) 
-	  = time__localtime(CurrentTime),
+        tm(Year, _Month, _MonthDay, Hours, Minutes, Seconds, Yearday, 
+		_Weekday, _DST) = time__localtime(CurrentTime),
 	TotalSecs = ((( integer(Year) * integer(365) + integer(Yearday)) 
 		      * integer(24) + integer(Hours)) 
 		      * integer(60) + integer(Minutes)) 
