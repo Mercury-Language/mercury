@@ -95,11 +95,12 @@ module_qual__qualify_type_qualification(Type0, Type, Context, Info0, Info) -->
 
 :- type mq_info
 	--->	mq_info(
-				% Sets of all types, insts, modes,
-				% and typeclasses visible
-				% in this module.
-				% XXX we ought to also keep track of
-				% which modules are visible.
+				% Unused junk
+			junk,
+
+				% Sets of all modules, types, insts, modes,
+				% and typeclasses visible in this module.
+			module_id_set,
 			type_id_set,
 			inst_id_set,
 			mode_id_set,
@@ -124,8 +125,12 @@ module_qual__qualify_type_qualification(Type0, Type, Context, Info0, Info) -->
 	--->	exported
 	;	not_exported.
 		
-	% Pass over the item list collecting all defined type, mode and
-	% inst ids and the names of all modules imported in the interface.
+	% The `module_eqv_map' field is unused junk -- feel free to replace it.
+:- type junk == unit.
+
+	% Pass over the item list collecting all defined module, type, mode and
+	% inst ids, all module synonym definitions, and the names of all
+	% modules imported in the interface.
 :- pred collect_mq_info(item_list::in, mq_info::in, mq_info::out) is det.
 
 collect_mq_info([], Info, Info).
@@ -205,12 +210,24 @@ add_typeclass_defn(SymName, Params, Info0, Info) :-
 	id_set_insert(NeedQualifier, SymName - Arity, Classes0, Classes),
 	mq_info_set_classes(Info0, Classes, Info).
 
-	% Update import status.
-	% Add imported modules if in the interface.
+	% process_module_defn:
+	%
+	% - Update the import status.
+	%
+	% - For sub-module definitions (whether nested or separate,
+	%   i.e. either `:- module foo.' or `:- include_module foo.'),
+	%   add the module id to the module_id_set.
+	%
+	% - For import declarations (`:- import_module' or `:- use_module'),
+	%   if we're currently in the interface section, then add the
+	%   imported modules to the interface_modules list.
+
 :- pred process_module_defn(module_defn::in, mq_info::in, mq_info::out) is det.
 
-process_module_defn(module(_), Info, Info).
-process_module_defn(include_module(_), Info, Info).
+process_module_defn(module(ModuleName), Info0, Info) :-
+	add_module_defn(ModuleName, Info0, Info).
+process_module_defn(include_module(ModuleNameList), Info0, Info) :-
+	list__foldl(add_module_defn, ModuleNameList, Info0, Info).
 process_module_defn(interface, Info0, Info) :-
 	mq_info_set_import_status(Info0, exported, Info).
 process_module_defn(private_interface, Info0, Info) :-
@@ -233,6 +250,16 @@ process_module_defn(import(Imports), Info0, Info) :-
 	add_interface_imports(Imports, Info0, Info).
 process_module_defn(use(Imports), Info0, Info) :-
 	add_interface_imports(Imports, Info0, Info).
+
+:- pred add_module_defn(module_name, mq_info, mq_info).
+:- mode add_module_defn(in, in, out) is det.
+
+add_module_defn(ModuleName, Info0, Info) :-
+	mq_info_get_modules(Info0, Modules0),
+	mq_info_get_need_qual_flag(Info0, NeedQualifier),
+	Arity = 0,
+	id_set_insert(NeedQualifier, ModuleName - Arity, Modules0, Modules),
+	mq_info_set_modules(Info0, Modules, Info).
 
 :- pred add_interface_imports(sym_list::in,
 		mq_info::in, mq_info::out) is det.
@@ -905,9 +932,11 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 
 	% Find all IDs which match the current id.
 	{ Id0 = SymName - Arity },
-	{ id_set_search_sym_arity(Ids, SymName, Arity, Modules) },
+	{ mq_info_get_modules(Info0, Modules) },
+	{ id_set_search_sym_arity(Ids, SymName, Arity, Modules,
+		MatchingModules) },
 
-	( { Modules = [] } ->
+	( { MatchingModules = [] } ->
 		% No matches for this id.
 		{ Id = Id0 },
 		( { mq_info_get_report_error_flag(Info0, yes) } ->
@@ -918,7 +947,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 		;
 			{ Info = Info0 }
 		)
-	; { Modules = [Module] } ->
+	; { MatchingModules = [Module] } ->
 		% A unique match for this ID.
 		{ unqualify_name(SymName, IdName) },
 		{ Id = qualified(Module, IdName) - Arity },
@@ -929,7 +958,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 		( { mq_info_get_report_error_flag(Info0, yes) } ->
 			{ mq_info_get_error_context(Info0, ErrorContext) },
 			report_ambiguous_match(ErrorContext, Id0, TypeOfId,
-						Modules),
+						MatchingModules),
 			{ mq_info_set_error_flag(Info0, TypeOfId, Info1) },
 			{ mq_info_incr_errors(Info1, Info) }
 		;
@@ -1174,11 +1203,14 @@ init_mq_info(ReportErrors, Info0) :-
 	term__context_init(Context),
 	ErrorContext = type(unqualified("") - 0) - Context,
 	set__init(InterfaceModules0),
+	Junk = unit,
 	id_set_init(Empty),
-	Info0 = mq_info(Empty, Empty, Empty, Empty, InterfaceModules0,
-		not_exported, 0, no, no, ReportErrors, ErrorContext,
-		may_be_unqualified).
+	Info0 = mq_info(Junk, Empty, Empty, Empty, Empty, Empty,
+			InterfaceModules0, not_exported, 0, no, no,
+			ReportErrors, ErrorContext, may_be_unqualified).
 
+:- pred mq_info_get_junk(mq_info::in, junk::out) is det.
+:- pred mq_info_get_modules(mq_info::in, module_id_set::out) is det.
 :- pred mq_info_get_types(mq_info::in, type_id_set::out) is det.
 :- pred mq_info_get_insts(mq_info::in, inst_id_set::out) is det.
 :- pred mq_info_get_modes(mq_info::in, mode_id_set::out) is det.
@@ -1192,20 +1224,33 @@ init_mq_info(ReportErrors, Info0) :-
 :- pred mq_info_get_report_error_flag(mq_info::in, bool::out) is det.
 :- pred mq_info_get_error_context(mq_info::in, error_context::out) is det.
 
-mq_info_get_types(mq_info(Types, _, _,_,_,_,_,_,_,_,_,_), Types).
-mq_info_get_insts(mq_info(_, Insts, _,_,_,_,_,_,_,_,_,_), Insts).
-mq_info_get_modes(mq_info(_,_, Modes, _,_,_,_,_,_,_,_,_), Modes).
-mq_info_get_classes(mq_info(_,_,_, Classes, _,_,_,_,_,_,_,_), Classes).
-mq_info_get_interface_modules(mq_info(_,_,_,_, Modules,_,_,_,_,_,_,_), Modules).
-mq_info_get_import_status(mq_info(_,_,_,_,_, Status, _,_,_,_,_,_), Status).
-mq_info_get_num_errors(mq_info(_,_,_,_,_,_, NumErrors, _,_,_,_,_), NumErrors).
-mq_info_get_type_error_flag(mq_info(_,_,_,_,_,_,_, TypeErrs,_,_,_,_), TypeErrs).
-mq_info_get_mode_error_flag(mq_info(_,_,_,_,_,_,_,_, ModeError, _,_,_),
-						ModeError).
-mq_info_get_report_error_flag(mq_info(_,_,_,_,_,_,_,_,_, Report,_,_), Report).
-mq_info_get_error_context(mq_info(_,_,_,_,_,_,_,_,_,_, Context,_), Context).
-mq_info_get_need_qual_flag(mq_info(_,_,_,_,_,_,_,_,_,_,_,UseModule), UseModule).
+mq_info_get_junk(mq_info(Junk, _, _,_,_,_,_,_,_,_,_,_,_,_),
+	Junk).
+mq_info_get_modules(mq_info(_, Modules, _,_,_,_,_,_,_,_,_,_,_,_), Modules).
+mq_info_get_types(mq_info(_,_, Types, _,_,_,_,_,_,_,_,_,_,_), Types).
+mq_info_get_insts(mq_info(_,_,_, Insts, _,_,_,_,_,_,_,_,_,_), Insts).
+mq_info_get_modes(mq_info(_,_,_,_, Modes, _,_,_,_,_,_,_,_,_), Modes).
+mq_info_get_classes(mq_info(_,_,_,_,_, Classes, _,_,_,_,_,_,_,_), Classes).
+mq_info_get_interface_modules(mq_info(_,_,_,_,_,_, Modules, _,_,_,_,_,_,_),
+	Modules).
+mq_info_get_import_status(mq_info(_,_,_,_,_,_,_, Status, _,_,_,_,_,_), Status).
+mq_info_get_num_errors(mq_info(_,_,_,_,_,_,_,_, NumErrors, _,_,_,_,_),
+	NumErrors).
+mq_info_get_type_error_flag(mq_info(_,_,_,_,_,_,_,_,_, TypeErrs, _,_,_,_),
+	TypeErrs).
+mq_info_get_mode_error_flag(mq_info(_,_,_,_,_,_,_,_,_,_, ModeError, _,_,_),
+	ModeError).
+mq_info_get_report_error_flag(mq_info(_,_,_,_,_,_,_,_,_,_,_, Report, _,_),
+	Report).
+mq_info_get_error_context(mq_info(_,_,_,_,_,_,_,_,_,_,_,_, Context, _),
+	Context).
+mq_info_get_need_qual_flag(mq_info(_,_,_,_,_,_,_,_,_,_,_,_,_, UseModule),
+	UseModule).
 
+:- pred mq_info_set_junk(mq_info::in, junk::in,
+		mq_info::out) is det.
+:- pred mq_info_set_modules(mq_info::in, module_id_set::in, mq_info::out)
+		is det.
 :- pred mq_info_set_types(mq_info::in, type_id_set::in, mq_info::out) is det.
 :- pred mq_info_set_insts(mq_info::in, inst_id_set::in, mq_info::out) is det.
 :- pred mq_info_set_modes(mq_info::in, mode_id_set::in, mq_info::out) is det.
@@ -1219,31 +1264,35 @@ mq_info_get_need_qual_flag(mq_info(_,_,_,_,_,_,_,_,_,_,_,UseModule), UseModule).
 :- pred mq_info_set_error_context(mq_info::in, error_context::in,
 						mq_info::out) is det.
 
-mq_info_set_types(mq_info(_, B,C,D,E,F,G,H,I,J,K,L), Types,
-		mq_info(Types, B,C,D,E,F,G,H,I,J,K,L)).
-mq_info_set_insts(mq_info(A,_,C,D,E,F,G,H,I,J,K,L), Insts,
-		mq_info(A, Insts, C,D,E,F,G,H,I,J,K,L)).
-mq_info_set_modes(mq_info(A,B,_,D,E,F,G,H,I,J,K,L), Modes,
-		mq_info(A,B, Modes, D,E,F,G,H,I,J,K,L)).
-mq_info_set_classes(mq_info(A,B,C,_,E,F,G,H,I,J,K,L), Classes,
-		mq_info(A,B, C, Classes,E,F,G,H,I,J,K,L)).
-mq_info_set_interface_modules(mq_info(A,B,C,D,_,F,G,H,I,J,K,L), Modules,
-		mq_info(A,B,C,D, Modules, F,G,H,I,J,K,L)).
-mq_info_set_import_status(mq_info(A,B,C,D,E,_,G,H,I,J,K,L), Status,
-		mq_info(A,B,C,D,E, Status, G,H,I,J,K,L)).
-mq_info_set_type_error_flag(mq_info(A,B,C,D,E,F,G, _, I,J,K,L),
-		mq_info(A,B,C,D,E,F,G, yes, I,J,K,L)).
-mq_info_set_mode_error_flag(mq_info(A,B,C,D,E,F,G,H,_,J,K,L),
-		mq_info(A,B,C,D,E,F,G,H, yes, J,K,L)).
-mq_info_set_error_context(mq_info(A,B,C,D,E,F,G,H,I,J,_,L), Context,
-		mq_info(A,B,C,D,E,F,G,H,I,J, Context,L)).
-mq_info_set_need_qual_flag(mq_info(A,B,C,D,E,F,G,H,I,J,K,_), Flag,
-		mq_info(A,B,C,D,E,F,G,H,I,J,K, Flag)).
+mq_info_set_junk(mq_info(_, B,C,D,E,F,G,H,I,J,K,L,M,N), Junk,
+		mq_info(Junk, B,C,D,E,F,G,H,I,J,K,L,M,N)).
+mq_info_set_modules(mq_info(A, _, C,D,E,F,G,H,I,J,K,L,M,N), Modules,
+		mq_info(A, Modules, C,D,E,F,G,H,I,J,K,L,M,N)).
+mq_info_set_types(mq_info(A,B, _, D,E,F,G,H,I,J,K,L,M,N), Types,
+		mq_info(A,B, Types, D,E,F,G,H,I,J,K,L,M,N)).
+mq_info_set_insts(mq_info(A,B,C, _, E,F,G,H,I,J,K,L,M,N), Insts,
+		mq_info(A,B,C, Insts, E,F,G,H,I,J,K,L,M,N)).
+mq_info_set_modes(mq_info(A,B,C,D, _, F,G,H,I,J,K,L,M,N), Modes,
+		mq_info(A,B,C,D, Modes, F,G,H,I,J,K,L,M,N)).
+mq_info_set_classes(mq_info(A,B,C,D,E, _, G,H,I,J,K,L,M,N), Classes,
+		mq_info(A,B,C,D,E, Classes, G,H,I,J,K,L,M,N)).
+mq_info_set_interface_modules(mq_info(A,B,C,D,E,F, _, H,I,J,K,L,M,N), Modules,
+		mq_info(A,B,C,D,E,F, Modules, H,I,J,K,L,M,N)).
+mq_info_set_import_status(mq_info(A,B,C,D,E,F,G, _, I,J,K,L,M,N), Status,
+		mq_info(A,B,C,D,E,F,G, Status, I,J,K,L,M,N)).
+mq_info_set_type_error_flag(mq_info(A,B,C,D,E,F,G,H,I, _, K,L,M,N),
+		mq_info(A,B,C,D,E,F,G,H,I, yes, K,L,M,N)).
+mq_info_set_mode_error_flag(mq_info(A,B,C,D,E,F,G,H,I,J, _, L,M,N),
+		mq_info(A,B,C,D,E,F,G,H,I,J, yes, L,M,N)).
+mq_info_set_error_context(mq_info(A,B,C,D,E,F,G,H,I,J,K,L, _, N), Context,
+		mq_info(A,B,C,D,E,F,G,H,I,J,K,L, Context, N)).
+mq_info_set_need_qual_flag(mq_info(A,B,C,D,E,F,G,H,I,J,K,L,M, _), Flag,
+		mq_info(A,B,C,D,E,F,G,H,I,J,K,L,M, Flag)).
 
 :- pred mq_info_incr_errors(mq_info::in, mq_info::out) is det.
 
-mq_info_incr_errors(mq_info(A,B,C,D,E,F, NumErrors0, H,I,J,K,L), 
-		mq_info(A,B,C,D,E,F, NumErrors,H,I,J,K,L)) :-
+mq_info_incr_errors(mq_info(A,B,C,D,E,F,G,H, NumErrors0, J,K,L,M,N), 
+		mq_info(A,B,C,D,E,F,G,H, NumErrors, J,K,L,M,N)) :-
 	NumErrors is NumErrors0 + 1.
 
 :- pred mq_info_set_error_flag(mq_info::in, id_type::in, mq_info::out) is det.
@@ -1308,6 +1357,9 @@ mq_info_add_interface_modules(Info0, NewModules, Info) :-
 :- type mode_id_set == id_set.
 :- type inst_id_set == id_set.
 :- type class_id_set == id_set.
+	% Modules don't have an arity, but for simplicity we use the same
+	% data structure here, assigning arity zero to all module names.
+:- type module_id_set == id_set.
 
 :- pred id_set_init(id_set::out) is det.
 
@@ -1341,9 +1393,9 @@ id_set_insert(NeedQualifier, qualified(Module, Name) - Arity, IdSet0, IdSet) :-
 	map__set(IdSet0, Name - Arity, ImportModules - UseModules, IdSet).
 
 :- pred id_set_search_sym_arity(id_set::in, sym_name::in, int::in,
-				list(module_name)::out) is det.
+		module_id_set::in, list(module_name)::out) is det.
 
-id_set_search_sym_arity(IdSet, Sym, Arity, Modules) :-
+id_set_search_sym_arity(IdSet, Sym, Arity, Modules, MatchingModules) :-
 	unqualify_name(Sym, UnqualName),
 	(
 		map__search(IdSet, UnqualName - Arity,
@@ -1351,30 +1403,53 @@ id_set_search_sym_arity(IdSet, Sym, Arity, Modules) :-
 	->
 		(
 			Sym = unqualified(_),
-			set__to_sorted_list(ImportModules, Modules)
+			set__to_sorted_list(ImportModules, MatchingModules)
 		;
 			Sym = qualified(Module, _),
-			% XXX The code below is not quite right -
-			% it doesn't handle the cases where
-			% a module is imported but its parent module is used,
-			% or vice versa.
-			% E.g. It allows the use of `bar:baz' to match
-			% `:foo:bar:baz' if `bar' is imported,
-			% whereas this ought to be allowed only if `foo'
-			% is imported.
+
+			%
+			% first, compute the set of modules that this
+			% module specifier could possibly refer to
+			%
+
+			% do a recursive search to find nested modules
+			% which match the specified module name
+			ModuleArity = 0,
+			id_set_search_sym_arity(Modules, Module, ModuleArity,
+				Modules, MatchingParentModules),
+			unqualify_name(Module, UnqualModule),
+			AppendModuleName = (pred(X::in, Y::out) is det :-
+					Y = qualified(X, UnqualModule)),
+			list__map(AppendModuleName,
+				MatchingParentModules,
+				MatchingNestedModules),
+
+			% add the specified module name itself, in case
+			% it refers to a top-level (unnested) module name,
+			% since top-level modules don't get inserted into
+			% the module_id_set.
+			AllMatchingModules = [Module | MatchingNestedModules],
+
+			%
+			% second, compute the set of modules that define
+			% this symbol 
+			%
+			set__union(ImportModules, UseModules, DefiningModules),
+
+			%
+			% third, take the intersection of the sets computed
+			% in the first two steps
+			%
 			FindMatch =
 				lambda([MatchModule::out] is nondet, (
-				    (   
-					set__member(MatchModule, ImportModules)
-				    ;   
-					set__member(MatchModule, UseModules)
-				    ),
-				    match_sym_name(Module, MatchModule)
+				    list__member(MatchModule,
+				    	AllMatchingModules),
+				    set__member(MatchModule, DefiningModules)
 				)),
-			solutions(FindMatch, Modules)
+			solutions(FindMatch, MatchingModules)
 		)
 	;
-		Modules = []
+		MatchingModules = []
 	).
 
 %----------------------------------------------------------------------------%

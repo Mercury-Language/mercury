@@ -52,9 +52,7 @@ hello --> io__write_string("nested:child2:hello\n").
 :- type t2 == child:foo.
 :- type t3 == foo.
 :- type t4 == nested:child2:foo.
-% :- type t5 == child2:foo.	% XXX mixing of use_module and import_module
-				% is not yet supported.
-:- type t5 == nested:child2:foo.
+:- type t5 == child2:foo.
 
 main -->
 	nested:child:hello,
