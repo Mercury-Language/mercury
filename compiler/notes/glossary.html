@@ -24,17 +24,13 @@
 	<dd>
 	The typeclass constraints on a predicate or function.
 
+<dt> codeinfo
+	<dd>
+	a structure used by codegen.m
+
 <dt> HLDS 
 	<dd>
 	The "High Level Data Structure".  See hlds.m.
-
-<dt> moduleinfo 
-	<dd>
-	Another name for the HLDS.
-
-<dt> LLDS
-	<dd>
-	The "Low Level Data Structure".  See llds.m.
 
 <dt> inst
 	<dd>
@@ -61,6 +57,10 @@
 	ought to affect liveness).
 	</ol>
 
+<dt> LLDS
+	<dd>
+	The "Low Level Data Structure".  See llds.m.
+
 <dt> mode 
 	<dd>
 	this has two meanings:
@@ -72,6 +72,15 @@
 		(the mode of a predicate)
 	</ol>
 	
+<dt> moduleinfo 
+	<dd>
+	Another name for the HLDS.
+
+<dt> predinfo
+	<dd>
+	the structure in HLDS which contains information about
+	a predicate.
+
 <dt> proc (procedure)
 	<dd>
 	a particular mode of a predicate.
@@ -81,19 +90,11 @@
 	the structure in HLDS which contains
 	information about a procedure.
 
-<dt> predinfo
+<dt> RTTI
 	<dd>
-	the structure in HLDS which contains information about
-	a predicate.
-
-<dt> codeinfo
-	<dd>
-	a structure used by codegen.m
-
-<dt> switch
-	<dd>
-	a disjunction which does a case analysis on the toplevel
-	functor of some variable.
+	The "RunTime Type Information". See rtti.m. A copy of a paper given
+	on this topic is available 
+	<a href="http://www.cs.mu.oz.au/research/mercury/information/papers/rtti_ppdp.ps.gz">here</a> in zipped Postscript format.
 
 <dt> super-homogenous form (SHF)
 	<dd>
@@ -101,11 +102,16 @@
 	each unification is split into its component pieces; in particular,
 	the arguments of each predicate call and functor must be distinct
 	variables.
+
+<dt> switch
+	<dd>
+	a disjunction which does a case analysis on the toplevel
+	functor of some variable.
 </dl>
 
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-11-12 09:12:24 $ by $Author: petdr $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-01-09 04:48:59 $ by $Author: ndw $@cs.mu.oz.au. <br>
 </body>
 </html>
