@@ -328,6 +328,10 @@ Changes to the Mercury standard library:
   relation__from_assoc_list/2, relation__compose/3, varset__select/3
   and eqvclass__same_eqvclass_list/2.
 
+  In addition, there are four new system constants added to the float
+  library module, float__radix, float__mantissa_digits, float__min_exponent
+  and float__max_exponent.  There are also predicate equivalents for these.
+
   Also the old relation__to_assoc_list/2 predicate has been renamed as
   relation__to_key_assoc_list/2; there is a new relation__to_assoc_list/2
   predicate with a different type for the second argument.
@@ -380,6 +384,15 @@ Changes to the Mercury implementation:
   define the C macro ML_OMIT_ARRAY_BOUNDS_CHECKS (e.g. by using
   `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmake file). 
   [XXX we also need to fix problems with intermodule inlining heuristics.]
+
+* Domain checking for higher mathematical operations can now be disabled.
+
+  To disable domain  checking, you must compile with
+  `--intermodule-optimization' enabled and you must also
+  define the C macro ML_OMIT_MATH_DOMAIN_CHECKS (e.g. by using
+  `MGNUCFLAGS=-DML_OMIT_MATH_DOMAIN_CHECKS' in your Mmake file). 
+
+  See the Mercury Library Reference Manual for details.
 
 * We've added some primitive debugging support.
 
