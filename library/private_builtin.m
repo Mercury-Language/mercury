@@ -510,8 +510,12 @@ sys_init_type_info_module_write_out_proc_statics(FILE *fp)
 static MR_TypeInfo MR_typeclass_info_type_info(
 	MR_TypeClassInfo tcinfo, int index)
 {
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	return 0;
+	MR_Word tmp;
+	int t1;
+
+	tmp = dynamic_cast<MR_Word> (tcinfo[0]);
+	t1 = System::Convert::ToInt32(tmp[0]) + index;
+	return dynamic_cast<MR_Word> (tcinfo[t1]);
 }
 static MR_TypeInfo MR_typeclass_info_unconstrained_type_info(
 	MR_TypeClassInfo tcinfo, int index) 
