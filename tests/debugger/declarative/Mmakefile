@@ -49,6 +49,7 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 	untraced_subgoal
 
 NONWORKING_DECLARATIVE_PROGS=	\
+	shallow			\
 	solutions
 
 ifneq "$(findstring .debug,$(GRADE))" ""
@@ -183,6 +184,9 @@ propositional.out: propositional propositional.inp
 
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
+
+shallow.out: shallow shallow.inp
+	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1
 
 small.out: small small.inp
 	$(MDB) ./small < small.inp > small.out 2>&1

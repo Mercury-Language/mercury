@@ -4,6 +4,7 @@ MCFLAGS-dependency=--trace rep
 MCFLAGS-dependency2=--trace rep
 MCFLAGS-input_term_dep=--trace rep
 MCFLAGS-output_term_dep=--trace rep
+MCFLAGS-shallow_2=--trace shallow
 MCFLAGS-special_term_dep=--trace rep
 MCFLAGS-tabled_read_decl=--trace rep --trace-table-io-decl
 MCFLAGS-untraced_subgoal_sub=--trace minimum

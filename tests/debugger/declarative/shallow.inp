@@ -1,0 +1,43 @@
+echo on
+register --quiet
+break test
+continue
+finish
+dd
+n
+n
+y
+y
+continue
+continue
+finish
+dd
+n
+n
+y
+y
+continue
+continue
+finish
+dd
+n
+n
+y
+continue
+continue
+finish
+dd
+n
+n
+y
+y
+continue
+continue
+finish
+dd
+n
+n
+y
+y
+continue
+continue
