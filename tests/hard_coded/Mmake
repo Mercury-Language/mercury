@@ -10,6 +10,7 @@ PROGS=	\
 	address_of_builtins \
 	agg \
 	bidirectional \
+	boyer \
 	c_write_string \
 	cc_nondet_disj \
 	construct \
@@ -49,6 +50,7 @@ PROGS=	\
 
 # some tests need to be compiled with particular options
 
+MCFLAGS-boyer		=	--infer-all
 MCFLAGS-func_test	=	--infer-all
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 
