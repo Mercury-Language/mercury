@@ -719,7 +719,6 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
 	modecheck_goal(A0, A),
 	mode_info_remove_live_vars(B_Vars),
 	mode_info_unlock_vars(NonLocals),
-	mode_info_dcg_get_instmap(InstMapA),
 	modecheck_goal(B0, B),
 	mode_info_dcg_get_instmap(InstMapB),
 	mode_info_set_instmap(InstMap0),
@@ -727,29 +726,7 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
 	mode_info_dcg_get_instmap(InstMapC),
 	mode_info_set_instmap(InstMap0),
 	instmap__merge(NonLocals, [InstMapB, InstMapC], if_then_else),
-	( { instmap__is_unreachable(InstMapA) } ->
-		% if the condition can never succeed, we delete the
-		% unreachable `then' part by replacing
-		%	if some [Vs] A then B else C
-		% with
-		%	(not some [Vs] A), C
-		{ goal_get_nonlocals(A, A_Vars) },
-		{ goal_get_nonlocals(C, C_Vars) },
-		{ set__union(NonLocals, C_Vars, OutsideVars) },
-		{ set__delete_list(OutsideVars, Vs, OutsideVars1) },
-		{ set__intersect(OutsideVars1, A_Vars, SomeA_NonLocals) },
-		{ goal_info_init(EmptyGoalInfo) },
-		{ goal_info_set_nonlocals(EmptyGoalInfo, SomeA_NonLocals,
-			SomeA_GoalInfo) },
-		{ instmap_delta_init_reachable(EmptyInstmapDelta) },
-		{ goal_info_set_instmap_delta(SomeA_GoalInfo,
-			EmptyInstmapDelta, NotSomeA_GoalInfo) },
-		
-		{ Goal = conj([not(some(Vs, A) - SomeA_GoalInfo) -
-				NotSomeA_GoalInfo, C]) }
-	;
-		{ Goal = if_then_else(Vs, A, B, C, SM) }
-	),
+	{ Goal = if_then_else(Vs, A, B, C, SM) },
 	mode_checkpoint(exit, "if-then-else").
 
 modecheck_goal_expr(not(A0), GoalInfo0, not(A)) -->

@@ -19,24 +19,24 @@
 
 :- type det_msg	--->
 			% warnings
-			multidet_disj(hlds_goal_info, list(hlds_goal))
-		;	det_disj(hlds_goal_info, list(hlds_goal))
-		;	semidet_disj(hlds_goal_info, list(hlds_goal))
-		;	zero_soln_disj(hlds_goal_info, list(hlds_goal))
-		;	zero_soln_disjunct(hlds_goal_info)
-		;	ite_cond_cannot_fail(hlds_goal_info)
-		;	ite_cond_cannot_succeed(hlds_goal_info)
-		;	negated_goal_cannot_fail(hlds_goal_info)
-		;	negated_goal_cannot_succeed(hlds_goal_info)
-		;	warn_obsolete(pred_id, hlds_goal_info)
+			multidet_disj(term__context, list(term__context))
+		;	det_disj(term__context, list(term__context))
+		;	semidet_disj(term__context, list(term__context))
+		;	zero_soln_disj(term__context, list(term__context))
+		;	zero_soln_disjunct(term__context)
+		;	ite_cond_cannot_fail(term__context)
+		;	ite_cond_cannot_succeed(term__context)
+		;	negated_goal_cannot_fail(term__context)
+		;	negated_goal_cannot_succeed(term__context)
+		;	warn_obsolete(pred_id, term__context)
 				% warning about calls to predicates
 				% for which there is a `:- pragma obsolete'
 				% declaration.
-		;	warn_infinite_recursion(hlds_goal_info)
+		;	warn_infinite_recursion(term__context)
 				% warning about recursive calls
 				% which would cause infinite loops.
 		;	duplicate_call(seen_call_id, term__context,
-				hlds_goal_info)
+				term__context)
 				% multiple calls with the same input args.
 			% errors
 		;	cc_pred_in_wrong_context(hlds_goal_info, determinism,
@@ -837,70 +837,55 @@ det_msg_get_type(error_in_lambda(_, _, _, _, _, _), error).
 :- pred det_report_msg(det_msg, module_info, io__state, io__state).
 :- mode det_report_msg(in, in, di, uo) is det.
 
-det_report_msg(multidet_disj(GoalInfo, Disjuncts0), _) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(multidet_disj(Context, DisjunctContexts), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
-	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
-	det_report_context_lines(Disjuncts, yes),
+	det_report_context_lines(DisjunctContexts, yes),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  has no outputs, but can succeed more than once.\n").
-det_report_msg(det_disj(GoalInfo, Disjuncts0), _) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(det_disj(Context, DisjunctContexts), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
-	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
-	det_report_context_lines(Disjuncts, yes),
+	det_report_context_lines(DisjunctContexts, yes),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  will succeed exactly once.\n").
-det_report_msg(semidet_disj(GoalInfo, Disjuncts0), _) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(semidet_disj(Context, DisjunctContexts), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
-	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
-	det_report_context_lines(Disjuncts, yes),
+	det_report_context_lines(DisjunctContexts, yes),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  is semidet, yet it has an output.\n").
-det_report_msg(zero_soln_disj(GoalInfo, Disjuncts0), _) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(zero_soln_disj(Context, DisjunctContexts), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
-	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
-	det_report_context_lines(Disjuncts, yes),
+	det_report_context_lines(DisjunctContexts, yes),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  cannot succeed.\n").
-det_report_msg(zero_soln_disjunct(GoalInfo), _) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(zero_soln_disjunct(Context), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: this disjunct will never have any solutions.\n").
-det_report_msg(ite_cond_cannot_fail(GoalInfo), _) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(ite_cond_cannot_fail(Context), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: the condition of this if-then-else cannot fail.\n").
-det_report_msg(ite_cond_cannot_succeed(GoalInfo), _) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(ite_cond_cannot_succeed(Context), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: the condition of this if-then-else cannot succeed.\n").
-det_report_msg(negated_goal_cannot_fail(GoalInfo), _) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(negated_goal_cannot_fail(Context), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: the negated goal cannot fail.\n").
-det_report_msg(negated_goal_cannot_succeed(GoalInfo), _) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(negated_goal_cannot_succeed(Context), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: the negated goal cannot succeed.\n").
-det_report_msg(warn_obsolete(PredId, GoalInfo), ModuleInfo) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(warn_obsolete(PredId, Context), ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: call to obsolete "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string(".\n").
-det_report_msg(warn_infinite_recursion(GoalInfo), _ModuleInfo) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(warn_infinite_recursion(Context), _ModuleInfo) -->
 /*
 % it would be better if we supplied more information
 % than just the line number.
@@ -920,8 +905,7 @@ det_report_msg(warn_infinite_recursion(GoalInfo), _ModuleInfo) -->
 	;
 		[]
 	).
-det_report_msg(duplicate_call(SeenCall, PrevContext, GoalInfo), ModuleInfo) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_msg(duplicate_call(SeenCall, PrevContext, Context), ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: redundant "),
 	det_report_seen_call_id(SeenCall, ModuleInfo),
@@ -985,52 +969,21 @@ det_report_seen_call_id(SeenCall, ModuleInfo) -->
 	).
 %-----------------------------------------------------------------------------%
 
-	% Insertion sort is good enough.
-
-:- pred det_report_sort_context_lines(list(hlds_goal), list(hlds_goal)).
-:- mode det_report_sort_context_lines(in, out) is det.
-
-det_report_sort_context_lines([], []).
-det_report_sort_context_lines([Goal0 | Goals0], Goals) :-
-	det_report_sort_context_lines(Goals0, Goals1),
-	det_report_insert_context_line(Goals1, Goal0, Goals).
-
-:- pred det_report_insert_context_line(list(hlds_goal), hlds_goal,
-	list(hlds_goal)).
-:- mode det_report_insert_context_line(in, in, out) is det.
-
-det_report_insert_context_line([], Goal, [Goal]).
-det_report_insert_context_line([Goal0 | Goals0], Goal, Goals) :-
-	Goal0 = _ - GoalInfo0,
-	goal_info_get_context(GoalInfo0, Context0),
-	term__context_line(Context0, Line0),
-	Goal = _ - GoalInfo,
-	goal_info_get_context(GoalInfo, Context),
-	term__context_line(Context, Line),
-	( Line < Line0 ->
-		Goals = [Goal, Goal0 | Goals0]
-	;
-		det_report_insert_context_line(Goals0, Goal, Goals1),
-		Goals = [Goal0 | Goals1]
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred det_report_context_lines(list(hlds_goal), bool, io__state, io__state).
+:- pred det_report_context_lines(list(term__context), bool, 
+		io__state, io__state).
 :- mode det_report_context_lines(in, in, di, uo) is det.
 
 det_report_context_lines([], _) --> [].
-det_report_context_lines([_ - GoalInfo | Goals], First) -->
-	{ goal_info_get_context(GoalInfo, Context) },
+det_report_context_lines([Context | Contexts], First) -->
 	{ term__context_line(Context, Line) },
 	( { First = yes } ->
 		[]
-	; { Goals = [] } ->
+	; { Contexts = [] } ->
 		io__write_string(" and ")
 	;
 		io__write_string(", ")
 	),
 	io__write_int(Line),
-	det_report_context_lines(Goals, no).
+	det_report_context_lines(Contexts, no).
 
 %-----------------------------------------------------------------------------%

@@ -80,9 +80,8 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		VarSet0, VarTypes0, Info0),
 	write_pred_progress_message("% Simplifying ", PredId, ModuleInfo0,
 		State1, State2),
+	Simplify = simplify(Warn, WarnCalls, Once, Switch, _, Excess, Calls),
 	( simplify_do_common(Info0) ->
-		Simplify = simplify(Warn, WarnCalls, Once, 
-				Switch, _, Excess, Calls),
 		% On the first pass do common structure elimination and
 		% branch merging.
 		simplify_info_set_simplify(Info0,
@@ -94,7 +93,7 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		proc_info_variables(Proc1, VarSet1),
 		proc_info_vartypes(Proc1, VarTypes1),
 		simplify_info_init(DetInfo,
-			simplify(Warn, WarnCalls, Once, no, no, Excess, no),
+			simplify(no, no, Once, no, no, Excess, no),
 			InstMap0, VarSet1, VarTypes1, Info3),
 		simplify_info_set_msgs(Info3, Msgs1, Info4),
 		%proc_info_goal(Proc1, OutGoal),
@@ -114,7 +113,7 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 			Info4, Info, State4, State5),
 	simplify_info_get_msgs(Info, Msgs2),
 	set__to_sorted_list(Msgs2, Msgs),
-	( simplify_do_warn(Info) ->
+	( (Warn = yes ; WarnCalls = yes) ->
 		det_report_msgs(Msgs, ModuleInfo, WarnCnt,
 			ErrCnt, State5, State)
 	;
@@ -371,7 +370,9 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		pred_info_get_marker_list(PredInfo, Markers),
 		list__member(request(obsolete), Markers)
 	->
-		simplify_info_add_msg(Info0, warn_obsolete(PredId, GoalInfo),
+
+		goal_info_get_context(GoalInfo, Context1),
+		simplify_info_add_msg(Info0, warn_obsolete(PredId, Context1),
 			Info1)
 	;
 		Info1 = Info0
@@ -414,7 +415,8 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		simplify__input_args_are_equiv(Args, HeadVars, ArgModes,
 			CommonInfo1, ModuleInfo1)
 	->
-		simplify_info_add_msg(Info1, warn_infinite_recursion(GoalInfo),
+		goal_info_get_context(GoalInfo, Context2),
+		simplify_info_add_msg(Info1, warn_infinite_recursion(Context2),
 				Info2)
 	;
 		Info2 = Info1
@@ -472,40 +474,64 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	% is finished, or when we start doing coroutining.
 
 simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
-		GoalInfo, Goal, GoalInfo, Info0, Info) :-
+		GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Cond0 = _ - CondInfo0,
 
 	goal_info_get_determinism(CondInfo0, CondDetism),
-	determinism_components(CondDetism, CondCanFail, _CondSolns),
+	determinism_components(CondDetism, CondCanFail, CondSolns),
 	( CondCanFail = cannot_fail ->
 		goal_to_conj_list(Cond0, CondList),
 		goal_to_conj_list(Then0, ThenList),
 		list__append(CondList, ThenList, List),
-		simplify__goal(conj(List) - GoalInfo, Goal - _,
+		simplify__goal(conj(List) - GoalInfo0, Goal - GoalInfo,
 			Info0, Info1),
-		simplify_info_add_msg(Info1, ite_cond_cannot_fail(GoalInfo),
+		goal_info_get_context(GoalInfo, Context),
+		simplify_info_add_msg(Info1, ite_cond_cannot_fail(Context),
 			Info)
-/*********
-	The following optimization is disabled, because it is
-	buggy (see the XXX below).  It's not important, since
-	most of these cases will be optimized by modes.m anyway.
 	; CondSolns = at_most_zero ->
 		% Optimize away the condition and the `then' part.
+		goal_info_get_determinism(CondInfo0, Detism),
+		det_negation_det(Detism, MaybeNegDetism),
+		( Cond0 = not(NegCond) - _ ->
+			Cond = NegCond
+		;
+			(
+				MaybeNegDetism = yes(NegDetism1),
+				(
+					NegDetism1 = erroneous,
+					instmap_delta_init_unreachable(
+						NegInstMapDelta1)
+				;
+					NegDetism1 = det,
+					instmap_delta_init_reachable(
+						NegInstMapDelta1)
+				)
+			->
+				NegDetism = NegDetism1,
+				NegInstMapDelta = NegInstMapDelta1
+			;
+				error("simplify__goal_2: cannot get negated determinism")
+			),
+			goal_info_set_determinism(CondInfo0,
+				NegDetism, NegCondInfo0),
+			goal_info_set_instmap_delta(NegCondInfo0, 
+				NegInstMapDelta, NegCondInfo),
+			Cond = not(Cond0) - NegCondInfo
+		),
 		goal_to_conj_list(Else0, ElseList),
-		% XXX Using CondInfo without updating the determinism is a bug.
-		% We should probably update other goal_info fields as well,
-		% e.g. the instmap_delta.
-		List = [not(Cond0) - CondInfo | ElseList],
-		simplify__goal(conj(List) - GoalInfo, InstMap0, DetInfo,
-			Goal - _, Msgs1),
-		Msgs = [ite_cond_cannot_succeed(GoalInfo) | Msgs1]
-**********/
+		List = [Cond | ElseList],
+		simplify__goal(conj(List) - GoalInfo0, Goal - GoalInfo,
+			Info0, Info1),
+		goal_info_get_context(GoalInfo, Context),
+		simplify_info_add_msg(Info1, ite_cond_cannot_succeed(Context),
+			Info)
 	; Else0 = disj([], _) - _ ->
 		% (A -> C ; fail) is equivalent to (A, C)
 		goal_to_conj_list(Cond0, CondList),
 		goal_to_conj_list(Then0, ThenList),
 		list__append(CondList, ThenList, List),
-		simplify__goal(conj(List) - GoalInfo, Goal - _, Info0, Info)
+		simplify__goal(conj(List) - GoalInfo0, Goal - GoalInfo,
+			Info0, Info)
 	;
 		simplify__goal(Cond0, Cond, Info0, Info1),
 		simplify_info_update_instmap(Info1, Cond, Info2),
@@ -523,7 +549,8 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		goal_info_get_instmap_delta(ElseInfo, ElseDelta),
 		simplify_info_create_branch_info(Info0, Info6,
 			[ElseDelta, CondThenDelta], Info),
-		Goal = if_then_else(Vars, Cond, Then, Else, SM)
+		Goal = if_then_else(Vars, Cond, Then, Else, SM),
+		GoalInfo = GoalInfo0
 	).
 
 simplify__goal_2(not(Goal0), GoalInfo, Goal, GoalInfo, Info0, Info) :-
@@ -532,24 +559,38 @@ simplify__goal_2(not(Goal0), GoalInfo, Goal, GoalInfo, Info0, Info) :-
 	simplify_info_get_common_info(Info0, Common),
 	simplify__goal(Goal0, Goal1, Info0, Info1),
 	simplify_info_set_common_info(Info1, Common, Info2),
+	Goal1 = _ - GoalInfo1,
+	goal_info_get_determinism(GoalInfo1, Detism),
+	determinism_components(Detism, CanFail, MaxSoln),
+	( CanFail = cannot_fail ->
+		goal_info_get_context(GoalInfo, Context),
+		simplify_info_add_msg(Info2,
+			negated_goal_cannot_fail(Context), Info)
+	; MaxSoln = at_most_zero ->
+		goal_info_get_context(GoalInfo, Context),
+		simplify_info_add_msg(Info2,
+			negated_goal_cannot_succeed(Context), Info)
+	;
+		Info = Info2
+	),
 	(
 		% replace `not true' with `fail'
 		Goal1 = conj([]) - _GoalInfo
 	->
 		map__init(Empty),
-		Goal = disj([], Empty),
-		simplify_info_add_msg(Info2,
-			negated_goal_cannot_fail(GoalInfo), Info)
+		Goal = disj([], Empty)
 	;
 		% replace `not fail' with `true'
 		Goal1 = disj([], _) - _GoalInfo2
 	->
-		Goal = conj([]),
-		simplify_info_add_msg(Info1,
-			negated_goal_cannot_succeed(GoalInfo), Info)
+		Goal = conj([])
 	;
-		Goal = not(Goal1),
-		Info = Info2
+		% remove double negation
+		Goal1 = not(SubGoal - _) - _
+	->
+		Goal = SubGoal
+	;
+		Goal = not(Goal1)
 	).
 
 simplify__goal_2(some(Vars1, Goal1), SomeInfo, Goal, SomeInfo, Info0, Info) :-
@@ -1004,7 +1045,8 @@ simplify__disj([Goal0 |Goals0], [Goal | Goals], PostBranchInstMaps0,
 		determinism_components(Detism, _, MaxSolns),
 		MaxSolns = at_most_zero
 	->
-		simplify_info_add_msg(Info4, zero_soln_disjunct(GoalInfo),
+		goal_info_get_context(GoalInfo, Context),
+		simplify_info_add_msg(Info4, zero_soln_disjunct(Context),
 			Info)
 	;
 		Info = Info4
@@ -1139,8 +1181,8 @@ simplify__contains_multisoln_goal(Goals) :-
 		).
 
 simplify_info_init(DetInfo, Simplify, InstMap, VarSet, VarTypes, Info) :-
-	set__init(Msgs),
 	common_info_init(CommonInfo),
+	set__init(Msgs),
 	Info = simplify_info(DetInfo, Msgs, Simplify, CommonInfo,
 			InstMap, VarSet, VarTypes, no, no, no). 
 

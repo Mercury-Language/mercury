@@ -187,8 +187,23 @@ detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		Liveness0, NonLocals, LiveInfo, Liveness,
 		if_then_else(Vars, Cond, Then, Else, SM)) :-
 	detect_liveness_in_goal(Cond0, Liveness0, LiveInfo, LivenessCond, Cond),
-	detect_liveness_in_goal(Then0, LivenessCond, LiveInfo, LivenessThen,
-		Then1),
+
+	%
+	% If the condition cannot succeed, any variables which become
+	% live in the else part should put in the post-birth set of the
+	% then part by add_liveness_after_goal, and the other sets
+	% should be empty.
+	%
+	Cond = _ - CondInfo,
+	goal_info_get_instmap_delta(CondInfo, CondDelta),
+	( instmap_delta_is_unreachable(CondDelta) ->
+		LivenessThen = LivenessCond,
+		Then1 = Then0
+	;
+		detect_liveness_in_goal(Then0, LivenessCond, LiveInfo,
+			LivenessThen, Then1)
+	),
+
 	detect_liveness_in_goal(Else0, Liveness0, LiveInfo, LivenessElse,
 		Else1),
 
