@@ -679,7 +679,7 @@ code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 		code_gen__generate_goal(model_det, Goal, Instr)
 	;
 		{ CodeModel = model_semi },
-		{ error("unimplemented: semidet model in det context") }
+		{ error("semidet model in det context") }
 	;
 		{ CodeModel = model_non },
 		{ error("unimplemented: nondet model in det context") }

@@ -168,7 +168,11 @@ segregate_procs_2(ModuleInfo, [PredId - PredMode|PredProcs],
 				io__state, io__state).
 :- mode global_analysis_pass(in, in, out, di, uo) is det.
 
-	% Iterate until a fixpoint is reached
+	% Iterate until a fixpoint is reached. This can be expensive
+	% if a module has many predicates with undeclared determinisms.
+	% If this ever becomes a problem, we should switch to doing
+	% iterations only on strongly connected components of the
+	% dependency graph.
 
 global_analysis_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
@@ -307,7 +311,8 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 			error("transformation of pruned disj to ite changes its determinism")
 		)
 	;
-		Detism \= InternalDetism
+		Detism \= InternalDetism,
+		Goal1 \= some(_, _)
 	->
 		Goal = some([], Goal1 - InnerInfo),
 		goal_info_set_determinism(GoalInfo0, InternalDetism, InnerInfo),
@@ -358,8 +363,9 @@ det__disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 				instmap_delta, hlds__goal_expr, determinism).
 :- mode det_infer_goal_2(in, in, in, in, in, out, out) is det.
 
-	% the determinism of a conjunction is the worst case of the elements
+	% The determinism of a conjunction is the worst case of the elements
 	% of that conjuction.
+
 det_infer_goal_2(conj(Goals0), InstMap0, MiscInfo, _, _, conj(Goals), Detism) :-
 	( Goals0 = [SingleGoal0] ->
 		% a singleton conjunction is equivalent to the goal itself
@@ -382,7 +388,7 @@ det_infer_goal_2(disj(Goals0), InstMap0, MiscInfo, _, _, disj(Goals), Detism) :-
 			can_fail, at_most_zero, Goals, Detism)
 	).
 
-	% the determinism of a switch is the worst of the determinism of each
+	% The determinism of a switch is the worst of the determinism of each
 	% of the cases. Also, if only a subset of the constructors are handled,
 	% then it is semideterministic or worse - this is determined
 	% in switch_detection.m and handled via the SwitchCanFail field.
@@ -395,16 +401,9 @@ det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), InstMap0, MiscInfo, _, _,
 	det_conjunction_canfail(SwitchCanFail, CasesCanFail, CanFail),
 	determinism_components(Detism, CanFail, CasesSolns).
 
-	% look up the determinism entry associated with the call.
+	% Look up the determinism entry associated with the call.
 	% This is the point at which annotations start changing
 	% when we iterate to fixpoint for global determinism analysis.
-	%
-	% Note that it _might_ be a good idea to record a list
-	% of dependencies, so that we avoid recomputing the determinism
-	% of clauses when none of the predicates they call changed
-	% determinism.  But let's wait until this part of the
-	% compilation becomes a bottleneck before worrying about
-	% this.
 
 det_infer_goal_2(call(PredId, ModeId, A, B, N, F), _, MiscInfo, _, _,
 		call(PredId, ModeId, A, B, N, F), Detism) :-
@@ -438,12 +437,11 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 		det_infer_goal_2(conj(List), InstMap0, MiscInfo,
 			NonLocalVars, DeltaInstMap, Goal, Detism)
 /***********
-% The following optimization is not semantically valid - fjh.
-% That depends on your view of semantics - zs.
+% The following optimization is not semantically valid if Cond can raise
+% an exception. Since this part of the compiler doesn't (yet) know about
+% the possibilities of exceptions, we forego the optimization.
 %	; CondSolns = at_most_zero ->
 %		% Optimize away the condition and the `then' part.
-%		% XXX We could give a warning if the condition
-%		% contains a (possibly indirect) call to error.
 %		Else0 = ElseGoal0 - _,
 %		det_infer_goal_2(ElseGoal0, InstMap0, MiscInfo,
 %			NonLocalVars, DeltaInstMap, Goal, Detism)
@@ -484,8 +482,9 @@ det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _, Goal, Det) :-
 	;
 		Goal = not(Goal1)
 	).
-% The following optimizations are semantically valid only if we know that
-% the goal concerned cannot raise exceptions.
+% The following optimizations are generic versions of the ones above,
+% but they are semantically valid only if we know that the goal concerned
+% cannot raise exceptions.
 %	determinism_components(NegDet, NegCanFail, NegSolns),
 %	( NegCanFail = cannot_fail, NegDet \= erroneous ->
 %		Goal = disj([])
@@ -495,23 +494,13 @@ det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _, Goal, Det) :-
 %		Goal = not(Goal1)
 %	).
 
-	% explicit quantification isn't important, since we've already
-	% stored the information about variable scope in the goal_info.
+	% Existential quantification may require a cut to throw away solutions,
+	% but we cannot rely on explicit quantification to detect this.
+	% Therefore cuts are handled in det_infer_goal.
 
 det_infer_goal_2(some(Vars, Goal0), InstMap0, MiscInfo, _, _,
 			some(Vars, Goal), Det) :-
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Det).
-
-:- pred det_find_at_most_many(list(hlds__goal)).
-:- mode det_find_at_most_many(in) is semidet.
-
-det_find_at_most_many([_Goal - GoalInfo | Goals]) :-
-	(
-		goal_info_get_determinism(GoalInfo, Detism),
-		determinism_components(Detism, _, at_most_many)
-	;
-		det_find_at_most_many(Goals)
-	).
 
 %-----------------------------------------------------------------------------%
 
@@ -725,7 +714,7 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 				DeclaredDetism, InferredDetism),
 			{ proc_info_goal(ProcInfo, Goal) },
 			{ MiscInfo = misc_info(ModuleInfo1, PredId, ModeId) },
-			det_diagnose_goal(Goal, DeclaredDetism, MiscInfo, _)
+			det_diagnose_goal(Goal, DeclaredDetism, [], MiscInfo, _)
 			% XXX with the right verbosity options, we want to
 			% call report_determinism_problem only if diagnose
 			% returns false, i.e. it didn't print a message.
@@ -834,18 +823,41 @@ compare_solncounts(at_most_many, at_most_many, sameas).
 
 %-----------------------------------------------------------------------------%
 
+:- type switch_context --->	switch_context(var, cons_id).
+
+:- pred det_diagnose_write_switch_context(term__context, list(switch_context),
+	misc_info, io__state, io__state).
+:- mode det_diagnose_write_switch_context(in, in, in, di, uo) is det.
+
+det_diagnose_write_switch_context(_Context, [], _MiscInco) --> [].
+det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
+		MiscInfo) -->
+	prog_out__write_context(Context),
+	{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
+	{ proc_info_variables(ProcInfo, Varset) },
+	{ SwitchContext = switch_context(Var, ConsId) },
+	io__write_string("  Inside the case "),
+	hlds_out__write_cons_id(ConsId),
+	io__write_string(" of the switch on "),
+	mercury_output_var(Var, Varset),
+	io__write_string(":\n"),
+	det_diagnose_write_switch_context(Context, SwitchContexts, MiscInfo).
+
+%-----------------------------------------------------------------------------%
+
 	% The given goal should have determinism Desired, but doesn't.
 	% Find out what is wrong and print a report of the cause.
 
-:- pred det_diagnose_goal(hlds__goal, determinism, misc_info, bool,
-	io__state, io__state).
-:- mode det_diagnose_goal(in, in, in, out, di, uo) is det.
+:- pred det_diagnose_goal(hlds__goal, determinism, list(switch_context),
+	misc_info, bool, io__state, io__state).
+:- mode det_diagnose_goal(in, in, in, in, out, di, uo) is det.
 
-det_diagnose_goal(Goal - GoalInfo, Desired, MiscInfo, Diagnosed) -->
+det_diagnose_goal(Goal - GoalInfo, Desired, SwitchContext, MiscInfo,
+		Diagnosed) -->
 	{ goal_info_get_determinism(GoalInfo, Actual) },
 	( { compare_determinisms(Desired, Actual, tighter) } ->
 		det_diagnose_goal_2(Goal, GoalInfo, Desired, Actual,
-			MiscInfo, Diagnosed)
+			SwitchContext, MiscInfo, Diagnosed)
 	;
 		{ Diagnosed = no }
 	).
@@ -853,16 +865,18 @@ det_diagnose_goal(Goal - GoalInfo, Desired, MiscInfo, Diagnosed) -->
 %-----------------------------------------------------------------------------%
 
 :- pred det_diagnose_goal_2(hlds__goal_expr, hlds__goal_info,
-	determinism, determinism, misc_info, bool, io__state, io__state).
-:- mode det_diagnose_goal_2(in, in, in, in, in, out, di, uo) is det.
+	determinism, determinism, list(switch_context), misc_info, bool,
+	io__state, io__state).
+:- mode det_diagnose_goal_2(in, in, in, in, in, in, out, di, uo) is det.
 
-det_diagnose_goal_2(conj(Goals), _GoalInfo, Desired, _Actual, MiscInfo,
+det_diagnose_goal_2(conj(Goals), _GoalInfo, Desired, _Actual, Context, MiscInfo,
 		Diagnosed) -->
-	det_diagnose_conj(Goals, Desired, MiscInfo, Diagnosed).
+	det_diagnose_conj(Goals, Desired, Context, MiscInfo, Diagnosed).
 
-det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, _Actual, MiscInfo,
-		Diagnosed) -->
-	det_diagnose_disj(Goals, Desired, MiscInfo, 0, Clauses, Diagnosed1),
+det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, _Actual, SwitchContext,
+		MiscInfo, Diagnosed) -->
+	det_diagnose_disj(Goals, Desired, SwitchContext, MiscInfo, 0, Clauses,
+		Diagnosed1),
 	{ determinism_components(Desired, _, DesSolns) },
 	(
 		{ DesSolns \= at_most_many },
@@ -876,18 +890,20 @@ det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, _Actual, MiscInfo,
 		{ Diagnosed = Diagnosed1 }
 	).
 
-	% the determinism of a switch is the worst of the determinism of each of
+	% The determinism of a switch is the worst of the determinism of each of
 	% the cases. Also, if only a subset of the constructors are handled,
 	% then it is semideterministic or worse - this is determined
-	% in switch_detection.m and handled via the LocalDet field.
+	% in switch_detection.m and handled via the CanFail field.
 
 det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
-		Desired, _Actual, MiscInfo, Diagnosed) -->
+		Desired, _Actual, SwitchContext, MiscInfo, Diagnosed) -->
 	(
 		{ SwitchCanFail = can_fail },
 		{ determinism_components(Desired, cannot_fail, _) }
 	->
 		{ goal_info_context(GoalInfo, Context) },
+		det_diagnose_write_switch_context(Context, SwitchContext,
+			MiscInfo),
 		prog_out__write_context(Context),
 		{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
 		{ proc_info_variables(ProcInfo, Varset) },
@@ -915,11 +931,12 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
 	;
 		{ Diagnosed1 = no }
 	),
-	det_diagnose_switch(Cases, Desired, MiscInfo, Diagnosed2),
+	det_diagnose_switch(Var, Cases, Desired, SwitchContext, MiscInfo,
+		Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
 det_diagnose_goal_2(call(PredId, ModeId, _, _, _, _), GoalInfo,
-		Desired, Actual, misc_info(ModuleInfo, _, _), yes) -->
+		Desired, Actual, _, misc_info(ModuleInfo, _, _), yes) -->
 	{ goal_info_context(GoalInfo, Context) },
 	{ module_info_preds(ModuleInfo, PredTable) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
@@ -973,7 +990,7 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, _, _), GoalInfo,
 	).
 
 det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
-		Desired, Actual, MiscInfo, Diagnosed) -->
+		Desired, Actual, _, MiscInfo, Diagnosed) -->
 	{ goal_info_context(GoalInfo, Context) },
 	{ determinism_components(Desired, DesiredCanFail, _DesiredSolns) },
 	{ determinism_components(Actual, ActualCanFail, _ActualSolns) },
@@ -1004,7 +1021,7 @@ det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 	).
 
 det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
-		Desired, _Actual, MiscInfo, Diagnosed) -->
+		Desired, _Actual, SwitchContext, MiscInfo, Diagnosed) -->
 	{
 		determinism_components(Desired, _DesiredCanFail, DesiredSolns),
 		Cond = _CondGoal - CondInfo,
@@ -1016,16 +1033,17 @@ det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
 		{ DesiredSolns \= at_most_many }
 	->
 		{ determinism_components(DesiredCond, can_fail, DesiredSolns) },
-		det_diagnose_goal(Cond, DesiredCond, MiscInfo, Diagnosed1)
+		det_diagnose_goal(Cond, DesiredCond, SwitchContext, MiscInfo,
+			Diagnosed1)
 	;
 		{ Diagnosed1 = no }
 	),
-	det_diagnose_goal(Then, Desired, MiscInfo, Diagnosed2),
-	det_diagnose_goal(Else, Desired, MiscInfo, Diagnosed3),
+	det_diagnose_goal(Then, Desired, SwitchContext, MiscInfo, Diagnosed2),
+	det_diagnose_goal(Else, Desired, SwitchContext, MiscInfo, Diagnosed3),
 	{ bool__or(Diagnosed2, Diagnosed3, Diagnosed23) },
 	{ bool__or(Diagnosed1, Diagnosed23, Diagnosed) }.
 
-det_diagnose_goal_2(not(_), GoalInfo, _, _, _, yes) -->
+det_diagnose_goal_2(not(_), GoalInfo, _, _, _, _, yes) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("  It should be impossible to get a determinism error\n"),
@@ -1033,7 +1051,7 @@ det_diagnose_goal_2(not(_), GoalInfo, _, _, _, yes) -->
 	io__write_string("  with a negated goal that stays a negation.\n").
 
 det_diagnose_goal_2(some(_Vars, Goal), _, Desired, Actual,
-		MiscInfo, Diagnosed) -->
+		SwitchContext, MiscInfo, Diagnosed) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_determinism(GoalInfo, Internal) },
 	{ Actual = Internal ->
@@ -1042,43 +1060,50 @@ det_diagnose_goal_2(some(_Vars, Goal), _, Desired, Actual,
 		determinism_components(Desired, CanFail, _),
 		determinism_components(InternalDesired, CanFail, at_most_many)
 	},
-	det_diagnose_goal(Goal, InternalDesired, MiscInfo, Diagnosed).
+	det_diagnose_goal(Goal, InternalDesired, SwitchContext, MiscInfo,
+		Diagnosed).
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_diagnose_conj(list(hlds__goal), determinism, misc_info, bool,
-	io__state, io__state).
-:- mode det_diagnose_conj(in, in, in, out, di, uo) is det.
+:- pred det_diagnose_conj(list(hlds__goal), determinism,
+	list(switch_context), misc_info, bool, io__state, io__state).
+:- mode det_diagnose_conj(in, in, in, in, out, di, uo) is det.
 
-det_diagnose_conj([], _Desired, _MiscInfo, no) --> [].
-det_diagnose_conj([Goal | Goals], Desired, MiscInfo, Diagnosed) -->
-	det_diagnose_goal(Goal, Desired, MiscInfo, Diagnosed1),
-	det_diagnose_conj(Goals, Desired, MiscInfo, Diagnosed2),
+det_diagnose_conj([], _Desired, _SwitchContext, _MiscInfo, no) --> [].
+det_diagnose_conj([Goal | Goals], Desired, SwitchContext, MiscInfo,
+		Diagnosed) -->
+	det_diagnose_goal(Goal, Desired, SwitchContext, MiscInfo, Diagnosed1),
+	det_diagnose_conj(Goals, Desired, SwitchContext, MiscInfo, Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
-:- pred det_diagnose_disj(list(hlds__goal), determinism, misc_info,
-	int, int, bool, io__state, io__state).
-:- mode det_diagnose_disj(in, in, in, in, out, out, di, uo) is det.
+:- pred det_diagnose_disj(list(hlds__goal), determinism,
+	list(switch_context), misc_info, int, int, bool, io__state, io__state).
+:- mode det_diagnose_disj(in, in, in, in, in, out, out, di, uo) is det.
 
-det_diagnose_disj([], _Desired, _MiscInfo, Clauses, Clauses, no) --> [].
-det_diagnose_disj([Goal | Goals], Desired, MiscInfo,
+det_diagnose_disj([], _Desired, _SwitchContext, _MiscInfo,
+		Clauses, Clauses, no) --> [].
+det_diagnose_disj([Goal | Goals], Desired, SwitchContext, MiscInfo,
 		Clauses0, Clauses, Diagnosed) -->
 	{ determinism_components(Desired, _, DesiredSolns) },
 	{ determinism_components(ClauseDesired, can_fail, DesiredSolns) },
-	det_diagnose_goal(Goal, ClauseDesired, MiscInfo, Diagnosed1),
+	det_diagnose_goal(Goal, ClauseDesired, SwitchContext, MiscInfo,
+		Diagnosed1),
 	{ Clauses1 is Clauses0 + 1 },
-	det_diagnose_disj(Goals, Desired, MiscInfo, Clauses1, Clauses,
-		Diagnosed2),
+	det_diagnose_disj(Goals, Desired, SwitchContext, MiscInfo,
+		Clauses1, Clauses, Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
-:- pred det_diagnose_switch(list(case), determinism, misc_info, bool,
-	io__state, io__state).
-:- mode det_diagnose_switch(in, in, in, out, di, uo) is det.
+:- pred det_diagnose_switch(var, list(case), determinism,
+	list(switch_context), misc_info, bool, io__state, io__state).
+:- mode det_diagnose_switch(in, in, in, in, in, out, di, uo) is det.
 
-det_diagnose_switch([], _Desired, _MiscInfo, no) --> [].
-det_diagnose_switch([case(_, Goal) | Cases], Desired, MiscInfo, Diagnosed) -->
-	det_diagnose_goal(Goal, Desired, MiscInfo, Diagnosed1),
-	det_diagnose_switch(Cases, Desired, MiscInfo, Diagnosed2),
+det_diagnose_switch(_Var, [], _Desired, _SwitchContext, _MiscInfo, no) --> [].
+det_diagnose_switch(Var, [case(ConsId, Goal) | Cases], Desired,
+		SwitchContext0, MiscInfo, Diagnosed) -->
+	{ SwitchContext1 = [switch_context(Var, ConsId) | SwitchContext0] },
+	det_diagnose_goal(Goal, Desired, SwitchContext1, MiscInfo, Diagnosed1),
+	det_diagnose_switch(Var, Cases, Desired, SwitchContext0, MiscInfo,
+		Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
 %-----------------------------------------------------------------------------%
