@@ -318,7 +318,7 @@
 % ways that we could generate code, depending on whether
 % we are aiming to maximize readability, or whether we
 % prefer to generate code that may be more efficient
-% but is a little less readabile.  The more readable method
+% but is a little less readable.  The more readable method
 % puts the generated goals in the same order that
 % they occur in the source code:
 %
@@ -337,7 +337,7 @@
 %	}
 %
 % The more efficient method generates the goals in
-% reverse order, so its less readable, but it has fewer
+% reverse order, so it's less readable, but it has fewer
 % function calls and can make it easier for the C compiler
 % to inline things:
 %
