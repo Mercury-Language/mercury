@@ -279,17 +279,17 @@ typedef enum {
 ** the values need to be distinct; this is why MR_SHORT_COUNT_BITS is
 ** more than 8.)
 **
-** The MR_sll_locns_types field point a memory area that contain three vectors
-** back to back. The first vector has #Long + #Short word-sized elements,
-** each of which is a pointer to a MR_PseudoTypeInfo giving the type of a live
-** data item, with a small integer instead of a pointer representing a special
-** kind of live data item (e.g. a saved succip or hp). The second vector is
-** an array of #Long MR_Long_Lvals, and the third is an array of #Short
-** MR_Short_Lvals, each of which describes a location. The pseudotypeinfo
-** pointed to by the slot at subscript i in the first vector describes
-** the type of the data stored in slot i in the second vector if i < #Long, and
-** the type of the data stored in slot i - #Long in the third vector
-** otherwise.
+** The MR_sll_locns_types field points to a memory area that contains three
+** vectors back to back. The first vector has #Long + #Short word-sized
+** elements, each of which is a pointer to a MR_PseudoTypeInfo giving the type
+** of a live data item, with a small integer instead of a pointer representing
+** a special kind of live data item (e.g. a saved succip or hp). The second
+** vector is an array of #Long MR_Long_Lvals, and the third is an array of
+** #Short MR_Short_Lvals, each of which describes a location. The
+** pseudotypeinfo pointed to by the slot at subscript i in the first vector
+** describes the type of the data stored in slot i in the second vector if
+** i < #Long, and the type of the data stored in slot i - #Long in the third
+** vector otherwise.
 **
 ** The MR_sll_var_nums field may be NULL, which means that there is no
 ** information about the variable numbers of the live values. If the field
@@ -348,7 +348,8 @@ typedef	struct MR_Label_Layout_Struct {
 
 typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
-	MR_int_least16_t		MR_sll_port;
+	MR_int_least8_t			MR_sll_port;
+	MR_int_least8_t			MR_sll_hidden;
 	MR_int_least16_t		MR_sll_goal_path;
 	MR_Integer			MR_sll_var_count; /* < 0 */
 } MR_Label_Layout_No_Var_Info;
@@ -409,9 +410,12 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 */ 
 
 #define MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(label, entry) \
-	MR_Label_Layout_No_Var_Info mercury_data__label_layout__##label = {\
-		(MR_Proc_Layout *) &mercury_data__proc_layout__##entry,	\
+	MR_Label_Layout_No_Var_Info					\
+	MR_PASTE2(mercury_data__label_layout__, label) = {		\
+		(MR_Proc_Layout *) &					\
+			MR_PASTE2(mercury_data__proc_layout__, entry),	\
 		-1,							\
+		MR_FALSE,						\
 		0,							\
 		-1		/* No info about live values */		\
 	}
@@ -790,14 +794,15 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
  #define	MR_INIT_PROC_LAYOUT_ADDR(entry)				\
 		do {							\
 			((MR_Proc_Layout *) &				\
-			mercury_data__proc_layout__##entry)		\
+			MR_PASTE2(mercury_data__proc_layout__, entry))	\
 				->MR_sle_code_addr = MR_ENTRY(entry);	\
 		} while (0)
 #endif
 
 #define MR_MAKE_PROC_LAYOUT(entry, detism, slots, succip_locn,		\
 		pf, module, name, arity, mode) 				\
-	MR_Proc_Layout_User mercury_data__proc_layout__##entry = {	\
+	MR_Proc_Layout_User						\
+	MR_PASTE2(mercury_data__proc_layout__, entry) = {		\
 		{							\
 			MR_MAKE_PROC_LAYOUT_ADDR(entry),		\
 			succip_locn,					\
