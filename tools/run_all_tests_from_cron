@@ -12,7 +12,14 @@
 # should be updated manually.
 
 #-----------------------------------------------------------------------------#
+tmpfile=/tmp/run_test$$
+tmpscript=/tmp/test_mercury$$
+mail_subject=/tmp/test_mercury_mail$$
+trap 'rm -f $tmpfile $tmpscript $mail_subject; exit 1' 1 2 3 13 15
 
+# Redirect all output to $tmpfile to stop cron mailing
+# content-free messages to mercury@cs.mu.oz.au.
+{
 tm_dir=/home/mercury/public/test_mercury
 
 #-----------------------------------------------------------------------------#
@@ -63,7 +70,6 @@ export PATH
 CVSROOT=/home/mercury1/repository
 export CVSROOT
 
-tmpscript=/tmp/test_mercury$$
 cd /home/mercury/public/test_mercury/scripts;
 cvs checkout mercury/tools/test_mercury
 cp mercury/tools/test_mercury $tmpscript
@@ -123,24 +129,10 @@ mv -f $tm_dir/logs/$logname $tm_dir/logs/old 2>/dev/null
 mv -f $tm_dir/logs/$logname.errs $tm_dir/logs/old 2>/dev/null
 logfile="$tm_dir/logs/$logname"
 
-tmpfile=/tmp/run_test$$
-trap 'rm -f $tmpfile $tmpscript; exit 1' 1 2 3 13 15
-
-# We can't just fold this into the case statement below because sh
-# (but not bash) executes compound commands with redirection in a
-# sub-shell, and we need the value of $test_status in the subject
-# for the mail below.
 if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $BRANCH $C_COMPILER \
 		> $logfile 2>&1
 then
 	test_status="succeeded"
-else
-	test_status="FAILED"
-fi
-
-{
-case "$test_status" in
-    succeeded)
 	fgrep '**' $logfile > $logfile.errs
 	if [ -s $logfile.errs ]; then
 		echo "test passed (with some errors supressed/ignored)"
@@ -166,8 +158,8 @@ case "$test_status" in
 		size mercury_compile
 		echo
 	} >> $tm_dir/logs/sizes
-	;;
-    FAILED)
+else
+	test_status="FAILED"
 	fgrep '**' $logfile > $logfile.errs
 	echo test FAILED
 	echo log file in $logfile
@@ -175,15 +167,17 @@ case "$test_status" in
 	echo
 	echo last 20 lines of log file:
 	tail -20 $logfile
-	;;
-esac
+fi
+
+# We can't just set a variable containing the mail subject string
+# because sh (but not bash) executes compound commands with redirection
+# in a sub-shell.
+echo -n "test_mercury $test_status: $BRANCH $HOST $C_COMPILER" > $mail_subject
 } > $tmpfile 2>&1
 
-# NB we can't just pipe into `mail', because `mail' times out while
-# waiting for the message.  So we need to use a temp file.
-# XXX This may not be necessary now we're using mutt on the local
-# machine to send the mail.
-mutt -s "test_mercury $test_status: $BRANCH $HOST $C_COMPILER" stayl < $tmpfile
-rm -f $tmpfile $tmpscript
+# NB we can't just pipe into `mutt' because the $mail_subject file
+# needs to be written before `mutt' is started.
+mutt -s "`cat $mail_subject`" stayl < $tmpfile
+rm -f $tmpfile $tmpscript $mail_subject
 
 #-----------------------------------------------------------------------------#
