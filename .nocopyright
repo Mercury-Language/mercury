@@ -2,6 +2,7 @@
 config.sub
 config.guess
 NEWS
+WORK_IN_PROGRESS
 .mode-constraints-sync-tag
 .reuse_trunk_sync_tag
 .dotnet_foreign_trunk_sync_tag
