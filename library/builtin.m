@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -398,6 +398,19 @@ get_one_solution(CCPred) = OutVal :-
 "
 	Y = X;
 ").
+:- pragma foreign_proc("Java",
+	cc_cast(X :: (pred(out) is cc_multi)) = (Y :: out(pred(out) is det)),
+	[will_not_call_mercury, thread_safe],
+"
+	Y = X;
+").
+:- pragma foreign_proc("Java",
+	cc_cast(X :: (pred(out) is cc_nondet)) =
+		(Y :: out(pred(out) is semidet)),
+	[will_not_call_mercury, thread_safe],
+"
+	Y = X;
+").
 
 :- pragma promise_pure(promise_only_solution_io/4).
 promise_only_solution_io(Pred, X) -->
@@ -419,6 +432,13 @@ get_one_solution_io(Pred, X) -->
 	Y = X;
 ").
 :- pragma foreign_proc("C#", 
+	cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
+		(Y :: out(pred(out, di, uo) is det)),
+	[will_not_call_mercury, thread_safe],
+"
+	Y = X;
+").
+:- pragma foreign_proc("Java", 
 	cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
 		(Y :: out(pred(out, di, uo) is det)),
 	[will_not_call_mercury, thread_safe],
@@ -618,6 +638,57 @@ special__Compare____tuple_0_0(ref object[] result,
 
 ").
 
+:- pragma foreign_code("Java",
+"
+public static java.lang.Object
+deep_copy(java.lang.Object original) {
+	java.lang.Object clone;
+
+	if (original == null) {
+		return null;
+	}
+
+	java.lang.Class cls = original.getClass();
+
+	if (cls.getName().equals(""java.lang.String"")) {
+		return new java.lang.String((java.lang.String) original);
+	}
+
+	if (cls.isArray()) {
+		int length = java.lang.reflect.Array.getLength(original);
+		clone = java.lang.reflect.Array.newInstance(
+				cls.getComponentType(), length);
+		for (int i = 0; i < length; i++) {
+			java.lang.Object X, Y;
+			X = java.lang.reflect.Array.get(original, i);
+			Y = deep_copy(X);
+			java.lang.reflect.Array.set(clone, i, Y);
+		}
+		return clone;
+	}
+
+	/*
+	** XXX Two possible approaches are possible here:
+	**
+	** 1. Get all mercury objects to implement the Serializable interface.
+	**    Then this whole function could be replaced with code that writes
+	**    the Object out via an ObjectOutputStream into a byte array (or
+	**    something), then reads it back in again, thus creating a copy.
+	** 2. Call cls.getConstructors(), then iterate through the resulting
+	**    array until one of them allows instantiation with all parameters
+	**    set to 0 or null (or some sort of recursive call that attempts to
+	**    instantiate the parameters).
+	**    This approach is of course not guaranteed to work all the time.
+	**    Then we can just copy the fields across using Reflection.
+	**
+	** For now, we're just throwing an exception.
+	*/
+
+	throw new java.lang.RuntimeException(
+			""deep copy not yet fully implemented"");
+}
+").
+
 %-----------------------------------------------------------------------------%
 
 % unsafe_promise_unique is a compiler builtin.
@@ -650,6 +721,20 @@ special__Compare____tuple_0_0(ref object[] result,
 ").
 
 :- pragma foreign_proc("C#",
+	copy(X::in, Y::uo),
+	[may_call_mercury, thread_safe, promise_pure],
+"
+        Y = deep_copy(X);
+").
+
+:- pragma foreign_proc("Java",
+	copy(X::ui, Y::uo),
+	[may_call_mercury, thread_safe, promise_pure],
+"
+        Y = deep_copy(X);
+").
+
+:- pragma foreign_proc("Java",
 	copy(X::in, Y::uo),
 	[may_call_mercury, thread_safe, promise_pure],
 "
