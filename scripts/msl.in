@@ -19,9 +19,9 @@
 #	-o, --output
 # Environment variables: MERCURY_SP_LIB_DIR, MERCURY_SP_LIB_OBJS
 
-SP=${MERCURY_SICSTUS_PROLOG=@LIBDIR@/sicstus/@FULLARCH@/library.sicstus.debug}
 SPLIBDIR=${MERCURY_SP_LIB_DIR=@LIBDIR@/sicstus/@FULLARCH@}
-LIBRARY_OBJS=${MERCURY_SP_LIB_OBJS=`cd $SPLIBDIR; echo *.ql`}
+SP=${MERCURY_SICSTUS_PROLOG=$SPLIBDIR/library.sicstus.debug}
+LIBRARY_OBJS=${MERCURY_SP_LIB_OBJS=""}
 
 verbose=false
 debug=false
@@ -56,8 +56,10 @@ while true; do
 done
 
 objlist=
-for obj in $LIBRARY_OBJS; do
-	if [ "$obj" = "sp_lib.ql" ]; then
+for obj in $LIBRARY_OBJS 'kludge for broken shells'; do
+	if [ "$obj" = 'kludge for broken shells' ]; then
+		true
+	elif [ "$obj" = "sp_lib.ql" ]; then
 		sp_lib=$SPLIBDIR/$obj
 	elif echo "" "$objlist" "$@" "" | grep " $obj " > /dev/null; then
 		true
@@ -83,6 +85,7 @@ if $debug; then
 		  prolog_flag(compiling, _, fastcode),
 		  unix(argv(Files)), load(Files),
 		  abolish(mercury_do_save),
+		  garbage_collect,
 		  save('$target', _),
 		  version
 		), (print_message(error, Error), halt)))).
