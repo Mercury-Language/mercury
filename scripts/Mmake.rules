@@ -74,6 +74,7 @@ main_target: $(MAIN_TARGET)
 	@-[ ! -f $*.dep ] || chmod +w $*.dep
 	$(MCD) $(MCDFLAGS) $<
 	@-chmod -w $*.dep
+	-rm -f $*_init.c
 
 .dep.doit:
 	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
