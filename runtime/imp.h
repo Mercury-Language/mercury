@@ -26,18 +26,16 @@ typedef struct s_entry
 {
 	const char	*e_name;   /* name of the procedure	     */
 	Code		*e_addr;   /* address of the code	     */
-	Code		*e_input;  /* address of the input generator */
 } Entry;
 
 #define	MAXLABELS	800
 
-#define	makeentry(n, a, i)					\
+#define	makeentry(n, a)						\
 			(					\
 				assert(cur_entry >= 0),		\
 				assert(cur_entry < MAXLABELS), 	\
 				entries[cur_entry].e_name  = n,	\
 				entries[cur_entry].e_addr  = a,	\
-				entries[cur_entry].e_input = i,	\
 				cur_entry += 1,			\
 				((void)0)			\
 			)
@@ -48,7 +46,7 @@ typedef struct s_entry
 #ifdef SPEED
 #define makelabel(n, a)	/* nothing */
 #else
-#define	makelabel(n,a)	makeentry((n),(a),NULL)
+#define	makelabel(n,a)	makeentry((n),(a))
 #endif
 
 /* a table of the entry points defined by the various modules */
@@ -162,6 +160,12 @@ extern	Word	*cpstackmin;
 
 /* DEFINITIONS FOR MANIPULATING THE HEAP */
 
+#define	incr_hp(n)	(					\
+				hp += (n),			\
+				heap_overflow_check(),		\
+				(void)0				\
+			)
+
 /* Note that gcc optimizes `hp += 2; return hp - 2;' to
    `tmp = hp; hp += 2; return tmp;', so we don't need to
    use gcc's expression statements here */
@@ -186,6 +190,19 @@ extern	Word	*cpstackmin;
 /* DEFINITIONS FOR MANIPULATING THE STACK */
 
 #define	stackvar(n)	sp[-n]
+
+#define	incr_sp(n)	(					\
+				sp += (n),			\
+				stack_overflow_check(),		\
+				(void)0				\
+			)
+
+#define	decr_sp(n)	(					\
+				sp -= (n),			\
+				stack_underflow_check(),	\
+				(void)0				\
+			)
+
 
 #define	push(w)		(					\
 				*sp = (Word) (w),		\
