@@ -792,11 +792,6 @@ get_type_info_for_type_info = TypeDesc :-
 
 %-----------------------------------------------------------------------------%
 
-	% XXX This is just here so that the library compiles in grade java.
-	% pseudo_type_desc's have not been implemented for the Java backend
-	% yet. 
-:- pragma foreign_type("Java", pseudo_type_desc, "java.lang.Object").
-
 :- pragma foreign_code("Java", "
 	public static class Type_desc_0 {
 		public mercury.runtime.TypeInfo_Struct struct;
