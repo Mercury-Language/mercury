@@ -27,10 +27,19 @@
 
 %-----------------------------------------------------------------------------%
 
-	% XXX - This predicate should be a command-line option.
+	% XXX - These predicates should be command-line options.
+
 :- pred option_write_line_numbers.
 option_write_line_numbers :- fail.
 
+	% The following is a hard-coded hack.
+
+:- pred option_handle_functor_overloading(string).
+:- mode option_handle_functor_overloading(input).
+
+option_handle_functor_overloading("character").
+
+%-----------------------------------------------------------------------------%
 	% Validate command line arguments
 
 :- pred main_predicate(list(string), io__state, io__state).
@@ -126,15 +135,26 @@ convert_to_goedel(ProgName, Items) -->
 	  reverse(Items2, Items3) },
 	{ goedel_replace_int_integer(Items3, Items4) },
 	io__write_string(StdErr, " done\n"),
-	io__write_string(StdErr, "% Writing output...\n"),
-	io__write_string("MODULE       "),
 	{ convert_functor_name(ProgName, GoedelName) },
-	io__write_string(GoedelName),
-	io__write_string(".\n"),
-	io__write_string("IMPORT       MercuryCompat.\n"),
-	io__write_string("\n"),
-	goedel_output_item_list(Items4),
-	io__write_string(StdErr, "% done\n").
+	{ string__append(GoedelName, ".loc", OutputFileName) },
+	io__tell(OutputFileName, Res),
+	( { Res = ok } ->
+		io__write_string(StdErr, "% Writing output to "),
+		io__write_string(StdErr, OutputFileName),
+		io__write_string(StdErr, "...\n"),
+		io__write_string("MODULE       "),
+		io__write_string(GoedelName),
+		io__write_string(".\n"),
+		io__write_string("IMPORT       MercuryCompat.\n"),
+		io__write_string("\n"),
+		goedel_output_item_list(Items4),
+		io__write_string(StdErr, "% done\n"),
+		io__told
+	;
+		io__write_string(StdErr, "Error: couldn't open file `"),
+		io__write_string(StdErr, OutputFileName),
+		io__write_string(StdErr, "' for output.\n")
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -432,13 +452,47 @@ goedel_output_type_defn_2(eqv_type(_Name, _Args, _Body), _VarSet, Context) -->
 	io__set_output_stream(OldStream, _).
 
 goedel_output_type_defn_2(du_type(Name, Args, Body), VarSet, Context) -->
+	{ unqualify_name(Name, Name2) },
+	{ convert_functor_name(Name2, Name3) },
+	( { option_handle_functor_overloading(Name2) } ->
+		{ string__append("Type__", Name3, TypeModule) },
+		{ string__append(TypeModule, ".exp", TypeModuleExport) },
+		{ string__append(TypeModule, ".loc", TypeModuleLocal) },
+		io__output_stream(OldStream),
+		io__tell(TypeModuleExport, _Res),	% XXX handle errors
+		io__write_string("EXPORT       "),
+		io__write_string(TypeModule),
+		io__write_string(".\n"),
+		io__write_string("IMPORT       MercuryCompat.\n"),
+		io__write_string("\n"),
+		goedel_output_type_defn_3(Name2, Name3, Args, Body, VarSet,
+				Context),
+		io__told,
+		io__tell(TypeModuleLocal, _Res),	% XXX handle errors
+		io__write_string("LOCAL       "),
+		io__write_string(TypeModule),
+		io__write_string(".\n"),
+		io__told,
+		io__set_output_stream(OldStream, _),
+		io__write_string("IMPORT       "),
+		io__write_string(TypeModule),
+		io__write_string(".\n")
+	;
+		goedel_output_type_defn_3(Name2, Name3, Args, Body, VarSet,
+				Context)
+	).
+
+:- pred goedel_output_type_defn_3(string, string, list(term), goal, varset,
+			term__context, io__state, io__state).
+:- mode goedel_output_type_defn_3(input, input, input, input, input, input,
+			di, uo).
+
+goedel_output_type_defn_3(Name2, Name3, Args, Body, VarSet, Context) -->
 	( { option_write_line_numbers } ->
 		goedel_write_context(Context),
 		io__write_string("\n")
 	),
 	{ length(Args, Arity) },
-	{ unqualify_name(Name, Name2) },
-	{ convert_functor_name(Name2, Name3) },
 	(if
 		{ Arity = 0 }
 	then

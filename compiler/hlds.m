@@ -459,7 +459,10 @@ moduleinfo_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
 :- pred predinfo_clauses(pred_info, clause_list).
 :- mode predinfo_clauses(input, output).
 
-:- mode predinfo_procedures(input, output).
+:- pred predinfo_set_clauses(pred_info, clause_list, pred_info).
+:- mode predinfo_set_clauses(input, input, output).
+
+:- pred predinfo_procedures(pred_info, proc_table).
 :- mode predinfo_procedures(input, output).
 
 %-----------------------------------------------------------------------------%
@@ -481,6 +484,10 @@ predinfo_procedures(PredInfo, Procs) :-
 
 predinfo_clauses(PredInfo, Clauses) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs, _).
+
+predinfo_set_clauses(PredInfo0, Clauses, PredInfo) :-
+	PredInfo0 = predicate(_TypeVars, _ArgTypes, _Cond, _, _Procs, C),
+	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs, C).
 
 predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, _Cond, _Clauses, _Procs, _).

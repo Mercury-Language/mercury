@@ -107,7 +107,7 @@ io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		io__unary_prefix_op(Functor)
 	->
 		io__write_char('('),
-		io__write_constant_2(Functor),
+		io__write_constant(Functor),
 		io__write_char(' '),
 		io__write_term_2(PrefixArg, VarSet0, N0, VarSet, N),
 		io__write_char(')')
@@ -118,7 +118,7 @@ io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		io__write_char('('),
 		io__write_term_2(PostfixArg, VarSet0, N0, VarSet, N),
 		io__write_char(' '),
-		io__write_constant_2(Functor),
+		io__write_constant(Functor),
 		io__write_char(')')
 	;
 		{ Args = [Arg1, Arg2] },
@@ -127,12 +127,12 @@ io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		io__write_char('('),
 		io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
 		io__write_char(' '),
-		io__write_constant_2(Functor),
+		io__write_constant(Functor),
 		io__write_char(' '),
 		io__write_term_2(Arg2, VarSet1, N1, VarSet, N),
 		io__write_char(')')
 	;
-		io__write_constant_2(Functor),
+		io__write_constant(Functor),
 		(
 			{ Args = [X|Xs] }
 		->

@@ -10,15 +10,26 @@
 % of the parse tree created by prog_io.
 
 % WARNING - this module is mostly junk at the moment!
-% (The format of the output is pretty terrible,
-% it includes calls to write/1 in various places,
-% and it has definite bugs at the moment.)
-% Consider it as just a debugging aid.
+% Only the first hundred lines or so are meaningful.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- interface.
+
+:- pred prog_out__write_messages(message_list, io__state, io__state).
+:- mode prog_out__write_messages(input, di, uo).
+
+:- pred prog_out__write_context(term__context, io__state, io__state).
+:- mode prog_out__write_context(input, di, uo).
+
+:- pred prog_out__write_sym_name(sym_name, io__state, io__state).
+:- mode prog_out__write_sym_name(input, di, uo).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -30,6 +41,9 @@ prog_out__write_messages([]) --> [].
 prog_out__write_messages([Message | Messages]) -->
 	prog_out__write_message(Message),
 	prog_out__write_messages(Messages).
+
+:- pred prog_out__write_message(pair(string, term), io__state, io__state).
+:- mode prog_out__write_message(input, di, uo).
 
 prog_out__write_message(Msg - Term) -->
 	(
@@ -48,6 +62,8 @@ prog_out__write_message(Msg - Term) -->
 		io__write_term_nl(VarSet, Term)
 	).
 
+%-----------------------------------------------------------------------------%
+
 	% Write out the information in term context (at the moment, just
 	% the line number) in a form suitable for the beginning of an
 	% error message.
@@ -57,6 +73,25 @@ prog_out__write_context(Context) -->
 	io__write_string("Line "),
 	io__write_int(LineNumber),
 	io__write_string(": ").
+
+%-----------------------------------------------------------------------------%
+
+	% write out a (possibly qualified) symbol name
+
+prog_out__write_sym_name(qualified(ModuleSpec,Name)) -->
+	prog_out__write_module_spec(ModuleSpec),
+	io__write_string(":"),
+	io__write_string(Name).
+prog_out__write_sym_name(unqualified(Name)) -->
+	io__write_string(Name).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+% THE REMAINDER OF THIS FILE IS JUNK THAT IS NOT USED.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% write out a whole module
 
@@ -89,13 +124,17 @@ prog_out__write_item(clause(VarSet, SymName, Args, Body)) -->
 	% XXX these are basically just debugging stubs
 prog_out__write_item(nothing) --> [].
 prog_out__write_item(module_defn(_VarSet, ModuleDefn)) -->
-	{ write(ModuleDefn), write('.'), nl }.
+	io__write_anything(ModuleDefn),
+	io__write_string(".\n").
 prog_out__write_item(type_defn(_VarSet, Defn, _Condition)) -->
-	{ write(Defn), write('.'), nl }.
+	io__write_anything(Defn),
+	io__write_string(".\n").
 prog_out__write_item(mode_defn(_VarSet, Defn, _Condition)) -->
-	{ write(Defn), write('.'), nl }.
+	io__write_anything(Defn),
+	io__write_string(".\n").
 prog_out__write_item(inst_defn(_VarSet, Defn, _Condition)) -->
-	{ write(Defn), write('.'), nl }.
+	io__write_anything(Defn),
+	io__write_string(".\n").
 prog_out__write_item(pred(VarSet, Name, Args, _Det, _Condition)) -->
 	io__write_string(":- pred "),
 	prog_out__write_sym_name(Name),
@@ -109,16 +148,8 @@ prog_out__write_item(rule(VarSet, Name, Args, _Condition)) -->
 prog_out__write_item(mode(_VarSet, Name, Args, _Condition)) -->
 	io__write_string(":- mode "),
 	prog_out__write_sym_name(Name),
-	{ write(Args), write('.'), nl }.
-
-	% write out a (possibly qualified) symbol name
-
-prog_out__write_sym_name(qualified(ModuleSpec,Name)) -->
-	prog_out__write_module_spec(ModuleSpec),
-	io__write_string(":"),
-	io__write_string(Name).
-prog_out__write_sym_name(unqualified(Name)) -->
-	io__write_string(Name).
+	io__write_anything(Args),
+	io__write_string(".\n").
 
 	% write out a module specifier
 
@@ -405,113 +436,3 @@ prog_out__op_adj(1,  fx, 1).
 prog_out__op_adj(1,  yf, 0).
 prog_out__op_adj(1,  fy, 0).
 
-/****** JUNK
-%-----------------------------------------------------------------------------%
-
-	% This is how types are represented.
-
-			% one day we might allow types to take
-			% value parameters as well as type parameters.
-
-% type_defn/3 define above
-
-:- type type_defn	--->	du_type(sym_name, list(type_param),
-						list(constructor))
-			;	uu_type(sym_name, list(type_param), list(type))
-			;	eqv_type(sym_name, list(type_param), type).
-
-	% XXX constructor should be pair(sym_name, list(type)) not term.
-:- type constructor	==	term.
-
-	% XXX type parameters should be variables not terms
-:- type type_param	=	term.
-
-:- type (type)		=	term.
-
-	% Types may have arbitrary assertions associated with them
-	% (eg. you can define a type which represents sorted lists).
-	% The compiler will ignore these assertions - they are intended
-	% to be used by other tools, such as the debugger.
-
-:- type condition	--->	true
-			;	where(term).
-
-%-----------------------------------------------------------------------------%
-
-	% This is how instantiatednesses and modes are represented.
-	% Note that while we use the normal term data structure to represent 
-	% type terms (see above), we need a separate data structure for inst 
-	% terms.
-
-% inst_defn/3 defined above
-
-:- type inst_defn	--->	inst_defn(sym_name, list(inst_param), inst).
-
-	% XXX inst parameters should be variables not terms.
-:- type inst_param	==	term.
-
-:- type (inst)		--->	free
-			;	bound(list(bound_inst))
-			;	ground
-			;	inst_var(var)
-			;	user_defined_inst(sym_name, list(inst)).
-
-:- type bound_inst	--->	functor(const, list(inst)).
-
-
-% mode_defn/3 defined above
-
-:- type mode_defn	--->	mode_defn(sym_name, list(inst_param), mode).
-
-:- type (mode)		--->	((inst) -> (inst))
-			;	user_defined_mode(sym_name, list(inst)).
-
-% mode/4 defined above
-
-%-----------------------------------------------------------------------------%
-	
-	% This is how module-system declarations (such as imports
-	% and exports) are represented.
-
-:- type module_defn	--->	module(module_name)
-			;	interface
-			;	implementation
-			;	end_module(module_name)
-			;	export(sym_list)
-			;	import(sym_list)
-			;	use(sym_list).
-:- type sym_list	--->	sym(list(sym_specifier))
-			;	pred(list(pred_specifier))
-			;	cons(list(pred_specifier))
-			;	op(list(op_specifier))
-			;	adt(list(sym_name_specifier))
-	 		;	type(list(sym_name_specifier))
-	 		;	module(list(module_specifier)).
-:- type sym_specifier	--->	sym(sym_name_specifier)
-			;	typed_sym(typed_cons_specifier)
-			;	pred(pred_specifier)
-			;	cons(cons_specifier)
-			;	op(op_specifier)
-			;	adt(sym_name_specifier)
-	 		;	type(sym_name_specifier)
-	 		;	module(module_specifier).
-:- type pred_specifier	--->	sym(sym_name_specifier)
-			;	name_args(sym_name, list(type)).
-:- type cons_specifier	--->	sym(sym_name_specifier)
-			;	typed(typed_cons_specifier).
-:- type typed_cons_specifier --->	
-				name_args(sym_name, list(type))
-			;	name_res(sym_name_specifier, type)
-			;	name_args_res(sym_name,
-						list(type), type).
-:- type op_specifier	--->	sym(sym_name_specifier)
-			% XXX operator fixity specifiers not yet implemented
-			;	fixity(sym_name_specifier, fixity).
-:- type fixity		--->	infix ; prefix ; postfix.
-:- type sym_name_specifier ---> name(sym_name)
-			;	name_arity(sym_name, integer).
-
-:- type module_name 	== 	string.
-
-%-----------------------------------------------------------------------------%
-JUNK ******/
