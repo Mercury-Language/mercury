@@ -639,11 +639,11 @@ output_simple_type(uint8, I, I) --> io__write_string("uint8").
 output_simple_type(uint16, I, I) --> io__write_string("uint16").
 output_simple_type(uint32, I, I) --> io__write_string("uint32").
 output_simple_type(uint64, I, I) --> io__write_string("uint64").
-output_simple_type(native_int, I, I) --> io__write_string("nativeint").
-output_simple_type(native_uint, I, I) --> io__write_string("nativeuint").
+output_simple_type(native_int, I, I) --> io__write_string("native int").
+output_simple_type(native_uint, I, I) --> io__write_string("native unsigned int").
 output_simple_type(float32, I, I) --> io__write_string("float32").
 output_simple_type(float64, I, I) --> io__write_string("float64").
-output_simple_type(native_float, I, I) --> io__write_string("native_float").
+output_simple_type(native_float, I, I) --> io__write_string("native float").
 output_simple_type(bool, I, I) --> io__write_string("bool").
 output_simple_type(char, I, I) --> io__write_string("char").
 output_simple_type(refany, I, I) --> io__write_string("refany").
