@@ -2,7 +2,7 @@ Uncaught Mercury exception:
 Software Error: detected infinite recursion in pred tc_loop.tc/2
 Stack dump follows:
    0       pred exception.throw/1-0 (erroneous) (exception.m:NNNN)
-   1       pred require.error/1-0 (erroneous) (require.m:NNNN
+   1       pred require.error/1-0 (erroneous) (require.m:NNNN)
    2    3* pred tc_loop.tc/2-0 (nondet) (tc_loop.m:26 and others)
    5       pred std_util.builtin_aggregate/4-6 (det) (std_util.m:NNNN)
    6       pred std_util.builtin_solutions/2-1 (det) (std_util.m:NNNN)
