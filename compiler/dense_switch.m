@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_data, hlds__hlds_llds.
+:- import_module hlds__hlds_data, hlds__hlds_goal.
 :- import_module ll_backend__llds, ll_backend__code_info.
 :- import_module backend_libs__code_model.
 :- import_module backend_libs__switch_util, check_hlds__type_util.
@@ -36,7 +36,7 @@
 	% Generate code for a switch using a dense jump table.
 
 :- pred dense_switch__generate(cases_list, int, int, prog_var, code_model,
-	can_fail, store_map, label, branch_end, branch_end, code_tree,
+	can_fail, hlds_goal_info, label, branch_end, branch_end, code_tree,
 	code_info, code_info).
 :- mode dense_switch__generate(in, in, in, in, in, in, in, in,
 	in, out, out, in, out) is det.
@@ -53,7 +53,7 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_goal, hlds__hlds_module.
+:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_llds.
 :- import_module ll_backend__code_gen, ll_backend__trace.
 :- import_module backend_libs__builtin_ops.
 
@@ -126,7 +126,7 @@ dense_switch__type_range(TypeCategory, Type, Range) -->
 %---------------------------------------------------------------------------%
 
 dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
-		StoreMap, EndLabel, MaybeEnd0, MaybeEnd, Code) -->
+		SwitchGoalInfo, EndLabel, MaybeEnd0, MaybeEnd, Code) -->
 		% Evaluate the variable which we are going to be switching on
 	code_info__produce_variable(Var, VarCode, Rval),
 		% If the case values start at some number other than 0,
@@ -151,8 +151,9 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 	),
 		% Now generate the jump table and the cases
 	dense_switch__generate_cases(Cases, StartVal, EndVal, CodeModel,
-			StoreMap, EndLabel, MaybeEnd0, MaybeEnd,
-			Labels, CasesCode),
+		SwitchGoalInfo, EndLabel, MaybeEnd0, MaybeEnd, Labels,
+		CasesCode),
+
 		% XXX
 		% We keep track of the code_info at the end of one of
 		% the non-fail cases.  We have to do this because 
@@ -167,13 +168,14 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 	{ Code = tree(VarCode, tree(RangeCheck, tree(DoJump, CasesCode))) }.
 
 :- pred dense_switch__generate_cases(cases_list, int, int,
-	code_model, store_map, label, branch_end, branch_end,
+	code_model, hlds_goal_info, label, branch_end, branch_end,
 	list(label), code_tree, code_info, code_info).
 :- mode dense_switch__generate_cases(in, in, in, in, in, in, in, out,
 	out, out, in, out) is det.
 
-dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, StoreMap,
-		EndLabel, MaybeEnd0, MaybeEnd, Labels, Code) -->
+dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel,
+		SwitchGoalInfo, EndLabel, MaybeEnd0, MaybeEnd, Labels, Code)
+		-->
 	(
 		{ NextVal > EndVal }
 	->
@@ -186,7 +188,7 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, StoreMap,
 	;
 		code_info__get_next_label(ThisLabel),
 		dense_switch__generate_case(Cases0, NextVal, CodeModel,
-			StoreMap, Cases1, MaybeEnd0, MaybeEnd1,
+			SwitchGoalInfo, Cases1, MaybeEnd0, MaybeEnd1,
 			ThisCode, Comment),
 		{ LabelCode = node([
 			label(ThisLabel)
@@ -199,8 +201,8 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, StoreMap,
 			% generate the rest of the cases.
 		{ NextVal1 is NextVal + 1 },
 		dense_switch__generate_cases(Cases1, NextVal1, EndVal,
-			CodeModel, StoreMap, EndLabel, MaybeEnd1, MaybeEnd,
-			Labels1, OtherCasesCode),
+			CodeModel, SwitchGoalInfo, EndLabel,
+			MaybeEnd1, MaybeEnd, Labels1, OtherCasesCode),
 		{ Labels = [ThisLabel | Labels1] },
 		{ Code =
 			tree(LabelCode,
@@ -212,13 +214,13 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, StoreMap,
 
 %---------------------------------------------------------------------------%
 
-:- pred dense_switch__generate_case(cases_list, int, code_model, store_map,
-		cases_list, branch_end, branch_end, code_tree, string,
-		code_info, code_info).
+:- pred dense_switch__generate_case(cases_list, int, code_model,
+	hlds_goal_info, cases_list, branch_end, branch_end, code_tree, string,
+	code_info, code_info).
 :- mode dense_switch__generate_case(in, in, in, in, out, in, out, out, out,
-		in, out) is det.
+	in, out) is det.
 
-dense_switch__generate_case(Cases0, NextVal, CodeModel, StoreMap, Cases,
+dense_switch__generate_case(Cases0, NextVal, CodeModel, SwitchGoalInfo, Cases,
 		MaybeEnd0, MaybeEnd, Code, Comment) -->
 	(
 		{ Cases0 = [Case | Cases1] },
@@ -228,8 +230,10 @@ dense_switch__generate_case(Cases0, NextVal, CodeModel, StoreMap, Cases,
 		% We need to save the expression cache, etc.,
 		% and restore them when we've finished.
 		code_info__remember_position(BranchStart),
-		trace__maybe_generate_internal_event_code(Goal, TraceCode),
+		trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+			TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
+		{ goal_info_get_store_map(SwitchGoalInfo, StoreMap) },
 		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
 			SaveCode),
 		{ Code =

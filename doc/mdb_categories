@@ -57,7 +57,8 @@ document_category 900 developer
 developer  - Commands that are intended to be of use only to developers
              of the Mercury implementation. The developer commands are
              `nondet_stack', `stack_regs', `all_regs', `table_io',
-	     `proc_stats', `label_stats' and `print_optionals'.
+             `proc_stats', `label_stats', `print_optionals' and
+             `unhide_events'.
 
 end
 document_category 1000 misc

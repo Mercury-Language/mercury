@@ -163,13 +163,14 @@
 	% trace event. This predicate must be called just before generating
 	% code for the given goal.
 :- pred trace__maybe_generate_internal_event_code(hlds_goal::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+	hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 	% If we are doing execution tracing, generate code for an trace event
 	% that represents leaving a negated goal (via success or failure).
 :- pred trace__maybe_generate_negated_event_code(hlds_goal::in,
-	negation_end_port::in, code_tree::out, code_info::in, code_info::out)
-	is det.
+	hlds_goal_info::in, negation_end_port::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 	% If we are doing execution tracing, generate code for a nondet
 	% pragma C code trace event.
@@ -638,7 +639,7 @@ trace__prepare_for_call(TraceCode) -->
 		TraceCode = empty
 	}.
 
-trace__maybe_generate_internal_event_code(Goal, Code) -->
+trace__maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	(
 		{ MaybeTraceInfo = yes(TraceInfo) }
@@ -680,9 +681,16 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 		->
 			{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
 			{ goal_info_get_context(GoalInfo, Context) },
+			{ goal_info_has_feature(OutsideGoalInfo,
+				hide_debug_event)
+			->
+				HideEvent = yes
+			;
+				HideEvent = no
+			},
 			trace__generate_event_code(Port,
 				internal(Path, PreDeaths), TraceInfo,
-				Context, _, _, Code)
+				Context, HideEvent, _, _, Code)
 		;
 			{ Code = empty }
 		)
@@ -690,7 +698,8 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 		{ Code = empty }
 	).
 
-trace__maybe_generate_negated_event_code(Goal, NegPort, Code) -->
+trace__maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code)
+		-->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	(
 		{ MaybeTraceInfo = yes(TraceInfo) },
@@ -710,8 +719,13 @@ trace__maybe_generate_negated_event_code(Goal, NegPort, Code) -->
 		{ Goal = _ - GoalInfo },
 		{ goal_info_get_goal_path(GoalInfo, Path) },
 		{ goal_info_get_context(GoalInfo, Context) },
+		{ goal_info_has_feature(OutsideGoalInfo, hide_debug_event) ->
+			HideEvent = yes
+		;
+			HideEvent = no
+		},
 		trace__generate_event_code(Port, negation_end(Path),
-			TraceInfo, Context, _, _, Code)
+			TraceInfo, Context, HideEvent, _, _, Code)
 	;
 		{ Code = empty }
 	).
@@ -728,7 +742,7 @@ trace__maybe_generate_pragma_event_code(PragmaPort, Context, Code) -->
 			TraceInfo ^ trace_suppress_items, Port) = yes }
 	->
 		trace__generate_event_code(Port, nondet_pragma, TraceInfo,
-			Context, _, _, Code)
+			Context, no, _, _, Code)
 	;
 		{ Code = empty }
 	).
@@ -744,7 +758,7 @@ trace__generate_external_event_code(ExternalPort, TraceInfo, Context,
 			TraceInfo ^ trace_suppress_items, Port) = yes }
 	->
 		trace__generate_event_code(Port, external, TraceInfo,
-			Context, Label, TvarDataMap, Code),
+			Context, no, Label, TvarDataMap, Code),
 		{ MaybeExternalInfo = yes(external_event_info(Label,
 			TvarDataMap, Code)) }
 	;
@@ -752,11 +766,11 @@ trace__generate_external_event_code(ExternalPort, TraceInfo, Context,
 	).
 
 :- pred trace__generate_event_code(trace_port::in, trace_port_info::in,
-	trace_info::in, prog_context::in, label::out,
+	trace_info::in, prog_context::in, bool::in, label::out,
 	map(tvar, set(layout_locn))::out, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
+trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
 		Label, TvarDataMap, Code) -->
 	code_info__get_next_label(Label),
 	code_info__get_known_variables(LiveVars0),
@@ -825,8 +839,8 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 		"\t\t\t(const MR_Label_Layout *)\n",
 		"\t\t\t&", LabelStr, ");\n"],
 		CallStmt) },
-	code_info__add_trace_layout_for_label(Label, Context, Port, no, Path,
-		LayoutLabelInfo),
+	code_info__add_trace_layout_for_label(Label, Context, Port, HideEvent,
+		Path, LayoutLabelInfo),
 	(
 		{ Port = fail },
 		{ TraceInfo ^ redo_label = yes(RedoLabel) }
@@ -842,7 +856,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 		% for the redo event, whose layout information is filled in
 		% when we get to the fail event.
 		code_info__add_trace_layout_for_label(RedoLabel, Context, redo,
-			no, Path, LayoutLabelInfo)
+			HideEvent, Path, LayoutLabelInfo)
 	;
 		[]
 	),

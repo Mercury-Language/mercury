@@ -436,6 +436,9 @@ static MR_Next	MR_trace_cmd_proc_body(char **words, int word_count,
 static MR_Next	MR_trace_cmd_print_optionals(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
+static MR_Next	MR_trace_cmd_unhide_events(char **words, int word_count,
+			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+			MR_Event_Details *event_details, MR_Code **jumpaddr);
 static MR_Next	MR_trace_cmd_save(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
@@ -3309,13 +3312,36 @@ MR_trace_cmd_print_optionals(char **words, int word_count,
 		MR_print_optionals = MR_TRUE;
 		MR_trace_set_level(MR_trace_current_level(),
 			MR_print_optionals);
-	} else if (word_count != 1)  {
+	} else if (word_count == 1)  {
+		fprintf(MR_mdb_out,
+			"optional values are %s being printed\n",
+			MR_print_optionals? "" : "not");
+	} else {
 		MR_trace_usage("developer", "print_optionals");
 	}
 
-	fprintf(MR_mdb_out,
-		"optional values are %s being printed\n",
-		MR_print_optionals? "" : "not");
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_unhide_events(char **words, int word_count,
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+	if (word_count == 2 && MR_streq(words[1], "off")) {
+		MR_trace_unhide_events = MR_FALSE;
+		fprintf(MR_mdb_out, "hidden events values are hidden\n");
+	} else if (word_count == 2 && MR_streq(words[1], "on")) {
+		MR_trace_unhide_events = MR_TRUE;
+		MR_trace_have_unhid_events = MR_TRUE;
+		fprintf(MR_mdb_out, "hidden events values are exposed\n");
+	} else if (word_count == 1)  {
+		fprintf(MR_mdb_out,
+			"hidden events are %s\n",
+			MR_trace_unhide_events? "exposed" : "hidden");
+	} else {
+		MR_trace_usage("developer", "unhide_events");
+	}
 
 	return KEEP_INTERACTING;
 }
@@ -3471,6 +3497,13 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		fprintf(MR_mdb_err,
 			"mdb: dd requires no arguments.\n");
 	} else {
+		if (MR_trace_have_unhid_events) {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err,
+				"mdb: dd doesn't work after `unhide_events on'.\n");
+			return KEEP_INTERACTING;
+		}
+
 		if (MR_trace_start_decl_debug(MR_TRACE_DECL_DEBUG,
 			NULL, cmd, event_info, event_details, jumpaddr))
 		{
@@ -5086,6 +5119,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "developer", "proc_body", MR_trace_cmd_proc_body,
 		NULL, MR_trace_null_completer },
 	{ "developer", "print_optionals", MR_trace_cmd_print_optionals,
+		MR_trace_on_off_args, MR_trace_null_completer },
+	{ "developer", "unhide_events", MR_trace_cmd_unhide_events,
 		MR_trace_on_off_args, MR_trace_null_completer },
 
 	{ "misc", "source", MR_trace_cmd_source,

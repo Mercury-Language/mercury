@@ -18,12 +18,12 @@
 :- interface.
 
 :- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_data, hlds__hlds_llds.
+:- import_module hlds__hlds_data, hlds__hlds_goal.
 :- import_module ll_backend__llds, ll_backend__code_info.
 :- import_module backend_libs__switch_util, backend_libs__code_model.
 
 :- pred string_switch__generate(cases_list, prog_var, code_model,
-	can_fail, store_map, label, branch_end, branch_end, code_tree,
+	can_fail, hlds_goal_info, label, branch_end, branch_end, code_tree,
 	code_info, code_info).
 :- mode string_switch__generate(in, in, in, in, in, in, in, out, out, in, out)
 	is det.
@@ -33,13 +33,14 @@
 :- implementation.
 
 :- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
 :- import_module ll_backend__code_gen, ll_backend__trace.
 :- import_module backend_libs__builtin_ops.
 :- import_module libs__tree.
 
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 
-string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
+string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
 		EndLabel, MaybeEnd0, MaybeEnd, Code) -->
 	code_info__produce_variable(Var, VarCode, VarRval),
 	code_info__acquire_reg(r, SlotReg),
@@ -87,7 +88,7 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 		% Generate the code etc. for the hash table
 		%
 	string_switch__gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
-		StoreMap, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
+		SwitchGoalInfo, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
 		Strings, Labels, NextSlots, SlotsCode),
 
 		% Generate code which does the hash table lookup
@@ -142,14 +143,14 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 	}.
 
 :- pred string_switch__gen_hash_slots(int, int, map(int, hash_slot),
-	code_model, store_map, label, label, branch_end, branch_end,
+	code_model, hlds_goal_info, label, label, branch_end, branch_end,
 	list(maybe(rval)), list(label), list(maybe(rval)), code_tree,
 	code_info, code_info).
 :- mode string_switch__gen_hash_slots(in, in, in, in, in, in, in,
 	in, out, out, out, out, out, in, out) is det.
 
 string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
-		StoreMap, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
+		SwitchGoalInfo, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
 		Strings, Labels, NextSlots, Code) -->
 	( { Slot = TableSize } ->
 		{
@@ -163,7 +164,7 @@ string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
 		}
 	;
 		string_switch__gen_hash_slot(Slot, TableSize, HashSlotMap,
-			CodeModel, StoreMap, FailLabel, EndLabel,
+			CodeModel, SwitchGoalInfo, FailLabel, EndLabel,
 			MaybeEnd0, MaybeEnd1,
 			String, Label, NextSlot, SlotCode),
 		{ Slot1 is Slot + 1 },
@@ -174,24 +175,22 @@ string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
 			Code = tree(SlotCode, Code0)
 		},
 		string_switch__gen_hash_slots(Slot1, TableSize, HashSlotMap,
-			CodeModel, StoreMap, FailLabel, EndLabel,
+			CodeModel, SwitchGoalInfo, FailLabel, EndLabel,
 			MaybeEnd1, MaybeEnd,
 			Strings0, Labels0, NextSlots0, Code0)
 	).
 
 :- pred string_switch__gen_hash_slot(int, int, map(int, hash_slot),
-	code_model, store_map, label, label, branch_end, branch_end,
+	code_model, hlds_goal_info, label, label, branch_end, branch_end,
 	maybe(rval), label, maybe(rval), code_tree,
 	code_info, code_info).
 :- mode string_switch__gen_hash_slot(in, in, in, in, in, in, in,
 	in, out, out, out, out, out, in, out) is det.
 
-string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
-		FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
+string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel,
+		SwitchGoalInfo, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
 		yes(StringRval), Label, yes(NextSlotRval), Code) -->
-	(
-		{ map__search(HashSlotMap, Slot, hash_slot(Case, Next)) }
-	->
+	( { map__search(HashSlotMap, Slot, hash_slot(Case, Next)) } ->
 		{ NextSlotRval = const(int_const(Next)) },
 		{ Case = case(_, ConsTag, _, Goal) },
 		{ ConsTag = string_constant(String0) ->
@@ -206,8 +205,10 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
 			label(Label) - Comment
 		]) },
 		code_info__remember_position(BranchStart),
-		trace__maybe_generate_internal_event_code(Goal, TraceCode),
+		trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+			TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
+		{ goal_info_get_store_map(SwitchGoalInfo, StoreMap) },
 		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
 			SaveCode),
 		(

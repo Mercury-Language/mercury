@@ -26,7 +26,8 @@
 	code_info::in, code_info::out) is det.
 
 :- pred ite_gen__generate_negation(code_model::in, hlds_goal::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+	hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 %---------------------------------------------------------------------------%
 
@@ -107,7 +108,8 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
 		EffectResumeCode),
 
 		% Generate the condition
-	trace__maybe_generate_internal_event_code(CondGoal, CondTraceCode),
+	trace__maybe_generate_internal_event_code(CondGoal, IteGoalInfo,
+		CondTraceCode),
 	code_gen__generate_goal(CondCodeModel, CondGoal, CondCode),
 
 	code_info__ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode),
@@ -144,7 +146,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
 	;	
 			% Generate the then branch
 		trace__maybe_generate_internal_event_code(ThenGoal,
-			ThenTraceCode),
+			IteGoalInfo, ThenTraceCode),
 		code_gen__generate_goal(CodeModel, ThenGoal, ThenCode),
 		code_info__generate_branch_end(StoreMap, no,
 			MaybeEnd0, ThenSaveCode)
@@ -160,7 +162,8 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
 		MaybeTicketSlot, undo, RestoreTicketCode),
 
 		% Generate the else branch
-	trace__maybe_generate_internal_event_code(ElseGoal, ElseTraceCode),
+	trace__maybe_generate_internal_event_code(ElseGoal, IteGoalInfo,
+		ElseTraceCode),
 	code_gen__generate_goal(CodeModel, ElseGoal, ElseCode),
 	code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
 		ElseSaveCode),
@@ -201,7 +204,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
 
 %---------------------------------------------------------------------------%
 
-ite_gen__generate_negation(CodeModel, Goal0, Code) -->
+ite_gen__generate_negation(CodeModel, Goal0, NotGoalInfo, Code) -->
 	{ CodeModel = model_non ->
 		error("nondet negation")
 	;
@@ -255,7 +258,7 @@ ite_gen__generate_negation(CodeModel, Goal0, Code) -->
 		code_info__leave_simple_neg(GoalInfo, SimpleNeg),
 		{ Code = tree(tree(CodeL, CodeR), TestCode) }
 	;
-		generate_negation_general(CodeModel, Goal,
+		generate_negation_general(CodeModel, Goal, NotGoalInfo,
 			ResumeVars, ResumeLocs, Code)
 	).
 
@@ -263,10 +266,11 @@ ite_gen__generate_negation(CodeModel, Goal0, Code) -->
 	% of the code for if-then-elses.
 
 :- pred generate_negation_general(code_model::in, hlds_goal::in,
-	set(prog_var)::in, resume_locs::in, code_tree::out,
+	hlds_goal_info::in, set(prog_var)::in, resume_locs::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
+generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
+		Code) -->
 
 	code_info__produce_vars(ResumeVars, ResumeMap, FlushCode),
 
@@ -300,7 +304,8 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 		% Generate the negated goal as a semi-deterministic goal;
 		% it cannot be nondet, since mode correctness requires it
 		% to have no output vars.
-	trace__maybe_generate_internal_event_code(Goal, EnterTraceCode),
+	trace__maybe_generate_internal_event_code(Goal, NotGoalInfo,
+		EnterTraceCode),
 	code_gen__generate_goal(model_semi, Goal, GoalCode),
 
 	code_info__ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode),
@@ -323,8 +328,8 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 		code_info__maybe_release_hp(MaybeHpSlot),
 		code_info__maybe_reset_prune_and_release_ticket(
 			MaybeTicketSlot, commit, PruneTicketCode),
-		trace__maybe_generate_negated_event_code(Goal, neg_failure,
-			FailTraceCode),
+		trace__maybe_generate_negated_event_code(Goal, NotGoalInfo,
+			neg_failure, FailTraceCode),
 		code_info__generate_failure(FailCode),
 			% We want liveness after not(G) to be the same as
 			% after G. Information about what variables are where
@@ -341,8 +346,8 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 	code_info__maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode),
 	code_info__maybe_reset_discard_and_release_ticket(
 		MaybeTicketSlot, undo, RestoreTicketCode),
-	trace__maybe_generate_negated_event_code(Goal, neg_success,
-		SuccessTraceCode),
+	trace__maybe_generate_negated_event_code(Goal, NotGoalInfo,
+		neg_success, SuccessTraceCode),
 
 	{ Code =
 		tree(FlushCode,

@@ -3048,6 +3048,18 @@ Tells the debugger to print optionally-printed values.
 @sp 1
 @item print_optionals off
 Tells the debugger not to print optionally-printed values.
+@sp 1
+@item unhide_events
+@kindex unhide_events (mdb command)
+Reports whether events that are normally hidden
+(that are usually of interest only to implementors)
+are being exposed or not.
+@sp 1
+@item unhide_events on
+Tells the debugger to expose events that are normally hidden.
+@sp 1
+@item unhide_events off
+Tells the debugger to hide events that are normally hidden.
 @end table
 @node Miscellaneous commands
 @subsection Miscellaneous commands

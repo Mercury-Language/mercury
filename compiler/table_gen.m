@@ -667,7 +667,9 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		instmap_delta_restrict(RestoreAnsInstMapDelta0,
 			RestoreAnsNonLocals, RestoreAnsInstMapDelta),
 		goal_info_init(RestoreAnsNonLocals, RestoreAnsInstMapDelta,
-			det, Context, RestoreAnsGoalInfo),
+			det, Context, RestoreAnsGoalInfo0),
+		goal_info_add_feature(RestoreAnsGoalInfo0, hide_debug_event,
+			RestoreAnsGoalInfo),
 		RestoreAnsGoal = RestoreAnsGoalEx - RestoreAnsGoalInfo
 	),
 	generate_save_goal(NumberedSaveVars, TableVar, BlockSize,
@@ -701,7 +703,9 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 	instmap_delta_restrict(CallSaveAnsInstMapDelta0,
 		CallSaveAnsNonLocals, CallSaveAnsInstMapDelta),
 	goal_info_init(CallSaveAnsNonLocals, CallSaveAnsInstMapDelta, det,
-		Context, CallSaveAnsGoalInfo),
+		Context, CallSaveAnsGoalInfo0),
+	goal_info_add_feature(CallSaveAnsGoalInfo0, hide_debug_event,
+		CallSaveAnsGoalInfo),
 	CallSaveAnsGoal = CallSaveAnsGoalEx - CallSaveAnsGoalInfo,
 
 	GenIfNecGoalEx = if_then_else([], OccurredGoal,
@@ -712,6 +716,8 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 	instmap_delta_restrict(GenIfNecInstMapDelta0, GenIfNecNonLocals,
 		GenIfNecInstMapDelta),
 	goal_info_init(GenIfNecNonLocals, GenIfNecInstMapDelta, det, Context,
+		GenIfNecGoalInfo0),
+	goal_info_add_feature(GenIfNecGoalInfo0, hide_debug_event,
 		GenIfNecGoalInfo),
 	GenIfNecGoal = GenIfNecGoalEx - GenIfNecGoalInfo,
 
@@ -723,7 +729,9 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 	instmap_delta_restrict(CheckAndGenAnsInstMapDelta0,
 		CheckAndGenAnsNonLocals, CheckAndGenAnsInstMapDelta),
 	goal_info_init(CheckAndGenAnsNonLocals, CheckAndGenAnsInstMapDelta,
-		det, Context, CheckAndGenAnsGoalInfo),
+		det, Context, CheckAndGenAnsGoalInfo0),
+	goal_info_add_feature(CheckAndGenAnsGoalInfo0, hide_debug_event,
+		CheckAndGenAnsGoalInfo),
 	CheckAndGenAnsGoal = CheckAndGenAnsGoalEx - CheckAndGenAnsGoalInfo,
 
 	BodyGoalEx = if_then_else([], InRangeGoal, CheckAndGenAnsGoal,
@@ -733,7 +741,8 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 	instmap_delta_restrict(BodyInstMapDelta0, OrigNonLocals,
 		BodyInstMapDelta),
 	goal_info_init(OrigNonLocals, BodyInstMapDelta, det, Context,
-		BodyGoalInfo),
+		BodyGoalInfo0),
+	goal_info_add_feature(BodyGoalInfo0, hide_debug_event, BodyGoalInfo),
 	Goal = BodyGoalEx - BodyGoalInfo.
 
 		%
@@ -812,6 +821,8 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	instmap_delta_restrict(NoLoopGenInstMapDelta0, GenAnsNonLocals,
 		NoLoopGenInstMapDelta),
 	goal_info_init(GenAnsNonLocals, NoLoopGenInstMapDelta, det, Context,
+		NoLoopGenGoalInfo0),
+	goal_info_add_feature(NoLoopGenGoalInfo0, hide_debug_event,
 		NoLoopGenGoalInfo),
 	NoLoopGenAnsGoal = NoLoopGenAnsGoalEx - NoLoopGenGoalInfo,
 
@@ -822,8 +833,9 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	instmap_delta_restrict(GenAnsInstMapDelta0, GenAnsNonLocals,
 		GenAnsInstMapDelta),
 	goal_info_init(GenAnsNonLocals, GenAnsInstMapDelta, det, Context,
+		GenAnsGoalInfo0),
+	goal_info_add_feature(GenAnsGoalInfo0, hide_debug_event,
 		GenAnsGoalInfo),
-
 	GenAnsGoal = GenAnsGoalEx - GenAnsGoalInfo,
 
 	ITEGoalEx = if_then_else([], CompleteCheckGoal, RestoreAnsGoal,
@@ -833,13 +845,14 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	instmap_delta_restrict(ITEInstMapDelta0, GenAnsNonLocals,
 		ITEInstMapDelta),
 	goal_info_init(GenAnsNonLocals, ITEInstMapDelta, det, Context,
-		ITEGoalInfo),
+		ITEGoalInfo0),
+	goal_info_add_feature(ITEGoalInfo0, hide_debug_event, ITEGoalInfo),
 	ITEGoal = ITEGoalEx - ITEGoalInfo,
 
 	GoalEx = conj([LookUpGoal, ITEGoal]),
 	goal_info_init(OrigNonLocals, OrigInstMapDelta, det, Context,
-		GoalInfo),
-
+		GoalInfo0),
+	goal_info_add_feature(GoalInfo0, hide_debug_event, GoalInfo),
 	Goal = GoalEx - GoalInfo.
 
 %-----------------------------------------------------------------------------%
@@ -901,9 +914,7 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 			EvalMethod = eval_memo
 		)
 	->
-		(
-			EvalMethod = eval_loop_check
-		->
+		( EvalMethod = eval_loop_check ->
 			SaveAnsGoal = MarkAsInactiveGoal
 		;
 			SaveAnsGoal = SaveAnsGoal0
@@ -921,7 +932,9 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		instmap_delta_restrict(NoLoopGenInstMapDelta0, GenAnsNonLocals,
 			NoLoopGenInstMapDelta),
 		goal_info_init(GenAnsNonLocals, NoLoopGenInstMapDelta, semidet,
-			Context, NoLoopGenGoalInfo),
+			Context, NoLoopGenGoalInfo0),
+		goal_info_add_feature(NoLoopGenGoalInfo0, hide_debug_event,
+			NoLoopGenGoalInfo),
 		NoLoopGenAnsGoal = NoLoopGenAnsGoalEx - NoLoopGenGoalInfo,
 
 		GenTrueAnsGoalEx = if_then_else([], ActiveCheckGoal,
@@ -931,8 +944,9 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		instmap_delta_restrict(GenTrueAnsInstMapDelta0,
 			GenAnsNonLocals, GenTrueAnsInstMapDelta),
 		goal_info_init(GenAnsNonLocals, GenTrueAnsInstMapDelta,
-			semidet, Context, GenTrueAnsGoalInfo),
-
+			semidet, Context, GenTrueAnsGoalInfo0),
+		goal_info_add_feature(GenTrueAnsGoalInfo0, hide_debug_event,
+			GenTrueAnsGoalInfo),
 		GenTrueAnsGoal = GenTrueAnsGoalEx - GenTrueAnsGoalInfo
 	;
 		EvalMethod = eval_minimal
@@ -955,8 +969,9 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		instmap_delta_restrict(GenTrueAnsInstMapDelta0,
 			GenAnsNonLocals, GenTrueAnsInstMapDelta),
 		goal_info_init(GenAnsNonLocals, GenTrueAnsInstMapDelta,
-			semidet, Context, GenTrueAnsGoalInfo),
-
+			semidet, Context, GenTrueAnsGoalInfo0),
+		goal_info_add_feature(GenTrueAnsGoalInfo0, hide_debug_event,
+			GenTrueAnsGoalInfo),
 		GenTrueAnsGoal = GenTrueAnsGoalEx - GenTrueAnsGoalInfo
 	;
 		error(
@@ -986,7 +1001,9 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		instmap_delta_restrict(RestInstMapDelta0, RestNonLocals,
 			RestInstMapDelta),
 		goal_info_init(RestNonLocals, RestInstMapDelta, semidet,
-			Context, RestAnsGoalInfo),
+			Context, RestAnsGoalInfo0),
+		goal_info_add_feature(RestAnsGoalInfo0, hide_debug_event,
+			RestAnsGoalInfo),
 		RestoreAnsGoal = RestAnsGoalEx - RestAnsGoalInfo
 	),
 
@@ -997,7 +1014,9 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	instmap_delta_restrict(GenAnsGoalInstMapDelta0, GenAnsNonLocals,
 		GenAnsGoalInstMapDelta),
 	goal_info_init(GenAnsNonLocals, GenAnsGoalInstMapDelta, semidet,
-		Context, GenAnsGoalInfo),
+		Context, GenAnsGoalInfo0),
+	goal_info_add_feature(GenAnsGoalInfo0, hide_debug_event,
+		GenAnsGoalInfo),
 	GenAnsGoal = GenAnsGoalEx - GenAnsGoalInfo,
 
 	ITEGoalEx = if_then_else([], CompleteCheckGoal, RestoreAnsGoal,
@@ -1007,13 +1026,14 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	instmap_delta_restrict(ITEInstMapDelta0, GenAnsNonLocals,
 		ITEInstMapDelta),
 	goal_info_init(GenAnsNonLocals, ITEInstMapDelta, semidet,
-		Context, ITEGoalInfo),
+		Context, ITEGoalInfo0),
+	goal_info_add_feature(ITEGoalInfo0, hide_debug_event, ITEGoalInfo),
 	ITEGoal = ITEGoalEx - ITEGoalInfo,
 
 	GoalEx = conj([LookUpGoal, ITEGoal]),
 	goal_info_init(OrigNonLocals, OrigInstMapDelta, semidet, Context,
-		GoalInfo),
-
+		GoalInfo0),
+	goal_info_add_feature(GoalInfo0, hide_debug_event, GoalInfo),
 	Goal = GoalEx - GoalInfo.
 
 %-----------------------------------------------------------------------------%
@@ -1072,19 +1092,13 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	true_goal(TrueGoal),
 	fail_goal(FailGoal),
 
-	(
-		EvalMethod = eval_memo
-	->
+	( EvalMethod = eval_memo ->
 		SaveAnsGoal = SaveAnsGoal0,
 		ActiveGoal = LoopErrorGoal
-	;
-		EvalMethod = eval_loop_check
-	->
+	; EvalMethod = eval_loop_check ->
 		SaveAnsGoal = TrueGoal,
 		ActiveGoal = LoopErrorGoal
-	;
-		EvalMethod = eval_minimal
-	->
+	; EvalMethod = eval_minimal ->
 		SaveAnsGoal = SaveAnsGoal0,
 		ActiveGoal = SuspendGoal
 	;
@@ -1099,12 +1113,12 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	instmap_delta_restrict(GenAnsGoalPart1IMD0, GenAnsGoalPart1NonLocals,
 		GenAnsGoalPart1IMD),
 	goal_info_init(GenAnsGoalPart1NonLocals, GenAnsGoalPart1IMD, nondet,
-		Context, GenAnsGoalPart1GoalInfo),
+		Context, GenAnsGoalPart1GoalInfo0),
+	goal_info_add_feature(GenAnsGoalPart1GoalInfo0, hide_debug_event,
+		GenAnsGoalPart1GoalInfo),
 	GenAnsGoalPart1 = GenAnsGoalPart1Ex - GenAnsGoalPart1GoalInfo,
 
-	(
-		EvalMethod = eval_minimal
-	->
+	( EvalMethod = eval_minimal ->
 		ResumeGoal = ResumeGoal1
 	;
 		ResumeGoal = FailGoal
@@ -1114,22 +1128,24 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 
 	ITE1GoalEx = if_then_else([], IsActiveCheckGoal, ActiveGoal,
 		GenAnsGoal),
-	ITE1Goal = ITE1GoalEx - GenAnsGoalPart1GoalInfo,
+	goal_info_add_feature(GenAnsGoalPart1GoalInfo, hide_debug_event,
+		ITE1GoalInfo),
+	ITE1Goal = ITE1GoalEx - ITE1GoalInfo,
 
-	(
-		EvalMethod = eval_loop_check
-	->
+	( EvalMethod = eval_loop_check ->
 		ITE2Goal = ITE1Goal
 	;
 		ITE2GoalEx = if_then_else([], CompleteCheckGoal,
 			RestoreAllAnsGoal, ITE1Goal),
-		ITE2Goal = ITE2GoalEx - GenAnsGoalPart1GoalInfo
+		goal_info_add_feature(GenAnsGoalPart1GoalInfo,
+			hide_debug_event, ITE2GoalInfo),
+		ITE2Goal = ITE2GoalEx - ITE2GoalInfo
 	),
 
 	GoalEx = conj([LookUpGoal, ITE2Goal]),
 	goal_info_init(OrigNonLocals, OrigInstMapDelta, nondet, Context,
-		GoalInfo),
-
+		GoalInfo0),
+	goal_info_add_feature(GoalInfo0, hide_debug_event, GoalInfo),
 	Goal = GoalEx - GoalInfo.
 
 %-----------------------------------------------------------------------------%

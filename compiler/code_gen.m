@@ -1157,8 +1157,8 @@ code_gen__generate_goal_2(par_conj(Goals), GoalInfo, CodeModel, Code) -->
 	par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code).
 code_gen__generate_goal_2(disj(Goals), GoalInfo, CodeModel, Code) -->
 	disj_gen__generate_disj(CodeModel, Goals, GoalInfo, Code).
-code_gen__generate_goal_2(not(Goal), _GoalInfo, CodeModel, Code) -->
-	ite_gen__generate_negation(CodeModel, Goal, Code).
+code_gen__generate_goal_2(not(Goal), GoalInfo, CodeModel, Code) -->
+	ite_gen__generate_negation(CodeModel, Goal, GoalInfo, Code).
 code_gen__generate_goal_2(if_then_else(_Vars, Cond, Then, Else),
 		GoalInfo, CodeModel, Code) -->
 	ite_gen__generate_ite(CodeModel, Cond, Then, Else, GoalInfo, Code).

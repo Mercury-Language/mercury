@@ -145,6 +145,10 @@ MR_trace_real(const MR_Label_Layout *layout)
 		depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);
 	}
 
+	if (layout->MR_sll_hidden && !MR_trace_unhide_events) {
+		return NULL;
+	}
+
 	MR_trace_event_number++;
 
 #ifdef	MR_TRACE_HISTOGRAM

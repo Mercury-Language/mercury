@@ -232,7 +232,8 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 		code_info__effect_resume_point(NextResumePoint, CodeModel,
 			ModContCode),
 
-		trace__maybe_generate_internal_event_code(Goal, TraceCode),
+		trace__maybe_generate_internal_event_code(Goal, DisjGoalInfo,
+			TraceCode),
 		{ goal_info_get_code_model(GoalInfo, GoalCodeModel) },
 		code_gen__generate_goal(GoalCodeModel, Goal, GoalCode),
 
@@ -310,7 +311,8 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
 		code_info__undo_disj_hijack(HijackInfo, UndoCode),
 
-		trace__maybe_generate_internal_event_code(Goal0, TraceCode),
+		trace__maybe_generate_internal_event_code(Goal0, DisjGoalInfo,
+			TraceCode),
 		code_gen__generate_goal(CodeModel, Goal0, GoalCode),
 		{ goal_info_get_store_map(DisjGoalInfo, StoreMap) },
 		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,

@@ -112,6 +112,27 @@ MR_Unsigned	MR_trace_event_number = 0;
 MR_bool		MR_trace_from_full = MR_TRUE;
 
 /*
+** MR_trace_unhide_events is a boolean. Normally, it is set to false, which
+** means that events that the compiler designates as hidden are really hidden
+** from the procedural debugger, being visible only when building the annotated
+** trace. When an mdb command intended for implementors only sets it to true,
+** hidden events will be visible to the procedural debugger too, i.e. the
+** hidden annotation on events will cease to be effective.
+**
+** The MR_trace_have_unhid_events is a boolean that is set to true whenever
+** MR_trace_unhide_events is set to true, and it is never reset to false.
+** MR_trace_have_unhid_events will therefore be true if the user has ever
+** unhidden events. The declarative debugger checks this flag and refuses
+** to perform if it is set, because if this flag has ever been set, then the
+** numbering of events may not be the same after a retry, which makes it
+** impossible to *reliably* find the event at which the "dd" command was issued
+** while building the annotated trace.
+*/
+
+MR_bool		MR_trace_unhide_events = MR_FALSE;
+MR_bool		MR_trace_have_unhid_events = MR_FALSE;
+
+/*
 ** I/O tabling is documented in library/table_builtin.m
 */
 
