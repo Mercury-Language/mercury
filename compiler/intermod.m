@@ -2008,7 +2008,7 @@ set_list_of_preds_exported_2([PredId | PredIds], Preds0, Preds) :-
 		->
 			NewStatus = pseudo_exported
 		;
-			NewStatus = exported
+			NewStatus = opt_exported
 		),
 		pred_info_set_import_status(PredInfo0, NewStatus, PredInfo),
 		map__det_update(Preds0, PredId, PredInfo, Preds1)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1496,6 +1496,7 @@ write_unused_args_to_opt_file(no, _, _, _) --> [].
 write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs) -->
 	(
 		( { pred_info_is_exported(PredInfo) }
+		; { pred_info_is_opt_exported(PredInfo) }
 		; { pred_info_is_exported_to_submodules(PredInfo) }
 		),
 		{ UnusedArgs \= [] }

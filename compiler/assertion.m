@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -838,6 +838,7 @@ is_defined_in_implementation_section(opt_imported, no).
 is_defined_in_implementation_section(abstract_imported, no).
 is_defined_in_implementation_section(pseudo_imported, no).
 is_defined_in_implementation_section(exported, no).
+is_defined_in_implementation_section(opt_exported, yes).
 is_defined_in_implementation_section(pseudo_exported, no).
 
 %-----------------------------------------------------------------------------%

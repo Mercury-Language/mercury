@@ -283,6 +283,10 @@
 				% for unification predicates (see comments in
 				% unify_proc.m)
 	;	exported	% defined in the interface of this module
+	;	opt_exported	% a local item for which the import-status
+				% has been changed due to its presence in
+				% the .opt files 
+				% (intermod__adjust_pred_import_status)
 	;	abstract_exported % describes a type with only an abstract
 				% declaration exported
 	;	pseudo_exported % the converse of pseudo_imported
@@ -633,6 +637,8 @@
 	% exported_to_submodules or pseudo_exported
 :- pred pred_info_is_exported(pred_info::in) is semidet.
 
+:- pred pred_info_is_opt_exported(pred_info::in) is semidet.
+
 :- pred pred_info_is_exported_to_submodules(pred_info::in) is semidet.
 
 :- pred pred_info_is_pseudo_exported(pred_info::in) is semidet.
@@ -800,6 +806,7 @@ status_is_exported(abstract_imported,		no).
 status_is_exported(pseudo_imported,		no).
 status_is_exported(opt_imported,		no).
 status_is_exported(exported,			yes).
+status_is_exported(opt_exported,		yes).
 status_is_exported(abstract_exported,		yes).
 status_is_exported(pseudo_exported,		yes).
 status_is_exported(exported_to_submodules,	yes).
@@ -815,6 +822,7 @@ status_defined_in_this_module(abstract_imported,	no).
 status_defined_in_this_module(pseudo_imported,		no).
 status_defined_in_this_module(opt_imported,		no).
 status_defined_in_this_module(exported,			yes).
+status_defined_in_this_module(opt_exported,		yes).
 status_defined_in_this_module(abstract_exported,	yes).
 status_defined_in_this_module(pseudo_exported,		yes).
 status_defined_in_this_module(exported_to_submodules,	yes).
@@ -1014,6 +1022,7 @@ pred_info_exported_procids(PredInfo, ProcIds) :-
 	pred_info_import_status(PredInfo, ImportStatus),
 	(
 		( ImportStatus = exported
+		; ImportStatus = opt_exported
 		; ImportStatus = exported_to_submodules
 		)
 	->
@@ -1025,6 +1034,7 @@ pred_info_exported_procids(PredInfo, ProcIds) :-
 	;
 		ProcIds = []
 	).
+
 
 pred_info_clauses_info(PredInfo, PredInfo^clauses_info).
 
@@ -1071,6 +1081,10 @@ pred_info_is_exported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
 	ImportStatus = exported.
 
+pred_info_is_opt_exported(PredInfo) :-
+	pred_info_import_status(PredInfo, ImportStatus),
+	ImportStatus = opt_exported.
+
 pred_info_is_exported_to_submodules(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
 	ImportStatus = exported_to_submodules.
@@ -1082,6 +1096,8 @@ pred_info_is_pseudo_exported(PredInfo) :-
 procedure_is_exported(PredInfo, ProcId) :-
 	(
 		pred_info_is_exported(PredInfo)
+	;
+		pred_info_is_opt_exported(PredInfo)
 	;
 		pred_info_is_exported_to_submodules(PredInfo)
 	;

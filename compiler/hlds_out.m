@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2273,6 +2273,8 @@ hlds_out__write_import_status(local) -->
 	io__write_string("local").
 hlds_out__write_import_status(exported) -->
 	io__write_string("exported").
+hlds_out__write_import_status(opt_exported) -->
+	io__write_string("opt_exported").
 hlds_out__write_import_status(abstract_exported) -->
 	io__write_string("abstract_exported").
 hlds_out__write_import_status(pseudo_exported) -->

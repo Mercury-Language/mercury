@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -698,7 +698,11 @@ termination__write_pred_termination_info(Module, PredId) -->
 	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
 
 	( 
-		{ ImportStatus = exported },
+		{
+			ImportStatus = exported
+		;
+			ImportStatus = opt_exported
+		},
 		{ \+ code_util__compiler_generated(PredInfo) },
 
 		% XXX These should be allowed, but the predicate
