@@ -794,7 +794,8 @@ code_exprn__expr_is_constant(mkword(Tag, Expr0), Vars, ExprnOpts,
 
 code_exprn__expr_is_constant(create(Tag, Args0, Label), Vars, ExprnOpts,
 		create(Tag, Args, Label)) :-
-	ExprnOpts = nlg_asm_sgt(_, _, yes),
+	ExprnOpts = nlg_asm_sgt_ubf(_, _, StaticGroundTerms, _),
+	StaticGroundTerms = yes,
 	code_exprn__args_are_constant(Args0, Vars, ExprnOpts, Args).
 
 code_exprn__expr_is_constant(var(Var), Vars, ExprnOpts, Rval) :-

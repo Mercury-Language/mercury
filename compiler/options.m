@@ -90,6 +90,7 @@
 				% `--num-tag-bits'.
 		;	args
 		;	highlevel_c
+		;	unboxed_float
 	% Code generation options
 		;	trad_passes
 		;	polymorphism
@@ -252,7 +253,8 @@ option_defaults_2(compilation_model_option, [
 					% above default with a value determined
 					% at configuration time
 	args			-	string("simple"),
-	highlevel_c		-	bool(no)
+	highlevel_c		-	bool(no),
+	unboxed_float		-	bool(no)
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
@@ -445,6 +447,8 @@ long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
 long_option("high-level-c",		highlevel_c).
+long_option("single-prec-float",	unboxed_float).
+long_option("unboxed-float",		unboxed_float).
 
 % code generation options
 long_option("polymorphism",		polymorphism).
@@ -899,6 +903,7 @@ options_help -->
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tAssume registers r1 up to r<n> are real machine registers.\n"),
 	io__write_string("\t--args {simple, compact}\n"),
+	io__write_string("\t--arg-convention {simple, compact}\n"),
 	io__write_string("\t\tUse the specified argument passing convention\n"),
 	io__write_string("\t\tin the generated low-level C code. With the `simple'\n"),
 	io__write_string("\t\tconvention, the <n>th argument is passed in or out\n"),
@@ -908,6 +913,13 @@ options_help -->
 	io__write_string("\t\tregister r<n>. The compact convention generally leads to\n"),
 	io__write_string("\t\tmore efficient code. However, currently only the simple\n"),
 	io__write_string("\t\tconvention is supported.\n"),
+	io__write_string("\t--single-prec-float\n"),
+	io__write_string("\t--unboxed-float\n"),
+	io__write_string("\t(This option is not for general use.)\n"),
+	io__write_string("\t\tUse unboxed single-precision floating point numbers,\n"),
+	io__write_string("\t\trather than boxed double-precision floats.\n"),
+	io__write_string("\t\t(The C code also needs to be compiled with\n"),
+	io__write_string("\t\t`-DUSE_SINGLE_PREC_FLOAT'.)\n"),
 
 	io__write_string("\nCode generation options:\n"),
 	io__write_string("\t--no-trad-passes\n"),

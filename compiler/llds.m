@@ -1295,7 +1295,9 @@ output_temp_decls_2(Next, Max) -->
 % set of symbols we've already declared.  That way, we avoid generating
 % the same symbol twice, which would cause an error in the C code.
 
-:- type decl_set == set(int).
+:- type decl_set == set(decl_id).
+
+:- type decl_id ---> create_label(int) ; float_label(string).
 
 :- pred output_rval_decls(rval, decl_set, decl_set, io__state, io__state).
 :- mode output_rval_decls(in, in, out, di, uo) is det.
@@ -1309,6 +1311,33 @@ output_rval_decls(mkword(_, Rval), DeclSet0, DeclSet) -->
 output_rval_decls(const(Const), DeclSet0, DeclSet) -->
 	( { Const = address_const(CodeAddress) } ->
 		output_code_addr_decls(CodeAddress, DeclSet0, DeclSet)
+	; { Const = float_const(FloatVal) } ->
+		%
+		% If floats are boxed, and the static ground terms
+		% option is enabled, then for each float constant
+		% which we might want to box we declare a static const
+		% variable holding that constant. 
+		%
+		globals__io_lookup_bool_option(unboxed_float, UnboxedFloat),
+		globals__io_lookup_bool_option(static_ground_terms,
+			StaticGroundTerms),
+		( { UnboxedFloat = no, StaticGroundTerms = yes } ->
+			{ string__float_to_string(FloatVal, FloatString) },
+			{ FloatLabel = float_label(FloatString) },
+			( { set__member(FloatLabel, DeclSet0) } ->
+				{ DeclSet = DeclSet0 }
+			;
+				{ set__insert(DeclSet0, FloatLabel, DeclSet) },
+				{ llds__float_const_name(FloatString,
+					FloatName) },
+				io__write_strings([
+					"static const Float ", FloatName,
+					" = ", FloatString, ";\n\t  "
+				])
+			)
+		;
+			{ DeclSet = DeclSet0 }
+		)
 	;
 		{ DeclSet = DeclSet0 }
 	).
@@ -1349,10 +1378,11 @@ output_rval_decls(binop(_, Rval1, Rval2), DeclSet0, DeclSet) -->
 	% to go in rdata if it can, because rdata is shared.
 	%
 output_rval_decls(create(_Tag, ArgVals, Label), DeclSet0, DeclSet) -->
-	( { set__member(Label, DeclSet0) } ->
+	{ CreateLabel = create_label(Label) },
+	( { set__member(CreateLabel, DeclSet0) } ->
 		{ DeclSet = DeclSet0 }
 	;
-		{ set__insert(DeclSet0, Label, DeclSet1) },
+		{ set__insert(DeclSet0, CreateLabel, DeclSet1) },
 		output_cons_arg_decls(ArgVals, DeclSet1, DeclSet),
 		(
 			% must we use use `Word *'?
@@ -1387,6 +1417,20 @@ output_rval_decls(create(_Tag, ArgVals, Label), DeclSet0, DeclSet) -->
 			io__write_string("};\n\t  ")
 		)
 	).
+
+:- pred llds__float_const_name(string::in, string::out) is det.
+
+llds__float_const_name(FloatName0, FloatName) :-
+	%
+	% The name of the variable is based on the
+	% value of the float const, with "pt" instead
+	% of ".", and "neg" instead of "-".
+	% We call llds_name_mangle too, just to be sure.
+	%
+	string__replace_all(FloatName0, ".", "pt", FloatName1),
+	string__replace_all(FloatName1, "-", "neg", FloatName2),
+	llds__name_mangle(FloatName2, FloatName3),
+	string__append("mercury_float_const_", FloatName3, FloatName).
 
 :- pred output_cons_arg_decls(list(maybe(rval)), decl_set, decl_set,
 				io__state, io__state).
@@ -1991,9 +2035,23 @@ llds__float_compare_op(float_gt, ">").
 output_rval_const(int_const(N)) -->
 	io__write_int(N).
 output_rval_const(float_const(Float)) -->
-	io__write_string("float_const("),
-	io__write_float(Float),
-	io__write_string(")").
+	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
+	globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms),
+	( { UnboxFloat = no, StaticGroundTerms = yes } ->
+		%
+		% for boxed floats, if --static-ground-terms is enabled,
+		% we just refer to the static const which we declared earlier
+		%
+		{ string__float_to_string(Float, FloatString) },
+		{ llds__float_const_name(FloatString, FloatName) },
+		io__write_string("(Word)(&"),
+		io__write_string(FloatName),
+		io__write_string(")")
+	;
+		io__write_string("float_const("),
+		io__write_float(Float),
+		io__write_string(")")
+	).
 output_rval_const(string_const(String)) -->
 	io__write_string("string_const("""),
 	output_c_quoted_string(String),

@@ -240,7 +240,7 @@ lookup_switch__get_case_rvals([Var|Vars], [Rval|Rvals]) -->
 
 	% lookup_switch__rval_is_constant(Rval, ExprnOpts) is
 	% true iff Rval is a constant. This depends on the options governing
-	% nonlocal gotos, asm labels enabled, and static ground terms.
+	% nonlocal gotos, asm labels enabled, and static ground terms, etc.
 :- pred lookup_switch__rval_is_constant(rval, exprn_opts).
 :- mode lookup_switch__rval_is_constant(in, in) is semidet.
 
@@ -257,7 +257,8 @@ lookup_switch__rval_is_constant(binop(_, Exprn0, Exprn1), ExprnOpts) :-
 lookup_switch__rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
 	lookup_switch__rval_is_constant(Exprn0, ExprnOpts).
 lookup_switch__rval_is_constant(create(_, Args, _), ExprnOpts) :-
-	ExprnOpts = nlg_asm_sgt(_, _, yes),
+	ExprnOpts = nlg_asm_sgt_ubf(_, _, StaticGroundTerms, _),
+	StaticGroundTerms = yes,
 	lookup_switch__rvals_are_constant(Args, ExprnOpts).
 
 :- pred lookup_switch__rvals_are_constant(list(maybe(rval)), exprn_opts).

@@ -11,11 +11,19 @@
 :- import_module llds.
 :- import_module list, std_util, bool, assoc_list.
 
-:- type exprn_opts	--->	nlg_asm_sgt(bool, bool, bool).
+:- type exprn_opts
+	--->	nlg_asm_sgt_ubf(
+			bool,	% --use-non-local-gotos
+			bool,	% --use-asm-labels
+			bool,	% --static-ground-terms
+			bool	% --unboxed-float
+		).
 
 :- pred exprn_aux__init_exprn_opts(option_table, exprn_opts).
 :- mode exprn_aux__init_exprn_opts(in, out) is det.
 
+	% determine whether an rval_const can be used as the initializer
+	% of a C static constant
 :- pred exprn_aux__const_is_constant(rval_const, exprn_opts, bool).
 :- mode exprn_aux__const_is_constant(in, in, out) is det.
 
@@ -77,15 +85,38 @@ exprn_aux__init_exprn_opts(Options, ExprnOpts) :-
 	getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG),
 	getopt__lookup_bool_option(Options, asm_labels, ASM),
 	getopt__lookup_bool_option(Options, static_ground_terms, SGT),
-	ExprnOpts = nlg_asm_sgt(NLG, ASM, SGT).
+	getopt__lookup_bool_option(Options, unboxed_float, UBF),
+	ExprnOpts = nlg_asm_sgt_ubf(NLG, ASM, SGT, UBF).
 
-	% Floating point values cannot be considered constants because
-	% they must be stored on the heap.
+% Determine whether a const (well, what _we_ consider to be a const)
+% is constant as far as the C compiler is concerned -- specifically,
+% determine whether it can be used as the initializer of a C static
+% constant.
 
 exprn_aux__const_is_constant(true, _, yes).
 exprn_aux__const_is_constant(false, _, yes).
 exprn_aux__const_is_constant(int_const(_), _, yes).
-exprn_aux__const_is_constant(float_const(_), _, no).
+exprn_aux__const_is_constant(float_const(_), ExprnOpts, IsConst) :-
+	ExprnOpts = nlg_asm_sgt_ubf(_NLG, _ASM, StaticGroundTerms,
+					UnboxedFloat),
+	( UnboxedFloat = yes ->
+		%
+		% If we're using unboxed (single-precision) floats,
+		% floating point values cannot be considered constants because
+		% gcc doesn't allow type punning from float to word in
+		% static initializers.
+		%
+		IsConst = no
+	;
+		%
+		% If we're using boxed floats, then we can generate a static
+		% constant variable to hold a float constant, and gcc
+		% doesn't mind us converting from its address to word
+		% in a static initializer.  However, we only do this if
+		% --static-ground-terms is enabled.
+		%
+		IsConst = StaticGroundTerms
+	).
 exprn_aux__const_is_constant(string_const(_), _, yes).
 exprn_aux__const_is_constant(address_const(CodeAddress), ExprnOpts, IsConst) :-
 	exprn_aux__addr_is_constant(CodeAddress, ExprnOpts, IsConst).
@@ -99,18 +130,24 @@ exprn_aux__addr_is_constant(do_fail, _, no).
 exprn_aux__addr_is_constant(do_succeed(_), _, no).
 exprn_aux__addr_is_constant(label(_), _, yes).
 exprn_aux__addr_is_constant(imported(_), ExprnOpts, IsConst) :-
-	ExprnOpts = nlg_asm_sgt(NonLocalGotos, AsmLabels, _SGT),
+	ExprnOpts = nlg_asm_sgt_ubf(NonLocalGotos, AsmLabels, _SGT, _UBF),
 	(
-		(
-			NonLocalGotos = no
-		;
-			AsmLabels = yes
-		)
+		NonLocalGotos = yes,
+		AsmLabels = no
 	->
-		IsConst = yes
-	;
+		%
+		% with non-local gotos but no asm labels, jumps to code
+		% addresses in different c_modules must be done via global
+		% variables; the value of these global variables is not
+		% constant (i.e. not computable at load time), since they
+		% can't be initialized until we call init_modules().
+		%
 		IsConst = no
+	;
+		IsConst = yes
 	).
+
+%------------------------------------------------------------------------------%
 
 exprn_aux__rval_contains_lval(lval(Lval0), Lval) :-
 	exprn_aux__lval_contains_lval(Lval0, Lval).
