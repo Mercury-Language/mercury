@@ -949,11 +949,17 @@ the following ordering:
 @end example
 
 @center erroneous > failure
+
 @center erroneous > det
+
 @center failure > semidet
+
 @center det > semidet
+
 @center semidet > nondet
+
 @center det > multidet
+
 @center multidet > nondet
 
 The determinism of goals is inferred from the determinism

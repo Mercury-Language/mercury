@@ -81,6 +81,7 @@ into another language, under the above conditions for modified versions.
 * Using SICStus::   Building and debugging Mercury programs with SICStus Prolog
 * FAQs::            Frequently Asked Questions
 * Invocation::      List of options for the Mercury compiler
+* Environment::     Environment variables used by the compiler and utilities.
 @end menu
 
 @node Filenames, Hello,, Top
@@ -473,7 +474,7 @@ Send mail to mercury-bugs@@cs.mu.oz.au, and we'll try to solve your problem.
 
 @end table
 
-@node Invocation,, FAQs, Top
+@node Invocation, Environment, FAQs, Top
 @chapter Invocation
 
 This section contains a brief description of all the options
@@ -784,6 +785,57 @@ imported modules.
 @item -h
 @itemx --help
 Print a usage message.
+@end table
+
+@node Environment,, Invocation, Top
+@chapter Environment Variables
+
+The shell scripts use the following environment variables.
+
+@table @code
+@item MERCURY_C_INCL_DIR
+Directory for the Mercury C header files (@filename{*.h}).
+
+@item MERCURY_INT_DIR
+Directory for the Mercury library interface
+files (@filename{*.int} and @filename{*.int2}).
+
+@item MERCURY_NC_BUILTIN
+Filename of the Mercury `nc'-compatibility file (nc_builtin.nl).
+
+@item MERCURY_C_LIB_DIR
+Base directory containing the Mercury libraries (@filename{libmer.a} and
+possibly @filename{libmer.so}) for each configuration and grade.
+The libraries for each configuration and grade should
+be in the subdirectory @var{config}/@var{grade} of @code{$MERCURY_C_LIB_DIR}.
+
+@item MERCURY_MOD_LIB_DIR
+The directory containing the .init files in the Mercury library.
+They are used to create the initialization file @filename{*_init.c}.
+
+@item MERCURY_MOD_LIB_MODS
+The names of the .init files in the Mercury library.
+
+@item MERCURY_NU_LIB_DIR
+Directory for the NU-Prolog object files (@filename{*.no}) for the
+NU-Prolog Mercury library.
+
+@item MERCURY_NU_LIB_OBJS
+List of the NU-Prolog object files (@filename{*.no}) for the Mercury
+library.
+
+@item MERCURY_COMPILER
+Filename of the Mercury Compiler.
+
+@item MERCURY_INTERPRETER
+Filename of the Mercury Interpreter.
+
+@item MERCURY_MKINIT
+Filename of the program to create the @filename{*_init.c} file.
+
+@item MERCURY_DEFAULT_GRADE
+The default grade to use if no @samp{--grade} option is specified.
+
 @end table
 
 @contents
