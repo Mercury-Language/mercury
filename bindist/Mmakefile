@@ -79,6 +79,8 @@ binary_distribution: bindist.configure bindist.build_vars
 	-cd ../extras/graphics; mmake realclean
 	-cd ../extras/graphics/samples/calc; mmake realclean
 	-cd ../extras/graphics/samples/maze; mmake realclean
+	-cd ../extras/trailed_update; mmake realclean
+	-cd ../extras/trailed_update/samples; mmake realclean
 	-cd ../tests; mmake realclean
 	cp -r ../samples $(MERCURY_VERSION)/samples
 	cp -r ../extras $(MERCURY_VERSION)/extras
