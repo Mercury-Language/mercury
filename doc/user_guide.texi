@@ -1245,13 +1245,13 @@ None.
 @code{--gcc-global-registers}.
 
 @item @samp{jump}
-@code{--gcc-nonlocal gotos}.
+@code{--gcc-nonlocal-gotos}.
 
 @item @samp{fast}
-@code{--gcc-global-registers --asm-labels}.
+@code{--gcc-global-registers --gcc-nonlocal-gotos}.
 
 @item @samp{asm_jump}
-@code{--gcc-global-registers --asm-labels}.
+@code{--gcc-nonlocal-gotos --asm-labels}.
 
 @item @samp{asm_fast}
 @code{--gcc-global-registers --gcc-nonlocal_gotos --asm-labels}.
