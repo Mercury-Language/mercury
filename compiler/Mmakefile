@@ -65,7 +65,7 @@ MGNUCFLAGS-libs.process_util = --no-ansi
 
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.
-CFLAGS-gcc =	-DMERCURY_BOOTSTRAP_H \
+CFLAGS-gcc =	-DMR_NO_BACKWARDS_COMPAT \
 		-DIN_GCC -DHAVE_CONFIG_H \
 		-I. \
 		-I$(GCC_SRC_DIR)/gcc \
