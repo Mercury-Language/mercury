@@ -632,9 +632,12 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	% so we need to disable it when tracing.
 	option_implies(procid_stack_layout, optimize_dups, bool(no)),
 
-	% XXX deforestation does not perform folding on polymorphic
-	% predicates correctly with --body-typeinfo-liveness.
+	% XXX deforestation and constraint propagation do not perform
+	% folding on polymorphic predicates correctly with
+	% --body-typeinfo-liveness.
 	option_implies(body_typeinfo_liveness, deforestation, bool(no)),
+	option_implies(body_typeinfo_liveness, constraint_propagation,
+		bool(no)),
 
 	% XXX if trailing is enabled, middle recursion optimization
 	% can generate code which does not allocate a stack frame 
