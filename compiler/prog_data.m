@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -156,6 +156,9 @@
 %
 
 :- type pragma_type 
+	%
+	% Foreign language interfacing pragmas
+	%
 			% a foreign language declaration, such as C
 			% header code.
 	--->	foreign_decl(foreign_language, string)
@@ -196,7 +199,9 @@
 			%    whether or not the foreign code may call Mercury,
 			%    whether or not the foreign code is thread-safe
 			% foreign function name.
-	
+	%
+	% Optimization pragmas
+	%
 	;	type_spec(sym_name, sym_name, arity, maybe(pred_or_func),
 			maybe(list(mode)), type_subst, tvarset, set(item_id))
 			% PredName, SpecializedPredName, Arity,
@@ -211,12 +216,6 @@
 	;	no_inline(sym_name, arity)
 			% Predname, Arity
 
-	;	obsolete(sym_name, arity)
-			% Predname, Arity
-
-	;	source_file(string)
-			% Source file name.
-
 	;	unused_args(pred_or_func, sym_name, arity,
 			mode_num, list(int))
 			% PredName, Arity, Mode number, Optimized pred name,
@@ -224,9 +223,31 @@
 			% Used for inter-module unused argument
 			% removal, should only appear in .opt files.
 
+	%
+	% Diagnostics pragmas (pragmas related to compiler warnings/errors)
+	%
+
+	;	obsolete(sym_name, arity)
+			% Predname, Arity
+
+	;	source_file(string)
+			% Source file name.
+
+	%
+	% Evaluation method pragmas
+	%
+
+	;	tabled(eval_method, sym_name, int, maybe(pred_or_func), 
+				maybe(list(mode)))
+			% Tabling type, Predname, Arity, PredOrFunc?, Mode?
+
 	;	fact_table(sym_name, arity, string)
 			% Predname, Arity, Fact file name.
 
+
+	%
+	% Aditi pragmas
+	%
 	;	aditi(sym_name, arity)
 			% Predname, Arity
 
@@ -266,15 +287,19 @@
 	;	owner(sym_name, arity, string)
 			% PredName, Arity, String.
 
-	;	tabled(eval_method, sym_name, int, maybe(pred_or_func), 
-				maybe(list(mode)))
-			% Tabling type, Predname, Arity, PredOrFunc?, Mode?
+	%
+	% Purity pragmas
+	%
 	
 	;	promise_pure(sym_name, arity)
 			% Predname, Arity
 
 	;	promise_semipure(sym_name, arity)
 			% Predname, Arity
+
+	%
+	% Termination analysis pragmas
+	%
 
 	;	termination_info(pred_or_func, sym_name, list(mode),
 				maybe(pragma_arg_size_info),
@@ -290,15 +315,15 @@
 			% termination_info pragmas are used in opt and
 			% trans_opt files.
 
-
 	;	terminates(sym_name, arity)
 			% Predname, Arity
 
 	;	does_not_terminate(sym_name, arity)
 			% Predname, Arity
 
-	;	check_termination(sym_name, arity).
+	;	check_termination(sym_name, arity)
 			% Predname, Arity
+	.
 
 %
 % Stuff for the foreign interfacing pragmas.
@@ -682,6 +707,14 @@
 
 :- type pragma_foreign_proc_extra_attributes == 
 	list(pragma_foreign_proc_extra_attribute).
+
+	% Convert the foreign code attributes to their source code
+	% representations suitable for placing in the attributes list of
+	% the pragma (not all attributes have one).
+	% In particular, the foreign language attribute needs to be
+	% handled separately as it belongs at the start of the pragma.
+:- pred attributes_to_strings(pragma_foreign_proc_attributes::in,
+		list(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1080,14 +1113,6 @@
 :- type need_qualifier
 	--->	must_be_qualified
 	;	may_be_unqualified.
-
-	% Convert the foreign code attributes to their source code
-	% representations suitable for placing in the attributes list of
-	% the pragma (not all attributes have one).
-	% In particular, the foreign language attribute needs to be
-	% handled separately as it belongs at the start of the pragma.
-:- pred attributes_to_strings(pragma_foreign_proc_attributes::in,
-		list(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
