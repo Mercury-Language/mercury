@@ -5471,9 +5471,9 @@ Note that extra whitespace is not handled --- there should only be a single
 space between the class keyword and the assembly specifier.
 @c XXX we should handle whitespace better
 Value types which have a special name (such as @samp{int32}) can be
-named using their valuetype syntax; they will be marshalled using their
-special name (as is required by section 7.2 of Partition II of the ECMA
-CLI documentation).
+named using their valuetype syntax or their special name;
+they will be marshalled using their special name
+(as is required by section 7.2 of Partition II of the ECMA CLI documentation).
 
 For example:
 

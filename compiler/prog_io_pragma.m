@@ -232,6 +232,91 @@ parse_foreign_language_type(InputTerm, Language, Result) :-
 
 parse_il_type_name(String0, ErrorTerm, ForeignType) :-
 	( 
+		String0 = "bool"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "Boolean")))
+	;
+		String0 = "char"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "Char")))
+	;
+		String0 = "object"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "Object")))
+	;
+		String0 = "string"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "String")))
+	;
+		String0 = "float32"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "Single")))
+	;
+		String0 = "float64"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "Double")))
+	;
+		String0 = "int8"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "SByte")))
+	;
+		String0 = "int16"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "Int16")))
+	;
+		String0 = "int32"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "Int32")))
+	;
+		String0 = "int64"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "Int64")))
+	;
+		String0 = "natural int"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "IntPtr")))
+	;
+		String0 = "natural unsigned int"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "UIntPtr")))
+	;
+		( String0 = "typedref" ; String0 = "refany" )
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "TypedReference")))
+	;
+		String0 = "unsigned int8"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "Byte")))
+	;
+		String0 = "unsigned int16"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "UInt16")))
+	;
+		String0 = "unsigned int32"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "UInt32")))
+	;
+		String0 = "unsigned int64"
+	->
+		ForeignType = ok(il(value, "mscorlib",
+			qualified(unqualified("System"), "UInt64")))
+	;
 		string__append("class [", String1, String0),
 		string__sub_string_search(String1, "]", Index)
 	->
