@@ -320,7 +320,7 @@ hlds_out__write_goal(Indent, switch(VarId, Cases, FollowVars)) -->
 	hlds_out__write_followvars(Indent1, FollowVars),
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
-hlds_out__write_goal(Indent, unify(LTerm, RTerm, Mode, Uni)) -->
+hlds_out__write_goal(Indent, unify(LTerm, RTerm, Mode, Uni, _)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("unify(\n"),
 	{ Indent1 is Indent + 1 },

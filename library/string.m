@@ -50,6 +50,10 @@
 :- mode string__uncapitalize_first(input, output).
 %	Convert the first character (if any) of a string to lowercase.
 
+:- pred string__to_char_list(string, list(character)).
+:- mode string__to_char_list(input, output).
+:- mode string__to_char_list(output, input).
+
 :- pred string__to_int(string, int).
 :- mode string__to_int(input, output).
 %	Convert a string (of digits) to an int. If the string contains
@@ -122,6 +126,17 @@ string__first_char(String0, Char, String) :-
 	List0 = [CharCode | List],
 	string__to_int_list(String, List),
 	char_to_int(Char, CharCode).
+
+string__to_char_list(String, CharList) :-
+	string__to_int_list(String, IntList),
+	string__int_list_to_char_list(IntList, CharList).
+
+:- pred string__int_list_to_char_list(list(int)::in, list(character)::out).
+
+string__int_list_to_char_list([], []).
+string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-
+	char_to_int(Char, Code),
+	string__int_list_to_char_list(Codes, Chars).
 
 string__capitalize_first(S0, S) :-
 	string__first_char(S0, C, S1),
