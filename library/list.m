@@ -60,6 +60,12 @@
 
 :- pred list__is_not_empty(list(T)::in) is semidet.
 
+	% list__cons(X, Y, Z) <=> Z = [X | Y].
+	%
+:- pred list__cons(T, list(T), list(T)).
+:- mode list__cons(in, in, out) is det.
+:- func list__cons(T, list(T)) = list(T).
+
 	% Standard append predicate:
 	% list__append(Start, End, List) is true iff
 	% `List' is the result of concatenating `Start' and `End'.
@@ -745,6 +751,10 @@
 list__is_empty([]).
 
 list__is_not_empty([_ | _]).
+
+list__cons(H, T, [H | T]).
+
+list__cons(H, T) = [H | T].
 
 list__append([], Ys, Ys).
 list__append([X | Xs], Ys, [X | Zs]) :-
@@ -1486,10 +1496,7 @@ list__merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
 
 empty_list = [].
 
-:- func cons(T, list(T)) = list(T).
-:- pragma export((cons(in, in) = (out)), "ML_cons").
-
-cons(H, T) = [H | T].
+:- pragma export((list__cons(in, in) = (out)), "ML_cons").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

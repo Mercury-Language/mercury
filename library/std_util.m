@@ -1467,11 +1467,7 @@ unsorted_solutions(Pred, List) :-
 	is det. /* really cc_multi */
 
 builtin_solutions(Generator, UnsortedList) :-
-	builtin_aggregate(Generator, cons, [], UnsortedList).
-
-:- pred cons(T::in, list(T)::in, list(T)::out) is det.
-
-cons(H, T, [H | T]).
+	builtin_aggregate(Generator, list__cons, [], UnsortedList).
 
 %-----------------------------------------------------------------------------%
 

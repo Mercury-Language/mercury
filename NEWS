@@ -160,6 +160,10 @@ Changes to the Mercury standard library:
 * We've added some new predicates, list__map2_foldl, list__map_foldl3,
   and list__foldl4 to list.m.
 
+* We've added a predicate, list__cons/3 to list.m.  This is sometimes
+  useful with higher-order code.  It can also be useful with state
+  variables.  We've also added a function version. 
+
 * We've added some new predicates, map__common_subset and map__foldl3,
   to map.m.
 

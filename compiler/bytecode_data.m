@@ -136,12 +136,8 @@ output_int(Bits, IntVal, !IO) :-
 :- pred int_to_byte_list(int::in, int::in, list(int)::out) is det.
 
 int_to_byte_list(Bits, IntVal, Bytes) :-
-	output_int(cons, Bits, IntVal, [], RevBytes),
+	output_int(list__cons, Bits, IntVal, [], RevBytes),
 	list__reverse(RevBytes, Bytes).
-
-:- pred cons(T::in, list(T)::in, list(T)::out) is det.
-
-cons(T, List, [T | List]).
 
 :- pred output_int(pred(int, T, T), int, int, T, T).
 :- mode output_int(pred(in, in, out) is det, in, in, in, out) is det.
