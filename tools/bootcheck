@@ -737,6 +737,20 @@ then
 		$RMSTAGECMD $root/stage3/* < /dev/null
 		/bin/rm -fr $root/stage3/* < /dev/null
 		/bin/rm -fr $root/stage3/.[a-zA-Z]* < /dev/null
+
+		case "$grade" in
+			*debug*)
+				# These files take up a lot of disk space,
+				# so we compress them. This reduces the
+				# probability that running the tests will
+				# run out of disk space, while still allowing
+				# the original files to be reconstructed
+				# relatively quickly.
+				gzip $root/stage2/library/*.c
+				gzip $root/stage2/browser/*.c
+				gzip $root/stage2/compiler/*.c
+				;;
+		esac
 	fi
 
 	echo "finishing stage3 at `date`"
