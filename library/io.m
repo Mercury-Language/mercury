@@ -28,9 +28,13 @@
 
 % External interface: exported predicates
 
-:- pred io__progname(string, io__state, io__state).
-:- mode io__progname(output, di, uo).
-%		Returns the name that the program was invoked with.
+:- pred io__progname(string, string, io__state, io__state).
+:- mode io__progname(input, output, di, uo).
+% 	io__progname(DefaultProgname, Progname)
+%		Returns the name that the program was invoked with,
+%		if available, or DefaultProgname if the name is not
+%		available.
+%		
 %		Does not modify the IO state.
 
 :- pred io__write_string(string, io__state, io__state).
@@ -189,7 +193,7 @@
 			;	user_error.
 
 /*
-:- external("NU-Prolog", io__progname/2).
+:- external("NU-Prolog", io__progname/4).
 :- external("NU-Prolog", io__write_string/3).
 :- external("NU-Prolog", io__write_char/3).
 :- external("NU-Prolog", io__write_int/3).

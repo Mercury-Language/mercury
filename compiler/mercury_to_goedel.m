@@ -55,7 +55,7 @@ main_predicate([_, Progname, File | Files]) -->
 :- pred usage(io__state, io__state).
 :- mode usage(di, uo).
 usage -->
-	io__progname(Progname),
+	io__progname("mercury_to_goedel", Progname),
 	io__stderr_stream(StdErr),
  	io__write_string(StdErr, "Mercury-to-Goedel converter version 0.1\n"),
  	io__write_string(StdErr, "Usage: "),
@@ -1277,15 +1277,5 @@ convert_var_name(Name, GoedelName) :-
 	;
 		string__uncapitalize_first(Name, GoedelName)
 	).
-
-%-----------------------------------------------------------------------------%
-
-	% Convert a (possibly module-qualified) sym_name into a string.
-
-:- pred unqualify_name(sym_name, string).
-:- mode unqualify_name(input, output).
-
-unqualify_name(unqualified(Name), Name).
-unqualify_name(qualified(_Module, Name), Name).
 
 %-----------------------------------------------------------------------------%

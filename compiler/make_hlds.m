@@ -535,8 +535,9 @@ make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
 	else
 		N1 is N - 1,
 		varset__new_var(VarSet0, Var, VarSet1),
+		varset__name_var(VarSet1, Var, "HeadVar", VarSet2),
 		Vars = [Var | Vars1],
-		make_n_fresh_vars(N1, VarSet1, Vars1, VarSet)
+		make_n_fresh_vars(N1, VarSet2, Vars1, VarSet)
 	).
 
 :- pred insert_head_unifications(list(term), list(term), goal, goal).
@@ -601,8 +602,11 @@ transform_goal(call(Goal), call(PredId, ModeId, Args, Builtin) - GoalInfo) :-
 	% XXX we need to know the module name!!!
 	ModuleName = "xxx",
 
-	require(Goal = term_functor(term_atom(PredName), Args, _),
-		"fatal error: called term is not an atom"),
+	( Goal = term_functor(term_atom(PredName), Args, _) ->
+		true
+	;
+		error("fatal error: called term is not an atom")
+	),
 	length(Args, Arity),
 	make_predid(ModuleName, unqualified(PredName), Arity, PredId),
 

@@ -294,32 +294,32 @@ typecheck_goal(Goal - _GoalInfo, TypeInfo0, TypeInfo) :-
 :- mode typecheck_goal_2(input, typeinfo_di, typeinfo_uo).
 
 typecheck_goal_2(conj(List)) -->
-	%%% checkpoint("conj"),
+	checkpoint("conj"),
 	typecheck_goal_list(List).
 typecheck_goal_2(disj(List)) -->
-	%%% checkpoint("disj"),
+	checkpoint("disj"),
 	typecheck_goal_list(List).
 typecheck_goal_2(if_then_else(_Vs, A, B, C)) -->
-	%%% checkpoint("if"),
+	checkpoint("if"),
 	typecheck_goal(A),
-	%%% checkpoint("then"),
+	checkpoint("then"),
 	typecheck_goal(B),
-	%%% checkpoint("else"),
+	checkpoint("else"),
 	typecheck_goal(C).
 typecheck_goal_2(not(_Vs, A)) -->
-	%%% checkpoint("not"),
+	checkpoint("not"),
 	typecheck_goal(A).
 typecheck_goal_2(some(_Vs, G)) -->
-	%%% checkpoint("some"),
+	checkpoint("some"),
 	typecheck_goal(G).
 typecheck_goal_2(all(_Vs, G)) -->
-	%%% checkpoint("all"),
+	checkpoint("all"),
 	typecheck_goal(G).
 typecheck_goal_2(call(PredId, _Mode, Args, _Builtin)) -->
-	%%% checkpoint("call"),
+	checkpoint("call"),
 	typecheck_call_pred(PredId, Args).
 typecheck_goal_2(unify(A, B, _Mode, _Info)) -->
-	%%% checkpoint("unify"),
+	checkpoint("unify"),
 	typecheck_unification(A, B).
 
 %-----------------------------------------------------------------------------%
@@ -346,15 +346,10 @@ typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
 		map__search(Preds, PredId, PredInfo)
 	then
 		predinfo_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
-
-		% XXX Design flaw.  Fuck.
-		
 			% rename apart the type variables in called
 			% predicate's arg types
-		typeinfo_get_typevarset(TypeInfo0, TypeVarSet0),
-		varset__merge(TypeVarSet0, PredTypeVarSet, PredArgTypes0,
-				  TypeVarSet, PredArgTypes),
-		typeinfo_set_typevarset(TypeInfo0, TypeVarSet, TypeInfo1),
+		rename_apart(TypeInfo0, PredTypeVarSet, PredArgTypes0,
+				TypeInfo1, PredArgTypes),
 			% unify the types of the call arguments with the
 			% called predicates' arg types
 		typecheck_term_has_type_list(Args, PredArgTypes, TypeInfo1,
@@ -369,6 +364,66 @@ typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
 		typeinfo_set_found_error(TypeInfoB1, true, TypeInfoB2),
 		typeinfo_set_type_assign_set(TypeInfoB2, [], TypeInfo)
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% Rename apart the type variables in called predicate's arg types.
+	%
+	% Each type_assign has it's own set of type variables, but these
+	% are supposed to stay in synch with each other.  We need to
+	% iterate over the set of type_assigns, but we check that
+	% the resulting renamed apart list of predicate arg types
+	% is the same for each type_assign (i.e. that the tvarsets
+	% were indeed in synch).
+
+:- pred rename_apart_2(type_info, tvarset, list(type), type_info, list(type)).
+:- mode rename_apart_2(typeinfo_di, input, input, typeinfo_uo, output).
+
+rename_apart(TypeInfo0, PredTypeVarSet, PredArgTypes0, TypeInfo, PredArgTypes)
+		:-
+	typeinfo_get_type_assign_set(TypeInfo0, TypeAssignSet0),
+	( TypeAssignSet0 = [TypeAssign0 | TypeAssigns0] ->
+			% process the first type_assign and get
+			% the resulting PredArgTypes
+		type_assign_rename_apart(TypeAssign0, PredTypeVarSet,
+				PredArgTypes0, TypeAssign, PredArgTypes),
+			% process the remaining type_assigns and check
+			% that they produce matching PredArgTypes
+		rename_apart_2(TypeAssigns0, PredTypeVarSet, PredArgTypes0,
+				  TypeAssigns, PredArgTypes),
+		TypeAssignSet = [TypeAssign | TypeAssigns],
+		typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
+	;
+		TypeInfo = TypeInfo0
+	).
+
+:- pred rename_apart_2(type_assign_set, tvarset, list(type),
+			type_assign_set, list(type)).
+:- mode rename_apart_2(input, input, input, output, input).
+
+rename_apart_2([], _, _, [], _).
+rename_apart_2([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredArgTypes0,
+		[TypeAssign | TypeAssigns], PredArgTypes) :-
+	type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes0,
+			TypeAssign, NewPredArgTypes),
+	(PredArgTypes = NewPredArgTypes ->
+		true
+	;
+		error("problem synchronizing type vars")
+	),
+	rename_apart_2(TypeAssigns0, PredTypeVarSet, PredArgTypes0,
+			TypeAssigns, PredArgTypes).
+
+:- pred type_assign_rename_apart(type_assign, tvarset, list(type),
+			type_assign, list(type)).
+:- mode type_assign_rename_apart(input, input, input, output, output).
+
+type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes0,
+		TypeAssign, PredArgTypes) :-
+	type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
+	varset__merge(TypeVarSet0, PredTypeVarSet, PredArgTypes0,
+			  TypeVarSet, PredArgTypes),
+	type_assign_set_typevarset(TypeAssign0, TypeVarSet, TypeAssign).
 
 %-----------------------------------------------------------------------------%
 
@@ -426,8 +481,10 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 	->
 		Type = Type0
 	;
-		varset__new_var(TVarSet, NewVar, _),
-		Type = term_variable(NewVar)
+		% this shouldn't happen - how can a variable which has
+		% not yet been assigned a type variable fail to have
+		% the correct type?
+		error("problem in type unification")
 	),
 	TypeStuff = type_stuff(Type, TVarSet, TypeBindings),
 	(
@@ -575,12 +632,8 @@ type_assign_cons_has_type([ConsDefn | ConsDefns], TypeAssign0, Args, Type,
 type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type, TypeInfo,
 		TypeAssignSet0, TypeAssignSet) :-
 
-	ConsDefn = hlds__cons_defn(ArgTypes, TypeId, Context),
-
-		% construct the type of this constructor
-	type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
-	type_id_to_type(TypeId, Context, TypeVarSet0, ConsType, TypeVarSet),
-	type_assign_set_typevarset(TypeAssign0, TypeVarSet, TypeAssign1),
+	get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo,
+			ConsType, ArgTypes, TypeAssign1),
 
 	( type_assign_unify_type(TypeAssign1, ConsType, Type, TypeAssign2) ->
 			% check the types of the arguments
@@ -666,8 +719,8 @@ checkpoint_2(Msg, T0) -->
 	io__write_string("At "),
 	io__write_string(Msg),
 	io__write_string(": "),
-	{ report_stats },
-	%%% io__write_string("\n"),
+	%%% { report_stats },
+	io__write_string("\n"),
 	{ typeinfo_get_type_assign_set(T0, TypeAssignSet) },
 	{ typeinfo_get_varset(T0, VarSet) },
 	write_type_assign_set(TypeAssignSet, VarSet).
@@ -799,7 +852,7 @@ type_assign_unify_term(term_variable(Y), term_functor(F, As, _), TypeAssign0,
 type_assign_unify_term(term_functor(FX, AsX, _), term_functor(FY, AsY, _),
 		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet) :-
 	    % XXX we should handle this properly
-	error("XXX warning: unification of term with term\n"),
+	error("XXX not implemented: unification of term with term\n"),
 	TypeAssignSet = TypeAssignSet0.
 
 %-----------------------------------------------------------------------------%
@@ -819,16 +872,12 @@ type_assign_unify_term(term_functor(FX, AsX, _), term_functor(FY, AsY, _),
 type_assign_unify_var_functor([], _, _, _, _, TypeAssignSet, TypeAssignSet).
 type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
+
+	get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo,
+			ConsType, ArgTypes, TypeAssign1),
 	
-	ConsDefn = hlds__cons_defn(ArgTypes, TypeId, Context),
-
-		% construct the type of this constructor
-	type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
-	type_id_to_type(TypeId, Context, TypeVarSet0, ConsType, TypeVarSet),
-	type_assign_set_typevarset(TypeAssign0, TypeVarSet, TypeAssign1),
-
 		% unify the type of Var with the type of the constructor
-	type_assign_get_var_types(TypeAssign0, VarTypes0),
+	type_assign_get_var_types(TypeAssign1, VarTypes0),
 	( %%% if some [TypeY]
 		map__search(VarTypes0, Y, TypeY)
 	->
@@ -864,41 +913,35 @@ type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 
 %-----------------------------------------------------------------------------%
 
-	% Given a type id (such as list/1), construct a type term
-	% (such as list(T)) corresponding to that type.
+	% Given an hlds__cons_defn, construct a type for the
+	% constructor and a list of types of the arguments.
+	% First we construct the type and the arg types using
+	% the information in the hlds__cons_defn and the information
+	% in the hlds type table entry for the cons' type.
+	% Then we rename these apart from the current type_assign's
+	% typevarset.
+	%
+	% XXX abstract the use of hlds__cons_defn/3 and hlds__type_defn/5
 
-:- pred type_id_to_type(type_id, term__context, tvarset, type, tvarset).
-:- mode type_id_to_type(input, input, input, output, output).
+:- pred get_cons_stuff(hlds__cons_defn, type_assign, type_info,
+			type, list(type), type_assign).
+:- mode get_cons_stuff(input, input, input, output, output, output).
 
-type_id_to_type(qualified(_Module, Name) - Arity, Context, TypeVarSet0, Type,
-		TypeVarSet) :-
-	Const = term_atom(Name),
-	make_n_fresh_var_terms(TypeVarSet0, Arity, TypeVarSet, TypeArgs),
-	Type = term_functor(Const, TypeArgs, Context).
+get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo, ConsType, ArgTypes,
+			TypeAssign) :-
 
-type_id_to_type(unqualified(Name) - Arity, Context, TypeVarSet0, Type,
-		TypeVarSet) :-
-	Const = term_atom(Name),
-	make_n_fresh_var_terms(TypeVarSet0, Arity, TypeVarSet, TypeArgs),
-	Type = term_functor(Const, TypeArgs, Context).
+	ConsDefn = hlds__cons_defn(ArgTypes0, TypeId, Context),
 
-%-----------------------------------------------------------------------------%
+	typeinfo_get_types(TypeInfo, Types),
+	map__search(Types, TypeId, TypeDefn),
+	TypeDefn = hlds__type_defn(ConsTypeVarSet, ConsTypeParams, _, _, _),
 
-:- pred make_n_fresh_var_terms(varset, int, varset, list(term)).
-:- mode make_n_fresh_var_terms(input, input, output, output).
+	TypeId = QualifiedName - _Arity,
+	unqualify_name(QualifiedName, Name),
+	ConsType0 = term_functor(term_atom(Name), ConsTypeParams, Context),
 
-make_n_fresh_var_terms(VarSet0, N, VarSet, VarTerms) :-
-	(if
-		N = 0
-	then
-		VarTerms = [],
-		VarSet = VarSet0
-	else
-		N1 is N - 1,
-		varset__new_var(VarSet0, VarId, VarSet1),
-		VarTerms = [term_variable(VarId) | VarTerms1],
-		make_n_fresh_var_terms(VarSet1, N1, VarSet, VarTerms1)
-	).
+	type_assign_rename_apart(TypeAssign0, ConsTypeVarSet,
+		[ConsType0 | ArgTypes0], TypeAssign, [ConsType | ArgTypes]).
 
 %-----------------------------------------------------------------------------%
 
@@ -1262,7 +1305,7 @@ is_builtin_type(qualified(_,"character") - 0).
 					cons_table,
 					pred_id,
 					term__context,
-					tvarset,	% type params
+					int,	% XXX this field is never used
 					varset,		% variables
 					type_assign_set,
 					bool	% did we find any type errors?
@@ -1308,11 +1351,10 @@ typeinfo_init(IOState, ModuleInfo, PredId, Context, TypeVarSet, VarSet,
 	moduleinfo_preds(ModuleInfo, Preds),
 	moduleinfo_types(ModuleInfo, Types),
 	moduleinfo_ctors(ModuleInfo, Ctors),
-	require(ground(Ctors), "error 4"),
 	map__init(TypeBindings),
 	map__init(VarTypes),
 	TypeInfo = typeinfo(
-		IOState, Preds, Types, Ctors, PredId, Context, TypeVarSet,
+		IOState, Preds, Types, Ctors, PredId, Context, 0,
 		VarSet, [type_assign(VarTypes, TypeVarSet, TypeBindings)],
 		false
 	).
@@ -1366,21 +1408,6 @@ typeinfo_get_predid(typeinfo(_,_,_,_,PredId,_,_,_,_,_), PredId).
 :- mode typeinfo_get_context(input, output).
 
 typeinfo_get_context(typeinfo(_,_,_,_,_,Context,_,_,_,_), Context).
-
-%-----------------------------------------------------------------------------%
-
-:- pred typeinfo_get_typevarset(type_info, varset).
-:- mode typeinfo_get_typevarset(input, output).
-
-typeinfo_get_typevarset(typeinfo(_,_,_,_,_,_,TypeVarSet,_,_,_), TypeVarSet).
-
-%-----------------------------------------------------------------------------%
-
-:- pred typeinfo_set_typevarset(type_info, varset, type_info).
-:- mode typeinfo_set_typevarset(typeinfo_di, input, typeinfo_uo).
-
-typeinfo_set_typevarset( typeinfo(A,B,C,D,E,F,_,H,I,J), TypeVarSet,
-			typeinfo(A,B,C,D,E,F,TypeVarSet,H,I,J)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1716,6 +1743,7 @@ report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	io__write_string(".\n"),
 	io__write_string("possible type assignments include:\n"),
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
+	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
 	{ map__keys(VarTypes1, Vars1) },
 	report_ambiguity_error_2(Vars1, VarSet, TypeAssign1, TypeAssign2).
 

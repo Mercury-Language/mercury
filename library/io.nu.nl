@@ -34,8 +34,7 @@ main(Args) :-
 
 :- pred run(list(atom)).
 run(Args) :-
-	atoms_to_strings(Args,ArgStrings),
-	save_progname(ArgStrings),
+	atoms_to_strings(Args, ArgStrings),
 	io__init_state(IOState0),
 	io__call(main_predicate(ArgStrings), IOState0, IOState),
 	io__final_state(IOState).
@@ -48,17 +47,23 @@ io__call(Goal, IOState0, IOState) :-
 :- pred io__call_2(pred, list(_), io__state).
 io__call_2(Goal, Solutions, IOState) :-
 	(Solutions = [] ->
-		write('\nio.nl: error: goal "'),
-		print(Goal),
-		write('." failed.\n'),
+		write(user_error, '\nio.nl: error: goal `'),
+		functor(Goal, F, N),
+		write(user_error, F),
+		write(user_error, '/'),
+		write(user_error, N),
+		write(user_error, '." failed.\n'),
 		abort
 	; Solutions = [SingleSolution - IOState0] ->
 		Goal = SingleSolution,
 		IOState = IOState0
 	;
-		write('\nio.nl: error: goal "'),
-		print(Goal),
-		write('." not deterministic.\n'),
+		write(user_error, '\nio.nl: error: goal `'),
+		functor(Goal, F, N),
+		write(user_error, F),
+		write(user_error, '/'),
+		write(user_error, N),
+		write(user_error, '." not deterministic.\n'),
 		abort
 	).
 
@@ -68,13 +73,10 @@ atoms_to_strings(A.As,S.Ss) :-
 	name(A,S),
 	atoms_to_strings(As,Ss).
 
-% ?- dynamic(io__progname/1).
-% save_progname(Progname._) :-
-% 	assert(io__progname(Progname, X, X)).
+	% XXX A NU-Prolog bug means that the program name is
+	% not available, so we have to use the default name.
 
-	% !! this is wrong, but is necessary to avoid bugs in nit & NU-Prolog.
-save_progname(_).
-io__progname("<argv[0] not available>", X, X).
+io__progname(DefaultName, DefaultName) --> [].
 	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -596,6 +596,22 @@ liveness_livevars(Liveness, LiveVars) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- interface.
+
+	% Convert a (possibly module-qualified) sym_name into a string.
+
+:- pred unqualify_name(sym_name, string).
+:- mode unqualify_name(input, output).
+
+:- implementation.
+
+unqualify_name(unqualified(Name), Name).
+unqualify_name(qualified(_Module, Name), Name).
+
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 	% Various predicates which are used by codegen to
 	% access the mode data structure.
 

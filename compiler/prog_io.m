@@ -290,11 +290,11 @@ prog_io__read_module(Module, Error, Messages, Prog) -->
 		},
 		io__seen
 	else
-		io__progname(Progname),
+		io__progname("prog_io.nl", Progname),
 		{
-		  string__append(Progname, ": can't open file '", Message1),
+		  string__append(Progname, ": can't open file `", Message1),
 		  string__append(Message1, FileName, Message2),
-		  string__append(Message2, "'.\n", Message),
+		  string__append(Message2, "'", Message),
 		  dummy_term(Term),
 		  Messages = [Message - Term],
 		  Error = yes,

@@ -99,7 +99,7 @@ output_c_file(c_file(Name, Modules)) -->
 		output_c_module_list(Modules),
 		io__told
 	else
-		io__progname(ProgName),
+		io__progname("llds.nl", ProgName),
 		io__write_string(ProgName),
 		io__write_string(": can't open '"),
 		io__write_string(FileName),
