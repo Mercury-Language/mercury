@@ -30,3 +30,4 @@ library.dep
 library.dv
 Mercury
 libmer_std.lib
+*.mh
