@@ -503,7 +503,7 @@ install_split_library: scripts dep_library
 	done && \
 	{ [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
 	  [ -d Mercury/c_dates ] && mv tmp_dir/*.c_date Mercury/c_dates; \
-	  [ -d Mercury/mihs] && mv tmp_dir/*.mih Mercury/mihs; \
+	  [ -d Mercury/mihs ] && mv tmp_dir/*.mih Mercury/mihs; \
 	  [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
 	  [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps; \
 	  mv tmp_dir/* . ; rmdir tmp_dir; true; }
