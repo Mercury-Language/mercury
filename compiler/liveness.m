@@ -162,11 +162,11 @@
 
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
 :- import_module hlds_out, mode_util, code_util, quantification, options.
-:- import_module trace, globals, polymorphism, passes_aux, prog_util.
-:- import_module term, varset.
+:- import_module polymorphism, passes_aux, prog_util.
+:- import_module trace_params, trace, globals.
 
-:- import_module bool, map, std_util, list, assoc_list, require.
-:- import_module string.
+:- import_module bool, string, map, std_util, list, assoc_list, require.
+:- import_module term, varset.
 
 detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	requantify_proc(ProcInfo0, ProcInfo1),

@@ -24,11 +24,6 @@
 
 :- implementation.
 
-	% library modules
-:- import_module int, list, map, set, std_util, dir, require, string, bool.
-:- import_module library, getopt, set_bbbtree, term, varset.
-:- import_module gc.
-
 	%
 	% the main compiler passes (mostly in order of execution)
 	%
@@ -67,12 +62,16 @@
 :- import_module ml_optimize.			% MLDS -> MLDS
 :- import_module mlds_to_c.			% MLDS -> C
 
-
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module dependency_graph, prog_util, rl_dump, rl_file.
-:- import_module options, globals, passes_aux.
+:- import_module options, globals, trace_params, passes_aux.
+
+	% library modules
+:- import_module int, list, map, set, std_util, dir, require, string, bool.
+:- import_module library, getopt, set_bbbtree, term, varset.
+:- import_module gc.
 
 %-----------------------------------------------------------------------------%
 

@@ -37,7 +37,8 @@
 :- implementation.
 
 :- import_module follow_vars, liveness, hlds_goal, llds, prog_data.
-:- import_module options, globals, goal_util, mode_util, instmap, trace.
+:- import_module options, globals, trace_params, trace.
+:- import_module goal_util, mode_util, instmap.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module bool, int, require.
 

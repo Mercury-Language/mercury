@@ -16,7 +16,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module options.
+:- import_module options, trace_params.
 :- import_module bool, getopt, list.
 
 :- type globals.
@@ -49,26 +49,11 @@
 	;	num_data_elems
 	;	size_data_elems.
 
-:- type trace_level.
-
 :- pred convert_target(string::in, compilation_target::out) is semidet.
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
 :- pred convert_prolog_dialect(string::in, prolog_dialect::out) is semidet.
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
-:- pred convert_trace_level(string::in, bool::in, trace_level::out) is semidet.
-	% the bool should be the setting of the `require_tracing' option.
-
-	% These functions check for various properties of the trace level.
-:- func trace_level_is_none(trace_level) = bool.
-:- func trace_level_needs_fixed_slots(trace_level) = bool.
-:- func trace_level_needs_from_full_slot(trace_level) = bool.
-:- func trace_level_needs_decl_debug_slots(trace_level) = bool.
-:- func trace_level_needs_interface_events(trace_level) = bool.
-:- func trace_level_needs_internal_events(trace_level) = bool.
-:- func trace_level_needs_neg_context_events(trace_level) = bool.
-:- func trace_level_needs_all_var_names(trace_level) = bool.
-:- func trace_level_needs_proc_body_reps(trace_level) = bool.
 
 %-----------------------------------------------------------------------------%
 
@@ -76,7 +61,7 @@
 
 :- pred globals__init(option_table::di, compilation_target::di, gc_method::di,
 	tags_method::di, prolog_dialect::di, termination_norm::di,
-	trace_level::di, globals::uo) is det.
+	trace_level::di, trace_suppress_items::di, globals::uo) is det.
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
 :- pred globals__get_target(globals::in, compilation_target::out) is det.
@@ -86,6 +71,8 @@
 :- pred globals__get_termination_norm(globals::in, termination_norm::out) 
 	is det.
 :- pred globals__get_trace_level(globals::in, trace_level::out) is det.
+:- pred globals__get_trace_suppress(globals::in, trace_suppress_items::out)
+	is det.
 
 :- pred globals__set_options(globals::in, option_table::in, globals::out)
 	is det.
@@ -127,7 +114,7 @@
 
 :- pred globals__io_init(option_table::di, compilation_target::in,
 	gc_method::in, tags_method::in, prolog_dialect::in,
-	termination_norm::in, trace_level::in,
+	termination_norm::in, trace_level::in, trace_suppress_items::in,
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_target(compilation_target::out,
@@ -146,6 +133,9 @@
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_trace_level(trace_level::out,
+	io__state::di, io__state::uo) is det.
+
+:- pred globals__io_get_trace_suppress(trace_suppress_items::out,
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_globals(globals::out, io__state::di, io__state::uo)
@@ -224,76 +214,6 @@ convert_termination_norm("total", total).
 convert_termination_norm("num-data-elems", num_data_elems).
 convert_termination_norm("size-data-elems", size_data_elems).
 
-convert_trace_level("minimum", no, none).
-convert_trace_level("minimum", yes, shallow).
-convert_trace_level("shallow", _, shallow).
-convert_trace_level("deep", _, deep).
-convert_trace_level("decl", _, decl).
-convert_trace_level("rep", _, decl_rep).
-convert_trace_level("default", no, none).
-convert_trace_level("default", yes, deep).
-
-:- type trace_level
-	--->	none
-	;	shallow
-	;	deep
-	;	decl
-	;	decl_rep.
-
-trace_level_is_none(none) = yes.
-trace_level_is_none(shallow) = no.
-trace_level_is_none(deep) = no.
-trace_level_is_none(decl) = no.
-trace_level_is_none(decl_rep) = no.
-
-trace_level_needs_fixed_slots(none) = no.
-trace_level_needs_fixed_slots(shallow) = yes.
-trace_level_needs_fixed_slots(deep) = yes.
-trace_level_needs_fixed_slots(decl) = yes.
-trace_level_needs_fixed_slots(decl_rep) = yes.
-
-trace_level_needs_from_full_slot(none) = no.
-trace_level_needs_from_full_slot(shallow) = yes.
-trace_level_needs_from_full_slot(deep) = no.
-trace_level_needs_from_full_slot(decl) = no.
-trace_level_needs_from_full_slot(decl_rep) = no.
-
-trace_level_needs_decl_debug_slots(none) = no.
-trace_level_needs_decl_debug_slots(shallow) = no.
-trace_level_needs_decl_debug_slots(deep) = no.
-trace_level_needs_decl_debug_slots(decl) = yes.
-trace_level_needs_decl_debug_slots(decl_rep) = yes.
-
-trace_level_needs_interface_events(none) = no.
-trace_level_needs_interface_events(shallow) = yes.
-trace_level_needs_interface_events(deep) = yes.
-trace_level_needs_interface_events(decl) = yes.
-trace_level_needs_interface_events(decl_rep) = yes.
-
-trace_level_needs_internal_events(none) = no.
-trace_level_needs_internal_events(shallow) = no.
-trace_level_needs_internal_events(deep) = yes.
-trace_level_needs_internal_events(decl) = yes.
-trace_level_needs_internal_events(decl_rep) = yes.
-
-trace_level_needs_neg_context_events(none) = no.
-trace_level_needs_neg_context_events(shallow) = no.
-trace_level_needs_neg_context_events(deep) = no.
-trace_level_needs_neg_context_events(decl) = yes.
-trace_level_needs_neg_context_events(decl_rep) = yes.
-
-trace_level_needs_all_var_names(none) = no.
-trace_level_needs_all_var_names(shallow) = no.
-trace_level_needs_all_var_names(deep) = no.
-trace_level_needs_all_var_names(decl) = yes.
-trace_level_needs_all_var_names(decl_rep) = yes.
-
-trace_level_needs_proc_body_reps(none) = no.
-trace_level_needs_proc_body_reps(shallow) = no.
-trace_level_needs_proc_body_reps(deep) = no.
-trace_level_needs_proc_body_reps(decl) = no.
-trace_level_needs_proc_body_reps(decl_rep) = yes.
-
 %-----------------------------------------------------------------------------%
 
 :- type globals
@@ -304,13 +224,14 @@ trace_level_needs_proc_body_reps(decl_rep) = yes.
 			tags_method 		:: tags_method,
 			prolog_dialect 		:: prolog_dialect,
 			termination_norm 	:: termination_norm,
-			trace_level 		:: trace_level
+			trace_level 		:: trace_level,
+			trace_suppress_items	:: trace_suppress_items
 		).
 
 globals__init(Options, Target, GC_Method, TagsMethod,
-		PrologDialect, TerminationNorm, TraceLevel,
+		PrologDialect, TerminationNorm, TraceLevel, TraceSuppress,
 	globals(Options, Target, GC_Method, TagsMethod,
-		PrologDialect, TerminationNorm, TraceLevel)).
+		PrologDialect, TerminationNorm, TraceLevel, TraceSuppress)).
 
 globals__get_options(Globals, Globals ^ options).
 globals__get_target(Globals, Globals ^ target).
@@ -319,12 +240,14 @@ globals__get_tags_method(Globals, Globals ^ tags_method).
 globals__get_prolog_dialect(Globals, Globals ^ prolog_dialect).
 globals__get_termination_norm(Globals, Globals ^ termination_norm).
 globals__get_trace_level(Globals, Globals ^ trace_level).
+globals__get_trace_suppress(Globals, Globals ^ trace_suppress_items).
 
 globals__set_options(Globals, Options, Globals ^ options := Options).
 
 globals__set_trace_level(Globals, TraceLevel,
 	Globals ^ trace_level := TraceLevel).
-globals__set_trace_level_none(Globals, Globals ^ trace_level := none).
+globals__set_trace_level_none(Globals,
+	Globals ^ trace_level := trace_level_none).
 
 globals__lookup_option(Globals, Option, OptionData) :-
 	globals__get_options(Globals, OptionTable),
@@ -387,11 +310,10 @@ globals__want_return_var_layouts(Globals, WantReturnLayouts) :-
 			globals__get_gc_method(Globals, GC_Method),
 			GC_Method = accurate
 		;
-			globals__lookup_bool_option(Globals, trace_return,
-				TraceReturn),
-			TraceReturn = yes,
 			globals__get_trace_level(Globals, TraceLevel),
-			TraceLevel \= none
+			globals__get_trace_suppress(Globals, TraceSuppress),
+			trace_needs_return_info(TraceLevel, TraceSuppress)
+				= yes
 		)
 	->
 		WantReturnLayouts = yes
@@ -403,15 +325,17 @@ globals__want_return_var_layouts(Globals, WantReturnLayouts) :-
 %-----------------------------------------------------------------------------%
 
 globals__io_init(Options, Target, GC_Method, TagsMethod,
-		PrologDialect, TerminationNorm, TraceLevel) -->
+		PrologDialect, TerminationNorm, TraceLevel, TraceSuppress) -->
 	{ copy(Target, Target1) },
 	{ copy(GC_Method, GC_Method1) },
 	{ copy(TagsMethod, TagsMethod1) },
 	{ copy(PrologDialect, PrologDialect1) },
 	{ copy(TerminationNorm, TerminationNorm1) },
 	{ copy(TraceLevel, TraceLevel1) },
+	{ copy(TraceSuppress, TraceSuppress1) },
 	{ globals__init(Options, Target1, GC_Method1, TagsMethod1,
-		PrologDialect1, TerminationNorm1, TraceLevel1, Globals) },
+		PrologDialect1, TerminationNorm1, TraceLevel1, TraceSuppress1,
+		Globals) },
 	globals__io_set_globals(Globals).
 
 globals__io_get_target(Target) -->
@@ -437,6 +361,10 @@ globals__io_get_termination_norm(TerminationNorm) -->
 globals__io_get_trace_level(TraceLevel) -->
 	globals__io_get_globals(Globals),
 	{ globals__get_trace_level(Globals, TraceLevel) }.
+
+globals__io_get_trace_suppress(TraceSuppress) -->
+	globals__io_get_globals(Globals),
+	{ globals__get_trace_suppress(Globals, TraceSuppress) }.
 
 globals__io_get_globals(Globals) -->
 	io__get_globals(UnivGlobals),
@@ -480,7 +408,7 @@ globals__io_set_trace_level(TraceLevel) -->
 	% This predicate is needed because mercury_compile.m doesn't know
 	% anything about type trace_level.
 globals__io_set_trace_level_none -->
-	globals__io_set_trace_level(none).
+	globals__io_set_trace_level(trace_level_none).
 
 %-----------------------------------------------------------------------------%
 

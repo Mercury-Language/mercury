@@ -95,10 +95,8 @@
 	% Auxiliary output options
 		;	assume_gmake
 		;	trace
-		;	trace_internal
-		;	trace_return
-		;	trace_redo
 		;	trace_optimized
+		;	suppress_trace
 		;	stack_trace_higher_order
 		;	generate_bytecode
 		;	generate_prolog		% Currently not used
@@ -485,10 +483,8 @@ option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
 	assume_gmake		-	bool(yes),
 	trace			-	string("default"),
-	trace_internal		-	bool(yes),
-	trace_return		-	bool(yes),
-	trace_redo		-	bool(yes),
 	trace_optimized		-	bool(no),
+	suppress_trace		-	string(""),
 	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
@@ -870,11 +866,9 @@ long_option("output-grade-string",	output_grade_string).
 % aux output options
 long_option("assume-gmake",		assume_gmake).
 long_option("trace",			trace).
-long_option("trace-internal",		trace_internal).
-long_option("trace-return",		trace_return).
-long_option("trace-redo",		trace_redo).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
+long_option("suppress-trace",		suppress_trace).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
@@ -1662,15 +1656,8 @@ options_help_aux_output -->
 		"\tof execution tracing.",
 		"\tSee the Debugging chapter of the Mercury User's Guide",
 		"\tfor details.",
-		"--no-trace-internal",
-		"\tDo not generate code for internal events even if the trace",
-		"\tlevel would normally require it.",
-		"--no-trace-return",
-		"\tDo not generate trace information for call return sites.",
-		"\tPrevents the printing of the values of variables in ancestors",
-		"\tof the current call.",
-		"--no-trace-redo",
-		"\tDo not generate code to trace REDO events.",
+%		"--suppress-trace <suppress-items>,",
+%		"\tSuppress the named aspects of the execution tracing system.",
 		"--trace-optimized",
 		"\tDo not disable optimizations that can change the trace.",
 		"--stack-trace-higher-order",

@@ -45,7 +45,7 @@
 
 :- implementation.
 
-:- import_module options, globals, prog_io_util.
+:- import_module options, globals, prog_io_util, trace_params.
 :- import_module char, int, string, map, set, getopt, library.
 
 handle_options(MaybeError, Args, Link) -->
@@ -160,30 +160,42 @@ postprocess_options(ok(OptionTable), Error) -->
                                 { convert_trace_level(TraceStr, RequireTracing,
                                     TraceLevel) }
                             ->
-                                { map__lookup(OptionTable, dump_hlds_alias,
-                                    DumpAliasOption) },
+                                { map__lookup(OptionTable, suppress_trace,
+                                    Suppress) },
                                 (
-                                    { DumpAliasOption = string(DumpAlias) },
-                                    { DumpAlias = "" }
+                                    { Suppress = string(SuppressStr) },
+                                    { convert_trace_suppress(SuppressStr,
+                                        TraceSuppress) }
                                 ->
-                                    postprocess_options_2(OptionTable,
-                                        Target, GC_Method, TagsMethod,
-				        PrologDialect, TermNorm, TraceLevel,
-					Error)
+                                    { map__lookup(OptionTable, dump_hlds_alias,
+                                        DumpAliasOption) },
+                                    (
+                                        { DumpAliasOption = string(DumpAlias) },
+                                        { DumpAlias = "" }
+                                    ->
+                                        postprocess_options_2(OptionTable,
+                                            Target, GC_Method, TagsMethod,
+                                            PrologDialect, TermNorm, TraceLevel,
+                                            TraceSuppress, Error)
+                                    ;
+                                        { DumpAliasOption = string(DumpAlias) },
+                                        { convert_dump_alias(DumpAlias,
+                                            DumpOptions) }
+                                    ->
+                                        { map__set(OptionTable,
+                                            dump_hlds_options,
+                                            string(DumpOptions),
+                                            NewOptionTable) },
+                                        postprocess_options_2(NewOptionTable,
+                                            Target, GC_Method, TagsMethod,
+                                            PrologDialect, TermNorm,
+                                            TraceLevel, TraceSuppress, Error)
+                                    ;
+                                        { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
+                                    )
                                 ;
-                                    { DumpAliasOption = string(DumpAlias) },
-                                    { convert_dump_alias(DumpAlias,
-                                        DumpOptions) }
-                                ->
-                                    { map__set(OptionTable, dump_hlds_options,
-                                        string(DumpOptions), NewOptionTable) },
-                                    postprocess_options_2(NewOptionTable,
-                                        Target, GC_Method, TagsMethod,
-				        PrologDialect, TermNorm, TraceLevel,
-					Error)
-                                ;
-                                    { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
-                                )
+                                    { Error = yes("Invalid argument to option `--suppress-trace'.") }
+				)
                             ;
                                 { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `shallow', `deep', or `default').") }
                             )
@@ -205,17 +217,18 @@ postprocess_options(ok(OptionTable), Error) -->
     ;
         { Error = yes("Invalid target option (must be `c' or `il')") }
     ).
+    
 
-:- pred postprocess_options_2(option_table, compilation_target, gc_method,
-	tags_method, prolog_dialect, termination_norm, trace_level,
-	maybe(string), io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, in, out, di, uo) is det.
+:- pred postprocess_options_2(option_table::in, compilation_target::in,
+    gc_method::in, tags_method::in, prolog_dialect::in, termination_norm::in,
+    trace_level::in, trace_suppress_items::in, maybe(string)::out,
+    io__state::di, io__state::uo) is det.
 
 postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
-		PrologDialect, TermNorm, TraceLevel, Error) -->
+		PrologDialect, TermNorm, TraceLevel, TraceSuppress, Error) -->
 	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod,
-		PrologDialect, TermNorm, TraceLevel),
+		PrologDialect, TermNorm, TraceLevel, TraceSuppress),
 
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->

@@ -399,8 +399,15 @@ generate_category_code(model_det, Goal, ResumePoint, TraceSlotInfo, Code,
 		code_info__get_maybe_trace_info(MaybeTraceInfo),
 		( { MaybeTraceInfo = yes(TraceInfo) } ->
 			trace__generate_external_event_code(call, TraceInfo,
-				BodyContext, TraceCallLabel, _TypeInfos,
-				TraceCallCode),
+				BodyContext, MaybeCallExternalInfo),
+			{
+				MaybeCallExternalInfo = yes(CallExternalInfo),
+				CallExternalInfo = external_event_info(
+					TraceCallLabel, _, TraceCallCode)
+			;
+				MaybeCallExternalInfo = no,
+				error("generate_category_code: call events suppressed")
+			},
 			{ MaybeTraceCallLabel = yes(TraceCallLabel) }
 		;
 			{ TraceCallCode = empty },
@@ -432,8 +439,15 @@ generate_category_code(model_semi, Goal, ResumePoint, TraceSlotInfo, Code,
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
 		trace__generate_external_event_code(call, TraceInfo,
-			BodyContext, TraceCallLabel, _TypeInfos,
-			TraceCallCode),
+			BodyContext, MaybeCallExternalInfo),
+		{
+			MaybeCallExternalInfo = yes(CallExternalInfo),
+			CallExternalInfo = external_event_info(
+				TraceCallLabel, _, TraceCallCode)
+		;
+			MaybeCallExternalInfo = no,
+			error("generate_category_code: call events suppressed")
+		},
 		{ MaybeTraceCallLabel = yes(TraceCallLabel) },
 		code_gen__generate_goal(model_semi, Goal, BodyCode),
 		code_gen__generate_entry(model_semi, Goal, ResumePoint,
@@ -448,7 +462,15 @@ generate_category_code(model_semi, Goal, ResumePoint, TraceSlotInfo, Code,
 			% XXX A context that gives the end of the procedure
 			% definition would be better than BodyContext.
 		trace__generate_external_event_code(fail, TraceInfo,
-			BodyContext, _, _, TraceFailCode),
+			BodyContext, MaybeFailExternalInfo),
+		{
+			MaybeFailExternalInfo = yes(FailExternalInfo),
+			FailExternalInfo = external_event_info(
+				_, _, TraceFailCode)
+		;
+			MaybeFailExternalInfo = no,
+			TraceFailCode = empty
+		},
 		{ Code =
 			tree(EntryCode,
 			tree(TraceCallCode,
@@ -484,8 +506,15 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 	{ goal_info_get_context(GoalInfo, BodyContext) },
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
 		trace__generate_external_event_code(call, TraceInfo,
-			BodyContext, TraceCallLabel, _TypeInfos,
-			TraceCallCode),
+			BodyContext, MaybeCallExternalInfo),
+		{
+			MaybeCallExternalInfo = yes(CallExternalInfo),
+			CallExternalInfo = external_event_info(
+				TraceCallLabel, _, TraceCallCode)
+		;
+			MaybeCallExternalInfo = no,
+			error("generate_category_code: call events suppressed")
+		},
 		{ MaybeTraceCallLabel = yes(TraceCallLabel) },
 		code_gen__generate_goal(model_non, Goal, BodyCode),
 		code_gen__generate_entry(model_non, Goal, ResumePoint,
@@ -500,7 +529,15 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 			% XXX A context that gives the end of the procedure
 			% definition would be better than BodyContext.
 		trace__generate_external_event_code(fail, TraceInfo,
-			BodyContext, _, _, TraceFailCode),
+			BodyContext, MaybeFailExternalInfo),
+		{
+			MaybeFailExternalInfo = yes(FailExternalInfo),
+			FailExternalInfo = external_event_info(
+				_, _, TraceFailCode)
+		;
+			MaybeFailExternalInfo = no,
+			TraceFailCode = empty
+		},
 		{ TraceSlotInfo = trace_slot_info(_, _, yes(_)) ->
 			DiscardTraceTicketCode = node([
 				discard_ticket - "discard retry ticket"
@@ -787,7 +824,16 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				% procedure definition would be better than
 				% CallContext.
 			trace__generate_external_event_code(exit, TraceInfo,
-				BodyContext, _, TypeInfoDatas, TraceExitCode),
+				BodyContext, MaybeExitExternalInfo),
+			{
+				MaybeExitExternalInfo = yes(ExitExternalInfo),
+				ExitExternalInfo = external_event_info(
+					_, TypeInfoDatas, TraceExitCode)
+			;
+				MaybeExitExternalInfo = no,
+				TypeInfoDatas = map__init,
+				TraceExitCode = empty
+			},
 			{ map__values(TypeInfoDatas, TypeInfoLocnSets) },
 			{ FindBaseLvals = lambda([Lval::out] is nondet, (
 				list__member(LocnSet, TypeInfoLocnSets),

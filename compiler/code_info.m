@@ -37,7 +37,8 @@
 :- implementation.
 
 :- import_module code_util, code_exprn, var_locn, llds_out, prog_out.
-:- import_module exprn_aux, arg_info, type_util, mode_util, options.
+:- import_module exprn_aux, arg_info, type_util, mode_util.
+:- import_module trace_params, options.
 
 :- import_module term, varset.
 :- import_module set, stack.

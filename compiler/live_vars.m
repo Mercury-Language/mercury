@@ -34,8 +34,8 @@
 :- implementation.
 
 :- import_module llds, arg_info, prog_data, hlds_goal, hlds_data, mode_util.
-:- import_module liveness, code_aux, globals, graph_colour, instmap, options.
-:- import_module trace.
+:- import_module liveness, code_aux, globals, trace_params, trace.
+:- import_module graph_colour, instmap, options.
 :- import_module list, map, set, std_util, assoc_list, bool.
 :- import_module int, require.
 

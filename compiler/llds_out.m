@@ -262,7 +262,7 @@
 
 :- implementation.
 
-:- import_module rtti, rtti_out, options.
+:- import_module rtti, rtti_out, options, trace_params.
 :- import_module exprn_aux, prog_util, prog_out, hlds_pred.
 :- import_module export, mercury_to_mercury, modules.
 :- import_module c_util.

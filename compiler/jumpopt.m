@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module llds, globals.
+:- import_module llds, trace_params.
 :- import_module list, set, bool, counter.
 
 	% Take an instruction list and optimize jumps. This includes jumps
