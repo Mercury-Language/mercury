@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -632,6 +632,12 @@ mlds_output_pragma_export_func_name(ModuleName, Indent,
 			mlds_output_pragma_export_type(prefix),
 			mlds_output_pragma_export_type(suffix)).
 
+:- pred mlds_output_pragma_export_type(mlds__type::in,
+		io__state::di, io__state::uo) is det.
+mlds_output_pragma_export_type(Type) -->
+	mlds_output_pragma_export_type(prefix, Type),
+	mlds_output_pragma_export_type(suffix, Type).
+
 :- type locn ---> prefix ; suffix.
 :- pred mlds_output_pragma_export_type(locn, mlds__type, io__state, io__state).
 :- mode mlds_output_pragma_export_type(in, in, di, uo) is det.
@@ -691,11 +697,13 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 		io__write_string("\t")
 	; { RetTypes = [RetType] } ->
 		io__write_string("\treturn ("),
-		mlds_output_pragma_export_type(prefix, RetType),
-		mlds_output_pragma_export_type(suffix, RetType),
+		mlds_output_pragma_export_type(RetType),
 		io__write_string(") ")
 	;
-		{ error("mlds_output_pragma_export: multiple return types") }
+		io__write_string("\treturn ("),
+		mlds_output_return_list(RetTypes,
+				mlds_output_pragma_export_type),
+		io__write_string(") ")
 	),
 
 	mlds_output_fully_qualified_name(FuncName),
@@ -703,7 +711,6 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 	io__write_list(Parameters, ", ",
 			mlds_output_name_with_cast(ModuleName)),
 	io__write_string(");\n").
-
 
 	%
 	% Write out the arguments to the MLDS function.  Note the last
@@ -1288,8 +1295,10 @@ mlds_output_func_decl_ho(Indent, QualifiedName, Context,
 	; { RetTypes = [RetType] } ->
 		OutputPrefix(RetType)
 	;
-		io__write_string("\n#error multiple return types\n")
-		% { error("mlds_output_func: multiple return types") }
+		mlds_output_return_list(RetTypes,
+				(pred(T::in, di, uo) is det -->
+					OutputPrefix(T),
+					OutputSuffix(T)))
 	),
 	io__write_char(' '),
 	io__write_string(CallingConvention),
@@ -1345,7 +1354,7 @@ mlds_output_func_type_prefix(Params) -->
 	; { RetTypes = [RetType] } ->
 		mlds_output_type(RetType)
 	;
-		{ error("mlds_output_func_type_prefix: multiple return types") }
+		mlds_output_return_list(RetTypes, mlds_output_type)
 	),
 	% Note that mlds__func_type actually corresponds to a
 	% function _pointer_ type in C.  This is necessary because
@@ -2161,7 +2170,8 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 		mlds_output_lval(Lval),
 		io__write_string(" = ")
 	;
-		{ error("mld_output_stmt: multiple return values") }
+		mlds_output_return_list(Results, mlds_output_lval),
+		io__write_string(" = ")
 	),
 	mlds_output_bracketed_rval(FuncRval),
 	io__write_string("("),
@@ -2187,7 +2197,7 @@ mlds_output_stmt(Indent, _FuncInfo, return(Results), _) -->
 		io__write_char(' '),
 		mlds_output_rval(Rval)
 	;
-		{ error("mlds_output_stmt: multiple return values") }
+		mlds_output_return_list(Results, mlds_output_rval)
 	),
 	io__write_string(";\n").
 	
@@ -2772,6 +2782,24 @@ mlds_output_bracketed_rval(Rval) -->
 		mlds_output_rval(Rval),
 		io__write_char(')')
 	).
+
+:- pred mlds_output_return_list(list(T), pred(T, io__state, io__state),
+		io__state, io__state).
+:- mode mlds_output_return_list(in, pred(in, di, uo) is det, di, uo) is det.
+	% mlds_output_return_list(List, OutputPred, IO0, IO) outputs a List
+	% of return types/values using OutputPred.
+
+mlds_output_return_list(List, OutputPred) -->
+	% Even though C doesn't support multiple return types,
+	% this case needs to be handled for e.g. MLDS dumps when
+	% compiling to Java.  We generate an "#error" directive
+	% to make the error message clearer, but then we go ahead
+	% and generate C-like psuedo-code for the purposes of MLDS
+	% dumps.
+	io__write_string("\n#error multiple return values\n"),
+	io__write_string("\t{"),
+	io__write_list(List, ", ", OutputPred),
+	io__write_string("}").
 
 :- pred mlds_output_rval(mlds__rval, io__state, io__state).
 :- mode mlds_output_rval(in, di, uo) is det.
