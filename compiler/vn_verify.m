@@ -220,6 +220,7 @@ vn_verify__subst_access_vns(vn_hp, [], hp).
 vn_verify__subst_access_vns(vn_sp, [], sp).
 vn_verify__subst_access_vns(vn_field(T, _, _), [R1, R2], field(T, R1, R2)).
 vn_verify__subst_access_vns(vn_temp(T, N), [], temp(T, N)).
+vn_verify__subst_access_vns(vn_mem_ref(_), [R], mem_ref(R)).
 
 :- pred vn_verify__subst_sub_vns(vnrval, list(rval), vn_tables, rval).
 :- mode vn_verify__subst_sub_vns(in, in, in, out) is semidet.
@@ -231,6 +232,8 @@ vn_verify__subst_sub_vns(vn_const(Const), [], _, const(Const)).
 vn_verify__subst_sub_vns(vn_create(T,A,AT,U,L,M), [], _, create(T,A,AT,U,L,M)).
 vn_verify__subst_sub_vns(vn_unop(Op, _), [R], _, unop(Op, R)).
 vn_verify__subst_sub_vns(vn_binop(Op, _, _), [R1, R2], _, binop(Op, R1, R2)).
+vn_verify__subst_sub_vns(vn_heap_addr(_, Tag, Field), [R], _,
+		mem_addr(heap_ref(R, Tag, Field))).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -402,6 +405,8 @@ vn_verify__tags_lval(field(_, Rval1, Rval2), NoDeref) :-
 vn_verify__tags_lval(lvar(_), _) :-
 	error("found lvar in vn_verify__tags_lval").
 vn_verify__tags_lval(temp(_, _), _).
+vn_verify__tags_lval(mem_ref(Rval), NoDeref) :-
+	vn_verify__tags_rval(Rval, NoDeref).
 
 :- pred vn_verify__tags_rval(rval, set(rval)).
 :- mode vn_verify__tags_rval(in, in) is semidet.
@@ -419,6 +424,17 @@ vn_verify__tags_rval(unop(_, Rval), NoDeref) :-
 vn_verify__tags_rval(binop(_, Rval1, Rval2), NoDeref) :-
 	vn_verify__tags_rval(Rval1, NoDeref),
 	vn_verify__tags_rval(Rval2, NoDeref).
+vn_verify__tags_rval(mem_addr(MemRef), NoDeref) :-
+	vn_verify__tags_mem_ref(MemRef, NoDeref).
+
+:- pred vn_verify__tags_mem_ref(mem_ref, set(rval)).
+:- mode vn_verify__tags_mem_ref(in, in) is semidet.
+
+vn_verify__tags_mem_ref(stackvar_ref(_), _).
+vn_verify__tags_mem_ref(framevar_ref(_), _).
+vn_verify__tags_mem_ref(heap_ref(Rval, _, _), NoDeref) :-
+	vn_verify__tags_rval(Rval, NoDeref).
+
 
 	% If the tag of an rval is tested in the condition of an if_val,
 	% that rval should not be dereferenced in previous statements.
