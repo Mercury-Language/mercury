@@ -98,3 +98,16 @@ the test suite.  Every time you add a new feature, you should add some
 test cases for that new feature to the test suite.  Every time you fix
 a bug, you should add a regression test to the test suite.
 
+
+Committing changes
+------------------
+
+Before committing a change, you should get someone else to review your
+changes.  Normally this should be done by sending the output of `cvs
+diff -u' to fjh@cs.mu.oz.au, together with a description of the changes
+for the CVS log.  If you have added any new files or directories, you
+*must* check the group-id and permissions of the newly created files or
+directories in the CVS repository.  Files should be readable by group
+mercury and directories should be both readable and writeable by group
+mercury.
+
