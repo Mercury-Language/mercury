@@ -23,7 +23,13 @@ PROGS=mkinit mdemangle info_to_mdb
 PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))
 SRC=$(PROGS:%=%.c)
 
-GETOPT_SRC=$(RUNTIME_DIR)/GETOPT/getopt.c $(RUNTIME_DIR)/GETOPT/getopt1.c
+
+# Only if getopt.h doesn't exist do we link in a version of getopt.
+ifeq ("$(GETOPT_H_AVAILABLE)","no")
+	GETOPT_SRC=$(RUNTIME_DIR)/GETOPT/getopt.c $(RUNTIME_DIR)/GETOPT/getopt1.c
+else
+	GETOPT_SRC=
+endif
 
 # mkinit.c needs `struct stat'
 MGNUCFLAGS-mkinit = --no-ansi
