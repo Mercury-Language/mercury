@@ -2388,8 +2388,52 @@ code_info__generate_call_livevals(ArgVars, Code) -->
 	{ set__list_to_set(LiveVars, VarSet1) },
 	{ set__union(VarSet0, VarSet1, VarSet) },
 	{ set__to_sorted_list(VarSet, VarList) },
-	code_info__generate_livevals_2(VarList, LiveVals),
+	code_info__generate_call_livevals_2(VarList, VarSet0, LiveVals),
 	{ Code = node([livevals(LiveVals) - ""]) }.
+
+:- pred code_info__generate_call_livevals_2(list(var), set(var),
+					bintree_set(lval),
+						code_info, code_info).
+:- mode code_info__generate_call_livevals_2(in, in, out, in, out) is det.
+
+code_info__generate_call_livevals_2([], _Args, Vals) -->
+	{ bintree_set__init(Vals) }.
+code_info__generate_call_livevals_2([V|Vs], Args, Vals) -->
+	code_info__generate_call_livevals_2(Vs, Args, Vals1),
+	(
+		code_info__get_variables(Variables),
+		{ map__search(Variables, V, evaluated(Vals0)) }
+	->
+		(
+			{ set__member(V, Args) }
+		->
+			{ set__to_sorted_list(Vals0, ValsList) },
+			{ bintree_set__sorted_list_to_set(ValsList, Vals2) }
+		;
+			{ set__to_sorted_list(Vals0, ValsList) },
+			{ code_info__filter_out_registers(ValsList, Vals2) }
+		),
+		{ bintree_set__union(Vals1, Vals2, Vals) }
+	;
+		{ Vals = Vals1 }
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__filter_out_registers(list(lval), bintree_set(lval)).
+:- mode code_info__filter_out_registers(in, out) is det.
+
+code_info__filter_out_registers([], Vals) :-
+	bintree_set__init(Vals).
+code_info__filter_out_registers([V|Vs], Vals) :-
+	code_info__filter_out_registers(Vs, Vals0),
+	(
+		V = reg(_) % should include transitives....
+	->
+		Vals = Vals0
+	;
+		bintree_set__insert(Vals0, V, Vals)
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -2407,9 +2451,12 @@ code_info__generate_livevals_2([], Vals) -->
 code_info__generate_livevals_2([V|Vs], Vals) -->
 	code_info__generate_livevals_2(Vs, Vals1),
 	(
-		code_info__variable_register(V, Val0)
+		code_info__get_variables(Variables),
+		{ map__search(Variables, V, evaluated(Vals0)) }
 	->
-		{ bintree_set__insert(Vals1, Val0, Vals) }
+		{ set__to_sorted_list(Vals0, ValsList) },
+		{ bintree_set__sorted_list_to_set(ValsList, Vals2) },
+		{ bintree_set__union(Vals1, Vals2, Vals) }
 	;
 		{ Vals = Vals1 }
 	).

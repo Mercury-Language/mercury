@@ -21,9 +21,9 @@
 :- interface.
 :- import_module list, std_util.
 
-:- type bintree(_K, _V).
+:- type bintree(K, V).
 
-:- pred bintree__init(bintree(_K,_V)).
+:- pred bintree__init(bintree(K,V)).
 :- mode bintree__init(out) is det.
 
 :- pred bintree__insert(bintree(K,V), K, V, bintree(K,V)).
