@@ -68,7 +68,9 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
             if (in_range(data_value)) {
                 secondary_tag = *data_value;
                 argument_vector = data_value + 1;
-                new_entry = (Word *) entry_value[secondary_tag +1];
+
+                new_entry = MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
+			entry_value, secondary_tag);
                 arity = new_entry[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
                 type_info_vector = new_entry + TYPELAYOUT_SIMPLE_ARGS_OFFSET;
 

@@ -638,7 +638,8 @@ typedef struct {
 	((MR_TypeLayout_ComplicatedVector *) (Vector))->num_sharers
 
 #define MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(Vector, N) 	\
-	( (&((MR_TypeLayout_ComplicatedVector *)(Vector))->simple_vector1) [N] )
+	( (Word *) strip_tag((&((MR_TypeLayout_ComplicatedVector *)	\
+		(Vector))->simple_vector1) [N]) )
 		
 	/* 
 	** Macros for dealing with no_tag vectors 

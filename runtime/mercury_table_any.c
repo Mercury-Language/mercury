@@ -98,9 +98,9 @@ MR_table_type(TrieNode table, Word *type_info, Word data)
 
             num_sharers = MR_TYPELAYOUT_COMPLICATED_VECTOR_NUM_SHARERS(
             			layout_vector_for_tag);
-	    /* XXX trd: this operation should have a macro */
-            new_layout_vector = (Word *) strip_tag(
-				layout_vector_for_tag[secondary_tag + 1]);
+            new_layout_vector =
+                MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
+                    layout_vector_for_tag, secondary_tag);
             arity = new_layout_vector[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
             type_info_vector =
 		    &new_layout_vector[TYPELAYOUT_SIMPLE_ARGS_OFFSET];
