@@ -1028,16 +1028,37 @@ output_module_string_table(ModuleName, StringTableSize, StringTable,
 	io__write_string("\n"),
 	output_layout_name_storage_type_name(TableName, yes),
 	io__write_string(" = {"),
-	output_module_string_table_chars(0, StringTableSize - 1, StringTable),
+	output_module_string_table_chars_driver(0, StringTableSize - 1,
+		StringTable),
 	io__write_string("};\n"),
 	{ decl_set_insert(data_addr(layout_addr(TableName)),
 		DeclSet0, DeclSet) }.
+
+% The jobs of this predicate is to minimize stack space consumption in
+% grades that do not allow output_module_string_table_chars to be tail
+% recursive. The maximum observed size of the module string so far has
+% been just short of 64 kilobytes; writing that out in 256 batches of 256
+% characters minimizes maximum total stack requirements.
+
+:- pred output_module_string_table_chars_driver(int::in, int::in,
+	string_with_0s::in, io__state::di, io__state::uo) is det.
+
+output_module_string_table_chars_driver(CurIndex, MaxIndex, StringWithNulls) -->
+	( { CurIndex < MaxIndex } ->
+		{ SubMaxIndex = int__min(MaxIndex, CurIndex + 255) },
+		output_module_string_table_chars(CurIndex, SubMaxIndex,
+			StringWithNulls),
+		output_module_string_table_chars_driver(SubMaxIndex + 1,
+			MaxIndex, StringWithNulls)
+	;
+		[]
+	).
 
 :- pred output_module_string_table_chars(int::in, int::in, string_with_0s::in,
 	io__state::di, io__state::uo) is det.
 
 output_module_string_table_chars(CurIndex, MaxIndex, StringWithNulls) -->
-	( { CurIndex mod 16 = 0 } ->
+	( { CurIndex mod 10 = 0 } ->
 		io__write_string("\n\t")
 	;
 		[]
@@ -1047,8 +1068,8 @@ output_module_string_table_chars(CurIndex, MaxIndex, StringWithNulls) -->
 	io__write_char(''''),
 	c_util__output_quoted_char(Char),
 	io__write_char(''''),
+	io__write_string(", "),
 	( { CurIndex < MaxIndex } ->
-		io__write_string(", "),
 		output_module_string_table_chars(CurIndex + 1, MaxIndex,
 			StringWithNulls)
 	;
