@@ -46,11 +46,11 @@ boyer -->
 		(implies(type_wff,type_wff) ;
 		 and(type_wff,type_wff) ;
 		 f(type_wff) ;
-		 plus(type_wff,type_wff) ;
+		 my_plus(type_wff,type_wff) ;
 		 equal1(type_wff,type_wff) ;
 		 append(type_wff,type_wff) ;
 		 lessp(type_wff,type_wff) ;
-		 times(type_wff,type_wff) ;
+		 my_times(type_wff,type_wff) ;
 		 reverse(type_wff) ;
 		 difference(type_wff,type_wff) ;
 		 remainder(type_wff,type_wff) ;
@@ -68,10 +68,10 @@ wff(implies(and(implies(X,Y),
                     and(implies(Z,U),
                         implies(U,W)))),
             implies(X,W))) :-
-        X = f(plus(plus(a1,b1),plus(c1,zero))),
-        Y = f(times(times(a1,b1),plus(c1,d1))),
+        X = f(my_plus(my_plus(a1,b1),my_plus(c1,zero))),
+        Y = f(my_times(my_times(a1,b1),my_plus(c1,d1))),
         Z = f(reverse(append(append(a1,b1),nil))),
-        U = equal1(plus(a1,b1),difference(x1,y1)),
+        U = equal1(my_plus(a1,b1),difference(x1,y1)),
         W = lessp(remainder(a1,b1),b_member(a1,b_length(b1))).
 
 :- pred tautology(type_wff,list(type_wff),list(type_wff)) .
@@ -127,9 +127,9 @@ rewrite(remainder(X1,X2),New) :-
 	 New = Mid
 	) .
 
-rewrite(plus(X1,X2),New) :-
+rewrite(my_plus(X1,X2),New) :-
         rewrite(X1,Y1) , rewrite(X2,Y2) ,
-	Mid = plus(Y1,Y2) ,
+	Mid = my_plus(Y1,Y2) ,
 	(equal(Mid,Next) -> rewrite(Next,New)
 	;
 	 New = Mid
@@ -167,9 +167,9 @@ rewrite(append(X1,X2),New) :-
 	 New = Mid
 	) .
 
-rewrite(times(X1,X2),New) :-
+rewrite(my_times(X1,X2),New) :-
         rewrite(X1,Y1) , rewrite(X2,Y2) ,
-	Mid = times(Y1,Y2) ,
+	Mid = my_times(Y1,Y2) ,
 	(equal(Mid,Next) -> rewrite(Next,New)
 	;
 	 New = Mid
@@ -265,7 +265,7 @@ equal(  b_length(A),
 equal(  lessp(A,B),
         C
         ) :- lessp1(A,B,C).
-equal(  plus(A,B),
+equal(  my_plus(A,B),
         C
         ) :- plus1(A,B,C).
 equal(  remainder(A,B),
@@ -281,9 +281,9 @@ equal(  reverse(append(A,B)),
 difference1(X,Y,Z) :-
 		(X = Y -> Z = zero
 		;
-		 (X = plus(A,B), Y = plus(A,C) -> Z = difference(B,C)
+		 (X = my_plus(A,B), Y = my_plus(A,C) -> Z = difference(B,C)
 		 ;
-		  X = plus(B,plus(Y,C)) -> Z = plus(B,C) ; fail
+		  X = my_plus(B,my_plus(Y,C)) -> Z = my_plus(B,C) ; fail
 		 )
 		) .
 
@@ -303,20 +303,20 @@ my_length(reverse(X),b_length(X)).
 % :- pred lessp1(type_wff,type_wff,type_wff) .
 :- mode lessp1(in,in,out) is semidet .
 
-lessp1(plus(X,Y), plus(X,Z), lessp(Y,Z)) .
+lessp1(my_plus(X,Y), my_plus(X,Z), lessp(Y,Z)) .
 
 % :- pred plus1(type_wff,type_wff,type_wff) .
 :- mode plus1(in,in,out) is semidet .
 
-plus1(plus(X,Y),Z,
-     plus(X,plus(Y,Z))).
+plus1(my_plus(X,Y),Z,
+     my_plus(X,my_plus(Y,Z))).
 
 % :- pred remainder1(type_wff,type_wff,type_wff) .
 :- mode remainder1(in,in,out) is semidet .
 
 remainder1(U,V,zero) :-
 		(U = V -> true ;
-		 U = times(A,B) , (B = V -> true ; A = V)
+		 U = my_times(A,B) , (B = V -> true ; A = V)
 		) .
 
 
