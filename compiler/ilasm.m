@@ -651,7 +651,7 @@ output_simple_type(class(Name), Info0, Info) -->
 	io__write_string("class "),
 	output_structured_name(Name, Info0, Info).
 output_simple_type(value_class(Name), Info0, Info) --> 
-	io__write_string("value_class "),
+	io__write_string("valuetype "),
 	output_structured_name(Name, Info0, Info).
 output_simple_type(interface(Name), Info0, Info) --> 
 	io__write_string("interface "),
@@ -690,6 +690,7 @@ output_simple_type_opcode(bool) --> io__write_string("i4").
 output_simple_type_opcode(char) --> io__write_string("i2").
 
 	% all reference types use "ref" as their opcode.
+	% XXX is "ref" here correct for value classes?
 output_simple_type_opcode(refany) --> io__write_string("ref").
 output_simple_type_opcode(class(_Name)) --> io__write_string("ref").
 output_simple_type_opcode(value_class(_Name)) --> io__write_string("ref").
