@@ -45,6 +45,9 @@
 :- pred code_util__neg_rval(rval, rval).
 :- mode code_util__neg_rval(in, out) is det.
 
+:- pred code_util__negate_the_test(list(instruction), list(instruction)).
+:- mode code_util__negate_the_test(in, out) is det.
+
 :- pred code_util__is_builtin(module_info, pred_id, proc_id, is_builtin).
 :- mode code_util__is_builtin(in, in, in, out) is det.
 
@@ -59,8 +62,7 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, hlds, map, std_util.
-:- import_module type_util.
+:- import_module type_util, list, map, require, std_util.
 
 %---------------------------------------------------------------------------%
 
@@ -210,12 +212,15 @@ code_util__neg_rval(Rval, NegRval) :-
 :- mode code_util__neg_rval_2(in, out) is semidet.
 
 code_util__neg_rval_2(const(Const), const(NegConst)) :-
-	( Const = true, NegConst = false
-	; Const = false, NegConst = true ).
+	(
+		Const = true, NegConst = false
+	;
+		Const = false, NegConst = true
+	).
 code_util__neg_rval_2(unop(not, Rval), Rval).
 code_util__neg_rval_2(binop(Op, X, Y), binop(NegOp, X, Y)) :-
 	code_util__neg_op(Op, NegOp).
-	
+
 :- pred code_util__neg_op(binary_op, binary_op).
 :- mode code_util__neg_op(in, out) is semidet.
 
@@ -231,5 +236,16 @@ code_util__neg_op(str_lt, str_ge).
 code_util__neg_op(str_le, str_gt).
 code_util__neg_op(str_gt, str_le).
 code_util__neg_op(str_ge, str_lt).
+
+code_util__negate_the_test([], _) :-
+	error("code_util__negate_the_test on empty list").
+code_util__negate_the_test([Instr0 | Instrs0], Instrs) :-
+	( Instr0 = if_val(Test, Target) - Comment ->
+		code_util__neg_rval(Test, NewTest),
+		Instrs = [if_val(NewTest, Target) - Comment]
+	;
+		code_util__negate_the_test(Instrs0, Instrs1),
+		Instrs = [Instr0 | Instrs1]
+	).
 
 %-----------------------------------------------------------------------------%

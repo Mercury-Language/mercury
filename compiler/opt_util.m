@@ -37,6 +37,13 @@
 	code_addr, list(instruction), list(instruction)).
 :- mode opt_util__next_modframe(in, in, out, out, out) is semidet.
 
+	% Skip to the next label, returning the code before the label,
+	% and the label together with the code after the label.
+
+:- pred opt_util__skip_to_next_label(list(instruction),
+	list(instruction), list(instruction)).
+:- mode opt_util__skip_to_next_label(in, out, out) is det.
+
 	% Check whether the named label follows without any intervening code.
 	% If yes, return the instructions after the label.
 
@@ -80,6 +87,22 @@
 :- pred opt_util__is_forkproceed_next(list(instruction), map(label, bool),
 	list(instruction)).
 :- mode opt_util__is_forkproceed_next(in, in, out) is semidet.
+
+	% If the following code a setup of a det stack frame? If yes, return
+	% the size of the frame and the remaining instructions.
+
+:- pred opt_util__detstack_setup(list(instruction), int, list(instruction)).
+:- mode opt_util__detstack_setup(in, out, out) is semidet.
+
+	% If the following code a teardown of a det stack frame, including
+	% possibly a semidet assignment to r1 and a proceed or tailcall?
+	% Return the teardown instructions, the non-stack instructions
+	% (possible assignment to r1 and the branch away), and the instructions
+	% remaining after that.
+
+:- pred opt_util__detstack_teardown(list(instruction), int,
+	list(instruction), list(instruction), list(instruction)).
+:- mode opt_util__detstack_teardown(in, in, out, out, out) is semidet.
 
 	% Remove the assignment to r1 from the list returned by
 	% opt_util__is_sdproceed_next.
@@ -171,6 +194,16 @@
 :- pred opt_util__count_temps_instr_list(list(instruction), int, int).
 :- mode opt_util__count_temps_instr_list(in, in, out) is det.
 
+	% See whether an lval references any stackvars.
+
+:- pred opt_util__lval_refers_stackvars(lval, bool).
+:- mode opt_util__lval_refers_stackvars(in, out) is det.
+
+	% See whether an rval references any stackvars.
+
+:- pred opt_util__rval_refers_stackvars(rval, bool).
+:- mode opt_util__rval_refers_stackvars(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -257,6 +290,16 @@ opt_util__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 		;
 			fail
 		)
+	).
+
+opt_util__skip_to_next_label([], [], []).
+opt_util__skip_to_next_label([Instr0 | Instrs0], Before, Remain) :-
+	( Instr0 = label(_) - _ ->
+		Before = [],
+		Remain = [Instr0 | Instrs0]
+	;
+		opt_util__skip_to_next_label(Instrs0, Before1, Remain),
+		Before = [Instr0 | Before1]
 	).
 
 opt_util__is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
@@ -391,9 +434,6 @@ opt_util__is_forkproceed_next(Instrs0, Succmap, Between) :-
 		fail
 	).
 
-:- pred opt_util__detstack_setup(list(instruction), int, list(instruction)).
-:- mode opt_util__detstack_setup(in, out, out) is semidet.
-
 opt_util__detstack_setup(Instrs0, FrameSize, Instrs) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
@@ -403,30 +443,27 @@ opt_util__detstack_setup(Instrs0, FrameSize, Instrs) :-
 	Instr3 = assign(stackvar(FrameSize), lval(succip)) - _,
 	opt_util__skip_comments_livevals(Instrs4, Instrs).
 
-:- pred opt_util__detstack_teardown(list(instruction), int,
-	list(instruction), list(instruction)).
-:- mode opt_util__detstack_teardown(in, in, out, out) is semidet.
-
-opt_util__detstack_teardown(Instrs0, FrameSize, Tail, Instrs) :-
-	opt_util__skip_comments_livevals(Instrs0, Instrs1),
+opt_util__detstack_teardown(Instrs0, FrameSize, Teardown, Tail, Remain) :-
+	opt_util__gather_comments_livevals(Instrs0, Comments1, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	Instr1 = assign(succip, lval(stackvar(FrameSize))) - _,
-	opt_util__skip_comments_livevals(Instrs2, Instrs3),
+	opt_util__gather_comments_livevals(Instrs2, Comments2, Instrs3),
 	Instrs3 = [Instr3 | Instrs4],
 	Instr3 = decr_sp(FrameSize) - _,
-	opt_util__gather_comments_livevals(Instrs4, Comments1, Instrs5),
+	opt_util__gather_comments_livevals(Instrs4, Comments3, Instrs5),
 	Instrs5 = [Instr5 | Instrs6],
 	( Instr5 = assign(reg(r(1)), const(_)) - _ ->
 		SemiDet = [Instr5],
-		opt_util__gather_comments_livevals(Instrs6, Comments2, Instrs7)
+		opt_util__gather_comments_livevals(Instrs6, Comments4, Instrs7)
 	;
 		SemiDet = [],
-		Comments2 = [],
+		Comments4 = [],
 		Instrs7 = Instrs5
 	),
-	Instrs7 = [Instr7 | Instrs],
+	Instrs7 = [Instr7 | Remain],
 	Instr7 = goto(_) - _,
-	list__condense([Comments1, SemiDet, Comments2, [Instr7]], Tail).
+	list__condense([Comments1, [Instr1], Comments2, [Instr3]], Teardown),
+	list__condense([Comments3, SemiDet, Comments4, [Instr7]], Tail).
 
 opt_util__chain_pred(Instrs0, Shuffle, Livevals, Tailcall) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
@@ -534,11 +571,6 @@ opt_util__no_stack_straight_line_2([Instr0 | Instrs0], After0, After, Instrs) :-
 		Instrs = [Instr0 | Instrs0]
 	).
 
-	% See whether an lval references any stackvars.
-
-:- pred opt_util__lval_refers_stackvars(lval, bool).
-:- mode opt_util__lval_refers_stackvars(in, out) is det.
-
 opt_util__lval_refers_stackvars(reg(_), no).
 opt_util__lval_refers_stackvars(stackvar(_), yes).
 opt_util__lval_refers_stackvars(framevar(_), _) :-
@@ -553,11 +585,6 @@ opt_util__lval_refers_stackvars(field(_, Baselval, _), Refers) :-
 opt_util__lval_refers_stackvars(lvar(_), _) :-
 	error("found lvar in lval_refers_stackvars").
 opt_util__lval_refers_stackvars(temp(_), no).
-
-	% See whether an rval references any stackvars.
-
-:- pred opt_util__rval_refers_stackvars(rval, bool).
-:- mode opt_util__rval_refers_stackvars(in, out) is det.
 
 opt_util__rval_refers_stackvars(lval(Lval), Refers) :-
 	opt_util__lval_refers_stackvars(Lval, Refers).

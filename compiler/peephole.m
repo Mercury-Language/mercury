@@ -25,8 +25,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module value_number, opt_debug, opt_util, code_util, map.
-:- import_module bintree_set, string, list, require, int, std_util.
+:- import_module frameopt, value_number, opt_debug, opt_util, code_util.
+:- import_module map, bintree_set, string, list, require, int, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -145,19 +145,20 @@ peephole__nonrepeat_opts(Options, Instructions0, Instructions) :-
 	options__lookup_bool_option(Options, peephole_frame_opt, FrameOpt),
 	( FrameOpt = yes ->
 		% write('frameopt'), nl,
-		peephole__frame_opt(Instructions0, Instructions1, Mod)
+		frameopt__optimize(Instructions0, Instructions1, Mod1)
 	;
 		Instructions1 = Instructions0,
-		Mod = no
+		Mod1 = no
 	),
-	( Mod = yes ->
+	( Mod1 = yes ->
 		% write('frameopt local'), nl,
-		peephole__local_opt(Instructions1, Instructions2, Mod2)
+		peephole__local_opt(Instructions1, Instructions2, Mod2),
+		bool__or(Mod1, Mod2, Mod12)
 	;
 		Instructions2 = Instructions1,
-		Mod2 = no
+		Mod12 = Mod1
 	),
-	( Mod2 = yes ->
+	( Mod12 = yes ->
 		% write('frameopt label elim'), nl,
 		peephole__label_elim(Instructions2, Instructions, _Mod3)
 	;
@@ -956,84 +957,5 @@ peephole__replace_curredoip(Target, Curredoip, Newtarget, Mod0, Mod) :-
 		Newtarget = Target,
 		Mod = Mod0
 	).
-
-%-----------------------------------------------------------------------------%
-
-	% Turn the code into a list of order-independent <label, block> pairs.
-	% For each block find out whether it needs a stack frame. If not,
-	% try to delay the construction until after the jump to that block,
-	% and remove the frame building and removing code.
-
-:- pred peephole__frame_opt(list(instruction), list(instruction), bool).
-:- mode peephole__frame_opt(in, out, out) is det.
-
-peephole__frame_opt(Instrs0, Instrs, Mod) :-
-	opt_util__gather_comments(Instrs0, Comments1, Instrs1),
-	(
-		Instrs1 = [Instr1prime | Instrs2prime],
-		Instr1prime = label(Firstlabel) - _
-	->
-		Instr1 = Instr1prime,
-		Instrs2 = Instrs2prime,
-		( Firstlabel = exported(ProclabelPrime) ->
-			Proclabel = ProclabelPrime
-		; Firstlabel = local(ProclabelPrime) ->
-			Proclabel = ProclabelPrime
-		;
-			error("procedure begins with bad label type")
-		)
-	;
-		error("procedure does not begin with label")
-	),
-	opt_util__gather_comments(Instrs2, Comments2, Instrs3),
-	(
-		opt_util__chain_pred(Instrs3, Shuffle, Livevals, Tailcall)
-	->
-		list__condense([
-			Comments1,
-			[Instr1],
-			Comments2,
-			Shuffle,
-			Livevals,
-			Tailcall]
-		, Instrs),
-		Mod = yes
-	;
-		opt_util__first_base_case(Instrs3, SetupSp, _SetupSuccip,
-			Test, After, Teardown, Follow),
-		Test = [if_val(Cond, Addr) - _]
-	->
-		opt_util__new_label_no(Instrs2, 1, Label_no),
-		opt_util__filter_in_livevals(Teardown, Livevals),
-		Label = local(Proclabel, Label_no),
-		% The reason why we keep the saving of succip before the test
-		% is to occupy the delay slot of the branch. Without this,
-		% the transformation loses performance.
-		%
-		% This pass is after the value numbering pass because this
-		% access to a det stack slot before incr_sp violates the
-		% assumptions made by value_number.
-		list__condense([
-			Comments1,
-			[Instr1],
-			Comments2,
-			[assign(stackvar(0), lval(succip)) - "new setup"],
-			[if_val(Cond, label(Label)) - "promoted test"],
-			After,
-			Livevals,
-			[goto(succip) - "proceed without teardown"],
-			[label(Label) - "new stack building code"],
-			SetupSp,
-			[comment("this goto should be optimized away") - ""],
-			[goto(Addr) - "clauses after first base clause"],
-			Follow
-		], Instrs),
-		Mod = yes
-	;
-		Instrs = Instrs0,
-		Mod = no
-	).
-
-:- end_module peephole.
 
 %-----------------------------------------------------------------------------%

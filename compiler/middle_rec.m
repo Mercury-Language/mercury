@@ -86,7 +86,7 @@ middle_rec__gen_det(Goal, Instrs) -->
 		code_info__pop_failure_cont,
 		{ tree__flatten(NegTestCode, NegTestListList) },
 		{ list__condense(NegTestListList, NegTestList) },
-		{ middle_rec__generate_entry_test(NegTestList, EntryTestList) },
+		{ code_util__negate_the_test(NegTestList, EntryTestList) },
 
 		code_info__grab_code_info(CodeInfo),
 		code_gen__generate_forced_det_goal(Base, BaseCodeFrag),
@@ -193,25 +193,6 @@ middle_rec__gen_det(Goal, Instrs) -->
 		{ Instrs = node(InstrList) }
 	;
 		{ error("middle_rec__gen_det match failed") }
-	).
-
-:- pred middle_rec__generate_entry_test(list(instruction), list(instruction)).
-:- mode middle_rec__generate_entry_test(in, out) is det.
-
-middle_rec__generate_entry_test([], _) :-
-	error("middle_rec__generate_entry_test on empty list").
-middle_rec__generate_entry_test([Instr0 | Instrs0], Instrs) :-
-	( Instr0 = if_val(Test, Target) - Comment ->
-		( Instrs0 = [] ->
-			true
-		;
-			error("middle_rec__generate_entry_test: if_val followed by other instructions")
-		),
-		code_util__neg_rval(Test, NewTest),
-		Instrs = [if_val(NewTest, Target) - Comment]
-	;
-		middle_rec__generate_entry_test(Instrs0, Instrs1),
-		Instrs = [Instr0 | Instrs1]
 	).
 
 :- pred middle_rec__generate_downloop_test(list(instruction), label,

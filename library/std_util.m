@@ -41,6 +41,12 @@
 
 :- type bool ---> yes ; no.
 
+:- pred bool__or(bool, bool, bool).
+:- mode bool__or(in, in, out) is det.
+
+:- pred bool__and(bool, bool, bool).
+:- mode bool__and(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 % The "maybe" type.
@@ -138,6 +144,20 @@ assoc_list__from_corresponding_lists_2([A|As], [B|Bs], [A - B|ABs]) :-
 	assoc_list__from_corresponding_lists_2(As, Bs, ABs).
 
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
+
+bool__or(Bool1, Bool2, Bool3) :-
+	( Bool1 = yes ->
+		Bool3 = yes
+	;
+		Bool3 = Bool2
+	).
+
+bool__and(Bool1, Bool2, Bool3) :-
+	( Bool1 = no ->
+		Bool3 = no
+	;
+		Bool3 = Bool2
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -96,7 +96,7 @@ switch_gen__generate_switch(Det, CaseVar, LocalDet, Cases, Code) -->
 		% generate the cases for the switch.
 
 		code_info__produce_variable(CaseVar, VarCode, _Lval),
-		switch_gen__generate_cases(TaggedCases,
+		switch_gen__generate_all_cases(TaggedCases,
 				CaseVar, Det, LocalDet, EndLabel, CasesCode),
 		{ Code = tree(VarCode, CasesCode) }
 	),
@@ -683,6 +683,50 @@ switch_gen__this_is_last_case(Slot, TableSize, Table) :-
 	% branch to the end of the switch.  After the last case, we put
 	% the end-of-switch label which other cases branch to after
 	% their case goals.
+
+:- pred switch_gen__generate_all_cases(list(extended_case), var, category,
+			category, label, code_tree, code_info, code_info).
+:- mode switch_gen__generate_all_cases(in, in, in, in, in, out, in, out) is det.
+
+switch_gen__generate_all_cases(Cases, Var, Det, LocalDet, EndLabel, Code) -->
+	(
+		{ Det = deterministic },
+		{ LocalDet = deterministic },
+		{ Cases = [Case1, Case2] }
+	->
+		{ Case1 = case(_, _, Cons1, Goal1) },
+		code_info__get_next_label(ElseLab),
+		code_info__push_failure_cont(known(ElseLab)),
+		unify_gen__generate_tag_test(Var, Cons1, TestCode),
+		code_info__pop_failure_cont,
+		code_info__grab_code_info(CodeInfo),
+		code_gen__generate_forced_goal(Det, Goal1, Case1Code),
+
+		{ Case2 = case(_, _, _Cons2, Goal2) },
+		code_info__slap_code_info(CodeInfo),
+		code_gen__generate_forced_goal(Det, Goal2, Case2Code),
+
+		{ tree__flatten(TestCode, TestListList) },
+		{ list__condense(TestListList, TestList) },
+		{ code_util__negate_the_test(TestList, RealTestList) },
+		{ Code  = tree(
+			tree(
+				node(RealTestList),
+				Case2Code),
+			tree(
+				node([
+					goto(label(EndLabel)) -
+						"skip to the end of the switch",
+					label(ElseLab) - "next case" ]),
+				tree(
+					Case1Code,
+					node([ label(EndLabel) -
+						"End of switch" ]))))
+		}
+	;
+		switch_gen__generate_cases(Cases, Var, Det, LocalDet,
+			EndLabel, Code)
+	).
 
 :- pred switch_gen__generate_cases(list(extended_case), var, category,
 			category, label, code_tree, code_info, code_info).

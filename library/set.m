@@ -69,6 +69,11 @@
 :- mode set__member(in, in) is semidet.
 :- mode set__member(out, in) is nondet.
 
+	% `set_member(X, Set, Res)' returns yes iff `X' is a member of `Set'.
+
+:- pred set__is_member(T, set(T), bool).
+:- mode set__is_member(in, in, out) is det.
+
 	% `set__insert(Set0, X, Set)' is true iff `Set' is the union of
 	% `Set0' and the set containing only `X'.
 
@@ -146,7 +151,7 @@
 
 :- implementation.
 
-:- import_module list.
+:- import_module list, std_util.
 
 :- type set(T)		  ==	  list(T).
 
@@ -184,6 +189,13 @@ set__superset(S0, S1) :-
 
 set__member(E, S) :-
 	list__member(E, S).
+
+set__is_member(E, S, R) :-
+	( set__member(E, S) ->
+		R = yes
+	;
+		R = no
+	).
 
 :- set__delete_list(_, Xs, _) when Xs.
 
