@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -106,16 +106,30 @@ MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal)
 		** This means we have reached some handwritten code that has
 		** no further information about the stack frame.
 		*/
-		fprintf(stderr, "Mercury runtime: LABEL: %s has no stack"
-				"layout info\n", entry_label->e_name);
+		fprintf(stderr, "Mercury runtime: the label ");
+		if (entry_label->e_name != NULL) {
+			fprintf(stderr, "%s has no stack layout info\n",
+				entry_label->e_name);
+		} else {
+			fprintf(stderr, "at address %p "
+				"has no stack layout info\n",
+				entry_label->e_addr);
+		}
+
 		fprintf(stderr, "Mercury runtime: Trying to continue...\n");
 		return;
 	}
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
-	fprintf(stderr, "scheduling called at: %s (%ld %lx)\n",
-		entry_label->e_name, (long) entry_label->e_addr,
-		(long) entry_label->e_addr);
+	if (entry_label->e_name != NULL) {
+		fprintf(stderr, "scheduling called at: %s (%ld %lx)\n",
+			entry_label->e_name, (long) entry_label->e_addr,
+			(long) entry_label->e_addr);
+	} else {
+		fprintf(stderr, "scheduling called at: (%ld %lx)\n",
+			(long) entry_label->e_addr,
+			(long) entry_label->e_addr);
+	}
 	fflush(NULL);
 #endif
 
