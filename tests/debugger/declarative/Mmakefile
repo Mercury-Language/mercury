@@ -156,9 +156,12 @@ small.out: small small.inp
 solutions.out: solutions solutions.inp
 	$(MDB) ./solutions < solutions.inp > solutions.out 2>&1
 
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
 throw.out: throw throw.inp
-	$(MDB) ./throw < throw.inp 2>&1 | sed -e '/EXCP/s/).*/)/' \
-		> throw.out 2>&1
+	$(MDB) ./throw < throw.inp 2>&1 | \
+		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' | \
+		sed -e '/EXCP/s/).*/)/' > throw.out 2>&1
 
 untraced_subgoal.out: untraced_subgoal untraced_subgoal.inp
 	$(MDB) ./untraced_subgoal < untraced_subgoal.inp \

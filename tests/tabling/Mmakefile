@@ -55,12 +55,32 @@ endif
 # if inlining is turned on, so we turn inlining off to make the test tougher.
 MCFLAGS-tc_minimal	=	--no-inlining
 
-# Some test cases are expected to abort, so we need to ignore the exit status
-# (hence the leading `-')
+# Some test cases are expected to abort.
+# We also need to pipe the output for these test cases through sed to avoid
+# hard-coding dependencies on particular line numbers in the standard library
+# source code.
+
 tc_loop.out: tc_loop
-	-./tc_loop > tc_loop.out 2>&1;
+	if ./no_fully_strict > $@.tmp 2>&1; then \
+		grep . $@.tmp; \
+		exit 1; \
+	else \
+		sed	-e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
+			< $@.tmp > $@; \
+		rm -f $@.tmp; \
+	fi
+
 loopcheck.out: loopcheck
-	-./loopcheck > loopcheck.out 2>&1;
+	if ./no_fully_strict > $@.tmp 2>&1; then \
+		grep . $@.tmp; \
+		exit 1; \
+	else \
+		sed	-e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
+			< $@.tmp > $@; \
+		rm -f $@.tmp; \
+	fi
 
 #-----------------------------------------------------------------------------#
 
