@@ -405,11 +405,6 @@ install_grades: scripts
 
 .PHONY: install_split_library
 install_split_library: scripts dep_library
-	cd library && \
-	rm -rf tmp_dir && \
-	mkdir tmp_dir && \
-	{ mv -f *.dir *.dep *.h *.c *.o *.pic_o *.a *.so \
-		Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; } && \
 	#
 	# Use the newly installed compiler to build the libraries
 	# in various different grades.  We need to override MC=mmc
@@ -417,6 +412,11 @@ install_split_library: scripts dep_library
 	# runs the newly installed compiler, rather than using the
 	# bootstrap compiler.
 	#
+	cd library && \
+	rm -rf tmp_dir && \
+	mkdir tmp_dir && \
+	{ mv -f *.dir *.dep *.h *.c *.o *.pic_o *.a *.so \
+		Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; } && \
 	for grade in $(GRADE) $(LIBGRADES); do \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
