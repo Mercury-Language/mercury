@@ -503,6 +503,12 @@ stuff_deadness_residue_into_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
+	% traverses a goal, annotating it with information about which vars
+	% are live on backtracking.  `Liveness' is the variables that are
+	% are live for the purposes of forward execution, i.e. they have
+	% been bound and may be referenced again (during forward execution).
+	% `Extras' is the variables that may be referenced on backtracking.
+
 :- pred add_nondet_lives_to_goal(hlds__goal, set(var),
 				set(var), hlds__goal, set(var), set(var)).
 :- mode add_nondet_lives_to_goal(in, in, in, out, out, out) is det.
@@ -576,7 +582,7 @@ add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
 	set__union(Extras2, Extras3, Extras),
 	
 		% Anything that became nondet-live in the condition
-		% or the Then can safely be killed off in the else
+		% or the "then" can safely be killed off in the "else"
 		% so long as it isn't live!
 	set__difference(Extras2, Extras0, CTExtras0),
 	set__difference(CTExtras0, Liveness0, CTExtras1),

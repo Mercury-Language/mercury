@@ -111,7 +111,11 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0,
 	PostDelta = PostBirths - PostDeaths,
 	set__difference(Liveness0,  PreDeaths, Liveness1),
 	set__union(Liveness1, PreBirths, Liveness2),
-
+	%
+	% if the goal is atomic, we want to apply the postdeaths
+	% before processing the goal, but if the goal is a compound
+	% goal, then we want to apply them after processing it
+	%
 	(
 		goal_is_atomic(Goal0)
 	->
@@ -138,7 +142,9 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0,
 	(
 		% goal_is_atomic(Goal0)
 		fail
-		% XXX this is not quite right
+		% NB: `fail' is a conservative approximation
+		% We could do better, but `goal_is_atomic' is not
+		% quite right
 	->
 		set__union(PreBirths, PostDeaths, ExtraInterference),
 		set__insert(LiveSets1, ExtraInterference, LiveSets)

@@ -323,6 +323,8 @@ check_final_insts([Var | Vars], [Inst | Insts], ArgNum, InstMap, ModuleInfo)
 	( { inst_matches_final(VarInst, Inst, ModuleInfo) } ->
 		[]
 	;
+		% XXX this might need to be reconsidered now we have
+		% unique modes
 		( { inst_matches_initial(VarInst, Inst, ModuleInfo) } ->
 			{ Reason = too_instantiated }
 		; { inst_matches_initial(Inst, VarInst, ModuleInfo) } ->

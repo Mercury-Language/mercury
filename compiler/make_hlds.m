@@ -866,13 +866,10 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 
 module_add_c_header(C_Header, Context, Module0, Module) :-
 	module_info_get_c_header(Module0, C_HeaderIndex0),
+		% XXX use of append is inefficient - O(N*N)
 	list__append(C_HeaderIndex0, [C_Header - Context], C_HeaderIndex1),
 	module_info_set_c_header(Module0, C_HeaderIndex1, Module).
 	
-
-
-
-
 %-----------------------------------------------------------------------------%
 
 	% Warn about variables which occur only once but don't start with

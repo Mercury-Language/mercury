@@ -96,7 +96,7 @@ postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
 		[]
 	),
 
-	{ copy(OptionTable, OptionTable1) },
+	{ copy(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, Tags_Method),
 	
 	% --gc conservative implies --no-reclaim-heap-*
@@ -1722,9 +1722,11 @@ mercury_compile__middle_pass(HLDS8, HLDS11, Proceed) -->
 	bool, bool, io__state, io__state).
 % :- mode mercury_compile__middle_pass_by_phases(di, uo, in, out, di, uo)
 %	is det.
-:- mode mercury_compile__middle_pass_by_phases(in, out, in, out, di, uo) is det.
+:- mode mercury_compile__middle_pass_by_phases(in, out, in, out, di, uo)
+	is det.
 
-mercury_compile__middle_pass_by_phases(HLDS8, HLDS11, ErrorcheckOnly, Proceed) -->
+mercury_compile__middle_pass_by_phases(HLDS8, HLDS11, ErrorcheckOnly, Proceed)
+		-->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
 	mercury_compile__check_determinism(HLDS8, HLDS9, FoundError),
@@ -1796,7 +1798,8 @@ mercury_compile__map_args_to_regs(HLDS0, HLDS) -->
 % :- mode mercury_compile__middle_pass_by_preds(di, uo, in, out, di, uo) is det.
 :- mode mercury_compile__middle_pass_by_preds(in, out, in, out, di, uo) is det.
 
-mercury_compile__middle_pass_by_preds(HLDS8, HLDS11, ErrorcheckOnly, Proceed) -->
+mercury_compile__middle_pass_by_preds(HLDS8, HLDS11, ErrorcheckOnly, Proceed)
+		-->
 	mercury_compile__middle_pass_by_phases(HLDS8, HLDS11, ErrorcheckOnly,
 		Proceed).
 
