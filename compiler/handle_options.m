@@ -768,6 +768,7 @@ long_usage -->
 	% IMPORTANT: any changes here may require similar changes to
 	%	runtime/mercury_grade.h
 	%	scripts/parse_grade_options.sh-subr
+	%	scripts/canonical_grade.sh-subr
 	%
 	% The grade_component type should have one constructor for each
 	% dimension of the grade. It is used when converting the components
