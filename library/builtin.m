@@ -477,18 +477,6 @@ static void compare_3_m3(MR_TypeInfo TypeInfo_for_T,
 	compare_3(TypeInfo_for_T, Res, X, Y);
 }
 
-static void copy_2(MR_TypeInfo TypeInfo_for_T,
-		MR_Box X, MR_Ref(MR_Box) Y) 
-{
-        *Y = mercury::builtin__csharp_code::mercury_code::deep_copy(X);
-}
-
-static void copy_2_m1(MR_TypeInfo TypeInfo_for_T,
-		MR_Box X, MR_Ref(MR_Box) Y) 
-{
-	copy_2(TypeInfo_for_T, X, Y);
-}
-
 ").
 
 :- pragma foreign_code("C#", "
@@ -882,193 +870,36 @@ do_compare__tuple_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 
 %-----------------------------------------------------------------------------%
 
-/* copy/2
-	:- pred copy(T, T).
-	:- mode copy(ui, uo) is det.
-	:- mode copy(in, uo) is det.
-*/
-
-/*************
-Using `pragma c_code' doesn't work, due to the lack of support for
-aliasing, and in particular the lack of support for `ui' modes.
-:- pragma c_code(copy(Value::ui, Copy::uo), "
+:- pragma foreign_proc("C",
+	copy(Value::ui, Copy::uo),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
 	MR_save_transient_registers();
-	Copy = MR_deep_copy(Value, TypeInfo_for_T, NULL, NULL);
+	Copy = MR_deep_copy(Value, (MR_TypeInfo) TypeInfo_for_T, NULL, NULL);
 	MR_restore_transient_registers();
 ").
-:- pragma c_code(copy(Value::in, Copy::uo), "
+
+:- pragma foreign_proc("C",
+	copy(Value::in, Copy::uo),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
 	MR_save_transient_registers();
-	Copy = MR_deep_copy(Value, TypeInfo_for_T, NULL, NULL);
+	Copy = MR_deep_copy(Value, (MR_TypeInfo) TypeInfo_for_T, NULL, NULL);
 	MR_restore_transient_registers();
 ").
-*************/
 
-:- external(copy/2).
-
-:- pragma foreign_decl("C", "
-#include ""mercury_deep_copy.h""
-#include ""mercury_deep_profiling_hand.h""
+:- pragma foreign_proc("MC++",
+	copy(X::ui, Y::uo),
+	[],
+"
+        Y = mercury::builtin__csharp_code::mercury_code::deep_copy(X);
 ").
 
-:- pragma foreign_decl("C", "
-#ifdef MR_HIGHLEVEL_CODE
-  void MR_CALL mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info, MR_Box, MR_Box *);
-  void MR_CALL mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info, MR_Box, MR_Box *);
-#endif
-").
-
-:- pragma foreign_code("C", "
-
-#ifdef MR_HIGHLEVEL_CODE
-
-void MR_CALL
-mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info type_info,
-	MR_Box value, MR_Box *copy)
-{
-	MR_Word val = (MR_Word) value;
-	*copy = (MR_Box) MR_deep_copy(val, (MR_TypeInfo) type_info,
-		NULL, NULL);
-}
-
-void MR_CALL
-mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info type_info,
-	MR_Box value, MR_Box *copy)
-{
-	mercury__builtin__copy_2_p_0(type_info, value, copy);
-}
-
-/* forward decl, to suppress gcc -Wmissing-decl warning */
-void mercury_sys_init_copy_module(void);
-
-#else /* ! MR_HIGHLEVEL_CODE */
-
-#ifdef	MR_DEEP_PROFILING
-MR_proc_static_user_builtin_empty(copy, 2, 0, ""builtin.m"", 0, MR_TRUE);
-MR_proc_static_user_builtin_empty(copy, 2, 1, ""builtin.m"", 0, MR_TRUE);
-#endif
-
-MR_define_extern_entry(mercury__copy_2_0);
-MR_define_extern_entry(mercury__copy_2_1);
-
-MR_BEGIN_MODULE(copy_module)
-	MR_init_entry(mercury__copy_2_0);
-	MR_init_entry(mercury__copy_2_1);
-#ifdef	MR_DEEP_PROFILING
-	MR_init_label(mercury__copy_2_0_i1);
-	MR_init_label(mercury__copy_2_0_i2);
-	MR_init_label(mercury__copy_2_1_i1);
-	MR_init_label(mercury__copy_2_1_i2);
-#endif
-MR_BEGIN_CODE
-
-#ifdef	MR_DEEP_PROFILING
-  #define call_label(proc_label)	MR_PASTE3(proc_label, _i, 1)
-  #define exit_label(proc_label)	MR_PASTE3(proc_label, _i, 2)
-  #define first_slot			3
-
-  #define copy_body(proc_label, proc_static)				\
-		MR_incr_sp_push_msg(6, ""pred builtin:copy/2"");	\
-		MR_stackvar(6) = (MR_Word) MR_succip;			\
-		MR_stackvar(1) = MR_r1;					\
-		MR_stackvar(2) = MR_r2;					\
-									\
-		MR_deep_det_call(proc_label, proc_static, first_slot,	\
-			call_label(proc_label));			\
-									\
-		{							\
-		MR_Word		value, copy;				\
-		MR_TypeInfo	type_info;				\
-									\
-		type_info = (MR_TypeInfo) MR_stackvar(1);		\
-		value = MR_stackvar(2);					\
-									\
-		MR_save_transient_registers();				\
-		copy = MR_deep_copy(value, type_info, NULL, NULL);	\
-		MR_restore_transient_registers();			\
-									\
-		MR_stackvar(1) = copy;					\
-		}							\
-									\
-		MR_deep_det_exit(proc_label, first_slot,		\
-			exit_label(proc_label));			\
-									\
-		MR_r1 = MR_stackvar(1);					\
-		MR_succip = (MR_Code *) MR_stackvar(6);			\
-		MR_decr_sp_pop_msg(6);					\
-		MR_proceed();
-#else
-  #define copy_body(proc_label, proc_static)				\
-		{							\
-		MR_Word		value, copy;				\
-		MR_TypeInfo	type_info;				\
-									\
-		type_info = (MR_TypeInfo) MR_r1;			\
-		value = MR_r2;						\
-									\
-		MR_save_transient_registers();				\
-		copy = MR_deep_copy(value, type_info, NULL, NULL);	\
-		MR_restore_transient_registers();			\
-									\
-		MR_r1 = copy;						\
-		MR_proceed();						\
-		}
-#endif
-
-MR_define_entry(mercury__copy_2_0);
-	copy_body(mercury__copy_2_0,
-		MR_proc_static_user_builtin_name(copy, 2, 0))
-
-MR_define_entry(mercury__copy_2_1);
-	copy_body(mercury__copy_2_1,
-		MR_proc_static_user_builtin_name(copy, 2, 1))
-
-#undef	call_label
-#undef	exit_label
-#undef	first_slot
-#undef	copy_body
-MR_END_MODULE
-
-#endif /* ! MR_HIGHLEVEL_CODE */
-
-/* Ensure that the initialization code for the above module gets run. */
-
-/*
-INIT mercury_sys_init_copy_module
-*/
-
-/* suppress gcc -Wmissing-decl warnings */
-void mercury_sys_init_copy_module_init(void);
-void mercury_sys_init_copy_module_init_type_tables(void);
-#ifdef MR_DEEP_PROFILING
-void mercury_sys_init_copy_module_write_out_proc_statics(FILE *fp);
-#endif
-
-MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc copy_module;
-
-void
-mercury_sys_init_copy_module_init(void)
-{
-#ifndef MR_HIGHLEVEL_CODE
-	copy_module();
-#endif
-}
-
-void
-mercury_sys_init_copy_module_init_type_tables(void)
-{
-}
-
-#ifdef	MR_DEEP_PROFILING
-void
-mercury_sys_init_copy_module_write_out_proc_statics(FILE *fp)
-{
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&mercury_data__proc_static__mercury__copy_2_0);
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&mercury_data__proc_static__mercury__copy_2_1);
-}
-#endif
-
+:- pragma foreign_proc("MC++",
+	copy(X::in, Y::uo),
+	[],
+"
+        Y = mercury::builtin__csharp_code::mercury_code::deep_copy(X);
 ").
 
 %-----------------------------------------------------------------------------%
