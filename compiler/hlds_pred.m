@@ -62,6 +62,10 @@
 			;	clauses		
 			;	none.
 
+	% Note: `liveness' and `liveness_info' record liveness in the sense
+	% used by code generation.  This is *not* the same thing as the notion
+	% of liveness used by mode analysis!  See compiler/notes/GLOSSARY.
+
 :- type liveness_info	==	set(var).	% The live variables
 
 :- type liveness	--->	live
@@ -569,28 +573,35 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 
 :- implementation.
 
-:- type proc_info	--->	procedure(
-					maybe(determinism),% _declared_ det'ism
-					varset,		% variable names
-					map(var, type),	% variable types
-					list(var),	% head vars
-					list(mode), 	% modes of args
-					hlds__goal,	% Body
-					term__context,	% The context of
-							% the :- mode decl,
-							% not the clause.
-					call_info,	% stack allocations
-					determinism,	% _inferred_ det'ism
-					bool,		% no if we must not
-						% process this procedure yet
-						% (used for complicated modes
-						% of unification procs)
-					list(arg_info),	% information about
-							% the arguments
-							% derived from the
-							% modes etc
-					liveness_info	% the initial liveness
-				).
+:- type proc_info
+	--->	procedure(
+			maybe(determinism),
+					% _declared_ determinism
+					% or `no' if there was no detism decl
+			varset,		% variable names
+			map(var, type),	% variable types
+			list(var),	% head vars
+			list(mode), 	% modes of args
+			hlds__goal,	% Body
+			term__context,	% The context of the `:- mode' decl
+					% (or the context of the first clause,
+					% if there was no mode declaration).
+			call_info,	% stack allocations
+			determinism,	% _inferred_ det'ism
+			bool,		% no if we must not process this
+					% procedure yet (used to delay
+					% mode checking etc. for complicated
+					% modes of unification procs until
+					% the end of the unique_modes pass.)
+			list(arg_info),	% calling convention of each arg:
+					% information computed by arg_info.m
+					% (based on the modes etc.)
+					% and used by code generation
+					% to determine how each argument
+					% should be passed.
+			liveness_info	% the initial liveness,
+					% for code generation
+		).
 
 
 	% Some parts of the procedure aren't known yet. We initialize
@@ -620,14 +631,14 @@ proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) :-
 		InferredDet = det
 	),
 	map__init(CallInfo),
-	set__init(Liveness),
+	set__init(InitialLiveness),
 	ArgInfo = [],
 	ClauseBody = conj([]) - GoalInfo,
 	CanProcess = yes,
 	NewProc = procedure(
 		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes,
 		ClauseBody, MContext, CallInfo, InferredDet, CanProcess,
-		ArgInfo, Liveness
+		ArgInfo, InitialLiveness
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes, Goal,
