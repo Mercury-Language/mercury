@@ -352,7 +352,7 @@ output_lval(stackvar(N)) -->
 	;
 		true
 	},
-	io__write_string("stackvar("),
+	io__write_string("detstackvar("),
 	io__write_int(N),
 	io__write_string(")").
 

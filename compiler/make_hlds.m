@@ -664,10 +664,10 @@ insert_head_unifications_2([Var|Vars], [Arg|Args], N0, List0, List) :-
 :- pred transform_goal(goal, substitution, hlds__goal).
 :- mode transform_goal(input, input, output).
 
-transform_goal(fail, _, conj([]) - GoalInfo) :-
+transform_goal(fail, _, disj([]) - GoalInfo) :-
 	goalinfo_init(GoalInfo).
 
-transform_goal(true, _, disj([]) - GoalInfo) :-
+transform_goal(true, _, conj([]) - GoalInfo) :-
 	goalinfo_init(GoalInfo).
 
 transform_goal(some(Vars0, Goal0), Subst, some(Vars, Goal) - GoalInfo) :-

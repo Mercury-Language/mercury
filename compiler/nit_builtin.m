@@ -50,7 +50,7 @@
 
 % allow nit to ignore the modes in a pred declaration `:- pred p(T::M)'.
 
-:- type (Type :: Mode) == Type.
+:- type (Type :: _Mode) == Type.
 
 % nit detects undefined types even if they're not used
 % so we need to give type definitions for all the modes

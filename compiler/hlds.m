@@ -652,7 +652,11 @@ procinfo_init(Modes, Det, MContext, NewProc) :-
 determinism_to_category(det, deterministic).
 determinism_to_category(semidet, semideterministic).
 determinism_to_category(nondet, nondeterministic).
-determinism_to_category(unspecified, nondeterministic).
+	% The inferred determinism gets initialized to `deterministic'.
+	% This is what `det_analysis.nl' wants.  If it turns out
+	% that the procedure wasn't deterministic, then det_analysis.nl
+	% provide the correct inferred determinism for it.
+determinism_to_category(unspecified, deterministic).
 
 procinfo_declared_determinism(ProcInfo, Determinism) :-
 	ProcInfo = procedure(Determinism, _, _, _, _, _, _, _, _).

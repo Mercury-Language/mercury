@@ -37,7 +37,7 @@
 :- mode array__init(input, input, input, output). % want an array_skeleton?
 
 % array__bounds returns the upper and lower bounds of an array.
-:- pred array__bounds(array(T), int, int).
+:- pred array__bounds(array(_T), int, int).
 :- mode array__bounds(input, output, output).
 
 % array__search returns the Nth element of an array - or fails if the index

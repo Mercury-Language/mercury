@@ -40,23 +40,16 @@ modecheck(Module0, Module, FoundError) -->
 	check_undefined_modes(Module0, Module1),
 	maybe_report_stats(VeryVerbose),
 
-/*****
-	maybe_write_string(Verbose,
-		"% Checking for circular mode definitions...\n"),
-	check_circular_modes(Module1, Module2),
-	maybe_report_stats(VeryVerbose),
-*****/
-
-/*****
 	maybe_write_string(Verbose, "% Mode-checking clauses...\n"),
-	check_pred_types(Module2, Module, FoundError),
+	check_pred_modes(Module1, Module, FoundError),
 	maybe_report_stats(VeryVerbose),
-*****/
-	{ FoundError = no },
-	{ Module = Module1 },
 
 	io__set_output_stream(OldStream, _).
 
+/*****
+	{ FoundError = no },
+	{ Module = Module1 },
+*****/
 
 %-----------------------------------------------------------------------------%
 	
@@ -82,25 +75,25 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, Error0,
 				ModuleInfo, Error) -->
 	{ moduleinfo_preds(ModuleInfo0, Preds0) },
 	{ map__search(Preds0, PredId, PredInfo0) },
-	%%% { predinfo_argmodes(PredInfo0, ModeVarSet, ArgModes) },
 	{ predinfo_clauses_info(PredInfo0, ClausesInfo0) },
+	{ ClausesInfo0 = clauses_info(_, _, _, Clauses0) },
 	( { Clauses0 = [] } ->
-		[]
+		{ ModuleInfo1 = ModuleInfo0 }
 	;
 		io__write_string("% Mode-checking predicate "),
 		write_pred_id(PredId),
-		io__write_string("\n")
+		io__write_string("\n"),
+		{ copy_clauses_to_procs(PredInfo0, PredInfo) },
+		{ map__set(Preds0, PredId, PredInfo, Preds) },
+		{ moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo1) }
 	),
-	{ copy_clauses_to_procs(PredInfo0, PredInfo1) },
-
 /******
 		% XXX fix here
+	{ predinfo_argmodes(PredInfo1, ModeVarSet, ArgModes) },
 	modecheck_clause_list(Clauses0, PredId, ModeVarSet, ArgModes,
 		ModuleInfo0, Error0, Clauses, Error1),
 *****/
-	{ predinfo_set_clauses_info(PredInfo0, ClausesInfo, PredInfo) },
-	{ map__set(Preds0, PredId, PredInfo, Preds) },
-	{ moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo1) },
+	{ Error1 = Error0 },
 	modecheck_pred_modes_2(PredIds, ModuleInfo1, Error1, ModuleInfo, Error).
 
 %-----------------------------------------------------------------------------%
@@ -108,28 +101,41 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, Error0,
 :- pred copy_clauses_to_procs(pred_info, pred_info).
 :- mode copy_clauses_to_procs(input, output).
 
-/****
-
 copy_clauses_to_procs(PredInfo0, PredInfo) :-
-	predinfo_clauses(PredInfo0, Clauses),
+	predinfo_clauses_info(PredInfo0, ClausesInfo),
 	predinfo_procedures(PredInfo0, Procs0),
 	map__keys(Procs0, ProcIds),
-	copy_clauses_to_procs_2(ProcIds, Clauses, Procs0, Procs),
+	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs0, Procs),
 	predinfo_set_procedures(PredInfo0, Procs, PredInfo).
 
-:- pred copy_clauses_to_procs_2(list(proc_id), clauses_info
-copy_clauses_to_procs_2([], _, Procs, Procs).
-copy_clauses_to_procs_2([ProcId | ProcIds], Clauses, Procs0, Procs) :-
-	select_matching_clauses(Clauses, ProcId, MatchingClauses),
-	combine_clauses(MatchingClauses, HeadVars, Goal),
-	procinfo_set_headvars(Procs0, HeadVars, Procs1),
-	procinfo_set_goal(Procs1, Goal, Procs2),
-	copy_clauses_to_procs_2(ProcIds, Clauses, Procs2, Procs).
+:- pred copy_clauses_to_procs_2(list(proc_id)::in, clauses_info::in,
+				proc_table::in, proc_table::out).
 
-:- pred select_matching_clauses(list(clause),
+copy_clauses_to_procs_2([], _, Procs, Procs).
+copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
+	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
+	select_matching_clauses(Clauses, ProcId, MatchingClauses),
+	get_clause_goals(MatchingClauses, GoalList),
+	(GoalList = [SingleGoal] ->
+		Goal = SingleGoal
+	;
+		goalinfo_init(GoalInfo),
+		Goal = disj(GoalList) - GoalInfo
+	),
+	map__lookup(Procs0, ProcId, Proc0),
+	Proc0 = procedure(DeclaredDet, _, _, _, ArgModes, _, Context, CallInfo,
+			InferredDet),
+	Proc = procedure(DeclaredDet, VarSet, VarTypes, HeadVars, ArgModes,
+			Goal, Context, CallInfo, InferredDet),
+	map__set(Procs0, ProcId, Proc, Procs1),
+	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
+
+:- pred select_matching_clauses(list(clause), proc_id, list(clause)).
+:- mode select_matching_clauses(input, input, output).
+
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
-	Clause = clause(ProcIds, _, _, _, _, _),
+	Clause = clause(ProcIds, _, _),
 	( member(ProcId, ProcIds) ->
 		MatchingClauses = [Clause | MatchingClauses1]
 	;
@@ -137,12 +143,12 @@ select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
 	),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses1).
 
-:- pred combine_clauses(...).
-combine_clauses([], HeadVars, conj([]) - GoalInfo) :-
-	% XXX HeadVars
-	goalinfo_init(GoalInfo).
-combine_clauses([Clause | Clauses], HeadVars, conj([]) - GoalInfo) :-
-****/
+:- pred get_clause_goals(list(clause)::in, list(hlds__goal)::out) is det.
+
+get_clause_goals([], []).
+get_clause_goals([Clause | Clauses], [Goal | Goals]) :-
+	Clause = clause(_, Goal, _),
+	get_clause_goals(Clauses, Goals).
 
 
 /*********************** ALL THIS IS COMMENTED OUT!
