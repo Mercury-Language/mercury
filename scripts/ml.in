@@ -136,12 +136,14 @@ EOF
 		case $mercury_libs in static)
 			mercury_libs=shared ;;
 		esac
+		shift
 		;;
 	-static|--static)
 		STATIC_OR_SHARED_OPT=-static
 		case $mercury_libs in shared)
 			mercury_libs=static ;;
 		esac
+		shift
 		;;
 	--)
 		shift
