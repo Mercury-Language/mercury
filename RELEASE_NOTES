@@ -1,5 +1,5 @@
 
-We are pleased to announce the release of version 0.6 of the Mercury system.
+We are pleased to announce the release of version 0.7 of the Mercury system.
 
 Mercury is a new general-purpose programming language, designed and
 implemented by a small group of researchers at the University of
@@ -13,7 +13,7 @@ traditional logic programming syntax, but also allows the
 syntactic convenience of user-defined functions, smoothly integrating
 logic and functional programming into a single paradigm.
 
-For a list of what's new in release 0.6, see the NEWS file.
+For a list of what's new in this release, see the NEWS file.
 
 The main features of Mercury are:
 

@@ -1,0 +1,42 @@
+# This is the central place where the version number is kept.
+# (But note that the version number for the last major release is
+# hard-coded in the RELEASE_NOTES file.)
+#
+# The version number must be a valid file name, i.e. it should
+# not contain whitespace or special characters.  Stick to [A-Za-z0-9._-].
+#
+# Please assign version numbers according to the scheme explained below.
+
+VERSION=DEV
+
+# We use the following general scheme for version numbers:
+#
+# Pattern	Examples	Explanation
+# -------	-------		-----------
+# *.*		0.6, 0.7 	Major releases.
+#
+# *.*.*		0.6.1		Bug-fix releases.
+#
+# rotd-<DATE>	rotd-1997-07-28 "Release-of-the-day" releases.
+#				These releases are snapshots of our
+#				development sources built automatically
+#				after they have passed our nightly
+#				automatic test process.
+#
+# <BASE>-<PATCH> 		"Unofficial" releases (releases of patched
+# 		0.6.2-1		versions by anyone other than the Mercury
+#				team).  BASE should be the official
+#				release on which it is based,
+#				e.g. "0.7", or "rotd-97-07-28".
+#				PATCH should be something uniquely
+#				identifying this release.
+#				(In the example "0.6.2-1", PATCH was "1",
+#				which is not a good choice.  Something like
+#				"0.6.2-debian1" would have been a better name.)
+#
+# DEV		 DEV		Generic version number used internally by
+# 				the Mercury team for development versions.
+#
+# DEV-<NAME>	 DEV-blah	Version numbers used internally by
+# 				the Mercury team for specific development
+#				versions.

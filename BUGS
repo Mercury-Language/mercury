@@ -11,9 +11,16 @@ able to reproduce the problem.  Make sure that all bug reports are
 fully self-contained.
 
 Below is a list of the known outstanding bugs.
-We'll try to record any other bugs that are discovered in 0.6
+We'll try to record any other bugs that are discovered
 on our WWW page <http://www.cs.mu.oz.au/mercury>.
 See also the LIMITATIONS file.
+
+Note: please do not be alarmed by the fact that this software has some bugs.
+ALL useful software has bugs.  During the development of the Mercury
+implementation we have found bugs in gcc, as, ld, the dynamic loader,
+and even the OS kernel.  We hope that by listing the known outstanding bugs
+here we are doing our users a service.  It would be disappointing if
+anyone were to infer the wrong thing from it.
 
 -----------------------------------------------------------------------------
 Subject: bug report - Inf and NaN

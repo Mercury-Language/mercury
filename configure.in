@@ -40,7 +40,8 @@ if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
 fi
 #-----------------------------------------------------------------------------#
 AC_CONFIG_HEADER(runtime/conf.h)
-AC_PREFIX_DEFAULT(/usr/local/mercury-0.6)
+. ./VERSION
+AC_PREFIX_DEFAULT(/usr/local/mercury-$VERSION)
 AC_CANONICAL_HOST
 FULLARCH="$host"
 AC_SUBST(FULLARCH)

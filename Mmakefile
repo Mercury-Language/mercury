@@ -11,8 +11,6 @@ MAIN_TARGET=all
 MERCURY_DIR=.
 include Mmake.common
 
-VERSION=0.6
-
 #-----------------------------------------------------------------------------#
 
 SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
@@ -71,7 +69,7 @@ depend_profiler:
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: $(SUBDIRS)
+all: $(SUBDIRS) README INSTALL
 
 .PHONY: scripts
 scripts:
@@ -146,6 +144,12 @@ config.status: configure
 Mmake.common: Mmake.common.in config.status
 	./config.status
 
+README: .README.in VERSION
+	sed 's/@VERSION@/$(VERSION)/g' .README.in > README
+
+INSTALL: .INSTALL.in VERSION
+	sed 's/@VERSION@/$(VERSION)/g' .INSTALL.in > INSTALL
+
 #-----------------------------------------------------------------------------#
 
 # Generally you should do a `mmake realclean' before doing `mmake tar'.
@@ -189,6 +193,7 @@ tar:
 		mv mercury-$(VERSION) mercury				\
 	)
 
+.PHONY: version
 version:
 	@echo $(VERSION)
 

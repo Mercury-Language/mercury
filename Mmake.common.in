@@ -17,6 +17,10 @@
 
 #-----------------------------------------------------------------------------#
 
+include $(MERCURY_DIR)/VERSION
+
+#-----------------------------------------------------------------------------#
+
 # Specify the locations for installing things.
 # These directories can all be modified independantly.
 # In particular, you might want to find a better place for the DVI and
