@@ -50,8 +50,8 @@
 :- mode output :: free -> ground.
 :- mode input :: ground -> ground.
 
-:- mode in :: input.
-:- mode out :: output.
+:- mode in :: ground -> ground.
+:- mode out :: free -> ground.
 
 :- mode in(Inst) :: Inst -> Inst.
 :- mode out(Inst) :: free -> Inst.

@@ -360,7 +360,7 @@ options__lookup_int_option(OptionTable, Opt, Val) :-
 	->
 		Val = Val0
 	;
-		error("Expected bool option and didn't get one.")
+		error("Expected int option and didn't get one.")
 	).
 
 options__lookup_string_option(OptionTable, Opt, Val) :-
@@ -369,7 +369,7 @@ options__lookup_string_option(OptionTable, Opt, Val) :-
 	->
 		Val = Val0
 	;
-		error("Expected bool option and didn't get one.")
+		error("Expected string option and didn't get one.")
 	).
 
 :- end_module options.
