@@ -54,7 +54,7 @@
 %  Note that if the C type used to implement nb_references changes (from
 %  something equivalent to `MR_Word'), then `c_reference.h' should also be
 %  updated.
-:- type nb_reference(T) ---> nb_reference(c_pointer).
+:- type nb_reference(T) ---> nb_reference(private_builtin.ref(T)).
 
 :- pragma c_header_code("#include ""mercury_deep_copy.h""").
 
@@ -63,7 +63,7 @@
 new_nb_reference(X, nb_reference(Ref)) :-
 	impure new_nb_reference_2(X, Ref).
 
-:- impure pred new_nb_reference_2(T::in, c_pointer::out) is det.
+:- impure pred new_nb_reference_2(T::in, private_builtin.ref(T)::out) is det.
 :- pragma inline(new_nb_reference_2/2).
 :- pragma c_code(new_nb_reference_2(X::in, Ref::out), will_not_call_mercury, "
 	MR_incr_hp(Ref, 1);
@@ -82,7 +82,7 @@ new_nb_reference(X, nb_reference(Ref)) :-
 value(nb_reference(Ref), X) :-
 	semipure value_2(Ref, X).
 
-:- semipure pred value_2(c_pointer::in, T::out) is det.
+:- semipure pred value_2(private_builtin.ref(T)::in, T::out) is det.
 :- pragma inline(value_2/2).
 :- pragma c_code(value_2(Ref::in, X::out), will_not_call_mercury, "
 	X = *(MR_Word *) Ref;
@@ -93,7 +93,7 @@ value(nb_reference(Ref), X) :-
 update(nb_reference(Ref), X) :-
 	impure update_2(Ref, X).
 
-:- impure pred update_2(c_pointer::in, T::in) is det.
+:- impure pred update_2(private_builtin.ref(T)::in, T::in) is det.
 :- pragma inline(update_2/2).
 :- pragma c_code(update_2(Ref::in, X::in), will_not_call_mercury, "
 #ifndef MR_CONSERVATIVE_GC
@@ -134,7 +134,10 @@ init(Ref, X) :-
 	impure update(Ref, X).
 
 :- pragma inline(nb_reference__from_c_pointer/1).
-nb_reference__from_c_pointer(CPointer) = nb_reference(CPointer).
+nb_reference__from_c_pointer(CPointer) = nb_reference(Ref) :-
+	private_builtin.unsafe_type_cast(CPointer, Ref).
 
 :- pragma inline(nb_reference__to_c_pointer/1).
-nb_reference__to_c_pointer(nb_reference(CPointer)) = CPointer.
+nb_reference__to_c_pointer(nb_reference(Ref)) = CPointer :-
+	private_builtin.unsafe_type_cast(Ref, CPointer).
+
