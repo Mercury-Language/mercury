@@ -25,7 +25,7 @@ p(_)
 Is this a bug? yes
       34:      3  3 EXCP pred throw:p/1-0 (cc_nondet)
 mdb> continue
-exception(univ("Too big" : string))
+exception(univ_cons("Too big"))
       41:     11  3 CALL pred throw:q/1-0 (semidet) throw.m:48 (exception.m:NNNN)
 mdb> finish
       76:     11  3 EXCP pred throw:q/1-0 (semidet)
@@ -44,4 +44,4 @@ q(_)
 Is this a bug? yes
       76:     11  3 EXCP pred throw:q/1-0 (semidet)
 mdb> continue
-exception(univ("Too big" : string))
+exception(univ_cons("Too big"))
