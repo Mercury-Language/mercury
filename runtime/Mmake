@@ -23,7 +23,8 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 
 HDRS		= access.h aux.h conf.h dlist.h debug.h dummy.h engine.h \
 		  getopt.h goto.h heap.h imp.h init.h label.h \
-		  overflow.h prof.h memory.h regorder.h regs.h std.h stacks.h \
+		  overflow.h prof.h memory.h mercury_solver_backtrack.h \
+		  regorder.h regs.h std.h stacks.h \
 		  table.h tags.h timing.h wrapper.h \
 		  prof.h type_info.h
 
