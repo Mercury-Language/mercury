@@ -648,6 +648,10 @@ code_info__set_follow_vars(FollowVars, CI0, CI) :-
 	code_exprn__set_follow_vars(FollowVars, ExprnInfo0, ExprnInfo),
 	code_info__set_exprn_info(ExprnInfo, CI0, CI).
 
+:- pred code_info__get_active_temps_data(assoc_list(lval, slot_contents),
+	code_info, code_info).
+:- mode code_info__get_active_temps_data(out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% Update the code info structure to be consistent
@@ -846,6 +850,12 @@ code_info__add_trace_layout_for_label(Label, LayoutInfo) -->
 		map__det_insert(Internals0, Label, Internal, Internals)
 	},
 	code_info__set_layout_info(Internals).
+
+code_info__get_active_temps_data(Temps) -->
+	code_info__get_temps_in_use(TempsInUse),
+	code_info__get_temp_content_map(TempContentMap),
+	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
+	{ map__to_assoc_list(TempsInUseContentMap, Temps) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3066,125 +3076,141 @@ code_info__max_reg_in_use(Max) -->
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-	% Submodule for dealing with information for garbage collection
-	% and value numbering.
+	% Submodule for dealing with the recording of variable liveness
+	% information around calls.
+	%
+	% Value numbering needs to know what locations are live before calls;
+	% the garbage collector and the debugger need to know what locations
+	% are live containing what types of values after calls.
 
 :- interface.
 
-:- pred code_info__generate_stack_livevals(set(var), set(lval),
-	code_info, code_info).
-:- mode code_info__generate_stack_livevals(in, out, in, out) is det.
+:- pred code_info__generate_call_stack_vn_livevals(set(var)::in,
+	set(lval)::out, code_info::in, code_info::out) is det.
 
-:- pred code_info__generate_stack_livelvals(set(var), instmap,
-	list(liveinfo), code_info, code_info).
-:- mode code_info__generate_stack_livelvals(in, in, out, in, out) is det.
+:- pred code_info__generate_call_vn_livevals(list(arg_loc)::in, set(var)::in,
+	set(lval)::out, code_info::in, code_info::out) is det.
+
+:- pred code_info__generate_return_live_lvalues(assoc_list(var, arg_loc)::in,
+	instmap::in, list(liveinfo)::out, code_info::in, code_info::out)
+	is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-code_info__generate_stack_livevals(Args, LiveVals) -->
-	code_info__get_known_variables(LiveVars),
-	{ set__list_to_set(LiveVars, Vars0) },
-	{ set__difference(Vars0, Args, Vars) },
-	{ set__to_sorted_list(Vars, VarList) },
+code_info__generate_call_stack_vn_livevals(OutputArgs, LiveVals) -->
+	code_info__get_known_variables(KnownVarList),
+	{ set__list_to_set(KnownVarList, KnownVars) },
+	{ set__difference(KnownVars, OutputArgs, LiveVars) },
+	{ set__to_sorted_list(LiveVars, LiveVarList) },
 	{ set__init(LiveVals0) },
-	code_info__generate_var_livevals(VarList, LiveVals0, LiveVals1),
-	code_info__get_temps_in_use(TempsInUse),
-	code_info__get_temp_content_map(TempContentMap),
-	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
-	{ map__to_assoc_list(TempsInUseContentMap, Temps) },
-	{ code_info__generate_temp_livevals(Temps, LiveVals1, LiveVals) }.
+	code_info__generate_stack_var_vn(LiveVarList, LiveVals0, LiveVals1),
 
-:- pred code_info__generate_var_livevals(list(var), set(lval), set(lval),
-	code_info, code_info).
-:- mode code_info__generate_var_livevals(in, in, out, in, out) is det.
+	code_info__get_active_temps_data(Temps),
+	{ code_info__generate_call_temp_vn(Temps, LiveVals1, LiveVals) }.
 
-code_info__generate_var_livevals([], Vals, Vals) --> [].
-code_info__generate_var_livevals([V | Vs], Vals0, Vals) -->
-	code_info__get_variable_slot(V, Slot),
-	{ set__insert(Vals0, Slot, Vals1) },
-	code_info__generate_var_livevals(Vs, Vals1, Vals).
+code_info__generate_call_vn_livevals(InputArgLocs, OutputArgs, LiveVals) -->
+	code_info__generate_call_stack_vn_livevals(OutputArgs, StackLiveVals),
+	{ code_info__generate_input_var_vn(InputArgLocs, StackLiveVals,
+		LiveVals) }.
 
-:- pred code_info__generate_temp_livevals(assoc_list(lval, slot_contents),
-	set(lval), set(lval)).
-:- mode code_info__generate_temp_livevals(in, in, out) is det.
+:- pred code_info__generate_stack_var_vn(list(var)::in, set(lval)::in,
+	set(lval)::out, code_info::in, code_info::out) is det.
 
-code_info__generate_temp_livevals([], Vals, Vals).
-code_info__generate_temp_livevals([Slot - _ | Slots], Vals0, Vals) :-
-	set__insert(Vals0, Slot, Vals1),
-	code_info__generate_temp_livevals(Slots, Vals1, Vals).
+code_info__generate_stack_var_vn([], Vals, Vals) --> [].
+code_info__generate_stack_var_vn([V | Vs], Vals0, Vals) -->
+	code_info__get_variable_slot(V, Lval),
+	{ set__insert(Vals0, Lval, Vals1) },
+	code_info__generate_stack_var_vn(Vs, Vals1, Vals).
+
+:- pred code_info__generate_call_temp_vn(assoc_list(lval, slot_contents)::in,
+	set(lval)::in, set(lval)::out) is det.
+
+code_info__generate_call_temp_vn([], Vals, Vals).
+code_info__generate_call_temp_vn([Lval - _ | Temps], Vals0, Vals) :-
+	set__insert(Vals0, Lval, Vals1),
+	code_info__generate_call_temp_vn(Temps, Vals1, Vals).
+
+:- pred code_info__generate_input_var_vn(list(arg_loc)::in,
+	set(lval)::in, set(lval)::out) is det.
+
+code_info__generate_input_var_vn([], Vals, Vals).
+code_info__generate_input_var_vn([InputArgLoc | InputArgLocs], Vals0, Vals) :-
+	code_util__arg_loc_to_register(InputArgLoc, Lval),
+	set__insert(Vals0, Lval, Vals1),
+	code_info__generate_input_var_vn(InputArgLocs, Vals1, Vals).
 
 %---------------------------------------------------------------------------%
 
-code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
-	code_info__get_known_variables(LiveVars),
-	{ set__list_to_set(LiveVars, Vars0) },
-	{ set__difference(Vars0, Args, Vars) },
-	{ set__to_sorted_list(Vars, VarList) },
-	{ set__init(LiveVals0) },
-	code_info__generate_var_livelvals(VarList, LiveVals0, LiveVals1),
-	{ set__to_sorted_list(LiveVals1, LiveVals2) },
+code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
+		LiveLvalues) -->
+	code_info__get_known_variables(Vars),
 	code_info__get_globals(Globals),
 	{ globals__want_return_var_layouts(Globals, WantReturnVarLayout) },
-	code_info__livevals_to_livelvals(LiveVals2, WantReturnVarLayout, 
-		AfterCallInstMap, LiveVals3),
-	code_info__get_temps_in_use(TempsInUse),
-	code_info__get_temp_content_map(TempContentMap),
-	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
-	{ map__to_assoc_list(TempsInUseContentMap, Temps) },
-	{ code_info__generate_temp_livelvals(Temps, LiveVals3, LiveVals) }.
+	code_info__find_return_var_lvals(Vars, OutputArgLocs, VarLvals),
+	code_info__generate_var_live_lvalues(VarLvals,
+		ReturnInstMap, WantReturnVarLayout, VarLiveLvalues),
 
-:- pred code_info__generate_var_livelvals(list(var),
-	set(pair(lval, var)), set(pair(lval, var)), code_info, code_info).
-:- mode code_info__generate_var_livelvals(in, in, out, in, out) is det.
+	code_info__get_active_temps_data(Temps),
+	{ code_info__generate_temp_live_lvalues(Temps, TempLiveLvalues) },
 
-code_info__generate_var_livelvals([], Vals, Vals) --> [].
-code_info__generate_var_livelvals([V | Vs], Vals0, Vals) -->
-	code_info__get_variable_slot(V, Slot),
-	{ set__insert(Vals0, Slot - V, Vals1) },
-	code_info__generate_var_livelvals(Vs, Vals1, Vals).
+	{ list__append(VarLiveLvalues, TempLiveLvalues, LiveLvalues) }.
 
-:- pred code_info__generate_temp_livelvals(assoc_list(lval, slot_contents),
-	list(liveinfo), list(liveinfo)).
-:- mode code_info__generate_temp_livelvals(in, in, out) is det.
+:- pred code_info__find_return_var_lvals(list(var)::in,
+	assoc_list(var, arg_loc)::in, assoc_list(var, lval)::out,
+	code_info::in, code_info::out) is det.
 
-code_info__generate_temp_livelvals([], LiveInfo, LiveInfo).
-code_info__generate_temp_livelvals([Slot - StoredLval | Slots], LiveInfo0, 
-		[live_lvalue(direct(Slot), LiveValueType, Empty) | LiveInfo1])
-		:-
+code_info__find_return_var_lvals([], _, []) --> [].
+code_info__find_return_var_lvals([Var | Vars], OutputArgLocs,
+		[Var - Lval | VarLvals]) -->
+	( { assoc_list__search(OutputArgLocs, Var, ArgLoc) } ->
+		% On return, output arguments are in their registers.
+		{ code_util__arg_loc_to_register(ArgLoc, Lval) }
+	;
+		% On return, other live variables are in their stack slots.
+		code_info__get_variable_slot(Var, Lval)
+	),
+	code_info__find_return_var_lvals(Vars, OutputArgLocs, VarLvals).
+
+:- pred code_info__generate_temp_live_lvalues(
+	assoc_list(lval, slot_contents)::in, list(liveinfo)::out) is det.
+
+code_info__generate_temp_live_lvalues([], []).
+code_info__generate_temp_live_lvalues([Temp | Temps], [Live | Lives]) :-
+	Temp = Slot - Contents,
+	code_info__get_live_value_type(Contents, LiveLvalueType),
 	map__init(Empty),
-	code_info__get_live_value_type(StoredLval, LiveValueType),
-	code_info__generate_temp_livelvals(Slots, LiveInfo0, LiveInfo1).
+	Live = live_lvalue(direct(Slot), LiveLvalueType, Empty),
+	code_info__generate_temp_live_lvalues(Temps, Lives).
 
-:- pred code_info__livevals_to_livelvals(assoc_list(lval, var), bool,
-	instmap, list(liveinfo), code_info, code_info).
-:- mode code_info__livevals_to_livelvals(in, in, in, out, in, out) is det.
+:- pred code_info__generate_var_live_lvalues(assoc_list(var, lval)::in,
+	instmap::in, bool::in, list(liveinfo)::out,
+	code_info::in, code_info::out) is det.
 
-code_info__livevals_to_livelvals([], _, _, []) --> [].
-code_info__livevals_to_livelvals([Lval - Var | Ls], WantReturnVarLayout,
-		AfterCallInstMap, [LiveLval | Lives]) -->
-	code_info__get_varset(VarSet),
+code_info__generate_var_live_lvalues([], _, _, []) --> [].
+code_info__generate_var_live_lvalues([Var - Lval | VarLvals], InstMap,
+		WantReturnVarLayout, [Live | Lives]) -->
 	(
 		{ WantReturnVarLayout = yes }
 	->
-		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
+		code_info__get_varset(VarSet),
 		{ varset__lookup_name(VarSet, Var, Name) },
-
 		code_info__variable_type(Var, Type),
+		{ instmap__lookup_var(InstMap, Var, Inst) },
 		{ type_util__vars(Type, TypeVars) },
 		code_info__find_typeinfos_for_tvars(TypeVars, TypeParams),
-		{ LiveLval = live_lvalue(direct(Lval),
-			var(Var, Name, Type, Inst), TypeParams) }
+		{ VarInfo = var(Var, Name, Type, Inst) },
+		{ Live = live_lvalue(direct(Lval), VarInfo, TypeParams) }
 	;
 		{ map__init(Empty) },
-		{ LiveLval = live_lvalue(direct(Lval), unwanted, Empty) }
+		{ Live = live_lvalue(direct(Lval), unwanted, Empty) }
 	),
-	code_info__livevals_to_livelvals(Ls, WantReturnVarLayout,
-		AfterCallInstMap, Lives).
+	code_info__generate_var_live_lvalues(VarLvals, InstMap,
+		WantReturnVarLayout, Lives).
 
-:- pred code_info__get_live_value_type(slot_contents, live_value_type).
-:- mode code_info__get_live_value_type(in, out) is det.
+:- pred code_info__get_live_value_type(slot_contents::in, live_value_type::out)
+	is det.
 
 code_info__get_live_value_type(lval(succip), succip).
 code_info__get_live_value_type(lval(hp), hp).

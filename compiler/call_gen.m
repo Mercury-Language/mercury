@@ -19,7 +19,7 @@
 :- interface.
 
 :- import_module prog_data, hlds_pred, hlds_data, hlds_goal, llds, code_info.
-:- import_module term, list, set, assoc_list, std_util.
+:- import_module term, list, set, assoc_list.
 
 :- pred call_gen__generate_higher_order_call(code_model, var, list(var),
 			list(type), list(mode), determinism, hlds_goal_info,
@@ -45,12 +45,12 @@
 						list(var), list(var)).
 :- mode call_gen__partition_args(in, out, out) is det.
 
-:- pred call_gen__input_arg_locs(list(pair(var, arg_info)), 
-				list(pair(var, arg_loc))).
+:- pred call_gen__input_arg_locs(assoc_list(var, arg_info), 
+				assoc_list(var, arg_loc)).
 :- mode call_gen__input_arg_locs(in, out) is det.
 
-:- pred call_gen__output_arg_locs(list(pair(var, arg_info)), 
-				list(pair(var, arg_loc))).
+:- pred call_gen__output_arg_locs(assoc_list(var, arg_info), 
+				assoc_list(var, arg_loc)).
 :- mode call_gen__output_arg_locs(in, out) is det.
 
 :- pred call_gen__save_variables(set(var), code_tree,
@@ -64,7 +64,7 @@
 :- import_module hlds_module, code_util.
 :- import_module arg_info, type_util, mode_util, unify_proc, instmap.
 :- import_module trace, globals, options.
-:- import_module bool, int, tree, map.
+:- import_module std_util, bool, int, tree, map.
 :- import_module varset, require.
 
 %---------------------------------------------------------------------------%
@@ -94,23 +94,23 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 		% Figure out what locations are live at the call point,
 		% for use by the value numbering optimization.
 	{ call_gen__input_args(ArgInfo, InputArguments) },
-	call_gen__generate_call_livevals(OutArgs, InputArguments, LiveCode),
+	call_gen__generate_call_vn_livevals(InputArguments, OutArgs,
+		LiveCode),
 
 		% Figure out what variables will be live at the return point,
 		% and where, for use in the accurate garbage collector, and
 		% in the debugger.
 	code_info__get_instmap(InstMap),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-	{ instmap__apply_instmap_delta(InstMap, InstMapDelta,
-		AfterCallInstMap) },
-	{ call_gen__output_arg_locs(ArgsInfos, OutputArguments) },
+	{ instmap__apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap) },
+	{ call_gen__output_arg_locs(ArgsInfos, OutputArgLocs) },
 		% We must update the code generator state to reflect
 		% the situation after the call before building
 		% the return liveness info. No later code in this
 		% predicate depends on the old state.
 	call_gen__rebuild_registers(ArgsInfos),
-	call_gen__generate_return_livevals(OutArgs, OutputArguments,
-		AfterCallInstMap, OutLiveVals),
+	code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
+		ReturnLiveLvalues),
 
 		% Make the call.
 	code_info__get_module_info(ModuleInfo),
@@ -118,7 +118,7 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 	code_info__get_next_label(ReturnLabel),
 	{ call_gen__call_comment(CodeModel, CallComment) },
 	{ CallCode = node([
-		call(Address, label(ReturnLabel), OutLiveVals, CallModel)
+		call(Address, label(ReturnLabel), ReturnLiveLvalues, CallModel)
 			- CallComment,
 		label(ReturnLabel)
 			- "continuation label"
@@ -171,7 +171,7 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 		% place the immediate input arguments in registers
 		% starting at r4.
 	call_gen__generate_immediate_args(InVars, 4, InLocs, ImmediateCode),
-	code_info__generate_stack_livevals(OutArgs, LiveVals0),
+	code_info__generate_call_stack_vn_livevals(OutArgs, LiveVals0),
 	{ set__insert_list(LiveVals0,
 		[reg(r, 1), reg(r, 2), reg(r, 3) | InLocs], LiveVals) },
 	(
@@ -183,11 +183,10 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 	),
 
 	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
-	{ call_gen__output_arg_locs(OutArguments, OutLocs) },
+	{ call_gen__output_arg_locs(OutArguments, OutputArgLocs) },
 	code_info__get_instmap(InstMap),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-	{ instmap__apply_instmap_delta(InstMap, InstMapDelta,
-		AfterCallInstMap) },
+	{ instmap__apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap) },
 
 	code_info__produce_variable(PredVar, PredVarCode, PredRVal),
 	(
@@ -216,14 +215,15 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 		% the return liveness info. No later code in this
 		% predicate depends on the old state.
 	call_gen__rebuild_registers(OutArguments),
-	call_gen__generate_return_livevals(OutArgs, OutLocs, AfterCallInstMap, 
-		OutLiveVals),
+	code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
+		ReturnLiveLvalues),
 
 	code_info__get_next_label(ReturnLabel),
 	{ CallCode = node([
 		livevals(LiveVals)
 			- "",
-		call(DoHigherCall, label(ReturnLabel), OutLiveVals, CallModel)
+		call(DoHigherCall, label(ReturnLabel), ReturnLiveLvalues,
+			CallModel)
 			- "Setup and call higher order pred",
 		label(ReturnLabel)
 			- "Continuation label"
@@ -278,7 +278,7 @@ call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 		% place the immediate input arguments in registers
 		% starting at r5.
 	call_gen__generate_immediate_args(InVars, 5, InLocs, ImmediateCode),
-	code_info__generate_stack_livevals(OutArgs, LiveVals0),
+	code_info__generate_call_stack_vn_livevals(OutArgs, LiveVals0),
 	{ set__insert_list(LiveVals0,
 		[reg(r, 1), reg(r, 2), reg(r, 3), reg(r, 4) | InLocs], 
 			LiveVals) },
@@ -290,11 +290,10 @@ call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 		{ FirstArg = 1 }
 	),
 	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
-	{ call_gen__output_arg_locs(OutArguments, OutLocs) },
+	{ call_gen__output_arg_locs(OutArguments, OutputArgLocs) },
 	code_info__get_instmap(InstMap),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-	{ instmap__apply_instmap_delta(InstMap, InstMapDelta,
-		AfterCallInstMap) },
+	{ instmap__apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap) },
 
 	code_info__produce_variable(TCVar, TCVarCode, TCVarRVal),
 	(
@@ -325,14 +324,15 @@ call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 		% the return liveness info. No later code in this
 		% predicate depends on the old state.
 	call_gen__rebuild_registers(OutArguments),
-	call_gen__generate_return_livevals(OutArgs, OutLocs, AfterCallInstMap, 
-		OutLiveVals),
+	code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
+		ReturnLiveLvalues),
 
 	code_info__get_next_label(ReturnLabel),
 	{ CallCode = node([
 		livevals(LiveVals)
 			- "",
-		call(DoMethodCall, label(ReturnLabel), OutLiveVals, CallModel)
+		call(DoMethodCall, label(ReturnLabel), ReturnLiveLvalues,
+			CallModel)
 			- "Setup and call class method",
 		label(ReturnLabel)
 			- "Continuation label"
@@ -615,74 +615,15 @@ call_gen__output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_call_livevals(set(var), list(arg_loc), code_tree,
-							code_info, code_info).
-:- mode call_gen__generate_call_livevals(in, in, out, in, out) is det.
+:- pred call_gen__generate_call_vn_livevals(list(arg_loc)::in, set(var)::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
-call_gen__generate_call_livevals(OutArgs, InputArgs, Code) -->
-	code_info__generate_stack_livevals(OutArgs, LiveVals0),
-	{ call_gen__insert_arg_livevals(InputArgs, LiveVals0, LiveVals) },
+call_gen__generate_call_vn_livevals(InputArgLocs, OutputArgs, Code) -->
+	code_info__generate_call_vn_livevals(InputArgLocs, OutputArgs,
+		LiveVals),
 	{ Code = node([
 		livevals(LiveVals) - ""
 	]) }.
-
-%---------------------------------------------------------------------------%
-
-:- pred call_gen__insert_arg_livevals(list(arg_loc),
-					set(lval), set(lval)).
-:- mode call_gen__insert_arg_livevals(in, in, out) is det.
-
-call_gen__insert_arg_livevals([], LiveVals, LiveVals).
-call_gen__insert_arg_livevals([L | As], LiveVals0, LiveVals) :-
-	code_util__arg_loc_to_register(L, R),
-	set__insert(LiveVals0, R, LiveVals1),
-	call_gen__insert_arg_livevals(As, LiveVals1, LiveVals).
-
-%---------------------------------------------------------------------------%
-
-:- pred call_gen__generate_return_livevals(set(var), list(pair(var, arg_loc)),
-		instmap, list(liveinfo), code_info, code_info).
-:- mode call_gen__generate_return_livevals(in, in, in, out, in, out) is det.
-
-call_gen__generate_return_livevals(OutArgs, OutputArgs, AfterCallInstMap, 
-		LiveVals) -->
-	code_info__generate_stack_livelvals(OutArgs, AfterCallInstMap, 
-		LiveVals0),
-	code_info__get_globals(Globals),
-	{ globals__want_return_var_layouts(Globals, WantReturnVarLayout) },
-	call_gen__insert_arg_livelvals(OutputArgs, WantReturnVarLayout,
-		AfterCallInstMap, LiveVals0, LiveVals).
-
-% Maybe a varlist to type_id list would be a better way to do this...
-
-%---------------------------------------------------------------------------%
-
-:- pred call_gen__insert_arg_livelvals(list(pair(var, arg_loc)), bool, 
-	instmap, list(liveinfo), list(liveinfo), code_info, code_info).
-:- mode call_gen__insert_arg_livelvals(in, in, in, in, out, in, out) is det.
-
-call_gen__insert_arg_livelvals([], _, _, LiveVals, LiveVals) --> [].
-call_gen__insert_arg_livelvals([Var - L | As], WantReturnVarLayout,
-		AfterCallInstMap, LiveVals0, LiveVals) -->
-	code_info__get_varset(VarSet),
-	{ varset__lookup_name(VarSet, Var, Name) },
-	{ code_util__arg_loc_to_register(L, R) },
-	(
-		{ WantReturnVarLayout = yes }
-	->
-		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
-
-		code_info__variable_type(Var, Type),
-		{ type_util__vars(Type, TypeVars) },
-		code_info__find_typeinfos_for_tvars(TypeVars, TypeParams),
-		{ VarInfo = var(Var, Name, Type, Inst) },
-		{ LiveVal = live_lvalue(direct(R), VarInfo, TypeParams) }
-	;
-		{ map__init(Empty) },
-		{ LiveVal = live_lvalue(direct(R), unwanted, Empty) }
-	),
-	call_gen__insert_arg_livelvals(As, WantReturnVarLayout,
-		AfterCallInstMap, [LiveVal | LiveVals0], LiveVals).
 
 %---------------------------------------------------------------------------%
 
