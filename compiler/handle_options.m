@@ -306,12 +306,12 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	is semidet.
 
 convert_grade_option(Grade0) -->
-	( { string__remove_suffix(Grade0, ".cnstr", Grade1) } ->
+	( { string__remove_suffix(Grade0, ".tr", Grade1) } ->
 		{ Grade2 = Grade1 },
-		set_bool_opt(constraints, yes)
+		set_bool_opt(use_trail, yes)
 	;
 		{ Grade2 = Grade0 },
-		set_bool_opt(constraints, no)
+		set_bool_opt(use_trail, no)
 	),
 	( { string__remove_suffix(Grade2, ".prof", Grade3) } ->
 		{ Grade4 = Grade3 },

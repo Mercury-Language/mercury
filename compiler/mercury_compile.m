@@ -1679,11 +1679,11 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		CompilerType = unknown
 	},
-	globals__io_lookup_bool_option(constraints, Constraints),
-	{ Constraints = yes ->
-		ConstraintsOpt = "-DCONSTRAINTS "
+	globals__io_lookup_bool_option(use_trail, UseTrail),
+	{ UseTrail = yes ->
+		UseTrailOpt = "-DMR_USE_TRAIL "
 	;
-		ConstraintsOpt = ""
+		UseTrailOpt = ""
 	},
 	globals__io_get_args_method(ArgsMethod),
 	{ ArgsMethod = compact ->
@@ -1741,7 +1741,7 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
-		ConstraintsOpt, ArgsOpt, TypeInfoOpt, TypeLayoutOpt,
+		UseTrailOpt, ArgsOpt, TypeInfoOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),

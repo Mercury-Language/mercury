@@ -60,13 +60,13 @@ disj_gen__generate_semi_disj(Goals, StoreMap, Code) -->
 :- mode disj_gen__generate_pruned_disj(in, in, out, in, out) is det.
 
 disj_gen__generate_pruned_disj(Goals, StoreMap, Code) -->
-		% If we are using constraints, save the current solver state
+		% If we are using a trail, save the current trail state
 		% before the first disjunct.
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
 		ReclaimHeap) },
-	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
-	code_info__maybe_save_ticket(Constraints, SaveTicketCode,
+	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
+	code_info__maybe_save_ticket(UseTrail, SaveTicketCode,
 		MaybeTicketSlot),
 
 		% Rather than saving the heap pointer here,
@@ -231,11 +231,11 @@ disj_gen__generate_non_disj(Goals, StoreMap, Code) -->
 		Goals = [_, _ | _]
 	},
 
-		% If we are using constraints, save the current solver state
+		% If we are using a trail, save the current trail state
 		% before the first disjunct.
 	code_info__get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
-	code_info__maybe_save_ticket(Constraints, SaveTicketCode,
+	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
+	code_info__maybe_save_ticket(UseTrail, SaveTicketCode,
 		MaybeTicketSlot),
 
 		% With nondet disjunctions, we must recover memory across

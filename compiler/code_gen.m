@@ -945,8 +945,8 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 	},
 	code_info__maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot),
 
-	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
-	code_info__maybe_save_ticket(Constraints, SaveTicketCode,
+	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
+	code_info__maybe_save_ticket(UseTrail, SaveTicketCode,
 		MaybeTicketSlot),
 
 		% Generate the condition as a semi-deterministic goal;
@@ -970,6 +970,7 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 		 tree(SaveHpCode,
 		 tree(SaveTicketCode,
 		 tree(GoalCode,
+		 % XXX don't we need `DiscardTicketCode' here?
 		 tree(FailCode,
 		 tree(RestoreContCode,
 		 tree(RestoreTicketCode,

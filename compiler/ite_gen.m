@@ -92,10 +92,9 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 	},
 	code_info__maybe_save_hp(ReclaimHeap, SaveHPCode, MaybeHpSlot),
 
-		% Maybe save the solver state current before the condition
-	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
-	code_info__maybe_save_ticket(Constraints, SaveTicketCode,
-		MaybeTicketSlot),
+		% Maybe save the current trail state before the condition
+	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
+	code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot),
 
 	code_info__grab_code_info(CodeInfo),
 
@@ -205,10 +204,9 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 	},
 	code_info__maybe_save_hp(ReclaimHeap, SaveHPCode, MaybeHpSlot),
 
-		% Maybe save the current solver state before the condition
-	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
-	code_info__maybe_save_ticket(Constraints, SaveTicketCode,
-		MaybeTicketSlot),
+		% Maybe save the current trail state before the condition
+	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
+	code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot),
 
 	code_info__grab_code_info(CodeInfo),
 

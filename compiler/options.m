@@ -93,7 +93,7 @@
 		;	asm_labels
 		;	gc
 		;	profiling
-		;	constraints
+		;	use_trail
 		;	debug
 		;	debug_data
 		;	tags
@@ -320,7 +320,7 @@ option_defaults_2(compilation_model_option, [
 	asm_labels		-	bool(yes),
 	gc			-	string("conservative"),
 	profiling		-	bool(no),
-	constraints		-	bool(no),
+	use_trail		-	bool(no),
 	debug			-	bool(no),
 	tags			-	string("low"),
 	num_tag_bits		-	int(-1),
@@ -1198,14 +1198,17 @@ options_help_compilation_model -->
 	io__write_string("\t\t\t\t\tother grades use `--gc none'.)\n"),
 	io__write_string("\t\tSpecify which method of garbage collection to use\n"),
 	io__write_string("\t\t(default: conservative).  `accurate' GC is not yet implemented.\n"),
+	io__write_string("\t--use-trail\n"),
+	io__write_string("\t(grades: any grade ending in `.tr')\n"),
+	io__write_string("\t\tEnable use of a trail.\n"),
+	io__write_string("\t\tThis is necessary for interfacing with constraint solvers,\n"),
+	io__write_string("\t\tor for backtrackable destructive update.\n"),
 	io__write_string("\t--profiling\t\t"),
 	io__write_string("\t(grades: any grade ending in `.prof')\n"),
 	io__write_string("\t\tEnable profiling.  Insert profiling hooks in the\n"),
 	io__write_string("\t\tgenerated code, and also output some profiling\n"),
 	io__write_string("\t\tinformation (the static call graph) to the file\n"),
 	io__write_string("\t\t`<module>.prof'.\n"),
-	%io__write_string("\t--constraints\n"),
-	%io__write_string("\t\tInterface with the CLP(R) constraint solver.\n"),
 	io__write_string("\t--debug\t\t\t"),
 	io__write_string("\t(grades: debug)\n"),
 	io__write_string("\t\tEnable debugging.\n"),
