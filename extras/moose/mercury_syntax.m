@@ -39,8 +39,7 @@
 
 :- type lines
 	--->	lines
-	;	nolines
-	.
+	;	nolines.
 
 :- pred write_element(lines, element, io__state, io__state).
 :- mode write_element(in, in, di, uo) is det.
@@ -51,8 +50,7 @@
 :- type (type)
 	--->	abstr(term)
 	;	equiv(term, term)
-	;	disj(term, list(term))
-	.
+	;	disj(term, list(term)).
 
 :- pred term_to_type(term, (type)).
 :- mode term_to_type(in, out) is semidet.
@@ -68,8 +66,7 @@
 	;	forall(vars, goal)
 	% 	(goal => goal) % XXX conflicts with type classes
 	;	(goal <= goal)
-	;	(goal <=> goal)
-	.
+	;	(goal <=> goal).
 
 :- pred term_to_goal(term, goal).
 :- mode term_to_goal(in, out) is semidet.
@@ -264,34 +261,6 @@ write_element(Lines, dcg_clause(Head, Goal, VarSet), !IO) :-
 	--->	normal
 	;	dcg.
 
-:- pred write_goal_term(lines, int, goal_type, term, varset,
-		io__state, io__state).
-:- mode write_goal_term(in, in, in, in, in, di, uo) is det.
-
-write_goal_term(Lines, Ind, Type, Term, VarSet, !IO) :-
-	( term_to_conj(Term, Conjuncts) ->
-		write_conjuncts(Lines, Ind, Type, Conjuncts, VarSet, !IO)
-	; term_to_ite(Term, IfThens, Else) ->
-		write_ite_terms(Lines, Ind, Type, IfThens, Else, VarSet, !IO)
-	; term_to_disj(Term, Disjuncts) ->
-		write_disjuncts(Lines, Ind, Type, Disjuncts, VarSet, !IO)
-	;
-		% Too bad if it is a quantifier, { Goal }, etc.
-		% Also too bad if it contains a pred expression...
-		% You can add pretty things here...
-		write_term(Lines, Ind, VarSet, Term, !IO)
-	).
-
-:- pred term_to_conj(term, list(term)).
-:- mode term_to_conj(in, out) is semidet.
-
-term_to_conj(functor(atom(","), [Head,Term], _), [Head|Tail]) :-
-	( term_to_conj(Term, Tail0) ->
-		Tail = Tail0
-	;
-		Tail = [Term]
-	).
-
 :- pred term_to_disj(term, list(term)).
 :- mode term_to_disj(in, out) is semidet.
 
@@ -301,123 +270,6 @@ term_to_disj(functor(atom(";"), [Head,Term], _), [Head|Tail]) :-
 	;
 		Tail = [Term]
 	).
-
-:- pred term_to_ite(term, list(pair(term)), term).
-:- mode term_to_ite(in, out, out) is semidet.
-
-term_to_ite(functor(atom(";"), [Head,Else0], _), [If - Then|Rest], Else) :-
-	Head = functor(atom("->"), [If, Then], _),
-	( term_to_ite(Else0, Rest0, Else1) ->
-		Rest = Rest0,
-		Else = Else1
-	;
-		Rest = [],
-		Else = Else0
-	).
-
-%------------------------------------------------------------------------------%
-
-:- pred write_conjuncts(lines, int, goal_type, list(term), varset,
-		io__state, io__state).
-:- mode write_conjuncts(in, in, in, in, in, di, uo) is det.
-
-write_conjuncts(_Lines, Ind, Type, [], _VarSet, !IO) :-
-	write_ind(Ind, !IO),
-	(
-		Type = normal,
-		io__write_string("true", !IO)
-	;
-		Type = dcg,
-		io__write_string("{ true }", !IO)
-	).
-
-write_conjuncts(Lines, Ind, Type, [Goal], VarSet, !IO) :-
-	write_goal_term(Lines, Ind, Type, Goal, VarSet, !IO).
-
-write_conjuncts(Lines, Ind, Type, [Goal | Goals], VarSet, !IO) :-
-	Goals = [_|_],
-	write_goal_term(Lines, Ind, Type, Goal, VarSet, !IO),
-	io__write_string(",\n", !IO),
-	write_conjuncts(Lines, Ind, Type, Goals, VarSet, !IO).
-
-%------------------------------------------------------------------------------%
-
-:- pred write_disjuncts(lines, int, goal_type, list(term), varset,
-		io__state, io__state).
-:- mode write_disjuncts(in, in, in, in, in, di, uo) is det.
-
-write_disjuncts(Lines, Ind, Type, Goals, VarSet, !IO) :-
-	write_ind(Ind, !IO),
-	io__write_string("(\n", !IO),
-	write_disjuncts0(Lines, Ind, Type, Goals, VarSet, !IO), io__nl(!IO),
-	write_ind(Ind, !IO),
-	io__write_string(")", !IO).
-
-:- pred write_disjuncts0(lines, int, goal_type, list(term), varset,
-		io__state, io__state).
-:- mode write_disjuncts0(in, in, in, in, in, di, uo) is det.
-
-write_disjuncts0(_Lines, Ind, Type, [], _VarSet, !IO) :-
-	write_ind(Ind, !IO),
-	(
-		Type = normal,
-		io__write_string("fail", !IO)
-	;
-		Type = dcg,
-		io__write_string("{ fail }", !IO)
-	).
-
-write_disjuncts0(Lines, Ind, Type, [Goal], VarSet, !IO) :-
-	write_goal_term(Lines, Ind + 1, Type, Goal, VarSet, !IO), io__nl(!IO).
-
-write_disjuncts0(Lines, Ind, Type, [Goal | Goals], VarSet, !IO) :-
-	Goals = [_|_],
-	write_goal_term(Lines, Ind + 1, Type, Goal, VarSet, !IO), io__nl(!IO),
-	write_ind(Ind, !IO),
-	io__write_string(";\n", !IO),
-	write_disjuncts0(Lines, Ind, Type, Goals, VarSet, !IO).
-
-%------------------------------------------------------------------------------%
-
-:- pred write_ite_terms(lines, int, goal_type, list(pair(term)), term, varset,
-		io__state, io__state).
-:- mode write_ite_terms(in, in, in, in, in, in, di, uo) is det.
-
-write_ite_terms(Lines, Ind, Type, IfThens, Else, VarSet, !IO) :-
-	write_ind(Ind, !IO),
-	io__write_string("(\n", !IO),
-	write_ite_terms0(Lines, Ind, Type, IfThens, VarSet, !IO),
-	write_ind(Ind, !IO),
-	io__write_string(";\n", !IO),
-	write_goal_term(Lines, Ind + 1, Type, Else, VarSet, !IO), 
-	io__nl(!IO),
-	write_ind(Ind, !IO),
-	io__write_string(")", !IO).
-
-:- pred write_ite_terms0(lines, int, goal_type, list(pair(term)), varset,
-		io__state, io__state).
-:- mode write_ite_terms0(in, in, in, in, in, di, uo) is det.
-
-write_ite_terms0(_Lines, _Ind, _Type, [], _VarSet, !IO) :-
-	error("no if-thens").
-write_ite_terms0(Lines, Ind, Type, [If - Then], VarSet, !IO) :-
-	write_goal_term(Lines, Ind + 1, Type, If, VarSet, !IO), 
-	io__nl(!IO),
-	write_ind(Ind, !IO),
-	io__write_string("->\n", !IO),
-	write_goal_term(Lines, Ind + 1, Type, Then, VarSet, !IO), 
-	io__nl(!IO).
-write_ite_terms0(Lines, Ind, Type, [If - Then | Rest], VarSet, !IO) :-
-	Rest = [_|_],
-	write_goal_term(Lines, Ind + 1, Type, If, VarSet, !IO), 
-	io__nl(!IO),
-	write_ind(Ind, !IO),
-	io__write_string("->\n", !IO),
-	write_goal_term(Lines, Ind + 1, Type, Then, VarSet, !IO), 
-	io__nl(!IO),
-	write_ind(Ind, !IO),
-	io__write_string(";\n", !IO),
-	write_ite_terms0(Lines, Ind, Type, Rest, VarSet, !IO).
 
 %------------------------------------------------------------------------------%
 
@@ -546,6 +398,14 @@ term_to_goal0(";", [A, B], _, Goal) :-
 		)
 	).
 
+term_to_goal0("else", [functor(atom("if"), [IfThenTerm],  _), ElseTerm], _, 
+		Goal) :-
+	IfThenTerm = functor(atom("then"), [IfTerm, ThenTerm], _),
+	term_to_goal(IfTerm, If),
+	term_to_goal(ThenTerm, Then),
+	term_to_goal(ElseTerm, Else),
+	Goal = ite(If, Then, Else).	
+
 term_to_goal0("=", [A, B], Context, =(A, B, Context)).
 
 term_to_goal0("not", [A], _, not(Goal)) :-
@@ -608,7 +468,8 @@ write_goal(Lines, Ind, GoalType, disj(Goals), VarSet, !IO) :-
 
 write_goal(Lines, Ind, GoalType, ite(If, Then, Else0), VarSet, !IO) :-
 	collect_ite(Else0, IfThens0, Else),
-	write_ite(Lines, Ind, GoalType, [If - Then | IfThens0], Else, VarSet, !IO).
+	write_ite(Lines, Ind, GoalType, [If - Then | IfThens0], Else, VarSet, 
+		!IO).
 
 write_goal(Lines, Ind, GoalType, not(Goal), VarSet, !IO) :-
 	write_ind(Ind, !IO),

@@ -55,7 +55,7 @@
 %------------------------------------------------------------------------------%
 
 check_rule_decls(DeclList, Decls, Errors) :-
-	init(Decls0),
+	map__init(Decls0),
 	check_rule_decls(DeclList, Decls0, Decls, Errors).
 
 :- pred check_rule_decls(list(rule_decl), rule_decls, rule_decls,
@@ -85,7 +85,7 @@ check_rule_decls([Decl | DeclList], !Decls, Errors) :-
 %------------------------------------------------------------------------------%
 
 check_clauses(ClauseList, Decls, Clauses, Errors) :-
-	init(Clauses0),
+	map__init(Clauses0),
 	check_clauses0(ClauseList, Decls, Clauses0, Clauses, Errors0),
 
 	map__keys(Decls, DeclIds),

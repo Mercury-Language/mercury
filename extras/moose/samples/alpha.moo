@@ -41,20 +41,30 @@ scan(Chars, Toks) :-
 
 scan([], Toks, [eof|Toks]).
 scan([C|Cs], Toks0, Toks) :-
-	( char__is_whitespace(C) ->
-		scan(Cs, Toks0, Toks)
-	; char__is_digit(C) ->
-		takewhile(char__is_digit, [C|Cs], Digits, Rest),
-		string__from_char_list(Digits, NumStr),
-		Num = string__det_to_int(NumStr),
-		scan(Rest, [num(Num)|Toks0], Toks)
-	; C = ('+') ->
-		scan(Cs, ['+'|Toks0], Toks)
-	; C = ('(') ->
-		scan(Cs, ['('|Toks0], Toks)
-	; C = (')') ->
-		scan(Cs, [')'|Toks0], Toks)
-	;
-		error("expr: syntax error in input")
+	(if		
+			char__is_whitespace(C)
+	 then
+			scan(Cs, Toks0, Toks)
+	 else if 
+			char__is_digit(C) 
+	 then
+			takewhile(char__is_digit, [C|Cs], Digits, Rest),
+			string__from_char_list(Digits, NumStr),
+			Num = string__det_to_int(NumStr),
+			scan(Rest, [num(Num)|Toks0], Toks)
+	 else if 	
+			C = ('+') 
+	 then	
+			scan(Cs, ['+'|Toks0], Toks)
+	 else if	
+			C = ('(') 
+	 then		
+			scan(Cs, ['('|Toks0], Toks)
+	 else if	
+			C = (')')
+  	 then
+			scan(Cs, [')'|Toks0], Toks)
+	 else	
+			error("expr: syntax error in input")
 	).
 

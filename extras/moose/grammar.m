@@ -233,8 +233,8 @@ construct_grammar(Start, AllClauses, XForms, Grammar) :-
 		% Keep the nonterminals in reverse sorted order
 		% for efficient processing in lalr.m
 	map__map_values((pred(_K::in, V0::in, V::out) is det :-
-	    sort(V0, V1),
-	    reverse(V1, V)
+	    list__sort(V0, V1),
+	    list__reverse(V1, V)
 	), ClauseIndex3, ClauseIndex4),
 	Grammar = grammar(Rules3, AllClauses3, XForms3, Nont3, ClauseIndex4,
 		First3, Follow3).
