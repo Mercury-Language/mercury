@@ -86,4 +86,41 @@ mercury_data_foo
 
 	some lambda goals
 mercury__lp__IntroducedFrom__pred__simplex__262__9_7_0_i5
+<pred goal from 'simplex' line 262 label 5>
 mercury__lp__IntroducedFrom__func__collect_vars__153__4_3_0
+<func goal from 'collect_vars' line 153>
+
+	A realistic test
+ml -s asm_fast.gc.tr --no-demangle -o interpreter interpreter_init.o \
+interpreter.o -lcfloat_lib 
+Undefined			first referenced
+ symbol  			    in file
+_entry_mercury__tr_store__get_mutvar_4_0 interpreter.o
+_entry_mercury____Index___store__mutvar_2_0 interpreter.o
+_entry_mercury____Compare___store__mutvar_2_0 interpreter.o
+_entry_mercury__std_util__unsorted_aggregate_4_5 interpreter.o
+mercury_data_store__base_type_info_some_store_type_0 interpreter.o
+_entry_mercury____Unify___store__mutvar_2_0 interpreter.o
+_entry_mercury__tr_store__new_mutvar_4_0 interpreter.o
+_entry_mercury__tr_store__set_mutvar_4_0 interpreter.o
+mercury_data_store__base_type_info_mutvar_2 interpreter.o
+ld: fatal: Symbol referencing errors. No output written to interpreter
+gmake: *** [interpreter] Error 1
+
+	A realistic test
+ml -s asm_fast.gc.tr --no-demangle -o interpreter interpreter_init.o \
+interpreter.o -lcfloat_lib 
+Undefined			first referenced
+ symbol  			    in file
+<predicate 'tr_store:get_mutvar'/4 mode 0> interpreter.o
+<index/2 predicate for type 'store:mutvar'/2> interpreter.o
+<compare/3 predicate for type 'store:mutvar'/2> interpreter.o
+<predicate 'std_util:unsorted_aggregate'/4 mode 5> interpreter.o
+<base type_info for type 'store:some_store_type'/0> interpreter.o
+<unification predicate for type 'store:mutvar'/2 mode 0> interpreter.o
+<predicate 'tr_store:new_mutvar'/4 mode 0> interpreter.o
+<predicate 'tr_store:set_mutvar'/4 mode 0> interpreter.o
+<base type_info for type 'store:mutvar'/2> interpreter.o
+ld: fatal: Symbol referencing errors. No output written to interpreter
+gmake: *** [interpreter] Error 1
+

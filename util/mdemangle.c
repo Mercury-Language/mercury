@@ -83,7 +83,8 @@ main(int argc, char **argv)
 */
 
 static void 
-demangle(char *name) {
+demangle(char *name)
+{
 	static const char entry[]   = "_entry_";
 	static const char mercury[] = "mercury__";
 	static const char func_prefix[] = "fn__"; /* added for functions */
@@ -108,7 +109,7 @@ demangle(char *name) {
 	static const char common[] = "common";
 
 	char *start = name;
-	const char *type_module = ""; /* module name of type for special pred */
+	const char *module = "";	/* module name */
 	char *end = name + strlen(name);
 	char *position;		/* current position in string */
 	int mode_num;
@@ -144,8 +145,6 @@ demangle(char *name) {
 	if (!strip_prefix(&start, mercury)) {
 		goto not_plain_mercury;
 	}
-
-/*---------------------------------------------------------------------------*/
 
 /*
 ** Code for dealing with predicate symbols.
@@ -272,14 +271,11 @@ demangle(char *name) {
 	*end = '\0';
 
 	/*
-	** Separate the module name from the type name for the compiler
-	** generated predicates.
+	** Strip off the module name
 	*/
-	if (category != ORDINARY) {
-		type_module = start;
-		if (!cut_at_double_underscore(&start, end)) {
-			type_module = "";
-		}
+	module = start;
+	if (!cut_at_double_underscore(&start, end)) {
+		module = "";
 	}
 
 	/*
@@ -294,13 +290,11 @@ demangle(char *name) {
 	}
 
 	/*
-	** chop off the module name,
 	** look for "IntroducedFrom"
 	*/
-	position = start;
 	if (category == ORDINARY
-			&& cut_at_double_underscore(&start, end)
-			&& strip_prefix(&start, introduced)) {
+			&& strip_prefix(&start, introduced))
+	{
 		category = LAMBDA;
 		if (strip_prefix(&start, pred)) {
 			lambda_kind = "pred";
@@ -318,11 +312,7 @@ demangle(char *name) {
 			lambda_line = lambda_line * 10 + (*start - '0');
 			start++;
 		}
-	} else {
-		start = position;
 	}
-
-			
 
 	/*
 	** Now, finally, we can print the demangled symbol name
@@ -331,23 +321,28 @@ demangle(char *name) {
 	switch(category) {
 	case UNIFY:
 		printf("unification predicate for type '%s:%s'/%d mode %d",
-			type_module, start, arity, mode_num);
+			module, start, arity, mode_num);
 		break;
 	case COMPARE:
 		printf("compare/3 predicate for type '%s:%s'/%d",
-			type_module, start, arity);
+			module, start, arity);
 		break;
 	case INDEX:
 		printf("index/2 predicate for type '%s:%s'/%d",
-			type_module, start, arity);
+			module, start, arity);
 		break;
 	case LAMBDA:
 		printf("%s goal from '%s' line %d",
 			lambda_kind, lambda_pred_name, lambda_line);
 		break;
 	default:
-		printf("%s '%s'/%d mode %d",
-			pred_or_func, start, arity, mode_num);
+		if (*module == '\0') {
+			printf("%s '%s'/%d mode %d",
+				pred_or_func, start, arity, mode_num);
+		} else {
+			printf("%s '%s:%s'/%d mode %d",
+				pred_or_func, module, start, arity, mode_num);
+		}
 	}
 	if (higher_order) {
 		printf(" (specialized)");
@@ -361,8 +356,6 @@ demangle(char *name) {
 	printf(">");
 	return;
 
-/*---------------------------------------------------------------------------*/
-
 /* 
 ** Code to deal with mercury_data items.
 */
@@ -372,9 +365,9 @@ not_plain_mercury:
 	if (!strip_prefix(&start, mercury_data)) {
 		goto wrong_format;
 	}
-	type_module = start;
+	module = start;
 	if (!cut_at_double_underscore(&start, end)) {
-		type_module = "";
+		module = "";
 	}
 
 	if (strip_prefix(&start, base_type_info)) {
@@ -406,35 +399,35 @@ not_plain_mercury:
 	switch (data_category) {
 
 	case INFO:
-		if (*type_module == '\0') {
+		if (*module == '\0') {
 			printf("<base type_info for type '%s'/%d>",
 				start, arity);
 		} else {
 			printf("<base type_info for type '%s:%s'/%d>",
-				type_module, start, arity);
+				module, start, arity);
 		}
 		break;
 	case LAYOUT:
-		if (*type_module == '\0') {
+		if (*module == '\0') {
 			printf("<type layout for type '%s'/%d>",
 				start, arity);
 		} else {
 			printf("<type layout for type '%s:%s'/%d>",
-				type_module, start, arity);
+				module, start, arity);
 		}
 		break;
 	case FUNCTORS:
-		if (*type_module == '\0') {
+		if (*module == '\0') {
 			printf("<type functors for type '%s'/%d>",
 				start, arity);
 		} else {
 			printf("<type functors for type '%s:%s'/%d>",
-				type_module, start, arity);
+				module, start, arity);
 		}
 		break;
 	case COMMON:
 		printf("<shared constant number %d for module %s>",
-			arity, type_module);
+			arity, module);
 		break;
 
 	default:
