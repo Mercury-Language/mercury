@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -386,7 +386,7 @@ middle_rec__find_unused_register_2([H | T], N, Reg) :-
 	).
 
 :- pred middle_rec__find_used_registers(list(instruction)::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 middle_rec__find_used_registers([], !Used).
 middle_rec__find_used_registers([Instr - _ | Instrs], !Used) :-
@@ -394,7 +394,7 @@ middle_rec__find_used_registers([Instr - _ | Instrs], !Used) :-
 	middle_rec__find_used_registers(Instrs, !Used).
 
 :- pred middle_rec__find_used_registers_instr(instr::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 middle_rec__find_used_registers_instr(comment(_), !Used).
 middle_rec__find_used_registers_instr(livevals(LvalSet), !Used) :-
@@ -448,7 +448,7 @@ middle_rec__find_used_registers_instr(join_and_continue(Lval,_), !Used) :-
 
 :- pred middle_rec__find_used_registers_components(
 	list(pragma_c_component)::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 middle_rec__find_used_registers_components([], !Used).
 middle_rec__find_used_registers_components([Comp | Comps], !Used) :-
@@ -456,7 +456,7 @@ middle_rec__find_used_registers_components([Comp | Comps], !Used) :-
 	middle_rec__find_used_registers_components(Comps, !Used).
 
 :- pred middle_rec__find_used_registers_component(pragma_c_component::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 middle_rec__find_used_registers_component(pragma_c_inputs(In), !Used) :-
 	insert_pragma_c_input_registers(In, !Used).
@@ -468,7 +468,7 @@ middle_rec__find_used_registers_component(pragma_c_fail_to(_), !Used).
 middle_rec__find_used_registers_component(pragma_c_noop, !Used).
 
 :- pred middle_rec__find_used_registers_lvals(list(lval)::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 middle_rec__find_used_registers_lvals([], !Used).
 middle_rec__find_used_registers_lvals([Lval | Lvals], !Used) :-
@@ -476,7 +476,7 @@ middle_rec__find_used_registers_lvals([Lval | Lvals], !Used) :-
 	middle_rec__find_used_registers_lvals(Lvals, !Used).
 
 :- pred middle_rec__find_used_registers_lval(lval::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 middle_rec__find_used_registers_lval(Lval, !Used) :-
 	( Lval = reg(r, N) ->
@@ -492,7 +492,7 @@ middle_rec__find_used_registers_lval(Lval, !Used) :-
 	).
 
 :- pred middle_rec__find_used_registers_rval(rval::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 middle_rec__find_used_registers_rval(Rval, !Used) :-
 	(
@@ -519,7 +519,7 @@ middle_rec__find_used_registers_rval(Rval, !Used) :-
 	).
 
 :- pred middle_rec__find_used_registers_mem_ref(mem_ref::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 middle_rec__find_used_registers_mem_ref(stackvar_ref(_), !Used).
 middle_rec__find_used_registers_mem_ref(framevar_ref(_), !Used).
@@ -527,7 +527,7 @@ middle_rec__find_used_registers_mem_ref(heap_ref(Rval, _, _), !Used) :-
 	middle_rec__find_used_registers_rval(Rval, !Used).
 
 :- pred middle_rec__find_used_registers_maybe_rvals(list(maybe(rval))::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 middle_rec__find_used_registers_maybe_rvals([], !Used).
 middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
@@ -540,7 +540,7 @@ middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
 	middle_rec__find_used_registers_maybe_rvals(MaybeRvals, !Used).
 
 :- pred insert_pragma_c_input_registers(list(pragma_c_input)::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 insert_pragma_c_input_registers([], !Used).
 insert_pragma_c_input_registers([Input|Inputs], !Used) :-
@@ -549,7 +549,7 @@ insert_pragma_c_input_registers([Input|Inputs], !Used) :-
 	insert_pragma_c_input_registers(Inputs, !Used).
 
 :- pred insert_pragma_c_output_registers(list(pragma_c_output)::in,
-	set(int)::di, set(int)::uo) is det.
+	set(int)::in, set(int)::out) is det.
 
 insert_pragma_c_output_registers([], !Used).
 insert_pragma_c_output_registers([Output|Outputs], !Used) :-
