@@ -609,7 +609,7 @@ unify_gen__generate_det_sub_unify(L, R, M, Code) -->
 	->
 		unify_gen__generate_sub_assign(R, L, Code)
 	;
-			% Input - Output== assignment <-
+			% Output - Input== assignment <-
 		{ mode_is_output(ModuleInfo, (LI -> LF)) },
 		{ mode_is_input(ModuleInfo, (RI -> RF)) }
 	->
