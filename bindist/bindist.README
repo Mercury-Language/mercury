@@ -4,12 +4,12 @@ University of Melbourne Mercury compiler, version 0.5.
 The Mercury implementation is free software, but it is Copyright (C)
 1994, 1995, 1996 The University of Melbourne.  It is distributed under
 the terms of the GNU General Public License.  See the file COPYING for
-copying permission.  The Mercury library and runtime (the files in the
-library and runtime subdirectories) are distributed under the terms of
-the GNU Library General Public License.  See the file COPYING.LIB for
-copying permissions for those files.  (If these licencing arrangements
-are unsatisfactory, please contact us!  We are willing to come to
-alternative arrangements, if the need should arise.)
+copying permission.  The Mercury library and runtime (libmercury.* and
+libmer.*) are distributed under the terms of the GNU Library General
+Public License.  See the file COPYING.LIB for copying permissions for
+those files.  (If these licencing arrangements are unsatisfactory,
+please contact us!  We are willing to come to alternative arrangements,
+if the need should arise.)
 
 This distribution also contains a slightly modified version of the
 conservative garbage collector distributed by Hans Boehm, version 4.5,
@@ -48,7 +48,7 @@ For examples of larger programs, download the Mercury source distribution -
 the Mercury compiler and the Mercury profiler are written in Mercury.
 
 For more information about Mercury, see the Mercury WWW home page at
-http://www.cs.mu.oz.au/~zs/mercury.html, or send mail to mercury@cs.mu.oz.au.
+http://www.cs.mu.oz.au/mercury, or send mail to mercury@cs.mu.oz.au.
 
 Please send bug reports, enhancement requests, suggestions for improvements,
 and any other feedback to mercury-bugs@cs.mu.oz.au or mercury@cs.mu.oz.au.
