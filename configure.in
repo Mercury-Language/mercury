@@ -1494,7 +1494,7 @@ case $ac_cv_prog_gcc in yes)
 	mips-*)
 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
 		;;
-	i?86-*)
+	i*86-*)
 		CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
 		;;
 	# We need a special-case hack here, because the auto-config 
@@ -2093,7 +2093,7 @@ fi
 # Find out whether branch instructions have a delay slot.
 
 case "$host" in
-	i?86-*)
+	i*86-*)
 		# NUM_REAL_REGS=3
 		# but succip and sp are real regs, so subtract 2
 		NUM_REAL_R_REGS=1
@@ -2249,7 +2249,7 @@ ALLOW_UNDEFINED=""
 ERROR_UNDEFINED=""
 
 case "$host" in
-	i?86-*-linux|i?86-*-linux-gnu)
+	i*86-*-linux|i*86-*-linux-gnu)
 		case $ac_cv_prog_gcc in
 		yes)
 			AC_MSG_RESULT(yes)
@@ -2291,7 +2291,7 @@ case "$host" in
 		AC_MSG_RESULT(yes)
 		EXT_FOR_SHARED_LIB=so
 		;;
-	i?86-*-freebsd*)
+	i*86-*-freebsd*)
 		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="ld -Bshareable"

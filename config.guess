@@ -304,7 +304,7 @@ EOF
     ????????:AIX?:[12].1:2)   # AIX 2.2.1 or AIX 2.1.1 is RT/PC AIX.
 	echo romp-ibm-aix      # uname -m gives an 8 hex-code CPU id
 	exit 0 ;;              # Note that: echo "'`uname -s`'" gives 'AIX '
-    i?86:AIX:*:*)
+    i*86:AIX:*:*)
 	echo i386-ibm-aix
 	exit 0 ;;
     *:AIX:2:3)
@@ -448,7 +448,7 @@ EOF
     hp8??:OSF1:*:*)
 	echo hppa1.0-hp-osf
 	exit 0 ;;
-    i?86:OSF1:*:*)
+    i*86:OSF1:*:*)
 	if [ -x /usr/sbin/sysversion ] ; then
 	    echo ${UNAME_MACHINE}-unknown-osf1mk
 	else
@@ -510,7 +510,7 @@ EOF
     sparc*:BSD/OS:*:*)
 	echo sparc-unknown-bsdi${UNAME_RELEASE}
 	exit 0 ;;
-    i?86:BSD/386:*:* | *:BSD/OS:*:*)
+    i*86:BSD/386:*:* | *:BSD/OS:*:*)
 	echo ${UNAME_MACHINE}-pc-bsdi${UNAME_RELEASE}
 	exit 0 ;;
     *:FreeBSD:*:*)
@@ -554,8 +554,8 @@ EOF
 				    s/ .*//
 				    p'`
         case "$ld_supported_emulations" in
-	  i?86linux)  echo "${UNAME_MACHINE}-pc-linux-gnuaout"      ; exit 0 ;;
-	  i?86coff)   echo "${UNAME_MACHINE}-pc-linux-gnucoff"      ; exit 0 ;;
+	  i*86linux)  echo "${UNAME_MACHINE}-pc-linux-gnuaout"      ; exit 0 ;;
+	  i*86coff)   echo "${UNAME_MACHINE}-pc-linux-gnucoff"      ; exit 0 ;;
 	  sparclinux) echo "${UNAME_MACHINE}-unknown-linux-gnuaout" ; exit 0 ;;
 	  armlinux)   echo "${UNAME_MACHINE}-unknown-linux-gnuaout" ; exit 0 ;;
 	  m68klinux)  echo "${UNAME_MACHINE}-unknown-linux-gnuaout" ; exit 0 ;;
@@ -637,7 +637,7 @@ EOF
 	  test $? != 0 && echo "${UNAME_MACHINE}-pc-linux-gnuoldld" && exit 0
 
 	  case "${UNAME_MACHINE}" in
-	  i?86)
+	  i*86)
 	    VENDOR=pc;
 	    ;;
 	  *)
@@ -672,10 +672,10 @@ EOF
 	fi ;;
 # ptx 4.0 does uname -s correctly, with DYNIX/ptx in there.  earlier versions
 # are messed up and put the nodename in both sysname and nodename.
-    i?86:DYNIX/ptx:4*:*)
+    i*86:DYNIX/ptx:4*:*)
 	echo i386-sequent-sysv4
 	exit 0 ;;
-    i?86:UNIX_SV:4.2MP:2.*)
+    i*86:UNIX_SV:4.2MP:2.*)
         # Unixware is an offshoot of SVR4, but it has its own version
         # number series starting with 2...
         # I am not positive that other SVR4 systems won't match this,
@@ -683,14 +683,14 @@ EOF
         # Use sysv4.2uw... so that sysv4* matches it.
 	echo ${UNAME_MACHINE}-pc-sysv4.2uw${UNAME_VERSION}
 	exit 0 ;;
-    i?86:*:4.*:* | i?86:SYSTEM_V:4.*:*)
+    i*86:*:4.*:* | i*86:SYSTEM_V:4.*:*)
 	if grep Novell /usr/include/link.h >/dev/null 2>/dev/null; then
 		echo ${UNAME_MACHINE}-univel-sysv${UNAME_RELEASE}
 	else
 		echo ${UNAME_MACHINE}-pc-sysv${UNAME_RELEASE}
 	fi
 	exit 0 ;;
-    i?86:*:3.2:*)
+    i*86:*:3.2:*)
 	if test -f /usr/options/cb.name; then
 		UNAME_REL=`sed -n 's/.*Version //p' </usr/options/cb.name`
 		echo ${UNAME_MACHINE}-pc-isc$UNAME_REL
@@ -704,7 +704,7 @@ EOF
 		echo ${UNAME_MACHINE}-pc-sysv32
 	fi
 	exit 0 ;;
-    i?86:UnixWare:*:*)
+    i*86:UnixWare:*:*)
 	if /bin/uname -X 2>/dev/null >/dev/null ; then
 	  (/bin/uname -X|egrep '^Machine.*Pentium' >/dev/null) \
 	    && UNAME_MACHINE=i586
@@ -752,7 +752,7 @@ EOF
     mc68030:UNIX_System_V:4.*:*)
 	echo m68k-atari-sysv4
 	exit 0 ;;
-    i?86:LynxOS:2.*:*)
+    i*86:LynxOS:2.*:*)
 	echo i386-unknown-lynxos${UNAME_RELEASE}
 	exit 0 ;;
     TSUNAMI:LynxOS:2.*:*)
