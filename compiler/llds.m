@@ -108,9 +108,9 @@
 :- pred output_c_file(c_file, io__state, io__state).
 :- mode output_c_file(in, di, uo) is det.
 
-	% Given a 'c_file' structure, open the appropriate .xmod file
+	% Given a 'c_file' structure, open the appropriate .mod file
 	% and output the code into that file.
-	% (We use .xmod instead of .mod to distinguish the compiler-generated
+	% (We use .mod instead of .mod to distinguish the compiler-generated
 	% files from the hand-written ones.)
 
 %-----------------------------------------------------------------------------%
@@ -127,7 +127,7 @@
 	% arguments around all the time, as discussed in my hons thesis. -fjh.
 
 output_c_file(c_file(Name, Modules)) -->
-	{ string__append(Name, ".xmod", FileName) },
+	{ string__append(Name, ".mod", FileName) },
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
@@ -288,7 +288,7 @@ output_instruction(if_not_val(Rval, Label)) -->
 	output_rval(Rval),
 	io__write_string(" )) \n\t\tGOTO_LABEL("),
 	output_label(Label),
-	io__write_string("));").
+	io__write_string(");").
 
 output_instruction(incr_sp(N)) -->
 	io__write_string("\t"),

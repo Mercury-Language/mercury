@@ -181,7 +181,7 @@ options_help -->
 	io__write_string("\t-D, --verbose-dump-hlds\n"),
 	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n"),
 	io__write_string("\t-g, --generate-code\n"),
-	io__write_string("\t\tGenerate .mod code in `<module>.xmod'.\n"),
+	io__write_string("\t\tGenerate .mod code in `<module>.mod'.\n"),
 	io__write_string("\t\tAs with -i, it disables type-checking, etc.\n"),
 	io__write_string("\t-l, --line-numbers\n"),
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),

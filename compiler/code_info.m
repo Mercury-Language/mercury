@@ -579,7 +579,7 @@ code_info__generate_expression(mkword(Tag, Rval0), TargetReg, Code) -->
 	{ Code = tree(Code0, Code1) }.
 code_info__generate_expression(iconst(Int), TargetReg, Code) -->
 	{ Code = node([
-		assign(TargetReg, iconst(Int)) - "Make a integer const"
+		assign(TargetReg, iconst(Int)) - "Make an integer const"
 	]) }.
 code_info__generate_expression(sconst(Str), TargetReg, Code) -->
 	{ Code = node([
@@ -1570,7 +1570,9 @@ code_info__grab_code_info(C, C, C).
 
 code_info__slap_code_info(C0, C1, C) :-
 	code_info__get_label_count(L, C1, _),
-	code_info__set_label_count(L, C0, C).
+	code_info__set_label_count(L, C0, C2),
+	code_info__get_succip_used(S, C1, _),
+	code_info__set_succip_used(S, C2, C).
 
 %---------------------------------------------------------------------------%
 
