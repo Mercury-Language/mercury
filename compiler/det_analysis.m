@@ -290,17 +290,23 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	),
 
 	det_infer_goal_2(Goal0, GoalInfo0, InstMap0, SolnContext, DetInfo,
-		NonLocalVars, DeltaInstMap, Goal1, InternalDetism, Msgs1),
+		NonLocalVars, DeltaInstMap, Goal1, InternalDetism0, Msgs1),
 
-	determinism_components(InternalDetism, InternalCanFail, InternalSolns),
+	determinism_components(InternalDetism0, InternalCanFail,
+				InternalSolns0),
 	(
 		% if mode analysis notices that a goal cannot succeed,
 		% then determinism analysis should notice this too
 
 		instmap_delta_is_unreachable(DeltaInstMap)
 	->
-		Solns = at_most_zero
+		InternalSolns = at_most_zero
 	;
+		InternalSolns = InternalSolns0
+	),
+	determinism_components(InternalDetism, InternalCanFail, InternalSolns),
+
+	(
 		% If a goal with multiple solutions has no output variables,
 		% then it really it has only one solution
 		% (we will need to do pruning)
@@ -401,7 +407,10 @@ det_infer_goal_2(call(PredId, ModeId, A, B, C, N), GoalInfo, _, SolnContext,
 	% from a non-committed-choice context.
 	%
 	determinism_components(Detism, _, NumSolns),
-	( NumSolns = at_most_many_cc, SolnContext \= first_soln ->
+	(
+		NumSolns = at_most_many_cc,
+		SolnContext \= first_soln
+	->
 		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism,
 				PredId, ModeId)]
 	;
@@ -414,7 +423,10 @@ det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det),
 		higher_order_call(PredVar, ArgVars, Types, Modes, Det),
 		Det, Msgs) :-
 	determinism_components(Det, _, NumSolns),
-	( NumSolns = at_most_many_cc, SolnContext \= first_soln ->
+	(
+		NumSolns = at_most_many_cc,
+		SolnContext \= first_soln
+	->
 		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det)]
 	;
 		Msgs = []
