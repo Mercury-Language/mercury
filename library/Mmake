@@ -147,6 +147,13 @@ sicstus_compile: sp_builtin.pl
 
 #-----------------------------------------------------------------------------#
 
+# We need to clean up the .no and .ql files for *.nu.nl, etc.
+
+clean:
+	rm -f *.no *.ql
+
+#-----------------------------------------------------------------------------#
+
 CHGRP=mercury
 CHMOD=go+w
 
