@@ -28,7 +28,7 @@
 /* command-line options */
 
 /* size of data areas, in kilobytes */
-unsigned	heap_size =     40960;
+unsigned	heap_size =      4096;
 unsigned	detstack_size =   512;
 unsigned	nondstack_size =  128;
 
