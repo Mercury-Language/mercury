@@ -76,11 +76,12 @@ translating Prolog programs into Mercury.
 @menu
 * Introduction::    Introduction
 * Syntax::          Syntax
-* IO::              Input and Output
-* FailLoops::       Failure Driven Loops, Assert and Retract
+* IO::              Input and output
+* FailLoops::       Failure driven loops, @code{assert} and @code{retract}
 * Commits::         Cuts
-* Accumulators::    Accumulators and Difference lists
+* Accumulators::    Accumulators and difference lists
 * Determinism::     Determinism
+* All-solutions::   All-solutions predicates: @code{findall} and @code{setof}
 @c * Problems::        Common Problems
 @end menu
 @end ifinfo
@@ -536,5 +537,49 @@ factorial(N, F) :-
         F is F1 * N
     ).
 @end example
+
+@node All-solutions
+@chapter All-solutions predicates.
+
+Unlike Prolog, which has a variety of subtly different all-solutions
+predicates (findall/3, bagof/3, setof/3, not to mention NU-Prolog's
+solutions/3), Mercury has a single all-solutions predicate called
+solutions/2.  To avoid the variable scoping problems of the Prolog
+versions, rather than taking both a goal to execute and an aliased
+term holding the resulting value to collect, Mercury's solutions/2 takes
+as input a single higher-order predicate term.  The Mercury equivalent to
+
+@example
+intersect(List1, List2, Intersection) :-
+	setof(X, (member(X, List1), member(X, List2)), Intersection).
+@end example
+
+@noindent
+is
+
+@example
+intersect(List1, List2, Intersection) :-
+	solutions(lambda([X::out] is nondet,
+	    (list__member(X, List1), list__member(X, List2))), Intersection).
+@end example
+
+Alternately, this could also be written as
+
+@example
+intersect(List1, List2, Intersection) :-
+	solutions(member_of_both(List1, List2), Intersection).
+
+:- pred member_of_both(list(T)::in, list(T)::in, T::out) is nondet.
+member_of_both(List1, List2, X) :-
+	list__member(X, List1), list__member(X, List2).
+@end example
+
+@noindent
+and in fact that's exactly how the Mercury compiler implements lambda
+expressions.
+
+The current implementation of solutions/2 is a "zero-copy" implementation,
+so the cost of solutions/2 is proportional the number of solutions, but
+independant of the size of the solutions.
 
 @bye

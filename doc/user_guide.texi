@@ -98,13 +98,17 @@ We strongly recommend that programmers use @samp{mmake} rather
 than invoking @samp{mc} directly, because @samp{mmake} is generally
 easier to use and avoids unnecessary recompilation.
 
-Mercury is a compiled language like C or Pascal,
-not an interpreted one like Prolog or Lisp.
-Therefore the debugging of Mercury programs
-requires a dedicated Mercury debugger program,
-since there is no interpreter to serve in its place.
-Until the Mercury debugger is complete,
-Mercury programmers may wish to use a Prolog system
+Since the Mercury implementation is essentially a native-code compiler
+which happens to compile via GNU C, not an interpreter,
+debugging of compiled Mercury programs would require
+a dedicated Mercury debugger program - or at least some
+significant extensions to gdb.  It would also require
+the Mercury compiler to arrange for the object
+code to contain suitable debugging information.
+Although it is possible to debug the intermediate C code, this is
+not productive, since the intermediate C code is extremely low-level
+and bears little resemblence to the source code.
+As an alternative, Mercury programmers may wish to use a Prolog system
 to execute their Mercury programs in order to gain access to this facility.
 The feasibility of this technique is dependent upon the program
 being written in the intersection of the Prolog and Mercury languages,
