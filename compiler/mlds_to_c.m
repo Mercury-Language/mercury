@@ -147,7 +147,7 @@ mlds_output_hdr_file(Indent, MLDS) -->
 	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
 	mlds_output_defns(Indent, MLDS_ModuleName, PublicTypeDefns), io__nl,
 	mlds_output_decls(Indent, MLDS_ModuleName, PublicNonTypeDefns), io__nl,
-	mlds_maybe_output_init_fn_decl(MLDS_ModuleName), io__nl,
+	mlds_output_init_fn_decls(MLDS_ModuleName), io__nl,
 	mlds_output_hdr_end(Indent, ModuleName).
 
 :- pred defn_is_public(mlds__defn).
@@ -222,6 +222,7 @@ mlds_output_src_file(Indent, MLDS) -->
 	%	#1. definitions of the private types,
 	% 	#2. forward-declarations of the private non-types
 	%	#3. definitions of all the non-types
+	%	#4. initialization functions
 	% in that order. 
 	% #2 is needed to allow #3 to contain forward references,
 	% which can arise for e.g. mutually recursive procedures.
@@ -242,7 +243,7 @@ mlds_output_src_file(Indent, MLDS) -->
 
 	mlds_output_c_defns(MLDS_ModuleName, Indent, ForeignCode), io__nl,
 	mlds_output_defns(Indent, MLDS_ModuleName, NonTypeDefns), io__nl,
-	mlds_maybe_output_init_fn_defn(MLDS_ModuleName, NonTypeDefns), io__nl,
+	mlds_output_init_fn_defns(MLDS_ModuleName, NonTypeDefns, Defns), io__nl,
 	mlds_output_src_end(Indent, ModuleName).
 
 :- pred mlds_output_hdr_start(indent, mercury_module_name,
@@ -320,55 +321,47 @@ mlds_output_src_end(Indent, ModuleName) -->
 	% MR_init_entry(<function>) for each function defined in the
 	% module.
 	%
-:- pred mlds_maybe_output_init_fn_decl(mlds_module_name::in,
+:- pred mlds_output_init_fn_decls(mlds_module_name::in,
 		io__state::di, io__state::uo) is det.
 
-mlds_maybe_output_init_fn_decl(ModuleName) -->
-	io_get_globals(Globals),
-	(
-		{ output_init_fn(Globals) }
-	->
-		output_init_fn_name(ModuleName),
-		io__write_string(";\n")
-	;
-		[]
-	).
+mlds_output_init_fn_decls(ModuleName) -->
+	output_init_fn_name(ModuleName, ""),
+	io__write_string(";\n"),
+	output_init_fn_name(ModuleName, "_type_tables"),
+	io__write_string(";\n"),
+	output_init_fn_name(ModuleName, "_debugger"),
+	io__write_string(";\n").
 
-:- pred mlds_maybe_output_init_fn_defn(mlds_module_name::in, mlds__defns::in,
+:- pred mlds_output_init_fn_defns(mlds_module_name::in, mlds__defns::in,
+		mlds__defns::in, io__state::di, io__state::uo) is det.
+
+mlds_output_init_fn_defns(ModuleName, NonTypeDefns, Defns) -->
+	output_init_fn_name(ModuleName, ""),
+	io__write_string("\n{\n"),
+	io__write_strings(["\tstatic int initialised = 0;\n",
+			"\tif (initialised) return;\n",
+			"\tinitialised = 1;\n\n"]),
+	mlds_output_init_main_fn(ModuleName, NonTypeDefns),
+	io__write_string("\n}\n"),
+
+	output_init_fn_name(ModuleName, "_type_tables"),
+	io__write_string("\n{\n"),
+	io__write_strings(["\tstatic int initialised = 0;\n",
+			"\tif (initialised) return;\n",
+			"\tinitialised = 1;\n\n"]),
+	mlds_output_init_type_table_fn(ModuleName, Defns),
+	io__write_string("\n}\n"),
+
+	output_init_fn_name(ModuleName, "_debugger"),
+	io__write_string("\n{\n"),
+	io__write_string(
+	    "\tMR_fatal_error(""debugger initialization in MLDS grade"");\n"),
+	io__write_string("\n}\n").
+
+:- pred output_init_fn_name(mlds_module_name::in, string::in,
 		io__state::di, io__state::uo) is det.
 
-mlds_maybe_output_init_fn_defn(ModuleName, Defns) -->
-	io_get_globals(Globals),
-	(
-		{ output_init_fn(Globals) }
-	->
-		output_init_fn_name(ModuleName),
-		io__write_string("\n{\n"),
-		io__write_strings(["\tstatic int initialised = 0;\n",
-				"\tif (initialised) return;\n",
-				"\tinitialised = 1;\n\n"]),
-		mlds_output_init_fn_2(ModuleName, Defns),
-		io__write_string("\n}\n")
-	;
-		[]
-	).
-
-	%
-	% Do we need an init function?
-	%
-:- pred output_init_fn(globals::in) is semidet.
-
-output_init_fn(Globals) :-
-	( Option = profile_calls
-	; Option = profile_time
-	; Option = profile_memory
-	),
-	globals__lookup_bool_option(Globals, Option, yes).
-	
-:- pred output_init_fn_name(mlds_module_name::in,
-		io__state::di, io__state::uo) is det.
-
-output_init_fn_name(ModuleName) -->
+output_init_fn_name(ModuleName, Suffix) -->
 		% Here we ensure that we only get one "mercury__" at the
 		% start of the function name.
 	{ prog_out__sym_name_to_string(
@@ -384,16 +377,18 @@ output_init_fn_name(ModuleName) -->
 	},
 	io__write_string("void "),
 	io__write_string(ModuleNameString),
-	io__write_string("__init(void)").
+	io__write_string("__init"),
+	io__write_string(Suffix),
+	io__write_string("(void)").
 
-:- pred mlds_output_init_fn_2(mlds_module_name::in, mlds__defns::in,
+:- pred mlds_output_init_main_fn(mlds_module_name::in, mlds__defns::in,
 		io__state::di, io__state::uo) is det.
 
-mlds_output_init_fn_2(_ModuleName, []) --> [].
-mlds_output_init_fn_2(ModuleName, [Defn | Defns]) --> 
+mlds_output_init_main_fn(_ModuleName, []) --> [].
+mlds_output_init_main_fn(ModuleName, [Defn | Defns]) --> 
 	{ Defn = mlds__defn(EntityName, _Context, _Flags, _EntityDefn) },
 	(
-		{ EntityName = function(_, _, _, _) }
+		{ EntityName = mlds__function(_, _, _, _) }
 	->
 		{ QualName = qual(ModuleName, EntityName) },
 		io__write_string("\tMR_init_entry("),
@@ -402,7 +397,27 @@ mlds_output_init_fn_2(ModuleName, [Defn | Defns]) -->
 	;
 		[]
 	),
-	mlds_output_init_fn_2(ModuleName, Defns).
+	mlds_output_init_main_fn(ModuleName, Defns).
+
+:- pred mlds_output_init_type_table_fn(mlds_module_name::in, mlds__defns::in,
+		io__state::di, io__state::uo) is det.
+
+mlds_output_init_type_table_fn(_ModuleName, []) --> [].
+mlds_output_init_type_table_fn(ModuleName, [Defn | Defns]) --> 
+	{ Defn = mlds__defn(EntityName, _Context, _Flags, EntityDefn) },
+	(
+		{ EntityDefn = mlds__data(Type, _) },
+		{ Type = mlds__rtti_type(RttiName) },
+		{ RttiName = type_ctor_info }
+	->
+		{ QualName = qual(ModuleName, EntityName) },
+		io__write_string("\tMR_register_type_ctor_info(&"),
+		mlds_output_fully_qualified_name(QualName),
+		io__write_string(");\n")
+	;
+		[]
+	),
+	mlds_output_init_type_table_fn(ModuleName, Defns).
 
 %-----------------------------------------------------------------------------%
 %
