@@ -106,6 +106,7 @@
 :- import_module sveqvclass.
 :- import_module svmap.
 :- import_module svqueue.
+:- import_module svrelation.
 :- import_module svset.
 :- import_module svvarset.
 :- import_module term.
@@ -241,6 +242,7 @@ mercury_std_library_module("svbimap").
 mercury_std_library_module("sveqvclass").
 mercury_std_library_module("svmap").
 mercury_std_library_module("svqueue").
+mercury_std_library_module("svrelation").
 mercury_std_library_module("svset").
 mercury_std_library_module("svvarset").
 mercury_std_library_module("table_builtin").
