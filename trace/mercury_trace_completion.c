@@ -423,10 +423,14 @@ static char *
 MR_trace_filename_completer_next(const char *word, size_t word_len,
 		MR_Completer_Data *data)
 {
+#ifdef MR_NO_USE_READLINE
+	return NULL;
+#else
 	int state;
 	state = (int) *data;
 	*data = (MR_Completer_Data) 1;
 	return filename_completion_function((char *) word, state);
+#endif /* ! MR_NO_USE_READLINE */
 }
 
 /*---------------------------------------------------------------------------*/
