@@ -1032,7 +1032,7 @@ det_univ_to_type(Univ, X) :-
 	% of the type_info for this type, and then store the input argument
 	% in the second field.
 :- pragma c_code(type_to_univ(Type::di, Univ::uo), will_not_call_mercury, "
-	incr_hp_msg(Univ, 2, mercury__std_util__type_to_univ_2_0,
+	incr_hp_msg(Univ, 2, MR_PROC_LABEL,
 		""std_util:univ/0"");
 	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO)
 		= (Word) TypeInfo_for_T;
@@ -1040,7 +1040,7 @@ det_univ_to_type(Univ, X) :-
 		= (Word) Type;
 ").
 :- pragma c_code(type_to_univ(Type::in, Univ::out), will_not_call_mercury, "
-	incr_hp_msg(Univ, 2, mercury__std_util__type_to_univ_2_1,
+	incr_hp_msg(Univ, 2, MR_PROC_LABEL,
 		""std_util:univ/0"");
 	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO)
 		= (Word) TypeInfo_for_T;
@@ -1721,8 +1721,7 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 				** be the rest of the words.
 				*/
 				incr_hp_msg(new_data, info.arity + 1,
-					mercury__fn__std_util__construct_3_0,
-					""<unknown type from ""
+					MR_PROC_LABEL, ""<unknown type from ""
 					""std_util:construct/3>"");
 				MR_field(MR_mktag(0), new_data, 0)
 					= info.secondary_tag;
@@ -1747,8 +1746,7 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 				*/
 
 				incr_hp_msg(new_data, info.arity,
-					mercury__fn__std_util__construct_3_0,
-					""<unknown type from ""
+					MR_PROC_LABEL, ""<unknown type from ""
 					""std_util:construct/3>"");
 				term_vector = (Word) new_data; 
 			}
@@ -1772,8 +1770,7 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 		*/
 
 		incr_hp_msg(Term, 2,
-			mercury__fn__std_util__construct_3_0,
-			""std_util:univ/0"");
+			MR_PROC_LABEL, ""std_util:univ/0"");
 		MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_TYPEINFO) = 
 			(Word) TypeInfo;
 		MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_DATA) =
@@ -1989,9 +1986,8 @@ ML_make_type(int arity, MR_TypeCtorInfo type_ctor, Word arg_types_list)
 		Word *type_info;
 
 		restore_transient_registers();
-		incr_hp_msg(LVALUE_CAST(Word, type_info), arity + extra_args,
-			mercury__fn__std_util__make_type_2_0,
-			""std_util:type_info/0"");
+		/* XXX should use incr_hp_msg() here */
+		incr_hp(LVALUE_CAST(Word, type_info), arity + extra_args);
 		save_transient_registers();
 		
 		MR_field(MR_mktag(0), type_info, 0) = type_ctor_info;
@@ -2665,8 +2661,7 @@ ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
 
 	if (success) {
 		/* Allocate enough room for a univ */
-		incr_hp_msg(ArgumentUniv, 2,
-			mercury__fn__std_util__argument_2_0,
+		incr_hp_msg(ArgumentUniv, 2, MR_PROC_LABEL,
 			""std_util:univ/0"");
 		MR_field(MR_mktag(0), ArgumentUniv, UNIV_OFFSET_FOR_TYPEINFO) =
 			arg_type_info;
@@ -2737,19 +2732,17 @@ det_argument(Type, ArgumentIndex) = Argument :-
 	Arity = info.arity;
 
 		/* Build argument list */
-	Arguments = MR_list_empty_msg(mercury__std_util__deconstruct_4_0);
+	Arguments = MR_list_empty_msg(MR_PROC_LABEL);
 	i = info.arity;
 
 	while (--i >= 0) {
 
 			/* Create an argument on the heap */
-		incr_hp_msg(Argument, 2,
-			mercury__std_util__deconstruct_4_0,
-			""std_util:univ/0"");
+		incr_hp_msg(Argument, 2, MR_PROC_LABEL, ""std_util:univ/0"");
 
 			/* Join the argument to the front of the list */
 		Arguments = MR_list_cons_msg(Argument, Arguments,
-			mercury__std_util__deconstruct_4_0);
+			MR_PROC_LABEL);
 
 			/* Fill in the arguments */
 		arg_pseudo_type_info = info.type_info_vector[i];

@@ -1353,8 +1353,7 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 	if (Res == 0) {
 		incr_hp_atomic_msg(LVALUE_CAST(Word, RetString),
 			ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(Char)),
-			mercury__io__read_line_as_string_2_5_0,
-			""string:string/0"");
+			MR_PROC_LABEL, ""string:string/0"");
 		memcpy(RetString, read_buffer, i * sizeof(Char));
 		RetString[i] = '\\0';
 	} else {
@@ -1484,7 +1483,7 @@ io__check_err(Stream, Res) -->
 	MercuryFile *f = (MercuryFile *) Stream;
 	RetVal = ferror(f->file);
 	ML_maybe_make_err_msg(RetVal != 0, ""read failed: "",
-		mercury__io__ferror_5_0, RetStr);
+		MR_PROC_LABEL, RetStr);
 }").
 
 % io__make_err_msg(MessagePrefix, Message):
@@ -1497,8 +1496,7 @@ io__check_err(Stream, Res) -->
 :- pragma c_code(make_err_msg(Msg0::in, Msg::out, _IO0::di, _IO::uo),
 		will_not_call_mercury,
 "{
-	ML_maybe_make_err_msg(TRUE, Msg0, mercury__io__make_err_msg_4_0,
-		Msg);
+	ML_maybe_make_err_msg(TRUE, Msg0, MR_PROC_LABEL, Msg);
 }").
 
 %-----------------------------------------------------------------------------%
@@ -1548,8 +1546,7 @@ io__check_err(Stream, Res) -->
 "{
 	incr_hp_atomic_msg(Buffer,
 		(Size * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word),
-		mercury__io__alloc_buffer_2_0,
-		""io:buffer/0"");
+		MR_PROC_LABEL, ""io:buffer/0"");
 }").
 
 :- pred io__resize_buffer(buffer::di, int::in, int::in, buffer::uo) is det.
@@ -1567,7 +1564,7 @@ io__check_err(Stream, Res) -->
 		Word next;
 		incr_hp_atomic_msg(next, 
 		   (NewSize * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word),
-		   mercury__io__resize_buffer_4_0,
+		   MR_PROC_LABEL,
 		   ""io:buffer/0"");
 		assert(buffer0 + OldSize == (Char *) next);
 	    	buffer = buffer0;
@@ -1575,8 +1572,7 @@ io__check_err(Stream, Res) -->
 		/* just have to alloc and copy */
 		incr_hp_atomic_msg(Buffer,
 		   (NewSize * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word),
-		   mercury__io__resize_buffer_4_0,
-		   ""io:buffer/0"");
+		   MR_PROC_LABEL, ""io:buffer/0"");
 		buffer = (Char *) Buffer;
 		if (OldSize > NewSize) {
 			memcpy(buffer, buffer0, NewSize);
@@ -3226,10 +3222,10 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		[will_not_call_mercury, thread_safe], "
 	/* convert mercury_argv from a vector to a list */
 	{ int i = mercury_argc;
-	  Args = MR_list_empty_msg(mercury__io__command_line_arguments_3_0);
+	  Args = MR_list_empty_msg(MR_PROC_LABEL);
 	  while (--i >= 0) {
 		Args = MR_list_cons_msg((Word) mercury_argv[i], Args,
-			mercury__io__command_line_arguments_3_0);
+			MR_PROC_LABEL);
 	  }
 	}
 	update_io(IO0, IO);
@@ -3364,7 +3360,7 @@ io__make_temp(Name) -->
 		/* Dir + / + Prefix + counter_high + . + counter_low + \\0 */
 	incr_hp_atomic_msg(LVALUE_CAST(Word, FileName),
 		(len + sizeof(Word)) / sizeof(Word),
-		mercury__io__make_temp_5_0, ""string:string/0"");
+		MR_PROC_LABEL, ""string:string/0"");
 	if (ML_io_tempnam_counter == 0) {
 		ML_io_tempnam_counter = getpid();
 	}
@@ -3453,7 +3449,7 @@ io__remove_file(FileName, Result, IO0, IO) :-
 "{
 	RetVal = remove(FileName);
 	ML_maybe_make_err_msg(RetVal != 0, ""remove failed: "",
-		mercury__io__remove_file_2_5_0, RetStr);
+		MR_PROC_LABEL, RetStr);
 	update_io(IO0, IO);
 }").
 
@@ -3474,7 +3470,7 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 "{
 	RetVal = rename(OldFileName, NewFileName);
 	ML_maybe_make_err_msg(RetVal != 0, ""rename failed: "",
-		mercury__io__rename_file_2_6_0, RetStr);
+		MR_PROC_LABEL, RetStr);
 	update_io(IO0, IO);
 }").
 

@@ -39,6 +39,7 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_pred, call_gen, llds_out, trace, tree.
+:- import_module code_util.
 :- import_module options, globals.
 :- import_module bool, string, int, assoc_list, set, map, require.
 
@@ -49,6 +50,7 @@
 %    <save live variables onto the stack> /* see note (1) below */
 %    {
 %	<declaration of one local variable for each arg>
+%	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %
 %	<assignment of input values from registers to local variables>
 %	save_registers(); /* see notes (1) and (2) below */
@@ -58,6 +60,8 @@
 %	  restore_registers(); /* see notes (1) and (3) below */
 %	#endif
 %	<assignment of the output values from local variables to registers>
+%
+%	#undef MR_PROC_LABEL /* see note (5) below */
 %    }
 %
 % In the case of a semidet pragma c_code, the above is followed by
@@ -276,6 +280,14 @@
 %	away ourselves, since these macros can be invoked from other macros,
 %	and thus we do not have a sure test of whether the code fragments
 %	invoke the macros.
+%
+% (5)	We insert a #define for MR_PROC_LABEL, so that the C code in the
+%	Mercury standard library that allocates memory manually can use
+%	MR_PROC_LABEL as the procname argument to incr_hp_msg(), for memory
+%	profiling.  Hard-coding the procname argument in the C code would
+%	be wrong, since it wouldn't handle the case where the original
+%	pragma c_code procedure gets inlined and optimized away.
+%	Of course we also need to #undef it afterwards.
 
 pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, _GoalInfo,
@@ -364,6 +376,15 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	{ make_pragma_decls(Args, Decls) },
 
 	%
+	% Generate <declaration for procedure>
+	%
+	code_info__get_module_info(ModuleInfo),
+	code_info__get_pred_id(CallerPredId),
+	code_info__get_proc_id(CallerProcId),
+	{ make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
+		ProcLabelHashDefine, ProcLabelHashUndef) },
+
+	%
 	% <assignment of input values from registers to local vars>
 	%
 	{ InputComp = pragma_c_inputs(InputDescs) },
@@ -382,7 +403,6 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% Code fragments to obtain and release the global lock
 	%
-	code_info__get_module_info(ModuleInfo),
 	{ ThreadSafe = thread_safe ->
 		ObtainLock = pragma_c_raw_code(""),
 		ReleaseLock = pragma_c_raw_code("")
@@ -452,9 +472,10 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% join all the components of the pragma_c together
 	%
-	{ Components = [InputComp, SaveRegsComp, ObtainLock, C_Code_Comp,
-			ReleaseLock, CheckR1_Comp, RestoreRegsComp,
-			OutputComp] },
+	{ Components = [ProcLabelHashDefine, InputComp, SaveRegsComp,
+			ObtainLock, C_Code_Comp, ReleaseLock,
+			CheckR1_Comp, RestoreRegsComp,
+			OutputComp, ProcLabelHashUndef] },
 	{ PragmaCCode = node([
 		pragma_c(Decls, Components, MayCallMercury, MaybeFailLabel, no)
 			- "Pragma C inclusion"
@@ -497,7 +518,26 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		     FailureCode))))
 	}.
 
-%---------------------------------------------------------------------------%
+:- pred make_proc_label_hash_define(module_info, pred_id, proc_id,
+		pragma_c_component, pragma_c_component).
+:- mode make_proc_label_hash_define(in, in, in, out, out) is det.
+
+make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
+		ProcLabelHashDef, ProcLabelHashUndef) :-
+	code_util__make_entry_label(ModuleInfo, PredId, ProcId, no,
+		CodeAddr),
+	( CodeAddr = imported(ProcLabel) ->
+		llds_out__get_proc_label(ProcLabel, yes, ProcLabelString)
+	; CodeAddr = label(ProcLabel) ->
+		llds_out__get_label(ProcLabel, yes, ProcLabelString)
+	;
+		error("unexpected code_addr in make_proc_label_hash_define")
+	),
+	ProcLabelHashDef = pragma_c_raw_code(string__append_list([
+			"#define MR_PROC_LABEL ", ProcLabelString, "\n"])),
+	ProcLabelHashUndef = pragma_c_raw_code("#undef MR_PROC_LABEL\n").
+
+%-----------------------------------------------------------------------------%
 
 :- pred pragma_c_gen__nondet_pragma_c_code(code_model::in,
 	pragma_c_code_attributes::in, pred_id::in, proc_id::in,
