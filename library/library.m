@@ -21,7 +21,7 @@
 :- import_module float, graph, group, int, io.
 :- import_module list, map, pqueue, queue, random, relation, require.
 :- import_module set, stack, std_util, string, term, term_io.
-:- import_module tree234, varset, store.
+:- import_module tree234, varset, store, rbtree.
 
 :- import_module parser, lexer, ops.
 
