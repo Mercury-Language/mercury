@@ -755,12 +755,10 @@ opt_level(2, _, [
 	optimize_fulljumps	-	bool(yes),
 	optimize_repeat		-	int(3),
 	optimize_dups		-	bool(yes),
+	optimize_dead_procs	-	bool(yes),
 	follow_code		-	bool(yes),
 	inline_simple		-	bool(yes),
-	inline_single_use	-	bool(no),	% yes when the problem
-							% caused by inlining
-							% parse_dcg_goal is
-							% solved.
+	inline_single_use	-	bool(yes),
 	inline_threshold	-	int(0),		% 10 when various
 							% bugs are fixed
 	common_struct		-	bool(yes),
@@ -772,7 +770,6 @@ opt_level(2, _, [
 
 opt_level(3, _, [
 	optimize_value_number	-	bool(yes),
-	optimize_dead_procs	-	bool(yes),
 %%%	optimize_copyprop	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
 	optimize_higher_order	-	bool(no),	% it loops on prog_io
