@@ -843,31 +843,34 @@ The following table shows the options that are selected by each grade; it
 is followed by a descriptions of those options.
 
 @table @asis
-@item @samp{debug}
-@code{--debug --no-c-optimize}
+@item @var{Grade}
+@var{Options implied}.
 
-@item none
+@item @samp{debug}
+@code{--debug --no-c-optimize}.
+
+@item @samp{none}
 None.
 
 @item @samp{reg}
-@code{--use-gcc-global-regisers}
+@code{--use-gcc-global-registers}.
 
 @item @samp{jump}
-@code{--use-gcc-nonlocal gotos}
+@code{--use-gcc-nonlocal gotos}.
 
 @item @samp{fast}
-@code{--use-gcc-global-registers --use-asm-labels}
+@code{--use-gcc-global-registers --use-asm-labels}.
 
 @item @samp{asm_jump}
-@code{--use-gcc-global-registers --use-asm-labels}
+@code{--use-gcc-global-registers --use-asm-labels}.
 
 @item @samp{asm_fast}
-@code{--use-gcc-global-registers --use-gcc-nonlocal_gotos --use-asm-labels}
+@code{--use-gcc-global-registers --use-gcc-nonlocal_gotos --use-asm-labels}.
 
 @item Any of the above followed by @samp{.gc}
 As above, plus @code{--use-conservative-gc}.
 
-@item Any of the above plus @samp{*.prof}
+@item Any of the above followed by @samp{.prof}
 As above, plus @code{--profiling}.
 
 @end table
