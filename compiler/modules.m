@@ -2889,6 +2889,12 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".dlls = "),
+	write_compact_dependencies_list(Modules, "$(dlls_subdir)", ".dll",
+					Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".all_ss = "),
 	write_compact_dependencies_list(Modules, "$(ss_subdir)", ".s",
 		Basis, DepStream),
@@ -3268,15 +3274,32 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	%
 
 	module_name_to_file_name(SourceModuleName, "", no, ExeFileName),
-	io__write_strings(DepStream, [
-		ExeFileName, " : $(", MakeVarName, ".cs_or_ss) ",
+
+	{ If = ["ifeq ($(findstring il,$(GRADE)),il)\n"] },
+	{ ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe ",
+			"$(", MakeVarName, ".dlls)\n"] },
+	{ Else = ["else\n"] },
+	{ MainRule =
+		[ExeFileName, " : $(", MakeVarName, ".cs_or_ss) ",
 			"$(", MakeVarName, ".os) ",
 			InitObjFileName, " $(MLOBJS) ", All_MLLibsDepString,
 			"\n",
 		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
 			ExeFileName, " ", InitObjFileName, " \\\n",
-		"\t	$(", MakeVarName, ".os) $(MLOBJS) $(ALL_MLLIBS)\n\n"
-	]),
+		"\t	$(", MakeVarName, ".os) $(MLOBJS) $(ALL_MLLIBS)\n"] },
+	{ EndIf = ["endif\n"] },
+
+	globals__io_get_target(Target),
+	{ Gmake = yes,
+		Rules = If ++ ILMainRule ++ Else ++ MainRule ++ EndIf
+	; Gmake = no,
+		( Target = il ->
+			Rules = ILMainRule
+		;
+			Rules = MainRule
+		)
+	},
+	io__write_strings(DepStream, Rules),
 
 	module_name_to_file_name(SourceModuleName, ".split", yes,
 				SplitExeFileName),
@@ -3408,7 +3431,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_lib_file_name("lib", ModuleName, ".install_hdrs", no,
 				LibInstallHdrsTargetName),
 	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
-	globals__io_get_target(Target),
 	( { HighLevelCode = yes, ( Target = c ; Target = asm ) } ->
 		%
 		% XXX  Note that we install the header files in two places:
@@ -3485,6 +3507,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		CleanTargetName, " :\n",
 		"\t-rm -rf $(", MakeVarName, ".dirs)\n",
 		"\t-rm -f $(", MakeVarName, ".cs) ", InitCFileName, "\n",
+		"\t-rm -f $(", MakeVarName, ".dlls)\n",
 		"\t-rm -f $(", MakeVarName, ".all_ss) ", InitAsmFileName, "\n",
 		"\t-rm -f $(", MakeVarName, ".all_pic_ss) ",
 					InitAsmFileName, "\n",

@@ -330,6 +330,9 @@ AC_DEFINE_UNQUOTED(MR_HOSTNAMECMD, "$HOSTNAMECMD")
 AC_PROG_CC
 AC_SUBST(CC)
 
+AC_EXEEXT
+AC_SUBST(EXEEXT)
+
 # We need to ensure that CFLAGS does not contain `-g', because
 # on some (broken) distributions of Linux (specifically Debian 0.93R6),
 # the `-lc' and `-lg' libraries have different contents; specifically,
@@ -368,7 +371,6 @@ AC_EGREP_CPP(yes,
 ] AC_MSG_RESULT(no))
 
 if test "$ac_microsoft" = "yes" ; then
-	EXE_SUFFIX=".exe"
 	OBJ_SUFFIX="obj"
 	LIB_SUFFIX="lib"
 	LIB_PREFIX="lib"
@@ -388,7 +390,6 @@ if test "$ac_microsoft" = "yes" ; then
 	RANLIB="echo"
 	AC_SUBST(RANLIB)
 else
-	EXE_SUFFIX=""
 	OBJ_SUFFIX="o"
 	LIB_SUFFIX="a"
 	LIB_PREFIX=""
@@ -412,7 +413,6 @@ AC_SUBST(AR)
 AC_SUBST(ARFLAGS)
 AC_SUBST(AR_LIBFILE_OPT)
 AC_SUBST(BOEHMGC_MAKEFILE)
-AC_SUBST(EXE_SUFFIX)
 AC_SUBST(OBJ_SUFFIX)
 AC_SUBST(LIB_SUFFIX)
 AC_SUBST(LIB_PREFIX)

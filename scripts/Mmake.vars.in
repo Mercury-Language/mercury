@@ -421,6 +421,7 @@ date3s_subdir=$(SUBDIR)date3s/
 optdates_subdir=$(SUBDIR)optdates/
 trans_opt_dates_subdir=$(SUBDIR)trans_opt_dates/
 cs_subdir=$(SUBDIR)cs/
+dlls_subdir=$(SUBDIR)dlls/
 ss_subdir=$(SUBDIR)cs/
 os_subdir=$(SUBDIR)os/
 rlos_subdir=$(SUBDIR)rlos/
@@ -451,6 +452,7 @@ date3s_subdir=
 optdates_subdir=
 trans_opt_dates_subdir=
 cs_subdir=
+dlls_subdir=
 ss_subdir=
 os_subdir=
 rlos_subdir=
@@ -553,7 +555,7 @@ LIBGRADES		= @LIBGRADES@
 empty_string=
 OBJFILE_OPT=@OBJFILE_OPT@$(empty_string)
 
-EXT_FOR_EXE=@EXE_SUFFIX@
+EXT_FOR_EXE=@EXEEXT@
 O=@OBJ_SUFFIX@
 A=@LIB_SUFFIX@
 
