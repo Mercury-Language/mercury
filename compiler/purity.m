@@ -126,7 +126,7 @@ puritycheck(HLDS0, HLDS) -->
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 
-	maybe_write_string(Verbose, "% Mode-checking clauses...\n"),
+	maybe_write_string(Verbose, "% Purity-checking clauses...\n"),
 	check_preds_purity(HLDS0, HLDS),
 	maybe_report_stats(Statistics),
 
