@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2002 The University of Melbourne.
+# Copyright (C) 1997-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -18,16 +18,14 @@ MLFLAGS=-g
 # Link in the trailed_update library from ..
 MCFLAGS += -I..
 CFLAGS += -I..
-MLFLAGS += -R`pwd`/.. -L..
-MLLIBS = -ltrailed_update
+MLFLAGS += --mercury-libs static
+MLOBJS = ../libtrailed_update.a
 VPATH = ..:$(MMAKE_VPATH)
 C2INITARGS = ../trailed_update.init
 
 # We need the following to use shared libraries on Linux
 #CFLAGS += -DPIC_REG
 #MLFLAGS += --shared
-
-MLFLAGS += --static
 
 DIFF_OPTS=-c
 
