@@ -6812,7 +6812,7 @@ themselves.
 @item impure
 Impure predicates may do almost anything, including changing the state of the
 computation.
-They must be type-, mode-, determinism - and uniqueness correct. 
+They must be type-, mode-, determinism- and uniqueness correct. 
 
 @end table
 
