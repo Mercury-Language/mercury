@@ -36,6 +36,7 @@ CHECK_OPTS="-ansi
       -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow
       -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
 OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
+OPT_OPTS="-O2 -g -DSPEED"
 DEBUG_OPTS="-g"
 
 grade=asm_fast.gc
@@ -111,6 +112,20 @@ case "$grade" in
 		exit 1
 esac
 
+ARCH_OPTS=""
+case @FULLARCH@ in
+	mips-sgi-irix5*)
+		# nonlocal gotos don't work with PIC, which is the
+		# default for Irix 5, so if nonlocal gotos are enabled
+		# we need to disable PIC with -non_shared.
+		case $GRADE_OPTS in
+			*-DUSE_GCC_NONLOCAL_GOTOS*)
+				ARCH_OPTS=-non_shared
+			;;
+		esac
+	;;
+esac
+
 HOST_OPTS=""
 case "`hostname`" in
 	cadillac.*)
@@ -128,7 +143,8 @@ if [ "`uname -r -s`" = "SunOS 4.1.2" ]; then
 	CHECK_OPTS=
 fi
 if $verbose; then
-	echo $GCC -I $C_INCL_DIR $HOST_OPTS $CHECK_OPTS $GRADE_OPTS $GC_OPTS \
-		"$@"
+	echo $GCC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $CHECK_OPTS \
+		$GRADE_OPTS $GC_OPTS "$@"
 fi
-exec $GCC -I $C_INCL_DIR $HOST_OPTS $CHECK_OPTS $GRADE_OPTS $GC_OPTS "$@"
+exec $GCC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $CHECK_OPTS \
+	$GRADE_OPTS $GC_OPTS "$@"
