@@ -1,5 +1,4 @@
 state_vars_test5.m:021: Error: !X cannot be a lambda argument.
-
 state_vars_test5.m:021:   Perhaps you meant !.X or !:X.
 state_vars_test5.m:021: In clause for `f(in) = out':
 state_vars_test5.m:021:   in argument 1 of call to function `list:foldl/3':
