@@ -4156,6 +4156,7 @@ set of operations is defined.
 @menu
 * Typeclass declarations::
 * Instance declarations::
+* Abstract typeclass declarations::
 * Abstract instance declarations::
 * Type class constraints on predicates and functions::
 * Type class constraints on type class declarations::
@@ -4418,6 +4419,25 @@ Likewise, if we call @samp{translate/3} with the first argument having type
 
 Further instances of the type class could be made, e.g.@: a type that represents
 the point using polar coordinates.
+
+@node Abstract typeclass declarations
+@section Abstract typeclass declarations
+
+Abstract typeclass declarations are typeclass declarations whose
+definitions are hidden.  An abstract typeclass declaration has the
+same form as a typeclass declaration, but without the
+@samp{where[@dots{}]} part.  An abstract typeclass declaration
+defines a name for a set of (sequences of) types, but does not define
+what methods must be implemented for instances of the type class.
+
+Like abstract type declarations, abstract typeclass declarations are
+only useful in the interface section of a module.  Each abstract
+typeclass declaration must be accompanied by a corresponding
+non-abstract typeclass declaration that defines the methods for
+that type class.
+
+Non-abstract instance declarations can only be made in scopes where
+the non-abstract typeclass declaration is visible.
 
 @node Abstract instance declarations
 @section Abstract instance declarations
