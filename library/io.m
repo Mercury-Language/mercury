@@ -493,7 +493,10 @@ io__read_char(Result) -->
 io__read_char(Stream, Result, IO_0, IO) :-
 	IO_0 = io__state(A, PutBack0, C, D, E),
 		% XXX inefficient
-	( map__search(PutBack0, Stream, [Char | Chars]) ->
+	(
+		map__search(PutBack0, Stream, PutBackChars),
+		PutBackChars = [Char | Chars]
+	->
 		( Chars = [] ->
 			map__det_remove(PutBack0, Stream, _, PutBack)
 		;
@@ -504,13 +507,13 @@ io__read_char(Stream, Result, IO_0, IO) :-
 	;
 		io__read_char_code(Stream, Code, IO_0, IO),
 		(
-			Code = -1
-		->
-			Result = eof
-		;
 			char_to_int(Char, Code)
 		->
 			Result = ok(Char)
+		;
+			Code = -1
+		->
+			Result = eof
 		;
 			% XXX improve error message
 			Result = error("read error")
