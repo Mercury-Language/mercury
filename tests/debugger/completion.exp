@@ -1,7 +1,3 @@
-Melbourne Mercury Debugger, mdb version DEV.
-Copyright 1998 The University of Melbourne, Australia.
-mdb is free software, covered by the GNU General Public License.
-There is absolutely no warranty for mdb.
        1:      1  1 CALL pred completion:main/2-0 (det) completion.m:13
 mdb> echo on
 Command echo enabled.
