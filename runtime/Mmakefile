@@ -10,6 +10,7 @@ MAIN_TARGET=runtime
 
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
+-include Mmake.runtime.params
 
 #-----------------------------------------------------------------------------#
 
