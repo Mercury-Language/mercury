@@ -932,10 +932,10 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 :- interface.
 
-:- pred proc_info_init(arity, list(mode), maybe(list(mode)),
+:- pred proc_info_init(arity, list(type), list(mode), maybe(list(mode)),
 	maybe(list(is_live)), maybe(determinism), term__context, 
 	args_method, proc_info).
-:- mode proc_info_init(in, in, in, in, in, in, in, out) is det.
+:- mode proc_info_init(in, in, in, in, in, in, in, in, out) is det.
 
 :- pred proc_info_set(maybe(determinism), varset, map(var, type), list(var),
 	list(mode), maybe(list(is_live)), hlds_goal, term__context,
@@ -1185,17 +1185,17 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 	% This is what `det_analysis.m' wants. det_analysis.m
 	% will later provide the correct inferred determinism for it.
 
-proc_info_init(Arity, Modes, DeclaredModes, MaybeArgLives,
+proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 		MaybeDet, MContext, ArgsMethod, NewProc) :-
-	map__init(BodyTypes),
-	goal_info_init(GoalInfo),
 	varset__init(BodyVarSet0),
 	make_n_fresh_vars("HeadVar__", Arity, BodyVarSet0,
 		HeadVars, BodyVarSet),
+	map__from_corresponding_lists(HeadVars, Types, BodyTypes),
 	InferredDet = erroneous,
 	map__init(StackSlots),
 	set__init(InitialLiveness),
 	ArgInfo = [],
+	goal_info_init(GoalInfo),
 	ClauseBody = conj([]) - GoalInfo,
 	CanProcess = yes,
 	map__init(TVarsMap),
