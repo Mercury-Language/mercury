@@ -282,6 +282,7 @@
 		;	cflags_for_regs
 		;	cflags_for_gotos
 		;	cflags_for_threads
+		;	pic
 		;	target_debug	
 		;	c_include_directory
 		;	c_flag_to_name_object_file
@@ -655,6 +656,7 @@ option_defaults_2(code_gen_option, [
 					% the `mmc' script will override the
 					% above three defaults with values
 					% determined at configuration time
+	pic			-	bool(no),
 	target_debug		-	bool(no),
 	c_include_directory	-	accumulating([]),
 					% the `mmc' script will override the
@@ -996,6 +998,7 @@ long_option("debug",			debug).
 % long_option("require-tracing",       require_tracing).
 long_option("use-trail",		use_trail).
 long_option("use-minimal-model",	use_minimal_model).
+long_option("pic",			pic).
 long_option("pic-reg",			pic_reg).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
@@ -2199,6 +2202,12 @@ options_help_code_generation -->
 		"\tthe Mercury compiler itself (and probably not even then).",
 		"\tCauses the generated code to become VERY big and VERY",
 		"\tinefficient.  Slows down compilation a LOT.",
+
+		"--pic",
+		"\tGenerate position-independent code.",
+		"\tThis option is only used by the `--target asm' back-end.",
+		"\tThe generated assembler code will be written to",
+		"\t`<module>.pic_s' rather than to `<module>.s'.",
 
 		"--target-debug",
 		"\tEnable debugging of the generated target code.",
