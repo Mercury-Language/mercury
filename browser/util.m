@@ -51,31 +51,28 @@
 
 	% Get user input via the same method used by the internal
 	% debugger.
-:- pred util__trace_getline(string, io__result(string), io__state,
-		io__state).
-:- mode util__trace_getline(in, out, di, uo) is det.
+:- pred util__trace_getline(string::in, io__result(string)::out,
+	io::di, io::uo) is det.
 
-:- pred util__trace_getline(string, io__result(string), io__input_stream,
-		io__output_stream, io__state, io__state).
-:- mode util__trace_getline(in, out, in, in, di, uo) is det.
+:- pred util__trace_getline(string::in, io__result(string)::out,
+	io__input_stream::in, io__output_stream::in, io::di, io::uo) is det.
 
 	% trace_get_command is similar to trace_getline except that it
 	% breaks lines into semicolon separated commands, and replaces
 	% EOF with the command 'quit'.
-:- pred util__trace_get_command(string, string, io__state, io__state).
-:- mode util__trace_get_command(in, out, di, uo) is det.
+:- pred util__trace_get_command(string::in, string::out, io::di, io::uo)
+	is det.
 
-:- pred util__trace_get_command(string, string, io__input_stream,
-		io__output_stream, io__state, io__state).
-:- mode util__trace_get_command(in, out, in, in, di, uo) is det.
+:- pred util__trace_get_command(string::in, string::out,
+	io__input_stream::in, io__output_stream::in, io::di, io::uo) is det.
 
-:- pred util__zip_with(pred(T1, T2, T3), list(T1), list(T2), list(T3)).
-:- mode util__zip_with(pred(in, in, out) is det, in, in, out) is det.
+:- pred util__zip_with(pred(T1, T2, T3)::in(pred(in, in, out) is det),
+	list(T1)::in, list(T2)::in, list(T3)::out) is det.
 
 	% Apply predicate to argument repeatedly until the result
 	% remains the same.
-:- pred util__limit(pred(list(T), list(T)), list(T), list(T)).
-:- mode util__limit(pred(in,out) is det, in, out) is det.
+:- pred util__limit(pred(list(T), list(T))::in(pred(in, out) is det),
+	list(T)::in, list(T)::out) is det.
 
 	% For use in representing unbound head variables in the "print goal"
 	% commands in the debugger.
@@ -187,9 +184,9 @@ util__trace_get_command(_, _, _, _, !IO) :-
 util__zip_with(Pred, XXs, YYs, Zipped) :-
 	( (XXs = [], YYs = []) ->
 		Zipped = []
-	; (XXs = [X|Xs], YYs = [Y|Ys]) ->
+	; (XXs = [X | Xs], YYs = [Y | Ys]) ->
 		Pred(X,Y,PXY),
-		Zipped = [PXY|Rest],
+		Zipped = [PXY | Rest],
 		util__zip_with(Pred, Xs, Ys, Rest)
 	;
 		error("zip_with: list arguments are of unequal length")
