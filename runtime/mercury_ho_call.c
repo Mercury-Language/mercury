@@ -8,11 +8,22 @@ ENDINIT
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+#define	MR_UNIFY_COMPARE_BY_CTOR_REP
+#define	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
+#define	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
+
 /*
-** This module provides much of the functionality for doing
-** higher order calls. The rest is provided by code generation of the
-** higher_order_call HLDS construct.
-**
+** This module provides much of the functionality for doing higher order
+** calls (with the rest provided by code generation of the generic_call
+** HLDS construct), and most of the functionality for doing generic
+** unifications and comparisons (with the rest provided by the
+** compiler-generated unify, index and compare predicates).
+*/
+
+#include "mercury_imp.h"
+#include "mercury_ho_call.h"
+
+/*
 ** The called closure may contain only input arguments. The extra arguments
 ** provided by the higher-order call may be input or output, and may appear
 ** in any order.
@@ -27,9 +38,6 @@ ENDINIT
 ** the code generator, as is the movement of the output arguments to their
 ** eventual destinations.
 */
-
-#include "mercury_imp.h"
-#include "mercury_ho_call.h"
 
 	/* 
 	** Number of input arguments to do_call_*_closure, 
