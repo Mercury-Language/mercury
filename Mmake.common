@@ -90,7 +90,8 @@ SYS_MODS = \
 	$(RUNTIME_DIR)/engine.mod \
 	$(RUNTIME_DIR)/io.mod \
 	$(RUNTIME_DIR)/wrapper.mod \
-	$(RUNTIME_DIR)/call.mod
+	$(RUNTIME_DIR)/call.mod \
+	$(RUNTIME_DIR)/solutions.mod
 
 #-----------------------------------------------------------------------------#
 
