@@ -108,6 +108,14 @@ postprocess_options(ok(OptionTable0), Error) -->
 				;	
 					[]
 				),
+				% dump flags require compilation by phases
+				globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
+				( { DumpStages \= [] } ->
+					globals__io_set_option(trad_passes,
+						bool(no))
+				;
+					[]
+				),
 				% --link implies --compile
 				globals__io_lookup_bool_option(link, Link),
 				( { Link = yes } ->
@@ -1808,9 +1816,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId, ModuleInfo,
 		Shapes0, Shapes, Proc) -->
 	{ detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo1) },
 	globals__io_lookup_bool_option(follow_vars, FollowVars),
-	(
-		{ FollowVars = yes }
-	->
+	( { FollowVars = yes } ->
 		{ find_follow_vars_in_proc(ProcInfo1, ModuleInfo, ProcInfo2) }
 	;
 		{ ProcInfo2 = ProcInfo1 }
@@ -1819,7 +1825,12 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId, ModuleInfo,
 	{ store_alloc_in_proc(ProcInfo3, ModuleInfo, ProcInfo4) },
 	generate_proc_code(ProcInfo4, ProcId, PredId, ModuleInfo,
 		Shapes0, Shapes, Proc0),
-	optimize__proc(Proc0, Proc).
+	globals__io_lookup_bool_option(optimize, Optimize),
+	( { Optimize = yes } ->
+		optimize__proc(Proc0, Proc)
+	;
+		{ Proc = Proc0 }
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
