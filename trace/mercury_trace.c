@@ -80,8 +80,8 @@ static	const MR_Label_Layout *MR_unwind_stacks_for_retry(
 				MR_Word **base_maxfr_ptr,
 				const char **problem);
 static	const char	*MR_undo_updates_of_maxfr(const MR_Proc_Layout
-				*level_layout, MR_Word *sp, MR_Word *curfr,
-				MR_Word **maxfr_ptr);
+				*level_layout, MR_Word *base_sp,
+				MR_Word *base_curfr, MR_Word **maxfr_ptr);
 static	MR_Word		MR_trace_find_input_arg(
 				const MR_Label_Layout *label, 
 				MR_Word *saved_regs,
@@ -95,8 +95,9 @@ static	MR_Retry_Result	MR_check_minimal_model_calls(MR_Event_Info *event_info,
 #endif
 
 static	void		MR_init_call_table_array(void);
-static	void		MR_maybe_record_call_table(const MR_Proc_Layout
-				*level_layout, MR_Word *sp, MR_Word *curfr);
+static	void		MR_maybe_record_call_table(
+				const MR_Proc_Layout *level_layout,
+				MR_Word *base_sp, MR_Word *base_curfr);
 static	void		MR_reset_call_table_array(void);
 static	void		MR_abandon_call_table_array(void);
 
@@ -861,11 +862,11 @@ MR_find_saved_io_counter(const MR_Label_Layout *call_label,
 }
 
 /*
-** This function figures out the state of the stacks (i.e. the values of sp,
-** curfr and maxfr) just after entry to the procedure specified by the given
-** ancestor level, and returns the proc layout for the specified procedure.
-** It also finds the list of call table tips that must be reset on a retry
-** of that ancestor.
+** This function figures out the state of the stacks (i.e. the values of MR_sp,
+** MR_curfr and MR_maxfr) just after entry to the procedure specified by the
+** given ancestor level, and returns the proc layout for the specified
+** procedure. It also finds the list of call table tips that must be reset
+** on a retry of that ancestor.
 **
 ** If it finds that it cannot do its job, it returns NULL and sets *problem
 ** to point to a string giving the reason for its failure.
@@ -873,8 +874,8 @@ MR_find_saved_io_counter(const MR_Label_Layout *call_label,
 
 static const MR_Label_Layout *
 MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
-	int ancestor_level, MR_Word **sp_ptr, MR_Word **curfr_ptr,
-	MR_Word **maxfr_ptr, const char **problem)
+	int ancestor_level, MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr,
+	MR_Word **base_maxfr_ptr, const char **problem)
 {
 	MR_Stack_Walk_Step_Result       result;
 	const MR_Proc_Layout		*level_layout;
@@ -898,13 +899,14 @@ MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
 	return_label_layout = top_layout;
 	level_layout = top_layout->MR_sll_entry;
 	*problem = MR_undo_updates_of_maxfr(level_layout,
-			*sp_ptr, *curfr_ptr, maxfr_ptr);
+			*base_sp_ptr, *base_curfr_ptr, base_maxfr_ptr);
 
 	if (*problem != NULL) {
 		return NULL;
 	}
 
-	MR_maybe_record_call_table(level_layout, *sp_ptr, *curfr_ptr);
+	MR_maybe_record_call_table(level_layout,
+		*base_sp_ptr, *base_curfr_ptr);
 
 #ifdef	MR_DEBUG_RETRY_STACKS
 	MR_print_detstackptr(MR_mdb_out, *sp_ptr);
@@ -917,7 +919,7 @@ MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
 
 	for (i = 0; i < ancestor_level; i++) {
 		result = MR_stack_walk_step(level_layout, &return_label_layout,
-				sp_ptr, curfr_ptr, problem);
+				base_sp_ptr, base_curfr_ptr, problem);
 		if (result != STEP_OK || return_label_layout == NULL) {
 			if (*problem == NULL) {
 				*problem = "not that many ancestors";
@@ -940,13 +942,14 @@ MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
 
 		level_layout = return_label_layout->MR_sll_entry;
 		*problem = MR_undo_updates_of_maxfr(level_layout,
-				*sp_ptr, *curfr_ptr, maxfr_ptr);
+				*base_sp_ptr, *base_curfr_ptr, base_maxfr_ptr);
 
 		if (*problem != NULL) {
 			return NULL;
 		}
 
-		MR_maybe_record_call_table(level_layout, *sp_ptr, *curfr_ptr);
+		MR_maybe_record_call_table(level_layout,
+			*base_sp_ptr, *base_curfr_ptr);
 	}
 
 #ifdef	MR_DEBUG_RETRY_STACKS
