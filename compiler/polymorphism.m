@@ -68,12 +68,13 @@
 %
 % There is a slight variation on this for variable-arity type constructors, of
 % there are exactly three: pred, func and tuple. Typeinfos of these types
-% always have a pointer to the pred/0 type_ctor_info, regardless of their true
-% arity, so we store the real arity in the type-info as well.
+% always have a pointer to the pred/0, func/0 or tuple/0 type_ctor_info,
+% regardless of their true arity, so we store the real arity in the type-info
+% as well.
 %
-%	word 0		<pointer to the type_ctor_info structure (pred/0)>
+%	word 0		<pointer to the arity 0 type_ctor_info structure>
 %	word 1		<arity of predicate>
-%	word 2+		<the type_infos for the type params, at least one>
+%	word 2+		<the type_infos for the type params, if any>
 %
 %-----------------------------------------------------------------------------%
 %
