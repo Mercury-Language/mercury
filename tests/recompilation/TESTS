@@ -20,7 +20,8 @@ TESTS_SHOULD_SUCCEED="\
 	pragma_type_spec_r \
 	pred_ctor_ambiguity_r \
 	pred_overloading_r \
-	typeclass_method_pragma_r"
+	typeclass_method_pragma_r \
+	type_spec_rename_var_r"
 
 # Parallel mmake with nested sub-modules is broken.
 # The commands to create `.c' files from the `.m' file containing the

@@ -499,11 +499,20 @@ items_are_unchanged([Item1 - _ | Items1], [Item2 - _ | Items2]) :-
 	yes = item_is_unchanged(Item1, Item2),
 	items_are_unchanged(Items1, Items2).
 
-:- func item_is_unchanged(item, item) = bool.
-
-	% We don't need to compare the varsets. What matters is that
-	% the variable numbers in the arguments and body are the same,
-	% the names are irrelevant.
+	% In most places here, we don't need to compare the varsets.
+	% What matters is that the variable numbers in the arguments
+	% and body are the same, the names are usually irrelevant.
+	%
+	% The only places where the names of variables affect the
+	% compilation of the program are in explicit type qualifications
+	% and `:- pragma type_spec' declarations. Explicit type
+	% qualifications do not need to be considered here. This module
+	% only deals with items in interface files (we don't yet write type
+	% qualifications to `.opt' files). Variables in type qualifications
+	% are only matched with the head type variables of the predicate
+	% by make_hlds.m. For `:- pragma type_spec' declarations to work
+	% we need to consider a predicate or function declaration to be
+	% changed if the names of any of the type variables are changed.
 	%
 	% It's important not to compare the varsets for type and instance
 	% declarations because the declarations we get here may be abstract
@@ -517,6 +526,8 @@ items_are_unchanged([Item1 - _ | Items1], [Item2 - _ | Items2]) :-
 	% those from the body, so that the variable numbers in the head of
 	% the declaration match those from an abstract declaration read
 	% from an interface file.
+:- func item_is_unchanged(item, item) = bool.
+
 item_is_unchanged(type_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
 		( Item2 = type_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
 item_is_unchanged(mode_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
@@ -541,6 +552,10 @@ item_is_unchanged(clause(_VarSet, PorF, SymName, Args, Goal), Item2) =
 item_is_unchanged(assertion(Goal, _VarSet), Item2) =
 		( Item2 = assertion(Goal, _) -> yes ; no ).
 
+	% We do need to compare the varset in `:- pragma type_spec'
+	% declarations because the names of the variables are used
+	% to find the corresponding variables in the predicate or
+	% function type declaration.
 item_is_unchanged(pragma(PragmaType), Item2) =
 		( Item2 = pragma(PragmaType) -> yes ; no ).
 item_is_unchanged(nothing(A), Item2) =
@@ -610,7 +625,7 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
 		Constraints1, TVarSet2, ExistQVars2,
 		TypesAndModes2, Constraints2) :-
 
-	varset__merge_subst(TVarSet1, TVarSet2, _, Subst),
+	varset__merge_subst(TVarSet1, TVarSet2, TVarSet, Subst),
 
 	GetArgTypes =
 		(func(TypeAndMode0) = Type :-
@@ -633,6 +648,33 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
 	%
 	type_list_subsumes(SubstTypes2, Types1, Types2ToTypes1Subst),
 	type_list_subsumes(Types1, SubstTypes2, _),
+
+	%
+	% Check that the corresponding variables have the same names.
+	% This is necessary because `:- pragma type_spec' declarations
+	% depend on the names of the variables, so for example if two
+	% variable names are swapped, the same `:- pragma type_spec'
+	% declaration will cause a different specialized version to be
+	% created.
+	%
+	( all [VarInItem1, VarInItem2]
+	    (
+		map__member(Types2ToTypes1Subst, VarInItem2, SubstTerm),
+		(
+			SubstTerm = term__variable(VarInItem1)
+		;
+			% The reverse subsumption test above should
+			% ensure that the substitutions are all var->var.
+			SubstTerm = term__functor(_, _, _),
+			error("pred_or_func_type_matches: invalid subst")
+		)
+	    )
+	=>
+	    (
+		varset__lookup_name(TVarSet, VarInItem1, VarName),
+		varset__lookup_name(TVarSet, VarInItem2, VarName)
+	    )
+	),
 
 	%
 	% Check that the existentially quantified variables are equivalent.
