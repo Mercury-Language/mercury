@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -217,6 +217,8 @@ rl_file__write_binary_2(Writer, RLFile) -->
 		rl_state::di, rl_state::uo) is det.
 
 rl_file__write_char(Writer, Char) -->
+	% XXX what about Unicode characters?
+	%     The value returned by char__to_int might not fit in a byte.
 	{ char__to_int(Char, Int) },
 	call(Writer, Int).
 

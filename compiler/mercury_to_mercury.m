@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2761,6 +2761,9 @@ mercury_format_escaped_char(Char) -->
 	% may require similar changes there.
 
 mercury_escape_char(Char, EscapeCode) :-
+	% XXX This may cause problems interfacing with versions of the compiler
+	%     that have been built in grades which use different character
+	%     representations.
 	char__to_int(Char, Int),
 	string__int_to_base_string(Int, 8, OctalString0),
 	string__pad_left(OctalString0, '0', 3, OctalString),

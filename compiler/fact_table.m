@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2171,6 +2171,9 @@ fact_table_hash(HashSize, Key, HashVal) :-
 	(
 		Key = term__string(String)
 	->
+		% XXX This method of hashing strings may not work
+		% if cross-compiling between systems that have different
+		% character representations.
 		string__to_char_list(String, Cs),
 		list__map(lambda([C::in, I::out] is det, char__to_int(C, I)),
 			Cs, Ns)
