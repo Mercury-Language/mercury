@@ -2624,9 +2624,33 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		All_C2InitArgsDepString = "$(ALL_C2INITARGS)"
 	},
 
+	%
+	% We include $(foo.cs) first in the dependency list, before $(foo.os).
+	% This is not strictly necessary, since the .o files themselves depend
+	% on the .c files, but we do it to ensure that Make will try to
+	% create all the C files first, thus detecting errors early,
+	% rather than first spending time compiling C files to .o,
+	% which could be a waste of time if the program contains errors.
+	%
+	% But we can only do this if we don't remove the .c files,
+	% i.e. if RM_C=:
+	% So we define $(foo.maybe_cs) here and use it in the rules below.
+	% This needs to be defined here in the .dep file rather than
+	% in the .dv file since it depends on the setting of the $(RM_C) file
+	% which can be overridden by the user's Mmakefile.
+	%
 	module_name_to_file_name(SourceModuleName, "", no, ExeFileName),
 	io__write_strings(DepStream, [
-		ExeFileName, " : $(", MakeVarName, ".os) ",
+		"ifeq ($(RM_C),:)\n",
+		MakeVarName, ".maybe_cs=$(", MakeVarName, ".cs)\n",
+		"else\n",
+		MakeVarName, ".maybe_cs=\n",
+		"endif\n\n"
+	]),
+
+	io__write_strings(DepStream, [
+		ExeFileName, " : $(", MakeVarName, ".maybe_cs) ",
+			"$(", MakeVarName, ".os) ",
 			InitObjFileName, " $(MLOBJS) ", All_MLLibsDepString,
 			"\n",
 		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
@@ -2686,8 +2710,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		SharedLibFileName, " : $(", MakeVarName,
-			".pic_os) $(MLPICOBJS) ", All_MLLibsDepString, "\n",
+		SharedLibFileName, " : $(", MakeVarName, ".maybe_cs) ",
+			"$(", MakeVarName, ".pic_os) ",
+			"$(MLPICOBJS) ", All_MLLibsDepString, "\n",
 		"\t$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) ",
 			"-o ", SharedLibFileName, " \\\n",
 		"\t\t$(", MakeVarName, ".pic_os) $(MLPICOBJS) ",
@@ -2695,7 +2720,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		LibFileName, " : $(", MakeVarName, ".os) $(MLOBJS)\n",
+		LibFileName, " : $(", MakeVarName, ".maybe_cs) ",
+			"$(", MakeVarName, ".os) $(MLOBJS)\n",
 		"\trm -f ", LibFileName, "\n",
 		"\t$(AR) $(ALL_ARFLAGS) ", LibFileName, " ",
 			"$(", MakeVarName, ".os) $(MLOBJS)\n",
