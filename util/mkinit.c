@@ -25,6 +25,7 @@
 #include	<errno.h>
 #include	"getopt.h"
 #include	"conf.h"
+#include	"std.h"
 
 /* --- adjustable limits --- */
 #define	MAXCALLS	40	/* maximum number of calls per function */
@@ -40,6 +41,7 @@ static const char *entry_point = "mercury__io__run_0_0";
 static int maxcalls = MAXCALLS;
 static int num_files;
 static char **files;
+static bool output_main_func = TRUE;
 
 static int num_modules = 0;
 static int num_errors = 0;
@@ -73,22 +75,25 @@ static const char header2[] =
 	"\n"
 	;
 
-static const char main_func[] =
+static const char mercury_main_func[] =
+	"\n"
 	"Declare_entry(%s);\n"
 	"\n"
-	"int main(int argc, char **argv)\n"
+	"#ifdef CONSERVATIVE_GC\n"
+	"extern char *GC_stackbottom;\n"
+	"#endif\n"
+	"\n"
+	"int mercury_main(int argc, char **argv, char *stackbottom)\n"
 	"{\n"
 	"\n"
 	"#ifdef CONSERVATIVE_GC\n"
 	"	/*\n"
 	"	** Explicitly register the bottom of the stack, so that the\n"
 	"	** GC knows where it starts.  This is necessary for AIX 4.1\n"
-	"	**  on RS/6000; it may also be helpful on other systems.\n"
+	"	** on RS/6000, and for gnu-win32 on Windows 95 or NT.\n"
+	"	** it may also be helpful on other systems.\n"
 	"	*/\n"
-	"	{ char dummy;\n"
-	"	  extern char *GC_stackbottom;\n"
-	"	  GC_stackbottom = &dummy;\n"
-	"	}\n"
+	"	GC_stackbottom = stackbottom;\n"
 	"#endif\n"
 	"\n"
 	"	address_of_mercury_init_io = mercury_init_io;\n"
@@ -102,9 +107,17 @@ static const char main_func[] =
 	"	program_entry_point = ENTRY(mercury__main_2_0);\n"
 	"	library_entry_point = ENTRY(%s);\n"
 	"\n"
-	"	return mercury_main(argc, argv);\n"
+	"	return mercury_runtime_main(argc, argv);\n"
 	"}\n"
+	;
+
+static const char main_func[] =
 	"\n"
+	"int main(int argc, char **argv)\n"
+	"{\n"
+	"	char dummy;\n"
+	"	return mercury_main(argc, argv, &dummy);\n"
+	"}\n"
 	;
 
 /* --- function prototypes --- */
@@ -174,20 +187,25 @@ int main(int argc, char **argv)
 static void parse_options(int argc, char *argv[])
 {
 	int	c;
-	while ((c = getopt(argc, argv, "c:w:")) != EOF)
+	while ((c = getopt(argc, argv, "c:w:l")) != EOF)
 	{
 		switch (c)
 		{
-
-	case 'c':	if (sscanf(optarg, "%d", &maxcalls) != 1)
+		case 'c':
+			if (sscanf(optarg, "%d", &maxcalls) != 1)
 				usage();
 			break;
 
-	case 'w':	entry_point = optarg;
+		case 'w':
+			entry_point = optarg;
 			break;
 
-	default:	usage();
+		case 'l':
+			output_main_func = FALSE;
+			break;
 
+		default:
+			usage();
 		}
 	}
 	num_files = argc - optind;
@@ -198,7 +216,8 @@ static void parse_options(int argc, char *argv[])
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: mkinit [-c maxcalls] [-w entry] files...\n");
+	fprintf(stderr,
+		"Usage: mkinit [-c maxcalls] [-w entry] [-l] files...\n");
 	exit(1);
 }
 
@@ -263,7 +282,10 @@ static void output_main_init_function(void)
 
 static void output_main(void)
 {
-	printf(main_func, entry_point, entry_point);
+	printf(mercury_main_func, entry_point, entry_point);
+	if (output_main_func) {
+		fputs(main_func, stdout);
+	}
 }
 
 /*---------------------------------------------------------------------------*/
