@@ -349,8 +349,7 @@ void *newmem(size_t n)
 	p = malloc(n);
 	if (p == NULL)
 	{
-		fprintf(stderr, "ran out of memory\n");
-		exit(1);
+		fatal_error("ran out of memory");
 	}
 
 	return p;
@@ -359,6 +358,11 @@ void *newmem(size_t n)
 void oldmem(void *p)
 {
 	free(p);
+}
+
+void fatal_error(const char *message) {
+	fprintf(stderr, "%s\n", message);
+	exit(1);
 }
 
 #ifndef __GNUC__

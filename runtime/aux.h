@@ -33,4 +33,6 @@ extern	void	printregs(const char *msg);
 
 extern	Word	do_mklist(int start, int len);
 
+extern	void	fatal_error(const char *msg);
+
 #endif

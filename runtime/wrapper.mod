@@ -43,7 +43,7 @@ static Label 	*which_input = NULL;
 static	int	start_time;
 static	int	finish_time;
 
-static	char	*progname;
+const char *	progname;
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 

@@ -367,8 +367,7 @@ extern	int	hash_string(const char *);
 #define	heap_overflow_check()					\
 			(					\
 				IF (hp >= heapend,(		\
-					fprintf(stderr, "heap overflow\n"), \
-					exit(1)			\
+					fatal_error("heap overflow") \
 				)),				\
 				IF (hp > heapmax,(		\
 					heapmax = hp		\
@@ -379,8 +378,7 @@ extern	int	hash_string(const char *);
 #define	detstack_overflow_check()				\
 			(					\
 				IF (sp >= detstackend,(		\
-					fprintf(stderr, "stack overflow\n"), \
-					exit(1)			\
+					fatal_error("stack overflow") \
 				)),				\
 				IF (sp > detstackmax,(		\
 					detstackmax = sp	\
@@ -391,8 +389,7 @@ extern	int	hash_string(const char *);
 #define	detstack_underflow_check()				\
 			(					\
 				IF (sp < detstackmin,(		\
-					fprintf(stderr, "stack underflow\n"), \
-					exit(1)			\
+					fatal_error("stack underflow") \
 				)),				\
 				(void)0				\
 			)
@@ -400,9 +397,7 @@ extern	int	hash_string(const char *);
 #define	nondstack_overflow_check()				\
 			(					\
 				IF (maxfr >= nondstackend,(	\
-					fprintf(stderr, 	\
-						"nondstack overflow\n"), \
-					exit(1)			\
+					fatal_error("nondstack overflow") \
 				)),				\
 				IF (maxfr > nondstackmax,(	\
 					nondstackmax = maxfr	\
@@ -413,9 +408,7 @@ extern	int	hash_string(const char *);
 #define	nondstack_underflow_check()				\
 			(					\
 				IF (maxfr < nondstackmin,(	\
-					fprintf(stderr,		\
-						"nondstack underflow\n"), \
-					exit(1)			\
+					fatal_error("nondstack underflow") \
 				)),				\
 				(void)0				\
 			)
