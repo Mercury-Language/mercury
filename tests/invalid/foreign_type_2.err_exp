@@ -1,0 +1,8 @@
+foreign_type_2.m:018: In clause for function `foreign_type_2:unwrap_foreign/1':
+foreign_type_2.m:018:   in argument 1 of clause head:
+foreign_type_2.m:018:   error: undefined symbol `foreign/1'.
+foreign_type_2.m:018:   There are `:- pragma foreign_type' declarations for
+foreign_type_2.m:018:   type `foreign_type_2:foreign/0', so it is treated as an
+foreign_type_2.m:018:   abstract type in all predicates and functions which are
+foreign_type_2.m:018:   not implemented for those foreign types.
+For more information, try recompiling with `-E'.

@@ -546,7 +546,9 @@ unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 			ConsTagValues),
 		UnifyPred = no,
 		IsEnum = no,
-		TypeBody = du_type([Ctor], ConsTagValues, IsEnum, UnifyPred),
+		IsForeign = no,
+		TypeBody = du_type([Ctor], ConsTagValues, IsEnum,
+			UnifyPred, IsForeign),
 		construct_type(TypeCtor, TupleArgTypes, Type),
 
 		term__context_init(Context)
@@ -703,7 +705,7 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 
 unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred) },
+		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _) },
 		( { MaybeEqPred = yes(PredName) } ->
 			%
 			% Just generate a call to the specified predicate,
@@ -743,7 +745,7 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 	;
 		% We treat foreign_type as if they were an equivalent to
 		% the builtin type c_pointer.
-		{ TypeBody = foreign_type(_, _) },
+		{ TypeBody = foreign_type(_) },
 		generate_unify_clauses_eqv_type(c_pointer_type,
 				H1, H2, Context, Clauses)
 	;
@@ -793,7 +795,7 @@ generate_unify_clauses_eqv_type(EqvType, H1, H2, Context, Clauses) -->
 
 unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred) },
+		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _) },
 		( { MaybeEqPred = yes(_) } ->
 			%
 			% For non-canonical types, the generated comparison
@@ -826,7 +828,7 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 		% invoked.
 		{ error("trying to create index proc for eqv type") }
 	;
-		{ TypeBody = foreign_type(_, _) },
+		{ TypeBody = foreign_type(_) },
 		{ error("trying to create index proc for a foreign type") }
 	;
 		{ TypeBody = abstract_type },
@@ -840,7 +842,7 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 		Clauses) -->
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred) },
+		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _) },
 		( { MaybeEqPred = yes(_) } ->
 			%
 			% just generate code that will call error/1
@@ -881,7 +883,7 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 		generate_compare_clauses_eqv_type(EqvType,
 				Res, H1, H2, Context, Clauses)
 	;
-		{ TypeBody = foreign_type(_, _) },
+		{ TypeBody = foreign_type(_) },
 		generate_compare_clauses_eqv_type(c_pointer_type,
 				Res, H1, H2, Context, Clauses)
 	;

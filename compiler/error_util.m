@@ -67,6 +67,12 @@
 :- pred write_error_pieces(prog_context::in, int::in,
 	list(format_component)::in, io__state::di, io__state::uo) is det.
 
+	% Display the given error message, but indent the first line.
+	% This is useful when adding extra lines to an already
+	% displayed message.
+:- pred write_error_pieces_not_first_line(prog_context::in, int::in,
+	list(format_component)::in, io__state::di, io__state::uo) is det.
+
 :- pred write_error_pieces_maybe_with_context(maybe(prog_context)::in, int::in,
 	list(format_component)::in, io__state::di, io__state::uo) is det.
 
@@ -167,10 +173,23 @@ report_warning(Context, Indent, Components) -->
 	write_error_pieces(Context, Indent, Components).
 
 write_error_pieces(Context, Indent, Components) -->
-	write_error_pieces_maybe_with_context(yes(Context),
+	write_error_pieces_maybe_with_context(yes, yes(Context),
+		Indent, Components).
+
+write_error_pieces_not_first_line(Context, Indent, Components) -->
+	write_error_pieces_maybe_with_context(no, yes(Context),
 		Indent, Components).
 
 write_error_pieces_maybe_with_context(MaybeContext, Indent, Components) -->
+	write_error_pieces_maybe_with_context(yes, MaybeContext,
+		Indent, Components).
+
+:- pred write_error_pieces_maybe_with_context(bool::in,
+	maybe(prog_context)::in, int::in, list(format_component)::in,
+	io__state::di, io__state::uo) is det.
+
+write_error_pieces_maybe_with_context(IsFirst, MaybeContext,
+		Indent, Components) -->
 	{
 			% The fixed characters at the start of the line are:
 			% filename
@@ -197,11 +216,16 @@ write_error_pieces_maybe_with_context(MaybeContext, Indent, Components) -->
 			MaybeContext = no,
 			ContextLength = 0
 		),
-		Remain is 79 - (ContextLength + Indent),
+		NotFirstIndent = (IsFirst = yes -> 0 ; 2),
+		Remain = 79 - (ContextLength + Indent + NotFirstIndent),
 		convert_components_to_word_list(Components, [], [], Words),
-		group_words(yes, Words, Remain, Lines)
+		group_words(IsFirst, Words, Remain, Lines)
 	},
-	write_lines(Lines, MaybeContext, Indent).
+	( { IsFirst = yes } ->
+		write_lines(Lines, MaybeContext, Indent)
+	;
+		write_nonfirst_lines(Lines, MaybeContext, Indent + 2)
+	).
 
 :- pred write_lines(list(list(string))::in, maybe(prog_context)::in, int::in,
 	io__state::di, io__state::uo) is det.

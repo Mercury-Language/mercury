@@ -1693,7 +1693,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 		module_info_types(ModuleInfo, Types),
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
-		Body = foreign_type(MaybeIL, MaybeC)
+		Body = foreign_type(foreign_type_body(MaybeIL, MaybeC))
 	->
 		module_info_globals(ModuleInfo, Globals),
 		globals__get_target(Globals, Target),

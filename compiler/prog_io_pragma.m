@@ -72,27 +72,23 @@ parse_pragma_type(_, "source_file", PragmaTerms, ErrorTerm, _VarSet, Result) :-
 	).
 
 parse_pragma_type(ModuleName, "foreign_type", PragmaTerms,
-            ErrorTerm, _VarSet, Result) :-
-    ( PragmaTerms = [LangTerm, MercuryName, ForeignTypeTerm] ->
+            ErrorTerm, VarSet, Result) :-
+    ( PragmaTerms = [LangTerm, MercuryTypeTerm, ForeignTypeTerm] ->
 	( parse_foreign_language(LangTerm, Language) ->
 	    parse_foreign_language_type(ForeignTypeTerm, Language,
 	    	MaybeForeignType),
 	    (
 		MaybeForeignType = ok(ForeignType),
-		parse_implicitly_qualified_term(ModuleName, MercuryName,
-		    ErrorTerm, "`:- pragma foreign_type' declaration",
-		    MaybeMercuryType),
+		parse_type_defn_head(ModuleName, MercuryTypeTerm,
+		    ErrorTerm, MaybeTypeDefnHead),
 		(
-		    MaybeMercuryType = ok(MercuryTypeSymName, MercuryArgs),
-		    ( MercuryArgs = [] ->
-			term__coerce(MercuryName, MercuryType),
-			Result = ok(pragma(foreign_type(ForeignType,
-			    MercuryType, MercuryTypeSymName)))
-		    ;
-			Result = error("foreign type arity not 0", ErrorTerm)
-		    )
+		    MaybeTypeDefnHead = ok(MercuryTypeSymName, MercuryArgs0),
+		    varset__coerce(VarSet, TVarSet),
+		    MercuryArgs = list__map(term__coerce, MercuryArgs0),
+		    Result = ok(pragma(foreign_type(ForeignType,
+			    TVarSet, MercuryTypeSymName, MercuryArgs))) 
 		;
-		    MaybeMercuryType = error(String, Term),
+		    MaybeTypeDefnHead = error(String, Term),
 		    Result = error(String, Term)
 		)
 	    ;

@@ -896,7 +896,7 @@ propagate_ctor_info_2(BoundInsts0, Type, ModuleInfo, BoundInsts) :-
 		map__search(TypeTable, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams0),
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-		TypeBody = du_type(Constructors, _, _, _)
+		TypeBody = du_type(Constructors, _, _, _, _)
 	->
 		term__term_list_to_var_list(TypeParams0, TypeParams),
 		map__from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),

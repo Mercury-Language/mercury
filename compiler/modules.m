@@ -1224,7 +1224,7 @@ pragma_allowed_in_interface(foreign_decl(_, _), no).
 pragma_allowed_in_interface(foreign_import_module(_, _), no).
 pragma_allowed_in_interface(foreign_code(_, _), no).
 pragma_allowed_in_interface(foreign_proc(_, _, _, _, _, _), no).
-pragma_allowed_in_interface(foreign_type(_, _, _), yes).
+pragma_allowed_in_interface(foreign_type(_, _, _, _), yes).
 pragma_allowed_in_interface(inline(_, _), no).
 pragma_allowed_in_interface(no_inline(_, _), no).
 pragma_allowed_in_interface(obsolete(_, _), yes).
@@ -1464,7 +1464,8 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 			ImpUsedModules0, ImpUsedModules),
 
 	{ get_fact_table_dependencies(Items0, FactDeps) },
-	{ get_interface(Items0, InterfaceItems) },
+	{ get_interface_and_implementation(Items0,
+		InterfaceItems, ImplItems) },
 	{ get_children(InterfaceItems, PublicChildren) },
 	{ MaybeTimestamp = yes(Timestamp) ->
 		MaybeTimestamps = yes(map__det_insert(map__init, ModuleName,
@@ -1478,19 +1479,23 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 		MaybeTimestamps, Module0) },
 
 		% If this module has any seperately-compiled sub-modules,
-		% then we need to make everything in this module
-		% exported_to_submodules.  We do that by splitting
-		% out the declarations and putting them in a special
-		% `:- private_interface' section.
+		% then we need to make everything in the implementation
+		% of this module exported_to_submodules.  We do that by
+		% splitting out the implementation declarations and putting
+		% them in a special `:- private_interface' section.
 	{ get_children(Items0, Children) },
 	{ Children = [] ->
+		Items1 = Items0,
 		Module1 = Module0
 	;
-		split_clauses_and_decls(Items0, Clauses, Decls),
+		split_clauses_and_decls(ImplItems, Clauses, ImplDecls),
+		make_pseudo_decl(interface, InterfaceDecl),
 		make_pseudo_decl(private_interface, PrivateInterfaceDecl),
 		make_pseudo_decl(implementation, ImplementationDecl),
-		list__append([PrivateInterfaceDecl | Decls],
-			[ImplementationDecl | Clauses], Items1),
+		list__condense(
+			[[InterfaceDecl | InterfaceItems],
+			[PrivateInterfaceDecl | ImplDecls],
+			[ImplementationDecl | Clauses]], Items1),
 		module_imports_set_items(Module0, Items1, Module1)
 	},
 
@@ -1502,7 +1507,7 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 		% Add `builtin' and `private_builtin' to the
 		% list of imported modules
 	globals__io_get_globals(Globals),
-	{ add_implicit_imports(Items0, Globals,
+	{ add_implicit_imports(Items1, Globals,
 			IntImportedModules1, IntUsedModules1,
 			IntImportedModules2, IntUsedModules2) },
 
@@ -5810,17 +5815,35 @@ report_error_duplicate_module_decl(ModuleName - Context) -->
 :- mode get_interface(in, out) is det.
 
 get_interface(Items0, Items) :-
-	get_interface_2(Items0, no, [], RevItems),
+	AddToImpl = (func(_, ImplItems) = ImplItems),
+	get_interface_and_implementation_2(Items0, no, [], RevItems,
+		AddToImpl, unit, _),
 	list__reverse(RevItems, Items).
 
-:- pred get_interface_2(item_list, bool, item_list, item_list).
-:- mode get_interface_2(in, in, in, out) is det.
+:- pred get_interface_and_implementation(item_list, item_list, item_list).
+:- mode get_interface_and_implementation(in, out, out) is det.
 
-get_interface_2([], _, Items, Items).
-get_interface_2([Item - Context | Rest], InInterface0,
-				Items0, Items) :-
+get_interface_and_implementation(Items0, InterfaceItems,
+		ImplementationItems) :-
+	AddToImpl = (func(ImplItem, ImplItems) = [ImplItem | ImplItems]),
+	get_interface_and_implementation_2(Items0, no, [], RevIntItems,
+		AddToImpl, [], RevImplItems),
+	list__reverse(RevIntItems, InterfaceItems),
+	list__reverse(RevImplItems, ImplementationItems).
+
+:- pred get_interface_and_implementation_2(item_list, bool,
+	item_list, item_list, func(item_and_context, T) = T, T, T).
+:- mode get_interface_and_implementation_2(in, in, in, out,
+	in, in, out) is det.
+
+get_interface_and_implementation_2([], _, IntItems, IntItems, _,
+		ImplItems, ImplItems).
+get_interface_and_implementation_2([ItemAndContext | Rest], InInterface0,
+		IntItems0, IntItems, AddImplItem, ImplItems0, ImplItems) :-
+	ItemAndContext = Item - Context,
 	( Item = module_defn(_, interface) ->
-		Items1 = Items0,
+		IntItems1 = IntItems0,
+		ImplItems1 = ImplItems0,
 		InInterface1 = yes,
 		Continue = yes
 	; 
@@ -5830,33 +5853,42 @@ get_interface_2([Item - Context | Rest], InInterface0,
 		)
 	->
 		% Items after here are not part of this module.
-		Items1 = Items0,
+		IntItems1 = IntItems0,
+		ImplItems1 = ImplItems0,
 		InInterface1 = no,
 		Continue = no
 	;
 		Item = module_defn(_, implementation) 
 	->
-		Items1 = Items0,
+		IntItems1 = IntItems0,
+		ImplItems1 = ImplItems0,
 		InInterface1 = no,
 		Continue = yes
 	;
 		( InInterface0 = yes ->
 			( make_abstract_instance(Item, Item1) ->
-				ItemToWrite = Item1
+				ItemToWrite = Item1,
+				ImplItems1 = AddImplItem(ItemAndContext,
+						ImplItems0)
 			;
-				ItemToWrite = Item
+				ItemToWrite = Item,
+				ImplItems1 = ImplItems0
 			),
-			Items1 = [ItemToWrite - Context | Items0]
+			IntItems1 = [ItemToWrite - Context | IntItems0]
 		;
-			Items1 = Items0
+			IntItems1 = IntItems0,
+			ImplItems1 = AddImplItem(ItemAndContext, ImplItems0)
 		),
 		InInterface1 = InInterface0,
 		Continue = yes
 	),
 	( Continue = yes ->
-		get_interface_2(Rest, InInterface1, Items1, Items)
+		get_interface_and_implementation_2(Rest, InInterface1,
+			IntItems1, IntItems, AddImplItem,
+			ImplItems1, ImplItems)
 	;
-		Items = Items1
+		ImplItems = ImplItems1,
+		IntItems = IntItems1
 	).
 
 	% Given a module interface (well, a list of items), extract the

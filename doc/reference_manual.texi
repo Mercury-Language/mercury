@@ -5016,8 +5016,8 @@ in the ``Foreign Language Interface'' chapter of the
 Mercury User's Guide.
 
 If there is a @code{pragma foreign_proc} declaration for any
-mode of a predicate or function, then there must be either a mode
-specific clause or a @code{pragma foreign_proc} 
+mode of a predicate or function, then there must be either a
+clause or a @code{pragma foreign_proc} 
 @c or @code{pragma import} 
 declaration for every mode of that predicate or function.
 
@@ -5042,8 +5042,6 @@ then the behaviour is undefined --- your program may misbehave or crash.)
 If there are both Mercury definitions and foreign_proc definitions for 
 a procedure and/or foreign_proc definitions for different languages,
 it is implementation defined which definition is used.
-All such Mercury definitions must use mode-specific clauses (even if
-there is only a single mode for the predicate).
 
 For pure and semipure procedures, the declarative semantics of the
 foreign_proc definitions must be the same as that of the Mercury code.
@@ -5193,8 +5191,6 @@ that's because these types represent mutable state, and in IL
 modifications to mutable state are done via side effects,
 rather than argument passing.
 
-@c XXX foreign type should be documented here.
-
 @c -----------------------------------------------------------------------
 
 @node Using foreign types from Mercury
@@ -5209,10 +5205,11 @@ a declaration of the form
 
 This defines @var{MercuryTypeName} as a synonym for type
 @var{ForeignTypeDescriptor} defined in the foreign language @var{Lang}.
-You must declare @var{MercuryTypeName} using a @samp{:- type}
-declaration as usual, and the foreign_type pragma must have the same
-visibility as the type declaration (either both in the interface or both
-in the implementation).
+You must declare @var{MercuryTypeName} using a (posssibly abstract)
+@samp{:- type} declaration as usual. The @samp{pragma foreign_type} must
+not have wider visibility than the type declaration (if the
+@samp{pragma foreign_type} declaration is in the interface,
+the @samp{:- type} declaration must be also).
 
 @var{ForeignTypeDescriptor} defines how the Mercury type is mapped for a
 particular foreign language.  Specific syntax is given in the language
@@ -5221,12 +5218,18 @@ specific information below.
 @var{MercuryTypeName} is treated as an abstract type at all times in
 Mercury code.
 However, if @var{MercuryTypeName} is one of the parameters of a
-foreign_proc for @var{Lang}, it will be passed to that foreign_proc as
+foreign_proc for @var{Lang}, and the @samp{pragma foreign_type} declaration
+is visible to the foreign_proc, it will be passed to that foreign_proc as
 specified by @var{ForeignTypeDescriptor}.
 
 Multiple foreign language definitions may be given for the same type ---
 the appropriate definition will be used for the appropriate language (see the
-language specific information below for details).
+language specific information below for details).  All definitions
+must have the same visibility.  A Mercury definition, which must define
+a discriminated union type, may also be given.  The constructors for the
+type will only be visible in Mercury clauses for predicates or functions with
+@samp{pragma foreign_proc} clauses for all of the languages for which there
+are @samp{foreign_type} declarations for the type. 
 
 You can use Mercury foreign language interfacing declarations           
 which specify language @var{X} to interface to types that are actually

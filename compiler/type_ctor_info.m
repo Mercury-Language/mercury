@@ -121,7 +121,7 @@ type_ctor_info__gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn,
 		;
 			SpecialPreds = no,
 			hlds_data__get_type_defn_body(TypeDefn, Body),
-			Body = du_type(_, _, _, yes(_UserDefinedEquality))
+			Body = du_type(_, _, _, yes(_UserDefinedEquality), _)
 		)
 	->
 		map__lookup(SpecMap, unify - TypeCtor, UnifyPredId),
@@ -256,7 +256,7 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 	;
 			% We treat foreign_types as equivalent to the
 			% type builtin__c_pointer.
-		TypeBody = foreign_type(_, _),
+		TypeBody = foreign_type(_),
 		gen_layout_info_eqv_type(c_pointer_type, TypeArity,
 				TypeCtorRep, NumFunctors, FunctorsInfo,
 				LayoutInfo, NumPtags, TypeTables)
@@ -279,7 +279,7 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 		LayoutInfo = equiv_layout(PseudoTypeInfoRttiData),
 		NumPtags = -1
 	;
-		TypeBody = du_type(Ctors, ConsTagMap, Enum, EqualityPred),
+		TypeBody = du_type(Ctors, ConsTagMap, Enum, EqualityPred, _),
 		(
 			EqualityPred = yes(_),
 			EqualityAxioms = user_defined

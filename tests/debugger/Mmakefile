@@ -316,7 +316,8 @@ ifneq ($(origin WORKSPACE),undefined)
 	cp $(WORKSPACE)/tools/lmc lmc/mmc
 endif
 	echo "echo on" > interactive.inp.tmp
-	echo mmc_options $(ALL_MCFLAGS) --trace minimum >> interactive.inp.tmp
+	echo mmc_options $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+			--trace minimum >> interactive.inp.tmp
 	cat interactive.inp >> interactive.inp.tmp
 	PATH="`pwd`/lmc:$$PATH" $(MDB) ./interactive \
 		< interactive.inp.tmp > interactive.out.orig 2>&1

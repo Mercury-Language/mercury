@@ -876,7 +876,7 @@ ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
 foreign_type_required_imports(c, _) = [].
 foreign_type_required_imports(il, TypeDefn) = Imports :-
 	hlds_data__get_type_defn_body(TypeDefn, Body),
-	( Body = foreign_type(MaybeIL, _MaybeC) ->
+	( Body = foreign_type(foreign_type_body(MaybeIL, _MaybeC)) ->
 		( MaybeIL = yes(il(_, Location, _)) ->
 			Name = il_assembly_name(mercury_module_name_to_mlds(
 					unqualified(Location))),

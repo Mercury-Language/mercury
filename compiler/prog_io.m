@@ -177,6 +177,12 @@
 :- pred parse_decl(module_name, varset, term, maybe_item_and_context).
 :- mode parse_decl(in, in, in, out) is det.
 
+	% parse_type_defn_head(ModuleName, Head, Body, HeadResult).
+	%
+	% Check the head of a type definition for errors.
+:- pred parse_type_defn_head(module_name, term, term, maybe_functor).
+:- mode parse_type_defn_head(in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	%	A QualifiedTerm is one of
@@ -1769,7 +1775,7 @@ get_condition(B, Body, Condition) :-
 :- pred process_eqv_type(module_name, term, term, maybe1(processed_type_body)).
 :- mode process_eqv_type(in, in, in, out) is det.
 process_eqv_type(ModuleName, Head, Body, Result) :-
-	check_for_errors(ModuleName, Head, Body, Result0),
+	parse_type_defn_head(ModuleName, Head, Body, Result0),
 	process_eqv_type_2(Result0, Body, Result).
 
 :- pred process_eqv_type_2(maybe_functor, term, maybe1(processed_type_body)).
@@ -1802,7 +1808,7 @@ process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
 			maybe1(processed_type_body)).
 :- mode process_du_type(in, in, in, in, out) is det.
 process_du_type(ModuleName, Head, Body, EqualityPred, Result) :-
-	check_for_errors(ModuleName, Head, Body, Result0),
+	parse_type_defn_head(ModuleName, Head, Body, Result0),
 	process_du_type_2(ModuleName, Result0, Body, EqualityPred, Result).
 
 :- pred process_du_type_2(module_name, maybe_functor, term,
@@ -1902,7 +1908,7 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 :- mode process_abstract_type(in, in, out) is det.
 process_abstract_type(ModuleName, Head, Result) :-
 	dummy_term(Body),
-	check_for_errors(ModuleName, Head, Body, Result0),
+	parse_type_defn_head(ModuleName, Head, Body, Result0),
 	process_abstract_type_2(Result0, Result).
 
 :- pred process_abstract_type_2(maybe_functor, maybe1(processed_type_body)).
@@ -1914,11 +1920,7 @@ process_abstract_type_2(ok(Functor, Args0),
 
 %-----------------------------------------------------------------------------%
 
-	%  check a type definition for errors
-
-:- pred check_for_errors(module_name, term, term, maybe_functor).
-:- mode check_for_errors(in, in, in, out) is det.
-check_for_errors(ModuleName, Head, Body, Result) :-
+parse_type_defn_head(ModuleName, Head, Body, Result) :-
 	( Head = term__variable(_) ->
 		%
 		% `Head' has no term__context, so we need to get the
@@ -1933,18 +1935,18 @@ check_for_errors(ModuleName, Head, Body, Result) :-
 	;
 		parse_implicitly_qualified_term(ModuleName,
 			Head, Head, "type definition", R),
-		check_for_errors_2(R, Body, Head, Result)
+		parse_type_defn_head_2(R, Body, Head, Result)
 	).
 
-:- pred check_for_errors_2(maybe_functor, term, term, maybe_functor).
-:- mode check_for_errors_2(in, in, in, out) is det.
-check_for_errors_2(error(Msg, Term), _, _, error(Msg, Term)).
-check_for_errors_2(ok(Name, Args), Body, Head, Result) :-
-	check_for_errors_3(Name, Args, Body, Head, Result).
+:- pred parse_type_defn_head_2(maybe_functor, term, term, maybe_functor).
+:- mode parse_type_defn_head_2(in, in, in, out) is det.
+parse_type_defn_head_2(error(Msg, Term), _, _, error(Msg, Term)).
+parse_type_defn_head_2(ok(Name, Args), Body, Head, Result) :-
+	parse_type_defn_head_3(Name, Args, Body, Head, Result).
 
-:- pred check_for_errors_3(sym_name, list(term), term, term, maybe_functor).
-:- mode check_for_errors_3(in, in, in, in, out) is det.
-check_for_errors_3(Name, Args, _Body, Head, Result) :-
+:- pred parse_type_defn_head_3(sym_name, list(term), term, term, maybe_functor).
+:- mode parse_type_defn_head_3(in, in, in, in, out) is det.
+parse_type_defn_head_3(Name, Args, _Body, Head, Result) :-
 	% check that all the head args are variables
 	( %%%	some [Arg]
 		(
@@ -1961,7 +1963,8 @@ check_for_errors_3(Name, Args, _Body, Head, Result) :-
 			list__member(Arg2, OtherArgs)
 		)
 	->
-		Result = error("repeated type parameters in LHS of type defn", Head)
+		Result = error("repeated type parameters in LHS of type defn",
+			Head)
 	;
 		Result = ok(Name, Args)
 	).

@@ -317,7 +317,7 @@ switch_util__type_range(enum_type, Type, ModuleInfo, 0, MaxEnum) :-
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-	( TypeBody = du_type(_, ConsTable, _, _) ->
+	( TypeBody = du_type(_, ConsTable, _, _, _) ->
 		map__count(ConsTable, TypeRange),
 		MaxEnum = TypeRange - 1
 	;
@@ -338,7 +338,7 @@ switch_util__get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, Body),
-	( Body = du_type(_, ConsTable, _, _) ->
+	( Body = du_type(_, ConsTable, _, _, _) ->
 		map__to_assoc_list(ConsTable, ConsList),
 		switch_util__cons_list_to_tag_list(ConsList, TagList)
 	;

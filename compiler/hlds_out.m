@@ -865,6 +865,10 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		io__write_string(", status: "),
 		hlds_out__write_import_status(ImportStatus),
 		io__write_string("\n"),
+		io__write_string("goal_type: "),
+		{ pred_info_get_goal_type(PredInfo, GoalType) },
+		io__write(GoalType),
+		io__write_string("\n"),
 		{ markers_to_marker_list(Markers, MarkerList) },
 		( { MarkerList = [] } ->
 			[]
@@ -2869,7 +2873,7 @@ hlds_out__write_type_params_2(Tvarset, [P | Ps]) -->
 :- mode hlds_out__write_type_body(in, in, in, di, uo) is det.
 
 hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, Tags, Enum,
-		MaybeEqualityPred)) -->
+		MaybeEqualityPred, Foreign)) -->
 	io__write_string(" --->\n"),
 	( { Enum = yes } ->
 		hlds_out__write_indent(Indent),
@@ -2886,6 +2890,12 @@ hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, Tags, Enum,
 	;
 		[]
 	),
+	( { Foreign = yes(_) } ->
+		hlds_out__write_indent(Indent),
+		io__write_string("/* has foreign_type */\n")
+	;
+		[]
+	),
 	io__write_string(".\n").
 
 	
@@ -2897,8 +2907,9 @@ hlds_out__write_type_body(_Indent, Tvarset, eqv_type(Type)) -->
 hlds_out__write_type_body(_Indent, _Tvarset, abstract_type) -->
 	io__write_string(".\n").
 
-hlds_out__write_type_body(_Indent, _Tvarset, foreign_type(_, _)) -->
-	{ error("hlds_out__write_type_body: foreign type body found") }.
+hlds_out__write_type_body(_Indent, _Tvarset, foreign_type(_)) -->
+	% XXX
+	io__write_string(" == $foreign_type.\n").
 
 :- pred hlds_out__write_constructors(int, tvarset, list(constructor),
 		cons_tag_values, io__state, io__state).

@@ -1030,7 +1030,8 @@ recompilation__usage__find_items_used_by_class_method(
 :- pred recompilation__usage__find_items_used_by_type_body(hlds_type_body::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-recompilation__usage__find_items_used_by_type_body(du_type(Ctors, _, _, _)) -->
+recompilation__usage__find_items_used_by_type_body(
+		du_type(Ctors, _, _, _, _)) -->
 	list__foldl(
 	    (pred(Ctor::in, in, out) is det -->
 		{ Ctor = ctor(_, Constraints, _, CtorArgs) },
@@ -1045,7 +1046,7 @@ recompilation__usage__find_items_used_by_type_body(du_type(Ctors, _, _, _)) -->
 recompilation__usage__find_items_used_by_type_body(eqv_type(Type)) -->
 	recompilation__usage__find_items_used_by_type(Type).
 recompilation__usage__find_items_used_by_type_body(abstract_type) --> [].
-recompilation__usage__find_items_used_by_type_body(foreign_type(_, _)) --> [].
+recompilation__usage__find_items_used_by_type_body(foreign_type(_)) --> [].
 
 :- pred recompilation__usage__find_items_used_by_mode_defn(hlds_mode_defn::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.

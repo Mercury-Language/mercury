@@ -999,7 +999,7 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 	->
 	    (
 		hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
-		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEq0),
+		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEq0, Foreign),
 		MaybeUserEq0 = yes(UserEq0)
 	    ->
 		module_info_get_special_pred_map(ModuleInfo, SpecialPreds),
@@ -1008,7 +1008,7 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 		pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
 		typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes,
 			TVarSet, UserEq0, UserEq, UserEqPredId),
-		TypeBody = du_type(Ctors, Tags, Enum, yes(UserEq)),
+		TypeBody = du_type(Ctors, Tags, Enum, yes(UserEq), Foreign),
 		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn),
 		intermod__add_proc(UserEqPredId, _, Info1, Info2)
 	    ;	
@@ -1185,7 +1185,7 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
 	{ TypeCtor = Name - _Arity },
 	(
-		{ Body = du_type(Ctors, _, _, MaybeEqualityPred) },
+		{ Body = du_type(Ctors, _, _, MaybeEqualityPred, _) },
 		{ TypeBody = du_type(Ctors, MaybeEqualityPred) }
 	;
 		{ Body = eqv_type(EqvType) },
@@ -1194,24 +1194,30 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 		{ Body = abstract_type },
 		{ TypeBody = abstract_type }
 	;
-		{ Body = foreign_type(_, _) },
+		{ Body = foreign_type(_) },
 		{ TypeBody = abstract_type }
 	),
 	mercury_output_item(type_defn(VarSet, Name, Args, TypeBody, true),
 		Context),
 
-	( { Body = foreign_type(MaybeIL, MaybeC) } ->
-		{ construct_type(TypeCtor, [], Type) },
+	(
+		{ Body = foreign_type(ForeignTypeBody)
+		; Body = du_type(_, _, _, _, yes(ForeignTypeBody))
+		},
+		{ ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC) }
+	->
 		( { MaybeIL = yes(ILForeignType) },
 			mercury_output_item(pragma(
-				foreign_type(il(ILForeignType), Type, Name)),
+				foreign_type(il(ILForeignType), VarSet,
+					Name, Args)),
 				Context)
 		; { MaybeIL = no },
 			[]
 		),
 		( { MaybeC = yes(CForeignType) },
 			mercury_output_item(pragma(
-				foreign_type(c(CForeignType), Type, Name)),
+				foreign_type(c(CForeignType), VarSet,
+					Name, Args)),
 				Context)
 		; { MaybeC = no },
 			[]

@@ -259,9 +259,9 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 
 :- type hlds_type_defn.
 
-:- pred hlds_data__set_type_defn(tvarset, list(type_param),
-	hlds_type_body, import_status, prog_context, hlds_type_defn).
-:- mode hlds_data__set_type_defn(in, in, in, in, in, out) is det.
+:- pred hlds_data__set_type_defn(tvarset, list(type_param), hlds_type_body,
+	import_status, need_qualifier, prog_context, hlds_type_defn).
+:- mode hlds_data__set_type_defn(in, in, in, in, in, in, out) is det.
 
 :- pred hlds_data__get_type_defn_tvarset(hlds_type_defn, tvarset).
 :- mode hlds_data__get_type_defn_tvarset(in, out) is det.
@@ -274,6 +274,10 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 
 :- pred hlds_data__get_type_defn_status(hlds_type_defn, import_status).
 :- mode hlds_data__get_type_defn_status(in, out) is det.
+
+:- pred hlds_data__get_type_defn_need_qualifier(hlds_type_defn,
+		need_qualifier).
+:- mode hlds_data__get_type_defn_need_qualifier(in, out) is det.
 
 :- pred hlds_data__get_type_defn_context(hlds_type_defn, prog_context).
 :- mode hlds_data__get_type_defn_context(in, out) is det.
@@ -293,17 +297,27 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 
 :- type hlds_type_body
 	--->	du_type(
-			list(constructor), 	% the ctors for this type
-			cons_tag_values,	% their tag values
-			bool,		% is this type an enumeration?
-			maybe(sym_name) % user-defined equality pred
+					% the ctors for this type
+			du_type_ctors :: list(constructor), 
+					% their tag values
+			du_type_cons_tag_values :: cons_tag_values,
+					% is this type an enumeration?
+			du_type_is_enum :: bool,
+					% user-defined equality pred
+			du_type_usereq :: maybe(sym_name),
+					% are there `:- pragma foreign' type
+					% declarations for this type.
+			du_type_is_foreign_type :: maybe(foreign_type_body)
 		)
 	;	eqv_type(type)
-	;	foreign_type(
+	;	foreign_type(foreign_type_body)
+	;	abstract_type.
+
+:- type foreign_type_body
+	---> foreign_type_body(
 			il	:: maybe(il_foreign_type),
 			c	:: maybe(c_foreign_type)
-		)
-	;	abstract_type.
+	).
 
 	% The `cons_tag_values' type stores the information on how
 	% a discriminated union type is represented.
@@ -510,14 +524,23 @@ get_secondary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
 
 :- type hlds_type_defn
 	--->	hlds_type_defn(
-			tvarset,		% Names of type vars (empty
+			type_defn_tvarset :: tvarset,	
+						% Names of type vars (empty
 						% except for polymorphic types)
-			list(type_param),	% Formal type parameters
-			hlds_type_body,	% The definition of the type
+			type_defn_params :: list(type_param),
+						% Formal type parameters
+			type_defn_body :: hlds_type_body,
+						% The definition of the type
 
-			import_status,		% Is the type defined in this
+			type_defn_import_status :: import_status,
+						% Is the type defined in this
 						% module, and if yes, is it
 						% exported
+
+			type_defn_need_qualifier :: need_qualifier,
+						% Do uses of the type and
+						% its constructors need
+						% to be qualified.
 
 %			condition,		% UNUSED
 %				% Reserved for holding a user-defined invariant
@@ -527,24 +550,27 @@ get_secondary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
 %				% :- type sorted_list(T) == list(T)
 %				%	where sorted.
 
-			prog_context		% The location of this type
+			type_defn_context :: prog_context	
+						% The location of this type
 						% definition in the original
 						% source code
 		).
 
-hlds_data__set_type_defn(Tvarset, Params, Body, Status, Context, Defn) :-
-	Defn = hlds_type_defn(Tvarset, Params, Body, Status, Context).
+hlds_data__set_type_defn(Tvarset, Params, Body, Status,
+		NeedQual, Context, Defn) :-
+	Defn = hlds_type_defn(Tvarset, Params, Body,
+			Status, NeedQual, Context).
 
-hlds_data__get_type_defn_tvarset(hlds_type_defn(Tvarset, _, _, _, _), Tvarset).
-hlds_data__get_type_defn_tparams(hlds_type_defn(_, Params, _, _, _), Params).
-hlds_data__get_type_defn_body(hlds_type_defn(_, _, Body, _, _), Body).
-hlds_data__get_type_defn_status(hlds_type_defn(_, _, _, Status, _), Status).
-hlds_data__get_type_defn_context(hlds_type_defn(_, _, _, _, Context), Context).
+hlds_data__get_type_defn_tvarset(Defn, Defn ^ type_defn_tvarset).
+hlds_data__get_type_defn_tparams(Defn, Defn ^ type_defn_params).
+hlds_data__get_type_defn_body(Defn, Defn ^ type_defn_body).
+hlds_data__get_type_defn_status(Defn, Defn ^ type_defn_import_status).
+hlds_data__get_type_defn_need_qualifier(Defn, Defn ^ type_defn_need_qualifier).
+hlds_data__get_type_defn_context(Defn, Defn ^ type_defn_context).
 
-hlds_data__set_type_defn_body(hlds_type_defn(A, B, _, D, E), Body,
-				hlds_type_defn(A, B, Body, D, E)).
-hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status, 
-				hlds_type_defn(A, B, C, Status, E)).
+hlds_data__set_type_defn_body(Defn, Body, Defn ^ type_defn_body := Body).
+hlds_data__set_type_defn_status(Defn, Status,
+		Defn ^ type_defn_import_status := Status).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -601,7 +601,7 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
 		map__search(Types, TypeCtor, TypeDefn)
 	->
 		hlds_data__get_type_defn_body(TypeDefn, Body),
-		( Body = foreign_type(MaybeIL, MaybeC) ->
+		( Body = foreign_type(foreign_type_body(MaybeIL, MaybeC)) ->
 			( Target = c,
 				( MaybeC = yes(c(NameStr)),
 					Name = unqualified(NameStr)

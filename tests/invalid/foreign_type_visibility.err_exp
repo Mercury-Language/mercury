@@ -1,0 +1,12 @@
+foreign_type_visibility.m:009: Error: pragma foreign_type
+foreign_type_visibility.m:009:   `foreign_type_visibility:foreign/0' must have
+foreign_type_visibility.m:009:   the same visibility as the type declaration.
+foreign_type_visibility.m:020: In definition of type
+foreign_type_visibility.m:020:   `foreign_type_visibility:foreign2/0':
+foreign_type_visibility.m:020:   error: all definitions of a type must have the
+foreign_type_visibility.m:020:   same visibility
+foreign_type_visibility.m:022: In definition of type
+foreign_type_visibility.m:022:   `foreign_type_visibility:foreign3/0':
+foreign_type_visibility.m:022:   error: all definitions of a type must have the
+foreign_type_visibility.m:022:   same visibility
+For more information, try recompiling with `-E'.

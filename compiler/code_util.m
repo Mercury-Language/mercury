@@ -735,7 +735,7 @@ code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 		map__lookup(TypeTable, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 		(
-			TypeBody = du_type(_, ConsTable0, _, _)
+			TypeBody = du_type(_, ConsTable0, _, _, _)
 		->
 			ConsTable = ConsTable0
 		;

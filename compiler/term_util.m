@@ -255,7 +255,7 @@ find_weights_for_type_list([TypeCtor - TypeDefn | TypeList],
 find_weights_for_type(TypeCtor, TypeDefn, Weights0, Weights) :-
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	(
-		TypeBody = du_type(Constructors, _, _, _),
+		TypeBody = du_type(Constructors, _, _, _, _),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
 		find_weights_for_cons_list(Constructors, TypeCtor, TypeParams,
 			Weights0, Weights)
@@ -270,7 +270,7 @@ find_weights_for_type(TypeCtor, TypeDefn, Weights0, Weights) :-
 		Weights = Weights0
 	;
 		% This type does not introduce any functors
-		TypeBody = foreign_type(_, _),
+		TypeBody = foreign_type(_),
 		Weights = Weights0
 	).
 

@@ -248,20 +248,7 @@ collect_mq_info_2(module_defn(_, ModuleDefn), Info0, Info) :-
 	process_module_defn(ModuleDefn, Info0, Info).
 collect_mq_info_2(pred_or_func(_,_,_,_,__,_,_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pred_or_func_mode(_,_,_,_,_,_,_), Info, Info).
-collect_mq_info_2(pragma(Pragma), Info0, Info) :-
-	( Pragma = foreign_type(_, Type, SymName) ->
-		( type_to_ctor_and_args(Type, _ - Arity0, _) ->
-			Arity = Arity0
-		;
-			Arity = 0
-		),
-		mq_info_get_types(Info0, Types0),
-		mq_info_get_need_qual_flag(Info0, NeedQualifier),
-		id_set_insert(NeedQualifier, SymName - Arity, Types0, Types),
-		mq_info_set_types(Info0, Types, Info)
-	;
-		Info = Info0
-	).
+collect_mq_info_2(pragma(_), Info, Info).
 collect_mq_info_2(promise(_PromiseType, Goal, _ProgVarSet, _UnivVars), Info0, 
 		Info) :-
 	process_assert(Goal, SymNames, Success),
@@ -896,9 +883,7 @@ qualify_type(Type0, Type, Info0, Info) -->
 qualify_pragma(X@source_file(_), X, Info, Info) --> [].
 qualify_pragma(X@foreign_decl(_, _), X, Info, Info) --> [].
 qualify_pragma(X@foreign_code(_, _), X, Info, Info) --> [].
-qualify_pragma(foreign_type(ForeignType, Type0, SymName), 
-		foreign_type(ForeignType, Type, SymName), Info0, Info) -->
-	qualify_type(Type0, Type, Info0, Info).
+qualify_pragma(X@foreign_type(_, _, _, _), X, Info, Info) --> [].
 qualify_pragma(X@foreign_import_module(_, _), X, Info, Info) --> [].
 qualify_pragma(
 	    foreign_proc(Rec, SymName, PredOrFunc, PragmaVars0, Varset, Code),

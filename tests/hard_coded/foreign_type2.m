@@ -1,4 +1,8 @@
-:- module foreign_type.
+% This modules tests selection of the Mercury definition for
+% types with both Mercury and foreign definitions,
+% It also tests field access functions for types with
+% both Mercury and foreign definitions.
+:- module foreign_type2.
 
 :- interface.
 
@@ -8,27 +12,31 @@
 
 :- implementation.
 
-:- type coord.
+:- import_module std_util.
 
-:- func new(int, int) = coord.
+:- type coord(T).
 
-:- func x(coord) = int.
-:- func y(coord) = int.
+:- func new(T, int, int) = coord(T).
+
+:- func x(coord(T)) = int.
+:- func y(coord(T)) = int.
 
 main -->
-	{ C = new(4, 5) },
+	{ C = new(1, 4, 5) },
 	io__write_string("X:"),
 	io__write_int(x(C)),
 	io__nl,
 	io__write_string("Y:"),
 	io__write_int(y(C)),
+	io__nl,
+	io__write_string(type_name(type_of(C))),
 	io__nl.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
 % IL implementation
-:- pragma foreign_type(il, coord,
+:- pragma foreign_type(il, coord(T),
 	"class [foreign_type__csharp_code]coord").
 
 :- pragma foreign_decl("C#", "
@@ -38,7 +46,7 @@ public class coord {
 }
 ").
 
-:- pragma foreign_proc("C#", new(X::in, Y::in) = (C::out),
+:- pragma foreign_proc("C#", new(_T::in, X::in, Y::in) = (C::out),
 	[will_not_call_mercury, promise_pure],
 "
 	C = new coord();
@@ -61,43 +69,10 @@ public class coord {
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
-% C implementation
-:- pragma foreign_type(c, coord, "coord *").
-
-:- pragma foreign_decl(c, "
-typedef struct {
-	int x, y;
-} coord;
-").
-
-:- pragma foreign_proc(c, new(X::in, Y::in) = (C::out),
-	[will_not_call_mercury, promise_pure],
-"
-	C = MR_GC_NEW(coord);
-	C->x = X;
-	C->y = Y;
-").
-
-:- pragma foreign_proc(c, x(C::in) = (X::out),
-	[will_not_call_mercury, promise_pure],
-"
-	X = C->x;
-").
-
-:- pragma foreign_proc(c, y(C::in) = (Y::out),
-	[will_not_call_mercury, promise_pure],
-"
-	Y = C->y;
-").
-
-%----------------------------------------------------------------------------%
-
 % Mercury implementation
-:- type coord ---> coord(x :: int, y :: int).
+:- type coord(T) ---> coord(x :: int, y :: int).
 
-new(X, Y) = coord(X, Y).
-x(C) = C ^ x.
-y(C) = C ^ y.
+new(_, X, Y) = coord(X, Y).
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%

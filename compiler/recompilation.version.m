@@ -538,7 +538,7 @@ is_pred_pragma(foreign_code(_, _), no).
 is_pred_pragma(foreign_proc(_, Name, PredOrFunc, Args, _, _),
 		yes(yes(PredOrFunc) - Name / Arity)) :-
 	adjust_func_arity(PredOrFunc, Arity, list__length(Args)).
-is_pred_pragma(foreign_type(_, _, _), no).
+is_pred_pragma(foreign_type(_, _, _, _), no).
 is_pred_pragma(type_spec(Name, _, Arity, MaybePredOrFunc, _, _, _, _),
 		yes(MaybePredOrFunc - Name / Arity)).
 is_pred_pragma(inline(Name, Arity), yes(no - Name / Arity)).

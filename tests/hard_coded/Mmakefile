@@ -59,6 +59,7 @@ ORDINARY_PROGS=	\
 	foreign_and_mercury \
 	foreign_import_module \
 	foreign_type \
+	foreign_type2 \
 	frameopt_pragma_redirect \
 	free_free_mode \
 	func_and_pred \
@@ -81,6 +82,7 @@ ORDINARY_PROGS=	\
 	impure_prune \
 	integer_test \
 	intermod_c_code \
+	intermod_foreign_type \
 	intermod_multimode_main \
 	intermod_pragma_clause \
 	intermod_type_qual \
@@ -255,6 +257,8 @@ MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-impure_foreign	=	--optimize-duplicate-calls
 MCFLAGS-intermod_c_code =	--intermodule-optimization
 MCFLAGS-intermod_c_code2 =	--intermodule-optimization
+MCFLAGS-intermod_foreign_type = --intermodule-optimization
+MCFLAGS-intermod_foreign_type2 = --intermodule-optimization
 MCFLAGS-intermod_pragma_clause = --intermodule-optimization
 MCFLAGS-intermod_type_qual =	--intermodule-optimization
 MCFLAGS-intermod_type_qual2 =	--intermodule-optimization

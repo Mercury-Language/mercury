@@ -321,6 +321,11 @@
 :- pred status_is_exported(import_status::in, bool::out) is det.
 
 	% returns yes if the status indicates that the item was
+	% exported to importing modules (not just to sub-modules).
+:- pred status_is_exported_to_non_submodules(import_status::in,
+		bool::out) is det.
+
+	% returns yes if the status indicates that the item was
 	% in any way imported -- that is, if it was defined in
 	% some other module, or in a sub-module of this module.
 	% This is the opposite of status_defined_in_this_module.
@@ -709,6 +714,9 @@
 :- pred pred_info_pragma_goal_type(pred_info).
 :- mode pred_info_pragma_goal_type(in) is semidet.
 
+:- pred pred_info_update_goal_type(pred_info, goal_type, pred_info).
+:- mode pred_info_update_goal_type(in, in, out) is det.
+
 :- pred pred_info_set_goal_type(pred_info, goal_type, pred_info).
 :- mode pred_info_set_goal_type(in, in, out) is det.
 
@@ -881,6 +889,16 @@ status_is_exported(abstract_exported,		yes).
 status_is_exported(pseudo_exported,		yes).
 status_is_exported(exported_to_submodules,	yes).
 status_is_exported(local,			no).
+
+status_is_exported_to_non_submodules(Status, Result) :-
+	(
+		status_is_exported(Status, yes),
+		Status \= exported_to_submodules
+	->
+		Result = yes
+	;
+		Result = no
+	).
 
 status_is_imported(Status, Imported) :-
 	status_defined_in_this_module(Status, InThisModule),
@@ -1214,14 +1232,47 @@ pred_info_set_typevarset(PredInfo, X, PredInfo^typevarset := X).
 pred_info_get_goal_type(PredInfo, PredInfo^goal_type).
 
 pred_info_clause_goal_type(PredInfo) :- 
-	( PredInfo ^ goal_type = clauses 
-	; PredInfo ^ goal_type = clauses_and_pragmas
-	).
+	clause_goal_type(PredInfo ^ goal_type).
 
 pred_info_pragma_goal_type(PredInfo) :- 
-	( PredInfo ^ goal_type = pragmas 
-	; PredInfo ^ goal_type = clauses_and_pragmas
-	).
+	pragma_goal_type(PredInfo ^ goal_type).
+
+:- pred clause_goal_type(goal_type::in) is semidet.
+
+clause_goal_type(clauses).
+clause_goal_type(clauses_and_pragmas).
+
+:- pred pragma_goal_type(goal_type::in) is semidet.
+
+pragma_goal_type(pragmas).
+pragma_goal_type(clauses_and_pragmas).
+
+pred_info_update_goal_type(PredInfo0, GoalType1, PredInfo) :-
+	pred_info_get_goal_type(PredInfo0, GoalType0),
+	(
+		GoalType0 = none, GoalType = GoalType1
+	;
+		GoalType0 = pragmas,
+		( clause_goal_type(GoalType1) ->
+			GoalType = clauses_and_pragmas
+		;
+			GoalType = pragmas
+		)
+	;
+		GoalType0 = clauses,
+		( pragma_goal_type(GoalType1) ->
+			GoalType = clauses_and_pragmas
+		;
+			GoalType = clauses
+		)
+
+	;
+		GoalType0 = clauses_and_pragmas,
+		GoalType = GoalType0
+	;
+		GoalType0 = promise(_), error("pred_info_update_goal_type")
+	),
+	pred_info_set_goal_type(PredInfo0, GoalType, PredInfo).	
 
 pred_info_set_goal_type(PredInfo, X, PredInfo^goal_type := X).
 

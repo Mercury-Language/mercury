@@ -1374,14 +1374,14 @@ magic_util__check_type_ctor(Parents, TypeCtor, Errors0, Errors) -->
 		set(argument_error)::in, set(argument_error)::out, 
 		magic_info::in, magic_info::out) is det.
 
-magic_util__check_type_defn(du_type(Ctors, _, _, _),
+magic_util__check_type_defn(du_type(Ctors, _, _, _, _),
 		Parents, Errors0, Errors) -->
 	list__foldl2(magic_util__check_ctor(Parents), Ctors, Errors0, Errors).
 magic_util__check_type_defn(eqv_type(_), _, _, _) -->
 	{ error("magic_util__check_type_defn: eqv_type") }.
 magic_util__check_type_defn(abstract_type, _, Errors0, Errors) -->
 	{ set__insert(Errors0, abstract, Errors) }.
-magic_util__check_type_defn(foreign_type(_, _), _, _, _) -->
+magic_util__check_type_defn(foreign_type(_), _, _, _) -->
 	{ error("magic_util__check_type_defn: foreign_type") }.
 
 :- pred magic_util__check_ctor(set(type_ctor)::in, constructor::in, 

@@ -172,8 +172,10 @@
 			% PredName, Predicate or Function, Vars/Mode, 
 			% VarNames, Foreign Code Implementation Info
 
-	;	foreign_type(foreign_language_type, (type), sym_name)
-			% ForeignType, MercuryType, MercuryTypeName
+	;	foreign_type(foreign_language_type, tvarset,
+			sym_name, list(type_param))
+			% ForeignType, TVarSet, MercuryTypeName,
+			% MercuryTypeParams
 
 	;	foreign_import_module(foreign_language, module_name)
 			% Equivalent to

@@ -132,8 +132,7 @@ rl_key__remove_useless_info(ModuleInfo,
 		type_to_ctor_and_args(Type, TypeCtor, _),
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
-		Body = du_type(Ctors, _, _, _),
-		Ctors = [_]
+		Body ^ du_type_ctors = []
 	->	
 		Bound = var - Vars
 	;
@@ -1028,9 +1027,9 @@ rl_key__choose_cons_id(ModuleInfo, UpperLower, Type,
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		% If there's a user defined equality pred we're in trouble.
-		Body = du_type(Ctors, _, _, no),
-		rl_key__choose_cons_id_2(Ctors, UpperLower, ConsId1,
-			ConsId2, ConsId)
+		Body ^ du_type_usereq = no,
+		rl_key__choose_cons_id_2(Body ^ du_type_ctors,
+			UpperLower, ConsId1, ConsId2, ConsId)
 	;
 		% int_consts etc. can be directly compared.
 		compare(CompareRes, ConsId1, ConsId2),

@@ -131,12 +131,17 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	add_item_list_decls_pass_2(Items,
 		item_status(local, may_be_unqualified), Module1, Module2),
 
+	% Add constructors and special preds. This must be done after
+	% adding all type and `:- pragma foreign_type' declarations.
+	{ module_info_types(Module2, Types) },
+	map__foldl2(process_type_defn, Types, Module2, Module3),
+
 	maybe_report_stats(Statistics),
 		% balance the binary trees
-	{ module_info_optimize(Module2, Module3) },
+	{ module_info_optimize(Module3, Module4) },
 	maybe_report_stats(Statistics),
 	{ init_qual_info(MQInfo0, EqvMap, QualInfo0) },
-	add_item_list_clauses(Items, local, Module3, Module4,
+	add_item_list_clauses(Items, local, Module4, Module5,
 				QualInfo0, QualInfo),
 	{ qual_info_get_mq_info(QualInfo, MQInfo) },
 	{ mq_info_get_type_error_flag(MQInfo, UndefTypes) },
@@ -144,10 +149,10 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	{ mq_info_get_num_errors(MQInfo, MQ_NumErrors) },
 	{ module_info_num_errors(Module4, NumErrors0) },
 	{ NumErrors is NumErrors0 + MQ_NumErrors },
-	{ module_info_set_num_errors(Module4, NumErrors, Module5) },
+	{ module_info_set_num_errors(Module5, NumErrors, Module6) },
 		% the predid list is constructed in reverse order, for
 		% efficiency, so we return it to the correct order here.
-	{ module_info_reverse_predids(Module5, Module) }.
+	{ module_info_reverse_predids(Module6, Module) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -412,49 +417,9 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		% Note that we check during add_item_clause that we have
 		% defined a foreign_type which is usable by the back-end
 		% we are compiling on.
-		{ Pragma = foreign_type(ForeignType, _MercuryType, Name) },
-
-		{ varset__init(VarSet) },
-		{ Args = [] },
-		{ ForeignType = il(ILForeignType),
-			Body = foreign_type(yes(ILForeignType), no)
-		; ForeignType = c(CForeignType),
-			Body = foreign_type(no, yes(CForeignType))
-		},
-		{ Cond = true },
-
-		{ TypeCtor = Name - 0 },
-		{ module_info_types(Module0, Types) },
-		{ TypeStr = error_util__describe_sym_name_and_arity(
-				Name / 0) },
-		( 
-			{ map__search(Types, TypeCtor, OldDefn) }
-		->
-			{ hlds_data__get_type_defn_status(OldDefn, OldStatus) },
-			{ combine_status(OldStatus, ImportStatus, NewStatus) },
-			( { NewStatus = abstract_exported } ->
-				{ ErrorPieces = [
-					words("Error: pragma foreign_type "),
-					fixed(TypeStr),
-					words("must have the same visibility as the type declaration.")
-				] },
-				error_util__write_error_pieces(Context, 0, ErrorPieces),
-				{ module_info_incr_errors(Module0, Module) }
-
-			;
-				module_add_type_defn_2(Module0, VarSet, Name,
-					Args, Body, Cond, Context, Status,
-					Module)
-			)
-		;
-			{ ErrorPieces = [
-				words("Error: type "),
-				fixed(TypeStr),
-				words("defined as foreign_type without being declared.")
-			] },
-			error_util__write_error_pieces(Context, 0, ErrorPieces),
-			{ module_info_incr_errors(Module0, Module) }
-		)
+		{ Pragma = foreign_type(ForeignType, TVarSet, Name, Args) },	
+		add_pragma_foreign_type(Context, Status, ForeignType,
+			TVarSet, Name, Args, Module0, Module)
 	;	
 		% Handle pragma tabled decls later on (when we process
 		% clauses).
@@ -812,10 +777,11 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
  			Module0, Module),
  		{ Info = Info0 }
  	;
-		{ Pragma = foreign_type(_, _, Name) }
+		{ Pragma = foreign_type(_, _, Name, Args) }
 	->
-		check_foreign_type(Name, Context, Module0, Module),
-		{ Info = Info0 }	
+		check_foreign_type(Name, list__length(Args),
+			Context, Module0, Module),
+		{ Info = Info0 }
 	;
  		% don't worry about any pragma declarations other than the
  		% clause-like pragmas (c_code, tabling and fact_table),
@@ -941,6 +907,63 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
 	;
 		undefined_pred_or_func_error(Name, Arity, Context,
 			"`:- pragma export' declaration"),
+		{ module_info_incr_errors(Module0, Module) }
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pragma_foreign_type(prog_context, item_status,
+	foreign_language_type, tvarset, sym_name, list(type_param),
+	module_info, module_info, io__state, io__state).
+:- mode add_pragma_foreign_type(in, in, in, in, in, in,
+	in, out, di, uo) is det.
+
+add_pragma_foreign_type(Context, item_status(ImportStatus, NeedQual), 
+		ForeignType, TVarSet, Name, Args, Module0, Module) -->
+	{ ForeignType = il(ILForeignType),
+		Body = foreign_type(foreign_type_body(yes(ILForeignType), no))
+	; ForeignType = c(CForeignType),
+		Body = foreign_type(foreign_type_body(no, yes(CForeignType)))
+	},
+	{ Cond = true },
+
+	{ Arity = list__length(Args) },
+	{ TypeCtor = Name - Arity },
+	{ module_info_types(Module0, Types) },
+	{ TypeStr = error_util__describe_sym_name_and_arity(Name / Arity) },
+	( 
+		{ map__search(Types, TypeCtor, OldDefn) }
+	->
+		{ hlds_data__get_type_defn_status(OldDefn, OldStatus) },
+		{ hlds_data__get_type_defn_body(OldDefn, OldBody) },
+		(
+			{ OldBody = abstract_type },
+			{ status_is_exported_to_non_submodules(OldStatus,
+				no) },
+			{ status_is_exported_to_non_submodules(ImportStatus,
+				yes) }
+		->
+			{ ErrorPieces = [
+				words("Error: pragma foreign_type "),
+				fixed(TypeStr),
+				words(
+		"must have the same visibility as the type declaration.")
+			] },
+			error_util__write_error_pieces(Context, 0, ErrorPieces),
+			{ module_info_incr_errors(Module0, Module) }
+		;
+			module_add_type_defn_2(Module0, TVarSet, Name,
+				Args, Body, Cond, Context,
+				item_status(ImportStatus, NeedQual),
+				Module)
+		)
+	;
+		{ ErrorPieces = [
+			words("Error: type "),
+			fixed(TypeStr),
+			words("defined as foreign_type without being declared.")
+		] },
+		error_util__write_error_pieces(Context, 0, ErrorPieces),
 		{ module_info_incr_errors(Module0, Module) }
 	).
 
@@ -1886,7 +1909,6 @@ module_add_type_defn(Module0, TVarSet, Name, Args, TypeDefn, Cond, Context,
 module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		item_status(Status0, NeedQual), Module) -->
 	{ module_info_types(Module0, Types0) },
-	globals__io_get_globals(Globals),
 	{ list__length(Args, Arity) },
 	{ TypeCtor = Name - Arity },
 	{ Body = abstract_type ->
@@ -1906,7 +1928,8 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		MaybeOldDefn = no,
 		Status = Status1 
 	},
-	{ hlds_data__set_type_defn(TVarSet, Args, Body, Status, Context, T) },
+	{ hlds_data__set_type_defn(TVarSet, Args, Body, Status,
+		NeedQual, Context, T) },
 	(
 		% if there was an existing non-abstract definition for the type
 		{ MaybeOldDefn = yes(T2) },
@@ -1915,8 +1938,11 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		{ hlds_data__get_type_defn_body(T2, Body_2) },
 		{ hlds_data__get_type_defn_context(T2, OrigContext) },
 		{ hlds_data__get_type_defn_status(T2, OrigStatus) },
+		{ hlds_data__get_type_defn_need_qualifier(T2,
+			OrigNeedQual) },
 		{ Body_2 \= abstract_type }
 	->
+		globals__io_get_target(Target),
 	  	(
 			% then if this definition was abstract, ignore it
 			% (but update the status of the old defn if necessary)
@@ -1928,17 +1954,37 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 				Module = Module0
 			;
 				hlds_data__set_type_defn(TVarSet_2, Params_2,
-					Body_2, Status, OrigContext, T3),
+					Body_2, Status, OrigNeedQual,
+					OrigContext, T3),
 				map__det_update(Types0, TypeCtor, T3, Types),
 				module_info_set_types(Module0, Types, Module)
 			}
 		;
-			{ merge_foreign_type_bodies(Body, Body_2, NewBody) }
+			{ merge_foreign_type_bodies(Target, Body, Body_2,
+				NewBody) }
 		->
-			{ hlds_data__set_type_defn(TVarSet_2, Params_2,
-				NewBody, Status, Context, T3) },
-			{ map__det_update(Types0, TypeCtor, T3, Types) },
-			{ module_info_set_types(Module0, Types, Module) }
+			(
+				{ check_foreign_type_visibility(OrigStatus,
+					Status1) }
+			->
+				{ hlds_data__set_type_defn(TVarSet_2, Params_2,
+					NewBody, Status, NeedQual,
+					Context, T3) },
+				{ map__det_update(Types0,
+					TypeCtor, T3, Types) },
+				{ module_info_set_types(Module0,
+					Types, Module) }
+			;
+				{ module_info_incr_errors(Module0, Module) },
+				{ Pieces = [words("In definition of type"),
+					fixed(describe_sym_name_and_arity(
+						Name / Arity) ++ ":"), nl,
+					words("error: all definitions of a"),
+					words("type must have the same"),
+					words("visibility")] },
+				error_util__write_error_pieces(Context, 0,
+					Pieces)
+			)
 		;
 			% otherwise issue an error message if the second
 			% definition wasn't read while reading .opt files. 
@@ -1952,42 +1998,7 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		)
 	;
 		{ map__set(Types0, TypeCtor, T, Types) },
-		{ construct_type(TypeCtor, Args, Type) },
-		(
-			{ Body = du_type(ConsList, _, _, _) }
-		->
-			{ module_info_ctors(Module0, Ctors0) },
-			{ module_info_get_partial_qualifier_info(Module0,
-				PQInfo) },
-			{ module_info_ctor_field_table(Module0,
-				CtorFields0) },
-			ctors_add(ConsList, TypeCtor, TVarSet, NeedQual,
-				PQInfo, Context, Status,
-				CtorFields0, CtorFields, Ctors0, Ctors),
-			{ module_info_set_ctors(Module0, Ctors, Module1) },
-			{ module_info_set_ctor_field_table(Module1,
-				CtorFields, Module1a) },
-			{
-				type_constructors_should_be_no_tag(ConsList, 
-					Globals, Name, CtorArgType, _)
-			->
-				NoTagType = no_tag_type(Args,
-					Name, CtorArgType),
-				module_info_no_tag_types(Module1a,
-					NoTagTypes0),
-				map__set(NoTagTypes0, TypeCtor, NoTagType,
-					NoTagTypes),
-				module_info_set_no_tag_types(Module1a,
-					NoTagTypes, Module2)
-			;
-				Module2 = Module1a
-			}
-		;
-			{ Module2 = Module0 }
-		),
-		{ add_special_preds(Module2, TVarSet, Type, TypeCtor,
-			Body, Context, Status, Module3) },
-		{ module_info_set_types(Module3, Types, Module) },
+		{ module_info_set_types(Module0, Types, Module) },
 		(
 			% XXX we can't handle abstract exported
 			% polymorphic equivalence types with monomorphic
@@ -2024,20 +2035,82 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		)
 	).
 
+	% check_foreign_type_visibility(OldStatus, NewDefnStatus).
+	%
+	% Check that the visibility of the new definition for
+	% a foreign type matches that of previous definitions.
+:- pred check_foreign_type_visibility(import_status::in,
+		import_status::in) is semidet.
+
+check_foreign_type_visibility(OldStatus, NewDefnStatus) :-
+	( OldStatus = abstract_exported  ->
+		% If OldStatus is abstract_exported, the previous
+		% definitions were local.
+		status_is_exported_to_non_submodules(NewDefnStatus, no)
+	; OldStatus = exported ->
+		NewDefnStatus = exported
+	;
+		status_is_exported_to_non_submodules(OldStatus, no),
+		status_is_exported_to_non_submodules(NewDefnStatus, no)
+	).	
+
+	% Add the constructors and special preds for a type to the HLDS.
+:- pred process_type_defn(type_ctor::in, hlds_type_defn::in, module_info::in,
+	module_info::out, io__state::di, io__state::uo) is det.
+
+process_type_defn(TypeCtor, TypeDefn, Module0, Module) -->
+	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
+	{ hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet) },
+	{ hlds_data__get_type_defn_tparams(TypeDefn, Args) },
+	{ hlds_data__get_type_defn_body(TypeDefn, Body) },
+	{ hlds_data__get_type_defn_status(TypeDefn, Status) },
+	{ hlds_data__get_type_defn_need_qualifier(TypeDefn, NeedQual) },
+	(
+		{ Body = du_type(ConsList, _, _, _, _) }
+	->
+		{ module_info_ctors(Module0, Ctors0) },
+		{ module_info_get_partial_qualifier_info(Module0, PQInfo) },
+		{ module_info_ctor_field_table(Module0, CtorFields0) },
+		ctors_add(ConsList, TypeCtor, TVarSet, NeedQual,
+			PQInfo, Context, Status,
+			CtorFields0, CtorFields, Ctors0, Ctors),
+		{ module_info_set_ctors(Module0, Ctors, Module1) },
+		{ module_info_set_ctor_field_table(Module1,
+			CtorFields, Module2) },
+		globals__io_get_globals(Globals),
+		{
+			type_constructors_should_be_no_tag(ConsList, 
+				Globals, Name, CtorArgType, _)
+		->
+			NoTagType = no_tag_type(Args, Name, CtorArgType),
+			module_info_no_tag_types(Module2, NoTagTypes0),
+			map__set(NoTagTypes0, TypeCtor, NoTagType, NoTagTypes),
+			module_info_set_no_tag_types(Module2,
+				NoTagTypes, Module3)
+		;
+			Module3 = Module2
+		}
+	;
+		{ Module3 = Module0 }
+	),
+	{ construct_type(TypeCtor, Args, Type) },
+	{ add_special_preds(Module3, TVarSet, Type, TypeCtor,
+		Body, Context, Status, Module) }.
+
 	% check_foreign_type ensures that if we are generating code for
 	% a specific backend that the foreign type has a representation
 	% on that backend.
-:- pred check_foreign_type(sym_name::in, prog_context::in,
+:- pred check_foreign_type(sym_name::in, arity::in, prog_context::in,
 		module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_foreign_type(Name, Context, Module0, Module) -->
-	{ TypeCtor = Name - 0 },
+check_foreign_type(Name, Arity, Context, Module0, Module) -->
+	{ TypeCtor = Name - Arity },
 	{ module_info_types(Module0, Types) },
-	{ TypeStr = error_util__describe_sym_name_and_arity(Name/0) },
+	{ TypeStr = error_util__describe_sym_name_and_arity(Name/Arity) },
 	( 
 		{ map__search(Types, TypeCtor, Defn) },
 		{ hlds_data__get_type_defn_body(Defn, Body) },
-		{ Body = foreign_type(MaybeIL, MaybeC) }
+		{ Body = foreign_type(ForeignTypeBody) }
 	->
 		{ module_info_globals(Module0, Globals) },
 		generating_code(GeneratingCode),
@@ -2054,43 +2127,47 @@ check_foreign_type(Name, Context, Module0, Module) -->
 				VerboseErrorPieces = []
 			},
 			{ globals__get_target(Globals, Target) },
-			( { Target = c },
-			    ( { MaybeC = yes(_) },
+			(
+				{ have_foreign_type_for_backend(Target,
+					ForeignTypeBody, yes) }
+			->
 				{ Module = Module0 }
-			    ; { MaybeC = no },
+			;
+		
+				{ Target = c, LangStr = "C"
+				; Target = il, LangStr = "IL"
+				% Foreign types aren't yet supported for Java.
+				; Target = java, LangStr = "Mercury"
+				; Target = asm, LangStr = "C"
+				},
 				{ ErrorPieces = [
-				    words("Error: no C pragma"),
-				    words("foreign_type declaration for"),
+				    words("Error: no"), words(LangStr),
+				    words(
+				    "`pragma foreign_type' declaration for"),
 				    fixed(TypeStr) | VerboseErrorPieces
 				] },
 				error_util__write_error_pieces(Context,
 					0, ErrorPieces),
 				{ module_info_incr_errors(Module0, Module) }
-			    )
-			; { Target = il },
-			    ( { MaybeIL = yes(_) },
-				{ Module = Module0 }
-			    ; { MaybeIL = no },
-				{ ErrorPieces = [
-				    words("Error: no IL pragma"),
-				    words("foreign_type declaration for"),
-				    fixed(TypeStr) | VerboseErrorPieces
-				] },
-				error_util__write_error_pieces(Context, 0,
-						ErrorPieces),
-				{ module_info_incr_errors(Module0, Module) }
-			    )
-			; { Target = java },
-				{ Module = Module0 }
-			; { Target = asm },
-				{ Module = Module0 }
 			)
 		;
 			{ Module = Module0 }
 		)
 	;
-		{ error("check_foreign_type: unable to find foreign type") }
+		% We probably chose a Mercury implementation for this type.
+		{ Module = Module0 }
 	).
+
+:- pred have_foreign_type_for_backend(compilation_target::in,
+		foreign_type_body::in, bool::out) is det.
+
+have_foreign_type_for_backend(c, ForeignTypeBody,
+		( ForeignTypeBody ^ c = yes(_) -> yes ; no )).
+have_foreign_type_for_backend(il, ForeignTypeBody,
+		( ForeignTypeBody ^ il = yes(_) -> yes ; no )).
+have_foreign_type_for_backend(java, _, no).
+have_foreign_type_for_backend(asm, ForeignTypeBody, Result) :-
+	have_foreign_type_for_backend(c, ForeignTypeBody, Result).
 
 	% Do the options imply that we will generate code for a specific
 	% back-end?
@@ -2114,16 +2191,42 @@ generating_code(bool__not(NotGeneratingCode)) -->
 			TypeCheckOnly, ErrorCheckOnly, OutputGradeString],
 			NotGeneratingCode) }.
 
-:- pred merge_foreign_type_bodies(hlds_type_body::in,
+:- pred merge_foreign_type_bodies(compilation_target::in, hlds_type_body::in,
 		hlds_type_body::in, hlds_type_body::out) is semidet.
 
-merge_foreign_type_bodies(foreign_type(MaybeILA, MaybeCA),
-		foreign_type(MaybeILB, MaybeCB),
-		foreign_type(MaybeIL, MaybeC)) :-
+	% Ignore Mercury definitions if we've got a foreign type
+	% declaration suitable for this back-end.
+merge_foreign_type_bodies(Target, foreign_type(ForeignTypeBody0),
+		Body1 @ du_type(_, _, _, _, MaybeForeignTypeBody1), Body) :-
+	( MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
+	; MaybeForeignTypeBody1 = no,
+		ForeignTypeBody1 = foreign_type_body(no, no)
+	),
+	merge_foreign_type_bodies_2(ForeignTypeBody0,
+		ForeignTypeBody1, ForeignTypeBody),
+	( have_foreign_type_for_backend(Target, ForeignTypeBody, yes) ->
+		Body = foreign_type(ForeignTypeBody)
+	;
+		Body = Body1 ^ du_type_is_foreign_type := yes(ForeignTypeBody)
+	).
+merge_foreign_type_bodies(Target, Body0 @ du_type(_, _, _, _, _),
+		Body1 @ foreign_type(_), Body) :-
+	merge_foreign_type_bodies(Target, Body1, Body0, Body).
+merge_foreign_type_bodies(_, foreign_type(Body0), foreign_type(Body1),
+		foreign_type(Body)) :-
+	merge_foreign_type_bodies_2(Body0, Body1, Body).
+
+:- pred merge_foreign_type_bodies_2(foreign_type_body::in,
+		foreign_type_body::in, foreign_type_body::out) is semidet.
+
+merge_foreign_type_bodies_2(foreign_type_body(MaybeILA, MaybeCA),
+		foreign_type_body(MaybeILB, MaybeCB),
+		foreign_type_body(MaybeIL, MaybeC)) :-
 	merge_maybe(MaybeILA, MaybeILB, MaybeIL),
 	merge_maybe(MaybeCA, MaybeCB, MaybeC).
 
 :- pred merge_maybe(maybe(T)::in, maybe(T)::in, maybe(T)::out) is semidet.
+merge_maybe(no, no, no).
 merge_maybe(yes(T), no, yes(T)).
 merge_maybe(no, yes(T), yes(T)).
 
@@ -2157,7 +2260,13 @@ combine_status_2(imported(_), Status2, Status) :-
 combine_status_2(local, Status2, Status) :-
 	combine_status_local(Status2, Status).
 combine_status_2(exported, _Status2, exported).
-combine_status_2(exported_to_submodules, _Status2, exported_to_submodules).
+combine_status_2(exported_to_submodules, Status2, Status) :-
+	combine_status_local(Status2, Status3),
+	( Status3 = local ->
+		Status = exported_to_submodules
+	;
+		Status = Status3
+	).
 combine_status_2(opt_imported, _Status2, opt_imported).
 combine_status_2(abstract_imported, Status2, Status) :-
 	combine_status_abstract_imported(Status2, Status).
@@ -2179,6 +2288,8 @@ combine_status_imported(abstract_exported,	abstract_exported).
 
 combine_status_local(imported(_),	local).
 combine_status_local(local,		local).
+combine_status_local(exported_to_submodules,
+					exported_to_submodules).
 combine_status_local(exported,		exported).
 combine_status_local(opt_imported,	local).
 combine_status_local(abstract_imported, local).
@@ -2208,7 +2319,8 @@ combine_status_abstract_imported(Status2, Status) :-
 :- mode convert_type_defn(in, in, in, out) is det.
 
 convert_type_defn(du_type(Body, EqualityPred), TypeCtor, Globals,
-		du_type(Body, CtorTags, IsEnum, EqualityPred)) :-
+		du_type(Body, CtorTags, IsEnum, EqualityPred, IsForeign)) :-
+	IsForeign = no,
 	assign_constructor_tags(Body, TypeCtor, Globals, CtorTags, IsEnum).
 convert_type_defn(eqv_type(Body), _, _, eqv_type(Body)).
 convert_type_defn(abstract_type, _, _, abstract_type).
@@ -3220,7 +3332,7 @@ add_special_preds(Module0, TVarSet, Type, TypeCtor,
 		->
 			(
 				Body = du_type(Ctors, _, IsEnum,
-						UserDefinedEquality),
+						UserDefinedEquality, _),
 				IsEnum = no,
 				UserDefinedEquality = no,
 				module_info_globals(Module0, Globals),
@@ -3295,7 +3407,7 @@ add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeCtor, TypeBody,
 			Module = Module0
 		;
 			SpecialPredId = compare,
-			( TypeBody = du_type(_, _, _, yes(_)) ->
+			( TypeBody = du_type(_, _, _, yes(_), _) ->
 					% The compiler generated comparison
 					% procedure prints an error message,
 					% since comparisons of types with
@@ -3338,7 +3450,7 @@ add_special_pred_for_real(SpecialPredId,
 	->
 		pred_info_set_import_status(PredInfo0, Status, PredInfo1)
 	;
-		TypeBody = du_type(_, _, _, yes(_)),
+		TypeBody = du_type(_, _, _, yes(_), _),
 		pred_info_import_status(PredInfo0, OldStatus),
 		OldStatus = pseudo_imported,
 		status_is_imported(Status, no)
@@ -3438,7 +3550,7 @@ add_special_pred_decl_for_real(SpecialPredId,
 	import_status::out) is det.
 
 add_special_pred_unify_status(TypeBody, Status0, Status) :-
-	( TypeBody = du_type(_, _, _, yes(_)) ->
+	( TypeBody = du_type(_, _, _, yes(_), _) ->
 			% If the type has user-defined equality,
 			% then we create a real __Unify__ predicate
 			% for it, whose body calls the user-specified
@@ -3861,14 +3973,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredOrFunc, PredName, Args, Body,
 			pred_info_set_goal_type(PredInfo3, promise(PromiseType),
 					PredInfo4)
 		;
-			HaveForeignClauses = Clauses ^ have_foreign_clauses,
-			( HaveForeignClauses = yes,
-				NewGoalType = clauses_and_pragmas
-			; HaveForeignClauses = no,
-				NewGoalType = clauses
-			),
-			pred_info_set_goal_type(PredInfo3,
-					NewGoalType, PredInfo4)
+			pred_info_update_goal_type(PredInfo3,
+					clauses, PredInfo4)
 		),
 		pred_info_set_typevarset(PredInfo4, TVarSet, PredInfo5),
 		pred_info_arg_types(PredInfo5, _ArgTVarSet,
@@ -4246,7 +4352,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 		io__write_string("  with preceding clauses.\n"),
 		{ Info = Info0 }
 	;
-		{ pred_info_set_goal_type(PredInfo1, pragmas, PredInfo2) },
+		{ pred_info_update_goal_type(PredInfo1, pragmas, PredInfo2) },
 		%
 		% add the pragma declaration to the proc_info for this procedure
 		%
@@ -4415,7 +4521,9 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 			% than the ones we can generate code for.
 		{ not list__member(PragmaForeignLanguage, BackendForeignLangs) }
 	->
-		{ ModuleInfo = ModuleInfo1 },
+		{ pred_info_update_goal_type(PredInfo0, pragmas, PredInfo) },
+		{ module_info_set_pred_info(ModuleInfo1,
+			PredId, PredInfo, ModuleInfo) },
 		{ Info = Info0 }
 	;		
 		% add the pragma declaration to the proc_info for this procedure
@@ -4438,13 +4546,8 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 				ModuleInfo2, Info0, Info),
 			{ pred_info_set_clauses_info(PredInfo1, Clauses, 
 				PredInfo2) },
-			{ pred_info_clause_goal_type(PredInfo2) ->
-				pred_info_set_goal_type(PredInfo2,
-					clauses_and_pragmas, PredInfo)
-			;
-				pred_info_set_goal_type(PredInfo2, pragmas,
-					PredInfo)
-			},
+			{ pred_info_update_goal_type(PredInfo2, pragmas,
+				PredInfo) },
 			{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 			{ predicate_table_set_preds(PredicateTable1, Preds, 
 				PredicateTable) },
