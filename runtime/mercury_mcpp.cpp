@@ -80,6 +80,18 @@ static System::Object * get_MR_Word_field(MR_Word w, int index) {
 	return w[index];
 }
 
+static bool list_is_cons(MR_Word w) {
+	return (System::Convert::ToInt32(w[0]) != 0);
+}
+
+static MR_Box list_get_head(MR_Word w) {
+	return w[1];
+}
+
+static MR_Word list_get_tail(MR_Word w) {
+	return dynamic_cast<MR_Word>(w[2]);
+}
+
 };
 
 __gc public class Errors {

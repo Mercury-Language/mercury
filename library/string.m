@@ -1020,11 +1020,18 @@ string__append_list(Lists, string__append_list(Lists)).
 }").
 
 :- pragma foreign_proc("C#",
-		string__append_list(_Strs::in) = (_Str::uo),
-		[will_not_call_mercury, thread_safe], "{
-	mercury.runtime.Errors.SORRY(""foreign code for this function"");
-	_Str = null;
-}").
+		string__append_list(Strs::in) = (Str::uo),
+		[will_not_call_mercury, thread_safe], "
+{
+        System.Text.StringBuilder tmp = new System.Text.StringBuilder();
+
+	while (mercury.runtime.LowLevelData.list_is_cons(Strs)) {
+		tmp.Append(mercury.runtime.LowLevelData.list_get_head(Strs));
+		Strs = mercury.runtime.LowLevelData.list_get_tail(Strs);
+	}
+	Str = tmp.ToString();
+}
+").
 
 :- pragma foreign_proc("C#",
 		string__join_list(_Sep::in, _Strs::in) = (_Str::uo),
@@ -1428,11 +1435,38 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 	).
 specifier_to_string(string(Chars)) = from_char_list(Chars).
 
-	% Construct a format string suitable to passing to sprintf.
+
+	% Construct a format string.
 :- func make_format(list(char), maybe(list(char)),
 		maybe(list(char)), string, string) = string.
 
-make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
+make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = 
+	( using_sprintf ->
+		make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod,
+			Spec)
+	;
+		make_format_dotnet(Flags, MaybeWidth, MaybePrec, LengthMod,
+			Spec)
+	).
+
+
+:- pred using_sprintf is semidet.
+
+:- pragma foreign_proc("C", using_sprintf,
+	[will_not_call_mercury, thread_safe], "
+	SUCCESS_INDICATOR = TRUE;
+").
+:- pragma foreign_proc("MC++", using_sprintf,
+	[will_not_call_mercury, thread_safe], "
+	SUCCESS_INDICATOR = FALSE;
+").
+		
+
+	% Construct a format string suitable to passing to sprintf.
+:- func make_format_sprintf(list(char), maybe(list(char)),
+		maybe(list(char)), string, string) = string.
+
+make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	(
 		MaybeWidth = yes(Width)
 	;
@@ -1450,6 +1484,43 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 				from_char_list(Width),
 				from_char_list(Prec), LengthMod, Spec]).
 
+
+	% Construct a format string suitable to passing to .NET's formatting
+	% functions.
+	% XXX this code is not yet complete.  We need to do a lot more work
+	% to make this work perfectly.
+:- func make_format_dotnet(list(char), maybe(list(char)),
+		maybe(list(char)), string, string) = string.
+
+make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
+	(
+		MaybeWidth = yes(Width0),
+		Width = [',' | Width0]
+	;
+		MaybeWidth = no,
+		Width = []
+	),
+	(
+		MaybePrec = yes(Prec)
+	;
+		MaybePrec = no,
+		Prec = []
+	),
+	( 	Spec0 = "i" -> Spec = "d"
+	;	Spec0 = "f" -> Spec = "e"
+	;	Spec = Spec0
+	),
+	String = string__append_list([
+		"{0", 
+		from_char_list(Width),
+		":",
+		Spec,
+		from_char_list(Prec),
+%		LengthMod,
+%		from_char_list(Flags),
+		"}"]).
+
+
 :- func int_length_modifer = string.
 :- pragma foreign_proc("C", 
 	int_length_modifer = (LengthModifier::out),
@@ -1459,10 +1530,9 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 }").
 
 :- pragma foreign_proc("C#", 
-	int_length_modifer = (_LengthModifier::out),
+	int_length_modifer = (LengthModifier::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury.runtime.Errors.SORRY(""foreign code for this function"");
-	_LengthModifier = null;
+	LengthModifier = """";
 }").
 
 
@@ -1478,10 +1548,9 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	MR_restore_transient_hp();
 }").
 :- pragma foreign_proc("C#",
-	format_float(_FormatStr::in, _Val::in) = (_Str::out),
+	format_float(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury.runtime.Errors.SORRY(""foreign code for this function"");
-	_Str = null;
+	Str = System.String.Format(FormatStr, Val);
 }").
 
 	% Create a string from a int using the format string.
@@ -1496,10 +1565,9 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	MR_restore_transient_hp();
 }").
 :- pragma foreign_proc("C#",
-	format_int(_FormatStr::in, _Val::in) = (_Str::out),
+	format_int(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury.runtime.Errors.SORRY(""foreign code for this function"");
-	_Str = null;
+	Str = System.String.Format(FormatStr, Val);
 }").
 
 	% Create a string from a string using the format string.
@@ -1512,10 +1580,9 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 }").
 :- pragma foreign_proc("C#", 
-	format_string(_FormatStr::in, _Val::in) = (_Str::out),
+	format_string(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury.runtime.Errors.SORRY(""foreign code for this function"");
-	_Str = null;
+	Str = System.String.Format(FormatStr, Val);
 }").
 
 	% Create a string from a char using the format string.
@@ -1530,10 +1597,9 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	MR_restore_transient_hp();
 }").
 :- pragma foreign_proc("C#", 
-	format_char(_FormatStr::in, _Val::in) = (_Str::out),
+	format_char(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury.runtime.Errors.SORRY(""foreign code for this function"");
-	_Str = null;
+	Str = System.String.Format(FormatStr, Val);
 }").
 
 
