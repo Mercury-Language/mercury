@@ -15,14 +15,10 @@ has been ported to use the .NET Frameworks.
 
 In order to try this system you will need 
 
-	- The Microsoft Visual Studio .NET 7.0 Beta 2 SDK, see
+	- The Microsoft .NET Framework SDK Beta 2, see
 		<http://msdn.microsoft.com/net/>
 	  to download.  If you are an MSDN Universal subscriber you can
 	  also order CDs as part of your subscription.
-
-	  Note this is not the .NET Framework Beta 2 (the smaller download).
-	  In future we would like to only require the Framework SDK, but at 
-	  the moment you need the full Visual Studio installation.
 
 	- A windows system suitable for development with Microsoft .NET
 	  (Windows 2000 is the most likely).  Microsoft advises not to
@@ -37,9 +33,10 @@ In order to try this system you will need
 	  Mercury still relies upon the Cygwin environment for
 	  development environment tools such as `mmake'.
 
-	- The Visual Studio 7.0 binaries must be in your path, and the
-	  appropriate environment variables must be set. 
-	  The easiest way to do this is to put the line
+	- If you have installed the .NET Beta2 SDK as part of Visual
+	  Studio .NET Beta 2, you will need to put the Visual Studio 7.0
+	  binaries in your path, and set appropriate environment
+	  variables.  The easiest way to do this is to put the line
 
 call "C:\Program Files\Microsoft Visual Studio.NET\Common7\Tools\vsvars32.bat"
 	  
@@ -70,39 +67,29 @@ is still somewhat rudimentary.
 
 To run a Mercury program using the ilc grade, you need to build the
 library and runtime in the ilc grade, using the Mercury source distribution.
-After unpacking the Mercury source distribution, run the following commands in
-a Cygwin shell:
-
-	cd mercury
-	autoconf
-	./configure
-	cd runtime
-	MMAKE_DIR=../scripts mmake GRADE=ilc
-	cd ..
-	cp runtime/*.dll library
-	cd library
-	mmake depend
-	MMAKE_DIR=../scripts mmake GRADE=ilc
-	gacutil -i mercury.dll
-	cd ..
+If configure finds the .NET SDK installed on your machine, the ilc grade
+will be added to the list of default grades to be installed, so simply
+running 
+	mmake install
+from the Mercury source distribution will install the ilc grade.
 
 You can now build programs such as hello.m or eliza.m in the samples
 directory.
 	
 	cd samples
-	mmake hello.depend
-	mmake hello.il
-	ilasm hello.il
+	mmake hello.depend GRADE=ilc
+	mmake hello GRADE=ilc
 
-or for single file programs, simply:
+You can also set the grade in an Mmakefile by adding the line
+	GRADE=ilc
+
+For for single file programs, try:
 
 	mmc --grade ilc hello.m
 
-Now you can finally run hello
+Now you can run hello
 
 	./hello.exe
-
-We expect to automate or eliminate most of these steps in the future.
 
 -----------------------------------------------------------------------------
 
@@ -114,47 +101,38 @@ will issue a message saying "Unimplemented: foreign code for this
 function".
 
 If you find missing functionality, you can interface to the .NET
-Frameworks using the Managed extensions for C++, and Mercury's foreign
-language interface.
+Frameworks using C# and Mercury's foreign language interface.
 
 For example:
 
-:- pragma foreign_code("MC++", io__getenv(Var::in, Value::out),
-                [will_not_call_mercury],
+:- pred to_string(T::in, string::out) is det.
+:- pragma foreign_proc("C#", to_string(T::in, Str::out), [],
 "{
-        Value = System::Environment::GetEnvironmentVariable(Var);
-        SUCCESS_INDICATOR = (Value != 0);
+        Str = T.ToString();
 }").
 
-The implementation will put this Managed C++ code into a separate file,
-which can be compiled with Microsoft's VC++.NET.  You will need to make
-sure it is compiled into a dll by running
-	mmake <modulename>.il
-	ilasm <modulename>.il
-	mmake <modulename>__c_code.dll
-Once again, we expect to add automatic dependency generation in future,
-so this step will be done for you. 
+The implementation will put this C# in a separate file, which will be
+compiled with Microsoft's C# compiler.  Mmake will automatically
+generate dependencies for this file and invoke the C# compiler with the
+appropriate options.
 
-If you add MC++ code to the Mercury standard library, the library/Mmakefile 
-will take care of this step when you run `mmake GRADE=ilc'.
-
-You can also use the MC++ interface to interface with any .NET language
+You can also use the C# interface to interface with any .NET language
 (Implementations have been announced or are under development for
 C++, C#, Visual Basic, Cobol, Eiffel, SmallTalk, ML, Haskell, Scheme,
 Python, Perl, Component Pascal and others).  
 
-Add a
+Add a 
+	MS_CSCFLAGS-<modulename>_csharp_code=/reference:<foreignmodulename>.dll
+or
+	MS_CSCFLAGS-<modulename>_csharp_code=/addmodule:<foreignmodulename>.dll
 
-:- pragma foreign_header("MC++", "
-	#using ""foreignmodulename.dll""
-").
+to your Mmakefile to pass the appropriate flag to the C# compiler so
+that you can reference another DLL from the C# code.
+<modulename> is the name of your Mercury module, and <foreignmodulename> is
+the name of the dll you want to use from Mercury via C#.
 
-and you can use a .dll that contains .NET code for any other language to
-implement Mercury predicates.  You can use the tool `ildasm' to look at
-the contents of a DLL.
-
-We plan to offer a tool that automatically generates a Mercury interface
-for any .NET component in the future.
+We are working on a tool that automatically generates a Mercury interface
+for any .NET component, but it is not yet ready for public use.
 
 -----------------------------------------------------------------------------
 
