@@ -63,8 +63,8 @@ prog_rep__represent_atomic_goal(GoalInfo, InstMap0, Info,
 	term__context_line(Context, LinenoRep),
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
-	instmap_changed_vars(InstMap0, InstMap, Info^vartypes, Info^module_info,
-		ChangedVars),
+	instmap_changed_vars(InstMap0, InstMap, Info ^ vartypes,
+		Info ^ module_info, ChangedVars),
 	set__to_sorted_list(ChangedVars, ChangedVarsList),
 	list__map(term__var_to_int, ChangedVarsList, ChangedVarsRep).
 
@@ -209,7 +209,7 @@ prog_rep__represent_goal_expr(generic_call(GenericCall, Args, _, _),
 		ChangedVarsRep, AtomicGoalRep).
 prog_rep__represent_goal_expr(call(PredId, _, Args, _, _, _),
 		GoalInfo, InstMap0, Info, Rep) :-
-	module_info_pred_info(Info^module_info, PredId, PredInfo),
+	module_info_pred_info(Info ^ module_info, PredId, PredInfo),
 	pred_info_name(PredInfo, PredName),
 	list__map(term__var_to_int, Args, ArgsRep),
 	AtomicGoalRep = plain_call_rep(PredName, ArgsRep),
