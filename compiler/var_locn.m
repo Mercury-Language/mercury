@@ -852,13 +852,15 @@ var_locn__assign_dynamic_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
 			  "accurate GC combined with term size profiling")
 		;
 			TotalOffset = yes(1)
-		)
+		),
+		TotalSize = Size + 1
 	;
-		TotalOffset = MaybeOffset
+		TotalOffset = MaybeOffset,
+		TotalSize = Size
 	),
 	CellCode = node([
-		incr_hp(Lval, yes(Ptag), TotalOffset, const(int_const(Size)),
-			TypeMsg)
+		incr_hp(Lval, yes(Ptag), TotalOffset,
+			const(int_const(TotalSize)), TypeMsg)
 			- string__append("Allocating heap for ", VarName)
 	]),
 	var_locn__set_magic_var_location(Var, Lval, !VLI),
