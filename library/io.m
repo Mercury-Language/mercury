@@ -74,8 +74,8 @@
 
 :- type io__error.	% Use io__error_message to decode it.
 
-	% Poly-type is used for io__write_many, which does
-	% some vaguely printf-like formatting.
+	% Poly-type is used for io__write_many and io__format,
+	% which do printf-like formatting.
 
 :- type io__poly_type == string__poly_type.
 %			--->
@@ -160,6 +160,14 @@
 
 % Text output predicates.
 
+:- pred io__nl(io__state, io__state).
+:- mode io__nl(di, uo) is det.
+%		Writes a newline character to the current output stream.
+
+:- pred io__nl(io__output_stream, io__state, io__state).
+:- mode io__nl(in, di, uo) is det.
+%		Writes a newline character to the specified output stream.
+
 :- pred io__write_string(string, io__state, io__state).
 :- mode io__write_string(in, di, uo) is det.
 %		Writes a string to the current output stream.
@@ -203,13 +211,32 @@
 %	io__write_float(Float, IO0, IO1).
 %		Writes a floating point number to the specified stream.
 
+:- pred io__format(string, list(io__poly_type), io__state, io__state).
+:- mode io__format(in, in, di, uo) is det.
+%	io__format(FormatString, Arguments, IO0, IO).
+%		Formats the specified arguments according to
+%		the format string, using string__format, and
+%		then writes the result to standard output.
+%		(See the documentation of string__format for details.)
+
+:- pred io__format(io__output_stream, string, list(io__poly_type),
+		io__state, io__state).
+:- mode io__format(in, in, in, di, uo) is det.
+%	io__format(Stream, FormatString, Arguments, IO0, IO).
+%		Formats the specified argument list according to
+%		the format string, using string__format, and
+%		then writes the result to the specified output stream.
+%		(See the documentation of string__format for details.)
+
 :- pred io__write_many(list(io__poly_type), io__state, io__state).
 :- mode io__write_many(in, di, uo) is det.
-%	writes a polyglot to output.
+%	io__write_many(Arguments, IO0, IO).
+%		Writes the specified arguments to the current output stream.
 
 :- pred io__write_many(io__output_stream, list(io__poly_type), io__state, io__state).
 :- mode io__write_many(in, in, di, uo) is det.
-%	writes a polyglot to a specified stream.
+%	io__write_many(Stream, Arguments, IO0, IO).
+%		Writes the specified arguments to the specified stream.
 
 :- pred io__write(T, io__state, io__state).
 :- mode io__write(in, di, uo) is det.
@@ -294,21 +321,23 @@
 
 :- pred io__get_line_number(int, io__state, io__state).
 :- mode io__get_line_number(out, di, uo) is det.
+%	Return the line number of the current input stream.
+%	Lines are normally numbered starting at 1
+%	(but this can be overridden by calling io__set_line_number).
 
 :- pred io__get_line_number(io__input_stream, int, io__state, io__state).
 :- mode io__get_line_number(in, out, di, uo) is det.
-
-%	Return the line number of the current input stream.
-%	Lines are numbered starting at 1.
+%	Return the line number of the specified input stream.
+%	Lines are normally numbered starting at 1
+%	(but this can be overridden by calling io__set_line_number).
 
 :- pred io__set_line_number(int, io__state, io__state).
 :- mode io__set_line_number(in, di, uo) is det.
+%	Set the line number of the current input stream.
 
 :- pred io__set_line_number(io__input_stream, int, io__state, io__state).
 :- mode io__set_line_number(in, in, di, uo) is det.
-
-%	Return the line number of the current input stream.
-%	Lines are numbered starting at 1.
+%	Set the line number of the specified input stream.
 
 %-----------------------------------------------------------------------------%
 
@@ -955,6 +984,12 @@ io__ignore_whitespace(Stream, Result) -->
 
 % output predicates
 
+io__nl -->
+	io__write_char('\n').
+
+io__nl(Stream) -->
+	io__write_char(Stream, '\n').
+
 io__write_strings(Strings) -->
 	io__output_stream(Stream),
 	io__write_strings(Stream, Strings).
@@ -963,6 +998,14 @@ io__write_strings(_Stream, []) --> [].
 io__write_strings(Stream, [S|Ss]) -->
 	io__write_string(Stream, S),
 	io__write_strings(Stream, Ss).
+
+io__format(FormatString, Arguments) -->
+	io__output_stream(Stream),
+	io__format(Stream, FormatString, Arguments).
+
+io__format(Stream, FormatString, Arguments) -->
+	{ string__format(FormatString, Arguments, String) },
+	io__write_string(Stream, String).
 
 io__write_many(Poly_list) -->
 	io__output_stream(Stream),
