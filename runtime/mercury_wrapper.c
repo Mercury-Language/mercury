@@ -248,37 +248,7 @@ mercury_runtime_init(int argc, char **argv)
 #endif
 
 #ifdef CONSERVATIVE_GC
-	GC_quiet = TRUE;
-
-	/*
-	** Call GC_INIT() to tell the garbage collector about this DLL.
-	** (This is necessary to support Windows DLLs using gnu-win32.)
-	*/
-	GC_INIT();
-
-	/*
-	** call the init_gc() function defined in <foo>_init.c,
-	** which calls GC_INIT() to tell the GC about the main program.
-	** (This is to work around a Solaris 2.X (X <= 4) linker bug,
-	** and also to support Windows DLLs using gnu-win32.)
-	*/
-	(*address_of_init_gc)();
-
-	/*
-	** Double-check that the garbage collector knows about
-	** global variables in shared libraries.
-	*/
-	GC_is_visible(&MR_runqueue_head);
-
-	/* The following code is necessary to tell the conservative */
-	/* garbage collector that we are using tagged pointers */
-	{
-		int i;
-
-		for (i = 1; i < (1 << TAGBITS); i++) {
-			GC_REGISTER_DISPLACEMENT(i);
-		}
-	}
+	MR_init_conservative_GC();
 #endif
 
 	/*
@@ -353,6 +323,44 @@ mercury_runtime_init(int argc, char **argv)
 	restore_regs_from_mem(c_regs);
 
 } /* end runtime_mercury_init() */
+
+#ifdef CONSERVATIVE_GC
+void
+MR_init_conservative_GC(void)
+{
+	GC_quiet = TRUE;
+
+	/*
+	** Call GC_INIT() to tell the garbage collector about this DLL.
+	** (This is necessary to support Windows DLLs using gnu-win32.)
+	*/
+	GC_INIT();
+
+	/*
+	** call the init_gc() function defined in <foo>_init.c,
+	** which calls GC_INIT() to tell the GC about the main program.
+	** (This is to work around a Solaris 2.X (X <= 4) linker bug,
+	** and also to support Windows DLLs using gnu-win32.)
+	*/
+	(*address_of_init_gc)();
+
+	/*
+	** Double-check that the garbage collector knows about
+	** global variables in shared libraries.
+	*/
+	GC_is_visible(&MR_runqueue_head);
+
+	/* The following code is necessary to tell the conservative */
+	/* garbage collector that we are using tagged pointers */
+	{
+		int i;
+
+		for (i = 1; i < (1 << TAGBITS); i++) {
+			GC_REGISTER_DISPLACEMENT(i);
+		}
+	}
+}
+#endif /* CONSERVATIVE_GC */
 
 void 
 do_init_modules(void)
@@ -698,9 +706,9 @@ process_options(int argc, char **argv)
 				MR_gotodebug    = TRUE;
 			else if (streq(MR_optarg, "G"))
 #ifdef CONSERVATIVE_GC
-			GC_quiet = FALSE;
+				GC_quiet = FALSE;
 #else
-			; /* ignore inapplicable option */
+				; /* ignore inapplicable option */
 #endif
 			else if (streq(MR_optarg, "h"))
 				MR_heapdebug    = TRUE;

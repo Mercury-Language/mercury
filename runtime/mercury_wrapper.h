@@ -47,6 +47,17 @@ extern	int	mercury_runtime_terminate(void);
 extern	int	MR_load_aditi_rl_code(void);
 
 /*
+** MR_init_conservative_GC() initializes the Boehm (et al)
+** conservative collector.  For the LLDS back-end, it is normally
+** called from mercury_runtime_init(), but for the MLDS
+** (--high-level-code) back-end, it may be called directly
+** from main().
+*/
+#ifdef CONSERVATIVE_GC
+  extern void	MR_init_conservative_GC(void);
+#endif
+
+/*
 ** The following global variables are set by mercury_init() on startup.
 ** The entry points are set based on the options to mkinit.c.
 ** The address_of_foo pointers are set to the address of
