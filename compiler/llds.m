@@ -122,8 +122,9 @@
 	;	decr_sp(int).
 			% Decrement the det stack pointer.
 
-:- type liveinfo	--->	live_lvalue(lval, int).
-				% XXX this tuple will need shape information
+:- type liveinfo	--->	live_lvalue(lval, shape_number).
+
+:- type shape_number == int.
 
 :- type lval		--->	reg(reg)	% either an int or float reg
 			;	stackvar(int)	% det stack slots

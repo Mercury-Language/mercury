@@ -214,7 +214,8 @@ special_pred_info(compare, Type,
 
 :- type shape           --->    quad(shape_tag, shape_tag, shape_tag,
 					 shape_tag)
-			;	abstract(type) 
+			;	abstract(type, list(shape_num))
+			;	equivalent(shape_num)
 			;	polymorphic(type)
 			;	closure(type).
 

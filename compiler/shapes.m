@@ -250,6 +250,13 @@ shapes__create_shape(Type_Tab, Shape_Id, Shape, S_Tab0, S_Tab) :-
 		S_Tab = S_Tab0
 	).
 
+
+
+%-----------------------------------------------------------------------------%
+% XXX Should we create shapes for the abstract shape arguments. I think so!
+% XXX What happens when the abstract shape refers to a local shape as an
+% XXX argument? At link time there is no entry for that shape, so KABOOM.
+%-----------------------------------------------------------------------------%
 :- pred shapes__create_shape_2(type_table, type, type_id, list(type), shape,
 					shape_table, shape_table).
 :- mode shapes__create_shape_2(in, in, in, in, out, in, out) is det.
@@ -282,16 +289,38 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 		% An abstract type that is imported from elsewhere.
 		% Later we find the real definition.
 		->
-			Shape = abstract(Type),
-			S_Tab = S_Tab0
+			(
+				type_to_type_id(Type, _, TypeArgs)
+			->
+				shapes__lookup_simple_info(TypeArgs, 
+					ShapeList, Type_Tab, S_Tab0, S_Tab),
+				shapes__get_snums(ShapeList, SNums),
+				Shape = abstract(Type, SNums) 
+			;
+				Shape = abstract(Type, [2000]),
+				S_Tab = S_Tab0
+			) 
 		;
 			Hlds_Type = hlds__type_defn(_, _, eqv_type(ET), _, _)
 		% The case where an abstract type is equivalent to another
  		% abstract type...
+		% XXX I think we want to look up a new shape number here.
 		->
-			shapes__replace_context(ET - ground, EqvType - _),
-			Shape = abstract(EqvType),
-			S_Tab = S_Tab0
+			shapes__replace_context(ET - ground, EqvType - G),
+			shapes__request_shape_number(EqvType - G,
+				Type_Tab, S_Tab0, S_Tab, EqvShapeNum),
+			Shape = equivalent(EqvShapeNum)
+	%		(
+	%			type_to_type_id(EqvType, _, TypeArgs)
+	%		->
+	%			shapes__lookup_simple_info(TypeArgs, 
+	%				ShapeList, Type_Tab, S_Tab0, S_Tab),
+	%			shapes__get_snums(ShapeList, SNums),
+	%			Shape = abstract(EqvType, SNums) 
+	%		;
+	%			Shape = abstract(EqvType, [2001]),
+	%			S_Tab = S_Tab0
+	%		) 
 		;
 			error("shapes__create_shape_2: unknown type")
 		)
@@ -303,6 +332,13 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 	;
 		error("shapes__create_shape_2: not in type table")
 	).
+
+:- pred shapes__get_snums(list(pair(shape_num,shape_id)),list(shape_num)).
+:- mode shapes__get_snums(in, out) is det.
+shapes__get_snums([], []).
+shapes__get_snums([N-_I | NIs], [N | Ns]) :-
+	shapes__get_snums(NIs, Ns).
+
 
 :- pred apply_to_ctors(list(constructor), tsubst, list(constructor)).
 :- mode apply_to_ctors(in, in, out) is det.
@@ -404,6 +440,9 @@ shapes__lookup_simple_info([ Arg | Args], [ S_Num - S | ShapeIds],
 % all the types that shape, and find all their arguments, and return
 % it as a list of lists. Fortunately, this is just a case of calling
 % shapes__lookup_simple_info multiple times. 
+% XXX This code contains a bug. We are adding empty shape_id lists to
+% the complicated info list. This makes it seem like we are adding 
+% constants to the complicated tag. 
 %-----------------------------------------------------------------------------%
 :- pred shapes__lookup_complicated_info(list(constructor), cons_tag_values,
 		bit_number, list(list(pair(shape_num, shape_id))), type_table, 
@@ -411,33 +450,35 @@ shapes__lookup_simple_info([ Arg | Args], [ S_Num - S | ShapeIds],
 :- mode shapes__lookup_complicated_info(in, in, in, out, in, in, out) is det.
 
 shapes__lookup_complicated_info([], _, _, [], _, S_Tab, S_Tab).
-shapes__lookup_complicated_info([Ctor | Cs], Tagvals, Bits, [S_Ids | Ss],
+shapes__lookup_complicated_info([Ctor | Cs], Tagvals, Bits, ShapeIds,
 				 Type_Table, S_Tab0, S_Tab) :-
-	shapes__get_complicated_shapeids(Ctor, Tagvals, Bits, S_Ids,
-					Type_Table, S_Tab0, S_Tab1),
 	shapes__lookup_complicated_info(Cs, Tagvals, Bits, Ss, 
-					Type_Table, S_Tab1, S_Tab).
+		Type_Table, S_Tab0, S_Tab1),
+	(
+		shapes__get_complicated_shapeids(Ctor, Tagvals, Bits, S_Ids,
+					Type_Table, S_Tab1, S_TabOut)
+	->
+		ShapeIds = [S_Ids | Ss],
+		S_Tab = S_TabOut
+	;
+		ShapeIds = Ss,
+		S_Tab = S_Tab1
+	).
 
 :- pred shapes__get_complicated_shapeids(constructor, cons_tag_values,
 			bit_number, list(pair(shape_num, shape_id)), 
 			type_table, shape_table, shape_table).
-:- mode shapes__get_complicated_shapeids(in, in, in, out, in, in, out) is det.
+:- mode shapes__get_complicated_shapeids(in, in, in, out, in, in, out) 
+					is semidet.
 shapes__get_complicated_shapeids(Ctor, Tagvals, Bits, S_Ids, 
 					Type_Table, S_Tab0, S_Tab) :- 
 	Ctor = Symname - Args,
 	shapes__make_cons_id(Symname, Args, C_Id),
 	map__lookup(Tagvals, C_Id, C_Tag),
-	(
-		C_Tag = complicated_tag(Primary, _Sec),
-		shapes__tag_match(Bits, Primary)
-	->
-		shapes__replace_all_contexts(Args, NewArgs),
-		shapes__lookup_simple_info(NewArgs, S_Ids,  
-						Type_Table, S_Tab0, S_Tab) 
-	;
-		S_Ids = [],
-		S_Tab = S_Tab0
-	).
+	C_Tag = complicated_tag(Primary, _Sec),
+	shapes__tag_match(Bits, Primary),
+	shapes__replace_all_contexts(Args, NewArgs),
+	shapes__lookup_simple_info(NewArgs, S_Ids,  Type_Table, S_Tab0, S_Tab).
 
 %-----------------------------------------------------------------------------%
 % From a list of shape_ids, create the list of shape tags and numbers, 
