@@ -11,9 +11,13 @@
 # in /home/mercury/public/test_mercury/scripts
 # should be updated manually.
 
+#-----------------------------------------------------------------------------#
+
 tm_dir=/home/mercury/public/test_mercury
 
 #-----------------------------------------------------------------------------#
+
+ulimit -c 0
 
 case $# in
 	1)	HOST=$1 ;;
