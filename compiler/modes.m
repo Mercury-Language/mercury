@@ -134,7 +134,7 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	( { pred_info_is_imported(PredInfo0) } ->
-		{ ModuleInfo3 = ModuleInfo0 }
+		{ ModuleInfo4 = ModuleInfo0 }
 	;
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
@@ -153,9 +153,15 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 		{ module_info_num_errors(ModuleInfo2, NumErrors0) },
 		{ NumErrors is NumErrors0 + Errs },
 		{ module_info_set_num_errors(ModuleInfo2, NumErrors,
-						ModuleInfo3) }
+						ModuleInfo3) },
+		{ Errs \= 0 ->
+			module_info_remove_predid(ModuleInfo3, PredId,
+				ModuleInfo4)
+		;
+			ModuleInfo4 = ModuleInfo3
+		}
 	),
-	modecheck_pred_modes_2(PredIds, ModuleInfo3, ModuleInfo).
+	modecheck_pred_modes_2(PredIds, ModuleInfo4, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2354,17 +2360,11 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
 	mode_util__modes_to_uni_modes(ModeX, ArgModes0,
 						ModuleInfo, ArgModes),
 	map__lookup(VarTypes, X, TypeX),
-	( TypeX = term__functor(term__atom("pred"), _, _) ->
-		set__init(WaitingVars),
-		mode_info_error(WaitingVars, mode_error_unify_pred,
-			ModeInfo0, ModeInfo)
-	;
-		ModeInfo = ModeInfo0
-	),
 	(
 		mode_is_output(ModuleInfo, ModeX)
 	->
-		Unification = construct(X, ConsId, ArgVars, ArgModes)
+		Unification = construct(X, ConsId, ArgVars, ArgModes),
+		ModeInfo = ModeInfo0
 	; 
 		% It's a deconstruction.
 		(
@@ -2382,17 +2382,27 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
 			InitialInst = bound([_]),
 			FinalInst = bound([_])
 		->
-			Det = deterministic
+			Det = deterministic,
+			ModeInfo = ModeInfo0
 		;
 			% If the type has only one constructor, then the
 			% unification must be deterministic
 			type_constructors(TypeX, ModuleInfo, Constructors),
 			Constructors = [_]
 		->
-			Det = deterministic
+			Det = deterministic,
+			ModeInfo = ModeInfo0
 		;
 			% Otherwise, it's semidet
-			Det = semideterministic
+			Det = semideterministic,
+			( TypeX = term__functor(term__atom("pred"), _, _) ->
+				set__init(WaitingVars),
+				mode_info_error(WaitingVars,
+					mode_error_unify_pred,
+					ModeInfo0, ModeInfo)
+			;
+				ModeInfo = ModeInfo0
+			)
 		),
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, Det)
 	).
