@@ -22,11 +22,11 @@ typedef void	Code;
 
 /* DEFINITIONS FOR THE LABEL TABLE */
 
-typedef struct s_entry
+typedef struct s_label
 {
 	const char	*e_name;   /* name of the procedure	     */
 	Code		*e_addr;   /* address of the code	     */
-} Entry;
+} Label;
 
 #define	MAXLABELS	800
 
@@ -52,20 +52,9 @@ typedef struct s_entry
 /* a table of the entry points defined by the various modules */
 /* TODO: replace this with a hash table */
 
-extern	Entry	entries[];
+extern	Label	entries[];
 extern	int	cur_entry;	/* next free slot in entries table   */
 extern	int	which;		/* procedure called from interpreter */
-
-/* standard labels in the entry table */
-extern	Code	*doredo;
-extern	Code	*dofail;
-extern	Code	*doresethpfail;
-extern	Code	*doresetcpvar0fail;
-extern	Code	*dosucceed;
-extern	Code	*doslownegfail;
-extern	Code	*doslownegsucceed;
-extern	Code	*dofastnegredo;
-extern	Code	*dofastnegproceed;
 
 /* DEFINITIONS FOR WORD LAYOUT */
 
@@ -77,16 +66,52 @@ extern	Code	*dofastnegproceed;
 
 /* DEFINITIONS FOR THE "PORTABLE ASSEMBLER" NON-LOCAL GOTOS */
 
+#define paste(a,b) a##b
+
 #ifdef USE_GCC_NONLOCAL_GOTOS
   #ifndef __GNUC__
   #error "You must use gcc if you define USE_GCC_NONLOCAL_GOTOS"
   #endif
-  #define LABEL(label)	(&&label)
-  #define GOTO(label)	do { debuggoto(label); goto *(label); } while(0)
+  typedef void *EntryPoint;
+  #define ENTRY(predname) 	paste(entry_,predname)
+  #define LABEL(label)		(&&label)
+  #define GOTO(label)		do { debuggoto(label); goto *(label); } while(0)
+	  /*
+	  ** GOTO_LABEL(label) is the same as GOTO(LABEL(label)) except
+	  ** that it may allow gcc to generate slightly better code
+	  */
+  #define GOTO_LABEL(label) 	do { debuggoto(&&label); goto label; } while(0)
 #else
-  #define LABEL(label)	(label)
-  #define GOTO(label)	do { debuggoto(label); return (label); } while(0)
+  typedef Code *EntryPoint(void);
+  #define ENTRY(predname) 	predname
+  #define LABEL(label)		(label)
+  #define GOTO(label)		do { debuggoto(label); return (label); } while(0)
+  #define GOTO_LABEL(label) 	GOTO(LABEL(label))
 #endif
+
+/* STANDARD ENTRY POINTS */
+
+/* these #defines are just for backwards compatibility with old .mod files */
+
+#define doredo 			ENTRY(do_redo)
+#define dofail 			ENTRY(do_fail)
+#define doresethpfail		ENTRY(do_reset_hp_fail)
+#define doresetcpvar0fail	ENTRY(do_reset_cpvar0_fail)
+#define dosucceed		ENTRY(do_succeed)
+#define doslownegfail		ENTRY(do_slowneg_fail)
+#define doslownegsucceed	ENTRY(do_slowneg_succeed)
+#define dofastnegredo		ENTRY(do_fastneg_redo)
+#define dofastnegproceed	ENTRY(do_fastneg_proceed)
+
+extern	EntryPoint	doredo;
+extern	EntryPoint	dofail;
+extern	EntryPoint	doresethpfail;
+extern	EntryPoint	doresetcpvar0fail;
+extern	EntryPoint	dosucceed;
+extern	EntryPoint	doslownegfail;
+extern	EntryPoint	doslownegsucceed;
+extern	EntryPoint	dofastnegredo;
+extern	EntryPoint	dofastnegproceed;
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
@@ -97,42 +122,22 @@ extern	Code	*dofastnegproceed;
 				GOTO(proc);			\
 			} while (0)
 
-#define paste(a,b) a##b
-
-#ifdef USE_GCC_NONLOCAL_GOTOS
 #define	callentry(procname, succcont)				\
 			do {					\
-				extern Code *paste(entry_,procname); \
-				call(paste(entry_,procname), succcont); \
+				extern EntryPoint ENTRY(procname); \
+				call(ENTRY(procname), succcont); \
 			} while (0)
-#else
-#define	callentry(procname, succcont)				\
-			do {					\
-				extern Code *procname(void); 	\
-				call(procname, succcont); 	\
-			} while (0)				
-#endif
 
 #define	tailcall(proc)	do {					\
 				debugtailcall(proc);		\
 				GOTO(proc);			\
 			} while (0)
 
-#ifdef USE_GCC_NONLOCAL_GOTOS
 #define	tailcallentry(procname)					\
 			do {					\
-				extern Code *paste(entry_,procname); \
-				debugtailcall(procname);	\
-				GOTO(paste(entry_,procname));	\
+				extern EntryPoint ENTRY(procname); \
+				tailcall(ENTRY(procname));	\
 			} while (0)
-#else
-#define	tailcallentry(procname)					\
-			do {					\
-				extern Code *procname(void); 	\
-				debugtailcall(procname);	\
-				GOTO(procname); 		\
-			} while (0)				
-#endif
 
 #define	proceed()	do {					\
 				debugproceed();			\
@@ -514,6 +519,7 @@ extern	bool	heapdebug;
 extern	bool	stackdebug;
 extern	bool	cpstackdebug;
 extern	bool	detaildebug;
+extern	bool	finaldebug;
 
 /* debugging messages, defined in aux.c */
 
@@ -547,5 +553,8 @@ extern	void	printregs(const char *);
 extern	void	printframe(const char *);
 extern	void	dumpframe(const Word *);
 extern	void	dumpcpstack(void);
+
+extern 	void	init_engine(void);
+extern 	void	call_engine(Code *);
 
 #endif /* IMP_H */
