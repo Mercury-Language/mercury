@@ -1774,6 +1774,7 @@ intermod__write_type_spec_pragmas(ModuleInfo, PredId) -->
 	% a predicate with the given marker.
 :- pred intermod__should_output_marker(marker::in, bool::out) is det.
 
+intermod__should_output_marker(stub, no).
 	% Since the inferred declarations are output, these
 	% don't need to be done in the importing module.
 intermod__should_output_marker(infer_type, no).

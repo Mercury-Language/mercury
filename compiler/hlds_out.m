@@ -948,6 +948,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 hlds_out__write_marker_list(Markers) -->
 	io__write_list(Markers, ", ", hlds_out__write_marker).
 
+hlds_out__marker_name(stub, "stub").
 hlds_out__marker_name(infer_type, "infer_type").
 hlds_out__marker_name(infer_modes, "infer_modes").
 hlds_out__marker_name(inline, "inline").
