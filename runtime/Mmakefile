@@ -39,6 +39,7 @@ HDRS		=	\
 			mercury_getopt.h	\
 			mercury_goto.h		\
 			mercury_grade.h		\
+			mercury_hash_table.h	\
 			mercury_heap.h		\
 			mercury_heap_profile.h	\
 			mercury_imp.h		\
@@ -60,7 +61,6 @@ HDRS		=	\
 			mercury_stack_layout.h	\
 			mercury_stack_trace.h	\
 			mercury_string.h	\
-			mercury_table.h		\
 			mercury_table_any.h	\
 			mercury_table_enum.h	\
 			mercury_table_builtins.h \
@@ -108,6 +108,7 @@ CFILES		= 	\
 			mercury_getopt.c	\
 			mercury_getopt1.c	\
 			mercury_grade.c		\
+			mercury_hash_table.c	\
 			mercury_heap_profile.c	\
 			mercury_ho_call.c	\
 			mercury_label.c		\
@@ -120,7 +121,6 @@ CFILES		= 	\
 			mercury_regs.c		\
 			mercury_signal.c	\
 			mercury_stack_trace.c	\
-			mercury_table.c		\
 			mercury_table_any.c	\
 			mercury_table_enum.c	\
 			mercury_table_builtins.c \
