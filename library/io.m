@@ -1800,31 +1800,27 @@ io__binary_output_stream_name(Stream, Name) -->
 :- pred io__stream_name(io__stream, string, io__state, io__state).
 :- mode io__stream_name(in, out, di, uo) is det.
 
-	% XXX major design flaw with regard to unique modes
-	% means that this is very inefficient.
 io__stream_name(Stream, Name) -->
-	io__get_stream_names(StreamNames0),
-	{ map__search(StreamNames0, Stream, Name1) ->
+	io__get_stream_names(StreamNames),
+	{ map__search(StreamNames, Stream, Name1) ->
 		Name = Name1
 	;
 		Name = "<stream name unavailable>"
 	},
-	{ copy(StreamNames0, StreamNames) }, % is this necessary?
 	io__set_stream_names(StreamNames).
 
 :- pred io__get_stream_names(io__stream_names, io__state, io__state).
-:- mode io__get_stream_names(uo, di, uo) is det.
+:- mode io__get_stream_names(out, di, uo) is det.
 
-:- pragma c_code(io__get_stream_names(StreamNames::uo, IO0::di, IO::uo), "
+:- pragma c_code(io__get_stream_names(StreamNames::out, IO0::di, IO::uo), "
 	StreamNames = ML_io_stream_names;
-	ML_io_stream_names = 0; /* ensure uniqueness */
 	update_io(IO0, IO);
 ").
 
 :- pred io__set_stream_names(io__stream_names, io__state, io__state).
-:- mode io__set_stream_names(di, di, uo) is det.
+:- mode io__set_stream_names(in, di, uo) is det.
 
-:- pragma c_code(io__set_stream_names(StreamNames::di, IO0::di, IO::uo), "
+:- pragma c_code(io__set_stream_names(StreamNames::in, IO0::di, IO::uo), "
 	ML_io_stream_names = StreamNames;
 	update_io(IO0, IO);
 ").
@@ -1842,9 +1838,7 @@ io__delete_stream_name(Stream) -->
 
 io__insert_stream_name(Stream, Name) -->
 	io__get_stream_names(StreamNames0),
-	{ copy(Stream, Stream1) },
-	{ copy(Name, Name1) },
-	{ map__set(StreamNames0, Stream1, Name1, StreamNames) },
+	{ map__set(StreamNames0, Stream, Name, StreamNames) },
 	io__set_stream_names(StreamNames).
 
 %-----------------------------------------------------------------------------%

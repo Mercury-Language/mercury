@@ -102,14 +102,21 @@
 
 % PREDICATES.
 
-% copy/2 is used to make a `unique' copy of a data structure,
-% so that you can use destructive update.
-% At the moment it doesn't actually do any copying, since we
-% haven't implemented destructive update yet and so there is no need.
+% copy/2 makes a deep copy of a data structure.  The resulting copy is a
+% `unique' value, so you can use destructive update on it.
 
 :- pred copy(T, T).
 :- mode copy(ui, uo) is det.
 :- mode copy(in, uo) is det.
+
+% unsafe_promise_unique/2 is used to promise the compiler that you have a
+% `unique' copy of a data structure, so that you can use destructive update.
+% It is used to work around limitations in the current support for unique
+% modes.  `unsafe_promise_unique(X, Y)' is the same as `Y = X' except that
+% the compiler will assume that `Y' is unique.
+
+:- pred unsafe_promise_unique(T, T).
+:- mode unsafe_promise_unique(in, uo) is det.
 
 % We define !/0 (and !/2 for dcgs) to be equivalent to `true'.  This is for
 % backwards compatibility with Prolog systems.  But of course it only works
@@ -640,31 +647,24 @@ compare_error :-
 
 %-----------------------------------------------------------------------------%
 
-/* copy/2
-	:- pred copy(T, T).
-	:- mode copy(ui, uo) is det.
-	:- mode copy(in, uo) is det.
+/* unsafe_promise_unique/2
+	:- pred unsafe_promise_unique(T, T).
+	:- mode unsafe_promise_unique(in, uo) is det.
 */
-
-	% XXX note that this is *not* deep copy, and so it is unsafe!
 
 /* This doesn't work, due to the lack of support for aliasing.
-:- pragma(c_code, copy(X::ui, Y::uo), "Y = X;").
-:- pragma(c_code, copy(X::in, Y::uo), "Y = X;").
+:- pragma(c_code, unsafe_promise_unique(X::in, Y::uo), "Y = X;").
 */
 
-:- external(copy/2).
+:- external(unsafe_promise_unique/2).
 :- pragma(c_code, "
-Define_extern_entry(mercury__copy_2_0);
-Define_extern_entry(mercury__copy_2_1);
+Define_extern_entry(mercury__unsafe_promise_unique_2_0);
 
-BEGIN_MODULE(copy_module)
-	init_entry(mercury__copy_2_0);
-	init_entry(mercury__copy_2_1);
+BEGIN_MODULE(unsafe_promise_unique_module)
+	init_entry(mercury__unsafe_promise_unique_2_0);
 BEGIN_CODE
 
-Define_entry(mercury__copy_2_0);
-Define_entry(mercury__copy_2_1);
+Define_entry(mercury__unsafe_promise_unique_2_0);
 #ifdef	COMPACT_ARGS
 	r1 = r2;
 #else
@@ -676,9 +676,88 @@ END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
+INIT sys_init_unsafe_promise_unique_module
+*/
+void sys_init_unsafe_promise_unique_module(void);
+	/* extra declaration to suppress gcc -Wmissing-decl warning */
+void sys_init_unsafe_promise_unique_module(void) {
+	extern ModuleFunc unsafe_promise_unique_module;
+	unsafe_promise_unique_module();
+}
+
+").
+
+%-----------------------------------------------------------------------------%
+
+/* copy/2
+	:- pred copy(T, T).
+	:- mode copy(ui, uo) is det.
+	:- mode copy(in, uo) is det.
+*/
+
+/*************
+Using `pragma c_code' doesn't work, due to the lack of support for
+aliasing, and in particular the lack of support for `ui' modes.
+:- pragma c_code(copy(Value::ui, Copy::uo), "
+	save_transient_registers();
+	Copy = deep_copy(Value, TypeInfo_for_T, NULL, NULL);
+	restore_transient_registers();
+").
+:- pragma c_code(copy(Value::in, Copy::uo), "
+	save_transient_registers();
+	Copy = deep_copy(Value, TypeInfo_for_T, NULL, NULL);
+	restore_transient_registers();
+").
+*************/
+
+:- external(copy/2).
+
+:- pragma(c_header_code, "#include ""deep_copy.h""").
+
+:- pragma(c_code, "
+Define_extern_entry(mercury__copy_2_0);
+Define_extern_entry(mercury__copy_2_1);
+
+BEGIN_MODULE(copy_module)
+	init_entry(mercury__copy_2_0);
+	init_entry(mercury__copy_2_1);
+BEGIN_CODE
+
+#ifdef PROFILE_CALLS
+  #define fallthru(target, caller) { tailcall((target), (caller)); }
+#else
+  #define fallthru(target, caller)
+#endif
+
+Define_entry(mercury__copy_2_0);
+fallthru(ENTRY(mercury__copy_2_1), ENTRY(mercury__copy_2_0))
+Define_entry(mercury__copy_2_1);
+{
+	Word value, copy, type_info;
+
+	type_info = r1;
+	value = r2;
+
+	save_transient_registers();
+	copy = deep_copy(value, type_info, NULL, NULL);
+	restore_transient_registers();
+
+#ifdef	COMPACT_ARGS
+	r1 = copy;
+#else
+	r3 = copy;
+#endif
+
+	proceed();
+}
+END_MODULE
+
+/* Ensure that the initialization code for the above module gets run. */
+/*
 INIT sys_init_copy_module
 */
-void sys_init_copy_module(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_copy_module(void);
+	/* extra declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_copy_module(void) {
 	extern ModuleFunc copy_module;
 	copy_module();
