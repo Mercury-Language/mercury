@@ -695,6 +695,9 @@
 		% Some (e.g. C#) also allow switches on strings.
 		% Most target languages only allow matching on values;
 		% only some (e.g. GNU C) allow matching on ranges.
+		% The MLDS code generator should only generate switches
+		% that the target will support.
+		%
 		% Note that unlike C, MLDS cases do NOT fall through; if you
 		% want to achieve that effect, you need to use an explicit goto.
 	;	switch(
@@ -833,7 +836,12 @@ XXX Full exception handling support is not yet implemented.
 	;	match_range(mlds__rval, mlds__rval).  % match_range(Min, Max)
 						% matches if the switch value
 						% is between Min and Max,
-						% inclusive
+						% inclusive.
+						% Note that this should only be
+						% used if the target supports
+						% it; currently the C back-end
+						% supports this only if you're
+						% using the GNU C compiler.
 
 	% The switch_default specifies what to do if none of the switch
 	% conditions match.

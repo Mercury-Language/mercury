@@ -1735,6 +1735,8 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 			% each procedure
 			%
 
+				% XXX we should use the standard library
+				% `counter' type here
 			func_label :: mlds__func_sequence_num,
 			commit_label :: commit_sequence_num,
 			label :: label_num,
