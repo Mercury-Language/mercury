@@ -42,9 +42,16 @@
 
 :- inst non_empty_list = bound([ground | ground]).
 
-:- mode input_list_skel :: list_skel -> list_skel.
-:- mode output_list_skel :: free -> list_skel.
-:- mode list_skel_output :: list_skel -> ground.
+:- mode in_list_skel :: list_skel -> list_skel.
+:- mode out_list_skel :: free -> list_skel.
+:- mode list_skel_out :: list_skel -> ground.
+
+	% These more verbose versions are deprecated.
+	% They exist only for backwards compatibility,
+	% and will be removed in a future release.
+:- mode input_list_skel :: in_list_skel.
+:- mode output_list_skel :: out_list_skel.
+:- mode list_skel_output :: list_skel_out.
 
 	% These modes are particularly useful for passing round lists
 	% of higher order terms, since they have complicated insts
