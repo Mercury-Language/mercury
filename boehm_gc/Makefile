@@ -26,7 +26,7 @@ CXX=g++ -ansi
 # Needed only for "make c++", which adds the c++ interface
 
 # AS=as
-AS=../scripts/mgnuc --grade $(GRADE) -x assembler-with-cpp -c
+AS=../scripts/mgnuc --grade $(GRADE) --assemble
 
 # CFLAGS= -O -DALL_INTERIOR_POINTERS -DNO_SIGNALS -DSILENT
 CFLAGS= -DSILENT $(EXTRA_CFLAGS)
