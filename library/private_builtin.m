@@ -774,86 +774,86 @@ do_compare__base_typeclass_info_1_0(
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	store_ticket(Ticket::out),
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
+#if MR_USE_TRAIL
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	// MR_store_ticket(Ticket);
 #else
-	Ticket = 0;
+	Ticket = null;
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	reset_ticket_undo(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
+#if MR_USE_TRAIL
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	// MR_reset_ticket(Ticket, MR_undo);
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	reset_ticket_commit(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
+#if MR_USE_TRAIL
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	// MR_reset_ticket(Ticket, MR_commit);
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	reset_ticket_solve(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
+#if MR_USE_TRAIL
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	// MR_reset_ticket(Ticket, MR_solve);
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	discard_ticket,
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
+#if MR_USE_TRAIL
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	// MR_discard_ticket();
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	prune_ticket,
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
+#if MR_USE_TRAIL
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	// MR_prune_ticket();
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	mark_ticket_stack(TicketCounter::out),
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
+#if MR_USE_TRAIL
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	// MR_mark_ticket_stack(TicketCounter);
 #else
-	TicketCounter = 0;
+	TicketCounter = null;
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	prune_tickets_to(TicketCounter::in),
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
+#if MR_USE_TRAIL
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	// MR_prune_tickets_to(TicketCounter);
 #endif
 ").
@@ -991,15 +991,15 @@ trailed_nondet_pragma_foreign_code :-
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	mark_hp(SavedHeapPointer::out),
 	[will_not_call_mercury, thread_safe],
 "
 	/* We can't do heap reclamation on failure in the .NET back-end. */
-	SavedHeapPointer = 0;
+	SavedHeapPointer = null;
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	restore_hp(_SavedHeapPointer::in),
 	[will_not_call_mercury, thread_safe],
 "
