@@ -194,6 +194,7 @@ MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all
 MCFLAGS-uniq_mode_inf_bug	= --infer-all
 MCFLAGS-vn_float		= -O5
+MCFLAGS-zero_arity		= --infer-modes
 
 check:	objs aditi_update.err
 

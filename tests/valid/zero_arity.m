@@ -6,18 +6,41 @@
 
 :- interface.
 
+% bar has one mode, with determinism semidet.
+:- pred bar is semidet.
+
+% baz has one mode, with determinism semidet.
+:- pred baz.
+:- mode baz is semidet.
+
 :- pred use_asm_labels.
 :- mode use_asm_labels is semidet.
 
 :- implementation.
 
-:- pragma c_code(use_asm_labels, [will_not_call_mercury, thread_safe], "
+:- import_module std_util.
 
+bar :- semidet_fail.
+
+baz :- semidet_fail.
+
+% foo has no modes, or the modes for foo will be inferred.
+:- pred foo.
+
+% The mode error here should not be detected because this predicate
+% has no modes and is not called, so no modes will be inferred.
+foo :- X = 1, unify(X, _).
+
+% quux has one mode, whose determinism will be inferred.
+:- pred quux.
+:- mode quux.
+
+quux :- semidet_fail.
+
+:- pragma c_code(use_asm_labels, [will_not_call_mercury, thread_safe], "
 #ifdef USE_ASM_LABELS
 	SUCCESS_INDICATOR = TRUE;
 #else
 	SUCCESS_INDICATOR = FALSE;
 #endif
 ").
-
-
