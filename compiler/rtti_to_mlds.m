@@ -564,7 +564,11 @@ gen_init_type_ctor_rep(Rep) = gen_init_builtin_const(Name) :-
 gen_init_builtin_const(Name) = init_obj(Rval) :-
         mercury_private_builtin_module(PrivateBuiltin),
 	MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
-	Rval = lval(var(qual(MLDS_Module, Name))).
+	% XXX These are actually enumeration constants.
+	% Perhaps we should be using an enumeration type here,
+	% rather than `mlds__native_int_type'.
+	Type = mlds__native_int_type,
+	Rval = lval(var(qual(MLDS_Module, Name), Type)).
 
 %-----------------------------------------------------------------------------%
 %

@@ -1020,7 +1020,7 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = MLDS_DeclFlags :-
 	;
 		Access = private
 	),
-	PerInstance = per_instance,
+	PerInstance = one_copy,
 	Virtuality = non_virtual,
 	Finality = overridable,
 	Constness = modifiable,
@@ -1080,25 +1080,40 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 		% value (rather than being passed by reference) and remove
 		% them from the byref_output_vars field in the ml_gen_info.
 		( CodeModel = model_non ->
-			ml_set_up_initial_succ_cont(ModuleInfo,
+		
+ 			ml_set_up_initial_succ_cont(ModuleInfo, 
 				CopiedOutputVars, MLDSGenInfo0, MLDSGenInfo1)
+ 		;
+		
+		module_info_globals(ModuleInfo, Globals),
+		globals__lookup_bool_option(Globals, det_copy_out,
+			DetCopyOut),
+		(
+			DetCopyOut = yes
+		->
+			% all of the output vars are returned by value
+			% rather than passed by reference
+			ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
+				OutputVars),
+			CopiedOutputVars = OutputVars,
+			ml_gen_info_set_byref_output_vars([],	
+				MLDSGenInfo0, MLDSGenInfo1)
 		;
-			(
-				is_output_det_function(ModuleInfo, PredId,
-					ProcId, ResultVar)
-			->
+ 			is_output_det_function(ModuleInfo, PredId, ProcId,
+ 				ResultVar)
+ 		->
 				CopiedOutputVars = [ResultVar],
 				ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
 					ByRefOutputVars0),
-				list__delete_all(ByRefOutputVars0,
-					ResultVar, ByRefOutputVars),
+				list__delete_all(ByRefOutputVars0, ResultVar, 
+					ByRefOutputVars),
 				ml_gen_info_set_byref_output_vars(
-					ByRefOutputVars,
-					MLDSGenInfo0, MLDSGenInfo1)
+				ByRefOutputVars, MLDSGenInfo0, MLDSGenInfo1)
 			;
 				CopiedOutputVars = [],
 				MLDSGenInfo1 = MLDSGenInfo0
 			)
+		
 		),
 
 		% This would generate all the local variables at the top of
@@ -1579,7 +1594,7 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		ml_gen_info_new_commit_label(CommitLabelNum),
 		{ string__format("commit_%d", [i(CommitLabelNum)],
 			CommitRef) },
-		ml_qualify_var(CommitRef, CommitRefLval),
+		ml_gen_var_lval(CommitRef, mlds__commit_type, CommitRefLval),
 		{ CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context,
 			CommitRef) },
 		{ DoCommitStmt = do_commit(lval(CommitRefLval)) },
@@ -1664,7 +1679,7 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		ml_gen_info_new_commit_label(CommitLabelNum),
 		{ string__format("commit_%d", [i(CommitLabelNum)],
 			CommitRef) },
-		ml_qualify_var(CommitRef, CommitRefLval),
+		ml_gen_var_lval(CommitRef, mlds__commit_type, CommitRefLval),
 		{ CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context,
 			CommitRef) },
 		{ DoCommitStmt = do_commit(lval(CommitRefLval)) },
@@ -1697,7 +1712,6 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 			[TryCommitStatement], Context,
 			CommitFuncDecls, MLDS_Statements),
 		{ MLDS_Decls = LocalVarDecls ++ CommitFuncDecls },
-
 		ml_gen_info_set_var_lvals(OrigVarLvalMap)
 	;
 		% no commit required
@@ -1854,21 +1868,21 @@ ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
 	%
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
-	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ OutputVarName = ml_gen_var_name(VarSet, OutputVar) },
 
 	%
 	% Generate a declaration for a corresponding local variable.
-	%
 	{ string__append("local_", OutputVarName, LocalVarName) },
-	{ LocalVarDefn = ml_gen_var_decl(LocalVarName, Type,
-		mlds__make_context(Context), ModuleInfo) },
-
+	
+	ml_gen_type(Type, MLDS_Type),
+	{ LocalVarDefn = ml_gen_mlds_var_decl(var(LocalVarName), MLDS_Type,
+		mlds__make_context(Context)) },
+	
 	%
 	% Generate code to assign from the local var to the output var
 	%
 	ml_gen_var(OutputVar, OutputVarLval),
-	ml_qualify_var(LocalVarName, LocalVarLval),
+	ml_gen_var_lval(LocalVarName, MLDS_Type, LocalVarLval),
 	{ Assign = ml_gen_assign(OutputVarLval, lval(LocalVarLval), Context) },
 
 	%

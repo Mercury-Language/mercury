@@ -307,8 +307,11 @@ ml_gen_static_const_arg(Var, static_cons(ConsId, ArgVars, StaticArgs), Rval) -->
 		% If this argument is something that would normally be allocated
 		% on the heap, just generate a reference to the static constant
 		% that we must have already generated for it.
+		% XXX Using mdls__array_type(mlds__generic_type) is probably 
+		% wrong when `--high-level-data' is enabled.
 		%
-		ml_gen_static_const_addr(Var, ConstAddrRval),
+		{ ConstType = mlds__array_type(mlds__generic_type) },	
+		ml_gen_static_const_addr(Var, ConstType, ConstAddrRval),
 		{ TagVal = 0 ->
 			TaggedRval = ConstAddrRval
 		;
@@ -468,7 +471,8 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% the pointer will not be tagged (i.e. the tag will be zero)
 	%
 	{ Tag = 0 },
-	{ CtorName = "<closure>" },
+	{ CtorDefn = ctor_id("<closure>", 0) },
+	{ QualifiedCtorId = qual(MLDS_PrivateBuiltinModule, CtorDefn) },
 
 	%
 	% put all the extra arguments of the closure together
@@ -480,9 +484,9 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% generate a `new_object' statement (or static constant)
 	% for the closure
 	%
-	ml_gen_new_object(no, Tag, CtorName, Var, ExtraArgRvals, ExtraArgTypes,
-			ArgVars, ArgModes, HowToConstruct, Context,
-			MLDS_Decls, MLDS_Statements).
+	ml_gen_new_object(no, Tag, QualifiedCtorId, Var, ExtraArgRvals, 
+		ExtraArgTypes, ArgVars, ArgModes, HowToConstruct, Context,
+		MLDS_Decls, MLDS_Statements).
 
 	%
 	% ml_gen_closure_wrapper:
@@ -614,7 +618,8 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 		WrapperBoxedArgTypes, WrapperArgModes, PredOrFunc, CodeModel) },
 
 	% then insert the `closure_arg' parameter
-	{ ClosureArg = data(var("closure_arg")) - mlds__generic_type },
+	{ ClosureArgType = mlds__generic_type },
+	{ ClosureArg = data(var("closure_arg")) - ClosureArgType },
 	{ WrapperParams0 = mlds__func_params(WrapperArgs0, WrapperRetType) },
 	{ WrapperParams = mlds__func_params([ClosureArg | WrapperArgs0],
 		WrapperRetType) },
@@ -641,10 +646,11 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	{ ClosureName = "closure" },
 	{ ClosureArgName = "closure_arg" },
 	{ MLDS_Context = mlds__make_context(Context) },
+	{ ClosureType = mlds__generic_type },
 	{ ClosureDecl = ml_gen_mlds_var_decl(var(ClosureName),
-		mlds__generic_type, MLDS_Context) },
-	ml_qualify_var(ClosureName, ClosureLval),
-	ml_qualify_var(ClosureArgName, ClosureArgLval),
+		ClosureType, MLDS_Context) },
+	ml_gen_var_lval(ClosureName, ClosureType, ClosureLval),
+	ml_gen_var_lval(ClosureArgName, ClosureArgType, ClosureArgLval),
 	{ InitClosure = ml_gen_assign(ClosureLval, lval(ClosureArgLval),
 		Context) },
 
@@ -782,7 +788,8 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
 		ml_gen_wrapper_arg_lvals(Names1, Types1, Modes1,
 			PredOrFunc, CodeModel, Context,
 			Defns1, Lvals1, CopyOutLvals1),
-		ml_qualify_var(Name, VarLval),
+		ml_gen_type(Type, MLDS_Type),
+		ml_gen_var_lval(Name, MLDS_Type, VarLval),
 		=(Info),
 		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 		{ mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) },
@@ -832,7 +839,6 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
 				% output arguments are passed by reference,
 				% so we need to dereference them
 				%
-				ml_gen_type(Type, MLDS_Type),
 				{ Lval = mem_ref(lval(VarLval), MLDS_Type) },
 				{ CopyOutLvals = CopyOutLvals1 },
 				{ Defns = Defns1 }
@@ -1009,6 +1015,8 @@ ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 
 		%
 		% Generate a local static constant for this term.
+		% XXX Using mdls__array_type(mlds__generic_type) is probably 
+		% wrong when `--high-level-data' is enabled.
 		%
 		ml_gen_static_const_name(Var, ConstName),
 		{ ConstType = mlds__array_type(mlds__generic_type) },
@@ -1021,7 +1029,7 @@ ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		% Assign the address of the local static constant to
 		% the variable.
 		%
-		ml_gen_static_const_addr(Var, ConstAddrRval),
+		ml_gen_static_const_addr(Var, ConstType, ConstAddrRval),
 		{ MaybeTag = no ->
 			TaggedRval = ConstAddrRval
 		;
@@ -1142,7 +1150,7 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval) -->
 		% Return as the boxed rval the address of that constant,
 		% cast to mlds__generic_type
 		%
-		ml_qualify_var(ConstName, ConstLval),
+		ml_gen_var_lval(ConstName, Type, ConstLval),
 		{ ConstAddrRval = mem_addr(ConstLval) },
 		{ BoxedRval = unop(cast(mlds__generic_type), ConstAddrRval) }
 	;
@@ -1191,19 +1199,30 @@ ml_lookup_static_const_name(Var, ConstName) -->
 	% Generate an rval containing the address of the local static constant
 	% for a given variable.
 	%
-:- pred ml_gen_static_const_addr(prog_var, mlds__rval,
+:- pred ml_gen_static_const_addr(prog_var, mlds__type, mlds__rval,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_static_const_addr(in, out, in, out) is det.
-ml_gen_static_const_addr(Var, ConstAddrRval) -->
+:- mode ml_gen_static_const_addr(in, in, out, in, out) is det.
+ml_gen_static_const_addr(Var, Type, ConstAddrRval) -->
 	ml_lookup_static_const_name(Var, ConstName),
-	ml_qualify_var(ConstName, ConstLval),
+	ml_gen_var_lval(ConstName, Type, ConstLval),
 	{ ConstAddrRval = mem_addr(ConstLval) }.
 
 :- pred ml_cons_name(cons_id, ctor_name, ml_gen_info, ml_gen_info).
 :- mode ml_cons_name(in, out, in, out) is det.
 
-ml_cons_name(ConsId, ConsName) -->
-	{ hlds_out__cons_id_to_string(ConsId, ConsName) }.
+ml_cons_name(HLDS_ConsId, QualifiedConsId) -->
+	( 
+		{ HLDS_ConsId = cons(SymName, Arity),
+	    	SymName = qualified(SymModuleName, ConsName) } 
+	->
+		{ ConsId = ctor_id(ConsName, Arity) },
+		{ ModuleName = mercury_module_name_to_mlds(SymModuleName) }
+	;
+		{ hlds_out__cons_id_to_string(HLDS_ConsId, ConsName) },
+		{ ConsId = ctor_id(ConsName, 0) },
+		{ ModuleName = mercury_module_name_to_mlds(unqualified("")) }
+	),
+	{ QualifiedConsId = qual(ModuleName, ConsId) }.
 
 :- pred ml_gen_cons_args(list(mlds__lval), list(prog_type),
 		list(uni_mode), module_info, list(mlds__rval)).

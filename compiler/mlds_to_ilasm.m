@@ -550,7 +550,7 @@ write_managed_cpp_lval(field(_, Rval, offset(OffSet), _, _)) -->
 write_managed_cpp_lval(mem_ref(Rval, _)) -->
 	io__write_string("*"),
 	write_managed_cpp_rval(Rval).
-write_managed_cpp_lval(var(Var)) -->
+write_managed_cpp_lval(var(Var, _VarType)) -->
 	{ mangle_mlds_var(Var, Id) },
 	io__write_string(Id).
 

@@ -65,7 +65,7 @@
 :- import_module mlds_to_java.			% MLDS -> Java
 :- import_module mlds_to_ilasm.			% MLDS -> IL assembler
 :- import_module maybe_mlds_to_gcc.		% MLDS -> GCC back-end
-
+:- import_module ml_util.			% MLDS utility predicates 
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
@@ -563,10 +563,7 @@ mercury_compile(Module) -->
 mercury_compile__mlds_has_main(MLDS) =
 	(
 		MLDS = mlds(_, _, _, Defns),
-		list__member(Defn, Defns),
-		Defn = mlds__defn(Name, _, _, _),
-		Name = function(FuncName, _, _, _), 
-		FuncName = pred(predicate, _, "main", 2)
+		defns_contain_main(Defns)
 	->
 		yes
 	;

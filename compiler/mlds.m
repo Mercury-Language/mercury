@@ -547,7 +547,14 @@
 
 	;	mlds__pseudo_type_info_type
 	
-	;	mlds__rtti_type(rtti_name).
+	;	mlds__rtti_type(rtti_name)
+
+		% A type used by the ML code generator for references 
+		% to variables that have yet to be declared.  This occurs 
+		% once in ml_code_util.m where references to env_ptr's are 
+		% generated but the declaration of these env_ptr's does not 
+		% occur until the ml_elim_nested pass.
+	;	mlds__unknown_type.
 
 :- type mercury_type == prog_data__type.
 
@@ -565,11 +572,17 @@
 :- type mlds__decl_flags.
 
 :- type access
-	--->	public
-	;	protected
-	;	private
-	;	default.	% Java "default" access: accessible to anything
+	--->	public		% accessible to anyone
+	;	protected	% only accessible to the class and to
+				% derived classes
+	;	private		% only accessible to the class
+	;	default		% Java "default" access: accessible to anything
 				% defined in the same package.
+	;	local		% use for local variables:
+				% only accessible within the function
+				% (or block) in which the variable is
+				% defined
+	.
 
 :- type per_instance
 	--->	one_copy	% i.e. "static" storage duration
@@ -1048,8 +1061,13 @@ XXX Full exception handling support is not yet implemented.
 	;	name(mlds__qualified_entity_name)
 	.
 
-	% XXX I'm not sure what representation we should use here
-:- type ctor_name == string.
+	%
+	% constructor id
+	%
+:- type ctor_name == mlds__qualified_ctor_id.
+:- type mlds__ctor_id ---> ctor_id(mlds__class_name, arity).
+:- type mlds__qualified_ctor_id ==
+	mlds__fully_qualified_name(mlds__ctor_id).
 
 	%
 	% trail management
@@ -1148,8 +1166,7 @@ XXX Full exception handling support is not yet implemented.
 	% variables
 	% these may be local or they may come from some enclosing scope
 	% the variable name should be fully qualified
-	%
-	;	var(mlds__var)
+	;	var(mlds__var, mlds__type) 
 	
 	.
 
@@ -1421,7 +1438,8 @@ access_bits(public)  	= 0x00.
 access_bits(private) 	= 0x01.
 access_bits(protected)	= 0x02.
 access_bits(default)	= 0x03.
-% 0x4 - 0x7 reserved
+access_bits(local) 	= 0x04.
+% 0x5 - 0x7 reserved
 
 :- func access_mask = int.
 access_mask = 0x07.

@@ -520,15 +520,16 @@ generate_defn_initializer(defn(Name, _Context, _DeclFlags, Entity),
 		Tree0, Tree) --> 
 	( 
 		{ Name = data(DataName) },
-		{ Entity = mlds__data(_MldsType, Initializer) }
+		{ Entity = mlds__data(MLDSType, Initializer) }
 	->
 		( { Initializer = no_initializer } ->
 			{ Tree = Tree0 }
 		;
 			( { DataName = var(VarName) } ->
 				il_info_get_module_name(ModuleName),
-				get_load_store_lval_instrs(
-					var(qual(ModuleName, VarName)), 
+				{ Lval = var(qual(ModuleName, VarName), 
+					MLDSType) },
+				get_load_store_lval_instrs(Lval,
 					LoadMemRefInstrs, StoreLvalInstrs),
 				{ NameString = VarName }
 			;
@@ -1140,7 +1141,7 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs,
 :- mode load(in, out, in, out) is det.
 
 load(lval(Lval), Instrs, Info0, Info) :- 
-	( Lval = var(Var),
+	( Lval = var(Var, _),
 		mangle_mlds_var(Var, MangledVarStr),
 		( is_local(MangledVarStr, Info0) ->
 			Instrs = instr_node(ldloc(name(MangledVarStr)))
@@ -1233,7 +1234,7 @@ load(binop(BinOp, R1, R2), Instrs) -->
 	{ Instrs = tree__list([R1LoadInstrs, R2LoadInstrs, BinaryOpInstrs]) }.
 
 load(mem_addr(Lval), Instrs, Info0, Info) :- 
-	( Lval = var(Var),
+	( Lval = var(Var, _VarType),
 		mangle_mlds_var(Var, MangledVarStr),
 		Info0 = Info,
 		( is_local(MangledVarStr, Info) ->
@@ -1269,7 +1270,7 @@ store(mem_ref(_Rval, _Type), _Instrs, Info, Info) :-
 		% instruction.  Annoying, eh?
 	unexpected(this_file, "store into mem_ref").
 
-store(var(Var), Instrs, Info, Info) :- 
+store(var(Var, _VarType), Instrs, Info, Info) :- 
 	mangle_mlds_var(Var, MangledVarStr),
 	( is_local(MangledVarStr, Info) ->
 		Instrs = instr_node(stloc(name(MangledVarStr)))
@@ -1810,7 +1811,8 @@ mlds_type_to_ilds_type(mercury_type(Type, _Classification)) = ILType :-
 		ILType = il_array_type
 	).
 
-
+mlds_type_to_ilds_type(mlds__unknown_type) = _ :-
+	unexpected(this_file, "mlds_type_to_ilds_type: unknown_type").
 %-----------------------------------------------------------------------------
 %
 % Name mangling.
@@ -2040,7 +2042,7 @@ is_local(VarName, Info) :-
 		il_info::in, il_info::out) is det.
 
 rval_to_type(lval(Lval), Type, Info0, Info) :- 
-	( Lval = var(Var),
+	( Lval = var(Var, _VarType),
 		mangle_mlds_var(Var, MangledVarStr),
 		il_info_get_mlds_type(MangledVarStr, Type, Info0, Info)
 	; Lval = field(_, _, _, Type, _),

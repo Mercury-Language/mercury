@@ -329,10 +329,11 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, EnvPtrTypeName,
 		FieldName = named_field(qual(EnvModuleName, VarName),
 			EnvPtrTypeName),
 		Tag = yes(0),
-		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
+		EnvPtr = lval(var(qual(ModuleName, "env_ptr"),
+			EnvPtrTypeName)),
 		EnvArgLval = field(Tag, EnvPtr, FieldName, FieldType, 
 			EnvPtrTypeName),
-		ArgRval = lval(var(QualVarName)),
+		ArgRval = lval(var(QualVarName, FieldType)),
 		AssignToEnv = assign(EnvArgLval, ArgRval),
 		CodeToCopyArg = mlds__statement(atomic(AssignToEnv), Context),
 
@@ -401,18 +402,20 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 		% XXX Perhaps if we used value classes this could go
 		% away.
 	( Target = il ->
-		EnvVarAddr = lval(var(EnvVar)),
+		EnvVarAddr = lval(var(EnvVar, EnvTypeName)),
 		ml_init_env(EnvTypeName, EnvVarAddr, Context, ModuleName,
 			 Globals, EnvPtrVarDecl, InitEnv0),
+		
 		NewObj = mlds__statement(
-				atomic(new_object(var(EnvVar), 
-					no, EnvTypeName, no, yes(""), [], [])),
+				atomic(new_object(
+					var(EnvVar, EnvTypeName), 
+					no, EnvTypeName, no, no, [], [])),
 				Context),
 		InitEnv = mlds__statement(block([], 
 			[NewObj, InitEnv0]), Context),
 		EnvDecls = [EnvVarDecl, EnvPtrVarDecl]
 	;
-		EnvVarAddr = mem_addr(var(EnvVar)),
+		EnvVarAddr = mem_addr(var(EnvVar, EnvTypeName)),
 		ml_init_env(EnvTypeName, EnvVarAddr, Context, ModuleName,
 			Globals, EnvPtrVarDecl, InitEnv),
 		EnvDecls = [EnvVarDecl, EnvPtrVarDecl]
@@ -447,7 +450,8 @@ ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
 		DefnBody0 = mlds__function(PredProcId, Params, yes(FuncBody0)),
 		statement_contains_var(FuncBody0, qual(ModuleName, "env_ptr"))
 	->
-		EnvPtrVal = lval(var(qual(ModuleName, "env_ptr_arg"))),
+		EnvPtrVal = lval(var(qual(ModuleName, "env_ptr_arg"),
+			mlds__generic_env_ptr_type)),
 		ml_init_env(TypeName, EnvPtrVal, Context, ModuleName, Globals,
 			EnvPtrDecl, InitEnvPtr),
 		FuncBody = mlds__statement(block([EnvPtrDecl],
@@ -498,9 +502,11 @@ ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 	%
 	%	env_ptr = (EnvPtrVarType) <EnvPtrVal>;
 	%
+	% XXX Do we need the cast? If so, why?
+	%
 	EnvPtrVar = qual(ModuleName, "env_ptr"),
-	AssignEnvPtr = assign(var(EnvPtrVar), unop(cast(EnvPtrVarType), 
-		EnvPtrVal)),
+	AssignEnvPtr = assign(var(EnvPtrVar, EnvPtrVarType),
+		unop(cast(EnvPtrVarType), EnvPtrVal)),
 	InitEnvPtr = mlds__statement(atomic(AssignEnvPtr), Context).
 
 	% Given the declaration for a function parameter, produce a
@@ -986,8 +992,8 @@ fixup_lval(field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
 	fixup_rval(Rval0, Rval).
 fixup_lval(mem_ref(Rval0, Type), mem_ref(Rval, Type)) --> 
 	fixup_rval(Rval0, Rval).
-fixup_lval(var(Var0), VarLval) --> 
-	fixup_var(Var0, VarLval).
+fixup_lval(var(Var0, VarType), VarLval) --> 
+	fixup_var(Var0, VarType, VarLval).
 
 %-----------------------------------------------------------------------------%
 
@@ -997,10 +1003,10 @@ fixup_lval(var(Var0), VarLval) -->
 %	containing function to go via the environment pointer
 %
 
-:- pred fixup_var(mlds__var, mlds__lval, elim_info, elim_info).
-:- mode fixup_var(in, out, in, out) is det.
+:- pred fixup_var(mlds__var, mlds__type, mlds__lval, elim_info, elim_info).
+:- mode fixup_var(in, in, out, in, out) is det.
 
-fixup_var(ThisVar, Lval, ElimInfo, ElimInfo) :-
+fixup_var(ThisVar, ThisVarType, Lval, ElimInfo, ElimInfo) :-
 	ThisVar = qual(ThisVarModuleName, ThisVarName),
 	ModuleName = elim_info_get_module_name(ElimInfo),
 	Locals = elim_info_get_local_data(ElimInfo),
@@ -1021,7 +1027,8 @@ fixup_var(ThisVar, Lval, ElimInfo, ElimInfo) :-
 			),
 		solutions(IsLocalVar, [FieldType])
 	->
-		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
+		EnvPtr = lval(var(qual(ModuleName, "env_ptr"),
+			EnvPtrVarType)),
 		EnvModuleName = ml_env_module_name(ClassType),
 		FieldName = named_field(qual(EnvModuleName, ThisVarName),
 			EnvPtrVarType),
@@ -1031,7 +1038,7 @@ fixup_var(ThisVar, Lval, ElimInfo, ElimInfo) :-
 		%
 		% leave everything else unchanged
 		%
-		Lval = var(ThisVar)
+		Lval = var(ThisVar, ThisVarType)
 	).
 /*****************************
 The following code is what we would have to use if we couldn't
@@ -1069,7 +1076,7 @@ just hoist all local variables out to the outermost function.
 		%
 		% leave everything else unchanged
 		%
-		Lval = var(ThisVar)
+		Lval = var(ThisVar, ThisVarType)
 	).
 
 	% check if the specified variable is contained in the

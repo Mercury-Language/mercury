@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,6 +36,23 @@
 :- pred ml_gen_type_name(type_id, mlds__class, arity).
 :- mode ml_gen_type_name(in, out, out) is det.
 
+	% Return the declaration flags appropriate for a type.
+	%
+:- func ml_gen_type_decl_flags = mlds__decl_flags.
+
+	% Return the declaration flags appropriate for an enumeration constant.
+	%
+:- func ml_gen_enum_constant_decl_flags = mlds__decl_flags.
+	
+	% Return the declaration flags appropriate for a member variable.
+	%
+:- func ml_gen_member_decl_flags = mlds__decl_flags.
+
+	% Return the declaration flags appropriate for a member of a class
+	% that was transformed from a special predicate.  These differ 
+	% from normal members in that their finality is `final'.
+	%
+:- func ml_gen_special_member_decl_flags = mlds__decl_flags.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -99,8 +116,8 @@ ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred),
 	% For each enumeration, we generate an MLDS type of the following form:
 	%
 	%	struct <ClassName> {
-	%		static const int <ctor1> = 0;
-	%		static const int <ctor2> = 1;
+	%		static final const int <ctor1> = 0;
+	%		static final const int <ctor2> = 1;
 	%		...
 	%		int value;
 	%	};
@@ -186,11 +203,11 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 	% For each discriminated union type, we generate an MLDS type of the
 	% following form:
 	%
-	%	class <ClassName> {
+	%	static class <ClassName> {
 	%	public:
 	% #if some_but_not_all_ctors_use_secondary_tag
 	%		/* A nested derived class for the secondary tag */
-	%		class tag_type : public <ClassName> {
+	%		static class tag_type : public <ClassName> {
 	%		public:
 	% #endif
 	% #if some_ctors_use_secondary_tag
@@ -221,7 +238,7 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 	%		** secondary tag, we put the secondary tag members
 	%		** directly in the base class.
 	%		*/
-	%		class <ctor1> : public <ClassName> {
+	%		static class <ctor1> : public <ClassName> {
 	%		public:
 	%			/*
 	%			** fields, one for each argument of this
@@ -231,7 +248,7 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 	%			MR_Word F2;
 	%			...
 	%		};
-	%		class <ctor2> : public <ClassName>::tag_type {
+	%		static class <ctor2> : public <ClassName>::tag_type {
 	%		public:
 	%			...
 	%		};
@@ -526,9 +543,19 @@ ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, MLDS_Defn,
 		MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type)
 	),
 	FieldName = ml_gen_field_name(MaybeFieldName, ArgNum0),
-	MLDS_Defn = ml_gen_mlds_var_decl(var(FieldName), MLDS_Type,
+	MLDS_Defn = ml_gen_mlds_field_decl(var(FieldName), MLDS_Type,
 		mlds__make_context(Context)),
 	ArgNum = ArgNum0 + 1.
+
+
+:- func ml_gen_mlds_field_decl(mlds__data_name, mlds__type, mlds__context)
+	= mlds__defn.
+
+ml_gen_mlds_field_decl(DataName, MLDS_Type, Context) = MLDS_Defn :- 
+	Name = data(DataName),
+	Defn = data(MLDS_Type, no_initializer),
+	DeclFlags = ml_gen_public_field_decl_flags,
+	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
 
 %-----------------------------------------------------------------------------%
 %
@@ -559,12 +586,10 @@ ml_gen_equality_members(_, []).  % XXX generation of `==' members
 % Routines for generating declaration flags.
 %
 
-	% Return the declaration flags appropriate for a type.
-:- func ml_gen_type_decl_flags = mlds__decl_flags.
 ml_gen_type_decl_flags = MLDS_DeclFlags :-
 	% XXX are these right?
 	Access = public,
-	PerInstance = per_instance,
+	PerInstance = one_copy,
 	Virtuality = non_virtual,
 	Finality = overridable,
 	Constness = modifiable,
@@ -572,8 +597,6 @@ ml_gen_type_decl_flags = MLDS_DeclFlags :-
 	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
 		Virtuality, Finality, Constness, Abstractness).
 
-	% Return the declaration flags appropriate for a member variable.
-:- func ml_gen_member_decl_flags = mlds__decl_flags.
 ml_gen_member_decl_flags = MLDS_DeclFlags :-
 	Access = public,
 	PerInstance = per_instance,
@@ -584,14 +607,21 @@ ml_gen_member_decl_flags = MLDS_DeclFlags :-
 	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
 		Virtuality, Finality, Constness, Abstractness).
 
-	% Return the declaration flags appropriate for an enumeration constant.
-:- func ml_gen_enum_constant_decl_flags = mlds__decl_flags.
 ml_gen_enum_constant_decl_flags = MLDS_DeclFlags :-
 	Access = public,
 	PerInstance = one_copy,
 	Virtuality = non_virtual,
-	Finality = overridable, % XXX should we use `final' instead?
-				% does it make any difference?
+	Finality = final,
+	Constness = const,
+	Abstractness = concrete,
+	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+		Virtuality, Finality, Constness, Abstractness).
+
+ml_gen_special_member_decl_flags = MLDS_DeclFlags :-
+	Access = public,
+	PerInstance = per_instance,
+	Virtuality = non_virtual,
+	Finality = final,
 	Constness = const,
 	Abstractness = concrete,
 	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,

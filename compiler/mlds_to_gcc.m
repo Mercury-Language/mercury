@@ -1054,6 +1054,8 @@ add_var_access_flag(protected, _GCC_Defn) -->
 	{ sorry(this_file, "`protected' access") }.
 add_var_access_flag(default, _GCC_Defn) -->
 	{ sorry(this_file, "`default' access") }.
+add_var_access_flag(local, _GCC_Defn) -->
+	{ sorry(this_file, "`local' access") }.
 
 :- pred add_var_virtuality_flag(mlds__virtuality, gcc__var_decl,
 	io__state, io__state).
@@ -1128,6 +1130,8 @@ add_field_access_flag(protected, _GCC_Defn) -->
 	{ sorry(this_file, "`protected' access") }.
 add_field_access_flag(default, _GCC_Defn) -->
 	{ sorry(this_file, "`default' access") }.
+add_field_access_flag(local, _GCC_Defn) -->
+	{ sorry(this_file, "`local' access") }.
 
 :- pred add_field_per_instance_flag(mlds__per_instance, gcc__field_decl,
 	io__state, io__state).
@@ -1209,6 +1213,8 @@ add_func_access_flag(protected, _GCC_Defn) -->
 	{ sorry(this_file, "`protected' access") }.
 add_func_access_flag(default, _GCC_Defn) -->
 	{ sorry(this_file, "`default' access") }.
+add_func_access_flag(local, _GCC_Defn) -->
+	{ sorry(this_file, "`local' access") }.
 
 :- pred add_func_per_instance_flag(mlds__per_instance, gcc__func_decl,
 	io__state, io__state).
@@ -1935,6 +1941,8 @@ build_type(mlds__commit_type, _, _, gcc__jmpbuf_type_node) --> [].
 build_type(mlds__rtti_type(RttiName), InitializerSize, _GlobalInfo,
 		GCC_Type) -->
 	build_rtti_type(RttiName, InitializerSize, GCC_Type).
+build_type(mlds__unknown_type, _, _, _) -->
+	{ unexpected(this_file, "build_type: unknown type") }.
 
 :- pred build_mercury_type(mercury_type, builtin_type, gcc__type,
 		io__state, io__state).
@@ -3035,7 +3043,7 @@ build_lval(mem_ref(PointerRval, _Type), DefnInfo, Expr) -->
 	build_rval(PointerRval, DefnInfo, PointerExpr),
 	gcc__build_pointer_deref(PointerExpr, Expr).
 
-build_lval(var(qual(ModuleName, VarName)), DefnInfo, Expr) -->
+build_lval(var(qual(ModuleName, VarName), _VarType), DefnInfo, Expr) -->
 	%
 	% Look up the variable in the symbol table.
 	% We try the symbol table for local vars first,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,13 +57,13 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	{ SlotVarName = string__format("slot_%d", [i(SlotVarSeq)]) },
 	{ SlotVarDefn = ml_gen_mlds_var_decl(var(SlotVarName),
 		mlds__native_int_type, MLDS_Context) },
-	ml_qualify_var(SlotVarName, SlotVarLval),
+	ml_gen_var_lval(SlotVarName, mlds__native_int_type, SlotVarLval),
 
 	ml_gen_info_new_cond_var(StringVarSeq),
 	{ StringVarName = string__format("str_%d", [i(StringVarSeq)]) },
 	{ StringVarDefn = ml_gen_mlds_var_decl(var(StringVarName),
 		ml_string_type, MLDS_Context) },
-	ml_qualify_var(StringVarName, StringVarLval),
+	ml_gen_var_lval(StringVarName, ml_string_type, StringVarLval),
 
 	%
 	% Generate new labels
@@ -114,7 +114,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	{ NextSlotsDefn = ml_gen_static_const_defn(NextSlotsName,
 		NextSlotsType,
 		init_array(NextSlots), Context) },
-	ml_qualify_var(NextSlotsName, NextSlotsLval),
+	ml_gen_var_lval(NextSlotsName, NextSlotsType, NextSlotsLval),
 
 	ml_gen_info_new_const(StringTableSeq),
 	ml_format_static_const_name("string_table", StringTableSeq,
@@ -122,7 +122,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	{ StringTableType = mlds__array_type(ml_string_type) },
 	{ StringTableDefn = ml_gen_static_const_defn(StringTableName,
 		StringTableType, init_array(Strings), Context) },
-	ml_qualify_var(StringTableName, StringTableLval),
+	ml_gen_var_lval(StringTableName, StringTableType ,StringTableLval),
 	
 	%
 	% Generate code which does the hash table lookup.

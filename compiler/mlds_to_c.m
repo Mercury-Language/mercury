@@ -632,7 +632,9 @@ mlds_output_pragma_export_type(prefix, mlds__pseudo_type_info_type) -->
 	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__rtti_type(_)) -->
 	io__write_string("MR_Word").
-	
+mlds_output_pragma_export_type(prefix, mlds__unknown_type) -->
+	{ unexpected(this_file, 
+		"mlds_output_pragma_export_type: unknown_type") }. 
 
 	%
 	% Output the definition body for a pragma export
@@ -1579,6 +1581,8 @@ mlds_output_type_prefix(mlds__commit_type) -->
 mlds_output_type_prefix(mlds__rtti_type(RttiName)) -->
 	io__write_string("MR_"),
 	io__write_string(mlds_rtti_type_name(RttiName)).
+mlds_output_type_prefix(mlds__unknown_type) -->
+	{ error("mlds_to_c.m: prefix has unknown type") }.
 
 :- pred mlds_output_mercury_type_prefix(mercury_type, builtin_type,
 		io__state, io__state).
@@ -1666,7 +1670,6 @@ initializer_array_size(init_array(Elems)) = array_size(list__length(Elems)).
 		io__state, io__state).
 :- mode mlds_output_type_suffix(in, in, di, uo) is det.
 
-
 mlds_output_type_suffix(mercury_type(_, _), _) --> [].
 mlds_output_type_suffix(mlds__native_int_type, _) --> [].
 mlds_output_type_suffix(mlds__native_float_type, _) --> [].
@@ -1705,6 +1708,9 @@ mlds_output_type_suffix(mlds__rtti_type(RttiName), ArraySize) -->
 	;
 		[]
 	).
+mlds_output_type_suffix(mlds__unknown_type, _) -->
+	{ unexpected(this_file,
+		"mlds_output_type_suffix: unknown_type") }.
 
 :- pred mlds_output_array_type_suffix(initializer_array_size::in,
 		io__state::di, io__state::uo) is det.
@@ -1768,6 +1774,7 @@ mlds_output_access_comment_2(public)    --> [].
 mlds_output_access_comment_2(private)   --> io__write_string("/* private: */ ").
 mlds_output_access_comment_2(protected) --> io__write_string("/* protected: */ ").
 mlds_output_access_comment_2(default)   --> io__write_string("/* default access */ ").
+mlds_output_access_comment_2(local)     --> [].
 
 :- pred mlds_output_per_instance_comment(per_instance, io__state, io__state).
 :- mode mlds_output_per_instance_comment(in, di, uo) is det.
@@ -1793,7 +1800,9 @@ mlds_output_per_instance_comment_2(one_copy)     --> io__write_string("/* one_co
 mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody)
 		-->
 	( 
-		{ Access = private ; PerInstance = one_copy },
+		{ Access = private
+		; Access = local, PerInstance = one_copy
+		},
 		{ Name \= type(_, _) },
 		% Don't output "static" for functions that don't have a body.
 		% This can happen for Mercury procedures declared `:- external'
@@ -2272,8 +2281,10 @@ mlds_maybe_output_heap_profile_instr(Context, Indent, Args, FuncName,
 		io__write_string(", """),
 		mlds_output_fully_qualified_name(FuncName),
 		io__write_string(""", "),
-		( { MaybeCtorName = yes(CtorName) } ->
+		( { MaybeCtorName = yes(CtorId) } ->
 			io__write_char('"'),
+			{ CtorId = qual(_ModuleName, CtorDefn) },
+			{ CtorDefn = ctor_id(CtorName, _CtorArity) },
 			c_util__output_quoted_string(CtorName),
 			io__write_char('"')
 		;
@@ -2424,8 +2435,10 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 		io__write_int(-1)
 	),
 	io__write_string(", "),
-	( { MaybeCtorName = yes(CtorName) } ->
+	( { MaybeCtorName = yes(QualifiedCtorId) } ->
 		io__write_char('"'),
+		{ QualifiedCtorId = qual(_ModuleName, CtorDefn) },
+		{ CtorDefn = ctor_id(CtorName, _CtorArity) },
 		c_util__output_quoted_string(CtorName),
 		io__write_char('"')
 	;
@@ -2598,7 +2611,7 @@ mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldName, CtorType),
 mlds_output_lval(mem_ref(Rval, _Type)) -->
 	io__write_string("*"),
 	mlds_output_bracketed_rval(Rval).
-mlds_output_lval(var(VarName)) -->
+mlds_output_lval(var(VarName, _VarType)) -->
 	mlds_output_var(VarName).
 
 :- pred mlds_output_var(mlds__var, io__state, io__state).
@@ -2620,7 +2633,7 @@ mlds_output_mangled_name(Name) -->
 mlds_output_bracketed_lval(Lval) -->
 	(
 		% if it's just a variable name, then we don't need parentheses
-		{ Lval = var(_) }
+		{ Lval = var(_, _) }
 	->
 		mlds_output_lval(Lval)
 	;
@@ -2635,7 +2648,7 @@ mlds_output_bracketed_lval(Lval) -->
 mlds_output_bracketed_rval(Rval) -->
 	(
 		% if it's just a variable name, then we don't need parentheses
-		{ Rval = lval(var(_))
+		{ Rval = lval(var(_,_))
 		; Rval = const(code_addr_const(_))
 		}
 	->

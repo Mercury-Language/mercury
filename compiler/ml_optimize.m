@@ -243,7 +243,7 @@ generate_assign_args(OptInfo,
 			% 
 			% don't bother assigning a variable to itself
 			%
-			Arg = lval(var(QualVarName))
+			Arg = lval(var(QualVarName, _VarType))
 		->
 			generate_assign_args(OptInfo, Rest, Args, 
 				Statements, TempDefns)
@@ -273,8 +273,8 @@ generate_assign_args(OptInfo,
 
 			Statement = statement(
 				atomic(assign(
-					var(QualVarName),
-					lval(var(QualTempName)))), 
+					var(QualVarName, Type),
+					lval(var(QualTempName, Type)))), 
 				OptInfo ^ context),
 			generate_assign_args(OptInfo, Rest, Args, Statements0,
 				TempDefns0),
@@ -420,7 +420,7 @@ convert_assignments_into_initializers(Defns0, Statements0, OptInfo,
 		% the block.
 		Statements0 = [AssignStatement | Statements1],
 		AssignStatement = statement(atomic(assign(LHS, RHS)), _),
-		LHS = var(ThisVar),
+		LHS = var(ThisVar, _ThisType),
 		ThisVar = qual(Qualifier, VarName),
 		Qualifier = OptInfo ^ module_name,
 		list__takewhile(isnt(var_defn(VarName)), Defns0, 

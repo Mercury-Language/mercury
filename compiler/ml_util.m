@@ -18,7 +18,13 @@
 :- import_module list, std_util.
 
 %-----------------------------------------------------------------------------%
+	% succeeds iff the definitions contain the entry point to
+	% the a main predicate.
+	%
+:- pred defns_contain_main(mlds__defns).
+:- mode defns_contain_main(in) is semidet.
 
+%-----------------------------------------------------------------------------%
 	% return `true' if the statement is a tail call which
 	% can be optimized into a jump back to the start of the
 	% function
@@ -115,9 +121,15 @@
 :- implementation.
 
 :- import_module rtti.
-:- import_module bool, list, std_util.
+:- import_module bool, list, std_util, prog_data.
 
 %-----------------------------------------------------------------------------%
+
+defns_contain_main(Defns) :-
+	list__member(Defn, Defns),
+	Defn = mlds__defn(Name, _, _, _),
+	Name = function(FuncName, _, _, _), 
+	FuncName = pred(predicate, _, "main", 2).
 
 can_optimize_tailcall(Name, Call) :-
 	Call = call(_Signature, FuncRval, MaybeObject, _CallArgs,
@@ -330,6 +342,6 @@ lval_contains_var(field(_MaybeTag, Rval, _FieldId, _, _), Name) :-
 	rval_contains_var(Rval, Name).
 lval_contains_var(mem_ref(Rval, _Type), Name) :-
 	rval_contains_var(Rval, Name).
-lval_contains_var(var(Name), Name).  /* this is where we can succeed! */
+lval_contains_var(var(Name, _Type), Name).  /* this is where we can succeed! */
 
 %-----------------------------------------------------------------------------%
