@@ -408,16 +408,18 @@ output_c_module_init_list_3(InitFunc0, BaseName, MaxInitFunc) -->
 :- pred output_init_name(string, io__state, io__state).
 :- mode output_init_name(in, di, uo) is det.
 
-output_init_name(BaseName) -->
+output_init_name(BaseName0) -->
 	io__write_string("mercury__"),
+	{ llds__name_mangle(BaseName0, BaseName) },
 	io__write_string(BaseName),
 	io__write_string("__init").
 
 :- pred output_bunch_name(string, int, io__state, io__state).
 :- mode output_bunch_name(in, in, di, uo) is det.
 
-output_bunch_name(BaseName, Number) -->
+output_bunch_name(BaseName0, Number) -->
 	io__write_string("mercury__"),
+	{ llds__name_mangle(BaseName0, BaseName) },
 	io__write_string(BaseName),
 	io__write_string("_bunch_"),
 	io__write_int(Number).
@@ -425,8 +427,9 @@ output_bunch_name(BaseName, Number) -->
 :- pred output_module_name(string, io__state, io__state).
 :- mode output_module_name(in, di, uo) is det.
 
-output_module_name(ModuleName) -->
+output_module_name(ModuleName0) -->
 	io__write_string("mercury__"),
+	{ llds__name_mangle(ModuleName0, ModuleName) },
 	io__write_string(ModuleName).
 
 :- pred output_c_module_list(list(c_module), io__state, io__state).
@@ -1524,10 +1527,11 @@ output_proc_label(proc(Module, Pred, Arity, ModeNum0)) -->
 	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
 	io__write_int(ModeNum).
 
-output_proc_label(special_proc(Module, PredName, TypeName, TypeArity,
+output_proc_label(special_proc(Module, PredName, TypeName0, TypeArity,
 				ModeNum0)) -->
 	llds__output_label_name(Module, PredName, TypeArity),
 	io__write_string("_"),
+	{ llds__name_mangle(TypeName0, TypeName) },
 	io__write_string(TypeName),
 	io__write_string("_"),
 	io__write_int(TypeArity),
