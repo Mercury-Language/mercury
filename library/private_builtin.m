@@ -590,11 +590,6 @@ do_compare__base_typeclass_info_1_0(
 		dynamic_cast<MR_Word>(y));
 }
 
-static void init_runtime(void)
-{
-	mercury::runtime::Init::init_runtime();
-}
-
 ").
 
 :- pragma foreign_proc("C",

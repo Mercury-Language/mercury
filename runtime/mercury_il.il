@@ -605,14 +605,45 @@ get_ftn_ptr_type_desc_unify() {
 
 }
 
-// Call init_state/2 in the IO module.
-// This gets called before main runs.
-// It has to be written in IL because we call something that might not
-// yet be available in a .DLL.
+// The init class is responsible for ensuring that the mercury runtime
+// is initialised before the first piece of Mercury code is executed.
+// This is done by calling responsible_for_initialising_runtime as the first
+// thing and init_runtime as the last thing in each .cctor for every
+// mercury_code class.
+// XXX These routines needs to be made thread safe!
 
 .class public 'Init' {
-    .method public static default void init_runtime() {
-        tail.
+
+    .field private static bool will_initialise_runtime
+
+    .method public static default void .cctor()
+    {
+    	ldc.i4.1
+	stsfld bool [mercury]mercury.runtime.Init::will_initialise_runtime
+	ret
+    }
+
+    .method public static default bool responsible_for_initialising_runtime() {
+    	ldsfld bool [mercury]mercury.runtime.Init::will_initialise_runtime
+	brfalse false_branch
+
+	true_branch:
+	ldc.i4.0
+	stsfld bool [mercury]mercury.runtime.Init::will_initialise_runtime
+	ldc.i4.1
+	ret
+
+	false_branch:
+	ldc.i4.0
+	ret
+    }
+
+    .method public static default void init_runtime(bool initialise) {
+	ldarg initialise
+	brtrue true_branch 
+	ret
+
+	true_branch:
         call void ['mercury']mercury.io.mercury_code::init_state_2()
 	ret
     }
