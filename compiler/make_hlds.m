@@ -2359,7 +2359,11 @@ transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet,
 		{ term__apply_substitution_to_list(Args0, Subst, Args) },
 		{ make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1) },
 		{
-			Name = unqualified("call"),
+			% check for a higher-order call,
+			% i.e. a call to either call/N or ''/N.
+			( Name = unqualified("call")
+			; Name = unqualified("")
+			),
 			HeadVars = [PredVar | RealHeadVars]
 		->
 			% initialize some fields to junk

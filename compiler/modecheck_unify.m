@@ -108,7 +108,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 	mode_info_get_predid(ModeInfo0, ThisPredId),
 	(
 		%
-		% is the function symbol apply/N,
+		% is the function symbol apply/N or ''/N,
 		% representing a higher-order function call?
 		%
 		% (As an optimization, if HowToCheck = check_unique_modes,
@@ -116,7 +116,8 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% been expanded.)
 		%
 		HowToCheckGoal \= check_unique_modes,
-		Name = cons(unqualified("apply"), _),
+		Name = cons(unqualified(ApplyName), _),
+		( ApplyName = "apply" ; ApplyName = "" ),
 		Arity >= 2,
 		ArgVars0 = [FuncVar | FuncArgVars]
 	->

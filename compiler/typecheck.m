@@ -1960,8 +1960,8 @@ make_pred_cons_info(TypeInfo, PredId, PredTable, FuncArity,
 	).
 
 	% builtin_apply_type(TypeInfo, Functor, Arity, ConsTypeInfos):
-	% Succeed if Functor is the builtin apply/N (N>=2), which is used
-	% to invoke higher-order functions.
+	% Succeed if Functor is the builtin apply/N or ''/N (N>=2),
+	% which is used to invoke higher-order functions.
 	% If so, bind ConsTypeInfos to a singleton list containing
 	% the appropriate type for apply/N of the specified Arity.
 
@@ -1969,7 +1969,8 @@ make_pred_cons_info(TypeInfo, PredId, PredTable, FuncArity,
 :- mode builtin_apply_type(type_info_ui, in, in, out) is semidet.
 
 builtin_apply_type(_TypeInfo, Functor, Arity, ConsTypeInfos) :-
-	Functor = cons(unqualified("apply"), _),
+	Functor = cons(unqualified(ApplyName), _),
+	( ApplyName = "apply" ; ApplyName = "" ),
 	Arity >= 2,
 	Arity1 is Arity - 1,
 	higher_order_func_type(Arity1, TypeVarSet, FuncType, ArgTypes, RetType),
