@@ -44,13 +44,14 @@
 
 main -->
 	io__command_line_arguments(Args0),
-	{ getopt__process_options(Args0, Args, Result0) },
+	{ OptionOps = option_ops(short_option, long_option, option_defaults) },
+	{ getopt__process_options(OptionOps, Args0, Args, Result0) },
 	postprocess_options(Result0, Args, Result),
 	main_2(Result, Args).
 
 
-:- pred postprocess_options(maybe_option_table, list(string), maybe(string),
-	io__state, io__state).
+:- pred postprocess_options(maybe_option_table(option), list(string),
+	maybe(string), io__state, io__state).
 :- mode postprocess_options(in, in, out, di, uo) is det.
 
 postprocess_options(error(ErrorMessage), _Args, yes(ErrorMessage)) --> [].

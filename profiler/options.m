@@ -9,43 +9,12 @@
 
 % This defines the stuff necessary so that getopt.m
 % can parse the command-line options.
-% When we implement higher-order preds, this and 
-% getopt.m should be rewritten to use them.
-% Currently the interface dependencies are very hairy.
 
 %-----------------------------------------------------------------------------%
 
 :- module options.
 :- interface.
-:- import_module int, string, std_util, list, io, map, require.
-
-:- type option_data	--->	bool(bool)
-			;	int(int)
-			;	string(string)
-			;	accumulating(list(string)).
-
-:- type option_table	==	map(option, option_data).
-		
-:- pred short_option(character::in, option::out) is semidet.
-:- pred long_option(string::in, option::out) is semidet.
-:- pred option_defaults(list(pair(option, option_data))::out) is det.
-
-:- pred options__lookup_bool_option(option_table, option, bool).
-:- mode options__lookup_bool_option(in, in, out) is det.
-
-:- pred options__lookup_int_option(option_table, option, int).
-:- mode options__lookup_int_option(in, in, out) is det.
-
-:- pred options__lookup_string_option(option_table, option, string).
-:- mode options__lookup_string_option(in, in, out) is det.
-
-:- pred options_help(io__state::di, io__state::uo) is det.
-
-% A couple of misc utilities
-
-:- pred maybe_write_string(bool::input, string::input,
-			io__state::di, io__state::uo) is det.
-:- pred maybe_flush_output(bool::in, io__state::di, io__state::uo) is det.
+:- import_module int, string, io, std_util, getopt.
 
 :- type option	
 	% Verbosity options
@@ -59,42 +28,42 @@
 	% Miscellaneous Options
 		;	help.
 
+:- type option_table	==	option_table(option).
+		
+:- pred short_option(character::in, option::out) is semidet.
+:- pred long_option(string::in, option::out) is semidet.
+:- pred option_defaults(option::out, option_data::out) is nondet.
+:- pred option_default(option::out, option_data::out) is multidet.
+
+:- pred options_help(io__state::di, io__state::uo) is det.
+
+% A couple of misc utilities
+
+:- pred maybe_write_string(bool::input, string::input,
+			io__state::di, io__state::uo) is det.
+:- pred maybe_flush_output(bool::in, io__state::di, io__state::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
 :- implementation.
+:- import_module require.
 
-	% I've split up option_defaults into several different clauses
-	% purely in order to reduce compilation time/memory usage.
+option_defaults(Option, Default) :-
+	semidet_succeed,
+	option_default(Option, Default).
 
-:- type option_category
-	--->	verbosity_option
-	;	profiler_option
-	;	miscellaneous_option.
+	% Verbosity Options
+option_default(verbose,		bool(no)).
+option_default(very_verbose,	bool(no)).
 
-option_defaults(OptionDefaults) :-
-	option_defaults_2(verbosity_option, VerbosityOptions),
-	option_defaults_2(profiler_option, ProfilerOptions),
-	option_defaults_2(miscellaneous_option, MiscellaneousOptions),
-	list__condense([VerbosityOptions, ProfilerOptions, MiscellaneousOptions]
-							, OptionDefaults).
+	% General profiler options
+option_default(dynamic_cg,	bool(no)).
+option_default(countfile,	string("Prof.Counts")).
+option_default(pairfile,	string("Prof.CallPair")).
+option_default(declfile,	string("Prof.Decl")).
 
-:- pred option_defaults_2(option_category::in,
-	list(pair(option, option_data))::out) is det.
-
-option_defaults_2(verbosity_option, [
-		% Verbosity Options
-	verbose			-	bool(no),
-	very_verbose		-	bool(no)
-]).
-option_defaults_2(profiler_option, [
-		% General profiler options
-	dynamic_cg			-	bool(no),
-	countfile		-	string("Prof.Counts"),
-	pairfile		-	string("Prof.CallPair"),
-	declfile		-	string("Prof.Decl")
-]).
-option_defaults_2(miscellaneous_option, [
-		% Miscellaneous Options
-	help 			-	bool(no)
-]).
+	% Miscellaneous Options
+option_default(help,		bool(no)).
 
 
 	% please keep this in alphabetic order
@@ -136,39 +105,13 @@ options_help -->
 	io__write_string("\t-V, --very_verbose\n"),
 	io__write_string("\t\tOutput very verbose progress messages.\n").
 
+%-----------------------------------------------------------------------------%
 
 maybe_write_string(yes, String) --> io__write_string(String).
 maybe_write_string(no, _) --> [].
 
 maybe_flush_output(yes) --> io__flush_output.
 maybe_flush_output(no) --> [].
-
-options__lookup_bool_option(OptionTable, Opt, Val) :-
-	(
-		map__lookup(OptionTable, Opt, bool(Val0))
-	->
-		Val = Val0
-	;
-		error("Expected bool option and didn't get one.")
-	).
-
-options__lookup_int_option(OptionTable, Opt, Val) :-
-	(
-		map__lookup(OptionTable, Opt, int(Val0))
-	->
-		Val = Val0
-	;
-		error("Expected int option and didn't get one.")
-	).
-
-options__lookup_string_option(OptionTable, Opt, Val) :-
-	(
-		map__lookup(OptionTable, Opt, string(Val0))
-	->
-		Val = Val0
-	;
-		error("Expected string option and didn't get one.")
-	).
 
 :- end_module options.
 
