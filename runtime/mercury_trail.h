@@ -264,6 +264,9 @@ extern Unsigned MR_ticket_counter_var;
 /*
 ** This is the interface that should be used by C code that wants to
 ** do trailing.
+**
+** This stuff is documented in the "Trailing" section of the
+** Mercury language reference manual.
 */
 /*---------------------------------------------------------------------------*/
 
@@ -281,13 +284,13 @@ extern Unsigned MR_ticket_counter_var;
 	} while(0);
 
 /*
-** void  MR_trail_value_at_address(Word *address);
+** void  MR_trail_current_value(Word *address);
 **
 ** Make sure that when the current execution is
 ** backtracked over, the value currently in `address'
 ** is restored.
 */
-#define MR_trail_value_at_address(address) \
+#define MR_trail_current_value(address) \
 	MR_trail_value((address), *(address))
 
 /*
