@@ -455,7 +455,7 @@ rbtree__insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree) :-
 				% Check to see if a grandchild is red and if so
 				% rotate.
 				( 
-					LL = red(_LLK, _LLV, _LLL, _LLR) 
+					LL = red(_LLK1, _LLV1, _LLL1, _LLR1) 
 				->
 					TreeR = red(K0, V0, LR, R0),
 					Tree = black(LK, LV, LL, TreeR)
@@ -511,7 +511,7 @@ rbtree__insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree) :-
 				% Check to see if a grandchild is red and if so
 				% rotate.
 				( 
-					LL = red(_LLK, _LLV, _LLL, _LLR) 
+					LL = red(_LLK2, _LLV2, _LLL2, _LLR2) 
 				->
 					TreeR = red(K0, V0, LR, R0),
 					Tree = black(LK, LV, LL, TreeR)
