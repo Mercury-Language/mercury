@@ -243,8 +243,8 @@ case $status in 0)
 		mmake install MMAKEFLAGS=$PARALLEL || status=1
 		mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
 			|| status=1
-		# install the asm_fast.gc.cnstr grade
-		mmake install_grades LIBGRADES="asm_fast.gc.cnstr" \
+		# install the asm_fast.gc.tr grade
+		mmake install_grades LIBGRADES="asm_fast.gc.tr" \
 			MMAKEFLAGS="$PARALLEL" || status=1
 		;;
 	*)
