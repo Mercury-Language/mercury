@@ -3441,7 +3441,7 @@ Summarize the list of available commands.
 @end table
 
 It is also legal to press return without specifying a command.
-If there is a default answer (see @ref{Oracle questions}),
+If there is a default answer (@pxref{Oracle questions}),
 pressing return is equivalent to giving that answer.
 If there is no default answer,
 pressing return is equivalent to the skip command.
@@ -4544,7 +4544,7 @@ This can make these files significantly larger.
 Generate code that includes the specified level of execution tracing.
 The @var{level} should be one of
 @samp{none}, @samp{shallow}, @samp{deep}, @samp{rep} and @samp{default}.
-See @ref{Debugging}.
+@xref{Debugging}.
 
 @item --trace-optimized
 @findex --trace-optimized
@@ -5208,7 +5208,7 @@ or classes, rather than treating all objects as arrays.
 @findex --debug
 @cindex Debugging
 Enables the inclusion in the executable of code and data structures
-that allow the program to be debugged with @samp{mdb} (see @ref{Debugging}).
+that allow the program to be debugged with @samp{mdb} (@pxref{Debugging}).
 This option is not yet supported for the @samp{--high-level-code} back-ends.
 
 @c XXX .decldebug isn't usefully different from .debug
@@ -5219,7 +5219,7 @@ This option is not yet supported for the @samp{--high-level-code} back-ends.
 @c Enables the inclusion in the executable of code and data structures
 @c that allow the program to be debugged
 @c with the declarative debugging facilities of @samp{mdb}
-@c (see @ref{Debugging}).
+@c (@pxref{Debugging}).
 @c This option is not yet supported for the @samp{--high-level-code} back-ends.
 
 @sp 1

@@ -319,7 +319,7 @@ Syntactically, terms in Mercury are exactly the same as in ISO Prolog,
 except that as extensions we permit higher-order terms and the
 introduction of infix operators by the use of grave accents (backquotes),
 as described below,
-and we support an extended set of builtin operators. @xref{Builtin Operators}.
+and we support an extended set of builtin operators.  @xref{Builtin Operators}.
 Also, the constructor for list terms in Mercury is @code{[|]/2}, not
 @code{./2} as in Prolog.
 
@@ -574,7 +574,7 @@ the predicate or function must have been declared
 in a preceding @samp{pred} or @samp{func} declaration in this module.
 The @var{Result} (if any) and the arguments of the @var{Head} must
 be valid data-terms (optionally annotated with a mode qualifier;
-see @pxref{Different clauses for different modes}).
+see @ref{Different clauses for different modes}).
 
 A fact is equivalent to a rule whose body is @samp{true}.
 
@@ -593,7 +593,7 @@ been declared in a preceding @samp{pred} or @samp{func} declaration in
 this module.
 The @var{Result} and the arguments of the @var{Head} must be
 valid data-terms (optionally annotated with a mode qualifier;
-see @pxref{Different clauses for different modes}).
+see @ref{Different clauses for different modes}).
 The @var{Body} must be a valid goal.
 
 @node Goals
@@ -4853,7 +4853,7 @@ Note that an existentially typed procedure is not allowed to have
 different types for its existentially typed arguments in different clauses
 (even mode-specific clauses) or in different subgoals of a single clause;
 however, the same effect can be achieved in other ways
-(see @pxref{Some idioms using existentially quantified types}).
+(@pxref{Some idioms using existentially quantified types}).
 
 For procedures involving calls to existentially-typed predicates or functions,
 the compiler's mode analysis must take account of the modes for type
@@ -5162,7 +5162,7 @@ harder_example(Name, Showable) :-
 @end example
 
 The issue can also arise for mode-specific clauses
-(see @pxref{Different clauses for different modes}).
+(@pxref{Different clauses for different modes}).
 For instance, the following example is illegal:
 
 @example
@@ -5346,7 +5346,7 @@ fair search rule; and so forth.
 
 This chapter documents the new foreign language interface.
 This is intended as a successor to the existing C interface for Mercury,
-which is documented in @xref{C interface}.
+which is documented in @ref{C interface}.
 However, the new foreign language interface is not yet complete
 (it does not yet include equivalents to
 @samp{pragma import} and @samp{pragma export} in the C interface)
@@ -5543,7 +5543,7 @@ to the foreign language's parameter passing convention.
 @node C data passing conventions
 @subsection C data passing conventions
 
-This section is currently documented in @pxref{Passing data to and from C}.
+This section is currently documented in @ref{Passing data to and from C}.
 
 @node IL and C# data passing conventions
 @subsection IL and C# data passing conventions
@@ -5984,7 +5984,7 @@ functions declared with @samp{pragma foreign_code}.
 The input and output variables for a C# @samp{pragma foreign_proc} will
 have C# types corresponding to their Mercury types.  The exact rules
 for mapping Mercury types to C# types are described in
-@xref{IL and C# data passing conventions}.
+@ref{IL and C# data passing conventions}.
 
 C# code in a @code{pragma foreign_proc} declaration
 for any procedure whose determinism indicates that it could fail
@@ -6185,7 +6185,7 @@ before returning.
 @c set @code{success} to false (zero).
 
 Each of the head variables will be represented by the Common Language
-Runtime types as specified in @pxref{IL and C# data passing conventions}.
+Runtime types as specified in @ref{IL and C# data passing conventions}.
 
 @node Using pragma foreign_decl for IL
 @subsubsection Using pragma foreign_decl for IL
@@ -6333,7 +6333,7 @@ For example:
 This chapter documents the original C interface.
 In the long term we are planning to phase out support for this interface
 in favour of the new foreign language interface documented in
-@xref{Foreign language interface}.
+@ref{Foreign language interface}.
 
 The Mercury distribution includes a number of examples of the
 use of the C interface that show how to interface C++ with Mercury
@@ -8474,7 +8474,7 @@ One of these transformations must be performed on every Aditi predicate.
 @samp{supp_magic} is the default.
 There are restrictions on predicates to which the context transformation
 can be applied; these are described in @cite{Right-, left-, and multi-linear
-rule transformations that maintain context information.} @ref{[6]}.
+rule transformations that maintain context information.} @xref{[6]}.
 
 @example
 :- pragma naive(@var{Name}/@var{Arity}).
