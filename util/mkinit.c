@@ -23,14 +23,18 @@
 #include	<string.h>
 #include	<ctype.h>
 #include	<errno.h>
-#include	<sys/stat.h>
+
+#include	"mercury_conf.h"
+
+#ifdef HAVE_SYS_STAT_H
+  #include	<sys/stat.h>
+#endif
 
 #ifdef HAVE_UNISTD_H
   #include	<unistd.h>
 #endif
 
 #include	"getopt.h"
-#include	"mercury_conf.h"
 #include	"mercury_std.h"
 
 /* --- adjustable limits --- */
@@ -496,15 +500,23 @@ find_init_file(const char *basename)
 
 	/*
 	** Check whether a file exists.
-	** At some point in the future it may be worth making this
-	** implementation more portable.
 	*/
 static bool
 file_exists(const char *filename)
 {
+#ifdef HAVE_SYS_STAT_H
 	struct stat buf;
 
 	return (stat(filename, &buf) == 0);
+#else
+	FILE *f = fopen(filename, "rb");
+	if (f != NULL) {
+		fclose(f);
+		return TRUE;
+	} else {
+		return FALSE;
+	}
+#endif
 }
 
 /*---------------------------------------------------------------------------*/
