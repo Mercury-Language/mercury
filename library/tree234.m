@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module list, std_util.
+:- import_module list, std_util, assoc_list.
 
 :- type tree234(K, V).
 

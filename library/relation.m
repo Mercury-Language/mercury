@@ -18,7 +18,7 @@
 :- module relation.
 
 :- interface.
-:- import_module list, set, std_util.
+:- import_module list, set, std_util, assoc_list.
 
 :- type relation(T).
 

@@ -29,7 +29,7 @@
 
 :- module bintree.
 :- interface.
-:- import_module list, std_util.
+:- import_module list, std_util, assoc_list.
 
 :- type bintree(K, V).
 

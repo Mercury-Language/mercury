@@ -22,7 +22,7 @@
 
 :- module map.
 :- interface.
-:- import_module set, list, std_util, require.
+:- import_module set, list, std_util, assoc_list, require.
 
 %-----------------------------------------------------------------------------%
 

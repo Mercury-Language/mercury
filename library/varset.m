@@ -45,6 +45,14 @@
 :- pred varset__new_var(varset, var, varset).
 :- mode varset__new_var(in, out, out) is det.
 
+	% delete an old variable
+:- pred varset__delete_var(varset, var, varset).
+:- mode varset__delete_var(in, in, out) is det.
+
+	% delete a list of old variables
+:- pred varset__delete_vars(varset, list(var), varset).
+:- mode varset__delete_vars(in, in, out) is det.
+
 	% return a list of all the variables in a varset
 :- pred varset__vars(varset, list(var)).
 :- mode varset__vars(in, out) is det.
@@ -65,7 +73,7 @@
 :- pred varset__bind_var(varset, var, term, varset).
 :- mode varset__bind_var(in, in, in, out) is det.
 
-	% bind a a set of terms to a set of variables.
+	% bind a set of terms to a set of variables.
 :- pred varset__bind_vars(varset, substitution, varset).
 :- mode varset__bind_vars(in, in, out) is det.
 
@@ -104,7 +112,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, std_util, require.
+:- import_module int, list, map, std_util, assoc_list, require.
 
 :- type varset		--->	varset(
 					var_supply,
@@ -129,6 +137,20 @@ varset__is_empty(varset(VarSupply, _, _)) :-
 varset__new_var(varset(MaxId0, Names, Vals), Var,
 		varset(MaxId, Names, Vals)) :-
 	term__create_var(MaxId0, Var, MaxId).
+
+%-----------------------------------------------------------------------------%
+
+varset__delete_var(varset(MaxId, Names0, Vals0), Var,
+		varset(MaxId, Names, Vals)) :-
+	map__delete(Names0, Var, Names),
+	map__delete(Vals0, Var, Vals).
+
+%-----------------------------------------------------------------------------%
+
+varset__delete_vars(Varset, [], Varset).
+varset__delete_vars(Varset0, [Var | Vars], Varset) :-
+	varset__delete_var(Varset0, Var, Varset1),
+	varset__delete_vars(Varset1, Vars, Varset).
 
 %-----------------------------------------------------------------------------%
 

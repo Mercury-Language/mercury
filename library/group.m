@@ -23,7 +23,7 @@
 
 :- interface.
 
-:- import_module set, list, std_util.
+:- import_module set, list, std_util, assoc_list.
 
 :- type group(T).
 

@@ -283,7 +283,7 @@ term__contains_var_list([_|Ts], V) :-
 	% CURRENTLY NOT USED.
 
 :- pred term__contains_functor(term, const, list(term)).
-:- mode term__contains_functor(in, in, in) is semidet.
+% :- mode term__contains_functor(in, in, in) is semidet.
 :- mode term__contains_functor(in, out, out) is nondet.
 
 term__contains_functor(term__functor(Functor, Args, _), Functor, Args).
