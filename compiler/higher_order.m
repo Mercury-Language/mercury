@@ -415,7 +415,9 @@ merge_higher_order_infos(Info1, Info2, Info) :-
 	Info1 = info(PredVars1, Requests1, NewPreds, ModuleInfo),
 	Info2 = info(PredVars2, Requests2,_,_),
 	merge_pred_vars(PredVars1, PredVars2, PredVars),
-	set__union(Requests1, Requests2, Requests),
+	set__union(Requests1, Requests2, Requests12),
+	set__to_sorted_list(Requests12, List12),
+	set__sorted_list_to_set(List12, Requests),
 	Info = info(PredVars, Requests, NewPreds, ModuleInfo).
 
 
