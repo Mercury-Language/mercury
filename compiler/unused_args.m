@@ -982,6 +982,15 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 	proc_info_headvars(OldProc0, HeadVars),
 	proc_info_goal(OldProc0, Goal0), 
 	Goal0 = _GoalExpr - GoalInfo0,
+
+		% We must use the interface determinism for determining
+		% the determinism of the version of the goal with its
+		% arguments removed, not the actual determinism of the
+		% body is it may be more lax, which will lead to code
+		% gen problems.
+	proc_info_interface_determinism(OldProc0, Determinism),
+	goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo1),
+
 	proc_info_vartypes(OldProc0, VarTypes0),
 	set__list_to_set(HeadVars, NonLocals),
 	map__apply_to_list(HeadVars, VarTypes0, VarTypeList),
@@ -992,7 +1001,7 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 	remove_listof_elements(HeadVars, 1, UnusedArgs, NewHeadVars),
 	GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
 		      not_builtin, no, qualified(PredModule, PredName)),
-	Goal1 = GoalExpr - GoalInfo0,
+	Goal1 = GoalExpr - GoalInfo1,
 	implicitly_quantify_goal(Goal1, Varset0, VarTypes1,
 		NonLocals, Goal, Varset, VarTypes, _),
 	proc_info_set_goal(OldProc0, Goal, OldProc1),

@@ -70,7 +70,8 @@ PROGS=		\
 		string_to_float \
 		univ \
 		unreachable \
-		unsafe_uniqueness
+		unsafe_uniqueness \
+		unused_arg_determinism
 
 # dnf.m does not work in non-gc grades, because it uses `pragma memo'
 # (i.e. tabling) and tabling is not yet implemented for non-gc grades.
