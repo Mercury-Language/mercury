@@ -980,8 +980,8 @@ options_help_warning -->
 	io__write_string("\t\tWarn about `.opt' files which cannot be opened.\n"),
 	io__write_string("\t--warn-non-stratification\n"),
 	io__write_string("\t\tWarn about possible non-stratification in the module.\n"),
-	io__write_string("\t\tNon-stratification occurs when a predicate/function can call itself"),
-	io__write_string("\t\tnegatively through some path along its call graph.").
+	io__write_string("\t\tNon-stratification occurs when a predicate/function can call\n"),
+	io__write_string("\t\titself negatively through some path along its call graph.\n").
 	
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
 
