@@ -309,6 +309,14 @@ mercury__unify_2_0:
 	tailcall(unify_pred, LABEL(mercury__unify_2_0));
 }
 
+#if OFFSET_FOR_ARG_TYPE_INFOS != 6
+
+mercury__term_to_type_2_0:
+mercury__type_to_term_2_0:
+	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
+
+#else
+
 mercury__term_to_type_2_0:
 {
 	/* we get called as 'term_to_type(TypeInfo, Term, X)' */
@@ -407,5 +415,7 @@ mercury__type_to_term_2_0_i1:
 	r3 = virtual_reg(type_arity + 2);
 	proceed();
 }
+
+#endif
 
 END_MODULE
