@@ -152,13 +152,13 @@ lexer__get_token_1(Token) -->
 			;
 				Token = SpecialToken
 			}
-		; { Char = '.' } ->
+		; { Char = ('.') } ->
 			lexer__get_dot(Token)
-		; { Char = '%' } ->
+		; { Char = ('%') } ->
 			lexer__skip_to_eol(Token)
 		; { Char = '"' ; Char = '''' } ->
 			lexer__get_quoted_name(Char, [], Token)
-		; { Char = '/' } ->
+		; { Char = ('/') } ->
 			lexer__get_slash(Token)
 		; { lexer__graphic_token_char(Char) } ->
 			lexer__get_graphic([Char], Token)
@@ -193,13 +193,13 @@ lexer__get_token_2(Token) -->
 			lexer__get_number([Char], Token)
 		; { lexer__special_token(Char, SpecialToken) } ->
 			{ Token = SpecialToken }
-		; { Char = '.' } ->
+		; { Char = ('.') } ->
 			lexer__get_dot(Token)
-		; { Char = '%' } ->
+		; { Char = ('%') } ->
 			lexer__skip_to_eol(Token)
 		; { Char = '"' ; Char = '''' } ->
 			lexer__get_quoted_name(Char, [], Token)
-		; { Char = '/' } ->
+		; { Char = ('/') } ->
 			lexer__get_slash(Token)
 		; { lexer__graphic_token_char(Char) } ->
 			lexer__get_graphic([Char], Token)
@@ -308,7 +308,7 @@ lexer__get_slash(Token) -->
 	; { Result = eof }, !,
 		{ Token = name("/") }
 	; { Result = ok(Char) },
-		( { Char = '*' } ->
+		( { Char = ('*') } ->
 			lexer__get_comment(Token)
 		; { lexer__graphic_token_char(Char) } ->
 			lexer__get_graphic([Char, '/'], Token)
@@ -328,7 +328,7 @@ lexer__get_comment(Token) -->
 	; { Result = eof }, !,
 		{ Token = error("unterminated '/*' comment") }
 	; { Result = ok(Char) },
-		( { Char = '*' } ->
+		( { Char = ('*') } ->
 			lexer__get_comment_2(Token)
 		;
 			lexer__get_comment(Token)
@@ -345,9 +345,9 @@ lexer__get_comment_2(Token) -->
 	; { Result = eof }, !,
 		{ Token = error("unterminated '/*' comment") }
 	; { Result = ok(Char) },
-		( { Char = '/' } ->
+		( { Char = ('/') } ->
 			lexer__get_token_2(Token)
-		; { Char = '*' } ->
+		; { Char = ('*') } ->
 			lexer__get_comment_2(Token)
 		;
 			lexer__get_comment(Token)
@@ -371,7 +371,7 @@ lexer__get_quoted_name(QuoteChar, Chars, Token) -->
 	; { Result = ok(Char) },
 		( { Char = QuoteChar } ->
 			lexer__get_quoted_name_quote(QuoteChar, Chars, Token)
-		; { Char = '\\' } ->
+		; { Char = ('\\') } ->
 			lexer__get_quoted_name_escape(QuoteChar, Chars, Token)
 		;
 			lexer__get_quoted_name(QuoteChar, [Char | Chars], Token)
@@ -465,7 +465,7 @@ lexer__get_hex_escape(QuoteChar, Chars, HexChars, Token) -->
 		( { char__is_hex_digit(Char) } ->
 			lexer__get_hex_escape(QuoteChar, Chars,
 						[Char | HexChars], Token)
-		; { Char = '\\' } ->
+		; { Char = ('\\') } ->
 			lexer__finish_hex_escape(QuoteChar, Chars, HexChars,
 				Token)
 		;
@@ -506,7 +506,7 @@ lexer__get_octal_escape(QuoteChar, Chars, OctalChars, Token) -->
 		( { char__is_octal_digit(Char) } ->
 			lexer__get_octal_escape(QuoteChar, Chars,
 						[Char | OctalChars], Token)
-		; { Char = '\\' } ->
+		; { Char = ('\\') } ->
 			lexer__finish_octal_escape(QuoteChar, Chars, OctalChars,
 				Token)
 		;
@@ -629,7 +629,7 @@ lexer__get_zero(Token) -->
 			lexer__get_octal(Token)
 		; { Char = 'x' } ->
 			lexer__get_hex(Token)
-		; { Char = '.' } ->
+		; { Char = ('.') } ->
 			lexer__get_int_dot(['0'], Token)
 		; { Char = 'e' ; Char = 'E' } ->
 			lexer__get_float_exponent([Char, '0'], Token)
@@ -773,7 +773,7 @@ lexer__get_number(Chars, Token) -->
 	; { Result = ok(Char) },
 		( { char__is_digit(Char) } ->
 			lexer__get_number([Char | Chars], Token)
-		; { Char = '.' } ->
+		; { Char = ('.') } ->
 			lexer__get_int_dot(Chars, Token)
 		; { Char = 'e' ; Char = 'E' } ->
 			lexer__get_float_exponent([Char | Chars], Token)
