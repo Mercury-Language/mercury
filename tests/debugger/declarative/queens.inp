@@ -1,0 +1,39 @@
+echo on
+dd_wrong
+goto 6
+dd_wrong
+goto 8
+dd_wrong
+goto 43
+dd_wrong
+goto 673
+dd_wrong
+n
+n
+n
+n
+n
+n
+n
+dd_wrong
+n
+n
+n
+n
+n
+y
+y
+dd_wrong
+n
+n
+y
+n
+n
+y
+dd_wrong
+n
+n
+y
+y
+continue -a
+

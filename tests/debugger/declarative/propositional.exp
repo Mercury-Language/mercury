@@ -1,0 +1,33 @@
+       1:      1  1 CALL pred propositional:main/2-0 (det) 
+mdb> echo on
+Command echo enabled.
+mdb> goto 10
+      10:      2  2 EXIT pred propositional:a/0-0 (semidet) 
+mdb> dd_wrong
+a
+Valid? n
+c
+Valid? y
+Incorrect instance found:
+
+a :-
+	c.
+
+      10:      2  2 EXIT pred propositional:a/0-0 (semidet) 
+mdb> goto 21
+      21:      5  2 EXIT pred propositional:b/0-0 (semidet) 
+mdb> dd_wrong
+b
+Valid? n
+f
+Valid? n
+i
+Valid? y
+Incorrect instance found:
+
+f :-
+	i.
+
+      21:      5  2 EXIT pred propositional:b/0-0 (semidet) 
+mdb> c
+yes

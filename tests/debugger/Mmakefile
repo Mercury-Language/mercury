@@ -136,12 +136,27 @@ RESS=		$(PROGS:%=%.res)
 
 #-----------------------------------------------------------------------------#
 
+SUBDIR_MMAKE = mmake $(MMAKEFLAGS) \
+			GRADE='$(GRADE)' \
+			EXTRA_CFLAGS='$(EXTRA_CFLAGS)' \
+			EXTRA_MCFLAGS='$(EXTRA_MCFLAGS)'
+
 dep:		$(DEPS)
+		cd declarative && $(SUBDIR_MMAKE) dep || exit 1;
 
 depend:		$(DEPENDS)
+		cd declarative && $(SUBDIR_MMAKE) depend || exit 1;
 
 check:		$(OUTS) $(RESS)
+		cd declarative && $(SUBDIR_MMAKE) check || exit 1;
 
 all:		$(PROGS)
+		cd declarative && $(SUBDIR_MMAKE) all || exit 1;
+
+clean:
+		cd declarative && $(SUBDIR_MMAKE) clean || exit 1;
+
+realclean:
+		cd declarative && $(SUBDIR_MMAKE) realclean || exit 1;
 
 #-----------------------------------------------------------------------------#

@@ -1,0 +1,57 @@
+       1:      1  1 CALL pred gcf:main/2-0 (cc_multi) 
+mdb> echo on
+Command echo enabled.
+mdb> goto 22
+      22:      2  2 EXIT pred gcf:a/1-0 (nondet) 
+mdb> dd_wrong
+a(11)
+Valid? y
+Bug not found.
+      22:      2  2 EXIT pred gcf:a/1-0 (nondet) 
+mdb> dd_wrong
+a(11)
+Valid? n
+f(11)
+Valid? n
+Incorrect instance found:
+
+f(11).
+
+      22:      2  2 EXIT pred gcf:a/1-0 (nondet) 
+mdb> goto 29
+      29:      2  2 EXIT pred gcf:a/1-0 (nondet) 
+mdb> dd_wrong
+a(12)
+Valid? n
+f(12)
+Valid? y
+c(2, 12)
+Valid? y
+g(2)
+Valid? n
+Incorrect instance found:
+
+g(2).
+
+      29:      2  2 EXIT pred gcf:a/1-0 (nondet) 
+mdb> goto 41
+      41:      2  2 EXIT pred gcf:a/1-0 (nondet) 
+mdb> dd_wrong
+a(20)
+Valid? n
+f(20)
+Valid? y
+c(3, 20)
+Valid? y
+g(3)
+Valid? y
+Incorrect instance found:
+
+a(20) :-
+	g(3),
+	c(3, 20),
+	f(20).
+
+      41:      2  2 EXIT pred gcf:a/1-0 (nondet) 
+mdb> c
+yes(20)

@@ -1,0 +1,81 @@
+#-----------------------------------------------------------------------------#
+
+main_target:	check
+
+include ../../Mmake.common
+
+RM_C=:
+
+#-----------------------------------------------------------------------------#
+
+# We suppress the printing of the banner, because different workspaces
+# may get different version numbers printed in it. This would otherwise be
+# the source of irrelevant difference between the actual and expected outputs.
+
+MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
+
+#-----------------------------------------------------------------------------#
+
+DECLARATIVE_PROGS= 		\
+	app 			\
+	gcf			\
+	if_then_else		\
+	propositional		\
+	queens
+
+MCFLAGS = --trace deep --trace-decl
+MLFLAGS = --trace
+C2INITFLAGS = --trace
+
+# Base grades `jump' and `fast' cannot be used with
+# stack layouts (which are required for tracing).
+
+ifneq "$(findstring asm_,$(GRADE))" ""
+    PROGS=$(DECLARATIVE_PROGS)
+else
+    ifneq "$(findstring jump,$(GRADE))" ""
+	PROGS=
+    else
+	ifneq "$(findstring fast,$(GRADE))" ""
+	    PROGS=
+	else
+	    PROGS=$(DECLARATIVE_PROGS)
+	endif
+    endif
+endif
+
+#-----------------------------------------------------------------------------#
+
+propositional.out: propositional propositional.inp
+	$(MDB) ./propositional < propositional.inp > propositional.out 2>&1
+
+app.out: app app.inp
+	$(MDB) ./app < app.inp > app.out 2>&1
+
+gcf.out: gcf gcf.inp
+	$(MDB) ./gcf < gcf.inp > gcf.out 2>&1
+
+if_then_else.out: if_then_else if_then_else.inp
+	$(MDB) ./if_then_else < if_then_else.inp > if_then_else.out 2>&1
+
+queens.out: queens queens.inp
+	$(MDB) ./queens < queens.inp > queens.out 2>&1
+
+#-----------------------------------------------------------------------------#
+
+DEPS=		$(PROGS:%=$(deps_subdir)%.dep)
+DEPENDS=	$(PROGS:%=%.depend)
+OUTS=		$(PROGS:%=%.out)
+RESS=		$(PROGS:%=%.res)
+
+#-----------------------------------------------------------------------------#
+
+dep:		$(DEPS)
+
+depend:		$(DEPENDS)
+
+check:		$(OUTS) $(RESS)
+
+all:		$(PROGS)
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,45 @@
+       1:      1  1 CALL pred if_then_else:main/2-0 (det) 
+mdb> echo on
+Command echo enabled.
+mdb> goto 8
+       8:      2  2 EXIT pred if_then_else:ite/2-0 (det) 
+mdb> dd_wrong
+ite(0, 1)
+Valid? n
+b(1)
+Valid? y
+a(0)
+Valid? y
+Incorrect instance found:
+
+ite(0, 1) :-
+	a(0),
+	b(1).
+
+       8:      2  2 EXIT pred if_then_else:ite/2-0 (det) 
+mdb> dd_wrong
+ite(0, 1)
+Valid? n
+b(1)
+Valid? n
+Incorrect instance found:
+
+b(1).
+
+       8:      2  2 EXIT pred if_then_else:ite/2-0 (det) 
+mdb> goto 15
+ite(0, 1).
+      15:      5  2 EXIT pred if_then_else:ite/2-0 (det) 
+mdb> dd_wrong
+ite(1, 0)
+Valid? n
+a(0)
+Valid? y
+Incorrect instance found:
+
+ite(1, 0) :-
+	a(0).
+
+      15:      5  2 EXIT pred if_then_else:ite/2-0 (det) 
+mdb> c
+ite(1, 0).

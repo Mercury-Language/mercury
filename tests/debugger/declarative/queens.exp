@@ -1,0 +1,123 @@
+       1:      1  1 CALL pred queens:main/2-0 (cc_multi) 
+mdb> echo on
+Command echo enabled.
+mdb> dd_wrong
+mdb: wrong answer analysis is only available from EXIT events.
+mdb> goto 6
+       6:      4  3 SWTC pred queens:qperm/2-0 (nondet) s1;
+mdb> dd_wrong
+mdb: wrong answer analysis is only available from EXIT events.
+mdb> goto 8
+       8:      5  4 DISJ pred queens:qdelete/3-0 (nondet) c2;d1;
+mdb> dd_wrong
+mdb: wrong answer analysis is only available from EXIT events.
+mdb> goto 43
+      43:     16  4 FAIL pred queens:nodiag/3-0 (semidet) 
+mdb> dd_wrong
+mdb: wrong answer analysis is only available from EXIT events.
+mdb> goto 673
+     673:      3  2 EXIT pred queens:queen/2-0 (nondet) 
+mdb> dd_wrong
+queen([1, 2, 3, 4, 5], [1, 3, 5, 2, 4])
+Valid? n
+safe([1, 3, 5, 2, 4])
+Valid? n
+safe([3, 5, 2, 4])
+Valid? n
+safe([5, 2, 4])
+Valid? n
+safe([2, 4])
+Valid? n
+safe([4])
+Valid? n
+safe([])
+Valid? n
+Incorrect instance found:
+
+safe([]).
+
+     673:      3  2 EXIT pred queens:queen/2-0 (nondet) 
+mdb> dd_wrong
+queen([1, 2, 3, 4, 5], [1, 3, 5, 2, 4])
+Valid? n
+safe([1, 3, 5, 2, 4])
+Valid? n
+safe([3, 5, 2, 4])
+Valid? n
+safe([5, 2, 4])
+Valid? n
+safe([2, 4])
+Valid? n
+safe([4])
+Valid? y
+nodiag(2, 1, [4])
+Valid? y
+Incorrect instance found:
+
+safe([2, 4]) :-
+	nodiag(2, 1, [4]),
+	safe([4]).
+
+     673:      3  2 EXIT pred queens:queen/2-0 (nondet) 
+mdb> dd_wrong
+queen([1, 2, 3, 4, 5], [1, 3, 5, 2, 4])
+Valid? n
+safe([1, 3, 5, 2, 4])
+Valid? n
+safe([3, 5, 2, 4])
+Valid? y
+nodiag(1, 1, [3, 5, 2, 4])
+Valid? n
+nodiag(1, 2, [5, 2, 4])
+Valid? n
+nodiag(1, 3, [2, 4])
+Valid? y
+Incorrect instance found:
+
+nodiag(1, 2, [5, 2, 4]) :-
+	nodiag(1, 3, [2, 4]).
+
+     673:      3  2 EXIT pred queens:queen/2-0 (nondet) 
+mdb> dd_wrong
+queen([1, 2, 3, 4, 5], [1, 3, 5, 2, 4])
+Valid? n
+safe([1, 3, 5, 2, 4])
+Valid? n
+safe([3, 5, 2, 4])
+Valid? y
+nodiag(1, 1, [3, 5, 2, 4])
+Valid? y
+Incorrect instance found:
+
+safe([1, 3, 5, 2, 4]) :-
+	nodiag(1, 1, [3, 5, 2, 4]),
+	safe([3, 5, 2, 4]).
+
+     673:      3  2 EXIT pred queens:queen/2-0 (nondet) 
+mdb> continue -a
+     674:      1  1 THEN pred queens:main/2-0 (cc_multi) t;
+     675:    141  2 CALL pred queens:print_list/3-0 (det) 
+     676:    141  2 ELSE pred queens:print_list/3-0 (det) e;
+[     677:    142  3 CALL pred queens:print_list_2/3-0 (det) 
+     678:    142  3 SWTC pred queens:print_list_2/3-0 (det) s1;
+1     679:    142  3 ELSE pred queens:print_list_2/3-0 (det) s1;c3;e;
+,      680:    143  4 CALL pred queens:print_list_2/3-0 (det) 
+     681:    143  4 SWTC pred queens:print_list_2/3-0 (det) s1;
+3     682:    143  4 ELSE pred queens:print_list_2/3-0 (det) s1;c3;e;
+,      683:    144  5 CALL pred queens:print_list_2/3-0 (det) 
+     684:    144  5 SWTC pred queens:print_list_2/3-0 (det) s1;
+5     685:    144  5 ELSE pred queens:print_list_2/3-0 (det) s1;c3;e;
+,      686:    145  6 CALL pred queens:print_list_2/3-0 (det) 
+     687:    145  6 SWTC pred queens:print_list_2/3-0 (det) s1;
+2     688:    145  6 ELSE pred queens:print_list_2/3-0 (det) s1;c3;e;
+,      689:    146  7 CALL pred queens:print_list_2/3-0 (det) 
+     690:    146  7 SWTC pred queens:print_list_2/3-0 (det) s1;
+4     691:    146  7 THEN pred queens:print_list_2/3-0 (det) s1;c3;t;
+     692:    146  7 EXIT pred queens:print_list_2/3-0 (det) 
+     693:    145  6 EXIT pred queens:print_list_2/3-0 (det) 
+     694:    144  5 EXIT pred queens:print_list_2/3-0 (det) 
+     695:    143  4 EXIT pred queens:print_list_2/3-0 (det) 
+     696:    142  3 EXIT pred queens:print_list_2/3-0 (det) 
+]
+     697:    141  2 EXIT pred queens:print_list/3-0 (det) 
+     698:      1  1 EXIT pred queens:main/2-0 (cc_multi) 

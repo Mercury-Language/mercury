@@ -1,0 +1,12 @@
+echo on
+goto 10
+dd_wrong
+n
+y
+goto 21
+dd_wrong
+n
+n
+y
+c
+

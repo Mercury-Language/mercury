@@ -37,6 +37,9 @@ at some time in the future:
   included in the formatted versions of the reference manual,
   only in the TexInfo source code.)
 
+* The Mercury debugger (mdb) now includes some support for declarative
+  debugging.
+
 We also have some code that goes at least some part of the way towards
 implementing the features below.   However, for these features, the
 code has not yet been committed and thus is not part of the standard

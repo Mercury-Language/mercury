@@ -1,0 +1,19 @@
+echo on
+goto 19
+dd_wrong
+y
+dd_wrong
+n
+n
+n
+n
+n
+n
+goto 67
+dd_wrong
+n
+n
+n
+y
+continue -a
+

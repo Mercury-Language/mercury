@@ -1,0 +1,49 @@
+       1:      1  1 CALL pred app:main/2-0 (det) 
+mdb> echo on
+Command echo enabled.
+mdb> goto 19
+      19:      2  2 EXIT pred app:app/3-0 (det) 
+mdb> dd_wrong
+app([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8], int)
+Valid? y
+Bug not found.
+      19:      2  2 EXIT pred app:app/3-0 (det) 
+mdb> dd_wrong
+app([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8], int)
+Valid? n
+app([2, 3, 4, 5], [6, 7, 8], [2, 3, 4, 5, 6, 7, 8], int)
+Valid? n
+app([3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8], int)
+Valid? n
+app([4, 5], [6, 7, 8], [4, 5, 6, 7, 8], int)
+Valid? n
+app([5], [6, 7, 8], [5, 6, 7, 8], int)
+Valid? n
+app([], [6, 7, 8], [6, 7, 8], int)
+Valid? n
+Incorrect instance found:
+
+app([], [6, 7, 8], [6, 7, 8], int).
+
+      19:      2  2 EXIT pred app:app/3-0 (det) 
+mdb> goto 67
+append([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8]).
+      67:      8  2 EXIT pred app:app/3-0 (det) 
+mdb> dd_wrong
+app([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int)
+Valid? n
+app([2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int)
+Valid? n
+app([3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int)
+Valid? n
+app([4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int)
+Valid? y
+Incorrect instance found:
+
+app([3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int) :-
+	app([4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int).
+
+      67:      8  2 EXIT pred app:app/3-0 (det) 
+mdb> continue -a
+append([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8]).
+      68:      1  1 EXIT pred app:main/2-0 (det) 

@@ -1661,12 +1661,12 @@ MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to insta
 AC_SUBST(LIBGRADES)
 #-----------------------------------------------------------------------------#
 #
-# Add an option that enables declarative debugging support in the internal
-# debugger.  It is disabled by default.
+# Add an option that disables declarative debugging support in the internal
+# debugger.  It is enabled by default.
 #
 AC_ARG_ENABLE(decl-debug,
-[  --enable-decl-debug     enable the declarative debugger],
-mercury_cv_enable_decl_debug="$enableval",mercury_cv_enable_decl_debug=no)
+[  --disable-decl-debug    disable the declarative debugger],
+mercury_cv_enable_decl_debug="$enableval",mercury_cv_enable_decl_debug=yes)
 if test "$mercury_cv_enable_decl_debug" = "yes"; then
 	AC_DEFINE(MR_USE_DECLARATIVE_DEBUGGER)
 fi
