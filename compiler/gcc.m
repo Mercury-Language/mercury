@@ -241,6 +241,19 @@
 :- pred end_function(io__state, io__state).
 :- mode end_function(di, uo) is det.
 
+	% set_context(Filename, LineNumber):
+	%	Set the source location that GCC uses for subsequent
+	%	declarations and diagnostics.  This should be called
+	%	before `start_function' and also before `end_function'.
+:- pred set_context(string, int, io__state, io__state).
+:- mode set_context(in, in, di, uo) is det.
+
+	% gen_line_note(FileName, LineNumber):
+	%	Generate a marker indicating the source location.
+	%	This should be called before generating each statement.
+:- pred gen_line_note(string, int, io__state, io__state).
+:- mode gen_line_note(in, in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Statements
@@ -703,6 +716,18 @@ build_func_addr_expr(FuncDecl, Expr) -->
 
 :- pragma import(end_function(di, uo), [will_not_call_mercury],
 	"merc_end_function").
+
+:- pragma c_code(set_context(FileName::in, LineNumber::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	merc_set_context(FileName, LineNumber);
+").
+
+:- pragma c_code(gen_line_note(FileName::in, LineNumber::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	emit_line_note(FileName, LineNumber);
+").
 
 %-----------------------------------------------------------------------------%
 %

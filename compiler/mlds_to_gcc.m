@@ -1033,7 +1033,7 @@ mlds_output_pred_proc_id(proc(PredId, ProcId)) -->
 		func_params, maybe(statement), io__state, io__state).
 :- mode mlds_output_func(in, in, in, in, in, di, uo) is det.
 
-mlds_output_func(_Indent, Name, _Context, Signature, MaybeBody) -->
+mlds_output_func(_Indent, Name, Context, Signature, MaybeBody) -->
 	(
 		{ MaybeBody = no }
 	;
@@ -1043,10 +1043,12 @@ mlds_output_func(_Indent, Name, _Context, Signature, MaybeBody) -->
 		build_label_table(Body, LabelTable),
 		{ FuncInfo = func_info(Name, Signature,
 			SymbolTable, LabelTable) },
+		set_context(Context),
 		gcc__start_function(FuncDecl),
-		gen_statement(FuncInfo, Body),
-		gcc__end_function
 		% mlds_maybe_output_time_profile_instr(Context, Name)
+		gen_statement(FuncInfo, Body),
+		set_context(Context),
+		gcc__end_function
 	).
 
 :- pred build_label_table(mlds__statement::in, label_table::out,
@@ -2101,7 +2103,7 @@ mlds_output_statements(Indent, FuncInfo, Statements) -->
 :- mode gen_statement(in, in, di, uo) is det.
 
 gen_statement(FuncInfo, mlds__statement(Statement, Context)) -->
-	mlds_output_context(Context),
+	gen_context(Context),
 	gen_stmt(FuncInfo, Statement, Context).
 
 :- pred gen_stmt(func_info, mlds__stmt, mlds__context,
@@ -3937,6 +3939,24 @@ mlds_indent(N) -->
 		io__write_string("  "),
 		mlds_indent(N - 1)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred set_context(mlds__context::in, io__state::di, io__state::uo) is det.
+set_context(MLDS_Context) -->
+	{ ProgContext = mlds__get_prog_context(MLDS_Context) },
+	{ FileName = term__context_file(ProgContext) },
+	{ LineNumber = term__context_line(ProgContext) },
+	gcc__set_context(FileName, LineNumber).
+
+:- pred gen_context(mlds__context, io__state, io__state).
+:- mode gen_context(in, di, uo) is det.
+
+gen_context(MLDS_Context) -->
+	{ ProgContext = mlds__get_prog_context(MLDS_Context) },
+	{ FileName = term__context_file(ProgContext) },
+	{ LineNumber = term__context_line(ProgContext) },
+	gcc__gen_line_note(FileName, LineNumber).
 
 %-----------------------------------------------------------------------------%
 %
