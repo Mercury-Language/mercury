@@ -178,11 +178,12 @@
 			% we only handle deterministic code.
 
 			;	disj(hlds__goals)
-			;	not(vars,hlds__goal)
+			;	not(list(var), hlds__goal)
 					% could use if_then_else instead
-			;	all(vars,hlds__goal)
-			;	some(vars,hlds__goal)
-			;	if_then_else(vars,hlds__goal,hlds__goal,hlds__goal)
+			;	all(list(var), hlds__goal)
+			;	some(list(var), hlds__goal)
+			;	if_then_else(list(var), hlds__goal,
+					hlds__goal, hlds__goal)
 			;	error.
 
 	% Record whether a call is a builtin or not, and if so, which one.
@@ -239,9 +240,6 @@
 
 :- export_type hlds__goals.
 :- type hlds__goals		==	list(hlds__goal).
-
-:- export_type vars.
-:- type vars		==	list(variable).
 
 :- type goal_info	--->	goalinfo(
 					map(var_id, is_live), 
