@@ -1549,6 +1549,7 @@ type classes (@pxref{Type classes}), and existentially quantified types
 * User-defined types::
 * Predicate and function type declarations::
 * Field access functions::
+* Solver types::
 @end menu
 
 @node Builtin types
@@ -2088,6 +2089,212 @@ update_field_in_map(Map, Index, Value) =
                 Map ^ elem(Index) ^ field2 := Value.
 @end example
 
+@node Solver types
+@section Solver types
+
+@menu
+* The any inst::
+* Abstract solver type declarations::
+* Solver type definitions::
+* Implementing solver types::
+* Solver type constraints and negated contexts::
+* Polymorphic solver types::
+@end menu
+
+Solver types are an experimental addition to the language supporting the
+implementation of constraint solvers.  A program may place constraints
+on and between variables of a solver type, limiting the values those
+variables may take on before they are actually bound.  For example, if
+@code{X} and @code{Y} are variables belonging to a constrained integer
+solver type, we might place constraints upon them such that @code{X > 3
++ Y} and @code{Y =< 7}.  A later attempt to unify @code{Y} with
+@code{10} will fail (it would violate the second constraint); similarly
+an attempt to unify @code{X} with @code{5} and @code{Y} with @code{4}
+would fail (it would violate the first constraint).
+
+@node The any inst
+@subsection The @samp{any} inst
+
+A special inst, @code{any}, is associated with solver types.  A variable
+of a solver type with inst @code{any} means that that variable may not
+(yet) be semantically ground, in the following sense: if a variable is
+semantically ground then the set of values it unifies with form an
+equivalence class; if a variable is non-ground then the set of values it
+unifies with do not form an equivalence class.
+
+More formally, @code{X} is ground if for values @code{Y} and
+@code{Z} that unify with @code{X}, it is the case that @code{Y} and
+@code{Z} also unify with each other.  @code{X} is non-ground if there
+are values @code{Y} and @code{Z} that unify with @code{X}, but which do
+not unify with each other.
+
+For non-solver types, @code{any} is equivalent to @code{ground}.
+
+@node Abstract solver type declarations
+@subsection Abstract solver type declarations
+
+The type declarations
+
+@example
+:- solver type t1.
+:- solver type t2(T1, T2).
+@end example
+
+@noindent
+declare types @code{t1/0} and @code{t2/2} to be abstract solver types.
+Abstract solver type declarations are identical to ordinary abstract
+type declarations except for the solver keyword.
+
+@node Solver type definitions
+@subsection Solver type definitions
+
+A solver type definition takes the following form:
+
+@example
+:- solver type solver_type
+        where   representation is representation_type,
+                initialisation is initialisation_pred,
+                ground         is ground_inst,
+                any            is any_inst,
+                equality       is equality_pred,
+                comparison     is comparison_pred.
+@end example
+
+The first four attributes after the @samp{where} are mandatory
+(@samp{initialization} is allowed as a synonym for
+@samp{initialisation}), the equality and comparison attributes are
+optional (although a solver type without equality would not be very
+useful), and attributes must appear in the order shown.
+
+The @code{representation_type} is the type used to implement the
+@code{solver_type}.  A two-tier scheme of this kind is necessary for a
+number of reasons, including
+@itemize @bullet
+@item
+a semantic gap is necessary to accommodate the fact that non-ground
+@code{solver_type} values may be represented by ground
+@code{representation_type} values (in the context of the corresponding
+constraint solver state);
+@item
+this approach greatly simplifies the definition of equality and
+comparison predicates for the @code{solver_type}.
+@end itemize
+
+The @code{initialisation_pred} is the name of a predicate defined in the same
+module as the solver type, with the following signature:
+
+@example
+:- pred initialisation_pred(solver_type::out(any)) is det.
+@end example
+
+Calls to this predicate are inserted automatically by the compiler when a
+@code{free} @code{solver_type} variable has to be given inst @code{any}.
+(The initialisation predicate is responsible for registering the new, unbound
+variable with the corresponding constraint solver state.)
+
+The @code{ground_inst} is the inst associated with
+@code{representation_type} values denoting @code{ground}
+@code{solver_type} values.
+
+The @code{any_inst} is the inst associated with
+@code{representation_type} values denoting @code{any} @code{solver_type}
+values.
+
+The compiler constructs three impure functions for converting between
+@code{solver_type} values and @code{representation_type} values
+(@samp{name} is the function symbol used to name @code{solver_type} and
+@samp{arity} is the number of type parameters it takes):
+
+@example
+:- impure func 'representation of name/arity'(solver_type) =
+                        representation_type.
+:-        mode 'representation of name/arity'(in) =
+                        out(ground_inst) is det.
+:-        mode 'representation of name/arity'(in(any)) =
+                        out(any_inst) is det.
+
+:- impure func 'representation to ground name/arity'(representation_type) =
+                        solver_type.
+:-        mode 'representation to ground name/arity'(in(ground_inst)) =
+                        out is det.
+
+:- impure func 'representation to any name/arity'(representation_type) =
+                        solver_type.
+:-        mode 'representation to any name/arity'(in(any_inst)) =
+                        out(any) is det.
+@end example
+
+These functions are impure because of the semantic gap issue mentioned
+above.
+
+Two @code{representation_type}-to-@code{solver_type} functions are
+needed to avoid mode ambiguity in the case where @code{any_inst} and
+@code{ground_inst} are equivalent.
+
+These functions are constructed in-line as part of a source-to-source
+transformation, hence it is an error to define a solver type in the
+interface section of a module.
+
+If @code{solver_type} is exported then it is a requirement that
+@code{representation_type}, @code{initialisation_pred}, and, if
+specified, @code{equality_pred} and @code{comparison_pred} are also
+exported from the same module.
+
+@node Implementing solver types
+@subsection Implementing solver types
+
+A solver type is an abstraction, implemented using a combination of a
+private representation type and a constraint store.
+
+The constraint store is an (impure) piece of state used to keep track of
+the extant constraints on variables of the solver type.  This will
+typically be implemented using foreign code.
+
+It is important that changes to the constraint store are properly 
+trailed (see @ref{Trailing}) so that changes can be undone on
+backtracking.
+
+The solver type implementation should provide functions and predicates
+to
+@itemize @bullet
+@item
+construct and deconstruct solver type values,
+@item
+to place constraints on solver type variables,
+@item
+to convert @code{any} solver type variables to @code{ground} if possible
+(this is obviously an impure operation --- see @ref{Impurity}),
+@item
+to convert solver type values to non-solver type values (again, this is
+impure and requires the argument solver type values be
+sufficiently ground),
+@item 
+to ask questions about the extant constraints on solver type variables
+without constraining them further (this too is impure because the set
+of constraints on a variable may change during execution of the
+program).
+@end itemize
+
+@node Solver type constraints and negated contexts
+@subsection Solver type constraints and negated contexts
+
+It is (a currently unchecked) error to place a constraint on a solver
+type variable in a negated context.  The reason for this is that the
+compiler does not understand what constraints mean and therefore it
+cannot enforce their negation outside a negated context.
+
+For this reason, soundness of a program is not guaranteed if constraints
+are placed on solver type variables inside negations or the conditions of
+if-then-else goals.  Particular care is needed since unification is a primary
+form of constraint.
+
+@node Polymorphic solver types
+@subsection Polymorphic solver types
+
+Under the current design, the compiler does not have enough information to
+initialise variables belonging to polymorphic parameters that are themselves
+expected to be solver types.  At some point we intend to lift this restriction.
+
 @node Modes
 @chapter Modes
 
@@ -2159,13 +2366,15 @@ but not the term @code{[H|T]} (only part of the skeleton is known),
 the term @code{[A,2]} (not all elements are variables),
 or the term @code{[A,A]} (the elements are not distinct variables).
 
-As a shorthand, the mode system provides @samp{free} and @samp{ground}
-as names for instantiatedness trees
-all of whose nodes are free and bound respectively.
-The shape of these trees is determined by
-the type of the variable to which they apply.
+As a shorthand, the mode system provides @code{free} and @code{ground}
+as names for instantiatedness trees all of whose nodes are free and
+bound respectively (with the exception of solver type values which may
+be semantically ground, but be defined in terms of non-ground solver
+type values; see @ref{Solver types} for more detail).  The shape of
+these trees is determined by the type of the variable to which they
+apply.
 
-A more concise, alternative syntax exists for @samp{bound} instantiatedness
+A more concise, alternative syntax exists for @code{bound} instantiatedness
 trees:
 
 @example

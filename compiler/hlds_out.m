@@ -436,10 +436,10 @@ hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity) = Str :-
 		Str = "`" ++ PromiseStr ++ "' declaration"
 	;
 		Promise = none,
-		PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+		PredOrFuncStr = prog_out__pred_or_func_to_full_str(PredOrFunc),
 		hlds_out__simple_call_id_to_sym_name_and_arity(
 			PredOrFunc - Name/Arity, SymArity),
-		sym_name_and_arity_to_string(SymArity, SymArityStr),
+		SymArityStr = prog_out__sym_name_and_arity_to_string(SymArity),
 		Str = PredOrFuncStr ++ " `" ++ SymArityStr ++ "'"
 	).
 
@@ -471,7 +471,7 @@ hlds_out__write_generic_call_id(GenericCallId, !IO) :-
 hlds_out__generic_call_id_to_string(higher_order(Purity, PredOrFunc, _)) =
 	purity_prefix_to_string(Purity)
 		++ "higher-order "
-		++ pred_or_func_to_full_str(PredOrFunc)
+		++ prog_out__pred_or_func_to_full_str(PredOrFunc)
 		++ " call".
 hlds_out__generic_call_id_to_string(class_method(_ClassId, MethodId)) =
 	hlds_out__simple_call_id_to_string(MethodId).
@@ -554,7 +554,8 @@ hlds_out__arg_number_to_string(generic_call(
 		% Make error messages for higher-order calls
 		% such as `P(A, B)' clearer.
 		Main = "argument " ++ int_to_string(ArgNum),
-		PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+		PredOrFuncStr =
+			prog_out__pred_or_func_to_full_str(PredOrFunc),
 		( ArgNum = 1 ->
 			Expl = "the " ++ PredOrFuncStr ++ " term"
 		;
@@ -2232,7 +2233,7 @@ hlds_out__write_aditi_builtin(_ModuleInfo, Builtin, CallId,
 	io__write_string(UpdateName, !IO),
 	io__write_string("(", !IO),
 	CallId = PredOrFunc - _,
-	PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
+	PredOrFuncStr = prog_out__pred_or_func_to_str(PredOrFunc),
 	io__write_string(PredOrFuncStr, !IO),
 	io__write_string(" ", !IO),
 	hlds_out__simple_call_id_to_sym_name_and_arity(CallId, SymArity),
@@ -3068,9 +3069,8 @@ hlds_out__write_types_2(Indent, [TypeCtor - TypeDefn | Types], !IO) :-
 
 	hlds_out__write_indent(Indent, !IO),
 	(
-		( TypeBody ^ du_type_is_solver_type = solver_type
+		( TypeBody = solver_type(_, _)
 		; TypeBody = abstract_type(solver_type)
-		; TypeBody = foreign_type(_, solver_type)
 		)
 	->
 		io__write_string(":- solver type ", !IO)
@@ -3090,32 +3090,32 @@ hlds_out__write_type_name(Name - _Arity, !IO) :-
 :- pred hlds_out__write_type_params(tvarset::in, list(type_param)::in,
 	io::di, io::uo) is det.
 
-hlds_out__write_type_params(_Tvarset, [], !IO).
-hlds_out__write_type_params(Tvarset, [P], !IO) :-
+hlds_out__write_type_params(_TVarSet, [], !IO).
+hlds_out__write_type_params(TVarSet, [P], !IO) :-
 	io__write_string("(", !IO),
-	term_io__write_term(Tvarset, P, !IO),
+	term_io__write_term(TVarSet, P, !IO),
 	io__write_string(")", !IO).
-hlds_out__write_type_params(Tvarset, [P | Ps], !IO) :-
+hlds_out__write_type_params(TVarSet, [P | Ps], !IO) :-
 	Ps = [_ | _],
 	io__write_string("(", !IO),
-	term_io__write_term(Tvarset, P, !IO),
-	hlds_out__write_type_params_2(Tvarset, Ps, !IO).
+	term_io__write_term(TVarSet, P, !IO),
+	hlds_out__write_type_params_2(TVarSet, Ps, !IO).
 
 :- pred hlds_out__write_type_params_2(tvarset::in, list(type_param)::in,
 	io::di, io::uo) is det.
 
-hlds_out__write_type_params_2(_Tvarset, [], !IO) :-
+hlds_out__write_type_params_2(_TVarSet, [], !IO) :-
 	io__write_string(")", !IO).
-hlds_out__write_type_params_2(Tvarset, [P | Ps], !IO) :-
+hlds_out__write_type_params_2(TVarSet, [P | Ps], !IO) :-
 	io__write_string(", ", !IO),
-	term_io__write_term(Tvarset, P, !IO),
-	hlds_out__write_type_params_2(Tvarset, Ps, !IO).
+	term_io__write_term(TVarSet, P, !IO),
+	hlds_out__write_type_params_2(TVarSet, Ps, !IO).
 
 :- pred hlds_out__write_type_body(int::in, tvarset::in, hlds_type_body::in,
 	io::di, io::uo) is det.
 
-hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, Tags, Enum,
-		MaybeEqualityPred, ReservedTag, _IsSolverType, Foreign),
+hlds_out__write_type_body(Indent, TVarSet, du_type(Ctors, Tags, Enum,
+			MaybeUserEqComp, ReservedTag, Foreign),
 		!IO) :-
 	io__write_string(" --->\n", !IO),
 	(
@@ -3132,33 +3132,8 @@ hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, Tags, Enum,
 	;
 		ReservedTag = no
 	),
-	hlds_out__write_constructors(Indent, Tvarset, Ctors, Tags, !IO),
-	( MaybeEqualityPred = yes(unify_compare(MaybeEq, MaybeCompare)) ->
-		io__write_string("\n", !IO),
-		hlds_out__write_indent(Indent + 1, !IO),
-		io__write_string("where ", !IO),
-		(
-			MaybeEq = yes(Eq),
-			io__write_string("equality is ", !IO),
-			prog_out__write_sym_name(Eq, !IO),
-			( MaybeCompare = yes(_) ->
-				io__write_string(", ", !IO)
-			;
-				true
-			)
-		;
-			MaybeEq = no
-		),
-		(
-			MaybeCompare = yes(Compare),
-			io__write_string("comparison is ", !IO),
-			prog_out__write_sym_name(Compare, !IO)
-		;
-			MaybeCompare = no
-		)
-	;
-		true
-	),
+	hlds_out__write_constructors(Indent, TVarSet, Ctors, Tags, !IO),
+	mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp, !IO),
 	(
 		Foreign = yes(_),
 		hlds_out__write_indent(Indent, !IO),
@@ -3168,57 +3143,64 @@ hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, Tags, Enum,
 	),
 	io__write_string(".\n", !IO).
 
-hlds_out__write_type_body(_Indent, Tvarset, eqv_type(Type), !IO) :-
+hlds_out__write_type_body(_Indent, TVarSet, eqv_type(Type), !IO) :-
 	io__write_string(" == ", !IO),
-	term_io__write_term(Tvarset, Type, !IO),
+	term_io__write_term(TVarSet, Type, !IO),
 	io__write_string(".\n", !IO).
 
-hlds_out__write_type_body(_Indent, _Tvarset, abstract_type(_IsSolverType),
+hlds_out__write_type_body(_Indent, _TVarSet, abstract_type(_IsSolverType),
 		!IO) :-
 	io__write_string(".\n", !IO).
 
-hlds_out__write_type_body(_Indent, _Tvarset, foreign_type(_, _), !IO) :-
+hlds_out__write_type_body(_Indent, _TVarSet, foreign_type(_), !IO) :-
 	% XXX
 	io__write_string(" == $foreign_type.\n", !IO).
+
+hlds_out__write_type_body(_Indent, TVarSet,
+		solver_type(SolverTypeDetails, MaybeUserEqComp), !IO) :-
+	mercury_output_where_attributes(TVarSet, yes(SolverTypeDetails),
+		MaybeUserEqComp, !IO),
+	io__write_string(".\n", !IO).
+
 
 :- pred hlds_out__write_constructors(int::in, tvarset::in,
 	list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.
 
-hlds_out__write_constructors(_Indent, _Tvarset, [], _, !IO) :-
+hlds_out__write_constructors(_Indent, _TVarSet, [], _, !IO) :-
 	error("hlds_out__write_constructors: empty constructor list?").
-hlds_out__write_constructors(Indent, Tvarset, [C], TagValues, !IO) :-
+hlds_out__write_constructors(Indent, TVarSet, [C], TagValues, !IO) :-
 	hlds_out__write_indent(Indent, !IO),
 	io__write_char('\t', !IO),
-	hlds_out__write_ctor(C, Tvarset, TagValues, !IO).
-hlds_out__write_constructors(Indent, Tvarset, [C | Cs], TagValues, !IO) :-
+	hlds_out__write_ctor(C, TVarSet, TagValues, !IO).
+hlds_out__write_constructors(Indent, TVarSet, [C | Cs], TagValues, !IO) :-
 	Cs = [_ | _],
 	hlds_out__write_indent(Indent, !IO),
 	io__write_char('\t', !IO),
-	hlds_out__write_ctor(C, Tvarset, TagValues, !IO),
+	hlds_out__write_ctor(C, TVarSet, TagValues, !IO),
 	io__write_string("\n", !IO),
-	hlds_out__write_constructors_2(Indent, Tvarset, Cs, TagValues, !IO).
+	hlds_out__write_constructors_2(Indent, TVarSet, Cs, TagValues, !IO).
 
 :- pred hlds_out__write_constructors_2(int::in, tvarset::in,
 	list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.
 
-hlds_out__write_constructors_2(_Indent, _Tvarset, [], _, !IO).
-hlds_out__write_constructors_2(Indent, Tvarset, [C | Cs], TagValues, !IO) :-
+hlds_out__write_constructors_2(_Indent, _TVarSet, [], _, !IO).
+hlds_out__write_constructors_2(Indent, TVarSet, [C | Cs], TagValues, !IO) :-
 	hlds_out__write_indent(Indent, !IO),
 	io__write_string(";\t", !IO),
-	hlds_out__write_ctor(C, Tvarset, TagValues, !IO),
+	hlds_out__write_ctor(C, TVarSet, TagValues, !IO),
 	( Cs = [] ->
 		true
 	;
 		io__write_string("\n", !IO),
-		hlds_out__write_constructors_2(Indent, Tvarset, Cs, TagValues,
+		hlds_out__write_constructors_2(Indent, TVarSet, Cs, TagValues,
 			!IO)
 	).
 
 :- pred hlds_out__write_ctor(constructor::in, tvarset::in,
 	cons_tag_values::in, io::di, io::uo) is det.
 
-hlds_out__write_ctor(C, Tvarset, TagValues, !IO) :-
-	mercury_output_ctor(C, Tvarset, !IO),
+hlds_out__write_ctor(C, TVarSet, TagValues, !IO) :-
+	mercury_output_ctor(C, TVarSet, !IO),
 	C = ctor(_, _, Name, Args),
 	ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
 	( map__search(TagValues, ConsId, TagValue) ->

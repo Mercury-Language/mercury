@@ -1942,7 +1942,7 @@ get_pred_id_and_proc_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
                 % Undefined/invalid pred or func.
 		% the type-checker should ensure that this never happens
 		list__length(ArgTypes, Arity),
-		PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
+		PredOrFuncStr = prog_out__pred_or_func_to_str(PredOrFunc),
 		prog_out__sym_name_to_string(SymName, Name2),
 		string__int_to_string(Arity, ArityString),
 		string__append_list(["get_pred_id_and_proc_id: ",
@@ -1962,7 +1962,7 @@ get_proc_id(ModuleInfo, PredId, ProcId) :-
 		Name = pred_info_name(PredInfo),
 		PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 		Arity = pred_info_arity(PredInfo),
-		PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
+		PredOrFuncStr = prog_out__pred_or_func_to_str(PredOrFunc),
 		string__int_to_string(Arity, ArityString),
 		( ProcIds = [] ->
 			string__append_list([

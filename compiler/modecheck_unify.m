@@ -314,12 +314,13 @@ modecheck_unification(X, lambda_goal(Purity, PredOrFunc, EvalMethod, _,
 		(
 			HowToCheckGoal = check_unique_modes
 		->
-			unique_modes__check_goal(Goal0, Goal, !ModeInfo, !IO)
+			unique_modes__check_goal(Goal0, Goal1, !ModeInfo, !IO)
 		;
-			modecheck_goal(Goal0, Goal, !ModeInfo, !IO)
+			modecheck_goal(Goal0, Goal1, !ModeInfo, !IO)
 		),
 		mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
-		modecheck_final_insts(Vars, FinalInsts, !ModeInfo),
+		modecheck_final_insts(Vars, FinalInsts, Goal1, Goal,
+			!ModeInfo),
 		mode_checkpoint(exit, "lambda goal", !ModeInfo, !IO),
 
 		mode_info_remove_live_vars(LiveVars, !ModeInfo),

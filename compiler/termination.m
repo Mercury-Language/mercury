@@ -689,6 +689,9 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
 	map__det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable),
 	set_generated_terminates(ProcIds, SpecialPredId, !ProcTable).
 
+	% XXX The ArgSize arguments for unify, compare and initialise
+	% are not necessarily correct since these may be user-defined.
+	%
 :- pred special_pred_id_to_termination(special_pred_id::in,
 	list(prog_var)::in, arg_size_info::out, termination_info::out) is det.
 
@@ -702,6 +705,10 @@ special_pred_id_to_termination(unify, HeadVars, ArgSize, Termination) :-
 	Termination = cannot_loop.
 special_pred_id_to_termination(index, HeadVars, ArgSize, Termination) :-
 	term_util__make_bool_list(HeadVars, [no, no], OutList),
+	ArgSize = finite(0, OutList),
+	Termination = cannot_loop.
+special_pred_id_to_termination(initialise, HeadVars, ArgSize, Termination) :-
+	term_util__make_bool_list(HeadVars, [yes], OutList),
 	ArgSize = finite(0, OutList),
 	Termination = cannot_loop.
 

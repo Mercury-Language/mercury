@@ -129,7 +129,7 @@
 	% An `hlds_type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
 	% eqv_type = equivalence type (a type defined to be equivalent
-	% to some other type)
+	% to some other type), and solver_type.
 
 :- type hlds_type_body
 	--->	du_type(
@@ -150,16 +150,13 @@
 					% pragma for this type?
 			du_type_reserved_tag	:: bool,
 
-					% should the `any' inst be considered
-					% `bound' for this type?
-			du_type_is_solver_type	:: is_solver_type,
-
 					% are there `:- pragma foreign' type
 					% declarations for this type?
 			du_type_is_foreign_type	:: maybe(foreign_type_body)
 		)
 	;	eqv_type(type)
-	;	foreign_type(foreign_type_body, is_solver_type)
+	;	foreign_type(foreign_type_body)
+	;	solver_type(solver_type_details, maybe(unify_compare))
 	;	abstract_type(is_solver_type).
 
 :- type foreign_type_body
@@ -171,6 +168,9 @@
 
 :- type foreign_type_lang_body(T) == maybe(foreign_type_lang_data(T)).
 
+	% Foreign types may have user-defined equality and comparison
+	% preds, but not solver_type_details.
+	%
 :- type foreign_type_lang_data(T)
 	--->	foreign_type_lang_data(
 			T,

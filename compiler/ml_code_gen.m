@@ -894,8 +894,8 @@ foreign_type_required_imports(c, _) = [].
 foreign_type_required_imports(il, TypeDefn) = Imports :-
 	hlds_data__get_type_defn_body(TypeDefn, Body),
 	(
-		Body = foreign_type(foreign_type_body(MaybeIL,
-			_MaybeC, _MaybeJava), _)
+		Body = foreign_type(foreign_type_body(MaybeIL, _MaybeC,
+				_MaybeJava))
 	->
 		(
 			MaybeIL = yes(Data),

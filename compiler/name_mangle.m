@@ -328,7 +328,7 @@ name_conversion_table("[]", "f_nil").
 	% Given a string, produce a C identifier
 	% for that string by concatenating the decimal
 	% expansions of the character codes in the string,
-	% separated by undellines.
+	% separated by underlines.
 	% The C identifier will start with "f_"; this predicate
 	% constructs everything except the initial "f".
 	%

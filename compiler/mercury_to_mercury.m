@@ -297,6 +297,10 @@
 :- pred write_maybe_termination_info(maybe(generic_termination_info(T))::in,
 	bool::in, io::di, io::uo) is det.
 
+:- pred mercury_output_where_attributes(tvarset::in,
+		maybe(solver_type_details)::in, maybe(unify_compare)::in,
+		io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 % This is the typeclass mentioned in the long comment at the top of the module.
@@ -1565,38 +1569,42 @@ mercury_format_mode(user_defined_mode(Name, Args), InstInfo) -->
 	list(type_param), type_defn, prog_context, io__state, io__state).
 :- mode mercury_output_type_defn(in, in, in, in, in, di, uo) is det.
 
-mercury_output_type_defn(VarSet, Name, Args,
+mercury_output_type_defn(TVarSet, Name, Args,
 		abstract_type(IsSolverType), Context) -->
 	mercury_output_begin_type_decl(IsSolverType),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
-	mercury_output_term(TypeTerm, VarSet, no, next_to_graphic_token),
+	mercury_output_term(TypeTerm, TVarSet, no, next_to_graphic_token),
 	io__write_string(".\n").
 
-mercury_output_type_defn(VarSet, Name, Args, eqv_type(Body), Context) -->
+mercury_output_type_defn(TVarSet, Name, Args, eqv_type(Body), Context) -->
 	mercury_output_begin_type_decl(non_solver_type),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
-	mercury_output_term(TypeTerm, VarSet, no),
+	mercury_output_term(TypeTerm, TVarSet, no),
 	io__write_string(" == "),
-	mercury_output_term(Body, VarSet, no, next_to_graphic_token),
+	mercury_output_term(Body, TVarSet, no, next_to_graphic_token),
 	io__write_string(".\n").
 
-mercury_output_type_defn(VarSet, Name, Args,
-		du_type(Ctors, IsSolverType, MaybeEqCompare), Context) -->
-	mercury_output_begin_type_decl(IsSolverType),
+mercury_output_type_defn(TVarSet, Name, Args,
+		du_type(Ctors, MaybeUserEqComp), Context) -->
+	mercury_output_begin_type_decl(non_solver_type),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
-	mercury_output_term(TypeTerm, VarSet, no),
+	mercury_output_term(TypeTerm, TVarSet, no),
 	io__write_string("\n\t--->\t"),
-	mercury_output_ctors(Ctors, VarSet),
-	( { MaybeEqCompare = yes(_) } ->
-		io__write_string("\n\t")
-	;
-		[]
-	),
-	mercury_output_equality_compare_preds(MaybeEqCompare),
-	io__write_string("\n\t.\n").
+	mercury_output_ctors(Ctors, TVarSet),
+	mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp),
+	io__write_string(".\n").
 
 mercury_output_type_defn(TVarSet, Name, Args,
-		foreign_type(ForeignType, MaybeEqCompare, Assertions),
+		solver_type(SolverTypeDetails, MaybeUserEqComp), Context) -->
+	mercury_output_begin_type_decl(solver_type),
+	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
+	mercury_output_term(TypeTerm, TVarSet, no),
+	mercury_output_where_attributes(TVarSet, yes(SolverTypeDetails),
+		MaybeUserEqComp),
+	io__write_string(".\n").
+
+mercury_output_type_defn(TVarSet, Name, Args,
+		foreign_type(ForeignType, MaybeUserEqComp, Assertions),
 		_Context) -->
 	io__write_string(":- pragma foreign_type("),
 	( { ForeignType = il(_) }, io__write_string("il, ")
@@ -1628,12 +1636,7 @@ mercury_output_type_defn(TVarSet, Name, Args,
 		io__write_string("]")
 	),
 	io__write_string(")"),
-	( { MaybeEqCompare = yes(_) } ->
-		io__write_string(" ")
-	;
-		[]
-	),
-	mercury_output_equality_compare_preds(MaybeEqCompare),
+	mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp),
 	io__write_string(".\n").
 
 :- pred mercury_output_foreign_type_assertion(foreign_type_assertion::in,
@@ -1652,32 +1655,89 @@ mercury_output_begin_type_decl(solver_type) -->
 mercury_output_begin_type_decl(non_solver_type) -->
 	io__write_string(":- type ").
 
-:- pred mercury_output_equality_compare_preds(maybe(unify_compare)::in,
-	io::di, io::uo) is det.
-
-mercury_output_equality_compare_preds(no) --> [].
-mercury_output_equality_compare_preds(
-		yes(unify_compare(MaybeEqualityPred, MaybeComparisonPred))) -->
-	io__write_string("where "),
-	( { MaybeEqualityPred = yes(EqualityPredName) } ->
-		io__write_string("equality is "),
-		mercury_output_bracketed_sym_name(EqualityPredName),
-		( { MaybeComparisonPred = yes(_) } ->
-			io__write_string(", ")
+mercury_output_where_attributes(TVarSet,
+		MaybeSolverTypeDetails, MaybeUserEqComp, !IO) :-
+	(
+		MaybeSolverTypeDetails = no,
+		MaybeUserEqComp        = no
+	->
+		true
+	;
+		(
+			MaybeUserEqComp = yes(unify_compare(MaybeUnifyPred0,
+							    MaybeComparePred0))
+		->
+			MaybeUnifyPred   = MaybeUnifyPred0,
+			MaybeComparePred = MaybeComparePred0
 		;
-			[]
+			MaybeUnifyPred   = no,
+			MaybeComparePred = no
+		),
+		io__write_string("\n\twhere\t", !IO),
+		(
+			MaybeUserEqComp =
+				yes(abstract_noncanonical_type(_))
+		->
+			io__write_string("type_is_abstract_noncanonical", !IO)
+		;
+			MaybeSolverTypeDetails = yes(SolverTypeDetails)
+		->
+			mercury_output_solver_type_details(TVarSet,
+				SolverTypeDetails, !IO),
+			(
+				(	MaybeUnifyPred = yes(_)
+				;	MaybeComparePred = yes(_)
+				)
+			->
+				io__write_string(",\n\t\t", !IO)
+			;
+				true
+			)
+		;
+			true
+		),
+		(
+			MaybeUnifyPred = yes(UnifyPredName)
+		->
+			io__write_string("equality is ", !IO),
+			mercury_output_bracketed_sym_name(UnifyPredName, !IO),
+			(
+				MaybeComparePred = yes(_)
+			->
+				io__write_string(",\n\t\t", !IO)
+			;
+				true
+			)
+		;
+			true
+		),
+		(
+			MaybeComparePred = yes(ComparePredName)
+		->
+			io__write_string("comparison is ", !IO),
+			mercury_output_bracketed_sym_name(ComparePredName, !IO)
+		;
+			true
 		)
-	;
-		[]
-	),
-	( { MaybeComparisonPred = yes(ComparisonPredName) } ->
-		io__write_string("comparison is "),
-		mercury_output_bracketed_sym_name(ComparisonPredName)
-	;
-		[]
 	).
-mercury_output_equality_compare_preds(yes(abstract_noncanonical_type)) -->
-	io__write_string("where type_is_abstract_noncanonical").
+
+
+:- pred mercury_output_solver_type_details(tvarset::in,
+		solver_type_details::in, io::di, io::uo) is det.
+
+mercury_output_solver_type_details(TVarSet,
+		solver_type_details(RepresentationType, InitPred,
+			GroundInst, AnyInst)) -->
+	io__write_string("representation is "),
+	mercury_output_term(RepresentationType, TVarSet, no),
+	io__write_string(",\n\t\tinitialisation is "),
+	mercury_output_bracketed_sym_name(InitPred),
+	{ varset__init(EmptyInstVarSet) },
+	io__write_string(",\n\t\tground is "),
+	mercury_output_inst(GroundInst, EmptyInstVarSet),
+	io__write_string(",\n\t\tany is "),
+	mercury_output_inst(AnyInst, EmptyInstVarSet).
+
 
 :- pred mercury_output_ctors(list(constructor), tvarset,
 				io__state, io__state).

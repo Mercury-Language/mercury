@@ -24,7 +24,7 @@
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, std_util, list, string, term.
+:- import_module bool, list, std_util, string, term.
 
 :- type foreign_decl_info 		== list(foreign_decl_code).
 					% in reverse order
@@ -133,8 +133,8 @@
 	% returns the module name needed to refer to ForeignImport from the
 	% CurrentModule.
 	%
-:- func foreign_import_module_name(foreign_import_module, module_name)
-	= module_name.
+:- func foreign_import_module_name(foreign_import_module, module_name) =
+	module_name.
 
 	% Filter the decls for the given foreign language.
 	% The first return value is the list of matches, the second is
@@ -145,9 +145,9 @@
 	% Filter the module imports for the given foreign language.
 	% The first return value is the list of matches, the second is
 	% the list of mis-matches.
-:- pred filter_imports(foreign_language::in, foreign_import_module_info::in,
-	foreign_import_module_info::out, foreign_import_module_info::out)
-	is det.
+:- pred filter_imports(foreign_language::in,
+	foreign_import_module_info::in, foreign_import_module_info::out,
+	foreign_import_module_info::out) is det.
 
 	% Filter the bodys for the given foreign language.
 	% The first return value is the list of matches, the second is
@@ -661,7 +661,7 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
 		map__search(Types, TypeCtor, TypeDefn)
 	->
 		hlds_data__get_type_defn_body(TypeDefn, Body),
-		( Body = foreign_type(ForeignTypeBody, _IsSolverType) ->
+		( Body = foreign_type(ForeignTypeBody) ->
 			foreign_type_body_to_exported_type(ModuleInfo,
 				ForeignTypeBody, ForeignTypeName, _,
 				Assertions),
@@ -714,7 +714,8 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
 			Name = unqualified(NameStr)
 		;
 			MaybeJava = no,
-			unexpected(this_file, "to_exported_type: no Java type")
+			unexpected(this_file,
+				"to_exported_type: no Java type")
 		)
 	;
 		Target = asm,
@@ -743,7 +744,7 @@ to_type_string(c, foreign(ForeignType, _)) = Result :-
 	).
 to_type_string(csharp, foreign(ForeignType, _)) = Result :-
 	sym_name_to_string(ForeignType, ".", Result).
-to_type_string(managed_cplusplus, foreign(ForeignType, _)) = Result ++ " *":-
+to_type_string(managed_cplusplus, foreign(ForeignType, _)) = Result ++ " *" :-
 	sym_name_to_string(ForeignType, "::", Result).
 to_type_string(il, foreign(ForeignType, _)) = Result :-
 	sym_name_to_string(ForeignType, ".", Result).
@@ -793,16 +794,21 @@ to_type_string(java, mercury(Type)) = Result :-
 foreign_import_module_name(
 		foreign_import_module(Lang, ForeignImportModule, _)) =
 		ModuleName :-
-	( Lang = c,
+	(
+		Lang = c,
 		ModuleName = ForeignImportModule
-	; Lang = il,
+	;
+		Lang = il,
 		ModuleName = ForeignImportModule
-	; Lang = java,
+	;
+		Lang = java,
 		ModuleName = ForeignImportModule
-	; Lang = managed_cplusplus,
+	;
+		Lang = managed_cplusplus,
 		ModuleName = foreign_language_module_name(ForeignImportModule,
 				Lang)
-	; Lang = csharp,
+	;
+		Lang = csharp,
 		ModuleName = foreign_language_module_name(ForeignImportModule,
 				Lang)
 	).

@@ -33,7 +33,6 @@
 % `bound', `ground', and `any' are all represented the same way.
 % That works fine for the CLP(R) interface but might not be ideal
 % in the general case.
-
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__inst_util.
@@ -125,6 +124,13 @@
 :- func pred_inst_info_standard_func_mode(arity) = pred_inst_info.
 
 	% Return the standard mode for a function of the given arity.
+
+%-----------------------------------------------------------------------------%
+
+	% inst_contains_unconstrained_var(Inst) iff Inst includes an
+	% unconstrained inst variable.
+	%
+:- pred inst_contains_unconstrained_var((inst)::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -1140,6 +1146,7 @@ maybe_make_shared_inst_list([], [_|_], _, _, _) :-
 maybe_make_shared_inst_list([_|_], [], _, _, _) :-
 	error("maybe_make_shared_inst_list: length mismatch").
 
+
 make_shared_inst_list([], ModuleInfo, [], ModuleInfo).
 make_shared_inst_list([Inst0 | Insts0], ModuleInfo0,
 		[Inst | Insts], ModuleInfo) :-
@@ -1407,6 +1414,7 @@ inst_merge(InstA, InstB, MaybeType, ModuleInfo0, Inst, ModuleInfo) :-
 			% merge the insts
 		inst_merge_2(InstA, InstB, MaybeType, ModuleInfo1, Inst0,
 			ModuleInfo2),
+
 
 			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
@@ -1798,5 +1806,67 @@ pred_inst_info_standard_func_mode(Arity) =
 	in_mode(InMode),
 	out_mode(OutMode),
 	ArgModes = list__duplicate(Arity - 1, InMode) ++ [OutMode].
+
+%-----------------------------------------------------------------------------%
+
+inst_contains_unconstrained_var(bound(_Uniqueness, BoundInsts)) :-
+	member(BoundInst, BoundInsts),
+	BoundInst = functor(_ConsId, ArgInsts),
+	member(ArgInst, ArgInsts),
+	inst_contains_unconstrained_var(ArgInst).
+
+inst_contains_unconstrained_var(ground(_Uniqueness, GroundInstInfo)) :-
+	GroundInstInfo = higher_order(PredInstInfo),
+	PredInstInfo = pred_inst_info(_PredOrFunc, Modes, _Detism),
+	member(Mode, Modes),
+	(
+		Mode = (Inst -> _)
+	;
+		Mode = (_ -> Inst)
+	;
+		Mode = user_defined_mode(_SymName, Insts),
+		member(Inst, Insts)
+	),
+	inst_contains_unconstrained_var(Inst).
+
+inst_contains_unconstrained_var(inst_var(_InstVar)).
+
+inst_contains_unconstrained_var(defined_inst(InstName)) :-
+	(
+		InstName = user_inst(_, Insts),
+		member(Inst, Insts),
+		inst_contains_unconstrained_var(Inst)
+	;
+		InstName = merge_inst(Inst, _),
+		inst_contains_unconstrained_var(Inst)
+	;
+		InstName = merge_inst(_, Inst),
+		inst_contains_unconstrained_var(Inst)
+	;
+		InstName = unify_inst(_, Inst, _, _),
+		inst_contains_unconstrained_var(Inst)
+	;
+		InstName = unify_inst(_, _, Inst, _),
+		inst_contains_unconstrained_var(Inst)
+	;
+		InstName = ground_inst(InstName1, _, _, _),
+		inst_contains_unconstrained_var(defined_inst(InstName1))
+	;
+		InstName = any_inst(InstName1, _, _, _),
+		inst_contains_unconstrained_var(defined_inst(InstName1))
+	;
+		InstName = shared_inst(InstName1),
+		inst_contains_unconstrained_var(defined_inst(InstName1))
+	;
+		InstName = mostly_uniq_inst(InstName1),
+		inst_contains_unconstrained_var(defined_inst(InstName1))
+	;
+		InstName = typed_inst(_, InstName1),
+		inst_contains_unconstrained_var(defined_inst(InstName1))
+	).
+
+inst_contains_unconstrained_var(abstract_inst(_SymName, Insts)) :-
+	member(Inst, Insts),
+	inst_contains_unconstrained_var(Inst).
 
 %-----------------------------------------------------------------------------%

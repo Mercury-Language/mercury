@@ -1060,7 +1060,9 @@ recompilation__usage__find_items_used_by_type_body(TypeBody) -->
 recompilation__usage__find_items_used_by_type_body(eqv_type(Type)) -->
 	recompilation__usage__find_items_used_by_type(Type).
 recompilation__usage__find_items_used_by_type_body(abstract_type(_)) --> [].
-recompilation__usage__find_items_used_by_type_body(foreign_type(_, _)) --> [].
+recompilation__usage__find_items_used_by_type_body(foreign_type(_)) --> [].
+	% rafe: XXX Should we trace the representation type?
+recompilation__usage__find_items_used_by_type_body(solver_type(_, _)) --> [].
 
 :- pred recompilation__usage__find_items_used_by_mode_defn(hlds_mode_defn::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.

@@ -327,7 +327,25 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 			error("type_ctor_info__gen_type_ctor_data: " ++
 				"abstract_type")
 		;
-			TypeBody = foreign_type(ForeignBody, _),
+				% We treat solver_types as being
+				% equivalent to their representation
+				% types for RTTI purposes.  Which may
+				% cause problems with construct,
+				% similar to those for abstract types.
+				%
+			TypeBody = solver_type(SolverTypeDetails,
+					_MaybeUserEqComp),
+			RepnType = SolverTypeDetails ^ representation_type,
+			% There can be no existentially typed args to
+			% an equivalence.
+			UnivTvars = TypeArity,
+			ExistTvars = [],
+			pseudo_type_info__construct_maybe_pseudo_type_info(
+				RepnType, UnivTvars, ExistTvars,
+				MaybePseudoTypeInfo),
+			Details = eqv(MaybePseudoTypeInfo)
+		;
+			TypeBody = foreign_type(ForeignBody),
 			foreign_type_body_to_exported_type(ModuleInfo, 
 				ForeignBody, _, _, Assertions),
 			(
@@ -351,12 +369,12 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 			Details = eqv(MaybePseudoTypeInfo)
 		;
 			TypeBody = du_type(Ctors, ConsTagMap, Enum,
-				EqualityPred, ReservedTag, _, _),
+				MaybeUserEqComp, ReservedTag, _),
 			(
-				EqualityPred = yes(_),
+				MaybeUserEqComp = yes(_),
 				EqualityAxioms = user_defined
 			;
-				EqualityPred = no,
+				MaybeUserEqComp = no,
 				EqualityAxioms = standard
 			),
 			(
@@ -385,7 +403,7 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 		)
 	),
 	Flags0 = set__init,
-	( TypeBody = du_type(_, _, _, _, _, _, _) ->
+	( TypeBody = du_type(_, _, _, _, _, _) ->
 		Flags1 = set__insert(Flags0, kind_of_du_flag),
 		( TypeBody ^ du_type_reserved_tag = yes ->
 			Flags2 = set__insert(Flags1, reserve_tag_flag)

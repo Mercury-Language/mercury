@@ -53,7 +53,7 @@
 % 	        record the newly inferred normalised final insts
 % 		in the proc_info, and check whether they changed
 % 		(so that we know when we've reached the fixpoint).
-% 
+%
 % To mode-analyse a goal:
 % If goal is
 % 	(a) a disjunction
@@ -100,14 +100,14 @@
 % 		insts match.  (Perhaps also think about expanding
 % 		if-then-elses so that they can be run backwards,
 % 		if the condition can't be scheduled?)
-% 
+%
 % To attempt to schedule a goal, first mode-check the goal.  If mode-checking
 % succeeds, then scheduling succeeds.  If mode-checking would report
 % an error due to the binding of a local variable, then scheduling
 % fails.  (If mode-checking would report an error due to the binding of
 % a *local* variable, we could report the error right away --
 % but this idea has not yet been implemented.)
-% 
+%
 % Note that the notion of liveness used here is different to that
 % used in liveness.m and the code generator.  Here, we consider
 % a variable live if its value will be used later on in the computation.
@@ -242,10 +242,10 @@
 	mode_info::in, mode_info::out) is det.
 
 	% check that the final insts of the head vars of a lambda
-	% goal matches their expected insts
+	% goal matches their expected insts.
 	%
 :- pred modecheck_final_insts(list(prog_var)::in, list(inst)::in,
-	mode_info::in, mode_info::out) is det.
+	hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out) is det.
 
 :- pred mode_info_add_goals_live_vars(list(hlds_goal)::in,
 	mode_info::in, mode_info::out) is det.
@@ -777,13 +777,13 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 
 		% modecheck the procedure body
 	( WhatToCheck = check_unique_modes ->
-		unique_modes__check_goal(Body0, Body, ModeInfo1, ModeInfo2,
+		unique_modes__check_goal(Body0, Body1, ModeInfo1, ModeInfo2,
 			!IO)
 	;
-		modecheck_goal(Body0, Body, ModeInfo1, ModeInfo2, !IO)
+		modecheck_goal(Body0, Body1, ModeInfo1, ModeInfo2, !IO)
 	),
 
-		% check that final insts match those specified in the
+		% Check that final insts match those specified in the
 		% mode declaration
 	mode_list_get_final_insts(ArgModes0, !.ModuleInfo, ArgFinalInsts0),
 	pred_info_get_markers(PredInfo, Markers),
@@ -793,7 +793,7 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 		InferModes = no
 	),
 	modecheck_final_insts_2(HeadVars, ArgFinalInsts0, InferModes,
-		ArgFinalInsts, ModeInfo2, ModeInfo3),
+		ArgFinalInsts, Body1, Body, ModeInfo2, ModeInfo3),
 
 	( InferModes = yes ->
 		% For inferred predicates, we don't report the
@@ -822,21 +822,22 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 	proc_info_set_argmodes(ArgModes, !ProcInfo).
 
 	% modecheck_final_insts for a lambda expression
-modecheck_final_insts(HeadVars, ArgFinalInsts, !ModeInfo) :-
+modecheck_final_insts(HeadVars, ArgFinalInsts, !Goal, !ModeInfo) :-
 		% for lambda expressions, modes must always be
 		% declared, we never infer them.
 	InferModes = no,
 	modecheck_final_insts_2(HeadVars, ArgFinalInsts, InferModes,
-		_NewFinalInsts, !ModeInfo).
+		_NewFinalInsts, !Goal, !ModeInfo).
 
 :- pred modecheck_final_insts_2(list(prog_var)::in, list(inst)::in, bool::in,
-	list(inst)::out, mode_info::in, mode_info::out) is det.
+	list(inst)::out, hlds_goal::in, hlds_goal::out,
+	mode_info::in, mode_info::out) is det.
 
 	% check that the final insts of the head vars matches their
 	% expected insts
 	%
 modecheck_final_insts_2(HeadVars, FinalInsts0, InferModes, FinalInsts,
-		!ModeInfo) :-
+		Body0, Body, !ModeInfo) :-
 	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
 	mode_info_get_errors(!.ModeInfo, Errors),
 	% If there were any mode errors, use an unreachable instmap.
@@ -876,13 +877,15 @@ modecheck_final_insts_2(HeadVars, FinalInsts0, InferModes, FinalInsts,
 		proc_info_arglives(ProcInfo, ModuleInfo, ArgLives),
 		maybe_clobber_insts(VarFinalInsts2, ArgLives, FinalInsts),
 		check_final_insts(HeadVars, FinalInsts0, FinalInsts,
-			InferModes, 1, ModuleInfo, no, Changed1, !ModeInfo),
+			InferModes, 1, ModuleInfo, Body0, Body, no, Changed1,
+			!ModeInfo),
 		mode_info_get_changed_flag(!.ModeInfo, Changed2),
 		bool__or_list([Changed0, Changed1, Changed2], Changed),
 		mode_info_set_changed_flag(Changed, !ModeInfo)
 	;
 		check_final_insts(HeadVars, FinalInsts0, VarFinalInsts1,
-			InferModes, 1, ModuleInfo, no, _Changed1, !ModeInfo),
+			InferModes, 1, ModuleInfo, Body0, Body, no, _Changed1,
+			!ModeInfo),
 		FinalInsts = FinalInsts0
 	).
 
@@ -903,11 +906,11 @@ maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
 	maybe_clobber_insts(Insts0, IsLives, Insts).
 
 :- pred check_final_insts(list(prog_var)::in, list(inst)::in, list(inst)::in,
-	bool::in, int::in, module_info::in, bool::in, bool::out,
-	mode_info::in, mode_info::out) is det.
+	bool::in, int::in, module_info::in, hlds_goal::in, hlds_goal::out,
+	bool::in, bool::out, mode_info::in, mode_info::out) is det.
 
 check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
-		!Changed, !ModeInfo) :-
+		!Goal, !Changed, !ModeInfo) :-
 	(
 		Vars = [],
 		Insts = [],
@@ -921,18 +924,34 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
 	->
 		mode_info_get_var_types(!.ModeInfo, VarTypes),
 		map__lookup(VarTypes, Var, Type),
-		( inst_matches_final(VarInst, Inst, Type, ModuleInfo) ->
+		(
+			inst_matches_final(VarInst, Inst, Type, ModuleInfo)
+		->
 			true
 		;
 			!:Changed = yes,
 			(
+				% If this is a solver type with inst `free'
+				% that should have inst `any' then insert
+				% a call to the appropriate initialisation
+				% predicate.
+				%
+				inst_match__inst_is_free(ModuleInfo, VarInst),
+				inst_match__inst_is_any(ModuleInfo, Inst),
+				type_util__type_is_solver_type(ModuleInfo,
+					Type)
+			->
+				prepend_initialisation_call(ModuleInfo, Var,
+					Type, VarInst, !Goal)
+			;
 				% If we're inferring the mode, then don't
 				% report an error, just set changed to yes
 				% to make sure that we will do another
 				% fixpoint pass.
 				InferModes = yes
+			->
+				true
 			;
-				InferModes = no,
 				% XXX this might need to be reconsidered now
 				% we have unique modes
 				(
@@ -959,15 +978,30 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
 		),
 		check_final_insts(VarsTail, InstsTail, VarInstsTail,
 			InferModes, ArgNum + 1, ModuleInfo,
-			!Changed, !ModeInfo)
+			!Goal, !Changed, !ModeInfo)
 	;
 		error("check_final_insts: length mismatch")
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- pred prepend_initialisation_call(module_info::in,
+		prog_var::in, (type)::in, (inst)::in,
+		hlds_goal::in, hlds_goal::out) is det.
+
+prepend_initialisation_call(ModuleInfo, Var, VarType, InitialInst,
+		Goal0, Goal) :-
+	Goal0   = _GoalExpr0 - GoalInfo0,
+	hlds_goal__goal_info_get_context(GoalInfo0, Context),
+	construct_initialisation_call(ModuleInfo, Var, VarType, InitialInst,
+		Context, no /* CallUnifyContext */, InitVarGoal),
+	goal_to_conj_list(Goal0, ConjList0),
+	conj_list_to_goal([InitVarGoal | ConjList0], GoalInfo0, Goal).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% Modecheck a goal by abstractly interpreteting it, as explained
+% Modecheck a goal by abstractly interpreting it, as explained
 % at the top of this file.
 
 % Note: any changes here may need to be duplicated in unique_modes.m.
@@ -1433,22 +1467,42 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
 	mode_info_get_errors(!.ModeInfo, OldErrors),
 	mode_info_set_errors([], !ModeInfo),
 
+	mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
+	delay_info__enter_conj(DelayInfo0, DelayInfo1),
+	mode_info_set_delay_info(DelayInfo1, !ModeInfo),
+
 	mode_info_get_live_vars(!.ModeInfo, LiveVars1),
-	mode_info_get_delay_info(!.ModeInfo, DelayInfo1),
-	delay_info__enter_conj(DelayInfo1, DelayInfo2),
-	mode_info_set_delay_info(DelayInfo2, !ModeInfo),
 	mode_info_add_goals_live_vars(Goals0, !ModeInfo),
 
-	modecheck_conj_list_2(Goals0, Goals, [], RevImpurityErrors,
-		!ModeInfo, !IO),
+		% Schedule goals without inserting any solver initialisation
+		% calls (the flag `may_initialise_solver_vars' is initialised
+		% to `no' by mode_info_init and reset to `no' after a
+		% call has been scheduled using initialisation and after
+		% modecheck_conj_list_3).
+		%
+		% We ignore any impurity errors generated here by delaying
+		% impure goals since these problems might be resolved in
+		% modecheck_conj_list_3 by inserting solver type
+		% initialisation calls.
+		%
+	modecheck_conj_list_2(Goals0, Goals1,
+		[], _PrematureRevImpurityErrors, !ModeInfo, !IO),
+
+		% Try to handle any unscheduled goals by inserting solver
+		% initialisation calls.  We do things this way because we
+		% prefer deconstruction over construct-and-unify.
+		%
+	mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
+	delay_info__leave_conj(DelayInfo2, DelayedGoals0, DelayInfo3),
+	mode_info_set_delay_info(DelayInfo3, !ModeInfo),
+	modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals2,
+		[], RevImpurityErrors, !ModeInfo, !IO),
+
+	Goals = Goals1 ++ Goals2,
 
 	mode_info_get_errors(!.ModeInfo, NewErrors),
 	list__append(OldErrors, NewErrors, Errors),
 	mode_info_set_errors(Errors, !ModeInfo),
-
-	mode_info_get_delay_info(!.ModeInfo, DelayInfo4),
-	delay_info__leave_conj(DelayInfo4, DelayedGoals, DelayInfo5),
-	mode_info_set_delay_info(DelayInfo5, !ModeInfo),
 
 	( DelayedGoals \= [] ->
 		% the variables in the delayed goals should not longer
@@ -1594,6 +1648,68 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
 		% we delayed this goal -- it will be stored in the delay_info
 		Goals = Goals2
 	).
+
+:- pred modecheck_conj_list_3(list(delayed_goal)::in, list(delayed_goal)::out,
+	list(hlds_goal)::out, impurity_errors::in, impurity_errors::out,
+	mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals,
+		!ImpurityErrors, !ModeInfo, !IO) :-
+	(
+			% There are no unscheduled goals, so we don't
+			% need to do anything.
+			%
+		DelayedGoals0 = [],
+		DelayedGoals  = [],
+		Goals = []
+	;
+			% There are some unscheduled goals.  See if
+			% allowing extra initialisation calls (for
+			% a single goal) makes a difference.
+			%
+		DelayedGoals0 = [_ | _],
+
+		Goals0 = map(hlds_goal_from_delayed_goal, DelayedGoals0),
+
+		mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
+		delay_info__enter_conj(DelayInfo0, DelayInfo1),
+		mode_info_set_delay_info(DelayInfo1, !ModeInfo),
+
+		mode_info_set_may_initialise_solver_vars(yes, !ModeInfo),
+		modecheck_conj_list_2(Goals0, Goals1,
+			!ImpurityErrors, !ModeInfo, !IO),
+		mode_info_set_may_initialise_solver_vars(no, !ModeInfo),
+
+		mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
+		delay_info__leave_conj(DelayInfo2, DelayedGoals1, DelayInfo3),
+		mode_info_set_delay_info(DelayInfo3, !ModeInfo),
+
+			% See if we scheduled any goals.
+			%
+		(
+			length(DelayedGoals1) < length(DelayedGoals0)
+		->
+				% We scheduled some goals.  Keep going
+				% until we flounder or succeed.
+				%
+			modecheck_conj_list_3(DelayedGoals1, DelayedGoals,
+				Goals2, !ImpurityErrors, !ModeInfo, !IO),
+			Goals = Goals1 ++ Goals2
+		;
+				% We've floundered; there's nothing
+				% more we can do.
+				%
+			DelayedGoals = DelayedGoals1,
+			Goals = Goals1
+		)
+	).
+
+
+:- func hlds_goal_from_delayed_goal(delayed_goal) = hlds_goal.
+
+hlds_goal_from_delayed_goal(delayed_goal(_WaitingVars, _ModeError, Goal)) =
+	Goal.
+
 
 %  check whether there are any delayed goals (other than headvar unifications)
 %  at the point where we are about to schedule an impure goal.  If so, that is
@@ -2070,101 +2186,129 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
 		% instantiated vars, since that would require
 		% doing a partially instantiated deep copy, and we
 		% don't know how to do that yet.
-		(
-			InitialInst = any(_),
-			inst_is_free(ModuleInfo0, VarInst1)
-		->
-			% This is the simple case of implied `any' modes,
-			% where the declared mode was `any -> ...'
-			% and the argument passed was `free'
 
-			Var = Var0,
+		InitialInst = any(_),
+		inst_is_free(ModuleInfo0, VarInst1)
+	->
+		% This is the simple case of implied `any' modes,
+		% where the declared mode was `any -> ...'
+		% and the argument passed was `free'
 
-			% Create code to initialize the variable to
-			% inst `any', by calling <mod>:<type>_init_any/1,
-			% where <mod>:<type> is the type of the variable.
-			% XXX We ought to use a more elegant method
-			% XXX than hard-coding the name `<foo>_init_any'.
+		Var = Var0,
 
-			mode_info_get_context(!.ModeInfo, Context),
-			mode_info_get_mode_context(!.ModeInfo, ModeContext),
-			mode_context_to_unify_context(!.ModeInfo,
-				ModeContext, UnifyContext),
-			CallUnifyContext = yes(call_unify_context(
-				Var, var(Var), UnifyContext)),
-			(
-				type_to_ctor_and_args(VarType, TypeCtor,
-					_TypeArgs),
-				TypeCtor = qualified(TypeModule, TypeName) -
-					_TypeArity,
-				string__append(TypeName, "_init_any", PredName),
-				modes__build_call(TypeModule, PredName, [Var],
-					Context, CallUnifyContext, ModuleInfo0,
-					BeforeGoal - GoalInfo0)
-			->
-				set__singleton_set(NonLocals, Var),
-				goal_info_set_nonlocals(GoalInfo0,
-					NonLocals, GoalInfo1),
-				InstmapDeltaAL = [Var - InitialInst],
-				instmap_delta_from_assoc_list(InstmapDeltaAL,
-					InstmapDelta),
-				goal_info_set_instmap_delta(GoalInfo1,
-					InstmapDelta, GoalInfo),
-				NewExtraGoal = extra_goals(
-					[BeforeGoal - GoalInfo], []),
-				append_extra_goals(!.ExtraGoals, NewExtraGoal,
-					!:ExtraGoals)
-			;
-				% If the type is a type variable,
-				% or there isn't any <mod>:<type>_init_any/1
-				% predicate, then give up.
-				set__singleton_set(WaitingVars, Var0),
-				mode_info_error(WaitingVars,
-					mode_error_implied_mode(Var0, VarInst0,
-						InitialInst),
-					!ModeInfo
-				)
-			)
-		;
-			inst_is_bound(ModuleInfo0, InitialInst)
-		->
-			% This is the case we can't handle
-			Var = Var0,
+		% If the variable's type is not a solver type (in
+		% which case inst `any' means the same as inst
+		% `ground') then this is an implied mode that we
+		% don't yet know how to handle.
+		%
+		% If the variable's type is a solver type then
+		% we need to insert a call to the solver type's
+		% initialisation predicate.
+
+		mode_info_get_context(!.ModeInfo, Context),
+		mode_info_get_mode_context(!.ModeInfo, ModeContext),
+		mode_context_to_unify_context(!.ModeInfo, ModeContext,
+			UnifyContext),
+		CallUnifyContext = yes(call_unify_context(Var, var(Var),
+						UnifyContext)),
+ 		(
+			mode_info_may_initialise_solver_vars(!.ModeInfo),
+ 			type_util__type_is_solver_type(ModuleInfo0, VarType)
+ 		->
+ 			% Create code to initialize the variable to
+ 			% inst `any', by calling the solver type's
+ 			% initialisation predicate.
+ 			insert_extra_initialisation_call(ModuleInfo0, Var,
+ 				VarType, InitialInst, Context,
+ 				CallUnifyContext, !ExtraGoals)
+ 		;
+			% If the type is a type variable,
+			% or isn't a solver type then give up.
 			set__singleton_set(WaitingVars, Var0),
 			mode_info_error(WaitingVars,
 				mode_error_implied_mode(Var0, VarInst0,
 					InitialInst),
-				!ModeInfo
-			)
-		;
-			% This is the simple case of implied modes,
-			% where the declared mode was free -> ...
+				!ModeInfo)
+ 		)
+	;
+		inst_is_bound(ModuleInfo0, InitialInst)
+	->
+		% This is the case we can't handle
+		Var = Var0,
+		set__singleton_set(WaitingVars, Var0),
+		mode_info_error(WaitingVars,
+			mode_error_implied_mode(Var0, VarInst0, InitialInst),
+			!ModeInfo)
+	;
+		% This is the simple case of implied modes,
+		% where the declared mode was free -> ...
 
-			% Introduce a new variable
-			mode_info_get_varset(!.ModeInfo, VarSet0),
-			varset__new_var(VarSet0, Var, VarSet),
-			map__set(VarTypes0, Var, VarType, VarTypes),
-			mode_info_set_varset(VarSet, !ModeInfo),
-			mode_info_set_var_types(VarTypes, !ModeInfo),
+		% Introduce a new variable
+		mode_info_get_varset(!.ModeInfo, VarSet0),
+		varset__new_var(VarSet0, Var, VarSet),
+		map__set(VarTypes0, Var, VarType, VarTypes),
+		mode_info_set_varset(VarSet, !ModeInfo),
+		mode_info_set_var_types(VarTypes, !ModeInfo),
 
-			% Construct the code to do the unification
-			modecheck_unify__create_var_var_unification(Var0, Var,
-				VarType, !.ModeInfo, ExtraGoal),
+		% Construct the code to do the unification
+		modecheck_unify__create_var_var_unification(Var0, Var,
+			VarType, !.ModeInfo, ExtraGoal),
 
-			% append the goals together in the appropriate order:
-			% ExtraGoals0, then NewUnify
-			NewUnifyExtraGoal = extra_goals([], [ExtraGoal]),
-			append_extra_goals(!.ExtraGoals, NewUnifyExtraGoal,
-				!:ExtraGoals)
-		)
+		% append the goals together in the appropriate order:
+		% ExtraGoals0, then NewUnify
+		NewUnifyExtraGoal = extra_goals([], [ExtraGoal]),
+		append_extra_goals(!.ExtraGoals, NewUnifyExtraGoal,
+			!:ExtraGoals)
 	).
 
-:- pred modes__build_call(module_name::in, string::in, list(prog_var)::in,
-	prog_context::in, maybe(call_unify_context)::in, module_info::in,
-	hlds_goal::out) is semidet.
 
-modes__build_call(Module, Name, ArgVars, Context, CallUnifyContext, ModuleInfo,
-		Goal) :-
+:- pred insert_extra_initialisation_call(module_info::in, prog_var::in,
+		(type)::in, (inst)::in,
+		prog_context::in, maybe(call_unify_context)::in,
+		extra_goals::in, extra_goals::out) is det.
+
+insert_extra_initialisation_call(ModuleInfo, Var, VarType, InitialInst,
+		Context, CallUnifyContext, !ExtraGoals) :-
+
+	construct_initialisation_call(ModuleInfo, Var, VarType, InitialInst,
+		Context, CallUnifyContext, InitVarGoal),
+	NewExtraGoal = extra_goals([InitVarGoal], []),
+	append_extra_goals(!.ExtraGoals, NewExtraGoal, !:ExtraGoals).
+
+
+:- pred construct_initialisation_call(module_info::in, prog_var::in,
+		(type)::in, (inst)::in, prog_context::in,
+		maybe(call_unify_context)::in, hlds_goal::out) is det.
+
+construct_initialisation_call(ModuleInfo, Var, VarType, InitialInst, Context,
+		MaybeCallUnifyContext, InitVarGoal) :-
+	(
+		type_to_ctor_and_args(VarType, TypeCtor, _TypeArgs),
+		PredName = special_pred__special_pred_name(initialise,
+				TypeCtor),
+		hlds_module__module_info_name(ModuleInfo, ThisModule),
+		modes__build_call(ThisModule, PredName, [Var],
+			Context, MaybeCallUnifyContext, ModuleInfo,
+			GoalExpr - GoalInfo0)
+	->
+		set__singleton_set(NonLocals, Var),
+		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
+		InstmapDeltaAL = [Var - InitialInst],
+		instmap_delta_from_assoc_list(InstmapDeltaAL, InstmapDelta),
+		goal_info_set_instmap_delta(GoalInfo1, InstmapDelta, GoalInfo),
+		InitVarGoal = GoalExpr - GoalInfo
+	;
+		error("modes.insert_extra_initialisation_call: " ++
+			"modes.construct_initialisation_call failed")
+	).
+
+
+:- pred modes__build_call(module_name::in, string::in, list(prog_var)::in,
+	prog_context::in, maybe(call_unify_context)::in,
+	module_info::in, hlds_goal::out) is semidet.
+
+modes__build_call(Module, Name, ArgVars, Context, CallUnifyContext,
+		ModuleInfo, Goal) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	list__length(ArgVars, Arity),
 	predicate_table_search_pred_m_n_a(PredicateTable, is_fully_qualified,

@@ -1262,7 +1262,7 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
 		map__search(Types, TypeId, Defn),
 		hlds_data__get_type_defn_body(Defn, Body),
 		Body = foreign_type(foreign_type_body(_MaybeIL, MaybeC,
-			_MaybeJava), _)
+				_MaybeJava))
 	->
 		(
 			MaybeC = yes(Data),

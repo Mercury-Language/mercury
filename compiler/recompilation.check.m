@@ -1133,10 +1133,11 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
 check_type_defn_ambiguity_with_functor(_, _, abstract_type(_)) --> [].
 check_type_defn_ambiguity_with_functor(_, _, eqv_type(_)) --> [].
 check_type_defn_ambiguity_with_functor(NeedQualifier,
-			TypeCtor, du_type(Ctors, _, _)) -->
+			TypeCtor, du_type(Ctors, _)) -->
 	list__foldl(check_functor_ambiguities(NeedQualifier, TypeCtor),
 		Ctors).
 check_type_defn_ambiguity_with_functor(_, _, foreign_type(_, _, _)) --> [].
+check_type_defn_ambiguity_with_functor(_, _, solver_type(_, _)) --> [].
 
 :- pred check_functor_ambiguities(need_qualifier::in, type_ctor::in,
 		constructor::in, recompilation_check_info::in,

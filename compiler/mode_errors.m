@@ -197,7 +197,7 @@
 :- import_module parse_tree__prog_util.
 
 :- import_module int, map, term_io, varset, term.
-:- import_module std_util, require.
+:- import_module std_util, string, require.
 
 	% just dispatch on the diffferent sorts of mode errors
 
@@ -444,7 +444,7 @@ report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
 		prog_out__write_context(Context),
 		io__write_string("  inside the condition of an if-then-else.\n")
 	; { Reason = lambda(PredOrFunc) },
-		{ PredOrFuncS = pred_or_func_to_str(PredOrFunc) },
+		{ PredOrFuncS = prog_out__pred_or_func_to_str(PredOrFunc) },
 		io__write_string("attempt to bind a non-local variable inside\n"),
 		prog_out__write_context(Context),
 		io__write_strings(["  a ", PredOrFuncS, " lambda goal.\n"])
@@ -753,11 +753,12 @@ report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		io__write_string("\tYour code is trying to test whether two "),
-		write_pred_or_func(PredOrFunc),
+		prog_out__write_pred_or_func(PredOrFunc),
 		io__write_string("s are equal,\n"),
-		io__write_string("\tby unifying them.  In the general case, testing equivalence\n"),
+		io__write_string("\tby unifying them.  In the general " ++
+					"case, testing equivalence\n"),
 		io__write_string("\tof "),
-		write_pred_or_func(PredOrFunc),
+		prog_out__write_pred_or_func(PredOrFunc),
 		io__write_string("s is an undecidable problem,\n"),
 		io__write_string("\tand so this is not allowed by the Mercury mode system.\n"),
 		io__write_string("\tIn some cases, you can achieve the same effect by\n"),

@@ -323,7 +323,28 @@ add_item_list_clauses([Item - Context | Items], Status0, !Module, !Info,
 	% skip clauses
 add_item_decl_pass_1(clause(_, _, _, _, _), _, !Status, !Module, no, !IO).
 
-add_item_decl_pass_1(type_defn(_, _, _, _, _), _, !Status, !Module, no, !IO).
+	% If this is a solver type then we need to also add the declarations
+	% for the compiler generated construction function and deconstruction
+	% predicate for the special constrained data constructor.
+	%
+	% In pass 3 we add the corresponding clauses.
+	%
+	% Before switch detection, we turn calls to these functions/predicates
+	% into ordinary constructions/deconstructions, but preserve the
+	% corresponding impurity annotations.
+	%
+add_item_decl_pass_1(
+		type_defn(TVarSet, SymName, TypeParams, TypeDefn, _Cond),
+		Context, !Status, !Module, no, !IO) :-
+	(
+		TypeDefn = solver_type(SolverTypeDetails, _MaybeUserEqComp)
+	->
+		add_solver_type_decl_items(TVarSet, SymName, TypeParams,
+			SolverTypeDetails, Context,
+			!Status, !Module, !IO)
+	;
+		true
+	).
 
 add_item_decl_pass_1(inst_defn(VarSet, Name, Params, InstDefn, Cond), Context,
 		!Status, !Module, InvalidMode, !IO) :-
@@ -429,6 +450,238 @@ add_item_decl_pass_1(typeclass(Constraints, Name, Vars, Interface, VarSet),
 	% We add instance declarations on the second pass so that we don't add
 	% an instance declaration before its class declaration.
 add_item_decl_pass_1(instance(_, _, _, _, _,_), _, !Status, !Module, no, !IO).
+
+%-----------------------------------------------------------------------------%
+
+	% A solver type t defined with
+	%
+	% :- solver type st
+	% 	where representation is rt,		% type
+	% 	      initialisation is ip,		% pred
+	% 	      ground         is gi,		% inst
+	% 	      any            is ai, ...		% inst
+	%
+	% causes the following to be introduced:
+	%
+	% :- impure func 'representation of st'(st)      = rt.
+	% :-        mode 'representation of st'(in)      = out(gi) is det.
+	% :-        mode 'representation of st'(in(any)) = out(ai) is det.
+	%
+	% :- impure func 'representation to ground st'(rt::in(gi)) =
+	% 			(st::out) is det.
+	% :- impure func 'representation to any st'(rt::in(ai)) =
+	% 			(st::out(any)) is det.
+	%
+	% We need two 'representation to ...' functions because
+	% having a single, two-moded conversion function would
+	% lead to the compiler issuing a `duplicate mode declaration'
+	% error in the case that gi = ai.
+	%
+:- pred add_solver_type_decl_items(
+		tvarset::in, sym_name::in, list(type_param)::in,
+		solver_type_details::in, prog_context::in,
+		item_status::in, item_status::out,
+		module_info::in, module_info::out, io::di, io::uo) is det.
+
+add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
+		SolverTypeDetails, Context,
+		!Status, !Module, !IO) :-
+
+	SolverType        = sym_name_and_args_to_term(TypeSymName,
+				TypeParams, Context),
+	Arity             = length(TypeParams),
+
+	RepnType          = SolverTypeDetails ^ representation_type,
+	AnyInst           = SolverTypeDetails ^ any_inst,
+	GroundInst        = SolverTypeDetails ^ ground_inst,
+
+	InAnyMode         = in_mode(AnyInst),
+	InGroundMode      = in_mode(GroundInst),
+
+	OutAnyMode        = out_mode(AnyInst),
+	OutGroundMode     = out_mode(GroundInst),
+
+	InstVarSet        = varset__init,
+	ExistQTVars       = [],
+
+	% Insert the conversion function declarations.
+
+		% The `:- impure func 'representation of st'(st) = rt'
+		% declaration.
+		%
+	ToRepnSymName     = solver_to_repn_symname(TypeSymName, Arity),
+	ToRepnArgTypes    = [type_only(SolverType), type_only(RepnType)],
+	ToRepnTypeSigItem =
+		pred_or_func(TVarSet, InstVarSet, ExistQTVars,
+			function,
+			ToRepnSymName,
+			ToRepnArgTypes,
+			no,	/* no `with_type` ... */
+			no,	/* no `with_inst` ... */
+			no,	/* no determinism */
+			true,	/* no `where ...' */
+			(impure), 
+			constraints([], []) /* no type class constraints */
+		),
+	add_item_decl_pass_1(ToRepnTypeSigItem, Context,
+		!Status, !Module, InvalidToRepnMode, !IO),
+
+	( InvalidToRepnMode = yes ->
+		error("make_hlds.add_solver_type_decl_items: invalid mode " ++
+			"in ToRepn item")
+	;
+		true
+	),
+
+		% The `:- mode 'representation of st'(in) = out(gi) is det'
+		% declaration.
+		%
+	ToGroundRepnArgModes  = [in_mode, OutGroundMode],
+	ToGroundRepnModeItem =
+		pred_or_func_mode(InstVarSet,
+			yes(function),
+			ToRepnSymName,
+			ToGroundRepnArgModes,
+			no,	/* no `with_inst` ... */
+			yes(det),
+			true	/* no `where ...' */
+		),
+	add_item_decl_pass_1(ToGroundRepnModeItem, Context,
+		!Status, !Module, InvalidToGroundRepnMode, !IO),
+
+	( InvalidToGroundRepnMode = yes ->
+		error("make_hlds.add_solver_type_decl_items: invalid mode " ++
+			"in ToGroundRepn item")
+	;
+		true
+	),
+
+		% The `:- mode 'representation of st'(in(any)) =
+		% 			out(ai) is det' declaration.
+		%
+	ToAnyRepnArgModes  = [in_any_mode, OutAnyMode],
+	ToAnyRepnModeItem =
+		pred_or_func_mode(InstVarSet,
+			yes(function),
+			ToRepnSymName,
+			ToAnyRepnArgModes,
+			no,	/* no `with_inst` ... */
+			yes(det),
+			true	/* no `where ...' */
+		),
+	add_item_decl_pass_1(ToAnyRepnModeItem, Context,
+		!Status, !Module, InvalidToAnyRepnMode, !IO),
+
+	( InvalidToAnyRepnMode = yes ->
+		error("make_hlds.add_solver_type_decl_items: invalid mode " ++
+			"in ToAnyRepn item")
+	;
+		true
+	),
+
+		% The `:- impure
+		%	func 'representation to ground st'(rt::in(gi)) =
+		% 			(st::out) is det' declaration.
+		%
+	FromGroundRepnSymName     =
+		repn_to_ground_solver_symname(TypeSymName, Arity),
+	FromGroundRepnArgTypes    =
+		[type_and_mode(RepnType,   InGroundMode   ),
+		 type_and_mode(SolverType, out_mode       )],
+	FromGroundRepnTypeSigItem =
+		pred_or_func(TVarSet, InstVarSet, ExistQTVars,
+			function,
+			FromGroundRepnSymName,
+			FromGroundRepnArgTypes,
+			no,	/* no `with_type` ... */
+			no,	/* no `with_inst` ... */
+			yes(det),
+			true,	/* no `where ...' */
+			(impure), 
+			constraints([], []) /* no type class constraints */
+		),
+	add_item_decl_pass_1(FromGroundRepnTypeSigItem, Context,
+		!Status, !Module, InvalidFromGroundRepnMode, !IO),
+
+	( InvalidFromGroundRepnMode = yes ->
+		error("make_hlds.add_solver_type_decl_items: invalid mode " ++
+			"in FromGroundRepn item")
+	;
+		true
+	),
+
+		% The `:- impure
+		%	func 'representation to any st'(rt::in(ai)) =
+		% 			(st::out(any)) is det' declaration.
+		%
+	FromAnyRepnSymName     =
+		repn_to_any_solver_symname(TypeSymName, Arity),
+	FromAnyRepnArgTypes    =
+		[type_and_mode(RepnType,   InAnyMode   ),
+		 type_and_mode(SolverType, out_any_mode)],
+	FromAnyRepnTypeSigItem =
+		pred_or_func(TVarSet, InstVarSet, ExistQTVars,
+			function,
+			FromAnyRepnSymName,
+			FromAnyRepnArgTypes,
+			no,	/* no `with_type` ... */
+			no,	/* no `with_inst` ... */
+			yes(det),
+			true,	/* no `where ...' */
+			(impure), 
+			constraints([], []) /* no type class constraints */
+		),
+	add_item_decl_pass_1(FromAnyRepnTypeSigItem, Context,
+		!Status, !Module, InvalidFromAnyRepnMode, !IO),
+
+	( InvalidFromAnyRepnMode = yes ->
+		error("make_hlds.add_solver_type_decl_items: invalid mode " ++
+			"in FromAnyRepn item")
+	;
+		true
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Obtain the solver type conversion function sym_names from
+	% the solver type sym_name.
+	%
+:- func solver_to_repn_symname(sym_name, arity) = sym_name.
+
+solver_to_repn_symname(unqualified(Name), Arity) =
+	unqualified(
+		"representation of " ++ Name ++ "/" ++ int_to_string(Arity)
+	).
+solver_to_repn_symname(qualified(ModuleNames, Name), Arity) =
+	qualified(ModuleNames,
+		"representation of " ++ Name ++ "/" ++ int_to_string(Arity)
+	).
+
+
+:- func repn_to_any_solver_symname(sym_name, arity) = sym_name.
+
+repn_to_any_solver_symname(SymName, Arity) =
+	repn_to_solver_symname("any", SymName, Arity).
+
+
+:- func repn_to_ground_solver_symname(sym_name, arity) = sym_name.
+
+repn_to_ground_solver_symname(SymName, Arity) =
+	repn_to_solver_symname("ground", SymName, Arity).
+
+
+:- func repn_to_solver_symname(string, sym_name, arity) = sym_name.
+
+repn_to_solver_symname(AnyOrGround, unqualified(Name), Arity) =
+	unqualified(
+		string.format("representation to %s %s/%d",
+			[s(AnyOrGround), s(Name), i(Arity)])
+	).
+repn_to_solver_symname(AnyOrGround, qualified(ModuleNames, Name), Arity) =
+	qualified(ModuleNames,
+		string.format("representation to %s %s/%d",
+			[s(AnyOrGround), s(Name), i(Arity)])
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -723,10 +976,24 @@ add_item_clause(clause(VarSet, PredOrFunc, PredName, Args, Body),
 		!Status, Context, !Module, !Info, !IO) :-
 	check_not_exported(!.Status, Context, "clause", !IO),
 	GoalType = none,
-	% at this stage we only need know that it's not % a promise declaration
+	% at this stage we only need know that it's not a promise declaration
 	module_add_clause(VarSet, PredOrFunc, PredName, Args, Body, !.Status,
 		Context, GoalType, !Module, !Info, !IO).
-add_item_clause(type_defn(_, _, _, _, _), !Status, _, !Module, !Info, !IO).
+
+add_item_clause(type_defn(_TVarSet, SymName, TypeParams, TypeDefn, _Cond),
+		!Status, Context, !Module, !Info, !IO) :-
+	% If this is a solver type then we need to also add clauses
+	% the compiler generated inst cast predicate (the declaration
+	% for which was added in pass 1).
+	(
+		TypeDefn = solver_type(SolverTypeDetails, _MaybeUserEqComp)
+	->
+		add_solver_type_clause_items(SymName, TypeParams,
+			SolverTypeDetails, !Status, Context, !Module, !Info,
+			!IO)
+	;
+		true
+	).
 add_item_clause(inst_defn(_, _, _, _, _), !Status, _, !Module, !Info, !IO).
 add_item_clause(mode_defn(_, _, _, _, _), !Status, _, !Module, !Info, !IO).
 add_item_clause(pred_or_func(_, _, _, PredOrFunc, SymName, TypesAndModes,
@@ -870,6 +1137,151 @@ add_item_clause(nothing(_), !Status, _, !Module, !Info, !IO).
 add_item_clause(typeclass(_, _, _, _, _), !Status, _, !Module, !Info, !IO).
 add_item_clause(instance(_, _, _, _, _, _), !Status, _, !Module, !Info, !IO).
 
+
+:- pred add_solver_type_clause_items(sym_name::in, list(type_param)::in,
+		solver_type_details::in,
+		import_status::in, import_status::out, prog_context::in,
+		module_info::in, module_info::out,
+		qual_info::in, qual_info::out, io::di, io::uo) is det.
+
+add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
+		!Status, Context, !Module, !Info, !IO) :-
+
+	Arity             = length(TypeParams),
+	ToRepnSymName     = solver_to_repn_symname(TypeSymName, Arity),
+	FromAnyRepnSymName =
+		repn_to_any_solver_symname(TypeSymName, Arity),
+	FromGroundRepnSymName =
+		repn_to_ground_solver_symname(TypeSymName, Arity),
+
+	AnyInst           = SolverTypeDetails ^ any_inst,
+	GroundInst        = SolverTypeDetails ^ ground_inst,
+
+	InAnyMode         = in_mode(AnyInst),
+	InGroundMode      = in_mode(GroundInst),
+
+	OutAnyMode        = out_mode(AnyInst),
+	OutGroundMode     = out_mode(GroundInst),
+
+	VarSet0           = varset__init,
+	varset__new_var(VarSet0, X, VarSet1),
+	varset__new_var(VarSet1, Y, VarSet),
+
+	Attrs0            = default_attributes(c),
+	set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
+	set_thread_safe(thread_safe,                Attrs1, Attrs2),
+	set_terminates(terminates,                  Attrs2, Attrs),
+
+	Impl              = ordinary("Y = X;", yes(Context)),
+
+		% The `func(in) = out(<i_ground>) is det' mode.
+		%
+	ToGroundRepnArgs = [ pragma_var(X, "X", in_mode      ),
+                             pragma_var(Y, "Y", OutGroundMode) ],
+	ToGroundRepnForeignProc =
+		foreign_proc(
+			Attrs,
+			ToRepnSymName,
+			function,
+			ToGroundRepnArgs,
+			VarSet,
+			Impl
+		),
+	ToGroundRepnItem = pragma(ToGroundRepnForeignProc),
+	add_item_clause(ToGroundRepnItem, !Status, Context, !Module, !Info,
+		!IO),
+
+		% The `func(in(any)) = out(<i_any>) is det' mode.
+		%
+	ToAnyRepnArgs = [ pragma_var(X, "X", in_any_mode),
+                          pragma_var(Y, "Y", OutAnyMode ) ],
+	ToAnyRepnForeignProc =
+		foreign_proc(
+			Attrs,
+			ToRepnSymName,
+			function,
+			ToAnyRepnArgs,
+			VarSet,
+			Impl
+		),
+	ToAnyRepnItem = pragma(ToAnyRepnForeignProc),
+	add_item_clause(ToAnyRepnItem, !Status, Context, !Module, !Info, !IO),
+
+		% The `func(in(<i_ground>)) = out is det' mode.
+		%
+	FromGroundRepnArgs        = [ pragma_var(X, "X", InGroundMode),
+			              pragma_var(Y, "Y", out_mode) ],
+	FromGroundRepnForeignProc =
+		foreign_proc(
+			Attrs,
+			FromGroundRepnSymName,
+			function,
+			FromGroundRepnArgs,
+			VarSet,
+			Impl
+		),
+	FromGroundRepnItem = pragma(FromGroundRepnForeignProc),
+	add_item_clause(FromGroundRepnItem, !Status, Context, !Module, !Info,
+		!IO),
+
+		% The `func(in(<i_any>)) = out(any) is det' mode.
+		%
+	FromAnyRepnArgs        = [ pragma_var(X, "X", InAnyMode   ),
+			           pragma_var(Y, "Y", out_any_mode) ],
+	FromAnyRepnForeignProc =
+		foreign_proc(
+			Attrs,
+			FromAnyRepnSymName,
+			function,
+			FromAnyRepnArgs,
+			VarSet,
+			Impl
+		),
+	FromAnyRepnItem = pragma(FromAnyRepnForeignProc),
+	add_item_clause(FromAnyRepnItem, !Status, Context, !Module, !Info,
+		!IO).
+
+%-----------------------------------------------------------------------------%
+
+	% We need to "unparse" the sym_name to construct the properly
+	% module qualified term.
+	%
+:- func sym_name_and_args_to_term(sym_name, list(term(T)), prog_context) =
+		term(T).
+
+sym_name_and_args_to_term(unqualified(Name), Xs, Context) =
+	term__functor(term__atom(Name), Xs, Context).
+
+sym_name_and_args_to_term(qualified(ModuleNames, Name), Xs, Context) =
+	sym_name_and_term_to_term(ModuleNames,
+		term__functor(term__atom(Name), Xs, Context), Context).
+
+
+:- func sym_name_and_term_to_term(module_specifier, term(T),
+		prog_context) = term(T).
+
+sym_name_and_term_to_term(unqualified(ModuleName), Term, Context) =
+	term__functor(
+		term__atom("."),
+		[ term__functor(term__atom(ModuleName), [], Context),
+		  Term ],
+		Context
+	).
+
+sym_name_and_term_to_term(qualified(ModuleNames, ModuleName), Term,
+		Context) =
+	term__functor(
+		term__atom("."),
+		[ sym_name_and_term_to_term(
+			ModuleNames,
+			term__functor(term__atom(ModuleName), [], Context),
+			Context
+		  ),
+		  Term ],
+		Context
+	).
+
+
 :- pred add_promise_clause(promise_type::in, list(term(prog_var_type))::in,
 	prog_varset::in, goal::in, prog_context::in, import_status::in,
 	module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -1006,8 +1418,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !Module,
 
 		;
 			TypeBody0 = du_type(Body, _CtorTags0, _IsEnum0,
-				EqualityPred, ReservedTag0, IsSolverType,
-				IsForeign)
+				MaybeUserEqComp, ReservedTag0, IsForeign)
 		->
 			(
 				ReservedTag0 = yes,
@@ -1038,8 +1449,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !Module,
 			assign_constructor_tags(Body, TypeCtor, ReservedTag,
 				Globals, CtorTags, IsEnum),
 			TypeBody = du_type(Body, CtorTags, IsEnum,
-				EqualityPred, ReservedTag, IsSolverType,
-				IsForeign),
+				MaybeUserEqComp, ReservedTag, IsForeign),
 			hlds_data__set_type_defn_body(TypeBody,
 				TypeDefn0, TypeDefn),
 			map__set(Types0, TypeCtor, TypeDefn, Types),
@@ -2099,7 +2509,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 		(
 			Body0 = abstract_type(_)
 		;
-			Body0 = du_type(_, _, _, _, _, _, _),
+			Body0 = du_type(_, _, _, _, _, _),
 			string__suffix(term__context_file(Context), ".int2")
 			% If the type definition comes from a .int2 file then
 			% we need to treat it as abstract.  The constructors
@@ -2148,7 +2558,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 		NeedQual, Context, T),
 	(
 		MaybeOldDefn = no,
-		Body = foreign_type(_, _)
+		Body = foreign_type(_)
 	->
 		TypeStr = error_util__describe_sym_name_and_arity(
 				Name / Arity),
@@ -2161,7 +2571,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 		module_info_incr_errors(!Module)
 	;
 		MaybeOldDefn = yes(OldDefn1),
-		Body = foreign_type(_, _),
+		Body = foreign_type(_),
 		hlds_data__get_type_defn_status(OldDefn1, OldStatus1),
 		hlds_data__get_type_defn_body(OldDefn1, OldBody1),
 		OldBody1 = abstract_type(_),
@@ -2195,7 +2605,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 		globals__io_get_target(Target, !IO),
 		globals__io_lookup_bool_option(make_optimization_interface,
 			MakeOptInt, !IO),
-		( Body = foreign_type(_, _) ->
+		( Body = foreign_type(_) ->
 			module_info_contains_foreign_type(!Module)
 		;
 			true
@@ -2295,26 +2705,13 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 	% default to having an is_solver_type field of `non_solver_type'.
 	% If another declaration for the type has a `solver' annotation then
 	% we must update the foreign_type body to reflect this.
+	%
+	% rafe: XXX think it should be an error for foreign types to
+	% be solver types.
+	%
 :- pred combine_is_solver_type(hlds_type_body::in, hlds_type_body::out,
-	hlds_type_body::in, hlds_type_body::out) is det.
-
-combine_is_solver_type(OldBody0, OldBody, Body0, Body) :-
-	(
-		OldBody0 = foreign_type(OldForeignTypeBody, non_solver_type),
-		maybe_get_body_is_solver_type(Body0, solver_type)
-	->
-		OldBody = foreign_type(OldForeignTypeBody, solver_type),
-		Body = Body0
-	;
-		maybe_get_body_is_solver_type(OldBody0, solver_type),
-		Body0 = foreign_type(ForeignTypeBody, non_solver_type)
-	->
-		OldBody = OldBody0,
-		Body = foreign_type(ForeignTypeBody, solver_type)
-	;
-		OldBody = OldBody0,
-		Body = Body0
-	).
+		hlds_type_body::in, hlds_type_body::out) is det.
+combine_is_solver_type(OldBody, OldBody, Body, Body).
 
 	% Succeed iff the two type bodies have inconsistent is_solver_type
 	% annotations.
@@ -2329,9 +2726,8 @@ is_solver_type_is_inconsistent(OldBody, Body) :-
 :- pred maybe_get_body_is_solver_type(hlds_type_body::in, is_solver_type::out)
 	is semidet.
 
-maybe_get_body_is_solver_type(Body, Body ^ du_type_is_solver_type).
 maybe_get_body_is_solver_type(abstract_type(IsSolverType), IsSolverType).
-maybe_get_body_is_solver_type(foreign_type(_, IsSolverType), IsSolverType).
+maybe_get_body_is_solver_type(solver_type(_, _), solver_type).
 
 	% check_foreign_type_visibility(OldStatus, NewDefnStatus).
 	%
@@ -2398,10 +2794,13 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !Module, !IO) :-
 		Body = abstract_type(_),
 		NewFoundError = no
 	;
+		Body = solver_type(_, _),
+		NewFoundError = no
+	;
 		Body = eqv_type(_),
 		NewFoundError = no
 	;
-		Body = foreign_type(ForeignTypeBody, _),
+		Body = foreign_type(ForeignTypeBody),
 		check_foreign_type(TypeCtor, ForeignTypeBody, Context,
 			NewFoundError, !Module, !IO)
 	),
@@ -2504,7 +2903,7 @@ generating_code(bool__not(NotGeneratingCode)) -->
 	% if we are making the optimization interface so that it gets
 	% output in the .opt file.
 merge_foreign_type_bodies(Target, MakeOptInterface,
-		foreign_type(ForeignTypeBody0, IsSolverType), Body1, Body) :-
+		foreign_type(ForeignTypeBody0), Body1, Body) :-
 	MaybeForeignTypeBody1 = Body1 ^ du_type_is_foreign_type,
 	(
 		MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
@@ -2518,17 +2917,17 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
 		have_foreign_type_for_backend(Target, ForeignTypeBody, yes),
 		MakeOptInterface = no
 	->
-		Body = foreign_type(ForeignTypeBody, IsSolverType)
+		Body = foreign_type(ForeignTypeBody)
 	;
 		Body = Body1 ^ du_type_is_foreign_type := yes(ForeignTypeBody)
 	).
 merge_foreign_type_bodies(Target, MakeOptInterface,
-		Body0 @ du_type(_, _, _, _, _, _, _),
-		Body1 @ foreign_type(_, _), Body) :-
+		Body0 @ du_type(_, _, _, _, _, _),
+		Body1 @ foreign_type(_), Body) :-
 	merge_foreign_type_bodies(Target, MakeOptInterface, Body1, Body0, Body).
-merge_foreign_type_bodies(_, _, foreign_type(Body0, _IsSolverType0),
-		foreign_type(Body1, IsSolverType),
-		foreign_type(Body, IsSolverType)) :-
+merge_foreign_type_bodies(_, _, foreign_type(Body0),
+		foreign_type(Body1),
+		foreign_type(Body)) :-
 	merge_foreign_type_bodies_2(Body0, Body1, Body).
 
 :- pred merge_foreign_type_bodies_2(foreign_type_body::in,
@@ -2633,9 +3032,9 @@ combine_status_abstract_imported(Status2, Status) :-
 :- pred convert_type_defn(type_defn::in, type_ctor::in, globals::in,
 	hlds_type_body::out) is det.
 
-convert_type_defn(du_type(Body, IsSolverType, EqualityPred), TypeCtor, Globals,
-		du_type(Body, CtorTags, IsEnum, EqualityPred,
-			ReservedTagPragma, IsSolverType, IsForeign)) :-
+convert_type_defn(du_type(Body, MaybeUserEqComp), TypeCtor, Globals,
+		du_type(Body, CtorTags, IsEnum, MaybeUserEqComp,
+			ReservedTagPragma, IsForeign)) :-
 	% Initially, when we first see the `:- type' definition,
 	% we assign the constructor tags assuming that there is no
 	% `:- pragma reserve_tag' declaration for this type.
@@ -2647,24 +3046,26 @@ convert_type_defn(du_type(Body, IsSolverType, EqualityPred), TypeCtor, Globals,
 		CtorTags, IsEnum),
 	IsForeign = no.
 convert_type_defn(eqv_type(Body), _, _, eqv_type(Body)).
+convert_type_defn(solver_type(SolverTypeDetails, MaybeUserEqComp), _, _,
+		solver_type(SolverTypeDetails, MaybeUserEqComp)).
 convert_type_defn(abstract_type(IsSolverType), _, _,
 		abstract_type(IsSolverType)).
-convert_type_defn(foreign_type(ForeignType, UserEqComp, Assertions), _, _,
-		foreign_type(Body, non_solver_type)) :-
+convert_type_defn(foreign_type(ForeignType, MaybeUserEqComp, Assertions),
+		_, _, foreign_type(Body)) :-
 	(
 		ForeignType = il(ILForeignType),
-		Data = foreign_type_lang_data(ILForeignType, UserEqComp,
-			Assertions),
+		Data = foreign_type_lang_data(ILForeignType,
+				MaybeUserEqComp, Assertions),
 		Body = foreign_type_body(yes(Data), no, no)
 	;
 		ForeignType = c(CForeignType),
-		Data = foreign_type_lang_data(CForeignType, UserEqComp,
-			Assertions),
+		Data = foreign_type_lang_data(CForeignType,
+				MaybeUserEqComp, Assertions),
 		Body = foreign_type_body(no, yes(Data), no)
 	;
 		ForeignType = java(JavaForeignType),
-		Data = foreign_type_lang_data(JavaForeignType, UserEqComp,
-			Assertions),
+		Data = foreign_type_lang_data(JavaForeignType,
+				MaybeUserEqComp, Assertions),
 		Body = foreign_type_body(no, no, yes(Data))
 	).
 
@@ -3629,9 +4030,23 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status, !Module) :-
 					TypeCtor, Body, Context, Status,
 					!Module)
 			)
-		)
+		),
+		(
+			type_util__type_body_is_solver_type(!.Module, Body)
+		->
+			add_special_pred(initialise, TVarSet, Type,
+				TypeCtor, Body, Context, Status, !Module)
+		;
+			true
+ 		)
 	;
-		SpecialPredIds = [unify, compare],
+		(
+			type_util__type_body_is_solver_type(!.Module, Body)
+		->
+			SpecialPredIds = [unify, compare, initialise]
+		;
+			SpecialPredIds = [unify, compare]
+		),
 		add_special_pred_decl_list(SpecialPredIds, TVarSet, Type,
 			TypeCtor, Body, Context, Status, !Module)
 	).
@@ -3688,6 +4103,19 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
 					Context, Status0, !Module)
 			;
 				true
+			)
+		;
+			SpecialPredId = initialise,
+			(
+				type_is_solver_type(!.Module, Type)
+			->
+				add_special_pred_for_real(SpecialPredId,
+					TVarSet, Type, TypeCtor, TypeBody,
+					Context, Status0, !Module)
+			;
+				error("make_hlds.add_special_pred: " ++
+					"attempt to add initialise pred " ++
+					"for non-solver type")
 			)
 		)
 	).

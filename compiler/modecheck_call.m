@@ -450,7 +450,11 @@ modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset, InstVarSub,
 		mode_info_set_instmap(Instmap, !ModeInfo)
 	;
 		true
-	).
+	),
+		% We only allow one call at any given time to be made
+		% schedulable by inserting initialisation calls.
+		%
+	mode_info_set_may_initialise_solver_vars(no, !ModeInfo).
 
 :- pred insert_new_mode(pred_id::in, list(prog_var)::in,
 	maybe(determinism)::in, proc_id::out,
@@ -874,13 +878,12 @@ compare_inst(ModuleInfo, InstA, InstB, MaybeArgInst, Type, Result) :-
 	; A_mi_B = no,  B_mi_A = yes, Result = worse
 	; A_mi_B = no,  B_mi_A = no,  Result = incomparable
 	; A_mi_B = yes, B_mi_A = yes,
-		%
-		% We need to further disambiguate the cases involving
-		% `any' and `free', since `any' matches_initial `free'
-		% and vice versa.  For these cases, we want to take
-		% the actual inst of the argument into account:
-		% if the argument is `free', we should prefer `free',
-		% but otherwise, we should prefer `any'.
+		% Otherwise, we need to further disambiguate the cases
+		% involving `any' and `free', since `any' matches_initial
+		% `free' and vice versa.  For these cases, we want to take
+		% the actual inst of the argument into account: if the
+		% argument is `free', we should prefer `free', but otherwise,
+		% we should prefer `any'.
 		%
 		(
 			MaybeArgInst = no,

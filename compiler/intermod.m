@@ -993,8 +993,7 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, !Info) :-
 		hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
 		(
 			TypeBody0 = du_type(Ctors, Tags, Enum,
-				MaybeUserEqComp0, ReservedTag, IsSolverType,
-				MaybeForeign0)
+				MaybeUserEqComp0, ReservedTag, MaybeForeign0)
 		->
 			module_info_globals(ModuleInfo, Globals),
 			globals__get_target(Globals, Target),
@@ -1024,17 +1023,17 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, !Info) :-
 				MaybeUserEqComp = MaybeUserEqComp0
 			;
 				intermod__resolve_unify_compare_overloading(
-					ModuleInfo, TypeCtor, MaybeUserEqComp0,
-					MaybeUserEqComp, !Info),
+					ModuleInfo, TypeCtor,
+					MaybeUserEqComp0, MaybeUserEqComp,
+					!Info),
 				MaybeForeign = MaybeForeign0
 			),
-			TypeBody = du_type(Ctors, Tags, Enum, MaybeUserEqComp,
-				ReservedTag, IsSolverType, MaybeForeign),
+			TypeBody = du_type(Ctors, Tags, Enum,
+				MaybeUserEqComp, ReservedTag, MaybeForeign),
 			hlds_data__set_type_defn_body(TypeBody,
 				TypeDefn0, TypeDefn)
 		;
-			TypeBody0 = foreign_type(ForeignTypeBody0,
-				IsSolverType)
+			TypeBody0 = foreign_type(ForeignTypeBody0)
 		->
 			% The header code must be written since
 			% it could be used by the foreign type.
@@ -1042,7 +1041,7 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, !Info) :-
 			intermod__resolve_foreign_type_body_overloading(
 				ModuleInfo, TypeCtor,
 				ForeignTypeBody0, ForeignTypeBody, !Info),
-			TypeBody = foreign_type(ForeignTypeBody, IsSolverType),
+			TypeBody = foreign_type(ForeignTypeBody),
 			hlds_data__set_type_defn_body(TypeBody,
 				TypeDefn0, TypeDefn)
 		;
@@ -1100,11 +1099,13 @@ intermod__resolve_foreign_type_body_overloading(ModuleInfo,
 
 intermod__resolve_foreign_type_body_overloading_2(_, _, no, no, !Info).
 intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
-		yes(foreign_type_lang_data(Body, MaybeEqComp0, Assertions)),
-		yes(foreign_type_lang_data(Body, MaybeEqComp, Assertions)),
+		yes(foreign_type_lang_data(Body, MaybeUserEqComp0,
+			Assertions)),
+		yes(foreign_type_lang_data(Body, MaybeUserEqComp,
+			Assertions)),
 		!Info) :-
 	intermod__resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
-		MaybeEqComp0, MaybeEqComp, !Info).
+		MaybeUserEqComp0, MaybeUserEqComp, !Info).
 
 :- pred intermod__resolve_unify_compare_overloading(module_info::in,
 	type_ctor::in, maybe(unify_compare)::in, maybe(unify_compare)::out,
@@ -1112,8 +1113,8 @@ intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
 
 intermod__resolve_unify_compare_overloading(_, _, no, no, !Info).
 intermod__resolve_unify_compare_overloading(_, _,
-		yes(abstract_noncanonical_type),
-		yes(abstract_noncanonical_type),
+		yes(abstract_noncanonical_type(IsSolverType)),
+		yes(abstract_noncanonical_type(IsSolverType)),
 		!Info).
 intermod__resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
 		yes(unify_compare(MaybeUserEq0, MaybeUserCompare0)),
@@ -1273,9 +1274,8 @@ intermod__write_type(TypeCtor - TypeDefn, !IO) :-
 	TypeCtor = Name - Arity,
 	(
 		Ctors = Body ^ du_type_ctors,
-		IsSolverType = Body ^ du_type_is_solver_type,
-		MaybeEqualityPred = Body ^ du_type_usereq,
-		TypeBody = du_type(Ctors, IsSolverType, MaybeEqualityPred)
+		MaybeUserEqComp = Body ^ du_type_usereq,
+		TypeBody = du_type(Ctors, MaybeUserEqComp)
 	;
 		Body = eqv_type(EqvType),
 		TypeBody = eqv_type(EqvType)
@@ -1283,15 +1283,17 @@ intermod__write_type(TypeCtor - TypeDefn, !IO) :-
 		Body = abstract_type(IsSolverType),
 		TypeBody = abstract_type(IsSolverType)
 	;
-		Body = foreign_type(_, IsSolverType),
-		TypeBody = abstract_type(IsSolverType)
+		Body = foreign_type(_),
+		TypeBody = abstract_type(non_solver_type)
+	;
+		Body = solver_type(SolverTypeDetails, MaybeUserEqComp),
+		TypeBody = solver_type(SolverTypeDetails, MaybeUserEqComp)
 	),
 	mercury_output_item(
 		type_defn(VarSet, Name, Args, TypeBody, true),
 		Context, !IO),
-
 	(
-		( Body = foreign_type(ForeignTypeBody, _)
+		( Body = foreign_type(ForeignTypeBody)
 		; Body ^ du_type_is_foreign_type = yes(ForeignTypeBody)
 		),
 		ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC,
@@ -1300,11 +1302,12 @@ intermod__write_type(TypeCtor - TypeDefn, !IO) :-
 		(
 			MaybeIL = yes(DataIL),
 			DataIL = foreign_type_lang_data(ILForeignType,
-				ILUserEqComp, AssertionsIL),
+				ILMaybeUserEqComp, AssertionsIL),
 			mercury_output_item(
 				type_defn(VarSet, Name, Args,
 					foreign_type(il(ILForeignType),
-						ILUserEqComp, AssertionsIL),
+						ILMaybeUserEqComp,
+						AssertionsIL),
 				true),
 				Context, !IO)
 		;
@@ -1313,11 +1316,12 @@ intermod__write_type(TypeCtor - TypeDefn, !IO) :-
 		(
 			MaybeC = yes(DataC),
 			DataC = foreign_type_lang_data(CForeignType,
-				CUserEqComp, AssertionsC),
+				CMaybeUserEqComp, AssertionsC),
 			mercury_output_item(
 				type_defn(VarSet, Name, Args,
 					foreign_type(c(CForeignType),
-						CUserEqComp, AssertionsC),
+						CMaybeUserEqComp,
+						AssertionsC),
 					true),
 				Context, !IO)
 		;
@@ -1326,11 +1330,12 @@ intermod__write_type(TypeCtor - TypeDefn, !IO) :-
 		(
 			MaybeJava = yes(DataJava),
 			DataJava = foreign_type_lang_data(JavaForeignType,
-				JavaUserEqComp, AssertionsJava),
+				JavaMaybeUserEqComp, AssertionsJava),
 			mercury_output_item(
 				type_defn(VarSet, Name, Args,
 					foreign_type(java(JavaForeignType),
-						JavaUserEqComp, AssertionsJava),
+						JavaMaybeUserEqComp,
+						AssertionsJava),
 					true),
 				Context, !IO)
 		;

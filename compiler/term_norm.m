@@ -140,7 +140,10 @@ find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
 		TypeBody = abstract_type(_)
 	;
 		% This type does not introduce any functors
-		TypeBody = foreign_type(_, _)
+		TypeBody = foreign_type(_)
+	;
+		% This type does not introduce any functors
+		TypeBody = solver_type(_, _)
 	).
 
 :- pred find_weights_for_cons(type_ctor::in, list(type_param)::in,

@@ -1780,7 +1780,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		Body = foreign_type(foreign_type_body(MaybeIL, MaybeC,
-			MaybeJava), _)
+				MaybeJava))
 	->
 		module_info_globals(ModuleInfo, Globals),
 		globals__get_target(Globals, Target),

@@ -729,20 +729,30 @@ update_import_status(include_module(_), Info0, Info, yes) :-
 :- pred qualify_type_defn(type_defn::in, type_defn::out, mq_info::in,
 	mq_info::out, io__state::di, io__state::uo) is det.
 
-qualify_type_defn(du_type(Ctors0, IsSolverType, MaybeEqualityPred0),
-		du_type(Ctors, IsSolverType, MaybeEqualityPred),
-		Info0, Info) -->
-	qualify_constructors(Ctors0, Ctors, Info0, Info),
+qualify_type_defn(du_type(Ctors0, MaybeUserEqComp0),
+		du_type(Ctors, MaybeUserEqComp),
+		Info0, Info, !IO) :-
+	qualify_constructors(Ctors0, Ctors, Info0, Info, !IO),
 
 	% User-defined equality pred names will be converted into
 	% predicate calls and then module-qualified after type analysis
 	% (during mode analysis).  That way they get full type overloading
 	% resolution, etc.  Thus we don't module-qualify them here.
-	{ MaybeEqualityPred = MaybeEqualityPred0 }.
-qualify_type_defn(eqv_type(Type0), eqv_type(Type), Info0, Info) -->
-	qualify_type(Type0, Type, Info0, Info).
-qualify_type_defn(abstract_type(_) @ Defn, Defn, Info, Info) --> [].
-qualify_type_defn(foreign_type(_, _, _) @ Defn, Defn, Info, Info) --> [].
+	MaybeUserEqComp = MaybeUserEqComp0.
+qualify_type_defn(eqv_type(Type0), eqv_type(Type), Info0, Info, !IO) :-
+	qualify_type(Type0, Type, Info0, Info, !IO).
+qualify_type_defn(abstract_type(_) @ Defn, Defn, Info, Info, !IO).
+qualify_type_defn(foreign_type(_, _, _) @ Defn, Defn, Info, Info, !IO).
+qualify_type_defn(solver_type(SolverTypeDetails0, MaybeUserEqComp),
+		solver_type(SolverTypeDetails, MaybeUserEqComp),
+		Info0, Info, !IO) :-
+	SolverTypeDetails0 = solver_type_details(RepnType0, InitPred,
+					GroundInst0, AnyInst0),
+	qualify_type(RepnType0, RepnType,     Info0, Info1, !IO),
+	qualify_inst(GroundInst0, GroundInst, Info1, Info2, !IO),
+	qualify_inst(AnyInst0, AnyInst,       Info2, Info,  !IO),
+	SolverTypeDetails  = solver_type_details(RepnType, InitPred,
+					GroundInst, AnyInst).
 
 :- pred qualify_constructors(list(constructor)::in, list(constructor)::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.

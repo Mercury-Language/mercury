@@ -645,7 +645,7 @@ report_aditi_builtin_error(
 	prog_out__write_context(Context),
 	io__write_string("  error: the modified "),
 	{ CallId = PredOrFunc - _ },
-	write_pred_or_func(PredOrFunc),
+	prog_out__write_pred_or_func(PredOrFunc),
 	io__write_string(" is not a base relation.\n").
 
 %-----------------------------------------------------------------------------%

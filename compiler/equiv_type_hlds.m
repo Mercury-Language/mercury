@@ -36,7 +36,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module recompilation.
 
-:- import_module bool, list, set, map, require, std_util, term, varset.
+:- import_module bool, list, set, map, require, std_util, string, term, varset.
 
 replace_in_hlds(!ModuleInfo) :-
 	module_info_types(!.ModuleInfo, Types0),
@@ -119,7 +119,7 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
 	equiv_type__maybe_record_expanded_items(ModuleName, fst(TypeCtor),
 		!.MaybeRecompInfo, EquivTypeInfo0),
 	(
-		Body0 = du_type(Ctors0, _, _, _, _, _, _),
+		Body0 = du_type(Ctors0, _, _, _, _, _),
 		equiv_type__replace_in_ctors(EqvMap, Ctors0, Ctors,
 			TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
 		Body = Body0 ^ du_type_ctors := Ctors
@@ -129,10 +129,19 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
 			TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
 		Body = eqv_type(Type)
 	;
-		Body0 = foreign_type(_, _),
+		Body0 = foreign_type(_),
 		EquivTypeInfo = EquivTypeInfo0,
 		Body = Body0,
 		TVarSet = TVarSet0
+	;
+		Body0 = solver_type(SolverTypeDetails0, UserEq),
+		SolverTypeDetails0 = solver_type_details(RepnType0, InitPred,
+					GroundInst, AnyInst),
+		equiv_type__replace_in_type(EqvMap, RepnType0, RepnType, _,
+			TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
+		SolverTypeDetails = solver_type_details(RepnType, InitPred,
+					GroundInst, AnyInst),
+		Body = solver_type(SolverTypeDetails, UserEq)
 	;
 		Body0 = abstract_type(_),
 		EquivTypeInfo = EquivTypeInfo0,
@@ -919,4 +928,5 @@ replace_in_foreign_arg_list(EqvMap, List0 @ [A0 | As0], List,
 		List = List0
 	).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

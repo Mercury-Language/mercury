@@ -135,6 +135,7 @@
 :- import_module check_hlds__cse_detection.
 :- import_module check_hlds__det_analysis.
 :- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
 :- import_module check_hlds__modes.
 :- import_module check_hlds__polymorphism.
 :- import_module check_hlds__post_typecheck.
@@ -546,13 +547,13 @@ unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 		ConsId = cons(CtorSymName, TupleArity),
 		map__from_assoc_list([ConsId - single_functor],
 			ConsTagValues),
-		TypeBody = du_type([Ctor], ConsTagValues, IsEnum,
-			UnifyPred, ReservedTag, IsSolverType, IsForeign),
+		TypeBody = du_type([Ctor], ConsTagValues, IsEnum, UnifyPred,
+				ReservedTag, IsForeign),
 		UnifyPred = no,
 		IsEnum = no,
 		IsForeign = no,
 		ReservedTag = no,
-		IsSolverType = non_solver_type,
+		IsForeign = no,
 		construct_type(TypeCtor, TupleArgTypes, Type),
 
 		term__context_init(Context)
@@ -691,6 +692,10 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	; SpecialPredId = compare, Args = [Res, X, Y] ->
 		unify_proc__generate_compare_clauses(ModuleInfo, Type,
 			TypeBody, Res, X, Y, Context, Clauses, Info1, Info)
+	; SpecialPredId = initialise, Args = [X] ->
+		unify_proc__generate_initialise_clauses(ModuleInfo, Type,
+			TypeBody, X, Context, Clauses, Info1, Info)
+
 	;
 		error("unknown special pred")
 	),
@@ -702,6 +707,37 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, Args,
 		Clauses, TI_VarMap, TCI_VarMap, HasForeignClauses).
 
+
+:- pred unify_proc__generate_initialise_clauses(module_info::in, (type)::in,
+	hlds_type_body::in, prog_var::in, prog_context::in,
+	list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
+
+unify_proc__generate_initialise_clauses(ModuleInfo, _Type, TypeBody,
+		X, Context, Clauses, !Info) :-
+	(
+		type_util__type_body_has_solver_type_details(ModuleInfo,
+			TypeBody, SolverTypeDetails)
+	->
+		% Just generate a call to the specified predicate,
+		% which is the user-defined equality pred for this
+		% type.
+		% (The pred_id and proc_id will be figured
+		% out by type checking and mode analysis.)
+		%
+		InitPred = SolverTypeDetails ^ init_pred,
+		PredId = invalid_pred_id,
+		ModeId = invalid_proc_id,
+		Call = call(PredId, ModeId, [X], not_builtin, no, InitPred),
+		goal_info_init(Context, GoalInfo),
+		Goal = Call - GoalInfo,
+		unify_proc__quantify_clauses_body([X], Goal, Context, Clauses,
+			!Info)
+	;
+		error("trying to create initialisation proc for type " ++
+			"that has no solver_type_details")
+	).
+
+
 :- pred unify_proc__generate_unify_clauses(module_info::in, (type)::in,
 	hlds_type_body::in, prog_var::in, prog_var::in, prog_context::in,
 	list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
@@ -710,9 +746,9 @@ unify_proc__generate_unify_clauses(ModuleInfo, Type, TypeBody,
 		H1, H2, Context, Clauses, !Info) :-
 	(
 		type_body_has_user_defined_equality_pred(ModuleInfo,
-			TypeBody, UserEqCompare)
+			TypeBody, UserEqComp)
 	->
-		unify_proc__generate_user_defined_unify_clauses(UserEqCompare,
+		unify_proc__generate_user_defined_unify_clauses(UserEqComp,
 			H1, H2, Context, Clauses, !Info)
 	;
 		(
@@ -740,7 +776,14 @@ unify_proc__generate_unify_clauses(ModuleInfo, Type, TypeBody,
 			generate_unify_clauses_eqv_type(EqvType, H1, H2,
 				Context, Clauses, !Info)
 		;
-			TypeBody = foreign_type(_, _),
+			TypeBody = solver_type(_, _),
+			% If no user defined equality predicate is given,
+			% we treat solver types as if they were an equivalent
+			% to the builtin type c_pointer.
+			generate_unify_clauses_eqv_type(c_pointer_type,
+				H1, H2, Context, Clauses, !Info)
+		;
+			TypeBody = foreign_type(_),
 			% If no user defined equality predicate is given,
 			% we treat foreign_type as if they were an equivalent
 			% to the builtin type c_pointer.
@@ -824,7 +867,8 @@ generate_builtin_unify(TypeCategory, H1, H2, Context, Clauses, !Info) :-
 	prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_user_defined_unify_clauses(abstract_noncanonical_type,
+unify_proc__generate_user_defined_unify_clauses(
+		abstract_noncanonical_type(_IsSolverType),
 		_, _, _, _, !Info) :-
 	error("trying to create unify proc for abstract noncanonical type").
 unify_proc__generate_user_defined_unify_clauses(UserEqCompare, H1, H2,
@@ -952,8 +996,11 @@ unify_proc__generate_index_clauses(ModuleInfo, TypeBody,
 			% we are generating should never be invoked.
 			error("trying to create index proc for eqv type")
 		;
-			TypeBody = foreign_type(_, _),
+			TypeBody = foreign_type(_),
 			error("trying to create index proc for a foreign type")
+		;
+			TypeBody = solver_type(_, _),
+			error("trying to create index proc for a solver type")
 		;
 			TypeBody = abstract_type(_),
 			error("trying to create index proc for abstract type")
@@ -1013,7 +1060,11 @@ unify_proc__generate_compare_clauses(ModuleInfo, Type, TypeBody, Res,
 			generate_compare_clauses_eqv_type(EqvType,
 				Res, H1, H2, Context, Clauses, !Info)
 		;
-			TypeBody = foreign_type(_, _),
+			TypeBody = foreign_type(_),
+			generate_compare_clauses_eqv_type(c_pointer_type,
+				Res, H1, H2, Context, Clauses, !Info)
+		;
+			TypeBody = solver_type(_, _),
 			generate_compare_clauses_eqv_type(c_pointer_type,
 				Res, H1, H2, Context, Clauses, !Info)
 		;
@@ -1096,7 +1147,7 @@ generate_builtin_compare(TypeCategory, Res, H1, H2, Context, Clauses, !Info) :-
 	prog_context::in, list(clause)::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_user_defined_compare_clauses(abstract_noncanonical_type,
+generate_user_defined_compare_clauses(abstract_noncanonical_type(_),
 		_, _, _, _, _, !Info) :-
 	error("trying to create compare proc for abstract noncanonical type").
 generate_user_defined_compare_clauses(unify_compare(_, MaybeCompare),

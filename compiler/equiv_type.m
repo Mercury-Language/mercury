@@ -399,9 +399,21 @@ equiv_type__replace_in_type_defn(EqvMap, TypeCtor, eqv_type(TBody0),
 		_, ContainsCirc, !VarSet, !Info).
 
 equiv_type__replace_in_type_defn(EqvMap, _,
-		du_type(TBody0, IsSolverType, EqPred),
-		du_type(TBody, IsSolverType, EqPred), no, !VarSet, !Info) :-
+		du_type(TBody0, EqPred),
+		du_type(TBody, EqPred), no, !VarSet, !Info) :-
 	equiv_type__replace_in_ctors(EqvMap, TBody0, TBody, !VarSet, !Info).
+
+equiv_type__replace_in_type_defn(EqvMap, TypeCtor,
+		solver_type(SolverTypeDetails0, MaybeUserEqComp),
+		solver_type(SolverTypeDetails,  MaybeUserEqComp),
+		ContainsCirc, !VarSet, !Info) :-
+	SolverTypeDetails0 = solver_type_details(RepresentationType0, InitPred,
+				GroundInst, AnyInst),
+	equiv_type__replace_in_type_2(EqvMap, [TypeCtor], 
+				RepresentationType0, RepresentationType,
+				_, ContainsCirc, !VarSet, !Info),
+	SolverTypeDetails = solver_type_details(RepresentationType, InitPred,
+				GroundInst, AnyInst).
 
 %-----------------------------------------------------------------------------%
 

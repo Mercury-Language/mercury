@@ -35,18 +35,26 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 	(
 		% new syntax: `:- pragma foo(...).'
 		PragmaTerms = [SinglePragmaTerm0],
-		get_maybe_equality_compare_preds(ModuleName,
-			SinglePragmaTerm0, SinglePragmaTerm,
-			UnifyCompareResult),
+		parse_type_decl_where_part_if_present(
+			non_solver_type, ModuleName, SinglePragmaTerm0,
+			SinglePragmaTerm, WherePartResult),
 		SinglePragmaTerm = term__functor(term__atom(PragmaType),
-			PragmaArgs, _),
+					PragmaArgs, _),
 		parse_pragma_type(ModuleName, PragmaType, PragmaArgs,
-			SinglePragmaTerm, VarSet, Result0)
+				SinglePragmaTerm, VarSet, Result0)
 	->
 		(
-			UnifyCompareResult = ok(MaybeUserEqCompare),
+				% The code to process `where' attributes will
+				% return an error result if solver attributes
+				% are given for a non-solver type.  Because
+				% this is a non-solver type, if the
+				% unification with WhereResult succeeds then
+				% _NoSolverTypeDetails is guaranteed to be
+				% `no'.
+			WherePartResult =
+				ok(_NoSolverTypeDetails, MaybeUserEqComp),
 			(
-				MaybeUserEqCompare = yes(_),
+				MaybeUserEqComp = yes(_),
 				Result0 = ok(Item0)
 			->
 				(
@@ -56,7 +64,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 				->
 					Result = ok(Item0 ^ td_ctor_defn :=
 						foreign_type(Type,
-							MaybeUserEqCompare,
+							MaybeUserEqComp,
 							Assertions))
 				;
 					Result = error(
@@ -67,8 +75,8 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 				Result = Result0
 			)
 		;
-			UnifyCompareResult = error(Msg, Term),
-			Result = error(Msg, Term)
+			WherePartResult = error(String, Term),
+			Result          = error(String, Term)
 		)
 	;
 		% old syntax: `:- pragma(foo, ...).'
@@ -115,7 +123,9 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
 			MaybeAssertionTerm = yes(AssertionTerm)
 		)
 	->
-		( parse_foreign_language(LangTerm, Language) ->
+		(
+			parse_foreign_language(LangTerm, Language)
+		->
 			parse_foreign_language_type(ForeignTypeTerm, Language,
 				MaybeForeignType),
 			(
@@ -133,6 +143,12 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
 					( parse_maybe_foreign_type_assertions(
 						MaybeAssertionTerm, Assertions)
 					->
+							% rafe: XXX I'm not
+							% sure that
+							% `no'
+							% here is right - we
+							% might need some more
+							% parsing...
 						Result = ok(type_defn(TVarSet,
 							MercuryTypeSymName,
 							MercuryArgs,
@@ -473,8 +489,7 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
 			)
 		;
 			ErrMsg = "-- invalid language parameter",
-			Result = error(string__append(InvalidDeclStr, ErrMsg),
-				LangTerm)
+			Result = error(InvalidDeclStr ++ ErrMsg, LangTerm)
 		)
 	;
 		string__format("invalid `:- pragma %s' declaration ",

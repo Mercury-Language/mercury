@@ -10,6 +10,9 @@
 % This module defines some utility routines for comparing insts
 % that are used by modes.m and det_analysis.m.
 %
+% rafe: XXX The following comment needs revising in the light of
+% the new solver types design.
+%
 % The handling of `any' insts is not complete.  (See also inst_util.m)
 % It would be nice to allow `free' to match `any', but right now we
 % only allow a few special cases of that.
@@ -268,6 +271,9 @@
 
 :- pred inst_is_free(module_info, inst).
 :- mode inst_is_free(in, in) is semidet.
+
+:- pred inst_is_any(module_info, inst).
+:- mode inst_is_any(in, in) is semidet.
 
 :- pred inst_list_is_free(list(inst), module_info).
 :- mode inst_list_is_free(in, in) is semidet.
@@ -1281,6 +1287,15 @@ inst_is_free(ModuleInfo, constrained_inst_vars(_, Inst)) :-
 inst_is_free(ModuleInfo, defined_inst(InstName)) :-
         inst_lookup(ModuleInfo, InstName, Inst),
         inst_is_free(ModuleInfo, Inst).
+
+inst_is_any(_, any(_)).
+inst_is_any(_, inst_var(_)) :-
+        error("internal error: uninstantiated inst parameter").
+inst_is_any(ModuleInfo, constrained_inst_vars(_, Inst)) :-
+	inst_is_any(ModuleInfo, Inst).
+inst_is_any(ModuleInfo, defined_inst(InstName)) :-
+        inst_lookup(ModuleInfo, InstName, Inst),
+        inst_is_any(ModuleInfo, Inst).
 
         % inst_is_bound succeeds iff the inst passed is not `free'
         % or is a user-defined inst which is not defined as `free'.

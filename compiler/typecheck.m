@@ -5689,7 +5689,7 @@ report_error_func_instead_of_pred(Info, PredOrFunc, PredCallId) -->
 	{ typecheck_info_get_context(Info, Context) },
 	prog_out__write_context(Context),
 	io__write_string("  (There is a *"),
-	write_pred_or_func(PredOrFunc),
+	prog_out__write_pred_or_func(PredOrFunc),
 	io__write_string("* with that name, however."),
 	( { PredOrFunc = function } ->
 		io__nl,
@@ -5750,7 +5750,7 @@ report_error_pred_num_args(Info, PredOrFunc - SymName/Arity, Arities) -->
 	io__nl,
 	prog_out__write_context(Context),
 	io__write_string("  in call to "),
-	write_pred_or_func(PredOrFunc),
+	prog_out__write_pred_or_func(PredOrFunc),
 	io__write_string(" `"),
 	prog_out__write_sym_name(SymName),
 	io__write_string("'.\n").

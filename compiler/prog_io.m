@@ -1,4 +1,4 @@
-%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------e
 % Copyright (C) 1993-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -176,19 +176,19 @@
 :- pred parse_type_defn_head(module_name::in, term::in, term::in,
 	maybe_functor::out) is det.
 
-	% get_maybe_equality_compare_preds(ModuleName,
-	%		Body0, Body, MaybeEqualPred):
-	%	Checks if `Body0' is a term of the form
-	%		`<body> where equality is <symname>'
-	%		`<body> where comparison is <symname>'
-	%		or `<body> where equality is <symname>,
-	%			comparison is <sym_name>'
-	%	If so, returns the `<body>' in Body and the <symname>s in
-	%	MaybeEqualPred.  If not, returns Body = Body0
-	%	and `no' in MaybeEqualPred.
-
-:- pred get_maybe_equality_compare_preds(module_name::in, term::in, term::out,
-	maybe1(maybe(unify_compare))::out) is det.
+	% parse_type_decl_where_part_if_present(TypeSymName, Arity,
+	% 		IsSolverType, Inst, ModuleName,	Term0, Term, Result):
+	%	Checks if Term0 is a term of the form
+	%		`<body> where <attributes>'
+	%	If so, returns the `<body>' in Term and the parsed
+	%	`<attributes>' in Result.
+	%	If not, returns Term = Term0 and
+	%	Result = no.
+	%
+:- pred parse_type_decl_where_part_if_present(is_solver_type::in,
+		module_name::in, term::in, term::out,
+		maybe2(maybe(solver_type_details), maybe(unify_compare))::out)
+			is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -262,6 +262,7 @@
 
 :- implementation.
 
+:- import_module check_hlds__inst_util.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__modules.
@@ -1519,18 +1520,91 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 		condition, maybe1(processed_type_body)).
 :- mode parse_type_decl_type(in, in, in, in, out, out) is semidet.
 
-parse_type_decl_type(ModuleName, "--->", [H, B], Attributes0, Condition, R) :-
-	/* get_condition(...), */
-	Condition = true,
-	get_maybe_equality_compare_preds(ModuleName, B, Body, EqCompare),
+parse_type_decl_type(ModuleName, "--->", [H, B], Attributes0, Condition,
+		Result) :-
+	get_condition(B, Body, Condition),
 	get_is_solver_type(Attributes0, IsSolverType, Attributes),
-	process_du_type(ModuleName, H, Body, IsSolverType, EqCompare, R0),
-	check_no_attributes(R0, Attributes, R).
+	(
+		IsSolverType = solver_type,
+		Result = error("a solver type cannot have data constructors",
+				H)
+	;
+		IsSolverType = non_solver_type,
+		du_type_rhs_ctors_and_where_terms(Body, CtorsTerm,
+			MaybeWhereTerm),
+		CtorsResult = convert_constructors(ModuleName, CtorsTerm),
+		(
+			CtorsResult = error(String, Term),
+			Result      = error(String, Term)
+		;
+			CtorsResult = ok(Ctors),
+			WhereResult = parse_type_decl_where_term(
+					non_solver_type, ModuleName,
+					MaybeWhereTerm),
+			(
+				WhereResult = error(String, Term),
+				Result      = error(String, Term)
+			;
+					% The code to process `where'
+					% attributes will return an error
+					% result if solver attributes are
+					% given for a non-solver type. 
+					% Because this is a du type, if the
+					% unification with WhereResult
+					% succeeds then _NoSolverTypeDetails
+					% is guaranteed to be `no'.
+				WhereResult = ok(_NoSolverTypeDetails,
+						 MaybeUserEqComp),
+				process_du_type(ModuleName, H, Body, Ctors,
+					MaybeUserEqComp, Result0),
+				check_no_attributes(Result0, Attributes,
+					Result)
+			)
+		)
+	).
 
 parse_type_decl_type(ModuleName, "==", [H, B], Attributes, Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_eqv_type(ModuleName, H, Body, R0),
 	check_no_attributes(R0, Attributes, R).
+
+parse_type_decl_type(ModuleName, "where", [H, B], Attributes0, Condition,
+		R) :-
+	get_condition(B, Body, Condition),
+	get_is_solver_type(Attributes0, IsSolverType, Attributes),
+	(
+		IsSolverType = non_solver_type,
+		R = error("only solver types can be defined " ++
+				"by a `where' block alone", H)
+	;
+		IsSolverType = solver_type,
+		R0 = parse_type_decl_where_term(solver_type, ModuleName,
+			yes(Body)),
+		(
+			R0 = error(String, Term),
+			R  = error(String, Term)
+		;
+			R0 = ok(MaybeSolverTypeDetails, MaybeUserEqComp),
+			process_solver_type(ModuleName, H,
+				MaybeSolverTypeDetails, MaybeUserEqComp, R1),
+			check_no_attributes(R1, Attributes, R)
+		)
+	).
+
+
+:- pred du_type_rhs_ctors_and_where_terms(term::in,
+		term::out, maybe(term)::out) is det.
+
+du_type_rhs_ctors_and_where_terms(Term, CtorsTerm, MaybeWhereTerm) :-
+	( if Term = term__functor(term__atom("where"),
+			[CtorsTerm0, WhereTerm], _Context)
+	  then
+	  	CtorsTerm      = CtorsTerm0,
+		MaybeWhereTerm = yes(WhereTerm)
+	  else
+	  	CtorsTerm      = Term,
+		MaybeWhereTerm = no
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1653,81 +1727,341 @@ parse_mode_decl_pred(ModuleName, VarSet, Pred, Attributes, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-get_maybe_equality_compare_preds(ModuleName, B, Body, MaybeEqComp) :-
+	% The optional `where ...' part of the type definition syntax 
+	% is a comma separated list of special type `attributes'.
+	%
+	% The possible attributes (in this order) are either
+	% - `type_is_abstract_noncanonical' on its own appears only in .int2
+	%   files and indicates that the type has user-defined equality and/or
+	%   comparison, but that what these predicates are is not known at
+	%   this point
+	% or
+	% - `representation is <<type name>>' (required for solver types)
+	% - `initialisation is <<pred name>>' (required for solver types)
+	% - `ground is <<inst>>' (required for solver types)
+	% - `any is <<inst>>' (required for solver types)
+	% - `equality is <<pred name>>' (optional)
+	% - `comparison is <<pred name>>' (optional).
+	%
+parse_type_decl_where_part_if_present(IsSolverType, ModuleName, Term0, Term,
+		Result) :-
 	(
-		B = term__functor(term__atom("where"), Args, _Context1),
-		Args = [Body1, EqCompTerm]
+		Term0  = term__functor(term__atom("where"), [Term1, WhereTerm],
+				_Context)
 	->
-		Body = Body1,
-		(
-			EqCompTerm = term__functor(
-				term__atom("type_is_abstract_noncanonical"),
-				[], _Context2)
-		->
-			MaybeEqComp = ok(yes(abstract_noncanonical_type))
-		;
-			parse_equality_or_comparison_pred_term("equality",
-				EqCompTerm, PredName)
-		->
-			parse_implicitly_qualified_symbol_name(ModuleName,
-				PredName, MaybeEqComp0),
-			process_maybe1(make_equality, MaybeEqComp0,
-				MaybeEqComp)
-		;
-			parse_equality_or_comparison_pred_term("comparison",
-				EqCompTerm, PredName)
-		->
-			parse_implicitly_qualified_symbol_name(ModuleName,
-				PredName, MaybeEqComp0),
-			process_maybe1(make_comparison, MaybeEqComp0,
-				MaybeEqComp)
-		;
-			EqCompTerm = term__functor(term__atom(","),
-					[EqTerm, CompTerm], _),
-			parse_equality_or_comparison_pred_term("equality",
-				EqTerm, EqPredNameTerm),
-			parse_equality_or_comparison_pred_term("comparison",
-				CompTerm, CompPredNameTerm)
-		->
-			parse_implicitly_qualified_symbol_name(ModuleName,
-				EqPredNameTerm, EqPredNameResult),
-			parse_implicitly_qualified_symbol_name(ModuleName,
-				CompPredNameTerm, CompPredNameResult),
-			(
-				EqPredNameResult = ok(EqPredName),
-				CompPredNameResult = ok(CompPredName),
-				MaybeEqComp = ok(yes(
-					unify_compare(yes(EqPredName),
-						yes(CompPredName))))
-			;
-				EqPredNameResult = ok(_),
-				CompPredNameResult = error(M, T),
-				MaybeEqComp = error(M, T)
-			;
-				EqPredNameResult = error(M, T),
-				MaybeEqComp = error(M, T)
-			)
-		;
-			MaybeEqComp = error("syntax error after `where'",
-				Body)
-		)
+		Term   = Term1,
+		Result = parse_type_decl_where_term(IsSolverType, ModuleName,
+				yes(WhereTerm))
 	;
-		Body = B,
-		MaybeEqComp = ok(no)
+		Term   = Term0,
+		Result = ok(no, no)
 	).
 
-:- pred parse_equality_or_comparison_pred_term(string::in, term::in,
-		term::out) is semidet.
 
-parse_equality_or_comparison_pred_term(EqOrComp, Term, PredNameTerm) :-
-	Term = term__functor(term__atom("is"),
-		[term__functor(term__atom(EqOrComp), [], _), PredNameTerm], _).
+	% The maybe2 wrapper allows us to return an error code or a pair
+	% of results.  Either result half may be empty, hence the maybe
+	% wrapper around each of those.
+	%
+:- func parse_type_decl_where_term(is_solver_type, module_name, maybe(term)) =
+		maybe2(maybe(solver_type_details), maybe(unify_compare)).
 
-:- pred make_equality(sym_name::in, maybe(unify_compare)::out) is det.
-make_equality(Pred, yes(unify_compare(yes(Pred), no))).
+parse_type_decl_where_term(_IsSolverType, _ModuleName, no) =
+	ok(no, no).
 
-:- pred make_comparison(sym_name::in, maybe(unify_compare)::out) is det.
-make_comparison(Pred, yes(unify_compare(no, yes(Pred)))).
+parse_type_decl_where_term(IsSolverType, ModuleName, MaybeTerm0 @ yes(Term)) =
+		MaybeWhereDetails :-
+	some [!MaybeTerm] (
+		!:MaybeTerm = MaybeTerm0,
+		parse_where_attribute(
+			parse_where_type_is_abstract_noncanonical,
+			TypeIsAbstractNoncanonicalResult, !MaybeTerm),
+		parse_where_attribute(
+			parse_where_is("representation",
+				parse_where_type_is(ModuleName)),
+			RepresentationIsResult, !MaybeTerm),
+		parse_where_attribute(
+			parse_where_initialisation_is(ModuleName),
+			InitialisationIsResult, !MaybeTerm),
+		parse_where_attribute(
+			parse_where_is("ground",
+				parse_where_inst_is(ModuleName)),
+			GroundIsResult, !MaybeTerm),
+		parse_where_attribute(
+			parse_where_is("any",
+				parse_where_inst_is(ModuleName)),
+			AnyIsResult, !MaybeTerm),
+		parse_where_attribute(
+			parse_where_is("equality",
+				parse_where_pred_is(ModuleName)),
+			EqualityIsResult, !MaybeTerm),
+		parse_where_attribute(
+			parse_where_is("comparison",
+				parse_where_pred_is(ModuleName)),
+			ComparisonIsResult, !MaybeTerm),
+		parse_where_end(!.MaybeTerm, WhereEndResult)
+	),
+	MaybeWhereDetails =
+		make_maybe_where_details(
+			IsSolverType,
+			TypeIsAbstractNoncanonicalResult,
+			RepresentationIsResult,
+			InitialisationIsResult,
+			GroundIsResult,
+			AnyIsResult,
+			EqualityIsResult,
+			ComparisonIsResult,
+			WhereEndResult,
+			Term
+		).
+
+
+	% parse_where_attribute(Parser, Result, MaybeTerm0, MaybeTerm)
+	% handles
+	% - where MaybeTerm0 may contain nothing
+	% - where MaybeTerm0 may be a comma-separated pair
+	% - applies Parser to the appropriate (sub)term to obtain Result
+	% - sets MaybeTerm depending upon whether the Result is an error
+	% or not and whether there is more to parse because MaybeTerm0
+	% was a comma-separated pair.
+	%
+:- pred parse_where_attribute((func(term) = maybe1(maybe(T)))::in,
+		maybe1(maybe(T))::out, maybe(term)::in, maybe(term)::out)
+			is det.
+
+parse_where_attribute(_Parser, ok(no), no,         no       ).
+
+parse_where_attribute( Parser, Result, yes(Term0), MaybeRest) :-
+	(
+		Term0 = term__functor(term__atom(","), [Term1, Term], _Context)
+	->
+		Result         = Parser(Term1),
+		MaybeRestIfYes = yes(Term)
+	;
+		Result         = Parser(Term0),
+		MaybeRestIfYes = no
+	),
+	(
+		Result = error(_, _),
+		MaybeRest = no
+	;
+		Result = ok(no),
+		MaybeRest = yes(Term0)
+	;
+		Result = ok(yes(_)),
+		MaybeRest = MaybeRestIfYes
+	).
+
+
+	% Parser for `where ...' attributes of the form
+	% `attributename is attributevalue'.
+	%
+:- func parse_where_is(string, func(term) = maybe1(T), term) =
+		maybe1(maybe(T)).
+
+parse_where_is(Name, Parser, Term) = Result :-
+	(
+		Term = term__functor(term__atom("is"), [LHS, RHS], _Context1)
+	->
+		(
+			LHS = term__functor(term__atom(Name), [], _Context2)
+		->
+			RHSResult = Parser(RHS),
+			(
+				RHSResult = ok(ParsedRHS),
+				Result    = ok(yes(ParsedRHS))
+			;
+				RHSResult = error(Msg, ProblemTerm),
+				Result    = error(Msg, ProblemTerm)
+			)
+		;
+			Result = ok(no)
+		)
+	;
+		Result = error("expected is/2", Term)
+	).
+
+
+:- func parse_where_type_is_abstract_noncanonical(term) = maybe1(maybe(unit)).
+
+parse_where_type_is_abstract_noncanonical(Term) =
+	(
+		Term = term__functor(term__atom(
+				"type_is_abstract_noncanonical"), [], _Context)
+	->
+		ok(yes(unit))
+	;
+		ok(no)
+	).
+
+
+:- func parse_where_initialisation_is(module_name, term) =
+		maybe1(maybe(sym_name)).
+
+parse_where_initialisation_is(ModuleName, Term) = Result :-
+	Result0 = parse_where_is("initialisation",
+			parse_where_pred_is(ModuleName), Term),
+	(
+		Result0 = ok(no)
+	->
+		Result  = parse_where_is("initialization",
+				parse_where_pred_is(ModuleName), Term)
+	;
+		Result  = Result0
+	).
+
+
+:- func parse_where_pred_is(module_name, term) = maybe1(sym_name).
+
+parse_where_pred_is(ModuleName, Term) = Result :-
+	parse_implicitly_qualified_symbol_name(ModuleName, Term, Result).
+
+
+:- func parse_where_inst_is(module_name, term) = maybe1(inst).
+
+parse_where_inst_is(_ModuleName, Term) =
+	( 
+		prog_io_util__convert_inst(no_allow_constrained_inst_var,
+			Term, Inst),
+		not inst_util__inst_contains_unconstrained_var(Inst)
+	->
+		ok(Inst)
+	;
+		error("expected a ground, unconstrained inst", Term)
+	).
+
+
+:- func parse_where_type_is(module_name, term) = maybe1(type).
+
+parse_where_type_is(_ModuleName, Term) = ok(Type) :-
+	prog_io_util__convert_type(Term, Type).
+
+
+:- pred parse_where_end(maybe(term)::in, maybe1(maybe(unit))::out) is det.
+
+parse_where_end(no,        ok(yes(unit))).
+
+parse_where_end(yes(Term), error("attributes are either badly ordered or " ++
+				"contain an unrecognised attribute", Term)).
+
+
+:- func make_maybe_where_details(
+		is_solver_type,
+		maybe1(maybe(unit)),
+		maybe1(maybe(type)),
+		maybe1(maybe(init_pred)),
+		maybe1(maybe(inst)),
+		maybe1(maybe(inst)),
+		maybe1(maybe(equality_pred)),
+		maybe1(maybe(comparison_pred)),
+		maybe1(maybe(unit)),
+		term
+	) = maybe2(maybe(solver_type_details), maybe(unify_compare)).
+
+make_maybe_where_details(
+		IsSolverType,
+		TypeIsAbstractNoncanonicalResult,
+		RepresentationIsResult,
+		InitialisationIsResult,
+		GroundIsResult,
+		AnyIsResult,
+		EqualityIsResult,
+		ComparisonIsResult,
+		WhereEndResult,
+		WhereTerm) =
+	(
+		TypeIsAbstractNoncanonicalResult = error(String, Term)
+	->
+		error(String, Term)
+	;
+		RepresentationIsResult = error(String, Term)
+	->
+		error(String, Term)
+	;
+		InitialisationIsResult = error(String, Term)
+	->
+		error(String, Term)
+	;
+		GroundIsResult = error(String, Term)
+	->
+		error(String, Term)
+	;
+		AnyIsResult = error(String, Term)
+	->
+		error(String, Term)
+	;
+		EqualityIsResult = error(String, Term)
+	->
+		error(String, Term)
+	;
+		ComparisonIsResult = error(String, Term)
+	->
+		error(String, Term)
+	;
+		WhereEndResult = error(String, Term)
+	->
+		error(String, Term)
+	;
+		TypeIsAbstractNoncanonicalResult = ok(yes(_))
+	->
+			% rafe: XXX I think this is wrong.  There isn't
+			% a problem with having the solver_type_details
+			% and type_is_abstract_noncanonical.
+		(
+			RepresentationIsResult = ok(no),
+			InitialisationIsResult = ok(no),
+			GroundIsResult         = ok(no),
+			AnyIsResult            = ok(no),
+			EqualityIsResult       = ok(no),
+			ComparisonIsResult     = ok(no)
+		->
+			ok(no, yes(abstract_noncanonical_type(IsSolverType)))
+		;
+			error("`where type_is_abstract_noncanonical' " ++
+				" excludes other `where ...' attributes",
+				WhereTerm)
+		)
+	;
+		IsSolverType = solver_type
+	->
+		(
+			RepresentationIsResult = ok(yes(RepnType)),
+			InitialisationIsResult = ok(yes(InitPred)),
+			GroundIsResult         = ok(yes(GroundInst)),
+			AnyIsResult            = ok(yes(AnyInst)),
+			EqualityIsResult       = ok(MaybeEqPred),
+			ComparisonIsResult     = ok(MaybeCmpPred)
+		->
+			ok(yes(solver_type_details(RepnType, InitPred,
+					GroundInst, AnyInst)),
+			   yes(unify_compare(MaybeEqPred, MaybeCmpPred))
+			)
+		;
+			error("missing solver type attribute: " ++
+				"required solver type attributes are " ++
+				"`representation', `initialisation', " ++
+				"`ground', and `any'", WhereTerm)
+		)
+	;
+		% Here we know IsSolverType = non_solver_type, so...
+
+		(	RepresentationIsResult = ok(yes(_))
+		;	InitialisationIsResult = ok(yes(_))
+		;	GroundIsResult         = ok(yes(_))
+		;	AnyIsResult            = ok(yes(_))
+		)
+	->
+		error("solver type attribute given for non-solver type",
+			WhereTerm)
+	;
+		EqualityIsResult = ok(MaybeEqPred),
+		ComparisonIsResult = ok(MaybeCmpPred)
+	->
+		ok(no, yes(unify_compare(MaybeEqPred, MaybeCmpPred)))
+	;
+		func_error("prog_io__make_maybe_where_details: " ++
+			"shouldn't have reached this point!")
+	).
+
 
 	% get_determinism(Term0, Term, Determinism) binds Determinism
 	% to a representation of the determinism condition of Term0, if any,
@@ -1842,6 +2176,45 @@ get_condition(B, Body, Condition) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred process_solver_type(module_name::in, term::in,
+		maybe(solver_type_details)::in, maybe(unify_compare)::in,
+		maybe1(processed_type_body)::out) is det.
+
+process_solver_type(ModuleName, Head, MaybeSolverTypeDetails, MaybeUserEqComp,
+		Result) :-
+	(
+		MaybeSolverTypeDetails = yes(SolverTypeDetails),
+		dummy_term(Body),
+		parse_type_defn_head(ModuleName, Head, Body, Result0),
+		(
+			Result0 = error(String, Term),
+			Result  = error(String, Term)
+		;
+			Result0 = ok(Name, Args0),
+			(
+				RepnType = SolverTypeDetails ^
+						representation_type,
+				term__contains_var(RepnType, Var),
+				not term__contains_var_list(Args0,
+					term__coerce_var(Var))
+			->
+				Result = error("free type variable in " ++
+						"representation type", Head)
+			;
+				list__map(term__coerce, Args0, Args),
+				Result = ok(processed_type_body(Name, Args,
+					     solver_type(SolverTypeDetails,
+					     	MaybeUserEqComp)))
+			)
+		)
+	;
+		MaybeSolverTypeDetails = no,
+		Result = error("solver type with no solver_type_details",
+				Head)
+	).
+
+%-----------------------------------------------------------------------------%
+
 	% This is for "Head == Body" (equivalence) definitions.
 :- pred process_eqv_type(module_name, term, term, maybe1(processed_type_body)).
 :- mode process_eqv_type(in, in, in, out) is det.
@@ -1849,8 +2222,8 @@ process_eqv_type(ModuleName, Head, Body, Result) :-
 	parse_type_defn_head(ModuleName, Head, Body, Result0),
 	process_eqv_type_2(Result0, Body, Result).
 
-:- pred process_eqv_type_2(maybe_functor, term, maybe1(processed_type_body)).
-:- mode process_eqv_type_2(in, in, out) is det.
+:- pred process_eqv_type_2(maybe_functor::in, term::in,
+		maybe1(processed_type_body)::out) is det.
 process_eqv_type_2(error(Error, Term), _, error(Error, Term)).
 process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
 	% check that all the variables in the body occur in the head
@@ -1860,8 +2233,8 @@ process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
 			\+ term__contains_var_list(Args0, Var2)
 		)
 	->
-		Result = error("free type parameter in RHS of type definition",
-				Body0)
+		Result = error("free type parameter in RHS of " ++
+				"type definition", Body0)
 	;
 		list__map(term__coerce, Args0, Args),
 		convert_type(Body0, Body),
@@ -1870,104 +2243,106 @@ process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-	% process_du_type(ModuleName, TypeHead, TypeBody, Result)
+	% process_du_type(ModuleName, TypeHead, TypeBody,
+	% 	MaybeUserEqComp, Result)
 	% checks that its arguments are well formed, and if they are,
 	% binds Result to a representation of the type information about the
 	% TypeHead.
-	% This is for "Head ---> Body" (constructor) definitions.
-:- pred process_du_type(module_name, term, term, is_solver_type,
-		maybe1(maybe(unify_compare)), maybe1(processed_type_body)).
-:- mode process_du_type(in, in, in, in, in, out) is det.
-process_du_type(ModuleName, Head, Body, IsSolverType, EqualityPred, Result) :-
-	parse_type_defn_head(ModuleName, Head, Body, Result0),
-	process_du_type_2(ModuleName, Result0, Body, IsSolverType,
-		EqualityPred, Result).
+	% This is for "Head ---> Body [where ...]" (constructor) definitions.
 
-:- pred process_du_type_2(module_name, maybe_functor, term, is_solver_type,
-		maybe1(maybe(unify_compare)), maybe1(processed_type_body)).
-:- mode process_du_type_2(in, in, in, in, in, out) is det.
-process_du_type_2(_, error(Error, Term), _, _, _, error(Error, Term)).
-process_du_type_2(ModuleName, ok(Functor, Args0), Body, IsSolverType,
-		MaybeEqualityPred, Result) :-
+:- pred process_du_type(module_name::in, term::in, term::in,
+		list(constructor)::in, maybe(unify_compare)::in,
+		maybe1(processed_type_body)::out) is det.
+
+process_du_type(ModuleName, Head, Body, Ctors, MaybeUserEqComp, Result) :-
+	parse_type_defn_head(ModuleName, Head, Body, Result0),
+	(
+		Result0 = error(String, Term),
+		Result  = error(String, Term)
+	;
+		Result0 = ok(Functor, Args),
+		process_du_type_2(Functor, Args, Body, Ctors,
+			MaybeUserEqComp, Result)
+	).
+
+
+:- pred process_du_type_2(sym_name::in, list(term)::in, term::in,
+		list(constructor)::in, maybe(unify_compare)::in,
+		maybe1(processed_type_body)::out) is det.
+
+process_du_type_2(Functor, Args0, Body, Ctors, MaybeUserEqComp, Result) :-
+
 	% check that body is a disjunction of constructors
 	list__map(term__coerce, Args0, Args),
+
+	% check that all type variables in the body
+	% are either explicitly existentially quantified
+	% or occur in the head.
 	(
-		convert_constructors(ModuleName, Body, Constrs)
+		list__member(Ctor, Ctors),
+		Ctor = ctor(ExistQVars, _Constraints, _CtorName,
+				CtorArgs),
+		assoc_list__values(CtorArgs, CtorArgTypes),
+		term__contains_var_list(CtorArgTypes, Var),
+		\+ list__member(Var, ExistQVars),
+		\+ term__contains_var_list(Args, Var)
 	->
-		% check that all type variables in the body
-		% are either explicitly existentially quantified
-		% or occur in the head.
-		(
-			list__member(Ctor, Constrs),
-			Ctor = ctor(ExistQVars, _Constraints, _CtorName,
-					CtorArgs),
-			assoc_list__values(CtorArgs, CtorArgTypes),
-			term__contains_var_list(CtorArgTypes, Var),
-			\+ list__member(Var, ExistQVars),
-			\+ term__contains_var_list(Args, Var)
-		->
-			Result = error(
-			"free type parameter in RHS of type definition",
-					Body)
+		Result = error("free type parameter in RHS of " ++
+				"type definition", Body)
 
-		% check that all type variables in existential quantifiers
-		% do not occur in the head
-		% (maybe this should just be a warning, not an error?
-		% If we were to allow it, we would need to rename them apart.)
-		;
-			list__member(Ctor, Constrs),
-			Ctor = ctor(ExistQVars, _Constraints, _CtorName,
-					_CtorArgs),
-			list__member(Var, ExistQVars),
-			term__contains_var_list(Args, Var)
-		->
-			Result = error( "type variable has overlapping scopes (explicit type quantifier shadows argument type)", Body)
-
-		% check that all type variables in existential quantifiers
-		% occur somewhere in the constructor argument types
-		% (not just the constraints)
-		;
-			list__member(Ctor, Constrs),
-			Ctor = ctor(ExistQVars, _Constraints, _CtorName,
-					CtorArgs),
-			list__member(Var, ExistQVars),
-			assoc_list__values(CtorArgs, CtorArgTypes),
-			\+ term__contains_var_list(CtorArgTypes, Var)
-		->
-			Result = error(
-"type variable in existential quantifier does not occur in arguments of constructor",
-					Body)
-		% check that all type variables in existential constraints
-		% occur in the existential quantifiers
-		% (XXX is this check overly conservative? Perhaps we should
-		% allow existential constraints so long as they contain
-		% at least one type variable which is existentially quantified,
-		% rather than requiring all variables in them to be
-		% existentially quantified.)
-		;
-			list__member(Ctor, Constrs),
-			Ctor = ctor(ExistQVars, Constraints, _CtorName,
-					_CtorArgs),
-			list__member(Constraint, Constraints),
-			Constraint = constraint(_Name, ConstraintArgs),
-			term__contains_var_list(ConstraintArgs, Var),
-			\+ list__member(Var, ExistQVars)
-		->
-			Result = error("type variables in class constraints introduced with `=>' must be explicitly existentially quantified using `some'",
-					Body)
-		;
-			(
-				MaybeEqualityPred = ok(EqualityPred),
-				Result = ok(processed_type_body(Functor, Args,
-					du_type(Constrs, IsSolverType,
-						EqualityPred)))
-			;
-				MaybeEqualityPred = error(Error, Term),
-				Result = error(Error, Term)
-			)
-		)
+	% check that all type variables in existential quantifiers
+	% do not occur in the head
+	% (maybe this should just be a warning, not an error?
+	% If we were to allow it, we would need to rename them apart.)
 	;
-		Result = error("invalid RHS of type definition", Body)
+		list__member(Ctor, Ctors),
+		Ctor = ctor(ExistQVars, _Constraints, _CtorName,
+				_CtorArgs),
+		list__member(Var, ExistQVars),
+		term__contains_var_list(Args, Var)
+	->
+		Result = error( "type variable has overlapping " ++
+				"scopes (explicit type quantifier " ++
+				"shadows argument type)", Body)
+
+	% check that all type variables in existential quantifiers
+	% occur somewhere in the constructor argument types
+	% (not just the constraints)
+	;
+		list__member(Ctor, Ctors),
+		Ctor = ctor(ExistQVars, _Constraints, _CtorName,
+				CtorArgs),
+		list__member(Var, ExistQVars),
+		assoc_list__values(CtorArgs, CtorArgTypes),
+		\+ term__contains_var_list(CtorArgTypes, Var)
+	->
+		Result = error("type variable in existential " ++
+				"quantifier does not occur in " ++
+				"arguments of constructor", Body)
+	% check that all type variables in existential constraints
+	% occur in the existential quantifiers
+	% (XXX is this check overly conservative? Perhaps we should
+	% allow existential constraints so long as they contain
+	% at least one type variable which is existentially quantified,
+	% rather than requiring all variables in them to be
+	% existentially quantified.)
+	;
+		list__member(Ctor, Ctors),
+		Ctor = ctor(ExistQVars, Constraints, _CtorName,
+				_CtorArgs),
+		list__member(Constraint, Constraints),
+		Constraint = constraint(_Name, ConstraintArgs),
+		term__contains_var_list(ConstraintArgs, Var),
+		\+ list__member(Var, ExistQVars)
+	->
+		Result = error("type variables in class " ++
+				"constraints introduced " ++
+				"with `=>' must be explicitly " ++
+				"existentially quantified " ++
+				"using `some'", Body)
+	;
+		Result = ok(processed_type_body(Functor, Args,
+				du_type(Ctors, MaybeUserEqComp)))
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2013,18 +2388,18 @@ parse_type_defn_head(ModuleName, Head, Body, Result) :-
 	;
 		parse_implicitly_qualified_term(ModuleName,
 			Head, Head, "type definition", R),
-		parse_type_defn_head_2(R, Body, Head, Result)
+		parse_type_defn_head_2(R, Head, Result)
 	).
 
-:- pred parse_type_defn_head_2(maybe_functor, term, term, maybe_functor).
-:- mode parse_type_defn_head_2(in, in, in, out) is det.
-parse_type_defn_head_2(error(Msg, Term), _, _, error(Msg, Term)).
-parse_type_defn_head_2(ok(Name, Args), Body, Head, Result) :-
-	parse_type_defn_head_3(Name, Args, Body, Head, Result).
+:- pred parse_type_defn_head_2(maybe_functor, term, maybe_functor).
+:- mode parse_type_defn_head_2(in, in, out) is det.
+parse_type_defn_head_2(error(Msg, Term), _, error(Msg, Term)).
+parse_type_defn_head_2(ok(Name, Args), Head, Result) :-
+	parse_type_defn_head_3(Name, Args, Head, Result).
 
-:- pred parse_type_defn_head_3(sym_name, list(term), term, term, maybe_functor).
-:- mode parse_type_defn_head_3(in, in, in, in, out) is det.
-parse_type_defn_head_3(Name, Args, _Body, Head, Result) :-
+:- pred parse_type_defn_head_3(sym_name, list(term), term, maybe_functor).
+:- mode parse_type_defn_head_3(in, in, in, out) is det.
+parse_type_defn_head_3(Name, Args, Head, Result) :-
 	% check that all the head args are variables
 	( %%%	some [Arg]
 		(
@@ -2051,55 +2426,120 @@ parse_type_defn_head_3(Name, Args, _Body, Head, Result) :-
 
 	% Convert a list of terms separated by semi-colons
 	% (known as a "disjunction", even thought the terms aren't goals
-	% in this case) into a list of constructors
+	% in this case) into a list of constructors.
 
-:- pred convert_constructors(module_name, term, list(constructor)).
-:- mode convert_constructors(in, in, out) is semidet.
-convert_constructors(ModuleName, Body, Constrs) :-
+:- func convert_constructors(module_name, term) = maybe1(list(constructor)).
+
+convert_constructors(ModuleName, Body) = Result :-
 	disjunction_to_list(Body, List),
-	convert_constructors_2(ModuleName, List, Constrs).
+	Result0 = convert_constructors_2(ModuleName, List),
+	(
+		Result0 = ok(Constructors),
+		Result  = ok(Constructors)
+	;
+		Result0 = error(String, Term),
+		Result  = error(String, Term)
+	).
 
 	% true if input argument is a valid list of constructors
 
-:- pred convert_constructors_2(module_name, list(term), list(constructor)).
-:- mode convert_constructors_2(in, in, out) is semidet.
-convert_constructors_2(_, [], []).
-convert_constructors_2(ModuleName, [Term | Terms], [Constr | Constrs]) :-
-	convert_constructor(ModuleName, Term, Constr),
-	convert_constructors_2(ModuleName, Terms, Constrs).
 
-	% true if input argument is a valid constructor.
+:- func convert_constructors_2(module_name, list(term)) =
+		maybe1(list(constructor)).
 
-:- pred convert_constructor(module_name, term, constructor).
-:- mode convert_constructor(in, in, out) is semidet.
-convert_constructor(ModuleName, Term0, Result) :-
+convert_constructors_2(_ModuleName, []) = ok([]).
+
+convert_constructors_2( ModuleName, [Term | Terms]) = Result :-
+	Result0 = convert_constructor(ModuleName, Term),
 	(
-		Term0 = term__functor(term__atom("some"), [Vars, Term1], _)
+		Result0 = error(String0, Term0),
+		Result  = error(String0, Term0)
+	;
+		Result0 = ok(Constructor),
+		Result1 = convert_constructors_2(ModuleName, Terms),
+		(
+			Result1 = error(String1, Term1),
+			Result  = error(String1, Term1)
+		;
+			Result1 = ok(Constructors),
+			Result  = ok([Constructor | Constructors])
+		)
+	).
+
+
+:- func convert_constructor(module_name, term) =
+		maybe1(constructor).
+
+convert_constructor(ModuleName, Term0) = Result :-
+	(
+		Term0 = term__functor(term__atom("some"), [Vars, Term1], 
+				_Context)
 	->
-		parse_list_of_vars(Vars, ExistQVars0),
-		list__map(term__coerce_var, ExistQVars0, ExistQVars),
-		Term2 = Term1
+		(
+			parse_list_of_vars(Vars, ExistQVars0)
+		->
+			list__map(term__coerce_var, ExistQVars0, ExistQVars),
+			Result = convert_constructor_2(ModuleName, ExistQVars,
+					Term0, Term1)
+		;
+			Result = error("syntax error in variable list", Term0)
+		)
 	;
 		ExistQVars = [],
-		Term2 = Term0
-	),
-	get_existential_constraints_from_term(ModuleName, Term2, Term3,
-		ok(Constraints)),
+		Result = convert_constructor_2(ModuleName, ExistQVars,
+				Term0, Term0)
+	).
+
+
+:- func convert_constructor_2(module_name, list(tvar), term, term) =
+		maybe1(constructor).
+
+convert_constructor_2(ModuleName, ExistQVars, Term0, Term1) = Result :-
+	get_existential_constraints_from_term(ModuleName, Term1, Term2,
+		Result0),
 	(
-		% Note that as a special case, one level of
-		% curly braces around the constructor are ignored.
-		% This is to allow you to define ';'/2 and 'some'/2
-		% constructors.
-		Term3 = term__functor(term__atom("{}"), [Term4], _Context)
-	->
-		Term5 = Term4
+		Result0 = error(String, Term),
+		Result  = error(String, Term)
 	;
-		Term5 = Term3
-	),
+		Result0 = ok(Constraints),
+		(
+			% Note that as a special case, one level of
+			% curly braces around the constructor are ignored.
+			% This is to allow you to define ';'/2 and 'some'/2
+			% constructors.
+			Term2 = term__functor(term__atom("{}"), [Term3],
+					_Context)
+		->
+			Term4 = Term3
+		;
+			Term4 = Term2
+		),
+		Result  = convert_constructor_3(ModuleName, ExistQVars,
+				Constraints, Term0, Term4)
+	).
+
+
+:- func convert_constructor_3(module_name, list(tvar),
+		list(class_constraint), term, term) = maybe1(constructor).
+
+convert_constructor_3(ModuleName, ExistQVars, Constraints, Term0, Term1) =
+		Result :-
 	parse_implicitly_qualified_term(ModuleName,
-		Term5, Term0, "constructor definition", ok(F, As)),
-	convert_constructor_arg_list(ModuleName, As, Args),
-	Result = ctor(ExistQVars, Constraints, F, Args).
+		Term1, Term0, "constructor definition", Result0),
+	(
+		Result0 = error(String, Term),
+		Result  = error(String, Term)
+	;
+		Result0 = ok(F, As),
+		Result1 = convert_constructor_arg_list(ModuleName, As),
+		(
+			Result1 = error(String, Term),
+			Result  = error(String, Term)
+		;
+			Result1 = ok(Args),
+			Result  = ok(ctor(ExistQVars, Constraints, F, Args))
+		)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -3672,25 +4112,56 @@ make_op_specifier(X, sym(X)).
 parse_type(T0, ok(T)) :-
 	convert_type(T0, T).
 
-:- pred convert_constructor_arg_list(module_name,
-		list(term), list(constructor_arg)).
-:- mode convert_constructor_arg_list(in, in, out) is semidet.
+:- func convert_constructor_arg_list(module_name, list(term)) =
+		maybe1(list(constructor_arg)).
 
-convert_constructor_arg_list(_, [], []).
-convert_constructor_arg_list(ModuleName, [Term | Terms], [Arg | Args]) :-
+convert_constructor_arg_list(_ModuleName, []) = ok([]).
+
+convert_constructor_arg_list( ModuleName, [Term | Terms]) = Result :-
 	(
-		Term = term__functor(term__atom("::"), [NameTerm, TypeTerm], _)
+		Term = term__functor(term__atom("::"), [NameTerm, TypeTerm],
+				_)
 	->
 		parse_implicitly_qualified_term(ModuleName, NameTerm, Term,
 			"field name", NameResult),
-		NameResult = ok(SymName, []),
-		convert_type(TypeTerm, Type),
-		Arg = yes(SymName) - Type
+		(
+			NameResult = error(String1, Term1),
+			Result     = error(String1, Term1)
+		;
+			NameResult = ok(_SymName, [_ | _]),
+			Result     = error("syntax error in " ++
+					   "constructor name", Term)
+		;
+			NameResult = ok(SymName, []),
+			MaybeFieldName = yes(SymName),
+			Result     = convert_constructor_arg_list_2(
+					ModuleName, MaybeFieldName,
+					TypeTerm, Terms)
+		)
 	;
-		convert_type(Term, Type),
-		Arg = no - Type
-	),
-	convert_constructor_arg_list(ModuleName, Terms, Args).
+		MaybeFieldName = no,
+		TypeTerm       = Term,
+		Result         = convert_constructor_arg_list_2(
+					ModuleName, MaybeFieldName,
+					TypeTerm, Terms)
+	).
+
+
+:- func convert_constructor_arg_list_2(module_name, maybe(sym_name), term,
+		list(term)) = maybe1(list(constructor_arg)).
+
+convert_constructor_arg_list_2(ModuleName, MaybeFieldName, TypeTerm, Terms) =
+		Result :-
+	convert_type(TypeTerm, Type),
+	Arg     = MaybeFieldName - Type,
+	Result0 = convert_constructor_arg_list(ModuleName, Terms),
+	(
+		Result0 = error(String, Term),
+		Result  = error(String, Term)
+	;
+		Result0 = ok(Args),
+		Result  = ok([Arg | Args])
+	).
 
 %-----------------------------------------------------------------------------%
 

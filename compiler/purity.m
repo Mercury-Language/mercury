@@ -937,14 +937,14 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) -->
 	write_context_and_pred_id(ModuleInfo, PredInfo, PredId),
 	prog_out__write_context(Context),
 	report_warning("  warning: declared `"),
-	write_purity(Purity),
+	prog_out__write_purity(Purity),
 	io__write_string("' but promised pure.\n"),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 		prog_out__write_context(Context),
 		io__write_string("  A pure "),
-		write_pred_or_func(PredOrFunc),
+		prog_out__write_pred_or_func(PredOrFunc),
 		io__write_string(" that invokes impure or semipure code should\n"),
 		prog_out__write_context(Context),
 		io__write_string(
@@ -997,7 +997,7 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity) -->
 		prog_out__write_context(Context),
 		{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 		io__write_string("  This "),
-		write_pred_or_func(PredOrFunc),
+		prog_out__write_pred_or_func(PredOrFunc),
 		io__write_string(" does not invoke any "),
 		io__write_string(CodeStr),
 		io__write_string(" code,\n"),
@@ -1018,9 +1018,9 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 	write_context_and_pred_id(ModuleInfo, PredInfo, PredId),
 	prog_out__write_context(Context),
 	io__write_string("  purity error: "),
-	write_pred_or_func(PredOrFunc),
+	prog_out__write_pred_or_func(PredOrFunc),
 	io__write_string(" is "),
-	write_purity(Purity),
+	prog_out__write_purity(Purity),
 	io__write_string(".\n"),
 	prog_out__write_context(Context),
 	{ pred_info_get_purity(PredInfo, DeclaredPurity) },
@@ -1028,9 +1028,9 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 		io__write_string("  It must be pure.\n")
 	;
 		io__write_string("  It must be declared `"),
-		write_purity(Purity),
+		prog_out__write_purity(Purity),
 		io__write_string("' or promised "),
-		write_purity(DeclaredPurity),
+		prog_out__write_purity(DeclaredPurity),
 		io__write_string(".\n")
 	).
 

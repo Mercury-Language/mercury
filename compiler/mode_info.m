@@ -216,6 +216,18 @@
 	mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+	% The mode_info contains a flag indicating whether initialisation
+	% calls, converting a solver variable from `free' to `any', may be
+	% inserted during mode analysis.
+
+:- pred mode_info_may_initialise_solver_vars(mode_info::in)
+		is semidet.
+
+:- pred mode_info_set_may_initialise_solver_vars(bool::in,
+		mode_info::in, mode_info::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -318,7 +330,7 @@
 				% to change which procedure
 				% is called?
 
-		checking_extra_goals :: bool
+		checking_extra_goals :: bool,
 				% Are we rechecking a goal after
 				% introducing unifications for
 				% complicated sub-unifications
@@ -326,6 +338,12 @@
 				% If so, redoing the mode check
 				% should not introduce more
 				% extra unifications.
+
+		may_initialise_solver_vars :: bool
+				% `yes' if calls to the initialisation
+				% predicates for solver vars can be
+				% inserted during mode analysis in order
+				% to make goals schedulable.
 	).
 
 %-----------------------------------------------------------------------------%
@@ -352,11 +370,13 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
 
 	Changed = no,
 	CheckingExtraGoals = no,
+	MayInitSolverVars = no,
 
 	ModeInfo = mode_info(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
 		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
 		ErrorList, LiveVarsList, NondetLiveVarsList, InstVarSet,
-		[], [], Changed, HowToCheck, MayChangeProc, CheckingExtraGoals
+		[], [], Changed, HowToCheck, MayChangeProc,
+		CheckingExtraGoals, MayInitSolverVars
 	).
 
 %-----------------------------------------------------------------------------%
@@ -622,4 +642,13 @@ mode_info_add_error(ModeErrorInfo, !ModeInfo) :-
         list__append(Errors0, [ModeErrorInfo], Errors),
         mode_info_set_errors(Errors, !ModeInfo).
 
+%-----------------------------------------------------------------------------%
+
+mode_info_may_initialise_solver_vars(ModeInfo) :-
+	ModeInfo ^ may_initialise_solver_vars = yes.
+
+mode_info_set_may_initialise_solver_vars(MayInit, !ModeInfo) :-
+	!:ModeInfo = !.ModeInfo ^ may_initialise_solver_vars := MayInit.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

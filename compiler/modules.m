@@ -15,11 +15,11 @@
 % The interface system works as follows:
 %
 % 1. a .int3 file is written, which contains all the types, typeclasses, insts
-% and modes defined in the interface. Equivalence types, insts and
-% modes are written in full, others are written in abstract form.
-% These are module qualified as far as possible given the information
-% present in the current module. The datestamp on the .date3 file
-% gives the last time the .int3 file was checked for consistency.
+% and modes defined in the interface. Equivalence types, solver types, insts
+% and modes are written in full, others are written in abstract form.  These
+% are module qualified as far as possible given the information present in the
+% current module. The datestamp on the .date3 file gives the last time the
+% .int3 file was checked for consistency.
 %
 % 2. The .int and .int2 files are created, using the .int3 files
 % of imported modules to fully module qualify all items.
@@ -1478,10 +1478,9 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
 	map__map_values(
 		(pred(_::in, Defns0::in, Defns::out) is det :-
 			(
-				Defns0 = [du_type(_, IsSolverType, _) -
-					(Item0 - Context)]
+				Defns0 = [du_type(_, _) - (Item0 - Context)]
 			->
-				Defn = abstract_type(IsSolverType),
+				Defn = abstract_type(non_solver_type),
 				( Item = Item0 ^ td_ctor_defn := Defn ->
 					Defns = [Defn - (Item - Context)]
 				;
@@ -6953,7 +6952,8 @@ make_abstract_defn(type_defn(VarSet, Name, Args, TypeDefn, Cond),
 		type_defn(VarSet, Name, Args, abstract_type(IsSolverType),
 			Cond)) :-
 	(
-		TypeDefn = du_type(_, IsSolverType, _),
+		TypeDefn = du_type(_, _),
+		IsSolverType = non_solver_type,
 		% For the `.int2' files, we need the full definitions of
 		% discriminated union types.  Even if the functors for a type
 		% are not used within a module, we may need to know them for
@@ -6962,7 +6962,16 @@ make_abstract_defn(type_defn(VarSet, Name, Args, TypeDefn, Cond),
 	;
 		TypeDefn = abstract_type(IsSolverType)
 	;
+		TypeDefn = solver_type(_, _),
+		% rafe: XXX we need to also export the details of the
+		% forwarding type for the representation and the forwarding
+		% pred for initialization.
+		IsSolverType = solver_type
+	;
 		TypeDefn = eqv_type(_),
+		% rafe: XXX what *should* IsSolverType be here?  We need
+		% to know properly.
+		IsSolverType = non_solver_type,
 		% For the `.int2' files, we need the full definitions of
 		% equivalence types. They are needed to ensure that
 		% non-abstract equivalence types always get fully expanded
@@ -6971,8 +6980,7 @@ make_abstract_defn(type_defn(VarSet, Name, Args, TypeDefn, Cond),
 		% But the full definitions are not needed for the `.int3'
 		% files. So we convert equivalence types into abstract
 		% types only for the `.int3' files.
-		ShortInterfaceKind = int3,
-		IsSolverType = non_solver_type
+		ShortInterfaceKind = int3
 	;
 		TypeDefn = foreign_type(_, _, _),
 		% We always need the definitions of foreign types
@@ -6991,14 +6999,19 @@ make_abstract_defn(typeclass(A, B, C, _, E), _,
 make_abstract_unify_compare(type_defn(VarSet, Name, Args, TypeDefn0, Cond),
 		int2, type_defn(VarSet, Name, Args, TypeDefn, Cond)) :-
 	(
-		TypeDefn0 = du_type(Constructors, IsSolverType,
-			yes(_UnifyCompare)),
-		TypeDefn  = du_type(Constructors, IsSolverType,
-			yes(abstract_noncanonical_type))
+		TypeDefn0 = du_type(Constructors, yes(_UserEqComp)),
+		TypeDefn  = du_type(Constructors, yes(
+				abstract_noncanonical_type(non_solver_type)))
 	;
-		TypeDefn0 = foreign_type(ForeignType, yes(_), Assertions),
-		TypeDefn = foreign_type(ForeignType,
-			yes(abstract_noncanonical_type), Assertions)
+		TypeDefn0 = foreign_type(ForeignType, yes(_UserEqComp),
+				Assertions),
+		TypeDefn  = foreign_type(ForeignType, yes(
+				abstract_noncanonical_type(non_solver_type)),
+				Assertions)
+	;
+		TypeDefn0 = solver_type(SolverTypeDetails, yes(_UserEqComp)),
+		TypeDefn  = solver_type(SolverTypeDetails,
+				yes(abstract_noncanonical_type(solver_type)))
 	).
 
 	% All instance declarations must be written

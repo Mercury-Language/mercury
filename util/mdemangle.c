@@ -155,6 +155,8 @@ demangle(const char *orig_name)
 	static const char compare2[] = "__Compare____";
 	static const char index1[]  = "__Index___";
 	static const char index2[]  = "__Index____";
+	static const char initialise1[]  = "__Initialise___";
+	static const char initialise2[]  = "__Initialise____";
 
 	static const char introduced[]  = "IntroducedFrom__";
 	static const char deforestation[]  = "DeforestationIn__";
@@ -193,7 +195,7 @@ demangle(const char *orig_name)
 		deforestation,
 		accumulator,
 		type_spec,
-		unify1, compare1, index1,
+		unify1, compare1, index1, initialise1,
 		NULL
 	};
 	static const char * trailing_context_1_hl_suffixes[] = {
@@ -242,7 +244,7 @@ demangle(const char *orig_name)
 	char *lambda_pred_name = NULL;
 	char *end_of_lambda_pred_name = NULL;
 	const char *lambda_kind = NULL;
-	enum { ORDINARY, UNIFY, COMPARE, INDEX,
+	enum { ORDINARY, UNIFY, COMPARE, INDEX, INITIALISE,
 		LAMBDA, DEFORESTATION, ACCUMULATOR, TYPE_SPEC }
 		category;
 	enum { COMMON, INFO, LAYOUT, FUNCTORS } data_category;
@@ -351,7 +353,8 @@ demangle(const char *orig_name)
 		*/
 		high_level = (strstr(start, unify2) ||
 		    strstr(start, compare2) ||
-		    strstr(start, index2));
+		    strstr(start, index2) ||
+		    strstr(start, initialise2));
 		pred_or_func = "predicate";
 	}
 
@@ -385,6 +388,8 @@ demangle(const char *orig_name)
 	} else if (strip_prefix(&start, index1)) {
 		category = INDEX;
 		if (mode_num != 0) goto not_plain_mercury;
+	} else if (strip_prefix(&start, initialise1)) {
+		category = INITIALISE;
 	} else {
 		category = ORDINARY;
 		/*
@@ -472,7 +477,8 @@ demangle(const char *orig_name)
 	}
 
 	if (!high_level) {
-		module = strip_module_name(&start, end, trailing_context_1, NULL);
+		module = strip_module_name(&start, end, trailing_context_1,
+				NULL);
 	}
 
 	/*
@@ -612,6 +618,10 @@ demangle(const char *orig_name)
 		break;
 	case INDEX:
 		printf("index/2 predicate for type '%s.%s'/%d",
+			module, start, arity);
+		break;
+	case INITIALISE:
+		printf("initialisation predicate for type '%s.%s'/%d",
 			module, start, arity);
 		break;
 	case LAMBDA:
@@ -814,7 +824,8 @@ typeclass_info:
 		if (class_arg_num != 0) {
 			strcat(class_arg_buf, ", ");
 		}
-		class_arg = strip_module_name(&start, end, trailing_context_3, NULL);
+		class_arg = strip_module_name(&start, end, trailing_context_3,
+				NULL);
 		if (!(strip_prefix(&start, arity_string)
 		      && strip_leading_integer(&start, &arity)
 		      && strip_prefix(&start, "__")))
@@ -875,7 +886,9 @@ strip_module_name(char **start_ptr, char *end,
 				stop = MR_TRUE;
 			}
 		}
-		for (i = 0; special_suffixes != NULL && special_suffixes[i] != NULL; i++) {
+		for (i = 0; special_suffixes    != NULL &&
+			    special_suffixes[i] != NULL;
+		     i++) {
 			if (strncmp(next_double_underscore,
 				special_suffixes[i],
 				strlen(special_suffixes[i])) == 0)

@@ -272,14 +272,19 @@ recompilation__version__gather_items_2(ItemAndContext, !Section) -->
 			% generated unification procedure.
 			{ BodyItem = Item }
 		;
-			{ Body = du_type(_, IsSolverType, _) },
+			{ Body = du_type(_, _) },
 			{ NameItem = type_defn(VarSet, Name, Args,
-				abstract_type(IsSolverType), Cond) },
+					abstract_type(non_solver_type),
+					Cond) },
 			{ BodyItem = Item }
 		;
 			{ Body = eqv_type(_) },
 			% When we use an equivalence type we
 			% always use the body.
+			{ NameItem = Item },
+			{ BodyItem = Item }
+		;
+			{ Body = solver_type(_, _) },
 			{ NameItem = Item },
 			{ BodyItem = Item }
 		;

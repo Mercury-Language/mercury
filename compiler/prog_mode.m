@@ -21,15 +21,20 @@
 	% `in', `out', `uo' or `unused' mode.
 :- pred in_mode((mode)::out) is det.
 :- func in_mode = (mode).
+:- func in_mode(inst) = (mode).
 :- pred out_mode((mode)::out) is det.
 :- func out_mode = (mode).
+:- func out_mode(inst) = (mode).
 :- pred uo_mode((mode)::out) is det.
 :- func uo_mode = (mode).
 :- pred unused_mode((mode)::out) is det.
 :- func unused_mode = (mode).
+:- func in_any_mode = (mode).
+:- func out_any_mode = (mode).
 
 :- func ground_inst = (inst).
 :- func free_inst = (inst).
+:- func any_inst = (inst).
 
 	% Construct the modes used for `aditi__state' arguments.
 	% XXX These should be unique, but are not yet because that
@@ -127,9 +132,13 @@ uo_mode(uo_mode).
 unused_mode(unused_mode).
 
 in_mode = make_std_mode("in", []).
+in_mode(I) = make_std_mode("in", [I]).
 out_mode = make_std_mode("out", []).
+out_mode(I) = make_std_mode("out", [I]).
 uo_mode = make_std_mode("uo", []).
 unused_mode = make_std_mode("unused", []).
+in_any_mode = make_std_mode("in", [any_inst]).
+out_any_mode = make_std_mode("out", [any_inst]).
 
 aditi_mui_mode = Mode :- in_mode(Mode).
 aditi_ui_mode = Mode :- in_mode(Mode).
@@ -138,6 +147,7 @@ aditi_uo_mode = Mode :- out_mode(Mode).
 
 ground_inst = ground(shared, none).
 free_inst = free.
+any_inst = any(shared).
 
 make_std_mode(Name, Args, make_std_mode(Name, Args)).
 

@@ -2096,7 +2096,7 @@ gen_lookup_call_for_type(TypeCat, Type, ArgVar, Prefix, VarSeqNum, Context,
 			(
 				Ctors = TypeBody ^ du_type_ctors,
 				TypeBody ^ du_type_is_enum = yes,
-				TypeBody ^ du_type_usereq = no
+				TypeBody ^ du_type_usereq  = no
 			->
 				list__length(Ctors, EnumRange)
 			;

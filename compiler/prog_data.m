@@ -1144,7 +1144,6 @@
 :- type type_defn
 	--->	du_type(
 			list(constructor),
-			is_solver_type,
 			maybe(unify_compare)
 		)
 	;	eqv_type(
@@ -1152,6 +1151,10 @@
 		)
 	;	abstract_type(
 			is_solver_type
+		)
+	;	solver_type(
+			solver_type_details,
+			maybe(unify_compare)
 		)
 	;	foreign_type(
 			foreign_language_type,
@@ -1181,19 +1184,41 @@
 :- type ctor_field_name == sym_name.
 
 	% unify_compare gives the user-defined unification and/or comparison
-	% predicates for a noncanonical type, if they are known.
-	% The value `abstract_noncanonical_type' represents a discriminated
-	% union type whose definition uses the syntax
-	% `where type_is_abstract_noncanonical' and has been read from a .int2
-	% file.  This means we know that the type has a noncanonical
-	% representation, but we don't know what the unification/comparison
-	% predicates are.
+	% predicates for a noncanonical type, if they are known.  The value
+	% `abstract_noncanonical_type' represents a type whose definition uses
+	% the syntax `where type_is_abstract_noncanonical' and has been read
+	% from a .int2 file.  This means we know that the type has a
+	% noncanonical representation, but we don't know what the
+	% unification/comparison predicates are.
+	%
 :- type unify_compare
 	--->	unify_compare(
 			unify		:: maybe(equality_pred),
 			compare		:: maybe(comparison_pred)
 		)
-	;	abstract_noncanonical_type.
+	;	abstract_noncanonical_type(is_solver_type).
+
+	% The `where' attributes of a solver type definition must begin
+	% with
+	% 	representation is <<representation type>>,
+	% 	initialisation is <<init pred name>>,
+	% 	ground         is <<ground inst>>,
+	% 	any            is <<any inst>>
+	% 
+:- type solver_type_details
+	--->	solver_type_details(
+			representation_type :: (type),
+			init_pred           :: init_pred,
+			ground_inst         :: (inst),
+			any_inst            :: (inst)
+		).
+
+	% An init_pred specifies the name of an impure user-defined predicate
+	% used to initialise solver type values (the compiler will insert
+	% calls to this predicate to convert free solver type variables to
+	% inst any variables where necessary.)
+	%
+:- type init_pred	==	sym_name.
 
 	% An equality_pred specifies the name of a user-defined predicate
 	% used for equality on a type.  See the chapter on them in the
@@ -1599,6 +1624,7 @@ default_attributes(Language) =
 	attributes(Language, may_call_mercury, not_thread_safe,
 		not_tabled_for_io, impure, depends_on_mercury_calls,
 		no, no, []).
+
 
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.

@@ -30,7 +30,8 @@
 :- type special_pred_id
 	--->	unify
 	;	index
-	;	compare.
+	;	compare
+	;	initialise.
 
 	% Return the predicate name we should use for the given special_pred
 	% for the given type constructor.
@@ -90,7 +91,8 @@
 	% A compiler-generated predicate only needs type checking if
 	%	(a) it is a user-defined equality pred
 	% or	(b) it is the unification or comparison predicate for an
-	%           existially quantified type.
+	%           existially quantified type
+	% or    (c) it is the initialisation predicate for a solver type.
 	%
 :- pred special_pred_for_type_needs_typecheck(module_info::in,
 	hlds_type_body::in) is semidet.
@@ -117,22 +119,41 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__prog_mode.
+:- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module bool, require.
+:- import_module bool, require, string.
 
 special_pred_list([unify, index, compare]).
 
 special_pred_name_arity(unify, "unify", 2).
 special_pred_name_arity(index, "index", 2).
 special_pred_name_arity(compare, "compare", 3).
+special_pred_name_arity(initialise, "initialise", 1).
 
 	% mode num for special procs is always 0 (the first mode)
 special_pred_mode_num(_, 0).
 
-special_pred_name(unify, _TypeCtor) = "__Unify__".
-special_pred_name(index, _TypeCtor) = "__Index__".
-special_pred_name(compare, _TypeCtor) = "__Compare__".
+	% XXX The name demanglers don't understand these names yet.
+	%
+% special_pred_name(unify,      SymName - Arity) =
+% 	string__format("__Unify__%s/%d",
+% 		[s(sym_name_to_string(SymName)), i(Arity)]).
+% special_pred_name(index,      SymName - Arity) =
+% 	string__format("__Index__%s/%d",
+% 		[s(sym_name_to_string(SymName)), i(Arity)]).
+% special_pred_name(compare,    SymName - Arity) =
+% 	string__format("__Compare__%s/%d",
+% 		[s(sym_name_to_string(SymName)), i(Arity)]).
+% special_pred_name(initialise, SymName - Arity) =
+% 	string__format("__Initialise__%s/%d",
+% 		[s(sym_name_to_string(SymName)), i(Arity)]).
+	% XXX So we use these for now.
+	%
+special_pred_name(unify,      _SymName - _Arity) = "__Unify__".
+special_pred_name(index,      _SymName - _Arity) = "__Index__".
+special_pred_name(compare,    _SymName - _Arity) = "__Compare__".
+special_pred_name(initialise, _SymName - _Arity) = "__Initialise__".
 
 special_pred_interface(unify, Type, [Type, Type], [In, In], semidet) :-
 	in_mode(In).
@@ -143,12 +164,16 @@ special_pred_interface(compare, Type, [comparison_result_type, Type, Type],
 		[Uo, In, In], det) :-
 	in_mode(In),
 	uo_mode(Uo).
+special_pred_interface(initialise, Type, [Type], [InAny], det) :-
+	InAny = out_any_mode.
 
 special_pred_get_type(unify, Types, T) :-
 	list__reverse(Types, [T | _]).
 special_pred_get_type(index, Types, T) :-
 	list__reverse(Types, [_, T | _]).
 special_pred_get_type(compare, Types, T) :-
+	list__reverse(Types, [T | _]).
+special_pred_get_type(initialise, Types, T) :-
 	list__reverse(Types, [T | _]).
 
 special_pred_get_type_det(SpecialId, ArgTypes, Type) :-
@@ -161,6 +186,7 @@ special_pred_get_type_det(SpecialId, ArgTypes, Type) :-
 special_pred_description(unify, "unification predicate").
 special_pred_description(compare, "comparison predicate").
 special_pred_description(index, "indexing predicate").
+special_pred_description(initialise, "initialisation predicate").
 
 special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
 	TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
@@ -180,6 +206,14 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
 	).
 
 special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
+	% We don't want special preds for solver types to be generated lazily
+	% because we have to insert calls to their initialisation preds during
+	% mode analysis and we therefore require the appropriate names to
+	% appear in the symbol table.
+	%
+	Body \= solver_type(_, _),
+	Body \= abstract_type(solver_type),
+
 	TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
 	(
 		TypeCategory = tuple_type
@@ -210,7 +244,7 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
 	% polymorphism__process_generated_pred can't handle calls to
 	% polymorphic procedures after the initial polymorphism pass.
 	%
-	Body \= foreign_type(_, _),
+	Body \= foreign_type(_),
 
 	% The special predicates for types with user-defined
 	% equality or existentially typed constructors are always
@@ -239,7 +273,7 @@ can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
 	),
 	\+ type_ctor_has_hand_defined_rtti(TypeCtor, Body),
 	\+ type_body_has_user_defined_equality_pred(ModuleInfo, Body,
-		abstract_noncanonical_type).
+		abstract_noncanonical_type(_IsSolverType)).
 
 is_builtin_types_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
 	Builtin = mercury_public_builtin_module,
