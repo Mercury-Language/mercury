@@ -64,6 +64,7 @@
 :- import_module mlds.				% MLDS data structure
 :- import_module ml_code_gen, rtti_to_mlds.	% HLDS/RTTI -> MLDS
 :- import_module ml_elim_nested, ml_tailcall.	% MLDS -> MLDS
+:- import_module ml_optimize.			% MLDS -> MLDS
 :- import_module mlds_to_c.			% MLDS -> C
 
 	% miscellaneous compiler modules
@@ -2368,15 +2369,26 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	( { NestedFuncs = no } ->
 		maybe_write_string(Verbose,
 			"% Flattening nested functions...\n"),
-		ml_elim_nested(MLDS20, MLDS30)
+		ml_elim_nested(MLDS20, MLDS30),
+		maybe_write_string(Verbose, "% done.\n")
 	;
 		{ MLDS30 = MLDS20 }
 	),
-	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS30, "30", "nested_funcs"),
 
-	{ MLDS = MLDS30 },
+	globals__io_lookup_bool_option(optimize, Optimize),
+	( { Optimize = yes } ->
+		maybe_write_string(Verbose, "% Optimizing MLDS...\n"),
+		ml_optimize__optimize(MLDS30, MLDS40),
+		maybe_write_string(Verbose, "% done.\n")
+	;
+		{ MLDS40 = MLDS30 }
+	),
+	maybe_report_stats(Stats),
+	mercury_compile__maybe_dump_mlds(MLDS40, "40", "optimize"),
+
+	{ MLDS = MLDS40 },
 	mercury_compile__maybe_dump_mlds(MLDS, "99", "final").
 
 :- pred mercury_compile__mlds_gen_rtti_data(module_info, mlds, mlds).

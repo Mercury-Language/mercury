@@ -1070,6 +1070,12 @@ long_option("simple-neg",		simple_neg).
 long_option("follow-vars",		follow_vars).
 long_option("allow-hijacks",		allow_hijacks).
 
+% MLDS optimizations
+% Option `optimize' is used for both MLDS and LLDS optimizations, but since
+% you can't use both at the same time it doesn't really matter.
+long_option("mlds-optimize",		optimize).
+long_option("mlds-optimise",		optimize).
+
 % LLDS optimizations
 long_option("common-data",		common_data).
 long_option("llds-optimize",		optimize).

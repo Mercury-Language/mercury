@@ -1171,58 +1171,7 @@ mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
 		{ FuncInfo = func_info(Name, Signature) },
 		mlds_maybe_output_time_profile_instr(Context, Indent + 1, Name),
 
-		%
-		% If the procedure body contains any optimizable tailcalls,
-		% we wrap the function body inside a `for(;;)' loop
-		% so that we can use `continue;' inside the function body
-		% to optimize tail recursive calls.
-		%
-		globals__io_lookup_bool_option(emit_c_loops, Emit_C_Loops),
-		(
-			{ Emit_C_Loops = yes },
-			{ statement_contains_statement(Body, Call) },
-			{ Call = mlds__statement(CallStmt, _) },
-			{ can_optimize_tailcall(FuncInfo, CallStmt) }
-		->
-			mlds_indent(Context, Indent + 1),
-			io__write_string("for(;;)\n"),
-			mlds_indent(Context, Indent + 2),
-			io__write_string("{\n"),
-			{ Indent2 = Indent + 2 }
-		;
-			{ Indent2 = Indent }
-		),
-
-		mlds_output_statement(Indent2 + 1, FuncInfo, Body),
-
-		%
-		% Output a `return' statement to terminate the `for(;;)' loop.
-		% This should only be necessary for functions with no
-		% return values; for functions with return values,
-		% the function body should never just fall through,
-		% instead it must always return via a `return' statement.
-		%
-		{ Signature = mlds__func_params(_Parameters, RetTypes) },
-		( { RetTypes = [] } ->
-			mlds_output_stmt(Indent2 + 1, FuncInfo, return([]),
-				Context)
-		;
-			globals__io_lookup_bool_option(auto_comments, Comments),
-			( { Comments = yes } ->
-				mlds_indent(Context, Indent2 + 1),
-				io__write_string("/*NOTREACHED*/\n")
-			;
-				[]
-			)
-		),
-
-		( { Indent2 = Indent + 2 } ->
-			% end the `for(;;)'
-			mlds_indent(Context, Indent2),
-			io__write_string("}\n")
-		;
-			[]
-		),
+		mlds_output_statement(Indent + 1, FuncInfo, Body),
 
 		mlds_indent(Context, Indent),
 		io__write_string("}\n")	% end the function
@@ -1903,93 +1852,62 @@ mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels), Context) -->
 mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 	{ Call = call(_Signature, FuncRval, MaybeObject, CallArgs,
 		Results, IsTailCall) },
+	{ CallerFuncInfo = func_info(Name, _Params) },
 	%
-	% Optimize directly-recursive tail calls
+	% Optimize general tail calls.
+	% We can't really do much here except to insert `return'
+	% as an extra hint to the C compiler.
+	% XXX these optimizations should be disable-able
 	%
-	{ CallerFuncInfo = func_info(Name, Params) },
-	globals__io_lookup_bool_option(emit_c_loops, Emit_C_Loops),
-	(
-		{ Emit_C_Loops = yes },
-		{ can_optimize_tailcall(CallerFuncInfo, Call) }
-	->
-		mlds_indent(Indent),
-		io__write_string("{\n"),
-		globals__io_lookup_bool_option(auto_comments, Comments),
-		( { Comments = yes } ->
-			mlds_indent(Context, Indent + 1),
-			io__write_string("/* tail recursive call */\n")
-		;
-			[]
-		),
-		{ Name = qual(ModuleName, _) },
-		{ Params = mlds__func_params(FuncArgs, _RetTypes) },
-		mlds_output_assign_args(Indent + 1, ModuleName, Context,
-			FuncArgs, CallArgs),
-		mlds_indent(Context, Indent + 1),
-		( { Comments = yes } ->
-			io__write_string("continue; /* go to start of function */\n")
-		;
-			io__write_string("continue;\n")
-		),
-		mlds_indent(Context, Indent),
-		io__write_string("}\n")
+	% If Results = [], i.e. the function has `void' return type,
+	% then this would result in code that is not legal ANSI C
+	% (although it _is_ legal in GNU C and in C++),
+	% so for that case, we put the return statement after
+	% the call -- see below.  We need to enclose it inside
+	% an extra pair of curly braces in case this `call'
+	% is e.g. inside an if-then-else.
+	%
+	mlds_indent(Indent),
+	io__write_string("{\n"),
+
+	mlds_maybe_output_call_profile_instr(Context,
+			Indent + 1, FuncRval, Name),
+
+	mlds_indent(Context, Indent + 1),
+
+	( { IsTailCall = tail_call, Results \= [] } ->
+		io__write_string("return ")
 	;
-		%
-		% Optimize general tail calls.
-		% We can't really do much here except to insert `return'
-		% as an extra hint to the C compiler.
-		% XXX these optimizations should be disable-able
-		%
-		% If Results = [], i.e. the function has `void' return type,
-		% then this would result in code that is not legal ANSI C
-		% (although it _is_ legal in GNU C and in C++),
-		% so for that case, we put the return statement after
-		% the call -- see below.  We need to enclose it inside
-		% an extra pair of curly braces in case this `call'
-		% is e.g. inside an if-then-else.
-		%
-		mlds_indent(Indent),
-		io__write_string("{\n"),
+		[]
+	),
+	( { MaybeObject = yes(Object) } ->
+		mlds_output_bracketed_rval(Object),
+		io__write_string(".") % XXX should this be "->"?
+	;
+		[]
+	),
+	( { Results = [] } ->
+		[]
+	; { Results = [Lval] } ->
+		mlds_output_lval(Lval),
+		io__write_string(" = ")
+	;
+		{ error("mld_output_stmt: multiple return values") }
+	),
+	mlds_output_bracketed_rval(FuncRval),
+	io__write_string("("),
+	io__write_list(CallArgs, ", ", mlds_output_rval),
+	io__write_string(");\n"),
 
-		mlds_maybe_output_call_profile_instr(Context,
-				Indent + 1, FuncRval, Name),
-
+	( { IsTailCall = tail_call, Results = [] } ->
 		mlds_indent(Context, Indent + 1),
-
-		( { IsTailCall = tail_call, Results \= [] } ->
-			io__write_string("return ")
-		;
-			[]
-		),
-		( { MaybeObject = yes(Object) } ->
-			mlds_output_bracketed_rval(Object),
-			io__write_string(".") % XXX should this be "->"?
-		;
-			[]
-		),
-		( { Results = [] } ->
-			[]
-		; { Results = [Lval] } ->
-			mlds_output_lval(Lval),
-			io__write_string(" = ")
-		;
-			{ error("mld_output_stmt: multiple return values") }
-		),
-		mlds_output_bracketed_rval(FuncRval),
-		io__write_string("("),
-		io__write_list(CallArgs, ", ", mlds_output_rval),
-		io__write_string(");\n"),
-
-		( { IsTailCall = tail_call, Results = [] } ->
-			mlds_indent(Context, Indent + 1),
-			io__write_string("return;\n")
-		;
-			mlds_maybe_output_time_profile_instr(Context,
-					Indent + 1, Name)
-		),
-		mlds_indent(Indent),
-		io__write_string("}\n")
-	).
+		io__write_string("return;\n")
+	;
+		mlds_maybe_output_time_profile_instr(Context,
+				Indent + 1, Name)
+	),
+	mlds_indent(Indent),
+	io__write_string("}\n").
 
 mlds_output_stmt(Indent, _FuncInfo, return(Results), _) -->
 	mlds_indent(Indent),
@@ -2193,47 +2111,6 @@ no_code_address(const(code_addr_const(proc(qual(Module, PredLabel - _), _)))) :-
 	SymName = mlds_module_name_to_sym_name(Module),
 	SymName = qualified(unqualified("mercury"), "private_builtin"),
 	PredLabel = pred(predicate, _, "unsafe_type_cast", 2).
-
-	% return `true' if the statement is a tail call which
-	% can be optimized into a jump back to the start of the
-	% function
-:- pred can_optimize_tailcall(func_info, mlds__stmt).
-:- mode can_optimize_tailcall(in, in) is semidet.
-can_optimize_tailcall(CallerFuncInfo, Call) :-
-	Call = call(_Signature, FuncRval, MaybeObject, _CallArgs,
-		_Results, IsTailCall),
-	CallerFuncInfo = func_info(Name, _Params),
-	%
-	% check if this call can be optimized as a tail call
-	%
-	IsTailCall = tail_call,
-
-	%
-	% check if the callee adddress is the same as
-	% the caller
-	%
-	FuncRval = const(code_addr_const(CodeAddr)),
-	(	
-		CodeAddr = proc(QualifiedProcLabel, _Sig),
-		MaybeSeqNum = no
-	;
-		CodeAddr = internal(QualifiedProcLabel, SeqNum, _Sig),
-		MaybeSeqNum = yes(SeqNum)
-	),
-	QualifiedProcLabel = qual(ModuleName, PredLabel - ProcId),
-	% check that the module name matches
-	Name = qual(ModuleName, FuncName),
-	% check that the PredLabel, ProcId, and MaybeSeqNum match
-	FuncName = function(PredLabel, ProcId, MaybeSeqNum, _),
-
-	%
-	% In C++, `this' is a constant, so our usual technique
-	% of assigning the arguments won't work if it is a
-	% member function.  Thus we don't do this optimization
-	% if we're optimizing a member function call
-	%
-	MaybeObject = no.
-
 
 	% Assign the specified list of rvals to the arguments.
 	% This is used as part of tail recursion optimization (see above).
@@ -2978,73 +2855,6 @@ mlds_indent(N) -->
 	;
 		io__write_string("  "),
 		mlds_indent(N - 1)
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred statements_contains_statement(mlds__statements, mlds__statement).
-:- mode statements_contains_statement(in, out) is nondet.
-
-statements_contains_statement(Statements, SubStatement) :-
-	list__member(Statement, Statements),
-	statement_contains_statement(Statement, SubStatement).
-
-:- pred maybe_statement_contains_statement(maybe(mlds__statement), mlds__statement).
-:- mode maybe_statement_contains_statement(in, out) is nondet.
-
-maybe_statement_contains_statement(no, _Statement) :- fail.
-maybe_statement_contains_statement(yes(Statement), SubStatement) :-
-	statement_contains_statement(Statement, SubStatement).
-
-:- pred statement_contains_statement(mlds__statement, mlds__statement).
-:- mode statement_contains_statement(in, out) is multi.
-
-statement_contains_statement(Statement, Statement).
-statement_contains_statement(Statement, SubStatement) :-
-	Statement = mlds__statement(Stmt, _Context),
-	stmt_contains_statement(Stmt, SubStatement).
-
-:- pred stmt_contains_statement(mlds__stmt, mlds__statement).
-:- mode stmt_contains_statement(in, out) is nondet.
-
-stmt_contains_statement(Stmt, SubStatement) :-
-	(
-		Stmt = block(_Defns, Statements),
-		statements_contains_statement(Statements, SubStatement)
-	;
-		Stmt = while(_Rval, Statement, _Once),
-		statement_contains_statement(Statement, SubStatement)
-	;
-		Stmt = if_then_else(_Cond, Then, MaybeElse),
-		( statement_contains_statement(Then, SubStatement)
-		; maybe_statement_contains_statement(MaybeElse, SubStatement)
-		)
-	;
-		Stmt = label(_Label),
-		fail
-	;
-		Stmt = goto(_),
-		fail
-	;
-		Stmt = computed_goto(_Rval, _Labels),
-		fail
-	;
-		Stmt = call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
-		fail
-	;
-		Stmt = return(_Rvals),
-		fail
-	;
-		Stmt = do_commit(_Ref),
-		fail
-	;
-		Stmt = try_commit(_Ref, Statement, Handler),
-		( statement_contains_statement(Statement, SubStatement)
-		; statement_contains_statement(Handler, SubStatement)
-		)
-	;
-		Stmt = atomic(_AtomicStmt),
-		fail
 	).
 
 %-----------------------------------------------------------------------------%

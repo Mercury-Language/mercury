@@ -38,6 +38,11 @@
 % or in global variables, etc.) and used after those earlier calls
 % have returned.  This assumption is true for the MLDS code generated
 % by ml_code_gen.m.
+%
+% We just mark tailcalls in this module here.  The actual tailcall
+% optimization (turn self-tailcalls into loops) is done in ml_optimize.
+% Individual backends may wish to treat tailcalls separately if there is
+% any backend support for them.
 
 %-----------------------------------------------------------------------------%
 
