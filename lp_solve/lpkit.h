@@ -11,7 +11,6 @@
 #include <math.h>
 #define FAIL -1
 
-#define NULL 	0
 #define FALSE   0
 #define TRUE    1
 

@@ -30,7 +30,7 @@ INSTALL_MMAKE_EXTRAS	= scripts/Mmake.rules scripts/Mmake.vars
 LIB_PARTS		= bin doc html inc ints lib modules \
 			@NUPROLOG@ @SICSTUS@
 
-UTILS			= util/mdemangle util/mkinit util/mtags
+UTILS			= util/mdemangle util/mkinit util/mtags util/lp_solve
 
 INSTALL_NUPROLOG	= @INSTALL_NUPROLOG@
 INSTALL_SICSTUS		= @INSTALL_SICSTUS@

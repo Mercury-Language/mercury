@@ -15,7 +15,8 @@ see the file README in that directory for copyright information about
 those files.  A few files (config*) are derived from code that is
 copyright by the Free Software Foundation, Inc.  The program `texi2html'
 in the doc directory is copyright by CERN; see the copyright notice at
-the end of that file.
+the end of that file.  The subdirectory `lp_solve' contains a linear
+programming solver by Michel Berkelaar; see the file lp_solve/COPYING.
 
 Some of the files in the `extras' subdirectory have fairly restrictive
 copyright licences.  The `Togl' library in extras/graphics/Togl-1.2
