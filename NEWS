@@ -115,3 +115,15 @@ DRAFT NEWS for Mercury release 0.7
 	relation__search_key/3, and relation__lookup_key/3
 
   - set__subset XXX
+
+  - Made some extensive additions to bag.m to include the standard set
+    operations (union, intersection, subtraction), and some other predicates
+    for manipulating bags.  Also changed bag__contains/2 (swapped the 
+    arguments), and bag__remove (now semidet) to match the standard in set.m 
+    and map.m. 
+
+  - Added io__tmpnam, and io__remove_file to io.m.  Their functions are 
+    the same as the C functions tmpnam() and remove().
+
+  - Added list__merge_and_remove_dups/4 and list__sort_and_remove_dups/4
+    to complete the set of list__merge and list__sort operations.
