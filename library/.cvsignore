@@ -1,3 +1,4 @@
+*.il
 *.c
 *.d
 *.ql
@@ -14,6 +15,11 @@
 *.optdate
 *.trans_opt
 *.trans_opt_date
+*.ilk
+*.pdb
+*__cpp_code.cpp
+*.dll
+*.*_date
 mercury.*.h
 sicstus_compile sicstus_saved_state
 io.h std_util.h exception.h
@@ -22,9 +28,4 @@ mer_std.init
 library.dep
 library.dv
 Mercury
-*.ilk
-*.pdb
-*__c_code.cpp
-*.dll
 libmer_std.lib
-*.*_date

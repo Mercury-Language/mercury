@@ -17,6 +17,8 @@ mercury_compile.stats
 mercury_compile
 mercury_compile.dep
 mercury_compile.dv
+mlds_to_gcc.dep
+mlds_to_gcc.dv
 Mercury
 *.ilk
 *.pdb
