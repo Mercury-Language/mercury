@@ -1165,6 +1165,7 @@ mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
 		io__write_string("{\n"),
 
 		{ FuncInfo = func_info(Name, Signature) },
+		mlds_maybe_output_time_profile_instr(Context, Indent + 1, Name),
 
 		%
 		% If the procedure body contains any optimizable tailcalls,
@@ -1979,7 +1980,8 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 			mlds_indent(Context, Indent + 1),
 			io__write_string("return;\n")
 		;
-			[]
+			mlds_maybe_output_time_profile_instr(Context,
+					Indent + 1, Name)
 		),
 		mlds_indent(Indent),
 		io__write_string("}\n")
@@ -2150,6 +2152,28 @@ mlds_maybe_output_call_profile_instr(Context, Indent,
 		mlds_output_bracketed_rval(CalleeFuncRval),
 		io__write_string(", "),
 		mlds_output_fully_qualified_name(CallerName),
+		io__write_string(");\n")
+	;
+		[]
+	).
+
+	%
+	% If time profiling is turned on output an instruction which
+	% informs the runtime which procedure we are currently located
+	% in.
+	%
+:- pred mlds_maybe_output_time_profile_instr(mlds__context::in,
+		indent::in, mlds__qualified_entity_name::in,
+		io__state::di, io__state::uo) is det.
+
+mlds_maybe_output_time_profile_instr(Context, Indent, Name) -->
+	globals__io_lookup_bool_option(profile_time, ProfileTime),
+	(
+		{ ProfileTime = yes }
+	->
+		mlds_indent(Context, Indent),
+		io__write_string("MR_set_prof_current_proc("),
+		mlds_output_fully_qualified_name(Name),
 		io__write_string(");\n")
 	;
 		[]

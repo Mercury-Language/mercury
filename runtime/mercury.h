@@ -35,15 +35,16 @@
   #endif
 #endif
 
-#ifdef PROFILE_CALLS
-  #include "mercury_prof.h"		/* for MR_prof_call_profile */
+#if defined(PROFILE_CALLS) || defined(PROFILE_TIME)
+  #include "mercury_prof.h"		/* for MR_prof_call_profile	*/
+					/* and MR_set_prof_current_proc	*/
 #endif
 
 #ifdef PROFILE_MEMORY
   #include "mercury_heap_profile.h"	/* for MR_record_allocation */
 #endif
 
-#if defined(PROFILE_CALLS) || defined(PROFILE_MEMORY)
+#if defined(PROFILE_CALLS) || defined(PROFILE_MEMORY) || defined(PROFILE_TIME)
   #include "mercury_goto.h"		/* for MR_init_entry */
 #endif
 

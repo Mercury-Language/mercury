@@ -35,6 +35,7 @@
 ** being executed when a profiling interrupt occurs.
 */
 
+#define MR_set_prof_current_proc(target)	set_prof_current_proc(target)
 #ifdef PROFILE_TIME
   #define set_prof_current_proc(target)		\
 		(MR_prof_current_proc = (target))
