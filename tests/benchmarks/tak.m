@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- import_module int, char, list, graph, require, std_util, io.
+:- import_module io.
 
 :- pred main1(int).
 :- mode main1(out) is det.
@@ -14,6 +14,8 @@
 :- mode main(di, uo) is det.
 
 :- implementation.
+
+:- import_module int.
 
 main --> main3(_).
 
