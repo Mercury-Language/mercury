@@ -1490,8 +1490,6 @@ process_type_decl_pred_or_func(PredOrFunc, ModuleName, WithType, WithInst0,
 	    WithInst0 = ok(WithInst),
 	    ( MaybeDeterminism = yes(_), WithInst = yes(_) ->
 		R = error("`with_inst` and determinism both specified", Body)
-	    ; MaybeDeterminism = yes(_), WithType = yes(_) ->
-		R = error("`with_type` and determinism both specified", Body)
 	    ; WithInst = yes(_), WithType = no ->
 		R = error("`with_inst` specified without `with_type`", Body)
 	    ;

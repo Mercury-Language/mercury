@@ -24,6 +24,11 @@
 
 :- func with_type_5 `with_type` map_func(T, T) `with_inst` map_func.
 
+:- func with_type_6 `with_type` map_func(T, T) is det <= string(T).
+
+:- typeclass string(T) where [].
+:- instance string(string) where [].
+
 :- implementation.
 
 with_type_1(_, _, X, X).
@@ -35,3 +40,5 @@ with_type_3(_, _, X, X).
 with_type_4(X, X).
 
 with_type_5(X) = X.
+
+with_type_6(X) = X.

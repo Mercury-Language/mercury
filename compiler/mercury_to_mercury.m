@@ -1747,7 +1747,7 @@ mercury_format_pred_or_func_decl(PredOrFunc, TypeVarSet, InstVarSet,
 	->
 		{ AppendVarnums = no },
 		mercury_format_pred_or_func_type_2(PredOrFunc, TypeVarSet,
-			ExistQVars, PredName, Types, WithType, MaybeDet,
+			ExistQVars, PredName, Types, WithType, no,
 			Purity, ClassContext, Context, AppendVarnums,
 			StartString, Separator),
 		mercury_format_pred_or_func_mode_decl_2(InstVarSet,
@@ -1812,14 +1812,18 @@ mercury_format_pred_or_func_type_2(PredOrFunc, VarSet, ExistQVars, PredName,
 		add_string("("),
 		mercury_format_term(Type, VarSet, AppendVarnums),
 		mercury_format_remaining_terms(Rest, VarSet, AppendVarnums),
-		add_string(")"),
-		mercury_format_class_context(ClassContext, ExistQVars, VarSet,
-			AppendVarnums)
+		add_string(")")
 	;
-		mercury_format_bracketed_sym_name(PredName),
-		mercury_format_class_context(ClassContext, ExistQVars, VarSet,
-			AppendVarnums),
-		mercury_format_det_annotation(MaybeDet)
+		mercury_format_bracketed_sym_name(PredName)
+	),
+
+	(
+		{ MaybeWithType = yes(WithType) },
+		add_string(" `with_type` ("),
+		mercury_format_term(WithType, VarSet, AppendVarnums),
+		add_string(")")
+	;
+		{ MaybeWithType = no }
 	),
 
 	% We need to handle is/2 specially, because it's used for
@@ -1836,21 +1840,19 @@ mercury_format_pred_or_func_type_2(PredOrFunc, VarSet, ExistQVars, PredName,
 	% efficient.
 
 	(
+		{ PredOrFunc = predicate },
+		{ MaybeDet = no },
 		{ unqualify_name(PredName, "is") },
 		{ list__length(Types, 2) }
 	->
+		% This determinism will be ignored.
+		mercury_format_det_annotation(yes(det))
+	;
 		mercury_format_det_annotation(MaybeDet)
-	;
-		[]
 	),
-	(
-		{ MaybeWithType = yes(WithType) },
-		add_string(" `with_type` ("),
-		mercury_format_term(WithType, VarSet, AppendVarnums),
-		add_string(")")
-	;
-		{ MaybeWithType = no }
-	),
+
+	mercury_format_class_context(ClassContext,
+		ExistQVars, VarSet, AppendVarnums),
 	add_string(Separator).
 
 %-----------------------------------------------------------------------------%
