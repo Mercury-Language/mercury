@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2004 The University of Melbourne. 
+# Copyright (C) 1995-2005 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -135,7 +135,7 @@ FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
 # Note that the definition below does _not_ include GRADEFLAGS.
 # So any changes to the grade flags for the standard library or 
 # compiler itself should be done by setting GRADE, not GRADEFLAGS.
-GRADESTRING		= $(shell $(SCRIPTS_DIR)/canonical_grade $(ALL_GRADEFLAGS))
+GRADESTRING = $(shell $(SCRIPTS_DIR)/canonical_grade $(ALL_GRADEFLAGS))
 
 # Options to pass to the Mercury compiler
 MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
@@ -146,6 +146,8 @@ MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
 # the library's .opt and .trans_opt files as well. However, during development
 # some problems are easier to track down without intermodule optimization
 # complicating things.
+# Some test cases assume that the library is compiled intermodule optimization,
+# so it is not a good idea to disable it in a bootcheck.
 LIBRARY_INTERMODULE = yes
 
 # Do we want to compile the library with --trace minimum?
@@ -189,8 +191,14 @@ GCC_SRC_DIR = @GCC_SRC_DIR@
 INCLUDE_ADITI_OUTPUT = @ENABLE_ADITI_BACK_END@
 
 # Enable building of the deep profiler?
-# This value of ENABLE_DEEP_PROFILER is either yes or no.
+# The value of ENABLE_DEEP_PROFILER is either yes or no.
 ENABLE_DEEP_PROFILER=@ENABLE_DEEP_PROFILER@
+
+ifdef ALWAYS_MMAKE_TAGS_FILE
+TAGS_FILE_EXISTS = tags_file_exists
+else
+TAGS_FILE_EXISTS =
+endif
 
 #-----------------------------------------------------------------------------#
 

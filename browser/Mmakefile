@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2004 The University of Melbourne.
+# Copyright (C) 1998-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -33,7 +33,7 @@ include $(MERCURY_DIR)/Mmake.common
 # can be found by `mmc --make'.
 include Mercury.options
 
-MAIN_TARGET=library
+MAIN_TARGET=main
 
 MERCURY_MAIN_LIB_MODULES=$(BROWSER_LIB_NAME) $(MDBCOMP_LIB_NAME)
 MERCURY_MAIN_MODULES=$(MERCURY_MAIN_LIB_MODULES) browse_test declarative_test
@@ -118,11 +118,14 @@ endif
 
 # targets
 
-.PHONY: library
-library: $(LIBS)
+.PHONY: main
+main:	library $(TAGS_FILE_EXISTS)
 
 .PHONY: all
-all: library browse_test declarative_test
+all:	library $(TAGS_FILE_EXISTS) browse_test declarative_test
+
+.PHONY: library
+library: $(LIBS)
 
 .PHONY: depend
 depend:	$(DEPENDS)
@@ -202,6 +205,12 @@ int3s:	$(INT3S_TARGETS)
 tags:	$(MTAGS) $($(BROWSER_LIB_NAME).ms) $($(MDBCOMP_LIB_NAME).ms)
 	$(MTAGS) $($(BROWSER_LIB_NAME).ms) $($(MDBCOMP_LIB_NAME).ms) \
 		../library/*.m
+
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags; \
+	$(MTAGS) $($(BROWSER_LIB_NAME).ms) $($(MDBCOMP_LIB_NAME).ms) \
+		../library/*.m ; fi
 
 $(BROWSER_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
 		$($(BROWSER_LIB_NAME).ms)

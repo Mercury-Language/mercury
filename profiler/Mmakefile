@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2000,2002-2003 The University of Melbourne. 
+# Copyright (C) 1995-2000,2002-2003, 2005 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -14,7 +14,7 @@ include $(MERCURY_DIR)/Mmake.common
 # can be found by `mmc --make'.
 include Mercury.options
 
-MAIN_TARGET=mercury_profile
+MAIN_TARGET=all
 MERCURY_MAIN_MODULES=mercury_profile
 
 #-----------------------------------------------------------------------------#
@@ -25,10 +25,10 @@ MCFLAGS += --linkage shared
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
-depend : mercury_profile.depend
+depend:	mercury_profile.depend
 
 .PHONY: all
-all : mercury_profile
+all:	mercury_profile $(TAGS_FILE_EXISTS)
 
 #-----------------------------------------------------------------------------#
 
@@ -47,20 +47,25 @@ $(cs_subdir)mercury_profile_init.c: $(UTIL_DIR)/mkinit
 #-----------------------------------------------------------------------------#
 
 .PHONY: check
-check		: mercury_profile.check
+check:	mercury_profile.check
 
 .PHONY: ints 
-ints		: mercury_profile.ints
+ints:	mercury_profile.ints
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(MTAGS) $(mercury_profile.ms) $(LIBRARY_DIR)/*.m
+tags:	$(MTAGS) $(mercury_profile.ms) $(LIBRARY_DIR)/*.m
 	$(MTAGS) $(mercury_profile.ms) $(LIBRARY_DIR)/*.m
+
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags; \
+	$(MTAGS) $(mercury_profile.ms) $(LIBRARY_DIR)/*.m ; fi
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
-dates		:
+dates:
 	touch $(mercury_profile.dates)
 
 #-----------------------------------------------------------------------------#

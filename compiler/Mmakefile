@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003 The University of Melbourne. 
+# Copyright (C) 1995-2003, 2005 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -18,7 +18,7 @@ GCC_SRC_DIR := $(MERCURY_DIR)/$(GCC_SRC_DIR)
 export GCC_SRC_DIR
 include Mercury.options
 
-MAIN_TARGET=mercury
+MAIN_TARGET=all
 
 MERCURY_MAIN_MODULES = top_level mlds_to_gcc
 
@@ -170,7 +170,7 @@ Mercury.modules:
 	$(MC) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: all
-all:		mercury
+all:		mercury $(TAGS_FILE_EXISTS)
 
 .PHONY: mercury
 mercury:	mercury_compile
@@ -263,24 +263,29 @@ $(MC_PROG)_init.c: $(UTIL_DIR)/mkinit
 #-----------------------------------------------------------------------------#
 
 .PHONY: check
-check		: $(MC_PROG).check
+check:	$(MC_PROG).check
 
 .PHONY: ints 
-ints		: $(MC_PROG).ints
+ints:	$(MC_PROG).ints
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m
+tags:	$(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m
 	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m
 
-$(MC_PROG).stats : source_stats.awk $($(MC_PROG).ms)
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags ; \
+	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m ; fi
+
+$(MC_PROG).stats: source_stats.awk $($(MC_PROG).ms)
 	awk -f `vpath_find source_stats.awk` \
 		`vpath_find $($(MC_PROG).ms)` > $@
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
-dates		:
+dates:
 	touch $($(MC_PROG).dates)
 
 #-----------------------------------------------------------------------------#

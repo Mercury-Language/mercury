@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne.
+# Copyright (C) 1995-2002, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -36,13 +36,18 @@ MGNUCFLAGS-mkinit = --no-ansi
 
 #-----------------------------------------------------------------------------#
 
-all:	$(PROGS)
+all:	$(PROGS) $(TAGS_FILE_EXISTS)
 
 .c:
 	$(MGNUC) $(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
 
 tags:
 	ctags $(SRC)
+
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags; \
+	ctags $(SRC) ; fi
 
 #-----------------------------------------------------------------------------#
 

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2004 The University of Melbourne.
+# Copyright (C) 1998-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -64,7 +64,7 @@ THREADLIBS	= \
 		    *.par*) echo "-lpthread" ;;				\
 		  esac							\
 		`
-MAIN_TARGET=trace
+MAIN_TARGET=all
 
 # Specify which files to check for namespace cleanliness, and which name
 # prefixes are allowed.
@@ -125,13 +125,22 @@ $(OBJS) $(PIC_OBJS): $(HDRS) $(RUNTIME_HDRS)
 
 #-----------------------------------------------------------------------------#
 
+.PHONY: all
 .PHONY: trace
 ifneq ("$(filter il% java%,$(GRADE))","")        
 # there is no tracing in the .NET and Java backends
+
+all:
+
 trace:
+
 else
-trace: lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
-trace: $(LIB_DLL_H) $(LIB_GLOBALS_H)
+
+all:	trace $(TAGS_FILE_EXISTS)
+
+trace:	lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+trace:	$(LIB_DLL_H) $(LIB_GLOBALS_H)
+
 endif
 
 lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A: $(OBJS)
@@ -159,10 +168,15 @@ lib$(TRACE_LIB_NAME).dylib: $(PIC_OBJS)
 		$(SHARED_LIBS)
 
 .PHONY: cs
-cs: $(CFILES)
+cs:	$(CFILES)
 
-tags: $(CFILES) $(HDRS)
+tags:	$(CFILES) $(HDRS)
 	ctags $(CFILES) $(HDRS) $(RUNTIME_DIR)/*.c $(RUNTIME_DIR)/*.h
+
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags; \
+	ctags $(CFILES) $(HDRS) $(RUNTIME_DIR)/*.c $(RUNTIME_DIR)/*.h ; fi
 
 #-----------------------------------------------------------------------------#
 

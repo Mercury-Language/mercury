@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2004 The University of Melbourne.
+# Copyright (C) 1997-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -34,7 +34,7 @@ include Mercury.options
 
 MERCURY_MAIN_MODULES = mer_std
 
-MAIN_TARGET=mercury
+MAIN_TARGET=all
 
 VPATH=.
 
@@ -152,18 +152,18 @@ endif
 # targets
 
 .PHONY: all
-all : mercury
+all:	mercury $(TAGS_FILE_EXISTS)
 
 .PHONY: mercury
-mercury : lib_std
+mercury: lib_std
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
-depend		: $(STD_LIB_NAME).depend
+depend:	$(STD_LIB_NAME).depend
 
 .PHONY: check
-check		: $(STD_LIB_NAME).check
+check:	$(STD_LIB_NAME).check
 
 .PHONY: all-ints 
 
@@ -178,31 +178,36 @@ all-ints: ints int3s
 endif
 
 .PHONY: ints 
-ints		: $(STD_LIB_NAME).ints
+ints:	$(STD_LIB_NAME).ints
 
 .PHONY: int3s 
-int3s		: $(STD_LIB_NAME).int3s
+int3s:	$(STD_LIB_NAME).int3s
 
 .PHONY: opts 
-opts		: $(STD_LIB_NAME).opts
+opts:	$(STD_LIB_NAME).opts
 
 .PHONY: trans_opts 
-trans_opts		: $(STD_LIB_NAME).trans_opts
-$(STD_LIB_NAME).trans_opts	: $($(STD_LIB_NAME).trans_opts)
+trans_opts: $(STD_LIB_NAME).trans_opts
+$(STD_LIB_NAME).trans_opts: $($(STD_LIB_NAME).trans_opts)
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(MTAGS) $($(STD_LIB_NAME).ms)
+tags:	$(MTAGS) $($(STD_LIB_NAME).ms)
 	$(MTAGS) $($(STD_LIB_NAME).ms)
 
-$(STD_LIB_NAME).stats : $(COMPILER_DIR)/source_stats.awk $($(STD_LIB_NAME).ms)
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags ; \
+	$(MTAGS) $($(STD_LIB_NAME).ms) ; fi
+
+$(STD_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk $($(STD_LIB_NAME).ms)
 	awk -f $(COMPILER_DIR)/source_stats.awk \
 		`vpath_find $($(STD_LIB_NAME).ms)` > $@
 	
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
-dates		:
+dates:
 	touch $($(STD_LIB_NAME).dates)
 
 #-----------------------------------------------------------------------------#

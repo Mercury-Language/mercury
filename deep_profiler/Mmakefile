@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2004 The University of Melbourne. 
+# Copyright (C) 1995-2005 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -49,7 +49,7 @@ nothing:
 depend:	$(DEPEND)
 
 .PHONY: all
-all:	mdprof_cgi mdprof_test
+all:	mdprof_cgi mdprof_test $(TAGS_FILE_EXISTS)
 
 #-----------------------------------------------------------------------------#
 
@@ -84,11 +84,17 @@ ints:	mdprof_cgi.ints mdprof_test.ints
 # and believes it to be the tags file we are asking for.
 
 .PHONY: tags
-tags:		.deep.tags
+tags:	.deep.tags
 
-.deep.tags:	$(MTAGS) $(mdprof_cgi.ms) $(mdprof_test.ms) $(LIBRARY_DIR)/*.m
-		$(MTAGS) $(mdprof_cgi.ms) $(mdprof_test.ms) $(LIBRARY_DIR)/*.m
-		touch .deep.tags
+.deep.tags: $(MTAGS) $(mdprof_cgi.ms) $(mdprof_test.ms) $(LIBRARY_DIR)/*.m
+	$(MTAGS) $(mdprof_cgi.ms) $(mdprof_test.ms) $(LIBRARY_DIR)/*.m
+	touch .deep.tags
+
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags; \
+	$(MTAGS) $(mdprof_cgi.ms) $(mdprof_test.ms) $(LIBRARY_DIR)/*.m; \
+	touch .deep.tags; fi
 
 #-----------------------------------------------------------------------------#
 

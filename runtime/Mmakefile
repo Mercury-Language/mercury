@@ -1,12 +1,12 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2004 The University of Melbourne.
+# Copyright (C) 1998-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 # This is the Mmakefile for the Mercury runtime library
 
-MAIN_TARGET=runtime
+MAIN_TARGET=all
 
 #-----------------------------------------------------------------------------#
 
@@ -278,6 +278,9 @@ mercury_profiling_builtin.h:	mercury_deep_call_port_body.h \
 
 #-----------------------------------------------------------------------------#
 
+.PHONY: all
+all:	runtime $(TAGS_FILE_EXISTS)
+
 ifeq ($(findstring java,$(GRADE)),java)        
 #
 # For grade java, there's nothing to do
@@ -358,6 +361,11 @@ cs: $(CFILES)
 
 tags: $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
 	ctags $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
+
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags; \
+	ctags $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H); fi
 
 #-----------------------------------------------------------------------------#
 
