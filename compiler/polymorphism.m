@@ -1079,14 +1079,26 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
 		PredTypeVars2) },
 	{ list__delete_elems(PredTypeVars2, ExistConstrainedVars, 
 		PredTypeVars) },
-	{ polymorphism__c_code_add_typeclass_infos(ExtraVars, ExtraVars1,
-			UnivCs, ExistCs, PredTypeVarSet, ArgInfo0, ArgInfo1) },
-	{ polymorphism__c_code_add_typeinfos(ExtraVars1, PredTypeVars,
-			PredTypeVarSet, ExistQVars, ArgInfo1, ArgInfo) },
+
+		% sanity check
+	{ list__length(ExtraVars, NV) },
+	{ list__length(UnivCs, NUCs) },
+	{ list__length(ExistCs, NECs) },
+	{ NCs is NUCs + NECs },
+	{ list__length(PredTypeVars, NTs) },
+	{ NEVs is NCs + NTs },
+	{ require(unify(NEVs, NV), 
+		"list length mismatch in polymorphism processing pragma_c") },
+
+	{ polymorphism__c_code_add_typeinfos(
+			PredTypeVars, PredTypeVarSet, ExistQVars, 
+			ArgInfo0, ArgInfo1) },
+	{ polymorphism__c_code_add_typeclass_infos(
+			UnivCs, ExistCs, PredTypeVarSet, ArgInfo1, ArgInfo) },
 
 	%
-	% insert type_info types for all the inserted type_info vars
-	% into the arg-types list
+	% insert type_info/typeclass_info types for all the inserted 
+	% type_info/typeclass_info vars into the arg-types list
 	%
 	{ mercury_private_builtin_module(PrivateBuiltin) },
 	{ MakeType = lambda([TypeVar::in, TypeInfoType::out] is det,
@@ -1110,35 +1122,31 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
-:- pred polymorphism__c_code_add_typeclass_infos(list(var), list(var),
+:- pred polymorphism__c_code_add_typeclass_infos(
 		list(class_constraint), list(class_constraint), 
 		tvarset, list(maybe(pair(string, mode))),
 		list(maybe(pair(string, mode)))). 
-:- mode polymorphism__c_code_add_typeclass_infos(in, out, in, in, in, 
-		in, out) is det.
+:- mode polymorphism__c_code_add_typeclass_infos(in, in, in, in, out) is det.
 
-polymorphism__c_code_add_typeclass_infos(ExtraVars0, ExtraVars,
-		UnivCs, ExistCs, PredTypeVarSet, ArgInfo0, ArgInfo) :-
+polymorphism__c_code_add_typeclass_infos(UnivCs, ExistCs, 
+		PredTypeVarSet, ArgInfo0, ArgInfo) :-
 	in_mode(In),
 	out_mode(Out),
-	polymorphism__c_code_add_typeclass_infos_2(ExtraVars0, ExtraVars1,
-		UnivCs, In, PredTypeVarSet, ArgInfo0, ArgInfo1),
-	polymorphism__c_code_add_typeclass_infos_2(ExtraVars1, ExtraVars,
-		ExistCs, Out, PredTypeVarSet, ArgInfo1, ArgInfo).
+	polymorphism__c_code_add_typeclass_infos_2(ExistCs, Out, 
+		PredTypeVarSet, ArgInfo0, ArgInfo1),
+	polymorphism__c_code_add_typeclass_infos_2(UnivCs, In, 
+		PredTypeVarSet, ArgInfo1, ArgInfo).
 
-:- pred polymorphism__c_code_add_typeclass_infos_2(list(var), list(var),
+:- pred polymorphism__c_code_add_typeclass_infos_2(
 		list(class_constraint), mode,
 		tvarset, list(maybe(pair(string, mode))),
 		list(maybe(pair(string, mode)))). 
-:- mode polymorphism__c_code_add_typeclass_infos_2(in, out, in, in, in, 
-		in, out) is det.
-
-polymorphism__c_code_add_typeclass_infos_2([], [], [], _, _, 
-		ArgNames, ArgNames).
-polymorphism__c_code_add_typeclass_infos_2([_Var|Vars0], Vars, [C|Cs], Mode,
-		TypeVarSet, ArgNames0, ArgNames) :-
-	polymorphism__c_code_add_typeclass_infos_2(Vars0, Vars, Cs,
-		Mode, TypeVarSet, ArgNames0, ArgNames1),
+:- mode polymorphism__c_code_add_typeclass_infos_2(in, in, in, in, out) is det.  
+polymorphism__c_code_add_typeclass_infos_2([], _, _, ArgNames, ArgNames).
+polymorphism__c_code_add_typeclass_infos_2([C|Cs], Mode, TypeVarSet, 
+		ArgNames0, ArgNames) :-
+	polymorphism__c_code_add_typeclass_infos_2(Cs, Mode, TypeVarSet, 
+		ArgNames0, ArgNames1),
 	C = constraint(Name0, Types),
 	prog_out__sym_name_to_string(Name0, "__", Name),
 	term__vars_list(Types, TypeVars),
@@ -1153,50 +1161,36 @@ polymorphism__c_code_add_typeclass_infos_2([_Var|Vars0], Vars, [C|Cs], Mode,
 		C_VarName),
 	ArgNames = [yes(C_VarName - Mode) | ArgNames1].
 
-polymorphism__c_code_add_typeclass_infos_2([], _, [_|_], _, _, _, _) :-
-	error("polymorphism__c_code_add_typeinfos: length mismatch").
-polymorphism__c_code_add_typeclass_infos_2([V|Vs], [V|Vs], [], _, _, As, As).
-
-:- pred polymorphism__c_code_add_typeinfos(list(var), list(tvar),
+:- pred polymorphism__c_code_add_typeinfos(list(tvar),
 		tvarset, existq_tvars, list(maybe(pair(string, mode))),
 		list(maybe(pair(string, mode)))). 
-:- mode polymorphism__c_code_add_typeinfos(in, in, in, in, in, out) is det.
+:- mode polymorphism__c_code_add_typeinfos(in, in, in, in, out) is det.
 
-polymorphism__c_code_add_typeinfos([], [], _, _, ArgNames, ArgNames).
-polymorphism__c_code_add_typeinfos([_Var|Vars], [TVar|TVars], TypeVarSet,
+polymorphism__c_code_add_typeinfos(TVars, TypeVarSet,
 		ExistQVars, ArgNames0, ArgNames) :-
-	polymorphism__c_code_add_typeinfos(Vars, TVars, TypeVarSet,
-		ExistQVars, ArgNames0, ArgNames1),
+	list__delete_elems(TVars, ExistQVars, UnivQVars),
+	in_mode(In),
+	out_mode(Out),
+	polymorphism__c_code_add_typeinfos_2(ExistQVars, TypeVarSet,
+		Out, ArgNames0, ArgNames1),
+	polymorphism__c_code_add_typeinfos_2(UnivQVars, TypeVarSet,
+		In, ArgNames1, ArgNames).
+
+:- pred polymorphism__c_code_add_typeinfos_2(list(tvar),
+		tvarset, mode, list(maybe(pair(string, mode))),
+		list(maybe(pair(string, mode)))). 
+:- mode polymorphism__c_code_add_typeinfos_2(in, in, in, in, out) is det.
+
+polymorphism__c_code_add_typeinfos_2([], _, _, ArgNames, ArgNames).
+polymorphism__c_code_add_typeinfos_2([TVar|TVars], TypeVarSet, Mode,
+		ArgNames0, ArgNames) :-
+	polymorphism__c_code_add_typeinfos_2(TVars, TypeVarSet,
+		Mode, ArgNames0, ArgNames1),
 	( varset__search_name(TypeVarSet, TVar, TypeVarName) ->
 		string__append("TypeInfo_for_", TypeVarName, C_VarName),
-		polymorphism__typeinfo_mode(ExistQVars, TVar, Mode),
 		ArgNames = [yes(C_VarName - Mode) | ArgNames1]
 	;
 		ArgNames = [no | ArgNames1]
-	).
-polymorphism__c_code_add_typeinfos([], [_|_], _, _, _, _) :-
-	error("polymorphism__c_code_add_typeinfos: length mismatch").
-polymorphism__c_code_add_typeinfos([_|_], [], _, _, _, _) :-
-	error("polymorphism__c_code_add_typeinfos: length mismatch").
-
-:- pred polymorphism__typeinfo_mode(existq_tvars, tvar, mode).
-:- mode polymorphism__typeinfo_mode(in, in, out) is det.
-
-polymorphism__typeinfo_mode(ExistQVars, TVar, Mode) :-
-	%
-	% type_infos have mode `in', unless the type
-	% variable is existentially quantified, in which
-	% case the mode is `out'.
-	%
-	% [XXX this would need to change if we allow
-	% `in' modes for arguments with existential types,
-	% because in that case the mode for the type_info
-	% must also be `in']
-	%
-	( list__member(TVar, ExistQVars) ->
-		out_mode(Mode)
-	;
-		in_mode(Mode)
 	).
 
 :- pred polymorphism__process_goal_list(list(hlds_goal), list(hlds_goal),
