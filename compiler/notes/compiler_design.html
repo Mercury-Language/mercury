@@ -445,7 +445,7 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 <p>
 
 <dl>
- <dt> pre-passes to annotate the HLDS
+<dt> pre-passes to annotate the HLDS
 
 	<dd>
 	Before code generation there are a few more passes which 
@@ -543,13 +543,19 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 			and saves information about procedures.
 		</dl>
 
+<dt> code generation for `pragma export' declarations (export.m)
+<dd> This is handled seperately from the other parts of code generation.
+     mercury_compile.m calls the procedures `export__produce_header_file'
+     and `export__get_pragma_exported_procs' to produce C code fragments
+     which declare/define the C functions which are the interface stubs
+     for procedures exported to C.
 </dl>
 
 <p>
 
 The result of code generation is the Low Level Data Structure (llds.m).
-The code is generated as a tree of code fragments which is then
-flattened (tree.m).
+The code for each procedure is generated as a tree of code fragments
+which is then flattened (tree.m).
 
 <p>
 
@@ -793,6 +799,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-01-07 06:09:44 $ by $Author: dgj $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-01-08 06:13:22 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
