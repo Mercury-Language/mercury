@@ -3590,7 +3590,7 @@ mlds_output_data_var_name(ModuleName, DataName, !IO) :-
 		% instance decls, even if they are in a different
 		% module
 		%
-		DataName = rtti(tc_rtti_id(_))
+		DataName = rtti(tc_rtti_id(base_typeclass_info(_, _, _)))
 	->
 		true
 	;
