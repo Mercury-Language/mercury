@@ -2161,11 +2161,11 @@ A solver type definition takes the following form:
                 comparison     is comparison_pred.
 @end example
 
-The first four attributes after the @samp{where} are mandatory
-(@samp{initialization} is allowed as a synonym for
-@samp{initialisation}), the equality and comparison attributes are
-optional (although a solver type without equality would not be very
-useful), and attributes must appear in the order shown.
+The @samp{representation} and @samp{initialisation} attributes are mandatory
+(@samp{initialization} is allowed as a synonym for @samp{initialisation}),
+@samp{ground_inst} and @samp{any_inst} default to @samp{ground}, the equality
+and comparison attributes are optional (although a solver type without equality
+would not be very useful), and attributes must appear in the order shown.
 
 The @code{representation_type} is the type used to implement the
 @code{solver_type}.  A two-tier scheme of this kind is necessary for a
