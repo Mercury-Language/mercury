@@ -44,10 +44,10 @@ C2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
 
 NU_LIBRARY_NOS = \
 	io.nu.no require.nu.no std_util.nu.no string.nu.no term_io.nu.no \
-	mercury_builtin.nu.no
+	int.nu.no mercury_builtin.nu.no
 NU_LIBRARY_QLS = \
 	io.nu.ql require.nu.ql std_util.nu.ql string.nu.ql term_io.nu.ql \
-	mercury_builtin.nu.ql sp_lib.ql
+	int.nu.ql mercury_builtin.nu.ql sp_lib.ql
 
 #-----------------------------------------------------------------------------#
 
