@@ -82,7 +82,7 @@ typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
   typedef MR_Word MR_Reference;
   typedef MR_Word MR_Pred;
   typedef MR_Word MR_Func;
-  typedef MR_Word MR_Array;
+  typedef MR_ArrayPtr MR_Array;
   typedef MR_Word MR_Univ;
   typedef MR_Word MR_Type_Desc;
   typedef MR_Word MR_Type_Ctor_Desc;

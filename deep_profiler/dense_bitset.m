@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,8 @@
 
 :- import_module array, int.
 
-:- type dense_bitset.
+% XXX should be abstract type; it is exported only as a workaround.
+:- type dense_bitset == array(int).
 
 :- func init = dense_bitset.
 :- mode (init = array_uo) is det.
@@ -52,8 +53,6 @@
 :- implementation.
 
 :- import_module list, require.
-
-:- type dense_bitset == array(int).
 
 init = array([0]).
 
