@@ -29,6 +29,8 @@ INSTALL_MMAKE_EXTRAS	= scripts/Mmake.rules scripts/Mmake.vars
 LIB_PARTS		= bin doc html inc ints lib modules \
 			@NUPROLOG@ @SICSTUS@
 
+UTILS			= util/mdemangle util/mkinit util/mtags
+
 #-----------------------------------------------------------------------------#
 
 all:
@@ -39,7 +41,7 @@ all:
 
 .PHONY: install
 install: install_lib install_info install_scripts install_mmake \
-		$(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
+		install_util $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
 	echo
 	echo "Don't forget to add $(INSTALL_BINDIR) to your path."
 
@@ -74,6 +76,11 @@ install_scripts:
 install_mmake: 
 	test -d $(INSTALL_LIBDIR)/mmake || mkdir -p $(INSTALL_LIBDIR)/mmake
 	cp $(INSTALL_MMAKE_EXTRAS) $(INSTALL_LIBDIR)/mmake
+
+.PHONY: install_util
+install_util: 
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
+	cp $(UTILS) $(INSTALL_BINDIR)
 
 install_nuprolog:
 	echo "Installing NU-Prolog scripts in $(INSTALL_BINDIR)"

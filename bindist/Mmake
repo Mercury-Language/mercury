@@ -15,7 +15,13 @@ LIB_FILES	= bin doc html inc ints lib modules \
 MERCURY_VERSION	= mercury-0.5-beta.$(FULLARCH)
 
 README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
-		../NEWS ../README ../RELEASE_NOTES
+		../NEWS ../RELEASE_NOTES
+
+UTILS		= $(INSTALL_PREFIX)/bin/mkinit \
+		$(INSTALL_PREFIX)/bin/mdemangle \
+		$(INSTALL_PREFIX)/bin/mtags \
+
+MISC_FILES	= INSTALL README bindist Makefile.in configure
 
 binary_distribution: configure bindist
 	# Make a quick check that there is a mercury installation in
@@ -32,10 +38,13 @@ binary_distribution: configure bindist
 	cp ../scripts/*.in ../scripts/Mmake.rules $(MERCURY_VERSION)/scripts
 	cp ../scripts/vpath_find $(MERCURY_VERSION)/scripts
 	cp ../config.sub ../config.guess ../install-sh $(MERCURY_VERSION)
-	cp bindist Makefile.in configure $(MERCURY_VERSION)
+	cp -r ../samples $(MERCURY_VERSION)/samples
+	test -d $(MERCURY_VERSION)/util || mkdir $(MERCURY_VERSION)/util
+	cp $(UTILS) $(MERCURY_VERSION)/util
+	cp $(MISC_FILES) $(MERCURY_VERSION)
 	cp $(README_ETC) $(MERCURY_VERSION)
-	tar -cf - $(MERCURY_VERSION) | gzip > $(MERCURY_VERSION).tar.gz
-	# rm -rf $(MERCURY_VERSION)
+	tar -cf - $(MERCURY_VERSION) | gzip > ../$(MERCURY_VERSION).tar.gz
+	rm -rf $(MERCURY_VERSION)
 
 configure: configure.in
 	autoconf
