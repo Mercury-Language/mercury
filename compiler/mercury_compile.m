@@ -688,7 +688,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 		globals__io_lookup_bool_option(warn_simple_code, Warn),
 		mercury_compile__simplify(HLDS11, Warn, no,
 			Verbose, Stats, HLDS12), !,
-		mercury_compile__maybe_dump_hlds(HLDS11, "12", "simplify"), !,
+		mercury_compile__maybe_dump_hlds(HLDS12, "12", "simplify"), !,
 
 		%
 		% work out whether we encountered any errors
