@@ -3,7 +3,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2002 The University of Melbourne.
+** Copyright (C) 1994-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -85,10 +85,11 @@ size_t		MR_cutstack_zone_size =		  16;
 /*
 ** MR_heap_margin_size is used for accurate GC with the MLDS->C back-end.
 ** It is used to decide when to actually do a garbage collection.
-** At each call to MR_GC_check(), which is normally done on entry
-** to each C function, we check whether there is less than this
+** At each call to MR_GC_check(), which is normally done before
+** each allocation, we check whether there is less than this
 ** amount of heap space still available, and if not, we call
 ** MR_garbage_collect().
+**
 ** Like the sizes above, it is measured in kilobytes
 ** (but we later multiply by 1024 to convert to bytes).
 */
