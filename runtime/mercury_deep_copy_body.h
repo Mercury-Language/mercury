@@ -395,7 +395,7 @@ try_again:
                 ** Fill in the pseudo_typeinfos in the closure layout
                 ** with the values from the closure.
                 */
-                type_info_arg_vector = MR_materialize_closure_typeinfos(
+                type_info_arg_vector = MR_materialize_closure_type_params(
                     old_closure);
 
                 /* copy the arguments */

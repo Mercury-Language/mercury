@@ -255,7 +255,7 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 	} else {
 		current_regs = NULL;
 	}
-	type_params = MR_materialize_typeinfos_base(label_layout,
+	type_params = MR_materialize_type_params_base(label_layout,
 		current_regs, stack_pointer, current_frame);
 
 	for (i = 0; i < long_var_count; i++) {

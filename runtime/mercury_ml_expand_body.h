@@ -117,9 +117,9 @@
 */
 
 #include <stdio.h>
-#include "mercury_library_types.h"   /* for MR_ArrayType */
-#include "mercury_layout_util.h"     /* for MR_materialize_closure_typeinfos */
-#include "mercury_ho_call.h"         /* for MR_Closure_Id etc */
+#include "mercury_library_types.h" /* for MR_ArrayType */
+#include "mercury_layout_util.h"   /* for MR_materialize_closure_type_params */
+#include "mercury_ho_call.h"       /* for MR_Closure_Id etc */
 
 #ifdef MR_DEEP_PROFILING
   #include  "mercury_deep_profiling.h"
@@ -781,7 +781,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     MR_TypeInfo *type_params;
 
                     type_params =
-                        MR_materialize_closure_typeinfos(closure);
+                        MR_materialize_closure_type_params(closure);
                     expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
                     expand_info->EXPAND_ARGS_FIELD.arg_values = &closure->
                         MR_closure_hidden_args_0[0];
@@ -809,7 +809,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     expand_info->chosen_value_ptr = 
                         &closure->MR_closure_hidden_args_0[chosen];
                     /* the following code could be improved */
-                    type_params = MR_materialize_closure_typeinfos(closure);
+                    type_params = MR_materialize_closure_type_params(closure);
                     expand_info->chosen_type_info =
                         MR_create_type_info(type_params,
                             closure_layout->

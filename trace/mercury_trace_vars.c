@@ -387,7 +387,7 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 		valid_saved_regs = NULL;
 	}
 
-	type_params = MR_materialize_typeinfos_base(level_layout,
+	type_params = MR_materialize_type_params_base(level_layout,
 				valid_saved_regs, base_sp, base_curfr);
 
 	MR_ensure_big_enough(var_count, MR_point.MR_point_var, 
@@ -833,7 +833,7 @@ MR_trace_browse_action(FILE *out, int action_number, MR_GoalBrowser browser,
 	MR_generate_proc_name_from_layout(proc_layout, &proc_name, &arity,
 		&is_func);
 
-	type_params = MR_materialize_answer_block_typeinfos(
+	type_params = MR_materialize_answer_block_type_params(
 			table_io_decl->MR_table_io_decl_type_params,
 			answer_block, filtered_arity);
 

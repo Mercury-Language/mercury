@@ -69,15 +69,15 @@ MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs)
 }
 
 MR_TypeInfoParams
-MR_materialize_typeinfos(const MR_Label_Layout *label_layout,
+MR_materialize_type_params(const MR_Label_Layout *label_layout,
 	MR_Word *saved_regs)
 {
-	return MR_materialize_typeinfos_base(label_layout, saved_regs,
+	return MR_materialize_type_params_base(label_layout, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs));
 }
 
 MR_TypeInfoParams
-MR_materialize_typeinfos_base(const MR_Label_Layout *label_layout,
+MR_materialize_type_params_base(const MR_Label_Layout *label_layout,
 	MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr)
 {
 	const MR_Type_Param_Locns *tvar_locns;
@@ -104,7 +104,7 @@ MR_materialize_typeinfos_base(const MR_Label_Layout *label_layout,
 						&succeeded);
 				if (! succeeded) {
 					MR_fatal_error("missing type param in "
-					    "MR_materialize_typeinfos_base");
+					    "MR_materialize_type_params_base");
 				}
 			}
 		}
@@ -117,7 +117,7 @@ MR_materialize_typeinfos_base(const MR_Label_Layout *label_layout,
 }
 
 MR_TypeInfoParams
-MR_materialize_closure_typeinfos(MR_Closure *closure)
+MR_materialize_closure_type_params(MR_Closure *closure)
 {
 	const MR_Type_Param_Locns *tvar_locns;
 
@@ -142,7 +142,7 @@ MR_materialize_closure_typeinfos(MR_Closure *closure)
 						closure, &succeeded);
 				if (! succeeded) {
 					MR_fatal_error("missing type param in "
-					    "MR_materialize_closure_typeinfos");
+					  "MR_materialize_closure_type_params");
 				}
 			}
 		}
@@ -154,7 +154,7 @@ MR_materialize_closure_typeinfos(MR_Closure *closure)
 }
 
 MR_TypeInfoParams
-MR_materialize_answer_block_typeinfos(const MR_Type_Param_Locns *tvar_locns,
+MR_materialize_answer_block_type_params(const MR_Type_Param_Locns *tvar_locns,
 	MR_Word *answer_block, int block_size)
 {
 	if (tvar_locns != NULL) {
@@ -178,7 +178,7 @@ MR_materialize_answer_block_typeinfos(const MR_Type_Param_Locns *tvar_locns,
 						&succeeded);
 				if (! succeeded) {
 					MR_fatal_error("missing type param in "
-					    "MR_materialize_answer_block_typeinfos");
+				     "MR_materialize_answer_block_type_params");
 				}
 			}
 		}

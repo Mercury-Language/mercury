@@ -498,7 +498,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 
 	/* XXX We must pass NULL since the registers have not been saved */
 	/* XXX This is probably a bug; Tyson should look into it */
-        type_params = MR_materialize_typeinfos_base(label_layout,
+        type_params = MR_materialize_type_params_base(label_layout,
             NULL, stack_pointer, current_frame);
         
         /* Copy each live variable */
@@ -621,7 +621,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 		** been saved. This is probably a bug; Tyson should look
 		** into it
 		*/
-		type_params = MR_materialize_typeinfos_base(label_layout,
+		type_params = MR_materialize_type_params_base(label_layout,
 		    NULL, stack_pointer, MR_redofr_slot(max_frame));
         
 		/* Copy each live variable */
