@@ -256,32 +256,27 @@
 	% Various access predicates for the module_info data structure
 
 moduleinfo_name(ModuleInfo, Name) :-
-	ModuleInfo = module(Name, _PredIDs, _Preds, _TypeIDs, _Types,
-		_InstIDs, _Insts, _ModeIDs,  _Modes).
-moduleinfo_predids(ModuleInfo, PredIDs) :-
-	ModuleInfo = module(_Name, PredIDs, _Preds, _TypeIDs, _Types,
-		_InstIDs, _Insts, _ModeIDs,  _Modes).
+	ModuleInfo = module(Name, _Preds, _Types, _Insts, _Modes).
 moduleinfo_preds(ModuleInfo, Preds) :-
-	ModuleInfo = module(_Name, _PredIDs, Preds, _TypeIDs, _Types,
-		_InstIDs, _Insts, _ModeIDs,  _Modes).
-moduleinfo_typeids(ModuleInfo, TypeIDs) :-
-	ModuleInfo = module(_Name, _PredIDs, _Preds, TypeIDs, _Types,
-		_InstIDs, _Insts, _ModeIDs,  _Modes).
+	ModuleInfo = module(_Name, Preds, _Types, _Insts, _Modes).
+moduleinfo_predids(ModuleInfo, PredIDs) :-
+	ModuleInfo = module(_Name, Preds, _Types, _Insts, _Modes),
+	map__keys(Preds, PredIDs).
 moduleinfo_types(ModuleInfo, Types) :-
-	ModuleInfo = module(_Name, _PredIDs, _Preds, _TypeIDs, Types,
-		_InstIDs, _Insts, _ModeIDs,  _Modes).
-moduleinfo_instids(ModuleInfo, InstIDs) :-
-	ModuleInfo = module(_Name, _PredIDs, _Preds, _TypeIDs, _Types,
-		InstIDs, _Insts, _ModeIDs,  _Modes).
+	ModuleInfo = module(_Name, _Preds, Types, _Insts, _Modes).
+moduleinfo_typeids(ModuleInfo, TypeIDs) :-
+	ModuleInfo = module(_Name, _Preds, Types, _Insts, _Modes),
+	map__keys(Types, TypeIDs).
 moduleinfo_insts(ModuleInfo, Insts) :-
-	ModuleInfo = module(_Name, _PredIDs, _Preds, _TypeIDs, _Types,
-		_InstIDs, Insts, _ModeIDs,  _Modes).
-moduleinfo_modeids(ModuleInfo, ModeIds) :-
-	ModuleInfo = module(_Name, _PredIDs, _Preds, _TypeIDs, _Types,
-		_InstIDs, _Insts, ModeIDs,  _Modes).
+	ModuleInfo = module(_Name, _Preds, _Types, Insts, _Modes).
+moduleinfo_instids(ModuleInfo, InstIDs) :-
+	ModuleInfo = module(_Name, _Preds, _Types, Insts, _Modes),
+	map__keys(Insts, InstIDs).
 moduleinfo_modes(ModuleInfo, Modes) :-
-	ModuleInfo = module(_Name, _PredIDs, _Preds, _TypeIDs, _Types,
-		_InstIDs, _Insts, _ModeIDs,  Modes).
+	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes).
+moduleinfo_modeids(ModuleInfo, ModeIDs) :-
+	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes),
+	map__keys(Modes, ModeIDs).
 
 %-----------------------------------------------------------------------------%
 
@@ -292,26 +287,26 @@ predicate_name(pred(_Module,Name,_Arity), Name).
 predicate_arity(pred(_Module,_Name,Arity), Arity).
 
 predinfo_modes(PredInfo, Modes) :-
-	PredInfo = predicate(_ArgTypes, _Cond, Procs),
+	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Procs),
 	map__keys(Procs, Modes).
 
 predinfo_procedures(PredInfo, Procs) :-
-	PredInfo = pred_info(_ArgTypes, _Cond, Procs).
+	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Procs).
 
 %-----------------------------------------------------------------------------%
 
 procinfo_category(ProcInfo, Category) :-
 	ProcInfo = procedure(Category, _Names, _Types, _HeadVars, _ModeInfo, _Goal).
-procinfo_variables(ProcInfo, Vars) :-
-	ProcInfo = procedure(_Category, Vars, _HeadVars, _ModeInfo, _Goal).
-procinfo_variables(ProcInfo, Vars) :-
-	ProcInfo = procedure(_Category, Vars, _HeadVars, _ModeInfo, _Goal).
+procinfo_variables(ProcInfo, VarSet) :-
+	ProcInfo = procedure(_Category, VarSet, _Types, _HeadVars, _ModeInfo, _Goal).
+procinfo_vartypes(ProcInfo, VarTypes) :-
+	ProcInfo = procedure(_Category, _Names, VarTypes, _HeadVars, _ModeInfo, _Goal).
 procinfo_headvars(ProcInfo, HeadVars) :-
-	ProcInfo = procedure(_Category, _Vars, HeadVars, _ModeInfo, _Goal).
+	ProcInfo = procedure(_Category, _Names, _Types, HeadVars, _ModeInfo, _Goal).
 procinfo_modeinfo(ProcInfo, ModeInfo) :-
-	ProcInfo = procedure(_Category, _Vars, _HeadVars, ModeInfo, _Goal).
+	ProcInfo = procedure(Category, _Names, _Types, _HeadVars, ModeInfo, _Goal).
 procinfo_goal(ProcInfo, Goal) :-
-	ProcInfo = procedure(_Category, _Vars, _HeadVars, _ModeInfo, Goal).
+	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars, _ModeInfo, Goal).
 
 %-----------------------------------------------------------------------------%
 
