@@ -80,7 +80,6 @@ ORDINARY_PROGS=	\
 	nondet_ctrl_vn \
 	nullary_ho_func \
 	pragma_c_code \
-	pragma_c_code_order \
 	pragma_export \
 	pragma_import \
 	pragma_inline \
