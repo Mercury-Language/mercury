@@ -29,6 +29,7 @@ SOURCES= \
 
 # we do not yet pass the following tests:
 #	freefree.m
+#	no_exports.m \
 #	types.m
 
 DEPS=		$(SOURCES:%.m=%.dep)
