@@ -311,10 +311,15 @@ option_defaults_2(code_gen_option, [
 					% the `mc' script will override the
 					% above two defaults with values
 					% determined at configuration time
-	c_include_directory	-	string("")
+	c_include_directory	-	string(""),
 					% the `mc' script will override the
 					% above default with a value determined
 					% at configuration time
+
+		% split_c_files is really an optimization option,
+		% but we list it here as a code_gen_option,
+		% because we don't want `-O<n>' to turn it off.
+	split_c_files		-	bool(no)
 ]).
 option_defaults_2(optimization_option, [
 		% Optimization options
@@ -377,7 +382,6 @@ option_defaults_2(optimization_option, [
 	emit_c_loops		-	bool(no),
 	procs_per_c_function	-	int(1),
 	everything_in_one_c_function -	special,
-	split_c_files		-	bool(no),
 	c_optimize		-	bool(no)
 ]).
 option_defaults_2(link_option, [
