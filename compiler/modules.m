@@ -2074,7 +2074,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 
 			io__write_strings(DepStream, [
 				ForeignDllFileName, " : ", DllFileName]),
-			write_dll_dependencies_list(AllDeps, DepStream),
+			write_dll_dependencies_list(ModuleName,
+					AllDeps, DepStream),
 			io__nl(DepStream),
 
 			io__write_strings(DepStream, [
@@ -3820,19 +3821,29 @@ write_dependencies_list([Module | Modules], Suffix, DepStream) -->
 	io__write_string(DepStream, FileName),
 	write_dependencies_list(Modules, Suffix, DepStream).
 
-:- pred write_dll_dependencies_list(list(module_name), io__output_stream,
-				io__state, io__state).
-:- mode write_dll_dependencies_list(in, in, di, uo) is det.
+:- pred write_dll_dependencies_list(module_name,
+		list(module_name), io__output_stream, io__state, io__state).
+:- mode write_dll_dependencies_list(in, in, in, di, uo) is det.
 
-write_dll_dependencies_list(Modules0, DepStream) -->
-	{ F = (func(M) =
-		( if M = unqualified(S), mercury_std_library_module(S) then
-			unqualified("mercury")
-		else
-			M
-		)
-	)},
-	{ Modules = list__remove_dups(list__map(F, Modules0)) },
+write_dll_dependencies_list(Module, Modules0, DepStream) -->
+		% If we are not compiling a module in the mercury
+		% std library then replace all the std library dlls with
+		% one reference to mercury.dll.
+	{ Module = unqualified(Str), mercury_std_library_module(Str) ->
+		Modules = Modules0
+	;
+		F = (func(M) =
+			( if 
+				M = unqualified(S),
+				mercury_std_library_module(S)
+			then
+				unqualified("mercury")
+			else
+				M
+			)
+		),
+		Modules = list__remove_dups(list__map(F, Modules0))
+	},
 	list__foldl(write_dll_dependency(DepStream), Modules).
 
 :- pred write_dll_dependency(io__output_stream, module_name,
