@@ -1391,10 +1391,10 @@ case "$host" in
 		;;
 	*-cygwin-*)
 		# disabled for now, since it hasn't been tested
-		# AC_MSG_RESULT(yes)
+		# xxx_MSG_RESULT(yes)
 		# EXT_FOR_SHARED_LIB=dll
 		# USE_DLLS=yes
-		AC_MSG_RESULT(disabled for now, because it is untested)
+		AC_MSG_RESULT(disabled for now because it is untested)
 
 		CFLAGS_FOR_PIC=
 		;;
