@@ -461,6 +461,7 @@ then
 	fi
 	$LN_S $root/doc .
 	$LN_S $root/scripts .
+	$LN_S $root/tools .
 	$LN_S $root/util .
 	if $copy_profiler
 	then
