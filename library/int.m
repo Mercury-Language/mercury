@@ -119,6 +119,12 @@
 :- func int // int = int.
 :- mode in  // in  = uo  is det.
 
+	% (/)/2 is a synonym for (//)/2 to bring Mercury into line with
+	% the common convention for naming integer division.
+	%
+:- func int / int = int.
+:- mode in  / in  = uo  is det.
+
 	% unchecked_quotient(X, Y) is the same as X // Y, but the
 	% behaviour is undefined if the right operand is zero.
 :- func unchecked_quotient(int, int) = int.
@@ -308,6 +314,9 @@ X // Y = Div :-
 	;
 		Div = unchecked_quotient(X, Y)
 	).
+
+:- pragma inline('/'/2).
+X / Y = X // Y.
 
 :- pragma inline(rem/2).
 X rem Y = Rem :-
