@@ -946,7 +946,7 @@ MR_BEGIN_CODE
   #define first_slot			3
 
   #define copy_body(proc_label, proc_static)				\
-		MR_incr_sp_push_msg(6, ""builtin:copy/2"");		\
+		MR_incr_sp_push_msg(6, ""pred builtin:copy/2"");	\
 		MR_stackvar(6) = (MR_Word) MR_succip;			\
 		MR_stackvar(1) = MR_r1;					\
 		MR_stackvar(2) = MR_r2;					\
