@@ -4,6 +4,12 @@ DRAFT NEWS for Mercury release 0.7
 * --args, --type-info
   incompatible, requires recompilation of everything
 
+* The compiler now issues a diagnostic if some but not all of the arguments
+  of a :- pred declaration specify modes.
+
+* We now allow programmers to give names to the arguments of constructor
+  function symbols. XXX
+
 * We now allow a function of arity N to coexist with a predicate of arity N+1.
 
 * We now support some inter-module optimizations: inlining and the
