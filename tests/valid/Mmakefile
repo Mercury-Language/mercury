@@ -94,12 +94,12 @@ all:	objs
 
 # some regression tests only failed with particular options enabled
 # (please keep this list sorted)
-GRADE-agc_graph			= asm_fast.agc
-GRADE-agc_ho_pred		= asm_fast.agc
-GRADE-agc_ite			= asm_fast.agc
-GRADE-agc_unbound_typevars	= asm_fast.agc
-GRADE-agc_unbound_typevars2	= asm_fast.agc
-GRADE-agc_unused_in		= asm_fast.agc
+GRADEFLAGS-agc_graph		= --gc accurate
+GRADEFLAGS-agc_ho_pred		= --gc accurate
+GRADEFLAGS-agc_ite		= --gc accurate
+GRADEFLAGS-agc_unbound_typevars	= --gc accurate
+GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
+GRADEFLAGS-agc_unused_in	= --gc accurate
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-double_vn		= -O4
 MCFLAGS-higher_order_implied_mode = -O-1
@@ -113,15 +113,15 @@ MCFLAGS-vn_float		= -O5
 
 # intermod_lambda.m needs inter-module optimization
 intermod_lambda.c:
-	$(MCI) --grade $(GRADE) $(MCIFLAGS) intermod_lambda2.m
-	$(MCOI) --grade $(GRADE) $(MCOIFLAGS) intermod_lambda2.m
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) --intermodule-optimization \
+	$(MCI) $(GRADEFLAGS) $(MCIFLAGS) intermod_lambda2.m
+	$(MCOI) $(GRADEFLAGS) $(MCOIFLAGS) intermod_lambda2.m
+	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) --intermodule-optimization \
 		intermod_lambda.m
 
 intermod_test.c:
-	$(MCI) --grade $(GRADE) $(MCIFLAGS) intermod_test2.m
-	$(MCOI) --grade $(GRADE) $(MCOIFLAGS) intermod_test2.m
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) --intermodule-optimization \
+	$(MCI) $(GRADEFLAGS) $(MCIFLAGS) intermod_test2.m
+	$(MCOI) $(GRADEFLAGS) $(MCOIFLAGS) intermod_test2.m
+	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) --intermodule-optimization \
 		intermod_test.m
 
 check:	objs

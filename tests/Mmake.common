@@ -1,15 +1,8 @@
 #-----------------------------------------------------------------------------#
 
+GRADEFLAGS = --grade $(GRADE) $(GRADEFLAGS-$*) $(EXTRA_GRADEFLAGS)
 MCFLAGS = $(MCFLAGS-$*) $(EXTRA_MCFLAGS)
 MGNUCFLAGS=-g $(EXTRA_MGNUCFLAGS) $(EXTRA_CFLAGS)
-
-# We only get to set the grade once, so take the first of either the
-# specific grade for the test, or the normal grade for all tests.  Note
-# that we evaluate NORMAL_GRADE now (using :=), so as to avoid GRADE
-# being defined in terms of itself.
-NORMAL_GRADE := $(GRADE)
-GRADE = $(firstword $(GRADE-$*) $(NORMAL_GRADE))
-
 
 # override this with `mmake HAVE_NUPROLOG=yes'
 # if you want to rebuild the `.exp' files.
