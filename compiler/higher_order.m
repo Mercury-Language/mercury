@@ -1558,7 +1558,13 @@ version_matches(Params, ModuleInfo, Request, Version,
 		bool::out) is semidet.
 
 higher_order_args_match([], [], [], no).
-higher_order_args_match([_ | _], [], [], yes).
+higher_order_args_match(RequestArgs, [], [], yes) :-
+	RequestArgs = [_ | _],
+	\+ (
+		list__member(RequestArg, RequestArgs),
+		RequestArg = higher_order_arg(RequestConsId, _, _, _, _, _),
+		RequestConsId = pred_const(_, _, _)
+	).
 higher_order_args_match([RequestArg | Args1], [VersionArg | Args2],
 		Args, PartialMatch) :-
 	RequestArg = higher_order_arg(ConsId1, ArgNo1, _, _, _, _),
@@ -2324,45 +2330,56 @@ maybe_write_request(yes, ModuleInfo, Msg, SymName,
 	),
 	io__write_string(" with higher-order arguments:\n"),
 	{ NumToDrop is ActualArity - Arity },
-	output_higher_order_args(ModuleInfo, NumToDrop, HOArgs).
+	output_higher_order_args(ModuleInfo, NumToDrop, 0, HOArgs).
 
-:- pred output_higher_order_args(module_info::in, int::in,
+:- pred output_higher_order_args(module_info::in, int::in, int::in,
 	list(higher_order_arg)::in, io__state::di, io__state::uo) is det.
 
-output_higher_order_args(_, _, []) --> [].
-output_higher_order_args(ModuleInfo, NumToDrop, [HOArg | HOArgs]) -->
-	{ HOArg = higher_order_arg(ConsId, ArgNo, NumArgs, _, _, _) },
+output_higher_order_args(_, _, _, []) --> [].
+output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs]) -->
+	{ HOArg = higher_order_arg(ConsId, ArgNo, NumArgs,
+			_, _, CurriedHOArgs) },
+	io__write_string("% "),
+	{ list__duplicate(Indent + 1, "  ", Spaces) }, 
+	list__foldl(io__write_string, Spaces),
 	( { ConsId = pred_const(PredId, _ProcId, _) } ->
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 		{ pred_info_name(PredInfo, Name) },
 		{ pred_info_arity(PredInfo, Arity) },
 			% adjust message for type_infos
 		{ DeclaredArgNo is ArgNo - NumToDrop },
-		io__write_string("\tHeadVar__"),
+		io__write_string("HeadVar__"),
 		io__write_int(DeclaredArgNo),
 		io__write_string(" = `"),
 		io__write_string(Name),
 		io__write_string("'/"),
 		io__write_int(Arity)
 	; { ConsId = type_ctor_info_const(TypeModule, TypeName, TypeArity) } ->
-		io__write_string(" type_ctor_info for `"),
+		io__write_string("type_ctor_info for `"),
 		prog_out__write_sym_name(qualified(TypeModule, TypeName)),
 		io__write_string("'/"),
 		io__write_int(TypeArity)
 	; { ConsId = base_typeclass_info_const(_, ClassId, _, _) } ->
-		io__write_string(" base_typeclass_info for `"),
+		io__write_string("base_typeclass_info for `"),
 		{ ClassId = class_id(ClassName, ClassArity) },
 		prog_out__write_sym_name(ClassName),
 		io__write_string("'/"),
 		io__write_int(ClassArity)
 	;
 		% XXX output the type.
-		io__write_string(" type_info/typeclass_info ")
+		io__write_string("type_info/typeclass_info ")
 	),
 	io__write_string(" with "),
 	io__write_int(NumArgs),
-	io__write_string(" curried arguments\n"),
-	output_higher_order_args(ModuleInfo, NumToDrop, HOArgs).
+	io__write_string(" curried arguments"),
+	( { CurriedHOArgs = [] } ->
+		io__nl
+	;
+		io__write_string(":\n"),
+		output_higher_order_args(ModuleInfo, 0,
+			Indent + 1, CurriedHOArgs)
+	),	
+	output_higher_order_args(ModuleInfo, NumToDrop, Indent, HOArgs).
 
 %-----------------------------------------------------------------------------%
 
