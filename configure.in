@@ -430,6 +430,19 @@ else
 	CYGPATH=echo
 
 	AC_PROG_RANLIB
+
+	# On MacOS 10.1 (and other MacOS systems?),
+	# we need to pass the `-c' option to ranlib.
+	# Otherwise, "common" symbols, i.e. "int foo;" without an initializer,
+	# do not get included in the archive table of contents, and so
+	# don't get found during linking.  Whose !@#$ing idea was it to make
+	# that brain-damaged and non-standard-conforming mode the default?
+
+	case "$host" in *-apple-darwin*)
+		RANLIB="$RANLIB -c"
+		AC_SUBST(RANLIB)
+		;;
+	esac
 fi
 
 AC_SUBST(OBJFILE_OPT)
