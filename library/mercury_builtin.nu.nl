@@ -195,7 +195,7 @@ lambda(LambdaExpression, Goal0, Arg1, Arg2, Arg3, Arg4, Arg5) :-
 	call(Goal).
 
 call(P0, X1, X2, X3, X4, X5, X6, X7) :-
-	P =.. L0,
+	P0 =.. L0,
 	append(L0, [X1, X2, X3, X4, X5, X6, X7], L),
 	P =.. L,
 	call(P).
