@@ -240,16 +240,24 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 			term__unify(BindingOfX, BindingOfY, Bindings0, Bindings)
 		else
 			% Y is a variable which hasn't been bound yet
-			not term__occurs(BindingOfX, Y, Bindings0),
-			map__set(Bindings0, Y, BindingOfX, Bindings)
+			(if BindingOfX = term_variable(Y) then
+				Bindings = Bindings0
+			else
+				not term__occurs(BindingOfX, Y, Bindings0),
+				map__set(Bindings0, Y, BindingOfX, Bindings)
+			)
 		)
 	else
 		(if some [BindingOfY2]
 			map__search(Bindings0, Y, BindingOfY2)
 		then
 			% X is a variable which hasn't been bound yet
-			not term__occurs(BindingOfY2, X, Bindings0),
-			map__set(Bindings0, X, BindingOfY2, Bindings)
+			(if BindingOfY2 = term_variable(X) then
+				Bindings = Bindings0
+			else
+				not term__occurs(BindingOfY2, X, Bindings0),
+				map__set(Bindings0, X, BindingOfY2, Bindings)
+			)
 		else
 			% both X and Y are unbound variables -
 			% bind one to the other
