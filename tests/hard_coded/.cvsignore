@@ -12,3 +12,12 @@ float_rounding_bug
 string_loop
 no_fully_strict
 cc_nondet_disj
+string_alignment
+tim_qual1
+c_write_string
+func_and_pred
+bidirectional
+address_of_builtins
+reverse_arith
+curry
+rev_arith
