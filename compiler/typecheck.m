@@ -912,18 +912,13 @@ typecheck_call_pred(PredName, Args, PredId, TypeCheckInfo0, TypeCheckInfo) :-
 				Args, PredTypeVarSet, PredArgTypes,
 				PredClassContext,
 				TypeCheckInfo1, TypeCheckInfo2)
-			),
-				% Arguably, we could do context reduction at
-				% a different point. See the paper:
-				% "Type classes: an exploration of the design
-				% space", S.P. Jones, M. Jones 1997.
-				% for a discussion of some of the issues.
-			perform_context_reduction(TypeCheckInfo2, TypeCheckInfo)
+			)
 		;
 			typecheck_info_get_pred_import_status(TypeCheckInfo1,
 						CallingStatus),
 			typecheck_call_overloaded_pred(PredIdList, Args,
-				CallingStatus, TypeCheckInfo1, TypeCheckInfo),
+				CallingStatus, TypeCheckInfo1, TypeCheckInfo2),
+
 			%
 			% In general, we can't figure out which
 			% predicate it is until after we have
@@ -936,7 +931,15 @@ typecheck_call_pred(PredName, Args, PredId, TypeCheckInfo0, TypeCheckInfo) :-
 			% available to determine which predicate it is.
 			%
 			invalid_pred_id(PredId)
-		)
+		),
+
+			% Arguably, we could do context reduction at
+			% a different point. See the paper:
+			% "Type classes: an exploration of the design
+			% space", S.P. Jones, M. Jones 1997.
+			% for a discussion of some of the issues.
+		perform_context_reduction(TypeCheckInfo2, TypeCheckInfo)
+
 	;
 		invalid_pred_id(PredId),
 		report_pred_call_error(TypeCheckInfo1, ModuleInfo,

@@ -1899,7 +1899,6 @@ hlds_out__write_constructor(Tvarset, Name - Args) -->
 :- mode hlds_out__write_classes(in, in, di, uo) is det.
 
 hlds_out__write_classes(Indent, ClassTable) -->
-		% XXX fix this up.
 	hlds_out__write_indent(Indent),
 	io__write_string("%-------- Classes --------\n"),
 	{ map__to_assoc_list(ClassTable, ClassTableList) },
