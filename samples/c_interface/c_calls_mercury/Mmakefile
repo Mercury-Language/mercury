@@ -13,7 +13,7 @@ MGNUCFLAGS=-g
 MLFLAGS=-g
 
 # tell the Mercury linker to link in c_main.o and mercury_lib.o
-MLOBJS=c_main.o mercury_lib.o
+MLOBJS=c_main.o $(mercury_lib.os)
 
 #-----------------------------------------------------------------------------#
 
@@ -21,7 +21,7 @@ c_main.o: mercury_lib.h c_main.h
 
 # to make mercury_lib.h, just compile mercury_lib.m;
 # the Mercury compiler will create mercury_lib.h as a side-effect.
-mercury_lib.h: mercury_lib.o
+mercury_lib.h: $(mercury_lib.os)
 
 # make sure that `mmake clean' removes c_main.o
 clean_local:

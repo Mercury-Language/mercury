@@ -12,7 +12,7 @@ LIBS = libmercury_lib
 LIBSLINK = libmercury_lib.a
 
 c_main: $(OBJECTS) $(LIBS)
-	$(ML) $(MLFLAGS) -o c_main $(OBJECTS) $(LIBSLINK)
+	$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o c_main $(OBJECTS) $(LIBSLINK)
 
 #-----------------------------------------------------------------------------#
 
