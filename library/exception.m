@@ -858,8 +858,7 @@ mercury__exception__builtin_catch_gc_trace(void *frame)
 
  #define ML_UNINSTALL_AGC_HANDLER() \
  	do { \
-	    mercury__private_builtin__stack_chain = ((struct MR_StackChain *) \
-		mercury__private_builtin__stack_chain)->prev; \
+	    mercury__private_builtin__stack_chain = agc_locals.prev; \
 	} while (0)
 
   #define ML_AGC_LOCAL(NAME) (agc_locals.NAME)
@@ -2063,7 +2062,7 @@ report_uncaught_exception(Exception) -->
 report_uncaught_exception_2(Exception, unit) -->
 	io__flush_output,
 	io__stderr_stream(StdErr),
-	io__write_string(StdErr, "Uncaught Mercury exception:\n"),
+	io__write_string(StdErr, "Uncaught exception:\n"),
 	( { univ_to_type(Exception, software_error(Message)) } ->
 		io__format(StdErr, "Software Error: %s\n", [s(Message)])
 	;
