@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,8 +55,13 @@
 :- implementation.
 :- import_module std_util, require, string, list.
 
-:- pragma c_header_code("#include <stdio.h>").
-:- pragma c_header_code("#include <dlfcn.h>").
+:- pragma c_header_code("
+	#include <stdio.h>
+	#include ""mercury_conf.h""
+#ifdef HAVE_DLFCN_H
+	#include <dlfcn.h>
+#endif
+").
 
 :- type handle ---> handle(c_pointer).
 
@@ -85,15 +90,36 @@ open(FileName, Mode, Scope, Result) -->
 :- pragma c_code(dlopen(FileName::in, Mode::in, Scope::in, Result::out,
 		_IO0::di, _IO::uo), [], "
 {
+#if defined(HAVE_DLFCN_H) && defined(HAVE_DLOPEN) \
+ && defined(RTLD_NOW) && defined(RTLD_LAZY)
 	int mode = (Mode ? RTLD_NOW : RTLD_LAZY);
 	/* not all systems have RTLD_GLOBAL */
 	#ifdef RTLD_GLOBAL
 	  if (Scope) mode |= RTLD_GLOBAL;
 	#endif
-	Result = (Word) dlopen(FileName, mode);
+	Result = (MR_Word) dlopen(FileName, mode);
+#else
+	Result = (MR_Word) NULL;
+#endif
 }").
 
-:- type closure ---> closure(int, c_pointer).
+:- type closure_layout
+	--->	closure_layout(
+			int,
+			string,
+			string,
+			string,
+			int,
+			int,
+			int
+		).
+
+:- type closure
+	--->	closure(
+			closure_layout,
+			c_pointer,
+			int
+		).
 
 mercury_sym(Handle, MercuryProc0, Result) -->
 	{ check_proc_spec_matches_result_type(Result, _,
@@ -109,7 +135,9 @@ mercury_sym(Handle, MercuryProc0, Result) -->
 		% convert the procedure address to a closure
 		%
 		NumCurriedInputArgs = 0,
-		Closure = closure(NumCurriedInputArgs, Address),
+		ClosureLayout = closure_layout(0, "unknown", "unknown",
+			"unknown", -1, -1, -1),
+		Closure = closure(ClosureLayout, Address, NumCurriedInputArgs),
 		private_builtin__unsafe_type_cast(Closure, Value),
 		Result = ok(Value)
 	}.
@@ -176,16 +204,28 @@ sym(handle(Handle), Name, Result) -->
 :- pragma c_code(dlsym(Handle::in, Name::in, Pointer::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury], "
 {
-	Pointer = (Word) dlsym((void *) Handle, Name);
+#if defined(HAVE_DLFCN_H) && defined(HAVE_DLSYM)
+	Pointer = (MR_Word) dlsym((void *) Handle, Name);
+#else
+	Pointer = (MR_Word) NULL;
+#endif
 }").
 
 :- pred dlerror(string::out, io__state::di, io__state::uo) is det.
 :- pragma c_code(dlerror(ErrorMsg::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury], "
 {
-	const char *msg = dlerror();
+	const char *msg;
+
+#if defined(HAVE_DLFCN_H) && defined(HAVE_DLERROR)
+	msg = dlerror();
 	if (msg == NULL) msg = """";
-	make_aligned_string_copy(ErrorMsg, msg);
+#else
+	MR_make_aligned_string(msg, ""sorry, not implemented: ""
+		""dynamic linking not supported on this platform"");
+#endif
+
+	MR_make_aligned_string_copy(ErrorMsg, msg);
 }").
 
 close(handle(Handle), Result) -->
@@ -193,6 +233,14 @@ close(handle(Handle), Result) -->
 	dlerror(ErrorMsg),
 	{ Result = (if ErrorMsg = "" then ok else error(ErrorMsg)) }.
 
+/*
+** Note that dlclose() may call finalization code (e.g. destructors for global
+** variables in C++) which may end up calling Mercury, so it's not safe
+** to declare this as `will_not_call_mercury'.
+*/
 :- pred dlclose(c_pointer::in, io__state::di, io__state::uo) is det.
-:- pragma c_code(dlclose(Handle::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury], "dlclose((void *)Handle)").
+:- pragma c_code(dlclose(Handle::in, _IO0::di, _IO::uo), [], "
+#if defined(HAVE_DLFCN_H) && defined(HAVE_DLCLOSE)
+	dlclose((void *)Handle)
+#endif
+").

@@ -1,6 +1,13 @@
+# Use shared libraries, since they're needed for dynamic linking
+MGNUCFLAGS = --pic-reg
+MLFLAGS = --shared
+
+# Link in the `-ldl' library (this may not be needed on some systems)
+#MLLIBS = -ldl
+
 # enable C-level debugging
 CFLAGS = -g
-MLFLAGS = --no-strip
+MLFLAGS += --no-strip
 
 main_target: libdl
 depend: dl.depend dl_test.depend hello.depend
