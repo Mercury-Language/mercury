@@ -455,7 +455,9 @@
 
 :- type class_name == sym_name.
 
-:- type class_interface  == list(class_method).	
+:- type class_interface
+	--->	abstract
+	;	concrete(list(class_method)).
 
 :- type class_method
 	--->	pred(tvarset, inst_varset, existq_tvars, sym_name,
@@ -720,6 +722,8 @@
 					% used for sets of type variables
 :- type tsubst		==	map(tvar, type). % used for type substitutions
 
+:- type type_id		==	pair(sym_name, arity).
+
 	% existq_tvars is used to record the set of type variables which are
 	% existentially quantified
 :- type existq_tvars	==	list(tvar).
@@ -866,6 +870,17 @@
 		% This is used internally by the compiler,
 		% to identify items which originally
 		% came from a .opt file.
+	;	transitively_imported
+		% This is used internally by the compiler,
+		% to identify items which originally
+		% came from a `.opt' or `.int2' file.
+		% These should not be allowed to
+		% match items in the current module.
+		% Note that unlike `:- interface', `:- implementation'
+		% and the other pseudo-declarations `:- imported(interface)',
+		% etc., a `:- transitively_imported' declaration
+		% applies to all of the following items in the list,
+		% not just up to the next pseudo-declaration. 
 
 	;	external(sym_name_specifier)
 

@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_goal, hlds_module, hlds_pred, prog_data.
+:- import_module hlds_goal, hlds_module, hlds_pred, prog_data.
 :- import_module bool, io, list, map, set, std_util.
 
 	% Check that the argument types and modes are legal for

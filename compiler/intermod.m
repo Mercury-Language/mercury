@@ -1345,7 +1345,9 @@ intermod__write_class(ModuleName, ClassId, ClassDefn) -->
 	{ ClassId = class_id(QualifiedClassName, _) },
 	(
 		{ QualifiedClassName = qualified(ModuleName, _) },
-		{ ImportStatus = local }
+		{ ImportStatus = local
+		; ImportStatus = abstract_exported
+		}
 	->
 		{ Item = typeclass(Constraints, QualifiedClassName, TVars,
 				Interface, TVarSet) },

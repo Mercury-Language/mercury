@@ -19,6 +19,7 @@ MULTIMODULE_SOURCES= \
 	imported_mode.m \
 	partial_implied_mode.m \
 	test_nested.m \
+	transitive_import_class.m \
 	undef_mod_qual.m
 
 SINGLEMODULE_SOURCES= \
@@ -45,8 +46,9 @@ SINGLEMODULE_SOURCES= \
 	ho_unique_error.m \
 	impure_method_impl.m \
 	inline_conflict.m \
-	invalid_main.m \
 	inst_list_dup.m \
+	invalid_main.m \
+	invalid_typeclass.m \
 	io_in_ite_cond.m \
 	lambda_syntax_error.m \
 	method_impl.m \
@@ -76,6 +78,7 @@ SINGLEMODULE_SOURCES= \
 	spurious_mode_error.m \
 	tc_err1.m \
 	tc_err2.m \
+	transitive_import.m \
 	tricky_assert1.m \
 	type_inf_loop.m \
 	type_loop.m \

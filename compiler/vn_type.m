@@ -14,7 +14,7 @@
 
 :- interface.
 :- import_module hlds_goal, llds, builtin_ops, livemap, options.
-:- import_module getopt, map, set, list, std_util, counter.
+:- import_module getopt, map, set, list, std_util, counter, term.
 
 :- type vn == int.
 

@@ -15,6 +15,15 @@ Changes to the Mercury standard library:
 * The exception module has a new predicate `try_store', which is
   like `try_io', but which works with stores rather than io__states.
 
+Changes to the Mercury implementation:
+* We've fixed a long-standing bug in the handling of module imports.
+  Previously, if `module1' imported `module2' which imported `module3' in
+  its interface section, then any types, insts, modes and typeclasses defined
+  in the interface of `module3' could be used in `module1' even
+  if `module1' did not import `module3' directly.
+
+  This change will break some existing programs, but that is easily fixed
+  by adding any necessary `:- import_module' or `:- use_module' declarations.
 
 NEWS for Mercury release 0.10.1:
 --------------------------------

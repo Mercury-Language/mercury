@@ -21,7 +21,7 @@
 :- import_module code_model, rtti, layout, builtin_ops.
 :- import_module tree.
 
-:- import_module bool, assoc_list, list, map, set, std_util, counter.
+:- import_module bool, assoc_list, list, map, set, std_util, counter, term.
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 University of Melbourne.
+% Copyright (C) 1997-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,7 +67,7 @@ parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
 				NameString, Vars, _, _))
 		->
 			Result = ok(typeclass(Constraints, NameString, Vars,
-				MethodList, TVarSet))
+				concrete(MethodList), TVarSet))
 		;
 				% if the item we get back isn't a typeclass,
 				% something has gone wrong...
@@ -158,11 +158,16 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
 		MaybeClassName = ok(ClassName, TermVars0),
 		list__map(term__coerce, TermVars0, TermVars),
 		(
-			term__var_list_to_term_list(Vars, TermVars)
+			term__var_list_to_term_list(Vars, TermVars),
+			list__sort_and_remove_dups(TermVars, SortedTermVars),
+			list__length(SortedTermVars) =
+				list__length(TermVars) `with_type` int
 		->
-			Result = ok(typeclass([], ClassName, Vars, [], TVarSet))
+			Result = ok(typeclass([], ClassName, Vars,
+					abstract, TVarSet))
 		;
-			Result = error("expected variables as class parameters",
+			Result = error(
+			"expected distinct variables as class parameters",
 				Name)
 		)
 	;
@@ -170,7 +175,8 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_class_methods(module_name, term, varset, maybe1(class_interface)).
+:- pred parse_class_methods(module_name, term, varset,
+		maybe1(list(class_method))).
 :- mode parse_class_methods(in, in, in, out) is det.
 
 parse_class_methods(ModuleName, Methods, VarSet, Result) :-

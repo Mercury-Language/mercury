@@ -49,7 +49,7 @@
 
 :- import_module hlds_data, hlds_module, (inst), instmap.
 :- import_module goal_util.
-:- import_module assoc_list, bool, map, require, set, std_util, varset.
+:- import_module assoc_list, bool, map, require, set, std_util, term, varset.
 
 context__process_disjuncts(OldPredProcId, Inputs, Outputs,
 		Disjuncts0, Disjuncts) -->

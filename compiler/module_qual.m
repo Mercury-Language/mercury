@@ -182,7 +182,8 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
 	% so we use a simpler data type here than hlds_pred__import_status.
 :- type import_status
 	--->	exported
-	;	not_exported.
+	;	local
+	;	imported.
 		
 	% Pass over the item list collecting all defined module, type, mode and
 	% inst ids, all module synonym definitions, and the names of all
@@ -191,8 +192,14 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
 
 collect_mq_info([], Info, Info).
 collect_mq_info([Item - _ | Items], Info0, Info) :-
-	collect_mq_info_2(Item, Info0, Info1),
-	collect_mq_info(Items, Info1, Info).
+	( Item = module_defn(_, transitively_imported) ->
+		% Don't process the transitively imported items (from `.int2'
+		% files). They can't be used in the current module.
+		Info = Info0
+	;
+		collect_mq_info_2(Item, Info0, Info1),
+		collect_mq_info(Items, Info1, Info)
+	).
 
 :- pred collect_mq_info_2(item::in, mq_info::in, mq_info::out) is det.
 
@@ -312,18 +319,20 @@ process_module_defn(include_module(ModuleNameList), Info0, Info) :-
 process_module_defn(interface, Info0, Info) :-
 	mq_info_set_import_status(Info0, exported, Info).
 process_module_defn(private_interface, Info0, Info) :-
-	mq_info_set_import_status(Info0, not_exported, Info).
+	mq_info_set_import_status(Info0, local, Info).
 process_module_defn(implementation, Info0, Info) :-
-	mq_info_set_import_status(Info0, not_exported, Info).
+	mq_info_set_import_status(Info0, local, Info).
 process_module_defn(imported(_), Info0, Info) :-
-	mq_info_set_import_status(Info0, not_exported, Info1),
+	mq_info_set_import_status(Info0, imported, Info1),
 	mq_info_set_need_qual_flag(Info1, may_be_unqualified, Info).
 process_module_defn(used(_), Info0, Info) :-
-	mq_info_set_import_status(Info0, not_exported, Info1),
+	mq_info_set_import_status(Info0, imported, Info1),
 	mq_info_set_need_qual_flag(Info1, must_be_qualified, Info).
 process_module_defn(opt_imported, Info0, Info) :-
-	mq_info_set_import_status(Info0, not_exported, Info1),
+	mq_info_set_import_status(Info0, imported, Info1),
 	mq_info_set_need_qual_flag(Info1, must_be_qualified, Info).
+process_module_defn(transitively_imported, _, _) :-
+	error("process_module_defn: transitively_imported item").
 process_module_defn(external(_), Info, Info).
 process_module_defn(end_module(_), Info, Info).
 process_module_defn(export(_), Info, Info).
@@ -345,9 +354,10 @@ add_module_defn(ModuleName, Info0, Info) :-
 :- pred add_imports(sym_list::in, mq_info::in, mq_info::out) is det.
 
 add_imports(Imports, Info0, Info) :-
-	( Imports = module(ImportedModules) ->
+	mq_info_get_import_status(Info0, Status),
+	( Imports = module(ImportedModules), Status \= imported ->
 		mq_info_add_imported_modules(Info0, ImportedModules, Info1),
-		( mq_info_get_import_status(Info1, exported) ->
+		( Status = exported ->
 			mq_info_add_unused_interface_modules(Info1,
 				ImportedModules, Info)
 		;
@@ -581,7 +591,15 @@ module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -
 	{ Id = Name - Arity },
 	{ mq_info_set_error_context(Info0, class(Id) - Context, Info1) },
 	qualify_class_constraint_list(Constraints0, Constraints, Info1, Info2),
-	qualify_class_interface(Interface0, Interface, Info2, Info).
+	(
+		{ Interface0 = abstract },
+		{ Interface = abstract },
+		{ Info = Info2 }
+	;
+		{ Interface0 = concrete(Methods0) },
+		qualify_class_interface(Methods0, Methods, Info2, Info),
+		{ Interface = concrete(Methods) }
+	).
 
 module_qualify_item(instance(Constraints0, Name0, Types0, Body0, VarSet,
 		ModName) - Context, 
@@ -602,13 +620,14 @@ module_qualify_item(instance(Constraints0, Name0, Types0, Body0, VarSet,
 							bool::out) is det.
 
 update_import_status(opt_imported, Info, Info, no).
+update_import_status(transitively_imported, Info, Info, no).
 update_import_status(module(_), Info, Info, yes).
 update_import_status(interface, Info0, Info, yes) :-
 	mq_info_set_import_status(Info0, exported, Info).
 update_import_status(implementation, Info0, Info, yes) :-
-	mq_info_set_import_status(Info0, not_exported, Info).
+	mq_info_set_import_status(Info0, local, Info).
 update_import_status(private_interface, Info0, Info, yes) :-
-	mq_info_set_import_status(Info0, not_exported, Info).
+	mq_info_set_import_status(Info0, local, Info).
 update_import_status(imported(_), Info, Info, no).
 update_import_status(used(_), Info, Info, no).
 update_import_status(external(_), Info, Info, yes).
@@ -1031,8 +1050,9 @@ qualify_class_name(Class0, Class, MQInfo0, MQInfo) -->
 	find_unique_match(Class0, Class, ClassIdSet, class_id,
 		MQInfo0, MQInfo).
 
-:- pred qualify_class_interface(class_interface::in, class_interface::out,
-	mq_info::in, mq_info::out, io__state::di, io__state::uo) is det. 
+:- pred qualify_class_interface(list(class_method)::in,
+	list(class_method)::out, mq_info::in, mq_info::out,
+	io__state::di, io__state::uo) is det. 
 
 qualify_class_interface([], [], MQInfo, MQInfo) --> [].
 qualify_class_interface([M0|M0s], [M|Ms], MQInfo0, MQInfo) -->
@@ -1395,8 +1415,6 @@ report_invalid_type(Type, ErrorContext - Context) -->
 	% is_builtin_atomic_type(TypeId)
 	%	is true iff 'TypeId' is the type_id of a builtin atomic type
 
-:- type type_id == id.
-
 :- pred is_builtin_atomic_type(type_id).
 :- mode is_builtin_atomic_type(in) is semidet.
 
@@ -1419,7 +1437,7 @@ init_mq_info(Items, Globals, ReportErrors, ModuleName, Info0) :-
 	set__list_to_set(ImportDeps `list__append` UseDeps, ImportedModules),
 	id_set_init(Empty),
 	Info0 = mq_info(ImportedModules, Empty, Empty, Empty, Empty,
-			Empty, InterfaceModules0, not_exported, 0, no, no,
+			Empty, InterfaceModules0, local, 0, no, no,
 			ReportErrors, ErrorContext, ModuleName,
 			may_be_unqualified).
 

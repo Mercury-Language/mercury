@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,8 +157,15 @@ equiv_type__replace_in_item(
 			no) :-
 	equiv_type__replace_in_class_constraint_list(Constraints0, VarSet0, 
 				EqvMap, Constraints, VarSet),
-	equiv_type__replace_in_class_interface(ClassInterface0,
-				EqvMap, ClassInterface).
+	(
+		ClassInterface0 = abstract,
+		ClassInterface = abstract
+	;
+		ClassInterface0 = concrete(Methods0),
+		equiv_type__replace_in_class_interface(Methods0,
+					EqvMap, Methods),
+		ClassInterface = concrete(Methods)
+	).
 
 equiv_type__replace_in_item(
 			instance(Constraints0, ClassName, Ts0, 
@@ -238,8 +245,8 @@ equiv_type__replace_in_class_constraint(Constraint0, VarSet0, EqvMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred equiv_type__replace_in_class_interface(class_interface,
-					eqv_map, class_interface).
+:- pred equiv_type__replace_in_class_interface(list(class_method),
+					eqv_map, list(class_method)).
 :- mode equiv_type__replace_in_class_interface(in, in, out) is det.
 
 equiv_type__replace_in_class_interface(ClassInterface0, EqvMap,

@@ -104,7 +104,11 @@ check_typeclass__check_instance_decls(ModuleInfo0, QualInfo0,
 	).  
 
 :- type check_tc_info
-	--->	check_tc_info(error_messages, module_info, qual_info).
+	--->	check_tc_info(
+			error_messages :: error_messages,
+			module_info :: module_info,
+			qual_info :: qual_info
+		).
 
 	% list__map_foldl2(Pred, InList, OutList, StartA, EndA, StartB, EndB)
 	% calls Pred with two accumulator (with the initial values of
@@ -134,53 +138,91 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 	ClassId - InstanceDefns, CheckTCInfo0, CheckTCInfo, IO0, IO) :-
 
 	map__lookup(ClassTable, ClassId, ClassDefn),
-	ClassDefn = hlds_class_defn(_, SuperClasses, ClassVars, _,
-		ClassInterface, ClassVarSet, _TermContext),
-	solutions(
-		lambda([PredId::out] is nondet, 
-			(
+	ClassDefn = hlds_class_defn(ImportStatus, SuperClasses, ClassVars,
+		Interface, ClassInterface, ClassVarSet, TermContext),
+
+	(
+		status_defined_in_this_module(ImportStatus, yes),
+		Interface = abstract
+	->
+		ClassId = class_id(ClassName, ClassArity),
+		sym_name_and_arity_to_string(ClassName / ClassArity,
+			ClassNameStr),
+		ErrorPieces = [
+			words("Error: no definition for typeclass"),
+			words(string__append_list(["`", ClassNameStr, "'."]))
+		],
+
+		Messages0 = CheckTCInfo0 ^ error_messages,
+		CheckTCInfo = CheckTCInfo0 ^ error_messages :=
+				[TermContext - ErrorPieces | Messages0],
+		InstanceDefns = InstanceDefns0,
+		IO = IO0
+	;
+		solutions(
+			(pred(PredId::out) is nondet :-
 				list__member(ClassProc, ClassInterface),
 				ClassProc = hlds_class_proc(PredId, _)
-			)),
-		PredIds),
-	list_map_foldl2(check_class_instance(ClassId, SuperClasses, ClassVars,
-				ClassInterface, ClassVarSet,
-				PredIds),
-		InstanceDefns0, InstanceDefns, 
-		CheckTCInfo0, CheckTCInfo,
-		IO0, IO).
+			),
+			PredIds),
+		list_map_foldl2(
+			check_class_instance(ClassId, SuperClasses,
+				ClassVars, ClassInterface, Interface,
+				ClassVarSet, PredIds),
+			InstanceDefns0, InstanceDefns, 
+			CheckTCInfo0, CheckTCInfo,
+			IO0, IO)
+	).
 
 	% check one instance of one class
 :- pred check_class_instance(class_id, list(class_constraint), list(tvar),
-	hlds_class_interface, tvarset, list(pred_id), 
+	hlds_class_interface, class_interface, tvarset, list(pred_id), 
 	hlds_instance_defn, hlds_instance_defn, 
 	check_tc_info, check_tc_info, 
 	io__state, io__state).
-:- mode check_class_instance(in, in, in, in, in, in, in, out, in, out,
+:- mode check_class_instance(in, in, in, in, in, in, in, in, out, in, out,
 	di, uo) is det.
 
-check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
-		PredIds, InstanceDefn0, InstanceDefn, 
+check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
+		ClassInterface, ClassVarSet, PredIds, InstanceDefn0,
+		InstanceDefn, 
 		check_tc_info(Errors0, ModuleInfo0, QualInfo0),
 		check_tc_info(Errors, ModuleInfo, QualInfo),
 		IO0, IO):-
 		
 		% check conformance of the instance body
-	InstanceDefn0 = hlds_instance_defn(_, _, _, _, _, InstanceBody,
-		_, _, _),
+	InstanceDefn0 = hlds_instance_defn(_, _, TermContext, _, _,
+		InstanceBody, _, _, _),
 	(
-		InstanceBody = abstract,
+	    InstanceBody = abstract,
+	    InstanceDefn2 = InstanceDefn0,
+	    ModuleInfo1 = ModuleInfo0,
+	    QualInfo = QualInfo0,
+	    Errors2 = Errors0,
+	    IO = IO0
+	;
+	    InstanceBody = concrete(InstanceMethods),
+	    (
+	    	ClassInterface = abstract,
+		ClassId = class_id(ClassName, ClassArity),
+		sym_name_and_arity_to_string(ClassName / ClassArity,
+			ClassNameStr),
+		ErrorPieces = [
+			words("Error: instance declaration for"),
+			words("abstract typeclass"),
+			words(string__append_list(["`", ClassNameStr, "'."]))
+		],
+		Errors2 = [TermContext - ErrorPieces | Errors0],
 		InstanceDefn2 = InstanceDefn0,
 		ModuleInfo1 = ModuleInfo0,
 		QualInfo = QualInfo0,
-		Errors2 = Errors0,
 		IO = IO0
-	;
-		InstanceBody = concrete(InstanceMethods),
+	    ;
+	    	ClassInterface = concrete(_),
 		InstanceCheckInfo0 = instance_check_info(InstanceDefn0,
 				[], Errors0, ModuleInfo0, QualInfo0),
 		list__foldl2(
-			check_instance_pred(ClassId, Vars, ClassInterface), 
+			check_instance_pred(ClassId, Vars, HLDSClassInterface), 
 			PredIds, InstanceCheckInfo0, InstanceCheckInfo,
 			IO0, IO),
 		InstanceCheckInfo = instance_check_info(InstanceDefn1,
@@ -222,6 +264,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 			_, _, _, _, _, _),
 		check_for_bogus_methods(InstanceMethods, ClassId, PredIds,
 			Context, ModuleInfo1, Errors1, Errors2)
+	    )
 	),
 
 		% check that the superclass constraints are satisfied for the
@@ -687,16 +730,16 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_string_option(Globals, aditi_user, User),
 
-	adjust_func_arity(PredOrFunc, Arity, PredArity),
-	produce_instance_method_clauses(InstancePredDefn, PredOrFunc,
-		PredArity, ArgTypes, Markers, Context, ClausesInfo,
-		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, IO0, IO),
-
 	( status_is_imported(Status0, yes) ->
 		Status = opt_imported
 	;
 		Status = Status0
 	),
+
+	adjust_func_arity(PredOrFunc, Arity, PredArity),
+	produce_instance_method_clauses(InstancePredDefn, PredOrFunc,
+		PredArity, ArgTypes, Markers, Context, Status, ClausesInfo,
+		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, IO0, IO),
 
 	pred_info_init(ModuleName, PredName, PredArity, ArgTypeVars, 
 		ExistQVars, ArgTypes, Cond, Context, ClausesInfo, Status,

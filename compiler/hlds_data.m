@@ -234,9 +234,6 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 
 	% The symbol table for types.
 
-:- type type_id		== 	pair(sym_name, arity).
-				% name, arity
-
 :- type type_table	==	map(type_id, hlds_type_defn).
 
 	% This is how type, modes and constructors are represented.

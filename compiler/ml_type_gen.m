@@ -22,7 +22,7 @@
 
 :- module ml_type_gen.
 :- interface.
-:- import_module prog_data, hlds_module, hlds_data, mlds.
+:- import_module prog_data, hlds_module, mlds.
 :- import_module io.
 
 	% Generate MLDS definitions for all the types in the HLDS.
@@ -57,6 +57,7 @@
 
 :- implementation.
 :- import_module hlds_pred, prog_data, prog_util, type_util, polymorphism.
+:- import_module hlds_data.
 :- import_module ml_code_util.
 :- import_module globals, options.
 

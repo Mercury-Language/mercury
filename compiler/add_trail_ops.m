@@ -40,7 +40,7 @@
 :- import_module code_model, instmap.
 
 :- import_module bool, string.
-:- import_module assoc_list, list, map, set, varset, std_util, require.
+:- import_module assoc_list, list, map, set, varset, std_util, require, term.
 
 
 %

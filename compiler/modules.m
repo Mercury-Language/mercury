@@ -1282,12 +1282,13 @@ grab_imported_modules(SourceFileName, ModuleName, Items0, Module, Error) -->
 		% Process the short interfaces for indirectly imported modules.
 		% The short interfaces are treated as if
 		% they are imported using `use_module'.
-	{ append_pseudo_decl(Module10, used(interface), Module11) },
+	{ append_pseudo_decl(Module10, transitively_imported, Module11) },
+	{ append_pseudo_decl(Module11, used(interface), Module12) },
 	process_module_short_interfaces_transitively(IntIndirectImports,
-		".int2", Module11, Module12),
-	{ append_pseudo_decl(Module12, used(implementation), Module13) },
+		".int2", Module12, Module13),
+	{ append_pseudo_decl(Module13, used(implementation), Module14) },
 	process_module_short_interfaces_transitively(ImpIndirectImports,
-		".int2", Module13, Module),
+		".int2", Module14, Module),
 
 	{ module_imports_get_error(Module, Error) }.
 
@@ -4444,7 +4445,7 @@ get_short_interface_2([ItemAndContext | Rest], Items0, Imports0, NeedsImports0,
 		Items1 = Items0,
 		Imports1 = [ItemAndContext | Imports0],
 		NeedsImports1 = NeedsImports0
-	; make_abstract_type_defn(Item0, Kind, Item1) ->
+	; make_abstract_defn(Item0, Kind, Item1) ->
 		Imports1 = Imports0,
 		Items1 = [Item1 - Context | Items0],
 		NeedsImports1 = NeedsImports0
@@ -4467,16 +4468,15 @@ include_in_short_interface(type_defn(_, _, _)).
 include_in_short_interface(inst_defn(_, _, _)).
 include_in_short_interface(mode_defn(_, _, _)).
 include_in_short_interface(module_defn(_, _)).
-include_in_short_interface(typeclass(_, _, _, _, _)).
 
-:- pred make_abstract_type_defn(item, short_interface_kind, item).
-:- mode make_abstract_type_defn(in, in, out) is semidet.
+:- pred make_abstract_defn(item, short_interface_kind, item).
+:- mode make_abstract_defn(in, in, out) is semidet.
 
-make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _, _), Cond), _,
+make_abstract_defn(type_defn(VarSet, du_type(Name, Args, _, _), Cond), _,
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).
-make_abstract_type_defn(type_defn(VarSet, abstract_type(Name, Args), Cond), _,
+make_abstract_defn(type_defn(VarSet, abstract_type(Name, Args), Cond), _,
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).
-make_abstract_type_defn(type_defn(VarSet, eqv_type(Name, Args, _), Cond),
+make_abstract_defn(type_defn(VarSet, eqv_type(Name, Args, _), Cond),
 			ShortInterfaceKind,
 			type_defn(VarSet, abstract_type(Name, Args), Cond)) :-
 	% For the `.int2' files, we need the full definitions of
@@ -4488,6 +4488,9 @@ make_abstract_type_defn(type_defn(VarSet, eqv_type(Name, Args, _), Cond),
 	% So we convert equivalence types into abstract types only for
 	% the `.int3' files.
 	ShortInterfaceKind = int3.
+make_abstract_defn(typeclass(A, B, C, _, E), _,
+		typeclass(A, B, C, abstract, E)).
+
 
 	% All instance declarations must be written
 	% to `.int' files as abstract instance
