@@ -239,11 +239,21 @@ builtin_compare_float(R, F1, F2) :-
 :- external(builtin_strcmp/3).
 
 builtin_unify_pred(_Pred1, _Pred2) :-
-	semidet_succeed,	% suppress determinism warning
-	error("attempted unification of higher-order predicate terms").
+	% suppress determinism warning
+	( semidet_succeed ->
+		error("attempted unification of higher-order predicate terms")
+	;
+		semidet_fail
+	).
 
-builtin_compare_pred(_Res, _Pred1, _Pred2) :-
-	error("attempted comparison of higher-order predicate terms").
+builtin_compare_pred(Res, _Pred1, _Pred2) :-
+	% suppress determinism warning
+	( semidet_succeed ->
+		error("attempted comparison of higher-order predicate terms")
+	;
+		% the following is never executed
+		Res = (<)
+	).
 
 builtin_index_pred(_, -1).
 

@@ -95,7 +95,8 @@ queue__equal(On0 - Off0, On1 - Off1) :-
 
 queue__is_empty([] - []).
 
-queue__is_full(_) :- fail.
+queue__is_full(_) :-
+	semidet_fail.
 
 queue__put(On - Off, Elem, [Elem | On] - Off).
 

@@ -14,7 +14,7 @@
 
 :- module stack.
 :- interface.
-:- import_module int.
+:- import_module int, std_util.
 
 :- type stack(_T).
 
@@ -81,7 +81,8 @@ stack__init([]).
 
 stack__is_empty([]).
 
-stack__is_full(_) :- fail.
+stack__is_full(_) :-
+	semidet_fail.
 
 stack__push(Stack, Elem, [Elem | Stack]).
 

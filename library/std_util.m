@@ -14,7 +14,9 @@
 %-----------------------------------------------------------------------------%
 
 :- module std_util.
+
 :- interface.
+
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -47,8 +49,17 @@
 :- pred bool__or(bool, bool, bool).
 :- mode bool__or(in, in, out) is det.
 
+:- pred bool__or_list(list(bool), bool).
+:- mode bool__or_list(in, out) is det.
+
 :- pred bool__and(bool, bool, bool).
 :- mode bool__and(in, in, out) is det.
+
+:- pred bool__and_list(list(bool), bool).
+:- mode bool__and_list(in, out) is det.
+
+:- pred bool__not(bool, bool).
+:- mode bool__not(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -158,7 +169,26 @@ univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 bool__or(yes, _, yes).
 bool__or(no, Bool, Bool).
 
+bool__or_list([], no).
+bool__or_list([Bool | Bools], Result) :-
+	( Bool = yes ->
+		Result = yes
+	;
+		bool__or_list(Bools, Result)
+	).
+
 bool__and(no, _, no).
 bool__and(yes, Bool, Bool).
+
+bool__and_list([], yes).
+bool__and_list([Bool | Bools], Result) :-
+	( Bool = no ->
+		Result = no
+	;
+		bool__and_list(Bools, Result)
+	).
+
+bool__not(no, yes).
+bool__not(yes, no).
 
 %-----------------------------------------------------------------------------%

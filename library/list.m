@@ -172,12 +172,19 @@
 :- pred list__duplicate(int, T, list(T)).
 :- mode list__duplicate(in, in, out) is det.
 
+:- pred list__chunk(list(T), int, list(list(T))).
+:- mode list__chunk(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module bintree_set, require, std_util.
+
+list__append([], Ys, Ys).
+list__append([X | Xs], Ys, [X | Zs]) :-
+	list__append(Xs, Ys, Zs).
 
 list__nth_member_search([X | Xs], Y, N) :-
 	( X = Y ->
@@ -252,10 +259,6 @@ list__delete_elems(Xs, [], Xs).
 list__delete_elems(Xs, [E | Es], Zs) :-
 	list__delete_all(Xs, E, Ys),
 	list__delete_elems(Ys, Es, Zs).
-
-list__append([], Ys, Ys).
-list__append([X | Xs], Ys, [X | Zs]) :-
-	list__append(Xs, Ys, Zs).
 
 :- list__remove_suffix(_List, Suffix, _Prefix) when Suffix.
 
@@ -368,7 +371,6 @@ list__partition([Head|Tail], Partition, Low, High) :-
 		High = [Head|High1]
 	).
 
-
 list__remove_dups(Xs, Ys) :-
 	bintree_set__init(Zs0),
 	list__remove_dups_2(Xs, Zs0, Ys).
@@ -467,6 +469,29 @@ list__duplicate(N, X, L) :-
 		list__duplicate(N1, X, L1)
 	;
 		L = []
+	).
+
+list__chunk(List, ChunkSize, ListOfSmallLists) :-
+	list__chunk_2(List, ChunkSize, [], ChunkSize, ListOfSmallLists).
+
+:- pred list__chunk_2(list(T), int, list(T), int, list(list(T))).
+:- mode list__chunk_2(in, in, in, in, out) is det.
+
+list__chunk_2([], _ChunkSize, List0, _N, Lists) :-
+	( List0 = [] ->
+		Lists = []
+	;
+		list__reverse(List0, List),
+		Lists = [List]
+	).
+list__chunk_2([X|Xs], ChunkSize, List0, N, Lists) :-
+	( N > 1 ->
+		N1 is N - 1,
+		list__chunk_2(Xs, ChunkSize, [X | List0], N1, Lists)
+	;
+		list__reverse([X | List0], List),
+		Lists = [List | Lists1],
+		list__chunk_2(Xs, ChunkSize, [], ChunkSize, Lists1)
 	).
 
 %-----------------------------------------------------------------------------%

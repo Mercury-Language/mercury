@@ -294,7 +294,7 @@ term__contains_functor(term__functor(_, Args, _), SubFunctor, SubArgs) :-
 
 :- pred term__subterm(term, term).
 :- mode term__subterm(in, in) is semidet.
-:- mode term__subterm(in, out) is nondet.
+:- mode term__subterm(in, out) is multidet.
 
 term__subterm(Term, Term).
 term__subterm(term__functor(_, Args, _), SubTerm) :-

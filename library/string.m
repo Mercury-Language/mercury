@@ -41,7 +41,7 @@
 
 :- pred string__prefix(string, string).
 :- mode string__prefix(in, in) is semidet.
-:- mode string__prefix(in, out) is nondet.
+:- mode string__prefix(in, out) is multidet.
 	% string__prefix(String, Prefix) is true iff Prefix is a
 	% prefix of String.  Same as string__append(Prefix, _, String).
 
