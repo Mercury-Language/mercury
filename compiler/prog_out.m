@@ -26,6 +26,9 @@
 :- pred prog_out__write_sym_name(sym_name, io__state, io__state).
 :- mode prog_out__write_sym_name(input, di, uo).
 
+:- pred prog_out__write_module_spec(module_specifier, io__state, io__state).
+:- mode prog_out__write_module_spec(input, input, output).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -92,9 +95,6 @@ prog_out__write_sym_name(unqualified(Name)) -->
 	io__write_string(Name).
 
 	% write out a module specifier
-
-:- pred prog_out__write_module_spec(module_specifier, io__state, io__state).
-:- mode prog_out__write_module_spec(input, input, output).
 
 prog_out__write_module_spec(ModuleSpec) -->
 	io__write_string(ModuleSpec).
