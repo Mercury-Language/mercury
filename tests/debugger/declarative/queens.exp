@@ -3,7 +3,7 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> dd
-mdb: declarative debugging is only available from EXIT or FAIL events.
+mdb: declarative debugging is only available from EXIT, FAIL or EXCP events.
 mdb> break queen
  0: + stop  interface pred queens:queen/2-0 (nondet)
 mdb> continue

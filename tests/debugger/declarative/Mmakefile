@@ -33,7 +33,8 @@ DECLARATIVE_PROGS=		\
 	oracle_db		\
 	propositional		\
 	queens			\
-	small
+	small			\
+	throw
 
 # The following should not be run in `debug' grades.
 NONDEBUG_DECLARATIVE_PROGS=	\
@@ -145,6 +146,9 @@ small.out: small small.inp
 
 solutions.out: solutions solutions.inp
 	$(MDB) ./solutions < solutions.inp > solutions.out 2>&1
+
+throw.out: throw throw.inp
+	$(MDB) ./throw < throw.inp > throw.out 2>&1
 
 untraced_subgoal.out: untraced_subgoal untraced_subgoal.inp
 	$(MDB) ./untraced_subgoal < untraced_subgoal.inp \

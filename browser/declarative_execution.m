@@ -53,6 +53,13 @@
 			R,			% Previous REDO event, if any.
 			event_number		% Trace event number.
 		)
+	;	excp(
+			R, 			% Preceding event.
+			R,			% Call event.
+			R,			% Previous redo, if any.
+			univ,			% Exception thrown.
+			event_number		% Trace event number.
+		)
 	;	switch(
 			R,			% Preceding event.
 			goal_path		% Path for this event.
@@ -249,6 +256,8 @@
 
 step_left_in_contour(Store, exit(_, Call, _, _, _)) = Prec :-
 	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)).
+step_left_in_contour(Store, excp(_, Call, _, _, _)) = Prec :-
+	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)).
 step_left_in_contour(_, switch(Prec, _)) = Prec.
 step_left_in_contour(_, first_disj(Prec, _)) = Prec.
 step_left_in_contour(Store, later_disj(_, _, FirstDisj)) = Prec :-
@@ -267,13 +276,24 @@ step_left_in_contour(Store, else(_, Cond)) = Prec :-
 step_left_in_contour(Store, neg_succ(_, Neg)) = Prec :-
 	neg_node_from_id(Store, Neg, neg(Prec, _, _)).
 	%
-	% The following cases are at the left end of a contour,
-	% so we cannot step any further.
+	% The following cases are possibly at the left end of a contour,
+	% where we cannot step any further.
 	%
 step_left_in_contour(_, call(_, _, _, _, _, _)) = _ :-
 	error("step_left_in_contour: unexpected CALL node").
-step_left_in_contour(_, neg(_, _, _)) = _ :-
-	error("step_left_in_contour: unexpected NEGE node").
+step_left_in_contour(_, neg(Prec, _, Status)) = Next :-
+	(
+		Status = undecided
+	->
+			%
+			% An exception must have been thrown inside the
+			% negation, so we don't consider it a separate
+			% context.
+			%
+		Next = Prec
+	;
+		error("step_left_in_contour: unexpected NEGE node")
+	).
 	%
 	% In the remaining cases we have reached a dead end, so we
 	% step to the previous contour instead.
@@ -317,22 +337,12 @@ find_prev_contour(_, cond(_, _, _), _) :-
 find_prev_contour(_, neg(_, _, _), _) :-
 	error("find_prev_contour: reached NEGE node").
 
-step_in_stratum(Store, exit(_, Call, MaybeRedo, _, _)) = Next :-
-	(
-		maybe_redo_node_from_id(Store, MaybeRedo, Redo)
-	->
-		Redo = redo(Next, _)
-	;
-		call_node_from_id(Store, Call, call(Next, _, _, _, _, _))
-	).
-step_in_stratum(Store, fail(_, Call, MaybeRedo, _)) = Next :-
-	(
-		maybe_redo_node_from_id(Store, MaybeRedo, Redo)
-	->
-		Redo = redo(Next, _)
-	;
-		call_node_from_id(Store, Call, call(Next, _, _, _, _, _))
-	).
+step_in_stratum(Store, exit(_, Call, MaybeRedo, _, _)) =
+	step_over_redo_or_call(Store, Call, MaybeRedo).
+step_in_stratum(Store, fail(_, Call, MaybeRedo, _)) =
+	step_over_redo_or_call(Store, Call, MaybeRedo).
+step_in_stratum(Store, excp(_, Call, MaybeRedo, _, _)) =
+	step_over_redo_or_call(Store, Call, MaybeRedo).
 step_in_stratum(Store, redo(_, Exit)) = Next :-
 	exit_node_from_id(Store, Exit, exit(Next, _, _, _, _)).
 step_in_stratum(_, switch(Next, _)) = Next.
@@ -361,6 +371,17 @@ step_in_stratum(_, call(_, _, _, _, _, _)) = _ :-
 	error("step_in_stratum: unexpected CALL node").
 step_in_stratum(_, neg(_, _, _)) = _ :-
 	error("step_in_stratum: unexpected NEGE node").
+
+:- func step_over_redo_or_call(S, R, R) = R <= annotated_trace(S, R).
+
+step_over_redo_or_call(Store, Call, MaybeRedo) = Next :-
+	(
+		maybe_redo_node_from_id(Store, MaybeRedo, Redo)
+	->
+		Redo = redo(Next, _)
+	;
+		call_node_from_id(Store, Call, call(Next, _, _, _, _, _))
+	).
 
 det_trace_node_from_id(Store, NodeId, Node) :-
 	(
@@ -571,6 +592,7 @@ trace_node_port(call(_, _, _, _, _, _))	= call.
 trace_node_port(exit(_, _, _, _, _))	= exit.
 trace_node_port(redo(_, _))		= redo.
 trace_node_port(fail(_, _, _, _))	= fail.
+trace_node_port(excp(_, _, _, _, _))	= exception.
 trace_node_port(switch(_, _))		= switch.
 trace_node_port(first_disj(_, _))	= disj.
 trace_node_port(later_disj(_, _, _))	= disj.
@@ -590,6 +612,7 @@ trace_node_path(_, call(_, _, _, _, _, _)) = "".
 trace_node_path(_, exit(_, _, _, _, _)) = "".
 trace_node_path(_, redo(_, _)) = "".
 trace_node_path(_, fail(_, _, _, _)) = "".
+trace_node_path(_, excp(_, _, _, _, _)) = "".
 trace_node_path(_, switch(_, P)) = P.
 trace_node_path(_, first_disj(_, P)) = P.
 trace_node_path(_, later_disj(_, P, _)) = P.
@@ -630,6 +653,7 @@ trace_node_call(_, exit(_, Call, _, _, _), Call).
 trace_node_call(S, redo(_, Exit), Call) :-
 	exit_node_from_id(S, Exit, exit(_, Call, _, _, _)).
 trace_node_call(_, fail(_, Call, _, _), Call).
+trace_node_call(_, excp(_, Call, _, _, _), Call).
 
 :- pred trace_node_first_disj(trace_node(trace_node_id), trace_node_id).
 :- mode trace_node_first_disj(in, out) is semidet.
@@ -726,6 +750,15 @@ construct_redo_node(Preceding, Exit) = redo(Preceding, Exit).
 
 construct_fail_node(Preceding, Call, Redo, EventNo) =
 		fail(Preceding, Call, Redo, EventNo).
+
+
+:- func construct_excp_node(trace_node_id, trace_node_id, trace_node_id,
+		univ, event_number) = trace_node(trace_node_id).
+:- pragma export(construct_excp_node(in, in, in, in, in) = out,
+		"MR_DD_construct_excp_node").
+
+construct_excp_node(Preceding, Call, MaybeRedo, Exception, EventNo) =
+		excp(Preceding, Call, MaybeRedo, Exception, EventNo).
 
 
 :- func construct_switch_node(trace_node_id, goal_path_string)
@@ -935,6 +968,7 @@ preceding_node(call(P, _, _, _, _, _))	= P.
 preceding_node(exit(P, _, _, _, _))	= P.
 preceding_node(redo(P, _))		= P.
 preceding_node(fail(P, _, _, _))	= P.
+preceding_node(excp(P, _, _, _, _))	= P.
 preceding_node(switch(P, _))		= P.
 preceding_node(first_disj(P, _))	= P.
 preceding_node(later_disj(P, _, _))	= P.

@@ -166,48 +166,71 @@ set_oracle_user(oracle(KB, _), UI, oracle(KB, UI)).
 		% The sets in this map are all incomplete---there
 		% exists a correct solution which is not in the set.
 		%
-		map(decl_atom, set(decl_atom))
+		map(decl_atom, set(decl_atom)),
+
+		% Mapping from call atoms to information about which
+		% exceptions are possible or impossible.
+		%
+		map(decl_atom, known_exceptions)
 	).
+
+:- type known_exceptions
+	--->	known_excp(
+			set(univ),		% Possible exceptions.
+			set(univ)		% Impossible exceptions.
+		).
 
 :- pred oracle_kb_init(oracle_kb).
 :- mode oracle_kb_init(out) is det.
 
-oracle_kb_init(oracle_kb(G, Y, N)) :-
+oracle_kb_init(oracle_kb(G, Y, N, X)) :-
 	map__init(G),
 	map__init(Y),
-	map__init(N).
+	map__init(N),
+	map__init(X).
 
 :- pred get_kb_ground_map(oracle_kb, map(decl_atom, decl_truth)).
 :- mode get_kb_ground_map(in, out) is det.
 
-get_kb_ground_map(oracle_kb(Map, _, _), Map).
+get_kb_ground_map(oracle_kb(Map, _, _, _), Map).
 
 :- pred set_kb_ground_map(oracle_kb, map(decl_atom, decl_truth), oracle_kb).
 :- mode set_kb_ground_map(in, in, out) is det.
 
-set_kb_ground_map(oracle_kb(_, Y, N), G, oracle_kb(G, Y, N)).
+set_kb_ground_map(oracle_kb(_, Y, N, X), G, oracle_kb(G, Y, N, X)).
 
 :- pred get_kb_complete_map(oracle_kb, map(decl_atom, set(decl_atom))).
 :- mode get_kb_complete_map(in, out) is det.
 
-get_kb_complete_map(oracle_kb(_, Map, _), Map).
+get_kb_complete_map(oracle_kb(_, Map, _, _), Map).
 
 :- pred set_kb_complete_map(oracle_kb, map(decl_atom, set(decl_atom)),
 		oracle_kb).
 :- mode set_kb_complete_map(in, in, out) is det.
 
-set_kb_complete_map(oracle_kb(G, _, N), Y, oracle_kb(G, Y, N)).
+set_kb_complete_map(oracle_kb(G, _, N, X), Y, oracle_kb(G, Y, N, X)).
 
 :- pred get_kb_incomplete_map(oracle_kb, map(decl_atom, set(decl_atom))).
 :- mode get_kb_incomplete_map(in, out) is det.
 
-get_kb_incomplete_map(oracle_kb(_, _, Map), Map).
+get_kb_incomplete_map(oracle_kb(_, _, Map, _), Map).
 
 :- pred set_kb_incomplete_map(oracle_kb, map(decl_atom, set(decl_atom)),
 		oracle_kb).
 :- mode set_kb_incomplete_map(in, in, out) is det.
 
-set_kb_incomplete_map(oracle_kb(G, Y, _), N, oracle_kb(G, Y, N)).
+set_kb_incomplete_map(oracle_kb(G, Y, _, X), N, oracle_kb(G, Y, N, X)).
+
+:- pred get_kb_exceptions_map(oracle_kb, map(decl_atom, known_exceptions)).
+:- mode get_kb_exceptions_map(in, out) is det.
+
+get_kb_exceptions_map(oracle_kb(_, _, _, Map), Map).
+
+:- pred set_kb_exceptions_map(oracle_kb, map(decl_atom, known_exceptions),
+		oracle_kb).
+:- mode set_kb_exceptions_map(in, in, out) is det.
+
+set_kb_exceptions_map(oracle_kb(G, Y, N, _), X, oracle_kb(G, Y, N, X)).
 
 %-----------------------------------------------------------------------------%
 
@@ -232,6 +255,19 @@ query_oracle_kb(KB, Node, Node - Truth) :-
 		get_kb_incomplete_map(KB, IMap),
 		map__search(IMap, Call, ISs),
 		set__subset(Ss, ISs),
+		Truth = no
+	).
+
+query_oracle_kb(KB, Node, Node - Truth) :-
+	Node = unexpected_exception(Call, Exception),
+	get_kb_exceptions_map(KB, XMap),
+	map__search(XMap, Call, known_excp(Possible, Impossible)),
+	(
+		set__member(Exception, Possible)
+	->
+		Truth = yes
+	;
+		set__member(Exception, Impossible),
 		Truth = no
 	).
 
@@ -273,4 +309,27 @@ assert_oracle_kb(missing_answer(Call, Solns) - no, KB0, KB) :-
 		%
 	map__set(Map0, Call, Ss, Map),
 	set_kb_incomplete_map(KB0, Map, KB).
+
+assert_oracle_kb(unexpected_exception(Call, Exception) - Truth, KB0, KB) :-
+	get_kb_exceptions_map(KB0, Map0),
+	(
+		map__search(Map0, Call, known_excp(Possible0, Impossible0))
+	->
+		Possible1 = Possible0,
+		Impossible1 = Impossible0
+	;
+		set__init(Possible1),
+		set__init(Impossible1)
+	),
+	(
+		Truth = yes,
+		set__insert(Possible1, Exception, Possible),
+		Impossible = Impossible1
+	;
+		Truth = no,
+		Possible = Possible1,
+		set__insert(Impossible1, Exception, Impossible)
+	),
+	map__set(Map0, Call, known_excp(Possible, Impossible), Map),
+	set_kb_exceptions_map(KB0, Map, KB).
 

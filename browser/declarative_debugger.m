@@ -63,6 +63,12 @@
 			decl_atom,	% The called atom, in its initial
 					% state.
 			event_number	% The fail event.
+		)
+	;	unhandled_exception(
+			decl_atom,	% The called atom, in its initial
+					% state.
+			decl_exception, % The exception thrown.
+			event_number	% The excp event.
 		).
 
 :- type decl_i_bug
@@ -97,11 +103,20 @@
 			% of instantiatedness (ie. at the CALL event),
 			% and the second argument is the list of solutions.
 			% 
-	;	missing_answer(decl_atom, list(decl_atom)).
+	;	missing_answer(decl_atom, list(decl_atom))
+
+			% The node is a possibly unexpected exception.
+			% The first argument is the atom in its initial
+			% state of instantiation, and the second argument
+			% is the exception thrown.
+			%
+	;	unexpected_exception(decl_atom, decl_exception).
 
 :- type decl_answer == pair(decl_question, decl_truth).
 
 :- type decl_atom == trace_atom.
+
+:- type decl_exception == univ.
 
 	% The diagnoser eventually responds with a value of this type
 	% after it is called.
@@ -342,6 +357,11 @@ trace_root_question(wrap(Store), dynamic(Ref), Root) :-
 	;
 		Node = exit(_, _, _, ExitAtom, _),
 		Root = wrong_answer(ExitAtom)
+	;
+		Node = excp(_, CallId, _, Exception, _),
+		call_node_from_id(Store, CallId, Call),
+		Call = call(_, _, CallAtom, _, _, _),
+		Root = unexpected_exception(CallAtom, Exception)
 	).
 
 :- pred get_answers(S, R, list(decl_atom), list(decl_atom))
@@ -372,6 +392,11 @@ trace_root_e_bug(wrap(S), dynamic(Ref), Bug) :-
 		call_node_from_id(S, CallId, Call),
 		Call = call(_, _, CallAtom, _, _, _),
 		Bug = partially_uncovered_atom(CallAtom, Event)
+	;
+		Node = excp(_, CallId, _, Exception, Event),
+		call_node_from_id(S, CallId, Call),
+		Call = call(_, _, CallAtom, _, _, _),
+		Bug = unhandled_exception(CallAtom, Exception, Event)
 	).
 
 :- pred trace_children(wrap(S), edt_node(R), list(edt_node(R)))
@@ -388,6 +413,10 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 		Node = exit(PrecId, CallId, _, _, _),
 		not_at_depth_limit(Store, CallId),
 		wrong_answer_children(Store, PrecId, [], Children)
+	;
+		Node = excp(PrecId, CallId, _, _, _),
+		not_at_depth_limit(Store, CallId),
+		unexpected_exception_children(Store, PrecId, [], Children)
 	).
 
 :- pred not_at_depth_limit(S, R) <= annotated_trace(S, R).
@@ -412,6 +441,10 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 			% We have reached the end of the contour.
 			%
 		Ns = Ns0
+	;
+		Node = excp(_, _, _, _, _)
+	->
+		error("wrong_answer_children: exception handling not supported")
 	;
 		(
 			Node = exit(_, _, _, _, _)
@@ -453,6 +486,11 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 			%
 		Ns = Ns0
 	;
+		Node = excp(_, _, _, _, _)
+	->
+		error(
+		    "missing_answer_children: exception handling not supported")
+	;
 		(
 			( Node = exit(_, _, _, _, _)
 			; Node = fail(_, _, _, _)
@@ -485,6 +523,48 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 		missing_answer_children(Store, Next, Ns1, Ns)
 	).
 
+:- pred unexpected_exception_children(S, R, list(edt_node(R)),
+		list(edt_node(R))) <= annotated_trace(S, R).
+:- mode unexpected_exception_children(in, in, in, out) is det.
+
+unexpected_exception_children(Store, NodeId, Ns0, Ns) :-
+	det_trace_node_from_id(Store, NodeId, Node),
+	(
+		( Node = call(_, _, _, _, _, _)
+		; Node = neg(_, _, failed)
+		; Node = cond(_, _, failed)
+		)
+	->
+			%
+			% We have reached the end of the contour.
+			%
+		Ns = Ns0
+	;
+		(
+			( Node = exit(_, _, _, _, _)
+			; Node = excp(_, _, _, _, _)
+			)
+		->
+				%
+				% Add a child for this node.
+				%
+			Ns1 = [dynamic(NodeId) | Ns0]
+		;
+			( Node = else(Prec, _)
+			; Node = neg_succ(Prec, _)
+			)
+		->
+				%
+				% There is a nested context.
+				% 
+			missing_answer_children(Store, Prec, Ns0, Ns1)
+		;
+			Ns1 = Ns0
+		),
+		Next = step_left_in_contour(Store, Node),
+		unexpected_exception_children(Store, Next, Ns1, Ns)
+	).
+
 :- pred edt_subtree_details(S, edt_node(R), event_number, sequence_number)
 		<= annotated_trace(S, R).
 :- mode edt_subtree_details(in, in, out, out) is det.
@@ -495,12 +575,15 @@ edt_subtree_details(Store, dynamic(Ref), Event, SeqNo) :-
 		Node = exit(_, Call, _, _, Event)
 	;
 		Node = fail(_, Call, _, Event)
+	;
+		Node = excp(_, Call, _, _, Event)
 	),
 	call_node_from_id(Store, Call, call(_, _, _, SeqNo, _, _)).
 
 :- inst trace_node_edt_node =
 		bound(	exit(ground, ground, ground, ground, ground)
-		;	fail(ground, ground, ground, ground)).
+		;	fail(ground, ground, ground, ground)
+		;	excp(ground, ground, ground, ground, ground)).
 
 :- pred det_edt_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode det_edt_node_from_id(in, in, out(trace_node_edt_node)) is det.
@@ -512,11 +595,13 @@ det_edt_node_from_id(Store, Ref, Node) :-
 			Node0 = exit(_, _, _, _, _)
 		;
 			Node0 = fail(_, _, _, _)
+		;
+			Node0 = excp(_, _, _, _, _)
 		)
 	->
 		Node = Node0
 	;
-		error("det_edt_node_from_id: not an EXIT or FAIL node")
+		error("det_edt_node_from_id: not an EXIT, FAIL or EXCP node")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -529,6 +614,8 @@ decl_bug_get_event_number(e_bug(EBug), Event) :-
 		EBug = incorrect_contour(_, _, Event)
 	;
 		EBug = partially_uncovered_atom(_, Event)
+	;
+		EBug = unhandled_exception(_, _, Event)
 	).
 decl_bug_get_event_number(i_bug(IBug), Event) :-
 	IBug = inadmissible_call(_, _, _, Event).

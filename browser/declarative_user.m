@@ -112,6 +112,7 @@ query_user_2([Node | Nodes], Skipped, Response, User0, User) -->
 
 decl_question_prompt(wrong_answer(_), "Valid? ").
 decl_question_prompt(missing_answer(_, _), "Complete? ").
+decl_question_prompt(unexpected_exception(_, _), "Expected? ").
 
 :- pred browse_edt_node(decl_question, user_state, user_state,
 		io__state, io__state).
@@ -270,6 +271,13 @@ write_decl_question(missing_answer(Call, Solns), User) -->
 		list__foldl(write_decl_atom(User^outstr, "\t"), Solns)
 	).
 
+write_decl_question(unexpected_exception(Call, Exception), User) -->
+	{ User = user(_, OutStr) },
+	write_decl_atom(OutStr, "Call ", Call),
+	io__write_string(OutStr, "Throws "),
+	io__print(OutStr, Exception),
+	io__nl(OutStr).
+
 :- pred write_decl_bug(decl_bug, user_state, io__state, io__state).
 :- mode write_decl_bug(in, in, di, uo) is det.
 
@@ -283,6 +291,12 @@ write_decl_bug(e_bug(EBug), User) -->
 		io__write_string(User^outstr,
 				"Found partially uncovered atom:\n"),
 		write_decl_atom(User^outstr, "", Atom)
+	;
+		{ EBug = unhandled_exception(Atom, Exception, _) },
+		io__write_string(User^outstr, "Found unhandled exception:\n"),
+		write_decl_atom(User^outstr, "", Atom),
+		io__write(User^outstr, univ_value(Exception)),
+		io__nl(User^outstr)
 	).
 
 write_decl_bug(i_bug(IBug), User) -->

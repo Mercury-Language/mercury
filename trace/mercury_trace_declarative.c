@@ -166,6 +166,9 @@ static	MR_Trace_Node
 MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev);
 
 static	MR_Trace_Node
+MR_trace_decl_excp(MR_Event_Info *event_info, MR_Trace_Node prev);
+
+static	MR_Trace_Node
 MR_trace_decl_switch(MR_Event_Info *event_info, MR_Trace_Node prev);
 
 static	MR_Trace_Node
@@ -400,8 +403,8 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			MR_fatal_error("MR_trace_decl_debug: "
 				"foreign language code is not handled (yet)");
 		case MR_PORT_EXCEPTION:
-			MR_fatal_error("MR_trace_decl_debug: "
-				"exceptions are not handled (yet)");
+			trace = MR_trace_decl_excp(event_info, trace);
+			break;
 		default:
 			MR_fatal_error("MR_trace_decl_debug: unknown port");
 	}
@@ -585,6 +588,34 @@ MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev)
 					(MR_Word) event_info->MR_event_number);
 		MR_DD_call_node_set_last_interface((MR_Word) call, (MR_Word) node);
 	);
+	return node;
+}
+
+static	MR_Trace_Node
+MR_trace_decl_excp(MR_Event_Info *event_info, MR_Trace_Node prev)
+{
+	MR_Trace_Node		node;
+	MR_Trace_Node		call;
+	Word			last_interface;
+
+#ifdef MR_USE_DECL_STACK_SLOT
+	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
+				event_info->MR_saved_regs);
+#else
+	call = MR_trace_matching_call(prev);
+	MR_decl_checkpoint_match(call);
+#endif
+
+	MR_TRACE_CALL_MERCURY(
+		last_interface = MR_DD_call_node_get_last_interface(
+				(Word) call);
+		node = (MR_Trace_Node) MR_DD_construct_excp_node(
+				(Word) prev, (Word) call, last_interface,
+				MR_trace_get_exception_value(),
+				(Word) event_info->MR_event_number);
+		MR_DD_call_node_set_last_interface((Word) call, (Word) node);
+	);
+
 	return node;
 }
 
