@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1996-1997, 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -229,6 +229,13 @@
 :- mode set_ordlist__filter_map(func(in) = out is semidet, in) = out is det.
 
 :- func set_ordlist__fold(func(T1, T2) = T2, set_ordlist(T1), T2) = T2.
+
+	% set_ordlist__divide(Pred, Set, TruePart, FalsePart):
+	% TruePart consists of those elements of Set for which Pred succeeds;
+	% FalsePart consists of those elements of Set for which Pred fails.
+:- pred set_ordlist__divide(pred(T1), set_ordlist(T1), set_ordlist(T1),
+	set_ordlist(T1)).
+:- mode set_ordlist__divide(pred(in) is semidet, in, out, out) is det.
 
 %--------------------------------------------------------------------------%
 
@@ -487,3 +494,27 @@ set_ordlist__filter_map(PF, S1) = S2 :-
 set_ordlist__fold(F, S, A) = B :-
 	B = list__foldl(F, set_ordlist__to_sorted_list(S), A).
 
+	% The calls to reverse allow us to make set_ordlist__divide_2 tail
+	% recursive. This costs us a higher constant factor, but allows
+	% set_ordlist__divide to work in constant stack space.
+set_ordlist__divide(Pred, Set, TruePart, FalsePart) :-
+	set_ordlist__divide_2(Pred, Set, [], RevTruePart, [], RevFalsePart),
+	list__reverse(RevTruePart, TruePart),
+	list__reverse(RevFalsePart, FalsePart).
+
+:- pred set_ordlist__divide_2(pred(T1), set_ordlist(T1),
+	set_ordlist(T1), set_ordlist(T1),
+	set_ordlist(T1), set_ordlist(T1)).
+:- mode set_ordlist__divide_2(pred(in) is semidet, in, in, out, in, out)
+	is det.
+
+set_ordlist__divide_2(_Pred, [], RevTrue, RevTrue, RevFalse, RevFalse).
+set_ordlist__divide_2(Pred, [H | T], RevTrue0, RevTrue, RevFalse0, RevFalse) :-
+	( call(Pred, H) ->
+		RevTrue1 = [H | RevTrue0],
+		RevFalse1 = RevFalse0
+	;
+		RevTrue1 = RevTrue0,
+		RevFalse1 = [H | RevFalse0]
+	),
+	set_ordlist__divide_2(Pred, T, RevTrue1, RevTrue, RevFalse1, RevFalse).

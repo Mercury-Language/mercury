@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -245,6 +245,12 @@
 
 :- func set__fold(func(T1, T2) = T2, set(T1), T2) = T2.
 
+	% set__divide(Pred, Set, TruePart, FalsePart):
+	% TruePart consists of those elements of Set for which Pred succeeds;
+	% FalsePart consists of those elements of Set for which Pred fails.
+:- pred set__divide(pred(T1), set(T1), set(T1), set(T1)).
+:- mode set__divide(pred(in) is semidet, in, out, out) is det.
+
 %--------------------------------------------------------------------------%
 
 :- implementation.
@@ -426,3 +432,5 @@ set__filter_map(PF, S1) = S2 :-
 set__fold(F, S, A) = B :-
 	B = list__foldl(F, set__to_sorted_list(S), A).
 
+set__divide(P, Set, TruePart, FalsePart) :-
+	set_ordlist__divide(P, Set, TruePart, FalsePart).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -226,6 +226,12 @@
 
 :- func set_unordlist__fold(func(T1, T2) = T2, set_unordlist(T1), T2) = T2.
 
+	% set_unordlist__divide(Pred, Set, TruePart, FalsePart):
+	% TruePart consists of those elements of Set for which Pred succeeds;
+	% FalsePart consists of those elements of Set for which Pred fails.
+:- pred set_unordlist__divide(pred(T1), set_unordlist(T1), set_unordlist(T1),
+	set_unordlist(T1)).
+:- mode set_unordlist__divide(pred(in) is semidet, in, out, out) is det.
 
 %--------------------------------------------------------------------------%
 
@@ -417,3 +423,24 @@ set_unordlist__filter_map(PF, S1) = S2 :-
 set_unordlist__fold(F, S, A) = B :-
 	B = list__foldl(F, set_unordlist__to_sorted_list(S), A).
 
+set_unordlist__divide(Pred, Set, RevTruePart, RevFalsePart) :-
+	set_unordlist__divide_2(Pred, Set, [], RevTruePart, [], RevFalsePart).
+
+:- pred set_unordlist__divide_2(pred(T1), set_unordlist(T1),
+	set_unordlist(T1), set_unordlist(T1),
+	set_unordlist(T1), set_unordlist(T1)).
+:- mode set_unordlist__divide_2(pred(in) is semidet, in, in, out, in, out)
+	is det.
+
+set_unordlist__divide_2(_Pred, [], RevTrue, RevTrue, RevFalse, RevFalse).
+set_unordlist__divide_2(Pred, [H | T],
+		RevTrue0, RevTrue, RevFalse0, RevFalse) :-
+	( call(Pred, H) ->
+		RevTrue1 = [H | RevTrue0],
+		RevFalse1 = RevFalse0
+	;
+		RevTrue1 = RevTrue0,
+		RevFalse1 = [H | RevFalse0]
+	),
+	set_unordlist__divide_2(Pred, T,
+		RevTrue1, RevTrue, RevFalse1, RevFalse).
