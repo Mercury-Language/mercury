@@ -216,7 +216,7 @@ output_instruction_list([Inst - Comment|Instructions]) -->
 :- mode output_instruction(in, di, uo) is det.
 
 output_instruction(comment(Comment)) -->
-	io__write_strings(["/*\n**\t",Comment,"\n*/"]).
+	io__write_strings(["/* ",Comment," */"]).
 
 output_instruction(assign(Lval, Rval)) -->
 	io__write_string("\t"),

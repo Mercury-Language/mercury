@@ -62,12 +62,12 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 		{ CodeC = node([
 			entrycall(Label, ReturnLabel) -
 					"branch to non-local procedure",
-			label(ReturnLabel) - "Continutation label"
+			label(ReturnLabel) - "Continuation label"
 		]) }
 	;
 		{ CodeC = node([
 			call(Label, ReturnLabel) - "branch to procedure",
-			label(ReturnLabel) - "Continutation label"
+			label(ReturnLabel) - "Continuation label"
 		]) }
 	),
 	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
@@ -100,12 +100,12 @@ call_gen__generate_semidet_call(PredId, ModeId, Arguments, Code) -->
 	->
 		{ CodeC = node([
 			entrycall(Label, ReturnLabel) - "branch to procedure",
-			label(ReturnLabel) - "Continutation label"
+			label(ReturnLabel) - "Continuation label"
 		]) }
 	;
 		{ CodeC = node([
 			call(Label, ReturnLabel) - "branch to procedure",
-			label(ReturnLabel) - "Continutation label"
+			label(ReturnLabel) - "Continuation label"
 		]) }
 	),
 	code_info__get_next_label(ContLab),
@@ -134,12 +134,12 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 		{ CodeC = node([
 			entrycall(Label, ReturnLabel) -
 					"branch to non-local procedure",
-			label(ReturnLabel) - "Continutation label"
+			label(ReturnLabel) - "Continuation label"
 		]) }
 	;
 		{ CodeC = node([
 			call(Label, ReturnLabel) - "branch to procedure",
-			label(ReturnLabel) - "Continutation label"
+			label(ReturnLabel) - "Continuation label"
 		]) }
 	),
 	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
