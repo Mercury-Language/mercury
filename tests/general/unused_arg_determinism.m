@@ -5,15 +5,26 @@
 :- module unused_arg_determinism.
 :- interface.
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- type t.
 :- func foo(t) = t.
 :- mode foo(in) = out is semidet.
 
 :- implementation.
+:- import_module exception.
 :- type t ---> t ; u.
+
 main -->
+	try_io(main_2, Result),
+	( { Result = succeeded(_) },
+		io__write_string("No exception.\n")
+	; { Result = exception(_) },
+		io__write_string("Exception.\n")
+	).
+
+:- pred main_2(int::out, io__state::di, io__state::uo) is det.
+main_2(0) -->
 	( { X = foo(t) } ->
 		io__write(X)
 	;

@@ -1,4 +1,1 @@
-Uncaught exception:
-Software Error: sorry, `foo' not implemented
-for this target language (or compiler back-end).
-Stack dump not available in this grade.
+Exception.
