@@ -136,17 +136,18 @@ Files ending in @file{.opt} are
 interface files used in inter-module optimization,
 and are created using the @samp{--make-optimization-interface}
 (or @samp{--make-opt-int}) option.
-Files ending in @file{.trans_opt} are interface files used in
+Similarly, files ending in @file{.trans_opt} are interface files used in
 transitive inter-module optimization, and are created using the
-@samp{--make-transitive-optimization-interface} option.
+@samp{--make-transitive-optimization-interface}
+(or @samp{--make-trans-opt-int}) option.
 
 Since the interface of a module changes less often than its implementation,
-the @file{.int}, @file{.int2}, @file{.int3}, and @file{.opt}
+the @file{.int}, @file{.int2}, @file{.int3}, @file{.opt}, and @file{.trans_opt}
 files will remain unchanged on many compilations.
 To avoid unnecessary recompilations of the clients of the module,
 the timestamps on the these files are updated only if their contents change.
-@file{.date}, @file{.date3} and @file{.optdate} files associated with the
-module are used as date stamps;
+@file{.date}, @file{.date3}, @file{.optdate}, and @file{.trans_opt_date}
+files associated with the module are used as date stamps;
 they are used when deciding whether the interface files need to be regenerated.
 
 Files ending in @file{.d} are automatically-generated Makefile fragments
@@ -459,7 +460,7 @@ sicstus_conv @var{module}.m
 @end example
 
 By default, @samp{msc} compiles files to machine code using
-SICStus Prolog's @samp{fastcode} mode. If space is more important
+SICStus Prolog's @samp{fastcode} mode.  If space is more important
 than speed, you can use the @samp{--mode compactcode} option,
 which instructs @code{msc} to use SICStus Prolog's @samp{compactcode}
 mode, which compiles files to a bytecode format.
@@ -808,7 +809,7 @@ Removes all the automatically generated files.
 In addition to the files removed by @var{main-module}.clean, this
 removes the @samp{.date}, @samp{.int}, @samp{.int2}, @samp{.int3},
 @samp{.opt}, @samp{.optdate}, @samp{.date3},
-@samp{.trans_opt}, @samp{.trans_optdate},
+@samp{.trans_opt}, @samp{.trans_opt_date},
 @samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
 and also the various possible executables for the program ---
 @samp{@var{main-module}},
@@ -833,7 +834,7 @@ directory.
 
 The variables used by the builtin rules (and their default values) are
 defined in the file @file{@var{prefix}/lib/mercury/mmake/Mmake.vars}, however
-these may be overridden by user @samp{Mmake} files. Some of the more
+these may be overridden by user @samp{Mmake} files.  Some of the more
 useful variables are:
 
 @table @code
@@ -867,9 +868,9 @@ Other variables also exist - see
 
 If you wish to temporarily change the flags passed to an executable,
 rather than setting the various @samp{FLAGS} variables directly, one can
-supply a @samp{EXTRA_} variable. When defining a @samp{FLAGS} option
+supply a @samp{EXTRA_} variable.  When defining a @samp{FLAGS} option
 directly (in your own @samp{Mmake} file), it is recommended you include
-the @samp{EXTRA_} version at the end. This is particularly intended for
+the @samp{EXTRA_} version at the end.  This is particularly intended for
 use where a shell script needs to call mmake and add an extra parameter,
 without interfering with the flag settings in the @samp{Mmake} file.
 
@@ -886,7 +887,7 @@ which is very useful if you have a machine with more than one CPU.
 @chapter Libraries
 
 Often you will want to use a particular set of Mercury modules
-in more than one program. The Mercury implementation
+in more than one program.  The Mercury implementation
 includes support for developing libraries, i.e. sets of Mercury modules
 intended for reuse.  It allows separate compilation of libraries
 and, on many platforms, it supports shared object libraries.
@@ -967,13 +968,19 @@ control the way static libraries are built.
 Note that to use a library, as well as the shared or static object library,
 you also need the interface files.  That's why the
 @samp{libmypackage} target builds @samp{$(mypackage.ints)}.
-Also, if the people using the library are going to use intermodule
-optimization, you need the intermodule optimization interfaces.
+If the people using the library are going to use intermodule
+optimization, you will also need the intermodule optimization interfaces.
 That's why the @samp{libmypackage} target builds @samp{$(mypackage.opts)}.
+If the people using the library are going to use transitive intermodule
+optimization, you will also need the transitive intermodule optimization
+interfaces.  Currently these are @emph{not} built by default; if
+you want to build them, you will need to include @samp{--trans-intermod-opt}
+in your @samp{MCFLAGS} variable.
+
 In addition, with certain compilation grades, programs will need to
 execute some startup code to initialize the library; the
 @samp{mypackage.init} file contains information about initialization
-code for the library.
+code for the library.  The @samp{libmypackage} target will build this file.
 
 On some platforms, shared objects must be created using position independent
 code (PIC), which requires passing some special options to the C compiler.
@@ -989,10 +996,12 @@ which contains a list of the @file{.o} files for that module.
 
 If you want, once you have built a library, you could then install
 (i.e. copy) the shared object library, the static object library,
-the interface files and the initialization file into a different directory,
-or into several different directories, for that matter --- though it
-is probably easiest for the users of the library if you keep them
-in a single directory.
+the interface files (possibly including the optimization interface
+files and the transitive optimization interface files), and the
+initialization file into a different directory, or into several
+different directories, for that matter --- though it is probably
+easiest for the users of the library if you keep them in a single
+directory.
 Or alternatively, you could package them up into a @samp{tar}, @samp{shar}, or
 @samp{zip} archive and ship them to the people who will use the
 library.
@@ -1577,16 +1586,19 @@ Write information used for inter-module optimization to
 @item --make-trans-opt
 @itemx --make-transitive-optimization-interface
 Write the @file{@var{module}.trans_opt} file.  This file is used to store
-information used for inter-module optimization. The information is read
-in when the compiler is invoked with the @samp{--transitive-optimization}
-option.  The file is called ``transitive'' because a
-@file{@var{module}.trans_opt} file may depend on other
-@file{@var{module}.trans_opt} files.
+information used for inter-module optimization.  The information is read 
+in when the compiler is invoked with the
+@samp{--transitive-intermodule-optimization} option. 
+The file is called the ``transitive'' optimization interface file
+because a @samp{.trans_opt} file may depend on other 
+@samp{.trans_opt} and @samp{.opt} files.  In contrast,
+a @samp{.opt} file can only hold information derived directly
+from the corresponding @samp{.m} file.
 
 @sp 1
 @item -G
 @itemx --convert-to-goedel
-Convert the Mercury code to Goedel. Output to file @file{@var{module}.loc}.
+Convert the Mercury code to Goedel.  Output to file @file{@var{module}.loc}.
 The translation is not perfect; some Mercury constructs cannot be easily
 translated into Goedel.
 
@@ -1594,7 +1606,7 @@ translated into Goedel.
 @item -P
 @itemx --pretty-print
 @itemx --convert-to-mercury
-Convert to Mercury. Output to file @file{@var{module}.ugly}.
+Convert to Mercury.  Output to file @file{@var{module}.ugly}.
 This option acts as a Mercury ugly-printer.
 (It would be a pretty-printer, except that comments are stripped
 and nested if-then-elses are indented too much --- so the result
@@ -1651,7 +1663,7 @@ Output a bytecode form of the module for use
 by an experimental debugger.
 
 @item --generate-prolog
-Convert the program to Prolog. Output to file @file{@var{module}.pl}
+Convert the program to Prolog.  Output to file @file{@var{module}.pl}
 or @file{@var{module}.nl} (depending the the dialect).
 
 @item --prolog-dialect @var{dialect}
@@ -1767,8 +1779,8 @@ in Mercury Language Reference Manual.  (It is listed under
 @item --enable-term
 @itemx --enable-termination
 Enable termination analysis.  Termination analysis analyses each mode of
-each predicate to see whether it terminates.  @samp{pragma terminates},
-@samp{pragma does_not_terminate} and @samp{pragma check_termination}
+each predicate to see whether it terminates.  The @samp{terminates},
+@samp{does_not_terminate} and @samp{check_termination}
 pragmas have no effect unless termination analysis is enabled.  When
 using termination, @samp{--intermodule-optimization} should be enabled,
 as it greatly improves the accuracy of the analysis.
@@ -1803,7 +1815,7 @@ Setting this limit to zero disables single argument analysis.
 @sp 1
 @item --termination-norm @var{norm}
 The norm defines how termination analysis measures the size
-of a memory cell. The @samp{simple} norm says that size is always one.
+of a memory cell.  The @samp{simple} norm says that size is always one.
 The @samp{total} norm says that it is the number of words in the cell.
 The @samp{num-data-elems} norm says that it is the number of words in
 the cell that contain something other than pointers to cells of
@@ -1842,7 +1854,7 @@ them in @samp{MCFLAGS}, @samp{MGNUCFLAGS}, and @samp{MLFLAGS}.
 @table @asis
 @item @code{-s @var{grade}}
 @itemx @code{--grade @var{grade}}
-Select the compilation model. The @var{grade} should be a base
+Select the compilation model.  The @var{grade} should be a base
 grade with zero or more grade modifiers appended.
 The base grades are @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
 @samp{fast}, and @samp{asm_fast}.
@@ -1856,7 +1868,7 @@ order they are listed here.
 
 The default grade is system-dependent; it is chosen at installation time
 by @samp{configure}, the auto-configuration script, but can be overridden
-with the @samp{MERCURY_DEFAULT_GRADE} environment variable if desired.
+with the environment variable @samp{MERCURY_DEFAULT_GRADE} if desired.
 Depending on your particular installation, only a subset
 of these possible grades will have been installed.
 Attempting to use a grade which has not been installed
@@ -2036,7 +2048,7 @@ Don't output base_type_layout structures or references to them.
 This option will generate smaller executables, but will not allow the
 use of code that uses the layout information (e.g. @samp{functor},
 @samp{arg}). Using such code will result in undefined behaviour at
-runtime. The C code also needs to be compiled with
+runtime.  The C code also needs to be compiled with
 @samp{-DNO_TYPE_LAYOUT}.
 
 @sp 1
@@ -2187,12 +2199,11 @@ predicates or functions imported from other modules.
 @sp 1
 @item --trans-intermod-opt
 @itemx --transitive-intermodule-optimization
-Use the information stored in other @file{@var{module}.trans_opt} files
-to make intermodule optimizations.  The @file{@var{module}.trans_opt} is
-different to the @file{@var{module}.opt} as @file{@var{module}.trans_opt}
-files may depend on other @file{@var{module}.trans_opt} files.
-@file{@var{module}.opt} files may only depend on the
-@file{@var{module}.m} file.
+Use the information stored in @file{@var{module}.trans_opt} files
+to make intermodule optimizations.  The @file{@var{module}.trans_opt} files
+are differents to the @file{@var{module}.opt} files as @samp{.trans_opt}
+files may depend on other @samp{.trans_opt} files, whereas each
+@samp{.opt} file may only depend on the corresponding @samp{.m} file. 
 
 @sp 1
 @item --split-c-files
@@ -2242,7 +2253,7 @@ Inline a procedure if its size is less than the given threshold.
 
 @item --intermod-inline-simple-threshold @var{threshold}
 Similar to --inline-simple-threshold, except used to determine which
-predicates should be included in @samp{.opt} files. Note that changing this
+predicates should be included in @samp{.opt} files.  Note that changing this
 between writing the @samp{.opt} file and compiling to C may cause link errors,
 and too high a value may result in reduced performance.
 
@@ -2272,7 +2283,7 @@ Don't migrate builtin goals into branched goals.
 
 @sp 1
 @item --optimize-unused-args
-Remove unused predicate arguments. The compiler will
+Remove unused predicate arguments.  The compiler will
 generate more efficient code for polymorphic predicates.
 
 @sp 1
