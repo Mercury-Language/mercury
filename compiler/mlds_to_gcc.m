@@ -3168,7 +3168,7 @@ convert_binary_op(str_lt, _, _) :- unexpected(this_file, "str_lt").
 convert_binary_op(str_gt, _, _) :- unexpected(this_file, "str_gt").
 convert_binary_op(str_le, _, _) :- unexpected(this_file, "str_le").
 convert_binary_op(str_ge, _, _) :- unexpected(this_file, "str_ge").
-convert_binary_op((<),		gcc__le_expr,	     gcc__boolean_type_node).
+convert_binary_op((<),		gcc__lt_expr,	     gcc__boolean_type_node).
 convert_binary_op((>),		gcc__gt_expr,	     gcc__boolean_type_node).
 convert_binary_op((<=),		gcc__le_expr,	     gcc__boolean_type_node).
 convert_binary_op((>=),		gcc__ge_expr,	     gcc__boolean_type_node).
