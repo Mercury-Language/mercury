@@ -51,7 +51,7 @@ fi
 
 MERCURY_LIBS="$WORKSPACE/trace/libmer_trace.a $WORKSPACE/browser/libmer_browser.a $WORKSPACE/library/libmer_std.a $WORKSPACE/runtime/libmer_rt.a $gclib -lm"
 export MERCURY_LIBS
-MERCURY_ALL_C_INCL_DIRS="-I$WORKSPACE/runtime -I$WORKSPACE/trace -I$WORKSPACE/boehm_gc -I$WORKSPACE/boehm_gc/include"
+MERCURY_ALL_C_INCL_DIRS="-I$WORKSPACE/library -I$WORKSPACE/runtime -I$WORKSPACE/trace -I$WORKSPACE/boehm_gc -I$WORKSPACE/boehm_gc/include"
 export MERCURY_ALL_C_INCL_DIRS
 MMAKE_DIR=$WORKSPACE/scripts
 export MMAKE_DIR
@@ -69,7 +69,7 @@ else
 	CDEBUG_FLAGS=""
 fi
 
-DIR_FLAGS="--cflags -I$WORKSPACE/trace --cflags -I$WORKSPACE/runtime --cflags -I$WORKSPACE/boehm_gc --cflags -I$WORKSPACE/boehm_gc/include -I$WORKSPACE/library"
+DIR_FLAGS="--cflags -I$WORKSPACE/trace --cflags -I$WORKSPACE/library --cflags -I$WORKSPACE/runtime --cflags -I$WORKSPACE/boehm_gc --cflags -I$WORKSPACE/boehm_gc/include -I$WORKSPACE/library"
 
 if test "$MMC_UNDER_GDB" != ""
 then
