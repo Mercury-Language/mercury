@@ -110,12 +110,27 @@ in_mode(user_defined_mode(unqualified("in"), [])).
 
 out_mode(user_defined_mode(unqualified("out"), [])).
 
+
 	% Given the mangled predicate name and the list of argument types,
-	% work out which type this special predicate is for
-special_pred_get_type("__Unify__", [T | _], T).
-special_pred_get_type("__Index__", [T | _], T).
-special_pred_get_type("__Compare__", [_ResType, T | _], T).
-special_pred_get_type("__Type_To_Term__", [T | _], T).
-special_pred_get_type("__Term_To_Type__", [_TermType, T | _], T).
+	% work out which type this special predicate is for.
+	% Note that this gets called after the polymorphism.m pass, so
+	% type_info arguments may have been inserted at the start; hence we
+	% find the type at a known position from the end of the list
+	% (by using list__reverse).
+
+	% Currently for all special predicates the type variable can be
+	% found in the last type argument, except for term_to_type, for
+	% which it is the second-last argument.
+
+special_pred_get_type("__Unify__", Types, T) :-
+	list__reverse(Types, [T | _]).
+special_pred_get_type("__Index__", Types, T) :-
+	list__reverse(Types, [T | _]).
+special_pred_get_type("__Compare__", Types, T) :-
+	list__reverse(Types, [T | _]).
+special_pred_get_type("__Type_To_Term__", Types, T) :-
+	list__reverse(Types, [T | _]).
+special_pred_get_type("__Term_To_Type__", Types, T) :-
+	list__reverse(Types, [_, T | _]).
 
 %-----------------------------------------------------------------------------%
