@@ -4,6 +4,7 @@
 # include <stdio.h>
 # include <stdlib.h>
 # include <unistd.h>
+# include <signal.h>
 
 int main(argc, argv, envp)
 int argc;
@@ -11,6 +12,7 @@ char ** argv;
 char ** envp;
 {
     FILE * f;
+    signal(SIGPROF, SIG_IGN);
     if (argc < 3) goto Usage;
     if ((f = fopen(argv[1], "rb")) != 0
         || (f = fopen(argv[1], "r")) != 0) {
