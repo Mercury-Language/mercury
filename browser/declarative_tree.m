@@ -439,7 +439,7 @@ unexpected_exception_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 % the top of the selected subterm.
 %
 % If the mode is `in', the origin could be:
-%	- a primitive (unification of foreign_proc) within the body of the
+%	- a primitive (unification or foreign_proc) within the body of the
 %	  parent,
 %	- an output subterm in a sibling node, or
 %	- an input subterm of the parent node.
