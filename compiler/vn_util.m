@@ -429,7 +429,7 @@ vn__record_compulsory_lvals(Vn_tables, Livevals0, Livevals,
 vn__record_compulsory_lval_list([], Livevals, Livevals, FlushEntry, FlushEntry).
 vn__record_compulsory_lval_list([Vnlval - Vn | Lval_vn_list],
 		Livevals0, Livevals, FlushEntry0, FlushEntry) :-
-	vn__vnlval_access_vn(Vnlval, Access),
+	vn__vnlval_access_vns(Vnlval, Access),
 	(
 		Access = [_|_],
 		map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),
@@ -498,13 +498,14 @@ vn__classify_nodes([Node | Nodes], Origlvals, Ctrls, Shareds, Lvals) :-
 
 :- interface.
 
-:- pred vn__blockorder_to_order(list(list(vn_node)), int, list(vn_node)).
-:- mode vn__blockorder_to_order(in, in, out) is det.
+:- pred vn__blockorder_to_order(list(list(vn_node)), int, vn_tables,
+	list(vn_node)).
+:- mode vn__blockorder_to_order(in, in, in, out) is det.
 
 :- implementation.
 
-vn__blockorder_to_order(BlockOrder, N, Order) :-
-	vn__order_equal_lists(BlockOrder, GoodBlockOrder),
+vn__blockorder_to_order(BlockOrder, N, Vn_tables, Order) :-
+	vn__order_equal_lists(BlockOrder, Vn_tables, GoodBlockOrder),
 	list__condense(GoodBlockOrder, Order0),
 	vn__find_last_ctrl(Order0, N, Ctrl, Order1),
 	( Ctrl = [_] ->
@@ -516,21 +517,23 @@ vn__blockorder_to_order(BlockOrder, N, Order) :-
 	),
 	list__append(Order1, Ctrl, Order).
 
-:- pred vn__order_equal_lists(list(list(vn_node)), list(list(vn_node))).
-:- mode vn__order_equal_lists(di, uo) is det.
+:- pred vn__order_equal_lists(list(list(vn_node)), vn_tables,
+	list(list(vn_node))).
+:- mode vn__order_equal_lists(di, in, uo) is det.
 
-vn__order_equal_lists([], []).
-vn__order_equal_lists([Block | Blocks], [GoodBlock | GoodBlocks]) :-
-	vn__order_equals(Block, GoodBlock),
-	vn__order_equal_lists(Blocks, GoodBlocks).
+vn__order_equal_lists([], _, []).
+vn__order_equal_lists([Block | Blocks], Vn_tables, [GoodBlock | GoodBlocks]) :-
+	vn__order_equals(Block, Vn_tables, GoodBlock),
+	vn__order_equal_lists(Blocks, Vn_tables, GoodBlocks).
 
-:- pred vn__order_equals(list(vn_node), list(vn_node)).
-:- mode vn__order_equals(di, uo) is det.
+:- pred vn__order_equals(list(vn_node), vn_tables, list(vn_node)).
+:- mode vn__order_equals(di, in, uo) is det.
 
-vn__order_equals(Order0, Order) :-
+vn__order_equals(Order0, Vn_tables, Order) :-
 	vn__find_ctrls(Order0, Ctrls, Order1),
-	vn__find_regs(Order1, Regs, Order2),
-	list__condense([Ctrls, Regs, Order2], Order).
+	vn__find_noops(Order1, Vn_tables, Noops, Order2),
+	vn__find_regs(Order2, Regs, Order3),
+	list__condense([Ctrls, Noops, Regs, Order3], Order).
 
 :- pred vn__find_ctrls(list(vn_node), list(vn_node), list(vn_node)).
 :- mode vn__find_ctrls(di, out, uo) is det.
@@ -543,6 +546,24 @@ vn__find_ctrls([Node0 | Nodes0], Ctrls, Nodes) :-
 		Nodes = Nodes1
 	;
 		Ctrls = Ctrls1,
+		Nodes = [Node0 | Nodes1]
+	).
+
+:- pred vn__find_noops(list(vn_node), vn_tables, list(vn_node), list(vn_node)).
+:- mode vn__find_noops(di, in, out, uo) is det.
+
+vn__find_noops([], _, [], []).
+vn__find_noops([Node0 | Nodes0], Vn_tables, Noops, Nodes) :-
+	vn__find_noops(Nodes0, Vn_tables, Noops1, Nodes1),
+	(
+		Node0 = node_lval(Vnlval),
+		vn__search_desired_value(Vnlval, Vn, Vn_tables),
+		vn__search_current_value(Vnlval, Vn, Vn_tables)
+	->
+		Noops = [Node0 | Noops1],
+		Nodes = Nodes1
+	;
+		Noops = Noops1,
 		Nodes = [Node0 | Nodes1]
 	).
 
@@ -625,8 +646,8 @@ vn__find_sub_vns_vnlval(vn_temp(_), []).
 
 	% Find out what vns, if any, are needed to access a vnlval.
 
-:- pred vn__vnlval_access_vn(vnlval, list(vn)).
-:- mode vn__vnlval_access_vn(in, out) is det.
+:- pred vn__vnlval_access_vns(vnlval, list(vn)).
+:- mode vn__vnlval_access_vns(in, out) is det.
 
 :- implementation.
 
@@ -882,16 +903,16 @@ vn__lval_access_rval(temp(_), []).
 vn__lval_access_rval(lvar(_), _) :-
 	error("lvar detected in value_number").
 
-vn__vnlval_access_vn(vn_reg(_), []).
-vn__vnlval_access_vn(vn_stackvar(_), []).
-vn__vnlval_access_vn(vn_framevar(_), []).
-vn__vnlval_access_vn(vn_succip, []).
-vn__vnlval_access_vn(vn_maxfr, []).
-vn__vnlval_access_vn(vn_curredoip, []).
-vn__vnlval_access_vn(vn_hp, []).
-vn__vnlval_access_vn(vn_sp, []).
-vn__vnlval_access_vn(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
-vn__vnlval_access_vn(vn_temp(_), []).
+vn__vnlval_access_vns(vn_reg(_), []).
+vn__vnlval_access_vns(vn_stackvar(_), []).
+vn__vnlval_access_vns(vn_framevar(_), []).
+vn__vnlval_access_vns(vn_succip, []).
+vn__vnlval_access_vns(vn_maxfr, []).
+vn__vnlval_access_vns(vn_curredoip, []).
+vn__vnlval_access_vns(vn_hp, []).
+vn__vnlval_access_vns(vn_sp, []).
+vn__vnlval_access_vns(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
+vn__vnlval_access_vns(vn_temp(_), []).
 
 vn__is_const_expr(Vn, IsConst, Vn_tables) :-
 	vn__lookup_defn(Vn, Vnrval, Vn_tables),
@@ -985,6 +1006,9 @@ vn__is_const_expr(Vn, IsConst, Vn_tables) :-
 
 :- pred vn__del_old_use(vn, vn_src, vn_tables, vn_tables).
 :- mode vn__del_old_use(in, in, di, uo) is det.
+
+:- pred vn__del_old_uses(list(vn), vn_src, vn_tables, vn_tables).
+:- mode vn__del_old_uses(in, in, di, uo) is det.
 
 :- pred vn__record_first_vnrval(vnrval, vn, vn_tables, vn_tables).
 :- mode vn__record_first_vnrval(in, out, di, uo) is det.
@@ -1147,7 +1171,17 @@ vn__add_new_use(Vn, NewUse, Vn_tables0, Vn_tables) :-
 		Vn_to_rval_table0, Vn_to_uses_table0,
 		Vn_to_locs_table0, Loc_to_vn_table0),
 	map__lookup(Vn_to_uses_table0, Vn, Uses0),
-	( list__member(NewUse, Uses0) ->
+	(
+		list__member(NewUse, Uses0),
+		\+ NewUse = src_access(_)
+	->
+		opt_debug__write("\n"),
+		opt_debug__dump_tables(Vn_tables0, T_str),
+		opt_debug__write(T_str),
+		opt_debug__write("\n"),
+		opt_debug__dump_use(NewUse, U_str),
+		opt_debug__write(U_str),
+		opt_debug__write("\n"),
 		error("new use already known")
 	;
 		Uses1 = [NewUse | Uses0]
@@ -1164,15 +1198,25 @@ vn__del_old_use(Vn, OldUse, Vn_tables0, Vn_tables) :-
 		Vn_to_rval_table0, Vn_to_uses_table0,
 		Vn_to_locs_table0, Loc_to_vn_table0),
 	map__lookup(Vn_to_uses_table0, Vn, Uses0),
-	% OldUse may not be in Uses0
-	% it may have been deleted earlier (if constant)
-	% or it may be an artificially introduced src_liveval for a shared vn
-	list__delete_all(Uses0, OldUse, Uses1),
+	% a given src_access may appear several times, we delete just one
+	( list__delete_first(Uses0, OldUse, Uses1Prime) ->
+		Uses1 = Uses1Prime
+	;
+		% OldUse may not be in Uses0; it may have been deleted earlier
+		% (if constant) or it may be an artificially introduced
+		% src_liveval for a shared vn
+		Uses1 = Uses0
+	),
 	map__set(Vn_to_uses_table0, Vn, Uses1, Vn_to_uses_table1),
 	Vn_tables = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table1,
 		Vn_to_locs_table0, Loc_to_vn_table0).
+
+vn__del_old_uses([], _OldUse, Vn_tables, Vn_tables).
+vn__del_old_uses([Vn | Vns], OldUse, Vn_tables0, Vn_tables) :-
+	vn__del_old_use(Vn, OldUse, Vn_tables0, Vn_tables1),
+	vn__del_old_uses(Vns, OldUse, Vn_tables1, Vn_tables).
 
 vn__record_first_vnrval(Vnrval, Vn, Vn_tables0, Vn_tables) :-
 	Vn_tables0 = vn_tables(NextVn0,
@@ -1324,7 +1368,7 @@ vn__build_uses_from_ctrl(Ctrl, Ctrlmap, Vn_tables0, Vn_tables) :-
 				Vn_tables0, Vn_tables1)
 		;
 			VnInstr = vn_mark_hp(Vnlval),
-			vn__vnlval_access_vn(Vnlval, Vns),
+			vn__vnlval_access_vns(Vnlval, Vns),
 			vn__record_use_list(Vns, src_ctrl(Ctrl),
 				Vn_tables0, Vn_tables1)
 		;
@@ -1350,8 +1394,8 @@ vn__build_uses_from_livevals([], Vn_tables, Vn_tables).
 vn__build_uses_from_livevals([Live | Liveslist], Vn_tables0, Vn_tables) :-
 	vn__lookup_desired_value(Live, Vn, Vn_tables0),
 	vn__record_use(Vn, src_liveval(Live), Vn_tables0, Vn_tables1),
-	vn__vnlval_access_vn(Live, SubVns),
-	vn__record_use_list(SubVns, src_liveval(Live),
+	vn__vnlval_access_vns(Live, SubVns),
+	vn__record_use_list(SubVns, src_access(Live),
 		Vn_tables1, Vn_tables2),
 	vn__build_uses_from_livevals(Liveslist, Vn_tables2, Vn_tables).
 
@@ -1365,8 +1409,8 @@ vn__record_use(Vn, Src, Vn_tables0, Vn_tables) :-
 		vn__lookup_defn(Vn, Vnrval, Vn_tables1),
 		(
 			Vnrval = vn_origlval(Vnlval),
-			vn__vnlval_access_vn(Vnlval, SubVns),
-			vn__record_use_list(SubVns, src_vn(Vn),
+			vn__vnlval_access_vns(Vnlval, SubVns),
+			vn__record_use_list(SubVns, src_access(Vnlval),
 				Vn_tables1, Vn_tables)
 		;
 			Vnrval = vn_mkword(_, SubVn),

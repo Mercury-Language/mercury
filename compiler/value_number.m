@@ -47,6 +47,7 @@
 
 :- type vn_src		--->	src_ctrl(int)
 			;	src_liveval(vnlval)
+			;	src_access(vnlval)
 			;	src_vn(int).
 
 :- type vn_node		--->	node_shared(vn)
@@ -121,9 +122,9 @@ vn__repeat_build_livemap_2(Backinstrs, Livemap0, Ccode, Livemap) :-
 	bintree_set__init(Livevals0),
 	vn__build_livemap(Backinstrs, Livevals0, no, Ccode1,
 		Livemap0, Livemap1),
-	opt_debug__dump_livemap(Livemap1, L_str),
-	opt_debug__write("\n\nLivemap:\n\n"),
-	opt_debug__write(L_str),
+	% opt_debug__dump_livemap(Livemap1, L_str),
+	% opt_debug__write("\n\nLivemap:\n\n"),
+	% opt_debug__write(L_str),
 	( Ccode1 = yes ->
 		Ccode = yes,
 		Livemap = Livemap1
@@ -339,12 +340,12 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
 	),
-	% opt_debug__dump_instr(Uinstr, Instr_str),
-	% opt_debug__write("\nInstr: "),
-	% opt_debug__write(Instr_str),
-	% opt_debug__dump_livevals(Livevals2, Live_str),
-	% opt_debug__write("\nLivevals: "),
-	% opt_debug__write(Live_str),
+	%% opt_debug__dump_instr(Uinstr, Instr_str),
+	%% opt_debug__write("\nInstr: "),
+	%% opt_debug__write(Instr_str),
+	%% opt_debug__dump_livevals(Livevals2, Live_str),
+	%% opt_debug__write("\nLivevals: "),
+	%% opt_debug__write(Live_str),
 	vn__build_livemap(Moreinstrs2, Livevals2, Ccode1, Ccode,
 		Livemap1, Livemap).
 
@@ -497,13 +498,13 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 		Incrsp, Decrsp, Incrhp, Ctrlmap0, Flushmap0, Ctrl0, Prev,
 		Instrs0, Instrs) :-
 	Instr0 = Uinstr0 - _Comment,
-	% opt_debug__dump_instr(Uinstr0, I_str),
-	% opt_debug__write("\n\nInstr: "),
-	% opt_debug__write(I_str),
-	% bintree_set__to_sorted_list(Livevals0, Livelist),
-	% opt_debug__dump_vnlvals(Livelist, L_str),
-	% opt_debug__write("\nLivevals: "),
-	% opt_debug__write(L_str),
+	%% opt_debug__dump_instr(Uinstr0, I_str),
+	%% opt_debug__write("\n\nInstr: "),
+	%% opt_debug__write(I_str),
+	%% bintree_set__to_sorted_list(Livevals0, Livelist),
+	%% opt_debug__dump_vnlvals(Livelist, L_str),
+	%% opt_debug__write("\nLivevals: "),
+	%% opt_debug__write(L_str),
 	(
 		Uinstr0 = comment(_),
 		vn__opt_block(Instrs0, Vn_tables0, Livemap,
@@ -677,13 +678,13 @@ vn__flush_all_nodes(Livevals, Templocs0, Vn_tables0, Incrsp, Decrsp, Incrhp,
 	bintree_set__to_sorted_list(Livevals, Live),
 	vn__build_uses(Livevals, Ctrlmap, Vn_tables0, Vn_tables1),
 
-	opt_debug__write("\n\n"),
-	opt_debug__dump_ctrlmap(Ctrlmap, Ctrl_str),
-	opt_debug__write(Ctrl_str),
-	opt_debug__dump_flushmap(Flushmap, Flush_str),
-	opt_debug__write(Flush_str),
-	opt_debug__dump_tables(Vn_tables1, Tables_str),
-	opt_debug__write(Tables_str),
+	% opt_debug__write("\n\n"),
+	% opt_debug__dump_ctrlmap(Ctrlmap, Ctrl_str),
+	% opt_debug__write(Ctrl_str),
+	% opt_debug__dump_flushmap(Flushmap, Flush_str),
+	% opt_debug__write(Flush_str),
+	% opt_debug__dump_tables(Vn_tables1, Tables_str),
+	% opt_debug__write(Tables_str),
 
 	(
 		vn__req_order(Ctrlmap, Flushmap, Incrhp, Vn_tables1,
@@ -700,28 +701,28 @@ vn__flush_all_nodes(Livevals, Templocs0, Vn_tables0, Incrsp, Decrsp, Incrhp,
 			Succmap3, Succmap4, Predmap3, Predmap4),
 		vn__pref_order(Succmap4, PrefOrder),
 
-		% opt_debug__write("\nSuccmap:\n"),
-		% opt_debug__dump_node_relmap(Succmap4, S_str),
-		% opt_debug__write(S_str),
-		% opt_debug__write("\nPredmap:\n"),
-		% opt_debug__dump_node_relmap(Predmap4, P_str),
-		% opt_debug__write(P_str),
-		% opt_debug__write("\nMustSuccmap:\n"),
-		% opt_debug__dump_node_relmap(MustSuccmap, MS_str),
-		% opt_debug__write(MS_str),
-		% opt_debug__write("\nMustPredmap:\n"),
-		% opt_debug__dump_node_relmap(MustPredmap, MP_str),
-		% opt_debug__write(MP_str),
+		%% opt_debug__write("\nSuccmap:\n"),
+		%% opt_debug__dump_node_relmap(Succmap4, S_str),
+		%% opt_debug__write(S_str),
+		%% opt_debug__write("\nPredmap:\n"),
+		%% opt_debug__dump_node_relmap(Predmap4, P_str),
+		%% opt_debug__write(P_str),
+		%% opt_debug__write("\nMustSuccmap:\n"),
+		%% opt_debug__dump_node_relmap(MustSuccmap, MS_str),
+		%% opt_debug__write(MS_str),
+		%% opt_debug__write("\nMustPredmap:\n"),
+		%% opt_debug__dump_node_relmap(MustPredmap, MP_str),
+		%% opt_debug__write(MP_str),
 
 		atsort(Succmap4, Predmap4, MustSuccmap, MustPredmap,
-			PrefOrder, BlockOrder),
+			PrefOrder, Blocks),
 		LastCtrl is Ctrl - 1,
-		vn__blockorder_to_order(BlockOrder, LastCtrl, Order),
+		vn__blockorder_to_order(Blocks, LastCtrl, Vn_tables3, Order),
 
-		opt_debug__dump_longnodelist(Order, O_str),
-		opt_debug__write("\nOrder:\n"),
-		opt_debug__write(O_str),
-		opt_debug__write("\n"),
+		% opt_debug__dump_longnodelist(Order, O_str),
+		% opt_debug__write("\nOrder:\n"),
+		% opt_debug__write(O_str),
+		% opt_debug__write("\n"),
 
 		vn__flush_nodelist(Order, Ctrlmap, Vn_tables3, _Vn_tables,
 			Templocs0, Templocs, Instrs0),
@@ -874,7 +875,7 @@ vn__vn_ctrl_order(Ctrl, Ctrlmap, Vn_tables0, Vn_tables,
 				Succmap0, Succmap1, Predmap0, Predmap1)
 		;
 			Vn_instr = vn_mark_hp(Vnlval),
-			vn__vnlval_access_vn(Vnlval, Vns),
+			vn__vnlval_access_vns(Vnlval, Vns),
 			vn__find_all_links(Vns, node_ctrl(Ctrl),
 				Vn_tables0, Vn_tables1,
 				Succmap0, Succmap1, Predmap0, Predmap1)
@@ -1017,7 +1018,7 @@ vn__find_links(Vn, Sink, Vn_tables0, Vn_tables,
 		vn__lookup_defn(Vn, Vnrval, Vn_tables0),
 		(
 			Vnrval = vn_origlval(Vnlval),
-			vn__vnlval_access_vn(Vnlval, Access_vns),
+			vn__vnlval_access_vns(Vnlval, Access_vns),
 			vn__find_all_links(Access_vns, Sink,
 				Vn_tables0, Vn_tables,
 				Succmap0, Succmap1, Predmap0, Predmap1),
@@ -1248,15 +1249,15 @@ vn__flush_node(Node, Ctrlmap, Vn_tables0, Vn_tables, Templocs0, Templocs,
 	),
 	(
 		Debug = yes,
-		opt_debug__write("for node "),
-		opt_debug__dump_node(Node, N_str),
-		opt_debug__write(N_str),
-		opt_debug__write(" generated instrs:\n"),
-		opt_debug__dump_fullinstrs(Instrs, I_str),
-		opt_debug__write(I_str),
-		opt_debug__write("new use info\n"),
-		opt_debug__dump_useful_vns(Vn_tables, U_str),
-		opt_debug__write(U_str),
+		% opt_debug__write("for node "),
+		% opt_debug__dump_node(Node, N_str),
+		% opt_debug__write(N_str),
+		% opt_debug__write(" generated instrs:\n"),
+		% opt_debug__dump_fullinstrs(Instrs, I_str),
+		% opt_debug__write(I_str),
+		% opt_debug__write("new use info\n"),
+		% opt_debug__dump_useful_vns(Vn_tables, U_str),
+		% opt_debug__write(U_str),
 		true
 	;
 		Debug = no,
@@ -1301,13 +1302,13 @@ vn__find_unused_user([Src | Srcs], Vnlvals, Vn_tables) :-
 	vn__find_unused_user(Srcs, Vnlvals0, Vn_tables),
 	(
 		Src = src_liveval(Live),
-		\+ Live = vn_field(_, _, _),
+		% \+ Live = vn_field(_, _, _),
 		\+ vn__search_current_value(Live, _, Vn_tables)
 	->
 		Vnlvals = [Live | Vnlvals0]
 	;
 		Src = src_liveval(Live),
-		\+ Live = vn_field(_, _, _),
+		% \+ Live = vn_field(_, _, _),
 		vn__search_current_value(Live, Vn, Vn_tables),
 		vn__lookup_uses(Vn, [], Vn_tables)
 	->
@@ -1379,7 +1380,11 @@ vn__ensure_assignment(Vnlval, Vn, Vn_tables0, Vn_tables,
 		vn__search_current_value(Vnlval, Cur_vn, Vn_tables0),
 		Vn = Cur_vn
 	->
-		vn__del_old_use(Vn, src_liveval(Vnlval), Vn_tables0, Vn_tables),
+		vn__del_old_use(Vn, src_liveval(Vnlval),
+			Vn_tables0, Vn_tables1),
+		vn__vnlval_access_vns(Vnlval, SubVns),
+		vn__del_old_uses(SubVns, src_access(Vnlval),
+			Vn_tables1, Vn_tables),
 		Templocs = Templocs0,
 		Instrs = []
 	;
@@ -1397,7 +1402,7 @@ vn__generate_assignment(Vnlval, Vn, Vn_tables0, Vn_tables,
 	% but they cannot appear on the temploc list, so of the next
 	% next two calls, at most one will modify temploc.
 	vn__no_temploc(Vnlval, Templocs0, Templocs1),
-	vn__flush_access_path(Vnlval, src_liveval(Vnlval), Lval,
+	vn__flush_access_path(Vnlval, src_access(Vnlval), Lval,
 		Vn_tables0, Vn_tables1, Templocs1, Templocs2, AccessInstrs),
 	vn__flush_vn(Vn, src_liveval(Vnlval), Rval, Vn_tables1, Vn_tables2,
 		Templocs2, Templocs3, FlushInstrs),
@@ -1521,7 +1526,7 @@ vn__flush_vn_value(Vn, Rval, Vn_tables0, Vn_tables, Templocs0, Templocs,
 	templocs, templocs, list(instruction)).
 :- mode vn__flush_access_path(in, in, out, di, uo, di, uo, out) is det.
 
-vn__flush_access_path(Vnlval, Src, Lval, Vn_tables0, Vn_tables,
+vn__flush_access_path(Vnlval, _Src, Lval, Vn_tables0, Vn_tables,
 		Templocs0, Templocs, AccessInstrs) :-
 	(
 		Vnlval = vn_reg(Reg),
@@ -1573,9 +1578,11 @@ vn__flush_access_path(Vnlval, Src, Lval, Vn_tables0, Vn_tables,
 		AccessInstrs = []
 	;
 		Vnlval = vn_field(Tag, Vn1, Vn2),
-		vn__flush_vn(Vn1, Src, Rval1, Vn_tables0, Vn_tables1,
+		vn__flush_vn(Vn1, src_access(Vnlval), Rval1,
+			Vn_tables0, Vn_tables1,
 			Templocs0, Templocs1, AccessInstrs1),
-		vn__flush_vn(Vn2, Src, Rval2, Vn_tables1, Vn_tables,
+		vn__flush_vn(Vn2, src_access(Vnlval), Rval2,
+			Vn_tables1, Vn_tables,
 			Templocs1, Templocs, AccessInstrs2),
 		Lval = field(Tag, Rval1, Rval2),
 		list__append(AccessInstrs1, AccessInstrs2, AccessInstrs)

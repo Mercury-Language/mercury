@@ -380,6 +380,9 @@ opt_debug__dump_use(src_ctrl(N), Str) :-
 opt_debug__dump_use(src_liveval(Vnlval), Str) :-
 	opt_debug__dump_vnlval(Vnlval, Vnlval_str),
 	string__append_list(["src_liveval(", Vnlval_str, ")"], Str).
+opt_debug__dump_use(src_access(Vnlval), Str) :-
+	opt_debug__dump_vnlval(Vnlval, Vnlval_str),
+	string__append_list(["src_access(", Vnlval_str, ")"], Str).
 opt_debug__dump_use(src_vn(Vn), Str) :-
 	opt_debug__dump_vn(Vn, Vn_str),
 	string__append_list(["src_vn(", Vn_str, ")"], Str).

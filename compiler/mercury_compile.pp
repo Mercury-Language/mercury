@@ -1038,20 +1038,18 @@ mercury_compile(module(Module, _, _, _, _)) -->
 	( { DoCodeGen = yes } ->
 #endif
 		mercury_compile__maybe_do_optimize(LLDS1, LLDS2),
-% #if NU_PROLOG
-% 		[]
-% 	;
-% 		[]
-% 	),
-% 	{ putprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile]),
-% 	write('finished putprop'), nl,
-% 	fail }.
-% mercury_compile(module(Module, _, _, _, _)) -->
-% 	{ getprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile], Ref),
-% 	write('finished getprop'), nl,
-% 	erase(Ref) },
-% 	( { DoCodeGen = yes } ->
-% #endif
+#if NU_PROLOG
+		[]
+	;
+		[]
+	),
+	{ putprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile]),
+	fail }.
+mercury_compile(module(Module, _, _, _, _)) -->
+	{ getprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile], Ref),
+	erase(Ref) },
+	( { DoCodeGen = yes } ->
+#endif
 		mercury_compile__output_llds(Module, LLDS2),
 		(
 			{ CompileToC = yes ; Compile = yes }
