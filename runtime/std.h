@@ -72,6 +72,7 @@
 #endif
 
 #undef	CTRL
-#define	CTRL(c)		('c' & 037)
+/* CTRL() macro was not ANSI complaint */
+#define	CONTROL(c)	(c & 037)
 #define	BELL		'\007'
 #define	ESC		'\033'

@@ -1,44 +1,47 @@
 #include	<stdio.h>
 #include	<assert.h>
+#include	"getopt.h"
 #include	"std.h"
 
-#define	NONDETCODETEST
-
 typedef	uint	Word;
+typedef void	Code;
 
 typedef struct s_entry
 {
-	char	*e_name;	/* the name of the procedure		*/
-	void	*e_addr;	/* the address of the code		*/
-	void	*e_input;	/* the address of the input generator	*/
+	const char	*e_name;	/* the name of the procedure	*/
+	Code		*e_addr;	/* the address of the code	*/
+	Code		*e_input;	/* the address of the input generator */
 } Entry;
 
 /* when you modify this, modify the table in aux.c as well */
-#define	APPEND_1	0
-#define	APPEND_2	1
-#define	NREV_1		2
-#define	LENGTH_1	3
-#define	LENGTH_2	4
-#define	ACLENGTH_1	5
-#define	MEMBER_1	6
-#define	MEMBER_2	7
-#define	MKLIST_1	8
-#define	Q_1		9
-#define	INT_1		10
-#define	HEAP_1		11
+enum {
+	APPEND_1,
+	APPEND_2,
+	NREV_1,
+	LENGTH_1,
+	LENGTH_2,
+	ACLENGTH_1,
+	MEMBER_1,
+	MEMBER_2,
+	MKLIST_1,
+	Q_1,
+	INT_1,
+	HEAP_1,
 
-#define	MAXENTRIES	12
+	MAXENTRIES
+};
+
 #define	STARTLABELS	40
 #define	MAXLABELS	400
 
-reg	Word	r0 asm("s0");
-reg	Word	r1 asm("s1");
-reg	Word	r2 asm("s2");
-reg	Word	r3 asm("s3");
-reg	Word	r4 asm("s4");
-reg	Word	r5 asm("s5");
-reg	Word	r6 asm("s6");
-reg	Word	r7 asm("s7");
+reg	Word	r0 __asm("s0");
+reg	Word	r1 __asm("s1");
+reg	Word	r2 __asm("s2");
+reg	Word	r3 __asm("s3");
+reg	Word	r4 __asm("s4");
+reg	Word	r5 __asm("s5");
+reg	Word	r6 __asm("s6");
+reg	Word	r7 __asm("s7");
 
 extern	Word	tmp0;
 extern	Word	tmp1;
@@ -52,7 +55,7 @@ extern	Word	tmp7;
 #define	hp	((Word *) r6)
 #define	sp	((Word *) r7)
 
-#define	succip	((void *) r0)
+#define	succip	((Code *) r0)
 #define	childcp	((Word *) tmp5)
 #define	curcp	((Word *) tmp6)
 #define	maxcp	((Word *) tmp7)
@@ -84,9 +87,9 @@ extern	int	r2val;
 extern	int	r3val;
 extern	int	repcounter;
 
-extern	void	*dofail;
-extern	void	*doresethpfail;
-extern	void	*doredo;
+extern	Code	*dofail;
+extern	Code	*doresethpfail;
+extern	Code	*doredo;
 
 #define	WORDSIZE	4
 
@@ -127,16 +130,16 @@ extern	void	*doredo;
 #define	SAVEVAL		-5
 
 /* the offsets used by choice points */
-#define	cpprednm	(char *) curcp[PREDNM]
-#define	cpsuccip	(void *) curcp[SUCCIP]
+#define	cpprednm	(const char *) curcp[PREDNM]
+#define	cpsuccip	(Code *) curcp[SUCCIP]
 #define	cpsucccp	(Word *) curcp[SUCCCP]
-#define	cpredoip	(void *) curcp[REDOIP]
+#define	cpredoip	(Code *) curcp[REDOIP]
 #define	cpprevcp	(Word *) curcp[PREVCP]
 #define	cpvar(n)	curcp[SAVEVAL-n]
 
 /* the offsets used by reclaim points */
-#define	recprednm	(char *) curcp[PREDNM]
-#define	recredoip	(void *) curcp[REDOIP]
+#define	recprednm	(const char *) curcp[PREDNM]
+#define	recredoip	(Code *) curcp[REDOIP]
 #define	recprevcp	(Word *) curcp[PREVCP]
 #define	recsavehp	(Word *) curcp[SAVEHP]
 
@@ -186,7 +189,7 @@ extern	void	*doredo;
 				debugsucceed();			\
 				childcp = curcp;		\
 				curcp = cpsucccp;		\
-				goto * (void *) childcp[SUCCIP];\
+				goto * (Code *) childcp[SUCCIP];\
 			} while (0)
 
 #define	fail()		do {					\
@@ -337,7 +340,7 @@ extern	void	*doredo;
 #define	heap_cr2_msg(val0, val1, hp)				\
 			do {					\
 				if (heapdebug)			\
-					printf("put %x,%x at %x\n",\
+					printf("put %x,%x at %p\n",\
 					val0, val1, hp);\
 			} while (0)
 #define	stack_push_msg(val, sp)					\
@@ -450,21 +453,23 @@ extern	void	*doredo;
 				w = *sp;			\
 				stack_pop_msg(*sp, sp);		\
 				stack_underflow_check();	\
-				w;				\
+				/* return */ w;			\
 			})
 
 extern	int	which;
-extern	void	(*regtable[MAXENTRIES][16])();
+
+/* A table of the entry points defined by the various modules */
+
 extern	Entry	entries[];
 
-extern	void	printint(Word n);
-extern	void	printheap(Word h);
-extern	void	printstack(Word s);
-extern	void	printcpstack(Word s);
-extern	void	printlist(Word p);
-extern	void	printlabel(Word w);
-extern	void	printregs(char *);
-extern	void	dumpcpstack(void);
+/* For each entry point, a table function pointers which indicate
+   which function should be called by debugregs() to print out
+   each register. */
+
+typedef void PrintRegFunc(Word);
+extern	PrintRegFunc * regtable[MAXENTRIES][16];
+
+/* prototypes for the modules */
 
 extern	void	list_module(void);
 extern	void	nrev_module(void);
@@ -474,9 +479,38 @@ extern	void	member_module(void);
 extern	void	mklist_module(void);
 extern	void	ab_module(void);
 extern	void	ex_module(void);
+extern	void	back_module(void);
+extern	void	neg_module(void);
+extern	void	heap_module(void);
+
+/* old (obsolete?) */
+
 extern	Word	mklist(int start, int len);
 extern	void	mkinput(int r1val, int r2val, int r3val);
 
-extern	int	getopt(int argc, char **argv, char *opstring);
-extern	char	*optarg;
-extern	int	optind, opterr;
+/* Debugging messages, defined in aux.c */
+
+extern	void	mkcp_msg(void);
+extern	void	mkreclaim_msg(void);
+extern	void	modcp_msg(void);
+extern	void	succeed_msg(void);
+extern	void	fail_msg(void);
+extern	void	redo_msg(void);
+extern	void	call_msg(const Word *proc, const Word *succcont);
+extern	void	proceed_msg(void);
+extern	void	push_msg(Word val, const Word *addr);
+extern	void	pop_msg(Word val, const Word *addr);
+
+/* More debugging messages, defined in aux.c */
+
+extern	void	printregs(const char *msg);
+extern	void	printtmps(void);
+extern	void	printint(Word n);
+extern	void	printheap(Word h);
+extern	void	printstack(Word s);
+extern	void	printcpstack(Word s);
+extern	void	printlist(Word p);
+extern	void	printlabel(Word w);
+extern	void	printregs(const char *);
+extern	void	dumpcpstack(void);
+

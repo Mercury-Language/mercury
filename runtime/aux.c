@@ -53,18 +53,30 @@ void redo_msg()
 	printf("redo ip: "); printlabel((Word) maxcp[REDOIP]);
 }
 
-void call_msg(Word *proc, Word *succcont)
+void call_msg(const Word *proc, const Word *succcont)
 {
 	printf("\ncalling      "); printlabel((Word) proc);
 	printf("continuation "); printlabel((Word) succcont);
 }
 
-void proceed_msg()
+void proceed_msg(void)
 {
 	printf("\nreturning from determinate procedure\n");
 }
 
-void printtmps()
+void push_msg(Word val, const Word *addr)
+{
+	printf("push value %x to ", val);
+	printstack((Word) addr);
+}
+
+void pop_msg(Word val, const Word *addr)
+{
+	printf("pop value %x from ", val);
+	printstack((Word) addr);
+}
+
+void printtmps(void)
 {
 	printf("tmps x%x x%x x%x x%x x%x x%x x%x x%x\n",
 		tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7);
@@ -74,19 +86,6 @@ void printint(Word n)
 {
 	printf("int %d\n", n);
 }
-
-void push_msg(Word val, Word *addr)
-{
-	printf("push value %x to ", val);
-	printstack((Word) addr);
-}
-
-void pop_msg(Word val, Word *addr)
-{
-	printf("pop value %x from ", val);
-	printstack((Word) addr);
-}
-
 void printheap(Word h)
 {
 	printf("ptr %x, offset %3d words\n",
@@ -102,7 +101,8 @@ void printstack(Word s)
 void printcpstack(Word s)
 {
 	printf("ptr %x, offset %3d words, procedure %s\n",
-		s, (Word *) s - cpstackmin, ((Word *) s)[PREDNM]);
+		s, (Word *) s - cpstackmin,
+		(const char *)(((Word *) s)[PREDNM]));
 }
 
 void dumpcpstack()
@@ -113,20 +113,20 @@ void dumpcpstack()
 	printf("\ncpstack dump\n");
 	for (cp = maxcp; cp > cpstackmin; cp = (Word *) cp[PREVCP])
 	{
-		if ((cp - cp[PREVCP]) == RECLAIM_SIZE)
+		if ((cp - (Word *)cp[PREVCP]) == RECLAIM_SIZE)
 		{
-			printf("reclaim frame at ptr %x, offset %3d words\n",
+			printf("reclaim frame at ptr %p, offset %3d words\n",
 				cp, cp - cpstackmin);
-			printf("\tpredname  %s\n", cp[PREDNM]);
+			printf("\tpredname  %s\n", (const char *)cp[PREDNM]);
 			printf("\tredoip    "); printlabel(cp[REDOIP]);
 			printf("\tprevcp    "); printcpstack(cp[PREVCP]);
 			printf("\tsavehp    "); printheap(cp[SAVEHP]);
 		}
 		else
 		{
-			printf("cp frame at ptr %x, offset %3d words\n",
+			printf("cp frame at ptr %p, offset %3d words\n",
 				cp, cp - cpstackmin);
-			printf("\tpredname  %s\n", cp[PREDNM]);
+			printf("\tpredname  %s\n", (const char *)cp[PREDNM]);
 			printf("\tsuccip    "); printlabel(cp[SUCCIP]);
 			printf("\tredoip    "); printlabel(cp[REDOIP]);
 			printf("\tsucccp    "); printcpstack(cp[SUCCCP]);
@@ -154,7 +154,7 @@ void printlist(Word p)
 		if ((c % LIST_WRAP) == 0 && c != 0)
 			printf("\n\t ");
 
-		printf("(%x)%d.", & field(TAG_CONS, t, 0), field(TAG_CONS, t, 0));
+		printf("(%p)%d.", & field(TAG_CONS, t, 0), field(TAG_CONS, t, 0));
 		fflush(stdout);
 		t = field(TAG_CONS, t, 1);
 
@@ -172,7 +172,7 @@ void printlist(Word p)
 			t = field(TAG_CONS, t, 1);
 		}
 
-		printf("(%x)%d.", & field(TAG_CONS, lastt, 0), field(TAG_CONS, lastt, 0));
+		printf("(%p)%d.", & field(TAG_CONS, lastt, 0), field(TAG_CONS, lastt, 0));
 		fflush(stdout);
 	}
 
@@ -201,9 +201,9 @@ void printlabel(Word w)
 	printf("label UNKNOWN (%x)\n", w);
 }
 
-#define	FNULL	((void (*)()) 0)
+#define	FNULL	((PrintRegFunc *)0)
 
-void	(*regtable[MAXENTRIES][16])() =
+PrintRegFunc	*regtable[MAXENTRIES][16] =
 {
 /* APPEND_1 */
 	{ printlabel, printlist, printlist, printlist,
@@ -256,7 +256,7 @@ void	(*regtable[MAXENTRIES][16])() =
 	FNULL, printcpstack, printcpstack, printcpstack },
 };
 
-void printregs(char *msg)
+void printregs(const char *msg)
 {
 	printf("\n%s\n", msg);
 

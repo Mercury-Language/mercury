@@ -1,1 +1,5 @@
--DNEEDBACK -DNEEDLIST -DNEEDNREV -DNEEDEX -DNEEDHEAP -DNEEDLENGTH -g
+-DNEEDBACK -DNEEDLIST -DNEEDNREV -DNEEDNEG
+-ansi
+-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wenum-clash -Wcast-align
+-Wtraditional -Wstrict-prototypes -Wmissing-prototypes -Wnested-externs
+-O2
