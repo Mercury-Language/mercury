@@ -95,11 +95,11 @@ extern	const char	*MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec,
 
 /*
 ** Print the list of the names and values of all variables live at the current
-** point. The variables names are printed directly to the given file; the
-** variable values are printed by calling the given browser function on them.
+** point. The variables names are printed directly to the given file, but
+** only if the given file pointer is not NULL; the variable values are
+** printed by calling the given browser function on them.
 */
 
-extern	const char 	*MR_trace_browse_all(FILE *out, FILE *err,
-				MR_Browser browser);
+extern	const char 	*MR_trace_browse_all(FILE *out, MR_Browser browser);
 
 #endif	/* MERCURY_TRACE_VARS_H */

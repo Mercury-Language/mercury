@@ -776,7 +776,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 			if streq(words[1], "*") {
 				problem = MR_trace_browse_all(MR_mdb_out,
-					MR_mdb_err, MR_trace_print_var);
+					MR_trace_print_var);
 			} else if (MR_trace_is_number(words[1], &n)) {
 				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
 				var_spec.MR_var_spec_number = n;

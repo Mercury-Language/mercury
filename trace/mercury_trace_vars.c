@@ -14,6 +14,7 @@
 
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
+#include "mercury_memory.h"
 #include "mercury_layout_util.h"
 #include "mercury_stack_layout.h"
 #include "mercury_trace_vars.h"
@@ -23,6 +24,29 @@
 #include <string.h>
 #include <ctype.h>
 
+/*
+** This structure contains all the debugger's information about a variable.
+**
+** The fullname field obviously contains the variable's full name.
+** If this name ends with a sequence of digits, then the basename field will
+** contain the name of the variable minus those digits, the num_suffix field
+** will contain the numeric value of this sequence of digits, and the
+** has_suffix field will be set to true. If the full name does not end with
+** a sequence of digits, then the basename field will contain the same string
+** as the fullname field, and the has_suffix field will be set to false
+** (the num_suffix field will not contain anything meaningful).
+**
+** The is_headvar field will be set to true iff the basename of the variable
+** is HeadVar__; such variables are always listed before other variables.
+** The is_ambiguous field will be set iff the full name of the variable
+** does not uniquely identify it among all the variables live at the
+** current point. What *is* guaranteed to uniquely identify a variable
+** is its HLDS number, which will be in the hlds_number field.
+**
+** The last two fields contain the value of the variable and the typeinfo
+** describing the type of this value.
+*/
+
 typedef struct {
 	char				*MR_var_fullname;
 	char				*MR_var_basename;
@@ -31,9 +55,39 @@ typedef struct {
 	bool				MR_var_is_headvar;
 	bool				MR_var_is_ambiguous;
 	int				MR_var_hlds_number;
-	Word				MR_var_value;
 	Word				MR_var_type;
+	Word				MR_var_value;
 } MR_Var_Details;
+
+/*
+** This structure contains all of the debugger's information about
+** all the variables that are live at the current program point,
+** where a program point is defined as the combination of a debugger
+** event and an ancestor level.
+**
+** The top_layout and top_saved_regs fields together describe the abstract
+** machine state at the current debugger event. The problem field points 
+** to a string containing an error message describing why the debugger
+** can't print any variables at the current point. It will of course be
+** NULL if the debugger can do so, which requires not only that the
+** debugger have all the information it needs about the current point.
+** Since the debugger doesn't allow the setting of the ancestor level
+** to a given value if the selected point is missing any of the required
+** information, the problem field can only be non-NULL if the ancestor
+** level is zero (i.e. the point at the event itself is already missing
+** some required info).
+**
+** The level_entry field contains the proc layout structure of the
+** procedure at the selected ancestor level, and the level_base_sp and
+** level_base_curfr fields contain the values appropriate for addressing
+** the stack frame of the selected invocation of this procedure. This
+** information is useful in looking up e.g. the call number of this invocation.
+**
+** The var_count field says how many variables are live at the current
+** point. This many of the elements of the vars array are valid.
+** The number of elements of the vars array for which space has been
+** reserved is held in var_max.
+*/
 
 typedef struct {
 	const MR_Stack_Layout_Label	*MR_point_top_layout;
@@ -243,7 +297,7 @@ MR_trace_set_level(int ancestor_level)
 		MR_Var_Details, MR_INIT_VAR_DETAIL_COUNT);
 
 	for (slot = 0; slot < MR_point.MR_point_var_count; slot++) {
-		/* free the memory allocated by previous strdups */
+		/* free the memory allocated by previous MR_copy_string */
 		free(MR_point.MR_point_vars[slot].MR_var_fullname);
 		free(MR_point.MR_point_vars[slot].MR_var_basename);
 	}
@@ -285,13 +339,13 @@ MR_trace_set_level(int ancestor_level)
 		MR_point.MR_point_vars[slot].MR_var_hlds_number =
 			var_info->MR_var_num;
 
-		copy = strdup(name);
+		copy = MR_copy_string(name);
 		MR_point.MR_point_vars[slot].MR_var_fullname = copy;
-		MR_point.MR_point_vars[slot].MR_var_value = value;
 		MR_point.MR_point_vars[slot].MR_var_type = type_info;
+		MR_point.MR_point_vars[slot].MR_var_value = value;
 
 		/* we need another copy we can cut apart */
-		copy = strdup(name);
+		copy = MR_copy_string(name);
 		copylen = strlen(copy);
 		s = copy + copylen - 1;
 		while (s > copy && isdigit(*s)) {
@@ -365,6 +419,22 @@ MR_trace_set_level(int ancestor_level)
 	MR_point.MR_point_var_count = slot_max;
 	return NULL;
 }
+
+/*
+** This comparison function is used to sort variables
+**
+**	- first on basename,
+**	- then on suffix,
+**	- and then, if necessary, on HLDS number.
+**
+** The sorting on basenames is alphabetical except for head variables,
+** which always come out first.
+**
+** The sorting on suffixes orders variables with the same basename
+** so that they come out in order of numerically increasing suffix,
+** with any variable sharing the same name but without a numeric suffix
+** coming out last.
+*/
 
 static int
 MR_trace_compare_var_details(const void *arg1, const void *arg2)
@@ -537,7 +607,7 @@ MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 }
 
 const char *
-MR_trace_browse_all(FILE *out, FILE *err, MR_Browser browser)
+MR_trace_browse_all(FILE *out, MR_Browser browser)
 {
 	int				i;
 
