@@ -61,12 +61,12 @@ option_handle_functor_overloading("character").
 
 %-----------------------------------------------------------------------------%
 
-convert_to_goedel(ProgName, Items) -->
+convert_to_goedel(ProgName, Items0) -->
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, "% Expanding equivalence types..."),
 	io__flush_output(StdErr),
-	{ prog_util__expand_eqv_types(Items, Items3) },
-	{ goedel_replace_int_integer(Items3, Items4) },
+	{ goedel_replace_int_integer(IntEquivTypeDefn) },
+	{ prog_util__expand_eqv_types([IntEquivTypeDefn | Items0], Items) },
 	io__write_string(StdErr, " done\n"),
 	{ convert_functor_name(ProgName, GoedelName) },
 	{ string__append(GoedelName, ".loc", OutputFileName) },
@@ -80,7 +80,7 @@ convert_to_goedel(ProgName, Items) -->
 		io__write_string(".\n"),
 		io__write_string("IMPORT       MercuryCompat.\n"),
 		io__write_string("\n"),
-		goedel_output_item_list(Items4),
+		goedel_output_item_list(Items),
 		io__write_string(StdErr, "% done\n"),
 		io__told
 	;
@@ -93,16 +93,19 @@ convert_to_goedel(ProgName, Items) -->
 
 	% Mercury uses "int" as the integer type, whereas Goedel uses
 	% "Integer", so we need to replace all occurrences of int with integer.
+	% We do this by inserting a type declaration
+	%	:- type int == integer.
+	% at the start of the item list.
 
-:- pred goedel_replace_int_integer(list(item_and_context),
-					list(item_and_context)).
-:- mode goedel_replace_int_integer(in, out) is det.
+:- pred goedel_replace_int_integer(item_and_context).
+:- mode goedel_replace_int_integer(out) is det.
 
-goedel_replace_int_integer(Items0, Items) :-
+goedel_replace_int_integer(Item - Context) :-
 	varset__init(VarSet),
 	term__context_init(Context),
-	prog_util__replace_eqv_type_list(Items0, VarSet, "int", [],
-		term__functor(term__atom("integer"), [], Context), Items).
+	Item = type_defn(VarSet, TypeDefn, true),
+	TypeDefn = eqv_type(unqualified("int"), [],
+		term__functor(term__atom("integer"), [], Context)).
 
 %-----------------------------------------------------------------------------%
 
