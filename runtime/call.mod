@@ -26,17 +26,33 @@ BEGIN_CODE
 do_call_closure:
 {
 	Word closure;
-	int i,num_in_args;
+	int i, num_in_args, num_extra_args;
 
 	closure = r1; /* The closure */
 	num_in_args = field(0, closure, 0); /* number of input args */
-	push(r2); /* The number of output args to unpack */
-	push(num_in_args); /* The number of input args */
+	num_extra_args = r2; /* number of immediate input args */
+
+	push(r3); /* The number of output args to unpack */
+	push(num_in_args + num_extra_args); /* The number of input args */
 	push(succip);
+
 	save_registers();
+
+	if (num_in_args < 3) {
+		for (i=1; i<=num_extra_args;i++) {
+			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+		}
+	} else if (num_in_args > 3) {
+		for (i=num_extra_args; i>0; i--) {
+			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+		}
+	} /* else do nothing because i == 3 */
+
 	for(i=1; i <= num_in_args; i++) 
 		virtual_reg(i) = field(0, closure, i+1); /* copy args */
+
 	restore_registers();
+
 	call(field(0, closure, 1), LABEL(do_closure_return));
 }
 do_closure_return:
@@ -46,24 +62,42 @@ do_closure_return:
 	succip = pop(); /* restore succip */
 	num_in_args = pop(); /* restore the input arg counter */
 	num_out_args = pop(); /* restore the ouput arg counter */
+
 	save_registers();
+
 	for (i=1; i<= num_out_args; i++)
 		virtual_reg(i) = virtual_reg(i+num_in_args);
+
 	restore_registers();
+
 	proceed();
 }
 
 do_call_semidet_closure:
 {
 	Word closure;
-	int i,num_in_args;
+	int i,num_in_args, num_extra_args;
 
 	closure = r1; /* The closure */
 	num_in_args = field(0, closure, 0); /* number of input args */
-	push(r2); /* The number of output args to unpack */
-	push(num_in_args); /* The number of input args */
+	num_extra_args = r2; /* the number of immediate input args */
+
+	push(r3); /* The number of output args to unpack */
+	push(num_in_args + num_extra_args); /* The number of input args */
 	push(succip);
+
 	save_registers();
+
+	if (num_in_args < 3) {
+		for (i=1; i<=num_extra_args;i++) {
+			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+		}
+	} else if (num_in_args > 3) {
+		for (i=num_extra_args; i>0; i--) {
+			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+		}
+	} /* else do nothing because i == 3 */
+
 	for(i=1; i <= num_in_args; i++) 
 		virtual_reg(i) = field(0, closure, i+1); /* copy args */
 	restore_registers();
@@ -76,10 +110,14 @@ do_semidet_closure_return:
 	succip = pop(); /* restore succip */
 	num_in_args = pop(); /* restore the input arg counter */
 	num_out_args = pop(); /* restore the ouput arg counter */
+
 	save_registers();
+
 	for (i=1; i<= num_out_args; i++)
 		virtual_reg(i+1) = virtual_reg(i+num_in_args);
+
 	restore_registers();
+
 	proceed();
 }
 
