@@ -1,12 +1,14 @@
-% ---------------------------------------------------------------------------- %
-% bitmap.m
-% Copyright (C) 2001-2002 Ralph Becket <rbeck@microsoft.com>
-% Thu Feb  1 14:38:31 GMT 2001
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2001-2002 The University of Melbourne
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
+%-----------------------------------------------------------------------------%
 %
-% THIS MODULE IS HEREBY DONATED TO THE MERCURY PROJECT TO BE
-% RELEASED UNDER WHATEVER LICENCES ARE DEEMED APPROPRIATE BY
-% THE MERCURY PROJECT TEAM.
+% File: bitmap.m
+% Main author: rafe
+% Stability: low
 %
 % Efficient bitmap implementation.
 %
@@ -17,7 +19,7 @@
 % a small burden on the programmer to ensure the correctness of his
 % code that would otherwise be assured by the compiler.)
 %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- module bitmap.
 
@@ -135,8 +137,8 @@
 :- func resize(bitmap, int, bool) = bitmap.
 :- mode resize(bitmap_di, in, in) = bitmap_uo is det.
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 

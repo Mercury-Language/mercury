@@ -1,15 +1,14 @@
 %-----------------------------------------------------------------------------%
-% pprint.m
-% Copyright (C) 2000-2002 Ralph Becket <rbeck@microsoft.com>
-% Wed Mar 22 17:44:32  2000
+% Copyright (C) 2000-2002 The University of Melbourne
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 % vi: ts=4 sw=4 et tw=0 wm=0
+%-----------------------------------------------------------------------------%
 %
+% File: pprint.m
 % Main author: rafe
 % Stability: medium
-%
-% This file is hereby contributed to the University of
-% Melbourne Mercury Project to be released under whatever
-% licence the current project management deems fit.
 %
 %
 % ABOUT

@@ -1,12 +1,14 @@
-% ---------------------------------------------------------------------------- %
-% hash_table.m
-% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-% Tue Jan 30 15:21:45 GMT 2001
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2001 The University of Melbourne
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
+%-----------------------------------------------------------------------------%
 %
-% THIS MODULE IS HEREBY DONATED TO THE MERCURY PROJECT TO BE
-% RELEASED UNDER WHATEVER LICENCES ARE DEEMED APPROPRIATE BY
-% THE MERCURY PROJECT TEAM.
+% File: hash_table.m
+% Main author: rafe
+% Stability: low
 %
 % Hash table implementation.
 %
@@ -31,7 +33,7 @@
 % destructively updated structure (such as a hash_table) since the
 % compiler will not currently detect such errors.
 %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- module hash_table.
 
@@ -176,8 +178,8 @@
 :- mode fold(func(in, in, in) = out is det, hash_table_ui, in) = out is det.
 :- mode fold(func(in, in, di) = uo is det, hash_table_ui, di) = uo is det.
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
