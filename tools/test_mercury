@@ -79,6 +79,7 @@ case $FULLARCH in
 		# On x86 Linux, we need to set the following flags to enable
 		# shared libraries (and we need to use shared libraries to
 		# avoid running out of disk space...)
+		TEST_MCFLAGS="$TEST_MCFLAGS --pic-reg"
 		TEST_MGNUCFLAGS=--pic-reg
 		TEST_MLFLAGS=--shared
 		;;
