@@ -166,9 +166,9 @@ tar:
 
 .PHONY: install
 install: all install_scripts install_util install_runtime install_boehm_gc \
-		install_library install_compiler install_doc \
-		install_runtime_grades install_library_grades \
-		install_profiler
+		install_library install_compiler install_profiler install_doc \
+		install_runtime_grades install_boehm_gc_grades \
+		install_library_grades
 
 .PHONY: install_scripts
 install_scripts: scripts
@@ -215,6 +215,21 @@ install_runtime_grades:
 	    fi \
 	done && \
 	(mv tmp_dir/* . || true)
+
+.PHONY: install_boehm_gc_grades
+install_boehm_gc_grades:
+	case "$(LIBGRADES)" in \
+	    *.prof*) \
+		cd boehm_gc && \
+		rm -rf tmp_dir && \
+		mkdir tmp_dir && \
+		(mv -f *.o *.pic_o *.a *.so tmp_dir || true) && \
+		$(SUBDIR_MMAKE) GRADE=$(GRADE).prof PROF=.prof install \
+			|| exit 1; \
+		rm -f *.o *.pic_o *.a *.so; \
+		(mv tmp_dir/* . || true) \
+	    ;; \
+	esac
 
 .PHONY: install_library_grades
 install_library_grades: dep_library

@@ -19,6 +19,9 @@ case "$host" in
 	mips-sgi-irix5.*)
 		AC_MSG_WARN(*** Read README.IRIX-5 before proceeding!)
 		;;
+	*-*-bsdi*)
+		AC_MSG_WARN(*** Read README.BSDI before proceeding!)
+		;;
 esac
 #-----------------------------------------------------------------------------#
 echo looking for an already installed Mercury compiler to bootstrap with...
@@ -44,6 +47,7 @@ EOF
 		BOOTSTRAP_MC=
 		AC_MSG_RESULT(no)
 	fi
+	rm -f conftest*
 fi
 #-----------------------------------------------------------------------------#
 GNU_MAKE=
@@ -383,6 +387,7 @@ AC_SUBST(LOW_TAG_BITS)
 #-----------------------------------------------------------------------------#
 #
 # For Irix 5, gcc labels don't work with shared libraries
+# For x86, gcc global registers only work with -fno-builtin
 #
 save_CC="$CC"
 save_LIBRARY_PATH="$LIBRARY_PATH"
@@ -391,6 +396,9 @@ case "$host" in
 		CC="$CC -non_shared -mno-abicalls"
 LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
 		export LIBRARY_PATH
+		;;
+	i?86-*)
+		CC="$CC -fno-builtin"
 		;;
 esac
 #-----------------------------------------------------------------------------#
@@ -603,6 +611,11 @@ fi
 for grade in $LIBGRADES; do
 	LIBGRADES="$LIBGRADES $grade.gc"
 done
+LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof \
+`echo $DEFAULT_GRADE|sed 's/\.gc$//'`.prof"
+if test $GRADE != $DEFAULT_GRADE; then
+	LIBGRADES="$LIBGRADES $GRADE.prof `echo $GRADE|sed 's/\.gc$//'`.prof"
+fi
 # remove DEFAULT_GRADE from LIBGRADES
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $DEFAULT_GRADE / /" `
 echo "using \`LIBGRADES=$LIBGRADES' as the set of library grades to install"
