@@ -528,7 +528,8 @@ ra_list_lookup_2(I, cons(Size, T, Rest), X) :-
 	( I < Size ->
 		ra_list_bintree_lookup(Size, T, I, X)
 	;
-		ra_list_lookup_2(I - Size, Rest, X)
+		NewI is I - Size,
+		ra_list_lookup_2(NewI, Rest, X)
 	).
 
 :- pred ra_list_bintree_lookup(int, ra_list_bintree(T), int, T).
@@ -565,7 +566,8 @@ ra_list_update_2(cons(Size, T0, Rest), I, X, List) :-
 		ra_list_bintree_update(Size, T0, I, X, T),
 		List = cons(Size, T, Rest)
 	;
-		ra_list_update_2(Rest, I - Size, X, List0),
+		NewI is I - Size,
+		ra_list_update_2(Rest, NewI, X, List0),
 		List = cons(Size, T0, List0)
 	).
 
