@@ -346,6 +346,9 @@ typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
 		map__search(Preds, PredId, PredInfo)
 	then
 		predinfo_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
+
+		% XXX Design flaw.  Fuck.
+		
 			% rename apart the type variables in called
 			% predicate's arg types
 		typeinfo_get_typevarset(TypeInfo0, TypeVarSet0),
@@ -395,9 +398,9 @@ typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
 		typeinfo_get_io_state(TypeInfo0, IOState0),
 		typeinfo_get_context(TypeInfo0, Context),
 		typeinfo_get_predid(TypeInfo0, PredId),
-		get_type_of_var(TypeAssignSet0, VarId, TypeOfVarList),
-		report_error_var(PredId, Context, VarSet, VarId, TypeOfVarList,
-				Type, IOState0, IOState),
+		get_type_stuff(TypeAssignSet0, VarId, TypeStuffList),
+		report_error_var(PredId, Context, VarSet, VarId, TypeStuffList,
+				Type, TypeAssignSet0, IOState0, IOState),
 		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, true, TypeInfo2),
 		typeinfo_set_type_assign_set(TypeInfo2, TypeAssignSet, TypeInfo)
@@ -408,27 +411,31 @@ typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
 	% Given a type assignment set and a variable id,
 	% return the list of possible different types for the variable.
 
-:- pred get_type_of_var(type_assign_set, variable, list(type)).
-:- mode get_type_of_var(input, input, output).
-get_type_of_var([], _VarId, []).
-get_type_of_var([TypeAssign | TypeAssigns], VarId, L) :-
-	get_type_of_var(TypeAssigns, VarId, L0),
+:- type type_stuff ---> type_stuff(type, tvarset, map(type_param, type)).
+
+:- pred get_type_stuff(type_assign_set, variable, list(type_stuff)).
+:- mode get_type_stuff(input, input, output).
+get_type_stuff([], _VarId, []).
+get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
+	get_type_stuff(TypeAssigns, VarId, L0),
+	type_assign_get_type_bindings(TypeAssign, TypeBindings),
+	type_assign_get_typevarset(TypeAssign, TVarSet),
 	type_assign_get_var_types(TypeAssign, VarTypes),
 	( %%% if some [Type0]
 		map__search(VarTypes, VarId, Type0)
 	->
 		Type = Type0
 	;
-		type_assign_get_typevarset(TypeAssign, TVarSet),
 		varset__new_var(TVarSet, NewVar, _),
 		Type = term_variable(NewVar)
 	),
+	TypeStuff = type_stuff(Type, TVarSet, TypeBindings),
 	(
-		member_chk(Type, L0)
+		member_chk(TypeStuff, L0)
 	->
 		L = L0
 	;
-		L = [Type | L0]
+		L = [TypeStuff | L0]
 	).
 
 :- pred typecheck_var_has_type_2(type_assign_set, var_id, type,
@@ -501,8 +508,9 @@ typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
 	    ->
 		typeinfo_get_io_state(TypeInfo0, IOState0),
 		typeinfo_get_predid(TypeInfo0, PredId),
-		report_error_cons(PredId, C, F, Arity, Type,
-				IOState0, IOState),
+		typeinfo_get_varset(TypeInfo0, VarSet),
+		report_error_cons(PredId, C, VarSet, F, Arity, Type,
+					TypeAssignSet, IOState0, IOState),
 		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, true, TypeInfo2),
 		typeinfo_set_type_assign_set(TypeInfo2, TypeAssignSet, TypeInfo)
@@ -1513,6 +1521,10 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+% The next section contains predicates for writing error diagnostics.
+
+%-----------------------------------------------------------------------------%
+
 :- pred report_error_unif(pred_id, term__context, varset, term, term,
 			type_assign_set, io__state, io__state).
 :- mode report_error_unif(input, input, input, input, input, input, di, uo).
@@ -1527,6 +1539,15 @@ report_error_unif(PredId, Context, VarSet, X, Y, TypeAssignSet) -->
 	io__write_string("' and `"),
 	io__write_term(VarSet, Y),
 	io__write_string("'.\n"),
+	write_type_assign_set_msg(TypeAssignSet, VarSet).
+
+%-----------------------------------------------------------------------------%
+
+:- pred write_type_assign_set_msg(type_assign_set, tvarset,
+				io__state, io__state).
+:- mode write_type_assign_set_msg(input, input, di, uo).
+
+write_type_assign_set_msg(TypeAssignSet, VarSet) -->
 	( { TypeAssignSet = [_] } ->
 	    io__write_string("The partial type assignment was:\n")
 	;
@@ -1555,7 +1576,10 @@ write_type_assign(TypeAssign, VarSet) -->
 	  map__keys(VarTypes, Vars),
 	  Vars = [Var | Vars1]
 	},
-	( { map__search(VarTypes, Var, Type) } ->
+	( 
+		{ map__search(VarTypes, Var, Type) },
+		{ varset__lookup_name(VarSet, Var, _) }
+	->
 		io__write_variable(Var, VarSet),
 		io__write_string(" :: "),
 		write_type_b(Type, TypeVarSet, TypeBindings)
@@ -1572,7 +1596,10 @@ write_type_assign(TypeAssign, VarSet) -->
 write_type_assign_2([], _, _, _, _) --> [].
 write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet)
 		-->
-	( { map__search(VarTypes, Var, Type) } ->
+	( 
+		{ map__search(VarTypes, Var, Type) },
+		{ varset__lookup_name(VarSet, Var, _) }
+	->
 		io__write_string(", "),
 		io__write_variable(Var, VarSet),
 		io__write_string(" :: "),
@@ -1581,6 +1608,8 @@ write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet)
 		[]
 	),
 	write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings, TypeVarSet).
+
+	% write_type_b writes out a type after applying the type bindings.
 
 :- pred write_type_b(type, map(type_param, type), tvarset,
 			io__state, io__state).
@@ -1592,46 +1621,53 @@ write_type_b(Type, TypeVarSet, TypeBindings) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_error_var(pred_id, term__context, varset, var, list(type), type, 
+:- pred report_error_var(pred_id, term__context, varset, var,
+			list(type_stuff), type, type_assign_set,
 			io__state, io__state).
-:- mode report_error_var(input, input, input, input, input, input, di, uo).
+:- mode report_error_var(input, input, input, input, input, input, input,
+			di, uo).
 
-report_error_var(PredId, Context, VarSet, VarId, TypesOfVar, Type) -->
+report_error_var(PredId, Context, VarSet, VarId, TypeStuffList, Type,
+			TypeAssignSet0) -->
 	prog_out__write_context(Context),
 	io__write_string("type error in clause for predicate `"),
 	write_pred_id(PredId),
 	io__write_string("':\n"),
 	io__write_string("variable `"),
 	write_var(VarId, VarSet),
-	io__write_string("' has "),
-	write_type_list(TypesOfVar),
-	io__write_string(", expected type was `"),
-	write_type(Type),	% XXX
-	io__write_string("'.\n").
+	( { TypeStuffList = [SingleTypeStuff] } ->
+		{ SingleTypeStuff = type_stuff(VType, TVarSet, TBinding) },
+		io__write_string("' has type `"),
+		write_type_b(VType, TVarSet, TBinding),
+		io__write_string("', expected type was `"),
+		write_type_b(Type, TVarSet, TBinding),
+		io__write_string("'.\n")
+	;
+		io__write_string("' has overloaded type { `"),
+		write_type_stuff_list(TypeStuffList),
+		io__write_string(" },\n"),
+		io__write_string("which doesn't match the expected type.\n")
+			% XXX improve error message: should output
+			% the expected type.
+	),
+	write_type_assign_set_msg(TypeAssignSet0, VarSet).
 
-:- pred write_type_list(list(type), io__state, io__state).
-:- mode write_type_list(input, di, uo).
+:- pred write_type_stuff_list(list(type_stuff), io__state, io__state).
+:- mode write_type_stuff_list(input, di, uo).
 
-write_type_list([]) -->
-	{ error("type list should not be empty") }.
-write_type_list([Type]) -->
-	io__write_string("type `"),
-	write_type(Type),
-	io__write_string("'").
-write_type_list([Type|Types]) -->
-	io__write_string("overloaded type { "),
-	write_type(Type),
-	write_type_list_2(Types),
-	io__write_string(" }").
+write_type_stuff_list([]) --> [].
+write_type_stuff_list([type_stuff(T, TVarSet, TBinding) | Ts]) -->
+	write_type_b(T, TVarSet, TBinding),
+	write_type_stuff_list_2(Ts).
 
-:- pred write_type_list_2(list(type), io__state, io__state).
-:- mode write_type_list_2(input, di, uo).
+:- pred write_type_stuff_list_2(list(type_stuff), io__state, io__state).
+:- mode write_type_stuff_list_2(input, di, uo).
 
-write_type_list_2([]) --> [].
-write_type_list_2([T | Ts]) -->
+write_type_stuff_list_2([]) --> [].
+write_type_stuff_list_2([type_stuff(T, TVarSet, TBinding) | Ts]) -->
 	io__write_string(", "),
-	write_type(T),
-	write_type_list_2(Ts).
+	write_type_b(T, TVarSet, TBinding),
+	write_type_stuff_list_2(Ts).
 
 %-----------------------------------------------------------------------------%
 
@@ -1661,11 +1697,13 @@ report_error_undef_cons(PredId, Context, Functor, Arity) -->
 	write_pred_id(PredId),
 	io__write_string("'.\n").
 
-:- pred report_error_cons(pred_id, term__context, const, int, type, 
-			io__state, io__state).
-:- mode report_error_cons(input, input, input, input, input, di, uo).
+:- pred report_error_cons(pred_id, term__context, varset, const, int, type,
+			type_assign_set, io__state, io__state).
+:- mode report_error_cons(input, input, input, input, input, input, input,
+			di, uo).
 
-report_error_cons(PredId, Context, Functor, Arity, Type) -->
+report_error_cons(PredId, Context, VarSet, Functor, Arity, Type,
+			TypeAssignSet) -->
 	prog_out__write_context(Context),
 	io__write_string("type error in clause for predicate `"),
 	write_pred_id(PredId),
@@ -1676,7 +1714,8 @@ report_error_cons(PredId, Context, Functor, Arity, Type) -->
 	io__write_int(Arity),
 	io__write_string("' does not have type `"),
 	write_type(Type),	% XXX
-	io__write_string("'.\n").
+	io__write_string("'.\n"),
+	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -1693,17 +1732,17 @@ report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	io__write_string(".\n"),
 	io__write_string("possible type assignments include:\n"),
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
-	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
-	{ type_assign_get_var_types(TypeAssign2, VarTypes2) },
 	{ map__keys(VarTypes1, Vars1) },
-	report_ambiguity_error_2(Vars1, VarSet, VarTypes1, VarTypes2).
+	report_ambiguity_error_2(Vars1, VarSet, TypeAssign1, TypeAssign2).
 
 :- pred report_ambiguity_error_2(list(var), varset, type_assign, type_assign,
 				io__state, io__state).
 :- mode report_ambiguity_error_2(input, input, input, input, di, uo).
 
-report_ambiguity_error_2([], _VarSet, _VarTypes1, _VarTypes2) --> [].
-report_ambiguity_error_2([V | Vs], VarSet, VarTypes1, VarTypes2) -->
+report_ambiguity_error_2([], _VarSet, _TypeAssign1, _TypeAssign2) --> [].
+report_ambiguity_error_2([V | Vs], VarSet, TypeAssign1, TypeAssign2) -->
+	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
+	{ type_assign_get_var_types(TypeAssign2, VarTypes2) },
 	( {
 		map__search(VarTypes1, V, T1),
 		map__search(VarTypes2, V, T2),
@@ -1711,12 +1750,16 @@ report_ambiguity_error_2([V | Vs], VarSet, VarTypes1, VarTypes2) -->
 	} ->
 		write_var(V, VarSet),
 		io__write_string(" :: "),
-		write_type(T1),		% XXX should expand type substitutions
+		{ type_assign_get_typevarset(TypeAssign1, TVarSet1) },
+		{ type_assign_get_type_bindings(TypeAssign1, TypeBindings1) },
+		write_type_b(T1, TVarSet1, TypeBindings1),
 		io__write_string(" OR "),
-		write_type(T2),		% XXX should expand type substitutions
+		{ type_assign_get_typevarset(TypeAssign2, TVarSet2) },
+		{ type_assign_get_type_bindings(TypeAssign2, TypeBindings2) },
+		write_type_b(T2, TVarSet2, TypeBindings2),
 		io__write_string("\n")
 	),
-	report_ambiguity_error_2(Vs, VarSet, VarTypes1, VarTypes2).
+	report_ambiguity_error_2(Vs, VarSet, TypeAssign1, TypeAssign2).
 
 :- pred write_var(variable, varset, io__state, io__state).
 :- mode write_var(input, input, di, uo).
