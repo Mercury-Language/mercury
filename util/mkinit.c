@@ -133,9 +133,9 @@ int main(int argc, char **argv)
 
 				fputs("\t{ extern void ", stdout);
 				fputs(line+init_strlen, stdout);
-				fputs("(void);", stdout);
+				fputs("(void);\n", stdout);
 
-				putc('\t', stdout);
+				fputs("\t  ", stdout);
 				fputs(line+init_strlen, stdout);
 				fputs("(); }\n", stdout);
 			}
