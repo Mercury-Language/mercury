@@ -703,8 +703,7 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 		% this shouldn't happen - how can a variable which has
 		% not yet been assigned a type variable fail to have
 		% the correct type?
-		%%% error("problem in type unification")
-		term__context_init(0, Context),
+		term__context_init(Context),
 		Type = term__functor(term__atom("<any>"), [], Context)
 	),
 	TypeStuff = type_stuff(Type, TVarSet, TypeBindings),
@@ -1594,7 +1593,7 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 type_info_init(IOState, ModuleInfo, PredId, TypeVarSet, VarSet,
 		VarTypes, HeadTypeParams, TypeInfo) :-
 	CallPredId = unqualified("") / 0,
-	term__context_init(0, Context),
+	term__context_init(Context),
 	map__init(TypeBindings),
 	FoundTypeError = no,
 	WarnedAboutOverloading = no,

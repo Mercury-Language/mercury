@@ -264,14 +264,18 @@ unify_proc__write_unify_proc_id(TypeId - UniMode) -->
 
 :- unify_proc__generate_clause_info(_, X, _) when X. % NU-Prolog indexing.
 
-unify_proc__generate_clause_info(_Type, unify_eqv_type(EqvType), ClauseInfo) :-
+unify_proc__generate_clause_info(Type, unify_eqv_type(EqvType), ClauseInfo) :-
 	var_type_info__init(VarTypeInfo0),
 	unify_proc__generate_head_vars(EqvType, H1, H2,
 					VarTypeInfo0, VarTypeInfo),
 	create_atomic_unification(term__variable(H1), term__variable(H2),
 					explicit, [], Goal),
 	implicitly_quantify_clause_body([H1, H2], Goal, Body),
-	term__context_init(0, Context),
+	( Type = term__functor(_, _, TypeContext) ->
+		Context = TypeContext
+	;
+		term__context_init(Context)
+	),
 	Clause = clause([], Body, Context),
 	var_type_info__extract(VarTypeInfo, VarSet, Types),
 	ClauseInfo = clauses_info(VarSet, Types, [H1, H2], [Clause]).
@@ -302,7 +306,7 @@ unify_proc__generate_clauses([Ctor | Ctors], H1, H2, [Clause | Clauses]) -->
 	{ Ctor = FunctorName - ArgTypes },
 	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
 	{ Functor = term__atom(UnqualifiedFunctorName) },
-	{ term__context_init(0, Context) },
+	{ term__context_init(Context) },
 	unify_proc__make_fresh_vars(ArgTypes, Vars1),
 	unify_proc__make_fresh_vars(ArgTypes, Vars2),
 	{ term__var_list_to_term_list(Vars1, VarTerms1) },

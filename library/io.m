@@ -40,27 +40,28 @@
 
 	% Various types used for the result from the access predicates
 
-:- type io__result	--->	ok
-			;	eof
-			;	error.
-
 :- type io__res		--->	ok
-			;	error.
+			;	error(io__error).
 
 :- type io__res(T)	--->	ok(T)
-			;	error.
+			;	error(io__error).
 
+:- type io__result(T)	--->	ok(T)
+			;	eof
+			;	error(io__error).
+
+:- type io__error.	% Use io__error__message to decode it.
 
 %-----------------------------------------------------------------------------%
 
 % Input predicates.
 
-:- pred io__read_char(character, io__result, io__state, io__state).
-:- mode io__read_char(out, out, di, uo) is det.
+:- pred io__read_char(io__result(character), io__state, io__state).
+:- mode io__read_char(out, di, uo) is det.
 %		Reads a character from the current input stream.
 
-:- pred io__read_line(list(character), io__result, io__state, io__state).
-:- mode io__read_line(out, out, di, uo) is det.
+:- pred io__read_line(io__result(list(character)), io__state, io__state).
+:- mode io__read_line(out, di, uo) is det.
 %		Reads a line from the current input stream.
 
 :- pred io__putback_char(character, io__state, io__state).
@@ -69,14 +70,14 @@
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
 
-:- pred io__read_char(io__input_stream, character, io__result,
+:- pred io__read_char(io__input_stream, io__result(character),
 				io__state, io__state).
-:- mode io__read_char(in, out, out, di, uo) is det.
+:- mode io__read_char(in, out, di, uo) is det.
 %		Reads a character from specified stream.
 
-:- pred io__read_line(io__input_stream, list(character), io__result,
+:- pred io__read_line(io__input_stream, io__result(list(character)),
 							io__state, io__state).
-:- mode io__read_line(in, out, out, di, uo) is det.
+:- mode io__read_line(in, out, di, uo) is det.
 %		Reads a line from specified stream.
 
 :- pred io__putback_char(io__input_stream, character, io__state, io__state).
@@ -170,7 +171,7 @@
 :- mode io__open_input(in, out, di, uo) is det.
 %	io__open_input(File, Result, IO0, IO1).
 %		Attempts to open a file for input.
-%		Result is either 'ok(Stream)' or 'error'.
+%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
 
 :- pred io__close_input(io__input_stream, io__state, io__state).
 :- mode io__close_input(in, di, uo) is det.
@@ -215,7 +216,7 @@
 %	io__tell(File, Result, IO0, IO1).
 %		Attempts to open a file for output, and if successful
 %		sets the current output stream to the newly opened stream.
-%		As per Prolog tell/1. Result is either 'ok' or 'error'.
+%		As per Prolog tell/1. Result is either 'ok' or 'error(ErrCode)'.
 
 :- pred io__told(io__state, io__state).
 :- mode io__told(di, uo) is det.
@@ -229,14 +230,14 @@
 :- mode io__open_output(in, out, di, uo) is det.
 %	io__open_output(File, Result, IO0, IO1).
 %		Attempts to open a file for output.
-%		Result is either 'ok(Stream)' or 'error'.
+%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
 
 :- pred io__open_append(string, io__res(io__output_stream),
 				io__state, io__state).
 :- mode io__open_append(in, out, di, uo) is det.
 %	io__open_append(File, Result, IO0, IO1).
 %		Attempts to open a file for appending.
-%		Result is either 'ok(Stream)' or 'error'.
+%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
 
 :- pred io__close_output(io__output_stream, io__state, io__state).
 :- mode io__close_output(in, di, uo) is det.
@@ -337,7 +338,13 @@
 %	io__call_system(Command, Result, IO0, IO1).
 %		Invokes the operating system shell with the specified
 %		Command.  Result is either `ok(ExitStatus)', if it was
-%		possible to invoke the command, or `error' if not.
+%		possible to invoke the command, or `error(ErrorCode)' if not.
+
+:- pred io__error_message(io__error, string).
+:- mode io__error_message(in, out) is det.
+%	io__error_message(ErrorCode, ErrorMessage).
+%		Look up the error message corresponding to a particular error
+%		code.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -374,7 +381,7 @@
 :- pred io__read_char_code(io__input_stream, int, io__state, io__state).
 :- mode io__read_char_code(in, out, di, uo) is det.
 %		Reads a character code from specified stream.
-%		Returns -1 if at EOF or error.
+%		Returns -1 if at EOF, -2 if an error occurs.
 
 :- pred io__call_system_code(string, int, io__state, io__state).
 :- mode io__call_system_code(in, out, di, uo) is det.
@@ -442,45 +449,53 @@
 
 % input predicates
 
-io__read_char(Char, Result) -->
+io__read_char(Result) -->
 	io__input_stream(Stream),
-	io__read_char(Stream, Char, Result).
+	io__read_char(Stream, Result).
 
-io__read_char(Stream, Char, Result) -->
+io__read_char(Stream, Result) -->
 	io__read_char_code(Stream, Code),
 	{
 		Code = -1
 	->
-		Result = eof, Char = '\001'	/* any old junk char */
+		Result = eof
 	;
-		char_to_int(Char0, Code)
+		char_to_int(Char, Code)
 	->
-		Result = ok, Char = Char0
+		Result = ok(Char)
 	;
-		Result = error, Char = '\001'	/* any old junk char */
+		Result = error("read error")	% XXX improve error message
 	}.
 
-io__read_line(String, Result) -->
+io__read_line(Result) -->
 	io__input_stream(Stream),
-	io__read_line(Stream, String, Result).
+	io__read_line(Stream, Result).
 
-io__read_line(Stream, Str, Result) -->
-	io__read_char(Stream, Char, Result0),
+io__read_line(Stream, Result) -->
+	io__read_char(Stream, CharResult),
 	(
-		{ Result0 = ok }
-	->
-		(
-			{ Char = '\n' }
-		->
-			{ Str = ['\n'] },
-			{ Result = Result0 }
+		{ CharResult = ok(Char) },
+		( { Char = '\n' } ->
+			{ Result = ok([Char]) }
 		;
-			{ Str = [Char | Str0] },
-			io__read_line(Stream, Str0, Result)
+			io__read_line(Stream, Result0),
+			(
+				{ Result0 = ok(Chars) },
+				{ Result = ok([Char | Chars]) }
+			;
+				{ Result0 = error(_) },
+				{ Result = Result0 }
+			;
+				{ Result0 = eof },
+				{ Result = ok([Char]) }
+			)
 		)
 	;
-		{ Str = [] },
-		{ Result = Result0 }
+		{ CharResult = error(Error) },
+		{ Result = error(Error) }
+	;
+		{ CharResult = eof },
+		{ Result = eof }
 	).
 
 io__putback_char(Char) -->
@@ -511,7 +526,8 @@ io__open_input(FileName, Result) -->
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) }
 	;
-		{ Result = error }
+		% XXX improve error message
+		{ Result = error("can't open input file") }
 	).
 
 io__open_output(FileName, Result) -->
@@ -519,7 +535,8 @@ io__open_output(FileName, Result) -->
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) }
 	;
-		{ Result = error }
+		% XXX improve error message
+		{ Result = error("can't open output file") }
 	).
 
 io__open_append(FileName, Result) -->
@@ -527,7 +544,8 @@ io__open_append(FileName, Result) -->
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) }
 	;
-		{ Result = error }
+		% XXX improve error message
+		{ Result = error("can't append to file") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -536,11 +554,13 @@ io__open_append(FileName, Result) -->
 
 io__see(File, Result) -->
 	io__open_input(File, Result0),
-	( { Result0 = ok(Stream) } ->
+	(
+		{ Result0 = ok(Stream) },
 		io__set_input_stream(Stream, _),
 		{ Result = ok }
-	; 
-		{ Result = error }
+	;
+		{ Result0 = error(Error) },
+		{ Result = error(Error) }
 	).
 
 io__seen -->
@@ -563,7 +583,8 @@ io__tell(File, Result) -->
 		io__set_output_stream(Stream, _),
 		{ Result = ok }
 	;
-		{ Result = error }
+		% XXX improve error message
+		{ Result = error("can't open output file") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -629,10 +650,15 @@ io__report_stats -->
 io__call_system(Command, Result) -->
 	io__call_system_code(Command, Status),
 	{ Status = -1 ->
-		Result = error
+		% XXX improve error message
+		Result = error("can't invoke system command")
 	;
 		Result = ok(Status)
 	}.
+
+:- type io__error	==	string.		% This is subject to change.
+
+io__error_message(Error, Error).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

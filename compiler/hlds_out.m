@@ -115,7 +115,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 		{ module_info_preds(ModuleInfo, Preds) },
 		{ map__lookup(Preds, PredId, PredInfo) },
 		{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
-		{ term__context_init(0, Context) },
+		{ term__context_init(Context) },
 		mercury_output_term(term__functor(term__atom(Name),
 				ArgTypes, Context), TVarSet)
 	;
@@ -365,7 +365,7 @@ hlds_out__write_intlist_2(Ns0) -->
 hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars) -->
 	{
 		predicate_name(ModuleInfo, PredId, PredName),
-		term__context_init(0, Context),
+		term__context_init(Context),
 		term__var_list_to_term_list(HeadVars, HeadTerms),
 		Term = term__functor(term__atom(PredName), HeadTerms, Context)
 	},
@@ -547,7 +547,7 @@ hlds_out__write_goal_2(call(_PredId, _ProcId, Args, _, PredName, _Follow),
 					_ModuleInfo, VarSet, _Indent) -->
 		% XXX we should print more info here
 	{ unqualify_name(PredName, Name) },
-	{ term__context_init(0, Context) },
+	{ term__context_init(Context) },
 	mercury_output_term(term__functor(term__atom(Name), Args, Context),
 				VarSet).
 

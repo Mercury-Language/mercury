@@ -328,7 +328,7 @@
 prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 	globals__io_lookup_accumulating_option(search_directories, Dirs),
 	search_for_file(Dirs, FileName, R),
-	( { R = ok } ->
+	( { R = yes } ->
 		read_all_items(RevMessages, RevItems0, Error0),
 		{
 		  get_end_module(RevItems0, RevItems, EndModule),
@@ -352,10 +352,10 @@ prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 		}
 	).
 
-:- pred search_for_file(list(string), string, io__res, io__state, io__state).
+:- pred search_for_file(list(string), string, bool, io__state, io__state).
 :- mode search_for_file(in, in, out, di, uo) is det.
 
-search_for_file([], _, error) --> [].
+search_for_file([], _, no) --> [].
 search_for_file([Dir | Dirs], FileName, R) -->
 	{ dir__this_directory(Dir) ->
 		ThisFileName = FileName
@@ -366,7 +366,7 @@ search_for_file([Dir | Dirs], FileName, R) -->
 	},
 	io__see(ThisFileName, R0),
 	( { R0 = ok } ->
-		{ R = ok }
+		{ R = yes }
 	;
 		search_for_file(Dirs, FileName, R)
 	).
@@ -463,7 +463,7 @@ check_begin_module(ModuleName, Messages0, Items0, Error0, EndModule, FileName,
 :- pred dummy_term(term).
 :- mode dummy_term(out) is det.
 dummy_term(Term) :-
-	term__context_init(0, Context),
+	term__context_init(Context),
 	dummy_term_with_context(Context, Term).
 
 	% Create a dummy term with the specified context.
@@ -636,7 +636,7 @@ parse_item(VarSet, Term, Result) :-
 			;
 					% term consists of just a single
 					% variable - the context has been lost
-				term__context_init(0, TheContext)
+				term__context_init(TheContext)
 			),
 			Body = term__functor(term__atom("true"), [], TheContext)
 		),
@@ -861,7 +861,7 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 		% catch calls to numbers and strings.
 
 		new_dcg_var(VarSet0, N0, VarSet, N, Var),
-		term__context_init(0, CallContext),
+		term__context_init(CallContext),
 		Term = term__functor(term__atom("call"), [
 				Term0,
 				term__variable(Var0),

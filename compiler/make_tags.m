@@ -14,7 +14,7 @@
 	% are constants), we just assign a different value for each
 	% constructor.
 	% 
-	% For other types, we use the bottom two bits of the word as a
+	% For other types, we use a couple of bits of the word as a
 	% tag.  We split the constructors into constants and functors,
 	% and assign tag zero to the constants (if any).  If there is
 	% more than one constant, we distinguish between the different

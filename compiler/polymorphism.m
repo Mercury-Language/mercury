@@ -119,31 +119,32 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	pred_info_procedures(PredInfo0, ProcTable0),
 	pred_info_proc_ids(PredInfo0, ProcIds),
 	( ProcIds = [ProcId|_] ->
-		map__lookup(ProcTable0, ProcId, ProcInfo)
-	;
-		error("polymorphism__fixup_preds: empty procid list")
-	),
+		map__lookup(ProcTable0, ProcId, ProcInfo),
+		proc_info_vartypes(ProcInfo, VarTypes),
+		proc_info_headvars(ProcInfo, HeadVars),
+		pred_info_arg_types(PredInfo0, TypeVarSet, ArgTypes0),
+		list__length(ArgTypes0, NumOldArgs),
+		list__length(HeadVars, NumNewArgs),
+		NumExtraArgs is NumNewArgs - NumOldArgs,
+		(
+			list__split_list(NumExtraArgs, HeadVars, ExtraHeadVars,
+					_OldHeadVars)
+		->
+			map__apply_to_list(ExtraHeadVars, VarTypes,
+				ExtraArgTypes),
+			list__append(ExtraArgTypes, ArgTypes0, ArgTypes)
+		;
+			error("polymorphism.nl: list__split_list failed")
+		),
 
-	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_headvars(ProcInfo, HeadVars),
-	pred_info_arg_types(PredInfo0, TypeVarSet, ArgTypes0),
-	list__length(ArgTypes0, NumOldArgs),
-	list__length(HeadVars, NumNewArgs),
-	NumExtraArgs is NumNewArgs - NumOldArgs,
-	(
-		list__split_list(NumExtraArgs, HeadVars, ExtraHeadVars,
-				_OldHeadVars)
-	->
-		map__apply_to_list(ExtraHeadVars, VarTypes, ExtraArgTypes),
-		list__append(ExtraArgTypes, ArgTypes0, ArgTypes)
+		pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes,
+			PredInfo),
+		map__set(PredTable0, PredId, PredInfo, PredTable),
+		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
+		polymorphism__fixup_preds(PredIds, ModuleInfo1, ModuleInfo)
 	;
-		error("polymorphism.nl: list__split_list failed")
-	),
-
-	pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-	polymorphism__fixup_preds(PredIds, ModuleInfo1, ModuleInfo).
+		ModuleInfo = ModuleInfo0
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -429,7 +430,7 @@ polymorphism__make_vars([Type|Types], ModuleInfo, UnifyProcMap,
 			ArgVars, ExtraGoals0, VarSet1, VarTypes1),
 		term__var_list_to_term_list(ArgVars, Args),
 		Functor = term__atom("="), 
-		term__context_init(0, Context),
+		term__context_init(Context),
 		ValTerm = term__functor(Functor, Args, Context),
 		classify_type(Type, ModuleInfo, TypeCategory),
 		polymorphism__get_unify_proc(TypeCategory, ModuleInfo, ConsId),
@@ -523,7 +524,7 @@ polymorphism__make_vars([Type|Types], ModuleInfo, UnifyProcMap,
 
 		% create a construction unification which initializes the
 		% variable to zero
-		term__context_init(0, Context),
+		term__context_init(Context),
 		Functor = term__integer(0),
 		ZeroTerm = term__functor(Functor, [], Context),
 		ConsId = int_const(0),
@@ -610,7 +611,7 @@ polymorphism__make_head_vars([TypeVar|TypeVars], TypeVarSet,
 	;
 		VarSet2 = VarSet1
 	),
-	term__context_init(0, Context),
+	term__context_init(Context),
 	Type = term__variable(TypeVar),
 	UnifyPredType = term__functor(term__atom("pred"), [Type, Type],
 					Context),

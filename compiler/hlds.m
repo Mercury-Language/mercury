@@ -1607,7 +1607,7 @@ goal_info_init(GoalInfo) :-
 	DeltaLiveness = Births - Deaths,
 	InstMapDelta = unreachable,
 	set__init(NonLocals),
-	term__context_init("", 0, Context),
+	term__context_init(Context),
 	GoalInfo = goal_info(DeltaLiveness, LocalDet, Det,
 			InstMapDelta, Context, NonLocals, DeltaLiveness, no).
 

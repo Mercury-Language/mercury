@@ -95,7 +95,7 @@ convert_to_goedel(ProgName, Items) -->
 
 goedel_replace_int_integer(Items0, Items) :-
 	varset__init(VarSet),
-	term__context_init(0, Context),
+	term__context_init(Context),
 	prog_util__replace_eqv_type_list(Items0, VarSet, "int", [],
 		term__functor(term__atom("integer"), [], Context), Items).
 	

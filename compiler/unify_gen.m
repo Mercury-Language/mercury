@@ -127,7 +127,8 @@ unify_gen__generate_tag_rval_2(float_constant(_String), _, _) :-
 unify_gen__generate_tag_rval_2(int_constant(Int), Rval, TestRval) :-
 	TestRval = binop(eq, Rval, const(int_const(Int))).
 unify_gen__generate_tag_rval_2(pred_constant(_, _), _Rval, _TestRval) :-
-	% XXX We should report a proper error message rather than just aborting
+	% This should never happen, since the error will be detected
+	% during mode checking.
 	error("Attempted higher-order unification").
 unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Rval, TestRval) :-
 	TestRval = binop(eq,	unop(tag, Rval),

@@ -14,7 +14,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module char.
+:- import_module char, int, float.
 
 :- pred string__length(string, int).
 :- mode string__length(in, out) is det.
@@ -88,6 +88,11 @@
 :- mode string__to_int(in, out) is semidet.
 %	Convert a string (of digits) to an int. If the string contains
 %	non-digit characters, string__to_int fails.
+
+:- pred string__to_float(string, float).
+:- mode string__to_float(in, out) is semidet.
+%	Convert a string to an float. If the string is not
+%	a syntacatically correct float literal, string__to_float fails.
 
 :- pred string__is_alpha(string).
 :- mode string__is_alpha(in) is semidet.
@@ -186,10 +191,8 @@
 :- mode string__to_int_list(out, in) is det.
 :- mode string__to_int_list(in, in) is semidet. % implied
 
-:- pred intToString(int, string).
-:- mode intToString(out, in) is semidet.
-
-:- external(intToString/2).
+:- external(string__to_float/2).
+:- external(string__to_int/2).
 :- external(string__to_int_list/2).
 
 string__index(String, Int, Char) :-
@@ -232,9 +235,6 @@ string__right(String, RightCount, RightString) :-
 string__substring(String, Start, Count, Substring) :-
 	string__right(String, Start, Right),
 	string__left(Right, Count, Substring).
-
-string__to_int(String, Int) :-
-	intToString(Int, String).
 
 string__length(String, Length) :-
 	string__to_int_list(String, List),

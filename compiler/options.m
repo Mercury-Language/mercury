@@ -162,7 +162,7 @@ option_defaults_2(output_option, [
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
 	tags			-	string("low"),
-	polymorphism		-	bool(no),
+	polymorphism		-	bool(yes),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
 	lazy_code		-	bool(yes),
@@ -176,13 +176,13 @@ option_defaults_2(code_gen_option, [
 	cflags			-	string(""),
 	c_include_directory	-	string(""),
 	link			-	bool(no),
-	gcc_non_local_gotos	-	bool(no),
-	gcc_global_registers	-	bool(no)
+	gcc_non_local_gotos	-	bool(yes),
+	gcc_global_registers	-	bool(yes)
 ]).
 option_defaults_2(optimization_option, [
 		% Optimization options
 	debug			-	bool(no),
-	c_optimize		-	bool(no),
+	c_optimize		-	bool(yes),
 	grade			-	string(""),
 	optimize		-	bool(yes),
 	optimize_peep		-	bool(yes),
@@ -392,10 +392,10 @@ options_help -->
 	io__write_string("\t\tDon't reclaim heap on backtracking in nondet code.\n"),
 	io__write_string("\t--no-reclaim-heap-on-semidet-failure\n"),
 	io__write_string("\t\tDon't reclaim heap on backtracking in semidet code.\n"),
-	io__write_string("\t--gcc-global-registers\n"),
-	io__write_string("\t\tUse GNU C's global register variables extension.\n"),
-	io__write_string("\t--gcc-non-local-gotos\n"),
-	io__write_string("\t\tUse GNU C's \"labels as values\" extension.\n"),
+	io__write_string("\t--no-gcc-global-registers\n"),
+	io__write_string("\t\tDon't use GNU C's global register variables extension.\n"),
+	io__write_string("\t--no-gcc-non-local-gotos\n"),
+	io__write_string("\t\tDon' use GNU C's \"labels as values\" extension.\n"),
 	io__write_string("\t--tags {none, low, high}\n"),
 	io__write_string("\t\tSpecify whether to use the low bits or the high bits of \n"),
 	io__write_string("\t\teach word as tag bits (default: low).\n"),
@@ -445,8 +445,8 @@ options_help -->
 	io__write_string("\t\tmust exceed this number\n"),
 	io__write_string("\t--no-inlining\n"),
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
-	io__write_string("\t--c-optimize\n"),
-	io__write_string("\t\tEnable the C compiler's optimizations.\n"),
+	io__write_string("\t--no-c-optimize\n"),
+	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
 
 	io__write_string("\nMiscellaneous Options:\n"),
 	io__write_string("\t-H <n>, --heap-space <n>\n"),
