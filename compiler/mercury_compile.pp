@@ -1159,13 +1159,19 @@ mercury_compile__compute_liveness(HLDS0, HLDS) -->
 :- mode mercury_compile__inlining(in, out, di, uo) is det.
 
 mercury_compile__inlining(HLDS0, HLDS) -->
-	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Inlining..."),
-	maybe_flush_output(Verbose),
-	{ inlining(HLDS0, HLDS) },
-	maybe_write_string(Verbose, " done.\n"),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+	(
+		globals__io_lookup_bool_option(inlining, yes)
+	->
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose, "% Inlining..."),
+		maybe_flush_output(Verbose),
+		{ inlining(HLDS0, HLDS) },
+		maybe_write_string(Verbose, " done.\n"),
+		globals__io_lookup_bool_option(statistics, Statistics),
+		maybe_report_stats(Statistics)
+	;
+		{ HLDS = HLDS0 }
+	).
 
 :- pred mercury_compile__map_args_to_regs(module_info, module_info,
 						io__state, io__state).

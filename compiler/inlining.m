@@ -59,13 +59,16 @@ inlining_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_headvars(ProcInfo0, HeadVars),
 
-	inlining__inlining_in_goal(Goal0, Varset0, ModuleInfo0, Goal1, Varset),
+	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, ModuleInfo0,
+		Goal1, Varset, VarTypes),
 	implicitly_quantify_clause_body(HeadVars, Goal1, Goal),
 
 	proc_info_set_variables(ProcInfo0, Varset, ProcInfo1),
-	proc_info_set_goal(ProcInfo1, Goal, ProcInfo),
+	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
+	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
 
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
@@ -75,47 +78,59 @@ inlining_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_goal(hlds__goal, varset, module_info,
-							hlds__goal, varset).
-:- mode inlining__inlining_in_goal(in, in, in, out, out) is det.
+:- pred inlining__inlining_in_goal(hlds__goal, varset, map(var, type),
+			module_info, hlds__goal, varset, map(var, type)).
+:- mode inlining__inlining_in_goal(in, in, in, in, out, out, out) is det.
 
-inlining__inlining_in_goal(Goal0 - GoalInfo, Varset0, ModuleInfo,
-		Goal - GoalInfo, Varset) :-
-	inlining__inlining_in_goal_2(Goal0, Varset0, ModuleInfo, Goal, Varset).
+inlining__inlining_in_goal(Goal0 - GoalInfo, Varset0, VarTypes0, ModuleInfo,
+		Goal - GoalInfo, Varset, VarTypes) :-
+	inlining__inlining_in_goal_2(Goal0, Varset0, VarTypes0, ModuleInfo,
+		Goal, Varset, VarTypes).
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_goal_2(hlds__goal_expr, varset, module_info,
-		hlds__goal_expr, varset).
-:- mode inlining__inlining_in_goal_2(in, in, in, out, out) is det.
+:- pred inlining__inlining_in_goal_2(hlds__goal_expr, varset, map(var, type),
+		module_info, hlds__goal_expr, varset, map(var, type)).
+:- mode inlining__inlining_in_goal_2(in, in, in, in, out, out, out) is det.
 
-inlining__inlining_in_goal_2(conj(Goals0), Varset0, ModuleInfo, conj(Goals), Varset) :-
-	inlining__inlining_in_conj(Goals0, Varset0, ModuleInfo, Goals, Varset).
+inlining__inlining_in_goal_2(conj(Goals0), Varset0, VarTypes0, ModuleInfo,
+		conj(Goals), Varset, VarTypes) :-
+	inlining__inlining_in_conj(Goals0, Varset0, VarTypes0, ModuleInfo,
+		Goals, Varset, VarTypes).
 
-inlining__inlining_in_goal_2(disj(Goals0), Varset0, ModuleInfo, disj(Goals), Varset) :-
-	inlining__inlining_in_disj(Goals0, Varset0, ModuleInfo, Goals, Varset).
+inlining__inlining_in_goal_2(disj(Goals0), Varset0, VarTypes0, ModuleInfo,
+		disj(Goals), Varset, VarTypes) :-
+	inlining__inlining_in_disj(Goals0, Varset0, VarTypes0, ModuleInfo,
+		Goals, Varset, VarTypes).
 
-inlining__inlining_in_goal_2(switch(Var, Det, Cases0), Varset0,
-				ModuleInfo, switch(Var, Det, Cases), Varset) :-
-	inlining__inlining_in_cases(Cases0, Varset0, ModuleInfo, Cases, Varset).
+inlining__inlining_in_goal_2(switch(Var, Det, Cases0), Varset0, VarTypes0,
+		ModuleInfo, switch(Var, Det, Cases), Varset, VarTypes) :-
+	inlining__inlining_in_cases(Cases0, Varset0, VarTypes0, ModuleInfo,
+		Cases, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Varset0,
-		ModuleInfo, if_then_else(Vars, Cond, Then, Else), Varset) :-
-	inlining__inlining_in_goal(Cond0, Varset0, ModuleInfo, Cond, Varset1),
-	inlining__inlining_in_goal(Then0, Varset1, ModuleInfo, Then, Varset2),
-	inlining__inlining_in_goal(Else0, Varset2, ModuleInfo, Else, Varset).
+		VarTypes0, ModuleInfo, if_then_else(Vars, Cond, Then, Else),
+		Varset, VarTypes) :-
+	inlining__inlining_in_goal(Cond0, Varset0, VarTypes0, ModuleInfo,
+		Cond, Varset1, VarTypes1),
+	inlining__inlining_in_goal(Then0, Varset1, VarTypes1, ModuleInfo,
+		Then, Varset2, VarTypes2),
+	inlining__inlining_in_goal(Else0, Varset2, VarTypes2, ModuleInfo,
+		Else, Varset, VarTypes).
 
-inlining__inlining_in_goal_2(not(Vars, Goal0), Varset0, ModuleInfo,
-		not(Vars, Goal), Varset) :-
-	inlining__inlining_in_goal(Goal0, Varset0, ModuleInfo, Goal, Varset).
+inlining__inlining_in_goal_2(not(Vars, Goal0), Varset0, VarTypes0, ModuleInfo,
+		not(Vars, Goal), Varset, VarTypes) :-
+	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, ModuleInfo,
+		Goal, Varset, VarTypes).
 
-inlining__inlining_in_goal_2(some(Vars, Goal0), Varset0, ModuleInfo,
-		some(Vars, Goal), Varset) :-
-	inlining__inlining_in_goal(Goal0, Varset0, ModuleInfo, Goal, Varset).
+inlining__inlining_in_goal_2(some(Vars, Goal0), Varset0, VarTypes0, ModuleInfo,
+		some(Vars, Goal), Varset, VarTypes) :-
+	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, ModuleInfo,
+		Goal, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(
 		call(PredId, ProcId, Args, Builtin, SymName, Follow),
-					Varset0, ModuleInfo, Goal, Varset) :-
+		Varset0, VarTypes0, ModuleInfo, Goal, Varset, VarTypes) :-
 	(
 		Builtin = not_builtin,
         	module_info_preds(ModuleInfo, Preds),
@@ -130,9 +145,11 @@ inlining__inlining_in_goal_2(
         	proc_info_headvars(ProcInfo, HeadVars0),
         	proc_info_argmodes(ProcInfo, ArgInfo),
         	proc_info_variables(ProcInfo, PVarset),
+		proc_info_vartypes(ProcInfo, CVarTypes),
 		varset__vars(PVarset, Vars0),
 		map__init(Subn0),
-		inlining__create_variables(Vars0, Varset0, Subn0, Varset, Subn),
+		inlining__create_variables(Vars0, Varset0, VarTypes0, Subn0,
+			CVarTypes, Varset, VarTypes, Subn),
 		inlining__rename_headvars(HeadVars0, Subn, HeadVars),
 		inlining__name_apart(CalledGoal, Subn, NewGoal),
 		goal_to_conj_list(NewGoal, NewGoalList),
@@ -150,62 +167,78 @@ inlining__inlining_in_goal_2(
 		Goal = conj(GoalList)
 	;
 		Goal = call(PredId, ProcId, Args, Builtin, SymName, Follow),
-		Varset = Varset0
+		Varset = Varset0,
+		VarTypes = VarTypes0
 	).
 
-inlining__inlining_in_goal_2(unify(A,B,C,D,E), Varset, _, unify(A,B,C,D,E), Varset).
+inlining__inlining_in_goal_2(unify(A,B,C,D,E), Varset, VarTypes, _,
+					unify(A,B,C,D,E), Varset, VarTypes).
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_disj(list(hlds__goal), varset,
-					module_info, list(hlds__goal), varset).
-:- mode inlining__inlining_in_disj(in, in, in, out, out) is det.
+:- pred inlining__inlining_in_disj(list(hlds__goal), varset, map(var, type),
+			module_info, list(hlds__goal), varset, map(var, type)).
+:- mode inlining__inlining_in_disj(in, in, in, in, out, out, out) is det.
 
-inlining__inlining_in_disj([], Varset, _ModuleInfo, [], Varset).
-inlining__inlining_in_disj([Goal0|Goals0], Varset0, ModuleInfo,
-		[Goal|Goals], Varset) :-
-	inlining__inlining_in_goal(Goal0, Varset0, ModuleInfo, Goal, Varset1),
-	inlining__inlining_in_disj(Goals0, Varset1, ModuleInfo, Goals, Varset).
-
-%-----------------------------------------------------------------------------%
-
-:- pred inlining__inlining_in_cases(list(case), varset, module_info,
-		list(case), varset).
-:- mode inlining__inlining_in_cases(in, in, in, out, out) is det.
-
-inlining__inlining_in_cases([], Varset, _ModuleInfo, [], Varset).
-inlining__inlining_in_cases([case(Cons, Goal0)|Goals0], Varset0, ModuleInfo,
-					[case(Cons, Goal)|Goals], Varset) :-
-	inlining__inlining_in_goal(Goal0, Varset0, ModuleInfo, Goal, Varset1),
-	inlining__inlining_in_cases(Goals0, Varset1, ModuleInfo, Goals, Varset).
+inlining__inlining_in_disj([], Varset, VarTypes, _ModuleInfo,
+				[], Varset, VarTypes).
+inlining__inlining_in_disj([Goal0|Goals0], Varset0, VarTypes0, ModuleInfo,
+		[Goal|Goals], Varset, VarTypes) :-
+	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, ModuleInfo,
+		Goal, Varset1, VarTypes1),
+	inlining__inlining_in_disj(Goals0, Varset1, VarTypes1, ModuleInfo,
+		Goals, Varset, VarTypes).
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_conj(list(hlds__goal), varset, module_info,
-						list(hlds__goal), varset).
-:- mode inlining__inlining_in_conj(in, in, in, out, out) is det.
+:- pred inlining__inlining_in_cases(list(case), varset, map(var, type), module_info,
+		list(case), varset, map(var, type)).
+:- mode inlining__inlining_in_cases(in, in, in, in, out, out, out) is det.
+
+inlining__inlining_in_cases([], Varset, VarTypes, _ModuleInfo,
+		[], Varset, VarTypes).
+inlining__inlining_in_cases([case(Cons, Goal0)|Goals0], Varset0, VarTypes0,
+		ModuleInfo, [case(Cons, Goal)|Goals], Varset, VarTypes) :-
+	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, ModuleInfo,
+		Goal, Varset1, VarTypes1),
+	inlining__inlining_in_cases(Goals0, Varset1, VarTypes1, ModuleInfo,
+		Goals, Varset, VarTypes).
+
+%-----------------------------------------------------------------------------%
+
+:- pred inlining__inlining_in_conj(list(hlds__goal), varset, map(var, type),
+		module_info, list(hlds__goal), varset, map(var, type)).
+:- mode inlining__inlining_in_conj(in, in, in, in, out, out, out) is det.
 
 	% Since a single goal may become a conjunction,
 	% we flatten the conjunction as we go.
 
-inlining__inlining_in_conj([], Varset, _ModuleInfo, [], Varset).
-inlining__inlining_in_conj([Goal0 | Goals0], Varset0, ModuleInfo,
-		Goals, Varset) :-
-	inlining__inlining_in_goal(Goal0, Varset0, ModuleInfo, Goal1, Varset1),
+inlining__inlining_in_conj([], Varset, VarTypes, _ModuleInfo,
+		[], Varset, VarTypes).
+inlining__inlining_in_conj([Goal0 | Goals0], Varset0, VarTypes0, ModuleInfo,
+		Goals, Varset, VarTypes) :-
+	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, ModuleInfo,
+		Goal1, Varset1, VarTypes1),
 	goal_to_conj_list(Goal1, Goal1List),
-	inlining__inlining_in_conj(Goals0, Varset1, ModuleInfo, Goals1, Varset),
+	inlining__inlining_in_conj(Goals0, Varset1, VarTypes1, ModuleInfo,
+		Goals1, Varset, VarTypes),
 	list__append(Goal1List, Goals1, Goals).
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__create_variables(list(var), varset, map(var, var), varset, map(var, var)).
-:- mode inlining__create_variables(in, in, in, out, out) is det.
+:- pred inlining__create_variables(list(var), varset, map(var, type), map(var, var), map(var, type), varset, map(var, type), map(var, var)).
+:- mode inlining__create_variables(in, in, in, in, in, out, out, out) is det.
 
-inlining__create_variables([], Varset, Subn, Varset, Subn).
-inlining__create_variables([V|Vs], Varset0, Subn0, Varset, Subn) :-
+inlining__create_variables([], Varset, VarTypes, Subn, _CVars,
+		Varset, VarTypes, Subn).
+inlining__create_variables([V|Vs], Varset0, VarTypes0, Subn0, CVars,
+		Varset, VarTypes, Subn) :-
 	varset__new_var(Varset0, NV, Varset1),
+	map__lookup(CVars, V, VT),
+	map__set(VarTypes0, NV, VT, VarTypes1),
 	map__set(Subn0, V, NV, Subn1),
-	inlining__create_variables(Vs, Varset1, Subn1, Varset, Subn).
+	inlining__create_variables(Vs, Varset1, VarTypes1, Subn1, CVars,
+		Varset, VarTypes, Subn).
 
 %-----------------------------------------------------------------------------%
 
@@ -423,7 +456,7 @@ inlining__argument_unifications([Mode|ArgInfos],
 		Context = unify_context(explicit, []),
 		Unify = unify(term__variable(H), term__variable(V),
 				((free -> ground) - (ground -> ground)),
-				assign(V, H), Context),
+				assign(H, V), Context),
 		goal_info_init(GoalInfo0),
 		map__init(Inst0),
 		map__insert(Inst0, H, ground, Inst),
@@ -437,7 +470,7 @@ inlining__argument_unifications([Mode|ArgInfos],
 		Context = unify_context(explicit, []),
 		Unify = unify(term__variable(V), term__variable(H),
 				((free -> ground) - (ground -> ground)),
-				assign(H, V), Context),
+				assign(V, H), Context),
 		goal_info_init(GoalInfo0),
 		map__init(Inst0),
 		map__insert(Inst0, V, ground, Inst),

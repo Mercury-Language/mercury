@@ -90,6 +90,7 @@
 		;	peephole_repeat
 		;	static_ground_terms
 		;	smart_indexing
+		;	inlining
 		;	optimize
 		;	debug
 		;	grade
@@ -187,7 +188,8 @@ option_defaults_2(optimization_option, [
 	peephole_frame_opt	-	bool(yes),
 	peephole_repeat		-	int(4),
 	static_ground_terms	-	bool(yes),
-	smart_indexing		-	bool(yes)
+	smart_indexing		-	bool(yes),
+	inlining		-	bool(yes)
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
@@ -222,6 +224,7 @@ short_option('v', 			verbose).
 short_option('x', 			smart_indexing).
 short_option('V', 			very_verbose).
 short_option('w', 			warn_singleton_vars).
+short_option('z', 			inlining).
 
 long_option("grade",			grade).
 long_option("optimize",			optimize).
@@ -281,6 +284,7 @@ long_option("peephole-frame-opt",	peephole_frame_opt).
 long_option("peephole-repeat",		peephole_repeat).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("smart-indexing",		smart_indexing).
+long_option("inlining",			inlining).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -409,6 +413,8 @@ options_help -->
 	io__write_string("\t--no-smart-indexing\n"),
 	io__write_string("\t\tGenerate deterministic switches as a simple if-then-else chain;\n"),
 	io__write_string("\t\tdisable string hashing and integer table-lookup indexing.\n"),
+	io__write_string("\t--no-inlining\n"),
+	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
 	io__write_string("\t--optimize\n"),
 	io__write_string("\t\tEnable the C compiler's optimizations.\n"),
 
