@@ -90,10 +90,10 @@ endif
 # targets
 
 .PHONY: all
-all : library
+all : library browse_test
 
 .PHONY: depend
-depend		: browser_library.depend
+depend		: browser_library.depend browse_test.depend
 
 .PHONY: check
 check		: browser_library.check
@@ -102,7 +102,7 @@ check		: browser_library.check
 all-ints: ints int3s
 
 .PHONY: ints 
-ints		: browser_library.ints
+ints		: browser_library.ints browse_test.ints
 
 .PHONY: int3s 
 int3s		: browser_library.int3s
@@ -110,7 +110,7 @@ int3s		: browser_library.int3s
 #-----------------------------------------------------------------------------#
 
 tags		: $(MTAGS) $(browser_library.ms)
-	$(MTAGS) $(browser_library.ms)
+	$(MTAGS) $(browser_library.ms) ../library/*.m
 
 browser_library.stats : $(COMPILER_DIR)/source_stats.awk $(browser_library.ms)
 	awk -f $(COMPILER_DIR)/source_stats.awk \

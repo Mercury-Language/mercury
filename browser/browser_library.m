@@ -14,6 +14,10 @@
 
 :- import_module help.
 :- import_module debugger_interface.
+:- import_module browse.
+:- import_module frame.
+:- import_module parse.
+:- import_module util.
 
 % See library/library.m for why we implement this predicate this way.
 
