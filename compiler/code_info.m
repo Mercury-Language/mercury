@@ -51,11 +51,16 @@
 :- pred code_info__get_next_label_number(int, code_info, code_info).
 :- mode code_info__get_next_label_number(out, in, out) is det.
 
-		% Create a code address for which holds the address
-		% of the specified predicate.
+		% Set's up call to code_info__make_entry_label_2.
 :- pred code_info__make_entry_label(module_info, pred_id, proc_id, code_addr,
 					code_info, code_info).
 :- mode code_info__make_entry_label(in, in, in, out, in, out) is det.
+
+		% Create a code address for which holds the address
+		% of the specified predicate.
+:- pred code_info__make_entry_label_2(module_info, int, pred_id, proc_id, 
+		pred_id, proc_id, code_addr).
+:- mode code_info__make_entry_label_2(in, in, in, in, in, in, out) is det.
 
 		% Get the variables for the current procedure.
 :- pred code_info__get_varset(varset, code_info, code_info).
@@ -536,14 +541,18 @@ code_info__get_next_label_number(N) -->
 
 %---------------------------------------------------------------------------%
 
-	% Any changes made to this predicate must be reflected in changes to 
-	% dependency_graph__make_entry_label/8.
 code_info__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) -->
 	code_info__get_globals(Globals),
 	code_info__get_pred_id(CurPredId),
 	code_info__get_proc_id(CurProcId),
-	{
+	{ 
 	globals__lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
+	code_info__make_entry_label_2(ModuleInfo, ProcsPerFunc, PredId, 
+			ProcId, CurPredId, CurProcId, PredAddress) 
+	}.
+
+code_info__make_entry_label_2(ModuleInfo, ProcsPerFunc, PredId, ProcId, 
+					CurPredId, CurProcId, PredAddress) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	(
@@ -559,8 +568,7 @@ code_info__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) -->
 		code_util__make_local_entry_label(ModuleInfo,
 							PredId, ProcId, Label),
 		PredAddress = label(Label)
-	)
-	}.
+	).
 
 %---------------------------------------------------------------------------%
 

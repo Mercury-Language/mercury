@@ -39,7 +39,7 @@
 :- import_module list, map, set, prog_io, std_util.
 :- import_module mode_util, int, term, require, string.
 :- import_module varset, mercury_to_mercury, relation.
-:- import_module globals, options, code_util.
+:- import_module globals, options, code_info.
 :- import_module llds.
 
 %-----------------------------------------------------------------------------%
@@ -467,10 +467,9 @@ dependency_graph__output_label(ModuleInfo, PredId, ProcId, CurPredId,
 
 %-----------------------------------------------------------------------------%
 
-	% dependency_graph__make_entry_label:
-	%	Almost identical to code_info__make_entry_label.
-	%	Calls the same predicates in code_util.  So any changes here
-	%	must be reflected in code_info__make_entry_label.
+% dependency_graph__make_entry_label:
+%	Just shunts off it's duties to code_info__make_entry_label_2
+%
 :- pred dependency_graph__make_entry_label(module_info, pred_id, proc_id, 
 			pred_id, proc_id, code_addr, io__state, io__state).
 :- mode dependency_graph__make_entry_label(in, in, in, in, in, out, di, uo)
@@ -479,24 +478,8 @@ dependency_graph__output_label(ModuleInfo, PredId, ProcId, CurPredId,
 dependency_graph__make_entry_label(ModuleInfo, PredId, ProcId, 
 					CurPredId, CurProcId, PredAddress) -->
         globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	{
-        module_info_preds(ModuleInfo, Preds),
-        map__lookup(Preds, PredId, PredInfo),
-        (
-                (       pred_info_is_imported(PredInfo)
-                ;       ProcsPerFunc \= 0,
-                        \+ (PredId = CurPredId, ProcId = CurProcId)
-                )
-        ->
-                code_util__make_proc_label(ModuleInfo,
-                                                PredId, ProcId, ProcLabel),
-                PredAddress = imported(ProcLabel)
-        ;
-                code_util__make_local_entry_label(ModuleInfo,
-                                                        PredId, ProcId, Label),
-                PredAddress = label(Label)
-        )
-        }.
+	{ code_info__make_entry_label_2(ModuleInfo, ProcsPerFunc, PredId,
+				ProcId, CurPredId, CurProcId, PredAddress) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
