@@ -912,9 +912,12 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 */
 
 #define WARNING(msg)							\\
-	fprintf(stderr, ""mdb: warning: %s\\n""				\\
-		""This may result in some exception events\\n""		\\
-		""being omitted from the trace.\\n"", (msg))
+	do {								\\
+		fflush(stdout);						\\
+		fprintf(stderr, ""mdb: warning: %s\\n""			\\
+			""This may result in some exception events\\n""	\\
+			""being omitted from the trace.\\n"", (msg));	\\
+	} while (0)
 
 static Code *
 MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
