@@ -14,6 +14,8 @@
 
 :- pragma(c_code, c_write_string(Str::in, IO0::di, IO::uo),
 	"fputs(Str, stdout); IO = IO0;").
+c_write_string(Str) -->
+	io__write_string(Str).
 
 main -->
 	c_write_string("Hello, world\n"),
