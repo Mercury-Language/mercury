@@ -323,6 +323,10 @@ $(os_subdir)std_util.$O \
 $(os_subdir)std_util.pic_o \
 	: ../runtime/mercury_type_desc.h
 
+$(os_subdir)table_builtin.$O \
+$(os_subdir)table_builtin.pic_o \
+	: ../runtime/mercury_tabling_macros.h
+
 #-----------------------------------------------------------------------------#
 
 realclean_local:
