@@ -48,7 +48,11 @@ ifeq ($(LIBRARY_INTERMODULE),yes)
 
 INTERMODULE_OPTS = --transitive-intermodule-optimization
 ENABLE_TERM_OPTS = --enable-termination
-# CHECK_TERM_OPTS = --check-termination
+CHECK_TERM_OPTS =
+# If you want to actually check termination for the library, then you need
+#	CHECK_TERM_OPTS = --check-termination
+# but that is not enabled by default because it probably just results in
+# spurious warnings.
 
 else
 

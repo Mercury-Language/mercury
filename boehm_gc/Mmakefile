@@ -1,11 +1,12 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 University of Melbourne. 
+# Copyright (C) 1995-1998 University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 # Mmake - Mmake file for Hans Boehm's conservative garbage collector.
 
+PROF=
 MAIN_TARGET=libgc$(PROF)
 
 MERCURY_DIR=..
@@ -58,6 +59,11 @@ ifeq ($(USE_DLLS),yes)
 
 LIBGC_DLL_H = libgc_dll.h 
 LIBGC_GLOBALS_H = libgc_globals.h 
+
+else
+
+LIBGC_DLL_H =
+LIBGC_GLOBALS_H =
 
 endif
 #-----------------------------------------------------------------------------#

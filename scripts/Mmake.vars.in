@@ -63,7 +63,8 @@ MLFLAGS		= $(EXTRA_MLFLAGS)
 EXTRA_MLFLAGS	=
 MLOBJS		=
 MLPICOBJS	= $(MLOBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
-MLLIBS		=
+MLLIBS		= $(EXTRA_MLLIBS)
+EXTRA_MLLIBS	=
 MNC		= mnc
 MNCFLAGS	= $(EXTRA_MNCFLAGS)
 EXTRA_MNCFLAGS	=
@@ -125,6 +126,7 @@ SUBDIR=Mercury/
 nos_subdir=$(SUBDIR)nos/
 qls_subdir=$(SUBDIR)qls/
 deps_subdir=$(SUBDIR)deps/
+ds_subdir=$(SUBDIR)ds/
 int0s_subdir=$(SUBDIR)int0s/
 ints_subdir=$(SUBDIR)ints/
 int2s_subdir=$(SUBDIR)int2s/
@@ -147,6 +149,7 @@ SUBDIR=
 nos_subdir=
 qls_subdir=
 deps_subdir=
+ds_subdir=
 int0s_subdir=
 ints_subdir=
 int2s_subdir=
@@ -171,6 +174,8 @@ endif
 .SUFFIXES: # reset sufix list to be empty
 
 #-----------------------------------------------------------------------------#
+
+MAIN_TARGET =
 
 default_target: main_target
 

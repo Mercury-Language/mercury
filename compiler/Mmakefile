@@ -53,6 +53,7 @@ MNC	=	MERCURY_NC_BUILTIN=$(LIBRARY_DIR)/nc_builtin.nl \
 MNL	=	MERCURY_NU_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/mnl
 MNLFLAGS =	-u 6000
 MTAGS	=	$(SCRIPTS_DIR)/mtags
+MTAGSFLAGS =	
 
 #-----------------------------------------------------------------------------#
 

@@ -131,6 +131,7 @@ include $(MERCURY_DIR)/Makefile.DLLs
 
 else
 
+DLL_CFLAGS =
 LIBMER_DLL_H =
 LIBMER_GLOBALS_H =
 DLL_DEF_LIB =
