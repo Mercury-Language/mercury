@@ -65,7 +65,6 @@ case $HOST in
 	ender)		OPTIMIZE=-O3 ;;
 	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
 	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
-	munta)		OPTIMIZE=-O0 ;; # dead
 esac
 
 # on some systems, the file system we're using does not support links
@@ -135,7 +134,6 @@ PARALLEL=
 case $HOST in
 	kryten) 	PARALLEL=-j2 ;; # out of three CPUs
 	rimmer) 	PARALLEL=-j2 ;; # out of two CPUs
-	munta)		PARALLEL=-j2 ;; # out of four CPUs
 	mundook) 	PARALLEL=-j1 ;; # out of two CPUs
 	murlibobo)	PARALLEL=-j6 ;; # out of eight CPUs
 	hydra)		PARALLEL=-j2 ;; # out of two CPUs
@@ -211,15 +209,6 @@ case $HOST in
 		# On kryten & taifun, there is a bug in readline which causes
 		# it to go into an infinite loop when reading from a file.
 		CONFIG_OPTS="--without-readline" ;;
-	munta)		
-		# On munta, we need to disable the external debugger,
-		# because it uses sockets, and munta doesn't have
-		# the static versions of the socket libraries
-		# installed.  Likewise for the -non_shared version
-		# of the dl library.  Unfortunately our configure script
-		# doesn't detect these problems, so we need to pass these
-		# options manually.
-		CONFIG_OPTS="--disable-extern-debug --disable-dynamic-link" ;;
 	ender)
 		# Test out these options, to make sure they continue
 		# to work
@@ -462,12 +451,6 @@ case $HOST in
 		GRADES="asm_fast.gc asm_fast asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.memprof asm_fast.gc.tr
 			asm_fast.gc.tr.debug"
-		;;
-	munta)
-		GRADES="reg.gc asm_fast asm_fast.gc
-			reg.gc.prof asm_fast.gc.prof"
-		# Don't bother with these, otherwise it would take forever...
-		#	reg.prof asm_fast.prof reg.gc.memprof reg.gc.tr reg.gc.tr.debug
 		;;
 	hydra)
 		GRADES="asm_fast.gc asm_fast
