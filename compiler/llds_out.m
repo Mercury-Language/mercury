@@ -1840,7 +1840,7 @@ output_live_value_type(redofr) --> io__write_string("MR_redofr").
 output_live_value_type(redoip) --> io__write_string("MR_redoip").
 output_live_value_type(hp) --> io__write_string("MR_hp").
 output_live_value_type(unwanted) --> io__write_string("unwanted").
-output_live_value_type(var(Var, Name, Type, Inst)) --> 
+output_live_value_type(var(Var, Name, Type, LldsInst)) --> 
 	io__write_string("var("),
 	{ term__var_to_int(Var, VarInt) },
 	io__write_int(VarInt),
@@ -1851,9 +1851,15 @@ output_live_value_type(var(Var, Name, Type, Inst)) -->
 	{ varset__init(NewTVarset) },
 	mercury_output_term(Type, NewTVarset, no),
 	io__write_string(", "),
-		% XXX Fake inst varset
-	{ varset__init(NewIVarset) },
-	mercury_output_inst(Inst, NewIVarset),
+	(
+		{ LldsInst = ground },
+		io__write_string("ground")
+	;
+		{ LldsInst = partial(Inst) },
+			% XXX Fake inst varset
+		{ varset__init(NewIVarset) },
+		mercury_output_inst(Inst, NewIVarset)
+	),
 	io__write_string(")").
 
 :- pred output_temp_decls(int, string, io__state, io__state).

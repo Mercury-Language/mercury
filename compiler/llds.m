@@ -548,7 +548,7 @@
 	;	redoip				% A stored redoip.
 	;	redofr				% A stored redofr.
 	;	hp				% A stored heap pointer.
-	;	var(prog_var, string, type, inst)
+	;	var(prog_var, string, type, llds_inst)
 						% A variable (the var number
 						% and name are for execution
 						% tracing; we have to store
@@ -559,6 +559,23 @@
 	;	unwanted.			% Something we don't need,
 						% or at least don't need
 						% information about.
+
+	% For recording information about the inst of a variable for use
+	% by the garbage collector or the debugger, we don't need to know
+	% what functors its parts are bound to, or which parts of it are
+	% unique; we just need to know which parts of it are bound.
+	% If we used the HLDS type inst to represent the instantiatedness
+	% in the LLDS, we would find that insts that the LLDS wants to treat
+	% as the same would compare as different. The live_value_types and
+	% var_infos containing them would compare as different as well,
+	% which can lead to a variable being listed more than once in
+	% a label's list of live variable.
+	%
+	% At the moment, the LLDS only handles ground insts. When this changes,
+	% the argument type of partial will have to be changed.
+:- type llds_inst
+	--->	ground
+	;	partial((inst)).
 
 	% An lval represents a data location or register that can be used
 	% as the target of an assignment.

@@ -3244,9 +3244,10 @@ code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
 	code_info__get_active_temps_data(Temps),
 	code_info__get_proc_info(ProcInfo),
 	code_info__get_globals(Globals),
+	code_info__get_module_info(ModuleInfo),
 	{ continuation_info__generate_return_live_lvalues(OutputArgLocs,
-		ReturnInstMap, Vars, VarLocs, Temps, ProcInfo, Globals,
-		LiveLvalues) }.
+		ReturnInstMap, Vars, VarLocs, Temps, ProcInfo, ModuleInfo,
+		Globals, LiveLvalues) }.
 
 :- pred code_info__generate_resume_layout(label::in, resume_map::in,
 	code_info::in, code_info::out) is det.
@@ -3259,8 +3260,9 @@ code_info__generate_resume_layout(Label, ResumeMap) -->
 		code_info__get_active_temps_data(Temps),
 		code_info__get_instmap(InstMap),
 		code_info__get_proc_info(ProcInfo),
+		code_info__get_module_info(ModuleInfo),
 		{ continuation_info__generate_resume_layout(ResumeMap,
-			Temps, InstMap, ProcInfo, Layout) },
+			Temps, InstMap, ProcInfo, ModuleInfo, Layout) },
 		code_info__add_gc_layout_for_label(Label, Layout)
 	;
 		[]

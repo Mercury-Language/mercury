@@ -226,13 +226,14 @@
 :- pred continuation_info__generate_return_live_lvalues(
 	assoc_list(prog_var, arg_loc)::in, instmap::in, list(prog_var)::in,
 	map(prog_var, set(rval))::in, assoc_list(lval, slot_contents)::in,
-	proc_info::in, globals::in, list(liveinfo)::out) is det.
+	proc_info::in, module_info::in, globals::in, list(liveinfo)::out)
+	is det.
 
 	% Generate the layout information we need for a resumption point,
 	% a label where forward execution can restart after backtracking.
 :- pred continuation_info__generate_resume_layout(map(prog_var, set(rval))::in,
 	assoc_list(lval, slot_contents)::in, instmap::in, proc_info::in,
-	layout_label_info::out) is det.
+	module_info::in, layout_label_info::out) is det.
 
 	% Generate the layout information we need to include in a closure.
 :- pred continuation_info__generate_closure_layout(module_info::in,
@@ -249,7 +250,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, code_util, type_util, options.
+:- import_module hlds_goal, code_util, type_util, inst_match, options.
 :- import_module string, require, varset, term.
 
 %-----------------------------------------------------------------------------%
@@ -416,13 +417,15 @@ continuation_info__some_arg_is_higher_order(PredInfo) :-
 %-----------------------------------------------------------------------------%
 
 continuation_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
-		Vars, VarLocs, Temps, ProcInfo, Globals, LiveLvalues) :-
+		Vars, VarLocs, Temps, ProcInfo, ModuleInfo, Globals,
+		LiveLvalues) :-
 	globals__want_return_var_layouts(Globals, WantReturnVarLayout),
 	proc_info_stack_slots(ProcInfo, StackSlots),
 	continuation_info__find_return_var_lvals(Vars, StackSlots,
 		OutputArgLocs, VarLvals),
 	continuation_info__generate_var_live_lvalues(VarLvals, ReturnInstMap,
-		VarLocs, ProcInfo, WantReturnVarLayout, VarLiveLvalues),
+		VarLocs, ProcInfo, ModuleInfo,
+		WantReturnVarLayout, VarLiveLvalues),
 	continuation_info__generate_temp_live_lvalues(Temps, TempLiveLvalues),
 	list__append(VarLiveLvalues, TempLiveLvalues, LiveLvalues).
 
@@ -456,15 +459,16 @@ continuation_info__generate_temp_live_lvalues([Temp | Temps], [Live | Lives]) :-
 
 :- pred continuation_info__generate_var_live_lvalues(
 	assoc_list(prog_var, lval)::in, instmap::in,
-	map(prog_var, set(rval))::in, proc_info::in,
+	map(prog_var, set(rval))::in, proc_info::in, module_info::in,
 	bool::in, list(liveinfo)::out) is det.
 
-continuation_info__generate_var_live_lvalues([], _, _, _, _, []).
+continuation_info__generate_var_live_lvalues([], _, _, _, _, _, []).
 continuation_info__generate_var_live_lvalues([Var - Lval | VarLvals], InstMap,
-		VarLocs, ProcInfo, WantReturnVarLayout, [Live | Lives]) :-
+		VarLocs, ProcInfo, ModuleInfo, WantReturnVarLayout,
+		[Live | Lives]) :-
 	( WantReturnVarLayout = yes ->
 		continuation_info__generate_layout_for_var(Var, InstMap,
-			ProcInfo, LiveValueType, TypeVars),
+			ProcInfo, ModuleInfo, LiveValueType, TypeVars),
 		continuation_info__find_typeinfos_for_tvars(TypeVars,
 			VarLocs, ProcInfo, TypeParams),
 		Live = live_lvalue(direct(Lval), LiveValueType, TypeParams)
@@ -473,16 +477,16 @@ continuation_info__generate_var_live_lvalues([Var - Lval | VarLvals], InstMap,
 		Live = live_lvalue(direct(Lval), unwanted, Empty)
 	),
 	continuation_info__generate_var_live_lvalues(VarLvals, InstMap,
-		VarLocs, ProcInfo, WantReturnVarLayout, Lives).
+		VarLocs, ProcInfo, ModuleInfo, WantReturnVarLayout, Lives).
 
 %---------------------------------------------------------------------------%
 
 continuation_info__generate_resume_layout(ResumeMap, Temps, InstMap,
-		ProcInfo, Layout) :-
+		ProcInfo, ModuleInfo, Layout) :-
 	map__to_assoc_list(ResumeMap, ResumeList),
 	set__init(TVars0),
 	continuation_info__generate_resume_layout_for_vars(ResumeList,
-		InstMap, ProcInfo, VarInfos, TVars0, TVars),
+		InstMap, ProcInfo, ModuleInfo, VarInfos, TVars0, TVars),
 	set__list_to_set(VarInfos, VarInfoSet),
 	set__to_sorted_list(TVars, TVarList),
 	continuation_info__find_typeinfos_for_tvars(TVarList, ResumeMap,
@@ -494,23 +498,26 @@ continuation_info__generate_resume_layout(ResumeMap, Temps, InstMap,
 
 :- pred continuation_info__generate_resume_layout_for_vars(
 	assoc_list(prog_var, set(rval))::in, instmap::in, proc_info::in,
-	list(var_info)::out, set(tvar)::in, set(tvar)::out) is det.
+	module_info::in, list(var_info)::out, set(tvar)::in,
+	set(tvar)::out) is det.
 
-continuation_info__generate_resume_layout_for_vars([], _, _, [], TVars, TVars).
+continuation_info__generate_resume_layout_for_vars([], _, _, _, [],
+		TVars, TVars).
 continuation_info__generate_resume_layout_for_vars([Var - RvalSet | VarRvals],
-		InstMap, ProcInfo, [VarInfo | VarInfos], TVars0, TVars) :-
+		InstMap, ProcInfo, ModuleInfo, [VarInfo | VarInfos],
+		TVars0, TVars) :-
 	continuation_info__generate_resume_layout_for_var(Var, RvalSet,
-		InstMap, ProcInfo, VarInfo, TypeVars),
+		InstMap, ProcInfo, ModuleInfo, VarInfo, TypeVars),
 	set__insert_list(TVars0, TypeVars, TVars1),
 	continuation_info__generate_resume_layout_for_vars(VarRvals,
-		InstMap, ProcInfo, VarInfos, TVars1, TVars).
+		InstMap, ProcInfo, ModuleInfo, VarInfos, TVars1, TVars).
 
 :- pred continuation_info__generate_resume_layout_for_var(prog_var::in,
-	set(rval)::in, instmap::in, proc_info::in,
+	set(rval)::in, instmap::in, proc_info::in, module_info::in,
 	var_info::out, list(tvar)::out) is det.
 
 continuation_info__generate_resume_layout_for_var(Var, RvalSet, InstMap,
-		ProcInfo, VarInfo, TypeVars) :-
+		ProcInfo, ModuleInfo, VarInfo, TypeVars) :-
 	set__to_sorted_list(RvalSet, RvalList),
 	( RvalList = [RvalPrime] ->
 		Rval = RvalPrime
@@ -523,7 +530,7 @@ continuation_info__generate_resume_layout_for_var(Var, RvalSet, InstMap,
 		error("var rval is not lval in stack resume map")
 	),
 	continuation_info__generate_layout_for_var(Var, InstMap, ProcInfo,
-		LiveValueType, TypeVars),
+		ModuleInfo, LiveValueType, TypeVars),
 	VarInfo = var_info(direct(Lval), LiveValueType).
 
 :- pred continuation_info__generate_temp_var_infos(
@@ -539,9 +546,10 @@ continuation_info__generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
 %---------------------------------------------------------------------------%
 
 :- pred continuation_info__generate_layout_for_var(prog_var::in, instmap::in,
-	proc_info::in, live_value_type::out, list(tvar)::out) is det.
+	proc_info::in, module_info::in, live_value_type::out, list(tvar)::out)
+	is det.
 
-continuation_info__generate_layout_for_var(Var, InstMap, ProcInfo,
+continuation_info__generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo,
 		LiveValueType, TypeVars) :-
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
@@ -552,7 +560,12 @@ continuation_info__generate_layout_for_var(Var, InstMap, ProcInfo,
 	),
 	instmap__lookup_var(InstMap, Var, Inst),
 	map__lookup(VarTypes, Var, Type),
-	LiveValueType = var(Var, Name, Type, Inst),
+	( inst_match__inst_is_ground(ModuleInfo, Inst) ->
+		LldsInst = ground
+	;
+		LldsInst = partial(Inst)
+	),
+	LiveValueType = var(Var, Name, Type, LldsInst),
 	type_util__vars(Type, TypeVars).
 
 %---------------------------------------------------------------------------%
