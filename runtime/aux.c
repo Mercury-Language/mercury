@@ -153,12 +153,12 @@ void goto_msg(const Code *addr)
 		printregs("registers at goto");
 }
 
-void reg_msg()
+void reg_msg(void)
 {
 	int i;
 
-	for(i=1;i<=8;i++) {
-		printf("%8x ",virtual_reg(i));
+	for(i=1; i<=8; i++) {
+		printf("%8x ", get_reg(i));
 	}
 	printf("\n");
 }
@@ -318,7 +318,6 @@ static void print_ordinary_regs(void)
 	int	i;
 	int	value;
 
-	restore_transient_registers();
 	for (i = 0; i < 8; i++)
 	{
 		printf("r%d:      ", i + 1);
@@ -336,7 +335,7 @@ Word do_mklist(int start, int len)
 	Word	curr;
 	int	i;
 
-	restore_transient_registers();
+	restore_transient_registers();	/* need hp */
 	curr = mkword(TAG_NIL, 0);
 	for (i = 1; i <= len; i++)
 	{
