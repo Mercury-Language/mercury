@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,7 +157,13 @@ term_errors__report_term_errors(SCC, Errors, Module) -->
 	),
 	(
 		{ Errors = [] },
-		{ error("empty list of errors") }
+		% XXX this should never happen
+		% XXX but for some reason, it often does
+		% { error("empty list of errors") }
+		{ Pieces2 = ["not", "proven,", "for", "unknown",
+			"reason(s)."] },
+		{ list__append(Pieces1, Pieces2, Pieces) },
+		write_error_pieces(Context, 0, Pieces)
 	;
 		{ Errors = [Error] },
 		{ Pieces2 = ["not", "proven", "for", "the",
@@ -505,7 +511,9 @@ term_errors__describe_one_pred_name(PredId, Module, Piece) :-
 
 term_errors__describe_one_proc_name(proc(PredId, ProcId), Module, Piece) :-
 	term_errors__describe_one_pred_name(PredId, Module, PredPiece),
-	proc_id_to_int(ProcId, ProcIdInt),
+	proc_id_to_int(ProcId, ProcIdInt0),
+	% strip off the "priority"
+	ProcIdInt is ProcIdInt0 mod 10000,
 	string__int_to_string(ProcIdInt, ProcIdPart),
 	string__append_list([
 		PredPiece,
