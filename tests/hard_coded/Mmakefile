@@ -26,6 +26,7 @@ PROGS=	\
 	division_test \
 	dupcall_types_bug \
 	elim_special_pred \
+	existential_bound_tvar \
 	eqv_type_bug \
 	error_func \
 	erroneous_liveness \
