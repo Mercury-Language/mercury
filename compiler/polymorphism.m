@@ -1259,8 +1259,11 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 					% Make the type_infos for the types
 					% that are constrained by this. These
 					% are packaged in the typeclass_info
+				term__apply_substitution_to_list(
+					ConstrainedTypes, VarTypes0,
+					RenamedConstrainedTypes),
 				polymorphism__make_type_info_vars(
-					ConstrainedTypes,
+					RenamedConstrainedTypes,
 					InstanceExtraTypeInfoVars,
 					TypeInfoGoals,
 					Info0, Info1),
