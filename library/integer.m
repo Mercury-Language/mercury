@@ -482,7 +482,8 @@ xor_pairs(i(L1, D1), i(L2, D2)) = Integer :-
 
 :- func xor_pairs_equal(list(digit), list(digit)) = list(digit).
 xor_pairs_equal([], _) = [].
-xor_pairs_equal([X | Xs], [Y | Ys]) = [X ^ Y | xor_pairs_equal(Xs, Ys)].
+xor_pairs_equal([X | Xs], [Y | Ys]) =
+	[int__xor(X, Y) | xor_pairs_equal(Xs, Ys)].
 xor_pairs_equal([_ | _], []) = [].
 
 
