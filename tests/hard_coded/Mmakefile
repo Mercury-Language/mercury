@@ -81,6 +81,7 @@ ORDINARY_PROGS=	\
 	multimode \
 	myset_test \
 	name_mangling \
+	needs_init \
 	no_fully_strict \
 	no_inline \
 	nondet_ctrl_vn \
@@ -258,6 +259,8 @@ MLFLAGS-parse			=	--trace --static
 
 C2INITFLAGS-split-c-files	= 	--trace
 MLFLAGS-split-c-files		=	--trace
+
+C2INITFLAGS-needs_init		= 	--include-initialization-code --extra-inits
 
 # no_fully_strict is expected to fail (it calls error/1).
 # We also need to pipe the output through sed to avoid hard-coding

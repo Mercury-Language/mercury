@@ -418,7 +418,6 @@ int
 main(int argc, char **argv)
 {
 	int	num_bunches;
-	const char	*need_main_ifdef;
 
 	MR_progname = argv[0];
 
@@ -430,10 +429,8 @@ main(int argc, char **argv)
 	output_headers();
 
 	if (need_initialization_code) {
-		need_main_ifdef = NULL;
-	} else {
-		need_main_ifdef = if_need_to_init;
-	}
+		printf("#define MR_MAY_NEED_INITIALIZATION\n\n");
+	} 
 
 	num_bunches = output_sub_init_functions(PURPOSE_INIT);
 	output_main_init_function(PURPOSE_INIT, num_bunches);
