@@ -94,10 +94,11 @@
 	% `QuantVars' are the variables not in `OutsideVars' 
 	% that have been explicitly existentially quantified over a scope
 	% which includes the current goal in a positive (non-negated) context.
-	% `OutsideLambdaVars' are the variables
-	% that have occurred free in a lambda
-	% expression outside this goal, not counting occurrences in
-	% parallel goals.
+	% `OutsideLambdaVars' are the variables that have occurred free in
+	% a lambda expression outside this goal, not counting occurrences in
+	% parallel goals (and if this goal is itself inside a lambda
+	% expression, not counting occurrences outside that lambda
+	% expression).
 	%
 	% For example, for
 	%
@@ -283,7 +284,9 @@ implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0, SM),
 	quantification__get_nonlocals(NonLocalsElse),
 	{ set__union(NonLocalsCond, NonLocalsThen, NonLocalsIfThen) },
 	{ set__union(NonLocalsIfThen, NonLocalsElse, NonLocalsIfThenElse) },
-	{ set__intersect(NonLocalsIfThenElse, OutsideVars, NonLocals) },
+	{ set__intersect(NonLocalsIfThenElse, OutsideVars, NonLocalsO) },
+	{ set__intersect(NonLocalsIfThenElse, LambdaOutsideVars, NonLocalsL) },
+	{ set__union(NonLocalsO, NonLocalsL, NonLocals) },
 	quantification__set_nonlocals(NonLocals).
 
 implicitly_quantify_goal_2(call(A, B, HeadVars, D, E, F), _,
@@ -367,18 +370,26 @@ implicitly_quantify_unify_rhs(
 		% and initialize the new quantified vars set to be empty.
 	quantification__get_quant_vars(QuantVars0),
 	{ set__union(OutsideVars0, QuantVars0, OutsideVars1) },
+	{ set__init(QuantVars) },
+	quantification__set_quant_vars(QuantVars),
 		% Add the lambda vars as outside vars, since they are
 		% outside of the lambda goal
 	{ set__insert_list(OutsideVars1, LambdaVars, OutsideVars) },
-	{ set__init(QuantVars) },
 	quantification__set_outside(OutsideVars),
-	quantification__set_quant_vars(QuantVars),
+		% Set the LambdaOutsideVars set to empty, because
+		% variables that occur outside this lambda expression
+		% only in other lambda expressions should not be
+		% considered non-local.
+	quantification__get_lambda_outside(LambdaOutsideVars0),
+	{ set__init(LambdaOutsideVars) },
+	quantification__set_lambda_outside(LambdaOutsideVars),
 	implicitly_quantify_goal(Goal1, Goal),
 	quantification__get_nonlocals(NonLocals0),
 		% lambda-quantified variables are local
 	{ set__delete_list(NonLocals0, LambdaVars, NonLocals) },
 	quantification__set_quant_vars(QuantVars0),
 	quantification__set_outside(OutsideVars0),
+	quantification__set_lambda_outside(LambdaOutsideVars0),
 	quantification__set_nonlocals(NonLocals).
 
 :- pred implicitly_quantify_conj(list(hlds_goal), list(hlds_goal), 
@@ -417,7 +428,9 @@ implicitly_quantify_conj_2([Goal0 | Goals0],
 				Goals),
 	quantification__get_nonlocals(NonLocalVars2),
 	{ set__union(NonLocalVars1, NonLocalVars2, NonLocalVarsConj) },
-	{ set__intersect(NonLocalVarsConj, OutsideVars, NonLocalVars) },
+	{ set__intersect(NonLocalVarsConj, OutsideVars, NonLocalVarsO) },
+	{ set__intersect(NonLocalVarsConj, LambdaOutsideVars, NonLocalVarsL) },
+	{ set__union(NonLocalVarsO, NonLocalVarsL, NonLocalVars) },
 	quantification__set_outside(OutsideVars),
 	quantification__set_nonlocals(NonLocalVars).
 
