@@ -510,11 +510,21 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 			pred_info_set_class_context(PredInfo4,
 				InferredTypeConstraints, PredInfo),
 			(
-				% if the argument types and the type
+				% If the argument types and the type
 				% constraints are identical up to renaming,
-				% then nothing has changed
-				% (the call to same_length is just an
-				% optimization -- catch the easy cases first)
+				% then nothing has changed.
+				%
+				% Note that we can't compare each of the
+				% parts seperately, since we need to ensure
+				% that the renaming (if any) is consistent
+				% over all the arguments and all the
+				% constraints.  So we need to append all
+				% the relevant types into one big type list
+				% and then compare them in a single call
+				% to indentical_up_to_renaming.
+
+				% The call to same_length here is just an
+				% optimization -- catch the easy cases first.
 				list__same_length(OldTypeConstraints,
 					InferredTypeConstraints),
 				same_structure(OldTypeConstraints,
