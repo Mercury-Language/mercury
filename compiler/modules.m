@@ -1919,9 +1919,18 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			PicAsmDateFileName, " ",
 			SplitObjPattern, " ",
 			RLOFileName, " ",
-			ILDateFileName, " : ",
-			SourceFileName
+			ILDateFileName
 		] ),
+		write_dependencies_list(ParentDeps, ".optdate", DepStream),
+		write_dependencies_list(ParentDeps,
+				".trans_opt_date", DepStream),
+		write_dependencies_list(ParentDeps, ".c_date", DepStream),
+		write_dependencies_list(ParentDeps, ".s_date", DepStream),
+		write_dependencies_list(ParentDeps, ".pic_s_date", DepStream),
+		write_dependencies_list(ParentDeps, ".dir/*.$O", DepStream),
+		write_dependencies_list(ParentDeps, ".rlo", DepStream),
+		write_dependencies_list(ParentDeps, ".il_date", DepStream),
+		io__write_strings(DepStream, [" : ", SourceFileName]),
 		% If the module contains nested sub-modules then `.int0'
 		% file must first be built.
 		( { InclDeps = [_ | _] } ->
