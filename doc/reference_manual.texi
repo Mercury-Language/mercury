@@ -2849,8 +2849,8 @@ sub-modules, i.e. to put the sub-modules in separate source files.)
 
 Mercury supports constrained polymorphism in the form of type classes.  
 Type classes allow the programmer to write predicates and functions which 
-operate on variables of any type (or set of types) for which a certain set
-of operations is defined.  
+operate on variables of any type (or sequence of types) for which a certain
+set of operations is defined.  
 
 @menu
 * Typeclass declarations::
@@ -2916,8 +2916,8 @@ same name and arity in the same module.
 
 Once the interface of the type class has been defined in the @code{typeclass}
 declaration, we can use an @code{instance} declaration to define how a
-particular type satisfies the interface declared in the @code{typeclass}
-declaration.
+particular type (or sequence of types) satisfies the interface declared
+in the @code{typeclass} declaration.
 
 An instance declaration has the form
 
@@ -2936,10 +2936,10 @@ but @code{T}, @code{list(int)} and @code{bintree(T,T)} are not.
 The types in an instance declaration must not be abstract types which
 are elsewhere defined as equivalence types.
 A program may not contain more than one @code{instance} declaration for a
-particular type (or set of types, in the case of a multi-parameter
+particular type (or sequence of types, in the case of a multi-parameter
 type class).  These restrictions ensure that there are no overlapping instance
 declarations, ie. there is at most one instance declaration that may be 
-applied to any type (or set of types).
+applied to any type (or sequence of types).
 
 Each entry in the @samp{where [@dots{}]} part of an @code{instance}
 declaration defines the implementation of one of the class methods
@@ -2949,14 +2949,14 @@ predicate of the specified arity whose type, modes, determinism, and
 purity are at least as permissive as the declared type, modes,
 determinism, and purity of the class method with the specified
 @var{methodname} and @var{arity}, after the types of the arguments
-in the instance declaration have substituted in place of the
+in the instance declaration have been substituted in place of the
 parameters in the type class declaration.
 Each @samp{instance} declaration must define an implementation for
 every method declared in the corresponding @samp{typeclass} declaration.
 It is an error to define more than one implemention for the same
 method within a single @samp{instance} declaration.
 
-Any call to a method must have arguments types (and in the case of functions,
+Any call to a method must have argument types (and in the case of functions,
 return type) which are constrained to be a member of that method's
 type class, or which match one of the instance declarations visible at
 the point of the call.  A method call will invoke the 
@@ -3043,8 +3043,8 @@ Abstract instance declarations are instance declarations whose
 implementations are hidden.  An abstract instance declaration has the
 same form as an instance declaration, but without the @samp{where
 [@dots{}]} part.  An abstract instance declaration declares that
-certain type(s) are an instance of a particular type class without
-defining how the type class methods are implemented for those type(s).
+a sequence of types is an instance of a particular type class without
+defining how the type class methods are implemented for those types.
 Like abstract type declarations,
 abstract instance declarations are only useful in the interface
 section of a module.  Each abstract instance declaration must
@@ -3131,9 +3131,7 @@ types with a particular set of numerical operations defined:
         func one = (T::out) is det,                     % '*' identity
         func plus(T::in, T::in) = (T::out) is det,      % '+'/2 (forward mode)
         func mult(T::in, T::in) = (T::out) is det,      % '*'/2 (forward mode)
-        func negative(T::in) = (T::out) is det,         % '-'/1 (forward mode)
-        func inverse(T::in) = (T::out) is semidet       % multiplicative 
-                                                        % inverse
+        func negative(T::in) = (T::out) is det          % '-'/1 (forward mode)
 ].
 @end example
 
