@@ -1,4 +1,4 @@
-*.c *.nux *.nux.save
+*.c *.nux *.nux.save *.exp *.out *.res
 arithmetic commit_bug disj_disj duplicate_label environment float_test
 interpreter nasty_nondet nondet_disj nondet_ite partition petdr1
 string__format_test string_test string_test_2 set_test univ
