@@ -90,19 +90,17 @@ case $BRANCH in
 		RELEASE_VERSION_PATTERN=rotd-*
 		;;
 	0.10)
-		#CHECKOUT_OPTS=-rversion-0_10
-		#BASE_TAG_NAME=version-0_10_y
-		#RELEASE_VERSION=0.10
-		#RELEASE_VERSION_PATTERN=0.10-*
 		CHECKOUT_OPTS=-rversion-0_10_y
+		#CHECKOUT_OPTS=-rversion-0_10_2
 		BASE_TAG_NAME=version-0_10_y
-		RELEASE_VERSION=0.10.1-beta-$DATE
-		RELEASE_VERSION_PATTERN=0.10.1-beta-*
+		RELEASE_VERSION=0.10.2-beta-$DATE
+		#RELEASE_VERSION=0.10.2
+		RELEASE_VERSION_PATTERN=0.10.1*
 		;;
 esac
 case "$C_COMPILER" in
-	gcc)	TEST_ID=$HOST.$BRANCH ;;
-	*)	TEST_ID=$HOST.$BRANCH."$C_COMPILER" ;;
+	gcc)	TEST_ID=$BRANCH.$HOST ;;
+	*)	TEST_ID=$BRANCH.$HOST."$C_COMPILER" ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -309,6 +307,14 @@ case $HOST in
 		INSTALL_LIBGRADES="hl.gc \
 			hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc \
 			hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
+		# Test the asm_fast.gc.tr.rt grade, but not on the 0.10 branch,
+		# since the asm_fast.gc.tr.rt grade is not yet implemented
+		# in the 0.10 branch.
+		case $BRANCH in
+			0.10)	;;
+			*)	INSTALL_LIBGRADES="$INSTALL_LIBGRADES \
+					asm_fast.gc.tr.rt" ;;
+		esac
 		;;
 	hg)
 		CONFIG_OPTS=""
@@ -717,7 +723,8 @@ case $HOST in
 		;;
 	roy)
 		GRADES="hlc.gc hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc
-			hl.gc  hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
+			hl.gc  hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc 
+			asm_fast.gc.tr.rt"
 		;;
 	ender)
 		GRADES="asm_fast.gc asm_fast
