@@ -21,4 +21,5 @@ mer_browser.init
 Mercury
 browser_library.dv
 browse_test.dv
+declarative_test.dv
 collect_lib.h
