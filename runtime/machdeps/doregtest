@@ -8,10 +8,30 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-if ../../scripts/mgnuc "-DREG=\"$1\"" regtest.c -o /tmp/regtest$$ -lm &&
+CFLAGS=
+PIC_CFLAGS=	$CFLAGS -fpic
+
+echo Trying register "$1"...
+if ../../scripts/mgnuc $CFLAGS "-DREG=\"$1\"" regtest.c regtest2.c -o /tmp/regtest$$ -lm &&
    [ -x /tmp/regtest$$ ] && /tmp/regtest$$
 then
-	true
+	if ../../scripts/mgnuc $PIC_CFLAGS "-DREG=\"$1\"" regtest.c regtest2.c \
+		-o /tmp/regtest$$ -lm &&
+	   [ -x /tmp/regtest$$ ] && /tmp/regtest$$
+	then
+		echo "Register $1 seems to work OK"
+	else
+		if ../../scripts/mgnuc -g $CFLAGS "-DREG=\"$1\"" -c regtest.c &&
+		   ../../scripts/mgnuc -g $PIC_CFLAGS -c regtest2.c &&
+		   ../../scripts/mgnuc -g regtest.o regtest2.o -o /tmp/regtest$$ -lm &&
+		   [ -x /tmp/regtest$$ ] && /tmp/regtest$$
+		then
+			echo "Register $1 can't be used in PIC mode"
+		else
+			echo "Register $1 can't be used in PIC mode, and"
+			echo "register $1 also gets clobbered when you merely call PIC code."
+		fi
+	fi
 else
 	echo "Register $1 can't be used"
 fi
