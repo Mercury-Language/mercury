@@ -7,9 +7,11 @@ code generation:
 
 - generate code for complicated unifies
 
-- generate code for polymorphic predicates
-
 - generate code for higher-order predicates
+	-  "predicate pointers" (needed to bootstrap)
+	-  closures.
+
+- generate code for polymorphic predicates
 
 - generate better code for switches - use jump tables
   rather than an if-then-else chain
