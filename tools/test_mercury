@@ -968,7 +968,7 @@ do
 			$PARALLEL runtests || \
 			set_status "tests in grade $grade"
 		if [ -f runtests.errs ]; then
-			cat runtest.errs >> $TEST_ERROR_FILE
+			cat runtests.errs >> $TEST_ERROR_FILE
 		fi
 		;;
 	esac
