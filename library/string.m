@@ -1479,6 +1479,11 @@ string__special_precision_and_width(-1).
 
 % The remaining routines are implemented using the C interface.
 
+:- pragma(c_header_code, "
+#include <string.h>
+#include <stdio.h>
+").
+
 %-----------------------------------------------------------------------------%
 
 	% Beware that the implementation of string__format depends
