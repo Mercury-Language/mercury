@@ -146,13 +146,21 @@ init_var_usage(ModuleInfo, VarUsage, PredProcList) :-
 
 setup_local_var_usage(_, _, [], VarUsage, VarUsage, [[]]).
 setup_local_var_usage(ModuleInfo, PredTable, [PredId | PredIds],
-			VarUsage0, VarUsage, [PredProcList | PredProcLists]) :-
+			VarUsage0, VarUsage, PredProcLists) :-
 	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_non_imported_procids(PredInfo, ProcIds),
-	setup_pred_args(ModuleInfo, PredId, ProcIds, VarUsage0, VarUsage1,
-							[], PredProcList),
-	setup_local_var_usage(ModuleInfo, PredTable, PredIds,
-			VarUsage1, VarUsage, PredProcLists).
+		% The builtins use all their arguments.
+	( code_util__predinfo_is_builtin(ModuleInfo, PredInfo) ->
+		VarUsage1 = VarUsage0,
+		setup_local_var_usage(ModuleInfo, PredTable, PredIds,
+			VarUsage1, VarUsage, PredProcLists)
+	;
+		pred_info_non_imported_procids(PredInfo, ProcIds),
+		setup_pred_args(ModuleInfo, PredId, ProcIds,
+			VarUsage0, VarUsage1, [], PredProcList),
+		setup_local_var_usage(ModuleInfo, PredTable, PredIds,
+			VarUsage1, VarUsage, PredProcLists1),
+		PredProcLists = [PredProcList | PredProcLists1]
+	).
 
 
 	% setup args for a predicate
