@@ -3072,7 +3072,7 @@ output_goto(do_trace_redo_fail_deep, _) -->
 output_goto(do_call_closure, _CallerLabel) -->
 	% see comment in output_call for why we use `noprof_' here
 	io__write_string("noprof_tailcall(ENTRY(mercury__do_call_closure));\n").
-output_goto(do_call_class_method, CallerLabel) -->
+output_goto(do_call_class_method, _CallerLabel) -->
 	% see comment in output_call for why we use `noprof_' here
 	io__write_string("noprof_tailcall(ENTRY(mercury__do_call_class_method));\n").
 output_goto(do_det_aditi_call, CallerLabel) -->
@@ -3137,7 +3137,7 @@ output_call(Target, Continuation, CallerLabel) -->
 		io__write_string("noprof_")
 	;
 		{ ProfileCall = yes }
-	},
+	),
 	(
 		{ Target = label(Label) },
 		% We really shouldn't be calling internal labels ...
