@@ -24,8 +24,11 @@
 	%	of type `list(T)', denoted `[Head | Tail]'.
 	%	
 
-	% The definition list is actually in mercury_builtin.m because
-	% it is required to implement 'type_to_term' and 'term_to_type'
+% :- type list(T) ---> [] | [T | list(T)].
+
+	% The definition of `list(T)' is actually in mercury_builtin.m because
+	% the implementation of type_to_term/3 and term_to_type/3 means
+	% that it has to be.
 
 %-----------------------------------------------------------------------------%
 
@@ -154,6 +157,7 @@
 	%	
 :- pred list__insert(T, list(T), list(T)).
 :- mode list__insert(in, in, in) is semidet.
+:- mode list__insert(in, out, in) is nondet.
 :- mode list__insert(out, out, in) is nondet.
 :- mode list__insert(in, in, out) is multi.
 
