@@ -3986,12 +3986,23 @@ should_dump_stage(StageNum, StageName, DumpStages) :-
 	(
 		list__member(StageNum, DumpStages)
 	;
+		string__append("0", StrippedStageNum, StageNum),
+		list__member(StrippedStageNum, DumpStages)
+	;
 		list__member(StageName, DumpStages)
 	;
 		list__member("all", DumpStages)
 	;
+		list__member(DumpStage, DumpStages),
+		string__append(From, "+", DumpStage),
+		string__to_int(From, FromInt),
+		(
 		string__append("0", StrippedStageNum, StageNum),
-		list__member(StrippedStageNum, DumpStages)
+			string__to_int(StrippedStageNum, StageInt)
+		;
+			string__to_int(StageNum, StageInt)
+		),
+		StageInt >= FromInt
 	).
 
 :- pred mercury_compile__dump_hlds(string, module_info, io__state, io__state).
