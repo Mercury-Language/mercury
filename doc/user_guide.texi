@@ -918,8 +918,8 @@ Don't warn about modules whose interface sections have no
 exported predicates, modes or types.
 
 @sp 1
-@item --no-warn-unused-args
-Don't warn about predicate arguments which are not used.
+@item --warn-unused-args
+Warn about predicate arguments which are not used.
 @end table
 
 @node Verbosity options
