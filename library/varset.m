@@ -108,8 +108,8 @@
 	%
 :- pred varset__search_name(varset(T)::in, var(T)::in, string::out) is semidet.
 
-	% Bind a value to a variable
-	% (will overwrite any existing binding).
+	% Bind a value to a variable.
+	% This will overwrite any existing binding.
 	%
 :- func varset__bind_var(varset(T), var(T), term(T)) = varset(T).
 :- pred varset__bind_var(varset(T)::in, var(T)::in, term(T)::in,

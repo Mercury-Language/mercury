@@ -26,8 +26,8 @@ Changes to the Mercury standard library:
   set_ctree234, have been added to provide operations on sets with better
   worst-case behavior (but worse constant factors) than the current
   implementation.s Seven new modules, svarray, sveqvclass, svmap, svbimap,
-  svset, svbag and svqueue now provide more convenient ways to update
-  arrays, equivalence classes, maps, bimaps, sets, bags and queues
+  svset, svbag, svqueue and svvarset now provide more convenient ways to update
+  arrays, equivalence classes, maps, bimaps, sets, bags, queues and varsets
   in code that uses state variables.
 * New procedures have been added to many of the existing standard library
   modules.  Most notably, these include procedures for creating

@@ -107,6 +107,7 @@
 :- import_module svmap.
 :- import_module svqueue.
 :- import_module svset.
+:- import_module svvarset.
 :- import_module term.
 :- import_module term_io.
 :- import_module term_to_xml.
