@@ -2488,7 +2488,7 @@ polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 	%
 	% or
 	%
-	%	TypeCtorInfoVar = base_type_type_info(CountVar,
+	%	TypeCtorInfoVar = type_ctor_info(CountVar,
 	%				SpecialPredVars...)
 	%
 	% These unifications WILL lead to the creation of cells on the
@@ -2540,7 +2540,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 
 	% Create a unification for a type_info or type_ctor_info variable:
 	%
-	%	TypeCtorInfoVar = base_type_type_info(CountVar,
+	%	TypeCtorInfoVar = type_ctor_info(CountVar,
 	%				SpecialPredVars...)
 	%
 	% This unification will NOT lead to the creation of a cell on the

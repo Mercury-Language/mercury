@@ -606,7 +606,7 @@ base_type_layout__layout_special(_ConsId - ConsTag, LayoutInfo,
 		error("type_ctor_layout: Unexpected constant - code_addr_constant/2")
 	;
 		ConsTag = type_ctor_info_constant(_, _, _),
-		error("type_ctor_layout: Unexpected constant - base_type_into_constant/3")
+		error("type_ctor_layout: Unexpected constant - type_ctor_info_constant/3")
 	),
 	list__duplicate(MaxTags, Rval, RvalsList),
 	list__condense(RvalsList, Rvals).
