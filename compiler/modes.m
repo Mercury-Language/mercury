@@ -1345,8 +1345,6 @@ write_inst_id(F - N) -->
 :- pred write_pred_id(pred_id, io__state, io__state).
 :- mode write_pred_id(input, di, uo).
 
-/******************** ALL THIS IS COMMENTED OUT
-
 write_pred_id(PredId) -->
 	% XXX module name
 	%%% { predicate_module(PredId, Module) },
@@ -1357,6 +1355,8 @@ write_pred_id(PredId) -->
 	io__write_string(Name),
 	io__write_string("/"),
 	io__write_int(Arity).
+
+/******************** ALL THIS IS COMMENTED OUT
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -56,7 +56,7 @@ add_item_list_decls([Item - Context | Items], Module0, Module) -->
 		io__set_output_stream(StdErr, OldStream),
 		io__write_string("\n"),
 		prog_out__write_context(Context),
-		io__write_string("internal error in make_hlds.\n"),
+		io__write_string("Internal error in make_hlds.\n"),
 		io__write_string("Failed to process the following item:\n"),
 		io__write_anything(Item),
 		io__write_string("\n"),
@@ -80,7 +80,7 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 		io__set_output_stream(StdErr, OldStream),
 		io__write_string("\n"),
 		prog_out__write_context(Context),
-		io__write_string("internal error in make_hlds.\n"),
+		io__write_string("Internal error in make_hlds.\n"),
 		io__write_string("Failed to process the following clause:\n"),
 		io__write_anything(Item),
 		io__write_string("\n"),
@@ -566,6 +566,7 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 	;
 		[]
 	),
+	maybe_warn_singletons(VarSet, PredId, Args, Body, Context),
 	(
 		% some [PredInfo0]
 		{ map__search(Preds0, PredId, PredInfo0) }
@@ -585,6 +586,133 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		clauses_add(Preds1, ModuleName, VarSet, PredName, Args,
 			Body, Context, Preds)
 	).
+
+%-----------------------------------------------------------------------------
+
+	% Warn about variables which occur only once but don't start with
+	% an underscore, or about variables which do start with an underscore
+	% but occur more than once.
+	%
+	% XXX We shouldn't warn about variables which start with '_'
+	%     unless they occur more than once *in the same scope*.
+	%
+	% XXX This is O(N*N) in the number of vars per clause
+
+:- pred maybe_warn_singletons(varset, pred_id, list(term), goal, term__context,
+					io__state, io__state).
+:- mode maybe_warn_singletons(in, in, in, in, in, di, uo).
+
+maybe_warn_singletons(VarSet, PredId, Args, Body, Context) -->
+	lookup_option(warn_singleton_vars, bool(WarnSingletonVars)),
+	( { WarnSingletonVars = yes } ->
+		{ term__vars_list(Args, VarList0) },
+		{ vars_in_goal(Body, VarList0, VarList) },
+		warn_singletons(VarList, VarSet, PredId, Context)
+	;	
+		[]
+	).
+
+:- pred warn_singletons(list(var), varset, pred_id, term__context,
+			io__state, io__state).
+:- mode warn_singletons(in, in, in, in, di, uo).
+
+warn_singletons([], _, _, _) --> [].
+warn_singletons([Var | Vars0], VarSet, PredId, Context) -->
+	{ delete_all(Vars0, Var, Vars1, Found) },
+	( { varset__lookup_name(VarSet, Var, Name) } ->
+		(
+			{ Found = yes },
+			{ string__first_char(Name, '_', _) }
+		->
+			prog_out__write_context(Context),
+			io__write_string("In clause for predicate `"),
+			hlds_out__write_pred_id(PredId),
+			io__write_string("':\n"),
+			prog_out__write_context(Context),
+			io__write_string("  Warning: variable `"),
+			io__write_variable(Var, VarSet),
+			io__write_string("' occurs more than once.\n")
+		;
+			{ Found = no },
+			{ \+ string__first_char(Name, '_', _) }
+		->
+			prog_out__write_context(Context),
+			io__write_string("In clause for predicate `"),
+			hlds_out__write_pred_id(PredId),
+			io__write_string("':\n"),
+			prog_out__write_context(Context),
+			io__write_string("  Warning: variable `"),
+			io__write_variable(Var, VarSet),
+			io__write_string("' occurs only once.\n")
+		;
+			[]
+		)
+	;
+		[]
+	),
+	warn_singletons(Vars1, VarSet, PredId, Context).
+
+
+	% delete_all(List0, Elem, List, Found) is true iff
+	% List is List0 with all occurrences of Elem removed,
+	% and Found = 'yes' if Elem occurred in List0 and 'no' otherwise.
+
+:- pred delete_all(list(T), T, list(T), bool).
+:- mode delete_all(in, in, out, out).
+
+delete_all([], _, [], no).
+delete_all([X | Xs], Y, L, Found) :-
+	( X = Y ->
+		Found = yes,
+		delete_all(Xs, Y, L, _)
+	;	
+		L = [X | Xs1],
+		delete_all(Xs, Y, Xs1, Found)
+	).
+
+:- pred vars_in_goal(goal, list(var), list(var)).
+:- mode vars_in_goal(in, in, out) is det.
+
+vars_in_goal(true) --> [].
+vars_in_goal(fail) --> [].
+vars_in_goal((A,B)) -->
+	vars_in_goal(A),
+	vars_in_goal(B).
+vars_in_goal((A;B)) -->
+	vars_in_goal(A),
+	vars_in_goal(B).
+vars_in_goal((A;B)) -->
+	vars_in_goal(A),
+	vars_in_goal(B).
+vars_in_goal(not(Vs, G)) -->
+	append(Vs),
+	vars_in_goal(G).
+vars_in_goal(some(Vs, G)) -->
+	append(Vs),
+	vars_in_goal(G).
+vars_in_goal(all(Vs, G)) -->
+	append(Vs),
+	vars_in_goal(G).
+vars_in_goal(unify(A, B)) -->
+	vars_in_term(A),
+	vars_in_term(B).
+vars_in_goal(call(Term)) -->
+	vars_in_term(Term).
+vars_in_goal(if_then(Vars,A,B)) -->
+	append(Vars),
+	vars_in_goal(A),
+	vars_in_goal(B).
+vars_in_goal(if_then_else(Vars,A,B,C)) -->
+	append(Vars),
+	vars_in_goal(A),
+	vars_in_goal(B),
+	vars_in_goal(C).
+
+:- pred vars_in_term(term, list(var), list(var)).
+:- mode vars_in_term(in, in, out) is det.
+
+vars_in_term(Term) -->
+	term__vars_2(Term).
 
 %-----------------------------------------------------------------------------
 
@@ -1250,7 +1378,7 @@ get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet) :-
 
 duplicate_def_warning(Name, Arity, DefType, Context) -->
 	prog_out__write_context(Context),
-	io__write_string("warning: duplicate definition for "),
+	io__write_string("Warning: duplicate definition for "),
 	io__write_string(DefType),
 	io__write_string(" `"),
 	prog_out__write_sym_name(Name),
@@ -1264,7 +1392,7 @@ duplicate_def_warning(Name, Arity, DefType, Context) -->
 
 multiple_def_error(Name, Arity, DefType, Context) -->
 	prog_out__write_context(Context),
-	io__write_string("error: "),
+	io__write_string("Error: "),
 	io__write_string(DefType),
 	io__write_string(" `"),
 	prog_out__write_sym_name(Name),
@@ -1278,7 +1406,7 @@ multiple_def_error(Name, Arity, DefType, Context) -->
 
 undefined_pred_error(Name, Arity, Context, Description) -->
 	prog_out__write_context(Context),
-	io__write_string("error: "),
+	io__write_string("Error: "),
 	io__write_string(Description),
 	io__write_string(" for `"),
 	prog_out__write_sym_name(Name),

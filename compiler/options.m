@@ -40,7 +40,8 @@
 			;	convert_to_mercury
 			;	convert_to_goedel
 			;	help
-			;	line_numbers.
+			;	line_numbers
+			;	warn_singleton_vars.
 
 :- implementation.
 
@@ -58,11 +59,13 @@ option_defaults([
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
 	help 			-	bool(no),
-	line_numbers		-	bool(no)
+	line_numbers		-	bool(no),
+	warn_singleton_vars	-	bool(yes)
 ]).
 
 short_option('v', 			verbose).
-short_option('w', 			very_verbose).
+short_option('V', 			very_verbose).
+short_option('w', 			warn_singleton_vars).
 short_option('e', 			verbose_errors).
 short_option('s', 			statistics).
 short_option('d', 			dump_hlds).
@@ -92,14 +95,17 @@ long_option("convert-to-goedel", 	convert_to_goedel).
 long_option("convert-to-Goedel", 	convert_to_goedel).
 long_option("help",			help).
 long_option("line-numbers",		line_numbers).
+long_option("warn-singleton-variables",	warn_singleton_vars).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
 	io__write_string("\t\tPrint this usage message.\n"),
 	io__write_string("\t-v, --verbose\n"),
 	io__write_string("\t\tOutput progress messages at each stage in the compilation.\n"),
-	io__write_string("\t-w, --very_verbose\n"),
+	io__write_string("\t-V, --very_verbose\n"),
 	io__write_string("\t\tOutput very verbose progress messages.\n"),
+	io__write_string("\t-w-, --no-warn-singleton-variables\n"),
+	io__write_string("\t\tDon't warn about variables which only occur once.\n"),
 	io__write_string("\t-e, --verbose-error-messages\n"),
 	io__write_string("\t\tExplain error messages.  Asks the compiler to give you a more\n"),
 	io__write_string("\t\detailed texplanation of any errors in your program.\n"),

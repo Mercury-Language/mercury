@@ -368,9 +368,9 @@ report_unresolved_type_error(TVars, TVarSet, TypeInfo0, TypeInfo) :-
 report_unresolved_type_error_2(TypeInfo, TVars, TVarSet) -->
 	write_typeinfo_context(TypeInfo),
 	{ typeinfo_get_context(TypeInfo, Context) },
-	io__write_string("Type error: unresolved polymorphism.\n"),
+	io__write_string("  type error: unresolved polymorphism.\n"),
 	prog_out__write_context(Context),
-	io__write_string("Unbound type vars were: "),
+	io__write_string("  Unbound type vars were: "),
 	write_type_var_list(TVars, TVarSet),
 	io__write_string(".\n"),
 	lookup_option(verbose_errors, bool(VerboseErrors)),
@@ -408,7 +408,7 @@ write_type_var_list_2([V|Vs], VarSet) -->
 :- pred typecheck_goal(hlds__goal, type_info, type_info).
 :- mode typecheck_goal(in, typeinfo_di, typeinfo_uo).
 
-typecheck_goal(Goal - GoalInfo, TypeInfo0, TypeInfo) :-
+typecheck_goal(Goal - _GoalInfo, TypeInfo0, TypeInfo) :-
 	% XXX prog_io.nl and make_hlds.nl don't set up the
 	%     goalinfo context, so we have to just use the clause
 	%     context
@@ -421,32 +421,32 @@ typecheck_goal(Goal - GoalInfo, TypeInfo0, TypeInfo) :-
 :- mode typecheck_goal_2(in, typeinfo_di, typeinfo_uo).
 
 typecheck_goal_2(conj(List)) -->
-	%%% checkpoint("conj"),
+	checkpoint("conj"),
 	typecheck_goal_list(List).
 typecheck_goal_2(disj(List)) -->
-	%%% checkpoint("disj"),
+	checkpoint("disj"),
 	typecheck_goal_list(List).
 typecheck_goal_2(if_then_else(_Vs, A, B, C)) -->
-	%%% checkpoint("if"),
+	checkpoint("if"),
 	typecheck_goal(A),
-	%%% checkpoint("then"),
+	checkpoint("then"),
 	typecheck_goal(B),
-	%%% checkpoint("else"),
+	checkpoint("else"),
 	typecheck_goal(C).
 typecheck_goal_2(not(_Vs, A)) -->
-	%%% checkpoint("not"),
+	checkpoint("not"),
 	typecheck_goal(A).
 typecheck_goal_2(some(_Vs, G)) -->
-	%%% checkpoint("some"),
+	checkpoint("some"),
 	typecheck_goal(G).
 typecheck_goal_2(all(_Vs, G)) -->
-	%%% checkpoint("all"),
+	checkpoint("all"),
 	typecheck_goal(G).
 typecheck_goal_2(call(PredId, _Mode, Args, _Builtin)) -->
-	%%% checkpoint("call"),
+	checkpoint("call"),
 	typecheck_call_pred(PredId, Args).
 typecheck_goal_2(unify(A, B, _Mode, _Info, UnifyContext)) -->
-	%%% checkpoint("unify"),
+	checkpoint("unify"),
 	typeinfo_set_arg_num(0),
 	typeinfo_set_unify_context(UnifyContext),
 	typecheck_unification(A, B).
@@ -909,7 +909,8 @@ typecheck_unify_var_var(X, Y, TypeInfo0, TypeInfo) :-
 					type_info, type_info).
 :- mode typecheck_unify_var_functor(in, in, in, in, di, uo).
 
-typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo0, TypeInfo) :-
+typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
+	typeinfo_set_context(Context, TypeInfo9, TypeInfo0),
 	length(Args, Arity),
 	typeinfo_get_ctor_list(TypeInfo0, Functor, Arity, ConsDefnList),
 	( ConsDefnList = [] ->
@@ -919,12 +920,55 @@ typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo0, TypeInfo) :-
 		typeinfo_set_io_state(TypeInfo0, IOState1, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, yes, TypeInfo)
 	;
-		typecheck_unification_old(term_variable(Var),
-				term_functor(Functor, Args, Context),
-				TypeInfo0, TypeInfo)
+		typeinfo_get_type_assign_set(TypeInfo0, TypeAssignSet0),
+								% XXX Args
+		typecheck_unify_var_functor_2(ConsDefnList, Var, Args,
+			TypeInfo0, TypeAssignSet0, [], TypeAssignSet),
+		( TypeAssignSet = [], TypeAssignSet0 \= [] ->
+			typeinfo_get_io_state(TypeInfo0, IOState0),
+			report_error_unif_var_functor(TypeInfo0,
+				Var, Functor, Args, TypeAssignSet0,
+				IOState0, IOState1),
+			typeinfo_set_io_state(TypeInfo0, IOState1, TypeInfo1),
+			typeinfo_set_found_error(TypeInfo1, yes, TypeInfo)
+		;
+			typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet,
+				TypeInfo)
+			% XXX typecheck_unify_args
+		)
 	).
-	%%% type_assign_unify_var_functor(ConsDefnList, Args, Y, TypeAssign0,
-	%%% 	TypeInfo, TypeAssignSet0, TypeAssignSet).
+
+	% Iterate over all the different possible cons defns
+	% for the functor.
+
+:- pred typecheck_unify_var_functor_2(list(cons_type_info), var, list(term),
+				type_info, type_assign_set,
+				type_assign_set, type_assign_set).
+:- mode typecheck_unify_var_functor_2(in, in, in, in, in, in, out).
+
+typecheck_unify_var_functor_2([], _, _, _, _) --> [].
+typecheck_unify_var_functor_2([ConsDefn | ConsDefns], Var, Args,
+		TypeInfo, TheTypeAssignSet) -->
+	typecheck_unify_var_functor_3(TheTypeAssignSet, ConsDefn,
+			Var, Args, TypeInfo),
+	typecheck_unify_var_functor_2(ConsDefns, Var, Args,
+		TypeInfo, TheTypeAssignSet).
+
+	% For each possible cons defn, we now
+	% iterate over all the different possible type assignments.
+
+:- pred typecheck_unify_var_functor_3(type_assign_set, cons_type_info,
+				var, list(term), type_info,
+				type_assign_set, type_assign_set).
+:- mode typecheck_unify_var_functor_3(in, in, in, in, in, in, out).
+
+typecheck_unify_var_functor_3([], _, _, _, _) --> [].
+typecheck_unify_var_functor_3([TypeAssign | TypeAssigns],
+			ConsDefn, Var, Args, TypeInfo) -->
+	type_assign_unify_var_functor_2(ConsDefn,
+			Args, Var, TypeAssign, TypeInfo),
+	typecheck_unify_var_functor_3(TypeAssigns,
+			ConsDefn, Var, Args, TypeInfo).
 
 :- pred typecheck_unification_old(term, term, type_info, type_info).
 :- mode typecheck_unification_old(in, in, typeinfo_di, typeinfo_uo).
@@ -1041,13 +1085,12 @@ type_assign_unify_term(term_variable(Y), term_functor(F, As, _), TypeAssign0,
 	type_assign_unify_term(term_functor(F, As, _), term_variable(Y),
 		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet).
 	
-type_assign_unify_term(term_functor(FX, AsX, _), term_functor(FY, AsY, _),
-		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet) :-
-	    % XXX we don't handle this, because it shouldn't occur
+type_assign_unify_term(term_functor(_, _, _), term_functor(_, _, _),
+		_, _, TypeAssignSet, TypeAssignSet) :-
+	    % We don't handle this, because it shouldn't occur
 	    % if the code is in superhomogeneous form, and we plan to
 	    % convert it to superhomogeneous form before doing type-checking.
-	error("XXX not implemented: unification of term with term\n"),
-	TypeAssignSet = TypeAssignSet0.
+	error("Unexpected unification of term with term\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -1062,8 +1105,27 @@ type_assign_unify_term(term_functor(FX, AsX, _), term_functor(FY, AsY, _),
 		type_info, type_assign_set, type_assign_set).
 :- mode type_assign_unify_var_functor(in, in, in, in, typeinfo_ui, in, out).
 
-type_assign_unify_var_functor([], _, _, _, _, TypeAssignSet, TypeAssignSet).
-type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
+	% loop over all the possible cons defns
+
+type_assign_unify_var_functor([], _, _, _, _) --> [].
+type_assign_unify_var_functor([ConsDefn | ConsDefns],
+			Args, Var, TypeAssign0, TypeInfo) -->
+	type_assign_unify_var_functor_2(ConsDefn,
+			Args, Var, TypeAssign0, TypeInfo),
+	type_assign_unify_var_functor(ConsDefns,
+			Args, Var, TypeAssign0, TypeInfo).
+
+
+:- pred type_assign_unify_var_functor_2(cons_type_info, list(term),
+		var, type_assign,
+		type_info, type_assign_set, type_assign_set).
+:- mode type_assign_unify_var_functor_2(in, in, in, in, typeinfo_ui, in, out).
+
+	% unify the type of the variable with the type of
+	% the constructor and if this succeeds insert that
+	% type assignment into the type assignment set.
+
+type_assign_unify_var_functor_2(ConsDefn, Args, Y, TypeAssign0,
 		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
 
 	get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo,
@@ -1083,12 +1145,12 @@ type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 			% specified arg types for this constructor
 			type_assign_term_has_type_list(Args, ArgTypes,
 				TypeAssign2, TypeInfo,
-				TypeAssignSet0, TypeAssignSet1)
+				TypeAssignSet0, TypeAssignSet)
 		;
 			% the top-level types didn't unify - no need to
 			% check the types of the arguments, since this
 			% type-assignment has already been rules out
-			TypeAssignSet1 = TypeAssignSet0
+			TypeAssignSet = TypeAssignSet0
 		)
 	;
 		map__set(VarTypes0, Y, ConsType, VarTypes),
@@ -1097,13 +1159,8 @@ type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 			% check that the types of the arguments matches the
 			% specified arg types for this constructor
 		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign3,
-			TypeInfo, TypeAssignSet0, TypeAssignSet1)
-	),
-
-		% recursively handle all the other possible constructors
-		% that match this functor.
-	type_assign_unify_var_functor(ConsDefns, Args, Y, TypeAssign0,
-		TypeInfo, TypeAssignSet1, TypeAssignSet).
+			TypeInfo, TypeAssignSet0, TypeAssignSet)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1455,7 +1512,7 @@ report_undef_type(TypeId, ErrorContext - Context) -->
 	write_error_context(ErrorContext),
 	io__write_string(":\n"),
 	prog_out__write_context(Context),
-	io__write_string("error: undefined type "),
+	io__write_string("  error: undefined type "),
 	hlds_out__write_type_id(TypeId),
 	io__write_string(".\n").
 
@@ -1562,7 +1619,7 @@ is_builtin_atomic_type(QualifiedName - 0) :-
 :- mode is_builtin_atomic_type_2(in).
 
 :- is_builtin_atomic_type_2([]) when ever.
-:- is_builtin_atomic_type_2([X|Xs]) when X.
+:- is_builtin_atomic_type_2([X|_]) when X.
 
 is_builtin_atomic_type_2("int").
 is_builtin_atomic_type_2("float").
@@ -2009,9 +2066,9 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 report_error_unif(TypeInfo, X, Y, TypeAssignSet) -->
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
 	write_typeinfo_context(TypeInfo),
-	io__write_string("type error in unification of `"),
+	io__write_string("  type error in unification of term `"),
 	io__write_term(VarSet, X),
-	io__write_string("' and `"),
+	io__write_string("' and term `"),
 	io__write_term(VarSet, Y),
 	io__write_string("'.\n"),
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
@@ -2029,9 +2086,9 @@ report_error_unif_var_var(TypeInfo, X, Y, TypeAssignSet) -->
 	write_unify_context(UnifyContext, Context),
 
 	write_typeinfo_context(TypeInfo),
-	io__write_string("type error in unification of `"),
+	io__write_string("  type error in unification of variable `"),
 	io__write_variable(X, VarSet),
-	io__write_string("' and `"),
+	io__write_string("' and variable `"),
 	io__write_variable(Y, VarSet),
 	io__write_string("'.\n"),
 
@@ -2049,6 +2106,34 @@ report_error_unif_var_var(TypeInfo, X, Y, TypeAssignSet) -->
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
+:- pred report_error_unif_var_functor(type_info, var, const, list(term),
+					type_assign_set,
+					io__state, io__state).
+:- mode report_error_unif_var_functor(typeinfo_no_io, in, in, in, in, di, uo).
+
+report_error_unif_var_functor(TypeInfo, Var, Functor, Args, TypeAssignSet) -->
+
+	{ typeinfo_get_context(TypeInfo, Context) },
+	{ typeinfo_get_varset(TypeInfo, VarSet) },
+	{ typeinfo_get_unify_context(TypeInfo, UnifyContext) },
+
+	write_unify_context(UnifyContext, Context),
+
+	write_typeinfo_context(TypeInfo),
+	io__write_string("  type error in unification of variable `"),
+	io__write_variable(Var, VarSet),
+	io__write_string("' and term `"),
+	io__write_term(VarSet, term_functor(Functor, Args, Context)),
+	io__write_string("'.\n"),
+
+	io__write_string("\t`"),
+	io__write_variable(Var, VarSet),
+	io__write_string("' "),
+	write_type_of_var(TypeInfo, TypeAssignSet, Var),
+	io__write_string(".\n"),
+
+	write_type_assign_set_msg(TypeAssignSet, VarSet).
+
 :- pred write_unify_context(unify_context, term__context, io__state, io__state).
 :- mode write_unify_context(in, in, di, uo).
 
@@ -2062,13 +2147,13 @@ write_unify_context(unify_context(MainContext, SubContexts), Context) -->
 
 write_unify_main_context(explicit) -->
 	[].
-write_unify_main_context(head(N)) -->
-	io__write_string("in argument "),
-	io__write_int(N),
+write_unify_main_context(head(ArgNum)) -->
+	io__write_string("  in argument "),
+	io__write_int(ArgNum),
 	io__write_string(" of clause head:\n").
-write_unify_main_context(call(PredId, N)) -->
+write_unify_main_context(call(PredId, ArgNum)) -->
 	io__write_string("in argument "),
-	io__write_int(N),
+	io__write_int(ArgNum),
 	io__write_string(" of call to predicate `"),
 	hlds_out__write_pred_id(PredId),
 	io__write_string("':\n").
@@ -2081,8 +2166,8 @@ write_unify_sub_contexts([], _) -->
 	[].
 write_unify_sub_contexts([ConsId - ArgNum | SubContexts], Context) -->
 	prog_out__write_context(Context),
-	io__write_string("in argument "),
-	io__write_int(N),
+	io__write_string("  in argument "),
+	io__write_int(ArgNum),
 	io__write_string(" of functor `"),
 	hlds_out__write_cons_id(ConsId),
 	io__write_string("':\n"),
@@ -2092,7 +2177,7 @@ write_unify_sub_contexts([ConsId - ArgNum | SubContexts], Context) -->
 				io__state, io__state).
 :- mode write_type_of_var(typeinfo_no_io, in, in, di, uo).
 
-write_type_of_var(TypeInfo, TypeAssignSet, Var) -->
+write_type_of_var(_TypeInfo, TypeAssignSet, Var) -->
 	{ get_type_stuff(TypeAssignSet, Var, TypeStuffList) },
 	( { TypeStuffList = [SingleTypeStuff] } ->
 		{ SingleTypeStuff = type_stuff(VType, TVarSet, TBinding) },
@@ -2165,8 +2250,8 @@ write_type_assign_2([], _, _, _, _, FoundOne) -->
 write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet,
 			FoundOne) -->
 	( 
-		{ map__search(VarTypes, Var, Type) },
-		{ varset__lookup_name(VarSet, Var, _) }
+		{ varset__lookup_name(VarSet, Var, _) },
+		{ map__search(VarTypes, Var, Type) }
 	->
 		( { FoundOne = yes } ->
 			io__write_string("\n\t")
@@ -2208,7 +2293,7 @@ report_error_var(TypeInfo, VarId, Type, TypeAssignSet0) -->
 	write_context_and_pred_id(TypeInfo),
 	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
-	io__write_string("type error: "),
+	io__write_string("  type error: "),
 	( { varset__lookup_name(VarSet, VarId, _) } ->
 		io__write_string("variable `"),
 		io__write_variable(VarId, VarSet),
@@ -2222,7 +2307,7 @@ report_error_var(TypeInfo, VarId, Type, TypeAssignSet0) -->
 		write_type_b(VType, TVarSet, TBinding),
 		io__write_string("',\n"),
 		prog_out__write_context(Context),
-		io__write_string("expected type was `"),
+		io__write_string("  expected type was `"),
 		write_type_b(Type, TVarSet, TBinding),
 		io__write_string("'.\n")
 	;
@@ -2231,7 +2316,7 @@ report_error_var(TypeInfo, VarId, Type, TypeAssignSet0) -->
 		io__write_string(" },\n"),
 		prog_out__write_context(Context),
 		lookup_option(verbose_errors, bool(VerboseErrors)),
-		io__write_string("which doesn't match the expected type.\n"),
+		io__write_string("  which doesn't match the expected type.\n"),
 		( { VerboseErrors = yes } ->
 				% XXX improve error message: should output
 				% the expected type.
@@ -2268,7 +2353,7 @@ write_type_stuff_list_2([type_stuff(T, TVarSet, TBinding) | Ts]) -->
 
 report_error_undef_pred(TypeInfo, PredId) -->
 	write_typeinfo_context(TypeInfo),
-	io__write_string("error: undefined predicate `"),
+	io__write_string("  error: undefined predicate `"),
 	hlds_out__write_pred_id(PredId),
 	io__write_string("'.\n").
 
@@ -2277,7 +2362,7 @@ report_error_undef_pred(TypeInfo, PredId) -->
 
 report_error_pred_num_args(TypeInfo, PredId) -->
 	write_typeinfo_context(TypeInfo),
-	io__write_string("error: wrong number of arguments in call to pred `"),
+	io__write_string("  error: wrong number of arguments in call to pred `"),
 	{ predicate_name(PredId, PredName) },
 	io__write_string(PredName),
 	io__write_string("'.\n").
@@ -2293,7 +2378,7 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 	write_context_and_pred_id(TypeInfo),
 	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
-	io__write_string("error: undefined symbol `"),
+	io__write_string("  error: undefined symbol `"),
 	io__write_constant(Functor),
 	io__write_string("/"),
 	io__write_int(Arity),
@@ -2308,7 +2393,7 @@ write_call_context(Context, PredId, ArgNum, UnifyContext) -->
 		write_unify_context(UnifyContext, Context)
 	;
 		prog_out__write_context(Context),
-		io__write_string("in argument "),
+		io__write_string("  in argument "),
 		io__write_int(ArgNum),
 		io__write_string(" of call to pred `"),
 		hlds_out__write_pred_id(PredId),
@@ -2328,7 +2413,7 @@ report_error_cons(TypeInfo, Functor, Args, Type, TypeAssignSet) -->
 	write_context_and_pred_id(TypeInfo),
 	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
-	io__write_string("type error: term `"),
+	io__write_string("  type error: term `"),
 	io__write_term(VarSet, term_functor(Functor, Args, Context)),
 	io__write_string("' does not have type `"),
 	write_type(Type),	% XXX type parameter names
@@ -2364,7 +2449,7 @@ write_context_and_pred_id(TypeInfo) -->
 
 report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	write_typeinfo_context(TypeInfo),
-	io__write_string("error: ambiguous overloading causes type ambiguity.\n"),
+	io__write_string("  error: ambiguous overloading causes type ambiguity.\n"),
 	io__write_string("\tpossible type assignments include:\n"),
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
 	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
@@ -2390,7 +2475,7 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeAssign1, TypeAssign2) -->
 		{ type_assign_get_typevarset(TypeAssign1, TVarSet1) },
 		{ type_assign_get_type_bindings(TypeAssign1, TypeBindings1) },
 		write_type_b(T1, TVarSet1, TypeBindings1),
-		io__write_string(" OR "),
+		io__write_string(" or "),
 		{ type_assign_get_typevarset(TypeAssign2, TVarSet2) },
 		{ type_assign_get_type_bindings(TypeAssign2, TypeBindings2) },
 		write_type_b(T2, TVarSet2, TypeBindings2),
