@@ -369,6 +369,12 @@
 :- pred code_info__set_instmap(instmap, code_info, code_info).
 :- mode code_info__set_instmap(in, in, out) is det.
 
+:- pred code_info__get_nondet_lives(set(var), code_info, code_info).
+:- mode code_info__get_nondet_lives(out, in, out) is det.
+
+:- pred code_info__set_nondet_lives(set(var), code_info, code_info).
+:- mode code_info__set_nondet_lives(in, in, out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -422,7 +428,9 @@
 			globals,	% code generation options
 			stack(pair(lval)),% the locations in use on the stack
 			shape_table,	% Table of shapes.
-			junk,
+			set(var),	% Variables that are not quite live
+					% but are only nondet-live (so that
+					% we make sure we save them).
 			junk
 	).
 
@@ -443,6 +451,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 	stack__init(StoreMapStack0),
 	stack__init(PushedVals0),
 	map__init(StoreMap),
+	set__init(NondetLives),
 	stack__push(StoreMapStack0, StoreMap, StoreMapStack),
 	code_info__max_slot(CallInfo, SlotCount0),
 	(
@@ -473,7 +482,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		Globals,
 		PushedVals0,
 		Shapes,
-		junk,
+		NondetLives,
 		junk
 	).
 
@@ -691,7 +700,12 @@ code_info__get_live_variables(VarList) -->
 
 code_info__variable_is_live(Var) -->
 	code_info__get_liveness_info(Liveness),
-	{ set__member(Var, Liveness) }.
+	code_info__get_nondet_lives(Nondets),
+	(
+		{ set__member(Var, Liveness) }
+	;
+		{ set__member(Var, Nondets) }
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -2284,6 +2298,16 @@ code_info__get_shapes(T, CI, CI) :-
 code_info__set_shapes(T, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
 		_, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
+		T, U, V).
+
+code_info__get_nondet_lives(U, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, U, _).
+
+code_info__set_nondet_lives(U, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
+		T, _, V),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
 		T, U, V).
 

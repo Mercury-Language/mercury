@@ -43,6 +43,9 @@
 :- pred implicitly_quantify_goal(hlds__goal, set(var), hlds__goal).
 :- mode implicitly_quantify_goal(in, in, out) is det.
 
+:- pred goal_vars(hlds__goal, set(var)).
+:- mode goal_vars(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -310,9 +313,6 @@ case_list_vars_2([], Set, Set).
 case_list_vars_2([case(_Cons, Goal - _GoalInfo)| Cases], Set0, Set) :-
 	goal_vars_2(Goal, Set0, Set1),
 	case_list_vars_2(Cases, Set1, Set).
-
-:- pred goal_vars(hlds__goal, set(var)).
-:- mode goal_vars(in, out) is det.
 
 goal_vars(Goal - _GoalInfo, Set) :-
 	set__init(Set0),

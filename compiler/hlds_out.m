@@ -425,6 +425,15 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		;
 			[]
 		),
+		{ goal_info_nondet_lives(GoalInfo, NondetLives) },
+		{ set__to_sorted_list(NondetLives, NondetList) },
+		( { NondetList \= [] } ->
+			io__write_string("% nondet-lives: "),
+			mercury_output_vars(NondetList, VarSet),
+			mercury_output_newline(Indent)
+		;
+			[]
+		),
 		io__write_string("% determinism: "),
 		{ goal_info_get_determinism(GoalInfo, Determinism) },
 		hlds_out__write_determinism(Determinism),

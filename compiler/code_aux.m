@@ -44,7 +44,7 @@
 
 :- implementation.
 
-:- import_module term, type_util, std_util, require.
+:- import_module set, term, type_util, std_util, require.
 
 code_aux__contains_only_builtins(Goal - _GoalInfo) :-
 	code_aux__contains_only_builtins_2(Goal).
@@ -173,15 +173,25 @@ code_aux__pre_goal_update(GoalInfo) -->
 	{ PreDelta = _ - PreDeaths },
 	code_info__make_vars_dead(PreDeaths),
 	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
-	code_info__update_deadness_info(PostDelta).
+	code_info__update_deadness_info(PostDelta),
+	code_info__get_nondet_lives(NondetLives0),
+	{ goal_info_nondet_lives(GoalInfo, NondetLives1) },
+	{ set__union(NondetLives0, NondetLives1, NondetLives) },
+	code_info__set_nondet_lives(NondetLives).
 
 	% Update the code info structure to be consistent
 	% immediately after generating a goal
 code_aux__post_goal_update(GoalInfo) -->
 	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
 	code_info__update_liveness_info(PostDelta),
+	code_info__update_deadness_info(PostDelta),
 	{ PostDelta = PostBirths - PostDeaths },
-	code_info__make_vars_dead(PostDeaths),
+	{ goal_info_nondet_lives(GoalInfo, NondetLives1) },
+	code_info__get_nondet_lives(NondetLives0),
+	{ set__difference(NondetLives0, NondetLives1, NondetLives) },
+	code_info__set_nondet_lives(NondetLives),
+	{ set__union(PostDeaths, NondetLives1, DeadVars) },
+	code_info__make_vars_dead(DeadVars),
 	code_info__make_vars_live(PostBirths),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	code_info__apply_instmap_delta(InstMapDelta).

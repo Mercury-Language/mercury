@@ -2006,7 +2006,7 @@ mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
 :- mode get_c_header_code(in, out) is det.
 
 get_c_header_code([], []).
-get_c_header_code((Header - _Context0).HeadersAndContexts, Header.Headers):-
+get_c_header_code([Header - _Context0 | HeadersAndContexts], [Header|Headers]):-
 	get_c_header_code(HeadersAndContexts, Headers).
 
 

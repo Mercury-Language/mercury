@@ -436,7 +436,7 @@ output_c_module(c_module(ModuleName, Procedures)) -->
 
 output_c_header_include_lines([]) --> 
 	[].
-output_c_header_include_lines(H.Hs) -->
+output_c_header_include_lines([H|Hs]) -->
 	io__write_string(H),
 	io__write_string("\n"),
 	output_c_header_include_lines(Hs).

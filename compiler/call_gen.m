@@ -198,7 +198,9 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 call_gen__save_variables(Args, Code) -->
 	code_info__get_live_variables(Variables0),
 	{ set__list_to_set(Variables0, Vars0) },
-	{ set__difference(Vars0, Args, Vars) },
+	code_info__get_nondet_lives(NondetLives),
+	{ set__union(Vars0, NondetLives, Vars1) },
+	{ set__difference(Vars1, Args, Vars) },
 	{ set__to_sorted_list(Vars, Variables) },
 	call_gen__save_variables_2(Variables, Code).
 
