@@ -10,10 +10,13 @@ AC_CANONICAL_HOST
 FULLARCH="$host"
 AC_SUBST(FULLARCH)
 if test "$prefix" = "NONE"; then
-	LIBDIR="$ac_default_prefix/lib/mercury"
+	PREFIX="$ac_default_prefix"
 else
-	LIBDIR="$prefix/lib/mercury"
+	PREFIX="$prefix"
 fi
+LIBDIR="$PREFIX/lib/mercury"
+NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
+AC_SUBST(PREFIX)
 AC_SUBST(LIBDIR)
 #-----------------------------------------------------------------------------#
 case "$host" in
@@ -115,7 +118,7 @@ AC_PROG_CPP
 AC_C_CROSS
 AC_PROG_RANLIB
 AC_RETSIGTYPE
-AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
+AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer strerror)
 #-----------------------------------------------------------------------------#
 # We need to ensure that runtime/conf.h exists, since some of the
 # programs we attempt to compile below indirectly include it.
@@ -396,7 +399,7 @@ save_LIBRARY_PATH="$LIBRARY_PATH"
 case "$host" in
 	mips-sgi-irix5.*)
 		CC="$CC -non_shared -mno-abicalls"
-LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
+LIBRARY_PATH="$$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		export LIBRARY_PATH
 		;;
 	i?86-*)
