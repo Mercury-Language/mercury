@@ -1004,23 +1004,24 @@ code_info__succip_is_used -->
 
 :- type failure_cont
 	--->	failure_cont(
-			failure_continuation,
-			maybe(label),
-				% the maybe(label) is yes if we created a
-				% temporary frame and we need to restore
-				% curfr after a redo()
+			failure_cont_info,
 			resume_maps
 		).
 
-:- type failure_continuation
-	--->	known(bool)	% on failure we jump to a label
-				% the bool is `yes' if we are inside
-				% a nondet context
-	;	unknown.	% on failure we do a `redo()'
-				% NB. any piece of code that sets the current
-				% failure continuation to `unknown' had
-				% better save variables that are live (on
-				% redo) onto the stack.
+:- type failure_cont_info
+	--->	semidet		
+	;	nondet(
+			is_known,	% Says whether on failure we can branch
+					% directly to one of the labels in
+					% the resume_maps, or if we must
+					% instead execute a redo.
+
+			maybe(label)	% The maybe(label) is yes if we have
+					% created a temporary frame and we
+					% must restore curfr after a redo().
+		).
+
+:- type is_known	--->	known ; unknown.
 
 :- type resume_map	==	map(var, set(rval)).
 
@@ -1030,6 +1031,18 @@ code_info__succip_is_used -->
 	;	orig_and_stack(resume_map, code_addr, resume_map, code_addr)
 	;	stack_and_orig(resume_map, code_addr, resume_map, code_addr).
 
+:- pred code_info__fail_cont_is_known(failure_cont_info).
+:- mode code_info__fail_cont_is_known(in) is semidet.
+
+code_info__fail_cont_is_known(FailContInfo) :-
+	FailContInfo \= nondet(unknown, _).
+
+:- pred code_info__fail_cont_is_unknown(failure_cont_info).
+:- mode code_info__fail_cont_is_unknown(in) is semidet.
+
+code_info__fail_cont_is_unknown(FailContInfo) :-
+	FailContInfo = nondet(unknown, _).
+
 %---------------------------------------------------------------------------%
 
 code_info__manufacture_failure_cont(IsNondet) -->
@@ -1038,14 +1051,15 @@ code_info__manufacture_failure_cont(IsNondet) -->
 		{ IsNondet = no },
 		code_info__get_next_label(ContLab1),
 		{ Address1 = label(ContLab1) },
-		{ ResumeMap = stack_only(Empty, Address1) }
+		{ ResumeMap = stack_only(Empty, Address1) },
+		{ ContInfo = semidet }
 	;
 		{ IsNondet = yes },
 		{ Address1 = do_fail },
-		{ ResumeMap = stack_only(Empty, Address1) }
+		{ ResumeMap = stack_only(Empty, Address1) },
+		{ ContInfo = nondet(known, no) }
 	),
-	{ FailureCont = failure_cont(known(IsNondet), no, ResumeMap) },
-	code_info__push_failure_cont(FailureCont).
+	code_info__push_failure_cont(failure_cont(ContInfo, ResumeMap)).
 
 %---------------------------------------------------------------------------%
 
@@ -1061,8 +1075,8 @@ code_info__make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet,
 
 		{ IsNondet = no },
 		{ TempFrameCode = empty },
-		{ MaybeRedoLabel = no },
-		{ HaveTempFrame = HaveTempFrame0 }
+		{ HaveTempFrame = HaveTempFrame0 },
+		{ FailContInfo = semidet }
 	;
 		% In nondet continuations we may use the redoip
 		% of the top stack frame. Therefore we must ensure
@@ -1071,9 +1085,9 @@ code_info__make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet,
 
 		{ IsNondet = yes },
 		code_info__top_failure_cont(FailureCont),
-		{ FailureCont = failure_cont(OrigCont, _, _) },
+		{ FailureCont = failure_cont(OrigInfo, _) },
 		(
-			{ OrigCont = unknown }
+			{ code_info__fail_cont_is_unknown(OrigInfo) }
 		->
 			code_info__get_next_label(RedoLabel),
 			{ MaybeRedoLabel = yes(RedoLabel) },
@@ -1105,7 +1119,8 @@ code_info__make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet,
 					"Set failure continuation"
 			]) },
 			{ HaveTempFrame = HaveTempFrame0 }
-		)
+		),
+		{ FailContInfo = nondet(known, MaybeRedoLabel) }
 	),
 	{ set__to_sorted_list(ResumeVars, VarList) },
 	(
@@ -1142,8 +1157,7 @@ code_info__make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet,
 		{ ResumeMaps = stack_and_orig(StackMap, StackAddr,
 			OrigMap, OrigAddr) }
 	),
-	code_info__push_failure_cont(
-		failure_cont(known(IsNondet), MaybeRedoLabel, ResumeMaps)),
+	code_info__push_failure_cont(failure_cont(FailContInfo, ResumeMaps)),
 	{ ModContCode = tree(OrigCode, TempFrameCode) }.
 
 :- pred code_info__produce_resume_vars(list(var), map(var, set(rval)),
@@ -1218,40 +1232,36 @@ code_info__tweak_stacklist([V - L | Rest0], [V - Rs | Rest]) :-
 
 code_info__restore_failure_cont(Code) -->
 	code_info__top_failure_cont(CurFailureCont),
-	{ CurFailureCont = failure_cont(CurrentCont, _Redo1, _FailureMap) },
+	{ CurFailureCont = failure_cont(CurContInfo, _FailureMap) },
 	code_info__generate_failure_cont(CurFailureCont, FailureCode),
 	code_info__pop_failure_cont,
 		% Fixup the redoip of the top frame if necessary
 	(
-		{ CurrentCont = known(no) }
-	->
+		{ CurContInfo = semidet },
 		{ ResetCode = empty }
 	;
-		% { CurrentCont = known(yes)  ; CurrentCont = unknown }
-		code_info__top_failure_cont(NewFailureCont),
-		{ NewFailureCont = failure_cont(NewCont, _, _) },
+		{ CurContInfo = nondet(_, _) },
+		code_info__top_failure_cont(EnclosingFailureCont),
+		{ EnclosingFailureCont = failure_cont(EnclosingContInfo, _) },
 		{
-			NewCont = unknown,
+			EnclosingContInfo = semidet,
+			ResetCode = empty
+		;
+			EnclosingContInfo = nondet(unknown, _),
 			ResetCode = node([
 				assign(redoip(lval(maxfr)),
 					const(code_addr_const(do_fail))) -
 					"restore failure cont"
 			])
 		;
-			NewCont = known(NondetCont),
-			(
-				NondetCont = no,
-				ResetCode = empty
-			;
-				NondetCont = yes,
-				code_info__find_first_resume_label(
-					NewFailureCont, NewRedoAddress),
-				ResetCode = node([
-					assign(redoip(lval(maxfr)),
-					const(code_addr_const(NewRedoAddress)))
-						- "restore failure cont"
-				])
-			)
+			EnclosingContInfo = nondet(known, _),
+			code_info__find_first_resume_label(
+				EnclosingFailureCont, RedoAddress),
+			ResetCode = node([
+				assign(redoip(lval(maxfr)),
+					const(code_addr_const(RedoAddress)))
+					- "restore failure cont"
+			])
 		}
 	),
 	{ Code = tree(FailureCode, ResetCode) }.
@@ -1302,14 +1312,15 @@ code_info__restore_failure_cont(Code) -->
 :- mode code_info__generate_failure_cont(in, out, in, out) is det.
 
 code_info__generate_failure_cont(FailureCont, Code) -->
-	{ FailureCont = failure_cont(_CurrentCont, MaybeRedo, ResumeMap) },
+	{ FailureCont = failure_cont(ContInfo, ResumeMap) },
 
 		% Did we create a temp nondet frame for this continuation?
 		% If not, then curfr will be right when we arrive here.
 		% If yes, it will be wrong, pointing to the temp frame,
 		% so we must restore curfr before continuing.
 	{
-		MaybeRedo = yes(RedoLabel)
+		ContInfo = nondet(_, MaybeRedoLabel),
+		MaybeRedoLabel = yes(RedoLabel)
 	->
 		FixCurFrCode = node([
 			label(RedoLabel) -
@@ -1452,26 +1463,27 @@ code_info__flatten_varlval_list([V - Rvals | Rest0], All) :-
 	list__append(Rest1, Rest, All).
 
 :- pred code_info__flatten_varlval_list_2(list(rval), var,
-						assoc_list(var, rval)).
+	assoc_list(var, rval)).
 :- mode code_info__flatten_varlval_list_2(in, in, out) is det.
 
 code_info__flatten_varlval_list_2([], _V, []).
 code_info__flatten_varlval_list_2([R | Rs], V, [V - R | Rest]) :-
 	code_info__flatten_varlval_list_2(Rs, V, Rest).
 
-
 %---------------------------------------------------------------------------%
 
 code_info__can_generate_direct_branch(CodeAddr) -->
 	code_info__top_failure_cont(FailureCont),
-	{ FailureCont = failure_cont(known(no), no, FailureMap) },
+	{ FailureCont = failure_cont(ContInfo, FailureMap) },
+	{ code_info__fail_cont_is_known(ContInfo) },
 	code_info__pick_matching_resume_addr(FailureMap, CodeAddr).
 
 code_info__generate_failure(Code) -->
 	code_info__top_failure_cont(FailureCont),
-	{ FailureCont = failure_cont(Cont, _MaybeRedoLabel, FailureMap) },
+	{ FailureCont = failure_cont(ContInfo, FailureMap) },
 	(
-		{ Cont = known(_) },
+		{ code_info__fail_cont_is_known(ContInfo) }
+	->
 		(
 			code_info__pick_matching_resume_addr(FailureMap,
 				FailureAddress0)
@@ -1489,15 +1501,15 @@ code_info__generate_failure(Code) -->
 		{ BranchCode = node([goto(FailureAddress) - "fail"]) },
 		{ Code = tree(PlaceCode, BranchCode) }
 	;
-		{ Cont = unknown },
 		{ Code = node([goto(do_redo) - "fail"]) }
 	).
 
 code_info__generate_test_and_fail(Rval0, Code) -->
 	code_info__top_failure_cont(FailureCont),
-	{ FailureCont = failure_cont(Cont, _MaybeRedoLabel, FailureMap) },
+	{ FailureCont = failure_cont(ContInfo, FailureMap) },
 	(
-		{ Cont = known(_) },
+		{ code_info__fail_cont_is_known(ContInfo) }
+	->
 		(
 			code_info__pick_matching_resume_addr(FailureMap,
 				FailureAddress0)
@@ -1535,7 +1547,6 @@ code_info__generate_test_and_fail(Rval0, Code) -->
 			{ Code = tree(TestCode, tree(PlaceCode, TailCode)) }
 		)
 	;
-		{ Cont = unknown },
 		{ FailureAddress = do_redo },
 			% We branch away if the test *fails*
 		{ code_util__neg_rval(Rval0, Rval) },
@@ -1616,8 +1627,9 @@ code_info__match_resume_loc(Map, Locations0) :-
 :- mode code_info__find_first_resume_label(in, out) is det.
 
 code_info__find_first_resume_label(FailureCont, Address) :-
-	FailureCont = failure_cont(_, MaybeRedoLabel, FailMap),
+	FailureCont = failure_cont(ContInfo, FailMap),
 	(
+		ContInfo = nondet(_, MaybeRedoLabel),
 		MaybeRedoLabel = yes(RedoLabel)
 	->
 		Address = label(RedoLabel)
@@ -1655,23 +1667,30 @@ code_info__pick_stack_resume_point(stack_and_orig(Map, Addr, _, _), Map, Addr).
 code_info__unset_failure_cont(Code) -->
 	code_info__flush_resume_vars_to_stack(Code),
 	code_info__top_failure_cont(FailureCont0),
-	{ FailureCont0 = failure_cont(_, MaybeRedoLabel, FailureMap) },
+	{ FailureCont0 = failure_cont(ContInfo0, FailureMap) },
 	code_info__pop_failure_cont,
-	{ FailureCont = failure_cont(unknown, MaybeRedoLabel, FailureMap) },
+	{
+		ContInfo0 = semidet,
+		error("unset of semidet failure cont")
+	;
+		ContInfo0 = nondet(_, MaybeRedoLabel),
+		ContInfo = nondet(unknown, MaybeRedoLabel)
+	},
+	{ FailureCont = failure_cont(ContInfo, FailureMap) },
 	code_info__push_failure_cont(FailureCont).
 
 code_info__flush_resume_vars_to_stack(Code) -->
 	code_info__top_failure_cont(FailureCont0),
-	{ FailureCont0 = failure_cont(_, _, FailureMap) },
+	{ FailureCont0 = failure_cont(_, FailureMap) },
 	{ code_info__pick_stack_resume_point(FailureMap, StackMap, _) },
 	{ map__to_assoc_list(StackMap, StackLocs) },
 	code_info__place_resume_vars(StackLocs, Code).
 
 code_info__may_use_nondet_tailcall(MayTailCall) -->
 	code_info__top_failure_cont(FailureCont),
-	{ FailureCont = failure_cont(IsKnown, _, FailureMap) },
+	{ FailureCont = failure_cont(ContInfo, FailureMap) },
 	(
-		{ IsKnown = known(_) },
+		{ code_info__fail_cont_is_known(ContInfo) },
 		{ FailureMap = stack_only(_, do_fail) }
 	->
 		{ MayTailCall = yes }
@@ -1683,16 +1702,16 @@ code_info__may_use_nondet_tailcall(MayTailCall) -->
 
 code_info__do_soft_cut(TheFrame, Code) -->
 	code_info__top_failure_cont(FailureCont),
-	{ FailureCont = failure_cont(ContType, _, _) },
+	{ FailureCont = failure_cont(ContInfo, _) },
 	(
-		{ ContType = known(_) },
+		{ code_info__fail_cont_is_known(ContInfo) }
+	->
 		{ code_info__find_first_resume_label(FailureCont, Address) }
 	;
 			% If the newly uncovered cont is unknown then
 			% we must have created a new frame before the
 			% condition which we no longer need, so we
 			% set its redoip to do_fail.
-		{ ContType = unknown },
 		{ Address = do_fail }
 	),
 	{ Code = node([
@@ -1705,9 +1724,9 @@ code_info__do_soft_cut(TheFrame, Code) -->
 code_info__generate_semi_pre_commit(RedoLabel, PreCommit) -->
 	code_info__generate_pre_commit_saves(SaveCode),
 	code_info__top_failure_cont(FailureCont),
-	{ FailureCont = failure_cont(_OrigCont, _MaybeRedo, FailureMap0) },
+	{ FailureCont = failure_cont(_, FailureMap0) },
 	code_info__clone_failure_cont(FailureMap0, FailureMap),
-	code_info__push_failure_cont(failure_cont(known(yes), no, FailureMap)),
+	code_info__push_failure_cont(failure_cont(nondet(known, no), FailureMap)),
 	code_info__get_next_label(RedoLabel),
 	{ HijackCode = node([
 		assign(redoip(lval(maxfr)),
@@ -1730,8 +1749,8 @@ code_info__generate_semi_commit(RedoLabel, Commit) -->
 
 	code_info__grab_code_info(CodeInfo0),
 	code_info__top_failure_cont(FailureCont),
-	{ FailureCont = failure_cont(_OldCont, _MaybeRedo, HFailureMap) },
-	code_info__generate_resume_setup(HFailureMap, FailureContCode),
+	{ FailureCont = failure_cont(_, FailureMaps) },
+	code_info__generate_resume_setup(FailureMaps, FailureContCode),
 	code_info__pop_failure_cont,
 	code_info__generate_failure(Fail),
 	code_info__slap_code_info(CodeInfo0),
