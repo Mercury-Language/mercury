@@ -21,7 +21,7 @@ DETPROGS=	arithmetic det_complicated_unify duplicate_label \
 		environment higher_order parse_list petdr1 \
 		semidet_map set_test string__format_test string_test \
 		string_test_2 univ unreachable float_test \
-		mode_inf_bug
+		mode_inf_bug liveness2
 
 # The `liveness' test doesn't work yet, due to bugs
 # in the compiler.  Ditto for frameopt_mkframe_bug.
