@@ -7,8 +7,8 @@
 % File: program_representation.m
 % Authors: zs, dougl
 %
-% This module defines the representation of procedure bodies used by
-% the declarative debugger.
+% This module defines the representation of procedure bodies
+% used by the declarative debugger.
 %
 % One of the things we want the declarative debugger to be able to do
 % is to let the user specify which part of which output argument of an
@@ -27,6 +27,8 @@
 % The current representation is intended to contain all the information
 % we are pretty sure can be usefully exploited by the declarative debugger.
 
+%-----------------------------------------------------------------------------%
+
 :- module mdb__program_representation.
 
 :- interface.
@@ -41,27 +43,30 @@
 	% goal_reps, which are stored in reversed order.
 
 :- type goal_rep
-	--->	conj(
+	--->	conj_rep(
 			list(goal_rep)		% The conjuncts in reverse
 						% order.
 		)
-	;	disj(
+	;	disj_rep(
 			list(goal_rep)		% The disjuncts in the original
 						% order.
 		)
-	;	switch(
+	;	switch_rep(
 			list(goal_rep)		% The switch arms in the
 						% original order.
 		)
-	;	ite(
+	;	ite_rep(
 			goal_rep,		% Condition.
 			goal_rep,		% Then branch.
 			goal_rep		% Else branch.
 		)
-	;	negation(
+	;	negation_rep(
 			goal_rep		% The negated goal.
 		)
-	;	atomic_goal(
+	;	some_rep(
+			goal_rep		% The quantified goal.
+		)
+	;	atomic_goal_rep(
 			detism_rep,
 			string,			% Filename of context.
 			int,			% Line number of context.
@@ -72,47 +77,54 @@
 		).
 
 :- type atomic_goal_rep
-	--->	unify_construct(
+	--->	unify_construct_rep(
 			var_rep,
+			cons_id_rep,
 			list(var_rep)
 		)
-	;	unify_deconstruct(
+	;	unify_deconstruct_rep(
 			var_rep,
+			cons_id_rep,
 			list(var_rep)
 		)
-	;	unify_assign(
+	;	unify_assign_rep(
+			var_rep,		% target
+			var_rep			% source
+		)
+	;	unify_simple_test_rep(
 			var_rep,
 			var_rep
 		)
-	;	unify_simple_test(
-			var_rep,
-			var_rep
+	;	pragma_foreign_code_rep(
+			list(var_rep)		% arguments
 		)
-	;	pragma_c_code(
-			list(var_rep)
+	;	higher_order_call_rep(
+			var_rep,		% the closure to call
+			list(var_rep)		% arguments
 		)
-	;	higher_order_call(
-			var_rep,
-			list(var_rep)
+	;	method_call_rep(
+			var_rep,		% typeclass info var
+			int,			% method number
+			list(var_rep)		% arguments
 		)
-	;	method_call(
-			var_rep,
-			int,
-			list(var_rep)
-		)
-	;	plain_call(
-			string,
-			list(var_rep)
+	;	plain_call_rep(
+			string,			% name of called pred
+			list(var_rep)		% arguments
 		).
 
 :- type var_rep	==	int.
 
+:- type cons_id_rep ==	string.
+
 :- type detism_rep	
-	--->	det
-	;	semidet
-	;	nondet
-	;	multidet
-	;	cc_nondet
-	;	cc_multidet
-	;	erroneous
-	;	failure.
+	--->	det_rep
+	;	semidet_rep
+	;	nondet_rep
+	;	multidet_rep
+	;	cc_nondet_rep
+	;	cc_multidet_rep
+	;	erroneous_rep
+	;	failure_rep.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

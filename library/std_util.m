@@ -508,6 +508,32 @@
 	%
 :- pred deconstruct(T::in, string::out, int::out, list(univ)::out) is det.
 
+:- implementation.
+:- interface.
+
+% The rest of the interface is for use by implementors only.
+
+:- type functor_tag_info
+        --->    functor_integer(int)
+        ;       functor_float(float)
+        ;       functor_string(string)
+        ;       functor_enum(int)
+        ;       functor_local(int, int)
+        ;       functor_remote(int, int, list(univ))
+        ;       functor_unshared(int, list(univ))
+        ;       functor_notag(univ)
+        ;       functor_equiv(univ).
+
+	% get_functor_info is a variant of deconstruct for use by the compiler,
+	% specifically prog_rep.m and static_term.m. It differs from
+	% deconstruct in two main ways. First, instead of returning the
+	% function symbol, it returns implementation information about
+	% its tag. Second, it succeeds for just the kinds of terms needed
+	% to represent procedure bodies for ordinary procedures. For the time
+	% being, these are procedures that do not involve higher order code
+	% or tabling.
+:- pred get_functor_info(univ::in, functor_tag_info::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -714,8 +740,8 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 "
 	/* save heap states */
 #ifndef CONSERVATIVE_GC
- 	HeapPtr = (Word) MR_hp;
- 	SolutionsHeapPtr = (Word) MR_sol_hp;
+ 	HeapPtr = (MR_Word) MR_hp;
+ 	SolutionsHeapPtr = (MR_Word) MR_sol_hp;
 #else
 	HeapPtr = SolutionsHeapPtr = 0;
 #endif
@@ -758,7 +784,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 #ifndef CONSERVATIVE_GC
     {
 	MemoryZone *temp_zone;
-	Word *temp_hp;
+	MR_Word *temp_hp;
 
 	temp_zone = MR_ENGINE(heap_zone);
 	MR_ENGINE(heap_zone) = MR_ENGINE(solutions_heap_zone);
@@ -801,7 +827,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
   	do {								\\
 		save_transient_hp();					\\
 		NewVal = deep_copy(&OldVal, (MR_TypeInfo) TypeInfo_for_T,\\
-				(const Word *) SolutionsHeapPtr,	\\
+				(const MR_Word *) SolutionsHeapPtr,	\\
 				MR_ENGINE(solutions_heap_zone)->top);	\\
 		restore_transient_hp();					\\
 	} while (0)
@@ -879,23 +905,23 @@ XXX `ui' modes don't work yet
 :- pragma c_code(new_mutvar(X::in, Ref::out), will_not_call_mercury,
 "
 	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
-	*(Word *) Ref = X;
+	*(MR_Word *) Ref = X;
 ").
 :- pragma c_code(new_mutvar(X::di, Ref::uo), will_not_call_mercury,
 "
 	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
-	*(Word *) Ref = X;
+	*(MR_Word *) Ref = X;
 ").
 
 :- pragma inline(get_mutvar/2).
 :- pragma c_code(get_mutvar(Ref::in, X::uo), will_not_call_mercury,
 "
-	X = *(Word *) Ref;
+	X = *(MR_Word *) Ref;
 ").
 
 :- pragma inline(set_mutvar/2).
 :- pragma c_code(set_mutvar(Ref::in, X::in), will_not_call_mercury, "
-	*(Word *) Ref = X;
+	*(MR_Word *) Ref = X;
 ").
 
 %%% end_module mutvar.
@@ -975,8 +1001,10 @@ det_univ_to_type(Univ, X) :-
 	).
 
 :- pragma c_code(univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
-	TypeInfo_for_T = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
-	Value = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
+    MR_TypeInfo typeinfo;
+
+    MR_unravel_univ(Univ, typeinfo, Value);
+    TypeInfo_for_T = (MR_Word) typeinfo;
 ").
 
 :- pragma c_header_code("
@@ -1004,28 +1032,22 @@ det_univ_to_type(Univ, X) :-
 	% Allocate heap space, set the first field to contain the address
 	% of the type_info for this type, and then store the input argument
 	% in the second field.
-:- pragma c_code(type_to_univ(Type::di, Univ::uo), will_not_call_mercury, "
-	incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO)
-		= (Word) TypeInfo_for_T;
-	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA)
-		= (Word) Type;
+:- pragma c_code(type_to_univ(Value::di, Univ::uo), will_not_call_mercury, "
+    incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+    MR_define_univ_fields(Univ, TypeInfo_for_T, Value);
 ").
-:- pragma c_code(type_to_univ(Type::in, Univ::out), will_not_call_mercury, "
-	incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO)
-		= (Word) TypeInfo_for_T;
-	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA)
-		= (Word) Type;
+:- pragma c_code(type_to_univ(Value::in, Univ::out), will_not_call_mercury, "
+    incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+    MR_define_univ_fields(Univ, TypeInfo_for_T, Value);
 ").
 
 	% Backward mode - convert from univ to type.
 	% We check that type_infos compare equal.
 	% The variable `TypeInfo_for_T' used in the C code
 	% is the compiler-introduced type-info variable.
-:- pragma c_code(type_to_univ(Type::out, Univ::in), will_not_call_mercury, "{
-	Word	univ_type_info;
-	int	comp;
+:- pragma c_code(type_to_univ(Value::out, Univ::in), will_not_call_mercury, "{
+	MR_Word	univ_type_info;
+	int	    comp;
 
 	univ_type_info = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
 	save_transient_registers();
@@ -1033,7 +1055,7 @@ det_univ_to_type(Univ, X) :-
 		(MR_TypeInfo) TypeInfo_for_T);
 	restore_transient_registers();
 	if (comp == MR_COMPARE_EQUAL) {
-		Type = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
+		Value = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
 		SUCCESS_INDICATOR = TRUE;
 	} else {
 		SUCCESS_INDICATOR = FALSE;
@@ -1082,8 +1104,8 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	** Unification for univ.
 	*/
 
-	Word	univ1, univ2;
-	Word	typeinfo1, typeinfo2;
+	MR_Word	univ1, univ2;
+	MR_Word	typeinfo1, typeinfo2;
 	int	comp;
 
 	univ1 = r1;
@@ -1121,8 +1143,8 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	** Comparison for univ:
 	*/
 
-	Word	univ1, univ2;
-	Word	typeinfo1, typeinfo2;
+	MR_Word	univ1, univ2;
+	MR_Word	typeinfo1, typeinfo2;
 	int	comp;
 
 	univ1 = r1;
@@ -1340,23 +1362,23 @@ typedef struct ML_Construct_Info_Struct {
 extern  void            ML_type_ctor_and_args(MR_TypeInfo type_info,
                             bool collapse_equivalences,
                             MR_TypeCtorDesc *type_ctor_desc_ptr,
-                            Word *arg_type_info_list_ptr);
+                            MR_Word *arg_type_info_list_ptr);
 extern  int     	    ML_get_num_functors(MR_TypeInfo type_info);
-extern	Word		    ML_type_params_vector_to_list(int arity,
+extern	MR_Word		    ML_type_params_vector_to_list(int arity,
                             MR_TypeInfoParams type_params);
-extern	Word		    ML_pseudo_type_info_vector_to_type_info_list(int arity,
+extern	MR_Word		    ML_pseudo_type_info_vector_to_type_info_list(int arity,
                             MR_TypeInfoParams type_params,
                             const MR_PseudoTypeInfo *arg_pseudo_type_infos);
 extern  bool    	    ML_get_functors_check_range(int functor_number,
                             MR_TypeInfo type_info,
                             ML_Construct_Info *construct_info);
 extern  void    	    ML_copy_arguments_from_list_to_vector(int arity,
-                            Word arg_list, Word term_vector);
+                            MR_Word arg_list, MR_Word term_vector);
 extern  bool    	    ML_typecheck_arguments(MR_TypeInfo type_info,
-                            int arity, Word arg_list,
+                            int arity, MR_Word arg_list,
                             const MR_PseudoTypeInfo *arg_pseudo_type_infos);
 extern  MR_TypeInfo	    ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
-				             Word arg_type_list);
+				             MR_Word arg_type_list);
 ").
 
 	% A type_ctor_desc is really just a subtype of type_desc,
@@ -1377,7 +1399,7 @@ extern  MR_TypeInfo	    ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 	*/
 #if 0
 	save_transient_registers();
-	TypeInfo = (Word) MR_collapse_equivalences(
+	TypeInfo = (MR_Word) MR_collapse_equivalences(
 		(MR_TypeInfo) TypeInfo_for_T);
 	restore_transient_registers();
 #endif
@@ -1478,7 +1500,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-	TypeCtor = (Word) ML_make_type_ctor_desc(type_info, type_ctor_info);
+	TypeCtor = (MR_Word) ML_make_type_ctor_desc(type_info, type_ctor_info);
 }
 ").
 
@@ -1532,7 +1554,7 @@ ML_make_type_ctor_desc(MR_TypeInfo type_info, MR_TypeCtorInfo type_ctor_info)
 
 void
 ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
-	MR_TypeCtorDesc *type_ctor_desc_ptr, Word *arg_type_info_list_ptr)
+	MR_TypeCtorDesc *type_ctor_desc_ptr, MR_Word *arg_type_info_list_ptr)
 {
 	MR_TypeCtorInfo type_ctor_info;
 	MR_TypeCtorDesc type_ctor_desc;
@@ -1569,7 +1591,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 
 	type_info = (MR_TypeInfo) TypeDesc;
 	ML_type_ctor_and_args(type_info, TRUE, &type_ctor_desc, &ArgTypes);
-	TypeCtorDesc = (Word) type_ctor_desc;
+	TypeCtorDesc = (MR_Word) type_ctor_desc;
 
 	restore_transient_registers();
 }
@@ -1589,7 +1611,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 {
 	MR_TypeCtorDesc type_ctor_desc;
 	MR_TypeCtorInfo type_ctor_info;
-	Word		    arg_type;
+	MR_Word		    arg_type;
 	int		        list_length;
 	int		        arity;
 
@@ -1612,7 +1634,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 		SUCCESS_INDICATOR = FALSE;
 	} else {
 		save_transient_registers();
-		TypeDesc = (Word) ML_make_type(arity, type_ctor_desc, ArgTypes);
+		TypeDesc = (MR_Word) ML_make_type(arity, type_ctor_desc, ArgTypes);
 		restore_transient_registers();
 		SUCCESS_INDICATOR = TRUE;
 	}
@@ -1635,7 +1657,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 
 	type_info = (MR_TypeInfo) TypeDesc;
 	ML_type_ctor_and_args(type_info, FALSE, &type_ctor_desc, &ArgTypes);
-	TypeCtorDesc = (Word) type_ctor_desc;
+	TypeCtorDesc = (MR_Word) type_ctor_desc;
 
 	restore_transient_registers();
 }
@@ -1650,9 +1672,9 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	type_ctor_desc = (MR_TypeCtorDesc) TypeCtorDesc;
 
 	if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
-		TypeCtorModuleName = (String) (Word)
+		TypeCtorModuleName = (MR_String) (MR_Word)
 			MR_TYPECTOR_DESC_GET_VA_MODULE_NAME(type_ctor_desc);
-		TypeCtorName = (String) (Word)
+		TypeCtorName = (MR_String) (MR_Word)
 			MR_TYPECTOR_DESC_GET_VA_NAME(type_ctor_desc);
 		TypeCtorArity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
 	} else {
@@ -1663,13 +1685,13 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 
             /*
             ** We cast away the const-ness of the module and type names,
-            ** because String is defined as char *, not const char *.
+            ** because MR_String is defined as char *, not const char *.
             */
 
 		TypeCtorModuleName =
-            (String) (Integer) type_ctor_info->type_ctor_module_name;
+            (MR_String) (Integer) type_ctor_info->type_ctor_module_name;
 		TypeCtorName =
-            (String) (Integer) type_ctor_info->type_ctor_name;
+            (MR_String) (Integer) type_ctor_info->type_ctor_name;
 		TypeCtorArity = type_ctor_info->arity;
 	}
 }
@@ -1712,7 +1734,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         */
 
     if (success) {
-        MR_make_aligned_string(FunctorName, (String) (Word)
+        MR_make_aligned_string(FunctorName, (MR_String) (MR_Word)
                 construct_info.functor_name);
         arity = construct_info.arity;
         Arity = arity;
@@ -1794,7 +1816,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 {
     MR_TypeInfo         type_info;
     MR_TypeCtorInfo     type_ctor_info;
-    Word                new_data;
+    MR_Word             new_data;
     ML_Construct_Info   construct_info;
     bool                success;
 
@@ -1849,11 +1871,11 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
             {
-                const MR_DuFunctorDesc *functor_desc;
-                Word                arg_list;
-                Word                ptag;
-                Word                arity;
-                int                 i;
+                const MR_DuFunctorDesc  *functor_desc;
+                MR_Word                 arg_list;
+                MR_Word                 ptag;
+                MR_Word                 arity;
+                int                     i;
 
                 functor_desc = construct_info.functor_info.du_functor_desc;
                 if (functor_desc->MR_du_functor_exist_info != NULL) {
@@ -1865,8 +1887,9 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                 ptag = functor_desc->MR_du_functor_primary;
                 switch (functor_desc->MR_du_functor_sectag_locn) {
                 case MR_SECTAG_LOCAL:
-                    new_data = (Word) MR_mkword(ptag,
-                        MR_mkbody((Word) functor_desc->MR_du_functor_secondary));
+                    new_data = (MR_Word) MR_mkword(ptag,
+                        MR_mkbody((MR_Word)
+                            functor_desc->MR_du_functor_secondary));
                     break;
 
                 case MR_SECTAG_REMOTE:
@@ -1925,7 +1948,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                     for (i = 0; i < arity; i++) {
                         MR_field(MR_mktag(0), new_data, i) =
                                 MR_field(MR_mktag(0), MR_list_head(arg_list),
-                                UNIV_OFFSET_FOR_DATA);
+                                    UNIV_OFFSET_FOR_DATA);
                         arg_list = MR_list_tail(arg_list);
                     }
 
@@ -1946,10 +1969,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         */
 
         incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-        MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_TYPEINFO) =
-            (Word) type_info;
-        MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_DATA) =
-            (Word) new_data;
+        MR_define_univ_fields(Term, type_info, new_data);
     }
 
     SUCCESS_INDICATOR = success;
@@ -1998,9 +2018,7 @@ construct_tuple(Args) =
 	** Create a univ.
 	*/
 	incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-	MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_TYPEINFO) =
-		(Word) type_info;
-	MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_DATA) = new_data;
+    MR_define_univ_fields(Term, type_info, new_data);
 }
 ").
 
@@ -2168,7 +2186,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
     */
 
 bool
-ML_typecheck_arguments(MR_TypeInfo type_info, int arity, Word arg_list,
+ML_typecheck_arguments(MR_TypeInfo type_info, int arity, MR_Word arg_list,
     const MR_PseudoTypeInfo *arg_pseudo_type_infos)
 {
     MR_TypeInfo     arg_type_info;
@@ -2217,8 +2235,8 @@ ML_typecheck_arguments(MR_TypeInfo type_info, int arity, Word arg_list,
     */
 
 void
-ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
-    Word term_vector)
+ML_copy_arguments_from_list_to_vector(int arity, MR_Word arg_list,
+    MR_Word term_vector)
 {
     int i;
 
@@ -2247,10 +2265,10 @@ ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
     */
 
 MR_TypeInfo
-ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, Word arg_types_list)
+ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 {
     MR_TypeCtorInfo type_ctor_info;
-    Word            *new_type_info_arena;
+    MR_Word         *new_type_info_arena;
     MR_TypeInfo     *new_type_info_args;
     int             i;
 
@@ -2263,7 +2281,7 @@ ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, Word arg_types_list)
             type_ctor_desc);
 
         restore_transient_registers();
-        incr_hp_atomic_msg(LVALUE_CAST(Word, new_type_info_arena),
+        incr_hp_atomic_msg(LVALUE_CAST(MR_Word, new_type_info_arena),
             MR_higher_order_type_info_size(arity),
             ""mercury__std_util__ML_make_type"", ""type_info"");
         save_transient_registers();
@@ -2278,7 +2296,7 @@ ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, Word arg_types_list)
         }
 
         restore_transient_registers();
-        incr_hp_atomic_msg(LVALUE_CAST(Word, new_type_info_arena),
+        incr_hp_atomic_msg(LVALUE_CAST(MR_Word, new_type_info_arena),
             MR_first_order_type_info_size(arity),
             ""mercury__std_util__ML_make_type"", ""type_info"");
         save_transient_registers();
@@ -2328,17 +2346,17 @@ ML_get_functors_check_range(int functor_number, MR_TypeInfo type_info,
     ** calls to this function.
     */
 
-Word
+MR_Word
 ML_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
 {
     MR_TypeInfo arg_type;
-    Word        type_info_list;
+    MR_Word     type_info_list;
 
     restore_transient_registers();
     type_info_list = MR_list_empty();
 
     while (arity > 0) {
-        type_info_list = MR_list_cons((Word) type_params[arity],
+        type_info_list = MR_list_cons((MR_Word) type_params[arity],
 		type_info_list);
 	--arity;
     }
@@ -2358,12 +2376,12 @@ ML_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
     ** calls to this function.
     */
 
-Word
+MR_Word
 ML_pseudo_type_info_vector_to_type_info_list(int arity,
     MR_TypeInfoParams type_params, const MR_PseudoTypeInfo *arg_pseudo_type_infos)
 {
     MR_TypeInfo arg_type;
-    Word        type_info_list;
+    MR_Word     type_info_list;
 
     restore_transient_registers();
     type_info_list = MR_list_empty();
@@ -2383,7 +2401,7 @@ ML_pseudo_type_info_vector_to_type_info_list(int arity,
         restore_transient_registers();
 
             /* Join the argument to the front of the list */
-        type_info_list = MR_list_cons((Word) arg_type, type_info_list);
+        type_info_list = MR_list_cons((MR_Word) arg_type, type_info_list);
     }
     save_transient_registers();
 
@@ -2514,7 +2532,7 @@ typedef struct ML_Expand_Info_Struct {
     ConstString functor;
     int         arity;
     int         num_extra_args;
-    Word        *arg_values;
+    MR_Word     *arg_values;
     MR_TypeInfo *arg_type_infos;
     bool        can_free_arg_type_infos;
     bool        non_canonical_type;
@@ -2526,7 +2544,7 @@ typedef struct ML_Expand_Info_Struct {
 
     /* Prototypes */
 
-extern  void    ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
+extern  void    ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     ML_Expand_Info *expand_info);
 
     /*
@@ -2534,8 +2552,8 @@ extern  void    ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
     ** in store.m, in trace/mercury_trace_vars.m, and in
     ** extras/trailed_update/tr_store.m.
     */
-extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
-                    MR_TypeInfo *arg_type_info_ptr, Word **argument_ptr);
+extern  bool    ML_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
+                    MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr);
 
 ").
 
@@ -2575,7 +2593,7 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 */
 
 void
-ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
+ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
     ML_Expand_Info *expand_info)
 {
     MR_TypeCtorInfo type_ctor_info;
@@ -2608,10 +2626,10 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
                 const MR_DuPtagLayout   *ptag_layout;
                 const MR_DuFunctorDesc  *functor_desc;
                 const MR_DuExistInfo    *exist_info;
-                Word                    data;
+                MR_Word                 data;
                 int                     ptag;
-                Word                    sectag;
-                Word                    *arg_vector;
+                MR_Word                 sectag;
+                MR_Word                 *arg_vector;
 
                 data = *data_word_ptr;
                 ptag = MR_tag(data);
@@ -2620,7 +2638,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
                 switch (ptag_layout->MR_sectag_locn) {
                     case MR_SECTAG_NONE:
                         functor_desc = ptag_layout->MR_sectag_alternatives[0];
-                        arg_vector = (Word *) MR_body(data, ptag);
+                        arg_vector = (MR_Word *) MR_body(data, ptag);
                         break;
                     case MR_SECTAG_LOCAL:
                         sectag = MR_unmkbody(data);
@@ -2632,7 +2650,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
                         sectag = MR_field(ptag, data, 0);
                         functor_desc =
                             ptag_layout->MR_sectag_alternatives[sectag];
-                        arg_vector = (Word *) MR_body(data, ptag) + 1;
+                        arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
                         break;
                 }
 
@@ -2667,7 +2685,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
                                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
                                         type_info),
                                     functor_desc->MR_du_functor_arg_types[i],
-                                    (Word *) MR_body(data, ptag),
+                                    (MR_Word *) MR_body(data, ptag),
                                     functor_desc);
                         } else {
                             expand_info->arg_type_infos[i] =
@@ -2755,14 +2773,14 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_INT:
             if (expand_info->need_functor) {
-                Word    data_word;
+                MR_Word data_word;
                 char    buf[500];
                 char    *str;
 
                 data_word = *data_word_ptr;
                 sprintf(buf, ""%ld"", (long) data_word);
-                incr_saved_hp_atomic(LVALUE_CAST(Word, str),
-                    (strlen(buf) + sizeof(Word)) / sizeof(Word));
+                incr_saved_hp_atomic(LVALUE_CAST(MR_Word, str),
+                    (strlen(buf) + sizeof(MR_Word)) / sizeof(MR_Word));
                 strcpy(str, buf);
                 expand_info->functor = str;
             }
@@ -2776,12 +2794,12 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
         case MR_TYPECTOR_REP_CHAR:
                 /* XXX should escape characters correctly */
             if (expand_info->need_functor) {
-                Word    data_word;
+                MR_Word data_word;
                 char    *str;
 
                 data_word = *data_word_ptr;
-                incr_saved_hp_atomic(LVALUE_CAST(Word, str),
-                    (3 + sizeof(Word)) / sizeof(Word));
+                incr_saved_hp_atomic(LVALUE_CAST(MR_Word, str),
+                    (3 + sizeof(MR_Word)) / sizeof(MR_Word));
                     sprintf(str, ""\'%c\'"", (char) data_word);
                 expand_info->functor = str;
             }
@@ -2793,16 +2811,16 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_FLOAT:
             if (expand_info->need_functor) {
-                Word    data_word;
-                char    buf[500];
-                Float   f;
-                char    *str;
+                MR_Word     data_word;
+                char        buf[500];
+                MR_Float    f;
+                char        *str;
 
                 data_word = *data_word_ptr;
                 f = word_to_float(data_word);
                 sprintf(buf, ""%#.15g"", f);
-                incr_saved_hp_atomic(LVALUE_CAST(Word, str),
-                    (strlen(buf) + sizeof(Word)) / sizeof(Word));
+                incr_saved_hp_atomic(LVALUE_CAST(MR_Word, str),
+                    (strlen(buf) + sizeof(MR_Word)) / sizeof(MR_Word));
                 strcpy(str, buf);
                 expand_info->functor = str;
             }
@@ -2815,14 +2833,14 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
         case MR_TYPECTOR_REP_STRING:
                 /* XXX should escape characters correctly */
             if (expand_info->need_functor) {
-                Word    data_word;
+                MR_Word data_word;
                 char    *str;
 
                 data_word = *data_word_ptr;
-                incr_saved_hp_atomic(LVALUE_CAST(Word, str),
-                    (strlen((String) data_word) + 2 + sizeof(Word))
-                    / sizeof(Word));
-                sprintf(str, ""%c%s%c"", '""', (String) data_word, '""');
+                incr_saved_hp_atomic(LVALUE_CAST(MR_Word, str),
+                    (strlen((MR_String) data_word) + 2 + sizeof(MR_Word))
+                    / sizeof(MR_Word));
+                sprintf(str, ""%c%s%c"", '""', (MR_String) data_word, '""');
                 expand_info->functor = str;
             }
             expand_info->arg_values = NULL;
@@ -2851,7 +2869,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
                 MR_make_aligned_string(expand_info->functor, ""{}"");
             }
             if (expand_info->need_args) {
-                expand_info->arg_values = (Word *) *data_word_ptr;
+                expand_info->arg_values = (MR_Word *) *data_word_ptr;
 
                 /*
                 ** Type-infos are normally counted from one, but
@@ -2863,15 +2881,15 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
             break;
 
         case MR_TYPECTOR_REP_UNIV: {
-            Word    data_word;
+            MR_Word data_word;
                 /*
                  * Univ is a two word structure, containing
                  * type_info and data.
                  */
             data_word = *data_word_ptr;
             ML_expand((MR_TypeInfo)
-                ((Word *) data_word)[UNIV_OFFSET_FOR_TYPEINFO],
-                &((Word *) data_word)[UNIV_OFFSET_FOR_DATA], expand_info);
+                ((MR_Word *) data_word)[UNIV_OFFSET_FOR_TYPEINFO],
+                &((MR_Word *) data_word)[UNIV_OFFSET_FOR_DATA], expand_info);
             break;
         }
 
@@ -3026,8 +3044,8 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
 */
 
 bool
-ML_arg(MR_TypeInfo type_info, Word *term_ptr, int arg_index,
-    MR_TypeInfo *arg_type_info_ptr, Word **arg_ptr)
+ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
+    MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr)
 {
     ML_Expand_Info      expand_info;
     bool                success;
@@ -3121,7 +3139,7 @@ ML_arg(MR_TypeInfo type_info, Word *term_ptr, int arg_index,
     MR_TypeInfo type_info;
     MR_TypeInfo exp_arg_type_info;
     MR_TypeInfo arg_type_info;
-    Word        *argument_ptr;
+    MR_Word     *argument_ptr;
     bool        success;
     int         comparison_result;
 
@@ -3152,7 +3170,7 @@ ML_arg(MR_TypeInfo type_info, Word *term_ptr, int arg_index,
 {
     MR_TypeInfo type_info;
     MR_TypeInfo arg_type_info;
-    Word        *argument_ptr;
+    MR_Word     *argument_ptr;
     bool        success;
 
     type_info = (MR_TypeInfo) TypeInfo_for_T;
@@ -3164,12 +3182,8 @@ ML_arg(MR_TypeInfo type_info, Word *term_ptr, int arg_index,
 
     if (success) {
         /* Allocate enough room for a univ */
-        incr_hp_msg(ArgumentUniv, 2, MR_PROC_LABEL,
-            ""std_util:univ/0"");
-        MR_field(MR_mktag(0), ArgumentUniv, UNIV_OFFSET_FOR_TYPEINFO) =
-            (Word) arg_type_info;
-        MR_field(MR_mktag(0), ArgumentUniv, UNIV_OFFSET_FOR_DATA)
-            = *argument_ptr;
+        incr_hp_msg(ArgumentUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+        MR_define_univ_fields(ArgumentUniv, arg_type_info, *argument_ptr);
     }
 
     SUCCESS_INDICATOR = success;
@@ -3202,8 +3216,8 @@ det_argument(Type, ArgumentIndex) = Argument :-
 {
     ML_Expand_Info      expand_info;
     MR_TypeInfo         type_info;
-    Word                Argument;
-    Word                tmp;
+    MR_Word             Argument;
+    MR_Word             tmp;
     int                 i;
 
     type_info = (MR_TypeInfo) TypeInfo_for_T;
@@ -3242,11 +3256,9 @@ det_argument(Type, ArgumentIndex) = Argument :-
 
             /* Create an argument on the heap */
         incr_hp_msg(Argument, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-
-        MR_field(MR_mktag(0), Argument, UNIV_OFFSET_FOR_TYPEINFO) =
-            (Word) expand_info.arg_type_infos[i];
-        MR_field(MR_mktag(0), Argument, UNIV_OFFSET_FOR_DATA) =
-            expand_info.arg_values[i + expand_info.num_extra_args];
+        MR_define_univ_fields(Argument,
+            expand_info.arg_type_infos[i],
+            expand_info.arg_values[i + expand_info.num_extra_args]);
 
             /* Join the argument to the front of the list */
         Arguments = MR_list_cons_msg(Argument, Arguments, MR_PROC_LABEL);
@@ -3259,6 +3271,235 @@ det_argument(Type, ArgumentIndex) = Argument :-
 
     if (expand_info.can_free_arg_type_infos) {
         MR_GC_free(expand_info.arg_type_infos);
+    }
+}").
+
+get_functor_info(Univ, FunctorInfo) :-
+    ( univ_to_type(Univ, Int) ->
+        FunctorInfo = functor_integer(Int)
+    ; univ_to_type(Univ, Float) ->
+        FunctorInfo = functor_float(Float)
+    ; univ_to_type(Univ, String) ->
+        FunctorInfo = functor_string(String)
+    ; get_enum_functor_info(Univ, Enum) ->
+        FunctorInfo = functor_enum(Enum)
+    ; get_du_functor_info(Univ, Where, Ptag, Sectag, Args) ->
+        ( Where = 0 ->
+            FunctorInfo = functor_unshared(Ptag, Args)
+        ; Where > 0 ->
+            FunctorInfo = functor_remote(Ptag, Sectag, Args)
+        ;
+            FunctorInfo = functor_local(Ptag, Sectag)
+        )
+    ; get_notag_functor_info(Univ, ExpUniv) ->
+        FunctorInfo = functor_notag(ExpUniv)
+    ; get_equiv_functor_info(Univ, ExpUniv) ->
+        FunctorInfo = functor_equiv(ExpUniv)
+    ;
+        fail
+    ).
+
+    % Given a value of an arbitrary type, succeed if its type is defined
+    % as a notag type, and return a univ which bundles up the value
+    % with the type of the single function symbol of the notag type.
+:- pred get_notag_functor_info(Univ::in, ExpUniv::out) is semidet.
+
+:- pragma c_code(get_notag_functor_info(Univ::in, ExpUniv::out),
+    will_not_call_mercury, "
+{
+    MR_TypeInfo         type_info;
+    MR_TypeInfo         exp_type_info;
+    MR_TypeCtorInfo     type_ctor_info;
+    MR_NotagFunctorDesc *functor_desc;
+    MR_Word             value;
+
+    MR_unravel_univ(Univ, type_info, value);
+    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+    switch (type_ctor_info->type_ctor_rep) {
+        case MR_TYPECTOR_REP_NOTAG:
+        case MR_TYPECTOR_REP_NOTAG_USEREQ:
+            functor_desc = type_ctor_info->type_functors.functors_notag;
+            exp_type_info = MR_pseudo_type_info_is_ground(
+                functor_desc->MR_notag_functor_arg_type);
+            incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+            MR_define_univ_fields(ExpUniv, exp_type_info, value);
+            SUCCESS_INDICATOR = TRUE;
+            break;
+
+        case MR_TYPECTOR_REP_NOTAG_GROUND:
+        case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+            functor_desc = type_ctor_info->type_functors.functors_notag;
+            exp_type_info = MR_create_type_info(
+                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                functor_desc->MR_notag_functor_arg_type);
+            incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+            MR_define_univ_fields(ExpUniv, exp_type_info, value);
+            SUCCESS_INDICATOR = TRUE;
+            break;
+
+        default:
+            SUCCESS_INDICATOR = FALSE;
+            break;
+    }
+}").
+
+    % Given a value of an arbitrary type, succeed if its type is defined
+    % as an equivalence type, and return a univ which bundles up the value
+    % with the equivalent type. (I.e. this removes one layer of equivalence
+    % from the type stored in the univ.)
+:- pred get_equiv_functor_info(Univ::in, ExpUniv::out) is semidet.
+
+:- pragma c_code(get_equiv_functor_info(Univ::in, ExpUniv::out),
+    will_not_call_mercury, "
+{
+    MR_TypeInfo     type_info;
+    MR_TypeInfo     exp_type_info;
+    MR_TypeCtorInfo type_ctor_info;
+    MR_Word         value;
+
+    MR_unravel_univ(Univ, type_info, value);
+    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+    switch (type_ctor_info->type_ctor_rep) {
+        case MR_TYPECTOR_REP_EQUIV:
+            exp_type_info = MR_pseudo_type_info_is_ground(
+                type_ctor_info->type_layout.layout_equiv);
+            incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+            MR_define_univ_fields(ExpUniv, exp_type_info, value);
+            SUCCESS_INDICATOR = TRUE;
+            break;
+
+        case MR_TYPECTOR_REP_EQUIV_GROUND:
+            exp_type_info = MR_create_type_info(
+                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                type_ctor_info->type_layout.layout_equiv);
+            incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+            MR_define_univ_fields(ExpUniv, exp_type_info, value);
+            SUCCESS_INDICATOR = TRUE;
+            break;
+
+        default:
+            SUCCESS_INDICATOR = FALSE;
+            break;
+    }
+}").
+
+    % Given a value of an arbitrary type, succeed if it is an enum type,
+    % and return the integer value corresponding to the value.
+:- pred get_enum_functor_info(Univ::in, Int::out) is semidet.
+
+:- pragma c_code(get_enum_functor_info(Univ::in, Enum::out),
+    will_not_call_mercury, "
+{
+    MR_TypeInfo     type_info;
+    MR_TypeCtorInfo type_ctor_info;
+    MR_Word         value;
+
+    MR_unravel_univ(Univ, type_info, value);
+    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+    switch (type_ctor_info->type_ctor_rep) {
+        case MR_TYPECTOR_REP_ENUM:
+        case MR_TYPECTOR_REP_ENUM_USEREQ:
+            Enum = (Integer) value;
+            SUCCESS_INDICATOR = TRUE;
+            break;
+
+        default:
+            SUCCESS_INDICATOR = FALSE;
+            break;
+    }
+}").
+
+    % Given a value of an arbitrary type, succeed if it is a general du type
+    % (i.e. non-enum, non-notag du type), and return the top function symbol's
+    % arguments as well as its tag information: an indication of where the
+    % secondary tag is (-1 for local secondary tag, 0 for nonexistent secondary
+    % tag, and 1 for remote secondary tag), as well as the primary and
+    % secondary tags themselves (the secondary tag argument will be meaningful
+    % only if the secondary tag exists, of course).
+:- pred get_du_functor_info(univ::in, int::out, int::out, int::out,
+    list(univ)::out) is semidet.
+
+:- pragma c_code(get_du_functor_info(Univ::in, Where::out,
+    Ptag::out, Sectag::out, Args::out), will_not_call_mercury, "
+{
+    MR_TypeInfo             type_info;
+    MR_TypeCtorInfo         type_ctor_info;
+    MR_DuPtagLayout         *ptag_layout;
+    const MR_DuFunctorDesc  *functor_desc;
+    MR_Word                 value;
+    MR_Word                 *arg_vector;
+    int                     i;
+
+    MR_unravel_univ(Univ, type_info, value);
+    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+    switch (type_ctor_info->type_ctor_rep) {
+        case MR_TYPECTOR_REP_DU:
+        case MR_TYPECTOR_REP_DU_USEREQ:
+            SUCCESS_INDICATOR = TRUE;
+            Ptag = MR_tag(value);
+            ptag_layout = &type_ctor_info->type_layout.layout_du[Ptag];
+
+            switch(ptag_layout->MR_sectag_locn) {
+                case MR_SECTAG_LOCAL:
+                    Where = -1;
+                    Sectag = MR_unmkbody(value);
+                    Args = MR_list_empty();
+                    break;
+
+                case MR_SECTAG_REMOTE:
+                case MR_SECTAG_NONE:
+                    if (ptag_layout->MR_sectag_locn == MR_SECTAG_NONE) {
+                        Where = 0;
+                        arg_vector = (MR_Word *) MR_body(value, Ptag);
+                        Sectag = 0;
+                    } else {
+                        Where = 1;
+                        arg_vector = (MR_Word *) MR_body(value, Ptag);
+                        Sectag = arg_vector[0];
+                        arg_vector++;
+                    }
+
+                    functor_desc = ptag_layout->MR_sectag_alternatives[Sectag];
+                    if (functor_desc->MR_du_functor_exist_info != NULL) {
+                        SUCCESS_INDICATOR = FALSE;
+                        break;
+                    }
+
+                    Args = MR_list_empty_msg(MR_PROC_LABEL);
+                    for (i = functor_desc->MR_du_functor_orig_arity - 1;
+                        i >= 0; i--)
+                    {
+                        MR_Word         arg;
+                        MR_TypeInfo     arg_type_info;
+
+                        if (MR_arg_type_may_contain_var(functor_desc, i)) {
+                            arg_type_info = MR_create_type_info_maybe_existq(
+                                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
+                                    type_info),
+                                functor_desc->MR_du_functor_arg_types[i],
+                                (MR_Word *) MR_body(value, Ptag),
+                                functor_desc);
+                        } else {
+                            arg_type_info = MR_pseudo_type_info_is_ground(
+                                functor_desc->MR_du_functor_arg_types[i]);
+                        }
+
+                        incr_hp_msg(arg, 2, MR_PROC_LABEL,
+                            ""std_util:univ/0"");
+                        MR_define_univ_fields(arg,
+                            arg_type_info, arg_vector[i]);
+                        Args = MR_list_cons_msg(arg, Args, MR_PROC_LABEL);
+                    }
+                    break;
+
+                default:
+                    fatal_error(""get_du_functor_info: unknown sectag locn"");
+            }
+            break;
+
+        default:
+            SUCCESS_INDICATOR = FALSE;
+            break;
     }
 }").
 

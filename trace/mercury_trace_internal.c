@@ -1603,6 +1603,20 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else {
 			MR_trace_usage("help", "help");
 		}
+	} else if (streq(words[0], "proc_body")) {
+		extern const struct MR_TypeCtorInfo_Struct
+			mercury_data_mdb__program_representation__type_ctor_info_goal_rep_0;
+		const MR_Stack_Layout_Entry	*entry;
+
+		entry = event_info->MR_event_sll->MR_sll_entry;
+		if (entry->MR_sle_proc_rep == 0) {
+			fprintf(MR_mdb_out,
+				"current procedure has no body info\n");
+		} else {
+			MR_trace_print_var(
+				(MR_Word) &mercury_data_mdb__program_representation__type_ctor_info_goal_rep_0,
+				entry->MR_sle_proc_rep);
+		}
 #ifdef	MR_TRACE_HISTOGRAM
 	} else if (streq(words[0], "histogram_all")) {
 		if (word_count == 2) {
@@ -2496,7 +2510,7 @@ MR_trace_getline(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 
 	/* if we're using readline, then readline does the echoing */
 #ifdef MR_NO_USE_READLINE
-	if (MR_echo_commands) {
+	if (MR_echo_commands && line != NULL) {
 		fputs(line, mdb_out);
 		putc('\n', mdb_out);
 	}

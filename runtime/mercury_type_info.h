@@ -344,6 +344,22 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 #define UNIV_OFFSET_FOR_TYPEINFO        0
 #define UNIV_OFFSET_FOR_DATA            1
 
+#define	MR_unravel_univ(univ, typeinfo, value)                      \
+    do {							                                \
+        typeinfo = (MR_TypeInfo) MR_field(MR_mktag(0), (univ),      \
+                        UNIV_OFFSET_FOR_TYPEINFO);                  \
+        value = MR_field(MR_mktag(0), (univ),                       \
+                        UNIV_OFFSET_FOR_DATA);                      \
+    } while (0)
+
+#define MR_define_univ_fields(univ, typeinfo, value)                \
+    do {                                                            \
+        MR_field(MR_mktag(0), (univ), UNIV_OFFSET_FOR_TYPEINFO)     \
+            = (Word) (typeinfo);                                    \
+        MR_field(MR_mktag(0), (univ), UNIV_OFFSET_FOR_DATA)         \
+            = (Word) (value);                                       \
+    } while (0)
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -616,7 +632,7 @@ typedef enum {
 } MR_Sectag_Locn;
 
 typedef struct {
-    MR_ConstString             MR_du_functor_name;
+    MR_ConstString          MR_du_functor_name;
     MR_int_least16_t        MR_du_functor_orig_arity;
     MR_int_least16_t        MR_du_functor_arg_type_contains_var;
     MR_Sectag_Locn          MR_du_functor_sectag_locn;
@@ -624,7 +640,7 @@ typedef struct {
     MR_int_least32_t        MR_du_functor_secondary;
     MR_int_least32_t        MR_du_functor_ordinal;
     const MR_PseudoTypeInfo *MR_du_functor_arg_types;
-    const MR_ConstString       *MR_du_functor_arg_names;
+    const MR_ConstString    *MR_du_functor_arg_names;
     const MR_DuExistInfo    *MR_du_functor_exist_info;
 } MR_DuFunctorDesc;
 
@@ -659,14 +675,14 @@ typedef struct {
 /*---------------------------------------------------------------------------*/
 
 typedef struct {
-    MR_ConstString         MR_enum_functor_name;
+    MR_ConstString      MR_enum_functor_name;
     MR_int_least32_t    MR_enum_functor_ordinal;
 } MR_EnumFunctorDesc;
 
 /*---------------------------------------------------------------------------*/
 
 typedef struct {
-    MR_ConstString         MR_notag_functor_name;
+    MR_ConstString      MR_notag_functor_name;
     MR_PseudoTypeInfo   MR_notag_functor_arg_type;
 } MR_NotagFunctorDesc;
 
@@ -755,7 +771,7 @@ typedef MR_PseudoTypeInfo   MR_EquivLayout;
   ** XXX This should be `MR_Box', but MR_Box is not visible here
   ** (due to a cyclic dependency problem), so we use `void *' instead.
   */
-  typedef	void *	MR_ProcAddr;
+  typedef	void        *MR_ProcAddr;
 #else
   typedef	MR_Code 	*MR_ProcAddr;
 #endif
@@ -820,16 +836,16 @@ typedef union {
     */
 
 struct MR_TypeCtorInfo_Struct {
-    MR_Integer             arity;
+    MR_Integer          arity;
     MR_ProcAddr         unify_pred;
     MR_ProcAddr         new_unify_pred;
     MR_ProcAddr         compare_pred;
     MR_TypeCtorRep      type_ctor_rep;
     MR_ProcAddr         solver_pred;
     MR_ProcAddr         init_pred;
-    MR_ConstString         type_ctor_module_name;
-    MR_ConstString         type_ctor_name;
-    MR_Integer             type_ctor_version;
+    MR_ConstString      type_ctor_module_name;
+    MR_ConstString      type_ctor_name;
+    MR_Integer          type_ctor_version;
     MR_TypeFunctors     type_functors;
     MR_TypeLayout       type_layout;
     MR_int_least32_t    type_ctor_num_functors;
@@ -850,22 +866,22 @@ struct MR_TypeCtorInfo_Struct {
 */
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, cm, n, a, cr, u, c)    \
-    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_A(u, c)			\
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_A(u, c)                       \
     MR_PASTE6(mercury_data_, cm, __type_ctor_info_, n, _, a) = {        \
     MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_B(m, n, a, cr, u, c)
 
-	/* MSVC CPP doesn't like having an empty CM field. */
-#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(m, n, a, cr, u, c)	\
-    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_A(u, c)			\
-    MR_PASTE5(mercury_data_, __type_ctor_info_, n, _, a) = {		\
+    /* MSVC CPP doesn't like having an empty CM field. */
+#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(m, n, a, cr, u, c)        \
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_A(u, c)                       \
+    MR_PASTE5(mercury_data_, __type_ctor_info_, n, _, a) = {            \
     MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_B(m, n, a, cr, u, c)
 
-#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_A(u, c)			\
+#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_A(u, c)                   \
     Declare_entry(u);                                                   \
     Declare_entry(c);                                                   \
     MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct                  \
 
-#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_B(m, n, a, cr, u, c)	\
+#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_B(m, n, a, cr, u, c)      \
         a,                                                              \
         MR_MAYBE_STATIC_CODE(ENTRY(u)),                                 \
         MR_MAYBE_STATIC_CODE(ENTRY(u)),                                 \

@@ -233,7 +233,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 	),
 	module_info_globals(ModuleInfo, Globals),
 	continuation_info__basic_stack_layout_for_proc(PredInfo, Globals,
-	BasicStackLayout, ForceProcId),
+		BasicStackLayout, ForceProcId),
 	( BasicStackLayout = yes ->
 		SaveSuccip = yes
 	;
@@ -282,10 +282,12 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		code_info__get_layout_info(InternalMap, CodeInfo, _),
 		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 			no, EntryLabel),
+		proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
 		proc_info_varset(ProcInfo, VarSet),
 		ProcLayout = proc_layout_info(EntryLabel, Detism, TotalSlots,
 			MaybeSuccipSlot, MaybeTraceCallLabel, MaxTraceReg,
-			TraceSlotInfo, ForceProcId, VarSet, InternalMap),
+			Goal, InstMap0, TraceSlotInfo, ForceProcId,
+			VarSet, InternalMap),
 		global_data_add_new_proc_layout(GlobalData0,
 			proc(PredId, ProcId), ProcLayout, GlobalData1)
 	;

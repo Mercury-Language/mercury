@@ -262,7 +262,9 @@
 :- implementation.
 
 :- import_module globals, options, llds_out, trace.
-:- import_module hlds_data, hlds_pred, prog_data, prog_util, prog_out.
+:- import_module hlds_data, hlds_goal, hlds_pred.
+:- import_module prog_data, prog_util, prog_out, instmap.
+:- import_module prog_rep, static_term.
 :- import_module rtti, ll_pseudo_type_info, (inst), code_util.
 :- import_module assoc_list, bool, string, int, require.
 :- import_module map, term, set, varset.
@@ -278,8 +280,6 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	list__filter(stack_layout__valid_proc_layout, ProcLayoutList0,
 		ProcLayoutList),
 
-	module_info_name(ModuleInfo0, ModuleName),
-	module_info_get_cell_counter(ModuleInfo0, CellCounter0),
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, agc_stack_layout, AgcLayout),
 	globals__lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
@@ -292,7 +292,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	map__init(StringMap0),
 	map__init(LabelTables0),
 	StringTable0 = string_table(StringMap0, [], 0),
-	LayoutInfo0 = stack_layout_info(ModuleName, CellCounter0,
+	LayoutInfo0 = stack_layout_info(ModuleInfo0,
 		AgcLayout, TraceLayout, ProcIdLayout, TraceDecl,
 		StaticCodeAddr, [], [], LayoutLabels0, [],
 		StringTable0, LabelTables0, map__init),
@@ -303,9 +303,12 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		LayoutInfo2, LayoutInfo3),
 		% This version of the layout info structure is final in all
 		% respects except the cell count.
-	LayoutInfo3 = stack_layout_info(_, _, _, _, _, _, _, ProcLayouts,
-		InternalLayouts, LayoutLabels, ProcLayoutArgs,
-		StringTable, LabelTables, _),
+	ProcLayouts = LayoutInfo3 ^ proc_layouts,
+	InternalLayouts = LayoutInfo3 ^ internal_layouts,
+	LayoutLabels = LayoutInfo3 ^ label_set,
+	ProcLayoutArgs = LayoutInfo3 ^ proc_layout_args,
+	StringTable = LayoutInfo3 ^ string_table,
+	LabelTables = LayoutInfo3 ^ label_tables,
 	StringTable = string_table(_, RevStringList, StringOffset),
 	list__reverse(RevStringList, StringList),
 	stack_layout__concat_string_list(StringList, StringOffset,
@@ -314,6 +317,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	( TraceLayout = yes ->
 		Exported = no,	% ignored; see linkage/2 in llds_out.m
 		list__length(ProcLayoutList, NumProcLayouts),
+		module_info_name(ModuleInfo0, ModuleName),
 		llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
 		stack_layout__get_next_cell_number(ProcVectorCellNum,
 			LayoutInfo3, LayoutInfo4),
@@ -347,8 +351,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		LayoutInfo = LayoutInfo3
 	),
 	PossiblyDynamicLayouts = ProcLayouts,
-	stack_layout__get_cell_counter(CellCounter, LayoutInfo, _),
-	module_info_set_cell_counter(ModuleInfo0, CellCounter, ModuleInfo).
+	stack_layout__get_module_info(ModuleInfo, LayoutInfo, _).
 
 :- pred stack_layout__valid_proc_layout(proc_layout_info::in) is semidet.
 
@@ -546,7 +549,8 @@ stack_layout__add_line_no(LineNo, LineInfo, RevList0, RevList) :-
 stack_layout__construct_layouts(ProcLayoutInfo) -->
 	{ ProcLayoutInfo = proc_layout_info(EntryLabel, Detism,
 		StackSlots, SuccipLoc, MaybeCallLabel, MaxTraceReg,
-		TraceSlotInfo, ForceProcIdLayout, VarSet, InternalMap) },
+		Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
+		VarSet, InternalMap) },
 	{ map__to_assoc_list(InternalMap, Internals) },
 	stack_layout__set_cur_proc_named_vars(map__init),
 	list__foldl(stack_layout__construct_internal_layout(EntryLabel),
@@ -558,7 +562,8 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 	stack_layout__set_label_tables(LabelTables),
 	stack_layout__construct_proc_layout(EntryLabel, Detism,
 		StackSlots, SuccipLoc, MaybeCallLabel, MaxTraceReg,
-		TraceSlotInfo, ForceProcIdLayout, VarSet, NamedVars).
+		Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
+		VarSet, NamedVars).
 
 %---------------------------------------------------------------------------%
 
@@ -653,12 +658,13 @@ stack_layout__context_is_valid(Context) :-
 
 :- pred stack_layout__construct_proc_layout(label::in, determinism::in,
 	int::in, maybe(int)::in, maybe(label)::in, int::in,
-	trace_slot_info::in, bool::in, prog_varset::in, map(int, string)::in,
+	hlds_goal::in, instmap::in, trace_slot_info::in, bool::in,
+	prog_varset::in, map(int, string)::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
-		MaybeSuccipLoc, MaybeCallLabel, MaxTraceReg, TraceSlotInfo,
-		ForceProcIdLayout, VarSet, UsedVarNames) -->
+		MaybeSuccipLoc, MaybeCallLabel, MaxTraceReg, Goal, InstMap,
+		TraceSlotInfo, ForceProcIdLayout, VarSet, UsedVarNames) -->
 	{
 		MaybeSuccipLoc = yes(Location0)
 	->
@@ -721,8 +727,8 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		{ stack_layout__construct_procid_rvals(ProcLabel, IdRvals,
 			IdArgTypes) },
 		stack_layout__construct_trace_layout(MaybeCallLabel,
-			MaxTraceReg, TraceSlotInfo, VarSet, UsedVarNames,
-			TraceRvals, TraceArgTypes),
+			MaxTraceReg, Goal, InstMap, TraceSlotInfo,
+			VarSet, UsedVarNames, TraceRvals, TraceArgTypes),
 		{ list__append(IdRvals, TraceRvals, IdTraceRvals) },
 		{ IdTraceArgTypes = initial(IdArgTypes, TraceArgTypes) }
 	;
@@ -745,18 +751,37 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 	stack_layout__add_proc_layout_data(CData, CDataName, EntryLabel).
 
 :- pred stack_layout__construct_trace_layout(maybe(label)::in, int::in,
-	trace_slot_info::in, prog_varset::in, map(int, string)::in,
+	hlds_goal::in, instmap::in, trace_slot_info::in,
+	prog_varset::in, map(int, string)::in,
 	list(maybe(rval))::out, create_arg_types::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_trace_layout(MaybeCallLabel, MaxTraceReg,
-		TraceSlotInfo, VarSet, UsedVarNameMap, Rvals, ArgTypes) -->
-	stack_layout__get_module_name(ModuleName),
+		Goal, InstMap, TraceSlotInfo, VarSet, UsedVarNameMap,
+		Rvals, ArgTypes) -->
 	stack_layout__get_trace_stack_layout(TraceLayout),
-	stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
-		VarNameCount, VarNameVector),
-	{ TraceLayout = yes ->
+	( { TraceLayout = yes } ->
+		stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
+			VarNameCount, VarNameVector),
+		stack_layout__get_trace_decl(TraceDecl),
+		(
+			{ TraceDecl = no },
+			{ GoalRepRval = yes(const(int_const(0))) }
+		;
+			{ TraceDecl = yes },
+			stack_layout__get_module_info(ModuleInfo0),
+			{ prog_rep__represent_goal(Goal, InstMap, ModuleInfo0,
+				GoalRep) },
+			{ type_to_univ(GoalRep, GoalRepUniv) },
+			stack_layout__get_cell_counter(CellCounter0),
+			{ static_term__term_to_rval(GoalRepUniv, GoalRepRval,
+				CellCounter0, CellCounter) },
+			stack_layout__set_cell_counter(CellCounter)
+		),
+		stack_layout__get_module_info(ModuleInfo),
+		{
 		( MaybeCallLabel = yes(CallLabel) ->
+			module_info_name(ModuleInfo, ModuleName),
 			CallRval = yes(const(data_addr_const(
 					data_addr(ModuleName,
 						internal_layout(CallLabel)))))
@@ -765,7 +790,6 @@ stack_layout__construct_trace_layout(MaybeCallLabel, MaxTraceReg,
 		),
 		ModuleRval = yes(const(data_addr_const(
 				data_addr(ModuleName, module_layout)))),
-		ProcRepRval = yes(const(int_const(0))),
 		MaxTraceRegRval = yes(const(int_const(MaxTraceReg))),
 		TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
 			MaybeDeclSlots, MaybeTrailSlot),
@@ -784,7 +808,7 @@ stack_layout__construct_trace_layout(MaybeCallLabel, MaxTraceReg,
 		;
 			TrailRval = yes(const(int_const(-1)))
 		),
-		Rvals = [CallRval, ModuleRval, ProcRepRval, VarNameVector,
+		Rvals = [CallRval, ModuleRval, GoalRepRval, VarNameVector,
 			VarNameCount, MaxTraceRegRval,
 			FromFullRval, TrailRval, DeclRval],
 		ArgTypes = initial([
@@ -792,11 +816,12 @@ stack_layout__construct_trace_layout(MaybeCallLabel, MaxTraceReg,
 			2 - yes(int_least16),
 			3 - yes(int_least8)],
 			none)
+		}
 	;
 		% Indicate the absence of the trace layout fields.
-		Rvals = [yes(const(int_const(0)))],
-		ArgTypes = initial([1 - yes(integer)], none)
-	}.
+		{ Rvals = [yes(const(int_const(0)))] },
+		{ ArgTypes = initial([1 - yes(integer)], none) }
+	).
 
 :- pred stack_layout__construct_var_name_vector(prog_varset::in,
 	map(int, string)::in, maybe(rval)::out, maybe(rval)::out,
@@ -1719,8 +1744,7 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 
 :- type stack_layout_info 	--->
 	stack_layout_info(
-		module_name		:: module_name,
-		cell_counter		:: counter,
+		module_info		:: module_info,
 		agc_stack_layout	:: bool, % generate agc info?
 		trace_stack_layout	:: bool, % generate tracing info?
 		procid_stack_layout	:: bool, % generate proc id info?
@@ -1749,10 +1773,7 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 					   % name of that variable.
 	).
 
-:- pred stack_layout__get_module_name(module_name::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
-:- pred stack_layout__get_cell_counter(counter::out,
+:- pred stack_layout__get_module_info(module_info::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 :- pred stack_layout__get_agc_stack_layout(bool::out,
@@ -1788,8 +1809,7 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 :- pred stack_layout__get_cur_proc_named_vars(map(int, string)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__get_module_name(LI ^ module_name, LI, LI).
-stack_layout__get_cell_counter(LI ^ cell_counter, LI, LI).
+stack_layout__get_module_info(LI ^ module_info, LI, LI).
 stack_layout__get_agc_stack_layout(LI ^ agc_stack_layout, LI, LI).
 stack_layout__get_trace_stack_layout(LI ^ trace_stack_layout, LI, LI).
 stack_layout__get_procid_stack_layout(LI ^ procid_stack_layout, LI, LI).
@@ -1802,6 +1822,20 @@ stack_layout__get_string_table(LI ^ string_table, LI, LI).
 stack_layout__get_label_tables(LI ^ label_tables, LI, LI).
 stack_layout__get_cur_proc_named_vars(LI ^ cur_proc_named_vars, LI, LI).
 
+:- pred stack_layout__get_module_name(module_name::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__get_module_name(ModuleName) -->
+	stack_layout__get_module_info(ModuleInfo),
+	{ module_info_name(ModuleInfo, ModuleName) }.
+
+:- pred stack_layout__get_cell_counter(counter::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__get_cell_counter(CellCounter) -->
+	stack_layout__get_module_info(ModuleInfo),
+	{ module_info_get_cell_counter(ModuleInfo, CellCounter) }.
+
 :- pred stack_layout__add_proc_layout_data(comp_gen_c_data::in, data_name::in,
 	label::in, stack_layout_info::in, stack_layout_info::out) is det.
 
@@ -1811,7 +1845,8 @@ stack_layout__add_proc_layout_data(NewProcLayout, NewDataName, NewLabel,
 	ProcLayouts = [NewProcLayout | ProcLayouts0],
 	LabelSet0 = LI0 ^ label_set,
 	set_bbbtree__insert(LabelSet0, NewLabel, LabelSet),
-	ModuleName = LI0 ^ module_name,
+	ModuleInfo = LI0 ^ module_info,
+	module_info_name(ModuleInfo, ModuleName),
 	NewProcLayoutArg = yes(const(data_addr_const(
 		data_addr(ModuleName, NewDataName)))),
 	ProcLayoutArgs0 = LI0 ^ proc_layout_args,
@@ -1834,12 +1869,21 @@ stack_layout__add_internal_layout_data(NewInternalLayout, NewLabel, LI0, LI) :-
 :- pred stack_layout__get_next_cell_number(int::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__get_next_cell_number(CN, LI0, LI) :-
-	C0 = LI0 ^ cell_counter,
-	counter__allocate(CN, C0, C),
-	LI = LI0 ^ cell_counter := C.
+stack_layout__get_next_cell_number(CellNum) -->
+	stack_layout__get_cell_counter(CellCounter0),
+	{ counter__allocate(CellNum, CellCounter0, CellCounter) },
+	stack_layout__set_cell_counter(CellCounter).
 
 :- pred stack_layout__set_cell_counter(counter::in,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__set_cell_counter(CellCounter) -->
+	stack_layout__get_module_info(ModuleInfo0),
+	{ module_info_set_cell_counter(ModuleInfo0, CellCounter,
+		ModuleInfo) },
+	stack_layout__set_module_info(ModuleInfo).
+
+:- pred stack_layout__set_module_info(module_info::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 :- pred stack_layout__set_string_table(string_table::in,
@@ -1851,7 +1895,7 @@ stack_layout__get_next_cell_number(CN, LI0, LI) :-
 :- pred stack_layout__set_cur_proc_named_vars(map(int, string)::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__set_cell_counter(CC, LI0, LI0 ^ cell_counter := CC).
+stack_layout__set_module_info(MI, LI0, LI0 ^ module_info := MI).
 stack_layout__set_string_table(ST, LI0, LI0 ^ string_table := ST).
 stack_layout__set_label_tables(LT, LI0, LI0 ^ label_tables := LT).
 stack_layout__set_cur_proc_named_vars(NV, LI0,

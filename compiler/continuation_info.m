@@ -83,6 +83,10 @@
 			max_trace_reg	:: int,
 					% Info about the stack slots used
 					% for tracing.
+			proc_body	:: hlds_goal,
+			initial_instmap	:: instmap,
+					% The instmap at the start of the
+					% procedure body.
 			trace_slot_info	:: trace_slot_info,
 					% Do we require the procedure id
 					% section of the procedure layout
