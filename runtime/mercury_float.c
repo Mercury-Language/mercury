@@ -5,6 +5,7 @@
 */
 
 #include	"mercury_imp.h"
+#include	<math.h>
 
 /*
 ** The function `MR_hash_float()' is used by the library predicate
@@ -83,4 +84,28 @@ MR_sprintf_float(char *buf, MR_Float f)
 	} while (round != f);
 
     return;
+}
+
+MR_bool
+MR_is_nan(MR_Float Flt)
+{
+#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISNANF)
+	return isnanf(Flt);
+#elif defined(MR_HAVE_ISNAN)
+	return isnan(Flt);
+#else
+	return (Flt != Flt);
+#endif
+}
+
+MR_bool
+MR_is_inf(MR_Float Flt)
+{
+#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISINFF)
+	return isinff(Flt);
+#elif defined(MR_HAVE_ISINF)
+	return isinf(Flt);
+#else
+	return (Flt == Flt / 2.0 && Flt != 0.0);
+#endif
 }

@@ -116,4 +116,7 @@ void MR_sprintf_float(char *buf, MR_Float f);
 
 MR_Integer MR_hash_float(MR_Float);
 
+MR_bool MR_is_nan(MR_Float);
+MR_bool MR_is_inf(MR_Float);
+
 #endif /* not MERCURY_FLOAT_H */

@@ -448,13 +448,7 @@ is_nan_or_inf(Float) :-
 :- pragma promise_pure(is_nan/1).
 :- pragma foreign_proc(c, is_nan(Flt::in),
 		[will_not_call_mercury, thread_safe], "
-#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISNANF)
-	SUCCESS_INDICATOR = isnanf(Flt);
-#elif defined(MR_HAVE_ISNAN)
-	SUCCESS_INDICATOR = isnan(Flt);
-#else
-	SUCCESS_INDICATOR = (Flt != Flt);
-#endif
+	SUCCESS_INDICATOR = MR_is_nan(Flt);
 ").
 :- pragma foreign_proc(il, is_nan(Flt::in),
 		[will_not_call_mercury, thread_safe, max_stack_size(1)], "
@@ -470,13 +464,7 @@ is_nan(_) :-
 :- pragma promise_pure(is_inf/1).
 :- pragma foreign_proc(c, is_inf(Flt::in),
 		[will_not_call_mercury, thread_safe], "
-#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISINFF)
-	SUCCESS_INDICATOR = isinff(Flt);
-#elif defined(MR_HAVE_ISINF)
-	SUCCESS_INDICATOR = isinf(Flt);
-#else
-	SUCCESS_INDICATOR = (Flt == Flt / 2.0 && Flt != 0.0);
-#endif
+	SUCCESS_INDICATOR = MR_is_inf(Flt);
 ").
 :- pragma foreign_proc(il, is_inf(Flt::in),
 		[will_not_call_mercury, thread_safe, max_stack_size(1)], "
