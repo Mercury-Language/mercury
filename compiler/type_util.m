@@ -841,6 +841,9 @@ type_util__type_is_solver_type(ModuleInfo, Type) :-
 		TypeBody = solver_type(_, _)
 	;
 		TypeBody = abstract_type(solver_type)
+	;
+		TypeBody = eqv_type(EqvType),
+		type_util__type_is_solver_type(ModuleInfo, EqvType)
 	).
 
 

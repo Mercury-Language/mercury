@@ -197,6 +197,18 @@
 	map(tvar, type_info_locn)::in, unification::in, unification::out,
 	hlds_goal_info::in, hlds_goal_info::out) is det.
 
+% Add the type_info variables for a new call goal.  This predicate assumes
+% that polymorphism__process_module has already been run so the called pred
+% has already been processed.
+%
+% XXX This predicate does not yet handle calls whose arguments include
+% existentially quantified types or type class constraints.
+
+:- pred polymorphism__process_new_call(pred_id::in, proc_id::in,
+	list(prog_var)::in, builtin_state::in, maybe(call_unify_context)::in,
+	sym_name::in, hlds_goal_info::in, hlds_goal::out,
+	poly_info::in, poly_info::out) is det.
+
 % Given a list of types, create a list of variables to hold the type_info
 % for those types, and create a list of goals to initialize those type_info
 % variables to the appropriate type_info structures for the types.
@@ -236,6 +248,13 @@
 	% create a poly_info, for use by the polymorphism transformation.
 :- pred create_poly_info(module_info::in, pred_info::in,
 	proc_info::in, poly_info::out) is det.
+
+	% Extract some fields from a pred_info and proc_info and use them to
+	% create a poly_info, for use by the polymorphism transformation for
+	% transforming a new call goal.
+	%
+:- pred create_poly_info_for_new_call(module_info::in, pred_info::in,
+	proc_info::in, prog_varset::in, vartypes::in, poly_info::out) is det.
 
 	% Update the fields in a pred_info and proc_info with
 	% the values in a poly_info.
@@ -1864,6 +1883,110 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo)
 	).
 
+%-----------------------------------------------------------------------------%
+
+% XXX This predicate does not yet handle calls whose arguments include
+% existentially quantified types or type class constraints.
+
+polymorphism__process_new_call(PredId, ProcId, CallArgs0, BuiltinState,
+		MaybeCallUnifyContext, SymName, GoalInfo0, Goal, !Info) :-
+	poly_info_get_var_types(!.Info, CallVarTypes),
+	poly_info_get_typevarset(!.Info, CallTypeVarSet0),
+	poly_info_get_pred_info(!.Info, PredInfo),
+	pred_info_arg_types(PredInfo, PredArgTypes),
+
+		% Work out the types of the provided call args.
+		%
+	CallArgTypes0 = map__apply_to_list(CallArgs0, CallVarTypes),
+
+		% Work out how many type_info args we need to prepend.
+		%
+	NCallArgs0 = list__length(CallArgTypes0),
+	NPredArgs  = list__length(PredArgTypes),
+	NExtraArgs = NPredArgs - NCallArgs0,
+
+		% Construct a fresh type var for each extra type_info
+		% we need to prepend.
+		%
+		% That is, for every such type_info we construct a new
+		% type variable ExtraTypeTypeVar which we will bind to a
+		% term private_builtin.type_info(ExtraArgTypeParam),
+		% where ExtraArgTypeParam is also a new type variable.
+		%
+	varset__new_vars(CallTypeVarSet0, NExtraArgs, ExtraArgTypeVars,
+		CallTypeVarSet1),
+	list__map2_foldl(bind_type_var_to_type_info_wrapper,
+		ExtraArgTypeVars, ExtraArgTypes0, ExtraArgTypeParams0,
+		CallTypeVarSet1, _CallTypeVarSet),
+
+		% Prepend the list of types to the call arg types and unify
+		% the resulting list with the pred arg types.  This should
+		% result in the earlier fresh ExtraArgTypeParams being unified
+		% with the types for which we need to construct type_infos.
+		%
+	CallArgTypes = ExtraArgTypes0 ++ CallArgTypes0,
+	unify_corresponding_types(PredArgTypes, CallArgTypes,
+		map__init, Substitution),
+	ExtraArgTypeParams = term__apply_rec_substitution_to_list(
+				ExtraArgTypeParams0, Substitution),
+
+		% And finally construct the type_info goals and args we
+		% need to prepend to complete the call.
+		%
+	Ctxt = term__context_init,
+	make_type_info_vars(ExtraArgTypeParams, Ctxt, ExtraArgs, ExtraGoals,
+		!Info),
+	CallArgs = ExtraArgs ++ CallArgs0,
+	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	NonLocals1 = set__list_to_set(ExtraArgs),
+	NonLocals = set__union(NonLocals0, NonLocals1),
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+	CallGoalExpr = call(PredId, ProcId, CallArgs, BuiltinState,
+		MaybeCallUnifyContext, SymName),
+	CallGoal = CallGoalExpr - GoalInfo,
+	conj_list_to_goal(ExtraGoals ++ [CallGoal], GoalInfo, Goal).
+
+
+	% bind_type_var_to_type_info_wrapper(X, Type, Param, VarSet0, VarSet)
+	% constructs a new type var Param and binds X to the Type form of
+	% `private_builtin.type_info(Param)'.
+	%
+:- pred bind_type_var_to_type_info_wrapper(tvar::in, (type)::out, (type)::out,
+	tvarset::in, tvarset::out) is det.
+
+bind_type_var_to_type_info_wrapper(X, Type, Param, TVarSet0, TVarSet) :-
+	varset__new_var(TVarSet0, Y, TVarSet1),
+	Param = variable(Y),
+	Ctxt  = term__context_init,
+	Type  = functor(atom("."),
+			[ functor(atom("private_builtin"), [], Ctxt),
+			  functor(atom("type_info"), [Param], Ctxt) ],
+			Ctxt),
+	varset__bind_var(TVarSet1, X, Type, TVarSet).
+
+
+:- pred unify_corresponding_types(list(type)::in, list(type)::in, 
+		tsubst::in, tsubst::out) is det.
+
+unify_corresponding_types([], [], !Subst).
+unify_corresponding_types([], [_ | _], !Subst) :-
+	error("polymorphism__unify_corresponding_types: " ++
+		"differing list lengths").
+unify_corresponding_types([_ | _], [], !Subst) :-
+	error("polymorphism__unify_corresponding_types: " ++
+		"differing list lengths").
+unify_corresponding_types([A | As], [B | Bs], !Subst) :-
+	(
+		term__unify(A, B, !Subst)
+	->
+		unify_corresponding_types(As, Bs, !Subst)
+	;
+		error("polymorphism__unify_corresponding_types: " ++
+			"term__unify failed")
+	).
+
+%-----------------------------------------------------------------------------%
+
 :- pred polymorphism__update_typeclass_infos(list(class_constraint)::in,
 	list(prog_var)::in, poly_info::in, poly_info::out) is det.
 
@@ -3321,6 +3444,17 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
 	pred_info_get_constraint_proofs(PredInfo, Proofs),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
+	proc_info_typeclass_info_varmap(ProcInfo, TypeClassInfoMap),
+	PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeInfoMap,
+		TypeClassInfoMap, Proofs, PredInfo, ModuleInfo).
+
+	% create_poly_info creates a poly_info for a call.
+	% (See also init_poly_info.)
+create_poly_info_for_new_call(ModuleInfo, PredInfo, ProcInfo, VarSet, VarTypes,
+		PolyInfo) :-
+	pred_info_typevarset(PredInfo, TypeVarSet),
+	pred_info_get_constraint_proofs(PredInfo, Proofs),
 	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
 	proc_info_typeclass_info_varmap(ProcInfo, TypeClassInfoMap),
 	PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeInfoMap,

@@ -224,6 +224,9 @@
 :- pred mode_info_may_initialise_solver_vars(mode_info::in)
 		is semidet.
 
+:- pred mode_info_get_may_initialise_solver_vars(bool::out, mode_info::in)
+		is det.
+
 :- pred mode_info_set_may_initialise_solver_vars(bool::in,
 		mode_info::in, mode_info::out) is det.
 
@@ -370,7 +373,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
 
 	Changed = no,
 	CheckingExtraGoals = no,
-	MayInitSolverVars = no,
+	MayInitSolverVars = yes,
 
 	ModeInfo = mode_info(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
 		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
@@ -646,6 +649,9 @@ mode_info_add_error(ModeErrorInfo, !ModeInfo) :-
 
 mode_info_may_initialise_solver_vars(ModeInfo) :-
 	ModeInfo ^ may_initialise_solver_vars = yes.
+
+mode_info_get_may_initialise_solver_vars(MayInit, !.ModeInfo) :-
+	MayInit = !.ModeInfo ^ may_initialise_solver_vars.
 
 mode_info_set_may_initialise_solver_vars(MayInit, !ModeInfo) :-
 	!:ModeInfo = !.ModeInfo ^ may_initialise_solver_vars := MayInit.

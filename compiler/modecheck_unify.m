@@ -72,12 +72,35 @@
 
 %-----------------------------------------------------------------------------%
 
-modecheck_unification(X, var(Y), Unification0, UnifyContext, _GoalInfo,
-		Unify, !ModeInfo, !IO) :-
+modecheck_unification(X, var(Y), Unification0, UnifyContext,
+		UnifyGoalInfo0, Unify, !ModeInfo, !IO) :-
 	mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+	mode_info_get_var_types(!.ModeInfo, VarTypes),
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
-	instmap__lookup_var(InstMap0, X, InstOfX),
-	instmap__lookup_var(InstMap0, Y, InstOfY),
+	instmap__lookup_var(InstMap0, X, InstOfX0),
+	instmap__lookup_var(InstMap0, Y, InstOfY0),
+	% If X and Y are free and have a solver type and we are allowed to
+	% insert initialisation calls at this point, then do so to allow
+	% scheduling of the unification.
+	(
+		mode_info_may_initialise_solver_vars(!.ModeInfo),
+		InstOfX0   = free,
+		InstOfY0   = free,
+		VarType    = VarTypes^elem(X),
+		type_util__type_is_solver_type(ModuleInfo0, VarType)
+	->
+		modes__construct_initialisation_call(X, VarType, any_inst,
+			context_init, no, InitXGoal, !ModeInfo),
+		MaybeInitX = yes(InitXGoal),
+		instmap__set(InstMap0, X, any_inst, InstMap),
+		InstOfX    = any_inst,
+		InstOfY    = InstOfY0
+	;
+		MaybeInitX = no,
+		InstMap    = InstMap0,
+		InstOfX    = InstOfX0,
+		InstOfY    = InstOfY0
+	),
 	mode_info_var_is_live(!.ModeInfo, X, LiveX),
 	mode_info_var_is_live(!.ModeInfo, Y, LiveY),
 	(
@@ -110,10 +133,19 @@ modecheck_unification(X, var(Y), Unification0, UnifyContext, _GoalInfo,
 		modecheck_set_var_inst(Y, Inst, yes(InstOfX), !ModeInfo),
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
-		mode_info_get_var_types(!.ModeInfo, VarTypes),
 		categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y,
-			Det, UnifyContext, VarTypes, Unification0, Unify,
-			!ModeInfo)
+			Det, UnifyContext, VarTypes, Unification0, Unify0,
+			!ModeInfo),
+		(
+			MaybeInitX = no,
+			Unify      = Unify0
+		;
+			MaybeInitX = yes(InitGoal - InitGoalInfo),
+			modes__compute_goal_instmap_delta(InstMap, Unify0,
+				UnifyGoalInfo0, UnifyGoalInfo, !ModeInfo),
+			Unify      = conj([InitGoal - InitGoalInfo,
+					   Unify0 - UnifyGoalInfo])
+		)
 	;
 		set__list_to_set([X, Y], WaitingVars),
 		mode_info_error(WaitingVars, mode_error_unify_var_var(X, Y,

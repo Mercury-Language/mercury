@@ -323,6 +323,12 @@
 :- pred mode_context_to_unify_context(mode_info::in, mode_context::in,
 	unify_context::out) is det.
 
+	% Construct a call to initialise a free solver type variable.
+	%
+:- pred construct_initialisation_call(prog_var::in, (type)::in, (inst)::in,
+		prog_context::in, maybe(call_unify_context)::in,
+		hlds_goal::out, mode_info::in, mode_info::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -338,6 +344,7 @@
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__modecheck_call.
 :- import_module check_hlds__modecheck_unify.
+:- import_module check_hlds__polymorphism.
 :- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
 :- import_module check_hlds__typecheck.
@@ -941,8 +948,8 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
 				type_util__type_is_solver_type(ModuleInfo,
 					Type)
 			->
-				prepend_initialisation_call(ModuleInfo, Var,
-					Type, VarInst, !Goal)
+				prepend_initialisation_call(Var, Type,
+					VarInst, !Goal, !ModeInfo)
 			;
 				% If we're inferring the mode, then don't
 				% report an error, just set changed to yes
@@ -985,16 +992,16 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred prepend_initialisation_call(module_info::in,
-		prog_var::in, (type)::in, (inst)::in,
-		hlds_goal::in, hlds_goal::out) is det.
+:- pred prepend_initialisation_call(prog_var::in, (type)::in, (inst)::in,
+		hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out)
+		is det.
 
-prepend_initialisation_call(ModuleInfo, Var, VarType, InitialInst,
-		Goal0, Goal) :-
+prepend_initialisation_call(Var, VarType, InitialInst, Goal0, Goal,
+		!ModeInfo) :-
 	Goal0   = _GoalExpr0 - GoalInfo0,
 	hlds_goal__goal_info_get_context(GoalInfo0, Context),
-	construct_initialisation_call(ModuleInfo, Var, VarType, InitialInst,
-		Context, no /* CallUnifyContext */, InitVarGoal),
+	construct_initialisation_call(Var, VarType, InitialInst, Context,
+		no /* CallUnifyContext */, InitVarGoal, !ModeInfo),
 	goal_to_conj_list(Goal0, ConjList0),
 	conj_list_to_goal([InitVarGoal | ConjList0], GoalInfo0, Goal).
 
@@ -1467,18 +1474,21 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
 	mode_info_get_errors(!.ModeInfo, OldErrors),
 	mode_info_set_errors([], !ModeInfo),
 
-		% Try to schedule goals without inserting any solver
-		% initialisation calls (the flag `may_initialise_solver_vars'
-		% is initialised to `no' by mode_info_init and reset to `no'
-		% after a call has been scheduled using initialisation and
-		% after modecheck_conj_list_4).
-		%
+	mode_info_get_may_initialise_solver_vars(MayInitEntryValue,
+		!.ModeInfo),
+
 	mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
 	delay_info__enter_conj(DelayInfo0, DelayInfo1),
 	mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 
 	mode_info_get_live_vars(!.ModeInfo, LiveVars1),
 	mode_info_add_goals_live_vars(Goals0, !ModeInfo),
+
+		% Try to schedule goals without inserting any solver
+		% initialisation calls by setting the mode_info flag
+		% may_initialise_solver_vars to no.
+		%
+	mode_info_set_may_initialise_solver_vars(no, !ModeInfo),
 
 	modecheck_conj_list_2(Goals0, Goals1,
 		[], RevImpurityErrors0, !ModeInfo, !IO),
@@ -1531,7 +1541,10 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
 		mode_info_error(Vars,
 			mode_error_conj(DelayedGoals, conj_floundered),
 			!ModeInfo)
-	).
+	),
+		% Restore the value of the may_initialise_solver_vars flag.
+		%
+	mode_info_set_may_initialise_solver_vars(MayInitEntryValue, !ModeInfo).
 
 mode_info_add_goals_live_vars([], !ModeInfo).
 mode_info_add_goals_live_vars([Goal | Goals], !ModeInfo) :-
@@ -1742,8 +1755,8 @@ modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals,
 				%
 			CandidateInitVarList =
 				set__to_sorted_list(CandidateInitVars),
-			construct_initialisation_calls(!.ModeInfo,
-				CandidateInitVarList, InitGoals),
+			construct_initialisation_calls(CandidateInitVarList,
+				InitGoals, !ModeInfo),
 			Goals1 = InitGoals ++ Goals0,
 
 			mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
@@ -1768,21 +1781,20 @@ modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals,
 	).
 
 
-:- pred construct_initialisation_calls(mode_info::in, list(prog_var)::in,
-		list(hlds_goal)::out) is det.
+:- pred construct_initialisation_calls(list(prog_var)::in,
+		list(hlds_goal)::out, mode_info::in, mode_info::out) is det.
 
-construct_initialisation_calls(_, [], []).
+construct_initialisation_calls([], [], !ModeInfo).
 
-construct_initialisation_calls(ModeInfo, [Var | Vars], [Goal | Goals]) :-
-	mode_info_get_var_types(ModeInfo, VarTypes),
+construct_initialisation_calls([Var | Vars], [Goal | Goals], !ModeInfo) :-
+	mode_info_get_var_types(!.ModeInfo, VarTypes),
 	map__lookup(VarTypes, Var, VarType),
 	InitialInst           = free,
 	Context               = term__context_init,
 	MaybeCallUnifyContext = no,
-	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	construct_initialisation_call(ModuleInfo, Var, VarType, InitialInst,
-		Context, MaybeCallUnifyContext, Goal),
-	construct_initialisation_calls(ModeInfo, Vars, Goals).
+	construct_initialisation_call(Var, VarType, InitialInst, Context,
+		MaybeCallUnifyContext, Goal, !ModeInfo),
+	construct_initialisation_calls(Vars, Goals, !ModeInfo).
 
 
 	% XXX will this catch synonyms for `free'?
@@ -2023,8 +2035,6 @@ modecheck_conj_list_4(DelayedGoals0, DelayedGoals, Goals,
 		mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
 		delay_info__enter_conj(DelayInfo0, DelayInfo1),
 		mode_info_set_delay_info(DelayInfo1, !ModeInfo),
-
-% 		mode_info_add_goals_live_vars(Goals0, !ModeInfo),
 
 		mode_info_set_may_initialise_solver_vars(yes, !ModeInfo),
 		modecheck_conj_list_2(Goals0, Goals1,
@@ -2549,9 +2559,10 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
 		% `ground') then this is an implied mode that we
 		% don't yet know how to handle.
 		%
-		% If the variable's type is a solver type then
-		% we need to insert a call to the solver type's
-		% initialisation predicate.
+		% If the variable's type is a solver type then we need to
+		% insert a call to the solver type's initialisation predicate.
+		% (To avoid unnecessary complications, we avoid doing this if
+		% there are any mode errors recorded at this point.)
 
 		mode_info_get_context(!.ModeInfo, Context),
 		mode_info_get_mode_context(!.ModeInfo, ModeContext),
@@ -2560,15 +2571,17 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
 		CallUnifyContext = yes(call_unify_context(Var, var(Var),
 						UnifyContext)),
  		(
+			mode_info_get_errors(!.ModeInfo, ModeErrors),
+			ModeErrors = [],
 			mode_info_may_initialise_solver_vars(!.ModeInfo),
  			type_util__type_is_solver_type(ModuleInfo0, VarType)
  		->
  			% Create code to initialize the variable to
  			% inst `any', by calling the solver type's
  			% initialisation predicate.
- 			insert_extra_initialisation_call(ModuleInfo0, Var,
- 				VarType, InitialInst, Context,
- 				CallUnifyContext, !ExtraGoals)
+ 			insert_extra_initialisation_call(Var, VarType,
+				InitialInst, Context, CallUnifyContext,
+				!ExtraGoals, !ModeInfo)
  		;
 			% If the type is a type variable,
 			% or isn't a solver type then give up.
@@ -2610,63 +2623,80 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
 	).
 
 
-:- pred insert_extra_initialisation_call(module_info::in, prog_var::in,
-		(type)::in, (inst)::in,
+:- pred insert_extra_initialisation_call(prog_var::in, (type)::in, (inst)::in,
 		prog_context::in, maybe(call_unify_context)::in,
-		extra_goals::in, extra_goals::out) is det.
+		extra_goals::in, extra_goals::out,
+		mode_info::in, mode_info::out) is det.
 
-insert_extra_initialisation_call(ModuleInfo, Var, VarType, InitialInst,
-		Context, CallUnifyContext, !ExtraGoals) :-
+insert_extra_initialisation_call(Var, VarType, Inst, Context, CallUnifyContext,
+		!ExtraGoals, !ModeInfo) :-
 
-	construct_initialisation_call(ModuleInfo, Var, VarType, InitialInst,
-		Context, CallUnifyContext, InitVarGoal),
+	construct_initialisation_call(Var, VarType, Inst, Context,
+		CallUnifyContext, InitVarGoal, !ModeInfo),
 	NewExtraGoal = extra_goals([InitVarGoal], []),
 	append_extra_goals(!.ExtraGoals, NewExtraGoal, !:ExtraGoals).
 
 
-:- pred construct_initialisation_call(module_info::in, prog_var::in,
-		(type)::in, (inst)::in, prog_context::in,
-		maybe(call_unify_context)::in, hlds_goal::out) is det.
-
-construct_initialisation_call(ModuleInfo, Var, VarType, InitialInst, Context,
-		MaybeCallUnifyContext, InitVarGoal) :-
+construct_initialisation_call(Var, VarType, Inst, Context,
+		MaybeCallUnifyContext, InitVarGoal, !ModeInfo) :-
 	(
 		type_to_ctor_and_args(VarType, TypeCtor, _TypeArgs),
 		PredName = special_pred__special_pred_name(initialise,
 				TypeCtor),
-		hlds_module__module_info_name(ModuleInfo, ThisModule),
-		modes__build_call(ThisModule, PredName, [Var],
-			Context, MaybeCallUnifyContext, ModuleInfo,
-			GoalExpr - GoalInfo0)
-	->
-		set__singleton_set(NonLocals, Var),
-		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
-		InstmapDeltaAL = [Var - InitialInst],
+		(
+			TypeCtor = qualified(ModuleName, _TypeName) - _Arity
+		;
+			TypeCtor = unqualified(_TypeName) - _Arity,
+			mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+			hlds_module__module_info_name(ModuleInfo, ModuleName)
+		),
+		NonLocals = set__make_singleton_set(Var),
+		InstmapDeltaAL = [Var - Inst],
 		instmap_delta_from_assoc_list(InstmapDeltaAL, InstmapDelta),
-		goal_info_set_instmap_delta(GoalInfo1, InstmapDelta, GoalInfo),
+		build_call(ModuleName, PredName, [Var], NonLocals,
+			InstmapDelta, Context, MaybeCallUnifyContext,
+			GoalExpr - GoalInfo, !ModeInfo)
+	->
 		InitVarGoal = GoalExpr - GoalInfo
 	;
-		error("modes.insert_extra_initialisation_call: " ++
-			"modes.construct_initialisation_call failed")
+		error("modes.construct_initialisation_call")
 	).
 
 
-:- pred modes__build_call(module_name::in, string::in, list(prog_var)::in,
-	prog_context::in, maybe(call_unify_context)::in,
-	module_info::in, hlds_goal::out) is semidet.
+:- pred build_call(module_name::in, string::in, list(prog_var)::in,
+	set(prog_var)::in, instmap_delta::in, prog_context::in,
+	maybe(call_unify_context)::in, hlds_goal::out,
+	mode_info::in, mode_info::out) is semidet.
 
-modes__build_call(Module, Name, ArgVars, Context, CallUnifyContext,
-		ModuleInfo, Goal) :-
-	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+build_call(ModuleName, PredName, ArgVars, NonLocals, InstmapDelta, Context,
+		CallUnifyContext, Goal, !ModeInfo) :-
+	mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+	module_info_get_predicate_table(ModuleInfo0, PredicateTable),
 	list__length(ArgVars, Arity),
 	predicate_table_search_pred_m_n_a(PredicateTable, is_fully_qualified,
-		Module, Name, Arity, [PredId]),
-	hlds_pred__proc_id_to_int(ModeId, 0), % first mode
-	Call = call(PredId, ModeId, ArgVars, not_builtin, CallUnifyContext,
-		qualified(Module, Name)),
+		ModuleName, PredName, Arity, [PredId]),
+	ProcNo = 0, % first mode
+	hlds_pred__proc_id_to_int(ProcId, ProcNo),
+	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo0,
+		ProcInfo0),
+	mode_info_get_varset(!.ModeInfo, VarSet0),
+	mode_info_get_var_types(!.ModeInfo, VarTypes0),
+	polymorphism__create_poly_info_for_new_call(ModuleInfo0, PredInfo0,
+		ProcInfo0, VarSet0, VarTypes0, PolyInfo0),
 	goal_info_init(GoalInfo0),
-	goal_info_set_context(GoalInfo0, Context, GoalInfo),
-	Goal = Call - GoalInfo.
+	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo2),
+	goal_info_set_instmap_delta(GoalInfo2, InstmapDelta, GoalInfo),
+	polymorphism__process_new_call(PredId, ProcId, ArgVars, not_builtin,
+		CallUnifyContext, qualified(ModuleName, PredName),
+		GoalInfo, Goal, PolyInfo0, PolyInfo),
+	polymorphism__poly_info_extract(PolyInfo, PredInfo0, _PredInfo,
+		ProcInfo0, ProcInfo, ModuleInfo),
+	proc_info_varset(ProcInfo, VarSet),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	mode_info_set_varset(VarSet, !ModeInfo),
+	mode_info_set_var_types(VarTypes, !ModeInfo),
+	mode_info_set_module_info(ModuleInfo, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 

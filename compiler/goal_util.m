@@ -234,8 +234,18 @@
 	string::in, list(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
+	% Generate an unsafe cast goal.  The input and output insts
+	% are just ground.
+	%
 :- pred goal_util__generate_unsafe_cast(prog_var::in, prog_var::in,
 	prog_context::in, hlds_goal::out) is det.
+
+	% This version takes input and output inst arguments, which may
+	% be necessary when casting, say, solver type values with inst
+	% any, or casting between enumeration types and ints.
+	%
+:- pred goal_util__generate_unsafe_cast(prog_var::in, prog_var::in,
+	(inst)::in, (inst)::in, prog_context::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1272,12 +1282,15 @@ goal_util__generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo,
 	Goal = GoalExpr - GoalInfo.
 
 generate_unsafe_cast(InArg, OutArg, Context, Goal) :-
+	Ground = ground(shared, none),
+	generate_unsafe_cast(InArg, OutArg, Ground, Ground, Context, Goal).
+
+generate_unsafe_cast(InArg, OutArg, InInst, OutInst, Context, Goal) :-
 	set__list_to_set([InArg, OutArg], NonLocals),
-	instmap_delta_from_assoc_list([OutArg - ground(shared, none)],
-		InstMapDelta),
+	instmap_delta_from_assoc_list([OutArg - OutInst], InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, pure, Context, GoalInfo),
 	Goal = generic_call(unsafe_cast, [InArg, OutArg],
-		[in_mode, out_mode], det) - GoalInfo.
+		[in_mode(InInst), out_mode(OutInst)], det) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 

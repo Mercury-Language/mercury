@@ -98,6 +98,10 @@
 
 % Higher-order predicate modes are builtin.
 
+% Solver type modes.
+:- mode ia == any >> any.
+:- mode oa == free >> any.
+
 %-----------------------------------------------------------------------------%
 
 % PREDICATES.

@@ -733,7 +733,44 @@ unify_proc__generate_initialise_clauses(ModuleInfo, _Type, TypeBody,
 		unify_proc__quantify_clauses_body([X], Goal, Context, Clauses,
 			!Info)
 	;
-		error("trying to create initialisation proc for type " ++
+		% If this is an equivalence type then we just generate a
+		% call to the initialisation pred of the type on the RHS
+		% of the equivalence and cast the result back to the type
+		% on the LHS of the equivalence.
+		TypeBody = eqv_type(EqvType)
+	->
+		goal_info_init(Context, GoalInfo),
+		unify_proc__make_fresh_named_var_from_type(EqvType,
+			"PreCast_HeadVar", 1, X0, !Info),
+		(
+			type_to_ctor_and_args(EqvType, TypeCtor0, _TypeArgs)
+		->
+			TypeCtor = TypeCtor0
+		;
+			error("unify_proc__generate_initialise_clauses: " ++
+				"type_to_ctor_and_args failed")
+		),
+		PredName = special_pred__special_pred_name(initialise,
+				TypeCtor),
+		hlds_module__module_info_name(ModuleInfo, ModuleName),
+		TypeCtor = TypeSymName - _TypeArity,
+		sym_name_get_module_name(TypeSymName, ModuleName,
+			TypeModuleName),
+		InitPred = qualified(TypeModuleName, PredName),
+		PredId   = invalid_pred_id,
+		ModeId   = invalid_proc_id,
+		InitCall = call(PredId, ModeId, [X0], not_builtin, no,
+				InitPred),
+		InitGoal = InitCall - GoalInfo,
+
+		Any = any(shared),
+		generate_unsafe_cast(X0, X, Any, Any, Context, CastGoal),
+		Goal = conj([InitGoal, CastGoal]) - GoalInfo,
+		unify_proc__quantify_clauses_body([X], Goal, Context, Clauses,
+			!Info)
+	;
+		error("unify_proc__generate_initialise_clauses: " ++
+			"trying to create initialisation proc for type " ++
 			"that has no solver_type_details")
 	).
 

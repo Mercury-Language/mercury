@@ -2111,12 +2111,13 @@ would fail (it would violate the first constraint).
 @node The any inst
 @subsection The @samp{any} inst
 
-A special inst, @code{any}, is associated with solver types.  A variable
-of a solver type with inst @code{any} means that that variable may not
-(yet) be semantically ground, in the following sense: if a variable is
-semantically ground then the set of values it unifies with form an
-equivalence class; if a variable is non-ground then the set of values it
-unifies with do not form an equivalence class.
+Variables with solver types can have one of three possible insts: @code{free},
+@code{ground} or @code{any}.
+A variable with a solver type with inst @code{any} may not (yet) be
+semantically ground, in the following sense: if a variable is semantically
+ground then the set of values it unifies with form an equivalence class; if a
+variable is non-ground then the set of values it unifies with do not form an
+equivalence class.
 
 More formally, @code{X} is ground if for values @code{Y} and
 @code{Z} that unify with @code{X}, it is the case that @code{Y} and
@@ -2124,7 +2125,11 @@ More formally, @code{X} is ground if for values @code{Y} and
 are values @code{Y} and @code{Z} that unify with @code{X}, but which do
 not unify with each other.
 
-For non-solver types, @code{any} is equivalent to @code{ground}.
+A non-solver type value will have inst @code{any} if it is constructed using
+one or more inst @code{any} values.
+
+The built-in modes @code{ia} and @code{oa} are equivalent to @code{in(any)}
+and @code{out(any)} respectively.
 
 @node Abstract solver type declarations
 @subsection Abstract solver type declarations
