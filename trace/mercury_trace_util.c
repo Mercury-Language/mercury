@@ -15,6 +15,8 @@
 #include "mercury_trace_util.h"
 #include "mercury_file.h"
 
+#include "string.mh"
+
 #include <ctype.h>
 
 void
@@ -74,17 +76,7 @@ MR_trace_is_integer(const char *word, MR_Integer *value)
 MR_bool
 MR_trace_is_float(const char *word, MR_Float *value)
 {
-	double	tmpf;
-	char   	tmpc;
-	MR_bool	success;
-
-	/* this duplicates the logic of string__to_float */
-	success =
-		(!MR_isspace(word[0])) &&
-		(sscanf(word, "%lf%c", &tmpf, &tmpc) == 1);
-		/* MR_TRUE if sscanf succeeds, MR_FALSE otherwise */
-	*value = tmpf;
-	return success;
+	return ML_string_to_float((MR_String) word, value);
 }
 
 void

@@ -1352,6 +1352,8 @@
 :- use_module table_builtin.
 :- use_module rtti_implementation.
 
+:- pragma foreign_import_module(c, string).
+
 :- type io__state ---> io__state(c_pointer).
 	% Values of type `io__state' are never really used:
 	% instead we store data in global variables.
@@ -4408,7 +4410,9 @@ io__putback_byte(_, _) -->
 	io__write_float(Val::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	if (ML_fprintf(mercury_current_text_output, ""%#.15g"", Val) < 0) {
+	char buf[ML_SPRINTF_FLOAT_BUF_SIZE];
+	ML_sprintf_float(buf, Val);
+	if (ML_fprintf(mercury_current_text_output, ""%s"", buf) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	MR_update_io(IO0, IO);
@@ -4501,14 +4505,6 @@ io__putback_byte(_, _) -->
 ").
 
 :- pragma foreign_proc("MC++",
-	io__write_float(Val::in, IO0::di, IO::uo),
-		[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-	mercury_print_string(mercury_current_text_output, Val.ToString());
-	MR_update_io(IO0, IO);
-").
-
-:- pragma foreign_proc("MC++",
 	io__write_byte(Byte::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
@@ -4555,10 +4551,8 @@ io__write_int(_) -->
 	% matching foreign_proc version.
 	{ private_builtin__sorry("io__write_int") }.
 
-io__write_float(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_float") }.
+io__write_float(Float) -->
+	io__write_string(string__float_to_string(Float)).
 
 io__write_byte(_) -->
 	% This version is only used for back-ends for which there is no
@@ -4683,7 +4677,9 @@ io__binary_stream_offset(_, _) -->
 		[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	if (ML_fprintf(stream, ""%#.15g"", Val) < 0) {
+	char buf[ML_SPRINTF_FLOAT_BUF_SIZE];
+	ML_sprintf_float(buf, Val);
+	if (ML_fprintf(stream, ""%s"", buf) < 0) {
 		mercury_output_error(stream);
 	}
 	MR_update_io(IO0, IO);
@@ -4782,16 +4778,6 @@ io__binary_stream_offset(_, _) -->
 }").
 
 :- pragma foreign_proc("MC++",
-	io__write_float(Stream::in, Val::in, IO0::di, IO::uo),
-		[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"{
-	MR_MercuryFile stream = ML_DownCast(MR_MercuryFile, 
-		MR_word_to_c_pointer(Stream));
-	mercury_print_string(stream, Val.ToString());
-	MR_update_io(IO0, IO);
-}").
-
-:- pragma foreign_proc("MC++",
 	io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "{
@@ -4846,10 +4832,8 @@ io__write_int(_, _) -->
 	% matching foreign_proc version.
 	{ private_builtin__sorry("io__write_int") }.
 
-io__write_float(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_float") }.
+io__write_float(Stream, Float) -->
+	io__write_string(Stream, string__float_to_string(Float)).
 
 io__write_byte(_, _) -->
 	% This version is only used for back-ends for which there is no

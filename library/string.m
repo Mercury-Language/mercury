@@ -1824,76 +1824,105 @@ format_char(_, _) = _ :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-	string__float_to_string(FloatVal::in, FloatString::uo),
+	string__float_to_string(Flt::in, Str::uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
-	char buf[500];
-	sprintf(buf, ""%#.15g"", FloatVal);
-	MR_allocate_aligned_string_msg(FloatString, strlen(buf), MR_PROC_LABEL);
-	strcpy(FloatString, buf);
+	char buf[ML_SPRINTF_FLOAT_BUF_SIZE];
+	ML_sprintf_float(buf, Flt);
+	MR_make_aligned_string_copy(Str, buf);
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__float_to_string(FloatVal::in, FloatString::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-	FloatString = System::Convert::ToString(FloatVal);
-}").
+	[will_not_call_mercury, promise_pure, thread_safe], "
+
+		// The R format string prints the double out such that it
+		// can be round-tripped.
+		// XXX According to the documentation it tries the 15 digits of
+		// precision, then 17 digits skipping 16 digits of precision.
+		// unlike what we do for the C backend.
+	FloatString = FloatVal.ToString(""R"");
+").
 
 string__float_to_string(_, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	private_builtin__sorry("string__float_to_string").
 
+:- pragma foreign_decl(c, "
+#ifdef MR_USE_SINGLE_PREC_FLOAT
+  #define ML_MIN_PRECISION	7
+  #define ML_FMT		""%f""
+#else
+  #define ML_MIN_PRECISION	15
+  #define ML_FMT		""%lf""
+#endif
+#define ML_MAX_PRECISION	(ML_MIN_PRECISION + 2)
 
-	% Beware that the implementation of string__format depends
-	% on the details of what string__float_to_f_string/2 outputs.
+/*
+** The size of the buffer to pass to ML_sprintf_float.
+**
+** Longest possible string for %#.*g format is `-n.nnnnnnE-mmmm', which
+** has size  PRECISION + MAX_EXPONENT_DIGITS + 5 (for the `-', `.', `E',
+** '-', and '\\0').  PRECISION is at most 20, and MAX_EXPONENT_DIGITS is
+** at most 5, so we need at most 30 chars.  80 is way more than enough.
+*/
+#define ML_SPRINTF_FLOAT_BUF_SIZE	80
 
-:- pred string__float_to_f_string(float::in, string::out) is det.
+void ML_sprintf_float(char *buf, MR_Float f);
+").
 
-:- pragma foreign_proc("C",
-	string__float_to_f_string(FloatVal::in, FloatString::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-	char buf[500];
-	sprintf(buf, ""%.15f"", FloatVal);
-	MR_allocate_aligned_string_msg(FloatString, strlen(buf), MR_PROC_LABEL);
-	strcpy(FloatString, buf);
-}").
+:- pragma foreign_code(c, "
+/*
+** ML_sprintf_float(buf, f)
+**
+** fills buff with the string representation of the float, f, such that
+** the string representation has enough precision to represent the
+** float, f.
+**
+** Note that buf must have size at least ML_SPRINTF_FLOAT_BUF_SIZE.
+*/
+void
+ML_sprintf_float(char *buf, MR_Float f)
+{
+	MR_Float round = 0.0;
+	int 	 i = ML_MIN_PRECISION;
 
-:- pragma foreign_proc("MC++",
-	string__float_to_f_string(FloatVal::in, FloatString::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-	FloatString = System::Convert::ToString(FloatVal);
-}").
+	/*
+	** Print the float at increasing precisions until the float
+	** is round-trippable.
+	*/
+	do {
+		sprintf(buf, ""%#.*g"", i, f);
+		if (i >= ML_MAX_PRECISION) {
+			/*
+			** This should be sufficient precision to
+			** round-trip any value.  Don't bother checking
+			** whether it can actually be round-tripped,
+			** since if it can't, this is a bug in the C
+			** implementation.
+			*/
+			break;
+		}
+		sscanf(buf, ML_FMT, &round);
+		i++;
+	} while (round != f);
+}
+").
 
-string__float_to_f_string(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("string__float_to_f_string").
-
+:- pragma export(string__to_float(in, out), "ML_string_to_float").
 :- pragma foreign_proc("C",
 	string__to_float(FloatString::in, FloatVal::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	/*
-	** Use a temporary, since we can't don't know whether FloatVal is a
-	** double or float.  The %c checks for any erroneous characters
-	** appearing after the float; if there are then sscanf() will
-	** return 2 rather than 1.
-	**
-	** The logic used here is duplicated in the function MR_trace_is_float
-	** in trace/mercury_trace_util.c.
+	** The %c checks for any erroneous characters appearing after
+	** the float; if there are then sscanf() will return 2 rather
+	** than 1.
 	*/
-	double tmpf;
-	char   tmpc;
+	char   	tmpc;
 	SUCCESS_INDICATOR =
 		(!MR_isspace(FloatString[0])) &&
-		(sscanf(FloatString, ""%lf%c"", &tmpf, &tmpc) == 1);
+		(sscanf(FloatString, ML_FMT ""%c"", &FloatVal, &tmpc) == 1);
 		/* MR_TRUE if sscanf succeeds, MR_FALSE otherwise */
-	FloatVal = tmpf;
-}").
-
-:- pragma foreign_proc("MC++",
-	string__float_to_f_string(FloatVal::in, FloatString::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-	FloatString = System::Convert::ToString(FloatVal);
 }").
 
 :- pragma foreign_proc("MC++",

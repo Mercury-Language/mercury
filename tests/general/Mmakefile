@@ -21,6 +21,7 @@ ORDINARY_PROGS=	\
 		duplicate_label \
 		environment \
 		fail_detism \
+		float_roundtrip \
 		float_test \
 		frameopt_mkframe_bug \
 		hello_again \
