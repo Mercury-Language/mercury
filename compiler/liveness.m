@@ -15,10 +15,6 @@
 	% of the variable itself, for the purposes of minimizing stack
 	% slot usage and for register re-use.
 
-	% XXX - we will need a different algorithm for determining liveness
-	% for non-deterministic code.  (That may also cause some
-	% difficulties for structure re-use, too!)
-
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -178,9 +174,7 @@ detect_liveness_in_goal_2(disj(Goals0), Liveness0, ModuleInfo,
 	set__union(Liveness0, Union, Liveness).
 
 detect_liveness_in_goal_2(not(Vars, Goal0), Liveness0, ModuleInfo,
-		Liveness, not(Vars, Goal)) :- % XXX is this quite correct?
-			% where q:- not(p(X)), r(X). and p does not
-			% bind X.
+		Liveness, not(Vars, Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness, Goal).
 
 detect_liveness_in_goal_2(switch(Var, Det, Cases0), Liveness0,
