@@ -8,6 +8,8 @@
 usage="\
 Usage: $0 [options]
 Options:
+	-d <dirname>, --test-dir <dirname>
+		Run the tests only in <dirname>.
 	-h, --help
 		Display this usage message.
 	-j <num-jobs>, --jobs <num-jobs>
@@ -22,6 +24,10 @@ Options:
 		Copy the runtime directory instead of linking it.
 		This is necessary if one wants to bootcheck a grade
 		that is not compatible with the standard one.
+	-s, --sicstus
+		As well as running the normal bootcheck, also build a SICStus
+		Prolog version of the compiler and check it against the
+		stage 2 directory.
 	-t, --no-test-suite
 		By default, bootcheck will also run the test quite.
 		This option prevents that.
@@ -29,10 +35,6 @@ Options:
 		Do not run the bootstrap check; execute the test suite only.
 		This option requires a previous bootstrap check to have left
 		a working stage 2 directory.
-	-s, --sicstus
-		As well as running the normal bootcheck, also build a SICStus
-		Prolog version of the compiler and check it against the
-		stage 2 directory.
 	-2, --keep-stage-2
 		Don't rebuild the stage 2 directory from scratch after
 		building stage 1.  Instead use the existing stage 2 directory.
@@ -48,6 +50,7 @@ Options:
 		(Same as the \`--use-subdirs' option to mmake and mmc.)
 "
 
+testdir=""
 jfactor=""
 keep_objs=false
 mmake_opts="-k"
@@ -63,6 +66,11 @@ use_subdirs=${MMAKE_USE_SUBDIRS=no}
 
 while [ $# -gt 0 ]; do
 	case "$1" in
+
+	-d|--test-dir)
+		testdir="$2"; shift ;;
+	-d*)
+		testdir="` expr $1 : '-d\(.*\)' `"; ;;
 
 	-h|--help)
 		echo "$usage"
@@ -89,14 +97,14 @@ while [ $# -gt 0 ]; do
 	-r|--copy-runtime)
 		copy_runtime=true ;;
 
+	-s|--sicstus)
+		test_sicstus=true ;;
+
 	-t|--no-test-suite)
 		runtests=false ;;
 
 	-T|--test-suite-only)
 		do_bootcheck=false ;;
-
-	-s|--sicstus)
-		test_sicstus=true ;;
 
 	-2|--keep-stage-2)
 		keep_stage_2=true ;;
@@ -602,6 +610,7 @@ then
 
 	echo "finishing stage3 at `date`"
 else
+	diff_status=0
 	echo "building of stages 1 and 2 skipped"
 fi
 
@@ -639,14 +648,26 @@ then
 
 	if test -d ../tests
 	then
-		cd ../tests
-		./runtests $jfactor
+		if test "$testdir" = ""
+		then
+			cd ../tests
+			./runtests $jfactor
+		else
+			cd ../tests/$testdir
+			./runtests $jfactor
+		fi
 		test_status=$?
 		cd $root
 	elif test -d tests
 	then
-		cd tests
-		./runtests $jfactor
+		if test "$testdir" = ""
+		then
+			cd tests
+			./runtests $jfactor
+		else
+			cd tests/$testdir
+			./runtests $jfactor
+		fi
 		test_status=$?
 		cd $root
 	else

@@ -203,7 +203,7 @@ then
 	fi
 fi
 
-if test "$bootcheck" = true
+if "$bootcheck"
 then
 
 	# Rebuild the stage3 library and compiler from scratch
