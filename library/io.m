@@ -4744,10 +4744,6 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 			RetVal::out, RetStr::out, IO0::di, IO::uo),
 		[will_not_call_mercury, tabled_for_io, thread_safe],
 "{
-#ifdef _MSC_VER
-		/* VC++ runtime fix */
-	_unlink(NewFileName);
-#endif
 	RetVal = rename(OldFileName, NewFileName);
 	ML_maybe_make_err_msg(RetVal != 0, ""rename failed: "",
 		MR_PROC_LABEL, RetStr);
