@@ -74,6 +74,7 @@ OTHER_PROGS= \
 	explicit_quant \
 	fail_ite \
 	followcode_det_problem \
+	big_foreign_type \
 	foreign_underscore_var \
 	func_int_bug_main \
 	func_default_modes \
