@@ -16,7 +16,10 @@ main -->
         print("Calc_one     = Lit_one:     " ++ 
 	     (if Calc_one = Lit_one then "true" else "false")), nl,
         print("Calc_one/9.0 = Lit_one/9.0: " ++
-	     (if Calc_one/9.0 = Lit_one/9.0 then "true" else "false")), nl.
+	     (if unchecked_quotient(Calc_one, 9.0)
+	     		= unchecked_quotient(Lit_one, 9.0)
+		then "true" else "false")),
+	nl.
 
 :- pragma no_inline(same_as/1).
 :- func same_as(float) = float.
