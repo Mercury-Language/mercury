@@ -15,8 +15,11 @@
 :- pred goal_util__rename_vars_in_goal(hlds__goal, map(var, var), hlds__goal).
 :- mode goal_util__rename_vars_in_goal(in, in, out) is det.
 
-:- pred goal_util__create_variables(list(var), varset,
-		map(var, type), map(var, var),
+:- pred goal_util__rename_var_list(list(var), map(var, var), list(var)).
+:- mode goal_util__rename_var_list(in, in, out) is det.
+
+:- pred goal_util__create_variables(list(var),
+			varset, map(var, type), map(var, var),
 			varset, map(var, type), map(var, var)).
 :- mode goal_util__create_variables(in, in, in, in, out, out, out) is det.
 
@@ -71,9 +74,6 @@ goal_util__init_subn([A-H|Vs], Subn0, Subn) :-
 	goal_util__init_subn(Vs, Subn1, Subn).
 
 %-----------------------------------------------------------------------------%
-
-:- pred goal_util__rename_var_list(list(var), map(var, var), list(var)).
-:- mode goal_util__rename_var_list(in, in, out) is det.
 
 goal_util__rename_var_list([], _Subn, []).
 goal_util__rename_var_list([V|Vs], Subn, [N|Ns]) :-

@@ -88,7 +88,7 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, Flags,
 			% the nonlocal vars and the non-atomic instmap deltas.
 		proc_info_headvars(ProcInfo0, HeadVars),
 		implicitly_quantify_clause_body(HeadVars, Goal1,
-			Varset0, VarTypes0, Goal2, Varset, VarTypes),
+			Varset0, VarTypes0, Goal2, Varset, VarTypes, _Warnings),
 		recompute_instmap_delta(Goal2, Goal, ModuleInfo0, ModuleInfo)
 	;
 		Goal = Goal0,

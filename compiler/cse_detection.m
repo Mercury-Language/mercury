@@ -141,7 +141,7 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, Redo0, Redo,
 		proc_info_vartypes(ProcInfo0, VarTypes0),
 
 		implicitly_quantify_clause_body(HeadVars, Goal1, Varset0,
-			VarTypes0, Goal, Varset, VarTypes),
+			VarTypes0, Goal, Varset, VarTypes, _Warnings),
 
 		proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 		proc_info_set_variables(ProcInfo1, Varset, ProcInfo2),
@@ -373,6 +373,17 @@ detect_cse_in_ite_2(Cond0, Then0, Else0, InstMap0, ModuleInfo, Redo,
 	bool__or(Redo12, Redo3, Redo).
 
 %-----------------------------------------------------------------------------%
+
+% common_deconstruct(Goals0, Var, GoalInfo0, Unify, Goals):
+% input vars:
+%	Goals0 is a list of parallel goals in a branched structure
+%	(disjunction, if-then-else, or switch).
+%	Var is the variable we are looking for a common deconstruction on.
+%	GoalInfo0 is the goal_info of the branched structure goal.
+% output vars:
+%	Goals is the modified version of Goals0 after the common deconstruction
+%	has been hoisted out.
+%	Unify is the unification that was hoisted out.
 
 :- pred common_deconstruct(list(hlds__goal), var, hlds__goal_info,
 	hlds__goal, list(hlds__goal)).

@@ -29,7 +29,7 @@
 :- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
 :- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
 :- import_module prog_out, prog_util, hlds_out.
-:- import_module mercury_to_mercury, mercury_to_goedel.
+:- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
 :- import_module conf, getopt, options, globals.
 :- import_module int, map, set, std_util, dir, tree234, term, varset, hlds.
 :- import_module dependency_graph, constraint.
@@ -165,6 +165,7 @@ postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
 	globals__io_lookup_bool_option(inhibit_warnings, InhibitWarnings),
 	( { InhibitWarnings = yes } ->
 		globals__io_set_option(warn_singleton_vars, bool(no)),
+		globals__io_set_option(warn_overlapping_scopes, bool(no)),
 		globals__io_set_option(warn_missing_det_decls, bool(no)),
 		globals__io_set_option(warn_det_decls_too_lax, bool(no)),
 		globals__io_set_option(warn_nothing_exported, bool(no))
@@ -1340,9 +1341,24 @@ mercury_compile(Module) -->
 		mercury_compile__middle_pass(HLDS9, HLDS11, Proceed3),
 		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 		( { ErrorcheckOnly = no, Proceed3 = yes } ->
-			mercury_compile__backend_pass(HLDS11, HLDS16, LLDS2),
-			mercury_compile__output_pass(HLDS16, LLDS2, ModuleName,
-				_CompileErrors)
+			globals__io_lookup_bool_option(highlevel_c, HighLevelC),
+			( { HighLevelC = yes } ->
+				{ string__append(ModuleName, ".c", C_File) },
+				mercury_compile__gen_hlds(C_File, HLDS11),
+				globals__io_lookup_bool_option(compile_to_c,
+					CompileToC),
+				( { CompileToC = no } ->
+					mercury_compile__c_to_obj(C_File,
+						_CompileOK)
+				;
+					[]
+				)
+			;
+				mercury_compile__backend_pass(HLDS11,	
+					HLDS16, LLDS2),
+				mercury_compile__output_pass(HLDS16, LLDS2,
+					ModuleName, _CompileErrors)
+			)
 		;
 			[]
 		)
@@ -2122,7 +2138,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__output_pass(module_info, list(c_procedure), string,
-	bool, io__state, io__state).
+					bool, io__state, io__state).
 :- mode mercury_compile__output_pass(in, in, in, out, di, uo) is det.
 
 mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
@@ -2488,6 +2504,29 @@ mercury_compile__dump_hlds(DumpFile, HLDS) -->
 	io__tell(DumpFile, Res),
 	( { Res = ok } ->
 		io__gc_call(hlds_out__write_hlds(0, HLDS)),
+		io__told,
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Statistics)
+	;
+		maybe_write_string(Verbose, "\n"),
+		{ string__append_list( ["can't open file `",
+			DumpFile, "' for output."], ErrorMessage) },
+		report_error(ErrorMessage)
+	).
+
+:- pred mercury_compile__gen_hlds(string, module_info, io__state, io__state).
+:- mode mercury_compile__gen_hlds(in, in, di, uo) is det.
+
+mercury_compile__gen_hlds(DumpFile, HLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_write_string(Verbose, "% Dumping out HLDS to `"),
+	maybe_write_string(Verbose, DumpFile),
+	maybe_write_string(Verbose, "'..."),
+	maybe_flush_output(Verbose),
+	io__tell(DumpFile, Res),
+	( { Res = ok } ->
+		io__gc_call(c__gen_hlds(0, HLDS)),
 		io__told,
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Statistics)

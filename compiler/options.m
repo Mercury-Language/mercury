@@ -55,6 +55,7 @@
 :- type option	
 	% Warning options
 		--->	warn_singleton_vars
+		;	warn_overlapping_scopes
 		;	warn_missing_det_decls
 		;	warn_det_decls_too_lax
 		;	warn_nothing_exported
@@ -87,6 +88,7 @@
 		;	output_file_name
 	% Code generation options
 		;	trad_passes
+		;	highlevel_c
 		;	lazy_code
 		;	polymorphism
 		;	reclaim_heap_on_semidet_failure
@@ -175,6 +177,7 @@ option_defaults_2(warning_option, [
 	inhibit_warnings	-	bool(no),
 	halt_at_warn		-	bool(no),
 	warn_singleton_vars	-	bool(yes),
+	warn_overlapping_scopes	-	bool(yes),
 	warn_missing_det_decls	-	bool(yes),
 	warn_det_decls_too_lax	-	bool(yes),
 	warn_nothing_exported	-	bool(yes)
@@ -215,6 +218,7 @@ option_defaults_2(code_gen_option, [
 		% Code Generation Options
 	tags			-	string("low"),
 	polymorphism		-	bool(yes),
+	highlevel_c		-	bool(no),
 	prev_code		-	bool(no),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
@@ -316,6 +320,7 @@ short_option('?', 			help).
 
 long_option("polymorphism",		polymorphism).
 long_option("grade",			grade).
+long_option("c-optimise",		c_optimize).
 long_option("c-optimize",		c_optimize).
 long_option("debug",			debug).
 long_option("verbose",			verbose).
@@ -338,6 +343,7 @@ long_option("convert-to-Goedel", 	convert_to_goedel).
 long_option("help",			help).
 long_option("line-numbers",		line_numbers).
 long_option("warn-singleton-variables",	warn_singleton_vars).
+long_option("warn-overlapping-scopes",	warn_overlapping_scopes).
 long_option("warn-missing-det-decls",	warn_missing_det_decls).
 long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("warn-nothing-exported",	warn_nothing_exported).
@@ -354,6 +360,10 @@ long_option("prev-code",		prev_code).
 long_option("follow-code",		follow_code).
 long_option("follow-vars",		follow_vars).
 long_option("lazy-code",		lazy_code).
+long_option("highlevel-C",		highlevel_c).
+long_option("highlevel-c",		highlevel_c).
+long_option("high-level-C",		highlevel_c).
+long_option("high-level-c",		highlevel_c).
 long_option("reclaim-heap-on-semidet-failure",
 					reclaim_heap_on_semidet_failure).
 long_option("reclaim-heap-on-nondet-failure",
@@ -432,6 +442,8 @@ options_help -->
 	io__write_string("\t\tnon-zero exit status.\n"),
 	io__write_string("\t--no-warn-singleton-variables\n"),
 	io__write_string("\t\tDon't warn about variables which only occur once.\n"),
+	io__write_string("\t--no-warn-overlapping-scopes\n"),
+	io__write_string("\t\tDon't warn about variables which occur in overlapping scopes.\n"),
 	io__write_string("\t--no-warn-missing-det-decls\n"),
 	io__write_string("\t\tDon't warn about predicate declarations which don't\n"),
 	io__write_string("\t\thave a determinism annotation.\n"),

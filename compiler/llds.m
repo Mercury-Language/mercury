@@ -292,6 +292,11 @@
 :- pred output_proc_label(proc_label, io__state, io__state).
 :- mode output_proc_label(in, di, uo) is det.
 
+	% Mangle an arbitrary name into a C identifier
+
+:- pred llds__name_mangle(string, string).
+:- mode llds__name_mangle(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -2053,9 +2058,6 @@ llds__reg_to_string(f(N), Description) :-
 	% part of a C identifier.  This predicate is necessary because
 	% quoted names such as 'name with embedded spaces' are valid
 	% predicate names in Mercury.
-
-:- pred llds__name_mangle(string, string).
-:- mode llds__name_mangle(in, out) is det.
 
 llds__name_mangle(Name, MangledName) :-
 	(

@@ -918,7 +918,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 		pred_info_procedures(PredInfo0, Procs),
 		map__keys(Procs, ModeIds),
 		clauses_info_add_clause(Clauses0, ModeIds, ClauseVarSet, Args,
-				Body, Context, Goal, VarSet, Clauses),
+				Body, Context, Goal, VarSet, Clauses, Warnings),
 		pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo),
 		map__set(Preds0, PredId, PredInfo, Preds),
 		predicate_table_set_preds(PredicateTable1, Preds,
@@ -927,7 +927,9 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 			ModuleInfo)
 		},
 		% warn about singleton variables 
-		maybe_warn_singletons(VarSet, PredName/Arity, Goal)
+		maybe_warn_singletons(VarSet, PredName/Arity, Goal),
+		% warn about variables with overlapping scopes
+		maybe_warn_overlap(Warnings, VarSet, PredName/Arity)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1101,6 +1103,55 @@ get_matching_procedure([P|Procs], Modes, OurProcId) :-
 	;
 		get_matching_procedure(Procs, Modes, OurProcId)
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% Warn about variables which occur only once but don't start with
+	% an underscore, or about variables which do start with an underscore
+	% but occur more than once.
+	%
+:- pred maybe_warn_overlap(list(quant_warning), varset, pred_call_id,
+				io__state, io__state).
+:- mode maybe_warn_overlap(in, in, in, di, uo) is det.
+
+maybe_warn_overlap(Warnings, VarSet, PredCallId) -->
+	globals__io_lookup_bool_option(warn_overlapping_scopes,
+			WarnOverlappingScopes),
+	( { WarnOverlappingScopes = yes } ->
+		warn_overlap(Warnings, VarSet, PredCallId)
+	;	
+		[]
+	).
+
+
+:- pred warn_overlap(list(quant_warning), varset, pred_call_id,
+				io__state, io__state).
+:- mode warn_overlap(in, in, in, di, uo) is det.
+
+warn_overlap([], _, _) --> [].
+warn_overlap([Warn|Warns], VarSet, PredCallId) -->
+	{ Warn = warn_overlap(Vars, Context) },
+	io__stderr_stream(StdErr),
+	io__set_output_stream(StdErr, OldStream),
+	prog_out__write_context(Context),
+	io__write_string(StdErr, "In clause for predicate `"),
+	hlds_out__write_pred_call_id(PredCallId),
+	io__write_string(StdErr, "':\n"),
+	prog_out__write_context(Context),
+	( { Vars = [Var] } ->
+		io__write_string(StdErr, "  Warning: variable `"),
+		mercury_output_var(Var, VarSet),
+		report_warning(StdErr, "' has overlapping scopes.\n")
+	;
+		io__write_string(StdErr, "  Warning: variables `"),
+		mercury_output_vars(Vars, VarSet),
+		report_warning(StdErr, "'\n"),
+		prog_out__write_context(Context),
+		report_warning(StdErr, "  each have overlapping scopes.\n")
+	),
+	io__set_output_stream(OldStream, _),
+	warn_overlap(Warns, VarSet, PredCallId).
+
 %-----------------------------------------------------------------------------%
 
 	% Warn about variables which occur only once but don't start with
@@ -1466,13 +1517,15 @@ clauses_info_init(Arity, clauses_info(VarSet, VarTypes, HeadVars, [])) :-
 :- pred clauses_info_add_clause(clauses_info::in,
 		list(proc_id)::in, varset::in, list(term)::in, goal::in,
 		term__context::in,
-		hlds__goal::out, varset::out, clauses_info::out) is det.
+		hlds__goal::out, varset::out, clauses_info::out,
+		list(quant_warning)::out) is det.
 
 clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
-		Context, Goal, VarSet, ClausesInfo) :-
+		Context, Goal, VarSet, ClausesInfo, Warnings) :-
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, HeadVars, ClauseList0),
 	varset__merge_subst(VarSet0, CVarSet, VarSet1, Subst),
-	transform(Subst, HeadVars, Args, Body, VarSet1, Context, Goal, VarSet),
+	transform(Subst, HeadVars, Args, Body, VarSet1, Context, Goal, VarSet,
+		Warnings),
 		% XXX we should avoid append - this gives O(N*N)
 	list__append(ClauseList0, [clause(ModeIds, Goal, Context)], ClauseList),
 	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, ClauseList).
@@ -1513,24 +1566,25 @@ clauses_info_add_pragma_c_code(ClausesInfo0, PredId, ModeId, PVarSet, PVars,
 		VarSet1, HldsGoal1, VarSet2),
 	map__init(Empty),
 	implicitly_quantify_clause_body(HeadVars, HldsGoal1, VarSet2, Empty,
-		HldsGoal, VarSet, _),
+		HldsGoal, VarSet, _, _Warnings),
 	NewClause = clause([ModeId], HldsGoal, Context),
 	ClausesInfo =  clauses_info(VarSet, VarTypes, HeadVars, [NewClause]).
 
 %-----------------------------------------------------------------------------
 
 :- pred transform(substitution, list(var), list(term), goal, varset,
-			term__context, hlds__goal, varset).
-:- mode transform(in, in, in, in, in, in, out, out) is det.
+			term__context, hlds__goal, varset, list(quant_warning)).
+:- mode transform(in, in, in, in, in, in, out, out, out) is det.
 
-transform(Subst, HeadVars, Args0, Body, VarSet0, Context, Goal, VarSet) :-
+transform(Subst, HeadVars, Args0, Body, VarSet0, Context,
+		Goal, VarSet, Warnings) :-
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1),
 	term__apply_substitution_to_list(Args0, Subst, Args),
 	insert_arg_unifications(HeadVars, Args, Context, head, Goal1, VarSet1,
 		Goal2, VarSet2),
 	map__init(Empty),
 	implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2, Empty,
-				Goal, VarSet, _).
+				Goal, VarSet, _, Warnings).
 
 %-----------------------------------------------------------------------------%
 

@@ -69,6 +69,11 @@
 :- pred hlds_out__write_hlds(int, module_info, io__state, io__state).
 :- mode hlds_out__write_hlds(in, in, di, uo) is det.
 
+:- pred hlds_out__write_clauses(int, module_info, pred_id, varset, list(var),
+				list(clause),
+				io__state, io__state).
+:- mode hlds_out__write_clauses(in, in, in, in, in, in, di, uo) is det.
+
 	% print out an hlds goal.
 
 :- pred hlds_out__write_goal(hlds__goal, module_info, varset, int,
@@ -305,11 +310,6 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 
 	hlds_out__write_procs(Indent, ModuleInfo, PredId, Imported, ProcTable),
 	io__write_string("\n").
-
-:- pred hlds_out__write_clauses(int, module_info, pred_id, varset, list(var),
-				list(clause),
-				io__state, io__state).
-:- mode hlds_out__write_clauses(in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clauses0)
 		-->

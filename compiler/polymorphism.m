@@ -264,7 +264,8 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 			VarSet = VarSet2
 		;
 			implicitly_quantify_clause_body(HeadVars, Goal1,
-				VarSet2, VarTypes2, Goal, VarSet, VarTypes)
+				VarSet2, VarTypes2, Goal, VarSet, VarTypes,
+				_Warnings)
 		)
 	),
 
