@@ -119,8 +119,8 @@ demangle(char *name) {
 	bool higher_order = FALSE; /* has this proc been specialized */
 	int internal = -1;
 	int lambda_line = 0;
-	char *lambda_pred_name;
-	const char *lambda_kind;
+	char *lambda_pred_name = NULL;
+	const char *lambda_kind = NULL;
 	enum { ORDINARY, UNIFY, COMPARE, INDEX, LAMBDA } category;
 	enum { COMMON, INFO, LAYOUT, FUNCTORS } data_category;
 
