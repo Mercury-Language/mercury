@@ -895,6 +895,11 @@ generate code --- instead, it will return a
 non-zero exit status.
 
 @sp 1
+@item --halt-at-syntax-error.
+This option causes the compiler to halt if it finds
+any syntax errors in the program.
+
+@sp 1
 @item --no-warn-singleton-variables
 Don't warn about variables which only occur once.
 
@@ -1226,8 +1231,8 @@ Don't migrate builtin goals into branched goals.
 Don't optimize the assignment of registers in branched goals.
 
 @sp 1
-@item --compact-args
-Use the same register for both input and output arguments.
+@item --args {old, compact}
+Use the pecified argument convention.
 
 @sp 1
 @item --no-reclaim-heap-on-nondet-failure
@@ -1406,8 +1411,12 @@ Don't specialize calls to higher-order predicates where
 the higher-order arguments are known.
 
 @sp 1
-@item --no-c-optimize
-Don't enable the C compiler's optimizations.
+@item -O-, --no-c-optimize
+@end table
+
+@sp 1
+@item --opt-level @var{n}
+Set optimization level to @var{n}.
 @end table
 
 @node Miscellaneous options
