@@ -1681,7 +1681,7 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 			}
 			break;
 		}
-		if (char_code != (MR_Char) char_code) {
+		if (char_code != (MR_UnsignedChar) char_code) {
 			Res = -2;
 			break;
 		}
