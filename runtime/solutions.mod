@@ -72,6 +72,12 @@ BEGIN_CODE
 #endif
 
 mercury__std_util__builtin_solutions_2_0:
+#ifdef PROFILE_CALLS
+{
+	tailcall(ENTRY(mercury__std_util__builtin_solutions_2_1),
+			LABEL(mercury__std_util__builtin_solutions_2_0));
+}
+#endif
 mercury__std_util__builtin_solutions_2_1:
 
 /*
@@ -101,7 +107,7 @@ mercury__std_util__builtin_solutions_2_1:
 		Declare_entry(do_call_nondet_closure);
 		call(ENTRY(do_call_nondet_closure),
 			LABEL(mercury__std_util__builtin_solutions_2_0_i1),
-			LABEL(mercury__std_util__builtin_solutions_2_0));
+			LABEL(mercury__std_util__builtin_solutions_2_1));
 	}
 
 mercury__std_util__builtin_solutions_2_0_i1:

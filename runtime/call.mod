@@ -355,8 +355,23 @@ mercury__index_2_0_i1:
 */
 
 mercury__compare_3_0:
+#ifdef PROFILE_CALLS
+{
+	tailcall(ENTRY(mercury__compare_3_3), LABEL(mercury__compare_3_0));
+}
+#endif
 mercury__compare_3_1:
+#ifdef PROFILE_CALLS
+{
+	tailcall(ENTRY(mercury__compare_3_3), LABEL(mercury__compare_3_1));
+}
+#endif
 mercury__compare_3_2:
+#ifdef PROFILE_CALLS
+{
+	tailcall(ENTRY(mercury__compare_3_3), LABEL(mercury__compare_3_2));
+}
+#endif
 mercury__compare_3_3:
 {
 	Word	type_info;
@@ -387,12 +402,12 @@ mercury__compare_3_3:
 	restore_registers();
 
 #ifdef	COMPACT_ARGS
-	tailcall(compare_pred, LABEL(mercury__compare_3_0));
+	tailcall(compare_pred, LABEL(mercury__compare_3_3));
 #else
 	push(succip);
 	push(type_arity);
 	call(compare_pred, LABEL(mercury__compare_3_0_i1),
-		LABEL(mercury__compare_3_0));
+		LABEL(mercury__compare_3_3));
 #endif
 }
 /*
