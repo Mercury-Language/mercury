@@ -28,13 +28,19 @@
 :- pred type_is_atomic(type, module_info).
 :- mode type_is_atomic(in, in) is semidet.
 
-	% type_is_higher_order_type(Type, PredOrFunc, ArgTypes) succeeds iff
+	% type_is_higher_order(Type, PredOrFunc, ArgTypes) succeeds iff
 	% Type is a higher-order predicate or function type with the specified
 	% argument types (for functions, the return type is appended to the
 	% end of the argument types).
 
 :- pred type_is_higher_order(type, pred_or_func, list(type)).
 :- mode type_is_higher_order(in, out, out) is semidet.
+
+	% type_id_is_higher_order(TypeId, PredOrFunc) succeeds iff
+	% TypeId is a higher-order predicate or function type.
+
+:- pred type_id_is_higher_order(type_id, pred_or_func).
+:- mode type_id_is_higher_order(in, out) is semidet.
 
 	% Given a type, determine what sort of type it is.
 
@@ -213,6 +219,17 @@ type_is_higher_order(Type, PredOrFunc, PredArgTypes) :-
 		PredOrFunc = function
 	).
 
+type_id_is_higher_order(SymName - Arity, PredOrFunc) :-
+	unqualify_name(SymName, TypeName),
+	( 
+		TypeName = "pred",
+		PredOrFunc = predicate
+	; 
+		TypeName = "=",
+		Arity = 2,
+		PredOrFunc = function
+	).
+
 :- pred type_is_enumeration(type, module_info).
 :- mode type_is_enumeration(in, in) is semidet.
 
@@ -230,20 +247,49 @@ type_to_type_id(Type, SymName - Arity, Args) :-
 		Atom = ":", Args0 = [ModuleTerm, TypeAndArgsTerm]
 	->
 		ModuleTerm = term__functor(term__atom(ModuleName), [], _),
-		TypeAndArgsTerm = term__functor(term__atom(TypeName), Args, _),
+		TypeAndArgsTerm = term__functor(term__atom(TypeName), Args1, _),
 		SymName = qualified(ModuleName, TypeName)
 	;
 		SymName = unqualified(Atom),
-		Args = Args0
+		Args1 = Args0
+	),
+
+		% higher order types may have representations where
+		% their arguments don't directly correspond to the
+		% arguments of the term.
+	(
+		type_is_higher_order(Type, _, PredArgTypes) 
+	->
+		Args = PredArgTypes
+	;
+		Args = Args1
 	),
 	list__length(Args, Arity).
 
 
-construct_type(SymName - _, Args, Type) :-
-	construct_qualified_term(SymName, Args, Type).
+construct_type(TypeId, Args, Type) :-
+	term__context_init(Context),
+	construct_type(TypeId, Args, Context, Type).
 
-construct_type(SymName - _, Args, Context, Type) :-
-	construct_qualified_term(SymName, Args, Context, Type).
+construct_type(TypeId, Args, Context, Type) :-
+	(
+		type_id_is_higher_order(TypeId, PredOrFunc)
+	->
+		(
+			PredOrFunc = predicate,
+			NewArgs = Args
+		;
+			PredOrFunc = function,
+			pred_args_to_func_args(Args, FuncArgTypes, FuncRetType),
+			NewArgs = [term__functor(term__atom("func"),
+						FuncArgTypes, Context),
+					 FuncRetType]
+		)
+	;
+		NewArgs = Args
+	),
+	TypeId = SymName - _,
+	construct_qualified_term(SymName, NewArgs, Context, Type).
 
 %-----------------------------------------------------------------------------%
 

@@ -275,9 +275,7 @@ equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap,
 				Type, VarSet, Circ)
 		;
 			VarSet = VarSet1,
-			EqvTypeId = SymName - _,
-			construct_qualified_term(SymName, TArgs1,
-							Context, Type),
+			construct_type(EqvTypeId, TArgs1, Context, Type),
 			bool__or(Circ0, Circ1, Circ)
 		)
 	;
