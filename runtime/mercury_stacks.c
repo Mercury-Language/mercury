@@ -142,7 +142,7 @@ MR_register_generator_ptr(MR_Subgoal **generator_ptr)
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf("registering generator %p -> %p "
-			"at cut stack level %d\n",
+			"at commit stack level %d\n",
 			generator_ptr, *generator_ptr, MR_cut_next - 1);
 	}
 #endif
