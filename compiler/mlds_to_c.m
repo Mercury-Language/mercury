@@ -380,6 +380,8 @@ mlds_output_pragma_export_defn(ModuleName, Indent, PragmaExport) -->
 	{ PragmaExport = ml_pragma_export(_C_name, MLDS_Name, MLDS_Signature,
 			Context, IsFunc) },
 	mlds_output_pragma_export_func_name(ModuleName, Indent, PragmaExport),
+	io__write_string("\n"),
+	mlds_indent(Context, Indent),
 	io__write_string("{\n"),
 	mlds_indent(Context, Indent),
 	(
@@ -474,7 +476,7 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 
 	mlds_output_fully_qualified_name(qual(ModuleName, FuncName)),
 	io__write_string("("),
-	io__write_list(QualNames, ",", mlds_output_fully_qualified_name),
+	io__write_list(QualNames, ", ", mlds_output_fully_qualified_name),
 	io__write_string(");\n").
 
 	%
