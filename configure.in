@@ -93,11 +93,9 @@ EOF
 	fi
 	rm -f conftest*
 fi
-#-----------------------------------------------------------------------------#
+if test "$BOOTSTRAP_MC" = ""; then
 # No `mmc' was installed - perhaps there was an `mc' around.
 # XXX This is only temporary.
-if test "$BOOTSTRAP_MC" = ""; then
-MERCURY_MSG("still looking for an already installed Mercury compiler to bootstrap with...")
 AC_PATH_PROG(BOOTSTRAP_MC_2,mc)
 if test "$BOOTSTRAP_MC_2" != ""; then
 	AC_MSG_CHECKING(whether $BOOTSTRAP_MC_2 works and is sufficiently recent)
