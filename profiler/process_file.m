@@ -47,23 +47,26 @@ process_file__main(Prof, DynamicCallGraph) -->
 	% globals__io_lookup_string_option(libraryfile, LibFile),
 	globals__io_lookup_bool_option(dynamic_cg, Dynamic),
 
+	% process the decl file
         maybe_write_string(VVerbose, "\n\t% Processing "),
 	maybe_write_string(VVerbose, DeclFile),
 	maybe_write_string(VVerbose, "..."),
-
         process_addr_decl(AddrDeclMap, ProfNodeMap0),
+        maybe_write_string(VVerbose, " done.\n"),
 
-        maybe_write_string(VVerbose, " done.\n\t% Processing "),
+	% process the timing counts file
+        maybe_write_string(VVerbose, "\t% Processing "),
 	maybe_write_string(VVerbose, CountFile),
 	maybe_write_string(VVerbose, "..."),
-        process_addr(ProfNodeMap0, ProfNodeMap1, Hertz, ClockTicks,TotalCounts),
+        process_addr(ProfNodeMap0, ProfNodeMap1, Hertz, ClockTicks,
+		TotalCounts),
+        maybe_write_string(VVerbose, " done.\n"),
 
-        maybe_write_string(VVerbose, " done.\n\t% Processing "),
+	% process the call pair counts file
+        maybe_write_string(VVerbose, "\t% Processing "),
 	maybe_write_string(VVerbose, PairFile),
 	maybe_write_string(VVerbose, "..."),
-
         process_addr_pair(ProfNodeMap1, DynamicCallGraph, ProfNodeMap),
-
         maybe_write_string(VVerbose, " done.\n"),
 
 	{ map__init(CycleMap) },
@@ -73,12 +76,11 @@ process_file__main(Prof, DynamicCallGraph) -->
 	(
 		{ Dynamic = no }
 	->
-		maybe_write_string(VVerbose, " done.\n"),
 		% maybe_write_string(VVerbose, "\t% Processing "),
 		% maybe_write_string(VVerbose, LibFile),
 		% maybe_write_string(VVerbose, "..."),
-
 		% process_library_callgraph(_, _),
+		% maybe_write_string(VVerbose, " done.\n"),
 		{ true }
 
 	;
@@ -90,7 +92,7 @@ process_file__main(Prof, DynamicCallGraph) -->
 
 
 % process_addr_decl:
-%	Reads in the addrdecl.out file.
+%	Reads in the Prof.Decl file.
 %	Builds the addrdecl map which associates label names(key) with 
 %	label addresses.
 %	Also builds the prof_node_map which associates label addresses with
@@ -160,7 +162,7 @@ process_addr_decl_2(AddrDecl0, ProfNodeMap0, AddrDecl, ProfNodeMap) -->
 
 
 % process_addr:
-% 	Reads in the addr.out file and stores all the counts in the 
+% 	Reads in the Prof.Counts file and stores all the counts in the 
 % 	prof_node structure.  Also sums the total counts at the same time.
 %
 :- pred process_addr(prof_node_map, prof_node_map, int, int, int,
@@ -179,12 +181,20 @@ process_addr(ProfNodeMap0, ProfNodeMap, Hertz, ClockTicks, TotalCounts) -->
 	;
 		{ Result = error(Error) },
 		{ io__error_message(Error, ErrorMsg) },
-		{ string__append("error opening count file `", CountFile, 
-					Str0) },
-		{ string__append(Str0, "': ", Str1) },
-		{ string__append(Str1, ErrorMsg, Str2) },
-		{ string__append(Str2, "\n", ErrorStr) },
-		{ error(ErrorStr) }
+		io__write_string("\nWarning: error opening `"),
+		io__write_string(CountFile),
+		io__write_string("': "),
+		io__write_string(ErrorMsg),
+		io__write_string("\n"),
+		io__write_string("The generated profile will not include "),
+		io__write_string("timing information.\n\n"),
+		{ TotalCounts = 0 },
+		{ ProfNodeMap = ProfNodeMap0 },
+		% We can use any arbitrary values for Hertz and ClockTicks;
+		% the values here won't be used, since all the times will be
+		% zero.
+		{ Hertz = 1 },
+		{ ClockTicks = 1 }
 	).
 
 :- pred process_addr_2(int, prof_node_map, int, prof_node_map, 
@@ -229,7 +239,7 @@ process_addr_2(TotalCounts0, ProfNodeMap0, TotalCounts, ProfNodeMap) -->
 
 
 % process_addr_pair:
-%	Reads in the addrpair.out file and stores the data in the relevant
+%	Reads in the Prof.CallPair file and stores the data in the relevant
 %	lists of the prof_node structure.  Also calculates the number of times
 %	a predicate is called.
 %

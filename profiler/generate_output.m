@@ -45,9 +45,15 @@
 						    % output_prof structure.
 			rbtree(float, string),	    % associate call graph 
 						    % percentage with a name.
-			rbtree(float, string)	    % as above except for flat 
+			rbtree(flat_key, string)    % as above except for flat 
 						    % profile.
 	    	).
+
+:- type flat_key --->
+		flat_key(
+			float,	% per cent time in this predicate
+			int	% number of calls to this predicate
+		).
 
 
 generate_output__main(Prof, IndexMap, Output) -->
@@ -149,14 +155,14 @@ generate_output__cycle(ProfNode, Prof, OutputProf0, OutputProf) :-
 	(
 		HertzFloat = 0.0
 	->
-		Selftime = 0.0,
+		SelfTime = 0.0,
 		DescTime = 0.0
 	;
-		Selftime is InitialFloat / HertzFloat * ClockTicksFloat,
+		SelfTime is InitialFloat / HertzFloat * ClockTicksFloat,
 		DescTime is (InitialFloat+Prop) / HertzFloat * ClockTicksFloat
 	),
 
-	OutputProfNode = output_cycle_prof(	Name, CycleNum, Selftime, 
+	OutputProfNode = output_cycle_prof(	Name, CycleNum, SelfTime, 
 						DescPercentage,
 						DescTime, TotalCalls, SelfCalls,
 						[], []
@@ -221,15 +227,15 @@ generate_output__single_predicate(ProfNode, Prof, OutputProf0, OutputProf) :-
 		(
 			HertzFloat = 0.0
 		->
-			Selftime = 0.0,
+			SelfTime = 0.0,
 			DescTime = 0.0
 		;
-			Selftime is InitialFloat / HertzFloat * ClockTicksFloat,
+			SelfTime is InitialFloat / HertzFloat * ClockTicksFloat,
 			DescTime is (InitialFloat+Prop) / HertzFloat 
 							* ClockTicksFloat
 		),
 
-		process_prof_node_parents(ParentList, Selftime, DescTime, 
+		process_prof_node_parents(ParentList, SelfTime, DescTime, 
 				TotalCalls, CycleNum, CycleMap, 
 				OutputParentList, OutputCycleParentList),
 		process_prof_node_children(ChildList, CycleNum, CycleMap, 
@@ -237,7 +243,7 @@ generate_output__single_predicate(ProfNode, Prof, OutputProf0, OutputProf) :-
 
 		OutputProfNode = output_prof(	Name,		CycleNum,
 						DescPercentage,
-						FlatPercentage,	Selftime,
+						FlatPercentage,	SelfTime,
 						DescTime,	TotalCalls,
 						SelfCalls,	
 						OutputParentList,
@@ -249,8 +255,9 @@ generate_output__single_predicate(ProfNode, Prof, OutputProf0, OutputProf) :-
 		map__det_insert(InfoMap0, LabelName, OutputProfNode, InfoMap),
 		rbtree__insert_duplicate(CallTree0, DescPercentage, 
 						LabelName, CallTree),
-		rbtree__insert_duplicate(FlatTree0, FlatPercentage, 
-							LabelName, FlatTree),
+		rbtree__insert_duplicate(FlatTree0, flat_key(FlatPercentage,
+							TotalCalls), 
+						LabelName, FlatTree),
 		
 		OutputProf = profiling(InfoMap, CallTree, FlatTree)
 	).
@@ -276,12 +283,12 @@ construct_name([Name | Names], NameStr) :-
 					cycle_map, list(parent), list(parent)).
 :- mode process_prof_node_parents(in, in, in, in, in, in, out, out) is det.
 
-process_prof_node_parents(Parents0, Selftime, DescTime, TotalCalls0, CycleNum,
+process_prof_node_parents(Parents0, SelfTime, DescTime, TotalCalls0, CycleNum,
 			CycleMap, OutputParentList, OutputCycleParentList) :-
 	remove_cycle_members(Parents0, TotalCalls0, CycleNum, CycleMap, 
 				TotalCalls, Parents, OutputCycleParentList),
 	int__to_float(TotalCalls, FltTotalCalls),
-	process_prof_node_parents_2(Parents, Selftime, DescTime, FltTotalCalls,
+	process_prof_node_parents_2(Parents, SelfTime, DescTime, FltTotalCalls,
 						CycleMap, OutputParentList).
 
 
@@ -330,10 +337,10 @@ remove_cycle_members([PN | PNs], TotalCalls0, CycleNum, CycleMap, TotalCalls,
 :- mode process_prof_node_parents_2(in, in, in, in, in, out) is det.
 
 process_prof_node_parents_2([], _, _, _, _, []).
-process_prof_node_parents_2([P | Ps], Selftime, DescTime, TotalCalls, 
+process_prof_node_parents_2([P | Ps], SelfTime, DescTime, TotalCalls, 
 						CycleMap, OutputParentList) :-
 	rbtree__init(Output0),
-	process_prof_node_parents_3([P | Ps], Selftime, DescTime, 
+	process_prof_node_parents_3([P | Ps], SelfTime, DescTime, 
 						TotalCalls, CycleMap,
 						Output0, Output),
 	rbtree__values(Output, OutputParentList).
@@ -344,7 +351,7 @@ process_prof_node_parents_2([P | Ps], Selftime, DescTime, TotalCalls,
 :- mode process_prof_node_parents_3(in, in, in, in, in, in, out) is det.
 
 process_prof_node_parents_3([], _, _, _, _, Output, Output).
-process_prof_node_parents_3([PN | PNs], Selftime, DescTime, TotalCalls, 
+process_prof_node_parents_3([PN | PNs], SelfTime, DescTime, TotalCalls, 
 					CycleMap, Output0, Output) :-
 	pred_info_get_entire(PN, LabelName, Calls),
 
@@ -364,14 +371,14 @@ process_prof_node_parents_3([PN | PNs], Selftime, DescTime, TotalCalls,
         % due to the parent.
         % and the amount of the current predicate's descendant-time spent
         % due to the parent.
-        builtin_float_times(Selftime, Proportion, PropSelftime),
-        builtin_float_times(DescTime, Proportion, PropDescTime),
+        PropSelfTime is SelfTime * Proportion,
+        PropDescTime is DescTime * Proportion,
 	
-	Parent = parent(LabelName, ParentCycleNum, PropSelftime, 
+	Parent = parent(LabelName, ParentCycleNum, PropSelfTime, 
 							PropDescTime, Calls),
 	rbtree__insert_duplicate(Output0, Calls, Parent, Output1),
 	
-	process_prof_node_parents_3(PNs, Selftime, DescTime, TotalCalls, 
+	process_prof_node_parents_3(PNs, SelfTime, DescTime, TotalCalls, 
 						CycleMap, Output1, Output).
 
 
@@ -450,7 +457,7 @@ process_prof_node_children_2([PN | PNs], Prof, Output0, Output) :-
 	prof_node_get_total_calls(ProfNode, TotalCalls),
 
 	int__to_float(Initial, InitialFloat),
-	builtin_float_plus(InitialFloat, Prop, CurrentCount),
+	CurrentCount is InitialFloat + Prop,
 
 	int__to_float(TotalCalls, FloatTotalCalls),
         int__to_float(Calls, FloatCalls),
@@ -459,22 +466,20 @@ process_prof_node_children_2([PN | PNs], Prof, Output0, Output) :-
 	% Calculate the self time spent in the current predicate.
 	int__to_float(Hertz, HertzFloat),
 	int__to_float(ClockTicks, ClockTicksFloat),
-	checked_float_divide(InitialFloat, HertzFloat, InterA),
-	builtin_float_times(InterA, ClockTicksFloat, Selftime),
+	SelfTime is (InitialFloat / HertzFloat) * ClockTicksFloat,
 
 	% Calculate the descendant time, which is the time spent in the 
 	% current predicate and its descendants
-	builtin_float_divide(CurrentCount, HertzFloat, InterB),
-	builtin_float_times(InterB, ClockTicksFloat, DescTime),
+	DescTime is (CurrentCount / HertzFloat) * ClockTicksFloat,
 
 	% Calculate the amount of the current predicate's self-time spent
         % due to the parent.
         % and the amount of the current predicate's descendant-time spent
         % due to the parent.
-        builtin_float_times(Selftime, Proportion, PropSelftime),
-        builtin_float_times(DescTime, Proportion, PropDescTime),
+        PropSelfTime is SelfTime * Proportion,
+        PropDescTime is DescTime * Proportion,
 	
-	Child = child(LabelName, CycleNum, PropSelftime, PropDescTime, Calls, 
+	Child = child(LabelName, CycleNum, PropSelfTime, PropDescTime, Calls, 
 								TotalCalls),
 	rbtree__insert_duplicate(Output0, Calls, Child, Output1),
 	process_prof_node_children_2(PNs, Prof, Output1, Output).
@@ -511,15 +516,14 @@ assign_index_numbers_2([X0|Xs0], IndexMap0, N0, IndexMap) :-
 
 profiling_init(Profiling) :-
 	map__init(InfoMap),
-	rbtree__init(EmptyTree),
-	CallTree = EmptyTree,
-	FlatTree = EmptyTree,
+	rbtree__init(CallTree),
+	rbtree__init(FlatTree),
 	Profiling = profiling(InfoMap, CallTree, FlatTree).
 
 checked_float_divide(A, B, C) :-
 	( B = 0.0 ->
 		C = 0.0
 	;
-		builtin_float_divide(A, B, C)
+		C is A / B
 	).
 

@@ -35,7 +35,7 @@ MLFLAGS =	--mercury-libs none $(EXTRA_MLFLAGS)
 MLLIBS  =	$(EXTRA_MLLIBS) $(LIBRARY_DIR)/libmercury.a \
 		$(RUNTIME_DIR)/libmer.a ` \
 		    case $(GRADE) in \
-			*.gc*.prof) echo $(BOEHM_GC_DIR)/libgc_prof.a ;; \
+			*.gc*.prof*) echo $(BOEHM_GC_DIR)/libgc_prof.a ;; \
 			*.gc*) echo $(BOEHM_GC_DIR)/libgc.a ;; \
 		    esac \
 		` -lm
