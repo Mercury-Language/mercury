@@ -114,15 +114,15 @@ extern	void	(*MR_trace_shutdown)(void);
 ** before calling MR_trace.
 **
 ** MR_trace_enabled should keep the same value throughout the execution of
-** the entire program after being set in mercury_wrapper.c. There are two
-** exceptions to this. First, the Mercury routines called as part of the
-** functionality of the tracer itself (e.g. the term browser) should always be
-** executed with MR_trace_enabled set to MR_FALSE. Second, when a procedure
-** implemented in foreign code has the tabled_for_io_unitize annotation,
-** which means that it can both do I/O and call Mercury code, then we turn the
-** procedure and its descendants into a single unit by turning off tracing
-** within the descendants. This is required to prevent the I/O tabling problems
-** that could otherwise arise if we got retries from within the descendants.
+** the entire program after being set in mercury_wrapper.c, with two
+** exceptions. First, the Mercury routines called as part of the functionality
+** of the tracer itself (e.g. the term browser) should always be executed
+** with MR_trace_enabled set to MR_FALSE. Second, when a procedure has
+** the tabled_for_io_unitize annotation, which means that it can both do I/O
+** and call Mercury code, then we turn the procedure and its descendants
+** into a single unit by turning off tracing within the descendants.
+** This is required to prevent the I/O tabling problems that could otherwise
+** arise if we got retries from within the descendants.
 */
 
 extern	MR_bool		MR_trace_enabled;
