@@ -1,81 +1,124 @@
 NEWS for Mercury release 0.6
 ----------------------------
 
-* We now specialize calls to higher-order predicates within the same module
-  in the case when the higher-order arguments have known values.
-  This optimization is enabled by the `--optimize-higher-order' option.
-  (XXX Unfortunately, this optimization has some bugs, so it is not
-  enabled by default.)
+* We now provide some support for functional syntax.
 
-* We now specialize calls to predicates within the same module which have
-  unused arguments.  This often happens for polymorphic predicates, since
-  the compiler introduces type_info arguments which are often unused.
-  This optimization is enabled by the `--optimize-unused-args' option.
-  (XXX Unfortunately, this optimization has some bugs, so it is not
-  enabled by default.)
+  This is still work-in-progress, and should be considered
+  experimental.  Higher-order functions are not supported yet (use
+  higher-order predicates instead).  The compiler will probably get
+  very confused if you try to define a function of arity N and a
+  predicate of arity N+1 with the same name.  There is no support for
+  debugging programs using functional syntax.  There is no
+  documentation.
 
-* There's a new option `--optimize-dead-proc' option to eliminate unused
-  procedures within a module.  This is useful even if the original source
-  code didn't contain any unused procedures, since inlining and specialization
-  can mean that the original version of a procedure is no longer used.
+* We now support overloading of predicates (and functions) with the
+  same name and arity defined in different modules. 
+  
+  Previously, an explicit module qualifier was required to resolve the
+  ambiguity; now, the typechecker will use the types to resolve the
+  ambiguity, if possible.  (Note that you cannot define more than one
+  predicate with the same name and arity in the same module.  Allowing
+  that would add considerable complexity to the syntax, and would be
+  of arguable utility, so we do not anticipate lifting that restriction.)
 
-* There's a new option `--split-c-files' which causes the compiler to put
-  each C function in its own C file, so that the linker can link in only
-  what is used, and a new Mmake target `foo.split' for
-  building a version of `foo' compiled with `--split-c-files'.
-  (`--split-c-files' has much the same effect as `--optimize-dead-proc',
-  except that it works globally, not just within a module.)
-  On platforms for which we don't support shared libraries, installing
-  a split version of the Mercury library fixes the problem of dumb Unix
-  linkers dragging in nearly the entire library even if most of it is
-  unused, and so reduces the size of a hello world program from >400k
-  to around 120k.
+* Support for floating point is much improved.
+  
+  The above-mentioned support for functional syntax and overloading
+  have enabled major improvements in the interface used for floating
+  point.  You can now use the usual arithmetic and comparison
+  operators, rather than the cumbersome builtin_float_plus (etc.)
+  predicates that were used previously.  We have also improved code
+  generation for floating point operations, by avoiding many
+  unnecessary boxing/unboxing operations, and by making the
+  `--static-ground-terms' optimization apply also to floating point
+  constants.  These two optimizations improved performance on the
+  realistic "pseudoknot" benchmark by nearly a factor of four.
 
-* The getopt library is now more flexible. It can handle command line switches
-  (such as -O2) that affect the values of many options, and it can handle
-  long options that specify a value after an equal sign, in the GNU style
-  (e.g. --optimization-level=2).
+* We've added some new compiler options to simplify the choice of which
+  optimization options to enable.
 
-* We have renamed the varset__lookup predicates to varset__search in order to
-  conform to our general naming convention.
-
-* We have removed (the undocumented) list__map_maybe/3.
-
-* We have added a few new predicates using higher order facilities:
-	list__map/3, list__filter/3, list__filter/4, list__foldl/4,
-	list__foldr/4, list__sort/4 and list__merge/4 in list.m
-	and maybe_pred/3 in std_util.m.
-	See the library reference manual for details.
-
-* There are quite a few changes to the graph module. The interface has been
-  made more consistent with the rest of the library. The predicate
-  graph__lookup_node/3 has been replaced by two predicates: graph__search_node/3
-  which is nondet and returns all the nodes with matching data, and
-  graph__find_matching_nodes/3 which is det and returns all the nodes with
-  matching data.
-
-* The code generator generates special code for dense switches in which all
-  the output variables are constant terms. Instead of generating a dense jump
-  table, it now generates an set of arrays of answers (one array for each output
-  variable). For predicates that convert between enumerations and integers,
-  etc, this is a significant improvement.
-
-* Various other minor improvements:
-
-  - You can now use `-O <n>' to select an optimization level between 0 and 5.
+  - You can now use `-O<n>' to select an optimization level between 0 and 5.
 
   - You can now use `--optimize-space' to select optimization for space, instead
     of optimization for time (which is the default).
 
+* We've continued to improve the compiler's optimization.
+
+  As well as the above-mentioned improvements to float-point code generation:
+
+  - We now specialize calls to higher-order predicates within the same module
+    in the case when the higher-order arguments have known values.
+    This optimization is enabled by the `--optimize-higher-order' option.
+    (XXX Unfortunately, this optimization has some bugs, so it is not
+    enabled by default.)
+
+  - We now specialize calls to predicates within the same module which have
+    unused arguments.  This often happens for polymorphic predicates, since
+    the compiler introduces type_info arguments which are often unused.
+    This optimization is enabled by the `--optimize-unused-args' option.
+    (XXX Unfortunately, this optimization has some bugs, so it is not
+    enabled by default.)
+
+  - There's a new option `--optimize-dead-proc' option to eliminate unused
+    procedures within a module.  This is useful even if the original source
+    code didn't contain any unused procedures, since inlining and specialization
+    can mean that the original version of a procedure is no longer used.
+
+  - There's a new option `--split-c-files' which causes the compiler to put
+    each C function in its own C file, so that the linker can link in only
+    what is used, and a new Mmake target `foo.split' for
+    building a version of `foo' compiled with `--split-c-files'.
+    (`--split-c-files' has much the same effect as `--optimize-dead-proc',
+    except that it works globally, not just within a module.)
+    On platforms for which we don't support shared libraries, installing
+    a split version of the Mercury library fixes the problem of dumb Unix
+    linkers dragging in nearly the entire library even if most of it is
+    unused, and so reduces the size of a hello world program from >400k
+    to around 120k.
+
+  - The code generator generates special code for dense switches in
+    which all the output variables are constant terms.  Instead of
+    generating dense jump tables, it puts the answers in static constant
+    arrays, and uses retrieves them using array indexing, avoiding
+    an expensive jump and reducing code size.
+
   - The code generator now emits better code for constructing deeply nested
-    terms.
+    terms, and avoids some unnecessary register shuffling.
 
   - The value numbering optimization now processes even code sequences
     containing several heap allocations.
 
-  - The `--pred-value-number' option now works. If it is given, and
+  - The `--pred-value-number' option now works.  If it is given, and
     value numbering notices that a value is available from a location
     that is faster to access than the one from which another code
     sequence retrieves the value, this other code sequence will be
     reoptimized taking this into account.
+
+* We've made a few changes to the Mercury standard library.
+
+  - The getopt library is now more flexible.  It can handle command
+    line switches (such as `-O2') that affect the values of many
+    options, and it can handle long options that specify a value after
+    an equal sign, in the GNU style (e.g. `--optimization-level=2').
+
+  - We have added a few new predicates using higher order facilities:
+	list__map/3, list__filter/3, list__filter/4, list__foldl/4,
+	list__foldr/4, list__sort/4 and list__merge/4 in list.m and
+	maybe_pred/3 in std_util.m.  See the library reference manual
+    for details.
+
+  - There are quite a few changes to the graph module.  The interface has been
+    made more consistent with the rest of the library.  The predicate
+    graph__lookup_node/3 has been replaced by two predicates:
+    graph__search_node/3 which is nondet and returns all the nodes with
+    matching data, and graph__find_matching_nodes/3 which is det and
+    returns all the nodes with matching data.
+
+  - We have renamed the varset__lookup predicates to varset__search in order to
+    conform to our general naming convention.
+
+  - We have removed the (undocumented) library predicate list__map_maybe/3.
+
+* We've ported the Mercury implementation to RS/6000 systems running AIX.
+  (Thanks to Andreas Kuehlmann.)
 
