@@ -19,7 +19,7 @@
 :- import_module list.
 :- export_pred	map__init/1, map__search/3, map__search_insert/4,
 		map__update/4, map__set/3, map__keys/2, map__to_assoc_list/2,
-		map__contains/2.
+		map__contains/2, map__inverse_search/3, map__member/3.
 :- export_type	map__pair.
 
 %-----------------------------------------------------------------------------%
@@ -74,6 +74,17 @@ map__inverse_search(Map, K, V) :-
 
 %-----------------------------------------------------------------------------%
 
+	% Nondeterministically return all the different key-value
+	% pairs contained in the map.
+	% The same as map__search except with a different mode.
+
+:- pred map__member(map(K,V), K, V).
+:- mode map__member(input, output, output).
+map__member(Map, K, V) :-
+	assoc_list_member(K-V, Map).
+
+%-----------------------------------------------------------------------------%
+
 	% This is just a version of member/2 with a complicated mode.
 	% The reason we don't just use member/2 is that we want to
 	% bootstrap this thing before we implement polymorphic modes.
@@ -81,6 +92,7 @@ map__inverse_search(Map, K, V) :-
 :- pred assoc_list_member(pair(K,V), list(pair(K,V))).
 :- mode assoc_list_member(bound(ground - free) -> ground, input).
 :- mode assoc_list_member(bound(free - ground) -> ground, input).
+:- mode assoc_list_member(bound(free - free) -> ground, input).
 assoc_list_member(X, [X|_]).
 assoc_list_member(X, [_|Xs]) :-
 	assoc_list_member(X, Xs).

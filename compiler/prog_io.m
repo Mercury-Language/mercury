@@ -275,7 +275,7 @@ prog_io__read_program(FileName, Result) -->
 		  string__append(Progname, ": can't open file '", Message1),
 		  string__append(Message1, FileName, Message2),
 		  string__append(Message2, "'.\n", Message),
-		  Term = term_functor(term_atom("<end of file>"), []),
+		  dummy_term(Term),
 		  Result = error([Message - Term])
 		}
 	).
@@ -329,9 +329,9 @@ check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
             ModuleName1 \= ModuleName2
             )
         then
+	    dummy_term(Term),
             ThisError = 
-"`:- end_module' declaration doesn't match `:- module' declaration" -
-			term_functor(term_atom("<end of file>"), []),
+"`:- end_module' declaration doesn't match `:- module' declaration" - Term,
             append([ThisError], Messages0, Messages),
             Result = error(Messages)
         else
@@ -342,10 +342,20 @@ check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
             )
         )
     else
+	dummy_term(Term2),
         ThisError = "module should start with a ':- module' declaration" -
-            		   term_functor(term_atom("<start of file>"), []),
+				Term2,
         Result = error([ThisError | Messages0])
     ).
+
+	% Create a dummy term.
+	% Used for error messages that are not associated with any
+	% term.
+:- pred dummy_term(term).
+:- mode dummy_term(output).
+dummy_term(Term) :-
+	term__context_init(0, Context),
+	Term = term_functor(term_atom(""), [], Context).
 
 %-----------------------------------------------------------------------------%
  	% Read a source file from standard input, first reading in
@@ -409,8 +419,10 @@ read_items_loop_2(syntax_error(ErrorMsg), Msgs0, Items0, _Error0,
 			Msgs, Items, Error) -->
 	% if the next item was a syntax error, then insert it in
 	% the list of messages and continue looping
+	io__get_line_number(LineNumber),
 	{
-	  ThisError = ErrorMsg - term_functor(term_atom(""), []),
+	  term__context_init(LineNumber, Context),
+	  ThisError = ErrorMsg - term_functor(term_atom(""), [], Context),
 	  Msgs1 = [ThisError | Msgs0],
 	  Items1 = Items0,
 	  Error1 = yes
@@ -471,20 +483,21 @@ convert_item(error(M,T), error(M,T)).
 :- mode parse_item(input, input, output).
 
 parse_item(VarSet, Term, Result) :-
- 	(if some [Decl]
-		Term = term_functor(term_atom(":-"), [Decl])
+ 	(if some [Decl, Context]
+		Term = term_functor(term_atom(":-"), [Decl], Context)
 	then
 		parse_decl(VarSet, Decl, Result)
 	else
 			% OK, it's not a declaration. Is it a fact, or a rule?
-		(if some [H,B]
-			Term = term_functor(term_atom(":-"), [H,B])
+		(if some [H, B, Context2]
+			Term = term_functor(term_atom(":-"), [H,B], Context2)
 		then		% it's a fact
 			Head = H,
 			Body = B
 		else		% it's a rule
 			Head = Term,
-			Body = term_functor(term_atom("true"), [])
+			term__context_init(0, Context3),
+			Body = term_functor(term_atom("true"), [], Context3)
 		),
 		parse_goal(Body, Body2),
 		parse_qualified_term(Head, "clause head", R),
@@ -504,7 +517,12 @@ join_error(no, Error, Error).
 
 %-----------------------------------------------------------------------------%
 
-	% parse a goal
+	% Parse a goal.
+	% We just check if it matches the appropriate pattern
+	% for one of the builtins.  If it doens't match any of the
+	% builtins, then it's just a predicate call.
+	% XXX we should do more parsing here - type qualification and
+	% module qualification should be parsed here.
 
 :- pred parse_goal(term, goal).
 :- mode parse_goal(input, output).
@@ -519,41 +537,41 @@ parse_goal(Term, Goal) :-
 
 :- pred parse_goal_2(term, goal).
 :- mode parse_goal_2(input, output).
-parse_goal_2(term_functor(term_atom("true"),[]), true).
-parse_goal_2(term_functor(term_atom("fail"),[]), fail).
-parse_goal_2(term_functor(term_atom("="),[A,B]), unify(A,B)).
-parse_goal_2(term_functor(term_atom(","),[A0,B0]), (A,B)) :-
+parse_goal_2(term_functor(term_atom("true"),[],_), true).
+parse_goal_2(term_functor(term_atom("fail"),[],_), fail).
+parse_goal_2(term_functor(term_atom("="),[A,B],_), unify(A,B)).
+parse_goal_2(term_functor(term_atom(","),[A0,B0],_), (A,B)) :-
 	parse_goal(A0, A),
 	parse_goal(B0, B).
-parse_goal_2(term_functor(term_atom(";"),[A0,B0]), (A;B)) :-
+parse_goal_2(term_functor(term_atom(";"),[A0,B0],_), (A;B)) :-
 	parse_goal(A0, A),
 	parse_goal(B0, B).
 parse_goal_2(term_functor(term_atom("if"),
-		[term_functor(term_atom("then"),[A0,B0])]),
+		[term_functor(term_atom("then"),[A0,B0],_)],_),
 		if_then(Vars,A,B)) :-
 	parse_some_vars_goal(A0, Vars, A),
 	parse_goal(B0, B).
 parse_goal_2( term_functor(term_atom("else"),[
 		    term_functor(term_atom("if"),[
-			term_functor(term_atom("then"),[A0,B0])
-		    ]),
+			term_functor(term_atom("then"),[A0,B0],_)
+		    ],_),
 		    C0
-		]),
+		],_),
 		if_then_else(Vars,A,B,C)) :-
 	parse_some_vars_goal(A0, Vars, A),
 	parse_goal(B0, B),
 	parse_goal(C0, C).
-parse_goal_2( term_functor(term_atom("not"), [A0]), not([],A) ) :-
+parse_goal_2( term_functor(term_atom("not"), [A0], _), not([],A) ) :-
 	parse_goal(A0, A).
-parse_goal_2( term_functor(term_atom("all"),[Vars0,A0]),all(Vars,A) ):-
+parse_goal_2( term_functor(term_atom("all"),[Vars0,A0],_),all(Vars,A) ):-
 	term_vars(Vars0, Vars),
 	parse_goal(A0, A).
 
 :- pred parse_some_vars_goal(term, vars, goal).
 :- mode parse_some_vars_goal(input, output, output).
 parse_some_vars_goal(A0, Vars, A) :-
-	(if some [Vars0, A1]
-		A0 = term_functor(term_atom("some"), [Vars0,A1])
+	(if some [Vars0, A1, Context]
+		A0 = term_functor(term_atom("some"), [Vars0,A1], Context)
 	then
 		term_vars(Vars0, Vars),
 		parse_goal(A1, A)
@@ -569,8 +587,8 @@ parse_some_vars_goal(A0, Vars, A) :-
 :- pred parse_decl(varset, term, maybe(item)).
 :- mode parse_decl(input, input, output).
 parse_decl(VarSet, F, Result) :-
-	(if some [Atom, As]
-		F = term_functor(term_atom(Atom), As)
+	(if some [Atom, As, Context]
+		F = term_functor(term_atom(Atom), As, Context)
 	then
 		(if some [R]
 			process_decl(VarSet, Atom, As, R)
@@ -674,8 +692,8 @@ process_decl(VarSet, "implementation", [],
 				ok(module_defn(VarSet, implementation))).
 
 process_decl(VarSet, "module", [ModuleName], Result) :-
-	(if some [Module]
-		ModuleName = term_functor(term_atom(Module), [])
+	(if some [Module, Context]
+		ModuleName = term_functor(term_atom(Module), [], Context)
 	then
 		Result = ok(module_defn(VarSet, module(Module)))
 	else
@@ -683,8 +701,8 @@ process_decl(VarSet, "module", [ModuleName], Result) :-
 	).
 
 process_decl(VarSet, "end_module", [ModuleName], Result) :-
-	(if some [Module]
-		ModuleName = term_functor(term_atom(Module), [])
+	(if some [Module, Context]
+		ModuleName = term_functor(term_atom(Module), [], Context)
 	then
 		Result = ok(module_defn(VarSet, end_module(Module)))
 	else
@@ -736,15 +754,15 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 :- pred parse_type_decl_type(term, condition, maybe(type_defn)).
 :- mode parse_type_decl_type(input, input, output).
 
-parse_type_decl_type(term_functor(term_atom("--->"),[H,B]), Condition, R) :-
+parse_type_decl_type(term_functor(term_atom("--->"),[H,B],_), Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_du_type(H, Body, R).
 
-parse_type_decl_type(term_functor(term_atom("="),[H,B]), Condition, R) :-
+parse_type_decl_type(term_functor(term_atom("="),[H,B],_), Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_uu_type(H, Body, R).
 	
-parse_type_decl_type(term_functor(term_atom("=="),[H,B]), Condition, R) :-
+parse_type_decl_type(term_functor(term_atom("=="),[H,B],_), Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_eqv_type(H, Body, R).
 
@@ -792,8 +810,9 @@ parse_mode_decl_pred(VarSet, Pred, R) :-
 :- pred get_condition(term, term, condition).
 :- mode get_condition(input, output, output).
 get_condition(B, Body, Condition) :-
-	(if some [Body1, Condition1]
-		B = term_functor(term_atom("where"), [Body1, Condition1])
+	(if some [Body1, Condition1, Context]
+		B = term_functor(term_atom("where"), [Body1, Condition1],
+					Context)
 	then
 		Body = Body1,
 		Condition = where(Condition1)
@@ -866,7 +885,7 @@ process_du_type_2(ok(Functor,Args), Body, Result) :-
 check_for_errors(Term, _, error("variable on LHS of type definition", Term)) :-
 	Term = term_variable(_).
 check_for_errors(Term, Body, Result) :-
-	Term = term_functor(_,_),
+	Term = term_functor(_,_,_),
 	parse_qualified_term(Term, "type definition", R),
 	check_for_errors_2(R, Body, Term, Result).
 
@@ -936,8 +955,8 @@ convert_constructors_2(Term.Terms, Constr.Constrs) :-
 :- pred convert_constructor(term, constructor).
 :- mode convert_constructor(input, output).
 convert_constructor(Term, Result) :-
-	(if some [Term1]
-		Term = term_functor(term_atom("{}"), [Term1])
+	(if some [Term1, Context]
+		Term = term_functor(term_atom("{}"), [Term1], Context)
 	then
 		Term2 = Term1
 	else
@@ -981,8 +1000,8 @@ binop_term_to_list(Op, Term, List) :-
 :- pred binop_term_to_list_2(string, term, list(term), list(term)).
 :- mode binop_term_to_list_2(input, input, input, output).
 binop_term_to_list_2(Op, Term, List0, List) :-
-	(if some [L, R]
-		Term = term_functor(term_atom(Op), [L, R])
+	(if some [L, R, Context]
+		Term = term_functor(term_atom(Op), [L, R], Context)
 	then
 		binop_term_to_list_2(Op, L, List0, List1),
 		binop_term_to_list_2(Op, R, List1, List)
@@ -1052,9 +1071,9 @@ process_rule_2(error(M, T), _, _, error(M, T)).
 /*** JUNK
 process_rule(VarSet, RuleType, Cond, Result) :-
 	varset__new_var(VarSet, Var, VarSet1),
-	RuleType = term_functor(F, RuleArgs),
+	RuleType = term_functor(F, RuleArgs, _),
 	append(RuleArgs, [Var, Var], PredArgs),
-	PredType = term_functor(F, PredArgs),
+	PredType = term_functor(F, PredArgs, _),
 	process_pred(VarSet1, PredType, Cond, Result).
 ***/
 
@@ -1065,8 +1084,8 @@ process_rule(VarSet, RuleType, Cond, Result) :-
 :- pred parse_inst_decl(varset, term, maybe(item)).
 :- mode parse_inst_decl(input, input, output).
 parse_inst_decl(VarSet, InstDefn, Result) :-
-	(if some [H,B]
-		InstDefn = term_functor(term_atom("="),[H,B])
+	(if some [H, B, Context]
+		InstDefn = term_functor(term_atom("="), [H,B], Context)
 	then
 		get_condition(B, Body, Condition),
 		convert_inst_defn(H, Body, R),
@@ -1136,7 +1155,7 @@ convert_inst_list([H0|T0], [H|T]) :-
 :- pred convert_inst(term, inst).
 :- mode convert_inst(input, output).
 convert_inst(term_variable(V), inst_var(V)).
-convert_inst(term_functor(Name, Args0), Result) :-
+convert_inst(term_functor(Name, Args0, _), Result) :-
 	(if Name = term_atom("free"), Args0 = [] then
 		Result = free
 	else
@@ -1161,7 +1180,7 @@ convert_bound_inst_list([H0|T0], [H|T]) :-
 
 :- pred convert_bound_inst(term, bound_inst).
 :- mode convert_bound_inst(input, output).
-convert_bound_inst(term_functor(Name, Args0), functor(Name, Args)) :-
+convert_bound_inst(term_functor(Name, Args0, _), functor(Name, Args)) :-
 	convert_inst_list(Args0, Args).
 
 :- pred process_inst_defn(maybe(inst_defn), varset, condition, maybe(item)).
@@ -1189,8 +1208,8 @@ parse_mode_decl(VarSet, ModeDefn, Result) :-
 
 :- pred mode_op(term, term, term).
 :- mode mode_op(input, input, output).
-mode_op(term_functor(term_atom("::"),[H,B]), H, B).
-mode_op(term_functor(term_atom("="),[H,B]), H, B).
+mode_op(term_functor(term_atom("::"),[H,B],_), H, B).
+mode_op(term_functor(term_atom("="),[H,B],_), H, B).
 
 :- pred convert_mode_defn(term, term, maybe(mode_defn)).
 :- mode convert_mode_defn(input, input, output).
@@ -1252,8 +1271,9 @@ convert_type_and_mode_list([H0|T0], [H|T]) :-
 :- pred convert_type_and_mode(term, type_and_mode).
 :- mode convert_type_and_mode(input, output).
 convert_type_and_mode(Term, Result) :-
-	(if some [ModeTerm, TypeTerm]
-		Term = term_functor(term_atom("::"), [ModeTerm, TypeTerm])
+	(if some [ModeTerm, TypeTerm, Context]
+		Term = term_functor(term_atom("::"), [ModeTerm, TypeTerm],
+				Context)
 	then
 		convert_type(TypeTerm, Type),
 		convert_mode(ModeTerm, Mode),
@@ -1273,8 +1293,8 @@ convert_mode_list([H0|T0], [H|T]) :-
 :- pred convert_mode(term, mode).
 :- mode convert_mode(input, output).
 convert_mode(Term, Mode) :-
-	(if some [InstA, InstB]
-		Term = term_functor(term_atom("->"), [InstA, InstB])
+	(if some [InstA, InstB, Context]
+		Term = term_functor(term_atom("->"), [InstA, InstB], Context)
 	then
 		convert_inst(InstA, ConvertedInstA),
 		convert_inst(InstB, ConvertedInstB),
@@ -1647,33 +1667,33 @@ combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
 
 :- pred parse_symbol_specifier(term, maybe(sym_specifier)).
 parse_symbol_specifier(Term, Result) :-
-	(if some [ConsSpecTerm]
-	    Term = term_functor(term_atom("cons"), [ConsSpecTerm])
+	(if some [ConsSpecTerm, Context1]
+	    Term = term_functor(term_atom("cons"), [ConsSpecTerm], Context1)
 	then
 	    parse_constructor_specifier(ConsSpecTerm, ConsSpecResult),
 	    process_cons_symbol_specifier(ConsSpecResult, Result)
-	else if some [PredSpecTerm]
-	    Term = term_functor(term_atom("pred"), [PredSpecTerm])
+	else if some [PredSpecTerm, Context2]
+	    Term = term_functor(term_atom("pred"), [PredSpecTerm], Context2)
 	then
 	    parse_predicate_specifier(PredSpecTerm, PredSpecResult),
 	    process_pred_symbol_specifier(PredSpecResult, Result)
-	else if some [TypeSpecTerm]
-	    Term = term_functor(term_atom("type"), [TypeSpecTerm])
+	else if some [TypeSpecTerm, Context3]
+	    Term = term_functor(term_atom("type"), [TypeSpecTerm], Context3)
 	then
 	    parse_type_specifier(TypeSpecTerm, TypeSpecResult),
 	    process_type_symbol_specifier(TypeSpecResult, Result)
-	else if some [AdtSpecTerm]
-	    Term = term_functor(term_atom("adt"), [AdtSpecTerm])
+	else if some [AdtSpecTerm, Context4]
+	    Term = term_functor(term_atom("adt"), [AdtSpecTerm], Context4)
 	then
 	    parse_adt_specifier(AdtSpecTerm, AdtSpecResult),
 	    process_adt_symbol_specifier(AdtSpecResult, Result)
-	else if some [OpSpecTerm]
-	    Term = term_functor(term_atom("op"), [OpSpecTerm])
+	else if some [OpSpecTerm, Context5]
+	    Term = term_functor(term_atom("op"), [OpSpecTerm], Context5)
 	then
 	    parse_op_specifier(OpSpecTerm, OpSpecResult),
 	    process_op_symbol_specifier(OpSpecResult, Result)
-	else if some [ModuleSpecTerm]
-	    Term = term_functor(term_atom("module"), [ModuleSpecTerm])
+	else if some [ModuleSpecTerm, Context6]
+	    Term = term_functor(term_atom("module"), [ModuleSpecTerm], Context6)
 	then
 	    parse_module_specifier(ModuleSpecTerm, ModuleSpecResult),
 	    process_module_symbol_specifier(ModuleSpecResult, Result)
@@ -1735,8 +1755,8 @@ process_op_symbol_specifier(error(Msg, Term), error(Msg, Term)).
 :- pred parse_module_specifier(term, maybe(module_specifier)).
 :- mode parse_module_specifier(input, output).
 parse_module_specifier(Term, Result) :-
-	(if some [ModuleName]
-		Term = term_functor(term_atom(ModuleName), [])
+	(if some [ModuleName, Context]
+		Term = term_functor(term_atom(ModuleName), [], Context)
 	then
 		Result = ok(ModuleName)
 	else
@@ -1763,8 +1783,8 @@ parse_module_specifier(Term, Result) :-
 :- pred parse_constructor_specifier(term, maybe(cons_specifier)).
 :- mode parse_constructor_specifier(input, output).
 parse_constructor_specifier(Term, Result) :-
-    (if some [NameArgsTerm, TypeTerm]
-	Term = term_functor(term_atom("::"), [NameArgsTerm, TypeTerm])
+    (if some [NameArgsTerm, TypeTerm, Context]
+	Term = term_functor(term_atom("::"), [NameArgsTerm, TypeTerm], Context)
     then
 	parse_arg_types_specifier(NameArgsTerm, NameArgsResult),
 	parse_type(TypeTerm, TypeResult),
@@ -1785,7 +1805,9 @@ parse_constructor_specifier(Term, Result) :-
 :- pred parse_predicate_specifier(term, maybe(pred_specifier)).
 :- mode parse_predicate_specifier(input, output).
 parse_predicate_specifier(Term, Result) :-
-    (if some [X, Y] Term = term_functor(term_atom("/"), [X,Y]) then
+    (if some [X, Y, Context]
+	Term = term_functor(term_atom("/"), [X,Y], Context)
+    then
 	parse_symbol_name_specifier(Term, TermResult),
         process_arity_predicate_specifier(TermResult, Result)
     else
@@ -1817,7 +1839,9 @@ process_arity_predicate_specifier(error(Msg, Term), error(Msg, Term)).
 :- pred parse_arg_types_specifier(term, maybe(pred_specifier)).
 :- mode parse_arg_types_specifier(input, output).
 parse_arg_types_specifier(Term, Result) :-
-    (if some [X, Y] Term = term_functor(term_atom("/"), [X,Y]) then
+    (if some [X, Y, Context]
+	Term = term_functor(term_atom("/"), [X,Y], Context)
+    then
 	parse_symbol_name_specifier(Term, TermResult),
         process_arity_predicate_specifier(TermResult, Result)
     else
@@ -1866,11 +1890,11 @@ process_untyped_cons_spec_2(name_args(Name, Args),
 :- pred parse_symbol_name_specifier(term, maybe(sym_name_specifier)).
 :- mode parse_symbol_name_specifier(input, output).
 parse_symbol_name_specifier(Term, Result) :-
-    (if some [NameTerm, ArityTerm]
-       	Term = term_functor(term_atom("/"), [NameTerm, ArityTerm])
+    (if some [NameTerm, ArityTerm, Context]
+       	Term = term_functor(term_atom("/"), [NameTerm, ArityTerm], Context)
     then
-        (if some [Arity]
-            ArityTerm = term_functor(term_integer(Arity),[])
+        (if some [Arity, Context2]
+            ArityTerm = term_functor(term_integer(Arity), [], Context2)
 	then
             (if Arity >= 0 then
 		parse_symbol_name(NameTerm, NameResult),
@@ -1909,14 +1933,14 @@ process_name_specifier(error(Error, Term), error(Error, Term)).
 :- pred parse_qualified_term(term, string, maybe_functor).
 :- mode parse_qualified_term(input, input, output).
 parse_qualified_term(Term, Msg, Result) :-
-    (if some [ModuleTerm, NameArgsTerm]
-       	Term = term_functor(term_atom(":"), [ModuleTerm, NameArgsTerm])
+    (if some [ModuleTerm, NameArgsTerm, Context]
+       	Term = term_functor(term_atom(":"), [ModuleTerm, NameArgsTerm], Context)
     then
-        (if some [Name, Args]
-            NameArgsTerm = term_functor(term_atom(Name),Args)
+        (if some [Name, Args, Context2]
+            NameArgsTerm = term_functor(term_atom(Name), Args, Context2)
         then
-            (if some [Module]
-                ModuleTerm = term_functor(term_atom(Module),[])
+            (if some [Modulem, Context3]
+                ModuleTerm = term_functor(term_atom(Module), [], Context3)
 	    then
 		Result = ok(qualified(Module, Name), Args)
 	    else
@@ -1926,8 +1950,8 @@ parse_qualified_term(Term, Msg, Result) :-
             Result = error("identifier expected after ':' in qualified symbol name", Term)
 	)
     else
-        (if some [Name2, Args2]
-            Term = term_functor(term_atom(Name2), Args2)
+        (if some [Name2, Args2, Context4]
+            Term = term_functor(term_atom(Name2), Args2, Context4)
         then
             Result = ok(unqualified(Name2), Args2)
         else
@@ -1949,14 +1973,14 @@ parse_qualified_term(Term, Msg, Result) :-
 :- pred parse_symbol_name(term, maybe(sym_name)).
 :- mode parse_symbol_name(input, output).
 parse_symbol_name(Term, Result) :-
-    (if some [ModuleTerm, NameTerm]
-       	Term = term_functor(term_atom(":"), [ModuleTerm, NameTerm])
+    (if some [ModuleTerm, NameTerm, Context]
+       	Term = term_functor(term_atom(":"), [ModuleTerm, NameTerm], Context)
     then
-        (if some [Name]
-            NameTerm = term_functor(term_atom(Name),[])
+        (if some [Name, Context]
+            NameTerm = term_functor(term_atom(Name), [], Context)
         then
-            (if some [Module]
-                ModuleTerm = term_functor(term_atom(Module),[])
+            (if some [Module, Context2]
+                ModuleTerm = term_functor(term_atom(Module), [], Context2)
 	    then
 		Result = ok(qualified(Module, Name))
 	    else
@@ -1966,8 +1990,8 @@ parse_symbol_name(Term, Result) :-
             Result = error("identifier expected after ':' in qualified symbol name", Term)
 	)
     else
-        (if some [Name2]
-            Term = term_functor(term_atom(Name2),[])
+        (if some [Name2, Context3]
+            Term = term_functor(term_atom(Name2), [], Context3)
         then
             Result = ok(unqualified(Name2))
         else

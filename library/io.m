@@ -74,6 +74,11 @@
 %		Return a list containing all the current operator definitions.
 
 
+:- pred io__get_line_number(int, io__state, io__state).
+:- mode io__get_line_number(output, di, uo).
+%	Return the line number of the current stream
+%	(as per NU-Prolog lineCount/1).
+
 :- type read_term ---> eof ; error(string) ; term(varset, term).
 :- pred io__read_term(read_term, io__state, io__state).
 
@@ -185,6 +190,14 @@ io__current_ops(Ops) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- io__get_line_number(_, IO0, _) when IO0.
+io__get_line_number(LineNumber) -->
+	{ currentInput(Stream) },
+	{ lineCount(Stream, LineNumber) }.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 	% Declarative versions of Prolog's see/1 and seen/0.
 
 :- io__see(File, _, IO0, _) when ground(File) and IO0.
@@ -232,14 +245,16 @@ io__told -->
 :- io__read_term(_, IO0, _) when IO0.
 io__read_term(Result) -->
 	{
-	    getTokenList(Tokens0),
+	    io__get_token_list(Tokens0, LineNumber),
+	    term__context_init(LineNumber, Context),
 	    convert_tokens(Tokens0, Tokens),
 	    ( treadTerm(Tokens, Term0, NameList, VarList) ->
 		expandTerm(Term0, Term1),
 		( nonvar(Term1), eof(Term1) ->
 			Result = eof
 		;
-			convert_term(Term1, NameList, VarList, VarSet, Term),
+			convert_term(Term1, NameList, VarList, Context,
+					VarSet, Term),
 			Result = term(VarSet, Term)
 		)
 	    ;
@@ -263,6 +278,23 @@ convert_tokens(Tok0.Toks0, Toks) :-
 		Toks = [Tok0 | Toks1]
 	),
 	convert_tokens(Toks0, Toks1).
+
+
+	% This gets a term's worth of tokens, and
+	% also returns the linenumber at the start of the term.
+	% (Actually we return the linenumber after the first token
+	% of the term.)
+
+io__get_token_list(Tokens, LineNumber) :-
+	getToken(Token, Type),
+	currentInput(Stream),
+	lineCount(Stream, LineNumber),
+	( Type = end_of_file ->
+		Tokens = [(Token.Type)]
+	;
+		getTokenList(Tokens0),
+		Tokens = [(Token.Type) | Tokens0]
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -320,44 +352,44 @@ varmap__lookup(var(V,N,I).Rest, Var, Name, Id) :-
 	% Given a term, a list of the named variables in the term and
 	% a list of their corresponding names, return a VarSet and
 	% a properly structured ground representation of that term.
-convert_term(Term0, NameList, VarList, VarSet, Term) :-
+convert_term(Term0, NameList, VarList, Context, VarSet, Term) :-
 	varset__init(VarSet0),
 	varmap__init(VarList, NameList, VarMap0),
-	convert_term_2(Term0, VarSet0, VarMap0, Term, VarSet, _).
+	convert_term_2(Term0, VarSet0, VarMap0, Context, Term, VarSet, _).
 
-convert_term_2(Term0, VarSet0, VarMap0, Term, VarSet, VarMap) :-
+convert_term_2(Term0, VarSet0, VarMap0, Context, Term, VarSet, VarMap) :-
 	( var(Term0) ->
 		varmap__lookup(VarMap0, Term0, Name, Id),
 		convert_term_3(Id, Name, Term0, VarSet0, VarMap0,
 				VarId, VarSet, VarMap),
 		Term = term_variable(VarId)
 	; integer(Term0) ->
-		Term = term_functor(term_integer(Term0),[]),
+		Term = term_functor(term_integer(Term0), [], Context),
 		VarSet = VarSet0,
 		VarMap = VarMap0
 	; float(Term0) ->
-		Term = term_functor(term_float(Term0),[]),
+		Term = term_functor(term_float(Term0), [], Context),
 		VarSet = VarSet0,
 		VarMap = VarMap0
 	; Term0 = '$string'(String) ->
-		Term = term_functor(term_string(String),[]),
+		Term = term_functor(term_string(String), [], Context),
 		VarSet = VarSet0,
 		VarMap = VarMap0
 	; functor(Term0, F ,_) ->
 		name(F, Name),
-		Term = term_functor(term_atom(Name),Args),
+		Term = term_functor(term_atom(Name), Args, Context),
 		Term0 =.. [_|Args0],
 		convert_term_2_list(Args0, VarSet0, VarMap0,
-					Args, VarSet, VarMap)
+					Context, Args, VarSet, VarMap)
 	;
 		fail
 	).
 
 	% convert a list of terms
-convert_term_2_list([], VarSet, VarMap, [], VarSet, VarMap).
-convert_term_2_list(X0.Xs0, VarSet0, VarMap0, X.Xs, VarSet, VarMap) :-
-	convert_term_2(X0, VarSet0, VarMap0, X, VarSet1, VarMap1),
-	convert_term_2_list(Xs0, VarSet1, VarMap1, Xs, VarSet, VarMap).
+convert_term_2_list([], VarSet, VarMap, _Context, [], VarSet, VarMap).
+convert_term_2_list(X0.Xs0, VarSet0, VarMap0, Context, X.Xs, VarSet, VarMap) :-
+	convert_term_2(X0, VarSet0, VarMap0, Context, X, VarSet1, VarMap1),
+	convert_term_2_list(Xs0, VarSet1, VarMap1, Context, Xs, VarSet, VarMap).
 
 	% If a variable does not already have an Id, then get the
 	% VarSet to allocate a new id for that variable and save
@@ -397,7 +429,7 @@ io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) :-
 		N is N0 + 1,
 		write_string(VarName)
 	).
-io__write_term_2(term_functor(Functor,Args), VarSet0, N0, VarSet, N) :-
+io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) :-
 	(if some [PrefixArg] (
 		Args = [PrefixArg],
 		io__unary_prefix_op(Functor)

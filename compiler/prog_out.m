@@ -28,11 +28,25 @@
 
 prog_out__write_messages([]) --> [].
 prog_out__write_messages([Msg - Term | Rest]) -->
+	(if %%% some [Functor, Args, Context]	% NU-Prolog DCG inconsistency
+		{ Term = term_functor(Functor, Args, Context) }
+	then
+		{ term__context_line(Context, LineNumber) },
+		io__write_string("Line "),
+		io__write_int(LineNumber),
+		io__write_string(": ")
+	),
 	io__write_string(Msg),
-	io__write_string(": "),
-	{ varset__init(VarSet) },	% XXX variable names in error messages
-	io__write_term_nl(VarSet, Term),
-	prog_out__write_messages(Rest).
+	(if %%% some [_Context]		% NU-Prolog DCG inconsistency
+		{ Term = term_functor(term_atom(""), [], _Context) }
+	then
+		io__write_string(".")
+	else
+		io__write_string(": "),
+		{ varset__init(VarSet) }, % XXX variable names in error messages
+		io__write_term_nl(VarSet, Term),
+		prog_out__write_messages(Rest)
+	).
 
 	% write out a whole module
 

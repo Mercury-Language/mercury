@@ -506,7 +506,7 @@ transform_goal(call(Goal), call(PredId, ModeId, Args, Builtin) - GoalInfo) :-
 	% XXX we need to know the module name!!!
 	ModuleName = "test",
 
-	require(Goal = term_functor(term_atom(PredName), Args),
+	require(Goal = term_functor(term_atom(PredName), Args, _),
 		"fatal error: called term is not an atom"),
 	length(Args, Arity),
 	make_predid(ModuleName, unqualified(PredName), Arity, PredId),

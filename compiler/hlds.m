@@ -382,7 +382,7 @@ moduleinfo_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
 
 :- interface.
 
-:- pred predicate_module(pred_id, string).
+:- pred predicate_module(pred_id, module_name).
 :- mode predicate_module(input, output).
 
 :- pred predicate_name(pred_id, string).
@@ -396,6 +396,9 @@ moduleinfo_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
 
 :- pred predinfo_arg_types(pred_info, varset, list(type)).
 :- mode predinfo_arg_types(input, output, output).
+
+:- pred predinfo_clauses(pred_info, clause_list).
+:- mode predinfo_clauses(input, output).
 
 :- mode predinfo_procedures(input, output).
 :- mode predinfo_procedures(input, output).
@@ -417,6 +420,9 @@ predinfo_modes(PredInfo, Modes) :-
 predinfo_procedures(PredInfo, Procs) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs).
 
+predinfo_clauses(PredInfo, Clauses) :-
+	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs).
+
 predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, _Cond, _Clauses, _Procs).
 
@@ -424,6 +430,26 @@ predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 %-----------------------------------------------------------------------------%
 
 	% Various predicates for accessing the proc_info data structure.
+
+:- interface.
+
+:- pred procinfo_category(proc_info, category).
+:- mode procinfo_category(input, output).
+
+:- pred procinfo_variables(proc_info, varset).
+:- mode procinfo_variables(input, output).
+
+:- pred procinfo_vartypes(proc_info, map(var, type)).
+:- mode procinfo_vartypes(input, output).
+
+:- pred procinfo_headvars(proc_info, list(var)).
+:- mode procinfo_headvars(input, output).
+
+:- pred procinfo_modeinfo(proc_info, xxx).
+:- mode procinfo_modeinfo(input, output).
+
+:- pred procinfo_goal(proc_info, hlds__goal).
+:- mode procinfo_goal(input, output).
 
 :- implementation.
 
