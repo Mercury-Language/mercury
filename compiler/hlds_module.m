@@ -970,7 +970,8 @@ module_add_foreign_body_code(Lang, Foreign_Body_Code, Context,
 
 :- interface.
 
-:- type dependency_ordering		== list(list(pred_proc_id)).
+:- type dependency_ordering(T)		== list(list(T)).
+:- type dependency_ordering		== dependency_ordering(pred_proc_id).
 
 :- type aditi_dependency_ordering	== list(aditi_scc).
 
@@ -983,18 +984,20 @@ module_add_foreign_body_code(Lang, Foreign_Body_Code, Context,
 :- type aditi_scc
 	--->	aditi_scc(dependency_ordering, list(pred_proc_id)).
 
-:- type dependency_graph		== relation(pred_proc_id).
-:- type dependency_info.
+:- type dependency_graph(T)		== relation(T).
+:- type dependency_graph		== dependency_graph(pred_proc_id).
+:- type dependency_info(T).
+:- type dependency_info			== dependency_info(pred_proc_id).
 
-:- pred hlds_dependency_info_init(dependency_info).
+:- pred hlds_dependency_info_init(dependency_info(T)).
 :- mode hlds_dependency_info_init(out) is det.
 
-:- pred hlds_dependency_info_get_dependency_graph(dependency_info, 
-	dependency_graph).
+:- pred hlds_dependency_info_get_dependency_graph(dependency_info(T), 
+	dependency_graph(T)).
 :- mode hlds_dependency_info_get_dependency_graph(in, out) is det.
 
-:- pred hlds_dependency_info_get_dependency_ordering(dependency_info, 
-	dependency_ordering).
+:- pred hlds_dependency_info_get_dependency_ordering(dependency_info(T), 
+	dependency_ordering(T)).
 :- mode hlds_dependency_info_get_dependency_ordering(in, out) is det.
 
 :- pred hlds_dependency_info_get_maybe_aditi_dependency_ordering(
@@ -1002,12 +1005,12 @@ module_add_foreign_body_code(Lang, Foreign_Body_Code, Context,
 :- mode hlds_dependency_info_get_maybe_aditi_dependency_ordering(in, 
 		out) is det.
 
-:- pred hlds_dependency_info_set_dependency_graph(dependency_info,
-	dependency_graph, dependency_info).
+:- pred hlds_dependency_info_set_dependency_graph(dependency_info(T),
+	dependency_graph(T), dependency_info(T)).
 :- mode hlds_dependency_info_set_dependency_graph(in, in, out) is det.
 
-:- pred hlds_dependency_info_set_dependency_ordering(dependency_info,
-	dependency_ordering, dependency_info).
+:- pred hlds_dependency_info_set_dependency_ordering(dependency_info(T),
+	dependency_ordering(T), dependency_info(T)).
 :- mode hlds_dependency_info_set_dependency_ordering(in, in, out) is det.
 
 :- pred hlds_dependency_info_set_aditi_dependency_ordering(dependency_info,
@@ -1018,10 +1021,10 @@ module_add_foreign_body_code(Lang, Foreign_Body_Code, Context,
 
 :- implementation.
 
-:- type dependency_info --->
+:- type dependency_info(T) --->
 		dependency_info(
-			dependency_graph,	% Dependency graph
-			dependency_ordering,	% Dependency ordering
+			dependency_graph(T),	% Dependency graph
+			dependency_ordering(T),	% Dependency ordering
 			maybe(aditi_dependency_ordering)
 					% Dependency ordering of Aditi SCCs 
 		).

@@ -4,20 +4,21 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__dependency_graph.
-% Main author: bromage, conway, stayl.
+% Main authors: bromage, conway, stayl.
 
 % The dependency_graph records which procedures depend on which other
-% procedures.  It is defined as a relation (see hlds_module.m) R where xRy
+% procedures. It is defined as a relation (see hlds_module.m) R where xRy
 % means that the definition of x depends on the definition of y.
 % Note that imported procedures are not included in the dependency_graph
 % (although opt_imported procedures are included).
 %
 % The other important structure is the dependency_ordering which is
 % a list of the cliques (strongly-connected components) of this relation,
-% in topological order.  This is very handy for doing fixpoint iterations.
+% in topological order. This is very handy for doing fixpoint iterations.
 
 %-----------------------------------------------------------------------------%
+
+:- module transform_hlds__dependency_graph.
 
 :- interface.
 :- import_module hlds__hlds_module.
@@ -37,34 +38,36 @@
 	% imported procedures are included in the dependency graph,
 	% otherwise they aren't.
 	%
-:- pred dependency_graph__build_dependency_graph(module_info, bool,
-		dependency_info).
-:- mode dependency_graph__build_dependency_graph(in, in, out) is det.
+:- pred dependency_graph__build_pred_dependency_graph(module_info, bool,
+	dependency_info(pred_id)).
+:- mode dependency_graph__build_pred_dependency_graph(in, in, out) is det.
 
+	% Output a form of the static call graph to a file, in a format
+	% suitable for use in .dependency_info files.
 :- pred dependency_graph__write_dependency_graph(module_info, module_info,
-						io__state, io__state).
+	io__state, io__state).
 :- mode dependency_graph__write_dependency_graph(in, out, di, uo) is det.
 
 	% Output a form of the static call graph to a file for use by the
 	% profiler.
 :- pred dependency_graph__write_prof_dependency_graph(module_info, module_info,
-						io__state, io__state).
+	io__state, io__state).
 :- mode dependency_graph__write_prof_dependency_graph(in, out, di, uo) is det.
 
 	% Given the list of predicates in a strongly connected component
 	% of the dependency graph, a list of the higher SCCs in the module
 	% and a module_info, find out which members of the SCC can be
 	% called from outside the SCC.
-:- pred dependency_graph__get_scc_entry_points(list(pred_proc_id), 
-		dependency_ordering, module_info, list(pred_proc_id)).
+:- pred dependency_graph__get_scc_entry_points(list(pred_proc_id),
+	dependency_ordering, module_info, list(pred_proc_id)).
 :- mode dependency_graph__get_scc_entry_points(in, in, in, out) is det.
 
 	% Create the Aditi dependency ordering. This contains all the Aditi
-	% SCCs in the original program. The difference is that SCCs which 
+	% SCCs in the original program. The difference is that SCCs which
 	% are only called from one other SCC and are not called through
 	% negation or aggregation are merged into the parent SCC. This makes
 	% the low-level RL optimizations more effective while maintaining
-	% stratification. 
+	% stratification.
 	% dead_proc_elim.m should be be run before this is called
 	% to avoid missing some opportunities for merging where
 	% a procedure is called from a dead procedure.
@@ -80,7 +83,7 @@
 :- pred dependency_graph__write_graph(dependency_info::in,
 	pred(pred_proc_id, io__state, io__state)::pred(in, di, uo) is det,
 	pred(pred_proc_id, pred_proc_id, io__state, io__state)::
-			pred(in, in, di, uo) is det,
+		pred(in, in, di, uo) is det,
 	io__state::di, io__state::uo) is det.
 
 	% write_graph_nodes(Nodes, Graph, WriteNode, WriteEdge)
@@ -92,7 +95,7 @@
 	dependency_graph::in,
 	pred(pred_proc_id, io__state, io__state)::pred(in, di, uo) is det,
 	pred(pred_proc_id, pred_proc_id, io__state, io__state)::
-			pred(in, in, di, uo) is det,
+		pred(in, in, di, uo) is det,
 	io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -124,32 +127,39 @@
 module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) :-
 	module_info_get_maybe_dependency_info(ModuleInfo0, MaybeDepInfo),
 	( MaybeDepInfo = yes(_) ->
-	    ModuleInfo = ModuleInfo0
+		ModuleInfo = ModuleInfo0
 	;
-	    dependency_graph__build_dependency_graph(ModuleInfo0, no, DepInfo),
-	    module_info_set_dependency_info(ModuleInfo0, DepInfo, ModuleInfo)
+		dependency_graph__build_dependency_graph(ModuleInfo0, no,
+			DepInfo),
+		module_info_set_dependency_info(ModuleInfo0, DepInfo,
+			ModuleInfo)
 	).
 
 	% Traverse the module structure, calling `dependency_graph__add_arcs'
 	% for each procedure body.
 
-dependency_graph__build_dependency_graph(ModuleInfo0, Imported, DepInfo) :-
-	module_info_predids(ModuleInfo0, PredIds),
+dependency_graph__build_pred_dependency_graph(ModuleInfo, Imported, DepInfo) :-
+	dependency_graph__build_dependency_graph(ModuleInfo, Imported, DepInfo).
+
+:- pred dependency_graph__build_dependency_graph(module_info, bool,
+	dependency_info(T)) <= dependency_node(T).
+:- mode dependency_graph__build_dependency_graph(in, in, out) is det.
+
+dependency_graph__build_dependency_graph(ModuleInfo, Imported, DepInfo) :-
+	module_info_predids(ModuleInfo, PredIds),
 	relation__init(DepGraph0),
-	dependency_graph__add_pred_nodes(PredIds, ModuleInfo0, Imported,
-				DepGraph0, DepGraph1),
-	dependency_graph__add_pred_arcs(PredIds, ModuleInfo0, Imported,
-				DepGraph1, DepGraph),
+	dependency_graph__add_nodes(PredIds, ModuleInfo, Imported,
+		DepGraph0, DepGraph1),
+	dependency_graph__add_arcs(PredIds, ModuleInfo, Imported,
+		DepGraph1, DepGraph),
 	hlds_dependency_info_init(DepInfo0),
-	hlds_dependency_info_set_dependency_graph(DepInfo0, DepGraph,
-				DepInfo1),
+	hlds_dependency_info_set_dependency_graph(DepInfo0, DepGraph, DepInfo1),
 	relation__atsort(DepGraph, DepOrd0),
 	dependency_graph__sets_to_lists(DepOrd0, [], DepOrd),
-	hlds_dependency_info_set_dependency_ordering(DepInfo1, DepOrd,
-				DepInfo).
+	hlds_dependency_info_set_dependency_ordering(DepInfo1, DepOrd, DepInfo).
 
-:- pred dependency_graph__sets_to_lists( list(set(pred_proc_id)),
-			list(list(pred_proc_id)), list(list(pred_proc_id))).
+:- pred dependency_graph__sets_to_lists(list(set(T)), list(list(T)),
+	list(list(T))).
 :- mode dependency_graph__sets_to_lists(in, in, out) is det.
 
 dependency_graph__sets_to_lists([], Xs, Xs).
@@ -160,18 +170,49 @@ dependency_graph__sets_to_lists([X | Xs], Ys, Zs) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred dependency_graph__add_pred_nodes(list(pred_id), module_info,
-		bool, dependency_graph, dependency_graph).
-:- mode dependency_graph__add_pred_nodes(in, in, in, in, out) is det.
+:- typeclass dependency_node(T) where [
+	pred dependency_graph__add_nodes(list(pred_id), module_info, bool,
+		dependency_graph(T), dependency_graph(T)),
+	mode dependency_graph__add_nodes(in, in, in, in, out) is det,
 
-dependency_graph__add_pred_nodes([], _ModuleInfo, _, DepGraph, DepGraph).
-dependency_graph__add_pred_nodes([PredId | PredIds], ModuleInfo, Imported,
-                                        DepGraph0, DepGraph) :-
-        module_info_preds(ModuleInfo, PredTable),
-        map__lookup(PredTable, PredId, PredInfo),
+	pred dependency_graph__add_arcs(list(pred_id), module_info, bool,
+		dependency_graph(T), dependency_graph(T)),
+	mode dependency_graph__add_arcs(in, in, in, in, out) is det,
+
+	func dependency_node(pred_proc_id) = T
+].
+
+:- instance dependency_node(pred_proc_id) where [
+	pred(dependency_graph__add_nodes/5) is
+		dependency_graph__add_pred_proc_nodes,
+	pred(dependency_graph__add_arcs/5) is
+		dependency_graph__add_pred_proc_arcs,
+	func(dependency_node/1) is id
+].
+
+:- instance dependency_node(pred_id) where [
+	pred(dependency_graph__add_nodes/5) is
+		dependency_graph__add_pred_nodes,
+	pred(dependency_graph__add_arcs/5) is
+		dependency_graph__add_pred_arcs,
+	func(dependency_node/1) is pred_proc_id_get_pred_id
+].
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred dependency_graph__add_pred_proc_nodes(list(pred_id), module_info,
+	bool, dependency_graph, dependency_graph).
+:- mode dependency_graph__add_pred_proc_nodes(in, in, in, in, out) is det.
+
+dependency_graph__add_pred_proc_nodes([], _ModuleInfo, _, !DepGraph).
+dependency_graph__add_pred_proc_nodes([PredId | PredIds], ModuleInfo, Imported,
+		!DepGraph) :-
+	module_info_preds(ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
 	(
 		% Don't bother adding nodes (or arcs) for procedures
-		% which which are imported (ie we don't have any
+		% which are imported (i.e. which we don't have any
 		% `clauses' for).
 		Imported = no,
 		pred_info_non_imported_procids(PredInfo, ProcIds)
@@ -181,36 +222,60 @@ dependency_graph__add_pred_nodes([PredId | PredIds], ModuleInfo, Imported,
 	),
 
 	dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
-		DepGraph0, DepGraph1),
-        dependency_graph__add_pred_nodes(PredIds, ModuleInfo, Imported,
-		DepGraph1, DepGraph).
+		!DepGraph),
+	dependency_graph__add_pred_proc_nodes(PredIds, ModuleInfo, Imported,
+		!DepGraph).
 
 :- pred dependency_graph__add_proc_nodes(list(proc_id), pred_id, module_info,
-                        dependency_graph, dependency_graph).
+	dependency_graph, dependency_graph).
 :- mode dependency_graph__add_proc_nodes(in, in, in, in, out) is det.
 
 dependency_graph__add_proc_nodes([], _PredId, _ModuleInfo, DepGraph, DepGraph).
 dependency_graph__add_proc_nodes([ProcId | ProcIds], PredId, ModuleInfo,
-                                                DepGraph0, DepGraph) :-
-	relation__add_element(DepGraph0, proc(PredId, ProcId), _, DepGraph1),
-        dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
-                                                DepGraph1, DepGraph).
+		!DepGraph) :-
+	relation__add_element(!.DepGraph, proc(PredId, ProcId), _, !:DepGraph),
+	dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
+		!DepGraph).
+
+%-----------------------------------------------------------------------------%
+
+:- pred dependency_graph__add_pred_nodes(list(pred_id), module_info,
+	bool, dependency_graph(pred_id), dependency_graph(pred_id)).
+:- mode dependency_graph__add_pred_nodes(in, in, in, in, out) is det.
+
+dependency_graph__add_pred_nodes([], _ModuleInfo, _, DepGraph, DepGraph).
+dependency_graph__add_pred_nodes([PredId | PredIds], ModuleInfo,
+		IncludeImported, !DepGraph) :-
+	module_info_preds(ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
+	% Don't bother adding nodes (or arcs) for predicates
+	% which are imported (i.e. which we don't have any `clauses' for).
+	(
+		IncludeImported = no,
+		pred_info_is_imported(PredInfo)
+	->
+		true
+	;
+		relation__add_element(!.DepGraph, PredId, _, !:DepGraph)
+	),
+	dependency_graph__add_pred_nodes(PredIds, ModuleInfo, IncludeImported,
+		!DepGraph).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred dependency_graph__add_pred_arcs(list(pred_id), module_info, bool,
-			dependency_graph, dependency_graph).
-:- mode dependency_graph__add_pred_arcs(in, in, in, in, out) is det.
+:- pred dependency_graph__add_pred_proc_arcs(list(pred_id), module_info, bool,
+	dependency_graph, dependency_graph).
+:- mode dependency_graph__add_pred_proc_arcs(in, in, in, in, out) is det.
 
-dependency_graph__add_pred_arcs([], _ModuleInfo, _, DepGraph, DepGraph).
-dependency_graph__add_pred_arcs([PredId | PredIds], ModuleInfo, Imported,
-					DepGraph0, DepGraph) :-
+dependency_graph__add_pred_proc_arcs([], _ModuleInfo, _, DepGraph, DepGraph).
+dependency_graph__add_pred_proc_arcs([PredId | PredIds], ModuleInfo, Imported,
+		!DepGraph) :-
 	module_info_preds(ModuleInfo, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
 	(
 		% Don't bother adding nodes (or arcs) for procedures
-		% which which are imported (ie we don't have any
+		% which are imported (i.e. which we don't have any
 		% `clauses' for).
 		Imported = no,
 		pred_info_non_imported_procids(PredInfo, ProcIds)
@@ -219,367 +284,402 @@ dependency_graph__add_pred_arcs([PredId | PredIds], ModuleInfo, Imported,
 		pred_info_procids(PredInfo, ProcIds)
 	),
 	dependency_graph__add_proc_arcs(ProcIds, PredId, ModuleInfo, Imported,
-			DepGraph0, DepGraph1),
-	dependency_graph__add_pred_arcs(PredIds, ModuleInfo, Imported,
-			DepGraph1, DepGraph).
+		!DepGraph),
+	dependency_graph__add_pred_proc_arcs(PredIds, ModuleInfo, Imported,
+		!DepGraph).
 
 :- pred dependency_graph__add_proc_arcs(list(proc_id), pred_id, module_info,
-			bool, dependency_graph, dependency_graph).
+	bool, dependency_graph, dependency_graph).
 :- mode dependency_graph__add_proc_arcs(in, in, in, in, in, out) is det.
 
-dependency_graph__add_proc_arcs([], _PredId, _ModuleInfo, _,
-		DepGraph, DepGraph).
+dependency_graph__add_proc_arcs([], _PredId, _ModuleInfo, _, !DepGraph).
 dependency_graph__add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo,
-		IncludeImported, DepGraph0, DepGraph) :-
-
+		IncludeImported, !DepGraph) :-
 	module_info_preds(ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
-
 	(
 		IncludeImported = no,
 		proc_info_goal(ProcInfo0, Goal),
 
-		relation__lookup_element(DepGraph0,
-				proc(PredId, ProcId), Caller),
-		dependency_graph__add_arcs_in_goal(Goal, Caller,
-				DepGraph0, DepGraph1)
+		relation__lookup_element(!.DepGraph,
+			proc(PredId, ProcId), Caller),
+		dependency_graph__add_arcs_in_goal(Goal, Caller, !DepGraph)
 	;
 		IncludeImported = yes,
 		pred_info_import_status(PredInfo0, ImportStatus),
 		status_is_imported(ImportStatus, Imported),
 		(
-			Imported = yes,
-			DepGraph1 = DepGraph0
+			Imported = yes
 		;
 			Imported = no,
 			proc_info_goal(ProcInfo0, Goal),
-
-			relation__lookup_element(DepGraph0,
-					proc(PredId, ProcId), Caller),
+			relation__lookup_element(!.DepGraph,
+				proc(PredId, ProcId), Caller),
 			dependency_graph__add_arcs_in_goal(Goal, Caller,
-					DepGraph0, DepGraph1)
+				!DepGraph)
 		)
 	),
 	dependency_graph__add_proc_arcs(ProcIds, PredId, ModuleInfo,
-			IncludeImported, DepGraph1, DepGraph).
+		IncludeImported, !DepGraph).
+
+%-----------------------------------------------------------------------------%
+
+:- pred dependency_graph__add_pred_arcs(list(pred_id), module_info, bool,
+	dependency_graph(pred_id), dependency_graph(pred_id)).
+:- mode dependency_graph__add_pred_arcs(in, in, in, in, out) is det.
+
+dependency_graph__add_pred_arcs([], _ModuleInfo, _, !DepGraph).
+dependency_graph__add_pred_arcs([PredId | PredIds], ModuleInfo,
+		IncludeImported, !DepGraph) :-
+	module_info_preds(ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
+	(
+		IncludeImported = no,
+		pred_info_is_imported(PredInfo)
+	->
+		true
+	;
+		pred_info_clauses_info(PredInfo, ClausesInfo),
+		clauses_info_clauses(ClausesInfo, Clauses),
+		Goals = list__map(func(clause(_, Goal, _, _)) = Goal, Clauses),
+		relation__lookup_element(!.DepGraph, PredId, Caller),
+		dependency_graph__add_arcs_in_list(Goals, Caller, !DepGraph)
+	),
+	dependency_graph__add_pred_arcs(PredIds, ModuleInfo, IncludeImported,
+		!DepGraph).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- func pred_proc_id_get_pred_id(pred_proc_id) = pred_id.
+
+pred_proc_id_get_pred_id(proc(PredId, _)) = PredId.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- pred dependency_graph__add_arcs_in_goal(hlds_goal, relation_key,
-					dependency_graph, dependency_graph).
+	dependency_graph(T), dependency_graph(T)) <= dependency_node(T).
 :- mode dependency_graph__add_arcs_in_goal(in, in, in, out) is det.
 
-dependency_graph__add_arcs_in_goal(Goal - _GoalInfo, PPId, 
-					DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_goal_2(Goal, PPId, DepGraph0, DepGraph).
+dependency_graph__add_arcs_in_goal(Goal - _GoalInfo, PPId, !DepGraph) :-
+	dependency_graph__add_arcs_in_goal_2(Goal, PPId, !DepGraph).
 
 %-----------------------------------------------------------------------------%
 
 :- pred dependency_graph__add_arcs_in_goal_2(hlds_goal_expr, relation_key,
-					dependency_graph, dependency_graph).
+	dependency_graph(T), dependency_graph(T)) <= dependency_node(T).
 :- mode dependency_graph__add_arcs_in_goal_2(in, in, in, out) is det.
 
-dependency_graph__add_arcs_in_goal_2(conj(Goals), Caller, 
-					DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).
+dependency_graph__add_arcs_in_goal_2(conj(Goals), Caller, !DepGraph) :-
+	dependency_graph__add_arcs_in_list(Goals, Caller, !DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(par_conj(Goals), Caller, 
-					DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).
+dependency_graph__add_arcs_in_goal_2(par_conj(Goals), Caller, !DepGraph) :-
+	dependency_graph__add_arcs_in_list(Goals, Caller, !DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(disj(Goals), Caller, 
-					DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).
+dependency_graph__add_arcs_in_goal_2(disj(Goals), Caller, !DepGraph) :-
+	dependency_graph__add_arcs_in_list(Goals, Caller, !DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(switch(_Var, _Det, Cases),
-					Caller, DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_cases(Cases, Caller, DepGraph0, DepGraph).
+dependency_graph__add_arcs_in_goal_2(switch(_Var, _Det, Cases), Caller,
+		!DepGraph) :-
+	dependency_graph__add_arcs_in_cases(Cases, Caller, !DepGraph).
 
 dependency_graph__add_arcs_in_goal_2(if_then_else(_Vars, Cond, Then, Else),
-			Caller, DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_goal(Cond, Caller, DepGraph0, DepGraph1),
-	dependency_graph__add_arcs_in_goal(Then, Caller, DepGraph1, DepGraph2),
-	dependency_graph__add_arcs_in_goal(Else, Caller, DepGraph2, DepGraph).
+			Caller, !DepGraph) :-
+	dependency_graph__add_arcs_in_goal(Cond, Caller, !DepGraph),
+	dependency_graph__add_arcs_in_goal(Then, Caller, !DepGraph),
+	dependency_graph__add_arcs_in_goal(Else, Caller, !DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(not(Goal), Caller, DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph).
+dependency_graph__add_arcs_in_goal_2(not(Goal), Caller, !DepGraph) :-
+	dependency_graph__add_arcs_in_goal(Goal, Caller, !DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(some(_Vars, _, Goal), Caller, 
-					DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph).
+dependency_graph__add_arcs_in_goal_2(some(_Vars, _, Goal), Caller,
+		!DepGraph) :-
+	dependency_graph__add_arcs_in_goal(Goal, Caller, !DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(generic_call(_, _, _, _),
-		_Caller, DepGraph, DepGraph).
+dependency_graph__add_arcs_in_goal_2(generic_call(_, _, _, _), _, !DepGraph).
 
 dependency_graph__add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _),
-			Caller, DepGraph0, DepGraph) :-
+		Caller, !DepGraph) :-
 	(
 		Builtin = inline_builtin
 	->
-		DepGraph = DepGraph0
+		true
 	;
 		(
 			% If the node isn't in the relation, then
 			% we didn't insert it because is was imported,
 			% and we don't consider it.
-			relation__search_element(DepGraph0,
-				proc(PredId, ProcId), Callee)
+			relation__search_element(!.DepGraph,
+				dependency_node(proc(PredId, ProcId)), Callee)
 		->
-			relation__add(DepGraph0, Caller, Callee, DepGraph)
+			relation__add(!.DepGraph, Caller, Callee, !:DepGraph)
 		;
-			DepGraph = DepGraph0
+			true
 		)
 	).
 
 dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
-				DepGraph0, DepGraph) :-
-	( Unify = assign(_, _),
-	    DepGraph0 = DepGraph
-	; Unify = simple_test(_, _),
-	    DepGraph0 = DepGraph
-	; Unify = construct(_, Cons, _, _, _, _, _),
-	    dependency_graph__add_arcs_in_cons(Cons, Caller,
-				DepGraph0, DepGraph)
-	; Unify = deconstruct(_, Cons, _, _, _, _),
-	    dependency_graph__add_arcs_in_cons(Cons, Caller,
-				DepGraph0, DepGraph)
-	; Unify = complicated_unify(_, _, _),
-	    DepGraph0 = DepGraph
+		!DepGraph) :-
+	(
+		Unify = assign(_, _)
+	;
+		Unify = simple_test(_, _)
+	;
+		Unify = construct(_, Cons, _, _, _, _, _),
+		dependency_graph__add_arcs_in_cons(Cons, Caller,
+			!DepGraph)
+	;
+		Unify = deconstruct(_, Cons, _, _, _, _),
+		dependency_graph__add_arcs_in_cons(Cons, Caller,
+			!DepGraph)
+	;
+		Unify = complicated_unify(_, _, _)
 	).
 
 % There can be no dependencies within a foreign_proc
 dependency_graph__add_arcs_in_goal_2(
-	foreign_proc(_, _, _, _, _, _, _), _, DepGraph, DepGraph).
+	foreign_proc(_, _, _, _, _, _, _), _, !DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(shorthand(ShorthandGoal), Caller, 
-		DepGraph0, DepGraph) :-
+dependency_graph__add_arcs_in_goal_2(shorthand(ShorthandGoal), Caller,
+		!DepGraph) :-
 	dependency_graph__add_arcs_in_goal_2_shorthand(ShorthandGoal, Caller,
-			DepGraph0, DepGraph).
-
+		!DepGraph).
 
 :- pred dependency_graph__add_arcs_in_goal_2_shorthand(shorthand_goal_expr,
-		relation_key, dependency_graph, dependency_graph).
-:- mode dependency_graph__add_arcs_in_goal_2_shorthand(in, in, in, out) 
-		is det.
-		
+	relation_key, dependency_graph(T), dependency_graph(T))
+	<= dependency_node(T).
+:- mode dependency_graph__add_arcs_in_goal_2_shorthand(in, in, in, out)
+	is det.
+
 dependency_graph__add_arcs_in_goal_2_shorthand(bi_implication(LHS, RHS),
-		Caller, DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_list([LHS, RHS], Caller,
-			DepGraph0, DepGraph).
+		Caller, !DepGraph) :-
+	dependency_graph__add_arcs_in_list([LHS, RHS], Caller, !DepGraph).
 
 %-----------------------------------------------------------------------------%
 
 :- pred dependency_graph__add_arcs_in_list(list(hlds_goal), relation_key,
-			dependency_graph, dependency_graph).
+	dependency_graph(T), dependency_graph(T)) <= dependency_node(T).
 :- mode dependency_graph__add_arcs_in_list(in, in, in, out) is det.
 
-dependency_graph__add_arcs_in_list([], _Caller, DepGraph, DepGraph).
-dependency_graph__add_arcs_in_list([Goal|Goals], Caller, DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph1),
-	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph1, DepGraph).
+dependency_graph__add_arcs_in_list([], _Caller, !DepGraph).
+dependency_graph__add_arcs_in_list([Goal|Goals], Caller, !DepGraph) :-
+	dependency_graph__add_arcs_in_goal(Goal, Caller, !DepGraph),
+	dependency_graph__add_arcs_in_list(Goals, Caller, !DepGraph).
 
 %-----------------------------------------------------------------------------%
 
 :- pred dependency_graph__add_arcs_in_cases(list(case), relation_key,
-			dependency_graph, dependency_graph).
+	dependency_graph(T), dependency_graph(T)) <= dependency_node(T).
 :- mode dependency_graph__add_arcs_in_cases(in, in, in, out) is det.
 
-dependency_graph__add_arcs_in_cases([], _Caller, DepGraph, DepGraph).
+dependency_graph__add_arcs_in_cases([], _Caller, !DepGraph).
 dependency_graph__add_arcs_in_cases([case(Cons, Goal) | Goals], Caller,
-						DepGraph0, DepGraph) :-
-	dependency_graph__add_arcs_in_cons(Cons, Caller, DepGraph0, DepGraph1),
-	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph1, DepGraph2),
-	dependency_graph__add_arcs_in_cases(Goals, Caller, DepGraph2, DepGraph).
+		!DepGraph) :-
+	dependency_graph__add_arcs_in_cons(Cons, Caller, !DepGraph),
+	dependency_graph__add_arcs_in_goal(Goal, Caller, !DepGraph),
+	dependency_graph__add_arcs_in_cases(Goals, Caller, !DepGraph).
 
 %-----------------------------------------------------------------------------%
 
 :- pred dependency_graph__add_arcs_in_cons(cons_id, relation_key,
-			dependency_graph, dependency_graph).
+	dependency_graph(T), dependency_graph(T)) <= dependency_node(T).
 :- mode dependency_graph__add_arcs_in_cons(in, in, in, out) is det.
 
-dependency_graph__add_arcs_in_cons(cons(_, _), _Caller,
-				DepGraph, DepGraph).
-dependency_graph__add_arcs_in_cons(int_const(_), _Caller,
-				DepGraph, DepGraph).
-dependency_graph__add_arcs_in_cons(string_const(_), _Caller,
-				DepGraph, DepGraph).
-dependency_graph__add_arcs_in_cons(float_const(_), _Caller,
-				DepGraph, DepGraph).
+dependency_graph__add_arcs_in_cons(cons(_, _), _Caller, !DepGraph).
+dependency_graph__add_arcs_in_cons(int_const(_), _Caller, !DepGraph).
+dependency_graph__add_arcs_in_cons(string_const(_), _Caller, !DepGraph).
+dependency_graph__add_arcs_in_cons(float_const(_), _Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(pred_const(Pred, Proc, _), Caller,
-				DepGraph0, DepGraph) :-
+		!DepGraph) :-
 	(
 			% If the node isn't in the relation, then
 			% we didn't insert it because is was imported,
 			% and we don't consider it.
-		relation__search_element(DepGraph0, proc(Pred, Proc), Callee)
+		relation__search_element(!.DepGraph,
+			dependency_node(proc(Pred, Proc)), Callee)
 	->
-		relation__add(DepGraph0, Caller, Callee, DepGraph)
+		relation__add(!.DepGraph, Caller, Callee, !:DepGraph)
 	;
-		DepGraph = DepGraph0
+		true
 	).
 dependency_graph__add_arcs_in_cons(code_addr_const(Pred, Proc), Caller,
-				DepGraph0, DepGraph) :-
+		!DepGraph) :-
 	(
 			% If the node isn't in the relation, then
 			% we didn't insert it because is was imported,
 			% and we don't consider it.
-		relation__search_element(DepGraph0, proc(Pred, Proc), Callee)
+		relation__search_element(!.DepGraph,
+			dependency_node(proc(Pred, Proc)), Callee)
 	->
-		relation__add(DepGraph0, Caller, Callee, DepGraph)
+		relation__add(!.DepGraph, Caller, Callee, !:DepGraph)
 	;
-		DepGraph = DepGraph0
+		true
 	).
-dependency_graph__add_arcs_in_cons(type_ctor_info_const(_, _, _), _Caller,
-				DepGraph, DepGraph).
+dependency_graph__add_arcs_in_cons(type_ctor_info_const(_, _, _),
+		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(base_typeclass_info_const(_, _, _, _),
-				_Caller, DepGraph, DepGraph).
+		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(tabling_pointer_const(_, _),
-				_Caller, DepGraph, DepGraph).
+		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(deep_profiling_proc_static(_),
-				_Caller, DepGraph, DepGraph).
+		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(table_io_decl(_),
-				_Caller, DepGraph, DepGraph).
+		_Caller, !DepGraph).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-dependency_graph__write_dependency_graph(ModuleInfo0, ModuleInfo) -->
-	io__write_string("% Dependency graph\n"),
-	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) },
-	{ module_info_dependency_info(ModuleInfo, DepInfo) },
-	io__write_string("\n\n% Dependency ordering\n"),
-	write_graph(DepInfo, (pred(_::in, di, uo) is det --> []),
-		(pred(Parent::in, Child::in, di, uo) is det -->
-			{ Parent = proc(PPredId, PProcId) }, % Caller
-			{ Child = proc(CPredId, CProcId) }, % Callee
-			{ module_info_pred_proc_info(ModuleInfo, PPredId,
-					PProcId, PPredInfo, PProcInfo) },
-			{ module_info_pred_proc_info(ModuleInfo, CPredId,
-					CProcId, CPredInfo, CProcInfo) },
-			{ pred_info_name(PPredInfo, PName) },
-			{ proc_info_declared_determinism(PProcInfo, PDet) },
-			{ proc_info_argmodes(PProcInfo, PModes) },
-			{ proc_info_context(PProcInfo, PContext) },
-
-			{ pred_info_name(CPredInfo, CName) },
-			{ proc_info_declared_determinism(CProcInfo, CDet) },
-			{ proc_info_argmodes(CProcInfo, CModes) },
-			{ proc_info_context(CProcInfo, CContext) },
-
-			{ varset__init(ModeVarSet) },
-
-			mercury_output_pred_mode_subdecl(ModeVarSet,
-					unqualified(PName), PModes, PDet,
-					PContext),
-			io__write_string(" -> "),
-			mercury_output_pred_mode_subdecl(ModeVarSet,
-					unqualified(CName), CModes, CDet,
-					CContext),
-			io__write_string("\n")
-		)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred dependency_graph__write_dependency_ordering(list(list(pred_proc_id)),
-				module_info, int, io__state, io__state).
+	module_info, int, io__state, io__state).
 :- mode dependency_graph__write_dependency_ordering(in, in, in, di, uo) is det.
-dependency_graph__write_dependency_ordering([], _ModuleInfo, _N) -->
-	io__write_string("\n").
-dependency_graph__write_dependency_ordering([Clique | Rest], ModuleInfo, N) -->
-	io__write_string("% Clique "),
-	io__write_int(N),
-	io__write_string("\n"),
-	dependency_graph__write_clique(Clique, ModuleInfo),
-	{ N1 = N + 1 },
-	dependency_graph__write_dependency_ordering(Rest, ModuleInfo, N1).
 
-:- pred dependency_graph__write_clique(list(pred_proc_id),
-				module_info, io__state, io__state).
+dependency_graph__write_dependency_ordering([], _ModuleInfo, _N, !IO) :-
+	io__write_string("\n", !IO).
+dependency_graph__write_dependency_ordering([Clique | Rest], ModuleInfo, N,
+		!IO) :-
+	io__write_string("% Clique ", !IO),
+	io__write_int(N, !IO),
+	io__write_string("\n", !IO),
+	dependency_graph__write_clique(Clique, ModuleInfo, !IO),
+	N1 = N + 1,
+	dependency_graph__write_dependency_ordering(Rest, ModuleInfo, N1, !IO).
+
+:- pred dependency_graph__write_clique(list(pred_proc_id), module_info,
+	io__state, io__state).
 :- mode dependency_graph__write_clique(in, in, di, uo) is det.
-dependency_graph__write_clique([], _ModuleInfo) --> [].
-dependency_graph__write_clique([proc(PredId, ProcId) | Rest], ModuleInfo) -->
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-						PredInfo, ProcInfo) },
-	{ pred_info_name(PredInfo, Name) },
-	{ proc_info_declared_determinism(ProcInfo, Det) },
-	{ proc_info_argmodes(ProcInfo, Modes) },
-	{ proc_info_context(ProcInfo, Context) },	
-	{ varset__init(ModeVarSet) },
 
-	io__write_string("% "),
+dependency_graph__write_clique([], _ModuleInfo, !IO).
+dependency_graph__write_clique([proc(PredId, ProcId) | Rest], ModuleInfo,
+		!IO) :-
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+		PredInfo, ProcInfo),
+	pred_info_name(PredInfo, Name),
+	proc_info_declared_determinism(ProcInfo, Det),
+	proc_info_argmodes(ProcInfo, Modes),
+	proc_info_context(ProcInfo, Context),
+	varset__init(ModeVarSet),
+
+	io__write_string("% ", !IO),
 	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(Name),
-						Modes, Det, Context),
-	io__write_string("\n"),
-	dependency_graph__write_clique(Rest, ModuleInfo).
+		Modes, Det, Context, !IO),
+	io__write_string("\n", !IO),
+	dependency_graph__write_clique(Rest, ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
 % dependency_graph__write_prof_dependency_graph:
-%	Output's the static call graph of the current module in the form of
+%	Output the static call graph of the current module in the form of
 %		CallerLabel (\t) CalleeLabel
 %
-dependency_graph__write_prof_dependency_graph(ModuleInfo0, ModuleInfo) -->
-	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) },
-	{ module_info_dependency_info(ModuleInfo, DepInfo) },
-	write_graph(DepInfo, (pred(_::in, di, uo) is det --> []),
-		(pred(Parent::in, Child::in, di, uo) is det -->
-			{ Parent = proc(PPredId, PProcId) }, % Caller
-			{ Child = proc(CPredId, CProcId) }, % Callee
-			dependency_graph__output_label(ModuleInfo,
-					PPredId, PProcId),
-			io__write_string("\t"),
-			dependency_graph__output_label(ModuleInfo,
-					CPredId, CProcId),
-			io__write_string("\n")
-		)).
+dependency_graph__write_prof_dependency_graph(!ModuleInfo, !IO) :-
+	module_info_ensure_dependency_info(!ModuleInfo),
+	module_info_dependency_info(!.ModuleInfo, DepInfo),
+	write_graph(DepInfo, write_empty_node,
+		write_prof_dep_graph_link(!.ModuleInfo), !IO).
+
+% dependency_graph__write_dependency_graph:
+%	Output the static call graph of the current module in the form of
+%		CallerModeDecl (\t) CalleeModeDecl
+%	with a heading.
+%
+dependency_graph__write_dependency_graph(!ModuleInfo, !IO) :-
+	module_info_ensure_dependency_info(!ModuleInfo),
+	module_info_dependency_info(!.ModuleInfo, DepInfo),
+	io__write_string("% Dependency graph\n", !IO),
+	io__write_string("\n\n% Dependency ordering\n", !IO),
+	write_graph(DepInfo, write_empty_node,
+		write_dep_graph_link(!.ModuleInfo), !IO).
+
+:- pred write_empty_node(pred_proc_id::in, io__state::di, io__state::uo)
+	is det.
+
+write_empty_node(_, !IO).
+
+:- pred write_prof_dep_graph_link(module_info::in,
+	pred_proc_id::in, pred_proc_id::in,
+	io__state::di, io__state::uo) is det.
+
+write_prof_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
+	Parent = proc(PPredId, PProcId),	% Caller
+	Child = proc(CPredId, CProcId),		% Callee
+	dependency_graph__output_label(ModuleInfo, PPredId, PProcId, !IO),
+	io__write_string("\t", !IO),
+	dependency_graph__output_label(ModuleInfo, CPredId, CProcId, !IO),
+	io__write_string("\n", !IO).
+
+:- pred write_dep_graph_link(module_info::in,
+	pred_proc_id::in, pred_proc_id::in,
+	io__state::di, io__state::uo) is det.
+
+write_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
+	Parent = proc(PPredId, PProcId),	% Caller
+	Child = proc(CPredId, CProcId),		% Callee
+	module_info_pred_proc_info(ModuleInfo, PPredId, PProcId,
+		PPredInfo, PProcInfo),
+	module_info_pred_proc_info(ModuleInfo, CPredId, CProcId,
+		CPredInfo, CProcInfo),
+	pred_info_name(PPredInfo, PName),
+	proc_info_declared_determinism(PProcInfo, PDet),
+	proc_info_argmodes(PProcInfo, PModes),
+	proc_info_context(PProcInfo, PContext),
+	pred_info_name(CPredInfo, CName),
+	proc_info_declared_determinism(CProcInfo, CDet),
+	proc_info_argmodes(CProcInfo, CModes),
+	proc_info_context(CProcInfo, CContext),
+	varset__init(ModeVarSet),
+	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(PName),
+		PModes, PDet, PContext, !IO),
+	io__write_string(" -> ", !IO),
+	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(CName),
+		CModes, CDet, CContext, !IO),
+	io__write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%
 
-write_graph(DepInfo, WriteNode, WriteLink) -->
-	{ hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph) },
-	{ relation__domain(DepGraph, DomSet) },
-	{ set__to_sorted_list(DomSet, DomList) },
-	write_graph_nodes(DomList, DepGraph, WriteNode, WriteLink).
+write_graph(DepInfo, WriteNode, WriteLink, !IO) :-
+	hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
+	relation__domain(DepGraph, DomSet),
+	set__to_sorted_list(DomSet, DomList),
+	write_graph_nodes(DomList, DepGraph, WriteNode, WriteLink, !IO).
 
-write_graph_nodes([], _Graph, _WriteNode, _WriteLink) --> [].
-write_graph_nodes([Node | Nodes], Graph, WriteNode, WriteLink) -->
-	WriteNode(Node),
-
-	{ relation__lookup_element(Graph, Node, NodeKey) },
-	{ relation__lookup_from(Graph, NodeKey, ChildrenSet) },
-	{ set__to_sorted_list(ChildrenSet, Children) },
-
-	write_graph_children(Children, Node, Graph, WriteLink),
-
-	write_graph_nodes(Nodes, Graph, WriteNode, WriteLink).
+write_graph_nodes([], _Graph, _WriteNode, _WriteLink, !IO).
+write_graph_nodes([Node | Nodes], Graph, WriteNode, WriteLink, !IO) :-
+	WriteNode(Node, !IO),
+	relation__lookup_element(Graph, Node, NodeKey),
+	relation__lookup_from(Graph, NodeKey, ChildrenSet),
+	set__to_sorted_list(ChildrenSet, Children),
+	write_graph_children(Children, Node, Graph, WriteLink, !IO),
+	write_graph_nodes(Nodes, Graph, WriteNode, WriteLink, !IO).
 
 :- pred write_graph_children(list(relation_key)::in, pred_proc_id::in,
 	dependency_graph::in,
 	pred(pred_proc_id, pred_proc_id, io__state, io__state)::
-			pred(in, in, di, uo) is det,
+		pred(in, in, di, uo) is det,
 	io__state::di, io__state::uo) is det.
 
-write_graph_children([], _Parent, _Graph, _WriteLink) --> [].
-write_graph_children([ChildKey | Children], Parent, Graph, WriteLink) -->
-	{ relation__lookup_key(Graph, ChildKey, Child) },
-	WriteLink(Parent, Child),
-	write_graph_children(Children, Parent, Graph, WriteLink).
+write_graph_children([], _Parent, _Graph, _WriteLink, !IO).
+write_graph_children([ChildKey | Children], Parent, Graph, WriteLink, !IO) :-
+	relation__lookup_key(Graph, ChildKey, Child),
+	WriteLink(Parent, Child, !IO),
+	write_graph_children(Children, Parent, Graph, WriteLink, !IO).
 
 %-----------------------------------------------------------------------------%
 
 % dependency_graph__output_label:
-%	Prints out the label corresponding to PredId and ProcId.  
+%	Prints out the label corresponding to PredId and ProcId.
 %
 :- pred dependency_graph__output_label(module_info, pred_id, proc_id,
-				io__state, io__state).
+	io__state, io__state).
 :- mode dependency_graph__output_label(in, in, in, di, uo) is det.
 
-dependency_graph__output_label(ModuleInfo, PredId, ProcId) -->
-	{ ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId) },
-	output_proc_label(ProcLabel).
+dependency_graph__output_label(ModuleInfo, PredId, ProcId, !IO) :-
+	ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
+	output_proc_label(ProcLabel, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -588,8 +688,8 @@ dependency_graph__get_scc_entry_points(SCC, HigherSCCs,
 	list__filter(dependency_graph__is_entry_point(HigherSCCs, ModuleInfo),
 		SCC, EntryPoints).
 
-:- pred dependency_graph__is_entry_point(list(list(pred_proc_id))::in, 
-		module_info::in, pred_proc_id::in) is semidet.
+:- pred dependency_graph__is_entry_point(list(list(pred_proc_id))::in,
+	module_info::in, pred_proc_id::in) is semidet.
 
 dependency_graph__is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
 	(
@@ -606,7 +706,7 @@ dependency_graph__is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
 		relation__lookup_element(DepGraph, PredProcId, PredProcIdKey),
 		relation__lookup_to(DepGraph, PredProcIdKey, CallingKeys),
 		set__member(CallingKey, CallingKeys),
-		relation__lookup_key(DepGraph, CallingKey, 
+		relation__lookup_key(DepGraph, CallingKey,
 			CallingPred),
 		list__member(HigherSCC, HigherSCCs),
 		list__member(CallingPred, HigherSCC)
@@ -617,74 +717,77 @@ dependency_graph__is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
 module_info_ensure_aditi_dependency_info(ModuleInfo0, ModuleInfo) :-
 	module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo1),
 	module_info_dependency_info(ModuleInfo1, DepInfo0),
-	hlds_dependency_info_get_maybe_aditi_dependency_ordering(DepInfo0, 
+	hlds_dependency_info_get_maybe_aditi_dependency_ordering(DepInfo0,
 		MaybeAditiInfo),
 	( MaybeAditiInfo = yes(_) ->
 		ModuleInfo = ModuleInfo1
-	;	
-		hlds_dependency_info_get_dependency_ordering(DepInfo0, 
+	;
+		hlds_dependency_info_get_dependency_ordering(DepInfo0,
 			DepOrdering),
 		aditi_scc_info_init(ModuleInfo1, AditiInfo0),
-		dependency_graph__build_aditi_scc_info(DepOrdering, 
+		dependency_graph__build_aditi_scc_info(DepOrdering,
 			AditiInfo0, AditiInfo),
 		dependency_graph__merge_aditi_sccs(AditiInfo, AditiOrdering),
 		hlds_dependency_info_set_aditi_dependency_ordering(DepInfo0,
 			AditiOrdering, DepInfo),
-		module_info_set_dependency_info(ModuleInfo1, 
+		module_info_set_dependency_info(ModuleInfo1,
 			DepInfo, ModuleInfo)
 	).
 
-:- pred dependency_graph__build_aditi_scc_info(dependency_ordering::in, 
-		aditi_scc_info::in, aditi_scc_info::out) is det.
+:- pred dependency_graph__build_aditi_scc_info(dependency_ordering::in,
+	aditi_scc_info::in, aditi_scc_info::out) is det.
 
-dependency_graph__build_aditi_scc_info([]) --> [].
-dependency_graph__build_aditi_scc_info([SCC | SCCs]) -->
-	aditi_scc_info_get_module_info(ModuleInfo),
+dependency_graph__build_aditi_scc_info([], !Info).
+dependency_graph__build_aditi_scc_info([SCC | SCCs], !Info) :-
+	aditi_scc_info_get_module_info(ModuleInfo, !Info),
 	(
-		{ list__member(PredProcId, SCC) },
-		{ PredProcId = proc(PredId, _) },
-		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ hlds_pred__pred_info_is_aditi_relation(PredInfo) },
-		{ \+ hlds_pred__pred_info_is_base_relation(PredInfo) }
+		list__member(PredProcId, SCC),
+		PredProcId = proc(PredId, _),
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		hlds_pred__pred_info_is_aditi_relation(PredInfo),
+		\+ hlds_pred__pred_info_is_base_relation(PredInfo)
 	->
-		aditi_scc_info_add_scc(SCC, SCCs, SCCid),
-		list__foldl(dependency_graph__process_aditi_pred_proc_id(SCCid),
-			SCC)
+		aditi_scc_info_add_scc(SCC, SCCs, SCCid, !Info),
+		list__foldl(
+			dependency_graph__process_aditi_pred_proc_id(SCCid),
+			SCC, !Info)
 	;
-		[]
+		true
 	),
-	dependency_graph__build_aditi_scc_info(SCCs).	
+	dependency_graph__build_aditi_scc_info(SCCs, !Info).
 
-:- pred dependency_graph__process_aditi_pred_proc_id(scc_id::in, 
+:- pred dependency_graph__process_aditi_pred_proc_id(scc_id::in,
 	pred_proc_id::in, aditi_scc_info::in, aditi_scc_info::out) is det.
 
-dependency_graph__process_aditi_pred_proc_id(SCCid, PredProcId) -->
-	aditi_scc_info_get_module_info(ModuleInfo),
-	{ module_info_pred_proc_info(ModuleInfo, PredProcId, 
-		PredInfo, ProcInfo) },
-	dependency_graph__process_aditi_proc_info(SCCid, PredInfo, ProcInfo).
+dependency_graph__process_aditi_pred_proc_id(SCCid, PredProcId, !Info) :-
+	aditi_scc_info_get_module_info(ModuleInfo, !Info),
+	module_info_pred_proc_info(ModuleInfo, PredProcId,
+		PredInfo, ProcInfo),
+	dependency_graph__process_aditi_proc_info(SCCid, PredInfo, ProcInfo,
+		!Info).
 
-:- pred dependency_graph__process_aditi_proc_info(scc_id::in, pred_info::in, 
+:- pred dependency_graph__process_aditi_proc_info(scc_id::in, pred_info::in,
 	proc_info::in, aditi_scc_info::in, aditi_scc_info::out) is det.
 
-dependency_graph__process_aditi_proc_info(CurrSCC, PredInfo, ProcInfo) -->
+dependency_graph__process_aditi_proc_info(CurrSCC, PredInfo, ProcInfo,
+		!Info) :-
 	(
-		{ pred_info_is_exported(PredInfo) }
+		pred_info_is_exported(PredInfo)
 	->
-		aditi_scc_info_add_no_merge_scc(CurrSCC)
+		aditi_scc_info_add_no_merge_scc(CurrSCC, !Info)
 	;
-		{ pred_info_get_markers(PredInfo, Markers) },
-		{ check_marker(Markers, context) }
+		pred_info_get_markers(PredInfo, Markers),
+		check_marker(Markers, context)
 	->
 		% The context transformation can only be applied
 		% to a single predicate SCC, so don't merge
 		% other SCCs with a context-transformed SCC.
-		aditi_scc_info_add_no_merge_scc(CurrSCC)
+		aditi_scc_info_add_no_merge_scc(CurrSCC, !Info)
 	;
-		[]
+		true
 	),
-	{ proc_info_goal(ProcInfo, Goal) },
-	process_aditi_goal(Goal).
+	proc_info_goal(ProcInfo, Goal),
+	process_aditi_goal(Goal, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -692,61 +795,57 @@ dependency_graph__process_aditi_proc_info(CurrSCC, PredInfo, ProcInfo) -->
 	% or aggregation. The SCCs containing those predicates cannot
 	% be merged into the current SCC.
 :- pred process_aditi_goal(hlds_goal::in, aditi_scc_info::in,
-		aditi_scc_info::out) is det.
+	aditi_scc_info::out) is det.
 
-process_aditi_goal(Goal) -->
-	 { multi_map__init(MMap0) },
-	process_aditi_goal(no, Goal, MMap0, _).
+process_aditi_goal(Goal, !Info) :-
+	multi_map__init(MMap0),
+	process_aditi_goal(no, Goal, MMap0, _, !Info).
 
 :- pred process_aditi_goal(bool::in, hlds_goal::in,
-	multi_map(prog_var, pred_proc_id)::in, 
+	multi_map(prog_var, pred_proc_id)::in,
 	multi_map(prog_var, pred_proc_id)::out,
 	aditi_scc_info::in, aditi_scc_info::out) is det.
 
-process_aditi_goal(IsNeg, conj(Goals) - _, Map0, Map) -->
-	list__foldl2(process_aditi_goal(IsNeg), Goals, Map0, Map).
-process_aditi_goal(_IsNeg, par_conj(_) - _, _, _) -->
-	{ error("process_aditi_goal - par_conj") }.
-process_aditi_goal(IsNeg, disj(Goals) - _, Map0, Map) -->
-	list__foldl2(process_aditi_goal(IsNeg), Goals, Map0, Map).
-process_aditi_goal(IsNeg, switch(_, _, Cases) - _, Map0, Map) -->
-	{ NegCallsInCases = 
-	    lambda([Case::in, M0::in, M::out, AInfo0::in, AInfo::out] is det, (
-		Case = case(_ConsId, Goal),
-		process_aditi_goal(IsNeg, Goal, M0, M, AInfo0, AInfo)
-	    )) },
-	list__foldl2(NegCallsInCases, Cases, Map0, Map).
-process_aditi_goal(IsNeg, if_then_else(_, Cond, Then, Else) - _, 
-		Map0, Map) -->
-	process_aditi_goal(yes, Cond, Map0, Map1),
-	process_aditi_goal(IsNeg, Then, Map1, Map2),
-	process_aditi_goal(IsNeg, Else, Map2, Map).
-process_aditi_goal(IsNeg, some(_, _, Goal) - _, Map0, Map) -->
-	process_aditi_goal(IsNeg, Goal, Map0, Map).
-process_aditi_goal(_IsNeg, not(Goal) - _, Map0, Map) -->
-	process_aditi_goal(yes, Goal, Map0, Map).
-process_aditi_goal(IsNeg, call(PredId, ProcId, Args, _, _, _) - _, 
-		Map0, Map) -->
-	aditi_scc_info_handle_call(IsNeg, PredId, ProcId, Args, Map0, Map).
-
-process_aditi_goal(_IsNeg, unify(Var, _, _, Unify, _) - _, 
-		Map0, Map) -->
+process_aditi_goal(IsNeg, conj(Goals) - _, !Map, !Info) :-
+	list__foldl2(process_aditi_goal(IsNeg), Goals, !Map, !Info).
+process_aditi_goal(_IsNeg, par_conj(_) - _, _, _, !Info) :-
+	error("process_aditi_goal - par_conj").
+process_aditi_goal(IsNeg, disj(Goals) - _, !Map, !Info) :-
+	list__foldl2(process_aditi_goal(IsNeg), Goals, !Map, !Info).
+process_aditi_goal(IsNeg, switch(_, _, Cases) - _, !Map, !Info) :-
+	NegCallsInCases = (
+		pred(Case::in, M0::in, M::out, AInfo0::in, AInfo::out) is det :-
+			Case = case(_ConsId, Goal),
+			process_aditi_goal(IsNeg, Goal, M0, M, AInfo0, AInfo)
+	),
+	list__foldl2(NegCallsInCases, Cases, !Map, !Info).
+process_aditi_goal(IsNeg, if_then_else(_, Cond, Then, Else) - _,
+		!Map, !Info) :-
+	process_aditi_goal(yes, Cond, !Map, !Info),
+	process_aditi_goal(IsNeg, Then, !Map, !Info),
+	process_aditi_goal(IsNeg, Else, !Map, !Info).
+process_aditi_goal(IsNeg, some(_, _, Goal) - _, !Map, !Info) :-
+	process_aditi_goal(IsNeg, Goal, !Map, !Info).
+process_aditi_goal(_IsNeg, not(Goal) - _, !Map, !Info) :-
+	process_aditi_goal(yes, Goal, !Map, !Info).
+process_aditi_goal(IsNeg, call(PredId, ProcId, Args, _, _, _) - _,
+		!Map, !Info) :-
+	aditi_scc_info_handle_call(IsNeg, PredId, ProcId, Args, !.Map, !Info).
+process_aditi_goal(_IsNeg, unify(Var, _, _, Unify, _) - _, !Map, !Info) :-
 	(
-		{ Unify = construct(_, pred_const(PredId, ProcId, _),
-			_, _, _, _, _) }
+		Unify = construct(_, pred_const(PredId, ProcId, _),
+			_, _, _, _, _)
 	->
-		aditi_scc_info_add_closure(Var, 
-			proc(PredId, ProcId), Map0, Map)
+		aditi_scc_info_add_closure(Var, proc(PredId, ProcId),
+			!Map, !Info)
 	;
-		{ Map = Map0 }
+		true
 	).
-process_aditi_goal(_IsNeg, generic_call(_, _, _, _) - _, 
-		Map, Map) --> [].
-process_aditi_goal(_IsNeg, foreign_proc(_, _, _, _, _, _, _) - _,
-		Map, Map) --> [].
-process_aditi_goal(_, shorthand(_) - _, _, _) -->
+process_aditi_goal(_IsNeg, generic_call(_, _, _, _) - _, !Map, !Info).
+process_aditi_goal(_IsNeg, foreign_proc(_, _, _, _, _, _, _) - _, !Map, !Info).
+process_aditi_goal(_, shorthand(_) - _, _, _, _, _) :-
 	% these should have been expanded out by now
-	{ error("process_aditi_goal: unexpected shorthand") }.
+	error("process_aditi_goal: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -755,13 +854,13 @@ process_aditi_goal(_, shorthand(_) - _, _, _) -->
 
 dependency_graph__merge_aditi_sccs(Info, Ordering) :-
 	Info = aditi_scc_info(ModuleInfo, _PredSCC, SCCPred,
-			_, SCCRel, NoMerge, _),
+		_, SCCRel, NoMerge, _),
 	( relation__tsort(SCCRel, SCCTsort) ->
 		eqvclass__init(EqvSCCs0),
 		set__init(MergedSCCs),
-		% Make all the SCCs known to the equivalence class.	
+		% Make all the SCCs known to the equivalence class.
 		AddElement = lambda([Elem::in, Eqv0::in, Eqv::out] is det, (
-				eqvclass__new_element(Eqv0, Elem, Eqv)	
+				eqvclass__new_element(Eqv0, Elem, Eqv)
 			)),
 		list__foldl(AddElement, SCCTsort, EqvSCCs0, EqvSCCs),
 		dependency_graph__merge_aditi_sccs_2(SCCTsort, ModuleInfo,
@@ -773,22 +872,20 @@ dependency_graph__merge_aditi_sccs(Info, Ordering) :-
 
 :- pred dependency_graph__merge_aditi_sccs_2(list(scc_id)::in,
 	module_info::in, eqvclass(scc_id)::in, set(scc_id)::in,
-	set(scc_id)::in, relation(scc_id)::in, scc_pred_map::in, 
+	set(scc_id)::in, relation(scc_id)::in, scc_pred_map::in,
 	aditi_dependency_ordering::in, aditi_dependency_ordering::out) is det.
 
-dependency_graph__merge_aditi_sccs_2([], _, _, _, _, _, _, Ordering, Ordering).
-dependency_graph__merge_aditi_sccs_2([SCCid | SCCs0], ModuleInfo, EqvSCCs0, 
-		MergedSCCs0, NoMergeSCCs, SCCRel, 
-		SCCPreds, Ordering0, Ordering) :-
+dependency_graph__merge_aditi_sccs_2([], _, _, _, _, _, _, !Ordering).
+dependency_graph__merge_aditi_sccs_2([SCCid | SCCs0], ModuleInfo, EqvSCCs0,
+		MergedSCCs0, NoMergeSCCs, SCCRel, SCCPreds, !Ordering) :-
 	(
 		set__member(SCCid, MergedSCCs0)
 	->
 			% This SCC has been merged into its parent.
-		Ordering1 = Ordering0,
 		EqvSCCs = EqvSCCs0,
 		SCCs = SCCs0
-	; 
-		map__lookup(SCCPreds, SCCid, SCC0 - EntryPoints), 
+	;
+		map__lookup(SCCPreds, SCCid, SCC0 - EntryPoints),
 		some [PredProcId] (
 			list__member(proc(PredId, _), SCC0),
 			module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -799,26 +896,25 @@ dependency_graph__merge_aditi_sccs_2([SCCid | SCCs0], ModuleInfo, EqvSCCs0,
 		% Don't merge predicates for which the context
 		% transformation has been requested with other SCCs --
 		% their magic predicates are incompatible.
-		Ordering1 = [aditi_scc([SCC0], EntryPoints) | Ordering0],
+		!:Ordering = [aditi_scc([SCC0], EntryPoints) | !.Ordering],
 		EqvSCCs = EqvSCCs0,
 		SCCs = SCCs0
 	;
 		dependency_graph__get_called_scc_ids(SCCid, SCCRel,
 			CalledSCCs),
 		map__lookup(SCCPreds, SCCid, SCC0 - EntryPoints),
-		dependency_graph__do_merge_aditi_sccs(SCCid, CalledSCCs, 
-			NoMergeSCCs, SCCs0, SCCs, SCCPreds, SCCRel, 
-			EqvSCCs0, EqvSCCs, 
+		dependency_graph__do_merge_aditi_sccs(SCCid, CalledSCCs,
+			NoMergeSCCs, SCCs0, SCCs, SCCPreds, SCCRel,
+			EqvSCCs0, EqvSCCs,
 			aditi_scc([SCC0], EntryPoints), SCC),
-		Ordering1 = [SCC | Ordering0]
+		!:Ordering = [SCC | !.Ordering]
 	),
 	dependency_graph__merge_aditi_sccs_2(SCCs, ModuleInfo, EqvSCCs,
-		MergedSCCs0, NoMergeSCCs, SCCRel, SCCPreds,
-		Ordering1, Ordering).
+		MergedSCCs0, NoMergeSCCs, SCCRel, SCCPreds, !Ordering).
 
 	% Find the SCCs called from a given SCC.
 :- pred dependency_graph__get_called_scc_ids(scc_id::in, relation(scc_id)::in,
-		set(scc_id)::out) is det.
+	set(scc_id)::out) is det.
 
 dependency_graph__get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
 	relation__lookup_element(SCCRel, SCCid, SCCidKey),
@@ -827,93 +923,96 @@ dependency_graph__get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
 	list__map(relation__lookup_key(SCCRel), CalledSCCKeyList, CalledSCCs),
 	set__list_to_set(CalledSCCs, CalledSCCSet).
 
-	% Go over the list of SCCs finding all those which 
+	% Go over the list of SCCs finding all those which
 	% can be merged into a given SCC.
-:- pred dependency_graph__do_merge_aditi_sccs(scc_id::in, set(scc_id)::in, 
-		set(scc_id)::in, list(scc_id)::in, list(scc_id)::out, 
-		scc_pred_map::in, relation(scc_id)::in, 
-		eqvclass(scc_id)::in, eqvclass(scc_id)::out, 
-		aditi_scc::in, aditi_scc::out) is det.
+:- pred dependency_graph__do_merge_aditi_sccs(scc_id::in, set(scc_id)::in,
+	set(scc_id)::in, list(scc_id)::in, list(scc_id)::out,
+	scc_pred_map::in, relation(scc_id)::in,
+	eqvclass(scc_id)::in, eqvclass(scc_id)::out,
+	aditi_scc::in, aditi_scc::out) is det.
 
-dependency_graph__do_merge_aditi_sccs(_, _, _, [], [], 
-		_, _, Eqv, Eqv, SubModule, SubModule).
+dependency_graph__do_merge_aditi_sccs(_, _, _, [], [], _, _, !Eqv, !SubModule).
 dependency_graph__do_merge_aditi_sccs(CurrSCCid, CalledSCCs, NoMergeSCCs,
-		[LowerSCCid | LowerSCCs0], LowerSCCs, SCCPreds, SCCRel, 
-		EqvSCCs0, EqvSCCs, SubModule0, SubModule) :-
+		[LowerSCCid | LowerSCCs0], LowerSCCs, SCCPreds, SCCRel,
+		!EqvSCCs, !SubModule) :-
 	(
-		set__member(LowerSCCid, CalledSCCs), 
-		\+ set__member(LowerSCCid, NoMergeSCCs) 
+		set__member(LowerSCCid, CalledSCCs),
+		\+ set__member(LowerSCCid, NoMergeSCCs)
 	->
 		relation__lookup_element(SCCRel, LowerSCCid, LowerSCCKey),
 		relation__lookup_to(SCCRel, LowerSCCKey, CallingSCCKeys),
 		set__to_sorted_list(CallingSCCKeys, CallingSCCKeyList),
-		list__map(relation__lookup_key(SCCRel), 
+		list__map(relation__lookup_key(SCCRel),
 			CallingSCCKeyList, CallingSCCs),
-		( eqvclass__same_eqvclass_list(EqvSCCs0, CallingSCCs) ->
+		( eqvclass__same_eqvclass_list(!.EqvSCCs, CallingSCCs) ->
 
 			%
-			% All the calling SCCs have been merged (or 
+			% All the calling SCCs have been merged (or
 			% there was only one to start with) so we
 			% can safely merge this one in as well.
 			%
-			eqvclass__new_equivalence(EqvSCCs0, CurrSCCid, 
-				LowerSCCid, EqvSCCs1),
+			eqvclass__new_equivalence(!.EqvSCCs, CurrSCCid,
+				LowerSCCid, !:EqvSCCs),
 			map__lookup(SCCPreds, LowerSCCid, LowerSCC),
 			LowerSCC = LowerSCCPreds - _,
 
 			%
 			% The entry-points of the combined SCC cannot include
-			% the entry-points of the lower SCC, since that 
+			% the entry-points of the lower SCC, since that
 			% would mean that the lower SCC was called from
 			% multiple places and could not be merged.
 			%
-			SubModule0 = aditi_scc(CurrSCCPreds0, EntryPoints),
-			SubModule1 = aditi_scc([LowerSCCPreds | CurrSCCPreds0], 
+			!.SubModule = aditi_scc(CurrSCCPreds0, EntryPoints),
+			!:SubModule =
+				aditi_scc([LowerSCCPreds | CurrSCCPreds0],
 					EntryPoints),
 
 			%
-			% Add the SCCs called by the newly merged SCC 
+			% Add the SCCs called by the newly merged SCC
 			% to those we are attempting to merge.
 			%
-			dependency_graph__get_called_scc_ids(LowerSCCid, 
+			dependency_graph__get_called_scc_ids(LowerSCCid,
 				SCCRel, LowerCalledSCCs),
 			set__union(CalledSCCs, LowerCalledSCCs, CalledSCCs1),
 
 			dependency_graph__do_merge_aditi_sccs(CurrSCCid,
-				CalledSCCs1, NoMergeSCCs, LowerSCCs0, 
-				LowerSCCs, SCCPreds, SCCRel, EqvSCCs1, EqvSCCs, 
-				SubModule1, SubModule)
-		;	
+				CalledSCCs1, NoMergeSCCs, LowerSCCs0,
+				LowerSCCs, SCCPreds, SCCRel, !EqvSCCs,
+				!SubModule)
+		;
 			dependency_graph__do_merge_aditi_sccs(CurrSCCid,
-				CalledSCCs, NoMergeSCCs, LowerSCCs0, 
-				LowerSCCs1, SCCPreds, SCCRel, 
-				EqvSCCs0, EqvSCCs, SubModule0, SubModule),
-			LowerSCCs = [LowerSCCid | LowerSCCs1]	
+				CalledSCCs, NoMergeSCCs, LowerSCCs0,
+				LowerSCCs1, SCCPreds, SCCRel,
+				!EqvSCCs, !SubModule),
+			LowerSCCs = [LowerSCCid | LowerSCCs1]
 		)
 	;
-		dependency_graph__do_merge_aditi_sccs(CurrSCCid, CalledSCCs, 
-			NoMergeSCCs, LowerSCCs0, LowerSCCs1, SCCPreds, SCCRel, 
-			EqvSCCs0, EqvSCCs, SubModule0, SubModule),
+		dependency_graph__do_merge_aditi_sccs(CurrSCCid, CalledSCCs,
+			NoMergeSCCs, LowerSCCs0, LowerSCCs1, SCCPreds, SCCRel,
+			!EqvSCCs, !SubModule),
 		LowerSCCs = [LowerSCCid | LowerSCCs1]
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- type aditi_scc_info
-	---> aditi_scc_info(
-		module_info,
-		map(pred_proc_id, scc_id),
-		scc_pred_map,
-		set(pred_proc_id),		% all local Aditi preds
-		relation(scc_id),
-		set(scc_id),			% SCCs which can't be merged
-						% into their parents.
-		scc_id				% current SCC.
+:- type aditi_scc_info --->
+	aditi_scc_info(
+		aditi_scc_module_info	:: module_info,
+		aditi_scc_proc_to_scc	:: map(pred_proc_id, scc_id),
+		aditi_scc_scc_to_procs	:: scc_pred_map,
+		aditi_scc_local_procs	:: set(pred_proc_id),
+					% all local Aditi preds
+		aditi_scc_dependencies	:: relation(scc_id),
+		aditi_scc_no_merge_sccs	:: set(scc_id),
+					% SCCs which can't be merged
+					% into their parents.
+		aditi_scc_cur_scc	:: scc_id
+					% current SCC.
 	).
 
 		% For each SCC, a list of all preds in SCC, and a list
 		% of entry-points of the SCC.
-:- type scc_pred_map ==	map(scc_id, pair(list(pred_proc_id))).
+:- type scc_pred_map == map(scc_id, pair(list(pred_proc_id))).
 
 :- type scc_id == int.
 
@@ -921,59 +1020,56 @@ dependency_graph__do_merge_aditi_sccs(CurrSCCid, CalledSCCs, NoMergeSCCs,
 
 :- pred aditi_scc_info_init(module_info::in, aditi_scc_info::out) is det.
 
-aditi_scc_info_init(ModuleInfo, AditiInfo) :- 
+aditi_scc_info_init(ModuleInfo, AditiInfo) :-
 	map__init(PredSCC),
 	map__init(SCCPred),
 	set__init(AditiPreds),
 	relation__init(SCCDep),
 	set__init(NoMergeSCCs),
-	AditiInfo = aditi_scc_info(ModuleInfo, PredSCC, SCCPred, 
-			AditiPreds, SCCDep, NoMergeSCCs, 0).
+	AditiInfo = aditi_scc_info(ModuleInfo, PredSCC, SCCPred,
+		AditiPreds, SCCDep, NoMergeSCCs, 0).
 
 :- pred aditi_scc_info_get_module_info(module_info::out,
-		aditi_scc_info::in, aditi_scc_info::out) is det.
+	aditi_scc_info::in, aditi_scc_info::out) is det.
 
 aditi_scc_info_get_module_info(Module, Info, Info) :-
-	Info = aditi_scc_info(Module, _, _, _, _, _, _).
+	Module = Info ^ aditi_scc_module_info.
 
 :- pred aditi_scc_info_add_no_merge_scc(scc_id::in,
-		aditi_scc_info::in, aditi_scc_info::out) is det.
+	aditi_scc_info::in, aditi_scc_info::out) is det.
 
 aditi_scc_info_add_no_merge_scc(SCCid, Info0, Info) :-
-	Info0 = aditi_scc_info(A, B, C, D, E, NoMerge0, G),
+	NoMerge0 = Info0 ^ aditi_scc_no_merge_sccs,
 	set__insert(NoMerge0, SCCid, NoMerge),
-	Info = aditi_scc_info(A, B, C, D, E, NoMerge, G).
+	Info = Info0 ^ aditi_scc_no_merge_sccs := NoMerge.
 
-:- pred aditi_scc_info_add_scc(list(pred_proc_id)::in, 
-		dependency_ordering::in, scc_id::out,
-		aditi_scc_info::in, aditi_scc_info::out) is det.
+:- pred aditi_scc_info_add_scc(list(pred_proc_id)::in,
+	dependency_ordering::in, scc_id::out,
+	aditi_scc_info::in, aditi_scc_info::out) is det.
 
 aditi_scc_info_add_scc(SCC, HigherSCCs, SCCid, Info0, Info) :-
-	Info0 = aditi_scc_info(ModuleInfo, PredSCC0, SCCPred0, AditiPreds0, 
-			SCCRel0, NoMerge, LastSCC),
+	Info0 = aditi_scc_info(ModuleInfo, PredSCC0, SCCPred0, AditiPreds0,
+		SCCRel0, NoMerge, LastSCC),
 	SCCid = LastSCC + 1,
 	dependency_graph__get_scc_entry_points(SCC, HigherSCCs,
 		ModuleInfo, EntryPoints),
 	map__det_insert(SCCPred0, SCCid, SCC - EntryPoints, SCCPred),
-	AddToMap = 
-	    lambda([PredProcId::in, PS0::in, PS::out] is det, (
+	AddToMap = lambda([PredProcId::in, PS0::in, PS::out] is det, (
 		map__det_insert(PS0, PredProcId, SCCid, PS)
-	    )),
+	)),
 	list__foldl(AddToMap, SCC, PredSCC0, PredSCC),
 	relation__add_element(SCCRel0, SCCid, _, SCCRel),
-	set__insert_list(AditiPreds0, SCC, AditiPreds),	
-	Info = aditi_scc_info(ModuleInfo, PredSCC, SCCPred, AditiPreds, 
-			SCCRel, NoMerge, SCCid).
+	set__insert_list(AditiPreds0, SCC, AditiPreds),
+	Info = aditi_scc_info(ModuleInfo, PredSCC, SCCPred, AditiPreds,
+		SCCRel, NoMerge, SCCid).
 
 :- pred aditi_scc_info_handle_call(bool::in, pred_id::in, proc_id::in,
-		list(prog_var)::in, multi_map(prog_var, pred_proc_id)::in, 
-		multi_map(prog_var, pred_proc_id)::out, 
-		aditi_scc_info::in, aditi_scc_info::out) is det.
+	list(prog_var)::in, multi_map(prog_var, pred_proc_id)::in,
+	aditi_scc_info::in, aditi_scc_info::out) is det.
 
-aditi_scc_info_handle_call(IsNeg, PredId, ProcId, Args, 
-		Map, Map, Info0, Info) :-
-	Info0 = aditi_scc_info(ModuleInfo, PredSCC, SCCPred, AditiPreds, 
-			SCCRel0, NoMerge0, SCCid),
+aditi_scc_info_handle_call(IsNeg, PredId, ProcId, Args, Map, !Info) :-
+	!.Info = aditi_scc_info(ModuleInfo, PredSCC, SCCPred,
+		AditiPreds, SCCRel0, NoMerge0, SCCid),
 	PredProcId = proc(PredId, ProcId),
 	( set__member(PredProcId, AditiPreds) ->
 		map__lookup(PredSCC, PredProcId, CalledSCCid),
@@ -991,16 +1087,16 @@ aditi_scc_info_handle_call(IsNeg, PredId, ProcId, Args,
 		),
 		handle_higher_order_args(Args, no, SCCid, Map, PredSCC,
 			SCCRel1, SCCRel, NoMerge1, NoMerge),
-		Info = aditi_scc_info(ModuleInfo, PredSCC, SCCPred, AditiPreds, 
-			SCCRel, NoMerge, SCCid)
+		!:Info = aditi_scc_info(ModuleInfo, PredSCC, SCCPred,
+			AditiPreds, SCCRel, NoMerge, SCCid)
 	;
 		( hlds_pred__is_aditi_aggregate(ModuleInfo, PredId) ->
 			handle_higher_order_args(Args, yes, SCCid, Map,
 				PredSCC, SCCRel0, SCCRel, NoMerge0, NoMerge),
-			Info = aditi_scc_info(ModuleInfo, PredSCC, SCCPred,
+			!:Info = aditi_scc_info(ModuleInfo, PredSCC, SCCPred,
 				AditiPreds, SCCRel, NoMerge, SCCid)
 		;
-			Info = Info0
+			true
 		)
 	).
 
@@ -1010,54 +1106,51 @@ aditi_scc_info_handle_call(IsNeg, PredId, ProcId, Args,
 	multi_map(prog_var, pred_proc_id)::in, map(pred_proc_id, scc_id)::in,
 	relation(scc_id)::in, relation(scc_id)::out,
 	set(scc_id)::in, set(scc_id)::out) is det.
-	
-handle_higher_order_args([], _, _, _, _, SCCRel, SCCRel, NoMerge, NoMerge).
-handle_higher_order_args([Arg | Args], IsAgg, SCCid, Map, PredSCC, 
-		SCCRel0, SCCRel, NoMerge0, NoMerge) :-
+
+handle_higher_order_args([], _, _, _, _, !SCCRel, !NoMerge).
+handle_higher_order_args([Arg | Args], IsAgg, SCCid, Map, PredSCC,
+		!SCCRel, !NoMerge) :-
 	( multi_map__search(Map, Arg, PredProcIds) ->
 		list__foldl2(handle_higher_order_arg(PredSCC, IsAgg, SCCid),
-			PredProcIds, SCCRel0, SCCRel1, NoMerge0, NoMerge1)
+			PredProcIds, !SCCRel, !NoMerge)
 	;
-		SCCRel1 = SCCRel0, 
-		NoMerge1 = NoMerge0
+		true
 	),
-	handle_higher_order_args(Args, IsAgg, SCCid, Map, PredSCC, 
-		SCCRel1, SCCRel, NoMerge1, NoMerge).
+	handle_higher_order_args(Args, IsAgg, SCCid, Map, PredSCC,
+		!SCCRel, !NoMerge).
 
 :- pred handle_higher_order_arg(map(pred_proc_id, scc_id)::in, bool::in,
-		scc_id::in, pred_proc_id::in,
-		relation(scc_id)::in, relation(scc_id)::out,
-		set(scc_id)::in, set(scc_id)::out) is det.
+	scc_id::in, pred_proc_id::in,
+	relation(scc_id)::in, relation(scc_id)::out,
+	set(scc_id)::in, set(scc_id)::out) is det.
 
 handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
-		SCCRel0, SCCRel, NoMerge0, NoMerge) :-
+		!SCCRel, !NoMerge) :-
 	( map__search(PredSCC, PredProcId, CalledSCCid) ->
-		% Make sure anything called through an
-		% aggregate is not merged into the current 
-		% sub-module.
+		% Make sure anything called through an aggregate
+		% is not merged into the current sub-module.
 		( IsAgg = yes ->
-			set__insert(NoMerge0, CalledSCCid, NoMerge)
+			set__insert(!.NoMerge, CalledSCCid, !:NoMerge)
 		;
-			NoMerge = NoMerge0
+			true
 		),
 		( CalledSCCid = SCCid ->
-			SCCRel = SCCRel0
-		;	
-			relation__add_values(SCCRel0, SCCid,
-				CalledSCCid, SCCRel)
+			true
+		;
+			relation__add_values(!.SCCRel, SCCid, CalledSCCid,
+				!:SCCRel)
 		)
 	;
-		NoMerge = NoMerge0, 
-		SCCRel = SCCRel0
+		true
 	).
 
-:- pred aditi_scc_info_add_closure(prog_var::in, pred_proc_id::in, 
-		multi_map(prog_var, pred_proc_id)::in, 
-		multi_map(prog_var, pred_proc_id)::out,
-		aditi_scc_info::in, aditi_scc_info::out) is det.
+:- pred aditi_scc_info_add_closure(prog_var::in, pred_proc_id::in,
+	multi_map(prog_var, pred_proc_id)::in,
+	multi_map(prog_var, pred_proc_id)::out,
+	aditi_scc_info::in, aditi_scc_info::out) is det.
 
 aditi_scc_info_add_closure(Var, PredProcId, Map0, Map, Info, Info) :-
-	Info = aditi_scc_info(_, _, _, AditiPreds, _, _, _),
+	AditiPreds = Info ^ aditi_scc_local_procs,
 	( set__member(PredProcId, AditiPreds) ->
 		multi_map__set(Map0, Var, PredProcId, Map)
 	;
