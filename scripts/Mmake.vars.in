@@ -56,6 +56,18 @@ else
 ASM_OPT  =
 endif
 
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+#
+# The following variables hold the names of various programs and
+# the options which should be passed to them.
+#
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+#
+# Stuff which is not specific to any back-end
+#
+
 ALL_GRADEFLAGS  = $(USUAL_GRADEFLAGS) $(ASM_OPT)
 USUAL_GRADEFLAGS = $(GRADEFLAGS) $(EXTRA_GRADEFLAGS) $(TARGET_GRADEFLAGS)
 GRADEFLAGS	= --grade $(GRADE)
@@ -113,10 +125,11 @@ EXTRA_MCDFLAGS	= $(EXTRA_MCFLAGS)
 EXTRA_MCGFLAGS	= $(EXTRA_MCFLAGS)
 EXTRA_MCSFLAGS	= $(EXTRA_MCFLAGS)
 
+#-----------------------------------------------------------------------------#
 #
-# The following variables hold the names of various programs and
-# the options which should be passed to them.
+# Stuff which is specific to the C back-ends
 #
+
 MGNUC		= mgnuc
 ALL_MGNUCFLAGS	= $(MGNUCFLAGS) $(EXTRA_MGNUCFLAGS) $(TARGET_MGNUCFLAGS) \
 		  $(LIB_MGNUCFLAGS) -- $(ALL_CFLAGS)
@@ -127,6 +140,11 @@ LIB_MGNUCFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 ALL_CFLAGS	= $(CFLAGS) $(EXTRA_CFLAGS) $(TARGET_CFLAGS)
 CFLAGS		=
 EXTRA_CFLAGS	=
+
+#-----------------------------------------------------------------------------#
+#
+# Stuff for the .NET back-end
+#
 
 # MS_CL is the command line version of Microsoft Visual C++, which we
 # use to compile Managed C++ code in the .NET backend.
@@ -168,6 +186,26 @@ ALL_MS_CSCFLAGS	= $(MS_CSCFLAGS) $(EXTRA_MS_CSCFLAGS) $(TARGET_MS_CSCFLAGS) \
 MS_CSCFLAGS	=
 EXTRA_MS_CSCFLAGS =
 LIB_MS_CSCFLAGS	= 
+
+#-----------------------------------------------------------------------------#
+#
+# Stuff for the Java back-end
+#
+
+# JAVAC is the command line java compiler;
+# it should generate .class files from .java files.
+JAVAC		= javac
+ALL_JAVACFLAGS	= $(JAVACFLAGS) $(EXTRA_JAVACFLAGS) $(TARGET_JAVACFLAGS) \
+		$(LIB_JAVACFLAGS)
+JAVACFLAGS	=
+EXTRA_JAVACFLAGS =
+# XXX Should we set LIB_JAVACFLAGS?
+LIB_JAVACFLAGS	= 
+
+#-----------------------------------------------------------------------------#
+#
+# Stuff related to linking (for the C and assembler back-ends).
+#
 
 C2INIT		= c2init
 ALL_C2INITFLAGS = $(C2INIT_AND_MLFLAGS)
@@ -218,6 +256,12 @@ MLLIBS		=
 EXTRA_MLLIBS	=
 LIB_MLLIBS	= $(patsubst %,-l%,$(ALL_EXTRA_LIBRARIES))
 
+#-----------------------------------------------------------------------------#
+#
+# Stuff related to the Prolog back-ends
+# (XXX This is all obsolete and should probably be deleted)
+#
+
 MNC		= mnc
 ALL_MNCFLAGS	= $(MNCFLAGS) $(EXTRA_MNCFLAGS) $(TARGET_MNCFLAGS)
 MNCFLAGS	=
@@ -247,6 +291,11 @@ MSP		= msp
 ALL_MSPFLAGS	= $(MSPFLAGS) $(EXTRA_MSPFLAGS) $(TARGET_MSPFLAGS)
 MSPFLAGS	=
 EXTRA_MSPFLAGS	=
+
+#-----------------------------------------------------------------------------#
+#
+# Stuff related to creating libraries
+#
 
 AR		= @AR@
 ALL_ARFLAGS	= $(ARFLAGS) $(EXTRA_ARFLAGS) $(TARGET_ARFLAGS)
@@ -436,6 +485,11 @@ ILASM_KEYFLAG = \
 maybe-target-ILASM_KEYFLAG- = $(ILASM_KEYFLAG-$*)
 maybe-target-ILASM_KEYFLAG-undefined =
 
+TARGET_JAVACFLAGS = \
+   $(maybe-base-JAVACFLAGS-$(findstring undefined,$(origin JAVACFLAGS-$*)))
+maybe-base-JAVACFLAGS- = $(JAVACFLAGS-$*)
+maybe-base-JAVACFLAGS-undefined =
+
 # Support for compiling Mercury programs with Prolog will probably be
 # dropped one of these days, so it's probably not worth bothering with these.
 TARGET_MNCFLAGS	=
@@ -484,11 +538,14 @@ os_subdir=$(SUBDIR)os/
 # doesn't know about `--use-subdirs'.
 rlos_subdir=
 ils_subdir=$(SUBDIR)ils/
+javas_subdir=$(SUBDIR)javas/
 dirs_subdir=$(SUBDIR)dirs/
 c_dates_subdir=$(SUBDIR)c_dates/
 s_dates_subdir=$(SUBDIR)s_dates/
 pic_s_dates_subdir=$(SUBDIR)pic_s_dates/
 il_dates_subdir=$(SUBDIR)il_dates/
+java_dates_subdir=$(SUBDIR)java_dates/
+classes_subdir=$(SUBDIR)classs/
 
 else
 
@@ -517,11 +574,14 @@ pic_ss_subdir=
 os_subdir=
 rlos_subdir=
 ils_subdir=
+javas_subdir=
 dirs_subdir=
 c_dates_subdir=
 s_dates_subdir=
 pic_s_dates_subdir=
 il_dates_subdir=
+java_dates_subdir=
+classes_subdir=
 
 endif
 

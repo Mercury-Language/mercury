@@ -779,6 +779,8 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 			; Ext = ".ss"
 			; Ext = ".pic_ss"
 			; Ext = ".ils"
+			; Ext = ".javas"
+			; Ext = ".classes"
 			; Ext = ".opts"
 			; Ext = ".trans_opts"
 			% The current interface to `mercury_update_interface'
@@ -1904,6 +1906,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		module_name_to_file_name(ModuleName, ".rlo", no, RLOFileName),
 		module_name_to_file_name(ModuleName, ".il_date", no,
 			ILDateFileName),
+		module_name_to_file_name(ModuleName, ".java_date", no,
+			JavaDateFileName),
 		module_name_to_file_name(ModuleName, ".pic_o", no,
 							PicObjFileName),
 		module_name_to_file_name(ModuleName, ".int0", no,
@@ -1919,7 +1923,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			PicAsmDateFileName, " ",
 			SplitObjPattern, " ",
 			RLOFileName, " ",
-			ILDateFileName
+			ILDateFileName, " ",
+			JavaDateFileName
 		] ),
 		write_dependencies_list(ParentDeps, ".optdate", DepStream),
 		write_dependencies_list(ParentDeps,
@@ -1930,6 +1935,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		write_dependencies_list(ParentDeps, ".dir/*.$O", DepStream),
 		write_dependencies_list(ParentDeps, ".rlo", DepStream),
 		write_dependencies_list(ParentDeps, ".il_date", DepStream),
+		write_dependencies_list(ParentDeps, ".java_date", DepStream),
 		io__write_strings(DepStream, [" : ", SourceFileName]),
 		% If the module contains nested sub-modules then `.int0'
 		% file must first be built.
@@ -1970,7 +1976,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				PicAsmDateFileName, " ",
 				SplitObjPattern, " ",
 				RLOFileName, " ",
-				ILDateFileName, " : "
+				ILDateFileName, " ",
+				JavaDateFileName, " : "
 			]),
 
 			% The target (e.g. C) file only depends on the .opt files
@@ -2002,7 +2009,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 					PicAsmDateFileName, " ",
 					SplitObjPattern, " ",
 					RLOFileName, " ",
-					ILDateFileName, " : "
+					ILDateFileName, " ",
+					JavaDateFileName, " : "
 				]),
 				write_dependencies_list(TransOptDeps,
 					".trans_opt", DepStream)
@@ -2301,6 +2309,10 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				ILDateFileName, " : ", SourceFileName, "\n",
 				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
 					"--il-only $< > ", ErrFileName,
+					" 2>&1\n",
+				JavaDateFileName, " : ", SourceFileName, "\n",
+				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
+					"--java-only $< > ", ErrFileName,
 					" 2>&1\n",
 				RLOFileName, " : ", SourceFileName, "\n",
 				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
@@ -3398,6 +3410,18 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".javas = "),
+	write_compact_dependencies_list(Modules, "$(javas_subdir)", ".java",
+					Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".classes = "),
+	write_compact_dependencies_list(Modules, "$(classes_subdir)", ".class",
+					Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".dirs = "),
 	write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir",
 					Basis, DepStream),
@@ -3449,6 +3473,12 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ".il_dates = "),
 	write_compact_dependencies_list(Modules, "$(il_dates_subdir)",
 					".il_date", Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".java_dates = "),
+	write_compact_dependencies_list(Modules, "$(java_dates_subdir)",
+					".java_date", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
@@ -3860,6 +3890,10 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 						RLOsTargetName),
 	module_name_to_file_name(ModuleName, ".ils", no,
 						ILsTargetName),
+	module_name_to_file_name(ModuleName, ".javas", no,
+						JavasTargetName),
+	module_name_to_file_name(ModuleName, ".classes", no,
+						ClassesTargetName),
 
 	% We need to explicitly mention
 	% $(foo.pic_ss) somewhere in the Mmakefile, otherwise it
@@ -3887,7 +3921,11 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		".PHONY : ", RLOsTargetName, "\n",
 		RLOsTargetName, " : $(", MakeVarName, ".rlos)\n\n",
 		".PHONY : ", ILsTargetName, "\n",
-		ILsTargetName, " : $(", MakeVarName, ".ils)\n\n"
+		ILsTargetName, " : $(", MakeVarName, ".ils)\n\n",
+		".PHONY : ", JavasTargetName, "\n",
+		JavasTargetName, " : $(", MakeVarName, ".javas)\n\n",
+		".PHONY : ", ClassesTargetName, "\n",
+		ClassesTargetName, " : $(", MakeVarName, ".classes)\n\n"
 	]),
 
 
@@ -3923,10 +3961,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 					InitPicObjFileName, " | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".c_dates) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".il_dates) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".java_dates) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".all_s_dates) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".all_pic_s_dates) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".useds) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".ils) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".javas) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".profs) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".errs) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".foreign_cs) | xargs rm -f\n",
@@ -3957,6 +3997,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-echo $(", MakeVarName, ".all_hs) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".dlls) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".foreign_dlls) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".classes) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".rlos) | xargs rm -f\n"
 	]),
 	io__write_strings(DepStream, [

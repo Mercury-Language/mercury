@@ -22,8 +22,9 @@ main_target: $(MAIN_TARGET)
 		.i .s .pic_s \
 		.ql .pl \
 		.rlo \
+		.java .class \
 		.il .dll .exe .cpp .cs \
-		.c_date .il_date .s_date .pic_s_date
+		.c_date .il_date .java_date .s_date .pic_s_date
 
 #-----------------------------------------------------------------------------#
 #
@@ -49,6 +50,7 @@ endif
 .PRECIOUS: $(trans_opt_dates_subdir)%.trans_opt_date
 .PRECIOUS: $(c_dates_subdir)%.c_date
 .PRECIOUS: $(il_dates_subdir)%.il_date
+.PRECIOUS: $(java_dates_subdir)%.java_date
 .PRECIOUS: $(s_dates_subdir)%.s_date
 .PRECIOUS: $(pic_s_dates_subdir)%.pic_s_date
 
@@ -236,6 +238,23 @@ $(c_dates_subdir)%.c_date : %.m
 # Aditi-RL back-end
 $(rlos_subdir)%.rlo : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --aditi-only $< > $*.err 2>&1
+
+# Java back-end
+
+# XXX Need to fix this rule to work properly with --use-subdirs,
+#    i.e. put the .class file in the $(classes_subdir) directory
+#    (since javac doesn't have a `-o' option to name the object file,
+#    we may need to use `mv' to move it?)
+$(classes_subdir)%.class: $(javas_subdir)%.java
+	$(JAVAC) $<
+
+# When smart recompilation finds that a module does not need to be
+# recompiled, it only touches the `.java_date' file.
+$(javas_subdir)%.java: $(java_dates_subdir)%.java_date
+	@:
+
+$(java_dates_subdir)%.java_date : %.m
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --java-only $< > $*.err 2>&1
 
 # .NET back-end
 
