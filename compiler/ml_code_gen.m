@@ -665,7 +665,7 @@ ml_gen_local_var_decls(Goal, VarSet, VarTypes, HeadVars) =
 :- func ml_gen_succeeded_var_decl(mlds__context) = mlds__defn.
 ml_gen_succeeded_var_decl(Context) = MLDS_Defn :-
 	Name = data(var("succeeded")),
-	ml_bool_type(Type),
+	Type = mlds__bool_type,
 	MaybeInitializer = no,
 	Defn = data(Type, MaybeInitializer),
 	DeclFlags = ml_gen_var_decl_flags,
@@ -2386,15 +2386,14 @@ ml_gen_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 	proc_info_argmodes(ProcInfo, HeadModes),
 
 	( CodeModel = model_semi ->
-		ml_bool_type(Bool),
-		RetTypes = [Bool]
+		RetTypes = [mlds__bool_type]
 	;
 		RetTypes = []
 	),
 	ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes,
 		VarSet, FuncArgs0),
 	( CodeModel = model_non ->
-		ml_cont_type(ContType),
+		ContType = mlds__cont_type,
 		ContName = data(var("cont")),
 		ContArg = ContName - ContType,
 		FuncArgs = list__append(FuncArgs0, [ContArg])
@@ -2464,7 +2463,7 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, VarSet,
 ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, VarSet, FuncArg) :-
 	MLDS_Type = mercury_type_to_mlds_type(Type),
 	( mode_is_output(ModuleInfo, Mode) ->
-		MLDS_ArgType = ml_ptr_type(MLDS_Type)
+		MLDS_ArgType = mlds__ptr_type(MLDS_Type)
 	;
 		MLDS_ArgType = MLDS_Type
 	),
@@ -2532,24 +2531,6 @@ ml_variable_type(Var, Type) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_var_types(MLDSGenInfo, VarTypes) },
 	{ map__lookup(VarTypes, Var, Type) }.
-
-%-----------------------------------------------------------------------------%
-%
-% XXX quick hacks for prototyping...
-
-:- pred ml_bool_type(mlds__type::out) is det.
-ml_bool_type(BoolType) :-
-	BoolType = mercury_type_to_mlds_type(int_type).
-
-:- pred ml_cont_type(mlds__type::out) is det.
-ml_cont_type(ContType) :-
-	construct_type(unqualified("Cont") - 0, [], ContT),
-	ContType = mercury_type_to_mlds_type(ContT).
-
-:- func ml_ptr_type(mlds__type) = mlds__type.
-ml_ptr_type(_Type) = PointerType :-
-	construct_type(unqualified("Pointer") - 0, [], PointerT),
-	PointerType = mercury_type_to_mlds_type(PointerT).
 
 %-----------------------------------------------------------------------------%
 

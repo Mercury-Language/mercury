@@ -543,18 +543,28 @@ mlds_output_data_name(tabling_pointer(_ProcLabel)) -->
 :- pred mlds_output_type(mlds__type, io__state, io__state).
 :- mode mlds_output_type(in, di, uo) is det.
 
-mlds_output_type(mlds__type(Type)) -->
+mlds_output_type(mercury_type(Type)) -->
 	( { Type = term__functor(term__atom("character"), [], _) } ->
-		io__write_string("char")
+		io__write_string("Char")
 	; { Type = term__functor(term__atom("int"), [], _) } ->
-		io__write_string("int")
+		io__write_string("Integer")
 	; { Type = term__functor(term__atom("string"), [], _) } ->
 		io__write_string("String")
 	; { Type = term__functor(term__atom("float"), [], _) } ->
 		io__write_string("Float")
 	;
+		% XXX we ought to use pointers to struct types here,
+		% so that distinct Mercury types map to distinct C types
 		io__write_string("Word")
 	).
+mlds_output_type(mlds__cont_type)  --> io__write_string("Cont").
+mlds_output_type(mlds__int_type)   --> io__write_string("int").
+mlds_output_type(mlds__float_type) --> io__write_string("float").
+mlds_output_type(mlds__bool_type)  --> io__write_string("bool").
+mlds_output_type(mlds__char_type)  --> io__write_string("char").
+mlds_output_type(mlds__ptr_type(Type)) -->
+	mlds_output_type(Type),
+	io__write_string(" *").
 
 %-----------------------------------------------------------------------------%
 %

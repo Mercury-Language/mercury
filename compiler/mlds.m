@@ -397,7 +397,30 @@
 		mlds__defns			% contains these members
 	).
 
-:- type mlds__type ---> mlds__type(prog_data__type).
+	% Note: the definition of the `mlds__type' type is subject to change.
+	% In particular, we might add new alternatives here, so try to avoid
+	% switching on this type.
+:- type mlds__type
+	--->	% Mercury data types
+		mercury_type(prog_data__type)
+
+		% The type for the continuation functions used
+		% to handle nondeterminism
+	;	mlds__cont_type
+
+		% MLDS native builtin types.
+		% These are the builtin types of the MLDS target language,
+		% whatever that may be.
+		% Currently we don't actually use many of these.
+	;	mlds__bool_type
+	;	mlds__int_type
+	;	mlds__float_type
+	;	mlds__char_type
+
+		% Pointer types.
+		% Currently these are used for handling output arguments.
+	;	mlds__ptr_type(mlds__type).
+
 :- type mercury_type == prog_data__type.
 
 :- func mercury_type_to_mlds_type(mercury_type) = mlds__type.
@@ -965,7 +988,7 @@ mlds__get_prog_context(mlds__context(Context)) = Context.
 % Currently mlds__types are just the same as Mercury types.
 % XXX something more complicated may be needed here...
 
-mercury_type_to_mlds_type(Type) = mlds__type(Type).
+mercury_type_to_mlds_type(Type) = mercury_type(Type).
 
 %-----------------------------------------------------------------------------%
 
