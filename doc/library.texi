@@ -99,14 +99,6 @@ Mercury system, we recommend that if possible you use only those
 modules whose stability is described as either ``medium to high'' or
 ``high''.
 
-Sometime in the near future, we will implement module qualifiers,
-and then all of the double-underscores will be replaced with module
-qualifiers, so that e.g. @samp{list__append} will become @samp{list:append}
-(and in fact the @samp{list:} prefix will become optional).
-At that time, some reorganization of the library may occur.
-When this change happens, we will provide users with a tool to
-automate conversion of existing programs.
-
 @menu
 @include library-menu.texi
 @end menu
