@@ -107,7 +107,12 @@ uninstall:
 	-rm -r $(INSTALL_LIBDIR)/mmake
 	-cd $(INSTALL_BINDIR) && rm $(SCRIPTS) 
 	-cd $(INSTALL_LIBDIR)/mdb && rm $(DEBUGGER_SCRIPTS)
-	# Is there any reason why we don't uninstall $(EMACS_SCRIPTS) here?
+	# The reason why we don't uninstall $(EMACS_SCRIPTS) specifically here
+	# is that the uninstall rule in the top-level Mmakefile does an "rm -r"
+	# on $(INSTALL_LIBDIR), and the directory into which $(EMACS_SCRIPTS)
+	# is installed, $(INSTALL_ELISP_DIR), is configured to be a
+	# subdirectory of $(INSTALL_LIBDIR).
+	#
 	# We try to uninstall $(CGI_SCRIPTS), but failure to do so is not an
 	# error for two reasons: because we may simply lack permission to
 	# update the directory, and because the deep profiler installation
