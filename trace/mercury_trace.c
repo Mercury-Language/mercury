@@ -46,7 +46,6 @@
 #include "mercury_misc.h"
 #include "mercury_array_macros.h"
 #include <stdio.h>
-#include <unistd.h>		/* for the write system call */
 
 static	MR_Trace_Cmd_Info	MR_trace_ctrl = { MR_CMD_GOTO, 0, 0,
 					MR_PRINT_LEVEL_SOME, FALSE };
@@ -281,7 +280,7 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	return jumpaddr;
 }
 
-char *
+const char *
 MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 	MR_Event_Details *event_details, int seqno, int depth,
 	int *max_mr_num, Code **jumpaddr)
@@ -295,7 +294,7 @@ MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 	Word				arg_value;
 	int				i;
 	bool				succeeded;
-	char			        *message;
+	const char			*message;
 
 	entry = this_label->MR_sll_entry;
 	call_label = entry->MR_sle_call_label;

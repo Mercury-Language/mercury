@@ -30,11 +30,11 @@ typedef struct MR_Event_Details_Struct {
 /* The initial size of arrays of argument values. */
 #define	MR_INIT_ARG_COUNT	20
 
-char *	MR_trace_retry(const MR_Stack_Layout_Label *layout,
+const char *	MR_trace_retry(const MR_Stack_Layout_Label *layout,
 			Word *saved_regs, MR_Event_Details *event_details,
 			int seqno, int depth, int *max_mr_num,
 			Code **jumpaddr);
-Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
+Word		MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
 			Word *saved_regs, const char *name, bool *succeeded);
 
 /*

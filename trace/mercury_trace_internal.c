@@ -660,8 +660,8 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("forward", "continue");
 		}
 	} else if (streq(words[0], "retry")) {
-		int	stop_depth;
-		char   *message;
+		int		stop_depth;
+		const char   	*message;
 
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
 			stop_depth = depth - n;
@@ -673,11 +673,14 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		}
 
 		if (stop_depth == depth && MR_port_is_final(port)) {
-			message = MR_trace_retry(layout, saved_regs, event_details,
-				seqno, depth, max_mr_num, jumpaddr);
-			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err, "%s\n", message);
-
+			message = MR_trace_retry(layout, saved_regs,
+				event_details, seqno, depth, max_mr_num,
+				jumpaddr);
+			if (message != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "%s\n", message);
+				goto return_keep_interacting;
+			}
 			cmd->MR_trace_cmd = MR_CMD_GOTO;
 			cmd->MR_trace_stop_event = MR_trace_event_number + 1;
 			cmd->MR_trace_strict = FALSE;
