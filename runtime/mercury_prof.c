@@ -32,10 +32,12 @@
 #endif
 
 #if !defined(MR_CLOCK_TICKS_PER_SECOND) \
-	|| !defined(SIGPROF) \
 	|| !defined(HAVE_SETITIMER)
   #error "Time profiling not supported on this system"
 #endif
+
+static int	MR_itimer_sig;
+static int	MR_itimer_type;
 
 #endif	/* PROFILE_TIME */
 
@@ -44,7 +46,7 @@
 */
 #define CALL_TABLE_SIZE 4096
 #define TIME_TABLE_SIZE 4096
-#define MR_CLOCK_TICKS_PER_SIGPROF	5
+#define MR_CLOCK_TICKS_PER_PROF_SIG	5
 
 #define MR_USEC_PER_SEC            	1000000
 
@@ -232,33 +234,35 @@ checked_signal(int sig, void (*handler)(int))
 
 #ifdef PROFILE_TIME
 
-static void 
-prof_time_profile(int);
+static void prof_init_time_profile_method(void);
+static void prof_time_profile(int);
 
 /*
 **	prof_init_time_profile:
 **		Writes the value of MR_CLOCK_TICKS_PER_SECOND and
-**		MR_CLOCK_TICKS_PER_SIGPROF at the start of the file
+**		MR_CLOCK_TICKS_PER_PROF_SIG at the start of the file
 **		'Prof.Counts'.
 **		Then sets up the profiling timer and starts it up. 
-**		At the moment it is after every MR_CLOCK_TICKS_PER_SIGPROF
+**		At the moment it is after every MR_CLOCK_TICKS_PER_PROF_SIG
 **		ticks of the clock.
 **
-**		SYSTEM SPECIFIC CODE
+**		WARNING: SYSTEM SPECIFIC CODE.  
+**		This code is not very portable, because it uses setitimer(),
+**		which is not part of POSIX.1 or ANSI C.
 */
 
 void
-prof_init_time_profile()
+prof_init_time_profile(void)
 {
 	FILE 	*fptr;
 	struct itimerval itime;
-	const long sigprof_interval_in_usecs = MR_CLOCK_TICKS_PER_SIGPROF *
+	const long prof_sig_interval_in_usecs = MR_CLOCK_TICKS_PER_PROF_SIG *
 		(MR_USEC_PER_SEC / MR_CLOCK_TICKS_PER_SECOND);
 
 	/* output the value of MR_CLOCK_TICKS_PER_SECOND */
 	fptr = checked_fopen("Prof.Counts", "create", "w");
 	fprintf(fptr, "%d %d\n",
-		MR_CLOCK_TICKS_PER_SECOND, MR_CLOCK_TICKS_PER_SIGPROF);
+		MR_CLOCK_TICKS_PER_SECOND, MR_CLOCK_TICKS_PER_PROF_SIG);
 	checked_fclose(fptr, "Prof.Counts");
 
 	checked_atexit(prof_finish);
@@ -266,15 +270,47 @@ prof_init_time_profile()
 	profiling_on = TRUE;
 
 	itime.it_value.tv_sec = 0;
-	itime.it_value.tv_usec = sigprof_interval_in_usecs;
+	itime.it_value.tv_usec = prof_sig_interval_in_usecs;
 	itime.it_interval.tv_sec = 0;
-	itime.it_interval.tv_usec = sigprof_interval_in_usecs;
+	itime.it_interval.tv_usec = prof_sig_interval_in_usecs;
 
-	checked_signal(SIGPROF, prof_time_profile);
-	checked_setitimer(ITIMER_PROF, &itime);
+	prof_init_time_profile_method();
 
+	checked_signal(MR_itimer_sig, prof_time_profile);
+	checked_setitimer(MR_itimer_type, &itime);
 }
 
+/*
+**	prof_init_time_profile_method:
+**		initializes MR_itimer_type and MR_itimer_sig
+**		based on the setting of MR_time_profile_method.
+*/
+static void
+prof_init_time_profile_method(void)
+{
+	switch (MR_time_profile_method) {
+#if defined(ITIMER_REAL) && defined(SIGALRM)
+		case MR_profile_real_time:
+			MR_itimer_type = ITIMER_REAL;
+			MR_itimer_sig  = SIGALRM;
+			break;
+#endif
+#if defined(ITIMER_VIRTUAL) && defined(SIGVTALRM)
+		case MR_profile_user_time:
+			MR_itimer_type = ITIMER_VIRTUAL;
+			MR_itimer_sig  = SIGVTALRM;
+			break;
+#endif
+#if defined(ITIMER_VIRTUAL) && defined(SIGVTALRM)
+		case MR_profile_user_plus_system_time:
+			MR_itimer_type = ITIMER_PROF;
+			MR_itimer_sig  = SIGPROF;
+			break;
+#endif
+		default:
+			fatal_error("invalid time profile method");
+	}
+}
 #endif /* PROFILE_TIME */
 
 /* ======================================================================== */
@@ -334,9 +370,9 @@ prof_call_profile(Code *Callee, Code *Caller)
 
 /*
 **	prof_time_profile:
-**		Signal handler to be called when ever a SIGPROF is received.
-**		Saves the current code address into a hash table. If the
-**		address already exists, it increments its count.
+**		Signal handler to be called whenever a profiling signal is
+**		received. Saves the current code address into a hash table.
+**		If the address already exists, it increments its count.
 */
 
 static void
@@ -386,7 +422,7 @@ prof_time_profile(int signum)
 */
 
 void
-prof_turn_off_time_profiling()
+prof_turn_off_time_profiling(void)
 {
 	struct itimerval itime;
 
@@ -398,7 +434,7 @@ prof_turn_off_time_profiling()
 	itime.it_interval.tv_sec = 0;
 	itime.it_interval.tv_usec = 0;
 
-	checked_setitimer(ITIMER_PROF, &itime);
+	checked_setitimer(MR_itimer_type, &itime);
 }
 	
 #endif /* PROFILE_TIME */
@@ -477,14 +513,14 @@ prof_output_addr_decls(const char *name, const Code *address)
 
 /*
 **	prof_output_addr_table:
-**		Outputs the addresses saved whenever SIGPROF is received to
+**		Outputs the addresses saved whenever PROF_SIG is received to
 **		the file "Prof.Counts"
 */
 
 static	void	print_time_node(FILE *fptr, prof_time_node *node);
 
 void
-prof_output_addr_table()
+prof_output_addr_table(void)
 {
 	static	bool	addr_table_written = FALSE;
 	FILE *fptr;
@@ -517,7 +553,7 @@ print_time_node(FILE *fptr, prof_time_node *node)
 
 #endif /* PROFILE_TIME */
 
-void prof_finish()
+void prof_finish(void)
 {
 
 #ifdef PROFILE_TIME

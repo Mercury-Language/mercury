@@ -79,6 +79,10 @@ int		time_at_last_stat;
 int		time_at_start;
 static	int	time_at_finish;
 
+/* time profiling */
+enum MR_TimeProfileMethod
+		MR_time_profile_method = MR_profile_user_plus_system_time;
+
 const char *	progname;
 int		mercury_argc;	/* not counting progname */
 char **		mercury_argv;
@@ -423,7 +427,7 @@ process_options(int argc, char **argv)
 	unsigned long size;
 	int c;
 
-	while ((c = getopt(argc, argv, "acd:hLlP:p:r:s:tw:xz:1:2:3:")) != EOF)
+	while ((c = getopt(argc, argv, "acd:hLlP:p:r:s:tT:w:xz:1:2:3:")) != EOF)
 	{
 		switch (c)
 		{
@@ -568,6 +572,19 @@ process_options(int argc, char **argv)
 			finaldebug     = FALSE;
 			break;
 
+		case 'T':
+			if (streq(optarg, "r")) {
+				MR_time_profile_method = MR_profile_real_time;
+			} else if (streq(optarg, "v")) {
+				MR_time_profile_method = MR_profile_user_time;
+			} else if (streq(optarg, "p")) {
+				MR_time_profile_method =
+					MR_profile_user_plus_system_time;
+			} else {
+				usage();
+			}
+			break;
+
 		case 'w': {
 			Label *which_label;
 
@@ -645,7 +662,10 @@ usage(void)
 		"-c \t\tcheck cross-function stack usage\n"
 		"-l \t\tprint all labels\n"
 		"-L \t\tcheck for duplicate labels\n"
-		"-t \t\tuse own timer\n"
+		"-t \t\ttime program execution\n"
+		"-Tr \t\tprofile real time (using ITIMER_REAL)\n"
+		"-Tv \t\tprofile user time (using ITIMER_VIRTUAL)\n"
+		"-Tp \t\tprofile user + system time (using ITIMER_PROF)\n"
 		"-x \t\tdisable garbage collection\n"
 		"-dg \t\tdebug gotos\n"
 		"-dc \t\tdebug calls\n"

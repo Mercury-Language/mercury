@@ -82,7 +82,17 @@ extern	int		r3val;
 
 extern	bool		check_space;
 
+/* timing */
 extern	int		time_at_start;
 extern	int		time_at_last_stat;
+
+/* time profiling */
+enum MR_TimeProfileMethod {
+	MR_profile_real_time,			/* i.e. ITIMER_REAL */
+	MR_profile_user_time,			/* i.e. ITIMER_VIRTUAL */
+	MR_profile_user_plus_system_time	/* i.e. ITIMER_PROF */
+};
+extern	enum MR_TimeProfileMethod
+			MR_time_profile_method;
 
 #endif /* not WRAPPER_H */
