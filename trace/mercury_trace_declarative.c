@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -47,7 +47,11 @@
 
 #include "mdb.declarative_debugger.h"
 #include "mdb.declarative_execution.h"
-#include "mercury.std_util.h"
+#ifdef MR_HIGHLEVEL_CODE
+  #include "mercury.std_util.h"
+#else
+  #include "std_util.h"
+#endif
 
 #include <errno.h>
 
@@ -1091,7 +1095,13 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
 			MR_fatal_error(problem);
 		}
 
-		ML_construct_univ((MR_Word) arg_type, arg_value, &arg);
+		MR_TRACE_USE_HP(
+			MR_tag_incr_hp(arg, MR_mktag(0), 2);
+		);
+		MR_field(MR_mktag(0), arg, MR_UNIV_OFFSET_FOR_TYPEINFO) =
+				(MR_Word) arg_type;
+		MR_field(MR_mktag(0), arg, MR_UNIV_OFFSET_FOR_DATA) =
+				arg_value;
 
 		MR_TRACE_CALL_MERCURY(
 			atom = MR_DD_add_trace_atom_arg(atom,

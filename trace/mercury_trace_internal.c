@@ -27,7 +27,6 @@
 #include "mercury_trace_vars.h"
 #include "mercury_trace_readline.h"
 
-#include "mercury.std_util.h"
 #include "mdb.browse.h"
 #include "mdb.program_representation.h"
 
@@ -479,7 +478,10 @@ MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
 		return "missing exception value";
 	}
 
-	ML_unravel_univ(&type_info, exception, &value);
+	type_info = MR_field(MR_mktag(0), exception,
+			MR_UNIV_OFFSET_FOR_TYPEINFO);
+	value = MR_field(MR_mktag(0), exception,
+			MR_UNIV_OFFSET_FOR_DATA);
 
 	(*browser)(type_info, value, caller, format);
 
