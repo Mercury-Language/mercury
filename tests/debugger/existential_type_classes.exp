@@ -68,9 +68,9 @@ mdb> P
        HeadVar__2             	4
 mdb> continue -a
       18:     10  2 CALL existential_type_classes.m:74 (from existential_type_classes.m:53)
-                         func existential_type_classes:my_exist_t/1-0 (det)
+                         func existential_type_classes:my_exist_t/0-0 (det)
       19:     10  2 EXIT existential_type_classes.m:74 (from existential_type_classes.m:53)
-                         func existential_type_classes:my_exist_t/1-0 (det)
+                         func existential_type_classes:my_exist_t/0-0 (det)
       20:     11  2 CALL existential_type_classes.m:68 (from existential_type_classes.m:53)
                          pred existential_type_classes:do_foo/2-0 (det)
 mdb> P
@@ -101,13 +101,13 @@ mdb> P
        HeadVar__2             	86
 mdb> continue -a
       28:     15  2 CALL existential_type_classes.m:70 (from existential_type_classes.m:54)
-                         func existential_type_classes:call_my_exist_t/1-0 (det)
+                         func existential_type_classes:call_my_exist_t/0-0 (det)
       29:     16  3 CALL existential_type_classes.m:74 (from existential_type_classes.m:70)
-                         func existential_type_classes:my_exist_t/1-0 (det)
+                         func existential_type_classes:my_exist_t/0-0 (det)
       30:     16  3 EXIT existential_type_classes.m:74 (from existential_type_classes.m:70)
-                         func existential_type_classes:my_exist_t/1-0 (det)
+                         func existential_type_classes:my_exist_t/0-0 (det)
       31:     15  2 EXIT existential_type_classes.m:70 (from existential_type_classes.m:54)
-                         func existential_type_classes:call_my_exist_t/1-0 (det)
+                         func existential_type_classes:call_my_exist_t/0-0 (det)
       32:     17  2 CALL existential_type_classes.m:68 (from existential_type_classes.m:54)
                          pred existential_type_classes:do_foo/2-0 (det)
 mdb> P
@@ -138,13 +138,13 @@ mdb> P
        HeadVar__2             	86
 mdb> continue -a
       40:     21  2 CALL existential_type_classes.m:82 (from existential_type_classes.m:55)
-                         func existential_type_classes:my_univ/2-0 (det)
+                         func existential_type_classes:my_univ/1-0 (det)
       41:     21  2 EXIT existential_type_classes.m:82 (from existential_type_classes.m:55)
-                         func existential_type_classes:my_univ/2-0 (det)
+                         func existential_type_classes:my_univ/1-0 (det)
       42:     22  2 CALL existential_type_classes.m:76 (from existential_type_classes.m:55)
-                         func existential_type_classes:my_univ_value/2-0 (det)
+                         func existential_type_classes:my_univ_value/1-0 (det)
       43:     22  2 EXIT existential_type_classes.m:76 (from existential_type_classes.m:55)
-                         func existential_type_classes:my_univ_value/2-0 (det)
+                         func existential_type_classes:my_univ_value/1-0 (det)
       44:     23  2 CALL existential_type_classes.m:68 (from existential_type_classes.m:55)
                          pred existential_type_classes:do_foo/2-0 (det)
 mdb> P
@@ -175,25 +175,25 @@ mdb> P
        HeadVar__2             	90
 mdb> 
       52:     27  2 CALL existential_type_classes.m:82 (from existential_type_classes.m:56)
-                         func existential_type_classes:my_univ/2-0 (det)
+                         func existential_type_classes:my_univ/1-0 (det)
 mdb> 
       53:     27  2 EXIT existential_type_classes.m:82 (from existential_type_classes.m:56)
-                         func existential_type_classes:my_univ/2-0 (det)
+                         func existential_type_classes:my_univ/1-0 (det)
 mdb> 
       54:     28  2 CALL existential_type_classes.m:72 (from existential_type_classes.m:56)
-                         func existential_type_classes:call_my_univ_value/2-0 (det)
+                         func existential_type_classes:call_my_univ_value/1-0 (det)
 mdb> P
        HeadVar__1             	my_univ('<<c_pointer>>')
 mdb> 
       55:     29  3 CALL existential_type_classes.m:76 (from existential_type_classes.m:72)
-                         func existential_type_classes:my_univ_value/2-0 (det)
+                         func existential_type_classes:my_univ_value/1-0 (det)
 mdb> P
        Univ                   	my_univ('<<c_pointer>>')
 mdb> continue -a
       56:     29  3 EXIT existential_type_classes.m:76 (from existential_type_classes.m:72)
-                         func existential_type_classes:my_univ_value/2-0 (det)
+                         func existential_type_classes:my_univ_value/1-0 (det)
       57:     28  2 EXIT existential_type_classes.m:72 (from existential_type_classes.m:56)
-                         func existential_type_classes:call_my_univ_value/2-0 (det)
+                         func existential_type_classes:call_my_univ_value/1-0 (det)
       58:     30  2 CALL existential_type_classes.m:68 (from existential_type_classes.m:56)
                          pred existential_type_classes:do_foo/2-0 (det)
 mdb> P

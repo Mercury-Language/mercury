@@ -13,6 +13,15 @@ break qperm
 break safe
 break -e qperm
 break -a qperm
+break /
+0
+break //2
+0
+break breakpoints:print_list:-/2
+break breakpoints:print_list:--0
+break breakpoints__print_list__/-0
+break breakpoints__print_list__print_list
+break breakpoints:print_list:print_list/3
 break info
 delete 0
 break info

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -980,7 +980,7 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry,
 		fprintf(fp, "%s:%s/%ld-%ld",
 			entry->MR_sle_user.MR_user_decl_module,
 			entry->MR_sle_user.MR_user_name,
-			(long) entry->MR_sle_user.MR_user_arity,
+			(long) MR_sle_user_adjusted_arity(entry),
 			(long) entry->MR_sle_user.MR_user_mode);
 
 		if (!spec && strcmp(entry->MR_sle_user.MR_user_decl_module,

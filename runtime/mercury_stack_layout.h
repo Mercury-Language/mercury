@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -712,6 +712,11 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 #define	MR_sle_eval_method(proc_layout_ptr)				\
 			((MR_EvalMethod) (proc_layout_ptr)->		\
 				MR_sle_exec_trace.MR_exec_eval_method_CAST_ME)
+
+	/* Adjust the arity of functions for printing. */
+#define MR_sle_user_adjusted_arity(entry)				\
+    ((entry)->MR_sle_user.MR_user_arity -				\
+        (((entry)->MR_sle_user.MR_user_pred_or_func == MR_FUNCTION) ? 1 : 0))
 
 /*
 ** Define a layout structure for a procedure, containing information

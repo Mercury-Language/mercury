@@ -3,11 +3,11 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break fib
- 0: + stop  interface func func_call:fib/2-0 (det)
+ 0: + stop  interface func func_call:fib/1-0 (det)
 mdb> continue
-       2:      2  2 CALL func func_call:fib/2-0 (det) func_call.m:14 (func_call.m:9)
+       2:      2  2 CALL func func_call:fib/1-0 (det) func_call.m:14 (func_call.m:9)
 mdb> finish -n
-      69:      2  2 EXIT func func_call:fib/2-0 (det) func_call.m:14 (func_call.m:9)
+      69:      2  2 EXIT func func_call:fib/1-0 (det) func_call.m:14 (func_call.m:9)
 mdb> dd
 fib(6) = 9
 Valid? no
@@ -22,5 +22,5 @@ Valid? yes
 Found incorrect contour:
 fib(4) = 4
 Is this a bug? yes
-      35:      4  4 EXIT func func_call:fib/2-0 (det) func_call.m:14 (func_call.m:20)
+      35:      4  4 EXIT func func_call:fib/1-0 (det) func_call.m:14 (func_call.m:20)
 mdb> quit -y
