@@ -18,6 +18,10 @@
 % it will end up compiling everything via C.
 
 % TODO:
+%	Fix bugs:
+%	- calling convention for semidet code not binary compatible
+%	  with C; need to promote boolean return type to int
+%
 %	Fix configuration issues:
 %	- mmake support
 %	- document installation procedure
@@ -35,18 +39,23 @@
 %
 %	Implement implementation-specific features that are supported
 %	by other gcc front-ends:
+%	- generate gcc trees rather than expanding as we go
 %	- support gdb
 %		- improve accuracy of line numbers (e.g. for decls).
-%		- fix variable scoping so that local vars show up
-%	- generate gcc trees rather than expanding as we go
+%		- make variable names match what's in the original source
+%		- use nested functions or something like that to hide
+%		  from the user the environment struct stuff that we
+%		  generate for nondet code
+%		- extend gdb to print Mercury data structures better
+%		- extend gdb to print Mercury stacks better
 %
 %	Improve efficiency of generated code:
+%	- implement annotation in gcc tree to force tailcalls
 %	- improve code for switches with default_is_unreachable.
+%	  (We already do a reasonably good job, so this is a low priority.)
 %	  One way would be to implement computed_goto and cast_to_unsigned,
 %	  and change target_supports_computed_goto_2(asm) in ml_switch_gen.m
 %	  to `yes'.
-%	- fix variable scoping
-%	- implement annotation in gcc tree to force tailcalls
 %
 %	Improve efficiency of compilation:
 %	- improve symbol table handling
@@ -2153,12 +2162,14 @@ gen_statement(FuncInfo, mlds__statement(Statement, Context)) -->
 	% sequence
 	%
 gen_stmt(FuncInfo0, block(Defns, Statements), _Context) -->
+	gcc__start_block,
 	{ FuncName = FuncInfo0 ^ func_name },
 	{ FuncName = qual(ModuleName, _) },
 	{ SymbolTable0 = FuncInfo0 ^ local_vars },
 	build_local_defns(Defns, FuncInfo0, ModuleName, SymbolTable0, SymbolTable),
 	{ FuncInfo = FuncInfo0 ^ local_vars := SymbolTable },
-	gen_statements(FuncInfo, Statements).
+	gen_statements(FuncInfo, Statements),
+	gcc__end_block.
 
 	%
 	% iteration

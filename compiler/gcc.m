@@ -163,6 +163,22 @@
 :- pred set_var_decl_readonly(gcc__var_decl::in, io__state::di, io__state::uo) is det.
 
 %
+% Routines to start/end a block.
+%
+% Every start_block must be matched by a corresponding end_block.
+% The lifetime of any local variable declarations
+% within the block will end at the corresponding end_block.
+%
+
+	% Like `{' in C.
+:- pred start_block(io__state, io__state).
+:- mode start_block(di, uo) is det.
+
+	% Like `}' in C.
+:- pred end_block(io__state, io__state).
+:- mode end_block(di, uo) is det.
+
+%
 % Stuff for function declarations
 %
 
@@ -1181,6 +1197,24 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 %
 % Statements.
 %
+
+%
+% blocks
+%
+
+:- pragma c_code(start_block(_IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	pushlevel(0);
+	expand_start_bindings(0);
+").
+
+:- pragma c_code(end_block(_IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	tree block = poplevel(/*keep=*/1, /*reverse=*/1, /*functionbody=*/0);
+	expand_end_bindings(block, /*mark_ends=*/1, /*dont_jump_in=*/0);
+").
 
 %
 % if-then-else
