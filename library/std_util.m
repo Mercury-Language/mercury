@@ -565,6 +565,8 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i1);
 
 	Word solution_copy;
 
+	/* XXX we should check for delayed non-linear constraints here */
+
 	/* save the current heap pointer */
 	Word *temp_hp = hp;
 
@@ -664,6 +666,9 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i2);
 
 Define_label(mercury__std_util__builtin_solutions_2_0_i1);
 	/* we found a solution */
+
+	/* XXX we should check for delayed non-linear constraints here */
+
 	/* insert it into the list, and then look for the next one */
 	framevar(0) = list_cons(r1, framevar(0));
 	redo();
