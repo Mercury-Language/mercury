@@ -1726,6 +1726,11 @@ Generate C code in @file{@var{module}.c}, but not object code.
 Generate C code in @file{@var{module}.c}
 and object code in @file{@var{module}.o}
 but do not attempt to link the named modules.
+
+@sp 1
+@item --output-grade-string
+Compute from the rest of the option settings the canonical grade
+string and print it on the standard output.
 @end table
 
 @node Auxiliary output options
@@ -1950,17 +1955,36 @@ them in @samp{MCFLAGS}, @samp{MGNUCFLAGS}, and @samp{MLFLAGS}.
 @table @asis
 @item @code{-s @var{grade}}
 @itemx @code{--grade @var{grade}}
-Select the compilation model.  The @var{grade} should be a base
-grade with zero or more grade modifiers appended.
-The base grades are @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
-@samp{fast}, and @samp{asm_fast}.
-The grade modifiers are @samp{.gc}, @samp{.prof}, @samp{.proftime},
-@samp{.profcalls}, @samp{.tr}, and @samp{.debug}.  The @samp{.prof},
-@samp{.proftime}, and @samp{.profcalls} grade modifiers are mutually
-exclusive; only one of those three may be specified.
-If a grade includes more than one grade modifier,
-the grade modifiers must be given in the same order as the
-order they are listed here.
+Select the compilation model.
+The @var{grade} should be a @samp{.} separated list of the
+grade options to set. The grade options may be given in any order.
+The available options each belong to a set of mutually
+exclusive alternatives governing a single aspect of the compilation model.
+The set of aspects and their alternatives are:
+@table @asis
+@item What combination of GNU-C extensions to use:
+@samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
+@samp{fast}, and @samp{asm_fast} (the default is system dependent).
+
+@item What garbage collection strategy to use:
+@samp{gc}, and @samp{agc} (the default is no garbage collection).
+
+@item What kind of profiling to use:
+@samp{prof},
+@c @samp{proftime}, @samp{profcalls},
+and @samp{memprof}
+(the default is no profiling).
+
+@item Whether to enable the trail:
+@samp{tr} (the default is no trailing).
+
+@item What debugging features to enable:
+@samp{debug} (the default is no debuging features).
+
+@item Whether to use a thread-safe version of the runtime environment:
+@samp{par} (the default is a non-thread-safe environment).
+
+@end table
 
 The default grade is system-dependent; it is chosen at installation time
 by @samp{configure}, the auto-configuration script, but can be overridden
@@ -1980,31 +2004,28 @@ and grade modifier; they are followed by descriptions of those options.
 @var{Options implied}.
 
 @item @samp{none}
-None.
+@code{--no-gcc-global-registers --no-gcc-nonlocal_gotos --no-asm-labels}.
 
 @item @samp{reg}
-@code{--gcc-global-registers}.
+@code{--gcc-global-registers --no-gcc-nonlocal_gotos --no-asm-labels}.
 
 @item @samp{jump}
-@code{--gcc-nonlocal-gotos}.
+@code{--no-gcc-global-registers --gcc-nonlocal-gotos --no-asm-labels}.
 
 @item @samp{fast}
-@code{--gcc-global-registers --gcc-nonlocal-gotos}.
+@code{--gcc-global-registers --gcc-nonlocal-gotos --no-asm-labels}.
 
 @item @samp{asm_jump}
-@code{--gcc-nonlocal-gotos --asm-labels}.
+@code{--no-gcc-global-registers --gcc-nonlocal-gotos --asm-labels}.
 
 @item @samp{asm_fast}
 @code{--gcc-global-registers --gcc-nonlocal_gotos --asm-labels}.
 
-@end table
-
-@table @asis
-@item @var{Grade modifier}
-@var{Options implied}.
-
 @item @samp{.gc}
 @code{--gc conservative}.
+
+@item @samp{.agc}
+@code{--gc accurate}.
 
 @item @samp{.prof}
 @code{--profiling}.

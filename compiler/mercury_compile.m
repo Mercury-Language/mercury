@@ -63,8 +63,14 @@ main_2(yes(ErrorMessage), _, _) -->
 	usage_error(ErrorMessage).
 main_2(no, Args, Link) -->
 	globals__io_lookup_bool_option(help, Help),
+	globals__io_lookup_bool_option(output_grade_string, OutputGrade),
 	( { Help = yes } ->
 		long_usage
+	; { OutputGrade = yes } ->
+		globals__io_get_globals(Globals),
+		{ compute_grade(Globals, Grade) },
+		io__write_string(Grade),
+		io__write_string("\n")
 	; { Args = [] } ->
 		usage
 	;

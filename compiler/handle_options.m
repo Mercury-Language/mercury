@@ -47,7 +47,7 @@
 :- implementation.
 
 :- import_module options, globals, prog_io_util.
-:- import_module int, string, map, getopt, library.
+:- import_module char, int, string, map, set, getopt, library.
 
 handle_options(MaybeError, Args, Link) -->
 	io__command_line_arguments(Args0),
@@ -453,313 +453,6 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 		[]
 	).
 
-	% IMPORTANT: any changes here may require similar changes to
-	%	runtime/mercury_grade.h
-	%	scripts/ml.in
-
-compute_grade(Globals, Grade) :-
-	globals__lookup_bool_option(Globals, asm_labels, AsmLabels),
-	globals__lookup_bool_option(Globals, gcc_non_local_gotos,
-						NonLocalGotos),
-	globals__lookup_bool_option(Globals, gcc_global_registers, GlobalRegs),
-	globals__get_gc_method(Globals, GC_Method),
-	globals__lookup_bool_option(Globals, profile_time, ProfileTime),
-	globals__lookup_bool_option(Globals, profile_calls, ProfileCalls),
-	globals__lookup_bool_option(Globals, profile_memory, ProfileMemory),
-	globals__lookup_bool_option(Globals, use_trail, UseTrail),
-/*
-% These vary from machine to machine, and (for backwards compatibility,
-% if nothing else) we want examples such as "GRADE = asm_fast.gc.prof"
-% to continue to work, so we can't include these in the grade.
-	globals__get_tags_method(Globals, TagsMethod),
-	globals__lookup_int_option(Globals, tag_bits, TagBits),
-	globals__lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
-*/
-	globals__get_args_method(Globals, ArgsMethod),
-	globals__lookup_bool_option(Globals, parallel, Parallel),
-	globals__lookup_bool_option(Globals, stack_trace, StackTrace),
-	globals__lookup_bool_option(Globals, require_tracing, RequireTracing),
-/*
-	globals__lookup_bool_option(Globals, pic_reg, PIC_Reg),
-*/
-
-	( AsmLabels = yes ->
-		Part1 = "asm_"
-	;
-		Part1 = ""
-	),
-	( NonLocalGotos = yes ->
-		( GlobalRegs = yes ->
-			Part2 = "fast"
-		;
-			Part2 = "jump"
-		)
-	;
-		( GlobalRegs = yes ->
-			Part2 = "reg"
-		;
-			Part2 = "none"
-		)
-	),
-	( Parallel = yes, Part2a = ".par"
-	; Parallel = no, Part2a = ""
-	),
-	( GC_Method = conservative, Part3 = ".gc"
-	; GC_Method = accurate, Part3 = ".agc"
-	; GC_Method = none, Part3 = ""
-	),
-	( ProfileTime = yes ->
-		( ProfileCalls = yes ->
-			( ProfileMemory = yes ->
-				Part4 = ".profall"
-			;
-				Part4 = ".prof"
-			)
-		;
-			( ProfileMemory = yes ->
-				Part4 = ".profmemtime" /* not allowed */
-					/* `ml' will catch the error */
-			;
-				Part4 = ".proftime" /* currently useless */
-			)
-		)
-	;
-		( ProfileCalls = yes ->
-			( ProfileMemory = yes ->
-				Part4 = ".memprof"
-			;
-				Part4 = ".profcalls"
-			)
-		;
-			( ProfileMemory = yes ->
-				Part4 = ".profmem" /* not allowed */
-					/* `ml' will catch the error */
-			;
-				Part4 = ""
-			)
-		)
-	),
-	( UseTrail = yes ->
-		Part5 = ".tr"
-	;
-		Part5 = ""
-	),
-
-/*
-% These vary from machine to machine, and (for backwards compatibility,
-% if nothing else) we want examples such as "GRADE = asm_fast.gc.prof"
-% to continue to work, so we can't include these in the grade.
-	( HighTags = yes ->
-		string__format(".hightags%d", [i(TagBits)], Part6)
-	;
-		string__format(".tags%d", [i(TagBits)], Part6)
-	),
-	( UnboxedFloat = yes ->
-		Part7 = ".ubf"
-	;
-		Part7 = ""
-	),
-*/
-	Part6 = "",
-	Part7 = "",
-
-	( ArgsMethod = compact, Part8 = ""
-	; ArgsMethod = simple, Part8 = ".sa"
-	),
-
-	( StackTrace = yes ->
-		( RequireTracing = yes ->
-			Part9 = ".debug"
-		;
-			Part9 = ".strce"
-		)
-	;
-		( RequireTracing = yes ->
-			Part9 = ".trace"
-		;
-			Part9 = ""
-		)
-	),
-
-/*******
-	% This can't be part of the grade, due to the way
-	% we handle things on Linux.  See README.Linux.
-	( PIC_Reg = yes ->
-		Part10 = ".picreg"
-	;
-		Part10 = ""
-	),
-*******/
-	Part10 = "",
-
-	string__append_list( [Part1, Part2, Part2a, Part3, Part4, Part5,
-				Part6, Part7, Part8, Part9, Part10], Grade).
-
-	% IMPORTANT: any changes here may require similar changes to
-	%	runtime/mercury_grade.h
-	%	scripts/parse_grade_options.sh-subr
-
-convert_grade_option(Grade0) -->
-	% part10
-	( { string__remove_suffix(Grade0, ".picreg", Grade1) } ->
-		{ Grade2 = Grade1 },
-		set_bool_opt(pic_reg, yes)
-	;
-		{ Grade2 = Grade0 },
-		set_bool_opt(pic_reg, no)
-	),
-	% part9
-	( { string__remove_suffix(Grade2, ".debug", Grade3) } ->
-		{ Grade4 = Grade3 },
-		set_bool_opt(stack_trace, yes),
-		set_bool_opt(require_tracing, yes)
-	; { string__remove_suffix(Grade2, ".trace", Grade3) } ->
-		{ Grade4 = Grade3 },
-		set_bool_opt(stack_trace, no),
-		set_bool_opt(require_tracing, yes)
-	; { string__remove_suffix(Grade2, ".strce", Grade3) } ->
-		{ Grade4 = Grade3 },
-		set_bool_opt(stack_trace, yes),
-		set_bool_opt(require_tracing, no)
-	;
-		{ Grade4 = Grade2 },
-		set_bool_opt(stack_trace, no),
-		set_bool_opt(require_tracing, no)
-	),
-	% part8
-	( { string__remove_suffix(Grade4, ".sa", Grade5) } ->
-		{ Grade6 = Grade5 },
-		set_string_opt(args, "simple")
-	;
-		{ Grade6 = Grade4 },
-		set_string_opt(args, "compact")
-	),
-	% part6 & 7
-	{ Grade10 = Grade6 },
-	% part5
-	( { string__remove_suffix(Grade10, ".tr", Grade11) } ->
-		{ Grade12 = Grade11 },
-		set_bool_opt(use_trail, yes)
-	;
-		{ Grade12 = Grade10 },
-		set_bool_opt(use_trail, no)
-	),
-	% part 4
-	( { string__remove_suffix(Grade12, ".prof", Grade13) } ->
-		{ Grade14 = Grade13 },
-		set_bool_opt(profile_time, yes),
-		set_bool_opt(profile_calls, yes),
-		set_bool_opt(profile_memory, no)
-	; { string__remove_suffix(Grade12, ".proftime", Grade13) } ->
-		{ Grade14 = Grade13 },
-		set_bool_opt(profile_time, yes),
-		set_bool_opt(profile_calls, no),
-		set_bool_opt(profile_memory, no)
-	; { string__remove_suffix(Grade12, ".profcalls", Grade13) } ->
-		{ Grade14 = Grade13 },
-		set_bool_opt(profile_time, no),
-		set_bool_opt(profile_calls, yes),
-		set_bool_opt(profile_memory, no)
-	; { string__remove_suffix(Grade12, ".profall", Grade13) } ->
-		{ Grade14 = Grade13 },
-		set_bool_opt(profile_time, yes),
-		set_bool_opt(profile_calls, yes),
-		set_bool_opt(profile_memory, yes)
-	; { string__remove_suffix(Grade12, ".memprof", Grade13) } ->
-		{ Grade14 = Grade13 },
-		set_bool_opt(profile_time, no),
-		set_bool_opt(profile_calls, yes),
-		set_bool_opt(profile_memory, yes)
-	;
-		{ Grade14 = Grade12 },
-		set_bool_opt(profile_time, no),
-		set_bool_opt(profile_calls, no),
-		set_bool_opt(profile_memory, no)
-	),
-	% part 3
-	( { string__remove_suffix(Grade14, ".gc", Grade15) } ->
-		{ Grade16 = Grade15 },
-		{ GC = conservative }
-	; { string__remove_suffix(Grade14, ".agc", Grade15) } ->
-		{ Grade16 = Grade15 },
-		{ GC = accurate }
-	;
-		{ Grade16 = Grade14 },
-		{ GC = none }
-	),
-	% Set the type of gc that the grade option implies.
-	% 'accurate' is now set in the grade, so we can override it here.
-	(
-		{ GC = accurate },
-		set_string_opt(gc, "accurate")
-	;
-		{ GC = conservative },
-		set_string_opt(gc, "conservative")
-	;
-		{ GC = none },
-		set_string_opt(gc, "none")
-	),
-	( { string__remove_suffix(Grade16, ".par", Grade17) } ->
-		{ Grade = Grade17 },
-		set_bool_opt(parallel, yes)
-	;
-		{ Grade = Grade16 }
-	),
-	% parts 2 & 1
-	convert_grade_option_2(Grade).
-
-:- pred convert_grade_option_2(string::in, option_table::in, option_table::out)
-	is semidet.
-
-convert_grade_option_2("asm_fast") -->
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, yes),
-	set_bool_opt(gcc_global_registers, yes),
-	set_bool_opt(asm_labels, yes).
-convert_grade_option_2("fast") -->
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, yes),
-	set_bool_opt(gcc_global_registers, yes),
-	set_bool_opt(asm_labels, no).
-convert_grade_option_2("asm_jump") -->
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, yes),
-	set_bool_opt(gcc_global_registers, no),
-	set_bool_opt(asm_labels, yes).
-convert_grade_option_2("jump") -->
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, yes),
-	set_bool_opt(gcc_global_registers, no),
-	set_bool_opt(asm_labels, no).
-convert_grade_option_2("reg") -->
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, no),
-	set_bool_opt(gcc_global_registers, yes),
-	set_bool_opt(asm_labels, no).
-convert_grade_option_2("none") -->
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, no),
-	set_bool_opt(gcc_global_registers, no),
-	set_bool_opt(asm_labels, no).
-
-:- pred set_bool_opt(option, bool, option_table, option_table).
-:- mode set_bool_opt(in, in, in, out) is det.
-
-set_bool_opt(Option, Value, OptionTable0, OptionTable) :-
-	map__set(OptionTable0, Option, bool(Value), OptionTable).
-
-:- pred set_string_opt(option, string, option_table, option_table).
-:- mode set_string_opt(in, in, in, out) is det.
-
-set_string_opt(Option, Value, OptionTable0, OptionTable) :-
-	map__set(OptionTable0, Option, string(Value), OptionTable).
-
-:- pred get_string_opt(option, string, option_table, option_table).
-:- mode get_string_opt(in, in, in, out) is semidet.
-
-get_string_opt(Option, Value, OptionTable, OptionTable) :-
-	map__lookup(OptionTable, Option, string(Value)).
-
 usage_error(ErrorMessage) -->
 	io__progname_base("mercury_compile", ProgName),
 	io__stderr_stream(StdErr),
@@ -790,3 +483,189 @@ long_usage -->
 	io__write_string("\t\tArguments that do not end in `.m' are assumed to be module names.\n"),
 	io__write_string("Options:\n"),
 	options_help.
+
+%-----------------------------------------------------------------------------%
+
+	% IMPORTANT: any changes here may require similar changes to
+	%	runtime/mercury_grade.h
+	%	scripts/parse_grade_options.sh-subr
+	%
+	% The grade_component type should have one constructor for each
+	% dimension of the grade. It is used when converting the components
+	% of the grade string to make sure the grade string doesn't contain
+	% more than one value for each dimension (eg *.gc.agc).
+	% Adding a value here will require adding clauses to the
+	% grade_component_table.
+	% The ordering of the components here is the same as the order
+	% used in scripts/ml.in, and any change here will require a
+	% corresponding change there. The only place where the ordering
+	% actually matters is for constructing the pathname for the
+	% grade of the library, etc for linking (and installation).
+:- type grade_component
+	--->	gcc_ext		% gcc extensions -- see grade_component_table
+	;	gc		% the kind of GC to use
+	;	prof		% what profiling options to use
+	;	trail		% whether or not to use trailing
+	;	args		% argument passing convention
+	;	trace		% tracing/debugging options
+	;	par		% parallelism / multithreading
+	;	pic		% Do we need to reserve a register for
+				% PIC (position independent code)?
+	.
+
+convert_grade_option(GradeString, Options0, Options) :-
+	split_grade_string(GradeString, Components),
+	set__init(NoComps),
+	list__foldl2(lambda([CompStr::in, Opts0::in, Opts::out,
+			CompSet0::in, CompSet::out] is semidet, (
+		grade_component_table(CompStr, Comp, CompOpts),
+			% Check that the component isn't mentioned
+			% more than once.
+		\+ set__member(Comp, CompSet0),
+		set__insert(CompSet0, Comp, CompSet),
+		add_option_list(CompOpts, Opts0, Opts)
+	)), Components, Options0, Options, NoComps, _FinalComps).
+
+:- pred add_option_list(list(pair(option, option_data)), option_table,
+		option_table).
+:- mode add_option_list(in, in, out) is det.
+
+add_option_list(CompOpts, Opts0, Opts) :-
+	list__foldl(lambda([Opt::in, Opts1::in, Opts2::out] is det, (
+		Opt = Option - Data,
+		map__set(Opts1, Option, Data, Opts2)
+	)), CompOpts, Opts0, Opts).
+
+compute_grade(Globals, Grade) :-
+	globals__get_options(Globals, Options),
+	compute_grade_components(Options, Components),
+	(
+		Components = [],
+		Grade = "none"
+	;
+		Components = [_|_],
+		construct_string(Components, Grade)
+	).
+
+:- pred construct_string(list(pair(grade_component, string)), string).
+:- mode construct_string(in, out) is det.
+
+construct_string([], "").
+construct_string([_ - Bit|Bits], Grade) :-
+	(
+		Bits = [_|_],
+		construct_string(Bits, Grade0),
+		string__append_list([Bit, ".", Grade0], Grade)
+	;
+		Bits = [],
+		Grade = Bit
+	).
+
+:- pred compute_grade_components(option_table,
+		list(pair(grade_component, string))).
+:- mode compute_grade_components(in, out) is det.
+
+compute_grade_components(Options, GradeComponents) :-
+	solutions(lambda([CompData::out] is nondet, (
+		grade_component_table(Name, Comp, CompOpts),
+			% For possible component of the grade string
+			% include it in the actual grade string if all
+			% the option setting that it implies are true.
+			% ie
+			%	all [Opt, Value] (
+			%	    member(Opt - Value, CompOpts) => 
+			%		map__search(Options, Opt, Value)
+			%	)
+		\+ (
+			list__member(Opt - Value, CompOpts),
+			\+ map__search(Options, Opt, Value)
+		),
+		CompData = Comp - Name
+	)), GradeComponents).
+
+:- pred grade_component_table(string, grade_component,
+		list(pair(option, option_data))).
+:- mode grade_component_table(in, out, out) is semidet.
+:- mode grade_component_table(out, out, out) is multi.
+
+	% Args method components
+grade_component_table("sa", args, [args - string("simple")]).
+
+	% GCC-hack components
+grade_component_table("none", gcc_ext, [asm_labels - bool(no),
+	gcc_non_local_gotos - bool(no), gcc_global_registers - bool(no)]).
+grade_component_table("reg", gcc_ext, [asm_labels - bool(no),
+	gcc_non_local_gotos - bool(no), gcc_global_registers - bool(yes)]).
+grade_component_table("jump", gcc_ext, [asm_labels - bool(no),
+	gcc_non_local_gotos - bool(yes), gcc_global_registers - bool(no)]).
+grade_component_table("asm_jump", gcc_ext, [asm_labels - bool(yes),
+	gcc_non_local_gotos - bool(yes), gcc_global_registers - bool(no)]).
+grade_component_table("fast", gcc_ext, [asm_labels - bool(no),
+	gcc_non_local_gotos - bool(yes), gcc_global_registers - bool(yes)]).
+grade_component_table("asm_fast", gcc_ext, [asm_labels - bool(yes),
+	gcc_non_local_gotos - bool(yes), gcc_global_registers - bool(yes)]).
+
+	% GC components
+grade_component_table("gc", gc, [gc - string("conservative")]).
+grade_component_table("agc", gc, [gc - string("accurate")]).
+
+	% Parallelism/MT components.
+grade_component_table("par", par, [parallel - bool(yes)]).
+
+	% Pic reg components
+grade_component_table("picreg", pic, [pic_reg - bool(yes)]).
+
+	% Profiling components
+grade_component_table("prof", prof, [profile_time - bool(yes),
+	profile_calls - bool(yes), profile_memory - bool(no)]).
+grade_component_table("proftime", prof, [profile_time - bool(yes),
+	profile_calls - bool(no), profile_memory - bool(no)]).
+grade_component_table("profcalls", prof, [profile_time - bool(no),
+	profile_calls - bool(yes), profile_memory - bool(no)]).
+grade_component_table("memprof", prof, [profile_time - bool(no),
+	profile_calls - bool(no), profile_memory - bool(yes)]).
+grade_component_table("profall", prof, [profile_time - bool(yes),
+	profile_calls - bool(yes), profile_memory - bool(yes)]).
+
+	% Debugging/Tracing components
+grade_component_table("debug", trace,
+	[stack_trace - bool(yes), require_tracing - bool(yes)]).
+grade_component_table("trace", trace,
+	[stack_trace - bool(no), require_tracing - bool(yes)]).
+grade_component_table("strace", trace,
+	[stack_trace - bool(yes), require_tracing - bool(no)]).
+
+	% Trailing components
+grade_component_table("tr", trail, [use_trail - bool(yes)]).
+
+
+:- pred split_grade_string(string, list(string)).
+:- mode split_grade_string(in, out) is semidet.
+
+split_grade_string(GradeStr, Components) :-
+	string__to_char_list(GradeStr, Chars),
+	split_grade_string_2(Chars, Components).
+
+:- pred split_grade_string_2(list(char), list(string)).
+:- mode split_grade_string_2(in, out) is semidet.
+
+split_grade_string_2([], []).
+split_grade_string_2(Chars, Components) :-
+	Chars = [_|_],
+	list__takewhile(char_is_not('.'), Chars, ThisChars, RestChars0),
+	string__from_char_list(ThisChars, ThisComponent),
+	Components = [ThisComponent|RestComponents],
+	(
+		RestChars0 = [_|RestChars], % discard the `.'
+		split_grade_string_2(RestChars, RestComponents)
+	;
+		RestChars0 = [],
+		RestComponents = []
+	).
+
+:- pred char_is_not(char, char).
+:- mode char_is_not(in, in) is semidet.
+
+char_is_not(A, B) :-
+	A \= B.
+

@@ -429,6 +429,11 @@ Changes to the Mercury implementation:
   `GRADEFLAGS = --profiling' in your Mmakefile, rather than having to
   use the more obscure incantation `GRADE = asm_fast.gc.prof'.
 
+* The components of the GRADE mmake variable/the argument to the --grade
+  option may now be given in any order. The compiler also has a new option
+  `--output-grade-string' which prints the cannonical grade string for
+  the set of options with which the compiler was invoked.
+
 * We've made a few small improvements to the efficiency of the generated code.
 
 * The system has been ported to Linux/PPC.
@@ -438,3 +443,4 @@ Changes to the Mercury implementation:
 * Numerous bug fixes.
 
 * XXX remove the X debugger command
+

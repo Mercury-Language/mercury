@@ -86,6 +86,7 @@
 		;	errorcheck_only
 		;	compile_to_c
 		;	compile_only
+		;	output_grade_string
 	% Auxiliary output options
 		;	assume_gmake
 		;	trace
@@ -364,7 +365,8 @@ option_defaults_2(output_option, [
 	typecheck_only		-	bool(no),
 	errorcheck_only		-	bool(no),
 	compile_to_c		-	bool(no),
-	compile_only		-	bool(no)
+	compile_only		-	bool(no),
+	output_grade_string	-	bool(no)
 ]).
 option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
@@ -692,6 +694,7 @@ long_option("errorcheck-only",		errorcheck_only).
 long_option("compile-to-c",		compile_to_c).
 long_option("compile-to-C",		compile_to_c).
 long_option("compile-only",		compile_only).
+long_option("output-grade-string",	output_grade_string).
 
 % aux output options
 long_option("assume-gmake",		assume_gmake).
@@ -1346,7 +1349,11 @@ options_help_output -->
 	io__write_string("\t\tGenerate C code in `<module>.c', but not object code.\n"),
 	io__write_string("\t-c, --compile-only\n"),
 	io__write_string("\t\tGenerate C code in `<module>.c' and object code in `<module>.o'\n"),
-	io__write_string("\t\tbut do not attempt to link the named modules.\n").
+	io__write_string("\t\tbut do not attempt to link the named modules.\n"),
+	io__write_string("\t\t--output-grade-string\n"),
+	io__write_string("\t\tCompute the grade of the library to link with based on\n"),
+	io__write_string("\t\tthe command line options, and print it to the standard\n"),
+	io__write_string("\t\toutput.\n").
 
 :- pred options_help_aux_output(io__state::di, io__state::uo) is det.
 

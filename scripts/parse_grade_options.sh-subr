@@ -125,141 +125,95 @@
 		#	compiler/handle_options.m
 		#	scripts/ml.in
 
-		case "$grade" in
-			*.debug)
+	    grade_pieces=`echo $grade | tr '.' ' '`
+	    for grade_piece in $grade_pieces
+	    do
+		case "$grade_piece" in
+			debug)
 				stack_trace=true
 				require_tracing=true
-				grade="` expr $grade : '\(.*\).debug' `"
 				;;
 # The following alternatives have been omitted since
 # they're not very useful and would probably just confuse people.
-#			*.trace)
+#			trace)
 #				stack_trace=false
 #				require_tracing=true
-#				grade="` expr $grade : '\(.*\).trace' `"
 #				;;
-#			*.strce)
+#			strce)
 #				stack_trace=true
 #				require_tracing=false
-#				grade="` expr $grade : '\(.*\).strce' `"
 #				;;
-			*)	
-				stack_trace=false
-				require_tracing=false
-				;;
-		esac
-
-		case "$grade" in
-			*.sa)
+			sa)
 				args_method=simple
-				grade="` expr $grade : '\(.*\).sa' `"
 				;;
-			*)	args_method=compact
+			tr)	use_trail=true
 				;;
-		esac
-
-		case "$grade" in
-			*.tr)	use_trail=true
-				grade="` expr $grade : '\(.*\).tr' `"
-				;;
-			*)	use_trail=false
-				;;
-		esac
-
-		case "$grade" in
-			*.memprof)
+			memprof)
 				profile_time=false
 				profile_calls=true
 				profile_memory=true
-				grade="` expr $grade : '\(.*\).memprof' `"
 				;;
-			*.prof)
+			prof)
 				profile_time=true
 				profile_calls=true
 				profile_memory=false
-				grade="` expr $grade : '\(.*\).prof' `"
 				;;
-			*.proftime)	
+			proftime)	
 				profile_time=true
 				profile_calls=false
 				profile_memory=false
-				grade="` expr $grade : '\(.*\).proftime' `"
 				;;
-			*.profcalls)	
+			profcalls)	
 				profile_time=false
 				profile_calls=true
 				profile_memory=false
-				grade="` expr $grade : '\(.*\).profcalls' `"
 				;;
-			*.profall)
+			profall)
 				profile_time=true
 				profile_calls=true
 				profile_memory=true
-				grade="` expr $grade : '\(.*\).profall' `"
 				;;
-			*)
-				profile_time=false
-				profile_calls=false
-				profile_memory=false
+			agc)	gc_method=accurate
 				;;
-		esac
-
-		case "$grade" in
-			*.agc)	gc_method=accurate
-				grade="` expr $grade : '\(.*\).agc' `"
+			gc)	gc_method=conservative
 				;;
-			*.gc)	gc_method=conservative
-				grade="` expr $grade : '\(.*\).gc' `"
+			nogc)	gc_method=none
 				;;
-			*)	gc_method=none
+			par)	thread_safe=true
 				;;
-		esac
-
-		case "$grade" in
-			*.par)	thread_safe=true
-				grade="` expr $grade : '\(.*\).par' `"
-				;;
-			*)	thread_safe=false
-				;;
-		esac
-
-		case "$grade" in
 			asm_fast)
-				global_regs=true
-				non_local_gotos=true
 				asm_labels=true
-				;;
-			fast)
-				global_regs=true
 				non_local_gotos=true
-				asm_labels=false
-				;;
-			reg)
 				global_regs=true
-				non_local_gotos=false
-				asm_labels=false
 				;;
 			asm_jump)
-				global_regs=false
-				non_local_gotos=true
 				asm_labels=true
+				non_local_gotos=true
+				;;
+			fast)
+				asm_labels=false
+				non_local_gotos=true
+				global_regs=true
 				;;
 			jump)
-				global_regs=false
 				asm_labels=false
 				non_local_gotos=true
-				;;
-			none)
 				global_regs=false
+				;;
+			reg)
 				asm_labels=false
 				non_local_gotos=false
+				global_regs=true
 				;;
-			*)
-				echo "$0: invalid grade \`$grade'" 1>&2;
-				exit 1
+			none)
+				asm_labels=false
+				non_local_gotos=false
+				global_regs=false
 				;;
 		esac
-		;;
+	    done
+	    ;;
+
 	-s*)
 		grade="` expr $1 : '-s\(.*\)' `"
 		# just insert it as `--grade $grade' and then reparse it
@@ -268,3 +222,4 @@
 			0) set - "x --grade $grade" "$@" ;;
 		esac
 		;;
+

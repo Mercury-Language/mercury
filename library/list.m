@@ -382,6 +382,8 @@
 :- pred list__foldl2(pred(X, Y, Y, Z, Z), list(X), Y, Y, Z, Z).
 :- mode list__foldl2(pred(in, in, out, in, out) is det,
 		in, in, out, in, out) is det.
+:- mode list__foldl2(pred(in, in, out, in, out) is semidet,
+		in, in, out, in, out) is semidet.
 :- mode list__foldl2(pred(in, in, out, mdi, muo) is det,
 		in, in, out, mdi, muo) is det.
 :- mode list__foldl2(pred(in, in, out, di, uo) is det,

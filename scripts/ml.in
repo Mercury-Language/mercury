@@ -304,6 +304,10 @@ case $stack_trace,$require_tracing in
 	true,false)	GRADE="$GRADE.strce" ;;
 	false,false)	;;
 esac
+case $thread_safe in
+	true)	GRADE="$GRADE.par" ;;
+	false)	;;
+esac
 
 case "$GRADE" in
 	*.gc.prof*)
