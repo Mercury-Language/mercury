@@ -1,5 +1,6 @@
 *.dep
 *.d
+*.int0
 *.out
 *.res
 CLEAN
