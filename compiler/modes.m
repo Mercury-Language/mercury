@@ -1561,8 +1561,9 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% to set up the nonlocals field in the goal_info correctly
 		%
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		set__list_to_set(Args, ArgsSet),
-		set__intersect(NonLocals, ArgsSet, LambdaNonLocals),
+		set__insert_list(NonLocals, LambdaVars, OutsideVars),
+		set__list_to_set(Args, InsideVars),
+		set__intersect(OutsideVars, InsideVars, LambdaNonLocals),
 		goal_info_init(LambdaGoalInfo0),
 		goal_info_set_nonlocals(LambdaGoalInfo0, LambdaNonLocals,
 				LambdaGoalInfo),
