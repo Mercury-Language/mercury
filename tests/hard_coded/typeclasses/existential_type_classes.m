@@ -63,6 +63,10 @@ call_my_univ_value(Univ) = my_univ_value(Univ).
 
 my_exist_t = 43.
 
+:- pragma c_header_code("
+	#include ""mercury_heap.h""	/* for MR_incr_hp() */
+	#include ""mercury_tags.h""	/* for MR_field() */
+").
 :- pragma c_code(my_univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
 	TypeClassInfo_for_existential_type_classes__fooable_T =
 		MR_field(MR_mktag(0), Univ, 0);
