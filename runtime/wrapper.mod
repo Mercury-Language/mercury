@@ -127,7 +127,8 @@ int main(int argc, char **argv)
 		defined(NATIVE_GC)
 	do_init_modules();
 #endif
-#if (defined(NATIVE_GC)) 
+
+#ifdef	NATIVE_GC 
 	gc_continuation_table_init();
 #endif
 
@@ -149,8 +150,8 @@ void do_init_modules(void)
 	static	bool	done = FALSE;
 
 	if (! done) {
-		init_modules();
 		done = TRUE;
+		init_modules();
 	}
 }
 

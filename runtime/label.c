@@ -45,12 +45,11 @@ void insert_gc_entry(const char *name, int det, int offset)
 	do_init_entries();
 
 	if ((entry = lookup_label_name(name)) != NULL) {
-#ifndef SPEED
-		if (progdebug)
+#ifndef SPEED 
+		if (progdebug) 
 			printf("adding det %d offset %d to label %s\n", det, 
 				offset, name);
-#endif /* SPEED */
-
+#endif  /* SPEED */
 
 		/* Same entry for both tables */
 
@@ -97,6 +96,7 @@ Label *insert_entry(const char *name, Code *addr)
 	if (progdebug)
 		printf("inserting label %s at %p\n", name, addr);
 #endif /* SPEED */
+
 
 	if (insert_table(entry_name_table, entry))
 		printf("duplicated label name %s\n", name);

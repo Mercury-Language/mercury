@@ -352,7 +352,9 @@ mercury__term_to_type_2_0:
 	call(term_to_type_pred, LABEL(mercury__term_to_type_2_0_i1),
 		LABEL(mercury__term_to_type_2_0));
 }
+#endif
 mercury__term_to_type_2_0_i1:
+#if OFFSET_FOR_ARG_TYPE_INFOS != 6
 {
 	/* r1 already contains the truth result of the semidet pred
 	** mercury__term_to_type_2_0 so r1 does not have to be updated. */
@@ -405,7 +407,9 @@ mercury__type_to_term_2_0:
 	call(type_to_term_pred, LABEL(mercury__type_to_term_2_0_i1),
 		LABEL(mercury__type_to_term_2_0));
 }
+#endif
 mercury__type_to_term_2_0_i1:
+#if OFFSET_FOR_ARG_TYPE_INFOS != 6
 {
 	int type_arity;
 	
