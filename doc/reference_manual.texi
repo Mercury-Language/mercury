@@ -1361,7 +1361,7 @@ Mercury's unique modes are similar to ``linear types'' in some
 functional programming languages such as Clean.  They allow you to
 specify when there is only one reference to a particular value, and
 when there will be no more references to that value.  If the compiler
-knows there are will be more references to a value, it can perform
+knows there will be no more references to a value, it can perform
 ``compile-time garbage collection'' by automatically inserting code
 to deallocate the storage associated with that value.  Even more
 importantly, the compiler can also simply reuse the storage immediately,
