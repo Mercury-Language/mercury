@@ -1,8 +1,8 @@
 /*
 **	Various configuration parameters. Their meanings are:
 **
-**	HAVE_MEMALIGN		the machine has the memalign libcall.
 **	HAVE_SYSCONF		the machine has the sysconf syscall.
+**	HAVE_MEMALIGN		the machine has the memalign libcall.
 **	HAVE_MPROTECT		the machine has the mprotect syscall.
 **	HAVE_SIGINFO		sighandlers are given siginfo arguments.
 **	HAVE_UCONTEXT		sighandlers are given ucontext arguments
