@@ -582,7 +582,7 @@ It may be as simple as this @file{mypackage.m} file:
 
 @example
 :- module mypackage.
-:- interface
+:- interface.
 :- include_module foo, bar, baz.
 @end example
 
