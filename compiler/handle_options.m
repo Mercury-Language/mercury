@@ -786,6 +786,16 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		[]
 	),
 
+	(
+		{ given_trace_level_is_none(TraceLevel) = yes
+		; HighLevel = no, Target = c
+		}
+	->
+		[]
+	;
+		usage_error("debugging is available only in low level C grades")
+	),
+
 	% The pthreads headers on some architectures (Solaris, Linux)
 	% don't work with -ansi.
 	option_implies(parallel, ansi_c, bool(no)),
