@@ -505,12 +505,19 @@ polymorphism__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 	% where `p' has determinism `Det' with
 	%	`p(X1, X2, ...)'
 	%
+	% XXX This optimization is only valid if the modes of the Xi are
+	% input, since only input arguments can be curried.
+	% Until this check is added, this optimization is incorrect,
+	% so I have disabled it - fjh.
 
 	LambdaGoal = _ - LambdaGoalInfo,
 	goal_info_get_nonlocals(LambdaGoalInfo, NonLocals0),
 	set__delete_list(NonLocals0, Vars, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars1),
 	( 
+/****************
+XXX this optimization temporarily disabled, see comment above
+
 		LambdaGoal = call(PredId0, ModeId0, CallVars, _, _, PredName, _)
 					- _,
 		list__remove_suffix(CallVars, Vars, InitialVars),
@@ -534,6 +541,7 @@ polymorphism__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		unqualify_name(PredName, PName),
 		PolyInfo = PolyInfo0
 	;
+****************/
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate
 		% name, arity, arg types, determinism,
@@ -618,6 +626,7 @@ polymorphism__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 			ModuleInfo),
 		polymorphism__set_module_info(ModuleInfo, PolyInfo0, PolyInfo)
+	
 	),
 	Functor = functor(term__atom(PName), ArgVars),
 	ConsId = pred_const(PredId, ModeId),
