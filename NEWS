@@ -21,6 +21,11 @@ Changes to the Mercury compiler:
 * A new optimization: `--loop-invariants'.
 * Support for arbitrary mappings from module name to source file name. 
 
+Portability improvements:
+* Mac OS X is now supported "out-of-the-box".
+* On Windows we now support generating non-Cygwin executables.
+* Better conformance to ANSI/ISO C.
+
 Changes to the compiler back-ends:
 * The native code Linux/x86 back-end is now "release quality".
 * The .NET CLR back-end is much improved.
@@ -387,6 +392,32 @@ Changes to the Mercury compiler:
 
 * The `--convert-to-goedel' option has been removed.
   It never really worked anyway.
+
+Portability improvements:
+
+* Mac OS X is now supported "out-of-the-box".
+
+  See README.MacOSX for details.
+
+* On Windows we now support generating non-Cygwin executables.
+
+  The Mercury compiler source distribution can be configured using
+  `configure --with-cc="gcc -mno-cygwin"'.  This option ensures
+  that the Mercury libraries are only linked with the standard
+  Windows libraries, not the Cygwin Unix emulation library,
+  so Mercury programs don't need Cygwin, and use DOS/Windows-style
+  path names rather than Cygwin's Unix-style path names.
+
+  Note that you still need Cygwin to install and use Mercury.
+  The change is that the programs which you build using Mercury
+  don't need Cygwin anymore.
+
+* Better conformance to ANSI/ISO C.
+
+  We now pass all the tests in the Mercury test suite
+  when the compiler is built with the "lcc" C compiler,
+  which is more strict about ANSI/ISO C conformance than GNU C.
+  This should also make it easier to port to other C compilers.
 
 Changes to the Mercury debugger:
 
