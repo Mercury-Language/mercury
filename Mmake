@@ -100,7 +100,7 @@ util: scripts
 	cd util && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
-profiler: scripts
+profiler: dep_profiler scripts util runtime boehm_gc library
 	cd profiler && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
