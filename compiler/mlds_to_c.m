@@ -602,6 +602,9 @@ mlds_output_pragma_export_func_name(ModuleName, Indent,
 :- mode mlds_output_pragma_export_type(in, in, di, uo) is det.
 
 mlds_output_pragma_export_type(suffix, _Type) --> [].
+		% Array types are exported as MR_Word
+mlds_output_pragma_export_type(prefix, mercury_array_type(_ElemType)) -->
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mercury_type(Type, _)) -->
 	{ export__type_to_type_string(Type, String) },
 	io__write_string(String).
@@ -840,6 +843,7 @@ mlds_type_list_contains_type(Types, SubType) :-
 :- mode mlds_type_contains_type(in, out) is multi.
 
 mlds_type_contains_type(Type, Type).
+mlds_type_contains_type(mlds__mercury_array_type(Type), Type).
 mlds_type_contains_type(mlds__array_type(Type), Type).
 mlds_type_contains_type(mlds__ptr_type(Type), Type).
 mlds_type_contains_type(mlds__func_type(Parameters), Type) :-
@@ -1523,6 +1527,17 @@ mlds_output_type(Type) -->
 
 mlds_output_type_prefix(mercury_type(Type, TypeCategory)) -->
 	mlds_output_mercury_type_prefix(Type, TypeCategory).
+mlds_output_type_prefix(mercury_array_type(_ElemType)) -->
+	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+	( { HighLevelData = yes } ->
+		mlds_output_mercury_user_type_name(
+			qualified(unqualified("array"), "array") - 1,
+			user_type)
+	;
+		% for the --no-high-level-data case,
+		% we just treat everything as `MR_Word'
+		io__write_string("MR_Array")
+	).
 mlds_output_type_prefix(mlds__native_int_type)   --> io__write_string("int").
 mlds_output_type_prefix(mlds__native_float_type) --> io__write_string("float").
 mlds_output_type_prefix(mlds__native_bool_type)  --> io__write_string("bool").
@@ -1640,15 +1655,8 @@ mlds_output_mercury_user_type_prefix(Type, TypeCategory) -->
 	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 	( { HighLevelData = yes } ->
 		( { type_to_type_id(Type, TypeId, _ArgsTypes) } ->
-			{ ml_gen_type_name(TypeId, ClassName, ClassArity) },
-			{ TypeCategory = enum_type ->
-				MLDS_Type = mlds__class_type(ClassName,
-					ClassArity, mlds__enum)
-			;
-				MLDS_Type = mlds__ptr_type(mlds__class_type(
-					ClassName, ClassArity, mlds__class))
-			},
-			mlds_output_type_prefix(MLDS_Type)
+			mlds_output_mercury_user_type_name(TypeId,
+				TypeCategory)
 		;
 			{ error("mlds_output_mercury_user_type_prefix") }
 		)
@@ -1657,6 +1665,21 @@ mlds_output_mercury_user_type_prefix(Type, TypeCategory) -->
 		% we just treat everything as `MR_Word'
 		io__write_string("MR_Word")
 	).
+
+:- pred mlds_output_mercury_user_type_name(type_id, builtin_type,
+		io__state, io__state).
+:- mode mlds_output_mercury_user_type_name(in, in, di, uo) is det.
+
+mlds_output_mercury_user_type_name(TypeId, TypeCategory) -->
+	{ ml_gen_type_name(TypeId, ClassName, ClassArity) },
+	{ TypeCategory = enum_type ->
+		MLDS_Type = mlds__class_type(ClassName,
+			ClassArity, mlds__enum)
+	;
+		MLDS_Type = mlds__ptr_type(mlds__class_type(
+			ClassName, ClassArity, mlds__class))
+	},
+	mlds_output_type_prefix(MLDS_Type).
 
 :- pred mlds_output_type_suffix(mlds__type, io__state, io__state).
 :- mode mlds_output_type_suffix(in, di, uo) is det.
@@ -1680,6 +1703,7 @@ initializer_array_size(init_array(Elems)) = array_size(list__length(Elems)).
 :- mode mlds_output_type_suffix(in, in, di, uo) is det.
 
 mlds_output_type_suffix(mercury_type(_, _), _) --> [].
+mlds_output_type_suffix(mercury_array_type(_), _) --> [].
 mlds_output_type_suffix(mlds__native_int_type, _) --> [].
 mlds_output_type_suffix(mlds__native_float_type, _) --> [].
 mlds_output_type_suffix(mlds__native_bool_type, _) --> [].

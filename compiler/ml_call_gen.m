@@ -752,6 +752,25 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval) -->
 			unop(box(MLDS_SourceType), VarRval)) }
 	;
 		%
+		% if converting from an array(T) to array(X) where
+		% X is a concrete instance, we should insert a cast
+		% to the concrete instance.  Also when converting to 
+		% array(T) from array(X) we should cast to array(T).
+		%
+		{ type_to_type_id(SourceType, SourceTypeId, SourceTypeArgs) },
+		{ type_to_type_id(DestType, DestTypeId, DestTypeArgs) },
+		( 
+			{ type_id_is_array(SourceTypeId) },
+			{ SourceTypeArgs = [term__variable(_)] }
+		;
+			{ type_id_is_array(DestTypeId) },
+			{ DestTypeArgs = [term__variable(_)] }
+		)
+	->
+		ml_gen_type(DestType, MLDS_DestType),
+		{ ArgRval = unop(cast(MLDS_DestType), VarRval) }
+	;
+		%
 		% if converting from one concrete type to a different
 		% one, then cast
 		%

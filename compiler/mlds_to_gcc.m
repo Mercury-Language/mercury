@@ -1668,7 +1668,15 @@ build_type(Type, GlobalInfo, GCC_Type) -->
 :- pred build_type(mlds__type, initializer_array_size, global_info,
 		gcc__type, io__state, io__state).
 :- mode build_type(in, in, in, out, di, uo) is det.
-
+	
+	% Just represent Mercury arrays as MR_Word.
+build_type(mercury_array_type(_ElemType), _, _, GCC_Type) -->
+	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+	( { HighLevelData = yes } ->
+		{ sorry(this_file, "--high-level-data (mercury_array_type)") }
+	;
+		{ GCC_Type = 'MR_Word' }
+	).
 build_type(mercury_type(Type, TypeCategory), _, _, GCC_Type) -->
 	build_mercury_type(Type, TypeCategory, GCC_Type).
 build_type(mlds__native_int_type, _, _, gcc__integer_type_node) --> [].

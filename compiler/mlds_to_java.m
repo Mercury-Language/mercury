@@ -856,6 +856,7 @@ get_java_type_initializer(mercury_type(_, tuple_type)) = "null".
 get_java_type_initializer(mercury_type(_, enum_type)) = "null".
 get_java_type_initializer(mercury_type(_, polymorphic_type)) = "null".
 get_java_type_initializer(mercury_type(_, user_type)) = "null".
+get_java_type_initializer(mlds__mercury_array_type(_)) = "null".
 get_java_type_initializer(mlds__cont_type(_)) = "null".
 get_java_type_initializer(mlds__commit_type) = "null".
 get_java_type_initializer(mlds__native_bool_type) = "false".
@@ -1206,6 +1207,14 @@ output_data_name(tabling_pointer(ProcLabel)) -->
 
 output_type(mercury_type(Type, TypeCategory)) -->
 	output_mercury_type(Type, TypeCategory).
+
+	% XXX array types need to be output as
+	% 	MLDSType varname[]
+	% not 
+	% 	MLDSType[] varname
+output_type(mercury_array_type(MLDSType)) -->
+	output_type(MLDSType),
+	io__write_string("[]").
 output_type(mlds__native_int_type)   --> io__write_string("int").
 output_type(mlds__native_float_type) --> io__write_string("double").
 output_type(mlds__native_bool_type) --> io__write_string("boolean").
@@ -1225,6 +1234,10 @@ output_type(mlds__ptr_type(Type)) -->
 	;
 		output_type(Type)
 	).
+	% XXX array types need to be output as
+	% 	MLDSType varname[]
+	% not 
+	% 	MLDSType[] varname
 output_type(mlds__array_type(Type)) -->
 	output_type(Type),
 	io__write_string("[]").

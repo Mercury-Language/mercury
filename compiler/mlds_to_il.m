@@ -1974,6 +1974,9 @@ unaryop_to_il(std_unop(bitwise_complement), _, node([not])) --> [].
 unaryop_to_il(std_unop((not)), _,
 	node([ldc(int32, i(1)), clt(unsigned)])) --> [].
 
+	% XXX should detect casts to System.Array from
+	% array types and ignore them, as they are not
+	% necessary.
 unaryop_to_il(cast(DestType), SrcRval, Instrs) -->
 	DataRep =^ il_data_rep,
 	{ DestILType = mlds_type_to_ilds_type(DataRep, DestType) },
@@ -2512,7 +2515,15 @@ mlds_type_to_ilds_simple_type(DataRep, MLDSType) = SimpleType :-
 
 	% XXX make sure all the types are converted correctly
 
-mlds_type_to_ilds_type(_, mlds__rtti_type(_RttiName)) = il_array_type.
+mlds_type_to_ilds_type(_, mlds__rtti_type(_RttiName)) = il_object_array_type.
+
+mlds_type_to_ilds_type(DataRep, mlds__mercury_array_type(ElementType)) = 
+	( ElementType = mlds__mercury_type(_, polymorphic_type) ->
+		il_generic_array_type
+	;
+		ilds__type([], '[]'(mlds_type_to_ilds_type(DataRep,
+			ElementType), []))
+	).
 
 mlds_type_to_ilds_type(DataRep, mlds__array_type(ElementType)) = 
 	ilds__type([], '[]'(mlds_type_to_ilds_type(DataRep, ElementType), [])).
@@ -2566,15 +2577,15 @@ mlds_type_to_ilds_type(_, mercury_type(_, char_type)) = ilds__type([], char).
 mlds_type_to_ilds_type(_, mercury_type(_, float_type)) =
 	ilds__type([], float64).
 mlds_type_to_ilds_type(_, mercury_type(_, str_type)) = il_string_type.
-mlds_type_to_ilds_type(_, mercury_type(_, pred_type)) = il_array_type.
-mlds_type_to_ilds_type(_, mercury_type(_, tuple_type)) = il_array_type.
-mlds_type_to_ilds_type(_, mercury_type(_, enum_type)) = il_array_type.
+mlds_type_to_ilds_type(_, mercury_type(_, pred_type)) = il_object_array_type.
+mlds_type_to_ilds_type(_, mercury_type(_, tuple_type)) = il_object_array_type.
+mlds_type_to_ilds_type(_, mercury_type(_, enum_type)) = il_object_array_type.
 mlds_type_to_ilds_type(_, mercury_type(_, polymorphic_type)) = il_generic_type.
 mlds_type_to_ilds_type(DataRep, mercury_type(MercuryType, user_type)) = 
 	( DataRep ^ highlevel_data = yes ->
 		mercury_type_to_highlevel_class_type(MercuryType)
 	;
-		il_array_type
+		il_object_array_type
 	).
 mlds_type_to_ilds_type(_, mlds__unknown_type) = _ :-
 	unexpected(this_file, "mlds_type_to_ilds_type: unknown_type").
@@ -2592,22 +2603,13 @@ mlds_class_to_ilds_simple_type(Kind, ClassName) = SimpleType :-
 :- func mercury_type_to_highlevel_class_type(mercury_type) = ilds__type.
 mercury_type_to_highlevel_class_type(MercuryType) = ILType :-
 	( type_to_type_id(MercuryType, TypeId, _Args) ->
-		(
-			type_id_is_array(TypeId)
-		->
-			ILType = il_array_type
-		;
-			ml_gen_type_name(TypeId, ClassName, Arity),
-			ILType = ilds__type([], class(
-				mlds_class_name_to_ilds_class_name(
-					ClassName, Arity)))
-		)
+		ml_gen_type_name(TypeId, ClassName, Arity),
+		ILType = ilds__type([], class(
+			mlds_class_name_to_ilds_class_name(ClassName, Arity)
+			))
 	;
 		unexpected(this_file, "type_to_type_id failed")
 	).
-
-
-
 
 :- func mlds_class_name_to_ilds_class_name(mlds__class, arity) =
 	ilds__class_name.
@@ -3103,7 +3105,7 @@ data_addr_constant_to_fieldref(data_addr(ModuleName, DataName), FieldRef) :-
 	mangle_dataname(DataName, FieldName),
 	mangle_dataname_module(yes(DataName), ModuleName, NewModuleName),
 	ClassName = mlds_module_name_to_class_name(NewModuleName),
-	FieldRef = make_fieldref(il_array_type, ClassName, FieldName).
+	FieldRef = make_fieldref(il_object_array_type, ClassName, FieldName).
 
 
 %-----------------------------------------------------------------------------%
@@ -3225,7 +3227,7 @@ simple_type_to_value_class(native_uint) = _ :-
 
 %-----------------------------------------------------------------------------%
 %
-% The mapping to the string type.
+% The mapping of the string type.
 %
 
 :- func il_string_equals = methodref.
@@ -3261,7 +3263,7 @@ mercury_string_class_name = mercury_library_name(StringClass) :-
 
 %-----------------------------------------------------------------------------%
 %
-% The mapping to the generic type (used like MR_Box).
+% The mapping of the generic type (used like MR_Box).
 %
 
 :- func il_generic_type = ilds__type.
@@ -3282,12 +3284,20 @@ il_generic_enum_name = il_system_name(["Enum"]).
 
 %-----------------------------------------------------------------------------%
 %
-% The mapping to the array type (used like MR_Word).
+% The mapping of the object array type (used like MR_Word).
+%
+	% il_object_array_type means array of System.Object.
+:- func il_object_array_type = ilds__type.
+il_object_array_type = ilds__type([], '[]'(il_generic_type, [])).
+
+%-----------------------------------------------------------------------------%
+%
+% The mapping of the library array type (array(T))
 %
 
-	% il_array_type means array of System.Object.
-:- func il_array_type = ilds__type.
-il_array_type = ilds__type([], '[]'(il_generic_type, [])).
+	% il_generic_array_type means array of System.Object.
+:- func il_generic_array_type = ilds__type.
+il_generic_array_type = ilds__type([], class(il_system_name(["Array"]))).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3299,7 +3309,7 @@ il_conversion_class_name = mercury_runtime_name(["Convert"]).
 
 %-----------------------------------------------------------------------------%
 %
-% The mapping to the exception type.
+% The mapping of the exception type.
 %
 
 :- func il_exception_type = ilds__type.
@@ -3313,7 +3323,7 @@ il_exception_class_name = mercury_runtime_name(["Exception"]).
 
 %-----------------------------------------------------------------------------%
 %
-% The mapping to the generic environment pointer type.
+% The mapping of the generic environment pointer type.
 %
 
 % Unfortunately the .NET CLR doesn't have any verifiable way of creating a
@@ -3358,7 +3368,7 @@ il_heap_envptr_class_name = mercury_runtime_name(["Environment"]).
 
 %-----------------------------------------------------------------------------%
 %
-% The mapping to the commit type.
+% The mapping of the commit type.
 %
 
 :- func il_commit_type = ilds__type.
