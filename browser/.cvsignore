@@ -14,6 +14,7 @@
 help.h
 debugger_interface.h
 declarative_debugger.h
+declarative_execution.h
 browse.h
 interactive_query.h
 mer_browser.init
