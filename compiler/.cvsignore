@@ -1,8 +1,14 @@
 *.c
+*.d
 *.ql
 *.pl
 *.prof
 *.err
+*.int
+*.int2
+*.int3
+*.date
+*.date3
 rl_file.m rl_out.m
 mercury_compile.stats
 mercury_compile

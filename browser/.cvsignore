@@ -1,5 +1,15 @@
+*.dep
 *.c
+*.d
+*.ql
+*.pl
+*.prof
 *.err
+*.int
+*.int2
+*.int3
+*.date
+*.date3
 help.h
 debugger_interface.h
 declarative_debugger.h
