@@ -69,10 +69,11 @@ allocate_stack_slots_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 
 build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0, ResumeVars0, LiveSets0,
 		ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets) :-
-	goal_info_get_pre_births(GoalInfo, PreBirths),
+	% note: we must be careful to apply deaths before births
 	goal_info_get_pre_deaths(GoalInfo, PreDeaths),
-	goal_info_get_post_births(GoalInfo, PostBirths),
+	goal_info_get_pre_births(GoalInfo, PreBirths),
 	goal_info_get_post_deaths(GoalInfo, PostDeaths),
+	goal_info_get_post_births(GoalInfo, PostBirths),
 
 	set__difference(Liveness0, PreDeaths, Liveness1),
 	set__union(Liveness1, PreBirths, Liveness2),

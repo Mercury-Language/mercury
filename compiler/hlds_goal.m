@@ -478,7 +478,11 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 
 % Instead of recording the liveness of every variable at every
 % part of the goal, we just keep track of the initial liveness
-% and the changes in liveness.
+% and the changes in liveness.  Note that when traversing forwards
+% through a goal, deaths must be applied before births;
+% this is necessary to handle certain circumstances where a
+% variable can occur in both the post-death and post-birth sets,
+% or in both the pre-death and pre-birth sets.
 
 :- pred goal_info_get_pre_births(hlds_goal_info, set(var)).
 :- mode goal_info_get_pre_births(in, out) is det.

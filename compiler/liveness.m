@@ -23,6 +23,10 @@
 % track of aliasing and for structure re-use optimization, whereas here
 % we are concerned with the liveness of the variable itself, for the
 % purposes of optimizing stack slot and register usage.
+% Variables have a lifetime: each variable is born, gets used, and then dies.
+% To minimize stack slot and register usage, the birth should be
+% as late as possible (but before the first possible use), and the
+% death should be as early as possible (but after the last possible use).
 %
 % We compute liveness related information in three distinct passes.
 %
@@ -154,35 +158,39 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 	set__difference(NonLocals, Liveness0, NewVarsSet),
 	set__to_sorted_list(NewVarsSet, NewVarsList),
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
-	set__init(Births0),
-	find_value_giving_occurrences(NewVarsList, LiveInfo, InstMapDelta,
-		Births0, Births),
-	set__union(Liveness0, Births, Liveness),
 	set__init(Empty),
+	( instmap_delta_is_unreachable(InstMapDelta) ->
+		Births = Empty
+	;
+		set__init(Births0),
+		find_value_giving_occurrences(NewVarsList, LiveInfo,
+			InstMapDelta, Births0, Births)
+	),
+	set__union(Liveness0, Births, Liveness),
 	(
 		goal_is_atomic(Goal0)
 	->
-		PreBirths = Births,
 		PreDeaths = Empty,
-		PostBirths = Empty,
+		PreBirths = Births,
 		PostDeaths = Empty,
+		PostBirths = Empty,
 		Goal = Goal0
 	;
-		PreBirths = Empty,
 		PreDeaths = Empty,
+		PreBirths = Empty,
 		detect_liveness_in_goal_2(Goal0, Liveness0, NonLocals,
 			LiveInfo, ActualLiveness, Goal),
 		set__intersect(NonLocals, ActualLiveness, NonLocalLiveness),
 		set__union(NonLocalLiveness, Liveness0, FinalLiveness),
-		set__difference(Liveness, FinalLiveness, PostBirths),
-		set__difference(FinalLiveness, Liveness, PostDeaths)
+		set__difference(FinalLiveness, Liveness, PostDeaths),
+		set__difference(Liveness, FinalLiveness, PostBirths)
 	),
 		% We initialize all the fields in order to obliterate any
 		% annotations left by a previous invocation of this module.
-	goal_info_set_pre_births(GoalInfo0, PreBirths, GoalInfo1),
-	goal_info_set_post_births(GoalInfo1, PostBirths, GoalInfo2),
-	goal_info_set_pre_deaths(GoalInfo2, PreDeaths, GoalInfo3),
-	goal_info_set_post_deaths(GoalInfo3, PostDeaths, GoalInfo4),
+	goal_info_set_pre_deaths(GoalInfo0, PreDeaths, GoalInfo1),
+	goal_info_set_pre_births(GoalInfo1, PreBirths, GoalInfo2),
+	goal_info_set_post_deaths(GoalInfo2, PostDeaths, GoalInfo3),
+	goal_info_set_post_births(GoalInfo3, PostBirths, GoalInfo4),
 	goal_info_set_resume_point(GoalInfo4, no_resume_point, GoalInfo).
 
 %-----------------------------------------------------------------------------%
@@ -329,35 +337,49 @@ detect_liveness_in_cases([case(Cons, Goal0) | Goals0], Liveness, NonLocals,
 
 detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, LiveInfo, Deadness,
 		Goal - GoalInfo) :-
-	goal_info_get_pre_births(GoalInfo0, PreBirths0),
-	goal_info_get_post_births(GoalInfo0, PostBirths0),
 	goal_info_get_pre_deaths(GoalInfo0, PreDeaths0),
+	goal_info_get_pre_births(GoalInfo0, PreBirths0),
 	goal_info_get_post_deaths(GoalInfo0, PostDeaths0),
-	set__union(Deadness0, PostDeaths0, Deadness1),
-	set__difference(Deadness1, PostBirths0, Deadness2),
+	goal_info_get_post_births(GoalInfo0, PostBirths0),
+
+	set__difference(Deadness0, PostBirths0, Deadness1),
+	set__union(Deadness1, PostDeaths0, Deadness2),
 
 	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0, NonLocals),
 	set__init(Empty),
 	(
 		goal_is_atomic(Goal0)
 	->
-		NewPreDeaths = Empty,
+		% 
+		% The code below is slightly dodgy: the new postdeaths really
+		% ought to be computed as the difference between the liveness
+		% immediately before goal and the deadness immediately after
+		% goal.  But we don't have liveness available here, and
+		% computing it would be complicated and perhaps costly.  So
+		% instead we use the non-locals.  The effect of this is that a
+		% variable will die after its last occurence, even if it has
+		% never been born.  (This can occur in the case of variables
+		% with `free->free' modes, or for goals with determinism
+		% erroneous.)  Thus the code generator must be willing to
+		% handle that -- it is not considered an error for a variable
+		% that is not yet live to die.  [If we ever wanted to
+		% change this, the easiest thing to do would be to put
+		% some extra code in the third pass (detect_resume_points)
+		% to delete any such untimely deaths.]
+		% 
 		set__difference(NonLocals, Deadness2, NewPostDeaths),
 		set__union(Deadness2, NewPostDeaths, Deadness3),
 		Goal = Goal0
 	;
-		NewPreDeaths = Empty,
 		NewPostDeaths = Empty,
 		detect_deadness_in_goal_2(Goal0, GoalInfo0, Deadness2,
 			LiveInfo, Deadness3, Goal)
 	),
-	set__union(PreDeaths0, NewPreDeaths, PreDeaths),
 	set__union(PostDeaths0, NewPostDeaths, PostDeaths),
-	goal_info_set_pre_deaths(GoalInfo0, PreDeaths, GoalInfo1),
-	goal_info_set_post_deaths(GoalInfo1, PostDeaths, GoalInfo),
+	goal_info_set_post_deaths(GoalInfo0, PostDeaths, GoalInfo),
 
-	set__union(Deadness3, PreDeaths0, Deadness4),
-	set__difference(Deadness4, PreBirths0, Deadness).
+	set__difference(Deadness3, PreBirths0, Deadness4),
+	set__union(Deadness4, PreDeaths0, Deadness).
 
 	% Here we process each of the different sorts of goals.
 
@@ -497,10 +519,10 @@ detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0) | Goals0], Deadness0,
 
 detect_resume_points_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 		ResumeVars0, Goal - GoalInfo0, Liveness) :-
-	goal_info_get_pre_births(GoalInfo0, PreBirths0),
-	goal_info_get_post_births(GoalInfo0, PostBirths0),
 	goal_info_get_pre_deaths(GoalInfo0, PreDeaths0),
+	goal_info_get_pre_births(GoalInfo0, PreBirths0),
 	goal_info_get_post_deaths(GoalInfo0, PostDeaths0),
+	goal_info_get_post_births(GoalInfo0, PostBirths0),
 
 	set__difference(Liveness0, PreDeaths0, Liveness1),
 	set__union(Liveness1, PreBirths0, Liveness2),
@@ -576,29 +598,7 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	CondResume = resume_point(CondResumeVars, CondResumeLocs),
 	goal_set_resume_point(Cond1, CondResume, Cond),
 
-	(
-		set__equal(LivenessThen, LivenessElse)
-	->
-		true
-	;
-		live_info_get_varset(LiveInfo, Varset),
-		set__to_sorted_list(LivenessThen, ThenVarsList),
-		set__to_sorted_list(LivenessElse, ElseVarsList),
-		list__map(varset__lookup_name(Varset),
-			ThenVarsList, ThenVarNames),
-		list__map(varset__lookup_name(Varset),
-			ElseVarsList, ElseVarNames),
-		Pad = lambda([S0::in, S::out] is det,
-			string__append(S0, " ", S)),
-		list__map(Pad, ThenVarNames, PaddedThenNames),
-		list__map(Pad, ElseVarNames, PaddedElseNames),
-		string__append_list(PaddedThenNames, ThenNames),
-		string__append_list(PaddedElseNames, ElseNames),
-		string__append_list([
-			"branches of if-then-else disagree on liveness\nThen: ",
-			ThenNames, "\nElse: ", ElseNames], Msg),
-		error(Msg)
-	).
+	require_equal(LivenessThen, LivenessElse, "if-then-else", LiveInfo).
 
 detect_resume_points_in_goal_2(some(Vars, Goal0), _, Liveness0, LiveInfo,
 		ResumeVars0, some(Vars, Goal), Liveness) :-
@@ -759,8 +759,7 @@ detect_resume_points_in_non_last_disjunct(Goal0, MayUseOrigOnly,
 	set__difference(Liveness0, PreDeaths, NeededFirst),
 	set__union(NeededFirst, NeededRest, Needed),
 
-	require(set__equal(Liveness, LivenessRest),
-		"branches of disjunction disagree on liveness").
+	require_equal(Liveness, LivenessRest, "disjunction", LiveInfo).
 
 :- pred detect_resume_points_in_last_disjunct(hlds_goal, set(var), live_info,
 	set(var), hlds_goal, set(var), set(var)).
@@ -788,11 +787,43 @@ detect_resume_points_in_cases([case(ConsId, Goal0) | Cases0], Liveness0,
 	( Cases0 = [_ | _] ->
 		detect_resume_points_in_cases(Cases0, Liveness0, LiveInfo,
 			ResumeVars0, Cases, LivenessRest),
-		require(set__equal(LivenessFirst, LivenessRest),
-			"branches of switch disagree on liveness")
+		require_equal(LivenessFirst, LivenessRest, "switch",
+			LiveInfo)
 	;
 		Cases = Cases0
 	).
+
+:- pred require_equal(set(var), set(var), string, live_info).
+:- mode require_equal(in, in, in, in) is det.
+
+require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
+	(
+		set__equal(LivenessFirst, LivenessRest)
+	->
+		true
+	;
+		live_info_get_varset(LiveInfo, Varset),
+		set__to_sorted_list(LivenessFirst, FirstVarsList),
+		set__to_sorted_list(LivenessRest, RestVarsList),
+		list__map(varset__lookup_name(Varset),
+			FirstVarsList, FirstVarNames),
+		list__map(varset__lookup_name(Varset),
+			RestVarsList, RestVarNames),
+		Pad = lambda([S0::in, S::out] is det,
+			string__append(S0, " ", S)),
+		list__map(Pad, FirstVarNames, PaddedFirstNames),
+		list__map(Pad, RestVarNames, PaddedRestNames),
+		string__append_list(PaddedFirstNames, FirstNames),
+		string__append_list(PaddedRestNames, RestNames),
+		string__append_list(["branches of ", GoalType, 
+			" disagree on liveness\nFirst: ",
+			FirstNames, "\nRest: ", RestNames], Msg),
+		% error(Msg)
+		dump(Msg) % XXX temporary debugging hack
+	).
+
+:- pred dump(string::in) is det.
+:- pragma c_code(dump(S::in), "puts(S);").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -902,47 +933,13 @@ initial_deadness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% Consider a goal such as
-	%
-	% ( Cond ->
-	%	DCG = value1
-	%	error
-	% ;
-	%	...
-	%	DCG = value2
-	% )
-	%
-	% When working working on the goal representing the then-part,
-	% detect_liveness_in_goal will put DCG into its post-death set,
-	% because the then-part cannot succeed and thus the lifetime of DCG
-	% is over at the end of the then-part.
-	%
-	% Later, at the end of the processing of the if-then-else, we will
-	% then put DCG into the post-birth set of the then-part, since it
-	% would have to be produced by the then-part if it ever terminated.
-	%
-	% Rather than end up with DCG in both the post-death and post-birth
-	% sets, which can cause problems if they are applied in the wrong
-	% order, we instead put into neither. This is fine; the intended
-	% result is that DCG should be live after the then-part, and it must
-	% have been born during the then-part (otherwise it would not have
-	% been put into the post-death set).
-
 :- pred add_liveness_after_goal(hlds_goal, set(var), hlds_goal).
 :- mode add_liveness_after_goal(in, in, out) is det.
 
 add_liveness_after_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
-	goal_info_get_post_deaths(GoalInfo0, PostDeaths0),
 	goal_info_get_post_births(GoalInfo0, PostBirths0),
-
-	set__intersect(Residue, PostDeaths0, CancelledDeaths),
-	set__difference(Residue, CancelledDeaths, NewBirths),
-
-	set__difference(PostDeaths0, CancelledDeaths, PostDeaths),
-	set__union(PostBirths0, NewBirths, PostBirths),
-
-	goal_info_set_post_births(GoalInfo0, PostBirths, GoalInfo1),
-	goal_info_set_post_deaths(GoalInfo1, PostDeaths, GoalInfo).
+	set__union(PostBirths0, Residue, PostBirths),
+	goal_info_set_post_births(GoalInfo0, PostBirths, GoalInfo).
 
 :- pred add_deadness_before_goal(hlds_goal, set(var), hlds_goal).
 :- mode add_deadness_before_goal(in, in, out) is det.

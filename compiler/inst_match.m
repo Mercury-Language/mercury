@@ -741,6 +741,7 @@ inst_is_free(ModuleInfo, defined_inst(InstName)) :-
         % or is a user-defined inst which is not defined as `free'.
         % Abstract insts must be bound.
 
+inst_is_bound(_, not_reached).
 inst_is_bound(_, any(_)).
 inst_is_bound(_, ground(_, _)).
 inst_is_bound(_, bound(_, _)).

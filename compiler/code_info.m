@@ -752,11 +752,12 @@ code_info__pre_goal_update(GoalInfo, Atomic) -->
 	;
 		{ MaybeFollowVars = no }
 	),
-	{ goal_info_get_pre_births(GoalInfo, PreBirths) },
+	% note: we must be careful to apply deaths before births
 	{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
-	code_info__add_forward_live_vars(PreBirths),
 	code_info__rem_forward_live_vars(PreDeaths),
 	code_info__make_vars_forward_dead(PreDeaths),
+	{ goal_info_get_pre_births(GoalInfo, PreBirths) },
+	code_info__add_forward_live_vars(PreBirths),
 	( { Atomic = yes } ->
 		{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
 		code_info__rem_forward_live_vars(PostDeaths)
@@ -767,11 +768,12 @@ code_info__pre_goal_update(GoalInfo, Atomic) -->
 	% Update the code info structure to be consistent
 	% immediately after generating a goal
 code_info__post_goal_update(GoalInfo) -->
-	{ goal_info_get_post_births(GoalInfo, PostBirths) },
+	% note: we must be careful to apply deaths before births
 	{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
-	code_info__add_forward_live_vars(PostBirths),
 	code_info__rem_forward_live_vars(PostDeaths),
 	code_info__make_vars_forward_dead(PostDeaths),
+	{ goal_info_get_post_births(GoalInfo, PostBirths) },
+	code_info__add_forward_live_vars(PostBirths),
 	code_info__make_vars_forward_live(PostBirths),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	code_info__apply_instmap_delta(InstMapDelta).
@@ -2090,7 +2092,8 @@ code_info__make_vars_forward_live(Vars) -->
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_exprn_info(Exprn0),
 	{ set__to_sorted_list(Vars, VarList) },
-	{ code_info__make_vars_forward_live_2(VarList, StackSlots, 1, Exprn0, Exprn) },
+	{ code_info__make_vars_forward_live_2(VarList, StackSlots, 1,
+		Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 :- pred code_info__make_vars_forward_live_2(list(var), stack_slots, int,

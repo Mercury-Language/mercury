@@ -22,6 +22,7 @@ PROGS=	\
 	division_test \
 	elim_special_pred \
 	error_func \
+	erroneous_liveness \
 	expand \
 	export_test \
 	float_map \

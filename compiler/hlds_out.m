@@ -660,23 +660,23 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 		[]
 	),
 	( { string__contains_char(Verbose, 'p') } ->
-		{ goal_info_get_pre_births(GoalInfo, PreBirths) },
-		{ set__to_sorted_list(PreBirths, PreBirthList) },
-		( { PreBirthList \= [] } ->
-			hlds_out__write_indent(Indent),
-			io__write_string("% pre-births: "),
-			mercury_output_vars(PreBirthList, VarSet,
-				AppendVarnums),
-			io__write_string("\n")
-		;
-			[]
-		),
 		{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
 		{ set__to_sorted_list(PreDeaths, PreDeathList) },
 		( { PreDeathList \= [] } ->
 			hlds_out__write_indent(Indent),
 			io__write_string("% pre-deaths: "),
 			mercury_output_vars(PreDeathList, VarSet,
+				AppendVarnums),
+			io__write_string("\n")
+		;
+			[]
+		),
+		{ goal_info_get_pre_births(GoalInfo, PreBirths) },
+		{ set__to_sorted_list(PreBirths, PreBirthList) },
+		( { PreBirthList \= [] } ->
+			hlds_out__write_indent(Indent),
+			io__write_string("% pre-births: "),
+			mercury_output_vars(PreBirthList, VarSet,
 				AppendVarnums),
 			io__write_string("\n")
 		;
@@ -731,23 +731,23 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 		[]
 	),
 	( { string__contains_char(Verbose, 'p') } ->
-		{ goal_info_get_post_births(GoalInfo, PostBirths) },
-		{ set__to_sorted_list(PostBirths, PostBirthList) },
-		( { PostBirthList \= [] } ->
-			hlds_out__write_indent(Indent),
-			io__write_string("% post-births: "),
-			mercury_output_vars(PostBirthList, VarSet,
-				AppendVarnums),
-			io__write_string("\n")
-		;
-			[]
-		),
 		{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
 		{ set__to_sorted_list(PostDeaths, PostDeathList) },
 		( { PostDeathList \= [] } ->
 			hlds_out__write_indent(Indent),
 			io__write_string("% post-deaths: "),
 			mercury_output_vars(PostDeathList, VarSet,
+				AppendVarnums),
+			io__write_string("\n")
+		;
+			[]
+		),
+		{ goal_info_get_post_births(GoalInfo, PostBirths) },
+		{ set__to_sorted_list(PostBirths, PostBirthList) },
+		( { PostBirthList \= [] } ->
+			hlds_out__write_indent(Indent),
+			io__write_string("% post-births: "),
+			mercury_output_vars(PostBirthList, VarSet,
 				AppendVarnums),
 			io__write_string("\n")
 		;
