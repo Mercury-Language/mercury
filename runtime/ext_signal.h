@@ -72,10 +72,6 @@ struct sigaltstack {
 
 typedef struct sigaltstack stack_t;
 
-#endif
-
-#endif
-
 extern int kill(pid_t, int);
 extern int sigaction(int, const struct sigaction *, struct sigaction *);
 #ifndef	sigaddset
@@ -96,3 +92,7 @@ extern int sigismember(const sigset_t *, int);
 extern int sigpending(sigset_t *);
 extern int sigprocmask(int, const sigset_t *, sigset_t *);
 extern int sigsuspend(const sigset_t *);
+
+#endif /* HAVE_SIGINFO */
+
+#endif /* EXT_SIGNAL_H */

@@ -18,10 +18,12 @@
 */
 
 #if	defined(__sparc) && !defined(__svr4__)
+/* e.g. cadillac */
 #define	KNOWN
 #endif
 
 #if	defined(__sparc) && defined(__svr4__)
+/* e.g. kryten */
 #define	HAVE_MEMALIGN
 #define	HAVE_MPROTECT
 #define	HAVE_SIGINFO
@@ -32,10 +34,13 @@
 #endif
 
 #if	defined(__sgi) && !defined(__SYSTYPE_SVR4__)
+/* e.g. munta */
+#define HAVE_CWD_DECL
 #define	KNOWN
 #endif
 
 #if	defined(__sgi) && defined(__SYSTYPE_SVR4__)
+/* e.g. mundil */
 #define	HAVE_MEMALIGN
 #define	HAVE_MPROTECT
 #define	HAVE_SIGINFO

@@ -8,7 +8,13 @@ extern	char	*fcvt(double, int, int *, int *);
 extern	char	*qecvt(long double, int, int *, int *);
 extern	char	*qfcvt(long double, int, int *, int *);
 extern	char	*qgcvt(long double, int, char *);
+
+#ifdef HAVE_CWD_DECL
+#include <unistd.h>
+#else
 extern	char	*getcwd(char *, size_t);
+#endif
+
 extern	char	*getlogin(void);
 extern	int	getopt(int, char *const *, const char *);
 extern	int	getsubopt(char **, char *const *, char **);
@@ -39,6 +45,6 @@ extern	long	lrand48(void);
 extern	long	mrand48(void);
 extern	long	nrand48(unsigned short *);
 extern	unsigned	short *seed48(unsigned short *);
-
-#endif
 extern	void	srand48(long);
+
+#endif /* EXT_STDLIB_H */

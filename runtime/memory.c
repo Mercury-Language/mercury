@@ -26,6 +26,10 @@
 ** thus detecting area overflow.
 */
 
+#include <stdio.h>
+FILE *popen(const char *command, const char *type);
+int pclose (FILE *stream);
+
 #ifdef	HAVE_MPROTECT
 #include <sys/mman.h>
 #endif
@@ -57,7 +61,10 @@ extern	int	getpagesize(void);
 
 static	int	roundup(int, int);
 static	void	setup_mprotect(void);
+#ifdef	HAVE_SIGINFO
 static	bool	try_munprotect(void *);
+#endif
+
 static	void	setup_signal(void);
 
 Word	unreal_reg_0;
@@ -311,7 +318,7 @@ static int roundup(int value, int align)
 ** PROT_NONE    page can not be accessed
 */
 
-void setup_mprotect(void)
+static void setup_mprotect(void)
 {
 	heap_zone_left = heap_zone_size;
 	heap_zone = (caddr_t) (heapend) - heap_zone_size;
@@ -338,7 +345,9 @@ void setup_mprotect(void)
 	}
 }
 
-bool try_munprotect(void *addr)
+#ifdef HAVE_SIGINFO	/* try_munprotect is only useful if we have SIGINFO */
+
+static bool try_munprotect(void *addr)
 {
 	caddr_t	fault_addr;
 	caddr_t	new_zone;
@@ -445,25 +454,31 @@ bool try_munprotect(void *addr)
 	return FALSE;
 }
 
-#else
+#endif /* HAVE_SIGINFO */
 
-void setup_mprotect(void)
+#else /* not HAVE_MPROTECT */
+
+static void setup_mprotect(void)
 {
 	heap_zone      = NULL;
 	detstack_zone  = NULL;
 	nondstack_zone = NULL;
 }
 
-bool try_munprotect(void *addr)
+#ifdef HAVE_SIGINFO	/* try_munprotect is only useful if we have SIGINFO */
+
+static bool try_munprotect(void *addr)
 {
 	return FALSE;
 }
 
-#endif
+#endif /* HAVE_SIGINFO */
+
+#endif /* not HAVE_MPROTECT */
 
 #ifdef	HAVE_SIGINFO
 
-void setup_signal(void)
+static void setup_signal(void)
 {
 	struct sigaction	act;
 
@@ -558,7 +573,7 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 
 #else
 
-void setup_signal(void)
+static void setup_signal(void)
 {
 	if (signal(SIGBUS, simple_sighandler) == SIG_ERR)
 	{
