@@ -7114,6 +7114,22 @@ unravel_unification(term__variable(X), RHS,
 		unravel_unification(term__variable(X), RVal,
 			Context, MainContext, SubContext, VarSet0,
 			Purity, Goal, VarSet, Info1, Info)
+	;
+		% Handle unification expressions.
+		{ F = term__atom("@") },
+		{ Args = [LVal, RVal] }
+	->
+		unravel_unification(term__variable(X), LVal,
+			Context, MainContext, SubContext,
+			VarSet0, Purity, Goal1, VarSet1, Info0, Info1),
+		unravel_unification(term__variable(X), RVal,
+			Context, MainContext, SubContext,
+			VarSet1, Purity, Goal2, VarSet, Info1, Info),
+		{ goal_info_init(GoalInfo) },
+		{ goal_to_conj_list(Goal1, ConjList1) },
+		{ goal_to_conj_list(Goal2, ConjList2) },
+		{ list__append(ConjList1, ConjList2, ConjList) },
+		{ conj_list_to_goal(ConjList, GoalInfo, Goal) }
 	;	
 	    {
 		% handle lambda expressions

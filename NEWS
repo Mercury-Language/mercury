@@ -17,6 +17,18 @@ Changes to the Mercury language:
   This change only affects programs which use `./2' explicitly.
   Programs which only use the `[H | T]' syntax will be unaffected.
 
+* We've added a new kind of expression to the language.
+  A unification expression, written `X @ Y', unifies X and Y
+  and returns the result.
+
+  Unification expressions are most useful when writing switches:
+	p(X, X) :- X = f(_, _).
+  can now be written as
+	p(X @ f(_, _), X).
+
+  See the "Data-terms" section of the "Syntax" chapter of the
+  Mercury Language Reference Manual for more details.
+
 * We've extended the language to allow you to specify different clauses
   for different modes of a predicate or function.  This is done by
   putting mode annotations in the head of each clause.

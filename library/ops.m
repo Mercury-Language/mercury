@@ -291,6 +291,7 @@ ops__op_table(">", after, xfx, 700).		% standard ISO Prolog
 ops__op_table(">=", after, xfx, 700).		% standard ISO Prolog
 ops__op_table(">>", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("?-", before, fx, 1200).		% standard ISO Prolog (*)
+ops__op_table("@", after, xfx, 90).		% standard ISO Prolog
 ops__op_table("@<", after, xfx, 700).		% standard ISO Prolog
 ops__op_table("@=<", after, xfx, 700).		% standard ISO Prolog
 ops__op_table("@>", after, xfx, 700).		% standard ISO Prolog

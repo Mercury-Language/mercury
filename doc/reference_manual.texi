@@ -413,6 +413,7 @@ while ``xfy'' indicates a right-associative infix operator.
 
 Operator          Specifier Priority
 
+@@                 xfx       50
 ^                 xfy       99
 ^                 fx        100
 `@var{op}`              yfx       120       @footnote{Operator term (@pxref{Terms}).}
@@ -958,6 +959,7 @@ or an explicit type qualification.
 @menu
 * Data-functors::
 * Record syntax::
+* Unification expressions::
 * Conditional expressions::
 * Lambda expressions::
 * Higher-order function applications::
@@ -1060,6 +1062,35 @@ Result = 'field1 :='(Arg1, Term, NewField1)
 @end example
 
 @end table
+
+@node Unification expressions
+@subsection Unification expressions
+
+A unification expression is an expression of the form
+@example
+X @@ Y
+@end example
+where @var{X} and @var{Y} are data-terms.
+
+The semantics of a unification expression is that @var{X} and @var{Y}
+are unified, and the expression is equivalent to the unified value.
+
+Unification expressions are most useful when writing switches
+@pxref{Determinism checking and inference}.
+
+For example
+
+@example
+p(X @@ f(_, _), X).
+@end example
+
+@noindent
+is equivalent to 
+
+@example
+p(X, X) :-
+        X = f(_, _).
+@end example
 
 @node Conditional expressions
 @subsection Conditional expressions
