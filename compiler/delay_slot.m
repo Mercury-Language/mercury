@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,7 +38,7 @@
 %		incr_sp(N)
 %		...
 %
-% The initial store intro stackvar(0) is into the first word above the
+% The initial store into stackvar(0) is into the first word above the
 % current detstack top. After the incr_sp is executed (if it ever is), this
 % word will become the bottom stack slot of the new frame, i.e. stackvar(N).
 
@@ -51,9 +51,6 @@
 :- import_module ll_backend__llds.
 
 :- import_module list.
-
-	% Delay the construction of det stack frames as long as possible,
-	% in order to avoid the construction in as many cases as possible.
 
 :- pred fill_branch_delay_slot(list(instruction)::in, list(instruction)::out)
 	is det.
