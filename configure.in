@@ -80,6 +80,11 @@ case "$host" in
 esac
 #-----------------------------------------------------------------------------#
 
+case "$host" in 
+	i386-pc-solaris2.8)	link_static_opt= ;;
+	*)			link_static_opt="--link-flags --static" ;;
+esac
+
 MERCURY_MSG("looking for an already installed Mercury compiler to bootstrap with...")
 AC_PATH_PROG(BOOTSTRAP_MC,mmc)
 if test "$BOOTSTRAP_MC" != ""; then
@@ -120,7 +125,7 @@ EOF
 		echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
 		$BOOTSTRAP_MC \
 			--generate-mmc-deps \
-			--halt-at-warn --link-flags --static conftest \
+			--halt-at-warn $link_static_opt conftest \
 			</dev/null >&AC_FD_CC 2>&1 &&
 		test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
 		$BOOTSTRAP_MC --output-grade-string --no-mercury-stdlib-dir \
