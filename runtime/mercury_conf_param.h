@@ -70,10 +70,6 @@
 **	Use C's `float' rather than C's `double' for the
 **	Mercury floating point type (`Float').
 **
-** USE_TYPE_TO_TERM:
-**	Include `type_to_term' and `term_to_type' fields in type_infos.
-**	[This is obsolete. USE_TYPE_LAYOUT is a better solution.]
-**
 ** PARALLEL
 **	Enable support for parallelism [not yet working].
 **

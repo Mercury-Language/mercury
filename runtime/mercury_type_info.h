@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -419,67 +419,29 @@ enum MR_TypeLayoutValue {
 
   #define MR_STATIC_CODE_CONST
 
-  #ifdef USE_TYPE_TO_TERM
-
-    #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
-    do {								\
+  #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T)			\
+  do {									\
 	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
 		OFFSET_FOR_UNIFY_PRED);					\
 	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
 		OFFSET_FOR_INDEX_PRED);					\
 	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 		\
 		OFFSET_FOR_COMPARE_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,	\
-		OFFSET_FOR_TYPE_TO_TERM_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_term_to_type##T##2_0,	\
-		OFFSET_FOR_TERM_TO_TYPE_PRED);				\
-    } while (0)
+  } while (0)
 
-    #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
-    do {								\
+  #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
+  do {									\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
 	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TYPE_TO_TERM_PRED);		\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TERM_TO_TYPE_PRED);		\
-    } while (0)
+  } while (0)
 
-    #define	MR_INIT_TYPE_CTOR_INFO(B, T) \
-    do {								\
+  #define	MR_INIT_TYPE_CTOR_INFO(B, T)				\
+  do {									\
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);	\
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);	\
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare);	\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TERM_TO_TYPE_PRED, Term_To_Type);\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TYPE_TO_TERM_PRED, Type_To_Term);\
-    } while (0)
-
-  #else /* not USE_TYPE_TO_TERM */ 
-
-    #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
-    do {								\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 	\
-		OFFSET_FOR_UNIFY_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 	\
-		OFFSET_FOR_INDEX_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
-		OFFSET_FOR_COMPARE_PRED);				\
-    } while (0)
-
-    #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
-    do {								\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
-    } while (0)
-
-    #define	MR_INIT_TYPE_CTOR_INFO(B, T) \
-    do {	\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);     \
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare); \
-    } while (0)
-
-    #endif /* not USE_TYPE_TO_TERM */
+  } while (0)
 
 #else	/* MR_STATIC_CODE_ADDRESSES */
 
