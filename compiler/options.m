@@ -2548,8 +2548,9 @@ options_help_mlds_mlds_optimization -->
 		"\tTreat tailcalls as ordinary calls, rather than optimizing",
 		"\tby turning self-tailcalls into loops.",
 		"--no-optimize-initializations",
-		"\tLeave initializations of local variables as assignment statements,",
-		"\trather converting such assignments statements into initializers."
+		"\tLeave initializations of local variables as assignment",
+		"\tstatements, rather than converting such assignments statements",
+		"\tinto initializers."
 	]).
 
 

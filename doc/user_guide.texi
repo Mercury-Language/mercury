@@ -4107,7 +4107,7 @@ by turning self-tailcalls into loops.
 
 @item --no-optimize-initializations
 Leave initializations of local variables as assignment statements,
-rather converting such assignments statements into initializers.
+rather than converting such assignments statements into initializers.
 
 @end table
 

@@ -9,9 +9,9 @@
 
 % This module runs various optimizations on the MLDS.
 %
-% Currently the optimization we do here are
-%	- turning tailcalls into loops.
-%	- converting assignments to local variables into variable initializers
+% Currently the optimizations we do here are
+%	- turning tailcalls into loops;
+%	- converting assignments to local variables into variable initializers.
 %
 % Note that tailcall detection is done in ml_tailcall.m.
 % It might be nice to move the detection here, and do both the
