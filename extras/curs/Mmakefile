@@ -6,7 +6,7 @@
 
 
 
-# Do the following:
+# To build, do the following:
 #
 # $ mmake depend
 # $ mmake
@@ -37,6 +37,8 @@ MLLIBS = -lpanel -lncurses
 # in its Mmakefile:
 #
 #EXTRA_LIBRARIES = curs
+
+-include ../Mmake.params
 
 MAIN_TARGET = libcurs
 depend: curs.depend
