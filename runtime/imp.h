@@ -466,29 +466,14 @@ extern	Word	*cpstackmin;
 
 #endif
 
-/* DEFINITIONS FOR SYSTEM INITIALIZATION */
+/* DEFINITIONS TO SUPPORT DEBUGGING */
 
 extern	int	r1val;
 extern	int	r2val;
 extern	int	r3val;
 extern	int	repcounter;
 
-extern	void	list_module(void);
-extern	void	nrev_module(void);
-extern	void	length_module(void);
-extern	void	aclength_module(void);
-extern	void	member_module(void);
-extern	void	memdet_module(void);
-extern	void	mklist_module(void);
-extern	void	ab_module(void);
-extern	void	back_module(void);
-extern	void	neg_module(void);
-extern	void	heap_module(void);
-extern	void	color_module(void);
-
 extern	Word	mklist(int start, int len);
-
-/* DEFINITIONS TO SUPPORT DEBUGGING */
 
 /*
 ** For each entry point, a table function pointers which indicate
