@@ -1004,7 +1004,9 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
 
 		% Generate the entire method contents.
 	DebugIlAsm =^ debug_il_asm,
-	{ MethodBody = make_method_defn(DebugIlAsm, InstrsTree) },
+	VerifiableCode =^ verifiable_code,
+	{ MethodBody = make_method_defn(DebugIlAsm, VerifiableCode,
+		InstrsTree) },
 	{ list__append(EntryPoint, MethodBody, MethodContents) },
 
 	{ ClassDecl = ilasm__method(methodhead(Attrs, MemberName,
@@ -3478,23 +3480,25 @@ mlds_to_il__generate_extern_assembly(Imports, AllDecls) :-
 
 %-----------------------------------------------------------------------------
 
-:- func make_method_defn(bool, instr_tree) = method_defn.
-make_method_defn(DebugIlAsm, InstrTree) = MethodDecls :-
+:- func make_method_defn(bool, bool, instr_tree) = method_defn.
+make_method_defn(DebugIlAsm, VerifiableCode, InstrTree) = MethodDecls :-
 	( DebugIlAsm = yes,
 		Add = 1
 	; DebugIlAsm = no,
 		Add = 0
 	),
 	Instrs = list__condense(tree__flatten(InstrTree)),
-	MethodDecls = [
-		maxstack(int32(calculate_max_stack(Instrs) + Add)),
-			% note that we only need .zeroinit to ensure
-			% verifiability; for nonverifiable code,
-			% we could omit that (it ensures that all
-			% variables are initialized to zero).
-		zeroinit,
-		instrs(Instrs)
-		].
+	MaxStack = maxstack(int32(calculate_max_stack(Instrs) + Add)),
+		% .zeroinit (which initializes all variables to zero)
+		% is required for verifiable code.  But if we're generating
+		% non-verifiable code, then we can skip it.  The code that
+		% the Mercury compiler generates doesn't require it, and
+		% omitting it may lead to slightly faster code.
+	( VerifiableCode = yes ->
+		MethodDecls = [MaxStack, zeroinit, instrs(Instrs)]
+	;
+		MethodDecls = [MaxStack, instrs(Instrs)]
+	).
 
 %-----------------------------------------------------------------------------
 % Some useful functions for generating IL fragments.
