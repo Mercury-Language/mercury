@@ -5,7 +5,7 @@
 %-----------------------------------------------------------------------------%
 %
 % mlds_to_java - Convert MLDS to Java code.
-% Main authors: juliensf, mjwybrow. 
+% Main authors: juliensf, mjwybrow, fjh. 
 %
 % DONE:
 %	det and semidet predicates
@@ -28,8 +28,15 @@
 % 		(Java does not allow the name of a nested class to be
 % 		the same as its enclosing class)
 %	General code cleanup
-%	handle static ground terms
-%	RTTI (requires static ground terms)
+%	handle static ground terms(?)
+%	RTTI: currently we generate RTTI data which compiles,
+%		but which is not actually usable.  The class
+%		hierarchy of the RTTI classes in java/runtime/*.java
+%		needs quite a bit of work.  It is implemented in a way
+%		that mirrors what we do for C, but in C we rely on being
+%		able to coerce between different types that have the same
+%		initial fields (e.g. FA_TypeInfo_Struct and TypeInfo_Struct),
+%		and that doesn't work in Java.
 %	generate names of classes etc. correctly (mostly same as IL backend)
 %	support foreign_import_module for Java
 %	handle foreign code written in C 

@@ -28,12 +28,6 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 		args = ti.args;
 	}
 
-	// XXX a temp hack just to get things to link
-	public TypeInfo_Struct(java.lang.Object ti)
-	{
-		throw new java.lang.Error("TypeInfo_Struct(Object)");
-	}
-
 	//
 	// constructors for fixed-arity type_infos
 	//
@@ -81,5 +75,25 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 		// assert arity == 2;
 		type_ctor = tc;
 		args = new PseudoTypeInfo[] { a1, a2 };
+	}
+
+	// XXX a temp hack just to get things to run
+	public TypeInfo_Struct(java.lang.Object obj)
+	{
+		try {
+			TypeInfo_Struct ti = (TypeInfo_Struct) obj;
+			type_ctor = ti.type_ctor;
+			args = ti.args;
+		} catch (java.lang.Exception e) {
+			try {
+				TypeCtorInfo_Struct tci =
+					(TypeCtorInfo_Struct) obj;
+				type_ctor = tci;
+				args = null;
+			} catch (java.lang.Exception e2) {
+				throw new java.lang.Error(
+					"TypeInfo_Struct(Object)");
+			}
+		}
 	}
 }

@@ -1664,7 +1664,8 @@
 
 :- type io__stream --->		io__stream(c_pointer).
 :- pragma foreign_type("C", io__stream, "MercuryFilePtr").
-:- pragma foreign_type("il", io__stream, "class [mercury]mercury.io__csharp_code.MR_MercuryFileStruct").
+:- pragma foreign_type("il", io__stream,
+	"class [mercury]mercury.io__csharp_code.MR_MercuryFileStruct").
 
 	% a unique identifier for an IO stream
 :- type io__stream_id == int.
@@ -5541,6 +5542,31 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 	mercury_current_binary_output.stream.Flush();
+").
+
+:- pragma foreign_proc("Java", 
+	io__write_string(Message::in, _IO0::di, _IO::uo),
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+	System.out.print(Message);
+").
+:- pragma foreign_proc("Java", 
+	io__write_char(Character::in, _IO0::di, _IO::uo),
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+	System.out.print(Character);
+").
+:- pragma foreign_proc("Java",
+	io__write_int(Val::in, _IO0::di, _IO::uo),
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+	System.out.print(Val);
+").
+:- pragma foreign_proc("Java",
+	io__write_float(Val::in, _IO0::di, _IO::uo),
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+	System.out.print(Val);
 ").
 
 io__write_float(Float) -->

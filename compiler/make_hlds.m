@@ -807,7 +807,19 @@ add_item_clause(pragma(Pragma), !Status, Context, !Module, !Info, !IO) :-
 	;
 		Pragma = type_spec(_, _, _, _, _, _, _, _)
 	->
-		add_pragma_type_spec(Pragma, Context, !Module, !Info, !IO)
+		%
+		% XXX For the Java back-end, `pragma type_spec' can
+		% result in class names that exceed the limits on file
+		% name length.  So we ignore these pragmas for the
+		% Java back-end.
+		%
+		globals__io_get_target(Target, !IO),
+		( Target = java ->
+			true
+		;
+			add_pragma_type_spec(Pragma, Context, !Module, !Info,
+				!IO)
+		)
 	;
  		Pragma = termination_info(PredOrFunc, SymName, ModeList,
  			MaybeArgSizeInfo, MaybeTerminationInfo)

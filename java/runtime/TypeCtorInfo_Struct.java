@@ -42,7 +42,7 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo {
 		type_functors = (mercury.runtime.TypeFunctors)
 			name_ordered_functor_descs;
 		type_layout = (mercury.runtime.TypeLayout)
-			name_ordered_functor_descs;
+			value_ordered_functor_descs;
 		type_ctor_flags = flags;
 	}
 }

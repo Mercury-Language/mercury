@@ -6,9 +6,10 @@
 
 package mercury.runtime;
 
-public class FA_TypeInfo_Struct1 extends PseudoTypeInfo {
+public class FA_TypeInfo_Struct1 extends TypeInfo_Struct {
 	public FA_TypeInfo_Struct1(TypeCtorInfo_Struct type_ctor_info,
 			Object[] args) {
 		// XXX stub only
+		super(type_ctor_info);
 	}
 }

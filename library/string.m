@@ -2994,6 +2994,12 @@ string__index_check(Index, Length) :-
 "
 	Ch = Str[Index];
 ").
+:- pragma foreign_proc("Java", 
+	string__unsafe_index(Str::in, Index::in, Ch::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Ch = Str.charAt(Index);
+").
 string__unsafe_index(Str, Index, Char) :-
 	( string__first_char(Str, First, Rest) ->
 		( Index = 0 ->
@@ -3548,6 +3554,14 @@ string__split(Str, Count, Left, Right) :-
 		System.String.Compare(Str, 1, Rest, 0, len) == 0
 	);
 ").
+:- pragma foreign_proc("Java",
+	string__first_char(Str::in, First::in, Rest::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	succeeded = (Str.length() == Rest.length() + 1 &&
+		Str.charAt(0) == First &&
+		Str.endsWith(Rest));
+").
 
 /*
 :- mode string__first_char(in, uo, in) is semidet.	% implied
@@ -3570,6 +3584,22 @@ string__split(Str, Count, Left, Right) :-
 		First = Str[0];
 	} else {
 		SUCCESS_INDICATOR = false;
+	}
+").
+:- pragma foreign_proc("Java",
+	string__first_char(Str::in, First::uo, Rest::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	
+	if (Str.length() == Rest.length() + 1
+		&& Str.endsWith(Rest))
+	{
+		succeeded = true;
+		First = Str.charAt(0);
+	} else {
+		succeeded = false;
+		// XXX to avoid uninitialized var warning
+		First = (char) 0;
 	}
 ").
 
@@ -3601,9 +3631,23 @@ string__split(Str, Count, Left, Right) :-
 	int len = Str.Length;
 	if (len > 0) {
 		SUCCESS_INDICATOR = (First == Str[0]);
-		Rest = (Str).Substring(1);
+		Rest = Str.Substring(1);
 	} else {
 		SUCCESS_INDICATOR = false;
+	}
+}").
+:- pragma foreign_proc("Java",
+	string__first_char(Str::in, First::in, Rest::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
+	int len = Str.length();
+	if (len > 0) {
+		succeeded = (First == Str.charAt(0));
+		Rest = Str.substring(1);
+	} else {
+		succeeded = false;
+		// XXX to avoid uninitialized var warning
+		Rest = null;
 	}
 }").
 
@@ -3637,8 +3681,23 @@ string__split(Str, Count, Left, Right) :-
 		SUCCESS_INDICATOR = false;
 	} else {
 		First = Str[0];
-		Rest = (Str).Substring(1);
+		Rest = Str.Substring(1);
 		SUCCESS_INDICATOR = true;
+        }
+}").
+:- pragma foreign_proc("Java", 
+	string__first_char(Str::in, First::uo, Rest::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
+	if (Str.length() == 0) {
+		succeeded = false;
+		// XXX to avoid uninitialized var warnings:
+		First = (char) 0;
+		Rest = null;
+	} else {
+		First = Str.charAt(0);
+		Rest = Str.substring(1);
+		succeeded = true;
         }
 }").
 
@@ -3661,6 +3720,13 @@ string__split(Str, Count, Left, Right) :-
 	string FirstStr;
 	FirstStr = new System.String(First, 1);
 	Str = System.String.Concat(FirstStr, Rest);
+}").
+:- pragma foreign_proc("Java",
+	string__first_char(Str::uo, First::in, Rest::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
+	java.lang.String FirstStr = java.lang.String.valueOf(First);
+	Str = FirstStr.concat(Rest);
 }").
 
 %-----------------------------------------------------------------------------%
