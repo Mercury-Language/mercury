@@ -146,7 +146,7 @@ MR_trace_fake(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 		"Rebuild the <main>_init.c file, "
 		"and give the `-t' flag to c2init when you do so.\n"
 		"If you are using mmake, you can do this by including "
-		"`-t' in C2INIT_FLAGS.\n"
+		"`-t' in C2INITFLAGS.\n"
 		"For further details, please see the \"Debugging\" chapter "
 		"of the\n"
 		"Mercury User's Guide.\n");
