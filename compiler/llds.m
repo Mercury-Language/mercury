@@ -1266,7 +1266,7 @@ output_rval(binop(Op, X, Y)) -->
 		io__write_string(")")
 	).
 output_rval(mkword(Tag, Exprn)) -->
-	io__write_string("mkword("),
+	io__write_string("(Integer) mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_rval(Exprn),
