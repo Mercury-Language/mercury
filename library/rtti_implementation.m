@@ -649,25 +649,29 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arguments = []
 	;
 		TypeCtorRep = int,
-		cast_to_type(Term, Int),
+		det_dynamic_cast(Term, Int),
 		Functor = string__int_to_string(Int),
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = char,
-		cast_to_type(Term, Char),
+		det_dynamic_cast(Term, Char),
+
+		% XXX should escape characters correctly
 		Functor = "'" ++ char_to_string(Char) ++ "'",
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = float,
-		cast_to_type(Term, Float),
+		det_dynamic_cast(Term, Float),
 		Functor = float_to_string(Float),
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = string,
-		cast_to_type(Term, String),
+		det_dynamic_cast(Term, String),
+
+		% XXX should escape characters in the string correctly
 		Functor = "\"" ++ String ++ "\"",
 		Arity = 0,
 		Arguments = []
@@ -800,9 +804,9 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		error("rtti_implementation: unknown type_ctor rep in deconstruct")
 	).
 	
-:- pred cast_to_type(T::in, U::out) is det.
+:- pred det_dynamic_cast(T::in, U::out) is det.
 
-cast_to_type(Term, Actual) :-
+det_dynamic_cast(Term, Actual) :-
 	std_util__type_to_univ(Term, Univ),
 	std_util__det_univ_to_type(Univ, Actual).
 
