@@ -57,8 +57,12 @@ extern	int	getpagesize(void);
 #endif
 #endif
 
+#ifdef CONSERVATIVE_GC
+#define memalign(a,s)   GC_MALLOC(s)
+#else
 #ifndef	HAVE_MEMALIGN
 #define	memalign(a,s)	malloc(s)
+#endif
 #endif
 
 #include "conf.h"
