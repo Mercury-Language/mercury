@@ -1029,21 +1029,22 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 #endif
 ").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	get_registers(HeapPtr::out, SolutionsHeapPtr::out, TrailPtr::out),
 	[will_not_call_mercury, thread_safe],
 "
 	/*
-	** For MC++, we always use the MS garbage collector,
+	** For .NET we always use the MS garbage collector,
 	** so we don't have to worry here about heap reclamation on failure.
 	*/
-	HeapPtr = SolutionsHeapPtr = 0;
+	HeapPtr = null;
+	SolutionsHeapPtr = null;
 
-#ifdef MR_USE_TRAIL
+#if MR_USE_TRAIL
 	/* XXX trailing not yet implemented for the MLDS back-end */
-	mercury::runtime::Errors::SORRY(S""foreign code for get_registers"");
+	mercury.runtime.Errors.SORRY(""foreign code for get_registers"");
 #else
-	TrailPtr = 0;
+	TrailPtr = null;
 #endif
 ").
 
@@ -1059,13 +1060,13 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 #endif
 ").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	check_for_floundering(_TrailPtr::in),
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(
-		S""foreign code for check_for_floundering"");
+#if MR_USE_TRAIL
+	mercury.runtime.Errors.SORRY(
+		""foreign code for check_for_floundering"");
 #endif
 ").
 
@@ -1083,13 +1084,13 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 #endif
 ").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	discard_trail_ticket,
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(
-		S""foreign code for discard_trail_ticket"");
+#if MR_USE_TRAIL
+	mercury.runtime.Errors.SORRY(
+		""foreign code for discard_trail_ticket"");
 #endif
 ").
 
