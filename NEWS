@@ -1,6 +1,6 @@
-NEWS since Mercury release 0.10
--------------------------------
-Note that Mercury 0.10 has not actually been officially announced;
+NEWS since Mercury release 0.10.1
+---------------------------------
+Note that Mercury 0.10.1 has not actually been officially announced;
 this section documents changes in the development version of
 Mercury since we established a feature freeze for Mercury 0.10
 and split development of that version off onto a separate branch
@@ -9,6 +9,17 @@ of our CVS repository (the `version-0_10_y' branch).
 Changes to the Mercury standard library:
 * The exception module has a new predicate `try_store', which is
   like `try_io', but which works with stores rather than io__states.
+
+
+NEWS for Mercury release 0.10.1:
+--------------------------------
+
+This is mainly a bug-fix release.
+
+There are however some new packages in the mercury-extras distribution:
+* lex: a lexical analyzer library for Mercury.
+* curs: a simplified binding to the ncurses/panel libraries for terminal I/O.
+
 
 NEWS for Mercury release 0.10:
 ------------------------------
@@ -46,6 +57,12 @@ Changes to the Mercury implementation:
 * There's a version of the new back-end which compiles directly
   to assembler, using the GCC back-end.
 * Various improvements to `mtags'.
+
+Additional packages in the mercury-extras distribution:
+* Moose: a parser generator for Mercury.
+* concurrency: support for multi-threading/concurrency.
+* stream: an implementation of generic I/O streams, using type classes.
+* xml: a library for parsing XML.
 
 DETAILED LISTING
 ================
