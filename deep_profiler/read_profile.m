@@ -1082,69 +1082,103 @@ make_dummy_psptr = proc_static_ptr(-1).
 
 %------------------------------------------------------------------------------%
 
-:- pragma c_header_code("
-#include ""mercury_deep_profiling.h""
-").
+:- pragma foreign_decl("C", "#include ""mercury_deep_profiling.h""").
 
 :- func token_call_site_static = int.
-:- pragma c_code(token_call_site_static = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_call_site_static;").
+:- pragma foreign_proc("C",
+	token_call_site_static = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_call_site_static;
+").
 
 :- func token_call_site_dynamic = int.
-:- pragma c_code(token_call_site_dynamic = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_call_site_dynamic;").
+:- pragma foreign_proc("C",
+	token_call_site_dynamic = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_call_site_dynamic;
+").
 
 :- func token_proc_static = int.
-:- pragma c_code(token_proc_static = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_proc_static;").
+:- pragma foreign_proc("C",
+	token_proc_static = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_proc_static;
+").
 
 :- func token_proc_dynamic = int.
-:- pragma c_code(token_proc_dynamic = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_proc_dynamic;").
+:- pragma foreign_proc("C",
+	token_proc_dynamic = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_proc_dynamic;
+").
 
 :- func token_normal_call = int.
-:- pragma c_code(token_normal_call = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_normal_call;").
+:- pragma foreign_proc("C",
+	token_normal_call = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_normal_call;
+").
 
 :- func token_special_call = int.
-:- pragma c_code(token_special_call = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_special_call;").
+:- pragma foreign_proc("C",
+	token_special_call = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_special_call;
+").
 
 :- func token_higher_order_call = int.
-:- pragma c_code(token_higher_order_call = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_higher_order_call;").
+:- pragma foreign_proc("C",
+	token_higher_order_call = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_higher_order_call;
+").
 
 :- func token_method_call = int.
-:- pragma c_code(token_method_call = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_method_call;").
+:- pragma foreign_proc("C",
+	token_method_call = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_method_call;
+").
 
 :- func token_callback = int.
-:- pragma c_code(token_callback = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_callback;").
+:- pragma foreign_proc("C",
+	token_callback = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_callback;
+").
 
 :- func token_isa_predicate = int.
-:- pragma c_code(token_isa_predicate = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_isa_predicate;").
+:- pragma foreign_proc("C",
+	token_isa_predicate = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_isa_predicate;
+").
 
 :- func token_isa_function = int.
-:- pragma c_code(token_isa_function = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_isa_function;").
+:- pragma foreign_proc("C",
+	token_isa_function = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_isa_function;
+").
 
 :- func token_isa_uci_pred = int.
-:- pragma c_code(token_isa_uci_pred = (X::out),
-	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_isa_uci_pred;").
+:- pragma foreign_proc("C",
+	token_isa_uci_pred = (X::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	X = MR_deep_token_isa_uci_pred;
+").
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

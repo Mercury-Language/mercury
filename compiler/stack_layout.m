@@ -171,7 +171,7 @@ concat_string_list(Strings, Len, string_with_0s(Result)) :-
 :- pred stack_layout__concat_string_list_2(list(string)::in, int::in,
 	string::out) is det.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	#include ""mercury_tags.h""	/* for MR_list_*() */
 	#include ""mercury_heap.h""	/* for MR_offset_incr_hp_atomic*() */
 	#include ""mercury_misc.h""	/* for MR_fatal_error() */

@@ -676,7 +676,7 @@
 
 :- import_module int, string.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 
 #ifndef MC_GUARD_GCC_HEADERS
 #define MC_GUARD_GCC_HEADERS
@@ -772,7 +772,7 @@ gcc__run_backend(CommandLine, ReturnValue, FrontEndCallBack, Output) -->
 	[may_call_mercury, tabled_for_io],
 	"MC_call_gcc_backend").
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 /* We use an `MC_' prefix for C code in the mercury/compiler directory. */
 
 extern MR_Word MC_frontend_callback;

@@ -233,10 +233,10 @@ float_to_byte_list(Val, [B0, B1, B2, B3, B4, B5, B6, B7]) :-
 	int::out, int::out, int::out, int::out,
 	int::out, int::out, int::out, int::out) is det.
 
-:- pragma c_code(
+:- pragma foreign_proc("C",
 	float_to_float64_bytes(FloatVal::in, B0::out, B1::out, B2::out,
 		B3::out, B4::out, B5::out, B6::out, B7::out),
-	[will_not_call_mercury],
+	[promise_pure, will_not_call_mercury],
 "
 	{
 		MR_Float64	float64;
