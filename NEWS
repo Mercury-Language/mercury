@@ -63,6 +63,30 @@ Changes to the standard library:
   are now deprecated; the new existentially typed predicate
   `store__new/1' should be used instead.
 
+* We've reimplemented the `string__format/3' procedure.
+
+  The new implementation is a lot more efficient and fixes several
+  bugs in the old implementation.  The new implementation also
+  eliminates some subtle differences in behaviour between
+  string__format and the standard ANSI/ISO C printf() function:
+
+	- For the old string__format, the default precision was 15
+	  (i.e. the number of significant figures in an IEEE double
+	  precision float), but for ISO C's printf(), the default
+	  precision is 6.
+
+	- For the old string__format, for the e, E, f, F, g and G conversions,
+	  the "precision" field in the format always specified the
+	  number of significant figures, but for ISO C's printf(), the
+	  precision only specifies as the number of significant
+	  figures for the g and G conversions, whereas for the e, E,
+	  f, and F conversions the precision specifies the number of
+	  digits after the decimal point.
+
+	- For the old string__format, floating point numbers were
+	  truncated to the specified precision, but for ISO C's
+	  printf(), they are rounded rather than being truncated.
+
 Changes to the Mercury implementation:
 
 * We've implemented a new back-end for the Mercury compiler.
