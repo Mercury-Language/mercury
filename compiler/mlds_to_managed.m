@@ -253,7 +253,7 @@ generate_foreign_header_code(Lang, _ModuleName,
 				di, uo) is det -->
 			output_context(Lang, Context),
 			( { CodeLang = Lang } ->
-				io__write_string(Code)
+				io__write_string(Code), io__nl
 			;
 				{ sorry(this_file, "wrong foreign code") }
 			),
@@ -296,7 +296,7 @@ generate_foreign_code(Lang, _ModuleName,
 				di, uo) is det -->
 			output_context(Lang, Context),
 			( { Lang = CodeLang } ->
-				io__write_string(Code)
+				io__write_string(Code), io__nl
 			;
 				{ sorry(this_file, "wrong foreign code") }
 			),
