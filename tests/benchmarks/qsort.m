@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module print_list.
+:- import_module printlist.
 
 main --> main3(_).
 
