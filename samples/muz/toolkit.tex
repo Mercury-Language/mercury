@@ -1,0 +1,419 @@
+\documentclass[11pt,a4paper]{article}
+%\usepackage{a4,fuzz}
+\usepackage{a4,zed-csp}
+
+\begin{document}
+
+%%%%%
+% Definitions moved earlier so they can be used before defined in the toolkit
+%
+
+%%ABBREV \pfun \nat \seq \bag
+%%ABBREV \rel \ffun \finset
+
+%%SYNTAX infun 1 \mapsto
+%%SYNTAX infun 2 \upto
+%%SYNTAX infun 3 + \cup \setminus \cat \uplus \uminus
+%%SYNTAX infun 4 * \div \mod \cap \circ \comp \filter \extract \otimes
+%%SYNTAX infun 5 \oplus \bcount
+%%SYNTAX infun 6 \dres \rres \ndres \nrres
+%%SYNTAX postfun \plus \star \inv
+%%SYNTAX inrel \neq \notin \subseteq \subset < \leq \geq > \inbag \partition
+%%SYNTAX inrel \prefix \subbageq \suffix \inseq
+%%SYNTAX prerel \disjoint
+%%SYNTAX ingen \rel \pfun \fun \pinj \inj \psurj \surj \bij \ffun \finj
+%%SYNTAX pregen \power_1 \id \finset \finset_1 \seq \seq_1 \iseq \bag
+
+%%MONOT \cup \cap \setminus \bigcup \bigcap count \uplus items
+%%MONOT \plus \cat head last tail front rev \filter \dcat
+%%MONOT first second \mapsto \dom \ran \dres \rres \ndres \nrres 
+%%MONOT \inv \oplus \comp \circ
+% Relational application (\limg \rimg) is also monotonic
+
+\begin{zed}
+	X \rel Y == \power ( X \cross Y ) \\
+	X \fun Y == \power ( X \cross Y ) \\
+\end{zed}
+
+%%%
+% D.1 Sets
+
+\begin{gendef}[X]
+	\_ \neq \_: X \rel X \\
+	\_ \notin \_: X \rel \power X \\
+\where
+	\forall x, y: X @ x \neq y \iff \lnot ( x = y ) \\
+	\forall x: X; S: \power X @ x \notin S \iff \lnot ( x \in S )
+\end{gendef}
+
+%%%
+
+\begin{zed}
+\emptyset[X] == \{ x: X | false \}
+\end{zed}
+
+\begin{gendef}[X]
+	\_ \subseteq \_, \_ \subset \_: \power X \rel \power X \\
+\where
+	\forall S, T: \power X @ \\
+	\t1	(S \subseteq T \iff (\forall x: X @ x \in S \implies x \in T))
+									\land \\
+	\t1	(S \subset T \iff S \subseteq T \land S \neq T)
+\end{gendef}
+
+\begin{zed}
+\power_1 X == \{ S : \power X | S \neq \emptyset \}
+\end{zed}
+
+%%%
+
+\begin{gendef}[X]
+        \_  \cup \_ , \_ \cap \_ , \_ \setminus \_:
+	                \power X \cross \power X \fun \power X \\
+\where
+	\forall S, T: \power X @ \\
+	\t1	S \cup      T = \{ x : X | x \in S \lor  x \in T \} \land \\
+	\t1	S \cap      T = \{ x : X | x \in S \land x \in T \} \land \\
+	\t1	S \setminus T = \{ x : X | x \in S \land x \notin T \}
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X]
+        \bigcup, \bigcap: \power (\power X) \fun \power X \\
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X, Y]
+        first: X \cross Y \fun X \\
+        second: X \cross Y \fun Y \\
+\end{gendef}
+
+%%%
+% D.2 Relations
+
+% \begin{zed}
+% 	X \rel Y == \power ( X \cross Y )
+% \end{zed}
+
+\begin{gendef}[X, Y]
+	\_ \mapsto \_: X \cross Y \fun X \cross Y \\
+\where
+	\forall x: X; y: Y @ \\
+	\t1	x \mapsto y = (x, y)
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X, Y]
+	\dom: (X \rel Y) \fun \power X \\
+	\ran: (X \rel Y) \fun \power Y \\
+\where
+	\forall R : X \rel Y @ \\
+	\t1	\dom R = \{ x: X; y: Y | (x \mapsto y) \in R @ x \} \land \\
+	\t1	\ran R = \{ x: X; y: Y | (x \mapsto y) \in R @ y \}
+\end{gendef}
+
+%%%
+
+\begin{zed}
+\id X == \{ x: X @ x \mapsto x \}
+\end{zed}
+
+\begin{gendef}[X, Y, Z]
+	\_ \comp \_: (X \rel Y) \cross (Y \rel Z) \fun (X \rel Z) \\
+	\_ \circ \_: (Y \rel Z) \cross (X \rel Y) \fun (X \rel Z) \\
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X, Y]
+	\_ \dres \_: \power X \cross (X \rel Y) \fun (X \rel Y) \\
+	\_ \rres \_: (X \rel Y) \cross \power Y \fun (X \rel Y) \\
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X, Y]
+	\_ \ndres \_: \power X \cross (X \rel Y) \fun (X \rel Y) \\
+	\_ \nrres \_: (X \rel Y) \cross \power Y \fun (X \rel Y) \\
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X, Y]
+	\_ \inv : (X \rel Y) \fun (Y \rel X)
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X, Y]
+	\_ \limg \_ \rimg : (X \rel Y) \cross \power X \fun \power Y
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X]
+	\_ \plus, \_ \star : (X \rel X) \fun (X \rel X)
+\end{gendef}
+
+%%%
+% D.3 Functions
+
+\begin{zed}
+	X \pfun Y == \\
+	\t1	\{ f: X \rel Y | ( \forall x: X; y_1, y_2: Y @ \\
+	\t4	( x \mapsto y_1) \in f \land (x \mapsto y_2) \in f \implies
+								y_1 = y_2 ) \}
+% 	X \fun Y == \{ f: X \pfun Y | \dom f = X \}
+\end{zed}
+
+% \begin{gendef}[X, Y]
+% 	NULL: X \cross Y
+% \where
+% 	X \fun Y = \{ f: X \pfun Y | \dom f = X \}
+% \end{gendef}
+
+%%%
+
+\begin{zed}
+	X \pinj Y == \\
+	\t1	\{ f: X \pfun Y | ( \forall x_1, x_2: \dom f @
+			f(x_1) = f(x_2) \implies x_1 = x_2) \} \\
+	X \inj Y == (X \pinj Y) \cap (X \fun Y)
+\end{zed}
+
+%%%
+
+\begin{zed}
+	X \psurj Y == \{ f: X \pfun Y | \ran f = Y \} \\
+	X \surj Y == (X \psurj Y) \cap (X \fun Y) \\
+	X \bij Y == (X \surj Y) \cap (X \inj Y) \\
+\end{zed}
+
+%%%
+
+\begin{gendef}[X, Y]
+	\_ \oplus \_: (X \pfun Y) \cross (X \pfun Y) \fun (X \pfun Y) \\
+\end{gendef}
+
+%%%
+% D.4 Numbers and finiteness
+
+% \begin{zed}
+% [\num]
+% \end{zed}
+
+\begin{axdef}
+	\nat: \power \num \also
+	\_ + \_ , \_ - \_ , \_ * \_: \num \cross \num \fun \num \\
+	\_ \div \_, \_ \mod \_: \num \cross (\num \setminus \{0\}) \fun \num \\
+%	- \_: \num \fun \num \also
+	- : \num \fun \num \also
+	\_ < \_ , \_ \leq \_ , \_ \geq \_ , \_ > \_: \num \rel \num \\
+\where
+	\nat = \{ n : \num | n \geq 0 \}
+% ... other definitions omitted ...
+\end{axdef}
+
+%%%
+
+\begin{zed}
+	\nat_1 == \nat \setminus \{0\}
+\end{zed}
+
+\begin{axdef}
+	succ : \nat \fun \nat \\
+\where
+	\forall n: \nat @ succ(n) = n + 1 \\
+\end{axdef}
+
+%%%
+
+\begin{gendef}[X]
+	iter: \num \fun (X \rel X) \fun (X \rel X) \\
+\where
+	\forall R: X \rel X @ \\
+	\t1	iter 0 R = \id X \land \\
+	\t1	(\forall k: \nat @ iter(k+1) R = R \comp (iter k R)) \land \\
+	\t1	(\forall k: \nat @ iter(-k) R = iter k (R\inv)) \\
+\end{gendef}
+
+%%%
+
+\begin{axdef}
+	\_ \upto \_: \num \cross \num \fun \power \num \\
+\where
+	\forall a, b: \num @ \\
+	\t1	a \upto b = \{ k: \num | a \leq k \leq b \}
+\end{axdef}
+
+%%%
+
+\begin{zed}
+	\finset X == \{ S : \power X | \exists n : \nat @
+				\exists f : 1 \upto n \fun S @ \ran f = S \} \\
+	\finset_1 X == \finset X \setminus \{ \emptyset \} \\
+\end{zed}
+
+\begin{gendef}[X]
+	\#: \finset X \fun \nat \\
+\where
+	\forall S: \finset X @ \\
+	\t1	\# S = (\mu n : \nat |
+			(\exists f : 1 \upto n \inj S @ \ran f = S))
+\end{gendef}
+
+%%%
+
+\begin{zed}
+	X \ffun Y == \{ f: X \pfun Y | \dom f \in \finset X \} \\
+	X \finj Y == (X \ffun Y) \cap (X \inj Y) \\
+\end{zed}
+
+%%%
+
+\begin{axdef}
+	min: \power_1 \num \pfun \num \\
+	max: \power_1 \num \pfun \num \\
+\where
+	min = \{ S: \power_1 \num; m: \num | \\
+	\t2	m \in S \land (\forall n: S @ m \leq n) @ S \mapsto m \} \also
+	max = \{ S: \power_1 \num; m: \num | \\
+	\t2	m \in S \land (\forall n: S @ m \geq n) @ S \mapsto m \} \also
+\end{axdef}
+
+%%%
+% D.5 Sequences
+
+\begin{zed}
+	\seq X == \{ f : \nat \ffun X | \dom f = 1 \upto \# f \} \\
+	\seq_1 X == \{ f : \seq X | \# f > 0 \} \\
+	\iseq X == \seq X \cap (\nat \pinj X) \\
+\end{zed}
+
+%%%
+
+\begin{gendef}[X]
+        \_ \cat \_ :  \seq X \cross \seq X \fun \seq X \\
+\where
+	\forall s, t: \seq X @ \\
+	\t1	s \cat t = s \cup \{ n : \dom t @ n + \# s \mapsto t(n) \}
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X]
+        head, last:  \seq_1 X \fun X \\
+        tail, front:  \seq_1 X \fun \seq X \\
+\where
+	\forall s: \seq_1 X @ \\
+	\t1	head~s = s(1) \land \\
+	\t1	last~s = s(\# s) \land \\
+	\t1	tail~s = (\lambda n: 1\upto \#s-1 @ s(n+1)) \land \\
+	\t1	front~s = (1\upto \#s-1) \dres s \\
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X]
+        rev:  \seq X \fun \seq X \\
+\where
+	\forall s: \seq X @ \\
+	\t1	rev~s = (\lambda n: \dom s @ s(\#s-n+1)) \\
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X]
+        \_ \filter \_ : \seq X \cross \power X \fun \seq X \\
+\where
+	\forall V: \power X @ \\
+	\t1	\langle \rangle \filter V = \langle \rangle \land \\
+	\t1	(\forall x: X @ \\
+	\t2		(x \in V \implies \langle x \rangle \filter V =
+						\langle x \rangle) \land \\
+	\t2		(x \notin V \implies \langle x \rangle \filter V =
+						\langle \rangle)) \land \\
+	\t1	(\forall s, t: \seq X @ \\
+	\t2		((s \cat t) \filter V =
+					(s \filter V) \cat (t \filter V))) \\
+\end{gendef}
+
+%%%ADDITION
+
+\begin{gendef}[X]
+        \_ \extract \_ : \power \nat \cross \seq X \fun \seq X \\
+	\_ \prefix \_, \_ \suffix \_, \_ \inseq \_: \seq X \rel \seq X \\
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X]
+        \dcat: \seq (\seq X) \fun \seq X \\
+\where
+	\dcat \langle \rangle = \langle \rangle \\
+	\forall s: \seq X @ \dcat \langle s \rangle = s \\
+	\forall q, r: \seq (\seq X) @ \\
+	\t1	\dcat (q \cat r) = (\dcat q) \cat (\dcat r) \\
+\end{gendef}
+
+%%%
+
+\begin{gendef}[I, X]
+        \disjoint \_ : \power (I \pfun \power X) \\
+        \_ \partition \_ : (I \pfun \power X) \rel \power X \\
+\where
+	\forall S: I \pfun \power X; T: \power X @ \\
+	\t1	(\disjoint S \iff \\
+	\t2		(\forall i, j: \dom S | i \neq j @
+				S(i) \cap S(j) = \emptyset)) \land \\
+	\t1	(S \partition T \iff \\
+	\t2		\disjoint S \land \bigcup \{ i: \dom S @ S(i) \} = T) \\
+\end{gendef}
+
+%%%
+% D.6 Bags
+
+\begin{zed}
+	\bag X == X \pfun \nat_1 \\
+\end{zed}
+
+\begin{gendef}[X]
+	count: \bag X \inj (X \fun \nat) \\
+        \_ \inbag \_ :  X \rel \bag X \\
+\where
+	\forall x: X; B: \bag X @ \\
+	\t1	count~B = (\lambda x: X @ 0) \oplus B \land \\
+	\t1	x \inbag B \iff x \in \dom B \\
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X]
+	\_ \uplus \_ :  \bag X \cross \bag X \fun \bag X \\
+\where
+	\forall B, C: \bag X; x: X @ \\
+	\t1	count~(B \uplus C) x = count~B x + count~C x \\
+\end{gendef}
+
+%%%
+
+\begin{gendef}[X]
+	items:  \seq X \fun \bag X \\
+\where
+	\forall s: \seq X; x: X @ \\
+	\t1	count~(items~s) x = \# \{ i: \dom s | s(i) = x \} \\
+\end{gendef}
+
+%%%ADDITIONS
+
+\begin{gendef}[X]
+	\_ \uminus \_ :  \bag X \cross \bag X \fun \bag X \\
+	\_ \bcount \_: \bag X \cross X \fun \nat \\
+	\_ \otimes \_: \nat \cross \bag X \fun \bag X \\
+	\_ \subbageq \_: \bag X \rel \bag X \\
+\end{gendef}
+
+\end{document}

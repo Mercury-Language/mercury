@@ -1,0 +1,240 @@
+%%%
+% KEY
+
+[ ]
+	--- optional part.
+{ }
+	--- one or more.
+{ : }
+	--- one or more of component before the colon,
+	separated by component after the colon.
+
+Both strings in quotes and strings of capital letters represent terminal
+symbols.  Strings of underscores and lowercase letters represent nonterminals.
+
+%%%
+% B.1.1	SPECIFICATION
+
+specification --> [ { paragraph } ].
+
+% Arbitary text other than one of the four start tokens
+% for paragraph (see below) can appear between paragraphs.
+
+%%%
+% PARAGRAPHS
+
+paragraph --> "\begin{zed}", { item: semicolon }, "\end".
+paragraph --> "\begin{axdef}", axiomatic_def, "\end".
+paragraph --> "\begin{schema}", schema_box, "\end".
+paragraph --> "\begin{gendef}", generic_def, "\end".
+
+semicolon --> ";".
+semicolon --> newline.
+
+%%%
+% B.1.2	GIVEN SET
+
+item --> "[", { ident: "," }, "]".
+item --> ident, ":==", { branch: "|" }.
+item --> schema_name, [ gen_formals ], "\defs", schema_exp.
+item --> def_lhs, "==", expression.
+item --> predicate.
+
+%%%
+% B.1.3	STRUCTURED SET
+
+branch --> "(", op_name, ")", "\ldata", expression, "\rdata".
+branch --> ident, [ "\ldata", expression, "\rdata" ].
+
+%%%
+% B.1.4	GLOBAL DEFINITION
+
+axiomatic_def --> decl_part, [ "\where", { predicate: newline } ].
+
+%%%
+% B.1.5	GENERIC DEFINITION
+
+generic_def --> [ gen_formals ], decl_part, [ "\where", {predicate: newline} ].
+
+def_lhs --> PREGEN, ident.
+def_lhs --> ident, INGEN, ident.
+def_lhs --> var_name, [ gen_formals ].
+
+%%%
+% B.1.6	SCHEMA DEFINITION
+
+schema_box -->
+	"{", schema_name, "}", [ gen_formals ],
+	decl_part,
+	[ "\\where", { predicate: newline } ].
+
+%%%
+% B.1.7	DECLARATION
+
+decl_part --> { decl_elem: semicolon }.
+
+decl_elem --> { decl_name: "," }, ":", expression.
+decl_elem --> schema_exp.
+
+%%%
+% B.1.8	SCHEMA TEXT
+
+%%%
+% B.1.9	SCHEMA
+
+schema_exp --> quantifier, schema_text, "@", schema_exp.
+schema_exp --> log_sch.
+
+log_sch --> { log_sch1:IFF }.		% left associative
+
+log_sch1 --> { log_sch2: IMPLIES }.	% right associative
+
+log_sch2 --> { log_sch3: OR }.		% left associative
+
+log_sch3 --> { logsch4: AND }.		% left associative
+
+logsch4 --> "\lnot", logsch4.
+logsch4 --> basicsch, cmpndsch1_tail, cmpndsch_tail.
+
+cmpndsch_tail --> [ sconn, basicsch, cmpndsch1_tail, cmpndsch_tail ].
+
+sconn --> zCOMPOSE.
+sconn --> pipe.
+sconn --> zPROJECTION.
+
+cmpndsch1_tail --> [ "\hide", "(", { decl_name: "," }, ")", cmpndsch1_tail ].
+
+basicsch --> "[", schema_text, "]".
+basicsch --> "\pre", basicsch.
+basicsch --> "(", schema_exp, ")".
+basicsch --> schema_ref.
+
+schema_text --> decl_part, [ "|", predicate ].
+
+schema_ref --> schema_name, [ gen_actuals ], [ renaming ].
+
+%%%
+% RENAMING
+renaming --> "[", { rename: "," }, "]".
+
+rename --> decl_name, "/", decl_name.
+
+%%%
+% B.1.10 PREDICATE
+
+predicate --> quantifier, schema_text, "@", predicate.
+predicate --> "\LET", { let_def: ";" }, "@", predicate.
+predicate --> log_pred.
+
+log_pred --> { log_pred1: "\iff" }.		% left associative
+
+log_pred1 --> { log_pred2: "\implies" }.	% right associative
+
+log_pred2 --> { log_pred3: "\lor" }.		% left associative
+
+log_pred3 --> { basic_pred: "\land" }.		% left associative
+
+basic_pred --> PREREL, expression0.
+basic_pred --> "true".
+basic_pred --> "false".
+basic_pred --> "\lnot", basic_pred.
+basic_pred --> "[", schema_text, "]".
+basic_pred --> "\pre", schema_ref.
+basic_pred --> "(", predicate, ")".
+basic_pred --> expression0, [ rel_tail ].
+basic_pred --> schema_ref.
+
+rel_tail --> "=", expression0, [ rel_tail ].
+rel_tail --> "\in", expression0, [ rel_tail ].
+rel_tail --> "\inrel", "{", ident, "}", expression0, [ rel_tail ]
+rel_tail --> INREL, expression0, [ rel_tail ].
+
+%%%
+% LET DEFINITIONS
+
+let_def --> var_name, DEFINEEQUAL, expression.
+
+%%%
+% B.1.11 EXPRESSION
+
+expression0 --> "\IF", predicate, "\THEN", expression, "\ELSE", expression.
+expression0 --> "\mu", schema_text, [ "@", expression ].
+expression0 --> "\LET", { let_def: ";" }, "@", expression.
+expression0 --> expression.
+
+expression --> expression1, [ expression_tail ].
+
+expression_tail --> INGEN, expression.
+
+expression1 --> { expression2: "\cross" }.
+
+expression2 --> expression3, [ expression2_tail ].
+
+% Infix operator precedence grammar.
+expression2_tail --> INFUN, expression2, [ expression2_tail ].
+
+expression3 --> "\power", expression5.
+expression3 --> PREGEN, expression5.
+expression3 --> expression4.
+
+expression4 --> { expression5 }.
+
+expression5 --> expression5_head, [ { expression5_tail } ].
+
+expression5_head --> "\{", [ { expression: "," } ], "\}".
+expression5_head --> "\{", schema_text, opt_at_exp, "\}".
+expression5_head --> "(", expression0, ")".
+expression5_head --> "(", expression, ",", { expression: "," }, ")".
+expression5_head --> "\langle", [ { expression: "," } ], "\rangle".
+expression5_head --> "\lbag", [ { expression: "," } ], "\rbag".
+expression5_head --> "\theta", schema_name, opt_renaming.
+expression5_head --> "\lambda", schema_text, "@", expression0.
+expression5_head --> NUMBER.
+expression5_head --> schema_ref.
+expression5_head --> var_name, [ gen_actuals ].
+
+expression5_tail --> "\limg", expression0, "\rimg", [ DECORATION ].
+expression5_tail --> POSTFUN.
+expression5_tail --> "^", "{", expression, "}".
+expression5_tail --> ".", NUMBER.
+expression5_tail --> ".", var_name.
+
+%%%
+% NAMES AND IDENTIFIERS
+
+ident --> NAME.
+
+decl_name --> op_name.
+decl_name --> ident.
+
+var_name --> "(", op_name, ")".
+var_name --> ident.
+
+op_name --> "\_", "\limg", "\_", "\rimg", [ DECORATION ].
+op_name --> "\_", in_sym, "\_".
+op_name --> "\_", post_sym.
+op_name --> pre_sym, "\_".
+
+in_sym --> INFUN.
+in_sym --> INGEN.
+in_sym --> INREL.
+
+pre_sym --> PREGEN.
+pre_sym --> PREREL.
+
+post_sym --> POSTFUN.
+
+gen_formals --> "[", { ident: "," }, "]".
+
+gen_actuals --> "[", { expression: "," }, "]".
+
+schema_name --> 'Delta', NAME.
+schema_name --> 'Xi', NAME.
+schema_name --> NAME.
+
+quantifier --> "\forall".
+quantifier --> "\exists".
+quantifier --> "\exists_1".
+
+newline --> "\\".
+newline --> "\also".
