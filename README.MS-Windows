@@ -155,3 +155,24 @@ can be downloaded from
 Autoconf should configure, build and install directly from the source
 package.
 
+-----------------------------------------------------------------------------
+
+BUILDING WITH MINGW
+
+The above instructions describe how to build/install a version of
+the system that targets Cygwin.  It is also possible to build a version that
+targets Mingw, i.e. where the generated executables do not rely on Cygwin.
+
+- First, install the Cygwin version of Mercury, and put it in your PATH.
+- Second, configure the source distribution of Mercury using
+  --with-cc="gcc -mno-cygwin".
+- Third, run "make" and "make install".
+- Fourth, replace the following files in the installed Mingw Mercury
+  directories with copies of the corresponding file from the installed
+  Cygwin Mercury directories:
+        mercury_compile.exe (in <prefix>/lib/mercury/bin/<config>)
+        mercury_profile.exe (in <prefix>/lib/mercury/bin/<config>)
+        mdemangle.exe (in <prefix>/bin)
+        mkinit.exe (in <prefix>/bin)
+
+-----------------------------------------------------------------------------
