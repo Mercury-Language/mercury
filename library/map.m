@@ -52,14 +52,27 @@
 :- mode map__inverse_search(in, in, out) is nondet.
 
 	% Insert a new key and corresponding value into a map.
+	% Fail if the key already exists.
 :- pred map__insert(map(K,V), K, V, map(K,V)).
 :- mode map__insert(in, in, in, out) is semidet.
 
+	% Insert a new key and corresponding value into a map.
+	% Abort if the key already exists.
+:- pred map__det_insert(map(K,V), K, V, map(K,V)).
+:- mode map__det_insert(in, in, in, out) is det.
+
 	% Update the value corresponding to a given key
+	% Fail if the key doesn't already exist.
 :- pred map__update(map(K,V), K, V, map(K,V)).
 :- mode map__update(in, in, in, out) is semidet.
 
-	% Update value if it's already there, otherwise insert it
+	% Update the value corresponding to a given key
+	% Abort if the key doesn't already exist.
+:- pred map__det_update(map(K,V), K, V, map(K,V)).
+:- mode map__det_update(in, in, in, out) is det.
+
+	% Update value if the key is already present, otherwise
+	% insert new key and value.
 :- pred map__set(map(K,V), K, V, map(K,V)).
 :- mode map__set(in, in, in, out) is det.
 
@@ -84,12 +97,19 @@
 :- mode map__from_sorted_assoc_list(in, out) is det.
 
 	% delete a key-value pair from a map
+	% if the key is not present, leave the map unchanged
 :- pred map__delete(map(K,V), K, map(K,V)).
 :- mode map__delete(in, in, out) is det.
 
 	% delete a key-value pair from a map and return the value.
+	% fail if the key is not present
 :- pred map__remove(map(K,V), K, V, map(K,V)).
 :- mode map__remove(in, in, out, out) is semidet.
+
+	% delete a key-value pair from a map and return the value.
+	% abort if the key is not present
+:- pred map__det_remove(map(K,V), K, V, map(K,V)).
+:- mode map__det_remove(in, in, out, out) is det.
 
 	% Count the number of elements in the map.
 :- pred map__count(map(K, V), int).
@@ -157,14 +177,28 @@ map__lookup(Map, K, V) :-
 	( bintree__search(Map, K, V1) ->
 		V = V1
 	;
-		error("map__lookup failed")
+		error("map__lookup: key not found")
 	).
 
 map__insert(Map0, K, V, Map) :-
 	bintree__insert(Map0, K, V, Map).
  
+map__det_insert(Map0, K, V, Map) :-
+	( bintree__insert(Map0, K, V, Map1) ->
+		Map = Map1
+	;	
+		error("map__det_insert: key already present")
+	).
+ 
 map__update(Map0, K, V, Map) :-
 	bintree__update(Map0, K, V, Map).
+
+map__det_update(Map0, K, V, Map) :-
+	( bintree__update(Map0, K, V, Map1) ->
+		Map = Map1
+	;	
+		error("map__det_update: key not found")
+	).
 
 map__set(Map0, K, V, Map) :-
 	bintree__set(Map0, K, V, Map).
@@ -189,6 +223,14 @@ map__delete(Map0, Key, Map) :-
 
 map__remove(Map0, Key, Value, Map) :-
 	bintree__remove(Map0, Key, Value, Map).
+
+map__det_remove(Map0, Key, Value, Map) :-
+	( bintree__remove(Map0, Key, Value1, Map1) ->
+		Value = Value1,
+		Map = Map1
+	;
+		error("map__det_remove: key not found")
+	).
 
 map__count(Map, Count) :-
 	bintree__count(Map, Count).
