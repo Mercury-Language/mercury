@@ -401,10 +401,20 @@ export__produce_header_file(Module, ModuleName) -->
 					"#ifndef ", UpperFileName, "\n",
 					"#define ", UpperFileName, "\n",
 					"\n",
+					"#ifdef __cplusplus\n",
+					"extern ""C"" {\n",
+					"#endif\n",
+					"\n",
 					"#include ""imp.h""\n",
 					"\n"]),
 			export__produce_header_file_2(Preds, ExportedProcs),
-			io__write_string("\n#endif\n"),
+			io__write_strings([
+					"\n",
+					"#ifdef __cplusplus\n",
+					"}\n",
+					"#endif\n",
+					"\n",
+					"#endif /* ", UpperFileName, " */\n"]),
 			io__told
 		;
 			io__progname_base("export.m", ProgName),
