@@ -109,7 +109,7 @@ Dynamic/static linking options:
 				Link with the shared libraries (*.so),
 				if possible, otherwise with the static ones.
 			--mercury-libs static
-				Link with the static libraries (*.a).
+				Link with the static libraries (*.@LIB_SUFFIX@).
 			--mercury-libs none
 				Don't link in the Mercury standard libraries.
 	-shared, --shared
@@ -241,7 +241,7 @@ EOF
 		;;
 	-L|--lib-dir)
 		dir="$2"
-		user_libdir_opts="$user_libdir_opts -L$dir"
+		user_libdir_opts="$user_libdir_opts @LIB_LIBPATH@$dir"
 		shift
 		;;
 	-L*)
@@ -310,7 +310,7 @@ esac
 # it will also have set mercury_libs.
 case $mercury_libs in default)
 	mercury_libs=shared
-	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*)
+	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*|i?86-*-cygwin32)
 		# shared libraries are not the default on Linux
 		# -- see README.Linux
 		# Likewise for FreeBSD
@@ -327,7 +327,7 @@ esac
 # (shared on most systems).
 case $all_libs in default)
 	all_libs=shared
-	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*)
+	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*|i?86-*-cygwin32)
 		# shared libraries are not the default on Linux
 		# -- see README.Linux
 		# Likewise for FreeBSD
@@ -441,11 +441,11 @@ esac
 case "$GRADE" in
 	*.gc.prof*)
 		LIBGC="-lgc_prof"
-		LIBGC_STATIC="$LIBDIR/$FULLARCH/libgc_prof.a"
+		LIBGC_STATIC=`@CYGPATH@ $LIBDIR/$FULLARCH/libgc_prof.@LIB_SUFFIX@`
 		;;
 	*.gc*)
 		LIBGC="-lgc"
-		LIBGC_STATIC="$LIBDIR/$FULLARCH/libgc.a"
+		LIBGC_STATIC=`@CYGPATH@ $LIBDIR/$FULLARCH/libgc.@LIB_SUFFIX@`
 		;;
 	*)
 		LIBGC=
@@ -464,8 +464,8 @@ case $trace in
 		TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $NSL_LIBRARY $DL_LIBRARY \
 			$READLINE_LIBRARIES"
 		TRACE_STATIC_LIBS="\
-			$LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.a \
-			$LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.a"
+		  `@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.@LIB_SUFFIX@` \
+		  `@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.@LIB_SUFFIX@`"
 		;;
 	false)	TRACE_LIBS=
 		TRACE_LIBS_SYSTEM=
@@ -517,9 +517,9 @@ case $make_shared_lib in
 esac
 
 merc_libdir_opts="\
-	-L$LIBDIR/$GRADE/$FULLARCH
-	-L$LIBDIR/$FULLARCH
-	-L/usr/local/lib
+	@LIB_LIBPATH@$LIBDIR/$GRADE/$FULLARCH
+	@LIB_LIBPATH@$LIBDIR/$FULLARCH
+	@LIB_LIBPATH@/usr/local/lib
 "
 LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts"
 
@@ -532,8 +532,8 @@ case $mercury_libs in
 		;;
 	static)
 		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_STATIC_LIBS
-			$LIBDIR/$GRADE/$FULLARCH/lib$STD_LIB_NAME.a \
-			$LIBDIR/$GRADE/$FULLARCH/lib$RT_LIB_NAME.a \
+			`@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$STD_LIB_NAME.@LIB_SUFFIX@` \
+			`@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$RT_LIB_NAME.@LIB_SUFFIX@` \
 			$LIBGC_STATIC"}
 		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
 		merc_shlib_dirs=""
@@ -610,17 +610,18 @@ case "$highlevel_code" in
     true) demangle=false ;;
 esac
 
+LINKER_PRE_FLAGS="$UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
+LINKER_POST_FLAGS="@LINK_OPT_SEP@ $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS"
+
 case $verbose in
     true)
 	echo "ml: using grade \`$GRADE'"
 	case $demangle in
 	    false)
-		echo $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT \
-			$ARCH_OPTS $LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS
+		echo $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS
 		;;
 	    true)
-		echo $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT \
-			$ARCH_OPTS $LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS "|"
+		echo $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS "|"
 		echo "$DEMANGLER"
 		;;
 	esac
@@ -661,11 +662,9 @@ case $demangle in
 		# execute $CC with stdout & stderr redirected to
 		# go via the pipe to $DEMANGLER and then to stderr
 	case $# in
-		0) $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS >$PIPE 2>&1 ;;
-
-		*) $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS >$PIPE 2>&1 ;;
+    		0) $LINKER $LINKER_PRE_FLAGS $LINKER_POST_FLAGS >$PIPE 2>&1 ;;
+    		*) $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS \
+			>$PIPE 2>&1 ;;
 	esac
 	linker_status=$?
 		# now we can remove the pipe; since is an open file, it will
@@ -677,10 +676,8 @@ case $demangle in
 	;;
 false)
 	case $# in
-		0) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
-		*) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS ;;
+    		0) exec $LINKER $LINKER_PRE_FLAGS $LINKER_POST_FLAGS ;;
+    		*) exec $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS ;;
 	esac
 	;;
 esac

@@ -258,6 +258,8 @@
 		;	cflags_for_gotos
 		;	c_debug
 		;	c_include_directory
+		;	c_flag_to_name_object_file
+		;	object_file_extension
 		;	max_jump_table_size
 		;	fact_table_max_array_size
 				% maximum number of elements in a single 
@@ -591,6 +593,14 @@ option_defaults_2(code_gen_option, [
 					% determined at configuration time
 	c_debug			-	bool(no),
 	c_include_directory	-	accumulating([]),
+					% the `mmc' script will override the
+					% above default with a value determined
+					% at configuration time
+	c_flag_to_name_object_file -	string("-o "),
+					% the `mmc' script will override the
+					% above default with a value determined
+					% at configuration time
+	object_file_extension	-	string("o"),
 					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
@@ -945,6 +955,8 @@ long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
 long_option("c-debug",			c_debug).
 long_option("c-include-directory",	c_include_directory).
+long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
+long_option("object-file-extension",	object_file_extension).
 long_option("max-jump-table-size",	max_jump_table_size).
 long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",
@@ -1962,6 +1974,14 @@ options_help_code_generation -->
 		"\tEnable debugging of the generated C code.",
 		"\t(This has the same effect as",
 		"\t`--cflags ""-g"" --link-flags ""--no-strip""'.)",
+
+		"--c-flag-to-name-object-file <flag>",
+		"\tThe flag the C compiler uses to name object files.",
+		"\t('-o ' for gcc and '/Fo' for Visual C.)",
+
+		"--object-file-extension <extension>",
+		"\tThe extension used to signify object files.",
+		"\t('o' under unix and 'obj' under windows.)",
 
 		"--max-jump-table-size",
 		"\tThe maximum number of entries a jump table can have.",

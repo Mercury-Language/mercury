@@ -259,6 +259,8 @@ if test "$ac_microsoft" = "yes" ; then
 	AR_LIBFILE_OPT="/OUT:"
 	BOEHMGC_MAKEFILE="-f NT_MAKEFILE"
 
+	CYGPATH="cygpath -w"
+
 	AC_DEFINE(MR_WIN32)
 
 		# MS doesn't use a ranlib.
@@ -279,6 +281,8 @@ else
 	AR_LIBFILE_OPT=""
 	BOEHMGC_MAKEFILE=""
 
+	CYGPATH=echo
+
 	AC_PROG_RANLIB
 fi
 
@@ -294,6 +298,7 @@ AC_SUBST(LIB_PREFIX)
 AC_SUBST(LIB_LIBPATH)
 AC_SUBST(LINK_LIB)
 AC_SUBST(LINK_OPT_SEP)
+AC_SUBST(CYGPATH)
 
 #-----------------------------------------------------------------------------#
 # Don't try to use mprotect() on gnu-win32, since it is broken

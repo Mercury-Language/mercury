@@ -454,7 +454,8 @@ mercury_compile(Module) -->
 			( { CompileToC = no } ->
 				module_name_to_file_name(ModuleName, ".c", no,
 					C_File),
-				module_name_to_file_name(ModuleName, ".o", yes,
+				object_extension(Obj),
+				module_name_to_file_name(ModuleName, Obj, yes,
 					O_File),
 				mercury_compile__single_c_to_obj(
 					C_File, O_File, _CompileOK)
@@ -2397,8 +2398,9 @@ mercury_compile__c_to_obj(ModuleName, NumChunks, Succeeded) -->
 		mercury_compile__c_to_obj_list(ModuleName, 0, NumChunks,
 			Succeeded)
 	;
+		object_extension(Obj),
 		module_name_to_file_name(ModuleName, ".c", no, C_File),
-		module_name_to_file_name(ModuleName, ".o", yes, O_File),
+		module_name_to_file_name(ModuleName, Obj, yes, O_File),
 		mercury_compile__single_c_to_obj(C_File, O_File, Succeeded)
 	).
 
@@ -2412,10 +2414,11 @@ mercury_compile__c_to_obj_list(ModuleName, Chunk, NumChunks, Succeeded) -->
 	( { Chunk > NumChunks } ->
 		{ Succeeded = yes }
 	;
+		object_extension(Obj),
 		module_name_to_split_c_file_name(ModuleName, Chunk,
 			".c", C_File),
 		module_name_to_split_c_file_name(ModuleName, Chunk,
-			".o", O_File),
+			Obj, O_File),
 		mercury_compile__single_c_to_obj(C_File, O_File, Succeeded0),
 		( { Succeeded0 = no } ->
 			{ Succeeded = no }
@@ -2432,6 +2435,8 @@ mercury_compile__c_to_obj_list(ModuleName, Chunk, NumChunks, Succeeded) -->
 
 mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_string_option(c_flag_to_name_object_file,
+			NameObjectFile),
 	maybe_write_string(Verbose, "% Compiling `"),
 	maybe_write_string(Verbose, C_File),
 	maybe_write_string(Verbose, "':\n"),
@@ -2638,7 +2643,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		StackTraceOpt, RequireTracingOpt,
 		UseTrailOpt, MinimalModelOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
-		" -c ", C_File, " -o ", O_File], Command) },
+		" -c ", C_File, " ", NameObjectFile, O_File], Command) },
 	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem compiling C file.")
@@ -2666,13 +2671,16 @@ mercury_compile__link_module_list(Modules) -->
 	),
 
 	{ file_name_to_module_name(OutputFileName, ModuleName) },
+	object_extension(Obj),
+	{ string__append("_init", Obj, InitObj) },
 	module_name_to_file_name(ModuleName, "_init.c", yes, InitCFileName),
-	module_name_to_file_name(ModuleName, "_init.o", yes, InitObjFileName),
+	module_name_to_file_name(ModuleName, InitObj, yes, InitObjFileName),
 
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
 	    module_name_to_file_name(ModuleName, ".a", yes, SplitLibFileName),
-	    join_module_list(Modules, ".dir/*.o", [], ObjectList),
+	    { string__append(".dir/*", Obj, DirObj) },
+	    join_module_list(Modules, DirObj, [], ObjectList),
 	    { list__append(
 		["ar cr ", SplitLibFileName, " " | ObjectList],
 		[" && ranlib ", SplitLibFileName],
@@ -2682,7 +2690,7 @@ mercury_compile__link_module_list(Modules) -->
 	    { Objects = SplitLibFileName }
 	;
 	    { MakeLibCmdOK = yes },
-	    join_module_list(Modules, ".o", [], ObjectsList),
+	    join_module_list(Modules, Obj, [], ObjectsList),
 	    { string__append_list(ObjectsList, Objects) }
 	),
 	( { MakeLibCmdOK = no } ->
@@ -2940,5 +2948,14 @@ mercury_compile__maybe_dump_rl(Procs, ModuleInfo, _StageNum, StageName) -->
 		[]
 	).
 
+%-----------------------------------------------------------------------------%
+
+	% Extension for object files.
+:- pred object_extension(string::out, io__state::di, io__state::uo) is det.
+
+object_extension(Extension) -->
+	globals__io_lookup_string_option(object_file_extension, Extension0),
+	{ string__append(".", Extension0, Extension) }. 
+	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
