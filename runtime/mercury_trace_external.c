@@ -303,8 +303,9 @@ MR_trace_final_external(void)
 }
 
 void
-MR_trace_event_external(const MR_Stack_Layout_Label *layout,
-	MR_trace_port port, Unsigned seqno, Unsigned depth, const char *path)
+MR_trace_event_external(MR_trace_cmd_info *cmd, 
+	const MR_Stack_Layout_Label *layout, MR_trace_port port,
+	Unsigned seqno, Unsigned depth, const char *path)
 {
 	static bool searching = FALSE;
 	static Word search_data;
@@ -349,13 +350,13 @@ MR_trace_event_external(const MR_Stack_Layout_Label *layout,
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_CURRENT\n");
 				}
-				var_list = MR_trace_make_var_list(port, layout);
+				var_list = MR_trace_make_var_list(layout);
 				MR_output_current(layout, port, seqno, depth,
 					var_list, path, debugger_request);
 				break;
 				
 			case MR_REQUEST_NO_TRACE:
-				MR_trace_cmd = MR_CMD_TO_END;
+				cmd->MR_trace_cmd = MR_CMD_TO_END;
 				return;
 
 			default:

@@ -11,7 +11,8 @@
 
 extern	void	MR_trace_init_external(void);
 extern	void	MR_trace_final_external(void);
-extern	void	MR_trace_event_external(const MR_Stack_Layout_Label *layout,
+extern	void	MR_trace_event_external(MR_trace_cmd_info *cmd,
+			const MR_Stack_Layout_Label *layout,
 			MR_trace_port port, Unsigned seqno, Unsigned depth,
 			const char *path);
 

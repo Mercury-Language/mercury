@@ -128,7 +128,7 @@ MR_trace_event(MR_trace_cmd_info *cmd,
 	MR_copy_regs_to_saved_regs(max_mr_num);
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 	if (MR_trace_handler == MR_TRACE_EXTERNAL) {
-		MR_trace_event_external(layout, port, seqno, depth, path);
+		MR_trace_event_external(cmd, layout, port, seqno, depth, path);
 	} else {
 		MR_trace_event_internal(cmd, layout, port, seqno, depth, path);
 	}
