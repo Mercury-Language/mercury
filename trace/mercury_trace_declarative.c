@@ -1395,6 +1395,10 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	MR_Unsigned		topmost_seqno;
 	MercuryFile		stream;
 
+	event_details->MR_call_seqno = MR_trace_call_seqno;
+	event_details->MR_call_depth = MR_trace_call_depth;
+	event_details->MR_event_number = MR_trace_event_number;
+
 	if (MR_edt_compiler_flag_warning) {
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "Warning: some modules were compiled with"
@@ -1414,6 +1418,10 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		fclose(MR_trace_store_file);
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 		MR_trace_enabled = MR_TRUE;
+		MR_trace_call_seqno = event_details->MR_call_seqno;
+		MR_trace_call_depth = event_details->MR_call_depth;
+		MR_trace_event_number = event_details->MR_event_number;
+
 		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 	}
 
@@ -1435,6 +1443,10 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 				(MR_Word *) &final_event,
 				(MR_Word *) &topmost_seqno);
 	);
+
+	MR_trace_call_seqno = event_details->MR_call_seqno;
+	MR_trace_call_depth = event_details->MR_call_depth;
+	MR_trace_event_number = event_details->MR_event_number;
 
 	if (bug_found) {
 		return MR_decl_handle_bug_found(bug_event, cmd,
