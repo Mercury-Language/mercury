@@ -97,6 +97,17 @@ intToString(I, S) :-
 string__to_float(String, Float) :-
 	number_chars(Float, String).
 
+string__float_to_string(Float, String) :-
+	number_chars(Float, String).
+
+	% This implementation of string__float_to_f_string is not
+	% 100% correct, because it will do the wrong thing
+	% for large numbers (print them in 1.0E+10 notation,
+	% rather than as 1000000000.0).  But this is good
+	% enough for the moment, I think.
+string__float_to_f_string(Float, String) :-
+	number_chars(Float, String).
+
 duplicate(Term, Copy) :-
 	copy_term(Term, Copy).
 
