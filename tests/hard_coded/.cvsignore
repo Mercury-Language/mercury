@@ -1,4 +1,5 @@
 *.c *.out *.res
+.allres
 qual_basic_test
 qual_basic_test2
 qual_is_test
@@ -22,3 +23,10 @@ reverse_arith
 curry
 rev_arith
 curry2
+write
+higher_order_syntax
+ho_func_reg
+float_reg
+expand
+ho_solns
+write_reg1
