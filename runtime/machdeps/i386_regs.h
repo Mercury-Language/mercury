@@ -16,6 +16,10 @@
 ** (ebx, esi, edi).  If we're using position-independent code (PIC),
 ** i.e. if this code is being compiled with `-fpic' or `-fPIC',
 ** then ebx is reserved, so we use only esi and edi.
+** We also avoid using ebx if compiled with -DPIC_REG;
+** compiling with -DPIC_REG but not -fpic allows one to
+** preserve link-compatibility with PIC code while generating
+** non-PIC code.
 **
 ** For the 386, if `ebp' is not used as a global register variable,
 ** then the code *must not* be compiled with `-fomit-frame-pointer'.
@@ -34,11 +38,21 @@
 ** the frame pointer.  (E.g. the one containing io__init_state/2.)
 */
 
+/*
+** Are we using PIC?
+*/
 #if (defined(__PIC__) || defined(__pic__)) && !defined(PIC)
   #define PIC 1
 #endif
 
-#if PIC
+/*
+** Should we keep the GOT register (ebx) free for PIC code?
+*/
+#if PIC && !defined(PIC_REG)
+  #define PIC_REG 1
+#endif
+
+#if PIC_REG
   #define NUM_REAL_REGS 2
 #else
   #define NUM_REAL_REGS 3
@@ -47,13 +61,13 @@
 register	Word	mr0 __asm__("esi");	/* sp */
 register	Word	mr1 __asm__("edi");	/* succip */
 
-#if PIC
+#if PIC_REG
   #define mr2	fake_reg[2]
 #else
   register	Word	mr2 __asm__("ebx");	/* r1 */
 #endif
 
-#if PIC
+#if PIC_REG
 
 #define save_regs_to_mem(save_area) (		\
 	save_area[0] = mr0,			\
@@ -67,7 +81,7 @@ register	Word	mr1 __asm__("edi");	/* succip */
 	(void)0					\
 )
 
-#else /* ! PIC */
+#else /* ! PIC_REG */
 
 #define save_regs_to_mem(save_area) (		\
 	save_area[0] = mr0,			\
@@ -83,7 +97,7 @@ register	Word	mr1 __asm__("edi");	/* succip */
 	(void)0					\
 )
 
-#endif	/* ! PIC */
+#endif	/* ! PIC_REG */
 
 #define save_transient_regs_to_mem(save_area)		((void)0)
 #define restore_transient_regs_from_mem(save_area)	((void)0)
