@@ -898,39 +898,40 @@ stack_layout__construct_closure_arg_rval(ClosureArg,
 	llds_type, stack_layout_info, stack_layout_info).
 :- mode stack_layout__represent_live_value_type(in, out, out, in, out) is det.
 
-stack_layout__represent_live_value_type(succip, Rval, integer) -->
-	{ Rval = const(int_const(0)) }.
-stack_layout__represent_live_value_type(hp, Rval, integer) -->
-	{ Rval = const(int_const(1)) }.
-stack_layout__represent_live_value_type(curfr, Rval, integer) -->
-	{ Rval = const(int_const(2)) }.
-stack_layout__represent_live_value_type(maxfr, Rval, integer) -->
-	{ Rval = const(int_const(3)) }.
-stack_layout__represent_live_value_type(redofr, Rval, integer) -->
-	{ Rval = const(int_const(4)) }.
-stack_layout__represent_live_value_type(redoip, Rval, integer) -->
-	{ Rval = const(int_const(5)) }.
-stack_layout__represent_live_value_type(unwanted, Rval, integer) -->
-	{ Rval = const(int_const(6)) }.
-stack_layout__represent_live_value_type(var(_, _, Type, Inst), Rval, data_ptr)
+stack_layout__represent_live_value_type(succip, Rval, data_ptr) -->
+	{ TypeCtor = type_ctor(info, "succip", 0) },
+	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
+	{ Rval = const(AddrConst) }.
+stack_layout__represent_live_value_type(hp, Rval, data_ptr) -->
+	{ TypeCtor = type_ctor(info, "hp", 0) },
+	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
+	{ Rval = const(AddrConst) }.
+stack_layout__represent_live_value_type(curfr, Rval, data_ptr) -->
+	{ TypeCtor = type_ctor(info, "curfr", 0) },
+	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
+	{ Rval = const(AddrConst) }.
+stack_layout__represent_live_value_type(maxfr, Rval, data_ptr) -->
+	{ TypeCtor = type_ctor(info, "maxfr", 0) },
+	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
+	{ Rval = const(AddrConst) }.
+stack_layout__represent_live_value_type(redofr, Rval, data_ptr) -->
+	{ TypeCtor = type_ctor(info, "redofr", 0) },
+	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
+	{ Rval = const(AddrConst) }.
+stack_layout__represent_live_value_type(redoip, Rval, data_ptr) -->
+	{ TypeCtor = type_ctor(info, "redoip", 0) },
+	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
+	{ Rval = const(AddrConst) }.
+stack_layout__represent_live_value_type(unwanted, Rval, data_ptr) -->
+	{ TypeCtor = type_ctor(info, "succip", 0) },
+	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
+	{ Rval = const(AddrConst) }.
+stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
 		-->
 	stack_layout__get_cell_number(CNum0),
-	{ stack_layout__represent_var_shape(Type, Inst, VarShape,
-		CNum0, CNum1) },
-	stack_layout__set_cell_number(CNum1),
-	stack_layout__get_next_cell_number(CNum2),
-	{ Rval = create(0, VarShape, uniform(no), must_be_static,
-		CNum2, "variable_shape") }.
-
-:- pred stack_layout__represent_var_shape((type)::in, (inst)::in,
-	list(maybe(rval))::out, int::in, int::out) is det.
-
-stack_layout__represent_var_shape(Type, _Inst, VarShape, CNum0, CNum) :-
-	base_type_layout__construct_typed_pseudo_type_info(Type, TypeRval, _,
-		CNum0, CNum),
-	% XXX hack - don't yet write out insts
-	InstRval = const(int_const(-1)),
-	VarShape = [yes(TypeRval), yes(InstRval)].
+	{ base_type_layout__construct_typed_pseudo_type_info(Type,
+		Rval, LldsType, CNum0, CNum) },
+	stack_layout__set_cell_number(CNum).
 
 %---------------------------------------------------------------------------%
 

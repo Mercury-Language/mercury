@@ -198,52 +198,6 @@ typedef enum {
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_Live_Type
-*/
-
-/*
-** MR_Live_Type describes live data. This includes:
-** 	- succip, hp, curfr, maxfr, redoip, and
-** 	  mercury data values (vars).
-**
-** The data is encoded such that low values (less than
-** TYPE_CTOR_LAYOUT_MAX_VARINT) represent succip, hp, etc.  Higher values
-** represent data variables, and are pointers to a 2 word cell,
-** containing a pseudo type_info and an instantiation represention.
-**
-** This data is generated in compiler/stack_layout.m, which must be kept
-** in sync with the constants defined here.
-*/
-
-typedef Word MR_Live_Type;
-
-typedef enum {
-	MR_LIVE_TYPE_SUCCIP,
-	MR_LIVE_TYPE_HP,
-	MR_LIVE_TYPE_CURFR,
-	MR_LIVE_TYPE_MAXFR,
-	MR_LIVE_TYPE_REDOIP,
-	MR_LIVE_TYPE_UNWANTED
-} MR_Lval_NonVar;
-
-typedef struct {
-	Word	*pseudo_type_info;
-	Word	inst;	/* not yet used; currently always -1 */
-} MR_Var_Shape_Info;
-
-#define MR_LIVE_TYPE_IS_VAR(T)         ((Word) T > TYPE_CTOR_LAYOUT_MAX_VARINT)
-
-#define MR_LIVE_TYPE_GET_NONVAR(T)			\
-		((MR_Lval_NonVar) T)
-
-#define MR_LIVE_TYPE_GET_VAR_TYPE(T)   			\
-		(((MR_Var_Shape_Info *) T)->pseudo_type_info)
-
-#define MR_LIVE_TYPE_GET_VAR_INST(T)   			\
-		(((MR_Var_Shape_Info *) T)->inst)
-
-/*-------------------------------------------------------------------------*/
-/*
 ** Definitions for MR_Stack_Layout_Vars
 */
 

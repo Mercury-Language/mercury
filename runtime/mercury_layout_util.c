@@ -118,7 +118,6 @@ MR_make_var_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 	Word				univ_list;
 	Word				univ;
 	Word				value;
-	MR_Live_Type			live_type;
 	Word				type_info;
 	Word				*base_sp;
 	Word				*base_curfr;
@@ -440,15 +439,9 @@ MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars, int i,
 	Word *type_params, Word *type_info, Word *value)
 {
 	bool	succeeded;
-	Word	*shape;
 	Word	*pseudo_type_info;
 
-	shape = MR_var_pti(vars, i);
-	if (!MR_LIVE_TYPE_IS_VAR(shape)) {
-		return FALSE;
-	}
-
-	pseudo_type_info = MR_LIVE_TYPE_GET_VAR_TYPE(shape);
+	pseudo_type_info = MR_var_pti(vars, i);
 	*type_info = (Word) MR_create_type_info(type_params, pseudo_type_info);
 
 	if (i < MR_long_desc_var_count(vars)) {
@@ -481,11 +474,7 @@ MR_get_type_base(const MR_Stack_Layout_Vars *vars, int i,
 	bool	succeeded;
 	Word	*pseudo_type_info;
 
-	if (!MR_LIVE_TYPE_IS_VAR(MR_var_pti(vars, i))) {
-		return FALSE;
-	}
-
-	pseudo_type_info = MR_LIVE_TYPE_GET_VAR_TYPE(MR_var_pti(vars, i));
+	pseudo_type_info = MR_var_pti(vars, i);
 	*type_info = (Word) MR_create_type_info(type_params, pseudo_type_info);
 	
 	return TRUE;

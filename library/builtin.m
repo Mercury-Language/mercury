@@ -296,6 +296,66 @@ const struct mercury_data___type_ctor_layout_void_0_struct {
 		mkbody(MR_TYPE_CTOR_LAYOUT_VOID_VALUE))
 };
 
+	/* type_ctor_layout for `succip' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_layout_succip_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data___type_ctor_layout_succip_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_SUCCIP_VALUE))
+};
+
+	/* type_ctor_layout for `hp' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_layout_hp_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data___type_ctor_layout_hp_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_SUCCIP_VALUE))
+};
+
+	/* type_ctor_layout for `curfr' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_layout_curfr_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data___type_ctor_layout_curfr_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_CURFR_VALUE))
+};
+
+	/* type_ctor_layout for `maxfr' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_layout_maxfr_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data___type_ctor_layout_maxfr_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_MAXFR_VALUE))
+};
+
+	/* type_ctor_layout for `redofr' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_layout_redofr_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data___type_ctor_layout_redofr_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_REDOFR_VALUE))
+};
+
+	/* type_ctor_layout for `redoip' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_layout_redoip_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data___type_ctor_layout_redoip_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_REDOIP_VALUE))
+};
+
 	/* type_ctor_functors definitions */
 
 	/* type_ctor_functors for `int' */
@@ -340,6 +400,60 @@ MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___type_ctor_functors_void_0_struct {
 	Integer f1;
 } mercury_data___type_ctor_functors_void_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
+	/* type_ctor_functors for `succip' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_functors_succip_0_struct {
+	Integer f1;
+} mercury_data___type_ctor_functors_succip_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
+	/* type_ctor_functors for `hp' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_functors_hp_0_struct {
+	Integer f1;
+} mercury_data___type_ctor_functors_hp_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
+	/* type_ctor_functors for `curfr' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_functors_curfr_0_struct {
+	Integer f1;
+} mercury_data___type_ctor_functors_curfr_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
+	/* type_ctor_functors for `maxfr' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_functors_maxfr_0_struct {
+	Integer f1;
+} mercury_data___type_ctor_functors_maxfr_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
+	/* type_ctor_functors for `redofr' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_functors_redofr_0_struct {
+	Integer f1;
+} mercury_data___type_ctor_functors_redofr_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
+	/* type_ctor_functors for `redoip' (only used by accurate gc) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_functors_redoip_0_struct {
+	Integer f1;
+} mercury_data___type_ctor_functors_redoip_0 = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
@@ -498,6 +612,180 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_void_0_struct {
 	(const Word *) & mercury_data___type_ctor_layout_void_0,
 	(const Word *) string_const(""builtin"", 7),
 	(const Word *) string_const(""void"", 4)
+#endif
+};
+
+	/* type_ctor_info for `succip' (only used by accurate gc) */
+
+Declare_entry(mercury__unused_0_0);
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_succip_0_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+#ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+	const Word *f9;
+#endif
+} mercury_data___type_ctor_info_succip_0 = {
+	((Integer) 0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#ifdef  USE_TYPE_LAYOUT
+	(const Word *) & mercury_data___type_ctor_layout_succip_0,
+	(const Word *) & mercury_data___type_ctor_functors_succip_0,
+	(const Word *) & mercury_data___type_ctor_layout_succip_0,
+	(const Word *) string_const(""builtin"", 7),
+	(const Word *) string_const(""succip"", 4)
+#endif
+};
+
+	/* type_ctor_info for `hp' (only used by accurate gc) */
+
+Declare_entry(mercury__unused_0_0);
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_hp_0_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+#ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+	const Word *f9;
+#endif
+} mercury_data___type_ctor_info_hp_0 = {
+	((Integer) 0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#ifdef  USE_TYPE_LAYOUT
+	(const Word *) & mercury_data___type_ctor_layout_hp_0,
+	(const Word *) & mercury_data___type_ctor_functors_hp_0,
+	(const Word *) & mercury_data___type_ctor_layout_hp_0,
+	(const Word *) string_const(""builtin"", 7),
+	(const Word *) string_const(""hp"", 4)
+#endif
+};
+
+	/* type_ctor_info for `curfr' (only used by accurate gc) */
+
+Declare_entry(mercury__unused_0_0);
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_curfr_0_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+#ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+	const Word *f9;
+#endif
+} mercury_data___type_ctor_info_curfr_0 = {
+	((Integer) 0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#ifdef  USE_TYPE_LAYOUT
+	(const Word *) & mercury_data___type_ctor_layout_curfr_0,
+	(const Word *) & mercury_data___type_ctor_functors_curfr_0,
+	(const Word *) & mercury_data___type_ctor_layout_curfr_0,
+	(const Word *) string_const(""builtin"", 7),
+	(const Word *) string_const(""curfr"", 4)
+#endif
+};
+
+	/* type_ctor_info for `maxfr' (only used by accurate gc) */
+
+Declare_entry(mercury__unused_0_0);
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_maxfr_0_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+#ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+	const Word *f9;
+#endif
+} mercury_data___type_ctor_info_maxfr_0 = {
+	((Integer) 0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#ifdef  USE_TYPE_LAYOUT
+	(const Word *) & mercury_data___type_ctor_layout_maxfr_0,
+	(const Word *) & mercury_data___type_ctor_functors_maxfr_0,
+	(const Word *) & mercury_data___type_ctor_layout_maxfr_0,
+	(const Word *) string_const(""builtin"", 7),
+	(const Word *) string_const(""maxfr"", 4)
+#endif
+};
+
+	/* type_ctor_info for `redoip' (only used by accurate gc) */
+
+Declare_entry(mercury__unused_0_0);
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_redoip_0_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+#ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+	const Word *f9;
+#endif
+} mercury_data___type_ctor_info_redoip_0 = {
+	((Integer) 0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#ifdef  USE_TYPE_LAYOUT
+	(const Word *) & mercury_data___type_ctor_layout_redoip_0,
+	(const Word *) & mercury_data___type_ctor_functors_redoip_0,
+	(const Word *) & mercury_data___type_ctor_layout_redoip_0,
+	(const Word *) string_const(""builtin"", 7),
+	(const Word *) string_const(""redoip"", 4)
+#endif
+};
+
+	/* type_ctor_info for `redofr' (only used by accurate gc) */
+
+Declare_entry(mercury__unused_0_0);
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_redofr_0_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+#ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+	const Word *f9;
+#endif
+} mercury_data___type_ctor_info_redofr_0 = {
+	((Integer) 0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#ifdef  USE_TYPE_LAYOUT
+	(const Word *) & mercury_data___type_ctor_layout_redofr_0,
+	(const Word *) & mercury_data___type_ctor_functors_redofr_0,
+	(const Word *) & mercury_data___type_ctor_layout_redofr_0,
+	(const Word *) string_const(""builtin"", 7),
+	(const Word *) string_const(""redofr"", 4)
 #endif
 };
 
