@@ -1332,7 +1332,8 @@ output_rval_decls(binop(_, Rval1, Rval2), DeclSet0, DeclSet) -->
 	% problems with Solaris: if you use gcc 2.7 and link with `gcc -shared',
 	% you get a link error; the work-around is to link with `gcc -G'.
 	% It also causes major problems with Irix 5: the relocation is not
-	% done, resulting in a core dump at runtime.
+	% done, resulting in a core dump at runtime.  It also causes
+	% major problems on AIX RS/6000 systems: a link error or core dump.
 	%
 	% The gcc maintainers said that this was a bug in our code, since it
 	% converted a pointer to an integer, which is ANSI/ISO C says is
@@ -1796,6 +1797,9 @@ output_tag(Tag) -->
 	io__write_int(Tag),
 	io__write_string(")").
 
+% output an rval, as type `Integer', `Word', or `Unsigned'
+% (normally as `Integer', so that arithmetic operators use signed arithmetic.)
+
 :- pred output_rval(rval, io__state, io__state).
 :- mode output_rval(in, di, uo) is det.
 
@@ -1810,7 +1814,7 @@ output_rval(binop(Op, X, Y)) -->
 	(
 		{ Op = array_index }
 	->
-		io__write_string("((Word *)"),
+		io__write_string("((Integer *)"),
 		output_rval(X),
 		io__write_string(")["),
 		output_rval(Y),
@@ -1829,23 +1833,23 @@ output_rval(binop(Op, X, Y)) -->
 	;
 		{ llds__float_compare_op(Op, OpStr) }
 	->
-		io__write_string("(word_to_float("),
-		output_rval(X),
-		io__write_string(") "),
+		io__write_string("("),
+		output_rval_as_float(X),
+		io__write_string(" "),
 		io__write_string(OpStr),
-		io__write_string(" word_to_float("),
-		output_rval(Y),
-		io__write_string("))")
+		io__write_string(" "),
+		output_rval_as_float(Y),
+		io__write_string(")")
 	;
 		{ llds__float_op(Op, OpStr) }
 	->
-		io__write_string("float_to_word(word_to_float("),
-		output_rval(X),
-		io__write_string(") "),
+		io__write_string("float_to_word("),
+		output_rval_as_float(X),
+		io__write_string(" "),
 		io__write_string(OpStr),
-		io__write_string(" word_to_float("),
-		output_rval(Y),
-		io__write_string("))")
+		io__write_string(" "),
+		output_rval_as_float(Y),
+		io__write_string(")")
 	;
 		{ Op = (+) },
 		{ Y = const(int_const(C)) },
@@ -1889,6 +1893,28 @@ output_rval(create(Tag, _Args, LabelNum)) -->
 	io__write_string(")").
 output_rval(var(_)) -->
 	{ error("Cannot output a var(_) expression in code") }.
+
+% output an rval, converted to type `Float' (the Mercury floating point type).
+
+:- pred output_rval_as_float(rval, io__state, io__state).
+:- mode output_rval_as_float(in, di, uo) is det.
+
+output_rval_as_float(Rval) -->
+	( { Rval = const(float_const(FloatVal)) } ->
+		io__write_float(FloatVal)
+	; { Rval = binop(Op, X, Y) }, { llds__float_op(Op, OpStr) } ->
+		io__write_string("("),
+		output_rval_as_float(X),
+		io__write_string(" "),
+		io__write_string(OpStr),
+		io__write_string(" "),
+		output_rval_as_float(Y),
+		io__write_string(")")
+	;
+		io__write_string("word_to_float("),
+		output_rval(Rval),
+		io__write_string(")")
+	).
 
 :- pred output_unary_op(unary_op, io__state, io__state).
 :- mode output_unary_op(in, di, uo) is det.
