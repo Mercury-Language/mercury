@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------
@@ -17,17 +17,18 @@
 :- module term_pass2.
 :- interface.
 
-:- import_module hlds_module, term_util.
+:- import_module hlds_module, hlds_pred, term_util.
+:- import_module list.
 
 :- pred prove_termination_in_scc(list(pred_proc_id)::in, module_info::in,
 	pass_info::in, int::in, termination_info::out) is det.
 
 :- implementation.
 
-:- import_module term_traversal, term_util, term_errors.
-:- import_module hlds_pred, hlds_goal, prog_data, type_util, mode_util.
+:- import_module term_traversal, term_errors.
+:- import_module hlds_goal, prog_data, type_util, mode_util.
 
-:- import_module std_util, bool, int, list, assoc_list.
+:- import_module std_util, bool, int, assoc_list.
 :- import_module set, bag, map, term, require.
 
 :- type fixpoint_dir

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -28,6 +28,8 @@
 #include "mercury_std.h"
 
 static void demangle(char *name);
+static const char *strip_module_name(char **start_ptr, char *end,
+		const char *trailing_context[]);
 static bool check_for_suffix(char *start, char *position, const char *suffix,
 		int sizeof_suffix, int *mode_num2);
 static char *fix_mangled_ascii(char *str, char **end);
@@ -116,6 +118,15 @@ demangle(char *name)
 	static const char base_type_info[] = "base_type_info_";
 	static const char base_type_functors[] = "base_type_functors_";
 	static const char common[] = "common";
+
+	static const char * trailing_context_1[] = { introduced, NULL };
+	static const char * trailing_context_2[] = {
+		base_type_layout,
+		base_type_info,
+		base_type_functors,
+		common,
+		NULL
+	};
 
 	char *start = name;
 	const char *module = "";	/* module name */
@@ -281,14 +292,6 @@ demangle(char *name)
 	*end = '\0';
 
 	/*
-	** Strip off the module name
-	*/
-	module = start;
-	if (!cut_at_double_underscore(&start, end)) {
-		module = "";
-	}
-
-	/*
 	** Make sure special predicates with unused_args 
 	** are reported correctly.
 	*/
@@ -298,6 +301,8 @@ demangle(char *name)
 			goto wrong_format;
 		}
 	}
+
+	module = strip_module_name(&start, end, trailing_context_1);
 
 	/*
 	** look for "IntroducedFrom"
@@ -385,10 +390,8 @@ not_plain_mercury:
 	if (!strip_prefix(&start, mercury_data)) {
 		goto wrong_format;
 	}
-	module = start;
-	if (!cut_at_double_underscore(&start, end)) {
-		module = "";
-	}
+
+	module = strip_module_name(&start, end, trailing_context_2);
 
 	if (strip_prefix(&start, base_type_info)) {
 		data_category = INFO;
@@ -460,6 +463,69 @@ wrong_format:
 	printf("%s", name);
 	return;
 } /* end demangle() */
+
+	/*
+	** Remove a module name prefix.
+	** Just keep munching up double-underscores until we
+	** get to something that matches the specified trailing context,
+	** at which point we stop, or until there are no double-underscores
+	** left.
+	*/
+static const char *
+strip_module_name(char **start_ptr, char *end, const char *trailing_context[])
+{
+	const char *module;		/* module name */
+	char *module_end;		/* end of the module name */
+	char *next_double_underscore;
+	char *start;
+
+	start = *start_ptr;
+
+	/*
+	** Strip off the module name
+	*/
+	module = start;
+	module_end = start;
+	while ((next_double_underscore = strstr(start, "__")) != NULL) {
+		int len, i;
+
+		/*
+		** Check for special cases
+		*/
+		bool stop = FALSE;
+		for (i = 0; trailing_context[i] != NULL; i++) {
+			if (strncmp(start,
+				trailing_context[i],
+				strlen(trailing_context[i])) == 0)
+			{
+				stop = TRUE;
+			}
+		}
+		if (stop) break;
+
+		len = next_double_underscore - start;
+		if (module != module_end) {
+			/*
+			** append a module qualifier, and
+			** shift the module name into the right place
+			*/
+			*module_end = ':';
+			module_end++;
+			memmove(module_end, start, len);
+		}
+		module_end += len;
+
+		start = next_double_underscore + 2;
+	}
+	if (module == module_end) {
+		module = "";
+	} else {
+		*module_end = '\0';
+	}
+
+	*start_ptr = start;
+	return module;
+}
 
 	/*
 	** Remove the prefix from a string, if it has 

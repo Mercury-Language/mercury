@@ -374,12 +374,14 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 	% is much simpler to avoid introducing type_info arguments for it.
 	% Since both of these are really just assignment unifications, it
 	% is desirable to generate them inline.
-:- pred polymorphism__no_type_info_builtin(string, string, int).
+:- pred polymorphism__no_type_info_builtin(module_name, string, int).
 :- mode polymorphism__no_type_info_builtin(in, in, out) is semidet.
 
-polymorphism__no_type_info_builtin("mercury_builtin", "unsafe_type_cast", 2).
-polymorphism__no_type_info_builtin("mercury_builtin",
-		"unsafe_promise_unique", 2).
+polymorphism__no_type_info_builtin(MercuryBuiltin, "unsafe_type_cast", 2) :-
+	mercury_private_builtin_module(MercuryBuiltin).
+polymorphism__no_type_info_builtin(MercuryBuiltin,
+		"unsafe_promise_unique", 2) :-
+	mercury_private_builtin_module(MercuryBuiltin).
 
 %---------------------------------------------------------------------------%
 
@@ -516,8 +518,8 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 	list__length(ExtraHeadTypeclassInfoVars, NumExtraVars1),
 	NumExtraVars is NumExtraVars1 + NumExtraVars0,
 
-	list__duplicate(NumExtraVars, user_defined_mode(
-		qualified("mercury_builtin", "in"), []), ExtraModes),
+	in_mode(In),
+	list__duplicate(NumExtraVars, In, ExtraModes),
 	list__append(ExtraModes, ArgModes0, ArgModes),
 
 		% Make a map of the locations of the unconstrained typeinfos
@@ -641,8 +643,10 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 
 			{ module_info_get_predicate_table(ModuleInfo,
 				PredicateTable) },
+			{ mercury_public_builtin_module(MercuryBuiltin) },
 			{ predicate_table_search_pred_m_n_a(PredicateTable,
-				"mercury_builtin", "unify", 2, [CallPredId]) ->
+				MercuryBuiltin, "unify", 2, [CallPredId])
+			->
 				PredId = CallPredId
 			;
 				error("polymorphism.m: can't find `mercury_builtin:unify/2'")
@@ -691,9 +695,10 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			{ module_info_get_predicate_table(ModuleInfo,
 				PredicateTable) },
 			{
+				mercury_private_builtin_module(PrivateBuiltin),
 				predicate_table_search_pred_m_n_a(
 				    PredicateTable,
-				    "mercury_builtin", "builtin_unify_pred", 2,
+				    PrivateBuiltin, "builtin_unify_pred", 2,
 				    [PredId0])
 			->
 				PredId = PredId0
@@ -798,8 +803,9 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
 	% insert type_info types for all the inserted type_info vars
 	% into the arg-types list
 	%
+	{ mercury_private_builtin_module(PrivateBuiltin) },
 	{ MakeType = lambda([TypeVar::in, TypeInfoType::out] is det,
-		construct_type(qualified("mercury_builtin", "type_info") - 1,
+		construct_type(qualified(PrivateBuiltin, "type_info") - 1,
 			[term__variable(TypeVar)], TypeInfoType)) },
 	{ list__map(MakeType, PredTypeVars, TypeInfoTypes) },
 	{ list__append(TypeInfoTypes, OrigArgTypes0, OrigArgTypes) },
@@ -823,8 +829,7 @@ polymorphism__c_code_add_typeinfos([_Var|Vars], [TVar|TVars], TypeVarSet,
 		ArgNames0, ArgNames1),
 	( varset__search_name(TypeVarSet, TVar, TypeVarName) ->
 		string__append("TypeInfo_for_", TypeVarName, C_VarName),
-		Input = user_defined_mode(qualified("mercury_builtin", "in"),
-			[]),
+		in_mode(Input),
 		ArgNames = [yes(C_VarName - Input) | ArgNames1]
 	;
 		ArgNames = [no | ArgNames1]
@@ -1379,19 +1384,16 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 
 				% Make the goal for the call
 			varset__init(Empty),
-			term__context_init(EmptyContext),
-			ExtractSuperClass = 
-				qualified("mercury_builtin", 
+			mercury_private_builtin_module(PrivateBuiltin),
+			ExtractSuperClass = qualified(PrivateBuiltin, 
 					  "superclass_from_typeclass_info"),
-			TypeClassInfoTerm = term__functor(
-					term__atom("typeclass_info"), [],
-					EmptyContext),
-			IntTerm = term__functor(
-					term__atom("int"), [],
-					EmptyContext),
+			construct_type(qualified(PrivateBuiltin,
+					"typeclass_info") - 0,
+					[], TypeClassInfoType),
+			construct_type(unqualified("int") - 0, [], IntType),
 			get_pred_id_and_proc_id(ExtractSuperClass, predicate, 
 				Empty, 
-				[TypeClassInfoTerm, IntTerm, TypeClassInfoTerm],
+				[TypeClassInfoType, IntType, TypeClassInfoType],
 				ModuleInfo, PredId, ProcId),
 			Call = call(PredId, ProcId, 
 				[SubClassVar, IndexVar, Var],
@@ -1455,9 +1457,9 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 	base_typeclass_info__make_instance_string(InstanceTypes,
 		InstanceString),
 
-		% XXX I don't think we actually need to carry this string
+		% XXX I don't think we actually need to carry the module name
 		% around.
-	ModuleName = "some bogus string",
+	ModuleName = unqualified("some bogus module name"),
 	ConsId = base_typeclass_info_const(ModuleName, ClassId, InstanceString),
 	BaseTypeClassInfoTerm = functor(ConsId, []),
 
@@ -1480,7 +1482,8 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 
 		% build a unification to add the argvars to the
 		% base_typeclass_info
-	NewConsId = cons(qualified("mercury_builtin", "typeclass_info"), 1),
+	mercury_private_builtin_module(PrivateBuiltin),
+	NewConsId = cons(qualified(PrivateBuiltin, "typeclass_info"), 1),
 	NewArgVars = [BaseVar|ArgVars],
 	TypeClassInfoTerm = functor(NewConsId, NewArgVars),
 
@@ -1511,7 +1514,7 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
 		% difference.
-	InstConsId = cons( qualified("mercury_builtin", "typeclass_info"), 
+	InstConsId = cons( qualified(PrivateBuiltin, "typeclass_info"), 
 		NumArgVars),
 	instmap_delta_from_assoc_list(
 		[NewVar - 
@@ -1772,7 +1775,8 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 		% a type_info, we need to adjust its type.
 		% Since base_type_info_const cons_ids are handled
 		% specially, this should not cause problems.
-		construct_type(qualified("mercury_builtin", "type_info") - 1,
+		mercury_private_builtin_module(MercuryBuiltin),
+		construct_type(qualified(MercuryBuiltin, "type_info") - 1,
 			[Type], NewBaseVarType),
 		map__det_update(VarTypes0, BaseVar, NewBaseVarType, VarTypes),
 
@@ -1815,8 +1819,7 @@ polymorphism__make_count_var(NumTypeArgs, VarSet0, VarTypes0,
 		CountVar, CountGoal, VarSet, VarTypes) :-
 	varset__new_var(VarSet0, CountVar, VarSet1),
 	varset__name_var(VarSet1, CountVar, "TypeArity", VarSet),
-	term__context_init(Context),
-	IntType = term__functor(term__atom("int"), [], Context),
+	construct_type(unqualified("int") - 0, [], IntType),
 	map__set(VarTypes0, CountVar, IntType, VarTypes),
 	polymorphism__init_with_int_constant(CountVar, NumTypeArgs, CountGoal).
 
@@ -1976,8 +1979,9 @@ polymorphism__get_category_name(user_type, _) :-
 polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	(
+		mercury_private_builtin_module(PrivateBuiltin),
 		predicate_table_search_pred_m_n_a(PredicateTable,
-			"mercury_builtin", Name, Arity, [PredId1])
+			PrivateBuiltin, Name, Arity, [PredId1])
 	->
 		PredId = PredId1
 	;
@@ -2006,7 +2010,8 @@ polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 			TypeInfoVar, TypeInfoGoal, VarSet, VarTypes) :-
 
-	ConsId = cons(qualified("mercury_builtin", Symbol), 1),
+	mercury_private_builtin_module(PrivateBuiltin),
+	ConsId = cons(qualified(PrivateBuiltin, Symbol), 1),
 	TypeInfoTerm = functor(ConsId, ArgVars),
 
 	% introduce a new variable
@@ -2032,7 +2037,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
 		% difference.
-	InstConsId = cons(qualified("mercury_builtin", Symbol), NumArgVars),
+	InstConsId = cons(qualified(PrivateBuiltin, Symbol), NumArgVars),
 	instmap_delta_from_assoc_list(
 		[TypeInfoVar - bound(unique, [functor(InstConsId, ArgInsts)])],
 		InstMapDelta),
@@ -2124,8 +2129,9 @@ polymorphism__new_type_info_var(Type, Symbol, VarSet0, VarTypes0,
 	string__int_to_string(VarNum, VarNumStr),
 	string__append("TypeInfo_", VarNumStr, Name),
 	varset__name_var(VarSet1, Var, Name, VarSet),
-	construct_type(qualified("mercury_builtin", Symbol) - 1,
-					[Type], UnifyPredType),
+	mercury_private_builtin_module(PrivateBuiltin),
+	construct_type(qualified(PrivateBuiltin, Symbol) - 1, [Type],
+			UnifyPredType),
 	map__set(VarTypes0, Var, UnifyPredType, VarTypes).
 
 %---------------------------------------------------------------------------%
@@ -2158,17 +2164,16 @@ extract_type_info_2(Type, _TypeVar, TypeClassInfoVar, Index, ModuleInfo, Goals,
 	varset__init(TVarSet0),
 	varset__new_var(TVarSet0, TVar, TVarSet),
 
-	term__context_init(EmptyContext),
-	ExtractTypeInfo = qualified("mercury_builtin",
+	mercury_private_builtin_module(PrivateBuiltin),
+	ExtractTypeInfo = qualified(PrivateBuiltin,
 				"type_info_from_typeclass_info"),
-	TypeClassInfoTerm = term__functor(term__atom("typeclass_info"), [],
-		EmptyContext),
-	IntTerm = term__functor(term__atom("int"), [], EmptyContext),
-	TypeInfoTerm = term__functor(term__atom("type_info"), 
-		[term__variable(TVar)], EmptyContext),
-
+	construct_type(qualified(PrivateBuiltin, "typeclass_info") - 0, [],
+		TypeClassInfoType),
+	construct_type(unqualified("int") - 0, [], IntType),
+	construct_type(qualified(PrivateBuiltin, "type_info") - 1,
+		[term__variable(TVar)], TypeInfoType),
 	get_pred_id_and_proc_id(ExtractTypeInfo, predicate, TVarSet, 
-		[TypeClassInfoTerm, IntTerm, TypeInfoTerm],
+		[TypeClassInfoType, IntType, TypeInfoType],
 		ModuleInfo, PredId, ProcId),
 	polymorphism__make_count_var(Index, VarSet0, VarTypes0, IndexVar,
 		IndexGoal, VarSet1, VarTypes1),
@@ -2342,7 +2347,8 @@ polymorphism__new_typeclass_info_var(VarSet0, VarTypes0, ClassName,
 	string__append("TypeClassInfo_for_", ClassName, Name),
 	varset__name_var(VarSet1, Var, Name, VarSet),
 
-	construct_type(qualified("mercury_builtin", "typeclass_info") - 0,
+	mercury_private_builtin_module(PrivateBuiltin),
+	construct_type(qualified(PrivateBuiltin, "typeclass_info") - 0,
 					[], DictionaryType),
 	map__set(VarTypes0, Var, DictionaryType, VarTypes).
 

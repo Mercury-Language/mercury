@@ -14,8 +14,8 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, switch_gen, code_info.
-:- import_module list.
+:- import_module hlds_goal, hlds_data, llds, switch_gen, code_info.
+:- import_module list, term.
 
 	% Generate intelligent indexing code for tag based switches.
 
@@ -25,10 +25,10 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, hlds_data, code_gen, trace.
+:- import_module hlds_module, hlds_pred, code_gen, trace.
 :- import_module options, globals, type_util, prog_data.
 :- import_module assoc_list, map, tree, bool, int, string.
-:- import_module require, std_util, term.
+:- import_module require, std_util.
 
 % where is the secondary tag (if any) for this primary tag value
 :- type stag_loc	--->	none ; local ; remote.

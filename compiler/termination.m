@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -47,8 +47,8 @@
 
 :- interface.
 
-:- import_module io.
-:- import_module hlds_module, term_util.
+:- import_module io, bool, std_util, list.
+:- import_module prog_data, hlds_module, hlds_pred, term_util.
 
 	% Perform termination analysis on the module.
 
@@ -78,13 +78,14 @@
 :- implementation.
 
 :- import_module term_pass1, term_pass2, term_errors.
-:- import_module inst_match, passes_aux, options, globals, prog_data.
-:- import_module hlds_data, hlds_pred, hlds_goal, dependency_graph.
-:- import_module mode_util, hlds_out, code_util, prog_out.
+:- import_module inst_match, passes_aux, options, globals.
+:- import_module hlds_data, hlds_goal, dependency_graph.
+:- import_module mode_util, hlds_out, code_util, prog_out, prog_util.
 :- import_module mercury_to_mercury, varset, type_util, special_pred.
+:- import_module modules.
 
-:- import_module map, std_util, bool, int, char, string, relation.
-:- import_module list, require, bag, set, term.
+:- import_module map, int, char, string, relation.
+:- import_module require, bag, set, term.
 
 %----------------------------------------------------------------------------%
 
@@ -478,7 +479,9 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module,
 		(
 			special_pred_name_arity(SpecPredId0, Name, _, Arity),
 			pred_info_module(PredInfo, ModuleName),
-			ModuleName = "mercury_builtin"
+			( mercury_private_builtin_module(ModuleName)
+			; mercury_public_builtin_module(ModuleName)
+			)
 		->
 			SpecialPredId = SpecPredId0
 		;
@@ -655,7 +658,7 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
 %----------------------------------------------------------------------------%
 
 % These predicates are used to add the termination_info pragmas to the .opt
-% file.  It is oftern better to use the .trans_opt file, as it gives
+% file.  It is often better to use the .trans_opt file, as it gives
 % much better accuracy.  The two files are not mutually exclusive, and
 % termination information may be stored in both.
 
@@ -665,7 +668,8 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
 
 termination__make_opt_int(PredIds, Module) -->
 	{ module_info_name(Module, ModuleName) },
-	{ string__append(ModuleName, ".opt.tmp", OptFileName) },
+	{ module_name_to_file_name(ModuleName, BaseFileName) },
+	{ string__append(BaseFileName, ".opt.tmp", OptFileName) },
 	io__open_append(OptFileName, OptFileRes),
 	( { OptFileRes = ok(OptFile) } ->
 		io__set_output_stream(OptFile, OldStream),

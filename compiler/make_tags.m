@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,7 +39,7 @@
 :- interface.
 
 :- import_module prog_data, hlds_data, globals.
-:- import_module bool.
+:- import_module bool, list.
 
 % assign_constructor_tags(Constructors, Globals, TagValues, IsEnum):
 %	Assign a constructor tag to each constructor for a discriminated
@@ -57,7 +57,7 @@
 :- implementation.
 
 :- import_module prog_util, type_util, globals, options.
-:- import_module int, map, list, std_util, require.
+:- import_module int, map, std_util, require.
 
 %-----------------------------------------------------------------------------%
 

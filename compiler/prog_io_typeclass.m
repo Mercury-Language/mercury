@@ -18,15 +18,16 @@
 :- import_module list, varset, term.
 
 	% parse a typeclass declaration. 
-:- pred parse_typeclass(string, varset, list(term), maybe1(item)).
+:- pred parse_typeclass(module_name, varset, list(term), maybe1(item)).
 :- mode parse_typeclass(in, in, in, out) is semidet.
 
 	% parse an instance declaration. 
-:- pred parse_instance(string, varset, list(term), maybe1(item)).
+:- pred parse_instance(module_name, varset, list(term), maybe1(item)).
 :- mode parse_instance(in, in, in, out) is semidet.
 
 	% parse a list of class constraints
-:- pred parse_class_constraints(string, term, maybe1(list(class_constraint))).
+:- pred parse_class_constraints(module_name, term,
+				maybe1(list(class_constraint))).
 :- mode parse_class_constraints(in, in, out) is det.
 
 :- implementation.
@@ -47,7 +48,7 @@ parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
 		parse_class_name(ModuleName, Arg, VarSet, Result)
 	).
 
-:- pred parse_non_empty_class(string, term, term, varset, maybe1(item)).
+:- pred parse_non_empty_class(module_name, term, term, varset, maybe1(item)).
 :- mode parse_non_empty_class(in, in, in, in, out) is det.
 
 parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
@@ -75,7 +76,7 @@ parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_class_name(string, term, varset, maybe1(item)).
+:- pred parse_class_name(module_name, term, varset, maybe1(item)).
 :- mode parse_class_name(in, in, in, out) is det.
 
 parse_class_name(ModuleName, Arg, VarSet, Result) :-
@@ -88,7 +89,7 @@ parse_class_name(ModuleName, Arg, VarSet, Result) :-
 		parse_unconstrained_class(ModuleName, Arg, VarSet, Result)
 	).
 
-:- pred parse_constrained_class(string, term, term, varset, maybe1(item)).
+:- pred parse_constrained_class(module_name, term, term, varset, maybe1(item)).
 :- mode parse_constrained_class(in, in, in, in, out) is det.
 
 parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
@@ -117,13 +118,13 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_unconstrained_class(string, term, varset, maybe1(item)).
+:- pred parse_unconstrained_class(module_name, term, varset, maybe1(item)).
 :- mode parse_unconstrained_class(in, in, in, out) is det.
 
 
 parse_unconstrained_class(ModuleName, Name, VarSet, Result) :-
-	parse_qualified_term(ModuleName, Name, Name, "typeclass declaration",
-		MaybeClassName),
+	parse_implicitly_qualified_term(ModuleName,
+		Name, Name, "typeclass declaration", MaybeClassName),
 	(
 		MaybeClassName = ok(ClassName, TermVars),
 		(
@@ -139,7 +140,7 @@ parse_unconstrained_class(ModuleName, Name, VarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_class_methods(string, term, varset, maybe1(class_interface)).
+:- pred parse_class_methods(module_name, term, varset, maybe1(class_interface)).
 :- mode parse_class_methods(in, in, in, out) is det.
 
 parse_class_methods(ModuleName, Methods, VarSet, Result) :-
@@ -234,7 +235,7 @@ parse_class_constraints(ModuleName, Constraints, ParsedConstraints) :-
 	parse_class_constraint_list(ModuleName, ConstraintList, 
 		ParsedConstraints).
 
-:- pred parse_class_constraint_list(string, list(term),
+:- pred parse_class_constraint_list(module_name, list(term),
 	maybe1(list(class_constraint))).
 :- mode parse_class_constraint_list(in, in, out) is det.
 
@@ -256,7 +257,7 @@ parse_class_constraint_list(ModuleName, [C0|C0s], Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_class_constraint(string, term, maybe1(class_constraint)).
+:- pred parse_class_constraint(module_name, term, maybe1(class_constraint)).
 :- mode parse_class_constraint(in, in, out) is det.
 
 parse_class_constraint(_ModuleName, Constraint, Result) :-
@@ -284,7 +285,7 @@ parse_instance(ModuleName, VarSet, TypeClassTerm, Result) :-
 		parse_instance_name(ModuleName, Arg, VarSet, Result)
 	).
 
-:- pred parse_instance_name(string, term, varset, maybe1(item)).
+:- pred parse_instance_name(module_name, term, varset, maybe1(item)).
 :- mode parse_instance_name(in, in, in, out) is det.
 
 parse_instance_name(ModuleName, Arg, VarSet, Result) :-
@@ -297,7 +298,7 @@ parse_instance_name(ModuleName, Arg, VarSet, Result) :-
 		parse_underived_instance(ModuleName, Arg, VarSet, Result)
 	).
 
-:- pred parse_derived_instance(string, term, term, varset, maybe1(item)).
+:- pred parse_derived_instance(module_name, term, term, varset, maybe1(item)).
 :- mode parse_derived_instance(in, in, in, in, out) is det.
 
 parse_derived_instance(ModuleName, Decl, Constraints, VarSet, Result) :-
@@ -327,7 +328,7 @@ parse_derived_instance(ModuleName, Decl, Constraints, VarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_instance_constraints(string, term, 
+:- pred parse_instance_constraints(module_name, term, 
 	maybe1(list(class_constraint))).
 :- mode parse_instance_constraints(in, in, out) is det.
 
@@ -355,7 +356,7 @@ parse_instance_constraints(ModuleName, Constraints, Result) :-
 		Result = ParsedConstraints
 	).
 
-:- pred parse_underived_instance(string, term, varset, maybe1(item)).
+:- pred parse_underived_instance(module_name, term, varset, maybe1(item)).
 :- mode parse_underived_instance(in, in, in, out) is det.
 
 parse_underived_instance(_ModuleName, Name, VarSet, Result) :-
@@ -411,7 +412,7 @@ parse_underived_instance(_ModuleName, Name, VarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_non_empty_instance(string, term, term, varset, maybe1(item)).
+:- pred parse_non_empty_instance(module_name, term, term, varset, maybe1(item)).
 :- mode parse_non_empty_instance(in, in, in, in, out) is det.
 
 parse_non_empty_instance(ModuleName, Name, Methods, VarSet, Result) :-
@@ -440,7 +441,8 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_instance_methods(string, term, maybe1(list(instance_method))).
+:- pred parse_instance_methods(module_name, term,
+				maybe1(list(instance_method))).
 :- mode parse_instance_methods(in, in, out) is det.
 
 parse_instance_methods(ModuleName, Methods, Result) :-
@@ -457,7 +459,7 @@ parse_instance_methods(ModuleName, Methods, Result) :-
 	).
 
 	% Turn the term into a method instance
-:- pred term_to_instance_method(string, term, maybe1(instance_method)).
+:- pred term_to_instance_method(module_name, term, maybe1(instance_method)).
 :- mode term_to_instance_method(in, in, out) is det.
 
 term_to_instance_method(_ModuleName, MethodTerm, Result) :-

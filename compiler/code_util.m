@@ -1,24 +1,24 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % file: code_util.m.
 %
 % various utilities routines for code generation and recognition
 % of builtins.
 %
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module code_util.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, llds.
-:- import_module list.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data, llds.
+:- import_module list, std_util, term.
 
 	% Create a code address which holds the address of the specified
 	% procedure.
@@ -110,7 +110,7 @@
 	% Each to be assigned rval is guaranteed to be either in a form
 	% acceptable for a test rval, or in the form of a variable.
 
-:- pred code_util__translate_builtin(string, string, proc_id, list(var),
+:- pred code_util__translate_builtin(module_name, string, proc_id, list(var),
 	maybe(rval), maybe(pair(var, rval))).
 :- mode code_util__translate_builtin(in, in, in, in, out, out) is semidet.
 
@@ -333,18 +333,25 @@ code_util__builtin_state(ModuleInfo, PredId0, ProcId, BuiltinState) :-
 		BuiltinState = not_builtin
 	).
 
-:- pred code_util__inline_builtin(string, string, int, int).
+:- pred code_util__inline_builtin(module_name, string, int, int).
 :- mode code_util__inline_builtin(in, in, in, in) is semidet.
 
-code_util__inline_builtin(ModuleName, PredName, ProcId, Arity) :-
+code_util__inline_builtin(FullyQualifiedModule, PredName, ProcId, Arity) :-
 	Arity =< 3,
 	varset__init(VarSet),
 	varset__new_vars(VarSet, Arity, Args, _),
+	% --- not yet:
+	% FullyQualifiedModule = qualified(unqualified("std"), ModuleName),
+	FullyQualifiedModule = unqualified(ModuleName),
 	code_util__translate_builtin_2(ModuleName, PredName, ProcId, Args, _, _).
 
-code_util__translate_builtin(Module, PredName, ProcId, Args, BinOp, AsgOp) :-
+code_util__translate_builtin(FullyQualifiedModule, PredName, ProcId, Args,
+		BinOp, AsgOp) :-
 	proc_id_to_int(ProcId, ProcInt),
-	code_util__translate_builtin_2(Module, PredName, ProcInt, Args,
+	% -- not yet:
+	% FullyQualifiedModule = qualified(unqualified("std"), ModuleName),
+	FullyQualifiedModule = unqualified(ModuleName),
+	code_util__translate_builtin_2(ModuleName, PredName, ProcInt, Args,
 		BinOp, AsgOp).
 
 :- pred code_util__translate_builtin_2(string, string, int, list(var),

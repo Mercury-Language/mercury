@@ -18,8 +18,11 @@
 :- module instmap.
 
 :- interface.
-:- import_module hlds_module, prog_data, mode_info, (inst).
-:- import_module set, term.
+
+:- import_module hlds_module, prog_data, mode_info, (inst), mode_errors.
+:- import_module hlds_data.
+
+:- import_module map, bool, set, term, list, assoc_list.
 
 :- type instmap.
 :- type instmap_delta.
@@ -262,9 +265,10 @@
 
 :- implementation.
 
-:- import_module mode_util, inst_match, prog_data, mode_errors, goal_util.
+:- import_module mode_util, inst_match, prog_data, goal_util.
 :- import_module hlds_data, inst_util.
-:- import_module list, std_util, bool, map, set, assoc_list, require.
+
+:- import_module std_util, require.
 
 :- type instmap_delta	==	instmap.
 

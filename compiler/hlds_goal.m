@@ -13,7 +13,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred, llds, prog_data, (inst), instmap.
-:- import_module list, set, map, std_util.
+:- import_module list, set, map, term, std_util.
 
 	% Here is how goals are represented
 
@@ -686,7 +686,7 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 
 :- implementation.
 
-:- import_module require, term.
+:- import_module require.
 
 goal_info_init(GoalInfo) :-
 	Detism = erroneous,

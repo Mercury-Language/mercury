@@ -111,7 +111,7 @@ c_gen_header(Indent, Module) -->
 	{ module_info_name(Module, Name) },
 	c_gen_indent(Indent),
 	io__write_string("/* :- module "),
-	io__write_string(Name),
+	prog_out__write_sym_name(Name),
 	io__write_string(". */\n\n"),
 	c_gen_indent(Indent),
 	io__write_string("#include ""mercury_imp.h""\n\n").
@@ -123,7 +123,7 @@ c_gen_footer(Indent, Module) -->
 	{ module_info_name(Module, Name) },
 	c_gen_indent(Indent),
 	io__write_string("/* :- end_module "),
-	io__write_string(Name),
+	prog_out__write_sym_name(Name),
 	io__write_string(". */\n").
 
 :- pred c_gen_preds(int, module_info, pred_table,
@@ -389,10 +389,11 @@ c_gen_proc_name(ModuleInfo, PredId, ProcId) -->
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ predicate_arity(ModuleInfo, PredId, Arity) },
+	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 	{ llds_out__name_mangle(PredName, MangledPredName) },
 	io__write_string("MP_"),
 	io__write_string("_"),
-	io__write_string(ModuleName),
+	io__write_string(MangledModuleName),
 	io__write_string("__"),
 	io__write_string(MangledPredName),
 	io__write_string("_"),

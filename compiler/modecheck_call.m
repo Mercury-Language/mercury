@@ -21,8 +21,9 @@
 :- module modecheck_call.
 :- interface.
 
-:- import_module hlds_goal, mode_info.
-:- import_module term.
+:- import_module hlds_goal, hlds_pred, hlds_module, hlds_data.
+:- import_module prog_data, modes, mode_info.
+:- import_module term, list, std_util.
 
 :- pred modecheck_call_pred(pred_id, list(var), maybe(determinism),
 				proc_id, list(var), extra_goals,
@@ -59,11 +60,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_data, hlds_pred, hlds_data, hlds_module, instmap, (inst).
+:- import_module prog_data, instmap, (inst).
 :- import_module mode_info, mode_debug, modes, mode_util, mode_errors.
 :- import_module clause_to_proc, inst_match, make_hlds.
 :- import_module det_report, unify_proc.
-:- import_module map, list, bool, std_util, set, require.
+:- import_module map, bool, set, require.
 
 modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0, Goal)
 		-->

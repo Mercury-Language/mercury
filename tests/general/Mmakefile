@@ -53,7 +53,7 @@ PROGS=		array_test \
 		prune_switch \
 		semidet_map \
 		set_test \
-		string__format_test \
+		string_format_test \
 		string_test \
 		string_test_2 \
 		univ \

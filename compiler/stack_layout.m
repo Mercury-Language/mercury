@@ -137,21 +137,21 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds_module, list, llds.
 
 :- pred stack_layout__generate_llds(module_info, module_info, list(c_module)).
 :- mode stack_layout__generate_llds(in, out, out) is det.
 
 :- implementation.
 
-:- import_module llds, globals, options, continuation_info, llds_out.
-:- import_module hlds_data, hlds_pred, base_type_layout, prog_data.
-:- import_module assoc_list, bool, string, int, list, map, std_util, require.
+:- import_module globals, options, continuation_info, llds_out.
+:- import_module hlds_data, hlds_pred, base_type_layout, prog_data, prog_out.
+:- import_module assoc_list, bool, string, int, map, std_util, require.
 :- import_module set.
 
 :- type stack_layout_info 	--->	
 	stack_layout_info(
-		string,		% module name
+		module_name,	% module name
 		int,		% next available cell number
 		bool,		% generate agc layout info?
 		bool,		% generate tracing layout info?
@@ -281,11 +281,13 @@ stack_layout__construct_procid_rvals(ProcLabel, Rvals) :-
 		ProcLabel = proc(DefModule, PredFunc, DeclModule,
 			PredName, Arity, ProcId),
 		stack_layout__represent_pred_or_func(PredFunc, PredFuncCode),
+		prog_out__sym_name_to_string(DefModule, DefModuleString),
+		prog_out__sym_name_to_string(DeclModule, DeclModuleString),
 		proc_id_to_int(ProcId, Mode),
 		Rvals = [
 				yes(const(int_const(PredFuncCode))),
-				yes(const(string_const(DeclModule))),
-				yes(const(string_const(DefModule))),
+				yes(const(string_const(DeclModuleString))),
+				yes(const(string_const(DefModuleString))),
 				yes(const(string_const(PredName))),
 				yes(const(int_const(Arity))),
 				yes(const(int_const(Mode)))
@@ -293,11 +295,13 @@ stack_layout__construct_procid_rvals(ProcLabel, Rvals) :-
 	;
 		ProcLabel = special_proc(DefModule, PredName, TypeModule,
 			TypeName, Arity, ProcId),
+		prog_out__sym_name_to_string(TypeModule, TypeModuleString),
+		prog_out__sym_name_to_string(DefModule, DefModuleString),
 		proc_id_to_int(ProcId, Mode),
 		Rvals = [
 				yes(const(string_const(TypeName))),
-				yes(const(string_const(TypeModule))),
-				yes(const(string_const(DefModule))),
+				yes(const(string_const(TypeModuleString))),
+				yes(const(string_const(DefModuleString))),
 				yes(const(string_const(PredName))),
 				yes(const(int_const(Arity))),
 				yes(const(int_const(Mode)))
@@ -625,7 +629,7 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 
 	% Access to the stack_layout data structure.
 
-:- pred stack_layout__get_module_name(string::out,
+:- pred stack_layout__get_module_name(module_name::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__get_module_name(ModuleName, LayoutInfo, LayoutInfo) :-

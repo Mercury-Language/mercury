@@ -39,7 +39,8 @@ mode system to distinguish between different representations.
 
 :- interface.
 
-:- import_module hlds_module, (inst).
+:- import_module hlds_module, prog_data, (inst).
+:- import_module list, term.
 
 %-----------------------------------------------------------------------------%
 

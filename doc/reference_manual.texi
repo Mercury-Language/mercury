@@ -49,7 +49,7 @@ into another language, under the above conditions for modified versions.
 @author David Jeffery
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1997 The University of Melbourne.
+Copyright @copyright{} 1995-1998 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -344,7 +344,7 @@ The allowed declarations are:
 :- implementation
 :- import_module
 :- use_module
-:- external
+:- include_module
 :- end_module
 @end example
 
@@ -896,10 +896,8 @@ whose argument types are all @code{int}.
 Each discriminated union type definition introduces a distinct type.
 Mercury considers two discriminated union types that have the same bodies
 to be distinct types (name equivalence).
-Having two different types with the same name and arity in the program
-is an error.
-(We hope to relax this in the future, to allow types with the same name
-and arity in different modules.)
+Having two different definitions of a type with the same name and arity in
+the same module is an error.
 
 @item
 Equivalence types: these are type abbreviations.
@@ -945,8 +943,8 @@ or as equivalence types.
 Constructors may be overloaded among different types:
 there may be any number of constructors with a given name and arity,
 so long as they all have different types.
-However, there must be only one constructor
-with a given name, arity, and result type.
+However, there must not be more than one constructor
+with the same name, arity, and result type in the same module.
 (There is no particularly good reason for this restriction;
 in the future we may allow several such functors
 as long as they have different argument types.)
@@ -969,6 +967,7 @@ For example:
 
 There must only be one predicate with a given name and arity in each module,
 and only one function with a given name and arity in each module.
+It is an error to declare the same predicate or function twice.
 
 The compiler infers the types of data-terms, and in particular the types
 of variables and overloaded constructors, functions, and predicates.
@@ -1162,6 +1161,10 @@ could have be defined as
 @example
 :- mode create_request :: out(request).
 @end example
+
+There must not be more than one inst definition with the same name
+and arity in the same module.  Similarly, there must not be more
+than one mode definition with the same name and arity in the same module.
 
 A @dfn{predicate mode declaration}
 assigns a mode mapping to each argument of a predicate.
@@ -2069,7 +2072,7 @@ Mercury supports higher-order functions and predicates with currying,
 closures, and lambda expressions. 
 (To be pedantic, it would be more accurate to
 say that Mercury supports higher-order procedures: in Mercury, when you
-construct a higher-order predicate term, you only get one mode of
+construct a higher-order term, you only get one mode of
 a predicate or function; if you want multiple modes, you must pass multiple
 higher-order procedures.)
 
@@ -2437,32 +2440,55 @@ run-time rather than at compile-time.
 @node Modules
 @chapter Modules
 
-The Mercury module system is simple and straightforward. 
-Each module must start with a @code{module} declaration,
-specifying the name of the module. 
-An @code{interface} declaration specifies
+@menu
+* The module system::
+* An example module::
+* Sub-modules::
+@end menu
+
+@node The module system
+@section The module system
+
+The Mercury module system is relatively simple and straightforward. 
+
+Each module must start with a @samp{:- module @var{ModuleName}}
+declaration, specifying the name of the module. 
+
+A @samp{:- interface.} declaration indicates
 the start of the module's interface section:
-this section contains declarations for the types, typeclasses, typeclass
-instances, data constructors, instantiation states, modes, functions and
-predicates exported by this module.
-Mercury provides support for abstract data types,
-since the definition of a type may be kept hidden,
-with only the type name being exported.  
-An @code{implementation} declaration specifies
+this section specifies the entities that are exported by this module.
+Mercury provides support for abstract data types, by allowing the
+definition of a type to be kept hidden, with the interface
+only exporting the type name.
+The interface section can contain declarations or definitions of types,
+definitions of typeclasses, typeclass instances, data constructors,
+instantiation states, and modes,
+and declarations for functions, predicates, and (sub-)modules.
+The interface section may not contain definitions for functions or
+predicates (i.e. clauses), or definitions of (sub-)modules. 
+
+A @samp{:- implementation.} declaration indicates
 the start of the module's implementation section. 
 Any entities declared in this section are local to the module
-and cannot be used by other modules.
-The implementation section must of course contain definitions
-for all abstract data types, functions and predicates exported by the module,
-as well for all local types, functions and predicates.
-The module may optionally end with an @code{end_module} declaration.
+(and its sub-modules) and cannot be used by other modules.
+The implementation section must contain definitions
+for all abstract data types, functions, predicates, and
+sub-modules exported by the module,
+as well as for all local types, functions, predicates, and sub-modules.
+The implementation section can be omitted if it is empty.
 
-@c XXX should we mention multipart interfaces and implementations?
+The module may optionally end with a @samp{:- end_module @var{ModuleName}}
+declaration; the name specified in the @samp{end_module} must be the
+same as that in the corresponding @samp{module} declaration.
+
+@c should we mention multipart interfaces and implementations?
 @c ===> no
 
 If a module wishes to make use of entities exported by other modules,
 then it must explicitly import those modules using one or more 
-@code{import_module} or @code{use_module} declarations.
+@samp{:- import_module @var{Modules}} or @samp{:- use_module @var{Modules}}
+declarations.  In both cases, @var{Modules} is a comma-separated list of
+fully-qualified module names.
 These declarations may occur either in the interface or the implementation 
 section.  If the imported entities are used in the interface section,
 then the corresponding @code{import_module} or @code{use_module}
@@ -2471,11 +2497,12 @@ entities are only used in the implementation section, the
 @code{import_module} or @code{use_module} declaration should be in 
 the implementation section.
 
-The names of predicates, functions, constructors, types, modes and insts
-can be explicitly module qualified using the @samp{:} operator,
-i.e. @samp{module:name}.  This is useful both for readability and
-for resolving name conflicts.  Uses of entities imported using 
-@code{use_module} declarations @emph{must} be explicitly module qualified.
+The names of predicates, functions, constructors, types, modes, insts,
+and (sub-)modules can be explicitly module qualified using the @samp{:}
+operator, e.g. @samp{module:name} or @samp{module:submodule:name}.
+This is useful both for readability and for resolving name conflicts.
+Uses of entities imported using @code{use_module} declarations
+@emph{must} be explicitly module qualified.
 
 Currently we also support @samp{__} as an alternative module qualifier,
 so you can write @code{module__name} instead of @code{module:name}.
@@ -2489,7 +2516,7 @@ defined in other modules to be as effective as possible.  At the moment,
 inlining and higher-order specialization are the only optimizations that
 the Mercury compiler can perform across module boundaries.
 
-One module must export a predicate @samp{main}, which
+One module must export a predicate @samp{main/2}, which
 must be declared as either
 
 @example
@@ -2506,7 +2533,17 @@ or
 @noindent
 (or any declaration equivalent to one of the two above).
 
-For example, here is the definition of a simple module for managing queues:
+Mercury has a standard library which includes modules for
+lists, stacks, queues, priority queues, sets, bags (multi-sets),
+maps (dictionaries), random number generation, input/output
+and filename and directory handling. 
+See the Mercury Library Reference Manual for details.
+
+@node An example module
+@section An example module.
+
+For illustrative purposes, here is the definition of a
+simple module for managing queues:
 
 @example
 :- module queue.
@@ -2554,19 +2591,121 @@ get([Elem | Queue], Elem, Queue).
 
 @end example
 
-Mercury has a standard library which includes modules for
-lists, stacks, queues, priority queues, sets, bags (multi-sets),
-maps (dictionaries), random number generation, input/output
-and filename and directory handling. 
-See the Mercury Library Reference Manual for details.
+@node Sub-modules
+@section Sub-modules
 
-The Mercury standard library has a standard naming convention in which
-every entity exported by a module is prefixed by the module name and
-two underscores.  We have found this convention improves the
-readability and maintainability of our code, and so we recommend that
-you follow it in your code too.  (Eventually, these names will be converted
-to names of the form @code{module.name}; this will allow you to omit the
-prefix in places where it does not improve readability.)
+As mentioned above, modules may contain sub-modules.
+There are two kinds of sub-modules, called nested sub-modules
+and separate sub-modules; the difference is that nested sub-modules
+are defined in the same source file as the containing module,
+whereas separate sub-modules are defined in separate source files.
+Implementations should support separate compilation of separate sub-modules.
+
+A module may not contain more than one sub-module with the same name.
+
+@menu
+* Nested sub-modules::
+* Separate sub-modules::
+* Visibility rules::
+* Implementation bugs and limitations::
+@end menu
+
+@node Nested sub-modules
+@subsection Nested sub-modules
+
+Nested sub-modules within a module are delimited by
+matching @samp{:- module} and @samp{:- end_module} declarations.
+(Note that @samp{:- end_module} for nested sub-modules 
+are mandatory, not optional, even if the nested sub-module
+is the last thing in the source file.
+Also note that the module name in a @samp{:- module} declaration
+need not be fully-qualified.)
+The sequence of items thus delimited is known as a nested sub-module
+declaration.
+
+The interface and implementation parts of a nested sub-module
+may be specified in two different sub-module declarations.
+If a nested sub-module declaration includes an interface section,
+then it is a declaration of that sub-module;
+if it includes an implementation section,
+then it is a definition of that sub-module;
+and if includes both, then it is both declaration and definition.
+
+It is an error to declare a sub-module twice, or to define it twice.
+It is an error to define a sub-module without declaring it.
+If a sub-module is declared but not explicitly defined,
+then there is an implicit definition with an empty implementation section
+for that sub-module (this will result in an error, if the interface
+section includes declarations but not definitions for any types,
+predicates, modes, or (doubly) nested sub-modules).
+
+@node Separate sub-modules
+@subsection Separate sub-modules
+
+Separate sub-modules are declared using
+@samp{:- include_module @var{Modules}} declarations.
+Each @samp{:- include_module} declaration specifies a comma-separated list
+of sub-modules.
+
+@example
+:- include_module @var{Module1}, @var{Module2}, @dots{}, @var{ModuleN}.
+@end example
+
+Each of the named sub-modules in a @samp{:- include_module} declaration
+must be defined in a separate source file.
+The mapping between module names and source file names is
+implementation-defined.  (The University of Melbourne Mercury
+implementation requires a module named @samp{foo:bar:baz} to be
+located in source file @file{foo.bar.baz.m}.)
+The separate source source must contain the definition of
+the sub-module, starting with a @samp{:- module} declaration
+which matches that in the @samp{:- include_module} declaration
+in the parent, and optionally ending in a @samp{:- end_module}
+declaration.  (Note: the module names in the @samp{:- module}
+and @samp{:- end_module} declaration need not be fully-qualified.)
+
+If a @samp{:- include_module} declaration occurs in the interface
+section of a module, then only the interfaces of the sub-modules
+are included in the parent module's interface; the implementations
+of the sub-modules are considered to be implicitly part of the
+parent module's implementation.
+
+Apart from that, the semantics of separate sub-modules are
+identical to those of nested sub-modules.
+
+@node Visibility rules
+@subsection Visibility rules
+
+Any declarations in the parent module, including those in the
+parent module's implementation section, are visible in the parent's
+sub-modules, including indirect sub-modules (i.e. sub-sub-modules, etc.).
+Similarly, declarations in the interfaces of any modules imported using a
+@samp{:- import_module} or a @samp{:- use_module} in the parent module
+are visible in the parent's sub-modules, including indirect sub-modules.
+However, declarations in a child module are not visible in the parent
+module or in "sibling" modules (other children of the same parent)
+unless the child is explicitly imported using a @samp{:- import_module}
+or @samp{:- use_module} declaration. 
+
+Note that as mentioned previously, all @samp{:- import_module} and
+@samp{:- use_module} declarations must use fully-qualified module
+names.
+
+@node Implementation bugs and limitations
+@subsection Implementation bugs and limitations
+
+The current implementation of sub-modules is incomplete. 
+In particular:
+
+@itemize @bullet
+@item it supports only separate sub-modules, not nested sub-modules; 
+@item module qualifiers must use the fully-qualified module name; 
+@item the compiler doesn't check that the parent module is imported/used
+      before allowing import/use of its sub-modules;
+@item it doesn't check that there is an include_module declaration in the
+	parent for each module claiming to be a child of that parent;
+@item privacy of private sub-modules is not enforced
+@end itemize
 
 @node Type classes
 @chapter Type classes
@@ -2624,7 +2763,10 @@ is allowed:
 :- typeclass a(T1, T2) where [@dots{}].
 @end example
 
-The only restriction is that the parameters be distinct variables.
+The parameters must be distinct variables.
+
+There must not be more than one typeclass declaration with the
+same name and arity in the same module.
 
 @node Instance declarations
 @section Instance declarations
@@ -2639,7 +2781,6 @@ typeclass.  Each of these types must be either a type with no arguments, or
 a polymorphic type whose arguments are all distinct type variables.  e.g. 
 @code{int}, @code{list(T)} and @code{map(K,V)} are allowed but
 @code{T}, @code{list(int)} and @code{map(T,T)} are not.
-
 A program may not contain more than one @code{instance} declaration for a
 particular type (or set of types, in the case of a multi-parameter
 typeclass).  These restrictions ensure that there are no overlapping instance

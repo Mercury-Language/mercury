@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds_module, hlds_pred.
 
 :- import_module io, bag, std_util, list, assoc_list, term.
 
@@ -128,7 +128,7 @@
 
 :- implementation.
 
-:- import_module hlds_out, prog_out, hlds_pred, passes_aux, error_util.
+:- import_module hlds_out, prog_out, passes_aux, error_util.
 :- import_module mercury_to_mercury, term_util, options, globals.
 
 :- import_module bool, int, string, map, bag, require, varset.
@@ -483,6 +483,7 @@ term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,
 term_errors__describe_one_pred_name(PredId, Module, Piece) :-
 	module_info_pred_info(Module, PredId, PredInfo),
 	pred_info_module(PredInfo, ModuleName),
+	prog_out__sym_name_to_string(ModuleName, ModuleNameString),
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, Arity),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
@@ -498,7 +499,7 @@ term_errors__describe_one_pred_name(PredId, Module, Piece) :-
 	string__int_to_string(OrigArity, ArityPart),
 	string__append_list([
 		PredOrFuncPart,
-		ModuleName,
+		ModuleNameString,
 		":",
 		PredName,
 		"/",

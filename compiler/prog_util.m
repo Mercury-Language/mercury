@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,18 +13,52 @@
 
 :- interface.
 
-:- import_module list, term.
+:- import_module std_util, list, term.
 :- import_module prog_data.
 
 %-----------------------------------------------------------------------------%
 
-	% Convert a sym_name into a string.
+	% Returns the name of the module containing public builtins;
+	% traditionally this was "mercury_builtin", but it may eventually
+	% be renamed "std:builtin".
+
+:- pred mercury_public_builtin_module(sym_name).
+:- mode mercury_public_builtin_module(out) is det.
+
+	% Returns the name of the module containing private builtins;
+	% traditionally this was "mercury_builtin", but it may eventually
+	% be renamed "std:private_builtin".
+
+:- pred mercury_private_builtin_module(sym_name).
+:- mode mercury_private_builtin_module(out) is det.
+
+	% Given a symbol name, return its unqualified name.
 
 :- pred unqualify_name(sym_name, string).
 :- mode unqualify_name(in, out) is det.
 
+	% sym_name_get_module_name(SymName, DefaultModName, ModName):
+	% Given a symbol name, return the module qualifier(s).
+	% If the symbol is unqualified, then return the specified default
+	% module name.
+
 :- pred sym_name_get_module_name(sym_name, module_name, module_name).
 :- mode sym_name_get_module_name(in, in, out) is det.
+
+	% string_to_sym_name(String, Separator, SymName):
+	%	Convert a string, possibly prefixed with
+	%	module qualifiers (separated by Separator),
+	%	into a symbol name.
+	%
+:- pred string_to_sym_name(string, string, sym_name).
+:- mode string_to_sym_name(in, in, out) is det.
+
+	% match_sym_name(PartialSymName, CompleteSymName):
+	%	succeeds iff there is some sequence of module qualifiers
+	%	which when prefixed to PartialSymName gives CompleteSymName.
+	%
+:- pred match_sym_name(sym_name, sym_name).
+:- mode match_sym_name(in, in) is semidet.
 
         % Given a possible module qualified sym_name and a list of
 	% argument types and a context, construct a term. This is
@@ -68,10 +102,18 @@
 
 :- implementation.
 :- import_module (inst).
-:- import_module bool, std_util, map.
+:- import_module bool, string, int, map.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+% -- not yet:
+%	mercury_public_builtin_module(M) :-
+% 		M = qualified(unqualified("std"), "builtin"))).
+%	mercury_private_builtin_module(M) :-
+% 		M = qualified(unqualified("std"), "private_builtin"))).
+mercury_public_builtin_module(unqualified("mercury_builtin")).
+mercury_private_builtin_module(unqualified("mercury_builtin")).
 
 unqualify_name(unqualified(PredName), PredName).
 unqualify_name(qualified(_ModuleName, PredName), PredName).
@@ -80,7 +122,7 @@ sym_name_get_module_name(unqualified(_), ModuleName, ModuleName).
 sym_name_get_module_name(qualified(ModuleName, _PredName), _, ModuleName).
 
 construct_qualified_term(qualified(Module, Name), Args, Context, Term) :-
-	ModuleTerm = term__functor(term__atom(Module), [], Context),
+	construct_qualified_term(Module, [], Context, ModuleTerm),
 	UnqualifiedTerm = term__functor(term__atom(Name), Args, Context),
 	Term = term__functor(term__atom(":"), [ModuleTerm, UnqualifiedTerm],
 							Context).
@@ -194,5 +236,49 @@ prog_util__rename_in_vars([Var0 | Vars0], OldVar, NewVar, [Var | Vars]) :-
 		Var = Var0
 	),
 	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars).
+
+%-----------------------------------------------------------------------------%
+
+% This would be simpler if we had a string__rev_sub_string_search/3 pred.
+% With that, we could search for underscores right-to-left,
+% and construct the resulting symbol directly.
+% Instead, we search for them left-to-right, and then call 
+% insert_module_qualifier to fix things up.
+
+string_to_sym_name(String, ModuleSeparator, Result) :-
+    (
+	string__sub_string_search(String, ModuleSeparator, LeftLength),
+	LeftLength > 0
+    ->
+	string__left(String, LeftLength, ModuleName),
+	string__length(String, StringLength),
+	string__length(ModuleSeparator, SeparatorLength),
+	RightLength is StringLength - LeftLength - SeparatorLength,
+	string__right(String, RightLength, Name),
+	string_to_sym_name(Name, ModuleSeparator, NameSym),
+	insert_module_qualifier(ModuleName, NameSym, Result)
+    ;
+    	Result = unqualified(String)
+    ).
+
+:- pred insert_module_qualifier(string, sym_name, sym_name).
+:- mode insert_module_qualifier(in, in, out) is det.
+
+insert_module_qualifier(ModuleName, unqualified(PlainName),
+		qualified(unqualified(ModuleName), PlainName)).
+insert_module_qualifier(ModuleName, qualified(ModuleQual0, PlainName),
+		qualified(ModuleQual, PlainName)) :-
+	insert_module_qualifier(ModuleName, ModuleQual0, ModuleQual).
+
+%-----------------------------------------------------------------------------%
+
+% match_sym_name(PartialSymName, CompleteSymName):
+%	succeeds iff there is some sequence of module qualifiers
+%	which when prefixed to PartialSymName gives CompleteSymName.
+
+match_sym_name(qualified(Module1, Name), qualified(Module2, Name)) :-
+	match_sym_name(Module1, Module2).
+match_sym_name(unqualified(Name), unqualified(Name)).
+match_sym_name(unqualified(Name), qualified(_, Name)).
 
 %-----------------------------------------------------------------------------%

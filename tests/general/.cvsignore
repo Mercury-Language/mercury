@@ -1,7 +1,7 @@
 *.c *.nux *.nux.save *.exp *.out *.res .allres
 arithmetic commit_bug disj_disj duplicate_label environment float_test
 interpreter nasty_nondet nondet_disj nondet_ite partition petdr1
-string__format_test string_test string_test_2 set_test univ
+string_format_test string_test string_test_2 set_test univ
 higher_order semidet_map parse_list
 det_complicated_unify commit_bug nondet_ite_2
 unreachable dnf hello_again nondetlive semidet_lambda liveness

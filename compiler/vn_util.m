@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module list.
+:- import_module list, bool, std_util.
 :- import_module llds, vn_type, vn_table.
 
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,7 @@
 
 :- implementation.
 
-:- import_module bool, int, float, string, set, map, require, std_util.
+:- import_module int, float, string, set, map, require.
 
 :- import_module opt_util.
 

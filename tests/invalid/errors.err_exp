@@ -1,8 +1,8 @@
-errors.m:001: Warning: module should start with a `:- module' declaration.
+errors.m:010: Warning: module should start with a `:- module' declaration.
 errors.m:060: Error: free type parameter in RHS of type definition: f(_0).
 errors.m:061: Error: free type parameter in RHS of type definition: f(_0).
-errors.m:000: Warning: module `int' is imported using both
-errors.m:000:   `:- import_module' and `:- use_module' declarations.
+errors.m:001: Warning: module `int' is imported using both
+errors.m:001:   `:- import_module' and `:- use_module' declarations.
 errors.m:051: In definition of type `errors:du_type_which_references_undefined_type'/0:
 errors.m:051:   error: undefined type `undefined_type'/0.
 errors.m:053: In definition of type `errors:eqv_type_which_references_undefined_type'/0:

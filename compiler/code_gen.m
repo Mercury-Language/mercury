@@ -30,8 +30,8 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info.
-:- import_module continuation_info.
-:- import_module list, assoc_list, io.
+:- import_module continuation_info, globals.
+:- import_module set, list, assoc_list, term, io.
 
 		% Translate a HLDS structure into an LLDS
 
@@ -58,12 +58,12 @@
 :- implementation.
 
 :- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
-:- import_module pragma_c_gen, trace, globals, options, hlds_out.
+:- import_module pragma_c_gen, trace, options, hlds_out.
 :- import_module code_aux, middle_rec, passes_aux, llds_out.
 :- import_module code_util, type_util, mode_util.
-:- import_module prog_data, instmap.
-:- import_module bool, char, int, string, list, term.
-:- import_module map, tree, std_util, require, set, varset.
+:- import_module prog_data, prog_out, instmap.
+:- import_module bool, char, int, string.
+:- import_module map, tree, std_util, require, varset.
 
 %---------------------------------------------------------------------------%
 
@@ -436,8 +436,9 @@ code_gen__generate_prolog(CodeModel, Goal, FrameInfo, PrologCode) -->
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ predicate_arity(ModuleInfo, PredId, Arity) },
+	{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
 	{ string__int_to_string(Arity, ArityStr) },
-	{ string__append_list([ModuleName, ":", PredName, "/", ArityStr],
+	{ string__append_list([ModuleNameString, ":", PredName, "/", ArityStr],
 		PushMsg) },
 	(
 		{ CodeModel = model_non }

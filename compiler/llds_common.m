@@ -21,15 +21,18 @@
 :- interface.
 
 :- import_module llds.
+:- import_module prog_data. % for module_name
+:- import_module list.
 
-:- pred llds_common(list(c_procedure), list(c_module), string, 
+:- pred llds_common(list(c_procedure), list(c_module), module_name, 
 	list(c_procedure), list(c_module), list(c_module)).
 :- mode llds_common(in, in, in, out, out, out) is det.
 
 :- implementation.
 
 :- import_module llds_out.
-:- import_module bool, int, list, assoc_list, map, std_util, require.
+
+:- import_module bool, int, assoc_list, map, std_util, require.
 
 :- type cell_info
 	--->	cell_info(
@@ -38,7 +41,7 @@
 
 :- type common_info
 	--->	common_info(
-			string,		% base file name
+			module_name,	% base file name
 			int,		% next cell number
 			map(list(maybe(rval)), cell_info)
 					% map cell contents to cell declaration
@@ -61,7 +64,7 @@ llds_common(Procedures0, Data0, BaseName, Procedures, Data, DataModules) :-
 	llds_common__cell_pairs_to_modules(CellPairs, BaseName, DataModules).
 
 :- pred llds_common__cell_pairs_to_modules(
-	assoc_list(list(maybe(rval)), cell_info), string, list(c_module)).
+	assoc_list(list(maybe(rval)), cell_info), module_name, list(c_module)).
 :- mode llds_common__cell_pairs_to_modules(in, in, out) is det.
 
 llds_common__cell_pairs_to_modules([], _, []).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,6 +17,7 @@
 :- interface.
 
 :- import_module llds, prog_data, switch_gen, code_info, type_util.
+:- import_module hlds_data, hlds_goal.
 :- import_module term.
 
 	% Should this switch be implemented as a dense jump table?

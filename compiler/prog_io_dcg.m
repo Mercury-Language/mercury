@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,10 +14,10 @@
 
 :- interface.
 
-:- import_module prog_io_util.
+:- import_module prog_data, prog_io_util.
 :- import_module varset, term.
 
-:- pred parse_dcg_clause(string, varset, term, term, term__context,
+:- pred parse_dcg_clause(module_name, varset, term, term, term__context,
 			maybe_item_and_context).
 :- mode parse_dcg_clause(in, in, in, in, in, out) is det.
 
@@ -32,7 +32,7 @@
 
 :- implementation.
 
-:- import_module prog_io_goal, prog_util, prog_data, purity.
+:- import_module prog_io, prog_io_goal, prog_util, purity.
 :- import_module int, string, std_util, varset, list.
 
 %-----------------------------------------------------------------------------%
@@ -42,8 +42,8 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
 	new_dcg_var(VarSet0, 0, VarSet1, N0, DCG_0_Var),
 	parse_dcg_goal(DCG_Body, VarSet1, N0, DCG_0_Var,
 			Body, VarSet, _N, DCG_Var),
-	parse_qualified_term(ModuleName, DCG_Head, DCG_Body, "DCG clause head",
-			HeadResult),
+	parse_implicitly_qualified_term(ModuleName,
+			DCG_Head, DCG_Body, "DCG clause head", HeadResult),
 	process_dcg_clause(HeadResult, VarSet, DCG_0_Var, DCG_Var, Body, R),
 	add_context(R, DCG_Context, Result).
 

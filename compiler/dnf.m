@@ -43,7 +43,8 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, set.
+:- import_module hlds_module, hlds_pred.
+:- import_module set, list, bool, std_util.
 
 :- pred dnf__transform_module(module_info::in, bool::in,
 	maybe(set(pred_proc_id))::in, module_info::out) is det.
@@ -59,7 +60,7 @@
 
 :- import_module hlds_goal, hlds_data, prog_data, instmap.
 :- import_module excess, make_hlds, mode_util.
-:- import_module require, map, list, string, int, bool, std_util, term, varset.
+:- import_module require, map, string, int, term, varset.
 
 	% Traverse the module structure.
 

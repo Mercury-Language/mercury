@@ -29,7 +29,7 @@
 				% the error/warning message, and the
 				% term to which it relates
 
-:- type program		
+:- type compilation_unit		
 	--->	module(
 			module_name,
 			item_list
@@ -452,8 +452,11 @@
 
 :- type module_defn	
 	--->	module(module_name)
+	;	end_module(module_name)
+
 	;	interface
 	;	implementation
+
 	;	imported
 		% This is used internally by the compiler,
 		% to identify declarations which originally
@@ -467,15 +470,18 @@
 		% applies to items from modules imported using
 		% `:- use_module', and items from `.opt'
 		% and `.int2' files.
-	;	external(sym_name_specifier)
 	;	opt_imported
 		% This is used internally by the compiler,
 		% to identify items which originally
 		% came from a .opt file.
-	;	end_module(module_name)
+
+	;	external(sym_name_specifier)
+
 	;	export(sym_list)
 	;	import(sym_list)
-	;	use(sym_list).
+	;	use(sym_list)
+
+	;	include_module(list(module_name)).
 
 :- type sym_list	
 	--->	sym(list(sym_specifier))
@@ -521,14 +527,14 @@
 	; 	binary_prefix 
 	; 	binary_postfix.
 :- type sym_name_specifier 
-	---> name(sym_name)
+	--->	name(sym_name)
 	;	name_arity(sym_name, arity).
 :- type sym_name 	
 	--->	unqualified(string)
 	;	qualified(module_specifier, string).
 
-:- type module_specifier ==	string.
-:- type module_name 	== 	string.
+:- type module_specifier ==	sym_name.
+:- type module_name 	== 	sym_name.
 :- type arity		==	int.
 
 	% Describes whether an item can be used without an 

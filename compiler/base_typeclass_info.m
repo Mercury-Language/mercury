@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,7 +20,7 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds_module, list, llds, prog_data.
 
 :- pred base_typeclass_info__generate_llds(module_info, list(c_module)).
 :- mode base_typeclass_info__generate_llds(in, out) is det.
@@ -33,9 +33,9 @@
 
 :- implementation.
 
-:- import_module prog_data, hlds_data, hlds_pred, hlds_out.
-:- import_module llds, code_util, globals, options.
-:- import_module bool, string, list, map, std_util, require, assoc_list, term.
+:- import_module hlds_data, hlds_pred, hlds_out.
+:- import_module code_util, globals, options.
+:- import_module bool, string, map, std_util, require, assoc_list, term.
 
 %---------------------------------------------------------------------------%
 
@@ -47,7 +47,7 @@ base_typeclass_info__generate_llds(ModuleInfo, CModules) :-
 		ModuleInfo, CModules).
 
 :- pred base_typeclass_info__gen_infos_for_classes(assoc_list(class_id,
-	list(hlds_instance_defn)), string, module_info, list(c_module)).
+	list(hlds_instance_defn)), module_name, module_info, list(c_module)).
 :- mode base_typeclass_info__gen_infos_for_classes(in, in, in, out) is det.
 
 base_typeclass_info__gen_infos_for_classes([], _ModuleName, _ModuleInfo, []).
@@ -62,7 +62,7 @@ base_typeclass_info__gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo,
 
 	% XXX make it use an accumulator
 :- pred base_typeclass_info__gen_infos_for_instance_list(
-	pair(class_id, list(hlds_instance_defn)), string, module_info,
+	pair(class_id, list(hlds_instance_defn)), module_name, module_info,
 	list(c_module)).
 :- mode base_typeclass_info__gen_infos_for_instance_list(in, in, in, out) 
 	is det.
@@ -178,7 +178,8 @@ base_typeclass_info__gen_superclass_rvals(ClassId, ModuleInfo, InstanceTypes,
 					InstanceString),
 				% it doesn't matter which module the instance
 				% decl comes from
-			DataAddr = data_addr("<unknown>", DataName),
+			Module = unqualified("<unknown>"),
+			DataAddr = data_addr(Module, DataName),
 			Rval =  yes(const(data_addr_const(DataAddr)))
 		)),
 	list__map(GetRval, SuperClassConstraints, SuperClassRvals).

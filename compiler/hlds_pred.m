@@ -15,13 +15,13 @@
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
 :- import_module purity, globals.
-:- import_module bool, list, map, std_util, term, varset.
+:- import_module bool, list, set, map, std_util, term, varset.
 :- import_module term_util.
 
 :- implementation.
 
 :- import_module make_hlds, prog_util, mode_util, type_util.
-:- import_module int, string, set, require, assoc_list.
+:- import_module int, string, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
 

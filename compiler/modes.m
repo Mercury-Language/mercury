@@ -131,8 +131,8 @@ a variable live if its value will be used later on in the computation.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, (inst), instmap.
-:- import_module bool, io.
+:- import_module prog_data, hlds_goal, hlds_module, hlds_pred, (inst), instmap.
+:- import_module bool, list, term, io.
 
 	% modecheck(HLDS0, HLDS, UnsafeToContinue):
 	% Perform mode inference and checking for a whole module.
@@ -301,13 +301,15 @@ a variable live if its value will be used later on in the computation.
 
 :- implementation.
 
-:- import_module make_hlds, hlds_goal, hlds_data, unique_modes, mode_debug.
+:- import_module make_hlds, hlds_data, unique_modes, mode_debug.
 :- import_module mode_info, delay_info, mode_errors, inst_match, instmap.
-:- import_module type_util, mode_util, code_util, prog_data, unify_proc.
+:- import_module type_util, mode_util, code_util, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
 :- import_module passes_aux, typecheck, module_qual, clause_to_proc.
 :- import_module modecheck_unify, modecheck_call, inst_util, purity.
-:- import_module list, map, varset, term, prog_out, string, require, std_util.
+:- import_module prog_out.
+
+:- import_module list, map, varset, string, require, std_util.
 :- import_module assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -1769,7 +1771,7 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst0, FinalInst, Det,
 		)
 	).
 
-:- pred modes__build_call(string, string, list(var),
+:- pred modes__build_call(module_name, string, list(var),
 			term__context, maybe(call_unify_context), module_info,
 			hlds_goal).
 :- mode modes__build_call(in, in, in, in, in, in, out) is semidet.

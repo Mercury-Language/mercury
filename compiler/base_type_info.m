@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,7 +25,8 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds_module, llds.
+:- import_module list.
 
 :- pred base_type_info__generate_hlds(module_info, module_info).
 :- mode base_type_info__generate_hlds(in, out) is det.
@@ -35,9 +36,12 @@
 
 :- implementation.
 
-:- import_module prog_data, hlds_data, hlds_pred, hlds_out, base_typeclass_info.
-:- import_module llds, code_util, globals, special_pred, options.
-:- import_module bool, string, list, map, std_util, require.
+:- import_module base_typeclass_info.
+:- import_module prog_data, prog_util, prog_out.
+:- import_module hlds_data, hlds_pred, hlds_out.
+:- import_module code_util, special_pred, globals, options.
+
+:- import_module bool, string, map, std_util, require.
 
 %---------------------------------------------------------------------------%
 
@@ -54,8 +58,8 @@ base_type_info__generate_hlds(ModuleInfo0, ModuleInfo) :-
 	% find the types defined in this module, and return a base_gen_info
 	% for each.
 
-:- pred base_type_info__gen_base_gen_infos(list(type_id), type_table, string,
-	module_info, list(base_gen_info)).
+:- pred base_type_info__gen_base_gen_infos(list(type_id), type_table,
+	module_name, module_info, list(base_gen_info)).
 :- mode base_type_info__gen_base_gen_infos(in, in, in, in, out) is det.
 
 base_type_info__gen_base_gen_infos([], _, _, _, []).
@@ -159,8 +163,9 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 			TypeArity, LayoutArg),
 		base_type_info__construct_functors(ModuleInfo, TypeName,
 			TypeArity, FunctorsArg),
+		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
 		NameArg = yes(const(string_const(TypeName))),
-		ModuleArg = yes(const(string_const(ModuleName))),
+		ModuleArg = yes(const(string_const(ModuleNameString))),
 		list__append(PredAddrArgs, [LayoutArg, FunctorsArg, ModuleArg,
 			NameArg], FinalArgs)
 	;
@@ -207,9 +212,10 @@ base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, PredAddrArgs) :-
 			globals__have_static_code_addresses(Globals, yes)
 		->
 			hlds_pred__initial_proc_id(ProcId),
+			mercury_private_builtin_module(MercuryBuiltin),
 			PredAddrArg = yes(const(code_addr_const(
-				imported(proc("mercury_builtin", predicate,
-					"mercury_builtin", "unused", 0,
+				imported(proc(MercuryBuiltin, predicate,
+					MercuryBuiltin, "unused", 0,
 						ProcId)))))
 		;
 			PredAddrArg = yes(const(int_const(0)))

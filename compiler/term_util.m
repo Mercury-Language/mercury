@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,7 @@
 :- import_module term_errors, prog_data.
 :- import_module hlds_module, hlds_pred, hlds_data, hlds_goal.
 
-:- import_module bool, int, list, map, bag, term.
+:- import_module std_util, bool, int, list, map, bag, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -180,7 +180,7 @@
 :- import_module inst_match, prog_out, mode_util, type_util.
 :- import_module globals, options.
 
-:- import_module io, std_util, assoc_list, require.
+:- import_module assoc_list, require.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

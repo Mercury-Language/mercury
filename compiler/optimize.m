@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module llds, io.
+:- import_module llds, io, list.
 
 :- pred optimize_main(list(c_procedure), list(c_procedure),
 	io__state, io__state).
@@ -27,7 +27,7 @@
 
 :- implementation.
 
-:- import_module bool, list, map, bimap, int, std_util.
+:- import_module bool, map, bimap, int, std_util.
 
 :- import_module jumpopt, labelopt, dupelim, peephole.
 :- import_module frameopt, delay_slot, value_number, options.

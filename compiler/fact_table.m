@@ -88,7 +88,9 @@
 
 :- import_module int, map, std_util, assoc_list, char, require, library, bool.
 :- import_module float, math, getopt, term, string.
-:- import_module parser, prog_out, term_io, llds_out, hlds_out, hlds_data.
+:- import_module parser, term_io.
+
+:- import_module prog_util, prog_out, llds_out, hlds_out, hlds_data.
 :- import_module globals, options, passes_aux, arg_info, llds, mode_util.
 :- import_module code_util, export, inst_match.
 
@@ -348,11 +350,7 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
 	term__functor(Const, Terms0, Context), FactArgInfos, ProcStreams, 
 	MaybeOutput, FactNum, Result) -->
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	(
-	    { PredName = unqualified(PredString) }
-	;
-	    { PredName = qualified(_, PredString) }
-	),
+	{ unqualify_name(PredName, PredString) },
 	(
 	    { Const = term__atom(TopLevel) }
 	->
@@ -2414,14 +2412,9 @@ write_fact_table_numfacts(PredName, NumFacts, OutputStream, C_HeaderCode) -->
 %---------------------------------------------------------------------------%
 :- pred make_fact_table_identifier(sym_name::in, string::out) is det.
 
-make_fact_table_identifier(qualified(ModuleName, PredName), Identifier) :-
-	llds_out__name_mangle(ModuleName, MangledModuleName),
-	llds_out__name_mangle(PredName, MangledPredName),
-	llds_out__qualify_name(MangledModuleName, MangledPredName,
-		Identifier).
+make_fact_table_identifier(SymName, Identifier) :-
+	llds_out__sym_name_mangle(SymName, Identifier).
 
-make_fact_table_identifier(unqualified(PredName), Identifier) :-
-	llds_out__name_mangle(PredName, Identifier).
 %---------------------------------------------------------------------------%
 
 	% Delete a file.  Report an error message if something goes wrong.

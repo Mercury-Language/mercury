@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,8 @@
 :- import_module list, io.
 :- import_module prog_data.
 
-:- pred convert_to_goedel(string, list(item_and_context), io__state, io__state).
+:- pred convert_to_goedel(module_name, list(item_and_context),
+			io__state, io__state).
 :- mode convert_to_goedel(in, in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -60,7 +61,7 @@ option_handle_functor_overloading("character").
 
 %-----------------------------------------------------------------------------%
 
-convert_to_goedel(ProgName, Items0) -->
+convert_to_goedel(ModuleNameSym, Items0) -->
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, "% Expanding equivalence types..."),
 	io__flush_output(StdErr),
@@ -69,7 +70,9 @@ convert_to_goedel(ProgName, Items0) -->
 					Items, Error,  _),
 	io__write_string(StdErr, " done\n"),
 	( { Error = no } ->
-		{ convert_functor_name(ProgName, GoedelName) },
+		{ prog_out__sym_name_to_string(ModuleNameSym, "__",
+				ModuleName) },
+		{ convert_functor_name(ModuleName, GoedelName) },
 		{ string__append(GoedelName, ".loc", OutputFileName) },
 		io__tell(OutputFileName, Res),
 		( { Res = ok } ->

@@ -45,8 +45,8 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_data, code_info.
-:- import_module term.
+:- import_module hlds_goal, hlds_data, code_info, llds.
+:- import_module list, term.
 
 :- pred switch_gen__generate_switch(code_model, var, can_fail, list(case),
 	store_map, hlds_goal_info, code_tree, code_info, code_info).
@@ -64,9 +64,9 @@
 :- implementation.
 
 :- import_module dense_switch, string_switch, tag_switch, lookup_switch.
-:- import_module llds, code_gen, unify_gen, code_aux, type_util, code_util.
+:- import_module code_gen, unify_gen, code_aux, type_util, code_util.
 :- import_module trace, globals, options.
-:- import_module bool, int, string, list, map, tree, std_util, require.
+:- import_module bool, int, string, map, tree, std_util, require.
 
 :- type switch_category
 	--->	atomic_switch

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,8 +24,8 @@
 
 :- interface.
 
-:- import_module hlds_module, term_util, term_errors.
-:- import_module io.
+:- import_module hlds_module, hlds_pred, term_util, term_errors.
+:- import_module io, list, std_util.
 
 :- type arg_size_result
 	--->	ok(
@@ -48,10 +48,10 @@
 
 :- implementation.
 
-:- import_module term_traversal, hlds_pred, hlds_goal, hlds_data.
-:- import_module term_errors, mode_util, type_util, lp.
+:- import_module term_traversal, term_errors, hlds_goal, hlds_data.
+:- import_module mode_util, type_util, lp.
 
-:- import_module int, float, char, string, bool, std_util, list, set, bag, map.
+:- import_module int, float, char, string, bool, set, bag, map.
 :- import_module term, varset, require.
 
 %-----------------------------------------------------------------------------%

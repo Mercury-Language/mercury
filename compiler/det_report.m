@@ -14,8 +14,9 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, det_util, prog_data.
-:- import_module io.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module det_util, prog_data.
+:- import_module io, list, term, varset.
 
 :- type det_msg	--->
 			% warnings
@@ -107,7 +108,7 @@
 :- import_module globals, options, prog_out, hlds_out, mercury_to_mercury.
 :- import_module passes_aux.
 
-:- import_module bool, int, list, map, set, varset, std_util, term, require.
+:- import_module bool, int, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%
 

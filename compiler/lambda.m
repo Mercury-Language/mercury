@@ -40,7 +40,7 @@
 
 :- interface. 
 
-:- import_module hlds_module, hlds_pred, prog_data.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module list, map, term, varset.
 
 :- pred lambda__process_pred(pred_id, module_info, module_info).
@@ -59,7 +59,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, make_hlds.
+:- import_module make_hlds.
 :- import_module prog_util, mode_util, inst_match, llds, arg_info.
 
 :- import_module bool, set, string, std_util, require.
@@ -349,7 +349,7 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		% we use the mode in the lambda expression. 
 
 		list__length(ArgVars, NumArgVars),
-		In = user_defined_mode(qualified("mercury_builtin", "in"), []),
+		in_mode(In),
 		list__duplicate(NumArgVars, In, InModes),
 		map__from_corresponding_lists(ArgVars, InModes,
 			ArgModesMap),
@@ -403,7 +403,7 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 	ConsId = pred_const(PredId, ProcId),
 	Unification = construct(Var, ConsId, ArgVars, UniModes).
 
-:- pred make_lambda_name(string, pred_or_func, string, int, int, sym_name).
+:- pred make_lambda_name(module_name, pred_or_func, string, int, int, sym_name).
 :- mode make_lambda_name(in, in, in, in, in, out) is det.
 
 make_lambda_name(ModuleName, PredOrFunc, PredName, Line, Counter, SymName) :-

@@ -28,7 +28,8 @@
 
 	% Produce a header file containing prototypes for the exported C
 	% functions
-:- pred export__produce_header_file(module_info, string, io__state, io__state).
+:- pred export__produce_header_file(module_info, module_name,
+					io__state, io__state).
 :- mode export__produce_header_file(in, in, di, uo) is det.
 
 	% Convert the term, which represents a type, to a string corresponding
@@ -58,7 +59,8 @@
 
 :- implementation.
 
-:- import_module code_gen, code_util, hlds_pred, llds, llds_out.
+:- import_module code_gen, code_util, hlds_pred, llds, llds_out, modules.
+
 :- import_module library, map, int, string, std_util, assoc_list, require.
 :- import_module bool.
 
@@ -447,7 +449,8 @@ export__produce_header_file(Module, ModuleName) -->
 	->
 		{ module_info_get_predicate_table(Module, PredicateTable) },
 		{ predicate_table_get_preds(PredicateTable, Preds) },
-		{ string__append(ModuleName, ".h", FileName) },
+		{ module_name_to_file_name(ModuleName, BaseFileName) },
+		{ string__append(BaseFileName, ".h", FileName) },
 		io__tell(FileName, Result),
 		(
 			{ Result = ok }
@@ -455,15 +458,19 @@ export__produce_header_file(Module, ModuleName) -->
 			{ library__version(Version) },
 			io__write_strings(
 				["/*\n** Automatically generated from `", 
-				ModuleName,
+				BaseFileName,
 				".m' by the\n** Mercury compiler, version ", 
 				Version,
 				".  Do not edit.\n*/\n"]),
-			{ string__to_upper(ModuleName, UpperModuleName) },
-			{ string__append(UpperModuleName, "_H", UpperFileName) },
+			{ llds_out__sym_name_mangle(ModuleName,
+					MangledModuleName) },
+			{ string__to_upper(MangledModuleName,
+					UppercaseModuleName) },
+			{ string__append(UppercaseModuleName, "_H",
+					GuardMacroName) },
 			io__write_strings([
-					"#ifndef ", UpperFileName, "\n",
-					"#define ", UpperFileName, "\n",
+					"#ifndef ", GuardMacroName, "\n",
+					"#define ", GuardMacroName, "\n",
 					"\n",
 					"#ifdef __cplusplus\n",
 					"extern ""C"" {\n",
@@ -478,7 +485,7 @@ export__produce_header_file(Module, ModuleName) -->
 					"}\n",
 					"#endif\n",
 					"\n",
-					"#endif /* ", UpperFileName, " */\n"]),
+					"#endif /* ", GuardMacroName, " */\n"]),
 			io__told
 		;
 			io__progname_base("export.m", ProgName),

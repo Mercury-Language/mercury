@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, switch_gen, code_info.
+:- import_module hlds_data, hlds_goal, llds, switch_gen, code_info.
 :- import_module term.
 
 :- pred string_switch__generate(cases_list, var, code_model,
@@ -29,7 +29,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, code_gen, trace, tree.
+:- import_module code_gen, trace, tree.
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,

@@ -186,6 +186,8 @@
 :- implementation.
 
 :- import_module llds_out, opt_util, vn_util, hlds_pred, globals, options.
+:- import_module prog_out.
+
 :- import_module int, set, map, string.
 
 opt_debug__msg(OptDebug, Msg) -->
@@ -685,8 +687,9 @@ opt_debug__dump_const(code_addr_const(CodeAddr), Str) :-
 	string__append_list(["code_addr_const(", C_str, ")"], Str).
 opt_debug__dump_const(data_addr_const(data_addr(BaseName, VarName)), Str) :-
 	opt_debug__dump_data_name(VarName, N_str),
-	string__append_list(["data_addr_const(", BaseName, ", ", N_str, ")"],
-		Str).
+	prog_out__sym_name_to_string(BaseName, BaseName_str),
+	string__append_list(
+		["data_addr_const(", BaseName_str, ", ", N_str, ")"], Str).
 opt_debug__dump_const(label_entry(Label), Str) :-
 	opt_debug__dump_label(Label, LabelStr),
 	string__append_list(["label_entry(", LabelStr, ")"], Str).
@@ -785,23 +788,27 @@ opt_debug__dump_label_pairs([L1 - L2 | Labels], Str) :-
 
 opt_debug__dump_proclabel(proc(Module, _PredOrFunc, PredModule,
 		PredName, Arity, ProcId), Str) :-
-	string__int_to_string(Arity, A_str),
-	proc_id_to_int(ProcId, Mode),
-	string__int_to_string(Mode, M_str),
 	( Module = PredModule ->
 		ExtraModule = ""
 	;
-		string__append(Module, "_", ExtraModule)
+		llds_out__sym_name_mangle(PredModule, PredModuleName),
+		string__append(PredModuleName, "_", ExtraModule)
 	),
-	string__append_list([ExtraModule, Module, "_", PredName,
-		"_", A_str, "_", M_str], Str).
-opt_debug__dump_proclabel(special_proc(Module, Pred, TypeModule,
-		Type, Arity, ProcId), Str) :-
+	llds_out__sym_name_mangle(Module, ModuleName),
 	string__int_to_string(Arity, A_str),
 	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, M_str),
-	llds_out__qualify_name(TypeModule, Type, TypeName),
-	string__append_list([Module, "_", Pred, "_",
+	string__append_list([ExtraModule, ModuleName, "_", PredName,
+		"_", A_str, "_", M_str], Str).
+opt_debug__dump_proclabel(special_proc(Module, Pred, TypeModule,
+		Type, Arity, ProcId), Str) :-
+	llds_out__sym_name_mangle(Module, ModuleName),
+	llds_out__sym_name_mangle(TypeModule, TypeModuleName),
+	llds_out__qualify_name(TypeModuleName, Type, TypeName),
+	string__int_to_string(Arity, A_str),
+	proc_id_to_int(ProcId, Mode),
+	string__int_to_string(Mode, M_str),
+	string__append_list([ModuleName, "_", Pred, "_",
 		TypeName, "_", A_str, "_", M_str], Str).
 
 opt_debug__dump_bool(yes, "yes").

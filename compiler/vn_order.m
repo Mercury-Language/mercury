@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module llds, vn_type, vn_table.
-:- import_module bool, list.
+:- import_module bool, list, std_util.
 
 :- type order_result	--->	success(vn_tables, list(vn_node))
 			;	failure(maybe(label)).
@@ -28,7 +28,7 @@
 
 :- implementation.
 
-:- import_module map, set, string, int, require, std_util, assoc_list.
+:- import_module map, set, string, int, require, assoc_list.
 
 :- import_module atsort, vn_util, vn_debug, opt_util.
 

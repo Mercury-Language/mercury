@@ -48,6 +48,8 @@ PROGS=	\
 	no_fully_strict \
 	no_inline \
 	nullary_ho_func \
+	parent \
+	parent2 \
 	pragma_c_code \
 	pragma_inline \
 	pragma_import \

@@ -31,8 +31,8 @@
 	hlds_goal_info::in, pragma_c_code_impl::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-:- pred pragma_c_gen__struct_name(string::in, string::in, int::in, proc_id::in,
-	string::out) is det.
+:- pred pragma_c_gen__struct_name(module_name::in, string::in, int::in,
+	proc_id::in, string::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1002,7 +1002,7 @@ output_descs_from_arg_info([Arg | Args], [Output | Outputs]) :-
 %---------------------------------------------------------------------------%
 
 pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId, StructName) :-
-	llds_out__name_mangle(ModuleName, MangledModuleName),
+	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
 	llds_out__name_mangle(PredName, MangledPredName),
 	proc_id_to_int(ProcId, ProcNum),
 	string__int_to_string(Arity, ArityStr),

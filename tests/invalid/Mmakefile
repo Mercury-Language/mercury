@@ -24,6 +24,7 @@ SOURCES= \
 	inline_conflict.m \
 	io_in_ite_cond.m \
 	missing_det_decls.m \
+	missing_interface_import.m \
 	modes_erroneous.m \
 	mostly_uniq1.m \
 	mostly_uniq2.m \
@@ -59,6 +60,7 @@ SOURCES= \
 MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-any_mode	=	--infer-types
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
+MCFLAGS-missing_interface_import = --make-interface
 
 DEPS=		$(SOURCES:%.m=%.dep)
 DEPENDS=	$(SOURCES:%.m=%.depend)

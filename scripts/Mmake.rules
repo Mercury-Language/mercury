@@ -12,14 +12,14 @@ main_target: $(MAIN_TARGET)
 
 # Beware that the order of suffixes is significant.
 .SUFFIXES: .m .nl .no .err \
-		.int .int2 .int3 .opt .trans_opt \
+		.int0 .int .int2 .int3 .opt .trans_opt \
 		.dep .depend .doit .ugly \
-		.date .date3 .optdate .trans_opt_date \
+		.date0 .date .date3 .optdate .trans_opt_date \
 		.c .nu .o .pic_o \
 		.i .s .pic_s \
 		.ql .pl
 
-.PRECIOUS: %.date %.date3 %.optdate %.trans_opt_date
+.PRECIOUS: %.date0 %.date %.date3 %.optdate %.trans_opt_date
 
 # All the builtin rules must use $@ as the target, so that they work
 # when $(VPATH) is set.
@@ -52,6 +52,9 @@ main_target: $(MAIN_TARGET)
 	$(MC) $(MCFLAGS) --errorcheck-only $< > $@ 2>&1
 	@touch $@
 
+.m.date0:
+	$(MCPI) $(MCPIFLAGS) $<
+
 .m.date:
 	$(MCI) $(MCIFLAGS) $<
 
@@ -69,6 +72,9 @@ main_target: $(MAIN_TARGET)
 # It is used to force GNU Make to recheck the timestamp
 # on the target file.  (It is a pity that GNU Make doesn't
 # have a way of handling these sorts of rules in a nicer manner.)
+
+.date0.int0:
+	@:
 
 .date.int:
 	@:

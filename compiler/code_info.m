@@ -33,16 +33,18 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_goal, llds, instmap, trace.
-:- import_module globals.
-:- import_module bool, set, std_util, assoc_list.
+:- import_module hlds_module, hlds_pred, hlds_goal, llds, instmap, trace.
+:- import_module continuation_info, prog_data, hlds_data, globals.
+
+:- import_module bool, set, varset, list, map, term, std_util, assoc_list.
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, code_util.
-:- import_module code_exprn, set, varset, term, stack, prog_data.
-:- import_module continuation_info, type_util, mode_util, options.
-:- import_module string, require, char, list, map, bimap, tree, int.
+:- import_module code_util, code_exprn, prog_out.
+:- import_module type_util, mode_util, options.
+
+:- import_module set, varset, stack.
+:- import_module string, require, char, bimap, tree, int.
 
 %---------------------------------------------------------------------------%
 
@@ -2016,8 +2018,9 @@ code_info__generate_pre_commit_saves(Slots, Code) -->
 		code_info__get_pred_id(PredId),
 		{ predicate_module(ModuleInfo, PredId, ModuleName) },
 		{ predicate_name(ModuleInfo, PredId, PredName) },
-		{ string__append_list(["commit in ", ModuleName, ":", PredName],
-			Message) },
+		{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
+		{ string__append_list(["commit in ",
+			ModuleNameString, ":", PredName], Message) },
 		{ PushCode = node([
 			incr_sp(NumSlots, Message) - SaveMessage
 		]) },

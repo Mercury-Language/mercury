@@ -15,7 +15,8 @@
 
 :- module special_pred.
 :- interface.
-:- import_module list, map, prog_data, hlds_data, hlds_pred.
+:- import_module prog_data, hlds_data, hlds_pred.
+:- import_module list, map, std_util.
 
 :- type special_pred_map	==	map(special_pred, pred_id).
 
@@ -55,8 +56,7 @@
 
 :- implementation.
 
-:- import_module type_util.
-:- import_module std_util.
+:- import_module type_util, mode_util, prog_util.
 
 special_pred_list([unify, index, compare]).
 
@@ -77,22 +77,11 @@ special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
 
 special_pred_info(compare, Type,
 		 "__Compare__", [ResType, Type, Type], [Uo, In, In], det) :-
-	construct_type(qualified("mercury_builtin", "comparison_result") - 0,
+	mercury_public_builtin_module(PublicBuiltin),
+	construct_type(qualified(PublicBuiltin, "comparison_result") - 0,
 							[], ResType),
 	in_mode(In),
 	uo_mode(Uo).
-
-:- pred in_mode((mode)::out) is det.
-
-in_mode(user_defined_mode(qualified("mercury_builtin", "in"), [])).
-
-:- pred out_mode((mode)::out) is det.
-
-out_mode(user_defined_mode(qualified("mercury_builtin", "out"), [])).
-
-:- pred uo_mode((mode)::out) is det.
-
-uo_mode(user_defined_mode(qualified("mercury_builtin", "uo"), [])).
 
 	% Given the mangled predicate name and the list of argument types,
 	% work out which type this special predicate is for.

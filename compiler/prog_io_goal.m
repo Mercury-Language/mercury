@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module prog_data, prog_io_util.
+:- import_module prog_data, hlds_data.
 :- import_module list, term, varset.
 
 	% Convert a single term into a goal.
@@ -70,50 +70,11 @@
 :- pred parse_func_expression(term, list(term), list(mode), determinism).
 :- mode parse_func_expression(in, out, out, out) is semidet.
 
-	%	A QualifiedTerm is one of
-	%		Name(Args)
-	%		Module:Name(Args)
-	%	(or if Args is empty, one of
-	%		Name
-	%		Module:Name)
-	%	For backwards compatibility, we allow `__'
-	%	as an alternative to `:'.
-
-	% sym_name_and_args takes a term and returns a sym_name and a list of
-	% argument terms.
-	% It fals if the input is not valid syntax for a QualifiedTerm.
-:- pred sym_name_and_args(term, sym_name, list(term)).
-:- mode sym_name_and_args(in, out, out) is semidet.
-
-	% parse_qualified_term/4 takes a term (and also the containing
-	% term, and a string describing the context from which it
-	% was called [e.g. "clause head"] and the containing term)
-	% and returns a sym_name and a list of argument terms.
-	% Returns an error on ill-formed input.
-:- pred parse_qualified_term(term, term, string, maybe_functor).
-:- mode parse_qualified_term(in, in, in, out) is det.
-
-	% parse_qualified_term(DefaultModName, Term,
-	%	ContainingTerm, Msg, Result):
-	%
-	% parse_qualified_term/5 takes a default module name and a term,
-	% (and also the containing term, and a string describing
-	% the context from which it was called (e.g. "clause head"),
-	% and returns a sym_name and a list of argument terms.
-	% Returns an error on ill-formed input or a module qualifier that
-	% doesn't match the DefaultModName, if DefaultModName is not ""
-	% and not "mercury_builtin".
-	% parse_qualified_term/4 calls parse_qualified_term/5, and is 
-	% used when no default module name exists.
-
-:- pred parse_qualified_term(string, term, term, string, maybe_functor).
-:- mode parse_qualified_term(in, in, in, in, out) is det.
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_data, purity.
+:- import_module mode_util, purity, prog_io, prog_io_util.
 :- import_module int, string, std_util.
 
 	% Parse a goal.
@@ -346,8 +307,8 @@ parse_func_expression(FuncTerm, Vars, Modes, Det) :-
 	% the return mode defaults to `out',
 	% and the determinism defaults to `det'.
 	%
-	InMode = user_defined_mode(qualified("mercury_builtin", "in"), []),
-	OutMode = user_defined_mode(qualified("mercury_builtin", "out"), []),
+	in_mode(InMode),
+	out_mode(OutMode),
 	list__length(Vars0, NumVars),
 	list__duplicate(NumVars, InMode, Modes0),
 	RetMode = OutMode,
@@ -377,85 +338,5 @@ parse_dcg_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
 	Terms = [_, _|_],
 	parse_lambda_arg(Term, Arg, Mode),
 	parse_dcg_pred_expr_args(Terms, Args, Modes).
-
-%-----------------------------------------------------------------------------%
-
-sym_name_and_args(Term, SymName, Args) :-
-	parse_qualified_term(Term, Term, "", ok(SymName, Args)).
-
-parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
-	parse_qualified_term("", Term, ContainingTerm, Msg, Result).
-
-parse_qualified_term(DefaultModName, Term, ContainingTerm, Msg, Result) :-
-    (
-       	Term = term__functor(term__atom(":"), [ModuleTerm, NameArgsTerm],
-		_Context)
-    ->
-        ( 
-            NameArgsTerm = term__functor(term__atom(Name), Args, _Context2)
-        ->
-            ( 
-                ModuleTerm = term__functor(term__atom(Module), [], _Context3)
-	    ->
-		(
-		    ( Module = DefaultModName
-		    ; DefaultModName = ""
-		    ; DefaultModName = "mercury_builtin"
-		    )
-		->
-		    Result = ok(qualified(Module, Name), Args)
-		;
-		    Result = error("module qualifier in definition does not match preceding `:- module' declaration", Term)
-		)
-	    ;
-		Result = error("module name identifier expected before ':' in qualified symbol name", Term)
-            )
-        ;
-            Result = error("identifier expected after ':' in qualified symbol name", Term)
-	)
-    ;
-        ( 
-            Term = term__functor(term__atom(Name), Args, _Context4)
-        ->
-	    (
-		string__sub_string_search(Name, "__", LeftLength),
-		LeftLength > 0
-	    ->
-		string__left(Name, LeftLength, Module),
-		string__length(Name, NameLength),
-		RightLength is NameLength - LeftLength - 2,
-		string__right(Name, RightLength, Name2),
-		(
-		    ( Module = DefaultModName
-		    ; DefaultModName = ""
-		    ; DefaultModName = "mercury_builtin"
-		    )
-		->
-		    Result = ok(qualified(Module, Name2), Args)
-		;
-		    Result = error("module qualifier (name before `__') in definition does not match preceding `:- module' declaration", Term)
-		)
-	    ;
-		DefaultModName = ""
-	    ->
-            	Result = ok(unqualified(Name), Args)
-	    ;
-		Result = ok(qualified(DefaultModName, Name), Args)
-	    )
-        ;
-	    string__append("atom expected in ", Msg, ErrorMsg),
-	    %
-	    % since variables don't have any term__context,
-	    % if Term is a variable, we use ContainingTerm instead
-	    % (hopefully that _will_ have a term__context).
-	    %
-	    ( Term = term__variable(_) ->
-	    	ErrorTerm = ContainingTerm
-	    ;
-	    	ErrorTerm = Term
-	    ),
-	    Result = error(ErrorMsg, ErrorTerm)
-        )
-    ).
 
 %-----------------------------------------------------------------------------%

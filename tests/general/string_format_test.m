@@ -2,7 +2,7 @@
 % File to test string__format predicate.
 %
 
-:- module string__format_test.
+:- module string_format_test.
 
 :- interface.
 

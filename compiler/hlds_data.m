@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module hlds_pred, llds, prog_data, (inst).
-:- import_module bool, list, map, varset.
+:- import_module bool, list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -34,9 +34,9 @@
 				% Used for constructing type_infos.
 				% Note that a pred_const is for a closure
 				% whereas a code_addr_const is just an address.
-			;	base_type_info_const(string, string, int)
+			;	base_type_info_const(module_name, string, int)
 				% module name, type name, type arity
-			;	base_typeclass_info_const(string, class_id,
+			;	base_typeclass_info_const(module_name, class_id,
 					string)
 				% name of module containing instance
 				% declaration, class name and arity, a string
@@ -95,7 +95,7 @@
 :- implementation.
 
 :- import_module prog_util.
-:- import_module require, std_util, term.
+:- import_module require.
 
 cons_id_and_args_to_term(int_const(Int), [], Term) :-
 	term__context_init(Context),
@@ -128,7 +128,14 @@ make_functor_cons_id(term__string(String), _, string_const(String)).
 make_functor_cons_id(term__float(Float), _, float_const(Float)).
 
 make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
+	% Use the module qualifier on the SymName, if there is one,
+	% otherwise use the module qualifier on the Type, if there is one,
+	% otherwise leave it unqualified.
+	% XXX is that the right thing to do?
 	(
+		SymName0 = qualified(_, _),
+		SymName = SymName0
+	;
 		SymName0 = unqualified(ConsName),
 		(
 			TypeId = unqualified(_) - _,
@@ -137,9 +144,6 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			TypeId = qualified(TypeModule, _) - _,
 			SymName = qualified(TypeModule, ConsName)
 		)
-	;
-		SymName0 = qualified(_, _),
-		SymName = SymName0
 	),
 	list__length(Args, Arity).
 
@@ -244,13 +248,12 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% (used for constructing type_infos).
 			% The word just contains the address of the
 			% specified procedure.
-	;	base_type_info_constant(string, string, int)
+	;	base_type_info_constant(module_name, string, arity)
 			% This is how we refer to base_type_info structures
-			% represented as global data. The two strings are
-			% the name of the module the type is defined in
-			% and the name of the type, while the integer is
-			% the arity.
-	;	base_typeclass_info_constant(string, class_id, string)
+			% represented as global data. The args are
+			% the name of the module the type is defined in,
+			% and the name of the type, and its arity.
+	;	base_typeclass_info_constant(module_name, class_id, string)
 			% This is how we refer to base_typeclass_info structures
 			% represented as global data. The first argument is the
 			% name of the module containing the instance declration,

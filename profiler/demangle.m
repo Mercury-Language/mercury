@@ -1,6 +1,6 @@
 %-----------------------------------------------------------------------------%
 %
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %
@@ -183,18 +183,6 @@ demangle_proc -->
 	),
 
 	%
-	% Separate the module name from the type name for the compiler
-	% generated predicates.
-	%
-	( { Category0 \= ordinary } ->
-		remove_prefix("_"),
-		remove_maybe_module_prefix(MaybeModule),
-		{ MaybeModule \= yes("") }
-	;
-		remove_maybe_module_prefix(MaybeModule)
-	),
-
-	%
 	% Make sure special predicates with unused_args 
 	% are reported correctly.
 	%
@@ -203,6 +191,20 @@ demangle_proc -->
 		remove_trailing_int(Arity)
 	;
 		{ true }
+	),
+
+	%
+	% Separate the module name from the type name for the compiler
+	% generated predicates.
+	%
+	( { Category0 \= ordinary } ->
+		remove_prefix("_"),
+		remove_maybe_module_prefix(MaybeModule,
+			["IntroducedFrom__"]),
+		{ MaybeModule \= yes("") }
+	;
+		remove_maybe_module_prefix(MaybeModule,
+			["IntroducedFrom__"])
 	),
 
 	%
@@ -220,7 +222,7 @@ demangle_proc -->
 		;
 			{ fail }
 		),
-		remove_maybe_module_prefix(MPredName),
+		remove_maybe_pred_name(MPredName),
 		{ MPredName = yes(PredName) },
 		remove_int(Line),
 		remove_prefix("__"),
@@ -303,7 +305,9 @@ format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
 :- mode demangle_data(in, out) is semidet.
 demangle_data -->
 	remove_prefix("mercury_data_"),
-	remove_maybe_module_prefix(MaybeModule0),
+	remove_maybe_module_prefix(MaybeModule0,
+		["base_type_info_", "base_type_layout_",
+		"base_type_functors_", "common_"]),
 	{ MaybeModule0 = yes("") ->
 		MaybeModule = no
 	;
@@ -470,18 +474,53 @@ digit('9', 9).
 
 /*---------------------------------------------------------------------------*/
 
-:- pred remove_maybe_module_prefix(maybe(string), string, string).
-:- mode remove_maybe_module_prefix(out, in, out) is det.
-remove_maybe_module_prefix(MaybeModule, String0, String) :-
-	( string__sub_string_search(String0, "__", Index) ->
+:- pred remove_maybe_module_prefix(maybe(string), list(string), string, string).
+:- mode remove_maybe_module_prefix(out, in, in, out) is det.
+remove_maybe_module_prefix(MaybeModule, StringsToStopAt, String0, String) :-
+	(
+		list__member(StopString, StringsToStopAt),
+		string__prefix(String0, StopString)
+	->
+		MaybeModule = no,
+		String = String0
+	;
+		string__sub_string_search(String0, "__", Index)
+	->
 		string__left(String0, Index, Module),
 		string__length(String0, Len),
 		Index2 is Index + 2,
-		string__substring(String0, Index2, Len, String),
-		MaybeModule = yes(Module)
+		string__substring(String0, Index2, Len, String1),
+		(
+			remove_maybe_module_prefix(yes(SubModule),
+				StringsToStopAt, String1, String2)
+		->
+			string__append_list([Module, ":", SubModule],
+				QualifiedModule),
+			MaybeModule = yes(QualifiedModule),
+			String = String2
+		;
+			MaybeModule = yes(Module),
+			String = String1
+		)
 	;
 		String = String0,
 		MaybeModule = no
+	).
+
+:- pred remove_maybe_pred_name(maybe(string), string, string).
+:- mode remove_maybe_pred_name(out, in, out) is det.
+remove_maybe_pred_name(MaybePredName, String0, String) :-
+	(
+		string__sub_string_search(String0, "__", Index)
+	->
+		string__left(String0, Index, PredName),
+		string__length(String0, Len),
+		Index2 is Index + 2,
+		string__substring(String0, Index2, Len, String),
+		MaybePredName = yes(PredName)
+	;
+		String = String0,
+		MaybePredName = no
 	).
 
 :- pred maybe_remove_prefix(string, string, string).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -217,7 +217,7 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds_module, list, llds, prog_data.
 
 :- pred base_type_layout__generate_hlds(module_info, module_info).
 :- mode base_type_layout__generate_hlds(in, out) is det.
@@ -234,14 +234,14 @@
 
 :- implementation.
 
-:- import_module prog_data, hlds_data, hlds_pred, hlds_out, type_util.
-:- import_module llds, code_util, globals, options, special_pred, prog_util.
-:- import_module assoc_list, bool, string, int, list, map, std_util, require.
+:- import_module hlds_data, hlds_pred, hlds_out, type_util.
+:- import_module code_util, globals, options, special_pred, prog_util.
+:- import_module assoc_list, bool, string, int, map, std_util, require.
 :- import_module term.
 
 :- type layout_info 	--->	
 	layout_info(
-		string,		% module name
+		module_name,	% module name
 		cons_table,	% ctor table
 		int,		% number of tags available
 		int,		% next available label 
@@ -274,7 +274,7 @@ base_type_layout__generate_hlds(ModuleInfo0, ModuleInfo) :-
 	% base_gen_layout for each.
 
 :- pred base_type_layout__gen_base_gen_layouts(list(type_id), type_table, 
-	string, module_info, list(base_gen_layout)).
+	module_name, module_info, list(base_gen_layout)).
 :- mode base_type_layout__gen_base_gen_layouts(in, in, in, in, out) is det.
 
 base_type_layout__gen_base_gen_layouts([], _, _, _, []).
@@ -1089,7 +1089,7 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 
 			type_is_higher_order(Type, _PredFunc, _TypeArgs)
 		->
-			TypeModule = "",
+			TypeModule = unqualified(""),
 			TypeName = "pred",
 			Arity = 0,
 			TypeId = _QualTypeName - RealArity,
@@ -1097,7 +1097,8 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 		;
 			TypeId = QualTypeName - Arity,
 			unqualify_name(QualTypeName, TypeName),
-			sym_name_get_module_name(QualTypeName, "", TypeModule),
+			sym_name_get_module_name(QualTypeName, unqualified(""),
+					TypeModule),
 			RealArityArg = []
 		),
 		Pseudo0 = yes(const(data_addr_const(data_addr(TypeModule,
@@ -1229,7 +1230,7 @@ base_type_layout__get_cons_args(LayoutInfo, ConsId, TypeArgs) :-
 
 	% access to the base_type_layout data structure.
 
-:- pred base_type_layout__get_module_name(layout_info, string).
+:- pred base_type_layout__get_module_name(layout_info, module_name).
 :- mode base_type_layout__get_module_name(in, out) is det.
 base_type_layout__get_module_name(LayoutInfo, ModuleName) :-
 	LayoutInfo = layout_info(ModuleName, _, _, _, _, _).

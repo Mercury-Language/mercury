@@ -55,7 +55,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, hlds_out, type_util, instmap.
 :- import_module code_util, globals, make_hlds, mercury_to_mercury, mode_util.
 :- import_module options, prog_data, prog_out, quantification, special_pred.
-:- import_module passes_aux, inst_match.
+:- import_module passes_aux, inst_match, modules.
 
 :- import_module assoc_list, bool, char, int, list, map, require.
 :- import_module set, std_util, string, term, varset. 
@@ -98,7 +98,8 @@ unused_args__process_module(ModuleInfo0, ModuleInfo) -->
 	globals__io_lookup_bool_option(make_optimization_interface, MakeOpt),
 	( { MakeOpt = yes } ->
 		{ module_info_name(ModuleInfo0, ModuleName) },
-		{ string__append(ModuleName, ".opt.tmp", OptFileName) },
+		{ module_name_to_file_name(ModuleName, BaseFileName) },
+		{ string__append(BaseFileName, ".opt.tmp", OptFileName) },
 		io__open_append(OptFileName, OptFileRes),
 		( { OptFileRes = ok(OptFile) } ->
 			{ MaybeOptFile = yes(OptFile) }
@@ -929,9 +930,11 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 		type_util__type_id_name(ModuleInfo, TypeId, TypeName),
 		type_util__type_id_arity(ModuleInfo, TypeId, TypeArity),
 		string__int_to_string(TypeArity, TypeAr),
-		string__append_list(
-			[Name0, "_", TypeModule, "__", TypeName, "_", TypeAr],
-			Name1)
+		prog_out__sym_name_to_string(TypeModule, TypeModuleString0),
+		string__replace_all(TypeModuleString0, ":", "__",
+			TypeModuleString),
+		string__append_list( [Name0, "_", TypeModuleString, "__",
+			TypeName, "_", TypeAr], Name1)
 	;
 		Name1 = Name0
 	),
@@ -956,7 +959,8 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	% Replace the goal in the procedure with one to call the given
 	% pred_id and proc_id.
 :- pred create_call_goal(list(int)::in, pred_id::in, proc_id::in,
-		string::in, string::in, proc_info::in, proc_info::out) is det.
+		module_name::in, string::in, proc_info::in, proc_info::out)
+		is det.
 
 create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 		PredName, OldProc0, OldProc) :-
@@ -1534,14 +1538,14 @@ report_unused_args(PredInfo, UnusedArgs) -->
 	hlds_out__write_pred_or_func(PredOrFunc),
 	io__write_string(" `"),
 	{ pred_info_module(PredInfo, Module) },
-	io__write_string(Module),
+	prog_out__write_sym_name(Module),
 	io__write_string(":"),
 	{ pred_info_name(PredInfo, Name) },
 	io__write_string(Name), 
-	io__write_string(("'/")),
+	io__write_string("/"),
 	{ pred_info_arity(PredInfo, Arity) },
 	io__write_int(Arity),
-	io__write_string(":\n"),
+	io__write_string("':\n"),
 	prog_out__write_context(Context),
 	io__write_string("  warning: "),   
 	(

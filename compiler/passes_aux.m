@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, prog_data.
-:- import_module io.
+:- import_module io, std_util, list, bool.
 
 %-----------------------------------------------------------------------------%
 
@@ -128,7 +128,7 @@ about unbound type variables.
 
 :- import_module options, globals, hlds_out, prog_out, mode_util.
 :- import_module mercury_to_mercury.
-:- import_module bool, int, map, tree234, std_util, require, list.
+:- import_module int, map, tree234, require.
 :- import_module varset.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->

@@ -21,14 +21,15 @@
 
 :- interface.
 
-:- import_module hlds_pred, unify_proc, special_pred.
-:- import_module relation, globals, continuation_info.
+:- import_module hlds_pred, hlds_data, prog_data, unify_proc, special_pred.
+:- import_module globals, llds, continuation_info.
+:- import_module relation, map, std_util, list, set.
 
 :- implementation.
 
-:- import_module hlds_data, hlds_out, llds, prog_data, prog_util.
+:- import_module hlds_out, prog_out, prog_data, prog_util.
 :- import_module typecheck.
-:- import_module bool, require, int, string, list, map, set, std_util.
+:- import_module bool, require, int, string, set.
 
 %-----------------------------------------------------------------------------%
 
@@ -55,7 +56,7 @@
 :- type base_gen_info
 	--->	base_gen_info(
 			type_id,
-			string,		% module name
+			module_name,	% module name
 			string,		% type name
 			int,		% type arity
 			import_status,	% of the type
@@ -73,7 +74,7 @@
 :- type base_gen_layout
 	--->	base_gen_layout(
 			type_id,
-			string,		% module name
+			module_name,	% module name
 			string,		% type name
 			int,		% type arity
 			import_status,	% of the type
@@ -89,7 +90,7 @@
 	% Create an empty module_info for a given module name (and the
 	% global options).
 
-:- pred module_info_init(string, globals, module_info).
+:- pred module_info_init(module_name, globals, module_info).
 :- mode module_info_init(in, in, out) is det.
 
 :- pred module_info_get_predicate_table(module_info, predicate_table).
@@ -164,7 +165,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_info_name(module_info, string).
+:- pred module_info_name(module_info, module_name).
 :- mode module_info_name(in, out) is det.
 
 :- pred module_info_globals(module_info, globals).
@@ -348,7 +349,7 @@
 	maybe(dependency_info), module_info).
 :- mode module_info_set_maybe_dependency_info(in, in, out) is det.
 
-:- pred module_sub_get_name(module_sub_info, string).
+:- pred module_sub_get_name(module_sub_info, module_name).
 :- mode module_sub_get_name(in, out) is det.
 
 :- pred module_sub_get_globals(module_sub_info, globals).
@@ -452,7 +453,7 @@
 
 :- type module_sub_info
 	--->	module_sub(
-			string,		% module name
+			module_name,	% module name
 			globals, 	% global options
 			c_header_info,
 			c_body_info,
@@ -502,7 +503,7 @@ module_info_init(Name, Globals, ModuleInfo) :-
 
 % :- type module_sub_info
 %	--->	module_sub(
-% A			string,		% module name
+% A			module_name,	% module name
 % B			globals, 	% global options
 % C			c_header_info,
 % D			c_body_info,
@@ -1160,10 +1161,16 @@ hlds_dependency_info_set_dependency_ordering(DepInfo0, B, DepInfo) :-
 	% When searching for functions, the arity used
 	% is the arity of the function, not the arity N+1 predicate
 	% that it gets converted to.
-	% Note that in cases (b) and (c) there should be at most
-	% one matching pred_id, since under the current overloading
-	% rules each predicate or function can be uniquely identified
+	%
+	% Note that in cases (b) and (c) it was previously the case
+	% that there could only be one matching pred_id, since
+	% each predicate or function could be uniquely identified
 	% by its module, name, arity, and category (function/predicate).
+	% However this is no longer true, due to nested modules.
+	% (For example, `pred foo:bar/2' might match both
+	% `pred mod1:foo:bar/2' and `pred mod2:foo:bar/2').
+	% I hope it doesn't break anything too badly...
+	%
 	% (`m_n_a' here is short for "module, name, arity".)
 
 :- pred predicate_table_search_m_n_a(predicate_table, module_name, string,
@@ -1353,7 +1360,7 @@ predicate_table_remove_predicate(PredicateTable0, PredId, PredicateTable) :-
 			PredN0, PredNA0, PredMNA0, FuncN, FuncNA, FuncMNA)
 	).
 
-:- pred predicate_table_remove_from_index(string, string, int, pred_id, 
+:- pred predicate_table_remove_from_index(module_name, string, int, pred_id, 
 		name_index, name_index, name_arity_index, name_arity_index, 
 		module_name_arity_index, module_name_arity_index).
 :- mode predicate_table_remove_from_index(in, in, in, in, in, out, 
@@ -1382,7 +1389,7 @@ do_remove_from_index(Index0, T, PredId, Index) :-
 	).
 
 :- pred	do_remove_from_m_n_a_index(module_name_arity_index, 
-		string, string, int, pred_id, module_name_arity_index).
+		module_name, string, int, pred_id, module_name_arity_index).
 :- mode do_remove_from_m_n_a_index(in, in, in, in, in, out) is det.
 
 do_remove_from_m_n_a_index(MNA0, Module, Name, Arity, PredId, MNA) :-
@@ -1769,20 +1776,11 @@ get_pred_id_and_proc_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	list__length(ArgTypes, Arity),
 	(
-		(
-			% In this case there is no overloading to resolve,
-			% so just look up the pred_id. 
-			SymName = qualified(Module, Name),
-			predicate_table_search_pf_m_n_a(PredicateTable,
-				PredOrFunc, Module, Name, Arity, [PredId0])
-		;
-			% Resolve overloading using the arguments types. 
-			SymName = unqualified(Name),
-			predicate_table_search_pf_name_arity(PredicateTable,
-				PredOrFunc, Name, Arity, PredIds),
-			typecheck__find_matching_pred_id(PredIds, ModuleInfo,
-				TVarSet, ArgTypes, PredId0, _PredName)
-		)
+		predicate_table_search_pf_sym_arity(PredicateTable,
+			PredOrFunc, SymName, Arity, PredIds),
+		% Resolve overloading using the argument types. 
+		typecheck__find_matching_pred_id(PredIds, ModuleInfo,
+			TVarSet, ArgTypes, PredId0, _PredName)
 	->
 		PredId = PredId0,
 		get_proc_id(PredicateTable, PredId, ProcId)
@@ -1790,7 +1788,7 @@ get_pred_id_and_proc_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
 		% Undefined/invalid pred or func.
 		% the type-checker should ensure that this never happens
 		hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
-		unqualify_name(SymName, Name2),
+		prog_out__sym_name_to_string(SymName, Name2),
 		string__int_to_string(Arity, ArityString),
 		string__append_list(
 			["get_pred_id_and_proc_id: ",

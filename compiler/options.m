@@ -74,6 +74,7 @@
 	% Output options
 		;	make_short_interface
 		;	make_interface
+		;	make_private_interface
 		;	make_optimization_interface
 		;	make_transitive_opt_interface
 		;	generate_dependencies
@@ -339,6 +340,7 @@ option_defaults_2(output_option, [
 	generate_module_order 	-	bool(no),
 	make_short_interface	-	bool(no),
 	make_interface		-	bool(no),
+	make_private_interface	-	bool(no),
 	make_optimization_interface -	bool(no),
 	make_transitive_opt_interface -	bool(no),
 	convert_to_mercury 	-	bool(no),
@@ -635,6 +637,8 @@ long_option("make-short-interface",	make_short_interface).
 long_option("make-short-int",		make_short_interface).
 long_option("make-interface",		make_interface).
 long_option("make-int",			make_interface).
+long_option("make-private-interface",	make_private_interface).
+long_option("make-priv-int",		make_private_interface).
 long_option("make-optimization-interface",
 					make_optimization_interface).
 long_option("make-optimisation-interface",
@@ -1249,6 +1253,9 @@ options_help_output -->
 	io__write_string("\t\tWrite the module interface to `<module>.int',\n"),
 	io__write_string("\t\tand write the short interface to `<module>.int2'\n"),
 	io__write_string("\t\tThis option should only be used by mmake.\n"),
+	io__write_string("\t--make-priv-int, --make-private-interface\n"),
+	io__write_string("\t\tWrite the private interface to `<module>.int0'.\n"),
+	io__write_string("\t\tThis option should only be used by mmake.\n"),
 	io__write_string("\t--make-short-int, --make-short-interface\n"),
 	io__write_string("\t\tWrite the unqualified short interface to `<module>.int3'.\n"),
 	io__write_string("\t\tThis option should only be used by mmake.\n"),
@@ -1260,6 +1267,7 @@ options_help_output -->
 	io__write_string("\t--make-transitive-optimization-interface\n"),
 	io__write_string("\t\tOutput transitive optimization information\n"),
 	io__write_string("\t\tinto the `<module>.trans_opt' file.\n"),
+	io__write_string("\t\tThis option should only be used by mmake.\n"),
 	io__write_string("\t-G, --convert-to-goedel\n"),
 	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'.\n"),
 	io__write_string("\t\tNote that some Mercury language constructs cannot\n"),

@@ -28,8 +28,9 @@
 
 :- interface.
 
-:- import_module common, hlds_pred, det_report, det_util, instmap.
-:- import_module io.
+:- import_module hlds_goal, hlds_module, hlds_pred, det_report, det_util.
+:- import_module common, instmap.
+:- import_module io, bool, map, term, varset.
 
 :- pred simplify__proc(simplify, pred_id, proc_id, module_info, module_info,
 	proc_info, proc_info, int, int, io__state, io__state).
@@ -64,10 +65,10 @@
 :- import_module hlds_out.
 
 :- import_module code_aux, det_analysis, follow_code, goal_util, const_prop.
-:- import_module hlds_module, hlds_goal, hlds_data, (inst), inst_match.
+:- import_module hlds_module, hlds_data, (inst), inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes, purity.
-:- import_module bool, list, set, map, require, std_util, term, varset, int.
+:- import_module set, list, require, std_util, int.
 
 %-----------------------------------------------------------------------------%
 
@@ -1407,6 +1408,8 @@ simplify_info_init(DetInfo, Simplify, InstMap, VarSet, VarTypes, Info) :-
 
 	% exported for common.m
 :- interface.
+:- import_module set, std_util.
+:- import_module prog_data, det_util, instmap.
 
 :- pred simplify_info_get_det_info(simplify_info::in, det_info::out) is det.
 :- pred simplify_info_get_msgs(simplify_info::in, set(det_msg)::out) is det.

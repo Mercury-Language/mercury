@@ -25,8 +25,9 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data.
+:- import_module hlds_module, hlds_data, prog_out.
 :- import_module code_gen, unify_gen, code_util, code_aux, opt_util.
+
 :- import_module bool, set, int, std_util, tree, list, assoc_list, require.
 :- import_module string, term.
 
@@ -183,8 +184,10 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 				- "test on upward loop"]
 	;
 		predicate_module(ModuleInfo, PredId, ModuleName),
+		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
 		predicate_name(ModuleInfo, PredId, PredName),
-		string__append_list([ModuleName, ":", PredName], PushMsg),
+		string__append_list([ModuleNameString, ":", PredName],
+			PushMsg),
 		MaybeIncrSp = [incr_sp(FrameSize, PushMsg) - ""],
 		MaybeDecrSp = [decr_sp(FrameSize) - ""],
 		InitAuxReg =  [assign(AuxReg, lval(sp))

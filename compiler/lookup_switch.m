@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,7 +42,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_data, llds, switch_gen, code_info.
-:- import_module list, term.
+:- import_module std_util, map, set, list, term.
 
 :- type case_consts == list(pair(int, list(rval))).
 
@@ -67,8 +67,9 @@
 
 :- implementation.
 
-:- import_module set, code_gen, type_util, map, tree, int, std_util, require.
-:- import_module dense_switch, bool, assoc_list, globals, options, mode_util.
+:- import_module int, require, bool, assoc_list.
+:- import_module code_gen, type_util, tree.
+:- import_module dense_switch, globals, options, mode_util.
 :- import_module exprn_aux, getopt, prog_data, instmap.
 
 	% Most of this predicate is taken from dense_switch.m

@@ -128,10 +128,11 @@ Each Mercury source file must contain a single Mercury module
 whose name should be the same as the filename without
 the @samp{.m} extension.
 
-Files ending in @file{.int}, @file{.int2} and @file{.int3} are interface files;
-these are generated automatically by the compiler,
-using the @samp{--make-interface} (or @samp{--make-int})
-and @samp{--make-short-interface} (or @samp{--make-short-int}) options.
+Files ending in @file{.int}, @file{.int0}, @file{.int2} and @file{.int3}
+are interface files; these are generated automatically by the compiler,
+using the @samp{--make-interface} (or @samp{--make-int}),
+@samp{--make-private-interface} (or @samp{--make-priv-int}),
+@samp{--make-short-interface} (or @samp{--make-short-int}) options.
 Files ending in @file{.opt} are
 interface files used in inter-module optimization,
 and are created using the @samp{--make-optimization-interface}
@@ -142,11 +143,12 @@ transitive inter-module optimization, and are created using the
 (or @samp{--make-trans-opt-int}) option.
 
 Since the interface of a module changes less often than its implementation,
-the @file{.int}, @file{.int2}, @file{.int3}, @file{.opt}, and @file{.trans_opt}
-files will remain unchanged on many compilations.
+the @file{.int}, @file{.int0}, @file{.int2}, @file{.int3}, @file{.opt},
+and @file{.trans_opt} files will remain unchanged on many compilations.
 To avoid unnecessary recompilations of the clients of the module,
 the timestamps on the these files are updated only if their contents change.
-@file{.date}, @file{.date3}, @file{.optdate}, and @file{.trans_opt_date}
+@file{.date}, @file{.date0}, @file{.date3}, @file{.optdate},
+and @file{.trans_opt_date}
 files associated with the module are used as date stamps;
 they are used when deciding whether the interface files need to be regenerated.
 
@@ -807,9 +809,10 @@ or its imported modules.
 @item @var{main-module}.realclean
 Removes all the automatically generated files.
 In addition to the files removed by @var{main-module}.clean, this
-removes the @samp{.date}, @samp{.int}, @samp{.int2}, @samp{.int3},
-@samp{.opt}, @samp{.optdate}, @samp{.date3},
-@samp{.trans_opt}, @samp{.trans_opt_date},
+removes the @samp{.int}, @samp{.int0}, @samp{.int2},
+@samp{.int3}, @samp{.opt}, @samp{.trans_opt},
+@samp{.date}, @samp{.date0}, @samp{.date3}, @samp{.optdate},
+@samp{.trans_opt_date},
 @samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
 and also the various possible executables for the program ---
 @samp{@var{main-module}},
@@ -1589,6 +1592,12 @@ Also write the short interface to @file{@var{module}.int2}.
 @itemx --make-short-interface
 Write the unqualified version of the short interface to
 @file{@var{module}.int3}.
+
+@sp 1
+@item --make-priv-int
+@itemx --make-private-interface
+Write the module's private interface (used for compiling
+nested sub-modules) to @file{@var{module}.int0}.
 
 @sp 1
 @item --make-opt-int

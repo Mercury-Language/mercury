@@ -18,7 +18,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, globals.
 :- import_module instmap.
-:- import_module bool, set, list.
+:- import_module bool, set, list, term.
 
 :- type maybe_changed	--->	changed ; unchanged.
 
@@ -89,7 +89,7 @@
 :- implementation.
 
 :- import_module inst_match, mode_util, type_util, options.
-:- import_module map, term, require, std_util.
+:- import_module map, require, std_util.
 
 update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),

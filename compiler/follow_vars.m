@@ -29,7 +29,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds_module, hlds_pred, hlds_goal.
 
 :- pred find_final_follow_vars(proc_info, follow_vars).
 :- mode find_final_follow_vars(in, out) is det.
@@ -43,7 +43,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, llds, mode_util.
+:- import_module hlds_data, llds, mode_util.
 :- import_module code_util, quantification, arg_info, globals.
 :- import_module bool, list, map, set, std_util, term, require.
 

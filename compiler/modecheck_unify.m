@@ -20,8 +20,8 @@
 :- module modecheck_unify.
 :- interface.
 
-:- import_module hlds_goal, mode_info, modes.
-:- import_module term.
+:- import_module hlds_goal, hlds_data, prog_data, mode_info, modes.
+:- import_module map, term, list.
 
 	% Modecheck a unification
 :- pred modecheck_unification( var, unify_rhs, unification, unify_context,
@@ -49,12 +49,14 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module llds, prog_data, prog_util, type_util, module_qual, instmap.
-:- import_module hlds_module, hlds_goal, hlds_pred, hlds_data, hlds_out.
+
+:- import_module llds, prog_util, type_util, module_qual, instmap.
+:- import_module hlds_module, hlds_goal, hlds_pred, hlds_out.
 :- import_module mode_debug, mode_util, mode_info, modes, mode_errors.
 :- import_module inst_match, inst_util, unify_proc, code_util, unique_modes.
 :- import_module typecheck, modecheck_call, (inst), quantification.
-:- import_module bool, list, std_util, int, map, set, require, varset.
+
+:- import_module bool, std_util, int, set, require, varset.
 :- import_module string, assoc_list.
 
 %-----------------------------------------------------------------------------%

@@ -41,7 +41,8 @@ in the general case.
 :- module inst_util.
 :- interface.
 
-:- import_module hlds_module, prog_data, (inst).
+:- import_module hlds_module, hlds_data, prog_data, (inst).
+:- import_module list.
 
 :- pred abstractly_unify_inst(is_live, inst, inst, unify_is_real, module_info,
 				inst, determinism, module_info).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
 
 :- interface.
 
-:- import_module prog_data, (inst).
+:- import_module prog_data, hlds_data, (inst).
 :- import_module list, term, io.
 
 :- type maybe2(T1, T2)	--->	error(string, term)
@@ -96,7 +96,7 @@
 
 :- implementation.
 
-:- import_module prog_io_goal, hlds_data, hlds_pred, options, globals.
+:- import_module prog_io, prog_io_goal, hlds_pred, options, globals.
 :- import_module bool, string, std_util.
 
 add_context(error(M, T), _, error(M, T)).

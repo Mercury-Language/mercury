@@ -17,8 +17,9 @@
 
 :- interface.
 
-:- import_module hlds_data, prog_data, mode_info, (inst).
-:- import_module set, assoc_list.
+:- import_module hlds_data, hlds_pred, hlds_module, hlds_goal.
+:- import_module prog_data, mode_info, (inst).
+:- import_module bool, set, assoc_list, term, list.
 
 %-----------------------------------------------------------------------------%
 
@@ -163,10 +164,10 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_out.
+:- import_module hlds_out.
 :- import_module mode_info, mode_util, prog_out, mercury_to_mercury.
 :- import_module options, globals.
-:- import_module bool, int, list, map, io, term, term_io, varset.
+:- import_module int, map, io, term_io, varset.
 :- import_module std_util, require.
 
 	% just dispatch on the diffferent sorts of mode errors

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,7 +36,8 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, list, varset, assoc_list, options.
+:- import_module hlds_goal, llds, options.
+:- import_module map, set, list, term, varset, assoc_list.
 
 :- type exprn_info.
 
@@ -244,7 +245,7 @@
 :- implementation.
 
 :- import_module exprn_aux, tree.
-:- import_module bool, map, bag, set, require, int, term, string, std_util.
+:- import_module bool, bag, require, int, term, string, std_util.
 
 :- type var_stat	--->	evaled(set(rval))
 			;	cached(rval).

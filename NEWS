@@ -238,6 +238,23 @@ Changes to the Mercury language:
 * Mode inference can now infer "mostly-unique" modes as well as
   "unique" modes.
 
+* The module system now includes support for logically nested sub-modules
+  with separate compilation.
+
+  The aim of this extension is to provide better support for structuring
+  large software packages.
+
+  Modules may now contain `:- include_module' declarations.
+  If a module `foo' contains an `include_module bar' declaration,
+  this specifies that module `foo' contains the sub-module `foo:bar'.
+  Since a sub-module is logically part of the containing module,
+  it has access to all the entities declared in or imported into
+  the containing module, including those declared in the implementation
+  section.
+
+  See the "Modules" chapter of the Mercury language reference manual for
+  details.
+
 * We've made more improvements to the C interface.
 
   The C interface now includes support for defining procedures
