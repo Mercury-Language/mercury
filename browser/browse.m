@@ -31,12 +31,14 @@
 :- mode browse__init_state(out, di, uo) is det.
 
 	% The interactive term browser.
-:- pred browse__browse(T, browser_state, browser_state, io__state, io__state).
-:- mode browse__browse(in, in, out, di, uo) is det.
+:- pred browse__browse(T, io__input_stream, io__output_stream,
+			browser_state, browser_state, io__state, io__state).
+:- mode browse__browse(in, in, in, in, out, di, uo) is det.
 
 	% The non-interactive term browser.
-:- pred browse__print(T, browser_state, io__state, io__state).
-:- mode browse__print(in, in, di, uo) is det.
+:- pred browse__print(T, io__output_stream, browser_state,
+			io__state, io__state).
+:- mode browse__print(in, in, in, di, uo) is det.
 
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -50,23 +52,26 @@
 % they are used in trace/mercury_trace_browser.c.
 %
 
-:- pragma export(browse__init_state(out, di, uo), "ML_BROWSE_init_state").
-:- pragma export(browse__browse(in, in, out, di, uo), "ML_BROWSE_browse").
-:- pragma export(browse__print(in, in, di, uo), "ML_BROWSE_print").
+:- pragma export(browse__init_state(out, di, uo),
+	"ML_BROWSE_init_state").
+:- pragma export(browse__browse(in, in, in, in, out, di, uo),
+	"ML_BROWSE_browse").
+:- pragma export(browse__print(in, in, in, di, uo),
+	"ML_BROWSE_print").
 :- pragma export(browse__browser_state_type(out),
-					"ML_BROWSE_browser_state_type").
+	"ML_BROWSE_browser_state_type").
 
 %---------------------------------------------------------------------------%
 
 browse__init_state(State) -->
-	default_state(State).
+	{ default_state(State) }.
 
 % return the type_info for a browser_state type
 :- pred browse__browser_state_type(type_info).
 :- mode browse__browser_state_type(out) is det.
 
 browse__browser_state_type(Type) :-
-	dummy_state(State),
+	default_state(State),
 	Type = type_of(State).
 
 %---------------------------------------------------------------------------%
@@ -74,9 +79,11 @@ browse__browser_state_type(Type) :-
 % Non-interactive display
 %
 
-browse__print(Term, State0) -->
+browse__print(Term, OutputStream, State0) -->
 	{ set_term(Term, State0, State) },
-	browse__print(State).
+	io__set_output_stream(OutputStream, OldStream),
+	browse__print(State),
+	io__set_output_stream(OldStream, _).
 
 :- pred browse__print(browser_state, io__state, io__state).
 :- mode browse__print(in, di, uo) is det.
@@ -93,15 +100,12 @@ browse__print(State) -->
 	{ get_term(State, Univ) },
 	{ term_size(Univ, Size) },
 	{ max_print_size(MaxSize) },
-	{ get_output_stream(State, OutStream) },
-	io__set_output_stream(OutStream, OldStream),
 	( { Size =< MaxSize } ->
 		io__write_univ(Univ),
 		io__nl
 	;
 		portray_fmt(State, flat)
-	),
-	io__set_output_stream(OldStream, _).
+	).
 
 	% The maximum estimated size for which we use `io__write'.
 :- pred max_print_size(int::out) is det.
@@ -128,17 +132,15 @@ term_size(Univ, TotalSize) :-
 % Interactive display
 %
 
-browse__browse(Object, State0, State) -->
+browse__browse(Object, InputStream, OutputStream, State0, State) -->
 	{ type_to_univ(Object, Univ) },
 	{ set_term(Univ, State0, State1) },
-	{ get_output_stream(State1, OutStream) },
-	{ get_input_stream(State1, InStream) },
-	io__set_output_stream(OutStream, OldOutStream),
-	io__set_input_stream(InStream, OldInStream),
+	io__set_input_stream(InputStream, OldInputStream),
+	io__set_output_stream(OutputStream, OldOutputStream),
 	% startup_message,
 	browse_main_loop(State1, State),
-	io__set_output_stream(OldOutStream, _),
-	io__set_input_stream(OldInStream, _).
+	io__set_input_stream(OldInputStream, _),
+	io__set_output_stream(OldOutputStream, _).
 
 :- pred browse_main_loop(browser_state, browser_state, io__state, io__state).
 :- mode browse_main_loop(in, out, di, uo) is det.
@@ -673,125 +675,86 @@ deref_subterm_2(Univ, Path, SubUniv) :-
 			list(dir),	% root rel `present working directory'
 			portray_format,	% format for ls.
 			int,	% X clipping for verbose display
-			int,	% Y clipping for verbose display
-			io__input_stream, % read input from here
-			io__output_stream % write output to here
+			int	% Y clipping for verbose display
 		).
 
 	% access predicates
 
-:- pred default_state(browser_state, io__state, io__state).
-:- mode default_state(out, di, uo) is det.
-default_state(State) -->
+:- pred default_state(browser_state).
+:- mode default_state(out) is det.
+default_state(State) :-
 	% We need to supply an object to initialize the state,
 	% but this object won't be used, since the first call
 	% to browse__browse will overwrite it.  So we just supply
 	% a dummy object -- it doesn't matter what its type or value is.
-	{ DummyObject = "" },
-	{ type_to_univ(DummyObject, Univ) },
-	{ default_depth(DefaultDepth) },
-	io__stdout_stream(StdOut),
-	io__stdin_stream(StdIn),
-	{ State = browser_state(Univ, 3, DefaultDepth, [], verbose, 79, 25,
-		StdIn, StdOut) }.
-
-	% This is simply used to provide a variable of the type
-	% browser_state.
-:- pred dummy_state(browser_state).
-:- mode dummy_state(unused) is det.
-
-dummy_state(_).
+	DummyObject = "",
+	type_to_univ(DummyObject, Univ),
+	default_depth(DefaultDepth),
+	State = browser_state(Univ, 3, DefaultDepth, [], verbose, 79, 25).
 
 :- pred get_term(browser_state, univ).
 :- mode get_term(in, out) is det.
-get_term(browser_state(Univ, _Depth, _Size, _Path, _Fmt, _X, _Y, _IS, _OS),
-	Univ).
+get_term(browser_state(Univ, _Depth, _Size, _Path, _Fmt, _X, _Y), Univ).
 
 :- pred get_depth(browser_state, int).
 :- mode get_depth(in, out) is det.
-get_depth(browser_state(_Univ, Depth, _Size, _Path, _Fmt, _X, _Y, _IS, _OS),
-	Depth).
+get_depth(browser_state(_Univ, Depth, _Size, _Path, _Fmt, _X, _Y), Depth).
 
 :- pred get_size(browser_state, int).
 :- mode get_size(in, out) is det.
-get_size(browser_state(_Univ, _Depth, Size, _Path, _Fmt, _X, _Y, _IS, _OS),
-	Size).
+get_size(browser_state(_Univ, _Depth, Size, _Path, _Fmt, _X, _Y), Size).
 
 :- pred get_clipx(browser_state, int).
 :- mode get_clipx(in, out) is det.
-get_clipx(browser_state(_Univ, _Depth, _Size, _Path, _Fmt, X, _Y, _IS, _OS),
-	X).
+get_clipx(browser_state(_Univ, _Depth, _Size, _Path, _Fmt, X, _Y), X).
 
 :- pred get_clipy(browser_state, int).
 :- mode get_clipy(in, out) is det.
-get_clipy(browser_state(_Univ, _Depth, _Size, _Path, _Fmt, _X, Y, _IS, _OS),
-	Y).
+get_clipy(browser_state(_Univ, _Depth, _Size, _Path, _Fmt, _X, Y), Y).
 
 :- pred get_dirs(browser_state, list(dir)).
 :- mode get_dirs(in, out) is det.
-get_dirs(browser_state(_Univ, _Depth, _Size, Dirs, _Fmt, _X, _Y, _IS, _OS),
-	Dirs).
+get_dirs(browser_state(_Univ, _Depth, _Size, Dirs, _Fmt, _X, _Y), Dirs).
 
 :- pred get_path(browser_state, path).
 :- mode get_path(in, out) is det.
-get_path(browser_state(_Univ, _Depth, _Size, Dirs, _Fmt, _X, _Y, _IS, _OS),
+get_path(browser_state(_Univ, _Depth, _Size, Dirs, _Fmt, _X, _Y),
 	root_rel(Dirs)).
 
 :- pred get_fmt(browser_state, portray_format).
 :- mode get_fmt(in, out) is det.
-get_fmt(browser_state(_Univ, _Depth, _Size, _Path, Fmt, _X, _Y, _IS, _OS),
-	Fmt).
-
-:- pred get_input_stream(browser_state, io__input_stream).
-:- mode get_input_stream(in, out) is det.
-get_input_stream(browser_state(_Univ, _Depth, _Size, _Path, _Fmt, _X, _Y, IS,
-	_OS), IS).
-
-:- pred get_output_stream(browser_state, io__output_stream).
-:- mode get_output_stream(in, out) is det.
-get_output_stream(browser_state(_Univ, _Depth, _Size, _Path, _Fmt, _X, _Y, _IS,
-	OS), OS).
+get_fmt(browser_state(_Univ, _Depth, _Size, _Path, Fmt, _X, _Y), Fmt).
 
 :- pred set_depth(int, browser_state, browser_state).
 :- mode set_depth(in, in, out) is det.
 set_depth(NewMaxDepth, State, NewState) :-
-	State = browser_state(Univ, _MaxDepth, MaxSize, Dirs, Fmt, X, Y, IS,
-		OS),
-	NewState = browser_state(Univ, NewMaxDepth, MaxSize, Dirs, Fmt, X, Y,
-		IS, OS).
+	State = browser_state(Univ, _MaxDepth, MaxSize, Dirs, Fmt, X, Y),
+	NewState = browser_state(Univ, NewMaxDepth, MaxSize, Dirs, Fmt, X, Y).
 
 :- pred set_size(int, browser_state, browser_state).
 :- mode set_size(in, in, out) is det.
 set_size(NewMaxSize, State, NewState) :-
-	State = browser_state(Univ, MaxDepth, _MaxSize, Dirs, Fmt, X, Y, IS,
-		OS),
-	NewState = browser_state(Univ, MaxDepth, NewMaxSize, Dirs, Fmt, X, Y,
-		IS, OS).
+	State = browser_state(Univ, MaxDepth, _MaxSize, Dirs, Fmt, X, Y),
+	NewState = browser_state(Univ, MaxDepth, NewMaxSize, Dirs, Fmt, X, Y).
 
 :- pred set_clipx(int, browser_state, browser_state).
 :- mode set_clipx(in, in, out) is det.
 set_clipx(NewX, State, NewState) :-
-	State = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, _X, Y, IS,
-		OS),
-	NewState = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, NewX, Y,
-		IS, OS).
+	State = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, _X, Y),
+	NewState = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, NewX, Y).
 
 :- pred set_clipy(int, browser_state, browser_state).
 :- mode set_clipy(in, in, out) is det.
 set_clipy(NewY, State, NewState) :-
-	State = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, X, _Y, IS,
-		OS),
-	NewState = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, X, NewY,
-		IS, OS).
+	State = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, X, _Y),
+	NewState = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, X, NewY).
 
 :- pred set_path(path, browser_state, browser_state).
 :- mode set_path(in, in, out) is det.
 set_path(NewPath, State, NewState) :-
-	State = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, X, Y, IS,
-		OS),
+	State = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, X, Y),
 	change_dir(Dirs, NewPath, NewDirs),
-	NewState = browser_state(Univ, MaxDepth, MaxSize, NewDirs, Fmt, X, Y,
-		IS, OS).
+	NewState = browser_state(Univ, MaxDepth, MaxSize, NewDirs, Fmt, X, Y).
 
 :- pred change_dir(list(dir), path, list(dir)).
 :- mode change_dir(in, in, out) is det.
@@ -807,20 +770,8 @@ change_dir(PwdDirs, Path, RootRelDirs) :-
 
 :- pred set_fmt(portray_format, browser_state, browser_state).
 :- mode set_fmt(in, in, out) is det.
-set_fmt(NewFmt, browser_state(Univ, Depth, Size, Path, _OldFmt, X, Y, IS, OS),
-	browser_state(Univ, Depth, Size, Path, NewFmt, X, Y, IS, OS)).
-
-:- pred set_input_stream(io__input_stream, browser_state, browser_state).
-:- mode set_input_stream(in, in, out) is det.
-set_input_stream(NewIS, browser_state(Univ, Depth, Size, Path, Fmt, X, Y,
-		_OldIS, OS), 
-	browser_state(Univ, Depth, Size, Path, Fmt, X, Y, NewIS, OS)).
-
-:- pred set_output_stream(io__output_stream, browser_state, browser_state).
-:- mode set_output_stream(in, in, out) is det.
-set_output_stream(NewOS, browser_state(Univ, Depth, Size, Path, Fmt, X, Y, IS,
-		_OldOS), 
-	browser_state(Univ, Depth, Size, Path, Fmt, X, Y, IS, NewOS)).
+set_fmt(NewFmt, browser_state(Univ, Depth, Size, Path, _OldFmt, X, Y),
+	browser_state(Univ, Depth, Size, Path, NewFmt, X, Y)).
 
 :- pred set_term(T, browser_state, browser_state).
 :- mode set_term(in, in, out) is det.
@@ -833,8 +784,8 @@ set_term(Term, State0, State) :-
 
 :- pred set_univ(univ, browser_state, browser_state).
 :- mode set_univ(in, in, out) is det.
-set_univ(NewUniv, browser_state(_OldUniv, Dep, Siz, Path, Fmt, X, Y, IS, OS),
-	browser_state(NewUniv, Dep, Siz, Path, Fmt, X, Y, IS, OS)).
+set_univ(NewUniv, browser_state(_OldUniv, Dep, Siz, Path, Fmt, X, Y),
+	browser_state(NewUniv, Dep, Siz, Path, Fmt, X, Y)).
 
 %---------------------------------------------------------------------------%
 %
@@ -845,7 +796,7 @@ set_univ(NewUniv, browser_state(_OldUniv, Dep, Siz, Path, Fmt, X, Y, IS, OS),
 :- mode show_settings(in, di, uo) is det.
 show_settings(State) -->
 	{ State = browser_state(_Univ, MaxDepth, MaxSize,
-		CurPath, Fmt, X, Y, _IS, _OS) },
+		CurPath, Fmt, X, Y) },
 	io__write_string("Max depth is: "), io__write_int(MaxDepth), io__nl,
 	io__write_string("Max size is: "), io__write_int(MaxSize), io__nl,
 	io__write_string("X clip is: "), io__write_int(X), io__nl,

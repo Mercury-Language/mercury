@@ -23,6 +23,7 @@
 #include "mercury_imp.h"
 #include "mercury_trace_browse.h"
 #include "mercury_trace_util.h"
+#include "mercury_trace_internal.h"
 #include "mercury_deep_copy.h"
 #include "browse.h"
 #include "std_util.h"
@@ -33,13 +34,27 @@ static	Word		MR_trace_browser_state_type;
 
 static	void		MR_trace_browse_ensure_init(void);
 
+static void
+MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
+{
+	mercury_file->file = c_file;
+	mercury_file->line_number = 1;
+}
+
 void
 MR_trace_browse(Word type_info, Word value)
 {
+	MercuryFile mdb_in, mdb_out;
+
 	MR_trace_browse_ensure_init();
+
+	MR_c_file_to_mercury_file(MR_mdb_in, &mdb_in);
+	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
+
 	MR_TRACE_CALL_MERCURY(
-		ML_BROWSE_browse(type_info, value, MR_trace_browser_state,
-			&MR_trace_browser_state);
+		ML_BROWSE_browse(type_info, value,
+			(Word) &mdb_in, (Word) &mdb_out,
+			MR_trace_browser_state, &MR_trace_browser_state);
 	);
 	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
 				(Word *) MR_trace_browser_state_type);
@@ -48,9 +63,15 @@ MR_trace_browse(Word type_info, Word value)
 void
 MR_trace_print(Word type_info, Word value)
 {
+	MercuryFile mdb_out;
+
 	MR_trace_browse_ensure_init();
+
+	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
+
 	MR_TRACE_CALL_MERCURY(
-		ML_BROWSE_print(type_info, value, MR_trace_browser_state);
+		ML_BROWSE_print(type_info, value, (Word) &mdb_out,
+			MR_trace_browser_state);
 	);
 }
 

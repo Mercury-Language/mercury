@@ -65,9 +65,9 @@
 ** information messages about conditions which are not errors, should
 ** go to MR_mdb_out, but error messages should go to MR_mdb_err.
 */
-static FILE *MR_mdb_in;
-static FILE *MR_mdb_out;
-static FILE *MR_mdb_err;
+FILE *MR_mdb_in;
+FILE *MR_mdb_out;
+FILE *MR_mdb_err;
 
 static	MR_Trace_Print_Level	MR_default_print_level = MR_PRINT_LEVEL_SOME;
 
