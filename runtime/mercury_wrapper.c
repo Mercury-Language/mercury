@@ -3,7 +3,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2003 The University of Melbourne.
+** Copyright (C) 1994-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1557,8 +1557,10 @@ MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 	MR_TypeCtorInfo type_ctor_info)
 {
 	int	i;
-
-	type_stat->type_ctor_reps[MR_type_ctor_rep(type_ctor_info)]++;
+	MR_TypeCtorRep rep;
+	
+	rep = MR_type_ctor_rep(type_ctor_info);
+	type_stat->type_ctor_reps[MR_GET_ENUM_VALUE(rep)]++;
 
 	for (i = 0; i < type_stat->type_ctor_name_next; i++) {
 		/*
@@ -1587,8 +1589,7 @@ MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 		type_ctor_info->type_ctor_module_name;
 	type_stat->type_ctor_names[i].type_stat_name =
 		type_ctor_info->type_ctor_name;
-	type_stat->type_ctor_names[i].type_stat_ctor_rep =
-		MR_type_ctor_rep(type_ctor_info);
+	type_stat->type_ctor_names[i].type_stat_ctor_rep = rep;
 	type_stat->type_ctor_names[i].type_stat_count = 1;
 	type_stat->type_ctor_name_next++;
 }
@@ -1628,8 +1629,8 @@ MR_print_one_type_ctor_stat(FILE *fp, const char *op, MR_TypeStat *type_stat)
 		fprintf(fp, "%s %s %s %s %ld\n", op,
 			type_stat->type_ctor_names[i].type_stat_module,
 			type_stat->type_ctor_names[i].type_stat_name,
-			MR_ctor_rep_name[type_stat->
-				type_ctor_names[i].type_stat_ctor_rep],
+			MR_ctor_rep_name[MR_GET_ENUM_VALUE(type_stat->
+				type_ctor_names[i].type_stat_ctor_rep)],
 			type_stat->type_ctor_names[i].type_stat_count);
 	}
 }

@@ -300,13 +300,19 @@
 		x = MR_CONVERT_C_ENUM_CONSTANT(MR_PASTE2(x, _val)), \
 		MR_PASTE2(x, _dummy) = MR_PASTE2(x, _val)
 
+	/* This is the inverse of MR_CONVERT_C_ENUM_CONSTANT */
+	#define MR_GET_ENUM_VALUE(x) \
+		MR_body((x), MR_mktag(MR_FIRST_UNRESERVED_RAW_TAG))
 #else
 
 	#define MR_CONVERT_C_ENUM_CONSTANT(x)   (x)
 
 	#define MR_DEFINE_MERCURY_ENUM_CONST(x)	x
 
+	#define MR_GET_ENUM_VALUE(x) (x)
+
 #endif
+
 
 /*
 ** For each enumeration constant defined in the runtime (not in Mercury)

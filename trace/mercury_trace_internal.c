@@ -4751,7 +4751,8 @@ MR_print_type_ctor_info(FILE *fp, MR_TypeCtorInfo type_ctor_info,
 	
 	rep = MR_type_ctor_rep(type_ctor_info);
 	if (print_rep) {
-		fprintf(fp, ": %s\n", MR_ctor_rep_name[rep]);
+		fprintf(fp, ": %s\n",
+			MR_ctor_rep_name[MR_GET_ENUM_VALUE(rep)]);
 	} else {
 		fprintf(fp, "\n");
 	}
