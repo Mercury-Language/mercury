@@ -137,6 +137,9 @@
 :- implementation.
 :- import_module int, require.
 
+% The arithmetic and comparison operators are builtins,
+% which the compiler expands inline.  We don't need to define them here.
+
 float__abs(Num, Abs) :-
 	(
 		Num =< 0.0
