@@ -37,7 +37,6 @@ PROGS=		\
 		interpreter \
 		liveness \
 		liveness2 \
-		merge_and_remove_dups \
 		mode_inf \
 		mode_inf_bug \
 		mu \
