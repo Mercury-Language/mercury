@@ -25,6 +25,14 @@ code generation:
 
 - generate better code for switches on tagged types
 
+- The followcode transformation is buggy, in that it can make valid
+  code become invalid due to determinism errors.  We need to fix
+  this by running determinism analysis once before followcode
+  to check for errors, and then running it again after followcode
+  this time ignoring any errors.  Or alternately we could put more
+  intelligence into the followcode transformation pass so that it doesn't
+  apply the transformation if it would introduce a determinism error.
+
 typechecking
 ------------
 
