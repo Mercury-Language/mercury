@@ -347,7 +347,7 @@ each of which will be useful for different classes of problems.
 The @samp{list} ADT is useful if the order of the asserted facts is important.
 The @samp{set} ADT is useful if the order is not important,
 and if the asserted facts are not key-value pairs.
-If the asserted facts are not key-value pairs,
+If the asserted facts are key-value pairs,
 you can choose among several ADTs,
 including @samp{map}, @samp{bintree}, @samp{rbtree}, and @samp{tree234}.
 We recommend the @samp{map} ADT for generic use.
