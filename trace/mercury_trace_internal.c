@@ -119,10 +119,9 @@ typedef struct {
 } MR_Var_Spec;
 
 static	void	MR_trace_internal_ensure_init(void);
-static	bool	MR_trace_internal_init_from_env(const char *env_var);
-static	bool	MR_trace_internal_init_from_file(const char *filename);
-static	bool	MR_trace_internal_init_from_env_dir(const char *env_var,
-			const char *filename);
+static	void	MR_trace_internal_init_from_env(void);
+static	void	MR_trace_internal_init_from_local(void);
+static	void	MR_trace_internal_init_from_home_dir(void);
 static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			const MR_Stack_Layout_Label *layout,
 			Word *saved_regs, MR_Event_Details *event_details,
@@ -289,95 +288,62 @@ MR_trace_internal_ensure_init(void)
 			MR_scroll_limit = n;
 		}
 
-		/*
-		** Look for an initialization file in the following places,
-		** in order:
-		** 
-		** - the file named by the MERCURY_DEBUGGER_INIT environment
-		**   variable, which can be set by the user
-		**
-		** - the file .mdbrc in the current directory
-		**
-		** - the file .mdbrc in the user's home directory
-		**
-		** - the file named by the DEFAULT_MERCURY_DEBUGGER_INIT
-		**   environment variable, which is set by the mdb script
-		**   to point to the system's default init script
-		**
-		** We stop as soon as we find and source one.
-		**
-		** XXX Several aspects of how we find these locations
-		** are too Unix specific.
-		*/
-
-		if (! (MR_trace_internal_init_from_env("MERCURY_DEBUGGER_INIT")
-		|| MR_trace_internal_init_from_file(MDBRC_FILENAME)
-		|| MR_trace_internal_init_from_env_dir("HOME", MDBRC_FILENAME)
-		|| MR_trace_internal_init_from_env(
-				"DEFAULT_MERCURY_DEBUGGER_INIT")))
-		{
-			printf("mdb: warning, "
-				"cannot find any initialization file.\n");
-		}
+		MR_trace_internal_init_from_env();
+		MR_trace_internal_init_from_local();
+		MR_trace_internal_init_from_home_dir();
 
 		MR_trace_internal_initialized = TRUE;
 	}
 }
 
-static bool
-MR_trace_internal_init_from_env(const char *env_var)
+static void
+MR_trace_internal_init_from_env(void)
 {
 	char	*init;
 
-	init = getenv(env_var);
+	init = getenv("MERCURY_DEBUGGER_INIT");
 	if (init != NULL) {
-		return MR_trace_source(init);
-	} else {
-		return FALSE;
+		(void) MR_trace_source(init);
+		/* If the source failed, the error message has been printed. */
 	}
 }
 
-static bool
-MR_trace_internal_init_from_file(const char *filename)
+static void
+MR_trace_internal_init_from_local(void)
 {
 	FILE	*fp;
 
-	if ((fp = fopen(filename, "r")) != NULL) {
+	if ((fp = fopen(MDBRC_FILENAME, "r")) != NULL) {
 		MR_trace_source_from_open_file(fp);
 		fclose(fp);
-		return TRUE;
-	} else {
-		return FALSE;
 	}
 }
 
-static bool
-MR_trace_internal_init_from_env_dir(const char *env_var, const char *filename)
+static void
+MR_trace_internal_init_from_home_dir(void)
 {
 	char	*env;
 	char	*buf;
 	int	len;
 	FILE	*fp;
 
-	env = getenv(env_var);
+	/* XXX This code is too Unix specific. */
+
+	env = getenv("HOME");
 	if (env == NULL) {
-		return FALSE;
+		return;
 	}
 
-	/* XXX This code is too Unix specific. */
-	buf = checked_malloc(strlen(env) + strlen(filename) + 2);
+	buf = checked_malloc(strlen(env) + strlen(MDBRC_FILENAME) + 2);
 	(void) strcpy(buf, env);
 	(void) strcat(buf, "/");
-	(void) strcat(buf, filename);
+	(void) strcat(buf, MDBRC_FILENAME);
 	if ((fp = fopen(buf, "r")) != NULL) {
 		MR_trace_source_from_open_file(fp);
 		fclose(fp);
-		free(buf);
-		return TRUE;
-	} else {
-		free(buf);
-		return FALSE;
 	}
+
+	free(buf);
 }
 
 static MR_Next

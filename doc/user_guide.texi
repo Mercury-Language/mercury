@@ -3172,9 +3172,27 @@ mdb @var{prog} @var{arg1} @var{arg2} ...
 because you do not get a chance
 to specify the command line of the program later.
 
-@c XXX more to come
-@c environment variables controlling debugger startup
-@c sourcing of .mdbrc files
+When the debugger starts up, as part of its initialization
+it executes commands from the following three sources, in order:
+@table @emph
+@item
+The file named by the @samp{MERCURY_DEBUGGER_INIT} environment variable.
+Usually, @samp{mdb} sets this variable to point to a file
+that provides documentation for all the debugger commands
+and defines a small set of aliases.
+However, if @samp{MERCURY_DEBUGGER_INIT} is already defined
+when @samp{mdb} is invoked, it will leave its value unchanged.
+You can use this override ability to provide alternate documentation.
+If the file named by @samp{MERCURY_DEBUGGER_INIT} cannot be read,
+@samp{mdb} will print a warning,
+since in that case, that usual online documentation will not be available.
+@item
+The file named @samp{.mdbrc} in your home directory.
+You can put your usual aliases and settings here.
+@item
+The file named @samp{.mdbrc} in the current working directory.
+You can put program-specific aliases and settings here.
+@end table
 
 @node Mercury debugger concepts
 @section Mercury debugger concepts
@@ -3903,6 +3921,12 @@ Filename of the Mercury Interpreter.
 @sp 1
 @item MERCURY_MKINIT
 Filename of the program to create the @file{*_init.c} file.
+
+@sp 1
+@item MERCURY_DEBUGGER_INIT
+Name of a file that contains startup commands for the Mercury debugger.
+This file should contain documentation for the debugger command set,
+and possibly a set of default aliases.
 
 @sp 1
 @item MERCURY_OPTIONS

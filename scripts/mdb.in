@@ -20,7 +20,7 @@ Description:
 	Otherwise, mdb will execute the command line as if the mdb prefix
 	weren't there.
 Environment variables:
-	MERCURY_OPTIONS.
+	MERCURY_OPTIONS, MERCURY_DEBUGGER_INIT.
 "
 
 case $# in
@@ -36,6 +36,6 @@ esac
 
 MERCURY_OPTIONS="$MERCURY_OPTIONS -Di"
 export MERCURY_OPTIONS
-DEFAULT_MERCURY_DEBUGGER_INIT=@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@/mdbrc
-export DEFAULT_MERCURY_DEBUGGER_INIT
+MERCURY_DEBUGGER_INIT=${MERCURY_DEBUGGER_INIT-@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@/mdbrc}
+export MERCURY_DEBUGGER_INIT
 exec "$@"
