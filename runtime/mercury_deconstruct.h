@@ -25,7 +25,7 @@ typedef struct {
     int                     num_extra_args;
     MR_Word                 *arg_values;
     MR_TypeInfo             *arg_type_infos;
-    MR_bool                    can_free_arg_type_infos;
+    MR_bool                 can_free_arg_type_infos;
 } MR_Expand_Args_Fields;
 
 typedef struct {
@@ -38,7 +38,7 @@ typedef struct {
     int                     arity;
     MR_ConstString          functor;
     MR_Expand_Args_Fields   args;
-    MR_bool                    limit_reached;
+    MR_bool                 limit_reached;
 } MR_Expand_Functor_Args_Limit_Info;
 
 typedef struct {
@@ -53,7 +53,7 @@ typedef struct {
 
 typedef struct {
     int                     arity;
-    MR_bool                    chosen_index_exists;
+    MR_bool                 chosen_index_exists;
     MR_Word                 *chosen_value_ptr;
     MR_TypeInfo             chosen_type_info;
 } MR_Expand_Chosen_Arg_Only_Info;
