@@ -960,6 +960,7 @@ Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 {
 	int i;
 	ML_Construct_Info info;
+	bool success;
 
 		/* 
 		** Get information for this functor number and
@@ -968,7 +969,7 @@ Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 	 	** succeed.
 		*/
 	save_transient_registers();
-	SUCCESS_INDICATOR = ML_get_functors_check_range(FunctorNumber,
+	success = ML_get_functors_check_range(FunctorNumber,
 				TypeInfo, &info);
 	restore_transient_registers();
 
@@ -977,7 +978,7 @@ Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 		** of type_infos for arguments.
 		*/
 
-	if (SUCCESS_INDICATOR) {
+	if (success) {
 		make_aligned_string(FunctorName, (String) (Word) 
 				info.functor_name);
 		Arity = info.arity;
@@ -986,7 +987,7 @@ Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 				TypeInfo, info.argument_vector);
 		restore_transient_registers();
 	}
-
+	SUCCESS_INDICATOR = success;
 }
 ").
 
@@ -997,13 +998,14 @@ Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 		term_vector, list_arg_type_info;
 	int i;
 	ML_Construct_Info info;
+	bool success;
 
 		/* 
 		** Check range of FunctorNum, get info for this
 		** functor.
 		*/
 	save_transient_registers();
-	SUCCESS_INDICATOR = 
+	success = 
 		ML_get_functors_check_range(FunctorNumber, TypeInfo, &info) &&
 		ML_typecheck_arguments(TypeInfo, info.arity, ArgList, 
 				info.argument_vector);
@@ -1016,7 +1018,7 @@ Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 		** the argument vector.
 		** 
 		*/
-	if (SUCCESS_INDICATOR) {
+	if (success) {
 
 		layout_entry = MR_BASE_TYPEINFO_GET_TYPELAYOUT_ENTRY(
 			MR_TYPEINFO_GET_BASE_TYPEINFO((Word *) TypeInfo), 
@@ -1101,6 +1103,7 @@ Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 	        field(mktag(0), Term, UNIV_OFFSET_FOR_DATA) = (Word) new_data;
 	}
 
+	SUCCESS_INDICATOR = success;
 }
 "). 
 
@@ -1477,6 +1480,13 @@ typedef struct ML_Expand_Info_Struct {
 
 void mercury_expand(Word* type_info, Word data_word, ML_Expand_Info *info);
 
+Word * create_type_info(Word *term_type_info, 
+	Word *arg_pseudo_type_info);
+
+").
+
+:- pragma(c_code, "
+
 static void mercury_expand_const(Word data_value, Word entry_value,
 	ML_Expand_Info *info);
 static void mercury_expand_enum(Word data_value, Word entry_value, 
@@ -1487,12 +1497,6 @@ static void mercury_expand_builtin(Word data_value, Word entry_value,
 	ML_Expand_Info *info);
 static void mercury_expand_complicated(Word data_value, Word entry_value, 
 	Word * type_info, ML_Expand_Info *info);
-static Word * create_type_info(Word *term_type_info, 
-	Word *arg_pseudo_type_info);
-
-").
-
-:- pragma(c_code, "
 
 /*
 ** Expand the given data using its type_info, find its
@@ -1994,6 +1998,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 {
 	ML_Expand_Info info;
 	Word arg_pseudo_type_info;
+	bool success;
 
 	info.need_functor = FALSE;
 	info.need_args = TRUE;
@@ -2005,8 +2010,8 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	restore_transient_registers();
 
 		/* Check range */
-	SUCCESS_INDICATOR = (ArgumentIndex > 0 && ArgumentIndex <= info.arity);
-	if (SUCCESS_INDICATOR) {
+	success = (ArgumentIndex > 0 && ArgumentIndex <= info.arity);
+	if (success) {
 
 			/* Allocate enough room for a univ */
 		incr_hp(Argument, 2);
@@ -2029,6 +2034,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 	free(info.type_info_vector);
 
+	SUCCESS_INDICATOR = success;
 
 }").
 
