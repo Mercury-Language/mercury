@@ -27,7 +27,7 @@
 
 :- implementation.
 :- import_module list, string, term, varset, term_io, require, std_util.
-:- import_module store, tr_store, map, multi_map.
+:- import_module store, tr_store, map, multi_map, assoc_list.
 :- import_module unsafe.
 
 main -->
@@ -103,7 +103,7 @@ print_solutions(VarSet, VarMap, MyGoal, Store0, Database) -->
 write_solution(VarSet0, VarToMyVarMap, MyGoal, Store0) -->
 	{ map__keys(VarToMyVarMap, Vars) },
 	{ map__values(VarToMyVarMap, MyVars) },
-	{ map__from_corresponding_lists(MyVars, Vars, VarMap0) },
+	{ assoc_list__from_corresponding_lists(MyVars, Vars, VarMap0) },
 	{ my_term_to_term(MyGoal, Goal, VarSet0, VarSet, VarMap0, _VarMap,
 			Store0, _Store) },
 	term_io__write_term_nl(VarSet, Goal).
@@ -233,7 +233,7 @@ term_to_my_term_list([Term0|Terms0], [Term|Terms], VarMap0, VarMap) -->
 
 my_term_to_term(MyTerm, Term) -->
 	{ varset__init(VarSet0) },
-	{ map__init(VarMap0) },
+	{ VarMap0 = [] },
 	my_term_to_term(MyTerm, Term, VarSet0, _VarSet, VarMap0, _VarMap).
 
 :- pred my_term_to_term_list(list(my_term(S)), list(term), store(S), store(S)).
@@ -241,12 +241,19 @@ my_term_to_term(MyTerm, Term) -->
 
 my_term_to_term_list(MyTerms, Terms) -->
 	{ varset__init(VarSet0) },
-	{ map__init(VarMap0) },
+	{ VarMap0 = [] },
 	my_term_to_term_list(MyTerms, Terms,
 		VarSet0, _VarSet, VarMap0, _VarMap).
 
+% note that we need to use an assoc_list here rather than a map,
+% because store mutvars can only be tested for equality, not compared
+% (this in turn is because in implementations which use copying GC,
+% the relative addresses of different mutvars might change after
+% a garbage collection).
+
 :- pred my_term_to_term(my_term(S), term, varset, varset,
-		map(my_var(S), var), map(my_var(S), var), store(S), store(S)).
+		assoc_list(my_var(S), var), assoc_list(my_var(S), var),
+		store(S), store(S)).
 :- mode my_term_to_term(in, out, in, out, in, out, mdi, muo) is det.
 
 my_term_to_term(var(MyVar), variable(Var), VarSet0, VarSet, VarMap0, VarMap)
@@ -256,13 +263,13 @@ my_term_to_term(var(MyVar), variable(Var), VarSet0, VarSet, VarMap0, VarMap)
 	% if so, use its corresponding Var,
 	% otherwise, create a fresh Var and insert it into the VarMap
 	%
-	( { map__search(VarMap0, MyVar, Var1) } ->
+	( { assoc_list__search(VarMap0, MyVar, Var1) } ->
 		{ Var = Var1 },
 		{ VarSet1 = VarSet0 },
 		{ VarMap1 = VarMap0 }
 	;
 		{ varset__new_var(VarSet0, Var, VarSet1) },
-		{ map__det_insert(VarMap0, MyVar, Var, VarMap1) }
+		{ VarMap1 = [MyVar - Var | VarMap0] }
 	),
 	%
 	% check whether MyVar is bound;
@@ -285,8 +292,8 @@ my_term_to_term(functor(Functor, Args0), functor(Functor, Args, Context),
 	{ context_init(Context) },
 	my_term_to_term_list(Args0, Args, VarSet0, VarSet, VarMap0, VarMap).
 
-:- pred my_term_to_term_list(list(my_term(S)), list(term),
-		varset, varset, map(my_var(S), var), map(my_var(S), var),
+:- pred my_term_to_term_list(list(my_term(S)), list(term), varset, varset,
+		assoc_list(my_var(S), var), assoc_list(my_var(S), var),
 		store(S), store(S)).
 :- mode my_term_to_term_list(in, out, in, out, in, out, mdi, muo) is det.
 

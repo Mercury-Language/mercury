@@ -16,7 +16,7 @@ No (more) solutions.
 :- module interpreter.
 :- implementation.
 :- import_module unsafe.
-:- import_module store, tr_store, map, multi_map.
+:- import_module store, tr_store, map, multi_map, assoc_list.
 :- import_module list, string, term, varset, term_io, require, std_util.
 :- import_module io.
 :- mode database_lookup_pred_clause(in, in, out) is nondet.
@@ -60,8 +60,8 @@ No (more) solutions.
 :- pred unify_list(list(my_term(_2)), list(my_term(_2)), store(_2), store(_2)).
 :- pred unify(my_term(_2), my_term(_2), store(_2), store(_2)).
 :- pred solve(database, my_term(_2), store(_2), store(_2)).
-:- pred my_term_to_term_list(list(my_term(_2)), list(term), varset, varset, map(my_var(_2), var), map(my_var(_2), var), store(_2), store(_2)).
-:- pred my_term_to_term(my_term(_2), term, varset, varset, map(my_var(_2), var), map(my_var(_2), var), store(_2), store(_2)).
+:- pred my_term_to_term_list(list(my_term(_2)), list(term), varset, varset, assoc_list(my_var(_2), var), assoc_list(my_var(_2), var), store(_2), store(_2)).
+:- pred my_term_to_term(my_term(_2), term, varset, varset, assoc_list(my_var(_2), var), assoc_list(my_var(_2), var), store(_2), store(_2)).
 :- pred my_term_to_term_list(list(my_term(_2)), list(term), store(_2), store(_2)).
 :- pred my_term_to_term(my_term(_2), term, store(_2), store(_2)).
 :- pred term_to_my_term_list(list(term), list(my_term(_2)), map(var, my_var(_2)), map(var, my_var(_2)), store(_2), store(_2)).
@@ -89,7 +89,7 @@ No (more) solutions.
 consult_until_eof_2(term(_3, _4), _5, _6) --> { database_assert_clause(_5, _3, _4, _7) }, consult_until_eof(_7, _6).
 consult_until_eof_2(error(_3, _4), _5, _6) --> io__write_string("Error reading term at line "), io__write_int(_4), io__write_string(" of standard input: "), io__write_string(_3), io__write_string("\n"), consult_until_eof(_5, _6).
 consult_until_eof_2(eof, _3, _3) --> [].
-my_term_to_term(_3, _4) --> { varset__init(_5) }, { map__init(_6) }, my_term_to_term(_3, _4, _5, _7, _6, _8).
+my_term_to_term(_3, _4) --> { varset__init(_5) }, { _6 = [] }, my_term_to_term(_3, _4, _5, _7, _6, _8).
 consult_list([_3 | _4], _5, _6) --> consult(_3, _5, _7), consult_list(_4, _7, _6).
 consult_list([], _3, _3) --> [].
 consult(_3, _4, _5) --> io__write_string("Consulting file `"), io__write_string(_3), io__write_string("\'...\n"), io__see(_3, _6), ({ _6 = ok } -> consult_until_eof(_4, _5), io__seen ; io__write_string("Error opening file `"), io__write_string(_3), io__write_string("\' for input.\n"), { _5 = _4 }).
@@ -104,12 +104,12 @@ main --> io__write_string("Pure Prolog Interpreter.\n\n"), io__command_line_argu
 main_loop_2(term(_3, _4), _5) --> { store__new(_6) }, { map__init(_7) }, { term_to_my_term(_4, _8, _7, _9, _6, _10) }, print_solutions(_3, _9, _8, _10, _5), main_loop(_5).
 main_loop_2(error(_3, _4), _5) --> io__write_string("Error reading term at line "), io__write_int(_4), io__write_string(" of standard input: "), io__write_string(_3), io__write_string("\n"), main_loop(_5).
 main_loop_2(eof, _3) --> [].
-my_term_to_term_list(_3, _4) --> { varset__init(_5) }, { map__init(_6) }, my_term_to_term_list(_3, _4, _5, _7, _6, _8).
+my_term_to_term_list(_3, _4) --> { varset__init(_5) }, { _6 = [] }, my_term_to_term_list(_3, _4, _5, _7, _6, _8).
 not_occurs(functor(_3, _4), _5) --> not_occurs_list(_4, _5).
 not_occurs(var(_3), _4) --> { _3 \= _4 }, tr_store__get_mutvar(_3, _5), ({ _5 = free } -> [] ; not_occurs(_5, _4)).
 my_term_to_term(functor(_3, _4), functor(_3, _5, _6), _7, _8, _9, _10) --> { context_init(_6) }, my_term_to_term_list(_4, _5, _7, _8, _9, _10).
 my_term_to_term(free, variable(_3), _4, _5, _6, _6) --> { varset__new_var(_4, _3, _5) }, { error("my_term_to_term: unexpected free var") }.
-my_term_to_term(var(_3), variable(_4), _5, _6, _7, _8) --> ({ map__search(_7, _3, _9) } -> { _4 = _9 }, { _10 = _5 }, { _11 = _7 } ; { varset__new_var(_5, _4, _10) }, { map__det_insert(_7, _3, _4, _11) }), tr_store__get_mutvar(_3, _12), ({ _12 \= free } -> my_term_to_term(_12, _13, _10, _14, _11, _8), { varset__bind_var(_14, _4, _13, _6) } ; { _8 = _11 }, { _6 = _10 }).
+my_term_to_term(var(_3), variable(_4), _5, _6, _7, _8) --> ({ assoc_list__search(_7, _3, _9) } -> { _4 = _9 }, { _10 = _5 }, { _11 = _7 } ; { varset__new_var(_5, _4, _10) }, { _11 = [_3 - _4 | _7] }), tr_store__get_mutvar(_3, _12), ({ _12 \= free } -> my_term_to_term(_12, _13, _10, _14, _11, _8), { varset__bind_var(_14, _4, _13, _6) } ; { _8 = _11 }, { _6 = _10 }).
 my_term_to_term_list([_3 | _4], [_5 | _6], _7, _8, _9, _10) --> my_term_to_term(_3, _5, _7, _11, _9, _12), my_term_to_term_list(_4, _6, _11, _8, _12, _10).
 my_term_to_term_list([], [], _3, _3, _4, _4) --> [].
 not_occurs_list([_3 | _4], _5) --> not_occurs(_3, _5), not_occurs_list(_4, _5).
@@ -131,6 +131,6 @@ term_to_my_term_list([_3 | _4], [_5 | _6], _7, _8) --> term_to_my_term(_3, _5, _
 term_to_my_term_list([], [], _3, _3) --> [].
 unify_list([_3 | _4], [_5 | _6]) --> unify(_3, _5), unify_list(_4, _6).
 unify_list([], []) --> [].
-write_solution(_3, _4, _5, _6) --> { map__keys(_4, _7) }, { map__values(_4, _8) }, { map__from_corresponding_lists(_8, _7, _9) }, { my_term_to_term(_5, _10, _3, _11, _9, _12, _6, _13) }, term_io__write_term_nl(_11, _10).
+write_solution(_3, _4, _5, _6) --> { map__keys(_4, _7) }, { map__values(_4, _8) }, { assoc_list__from_corresponding_lists(_8, _7, _9) }, { my_term_to_term(_5, _10, _3, _11, _9, _12, _6, _13) }, term_io__write_term_nl(_11, _10).
 No (more) solutions.
 ?- 
