@@ -1296,6 +1296,7 @@ static	int		MR_call_table_ptr_next;
 static void
 MR_init_call_table_array(void)
 {
+	MR_call_table_ptr_max = 0;
 	MR_call_table_ptr_next = 0;
 }
 
