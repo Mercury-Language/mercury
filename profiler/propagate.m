@@ -291,7 +291,8 @@ propagate__process_cycle(Preds, Cycle, AddrMap, ProfNodeMap0, ProfNodeMap) :-
 				
 		% NB we give the address of a cycle as being the negative of
 		% the cycle number as this will be unique.
-	map__det_insert(ProfNodeMap0, -Cycle, ProfNode, ProfNodeMap1),
+	Address is -Cycle,
+	map__det_insert(ProfNodeMap0, Address, ProfNode, ProfNodeMap1),
 	
 		
 		% Propagate the counts XXX
