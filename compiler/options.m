@@ -72,7 +72,6 @@
 		;	debug_modes
 		;	debug_det
 		;	debug_opt
-		;	debug_vn	% vn = value numbering
 		;	debug_pd	% pd = partial deduction/deforestation
 		;	debug_rl_gen
 		;	debug_rl_opt
@@ -386,13 +385,9 @@
 		;	optimize_labels
 		;	optimize_dups
 %%% unused:	;	optimize_copyprop
-		;	optimize_value_number
 		;	optimize_frames
 		;	optimize_delay_slot
 		;	optimize_repeat
-		;	optimize_vnrepeat
-		;	pred_value_number
-		;	vn_fudge
 	%	- RL
 		;	optimize_rl
 		;	optimize_rl_cse
@@ -489,7 +484,6 @@ option_defaults_2(verbosity_option, [
 	debug_modes		- 	bool(no),
 	debug_det		- 	bool(no),
 	debug_opt		- 	bool(no),
-	debug_vn		- 	int(0),
 	debug_pd		-	bool(no),
 	debug_rl_gen		-	bool(no),
 	debug_rl_opt		-	bool(no),
@@ -781,14 +775,9 @@ option_defaults_2(optimization_option, [
 	optimize_labels		-	bool(no),
 	optimize_dups		-	bool(no),
 %%%	optimize_copyprop	-	bool(no),
-	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(no),
 	optimize_delay_slot	-	bool(no),
 	optimize_repeat		-	int(0),
-	optimize_vnrepeat	-	int(1),		% ineffective unless
-							% value_number is set
-	pred_value_number	-	bool(no),
-	vn_fudge		-	int(1000),
 
 % LLDS -> C
 	use_macro_for_redo_fail	-	bool(no),
@@ -888,7 +877,6 @@ long_option("debug-modes",		debug_modes).
 long_option("debug-determinism",	debug_det).
 long_option("debug-det",		debug_det).
 long_option("debug-opt",		debug_opt).
-long_option("debug-vn",			debug_vn).
 long_option("debug-pd",			debug_pd).
 long_option("debug-rl-gen",		debug_rl_gen).
 long_option("debug-rl-opt",		debug_rl_opt).
@@ -1226,18 +1214,12 @@ long_option("optimize-dups",		optimize_dups).
 long_option("optimise-dups",		optimize_dups).
 %%% long_option("optimize-copyprop",	optimize_copyprop).
 %%% long_option("optimise-copyprop",	optimize_copyprop).
-long_option("optimize-value-number",	optimize_value_number).
-long_option("optimise-value-number",	optimize_value_number).
 long_option("optimize-frames",		optimize_frames).
 long_option("optimise-frames",		optimize_frames).
 long_option("optimize-delay-slot",	optimize_delay_slot).
 long_option("optimise-delay-slot",	optimize_delay_slot).
 long_option("optimize-repeat",		optimize_repeat).
 long_option("optimise-repeat",		optimize_repeat).
-long_option("optimize-vnrepeat",	optimize_vnrepeat).
-long_option("optimise-vnrepeat",	optimize_vnrepeat).
-long_option("pred-value-number",	pred_value_number).
-long_option("vn-fudge",			vn_fudge).
 
 % RL optimizations
 long_option("optimize-rl",		optimize_rl).
@@ -1539,8 +1521,6 @@ opt_level(3, _, [
 % and increases the inlining thresholds
 
 opt_level(4, _, [
-	% lazy_code		-	bool(yes),
-	% optimize_value_number	-	bool(yes),
 	use_local_vars		-	bool(yes),
 	inline_simple_threshold	-	int(8),
 	inline_compound_threshold -	int(20),
@@ -1555,8 +1535,6 @@ opt_level(4, _, [
 % optimizations, and increases the inlining thresholds still further.
 
 opt_level(5, _, [
-	% pred_value_number	-	bool(yes),
-	% optimize_vnrepeat	-	int(2),
 	optimize_repeat		-	int(5),
 	delay_construct		-	bool(yes),
 	inline_compound_threshold -	int(100),
@@ -1688,11 +1666,6 @@ options_help_verbosity -->
 		"\tOutput detailed debugging traces of determinism analysis.",
 		"--debug-opt",
 		"\tOutput detailed debugging traces of the optimization process.",
-		"--debug-vn <n>",
-		"\tOutput detailed debugging traces of the value numbering",
-		"\toptimization pass. The different bits in the number",
-		"\targument of this option control the printing of",
-		"\tdifferent types of tracing messages.",
 		"--debug-pd",
 		"\tOutput detailed debugging traces of the partial",
 		"\tdeduction and deforestation process.",
@@ -2587,18 +2560,12 @@ options_help_llds_llds_optimization -->
 		"\tEnable elimination of duplicate code.",
 %%%		"--optimize-copyprop",
 %%%		"\tEnable the copy propagation optimization.",
-		"--optimize-value-number",
-		"\tPerform value numbering on extended basic blocks.",
 		"--no-optimize-frames",
 		"\tDisable stack frame optimizations.",
 		"--no-optimize-delay-slot",
 		"\tDisable branch delay slot optimizations.",
 		"--optimize-repeat <n>",
-		"\tIterate most optimizations at most <n> times (default: 3).",
-		"--optimize-vnrepeat <n>",
-		"\tIterate value numbering at most <n> times (default: 1).",
-		"--pred-value-number",
-		"\tExtend value numbering to entire predicates."
+		"\tIterate most optimizations at most <n> times (default: 3)."
 	]).
 
 :- pred options_help_mlds_mlds_optimization(io__state::di, io__state::uo) is det.

@@ -484,17 +484,6 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 			% The following option selects a special-case
 			% code generator that cannot (yet) implement tracing.
 		globals__io_set_option(middle_rec, bool(no)),
-			% Tracing inserts C code into the generated LLDS.
-			% Value numbering cannot optimize such LLDS code.
-			% (If it tried, it would get it wrong due to the
-			% absence of liveness annotations on the introduced
-			% labels.) We turn value numbering off now so that
-			% we don't have to discover this fact anew
-			% for each procedure.
-		globals__io_set_option(optimize_value_number, bool(no)),
-			% Without value numbering, the eager code generator
-			% generates better code than the lazy code generator.
-		globals__io_set_option(lazy_code, bool(no)),
 			% The following options cause the info required
 			% by tracing to be generated.
 		globals__io_set_option(trace_stack_layout, bool(yes)),
@@ -540,11 +529,6 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	% XXX deforestation does not perform folding on polymorphic
 	% predicates correctly with --body-typeinfo-liveness.
 	option_implies(body_typeinfo_liveness, deforestation, bool(no)),
-
-	% XXX value numbering implements the wrong semantics for LLDS
-	% operations involving tickets, which are generated only with
-	% --use-trail.
-	option_implies(use_trail, optimize_value_number, bool(no)),
 
 	% XXX if trailing is enabled, middle recursion optimization
 	% can generate code which does not allocate a stack frame 

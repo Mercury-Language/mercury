@@ -46,10 +46,6 @@ ACC_FLAGS = -d accum --introduce-accumulators --optimize-constructor-last-call \
 OPT_FLAGS = --trace-optimized --excess-assign --common-struct \
 		--no-deforestation
 
-	# XXX There appears to be a bug in value numbering which
-	# causes incorrect output from this test case.
-MCFLAGS-split = --no-optimize-value-number
-
 	# Ensure that the accumulator introduction flags are passed
 	# after EXTRA_MCFLAGS, so that we can override things set in
 	# EXTRA_MCFLAGS.

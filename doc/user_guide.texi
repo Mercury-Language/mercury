@@ -3037,12 +3037,6 @@ Output detailed debugging traces of determinism analysis.
 Output detailed debugging traces of the optimization process.
 
 @sp 1
-@item --debug-vn <n>
-Output detailed debugging traces of the value numbering optimization pass.
-The different bits in the number argument of this option control the
-printing of different types of tracing messages.
-
-@sp 1
 @item --debug-pd
 Output detailed debugging traces of the partial
 deduction and deforestation process.
@@ -4303,14 +4297,6 @@ Enable elimination of duplicate code.
 @c Enable the copy propagation optimization.
 
 @sp 1
-@item --optimize-value-number
-Perform value numbering on extended basic blocks.
-
-@sp 1
-@item --pred-value-number
-Extend value numbering to whole procedures, rather than just basic blocks.
-
-@sp 1
 @item --no-optimize-frames
 Disable stack frame optimizations.
 
@@ -4321,10 +4307,6 @@ Disable branch delay slot optimizations.
 @sp 1
 @item --optimize-repeat @var{n}
 Iterate most optimizations at most @var{n} times (default: 3).
-
-@sp 1
-@item --optimize-vnrepeat @var{n}
-Iterate value numbering at most @var{n} times (default: 1).
 
 @end table
 

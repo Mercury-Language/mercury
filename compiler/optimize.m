@@ -28,8 +28,8 @@
 :- implementation.
 
 :- import_module jumpopt, labelopt, dupelim, peephole.
-:- import_module frameopt, delay_slot, value_number, use_local_vars, options.
-:- import_module globals, passes_aux, opt_util, opt_debug, vn_debug.
+:- import_module frameopt, delay_slot, use_local_vars, options.
+:- import_module globals, passes_aux, opt_util, opt_debug.
 :- import_module wrap_blocks, hlds_pred, llds_out, continuation_info.
 
 :- import_module bool, int, string.
@@ -45,9 +45,7 @@ optimize__proc(CProc0, GlobalData, CProc) -->
 		ProcLabel, C0, ContainsReconstruction) },
 	optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, C0,
 		OptDebugInfo0),
-	globals__io_lookup_int_option(optimize_repeat, AllRepeat),
-	globals__io_lookup_int_option(optimize_vnrepeat, VnRepeat),
-	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
+	globals__io_lookup_int_option(optimize_repeat, Repeat),
 	{
 		global_data_maybe_get_proc_layout(GlobalData, PredProcId,
 			ProcLayout)
@@ -58,23 +56,10 @@ optimize__proc(CProc0, GlobalData, CProc) -->
 	;
 		set__init(LayoutLabelSet)
 	},
-	( { ValueNumber = yes } ->
-		{ NovnRepeat is AllRepeat - VnRepeat },
-		optimize__repeat(NovnRepeat, no, ContainsReconstruction,
-			LayoutLabelSet, Instrs0, ProcLabel, C0, C1,
-			OptDebugInfo0, OptDebugInfo1, Instrs1),
-		optimize__middle(Instrs1, no, LayoutLabelSet, ProcLabel,
-			C1, C2, OptDebugInfo1, OptDebugInfo2, Instrs2),
-		optimize__repeat(VnRepeat, yes, ContainsReconstruction,
-			LayoutLabelSet, Instrs2, ProcLabel, C2, C,
-			OptDebugInfo2, OptDebugInfo, Instrs3)
-	;
-		optimize__repeat(AllRepeat, no, ContainsReconstruction,
-			LayoutLabelSet, Instrs0, ProcLabel, C0, C1,
-			OptDebugInfo0, OptDebugInfo1, Instrs1),
-		optimize__middle(Instrs1, yes, LayoutLabelSet, ProcLabel,
-			C1, C, OptDebugInfo1, OptDebugInfo, Instrs3)
-	),
+	optimize__repeat(Repeat, LayoutLabelSet, Instrs0, ProcLabel, C0, C1,
+		OptDebugInfo0, OptDebugInfo1, Instrs1),
+	optimize__middle(Instrs1, yes, LayoutLabelSet, ProcLabel,
+		C1, C, OptDebugInfo1, OptDebugInfo, Instrs3),
 	optimize__last(Instrs3, LayoutLabelSet, C, OptDebugInfo, Instrs),
 	{ CProc = c_procedure(Name, Arity, PredProcId, Instrs,
 		ProcLabel, C, ContainsReconstruction) }.
@@ -167,14 +152,13 @@ optimize__maybe_opt_debug(Instrs, Counter, Msg,
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize__repeat(int::in, bool::in, contains_reconstruction::in,
-	set(label)::in, list(instruction)::in, proc_label::in,
-	counter::in, counter::out, opt_debug_info::in, opt_debug_info::out,
-	list(instruction)::out,
+:- pred optimize__repeat(int::in, set(label)::in, list(instruction)::in,
+	proc_label::in, counter::in, counter::out, opt_debug_info::in,
+	opt_debug_info::out, list(instruction)::out,
 	io__state::di, io__state::uo) is det.
 
-optimize__repeat(Iter0, DoVn, ContainsReconstruction, LayoutLabelSet, Instrs0,
-		ProcLabel, C0, C, OptDebugInfo0, OptDebugInfo, Instrs) -->
+optimize__repeat(Iter0, LayoutLabelSet, Instrs0, ProcLabel, C0, C,
+		OptDebugInfo0, OptDebugInfo, Instrs) -->
 	( { Iter0 > 0 } ->
 		{ Iter1 = Iter0 - 1 },
 		( { Iter1 = 0 } ->
@@ -182,13 +166,12 @@ optimize__repeat(Iter0, DoVn, ContainsReconstruction, LayoutLabelSet, Instrs0,
 		;
 			{ Final = no }
 		),
-		optimize__repeated(Instrs0, DoVn, ContainsReconstruction,
-			Final, LayoutLabelSet, ProcLabel, C0, C1,
-			OptDebugInfo0, OptDebugInfo1, Instrs1, Mod),
+		optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel,
+			C0, C1, OptDebugInfo0, OptDebugInfo1, Instrs1, Mod),
 		( { Mod = yes } ->
-			optimize__repeat(Iter1, DoVn, ContainsReconstruction,
-				LayoutLabelSet, Instrs1, ProcLabel, C1, C,
-				OptDebugInfo1, OptDebugInfo, Instrs)
+			optimize__repeat(Iter1, LayoutLabelSet, Instrs1,
+				ProcLabel, C1, C, OptDebugInfo1, OptDebugInfo,
+				Instrs)
 		;
 			{ Instrs = Instrs1 },
 			{ C = C1 },
@@ -203,37 +186,16 @@ optimize__repeat(Iter0, DoVn, ContainsReconstruction, LayoutLabelSet, Instrs0,
 	% We short-circuit jump sequences before normal peepholing
 	% to create more opportunities for use of the tailcall macro.
 
-:- pred optimize__repeated(list(instruction)::in, bool::in,
-	contains_reconstruction::in, bool::in, set(label)::in,
+:- pred optimize__repeated(list(instruction)::in, bool::in, set(label)::in,
 	proc_label::in, counter::in, counter::out,
 	opt_debug_info::in, opt_debug_info::out, list(instruction)::out,
 	bool::out, io__state::di, io__state::uo) is det.
 
-optimize__repeated(Instrs0, DoVn, ContainsReconstruction, Final,
-		LayoutLabelSet, ProcLabel, C0, C, OptDebugInfo0, OptDebugInfo,
-		Instrs, Mod) -->
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel, C0, C,
+		OptDebugInfo0, OptDebugInfo, Instrs, Mod) -->
 	{ opt_util__find_first_label(Instrs0, Label) },
 	{ opt_util__format_label(Label, LabelStr) },
-
-	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
-	( { ValueNumber = yes, DoVn = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing value number for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
-		;
-			[]
-		),
-		value_number_main(Instrs0, ContainsReconstruction,
-			LayoutLabelSet, ProcLabel, C0, C1, Instrs1),
-		optimize__maybe_opt_debug(Instrs1, C1, "after value numbering",
-			OptDebugInfo0, OptDebugInfo1)
-	;
-		{ Instrs1 = Instrs0 },
-		{ C1 = C0 },
-		{ OptDebugInfo1 = OptDebugInfo0 }
-	),
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	globals__io_lookup_bool_option(optimize_jumps, Jumpopt),
 	globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt),
 	globals__io_lookup_bool_option(checked_nondet_tailcalls,
@@ -247,15 +209,15 @@ optimize__repeated(Instrs0, DoVn, ContainsReconstruction, Final,
 		;
 			[]
 		),
-		{ jumpopt_main(Instrs1, LayoutLabelSet, TraceLevel, ProcLabel,
-			C1, C2, FullJumpopt, Final, CheckedNondetTailCalls,
-			Instrs2, Mod1) },
-		optimize__maybe_opt_debug(Instrs2, C2, "after jump opt",
-			OptDebugInfo1, OptDebugInfo2)
+		{ jumpopt_main(Instrs0, LayoutLabelSet, TraceLevel, ProcLabel,
+			C0, C1, FullJumpopt, Final, CheckedNondetTailCalls,
+			Instrs1, Mod1) },
+		optimize__maybe_opt_debug(Instrs1, C1, "after jump opt",
+			OptDebugInfo0, OptDebugInfo1)
 	;
-		{ Instrs2 = Instrs1 },
-		{ C2 = C1 },
-		{ OptDebugInfo2 = OptDebugInfo1 },
+		{ Instrs1 = Instrs0 },
+		{ C1 = C0 },
+		{ OptDebugInfo1 = OptDebugInfo0 },
 		{ Mod1 = no }
 	),
 	globals__io_lookup_bool_option(optimize_peep, Peephole),
@@ -268,12 +230,12 @@ optimize__repeated(Instrs0, DoVn, ContainsReconstruction, Final,
 			[]
 		),
 		globals__io_get_gc_method(GC_Method),
-		{ peephole__optimize(GC_Method, Instrs2, Instrs3, Mod2) },
-		optimize__maybe_opt_debug(Instrs3, C2, "after peephole",
-			OptDebugInfo2, OptDebugInfo3)
-		;
-		{ Instrs3 = Instrs2 },
-		{ OptDebugInfo3 = OptDebugInfo2 },
+		{ peephole__optimize(GC_Method, Instrs1, Instrs2, Mod2) },
+		optimize__maybe_opt_debug(Instrs2, C1, "after peephole",
+			OptDebugInfo1, OptDebugInfo2)
+	;
+		{ Instrs2 = Instrs1 },
+		{ OptDebugInfo2 = OptDebugInfo1 },
 		{ Mod2 = no }
 	),
 	globals__io_lookup_bool_option(optimize_labels, LabelElim),
@@ -285,13 +247,13 @@ optimize__repeated(Instrs0, DoVn, ContainsReconstruction, Final,
 		;
 			[]
 		),
-		{ labelopt_main(Instrs3, Final, LayoutLabelSet,
-			Instrs4, Mod3) },
-		optimize__maybe_opt_debug(Instrs4, C2, "after label opt",
-			OptDebugInfo3, OptDebugInfo4)
+		{ labelopt_main(Instrs2, Final, LayoutLabelSet,
+			Instrs3, Mod3) },
+		optimize__maybe_opt_debug(Instrs3, C1, "after label opt",
+			OptDebugInfo2, OptDebugInfo3)
 		;
-		{ Instrs4 = Instrs3 },
-		{ OptDebugInfo4 = OptDebugInfo3 },
+		{ Instrs3 = Instrs2 },
+		{ OptDebugInfo3 = OptDebugInfo2 },
 		{ Mod3 = no }
 	),
 	globals__io_lookup_bool_option(optimize_dups, DupElim),
@@ -303,13 +265,13 @@ optimize__repeated(Instrs0, DoVn, ContainsReconstruction, Final,
 		;
 			[]
 		),
-		{ dupelim_main(Instrs4, ProcLabel, C2, C, Instrs) },
+		{ dupelim_main(Instrs3, ProcLabel, C1, C, Instrs) },
 		optimize__maybe_opt_debug(Instrs, C, "after duplicates",
-			OptDebugInfo4, OptDebugInfo)
+			OptDebugInfo3, OptDebugInfo)
 	;
-		{ Instrs = Instrs4 },
-		{ OptDebugInfo = OptDebugInfo4 },
-		{ C = C2 }
+		{ Instrs = Instrs3 },
+		{ OptDebugInfo = OptDebugInfo3 },
+		{ C = C1 }
 	),
 	{ Mod1 = no, Mod2 = no, Mod3 = no, Instrs = Instrs0 ->
 		Mod = no
@@ -418,9 +380,8 @@ optimize__last(Instrs0, LayoutLabelSet, C, OptDebugInfo0, Instrs) -->
 	{ opt_util__format_label(Label, LabelStr) },
 
 	globals__io_lookup_bool_option(optimize_delay_slot, DelaySlot),
-	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
 	globals__io_lookup_bool_option(use_local_vars, UseLocalVars),
-	( { DelaySlot = yes ; ValueNumber = yes ; UseLocalVars = yes } ->
+	( { DelaySlot = yes ; UseLocalVars = yes } ->
 		% We must get rid of any extra labels added by other passes,
 		% since they can confuse both wrap_blocks and delay_slot.
 		( { VeryVerbose = yes } ->
@@ -452,9 +413,9 @@ optimize__last(Instrs0, LayoutLabelSet, C, OptDebugInfo0, Instrs) -->
 		{ OptDebugInfo2 = OptDebugInfo1 },
 		{ Instrs2 = Instrs1 }
 	),
-	( { ValueNumber = yes ; UseLocalVars = yes } ->
+	( { UseLocalVars = yes } ->
 		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing post value number for "),
+			io__write_string("% Wrapping blocks for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
 		;

@@ -790,79 +790,14 @@ They are:
 
 <li> introduction of local C variables (use_local_vars.m) <br>
 
-<li> value numbering <br>
-
-	This is done by value_number.m, which has the following sub-modules:
-
-	<dl>
-	<dt> vn_block.m
-		<dd>
-		Traverse an extended basic block, building up tables showing
-		the actions that must be taken, and the current and desired
-		contents of locations.
-	<dt> vn_cost.m
-		<dd>
-		Computes the cost of instruction sequences.
-		Value numbering should never replace an instruction
-		sequence with a more expensive sequence. Unfortunately,
-		computing costs accurately is very difficult.
-	<dt> vn_debug.m
-		<dd>
-		Predicates to dump data structures used in value
-		numbering.
-	<dt> vn_filter.m
-		<dd>
-		Module to eliminate useless temporaries introduced by
-		value numbering. Not generating them in the first place
-		would be better, but would be quite difficult.
-	<dt> vn_flush.m
-		<dd>
-		Given the tables built up by vn_block and a list of nodes
-		computed by vn_order, generate code to assign the required
-		values to each temporary and live location in what is
-		hopefully the fastest and most compact way.
-	<dt> vn_order.m
-		<dd>
-		Given tables built up by vn_block showing the actions that
-		must be taken, and the current and desired contents of
-		locations, find out which shared subexpressions should
-		have temporaries allocated to them and in what order these
-		temporaries and the live locations should be assigned to.
-		This module uses the module atsort.m to perform an approximate
-		topological sort on the nodes of the location dependency
-		graph it operations on (since the graph may have cycles,
-		a precise topological sort may not exist).
-	<dt> vn_table.m
-		<dd>
-		Abstract data type showing the current and desired
-		contents of locations.
-	<dt> vn_temploc.m
-		<dd>
-		Abstract data type to keep track of the availability
-		of registers and temporaries.
-	<dt> vn_type.m
-		<dd>
-		This module defines the types used by the other
-		modules of the value numbering optimization.
-	<dt> vn_util.m
-		<dd>
-		Utility predicates.
-	<dt> vn_verify.m
-		<dd>
-		Sanity checks to make sure that (a) the optimized code
-		computes the same values as the original code, and (b)
-		the optimized code does not dereference tagged pointers
-		until the tag is known. (Violations of (b) usually cause
-		unaligned accesses, which cause bus errors on many machines.)
-	</dl>
 </ul>
 
 <p>
 
-Several of these optimizations (frameopt, use_local_vars and value numbering)
+Several of these optimizations (frameopt and use_local_vars)
 use livemap.m, a module that finds the set of locations live at each label.
 
-Use_local_vars and value numbering also introduce
+Use_local_vars numbering also introduces
 references to temporary variables in extended basic blocks
 in the LLDS representation of the C code.
 The transformation to insert the block scopes
@@ -1204,6 +1139,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2001-04-24 03:59:09 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2001-05-15 07:12:01 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
