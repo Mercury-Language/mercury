@@ -341,9 +341,17 @@ term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 		Single, Module, Pieces, no) :-
 	(
 		Single = yes(PPId),
-		require(unify(PPId, ProcPPId), "not_subset outside this SCC"),
-		Pieces1 = ["The", "set", "of", "its", "output", "supplier",
-			"variables"]
+		( PPId = ProcPPId ->
+			Pieces1 = ["The", "set", "of", "its", "output",
+				"supplier", "variables"]
+		;
+			% XXX this should never happen (but it does)
+			% error("not_subset outside this SCC"),
+			term_errors__describe_one_proc_name(ProcPPId, Module,
+				PPIdPiece),
+			Pieces1 = ["The", "set", "of", "output", "supplier",
+				"variables", "of", PPIdPiece]
+		)
 	;
 		Single = no,
 		term_errors__describe_one_proc_name(ProcPPId, Module,
@@ -365,12 +373,12 @@ term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 term_errors__description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
 	( CallSites = [DirectCall] ->
 		term_errors__describe_one_call_site(DirectCall, Module, Site),
-		Pieces = ["At", "the", "recursive", "call", "at", Site,
+		Pieces = ["At", "the", "recursive", "call", "to", Site,
 			"the", "arguments", "are", "not", "guaranteed",
 			"to", "decrease", "in", "size."]
 	;
 		Pieces1 = ["In", "the", "recursive", "cycle",
-			"through", "the", "calls", "at"],
+			"through", "the", "calls", "to"],
 		term_errors__describe_several_call_sites(CallSites, Module,
 			Sites),
 		Pieces2 = ["the", "arguments", "are", "not", "guaranteed",
