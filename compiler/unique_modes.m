@@ -134,6 +134,8 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% extract the predicate's type from the pred_info
 	% and propagate the type information into the modes
 	%
+	module_info_preds(ModuleInfo0, Preds),
+	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, _TypeVars, ArgTypes),
 	propagate_type_info_mode_list(ArgTypes, ModuleInfo0, ArgModes0,
 			ArgModes),
@@ -144,8 +146,6 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% there weren't any clauses at all, in which case
 	% we use the context of the mode declaration.
 	%
-	module_info_preds(ModuleInfo0, Preds),
-	map__lookup(Preds, PredId, PredInfo),
 	pred_info_clauses_info(PredInfo, ClausesInfo),
 	ClausesInfo = clauses_info(_, _, _, _, ClauseList),
 	( ClauseList = [FirstClause | _] ->
