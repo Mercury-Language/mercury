@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,6 +142,7 @@ java_util__is_keyword("default").
 java_util__is_keyword("do").
 java_util__is_keyword("double").
 java_util__is_keyword("else").
+java_util__is_keyword("enum").
 java_util__is_keyword("extends").
 java_util__is_keyword("false").
 java_util__is_keyword("final").
