@@ -793,9 +793,9 @@ mercury_output_some(Vars, VarSet) -->
 
 mercury_output_pragma_c_header(C_HeaderString) -->
 	io__write_string(":- pragma(c_header_code, "),
-	io__write_string("\""),
+	io__write_string(""""),
 	io__write_string(C_HeaderString),
-	io__write_string("\""),
+	io__write_string(""""),
 	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%
