@@ -69,19 +69,23 @@
 :- pred varset__merge(varset, varset, list(term), varset, list(term)).
 :- mode varset__merge(input, input, input, output, output).
 
-	% XXX This should not be exported, but it's currently used by
-	% hlds_out.nl.  We should fix hlds_out.nl.
+	% As above, except return the substitution directly
+	% rather than applying it to a list of terms.
+
+:- pred varset__merge_subst(varset, varset, varset, substitution).
+:- mode varset__merge_subst(input, input, input, output).
+
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module map.
 
 :- type varset		--->	varset(
 					var_supply,
 					map(var, string),
 					map(var, term)
 				).
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-:- import_module map.
 
 %-----------------------------------------------------------------------------%
 
@@ -146,19 +150,22 @@ varset__lookup_var(varset(_, _, Vals), Id, Val) :-
 	% fresh variable in the first varset.  We then apply
 	% this substition to the list of terms.
 
-varset__merge(VarSet0, varset(MaxId, Names, Vals), TermList0,
-		VarSet, TermList) :-
-	map__init(Subst0),
-	term__init_var_supply(N),
-	varset__merge_2(N, MaxId, Names, Vals, VarSet0, Subst0, VarSet, Subst),
+varset__merge(VarSet0, VarSet1, TermList0, VarSet, TermList) :-
+	varset__merge_subst(VarSet0, VarSet1, VarSet, Subst),
 	term__apply_substitution_to_list(TermList0, Subst, TermList).
 
-:- pred varset__merge_2(var_supply, var_supply, map(var, string),
+varset__merge_subst(VarSet0, varset(MaxId, Names, Vals), VarSet, Subst) :-
+	term__init_var_supply(N),
+	map__init(Subst0),
+	varset__merge_subst_2(N, MaxId, Names, Vals, VarSet0, Subst0,
+				VarSet, Subst).
+
+:- pred varset__merge_subst_2(var_supply, var_supply, map(var, string),
 	map(var, term), varset, substitution, varset, substitution).
-:- mode varset__merge_2(input, input, input, input, input, input,
+:- mode varset__merge_subst_2(input, input, input, input, input, input,
 	output, output).
 
-varset__merge_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
+varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 	( N = Max ->
 		VarSet = VarSet0,
 		Subst0 = Subst

@@ -759,6 +759,7 @@ hlds_out__write_unimode(Indent, X) -->
 :- pred hlds_out__write_varset(int, varset, io__state, io__state).
 :- mode hlds_out__write_varset(input, input, input, output).
 
+/*************
 	% XXX this violates modularity - varset is an adt.
 
 hlds_out__write_varset(Indent, varset(Id, VarNames, VarTerms)) -->
@@ -780,6 +781,11 @@ hlds_out__write_varset(Indent, varset(Id, VarNames, VarTerms)) -->
 	hlds_out__write_varterms(Indent1, VarTerms),
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
+*************/
+hlds_out__write_varset(Indent, VarSet) -->
+	hlds_out__write_indent(Indent),
+	io__write_anything(VarSet),
+	io__write_string("\n").
 
 :- pred hlds_out__write_varnames(int, map(var, string), io__state, io__state).
 :- mode hlds_out__write_varnames(input, input, input, output).
