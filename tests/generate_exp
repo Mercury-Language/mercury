@@ -4,7 +4,7 @@
 
 . handle_options
 
-root=`bin/pwd`
+root=`pwd`
 for dir in benchmark general
 do
 	cd $dir
