@@ -1,3 +1,11 @@
+NEWS since Mercury release 0.10.1
+---------------------------------
+
+Changes to the Mercury standard library:
+* We've fixed a bug in time.m. Type `tm' didn't store the day of the month,
+  which meant that the functions which required that field (e.g. time__asctime,
+ time__mktime) did not work.
+
 NEWS for Mercury release 0.10.1:
 --------------------------------
 
