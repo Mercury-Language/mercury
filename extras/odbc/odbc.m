@@ -1,6 +1,6 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997 Mission Critical.
-% Copyright (C) 1997,1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -23,9 +23,11 @@
 %	<http://www.cs.mu.OZ.AU/publications/tr_db/mu_96_45_cover.ps.gz>
 %	and <http://www.cs.mu.OZ.AU/publications/tr_db/mu_96_45.ps.gz>.
 %
-% This has been tested with MySQL 3.20.19 and iODBC 2.12 under Solaris 2.5,
-% and with Microsoft SQL Server 6.5 under Windows NT 4.0 with the GNU-Win32 
-% tools beta 17.1.
+% This has been tested using the following platforms:
+% - MySQL 3.20.19 and iODBC 2.12 under Solaris 2.5
+% - MySQL 3.22.32 and iODBC 2.50.3 under Solaris 2.6
+% - Microsoft SQL Server 6.5 under Windows NT 4.0 with the
+%	GNU-Win32 tools beta 17.1
 %
 % Notes:
 %
@@ -76,8 +78,20 @@
 
 :- type odbc__state.
 
-	% Perform the closure atomically on the given database connection.
-	% On error, the transaction is rolled back.
+	% odbc__transaction(Source, UserName, Password, Transaction, Result).
+	%
+	% Open a connection to `Source' using the given `UserName'
+	% and `Password', perform `Transaction' within a transaction
+	% using that connection, then close the connection.
+	%
+	% `Result' is `ok(Results) - Messages' if the transaction
+	% succeeds or `error - Messages' if the transaction is aborted.
+	% Whether updates are rolled back if the transaction aborts depends
+	% on the database. MySQL will not roll back updates.
+	%
+	% If `Transaction' throws an exception, odbc__transaction will
+	% attempt to roll back the transaction, and will then rethrow
+	% the exception to the caller.
 :- pred odbc__transaction(odbc__data_source, odbc__user_name, odbc__password,
 		odbc__transaction(T), odbc__result(T), io__state, io__state).
 :- mode odbc__transaction(in, in, in, odbc__transaction, out, di, uo) is det.
@@ -265,7 +279,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module assoc_list, int, require, std_util, string.
+:- import_module assoc_list, exception, int, require, std_util, string.
 
 %-----------------------------------------------------------------------------%
 
@@ -398,7 +412,8 @@ static SQLRETURN odbc_ret_code = SQL_SUCCESS;
 static Word	odbc_message_list;
 
 static void odbc_transaction_c_code(Word type_info, Word Connection, 
-			Word Closure, Word *Results, Word *Status, 
+			Word Closure, Word *Results, Word *GotMercuryException,
+			Word *Exception, Word *Status, 
 			Word *Msgs, Word IO0, Word *IO);
 static bool odbc_check(SQLHENV, SQLHDBC, SQLHSTMT, SQLRETURN);
 
@@ -419,11 +434,22 @@ odbc__transaction(Source, User, Password, Closure, Result) -->
 
 		% Do the transaction.
 		odbc__transaction_2(Connection, Closure, Data, 
-			Status, RevMessages),
+			GotMercuryException, Exception, Status, RevMessages),
 		{ list__reverse(RevMessages, TransMessages) },
 
 		odbc__close_connection(Connection,
 			CloseStatus - CloseMessages),
+
+		%
+		% Pass on any exception that was found while
+		% processing the transaction.
+		%
+		( { GotMercuryException = 1 } ->
+			{ rethrow(exception(Exception)) }
+		;
+			[]
+		),
+
 		{ list__condense(
 			[ConnectMessages, TransMessages, CloseMessages], 
 			Messages) },
@@ -439,15 +465,15 @@ odbc__transaction(Source, User, Password, Closure, Result) -->
 
 :- pred odbc__transaction_2(odbc__connection,
 		pred(T, odbc__state, odbc__state), T, 
-		int, list(odbc__message), io__state, io__state).  
+		int, univ, int, list(odbc__message), io__state, io__state).  
 :- mode odbc__transaction_2(in, pred(out, di, uo) is det, 
-		out, out, out, di, uo) is det.
+		out, out, out, out, out, di, uo) is det.
 
 :- pragma c_code(
 		odbc__transaction_2(Connection::in, 
 			Closure::pred(out, di, uo) is det,
-			Results::out, Status::out, Msgs::out,
-			IO0::di, IO::uo),
+			Results::out, GotMercuryException::out, Exception::out,
+			Status::out, Msgs::out, IO0::di, IO::uo),
 		may_call_mercury,
 "
 	/*
@@ -460,7 +486,8 @@ odbc__transaction(Source, User, Password, Closure, Result) -->
 	*/
 	save_transient_registers();
 	odbc_transaction_c_code(TypeInfo_for_T, Connection, Closure, 
-			&Results, &Status, &Msgs, IO0, &IO);
+			&Results, &GotMercuryException, &Exception, 
+			&Status, &Msgs, IO0, &IO);
 	restore_transient_registers();
 ").
 
@@ -469,8 +496,8 @@ odbc__transaction(Source, User, Password, Closure, Result) -->
 "
 static void 
 odbc_transaction_c_code(Word TypeInfo_for_T, Word Connection, 
-		Word Closure, Word *Results, Word *Status, 
-		Word *Msgs, Word IO0, Word *IO)
+		Word Closure, Word *Results, Word *GotMercuryException,
+		Word *Exception, Word *Status, Word *Msgs, Word IO0, Word *IO)
 {
 	Word DB0 = (Word) 0;
 	Word DB = (Word) 0;
@@ -496,19 +523,36 @@ odbc_transaction_c_code(Word TypeInfo_for_T, Word Connection,
 	** MODBC_odbc__do_transaction() must be declared volatile.
 	*/
 
-	MODBC_odbc__do_transaction(TypeInfo_for_T, Closure, Results, DB0, &DB);
+	MODBC_odbc__do_transaction(TypeInfo_for_T, Closure,
+		GotMercuryException, Results, Exception, DB0, &DB);
 
 	/*
 	** MR_longjmp() cannot be called after here.
 	*/
 
-	rc = SQLTransact(odbc_env_handle, odbc_connection, SQL_COMMIT);
+	if (*GotMercuryException == 0) {
 
-	if (! odbc_check(odbc_env_handle, odbc_connection, 
-			SQL_NULL_HSTMT, rc)) {
-		goto transaction_error;
+		rc = SQLTransact(odbc_env_handle, odbc_connection, SQL_COMMIT);
+
+		if (! odbc_check(odbc_env_handle, odbc_connection, 
+				SQL_NULL_HSTMT, rc)) {
+			goto transaction_error;
+		}
+
+	} else {
+
+		/*
+		** There was a Mercury exception -- abort the transaction.
+		** The return value of the call to SQLTransact() is
+		** ignored because the caller won't look at the result --
+		** it will just rethrow the exception.
+		*/
+		DEBUG(printf(
+			""Mercury exception in transaction: aborting\\n""));
+		(void) SQLTransact(odbc_env_handle,
+				odbc_connection, SQL_ROLLBACK);
 	}
-	
+		
 	*Status = SQL_SUCCESS;
 
 	goto transaction_done;
@@ -521,6 +565,8 @@ transaction_error:
 	*/
 
 	*Status = odbc_ret_code;
+
+	*GotMercuryException = 0;
 
 	rc = SQLTransact(odbc_env_handle, odbc_connection, SQL_ROLLBACK);
 
@@ -543,15 +589,40 @@ transaction_done:
 %-----------------------------------------------------------------------------%
 
 	% Call the transaction closure.
-:- pred odbc__do_transaction(odbc__transaction(T), T,
+:- pred odbc__do_transaction(odbc__transaction(T), int, T, univ,
 		odbc__state, odbc__state).
-:- mode odbc__do_transaction(odbc__transaction, out, di, uo) is det.
+:- mode odbc__do_transaction(odbc__transaction,
+		out, out, out, di, uo) is cc_multi.
 
-:- pragma export(odbc__do_transaction(odbc__transaction, out, di, uo), 
+:- pragma export(odbc__do_transaction(odbc__transaction,
+		out, out, out, di, uo), 
 		"MODBC_odbc__do_transaction").
 
-odbc__do_transaction(Closure, Results) -->
-	call(Closure, Results).
+odbc__do_transaction(Closure, GotException, Results,
+		Exception, State0, State) :-
+	try((pred(TryResult::out) is det :-
+		unsafe_promise_unique(State0, State1),
+		Closure(Result, State1, ResultState),
+		TryResult = Result - ResultState
+	), ExceptResult),
+	(
+		ExceptResult = succeeded(Results - State2),
+		unsafe_promise_unique(State2, State),
+		make_dummy_value(Exception),
+		GotException = 0
+	;
+		ExceptResult = exception(Exception),
+		make_dummy_value(Results),
+		unsafe_promise_unique(State0, State),
+		GotException = 1
+	).
+
+	% Produce a value which is never looked at, for returning
+	% discriminated unions to C.
+:- pred make_dummy_value(T::out) is det.
+:- pragma c_code(make_dummy_value(T::out),
+		[will_not_call_mercury, thread_safe],
+		"T = 0;").
 
 %-----------------------------------------------------------------------------%
 
@@ -958,6 +1029,7 @@ typedef struct {
 static SQLRETURN odbc_do_cleanup_statement(MODBC_Statement *stat);
 static size_t sql_type_to_size(SWORD sql_type, UDWORD cbColDef, 
 		SWORD ibScale, SWORD fNullable);
+static MODBC_AttrType sql_type_to_attribute_type(SWORD sql_type);
 static SWORD attribute_type_to_sql_c_type(MODBC_AttrType AttrType);
 static bool is_variable_length_sql_type(SWORD);
 void odbc_do_get_data(MODBC_Statement *stat, int column_id);
