@@ -443,14 +443,6 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		MR_insert_line_at_head(MR_copy_string(semicolon + 1));
 	}
 
-	/* if we're using readline, then readline does the echoing */
-#ifdef MR_NO_USE_READLINE
-	if (MR_echo_commands) {
-		fputs(line, MR_mdb_out);
-		putc('\n', MR_mdb_out);
-	}
-#endif
-
 	problem = MR_trace_parse_line(line, &words, &word_max, &word_count);
 	if (problem != NULL) {
 		fflush(MR_mdb_out);
@@ -2245,7 +2237,17 @@ MR_trace_getline(const char *prompt)
 
 	MR_trace_internal_interacting = TRUE;
 
-	return MR_trace_readline(prompt, MR_mdb_in, MR_mdb_out);
+	line = MR_trace_readline(prompt, MR_mdb_in, MR_mdb_out);
+
+	/* if we're using readline, then readline does the echoing */
+#ifdef MR_NO_USE_READLINE
+	if (MR_echo_commands) {
+		fputs(line, MR_mdb_out);
+		putc('\n', MR_mdb_out);
+	}
+#endif
+
+	return line;
 }
 
 /*
