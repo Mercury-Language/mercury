@@ -89,6 +89,10 @@ name(descartes	, "Descartes").
 name(russell	, "Russell").
 name(sartre	, "Sartre").
 
+:- pragma foreign_code("C#", "
+	public static System.Random rng = new System.Random();
+").
+
 :- pred rand_sleep(int::in, io__state::di, io__state::uo) is det.
 :- pragma c_code(rand_sleep(Int::in, IO0::di, IO::uo),
 		[thread_safe, will_not_call_mercury], "{
@@ -101,5 +105,5 @@ name(sartre	, "Sartre").
 }").
 :- pragma foreign_proc("C#", rand_sleep(Int::in, _IO0::di, _IO::uo),
 		[thread_safe, will_not_call_mercury, promise_pure], "{
-	System.Threading.Thread.Sleep((new System.Random()).Next(Int) * 1000);
+	System.Threading.Thread.Sleep(rng.Next(Int) * 1000);
 }").
