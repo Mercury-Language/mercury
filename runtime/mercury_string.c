@@ -23,7 +23,7 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 	char		*p;
 
 #if defined(HAVE_VSNPRINTF) || defined(HAVE__VSNPRINTF)
-	int 		size = 2 * BUFFER_SIZE;
+	int 		size = BUFFER_SIZE;
 	char		fixed[BUFFER_SIZE];
 	bool		dynamically_allocated = FALSE;
 	
@@ -57,7 +57,7 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 			p = MR_NEW_ARRAY(char, size);
 			dynamically_allocated = TRUE;
 		} else {
-			MR_RESIZE_ARRAY(p, char, size);
+			p = MR_RESIZE_ARRAY(p, char, size);
 		}
 	}
 
