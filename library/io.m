@@ -2728,6 +2728,7 @@ io__remove_file(FileName, Result, IO0, IO) :-
 	} else {
 		RetStr = NULL;
 	}
+	update_io(IO0, IO);
 }").
 
 
