@@ -130,14 +130,26 @@ type_ctor_info__gen_type_ctor_gen_info(TypeId, TypeName, TypeArity, TypeDefn,
 		map__lookup(SpecMap, compare - TypeId, ComparePredId),
 		special_pred_mode_num(compare, CompareProcInt),
 		proc_id_to_int(CompareProcId, CompareProcInt),
-		MaybeCompare = yes(proc(ComparePredId, CompareProcId))
+		MaybeCompare = yes(proc(ComparePredId, CompareProcId)),
+
+		map__lookup(SpecMap, solve_equal - TypeId, SolveEqualPredId),
+		special_pred_mode_num(solve_equal, SolveEqualProcInt),
+		proc_id_to_int(SolveEqualProcId, SolveEqualProcInt),
+		MaybeSolveEqual = yes(proc(SolveEqualPredId, SolveEqualProcId)),
+
+		map__lookup(SpecMap, init - TypeId, InitPredId),
+		special_pred_mode_num(init, InitProcInt),
+		proc_id_to_int(InitProcId, InitProcInt),
+		MaybeInit = yes(proc(InitPredId, InitProcId))
 	;
 		MaybeUnify = no,
-		MaybeCompare = no
+		MaybeCompare = no,
+		MaybeSolveEqual = no,
+		MaybeInit = no
 	),
 	TypeCtorGenInfo = type_ctor_gen_info(TypeId, ModuleName,
 		TypeName, TypeArity, Status, TypeDefn,
-		MaybeUnify, MaybeCompare, no, no, no).
+		MaybeUnify, MaybeCompare, MaybeSolveEqual, MaybeInit, no).
 
 %---------------------------------------------------------------------------%
 
