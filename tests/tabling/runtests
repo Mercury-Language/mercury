@@ -13,13 +13,13 @@ checkstatus=$?
 cat *.res > .allres
 if test ! -s .allres -a "$checkstatus" = 0
 then
-	echo "the tests in the hard_coded directory succeeded"
+	echo "the tests in the tabling directory succeeded"
 	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
 	rm -f .allres
 	. ../shutdown
 	exit 0
 else
-	echo "the tests in the hard_coded directory failed"
+	echo "the tests in the tabling directory failed"
 	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
 	echo "the differences are:"
 	cat .allres
