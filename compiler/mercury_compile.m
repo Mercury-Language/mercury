@@ -1708,12 +1708,10 @@ mercury_compile__maybe_higher_order(HLDS0, Verbose, Stats, HLDS) -->
 :- mode mercury_compile__maybe_do_inlining(in, in, in, out, di, uo) is det.
 
 mercury_compile__maybe_do_inlining(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
 	globals__io_lookup_bool_option(inline_simple, Simple),
 	globals__io_lookup_bool_option(inline_single_use, SingleUse),
 	globals__io_lookup_int_option(inline_compound_threshold, Threshold),
 	(
-		{ ErrorCheckOnly = no },
 		{ Simple = yes ; SingleUse = yes ; Threshold > 0 }
 	->
 		maybe_write_string(Verbose, "% Inlining...\n"),
