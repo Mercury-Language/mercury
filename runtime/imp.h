@@ -714,7 +714,7 @@ typedef double Float;
 #define float_to_word(f) ( \
 		hp_alloc(FLOAT_WORDS), \
 		*(Float *)(void *)(hp - FLOAT_WORDS) = f, \
-		/* return */ hp \
+		/* return */ (Word) (hp - FLOAT_WORDS) \
 	)
 #else
 /* we need to ensure that what we allocated on the heap is properly
@@ -722,7 +722,7 @@ typedef double Float;
 #define float_to_word(f) ( \
 		hp_alloc(FLOAT_WORDS), /* XXX alignment!!! */ \
 		*(Float *)(void *)(hp - FLOAT_WORDS) = f, \
-		/* return */ (Word) hp \
+		/* return */ (Word) (hp - FLOAT_WORDS) \
 	)
 #endif
 
