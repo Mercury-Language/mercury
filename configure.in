@@ -760,6 +760,93 @@ else
 fi
 AC_SUBST(HAVE_BOXED_FLOATS)
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether long long is 64-bits)
+AC_CACHE_VAL(mercury_cv_int64,
+	AC_TRY_RUN([
+	int main() {
+		if (sizeof(long long) == 8)
+			exit(0);
+		else
+			exit(1);
+	}],
+	[mercury_cv_int64=yes],
+	[mercury_cv_int64=no],
+	[mercury_cv_int64=no])
+)
+AC_MSG_RESULT($mercury_cv_int64)
+if test "$mercury_cv_int64" = yes; then
+	AC_DEFINE(LONG_LONG_IS_64_BITS)
+fi
+AC_SUBST(LONG_LONG_IS_64_BITS)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether double is 64-bits)
+AC_CACHE_VAL(mercury_cv_float64,
+	AC_TRY_RUN([
+	int main() {
+		if (sizeof(double) == 8)
+			exit(0);
+		else
+			exit(1);
+	}],
+	[mercury_cv_float64=yes],
+	[mercury_cv_float64=no],
+	[mercury_cv_float64=no]))
+AC_MSG_RESULT($mercury_cv_float64)
+if test "$mercury_cv_float64" = yes; then
+	AC_DEFINE(DOUBLE_IS_64_BITS)
+fi
+AC_SUBST(DOUBLE_IS_64_BITS)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether short is 16-bits)
+AC_CACHE_VAL(mercury_cv_short16,
+	AC_TRY_RUN([
+	int main() {
+		if (sizeof(short) == 2)
+			exit(0);
+		else
+			exit(1);
+	}],
+	[mercury_cv_short16=yes],
+	[mercury_cv_short16=no],
+	[mercury_cv_short16=no])
+)
+AC_MSG_RESULT($mercury_cv_short16)
+if test "$mercury_cv_short16" = yes; then
+	AC_DEFINE(SHORT_IS_16_BITS)
+fi
+AC_SUBST(SHORT_IS_16_BITS)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(endianness of architecture)
+AC_CACHE_VAL(mercury_cv_endianness,
+	AC_TRY_RUN([
+	int main() {
+		unsigned char *tmp_p;
+		int i=1;
+
+		tmp_p = (unsigned char*) &i;
+		if (tmp_p[0] == 0)
+			return 0;
+		else if (tmp_p[0] == 1)
+			return 1;
+		else
+			return 2;
+	}],
+	[mercury_cv_endianness=big],
+	[mercury_cv_endianness=little],
+	[mercury_cv_endianness=unknown])
+)
+AC_MSG_RESULT($mercury_cv_endianness)
+if test "$mercury_cv_endianness" = big; then
+	AC_DEFINE(BIG_ENDIAN)
+elif test "$mercury_cv_endianness" = little; then
+	AC_DEFINE(LITTLE_ENDIAN)
+else
+	AC_DEFINE(UNKNOWN_ENDIAN)
+fi
+AC_SUBST(BIG_ENDIAN)
+AC_SUBST(LITTLE_ENDIAN)
+AC_SUBST(UNKNOWN_ENDIAN)
+#-----------------------------------------------------------------------------#
 #
 # For Irix 5, gcc labels don't work with shared libraries,
 # so if we're using gcc labels, we need to use non-shared libraries,
