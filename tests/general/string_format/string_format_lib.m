@@ -1,8 +1,12 @@
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 :- module string_format_lib.
 
 :- interface.
 
 :- import_module io, list, string.
+
+%-----------------------------------------------------------------------------%
 
 	% Given a specifier return all possible format strings for that
 	% specifier.
@@ -12,11 +16,29 @@
 :- pred output_list(list(string__poly_type)::in, string::in,
         io::di, io::uo) is det.
 
+
+:- func standard_floats = list(string__poly_type).
+:- func trailing_zero_floats = list(string__poly_type).
+:- func rounding_floats = list(string__poly_type).
+:- func extreme_floats = list(string__poly_type).
+:- func denormal_floats = list(string__poly_type).
+:- func infinite_floats = list(string__poly_type).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module std_util.
+:- import_module float, std_util.
+
+%-----------------------------------------------------------------------------%
+
+standard_floats = [f(0.0), f(1.0), f(-1.0), f(10.0),
+				f(-10.0), f(100.0), f(-100.0)].
+trailing_zero_floats = [f(100000000000000000.0), f(-100000000000000000.0)].
+rounding_floats = [f(55.555555555), f(-55.555555555)].
+extreme_floats	= [f(-max), f(-min), f(min), f(max)].
+denormal_floats	= [f(min / 2.0), f(-min / 2.0)].
+infinite_floats = [f(-(max+max)), f(max+max)].
 
 %-----------------------------------------------------------------------------%
 
@@ -83,8 +105,8 @@ flags(Specifier) = Flags :-
 
 :- pred all_combinations(list(T)::in, list(T)::out) is multi.
 
-all_combinations(List, list__sort(List)).
-all_combinations(List, list__sort(Combination)) :-
+all_combinations(List, List).
+all_combinations(List, Combination) :-
 	list__delete(List, _, SubList),
 	all_combinations(SubList, Combination).
 

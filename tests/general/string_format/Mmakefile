@@ -1,0 +1,89 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = general/string_format
+
+#-----------------------------------------------------------------------------#
+
+# Any program added here should also be added to the `.cvsignore' file.
+
+PROGS=	\
+		string_format_c \
+		string_format_d \
+		string_format_e \
+		string_format_f \
+		string_format_g \
+		string_format_o \
+		string_format_s \
+		string_format_u \
+		string_format_x 
+
+SUBDIRS = 
+TESTS=$(PROGS)
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.res ;
+
+#
+# This is adapted from the rule in ../../Mmake.common.  The
+# difference is that we only display the last 20 lines of the output
+# file if the file fails, due to the size of the output file.
+#
+%.out: %
+	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
+		{ grep . $@ /dev/null | tail -n 20; exit 1; }
+
+#
+# This is adapted from the rule in ../../Mmake.common.  The only
+# differences are that we only cat the first 50 lines to stdout, as
+# generally it is quite big and that we sort the output before the
+# comparison, as the IL and C backends use a different ordering for
+# lexical comparisons.
+#
+%.res: %.exp %.out
+	@echo "Comparing $*.sorted_out with $*.exp*,"
+	@echo "	results in $@"
+	@-rm -f $@ $*.res[1-5]
+	@cat $*.out | sort > $*.sorted_out
+	@{ diff $(DIFF_OPTS) $*.exp $*.sorted_out > $*.res1 && \
+		echo "Matched $*.exp" && \
+		cp $*.res1 $@; } || \
+	{ test -f $*.exp2 && \
+		diff $(DIFF_OPTS) $*.exp2 $*.sorted_out > $*.res2 && \
+		echo "Matched $*.exp2" && \
+		cp $*.res2 $@; } || \
+	{ test -f $*.exp3 && \
+		diff $(DIFF_OPTS) $*.exp3 $*.sorted_out > $*.res3 && \
+		echo "Matched $*.exp3" && \
+		cp $*.res3 $@; } || \
+	{ test -f $*.exp4 && \
+		diff $(DIFF_OPTS) $*.exp4 $*.sorted_out > $*.res4 && \
+		echo "Matched $*.exp4" && \
+		cp $*.res4 $@; } || \
+	{ test -f $*.exp5 && \
+		diff $(DIFF_OPTS) $*.exp5 $*.sorted_out > $*.res5 && \
+		echo "Matched $*.exp5" && \
+		cp $*.res5 $@; } || \
+	{ shortest=`wc -l $*.res[1-5] | grep -v total | sort -n | \
+		head -1 | awk '{ print $$2; }' `; \
+		echo "** $*.sorted_out did not match the expected output"; \
+		echo "** (closest match was $$shortest)"; \
+		echo "** The diff is located in $@"; \
+		cp $$shortest $@; \
+		cat $$shortest | head -n 50; \
+		exit 1; }
+
+#-----------------------------------------------------------------------------#
+
+realclean_local: clean_sorted_outs
+clean_local: clean_sorted_outs
+
+clean_sorted_outs:
+	rm -f *.sorted_out
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#

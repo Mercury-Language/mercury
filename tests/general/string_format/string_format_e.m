@@ -23,14 +23,23 @@
 %------------------------------------------------------------------------------%
 
 main -->
-	{ Floats = [f(0.0), f(1.0), f(-1.0),
-			f(10.0), f(-10.0), f(100.0), f(-100.0),
-			f(100000000000000000.0), f(-100000000000000000.0),
-			f(55.5555555555), f(-55.5555555555), 
-			f(min), f(-min), f(max), f(-max),
-			f(min / 2.0), f(-min / 2.0), f(max*max), f(-max*max)] },
-	list__foldl(output_list(Floats), format_strings("e")),
-	list__foldl(output_list(Floats), format_strings("E")).
+	{ FormatStrs_e = format_strings("e") },
+	{ FormatStrs_E = format_strings("E") },
+
+	list__foldl(output_list(standard_floats), FormatStrs_e),
+	list__foldl(output_list(trailing_zero_floats), FormatStrs_e),
+	list__foldl(output_list(rounding_floats), FormatStrs_e),
+	list__foldl(output_list(extreme_floats), FormatStrs_e),
+	list__foldl(output_list(denormal_floats), FormatStrs_e),
+	list__foldl(output_list(infinite_floats), FormatStrs_e),
+
+	list__foldl(output_list(standard_floats), FormatStrs_E),
+	list__foldl(output_list(trailing_zero_floats), FormatStrs_E),
+	list__foldl(output_list(rounding_floats), FormatStrs_E),
+	list__foldl(output_list(extreme_floats), FormatStrs_E),
+	list__foldl(output_list(denormal_floats), FormatStrs_E),
+	list__foldl(output_list(infinite_floats), FormatStrs_E),
+	[].
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

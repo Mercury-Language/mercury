@@ -1,0 +1,2 @@
+MCFLAGS=--no-line-numbers
+MS_ILASMFLAGS=/debug
