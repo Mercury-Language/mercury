@@ -84,3 +84,8 @@ string__contains_char(String, Char) :-
 	list__member(CharCode, List).
 
 %-----------------------------------------------------------------------------%
+
+string__unsafe_index(String, Index, Char) :-
+	string__index(String, Index, Char).
+
+%-----------------------------------------------------------------------------%
