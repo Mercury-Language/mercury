@@ -143,8 +143,7 @@ simplify__proc_2(Proc0, Proc, ModuleInfo0, ModuleInfo,
 			RecomputeAtomic = no
 		),
 		proc_info_goal(Proc4, Goal2),
-		proc_info_get_initial_instmap(Proc4,
-			ModuleInfo0, InstMap0),
+		proc_info_get_initial_instmap(Proc4, ModuleInfo0, InstMap0),
 		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
 			InstMap0, ModuleInfo0, ModuleInfo),
 		proc_info_set_goal(Proc4, Goal3, Proc),
@@ -380,6 +379,12 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 	( simplify_do_calls(Info0) ->
 		common__optimise_higher_order_call(Closure, Args, Modes, Det,
 			Goal0, GoalInfo, Goal, Info0, Info)
+	; simplify_do_warn_calls(Info0) ->
+		% we need to do the pass, for the warnings, but we ignore
+		% the optimized goal and instead use the original one
+		common__optimise_higher_order_call(Closure, Args, Modes, Det,
+			Goal0, GoalInfo, _Goal1, Info0, Info),
+		Goal = Goal0
 	;
 		Goal = Goal0,
 		Info = Info0
@@ -456,6 +461,12 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 	( simplify_do_calls(Info2) ->
 		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo,
 			Goal, Info2, Info)
+	; simplify_do_warn_calls(Info0) ->
+		% we need to do the pass, for the warnings, but we ignore
+		% the optimized goal and instead use the original one
+		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo,
+			_Goal1, Info2, Info),
+		Goal = Goal0
 	;
 		Goal = Goal0,
 		Info = Info2
@@ -493,6 +504,20 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	->
 		common__optimise_unification(U0, LT0, RT0, M, C,
 			Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info)
+	;
+		( simplify_do_calls(Info0)
+		; simplify_do_warn_calls(Info0)
+		)
+	->
+		% We need to do the pass, to record the variable
+		% equivalences used for optimizing or warning about
+		% duplicate calls.  But we don't want to perform
+		% the optimization, so we disregard the optimized goal
+		% and instead use the original one.
+		common__optimise_unification(U0, LT0, RT0, M, C,
+			Goal0, GoalInfo0, _Goal1, _GoalInfo1, Info0, Info),
+		Goal = Goal0,
+		GoalInfo = GoalInfo0
 	;
 		Goal = Goal0,
 		GoalInfo = GoalInfo0,
@@ -532,8 +557,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 			Info)
 	; CondSolns = at_most_zero ->
 		% Optimize away the condition and the `then' part.
-		goal_info_get_determinism(CondInfo0, Detism),
-		det_negation_det(Detism, MaybeNegDetism),
+		det_negation_det(CondDetism, MaybeNegDetism),
 		( Cond0 = not(NegCond) - _ ->
 			Cond = NegCond
 		;
