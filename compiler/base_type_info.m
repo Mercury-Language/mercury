@@ -245,6 +245,7 @@ base_type_info__construct_pred_addrs2([proc(PredId, ProcId) | Procs],
 	;	du
 	;	notag
 	;	equiv
+	;	equiv_var
 	;	int
 	;	char
 	;	float
@@ -264,18 +265,19 @@ base_type_info__type_ctor_rep_to_int(enum, 0).
 base_type_info__type_ctor_rep_to_int(du, 1).
 base_type_info__type_ctor_rep_to_int(notag, 2).
 base_type_info__type_ctor_rep_to_int(equiv, 3).
-base_type_info__type_ctor_rep_to_int(int, 4).
-base_type_info__type_ctor_rep_to_int(char, 5).
-base_type_info__type_ctor_rep_to_int(float, 6).
-base_type_info__type_ctor_rep_to_int(string, 7).
-base_type_info__type_ctor_rep_to_int(pred, 8).
-base_type_info__type_ctor_rep_to_int(univ, 9).
-base_type_info__type_ctor_rep_to_int(void, 10).
-base_type_info__type_ctor_rep_to_int(c_pointer, 11).
-base_type_info__type_ctor_rep_to_int(typeinfo, 12).
-base_type_info__type_ctor_rep_to_int(typeclassinfo, 13).
-base_type_info__type_ctor_rep_to_int(array, 14).
-base_type_info__type_ctor_rep_to_int(unknown, 15).
+base_type_info__type_ctor_rep_to_int(equiv_var, 4).
+base_type_info__type_ctor_rep_to_int(int, 5).
+base_type_info__type_ctor_rep_to_int(char, 6).
+base_type_info__type_ctor_rep_to_int(float, 7).
+base_type_info__type_ctor_rep_to_int(string, 8).
+base_type_info__type_ctor_rep_to_int(pred, 9).
+base_type_info__type_ctor_rep_to_int(univ, 10).
+base_type_info__type_ctor_rep_to_int(void, 11).
+base_type_info__type_ctor_rep_to_int(c_pointer, 12).
+base_type_info__type_ctor_rep_to_int(typeinfo, 13).
+base_type_info__type_ctor_rep_to_int(typeclassinfo, 14).
+base_type_info__type_ctor_rep_to_int(array, 15).
+base_type_info__type_ctor_rep_to_int(unknown, 16).
 
 
 :- pred base_type_info__construct_type_ctor_representation(hlds_type_defn,

@@ -250,9 +250,9 @@ enum MR_TypeLayoutValue {
 */
 
 #define MR_TYPE_CTOR_INFO_HO_PRED				\
-	((const Word *) &mercury_data___type_ctor_info_pred_0)
+	((MR_TypeCtorInfo) &mercury_data___type_ctor_info_pred_0)
 #define MR_TYPE_CTOR_INFO_HO_FUNC				\
-	((const Word *) &mercury_data___type_ctor_info_func_0)
+	((MR_TypeCtorInfo) &mercury_data___type_ctor_info_func_0)
 #define MR_TYPE_CTOR_INFO_IS_HO_PRED(T)				\
 	(T == MR_TYPE_CTOR_INFO_HO_PRED)
 #define MR_TYPE_CTOR_INFO_IS_HO_FUNC(T)				\
@@ -668,115 +668,18 @@ typedef struct {
 
 /*---------------------------------------------------------------------------*/
 
-
 	/* 
-	** Macros for retreiving things from type_infos and
-	** type_ctor_infos
+	** Macros for retreiving things from type_infos.
 	*/
 
 #define MR_TYPEINFO_GET_TYPE_CTOR_INFO(TypeInfo)			\
-		((*TypeInfo) ? (Word *) *TypeInfo : (Word *) (Word) TypeInfo)
+	((MR_TypeCtorInfo) ((*TypeInfo) ? *TypeInfo : (Word) TypeInfo))
 
 #define MR_TYPEINFO_GET_HIGHER_ARITY(TypeInfo)				\
-		((Integer) (Word *) (TypeInfo)[TYPEINFO_OFFSET_FOR_PRED_ARITY]) 
+	((Integer) (Word *) (TypeInfo)[TYPEINFO_OFFSET_FOR_PRED_ARITY]) 
 
-#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(BaseTypeInfo)		\
-		((Word *) (BaseTypeInfo)[OFFSET_FOR_BASE_TYPE_FUNCTORS])
-
-#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(BaseTypeInfo)		\
-		((Word *) (BaseTypeInfo)[OFFSET_FOR_BASE_TYPE_LAYOUT])
-
-#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT_ENTRY(BaseTypeInfo, Tag)	\
-		(MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(BaseTypeInfo)[(Tag)])
-
-#define MR_TYPE_CTOR_INFO_GET_TYPE_ARITY(BaseTypeInfo)			\
-		(((Word *) (BaseTypeInfo))[OFFSET_FOR_COUNT])
-
-#define MR_TYPE_CTOR_INFO_GET_TYPE_NAME(BaseTypeInfo)			\
-		(((String *) (BaseTypeInfo))[OFFSET_FOR_TYPE_NAME])
-
-#define MR_TYPE_CTOR_INFO_GET_TYPE_MODULE_NAME(BaseTypeInfo)		\
-		(((String *) (BaseTypeInfo))[OFFSET_FOR_TYPE_MODULE_NAME])
 
 /*---------------------------------------------------------------------------*/
-
-#if 0
-
-	/* XXX: We should use structs to represent the various
-	** data structures in the type_ctor_*
-	**
-	** To implement this: 
-	** 	1. The code that uses the data in the library and
-	** 	   runtime should be modified to use the above access
-	** 	   macros
-	** 	2. Then we can simplify the ordering of the data
-	** 	   structures (for example, put variable length fields
-	** 	   last)
-	** 	3. Then we can create structs for them.
-	**
-	** Some examples are below, (no guarantees of correctness).
-	**
-	** Note that enum_vectors have already been handled in this way.
-	*/
-
-        /*
-        **         ** IMPORTANT: the layout in memory of the following
-        **         structs must match the way that the Mercury compiler
-        **         generates code for them.
-        */         
-
-
-	/*
-	** Structs defining the structure of type_ctor_infos.
-	** A type_ctor_info describes the structure of a particular
-	** type constructor.  One of these is generated for every
-	** `:- type' declaration.
-	**
-	** XXX this is not used yet but we are aiming towards
-	** this structure.
-	*/
-
-typedef struct {
-	int arity;
-	Code *unify_pred;
-	Code *index_pred;
-	Code *compare_pred;
-		/* 
-		** The representation that is used for this
-		** constructor -- e.g. an enumeration, or a builtin
-		** type, or a no-tag type, etc.
-		*/
-	MR_TypeCtorRepresentation type_ctor_rep;
-		/*
-		** The names, arity and argument types of all the
-		** functors of this type if it is some sort of
-		** discriminated union.
-		*/
-	MR_TypeCtorFunctors type_ctor_functors;
-		/*
-		** The meanings of the primary tags of this type,
-		** if it is a discriminated union.
-		*/
-	MR_TypeCtorLayout type_ctor_layout;
-	String type_ctor_name;
-	String type_ctor_module_name;
-} MR_TypeCtorInfo;
-
-typedef struct {
-	Word arity;
-	Word arg_pseudo_type_infos[1]; /* variable-sized array */
-                        /* actualy length is `arity', not 1 */
-} MR_TypeLayout_part1;
-
-typedef struct {
-                ConstString name;
-                Word arg_layouts[1]; /* variable-sized array */
-                        /* actualy length is `arity', not 1 */
-} MR_TypeLayout_part2;
-typedef MR_TypeLayout_part1 MR_TypeLayout;
-
-#endif
-
 
 /*
 ** definitions for accessing the representation of the
@@ -835,85 +738,102 @@ void MR_deallocate(MR_MemoryList allocated_memory_cells);
 **
 ** 
 */
-enum MR_TypeCtorRepresentation {
-	MR_TYPE_CTOR_REP_ENUM,
-	MR_TYPE_CTOR_REP_DU,
-	MR_TYPE_CTOR_REP_NOTAG,
-	MR_TYPE_CTOR_REP_EQUIV,
-	MR_TYPE_CTOR_REP_EQUIV_VAR,
-	MR_TYPE_CTOR_REP_INT,
-	MR_TYPE_CTOR_REP_CHAR,
-	MR_TYPE_CTOR_REP_FLOAT,
-	MR_TYPE_CTOR_REP_STRING,
-	MR_TYPE_CTOR_REP_PRED,
-	MR_TYPE_CTOR_REP_UNIV,
-	MR_TYPE_CTOR_REP_VOID,
-	MR_TYPE_CTOR_REP_C_POINTER,
-	MR_TYPE_CTOR_REP_TYPEINFO,
-	MR_TYPE_CTOR_REP_TYPECLASSINFO,
-	MR_TYPE_CTOR_REP_ARRAY,
-	MR_TYPE_CTOR_REP_UNKNOWN
-};
+typedef enum MR_TypeCtorRepresentation {
+	MR_TYPECTOR_REP_ENUM,
+	MR_TYPECTOR_REP_DU,
+	MR_TYPECTOR_REP_NOTAG,
+	MR_TYPECTOR_REP_EQUIV,
+	MR_TYPECTOR_REP_EQUIV_VAR,
+	MR_TYPECTOR_REP_INT,
+	MR_TYPECTOR_REP_CHAR,
+	MR_TYPECTOR_REP_FLOAT,
+	MR_TYPECTOR_REP_STRING,
+	MR_TYPECTOR_REP_PRED,
+	MR_TYPECTOR_REP_UNIV,
+	MR_TYPECTOR_REP_VOID,
+	MR_TYPECTOR_REP_C_POINTER,
+	MR_TYPECTOR_REP_TYPEINFO,
+	MR_TYPECTOR_REP_TYPECLASSINFO,
+	MR_TYPECTOR_REP_ARRAY,
+	MR_TYPECTOR_REP_UNKNOWN
+} MR_TypeCtorRepresentation;
 
 /*
 ** If the MR_TypeCtorRepresentation is MR_TYPE_CTOR_REP_DU, we have a
 ** discriminated union type (other than a no-tag or enumeration).  Each
 ** tag may have a different representation.
 */
-enum MR_DiscUnionTagRepresentation {
+typedef enum MR_DiscUnionTagRepresentation {
 	MR_DISCUNIONTAG_SHARED_LOCAL,
 	MR_DISCUNIONTAG_UNSHARED,
 	MR_DISCUNIONTAG_SHARED_REMOTE
-};
+} MR_DiscUnionTagRepresentation;
 
 /*
-** MR_DataRepresentation is the representation for a particular value
-** of a type with this constructor.  It is similar to the
-** MR_TypeCtorRepresentaion but you need to know the primary tag value
-** (and, therefore, must have the data around to examine) to tell the
-** different cases for discriminated unions apart.
-**
-** These have been ordered so that the most similar cases are next
-** to each other, so a switch on this type can exploit fallthrough
-** to cut down on code duplication.
-** 
-** XXX this type will be replaced by a combination of MR_TypeCtorRepresentaion
-** and MR_DiscUnionTagRepresentation.
+** Return the tag representation used by the data with the given
+** entry in the type_ctor_layout table.
 */
-enum MR_DataRepresentation {
-	MR_DATAREP_ENUM,
-	MR_DATAREP_SHARED_LOCAL,
-	MR_DATAREP_SHARED_REMOTE,
-	MR_DATAREP_UNSHARED,
-	MR_DATAREP_NOTAG,
-	MR_DATAREP_EQUIV,
-	MR_DATAREP_EQUIV_VAR,
-	MR_DATAREP_INT,
-	MR_DATAREP_CHAR,
-	MR_DATAREP_FLOAT,
-	MR_DATAREP_STRING,
-	MR_DATAREP_PRED,
-	MR_DATAREP_UNIV,
-	MR_DATAREP_VOID,
-	MR_DATAREP_ARRAY,
-	MR_DATAREP_TYPEINFO,
-	MR_DATAREP_C_POINTER,
-	MR_DATAREP_UNKNOWN,
-	MR_DATAREP_TYPECLASSINFO
-};
 
+MR_DiscUnionTagRepresentation MR_get_tag_representation(Word layout_entry);
 
-/*
-** Return the data representation used by the data with the given
-** functors_indicator and layout_entry.
-**
-** functors_indicator is part of the type_ctor_functors data structure.
-** layout_entry is the type_ctor_layout entry corresponding to the
-** primary tag of the data.
-**
-*/
-enum MR_DataRepresentation MR_categorize_data(Word functors_indicator,
-		Word layout_entry);
+/*---------------------------------------------------------------------------*/
+
+typedef	Word *	MR_TypeCtorFunctors;
+typedef	Word *	MR_TypeCtorLayout;
+
+	/*
+	** Structs defining the structure of type_ctor_infos.
+	** A type_ctor_info describes the structure of a particular
+	** type constructor.  One of these is generated for every
+	** `:- type' declaration.
+	*/
+
+typedef struct {
+	int arity;
+	Code *unify_pred;
+	Code *index_pred;
+	Code *compare_pred;
+		/* 
+		** The representation that is used for this
+		** constructor -- e.g. an enumeration, or a builtin
+		** type, or a no-tag type, etc.
+		*/
+	MR_TypeCtorRepresentation type_ctor_rep;
+		/*
+		** The names, arity and argument types of all the
+		** functors of this type if it is some sort of
+		** discriminated union.
+		*/
+	MR_TypeCtorFunctors type_ctor_functors;
+		/*
+		** The meanings of the primary tags of this type,
+		** if it is a discriminated union.
+		*/
+	MR_TypeCtorLayout type_ctor_layout;
+	String type_ctor_module_name;
+	String type_ctor_name;
+} *MR_TypeCtorInfo;
+
+	/* 
+	** Macros for retreiving things from type_ctor_infos.
+	*/
+#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(TypeCtorInfo)		\
+	((TypeCtorInfo)->type_ctor_functors)
+
+#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(TypeCtorInfo)		\
+	((TypeCtorInfo)->type_ctor_layout)
+
+#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT_ENTRY(TypeCtorInfo, Tag)	\
+	((TypeCtorInfo)->type_ctor_layout[(Tag)])
+
+#define MR_TYPE_CTOR_INFO_GET_TYPE_ARITY(TypeCtorInfo)			\
+	((TypeCtorInfo)->arity)
+
+#define MR_TYPE_CTOR_INFO_GET_TYPE_NAME(TypeCtorInfo)			\
+	((TypeCtorInfo)->type_ctor_name)
+
+#define MR_TYPE_CTOR_INFO_GET_TYPE_MODULE_NAME(TypeCtorInfo)		\
+	((TypeCtorInfo)->type_ctor_module_name)
 
 /*---------------------------------------------------------------------------*/
 #endif /* not MERCURY_TYPEINFO_H */

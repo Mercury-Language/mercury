@@ -1073,7 +1073,7 @@ mercury_data_std_util__type_ctor_info_univ_0_struct {
 	Code * f2;
 	Code * f3;
 	Code * f4;
-	Word * f5;
+	Word   f5;
 	Word * f6;
 	Word * f7;
 	Word * f8;
@@ -1083,7 +1083,7 @@ mercury_data_std_util__type_ctor_info_univ_0_struct {
 	ENTRY(mercury____Unify___std_util__univ_0_0),
 	ENTRY(mercury____Index___std_util__univ_0_0),
 	ENTRY(mercury____Compare___std_util__univ_0_0),
-	(Word *) &mercury_data_std_util__type_ctor_layout_univ_0,
+	MR_TYPECTOR_REP_UNIV,
 	(Word *) &mercury_data_std_util__type_ctor_functors_univ_0,
 	(Word *) &mercury_data_std_util__type_ctor_layout_univ_0,
 	string_const(""std_util"", 8),
@@ -1313,7 +1313,8 @@ void	ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
 				Word term_vector);
 bool	ML_typecheck_arguments(Word type_info, int arity, 
 				Word arg_list, Word* arg_vector);
-Word 	ML_make_type(int arity, Word *type_ctor_info, Word arg_type_list);
+Word 	ML_make_type(int arity, MR_TypeCtorInfo type_ctor_info,
+				Word arg_type_list);
 
 ").
 
@@ -1426,13 +1427,14 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 :- pragma c_code(type_ctor(TypeInfo::in) = (TypeCtor::out), 
 	will_not_call_mercury, "
 {
-	Word *type_info, *type_ctor_info;
+	MR_TypeCtorInfo type_ctor_info;
+	Word *type_info;
 
 	save_transient_registers();
 	type_info = (Word *) MR_collapse_equivalences(TypeInfo);
 	restore_transient_registers();
 
-	type_ctor_info = (Word *) MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
 	TypeCtor = ML_make_ctor_info(type_info, type_ctor_info);
 }
@@ -1440,7 +1442,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 
 :- pragma c_header_code("
 
-Word ML_make_ctor_info(Word *type_info, Word *type_ctor_info);
+Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info);
 
 	/*
 	** Several predicates use these (the MR_TYPE_CTOR_INFO_IS_HO_*
@@ -1455,7 +1457,7 @@ MR_DECLARE_STRUCT(mercury_data___type_ctor_info_func_0);
 :- pragma c_code("
 
 
-Word ML_make_ctor_info(Word *type_info, Word *type_ctor_info)
+Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 {
 	Word ctor_info = (Word) type_ctor_info;
 
@@ -1483,7 +1485,8 @@ Word ML_make_ctor_info(Word *type_info, Word *type_ctor_info)
 :- pragma c_code(type_ctor_and_args(TypeInfo::in,
 		TypeCtor::out, TypeArgs::out), will_not_call_mercury, "
 {
-	Word *type_info, *type_ctor_info;
+	MR_TypeCtorInfo type_ctor_info;
+	Word *type_info;
 	Integer arity;
 
 	save_transient_registers();
@@ -1519,9 +1522,9 @@ Word ML_make_ctor_info(Word *type_info, Word *type_ctor_info)
 {
 	int list_length, arity;
 	Word arg_type;
-	Word *type_ctor_info;
+	MR_TypeCtorInfo type_ctor_info;
 	
-	type_ctor_info = (Word *) TypeCtor;
+	type_ctor_info = (MR_TypeCtorInfo) TypeCtor;
 
 	if (MR_TYPECTOR_IS_HIGHER_ORDER(type_ctor_info)) {
 		arity = MR_TYPECTOR_GET_HOT_ARITY(type_ctor_info);
@@ -1555,7 +1558,8 @@ Word ML_make_ctor_info(Word *type_info, Word *type_ctor_info)
 		will_not_call_mercury, "
 {
 	Word *type_info = (Word *) TypeInfo;
-	Word *type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+	MR_TypeCtorInfo type_ctor_info = 
+		MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 	Integer arity;
 
 	TypeCtor = ML_make_ctor_info(type_info, type_ctor_info);
@@ -1579,7 +1583,7 @@ Word ML_make_ctor_info(Word *type_info, Word *type_ctor_info)
 		TypeCtorModuleName::out, TypeCtorName::out, 
 		TypeCtorArity::out), will_not_call_mercury, "
 {
-	Word *type_ctor = (Word *) TypeCtor;
+	MR_TypeCtorInfo type_ctor = (MR_TypeCtorInfo) TypeCtor;
 
 	if (MR_TYPECTOR_IS_HIGHER_ORDER(type_ctor)) {
 		TypeCtorName = (String) (Word) 
@@ -1938,7 +1942,7 @@ ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
 	*/
 
 Word
-ML_make_type(int arity, Word *type_ctor, Word arg_types_list) 
+ML_make_type(int arity, MR_TypeCtorInfo type_ctor, Word arg_types_list) 
 {
 	int i, extra_args;
 	Word type_ctor_info;
@@ -2205,105 +2209,109 @@ Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 void 
 ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 {
+    MR_TypeCtorInfo type_ctor_info;
+    MR_TypeCtorLayout type_ctor_layout;
+    MR_TypeCtorFunctors type_ctor_functors;
     Code *compare_pred;
-    Word *type_ctor_info, *type_ctor_functors;
-    Word data_value, entry_value, type_ctor_layout_entry, functors_indicator;
-    int data_tag, entry_tag; 
-    Word data_word;
-    enum MR_DataRepresentation data_rep;
+    Word layout_for_tag, layout_vector_for_tag;
+    Word data_value, data_word;
+    int data_tag; 
+    MR_DiscUnionTagRepresentation tag_rep;
+
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+    type_ctor_layout = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(type_ctor_info);
+    type_ctor_functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
+        type_ctor_info);
 
-    compare_pred = (Code *) type_ctor_info[OFFSET_FOR_COMPARE_PRED];
+    compare_pred = type_ctor_info->compare_pred;
     info->non_canonical_type = ( compare_pred ==
         ENTRY(mercury__builtin_compare_non_canonical_type_3_0) );
 
     data_word = *data_word_ptr;
     data_tag = tag(data_word);
     data_value = body(data_word, data_tag);
+
+    layout_for_tag = type_ctor_layout[data_tag];
+    layout_vector_for_tag = (Word *) strip_tag(layout_for_tag);
 	
-    type_ctor_layout_entry = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT_ENTRY(
-        type_ctor_info, data_tag);
-    type_ctor_functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(type_ctor_info);
-    functors_indicator = MR_TYPE_CTOR_FUNCTORS_INDICATOR(type_ctor_functors);
+    switch(type_ctor_info->type_ctor_rep) {
 
-
-    data_rep = MR_categorize_data(functors_indicator, type_ctor_layout_entry);
-
-    entry_value = strip_tag(type_ctor_layout_entry);
-
-    switch(data_rep) {
-
-        case MR_DATAREP_ENUM:
+        case MR_TYPECTOR_REP_ENUM:
             info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
-                entry_value, data_word);
+                layout_vector_for_tag, data_word);
             info->arity = 0;
             info->argument_vector = NULL;
             info->type_info_vector = NULL;	
             break;
 
-        case MR_DATAREP_SHARED_LOCAL:
-            data_value = unmkbody(data_value);
-            info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
-                entry_value, data_value);
-            info->arity = 0;
-            info->argument_vector = NULL;
-            info->type_info_vector = NULL;	
-            break;
+        case MR_TYPECTOR_REP_DU:
+            tag_rep = MR_get_tag_representation((Word) layout_for_tag);
+            switch(tag_rep) {
+            case MR_DISCUNIONTAG_SHARED_LOCAL:
+                data_value = unmkbody(data_value);
+                info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
+                    layout_vector_for_tag, data_value);
+                info->arity = 0;
+                info->argument_vector = NULL;
+                info->type_info_vector = NULL;	
+                break;
 
-        case MR_DATAREP_SHARED_REMOTE: {
-            Word secondary_tag;
+            case MR_DISCUNIONTAG_SHARED_REMOTE: {
+                Word secondary_tag;
 
-            secondary_tag = ((Word *) data_value)[0];
+                secondary_tag = ((Word *) data_value)[0];
              
                 /* 
                 ** Look past the secondary tag, and get the functor
                 ** descriptor, then we can just use the code for
                 ** unshared tags.
                 */
-            data_value = (Word) ((Word *) data_value + 1);
-            entry_value = (Word)
-            MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR(
-                entry_value, secondary_tag);
-            entry_value = strip_tag(entry_value);
-        }   /* fallthru */
+                data_value = (Word) ((Word *) data_value + 1);
+                layout_for_tag = (Word)
+                MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR(
+                    layout_vector_for_tag, secondary_tag);
+                layout_vector_for_tag = strip_tag(layout_for_tag);
+            }   /* fallthru */
 
-        case MR_DATAREP_UNSHARED: /* fallthru */
-        {
-            int i;
-	    Word * functor_descriptor = (Word *) entry_value;
-
-            info->arity =
-	    MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(functor_descriptor);
+            case MR_DISCUNIONTAG_UNSHARED: /* fallthru */
+            {
+                int i;
+	        Word * functor_descriptor = (Word *) layout_vector_for_tag;
+    
+                info->arity =
+	        MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(functor_descriptor);
 	
-            if (info->need_functor) {
-                make_aligned_string(info->functor, 
-                    MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(
-                    functor_descriptor));
-            }
-
-            if (info->need_args) {
-                info->argument_vector = (Word *) data_value;
-
-                info->type_info_vector = newmem(info->arity * sizeof(Word));
-
-                for (i = 0; i < info->arity ; i++) {
-                    Word *arg_pseudo_type_info;
-
-                    arg_pseudo_type_info = (Word *)
-                        MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(
-				functor_descriptor)[i];
-                    info->type_info_vector[i] = (Word) MR_create_type_info(
-                        type_info, arg_pseudo_type_info);
+                if (info->need_functor) {
+                    make_aligned_string(info->functor, 
+                        MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(
+                        functor_descriptor));
                 }
-            }
-            break;
-        }
 
-        case MR_DATAREP_NOTAG:
+                if (info->need_args) {
+                    info->argument_vector = (Word *) data_value;
+    
+                    info->type_info_vector = newmem(info->arity * sizeof(Word));
+
+                    for (i = 0; i < info->arity ; i++) {
+                        Word *arg_pseudo_type_info;
+
+                        arg_pseudo_type_info = (Word *)
+                            MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(
+				    functor_descriptor)[i];
+                        info->type_info_vector[i] = (Word) MR_create_type_info(
+                            type_info, arg_pseudo_type_info);
+                    }
+                }
+                break;
+            }
+	    }
+	break;
+
+        case MR_TYPECTOR_REP_NOTAG:
         {
             int i;
-	    Word * functor_descriptor = (Word *) entry_value;
+	    Word * functor_descriptor = (Word *) layout_vector_for_tag;
 
             data_value = (Word) data_word_ptr;
 
@@ -2338,24 +2346,24 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             }
             break;
         }
-        case MR_DATAREP_EQUIV: {
+        case MR_TYPECTOR_REP_EQUIV: {
             Word *equiv_type_info;
 
 			equiv_type_info = MR_create_type_info(type_info, 
 				(Word *) MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(
-					entry_value));
+					layout_vector_for_tag));
 			ML_expand(equiv_type_info, data_word_ptr, info);
             break;
         }
-        case MR_DATAREP_EQUIV_VAR: {
+        case MR_TYPECTOR_REP_EQUIV_VAR: {
             Word *equiv_type_info;
 
 			equiv_type_info = MR_create_type_info(type_info, 
-				(Word *) entry_value);
+				(Word *) layout_vector_for_tag);
 			ML_expand(equiv_type_info, data_word_ptr, info);
             break;
         }
-        case MR_DATAREP_INT:
+        case MR_TYPECTOR_REP_INT:
             if (info->need_functor) {
                 char buf[500];
                 char *str;
@@ -2372,7 +2380,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->arity = 0;
             break;
 
-        case MR_DATAREP_CHAR:
+        case MR_TYPECTOR_REP_CHAR:
                 /* XXX should escape characters correctly */
             if (info->need_functor) {
                 char *str;
@@ -2387,7 +2395,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->arity = 0;
             break;
 
-        case MR_DATAREP_FLOAT:
+        case MR_TYPECTOR_REP_FLOAT:
             if (info->need_functor) {
                 char buf[500];
                 Float f;
@@ -2405,7 +2413,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->arity = 0;
             break;
 
-        case MR_DATAREP_STRING:
+        case MR_TYPECTOR_REP_STRING:
                 /* XXX should escape characters correctly */
             if (info->need_functor) {
                 char *str;
@@ -2421,7 +2429,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->arity = 0;
             break;
 
-        case MR_DATAREP_PRED:
+        case MR_TYPECTOR_REP_PRED:
             if (info->need_functor) {
                 make_aligned_string(info->functor, ""<<predicate>>"");
             }
@@ -2430,7 +2438,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->arity = 0;
             break;
 
-        case MR_DATAREP_UNIV:
+        case MR_TYPECTOR_REP_UNIV:
                 /* 
                  * Univ is a two word structure, containing
                  * type_info and data.
@@ -2440,14 +2448,14 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                 &((Word *) data_word)[UNIV_OFFSET_FOR_DATA], info);
             break;
 
-        case MR_DATAREP_VOID:
+        case MR_TYPECTOR_REP_VOID:
 	    /*
 	    ** There's no way to create values of type `void',
 	    ** so this should never happen.
 	    */
 	    fatal_error(""ML_expand: cannot expand void types"");
 
-        case MR_DATAREP_ARRAY:
+        case MR_TYPECTOR_REP_ARRAY:
             if (info->need_functor) {
                 make_aligned_string(info->functor, ""<<array>>"");
             }
@@ -2457,7 +2465,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->arity = 0;
             break;
 
-        case MR_DATAREP_TYPEINFO:
+        case MR_TYPECTOR_REP_TYPEINFO:
             if (info->need_functor) {
                 make_aligned_string(info->functor, ""<<typeinfo>>"");
             }
@@ -2467,7 +2475,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->arity = 0;
             break;
 
-        case MR_DATAREP_C_POINTER:
+        case MR_TYPECTOR_REP_C_POINTER:
             if (info->need_functor) {
                 make_aligned_string(info->functor, ""<<c_pointer>>"");
             }
@@ -2476,7 +2484,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->arity = 0;
             break;
 
-        case MR_DATAREP_UNKNOWN:    /* fallthru */
+        case MR_TYPECTOR_REP_UNKNOWN:    /* fallthru */
         default:
             fatal_error(""ML_expand: cannot expand -- unknown data type"");
             break;

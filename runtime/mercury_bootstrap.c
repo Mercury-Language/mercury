@@ -55,7 +55,7 @@ const struct mercury_data_builtin__type_ctor_info_c_pointer_0_struct {
 	ENTRY(mercury____Unify___builtin__c_pointer_0_0_bootstrap),
 	ENTRY(mercury____Index___builtin__c_pointer_0_0_bootstrap),
 	ENTRY(mercury____Compare___builtin__c_pointer_0_0_bootstrap),
-	MR_TYPE_CTOR_REP_C_POINTER,
+	MR_TYPECTOR_REP_C_POINTER,
 	(Word *) &mercury_data_builtin__type_ctor_functors_c_pointer_0_bootstrap,
 	(Word *) &mercury_data_builtin__type_ctor_layout_c_pointer_0_bootstrap,
 	string_const("builtin", 7),

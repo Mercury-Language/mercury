@@ -281,7 +281,7 @@ mercury_data_array__type_ctor_info_array_1_struct {
 	Code * f2;
 	Code * f3;
 	Code * f4;
-	Code * f5;
+	Word   f5;
 	Word * f6;
 	Word * f7;
 	Word * f8;
@@ -291,7 +291,7 @@ mercury_data_array__type_ctor_info_array_1_struct {
 	ENTRY(mercury____Unify___array__array_1_0),
 	ENTRY(mercury____Index___array__array_1_0),
 	ENTRY(mercury____Compare___array__array_1_0),
-	(Word *) &mercury_data_array__type_ctor_layout_array_1,
+	MR_TYPECTOR_REP_ARRAY,
 	(Word *) &mercury_data_array__type_ctor_functors_array_1,
 	(Word *) &mercury_data_array__type_ctor_layout_array_1,
 	string_const(""array"", 5),

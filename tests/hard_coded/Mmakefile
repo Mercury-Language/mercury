@@ -24,6 +24,7 @@ PROGS=	\
 	cut_test \
  	cycles \
  	cycles2 \
+	deep_copy \
 	deep_copy_bug \
 	det_in_semidet_cntxt \
 	division_test \

@@ -480,7 +480,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_int_0_struct {
 	Code *f3;
 	Code *f4;
 #ifdef USE_TYPE_LAYOUT
-	const Word *f5;
+	Word f5;
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
@@ -492,7 +492,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_int_0_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_int_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_int_3_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_int_0,
+	MR_TYPECTOR_REP_INT,
 	(const Word *) & mercury_data___type_ctor_functors_int_0,
 	(const Word *) & mercury_data___type_ctor_layout_int_0,
 	(const Word *) string_const(""builtin"", 7),
@@ -512,7 +512,7 @@ mercury_data___type_ctor_info_character_0_struct {
 	Code *f3;
 	Code *f4;
 #ifdef USE_TYPE_LAYOUT
-	const Word *f5;
+	Word f5;
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
@@ -524,7 +524,7 @@ mercury_data___type_ctor_info_character_0_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_character_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_character_3_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_character_0,
+	MR_TYPECTOR_REP_CHAR,
 	(const Word *) & mercury_data___type_ctor_functors_character_0,
 	(const Word *) & mercury_data___type_ctor_layout_character_0,
 	(const Word *) string_const(""builtin"", 7),
@@ -543,7 +543,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_string_0_struct {
 	Code *f3;
 	Code *f4;
 #ifdef USE_TYPE_LAYOUT
-	const Word *f5;
+	Word f5;
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
@@ -555,7 +555,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_string_0_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_string_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_string_3_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_string_0,
+	MR_TYPECTOR_REP_STRING,
 	(const Word *) & mercury_data___type_ctor_functors_string_0,
 	(const Word *) & mercury_data___type_ctor_layout_string_0,
 	(const Word *) string_const(""builtin"", 7),
@@ -574,7 +574,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_float_0_struct {
 	Code *f3;
 	Code *f4;
 #ifdef USE_TYPE_LAYOUT
-	const Word *f5;
+	Word f5;
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
@@ -586,7 +586,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_float_0_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_float_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_float_3_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_float_0,
+	MR_TYPECTOR_REP_FLOAT,
 	(const Word *) & mercury_data___type_ctor_functors_float_0,
 	(const Word *) & mercury_data___type_ctor_layout_float_0,
 	(const Word *) string_const(""builtin"", 7),
@@ -603,7 +603,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_void_0_struct {
 	Code *f3;
 	Code *f4;
 #ifdef USE_TYPE_LAYOUT
-	const Word *f5;
+	Word f5;
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
@@ -615,7 +615,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_void_0_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_void_0,
+	MR_TYPECTOR_REP_VOID,
 	(const Word *) & mercury_data___type_ctor_functors_void_0,
 	(const Word *) & mercury_data___type_ctor_layout_void_0,
 	(const Word *) string_const(""builtin"", 7),
