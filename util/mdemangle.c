@@ -97,6 +97,7 @@ demangle(char *name) {
 	static const char mercury_data[] = "mercury_data_";
 	static const char base_type_layout[] = "base_type_layout_";
 	static const char base_type_info[] = "base_type_info_";
+	static const char base_type_functors[] = "base_type_functors_";
 	static const char common[] = "common";
 
 	char *start = name;
@@ -111,7 +112,7 @@ demangle(char *name) {
 	bool higher_order = FALSE; /* has this proc been specialized */
 	int internal = -1;
 	enum { ORDINARY, UNIFY, COMPARE, INDEX } category;
-	enum { COMMON, INFO, LAYOUT } data_category;
+	enum { COMMON, INFO, LAYOUT, FUNCTORS } data_category;
 
 	/*
 	** skip any leading underscore inserted by the C compiler
@@ -339,6 +340,11 @@ not_plain_mercury:
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
 			goto wrong_format;
 		}
+	} else if (strip_prefix(&start, base_type_functors)) {
+		data_category = FUNCTORS;
+		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
+			goto wrong_format;
+		}
 	} else if (strip_prefix(&start, common)) {
 		data_category = COMMON;
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
@@ -367,6 +373,15 @@ not_plain_mercury:
 				start, arity);
 		} else {
 			printf("<type layout for type '%s:%s'/%d>",
+				type_module, start, arity);
+		}
+		break;
+	case FUNCTORS:
+		if (*type_module == '\0') {
+			printf("<type functors for type '%s'/%d>",
+				start, arity);
+		} else {
+			printf("<type functors for type '%s:%s'/%d>",
 				type_module, start, arity);
 		}
 		break;

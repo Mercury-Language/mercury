@@ -14,6 +14,10 @@ mercury_data_mercury_builtin__base_type_info_list_1
 mercury_data_mercury_builtin__base_type_layout_term__context_0
 <type layout for type 'mercury_builtin:term__context'/0>
 
+	a base type functors
+mercury_data_eliza__base_type_functors_message_0
+<type functors for type 'eliza:message'/0>
+
 	an unqualified base type info
 mercury_data___base_type_info_int_0
 <base type_info for type 'int'/0>
