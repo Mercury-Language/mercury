@@ -594,7 +594,22 @@ deforest__should_try_deforestation(DeforestInfo, ShouldTry) -->
 		% The depth limit was exceeded. This should not
 		% occur too often in practice - the depth limit
 		% is just a safety net.
-		pd_debug__message("\n\n*****Depth limit exceeded*****\n\n", []),
+		pd_debug__message("\n\n*****Depth limit exceeded*****\n\n",
+			[]),
+		{ ShouldTry = no }
+	;
+		% Check whether either of the goals to be
+		% deforested can't be inlined.
+		( 
+			{ EarlierGoal = call(PredId, _, _, _, _, _) - _ }
+		;
+			{ LaterGoal = call(PredId, _, _, _, _, _) - _ }
+		),
+		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+		{ pred_info_get_markers(PredInfo, Markers) },
+		{ check_marker(Markers, no_inline) }
+	->
+		pd_debug__message("non-inlineable calls\n", []),		
 		{ ShouldTry = no }
 	;
 		%
