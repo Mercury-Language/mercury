@@ -48,7 +48,7 @@ else
 fi
 
 LIB_FLAGS="--link-object $WORKSPACE/trace/libmer_trace.a --link-object $WORKSPACE/browser/libmer_browser.a --link-object $WORKSPACE/library/libmer_std.a --link-object $WORKSPACE/runtime/libmer_rt.a --link-object $gclib -lm"
-INIT_FLAGS="--trace-init-file $WORKSPACE/browser/mer_browse.init --init-file $WORKSPACE/library/mer_std.init --init-file $WORKSPACE/runtime/mer_rt.init"
+INIT_FLAGS="--trace-init-file $WORKSPACE/browser/mer_browser.init --init-file $WORKSPACE/library/mer_std.init --init-file $WORKSPACE/runtime/mer_rt.init"
 
 if test "$MMC_CDEBUG" != ""
 then
