@@ -53,7 +53,7 @@ endif
 .SUFFIXES: .texi .dvi .ps .text
 
 %.dvi: %.texi
-	$(TEXI2DVI) $< > `basename $< .texi`.dvi_log
+	$(TEXI2DVI) $< > $*.dvi_log
 
 %.ps: %.dvi
 	$(DVIPS) -f < $< > $@
