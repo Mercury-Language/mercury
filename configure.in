@@ -188,6 +188,16 @@ PATH="$save_PATH"
 #-----------------------------------------------------------------------------#
 AC_PROG_CC
 AC_SUBST(CC)
+
+# We need to ensure that CFLAGS does not contain `-g', because
+# on some (broken) distributions of Linux (specifically Debian 0.93R6),
+# the `-lc' and `-lg' libraries have different contents; specifically,
+# only the latter contains memalign().  We need to make sure that the
+# test for memalign() doesn't use `-g', since `ml' doesn't use `-g'.
+CFLAGS="-O"
+
+# we also need to add the appropriate `-I' options so that the test programs
+# can do #include "memory.h"
 CFLAGS="-I runtime -I runtime/machdeps $CFLAGS"
 AC_PROG_CPP
 AC_C_CROSS
