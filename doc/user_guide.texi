@@ -3759,7 +3759,7 @@ followed by the exception that was thrown,
 and prints the question @samp{Expected?} for the user to answer.
 
 In addition to asserting whether a call behaved correctly or not 
-the user may also assert that a call should never have occured in the first
+the user may also assert that a call should never have occurred in the first
 place, because its inputs violated some precondition of the call.  For example
 if an unsorted list is passed to a predicate that is only designed to work with
 sorted lists.  Such calls should be deemed @emph{inadmissible} by the user. 
@@ -3809,7 +3809,7 @@ is omitted then browse the whole call as if it were a data term.
 While browsing a @samp{mark} command may be issued to assert that
 the current subterm is incorrect (see @ref{Improving the search}).
 To return to the declarative debugger question issue a @samp{quit}
-command from within the interative term browser.  For more information
+command from within the interactive term browser.  For more information
 on the use of the interactive term browser see the @samp{browse} command
 in @ref{Browsing commands} or type @samp{help} from within the 
 interactive query browser.
@@ -3952,7 +3952,7 @@ of the program which can make them harder to answer.
 The number of questions asked by the declarative debugger before it pinpoints
 the location of a bug can be reduced by giving it extra information.  The kind
 of extra information that can be given and how to convey this information are
-exlained in this section.
+explained in this section.
 
 @subsubsection Marking incorrect subterms
 
@@ -4060,7 +4060,7 @@ During the declarative debugging session the user may tell the declarative
 debugger to trust the predicate or function in the current question.
 Alternatively the user may tell the declarative debugger to trust all the
 predicates and functions in the same module as the predicate or function in the
-currect question.  See the @samp{trust} command in 
+current question.  See the @samp{trust} command in 
 @ref{Declarative debugging commands}.
 
 @c ----------------------------------------------------------------------------
@@ -4782,6 +4782,15 @@ Warn about procedures which are never called.
 @findex --no-warn-table-with-inline
 Disable warnings about tabled procedures that also have
 a `pragma inline' declaration.
+
+@sp 1
+@item --no-warn-non-term-special-preds
+@findex --no-warn-non-term-special-preds
+Do not warn about types that have user-defined equality or
+comparison predicates, or solver type initialisation predicates
+that cannot be proved to terminate.  This option is only
+enabled when termination analysis is enabled.
+(See @ref{Termination analysis options} for further details).
 
 @end table
 

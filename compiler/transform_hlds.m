@@ -38,6 +38,8 @@
    :- include_module term_util.
    :- include_module lp. % this could alternatively go in the `libs' module
 
+:- include_module post_term_analysis.
+
 :- include_module exception_analysis.
 
 % Optimizations (HLDS -> HLDS)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -247,6 +247,7 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
     % grades.
 :- type version_array(T) ---> version_array(T).
 
+:- pragma terminates(eq_version_array/2).
 :- pred eq_version_array(version_array(T)::in, version_array(T)::in)
             is semidet.
 
@@ -267,7 +268,7 @@ eq_version_array_2(I, VAa, VAb) :-
         true
     ).
 
-
+:- pragma terminates(cmp_version_array/3).
 :- pred cmp_version_array(comparison_result::uo,
             version_array(T)::in, version_array(T)::in) is det.
 

@@ -86,6 +86,7 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__dependency_graph.
+:- import_module transform_hlds__post_term_analysis.
 :- import_module transform_hlds__term_errors.
 :- import_module transform_hlds__term_norm.
 :- import_module transform_hlds__term_pass1.
@@ -133,7 +134,8 @@ termination__pass(!Module, !IO) :-
 		termination__make_opt_int(PredIds, !.Module, !IO)
 	;
 		true
-	).
+	),
+	post_term_analysis__process_module(!.Module, !IO).
 
 %----------------------------------------------------------------------------%
 %
@@ -644,8 +646,8 @@ check_preds([PredId | PredIds], !Module, !IO) :-
 % If it is, then the compiler sets the termination property of the ProcIds
 % accordingly.
 
-% XXX This does the wrong thing for calls to unify/2,
-% which might not terminate in the case of user-defined equality predicates.
+% We assume that user-defined special predicates terminate.  This 
+% assumption is checked later during the post_term_analysis pass.
 
 :- pred set_compiler_gen_terminates(pred_info::in, list(proc_id)::in,
 	pred_id::in, module_info::in, proc_table::in, proc_table::out)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2004 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -395,6 +395,7 @@
 
 :- pred array_equal(array(T)::in, array(T)::in) is semidet.
 :- pragma export(array_equal(in, in), "ML_array_equal").
+:- pragma terminates(array_equal/2).
 
 array_equal(Array1, Array2) :-
 	( if
@@ -424,6 +425,7 @@ array__equal_elements(N, Size, Array1, Array2) :-
 :- pred array_compare(comparison_result::uo, array(T)::in, array(T)::in)
 	is det.
 :- pragma export(array_compare(uo, in, in), "ML_array_compare").
+:- pragma terminates(array_compare/3).
 
 array_compare(Result, Array1, Array2) :-
 	array__size(Array1, Size1),

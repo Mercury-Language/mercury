@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,6 +96,7 @@
 		;	warn_stubs
 		;	warn_dead_procs
 		;	warn_table_with_inline
+		;	warn_non_term_special_preds
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -761,7 +762,8 @@ option_defaults_2(warning_option, [
 	warn_up_to_date -		bool(yes),
 	warn_stubs		-	bool(yes),
 	warn_dead_procs	-		bool(no),
-	warn_table_with_inline	-	bool(yes)
+	warn_table_with_inline	-	bool(yes),
+	warn_non_term_special_preds - 	bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -1398,6 +1400,7 @@ long_option("warn-up-to-date",		warn_up_to_date).
 long_option("warn-stubs",		warn_stubs).
 long_option("warn-dead-procs",		warn_dead_procs).
 long_option("warn-table-with-inline", 	warn_table_with_inline).
+long_option("warn-non-term-special-preds", warn_non_term_special_preds).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -1420,7 +1423,7 @@ long_option("debug-pd",			debug_pd).
 long_option("debug-rl-gen",		debug_rl_gen).
 long_option("debug-rl-opt",		debug_rl_opt).
 	% debug-il-asm does very low-level printf style debugging of
-	% IL assember.  Each instruction is written on stdout before it
+	% IL assembler.  Each instruction is written on stdout before it
 	% is executed.  It is a temporary measure until the IL debugging
 	% system built into .NET improves.
 long_option("debug-il-asm",		debug_il_asm).
@@ -1555,7 +1558,7 @@ long_option("deep-profile-tail-recursion",
 					deep_profile_tail_recursion).
 long_option("record-term-sizes-as-words", record_term_sizes_as_words).
 long_option("record-term-sizes-as-cells", record_term_sizes_as_cells).
-	% (c) miscellanous optional features
+	% (c) miscellaneous optional features
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
 long_option("parallel",			parallel).
@@ -1563,7 +1566,7 @@ long_option("use-trail",		use_trail).
 long_option("type-layout",		type_layout).
 long_option("aditi",			aditi).
 long_option("aditi-calls-mercury",	aditi_calls_mercury).
-	% Data represention options
+	% Data representation options
 long_option("reserve-tag",		reserve_tag).
 long_option("use-minimal-model-stack_copy",	use_minimal_model_stack_copy).
 long_option("use-minimal-model-own-stacks",	use_minimal_model_own_stacks).
@@ -2103,7 +2106,9 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_target_code	-	bool(Enable),
 			warn_up_to_date -		bool(Enable),
 			warn_stubs	-		bool(Enable),
-			warn_dead_procs	-		bool(Enable)
+			warn_dead_procs	-		bool(Enable),
+			warn_table_with_inline - 	bool(Enable),
+			warn_non_term_special_preds - 	bool(Enable)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
 	override_options([
@@ -2624,7 +2629,13 @@ options_help_warning -->
 		"\ttarget code (e.g. gcc).",
 		"--no-warn-table-with-inline",
 		"\tDisable warnings about tabled procedures that also have",
-		"\ta `pragma inline' declaration."
+		"\ta `pragma inline' declaration.",
+		"--no-warn-non-term-special-preds",
+		"\tDo not warn about types that have user-defined equality or",
+		"\tcomparison predicates, or solver type initialisation predicates",
+		"\tthat cannot be proved to terminate.  This option is only",
+		"\tenabled when termination analysis is enabled.",
+		"\t(See the ""Termination Analysis Options"" section below)."
 	]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.
