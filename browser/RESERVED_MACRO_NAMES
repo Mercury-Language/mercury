@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000-2002 The University of Melbourne.
+# Copyright (C) 2000-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -36,4 +36,20 @@ _GC_H
 # Normally it would be better to use uppercase for header guard macro names,
 # but that would be inconsistent with the coding style used in mps_gc/code.
 mercury_mps_h
+#-----------------------------------------------------------------------------#
+# This is defined by the mgnuc script in some grades.
+# It is used for configuring the Boehm collector.
+# XXX it should have a GC_ prefix.
+NO_SIGNALS
+#-----------------------------------------------------------------------------#
+# These are defined automatically by GCC -- gcc optionally passes
+# them on the command line when calling cc1, depending on the
+# exact options which gcc was invoked with.  These are not
+# namespace polution, since they are in the _[A-Z]* namespace
+# which is reserved for the C implementation, and they are being
+# defined by the C implementation.
+_GNU_SOURCE
+__EXTENSIONS__
+__OPTIMIZE__
+__STRICT_ANSI__
 #-----------------------------------------------------------------------------#

@@ -5843,7 +5843,7 @@ io__make_temp(Dir, Prefix, Name) -->
 	#include <sys/stat.h>
 	#include <fcntl.h>
 
-	#define	MAX_TEMPNAME_TRIES	(6 * 4)
+	#define	ML_MAX_TEMPNAME_TRIES	(6 * 4)
 
 	extern long ML_io_tempnam_counter;
 ").
@@ -5889,7 +5889,7 @@ io__make_temp(Dir, Prefix, Name) -->
 		num_tries++;
 		ML_io_tempnam_counter += (1 << num_tries);
 	} while (fd == -1 && errno == EEXIST &&
-		num_tries < MAX_TEMPNAME_TRIES);
+		num_tries < ML_MAX_TEMPNAME_TRIES);
 	if (fd == -1) {
 		ML_maybe_make_err_msg(MR_TRUE, ""error opening temporary file: "",
 			MR_PROC_LABEL, ErrorMessage);

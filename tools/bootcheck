@@ -488,12 +488,14 @@ then
 		$LN $root/library/library_strong_name.sn .
 		cp $root/library/Mmake* $root/library/Mercury.options .
 		$LN_S $root/library/$STD_LIB_NAME.init .
+		$LN_S $root/library/RESERVED_MACRO_NAMES .
 		cd $root/stage2
 		mkdir browser
 		cd browser
 		$LN_S $root/browser/*.m .
 		cp $root/browser/Mmake* $root/browser/Mercury.options .
 		$LN_S $root/browser/$BROWSER_LIB_NAME.init .
+		$LN_S $root/browser/RESERVED_MACRO_NAMES .
 		cd $root/stage2
 		if $copy_runtime
 		then
@@ -524,6 +526,7 @@ then
 			$LN_S $root/trace/*.h .
 			$LN_S $root/trace/*.c .
 			cp $root/trace/Mmake* .
+			$LN_S $root/trace/RESERVED_MACRO_NAMES .
 			cd $root/stage2
 		else
 			$LN_S $root/runtime .
