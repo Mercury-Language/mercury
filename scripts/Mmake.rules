@@ -31,6 +31,8 @@ main_target: $(MAIN_TARGET)
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 
 MCFLAGS += --use-subdirs
+MSCFLAGS += --use-subdirs
+MNCFLAGS += --use-subdirs
 MGNUCFLAGS += -I.
 
 endif

@@ -29,15 +29,18 @@ RM_C	=	$(LIBRARY_RM_C)
 MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" \
 		$(SCRIPTS_DIR)/mnc
 MNL	=	MERCURY_NU_LIB_DIR=. \
-		MERCURY_NU_LIB_OBJS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
+		MERCURY_NU_LIB_OBJS="`vpath_find $(library.nos) \
+					$(NU_LIBRARY_NOS)`" \
 		MERCURY_NU_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_NOS)" \
+		MERCURY_NU_DEBUG_LIB_OBJS="$(NU_DEBUG_LIBRARY_NOS)" \
 		$(SCRIPTS_DIR)/mnl -v
 
 MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
 MSL	=	MERCURY_SP_LIB_DIR=. \
 		MERCURY_SICSTUS_PROLOG=./sicstus_saved_state \
 		MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql \
-				$(library.qls) $(NU_LIBRARY_QLS) portray.ql`" \
+				$(library.qls) $(NU_LIBRARY_QLS) \
+				$(qls_subdir)portray.ql`" \
 		MERCURY_SP_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_QLS)" \
 		$(SCRIPTS_DIR)/msl
 
@@ -111,17 +114,21 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-NU_LIBRARY_NOS = \
-	io.nu.no require.nu.no std_util.nu.no string.nu.no term_io.nu.no \
-	int.nu.no float.nu.no char.nu.no mercury_builtin.nu.no library.nu.no \
-	store.nu.no
-NU_OVERRIDING_LIBRARY_NOS = map.nu.no assoc_list.nu.no array.nu.no
+NU_LIBRARY_NLS = \
+	io.nu.nl require.nu.nl std_util.nu.nl string.nu.nl term_io.nu.nl \
+	int.nu.nl float.nu.nl char.nu.nl mercury_builtin.nu.nl library.nu.nl \
+	store.nu.nl
+NU_OVERRIDING_LIBRARY_NLS = map.nu.nl assoc_list.nu.nl array.nu.nl
+NU_DEBUG_LIBRARY_NLS = portray.nl debug.nl error.nl
+	
 
-NU_LIBRARY_QLS = \
-	io.nu.ql require.nu.ql std_util.nu.ql string.nu.ql term_io.nu.ql \
-	int.nu.ql float.nu.ql char.nu.ql mercury_builtin.nu.ql library.nu.ql \
-	store.nu.ql sp_lib.ql
-NU_OVERRIDING_LIBRARY_QLS = map.nu.ql assoc_list.nu.ql array.nu.ql
+NU_LIBRARY_NOS = $(NU_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
+NU_OVERRIDING_LIBRARY_NOS = $(NU_OVERRIDING_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
+NU_DEBUG_LIBRARY_NOS = $(NU_DEBUG_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
+
+NU_LIBRARY_QLS = $(NU_LIBRARY_NLS:%.nl=$(qls_subdir)%.ql) \
+	$(qls_subdir)sp_lib.ql
+NU_OVERRIDING_LIBRARY_QLS = $(NU_OVERRIDING_LIBRARY_NLS:%.nl=$(qls_subdir)%.ql)
 
 #-----------------------------------------------------------------------------#
 
@@ -236,15 +243,19 @@ libmercury.init: $(deps_subdir)library.dep
 # isn't part of the application, but in this case it is.
 
 library.nu library.nu.debug: $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS)
-library.sicstus library.sicstus.debug: sp_builtin.ql $(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS)
+library.sicstus library.sicstus.debug: $(qls_subdir)sp_builtin.ql \
+	$(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS)
 
-library.nu.debug: error.no debug.no portray.no
-library.sicstus library.sicstus.debug: portray.ql
+library.nu.debug: $(nos_subdir)error.no $(nos_subdir)debug.no \
+	$(nos_subdir)portray.no
+library.sicstus library.sicstus.debug: $(qls_subdir)portray.ql
 
-sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS) portray.ql: sicstus_compile
+sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS) \
+$(qls_subdir)portray.ql: sicstus_compile
 
-$(library.nos) $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS) error.no \
-	debug.no portray.no: nc_builtin.nl
+$(library.nos) $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS) \
+	$(nos_subdir)error.no $(nos_subdir)debug.no $(nos_subdir)portray.no: \
+	nc_builtin.nl
 
 #-----------------------------------------------------------------------------#
 
@@ -280,7 +291,7 @@ on_exception(Error, (						\
 # We need to clean up the .no and .ql files for *.nu.nl, etc.
 
 clean:
-	rm -f *.no *.ql
+	rm -f $(nos_subdir)*.no $(qls_subdir)*.ql
 
 realclean:
 	rm -f libmercury.a libmercury.so libmercury.init
@@ -359,13 +370,15 @@ install_nuprolog: install_library_nu install_interpreter_nu
 .PHONY: install_library_nu
 install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) \
 			$(NU_OVERRIDING_LIBRARY_NOS) \
-			error.no debug.no portray.no nc_builtin.nl
+			$(nos_subdir)error.no $(nos_subdir)debug.no \
+			$(nos_subdir)portray.no nc_builtin.nl
 	[ -d $(INSTALL_NU_DIR) ] || mkdir -p $(INSTALL_NU_DIR)
 	cp `vpath_find nc_builtin.nl` $(INSTALL_NU_DIR)
 	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
 	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS) \
 		$(NU_OVERRIDING_LIBRARY_NOS) \
-		error.no debug.no portray.no` $(INSTALL_NU_ARCH_DIR)
+		$(nos_subdir)error.no $(nos_subdir)debug.no \
+		$(nos_subdir)portray.no` $(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_interpreter_nu
 install_interpreter_nu: library.nu

@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 The University of Melbourne.
+# Copyright (C) 1995-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -26,7 +26,7 @@
 NULIBDIR=${MERCURY_NU_LIB_DIR=@LIBDIR@/nuprolog/@FULLARCH@}
 LIBRARY_OBJS=${MERCURY_NU_LIB_OBJS=" `cd $NULIBDIR; echo *.no` "}
 OVERRIDING_LIBRARY_OBJS=${MERCURY_NU_OVERRIDING_LIB_OBJS=""}
-debug_objs="portray.no debug.no error.no"
+debug_objs=${MERCURY_NU_DEBUG_LIB_OBJS="portray.no debug.no error.no"}
 
 options=
 verbose=false

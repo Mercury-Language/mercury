@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1996 The University of Melbourne.
+# Copyright (C) 1995-1996, 1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -18,9 +18,18 @@ nc_builtin_nl=${MERCURY_NC_BUILTIN=@LIBDIR@/nuprolog/nc_builtin.nl}
 
 options=
 target=
+use_subdirs=${MMAKE_USE_SUBDIRS=no}
 
 while true; do
 	case "$1" in
+		--use-subdirs)
+			use_subdirs=yes
+			shift
+			;;
+		--no-use-subdirs)
+			use_subdirs=no
+			shift
+			;;
 		-F)	options="$options $1 $2"
 			shift; shift
 			;;
@@ -34,6 +43,12 @@ while true; do
 			;;
 	esac
 done
+
+case "$use_subdirs" in
+	yes)
+		[ -d Mercury/nos ] || mkdir -p Mercury/nos
+		;;
+esac
 
 for file in "$@"; do
 	dir=`dirname "$file"`
@@ -59,7 +74,11 @@ for file in "$@"; do
 	nc -c $options $tmp.nl
 	rm $tmp.nl $tmp.ns
 	case "$target" in
-		"") mv $tmp.no "$rootname.no" ;;
-		*)  mv $tmp.no "$target" ;;
+	    "") case "$use_subdirs" in
+		    no)  mv $tmp.no "$dir/$base.no" ;;
+		    yes) mv $tmp.no "$dir/Mercury/nos/$base.no" ;;
+		esac
+		;;
+	    *)  mv $tmp.no "$target" ;;
 	esac
 done
