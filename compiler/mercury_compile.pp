@@ -151,7 +151,6 @@ convert_gc_grade_option(GC_Grade) -->
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)
 	is semidet.
 
-convert_grade_option("") --> [].
 convert_grade_option("asm_fast") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
@@ -2044,12 +2043,7 @@ mercury_compile__link_module_list(Modules) -->
 		;
 	            maybe_write_string(Verbose, "% Linking...\n"),
 		    { join_string_list(Modules, ".o ", [], ObjectList) },
-		    globals__io_lookup_string_option(grade, Grade0),
-		    { Grade0 = "" -> 
-			Grade = "asm_fast.gc"
-		    ;
-			Grade = Grade0
-		    },
+		    globals__io_lookup_string_option(grade, Grade),
 		    { string__append_list(["ml -s ", Grade, " -o ", Module, " ",
 				Module, "_init.o " | ObjectList], LinkCmd) },
 		    mercury_compile__invoke_system_command(LinkCmd, LinkCmdOK),

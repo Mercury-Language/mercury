@@ -209,7 +209,7 @@ option_defaults_2(optimization_option, [
 		% Optimization options
 	debug			-	bool(no),
 	c_optimize		-	bool(yes),
-	grade			-	string(""),
+	grade			-	string("asm_fast.gc"),
 	optimize		-	bool(yes),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
