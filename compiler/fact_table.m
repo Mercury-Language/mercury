@@ -2536,20 +2536,20 @@ BEGIN_MODULE(%s_module)
 BEGIN_CODE
 Define_entry(%s);
 	mkframe(""%s/%d"", 1, LABEL(%s_i1));
-	framevar(0) = (Integer) 0;
+	MR_framevar(1) = (Integer) 0;
 	GOTO(LABEL(%s_i1));
 Define_label(%s_i1);
-	if (framevar(0) >= %s) fail();
+	if (MR_framevar(1) >= %s) fail();
 	{
 		/* declare argument vars */
 %s
-		Word ind = framevar(0), tmp;
+		Word ind = MR_framevar(1), tmp;
 		/* lookup fact table */
 %s
 		/* save output args to registers */
 %s
 	}
-	framevar(0)++;
+	MR_framevar(1)++;
 	succeed();
 END_MODULE
 
@@ -3065,18 +3065,18 @@ Define_entry(%s);
 %s
 		/* save output args to registers */
 %s
-		framevar(0) = ind + 1;
+		MR_framevar(1) = ind + 1;
 		succeed();
 	failure_code_%s:
 		fail();
 	}
 Define_label(%s_i1);
-	if (framevar(0) >= %s) 
+	if (MR_framevar(1) >= %s) 
 		fail();
 	{
 		/* create argument vars */
 %s
-		int ind = framevar(0);
+		int ind = MR_framevar(1);
 		/* copy framevars to registers */
 %s		
  		/* copy registers to input arg vars */
@@ -3088,7 +3088,7 @@ Define_label(%s_i1);
 		/* save output args to registers */
 %s
 	}
-	framevar(0)++;
+	MR_framevar(1)++;
 	succeed();
 END_MODULE
 
@@ -3199,10 +3199,10 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, DeclCode,
 	->
 		generate_arg_decl_code(VarName, Type, DeclCode0),
 		( ArgMode = top_in ->
-			generate_arg_input_code(VarName, Type, Loc,
-				NumInputArgs0, InputCode0, SaveRegsCode0,
-				GetRegsCode0),
 			NumInputArgs1 is NumInputArgs0 + 1,
+			generate_arg_input_code(VarName, Type, Loc,
+				NumInputArgs1, InputCode0, SaveRegsCode0,
+				GetRegsCode0),
 			OutputCode0 = ""
 		; ArgMode = top_out ->
 			generate_arg_output_code(VarName, Type, Loc,
@@ -3241,9 +3241,9 @@ generate_arg_input_code(Name, Type, RegNum, FrameVarNum, InputCode,
 	convert_type_from_mercury(RegName, Type, Converted),
 	Template = "\t\t%s = %s;\n",
 	string__format(Template, [s(Name), s(Converted)], InputCode),
-	string__format("\t\tframevar(%d) = %s;\n",
+	string__format("\t\tMR_framevar(%d) = %s;\n",
 		[i(FrameVarNum), s(RegName)], SaveRegCode),
-	string__format("\t\t%s = framevar(%d);\n",
+	string__format("\t\t%s = MR_framevar(%d);\n",
 		[s(RegName), i(FrameVarNum)], GetRegCode).
 
 :- pred generate_arg_output_code(string::in, (type)::in, int::in, 
@@ -3364,10 +3364,10 @@ Define_entry(%s);
 		/* save output args to registers */
 %s
 		if (hashval == -1) succeed_discard();
-		framevar(0) = hashval;
-		framevar(1) = (Word) current_table;
-		framevar(2) = (Word) keytype;
-		framevar(3) = current_key;
+		MR_framevar(1) = hashval;
+		MR_framevar(2) = (Word) current_table;
+		MR_framevar(3) = (Word) keytype;
+		MR_framevar(4) = current_key;
 		succeed();
 	failure_code_%s:
 		fail();
@@ -3376,10 +3376,10 @@ Define_label(%s_i1);
 	{
 		/* create argument vars */
 %s
-		Integer hashval = framevar(0);
+		Integer hashval = MR_framevar(1);
 		Word ind;
-		void *current_table = (void *)framevar(1);
-		char keytype = (char) framevar(2);
+		void *current_table = (void *) MR_framevar(2);
+		char keytype = (char) MR_framevar(3);
 
 		/* lookup hash table */
 		switch(keytype) 
@@ -3402,7 +3402,7 @@ Define_label(%s_i1);
 		/* save output args to registers */
 %s
 		if (hashval == -1) succeed_discard();
-		framevar(0) = hashval;
+		MR_framevar(1) = hashval;
 		succeed();
 	failure_code_%s:
 		fail();
@@ -3431,13 +3431,13 @@ void sys_init_%s_module(void) {
 	generate_hash_code(PragmaVars, ArgTypes, ModuleInfo, LabelName, 0,
 		PredName, 1, FactTableSize, HashCode),
 
-	generate_hash_lookup_code("(char *)framevar(3)", LabelName2, 0,
+	generate_hash_lookup_code("(char *) MR_framevar(4)", LabelName2, 0,
 		"strcmp(%s, %s) == 0", 's', no, "", [], [], ModuleInfo, 0, 0,
 		StringHashLookupCode),
-	generate_hash_lookup_code("framevar(3)", LabelName2, 1, "%s == %s",	
+	generate_hash_lookup_code("MR_framevar(4)", LabelName2, 1, "%s == %s",	
 		'i', no, "", [], [], ModuleInfo, 0, 0, IntHashLookupCode),
-	generate_hash_lookup_code("word_to_float(framevar(3))", LabelName2, 2,
-		"%s == %s", 'f', no, "", [], [], ModuleInfo, 0, 0,
+	generate_hash_lookup_code("word_to_float(MR_framevar(4))", LabelName2,
+		2, "%s == %s", 'f', no, "", [], [], ModuleInfo, 0, 0,
 		FloatHashLookupCode),
 	generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, ModuleInfo, 1,
 		FactTableSize, FactLookupCode),
