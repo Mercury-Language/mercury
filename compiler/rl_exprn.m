@@ -951,7 +951,7 @@ rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
 		% in Aditi predicates so the types must be known.
 		\+ {
 			% `index/2' doesn't work in Aditi.
-			compiler_generated(PredInfo),
+			is_unify_or_compare_pred(PredInfo),
 			\+ pred_info_name(PredInfo, "__Index__")
 		},
 		{ \+ pred_info_is_builtin(PredInfo) },

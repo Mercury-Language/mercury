@@ -333,9 +333,11 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 	    % But, compiler-generated unify predicates are not guaranteed
 	    % to be type-correct if they call a user-defined equality pred
 	    % or if it is a special pred for an existentially typed data type.
-	    ( compiler_generated(!.PredInfo),
-	      \+ special_pred_needs_typecheck(!.PredInfo, ModuleInfo0)
-	    ; pred_info_is_builtin(!.PredInfo)
+	    (
+	    	is_unify_or_compare_pred(!.PredInfo),
+	    	\+ special_pred_needs_typecheck(!.PredInfo, ModuleInfo0)
+	    ;
+	    	pred_info_is_builtin(!.PredInfo)
 	    )
 	->
 	    pred_info_clauses_info(!.PredInfo, ClausesInfo0),
@@ -4865,7 +4867,7 @@ convert_cons_defn(TypeCheckInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 		typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		\+ pred_info_get_goal_type(PredInfo, clauses_and_pragmas),
-		\+ compiler_generated(PredInfo),
+		\+ is_unify_or_compare_pred(PredInfo),
 		\+ pred_info_import_status(PredInfo, opt_imported)
 	->
 		ConsTypeInfo = error(foreign_type_constructor(TypeCtor,

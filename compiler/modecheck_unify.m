@@ -988,7 +988,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 				PredInfo),
 		mode_info_get_instmap(ModeInfo3, InstMap0),
 		( 
-			( compiler_generated(PredInfo) 
+			( is_unify_or_compare_pred(PredInfo) 
 			; instmap__is_unreachable(InstMap0)
 			)
 		->

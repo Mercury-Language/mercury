@@ -1561,7 +1561,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 				% Don't warn about builtins
 				% that have unused arguments.
 			\+ pred_info_is_builtin(PredInfo),
-			\+ compiler_generated(PredInfo),
+			\+ is_unify_or_compare_pred(PredInfo),
 				% Don't warn about stubs for procedures
 				% with no clauses -- in that case,
 				% we *expect* that none of the arguments

@@ -898,7 +898,7 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity) -->
 	; 
 		% Don't require purity annotations on calls in
 		% compiler-generated code.
-		{ compiler_generated(PredInfo) }
+		{ is_unify_or_compare_pred(PredInfo) }
 	->
 		[]
 	; 
@@ -1096,7 +1096,7 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 	io__write_string(".\n"),
 	prog_out__write_context(Context),
 	{ pred_info_get_purity(PredInfo, DeclaredPurity) },
-	( { compiler_generated(PredInfo) } ->
+	( { is_unify_or_compare_pred(PredInfo) } ->
 		io__write_string("  It must be pure.\n")
 	;
 		io__write_string("  It must be declared `"),

@@ -813,7 +813,7 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 			% need that information to understand how the program
 			% has been transformed.
 			{ \+ string__contains_char(Verbose, 'U') },
-			{ compiler_generated(PredInfo) }
+			{ is_unify_or_compare_pred(PredInfo) }
 		->
 			[]
 		;

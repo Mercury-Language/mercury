@@ -720,7 +720,7 @@ termination__write_pred_termination_info(Module, PredId) -->
 		;
 			ImportStatus = opt_exported
 		},
-		{ \+ compiler_generated(PredInfo) },
+		{ \+ is_unify_or_compare_pred(PredInfo) },
 
 		% XXX These should be allowed, but the predicate
 		% declaration for the specialized predicate is not produced

@@ -414,7 +414,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		GenBytecode = yes,
 		% We don't generate bytecode for __Unify__, __Compare__ etc
 		% Since we will assume this code is already correct
-		\+ compiler_generated(PredInfo),
+		\+ is_unify_or_compare_pred(PredInfo),
 		% Don't generate bytecode for procs with foreign code
 		goal_has_foreign(Goal) = no
 	->

@@ -1237,7 +1237,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% a type ambiguity error, but compiler-generated
 		% predicates are not type-checked.)
 		%
-		\+ compiler_generated(PredInfo0),
+		\+ is_unify_or_compare_pred(PredInfo0),
 
 		%
 		% We don't do this for the clause introduced by the
@@ -1328,7 +1328,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% We don't do this for compiler-generated predicates --
 		% they will never contain calls to field access functions.
 		%
-		\+ compiler_generated(PredInfo0),
+		\+ is_unify_or_compare_pred(PredInfo0),
 
 		%
 		% If there is a constructor for which the argument types

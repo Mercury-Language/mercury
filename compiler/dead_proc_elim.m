@@ -781,7 +781,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			% Don't eliminate special preds since they won't
 			% be actually called from the HLDS until after 
 			% polymorphism.
-			compiler_generated(PredInfo)
+			is_unify_or_compare_pred(PredInfo)
 		;
 			% Don't eliminate preds from builtin modules,
 			% since later passes of the compiler may introduce

@@ -437,7 +437,7 @@
 			%	pred_info_is_imported/1,
 			%	pred_info_is_pseudo_imported/1,
 			%	procedure_is_exported/2, and
-			%	pred_info_is_compiler_generated/1
+			%	is_unify_or_compare_pred/1
 			% respectively.
 			% We store booleans here, rather than storing the
 			% pred_info, to avoid retaining a reference to the
@@ -451,7 +451,7 @@
 			is_imported			::	bool,
 			is_pseudo_imported		::	bool,
 			is_exported			::	bool,
-			is_special_pred_instance	::	bool
+			is_unify_or_compare_pred	::	bool
 		).
 
 %-----------------------------------------------------------------------------%
@@ -758,15 +758,15 @@ rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	IsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
 	IsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
 	IsExported = (procedure_is_exported(PredInfo, ProcId) -> yes ; no),
-	IsSpecialPredInstance =
-		(compiler_generated(PredInfo) -> yes ; no),
+	IsUnifyOrComparePred =
+		(is_unify_or_compare_pred(PredInfo) -> yes ; no),
 	ProcHeadVarsWithNames = list__map((func(Var) = Var - Name :-
 			Name = varset__lookup_name(ProcVarSet, Var)
 		), ProcHeadVars),
 	ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
 		PredName, Arity, ArgTypes, PredId, ProcId,
 		ProcHeadVarsWithNames, ProcArgModes, ProcCodeModel,
-		IsImported, IsPseudoImp, IsExported, IsSpecialPredInstance).
+		IsImported, IsPseudoImp, IsExported, IsUnifyOrComparePred).
 
 rtti__proc_label_pred_proc_id(ProcLabel, PredId, ProcId) :-
 	ProcLabel = rtti_proc_label(_, _, _, _, _, _, PredId, ProcId,

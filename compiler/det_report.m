@@ -213,7 +213,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 				% happen for the Unify pred for the unit type,
 				% if such types are not boxed (as they are not
 				% boxed for the IL backend).
-				{ \+ compiler_generated(PredInfo0) },
+				{ \+ is_unify_or_compare_pred(PredInfo0) },
 
 				% Don't warn about predicates which are
 				% inferred erroneous when the appropiate

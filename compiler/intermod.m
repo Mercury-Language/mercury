@@ -367,7 +367,7 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 
 		% Don't export builtins since they will be
 		% recreated in the importing module anyway.
-		\+ compiler_generated(PredInfo),
+		\+ is_unify_or_compare_pred(PredInfo),
 		\+ pred_info_is_builtin(PredInfo),
 
 		% These will be recreated in the importing module.
@@ -614,7 +614,7 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		% the `.opt' file, since they will be recreated every
 		% time anyway.
 		%
-		{ compiler_generated(PredInfo) }
+		{ is_unify_or_compare_pred(PredInfo) }
 	->
 		{ DoWrite = yes }
 	;

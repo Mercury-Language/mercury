@@ -380,10 +380,10 @@ output_layout_name_storage_type_name(proc_static(RttiProcLabel),
 		{ BeingDefined = yes }
 	),
 	(
-		{ RttiProcLabel ^ is_special_pred_instance = yes },
+		{ RttiProcLabel ^ is_unify_or_compare_pred = yes },
 		io__write_string("MR_Compiler_ProcStatic ")
 	;
-		{ RttiProcLabel ^ is_special_pred_instance = no },
+		{ RttiProcLabel ^ is_unify_or_compare_pred = no },
 		io__write_string("MR_User_ProcStatic ")
 	),
 	output_layout_name(proc_static(RttiProcLabel)).
