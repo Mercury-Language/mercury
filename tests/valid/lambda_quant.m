@@ -3,12 +3,12 @@
 
 :- module lambda_quant.
 :- interface.
-:- import_module list, int.
 
 :- pred test(pred).
 :- mode test(out((pred) is semidet)) is nondet.
 
 :- implementation.
+:- import_module list, int.
 
 :- pred t is semidet.
 t.
@@ -21,5 +21,9 @@ test(f).
 test(G) :-
 	G1 = ((pred) is semidet :- X = 0, X \= 1),
 	G2 = ((pred) is det :- X = [], X \= [_|_]),
+	G = ((pred) is semidet :- G1, G2).
+test(G) :-
+	G1 = ((pred) is semidet :- Y = 0),
+	G2 = ((pred) is det :- Y = []),
 	G = ((pred) is semidet :- G1, G2).
 
