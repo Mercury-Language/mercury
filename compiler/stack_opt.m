@@ -1812,9 +1812,15 @@ record_decisions_in_goal(some(Vars0, CanRemove, Goal0) - GoalInfo,
 
 record_decisions_in_goal(Goal0, Goal, VarInfo0, VarInfo,
 		VarRename0, VarRename, InsertMap) :-
-	Goal0 = generic_call(_,_,_,_) - _,
+	Goal0 = generic_call(GenericCall, _ , _, _) - _,
+	% unsafe_casts are generated inline.
+	( GenericCall = unsafe_cast ->
+		MustHaveMap = no
+	;
+		MustHaveMap = yes
+	),
 	record_decisions_at_call_site(Goal0, Goal, VarInfo0, VarInfo,
-		VarRename0, VarRename, yes, InsertMap).
+		VarRename0, VarRename, MustHaveMap, InsertMap).
 
 record_decisions_in_goal(Goal0, Goal, VarInfo0, VarInfo, VarRename0, VarRename,
 		InsertMap) :-
