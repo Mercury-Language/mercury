@@ -302,7 +302,7 @@ tag_switch__get_tag_counts_2([ConsTag | TagList], TagCountMap0, TagCountMap) :-
 		( map__search(TagCountMap0, Primary, _) ->
 			error("simple tag is shared")
 		;
-			map__set(TagCountMap0, Primary, none - -1,
+			map__set(TagCountMap0, Primary, none - (-1),
 				TagCountMap1)
 		)
 	; ConsTag = complicated_tag(Primary, Secondary) ->
