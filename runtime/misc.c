@@ -307,6 +307,8 @@ static void print_ordinary_regs(void)
 	}
 }
 
+#endif /* !defined(SPEED) || defined(DEBUG_GOTOS) */
+
 void printlabel(/* const */ Code *w)
 {
 	Label	*label;
@@ -317,8 +319,6 @@ void printlabel(/* const */ Code *w)
 	else
 		printf("label UNKNOWN (0x%p)\n", w);
 }
-
-#endif
 
 #if 0
 
