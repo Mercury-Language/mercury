@@ -4407,7 +4407,8 @@ of Melbourne, Melbourne, Australia, 1997.  Available from
 @unnumberedsec [4]
 K. Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
 for Well-Founded Evaluation of Normal Logic Programs},
-PhD thesis, SUNY at Stony Brook, 1996.
+PhD thesis, SUNY at Stony Brook, 1996.  Available from
+<http://www.cs.kuleuven.ac.be/~kostis/Thesis/thesis.ps.gz>.
 
 @node [5]
 @unnumberedsec [5]
