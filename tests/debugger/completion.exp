@@ -3,10 +3,11 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                  document           maxdepth           scroll
-P                  document_category  mindepth           set
-alias              down               mm_stacks          source
-all_class_decls    e                  mmc_options        stack
+?                  disable            level              scope
+P                  document           maxdepth           scroll
+alias              document_category  mindepth           set
+all_class_decls    down               mm_stacks          source
+all_procedures     e                  mmc_options        stack
 all_regs           echo               modules            stack_regs
 all_type_ctors     enable             next               step
 b                  exception          nondet_stack       subgoal
@@ -26,7 +27,6 @@ dd                 histogram_exp      return             var_name_stats
 dd_dd              ignore             s                  vars
 debug_vars         io_query           save               view
 delete             label_stats        save_to_file       
-disable            level              scope              
 h              help           histogram_all  histogram_exp  
 var_details     var_name_stats  vars            view
 var_details     var_name_stats  vars            

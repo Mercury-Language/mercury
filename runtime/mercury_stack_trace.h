@@ -256,6 +256,14 @@ extern	void	MR_print_pred_id(FILE *fp, const MR_Proc_Layout *entry);
 extern	void	MR_print_proc_spec(FILE *fp, const MR_Proc_Layout *entry);
 
 /*
+** MR_print_proc_separate prints a string that uniquely specifies the given
+** procedure to the debugger, with each component of a name in a separate field
+** to allow the output to be processed by tools (e.g. awk scripts).
+*/
+
+extern	void	MR_print_proc_separate(FILE *fp, const MR_Proc_Layout *entry);
+
+/*
 ** MR_print_proc_id_trace_and_context prints an identification of the given
 ** procedure, together with call trace information (if available), a context
 ** within the procedure, and possibly a context identifying the caller.

@@ -77,7 +77,7 @@ static  void        MR_dump_stack_record_flush(FILE *fp,
 
 static  void        MR_print_proc_id_internal(FILE *fp,
                         const MR_Proc_Layout *entry, MR_bool spec, 
-                        MR_bool print_mode);
+                        MR_bool print_mode, MR_bool separate);
 
 static  void        MR_maybe_print_context(FILE *fp,
                         const char *filename, int lineno);
@@ -1256,24 +1256,30 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
 void
 MR_print_proc_id(FILE *fp, const MR_Proc_Layout *entry)
 {
-    MR_print_proc_id_internal(fp, entry, MR_FALSE, MR_TRUE);
+    MR_print_proc_id_internal(fp, entry, MR_FALSE, MR_TRUE, MR_FALSE);
 }
 
 void
 MR_print_pred_id(FILE *fp, const MR_Proc_Layout *entry)
 {
-    MR_print_proc_id_internal(fp, entry, MR_FALSE, MR_FALSE);
+    MR_print_proc_id_internal(fp, entry, MR_FALSE, MR_FALSE, MR_FALSE);
 }
 
 void
 MR_print_proc_spec(FILE *fp, const MR_Proc_Layout *entry)
 {
-    MR_print_proc_id_internal(fp, entry, MR_TRUE, MR_TRUE);
+    MR_print_proc_id_internal(fp, entry, MR_TRUE, MR_TRUE, MR_FALSE);
+}
+
+void
+MR_print_proc_separate(FILE *fp, const MR_Proc_Layout *entry)
+{
+    MR_print_proc_id_internal(fp, entry, MR_TRUE, MR_TRUE, MR_TRUE);
 }
 
 static void
 MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec,
-    MR_bool print_mode)
+    MR_bool print_mode, MR_bool separate)
 {
     const MR_User_Proc_Id *user;
     const MR_UCI_Proc_Id  *uci;
@@ -1287,20 +1293,29 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec,
 
         if (spec) {
             if (MR_streq(uci->MR_uci_pred_name, "__Unify__")) {
-                fprintf(fp, "unif*");
+                fprintf(fp, "unif");
             } else if (MR_streq(uci->MR_uci_pred_name, "__Compare__")) {
-                fprintf(fp, "comp*");
+                fprintf(fp, "comp");
             } else if (MR_streq(uci->MR_uci_pred_name, "__Index__")) {
-                fprintf(fp, "indx*");
+                fprintf(fp, "indx");
+            } else if (MR_streq(uci->MR_uci_pred_name, "__Initialise__")) {
+                fprintf(fp, "init");
             } else {
-                MR_fatal_error("uci procedure is not unify, compare or index");
+                MR_fatal_error("uci procedure is not "
+                    "unify, compare, index or init");
             }
 
-            fprintf(fp, "%s.%s/%ld",
-                uci->MR_uci_type_module,
-                uci->MR_uci_type_name,
-                (long) uci->MR_uci_type_arity);
-
+            if (separate) {
+                fprintf(fp, " %s %s %ld",
+                    uci->MR_uci_type_module,
+                    uci->MR_uci_type_name,
+                    (long) uci->MR_uci_type_arity);
+            } else {
+                fprintf(fp, "*%s.%s/%ld",
+                    uci->MR_uci_type_module,
+                    uci->MR_uci_type_name,
+                    (long) uci->MR_uci_type_arity);
+            }
         } else {
             fprintf(fp, "%s for %s.%s/%ld",
                 uci->MR_uci_pred_name,
@@ -1310,7 +1325,11 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec,
         }
 
         if (print_mode) {
-            fprintf(fp, "-%ld", (long) uci->MR_uci_mode);
+            if (separate) {
+                fprintf(fp, " %ld", (long) uci->MR_uci_mode);
+            } else {
+                fprintf(fp, "-%ld", (long) uci->MR_uci_mode);
+            }
         }
 
         if (strcmp(uci->MR_uci_type_module,
@@ -1329,19 +1348,32 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec,
             MR_fatal_error("procedure is not pred or func");
         }
 
-        if (spec) {
+        if (separate) {
+            fprintf(fp, " ");
+        } else if (spec) {
             fprintf(fp, "*");
         } else {
             fprintf(fp, " ");
         }
 
-        fprintf(fp, "%s.%s/%ld",
-            user->MR_user_decl_module,
-            user->MR_user_name,
-            (long) MR_sle_user_adjusted_arity(entry));
+        if (separate) {
+            fprintf(fp, "%s %s %ld",
+                user->MR_user_decl_module,
+                user->MR_user_name,
+                (long) MR_sle_user_adjusted_arity(entry));
+        } else {
+            fprintf(fp, "%s.%s/%ld",
+                user->MR_user_decl_module,
+                user->MR_user_name,
+                (long) MR_sle_user_adjusted_arity(entry));
+        }
 
         if (print_mode) {
-            fprintf(fp, "-%ld", (long) user->MR_user_mode);
+            if (separate) {
+                fprintf(fp, " %ld", (long) user->MR_user_mode);
+            } else {
+                fprintf(fp, "-%ld", (long) user->MR_user_mode);
+            }
         }
 
         if (!spec && strcmp(user->MR_user_decl_module,

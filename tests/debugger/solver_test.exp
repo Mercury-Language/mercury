@@ -1,0 +1,18 @@
+      E1:     C1 CALL pred solver_test.main/2-0 (det) solver_test.m:23
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> procedures solver_test
+List of procedures in module `solver_test'
+
+__Initialise__ for solver_test.foo/0-0 (det)
+__Compare__ for solver_test.foo/0-0 (det)
+__Unify__ for solver_test.foo/0-0 (semidet)
+pred solver_test.test_any_free_unify/2-0 (det)
+pred solver_test.init_foo/1-0 (det)
+func solver_test.representation to any foo/0/1-0 (det)
+func solver_test.representation to ground foo/0/1-0 (det)
+func solver_test.representation of any foo/0/1-0 (det)
+func solver_test.representation of ground foo/0/1-0 (det)
+pred solver_test.main/2-0 (det)
+mdb> quit -y

@@ -466,6 +466,7 @@ static	MR_TraceCmdFunc	MR_trace_cmd_type_ctor;
 static	MR_TraceCmdFunc	MR_trace_cmd_class_decl;
 static	MR_TraceCmdFunc	MR_trace_cmd_all_type_ctors;
 static	MR_TraceCmdFunc	MR_trace_cmd_all_class_decls;
+static	MR_TraceCmdFunc	MR_trace_cmd_all_procedures;
 static	MR_TraceCmdFunc	MR_trace_cmd_save;
 static	MR_TraceCmdFunc	MR_trace_cmd_quit;
 static	MR_TraceCmdFunc	MR_trace_cmd_dd;
@@ -540,6 +541,9 @@ static	MR_bool	MR_trace_options_type_ctor(MR_bool *print_rep,
 static	MR_bool	MR_trace_options_class_decl(MR_bool *print_methods,
 			MR_bool *print_instances, char ***words,
 			int *word_count, const char *cat, const char *item);
+static	MR_bool	MR_trace_options_all_procedures(MR_bool *separate,
+			MR_bool *uci, char ***words, int *word_count,
+			const char *cat, const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_do_noop(void);
 
@@ -4875,7 +4879,7 @@ MR_trace_cmd_all_type_ctors(char **words, int word_count,
 	print_rep = MR_FALSE;
 	print_functors = MR_FALSE;
 	if (! MR_trace_options_type_ctor(&print_rep, &print_functors,
-		&words, &word_count, "developer", "all_class_decls"))
+		&words, &word_count, "developer", "all_type_ctors"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1 || word_count == 2) {
@@ -4972,6 +4976,52 @@ MR_trace_cmd_all_class_decls(char **words, int word_count,
 		} else {
 			fprintf(MR_mdb_out, "in module %s: %d\n",
 				module_name, count);
+		}
+	} else {
+		MR_trace_usage("developer", "class_decl");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_all_procedures(char **words, int word_count,
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+	const char		*filename;
+	MR_bool			separate;
+	MR_bool			uci;
+	FILE			*fp;
+
+	MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
+
+	separate = MR_FALSE;
+	uci = MR_FALSE;
+	if (! MR_trace_options_all_procedures(&separate, &uci,
+		&words, &word_count, "developer", "all_procedures"))
+	{
+		; /* the usage message has already been printed */
+	} else if (word_count == 2) {
+		filename = words[1];
+		fp = fopen(filename, "w");
+		if (fp == NULL) {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err,
+				"mdb: error opening `%s': %s.\n",
+				filename, strerror(errno));
+			return KEEP_INTERACTING;
+		}
+
+		MR_dump_module_tables(fp, separate, uci);
+		if (fclose(fp) != 0) {
+			fprintf(MR_mdb_err,
+				"mdb: error writing to `%s': %s.\n",
+				filename, strerror(errno));
+			return KEEP_INTERACTING;
+		} else {
+			fprintf(MR_mdb_out,
+				"mdb: wrote table to `%s'.\n", filename);
 		}
 	} else {
 		MR_trace_usage("developer", "class_decl");
@@ -6475,6 +6525,44 @@ MR_trace_options_class_decl(MR_bool *print_methods, MR_bool *print_instances,
 	return MR_TRUE;
 }
 
+static struct MR_option MR_trace_all_procedures_opts[] =
+{
+	{ "separate",		MR_no_argument,		NULL,	's' },
+	{ "uci",		MR_no_argument,		NULL,	'u' },
+	{ NULL,			MR_no_argument,		NULL,	0 }
+};
+
+static MR_bool
+MR_trace_options_all_procedures(MR_bool *separate, MR_bool *uci,
+	char ***words, int *word_count, const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "su",
+		MR_trace_all_procedures_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 's':
+				*separate = MR_TRUE;
+				break;
+
+			case 'u':
+				*uci = MR_TRUE;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return MR_FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return MR_TRUE;
+}
+
 static void
 MR_trace_usage(const char *cat, const char *item)
 /* cat is unused now, but could be used later */
@@ -7324,7 +7412,7 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "misc", "save", MR_trace_cmd_save,
 		NULL, MR_trace_filename_completer },
 	{ "misc", "quit", MR_trace_cmd_quit,
-		MR_trace_quit_cmd_args, NULL },
+		MR_trace_quit_cmd_args, MR_trace_null_completer },
 	
 	{ "exp", "histogram_all", MR_trace_cmd_histogram_all,
 		NULL, MR_trace_filename_completer },
@@ -7381,6 +7469,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		NULL, MR_trace_null_completer },
 	{ "developer", "all_class_decls", MR_trace_cmd_all_class_decls,
 		NULL, MR_trace_null_completer },
+	{ "developer", "all_procedures", MR_trace_cmd_all_procedures,
+		NULL, MR_trace_filename_completer },
 
 	/* End of doc/mdb_command_list. */
 	{ NULL, "NUMBER", NULL,

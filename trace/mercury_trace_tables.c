@@ -271,17 +271,23 @@ MR_process_line_layouts(const MR_Module_File_Layout *file_layout, int line,
 }
 
 void
-MR_dump_module_tables(FILE *fp)
+MR_dump_module_tables(FILE *fp, MR_bool separate, MR_bool uci)
 {
-	int	i, j;
+	int			i, j;
+	const MR_Proc_Layout	*proc;
 
 	for (i = 0; i < MR_module_info_next; i++) {
-		fprintf(fp, "====================\n");
-		fprintf(fp, "module %s\n", MR_module_infos[i]->MR_ml_name);
-		fprintf(fp, "====================\n");
 		for (j = 0; j < MR_module_infos[i]->MR_ml_proc_count; j++) {
-			MR_print_proc_id_and_nl(fp,
-				MR_module_infos[i]->MR_ml_procs[j]);
+			proc = MR_module_infos[i]->MR_ml_procs[j];
+			if (uci || !MR_PROC_LAYOUT_IS_UCI(proc)) {
+				if (separate) {
+					MR_print_proc_separate(fp, proc);
+				} else {
+					MR_print_proc_id(fp, proc);
+				}
+
+				fprintf(fp, "\n");
+			}
 		}
 	}
 }
@@ -405,6 +411,9 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	} else if (MR_strneq(str, "indx*", 5)) {
 		spec->MR_proc_prefix = MR_PREFIX_INDX;
 		str += 5;
+	} else if (MR_strneq(str, "init*", 5)) {
+		spec->MR_proc_prefix = MR_PREFIX_INIT;
+		str += 5;
 	}
 
 	/*
@@ -476,6 +485,7 @@ MR_translate_double_underscores(char *start)
 ** On return, `*end' points to the start of the trailing number.
 ** If no number was found, `*end' is unchanged. 
 */
+
 static MR_bool
 MR_parse_trailing_number(char *start, char **end, int *number)
 {

@@ -3538,6 +3538,19 @@ it also lists all the methods of each type class.
 @sp 1
 If the option @samp{-i} or @samp{--print-instance} option is given,
 it also lists all the instances of each type class.
+@sp 1
+@item all_procedures [-su] @var{filename}
+@kindex all_procedures (mdb command)
+Puts a list of all the debuggable procedures in the program
+into the named file.
+@sp 1
+If the @samp{-s} or @samp{--separate} option is given,
+the various components of procedure names are separated by spaces.
+@sp 1
+If the @samp{-u} or @samp{--uci} option is given,
+the list will include the procedures of
+compiler generated unify, compare, index and initialization predicates.
+Normally, the list includes the procedures of only user defined predicates.
 @end table
 
 @node Declarative debugging

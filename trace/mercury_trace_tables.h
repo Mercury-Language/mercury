@@ -56,21 +56,26 @@ extern	void		MR_process_file_line_layouts(const char *file,
 **
 ** MR_dump_module_tables lists all procedures in all modules.
 ** Its output can be very big; it should be used only by developers,
-** for debugging the debugger.
+** for debugging the debugger. The components of procedure names will be
+** printed in separate fields if the separate argument is true, while the
+** names of compiler-created (unify/compare/index etc) predicates will be
+** printed if the uci argument is true.
 **
 ** MR_dump_module_list lists the names of all the modules,
 ** while MR_dump_module_procs lists the names of all the procs in the named
 ** module. These are intended for ordinary, non-developer users.
 */
 
-extern	void		MR_dump_module_tables(FILE *fp);
+extern	void		MR_dump_module_tables(FILE *fp, MR_bool separate,
+				MR_bool uci);
+
 extern	void		MR_dump_module_list(FILE *fp);
 extern	void		MR_dump_module_procs(FILE *fp, const char *name);
 
 /*
 ** A procedure specification has several components, the meaning of which
 ** depends on whether the procedure is from a user defined procedure (user)
-** or from a unify, compare or index procedure (uci).
+** or from a unify, compare, index or init procedure (uci).
 **
 ** The meanings of the components are
 **
@@ -93,7 +98,8 @@ typedef enum {
 	MR_PREFIX_FUNC,
 	MR_PREFIX_UNIF,
 	MR_PREFIX_COMP,
-	MR_PREFIX_INDX
+	MR_PREFIX_INDX,
+	MR_PREFIX_INIT
 } MR_Proc_Prefix;
 
 typedef	struct {
