@@ -971,7 +971,7 @@ defines the inst @samp{listskel(Inst)} to be a list skeleton
 whose elements have inst @samp{Inst}; you can the use insts
 such as @samp{listskel(listskel(free))}, which represents
 the instantiation state of a list of lists of free variables.
-The standary library provides the parametric modes
+The standard library provides the parametric modes
 
 @example
 :- mode in(Inst) :: Inst -> Inst.
@@ -1051,22 +1051,40 @@ would not be allowed, since it would create aliasing between the
 different arguments --- on success of the predicate, the list elements
 would be free variables but they would not be distinct.
 
-@ignore
-Note that for every mode of a predicate
-in which a node is @dfn{produced} (mapped from free to bound)
-there is another mode for that predicate
-in which the node is @dfn{consumed} (mapped from bound to bound),
-and for every mode in which a node is ignored (mapped from free to free)
-there is another mode in which the node is mapped from bound to bound.
-Such modes are called @dfn{implied modes}.
-@end ignore
+In Mercury it is always possible to call a predicate with an
+argument that is is more bound than the initial inst specified for that
+argument in the predicate's mode declaration.  In such cases, the
+compiler will insert additional unifications to ensure that the
+argument actually passed to the predicate will have the inst specified.
+For example, if the predicate @code{p/1} has mode @samp{p(out)}, you
+can still call @samp{p(X)} if @code{X} is ground.  The compiler will
+transform this code to @samp{p(Y), X = Y} where @code{Y} is a fresh
+variable.  It is almost as if the predicate @code{p/1} has another mode
+@samp{p(in)}; we call such modes ``implied modes''.
+
+To make this concept precise, we introduce the following definition.
+A term @dfn{satisfies} an instantiatedness tree
+if for every node in the instantiatedness tree,
+
+@itemize @bullet
+@item
+if the node is ``free'',
+then the corresponding node in the term (if any)
+is either a distinct free variable,
+or a function symbol.
+
+@item
+if the node is ``bound'',
+then the corresponding node in the term (if any)
+is a function symbol.
+
+@end itemize
 
 The @dfn{mode set} for a predicate
-is the set of mode declarations for the predicate
-plus all their implied modes.
+is the set of mode declarations for the predicate.
 A mode set is an assertion by the programmer
 that the predicate should only be called with argument terms
-that are approximated by the initial instantiatedness trees
+that satisfy the initial instantiatedness trees
 of one of the mode declarations in the set
 (i.e. the specified modes and the modes they imply
 are the only allowed modes for this predicate).
