@@ -19,19 +19,22 @@
 :- interface.
 :- import_module hlds, io.
 
-:- pred dependency_graph__build_dependency_graph(module_info, module_info).
-:- mode dependency_graph__build_dependency_graph(in, out) is det.
+:- pred module_info_ensure_dependency_info(module_info, module_info).
+:- mode module_info_ensure_dependency_info(in, out) is det.
 
-:- pred dependency_graph__write_dependency_graph(module_info,
+<<<<<<< dependency_graph.m
+:- pred dependency_graph__write_dependency_graph(module_info, module_info,
 						io__state, io__state).
-:- mode dependency_graph__write_dependency_graph(in, di, uo) is det.
+:- mode dependency_graph__write_dependency_graph(in, out, di, uo) is det.
 
+=======
 	% Output a form of the static call graph to a file for use by the
 	% profiler.
 :- pred dependency_graph__write_prof_dependency_graph(module_info,
 						io__state, io__state).
 :- mode dependency_graph__write_prof_dependency_graph(in, di, uo) is det.
 
+>>>>>>> 1.2
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -44,15 +47,28 @@
 
 %-----------------------------------------------------------------------------%
 
+	% Ensure that the dependency graph has been built by building
+	% it if necessary.
+
+module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) :-
+	( module_info_dependency_info_built(ModuleInfo0) ->
+	    ModuleInfo = ModuleInfo0
+	;
+	    dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo)
+	).
+
 	% Traverse the module structure, calling `dependency_graph__add_arcs'
 	% for each procedure body.
+
+:- pred dependency_graph__build_dependency_graph(module_info, module_info).
+:- mode dependency_graph__build_dependency_graph(in, out) is det.
 
 dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) :-
 	module_info_predids(ModuleInfo0, PredIds),
 	relation__init(DepGraph0),
 	dependency_graph__add_pred_arcs(PredIds, ModuleInfo0,
 				DepGraph0, DepGraph),
-	module_info_dependency_info(ModuleInfo0, DepInfo0),
+	dependency_info__init(DepInfo0),
 	dependency_info__set_dependency_graph(DepInfo0, DepGraph, DepInfo1),
 	relation__atsort(DepGraph, DepOrd0),
 	dependency_graph__list_set_to_list_list(ModuleInfo0, DepOrd0,
@@ -260,8 +276,9 @@ dependency_graph__add_arcs_in_cons(address_const(Pred, Proc), Caller,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-dependency_graph__write_dependency_graph(ModuleInfo) -->
+dependency_graph__write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	io__write_string("% Dependency graph\n"),
+	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) },
 	{ module_info_dependency_info(ModuleInfo, DepInfo) },
 	{ dependency_info__get_dependency_graph(DepInfo, DepGraph) },
 	{ relation__effective_domain(DepGraph, DomSet) },

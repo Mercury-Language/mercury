@@ -1272,8 +1272,12 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9, Proceed0, Proceed) -->
 		mercury_compile__maybe_dump_hlds(HLDS3, "3", "modecheck"),
 		{ bool__not(FoundModeError, Proceed2) },
 
+<<<<<<< mercury_compile.pp
+		mercury_compile__maybe_write_dependency_graph(HLDS3, HLDS3a),
+=======
 		mercury_compile__make_dependency_graph(HLDS3, HLDS3a),
 		mercury_compile__maybe_output_prof_call_graph(HLDS3a),
+>>>>>>> 1.70
 
 		{ bool__and_list([Proceed0, Proceed1, Proceed2], Proceed) },
 		( { Proceed = yes } ->
@@ -1353,29 +1357,29 @@ mercury_compile__modecheck(HLDS0, HLDS, FoundModeError) -->
 			"% Program is mode-correct.\n")
 	).
 
-:- pred mercury_compile__make_dependency_graph(module_info, module_info,
+:- pred mercury_compile__maybe_write_dependency_graph(module_info, module_info,
 	io__state, io__state).
-:- mode mercury_compile__make_dependency_graph(in, out, di, uo) is det.
+:- mode mercury_compile__maybe_write_dependency_graph(in, out, di, uo) is det.
 
-mercury_compile__make_dependency_graph(ModuleInfo0, ModuleInfo) -->
+mercury_compile__maybe_write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Building dependency graph..."),
-	maybe_flush_output(Verbose),
-	{ dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) },
-	maybe_write_string(Verbose, "done.\n"),
 	globals__io_lookup_bool_option(show_dependency_graph, ShowDepGraph),
 	( { ShowDepGraph = yes } ->
-		{ module_info_name(ModuleInfo, Name) },
+		maybe_write_string(Verbose, "% Writing dependency graph..."),
+		{ module_info_name(ModuleInfo0, Name) },
 		{ string__append(Name, ".dependency_graph", WholeName) },
 		io__tell(WholeName, Res),
 		( { Res = ok } ->
-			dependency_graph__write_dependency_graph(ModuleInfo),
-			io__told
+			dependency_graph__write_dependency_graph(ModuleInfo0,
+							ModuleInfo),
+			io__told,
+			maybe_write_string(Verbose, " done\n")
 		;
-			report_error("unable to write dependency graph")
+			report_error("unable to write dependency graph"),
+			{ ModuleInfo0 = ModuleInfo }
 		)
 	;
-		[]
+		{ ModuleInfo0 = ModuleInfo }
 	).
 	
 

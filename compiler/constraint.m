@@ -25,18 +25,19 @@
 :- import_module list, map, set, std_util, string.
 :- import_module mode_util, term, require.
 :- import_module varset, code_aux, prog_io.
-:- import_module delay_info, mode_info, inst_match.
+:- import_module delay_info, mode_info, inst_match, modes.
 :- import_module transform, options, globals.
-:- import_module mercury_to_mercury, hlds_out.
+:- import_module mercury_to_mercury, hlds_out, dependency_graph.
 
 :- type constraint == hlds__goal.
 
 %-----------------------------------------------------------------------------%
 
 constraint_propagation(ModuleInfo0, ModuleInfo) -->
-	{ module_info_dependency_info(ModuleInfo0, DepInfo) },
+	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo1) },
+	{ module_info_dependency_info(ModuleInfo1, DepInfo) },
 	{ dependency_info__get_dependency_ordering(DepInfo, DepOrd) },
-	constraint_propagation2(DepOrd, ModuleInfo0, ModuleInfo).
+	constraint_propagation2(DepOrd, ModuleInfo1, ModuleInfo).
 
 :- pred constraint_propagation2(dependency_ordering, module_info, module_info,
 				io__state, io__state).
@@ -51,15 +52,29 @@ constraint_propagation2([C | Cs], ModuleInfo0, ModuleInfo) -->
 :- mode constraint_propagation3(in, in, out, di, uo) is det.
 constraint_propagation3([], ModuleInfo, ModuleInfo) --> [].
 constraint_propagation3([Pred - Proc | Rest], ModuleInfo0, ModuleInfo) -->
-	constraint__transform_proc(Pred, Proc, ModuleInfo0, ModuleInfo1),
-	constraint_propagation3(Rest, ModuleInfo1, ModuleInfo).
+	constraint__transform_proc_1(Pred, Proc, ModuleInfo0, ModuleInfo1),
+	{ module_info_pred_proc_info(ModuleInfo1, Pred, Proc, PredInfo0,
+			 ProcInfo0) },
+	modecheck_proc(Proc, Pred, ModuleInfo1, ProcInfo0, ProcInfo, Errs),
+	( { Errs = 0 } ->
+	    { error("constraint_propagation3") }
+	;
+	    []
+	),
+	{ pred_info_procedures(PredInfo0, ProcTable0) },
+	{ map__set(ProcTable0, Proc, ProcInfo, ProcTable) },
+	{ pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) },
+	{ module_info_preds(ModuleInfo1, Preds0) },
+	{ map__set(Preds0, Pred, PredInfo, Preds) },
+	{ module_info_set_preds(ModuleInfo1, Preds, ModuleInfo2) },
+	constraint_propagation3(Rest, ModuleInfo2, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred constraint__transform_proc(pred_id, proc_id, module_info, module_info,
+:- pred constraint__transform_proc_1(pred_id, proc_id, module_info, module_info,
 				io__state, io__state).
-:- mode constraint__transform_proc(in, in, in, out, di, uo) is det.
-constraint__transform_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
+:- mode constraint__transform_proc_1(in, in, in, out, di, uo) is det.
+constraint__transform_proc_1(PredId, ProcId, ModuleInfo0, ModuleInfo,
 				IoState0, IoState) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),

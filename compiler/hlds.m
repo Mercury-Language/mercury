@@ -28,7 +28,7 @@
 :- import_module prog_io, llds.
 
 :- implementation.
-:- import_module prog_util, mode_util, unify_proc, shapes.
+:- import_module prog_util, mode_util, unify_proc, shapes, require.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -68,7 +68,7 @@
 					inst_table,
 					mode_table,
 					cons_table,
-					dependency_info,% the call graph
+					maybe(dependency_info),
 					int,		% number of errors
 					int		% number of warnings
 				).
@@ -511,6 +511,11 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 :- type hlds__goal_info.
 
+:- type goal_feature --->
+		constraint.	% This is included if the goal is
+				% a constraint.  See constraint.m
+				% for the definition of this.
+
 :- implementation.
 
 :- type hlds__goal_info
@@ -526,7 +531,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% the new store_map, if any - this records
 				% where to store variables at the end of
 				% branched structures.
-		maybe(set(var))	% maybe the set of variables that are
+		maybe(set(var)),
+				% maybe the set of variables that are
 				% live when forward execution resumes
 				% on the failure of some subgoal of this
 				% goal. For
@@ -536,6 +542,10 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% live after the condition.
 				% These are the only kinds of goal that
 				% use this field.
+		set(goal_feature)
+				% The set of used-defined "features" of
+				% this goal, which optimisers may wish
+				% to know about.
 	).
 
 :- interface.
@@ -725,6 +735,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- pred module_info_dependency_info(module_info, dependency_info).
 :- mode module_info_dependency_info(in, out) is det.
 
+:- pred module_info_dependency_info_built(module_info).
+:- mode module_info_dependency_info_built(in) is semidet.
+
 :- pred module_info_set_name(module_info, string, module_info).
 :- mode module_info_set_name(in, in, out) is det.
 
@@ -799,7 +812,7 @@ module_info_init(Name, module(Name, C_Header, PredicateTable, Requests,
 	map__init(AbsExports),
 	Shapes = shape_info(ShapeTable, AbsExports),
 	map__init(Ctors),
-	dependency_info__init(DepInfo).
+	DepInfo = no.
 
 	% Various access predicates which extract different pieces
 	% of info from the module_info data structure.
@@ -883,7 +896,19 @@ module_info_consids(ModuleInfo, ConsIDs) :-
 	map__keys(Ctors, ConsIDs).
 
 module_info_dependency_info(ModuleInfo, DepInfo) :-
+<<<<<<< hlds.m
+	ModuleInfo = module(_, _, _, _, _, _, _, _, _, DepInfo0, _, _),
+	( DepInfo0 = yes(DepInfo1) ->
+	    DepInfo = DepInfo1
+	;
+	    error("Attempted to access uninitialised dependency_info")
+	).
+
+module_info_dependency_info_built(ModuleInfo) :-
+	ModuleInfo = module(_, _, _, _, _, _, _, _, _, yes(_), _, _).
+=======
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, DepInfo, _, _).
+>>>>>>> 1.161
 
 module_info_num_errors(ModuleInfo, NumErrors) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, _, NumErrors, _).
@@ -942,8 +967,13 @@ module_info_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
 	ModuleInfo = module(A, B, C, D, E, F, G, H, I, Ctors, K, L, M).
 
 module_info_set_dependency_info(ModuleInfo0, DepInfo, ModuleInfo) :-
+<<<<<<< hlds.m
+	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, _, K, L),
+	ModuleInfo = module(A, B, C, D, E, F, G, H, I, yes(DepInfo), K, L).
+=======
 	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, _, L, M),
 	ModuleInfo = module(A, B, C, D, E, F, G, H, I, J, DepInfo, L, M).
+>>>>>>> 1.161
 
 module_info_set_num_errors(ModuleInfo0, Errs, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K, _, M),
@@ -1793,6 +1823,23 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 :- pred goal_info_set_nonlocals(hlds__goal_info, set(var), hlds__goal_info).
 :- mode goal_info_set_nonlocals(in, in, out) is det.
 
+:- pred goal_info_get_features(hlds__goal_info, set(goal_feature)).
+:- mode goal_info_get_features(in, out) is det.
+
+:- pred goal_info_set_features(hlds__goal_info, set(goal_feature),
+					hlds__goal_info).
+:- mode goal_info_set_features(in, in, out) is det.
+
+:- pred goal_info_add_feature(hlds__goal_info, goal_feature, hlds__goal_info).
+:- mode goal_info_add_feature(in, in, out) is det.
+
+:- pred goal_info_remove_feature(hlds__goal_info, goal_feature, 
+					hlds__goal_info).
+:- mode goal_info_remove_feature(in, in, out) is det.
+
+:- pred goal_info_has_feature(hlds__goal_info, goal_feature).
+:- mode goal_info_has_feature(in, in) is semidet.
+
 	% The instmap delta stores the final instantiatedness
 	% of the non-local variables whose instantiatedness
 	% changed.
@@ -1861,79 +1908,106 @@ goal_info_init(GoalInfo) :-
 	InstMapDelta = unreachable,
 	set__init(NonLocals),
 	term__context_init(Context),
+	set__init(Features),
 	GoalInfo = goal_info(DeltaLiveness, InternalDetism, ExternalDetism,
-		InstMapDelta, Context, NonLocals, DeltaLiveness, no, no).
+		InstMapDelta, Context, NonLocals, DeltaLiveness, no, no,
+		Features).
 
 goal_info_pre_delta_liveness(GoalInfo, DeltaLiveness) :-
-	GoalInfo = goal_info(DeltaLiveness, _, _, _, _, _, _, _, _).
+	GoalInfo = goal_info(DeltaLiveness, _, _, _, _, _, _, _, _, _).
 
 goal_info_set_pre_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
-	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H, I),
-	GoalInfo = goal_info(DeltaLiveness, B, C, D, E, F, G, H, I).
+	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H, I, J),
+	GoalInfo = goal_info(DeltaLiveness, B, C, D, E, F, G, H, I, J).
 
 goal_info_post_delta_liveness(GoalInfo, DeltaLiveness) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, DeltaLiveness, _, _).
+	GoalInfo = goal_info(_, _, _, _, _, _, DeltaLiveness, _, _, _).
 
 goal_info_set_post_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H, I),
-	GoalInfo = goal_info(A, B, C, D, E, F, DeltaLiveness, H, I).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H, I, J),
+	GoalInfo = goal_info(A, B, C, D, E, F, DeltaLiveness, H, I, J).
 
 goal_info_get_internal_code_model(GoalInfo, CodeModel) :-
 	goal_info_get_internal_determinism(GoalInfo, Determinism),
 	determinism_to_code_model(Determinism, CodeModel).
 
 goal_info_get_internal_determinism(GoalInfo, Determinism) :-
-	GoalInfo = goal_info(_, Determinism, _, _, _, _, _, _, _).
+	GoalInfo = goal_info(_, Determinism, _, _, _, _, _, _, _, _).
 
 goal_info_set_internal_determinism(GoalInfo0, Determinism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H, I),
-	GoalInfo = goal_info(A, Determinism, C, D, E, F, G, H, I).
+	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H, I, J),
+	GoalInfo = goal_info(A, Determinism, C, D, E, F, G, H, I, J).
 
 goal_info_get_code_model(GoalInfo, CodeModel) :-
 	goal_info_get_determinism(GoalInfo, Determinism),
 	determinism_to_code_model(Determinism, CodeModel).
 
 goal_info_get_determinism(GoalInfo, Determinism) :-
-	GoalInfo = goal_info(_, _, Determinism, _, _, _, _, _, _).
+	GoalInfo = goal_info(_, _, Determinism, _, _, _, _, _, _, _).
 
 goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H, I),
-	GoalInfo = goal_info(A, B, Determinism, D, E, F, G, H, I).
+	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H, I, J),
+	GoalInfo = goal_info(A, B, Determinism, D, E, F, G, H, I, J).
 
 goal_info_get_instmap_delta(GoalInfo, InstMapDelta) :-
-	GoalInfo = goal_info(_, _, _, InstMapDelta, _, _, _, _, _).
+	GoalInfo = goal_info(_, _, _, InstMapDelta, _, _, _, _, _, _).
 
 goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H, I),
-	GoalInfo = goal_info(A, B, C, InstMapDelta, E, F, G, H, I).
+	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H, I, J),
+	GoalInfo = goal_info(A, B, C, InstMapDelta, E, F, G, H, I, J).
 
 goal_info_context(GoalInfo, Context) :-
-	GoalInfo = goal_info(_, _, _, _, Context, _, _, _, _).
+	GoalInfo = goal_info(_, _, _, _, Context, _, _, _, _, _).
 
 goal_info_set_context(GoalInfo0, Context, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H, I),
-	GoalInfo = goal_info(A, B, C, D, Context, F, G, H, I).
+	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H, I, J),
+	GoalInfo = goal_info(A, B, C, D, Context, F, G, H, I, J).
 
 goal_info_get_nonlocals(GoalInfo, NonLocals) :-
-	GoalInfo = goal_info(_, _, _, _, _, NonLocals, _, _, _).
+	GoalInfo = goal_info(_, _, _, _, _, NonLocals, _, _, _, _).
 
 goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H, I),
-	GoalInfo  = goal_info(A, B, C, D, E, NonLocals, G, H, I).
+	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H, I, J),
+	GoalInfo  = goal_info(A, B, C, D, E, NonLocals, G, H, I, J).
 
 goal_info_store_map(GoalInfo, H) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, H, _).
+	GoalInfo = goal_info(_, _, _, _, _, _, _, H, _, _).
 
 goal_info_set_store_map(GoalInfo0, H, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _, I),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _, I, J),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J).
 
 goal_info_cont_lives(GoalInfo, I) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, I).
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, I, _).
 
 goal_info_set_cont_lives(GoalInfo0, I, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, _),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, _, J),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J).
+
+goal_info_get_features(GoalInfo, J) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, J).
+
+goal_info_set_features(GoalInfo0, J, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, _),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J).
+
+goal_info_add_feature(GoalInfo0, Feature, GoalInfo) :-
+	goal_info_get_features(GoalInfo0, J0),
+	set__insert(J0, Feature, J),
+	goal_info_set_features(GoalInfo0, J, GoalInfo).
+
+goal_info_remove_feature(GoalInfo0, Feature, GoalInfo) :-
+	goal_info_get_features(GoalInfo0, J0),
+	( set__remove(J0, Feature, J1) ->
+	    J = J1
+	;
+	    J = J0
+	),
+	goal_info_set_features(GoalInfo0, J, GoalInfo).
+
+goal_info_has_feature(GoalInfo, Feature) :-
+	goal_info_get_features(GoalInfo, J),
+	set__member(Feature, J).
 
 %-----------------------------------------------------------------------------%
 
@@ -2043,16 +2117,7 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 
 :- type dependency_ordering	== list(list(pred_proc_id)).
 :- type dependency_graph	== relation(pred_proc_id).
-
-:- type dependency_info --->
-		dependency_info(
-			dependency_graph,	% Dependency graph
-			dependency_ordering,	% Dependency ordering
-			set(pred_proc_id),	% Unused procs
-			unit,			% Junk slots
-			unit,
-			unit
-		).
+:- type dependency_info.
 
 :- pred dependency_info__init(dependency_info).
 :- mode dependency_info__init(out) is det.
@@ -2074,6 +2139,16 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 :- mode dependency_info__set_dependency_ordering(in, in, out) is det.
 
 :- implementation.
+
+:- type dependency_info --->
+		dependency_info(
+			dependency_graph,	% Dependency graph
+			dependency_ordering,	% Dependency ordering
+			set(pred_proc_id),	% Unused procs
+			unit,			% Junk slots
+			unit,
+			unit
+		).
 
 dependency_info__init(DepInfo) :-
 	DepInfo = dependency_info(DepRel, DepOrd, Unused, unit, unit, unit),

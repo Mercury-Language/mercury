@@ -86,6 +86,10 @@ a local variable, then report the error [this idea not yet implemented].
 	int, io__state, io__state).
 :- mode modecheck_pred_mode(in, in, di, uo, out, di, uo) is det.
 
+:- pred modecheck_proc(proc_id, pred_id, module_info, proc_info,
+				proc_info, int, io__state, io__state).
+:- mode modecheck_proc(in, in, in, in, out, out, di, uo) is det.
+
 	% inst_merge should probably be moved to mode_util
 :- pred inst_merge(inst, inst, module_info, inst, module_info).
 :- mode inst_merge(in, in, in, out, out) is semidet.
@@ -217,10 +221,6 @@ modecheck_procs_2([ProcId|ProcIds], PredId, ModuleInfo, Procs0, Errs0,
 %-----------------------------------------------------------------------------%
 
 	% Mode-check the code for predicate in a given mode.
-
-:- pred modecheck_proc(proc_id, pred_id, module_info, proc_info,
-				proc_info, int, io__state, io__state).
-:- mode modecheck_proc(in, in, in, in, out, out, di, uo) is det.
 
 modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 			IOState0, IOState) :-
