@@ -551,7 +551,15 @@ mercury_compile(Module) -->
 				MaybeRLFile, ModuleName, _CompileErrors)
 		    )
 		;
-		    []
+		    	% If the number of errors is > 0, make sure that
+			% the compiler exits with a non-zero exit
+			% status.
+		    io__get_exit_status(ExitStatus),
+		    ( { ExitStatus = 0 } ->
+		    	io__set_exit_status(1)
+		    ;
+		    	[]
+		    )
 		)
 	    )
 	;
