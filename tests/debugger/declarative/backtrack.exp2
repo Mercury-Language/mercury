@@ -1,0 +1,40 @@
+       1:      1  1 CALL pred backtrack.main/2-0 (det) backtrack.m:9
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred backtrack.p/2-0 (det)
+mdb> continue
+       2:      2  2 CALL pred backtrack.p/2-0 (det) backtrack.m:24 (backtrack.m:10)
+mdb> finish
+      29:      2  2 EXIT pred backtrack.p/2-0 (det) backtrack.m:24 (backtrack.m:10)
+mdb> dd
+p(1, no)
+Valid? no
+q(1, 1)
+Valid? yes
+Call >(1, 5)
+No solutions.
+Complete? yes
+q(1, 2)
+Valid? yes
+Call >(2, 5)
+No solutions.
+Complete? yes
+q(1, 3)
+Valid? yes
+Call >(3, 5)
+No solutions.
+Complete? yes
+Call q(1, _)
+Solutions:
+	q(1, 1)
+	q(1, 2)
+	q(1, 3)
+Complete? yes
+Found incorrect contour:
+p(1, no)
+Is this a bug? yes
+      29:      2  2 EXIT pred backtrack.p/2-0 (det) backtrack.m:24 (backtrack.m:10)
+mdb> continue
+no
