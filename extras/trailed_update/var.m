@@ -389,6 +389,7 @@ new_delayed_goal(Pred, Goal) :-
 	/* impure */ get_last_delayed_goal(LastGoal),
 	LastGoal = goal(_, _LastWoken, LastPrev, _LastNext),
 	Goal = goal(Pred, no, LastPrev, LastGoal),
+	setarg(LastPrev, 4, Goal),		       % LastPrev->next := Goal
 	/* impure */ set_last_delayed_goal_prev(Goal). % LastGoal->prev := Goal
 
 /* impure */
@@ -403,7 +404,7 @@ wakeup_delayed_goals(Goal, Value) :-
 	%
 	/* impure */ setarg(Goal, 2, yes),	% Goal->woken := yes
 	/* impure */ setarg(Next, 3, Prev),	% Next->prev := Prev
-	/* impure */ setarg(Prev, 3, Next),	% Prev->next := Next
+	/* impure */ setarg(Prev, 4, Next),	% Prev->next := Next
 	%
 	% Call it.
 	%
@@ -422,6 +423,9 @@ wakeup_delayed_goals((GoalsX, GoalsY), Value) :-
 ").
 
 :- pragma c_code("
+
+static void
+ML_var_report_goal_floundered(ML_var_delayed_conj *old_goal);
 
 void
 ML_var_untrail_func(ML_var_delayed_conj *old_goal, MR_untrail_reason reason)
@@ -453,10 +457,7 @@ ML_var_untrail_func(ML_var_delayed_conj *old_goal, MR_untrail_reason reason)
 			** can't commit, so the goal flounders.
 			*/
 			if (old_goal != ML_var_last_goal.prev) {
-				/* XXX should improve error message */
-				fflush(stdout);
-				fprintf(stderr, ""var.m: warning: ""
-					""goal floundered.\n"");
+				report_goal_floundered(old_goal);
 			}
 			break;
 
@@ -466,6 +467,26 @@ ML_var_untrail_func(ML_var_delayed_conj *old_goal, MR_untrail_reason reason)
 	}
 }
 
+static void
+ML_var_report_goal_floundered(ML_var_delayed_conj *old_goal)
+{
+	ML_var_delayed_conj *last = ML_var_last_goal.prev;
+	int num_delayed_goals;
+
+	/* XXX should improve error message */
+	fflush(stdout);
+	fprintf(stderr, ""var.m: warning: goal floundered.\n"");
+
+	num_delayed_goals = 0; 
+	while (last && last != old_goal) {
+		if (!last->woken) {
+			num_delayed_goals++;
+		}
+		last = last->prev;
+	}
+	fprintf(stderr, ""       %d outstanding delayed goal%s.\n"",
+		num_delayed_goals, (num_delayed_goals == 1 ? """" : ""s""));
+}
 ").
 
 %-----------------------------------------------------------------------------%

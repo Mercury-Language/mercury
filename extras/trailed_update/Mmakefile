@@ -15,5 +15,8 @@ MAIN_TARGET = libtrailed_update
 
 depend : trailed_update.depend
 
+check : libtrailed_update
+	cd samples && mmake $(MMAKEFLAGS) check
+
 # We need this to use shared libraries on Linux
 ML = ml --mercury-libs shared
