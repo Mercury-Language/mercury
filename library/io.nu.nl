@@ -21,20 +21,28 @@ io__gc_call(Goal) -->
 	% we halt.  (abort/0 is called by error/1; see the
 	% NU-Prolog manual entry for abort/0.)
 
-:- dynamic main_started/0.
+:- dynamic io__main_started/0.
+:- dynamic io__save_progname/1.
 
 :- pred main(list(atom)).
 main(Args) :-
-	( main_started ->
+	( io__main_started ->
 		exit(1)
 	;
-		assert(main_started),
+		assert(io__main_started),
 		run(Args)
 	).
+
 
 :- pred run(list(atom)).
 run(Args) :-
 	atoms_to_strings(Args, ArgStrings),
+	( ArgStrings = [Progname | _] ->
+		retractall(io__save_progname(_)),
+		assert(io__save_progname(Progname))
+	;
+		true
+	),
 	io__init_state(IOState0),
 	io__call(main_predicate(ArgStrings), IOState0, IOState),
 	io__final_state(IOState).
@@ -73,10 +81,12 @@ atoms_to_strings(A.As,S.Ss) :-
 	name(A,S),
 	atoms_to_strings(As,Ss).
 
-	% XXX A NU-Prolog bug means that the program name is
-	% not available, so we have to use the default name.
-
-io__progname(DefaultName, DefaultName) --> [].
+io__progname(DefaultName, Name) --> 
+	{ io__save_progname(N) ->
+		Name = N
+	;
+		Name = DefaultName
+	}.
 	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
