@@ -361,7 +361,12 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Clauses) -->
 		{ term__context_init(Context) },
 		{ create_atomic_unification(H1, var(H2), Context, explicit, [],
 			Goal) },
-		{ implicitly_quantify_clause_body([H1, H2], Goal, Body) },
+		unify_proc_info__get_varset(Varset0),
+		unify_proc_info__get_types(Types0),
+		{ implicitly_quantify_clause_body([H1, H2], Goal,
+			Varset0, Types0, Body, Varset, Types) },
+		unify_proc_info__set_varset(Varset),
+		unify_proc_info__set_types(Types),
 		{ Clauses = [clause([], Body, Context)] }
 	).
 
@@ -376,7 +381,12 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Clauses) -->
 	;
 		{ ArgVars = [X, Index] },
 		unify_proc__build_call("index", ArgVars, Goal),
-		{ implicitly_quantify_clause_body(ArgVars, Goal, Body) },
+		unify_proc_info__get_varset(Varset0),
+		unify_proc_info__get_types(Types0),
+		{ implicitly_quantify_clause_body(ArgVars, Goal,
+			Varset0, Types0, Body, Varset, Types) },
+		unify_proc_info__set_varset(Varset),
+		unify_proc_info__set_types(Types),
 		{ term__context_init(Context) },
 		{ Clauses = [clause([], Body, Context)] }
 	).
@@ -393,7 +403,12 @@ unify_proc__generate_compare_clauses(TypeBody, Res, H1, H2, Clauses) -->
 	;
 		{ ArgVars = [Res, H1, H2] },
 		unify_proc__build_call("compare", ArgVars, Goal),
-		{ implicitly_quantify_clause_body(ArgVars, Goal, Body) },
+		unify_proc_info__get_varset(Varset0),
+		unify_proc_info__get_types(Types0),
+		{ implicitly_quantify_clause_body(ArgVars, Goal,
+			Varset0, Types0, Body, Varset, Types) },
+		unify_proc_info__set_varset(Varset),
+		unify_proc_info__set_types(Types),
 		{ term__context_init(Context) },
 		{ Clauses = [clause([], Body, Context)] }
 	).
@@ -409,7 +424,12 @@ unify_proc__generate_read_clauses(TypeBody, Term, X, Clauses) -->
 
 		{ ArgVars = [Term, X] },
 		unify_proc__build_call("read", ArgVars, Goal),
-		{ implicitly_quantify_clause_body(ArgVars, Goal, Body) },
+		unify_proc_info__get_varset(Varset0),
+		unify_proc_info__get_types(Types0),
+		{ implicitly_quantify_clause_body(ArgVars, Goal,
+			Varset0, Types0, Body, Varset, Types) },
+		unify_proc_info__set_varset(Varset),
+		unify_proc_info__set_types(Types),
 		{ term__context_init(Context) },
 		{ Clauses = [clause([], Body, Context)] }
 	).
@@ -424,7 +444,12 @@ unify_proc__generate_write_clauses(TypeBody, X, Term, Clauses) -->
 	;
 		{ ArgVars = [X, Term] },
 		unify_proc__build_call("write", ArgVars, Goal),
-		{ implicitly_quantify_clause_body(ArgVars, Goal, Body) },
+		unify_proc_info__get_varset(Varset0),
+		unify_proc_info__get_types(Types0),
+		{ implicitly_quantify_clause_body(ArgVars, Goal,
+			Varset0, Types0, Body, Varset, Types) },
+		unify_proc_info__set_varset(Varset),
+		unify_proc_info__set_types(Types),
 		{ term__context_init(Context) },
 		{ Clauses = [clause([], Body, Context)] }
 	).
@@ -483,7 +508,12 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2,
 	{ GoalList = [UnifyH1_Goal, UnifyH2_Goal | UnifyArgs_Goal] },
 	{ goal_info_init(GoalInfo) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
-	{ implicitly_quantify_clause_body([H1, H2], Goal, Body) },
+	unify_proc_info__get_varset(Varset0),
+	unify_proc_info__get_types(Types0),
+	{ implicitly_quantify_clause_body([H1, H2], Goal,
+		Varset0, Types0, Body, Varset, Types) },
+	unify_proc_info__set_varset(Varset),
+	unify_proc_info__set_types(Types),
 	{ Clause = clause([], Body, Context) },
 	unify_proc__generate_du_unify_clauses(Ctors, H1, H2, Clauses).
 
@@ -531,7 +561,12 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, N,
 	{ GoalList = [UnifyX_Goal, UnifyIndex_Goal] },
 	{ goal_info_init(GoalInfo) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
-	{ implicitly_quantify_clause_body([X, Index], Goal, Body) },
+	unify_proc_info__get_varset(Varset0),
+	unify_proc_info__get_types(Types0),
+	{ implicitly_quantify_clause_body([X, Index], Goal,
+		Varset0, Types0, Body, Varset, Types) },
+	unify_proc_info__set_varset(Varset),
+	unify_proc_info__set_types(Types),
 	{ Clause = clause([], Body, Context) },
 	{ N1 is N + 1 },
 	unify_proc__generate_du_index_clauses(Ctors, X, Index, N1, Clauses).
@@ -589,7 +624,12 @@ unify_proc__generate_du_compare_clauses(Ctors, Res, X, Y, [Clause]) -->
 			Goal)
 	),
 	{ ArgVars = [Res, X, Y] },
-	{ implicitly_quantify_clause_body(ArgVars, Goal, Body) },
+	unify_proc_info__get_varset(Varset0),
+	unify_proc_info__get_types(Types0),
+	{ implicitly_quantify_clause_body(ArgVars, Goal,
+		Varset0, Types0, Body, Varset, Types) },
+	unify_proc_info__set_varset(Varset),
+	unify_proc_info__set_types(Types),
 	{ term__context_init(Context) },
 	{ Clause = clause([], Body, Context) }.
 
@@ -839,7 +879,12 @@ unify_proc__generate_du_read_clauses([Ctor | Ctors], Term, X,
 
 	{ goal_info_init(GoalInfo) },
 	{ conj_list_to_goal([TermGoal, XGoal | ReadGoals], GoalInfo, Goal) },
-	{ implicitly_quantify_clause_body([Term, X], Goal, Body) },
+	unify_proc_info__get_varset(Varset0),
+	unify_proc_info__get_types(Types0),
+	{ implicitly_quantify_clause_body([Term, X], Goal,
+		Varset0, Types0, Body, Varset, Types) },
+	unify_proc_info__set_varset(Varset),
+	unify_proc_info__set_types(Types),
 	{ Clause = clause([], Body, Context) },
 	unify_proc__generate_du_read_clauses(Ctors, Term, X, Clauses).
 
@@ -949,7 +994,12 @@ unify_proc__generate_du_write_clauses([Ctor | Ctors], X, Term,
 	{ goal_info_init(GoalInfo) },
 	{ conj_list_to_goal([XGoal, ContextGoal, TermGoal | WriteGoals],
 							GoalInfo, Goal) },
-	{ implicitly_quantify_clause_body([X, Term], Goal, Body) },
+	unify_proc_info__get_varset(Varset0),
+	unify_proc_info__get_types(Types0),
+	{ implicitly_quantify_clause_body([X, Term], Goal,
+		Varset0, Types0, Body, Varset, Types) },
+	unify_proc_info__set_varset(Varset),
+	unify_proc_info__set_types(Types),
 	{Clause = clause([], Body, Context) },
 	unify_proc__generate_du_write_clauses(Ctors, X, Term, Clauses).
 
@@ -1031,6 +1081,12 @@ unify_proc__unify_var_lists([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
 :- pred unify_proc_info__set_varset(varset, unify_proc_info, unify_proc_info).
 :- mode unify_proc_info__set_varset(in, in, out) is det.
 
+:- pred unify_proc_info__get_types(map(var, type), unify_proc_info, unify_proc_info).
+:- mode unify_proc_info__get_types(out, in, out) is det.
+
+:- pred unify_proc_info__set_types(map(var, type), unify_proc_info, unify_proc_info).
+:- mode unify_proc_info__set_types(in, in, out) is det.
+
 :- pred unify_proc_info__get_module_info(module_info,
 					unify_proc_info, unify_proc_info).
 :- mode unify_proc_info__get_module_info(out, in, out) is det.
@@ -1064,6 +1120,12 @@ unify_proc_info__get_varset(VarSet, ProcInfo, ProcInfo) :-
 	ProcInfo = unify_proc_info(VarSet, _Types, _ModuleInfo).
 
 unify_proc_info__set_varset(VarSet, unify_proc_info(_VarSet, Types, ModuleInfo),
+				unify_proc_info(VarSet, Types, ModuleInfo)).
+
+unify_proc_info__get_types(Types, ProcInfo, ProcInfo) :-
+	ProcInfo = unify_proc_info(_VarSet, Types, _ModuleInfo).
+
+unify_proc_info__set_types(Types, unify_proc_info(VarSet, _Types, ModuleInfo),
 				unify_proc_info(VarSet, Types, ModuleInfo)).
 
 unify_proc_info__get_module_info(ModuleInfo, VarTypeInfo, VarTypeInfo) :-

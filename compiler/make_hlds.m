@@ -1056,8 +1056,10 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Goal, VarSet) :-
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1),
 	term__apply_substitution_to_list(Args0, Subst, Args),
 	insert_arg_unifications(HeadVars, Args, head, Goal1, VarSet1,
-		Goal2, VarSet),
-	implicitly_quantify_clause_body(HeadVars, Goal2, Goal).
+		Goal2, VarSet2),
+	map__init(Empty),
+	implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2, Empty,
+				Goal, VarSet, _).
 
 %-----------------------------------------------------------------------------%
 

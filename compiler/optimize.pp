@@ -196,11 +196,15 @@ optimize__nonrepeat(Instrs0, Instrs) -->
 		;
 			[]
 		),
-		{ frameopt__main(Instrs0, Instrs1, TeardownMap, Mod1) }
+			% XXX Mod1 is singleton in two separate scopes
+			% zs, please check the fix is correct and remove
+			% this comment.
+			% (this comment will self destruct in 10 seconds....)
+		{ frameopt__main(Instrs0, Instrs1, TeardownMap, _Mod1) }
 	;
 		{ Instrs1 = Instrs0 },
-		{ bimap__init(TeardownMap) },
-		{ Mod1 = no }
+		{ bimap__init(TeardownMap) } %, (XXX here too)
+		% { Mod1 = no }
 	),
 	globals__io_lookup_bool_option(optimize_peep, Peephole),
 	( { FrameOpt = yes, Peephole = yes } ->

@@ -250,13 +250,16 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 		Info0 = poly_info(VarSet1, VarTypes1, TypeVarSet0,
 					TypeInfoMap, ModuleInfo0),
 		polymorphism__process_goal(Goal0, Goal1, Info0, Info),
-		Info = poly_info(VarSet, VarTypes, TypeVarSet, _, ModuleInfo),
+		Info = poly_info(VarSet2, VarTypes2, TypeVarSet, _, ModuleInfo),
 		% if we introduced any new head variables, we need to
 		% fix up the quantification (non-local variables)
 		( ExtraHeadVars = [] ->
-			Goal = Goal1
+			Goal = Goal1,
+			VarTypes = VarTypes2,
+			VarSet = VarSet2
 		;
-			implicitly_quantify_clause_body(HeadVars, Goal1, Goal)
+			implicitly_quantify_clause_body(HeadVars, Goal1,
+				VarSet2, VarTypes2, Goal, VarSet, VarTypes)
 		)
 	),
 

@@ -137,9 +137,16 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, Redo0, Redo,
 	;
 		Redo1 = yes,
 		proc_info_headvars(ProcInfo0, HeadVars),
-		implicitly_quantify_clause_body(HeadVars, Goal1, Goal),
+		proc_info_variables(ProcInfo0, Varset0),
+		proc_info_vartypes(ProcInfo0, VarTypes0),
 
-		proc_info_set_goal(ProcInfo0, Goal, ProcInfo),
+		implicitly_quantify_clause_body(HeadVars, Goal1, Varset0,
+			VarTypes0, Goal, Varset, VarTypes),
+
+		proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
+		proc_info_set_variables(ProcInfo1, Varset, ProcInfo2),
+		proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
+
 		map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 		map__set(PredTable0, PredId, PredInfo, PredTable),
@@ -297,6 +304,7 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between variables.
 		instmap_lookup_var(InstMap, Var, VarInst0),
+		Var \= SwitchVar,
 		inst_is_ground(ModuleInfo, VarInst0),
 		common_deconstruct_cases(Cases0, Var, GoalInfo, Unify, Cases)
 	->

@@ -310,9 +310,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		% Disjunctions should always be able succeed several times.
 
 		det__disj_to_ite(Disjuncts, GoalInfo0, Goal2),
-		implicitly_quantify_goal(Goal2 - GoalInfo0, NonLocalVars,
-			GoalPair3),
-		det_infer_goal(GoalPair3, InstMap0, MiscInfo,
+		det_infer_goal(Goal2, InstMap0, MiscInfo,
 			Goal - GoalInfo, _, NewDetism),
 		( Detism = NewDetism ->
 			true
@@ -331,7 +329,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		goal_info_set_determinism(GoalInfo0, Detism, GoalInfo)
 	).
 
-:- pred det__disj_to_ite(list(hlds__goal), hlds__goal_info, hlds__goal_expr).
+:- pred det__disj_to_ite(list(hlds__goal), hlds__goal_info, hlds__goal).
 % :- mode det__disj_to_ite(di, in, uo) is det.
 :- mode det__disj_to_ite(in, in, out) is det.
 
@@ -351,20 +349,41 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 	%		Disjunct3
 	%	).
 
-det__disj_to_ite([], _, disj([])).
+det__disj_to_ite([], GoalInfo, disj([]) - GoalInfo).
 det__disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 	( Disjuncts = [] ->
-		Disjunct = Goal - _GoalInfo
+		Goal = Disjunct
 	;
-		Goal = if_then_else([], Cond, Then, Else),
 		Cond = Disjunct,
+		Cond = _CondGoal - CondGoalInfo,
+
 		goal_info_init(InitGoalInfo0),
-		map__init(InstMap),
+		map__init(InstMap1),
 		goal_info_set_instmap_delta(InitGoalInfo0,
-				reachable(InstMap), InitGoalInfo),
+				reachable(InstMap1), InitGoalInfo),
 		Then = conj([]) - InitGoalInfo,
-		Else = Rest - GoalInfo,
-		det__disj_to_ite(Disjuncts, GoalInfo, Rest)
+
+		det__disj_to_ite(Disjuncts, GoalInfo, Rest),
+		Rest = _RestGoal - RestGoalInfo,
+
+		goal_info_get_nonlocals(CondGoalInfo, CondNonLocals),
+		goal_info_get_nonlocals(RestGoalInfo, RestNonLocals),
+		set__union(CondNonLocals, RestNonLocals, NonLocals),
+		goal_info_set_nonlocals(GoalInfo, NonLocals, NewGoalInfo0),
+
+		goal_info_get_instmap_delta(GoalInfo, InstMapDelta0),
+		(
+			InstMapDelta0 = reachable(InstMap0),
+			map__select(InstMap0, NonLocals, InstMap),
+			InstMapDelta = reachable(InstMap)
+		;
+			InstMapDelta0 = unreachable,
+			InstMapDelta = InstMapDelta0
+		),
+		goal_info_set_instmap_delta(NewGoalInfo0,
+					InstMapDelta, NewGoalInfo),
+
+		Goal = if_then_else([], Cond, Then, Rest) - NewGoalInfo
 	).
 
 %-----------------------------------------------------------------------------%
