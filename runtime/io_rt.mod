@@ -18,6 +18,7 @@
 #include "type_info.h"
 
 #include <string.h>
+#include <errno.h>
 
 /*
 ** Mercury files are not quite the same as C stdio FILEs,
@@ -65,17 +66,27 @@ mercury_open(const char *filename, const char *type)
 	return mf;
 }
 
+static int
+mercury_output_error(MercuryFile* mf)
+{
+	fprintf(stderr, "Mercury runtime: error writing to output file: %s\n",
+		strerror(errno));
+	exit(1);
+}
+
 static void
 mercury_print_string(MercuryFile* mf, const char *s)
 {
-	fprintf(mf->file, "%s", s);
+	if (fprintf(mf->file, "%s", s) < 0) {
+		mercury_output_error(mf);
+	}
 	while (*s) {
 		if (*s++ == '\n') {
 			mf->line_number++;
 		}
 	}
 }
-	
+
 static int
 mercury_getc(MercuryFile* mf)
 {
@@ -93,7 +104,12 @@ mercury_close(MercuryFile* mf)
 	    mf != &mercury_stdout &&
 	    mf != &mercury_stderr)
 	{
-		fclose(mf->file);
+		if (fclose(mf->file) < 0) {
+			fprintf(stderr,
+				"Mercury runtime: error closing file: %s\n",
+				strerror(errno));
+			exit(1);
+		}
 		oldmem(mf);
 	}
 }
@@ -205,22 +221,36 @@ mercury__io__write_char_3_0:
 		   more importantly it avoids a gcc internal
 		   error for gcc-2.7.0 on i386.
 		*/
-	fprintf(mercury_current_output->file, "%c", (int) r1);
+	if (fprintf(mercury_current_output->file, "%c", (int) r1) < 0) {
+		mercury_output_error(mercury_current_output);
+	}
+	if ((int) r1 == '\n') {
+		mercury_current_output->line_number++;
+	}
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__write_int_3_0:
-	fprintf(mercury_current_output->file, "%ld", (long) (Integer) r1);
+	if (fprintf(mercury_current_output->file, "%ld",
+			(long) (Integer) r1) < 0)
+	{
+		mercury_output_error(mercury_current_output);
+	}
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__write_float_3_0:
-	fprintf(mercury_current_output->file, "%f", word_to_float(r1));
+	if (fprintf(mercury_current_output->file, "%f", word_to_float(r1)) < 0)
+	{
+		mercury_output_error(mercury_current_output);
+	}
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__flush_output_2_0:
-	fflush(mercury_current_output->file);
+	if (fflush(mercury_current_output->file) < 0) {
+		mercury_output_error(mercury_current_output);
+	}
 	update_io(r1, r2);
 	proceed();
 
@@ -232,22 +262,33 @@ mercury__io__write_string_4_0:
 	proceed();
 
 mercury__io__write_char_4_0:
-	fprintf(((MercuryFile*)r1)->file, "%c", (char) r2);
+	if (fprintf(((MercuryFile*)r1)->file, "%c", (char) r2) < 0) {
+		mercury_output_error((MercuryFile*)r1);
+	}
+	if ((char) r2 == '\n') {
+		((MercuryFile*)r1)->line_number++;
+	}
 	update_io(r3, r4);
 	proceed();
 
 mercury__io__write_int_4_0:
-	fprintf(((MercuryFile*)r1)->file, "%ld", (long) (Integer) r2);
+	if (fprintf(((MercuryFile*)r1)->file, "%ld", (long) (Integer) r2) < 0) {
+		mercury_output_error((MercuryFile*)r1);
+	}
 	update_io(r3, r4);
 	proceed();
 
 mercury__io__write_float_4_0:
-	fprintf(((MercuryFile*)r1)->file, "%f", word_to_float(r2));
+	if (fprintf(((MercuryFile*)r1)->file, "%f", word_to_float(r2)) < 0) {
+		mercury_output_error((MercuryFile*)r1);
+	}
 	update_io(r3, r4);
 	proceed();
 
 mercury__io__flush_output_3_0:
-	fflush(((MercuryFile*)r1)->file);
+	if (fflush(((MercuryFile*)r1)->file) < 0) {
+		mercury_output_error((MercuryFile*)r1);
+	}
 	update_io(r2, r3);
 	proceed();
 
