@@ -322,11 +322,28 @@ Changes to the Mercury standard library:
 * Miscellaneous new predicates.
 
   The Mercury standard library now includes the following new predicates:
-  bag__least_upper_bound/3, bag__remove_list/3, bag__det_remove_list/3,
-  det_univ_to_type/2, list__take_upto/3, set__count/2, set_ordlist__count/2,
-  store__new_cyclic_mutvar/4, relation__add_values/4,
-  relation__from_assoc_list/2, relation__compose/3, varset__select/3,
-  eqvclass__same_eqvclass_list/2 and io__read_line_as_string/{3,4}.
+
+	  bag__det_remove_list/3
+	  bag__least_upper_bound/3
+	  bag__remove_list/3
+	  det_univ_to_type/2
+	  eqvclass__same_eqvclass_list/2
+	  io__read_line_as_string/{3,4}
+	  list__take_upto/3
+	  map__det_insert_from_assoc_list/3
+	  map__det_intersect/5
+	  map__det_union/5
+	  map__intersect/4
+	  map__sorted_keys/2
+	  map__to_sorted_assoc_list/2
+	  map__union/4
+	  relation__add_values/4
+	  relation__compose/3
+	  relation__from_assoc_list/2
+	  set__count/2
+	  set_ordlist__count/2
+	  store__new_cyclic_mutvar/4
+	  varset__select/3
 
   In addition, there are four new system constants added to the float
   library module, float__radix, float__mantissa_digits, float__min_exponent

@@ -74,6 +74,11 @@
 						list(V), map(K,V)).
 :- mode map__det_insert_from_corresponding_lists(in, in, in, out) is det.
 
+	% Apply map__det_insert to key - value pairs from the assoc_lists.
+:- pred map__det_insert_from_assoc_list(map(K,V), assoc_list(K, V),
+						map(K,V)).
+:- mode map__det_insert_from_assoc_list(in, in, out) is det.
+
 	% Update the value corresponding to a given key
 	% Fail if the key doesn't already exist.
 :- pred map__update(map(K,V), K, V, map(K,V)).
@@ -90,44 +95,53 @@
 :- mode map__set(di, di, di, uo) is det.
 :- mode map__set(in, in, in, out) is det.
 
-	% Given a map, return a list of all the keys in the map
+	% Given a map, return a list of all the keys in the map.
 :- pred map__keys(map(K, _V), list(K)).
 :- mode map__keys(in, out) is det.
 
-	% Given a map, return a list of all the data values in the map
+	% Given a map, return a list of all the keys in the map,
+	% in sorted order.
+:- pred map__sorted_keys(map(K, _V), list(K)).
+:- mode map__sorted_keys(in, out) is det.
+
+	% Given a map, return a list of all the data values in the map.
 :- pred map__values(map(_K, V), list(V)).
 :- mode map__values(in, out) is det.
 
-	% convert a map to an association list
+	% Convert a map to an association list.
 :- pred map__to_assoc_list(map(K,V), assoc_list(K,V)).
 :- mode map__to_assoc_list(in, out) is det.
 
-	% convert an association list to a map
+	% Convert a map to an association list which is sorted on the keys.
+:- pred map__to_sorted_assoc_list(map(K,V), assoc_list(K,V)).
+:- mode map__to_sorted_assoc_list(in, out) is det.
+
+	% Convert an association list to a map.
 :- pred map__from_assoc_list(assoc_list(K,V), map(K,V)).
 :- mode map__from_assoc_list(in, out) is det.
 
-	% convert a sorted association list to a map
+	% Convert a sorted association list to a map.
 :- pred map__from_sorted_assoc_list(assoc_list(K,V), map(K,V)).
 :- mode map__from_sorted_assoc_list(in, out) is det.
 
-	% delete a key-value pair from a map
-	% if the key is not present, leave the map unchanged
+	% Delete a key-value pair from a map.
+	% If the key is not present, leave the map unchanged.
 :- pred map__delete(map(K,V), K, map(K,V)).
 :- mode map__delete(di, in, uo) is det.
 :- mode map__delete(in, in, out) is det.
 
-	% apply map__delete/3 to a list of keys
+	% Apply map__delete/3 to a list of keys.
 :- pred map__delete_list(map(K,V), list(K), map(K,V)).
 :- mode map__delete_list(di, in, uo) is det.
 :- mode map__delete_list(in, in, out) is det.
 
-	% delete a key-value pair from a map and return the value.
-	% fail if the key is not present
+	% Delete a key-value pair from a map and return the value.
+	% Fail if the key is not present.
 :- pred map__remove(map(K,V), K, V, map(K,V)).
 :- mode map__remove(in, in, out, out) is semidet.
 
-	% delete a key-value pair from a map and return the value.
-	% abort if the key is not present
+	% Delete a key-value pair from a map and return the value.
+	% Abort if the key is not present.
 :- pred map__det_remove(map(K,V), K, V, map(K,V)).
 :- mode map__det_remove(in, in, out, out) is det.
 
@@ -187,6 +201,38 @@
 :- pred map__map_values(pred(K, V, W), map(K, V), map(K, W)).
 :- mode map__map_values(pred(in, in, out) is det, in, out) is det.
 :- mode map__map_values(pred(in, in, out) is semidet, in, out) is semidet.
+
+	% Given two maps M1 and M2, create a third map M3 that has only the
+	% keys that occur in both M1 and M2. For keys that occur in both M1
+	% and M2, compute the value in the final map by applying the supplied
+	% predicate to the values associated with the key in M1 and M2.
+	% Fail if and only if this predicate fails on the values associated
+	% with some common key.
+:- pred map__intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
+:- mode map__intersect(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode map__intersect(pred(in, in, out) is det, in, in, out) is det.
+
+	% Calls map__intersect. Aborts (with the last argument as the message)
+	% if map__intersect fails.
+:- pred map__det_intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V),
+	string).
+:- mode map__det_intersect(pred(in, in, out) is semidet, in, in, out, in)
+	is det.
+
+	% Given two maps M1 and M2, create a third map M3 that all the keys
+	% that occur in either M1 and M2. For keys that occur in both M1
+	% and M2, compute the value in the final map by applying the supplied
+	% predicate to the values associated with the key in M1 and M2.
+	% Fail if and only if this predicate fails on the values associated
+	% with some common key.
+:- pred map__union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
+:- mode map__union(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode map__union(pred(in, in, out) is det, in, in, out) is det.
+
+	% Calls map__union. Aborts (with the last argument as the message)
+	% if map__intersect fails.
+:- pred map__det_union(pred(V, V, V), map(K, V), map(K, V), map(K, V), string).
+:- mode map__det_union(pred(in, in, out) is semidet, in, in, out, in) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -276,6 +322,11 @@ map__det_insert_from_corresponding_lists(Map0, Ks, Vs, Map) :-
 		error("map__det_insert_from_corresponding_lists - lists do not correspond")
 	).
 
+map__det_insert_from_assoc_list(Map, [], Map).
+map__det_insert_from_assoc_list(Map0, [K - V | KVs], Map) :-
+	map__det_insert(Map0, K, V, Map1),
+	map__det_insert_from_assoc_list(Map1, KVs, Map).
+
 map__update(Map0, K, V, Map) :-
 	tree234__update(Map0, K, V, Map).
 
@@ -292,10 +343,18 @@ map__set(Map0, K, V, Map) :-
 map__keys(Map, KeyList) :-
 	tree234__keys(Map, KeyList).
 
+map__sorted_keys(Map, KeyList) :-
+	% Guaranteed to yield sorted lists.
+	tree234__keys(Map, KeyList).
+
 map__values(Map, KeyList) :-
 	tree234__values(Map, KeyList).
 
 map__to_assoc_list(M, L) :-
+	tree234__tree234_to_assoc_list(M, L).
+
+map__to_sorted_assoc_list(M, L) :-
+	% Guaranteed to yield sorted lists.
 	tree234__tree234_to_assoc_list(M, L).
 
 map__from_assoc_list(L, M) :-
@@ -423,6 +482,120 @@ map__foldl(Pred, Map, Acc0, Acc) :-
 
 map__map_values(Pred, Map0, Map) :-
 	tree234__map_values(Pred, Map0, Map).
+
+%-----------------------------------------------------------------------------%
+
+map__intersect(CommonPred, Map1, Map2, Common) :-
+	map__to_sorted_assoc_list(Map1, AssocList1),
+	map__to_sorted_assoc_list(Map2, AssocList2),
+	map__init(Common0),
+	map__intersect_2(AssocList1, AssocList2, CommonPred, Common0, Common).
+
+:- pred map__intersect_2(assoc_list(K, V), assoc_list(K, V), pred(V, V, V),
+	map(K, V), map(K, V)).
+:- mode map__intersect_2(in, in, pred(in, in, out) is semidet, in, out)
+	is semidet.
+:- mode map__intersect_2(in, in, pred(in, in, out) is det, in, out)
+	is det.
+
+map__intersect_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
+	(
+		AssocList1 = [],
+		AssocList2 = [],
+		Common = Common0
+	;
+		AssocList1 = [_ | _],
+		AssocList2 = [],
+		Common = Common0
+	;
+		AssocList1 = [],
+		AssocList2 = [_ | _],
+		Common = Common0
+	;
+		AssocList1 = [Key1 - Value1 | AssocTail1],
+		AssocList2 = [Key2 - Value2 | AssocTail2],
+		compare(R, Key1, Key2),
+		(
+			R = (=),
+			call(CommonPred, Value1, Value2, Value),
+			map__det_insert(Common0, Key1, Value, Common1),
+			map__intersect_2(AssocTail1, AssocTail2, CommonPred,
+				Common1, Common)
+		;
+			R = (<),
+			map__intersect_2(AssocTail1, AssocList2, CommonPred,
+				Common0, Common)
+		;
+			R = (>),
+			map__intersect_2(AssocList1, AssocTail2, CommonPred,
+				Common0, Common)
+		)
+	).
+
+map__det_intersect(CommonPred, Map1, Map2, Common, Msg) :-
+	( map__intersect(CommonPred, Map1, Map2, CommonPrime) ->
+		Common = CommonPrime
+	;
+		error(Msg)
+	).
+
+%-----------------------------------------------------------------------------%
+
+map__union(CommonPred, Map1, Map2, Common) :-
+	map__to_sorted_assoc_list(Map1, AssocList1),
+	map__to_sorted_assoc_list(Map2, AssocList2),
+	map__init(Common0),
+	map__union_2(AssocList1, AssocList2, CommonPred, Common0, Common).
+
+:- pred map__union_2(assoc_list(K, V), assoc_list(K, V), pred(V, V, V),
+	map(K, V), map(K, V)).
+:- mode map__union_2(in, in, pred(in, in, out) is semidet, in, out)
+	is semidet.
+:- mode map__union_2(in, in, pred(in, in, out) is det, in, out)
+	is det.
+
+map__union_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
+	(
+		AssocList1 = [],
+		AssocList2 = [],
+		Common = Common0
+	;
+		AssocList1 = [_ | _],
+		AssocList2 = [],
+		map__det_insert_from_assoc_list(Common0, AssocList1, Common)
+	;
+		AssocList1 = [],
+		AssocList2 = [_ | _],
+		map__det_insert_from_assoc_list(Common0, AssocList2, Common)
+	;
+		AssocList1 = [Key1 - Value1 | AssocTail1],
+		AssocList2 = [Key2 - Value2 | AssocTail2],
+		compare(R, Key1, Key2),
+		(
+			R = (=),
+			call(CommonPred, Value1, Value2, Value),
+			map__det_insert(Common0, Key1, Value, Common1),
+			map__union_2(AssocTail1, AssocTail2, CommonPred,
+				Common1, Common)
+		;
+			R = (<),
+			map__det_insert(Common0, Key1, Value1, Common1),
+			map__union_2(AssocTail1, AssocList2, CommonPred,
+				Common1, Common)
+		;
+			R = (>),
+			map__det_insert(Common0, Key2, Value2, Common1),
+			map__union_2(AssocList1, AssocTail2, CommonPred,
+				Common1, Common)
+		)
+	).
+
+map__det_union(CommonPred, Map1, Map2, Union, Msg) :-
+	( map__union(CommonPred, Map1, Map2, UnionPrime) ->
+		Union = UnionPrime
+	;
+		error(Msg)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
