@@ -49,9 +49,10 @@
 
 :- implementation.
 
-:- import_module hlds_data, mode_debug, modecheck_unify, instmap.
+:- import_module hlds_data, mode_debug, modecheck_unify.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
-:- import_module modes, inst_match, prog_data, mode_errors, llds, unify_proc.
+:- import_module modes, prog_data, mode_errors, llds, unify_proc.
+:- import_module (inst), instmap, inst_match, inst_util.
 :- import_module bool, int, list, map, set, std_util, require, term, varset.
 :- import_module assoc_list.
 
@@ -315,7 +316,7 @@ select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
 	instmap__lookup_var(InstMap0, Var, Inst0),
 	(
 		instmap_delta_is_reachable(DeltaInstMap),
-		instmap_delta_lookup_var(DeltaInstMap, Var, Inst),
+		instmap_delta_search_var(DeltaInstMap, Var, Inst),
 		\+ inst_matches_final(Inst, Inst0, ModuleInfo)
 	->
 		ChangedVars = [Var | ChangedVars1],

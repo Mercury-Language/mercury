@@ -58,7 +58,7 @@
 
 :- import_module prog_io, prog_io_goal, prog_io_util, prog_out, hlds_out.
 :- import_module module_qual, prog_util, globals, options.
-:- import_module make_tags, quantification.
+:- import_module make_tags, quantification, (inst).
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table.

@@ -131,7 +131,7 @@ a variable live if its value will be used later on in the computation.
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, instmap.
+:- import_module hlds_module, hlds_pred, (inst), instmap.
 :- import_module bool, io.
 
 	% modecheck(HLDS0, HLDS, UnsafeToContinue):
@@ -261,7 +261,7 @@ a variable live if its value will be used later on in the computation.
 :- import_module type_util, mode_util, code_util, prog_data, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
 :- import_module passes_aux, typecheck, module_qual, clause_to_proc.
-:- import_module modecheck_unify, modecheck_call.
+:- import_module modecheck_unify, modecheck_call, inst_util.
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
 :- import_module assoc_list.
 

@@ -65,6 +65,7 @@
 
 :- import_module hlds_data, hlds_module, hlds_pred, type_util, prog_out.
 :- import_module prog_util, mercury_to_mercury, globals, options.
+:- import_module (inst), instmap.
 :- import_module int, list, map, require, set, std_util, string, term, varset.
 
 module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,

@@ -18,7 +18,7 @@
 :- module instmap.
 
 :- interface.
-:- import_module hlds_module, prog_data, mode_info.
+:- import_module hlds_module, prog_data, mode_info, (inst).
 :- import_module set, term.
 
 :- type instmap.
@@ -112,8 +112,8 @@
 	% Given an instmap_delta and a variable, determine the inst
 	% of that variable.
 	%
-:- pred instmap_delta_lookup_var(instmap_delta, var, inst).
-:- mode instmap_delta_lookup_var(in, in, out) is det.
+:- pred instmap_delta_search_var(instmap_delta, var, inst).
+:- mode instmap_delta_search_var(in, in, out) is semidet.
 
 	% Given an instmap and a list of variables, return a list
 	% containing the insts of those variable.
@@ -249,7 +249,7 @@
 :- implementation.
 
 :- import_module mode_util, inst_match, prog_data, mode_errors, goal_util.
-:- import_module hlds_data.
+:- import_module hlds_data, inst_util.
 :- import_module list, std_util, bool, map, set, assoc_list, require.
 
 :- type instmap_delta	==	instmap.
@@ -344,9 +344,6 @@ instmap__lookup_var(unreachable, _Var, not_reached).
 instmap__lookup_var(reachable(InstMap), Var, Inst) :-
 	instmapping_lookup_var(InstMap, Var, Inst).
 
-instmap_delta_lookup_var(InstmapDelta, Var, Inst) :-
-	instmap__lookup_var(InstmapDelta, Var, Inst).
-
 :- pred instmapping_lookup_var(instmapping, var, inst).
 :- mode instmapping_lookup_var(in, in, out) is det.
 
@@ -356,6 +353,9 @@ instmapping_lookup_var(InstMap, Var, Inst) :-
 	;
 		Inst = free
 	).
+
+instmap_delta_search_var(reachable(InstMap), Var, Inst) :-
+	map__search(InstMap, Var, Inst).
 
 instmap__lookup_vars([], _InstMap, []).
 instmap__lookup_vars([Arg|Args], InstMap, [Inst|Insts]) :-

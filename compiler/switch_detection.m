@@ -29,7 +29,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_data, instmap.
+:- import_module hlds_goal, hlds_data, prog_data, instmap, inst_match.
 :- import_module modes, mode_util, type_util, det_util.
 :- import_module passes_aux.
 :- import_module char, int, list, assoc_list, map, set, std_util, term, require.

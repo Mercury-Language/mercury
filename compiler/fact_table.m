@@ -90,7 +90,7 @@
 :- import_module float, math, getopt, term, string.
 :- import_module parser, prog_out, term_io, llds_out, hlds_out, hlds_data.
 :- import_module globals, options, passes_aux, arg_info, llds, mode_util.
-:- import_module code_util, export.
+:- import_module code_util, export, inst_match.
 
 :- type fact_result
 	--->	ok ; error.

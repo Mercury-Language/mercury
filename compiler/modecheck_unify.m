@@ -44,8 +44,8 @@
 :- import_module llds, prog_data, prog_util, type_util, module_qual, instmap.
 :- import_module hlds_module, hlds_goal, hlds_pred, hlds_data, hlds_out.
 :- import_module mode_debug, mode_util, mode_info, modes, mode_errors.
-:- import_module inst_match, unify_proc, code_util, unique_modes.
-:- import_module typecheck, modecheck_call.
+:- import_module inst_match, inst_util, unify_proc, code_util, unique_modes.
+:- import_module typecheck, modecheck_call, (inst).
 :- import_module bool, list, std_util, int, map, set, require, varset.
 :- import_module string, assoc_list.
 
@@ -614,33 +614,6 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		ArgVars = ArgVars0,
 		ExtraGoals = [] - []
 	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred modecheck_higher_order_func_call(var, list(var), var, hlds_goal_info,
-		hlds_goal_expr, mode_info, mode_info).
-:- mode modecheck_higher_order_func_call(in, in, in, in, out,
-		mode_info_di, mode_info_uo) is det.
-
-modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "higher-order function call"),
-	mode_info_set_call_context(higher_order_call(function)),
-
-	=(ModeInfo0),
-	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
-
-	{ list__append(Args0, [RetVar], Args1) },
-	modecheck_higher_order_call(function, FuncVar, Args1,
-			Types, Modes, Det, Args, ExtraGoals),
-
-	=(ModeInfo),
-	{ Call = higher_order_call(FuncVar, Args, Types, Modes, Det) },
-	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0,
-				[FuncVar | Args1], [FuncVar | Args],
-				InstMap0, ModeInfo, Goal) },
-
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, "higher-order function call").
 
 %-----------------------------------------------------------------------------%
 

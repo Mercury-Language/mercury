@@ -25,7 +25,7 @@
 
 :- interface.
 
-:- import_module prog_data.
+:- import_module prog_data, (inst).
 :- import_module list, term, io.
 
 :- type maybe2(T1, T2)	--->	error(string, term)

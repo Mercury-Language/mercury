@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, tree, prog_data.
+:- import_module hlds_pred, tree, prog_data, (inst).
 :- import_module assoc_list, bool, list, set, term, std_util.
 
 %-----------------------------------------------------------------------------%

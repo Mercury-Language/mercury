@@ -27,7 +27,7 @@
 
 :- interface.
 
-:- import_module common, hlds_pred, det_report, det_util.
+:- import_module common, hlds_pred, det_report, det_util, instmap.
 :- import_module io.
 
 :- pred simplify__proc(simplify, pred_id, proc_id, module_info, module_info,
@@ -62,7 +62,7 @@
 :- import_module hlds_out.
 
 :- import_module code_aux, det_analysis, follow_code, goal_util.
-:- import_module hlds_module, hlds_goal, hlds_data, instmap, inst_match.
+:- import_module hlds_module, hlds_goal, hlds_data, (inst), inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes.
 :- import_module bool, list, set, map, require, std_util, term, varset.
@@ -884,7 +884,11 @@ simplify__check_branches_for_extra_info(_, _, [], _, CaseList, CaseList).
 simplify__check_branches_for_extra_info(Var, InstMap,
 		[BranchInstMap | BranchInstMaps], Cases, CaseList0, CaseList) :-
 	instmap__lookup_var(InstMap, Var, InstMapInst),
-	instmap_delta_lookup_var(BranchInstMap, Var, BranchInstMapInst),
+	( instmap_delta_search_var(BranchInstMap, Var, BranchInstMapInst0) ->
+		BranchInstMapInst = BranchInstMapInst0
+	;
+		BranchInstMapInst = InstMapInst
+	),
 	simplify__inst_contains_more_information(BranchInstMapInst,
 		InstMapInst, Cases, ThisCase),
 	simplify__check_branches_for_extra_info(Var, InstMap,

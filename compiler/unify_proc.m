@@ -92,9 +92,9 @@
 :- import_module list, tree, map, queue, int, string, require, bool.
 :- import_module code_util, code_info, type_util, varset.
 :- import_module mercury_to_mercury, hlds_out.
-:- import_module make_hlds, term, prog_util.
+:- import_module make_hlds, term, prog_util, inst_match.
 :- import_module quantification, clause_to_proc.
-:- import_module globals, options, mode_util.
+:- import_module globals, options, mode_util, (inst).
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 
 	% We keep track of all the complicated unification procs we need

@@ -40,11 +40,16 @@
 :- mode modecheck_higher_order_pred_call(in, in, in, out,
 		mode_info_di, mode_info_uo) is det.
 
+:- pred modecheck_higher_order_func_call(var, list(var), var, hlds_goal_info,
+		hlds_goal_expr, mode_info, mode_info).
+:- mode modecheck_higher_order_func_call(in, in, in, in, out,
+		mode_info_di, mode_info_uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_data, hlds_pred, hlds_data, hlds_module, instmap.
+:- import_module prog_data, hlds_pred, hlds_data, hlds_module, instmap, (inst).
 :- import_module mode_info, mode_debug, modes, mode_util, mode_errors.
 :- import_module clause_to_proc, inst_match, make_hlds.
 :- import_module map, list, bool, std_util, set.
@@ -65,6 +70,26 @@ modecheck_higher_order_pred_call(PredVar, Args0, GoalInfo0, Goal) -->
 			InstMap0, ModeInfo, Goal) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "higher-order predicate call").
+
+modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "higher-order function call"),
+	mode_info_set_call_context(higher_order_call(function)),
+
+	=(ModeInfo0),
+	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
+
+	{ list__append(Args0, [RetVar], Args1) },
+	modecheck_higher_order_call(function, FuncVar, Args1,
+			Types, Modes, Det, Args, ExtraGoals),
+
+	=(ModeInfo),
+	{ Call = higher_order_call(FuncVar, Args, Types, Modes, Det) },
+	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0,
+				[FuncVar | Args1], [FuncVar | Args],
+				InstMap0, ModeInfo, Goal) },
+
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "higher-order function call").
 
 modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		ExtraGoals, ModeInfo0, ModeInfo) :-

@@ -113,7 +113,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, llds, quantification, instmap.
+:- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
 :- import_module hlds_out, mode_util, code_util.
 :- import_module prog_data, globals, passes_aux.
 :- import_module bool, list, map, set, std_util, term, assoc_list, require.
@@ -973,8 +973,10 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 	live_info_get_var_types(LiveInfo, VarTypes),
 	live_info_get_module_info(LiveInfo, ModuleInfo),
 	map__lookup(VarTypes, Var, Type),
-	instmap_delta_lookup_var(InstMapDelta, Var, Inst),
-	( mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out) ->
+	(
+		instmap_delta_search_var(InstMapDelta, Var, Inst),
+		mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out)
+	->
 		set__insert(ValueVars0, Var, ValueVars1)
 	;
 		ValueVars1 = ValueVars0

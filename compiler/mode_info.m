@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
-:- import_module mode_errors, delay_info.
+:- import_module mode_errors, delay_info, (inst).
 :- import_module map, list, varset, set, bool, term, assoc_list.
 
 :- interface.
