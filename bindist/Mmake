@@ -10,7 +10,7 @@
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
 
-MERCURY_VERSION	= mercury-0.5.$(FULLARCH)
+MERCURY_VERSION	= mercury-0.6.$(FULLARCH)
 
 INSTALL_LIB_DIR	= $(INSTALL_PREFIX)/lib
 
