@@ -1579,7 +1579,8 @@ pseudotypeinfo_max_var = 1024.
 		type_ctor_name		= 7,
 		type_functors		= 8,
 		type_layout		= 9,
-		type_ctor_num_functors	= 10
+		type_ctor_num_functors	= 10,
+		type_ctor_flags		= 11
 	}
 
 	enum ptag_layout_field_nums {
