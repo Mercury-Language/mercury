@@ -73,8 +73,6 @@ error(Message) :-
 
 Define_extern_entry(mercury__require__error_internal_1_0);
 
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__require__error_internal_1_0);
-
 BEGIN_MODULE(require_internal_module)
         init_entry(mercury__require__error_internal_1_0);
 BEGIN_CODE
