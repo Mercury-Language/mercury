@@ -1158,7 +1158,16 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 				module_info_pred_info(ModuleInfo, PredId0,
 						PredInfo),
 				pred_info_get_markers(PredInfo, Markers),
-				check_marker(Markers, class_method)
+				check_marker(Markers, class_method),
+
+				% enabling this optimisation causes a bug
+				% where implied instances are concerned. 
+				% When the class method call is inlined, the
+				% extra typeclass_infos from the instance
+				% declaration are not included. Until that
+				% bug is fixed, we will disable the
+				% optimisation.
+				semidet_fail
 			->
 				% Get the class methods, and figure out
 				% the method number of this class method.
