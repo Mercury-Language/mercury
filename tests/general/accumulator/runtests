@@ -42,8 +42,8 @@ then
 	. ../../shutdown
 	exit 0
 else
-	echo "the tests in the general/accumulator directory failed"
-	echo "as some test cases didn't produce the correct output"
+	echo "** the tests in the general/accumulator directory failed"
+	echo "** as some test cases didn't produce the correct output"
 	echo "mmakeopts=$mmakeopts"
 	echo "the differences are:"
 	cat .allres
