@@ -657,22 +657,24 @@ mode_info_write_context(ModeInfo) -->
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, Procs) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, ArgModes0) },
-	{ pred_info_name(PredInfo, PredName) },
+	{ proc_info_argmodes(ProcInfo, Modes0) },
+	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
+	{ pred_info_name(PredInfo, Name0) },
+	{ Name = unqualified(Name0) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	{ MaybeDet = no },
 
 	prog_out__write_context(Context),
 	io__write_string("In clause for `"),
-	io__write_string(PredName),
-	( { ArgModes0 \= [] } ->
-		io__write_string("("),
-		{ strip_builtin_qualifiers_from_mode_list(ArgModes0,
-							ArgModes) },
-		mercury_output_mode_list(ArgModes, InstVarSet),
-		io__write_string(")")
-	;
-		[]
+	(	{ PredOrFunc = predicate },
+		mercury_output_pred_mode_subdecl(InstVarSet, Name, Modes,
+				MaybeDet, Context)
+	;	{ PredOrFunc = function },
+		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
+		mercury_output_func_mode_subdecl(InstVarSet, Name, ArgModes,
+				RetMode, MaybeDet, Context)
 	),
 	io__write_string("':\n"),
 	{ mode_info_get_mode_context(ModeInfo, ModeContext) },
