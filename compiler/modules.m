@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -476,7 +476,7 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 			io__nl(DepStream),
 			globals__io_lookup_bool_option(assume_gmake,
 				AssumeGmake),
-			( { AssumeGmake = no} ->
+			( { AssumeGmake = no } ->
 				io__write_strings(DepStream,
 					[ModuleName, ".fact_tables.os = "]),
 				write_dependencies_list(FactDeps, ".o",
