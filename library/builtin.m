@@ -452,7 +452,7 @@ static void compare_3(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res,
         if (0) {
             // XXX code for higher order still needs to be written...
         } else {
-            arity = mercury::runtime::Convert::ToInt32(
+            arity = System::Convert::ToInt32(
 		type_ctor_info->GetValue(MR_TYPE_CTOR_INFO_ARITY_SLOT));
         }
 
@@ -569,7 +569,7 @@ static MR_Integer unify_2_p(MR_TypeInfo TypeInfo_for_T, MR_Box X, MR_Box Y)
         if (0) {
 
         } else {
-            arity = mercury::runtime::Convert::ToInt32(
+            arity = System::Convert::ToInt32(
 		type_ctor_info->GetValue(MR_TYPE_CTOR_INFO_ARITY_SLOT));
         }
 
@@ -794,8 +794,8 @@ static int
 do_unify__int_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::builtin__cpp_code::mercury_code::__Unify____int_0_0(
-		mercury::runtime::Convert::ToInt32(x), 
-		mercury::runtime::Convert::ToInt32(y)); 
+		System::Convert::ToInt32(x), 
+		System::Convert::ToInt32(y)); 
 }
 
 static int
@@ -810,16 +810,16 @@ static int
 do_unify__float_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::builtin__cpp_code::mercury_code::__Unify____float_0_0(
-		mercury::runtime::Convert::ToDouble(x),
-		mercury::runtime::Convert::ToDouble(y));
+		System::Convert::ToDouble(x), 
+		System::Convert::ToDouble(y)); 
 }
 
 static int
 do_unify__character_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::builtin__cpp_code::mercury_code::__Unify____character_0_0(
-		mercury::runtime::Convert::ToChar(x),
-		mercury::runtime::Convert::ToChar(y));
+		System::Convert::ToChar(x), 
+		System::Convert::ToChar(y)); 
 }
 
 static int
@@ -863,8 +863,8 @@ static void
 do_compare__int_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 {
 	mercury::builtin__cpp_code::mercury_code::__Compare____int_0_0(result,
-		mercury::runtime::Convert::ToInt32(x),
-		mercury::runtime::Convert::ToInt32(y));
+		System::Convert::ToInt32(x), 
+		System::Convert::ToInt32(y)); 
 }
 
 static void
@@ -879,8 +879,8 @@ static void
 do_compare__float_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 {
 	mercury::builtin__cpp_code::mercury_code::__Compare____float_0_0(result,
-		mercury::runtime::Convert::ToDouble(x),
-		mercury::runtime::Convert::ToDouble(y));
+		System::Convert::ToDouble(x), 
+		System::Convert::ToDouble(y)); 
 }
 
 static void
@@ -889,8 +889,8 @@ do_compare__character_0_0(
 {
 	mercury::builtin__cpp_code::mercury_code::__Compare____character_0_0(
 		result, 
-		mercury::runtime::Convert::ToChar(x),
-		mercury::runtime::Convert::ToChar(y));
+		System::Convert::ToChar(x), 
+		System::Convert::ToChar(y)); 
 }
 
 static void

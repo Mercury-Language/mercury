@@ -305,46 +305,6 @@ get_ftn_ptr_univ_unify() {
 } // end of class TempHack
 
 // ------------------------------------------------------------------------
-// The implementation of conversion routines.  It would be good to inline
-// this code whenever possible.
-
-.class public ConvertImpl {
-
-
-.method public static default class [mscorlib]System.Object ToObject(int32 ival)
-{
-	ldarg ival
-	box ['mscorlib']System.Int32
-	ret
-}
-
-.method public static default class [mscorlib]System.Object ToObject(float64 fval)
-{
-	ldarg fval
-	box ['mscorlib']System.Float64
-	ret
-}
-
-.method public static default int32 ToInt32(class [mscorlib]System.Object obj)
-{
-	ldarg obj
-	unbox int32
-	ldobj int32
-	ret
-}
-
-.method public static default float64 ToFloat64(class [mscorlib]System.Object obj)
-{
-	ldarg obj
-	unbox float64
-	ldobj float64
-	ret
-}
-
-
-}
-
-// ------------------------------------------------------------------------
 
 // This class implements some specific instances of call/N, mostly used for 
 // doing unify and compare.  You can't call using a function pointer in MC++
@@ -358,7 +318,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -372,7 +333,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -386,7 +348,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -402,7 +365,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -419,7 +383,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -439,7 +404,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -456,7 +422,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	void (class [mscorlib]System.Object[]&, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -471,7 +438,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	void (class [mscorlib]System.Object, class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -489,7 +457,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	void (class [mscorlib]System.Object,
 		class [mscorlib]System.Object, class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -509,7 +478,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	void (class [mscorlib]System.Object, class [mscorlib]System.Object,
 		class [mscorlib]System.Object, class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -530,7 +500,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	void (class [mscorlib]System.Object, class [mscorlib]System.Object,
 		class [mscorlib]System.Object,
 		class [mscorlib]System.Object, class [mscorlib]System.Object[]&,
@@ -554,7 +525,8 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'X'
 	ldarg 'Y'
 	ldarg 'procedure'
-	call 	int32 ['mercury']mercury.runtime.ConvertImpl::ToInt32(class [mscorlib]System.Object)
+	unbox int32
+	ldobj int32
 	calli	void (class [mscorlib]System.Object, class [mscorlib]System.Object,
 		class [mscorlib]System.Object, class [mscorlib]System.Object,
 		class [mscorlib]System.Object, class [mscorlib]System.Object[]&,

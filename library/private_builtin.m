@@ -527,7 +527,7 @@ static MR_TypeClassInfo MR_typeclass_info_superclass_info(
 	int t1;
 
 	tmp = dynamic_cast<MR_Word> (tcinfo[0]);
-	t1 = mercury::runtime::Convert::ToInt32(tmp[0]) + index;
+	t1 = System::Convert::ToInt32(tmp[0]) + index;
 	return dynamic_cast<MR_Word> (tcinfo[t1]);
 }
 

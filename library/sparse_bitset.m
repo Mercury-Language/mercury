@@ -788,8 +788,8 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
     #error ""sparse_bitset not implemented for MC++ in .rt grades""
 #endif
 	MR_newobj((Pair), 0, 2);
-	MR_objset((Pair), 1, (mercury::runtime::Convert::ToObject(A)));	
-	MR_objset((Pair), 2, (mercury::runtime::Convert::ToObject(B)));
+	MR_objset((Pair), 1, __box(A));
+	MR_objset((Pair), 2, __box(B));
 }").
 
 %-----------------------------------------------------------------------------%

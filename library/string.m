@@ -788,9 +788,7 @@ string__from_char_list(CharList, Str) :-
         MR_list_nil(prev);
 
         for (i = length - 1; i >= 0; i--) {
-		MR_list_cons(tmp,
-			mercury::runtime::Convert::ToObject(Str->get_Chars(i)),
-			prev);
+		MR_list_cons(tmp, __box(Str->get_Chars(i)), prev);
 		prev = tmp;
         }
         CharList = tmp;
@@ -804,7 +802,7 @@ string__from_char_list(CharList, Str) :-
         tmp = new System::Text::StringBuilder();
         while (1) {
             if (MR_list_is_cons(CharList)) {
-		c = mercury::runtime::Convert::ToChar(MR_list_head(CharList));
+		c = System::Convert::ToChar(MR_list_head(CharList));
                 tmp->Append(c);
                 CharList = MR_list_tail(CharList);
             } else {
@@ -1662,8 +1660,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
         MR_list_nil(prev);
 
         for (i = length - 1; i >= 0; i--) {
-		MR_list_cons(tmp,
-			mercury::runtime::Convert::ToObject(Str->get_Chars(i)),
+		MR_list_cons(tmp, __box(Str->get_Chars(i)),
 			prev);
 		prev = tmp;
         }
@@ -1677,8 +1674,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
        
         tmp = new System::Text::StringBuilder();
         while (1) {
-            if (mercury::runtime::Convert::ToInt32(IntList->GetValue(0))) {
-                tmp->Append(mercury::runtime::Convert::ToChar(
+            if (System::Convert::ToInt32(IntList->GetValue(0))) {
+                tmp->Append(System::Convert::ToChar(
 			IntList->GetValue(1)));
                 IntList = dynamic_cast<MR_Word>(IntList->GetValue(2));
             } else {

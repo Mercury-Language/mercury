@@ -238,7 +238,10 @@ MS_CL_NOASM=:noAssembly
 
 # We need to build the following DLLs for the .NET runtime
 DOTNET_DLLS=mercury_il.dll mercury_mcpp.dll
- 
+
+clean_local:
+	rm -f $(DOTNET_DLLS)
+	
 runtime: $(DOTNET_DLLS)
 
 mercury_mcpp.dll: mercury_il.dll

@@ -37,47 +37,6 @@ public:
 };
 
 
-
-__gc public class Convert
-{
-public:
-    static MR_Box ToObject(MR_Integer x)
-    {
-        return ConvertImpl::ToObject(x);
-    }
-    static MR_Box ToObject(MR_Char x)
-    {
-        return ConvertImpl::ToObject((MR_Integer) x);
-    }
-    static MR_Box ToObject(MR_Word x)
-    {
-        return x;
-    }
-    static MR_Box ToObject(MR_Float x)
-    {
-        return ConvertImpl::ToObject(x);
-    }
-
-
-    static MR_Char ToChar(MR_Box x)
-    {
-        return (MR_Char) ConvertImpl::ToInt32(x);
-    }
-    static MR_Integer ToInt32(MR_Box x)
-    {
-        return ConvertImpl::ToInt32(x);
-    }
-    static MR_Float ToDouble(MR_Box x)
-    {
-        return ConvertImpl::ToFloat64(x);
-    }
-    static MR_Word ToArray(MR_Box x)
-    {
-        return dynamic_cast<MR_Word>(x);
-    }
-};
-
-
 __gc public class Errors {
     public:
     static void SORRY(MR_String s) 

@@ -1,4 +1,3 @@
-
 //
 // Copyright (C) 2000-2001 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
@@ -21,7 +20,7 @@ typedef int		MR_Integer;
 typedef System::Int32	MR_BoxedInt;
 typedef System::Boolean	MR_Bool;
 
-typedef System::Char	MR_Char; // `Char' is MS's name for unicode characters 
+typedef System::Char	MR_Char; // `Char' is MS's name for unicode characters
 
 typedef double 		MR_Float;
 	// XXX using a typedef doesn't seem to work properly when we want
@@ -94,7 +93,7 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 // We have to jump through a few hoops to get function pointers -- we do
 // it in IL currently.  We treat function pointers as integers and have
 // to box them.
-#define MR_BOX_INT(a) mercury::runtime::Convert::ToObject(a)
+#define MR_BOX_INT(a) __box(a)
 #define MR_MAYBE_STATIC_CODE(a) \
 	MR_BOX_INT(mercury::runtime::TempHack::get_ftn_ptr_##a())
 #define MR_ENTRY(a) a
@@ -211,10 +210,10 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
     	MR_newobj(List, 0, 0);
 
 #define MR_list_is_cons(List)	\
-	(mercury::runtime::Convert::ToInt32((List)->GetValue(0)))
+	(System::Convert::ToInt32((List)->GetValue(0)))
 
 #define MR_list_is_nil(List)	\
-	(mercury::runtime::Convert::ToInt32((List)->GetValue(0)) == 0)
+	(System::Convert::ToInt32((List)->GetValue(0)) == 0)
 
 #define MR_list_head(List)	\
 	((List)->GetValue(1))
