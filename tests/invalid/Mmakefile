@@ -151,6 +151,8 @@ ERR_RESS=	$(SOURCES:%.m=%.err_res)
 	if $(MC) $(ALL_MCFLAGS) --errorcheck-only $* > $*.err 2>&1; \
 	then false; else true; fi
 
+$(dates_subdir)undef_mod_qual.date: $(int0s_subdir)undef_mod_qual.int0
+
 # Some tests have more than one possible valid output, so
 # we allow the test to pass if it matches *either* the .err_exp
 # or the .err_exp2 file. 
