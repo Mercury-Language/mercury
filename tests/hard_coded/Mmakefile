@@ -170,6 +170,7 @@ ORDINARY_PROGS=	\
 	time_test \
 	tim_qual1 \
 	trans_intermod_user_equality \
+	transform_value \
 	transitive_inst_type \
 	tuple_test \
 	tuple_test \

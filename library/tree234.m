@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997,1999-2000,2002-2004 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -114,6 +114,13 @@
 :- mode tree234__update(in, in, in, out) is semidet.
 % :- mode tree234__update(di_tree234, in, in, uo_tree234) is det.
 % :- mode tree234__update(di, di, di, uo) is semidet.
+
+	% Update the value at the given key by applying the supplied 
+	% transformation to it.  This is faster than first searching for 
+	% the value and then updating it.
+	%
+:- pred tree234__transform_value(pred(V, V)::in(pred(in, out) is det), K::in, 
+	tree234(K, V)::in, tree234(K, V)::out) is semidet.
 
 	% count the number of elements in a tree
 :- pred tree234__count(tree234(K, V), int).
@@ -774,6 +781,104 @@ tree234__update(Tin, K, V, Tout) :-
 			;
 				Result2 = (>),
 				tree234__update(T3, K, V, NewT3),
+				Tout = four(K0, V0, K1, V1, K2, V2,
+					T0, T1, T2, NewT3)
+			)
+		)
+	).
+
+%------------------------------------------------------------------------------%
+
+tree234__transform_value(P, K, Tin, Tout) :-
+	(
+		Tin = empty,
+		fail
+	;
+		Tin = two(K0, V0, T0, T1),
+		compare(Result, K, K0),
+		(
+			Result = (<),
+			tree234__transform_value(P, K, T0, NewT0),
+			Tout = two(K0, V0, NewT0, T1)
+		;
+			Result = (=),
+			P(V0, VNew),
+			Tout = two(K0, VNew, T0, T1)
+		;
+			Result = (>),
+			tree234__transform_value(P, K, T1, NewT1),
+			Tout = two(K0, V0, T0, NewT1)
+		)
+	;
+		Tin = three(K0, V0, K1, V1, T0, T1, T2),
+		compare(Result0, K, K0),
+		(
+			Result0 = (<),
+			tree234__transform_value(P, K, T0, NewT0),
+			Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
+		;
+			Result0 = (=),
+			P(V0, VNew),
+			Tout = three(K0, VNew, K1, V1, T0, T1, T2)
+		;
+			Result0 = (>),
+			compare(Result1, K, K1),
+			(
+				Result1 = (<),
+				tree234__transform_value(P, K, T1, NewT1),
+				Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
+			;
+				Result1 = (=),
+				P(V1, VNew),
+				Tout = three(K0, V0, K1, VNew, T0, T1, T2)
+			;
+				Result1 = (>),
+				tree234__transform_value(P, K, T2, NewT2),
+				Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
+			)
+		)
+	;
+		Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+		compare(Result1, K, K1),
+		(
+			Result1 = (<),
+			compare(Result0, K, K0),
+			(
+				Result0 = (<),
+				tree234__transform_value(P, K, T0, NewT0),
+				Tout = four(K0, V0, K1, V1, K2, V2,
+					NewT0, T1, T2, T3)
+			;
+				Result0 = (=),
+				P(V0, VNew),
+				Tout = four(K0, VNew, K1, V1, K2, V2,
+					T0, T1, T2, T3)
+			;
+				Result0 = (>),
+				tree234__transform_value(P, K, T1, NewT1),
+				Tout = four(K0, V0, K1, V1, K2, V2,
+					T0, NewT1, T2, T3)
+			)
+		;
+			Result1 = (=),
+			P(V1, VNew),
+			Tout = four(K0, V0, K1, VNew, K2, V2, T0, T1, T2, T3)
+		;
+			Result1 = (>),
+			compare(Result2, K, K2),
+			(
+				Result2 = (<),
+				tree234__transform_value(P, K, T2, NewT2),
+				Tout = four(K0, V0, K1, V1, K2, V2,
+					T0, T1, NewT2, T3)
+			;
+				Result2 = (=),
+				P(V2, VNew),
+				Tout = four(K0, V0, K1, V1, K2, VNew,
+					T0, T1, T2, T3)
+			;
+				Result2 = (>),
+				tree234__transform_value(P, K, T3, NewT3),
 				Tout = four(K0, V0, K1, V1, K2, V2,
 					T0, T1, T2, NewT3)
 			)

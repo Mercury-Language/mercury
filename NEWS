@@ -126,8 +126,8 @@ Changes to the Mercury language:
 Changes to the Mercury standard library:
 
 * We've added some new higher-order predicates, rbtree.foldl2/6
-  and rbtree.foldl3 to the rbtree module.  The predicate 
-  rbtree.remove/3 has been deprecated.
+  rbtree.foldl3 and rbtree.transform_value to the rbtree module.  The
+  predicate rbtree.remove/3 has been deprecated.
 
 * We've add some new predicates and functions to int.m.
   int.fold_up/4, int.fold_down/4, int.fold_up/5, int.fold_down/5,
@@ -234,7 +234,7 @@ Changes to the Mercury standard library:
   variables.  We've also added a function version. 
 
 * We've added some new predicates, map__common_subset, map__foldl3,
-  and map__overlay_large_map, to map.m.
+  map__overlay_large_map and map__transform_value, to map.m.
 
 * We've added a predicate, map_fold, to set.m.
 

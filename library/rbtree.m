@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1995-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,6 +15,9 @@
 %	fails if key already in tree.
 % update:
 %	changes value of key already in tree.  fails if key doesn't exist.
+% transform_value:
+%	looks up an existing value in the tree, applies a transformation to the
+%	value and then updates the value.  fails if the key doesn't exist.
 % set:
 %	inserts or updates. Never fails.
 %
@@ -62,6 +65,13 @@
 	%
 :- pred rbtree__update(rbtree(K, V)::in, K::in, V::in, rbtree(K, V)::out)
 	is semidet.
+
+	% Update the value at the given key by applying the supplied 
+	% transformation to it.  Fails if the key is not found.  This is faster
+	% than first searching for the value and then updating it.
+	%
+:- pred rbtree__transform_value(pred(V, V)::in(pred(in, out) is det), K::in, 
+	rbtree(K, V)::in, rbtree(K, V)::out) is semidet.
 
 	% Sets a value regardless of whether key exists or not.
 	%
@@ -390,6 +400,43 @@ rbtree__update(black(K0, V0, L, R), K, V, Tree) :-
 		Tree = black(K0, V0, NewL, R)
 	;
 		rbtree__update(R, K, V, NewR),
+		Tree = black(K0, V0, L, NewR)
+	).
+
+%-----------------------------------------------------------------------------%
+
+rbtree__transform_value(_P, _K, empty, _T) :-
+	fail.
+rbtree__transform_value(P, K, red(K0, V0, L, R), Tree) :-
+	compare(Result, K, K0),
+	(
+		Result = (=)
+	->
+		P(V0, NewV),
+		Tree = red(K, NewV, L, R)
+	;
+		Result = (<)
+	->
+		rbtree__transform_value(P, K, L, NewL),
+		Tree = red(K0, V0, NewL, R)
+	;
+		rbtree__transform_value(P, K, R, NewR),
+		Tree = red(K0, V0, L, NewR)
+	).
+rbtree__transform_value(P, K, black(K0, V0, L, R), Tree) :-
+	compare(Result, K, K0),
+	(
+		Result = (=)
+	->
+		P(V0, NewV),
+		Tree = black(K, NewV, L, R)
+	;
+		Result = (<)
+	->
+		rbtree__transform_value(P, K, L, NewL),
+		Tree = black(K0, V0, NewL, R)
+	;
+		rbtree__transform_value(P, K, R, NewR),
 		Tree = black(K0, V0, L, NewR)
 	).
 

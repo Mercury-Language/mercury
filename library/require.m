@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999, 2003 The University of Melbourne.
+% Copyright (C) 1993-1999, 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,6 +50,15 @@
 %		Key and Value.  The error message will include Message
 %		and information about Key and Value.
 
+:- pred report_lookup_error(string, K).
+:- mode report_lookup_error(in, in) is erroneous.
+
+%	report_lookup_error(Message, Key)
+%		Call error/1 with an error message that is appropriate for
+%		the failure of a lookup operation involving the specified
+%		Key.  The error message will include Message
+%		and information about Key.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -84,6 +93,25 @@ report_lookup_error(Msg, K, V) :-
 		FunctorStr,
 		"\n\tValue Type: ",
 		ValueType
+		],
+		ErrorString),
+	error(ErrorString).
+
+report_lookup_error(Msg, K) :-
+	KeyType = type_name(type_of(K)),
+	functor(K, Functor, Arity),
+	( Arity = 0 ->
+		FunctorStr = Functor
+	;
+		string__int_to_string(Arity, ArityStr),
+		string__append_list([Functor, "/", ArityStr], FunctorStr)
+	),
+	string__append_list(
+		[Msg,
+		"\n\tKey Type: ",
+		KeyType,
+		"\n\tKey Functor: ",
+		FunctorStr
 		],
 		ErrorString),
 	error(ErrorString).

@@ -124,6 +124,20 @@
 :- pred map__det_update(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
 :- func map__det_update(map(K, V), K, V) = map(K, V).
 
+	% Update the value at the given key by applying the supplied 
+	% transformation to it.  Fails if the key is not found.  This is faster
+	% than first searching for the value and then updating it.
+	%
+:- pred map__transform_value(pred(V, V)::in(pred(in, out) is det), K::in, 
+	map(K, V)::in, map(K, V)::out) is semidet.
+
+	% Same as transform_value/4, but aborts instead of failing if the
+	% key is not found.
+	%
+:- pred map__det_transform_value(pred(V, V)::in(pred(in, out) is det), K::in, 
+	map(K, V)::in, map(K, V)::out) is det.
+:- func map__det_transform_value(func(V) = V, K, map(K, V)) = map(K, V).
+
 	% Update value if the key is already present, otherwise
 	% insert new key and value.
 :- pred map__set(map(K, V), K, V, map(K, V)).
@@ -563,6 +577,23 @@ map__det_update(Map0, K, V, Map) :-
 	;
 		report_lookup_error("map__det_update: key not found", K, V)
 	).
+
+map__transform_value(P, K, !Map) :-
+	tree234__transform_value(P, K, !Map).
+
+map__det_transform_value(P, K, !Map) :-
+	(
+		map__transform_value(P, K, !.Map, NewMap)
+	->
+		!:Map = NewMap
+	;
+		report_lookup_error("map__det_transform_value: key not found",
+			K)
+	).
+
+map__det_transform_value(F, K, Map0) = Map :-
+	map__det_transform_value(pred(V0::in, V::out) is det :- V = F(V0), K, 
+		Map0, Map).
 
 map__set(Map0, K, V, Map) :-
 	tree234__set(Map0, K, V, Map).
