@@ -35,7 +35,7 @@ extern	void	special_labels_module(void); /* unnecessary */
 #define	doresethpfail		ENTRY(do_reset_hp_fail)
 #define	doresetframevar0fail	ENTRY(do_reset_framevar0_fail)
 #define	dosucceed		ENTRY(do_succeed)
-#define	donotreached		ENTRY(do_not_reached);
+#define	donotreached		ENTRY(do_not_reached)
 
 extern	EntryPoint	doredo;
 extern	EntryPoint	dofail;
