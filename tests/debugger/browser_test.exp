@@ -6,10 +6,7 @@ mdb> goto 3
 mdb> set format pretty
 mdb> print *
        HeadVar__1             	
-big(
-  big(big(small, 1, small), 2, small), 
-  3, 
-  big(big(small, 4, big/3), 6, small))
+big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
 mdb> set -A format verbose
 mdb> print *
        HeadVar__1             	
@@ -29,10 +26,7 @@ mdb> print -f 1
        HeadVar__1             	big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
 mdb> print -r 1
        HeadVar__1             	
-big(
-  big(big(small, 1, small), 2, small), 
-  3, 
-  big(big(small, 4, big/3), 6, small))
+big(big(big(...), ...), 3, ...)
 mdb> print -v 1
        HeadVar__1             	
 big
