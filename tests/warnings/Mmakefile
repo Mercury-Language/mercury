@@ -45,7 +45,7 @@ check:	$(ERRS) $(RESS)
 
 all:	$(PROGS)
 
-clean:	clean_err clean_res
+clean_local:	clean_err clean_res
 
 clean_mc: clean_c clean_o clean_err clean_res
 

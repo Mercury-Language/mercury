@@ -69,8 +69,8 @@ check:	$(OUTS) $(RESS)
 
 all:	$(PROGS)
 
-clean:
+clean_local:
 
-realclean:
+realclean_local:
 
 #-----------------------------------------------------------------------------#

@@ -35,7 +35,7 @@ DIFF_OPTS=-c
 
 #-----------------------------------------------------------------------------#
 
-clean: clean_out clean_res
+clean_local: clean_out clean_res
 
 clean_mc: clean_c clean_o clean_out clean_res
 

@@ -37,7 +37,7 @@ check:	$(OUTS) $(RESS)
 
 all:	$(PROGS)
 
-clean:	clean_ugly
+clean_local:	clean_ugly
 
 clean_ugly:
 	rm -fr *.ugly

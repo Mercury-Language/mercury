@@ -90,10 +90,10 @@ trans_opts: $(TRANS_OPTS)
 
 check: $(TRANS_OPT_RESS)
 
-clean:
+clean_local:
 	rm -f *.trans_opt_err
 
-realclean:
+realclean_local:
 	rm -f *.trans_opt_res
 
 #-----------------------------------------------------------------------------#

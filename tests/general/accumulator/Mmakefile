@@ -54,7 +54,7 @@ mods:	$(MODS)
 
 all:	$(PROGS)
 
-realclean: clean_hlds_dump
+realclean_local: clean_hlds_dump
 
 clean_hlds_dump:
 	-rm -f *hlds_dump*

@@ -199,7 +199,7 @@ printtests:
 printobjs:
 	@echo $(OBJS)
 
-clean:
+clean_local:
 	rm -f *.err *.h
 
 #-----------------------------------------------------------------------------#

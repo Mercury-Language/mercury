@@ -118,7 +118,7 @@ errs:	$(ERRS)
 depend:	aditi_update_errors.depend aditi_update_mode_errors.depend \
 		test_nested.depend partial_implied_mode.depend
 
-clean:
+clean_local:
 	rm -f *.err *.err_res
 
 #-----------------------------------------------------------------------------#
