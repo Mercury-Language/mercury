@@ -17,7 +17,7 @@ require(Goal, Message) :-
 
 :- pred error(string).
 error(Message) :-
-	format("~s\n", Message),
+	format("~s\n", [Message]),
 	trace,
 	fail.
 
