@@ -548,20 +548,40 @@ simplify__goal_2(disj(Disjuncts0, SM), GoalInfo0,
 	( Disjuncts = [] ->
 		goal_info_get_context(GoalInfo0, Context),
 		fail_goal(Context, Goal - GoalInfo),
-		Info = Info1
+		Info2 = Info1
 	; Disjuncts = [SingleGoal] ->
 		% a singleton disjunction is equivalent to the goal itself
 		SingleGoal = Goal1 - GoalInfo1,
 		simplify__maybe_wrap_goal(GoalInfo0, GoalInfo1,
-			Goal1, Goal, GoalInfo, Info1, Info)
+			Goal1, Goal, GoalInfo, Info1, Info2)
 	;
 		Goal = disj(Disjuncts, SM),
 		simplify_info_get_module_info(Info1, ModuleInfo1),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
 		merge_instmap_deltas(InstMap0, NonLocals, InstMaps,
 			NewDelta, ModuleInfo1, ModuleInfo2),
-		simplify_info_set_module_info(Info1, ModuleInfo2, Info),
+		simplify_info_set_module_info(Info1, ModuleInfo2, Info2),
 		goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
+	),
+	(
+		list__length(Disjuncts) \=
+			list__length(Disjuncts0) `with_type` int
+	->
+		%
+		% If we pruned some disjuncts, variables used by those
+		% disjuncts may no longer be non-local to the disjunction.
+		% Also, the determinism may have changed (especially
+		% if we pruned all the disjuncts).
+		% If the disjunction now can't succeed, it is necessary
+		% to recompute instmap_deltas and rerun determinism
+		% analysis to avoid aborts in the code generator
+		% because the disjunction now cannot produce variables
+		% it did before.
+		%
+		simplify_info_set_requantify(Info2, Info3),
+		simplify_info_set_rerun_det(Info3, Info)
+	;
+		Info = Info2
 	).
 
 simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
@@ -583,7 +603,7 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 	( Cases = [] ->
 		% An empty switch always fails.
 		pd_cost__eliminate_switch(CostDelta),
-		simplify_info_incr_cost_delta(Info1, CostDelta, Info),
+		simplify_info_incr_cost_delta(Info1, CostDelta, Info5),
 		goal_info_get_context(GoalInfo0, Context),
 		fail_goal(Context, Goal - GoalInfo)
 	; Cases = [case(ConsId, SingleGoal)] ->
@@ -655,15 +675,32 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 		    Info4 = Info1
 		),
 		pd_cost__eliminate_switch(CostDelta),
-		simplify_info_incr_cost_delta(Info4, CostDelta, Info)
+		simplify_info_incr_cost_delta(Info4, CostDelta, Info5)
 	;
 		Goal = switch(Var, SwitchCanFail, Cases, SM),
 		simplify_info_get_module_info(Info1, ModuleInfo1),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
 		merge_instmap_deltas(InstMap0, NonLocals, InstMaps,
 			NewDelta, ModuleInfo1, ModuleInfo2),
-		simplify_info_set_module_info(Info1, ModuleInfo2, Info),
+		simplify_info_set_module_info(Info1, ModuleInfo2, Info5),
 		goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
+	),
+	( list__length(Cases) \= list__length(Cases0) `with_type` int ->
+		%
+		% If we pruned some cases, variables used by those
+		% cases may no longer be non-local to the switch.
+		% Also, the determinism may have changed (especially
+		% if we pruned all the cases).
+		% If the switch now can't succeed, it is necessary
+		% to recompute instmap_deltas and rerun determinism
+		% analysis to avoid aborts in the code generator
+		% because the switch now cannot produce variables it
+		% did before.
+		%
+		simplify_info_set_requantify(Info5, Info6),
+		simplify_info_set_rerun_det(Info6, Info)
+	;
+		Info = Info5
 	).
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
