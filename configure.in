@@ -26,11 +26,18 @@ BOOTSTRAP_MC=
 AC_PATH_PROG(BOOTSTRAP_MC,mc)
 if test "$BOOTSTRAP_MC" != ""; then
 	AC_MSG_CHECKING(that $BOOTSTRAP_MC works)
-	if 	(cd samples &&
-		 rm -f hello &&
-	 	 ($BOOTSTRAP_MC -v hello >&AC_FD_CC 2>&1) &&
-		 test "`./hello`" = "Hello, world"
-		)
+	cat > conftest.m << EOF
+		:- module conftest.
+		:- interface.
+		:- import_module io.
+		:- pred main(io__state::di, io__state::uo) is det.
+		:- implementation.
+		main --> io__write_string("Hello, world\n").
+EOF
+	if
+	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
+	 	 $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
+		 test "`./conftest 2>&1`" = "Hello, world"
 	then
 		AC_MSG_RESULT(yes)
 	else
@@ -605,6 +612,14 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # We ought to use $target here rather than $host - but we don't
 # support cross-compilation at the moment anyhow.
 case "$host" in
+	i386-*-freebsd*)
+		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
+		AC_MSG_RESULT(yes)
+		LINK_SHARED_OBJ="ld -Bshareable"
+		PIC=-fpic
+		PIC_O=pic_o
+		SO=so
+		;;
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="$CC -G"
@@ -652,13 +667,15 @@ scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
 ,
-
-echo chmod a-w $CONFIG_FILES $CONFIG_HEADERS
-chmod a-w $CONFIG_FILES $CONFIG_HEADERS
-
-exec_files="`echo $CONFIG_FILES | sed -e 's/[^ ]*Mmake.common//' `"
-echo chmod +x $exec_files
-chmod +x $exec_files
+if test "$CONFIG_HEADERS" = "runtime/conf.h"; then
+	touch runtime/conf.h.date
+fi
+# conftest.junk is used to avoid a warning if there
+# are no files in the list passed to chmod
+touch conftest.junk
+chmod a-w $CONFIG_FILES $CONFIG_HEADERS conftest.junk
+chmod +x `echo $CONFIG_FILES | sed -e 's/[^ ]*Mmake.common//' ` conftest.junk
+rm -f conftest.junk
 )
 
 #-----------------------------------------------------------------------------#

@@ -17,8 +17,7 @@ SUBDIRS = scripts util runtime boehm_gc library compiler doc profiler
 
 SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 		MMAKE_VPATH=. \
-		MMAKE_VARS=../scripts/Mmake.vars \
-		MMAKE_RULES=../scripts/Mmake.rules \
+		MMAKE_DIR=../scripts \
 		../scripts/mmake $(MMAKEFLAGS)
 
 #-----------------------------------------------------------------------------#
@@ -239,7 +238,7 @@ clean_subdirs:
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
 	done
 
-realclean: realclean_subdirs realclean_config_cache
+realclean: realclean_subdirs realclean_config
 
 .PHONY: realclean_subdirs
 realclean_subdirs:
@@ -250,8 +249,8 @@ realclean_subdirs:
 	done
 	cd scripts; $(SUBDIR_MMAKE) realclean
 
-.PHONY: realclean_config_cache
-realclean_config_cache:
-	rm -f config.cache
+.PHONY: realclean_config
+realclean_config:
+	rm -f config.cache config.status config.log
 
 #-----------------------------------------------------------------------------#
