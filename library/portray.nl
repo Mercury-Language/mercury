@@ -25,7 +25,7 @@ portray(Term) :-
 	portray_args(As),
 	write(')'),
 	!.
-portray(Term) :- print(Term).
+portray(Term) :- write(Term).
 
 portray_args([]).
 portray_args([X|Xs]) :-
