@@ -263,7 +263,7 @@ llds_common__process_instr(Instr0, Instr, Info0, Info) :-
 		Instr = Instr0,
 		Info = Info0
 	;
-		Instr0 = pragma_c(_, _, _, _, _),
+		Instr0 = pragma_c(_, _, _, _, _, _),
 		Instr = Instr0,
 		Info = Info0
 	).

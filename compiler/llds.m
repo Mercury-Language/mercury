@@ -360,7 +360,8 @@
 			% Decrement the det stack pointer.
 
 	;	pragma_c(list(pragma_c_decl), list(pragma_c_component),
-				may_call_mercury, maybe(label), bool)
+				may_call_mercury, maybe(label), maybe(label),
+				bool)
 			% The first argument says what local variable
 			% declarations are required for the following
 			% components, which in turn can specify how
@@ -382,9 +383,16 @@
 			% refer to a Mercury label. If they do, we must
 			% prevent the label from being optimized away.
 			% To make it known to labelopt, we mention it in
-			% the fourth arg.
+			% the fourth or the fifth arg. The fourth argument
+			% may give the name of a label whose name is fixed
+			% (e.g. because it embedded in raw C code or because it
+			% has associated an label layout structure), while
+			% the fifth may give the name of a label that can
+			% be changed (because it is not mentioned in C code
+			% and has no associated layout structure, being
+			% mentioned only in pragma_c_fail_to components).
 			%
-			% The fifth argument says whether the contents
+			% The sixth argument says whether the contents
 			% of the pragma C code can refer to stack slots.
 			% User-written shouldn't refer to stack slots,
 			% the question is whether the compiler-generated
@@ -495,7 +503,9 @@
 	--->	pragma_c_inputs(list(pragma_c_input))
 	;	pragma_c_outputs(list(pragma_c_output))
 	;	pragma_c_user_code(maybe(prog_context), string)
-	;	pragma_c_raw_code(string).
+	;	pragma_c_raw_code(string)
+	;	pragma_c_fail_to(label)
+	;	pragma_c_noop.
 
 	% A pragma_c_input represents the code that initializes one
 	% of the input variables for a pragma_c instruction.

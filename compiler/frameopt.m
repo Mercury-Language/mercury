@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -174,36 +174,37 @@ flatten_block_seq([Label | Labels], BlockMap, Instrs) :-
 
 :- type block_map	==	map(label, block_info).
 
-:- type block_info	--->	block_info(
-					label,
-						% The label of the first instr.
-					list(instruction),
-						% The code of the block.
-					list(label),
-						% The labels we can jump to
-						% (not falling through).
-					maybe(label),
-						% The label we fall through to
-						% (if there is one).
-					block_type
-				).
+:- type block_info
+	--->	block_info(
+			label,
+				% The label of the first instr.
+			list(instruction),
+				% The code of the block.
+			list(label),
+				% The labels we can jump to
+				% (not falling through).
+			maybe(label),
+				% The label we fall through to
+				% (if there is one).
+			block_type
+		).
 
-:- type block_type	--->	setup		% This is a block containing
-						% only setup instructions.
-			;	ordinary(bool)	% This block does not contain
-						% setup or teardown. The bool
-						% says whether the code in the
-						% block needs a stack frame.
-			;	teardown(list(instruction), list(instruction),
-					instruction).
-						% This block contains stack
-						% teardown and goto code.
-						% The three args give
-						% (1) the instr that restores
-						% succip (if any),
-						% (2) the livevals instr
-						% before the goto (if any),
-						% (3) the goto instr
+:- type block_type
+	--->	setup		% This is a block containing
+				% only setup instructions.
+	;	ordinary(bool)	% This block does not contain setup or
+				% teardown. The bool says whether the code
+				% in the block needs a stack frame.
+	;	teardown(
+				% This block contains stack
+				% teardown and goto code.
+			list(instruction),
+				% the instr that restores succip (if any),
+			list(instruction),
+				% the livevals instr before the goto (if any),
+			instruction
+				% the goto instr
+		).
 
 %-----------------------------------------------------------------------------%
 
@@ -537,10 +538,12 @@ block_needs_frame(Instrs, NeedsFrame) :-
 			;
 				Uinstr = c_code(_)
 			;
-				Uinstr = pragma_c(_, _,
-					MayCallMercury, _, NeedStack),
+				Uinstr = pragma_c(_, _, MayCallMercury,
+					MaybeFixed, _, NeedStack),
 				(
 					MayCallMercury = may_call_mercury
+				;
+					MaybeFixed = yes(_)
 				;
 					NeedStack = yes
 				)
@@ -649,62 +652,6 @@ same_label_ref(local(ProcLabel), c_local(ProcLabel)).
 same_label_ref(local(ProcLabel), local(ProcLabel)).
 same_label_ref(c_local(ProcLabel), c_local(ProcLabel)).
 
-	% Given an instruction, find the set of labels to which it can cause
-	% control to transfer. In the case of calls, this includes transfer
-	% via return from the called procedure.
-
-:- pred possible_targets(instr::in, list(label)::out) is det.
-
-possible_targets(comment(_), []).
-possible_targets(livevals(_), []).
-possible_targets(block(_, _, _), _) :-
-	error("block in possible_targets").
-possible_targets(assign(_, _), []).
-possible_targets(call(_, ReturnAddr, _, _), Labels) :-
-	( ReturnAddr = label(Label) ->
-		Labels = [Label]
-	;
-		Labels = []
-	).
-possible_targets(mkframe(_, _), []).
-possible_targets(label(_), []).
-possible_targets(goto(CodeAddr), Targets) :-
-	( CodeAddr = label(Label) ->
-		Targets = [Label]
-	;
-		Targets = []
-	).
-possible_targets(computed_goto(_, Targets), Targets).
-possible_targets(c_code(_), []).
-possible_targets(if_val(_, CodeAddr), Targets) :-
-	( CodeAddr = label(Label) ->
-		Targets = [Label]
-	;
-		Targets = []
-	).
-possible_targets(incr_hp(_, _, _, _), []).
-possible_targets(mark_hp(_), []).
-possible_targets(restore_hp(_), []).
-possible_targets(store_ticket(_), []).
-possible_targets(reset_ticket(_, _), []).
-possible_targets(discard_ticket, []).
-possible_targets(mark_ticket_stack(_), []).
-possible_targets(discard_tickets_to(_), []).
-possible_targets(incr_sp(_, _), []).
-possible_targets(decr_sp(_), []).
-possible_targets(init_sync_term(_, _), []).
-possible_targets(fork(Child, Parent, _), [Child, Parent]).
-possible_targets(join_and_terminate(_), []).
-possible_targets(join_and_continue(_, Label), [Label]).
-possible_targets(pragma_c(_, _, _, MaybeLabel, _), List) :-
-	(	
-		MaybeLabel = no,
-		List = []
-	;
-		MaybeLabel = yes(Label),
-		List = [Label]
-	).
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -721,7 +668,7 @@ can_clobber_succip([Label | Labels], BlockMap, CanClobberSuccip) :-
 			Uinstr = call(_, _, _, _)
 		;
 			% Only may_call_mercury pragma_c's can clobber succip.
-			Uinstr = pragma_c(_, _, may_call_mercury, _, _)
+			Uinstr = pragma_c(_, _, may_call_mercury, _, _, _)
 		)
 	->
 		CanClobberSuccip = yes
@@ -1114,9 +1061,11 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, BlockMap0, ParMap0,
 	BlockInfo0 = block_info(_, Instrs0, SideLabels0,
 		MaybeFallThrough0, Type),
 	mark_parallels_for_teardown(SideLabels0, SideLabels,
-		LabelMap, BlockMap0, ProcLabel, N0, N1, ParMap0, ParMap1),
+		AssocLabelMap, BlockMap0, ProcLabel, N0, N1, ParMap0, ParMap1),
 	pick_last(Instrs0, PrevInstrs, LastInstr0),
-	substitute_labels(LastInstr0, LabelMap, LastInstr),
+	map__from_assoc_list(AssocLabelMap, LabelMap),
+	opt_util__replace_labels_instruction(LastInstr0, LabelMap, no,
+		LastInstr),
 	list__append(PrevInstrs, [LastInstr], Instrs),
 	(
 		MaybeFallThrough0 = yes(FallThrough),
@@ -1196,7 +1145,7 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, BlockMap0, ParMap0,
 	% parallels, allocating labels for them if they haven't been allocated
 	% already. We return both the updated list of labels and the
 	% substitution (represented as an association list) that will have
-	% to applied to the jumpting instruction.
+	% to applied to the jumping instruction.
 
 :- pred mark_parallels_for_teardown(list(label)::in, list(label)::out,
 	assoc_list(label)::out, block_map::in,
@@ -1240,105 +1189,6 @@ mark_parallel(Label0, Label, ProcLabel, N0, N, ParMap0, ParMap) :-
 		Label = NewParallel,
 		N is N0 + 1,
 		map__det_insert(ParMap0, Label0, NewParallel, ParMap)
-	).
-
-%-----------------------------------------------------------------------------%
-
-	% Given an instruction, substitute the labels in it
-	% according to the given association list.
-	% The substitution is not performed for instruction components
-	% which treat the label merely as data.
-
-:- pred substitute_labels(instruction::in, assoc_list(label)::in,
-	instruction::out) is det.
-
-substitute_labels(Uinstr0 - Comment, LabelMap, Uinstr - Comment) :-
-	substitute_labels_instr(Uinstr0, LabelMap, Uinstr).
-
-:- pred substitute_labels_instr(instr::in, assoc_list(label)::in,
-	instr::out) is det.
-
-substitute_labels_instr(comment(Comment), _, comment(Comment)).
-substitute_labels_instr(livevals(LiveVals), _, livevals(LiveVals)).
-substitute_labels_instr(block(_, _, _), _, _) :-
-	error("block in substitute_labels_instr").
-substitute_labels_instr(assign(Lval, Rval), _, assign(Lval, Rval)).
-substitute_labels_instr(call(Target, ReturnAddr0, LiveInfo, Model), LabelMap,
-		call(Target, ReturnAddr, LiveInfo, Model)) :-
-	(
-		ReturnAddr0 = label(Label0),
-		assoc_list__search(LabelMap, Label0, Label)
-	->
-		ReturnAddr = label(Label)
-	;
-		ReturnAddr = ReturnAddr0
-	).
-substitute_labels_instr(mkframe(NondetFrameInfo, Redoip), _,
-		mkframe(NondetFrameInfo, Redoip)).
-substitute_labels_instr(label(_), _, _) :-
-	error("label in substitute_labels_instr").
-substitute_labels_instr(goto(CodeAddr0), LabelMap, goto(CodeAddr)) :-
-	(
-		CodeAddr0 = label(Label0),
-		assoc_list__search(LabelMap, Label0, Label)
-	->
-		CodeAddr = label(Label)
-	;
-		CodeAddr = CodeAddr0
-	).
-substitute_labels_instr(computed_goto(Rval, Targets0), LabelMap,
-		computed_goto(Rval, Targets)) :-
-	substitute_labels_list(Targets0, LabelMap, Targets).
-substitute_labels_instr(c_code(Code), _, c_code(Code)).
-substitute_labels_instr(if_val(Rval, CodeAddr0), LabelMap,
-		if_val(Rval, CodeAddr)) :-
-	(
-		CodeAddr0 = label(Label0),
-		assoc_list__search(LabelMap, Label0, Label)
-	->
-		CodeAddr = label(Label)
-	;
-		CodeAddr = CodeAddr0
-	).
-substitute_labels_instr(incr_hp(Lval, Tag, Rval, Msg), _,
-		incr_hp(Lval, Tag, Rval, Msg)).
-substitute_labels_instr(mark_hp(Lval), _, mark_hp(Lval)).
-substitute_labels_instr(restore_hp(Rval), _, restore_hp(Rval)).
-substitute_labels_instr(store_ticket(Lval), _, store_ticket(Lval)).
-substitute_labels_instr(reset_ticket(Rval, Rsn), _, reset_ticket(Rval, Rsn)).
-substitute_labels_instr(discard_ticket, _, discard_ticket).
-substitute_labels_instr(mark_ticket_stack(Lval), _, mark_ticket_stack(Lval)).
-substitute_labels_instr(discard_tickets_to(Rval), _, discard_tickets_to(Rval)).
-substitute_labels_instr(incr_sp(Size, Name), _, incr_sp(Size, Name)).
-substitute_labels_instr(decr_sp(Size), _, decr_sp(Size)).
-substitute_labels_instr(init_sync_term(T, N), _, init_sync_term(T, N)).
-substitute_labels_instr(fork(Child0, Parent0, Lval), LabelMap,
-		fork(Child, Parent, Lval)) :-
-	substitute_label(LabelMap, Child0, Child),
-	substitute_label(LabelMap, Parent0, Parent).
-substitute_labels_instr(join_and_terminate(Lval), _LabelMap, join_and_terminate(Lval)).
-substitute_labels_instr(join_and_continue(Lval, Label0), LabelMap,
-		join_and_continue(Lval, Label)) :-
-	substitute_label(LabelMap, Label0, Label).
-substitute_labels_instr(pragma_c(A, B, C, D, E), _, pragma_c(A, B, C, D, E)).
-
-:- pred substitute_labels_list(list(label)::in, assoc_list(label)::in,
-	list(label)::out) is det.
-
-substitute_labels_list([], _, []).
-substitute_labels_list([Label0 | Labels0], LabelMap, [Label | Labels]) :-
-	substitute_label(LabelMap, Label0, Label),
-	substitute_labels_list(Labels0, LabelMap, Labels).
-
-:- pred substitute_label(assoc_list(label)::in, label::in, label::out) is det.
-
-substitute_label(LabelMap, Label0, Label) :-
-	(
-		assoc_list__search(LabelMap, Label0, Label1)
-	->
-		Label = Label1
-	;
-		Label = Label0
 	).
 
 %-----------------------------------------------------------------------------%

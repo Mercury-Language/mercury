@@ -1324,18 +1324,8 @@ output_instruction_decls(discard_tickets_to(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
 output_instruction_decls(decr_sp(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(pragma_c(_, Comps, _, _, _), DeclSet0, DeclSet) -->
+output_instruction_decls(pragma_c(_, Comps, _, _, _, _), DeclSet0, DeclSet) -->
 	output_pragma_c_component_list_decls(Comps, DeclSet0, DeclSet).
-
-:- pred output_pragma_c_component_list_decls(list(pragma_c_component),
-	decl_set, decl_set, io__state, io__state).
-:- mode output_pragma_c_component_list_decls(in, in, out, di, uo) is det.
-
-output_pragma_c_component_list_decls([], DeclSet, DeclSet) --> [].
-output_pragma_c_component_list_decls([Component | Components],
-		DeclSet0, DeclSet) -->
-	output_pragma_c_component_decls(Component, DeclSet0, DeclSet1),
-	output_pragma_c_component_list_decls(Components, DeclSet1, DeclSet).
 output_instruction_decls(init_sync_term(Lval, _), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(fork(Child, Parent, _), DeclSet0, DeclSet) -->
@@ -1347,17 +1337,30 @@ output_instruction_decls(join_and_continue(Lval, Label), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(label(Label), "", "", 0, _, DeclSet1, DeclSet).
 
+:- pred output_pragma_c_component_list_decls(list(pragma_c_component),
+	decl_set, decl_set, io__state, io__state).
+:- mode output_pragma_c_component_list_decls(in, in, out, di, uo) is det.
+
+output_pragma_c_component_list_decls([], DeclSet, DeclSet) --> [].
+output_pragma_c_component_list_decls([Component | Components],
+		DeclSet0, DeclSet) -->
+	output_pragma_c_component_decls(Component, DeclSet0, DeclSet1),
+	output_pragma_c_component_list_decls(Components, DeclSet1, DeclSet).
+
 :- pred output_pragma_c_component_decls(pragma_c_component,
 	decl_set, decl_set, io__state, io__state).
 :- mode output_pragma_c_component_decls(in, in, out, di, uo) is det.
 
 output_pragma_c_component_decls(pragma_c_inputs(Inputs), DeclSet0, DeclSet) -->
 	output_pragma_input_rval_decls(Inputs, DeclSet0, DeclSet).
-output_pragma_c_component_decls(pragma_c_outputs(Outputs), DeclSet0, DeclSet) -->
+output_pragma_c_component_decls(pragma_c_outputs(Outputs), DeclSet0, DeclSet)
+		-->
 	output_pragma_output_lval_decls(Outputs, DeclSet0, DeclSet).
 output_pragma_c_component_decls(pragma_c_raw_code(_), DeclSet, DeclSet) --> [].
 output_pragma_c_component_decls(pragma_c_user_code(_, _), DeclSet, DeclSet)
 		--> [].
+output_pragma_c_component_decls(pragma_c_fail_to(_), DeclSet, DeclSet) --> [].
+output_pragma_c_component_decls(pragma_c_noop, DeclSet, DeclSet) --> [].
 
 %-----------------------------------------------------------------------------%
 
@@ -1646,7 +1649,7 @@ output_instruction(decr_sp(N), _) -->
 	io__write_int(N),
 	io__write_string(");\n").
 
-output_instruction(pragma_c(Decls, Components, _, _, _), _) -->
+output_instruction(pragma_c(Decls, Components, _, _, _, _), _) -->
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
 	output_pragma_c_components(Components),
@@ -1716,6 +1719,11 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code)) -->
 	).
 output_pragma_c_component(pragma_c_raw_code(C_Code)) -->
 	io__write_string(C_Code).
+output_pragma_c_component(pragma_c_fail_to(Label)) -->
+	io__write_string("if (!r1) GOTO_LABEL("),
+	output_label(Label),
+	io__write_string(");\n").
+output_pragma_c_component(pragma_c_noop) --> [].
 
 	% Output the local variable declarations at the top of the 
 	% pragma_c_code code.
@@ -2645,8 +2653,7 @@ output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ decl_set_insert(DeclSet0, code_addr(CodeAddress),
-			DeclSet) },
+		{ decl_set_insert(DeclSet0, code_addr(CodeAddress), DeclSet) },
 		need_code_addr_decls(CodeAddress, NeedDecl),
 		( { NeedDecl = yes } ->
 			output_indent(FirstIndent, LaterIndent, N0),
@@ -3722,14 +3729,14 @@ output_rval_const(float_const(FloatVal)) -->
 	io__write_string("(Float) "),
 	io__write_float(FloatVal).
 output_rval_const(string_const(String)) -->
-	io__write_string("string_const("""),
+	io__write_string("MR_string_const("""),
 	output_c_quoted_string(String),
 	{ string__length(String, StringLength) },
 	io__write_string(""", "),
 	io__write_int(StringLength),
 	io__write_string(")").
 output_rval_const(multi_string_const(Length, String)) -->
-	io__write_string("string_const("""),
+	io__write_string("MR_string_const("""),
 	output_c_quoted_multi_string(Length, String),
 	io__write_string(""", "),
 	io__write_int(Length),
@@ -3794,14 +3801,14 @@ output_rval_static_const(int_const(N)) -->
 output_rval_static_const(float_const(FloatVal)) -->
 	io__write_float(FloatVal).
 output_rval_static_const(string_const(String)) -->
-	io__write_string("string_const("""),
+	io__write_string("MR_string_const("""),
 	output_c_quoted_string(String),
 	{ string__length(String, StringLength) },
 	io__write_string(""", "),
 	io__write_int(StringLength),
 	io__write_string(")").
 output_rval_static_const(multi_string_const(Length, String)) -->
-	io__write_string("string_const("""),
+	io__write_string("MR_string_const("""),
 	output_c_quoted_multi_string(Length, String),
 	io__write_string(""", "),
 	io__write_int(Length),

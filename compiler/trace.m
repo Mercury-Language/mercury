@@ -421,7 +421,7 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 	),
 	TraceCode = node([
 		pragma_c([], [pragma_c_raw_code(TraceStmt)],
-			will_not_call_mercury, no, yes) - ""
+			will_not_call_mercury, no, no, yes) - ""
 	])
 	}.
 
@@ -650,7 +650,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 				% by another label, and this way we can
 				% eliminate this other label.
 			pragma_c([], [pragma_c_raw_code(TraceStmt)],
-				may_call_mercury, yes(Label), yes)
+				may_call_mercury, yes(Label), no, yes)
 				- ""
 		]),
 	Code = tree(ProduceCode, TraceCode)

@@ -47,6 +47,7 @@ PROGS=	\
 	float_map \
 	float_reg \
 	float_rounding_bug \
+	frameopt_pragma_redirect \
 	free_free_mode \
 	func_and_pred \
 	func_ctor_ambig \

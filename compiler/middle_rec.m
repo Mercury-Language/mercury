@@ -424,7 +424,7 @@ middle_rec__find_used_registers_instr(discard_tickets_to(Rval), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(incr_sp(_, _), Used, Used).
 middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
-middle_rec__find_used_registers_instr(pragma_c(_, Components, _, _, _),
+middle_rec__find_used_registers_instr(pragma_c(_, Components, _, _, _, _),
 		Used0, Used) :-
 	middle_rec__find_used_registers_components(Components, Used0, Used).
 middle_rec__find_used_registers_instr(init_sync_term(Lval, _), Used0, Used) :-
@@ -454,6 +454,8 @@ middle_rec__find_used_registers_component(pragma_c_outputs(Out), Used0, Used) :-
 	insert_pragma_c_output_registers(Out, Used0, Used).
 middle_rec__find_used_registers_component(pragma_c_user_code(_, _), Used, Used).
 middle_rec__find_used_registers_component(pragma_c_raw_code(_), Used, Used).
+middle_rec__find_used_registers_component(pragma_c_fail_to(_), Used, Used).
+middle_rec__find_used_registers_component(pragma_c_noop, Used, Used).
 
 :- pred middle_rec__find_used_registers_lvals(list(lval), set(int), set(int)).
 :- mode middle_rec__find_used_registers_lvals(in, di, uo) is det.

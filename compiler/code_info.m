@@ -1758,7 +1758,7 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 			],
 			MarkCode = node([
 				pragma_c([], Components, will_not_call_mercury,
-					no, no) - ""
+					no, no, no) - ""
 			])
 		;
 			UseMinimalModel = no,
@@ -1834,8 +1834,8 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 				pragma_c_raw_code("\tMR_commit_cut();\n")
 			],
 			CutCode = node([
-				pragma_c([], Components,
-					will_not_call_mercury, no, no)
+				pragma_c([], Components, will_not_call_mercury,
+					no, no, no)
 					- "commit for temp frame hijack"
 			])
 		;

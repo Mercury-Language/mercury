@@ -569,7 +569,7 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint,
 				mkframe(NondetFrameInfo, OutsideResumeAddress)
 					- "Allocate stack frame",
 				pragma_c([], DefineComponents,
-					will_not_call_mercury, no, no)
+					will_not_call_mercury, no, no, no)
 					- ""
 			]) },
 			{ NondetPragma = yes }
@@ -656,7 +656,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo,
 		{ UndefComponents = [pragma_c_raw_code(UndefStr)] },
 		{ UndefCode = node([
 			pragma_c([], UndefComponents,
-				will_not_call_mercury, no, no)
+				will_not_call_mercury, no, no, no)
 				- ""
 		]) },
 		{ RestoreDeallocCode = empty },	% always empty for nondet code
