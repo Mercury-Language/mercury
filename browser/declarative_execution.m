@@ -293,13 +293,13 @@
 :- pred det_trace_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode det_trace_node_from_id(in, in, out) is det.
 
-:- inst trace_node_call = bound(call(ground, ground, ground, ground,
-	ground, ground, ground, ground, ground)).
+:- inst trace_node_call ---> call(ground, ground, ground, ground,
+	ground, ground, ground, ground, ground).
 
 :- pred call_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode call_node_from_id(in, in, out(trace_node_call)) is det.
 
-:- inst trace_node_redo = bound(redo(ground, ground)).
+:- inst trace_node_redo ---> redo(ground, ground).
 
 	% maybe_redo_node_from_id/3 fails if the argument is a
 	% NULL reference.
@@ -307,18 +307,18 @@
 :- pred maybe_redo_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode maybe_redo_node_from_id(in, in, out(trace_node_redo)) is semidet.
 
-:- inst trace_node_exit = bound(exit(ground, ground, ground, ground,
-	ground, ground)).
+:- inst trace_node_exit ---> exit(ground, ground, ground, ground,
+	ground, ground).
 
 :- pred exit_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode exit_node_from_id(in, in, out(trace_node_exit)) is det.
 
-:- inst trace_node_cond = bound(cond(ground, ground, ground)).
+:- inst trace_node_cond ---> cond(ground, ground, ground).
 
 :- pred cond_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode cond_node_from_id(in, in, out(trace_node_cond)) is det.
 
-:- inst trace_node_neg = bound(neg(ground, ground, ground)).
+:- inst trace_node_neg ---> neg(ground, ground, ground).
 
 :- pred neg_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode neg_node_from_id(in, in, out(trace_node_neg)) is det.
@@ -328,8 +328,9 @@
 :- pred first_disj_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode first_disj_node_from_id(in, in, out(trace_node_first_disj)) is det.
 
-:- inst trace_node_disj = bound(first_disj(ground, ground);
-				later_disj(ground, ground, ground)).
+:- inst trace_node_disj
+	--->	first_disj(ground, ground)
+	;	later_disj(ground, ground, ground).
 
 :- pred disj_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode disj_node_from_id(in, in, out(trace_node_disj)) is det.
@@ -630,10 +631,10 @@ step_left_in_contour(Store, Node) = Prec :-
 :- mode find_prev_contour(in, in, out) is semidet.
 :- mode find_prev_contour(in, in(trace_node_reverse), out) is det.
 
-:- inst trace_node_reverse =
-	bound(	fail(ground, ground, ground, ground)
+:- inst trace_node_reverse
+	---> 	fail(ground, ground, ground, ground)
 	;	redo(ground, ground)
-	;	neg_fail(ground, ground)).
+	;	neg_fail(ground, ground).
 
 find_prev_contour(Store, fail(_, Call, _, _), OnContour) :-
 	call_node_from_id(Store, Call, CallNode),

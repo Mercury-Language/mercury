@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997,1999-2000,2002 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -158,26 +158,14 @@ tree234_cc__search(T, K, MaybeV) :-
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
-:- inst two(K, V, T) =
-	bound(
-		two(K, V, T, T)
-	).
+:- inst two(K, V, T)   ---> two(K, V, T, T).
+:- inst three(K, V, T) ---> three(K, V, K, V, T, T, T).
+:- inst four(K, V, T)  ---> four(K, V, K, V, K, V, T, T, T, T).
 
-:- inst three(K, V, T) =
-	bound(
-		three(K, V, K, V, T, T, T)
-	).
-
-:- inst four(K, V, T) =
-	bound(
-		four(K, V, K, V, K, V, T, T, T, T)
-	).
-
-:- mode out_two :: out(two(ground, ground, ground)).
-
-:- mode in_two :: in(two(ground, ground, ground)).
-:- mode in_three :: in(three(ground, ground, ground)).
-:- mode in_four :: in(four(ground, ground, ground)).
+:- mode out_two  == out(two(ground, ground, ground)).
+:- mode in_two   == in(two(ground, ground, ground)).
+:- mode in_three == in(three(ground, ground, ground)).
+:- mode in_four  == in(four(ground, ground, ground)).
 
 %------------------------------------------------------------------------------%
 
