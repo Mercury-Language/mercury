@@ -940,7 +940,7 @@ XXX :- external stops us from using these two definitions
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""%s: new answer slot %d at %p(%p)\n"",
+		printf(""%s: new answer slot %d at %p(%p)\\n"",
 			MR_subgoal_addr_name(subgoal),
 			subgoal->MR_sg_num_ans, answer_node,
 			&answer_node->MR_aln_answer_data);
