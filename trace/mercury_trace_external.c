@@ -286,7 +286,7 @@ MR_trace_init_external(void)
 
 	/*
 	** We presume that the user's program has been invoked from
-	** within the debugger (e.g. Opium).
+	** within the debugger (e.g. Morphine).
 	** The debugger (or the user) should set the
 	** MERCURY_DEBUGGER_UNIX_SOCKET or MERCURY_DEBUGGER_INET_SOCKET
 	** environment variable to tell the user's program which socket

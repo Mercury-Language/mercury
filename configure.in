@@ -2112,7 +2112,7 @@ LIBS="$LIBS $SOCKET_LIBRARY $NSL_LIBRARY"
 #
 # use TRY_LINK to see whether we can use sockets
 #
-AC_MSG_CHECKING(whether we can use sockets (for Opium-M))
+AC_MSG_CHECKING(whether we can use sockets (for Morphine))
 AC_CACHE_VAL(mercury_cv_sockets_work,
 AC_TRY_LINK([
 	changequote(<<,>>) 
