@@ -437,7 +437,7 @@ output_instruction(incr_hp(Lval, Rval)) -->
 	output_lval(Lval),
 	io__write_string(", "),
 	output_rval(Rval),
-	io__write_string(") "),
+	io__write_string("); "),
 	io__write_string(" }").
 
 output_instruction(restore_hp(Rval)) -->
@@ -888,7 +888,7 @@ output_rval_const(true) -->
 output_rval_const(false) -->
 	io__write_string("FALSE").
 output_rval_const(pred_const(CodeAddress)) -->
-	io__write_string("(int) "),
+	io__write_string("(Integer) "),
 	output_code_addr(CodeAddress).
 
 :- pred output_lval(lval, io__state, io__state).
@@ -942,7 +942,7 @@ output_lval(temp(N)) -->
 :- mode output_rval_lval(in, di, uo) is det.
 
 output_rval_lval(reg(R)) -->
-	io__write_string("(int) "),
+	io__write_string("(Integer) "),
 	output_reg(R).
 output_rval_lval(stackvar(N)) -->
 	{ (N < 0) ->
@@ -950,7 +950,7 @@ output_rval_lval(stackvar(N)) -->
 	;
 		true
 	},
-	io__write_string("(int) detstackvar("),
+	io__write_string("(Integer) detstackvar("),
 	io__write_int(N),
 	io__write_string(")").
 output_rval_lval(framevar(N)) -->
@@ -959,21 +959,21 @@ output_rval_lval(framevar(N)) -->
 	;
 		true
 	},
-	io__write_string("(int) framevar("),
+	io__write_string("(Integer) framevar("),
 	io__write_int(N),
 	io__write_string(")").
 output_rval_lval(succip) -->
-	io__write_string("(int) succip").
+	io__write_string("(Integer) succip").
 output_rval_lval(sp) -->
-	io__write_string("(int) sp").
+	io__write_string("(Integer) sp").
 output_rval_lval(hp) -->
-	io__write_string("(int) hp").
+	io__write_string("(Integer) hp").
 output_rval_lval(maxfr) -->
-	io__write_string("(int) maxfr").
+	io__write_string("(Integer) maxfr").
 output_rval_lval(curredoip) -->
-	io__write_string("(int) curredoip").
+	io__write_string("(Integer) curredoip").
 output_rval_lval(field(Tag, Rval, FieldNum)) -->
-	io__write_string("(int) field("),
+	io__write_string("(Integer) field("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_rval(Rval),
