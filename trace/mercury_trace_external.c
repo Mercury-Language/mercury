@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -934,7 +934,8 @@ MR_output_current_slots(const MR_Label_Layout *layout,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_def_module,
 			(MR_String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_pred_name,
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_arity,
+			/* is the type_ctor's arity what is wanted? XXX */
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_arity,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
 			layout->MR_sll_entry->MR_sle_detism,
 			(MR_String) (MR_Word) path,
@@ -1037,7 +1038,8 @@ MR_found_match(const MR_Label_Layout *layout,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_def_module,
 			(MR_String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_pred_name,
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_arity,
+			/* is the type_ctor's arity what is wanted? XXX */
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_arity,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
 			layout->MR_sll_entry->MR_sle_detism,
 			arguments,
@@ -1368,7 +1370,7 @@ MR_print_proc_id_to_socket(const MR_Proc_Layout *entry,
 			entry->MR_sle_comp.MR_comp_pred_name,
 			entry->MR_sle_comp.MR_comp_type_module,
 			entry->MR_sle_comp.MR_comp_type_name,
-			(long) entry->MR_sle_comp.MR_comp_arity,
+			(long) entry->MR_sle_comp.MR_comp_type_arity,
 			(long) entry->MR_sle_comp.MR_comp_mode);
 
 		if (strcmp(entry->MR_sle_comp.MR_comp_type_module,

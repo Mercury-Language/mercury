@@ -563,7 +563,7 @@ typedef struct MR_Compiler_Proc_Id_Struct {
 	MR_ConstString		MR_comp_type_module;
 	MR_ConstString		MR_comp_def_module;
 	MR_ConstString		MR_comp_pred_name;
-	MR_int_least16_t	MR_comp_arity;
+	MR_int_least16_t	MR_comp_type_arity;
 	MR_int_least16_t	MR_comp_mode;
 } MR_Compiler_Proc_Id;
 

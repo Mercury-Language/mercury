@@ -314,8 +314,9 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
     const MR_Proc_Layout    *entry;
     MR_Word                 *valid_saved_regs;
     int                     var_count;
-    int                     proc_arity;
     int                     num_added_args;
+    int                     arity;
+    MR_PredFunc             pred_or_func;
     MR_TypeInfo             *type_params;
     MR_Word                 value;
     MR_TypeInfo             type_info;
@@ -406,13 +407,8 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
     string_table = entry->MR_sle_module_layout->MR_ml_string_table;
     string_table_size = entry->MR_sle_module_layout->MR_ml_string_table_size;
 
-    /* Work out how many type-infos were added. */
-    if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
-        proc_arity = entry->MR_sle_comp.MR_comp_arity;
-    } else {
-        proc_arity = entry->MR_sle_user.MR_user_arity;
-    }
-    num_added_args = entry->MR_sle_num_head_vars - proc_arity;
+    MR_proc_id_arity_addedargs_predfunc(entry, &arity, &num_added_args,
+        &pred_or_func);
 
     slot = 0;
     for (i = 0; i < var_count; i++) {

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -950,22 +950,15 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 	MR_trace_init_point_vars(layout, saved_regs, port, MR_TRUE);
 
 	name = MR_decl_atom_name(entry);
-	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
-		arity = entry->MR_sle_comp.MR_comp_arity;
-		pred_or_func = MR_PREDICATE;
-	} else {
-		arity = entry->MR_sle_user.MR_user_arity;
-		pred_or_func = entry->MR_sle_user.MR_user_pred_or_func;
-	}
+	MR_proc_id_arity_addedargs_predfunc(entry, &arity, &num_added_args,
+		&pred_or_func);
+
 	MR_TRACE_CALL_MERCURY(
 		atom = MR_DD_construct_trace_atom(
 				(MR_Word) pred_or_func,
 				(MR_String) name,
 				(MR_Word) entry->MR_sle_num_head_vars);
 	);
-
-	/* Find out how many type-info/typeclass-info variables were added. */
-	num_added_args = entry->MR_sle_num_head_vars - arity;
 
 	for (hv = 0; hv < entry->MR_sle_num_head_vars; hv++) {
 		int		hlds_num;

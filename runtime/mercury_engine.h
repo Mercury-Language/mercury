@@ -60,8 +60,9 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_AGC_FLAG 		14
 #define	MR_ORDINARY_REG_FLAG	15
 #define	MR_ANY_REG_FLAG 	16
-#define	MR_DETAILFLAG		17
-#define	MR_MAXFLAG		18
+#define	MR_PRINT_LOCN_FLAG 	17
+#define	MR_DETAILFLAG		18
+#define	MR_MAXFLAG		19
 /* MR_DETAILFLAG should be the last real flag */
 
 /*
@@ -112,6 +113,9 @@ extern	MR_bool	MR_debugflag[];
 **
 ** MR_finaldebug controls whether we want to get diagnostics showing how
 ** execution reaches the end of the program.
+**
+** MR_printlocndebug controls whether we want to get diagnostics showing how
+** the runtime system looks up locations recorded in RTTI data structures.
 */
 
 #define	MR_progdebug		MR_debugflag[MR_PROGFLAG]
@@ -131,6 +135,7 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_agc_debug		MR_debugflag[MR_AGC_FLAG]
 #define	MR_ordregdebug		MR_debugflag[MR_ORDINARY_REG_FLAG]
 #define	MR_anyregdebug		MR_debugflag[MR_ANY_REG_FLAG]
+#define	MR_printlocndebug	MR_debugflag[MR_PRINT_LOCN_FLAG]
 #define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 
 typedef struct {

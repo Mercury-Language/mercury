@@ -17,6 +17,12 @@ MCFLAGS-tabled_read_decl = --trace-table-io-all
 # differences from the expected output on the nondet_stack test case.
 # The optimization level also affects stack frame sizes.
 MCFLAGS-nondet_stack = -O2 --no-reclaim-heap-on-failure
+# We test the behavior of comparisons both with and without index predicates.
+# The --compare-specialization flag creates index predicates for type
+# constructors with three or more alternatives. The optimization level
+# is fixed to fix the event numbers in the input script; this is needed
+# because one cannot (yet) put breakpoints on unify, compare and index preds.
+MCFLAGS-uci = -O2 --compare-specialization 2
 
 # We need to use shared libraries for interactive queries to work.
 # The following is necessary for shared libraries to work on Linux.

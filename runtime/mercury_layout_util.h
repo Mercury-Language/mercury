@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -162,5 +162,16 @@ extern	void	MR_write_variable(MR_TypeInfo type_info, MR_Word value);
 extern	void	MR_generate_proc_name_from_layout(const MR_Proc_Layout
 			*proc_layout, MR_ConstString *proc_name_ptr,
 			int *arity_ptr, MR_Word *is_func_ptr);
+
+/*
+** Return the user-visible arity of the procedure (including the return value
+** for functions), the number of typeinfo and/or typeclassinfo arguments added
+** by the compiler, and an indication whether the procedure is from a predicate
+** or a function.
+*/
+
+extern	void	MR_proc_id_arity_addedargs_predfunc(const MR_Proc_Layout *proc,
+			int *arity_ptr, int *num_added_args_ptr,
+			MR_PredFunc *pred_or_func_ptr);
 
 #endif	/* MERCURY_LAYOUT_UTIL_H */

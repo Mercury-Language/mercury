@@ -36,7 +36,8 @@ NONRETRY_PROGS = \
 	print_table			\
 	queens_rep			\
 	resume_typeinfos		\
-	type_desc_test
+	type_desc_test			\
+	uci
 
 # This test is currently not useful.
 #	output_term_dep
@@ -374,6 +375,9 @@ tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.dat
 type_desc_test.out: type_desc_test type_desc_test.inp
 	$(MDB_STD) ./type_desc_test < type_desc_test.inp \
 		> type_desc_test.out 2>&1
+
+uci.out: uci uci.inp
+	$(MDB) ./uci < uci.inp 2>&1 > uci.out 2>&1
 
 # When WORKSPACE is set, use $(WORKSPACE)/tools/lmc to compile the query.
 ifneq ($(origin WORKSPACE), undefined)

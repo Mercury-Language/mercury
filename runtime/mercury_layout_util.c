@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -210,7 +210,7 @@ MR_get_register_number_short(MR_Short_Lval locn)
 }
 
 #ifdef	MR_DEBUG_LVAL_REP
-  #define MR_print_locn MR_TRUE
+  #define MR_print_locn MR_printlocndebug
 #else
   #define MR_print_locn MR_FALSE
 #endif
@@ -714,8 +714,16 @@ MR_generate_proc_name_from_layout(const MR_Proc_Layout *proc_layout,
 	if (MR_PROC_LAYOUT_COMPILER_GENERATED(proc_layout)) {
 		*proc_name_ptr = proc_layout->MR_sle_proc_id.
 			MR_proc_comp.MR_comp_pred_name;
-		*arity_ptr = proc_layout->MR_sle_proc_id.
-			MR_proc_comp.MR_comp_arity;
+		if (MR_streq(*proc_name_ptr, "__Unify__")) {
+			*arity_ptr = 2;
+		} else if (MR_streq(*proc_name_ptr, "__Compare__")) {
+			*arity_ptr = 3;
+		} else if (MR_streq(*proc_name_ptr, "__Index__")) {
+			*arity_ptr = 2;
+		} else {
+			MR_fatal_error("MR_generate_proc_name_from_layout: "
+				"bad MR_comp_pred_name");
+		}
 		*is_func_ptr = MR_BOOL_NO;
 	} else {
 		*proc_name_ptr = proc_layout->MR_sle_proc_id.
@@ -729,5 +737,27 @@ MR_generate_proc_name_from_layout(const MR_Proc_Layout *proc_layout,
 		} else {
 			*is_func_ptr = MR_BOOL_NO;
 		}
+	}
+}
+
+void
+MR_proc_id_arity_addedargs_predfunc(const MR_Proc_Layout *proc, int *arity_ptr,
+	int *num_added_args_ptr, MR_PredFunc *pred_or_func_ptr)
+{
+	if (MR_PROC_LAYOUT_COMPILER_GENERATED(proc)) {
+		/*
+		** MR_comp_type_arity is the arity of the type constructor.
+		** Each argument of the type constructor adds a typeinfo
+		** argument to the headvars for all predicates, unify, compare
+		** and index. (The index predicate doesn't need these
+		** typeinfos, but it has them anyway.)
+		*/
+		*num_added_args_ptr = proc->MR_sle_comp.MR_comp_type_arity;
+		*arity_ptr = proc->MR_sle_num_head_vars - *num_added_args_ptr;
+		*pred_or_func_ptr = MR_PREDICATE;
+	} else {
+		*arity_ptr = proc->MR_sle_user.MR_user_arity;
+		*num_added_args_ptr = proc->MR_sle_num_head_vars - *arity_ptr;
+		*pred_or_func_ptr = proc->MR_sle_user.MR_user_pred_or_func;
 	}
 }

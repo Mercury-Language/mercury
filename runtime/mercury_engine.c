@@ -55,6 +55,7 @@ MR_Debug_Flag_Info	MR_debug_flag_info[MR_MAXFLAG] = {
 	{ "agc",	MR_AGC_FLAG },
 	{ "ordreg",	MR_ORDINARY_REG_FLAG },
 	{ "anyreg",	MR_ANY_REG_FLAG },
+	{ "printlocn",	MR_PRINT_LOCN_FLAG },
 	{ "detail",	MR_DETAILFLAG }
 };
 

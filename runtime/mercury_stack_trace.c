@@ -1028,7 +1028,7 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec)
             entry->MR_sle_comp.MR_comp_pred_name,
             entry->MR_sle_comp.MR_comp_type_module,
             entry->MR_sle_comp.MR_comp_type_name,
-            (long) entry->MR_sle_comp.MR_comp_arity,
+            (long) entry->MR_sle_comp.MR_comp_type_arity,
             (long) entry->MR_sle_comp.MR_comp_mode);
 
         if (strcmp(entry->MR_sle_comp.MR_comp_type_module,
