@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995 University of Melbourne.
+% Copyright (C) 1993-1997 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -71,6 +71,7 @@
 :- type io__read_result(T)	--->	ok(T)
 				;	eof
 				;	error(string, int).
+					% error message, line number
 
 :- type io__error.	% Use io__error_message to decode it.
 
@@ -128,22 +129,24 @@
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
 
-:- pred io__read_anything(io__read_result(T), io__state, io__state).
-:- mode io__read_anything(out, di, uo) is det.
-%		Reads its argument from the current input stream.
-%		The argument may be of (almost) any type. 
-%		The term read had better be of the right type!
-%		XXX io__read_anything is NOT YET IMPLEMENTED.
-%		It will also probably be renamed io__read.
-
-:- pred io__read_anything(io__input_stream, io__read_result(T),
-							io__state, io__state).
-:- mode io__read_anything(in, out, di, uo) is det.
-%		Reads its argument to the specified stream.
-%		The argument may be of (almost) any type.
-%		The term read had better be of the right type!
-%		XXX io__read_anything is NOT YET IMPLEMENTED.
-%		It will also probably be renamed io__read.
+:- pred io__read(io__read_result(T), io__state, io__state).
+:- mode io__read(out, di, uo) is det.
+:- pred io__read(io__input_stream, io__read_result(T), io__state, io__state).
+:- mode io__read(in, out, di, uo) is det.
+%		Reads a ground term of any type, written using standard
+%		Mercury syntax, from the current or specified input stream.
+%		The type of the term read is determined by the context
+%		in which `io__read' is used.
+%		If there are no more non-whitespace characters before the
+%		end of file, then `io__read' returns `eof'.
+%		If it can read in a syntactically correct ground term
+%		of the correct type, then it returns `ok(Term)'.
+%		If characters on the input stream (up to the next `.' that
+%		is followed by whitespace) do not form a syntactically
+%		correct term, or if the term read is not a ground term,
+%		if the term is not a valid term of the appropriate type,
+%		or if encounters an I/O error, then it returns
+%		`error(Message, LineNumber)'.
 
 :- pred io__ignore_whitespace(io__result, io__state, io__state).
 :- mode io__ignore_whitespace(out, di, uo) is det.
@@ -160,6 +163,45 @@
 
 % Text output predicates.
 
+:- pred io__print(T, io__state, io__state).
+:- mode io__print(in, di, uo) is det.
+:- pred io__print(io__output_stream, T, io__state, io__state).
+:- mode io__print(in, in, di, uo) is det.
+%		io__print/3 writes its argument to the current output stream.
+%		io__print/4 writes its argument to the specified output
+%		stream.  In either case, the argument may be of any type.
+%		The argument is written in a format that is intended to
+%		be human-readable. 
+%
+%		If the argument is just a single string or character, it
+%		will be printed out exactly as is (unquoted).
+%		If the argument is of type univ, then it will print out
+%		the value stored in the univ, but not the type.
+%		For higher-order types, or for types defined using the
+%		foreign language interface (pragma c_code), the text output
+%		will only describe the type that is being printed, not the
+%		value.
+
+:- pred io__write(T, io__state, io__state).
+:- mode io__write(in, di, uo) is det.
+:- pred io__write(io__output_stream, T, io__state, io__state).
+:- mode io__write(in, in, di, uo) is det.
+%		io__write/3 writes its argument to the current output stream.
+%		io__write/4 writes its argument to the specified output stream.
+%		The argument may be of any type.
+%		The argument is written in a format that is intended to
+%		be valid Mercury syntax whenever possible.
+%
+%		Strings and characters are always printed out in quotes,
+%		using backslash escapes if necessary.
+%		For higher-order types, or for types defined using the
+%		foreign language interface (pragma c_code), the text output
+%		will only describe the type that is being printed, not the
+%		value, and the result may not be parsable by io__read.
+%		But in all other cases the format used is standard Mercury
+%		syntax, and if you do append a period and newline (".\n"),
+%		then the results can be read in again using `io__read'.
+
 :- pred io__nl(io__state, io__state).
 :- mode io__nl(di, uo) is det.
 %		Writes a newline character to the current output stream.
@@ -174,7 +216,7 @@
 
 :- pred io__write_string(io__output_stream, string, io__state, io__state).
 :- mode io__write_string(in, in, di, uo) is det.
-%		Writes a string to the specified stream.
+%		Writes a string to the specified output stream.
 
 :- pred io__write_strings(list(string), io__state, io__state).
 :- mode io__write_strings(in, di, uo) is det.
@@ -183,7 +225,7 @@
 :- pred io__write_strings(io__output_stream, list(string),
 				io__state, io__state).
 :- mode io__write_strings(in, in, di, uo) is det.
-%		Writes a string to the specified stream.
+%		Writes a list of strings to the specified output stream.
 
 :- pred io__write_char(char, io__state, io__state).
 :- mode io__write_char(in, di, uo) is det.
@@ -191,7 +233,7 @@
 
 :- pred io__write_char(io__output_stream, char, io__state, io__state).
 :- mode io__write_char(in, in, di, uo) is det.
-%		Writes a character to the specified stream.
+%		Writes a character to the specified output stream.
 
 :- pred io__write_int(int, io__state, io__state).
 :- mode io__write_int(in, di, uo) is det.
@@ -199,7 +241,7 @@
 
 :- pred io__write_int(io__output_stream, int, io__state, io__state).
 :- mode io__write_int(in, in, di, uo) is det.
-%		Writes an integer to the specified stream.
+%		Writes an integer to the specified output stream.
 
 :- pred io__write_float(float, io__state, io__state).
 :- mode io__write_float(in, di, uo) is det.
@@ -209,14 +251,14 @@
 :- pred io__write_float(io__output_stream, float, io__state, io__state).
 :- mode io__write_float(in, in, di, uo) is det.
 %	io__write_float(Float, IO0, IO1).
-%		Writes a floating point number to the specified stream.
+%		Writes a floating point number to the specified output stream.
 
 :- pred io__format(string, list(io__poly_type), io__state, io__state).
 :- mode io__format(in, in, di, uo) is det.
 %	io__format(FormatString, Arguments, IO0, IO).
 %		Formats the specified arguments according to
 %		the format string, using string__format, and
-%		then writes the result to standard output.
+%		then writes the result to the current output stream.
 %		(See the documentation of string__format for details.)
 
 :- pred io__format(io__output_stream, string, list(io__poly_type),
@@ -233,25 +275,11 @@
 %	io__write_many(Arguments, IO0, IO).
 %		Writes the specified arguments to the current output stream.
 
-:- pred io__write_many(io__output_stream, list(io__poly_type), io__state, io__state).
+:- pred io__write_many(io__output_stream, list(io__poly_type),
+			io__state, io__state).
 :- mode io__write_many(in, in, di, uo) is det.
 %	io__write_many(Stream, Arguments, IO0, IO).
-%		Writes the specified arguments to the specified stream.
-
-:- pred io__write(T, io__state, io__state).
-:- mode io__write(in, di, uo) is det.
-%		Writes its argument to the current output stream.
-%		The argument may be of (almost) any type.
-%		(Any type except a higher-order predicate type,
-%		or some of the builtin types such as io__state itself.)
-%		XXX Not all quoting of atoms is done correctly.
-
-:- pred io__write(io__output_stream, T, io__state, io__state).
-:- mode io__write(in, in, di, uo) is det.
-%		Writes its argument to the specified stream.
-%		The argument may be of (almost) any type.
-%		(Any type except a higher-order predicate type,
-%		or some of the builtin types such as io__state itself.)
+%		Writes the specified arguments to the specified output stream.
 
 :- pred io__write_list(list(T), string, pred(T, io__state, io__state),
 	io__state, io__state).
@@ -291,7 +319,8 @@
 %		Closes the current input stream.
 %		The current input stream reverts to standard input.
 
-:- pred io__open_input(string, io__res(io__input_stream), io__state, io__state).
+:- pred io__open_input(string, io__res(io__input_stream),
+			io__state, io__state).
 :- mode io__open_input(in, out, di, uo) is det.
 %	io__open_input(File, Result, IO0, IO1).
 %		Attempts to open a file for input.
@@ -454,16 +483,33 @@
 
 % Binary input predicates.
 
+:- pred io__read_binary(io__result(T), io__state, io__state).
+:- mode io__read_binary(out, di, uo) is det.
+%		Reads a binary representation of a term of type T
+%		from the current binary input stream.
+
+:- pred io__read_binary(io__binary_input_stream, io__result(T),
+		io__state, io__state).
+:- mode io__read_binary(in, out, di, uo) is det.
+%		Reads a binary representation of a term of type T
+%		from the specified binary input stream.
+
+%		Note: if you attempt to read a binary representation written
+%		by a different program, or a different version of the same
+%		program, then the results are not guaranteed to be meaningful.
+%		Another caveat is that higher-order types cannot be read. 
+%		(If you try, you will get a runtime error.)
+
 :- pred io__read_byte(io__result(int), io__state, io__state).
 :- mode io__read_byte(out, di, uo) is det.
-%		Reads a single byte from the current binary input
-%		stream and returns it in the bottom 8 bits of an integer.
+%		Reads a single 8-bit byte from the current binary input
+%		stream.
 
 :- pred io__read_byte(io__binary_input_stream, io__result(int),
 				io__state, io__state).
 :- mode io__read_byte(in, out, di, uo) is det.
-%		Reads a single byte from the specified binary input
-%		stream and returns it in the bottom 8 bits of an integer.
+%		Reads a single 8-bit byte from the specified binary input
+%		stream.
 
 :- pred io__putback_byte(int, io__state, io__state).
 :- mode io__putback_byte(in, di, uo) is det.
@@ -484,6 +530,18 @@
 % Binary output predicates.
 
 % XXX what about wide characters?
+
+:- pred io__write_binary(T, io__state, io__state).
+:- mode io__write_binary(in, di, uo) is det.
+%		Writes a binary representation of a term to the current
+%		binary output stream, in a format suitable for reading
+%		in again with io__read_binary.
+
+:- pred io__write_binary(io__binary_output_stream, T, io__state, io__state).
+:- mode io__write_binary(in, in, di, uo) is det.
+%		Writes a binary representation of a term to the specified
+%		binary output stream, in a format suitable for reading
+%		in again with io__read_binary.
 
 :- pred io__write_byte(int, io__state, io__state).
 :- mode io__write_byte(in, di, uo) is det.
@@ -718,7 +776,6 @@
 :- pred io__remove_file(string, io__res, io__state, io__state).
 :- mode io__remove_file(in, out, di, uo) is det.
 
-
 %-----------------------------------------------------------------------------%
 
 % Memory management predicates.
@@ -759,6 +816,36 @@
 %		code.
 
 %-----------------------------------------------------------------------------%
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+%-----------------------------------------------------------------------------%
+:- interface.
+
+% For backwards compatibility:
+
+:- pragma obsolete(io__read_anything/3).
+:- pred io__read_anything(io__read_result(T), io__state, io__state).
+:- mode io__read_anything(out, di, uo) is det.
+%		Same as io__read/3.
+
+:- pragma obsolete(io__read_anything/4).
+:- pred io__read_anything(io__output_stream, io__read_result(T),
+			io__state, io__state).
+:- mode io__read_anything(in, out, di, uo) is det.
+%		Same as io__read/4.
+
+:- pragma obsolete(io__write_anything/3).
+:- pred io__write_anything(T, io__state, io__state).
+:- mode io__write_anything(in, di, uo) is det.
+%		Same as io__write/3.
+
+:- pragma obsolete(io__write_anything/4).
+:- pred io__write_anything(io__output_stream, T, io__state, io__state).
+:- mode io__write_anything(in, in, di, uo) is det.
+%		Same as io__write/4.
 
 % For use by term_io.m:
 
@@ -781,7 +868,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, dir, term_io, varset, require, time.
+:- import_module map, dir, term, term_io, varset, require, time, uniq_array.
 
 :- type io__state
 	---> 	io__state(
@@ -986,25 +1073,37 @@ io__putback_byte(Char) -->
 	io__binary_input_stream(Stream),
 	io__putback_byte(Stream, Char).
 
-io__read_anything(X) -->
+io__read_anything(Result) -->
+	io__read(Result).
+
+io__read(Result) -->
 	term_io__read_term(ReadResult),
-	(	{ ReadResult = term(_VarSet, Term) },
+	(	
+		{ ReadResult = term(_VarSet, Term) },
 		( { term_to_type(Term, Type) } ->
-			{ X = ok(Type) }
+			{ Result = ok(Type) }
 		;
-			{ X = error("io__read_anything : the term read was not a valid type", 0) }
+			io__get_line_number(LineNumber),
+			( { \+ term__is_ground(Term) } ->
+				{ Result = error("io__read: the term read was not a ground term", LineNumber) }
+			;
+				{ Result = error("io__read: the term read did not have the right type", LineNumber) }
+			)
 		)
 	;
 		{ ReadResult = eof },
-		{ X = eof }
+		{ Result = eof }
 	;
 		{ ReadResult = error(String, Int) },
-		{ X = error(String, Int) }
+		{ Result = error(String, Int) }
 	).
 
-io__read_anything(Stream, X) -->
+io__read_anything(Stream, Result) -->
+	io__read(Stream, Result).
+
+io__read(Stream, Result) -->
 	io__set_input_stream(Stream, OrigStream),
-	io__read_anything(X),
+	io__read(Result),
 	io__set_input_stream(OrigStream, _Stream).
 
 io__ignore_whitespace(Result) -->
@@ -1076,37 +1175,252 @@ io__write_many( Stream, [ f(F) | Rest ]) -->
 	io__write_float(Stream, F),
 	io__write_many(Stream, Rest).
 
+io__print(Stream, Term) -->
+	io__set_output_stream(Stream, OrigStream),
+	io__print(Term),
+	io__set_output_stream(OrigStream, _Stream).
+
+io__print(Term) -->
+	% `string', `char' and `univ' are special cases for io__print
+	{ type_to_univ(Term, Univ) },
+	( { univ_to_type(Univ, String) } ->
+		io__write_string(String)
+	; { univ_to_type(Univ, Char) } ->
+		io__write_char(Char)
+	; { univ_to_type(Univ, OrigUniv) } ->
+		io__write_univ(OrigUniv)
+	;
+		io__print_quoted(Term)
+	).
+
+:- pred io__print_quoted(T, io__state, io__state).
+:- mode io__print_quoted(in, di, uo) is det.
+
+io__print_quoted(Term) -->
+	io__write(Term).
+/*
+When we have type classes, then instead of io__write(Term),
+we will want to do something like
+	( { univ_to_type_class(Univ, Portrayable) } ->
+		portray(Portrayable)
+	;
+		... code like io__write, but which prints
+		    the arguments using io__print_quoted, rather than
+		    io__write ...
+	)
+*/
+
+io__write_anything(Anything) -->
+	io__write(Anything).
+
+io__write_anything(Stream, Anything) -->
+	io__write(Stream, Anything).
+
 io__write(Stream, X) -->
 	io__set_output_stream(Stream, OrigStream),
 	io__write(X),
 	io__set_output_stream(OrigStream, _Stream).
 
+io__write(Term) -->
+	{ type_to_univ(Term, Univ) },
+	io__write_univ(Univ).
 
+:- pred io__write_univ(univ, io__state, io__state).
+:- mode io__write_univ(in, di, uo) is det.
 
-% We want to call io__write_args as a tail-call, and so that we only
-% put one stack frame up per level of traversal.
-% This is why the code is a little unusual.
-
-io__write(Anything) -->
-	{ expand(Anything, Functor, _Arity, Args) },
-	io__write_string(Functor),
-	(
-		{ Args = [Arg | Args1] }
-	->
-		io__write_string("("),
-		io__write(Arg),
-		io__write_args(Args1)
+io__write_univ(Univ) -->
+	%
+	% we need to special-case the builtin types:
+	%	int, char, float, string
+	%	type_info, univ, c_pointer, uniq_array
+	%
+	( { univ_to_type(Univ, String) } ->
+		term_io__quote_string(String)
+	; { univ_to_type(Univ, Char) } ->
+		term_io__quote_char(Char)
+	; { univ_to_type(Univ, Int) } ->
+		io__write_int(Int)
+	; { univ_to_type(Univ, Float) } ->
+		io__write_float(Float)
+	; { univ_to_type(Univ, TypeInfo) } ->
+		io__write_string(type_name(TypeInfo))
+	; { univ_to_type(Univ, OrigUniv) } ->
+		io__write_univ_as_univ(OrigUniv)
+	; { univ_to_type(Univ, C_Pointer) } ->
+		io__write_c_pointer(C_Pointer)
+	; { type_ctor_name(type_ctor(univ_type(Univ))) = "uniq_array" } ->
+		%
+		% XXX shouldn't type names be module-qualified?
+		%     shouldn't that be "uniq_array:uniq_array"?
+		%
+		% Note that we can't use univ_to_type above, because we
+		% want to match on a non-ground type `uniq_array(T)'
+		% (matching against `uniq_array(void)' isn't much use).
+		% Instead, we explicitly check the type name.
+		% That makes it tricky to get the value, so
+		% we can't use io__write_uniq_array below... instead we
+		% use the following, which is a bit of a hack.
+		%
+		{ type_to_term(Univ, Term) },
+		{ varset__init(VarSet) },
+		term_io__write_term(VarSet, Term)
 	;
-		[]
+		io__write_ordinary_term(Univ)
 	).
 
-:- pred io__write_args(list(univ)::in, io__state::di, io__state::uo) is det.
-io__write_args([]) --> 
+:- pred io__write_univ_as_univ(univ, io__state, io__state).
+:- mode io__write_univ_as_univ(in, di, uo) is det.
+
+io__write_univ_as_univ(Univ) -->
+	io__write_string("univ("),
+	io__write_univ(Univ),
+	% XXX what is the right TYPE_QUAL_OP to use here?
+	io__write_string(" : "),
+	io__write_string(type_name(univ_type(Univ))),
 	io__write_string(")").
-io__write_args([Arg | Args]) --> 
+
+:- pred io__write_ordinary_term(T, io__state, io__state).
+:- mode io__write_ordinary_term(in, di, uo) is det.
+
+io__write_ordinary_term(Term) -->
+	{ expand(Term, Functor, _Arity, Args) },
+	io__get_op_table(OpTable),
+	(
+		{ Functor = "." },
+		{ Args = [ListHead, ListTail] }
+	->
+		io__write_char('['),
+		io__write_univ(ListHead),
+		io__write_list_tail(ListTail),
+		io__write_char(']')
+	;
+		{ Functor = "[]" },
+		{ Args = [] }
+	->
+		io__write_string("[]")
+	;
+		{ Functor = "{}" },
+		{ Args = [BracedTerm] }
+	->
+		io__write_string("{ "),
+		io__write_univ(BracedTerm),
+		io__write_string(" }")
+	;
+		{ Args = [PrefixArg] },
+		{ ops__lookup_prefix_op(OpTable, Functor, _, _) }
+	->
+		io__write_char('('),
+		term_io__quote_atom(Functor),
+		io__write_char(' '),
+		io__write_univ(PrefixArg),
+		io__write_char(')')
+	;
+		{ Args = [PostfixArg] },
+		{ ops__lookup_postfix_op(OpTable, Functor, _, _) }
+	->
+		io__write_char('('),
+		io__write_univ(PostfixArg),
+		io__write_char(' '),
+		term_io__quote_atom(Functor),
+		io__write_char(')')
+	;
+		{ Args = [Arg1, Arg2] },
+		{ ops__lookup_infix_op(OpTable, Functor, _, _, _) }
+	->
+		io__write_char('('),
+		io__write_univ(Arg1),
+		io__write_char(' '),
+		term_io__quote_atom(Functor),
+		io__write_char(' '),
+		io__write_univ(Arg2),
+		io__write_char(')')
+	;
+		{ Args = [Arg1, Arg2] },
+		{ ops__lookup_binary_prefix_op(OpTable, Functor, _, _, _) }
+	->
+		io__write_char('('),
+		term_io__quote_atom(Functor),
+		io__write_char(' '),
+		io__write_univ(Arg1),
+		io__write_char(' '),
+		io__write_univ(Arg2),
+		io__write_char(')')
+	;
+		term_io__quote_atom(Functor),
+		(
+			{ Args = [X|Xs] }
+		->
+			io__write_char('('),
+			io__write_univ(X),
+			io__write_term_args(Xs),
+			io__write_char(')')
+		;
+			[]
+		)
+	).
+
+:- pred io__write_list_tail(univ, io__state, io__state).
+:- mode io__write_list_tail(in, di, uo) is det.
+
+io__write_list_tail(Term) -->
+	( 
+		{ expand_univ(Term, ".", _Arity, [ListHead, ListTail]) }
+	->
+		io__write_string(", "),
+		io__write_univ(ListHead),
+		io__write_list_tail(ListTail)
+	;
+		{ expand_univ(Term, "[]", _Arity, []) }
+	->
+		[]
+	;
+		io__write_string(" | "),
+		io__write_univ(Term)
+	).
+
+	% XXX expand_univ should be in std_util.m
+:- pred expand_univ(univ, string, int, list(univ)).
+:- mode expand_univ(in, out, out, out) is det.
+
+expand_univ(Univ, Name, Arity, Args) :-
+	% XXX expand is currently broken; it doesn't handle
+	% `univ' properly.  The commented out code is what
+	% we ought to have to use; instead, we can call expand
+	% directly.
+/****
+	( expand(Univ, "univ", 1, [Arg]) ->
+		expand(Arg, Name, Arity, Args)
+	;
+		error("expand returns wrong results for type univ")
+	).
+***/
+	expand(Univ, Name, Arity, Args).
+
+:- pred io__write_term_args(list(univ), io__state, io__state).
+:- mode io__write_term_args(in, di, uo) is det.
+
+	% write the remaining arguments
+io__write_term_args([]) --> [].
+io__write_term_args([X|Xs]) -->
 	io__write_string(", "),
-	io__write(Arg),
-	io__write_args(Args).
+	io__write_univ(X),
+	io__write_term_args(Xs).
+
+:- pred io__write_uniq_array(uniq_array(T), io__state, io__state).
+:- mode io__write_uniq_array(in, di, uo) is det.
+
+io__write_uniq_array(UniqArray) -->
+	io__write_string("uniq_array("),
+	{ uniq_array__to_list(UniqArray, List) },
+	io__write(List),
+	io__write_string(")").
+
+:- pred io__write_c_pointer(c_pointer, io__state, io__state).
+:- mode io__write_c_pointer(in, di, uo) is det.
+
+io__write_c_pointer(_C_Pointer) -->
+	% XXX what should we do here?
+	io__write_string("<<c_pointer>>").
 
 %-----------------------------------------------------------------------------%
 
@@ -1125,6 +1439,39 @@ io__write_list(Stream, List, Separator, OutputPred) -->
 	io__set_output_stream(Stream, OrigStream),
 	io__write_list(List, Separator, OutputPred),
 	io__set_output_stream(OrigStream, _Stream).
+
+%-----------------------------------------------------------------------------%
+
+io__write_binary(Stream, Term) -->
+	io__set_binary_output_stream(Stream, OrigStream),
+	io__write_binary(Term),
+	io__set_binary_output_stream(OrigStream, _Stream).
+
+io__read_binary(Stream, Result) -->
+	io__set_output_stream(Stream, OrigStream),
+	io__read_binary(Result),
+	io__set_output_stream(OrigStream, _Stream).
+
+io__write_binary(Term) -->
+	% a quick-and-dirty implementation... not very space-efficient
+	% (not really binary!)
+	io__binary_output_stream(Stream),
+	io__write(Stream, Term),
+	io__write_string(Stream, ".\n").
+
+io__read_binary(Result) -->
+	% a quick-and-dirty implementation... not very space-efficient
+	% (not really binary!)
+	io__binary_input_stream(Stream),
+	io__read(Stream, ReadResult),
+	{ io__convert_read_result(ReadResult, Result) }.
+
+:- pred io__convert_read_result(io__read_result(T), io__result(T)).
+:- mode io__convert_read_result(in, out) is det.
+
+io__convert_read_result(ok(T), ok(T)).
+io__convert_read_result(eof, eof).
+io__convert_read_result(error(Error, _Line), error(Error)).
 
 %-----------------------------------------------------------------------------%
 
