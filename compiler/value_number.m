@@ -136,10 +136,20 @@ vn__optimize_block(Instrs0, Livemap, ParEntries, LabelNo0, LabelNo, Instrs,
 vn__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
 	(
 		{ vn__separate_tag_test(Instrs0, Instrs1) },
-		globals__io_lookup_string_option(gc, Gc),
-		{ Gc = "conservative" ->
-			opt_util__count_incr_hp(Instrs1, Incr),
-			Incr < 2
+		%
+		% Value numbering currently combines multiple heap pointer
+		% increments into a single heap pointer increment.  If we're
+		% using conservative garbage collection, this would create
+		% invalid code (unless the collector was compiled with
+		% -DALL_INTERIOR_POINTERS, which would be very bad for
+		% performance).  Hence, if GC=conservative we must not
+		% perform value numbering on a block that contains more
+		% than one heap pointer increment.
+		%
+		globals__io_get_gc_method(GC),
+		{ GC = conservative ->
+			opt_util__count_incr_hp(Instrs1, NumIncrs),
+			NumIncrs < 2
 		;
 			true
 		}
