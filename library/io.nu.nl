@@ -562,17 +562,17 @@ io__rename_file_2(OldName, NewName, Result, ResultStr) -->
 		Result = 0
 	;
 		Result = -1,
-		Resultstr = "rename_file/2 failed"
+		ResultStr = "rename_file/2 failed"
 	}.
 
-io__remove_file_2(FileName, Result) -->
+io__remove_file_2(FileName, Result, ResultStr) -->
 	{ use_module(library(system)) }, % for delete_file/2
 	{ name(FileAtom, OldName) },
 	{ delete_file(FileAtom, []) ->
 		Result = 0
 	;
 		Result = -1,
-		Resultstr = "delete_file/2 failed"
+		ResultStr = "delete_file/2 failed"
 	}.
 
 %-----------------------------------------------------------------------------%
