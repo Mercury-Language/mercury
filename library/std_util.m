@@ -565,7 +565,7 @@
 	% non-canonical type.
 	%
 :- pred functor(T::in, string::out, int::out) is det.
-:- pred functor_cc(T::in, string::out, int::out) is det.
+:- pred functor_cc(T::in, string::out, int::out) is cc_multi.
 
 	% arg(Data, ArgumentIndex) = Argument
 	% argument(Data, ArgumentIndex) = ArgumentUniv
