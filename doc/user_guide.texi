@@ -3216,7 +3216,7 @@ Note that the user is not required to provide any missing instance
 in the case that the answer is no.
 (A limitation of the current implementation is that
 it is difficult to browse a specific exit atom.
-This will be addressed in the near future.)
+This will hopefully be addressed in the near future.)
 
 When seeking to determine the validity of
 the assertion corresponding to an EXCP event,
