@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2003 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -483,6 +483,14 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 #endif
 ").		
 
+:- pragma foreign_proc("Java",
+	bounds_checks,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	// never do bounds checking for Java (throw exceptions instead)
+	succeeded = false;
+").
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
@@ -577,6 +585,25 @@ array__init(Size, Item, Array) :-
 	Array = null;
 ").
 
+:- pragma foreign_proc("Java", 
+	array__init_2(Size::in, Item::in, Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	java.lang.Class itemClass = Item.getClass();
+
+	Array = java.lang.reflect.Array.newInstance(itemClass, Size);
+	for (int i = 0; i < Size; i++) {
+		java.lang.reflect.Array.set(Array, i, Item);
+	}
+").
+:- pragma foreign_proc("Java",
+	array__make_empty_array(Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	// XXX as per C#
+	Array = null;
+").
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
@@ -603,6 +630,21 @@ array__init(Size, Item, Array) :-
 ").
 :- pragma foreign_proc("C#", 
 	array__min(Array::in, Min::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	/* Array not used */
+	Min = 0;
+").
+
+:- pragma foreign_proc("Java",
+	array__min(_Array::array_ui, Min::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	/* Array not used */
+	Min = 0;
+").
+:- pragma foreign_proc("Java", 
+	array__min(_Array::in, Min::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	/* Array not used */
@@ -643,6 +685,27 @@ array__init(Size, Item, Array) :-
 	}
 ").
 
+:- pragma foreign_proc("Java", 
+	array__max(Array::array_ui, Max::out), 
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if (Array != null) {
+		Max = java.lang.reflect.Array.getLength(Array) - 1;
+	} else {
+		Max = -1;
+	}
+").
+:- pragma foreign_proc("Java",
+	array__max(Array::in, Max::out), 
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if (Array != null) {
+		Max = java.lang.reflect.Array.getLength(Array) - 1;
+	} else {
+		Max = -1;
+	}
+").
+
 array__bounds(Array, Min, Max) :-
 	array__min(Array, Min),
 	array__max(Array, Max).
@@ -678,6 +741,27 @@ array__bounds(Array, Min, Max) :-
 "
 	if (Array != null) {
 		Max = Array.Length;
+	} else {
+		Max = 0;
+	}
+").
+
+:- pragma foreign_proc("Java",
+	array__size(Array::array_ui, Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if (Array != null) {
+		Max = java.lang.reflect.Array.getLength(Array);
+	} else {
+		Max = 0;
+	}
+").
+:- pragma foreign_proc("Java",
+	array__size(Array::in, Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if (Array != null) {
+		Max = java.lang.reflect.Array.getLength(Array);
 	} else {
 		Max = 0;
 	}
@@ -753,6 +837,19 @@ array__lookup(Array, Index, Item) :-
 	Item = Array.GetValue(Index);
 }").
 
+:- pragma foreign_proc("Java",
+	array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Item = java.lang.reflect.Array.get(Array, Index);
+").
+:- pragma foreign_proc("Java",
+	array__unsafe_lookup(Array::in, Index::in, Item::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Item = java.lang.reflect.Array.get(Array, Index);
+").
+
 %-----------------------------------------------------------------------------%
 
 array__set(Array0, Index, Item, Array) :-
@@ -782,6 +879,15 @@ array__set(Array0, Index, Item, Array) :-
 	Array0.SetValue(Item, Index);	/* destructive update! */
 	Array = Array0;
 }").
+
+:- pragma foreign_proc("Java",
+	array__unsafe_set(Array0::array_di, Index::in,
+		Item::in, Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	java.lang.reflect.Array.set(Array0, Index, Item);
+	Array = Array0;			/* destructive update! */
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -874,6 +980,39 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 	}
 ").
 
+:- pragma foreign_proc("Java",
+	array__resize(Array0::array_di, Size::in, Item::in,
+		Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	java.lang.Class itemClass = Item.getClass();
+
+	if (Size == 0) {
+		Array = null;
+	} else if (Array0 == null) {
+		Array = java.lang.reflect.Array.newInstance(itemClass, Size);
+		for (int i = 0; i < Size; i++) {
+			java.lang.reflect.Array.set(Array, i, Item);
+		}
+	} else if (java.lang.reflect.Array.getLength(Array0) == Size) {
+		Array = Array0;
+	} else {
+		Array = java.lang.reflect.Array.newInstance(itemClass, Size);
+
+		int i;
+		for (i = 0; i < java.lang.reflect.Array.getLength(Array0) &&
+				i < Size; i++)
+		{
+			java.lang.reflect.Array.set(Array, i,
+					java.lang.reflect.Array.get(Array0, i)
+					);
+		}
+		for (/*i = Array0.length*/; i < Size; i++) {
+			java.lang.reflect.Array.set(Array, i, Item);
+		}
+	}
+").
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
@@ -936,6 +1075,24 @@ array__shrink(Array0, Size, Array) :-
 	Array = System.Array.CreateInstance(
 				Array0.GetType().GetElementType(), Size);
 	System.Array.Copy(Array0, Array, Size);
+").
+
+:- pragma foreign_proc("Java",
+	array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if (Array0 == null) {
+		Array = null;
+	} else {
+		java.lang.Class itemClass = java.lang.reflect.Array.
+				get(Array0, 0).getClass();
+		Array = java.lang.reflect.Array.newInstance(itemClass, Size);
+		for (int i = 0; i < Size; i++) {
+			java.lang.reflect.Array.set(Array, i,
+					java.lang.reflect.Array.get(Array0, i)
+					);
+		}
+	}
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1004,6 +1161,43 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 	Array = System.Array.CreateInstance(
 			Array0.GetType().GetElementType(), Array0.Length);
 	System.Array.Copy(Array0, Array, Array0.Length); 
+").
+
+:- pragma foreign_proc("Java",
+	array__copy(Array0::array_ui, Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if (Array0 == null) {
+		Array = null;
+	} else {
+		java.lang.Class itemClass = java.lang.reflect.Array.
+				get(Array0, 0).getClass();
+		int length = java.lang.reflect.Array.getLength(Array0);
+		Array = java.lang.reflect.Array.newInstance(itemClass, length);
+		for (int i = 0; i < length; i++) {
+			java.lang.reflect.Array.set(Array, i,
+					java.lang.reflect.Array.get(Array0, i)
+					);
+		}
+	}
+").
+:- pragma foreign_proc("Java",
+	array__copy(Array0::in, Array::array_uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if (Array0 == null) {
+		Array = null;
+	} else {
+		java.lang.Class itemClass = java.lang.reflect.Array.
+				get(Array0, 0).getClass();
+		int length = java.lang.reflect.Array.getLength(Array0);
+		Array = java.lang.reflect.Array.newInstance(itemClass, length);
+		for (int i = 0; i < length; i++) {
+			java.lang.reflect.Array.set(Array, i,
+					java.lang.reflect.Array.get(Array0, i)
+					);
+		}
+	}
 ").
 
 %-----------------------------------------------------------------------------%
