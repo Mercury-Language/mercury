@@ -82,10 +82,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
   independently of any declarations or imports in the implementation
   section
 
-<li> implement a use_module directive
-  (like import_module, except that everything must be explicitly
-  module qualified).
-
 <li> imports should not be transitive
   (currently we get this right for predicates, constants, and functors,
   but wrong for types, insts, and modes).
@@ -195,9 +191,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <h2> module system: </h2>
 
 <ul>
-<li> produce warnings for imports that are not needed
-  	[done by stayl, but not enabled by default, due to some
-	minor problems]
+<li> produce warnings for implementation imports that are not needed
 
 <li> produce warnings for imports that are in the wrong place
   (in the interface instead of the implementation, and vice versa)
@@ -231,15 +225,13 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> more work on module system, separate compilation, and the multiple
      specialisation problem
 
-<li> deforestation
-
 <li> extended DCGs
 
 <li> transform non-tail-recursive predicates into tail-recursive form
      using accumulators
 	[being worked on by jammb]
 
-<li> partial deduction
+<li> deforestation and partial deduction
 	[being worked on by stayl]
 </ul>
 
@@ -283,7 +275,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <li> give a better error message for the use of if-then without else.
 
-<li> give a better error message for the use of `<=' instead of `>='
+<li> give a better error message for the use of `<=' instead of `=<'
      (but how?)
 
 <li> give a better error message for type errors involving higher-order pred
@@ -354,6 +346,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-05-07 05:24:11 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-06-29 23:17:47 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>
