@@ -335,7 +335,7 @@
 			% pred_info, using procedures
 			%	pred_info_is_imported/1,
 			%	pred_info_is_pseudo_imported/1,
-			%	pred_info_is_exported/1, and
+			%	procedure_is_exported/2, and
 			%	pred_info_is_compiler_generated/1
 			% respectively.
 			% We store booleans here, rather than storing the
@@ -392,7 +392,7 @@ rtti__make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	pred_info_arg_types(PredInfo, ArgTypes),
 	IsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
 	IsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
-	IsExported = (pred_info_is_exported(PredInfo) -> yes ; no),
+	IsExported = (procedure_is_exported(PredInfo, ProcId) -> yes ; no),
 	IsSpecialPredInstance =
 		(code_util__compiler_generated(PredInfo) -> yes ; no),
 	ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
