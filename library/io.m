@@ -63,6 +63,12 @@
 %		Define an operator as per Prolog op/3 for future calls to
 %		io__read_term.
 
+:- type op_details ---> op(integer, op_type, string).
+:- pred io__current_ops(list(op_details), io__state, io__state).
+%	io__current_ops(Ops, IOState0, IOState1).
+%		Return a list containing all the current operator definitions.
+
+
 :- type read_term ---> eof ; error(string) ; term(varset, term).
 :- pred io__read_term(read_term, io__state, io__state).
 
@@ -145,6 +151,10 @@ io__progname("typecheck").
 io__op(Prec, Type, OpName) -->
 	{ name(Op, OpName), op(Prec, Type, Op) },
 	io__update_state.
+
+:- io__current_ops(_, IO0, _) when IO0.
+io__current_ops(Ops) -->
+	findall(op(Prec, Type, Op), currentOp(Prec, Type, Op), Ops). 
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
