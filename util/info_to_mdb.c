@@ -25,7 +25,7 @@
 static	bool	is_empty(const char *line);
 static	bool	is_all_same_char(const char *line, const char what);
 static	bool	is_command(const char *line, bool *is_concept);
-static	bool	diff_command(const char *line, const char *command);
+static	void	get_command(const char *line, char *command);
 static	void	print_command_line(const char *line, bool is_concept);
 
 static	char	*get_next_line(FILE *infp);
@@ -41,10 +41,10 @@ main(int argc, char **argv)
 	char	*category;	/* mdb help category */
 	FILE	*infp;
 	char	*line;
+	int	num_lines;
 	char	command[MAXLINELEN];
+	char	next_command[MAXLINELEN];
 	int	slot = 0;
-	int	len;
-	int	i;
 	bool	is_concept;
 	bool	next_concept;
 
@@ -88,26 +88,43 @@ main(int argc, char **argv)
 		slot += 100;
 		printf("document %s %d ", category, slot);
 		if (is_concept) {
+			int	i;
 			for (i = 0; line[i] != '\n'; i++) {
 				command[i] = concept_char(line[i]);
-				putchar(concept_char(line[i]));
 			}
-			putchar('\n');
 			command[i] = '\0';
 		} else {
-			for (i = 1; MR_isalnumunder(line[i]); i++) {
-				command[i-1] = line[i];
-				putchar(line[i]);
-			}
-			putchar('\n');
-			command[i-1] = '\0';
+			get_command(line, command);
 		}
+		puts(command);
 
 		print_command_line(line, is_concept);
 
+		num_lines = 0; 
 		while ((line = get_next_line(infp)) != NULL) {
 			if (is_command(line, &next_concept)) {
-				if (diff_command(line, command)) {
+				get_command(line, next_command);
+				if (strcmp(command, next_command) != 0) {
+					/*
+					** Sometimes several commands
+					** are documented together, e.g.
+					**
+					** cmd1 args...
+					** cmd2 args...
+					** cmd3 args...
+					**	description...
+					**
+					** It's difficult for us to handle
+					** that case properly here, so we
+					** just insert cross references
+					** ("cmd1: see cmd2", "cmd2: see cmd3",
+					** etc.)
+					*/
+					if (num_lines == 0) {
+						printf("    See help for "
+							"`%s'.\n",
+							next_command);
+					}
 					put_line_back(line);
 					break;
 				} else {
@@ -116,6 +133,7 @@ main(int argc, char **argv)
 			} else {
 				printf("%s", line);
 			}
+			num_lines++;
 		}
 
 		printf("end\n");
@@ -171,19 +189,15 @@ is_command(const char *line, bool *is_concept)
 	}
 }
 
-static bool
-diff_command(const char *line, const char *command)
+static void
+get_command(const char *line, char *command)
 {
 	int	i;
 
-	for (i = 0; command[i] != '\0' && line[i + 1] == command[i]; i++)
-		;
-
-	if (command[i] == '\0' && ! MR_isalnumunder(line[i+1])) {
-		return FALSE;
-	} else {
-		return TRUE;
+	for (i = 0; MR_isalnumunder(line[i + 1]); i++) {
+		command[i] = line[i + 1];
 	}
+	command[i] = '\0';
 }
 
 static void
