@@ -9,6 +9,9 @@
 % as a list of items; we insert each item into the appropriate symbol
 % table, and report any duplicate definition errors.  We also
 % transform clause bodies from (A,B,C) into conj([A,B,C]) form.
+%
+% XXX we should return a flag indicating whether any errors
+% occurred.
 
 :- module make_hlds.
 :- interface.
@@ -274,18 +277,18 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 	;
 		{ 
 		  TypeId = Name - Arity,
-		  map__set(Types0, TypeId, T, Types),
-		  (if some [ConsList]
-			Body = du_type(ConsList)
-		  then
-			moduleinfo_ctors(Module0, Ctors0),
-			ctors_add(ConsList, TypeId, Context, Ctors0, Ctors),
-			moduleinfo_set_ctors(Module0, Ctors, Module1)
-		  else
-			Module1 = Module0
-		  ),
-		  moduleinfo_set_types(Module1, Types, Module)
+		  map__set(Types0, TypeId, T, Types)
 		},
+		( %%% some [ConsList]
+			{ Body = du_type(ConsList) }
+		->
+			{ moduleinfo_ctors(Module0, Ctors0) },
+			ctors_add(ConsList, TypeId, Context, Ctors0, Ctors),
+			{ moduleinfo_set_ctors(Module0, Ctors, Module1) }
+		;
+			{ Module1 = Module0 }
+		),
+		{ moduleinfo_set_types(Module1, Types, Module) },
 		( { Body = uu_type(_) } ->
 			io__stderr_stream(StdErr),
 			io__set_output_stream(StdErr, OldStream),
@@ -316,21 +319,36 @@ type_is_compat( hlds__type_defn(_, Args, Body, _, _),
 		hlds__type_defn(_, Args, Body, _, _)).
 
 :- pred ctors_add(list(constructor), type_id, term__context, cons_table,
-			cons_table).
-:- mode ctors_add(input, input, input, input, output).
+			cons_table, io__state, io__state).
+:- mode ctors_add(input, input, input, input, output, di, uo).
 
-ctors_add([], _TypeId, _Context, Ctors, Ctors).
-ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) :-
-	make_cons_id(Name, Args, TypeId, ConsId),
-	ConsDefn = hlds__cons_defn(Args, TypeId, Context),
-	(if some [ConsDefns0]
-		map__search(Ctors0, ConsId, ConsDefns0)
-	then
-		ConsDefns1 = ConsDefns0
-	else
-		ConsDefns1 = []
+
+ctors_add([], _TypeId, _Context, Ctors, Ctors) --> [].
+ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
+	{ make_cons_id(Name, Args, TypeId, ConsId) },
+	{ ConsDefn = hlds__cons_defn(Args, TypeId, Context) },
+	( %%% some [ConsDefns0]
+		{ map__search(Ctors0, ConsId, ConsDefns0) }
+	->
+		{ ConsDefns1 = ConsDefns0 }
+	;
+		{ ConsDefns1 = [] }
 	),
-	map__set(Ctors0, ConsId, [ConsDefn | ConsDefns1], Ctors1),
+	( { member(hlds__cons_defn(_, TypeId, _), ConsDefns1) } ->
+		io__stderr_stream(StdErr),
+		io__set_output_stream(StdErr, OldStream),
+		prog_out__write_context(Context),
+		io__write_string("error: constructor `"),
+		make_hlds__write_cons_id(ConsId),
+		io__write_string("' for type `"),
+		make_hlds__write_type_id(TypeId),
+		io__write_string("' multiply defined.\n"),
+		io__set_output_stream(OldStream, _),
+		{ ConsDefns2 = ConsDefns1 }
+	;
+		{ ConsDefns2 = [ConsDefn | ConsDefns1] }
+	),
+	{ map__set(Ctors0, ConsId, ConsDefns2, Ctors1) },
 	ctors_add(Rest, TypeId, Context, Ctors1, Ctors).
 
 :- pred make_cons_id(sym_name, list(type), type_id, cons_id).
@@ -340,6 +358,25 @@ make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
 	length(Args, Arity).
 make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 	length(Args, Arity).
+
+:- pred make_hlds__write_cons_id(cons_id, io__state, io__state).
+:- mode make_hlds__write_cons_id(input, di, uo).
+
+make_hlds__write_cons_id(cons(Name, Arity)) -->
+	io__write_string(Name),
+	io__write_string("/"),
+	io__write_int(Arity).
+
+	% XXX this is duplicated in typecheck.nl
+	% Should be in hlds_out.nl or something.
+
+:- pred make_hlds__write_type_id(type_id, io__state, io__state).
+:- mode make_hlds__write_type_id(input, di, uo).
+
+make_hlds__write_type_id(Name - Arity) -->
+	prog_out__write_sym_name(Name),
+	io__write_string("/"),
+	io__write_int(Arity).
 
 %-----------------------------------------------------------------------------%
 
@@ -432,7 +469,19 @@ preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
 		{ map__insert(Preds0, PredId, P, Preds) },
 		{ moduleinfo_set_preds(Module0, Preds, Module1) },
 		{ moduleinfo_predids(Module1, PredIds0) },
-		{ moduleinfo_set_predids(Module1, [PredId | PredIds0], Module) }
+		{ moduleinfo_set_predids(Module1, [PredId | PredIds0],
+				Module2) },
+		{ moduleinfo_pred_name_index(Module2, PredNameIndex0) },
+		{ unqualify_name(Name, UnqualifiedName) },
+		{ map__search(PredNameIndex0, UnqualifiedName, PredIdList) ->
+			map__set(PredNameIndex0, UnqualifiedName,
+				[PredId | PredIdList], PredNameIndex)
+		;
+			map__insert(PredNameIndex0, UnqualifiedName,
+				[PredId], PredNameIndex)
+		},
+		{ moduleinfo_set_pred_name_index(Module2, PredNameIndex,
+				Module) }
 	).
 
 :- pred pred_is_compat(pred_info, pred_info).
@@ -440,7 +489,7 @@ preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
 
 pred_is_compat(predicate(_, Types, _, _, _, _),
 	       predicate(_, Types, _, _, _, _)).
-
+ 
 %-----------------------------------------------------------------------------%
 
 	% Add a mode declaration for a predicate.
@@ -505,8 +554,8 @@ pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, Det, _Cond,
 :- pred determinism_to_category(determinism, category).
 :- mode determinism_to_category(input, output).
 determinism_to_category(det, deterministic(declared)).
-determinism_to_category(semidet, deterministic(declared)).
-determinism_to_category(nondet, deterministic(declared)).
+determinism_to_category(semidet, semideterministic(declared)).
+determinism_to_category(nondet, nondeterministic(declared)).
 determinism_to_category(unspecified, unspecified).
 
 	% XXX efficiency could be improved

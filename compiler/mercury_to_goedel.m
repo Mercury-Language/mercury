@@ -82,14 +82,15 @@ process_files_2([File | Files], Progname, Items0) -->
 	io__write_string(StdErr, File),
 	io__write_string(StdErr, "..."),
 	io__flush_output(StdErr),
-	io__gc_call(prog_io__read_module(File, Result)),
-	process_files_3(Result, Files, Progname, Items0).
+	io__gc_call(prog_io__read_module(File, Result, Messages, Items)),
+	process_files_3(Result, Messages, Items, Files, Progname, Items0).
 
-:- pred process_files_3(maybe_program, list(string), string,
-			list(item_and_context), io__state, io__state).
-:- mode process_files_3(input, input, input, input, di, uo).
+:- pred process_files_3(bool, message_list, list(item_and_context), 
+			list(string), string, list(item_and_context),
+			io__state, io__state).
+:- mode process_files_3(input, input, input, input, input, input, di, uo).
 
-process_files_3(ok(Warnings, Prog), Files, Progname, Items) -->
+process_files_3(no, Warnings, Items2, Files, Progname, Items) -->
 		% switch to stderr
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
@@ -99,12 +100,10 @@ process_files_3(ok(Warnings, Prog), Files, Progname, Items) -->
 		% switch back to stdout
 	io__set_output_stream(OldStream, _),
 		% process the remaining files
-	{ Prog = module(_Name, Items2),
-	  append(Items, Items2, Items3)
-	},
+	{ append(Items, Items2, Items3) },
 	process_files_2(Files, Progname, Items3).
 
-process_files_3(error(Errors), _, _, _) -->
+process_files_3(yes, Errors, _, _, _, _) -->
 		% switch to stderr
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
@@ -173,9 +172,9 @@ goedel_replace_int_integer(Items0, Items) :-
 	% from the source code.  Circular equivalence types in the input 
 	% will cause references to undefined types in the output.
 
-:- pred goedel_replace_eqv_types(list(item_and_context), list(item_and_context),
-		list(item_and_context)).
-:- mode goedel_replace_eqv_types(input, input, output).
+:- pred goedel_replace_all_eqv_types(list(item_and_context),
+		list(item_and_context), list(item_and_context)).
+:- mode goedel_replace_all_eqv_types(input, input, output).
 
 goedel_replace_all_eqv_types([], Items, Items).
 goedel_replace_all_eqv_types([Item - Context | Items0], ItemList0, ItemList) :-
@@ -206,8 +205,8 @@ goedel_replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
 	),
 	goedel_replace_eqv_type_list(Items0, VarSet, Name, Args, Body, Items).
 
-:- pred goedel_replace_eqv_type(item, varset, string,
-			list(type_param), type, item_and_context).
+:- pred goedel_replace_eqv_type(item, varset, string, list(type_param), type,
+		item).
 :- mode goedel_replace_eqv_type(input, input, input, input, input, output).
 
 goedel_replace_eqv_type(type_defn(VarSet0, TypeDefn0, Cond),

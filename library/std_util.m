@@ -33,13 +33,18 @@
 
 :- type pair(T1, T2)	--->	(T1 - T2).
 
-:- type (pred).
-
 :- pred gc_call(pred).
+
+:- pred solutions(pred(T), list(T)).
+:- mode solutions(pred_call(output), output).
+	% we could and hence should use a more general polymorphic mode
 
 :- pred report_stats.
 
 :- implementation.
+
+solutions(P, L) :-
+	findall(X, call(P, X), L).
 
 /*
 :- external("NU-Prolog", gc_call/1).

@@ -49,8 +49,9 @@
 % 1) discriminated unions:
 %	:- type tree(T) ---> nil ; t(tree(T), T, tree(T)).
 %
-% 2) undiscriminated unions (if rhs has a single type then the two
-%	types have same structure but *different* name):
+% 2) undiscriminated unions [NOT YET IMPLEMENTED].
+%	If rhs has a single type then the two
+%	types have same structure but *different* name.
 %	Basically just syntactic sugar for discriminated unions,
 %	except that it also works for builtin types like int.
 %
@@ -64,7 +65,7 @@
 %		% another undiscriminated union
 %	:- type number = int + float.
 %
-%    NOT YET IMPLEMENTED.
+%    undiscriminated unions are NOT YET IMPLEMENTED.
 %
 % 3) equivalent types (treated identically, ie, same name.  Any number
 %	of types can be equivalent; the *canonical* one is the one
@@ -80,7 +81,7 @@
 %
 % 4) builtin types
 %	character, int, float, string
-%	(plus types for higher-order preds, details to be worked out later).
+%	pred, pred(T), pred(T1, T2), pred(T1, T2, T3), ... [not yet implemented]
 %       These types have special syntax for constants.
 %	There may be other types (short integers, complex numbers, rationals,
 %	etc.) provided by the system, but they can just be part of the
@@ -611,7 +612,7 @@ typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
 	% we have unified the type of this constructor with
 	% the specified type.
 
-:- pred typecheck_cons_has_type(type_assign_set, list(hlds__cons_defn),
+:- pred typecheck_cons_has_type(type_assign_set, list(cons_type_info),
 		list(term), type, type_info, type_assign_set, type_assign_set).
 :- mode typecheck_cons_has_type(input, input, input, input,
 		typeinfo_ui, input, output).
@@ -632,7 +633,7 @@ typecheck_cons_has_type([TypeAssign|TypeAssigns], ConsDefnList, Args, Type,
 	% the types of it's arguments are ok, then add the resulting
 	% type assignment to the type assignment set.
 
-:- pred type_assign_cons_has_type(list(hlds__cons_defn), type_assign,
+:- pred type_assign_cons_has_type(list(cons_type_info), type_assign,
 		list(term), type, type_info, type_assign_set, type_assign_set).
 :- mode type_assign_cons_has_type(input, input, input, input, 
 		typeinfo_ui, input, output).
@@ -645,7 +646,7 @@ type_assign_cons_has_type([ConsDefn | ConsDefns], TypeAssign0, Args, Type,
 		TypeInfo),
 	type_assign_cons_has_type(ConsDefns, TypeAssign0, Args, Type, TypeInfo).
 
-:- pred type_assign_cons_has_type_2(hlds__cons_defn, type_assign, list(term),
+:- pred type_assign_cons_has_type_2(cons_type_info, type_assign, list(term),
 		type, type_info, type_assign_set, type_assign_set).
 :- mode type_assign_cons_has_type_2(input, input, input, input,
 		typeinfo_ui, input, output).
@@ -872,7 +873,9 @@ type_assign_unify_term(term_variable(Y), term_functor(F, As, _), TypeAssign0,
 	
 type_assign_unify_term(term_functor(FX, AsX, _), term_functor(FY, AsY, _),
 		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet) :-
-	    % XXX we should handle this properly
+	    % XXX we don't handle this, because it shouldn't occur
+	    % if the code is in superhomogeneous form, and we plan to
+	    % convert it to superhomogeneous form before doing type-checking.
 	error("XXX not implemented: unification of term with term\n"),
 	TypeAssignSet = TypeAssignSet0.
 
@@ -884,7 +887,7 @@ type_assign_unify_term(term_functor(FX, AsX, _), term_functor(FY, AsY, _),
 	% the constructor and if this succeeds insert that
 	% type assignment into the type assignment set.
 
-:- pred type_assign_unify_var_functor(list(hlds__cons_defn), list(term),
+:- pred type_assign_unify_var_functor(list(cons_type_info), list(term),
 		var, type_assign,
 		type_info, type_assign_set, type_assign_set).
 :- mode type_assign_unify_var_functor(input, input, input, input,
@@ -934,43 +937,25 @@ type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 
 %-----------------------------------------------------------------------------%
 
-	% Given an hlds__cons_defn, construct a type for the
-	% constructor and a list of types of the arguments.
-	% First we construct the type and the arg types using
-	% the information in the hlds__cons_defn and the information
-	% in the hlds type table entry for the cons' type.
-	% Then we rename these apart from the current type_assign's
+	% Given an cons_type_info, construct a type for the
+	% constructor and a list of types of the arguments,
+	% suitable renamed apart from the current type_assign's
 	% typevarset.
-	%
-	% XXX abstract the use of hlds__cons_defn/3 and hlds__type_defn/5
 
-:- pred get_cons_stuff(hlds__cons_defn, type_assign, type_info,
+:- pred get_cons_stuff(cons_type_info, type_assign, type_info,
 			type, list(type), type_assign).
 :- mode get_cons_stuff(input, input, input, output, output, output).
 
-get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo, ConsType, ArgTypes,
+get_cons_stuff(ConsDefn, TypeAssign0, _TypeInfo, ConsType, ArgTypes,
 			TypeAssign) :-
 
-	ConsDefn = hlds__cons_defn(ArgTypes0, TypeId, Context),
-
-	( is_builtin_type(TypeId) ->
-		% XXX assumes arity = 0
-		varset__init(ConsTypeVarSet),
-		ConsTypeParams = []
-	;
-		typeinfo_get_types(TypeInfo, Types),
-		map__search(Types, TypeId, TypeDefn),
-		TypeDefn = hlds__type_defn(ConsTypeVarSet, ConsTypeParams,
-						_, _, _)
-	),
-
-	TypeId = QualifiedName - _Arity,
-	unqualify_name(QualifiedName, Name),
-	ConsType0 = term_functor(term_atom(Name), ConsTypeParams, Context),
+	ConsDefn = cons_type_info(ConsTypeVarSet, ConsType0, ArgTypes0),
 
 	% Rename apart the type vars in the type of the constructor
 	% and the types of it's arguments.
 	% (Optimize the common case of a non-polymorphic type)
+
+	ConsType0 = term_functor(_, ConsTypeParams, _),
 	(ConsTypeParams = [] ->
 		ConsType = ConsType0,
 		ArgTypes = ArgTypes0,
@@ -1224,7 +1209,8 @@ find_undef_type(term_functor(F, As, _), ErrorContext, TypeDefns) -->
 	{ make_type_id(F, Arity, TypeId) },
 	(
 		{ \+ map__contains(TypeDefns, TypeId), 
-		  \+ is_builtin_type(TypeId)
+		  \+ is_builtin_atomic_type(TypeId),
+		  \+ is_builtin_pred_type(TypeId)
 		}
 	->
 		report_undef_type(TypeId, ErrorContext)
@@ -1314,32 +1300,107 @@ write_pred_id(PredId) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% builtin_type(Term, Type)
-	%	is true iff 'Term' is a constant of the builtin type 'Type'.
+	% builtin_atomic_type(Const, TypeName)
+	%	If Const is a constant of a builtin atomic type,
+	%	instantiates TypeName to the name of that type,
+	%	otherwise fails.
 
-:- pred builtin_type(const, string).
-:- mode builtin_type(input, output).
+:- pred builtin_atomic_type(const, string).
+:- mode builtin_atomic_type(input, output) is semidet.
 
-builtin_type(term_integer(_), "int").
-builtin_type(term_float(_), "float").
-builtin_type(term_string(_), "string").
-builtin_type(term_atom(String), "character") :-
+builtin_atomic_type(term_integer(_), "int").
+builtin_atomic_type(term_float(_), "float").
+builtin_atomic_type(term_string(_), "string").
+builtin_atomic_type(term_atom(String), "character") :-
 	string__char_to_string(_, String).
 
-	% is_builtin_type(TypeId)
-	%	is true iff 'TypeId' is the type_id of a builting type
+	% builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList) :
+	%	instantiates PredConsInfoList to the set of cons_type_info
+	%	structures for each predicate with name `Functor' and arity
+	%	greater than or equal to Arity.
+	%
+	%		PredTypeVarSet, PredTypeParams, ArgTypes) :-
+	%	If Functor/Arity is a constant of a pred type,
+	%	instantiates the output parameters, otherwise fails.
+	%	For example, functor `map__search/1' has type `pred(K,V)'
+	%	(hence PredTypeParams = [K,V]) and argument types [map(K,V)].
 
-:- pred is_builtin_type(type_id).
-:- mode is_builtin_type(input).
+:- pred builtin_pred_type(type_info, const, int, list(cons_type_info)).
+:- mode builtin_pred_type(typeinfo_ui, input, input, output)
+	is semidet.
 
-is_builtin_type(unqualified("int") - 0).
-is_builtin_type(unqualified("float") - 0).
-is_builtin_type(unqualified("string") - 0).
-is_builtin_type(unqualified("character") - 0).
-is_builtin_type(qualified(_,"int") - 0).
-is_builtin_type(qualified(_,"float") - 0).
-is_builtin_type(qualified(_,"string") - 0).
-is_builtin_type(qualified(_,"character") - 0).
+builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList) :-
+	Functor = term_atom(Name),
+	typeinfo_get_preds(TypeInfo, PredTable),
+	typeinfo_get_pred_name_index(TypeInfo, PredNameIndex),
+	( map__search(PredNameIndex, Name, PredIdList) ->
+		make_pred_cons_info_list(PredIdList, PredTable, Arity, [],
+			PredConsInfoList)
+	;
+		PredConsInfoList = []
+	).
+
+:- pred make_pred_cons_info_list(list(pred_id), pred_table, int,
+				list(cons_type_info), list(cons_type_info)).
+:- mode make_pred_cons_info_list(input, input, input, input, output).
+
+make_pred_cons_info_list([], _PredTable, _Arity, L, L).
+make_pred_cons_info_list([PredId|PredIds], PredTable, Arity, L0, L) :-
+	make_pred_cons_info(PredId, PredTable, Arity, L0, L1),
+	make_pred_cons_info_list(PredIds, PredTable, Arity, L1, L).
+
+:- type cons_type_info ---> cons_type_info(tvarset, type, list(type)).
+
+:- pred make_pred_cons_info(pred_id, pred_table, int,
+				list(cons_type_info), list(cons_type_info)).
+:- mode make_pred_cons_info(input, input, input, input, output).
+
+make_pred_cons_info(PredId, PredTable, FuncArity, L0, L) :-
+	(
+		map__search(PredTable, PredId, PredInfo),
+		predicate_arity(PredId, PredArity),
+		PredArity >= FuncArity
+	->
+		predinfo_arg_types(PredInfo, PredTypeVarSet, CompleteArgTypes),
+		split_list(FuncArity, CompleteArgTypes,
+			ArgTypes, PredTypeParams),
+		term__context_init("<builtin>", 0, Context),
+		PredType = term_functor(term_atom("pred"), PredTypeParams,
+				Context),
+		ConsInfo = cons_type_info(PredTypeVarSet, PredType, ArgTypes),
+		L = [ConsInfo | L0]
+	;
+		L = L0
+	).
+
+	% is_builtin_atomic_type(TypeId)
+	%	is true iff 'TypeId' is the type_id of a builtin atomic type
+
+:- pred is_builtin_atomic_type(type_id).
+:- mode is_builtin_atomic_type(input).
+
+is_builtin_atomic_type(QualifiedName - 0) :-
+	unqualify_name(QualifiedName, Name),
+	is_builtin_atomic_type_2(Name).
+
+:- pred is_builtin_atomic_type_2(string).
+:- mode is_builtin_atomic_type_2(input).
+
+is_builtin_atomic_type_2("int").
+is_builtin_atomic_type_2("float").
+is_builtin_atomic_type_2("string").
+is_builtin_atomic_type_2("character").
+
+	% is_builtin_pred_type(TypeId)
+	%	is true iff 'TypeId' is the type_id of a builtin higher-order
+	%	predicate type.
+
+:- pred is_builtin_pred_type(type_id).
+:- mode is_builtin_pred_type(input).
+
+is_builtin_pred_type(QualifiedName - _Arity) :-
+	unqualify_name(QualifiedName, Name),
+	Name = "pred".
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1357,7 +1418,7 @@ is_builtin_type(qualified(_,"character") - 0).
 					cons_table,
 					pred_id,
 					term__context,
-					int,	% XXX this field is never used
+					map(string, list(pred_id)),
 					varset,		% variables
 					type_assign_set,
 					bool	% did we find any type errors?
@@ -1401,12 +1462,13 @@ is_builtin_type(qualified(_,"character") - 0).
 typeinfo_init(IOState, ModuleInfo, PredId, Context, TypeVarSet, VarSet,
 		TypeInfo) :-
 	moduleinfo_preds(ModuleInfo, Preds),
+	moduleinfo_pred_name_index(ModuleInfo, PredNameIndex),
 	moduleinfo_types(ModuleInfo, Types),
 	moduleinfo_ctors(ModuleInfo, Ctors),
 	map__init(TypeBindings),
 	map__init(VarTypes),
 	TypeInfo = typeinfo(
-		IOState, Preds, Types, Ctors, PredId, Context, 0,
+		IOState, Preds, Types, Ctors, PredId, Context, PredNameIndex,
 		VarSet, [type_assign(VarTypes, TypeVarSet, TypeBindings)],
 		no
 	).
@@ -1463,6 +1525,14 @@ typeinfo_get_context(typeinfo(_,_,_,_,_,Context,_,_,_,_), Context).
 
 %-----------------------------------------------------------------------------%
 
+:- pred typeinfo_get_pred_name_index(type_info, map(string, list(pred_id))).
+:- mode typeinfo_get_pred_name_index(input, output).
+
+typeinfo_get_pred_name_index(typeinfo(_,_,_,_,_,_,PredNameIndex,_,_,_), 
+		PredNameIndex).
+
+%-----------------------------------------------------------------------------%
+
 :- pred typeinfo_get_varset(type_info, varset).
 :- mode typeinfo_get_varset(input, output).
 
@@ -1494,30 +1564,73 @@ typeinfo_set_found_error( typeinfo(A,B,C,D,E,F,G,H,I,_), FoundError,
 
 %-----------------------------------------------------------------------------%
 
-:- pred typeinfo_get_ctor_list(type_info, const, int, list(hlds__cons_defn)).
+:- pred typeinfo_get_ctor_list(type_info, const, int, list(cons_type_info)).
 :- mode typeinfo_get_ctor_list(input, input, input, output).
 
-typeinfo_get_ctor_list(TypeInfo, Functor, Arity, ConsDefnList) :-
+typeinfo_get_ctor_list(TypeInfo, Functor, Arity, ConsInfoList) :-
+	% Check if `Functor/Arity' has been defined as a constructor
+	% in some discriminated union type(s).  This gives
+	% us a list of possible cons_type_infos.
 	typeinfo_get_ctors(TypeInfo, Ctors),
 	(
 		Functor = term_atom(Name),
-		map__search(Ctors, cons(Name, Arity), ConsDefnList0)
+		map__search(Ctors, cons(Name, Arity), HLDS_ConsDefnList)
 	->
-		ConsDefnList1 = ConsDefnList0
+		convert_cons_defn_list(TypeInfo, HLDS_ConsDefnList,
+			ConsInfoList0)
 	;
-		ConsDefnList1 = []
+		ConsInfoList0 = []
 	),
+	% Check if Functor is a constant of one of the builtin atomic
+	% types (string, float, int, character).  If so, insert
+	% the resulting cons_type_info at the start of the list.
 	(
 		Arity = 0,
-		builtin_type(Functor, BuiltInType)
+		builtin_atomic_type(Functor, BuiltInTypeName)
 	->
 		term__context_init("<builtin>", 0, Context),
-		TypeId = unqualified(BuiltInType) - 0,
-		ConsDefn = hlds__cons_defn([], TypeId, Context),
-		ConsDefnList = [ConsDefn | ConsDefnList1]
+		ConsType = term_functor(term_atom(BuiltInTypeName), [],
+				Context),
+		varset__init(ConsTypeVarSet),
+		ConsInfo = cons_type_info(ConsTypeVarSet, ConsType, []),
+		ConsInfoList1 = [ConsInfo | ConsInfoList0]
 	;
-		ConsDefnList = ConsDefnList1
+		ConsInfoList1 = ConsInfoList0
+	),
+	% Check if Functor is the name of a predicate which takes at least
+	% Arity arguments.  If so, insert the resulting cons_type_info
+	% at the start of the list.
+	(
+		builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList)
+	->
+		append(ConsInfoList1, PredConsInfoList, ConsInfoList)
+	;
+		ConsInfoList = ConsInfoList1
 	).
+
+:- pred convert_cons_defn_list(type_info, list(hlds__cons_defn),
+				list(cons_type_info)).
+:- mode convert_cons_defn_list(typeinfo_ui, input, output).
+
+:- convert_cons_defn_list(_, L, _) when L.	% NU-Prolog indexing.
+
+convert_cons_defn_list(_TypeInfo, [], []).
+convert_cons_defn_list(TypeInfo, [X|Xs], [Y|Ys]) :-
+	convert_cons_defn(TypeInfo, X, Y),
+	convert_cons_defn_list(TypeInfo, Xs, Ys).
+
+:- pred convert_cons_defn(type_info, hlds__cons_defn, cons_type_info).
+:- mode convert_cons_defn(typeinfo_ui, input, output).
+
+convert_cons_defn(TypeInfo, HLDS_ConsDefn, ConsTypeInfo) :-
+	HLDS_ConsDefn = hlds__cons_defn(ArgTypes, TypeId, Context),
+	typeinfo_get_types(TypeInfo, Types),
+	map__search(Types, TypeId, TypeDefn),
+	TypeDefn = hlds__type_defn(ConsTypeVarSet, ConsTypeParams, _, _, _),
+	TypeId = QualifiedName - _Arity,
+	unqualify_name(QualifiedName, Name),
+	ConsType = term_functor(term_atom(Name), ConsTypeParams, Context),
+	ConsTypeInfo = cons_type_info(ConsTypeVarSet, ConsType, ArgTypes).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

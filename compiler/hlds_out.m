@@ -463,7 +463,7 @@ hlds_out__write_predid(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-:- pred hlds_out__write_predmodeid(int, pred_mode_id, io__state, io__state).
+:- pred hlds_out__write_predmodeid(int, proc_id, io__state, io__state).
 :- mode hlds_out__write_predmodeid(input, input, input, output).
 
 hlds_out__write_predmodeid(Indent, X) -->
@@ -490,7 +490,7 @@ hlds_out__write_procs(Indent, PredId, ProcTable) -->
 		io__write_string("]\n")
 	).
 
-:- pred hlds_out__write_procs_2(int, pred_id, list(pred_mode_id),
+:- pred hlds_out__write_procs_2(int, pred_id, list(proc_id),
 					proc_table, io__state, io__state).
 :- mode hlds_out__write_procs_2(input, input, input, input, input, output).
 
@@ -520,7 +520,7 @@ hlds_out__write_procs_2(Indent, PredId, ProcIds0, ProcTable) -->
 		hlds_out__write_procs_2(Indent, PredId, ProcIds, ProcTable)
 	).
 
-:- pred hlds_out__write_proc(int, pred_id, pred_mode_id, proc_info,
+:- pred hlds_out__write_proc(int, pred_id, proc_id, proc_info,
 							io__state, io__state).
 :- mode hlds_out__write_proc(input, input, input, input, input, output).
 

@@ -150,9 +150,8 @@
 %	Return the line number of the current stream
 %	(as per NU-Prolog lineCount/1).
 
-% XXX The type and mode of io__gc_call/3 are a bit tricky.
-% :- pred io__gc_call(pred(M, io__state::di, io__state::uo) :: M,
-%			io__state::di, io__state::uo).
+:- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
+:- mode io__gc_call(pred_call(di, uo), di, uo).
 %	io__gc_call(Goal, IO0, IO1).
 %		Execute Goal, passing IO0, and IO1, and
 %		collect any garbage created during it's execution.
