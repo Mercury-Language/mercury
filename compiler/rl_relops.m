@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -351,7 +351,7 @@ rl_relops__subtract(Rel1, Rel2, OutputArgs1, OutputArgs2, InstMap,
 :- pred rl_relops__classify_subtract_condition(list(hlds_goal)::in,
 	subtract_type::out, rl_info::rl_info_di, rl_info::rl_info_uo) is det.
 
-rl_relops__classify_subtract_condition(_, nested_loop) --> [].
+rl_relops__classify_subtract_condition(_, semi) --> [].
 
 rl_relops__difference(OldRel, NewRel, DiffRel, Code) -->
 	rl_info_get_relation_schema(OldRel, Schema),

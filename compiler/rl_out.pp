@@ -631,6 +631,9 @@ rl_out__generate_instr(subtract(Output, Input1, Input2, Type, Cond) - _,
 		{ Type = nested_loop },
 		{ SubtractCode = rl_PROC_subtract_nl }
 	;
+		{ Type = semi },
+		{ SubtractCode = rl_PROC_semisubtract_nl }
+	;
 		{ Type = sort_merge(_, _) },
 		{ SubtractCode = rl_PROC_subtract_sm }
 	;
