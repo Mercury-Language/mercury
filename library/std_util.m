@@ -60,6 +60,9 @@
 
 :- type assoc_list(K,V)	==	list(pair(K,V)).
 
+:- pred assoc_list__reverse_members(assoc_list(K, V), assoc_list(V, K)).
+:- mode assoc_list__reverse_members(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred gc_call(pred).
@@ -91,6 +94,10 @@
 :- external("NU-Prolog", solutions/2).
 :- external("NU-Prolog", type_to_univ).
 */
+
+assoc_list__reverse_members([], []).
+assoc_list__reverse_members([K-V|KVs], [V-K|VKs]) :-
+	assoc_list__reverse_members(KVs, VKs).
 
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 

@@ -66,6 +66,13 @@
 :- mode set__member(in, in) is semidet.
 :- mode set__member(out, in) is nondet.
 
+	% set__a_member(X, Set) is true iff X is a member of Set,
+	% but succeeds at most once in the (out,in) mode.
+
+:- pred set__a_member(T, set(T)).
+:- mode set__a_member(in, in) is semidet.
+:- mode set__a_member(out, in) is semidet.
+
 	% `set__insert(Set0, X, Set)' is true iff `Set' is the union of
 	% `Set0' and the set containing only `X'.
 
@@ -176,6 +183,8 @@ set__superset(S0, S1) :-
 
 set__member(E, S) :-
 	member(E, S).
+
+set__a_member(E, [E|_]).
 
 :- set__delete_list(_, Xs, _) when Xs.
 
