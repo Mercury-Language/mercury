@@ -3,7 +3,7 @@ INIT mercury_sys_init_call
 ENDINIT
 */
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,6 +17,9 @@ ENDINIT
 ** provided by the higher-order call may be input or output, and may appear
 ** in any order.
 **
+** The procedure whose address is contained in the closure must use the
+** `compact' argument convention.
+**
 ** The input arguments to do_call_*_closure are the closure in r1,
 ** the number of additional input arguments in r2, the number of output
 ** arguments to expect in r3, and the additional input arguments themselves
@@ -29,6 +32,23 @@ ENDINIT
 */
 
 #include "mercury_imp.h"
+
+	/* 
+	** Number of input arguments to do_call_*_closure, 
+	** r1 -> closure 
+	** r2 -> number of immediate input arguments.
+	** r3 -> number of output arguments (unused).
+	*/
+#define MR_HO_CALL_INPUTS		3
+
+	/*
+	** Number of input arguments to do_call_*_class_method,
+	** r1 -> typeclass info
+	** r2 -> index of method in typeclass info
+	** r3 -> number of immediate input arguments.
+	** r4 -> number of output arguments (unused).
+	*/
+#define MR_CLASS_METHOD_CALL_INPUTS	4
 
 Define_extern_entry(do_call_det_closure);
 Declare_label(det_closure_return);
@@ -105,55 +125,27 @@ Define_entry(do_call_det_closure);
 	num_in_args = field(0, closure, 0); /* number of input args */
 	num_extra_args = r2; /* number of immediate input args */
 
-	push(r3); /* The number of output args to unpack */
-	push(num_in_args + num_extra_args); /* The number of input args */
-	push(MR_succip);
-
 	save_registers();
 
-	if (num_in_args < 3) {
+	if (num_in_args < MR_HO_CALL_INPUTS) {
 		for (i = 1; i <= num_extra_args; i++) {
-			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+			virtual_reg(i + num_in_args) =
+				virtual_reg(i + MR_HO_CALL_INPUTS);
 		}
-	} else if (num_in_args > 3) {
+	} else if (num_in_args > MR_HO_CALL_INPUTS) {
 		for (i = num_extra_args; i>0; i--) {
-			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+			virtual_reg(i + num_in_args) =
+				virtual_reg(i + MR_HO_CALL_INPUTS);
 		}
-	} /* else do nothing because i == 3 */
+	} /* else do nothing because i == MR_HO_CALL_INPUTS */
 
 	for (i = 1; i <= num_in_args; i++) {
-		virtual_reg(i) = field(0, closure, i+1); /* copy args */
+		virtual_reg(i) = field(0, closure, i + 1); /* copy args */
 	}
 
 	restore_registers();
 
-	call((Code *) field(0, closure, 1), LABEL(det_closure_return),
-		LABEL(do_call_det_closure));
-}
-	/* 
-	** This is used as a return label both by do_call_det_closure and
-	** do_call_det_class_method 
-	*/
-Define_label(det_closure_return);
-{
-	int	i, num_in_args, num_out_args;
-
-	MR_succip = pop(); /* restore succip */
-	num_in_args = pop(); /* restore the input arg counter */
-	num_out_args = pop(); /* restore the ouput arg counter */
-
-#ifdef	COMPACT_ARGS
-#else
-	save_registers();
-
-	for (i = 1; i <= num_out_args; i++) {
-		virtual_reg(i) = virtual_reg(i+num_in_args);
-	}
-
-	restore_registers();
-#endif
-
-	proceed();
+	tailcall((Code *) field(0, closure, 1), LABEL(do_call_det_closure));
 }
 
 Define_entry(do_call_semidet_closure);
@@ -165,71 +157,28 @@ Define_entry(do_call_semidet_closure);
 	num_in_args = field(0, closure, 0); /* number of input args */
 	num_extra_args = r2; /* the number of immediate input args */
 
-	push(r3); /* The number of output args to unpack */
-	push(num_in_args + num_extra_args); /* The number of input args */
-	push(MR_succip);
-
 	save_registers();
 
-#ifdef	COMPACT_ARGS
-	if (num_in_args < 3) {
+	if (num_in_args < MR_HO_CALL_INPUTS) {
 		for (i = 1; i <= num_extra_args; i++) {
-			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+			virtual_reg(i + num_in_args) =
+				virtual_reg(i + MR_HO_CALL_INPUTS);
 		}
-	} else if (num_in_args > 3) {
+	} else if (num_in_args > MR_HO_CALL_INPUTS) {
 		for (i = num_extra_args; i>0; i--) {
-			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+			virtual_reg(i + num_in_args) =
+				virtual_reg(i + MR_HO_CALL_INPUTS);
 		}
-	} /* else do nothing because i == 3 */
+	} /* else do nothing because i == MR_HO_CALL_INPUTS */
 
 	for (i = 1; i <= num_in_args; i++) {
-		virtual_reg(i) = field(0, closure, i+1); /* copy args */
+		virtual_reg(i) = field(0, closure, i + 1); /* copy args */
 	}
-#else
-	if (num_in_args < 2) {
-		for (i = 1; i <= num_extra_args; i++) {
-			virtual_reg(1+i+num_in_args) = virtual_reg(i+3);
-		}
-	} else if (num_in_args > 2) {
-		for (i = num_extra_args; i>0; i--) {
-			virtual_reg(1+i+num_in_args) = virtual_reg(i+3);
-		}
-	} /* else do nothing because i == 2 */
-
-	for (i = 1; i <= num_in_args; i++) {
-		virtual_reg(i+1) = field(0, closure, i+1); /* copy args */
-	}
-#endif
 
 	restore_registers();
 
-	call((Code *) field(0, closure, 1), LABEL(semidet_closure_return),
+	tailcall((Code *) field(0, closure, 1), 
 		LABEL(do_call_semidet_closure));
-}
-	/* 
-	** This is used as a return label both by do_call_semidet_closure and
-	** do_call_semidet_class_method 
-	*/
-Define_label(semidet_closure_return);
-{
-	int	i, num_in_args, num_out_args;
-
-	MR_succip = pop(); /* restore succip */
-	num_in_args = pop(); /* restore the input arg counter */
-	num_out_args = pop(); /* restore the ouput arg counter */
-
-#ifdef	COMPACT_ARGS
-#else
-	save_registers();
-
-	for (i = 1; i <= num_out_args; i++) {
-		virtual_reg(i+1) = virtual_reg(i+1+num_in_args);
-	}
-
-	restore_registers();
-#endif
-
-	proceed();
 }
 
 Define_entry(do_call_nondet_closure);
@@ -241,57 +190,28 @@ Define_entry(do_call_nondet_closure);
 	num_in_args = field(0, closure, 0); /* number of input args */
 	num_extra_args = r2; /* number of immediate input args */
 
-	mkframe("do_call_nondet_closure", 2, ENTRY(do_fail));
-	framevar(0) = r3;	/* The number of output args to unpack */
-	framevar(1) = num_in_args + num_extra_args;
-				/* The number of input args */
-
 	save_registers();
 
-	if (num_in_args < 3) {
+	if (num_in_args < MR_HO_CALL_INPUTS) {
 		for (i = 1; i <= num_extra_args; i++) {
-			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+			virtual_reg(i + num_in_args) =
+				virtual_reg(i + MR_HO_CALL_INPUTS);
 		}
-	} else if (num_in_args > 3) {
+	} else if (num_in_args > MR_HO_CALL_INPUTS) {
 		for (i = num_extra_args; i > 0; i--) {
-			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+			virtual_reg(i + num_in_args) =
+				virtual_reg(i + MR_HO_CALL_INPUTS);
 		}
-	} /* else do nothing because i == 3 */
+	} /* else do nothing because i == MR_HO_CALL_INPUTS */
 
 	for (i = 1; i <= num_in_args; i++) {
-		virtual_reg(i) = field(0, closure, i+1); /* copy args */
+		virtual_reg(i) = field(0, closure, i + 1); /* copy args */
 	}
 
 	restore_registers();
 
-	call((Code *) field(0, closure, 1), LABEL(nondet_closure_return),
-		LABEL(do_call_nondet_closure));
+	tailcall((Code *) field(0, closure, 1), LABEL(do_call_nondet_closure));
 }
-	/* 
-	** This is used as a return label both by do_call_nondet_closure and
-	** do_call_nondet_class_method 
-	*/
-Define_label(nondet_closure_return);
-{
-	int	i, num_in_args, num_out_args;
-
-	num_in_args = framevar(1); /* restore the input arg counter */
-	num_out_args = framevar(0); /* restore the ouput arg counter */
-
-#ifdef	COMPACT_ARGS
-#else
-	save_registers();
-
-	for (i = 1; i <= num_out_args; i++) {
-		virtual_reg(i) = virtual_reg(i+num_in_args);
-	}
-
-	restore_registers();
-#endif
-
-	succeed();
-}
-
 
 
 
@@ -313,25 +233,24 @@ Define_entry(do_call_det_class_method);
 
 	num_in_args = r3; /* number of input args */
 
-	push(r4); /* The number of output args to unpack */
-	push(num_in_args); /* The number of input args */
-	push(succip);
-
 	save_registers();
 
-	if (num_arg_typeclass_infos < 4) {
+	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
 			/* copy to the left, from the left */
 		for (i = 1; i <= num_in_args; i++) {
-			virtual_reg(i+num_arg_typeclass_infos) =
-				virtual_reg(i+4);
+			virtual_reg(i + num_arg_typeclass_infos) =
+				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
-	} else if (num_arg_typeclass_infos > 4) {
+	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {
 			/* copy to the right, from the right */
 		for (i = num_in_args; i > 0; i--) {
-			virtual_reg(i+num_arg_typeclass_infos) =
-				virtual_reg(i+4);
+			virtual_reg(i + num_arg_typeclass_infos) =
+				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
-	} /* else do nothing because num_arg_typeclass_infos == 4 */
+	} /*
+	  ** else do nothing because 
+	  ** num_arg_typeclass_infos == MR_CLASS_METHOD_CALL_INPUTS
+	  */
 
 	for (i = num_arg_typeclass_infos; i > 0; i--) {
 		virtual_reg(i) = 
@@ -340,8 +259,7 @@ Define_entry(do_call_det_class_method);
 
 	restore_registers();
 
-	call(destination, LABEL(det_closure_return),
-		LABEL(do_call_det_class_method));
+	tailcall(destination, LABEL(do_call_det_class_method));
 }
 
 Define_entry(do_call_semidet_class_method);
@@ -354,24 +272,24 @@ Define_entry(do_call_semidet_class_method);
 
 	num_in_args = r3; /* number of input args */
 
-	push(r4); /* The number of output args to unpack */
-	push(num_in_args); /* The number of input args */
-	push(succip);
-
 	save_registers();
 
-	if (num_arg_typeclass_infos < 4) {
+	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
 			/* copy to the left, from the left */
 		for (i = 1; i <= num_in_args; i++) {
-			virtual_reg(i) = virtual_reg(i+4);
+			virtual_reg(i) =
+				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
-	} else if (num_arg_typeclass_infos > 4) {
+	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {
 			/* copy to the right, from the right */
 		for (i = num_in_args; i > 0; i--) {
-			virtual_reg(i+num_arg_typeclass_infos) =
-				virtual_reg(i+4);
+			virtual_reg(i + num_arg_typeclass_infos) =
+				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
-	} /* else do nothing because num_arg_typeclass_infos == 4 */
+	} /*
+	  ** else do nothing because
+	  ** num_arg_typeclass_infos == MR_CLASS_METHOD_CALL_INPUTS
+	  */
 
 	for (i = num_arg_typeclass_infos; i > 0; i--) {
 		virtual_reg(i) = 
@@ -380,8 +298,7 @@ Define_entry(do_call_semidet_class_method);
 
 	restore_registers();
 
-	call(destination, LABEL(semidet_closure_return),
-		LABEL(do_call_semidet_class_method));
+	tailcall(destination, LABEL(do_call_semidet_class_method));
 }
 
 Define_entry(do_call_nondet_class_method);
@@ -394,24 +311,24 @@ Define_entry(do_call_nondet_class_method);
 
 	num_in_args = r3; /* number of input args */
 
-	mkframe("do_call_nondet_class_method", 2, ENTRY(do_fail));
-	framevar(0) = r4;	   /* The number of output args to unpack */
-	framevar(1) = num_in_args; /* The number of input args */
-
 	save_registers();
 
-	if (num_arg_typeclass_infos < 4) {
+	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
 			/* copy to the left, from the left */
 		for (i = 1; i <= num_in_args; i++) {
-			virtual_reg(i) = virtual_reg(i+4);
+			virtual_reg(i) =
+				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
-	} else if (num_arg_typeclass_infos > 4) {
+	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {
 			/* copy to the right, from the right */
 		for (i = num_in_args; i > 0; i--) {
-			virtual_reg(i+num_arg_typeclass_infos) =
-				virtual_reg(i+4);
+			virtual_reg(i + num_arg_typeclass_infos) =
+				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
-	} /* else do nothing because num_arg_typeclass_infos == 4 */
+	} /* 
+	  ** else do nothing because
+	  ** num_arg_typeclass_infos == MR_CLASS_METHOD_CALL_INPUTS
+	  */
 
 	for (i = num_arg_typeclass_infos; i > 0; i--) {
 		virtual_reg(i) = 
@@ -420,8 +337,7 @@ Define_entry(do_call_nondet_class_method);
 
 	restore_registers();
 
-	call(destination, LABEL(nondet_closure_return),
-		LABEL(do_call_nondet_class_method));
+	tailcall(destination, LABEL(do_call_nondet_class_method));
 }
 
 /*

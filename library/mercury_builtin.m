@@ -186,33 +186,33 @@
 
 :- pred builtin_unify_int(int::in, int::in) is semidet.
 :- pred builtin_index_int(int::in, int::out) is det.
-:- pred builtin_compare_int(comparison_result::out, int::in, int::in) is det.
+:- pred builtin_compare_int(comparison_result::uo, int::in, int::in) is det.
 
 :- pred builtin_unify_character(character::in, character::in) is semidet.
 :- pred builtin_index_character(character::in, int::out) is det.
-:- pred builtin_compare_character(comparison_result::out, character::in,
+:- pred builtin_compare_character(comparison_result::uo, character::in,
 	character::in) is det.
 
 :- pred builtin_unify_string(string::in, string::in) is semidet.
 :- pred builtin_index_string(string::in, int::out) is det.
-:- pred builtin_compare_string(comparison_result::out, string::in, string::in)
+:- pred builtin_compare_string(comparison_result::uo, string::in, string::in)
 	is det.
 
 :- pred builtin_unify_float(float::in, float::in) is semidet.
 :- pred builtin_index_float(float::in, int::out) is det.
-:- pred builtin_compare_float(comparison_result::out, float::in, float::in)
+:- pred builtin_compare_float(comparison_result::uo, float::in, float::in)
 	is det.
 
 :- pred builtin_unify_pred((pred)::in, (pred)::in) is semidet.
 :- pred builtin_index_pred((pred)::in, int::out) is det.
-:- pred builtin_compare_pred(comparison_result::out, (pred)::in, (pred)::in)
+:- pred builtin_compare_pred(comparison_result::uo, (pred)::in, (pred)::in)
 	is det.
 
 % The following two preds are used for index/1 or compare/3 on
 % non-canonical types (types for which there is a `where equality is ...'
 % declaration).
 :- pred builtin_index_non_canonical_type(T::in, int::out) is det.
-:- pred builtin_compare_non_canonical_type(comparison_result::out,
+:- pred builtin_compare_non_canonical_type(comparison_result::uo,
 		T::in, T::in) is det.
 
 :- pred unused is det.
