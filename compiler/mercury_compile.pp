@@ -29,8 +29,8 @@
 :- import_module library, getopt, term, varset.
 
 	% the main compiler passes (in order of execution)
-:- import_module handle_options, prog_io, modules, module_qual, make_hlds.
-:- import_module typecheck, modes.
+:- import_module handle_options, prog_io, modules, module_qual, equiv_type.
+:- import_module make_hlds, typecheck, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module simplify, bytecode_gen, bytecode, (lambda), polymorphism.
 :- import_module higher_order, inlining, common, dnf.
@@ -39,7 +39,7 @@
 :- import_module code_gen, optimize, export, llds_out.
 
 	% miscellaneous compiler modules
-:- import_module prog_data, prog_util, hlds_module, hlds_pred, hlds_out, llds.
+:- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
 :- import_module dependency_graph, garbage_out, shapes.
 :- import_module options, globals, passes_aux.
@@ -308,7 +308,7 @@ mercury_compile__module_qualify_items(Items0, Items, ModuleName, Verbose, Stats,
 mercury_compile__expand_equiv_types(Items0, Verbose, Stats, Items) -->
 	maybe_write_string(Verbose, "% Expanding equivalence types..."),
 	maybe_flush_output(Verbose),
-	{ prog_util__expand_eqv_types(Items0, Items) },
+	{ equiv_type__expand_eqv_types(Items0, Items) },
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 

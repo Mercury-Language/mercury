@@ -17,7 +17,6 @@
 %	handle Mercury's implicit quantification;
 %	implement the Mercury IO library in Goedel;
 %	implement various NU-Prolog predicates in Goedel; 
-%	handle undiscriminated union types;
 %	handle (possibly overloaded) predicates with module qualifiers;
 %
 % (Wish list)
@@ -31,8 +30,8 @@
 :- module mercury_to_goedel.
 :- interface.
 
-:- import_module prog_data, globals, options.
-:- import_module bool, string, list, io, require.
+:- import_module string, list, io.
+:- import_module prog_data.
 
 :- pred convert_to_goedel(string, list(item_and_context), io__state, io__state).
 :- mode convert_to_goedel(in, in, di, uo) is det.
@@ -40,9 +39,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, char, std_util, varset, term.
-:- import_module prog_io, prog_out, prog_util.
-
+:- import_module bool, int, char, std_util, varset, term, require.
+:- import_module prog_io, prog_out, prog_util, equiv_type.
+:- import_module globals, options.
 %-----------------------------------------------------------------------------%
 
 	% The following is a hard-coded hack.
@@ -66,7 +65,7 @@ convert_to_goedel(ProgName, Items0) -->
 	io__write_string(StdErr, "% Expanding equivalence types..."),
 	io__flush_output(StdErr),
 	{ goedel_replace_int_integer(IntEquivTypeDefn) },
-	{ prog_util__expand_eqv_types([IntEquivTypeDefn | Items0], Items) },
+	{ equiv_type__expand_eqv_types([IntEquivTypeDefn | Items0], Items) },
 	io__write_string(StdErr, " done\n"),
 	{ convert_functor_name(ProgName, GoedelName) },
 	{ string__append(GoedelName, ".loc", OutputFileName) },
