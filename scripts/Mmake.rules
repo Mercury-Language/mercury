@@ -7,7 +7,7 @@ main_target: $(MAIN_TARGET)
 #-----------------------------------------------------------------------------#
 
 .SUFFIXES: .m .nl .no .err .int .int2 .dep .depend .doit .ugly \
-		.date .c .nu .o .mod .pp .s .garb .mod_h .ql
+		.date .c .nu .o .mod .pp .s .garb .mod_h .ql .pl
 
 .PRECIOUS: %.date
 
@@ -28,6 +28,9 @@ main_target: $(MAIN_TARGET)
 
 .nl.ql:
 	$(MSC) $(MSCFLAGS) -o $@ $<
+
+.nl.pl:
+	sicstus_conv $<
 
 # The `touch' is necessary, since otherwise if
 # the old .err file was of size zero and

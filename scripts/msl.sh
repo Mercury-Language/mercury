@@ -13,7 +13,7 @@
 #	-o, --output
 # Environment variables: MERCURY_SP_LIB_DIR, MERCURY_SP_LIB_OBJS
 
-SP=${MERCURY_SICSTUS_PROLOG:-msp}
+SP=${MERCURY_SICSTUS_PROLOG:-@LIBDIR@/sicstus/@FULLARCH@/library.sicstus.debug}
 SPLIBDIR=${MERCURY_SP_LIB_DIR:-@LIBDIR@/sicstus/@FULLARCH@}
 LIBRARY_OBJS=${MERCURY_SP_LIB_OBJS:-`cd $SPLIBDIR; echo *.ql`}
 
@@ -43,12 +43,9 @@ while true; do
 			;;
 	esac
 done
-if $debug; then
-	LIBRARY_OBJS="$LIBRARY_OBJS error.ql"
-fi
 
 objlist=
-for obj in sp_builtin.ql $LIBRARY_OBJS; do
+for obj in $LIBRARY_OBJS; do
 	if echo "" "$objlist" "$@" "" | grep " $obj " > /dev/null; then
 		true
 	else
@@ -57,23 +54,24 @@ for obj in sp_builtin.ql $LIBRARY_OBJS; do
 done
 
 if $verbose; then
-	echo Linking $objlist
+	echo Linking $objlist "$@"
 fi
 if $debug; then
 	$SP $objlist "$@" 2>&1 << EOF
-	on_exception(Error, (
-		write(1), nl,
-	  prolog_flag(compiling, _, fastcode),
-		write(2), nl,
-	  unix(argv(Files)), load(Files),
-		write(3), nl,
-	  save('$target', _),
-		write(4), nl,
-	  fail
-	), print_message(error, Error)), halt) ; true.
+	assert((mercury_do_save :-
+		on_exception(Error, (
+		  prolog_flag(compiling, _, fastcode),
+		  unix(argv(Files)), load(Files),
+		  abolish(mercury_do_save),
+		  save('$target', _),
+		  version
+		), (print_message(error, Error), halt)))).
+
+	mercury_do_save.
+
 EOF
 else
-	sp $objlist "$@" 2>&1 << EOF
+	$SP $objlist "$@" 2>&1 << EOF
 	on_exception(Error, (
 	  prolog_flag(compiling, _, fastcode),
 	  unix(argv(Files)), load(Files),

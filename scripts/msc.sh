@@ -93,7 +93,7 @@ for file in "$@"; do
 /\\n/s//\
 /g
 /\\v/s///g
-	' $sp_builtin_nl $file > $tmp.pl
+	' $file > $tmp.pl
 	$sicstus_compile $compile_mode $tmp.pl
 	rm $tmp.pl 
 	mv $tmp.ql ${target:-"$rootname.ql"}
