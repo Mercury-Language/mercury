@@ -291,7 +291,51 @@ separate should be separated with dashed lines:
 
 %---------------------------------------------------------------------------%
 
+</pre>
+
+Ideally such sections should be identified by "section heading" comments
+identifying the contents of the section, optionally followed by a more
+detailed description.  These should be laid out like this:
+
+<pre>
+
+%---------------------------------------------------------------------------%
+%
+% Section title
+%
+
+% Detailed description of the contents of the section and/or
+% general comments about the contents of the section.
+% This part may go one for several lines.
+%
+% It can even contain several paragraphs.
+
+The actual code starts here.
+
+</pre>
+
+For example
+
+<pre>
+
+%---------------------------------------------------------------------------%
+%
+% Exception handling
+%
+
+% This section contains all the code that deals with throwing or catching
+% exceptions, including saving and restoring the virtual machine registers
+% if necessary.
+%
+% Note that we need to take care to ensure that this code is thread-safe!
+
+:- type foo ---&gt; ...
+
+</pre>
+
 Double-dashed lines, i.e.
+
+<pre>
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -342,6 +386,6 @@ contains more information on review policy.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2002-07-17 06:23:57 $ by $Author: dougl $@cs.mu.oz.au. <br>
+Last update was $Date: 2003-08-18 11:36:40 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
