@@ -8,8 +8,8 @@
 #	Echo gcc command before executing it.
 # -s<grade>
 #	Select optimization/debug/gc options according to <grade>, which
-#	must be one of debug, none, jump, reg, or fast, or one of those
-#	with .gc appended.
+#	must be one of debug, none, jump, asm_jump, reg, fast, or asm_fast,
+#	or one of those with .gc appended.
 #
 # This runs gcc with all warnings enabled, except for the following
 # exceptions:
@@ -70,6 +70,10 @@ case "$grade" in
 esac
 
 case "$grade" in
+	asm_fast)
+		GRADE_OPTS="$OPT_OPTS -DUSE_GCC_GLOBAL_REGISTERS
+				-DUSE_ASM_LABELS -DUSE_GCC_NONLOCAL_GOTOS"
+		;;
 	fast)
 		GRADE_OPTS="$OPT_OPTS
 			-DUSE_GCC_GLOBAL_REGISTERS -DUSE_GCC_NONLOCAL_GOTOS"
@@ -77,6 +81,10 @@ case "$grade" in
 	reg)
 		GRADE_OPTS="$OPT_OPTS
 			-DUSE_GCC_GLOBAL_REGISTERS"
+		;;
+	asm_jump)
+		GRADE_OPTS="$OPT_OPTS
+			-DUSE_ASM_LABELS -DUSE_GCC_NONLOCAL_GOTOS"
 		;;
 	jump)
 		GRADE_OPTS="$OPT_OPTS

@@ -20,7 +20,7 @@
 LIBDIR=${MERCURY_C_LIB_DIR:-@LIBDIR@/lib}
 verbose=false
 shared=false
-GRADE=fast
+GRADE=asm_fast.gc
 
 while true; do
     case "$1" in
@@ -56,9 +56,9 @@ case "$GRADE" in
 esac
 
 if $shared; then
-	LIBMER=libmer.so
+	LIBMER="libmer*.so"
 else
-	LIBMER=libmer.a
+	LIBMER="libmer*.a"
 fi
 
 LIBDIR_OPTS="$LIBDIR/$GRADE/@FULLARCH@/$LIBMER"
