@@ -460,6 +460,14 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   specialized versions without them (unused_args.m); type_infos are
   often unused.
 
+<li> attempt to introduce accumulators (accumulator.m).  This optimizes
+  procedures whose tail consists of independent associative computations
+  or independant chains of commutative computations into a tail
+  recursive form by the introduction of accumulators.  If lco is turned
+  on it can also transform some procedures so that only construction
+  unifications are after the recursive call.  This pass must come before
+  lco.
+
 <li> elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
   specialization and the elimination of unused args can make procedures dead
   even the user doesn't, and automatically constructed unification and
@@ -919,6 +927,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-03-30 05:38:14 $ by $Author: dgj $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-06-15 07:10:00 $ by $Author: petdr $@cs.mu.oz.au. <br>
 </body>
 </html>

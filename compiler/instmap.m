@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,8 +102,26 @@
 	% changed (or our knowledge about them has changed) across
 	% an instmap_delta.
 	%
+	% This predicate shouldn't be used if you want your code to
+	% compile on the alias branch, use instmap_changed_vars instead.
+	%
 :- pred instmap_delta_changed_vars(instmap_delta, set(prog_var)).
 :- mode instmap_delta_changed_vars(in, out) is det.
+
+	%
+	% instmap_changed_vars(IMA, IMB, MI, CV)
+	%
+	% Given an earlier instmap, IMA, and a later instmap, IMB,
+	% determine what variables, CV, have had their instantiatedness
+	% information changed.
+	%
+	% This predicate is meant to be equivalent to
+	% instmap_delta_changed_vars, where the instmap_delta is simply
+	% the one to take IMA to IMB.  However this predicate should
+	% transform more easily to the alias branch.
+	%
+:- pred instmap_changed_vars(instmap::in, instmap::in, module_info::in,
+		set(prog_var)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -374,6 +392,31 @@ instmap_delta_changed_vars(unreachable, EmptySet) :-
 instmap_delta_changed_vars(reachable(InstMapping), ChangedVars) :-
 	map__keys(InstMapping, ChangedVarsList),
 	set__sorted_list_to_set(ChangedVarsList, ChangedVars).
+
+%-----------------------------------------------------------------------------%
+
+instmap_changed_vars(InstMapA, InstMapB, ModuleInfo, ChangedVars) :-
+	instmap__vars_list(InstMapB, VarsB),
+	changed_vars_2(VarsB, InstMapA, InstMapB, ModuleInfo, ChangedVars).
+
+:- pred changed_vars_2(prog_vars::in, instmap::in,
+		instmap::in, module_info::in, set(prog_var)::out) is det.
+
+changed_vars_2([], _InstMapA, _InstMapB, _ModuleInfo, ChangedVars) :-
+	set__init(ChangedVars).
+changed_vars_2([VarB|VarBs], InstMapA, InstMapB, ModuleInfo, ChangedVars) :-
+	changed_vars_2(VarBs, InstMapA, InstMapB, ModuleInfo, ChangedVars0),
+
+	instmap__lookup_var(InstMapA, VarB, InitialInst),
+	instmap__lookup_var(InstMapB, VarB, FinalInst),
+
+	(
+		inst_matches_final(InitialInst, FinalInst, ModuleInfo)
+	->
+		ChangedVars = ChangedVars0
+	;
+		set__insert(ChangedVars0, VarB, ChangedVars)
+	).
 
 %-----------------------------------------------------------------------------%
 

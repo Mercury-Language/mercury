@@ -3356,6 +3356,11 @@ and branched goals.
 Evaluate constant expressions at compile time.
 
 @sp 1
+@item --introduce-accumulators
+Attempt to introduce accumulating variables into
+procedures, so as to make the procedure tail recursive.
+
+@sp 1
 @item --optimize-constructor-last-call
 Enable the optimization of ``last'' calls that are followed by
 constructor application.

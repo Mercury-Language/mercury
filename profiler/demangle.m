@@ -41,6 +41,7 @@
 :- type introduced_pred_type
 	--->	(lambda)
 	;	deforestation
+	;	accumulator
 	.
 
 :- type data_category
@@ -209,11 +210,11 @@ demangle_proc -->
 	( { Category0 \= ordinary } ->
 		remove_prefix("_"),
 		remove_maybe_module_prefix(MaybeModule,
-			["IntroducedFrom__", "DeforestationIn__"]),
+			["IntroducedFrom__", "DeforestationIn__", "AccFrom__"]),
 		{ MaybeModule \= yes("") }
 	;
 		remove_maybe_module_prefix(MaybeModule,
-			["IntroducedFrom__", "DeforestationIn__"])
+			["IntroducedFrom__", "DeforestationIn__", "AccFrom__"])
 	),
 
 	%
@@ -224,11 +225,17 @@ demangle_proc -->
 	=(PredName0),
 
 	(
-		( remove_prefix("IntroducedFrom__") ->
+		( 
+			remove_prefix("IntroducedFrom__") 
+		->
 			{ IntroducedPredType = (lambda) }
 		;
-			remove_prefix("DeforestationIn__"),
+			remove_prefix("DeforestationIn__")
+		->
 			{ IntroducedPredType = deforestation }
+		;
+			remove_prefix("AccFrom__"),
+			{ IntroducedPredType = accumulator }
 		)
 	->
 		( remove_prefix("pred__") ->
@@ -299,6 +306,11 @@ format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
 			string__format(
 				"deforestation procedure (#%d) from %s line %d",
 				[i(Seq), s(QualifiedName), i(Line)], MainPart)
+		;
+			Type = accumulator,
+			string__format(
+				"accumulator procedure from %s line %d",
+				[s(QualifiedName), i(Line)], MainPart)
 		)
 	},
 	[MainPart],

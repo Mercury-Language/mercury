@@ -37,7 +37,7 @@
 :- import_module bytecode_gen, bytecode.
 :- import_module (lambda), polymorphism, termination, higher_order, inlining.
 :- import_module deforest, dnf, unused_args, magic, dead_proc_elim.
-:- import_module lco, saved_vars, liveness.
+:- import_module accumulator, lco, saved_vars, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
 :- import_module rl_gen, rl_opt, rl_out.
@@ -1004,7 +1004,11 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__maybe_unused_args(HLDS36, Verbose, Stats, HLDS38), !,
 	mercury_compile__maybe_dump_hlds(HLDS38, "38", "unused_args"), !,
 
-	mercury_compile__maybe_lco(HLDS38, Verbose, Stats, HLDS40), !,
+	mercury_compile__maybe_introduce_accumulators(HLDS38,
+			Verbose, Stats, HLDS39), !,
+	mercury_compile__maybe_dump_hlds(HLDS39, "39", "accum"), !,
+
+	mercury_compile__maybe_lco(HLDS39, Verbose, Stats, HLDS40), !,
 	mercury_compile__maybe_dump_hlds(HLDS40, "40", "lco"), !,
 
 	% DNF transformations should be after inlining.
@@ -1781,6 +1785,28 @@ mercury_compile__maybe_dead_procs(HLDS0, Verbose, Stats, HLDS) -->
 	;
 		{ HLDS0 = HLDS }
 	).
+
+
+:- pred mercury_compile__maybe_introduce_accumulators(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_introduce_accumulators(in, in, in, out, di, uo)
+	is det.
+
+mercury_compile__maybe_introduce_accumulators(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(introduce_accumulators, Optimize),
+	( { Optimize = yes } ->
+		maybe_write_string(Verbose,
+				"% Attempting to introduce accumulators...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(
+			update_module_io(accumulator__process_proc),
+			HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
+	).
+
 
 :- pred mercury_compile__maybe_lco(module_info, bool, bool,
 	module_info, io__state, io__state).

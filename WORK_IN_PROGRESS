@@ -37,6 +37,9 @@ at some time in the future:
   included in the formatted versions of the reference manual,
   only in the TexInfo source code.)
 
+* Converting procedures to tail-recursive form via automatic
+  accumulator introduction (--introduce-accumulators).
+
 * The Mercury debugger (mdb) now includes some support for declarative
   debugging.
 
@@ -46,9 +49,6 @@ code has not yet been committed and thus is not part of the standard
 distribution.
 
 * Support for aliasing in the mode system.
-
-* Converting procedures to tail-recursive form via automatic
-  accumulator introduction.
 
 
 Work not in progress
