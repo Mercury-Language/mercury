@@ -209,16 +209,16 @@ MR_trace_write_label_exec_counts(FILE *fp)
     const MR_Proc_Layout        *prev_proc;
     const MR_Proc_Layout        *proc;
     const MR_User_Proc_Id       *id;
-    MR_Trace_Port           port;
-    int             num_modules;
-    int             num_files;
-    int             num_labels;
-    int             module_num;
-    int             file_num;
-    int             label_num;
-    int             label_index;
-    MR_Unsigned         exec_count;
-    MR_PathPort         path_port;
+    MR_Trace_Port               port;
+    int                         num_modules;
+    int                         num_files;
+    int                         num_labels;
+    int                         module_num;
+    int                         file_num;
+    int                         label_num;
+    int                         label_index;
+    MR_Unsigned                 exec_count;
+    MR_PathPort                 path_port;
 
     for (port = MR_PORT_CALL; port <= MR_PORT_NONE; port++) {
         MR_named_count_port[port] = PATH_ONLY;
