@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2002-2003 The University of Melbourne.
+% Copyright (C) 1994-1998,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -221,7 +221,7 @@ peephole__match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
 	% These two classes of patterns are mutually exclusive because if_val
 	% is not straight-line code.
 
-peephole__match(mkframe(NondetFrameInfo, Redoip1), Comment, _,
+peephole__match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
 		Instrs0, Instrs) :-
 	(
 		% A mkframe sets curfr to point to the new frame
@@ -236,7 +236,7 @@ peephole__match(mkframe(NondetFrameInfo, Redoip1), Comment, _,
 		opt_util__touches_nondet_ctrl(Skipped, no)
 	->
 		list__append(Skipped, Rest, Instrs1),
-		Instrs = [mkframe(NondetFrameInfo, Redoip2) - Comment
+		Instrs = [mkframe(NondetFrameInfo, yes(Redoip2)) - Comment
 			| Instrs1]
 	;
 		opt_util__skip_comments_livevals(Instrs0, Instrs1),
@@ -249,7 +249,7 @@ peephole__match(mkframe(NondetFrameInfo, Redoip1), Comment, _,
 			Instrs = [
 				if_val(Test, do_redo)
 					- Comment2,
-				mkframe(NondetFrameInfo, do_fail)
+				mkframe(NondetFrameInfo, yes(do_fail))
 					- Comment
 				| Instrs2
 			]
@@ -262,7 +262,7 @@ peephole__match(mkframe(NondetFrameInfo, Redoip1), Comment, _,
 				Instrs = [
 					if_val(Test, do_redo)
 						- Comment2,
-					mkframe(NondetFrameInfo, Redoip1)
+					mkframe(NondetFrameInfo, yes(Redoip1))
 						- Comment
 					| Instrs2
 				]
@@ -270,7 +270,7 @@ peephole__match(mkframe(NondetFrameInfo, Redoip1), Comment, _,
 				Target = do_redo
 			->
 				Instrs = [
-					mkframe(NondetFrameInfo, Redoip1)
+					mkframe(NondetFrameInfo, yes(Redoip1))
 						- Comment,
 					if_val(Test, Redoip1)
 						- Comment2

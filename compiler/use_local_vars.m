@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -161,7 +161,7 @@ some_code_addr_is_not_label([CodeAddr | CodeAddrs]) :-
 find_live_lvals_at_end_labels(LiveMap, Label, !LiveLvals) :-
 	( map__search(LiveMap, Label, LabelLiveLvals) ->
 		set__union(LabelLiveLvals, !LiveLvals)
-	; Label = local(_, _) ->
+	; Label = internal(_, _) ->
 		error("find_live_lvals_at_end_labels: local label not found")
 	;
 		% Non-local labels can be found only through call instructions,

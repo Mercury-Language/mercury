@@ -63,9 +63,6 @@
 :- pred code_util__extract_proc_label_from_code_addr(code_addr::in,
 	proc_label::out) is det.
 
-:- pred code_util__extract_proc_label_from_label(label::in, proc_label::out)
-	is det.
-
 :- pred code_util__arg_loc_to_register(arg_loc::in, lval::out) is det.
 
 :- pred code_util__max_mentioned_reg(list(lval)::in, int::out) is det.
@@ -141,10 +138,11 @@ code_util__make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
 		% into a data structure, a label that is usable only
 		% within the current C module won't do.
 		( RttiProcLabel ^ proc_is_exported = yes ->
-			Label = exported(ProcLabel)
+			EntryType = exported
 		;
-			Label = local(ProcLabel)
-		)
+			EntryType = local
+		),
+		Label = entry(EntryType, ProcLabel)
 	;
 		Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId)),
 		choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
@@ -169,39 +167,26 @@ choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
 			ProcId = CurProcId
 		)
 	->
-		Label = c_local(ProcLabel)
+		EntryType = c_local
 	;
-		Label = local(ProcLabel)
-	).
+		EntryType = local
+	),
+	Label = entry(EntryType, ProcLabel).
 
 %-----------------------------------------------------------------------------%
 
 code_util__make_internal_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-	Label = local(LabelNum, ProcLabel).
+	Label = internal(LabelNum, ProcLabel).
 
 code_util__extract_proc_label_from_code_addr(CodeAddr, ProcLabel) :-
-	( code_util__proc_label_from_code_addr(CodeAddr, ProcLabelPrime) ->
+	( CodeAddr = label(Label) ->
+		ProcLabel = get_proc_label(Label)
+	; CodeAddr = imported(ProcLabelPrime) ->
 		ProcLabel = ProcLabelPrime
 	;
 		error("code_util__extract_label_from_code_addr failed")
 	).
-
-:- pred code_util__proc_label_from_code_addr(code_addr::in,
-	proc_label::out) is semidet.
-
-code_util__proc_label_from_code_addr(CodeAddr, ProcLabel) :-
-	(
-		CodeAddr = label(Label),
-		code_util__extract_proc_label_from_label(Label, ProcLabel)
-	;
-		CodeAddr = imported(ProcLabel)
-	).
-
-code_util__extract_proc_label_from_label(local(_, ProcLabel), ProcLabel).
-code_util__extract_proc_label_from_label(c_local(ProcLabel), ProcLabel).
-code_util__extract_proc_label_from_label(local(ProcLabel), ProcLabel).
-code_util__extract_proc_label_from_label(exported(ProcLabel), ProcLabel).
 
 %-----------------------------------------------------------------------------%
 

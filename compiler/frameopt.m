@@ -71,6 +71,9 @@
 % Since the second transformation is a bigger win, we prefer to use it
 % whenever both transformations are possible.
 %
+% For predicates that live on the nondet stack, we attempt to perform
+% only the second transformation.
+%
 % NOTE: This module cannot handle code sequences of the form
 %
 %	label1:
@@ -91,16 +94,51 @@
 :- import_module backend_libs__proc_label.
 :- import_module ll_backend__llds.
 
-:- import_module bool, list, counter.
+:- import_module bool, list, set, counter.
 
-	% The first bool output says whether we performed any modifications.
+	% frameopt_main(ProcLabel, !LabelCounter, !Instrs,
+	%	AnyChange, NewJumps):
+	%
+	% Attempt to update !Instrs using the one of the transformations
+	% described above for procedures that live on the det stack.
+	%
+	% ProcLabel should be the ProcLabel of the procedure whose body
+	% !.Instrs implements, and !.LabelCounter that procedure's label
+	% counter. If frameopt_main allocates any labels, !:LabelCounter
+	% will reflect this.
+	%
+	% AnyChange says whether we performed any modifications.
 	% If yes, then we also introduced some extra labels that should be
-	% deleted. The second says whether we introduced any jumps that
-	% can be profitably be short-circuited.
+	% deleted. NewJumps says whether we introduced any jumps that could
+	% be profitably be short-circuited.
 
-:- pred frameopt_main(list(instruction)::in, proc_label::in,
-	counter::in, counter::out, list(instruction)::out,
+:- pred frameopt_main(proc_label::in, counter::in, counter::out,
+	list(instruction)::in, list(instruction)::out,
 	bool::out, bool::out) is det.
+
+	% frameopt_nondet(ProcLabel, LayoutLabels, MayAlterRtti, !LabelCounter,
+	%	!Instrs, AnyChange):
+	%
+	% Attempt to update !Instrs using the one of the transformations
+	% described above for procedures that live on the nondet stack.
+	%
+	% ProcLabel should be the ProcLabel of the procedure whose body
+	% !.Instrs implements, and !.LabelCounter that procedure's label
+	% counter. If frameopt_main allocates any labels, !:LabelCounter
+	% will reflect this.
+	%
+	% LayoutLabels should be the set of labels in the procedure with layout
+	% structures, while MayAlterRtti should say whether we are allowed to
+	% perform optimizations that may interfere with RTTI.
+	%
+	% AnyChange says whether we performed any modifications.
+	% If yes, then we also introduced some extra labels that should be
+	% deleted, and we introduced some jumps that may be profitably
+	% short-circuited.
+
+:- pred frameopt_nondet(proc_label::in, set(label)::in, may_alter_rtti::in,
+	counter::in, counter::out,
+	list(instruction)::in, list(instruction)::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -114,11 +152,9 @@
 
 :- import_module int, string, require, std_util, assoc_list, set, map, queue.
 
-frameopt_main(Instrs0, ProcLabel, !C, Instrs, Mod, Jumps) :-
+frameopt_main(ProcLabel, !C, Instrs0, Instrs, Mod, Jumps) :-
 	opt_util__get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
-	(
-		frameopt__detstack_setup(Instrs1, FrameSize, Msg, _, _, _)
-	->
+	( frameopt__detstack_setup(Instrs1, FrameSize, Msg, _, _, _) ->
 		map__init(BlockMap0),
 		divide_into_basic_blocks([LabelInstr | Instrs1], ProcLabel,
 			BasicInstrs, !C),
@@ -173,6 +209,96 @@ flatten_block_seq([Label | Labels], BlockMap, Instrs) :-
 	map__lookup(BlockMap, Label, BlockInfo),
 	BlockInfo = block_info(_, BlockInstrs, _, _, _),
 	list__append(BlockInstrs, RestInstrs, Instrs).
+
+%-----------------------------------------------------------------------------%
+
+frameopt_nondet(ProcLabel, LayoutLabels, MayAlterRtti, !C, Instrs0, Instrs,
+		Mod) :-
+	opt_util__get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
+	(
+		MayAlterRtti = may_alter_rtti,
+		frameopt__nondetstack_setup(Instrs1, FrameInfo, Redoip,
+			MkframeInstr, Remain),
+		MkframeInstr = MkframeUinstr - MkframeComment,
+		find_succeed_labels(Instrs1, map__init, SuccMap),
+		counter__allocate(KeepFrameLabelNum, !C),
+		KeepFrameLabel = internal(KeepFrameLabelNum, ProcLabel),
+		keep_nondet_frame(Remain, Instrs2, ProcLabel, KeepFrameLabel,
+			MkframeUinstr, SuccMap, LayoutLabels, no, yes)
+	->
+		list__condense([[LabelInstr], Comments0,
+			[mkframe(FrameInfo, no) - MkframeComment,
+			label(KeepFrameLabel) - "tail recursion target",
+			assign(redoip(lval(curfr)),
+				const(code_addr_const(Redoip)))
+				- ""],
+			Instrs2], Instrs),
+		Mod = yes
+	;
+		Instrs = Instrs0,
+		Mod = no
+	).
+
+:- pred frameopt__nondetstack_setup(list(instruction)::in,
+	nondet_frame_info::out, code_addr::out,
+	instruction::out, list(instruction)::out) is semidet.
+
+frameopt__nondetstack_setup(Instrs0, FrameInfo, Redoip,
+		MkframeInstr, Remain) :-
+	Instrs0 = [MkframeInstr | Remain],
+	MkframeInstr = mkframe(FrameInfo, yes(Redoip)) - _,
+	FrameInfo = ordinary_frame(_, _, _).
+
+:- pred find_succeed_labels(list(instruction)::in, tailmap::in, tailmap::out)
+	is det.
+
+find_succeed_labels([], !SuccMap).
+find_succeed_labels([Instr | Instrs], !SuccMap) :-
+	Instr = Uinstr - _,
+	(
+		Uinstr = label(Label),
+		opt_util__skip_comments(Instrs, TailInstrs),
+		opt_util__is_succeed_next(TailInstrs, Between)
+	->
+		map__det_insert(!.SuccMap, Label, Between, !:SuccMap)
+	;
+		true
+	),
+	find_succeed_labels(Instrs, !SuccMap).
+
+:- pred keep_nondet_frame(list(instruction)::in, list(instruction)::out,
+	proc_label::in, label::in, instr::in, tailmap::in, set(label)::in,
+	bool::in, bool::out) is det.
+
+keep_nondet_frame([], [], _, _, _, _, _, !Changed).
+keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
+		PrevInstr, SuccMap, LayoutLabels, !Changed) :-
+	Instr0 = Uinstr0 - Comment,
+	(
+		% Look for nondet style tailcalls which do not need
+		% a runtime check.
+		Uinstr0 = call(label(entry(_, ProcLabel)), label(RetLabel),
+			_, _, _, CallModel),
+		CallModel = nondet(unchecked_tail_call),
+		map__search(SuccMap, RetLabel, BetweenIncl),
+		BetweenIncl = [livevals(_) - _, goto(_) - _],
+		PrevInstr = livevals(Livevals),
+		not set__member(RetLabel, LayoutLabels)
+	->
+		keep_nondet_frame(Instrs0, Instrs1, ProcLabel, KeepFrameLabel,
+			Uinstr0, SuccMap, LayoutLabels, !.Changed, _),
+		!:Changed = yes,
+		NewComment = Comment ++ " (nondet tailcall)",
+		Instrs = [
+			livevals(Livevals) - "",
+			goto(label(KeepFrameLabel)) - NewComment
+			| Instrs1
+		]
+	;
+		keep_nondet_frame(Instrs0, Instrs1, ProcLabel, KeepFrameLabel,
+			Uinstr0, SuccMap, LayoutLabels, !Changed),
+		Instrs = [Instr0 | Instrs1]
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -234,7 +360,7 @@ divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, Instrs, !C) :-
 				Instrs = [Instr0 | Instrs1]
 			;
 				counter__allocate(N, !C),
-				NewLabel = local(N, ProcLabel),
+				NewLabel = internal(N, ProcLabel),
 				NewInstr = label(NewLabel) - "",
 				divide_into_basic_blocks(Instrs0, ProcLabel,
 					Instrs1, !C),
@@ -296,7 +422,7 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, !BlockMap,
 				Instrs2 = Instrs1
 			;
 				counter__allocate(N, !C),
-				NewLabel = local(N, ProcLabel),
+				NewLabel = internal(N, ProcLabel),
 				NewInstr = label(NewLabel) - "",
 				Instrs2 = [NewInstr | Instrs1]
 			),
@@ -325,7 +451,7 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, !BlockMap,
 					[], no, ordinary(Needs)),
 				MaybeTailInfo = yes(TailInfo - Label),
 				counter__allocate(N, !C),
-				NewLabel = local(N, ProcLabel),
+				NewLabel = internal(N, ProcLabel),
 				NewInstr = label(NewLabel) - "",
 				LabelledBlock = [NewInstr | Teardown],
 				TeardownLabel = NewLabel,
@@ -616,7 +742,7 @@ analyze_block_map_2([Label | Labels], FirstLabel, !BlockMap, !KeepFrame) :-
 		),
 		(
 			LastUinstr = goto(label(GotoLabel)),
-			same_label_ref(FirstLabel, GotoLabel)
+			matching_label_ref(FirstLabel, GotoLabel)
 		->
 			!:KeepFrame = yes
 		;
@@ -640,14 +766,21 @@ analyze_block_map_2([Label | Labels], FirstLabel, !BlockMap, !KeepFrame) :-
 	% is a proper reference to the first label (from the initial label
 	% instruction).
 
-:- pred same_label_ref(label::in, label::in) is semidet.
+:- pred matching_label_ref(label::in, label::in) is semidet.
 
-same_label_ref(exported(ProcLabel), exported(ProcLabel)).
-same_label_ref(exported(ProcLabel), c_local(ProcLabel)).
-same_label_ref(exported(ProcLabel), local(ProcLabel)).
-same_label_ref(local(ProcLabel), c_local(ProcLabel)).
-same_label_ref(local(ProcLabel), local(ProcLabel)).
-same_label_ref(c_local(ProcLabel), c_local(ProcLabel)).
+matching_label_ref(entry(FirstLabelType, ProcLabel),
+		entry(GotoLabelType, ProcLabel)) :-
+	matching_entry_type(FirstLabelType, GotoLabelType).
+
+:- pred matching_entry_type(entry_label_type::in, entry_label_type::in)
+	is semidet.
+
+matching_entry_type(exported, exported).
+matching_entry_type(exported, c_local).
+matching_entry_type(exported, local).
+matching_entry_type(local, c_local).
+matching_entry_type(local, local).
+matching_entry_type(c_local, c_local).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -694,7 +827,7 @@ keep_frame([Label | Labels], FirstLabel, SecondLabel, CanClobberSuccip,
 		BlockInfo0 = block_info(Label, OrigInstrs, [_], no,
 			teardown(Succip, Livevals, Goto)),
 		Goto = goto(label(GotoLabel)) - Comment,
-		same_label_ref(FirstLabel, GotoLabel)
+		matching_label_ref(FirstLabel, GotoLabel)
 	->
 		(
 			OrigInstrs = [OrigInstr0 | _],
@@ -1069,7 +1202,7 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, FramedLabels, FrameSize,
 				% stack frame, so we must create one.
 
 				counter__allocate(N, !C),
-				NewLabel = local(N, ProcLabel),
+				NewLabel = internal(N, ProcLabel),
 				MaybeFallThrough = yes(NewLabel),
 				MaybeNewLabel = yes(NewLabel),
 				SetupCode = [
@@ -1158,7 +1291,7 @@ mark_parallel(Label0, Label, ProcLabel, !C, !ParMap) :-
 		Label = OldParallel
 	;
 		counter__allocate(N, !C),
-		NewParallel = local(N, ProcLabel),
+		NewParallel = internal(N, ProcLabel),
 		Label = NewParallel,
 		map__det_insert(!.ParMap, Label0, NewParallel, !:ParMap)
 	).

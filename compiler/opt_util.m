@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1169,7 +1169,8 @@ opt_util__instr_labels_2(block(_, _, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_labels(Instrs, Labels, CodeAddrs).
 opt_util__instr_labels_2(assign(_,_), [], []).
 opt_util__instr_labels_2(call(Target, Ret, _, _, _, _), [], [Target, Ret]).
-opt_util__instr_labels_2(mkframe(_, Addr), [], [Addr]).
+opt_util__instr_labels_2(mkframe(_, yes(Addr)), [], [Addr]).
+opt_util__instr_labels_2(mkframe(_, no), [], []).
 opt_util__instr_labels_2(label(_), [], []).
 opt_util__instr_labels_2(goto(Addr), [], [Addr]).
 opt_util__instr_labels_2(computed_goto(_, Labels), Labels, []).
@@ -1381,9 +1382,11 @@ opt_util__instr_list_labels([Uinstr - _ | Instrs], Labels, CodeAddrs) :-
 	list__append(CodeAddrs0, CodeAddrs1, CodeAddrs).
 
 opt_util__livevals_addr(label(Label), Result) :-
-	( Label = local(_, _) ->
+	(
+		Label = internal(_, _),
 		Result = no
 	;
+		Label = entry(_, _),
 		Result = yes
 	).
 opt_util__livevals_addr(imported(_), yes).
@@ -1476,13 +1479,9 @@ opt_util__count_temps_lval(Lval, R0, R, F0, F) :-
 % that uses a temp var without defining it.
 opt_util__count_temps_rval(_, R, R, F, F).
 
-opt_util__format_label(local(_, ProcLabel), Str) :-
+opt_util__format_label(internal(_, ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).
-opt_util__format_label(c_local(ProcLabel), Str) :-
-	opt_util__format_proclabel(ProcLabel, Str).
-opt_util__format_label(local(ProcLabel), Str) :-
-	opt_util__format_proclabel(ProcLabel, Str).
-opt_util__format_label(exported(ProcLabel), Str) :-
+opt_util__format_label(entry(_, ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).
 
 :- pred opt_util__format_proclabel(proc_label, string).
@@ -1765,14 +1764,22 @@ opt_util__replace_labels_instr(assign(Lval0, Rval0), ReplMap, ReplData,
 opt_util__replace_labels_instr(call(Target, Return0, LiveInfo, CXT, GP, CM),
 		ReplMap, _, call(Target, Return, LiveInfo, CXT, GP, CM)) :-
 	opt_util__replace_labels_code_addr(Return0, ReplMap, Return).
-opt_util__replace_labels_instr(mkframe(NondetFrameInfo, Redoip0), ReplMap,
-		ReplData, mkframe(NondetFrameInfo, Redoip)) :-
+opt_util__replace_labels_instr(mkframe(NondetFrameInfo, MaybeRedoip0), ReplMap,
+		ReplData, mkframe(NondetFrameInfo, MaybeRedoip)) :-
 	(
 		ReplData = yes,
-		opt_util__replace_labels_code_addr(Redoip0, ReplMap, Redoip)
+		(
+			MaybeRedoip0 = yes(Redoip0),
+			opt_util__replace_labels_code_addr(Redoip0, ReplMap,
+				Redoip),
+			MaybeRedoip = yes(Redoip)
+		;
+			MaybeRedoip0 = no,
+			MaybeRedoip = no
+		)
 	;
 		ReplData = no,
-		Redoip = Redoip0
+		MaybeRedoip = MaybeRedoip0
 	).
 opt_util__replace_labels_instr(label(Label), ReplMap, _, label(Label)) :-
 	( map__search(ReplMap, Label, _) ->

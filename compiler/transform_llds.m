@@ -105,7 +105,7 @@ gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
 	PredName = "ACCURATE_GC_END_LABEL",
 	ProcLabel = proc(ModuleName, predicate, ModuleName, PredName,
 		Arity, ProcId),
-	Instrs = [label(local(ProcLabel)) -
+	Instrs = [label(entry(local, ProcLabel)) -
 		"label to indicate end of previous procedure"],
 	DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId),
 		Instrs, ProcLabel, counter__init(0), must_not_alter_rtti),
@@ -195,9 +195,9 @@ split_computed_goto(Rval, Labels, Comment, Instrs, !C, MaxSize, NumLabels,
 
 		Index     = binop((-), Rval, const(int_const(Mid))),
 		Test      = binop((>=), Rval, const(int_const(Mid))),
-		ElseAddr  = label(local(LabelNum, ProcLabel)),
+		ElseAddr  = label(internal(LabelNum, ProcLabel)),
 		IfInstr   = if_val(Test, ElseAddr) - "binary search",
-		ElseInstr = label(local(LabelNum, ProcLabel)) - "",
+		ElseInstr = label(internal(LabelNum, ProcLabel)) - "",
 
 		split_computed_goto(Rval, Start, Comment ++ " then",
 			ThenInstrs, !C, MaxSize, Mid, ProcLabel),

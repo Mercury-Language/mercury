@@ -19,33 +19,36 @@
 
 :- import_module list, set, bool, counter.
 
-	% Take an instruction list and optimize jumps. This includes jumps
+	% jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
+	%	Recjump, PessimizeTailCalls, CheckedNondetTailCall,
+	%	!LabelCounter, !Instrs, Mod):
+	%
+	% Take an instruction list and optimize jumps. This includes the jumps
 	% implicit in procedure returns.
 	%
-	% The second argument gives the set of labels that have layout
-	% structures. This module will not optimize jumps to labels in this
-	% set, since this may interfere with the RTTI recorded for these
-	% labels. The third argument says whether we are allowed to perform
-	% optimizations that may interfere with RTTI.
+	% LayoutLabels gives the set of labels that have layout structures.
+	% This module will not optimize jumps to labels in this set, since
+	% this may interfere with the RTTI recorded for these labels.
+	% MayAlterRtti says whether we are allowed to perform optimizations
+	% that may interfere with RTTI.
 	%
-	% The final four bool inputs should be
+	% Fulljumpopt should be the value of the --optimize-fulljumps option.
 	%
-	% - the value of the --optimize-fulljumps option,
+	% Recjump should be an indication of whether this is the final
+	% application of this optimization.
 	%
-	% - an indication of whether this is the final application of this
-	%   optimization,
+	% PessimizeTailCalls should be the value of the --pessimize-tailcalls
+	% option.
 	%
-	% - the value of the --pessimize-tailcalls option, and
+	% CheckedNondetTailCall should be the value of the
+	% --checked-nondet-tailcalls option.
 	%
-	% - the value of the --checked-nondet-tailcalls option respectively.
-	%
-	% The bool output says whether the instruction sequence was modified
+	% Mod will say whether the instruction sequence was modified
 	% by the optimization.
 
-:- pred jumpopt_main(list(instruction)::in, set(label)::in, may_alter_rtti::in,
-	proc_label::in, counter::in, counter::out,
-	bool::in, bool::in, bool::in, bool::in,
-	list(instruction)::out, bool::out) is det.
+:- pred jumpopt_main(set(label)::in, may_alter_rtti::in, proc_label::in,
+	bool::in, bool::in, bool::in, bool::in, counter::in, counter::out,
+	list(instruction)::in, list(instruction)::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -81,9 +84,9 @@
 % frameopt, which can do a better job of optimizing this block, have
 % been applied.
 
-jumpopt_main(Instrs0, LayoutLabels, MayAlterRtti, ProcLabel, C0, C,
-		Fulljumpopt, Recjump, PessimizeTailCalls,
-		CheckedNondetTailCall, Instrs, Mod) :-
+jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt, Recjump,
+		PessimizeTailCalls, CheckedNondetTailCall, !C, Instrs0, Instrs,
+		Mod) :-
 	map__init(Instrmap0),
 	map__init(Lvalmap0),
 	map__init(Procmap0),
@@ -111,14 +114,14 @@ jumpopt_main(Instrs0, LayoutLabels, MayAlterRtti, ProcLabel, C0, C,
 	),
 	(
 		CheckedNondetTailCall = yes,
-		CheckedNondetTailCallInfo0 = yes(ProcLabel - C0),
+		CheckedNondetTailCallInfo0 = yes(ProcLabel - !.C),
 		jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap,
 			Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap,
 			LayoutLabels, Fulljumpopt, MayAlterRtti,
 			CheckedNondetTailCallInfo0, CheckedNondetTailCallInfo,
 			Instrs1),
-		( CheckedNondetTailCallInfo = yes(_ - Cprime) ->
-			C = Cprime
+		( CheckedNondetTailCallInfo = yes(_ - !:C) ->
+			true
 		;
 			error("jumpopt_main: lost the next label number")
 		)
@@ -128,8 +131,7 @@ jumpopt_main(Instrs0, LayoutLabels, MayAlterRtti, ProcLabel, C0, C,
 		jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap,
 			Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap,
 			LayoutLabels, Fulljumpopt, MayAlterRtti,
-			CheckedNondetTailCallInfo0, _, Instrs1),
-		C = C0
+			CheckedNondetTailCallInfo0, _, Instrs1)
 	),
 	opt_util__filter_out_bad_livevals(Instrs1, Instrs),
 	( Instrs = Instrs0 ->
@@ -180,10 +182,10 @@ jumpopt__build_maps([Instr0 | Instrs0], Recjump, !Instrmap,
 		;
 			true
 		),
-		% put the start of the procedure into Blockmap
-		% only after frameopt and value_number have had a shot at it
+		% Put the start of the procedure into Blockmap only after
+		% frameopt has had a shot at it.
 		(
-			( Label = local(_, _)
+			( Label = internal(_, _)
 			; Recjump = yes
 			)
 		->
@@ -320,7 +322,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			counter__allocate(LabelNum, Counter0, Counter1),
-			NewLabel = local(LabelNum, ProcLabel),
+			NewLabel = internal(LabelNum, ProcLabel),
 			NewInstrs = [
 				if_val(binop(ne, lval(curfr), lval(maxfr)),
 					label(NewLabel))
@@ -533,6 +535,43 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			% strictly reduces the size of the code.
 			RemainInstrs = [NewInstr | AfterGoto]
 		;
+			% Attempt to transform code such as
+			%
+			%	if (Cond) L1
+			%	goto L2
+			%
+			% into
+			%
+			%	if (! Cond) L2
+			% 	<code at L1>
+			%
+			% when we know the code at L1 and don't know the code
+			% at L2. Here, we just generate
+			%
+			%	if (! Cond) L2
+			% 	goto L1
+			%
+			% and get the code processed again starting after the
+			% if_val, to get the recursive call to replace the goto
+			% to L1 with the code at L1.
+			Fulljumpopt = yes,
+			map__search(Blockmap, TargetLabel, _TargetBlock),
+			opt_util__skip_comments(Instrs0, Instrs1),
+			Instrs1 = [GotoInstr | AfterGoto],
+			GotoInstr = goto(GotoAddr) - GotoComment,
+			\+ (
+				GotoAddr = label(GotoLabel),
+				map__search(Blockmap, GotoLabel, _)
+			)
+		->
+			code_util__neg_rval(Cond, NotCond),
+			NewIfInstr = if_val(NotCond, GotoAddr) - GotoComment,
+			NewInstrs = [NewIfInstr],
+			NewGotoComment = Comment0 ++ " (switched)",
+			NewGotoInstr = goto(label(TargetLabel)) -
+				NewGotoComment,
+			RemainInstrs = [NewGotoInstr | AfterGoto]
+		;
 			map__search(Instrmap, TargetLabel, TargetInstr)
 		->
 			jumpopt__final_dest(Instrmap, TargetLabel, DestLabel,
@@ -609,7 +648,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				Shorted),
 			NewInstrs = [assign(Lval, Rval) - Shorted]
 		)
-	; Uinstr0 = mkframe(FrameInfo, label(Label0)) ->
+	; Uinstr0 = mkframe(FrameInfo, yes(label(Label0))) ->
 		jumpopt__short_label(Instrmap, Label0, Label),
 		RemainInstrs = Instrs0,
 		( Label = Label0 ->
@@ -617,7 +656,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		;
 			string__append(Comment0, " (some shortcircuits)",
 				Shorted),
-			NewInstrs = [mkframe(FrameInfo, label(Label))
+			NewInstrs = [mkframe(FrameInfo, yes(label(Label)))
 				- Shorted]
 		)
 	;

@@ -463,7 +463,7 @@ order_layout_datas_2([Layout | Layouts], !ProcLayouts, !LabelLayouts,
 		!OtherLayouts) :-
 	( Layout = proc_layout_data(_, _, _) ->
 		!:ProcLayouts = [Layout | !.ProcLayouts]
-	; Layout = label_layout_data(_, _, _, _, _, _) ->
+	; Layout = label_layout_data(_, _, _, _, _, _, _) ->
 		!:LabelLayouts = [Layout | !.LabelLayouts]
 	;
 		!:OtherLayouts = [Layout | !.OtherLayouts]
@@ -1145,11 +1145,13 @@ group_c_labels_with_layouts(_StackLayoutLabels, [],
 		!DeclLLMap, !OtherLocalMap, !RevAddrsToDecl, !RevOthers).
 group_c_labels_with_layouts(StackLayoutLabels, [Label | Labels],
 		!DeclLLMap, !OtherLocalMap, !RevAddrsToDecl, !RevOthers) :-
-	( Label = local(LabelNum, ProcLabel) ->
+	(
+		Label = internal(LabelNum, ProcLabel),
 		( map__search(StackLayoutLabels, Label, DataAddr) ->
 			(
 				DataAddr = layout_addr(LayoutName),
-				LayoutName = label_layout(Label, LabelVars),
+				LayoutName = label_layout(ProcLabel, LabelNum,
+					LabelVars),
 				LabelVars = label_has_var_info
 			->
 				multi_map__set(!.DeclLLMap, ProcLabel,
@@ -1165,6 +1167,7 @@ group_c_labels_with_layouts(StackLayoutLabels, [Label | Labels],
 				!:OtherLocalMap)
 		)
 	;
+		Label = entry(_, _),
 		!:RevOthers = [Label | !.RevOthers]
 	),
 	group_c_labels_with_layouts(StackLayoutLabels, Labels,
@@ -1226,8 +1229,7 @@ output_local_label_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
 	decl_set::in, decl_set::out) is det.
 
 insert_var_info_label_layout_decl(ProcLabel, LabelNum, !DeclSet) :-
-	Label = local(LabelNum, ProcLabel),
-	LayoutName = label_layout(Label, label_has_var_info),
+	LayoutName = label_layout(ProcLabel, LabelNum, label_has_var_info),
 	DataAddr = layout_addr(LayoutName),
 	DeclId = data_addr(DataAddr),
 	decl_set_insert(DeclId, !DeclSet).
@@ -1236,7 +1238,7 @@ insert_var_info_label_layout_decl(ProcLabel, LabelNum, !DeclSet) :-
 	decl_set::in, decl_set::out) is det.
 
 insert_code_addr_decl(ProcLabel, LabelNum, !DeclSet) :-
-	DeclId = code_addr(label(local(LabelNum, ProcLabel))),
+	DeclId = code_addr(label(internal(LabelNum, ProcLabel))),
 	decl_set_insert(DeclId, !DeclSet).
 
 :- pred output_c_label_decl(map(label, data_addr)::in, label::in,
@@ -1248,9 +1250,10 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
 	%
 	( map__search(StackLayoutLabels, Label, DataAddr) ->
 		(
-			Label = local(LabelNum, ProcLabel),
+			Label = internal(LabelNum, ProcLabel),
 			DataAddr = layout_addr(LayoutName),
-			LayoutName = label_layout(Label, LabelVars)
+			LayoutName = label_layout(ProcLabel, LabelNum,
+				LabelVars)
 		->
 			(
 				LabelVars = label_has_var_info,
@@ -1282,10 +1285,10 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
 		% Declare the label itself.
 		%
 		(
-			Label = exported(_),
+			Label = entry(exported, _),
 			DeclMacro = "MR_def_extern_entry("
 		;
-			Label = local(_),
+			Label = entry(local, _),
 			% The code for procedures local to a Mercury module
 			% should normally be visible only within the C file
 			% generated for that module. However, if we generate
@@ -1299,10 +1302,10 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
 				DeclMacro = "MR_def_extern_entry("
 			)
 		;
-			Label = c_local(_),
+			Label = entry(c_local, _),
 			DeclMacro = "MR_decl_local("
 		;
-			Label = local(_, _),
+			Label = internal(_, _),
 			DeclMacro = "MR_decl_label("
 		),
 		io__write_string(DeclMacro, !IO),
@@ -1341,7 +1344,8 @@ output_c_label_inits(StackLayoutLabels, Labels, !IO) :-
 group_c_labels(_StackLayoutLabels, [], !NoLayoutMap, !LayoutMap, !RevOthers).
 group_c_labels(StackLayoutLabels, [Label | Labels], !NoLayoutMap, !LayoutMap,
 		!RevOthers) :-
-	( Label = local(LabelNum, ProcLabel) ->
+	(
+		Label = internal(LabelNum, ProcLabel),
 		( map__search(StackLayoutLabels, Label, _DataAddr) ->
 			multi_map__set(!.LayoutMap, ProcLabel, LabelNum,
 				!:LayoutMap)
@@ -1350,6 +1354,7 @@ group_c_labels(StackLayoutLabels, [Label | Labels], !NoLayoutMap, !LayoutMap,
 				!:NoLayoutMap)
 		)
 	;
+		Label = entry(_, _),
 		!:RevOthers = [Label | !.RevOthers]
 	),
 	group_c_labels(StackLayoutLabels, Labels, !NoLayoutMap, !LayoutMap,
@@ -1402,18 +1407,18 @@ output_c_label_init(StackLayoutLabels, Label, !IO) :-
 		InitProcLayout = no
 	),
 	(
-		Label = exported(ProcLabel),
+		Label = entry(exported, ProcLabel),
 		TabInitMacro = "\tMR_init_entry1"
 	;
-		Label = local(ProcLabel),
+		Label = entry(local, ProcLabel),
 		TabInitMacro = "\tMR_init_entry1"
 	;
-		Label = c_local(ProcLabel),
+		Label = entry(c_local, ProcLabel),
 		TabInitMacro = "\tMR_init_local1"
 	;
-		Label = local(_, _),
+		Label = internal(_, _),
 		% These should have been separated out by group_c_labels.
-		error("output_c_label_init: local/2")
+		error("output_c_label_init: internal/2")
 	),
 	io__write_string(TabInitMacro, !IO),
 	io__write_string(SuffixOpen, !IO),
@@ -1429,10 +1434,8 @@ output_c_label_init(StackLayoutLabels, Label, !IO) :-
 
 :- pred label_is_proc_entry(label::in, bool::out) is det.
 
-label_is_proc_entry(local(_, _), no).
-label_is_proc_entry(c_local(_), yes).
-label_is_proc_entry(local(_), yes).
-label_is_proc_entry(exported(_), yes).
+label_is_proc_entry(internal(_, _), no).
+label_is_proc_entry(entry(_, _), yes).
 
 :- pred output_c_procedure_decls(map(label, data_addr)::in, c_procedure::in,
 	decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -1492,9 +1495,11 @@ llds_out__find_caller_label([], _) :-
 	error("cannot find caller label").
 llds_out__find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
 	( Instr0 = label(Label) ->
-		( Label = local(_, _) ->
+		(
+			Label = internal(_, _),
 			error("caller label is internal label")
 		;
+			Label = entry(_, _),
 			CallerLabel = Label
 		)
 	;
@@ -1513,12 +1518,12 @@ llds_out__find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
 		(
 			Instr = call(_, label(ContLabel), _, _, _, _)
 		;
-			Instr = mkframe(_, label(ContLabel))
+			Instr = mkframe(_, yes(label(ContLabel)))
 		;
 			Instr = join_and_continue(_, ContLabel)
 		;
-			Instr = assign(redoip(lval(_)),
-				const(code_addr_const(label(ContLabel))))
+			Instr = assign(redoip(_), const(Const)),
+			Const = code_addr_const(label(ContLabel))
 		)
 	->
 		bintree_set__insert(!.ContLabelSet, ContLabel, !:ContLabelSet)
@@ -1614,7 +1619,7 @@ output_instr_decls(_, call(Target, ContLabel, _, _, _, _),
 	output_code_addr_decls(Target, !DeclSet, !IO),
 	output_code_addr_decls(ContLabel, !DeclSet, !IO).
 output_instr_decls(_, c_code(_, _), !DeclSet, !IO).
-output_instr_decls(_, mkframe(FrameInfo, FailureContinuation),
+output_instr_decls(_, mkframe(FrameInfo, MaybeFailureContinuation),
 		!DeclSet, !IO) :-
 	(
 		FrameInfo = ordinary_frame(_, _, yes(Struct)),
@@ -1634,11 +1639,13 @@ output_instr_decls(_, mkframe(FrameInfo, FailureContinuation),
 		io__write_string("struct ", !IO),
 		io__write_string(StructName, !IO),
 		io__write_string(" {\n", !IO),
-		( MaybeStructFieldsContext = yes(StructFieldsContext) ->
+		(
+			MaybeStructFieldsContext = yes(StructFieldsContext),
 			output_set_line_num(StructFieldsContext, !IO),
 			io__write_string(StructFields, !IO),
 			output_reset_line_num(!IO)
 		;
+			MaybeStructFieldsContext = no,
 			io__write_string(StructFields, !IO)
 		),
 		io__write_string("\n};\n", !IO),
@@ -1646,7 +1653,12 @@ output_instr_decls(_, mkframe(FrameInfo, FailureContinuation),
 	;
 		true
 	),
-	output_code_addr_decls(FailureContinuation, !DeclSet, !IO).
+	(
+		MaybeFailureContinuation = yes(FailureContinuation),
+		output_code_addr_decls(FailureContinuation, !DeclSet, !IO)
+	;
+		MaybeFailureContinuation = no
+	).
 output_instr_decls(_, label(_), !DeclSet, !IO).
 output_instr_decls(_, goto(CodeAddr), !DeclSet, !IO) :-
 	output_code_addr_decls(CodeAddr, !DeclSet, !IO).
@@ -1811,8 +1823,9 @@ output_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
 	bintree_set__init(ContLabelSet),
 	DummyModule = unqualified("DEBUG"),
 	DummyPredName = "DEBUG",
-	ProfInfo = local(proc(DummyModule, predicate, DummyModule,
-		DummyPredName, 0, hlds_pred__initial_proc_id)) - ContLabelSet,
+	ProcLabel = proc(DummyModule, predicate, DummyModule,
+		DummyPredName, 0, hlds_pred__initial_proc_id),
+	ProfInfo = entry(local, ProcLabel) - ContLabelSet,
 	output_instruction_and_comment(Instr, Comment, PrintComments,
 		ProfInfo, !IO).
 
@@ -1823,8 +1836,9 @@ output_instruction(Instr, !IO) :-
 	bintree_set__init(ContLabelSet),
 	DummyModule = unqualified("DEBUG"),
 	DummyPredName = "DEBUG",
-	ProfInfo = local(proc(DummyModule, predicate, DummyModule,
-		DummyPredName, 0, hlds_pred__initial_proc_id)) - ContLabelSet,
+	ProcLabel = proc(DummyModule, predicate, DummyModule,
+		DummyPredName, 0, hlds_pred__initial_proc_id),
+	ProfInfo = entry(local, ProcLabel) - ContLabelSet,
 	output_instruction(Instr, ProfInfo, !IO).
 
 :- pred output_instruction(instr::in, pair(label, bintree_set(label))::in,
@@ -1877,39 +1891,78 @@ output_instruction(c_code(C_Code_String, _), _, !IO) :-
 	io__write_string("\t", !IO),
 	io__write_string(C_Code_String, !IO).
 
-output_instruction(mkframe(FrameInfo, FailCont), _, !IO) :-
+output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
 	(
 		FrameInfo = ordinary_frame(Msg, Num, MaybeStruct),
-		( MaybeStruct = yes(pragma_c_struct(StructName, _, _)) ->
-			io__write_string("\tMR_mkpragmaframe(""", !IO),
-			c_util__output_quoted_string(Msg, !IO),
-			io__write_string(""", ", !IO),
-			io__write_int(Num, !IO),
-			io__write_string(", ", !IO),
-			io__write_string(StructName, !IO),
-			io__write_string(", ", !IO),
-			output_code_addr(FailCont, !IO),
-			io__write_string(");\n", !IO)
+		(
+			MaybeStruct = yes(pragma_c_struct(StructName, _, _)),
+			(
+				MaybeFailCont = yes(FailCont),
+				io__write_string("\tMR_mkpragmaframe(""", !IO),
+				c_util__output_quoted_string(Msg, !IO),
+				io__write_string(""", ", !IO),
+				io__write_int(Num, !IO),
+				io__write_string(", ", !IO),
+				io__write_string(StructName, !IO),
+				io__write_string(", ", !IO),
+				output_code_addr(FailCont, !IO),
+				io__write_string(");\n", !IO)
+			;
+				MaybeFailCont = no,
+				io__write_string(
+					"\tMR_mkpragmaframe_no_redoip(""",
+					!IO),
+				c_util__output_quoted_string(Msg, !IO),
+				io__write_string(""", ", !IO),
+				io__write_int(Num, !IO),
+				io__write_string(", ", !IO),
+				io__write_string(StructName, !IO),
+				io__write_string(");\n", !IO)
+			)
 		;
-			io__write_string("\tMR_mkframe(""", !IO),
-			c_util__output_quoted_string(Msg, !IO),
-			io__write_string(""", ", !IO),
-			io__write_int(Num, !IO),
-			io__write_string(", ", !IO),
-			output_code_addr(FailCont, !IO),
-			io__write_string(");\n", !IO)
+			MaybeStruct = no,
+			(
+				MaybeFailCont = yes(FailCont),
+				io__write_string("\tMR_mkframe(""", !IO),
+				c_util__output_quoted_string(Msg, !IO),
+				io__write_string(""", ", !IO),
+				io__write_int(Num, !IO),
+				io__write_string(", ", !IO),
+				output_code_addr(FailCont, !IO),
+				io__write_string(");\n", !IO)
+			;
+				MaybeFailCont = no,
+				io__write_string("\tMR_mkframe_no_redoip(""",
+					!IO),
+				c_util__output_quoted_string(Msg, !IO),
+				io__write_string(""", ", !IO),
+				io__write_int(Num, !IO),
+				io__write_string(");\n", !IO)
+			)
 		)
 	;
 		FrameInfo = temp_frame(Kind),
 		(
 			Kind = det_stack_proc,
 			io__write_string("\tMR_mkdettempframe(", !IO),
-			output_code_addr(FailCont, !IO),
+			(
+				MaybeFailCont = yes(FailCont),
+				output_code_addr(FailCont, !IO)
+			;
+				MaybeFailCont = no,
+				error("output_instruction: no failcont")
+			),
 			io__write_string(");\n", !IO)
 		;
 			Kind = nondet_stack_proc,
 			io__write_string("\tMR_mktempframe(", !IO),
-			output_code_addr(FailCont, !IO),
+			(
+				MaybeFailCont = yes(FailCont),
+				output_code_addr(FailCont, !IO)
+			;
+				MaybeFailCont = no,
+				error("output_instruction: no failcont")
+			),
 			io__write_string(");\n", !IO)
 		)
 	).
@@ -3043,16 +3096,16 @@ output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, !N, !DeclSet,
 
 need_code_addr_decls(label(Label), Need, !IO) :-
 	(
-		Label = exported(_),
+		Label = entry(exported, _),
 		Need = yes
 	;
-		Label = local(_),
+		Label = entry(local, _),
 		Need = yes
 	;
-		Label = c_local(_),
+		Label = entry(c_local, _),
 		Need = no
 	;
-		Label = local(_, _),
+		Label = internal(_, _),
 		Need = no
 	).
 need_code_addr_decls(imported(_), yes, !IO).
@@ -3130,21 +3183,22 @@ output_code_addr_decls(do_not_reached, !IO) :-
 
 :- pred output_label_as_code_addr_decls(label::in, io::di, io::uo) is det.
 
-output_label_as_code_addr_decls(exported(ProcLabel), !IO) :-
+output_label_as_code_addr_decls(entry(exported, ProcLabel), !IO) :-
 	io__write_string("MR_decl_entry(", !IO),
-	output_label(exported(ProcLabel), no, !IO),
+	output_label(entry(exported, ProcLabel), no, !IO),
 	io__write_string(");\n", !IO).
-output_label_as_code_addr_decls(local(ProcLabel), !IO) :-
+output_label_as_code_addr_decls(entry(local, ProcLabel), !IO) :-
 	globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-	( SplitFiles = no ->
-		true
+	(
+		SplitFiles = no
 	;
+		SplitFiles = yes,
 		io__write_string("MR_decl_entry(", !IO),
-		output_label(local(ProcLabel), no, !IO),
+		output_label(entry(local, ProcLabel), no, !IO),
 		io__write_string(");\n", !IO)
 	).
-output_label_as_code_addr_decls(c_local(_), !IO).
-output_label_as_code_addr_decls(local(_, _), !IO).
+output_label_as_code_addr_decls(entry(c_local, _), !IO).
+output_label_as_code_addr_decls(internal(_, _), !IO).
 
 output_data_addr_decls(DataAddr, !DeclSet, !IO) :-
 	output_data_addr_decls(DataAddr, "", "", 0, _, !DeclSet, !IO).
@@ -3299,7 +3353,7 @@ maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet, !IO) :-
 
 output_goto(label(Label), CallerLabel, !IO) :-
 	(
-		Label = exported(_),
+		Label = entry(exported, _),
 		globals__io_lookup_bool_option(profile_calls, ProfileCalls,
 			!IO),
 		(
@@ -3316,7 +3370,7 @@ output_goto(label(Label), CallerLabel, !IO) :-
 			io__write_string(");\n", !IO)
 		)
 	;
-		Label = local(_),
+		Label = entry(local, _),
 		globals__io_lookup_bool_option(profile_calls, ProfileCalls,
 			!IO),
 		(
@@ -3333,7 +3387,7 @@ output_goto(label(Label), CallerLabel, !IO) :-
 			io__write_string(");\n", !IO)
 		)
 	;
-		Label = c_local(_),
+		Label = entry(c_local, _),
 		globals__io_lookup_bool_option(profile_calls, ProfileCalls,
 			!IO),
 		(
@@ -3350,7 +3404,7 @@ output_goto(label(Label), CallerLabel, !IO) :-
 			io__write_string(");\n", !IO)
 		)
 	;
-		Label = local(_, _),
+		Label = internal(_, _),
 		io__write_string("MR_GOTO_LAB(", !IO),
 		output_label(Label, no, !IO),
 		io__write_string(");\n", !IO)
@@ -3463,9 +3517,7 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
 	(
 		Target = label(Label),
 		% We really shouldn't be calling internal labels ...
-		( Label = c_local(_)
-		; Label = local(_, _)
-		)
+		label_is_external_to_c_module(Label) = no
 	->
 		(
 			ProfileCall = yes,
@@ -3511,9 +3563,7 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
 		)
 	;
 		Continuation = label(ContLabel),
-		( ContLabel = c_local(_)
-		; ContLabel = local(_, _)
-		)
+		label_is_external_to_c_module(ContLabel) = no
 	->
 		(
 			ProfileCall = yes,
@@ -3634,12 +3684,12 @@ output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO) :-
 
 code_addr_to_string_base(label(Label), BaseStr, yes, Wrapper) :-
 	BaseStr = label_to_c_string(Label, no),
-	IsEntry = label_is_entry(Label),
+	IsExternal = label_is_external_to_c_module(Label),
 	(
-		IsEntry = yes,
+		IsExternal = yes,
 		Wrapper = entry
 	;
-		IsEntry = no,
+		IsExternal = no,
 		Wrapper = label
 	).
 code_addr_to_string_base(imported(ProcLabel), BaseStr, yes, entry) :-
@@ -3766,18 +3816,18 @@ output_label_as_code_addr(Label, !IO) :-
 	label_as_code_addr_to_string(Label, Str),
 	io__write_string(Str, !IO).
 
-:- func label_is_entry(label) = bool.
+:- func label_is_external_to_c_module(label) = bool.
 
-label_is_entry(exported(_)) = yes.
-label_is_entry(local(_)) = yes.
-label_is_entry(c_local(_)) = no.
-label_is_entry(local(_, _)) = no.
+label_is_external_to_c_module(entry(exported, _)) = yes.
+label_is_external_to_c_module(entry(local, _)) = yes.
+label_is_external_to_c_module(entry(c_local, _)) = no.
+label_is_external_to_c_module(internal(_, _)) = no.
 
 :- pred label_as_code_addr_to_string(label::in, string::out) is det.
 
 label_as_code_addr_to_string(Label, Str) :-
 	LabelStr = llds_out__label_to_c_string(Label, no),
-	IsEntry = label_is_entry(Label),
+	IsEntry = label_is_external_to_c_module(Label),
 	(
 		IsEntry = yes,
 		Str = "MR_ENTRY_AP(" ++ LabelStr ++ ")"
@@ -3807,44 +3857,45 @@ output_label_list_2([Label | Labels], !IO) :-
 
 :- pred output_label_defn(label::in, io::di, io::uo) is det.
 
-output_label_defn(exported(ProcLabel), !IO) :-
+output_label_defn(entry(exported, ProcLabel), !IO) :-
 	io__write_string("MR_define_entry(", !IO),
-	output_label(exported(ProcLabel), !IO),
+	output_label(entry(exported, ProcLabel), !IO),
 	io__write_string(");\n", !IO).
-output_label_defn(local(ProcLabel), !IO) :-
+output_label_defn(entry(local, ProcLabel), !IO) :-
 	% The code for procedures local to a Mercury module
 	% should normally be visible only within the C file
 	% generated for that module. However, if we generate
 	% multiple C files, the code in each C file must be
 	% visible to the other C files for that Mercury module.
 	globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-	( SplitFiles = no ->
+	(
+		SplitFiles = no,
 		io__write_string("MR_def_static(", !IO),
 		output_proc_label(ProcLabel, no, !IO),
 		io__write_string(")\n", !IO)
 	;
+		SplitFiles = yes,
 		io__write_string("MR_def_entry(", !IO),
 		output_proc_label(ProcLabel, no, !IO),
 		io__write_string(")\n", !IO)
 	).
-output_label_defn(c_local(ProcLabel), !IO) :-
+output_label_defn(entry(c_local, ProcLabel), !IO) :-
 	io__write_string("MR_def_local(", !IO),
 	output_proc_label(ProcLabel, no, !IO),
 	io__write_string(")\n", !IO).
-output_label_defn(local(Num, ProcLabel), !IO) :-
+output_label_defn(internal(Num, ProcLabel), !IO) :-
 	io__write_string("MR_def_label(", !IO),
 	output_proc_label(ProcLabel, no, !IO),
 	io__write_string(",", !IO),
 	io__write_int(Num, !IO),
 	io__write_string(")\n", !IO).
 
-% Entry labels, i.e. those bound to any functor other than local/2,
-% should generate the same code, regardless of whether we refer to them
-% via exported/1, local/1 or c_local/1, because we may refer to an entry label
-% via different function symbols in different circumstances.
+% Entry labels should generate the same code, regardless of the entry label
+% type, because we may refer to an entry label via different entry label types
+% in different circumstances.
 % For example, the entry label of a recursive unification predicate
-% is referred to as local/1 in type_info structures and as c_local/1
-% in the recursive call, since the c_local/1 is special cased in some
+% is referred to as local in type_info structures and as c_local
+% in the recursive call, since the c_local is special cased in some
 % circumstances, leading to better code.
 
 output_label(Label, !IO) :-
@@ -3855,13 +3906,9 @@ output_label(Label, AddPrefix, !IO) :-
 	LabelStr = llds_out__label_to_c_string(Label, AddPrefix),
 	io__write_string(LabelStr, !IO).
 
-llds_out__label_to_c_string(exported(ProcLabel), AddPrefix) =
+llds_out__label_to_c_string(entry(_, ProcLabel), AddPrefix) =
 	proc_label_to_c_string(ProcLabel, AddPrefix).
-llds_out__label_to_c_string(local(ProcLabel), AddPrefix) =
-	proc_label_to_c_string(ProcLabel, AddPrefix).
-llds_out__label_to_c_string(c_local(ProcLabel), AddPrefix) =
-	proc_label_to_c_string(ProcLabel, AddPrefix).
-llds_out__label_to_c_string(local(Num, ProcLabel), AddPrefix) = LabelStr :-
+llds_out__label_to_c_string(internal(Num, ProcLabel), AddPrefix) = LabelStr :-
 	ProcLabelStr = proc_label_to_c_string(ProcLabel, AddPrefix),
 	string__int_to_string(Num, NumStr),
 	string__append("_i", NumStr, NumSuffix),

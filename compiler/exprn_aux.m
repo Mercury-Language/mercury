@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2003 The University of Melbourne.
+% Copyright (C) 1995-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -168,12 +168,15 @@ exprn_aux__addr_is_constant(do_not_reached, _, no).
 :- pred exprn_aux__label_is_constant(label::in, bool::in, bool::in, bool::out)
 	is det.
 
-exprn_aux__label_is_constant(exported(_), NonLocalGotos, AsmLabels, IsConst) :-
+exprn_aux__label_is_constant(entry(exported, _), NonLocalGotos, AsmLabels,
+		IsConst) :-
 	globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
-exprn_aux__label_is_constant(local(_), NonLocalGotos, AsmLabels, IsConst) :-
+exprn_aux__label_is_constant(entry(local, _), NonLocalGotos, AsmLabels,
+		IsConst) :-
 	globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
-exprn_aux__label_is_constant(c_local(_), _NonLocalGotos, _AsmLabels, yes).
-exprn_aux__label_is_constant(local(_, _), _NonLocalGotos, _AsmLabels, yes).
+exprn_aux__label_is_constant(entry(c_local, _), _NonLocalGotos, _AsmLabels,
+		yes).
+exprn_aux__label_is_constant(internal(_, _), _NonLocalGotos, _AsmLabels, yes).
 
 %------------------------------------------------------------------------------%
 

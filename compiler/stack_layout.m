@@ -150,7 +150,7 @@ stack_layout__generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
 
 stack_layout__valid_proc_layout(ProcLayoutInfo) :-
 	EntryLabel = ProcLayoutInfo ^ entry_label,
-	code_util__extract_proc_label_from_label(EntryLabel, ProcLabel),
+	ProcLabel = get_proc_label(EntryLabel),
 	(
 		ProcLabel = proc(_, _, DeclModule, Name, Arity, _),
 		\+ no_type_info_builtin(DeclModule, Name, Arity)
@@ -296,7 +296,7 @@ stack_layout__construct_layouts(ProcLayoutInfo, !Info) :-
 	compute_var_number_map(HeadVars, VarSet, Internals, MaybeGoal,
 		VarNumMap),
 
-	code_util__extract_proc_label_from_label(EntryLabel, ProcLabel),
+	ProcLabel = get_proc_label(EntryLabel),
 	stack_layout__get_procid_stack_layout(ProcIdLayout0, !Info),
 	bool__or(ProcIdLayout0, ForceProcIdLayout, ProcIdLayout),
 	(
@@ -318,8 +318,8 @@ stack_layout__construct_layouts(ProcLayoutInfo, !Info) :-
 		valid_proc_layout(ProcLayoutInfo)
 	->
 		list__map_foldl(stack_layout__construct_internal_layout(
-			ProcLayoutName, VarNumMap), Internals, InternalLayouts,
-			!Info)
+			ProcLabel, ProcLayoutName, VarNumMap),
+			Internals, InternalLayouts, !Info)
 	;
 		InternalLayouts = []
 	),
@@ -336,10 +336,11 @@ stack_layout__construct_layouts(ProcLayoutInfo, !Info) :-
 	% Add the given label layout to the module-wide label tables.
 
 :- pred stack_layout__update_label_table(
-	{label, label_vars, internal_layout_info}::in,
+	{proc_label, int, label_vars, internal_layout_info}::in,
 	map(string, label_table)::in, map(string, label_table)::out) is det.
 
-stack_layout__update_label_table({Label, LabelVars, InternalInfo},
+stack_layout__update_label_table(
+		{ProcLabel, LabelNum, LabelVars, InternalInfo},
 		!LabelTables) :-
 	InternalInfo = internal_layout_info(Port, _, Return),
 	(
@@ -352,28 +353,28 @@ stack_layout__update_label_table({Label, LabelVars, InternalInfo},
 		;
 			IsReturn = unknown_callee
 		),
-		stack_layout__update_label_table_2(Label, LabelVars,
-			Context, IsReturn, !LabelTables)
+		stack_layout__update_label_table_2(ProcLabel, LabelNum,
+			LabelVars, Context, IsReturn, !LabelTables)
 	;
 		Port = yes(trace_port_layout_info(Context, _, _, _, _)),
 		stack_layout__context_is_valid(Context)
 	->
-		stack_layout__update_label_table_2(Label, LabelVars,
-			Context, not_a_return, !LabelTables)
+		stack_layout__update_label_table_2(ProcLabel, LabelNum,
+			LabelVars, Context, not_a_return, !LabelTables)
 	;
 		true
 	).
 
-:- pred stack_layout__update_label_table_2(label::in, label_vars::in,
-	context::in, is_label_return::in,
+:- pred stack_layout__update_label_table_2(proc_label::in, int::in,
+	label_vars::in, context::in, is_label_return::in,
 	map(string, label_table)::in, map(string, label_table)::out) is det.
 
-stack_layout__update_label_table_2(Label, LabelVars, Context, IsReturn,
-		!LabelTables) :-
+stack_layout__update_label_table_2(ProcLabel, LabelNum, LabelVars, Context,
+		IsReturn, !LabelTables) :-
 	term__context_file(Context, File),
 	term__context_line(Context, Line),
 	( map__search(!.LabelTables, File, LabelTable0) ->
-		LabelLayout = label_layout(Label, LabelVars),
+		LabelLayout = label_layout(ProcLabel, LabelNum, LabelVars),
 		( map__search(LabelTable0, Line, LineInfo0) ->
 			LineInfo = [LabelLayout - IsReturn | LineInfo0],
 			map__det_update(LabelTable0, Line, LineInfo,
@@ -389,7 +390,7 @@ stack_layout__update_label_table_2(Label, LabelVars, Context, IsReturn,
 		)
 	; stack_layout__context_is_valid(Context) ->
 		map__init(LabelTable0),
-		LabelLayout = label_layout(Label, LabelVars),
+		LabelLayout = label_layout(ProcLabel, LabelNum, LabelVars),
 		LineInfo = [LabelLayout - IsReturn],
 		map__det_insert(LabelTable0, Line, LineInfo, LabelTable),
 		map__det_insert(!.LabelTables, File, LabelTable, !:LabelTables)
@@ -576,7 +577,14 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 	TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeIoSeqSlot,
 		MaybeTrailSlots, MaybeMaxfrSlot, MaybeCallTableSlot),
 		% The label associated with an event must have variable info.
-	CallLabelLayout = label_layout(CallLabel, label_has_var_info),
+	(
+		CallLabel = internal(CallLabelNum, CallProcLabel)
+	;
+		CallLabel = entry(_, _),
+		error("stack_layout__construct_trace_layout: entry call label")
+	),
+	CallLabelLayout = label_layout(CallProcLabel, CallLabelNum,
+		label_has_var_info),
 	(
 		MaybeTableInfo = no,
 		MaybeTableName = no
@@ -660,7 +668,7 @@ stack_layout__construct_var_name_rvals([Var - Name | VarNamesTail], CurNum,
 :- type var_num_map	== map(prog_var, pair(int, string)).
 
 :- pred compute_var_number_map(list(prog_var)::in, prog_varset::in,
-	assoc_list(label, internal_layout_info)::in, maybe(hlds_goal)::in,
+	assoc_list(int, internal_layout_info)::in, maybe(hlds_goal)::in,
 	var_num_map::out) is det.
 
 compute_var_number_map(HeadVars, VarSet, Internals, MaybeGoal, VarNumMap) :-
@@ -682,7 +690,7 @@ compute_var_number_map(HeadVars, VarSet, Internals, MaybeGoal, VarNumMap) :-
 	list__foldl2(internal_var_number_map, Internals, VarNumMap2, VarNumMap,
 		Counter2, _Counter).
 
-:- pred internal_var_number_map(pair(label, internal_layout_info)::in,
+:- pred internal_var_number_map(pair(int, internal_layout_info)::in,
 	var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
 
 internal_var_number_map(_Label - Internal, !VarNumMap, !Counter) :-
@@ -750,13 +758,13 @@ add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter) :-
 	% Construct the layout describing a single internal label
 	% for accurate GC and/or execution tracing.
 
-:- pred stack_layout__construct_internal_layout(layout_name::in,
-	var_num_map::in, pair(label, internal_layout_info)::in,
-	{label, label_vars, internal_layout_info}::out,
+:- pred stack_layout__construct_internal_layout(proc_label::in,
+	layout_name::in, var_num_map::in, pair(int, internal_layout_info)::in,
+	{proc_label, int, label_vars, internal_layout_info}::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_internal_layout(ProcLayoutName, VarNumMap,
-		Label - Internal, LabelLayout, !Info) :-
+stack_layout__construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
+		LabelNum - Internal, LabelLayout, !Info) :-
 	Internal = internal_layout_info(Trace, Resume, Return),
 	(
 		Trace = no,
@@ -879,13 +887,14 @@ stack_layout__construct_internal_layout(ProcLayoutName, VarNumMap,
 		LabelVars = label_has_var_info
 	),
 
-	LayoutData = label_layout_data(Label, ProcLayoutName,
+	LayoutData = label_layout_data(ProcLabel, LabelNum, ProcLayoutName,
 		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo),
 	CData = layout_data(LayoutData),
-	LayoutName = label_layout(Label, LabelVars),
+	LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
+	Label = internal(LabelNum, ProcLabel),
 	stack_layout__add_internal_layout_data(CData, Label, LayoutName,
 		!Info),
-	LabelLayout = {Label, LabelVars, Internal}.
+	LabelLayout = {ProcLabel, LabelNum, LabelVars, Internal}.
 
 %---------------------------------------------------------------------------%
 

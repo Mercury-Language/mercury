@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2003 The University of Melbourne.
+% Copyright (C) 1995-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -48,8 +48,8 @@
 
 :- import_module list, counter.
 
-:- pred dupelim_main(list(instruction)::in, proc_label::in,
-	counter::in, counter::out, list(instruction)::out) is det.
+:- pred dupelim_main(proc_label::in, counter::in, counter::out,
+	list(instruction)::in, list(instruction)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -71,7 +71,7 @@
 	% OtherLabels must be nonempty.
 :- type cluster		--->	cluster(label, list(label)).
 
-dupelim_main(Instrs0, ProcLabel, !C, Instrs) :-
+dupelim_main(ProcLabel, !C, Instrs0, Instrs) :-
 	create_basic_blocks(Instrs0, Comments, ProcLabel, !C,
 		LabelSeq0, BlockMap0),
 	map__init(StdMap0),

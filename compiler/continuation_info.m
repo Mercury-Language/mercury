@@ -138,7 +138,7 @@
 	%
 	% Information about the labels internal to a procedure.
 	%
-:- type proc_label_layout_info	==	map(label, internal_layout_info).
+:- type proc_label_layout_info	==	map(int, internal_layout_info).
 
 	%
 	% Information for an internal label.
@@ -430,7 +430,16 @@ continuation_info__process_continuation(WantReturnInfo, CallInfo,
 		Internals0, Internals) :-
 	CallInfo = call_info(ReturnLabel, Target, LiveInfoList,
 		Context, MaybeGoalPath),
-	( map__search(Internals0, ReturnLabel, Internal0) ->
+	% We could check not only that the return label is an internal label,
+	% but also that it belongs to the current procedure, but this would be
+	% serious paranoia.
+	(
+		ReturnLabel = internal(ReturnLabelNum, _)
+	;
+		ReturnLabel = entry(_, _),
+		error("continuation_info__process_continuation: bad return")
+	),
+	( map__search(Internals0, ReturnLabelNum, Internal0) ->
 		Internal0 = internal_layout_info(Port0, Resume0, Return0)
 	;
 		Port0 = no,
@@ -470,7 +479,7 @@ continuation_info__process_continuation(WantReturnInfo, CallInfo,
 		Return = Return0
 	),
 	Internal = internal_layout_info(Port0, Resume0, Return),
-	map__set(Internals0, ReturnLabel, Internal, Internals).
+	map__set(Internals0, ReturnLabelNum, Internal, Internals).
 
 :- pred continuation_info__convert_return_data(list(liveinfo)::in,
 	set(var_info)::out, map(tvar, set(layout_locn))::out) is det.

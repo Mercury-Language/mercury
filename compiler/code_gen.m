@@ -848,7 +848,8 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
 			NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots,
 				yes(Struct)),
 			AllocCode = node([
-				mkframe(NondetFrameInfo, OutsideResumeAddress)
+				mkframe(NondetFrameInfo,
+					yes(OutsideResumeAddress))
 					- "Allocate stack frame",
 				pragma_c([], DefineComponents,
 					will_not_call_mercury, no, no, no, no,
@@ -860,7 +861,8 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
 			NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots,
 				no),
 			AllocCode = node([
-				mkframe(NondetFrameInfo, OutsideResumeAddress)
+				mkframe(NondetFrameInfo,
+					yes(OutsideResumeAddress))
 					- "Allocate stack frame"
 			]),
 			NondetPragma = no

@@ -45,7 +45,8 @@
 
 :- type layout_data
 	--->	label_layout_data(		% defines MR_Label_Layout
-			label			:: label,
+			proc_label		:: proc_label,
+			label_num		:: int,
 			proc_layout_name	:: layout_name,
 			maybe_port		:: maybe(trace_port),
 			maybe_is_hidden		:: maybe(bool),
@@ -176,7 +177,7 @@
 %-----------------------------------------------------------------------------%
 
 :- type layout_name
-	--->	label_layout(label, label_vars)
+	--->	label_layout(proc_label, int, label_vars)
 	;	proc_layout(rtti_proc_label, proc_layout_kind)
 		% A proc layout structure for stack tracing, accurate gc,
 		% deep profiling and/or execution tracing.

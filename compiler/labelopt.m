@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,8 +23,8 @@
 	% If the instruction before the label branches away, we also
 	% remove the instruction block following the label.
 
-:- pred labelopt_main(list(instruction)::in, bool::in, set(label)::in,
-	list(instruction)::out, bool::out) is det.
+:- pred labelopt_main(bool::in, set(label)::in,
+	list(instruction)::in, list(instruction)::out, bool::out) is det.
 
 	% Build up a set showing which labels are referred to.
 	% The input set is the list of labels referred to from outside
@@ -41,11 +41,11 @@
 
 :- import_module std_util.
 
-labelopt_main(Instrs0, Final, LayoutLabelSet, Instrs, Mod) :-
+labelopt_main(Final, LayoutLabelSet, Instrs0, Instrs, Mod) :-
 	labelopt__build_useset(Instrs0, LayoutLabelSet, Useset),
 	labelopt__instr_list(Instrs0, yes, Useset, Instrs1, Mod),
 	( Final = yes, Mod = yes ->
-		labelopt_main(Instrs1, Final, LayoutLabelSet, Instrs, _)
+		labelopt_main(Final, LayoutLabelSet, Instrs1, Instrs, _)
 	;
 		Instrs = Instrs1
 	).
@@ -76,9 +76,13 @@ labelopt__instr_list([Instr0 | MoreInstrs0],
 	Instr0 = Uinstr0 - _Comment,
 	( Uinstr0 = label(Label) ->
 		(
-			( Label = exported(_)
-			; Label = local(_)
-			; set__member(Label, Useset)
+			(
+				Label = entry(EntryType, _),
+				( EntryType = exported
+				; EntryType = local
+				)
+			;
+				set__member(Label, Useset)
 			)
 		->
 			ReplInstrs = [Instr0],

@@ -98,10 +98,10 @@
 
 :- import_module int, char, string, require, std_util, list.
 
-output_layout_data_defn(label_layout_data(Label, ProcLayoutAddr,
+output_layout_data_defn(label_layout_data(ProcLabel, LabelNum, ProcLayoutAddr,
 		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo),
 		!DeclSet, !IO) :-
-	output_label_layout_data_defn(Label, ProcLayoutAddr,
+	output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr,
 		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo,
 		!DeclSet, !IO).
 output_layout_data_defn(proc_layout_data(ProcLabel, Traversal, MaybeRest),
@@ -148,10 +148,12 @@ output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO) :-
 
 :- pred extract_layout_name(layout_data::in, layout_name::out) is det.
 
-extract_layout_name(label_layout_data(Label, _, _, _, _, yes(_)), LayoutName) :-
-	LayoutName = label_layout(Label, label_has_var_info).
-extract_layout_name(label_layout_data(Label, _, _, _, _, no), LayoutName) :-
-	LayoutName = label_layout(Label, label_has_no_var_info).
+extract_layout_name(label_layout_data(ProcLabel, LabelNum, _, _, _, _, yes(_)),
+		LayoutName) :-
+	LayoutName = label_layout(ProcLabel, LabelNum, label_has_var_info).
+extract_layout_name(label_layout_data(ProcLabel, LabelNum, _, _, _, _, no),
+		LayoutName) :-
+	LayoutName = label_layout(ProcLabel, LabelNum, label_has_no_var_info).
 extract_layout_name(proc_layout_data(RttiProcLabel, _, MaybeRest),
 		LayoutName) :-
 	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
@@ -194,11 +196,12 @@ make_label_layout_name(Label) = Name :-
 		LabelName
 	], Name).
 
-output_layout_name(label_layout(Label, _)) -->
+output_layout_name(label_layout(ProcLabel, LabelNum, _)) -->
 	% This code should be kept in sync with make_label_layout_name/1 above.
 	io__write_string(mercury_data_prefix),
 	io__write_string("_label_layout__"),
-	io__write_string(label_to_c_string(Label, yes)).
+	io__write_string(label_to_c_string(internal(LabelNum, ProcLabel),
+		yes)).
 output_layout_name(proc_layout(RttiProcLabel, _)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_proc_layout__"),
@@ -297,12 +300,13 @@ output_layout_name(table_gen_steps(RttiProcLabel)) -->
 	{ ProcLabel = make_proc_label_from_rtti(RttiProcLabel) },
 	output_proc_label(ProcLabel, no).
 
-output_layout_name_storage_type_name(label_layout(Label, LabelVars),
+output_layout_name_storage_type_name(
+		label_layout(ProcLabel, LabelNum, LabelVars),
 		_BeingDefined) -->
 	io__write_string("static const "),
 	io__write_string(label_vars_to_type(LabelVars)),
 	io__write_string(" "),
-	output_layout_name(label_layout(Label, LabelVars)).
+	output_layout_name(label_layout(ProcLabel, LabelNum, LabelVars)).
 output_layout_name_storage_type_name(proc_layout(ProcLabel, Kind),
 		BeingDefined) -->
 	{ ProcIsImported = ProcLabel ^ proc_is_imported },
@@ -415,7 +419,7 @@ output_layout_name_storage_type_name(table_gen_steps(RttiProcLabel),
 	output_layout_name(table_gen_steps(RttiProcLabel)),
 	io__write_string("[]").
 
-layout_name_would_include_code_addr(label_layout(_, _)) = no.
+layout_name_would_include_code_addr(label_layout(_, _, _)) = no.
 layout_name_would_include_code_addr(proc_layout(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout_exec_trace(_)) = yes.
 layout_name_would_include_code_addr(proc_layout_head_var_nums(_)) = no.
@@ -467,13 +471,13 @@ output_rval_or_num_or_none(num(Num), !IO) :-
 	io__write_int(Num, !IO).
 output_rval_or_num_or_none(none, !IO).
 
-:- pred output_label_layout_data_defn(label::in, layout_name::in,
+:- pred output_label_layout_data_defn(proc_label::in, int::in, layout_name::in,
 	maybe(trace_port)::in, maybe(bool)::in, maybe(int)::in,
 	maybe(label_var_info)::in, decl_set::in, decl_set::out,
 	io::di, io::uo) is det.
 
-output_label_layout_data_defn(Label, ProcLayoutAddr, MaybePort, MaybeIsHidden,
-		MaybeGoalPath, MaybeVarInfo, !DeclSet, !IO) :-
+output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
+		MaybeIsHidden, MaybeGoalPath, MaybeVarInfo, !DeclSet, !IO) :-
 	output_layout_decl(ProcLayoutAddr, !DeclSet, !IO),
 	(
 		MaybeIsHidden = yes(yes),
@@ -544,11 +548,10 @@ output_label_layout_data_defn(Label, ProcLayoutAddr, MaybePort, MaybeIsHidden,
 		Macro = "MR_DEF_LLNVI" ++ HiddenChars,
 		MaybeVarInfoTuple = no
 	),
-	LayoutName = label_layout(Label, LabelVars),
+	LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
 	io__write_string("\n", !IO),
 	io__write_string(Macro, !IO),
 	io__write_string("(", !IO),
-	break_up_local_label(Label, ProcLabel, LabelNum),
 	output_proc_label(ProcLabel, no, !IO),
 	io__write_string(",\n", !IO),
 	io__write_int(LabelNum, !IO),
@@ -822,8 +825,8 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
 	output_layout_name_storage_type_name(
 		proc_layout_exec_trace(RttiProcLabel), yes, !IO),
 	io__write_string(" = {\nMR_LABEL_LAYOUT_REF(", !IO),
-	( CallLabelLayout = label_layout(CallLabel, _) ->
-		output_label(CallLabel, no, !IO)
+	( CallLabelLayout = label_layout(CallProcLabel, CallLabelNum, _) ->
+		output_label(internal(CallLabelNum, CallProcLabel), no, !IO)
 	;
 		error("output_layout_exec_trace: bad call layout")
 	),
@@ -1290,9 +1293,9 @@ output_file_layout_label_layout_vector_defn(ModuleName, FileNum, LabelAddrs,
 project_label_layout(DataAddr, Label) :-
 	(
 		DataAddr = layout_addr(LayoutName),
-		LayoutName = label_layout(LabelPrime, _)
+		LayoutName = label_layout(ProcLabel, LabelNum, _)
 	->
-		Label = LabelPrime
+		Label = internal(LabelNum, ProcLabel)
 	;
 		error("project_label_layout: not label layout")
 	).
@@ -1303,7 +1306,7 @@ project_label_layout(DataAddr, Label) :-
 output_label_layout_addrs_in_vector([], !IO).
 output_label_layout_addrs_in_vector([Label | Labels], !IO) :-
 	(
-		Label = local(LabelNum, ProcLabel),
+		Label = internal(LabelNum, ProcLabel),
 		groupable_labels(ProcLabel, 1, N, [LabelNum], RevLabelNums,
 			Labels, RemainingLabels),
 		N > 1
@@ -1335,7 +1338,7 @@ groupable_labels(ProcLabel, !Count, !RevLabelsNums, !Labels) :-
 		!.Labels = [Label | !:Labels],
 		MaxChunkSize = 9,
 		!.Count < MaxChunkSize,	% leave room for the one we're adding
-		Label = local(LabelNum, ProcLabel)
+		Label = internal(LabelNum, ProcLabel)
 	->
 		!:Count = !.Count + 1,
 		!:RevLabelsNums = [LabelNum | !.RevLabelsNums],

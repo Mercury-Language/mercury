@@ -185,16 +185,15 @@
 				((void) 0)
 #endif
 
-#define	MR_mkframe(predname, numslots, redoip)				\
+#define	MR_mkframe_basic(predname, numslots)				\
 	do {								\
 		MR_Word	*prevfr;					\
 		MR_Word	*succfr;					\
 									\
 		prevfr = MR_maxfr;					\
 		succfr = MR_curfr;					\
-		MR_maxfr += (MR_NONDET_FIXED_SIZE + numslots);		\
+		MR_maxfr += (MR_NONDET_FIXED_SIZE + (numslots));	\
 		MR_curfr = MR_maxfr;					\
-		MR_redoip_slot(MR_curfr) = redoip;			\
 		MR_prevfr_slot(MR_curfr) = prevfr;			\
 		MR_succip_slot(MR_curfr) = MR_succip;			\
 		MR_succfr_slot(MR_curfr) = succfr;			\
@@ -205,27 +204,30 @@
 		MR_collect_non_frame_stats(numslots);			\
 	} while (0)
 
+#define	MR_mkframe(predname, numslots, redoip)				\
+	do {								\
+		MR_mkframe_basic(predname, numslots);			\
+		MR_redoip_slot(MR_curfr) = redoip;			\
+	} while (0)
+
+#define	MR_mkframe_no_redoip(predname, numslots)			\
+	do {								\
+		MR_mkframe_basic(predname, numslots);			\
+	} while (0)
+
 /* just like mkframe, but also reserves space for a struct     */
 /* with the given tag at the bottom of the nondet stack frame  */
 #define	MR_mkpragmaframe(predname, numslots, structname, redoip)	\
 	do {								\
-		MR_Word	*prevfr;					\
-		MR_Word	*succfr;					\
-									\
-		prevfr = MR_maxfr;					\
-		succfr = MR_curfr;					\
-		MR_maxfr += MR_NONDET_FIXED_SIZE + numslots + 		\
-			MR_bytes_to_words(sizeof(struct structname));	\
-		MR_curfr = MR_maxfr;					\
+		MR_mkframe_basic(predname, numslots +			\
+			MR_bytes_to_words(sizeof(struct structname)));	\
 		MR_redoip_slot(MR_curfr) = redoip;			\
-		MR_prevfr_slot(MR_curfr) = prevfr;			\
-		MR_succip_slot(MR_curfr) = MR_succip;			\
-		MR_succfr_slot(MR_curfr) = succfr;			\
-		MR_redofr_slot(MR_curfr) = MR_curfr;			\
-		MR_maybe_fill_table_detfr_slot();			\
-		MR_debugmkframe(predname);				\
-		MR_nondstack_overflow_check();				\
-		MR_collect_non_frame_stats(numslots);			\
+	} while (0)
+
+#define	MR_mkpragmaframe_no_redoip(predname, numslots, structname)	\
+	do {								\
+		MR_mkframe_basic(predname, numslots +			\
+			MR_bytes_to_words(sizeof(struct structname)));	\
 	} while (0)
 
 #define	MR_mktempframe(redoip)						\

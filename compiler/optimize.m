@@ -55,29 +55,40 @@
 optimize_main(GlobalData, !Procs, !IO) :-
 	list__map_foldl(optimize__proc(GlobalData), !Procs, !IO).
 
-optimize__proc(GlobalData, CProc0, CProc) -->
-	{ CProc0 = c_procedure(Name, Arity, PredProcId, Instrs0,
-		ProcLabel, C0, MayAlterRtti) },
-	optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, C0,
-		OptDebugInfo0),
-	globals__io_lookup_int_option(optimize_repeat, Repeat),
-	{
-		global_data_maybe_get_proc_layout(GlobalData, PredProcId,
-			ProcLayout)
-	->
-		LabelMap = ProcLayout^internal_map,
-		map__sorted_keys(LabelMap, LayoutLabels),
-		set__sorted_list_to_set(LayoutLabels, LayoutLabelSet)
-	;
-		set__init(LayoutLabelSet)
-	},
-	optimize__repeat(Repeat, LayoutLabelSet, Instrs0, ProcLabel,
-		MayAlterRtti, C0, C1, OptDebugInfo0, OptDebugInfo1, Instrs1),
-	optimize__middle(Instrs1, yes, LayoutLabelSet, ProcLabel,
-		MayAlterRtti, C1, C, OptDebugInfo1, OptDebugInfo, Instrs3),
-	optimize__last(Instrs3, LayoutLabelSet, C, OptDebugInfo, Instrs),
-	{ CProc = c_procedure(Name, Arity, PredProcId, Instrs,
-		ProcLabel, C, MayAlterRtti) }.
+:- func make_internal_label(proc_label, int) = label.
+
+make_internal_label(ProcLabel, LabelNum) = internal(LabelNum, ProcLabel).
+
+optimize__proc(GlobalData, CProc0, CProc, !IO) :-
+	some [!OptDebugInfo, !C, !Instrs] (
+		CProc0 = c_procedure(Name, Arity, PredProcId, !:Instrs,
+			ProcLabel, !:C, MayAlterRtti),
+		optimize__init_opt_debug_info(Name, Arity, PredProcId,
+			!.Instrs, !.C, !:OptDebugInfo, !IO),
+		globals__io_lookup_int_option(optimize_repeat, Repeat, !IO),
+		(
+			global_data_maybe_get_proc_layout(GlobalData,
+				PredProcId, ProcLayout)
+		->
+			LabelMap = ProcLayout ^ internal_map,
+			map__sorted_keys(LabelMap, LayoutLabelNums),
+			LayoutLabels = list__map(make_internal_label(ProcLabel),
+				LayoutLabelNums),
+			set__sorted_list_to_set(LayoutLabels, LayoutLabelSet)
+		;
+			set__init(LayoutLabelSet)
+		),
+		optimize__initial(LayoutLabelSet, ProcLabel, MayAlterRtti,
+			!C, !OptDebugInfo, !Instrs, !IO),
+		optimize__repeat(Repeat, LayoutLabelSet, ProcLabel,
+			MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO),
+		optimize__middle(yes, LayoutLabelSet, ProcLabel, MayAlterRtti,
+			!C, !OptDebugInfo, !Instrs, !IO),
+		optimize__last(LayoutLabelSet, !.C, !.OptDebugInfo, !Instrs,
+			!IO),
+		CProc = c_procedure(Name, Arity, PredProcId, !.Instrs,
+			ProcLabel, !.C, MayAlterRtti)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -90,7 +101,7 @@ optimize__proc(GlobalData, CProc0, CProc) -->
 
 :- pred optimize__init_opt_debug_info(string::in, int::in, pred_proc_id::in,
 	list(instruction)::in, counter::in, opt_debug_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, Counter,
 		OptDebugInfo, !IO) :-
@@ -116,7 +127,8 @@ optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, Counter,
 		( Res = ok(FileStream) ->
 			io__set_output_stream(FileStream, OutputStream, !IO),
 			counter__allocate(NextLabel, Counter, _),
-			opt_debug__msg(yes, NextLabel, "before optimization", !IO),
+			opt_debug__msg(yes, NextLabel, "before optimization",
+				!IO),
 			opt_debug__dump_instrs(yes, Instrs0, !IO),
 			io__set_output_stream(OutputStream, _, !IO),
 			io__close_output(FileStream, !IO)
@@ -130,344 +142,384 @@ optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, Counter,
 
 :- pred optimize__maybe_opt_debug(list(instruction)::in, counter::in,
 	string::in, opt_debug_info::in, opt_debug_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-optimize__maybe_opt_debug(Instrs, Counter, Msg,
-		OptDebugInfo0, OptDebugInfo) -->
+optimize__maybe_opt_debug(Instrs, Counter, Msg, OptDebugInfo0, OptDebugInfo,
+		!IO) :-
 	(
-		{ OptDebugInfo0 = opt_debug_info(BaseName, OptNum0) },
-		{ OptNum = OptNum0 + 1 },
-		{ string__int_to_string(OptNum0, OptNum0Str) },
-		{ string__int_to_string(OptNum, OptNumStr) },
-		{ string__append_list([BaseName, ".opt", OptNum0Str],
-			OptFileName0) },
-		{ string__append_list([BaseName, ".opt", OptNumStr],
-			OptFileName) },
-		{ string__append_list([BaseName, ".diff", OptNumStr],
-			DiffFileName) },
-		io__open_output(OptFileName, Res),
-		( { Res = ok(FileStream) } ->
-			io__set_output_stream(FileStream, OutputStream),
-			{ counter__allocate(NextLabel, Counter, _) },
-			opt_debug__msg(yes, NextLabel, Msg),
-			opt_debug__dump_instrs(yes, Instrs),
-			io__set_output_stream(OutputStream, _),
-			io__close_output(FileStream)
+		OptDebugInfo0 = opt_debug_info(BaseName, OptNum0),
+		OptNum = OptNum0 + 1,
+		string__int_to_string(OptNum0, OptNum0Str),
+		string__int_to_string(OptNum, OptNumStr),
+		string__append_list([BaseName, ".opt", OptNum0Str],
+			OptFileName0),
+		string__append_list([BaseName, ".opt", OptNumStr],
+			OptFileName),
+		string__append_list([BaseName, ".diff", OptNumStr],
+			DiffFileName),
+		io__open_output(OptFileName, Res, !IO),
+		( Res = ok(FileStream) ->
+			io__set_output_stream(FileStream, OutputStream, !IO),
+			counter__allocate(NextLabel, Counter, _),
+			opt_debug__msg(yes, NextLabel, Msg, !IO),
+			opt_debug__dump_instrs(yes, Instrs, !IO),
+			io__set_output_stream(OutputStream, _, !IO),
+			io__close_output(FileStream, !IO)
 		;
-			{ string__append("cannot open ", OptFileName,
-				ErrorMsg) },
-			{ error(ErrorMsg) }
+			string__append("cannot open ", OptFileName,
+				ErrorMsg),
+			error(ErrorMsg)
 		),
 		% Although the -u is not fully portable, it is available
 		% on all the systems we intend to use it on, and the main user
 		% of --debug-opt (zs) strongly prefers -u to -c.
-		{ string__append_list(["diff -u ",
+		string__append_list(["diff -u ",
 			OptFileName0, " ", OptFileName,
-			" > ", DiffFileName], DiffCommand) },
-		io__call_system(DiffCommand, _),
-		{ OptDebugInfo = opt_debug_info(BaseName, OptNum) }
+			" > ", DiffFileName], DiffCommand),
+		io__call_system(DiffCommand, _, !IO),
+		OptDebugInfo = opt_debug_info(BaseName, OptNum)
 	;
-		{ OptDebugInfo0 = no_opt_debug_info },
-		{ OptDebugInfo = no_opt_debug_info }
+		OptDebugInfo0 = no_opt_debug_info,
+		OptDebugInfo = no_opt_debug_info
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize__repeat(int::in, set(label)::in, list(instruction)::in,
-	proc_label::in, may_alter_rtti::in, counter::in, counter::out,
-	opt_debug_info::in, opt_debug_info::out, list(instruction)::out,
-	io__state::di, io__state::uo) is det.
+:- pred optimize__initial(set(label)::in, proc_label::in, may_alter_rtti::in,
+	counter::in, counter::out, opt_debug_info::in, opt_debug_info::out,
+	list(instruction)::in, list(instruction)::out, io::di, io::uo) is det.
 
-optimize__repeat(Iter0, LayoutLabelSet, Instrs0, ProcLabel, MayAlterRtti,
-		C0, C, OptDebugInfo0, OptDebugInfo, Instrs) -->
-	( { Iter0 > 0 } ->
-		{ Iter1 = Iter0 - 1 },
-		( { Iter1 = 0 } ->
-			{ Final = yes }
+optimize__initial(LayoutLabelSet, ProcLabel, MayAlterRtti, !C, !OptDebugInfo,
+		!Instrs, !IO) :-
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+	opt_util__find_first_label(!.Instrs, Label),
+	opt_util__format_label(Label, LabelStr),
+
+	globals__io_lookup_bool_option(optimize_frames, FrameOpt, !IO),
+	(
+		FrameOpt = yes,
+		(
+			VeryVerbose = yes,
+			io__write_string("% Optimizing nondet frames for ",
+				!IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
 		;
-			{ Final = no }
+			VeryVerbose = no
 		),
-		optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel,
-			MayAlterRtti, C0, C1, OptDebugInfo0, OptDebugInfo1,
-			Instrs1, Mod),
-		( { Mod = yes } ->
-			optimize__repeat(Iter1, LayoutLabelSet, Instrs1,
-				ProcLabel, MayAlterRtti, C1, C,
-				OptDebugInfo1, OptDebugInfo, Instrs)
+		frameopt_nondet(ProcLabel, LayoutLabelSet, MayAlterRtti, !C,
+			!Instrs, _Mod),
+		optimize__maybe_opt_debug(!.Instrs, !.C,
+			"after nondet frame opt", !OptDebugInfo, !IO)
+	;
+		FrameOpt = no
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred optimize__repeat(int::in, set(label)::in, proc_label::in,
+	may_alter_rtti::in, counter::in, counter::out,
+	opt_debug_info::in, opt_debug_info::out,
+	list(instruction)::in, list(instruction)::out, io::di, io::uo) is det.
+
+optimize__repeat(CurIter, LayoutLabelSet, ProcLabel, MayAlterRtti,
+		!C, !OptDebugInfo, !Instrs, !IO) :-
+	( CurIter > 0 ->
+		NextIter = CurIter - 1,
+		( NextIter = 0 ->
+			Final = yes
 		;
-			{ Instrs = Instrs1 },
-			{ C = C1 },
-			{ OptDebugInfo = OptDebugInfo0 }
+			Final = no
+		),
+		optimize__repeated(Final, LayoutLabelSet, ProcLabel,
+			MayAlterRtti, !C, !OptDebugInfo,
+			!Instrs, Mod, !IO),
+		(
+			Mod = yes,
+			optimize__repeat(NextIter, LayoutLabelSet, ProcLabel,
+				MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO)
+		;
+			Mod = no
 		)
 	;
-		{ Instrs = Instrs0 },
-		{ C = C0 },
-		{ OptDebugInfo = OptDebugInfo0 }
+		true
 	).
 
 	% We short-circuit jump sequences before normal peepholing
 	% to create more opportunities for use of the tailcall macro.
 
-:- pred optimize__repeated(list(instruction)::in, bool::in, set(label)::in,
-	proc_label::in, may_alter_rtti::in, counter::in, counter::out,
-	opt_debug_info::in, opt_debug_info::out, list(instruction)::out,
-	bool::out, io__state::di, io__state::uo) is det.
+:- pred optimize__repeated(bool::in, set(label)::in, proc_label::in,
+	may_alter_rtti::in, counter::in, counter::out,
+	opt_debug_info::in, opt_debug_info::out,
+	list(instruction)::in, list(instruction)::out, bool::out,
+	io::di, io::uo) is det.
 
-optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
-		C0, C, OptDebugInfo0, OptDebugInfo, Instrs, Mod) -->
-	{ opt_util__find_first_label(Instrs0, Label) },
-	{ proc_label_to_c_string(get_proc_label(Label), no) = LabelStr },
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	globals__io_lookup_bool_option(optimize_jumps, Jumpopt),
-	globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt),
+optimize__repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
+		!C, !OptDebugInfo, !Instrs, Mod, !IO) :-
+	InstrsAtStart = !.Instrs,
+	opt_util__find_first_label(!.Instrs, Label),
+	proc_label_to_c_string(get_proc_label(Label), no) = LabelStr,
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+	globals__io_lookup_bool_option(optimize_jumps, Jumpopt, !IO),
+	globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt, !IO),
 	globals__io_lookup_bool_option(pessimize_tailcalls,
-		PessimizeTailCalls),
+		PessimizeTailCalls, !IO),
 	globals__io_lookup_bool_option(checked_nondet_tailcalls,
-		CheckedNondetTailCalls),
-	( { Jumpopt = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing jumps for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
+		CheckedNondetTailCalls, !IO),
+	(
+		Jumpopt = yes,
+		(
+			VeryVerbose = yes,
+			io__write_string("% Optimizing jumps for ", !IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
 		;
-			[]
+			VeryVerbose = no
 		),
-		{ jumpopt_main(Instrs0, LayoutLabelSet, MayAlterRtti,
-			ProcLabel, C0, C1, FullJumpopt, Final,
-			PessimizeTailCalls, CheckedNondetTailCalls,
-			Instrs1, Mod1) },
-		optimize__maybe_opt_debug(Instrs1, C1, "after jump opt",
-			OptDebugInfo0, OptDebugInfo1)
+		jumpopt_main(LayoutLabelSet, MayAlterRtti, ProcLabel,
+			FullJumpopt, Final, PessimizeTailCalls,
+			CheckedNondetTailCalls, !C, !Instrs, Mod1),
+		optimize__maybe_opt_debug(!.Instrs, !.C, "after jump opt",
+			!OptDebugInfo, !IO)
 	;
-		{ Instrs1 = Instrs0 },
-		{ C1 = C0 },
-		{ OptDebugInfo1 = OptDebugInfo0 },
-		{ Mod1 = no }
+		Jumpopt = no,
+		Mod1 = no
 	),
-	globals__io_lookup_bool_option(optimize_peep, Peephole),
-	( { Peephole = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing locally for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
+	globals__io_lookup_bool_option(optimize_peep, Peephole, !IO),
+	( 
+		Peephole = yes,
+		(
+			VeryVerbose = yes,
+			io__write_string("% Optimizing locally for ", !IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
 		;
-			[]
+			VeryVerbose = no
 		),
-		globals__io_get_gc_method(GC_Method),
-		{ peephole__optimize(GC_Method, Instrs1, Instrs2, Mod2) },
-		optimize__maybe_opt_debug(Instrs2, C1, "after peephole",
-			OptDebugInfo1, OptDebugInfo2)
+		globals__io_get_gc_method(GC_Method, !IO),
+		peephole__optimize(GC_Method, !Instrs, Mod2),
+		optimize__maybe_opt_debug(!.Instrs, !.C, "after peephole",
+			!OptDebugInfo, !IO)
 	;
-		{ Instrs2 = Instrs1 },
-		{ OptDebugInfo2 = OptDebugInfo1 },
-		{ Mod2 = no }
+		Peephole = no,
+		Mod2 = no
 	),
-	globals__io_lookup_bool_option(optimize_labels, LabelElim),
-	( { LabelElim = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing labels for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
+	globals__io_lookup_bool_option(optimize_labels, LabelElim, !IO),
+	(
+		LabelElim = yes,
+		(
+			VeryVerbose = yes,
+			io__write_string("% Optimizing labels for ", !IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
 		;
-			[]
+			VeryVerbose = no
 		),
-		{ labelopt_main(Instrs2, Final, LayoutLabelSet,
-			Instrs3, Mod3) },
-		optimize__maybe_opt_debug(Instrs3, C1, "after label opt",
-			OptDebugInfo2, OptDebugInfo3)
-		;
-		{ Instrs3 = Instrs2 },
-		{ OptDebugInfo3 = OptDebugInfo2 },
-		{ Mod3 = no }
-	),
-	globals__io_lookup_bool_option(optimize_dups, DupElim),
-	( { DupElim = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing duplicates for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
-		;
-			[]
-		),
-		{ dupelim_main(Instrs3, ProcLabel, C1, C, Instrs) },
-		optimize__maybe_opt_debug(Instrs, C, "after duplicates",
-			OptDebugInfo3, OptDebugInfo)
+		labelopt_main(Final, LayoutLabelSet, !Instrs, Mod3),
+		optimize__maybe_opt_debug(!.Instrs, !.C, "after label opt",
+			!OptDebugInfo, !IO)
 	;
-		{ Instrs = Instrs3 },
-		{ OptDebugInfo = OptDebugInfo3 },
-		{ C = C1 }
+		LabelElim = no,
+		Mod3 = no
 	),
-	{ Mod1 = no, Mod2 = no, Mod3 = no, Instrs = Instrs0 ->
+	globals__io_lookup_bool_option(optimize_dups, DupElim, !IO),
+	(
+		DupElim = yes,
+		(
+			VeryVerbose = yes,
+			io__write_string("% Optimizing duplicates for ", !IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
+		;
+			VeryVerbose = no
+		),
+		dupelim_main(ProcLabel, !C, !Instrs),
+		optimize__maybe_opt_debug(!.Instrs, !.C, "after duplicates",
+			!OptDebugInfo, !IO)
+	;
+		DupElim = no
+	),
+	( Mod1 = no, Mod2 = no, Mod3 = no, !.Instrs = InstrsAtStart ->
 		Mod = no
 	;
 		Mod = yes
-	},
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+	),
+	globals__io_lookup_bool_option(statistics, Statistics, !IO),
+	maybe_report_stats(Statistics, !IO).
 
-:- pred optimize__middle(list(instruction)::in, bool::in, set(label)::in,
-	proc_label::in, may_alter_rtti::in, counter::in, counter::out,
-	opt_debug_info::in, opt_debug_info::out, list(instruction)::out,
-	io__state::di, io__state::uo) is det.
+:- pred optimize__middle(bool::in, set(label)::in, proc_label::in,
+	may_alter_rtti::in, counter::in, counter::out,
+	opt_debug_info::in, opt_debug_info::out,
+	list(instruction)::in, list(instruction)::out, io::di, io::uo) is det.
 
-optimize__middle(Instrs0, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
-		C0, C, OptDebugInfo0, OptDebugInfo, Instrs) -->
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	{ opt_util__find_first_label(Instrs0, Label) },
-	{ opt_util__format_label(Label, LabelStr) },
+optimize__middle(Final, LayoutLabelSet, ProcLabel, MayAlterRtti, !C,
+		!OptDebugInfo, !Instrs, !IO) :-
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+	opt_util__find_first_label(!.Instrs, Label),
+	opt_util__format_label(Label, LabelStr),
 
-	globals__io_lookup_bool_option(optimize_frames, FrameOpt),
-	( { FrameOpt = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing frames for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
+	globals__io_lookup_bool_option(optimize_frames, FrameOpt, !IO),
+	(
+		FrameOpt = yes,
+		(
+			VeryVerbose = yes,
+			io__write_string("% Optimizing frames for ", !IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
 		;
-			[]
+			VeryVerbose = no
 		),
-		{ frameopt_main(Instrs0, ProcLabel, C0, C1, Instrs1,
-			Mod1, Jumps) },
-		optimize__maybe_opt_debug(Instrs1, C1, "after frame opt",
-			OptDebugInfo0, OptDebugInfo1),
-		globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt),
+		frameopt_main(ProcLabel, !C, !Instrs, Mod1, Jumps),
+		optimize__maybe_opt_debug(!.Instrs, !.C, "after frame opt",
+			!OptDebugInfo, !IO),
+		globals__io_lookup_bool_option(optimize_fulljumps,
+			FullJumpopt, !IO),
 		globals__io_lookup_bool_option(pessimize_tailcalls,
-			PessimizeTailCalls),
+			PessimizeTailCalls, !IO),
 		globals__io_lookup_bool_option(checked_nondet_tailcalls,
-			CheckedNondetTailCalls),
-		( { Jumps = yes, FullJumpopt = yes } ->
-			( { VeryVerbose = yes } ->
-				io__write_string("% Optimizing jumps for "),
-				io__write_string(LabelStr),
-				io__write_string("\n")
+			CheckedNondetTailCalls, !IO),
+		(
+			Jumps = yes,
+			FullJumpopt = yes
+		->
+			(
+				VeryVerbose = yes,
+				io__write_string("% Optimizing jumps for ",
+					!IO),
+				io__write_string(LabelStr, !IO),
+				io__write_string("\n", !IO)
 			;
-				[]
+				VeryVerbose = no
 			),
-			{ jumpopt_main(Instrs1, LayoutLabelSet, MayAlterRtti,
-				ProcLabel, C1, C2, FullJumpopt, Final,
-				PessimizeTailCalls, CheckedNondetTailCalls,
-				Instrs2, _Mod2) },
-			optimize__maybe_opt_debug(Instrs2, C2, "after jumps",
-				OptDebugInfo1, OptDebugInfo2)
+			jumpopt_main(LayoutLabelSet, MayAlterRtti, ProcLabel,
+				FullJumpopt, Final, PessimizeTailCalls,
+				CheckedNondetTailCalls, !C, !Instrs, _Mod2),
+			optimize__maybe_opt_debug(!.Instrs, !.C, "after jumps",
+				!OptDebugInfo, !IO)
 		;
-			{ Instrs2 = Instrs1 },
-			{ OptDebugInfo2 = OptDebugInfo1 },
-			{ C2 = C1 }
+			true
 		),
-		( { Mod1 = yes } ->
-			( { VeryVerbose = yes } ->
-				io__write_string("% Optimizing labels for "),
-				io__write_string(LabelStr),
-				io__write_string("\n")
+		(
+			Mod1 = yes,
+			(
+				VeryVerbose = yes,
+				io__write_string("% Optimizing labels for ",
+					!IO),
+				io__write_string(LabelStr, !IO),
+				io__write_string("\n", !IO)
 			;
-				[]
+				VeryVerbose = no
 			),
-			{ labelopt_main(Instrs2, Final, LayoutLabelSet,
-				Instrs3, _Mod3) },
-			optimize__maybe_opt_debug(Instrs3, C2, "after labels",
-				OptDebugInfo2, OptDebugInfo3)
-			;
-			{ OptDebugInfo3 = OptDebugInfo2 },
-			{ Instrs3 = Instrs2 }
+			labelopt_main(Final, LayoutLabelSet, !Instrs, _Mod3),
+			optimize__maybe_opt_debug(!.Instrs, !.C, "after labels",
+				!OptDebugInfo, !IO)
+		;
+			Mod1 = no
 		)
 	;
-		{ Instrs3 = Instrs0 },
-		{ OptDebugInfo3 = OptDebugInfo0 },
-		{ C2 = C0 }
+		FrameOpt = no
 	),
-	globals__io_lookup_bool_option(use_local_vars, UseLocalVars),
+	globals__io_lookup_bool_option(use_local_vars, UseLocalVars, !IO),
 	(
-		{ UseLocalVars = yes },
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing local vars for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
+		UseLocalVars = yes,
+		(
+			VeryVerbose = yes,
+			io__write_string("% Optimizing local vars for ", !IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
 		;
-			[]
+			VeryVerbose = no
 		),
-		globals__io_lookup_int_option(num_real_r_regs, NumRealRRegs),
+		globals__io_lookup_int_option(num_real_r_regs, NumRealRRegs,
+			!IO),
 		globals__io_lookup_int_option(local_var_access_threshold,
-			AccessThreshold),
-		{ use_local_vars__main(Instrs3, Instrs,
-			ProcLabel, NumRealRRegs, AccessThreshold, C2, C) },
-		optimize__maybe_opt_debug(Instrs, C, "after use_local_vars",
-			OptDebugInfo3, OptDebugInfo)
+			AccessThreshold, !IO),
+		use_local_vars__main(!Instrs, ProcLabel, NumRealRRegs,
+			AccessThreshold, !C),
+		optimize__maybe_opt_debug(!.Instrs, !.C,
+			"after use_local_vars", !OptDebugInfo, !IO)
 	;
-		{ UseLocalVars = no },
-		{ Instrs = Instrs3 },
-		{ OptDebugInfo = OptDebugInfo3 },
-		{ C = C2 }
+		UseLocalVars = no
 	).
 
-:- pred optimize__last(list(instruction)::in, set(label)::in,
-	counter::in, opt_debug_info::in, list(instruction)::out,
-	io__state::di, io__state::uo) is det.
+:- pred optimize__last(set(label)::in, counter::in, opt_debug_info::in,
+	list(instruction)::in, list(instruction)::out, io::di, io::uo) is det.
 
-optimize__last(Instrs0, LayoutLabelSet, C, OptDebugInfo0, Instrs) -->
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	{ opt_util__find_first_label(Instrs0, Label) },
-	{ opt_util__format_label(Label, LabelStr) },
+optimize__last(LayoutLabelSet, C, !.OptDebugInfo, !Instrs, !IO) :-
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+	opt_util__find_first_label(!.Instrs, Label),
+	opt_util__format_label(Label, LabelStr),
 
-	globals__io_lookup_bool_option(optimize_reassign, Reassign),
-	globals__io_lookup_bool_option(optimize_delay_slot, DelaySlot),
-	globals__io_lookup_bool_option(use_local_vars, UseLocalVars),
-	( { Reassign = yes ; DelaySlot = yes ; UseLocalVars = yes } ->
+	globals__io_lookup_bool_option(optimize_reassign, Reassign, !IO),
+	globals__io_lookup_bool_option(optimize_delay_slot, DelaySlot, !IO),
+	globals__io_lookup_bool_option(use_local_vars, UseLocalVars, !IO),
+	(
+		( Reassign = yes
+		; DelaySlot = yes
+		; UseLocalVars = yes
+		)
+	->
 		% We must get rid of any extra labels added by other passes,
 		% since they can confuse reassign, wrap_blocks and delay_slot.
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing labels for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
+		(
+			VeryVerbose = yes,
+			io__write_string("% Optimizing labels for ", !IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
 		;
-			[]
+			VeryVerbose = no
 		),
-		{ labelopt_main(Instrs0, no, LayoutLabelSet, Instrs1, _Mod1) },
-		optimize__maybe_opt_debug(Instrs1, C, "after label opt",
-			OptDebugInfo0, OptDebugInfo1)
+		labelopt_main(no, LayoutLabelSet, !Instrs, _Mod1),
+		optimize__maybe_opt_debug(!.Instrs, C, "after label opt",
+			!OptDebugInfo, !IO)
 	;
-		{ OptDebugInfo1 = OptDebugInfo0 },
-		{ Instrs1 = Instrs0 }
+		true
 	),
-	( { Reassign = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing reassign for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
+	(
+		Reassign = yes,
+		(
+			VeryVerbose = yes,
+			io__write_string("% Optimizing reassign for ", !IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
 		;
-			[]
+			VeryVerbose = no
 		),
-		{ remove_reassign(Instrs1, Instrs2) },
-		optimize__maybe_opt_debug(Instrs2, C, "after reassign",
-			OptDebugInfo1, OptDebugInfo2)
+		remove_reassign(!Instrs),
+		optimize__maybe_opt_debug(!.Instrs, C, "after reassign",
+			!OptDebugInfo, !IO)
 	;
-		{ OptDebugInfo2 = OptDebugInfo1 },
-		{ Instrs2 = Instrs1 }
+		Reassign = no
 	),
-	( { DelaySlot = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing delay slot for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
+	(
+		DelaySlot = yes,
+		(
+			VeryVerbose = yes,
+			io__write_string("% Optimizing delay slot for ", !IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
 		;
-			[]
+			VeryVerbose = no
 		),
-		{ fill_branch_delay_slot(Instrs2, Instrs3) },
-		optimize__maybe_opt_debug(Instrs3, C, "after delay slots",
-			OptDebugInfo2, OptDebugInfo3)
+		fill_branch_delay_slot(!Instrs),
+		optimize__maybe_opt_debug(!.Instrs, C, "after delay slots",
+			!OptDebugInfo, !IO)
 	;
-		{ OptDebugInfo3 = OptDebugInfo2 },
-		{ Instrs3 = Instrs2 }
+		DelaySlot = no
 	),
-	( { UseLocalVars = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Wrapping blocks for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
+	(
+		UseLocalVars = yes,
+		(
+			VeryVerbose = yes,
+			io__write_string("% Wrapping blocks for ", !IO),
+			io__write_string(LabelStr, !IO),
+			io__write_string("\n", !IO)
 		;
-			[]
+			VeryVerbose = no
 		),
-		{ wrap_blocks(Instrs3, Instrs) },
-		optimize__maybe_opt_debug(Instrs, C, "after wrap blocks",
-			OptDebugInfo3, _OptDebugInfo)
+		wrap_blocks(!Instrs),
+		optimize__maybe_opt_debug(!.Instrs, C, "after wrap blocks",
+			!.OptDebugInfo, _OptDebugInfo, !IO)
 	;
-		{ Instrs = Instrs3 }
+		UseLocalVars = no
 	).

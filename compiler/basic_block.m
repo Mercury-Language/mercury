@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001,2003 The University of Melbourne.
+% Copyright (C) 1997-2001,2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,7 +79,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel,
 		RestInstrs = OrigInstrs0
 	;
 		counter__allocate(N, !C),
-		Label = local(N, ProcLabel),
+		Label = internal(N, ProcLabel),
 		LabelInstr = label(Label) - "",
 		RestInstrs = [OrigInstr0 | OrigInstrs0]
 	),

@@ -889,14 +889,14 @@ trace__maybe_setup_redo_event(TraceInfo, Code) :-
 				"from-full flag not stored in expected slot"),
 			Code = node([
 				mkframe(temp_frame(nondet_stack_proc),
-					do_trace_redo_fail_shallow)
+					yes(do_trace_redo_fail_shallow))
 					- "set up shallow redo event"
 			])
 		;
 			MaybeFromFullSlot = no,
 			Code = node([
 				mkframe(temp_frame(nondet_stack_proc),
-					do_trace_redo_fail_deep)
+					yes(do_trace_redo_fail_deep))
 					- "set up deep redo event"
 			])
 		)

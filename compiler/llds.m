@@ -255,17 +255,21 @@
 			% tail recursion elimination is potentially applicable
 			% to the call.
 
-	;	mkframe(nondet_frame_info, code_addr)
-			% mkframe(NondetFrameInfo, CodeAddr) creates a nondet
+	;	mkframe(nondet_frame_info, maybe(code_addr))
+			% mkframe(NondetFrameInfo, MaybeAddr) creates a nondet
 			% stack frame. NondetFrameInfo says whether the frame
 			% is an ordinary frame, containing the variables of a
 			% model_non procedure, or a temp frame used only for
 			% its redoip/redofr slots. If the former, it also
 			% gives the details of the size of the variable parts
 			% of the frame (temp frames have no variable sized
-			% parts). CodeAddr is the code address to branch to
-			% when trying to generate the next solution from this
-			% choice point.
+			% parts). If MaybeAddr = yes(CodeAddr), then CodeAddr
+			% is the code address to branch to when trying to
+			% generate the next solution from this choice point.
+			% If MaybeAddr = no, then the field of the choice
+			% point that contains this information is not filled
+			% in by mkframe; it is up to the code following to do
+			% so.
 
 	;	label(label)
 			% Defines a label that can be used as the
@@ -880,14 +884,30 @@
 	--->	r		% general-purpose (integer) regs
 	;	f.		% floating point regs
 
+	% There are two kinds of labels: entry labels and internal labels.
+	% Entry labels are the entry points of procedures; internal labels
+	% are not.
+	%
+	% We have three ways of referring to entry labels. One way is valid
+	% from everywhere in the program (external). Another way is valid
+	% only from within the C file that defines the procedure (local).
+	% The last is valid only from within the BEGIN_MODULE/END_MODULE pair
+	% that contains the procedure definition. The more specialized the
+	% reference, the faster jumping to the label may be, though the
+	% implementations of adjacent entry_label_types may be identical
+	% in some grades.
+	%
+	% It is valid to declare a label using one entry_label_type and to
+	% refer to it using a more specialized entry_label_type.
+
+:- type entry_label_type
+	--->	c_local		% proc entry; internal to a C module
+	;	local		% proc entry; internal to a Mercury module
+	;	exported.	% proc entry; exported from a Mercury module
+
 :- type label
-	--->	local(int, proc_label)	% not proc entry; internal to a
-					% procedure
-	;	c_local(proc_label)	% proc entry; internal to a C module
-	;	local(proc_label)	% proc entry; internal to a Mercury
-					% module
-	;	exported(proc_label).	% proc entry; exported from a Mercury
-					% module
+	--->	internal(int, proc_label)
+	;	entry(entry_label_type, proc_label).
 
 :- type code_addr
 	--->	label(label)		% A label defined in this Mercury
@@ -1034,11 +1054,11 @@ stack_slot_num_to_lval(CodeModel, SlotNum) =
 	).
 
 break_up_local_label(Label, ProcLabel, LabelNum) :-
-	( Label = local(LabelNumPrime, ProcLabelPrime) ->
-		LabelNum = LabelNumPrime,
-		ProcLabel = ProcLabelPrime
+	(
+		Label = internal(LabelNum, ProcLabel)
 	;
-		error("break_up_local_label: bad label")
+		Label = entry(_, _),
+		error("break_up_local_label: entry label")
 	).
 
 llds__wrap_rtti_data(RttiData, rtti_data(RttiData)).
@@ -1160,10 +1180,8 @@ llds__binop_return_type(body, word).
 llds__register_type(r, word).
 llds__register_type(f, float).
 
-get_proc_label(exported(ProcLabel)) = ProcLabel.
-get_proc_label(local(ProcLabel)) = ProcLabel.
-get_proc_label(c_local(ProcLabel)) = ProcLabel.
-get_proc_label(local(_, ProcLabel)) = ProcLabel.
+get_proc_label(entry(_, ProcLabel)) = ProcLabel.
+get_proc_label(internal(_, ProcLabel)) = ProcLabel.
 
 get_defining_module_name(proc(ModuleName, _, _, _, _, _)) = ModuleName.
 get_defining_module_name(special_proc(ModuleName, _, _, _, _, _)) = ModuleName.

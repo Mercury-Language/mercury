@@ -143,7 +143,7 @@
 	% Get the label layout information created by tracing
 	% during code generation.
 :- pred code_info__get_layout_info(code_info::in,
-	map(label, internal_layout_info)::out) is det.
+	proc_label_layout_info::out) is det.
 
 	% Get the global static data structures that have
 	% been created during code generation for closure layouts.
@@ -202,7 +202,7 @@
 :- pred code_info__set_succip_used(bool::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_layout_info(map(label, internal_layout_info)::in,
+:- pred code_info__set_layout_info(proc_label_layout_info::in,
 	code_info::in, code_info::out) is det.
 
 :- pred code_info__get_max_temp_slot_count(code_info::in, int::out) is det.
@@ -315,7 +315,7 @@
 				% by this procedure.
 		store_succip	:: bool,
 				% do we need to store succip?
-		label_info	:: map(label, internal_layout_info),
+		label_info	:: proc_label_layout_info,
 				% Information on which values
 				% are live and where at which labels,
 				% for tracing and/or accurate gc.
@@ -841,7 +841,13 @@ code_info__add_trace_layout_for_label(Label, Context, Port, IsHidden, Path,
 	code_info__get_layout_info(!.CI, Internals0),
 	Exec = yes(trace_port_layout_info(Context, Port, IsHidden,
 		Path, Layout)),
-	( map__search(Internals0, Label, Internal0) ->
+	(
+		Label = internal(LabelNum, _)
+	;
+		Label = entry(_, _),
+		error("code_info__add_trace_layout_for_label: entry")
+	),
+	( map__search(Internals0, LabelNum, Internal0) ->
 		Internal0 = internal_layout_info(Exec0, Resume, Return),
 		( Exec0 = no ->
 			true
@@ -849,17 +855,23 @@ code_info__add_trace_layout_for_label(Label, Context, Port, IsHidden, Path,
 			error("adding trace layout for already known label")
 		),
 		Internal = internal_layout_info(Exec, Resume, Return),
-		map__set(Internals0, Label, Internal, Internals)
+		map__det_update(Internals0, LabelNum, Internal, Internals)
 	;
 		Internal = internal_layout_info(Exec, no, no),
-		map__det_insert(Internals0, Label, Internal, Internals)
+		map__det_insert(Internals0, LabelNum, Internal, Internals)
 	),
 	code_info__set_layout_info(Internals, !CI).
 
 code_info__add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
 	code_info__get_layout_info(!.CI, Internals0),
 	Resume = yes(LayoutInfo),
-	( map__search(Internals0, Label, Internal0) ->
+	(
+		Label = internal(LabelNum, _)
+	;
+		Label = entry(_, _),
+		error("code_info__add_trace_layout_for_label: entry")
+	),
+	( map__search(Internals0, LabelNum, Internal0) ->
 		Internal0 = internal_layout_info(Exec, Resume0, Return),
 		( Resume0 = no ->
 			true
@@ -867,10 +879,10 @@ code_info__add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
 			error("adding gc layout for already known label")
 		),
 		Internal = internal_layout_info(Exec, Resume, Return),
-		map__set(Internals0, Label, Internal, Internals)
+		map__det_update(Internals0, LabelNum, Internal, Internals)
 	;
 		Internal = internal_layout_info(no, Resume, no),
-		map__det_insert(Internals0, Label, Internal, Internals)
+		map__det_insert(Internals0, LabelNum, Internal, Internals)
 	),
 	code_info__set_layout_info(Internals, !CI).
 
@@ -1999,7 +2011,7 @@ code_info__create_temp_frame(Redoip, Comment, Code, !CI) :-
 		Kind = det_stack_proc
 	),
 	Code = node([
-		mkframe(temp_frame(Kind), Redoip)
+		mkframe(temp_frame(Kind), yes(Redoip))
 			- Comment
 	]),
 	code_info__set_created_temp_frame(yes, !CI),

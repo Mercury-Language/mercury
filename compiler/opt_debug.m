@@ -503,8 +503,9 @@ opt_debug__dump_rtti_type_class_instance_types(TCTypes, Str) :-
 	string__append_list(["tc_instance(", TypesStr, ")"],
 		Str).
 
-opt_debug__dump_layout_name(label_layout(Label, LabelVars), Str) :-
-	opt_debug__dump_label(Label, LabelStr),
+opt_debug__dump_layout_name(label_layout(ProcLabel, LabelNum, LabelVars),
+		Str) :-
+	opt_debug__dump_label(internal(LabelNum, ProcLabel), LabelStr),
 	(
 		LabelVars = label_has_var_info,
 		LabelVarsStr = "label_has_var_info"
@@ -648,15 +649,11 @@ opt_debug__dump_code_addrs([Addr | Addrs], Str) :-
 	opt_debug__dump_code_addrs(Addrs, A2_str),
 	string__append_list([" ", A_str, A2_str], Str).
 
-opt_debug__dump_label(local(N, ProcLabel), Str) :-
+opt_debug__dump_label(internal(N, ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, P_str),
 	string__int_to_string(N, N_str),
 	string__append_list([P_str, "_", N_str], Str).
-opt_debug__dump_label(c_local(ProcLabel), Str) :-
-	opt_debug__dump_proclabel(ProcLabel, Str).
-opt_debug__dump_label(local(ProcLabel), Str) :-
-	opt_debug__dump_proclabel(ProcLabel, Str).
-opt_debug__dump_label(exported(ProcLabel), Str) :-
+opt_debug__dump_label(entry(_, ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, Str).
 
 opt_debug__dump_labels([], "").
@@ -729,8 +726,14 @@ opt_debug__dump_instr(call(Proc, Ret, _, _, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).
-opt_debug__dump_instr(mkframe(FrameInfo, Redoip), Str) :-
-	opt_debug__dump_code_addr(Redoip, R_str),
+opt_debug__dump_instr(mkframe(FrameInfo, MaybeRedoip), Str) :-
+	(
+		MaybeRedoip = yes(Redoip),
+		opt_debug__dump_code_addr(Redoip, R_str)
+	;
+		MaybeRedoip = no,
+		R_str = "no_redoip"
+	),
 	(
 		FrameInfo = ordinary_frame(Name, Size, MaybePragma),
 		string__int_to_string(Size, S_str),
