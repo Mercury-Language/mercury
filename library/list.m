@@ -484,6 +484,21 @@
 :- mode list__foldl2(pred(in, di, uo, di, uo) is det,
 		in, di, uo, di, uo) is det.
 
+	% list__foldl3(Pred, List, Start1, End1, Start2, End2, Start3, End3) 
+	% calls Pred with each element of List (working left-to-right),
+	% 3 accumulators (with the initial values of Start1, Start2 and Start3),
+	% and returns the final values in End1, End2 and End3.
+	% (Although no more expressive than list__foldl, this is often
+	% a more convenient format, and a little more efficient).
+:- pred list__foldl3(pred(L, A1, A1, A2, A2, A3, A3), list(L),
+		A1, A1, A2, A2, A3, A3).
+:- mode list__foldl3(pred(in, in, out, in, out, in, out) is det,
+		in, in, out, in, out, in, out) is det.
+:- mode list__foldl3(pred(in, in, out, in, out, in, out) is semidet,
+		in, in, out, in, out, in, out) is semidet.
+:- mode list__foldl3(pred(in, in, out, in, out, in, out) is nondet,
+		in, in, out, in, out, in, out) is nondet.
+
 	% list__map_foldl(Pred, InList, OutList, Start, End) calls Pred
 	% with an accumulator (with the initial value of Start) on
 	% each element of InList (working left-to-right) to transform
@@ -1148,6 +1163,14 @@ list__foldl2(_, [], FirstAcc, FirstAcc, SecAcc, SecAcc).
 list__foldl2(P, [H|T], FirstAcc0, FirstAcc, SecAcc0, SecAcc) :-
 	call(P, H, FirstAcc0, FirstAcc1, SecAcc0, SecAcc1),
 	list__foldl2(P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc).
+
+list__foldl3(_, [], FirstAcc, FirstAcc, SecAcc, SecAcc, ThirdAcc, ThirdAcc).
+list__foldl3(P, [H | T], FirstAcc0, FirstAcc, SecAcc0, SecAcc,
+		ThirdAcc0, ThirdAcc) :-
+	call(P, H, FirstAcc0, FirstAcc1, SecAcc0, SecAcc1,
+		ThirdAcc0, ThirdAcc1),
+	list__foldl3(P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc,
+		ThirdAcc1, ThirdAcc).
 
 list__map_foldl(_, [],  []) -->
         [].
