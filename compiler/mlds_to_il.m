@@ -488,12 +488,12 @@ mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags,
 		function(_MaybePredProcId, _Params, _MaybeStmts)),
 		_Decl, Info, Info) :-
 	sorry(this_file, "top level function definition!").
-mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags0, class(ClassDefn)),
+mlds_defn_to_ilasm_decl(defn(Name, Context, Flags0, class(ClassDefn)),
 		Decl, Info0, Info) :-
 	il_info_new_class(ClassDefn, Info0, Info1),
 
-	generate_class_body(Name, ClassDefn, ClassName, EntityName, Extends,
-			Interfaces, MethodsAndFieldsAndCtors, Info1, Info2),
+	generate_class_body(Name, Context, ClassDefn, ClassName, EntityName,
+		Extends, Interfaces, MethodsAndFieldsAndCtors, Info1, Info2),
 
 		% Only the wrapper class needs to have the
 		% initialization instructions executed by the class
@@ -533,28 +533,54 @@ mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags0, class(ClassDefn)),
 	Decl = class(decl_flags_to_classattrs(Flags), EntityName, Extends,
 			Interfaces, MethodDecls).
 
-:- pred generate_class_body(mlds__entity_name::in, mlds__class_defn::in,
+:- pred generate_class_body(mlds__entity_name::in, mlds__context::in,
+		mlds__class_defn::in,
 		ilds__class_name::out, ilds__id::out, extends::out,
 		implements::out, list(classdecl)::out,
 		il_info::in, il_info::out) is det.
 
-generate_class_body(Name, ClassDefn, ClassName, EntityName, Extends, Interfaces,
-		ClassDecls, Info0, Info) :-
+generate_class_body(Name, Context, ClassDefn,
+		ClassName, EntityName, Extends, Interfaces, ClassDecls,
+		Info0, Info) :-
 	EntityName = entity_name_to_ilds_id(Name),
 	ClassDefn = class_defn(Kind, _Imports, Inherits, Implements,
-			Ctors, Members),
+			Ctors0, Members),
 	Parent - Extends = generate_parent_and_extends(Info0 ^ il_data_rep,
 			Kind, Inherits),
 	Interfaces = implements(
 			list__map(interface_id_to_class_name, Implements)),
-
 	ClassName = class_name(Info0 ^ module_name, EntityName),
 	list__map_foldl(generate_method(ClassName, no), Members,
 			MethodsAndFields, Info0, Info1),
+	Ctors = maybe_add_empty_ctor(Ctors0, Kind, Context),
 	list__map_foldl(generate_method(ClassName, yes(Parent)), Ctors,
 			IlCtors, Info1, Info),
 	ClassDecls = IlCtors ++ MethodsAndFields.
 
+	% For IL, every class needs a constructor,
+	% otherwise you can't use the newobj instruction to
+	% allocate instances of the class.
+	% So if a class doesn't already have one, we add an empty one.
+:- func maybe_add_empty_ctor(mlds__defns, mlds__class_kind, mlds__context) =
+	mlds__defns.
+maybe_add_empty_ctor(Ctors0, Kind, Context) = Ctors :-
+	(
+		Kind = mlds__class,
+		Ctors0 = [] 
+	->
+		% Generate an empty block for the body of the constructor.
+		Stmt = mlds__statement(block([], []), Context),
+
+		Ctor = mlds__function(no, func_params([], []),
+				defined_here(Stmt)),
+		CtorFlags = init_decl_flags(public, per_instance, non_virtual,
+				overridable, modifiable, concrete),
+
+		CtorDefn = mlds__defn(export(".ctor"), Context, CtorFlags, Ctor),
+		Ctors = [CtorDefn]
+	;
+		Ctors = Ctors0
+	).
 
 :- func generate_parent_and_extends(il_data_rep, mlds__class_kind,
 		list(mlds__class_id)) = pair(ilds__class_name, extends).
@@ -1020,9 +1046,9 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
 	{ ClassDecl = ilasm__method(methodhead(Attrs, MemberName,
 			ILSignature, []), MethodContents)}.
 
-generate_method(_, _, defn(Name, _Context, Flags, Entity), ClassDecl) -->
+generate_method(_, _, defn(Name, Context, Flags, Entity), ClassDecl) -->
 	{ Entity = class(ClassDefn) },
-	generate_class_body(Name, ClassDefn, _ClassName, EntityName,
+	generate_class_body(Name, Context, ClassDefn, _ClassName, EntityName,
 			Extends, Interfaces, ClassDecls),
 	{ ClassDecl = nested_class(decl_flags_to_nestedclassattrs(Flags),
 			EntityName, Extends, Interfaces, ClassDecls) }.

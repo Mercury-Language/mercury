@@ -378,46 +378,25 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	%
 		% If we're allocating it on the heap, then we need to use 
 		% a class type rather than a struct (value type).
-		% This is needed for the IL back-end.
+		% This is needed for verifiable code on the IL back-end.
 	globals__lookup_bool_option(Globals, put_nondet_env_on_heap, OnHeap),
 	( OnHeap = yes ->
-		EnvTypeKind = mlds__class
+		EnvTypeKind = mlds__class,
+		BaseClasses = [mlds__generic_env_ptr_type]
 	;
-		EnvTypeKind = mlds__struct
+		EnvTypeKind = mlds__struct,
+		BaseClasses = []
 	),
 	EnvTypeName = class_type(qual(ModuleName, EnvClassName), 0,
 		EnvTypeKind),
 	EnvTypeEntityName = type(EnvClassName, 0),
 	EnvTypeFlags = env_type_decl_flags,
 	Fields = list__map(convert_local_to_field, LocalVars),
-
-		% If we're allocating it on the heap, then we're using
-		% a class type, and (for some back-ends, at least, e.g. IL)
-		% that means we need to define a constructor for it.
-	( OnHeap = yes ->
-			% Generate a ctor for the class.
-
-			% We generate an empty block for the body of the
-			% constructor.
-		Stmt = mlds__statement(block([], []), Context),
-
-		Ctor = mlds__function(no, func_params([], []),
-				defined_here(Stmt)),
-		CtorFlags = init_decl_flags(public, per_instance, non_virtual,
-				overridable, modifiable, concrete),
-
-			% Note that the name of constructor is
-			% determined by the backend convention.
-		CtorDefn = mlds__defn(export("<constructor>"), Context,
-				CtorFlags, Ctor),
-		Ctors = [CtorDefn],
-		BaseClasses = [mlds__generic_env_ptr_type]
-	;
-		Ctors = [],
-		BaseClasses = []
-	),
-	EnvTypeDefnBody = mlds__class(mlds__class_defn(EnvTypeKind, [], 
-		BaseClasses, [], Ctors, Fields)),
+	Imports = [],
+	Ctors = [], % mlds_to_il.m will add an empty constructor if needed
+	Interfaces = [],
+	EnvTypeDefnBody = mlds__class(mlds__class_defn(EnvTypeKind, Imports, 
+		BaseClasses, Interfaces, Ctors, Fields)),
 	EnvTypeDefn = mlds__defn(EnvTypeEntityName, Context, EnvTypeFlags,
 		EnvTypeDefnBody),
 
@@ -549,8 +528,7 @@ ml_make_env_ptr_type(Globals, EnvType) = EnvPtrType :-
 	globals__lookup_bool_option(Globals, put_nondet_env_on_heap, OnHeap),
 	globals__get_target(Globals, Target),
 	( Target = il, OnHeap = yes ->
-		% IL uses classes instead of structs, so the type
-		% is a little different.
+		% For IL, a class type is already a pointer (object reference).
 		EnvPtrType = EnvType
 	;
 		EnvPtrType = mlds__ptr_type(EnvType)
