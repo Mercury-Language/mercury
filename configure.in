@@ -2976,7 +2976,7 @@ AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mercury.bat
 scripts/mprof scripts/mercury_update_interface scripts/mgnuc
 scripts/parse_ml_options.sh-subr scripts/ml scripts/c2init
 scripts/mmake scripts/mdb scripts/mdbrc scripts/mdprof
-scripts/sicstus_conv scripts/mkfifo_using_mknod bindist/bindist.build_vars
+scripts/mkfifo_using_mknod bindist/bindist.build_vars
 ,
 for header in $CONFIG_HEADERS ; do
 	if test "$header" = "runtime/mercury_conf.h"; then

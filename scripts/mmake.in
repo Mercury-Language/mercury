@@ -64,15 +64,6 @@ Targets:
 	<module>:
 		Compile and link a Mercury program with main module
 		\`<module>.m' to produce an executable.
-	<module>.nu:
-		Compile and link a Mercury program with NU-Prolog
-		rather than with the Mercury compiler.
-	<module>.sicstus:
-		Compile and link a Mercury program with SICStus Prolog
-		rather than with the Mercury compiler.
-	<module>.nu.debug:
-	<module>.sicstus.debug:
-		Debugging versions of the above.
 	clean:
 		Remove intermediate files.
 	realclean:

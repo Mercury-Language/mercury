@@ -35,8 +35,6 @@ main_target: $(MAIN_TARGET)
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 
 MCFLAGS += --use-subdirs
-MSCFLAGS += --use-subdirs
-MNCFLAGS += --use-subdirs
 ALL_MGNUCFLAGS += -I.
 
 endif
@@ -68,29 +66,6 @@ endif
 .PRECIOUS: $(java_dates_subdir)%.java_date
 .PRECIOUS: $(s_dates_subdir)%.s_date
 .PRECIOUS: $(pic_s_dates_subdir)%.pic_s_date
-
-#-----------------------------------------------------------------------------#
-#
-# Rules for NU-Prolog and SICStus Prolog.
-#
-
-.m.pl:
-	sicstus_conv $<
-
-.nl.pl:
-	sicstus_conv $<
-
-$(nos_subdir)%.no : %.m
-	$(MNC) $(ALL_MNCFLAGS) -o $@ $<
-
-$(nos_subdir)%.no : %.nl
-	$(MNC) $(ALL_MNCFLAGS) -o $@ $<
-
-$(qls_subdir)%.ql : %.m
-	$(MSC) $(ALL_MSCFLAGS) -o $@ $<
-
-$(qls_subdir)%.ql : %.nl
-	$(MSC) $(ALL_MSCFLAGS) -o $@ $<
 
 #-----------------------------------------------------------------------------#
 #

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998, 2000 The University of Melbourne. 
+# Copyright (C) 1995-1998, 2000, 2002 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -43,12 +43,9 @@ install:
 
 .PHONY: clean
 clean:
-	-rm -f */*.o */*.pic_o */*.a */*.so */*.no */*.ql */*.pl
+	-rm -f */*.o */*.pic_o */*.a */*.so
 	-rm -rf */Mercury/os */Mercury/pic_os */Mercury/libs
-	-rm -rf */Mercury/qls */Mercury/nos
 	-rm -f compiler/mercury_compile profiler/mercury_profile 
-	-rm -f library/library.nu* library/library.sicstus*
-	-rm -f library/sicstus_compile library/sicstus_saved_state
 	-rm -f util/mdemangle util/mkinit
 	cd boehm_gc; $(MMAKE_SUBDIR) clean
 
