@@ -563,7 +563,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	{ select_ok_modules(Modules0, DepsMap, Modules) },
 
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".ms = "),
+	io__write_string(DepStream, ".ms ="),
 	write_dependencies_list(Modules, ".m", DepStream),
 	io__write_string(DepStream, "\n\n"),
 
