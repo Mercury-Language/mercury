@@ -98,6 +98,11 @@ int main(int argc, char **argv)
 
 #ifdef CONSERVATIVE_GC
 	GC_quiet = TRUE;
+
+	/* double-check that the garbage collector knows about
+	   global variables in shared libraries */
+	GC_is_visible(fake_reg);
+
 	/* call the init_gc() function defined in <foo>_init.c - */
 	/* this is to work around a Solaris 2.X (X <= 4) linker bug */
 	init_gc();
