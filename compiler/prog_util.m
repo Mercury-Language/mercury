@@ -133,8 +133,22 @@ prog_util__replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
 	varset__merge_subst(VarSet0, TVarSet, _, Subst),
 	term__apply_substitution_to_list(Args0, Subst, Args),
 	term__apply_substitution(Body0, Subst, Body),
-	prog_util__replace_eqv_type_pred(TypesAndModes0, Name, Args, Body,
+	prog_util__replace_eqv_type_tms(TypesAndModes0, Name, Args, Body,
 		no, TypesAndModes, yes).
+
+prog_util__replace_eqv_type(
+			func(VarSet0, PredName, TypesAndModes0, 
+				RetTypeAndMode0, Det, Cond),
+			TVarSet, Name, Args0, Body0,
+			func(VarSet0, PredName, TypesAndModes, RetTypeAndMode,
+				Det, Cond)) :-
+	varset__merge_subst(VarSet0, TVarSet, _, Subst),
+	term__apply_substitution_to_list(Args0, Subst, Args),
+	term__apply_substitution(Body0, Subst, Body),
+	prog_util__replace_eqv_type_tms(TypesAndModes0, Name, Args, Body,
+		no, TypesAndModes, Found),
+	prog_util__replace_eqv_type_tm(RetTypeAndMode0, Name, Args, Body,
+		Found, RetTypeAndMode, yes).
 
 :- pred prog_util__replace_eqv_type_defn(type_defn, string, list(type_param),
 					type, type_defn).
@@ -215,16 +229,16 @@ prog_util__replace_eqv_type_type(term__functor(F, TArgs0, Context), Name, Args,
 		Type = term__functor(F, TArgs1, Context)
 	).
 
-:- pred prog_util__replace_eqv_type_pred(list(type_and_mode), string,
+:- pred prog_util__replace_eqv_type_tms(list(type_and_mode), string,
 	list(type_param), type, bool, list(type_and_mode), bool).
-:- mode prog_util__replace_eqv_type_pred(in, in, in, in, in, out, out) is det.
+:- mode prog_util__replace_eqv_type_tms(in, in, in, in, in, out, out) is det.
 
-prog_util__replace_eqv_type_pred([], _Name, _Args, _Body, Found, [], Found).
-prog_util__replace_eqv_type_pred([TM0|TMs0], Name, Args, Body, Found0,
+prog_util__replace_eqv_type_tms([], _Name, _Args, _Body, Found, [], Found).
+prog_util__replace_eqv_type_tms([TM0|TMs0], Name, Args, Body, Found0,
 				[TM|TMs], Found) :-
 	prog_util__replace_eqv_type_tm(TM0, Name, Args, Body, Found0,
 				TM, Found1),
-	prog_util__replace_eqv_type_pred(TMs0, Name, Args, Body, Found1,
+	prog_util__replace_eqv_type_tms(TMs0, Name, Args, Body, Found1,
 					TMs, Found).
 
 :- pred prog_util__replace_eqv_type_tm(type_and_mode, string, list(type_param),
