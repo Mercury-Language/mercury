@@ -143,28 +143,18 @@ inlining__inlining_in_goal_2(
 		code_aux__contains_only_builtins(CalledGoal),
 		code_aux__goal_is_flat(CalledGoal)
 	->
-        	proc_info_headvars(ProcInfo, HeadVars0),
-        	proc_info_argmodes(ProcInfo, ArgInfo),
+		proc_info_headvars(ProcInfo, HeadVars),
         	proc_info_variables(ProcInfo, PVarset),
 		proc_info_vartypes(ProcInfo, CVarTypes),
 		varset__vars(PVarset, Vars0),
-		map__init(Subn0),
-		inlining__create_variables(Vars0, Varset0, VarTypes0, Subn0,
-			CVarTypes, Varset, VarTypes, Subn),
-		inlining__rename_headvars(HeadVars0, Subn, HeadVars),
-		inlining__name_apart(CalledGoal, Subn, NewGoal),
-		goal_to_conj_list(NewGoal, NewGoalList),
 		term__vars_list(Args, ArgVars),
-		(
-			inlining__argument_unifications(ArgInfo, ArgVars,
-				HeadVars, ModuleInfo, Inputs0, Outputs0)
-		->
-			Inputs = Inputs0,
-			Outputs = Outputs0
-		;
-			error("inlining__inlining_in_goal_2: lists not same length")
-		),
-		list__condense([Inputs, NewGoalList, Outputs], GoalList),
+		map__init(Subn0),
+		assoc_list__from_corresponding_lists(ArgVars, HeadVars, ArgSub),
+		inlining__init_subn(ArgSub, Subn0, Subn1),
+		inlining__create_variables(Vars0, Varset0, VarTypes0,
+			Subn1, CVarTypes, Varset, VarTypes, Subn),
+		inlining__name_apart(CalledGoal, Subn, NewGoal),
+		goal_to_conj_list(NewGoal, GoalList),
 		(
 			GoalList = [SingleGoal - _]
 		->
@@ -233,19 +223,39 @@ inlining__inlining_in_conj([Goal0 | Goals0], Varset0, VarTypes0, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__create_variables(list(var), varset, map(var, type), map(var, var), map(var, type), varset, map(var, type), map(var, var)).
+:- pred inlining__create_variables(list(var), varset,
+		map(var, type), map(var, var), map(var, type),
+				varset, map(var, type), map(var, var)).
 :- mode inlining__create_variables(in, in, in, in, in, out, out, out) is det.
 
 inlining__create_variables([], Varset, VarTypes, Subn, _CVars,
 		Varset, VarTypes, Subn).
 inlining__create_variables([V|Vs], Varset0, VarTypes0, Subn0, CVars,
 		Varset, VarTypes, Subn) :-
-	varset__new_var(Varset0, NV, Varset1),
+	(
+		map__contains(Subn0, V)
+	->
+		NV = V,
+		Varset1 = Varset0,
+		Subn1 = Subn0
+	;
+		varset__new_var(Varset0, NV, Varset1),
+		map__set(Subn0, V, NV, Subn1)
+	),
 	map__lookup(CVars, V, VT),
 	map__set(VarTypes0, NV, VT, VarTypes1),
-	map__set(Subn0, V, NV, Subn1),
 	inlining__create_variables(Vs, Varset1, VarTypes1, Subn1, CVars,
 		Varset, VarTypes, Subn).
+
+%-----------------------------------------------------------------------------%
+
+:- pred inlining__init_subn(assoc_list(var, var), map(var, var), map(var, var)).
+:- mode inlining__init_subn(in, in, out) is det.
+
+inlining__init_subn([], Subn, Subn).
+inlining__init_subn([A-H|Vs], Subn0, Subn) :-
+	map__set(Subn0, H, A, Subn1),
+	inlining__init_subn(Vs, Subn1, Subn).
 
 %-----------------------------------------------------------------------------%
 
