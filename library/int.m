@@ -19,6 +19,16 @@
 :- pred int__min(int, int, int).
 :- mode int__min(intput, input, output).
 
+:- type int__expr 	= 	int__expr_2 + int.
+:- type int__expr_2	--->	(int__expr + int__expr)
+			;	(int__expr * int__expr)
+			;	(int__expr - int__expr)
+			;	(int__expr / int__expr).
+
+	% builtin in NU-Prolog
+:- pred is(int, int__expr).
+:- mode is(output, input).
+
 :- implementation.
 
 int__abs(I0, I) :-
