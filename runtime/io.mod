@@ -249,7 +249,8 @@ mercury__io__set_output_stream_4_0:
 /* stream open/close predicates */
 
 mercury__io__do_open_input_5_0:
-	r3 = r2 = (int)mercury_open((char*)r1, "r");
+	r3 = (int)mercury_open((char*)r1, "r");
+	r2 = (r3) ? 1 : -1; /* XXX ??? */
 	update_io(r4, r5);
 	proceed();
 
@@ -360,12 +361,17 @@ mercury__type_to_univ_2_1:
 	 *  On successful exit r3 contains the output argument of type T;
 	 *  r1 is for the success/failure indication.
 	 *
-	 *  We check that the type_info addresses match.
+	 *  XXX We check that the type_info addresses match.
+	 *	This is incorrect - the type_info structures could
+	 *	have been created in different places.
+	 *  XXX As a tempory hack, we don't check.
 	 */
+/***
 	if (field(mktag(0), r4, 0) != r2) {
 		r1 = FALSE;
 		proceed();
 	}
+***/
 	r3 = field(mktag(0), r4, 1);
 	r1 = TRUE;
 	proceed();
