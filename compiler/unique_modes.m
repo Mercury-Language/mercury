@@ -67,12 +67,12 @@
 %-----------------------------------------------------------------------------%
 
 unique_modes__check_module(ModuleInfo0, ModuleInfo) -->
-	check_pred_modes(check_unique_modes(may_change_called_proc),
+	check_pred_modes(check_unique_modes, may_change_called_proc,
 			ModuleInfo0, ModuleInfo, _UnsafeToContinue).
 
 unique_modes__check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, Changed) -->
 	modecheck_proc(ProcId, PredId,
-		check_unique_modes(may_change_called_proc),
+		check_unique_modes, may_change_called_proc,
 		ModuleInfo0, ModuleInfo, NumErrors, Changed),
 	( { NumErrors \= 0 } ->
 		io__set_exit_status(1)
@@ -492,11 +492,11 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 	%
 	mode_info_get_errors(ModeInfo2, Errors),
 	mode_info_set_errors(OldErrors, ModeInfo2, ModeInfo3),
-	mode_info_get_how_to_check(ModeInfo3, HowToCheck),
+	mode_info_get_may_change_called_proc(ModeInfo3, MayChangeCalledProc),
 	( Errors = [] ->
 		ProcId = ProcId0,
 		ModeInfo = ModeInfo3
-	; HowToCheck = check_unique_modes(may_not_change_called_proc) ->
+	; MayChangeCalledProc = may_not_change_called_proc ->
 		% We're not allowed to try a different procedure
 		% here, so just return all the errors.
 		ProcId = ProcId0,
@@ -519,7 +519,7 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 		%
 		mode_info_set_instmap(InstMap0, ModeInfo3, ModeInfo4),
 		proc_info_inferred_determinism(ProcInfo, Determinism),
-		modecheck_call_pred(PredId, ArgVars, yes(Determinism),
+		modecheck_call_pred(PredId, ProcId0, ArgVars, yes(Determinism),
 			ProcId, NewArgVars, ExtraGoals, ModeInfo4, ModeInfo),
 		
 		( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->

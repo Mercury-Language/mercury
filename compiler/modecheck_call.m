@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,16 +25,17 @@
 :- import_module prog_data, modes, mode_info.
 :- import_module list, std_util.
 
-:- pred modecheck_call_pred(pred_id, list(prog_var), maybe(determinism),
-		proc_id, list(prog_var), extra_goals, mode_info, mode_info).
-:- mode modecheck_call_pred(in, in, in, out, out, out,
-				mode_info_di, mode_info_uo) is det.
+:- pred modecheck_call_pred(pred_id, proc_id, list(prog_var),
+		maybe(determinism), proc_id, list(prog_var),
+		extra_goals, mode_info, mode_info).
+:- mode modecheck_call_pred(in, in, in, in, out, out, out,
+		mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_higher_order_call(pred_or_func, prog_var, list(prog_var),
 		list(type), list(mode), determinism, list(prog_var),
 		extra_goals, mode_info, mode_info).
 :- mode modecheck_higher_order_call(in, in, in, out, out, out, out, out,
-				mode_info_di, mode_info_uo) is det.
+		mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_higher_order_pred_call(prog_var, list(prog_var), pred_or_func,
 		hlds_goal_info, hlds_goal_expr, mode_info, mode_info).
@@ -88,12 +89,11 @@ modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0, Goal)
 	modecheck_higher_order_call(PredOrFunc, PredVar, Args0,
 			Types, Modes, Det, Args, ExtraGoals),
 
-	=(ModeInfo),
 	{ Call = higher_order_call(PredVar, Args, Types, Modes, Det,
 			PredOrFunc) },
-	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0,
+	handle_extra_goals(Call, ExtraGoals, GoalInfo0,
 			[PredVar | Args0], [PredVar | Args],
-			InstMap0, ModeInfo, Goal) },
+			InstMap0, Goal),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "higher-order predicate call").
 
@@ -108,12 +108,11 @@ modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
 	modecheck_higher_order_call(function, FuncVar, Args1,
 			Types, Modes, Det, Args, ExtraGoals),
 
-	=(ModeInfo),
 	{ Call = higher_order_call(FuncVar, Args, Types, Modes, Det,
 				function) },
-	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0,
-				[FuncVar | Args1], [FuncVar | Args],
-				InstMap0, ModeInfo, Goal) },
+	handle_extra_goals(Call, ExtraGoals, GoalInfo0,
+			[FuncVar | Args1], [FuncVar | Args],
+			InstMap0, Goal),
 
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "higher-order function call").
@@ -178,17 +177,29 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		ExtraGoals = no_extra_goals
 	).
 
-modecheck_call_pred(PredId, ArgVars0, DeterminismKnown,
+modecheck_call_pred(PredId, ProcId0, ArgVars0, DeterminismKnown,
 		TheProcId, ArgVars, ExtraGoals, ModeInfo0, ModeInfo) :-
 
-		% Get the list of different possible modes for the called
-		% predicate
+	mode_info_get_may_change_called_proc(ModeInfo0, MayChangeCalledProc),
+
 	mode_info_get_preds(ModeInfo0, Preds),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	map__lookup(Preds, PredId, PredInfo0),
 	maybe_add_default_mode(ModuleInfo, PredInfo0, PredInfo, _),
 	pred_info_procedures(PredInfo, Procs),
-	map__keys(Procs, ProcIds),
+
+	( MayChangeCalledProc = may_not_change_called_proc ->
+		( invalid_proc_id(ProcId0) ->
+			error("modecheck_call_pred: invalid proc_id")
+		;
+			ProcIds = [ProcId0]
+		)
+	;
+			% Get the list of different possible
+			% modes for the called predicate
+		map__keys(Procs, ProcIds)
+	),
+
 	pred_info_get_markers(PredInfo, Markers),
 
 		% In order to give better diagnostics, we handle the
@@ -206,7 +217,9 @@ modecheck_call_pred(PredId, ArgVars0, DeterminismKnown,
 		ExtraGoals = no_extra_goals
 	;
 		ProcIds = [ProcId],
-		\+ check_marker(Markers, infer_modes)
+		( \+ check_marker(Markers, infer_modes)
+		; MayChangeCalledProc = may_not_change_called_proc
+		)
 	->
 		TheProcId = ProcId,
 		map__lookup(Procs, ProcId, ProcInfo),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -352,7 +352,7 @@ queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo) -->
 		%
 		% print progress message
 		%
-		( { HowToCheckGoal = check_unique_modes(_) } ->
+		( { HowToCheckGoal = check_unique_modes } ->
 			io__write_string(
 		    "% Analyzing modes, determinism, and unique-modes for\n% ")
 		;
@@ -406,10 +406,10 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, OldPredTable0, ModuleInfo0,
 	->
 		io__set_exit_status(1),
 		{ OldPredTable = OldPredTable0 },
-		{ ModuleInfo = ModuleInfo2 },
+		{ module_info_remove_predid(ModuleInfo2, PredId, ModuleInfo) },
 		{ Changed = Changed1 }
 	;
-		( { HowToCheckGoal = check_unique_modes(_) } ->
+		( { HowToCheckGoal = check_unique_modes } ->
 			{ detect_switches_in_proc(ProcId, PredId,
 						ModuleInfo2, ModuleInfo3) },
 			detect_cse_in_proc(ProcId, PredId,
