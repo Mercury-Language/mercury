@@ -113,6 +113,9 @@ MR_proc_static_user_builtin_empty(typectordesc_unify, 2, 0,
 MR_proc_static_user_builtin_empty(typectordesc_compare, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
 
+MR_proc_static_user_empty(std_util, compare_representation, 3, 0,
+	"mercury_ho_call.c", 0, MR_TRUE);
+
 #endif
 
 #ifndef MR_HIGHLEVEL_CODE
