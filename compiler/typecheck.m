@@ -3341,7 +3341,7 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 			% or higher-order pred constants.
 		{ string__int_to_string(Arity, ArStr) },
 		io__write_strings(["  error: undefined predicate or function `",
-				Module, ":", Name, "'/", ArStr])
+				Module, ":", Name, "'/", ArStr, ".\n"])
 	;
 		{ Functor = cons(unqualified(Name), _) },
 		{ language_builtin(Name, Arity) }
