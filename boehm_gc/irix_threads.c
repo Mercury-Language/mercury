@@ -15,6 +15,10 @@
  * Support code for Irix (>=6.2) Pthreads.  This relies on properties
  * not guaranteed by the Pthread standard.  It may or may not be portable
  * to other implementations.
+ *
+ * Note that there is a lot of code duplication between linux_threads.c
+ * and irix_threads.c; any changes made here may need to be reflected
+ * there too.
  */
 
 # if defined(IRIX_THREADS)
@@ -107,7 +111,6 @@ void GC_suspend_handler(int sig)
     int i;
 
     if (sig != SIG_SUSPEND) ABORT("Bad signal in suspend_handler");
-    pthread_mutex_lock(&GC_suspend_lock);
     me = GC_lookup_thread(pthread_self());
     /* The lookup here is safe, since I'm doing this on behalf  */
     /* of a thread which holds the allocation lock in order	*/
@@ -118,6 +121,7 @@ void GC_suspend_handler(int sig)
 	pthread_mutex_unlock(&GC_suspend_lock);
 	return;
     }
+    pthread_mutex_lock(&GC_suspend_lock);
     me -> stack_ptr = (ptr_t)(&dummy);
     me -> stop = STOPPED;
     pthread_cond_signal(&GC_suspend_ack_cv);
@@ -127,7 +131,7 @@ void GC_suspend_handler(int sig)
 }
 
 
-bool GC_thr_initialized = FALSE;
+GC_bool GC_thr_initialized = FALSE;
 
 size_t GC_min_stack_sz;
 
@@ -198,7 +202,7 @@ GC_thread GC_new_thread(pthread_t id)
     int hv = ((word)id) % THREAD_TABLE_SZ;
     GC_thread result;
     static struct GC_Thread_Rep first_thread;
-    static bool first_thread_used = FALSE;
+    static GC_bool first_thread_used = FALSE;
     
     if (!first_thread_used) {
     	result = &first_thread;
@@ -301,7 +305,7 @@ void GC_stop_world()
                 case 0:
                     break;
                 default:
-                    ABORT("thr_kill failed");
+                    ABORT("pthread_kill failed");
             }
         }
       }
@@ -370,8 +374,6 @@ int GC_is_thread_stack(ptr_t addr)
 }
 # endif
 
-extern ptr_t GC_approx_sp();
-
 /* We hold allocation lock.  We assume the world is stopped.	*/
 void GC_push_all_stacks()
 {
@@ -407,12 +409,20 @@ void GC_push_all_stacks()
 void GC_thr_init()
 {
     GC_thread t;
+    struct sigaction act;
 
     GC_thr_initialized = TRUE;
     GC_min_stack_sz = HBLKSIZE;
     GC_page_sz = sysconf(_SC_PAGESIZE);
-    if (sigset(SIG_SUSPEND, GC_suspend_handler) != SIG_DFL)
+    (void) sigaction(SIG_SUSPEND, 0, &act);
+    if (act.sa_handler != SIG_DFL)
     	ABORT("Previously installed SIG_SUSPEND handler");
+    /* Install handler.	*/
+	act.sa_handler = GC_suspend_handler;
+	act.sa_flags = SA_RESTART;
+	(void) sigemptyset(&act.sa_mask);
+        if (0 != sigaction(SIG_SUSPEND, &act, 0))
+	    ABORT("Failed to install SIG_SUSPEND handler");
     /* Add the initial thread, so we can stop it.	*/
       t = GC_new_thread(pthread_self());
       t -> stack_size = 0;
@@ -548,7 +558,7 @@ GC_pthread_create(pthread_t *new_thread,
     return(result);
 }
 
-bool GC_collecting = 0; /* A hint that we're in the collector and       */
+GC_bool GC_collecting = 0; /* A hint that we're in the collector and       */
                         /* holding the allocation lock for an           */
                         /* extended period.                             */
 
@@ -558,6 +568,8 @@ bool GC_collecting = 0; /* A hint that we're in the collector and       */
 
 unsigned long GC_allocate_lock = 0;
 
+#define SLEEP_THRESHOLD 3
+
 void GC_lock()
 {
 #   define low_spin_max 30  /* spin cycles if we suspect uniprocessor */
@@ -566,13 +578,14 @@ void GC_lock()
     unsigned my_spin_max;
     static unsigned last_spins = 0;
     unsigned my_last_spins;
-    unsigned junk;
+    volatile unsigned junk;
 #   define PAUSE junk *= junk; junk *= junk; junk *= junk; junk *= junk
     int i;
 
-    if (!__test_and_set(&GC_allocate_lock, 1)) {
+    if (!GC_test_and_set(&GC_allocate_lock, 1)) {
         return;
     }
+    junk = 0;
     my_spin_max = spin_max;
     my_last_spins = last_spins;
     for (i = 0; i < my_spin_max; i++) {
@@ -581,7 +594,7 @@ void GC_lock()
             PAUSE; 
             continue;
         }
-        if (!__test_and_set(&GC_allocate_lock, 1)) {
+        if (!GC_test_and_set(&GC_allocate_lock, 1)) {
 	    /*
              * got it!
              * Spinning worked.  Thus we're probably not being scheduled
@@ -596,11 +609,22 @@ void GC_lock()
     /* We are probably being scheduled against the other process.  Sleep. */
     spin_max = low_spin_max;
 yield:
-    for (;;) {
-        if (!__test_and_set(&GC_allocate_lock, 1)) {
+    for (i = 0;; ++i) {
+        if (!GC_test_and_set(&GC_allocate_lock, 1)) {
             return;
         }
-        sched_yield();
+        if (i < SLEEP_THRESHOLD) {
+            sched_yield();
+	} else {
+	    struct timespec ts;
+	
+	    if (i > 26) i = 26;
+			/* Don't wait for more than about 60msecs, even	*/
+			/* under extreme contention.			*/
+	    ts.tv_sec = 0;
+	    ts.tv_nsec = 1 << i;
+	    nanosleep(&ts, 0);
+	}
     }
 }
 

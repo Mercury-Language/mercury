@@ -16,7 +16,7 @@
  * Modified Peter C. for Solaris Posix Threads.
  */
 /* Boehm, September 14, 1994 4:44 pm PDT */
-/* $Id: solaris_pthreads.c,v 1.1.1.2 1998-05-20 18:31:35 fjh Exp $ */
+/* $Id: solaris_pthreads.c,v 1.1.1.3 1998-08-31 05:01:48 fjh Exp $ */
 
 # if defined(_SOLARIS_PTHREADS)
 # include "gc_priv.h"
@@ -37,6 +37,7 @@
 # include <unistd.h>
 # include <errno.h>
 # include "solaris_threads.h"
+# include <stdio.h>
 
 #undef pthread_join
 #undef pthread_create
