@@ -191,7 +191,7 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
 	num_tag_bits		-	int(2),
-	gc			-	string("none"),
+	gc			-	string("conservative"),
 	compile_to_c		-	bool(no),
 	compile			-	bool(no),
 	cc			-	string("gcc"),
