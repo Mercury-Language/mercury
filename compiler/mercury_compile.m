@@ -89,7 +89,7 @@ main -->
 :- pragma c_code(gc_init(_IO0::di, _IO::uo), [will_not_call_mercury], "
 #ifdef CONSERVATIVE_GC
 	/*
-	** Explicitly force the initial heap size to be at least 2 Mb.
+	** Explicitly force the initial heap size to be at least 4 Mb.
 	**
 	** This works around a bug in the Boehm collector (for versions up
 	** to at least 6.2) where the collector would sometimes abort with
@@ -99,7 +99,7 @@ main -->
 	** Doing this should also improve performance slightly by avoiding
 	** frequent garbage collection during start-up.
 	*/
-	GC_expand_hp(2 * 1024 * 1024);
+	GC_expand_hp(4 * 1024 * 1024);
 #endif
 ").
 
