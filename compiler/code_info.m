@@ -452,8 +452,26 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 :- mode code_info__max_slot(in, out) is det.
 
 code_info__max_slot(CallInfo, SlotCount) :-
-	map__to_assoc_list(CallInfo, CallList),
-	list__length(CallList, SlotCount).
+	map__values(CallInfo, CallList),
+	code_info__max_slot_2(CallList, 0, SlotCount).
+
+:- pred code_info__max_slot_2(list(lval), int, int).
+:- mode code_info__max_slot_2(in, in, out) is det.
+
+code_info__max_slot_2([], Max, Max).
+code_info__max_slot_2([L|Ls], Max0, Max) :-
+	(
+		L = stackvar(N)
+	->
+		int__max(N, Max0, Max1)
+	;
+		L = framevar(N)
+	->
+		int__max(N, Max0, Max1)
+	;
+		Max1 = Max0
+	),
+	code_info__max_slot_2(Ls, Max1, Max).
 
 %---------------------------------------------------------------------------%
 
