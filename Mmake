@@ -12,7 +12,7 @@ include Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS = scripts util runtime boehm_gc library compiler doc prof
+SUBDIRS = scripts util runtime boehm_gc library compiler doc profiler
 
 SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 		MMAKE_VPATH=. \
@@ -57,7 +57,7 @@ depend_compiler:
 
 .PHONY: depend_profiler
 depend_profiler:
-	cd prof && $(SUBDIR_MMAKE) depend
+	cd profiler && $(SUBDIR_MMAKE) depend
 
 #-----------------------------------------------------------------------------#
 
@@ -92,12 +92,9 @@ doc: scripts
 util: scripts
 	cd util && $(SUBDIR_MMAKE)
 
-.PHONY: prof
-prof: profiler
-
 .PHONY: profiler
 profiler: scripts
-	cd prof && $(SUBDIR_MMAKE)
+	cd profiler && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
 
@@ -114,7 +111,7 @@ tags_library:
 
 .PHONY: tags_profiler
 tags_profiler:
-	cd prof && $(SUBDIR_MMAKE) tags
+	cd profiler && $(SUBDIR_MMAKE) tags
 
 #-----------------------------------------------------------------------------#
 
@@ -194,7 +191,7 @@ install_doc: doc
 
 .PHONY: install_profiler
 install_profiler: profiler
-	cd prof && $(SUBDIR_MMAKE) install
+	cd profiler && $(SUBDIR_MMAKE) install
 
 .PHONY: install_runtime_grades
 install_runtime_grades:
