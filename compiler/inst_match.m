@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1998, 2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -875,7 +875,7 @@ inst_is_mostly_unique(ModuleInfo, Inst) :-
 :- mode inst_is_mostly_unique_2(in, in, in) is semidet.
 
 inst_is_mostly_unique_2(_, not_reached, _).
-inst_is_mostly_unique_2(ModuleInfo, bound(mostly_unique, List), Expansions) :-
+inst_is_mostly_unique_2(ModuleInfo, bound(unique, List), Expansions) :-
         bound_inst_list_is_mostly_unique_2(List, ModuleInfo, Expansions).
 inst_is_mostly_unique_2(ModuleInfo, bound(mostly_unique, List), Expansions) :-
         bound_inst_list_is_mostly_unique_2(List, ModuleInfo, Expansions).
