@@ -9,8 +9,6 @@
 :- func map_f(func(X) = Y, list(X)) = list(Y).
 :- mode map_f(func(in) = out is det, in) = out is det.
 :- mode map_f(func(in) = out is semidet, in) = out is semidet.
-:- mode map_f(func(in) = out is multi, in) = out is multi.
-:- mode map_f(func(in) = out is nondet, in) = out is nondet.
 
 :- pred map_p(pred(X, Y), list(X), list(Y)).
 :- mode map_p(pred(in, out) is det, in, out) is det.

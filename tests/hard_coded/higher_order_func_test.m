@@ -9,8 +9,6 @@
 :- func map(func(X) = Y, list(X)) = list(Y).
 :- mode map(func(in) = out is det, in) = out is det.
 :- mode map(func(in) = out is semidet, in) = out is semidet.
-:- mode map(func(in) = out is multi, in) = out is multi.
-:- mode map(func(in) = out is nondet, in) = out is nondet.
 
 :- implementation.
 
