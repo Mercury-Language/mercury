@@ -209,6 +209,9 @@ MR_call_engine(Code *entry_point, bool catch_exceptions)
 
 	jmp_buf		curr_jmp_buf;
 	jmp_buf		* volatile prev_jmp_buf;
+#if defined(PROFILE_TIME)
+	Code		* volatile prev_proc;
+#endif
 
 	/*
 	** Preserve the value of MR_ENGINE(e_jmp_buf) on the C stack.
@@ -240,9 +243,12 @@ MR_call_engine(Code *entry_point, bool catch_exceptions)
 		debugmsg0("...caught longjmp\n");
 		/*
 		** On return,
+		** set MR_prof_current_proc to be the caller proc again
+		** (if time profiling is enabled),
 		** restore the registers (since longjmp may clobber them),
 		** and restore the saved value of MR_ENGINE(e_jmp_buf).
 		*/
+		update_prof_current_proc(prev_proc);
 		restore_registers();
 		MR_ENGINE(e_jmp_buf) = prev_jmp_buf;
 		if (catch_exceptions) {
@@ -273,6 +279,51 @@ MR_call_engine(Code *entry_point, bool catch_exceptions)
 		}
 		return NULL;
 	}
+
+
+  	MR_ENGINE(e_jmp_buf) = &curr_jmp_buf;
+  
+	/*
+	** If call profiling is enabled, and this is a case of
+	** Mercury calling C code which then calls Mercury,
+	** then we record the Mercury caller / Mercury callee pair
+	** in the table of call counts, if possible.
+	*/
+#ifdef PROFILE_CALLS
+  #ifdef PROFILE_TIME
+	if (MR_prof_current_proc != NULL) {
+		PROFILE(entry_point, MR_prof_current_proc);
+	}
+  #else
+	/*
+	** XXX There's not much we can do in this case
+	** to keep the call counts accurate, since
+	** we don't know who the caller is.
+	*/ 
+  #endif
+#endif /* PROFILE_CALLS */
+
+	/*
+	** If time profiling is enabled, then we need to
+	** save MR_prof_current_proc so that we can restore it
+	** when we return.  We must then set MR_prof_current_proc
+	** to the procedure that we are about to call.
+	**
+	** We do this last thing before calling call_engine_inner(),
+	** since we want to credit as much as possible of the time
+	** in C code to the caller, not to the callee.
+	** Note that setting and restoring MR_prof_current_proc
+	** here in call_engine() means that time in call_engine_inner()
+	** unfortunately gets credited to the callee.
+	** That is not ideal, but we can't move this code into
+	** call_engine_inner() since call_engine_inner() can't
+	** have any local variables and this code needs the
+	** `prev_proc' local variable.
+	*/
+#ifdef PROFILE_TIME
+	prev_proc = MR_prof_current_proc;
+	set_prof_current_proc(entry_point);
+#endif
 
 	call_engine_inner(entry_point);
 }
