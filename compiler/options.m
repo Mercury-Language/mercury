@@ -1423,7 +1423,9 @@ long_option("library-directory",	link_library_directories).
 long_option("library",			link_libraries).
 long_option("link-object",		link_objects).
 long_option("mercury-library",		mercury_library_special).
+long_option("ml",			mercury_library_special).
 long_option("mercury-library-directory", mercury_library_directory_special).
+long_option("mld",			mercury_library_directory_special).
 long_option("init-file-directory",	init_file_directories).
 long_option("init-file",		init_files).
 
@@ -2986,13 +2988,13 @@ options_help_link -->
 		"\tLink with the specified library.",
 		"--link-object <object-file>",
 		"\tLink with the specified object file.",
-		"--mercury-library-directory <directory>",
+		"--mld <directory>, --mercury-library-directory <directory>",
 		"\tAppend <directory> to the list of directories to",
 		"\tbe searched for Mercury libraries. This will add",
 		"\t`--search-directory', `--library-directory',",
 		"\t`--init-file-directory' and `--c-include-directory'",
 		"\toptions as needed.",
-		"--mercury-library <library>",
+		"--ml <library>, --mercury-library <library>",
 		"\tLink with the specified Mercury library.",
 		"--init-file-directory <directory>",
 		"\tAppend <directory> to the list of directories to",

@@ -5609,7 +5609,9 @@ Link with the specified library.
 @cindex Object files, linking with
 Link with the specified object file.
 
-@item --mercury-library-directory @var{directory}
+@item --mld @var{directory}
+@itemx --mercury-library-directory @var{directory}
+@findex --mld
 @findex --mercury-library-directory
 @cindex Directories for libraries
 @cindex Search path for libraries
@@ -5619,7 +5621,9 @@ be searched for Mercury libraries. This will add
 @samp{--init-file-directory} and @samp{--c-include-directory}
 options as needed.
 
-@item --mercury-library @var{library}
+@item --ml @var{library}
+@itemx --mercury-library @var{library}
+@findex --ml
 @findex --mercury-library
 @cindex Libraries, linking with
 Link with the specified Mercury library.

@@ -727,20 +727,25 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	%
 	globals__io_lookup_accumulating_option(mercury_library_directories,
 		MercuryLibDirs),
-	globals__io_lookup_string_option(fullarch, FullArch),
-	globals__io_get_globals(Globals),
-	{ compute_grade(Globals, GradeString) },
-	{ ExtraLinkLibDirs = list__map(
-			(func(MercuryLibDir) =
-				dir__make_path_name(MercuryLibDir,
-				dir__make_path_name("lib",
-				dir__make_path_name(GradeString,
-				FullArch)))
-			), MercuryLibDirs) },
-	globals__io_lookup_accumulating_option(link_library_directories,
-		LinkLibDirs),
-	globals__io_set_option(link_library_directories,
-		accumulating(LinkLibDirs ++ ExtraLinkLibDirs)),
+	(
+		{ MercuryLibDirs = [_|_] },
+		globals__io_lookup_string_option(fullarch, FullArch),
+		globals__io_get_globals(Globals),
+		{ compute_grade(Globals, GradeString) },
+		{ ExtraLinkLibDirs = list__map(
+				(func(MercuryLibDir) =
+					dir__make_path_name(MercuryLibDir,
+					dir__make_path_name("lib",
+					dir__make_path_name(GradeString,
+					FullArch)))
+				), MercuryLibDirs) },
+		globals__io_lookup_accumulating_option(
+			link_library_directories, LinkLibDirs),
+		globals__io_set_option(link_library_directories,
+			accumulating(LinkLibDirs ++ ExtraLinkLibDirs))
+	;
+		{ MercuryLibDirs = [] }
+	),
 	
 	% If --use-search-directories-for-intermod is true, append the
 	% search directories to the list of directories to search for
