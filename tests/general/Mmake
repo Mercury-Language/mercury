@@ -40,7 +40,8 @@ endif
 
 # mode_inf_bug needs to be compiled with `--infer-all'.
 mode_inf_bug.c: mode_inf_bug.m
-	$(MCG) $(MCGFLAGS) --infer-all mode_inf_bug.m > mode_inf_bug.err 2>&1
+	$(MCG) --grade $(GRADE) $(MCGFLAGS) --infer-all mode_inf_bug.m \
+		> mode_inf_bug.err 2>&1
 
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
