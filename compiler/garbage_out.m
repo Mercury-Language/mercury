@@ -66,7 +66,7 @@ garbage_out__do_garbage_out(ShapeInfo, c_file(Name, Modules)) -->
 		garbage_out__output(CList, ShapeTable, Abs_Exports),
 		io__told
 	;
-		io__progname("garbage_out.m", ProgName),
+		io__progname_base("garbage_out.m", ProgName),
                 io__write_string("\n"),
                 io__write_string(ProgName),
                 io__write_string(": can't open `"),
