@@ -871,8 +871,8 @@ selection @var{field_list} to the implicit DCG argument.
 
 Semantics:
 @example
-transform(V_in, V_out, Term =^ field_list
-        (Term = V_in ^ field_list = V_in)
+transform(V_in, V_out, Term =^ field_list) =
+        (Term = V_in ^ field_list, V_out = V_in)
 @end example
 
 @item ^ @var{field_list} := @var{Term}
