@@ -161,8 +161,7 @@
 					map(pred_id, pred_info),
 					map(type_id, type_body),
 					map(inst_id, inst_body),
-					map(mode_id, mode_body),
-					map(pair(pred_id, mode_id), category)
+					map(mode_id, mode_body)
 				).
 
 :- type pred_info	--->	predicate(
