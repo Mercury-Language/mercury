@@ -58,6 +58,16 @@ middle_rec__gen_det(Goal, Instrs) -->
 		{ Case1 = case(_NonrecConsId, Base) },
 		{ Case2 = case(RecConsId, Recursive) }
 	->
+
+		{ goal_info_store_map(SwitchGoalInfo, StoreMap0) },
+		(
+			{ StoreMap0 = yes(StoreMap) }
+		->
+			code_info__push_store_map(StoreMap)
+		;
+			{ true }
+		),
+
 		code_info__get_call_info(CallInfo),
 		code_info__get_varset(VarSet),
 		{ code_aux__explain_call_info(CallInfo, VarSet,
@@ -73,11 +83,32 @@ middle_rec__gen_det(Goal, Instrs) -->
 		code_info__get_next_label(BaseLabel),
 		code_info__push_failure_cont(known(BaseLabel)),
 		unify_gen__generate_tag_test(Var, RecConsId, EntryTestCode),
+		code_info__pop_failure_cont,
 
 		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_forced_det_goal(Base, BaseCode),
+		code_gen__generate_forced_det_goal(Base, BaseCodeFrag),
 		code_info__slap_code_info(CodeInfo),
-		code_gen__generate_forced_det_goal(Recursive, RecCode),
+		code_gen__generate_forced_det_goal(Recursive, RecCodeFrag),
+
+		code_aux__post_goal_update(SwitchGoalInfo),
+		code_info__remake_with_store_map,
+
+		(
+			{ StoreMap0 = yes(StoreMap) }
+		->
+			code_info__pop_store_map
+		;
+			{ true }
+		),
+
+		code_info__get_arginfo(ArgModes),
+		code_info__get_headvars(HeadVars),
+		{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
+		code_info__setup_call(Args, HeadVars, callee, EpilogFrag),
+
+		{ BaseCode = tree(BaseCodeFrag, EpilogFrag) },
+		{ RecCode = tree(RecCodeFrag, EpilogFrag) },
+
 		{ tree__flatten(RecCode, RecListList) },
 		{ list__condense(RecListList, RecList) },
 		{ middle_rec__split_rec_code(RecList, BeforeList, AfterList) },

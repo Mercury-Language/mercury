@@ -12,7 +12,8 @@
 
 :- interface.
 
-:- import_module list, code_info, hlds.
+:- import_module list, code_info, hlds, llds.
+:- import_module map, varset, string.
 
 :- pred code_aux__contains_only_builtins(hlds__goal).
 :- mode code_aux__contains_only_builtins(in) is semidet.
@@ -34,7 +35,7 @@
 
 :- implementation.
 
-:- import_module std_util.
+:- import_module term, std_util.
 
 code_aux__contains_only_builtins(Goal - _GoalInfo) :-
 	code_aux__contains_only_builtins_2(Goal).
