@@ -31,10 +31,15 @@ add_item_list_decls([Item - Context | Items], Module0, Module) -->
 	(add_item_decl(Item, Context, Module0, Module1) ->
 		{ true }
 	;
-		{ write('failed: '),
-		  write(Item),
-		  nl
-		}
+		io__stderr_stream(StdErr),
+		io__set_output_stream(StdErr, OldStream),
+		io__write_string("\n"),
+		prog_out__write_context(Context),
+		io__write_string("internal error in make_hlds.\n"),
+		io__write_string("Failed to process the following item:\n"),
+		io__write_anything(Item),
+		io__write_string("\n"),
+		io__set_output_stream(OldStream, _)
 	),
 	add_item_list_decls(Items, Module1, Module).
 
@@ -45,10 +50,15 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 	(add_item_clause(Item, Context, Module0, Module1) ->
 		{ true }
 	;
-		{ write('failed: '),
-		  write(Item),
-		  nl
-		}
+		io__stderr_stream(StdErr),
+		io__set_output_stream(StdErr, OldStream),
+		io__write_string("\n"),
+		prog_out__write_context(Context),
+		io__write_string("internal error in make_hlds.\n"),
+		io__write_string("Failed to process the following clause:\n"),
+		io__write_anything(Item),
+		io__write_string("\n"),
+		io__set_output_stream(OldStream, _)
 	),
 	add_item_list_clauses(Items, Module1, Module).
 

@@ -676,7 +676,7 @@ type_assign_unify_term(term_variable(Y), term_functor(F, As, _), TypeAssign0,
 type_assign_unify_term(term_functor(FX, AsX, _), term_functor(FY, AsY, _),
 		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet) :-
 	    % XXX we should handle this properly
-	write('XXX warning: unification of term with term\n'),
+	error("XXX warning: unification of term with term\n"),
 	TypeAssignSet = TypeAssignSet0.
 
 %-----------------------------------------------------------------------------%

@@ -203,7 +203,8 @@ prog_out__write_pred_arg(VarSet, type_and_mode(Type, Mode)) -->
 
 
 prog_out__write_mode(_VarSet, Mode) -->		% XXX
-	{ write(Mode), write('.'), nl }.
+	io__write_anything(Mode),
+	io__write_string(".\n").
 
 /*
  * Please note that this code is the property of
@@ -348,10 +349,11 @@ prog_out__write_goal(call(X), I, T, VarSet) -->
 	prog_out__qwrite(Prec, VarSet, X).
 
 prog_out__write_var_list(_VarSet, Vars) -->
-	{ write(Vars) }.	% XXX
+	io__write_anything(Vars).
 
 prog_out__write_some_vars(_VarSet, Vars) -->
-	{ write('some '), write(Vars) }.	% XXX
+	io__write_string("some "),
+	io__write_anything(Vars).		% XXX
 
 :- pred prog_out__beforelit(context, int, io__state, io__state).
 :- mode prog_out__beforelit(input, input, di, uo).
