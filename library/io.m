@@ -1450,6 +1450,20 @@ mercury_close(MercuryFile* mf)
 
 Declare_entry(mercury__io__init_state_2_0);
 
+/* This code is the program startup point -- it is called by the Mercury
+   runtime.
+
+   The handwritten code below is almost equivalent to
+
+	io__run :-
+		initial_external_state(IO0),
+		program_entry_point(IO0, IO),
+		final_io_state(IO).
+
+   except that program_entry_point is a variable, which is by default
+   set to the address of main/2.
+*/
+
 Define_extern_entry(mercury__io__run_0_0);
 Declare_label(mercury__io__run_0_0_i1);
 Declare_label(mercury__io__run_0_0_i2);
