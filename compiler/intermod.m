@@ -1207,7 +1207,7 @@ intermod_info_set_tvarset(TVarSet, info(A,B,C,D,E,F,G,H,I,_),
 intermod__adjust_pred_import_status(Module0, Module, IO0, IO) :-
 	globals__io_lookup_bool_option(very_verbose, VVerbose, IO0, IO1),
 	maybe_write_string(VVerbose, 
-		"Adjusting import status of predicates in the `.opt' file...",
+		"% Adjusting import status of predicates in the `.opt' file...",
 		IO1, IO2),
 
 	init_intermod_info(Module0, Info0),
@@ -1220,7 +1220,7 @@ intermod__adjust_pred_import_status(Module0, Module, IO0, IO) :-
 		Deforestation, Info0, Info1),
 	intermod__gather_abstract_exported_types(Info1, Info),
 	do_adjust_pred_import_status(Info, Module0, Module),
-	maybe_write_string(VVerbose, "done\n", IO2, IO).
+	maybe_write_string(VVerbose, " done\n", IO2, IO).
 
 :- pred do_adjust_pred_import_status(intermod_info::in,
 		module_info::in, module_info::out) is det.
