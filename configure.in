@@ -595,11 +595,12 @@ AC_SUBST(GRADE)
 DEFAULT_GRADE=$GRADE
 # For Irix 5.x, shared libraries are incompatible with gcc non-local gotos
 # We prefer to use shared libraries by default
-case "$host" in
-	mips-sgi-irix5.*)
-		DEFAULT_GRADE=reg.gc
-		;;
-esac
+# --- XXX but shared libaries don't work anyway
+# case "$host" in
+# 	mips-sgi-irix5.*)
+# 		DEFAULT_GRADE=reg.gc
+# 		;;
+# esac
 echo "using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications"
 AC_SUBST(DEFAULT_GRADE)
 
