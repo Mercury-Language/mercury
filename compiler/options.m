@@ -1718,7 +1718,8 @@ long_option("aditi-user",		aditi_user).
 long_option("fullarch",			fullarch).
 long_option("bug-intermod-2002-06-13",	compiler_sufficiently_recent).
 long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
-
+long_option("install-opt-files-2002-08-30", compiler_sufficiently_recent).
+ 
 %-----------------------------------------------------------------------------%
 
 special_handler(grade, string(Grade), OptionTable0, Result) :-
