@@ -2587,7 +2587,7 @@ enable_dotnet_grades="$enableval",enable_dotnet_grades=yes)
 
 AC_ARG_ENABLE(java-grade,
 [  --disable-java-grade    do not install the Java grade],
-enable_java_grade="$enableval",enable_java_grade=yes)
+enable_java_grade="$enableval",enable_java_grade=no)
 
 AC_ARG_ENABLE(libgrades,
 [  --enable-libgrades=...
