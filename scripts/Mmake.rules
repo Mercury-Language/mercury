@@ -48,7 +48,7 @@ main_target: $(MAIN_TARGET)
 # (Is that a bug in unix? In bash?)
 
 .m.err:
-	$(MC) $(MCFLAGS) $< > $@ 2>&1
+	$(MC) $(MCFLAGS) --errorcheck-only $< > $@ 2>&1
 	@touch $@
 
 .m.date:
