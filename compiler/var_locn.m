@@ -1451,10 +1451,10 @@ record_change_in_root_dependencies(OldLvalSet, NewLvalSet, Var, !LocVarMap) :-
 	set__difference(OldRootLvalSet, NewRootLvalSet, DeleteSet),
 	set__to_sorted_list(InsertSet, Inserts),
 	set__to_sorted_list(DeleteSet, Deletes),
-	list__foldl(make_var_depend_on_root_lval(Var),
-		Inserts, !LocVarMap),
-	list__foldl(make_var_not_depend_on_root_lval(Var),
-		Deletes, !LocVarMap).
+	list__foldl(make_var_depend_on_root_lval(Var), Inserts,
+		!LocVarMap),
+	list__foldl(make_var_not_depend_on_root_lval(Var), Deletes,
+		!LocVarMap).
 
 :- func substitute_lval_in_lval(lval, lval, lval) = lval.
 
