@@ -25,6 +25,8 @@
 #ifndef MERCURY_GRADES_H
 #define MERCURY_GRADES_H
 
+#include "mercury_tags.h" /* for TAGBITS */
+
 /* convert a macro to a string */
 #define MR_STRINGIFY(x)		MR_STRINGIFY_2(x)
 #define MR_STRINGIFY_2(x)	#x

@@ -82,6 +82,7 @@ static const char header2[] =
 	"\n"
 	"#include <stddef.h>\n"
 	"#include \"mercury_init.h\"\n"
+	"#include \"mercury_grade.h\"\n"
 	"\n"
 	"/*\n"
 	"** Work around a bug in the Solaris 2.X (X<=4) linker;\n"
@@ -217,6 +218,9 @@ static const char mercury_funcs[] =
 	"	mercury_call_main();\n"
 	"	return mercury_terminate();\n"
 	"}\n"
+	"\n"
+	"/* ensure that everything gets compiled in the same grade */\n"
+	"static const void *const MR_grade = &MR_GRADE_VAR;\n"
 	;
 
 static const char main_func[] =
