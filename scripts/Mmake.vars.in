@@ -13,11 +13,14 @@
 # Ensure that commands use /bin/sh not the user's shell
 SHELL		= /bin/sh
 
+# Set the directory search path. 
+# (See the GNU Make manual for documentation about VPATH and GPATH.)
 MMAKE_VPATH	= $(MERCURY_INT_DIR)
 VPATH		= $(MMAKE_VPATH) # do not remove the `:' from this comment!!!
 #			 the above comment works around a misfeature of
 #			 autoconf which causes it to delete assignments to
 #			 VPATH unless they contain a `:'
+GPATH		= $(VPATH)
 
 DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
 GRADE		= $(DEFAULT_GRADE)
