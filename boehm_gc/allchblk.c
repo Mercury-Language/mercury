@@ -12,6 +12,7 @@
  * modified is included with the above copyright notice.
  */
 /* Boehm, January 31, 1995 3:01 pm PST */
+/* I commented out the warning about allocating blacklisted blocks - fjh. */
 
 #define DEBUG
 #undef DEBUG
@@ -196,7 +197,9 @@ unsigned char flags;  /* IGNORE_OFF_PAGE or 0 */
 	      } else if (size_needed > BL_LIMIT
 	                 && orig_avail - size_needed > BL_LIMIT) {
 	        /* Punt, since anything else risks unreasonable heap growth. */
+#ifdef WARN_BLACK_LIST
 	        WARN("Need to allocated blacklisted block at %ld\n", (word)hbp);
+#endif
 	        thishbp = hbp;
 	        size_avail = orig_avail;
 	      } else if (size_avail == 0
