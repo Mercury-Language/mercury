@@ -18,8 +18,9 @@
 % present to implement type_info comparisons and unifications (which is enough
 % to get univ working).
 %
-% The plan is to have RTTI functions in std_util.m call into this module
-% as they are implemented in Mercury.
+% The plan is to migrate most of the Mercury level data structures in
+% compiler/rtti.m here, and to interpret them, instead of relying on access
+% to C level data structures.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -114,6 +115,7 @@
 	;	base_typeclass_info
 	;	type_desc
 	;	type_ctor_desc
+	;	foreign
 	;	unknown.
 
 	% We keep all the other types abstract.
@@ -198,7 +200,6 @@ generic_compare(Res, X, Y) :-
 			error("compare/3: type arity > 5 not supported")
 		)
 	).
-
 
 generic_unify(X, Y) :-
 	TypeInfo = get_type_info(X),
@@ -299,7 +300,6 @@ semidet_call_7(_::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
 semidet_call_8(_::in, _::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
 	semidet_unimplemented("semidet_call_8").
 
-
 :- pred result_call_4(P::in, comparison_result::out,
 		T::in, U::in) is det.
 result_call_4(_::in, (=)::out, _::in, _::in) :-
@@ -333,7 +333,6 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
 
 	% We override the above definitions in the .NET backend.
 
@@ -383,8 +382,6 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 		mercury::runtime::GenericCall::semidet_call_8(Pred, A, B, C, D,
 			E, X, Y);
 ").
-
-
 
 :- pragma foreign_proc("C#",
 	result_call_4(Pred::in, Res::out, X::in, Y::in), 
@@ -546,7 +543,6 @@ iterate_foldl(Start, Max, Pred) -->
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
 
 	% Code to perform deconstructions (XXX not yet complete).
 	%
@@ -779,14 +775,17 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arity = 0,
 		Arguments = []
 	;
+		TypeCtorRep = foreign,
+		Functor = "some_foreign", 
+		Arity = 0,
+		Arguments = []
+	;
 		TypeCtorRep = unknown,
 		Functor = "some_unknown", 
 		Arity = 0,
 		Arguments = []
 	).
 	
-
-
 	% Retrieve an argument number from a term, given the functor
 	% descriptor.
 
@@ -874,12 +873,10 @@ get_type_and_extra_args(TypeInfoParams, PseudoTypeInfo, Term,
 		ExtraArgs = 0
 	).
 
-
 	% XXX this is completely unimplemented.
 :- func pseudotypeinfo_get_higher_order_arity(type_info) = int.
 pseudotypeinfo_get_higher_order_arity(_) = 1 :-
 	det_unimplemented("pseudotypeinfo_get_higher_order_arity").
-
 
 	% Make a new type-info with the given arity, using the given type_info
 	% as the basis.
@@ -896,7 +893,6 @@ new_type_info(TypeInfo::in, _::in) = (NewTypeInfo::uo) :-
 	System.Array.Copy(OldTypeInfo, NewTypeInfo, OldTypeInfo.Length);
 ").
 
-
 	% Get the pseudo-typeinfo at the given index from the argument types.
 	
 :- some [T] func get_pti_from_arg_types(arg_types, int) = T.
@@ -910,7 +906,6 @@ get_pti_from_arg_types(_::in, _::in) = (42::out) :-
 	ArgTypeInfo = ArgTypes[Index];
 ").
 
-
 	% Get the pseudo-typeinfo at the given index from a type-info.
 
 :- some [T] func get_pti_from_type_info(type_info, int) = T.
@@ -923,8 +918,6 @@ get_pti_from_type_info(_::in, _::in) = (42::out) :-
 		[promise_pure], "
 	PTI = TypeInfo[Index];
 ").
-
-
 
 	% Get the type info for a particular type variable number
 	% (it might be in the type_info or in the term itself).
@@ -961,7 +954,6 @@ get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc,
 		)
 	).
 
-
 	% An unchecked cast to type_info (for pseudo-typeinfos).
 
 :- func type_info_cast(T) = type_info.
@@ -984,7 +976,6 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
 	TypeInfo_for_T = TypeInfo;
 ").
 
-
 	% Test whether a type info is variable.
 
 :- pred typeinfo_is_variable(T::in, int::out) is semidet.
@@ -1000,7 +991,6 @@ typeinfo_is_variable(_::in, 42::out) :-
 	}
 ").
 
-
 	% Tests for universal and existentially quantified variables.
 
 :- pred type_variable_is_univ_quant(int::in) is semidet.
@@ -1014,7 +1004,6 @@ type_variable_is_univ_quant(X) :- X =< pseudotypeinfo_exist_var_base.
 
 pseudotypeinfo_exist_var_base = 512.
 pseudotypeinfo_max_var = 1024.
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1099,7 +1088,6 @@ get_type_ctor_info(_) = _ :-
 	% matching foreign_proc version.
 	private_builtin__sorry("get_type_ctor_info").
 
-
 :- pred same_pointer_value(T::in, T::in) is semidet.
 :- pred same_pointer_value_untyped(T::in, U::in) is semidet.
 
@@ -1111,12 +1099,14 @@ same_pointer_value(X, Y) :- same_pointer_value_untyped(X, Y).
 "
 	SUCCESS_INDICATOR = (T1 == T2);
 ").
+
 :- pragma foreign_proc("C",
 	same_pointer_value_untyped(T1::in, T2::in), 
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR = (T1 == T2);
 ").
+
 same_pointer_value_untyped(_, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -1124,7 +1114,6 @@ same_pointer_value_untyped(_, _) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
 
 :- func get_primary_tag(T) = int.
 :- func get_remote_secondary_tag(T) = int.
@@ -1147,8 +1136,6 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 	object[] data = (object[]) X;
 	Tag = (int) data[0];
 ").
-
-
 
 :- type sectag_locn ---> none ; local ; remote ; variable.
 
@@ -1254,7 +1241,6 @@ functor_exist_info(X::in) = (unsafe_cast(X)::out) :-
 		
 ").
 
-
 :- func typeinfo_locns_index(int, exist_info) = typeinfo_locn.
 
 typeinfo_locns_index(X::in, _::in) = (unsafe_cast(X)::out) :- 
@@ -1268,7 +1254,6 @@ typeinfo_locns_index(X::in, _::in) = (unsafe_cast(X)::out) :-
 			exist_info_field_nums.typeinfo_locns])[X];
 		
 ").
-
 
 :- func exist_info_typeinfos_plain(exist_info) = int.
 
@@ -1434,6 +1419,7 @@ type_ctor_unify_pred(_) = "dummy value" :-
 	UnifyPred = TypeCtorInfo[
 			(int) type_ctor_info_field_nums.type_ctor_compare_pred];
 ").
+
 :- pragma foreign_proc("C",
 	type_ctor_compare_pred(TypeCtorInfo::in) = (UnifyPred::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -1441,12 +1427,11 @@ type_ctor_unify_pred(_) = "dummy value" :-
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	UnifyPred = (MR_Integer) tci->MR_type_ctor_compare_pred;
 ").
+
 type_ctor_compare_pred(_) = "dummy value" :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	private_builtin__sorry("type_ctor_compare_pred").
-
-
 
 :- func type_ctor_rep(type_ctor_info) = type_ctor_rep.
 :- pragma foreign_proc("C#",
@@ -1469,7 +1454,6 @@ type_ctor_rep(_) = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	private_builtin__sorry("type_ctor_rep").
-
 
 :- func type_ctor_module_name(type_ctor_info) = string.
 

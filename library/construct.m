@@ -387,7 +387,8 @@ get_functor_ordinal(_, _, _) :-
 		int total_reserved_addrs;
 		const MR_ReservedAddrFunctorDesc *functor_desc;
 
-		ra_layout = MR_type_ctor_layout(type_ctor_info).layout_reserved_addr;
+		ra_layout = MR_type_ctor_layout(type_ctor_info).
+			MR_layout_reserved_addr;
 		total_reserved_addrs = ra_layout->MR_ra_num_res_numeric_addrs
 			+ ra_layout->MR_ra_num_res_symbolic_addrs;
 
@@ -480,7 +481,8 @@ get_functor_ordinal(_, _, _) :-
 
         case MR_TYPECTOR_REP_TUPLE:
             {
-                int     arity, i;
+                int    	arity;
+		int	i;
                 MR_Word    arg_list;
 
                 arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);

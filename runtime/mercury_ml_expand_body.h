@@ -284,7 +284,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_ENUM:
             handle_functor_name(MR_type_ctor_layout(type_ctor_info).
-                    layout_enum[*data_word_ptr]->MR_enum_functor_name);
+                    MR_layout_enum[*data_word_ptr]->MR_enum_functor_name);
             handle_zero_arity_args();
             break;
 
@@ -307,7 +307,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 				MR_Word data;
 				MR_ReservedAddrTypeLayout ra_layout;
 
-				ra_layout = MR_type_ctor_layout(type_ctor_info).layout_reserved_addr;
+				ra_layout = MR_type_ctor_layout(type_ctor_info).
+                    MR_layout_reserved_addr;
 				data = *data_word_ptr;
 
 				/*
@@ -363,7 +364,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             /* else fall through */
 
         case MR_TYPECTOR_REP_DU:
-			du_type_layout = MR_type_ctor_layout(type_ctor_info).layout_du;
+			du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
 			/* fall through */
 
 			/*
@@ -522,7 +523,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         case MR_TYPECTOR_REP_NOTAG:
             expand_info->arity = 1;
             handle_functor_name(MR_type_ctor_layout(type_ctor_info).
-                layout_notag->MR_notag_functor_name);
+                MR_layout_notag->MR_notag_functor_name);
 
 #ifdef  EXPAND_ARGS_FIELD
             expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
@@ -533,16 +534,16 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             expand_info->EXPAND_ARGS_FIELD.arg_type_infos[0] =
                 MR_create_type_info(
                     MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                    MR_type_ctor_layout(type_ctor_info).layout_notag->
+                    MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
                         MR_notag_functor_arg_type);
 #endif  /* EXPAND_ARGS_FIELD */
 
 #ifdef  EXPAND_ONE_ARG
   #ifdef    EXPAND_NAMED_ARG
-            if (MR_type_ctor_layout(type_ctor_info).layout_notag
+            if (MR_type_ctor_layout(type_ctor_info).MR_layout_notag
                     ->MR_notag_functor_arg_name != NULL
                && MR_streq(chosen_name, MR_type_ctor_layout(type_ctor_info).
-                    layout_notag->MR_notag_functor_arg_name))
+                    MR_layout_notag->MR_notag_functor_arg_name))
             {
                 chosen = 0;
             }
@@ -554,7 +555,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 expand_info->chosen_type_info =
                     MR_create_type_info(
                         MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                        MR_type_ctor_layout(type_ctor_info).layout_notag->
+                        MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
                             MR_notag_functor_arg_type);
             } else {
                 expand_info->chosen_index_exists = MR_FALSE;
@@ -578,7 +579,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         case MR_TYPECTOR_REP_NOTAG_GROUND:
             expand_info->arity = 1;
             handle_functor_name(MR_type_ctor_layout(type_ctor_info).
-                layout_notag->MR_notag_functor_name);
+                MR_layout_notag->MR_notag_functor_name);
 
 #ifdef  EXPAND_ARGS_FIELD
             expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
@@ -588,16 +589,16 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_GC_NEW_ARRAY(MR_TypeInfo, 1);
             expand_info->EXPAND_ARGS_FIELD.arg_type_infos[0] =
                 MR_pseudo_type_info_is_ground(
-                    MR_type_ctor_layout(type_ctor_info).layout_notag->
+                    MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
                         MR_notag_functor_arg_type);
 #endif  /* EXPAND_ARGS_FIELD */
 
 #ifdef  EXPAND_ONE_ARG
   #ifdef    EXPAND_NAMED_ARG
-            if (MR_type_ctor_layout(type_ctor_info).layout_notag
+            if (MR_type_ctor_layout(type_ctor_info).MR_layout_notag
                     ->MR_notag_functor_arg_name != NULL
                && MR_streq(chosen_name, MR_type_ctor_layout(type_ctor_info).
-                    layout_notag->MR_notag_functor_arg_name))
+                    MR_layout_notag->MR_notag_functor_arg_name))
             {
                 chosen = 0;
             }
@@ -608,7 +609,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 expand_info->chosen_value_ptr = data_word_ptr;
                 expand_info->chosen_type_info =
                     MR_pseudo_type_info_is_ground(
-                        MR_type_ctor_layout(type_ctor_info).layout_notag
+                        MR_type_ctor_layout(type_ctor_info).MR_layout_notag
                             ->MR_notag_functor_arg_type);
             } else {
                 expand_info->chosen_index_exists = MR_FALSE;
@@ -622,7 +623,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                 eqv_type_info = MR_create_type_info(
                     MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                    MR_type_ctor_layout(type_ctor_info).layout_equiv);
+                    MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
                 EXPAND_FUNCTION_NAME(eqv_type_info, data_word_ptr, noncanon,
                     EXTRA_ARGS expand_info);
             }
@@ -630,7 +631,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             EXPAND_FUNCTION_NAME(MR_pseudo_type_info_is_ground(
-                MR_type_ctor_layout(type_ctor_info).layout_equiv),
+                MR_type_ctor_layout(type_ctor_info).MR_layout_equiv),
                 data_word_ptr, noncanon, EXTRA_ARGS expand_info);
             break;
 
@@ -1144,6 +1145,11 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_TICKET:
             handle_functor_name("<<ticket>>");
+            handle_zero_arity_args();
+            break;
+
+        case MR_TYPECTOR_REP_FOREIGN:
+            handle_functor_name("<<foreign>>");
             handle_zero_arity_args();
             break;
 

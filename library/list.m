@@ -56,6 +56,10 @@
 
 %-----------------------------------------------------------------------------%
 
+:- pred list__is_empty(list(T)::in) is semidet.
+
+:- pred list__is_not_empty(list(T)::in) is semidet.
+
 	% Standard append predicate:
 	% list__append(Start, End, List) is true iff
 	% `List' is the result of concatenating `Start' and `End'.
@@ -734,6 +738,10 @@
 :- import_module bintree_set, require, std_util.
 
 %-----------------------------------------------------------------------------%
+
+list__is_empty([]).
+
+list__is_not_empty([_ | _]).
 
 list__append([], Ys, Ys).
 list__append([X | Xs], Ys, [X | Zs]) :-

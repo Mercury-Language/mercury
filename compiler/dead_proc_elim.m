@@ -334,13 +334,10 @@ dead_proc_elim__find_base_gen_info(ModuleName, TypeName, TypeArity,
 	(
 		TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName,
 			TypeName, TypeArity, _Status, _HldsDefn,
-			MaybeUnify, MaybeCompare)
+			Unify, Compare)
 	->
-		Refs0 = [],
-		dead_proc_elim__maybe_add_ref(MaybeUnify,   Refs0, Refs1),
-		dead_proc_elim__maybe_add_ref(MaybeCompare, Refs1, Refs2),
-		% dead_proc_elim__maybe_add_ref(MaybePretty,  Refs2, Refs3),
-		Refs = Refs2
+		Refs = [Unify, Compare]
+		% dead_proc_elim__maybe_add_ref(MaybePretty,  Refs0, Refs)
 	;
 		dead_proc_elim__find_base_gen_info(ModuleName, TypeName,
 			TypeArity, TypeCtorGenInfos, Refs)
@@ -669,20 +666,15 @@ dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
 		Needed, TypeCtorGenInfos) :-
 	dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, Needed,	
 		TypeCtorGenInfos1),
-	TypeCtorGenInfo0 = type_ctor_gen_info(TypeCtor, ModuleName,
-		TypeName, Arity, Status, HldsDefn,
-		_MaybeUnify, _MaybeCompare),
+	TypeCtorGenInfo0 = type_ctor_gen_info(_TypeCtor, ModuleName,
+		TypeName, Arity, _Status, _HldsDefn, _Unify, _Compare),
 	(
 		Entity = base_gen_info(ModuleName, TypeName, Arity),
 		map__search(Needed, Entity, _)
 	->
 		TypeCtorGenInfos = [TypeCtorGenInfo0 | TypeCtorGenInfos1]
 	;
-		NeuteredTypeCtorGenInfo = type_ctor_gen_info(TypeCtor,
-			ModuleName, TypeName, Arity, Status, HldsDefn,
-			no, no),
-		TypeCtorGenInfos = [NeuteredTypeCtorGenInfo |
-			TypeCtorGenInfos1]
+		TypeCtorGenInfos = TypeCtorGenInfos1
 	).
 
 %-----------------------------------------------------------------------------%

@@ -65,8 +65,8 @@
 			int,		% type arity
 			import_status,	% of the type
 			hlds_type_defn,	% defn of type
-			maybe(pred_proc_id),	% unify, if not eliminated
-			maybe(pred_proc_id)	% compare, if not eliminated
+			pred_proc_id,	% unify procedure
+			pred_proc_id	% compare procedure
 			% maybe(pred_proc_id)	% prettyprinter, if relevant
 		).
 

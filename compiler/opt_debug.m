@@ -379,10 +379,10 @@ opt_debug__dump_rtti_name(field_names(Ordinal), Str) :-
 opt_debug__dump_rtti_name(field_types(Ordinal), Str) :-
 	string__int_to_string(Ordinal, Ordinal_str),
 	string__append("field_types_", Ordinal_str, Str).
-opt_debug__dump_rtti_name(reserved_addrs, Str) :-
-	Str = "reserved_addrs".
-opt_debug__dump_rtti_name(reserved_addr_functors, Str) :-
-	Str = "reserved_addr_functors".
+opt_debug__dump_rtti_name(res_addrs, Str) :-
+	Str = "res_addrs".
+opt_debug__dump_rtti_name(res_addr_functors, Str) :-
+	Str = "res_addr_functors".
 opt_debug__dump_rtti_name(enum_functor_desc(Ordinal), Str) :-
 	string__int_to_string(Ordinal, Ordinal_str),
 	string__append("enum_functor_desc_", Ordinal_str, Str).
@@ -391,9 +391,9 @@ opt_debug__dump_rtti_name(notag_functor_desc, Str) :-
 opt_debug__dump_rtti_name(du_functor_desc(Ordinal), Str) :-
 	string__int_to_string(Ordinal, Ordinal_str),
 	string__append("du_functor_desc_", Ordinal_str, Str).
-opt_debug__dump_rtti_name(reserved_addr_functor_desc(Ordinal), Str) :-
+opt_debug__dump_rtti_name(res_functor_desc(Ordinal), Str) :-
 	string__int_to_string(Ordinal, Ordinal_str),
-	string__append("reserved_addr_functor_desc_", Ordinal_str, Str).
+	string__append("res_functor_desc_", Ordinal_str, Str).
 opt_debug__dump_rtti_name(enum_name_ordered_table, Str) :-
 	Str = "enum_name_ordered_table".
 opt_debug__dump_rtti_name(enum_value_ordered_table, Str) :-
@@ -405,8 +405,10 @@ opt_debug__dump_rtti_name(du_stag_ordered_table(Ptag), Str) :-
 	string__append("du_stag_ordered_table_", Ptag_str, Str).
 opt_debug__dump_rtti_name(du_ptag_ordered_table, Str) :-
 	Str = "du_ptag_ordered_table".
-opt_debug__dump_rtti_name(reserved_addr_table, Str) :-
-	Str = "reserved_addr_table".
+opt_debug__dump_rtti_name(res_value_ordered_table, Str) :-
+	Str = "res_value_ordered_table".
+opt_debug__dump_rtti_name(res_name_ordered_table, Str) :-
+	Str = "res_name_ordered_table".
 opt_debug__dump_rtti_name(type_ctor_info, Str) :-
 	Str = "type_ctor_info".
 opt_debug__dump_rtti_name(base_typeclass_info(_ModuleName, ClassId,

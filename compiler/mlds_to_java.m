@@ -1668,8 +1668,9 @@ output_type(mlds__commit_type) -->
 % generated as such.
 %
 output_type(mlds__rtti_type(RttiName)) -->
-	io__write_string("static mercury.runtime."),
-	io__write_string(mlds_rtti_type_name(RttiName)).
+	{ rtti_name_java_type(RttiName, JavaTypeName, _IsArray) },
+	io__write_string("static "),
+	io__write_string(JavaTypeName).
 output_type(mlds__unknown_type) -->
 	{ unexpected(this_file, "output_type: unknown type") }.
 

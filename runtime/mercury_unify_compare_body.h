@@ -62,13 +62,13 @@ start_label:
             MR_save_transient_hp();
             type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                MR_type_ctor_layout(type_ctor_info).layout_equiv);
+                MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
             MR_restore_transient_hp();
             goto start_label;
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             type_info = (MR_TypeInfo)
-                MR_type_ctor_layout(type_ctor_info).layout_equiv;
+                MR_type_ctor_layout(type_ctor_info).MR_layout_equiv;
             goto start_label;
 
   #ifdef include_compare_rep_code
@@ -79,7 +79,7 @@ start_label:
             MR_save_transient_hp();
             type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                MR_type_ctor_layout(type_ctor_info).layout_notag->
+                MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
                 MR_notag_functor_arg_type);
             MR_restore_transient_hp();
             goto start_label;
@@ -90,7 +90,7 @@ start_label:
   #endif
         case MR_TYPECTOR_REP_NOTAG_GROUND:
             type_info = (MR_TypeInfo) MR_type_ctor_layout(type_ctor_info).
-                layout_notag->MR_notag_functor_arg_type;
+                MR_layout_notag->MR_notag_functor_arg_type;
             goto start_label;
 
   #ifdef include_compare_rep_code
@@ -144,7 +144,7 @@ start_label:
                                                                               \
                     ptag = MR_tag(data);                                      \
                     ptaglayout = &MR_type_ctor_layout(type_ctor_info).        \
-                        layout_du[ptag];                                      \
+                        MR_layout_du[ptag];                                   \
                     data_value = (MR_Word *) MR_body(data, ptag);             \
                                                                               \
                     switch (ptaglayout->MR_sectag_locn) {                     \
@@ -192,7 +192,7 @@ start_label:
                 }
 
                 ptaglayout = &MR_type_ctor_layout(type_ctor_info).
-                    layout_du[x_ptag];
+                    MR_layout_du[x_ptag];
                 x_data_value = (MR_Word *) MR_body(x, x_ptag);
                 y_data_value = (MR_Word *) MR_body(y, y_ptag);
 
@@ -721,6 +721,9 @@ start_label:
 
         case MR_TYPECTOR_REP_BASETYPECLASSINFO:
             MR_fatal_error(attempt_msg "base_typeclass_infos");
+
+        case MR_TYPECTOR_REP_FOREIGN:
+            MR_fatal_error(attempt_msg "terms of a foreign type");
 
         case MR_TYPECTOR_REP_UNKNOWN:
             MR_fatal_error(attempt_msg "terms of unknown type");

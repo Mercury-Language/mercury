@@ -42,6 +42,17 @@
 :- pred pseudo_type_info__construct_type_info((type)::in, rtti_type_info::out)
 	is det.
 
+	% pseudo_type_info__construct_maybe_pseudo_type_info(Type,
+	% 	NumUnivQTvars, ExistQVars, MaybePseudoTypeInfo)
+	%
+	% Given a Mercury type (`Type'), this predicate checks whether it is
+	% ground or not. If it is ground, it returns a typeinfo for it; if it
+	% is not ground, it returns a pseudo type info for it. The arguments
+	% are the same as for pseudo_type_info__construct_pseudo_type_info.
+
+:- pred pseudo_type_info__construct_maybe_pseudo_type_info((type)::in,
+	int::in, existq_tvars::in, rtti_maybe_pseudo_type_info::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -52,8 +63,19 @@
 
 %---------------------------------------------------------------------------%
 
+pseudo_type_info__construct_maybe_pseudo_type_info(Type, NumUnivQTvars,
+		ExistQTvars, MaybePseudoTypeInfo) :-
+	( term__is_ground(Type) ->
+		pseudo_type_info__construct_type_info(Type, TypeInfo),
+		MaybePseudoTypeInfo = plain(TypeInfo)
+	;
+		pseudo_type_info__construct_pseudo_type_info(Type,
+			NumUnivQTvars, ExistQTvars, PseudoTypeInfo),
+		MaybePseudoTypeInfo = pseudo(PseudoTypeInfo)
+	).
+
 pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
-		ExistQTvars, Pseudo) :-
+		ExistQTvars, PseudoTypeInfo) :-
 	( type_to_ctor_and_args(Type, TypeCtor, TypeArgs0) ->
 		canonicalize_type_args(TypeCtor, TypeArgs0, TypeArgs),
 		( type_is_var_arity(Type, VarArityId) ->
@@ -63,7 +85,7 @@ pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 			require(check_var_arity(VarArityId, PseudoArgs,
 				RealArity),
 				"construct_pseudo_type_info: arity mismatch"),
-			Pseudo = var_arity_pseudo_type_info(VarArityId,
+			PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId,
 				PseudoArgs)
 		;
 			TypeCtor = QualTypeName - Arity,
@@ -77,10 +99,12 @@ pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 			require(check_arity(PseudoArgs, Arity),
 				"construct_pseudo_type_info: arity mismatch"),
 			( PseudoArgs = [] ->
-				Pseudo = plain_arity_zero_pseudo_type_info(
+				PseudoTypeInfo =
+					plain_arity_zero_pseudo_type_info(
 					RttiTypeCtor)
 			;
-				Pseudo = plain_pseudo_type_info(RttiTypeCtor,
+				PseudoTypeInfo =
+					plain_pseudo_type_info(RttiTypeCtor,
 					PseudoArgs)
 			)
 		)
@@ -119,7 +143,7 @@ pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 		),
 		require(VarInt =< pseudo_type_info__pseudo_typeinfo_max_var,
 			"construct_pseudo_type_info: type var exceeds limit"),
-		Pseudo = type_var(VarInt)
+		PseudoTypeInfo = type_var(VarInt)
 	;
 		error("construct_pseudo_type_info: neither var nor non-var")
 	).

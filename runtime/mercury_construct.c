@@ -62,7 +62,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
             }
 
             functor_desc = MR_type_ctor_functors(type_ctor_info).
-                functors_du[functor_number];
+                MR_functors_du[functor_number];
             construct_info->functor_info.du_functor_desc = functor_desc;
             construct_info->functor_name = functor_desc->MR_du_functor_name;
             construct_info->arity = functor_desc->MR_du_functor_orig_arity;
@@ -86,7 +86,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
             }
 
             functor_desc = MR_type_ctor_functors(type_ctor_info).
-                functors_enum[functor_number];
+                MR_functors_enum[functor_number];
             construct_info->functor_info.enum_functor_desc = functor_desc;
             construct_info->functor_name = functor_desc->MR_enum_functor_name;
             construct_info->arity = 0;
@@ -107,7 +107,8 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
                     "notag functor_number out of range");
             }
 
-            functor_desc = MR_type_ctor_functors(type_ctor_info).functors_notag;
+            functor_desc = MR_type_ctor_functors(type_ctor_info).
+                MR_functors_notag;
             construct_info->functor_info.notag_functor_desc = functor_desc;
             construct_info->functor_name = functor_desc->MR_notag_functor_name;
             construct_info->arity = 1;
@@ -123,7 +124,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
         return MR_get_functor_info(
             MR_create_type_info(
                 MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                MR_type_ctor_layout(type_ctor_info).layout_equiv),
+                MR_type_ctor_layout(type_ctor_info).MR_layout_equiv),
             functor_number, construct_info);
 
     case MR_TYPECTOR_REP_TUPLE:
@@ -158,6 +159,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_REDOIP:
     case MR_TYPECTOR_REP_TRAIL_PTR:
     case MR_TYPECTOR_REP_TICKET:
+    case MR_TYPECTOR_REP_FOREIGN:
         return MR_FALSE;
 
     case MR_TYPECTOR_REP_UNKNOWN:
@@ -288,7 +290,7 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_EQUIV:
             functors = MR_get_num_functors(
                 MR_create_type_info((MR_TypeInfo *) type_info,
-                    MR_type_ctor_layout(type_ctor_info).layout_equiv));
+                    MR_type_ctor_layout(type_ctor_info).MR_layout_equiv));
             break;
 
         case MR_TYPECTOR_REP_INT:
@@ -314,6 +316,7 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_REDOIP:
         case MR_TYPECTOR_REP_TRAIL_PTR:
         case MR_TYPECTOR_REP_TICKET:
+        case MR_TYPECTOR_REP_FOREIGN:
             functors = -1;
             break;
 

@@ -1828,8 +1828,8 @@ mlds_output_type_prefix(mlds__commit_type) -->
 		io__write_string("jmp_buf")
 	).
 mlds_output_type_prefix(mlds__rtti_type(RttiName)) -->
-	io__write_string("MR_"),
-	io__write_string(mlds_rtti_type_name(RttiName)).
+	{ rtti_name_c_type(RttiName, CType, _IsArray) },
+	io__write_string(CType).
 mlds_output_type_prefix(mlds__unknown_type) -->
 	{ error("mlds_to_c.m: prefix has unknown type") }.
 

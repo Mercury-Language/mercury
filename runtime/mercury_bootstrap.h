@@ -15,6 +15,94 @@
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
 
+#define	MR_FA_PseudoTypeInfo_Struct0_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct1_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct2_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct3_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct4_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct5_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct6_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct7_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct8_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct9_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct10_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct11_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct12_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct13_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct14_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct15_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct16_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct17_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct18_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct19_GUARD
+#define	MR_FA_PseudoTypeInfo_Struct20_GUARD
+
+#define	MR_VA_PseudoTypeInfo_Struct0_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct1_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct2_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct3_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct4_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct5_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct6_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct7_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct8_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct9_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct10_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct11_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct12_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct13_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct14_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct15_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct16_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct17_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct18_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct19_GUARD
+#define	MR_VA_PseudoTypeInfo_Struct20_GUARD
+
+#define	MR_FA_TypeInfo_Struct0_GUARD
+#define	MR_FA_TypeInfo_Struct1_GUARD
+#define	MR_FA_TypeInfo_Struct2_GUARD
+#define	MR_FA_TypeInfo_Struct3_GUARD
+#define	MR_FA_TypeInfo_Struct4_GUARD
+#define	MR_FA_TypeInfo_Struct5_GUARD
+#define	MR_FA_TypeInfo_Struct6_GUARD
+#define	MR_FA_TypeInfo_Struct7_GUARD
+#define	MR_FA_TypeInfo_Struct8_GUARD
+#define	MR_FA_TypeInfo_Struct9_GUARD
+#define	MR_FA_TypeInfo_Struct10_GUARD
+#define	MR_FA_TypeInfo_Struct11_GUARD
+#define	MR_FA_TypeInfo_Struct12_GUARD
+#define	MR_FA_TypeInfo_Struct13_GUARD
+#define	MR_FA_TypeInfo_Struct14_GUARD
+#define	MR_FA_TypeInfo_Struct15_GUARD
+#define	MR_FA_TypeInfo_Struct16_GUARD
+#define	MR_FA_TypeInfo_Struct17_GUARD
+#define	MR_FA_TypeInfo_Struct18_GUARD
+#define	MR_FA_TypeInfo_Struct19_GUARD
+#define	MR_FA_TypeInfo_Struct20_GUARD
+
+#define	MR_VA_TypeInfo_Struct0_GUARD
+#define	MR_VA_TypeInfo_Struct1_GUARD
+#define	MR_VA_TypeInfo_Struct2_GUARD
+#define	MR_VA_TypeInfo_Struct3_GUARD
+#define	MR_VA_TypeInfo_Struct4_GUARD
+#define	MR_VA_TypeInfo_Struct5_GUARD
+#define	MR_VA_TypeInfo_Struct6_GUARD
+#define	MR_VA_TypeInfo_Struct7_GUARD
+#define	MR_VA_TypeInfo_Struct8_GUARD
+#define	MR_VA_TypeInfo_Struct9_GUARD
+#define	MR_VA_TypeInfo_Struct10_GUARD
+#define	MR_VA_TypeInfo_Struct11_GUARD
+#define	MR_VA_TypeInfo_Struct12_GUARD
+#define	MR_VA_TypeInfo_Struct13_GUARD
+#define	MR_VA_TypeInfo_Struct14_GUARD
+#define	MR_VA_TypeInfo_Struct15_GUARD
+#define	MR_VA_TypeInfo_Struct16_GUARD
+#define	MR_VA_TypeInfo_Struct17_GUARD
+#define	MR_VA_TypeInfo_Struct18_GUARD
+#define	MR_VA_TypeInfo_Struct19_GUARD
+#define	MR_VA_TypeInfo_Struct20_GUARD
+
 /*
 ** These will be needed until we regularize the module-qualification
 ** of builtin types.

@@ -1916,9 +1916,9 @@ build_rtti_type(field_names(_), Size, GCC_Type) -->
 	build_sized_array_type('MR_ConstString', Size, GCC_Type).
 build_rtti_type(field_types(_), Size, GCC_Type) -->
 	build_sized_array_type('MR_PseudoTypeInfo', Size, GCC_Type).
-build_rtti_type(reserved_addrs, Size, GCC_Type) -->
+build_rtti_type(res_addrs, Size, GCC_Type) -->
 	build_sized_array_type(gcc__ptr_type_node, Size, GCC_Type).
-build_rtti_type(reserved_addr_functors, Size, GCC_Type) -->
+build_rtti_type(res_addr_functors, Size, GCC_Type) -->
 	{ MR_ReservedAddrFunctorDescPtr = gcc__ptr_type_node },
 	build_sized_array_type(MR_ReservedAddrFunctorDescPtr, Size, GCC_Type).
 build_rtti_type(enum_functor_desc(_), _, GCC_Type) -->
@@ -1970,12 +1970,12 @@ build_rtti_type(du_functor_desc(_), _, GCC_Type) -->
 		 MR_ConstStringPtr	- "MR_du_functor_arg_names",
 		 MR_DuExistInfoPtr	- "MR_du_functor_exist_info"],
 		GCC_Type).
-build_rtti_type(reserved_addr_functor_desc(_), _, GCC_Type) -->
+build_rtti_type(res_functor_desc(_), _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString      MR_ra_functor_name;
 	%     MR_int_least32_t    MR_ra_functor_ordinal;
 	%     const void *        MR_ra_functor_reserved_addr;
-	% } MR_EnumFunctorDesc;
+	% } MR_ReservedAddrFunctorDesc;
 	build_struct_type("MR_ReservedAddrFunctorDesc",
 		['MR_ConstString'	- "MR_ra_functor_name",
 		 'MR_int_least32_t'	- "MR_ra_functor_ordinal",
@@ -2005,7 +2005,7 @@ build_rtti_type(du_ptag_ordered_table, Size, GCC_Type) -->
 		 gcc__ptr_type_node	- "MR_sectag_alternatives"],
 		MR_DuPtagLayout),
 	build_sized_array_type(MR_DuPtagLayout, Size, GCC_Type).
-build_rtti_type(reserved_addr_table, _, GCC_Type) -->
+build_rtti_type(res_value_ordered_table, _, GCC_Type) -->
 	% typedef struct {
 	%     MR_int_least16_t    MR_ra_num_res_numeric_addrs;
 	%     MR_int_least16_t    MR_ra_num_res_symbolic_addrs;
@@ -2019,6 +2019,27 @@ build_rtti_type(reserved_addr_table, _, GCC_Type) -->
 		 gcc__ptr_type_node	- "MR_ra_res_symbolic_addrs",
 		 gcc__ptr_type_node	- "MR_ra_constants",
 		 gcc__ptr_type_node	- "MR_ra_other_functors"
+		], GCC_Type).
+build_rtti_type(res_name_ordered_table, _, GCC_Type) -->
+	% typedef union {
+    	%	MR_DuFunctorDesc            *MR_maybe_res_du_ptr;
+    	%	MR_ReservedAddrFunctorDesc  *MR_maybe_res_res_ptr;
+	% } MR_MaybeResFunctorDescPtr;
+	%
+	% typedef struct {
+    	%	MR_ConstString              MR_maybe_res_name;
+    	%	MR_Integer                  MR_maybe_res_arity;
+    	%	MR_bool                     MR_maybe_res_is_res;
+    	%	MR_MaybeResFunctorDescPtr   MR_maybe_res_ptr;
+	% } MR_MaybeResAddrFunctorDesc;
+	build_struct_type("MR_MaybeResAddrFunctorDesc",
+		[gcc__ptr_type_node	- "MR_maybe_res_init"],
+		MR_MaybeResAddrFunctorDesc),
+	build_struct_type("MR_ReservedAddrFunctorDesc",
+		['MR_ConstString'	- "MR_maybe_res_name",
+		 'MR_Integer'		- "MR_maybe_res_arity",
+		 'MR_bool'		- "MR_maybe_res_is_res",
+		 MR_MaybeResAddrFunctorDesc	- "MR_maybe_res_ptr"
 		], GCC_Type).
 build_rtti_type(type_ctor_info, _, GCC_Type) -->
 	% MR_Integer          MR_type_ctor_arity;
@@ -2035,10 +2056,10 @@ build_rtti_type(type_ctor_info, _, GCC_Type) -->
 
 	{ MR_ProcAddr = gcc__ptr_type_node },
 	build_struct_type("MR_TypeFunctors",
-		[gcc__ptr_type_node	- "functors_init"],
+		[gcc__ptr_type_node	- "MR_functors_init"],
 		MR_TypeFunctors),
 	build_struct_type("MR_TypeLayout",
-		[gcc__ptr_type_node	- "layout_init"],
+		[gcc__ptr_type_node	- "MR_layout_init"],
 		MR_TypeLayout),
 	build_struct_type("MR_TypeCtorInfo_Struct",
 		['MR_Integer'		- "MR_type_ctor_arity",
@@ -2224,7 +2245,8 @@ rtti_enum_const("MR_TYPECTOR_REP_TYPECTORINFO", 33).
 rtti_enum_const("MR_TYPECTOR_REP_BASETYPECLASSINFO", 34).
 rtti_enum_const("MR_TYPECTOR_REP_TYPEDESC", 35).
 rtti_enum_const("MR_TYPECTOR_REP_TYPECTORDESC", 36).
-rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 37).
+rtti_enum_const("MR_TYPECTOR_REP_FOREIGN", 37).
+rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 38).
 rtti_enum_const("MR_SECTAG_NONE", 0).
 rtti_enum_const("MR_SECTAG_LOCAL", 1).
 rtti_enum_const("MR_SECTAG_REMOTE", 2).
@@ -3464,6 +3486,7 @@ gen_context(MLDS_Context) -->
 :- func 'MR_String'		= gcc__type.
 :- func 'MR_ConstString'	= gcc__type.
 :- func 'MR_Word'		= gcc__type.
+:- func 'MR_bool'		= gcc__type.
 :- func 'MR_TypeInfo'		= gcc__type.
 :- func 'MR_PseudoTypeInfo'	= gcc__type.
 :- func 'MR_Sectag_Locn'	= gcc__type.
@@ -3484,6 +3507,7 @@ gen_context(MLDS_Context) -->
 'MR_ConstString'	= gcc__string_type_node.
 	% XXX 'MR_Word' should perhaps be unsigned, to match the C back-end
 'MR_Word'		= gcc__intptr_type_node.
+'MR_bool'		= gcc__char_type_node.
 
 'MR_TypeInfo'		= gcc__ptr_type_node.
 'MR_PseudoTypeInfo'	= gcc__ptr_type_node.

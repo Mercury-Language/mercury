@@ -381,7 +381,7 @@ MR_collapse_equivalences(MR_TypeInfo maybe_equiv_type_info)
 		maybe_equiv_type_info = MR_create_type_info(
 			MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(
 				maybe_equiv_type_info),
-			MR_type_ctor_layout(type_ctor_info).layout_equiv);
+			MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
 
 		type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(
 				maybe_equiv_type_info);

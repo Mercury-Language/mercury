@@ -645,7 +645,8 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             {
                 int i;
                 MR_ReservedAddrTypeLayout ra_layout =
-                            MR_type_ctor_layout(type_ctor_info).layout_reserved_addr;
+                        MR_type_ctor_layout(type_ctor_info).
+                            MR_layout_reserved_addr;
 
                 /*
                 ** First check if this value is one of
@@ -687,7 +688,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             
         case MR_TYPECTOR_REP_DU: 
         case MR_TYPECTOR_REP_DU_USEREQ: 
-            du_type_layout = MR_type_ctor_layout(type_ctor_info).layout_du;
+            du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
             /* fall through */
         
         /*
@@ -793,7 +794,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
                 eqv_type_info = MR_make_type_info(
                     MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                    MR_type_ctor_layout(type_ctor_info).layout_notag->
+                    MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
                         MR_notag_functor_arg_type, &allocated_memory_cells);
                 MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
                 MR_deallocate(allocated_memory_cells);
@@ -803,7 +804,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
         case MR_TYPECTOR_REP_NOTAG_GROUND: 
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
             MR_DEBUG_TABLE_ANY(table, MR_pseudo_type_info_is_ground(
-                MR_type_ctor_layout(type_ctor_info).layout_notag->
+                MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
                 MR_notag_functor_arg_type), data);
             break;
 
@@ -814,7 +815,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
                 eqv_type_info = MR_make_type_info(
                     MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                    MR_type_ctor_layout(type_ctor_info).layout_equiv,
+                    MR_type_ctor_layout(type_ctor_info).MR_layout_equiv,
                     &allocated_memory_cells);
                 MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
                 MR_deallocate(allocated_memory_cells);
@@ -823,7 +824,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             MR_DEBUG_TABLE_ANY(table, MR_pseudo_type_info_is_ground(
-                MR_type_ctor_layout(type_ctor_info).layout_equiv), data);
+                MR_type_ctor_layout(type_ctor_info).MR_layout_equiv), data);
             break;
 
         case MR_TYPECTOR_REP_INT:
@@ -975,6 +976,10 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
         case MR_TYPECTOR_REP_TICKET:
             MR_fatal_error("Attempt to table a saved ticket");
+            break;
+
+        case MR_TYPECTOR_REP_FOREIGN:
+            MR_fatal_error("Attempt to table a value of a foreign type");
             break;
 
         case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */

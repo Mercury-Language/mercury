@@ -161,7 +161,7 @@ Changes to the Mercury standard library:
   Also beware that std_util__functor and std_util__deconstruct now
   return `[|]' rather than `.' for lists, and calls to std_util__construct
   which construct lists may need to be updated.
-* We've added a predicate list__map_foldl2.
+* We've added the predicate list__is_empty/1 and list__is_not_empty/1.
 
 * We've added a function version of error/1, called func_error/1, to require.m.
 

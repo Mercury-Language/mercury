@@ -815,7 +815,8 @@ get_functor_info(Univ, FunctorInfo) :-
     switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
-            functor_desc = MR_type_ctor_functors(type_ctor_info).functors_notag;
+            functor_desc = MR_type_ctor_functors(type_ctor_info).
+	    	MR_functors_notag;
             exp_type_info = MR_pseudo_type_info_is_ground(
                 functor_desc->MR_notag_functor_arg_type);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
@@ -824,7 +825,8 @@ get_functor_info(Univ, FunctorInfo) :-
 
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-            functor_desc = MR_type_ctor_functors(type_ctor_info).functors_notag;
+            functor_desc = MR_type_ctor_functors(type_ctor_info).
+	    	MR_functors_notag;
             exp_type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                 functor_desc->MR_notag_functor_arg_type);
@@ -863,7 +865,7 @@ get_notag_functor_info(_, _) :-
     switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_EQUIV:
             exp_type_info = MR_pseudo_type_info_is_ground(
-                MR_type_ctor_layout(type_ctor_info).layout_equiv);
+                MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = MR_TRUE;
             break;
@@ -871,7 +873,7 @@ get_notag_functor_info(_, _) :-
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             exp_type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                MR_type_ctor_layout(type_ctor_info).layout_equiv);
+                MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = MR_TRUE;
             break;
@@ -949,7 +951,8 @@ get_enum_functor_info(_, _) :-
         case MR_TYPECTOR_REP_DU_USEREQ:
             SUCCESS_INDICATOR = MR_TRUE;
             Ptag = MR_tag(value);
-            ptag_layout = &MR_type_ctor_layout(type_ctor_info).layout_du[Ptag];
+            ptag_layout = &MR_type_ctor_layout(type_ctor_info).
+	    	MR_layout_du[Ptag];
 
             switch(ptag_layout->MR_sectag_locn) {
                 case MR_SECTAG_LOCAL:

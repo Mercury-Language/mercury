@@ -106,7 +106,7 @@ try_again:
             MR_ReservedAddrTypeLayout ra_layout;
 
             ra_layout =
-                MR_type_ctor_layout(type_ctor_info).layout_reserved_addr;
+                MR_type_ctor_layout(type_ctor_info).MR_layout_reserved_addr;
 
             /*
             ** First check if this value is one of
@@ -141,7 +141,7 @@ try_again:
 
     case MR_TYPECTOR_REP_DU:
     case MR_TYPECTOR_REP_DU_USEREQ:
-        du_type_layout = MR_type_ctor_layout(type_ctor_info).layout_du;
+        du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
         /* fallthru */
 
     /*
@@ -313,14 +313,14 @@ try_again:
     case MR_TYPECTOR_REP_NOTAG_USEREQ:
         new_data = copy_arg(NULL, data, NULL,
             MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-            MR_type_ctor_layout(type_ctor_info).layout_notag->
+            MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
             MR_notag_functor_arg_type, lower_limit, upper_limit);
         break;
 
     case MR_TYPECTOR_REP_NOTAG_GROUND:
     case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
         type_info = MR_pseudo_type_info_is_ground(
-            MR_type_ctor_layout(type_ctor_info).layout_notag
+            MR_type_ctor_layout(type_ctor_info).MR_layout_notag
             ->MR_notag_functor_arg_type);
         goto try_again;
         break;
@@ -328,13 +328,13 @@ try_again:
     case MR_TYPECTOR_REP_EQUIV:
         new_data = copy_arg(NULL, data, NULL,
             MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-            MR_type_ctor_layout(type_ctor_info).layout_equiv,
+            MR_type_ctor_layout(type_ctor_info).MR_layout_equiv,
             lower_limit, upper_limit);
         break;
 
     case MR_TYPECTOR_REP_EQUIV_GROUND:
         type_info = MR_pseudo_type_info_is_ground(
-            MR_type_ctor_layout(type_ctor_info).layout_equiv);
+            MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
         goto try_again;
         break;
 
