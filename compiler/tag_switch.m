@@ -217,7 +217,7 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary,
 		code_info__get_globals(Globals),
 		{ globals__lookup_int_option(Globals, dense_switch_size,
 			DenseSwitchSize) },
-		{ MaxSecondary >= DenseSwitchSize }
+		{ MaxSecondary < DenseSwitchSize }
 	->
 		code_info__acquire_reg(SecTagReg),
 		code_info__release_reg(SecTagReg),
