@@ -440,7 +440,7 @@ void init_memory(void)
 	}
 }
 
-MemoryZone *get_zone()
+MemoryZone *get_zone(void)
 {
 	MemoryZone *zone;
 
