@@ -70,17 +70,60 @@ bintree__delete(tree(K0 - V0, Left, Right), K, Tree) :-
 	else if
 		Result = (<)
 	then
-		bintree_delete(Right, K, Tree1),
+		bintree__delete(Right, K, Tree1),
 		Tree = tree(K0 - V0, Left, Tree1)
 	else
-		bintree_delete(Left, K, Tree1),
+		bintree__delete(Left, K, Tree1),
 		Tree = tree(K0 - V0, Tree1, Right)
 	).
 
 bintree__fixup(empty, Right, Right).
-bintree__fixup(tree(Node, Left, Right0), Right, Tree) :-
-	bintree__fixup(Right0, Right, Right1),
-	Tree = tree(Node, Left, Right1).
+bintree__fixup(Left, empty, Left).
+bintree__fixup(Left, Right, Tree) :-
+	bintree__right_depth(Left, LD),
+	bintree__left_depth(Right, RD),
+	(if
+		LD > RD
+	then
+		bintree__knock_left(Left, Node, Left1),
+		Right1 = Right
+	else
+		bintree__knock_right(Right, Node, Right1),
+		Left1 = Left
+	),
+	Tree = tree(Node, Left1, Right1).
+
+bintree__right_depth(empty, 0).
+bintree__right_depth(tree(Node, Left, Right), N) :-
+	bintree__right_depth(Right, M),
+	N is M + 1.
+
+bintree__left_depth(empty, 0).
+bintree__left_depth(tree(Node, Left, Right), N) :-
+	bintree__left_depth(Left, M),
+	N is M + 1.
+
+bintree__knock_left(tree(Node0, Left, Right), Node, Tree) :-
+	(if
+		Right = empty
+	then
+		Node = Node0,
+		Tree = Left
+	else
+		bintree__knock_left(Right, Node, Right1),
+		Tree = tree(Node0, Left, Right1)
+	).
+
+bintree__knock_right(tree(Node0, Left, Right), Node, Tree) :-
+	(if
+		Left = empty
+	then
+		Node = Node0,
+		Tree = Right
+	else
+		bintree__knock_right(Left, Node, Left1),
+		Tree = tree(Node0, Left1, Right)
+	).
 
 :- pred bintree__from_list(list(pair(K,V)), bintree(K,V)).
 :- mode bintree__from_list(input, output).
