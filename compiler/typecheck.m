@@ -2117,22 +2117,34 @@ report_error_unif_var_functor(TypeInfo, Var, Functor, Args, TypeAssignSet) -->
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
 	{ typeinfo_get_unify_context(TypeInfo, UnifyContext) },
 
+	write_typeinfo_context(TypeInfo),
 	write_unify_context(UnifyContext, Context),
 
-	write_typeinfo_context(TypeInfo),
-	io__write_string("  type error in unification of variable `"),
-	io__write_variable(Var, VarSet),
-	io__write_string("' and term `"),
+	io__write_string("  type error in unification of "),
+	write_argument_name(VarSet, Var),
+	io__write_string(" and term `"),
 	io__write_term(VarSet, term_functor(Functor, Args, Context)),
 	io__write_string("'.\n"),
 
-	io__write_string("\t`"),
-	io__write_variable(Var, VarSet),
-	io__write_string("' "),
+	io__write_string("\t"),
+	write_argument_name(VarSet, Var),
+	io__write_string(" "),
 	write_type_of_var(TypeInfo, TypeAssignSet, Var),
 	io__write_string(".\n"),
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
+
+:- pred write_argument_name(varset, var, io__state, io__state).
+:- mode write_argument_name(in, in, di, uo).
+
+write_argument_name(VarSet, VarId) -->
+	( { varset__lookup_name(VarSet, VarId, _) } ->
+		io__write_string("variable `"),
+		io__write_variable(VarId, VarSet),
+		io__write_string("'")
+	;
+		io__write_string("argument")
+	).
 
 :- pred write_unify_context(unify_context, term__context, io__state, io__state).
 :- mode write_unify_context(in, in, di, uo).
@@ -2294,13 +2306,7 @@ report_error_var(TypeInfo, VarId, Type, TypeAssignSet0) -->
 	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
 	io__write_string("  type error: "),
-	( { varset__lookup_name(VarSet, VarId, _) } ->
-		io__write_string("variable `"),
-		io__write_variable(VarId, VarSet),
-		io__write_string("' ")
-	;
-		io__write_string("argument ")
-	),
+	write_argument_name(VarSet, VarId),
 	( { TypeStuffList = [SingleTypeStuff] } ->
 		{ SingleTypeStuff = type_stuff(VType, TVarSet, TBinding) },
 		io__write_string(" has type `"),
