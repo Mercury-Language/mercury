@@ -1369,15 +1369,18 @@ output_gc_livevals(LiveVals) -->
 :- mode output_gc_livevals_2(in, di, uo) is det.
 
 output_gc_livevals_2([]) --> [].
-output_gc_livevals_2([live_lvalue(Lval, LiveValueType, TypeParams)|Lvals]) -->
+output_gc_livevals_2([LiveInfo | LiveInfos]) -->
+	{ LiveInfo = live_lvalue(Lval, LiveValueType, Name, TypeParams) },
 	io__write_string(" *\t"),
 	output_lval(Lval),
+	io__write_string("\t"),
+	io__write_string(Name),
 	io__write_string("\t"),
 	output_live_value_type(LiveValueType),
 	io__write_string("\t"),
 	output_gc_livevals_params(TypeParams),
 	io__write_string("\n"),
-	output_gc_livevals_2(Lvals).
+	output_gc_livevals_2(LiveInfos).
 
 :- pred output_gc_livevals_params(assoc_list(var, lval), io__state, io__state).
 :- mode output_gc_livevals_params(in, di, uo) is det.

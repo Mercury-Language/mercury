@@ -2891,7 +2891,7 @@ code_info__generate_var_livelvals([V | Vs], Vals0, Vals) -->
 
 code_info__generate_temp_livelvals([], LiveInfo, LiveInfo).
 code_info__generate_temp_livelvals([Slot - StoredLval | Slots], LiveInfo0, 
-		[live_lvalue(Slot, LiveValueType, []) | LiveInfo1]) :-
+		[live_lvalue(Slot, LiveValueType, "", []) | LiveInfo1]) :-
 	code_info__get_live_value_type(StoredLval, LiveValueType),
 	code_info__generate_temp_livelvals(Slots, LiveInfo0, LiveInfo1).
 
@@ -2916,11 +2916,11 @@ code_info__generate_commit_livelvals(Triples0, LiveInfo0, LiveInfo) :-
 		code_info__get_live_value_type(lval(maxfr), MaxfrValueType),
 		code_info__get_live_value_type(lval(redoip(lval(maxfr))),
 			RedoipValueType),
-		LiveInfo2 = [live_lvalue(CurfrVar, CurfrValueType, []) | 
+		LiveInfo2 = [live_lvalue(CurfrVar, CurfrValueType, "", []) | 
 				LiveInfo1],
-		LiveInfo3 = [live_lvalue(MaxfrVar, MaxfrValueType, []) |
+		LiveInfo3 = [live_lvalue(MaxfrVar, MaxfrValueType, "", []) |
 				LiveInfo2],
-		LiveInfo  = [live_lvalue(RedoipVar, RedoipValueType, []) |
+		LiveInfo  = [live_lvalue(RedoipVar, RedoipValueType, "", []) |
 				LiveInfo3]
 	).
 
@@ -2931,6 +2931,8 @@ code_info__generate_commit_livelvals(Triples0, LiveInfo0, LiveInfo) :-
 code_info__livevals_to_livelvals([], _GC_Method, _, []) --> [].
 code_info__livevals_to_livelvals([Lval - Var | Ls], GC_Method, AfterCallInstMap,
 		[LiveLval | Lives]) -->
+	code_info__get_varset(VarSet),
+	{ varset__lookup_name(VarSet, Var, Name) },
 	(
 		{ GC_Method = accurate }
 	->
@@ -2939,9 +2941,10 @@ code_info__livevals_to_livelvals([Lval - Var | Ls], GC_Method, AfterCallInstMap,
 		code_info__variable_type(Var, Type),
 		{ type_util__vars(Type, TypeVars) },
 		code_info__find_type_infos(TypeVars, TypeParams),
-		{ LiveLval = live_lvalue(Lval, var(Type, Inst), TypeParams) }
+		{ LiveLval = live_lvalue(Lval, var(Type, Inst), Name,
+			TypeParams) }
 	;
-		{ LiveLval = live_lvalue(Lval, unwanted, []) }
+		{ LiveLval = live_lvalue(Lval, unwanted, Name, []) }
 	),
 	code_info__livevals_to_livelvals(Ls, GC_Method, AfterCallInstMap, 
 		Lives).

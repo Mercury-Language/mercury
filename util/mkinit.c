@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -78,6 +78,7 @@ static const char header2[] =
 static const char mercury_funcs[] =
 	"\n"
 	"Declare_entry(%s);\n"
+	"Declare_entry(mercury__io__print_3_0);\n"
 	"\n"
 	"#ifdef CONSERVATIVE_GC\n"
 	"extern char *GC_stackbottom;\n"
@@ -131,6 +132,7 @@ static const char mercury_funcs[] =
 	"#endif\n"
 	"	MR_library_initializer = ML_io_init_state;\n"
 	"	MR_library_finalizer = ML_io_finalize_state;\n"
+	"	MR_library_trace_browser = ENTRY(mercury__io__print_3_0);\n"
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
 	"	do_init_modules();\n"
 	"#endif\n"

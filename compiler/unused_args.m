@@ -254,9 +254,9 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 			ArgModes, VarDep1, VarDep2),
 		
 		module_info_globals(ModuleInfo, Globals),
-		globals__lookup_bool_option(Globals, alternate_liveness, 
-			AlternateLiveness),
-		( AlternateLiveness = yes ->
+		globals__lookup_bool_option(Globals, typeinfo_liveness, 
+			TypeinfoLiveness),
+		( TypeinfoLiveness = yes ->
 			proc_info_typeinfo_varmap(ProcInfo, TVarMap),
 			setup_typeinfo_deps(Vars, VarTypes, 
 				proc(PredId, ProcId), TVarMap, VarDep2,

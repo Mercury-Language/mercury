@@ -52,8 +52,8 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, tree.
-:- import_module int, list, std_util, string, require.
+:- import_module hlds_module, hlds_pred, llds_out, code_util, tree.
+:- import_module bool, int, list, std_util, string, require.
 
 :- type trace_info
 	--->	trace_info(
@@ -93,21 +93,15 @@ trace__generate_event_code(Port, TraceInfo, TraceCode) -->
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_proc_model(CodeModel),
 	{
+	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
+	llds_out__get_label(local(ProcLabel), yes, LabelStr),
 	TraceInfo = trace_info(CallNumLval, CallDepthLval),
 	trace__stackref_to_string(CallNumLval, CallNumStr),
 	trace__stackref_to_string(CallDepthLval, CallDepthStr),
-	predicate_module(ModuleInfo, PredId, ModuleName),
-	predicate_name(ModuleInfo, PredId, PredName),
-	predicate_arity(ModuleInfo, PredId, Arity),
-	string__int_to_string(Arity, ArityStr),
 	Quote = """",
 	Comma = ", ",
 	trace__port_to_string(Port, PortStr),
-	trace__code_model_to_string(CodeModel, CodeModelStr),
-	proc_id_to_int(ProcId, ModeNum),
-	string__int_to_string(ModeNum, ModeNumStr),
 	( trace__port_path(Port, Path) ->
 		trace__path_to_string(Path, PathStr)
 	;
@@ -115,14 +109,10 @@ trace__generate_event_code(Port, TraceInfo, TraceCode) -->
 	),
 	string__append_list([
 		"MR_trace(",
+		"(const Word *) &mercury_data__stack_layout__", LabelStr, Comma,
 		PortStr, Comma,
-		CodeModelStr, Comma,
 		CallNumStr, Comma,
 		CallDepthStr, Comma,
-		Quote, ModuleName, Quote, Comma,
-		Quote, PredName, Quote, Comma,
-		ArityStr, Comma,
-		ModeNumStr, Comma,
 		Quote, PathStr, Quote, ");\n"],
 		TraceStmt),
 	TraceCode = node([c_code(TraceStmt) - ""])

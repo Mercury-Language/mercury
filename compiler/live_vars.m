@@ -499,9 +499,10 @@ build_live_sets_in_cases([case(_Cons, Goal0) | Goals0],
 maybe_add_alternate_liveness_typeinfos(ModuleInfo, ProcInfo, OutVars,
 		LiveVars1, LiveVars) :-
 	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, alternate_liveness, AlternateLive),
+	globals__lookup_bool_option(Globals, typeinfo_liveness,
+		TypeinfoLiveness),
 	(
-		AlternateLive = yes
+		TypeinfoLiveness = yes
 	->
 		proc_info_get_typeinfo_vars_setwise(ProcInfo, LiveVars1,
 			TypeInfoVarsLive),

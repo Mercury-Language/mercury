@@ -334,6 +334,10 @@
 				% refer to?
 			live_value_type,
 				% What is the type of this live value?
+			string,
+				% What is the name of the variable stored here?
+				% The empty string if this lval does not
+				% store a variable.
 			assoc_list(tvar, lval)
 				% Where are the typeinfos that determine the
 				% types of the actual parameters of the type

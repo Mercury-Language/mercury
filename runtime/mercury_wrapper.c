@@ -127,7 +127,8 @@ void	(*MR_library_initializer)(void);
 		/* normally ML_io_init_state (io__init_state/2)*/
 void	(*MR_library_finalizer)(void);
 		/* normally ML_io_finalize_state (io__finalize_state/2) */
-
+Code	*MR_library_trace_browser;
+		/* normally mercury__io__print_3_0 (io__print/3) */
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 

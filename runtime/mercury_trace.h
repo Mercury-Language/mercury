@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -28,19 +28,11 @@ typedef	enum {
 	MR_PORT_THEN, MR_PORT_ELSE, MR_PORT_DISJ, MR_PORT_SWITCH
 } MR_trace_port;
 
-typedef	enum {
-	MR_MODEL_DET, MR_MODEL_SEMI, MR_MODEL_NON
-} MR_trace_code_model;
-
 extern	void	MR_trace(
+	const Word *,		/* pointer to stack layout info */
 	MR_trace_port,
-	MR_trace_code_model,
 	int,			/* call sequence number */
 	int,			/* call depth */
-	const char *,		/* module name */
-	const char *,		/* predicate name */
-	int,			/* predicate arity */
-	int,			/* mode number within predicate */
 	const char *);		/* path to event goal within procedure */
 
 #endif /* MERCURY_TRACE_H */

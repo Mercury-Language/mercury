@@ -52,7 +52,7 @@
 % code at that resume point as well as the nature of the required
 % entry labels.
 %
-% Alternate liveness calculation notes:
+% Typeinfo liveness calculation notes:
 %
 % When using accurate gc or execution tracing, liveness is computed
 % slightly differently.  The runtime system needs access to the
@@ -884,10 +884,10 @@ initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 		% typeinfo vars.
 	proc_info_goal(ProcInfo, _Goal - GoalInfo),
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	globals__lookup_bool_option(Globals, alternate_liveness, 
-		AlternateLiveness),
+	globals__lookup_bool_option(Globals, typeinfo_liveness, 
+		TypeinfoLiveness),
 	( 	
-		AlternateLiveness = yes
+		TypeinfoLiveness = yes
 	->
 		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0,
 			TypeInfoNonLocals),
@@ -936,10 +936,10 @@ initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 		% If doing alternate liveness, the corresponding
 		% typeinfos need to be added to these.
 	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, alternate_liveness, 
-		AlternateLiveness),
+	globals__lookup_bool_option(Globals, typeinfo_liveness, 
+		TypeinfoLiveness),
 	( 
-		AlternateLiveness = yes
+		TypeinfoLiveness = yes
 	->
 		proc_info_get_typeinfo_vars_setwise(ProcInfo, Deadness2,
 			TypeInfoVars),
@@ -1065,10 +1065,10 @@ liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
 	live_info_get_module_info(LiveInfo, ModuleInfo),
 	module_info_globals(ModuleInfo, Globals),
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	globals__lookup_bool_option(Globals, alternate_liveness, 
-		AlternateLiveness),
+	globals__lookup_bool_option(Globals, typeinfo_liveness, 
+		TypeinfoLiveness),
 	( 
-		AlternateLiveness = yes
+		TypeinfoLiveness = yes
 	->
 		live_info_get_proc_info(LiveInfo, ProcInfo),
 		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0,

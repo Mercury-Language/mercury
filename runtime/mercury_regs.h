@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1997 The University of Melbourne.
+** Copyright (C) 1993-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -128,6 +128,13 @@
 	LVALUE_COND((n) > MAX_REAL_REG, \
 		r(n), \
 		fake_reg[virtual_reg_map[(n) - 1]])
+
+/* saved_reg(save_area, n) accesses the given save area instead of fake_reg */
+
+#define saved_reg(save_area, n)	\
+	LVALUE_COND((n) > MAX_REAL_REG, \
+		r(n), \
+		save_area[virtual_reg_map[(n) - 1]])
 
 /*
 ** get_reg() and set_reg() provide a different way of addressing

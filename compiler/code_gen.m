@@ -182,6 +182,7 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		ContInfo0, CellCount0, ContInfo, CellCount, Proc) :-
 		% find out if the proc is deterministic/etc
+	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 		% get the goal for this procedure
 	proc_info_goal(ProcInfo, Goal),
@@ -240,7 +241,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		code_util__make_proc_label(ModuleInfo, PredId, ProcId,
 			ProcLabel),
 		continuation_info__add_proc_layout_info(proc(PredId, ProcId),
-			ProcLabel, TotalSlots, CodeModel, MaybeSuccipSlot,
+			ProcLabel, TotalSlots, Detism, MaybeSuccipSlot,
 			ContInfo1, ContInfo)
 	;
 		ContInfo = ContInfo1
@@ -420,12 +421,12 @@ code_gen__generate_prolog(CodeModel, Goal, FrameInfo, PrologCode) -->
 		{ code_gen__select_args_with_mode(Args, top_in, InVars,
 			InLvals) },
 
-		code_gen__generate_lvaltypes(InVars, InLvals, LvalTypes,
+		code_gen__generate_var_infos(InVars, InLvals, VarInfos,
 			TypeInfos),
 		
 		code_info__get_continuation_info(ContInfo0),
 		{ continuation_info__add_proc_entry_info(proc(PredId, ProcId),
-			LvalTypes, TypeInfos, ContInfo0, ContInfo) },
+			VarInfos, TypeInfos, ContInfo0, ContInfo) },
 		code_info__set_continuation_info(ContInfo)
 	;
 		[]
@@ -613,14 +614,14 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 			{ globals__lookup_bool_option(Globals,
 				trace_stack_layout, yes) }
 		->
-			code_gen__generate_lvaltypes(OutVars, OutLvals,
-				LvalTypes, TypeInfos),
+			code_gen__generate_var_infos(OutVars, OutLvals,
+				VarInfos, TypeInfos),
 			code_info__get_continuation_info(ContInfo0),
 			code_info__get_pred_id(PredId),
 			code_info__get_proc_id(ProcId),
-			{ continuation_info__add_proc_exit_info(proc(PredId,
-				ProcId), LvalTypes, TypeInfos, ContInfo0,
-				ContInfo) },
+			{ continuation_info__add_proc_exit_info(
+				proc(PredId, ProcId), VarInfos, TypeInfos,
+				ContInfo0, ContInfo) },
 			code_info__set_continuation_info(ContInfo),
 
 				% Make sure typeinfos are in livevals(...)
@@ -698,29 +699,31 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 	% typeinfo variable - lval pairs for any type variables in
 	% the types of the given variables.
 
-:- pred code_gen__generate_lvaltypes(list(var), list(lval),
-		assoc_list(lval, live_value_type), assoc_list(var, lval),
-		code_info, code_info).
-:- mode code_gen__generate_lvaltypes(in, in, out, out, in, out) is det.
-code_gen__generate_lvaltypes(Vars, Lvals, LvalTypes, TypeInfos) -->
+:- pred code_gen__generate_var_infos(list(var), list(lval),
+		list(var_info), assoc_list(var, lval), code_info, code_info).
+:- mode code_gen__generate_var_infos(in, in, out, out, in, out) is det.
+
+code_gen__generate_var_infos(Vars, Lvals, VarInfos, TypeInfos) -->
+	{ assoc_list__from_corresponding_lists(Vars, Lvals, VarLvals) },
+	code_info__get_proc_info(ProcInfo),
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	code_info__get_instmap(InstMap),
-	list__map_foldl(code_info__variable_type, Vars, Types),
-	{ list__map(instmap__lookup_var(InstMap), Vars, Insts) },
-	{ assoc_list__from_corresponding_lists(Types, Insts,
-		TypeInsts) },
-	{ list__map(lambda([TypeInst::in, LiveType::out] is det, (
-			TypeInst = Type - Inst,
-			LiveType = var(Type, Inst))), 
-		TypeInsts, LiveTypes) },
+	code_info__get_varset(VarSet),
+	{ MakeVarInfo = lambda([VarLval::in, VarInfo::out] is det, (
+		VarLval = Var - Lval,
+		map__lookup(VarTypes, Var, Type),
+		instmap__lookup_var(InstMap, Var, Inst),
+		LiveType = var(Type, Inst),
+		varset__lookup_name(VarSet, Var, "V_", Name),
+		VarInfo = var_info(Lval, LiveType, Name)
+	)) }, 
+	{ list__map(MakeVarInfo, VarLvals, VarInfos) },
 
 	% XXX This doesn't work yet.
 	% { list__map(type_util__vars, Types, TypeVarsList) },
 	% { list__condense(TypeVarsList, TypeVars) },
 	% code_info__find_type_infos(TypeVars, TypeInfos),
-	{ TypeInfos = [] },
-
-	{ assoc_list__from_corresponding_lists(Lvals, LiveTypes,
-		LvalTypes) }.
+	{ TypeInfos = [] }.
 
 %---------------------------------------------------------------------------%
 
@@ -1206,7 +1209,7 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 		Instrn0 = call(Target, ReturnLabel, LiveVals0, CM)
 	->
 		Instrn  = call(Target, ReturnLabel, 
-			[live_lvalue(stackvar(StackLoc), succip, []) |
+			[live_lvalue(stackvar(StackLoc), succip, "", []) |
 			LiveVals0], CM)
 	;
 		Instrn = Instrn0

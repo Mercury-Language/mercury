@@ -29,10 +29,41 @@
 #endif
 
 /*
-** Definitions for MR_Stack_Specifier
+** Definitions for MR_PredFunc
 */
 
-typedef enum { MR_STACK_DET, MR_STACK_NONDET } MR_Stack_Specifier;
+typedef	enum { MR_PREDICATE, MR_FUNCTION } MR_PredFunc;
+
+/*
+** Definitions for MR_Determinism
+**
+** The max_soln component of the determinism is encoded in the 1 and 2 bits.
+** The can_fail component of the determinism is encoded in the 4 bit.
+** The first_solution component of the determinism is encoded in the 8 bit.
+**
+** MR_DETISM_AT_MOST_MANY could also be defined as ((d) & 3) == 3),
+** but this would be less efficient, since the C compiler does not know
+** that we do not set the 1 bit unless we also set the 2 bit.
+*/
+
+typedef	Word MR_Determinism;
+
+#define	MR_DETISM_DET		6
+#define	MR_DETISM_SEMI		2
+#define	MR_DETISM_NON		3
+#define	MR_DETISM_MULTI		7
+#define	MR_DETISM_ERRONEOUS	4
+#define	MR_DETISM_FAILURE	0
+#define	MR_DETISM_CCNON		10
+#define	MR_DETISM_CCMULTI	14
+
+#define MR_DETISM_AT_MOST_ZERO(d)	((d) & 3) == 0)
+#define MR_DETISM_AT_MOST_ONE(d)	((d) & 3) == 2)
+#define MR_DETISM_AT_MOST_MANY(d)	((d) & 1) != 0)
+
+#define MR_DETISM_CAN_FAIL(d)		((d) & 4) != 0)
+
+#define MR_DETISM_FIRST_SOLN(d)		((d) & 8) != 0)
 
 /*
 ** Definitions for "MR_Live_Lval"
@@ -128,7 +159,6 @@ typedef struct {
 #define MR_LIVE_TYPE_GET_VAR_INST(T)   			\
 		((Word) ((MR_Var_Shape_Info *) T)->inst)
 
-
 /*
 ** Macros to support hand-written C code.
 */
@@ -147,8 +177,8 @@ typedef struct {
 	Integer f4;							\
  } mercury_data__stack_layout__##l = {					\
 	STATIC(l),							\
+	(Integer) -1, 	/* Unknown determinism */			\
 	(Integer) -1,	/* Unknown number of stack slots */		\
-	(Integer) -1, 	/* Unknown code model */			\
         (Integer) MR_LVAL_TYPE_UNKNOWN 	/* Unknown succip location */	\
  };
 #else
@@ -207,13 +237,53 @@ typedef struct {
  #define MR_MAKE_STACK_LAYOUT_INTERNAL(l, x)        
 #endif	/* MR_USE_STACK_LAYOUTS */
 
-
 /*
-** Macros to support stack layouts.
-** XXX ought to use a MR_Entry_Stack_Layout and MR_Cont_Stack_Layout
-** struct to make it easier to access the fields.
+** Structs and macros to support stack layouts.
 */
 
+typedef	struct MR_stack_layout_shape_struct {
+	Word			*MR_sls_type;
+	Word			MR_sls_inst;
+} MR_stack_layout_shape;
+
+typedef	struct MR_stack_layout_var_struct {
+	Integer			MR_slv_locn;
+	MR_stack_layout_shape	*MR_slv_shape;
+} MR_stack_layout_var;
+
+typedef	struct MR_stack_layout_vars_struct {
+	MR_stack_layout_var	*MR_slvs_pairs;
+	String			*MR_slvs_names;
+	Word			*MR_slvs_tvars;
+} MR_stack_layout_vars;
+
+typedef	struct MR_stack_layout_entry_struct {
+	Code			*MR_sle_code_addr;
+	MR_Determinism		MR_sle_detism;
+	Integer			MR_sle_stack_slots;
+	MR_Live_Lval		MR_sle_succip_locn;
+	/* the fields from here onwards are present only with procid layouts */
+	MR_PredFunc		MR_sle_pred_or_func;
+	String			MR_sle_decl_module;
+	String			MR_sle_def_module;
+	String			MR_sle_name;
+	Integer			MR_sle_arity;
+	Integer			MR_sle_mode;
+	/* the fields from here onwards are present only with trace layouts */
+	Integer			MR_sle_in_arg_count;
+	MR_stack_layout_vars	MR_sle_in_arg_info;
+	Integer			MR_sle_out_arg_count;
+	MR_stack_layout_vars	MR_sle_out_arg_info;
+} MR_stack_layout_entry;
+
+typedef	struct MR_stack_layout_label_struct {
+	MR_stack_layout_entry	*MR_sll_entry;
+	Integer			MR_sll_var_count;
+	/* the last field is present only if MR_sll_var_count > 0 */
+	MR_stack_layout_vars	MR_sll_var_info;
+} MR_stack_layout_label;
+
+/* The following macros support obsolete code. */
 #define MR_ENTRY_STACK_LAYOUT_GET_LABEL_ADDRESS(s)		\
 		((Code *) field(0, (s), 0))
 
@@ -221,10 +291,10 @@ typedef struct {
 		(field(0, (s), 0))
 
 #define MR_ENTRY_STACK_LAYOUT_GET_NUM_SLOTS(s)			\
-		(field(0, (s), 1))
+		(field(0, (s), 2))
 
 #define MR_ENTRY_STACK_LAYOUT_GET_CODE_MODEL(s)			\
-		(field(0, (s), 2))
+		(field(0, (s), 1) & 1)
 
 #define MR_ENTRY_STACK_LAYOUT_GET_SUCCIP_LOC(s)			\
 		(field(0, (s), 3))

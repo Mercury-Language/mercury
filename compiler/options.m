@@ -147,12 +147,15 @@
 				% accurate GC.
 		;	agc_stack_layout
 				% Stack layout information required to do
+				% procedure identification.
+		;	procid_stack_layout
+				% Stack layout information required to do
 				% tracing.
 		;	trace_stack_layout
-				% Use alternate calculation of liveness
+				% Use an alternate calculation of liveness
 				% where typeinfos are live for any live data
 				% the includes that type variable.
-		;	alternate_liveness
+		;	typeinfo_liveness
 		;	highlevel_c
 		;	unboxed_float
 	% Code generation options
@@ -410,8 +413,9 @@ option_defaults_2(compilation_model_option, [
 	type_layout		-	bool(yes),
 	basic_stack_layout	-	bool(no),
 	agc_stack_layout	-	bool(no),
+	procid_stack_layout	-	bool(no),
 	trace_stack_layout	-	bool(no),
-	alternate_liveness	-	bool(no),
+	typeinfo_liveness	-	bool(no),
 	highlevel_c		-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
@@ -707,8 +711,9 @@ long_option("arg-convention",		args).
 long_option("type-layout",		type_layout).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
+long_option("procid-stack-layout",	procid_stack_layout).
 long_option("trace-stack-layout",	trace_stack_layout).
-long_option("alternate-liveness",	alternate_liveness).
+long_option("typeinfo-liveness",	typeinfo_liveness).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
@@ -1543,13 +1548,19 @@ your program compiled with different options.
 %	io__write_string("\t\taccurate garbage collection.\n"),
 %
 		% This is a developer only option.
+%	io__write_string("\t--procid-stack-layout\n"),
+%	io__write_string("\t(This option is not for general use.)\n"),
+%	io__write_string("\t\tGenerate the stack_layout structures required for\n"),
+%	io__write_string("\t\tlooking up procedure identification information.\n"),
+
+		% This is a developer only option.
 %	io__write_string("\t--trace-stack-layout\n"),
 %	io__write_string("\t(This option is not for general use.)\n"),
 %	io__write_string("\t\tGenerate the stack_layout structures required for\n"),
 %	io__write_string("\t\texecution tracing.\n"),
 
 		% This is a developer only option.
-%	io__write_string("\t--alternate-liveness\n"),
+%	io__write_string("\t--typeinfo-liveness\n"),
 %	io__write_string("\t(This option is not for general use.)\n"),
 %	io__write_string("\t\tUse an alternate technique for calculating liveness.\n"),
 %	io__write_string("\t\tKeeps typeinfo variables around for as long as any data\n"),

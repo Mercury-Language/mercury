@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -39,6 +39,15 @@ typedef void			Code;	/* code addresses are `void *' */
 	#error	For Mercury bytecode, we require 64-bit IEEE-754 floating point
 #endif
 
+/* The following four typedefs logically belong in mercury_string.h.     */
+/* They are defined here to avoid problems with circular #includes.      */
+/* If you modify them, you will need to modify mercury_string.h as well. */
+
+typedef char Char;
+typedef unsigned char UnsignedChar;
+
+typedef Char *String;
+typedef const Char *ConstString;
 
 /* continuation function type, for --high-level-C option */
 typedef void (*Cont) (void);

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -13,7 +13,6 @@
 
 #include "mercury_heap.h"	/* for incr_hp_atomic */
 
-
 /*
 ** Mercury characters are given type `Char', which is a typedef for `char'.
 ** But BEWARE: when stored in an Integer, the value must be
@@ -22,12 +21,16 @@
 **
 ** We may eventually move to using wchar_t for Mercury characters and strings,
 ** so it is important to use these typedefs.
+**
+** The actual typedefs are in mercury_types.h to avoid problems with
+** circular #includes.
+**
+** typedef char Char;
+** typedef unsigned char UnsignedChar;
+**
+** typedef Char *String;
+** typedef const Char *ConstString;
 */
-typedef char Char;
-typedef unsigned char UnsignedChar;
-
-typedef Char *String;
-typedef const Char *ConstString;
 
 /*
 ** string_const("...", len):
