@@ -477,14 +477,6 @@
 				% fully qualified. This occurs for
 				% predicates read from `.opt' files
 				% and compiler-generated predicates.
-
-	;	not_accessible_by_unqualifed_name
-				% This predicate is not accessible by its
-				% unqualified name.
-
-	;	not_accessible_by_partially_qualified_names
-				% This predicate is not accessible by any
-				% partially qualified names.
 	.
 
 	% An abstract set of attributes.
