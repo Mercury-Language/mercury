@@ -1,13 +1,19 @@
-#!/usr/bin/perl
+
+# Leave the first line of this file blank!
+# This is a Perl script; the following two lines allow us to avoid
+# embedding the path of the perl interpreter in the script.
+eval "exec perl -S $0 $*"
+    if $running_under_some_shell;
+
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 
-# create a vi style tags file for Mercury programs
-# takes its list of filenames from the command line
-# it should warn about duplicate tags, but doesn't as yet
+# This script creates a vi style tags file for Mercury programs.
+# It takes its list of filenames from the command line.
+# It should warn about duplicate tags, but doesn't as yet.
 
 die "Usage: mtags file1.m ...\n" if $#ARGV < 0;
 

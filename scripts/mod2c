@@ -1,11 +1,17 @@
-#!/usr/local/bin/perl
+
+# Leave the first line of this file blank!
+# This is a Perl script; the following two lines allow us to avoid
+# embedding the path of the perl interpreter in the script.
+eval "exec perl -S $0 $*"
+    if $running_under_some_shell;
+
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 
-# This converts .mod files to .c files.
+# This script converts .mod files to .c files.
 
 sub println {
     local ($line) = @_;
