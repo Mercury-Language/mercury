@@ -1162,7 +1162,7 @@ llds__unop_arg_type(unmktag, word).
 llds__unop_arg_type(strip_tag, word).
 llds__unop_arg_type(mkbody, word).
 llds__unop_arg_type(unmkbody, word).
-llds__unop_arg_type(hash_string, word).
+llds__unop_arg_type(hash_string, string).
 llds__unop_arg_type(bitwise_complement, integer).
 llds__unop_arg_type(not, bool).
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -127,8 +127,8 @@
 **	Given a Mercury string `string', set `hash' to the hash value
 **	for that string.  (`hash' must be an lvalue.)
 **
-** This is an implementation detail used to implement hash_string().
-** It should not be used directly.  Use hash_string() instead.
+** This is an implementation detail used to implement MR_hash_string().
+** It should not be used directly.  Use MR_hash_string() instead.
 **
 ** Note that hash_string is also defined in library/string.m.
 ** The definition here and the definition in string.m
@@ -136,7 +136,10 @@
 */
 #define MR_do_hash_string(hash, s)			\
 	{						\
-	   int len = 0;					\
+	   int len;					\
+	   MR_CHECK_EXPR_TYPE(hash, int);		\
+	   MR_CHECK_EXPR_TYPE(s, MR_ConstString);	\
+	   len = 0;					\
 	   hash = 0;					\
 	   while(((MR_ConstString)(s))[len]) {		\
 		hash ^= (hash << 5);			\
@@ -150,11 +153,12 @@
 ** MR_hash_string(s):
 **	Given a Mercury string `s', return a hash value for that string.
 */
-int	MR_hash_string(MR_Word);
+int	MR_hash_string(MR_ConstString);
 
 #ifdef __GNUC__
 #define MR_hash_string(s)						\
 	({ int hash_string_result;					\
+	   MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
 	   MR_do_hash_string(hash_string_result, s);			\
 	   hash_string_result;						\
 	})

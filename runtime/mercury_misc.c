@@ -114,7 +114,7 @@ MR_fatal_error(const char *fmt, ...)
 #undef MR_hash_string
 
 int 
-MR_hash_string(MR_Word s)
+MR_hash_string(MR_ConstString s)
 {
 	MR_HASH_STRING_FUNC_BODY
 }
