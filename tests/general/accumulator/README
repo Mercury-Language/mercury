@@ -1,0 +1,4 @@
+The file INTRODUCED contains the procedures which should have an
+accumulator introduced for them, when the following options are set
+
+        --introduce-accumulators --optimize-constructor-last-call
