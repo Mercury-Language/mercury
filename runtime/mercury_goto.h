@@ -20,7 +20,7 @@
 
 #ifdef MR_USE_STACK_LAYOUTS
   #define MR_STACK_LAYOUT(label)        (Word *) (Word) \
-	&(paste(mercury_data__stack_layout__,label))
+	&(paste(mercury_data__layout__,label))
 #else
   #define MR_STACK_LAYOUT(label) (Word *) NULL
 #endif /* MR_USE_STACK_LAYOUTS */

@@ -329,7 +329,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Ccode = Ccode0
 	;
 		% XXX we shouldn't just give up here
-		Uinstr0 = pragma_c(_, _, _, _),
+		Uinstr0 = pragma_c(_, _, _, _, _),
 		Livemap = Livemap0,
 		Livevals = Livevals0,
 		Instrs = Instrs0,

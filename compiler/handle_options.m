@@ -113,73 +113,81 @@ dump_arguments([Arg | Args]) -->
 
 postprocess_options(error(ErrorMessage), yes(ErrorMessage)) --> [].
 postprocess_options(ok(OptionTable), Error) -->
-            { map__lookup(OptionTable, gc, GC_Method0) },
+    { map__lookup(OptionTable, gc, GC_Method0) },
+    (
+        { GC_Method0 = string(GC_MethodStr) },
+        { convert_gc_method(GC_MethodStr, GC_Method) }
+    ->
+        { map__lookup(OptionTable, tags, TagsMethod0) },
+        (
+            { TagsMethod0 = string(TagsMethodStr) },
+            { convert_tags_method(TagsMethodStr, TagsMethod) }
+        ->
+            { map__lookup(OptionTable, args, ArgsMethod0) },
             (
-                { GC_Method0 = string(GC_MethodStr) },
-                { convert_gc_method(GC_MethodStr, GC_Method) }
+                { ArgsMethod0 = string(ArgsMethodStr) },
+                { convert_args_method(ArgsMethodStr, ArgsMethod) }
             ->
-                { map__lookup(OptionTable, tags, TagsMethod0) },
+                { map__lookup(OptionTable, prolog_dialect,
+                    PrologDialect0) },
                 (
-                    { TagsMethod0 = string(TagsMethodStr) },
-                    { convert_tags_method(TagsMethodStr, TagsMethod) }
+                    { PrologDialect0 = string(PrologDialectStr) },
+                    { convert_prolog_dialect(PrologDialectStr,
+                        PrologDialect) }
                 ->
-                    { map__lookup(OptionTable, args, ArgsMethod0) },
-                    (
-                        { ArgsMethod0 = string(ArgsMethodStr) },
-                        { convert_args_method(ArgsMethodStr, ArgsMethod) }
+                    { map__lookup(OptionTable,
+                        fact_table_hash_percent_full, PercentFull) },
+                    ( 
+                        { PercentFull = int(Percent) },
+                        { Percent >= 1 },
+                        { Percent =< 100 }
                     ->
-                            { map__lookup(OptionTable, prolog_dialect,
-                                PrologDialect0) },
+                        { map__lookup(OptionTable, termination_norm,
+                                TermNorm0) },
+                        ( 
+                            { TermNorm0 = string(TermNormStr) },
+                            { convert_termination_norm(TermNormStr,
+                                    TermNorm) }
+                        ->
+                            { map__lookup(OptionTable, trace, Trace) },
                             (
-                                { PrologDialect0 = string(PrologDialectStr) },
-                                { convert_prolog_dialect(PrologDialectStr,
-                                    PrologDialect) }
+                                { Trace = string(TraceStr) },
+                                { convert_trace_level(TraceStr,
+                                    TraceLevel) }
                             ->
-				{ map__lookup(OptionTable,
-					fact_table_hash_percent_full,
-					PercentFull) },
-				( 
-				    { PercentFull = int(Percent) },
-				    { Percent >= 1 },
-				    { Percent =< 100 }
-				->
-				    { map__lookup(OptionTable,
-				    	termination_norm, TermNorm0) },
-				    ( 
-					{ TermNorm0 = string(TermNormStr) },
-					{ convert_termination_norm(
-						TermNormStr, TermNorm) }
-				    ->
-				    	postprocess_options_2(OptionTable,
-				    	    GC_Method, TagsMethod, ArgsMethod,
-				    	    PrologDialect, TermNorm),
-				        { Error = no }
-				    ;
-				    	{ Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
-				    )
-				;
-				    { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n                 (must be an integer between 1 and 100)") }
-				)
+                                postprocess_options_2(OptionTable,
+                                    GC_Method, TagsMethod, ArgsMethod,
+                                    PrologDialect, TermNorm, TraceLevel),
+                                { Error = no }
                             ;
-                                { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
+                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimal', `interface' or  `full').") }
                             )
+                        ;
+                            { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
+                        )
                     ;
-                        { Error = yes("Invalid args option (must be `simple' or `compact')") }
+                        { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n\t(must be an integer between 1 and 100)") }
                     )
                 ;
-                    { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
+                    { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
                 )
             ;
-                { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
-            ).
+                { Error = yes("Invalid args option (must be `simple' or `compact')") }
+            )
+        ;
+            { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
+        )
+    ;
+        { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
+    ).
 
 :- pred postprocess_options_2(option_table, gc_method, tags_method, 
-	args_method, prolog_dialect, termination_norm,
+	args_method, prolog_dialect, termination_norm, trace_level,
 	io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, di, uo) is det.
+:- mode postprocess_options_2(in, in, in, in, in, in, in, di, uo) is det.
 
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
-		PrologDialect, TermNorm) -->
+		PrologDialect, TermNorm, TraceLevel) -->
 	% work around for NU-Prolog problems
 	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
 	->
@@ -190,7 +198,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
-		PrologDialect, TermNorm),
+		PrologDialect, TermNorm, TraceLevel),
 
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->
@@ -259,15 +267,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
-	% --generate-trace requires 
+	% Tracing requires 
 	% 	- disabling optimizations that would change 
 	% 	  the trace being generated
 	%	- enabling some low level optimizations to ensure consistent
 	%	  paths across optimization levels
 	% 	- enabling stack layouts
 	% 	- enabling typeinfo liveness
-	globals__io_lookup_bool_option(generate_trace, Trace),
-	( { Trace = yes } ->
+	( { TraceLevel = interface ; TraceLevel = full } ->
 			% The following options modify the structure
 			% of the program, which makes it difficult to
 			% relate the trace to the source code (although

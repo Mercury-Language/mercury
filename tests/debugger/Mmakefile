@@ -13,7 +13,7 @@ DEBUGGER_PROGS=	\
 	interpreter	\
 	queens
 
-MCFLAGS = --generate-trace $(EXTRA_MCFLAGS)
+MCFLAGS = --trace full $(EXTRA_MCFLAGS)
 
 # Not all grades can be used with stack layouts
 #
@@ -27,6 +27,9 @@ else
 	endif
 endif
 
+LIBPROGS=	$(PROGS:%=%_lib)
+ALLPROGS=	$(PROGS) $(LIBPROGS)
+
 #-----------------------------------------------------------------------------#
 
 debugger_regs.out: debugger_regs debugger_regs.inp
@@ -38,24 +41,34 @@ interpreter.out: interpreter interpreter.inp
 queens.out: queens queens.inp
 	mdb ./queens < queens.inp > queens.out
 
+debugger_regs_lib.out: debugger_regs_lib debugger_regs_lib.inp
+	mdb ./debugger_regs_lib < debugger_regs_lib.inp > debugger_regs_lib.out
+
+interpreter_lib.out: interpreter_lib interpreter_lib.inp
+	mdb ./interpreter_lib interpreter_lib.m < interpreter_lib.inp > interpreter_lib.out
+
+queens_lib.out: queens_lib queens_lib.inp
+	mdb ./queens_lib < queens_lib.inp > queens_lib.out
+
 #-----------------------------------------------------------------------------#
 
-DEPS=	$(PROGS:%=%.dep)
-DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out)
-RESS=	$(PROGS:%=%.res)
-MODS=	$(PROGS:%=%.mod)
+DEPS=		$(ALLPROGS:%=%.dep)
+DEPENDS=	$(ALLPROGS:%=%.depend)
+OUTS=		$(PROGS:%=%.out)
+LIBOUTS=	$(LIBPROGS:%=%.out)
+RESS=		$(PROGS:%=%.res)
+LIBRESS=	$(LIBPROGS:%=%.res)
 
 #-----------------------------------------------------------------------------#
 
-dep:	$(DEPS)
+dep:		$(DEPS)
 
-depend:	$(DEPENDS)
+depend:		$(DEPENDS)
 
-check:	$(OUTS) $(RESS)
+check:		$(OUTS) $(RESS)
 
-mods:	$(MODS)
+check_lib:	$(LIBOUTS) $(LIBRESS)
 
-all:	$(PROGS)
+all:		$(ALLPROGS)
 
 #-----------------------------------------------------------------------------#

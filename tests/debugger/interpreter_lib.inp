@@ -1,0 +1,11 @@
+h
+b interpreter_lib consult_until_eof
+c
+p
+2s
+p
+f
+p
+?
+- 0
+c

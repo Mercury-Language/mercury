@@ -880,8 +880,8 @@ output_instruction_decls(discard_tickets_to(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
 output_instruction_decls(decr_sp(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(pragma_c(_, Components, _, _), DeclSet0, DeclSet) -->
-	output_pragma_c_component_list_decls(Components, DeclSet0, DeclSet).
+output_instruction_decls(pragma_c(_, Comps, _, _, _), DeclSet0, DeclSet) -->
+	output_pragma_c_component_list_decls(Comps, DeclSet0, DeclSet).
 
 :- pred output_pragma_c_component_list_decls(list(pragma_c_component),
 	decl_set, decl_set, io__state, io__state).
@@ -1181,7 +1181,7 @@ output_instruction(decr_sp(N), _) -->
 	io__write_int(N),
 	io__write_string(");\n").
 
-output_instruction(pragma_c(Decls, Components, _, _), _) -->
+output_instruction(pragma_c(Decls, Components, _, _, _), _) -->
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
 	output_pragma_c_components(Components),
@@ -2309,7 +2309,7 @@ output_data_addr(ModuleName, VarName) -->
 		io__write_string(Str)
 	;
 		{ VarName = stack_layout(Label) },
-		io__write_string("_stack_layout__"),
+		io__write_string("_layout__"),
 		output_label(Label)
 	).
 

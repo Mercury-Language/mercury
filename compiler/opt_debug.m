@@ -903,7 +903,7 @@ opt_debug__dump_instr(decr_sp(Size), Str) :-
 	string__int_to_string(Size, S_str),
 	string__append_list(["decr_sp(", S_str, ")"], Str).
 % XXX  should probably give more info than this
-opt_debug__dump_instr(pragma_c(_, Comps, _, _), Str) :-
+opt_debug__dump_instr(pragma_c(_, Comps, _, _, _), Str) :-
 	opt_debug__dump_components(Comps, C_str),
 	string__append_list(["pragma_c(", C_str, ")"], Str).
 

@@ -49,8 +49,8 @@ allocate_stack_slots_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
 	set__init(LiveSets0),
 	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, generate_trace, Trace),
-	( Trace = yes ->
+	globals__get_trace_level(Globals, TraceLevel),
+	( ( TraceLevel = interface ; TraceLevel = full ) ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0),
 		set__insert(LiveSets0, ResumeVars0, LiveSets1)
 	;

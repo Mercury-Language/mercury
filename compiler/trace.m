@@ -46,7 +46,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_pred, hlds_module.
-:- import_module prog_data, llds, code_info.
+:- import_module globals, prog_data, llds, code_info.
 :- import_module assoc_list, set, term.
 
 :- type external_trace_port
@@ -68,24 +68,25 @@
 	% layouts).
 :- pred trace__fail_vars(module_info::in, proc_info::in, set(var)::out) is det.
 
-	% Set up the code generator state for tracing, by reserving
-	% slots for the call number and call depth.
-:- pred trace__setup(code_info::in, code_info::out) is det.
+	% Set up the code generator state for tracing, by reserving stack slots
+	% for the call number, call depth and (for interface tracing) for
+	% the flag that says whether this call should be traced.
+:- pred trace__setup(trace_level::in, code_info::in, code_info::out) is det.
 
-	% Generate code to fill in the slots for the call number and depth.
+	% Generate code to fill in the reserevd stack slots.
 :- pred trace__generate_slot_fill_code(trace_info::in, code_tree::out) is det.
 
-	% Generate code to reset the call depth before a call.
-:- pred trace__generate_depth_reset_code(trace_info::in, code_tree::out) is det.
+	% Generate code to prepare for a call.
+:- pred trace__prepare_for_call(trace_info::in, code_tree::out) is det.
 
-	% If generate_trace is set, generate code for an internal trace event.
-	% This predicate must be called just before generating code for the
-	% given goal.
+	% If we are doing execution tracing, generate code for an internal
+	% trace event. This predicate must be called just before generating
+	% code for the given goal.
 :- pred trace__maybe_generate_internal_event_code(hlds_goal::in,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-	% If generate_trace is set, generate code for a nondet pragma C code
-	% trace event.
+	% If we are doing execution tracing, generate code for a nondet
+	% pragma C code trace event.
 :- pred trace__maybe_generate_pragma_event_code(nondet_pragma_trace_port::in,
 	code_tree::out, code_info::in, code_info::out) is det.
 
@@ -129,12 +130,19 @@
 		)
 	;	nondet_pragma.
 
+:- type trace_type
+	--->	full_trace
+	;	interface_trace(lval).	% This holds the saved value of a bool
+					% that is true iff we were called from
+					% code with full tracing.
+
 	% Information for tracing that is valid throughout the execution
 	% of a procedure.
 :- type trace_info
 	--->	trace_info(
 			lval,	% stack slot of call sequence number
-			lval	% stack slot of call depth
+			lval,	% stack slot of call depth
+			trace_type
 		).
 
 trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
@@ -151,37 +159,70 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 		error("length mismatch in trace__fail_vars")
 	).
 
-trace__setup -->
+trace__setup(TraceLevel) -->
 	code_info__get_trace_slot(CallNumSlot),
 	code_info__get_trace_slot(CallDepthSlot),
-	{ TraceInfo = trace_info(CallNumSlot, CallDepthSlot) },
+	( { TraceLevel = full } ->
+		{ TraceType = full_trace }
+	;
+		code_info__get_trace_slot(CallFromFullSlot),
+		{ TraceType = interface_trace(CallFromFullSlot) }
+	),
+	{ TraceInfo = trace_info(CallNumSlot, CallDepthSlot, TraceType) },
 	code_info__set_maybe_trace_info(yes(TraceInfo)).
 
 trace__generate_slot_fill_code(TraceInfo, TraceCode) :-
-	TraceInfo = trace_info(CallNumLval, CallDepthLval),
+	TraceInfo = trace_info(CallNumLval, CallDepthLval, TraceType),
 	trace__stackref_to_string(CallNumLval, CallNumStr),
 	trace__stackref_to_string(CallDepthLval, CallDepthStr),
-	string__append(CallNumStr, " = MR_trace_incr_seq();\n",
-		CallNumStmt),
-	string__append(CallDepthStr, " = MR_trace_incr_depth();\n",
-		CallDepthStmt),
+	(
+		TraceType = interface_trace(CallFromFullSlot),
+		trace__stackref_to_string(CallFromFullSlot,
+			CallFromFullSlotStr),
+		string__append_list([
+			"\t\t", CallFromFullSlotStr, " = MR_trace_from_full;\n",
+			"\t\tif (MR_trace_from_full) {\n",
+			"\t\t\t", CallNumStr, " = MR_trace_incr_seq();\n",
+			"\t\t\t", CallDepthStr, " = MR_trace_incr_depth();\n",
+			"\t\t}"
+		], TraceStmt)
+	;
+		TraceType = full_trace,
+		string__append_list([
+			"\t\t", CallNumStr, " = MR_trace_incr_seq();\n",
+			"\t\t", CallDepthStr, " = MR_trace_incr_depth();"
+		], TraceStmt)
+	),
 	TraceCode = node([
-		c_code(CallNumStmt) - "",
-		c_code(CallDepthStmt) - ""
+		pragma_c([], [pragma_c_raw_code(TraceStmt)],
+			will_not_call_mercury, no, yes) - ""
 	]).
 
-trace__generate_depth_reset_code(TraceInfo, TraceCode) :-
-	TraceInfo = trace_info(_CallNumLval, CallDepthLval),
+trace__prepare_for_call(TraceInfo, TraceCode) :-
+	TraceInfo = trace_info(_CallNumLval, CallDepthLval, TraceType),
 	trace__stackref_to_string(CallDepthLval, CallDepthStr),
 	string__append_list(["MR_trace_reset_depth(", CallDepthStr, ");\n"],
-		Stmt),
-	TraceCode = node([
-		c_code(Stmt) - ""
-	]).
+		ResetDepthStmt),
+	(
+		TraceType = interface_trace(_),
+		TraceCode = node([
+			c_code("MR_trace_from_full = FALSE;\n") - "",
+			c_code(ResetDepthStmt) - ""
+		])
+	;
+		TraceType = full_trace,
+		TraceCode = node([
+			c_code("MR_trace_from_full = TRUE;\n") - "",
+			c_code(ResetDepthStmt) - ""
+		])
+	).
 
 trace__maybe_generate_internal_event_code(Goal, Code) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfo) } ->
+	(
+		{ MaybeTraceInfo = yes(TraceInfo) },
+		{ TraceInfo = trace_info(_, _, full_trace) }
+	->
 		{ Goal = _ - GoalInfo },
 		{ goal_info_get_goal_path(GoalInfo, Path) },
 		{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
@@ -213,7 +254,10 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 
 trace__maybe_generate_pragma_event_code(PragmaPort, Code) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfo) } ->
+	(
+		{ MaybeTraceInfo = yes(TraceInfo) },
+		{ TraceInfo = trace_info(_, _, full_trace) }
+	->
 		{ trace__convert_nondet_pragma_port_type(PragmaPort, Port) },
 		trace__generate_event_code(Port, nondet_pragma, TraceInfo,
 			_, _, Code)
@@ -266,28 +310,32 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataList,
 	set__list_to_set(TvarDataList, TvarDataSet),
 	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataSet),
 	llds_out__get_label(Label, yes, LabelStr),
-	TraceInfo = trace_info(CallNumLval, CallDepthLval),
+	TraceInfo = trace_info(CallNumLval, CallDepthLval, TraceType),
 	trace__stackref_to_string(CallNumLval, CallNumStr),
 	trace__stackref_to_string(CallDepthLval, CallDepthStr),
 	Quote = """",
 	Comma = ", ",
 	trace__port_to_string(Port, PortStr),
-	IfStmt = "\tif (MR_trace_enabled) {\n",
-	EndStmt = "\t}",
+	(
+		TraceType = full_trace,
+		FlagStr = "TRUE"
+	;
+		TraceType = interface_trace(CallFromFullLval),
+		trace__stackref_to_string(CallFromFullLval, FlagStr)
+	),
 	SaveStmt = "\t\tsave_transient_registers();\n",
-	RestoreStmt = "\t\trestore_transient_registers();\n",
+	RestoreStmt = "\t\trestore_transient_registers();",
 	string__int_to_string(MaxReg, MaxRegStr),
 	string__append_list([
 		"\t\tMR_trace((const MR_Stack_Layout_Label *)\n",
-		"\t\t\t&mercury_data__stack_layout__", LabelStr, Comma, "\n",
+		"\t\t\t&mercury_data__layout__", LabelStr, Comma, "\n",
 		"\t\t\t", PortStr, Comma,
 		CallNumStr, Comma,
 		CallDepthStr, Comma, "\n",
 		"\t\t\t", Quote, PathStr, Quote, Comma,
-		MaxRegStr, ");\n"],
+		MaxRegStr, Comma, FlagStr, ");\n"],
 		CallStmt),
-	string__append_list([IfStmt, SaveStmt, CallStmt, RestoreStmt, EndStmt],
-		TraceStmt),
+	string__append_list([SaveStmt, CallStmt, RestoreStmt], TraceStmt),
 	TraceCode =
 		node([
 			label(Label)
@@ -300,7 +348,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataList,
 				% by another label, and this way we can
 				% eliminate this other label.
 			pragma_c([], [pragma_c_raw_code(TraceStmt)],
-				may_call_mercury, yes(Label))
+				may_call_mercury, yes(Label), yes)
 				- ""
 		]),
 	Code = tree(ProduceCode, TraceCode)

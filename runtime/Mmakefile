@@ -67,6 +67,9 @@ HDRS		=	\
 			mercury_tags.h		\
 			mercury_timing.h	\
 			mercury_trace.h		\
+			mercury_trace_external.h \
+			mercury_trace_internal.h \
+			mercury_trace_util.h	\
 			mercury_trail.h		\
 			mercury_types.h		\
 			mercury_type_info.h	\
@@ -115,6 +118,9 @@ CFILES		= 	mercury_context.c	\
 			mercury_table_type_info.c\
 			mercury_timing.c	\
 			mercury_trace.c		\
+			mercury_trace_external.c \
+			mercury_trace_internal.c \
+			mercury_trace_util.c	\
 			mercury_trail.c 	\
 			mercury_type_info.c	\
 			mercury_wrapper.c

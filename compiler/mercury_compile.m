@@ -992,8 +992,8 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		"% Allocating storage locations for live vars in ",
 				PredId, ProcId, ModuleInfo3),
 	{ store_alloc_in_proc(ProcInfo5, ModuleInfo3, ProcInfo6) },
-	{ globals__lookup_bool_option(Globals, generate_trace, Trace) },
-	( { Trace = yes } ->
+	globals__io_get_trace_level(TraceLevel),
+	( { TraceLevel = interface ; TraceLevel = full } ->
 		write_proc_progress_message(
 			"% Calculating goal paths in ",
 					PredId, ProcId, ModuleInfo3),
@@ -1629,8 +1629,8 @@ mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 :- mode mercury_compile__maybe_goal_paths(in, in, in, out, di, uo) is det.
 
 mercury_compile__maybe_goal_paths(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_lookup_bool_option(generate_trace, Trace),
-	( { Trace = yes } ->
+	globals__io_get_trace_level(TraceLevel),
+	( { TraceLevel = interface ; TraceLevel = full } ->
 		maybe_write_string(Verbose, "% Calculating goal paths..."),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(
@@ -1768,8 +1768,8 @@ mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
 	{ export__get_pragma_exported_procs(HLDS, PragmaExports) },
 	maybe_add_header_file_include(PragmaExports, ModuleName, C_HeaderCode0,
 		C_HeaderCode1),
-	globals__io_lookup_bool_option(generate_trace, Trace),
-	( { Trace = yes } ->
+	globals__io_get_trace_level(TraceLevel),
+	( { TraceLevel = interface ; TraceLevel = full } ->
 		{ term__context_init(Context) },
 		{ TraceInclude = "#include ""mercury_trace.h""\n" - Context },
 		{ list__append(C_HeaderCode1, [TraceInclude], C_HeaderCode) }

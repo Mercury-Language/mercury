@@ -1,0 +1,31 @@
+       1:      1  1 CALL DET   interpreter_lib:main/2-0 
+mtrace> valid commands are:
+a, EOF:			abort the current execution.
+b <module> <name>:	set a breakpoint on the predicate
+			or function <module>:<name>.
+c:			continue to end of program, not printing the trace.
+C:			continue to end of program, printing the trace.
+f:			finish this call, not printing the trace.
+F:			finish this call, printing the trace.
+<N> g:			go to event #N, not printing the trace.
+<N> G:			go to event #N, printing the trace.
+p:			print the variables live at this point.
+r:			continue until forward execution is resumed.
+[<N>] [s]:		skip N events, not printing the trace (default: N=1).
+[<N>] S:		skip N events, printing the trace (default: N=1).
+?:			list all the breakpoints.
++ <N>:			enable breakpoint #N.
+- <N>:			disable breakpoint #N.
+mtrace> mtrace> Pure Prolog Interpreter.
+
+Consulting file `interpreter_lib.m'...
+      45:     20  4 CALL DET   interpreter_lib:consult_until_eof/4-0 
+mtrace>           HeadVar__1           		[]
+          HeadVar__3           		state('<<c_pointer>>')
+mtrace>       47:     22  6 CALL DET   parser:read_term/3-0 
+mtrace>           HeadVar__2           		state('<<c_pointer>>')
+mtrace>    13300:     22  6 EXIT DET   parser:read_term/3-0 
+mtrace>           HeadVar__1           		term(varset(0, empty, empty), functor(atom(":-"), [functor(atom("module"), [functor(atom("interpreter"), [], context("interpreter_lib.m", 22))], context("interpreter_lib.m", 22))], context("interpreter_lib.m", 22)))
+          HeadVar__3           		state('<<c_pointer>>')
+mtrace>  0: + interpreter_lib:consult_until_eof
+mtrace> mtrace> ?- 

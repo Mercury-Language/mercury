@@ -158,6 +158,8 @@ Declare_entry(do_interpreter);
 void
 mercury_runtime_init(int argc, char **argv)
 {
+	bool	saved_trace_enabled;
+
 #if NUM_REAL_REGS > 0
 	Word c_regs[NUM_REAL_REGS];
 #endif
@@ -198,8 +200,10 @@ mercury_runtime_init(int argc, char **argv)
 	*/
 	(*address_of_init_gc)();
 
-	/* double-check that the garbage collector knows about
-	   global variables in shared libraries */
+	/*
+	** Double-check that the garbage collector knows about
+	** global variables in shared libraries.
+	*/
 	GC_is_visible(fake_reg);
 
 	/* The following code is necessary to tell the conservative */
@@ -213,10 +217,24 @@ mercury_runtime_init(int argc, char **argv)
 	}
 #endif
 
-	/* process the command line and the options in the environment
-	   variable MERCURY_OPTIONS, and save results in global vars */
+	/*
+	** Process the command line and the options in the environment
+	** variable MERCURY_OPTIONS, and save results in global variables.
+	*/
+
 	process_args(argc, argv);
 	process_environment_options();
+
+	/*
+	** Some of the rest of this function may call Mercury code
+	** that may have been compiled with tracing (e.g. the initialization
+	** routines in the library called via MR_library_initializer).
+	** Since this initialization code shouldn't be traced, we disable
+	** tracing until the end of this function.
+	*/
+
+	saved_trace_enabled = MR_trace_enabled;
+	MR_trace_enabled = FALSE;
 
 #if (defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)) || \
 		defined(PROFILE_CALLS) || defined(PROFILE_TIME)
@@ -245,6 +263,12 @@ mercury_runtime_init(int argc, char **argv)
 
 	/* initialize the Mercury library */
 	(*MR_library_initializer)();
+
+	/*
+	** Now the real tracing starts; undo any updates to the trace state
+	** made by the trace code in the library initializer.
+	*/
+	MR_trace_start(saved_trace_enabled);
 
 	/*
 	** Restore the callee-save registers before returning,
@@ -968,6 +992,8 @@ mercury_runtime_terminate(void)
 	MR_trace_end();
 
 	(*MR_library_finalizer)();
+
+	MR_trace_final();
 
 	if (MR_profiling) MR_prof_finish();
 

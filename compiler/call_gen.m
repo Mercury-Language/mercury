@@ -107,7 +107,7 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		{ trace__generate_depth_reset_code(TraceInfo, TraceCode) }
+		{ trace__prepare_for_call(TraceInfo, TraceCode) }
 	;
 		{ TraceCode = empty }
 	),
@@ -230,7 +230,7 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		{ trace__generate_depth_reset_code(TraceInfo, TraceCode) }
+		{ trace__prepare_for_call(TraceInfo, TraceCode) }
 	;
 		{ TraceCode = empty }
 	),

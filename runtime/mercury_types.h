@@ -23,6 +23,7 @@
 typedef	unsigned WORD_TYPE	Word;
 typedef WORD_TYPE		Integer;
 typedef unsigned WORD_TYPE	Unsigned;
+typedef WORD_TYPE		Bool;
 typedef void			Code;	/* code addresses are `void *' */
 
 /*

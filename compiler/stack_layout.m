@@ -27,7 +27,7 @@
 % If the option basic_stack_layout is set, we generate a stack layout table
 % for each procedure. This table will be stored in the global variable
 % whose name is
-%	mercury_data__stack_layout__mercury__<proc_label>.
+%	mercury_data__layout__mercury__<proc_label>.
 % This table will always contain the following information:
 %
 %	code address		(Code *) - address of entry
@@ -79,7 +79,7 @@
 % If the option basic_stack_layout is set, we generate stack layout tables
 % for some labels internal to the procedure. This table will be stored in the
 % global variable whose name is
-%	mercury_data__stack_layout__mercury__<proc_label>_i<label_number>.
+%	mercury_data__layout__mercury__<proc_label>_i<label_number>.
 % This table has the following format:
 %
 %	procedure info		(Word *) - pointer to procedure stack layout
@@ -88,11 +88,15 @@
 % 	live data pairs 	(Word *) - pointer to vector of pairs
 %				containing MR_Live_Lval and MR_Live_Type
 % 	live data names	 	(Word *) - pointer to vector of String
+%	# of type parameters	(Integer)
 %	type parameters		(Word *) - pointer to vector of MR_Live_Lval
 %
-% The internal label number field is just for the convenience of those
-% implementors who are debugging stack layout dependent code. It holds
-% either the label number, or -1 indicating the entry label.
+% The internal label number field holds either the real label number
+% (which is always strictly positive), 0 indicating the entry label,
+% or a negative number indicating unknown (the last alternative is possible
+% only in non-compiler-generated structures). The only purpose of this field
+% is to make debugging the native garbage collector easier. Accordingly,
+% it will be present only if the option agc_stack_layout is set.
 %
 % The live data pair vector will have an entry for each live variable.
 % The entry will give the location of the variable and its type. (It also
@@ -299,7 +303,10 @@ stack_layout__construct_proc_layout(ProcLabel, Detism, StackSlots,
 		{ MaybeRvals = MaybeRvals1 }
 	),
 
-	{ CModule = c_data(ModuleName, stack_layout(Label), yes,
+	{ Exported = no },	% XXX With the new profiler, we will need to
+				% set this to `yes' if the profiling option
+				% is given and if the procedure is exported.
+	{ CModule = c_data(ModuleName, stack_layout(Label), Exported,
 		MaybeRvals, []) },
 	stack_layout__add_cmodule(CModule, Label).
 
@@ -358,15 +365,21 @@ stack_layout__construct_internal_layout(ProcLabel, Label - Internal) -->
 	stack_layout__get_module_name(ModuleName),
 	{ EntryAddrRval = const(data_addr_const(data_addr(ModuleName,
 		stack_layout(local(ProcLabel))))) },
-	{ Label = local(_, LabelNum0) ->
-		LabelNum = LabelNum0
-	;
-		LabelNum = -1
-	},
-	{ LabelNumRval = const(int_const(LabelNum)) },
 	stack_layout__construct_internal_rvals(Internal, AgcRvals),
-	{ LayoutRvals = [yes(EntryAddrRval), yes(LabelNumRval) | AgcRvals] },
-	{ CModule = c_data(ModuleName, stack_layout(Label), yes,
+	stack_layout__get_agc_stack_layout(AgcLayout),
+	( { AgcLayout = yes } ->
+		{ Label = local(_, LabelNum0) ->
+			LabelNum = LabelNum0
+		;
+			LabelNum = 0
+		},
+		{ LabelNumRval = const(int_const(LabelNum)) },
+		{ LayoutRvals = [yes(EntryAddrRval), yes(LabelNumRval)
+			| AgcRvals] }
+	;
+		{ LayoutRvals = [yes(EntryAddrRval) | AgcRvals] }
+	),
+	{ CModule = c_data(ModuleName, stack_layout(Label), no,
 		LayoutRvals, []) },
 	stack_layout__add_cmodule(CModule, Label).
 

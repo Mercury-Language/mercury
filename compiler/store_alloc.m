@@ -68,8 +68,8 @@ store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 		proc_info_goal(ProcInfo0, Goal2)
 	),
 	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
-	globals__lookup_bool_option(Globals, generate_trace, Trace),
-	( Trace = yes ->
+	globals__get_trace_level(Globals, TraceLevel),
+	( ( TraceLevel = interface ; TraceLevel = full ) ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
 	;
 		set__init(ResumeVars0)

@@ -165,8 +165,8 @@ detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	detect_deadness_in_goal(Goal1, Deadness0, LiveInfo, _, Goal2),
 
 	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, generate_trace, Trace),
-	( Trace = yes ->
+	globals__get_trace_level(Globals, TraceLevel),
+	( ( TraceLevel = interface ; TraceLevel = full ) ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
 	;
 		set__init(ResumeVars0)

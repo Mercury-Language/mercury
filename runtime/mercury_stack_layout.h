@@ -161,21 +161,35 @@ typedef struct {
 */ 
 
 #ifdef MR_USE_STACK_LAYOUTS
- #define MR_MAKE_STACK_LAYOUT_ENTRY(l) 					\
- const struct mercury_data__stack_layout__##l##_struct {		\
+  #define MR_MAKE_STACK_LAYOUT_ENTRY(l) 				\
+  const struct mercury_data__layout__##l##_struct {			\
 	Code * f1;							\
 	Integer f2;							\
 	Integer f3;							\
 	Integer f4;							\
- } mercury_data__stack_layout__##l = {					\
+  } mercury_data__layout__##l = {					\
 	STATIC(l),							\
 	(Integer) -1, 	/* Unknown determinism */			\
 	(Integer) -1,	/* Unknown number of stack slots */		\
         (Integer) MR_LVAL_TYPE_UNKNOWN 	/* Unknown succip location */	\
- };
+  };
 #else
- #define MR_MAKE_STACK_LAYOUT_ENTRY(l)        
+  #define MR_MAKE_STACK_LAYOUT_ENTRY(l)        
 #endif	/* MR_USE_STACK_LAYOUTS */
+
+/*
+** The layout structure for an internal label will have a field containing
+** the label number of that label (or -1, if the internal label has no
+** label number, being the entry label) only if we are using native gc.
+*/
+
+#ifdef	NATIVE_GC
+  #define	UNKNOWN_INTERNAL_LABEL_FIELD	Integer f2;
+  #define	UNKNOWN_INTERNAL_LABEL_NUMBER	(Integer) -1,
+#else
+  #define	UNKNOWN_INTERNAL_LABEL_FIELD
+  #define	UNKNOWN_INTERNAL_LABEL_NUMBER
+#endif
 
 /*
 ** Define a stack layout for an internal label. Need to supply the
@@ -186,18 +200,18 @@ typedef struct {
 */ 
 
 #ifdef MR_USE_STACK_LAYOUTS
- #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)			\
- const struct mercury_data__stack_layout__##l##_struct {		\
+  #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)		\
+  const struct mercury_data__layout__##l##_struct {			\
 	const Word * f1;						\
-	Integer f2;							\
+	UNKNOWN_INTERNAL_LABEL_FIELD					\
 	Integer f3;							\
- } mercury_data__stack_layout__##l = {					\
-	(const Word *) &mercury_data__stack_layout__##e,		\
-	(Integer) -1,		/* Unknown label number */		\
+  } mercury_data__layout__##l = {					\
+	(const Word *) &mercury_data__layout__##e,			\
+	UNKNOWN_INTERNAL_LABEL_NUMBER					\
 	(Integer) 0		/* No live values */			\
- };
+  };
 #else
- #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)        
+  #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)        
 #endif	/* MR_USE_STACK_LAYOUTS */
 
 /*
@@ -217,18 +231,18 @@ typedef struct {
 */ 
 
 #ifdef MR_USE_STACK_LAYOUTS
- #define MR_MAKE_STACK_LAYOUT_INTERNAL(e, x)				\
- const struct mercury_data__stack_layout__##e##_i##x##_struct {		\
+  #define MR_MAKE_STACK_LAYOUT_INTERNAL(e, x)				\
+  const struct mercury_data__layout__##e##_i##x##_struct {		\
 	const Word * f1;						\
-	Integer f2;							\
+	UNKNOWN_INTERNAL_LABEL_FIELD					\
 	Integer f3;							\
- } mercury_data__stack_layout__##e##_i##x = {				\
-	(const Word *) &mercury_data__stack_layout__##e,		\
-	(Integer) -1,		/* Unknown label number */		\
+  } mercury_data__layout__##e##_i##x = {				\
+	(const Word *) &mercury_data__layout__##e,			\
+	UNKNOWN_INTERNAL_LABEL_NUMBER					\
 	(Integer) 0		/* No live values */			\
- };
+  };
 #else
- #define MR_MAKE_STACK_LAYOUT_INTERNAL(l, x)        
+  #define MR_MAKE_STACK_LAYOUT_INTERNAL(l, x)        
 #endif	/* MR_USE_STACK_LAYOUTS */
 
 /*
@@ -272,7 +286,9 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 
 typedef	struct MR_Stack_Layout_Label_Struct {
 	MR_Stack_Layout_Entry	*MR_sll_entry;
+#ifdef	NATIVE_GC
 	Integer			MR_sll_label_num;
+#endif
 	Integer			MR_sll_var_count;
 	/* the last field is present only if MR_sll_var_count > 0 */
 	MR_Stack_Layout_Vars	MR_sll_var_info;

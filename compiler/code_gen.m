@@ -210,12 +210,12 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
 		ModuleInfo, CellCount0, CodeInfo0),
 		% generate code for the procedure
-	globals__lookup_bool_option(Globals, generate_trace, Trace),
+	globals__get_trace_level(Globals, TraceLevel),
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
 	(
-		Trace = yes
+		( TraceLevel = interface ; TraceLevel = full )
 	->
-		trace__setup(CodeInfo0, CodeInfo1)
+		trace__setup(TraceLevel, CodeInfo0, CodeInfo1)
 	;
 		CodeInfo1 = CodeInfo0
 	),
@@ -548,7 +548,7 @@ code_gen__generate_entry(CodeModel, Goal, FrameInfo, PrologCode) -->
 					do_fail)
 					- "Allocate stack frame",
 				pragma_c([], DefineComponents,
-					will_not_call_mercury, no)
+					will_not_call_mercury, no, no)
 					- ""
 			]) },
 			{ NondetPragma = yes }
@@ -632,7 +632,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, EpilogCode)
 		{ UndefComponents = [pragma_c_raw_code(UndefStr)] },
 		{ UndefCode = node([
 			pragma_c([], UndefComponents,
-				will_not_call_mercury, no)
+				will_not_call_mercury, no, no)
 				- ""
 		]) },
 		{ RestoreDeallocCode = empty },	% always empty for nondet code

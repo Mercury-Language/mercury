@@ -231,7 +231,7 @@
 			% Decrement the det stack pointer.
 
 	;	pragma_c(list(pragma_c_decl), list(pragma_c_component),
-				may_call_mercury, maybe(label)).
+				may_call_mercury, maybe(label), bool).
 			% The first argument says what local variable
 			% declarations are required for the following
 			% components, which in turn can specify how
@@ -254,6 +254,12 @@
 			% prevent the label from being optimized away.
 			% To make it known to labelopt, we mention it in
 			% the fourth arg.
+			%
+			% The fifth argument says whether the contents
+			% of the pragma C code can refer to stack slots.
+			% User-written shouldn't refer to stack slots,
+			% the question is whether the compiler-generated
+			% C code does.
 
 	% Procedures defined by nondet pragma C codes must have some way of
 	% preserving information after a success, so that when control

@@ -1902,10 +1902,12 @@ code_info__do_soft_cut(TheFrame, Code, ContCode) -->
 
 code_info__generate_semi_pre_commit(RedoLabel, Slots, PreCommit) -->
 	code_info__generate_pre_commit_saves(Slots, SaveCode),
+	code_info__get_next_label(ResumeLabel),
 	code_info__top_failure_cont(FailureCont0),
 	{ FailureCont0 = failure_cont(_, FailureMap0) },
-	code_info__clone_resume_maps(FailureMap0, FailureMap),
-	{ FailureCont = failure_cont(nondet(known, no), FailureMap) },
+	{ code_info__pick_stack_resume_point(FailureMap0, StackMap, _) },
+	{ FailureCont = failure_cont(nondet(known, no),
+		stack_only(StackMap, label(ResumeLabel))) },
 	code_info__push_failure_cont(FailureCont),
 	code_info__get_next_label(RedoLabel),
 	{ HijackCode = node([
@@ -1970,9 +1972,11 @@ code_info__generate_det_pre_commit(Slots, PreCommit) -->
 	% We therefore push a dummy nondet failure continuation onto the
 	% failure stack. Since the code we are cutting across is multi,
 	% the failure continuation will never actually be used.
-	{ map__init(Empty) },
+	code_info__top_failure_cont(FailureCont0),
+	{ FailureCont0 = failure_cont(_, FailureMap) },
+	{ code_info__pick_stack_resume_point(FailureMap, StackMap, _) },
 	{ FailureCont = failure_cont(nondet(known, no),
-		stack_only(Empty, do_fail)) },
+		stack_only(StackMap, do_fail)) },
 	code_info__push_failure_cont(FailureCont).
 
 code_info__generate_det_commit(Slots, Commit) -->
@@ -2155,38 +2159,6 @@ code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
 		tree(RestoreTrail,
 		tree(RestoreTicketCounter,
 		     MainPopCode)) }.
-
-
-:- pred code_info__clone_resume_maps(resume_maps, resume_maps,
-	code_info, code_info).
-:- mode code_info__clone_resume_maps(in, out, in, out) is det.
-
-code_info__clone_resume_maps(ResumeMaps0, ResumeMaps) -->
-	(
-		{ ResumeMaps0 = orig_only(Map1, _) },
-		code_info__get_next_label(Label1),
-		{ Addr1 = label(Label1) },
-		{ ResumeMaps = orig_only(Map1, Addr1) }
-	;
-		{ ResumeMaps0 = stack_only(Map1, _) },
-		code_info__get_next_label(Label1),
-		{ Addr1 = label(Label1) },
-		{ ResumeMaps = stack_only(Map1, Addr1) }
-	;
-		{ ResumeMaps0 = stack_and_orig(Map1, _, Map2, _) },
-		code_info__get_next_label(Label1),
-		{ Addr1 = label(Label1) },
-		code_info__get_next_label(Label2),
-		{ Addr2 = label(Label2) },
-		{ ResumeMaps = stack_and_orig(Map1, Addr1, Map2, Addr2) }
-	;
-		{ ResumeMaps0 = orig_and_stack(Map1, _, Map2, _) },
-		code_info__get_next_label(Label1),
-		{ Addr1 = label(Label1) },
-		code_info__get_next_label(Label2),
-		{ Addr2 = label(Label2) },
-		{ ResumeMaps = orig_and_stack(Map1, Addr1, Map2, Addr2) }
-	).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
