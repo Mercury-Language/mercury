@@ -29,8 +29,9 @@ CXX=g++ -ansi
 AS=../scripts/mgnuc --grade $(GRADE) -x assembler-with-cpp -c
 
 # CFLAGS= -O -DALL_INTERIOR_POINTERS -DNO_SIGNALS -DSILENT
-CFLAGS= -DNO_SIGNALS -DSILENT $(EXTRA_CFLAGS)
-# If profiling is enabled, -DNO_SIGNALS should not be used.
+CFLAGS= -DSILENT $(EXTRA_CFLAGS)
+# Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
+# profiling was enabled.
 
 # Setjmp_test may yield overly optimistic results when compiled
 # without optimization.
@@ -146,9 +147,9 @@ $(OBJS) test.o dyn_load.o dyn_load_sunos53.o: $(srcdir)/gc_priv.h $(srcdir)/gc_h
 
 mark.o typd_mlc.o finalize.o: $(srcdir)/gc_mark.h
 
-libgc.a: gc.a
-	rm -f libgc.a
-	ln -s gc.a libgc.a
+libgc$(PROF).a: gc.a
+	rm -f libgc$(PROF).a
+	ln -s gc.a libgc$(PROF).a
 
 gc.a: $(OBJS) dyn_load.o
 	rm -f on_sparc_sunos5
@@ -183,11 +184,12 @@ dyn_load_sunos53.o: dyn_load.c
 	$(CC) $(CFLAGS) -DSUNOS53_SHARED_LIB -c $(srcdir)/dyn_load.c -o $@
 
 # shared library version of the collector
-libgc.so: $(OBJS) # dyn_load_sunos53.o
-	./if_mach ALPHA "" $(LINK_SHARED_OBJ) -o libgc.so $(OBJS) dyn_load.o -lc
-	./if_not_there libgc.so $(MAKE) dyn_load_sunos53.o
-	./if_not_there libgc.so \
-		$(LINK_SHARED_OBJ) -o libgc.so $(OBJS) dyn_load_sunos53.o -ldl
+libgc$(PROF).so: $(OBJS) # dyn_load_sunos53.o
+	./if_mach ALPHA "" \
+	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load.o -lc
+	./if_not_there libgc$(PROF).so $(MAKE) dyn_load_sunos53.o
+	./if_not_there libgc$(PROF).so \
+	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load_sunos53.o -ldl
 
 mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_mach_dep.s $(srcdir)/rs6000_mach_dep.s if_mach if_not_there
 	rm -f mach_dep.o
