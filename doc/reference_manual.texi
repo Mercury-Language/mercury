@@ -3371,12 +3371,13 @@ using the parametric inst @samp{in/1} mentioned in @ref{Modes}
 which maps an inst to itself.
 
 If you want to define a predicate which returns a higher-order predicate
-term, you would use a mode such as @samp{free -> pred(@dots{}) is @dots{}},
-or @samp{out(pred(@dots{}) is @dots{})}.  For example:
+term, you would use a mode such as @samp{free >> pred(@dots{}) is @dots{}},
+or @samp{out(pred(@dots{}) is @dots{} )}.  For example:
+@c XXX The space after the dots{} above works around a bug in texi2html
 
 @example
 :- pred foo(pred(int)).
-:- mode foo(free -> pred(out) is det) is det.
+:- mode foo(free >> pred(out) is det) is det.
 
 foo(sum([1,2,3])).
 @end example
