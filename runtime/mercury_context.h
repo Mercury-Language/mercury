@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** Copyright (C) 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -142,8 +142,8 @@ typedef MR_Context Context;	/* for backwards compatibility */
 extern		MR_Context	*MR_runqueue_head;
 extern		MR_Context	*MR_runqueue_tail;
 #ifdef	MR_THREAD_SAFE
-  extern	MercuryLock	*MR_runqueue_lock;
-  extern	MercuryCond	*MR_runqueue_cond;
+  extern	MercuryLock	MR_runqueue_lock;
+  extern	MercuryCond	MR_runqueue_cond;
 #endif
 
 /*
@@ -178,7 +178,7 @@ typedef struct MR_PendingContext_Struct {
 
 extern	MR_PendingContext	*MR_pending_contexts;
 #ifdef	MR_THREAD_SAFE
-  extern	MercuryLock	*MR_pending_contexts_lock;
+  extern	MercuryLock	MR_pending_contexts_lock;
 #endif
 
 /*

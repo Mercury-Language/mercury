@@ -189,7 +189,7 @@ unsigned long	MR_num_uses[MR_MAX_RN];
 static MR_MemoryZone *used_memory_zones = NULL;
 static MR_MemoryZone *free_memory_zones = NULL;
 #ifdef	MR_THREAD_SAFE
-  static MercuryLock *free_memory_zones_lock;
+  static MercuryLock free_memory_zones_lock;
 #endif
 
 static void		MR_init_offsets(void);
@@ -215,8 +215,7 @@ MR_init_zones()
 {
 
 #ifdef  MR_THREAD_SAFE
-	free_memory_zones_lock = MR_GC_NEW(MercuryLock);
-	pthread_mutex_init(free_memory_zones_lock, MR_MUTEX_ATTR);
+	pthread_mutex_init(&free_memory_zones_lock, MR_MUTEX_ATTR);
 #endif
 
 	MR_init_offsets();
@@ -251,7 +250,7 @@ MR_get_zone(void)
 	** unlink the first zone on the free-list,
 	** link it onto the used-list and return it.
 	*/
-	MR_LOCK(free_memory_zones_lock, "get_zone");
+	MR_LOCK(&free_memory_zones_lock, "get_zone");
 	if (free_memory_zones == NULL) {
 		zone = MR_GC_NEW(MR_MemoryZone);
 	} else {
@@ -261,7 +260,7 @@ MR_get_zone(void)
 
 	zone->next = used_memory_zones;
 	used_memory_zones = zone;
-	MR_UNLOCK(free_memory_zones_lock, "get_zone");
+	MR_UNLOCK(&free_memory_zones_lock, "get_zone");
 
 	return zone;
 }
@@ -279,7 +278,7 @@ MR_unget_zone(MR_MemoryZone *zone)
 	** Find the zone on the used list, and unlink it from
 	** the list, then link it onto the start of the free-list.
 	*/
-	MR_LOCK(free_memory_zones_lock, "unget_zone");
+	MR_LOCK(&free_memory_zones_lock, "unget_zone");
 	for(prev = NULL, tmp = used_memory_zones;
 		tmp && tmp != zone; prev = tmp, tmp = tmp->next) 
 	{
@@ -296,7 +295,7 @@ MR_unget_zone(MR_MemoryZone *zone)
 
 	zone->next = free_memory_zones;
 	free_memory_zones = zone;
-	MR_UNLOCK(free_memory_zones_lock, "unget_zone");
+	MR_UNLOCK(&free_memory_zones_lock, "unget_zone");
 }
 
 #endif
