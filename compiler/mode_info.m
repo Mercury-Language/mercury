@@ -354,94 +354,107 @@
 :- import_module term, varset.
 :- import_module require, std_util, queue.
 
-:- type mode_info 
-	--->	mode_info(
-			io_state :: io__state,
-			module_info :: module_info,
-			predid :: pred_id,	% The pred we are checking
-			procid :: proc_id,	% The mode which we are checking
-			varset :: prog_varset,	
-					% The variables in the current proc
-			var_types :: vartypes,
-					% The types of the variables
-			context :: prog_context,
-					% The line number of the subgoal we
-					% are currently checking
-			mode_context :: mode_context,
-					% A description of where in the
-					% goal the error occurred
-			instmap :: instmap,
-					% The current instantiatedness
-					% of the variables
-			locked_vars :: locked_vars,
-					% The "locked" variables,
-					% i.e. variables which cannot be
-					% further instantiated inside a
-					% negated context
-			delay_info :: delay_info,
-					% info about delayed goals
-			errors :: list(mode_error_info),
-					% The mode errors found
+:- type mode_info --->
+	mode_info(
+		io_state	:: io__state,
+		module_info	:: module_info,
+		predid		:: pred_id,
+				% The pred we are checking
+		procid		:: proc_id,
+				% The mode which we are checking
+		varset		:: prog_varset,	
+				% The variables in the current proc
+		var_types	:: vartypes,
+				% The types of the variables
+		context		:: prog_context,
+				% The line number of the subgoal we
+				% are currently checking
+		mode_context	:: mode_context,
+				% A description of where in the
+				% goal the error occurred
+		instmap		:: instmap,
+				% The current instantiatedness
+				% of the variables
+		locked_vars	:: locked_vars,
+				% The "locked" variables,
+				% i.e. variables which cannot be
+				% further instantiated inside a
+				% negated context
+		delay_info	:: delay_info,
+				% info about delayed goals
+		errors		:: list(mode_error_info),
+				% The mode errors found
 
-			live_vars :: list(set(prog_var)),
-					% The live variables,
-	% i.e. those variables which may be referenced again on forward
-	% execution or after shallow backtracking.  (By shallow
-	% backtracking, I mean semidet backtracking in a negation,
-	% if-then-else, or semidet disjunction within the current
-	% predicate.)
+		live_vars	:: list(set(prog_var)),
+				% The live variables, i.e. those variables
+				% which may be referenced again on forward
+				% execution or after shallow backtracking.
+				% (By shallow backtracking, I mean semidet
+				% backtracking in a negation, if-then-else,
+				% or semidet disjunction within the current
+				% predicate.)
 
-			nondet_live_vars :: list(set(prog_var)),
-					% The nondet-live variables,
-	% i.e. those variables which may be referenced again after deep
-	% backtracking TO THE CURRENT EXECUTION POINT.  These are the
-	% variables which need to be made mostly_unique rather than
-	% unique when we get to a nondet disjunction or a nondet call.
-	% We do not include variables which may be referenced again
-	% after backtracking to a point EARLIER THAN the current
-	% execution point, since those variables will *already* have
-	% been marked as mostly_unique rather than unique.)
+		nondet_live_vars :: list(set(prog_var)),
+				% The nondet-live variables,
+				% i.e. those variables which may be
+				% referenced again after deep backtracking
+				% TO THE CURRENT EXECUTION POINT.
+				% These are the variables which need to be
+				% made mostly_unique rather than unique
+				% when we get to a nondet disjunction
+				% or a nondet call.  We do not include
+				% variables which may be referenced again
+				% after backtracking to a point EARLIER THAN
+				% the current execution point, since those
+				% variables will *already* have been marked
+				% as mostly_unique rather than unique.)
 
-			instvarset :: inst_varset,
+		instvarset	:: inst_varset,
 
-			last_checkpoint_insts :: assoc_list(prog_var, inst),
-	% This field is used by the checkpoint code when debug_modes is on.
-	% It has the instmap that was current at the last mode checkpoint,
-	% so that checkpoints do not print out the insts of variables
-	% whose insts have not changed since the last checkpoint.
-	% This field will always contain an empty list if debug_modes is off,
-	% since its information is not needed then.
+		last_checkpoint_insts :: assoc_list(prog_var, inst),
+				% This field is used by the checkpoint
+				% code when debug_modes is on.  It has the
+				% instmap that was current at the last
+				% mode checkpoint, so that checkpoints
+				% do not print out the insts of variables
+				% whose insts have not changed since the
+				% last checkpoint.  This field will always
+				% contain an empty list if debug_modes
+				% is off, since its information is not
+				% needed then.
 
-			parallel_vars ::
-				list(pair(set(prog_var), set(prog_var))),
-	% A stack of pairs of sets of variables used to mode-check
-	% parallel conjunctions. The first set is the nonlocals of
-	% the parallel conjunction. The second set is a subset of the
-	% first, and is the set of variables that have been [further]
-	% bound inside the current parallel conjunct - the stack is for
-	% the correct handling of nested parallel conjunctions.
+		parallel_vars	:: list(pair(set(prog_var), set(prog_var))),
+				% A stack of pairs of sets of variables used
+				% to mode-check parallel conjunctions. The
+				% first set is the nonlocals of the
+				% parallel conjunction. The second set is
+				% a subset of the first, and is the set of
+				% variables that have been [further] bound
+				% inside the current parallel conjunct -
+				% the stack is for the correct handling
+				% of nested parallel conjunctions.
 
-			changed_flag :: bool,
-					% Changed flag
-					% If `yes', then we may need
-					% to repeat mode inference.
+		changed_flag	:: bool,
+				% Changed flag
+				% If `yes', then we may need
+				% to repeat mode inference.
 
-			how_to_check :: how_to_check_goal,
+		how_to_check	:: how_to_check_goal,
 
-			may_change_called_proc :: may_change_called_proc,
-					% Is mode analysis allowed
-					% to change which procedure
-					% is called?
+		may_change_called_proc :: may_change_called_proc,
+				% Is mode analysis allowed
+				% to change which procedure
+				% is called?
 
-			checking_extra_goals :: bool
-					% Are we rechecking a goal after
-					% introducing unifications for
-					% complicated sub-unifications
-					% or an implied mode?
-					% If so, redoing the mode check
-					% should not introduce more
-					% extra unifications.
-		).
+		checking_extra_goals :: bool
+				% Are we rechecking a goal after
+				% introducing unifications for
+				% complicated sub-unifications
+				% or an implied mode?
+				% If so, redoing the mode check
+				% should not introduce more
+				% extra unifications.
+	).
 
 	% The normal inst of a mode_info struct: ground, with
 	% the io_state and the struct itself unique, but with
