@@ -112,6 +112,48 @@ else
 fi
 AC_SUBST(INSTALL_NUPROLOG)
 #-----------------------------------------------------------------------------#
+echo "looking for a way to create named pipes..."
+
+save_PATH="$PATH"
+PATH="$PATH:/etc:/usr/etc:/sbin"
+
+MKFIFO=
+AC_PATH_PROG(MKFIFO,mkfifo)
+if test "$MKFIFO" != ""; then
+	# check that it really works
+	tmp=/tmp/fifo$$
+	trap "rm -f $tmp" 1 2 3 13 15
+	if $MKFIFO $tmp && test -p $tmp; then
+		true
+	else
+		MKFIFO=""
+	fi
+	rm -f $tmp
+fi
+MKNOD=
+if test "$MKFIFO" = ""; then
+	AC_PATH_PROG(MKNOD,mknod)
+	if test "$MKNOD" != ""; then
+		# check that it really works
+		tmp=/tmp/fifo$$
+		trap "rm -f $tmp" 1 2 3 13 15
+		if $MKNOD $tmp p && test -p $tmp; then
+			MKFIFO=mkfifo_using_mknod
+		else
+			MKNOD=
+		fi
+	fi
+fi
+if test "$MKFIFO" = ""; then
+	AC_MSG_WARN(cannot find a working mkfifo or mknod)
+	MKFIFO=none
+fi
+AC_SUBST(MKFIFO)
+test MKNOD = "" && MKNOD=mknod
+AC_SUBST(MKNOD)
+
+PATH="$save_PATH"
+#-----------------------------------------------------------------------------#
 AC_PROG_CC
 AC_SUBST(CC)
 CFLAGS="-I runtime -I runtime/machdeps $CFLAGS"
@@ -703,6 +745,7 @@ AC_OUTPUT(Mmake.common scripts/mc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
+scripts/mkfifo_using_mknod
 ,
 if test "$CONFIG_HEADERS" = "runtime/conf.h"; then
 	touch runtime/conf.h.date
