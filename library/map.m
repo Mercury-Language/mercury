@@ -111,6 +111,11 @@
 :- mode map__delete(di, in, uo) is det.
 :- mode map__delete(in, in, out) is det.
 
+	% apply map__delete/3 to a list of keys
+:- pred map__delete_list(map(K,V), list(K), map(K,V)).
+:- mode map__delete_list(di, in, uo) is det.
+:- mode map__delete_list(in, in, out) is det.
+
 	% delete a key-value pair from a map and return the value.
 	% fail if the key is not present
 :- pred map__remove(map(K,V), K, V, map(K,V)).
@@ -244,6 +249,11 @@ map__from_sorted_assoc_list(L, M) :-
 
 map__delete(Map0, Key, Map) :-
 	tree234__delete(Map0, Key, Map).
+
+map__delete_list(Map, [], Map). 
+map__delete_list(Map0, [Key | Keys], Map) :-
+	map__delete(Map0, Key, Map1),
+	map__delete_list(Map1, Keys, Map).
 
 map__remove(Map0, Key, Value, Map) :-
 	tree234__remove(Map0, Key, Value, Map).
