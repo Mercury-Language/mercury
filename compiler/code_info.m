@@ -434,7 +434,7 @@
 			set(var),	% Variables that are not quite live
 					% but are only nondet-live (so that
 					% we make sure we save them).
-			junk
+			list(pair(lval))
 	).
 
 :- type fall_through	==	stack(failure_cont).
@@ -486,7 +486,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		PushedVals0,
 		Shapes,
 		NondetLives,
-		junk
+		[]
 	).
 
 :- pred code_info__build_input_arg_list(assoc_list(var, arg_info),
@@ -1180,6 +1180,30 @@ code_info__push_temp(Item, StackVar) -->
 
 %---------------------------------------------------------------------------%
 
+:- pred code_info__add_commit_val(lval, lval, code_info, code_info).
+:- mode code_info__add_commit_val(in, in, in, out) is det.
+
+code_info__add_commit_val(Item, StackVar) -->
+	code_info__get_commit_vals(Stack0),
+	code_info__set_commit_vals([StackVar - Item | Stack0]).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__rem_commit_val(code_info, code_info).
+:- mode code_info__rem_commit_val(in, out) is det.
+
+code_info__rem_commit_val -->
+	code_info__get_commit_vals(Stack0),
+	( 
+		{ Stack0 = [_ | Stack] },
+		code_info__set_commit_vals(Stack)
+	;
+		{ Stack0 = [] },
+		{ error("code_info__rem_commit_val: Empty list") }
+	).
+
+%---------------------------------------------------------------------------%
+
 	% `pop_stack' and `pop_temp' don't actually decrement the stack
 	% pointer, they just decrement the push count.  The space will
 	% be deallocated in the procedure epilogue.
@@ -1353,22 +1377,22 @@ code_info__variable_locations(Locations) -->
 	% generated in the goal.
 
 code_info__generate_pre_commit(RedoLab, PreCommit) -->
-	code_info__get_globals(Globals),
-	{ globals__get_gc_method(Globals, GC_Method) },
-	( { GC_Method = accurate } ->
-		% the pushes and pops on the det stack below will cause
-		% problems for accurate garbage collection.
-		{ error("code_info__generate_pre_commit: gc=accurate not supported") }
-	;
-		[]
-	),
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
-		{ PushCode = node([incr_sp(3) -
-			"push space for curfr, maxfr, and redoip"]) },
+		% the pushes and pops on the det stack below will cause
+		% problems for accurate garbage collection. Hence we 
+		% make sure the commit vals are made live, so gc
+		% can figure out what is going on later.
+		{ PushCode = node([
+			incr_sp(3) - 
+			"push space for curfr, maxfr, and redoip" 
+		]) },
 		{ CurfrSlot = stackvar(1) },
 		{ MaxfrSlot = stackvar(2) },
-		{ RedoipSlot = stackvar(3) }
+		{ RedoipSlot = stackvar(3) },
+		code_info__add_commit_val(curfr, CurfrSlot),
+		code_info__add_commit_val(maxfr, MaxfrSlot),
+		code_info__add_commit_val(redoip(lval(maxfr)), RedoipSlot)
 	;
 		{ PushCode = empty },
 		code_info__push_temp(curfr, CurfrSlot),
@@ -1416,10 +1440,14 @@ code_info__generate_commit(RedoLab, Commit) -->
 	code_info__pop_failure_cont,
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
-		{ PopCode = node([decr_sp(3) - "pop redoip & curfr"]) },
+		{ PopCode = node([decr_sp(3) - 
+			"pop redoip, maxfr & curfr"]) },
 		{ RedoipSlot = stackvar(3) },
 		{ MaxfrSlot = stackvar(2) },
-		{ CurfrSlot = stackvar(1) }
+		{ CurfrSlot = stackvar(1) },
+		code_info__rem_commit_val,
+		code_info__rem_commit_val,
+		code_info__rem_commit_val
 	;
 		{ PopCode = empty },
 		code_info__pop_temp(RedoipSlot),
@@ -1944,7 +1972,9 @@ code_info__generate_stack_livevals(Args, LiveVals) -->
 	{ set__to_sorted_list(Vars, VarList) },
 	{ set__init(LiveVals0) },
 	code_info__generate_stack_livevals_2(VarList, LiveVals0, LiveVals1),
-	code_info__get_pushed_values(Pushed),
+	code_info__get_pushed_values(Pushed0),
+	code_info__get_commit_vals(CommitVals),
+	{ stack__push_list(Pushed0, CommitVals, Pushed) },
 	{ code_info__generate_stack_livevals_3(Pushed, LiveVals1, LiveVals) }.
 
 :- pred code_info__generate_stack_livevals_2(list(var), set(lval), set(lval),
@@ -1990,7 +2020,9 @@ code_info__generate_stack_livelvals(Args, LiveVals) -->
         code_info__generate_stack_livelvals_2(VarList, LiveVals0, LiveVals1),
 	{ set__to_sorted_list(LiveVals1, LiveVals2) },
 	code_info__livevals_to_livelvals(LiveVals2, LiveVals3),
-        code_info__get_pushed_values(Pushed),
+        code_info__get_pushed_values(Pushed0),
+	code_info__get_commit_vals(CommitVals),
+	{ stack__push_list(Pushed0, CommitVals, Pushed) },
         { code_info__generate_stack_livelvals_3(Pushed, LiveVals3, LiveVals) }.
 
 :- pred code_info__generate_stack_livelvals_2(list(var), 
@@ -2115,6 +2147,12 @@ code_info__variable_type(Var, Type) -->
 
 :- pred code_info__set_pushed_values(stack(pair(lval)), code_info, code_info).
 :- mode code_info__set_pushed_values(in, in, out) is det.
+
+:- pred code_info__get_commit_vals(list(pair(lval)), code_info, code_info).
+:- mode code_info__get_commit_vals(out, in, out) is det.
+
+:- pred code_info__set_commit_vals(list(pair(lval)), code_info, code_info).
+:- mode code_info__set_commit_vals(in, in, out) is det.
 
 code_info__get_stackslot_count(A, CI, CI) :-
 	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
@@ -2322,6 +2360,16 @@ code_info__get_nondet_lives(U, CI, CI) :-
 code_info__set_nondet_lives(U, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
 		T, _, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
+		T, U, V).
+
+code_info__get_commit_vals(V, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, _, V).
+
+code_info__set_commit_vals(V, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
+		T, U, _),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
 		T, U, V).
 
