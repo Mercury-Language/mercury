@@ -27,6 +27,7 @@ MCFLAGS-loop_inv_test 	= 	--loop-invariants --trace-optimized
 MCFLAGS-loop_inv_test0 	= 	--loop-invariants --trace-optimized
 MCFLAGS-loop_inv_test1 	= 	--loop-invariants --trace-optimized
 MCFLAGS-loop_inv_test2 	= 	--loop-invariants --trace-optimized
+MCFLAGS-puzzle_detism_bug = 	--trace-optimized --inlining
 MCFLAGS-no_inline_builtins =	--no-inline-builtins
 MCFLAGS-no_warn_singleton =	--halt-at-warn
 MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out

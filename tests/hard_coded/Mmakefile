@@ -129,6 +129,7 @@ ORDINARY_PROGS=	\
 	pragma_import \
 	pragma_inline \
 	pretty_printing \
+	puzzle_detism_bug \
 	qual_adv_test \
 	qual_basic_test \
 	qual_is_test \
