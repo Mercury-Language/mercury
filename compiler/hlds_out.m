@@ -350,7 +350,8 @@ hlds_out__cons_id_to_string(table_io_decl(
 	% there as well.
 
 hlds_out__write_pred_id(ModuleInfo, PredId, !IO) :-
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	module_info_preds(ModuleInfo, PredTable),
+	( map__search(PredTable, PredId, PredInfo) ->
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
 	Arity = pred_info_orig_arity(PredInfo),
@@ -372,15 +373,23 @@ hlds_out__write_pred_id(ModuleInfo, PredId, !IO) :-
 		pred_info_get_markers(PredInfo, Markers),
 		check_marker(Markers, class_instance_method)
 	->
-		io__write_string("type class method implementation", !IO)
+			io__write_string("type class method implementation",
+				!IO)
 	;
 		pred_info_get_goal_type(PredInfo, promise(PromiseType))
 	->
-		io__write_string("`" ++ prog_out__promise_to_string(PromiseType)
+			io__write_string("`" ++
+				prog_out__promise_to_string(PromiseType)
 			++ "' declaration", !IO)
 	;
 		hlds_out__write_simple_call_id(PredOrFunc,
 			qualified(Module, Name), Arity, !IO)
+		)
+	;
+		% The predicate has been deleted, so we print what we can.
+		pred_id_to_int(PredId, PredIdInt),
+		io__write_string("deleted predicate ", !IO),
+		io__write_int(PredIdInt, !IO)
 	).
 
 hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO) :-
