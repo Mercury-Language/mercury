@@ -24,11 +24,10 @@ C2INITFLAGS = ../trailed_update.init
 %_init.c: $(C2INITFLAGS)
 
 # We need the following to use shared libraries on Linux
-# MGNUCFLAGS += -DPIC_REG
-# ML = ml --mercury-libs shared
+#MGNUCFLAGS += -DPIC_REG
+#MLFLAGS += --shared
 
-ML = ml --mercury-libs static
-MLLIBS = ../libtrailed_update.a
+MLFLAGS += --static
 
 #-----------------------------------------------------------------------------#
 
