@@ -4,7 +4,7 @@
 
 :- module llds.		
 
-:- import_module io.
+:- import_module io, list, string, integer.
 
 %-----------------------------------------------------------------------------%
 
@@ -13,10 +13,13 @@
 :- type int == integer.
 
 :- type c_file		--->	c_file(string, list(c_module)).
+			%	filename, modules
 
 :- type c_module	--->	c_module(string, list(instruction)).
+			%	module name, code
 
-:- type instruction	--->	instr - string.		% instruction, comment
+:- type instruction	--->	instr - string.	
+			%	 instruction, comment
 
 :- type instr		--->	assign(lval, rval)
 			;	call(code_addr, label)  % pred, continuation
@@ -25,8 +28,8 @@
 			;	label(label)
 			;	goto(label)
 			;	if_tag(reg, tag, label)
-					% branch to LABEL if TAG doesn't
-					% match REG's tag.
+					% branch to label if tag doesn't
+					% match reg's tag.
 			;	incr_sp(integer)
 			;	decr_sp(integer)
 			;	incr_hp(integer).
@@ -50,23 +53,34 @@
 			;	f(integer).		% floating point regs
 
 :- type code_addr 	--->	nonlocal(string, string, integer, integer)
-			%	module, predicate, arity, mode #
+				%	module, predicate, arity, mode #
 			;	local(label).
 
 :- type label 		--->	entrylabel(string, string, integer, integer)
-			%	module, predicate, arity, mode #
+				%	 module, predicate, arity, mode #
 			;	label(string, string, int, int, int, int).
-			%	module, predicate, arity, mode #,
-			%	clause #, prog point #
+				% module, predicate, arity, mode #,
+				% 			clause #, prog point #
 
 :- type tag		=	integer.
 
 :- pred output_c_file(c_file, io__state, io__state).
 :- mode output_c_file(i, di, uo).
 
+	% Given a 'c_file' structure, open the appropriate .xmod file
+	% and output the code into that file.
+	% (We use .xmod instead of .mod to distinguish the compiler-generated
+	% files from the hand-written ones.)
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+	% The following code is very straightforward and
+	% unremarkable.  The only thing of note is that is
+	% uses the logical io library, and that it uses DCGs
+	% to avoid having to explicitly shuffle the state-of-the-world
+	% arguments around all the time, as discussed in my hons thesis. -fjh.
 
 output_c_file(c_file(Name, Modules)) -->
 	{ string__append(Name, ".xmod", FileName) },
@@ -113,11 +127,11 @@ output_c_module(c_module(Name,Instructions)) -->
 output_instruction_list([]) --> [].
 output_instruction_list([Inst - Comment|Instructions]) -->
 	output_instruction(Inst),
-	( { Comment \= "" } ->
+	(if { Comment \= "" } then
 		io__write_string("\t/* "),
 		io__write_string(Comment),
 		io__write_string(" */\n")
-	;
+	else
 		io__write_string("\n")
 	),
 	output_instruction_list(Instructions).
@@ -311,8 +325,25 @@ output_lval(field(Tag, Reg, FieldNum)) -->
 	io__write_int(FieldNum),
 	io__write_string(")").
 
+%-----------------------------------------------------------------------------%
+
+:- pred clause_num_to_string(int::i, string::o).
+
+clause_num_to_string(N, Str) :-
+	(if N < 26 then
+		int_to_letter(N, Str)
+	else
+		N_Low is N mod 26,
+		N_High is N // 26,
+		int_to_letter(N_Low, L),
+		clause_num_to_string(N_High, S),
+		string__append(S, L, Str)
+	).
+
 :- pred int_to_letter(int, string).
 :- mode int_to_letter(i, o).
+
+	% This code is boring, but portable - it works even for EBCDIC ;-)
 
 int_to_letter(0, "a").
 int_to_letter(1, "b").
@@ -340,19 +371,6 @@ int_to_letter(22, "w").
 int_to_letter(23, "x").
 int_to_letter(24, "y").
 int_to_letter(25, "z").
-
-:- pred clause_num_to_string(int::i, string::o).
-
-clause_num_to_string(N, Str) :-
-	(if N < 26 then
-		int_to_letter(N, Str)
-	else
-		N_Low is N mod 26,
-		N_High is N // 26,
-		int_to_letter(N_Low, L),
-		clause_num_to_string(N_High, S),
-		string__append(S, L, Str)
-	).
 
 :- end_module llds.
 
