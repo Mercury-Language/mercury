@@ -1,10 +1,15 @@
 #!/usr/bin/perl
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995 University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
 
 # create a vi style tags file for Mercury programs
 # takes its list of filenames from the command line
 # it should warn about duplicate tags, but doesn't as yet
 
-die "Usage: mtags file1.nl ...\n" if $#ARGV < 0;
+die "Usage: mtags file1.m ...\n" if $#ARGV < 0;
 
 open(out, "| sort -u +0 -1 > tags");
 while ($#ARGV >= 0)
