@@ -71,10 +71,16 @@
 			% get rid of it.
 	;	mode_error_no_mode_decl
 			% a call to a predicate for which there are
-			% no mode declarations
+			% no mode declarations (and mode inference is
+			% not enabled)
 	;	mode_error_no_matching_mode(list(prog_var), list(inst))
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with >1 mode)
+	;	mode_error_in_callee(list(prog_var), list(inst),
+			pred_id, proc_id, list(mode_error_info))
+			% call to a predicate with initial argument insts
+			% for which mode inference gave a mode error
+			% in the callee
 	;	mode_error_bind_var(var_lock_reason, prog_var, inst, inst)
 			% attempt to bind a non-local variable inside
 			% a negated context, or attempt to re-bind a variable
@@ -223,6 +229,10 @@ report_mode_error(mode_error_conj(Errors, Culprit), ModeInfo) -->
 	report_mode_error_conj(ModeInfo, Errors, Culprit).
 report_mode_error(mode_error_no_matching_mode(Vars, Insts), ModeInfo) -->
 	report_mode_error_no_matching_mode(ModeInfo, Vars, Insts).
+report_mode_error(mode_error_in_callee(Vars, Insts,
+		CalleePredId, CalleeProcId, CalleeErrors), ModeInfo) -->
+	report_mode_error_in_callee(ModeInfo, Vars, Insts,
+		CalleePredId, CalleeProcId, CalleeErrors).
 report_mode_error(mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
 		ModeInfo) -->
 	report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst,
@@ -489,6 +499,54 @@ report_mode_error_non_local_lambda_var(ModeInfo, Var, VarInst) -->
 	io__write_string("  of lambda goals is `ground'.\n").
 
 %-----------------------------------------------------------------------------%
+
+:- pred report_mode_error_in_callee(mode_info, list(prog_var),
+		list(inst), pred_id, proc_id, list(mode_error_info),
+		io__state, io__state).
+:- mode report_mode_error_in_callee(mode_info_ui, in, in, in, in, in,
+		di, uo) is det.
+
+report_mode_error_in_callee(ModeInfo, Vars, Insts,
+		CalleePredId, CalleeProcId, CalleeModeErrors) -->
+	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
+	{ mode_info_get_context(ModeInfo, Context) },
+	{ mode_info_get_varset(ModeInfo, VarSet) },
+	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode error: arguments `"),
+	mercury_output_vars(Vars, VarSet, no),
+	io__write_string("'\n"),
+	prog_out__write_context(Context),
+	io__write_string("  have insts `"),
+	output_inst_list(Insts, InstVarSet),
+	io__write_string("',\n"),
+	prog_out__write_context(Context),
+	io__write_string("  which does not match any of the valid modes for "),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		prog_out__write_context(Context),
+		io__write_string("  the callee ("),
+		hlds_out__write_pred_id(ModuleInfo, CalleePredId),
+		io__write_string("),\n"),
+		prog_out__write_context(Context),
+		io__write_string("  because of the following error.\n")
+	;
+		prog_out__write_context(Context),
+		io__write_string("  the callee, because of the following error.\n")
+	),
+	( { CalleeModeErrors = [First | _] } ->
+		{ First = mode_error_info(_, CalleeModeError,
+			CalleeContext, CalleeModeContext) },
+		{ mode_info_set_predid(ModeInfo, CalleePredId, ModeInfo1) },
+		{ mode_info_set_procid(ModeInfo1, CalleeProcId, ModeInfo2) },
+		{ mode_info_set_context(CalleeContext, ModeInfo2, ModeInfo3) },
+		{ mode_info_set_mode_context(CalleeModeContext,
+			ModeInfo3, ModeInfo4) },
+		report_mode_error(CalleeModeError, ModeInfo4)
+	;
+		{ error("report_mode_error_in_callee: no error") }
+	).
 
 :- pred report_mode_error_no_matching_mode(mode_info, list(prog_var),
 		list(inst), io__state, io__state).
@@ -945,10 +1003,10 @@ write_mode_inference_messages([PredId | PredIds], OutputDetism, ModuleInfo) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_get_markers(PredInfo, Markers) },
 	( { check_marker(Markers, infer_modes) } ->
+		{ pred_info_all_procids(PredInfo, ProcIds) },
 		{ pred_info_procedures(PredInfo, Procs) },
-		{ map__keys(Procs, ProcIds) },
 		write_mode_inference_messages_2(ProcIds, Procs, PredInfo,
-			OutputDetism)
+			OutputDetism, ModuleInfo)
 	;
 		[]
 	),
@@ -958,24 +1016,40 @@ write_mode_inference_messages([PredId | PredIds], OutputDetism, ModuleInfo) -->
 	% proc_ids
 
 :- pred write_mode_inference_messages_2(list(proc_id), proc_table, pred_info,
-				bool, io__state, io__state).
-:- mode write_mode_inference_messages_2(in, in, in, in, di, uo) is det.
+				bool, module_info, io__state, io__state).
+:- mode write_mode_inference_messages_2(in, in, in, in, in, di, uo) is det.
 
-write_mode_inference_messages_2([], _, _, _) --> [].
+write_mode_inference_messages_2([], _, _, _, _) --> [].
 write_mode_inference_messages_2([ProcId | ProcIds], Procs, PredInfo,
-		OutputDetism) -->
+		OutputDetism, ModuleInfo) -->
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	write_mode_inference_message(PredInfo, ProcInfo, OutputDetism),
-	write_mode_inference_messages_2(ProcIds, Procs, PredInfo, OutputDetism).
+	(
+		{
+			% We always output `Inferred :- mode ...'
+			proc_info_is_valid_mode(ProcInfo)
+		;
+			% We only output `REJECTED :- mode ...'
+			% if --verbose-errors is enabled
+			VerboseErrors = yes
+		}
+	->
+		write_mode_inference_message(PredInfo, ProcInfo, OutputDetism,
+			ModuleInfo)
+	;
+		[]
+	),
+	write_mode_inference_messages_2(ProcIds, Procs, PredInfo, OutputDetism,
+		ModuleInfo).
 
 	% write out the inferred `mode' declaration
 	% for a single function or predicate.
 
 :- pred write_mode_inference_message(pred_info, proc_info, bool,
-				io__state, io__state).
-:- mode write_mode_inference_message(in, in, in, di, uo) is det.
+		module_info, io__state, io__state).
+:- mode write_mode_inference_message(in, in, in, in, di, uo) is det.
 
-write_mode_inference_message(PredInfo, ProcInfo, OutputDetism) -->
+write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo) -->
 	{ pred_info_name(PredInfo, PredName) },
 	{ Name = unqualified(PredName) },
 	{ pred_info_context(PredInfo, Context) },
@@ -997,20 +1071,39 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism) -->
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	( { OutputDetism = yes } ->
 		{ proc_info_inferred_determinism(ProcInfo, Detism) },
-		{ MaybeDet = yes(Detism) }
+		{ MaybeDet0 = yes(Detism) }
 	;
-		{ MaybeDet = no }
+		{ MaybeDet0 = no }
 	),
 	prog_out__write_context(Context),
-	{ strip_builtin_qualifiers_from_mode_list(ArgModes2, ArgModes3) },
-	io__write_string("Inferred "),
+	( { proc_info_is_valid_mode(ProcInfo) } ->
+		io__write_string("Inferred "),
+		{ ArgModes3 = ArgModes2 },
+		{ MaybeDet = MaybeDet0 }
+	;
+		io__write_string("REJECTED "),
+		% Replace the final insts with dummy insts '...',
+		% since they won't be valid anyway -- they are just
+		% the results of whatever partial inference we did
+		% before detecting the error.
+		{ mode_list_get_initial_insts(ArgModes2, ModuleInfo,
+			InitialInsts) }, 
+		{ DummyInst = defined_inst(user_inst(unqualified("..."), [])) },
+		{ list__duplicate(PredArity, DummyInst, FinalInsts) },
+		{ ArgModes3 = list__map(func(I - F) = (I -> F),
+			assoc_list__from_corresponding_lists(
+				InitialInsts, FinalInsts)) },
+		% Likewise delete the determinism.
+		{ MaybeDet = no }
+	),
+	{ strip_builtin_qualifiers_from_mode_list(ArgModes3, ArgModes) },
 	(	{ PredOrFunc = predicate },
-		mercury_output_pred_mode_decl(VarSet, Name, ArgModes3,
+		mercury_output_pred_mode_decl(VarSet, Name, ArgModes,
 				MaybeDet, Context)
 	;	{ PredOrFunc = function },
-		{ pred_args_to_func_args(ArgModes3, ArgModes, RetMode) },
-		mercury_output_func_mode_decl(VarSet, Name, ArgModes, RetMode,
-				MaybeDet, Context)
+		{ pred_args_to_func_args(ArgModes, FuncArgModes, RetMode) },
+		mercury_output_func_mode_decl(VarSet, Name, FuncArgModes,
+				RetMode, MaybeDet, Context)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -1762,8 +1762,7 @@ get_pred_id_and_proc_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
 get_proc_id(PredicateTable, PredId, ProcId) :-
 	predicate_table_get_preds(PredicateTable, Preds),
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_procedures(PredInfo, Procs),
-	map__keys(Procs, ProcIds),
+	pred_info_procids(PredInfo, ProcIds),
 	( ProcIds = [ProcId0] ->
 		ProcId = ProcId0
 	;

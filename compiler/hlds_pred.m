@@ -15,6 +15,7 @@
 
 :- import_module prog_data.
 :- import_module hlds_data, hlds_goal, hlds_module, instmap, term_util.
+:- import_module mode_errors.
 :- import_module globals.
 
 :- import_module bool, list, set, map, std_util, term, varset.
@@ -547,17 +548,30 @@
 :- pred pred_info_arity(pred_info, arity).
 :- mode pred_info_arity(in, out) is det.
 
-	% Return a list of all the proc_ids for the different modes
-	% of this predicate.
+	% Return a list of all the proc_ids for the valid modes
+	% of this predicate.  This does not include candidate modes
+	% that were generated during mode inference but which mode
+	% inference found were not valid modes.
 :- pred pred_info_procids(pred_info, list(proc_id)).
 :- mode pred_info_procids(in, out) is det.
 
 	% Return a list of the proc_ids for all the modes
+	% of this predicate, including invalid modes.
+:- pred pred_info_all_procids(pred_info, list(proc_id)).
+:- mode pred_info_all_procids(in, out) is det.
+
+	% Return a list of the proc_ids for all the valid modes
 	% of this predicate that are not imported.
 :- pred pred_info_non_imported_procids(pred_info, list(proc_id)).
 :- mode pred_info_non_imported_procids(in, out) is det.
 
 	% Return a list of the proc_ids for all the modes
+	% of this predicate that are not imported
+	% (including invalid modes).
+:- pred pred_info_all_non_imported_procids(pred_info, list(proc_id)).
+:- mode pred_info_all_non_imported_procids(in, out) is det.
+
+	% Return a list of the proc_ids for all the valid modes
 	% of this predicate that are exported.
 :- pred pred_info_exported_procids(pred_info, list(proc_id)).
 :- mode pred_info_exported_procids(in, out) is det.
@@ -956,8 +970,17 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
 		Indexes, Assertions, MaybeInstanceConstraints).
 
-pred_info_procids(PredInfo, ProcIds) :-
-	map__keys(PredInfo^procedures, ProcIds).
+pred_info_all_procids(PredInfo, ProcIds) :-
+	ProcTable = PredInfo ^ procedures,
+	map__keys(ProcTable, ProcIds).
+
+pred_info_procids(PredInfo, ValidProcIds) :-
+	pred_info_all_procids(PredInfo, AllProcIds),
+	ProcTable = PredInfo ^ procedures,
+	IsValid = (pred(ProcId::in) is semidet :-
+		ProcInfo = map__lookup(ProcTable, ProcId),
+		proc_info_is_valid_mode(ProcInfo)),
+	list__filter(IsValid, AllProcIds, ValidProcIds).
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
 	pred_info_import_status(PredInfo, ImportStatus),
@@ -971,6 +994,20 @@ pred_info_non_imported_procids(PredInfo, ProcIds) :-
 		list__delete_all(ProcIds0, 0, ProcIds)
 	;
 		pred_info_procids(PredInfo, ProcIds)
+	).
+
+pred_info_all_non_imported_procids(PredInfo, ProcIds) :-
+	pred_info_import_status(PredInfo, ImportStatus),
+	( ImportStatus = imported(_) ->
+		ProcIds = []
+	; ImportStatus = external(_) ->
+		ProcIds = []
+	; ImportStatus = pseudo_imported ->
+		pred_info_all_procids(PredInfo, ProcIds0),
+		% for pseduo_imported preds, procid 0 is imported
+		list__delete_all(ProcIds0, 0, ProcIds)
+	;
+		pred_info_all_procids(PredInfo, ProcIds)
 	).
 
 pred_info_exported_procids(PredInfo, ProcIds) :-
@@ -1587,7 +1624,16 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_has_io_state_pair(module_info::in, proc_info::in,
 	int::out, int::out) is semidet.
 
+	% When mode inference is enabled, we record for each inferred
+	% mode whether it is valid or not by keeping a list of error
+	% messages in the proc_info.  The mode is valid iff this list
+	% is empty.
+:- func mode_errors(proc_info) = list(mode_error_info).
+:- func 'mode_errors :='(proc_info, list(mode_error_info)) = proc_info.
+:- pred proc_info_is_valid_mode(proc_info::in) is semidet.
+
 :- implementation.
+:- import_module mode_errors.
 
 :- type proc_info
 	--->	procedure(
@@ -1595,6 +1641,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 			var_types	:: vartypes,
 			head_vars	:: list(prog_var),
 			actual_head_modes :: list(mode),
+			mode_errors	:: list(mode_error_info),
 			inst_varset :: inst_varset,
 			head_var_caller_liveness :: maybe(list(is_live)),
 					% Liveness (in the mode analysis sense)
@@ -1721,6 +1768,7 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 		HeadVars, BodyVarSet),
 	varset__init(InstVarSet),
 	map__from_corresponding_lists(HeadVars, Types, BodyTypes),
+	ModeErrors = [],
 	InferredDet = erroneous,
 	map__init(StackSlots),
 	set__init(InitialLiveness),
@@ -1732,7 +1780,7 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 	map__init(TCVarsMap),
 	RLExprn = no,
 	NewProc = procedure(
-		BodyVarSet, BodyTypes, HeadVars, Modes, InstVarSet,
+		BodyVarSet, BodyTypes, HeadVars, Modes, ModeErrors, InstVarSet,
 		MaybeArgLives, ClauseBody, MContext, StackSlots, MaybeDet,
 		InferredDet, CanProcess, ArgInfo, InitialLiveness, TVarsMap,
 		TCVarsMap, eval_normal, no, no, DeclaredModes, IsAddressTaken,
@@ -1745,9 +1793,10 @@ proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		TCVarsMap, ArgSizes, Termination, IsAddressTaken,
 		ProcInfo) :-
 	RLExprn = no,
+	ModeErrors = [],
 	ProcInfo = procedure(
-		BodyVarSet, BodyTypes, HeadVars,
-		HeadModes, InstVarSet, HeadLives, Goal, Context,
+		BodyVarSet, BodyTypes, HeadVars, HeadModes, ModeErrors,
+		InstVarSet, HeadLives, Goal, Context,
 		StackSlots, DeclaredDetism, InferredDetism, CanProcess, ArgInfo,
 		Liveness, TVarMap, TCVarsMap, eval_normal, ArgSizes,
 		Termination, no, IsAddressTaken, RLExprn, no, no).
@@ -1758,7 +1807,8 @@ proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet, Detism,
 	set__init(Liveness),
 	MaybeHeadLives = no,
 	RLExprn = no,
-	ProcInfo = procedure(VarSet, VarTypes, HeadVars, HeadModes,
+	ModeErrors = [],
+	ProcInfo = procedure(VarSet, VarTypes, HeadVars, HeadModes, ModeErrors,
 		InstVarSet, MaybeHeadLives, Goal, Context, StackSlots,
 		yes(Detism), Detism, yes, [], Liveness, TVarMap, TCVarsMap,
 		eval_normal, no, no, no, IsAddressTaken, RLExprn, no, no).
@@ -1771,6 +1821,9 @@ proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal,
 				^body := Goal)
 				^proc_type_info_varmap := TI_VarMap)
 				^proc_typeclass_info_varmap := TCI_VarMap).
+
+proc_info_is_valid_mode(ProcInfo) :-
+	ProcInfo ^ mode_errors = [].
 
 proc_info_interface_determinism(ProcInfo, Determinism) :-
 	proc_info_declared_determinism(ProcInfo, MaybeDeterminism),

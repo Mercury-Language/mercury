@@ -545,7 +545,7 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 	%
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId0,
-		PredInfo, ProcInfo),
+			PredInfo, ProcInfo),
 	compute_arg_offset(PredInfo, ArgOffset),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
 	proc_info_interface_determinism(ProcInfo, InterfaceDeterminism),
@@ -553,23 +553,36 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 	unique_modes__check_call_modes(ArgVars, ProcArgModes0, ArgOffset,
 			InterfaceDeterminism, NeverSucceeds,
 			ModeInfo1, ModeInfo2),
+	( ProcInfo ^ mode_errors = [_|_] ->
+		% mode error in callee for this mode
+		WaitingVars = set__list_to_set(ArgVars),
+		mode_info_get_instmap(ModeInfo2, InstMap),
+		instmap__lookup_vars(ArgVars, InstMap, ArgInsts),
+		mode_info_error(WaitingVars,
+			mode_error_in_callee(ArgVars, ArgInsts,
+				PredId, ProcId0,
+				ProcInfo ^ mode_errors),
+			ModeInfo2, ModeInfo3)
+	;
+		ModeInfo3 = ModeInfo2
+	),
 
 	%
 	% see whether or not that worked
 	% (and restore the old error list)
 	%
-	mode_info_get_errors(ModeInfo2, Errors),
-	mode_info_set_errors(OldErrors, ModeInfo2, ModeInfo3),
-	mode_info_get_may_change_called_proc(ModeInfo3, MayChangeCalledProc),
+	mode_info_get_errors(ModeInfo3, Errors),
+	mode_info_set_errors(OldErrors, ModeInfo3, ModeInfo4),
+	mode_info_get_may_change_called_proc(ModeInfo4, MayChangeCalledProc),
 	( Errors = [] ->
 		ProcId = ProcId0,
-		ModeInfo = ModeInfo3
+		ModeInfo = ModeInfo4
 	; MayChangeCalledProc = may_not_change_called_proc ->
 		% We're not allowed to try a different procedure
 		% here, so just return all the errors.
 		ProcId = ProcId0,
 		list__append(OldErrors, Errors, AllErrors),
-		mode_info_set_errors(AllErrors, ModeInfo3, ModeInfo)
+		mode_info_set_errors(AllErrors, ModeInfo4, ModeInfo)
 	;
 		%
 		% If it didn't work, restore the original instmap,
@@ -585,10 +598,10 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 		% as a result of unique mode analysis.  That is OK,
 		% because uniqueness should not affect determinism.
 		%
-		mode_info_set_instmap(InstMap0, ModeInfo3, ModeInfo4),
+		mode_info_set_instmap(InstMap0, ModeInfo4, ModeInfo5),
 		proc_info_inferred_determinism(ProcInfo, Determinism),
 		modecheck_call_pred(PredId, ProcId0, ArgVars, yes(Determinism),
-			ProcId, NewArgVars, ExtraGoals, ModeInfo4, ModeInfo),
+			ProcId, NewArgVars, ExtraGoals, ModeInfo5, ModeInfo),
 		
 		( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
 			true
@@ -616,9 +629,11 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes, ArgOffset,
 		Determinism, NeverSucceeds, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo,
-				InitialInsts),
-	modecheck_var_has_inst_list(ArgVars, InitialInsts, ArgOffset,
-				InstVarSub, ModeInfo0, ModeInfo1),
+			InitialInsts),
+	NeedExactMatch = no,
+	modecheck_var_has_inst_list(ArgVars, InitialInsts,
+			NeedExactMatch, ArgOffset, InstVarSub,
+			ModeInfo0, ModeInfo1),
 	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts0),
 	inst_list_apply_substitution(FinalInsts0, InstVarSub, FinalInsts),
 	modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,

@@ -746,7 +746,6 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_get_exist_quant_tvars(PredInfo, ExistQVars) },
 	{ pred_info_typevarset(PredInfo, TVarSet) },
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
-	{ pred_info_procedures(PredInfo, ProcTable) },
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_import_status(PredInfo, ImportStatus) },
@@ -860,7 +859,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		[]
 	),
 	hlds_out__write_procs(Indent, AppendVarnums, ModuleInfo, PredId,
-		ImportStatus, ProcTable),
+		ImportStatus, PredInfo),
 	io__write_string("\n").
 
 :- pred hlds_out__write_marker_list(list(marker), io__state, io__state).
@@ -2849,12 +2848,13 @@ hlds_out__write_modes(Indent, _ModeTable) -->
 %-----------------------------------------------------------------------------%
 
 :- pred hlds_out__write_procs(int, bool, module_info, pred_id, import_status,
-	proc_table, io__state, io__state).
+	pred_info, io__state, io__state).
 :- mode hlds_out__write_procs(in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_procs(Indent, AppendVarnums, ModuleInfo, PredId,
-		ImportStatus, ProcTable) -->
-	{ map__keys(ProcTable, ProcIds) },
+		ImportStatus, PredInfo) -->
+	{ pred_info_procedures(PredInfo, ProcTable) },
+	{ pred_info_procids(PredInfo, ProcIds) },
 	hlds_out__write_procs_2(ProcIds, AppendVarnums, ModuleInfo, Indent,
 		PredId, ImportStatus, ProcTable).
 
@@ -2867,7 +2867,8 @@ hlds_out__write_procs_2([], _, _ModuleInfo, _Indent, _PredId, _, _ProcTable) -->
 hlds_out__write_procs_2([ProcId | ProcIds], AppendVarnums, ModuleInfo, Indent,
 		PredId, ImportStatus, ProcTable) -->
 	{ map__lookup(ProcTable, ProcId, ProcInfo) },
-	hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId, ImportStatus, ProcInfo),
+	hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
+		ImportStatus, ProcInfo),
 	hlds_out__write_procs_2(ProcIds, AppendVarnums, ModuleInfo, Indent,
 		PredId, ImportStatus, ProcTable).
 

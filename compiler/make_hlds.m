@@ -3607,9 +3607,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		{ pred_info_clauses_info(PredInfo1, Clauses0) },
 		{ pred_info_typevarset(PredInfo1, TVarSet0) },
 		{ maybe_add_default_func_mode(PredInfo1, PredInfo2, _) },
-		{ pred_info_procedures(PredInfo2, Procs) },
-		{ map__keys(Procs, ModeIds) },
-		clauses_info_add_clause(Clauses0, ModeIds,
+		{ pred_info_all_procids(PredInfo2, ProcIds) },
+		clauses_info_add_clause(Clauses0, ProcIds,
 			ClauseVarSet, TVarSet0, Args, Body, Context,
 			PredOrFunc, Arity, IsAssertion, Goal,
 			VarSet, TVarSet, Clauses, Warnings,
@@ -3633,7 +3632,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		% check if there are still no modes for the predicate,
 		% and if so, set the `infer_modes' flag for that predicate
 		%
-		( ModeIds = [] ->
+		( ProcIds = [] ->
 			pred_info_get_markers(PredInfo6, Markers0),
 			add_marker(Markers0, infer_modes, Markers),
 			pred_info_set_markers(PredInfo6, Markers, PredInfo)
@@ -3739,10 +3738,10 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceClause,
 		% so it is set to a dummy value.
 		{ varset__init(TVarSet0) },
 
-		{ ModeIds = [] }, % means this clause applies to _every_
+		{ ProcIds = [] }, % means this clause applies to _every_
 				  % mode of the procedure
 		{ IsAssertion = no },
-		clauses_info_add_clause(ClausesInfo0, ModeIds,
+		clauses_info_add_clause(ClausesInfo0, ProcIds,
 			CVarSet, TVarSet0, HeadTerms, Body, Context,
 			PredOrFunc, Arity, IsAssertion, Goal,
 			VarSet, _TVarSet, ClausesInfo, Warnings,

@@ -126,7 +126,7 @@ copy_module_clauses_to_procs_2([PredId | PredIds], Preds0, Preds) :-
 copy_clauses_to_procs(PredInfo0, PredInfo) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	pred_info_clauses_info(PredInfo0, ClausesInfo),
-	pred_info_non_imported_procids(PredInfo0, ProcIds),
+	pred_info_all_non_imported_procids(PredInfo0, ProcIds),
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs0, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
