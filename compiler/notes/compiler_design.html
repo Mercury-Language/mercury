@@ -496,6 +496,10 @@ and prints the messages appropriate for each.
 <li>
 term_util.m defines the main types used in termination analysis
 and contains utility predicates.
+<li>
+lp.m is used by term_pass1.m. It implements the Linear Programming
+algorithm for optimizing a set of linear constraints with respect to
+a linear cost function.
 </ul>
 
 <p>
@@ -644,6 +648,7 @@ for high-level optimizations (but which is not yet used).
 		<li> call_gen.m (predicate calls and also calls to
 			out-of-line unification procedures)
 		<li> disj_gen.m (disjunctions)
+		<li> par_conj.m (parallel conjunctions)
 		<li> unify_gen.m (unifications)
 		<li> switch_gen.m (switches), which has sub-modules
 			<ul>
@@ -1064,6 +1069,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 1999-09-16 03:20:07 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-10-14 05:27:35 $ by $Author: conway $@cs.mu.oz.au. <br>
 </body>
 </html>
