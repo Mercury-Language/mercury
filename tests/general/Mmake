@@ -13,7 +13,7 @@ NONDETPROGS=	commit_bug disj_disj hello_again interpreter nasty_nondet \
 DETPROGS=	arithmetic det_complicated_unify duplicate_label environment \
 		higher_order parse_list petdr1 \
 		semidet_map set_test string__format_test string_test \
-		string_test_2 univ
+		string_test_2 univ unreachable
 
 # float_test doesn't work yet
 NOTWORKING=	float_test
