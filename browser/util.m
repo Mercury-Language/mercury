@@ -79,7 +79,7 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 		if (line == NULL) {
 			SUCCESS_INDICATOR = FALSE;
 		} else {
-			make_aligned_string_copy(mercury_string, line);
+			MR_make_aligned_string_copy(mercury_string, line);
 			free(line);
 			Line = (String) mercury_string;
 			SUCCESS_INDICATOR = TRUE;
