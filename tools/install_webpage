@@ -69,6 +69,7 @@ cd $DIR || { false; exit 1; }
 rm -rf mercury || { false; exit 1; }
 cvs checkout mercury/doc || { false; exit 1; }
 cvs checkout mercury/library || { false; exit 1; }
+cvs checkout mercury/compiler/notes || { false; exit 1; }
 cd $DIR/mercury || { false; exit 1; }
 # checkout the www module and remove RCS keywords.
 cvs checkout -kv www || { false; exit 1; }
@@ -87,6 +88,9 @@ echo "install_webpage starting install `date`" 1>&2
 echo "LIBRARY_DIR=$DIR/mercury/library" > $DIR/mercury/Mmake.common
 
 cd $DIR/mercury/www || { false; exit 1; }
+mmake install || { false; exit 1; }
+
+cd $DIR/mercury/compiler/notes || { false; exit 1; }
 mmake install || { false; exit 1; }
 
 echo "install_webpage done" 1>&2
