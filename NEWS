@@ -82,7 +82,7 @@ Changes to the Mercury standard library:
   return `[|]' rather than `.' for lists, and calls to std_util__construct
   which construct lists may need to be updated.
 
-* We've added a func version of error/1, called func_error/1, to require.m.
+* We've added a function version of error/1, called func_error/1, to require.m.
 
 * ops.m now defines a typeclass which can be used to define operator
   precedence tables for use by parser.m and term_io.m. See
@@ -143,6 +143,10 @@ Changes to the Mercury standard library:
 
 * We've added a version of `getopt__process_options' which returns
   the option arguments.
+
+* `getopt__process_options' has been modified to allow negation of
+  accumulating options. Negating an accumulating option empties
+  the accumulated list of strings.
 
 * We've added some functions to the term_io module to return printable
   representations of term components as strings.

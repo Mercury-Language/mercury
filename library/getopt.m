@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999,2001 The University of Melbourne.
+% Copyright (C) 1994-1999,2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General 
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,11 +63,13 @@
 % It is an error to use a "special" option for which there is no
 % handler, or for which the handler fails.
 %
-% Single-character boolean (i.e. bool or bool_special) or maybe_*
-% options can be negated by following them with another `-', e.g. `-x-'
-% will negate the `-x' option.  Long boolean or maybe_* options can be
-% negated by preceding them with `--no-', e.g. `--no-foo' will negate
-% the `--foo' option.
+% Boolean (i.e. bool or bool_special), maybe_int, maybe_string
+% and accumulating options can be negated. Negating an accumulating
+% option empties the accumulated list of strings.
+% Single-character options can be negated by following them
+% with another `-', e.g. `-x-' will negate the `-x' option.
+% Long options can be negated by preceding them with `--no-',
+% e.g. `--no-foo' will negate the `--foo' option.
 
 :- module getopt.
 :- interface.
@@ -78,11 +80,11 @@
 % getopt__process_options(OptionOps, Args, OptionArgs, NonOptionArgs, Result)
 %
 %	Scans through 'Args' looking for options, places all the option
-%	arguments in OptionArgs, places all the	non-option arguments in
-%	'NonOptionArgs', and records the options in the OptionTable.
-%	OptionTable is a map from a user-defined option type to option_data.
-%	If an invalid option is encountered, we return error(Message)
-%	otherwise we return ok(OptionTable) in 'Result'.
+%	arguments in `OptionArgs', places all the non-option arguments in
+%	'NonOptionArgs', and records the options in the `OptionTable'.
+%	`OptionTable' is a map from a user-defined option type to option_data.
+%	If an invalid option is encountered, we return `error(Message)'
+%	otherwise we return `ok(OptionTable)' in 'Result'.
 % 
 %	The argument `OptionOps' is a structure holding three or four
 %	predicates used to categorize a set of options. Their
@@ -606,6 +608,10 @@ process_negated_option(Option, Flag, OptionOps, OptionTable0, Result) :-
 			Result = ok(OptionTable)
 		; OptionData = maybe_string(_) ->
 			map__set(OptionTable0, Flag, maybe_string(no),
+					OptionTable),
+			Result = ok(OptionTable)
+		; OptionData = accumulating(_) ->
+			map__set(OptionTable0, Flag, accumulating([]),
 					OptionTable),
 			Result = ok(OptionTable)
 		; OptionData = bool_special ->
