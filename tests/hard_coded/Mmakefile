@@ -92,14 +92,33 @@ MODS=	$(PROGS:%=%.mod)
 
 #-----------------------------------------------------------------------------#
 
+SUBDIRS = typeclasses
+
+#-----------------------------------------------------------------------------#
+
 dep:	$(DEPS)
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && mmake $(MMAKEFLAGS) dep) || exit 1; \
+	done
 
 depend:	$(DEPENDS)
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && mmake $(MMAKEFLAGS) depend) || exit 1; \
+	done
 
 check:	$(OUTS) $(RESS)
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && mmake $(MMAKEFLAGS) check) || exit 1; \
+	done
 
 mods:	$(MODS)
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && mmake $(MMAKEFLAGS) mods) || exit 1; \
+	done
 
 all:	$(PROGS)
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && mmake $(MMAKEFLAGS) all) || exit 1; \
+	done
 
 #-----------------------------------------------------------------------------#
