@@ -1389,7 +1389,7 @@ case "$host" in
 			AC_MSG_RESULT(Read README.IRIX-5)
 		fi
 		;;
-	*-cygwin-*)
+	*-cygwin*)
 		# disabled for now, since it hasn't been tested
 		# xxx_MSG_RESULT(yes)
 		# EXT_FOR_SHARED_LIB=dll
