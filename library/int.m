@@ -208,12 +208,18 @@
 
 X div Y = Div :-
 	Trunc = X // Y,
-	( X // Y >= 0 ->
-		Div = Trunc
-	; X rem Y = 0 ->
-		Div = Trunc
+	( X > 0 ->
+		( Y > 0 ->
+			Div = Trunc
+		;
+			Div = Trunc - 1
+		)
 	;
-		Div = Trunc - 1
+		( Y > 0 ->
+			Div = Trunc - 1
+		;
+			Div = Trunc
+		)
 	).
 
 X mod Y = X - (X div Y) * Y.
