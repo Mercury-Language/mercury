@@ -33,29 +33,71 @@ io__gc_call(Goal) -->
 
 %-----------------------------------------------------------------------------%
 
+	
+	% `io__exit_on_abort' is used as a global flag to control the
+	% behaviour of main/1 when it is re-entered after a call to abort.
 	% When we enter main/1, we check whether this is because
 	% we have just restarted after a call to abort/0, and if so
 	% we halt.  (abort/0 is called by error/1; see the
 	% NU-Prolog manual entry for abort/0.)
+	%
+	% `io__inhibit_user_main_predicate' is used to ensure that
+	% when the user redefines main_predicate by loading their
+	% file into the interpreter and then does an abort, we
+	% execute io__main_predicate to invoke the NU-Prolog command loop,
+	% rather than executing the users program.
 
-:- dynamic io__main_started/0.
+:- dynamic io__exit_on_abort/0.
+:- dynamic io__inhibit_user_main_predicate/0.
+:- dynamic io__main_has_been_executed/0.
+
 :- dynamic io__save_progname/1.
 
 :- pred main(list(atom)).
 :- mode main(in) is det.
+
 main(Args) :-
-	( io__main_started ->
+	( io__main_has_been_executed ->
+		true
+	;
+		write('Mercury Interpreter 0.1\n'),
+		assert(io__main_has_been_executed)
+	),
+	( io__exit_on_abort ->
+		write('Mercury aborting.\n'),
 		exit(1)
 	;
-		assert(io__main_started),
-		run(Args),
+		assert(io__exit_on_abort),
+		( io__inhibit_user_main_predicate ->
+			io__run(Args)
+		;
+			run(Args)
+		),
 		exit(0)
 	).
 
-
 :- pred run(list(atom)).
 :- mode run(in) is det.
+
 run(Args) :-
+	io__init(Args, ArgStrings),
+	io__init_state(IOState0),
+	io__call(main_predicate(ArgStrings), IOState0, IOState),
+	io__final_state(IOState).
+
+:- pred io__run(list(atom)).
+:- mode io__run(in) is det.
+
+io__run(Args) :-
+	io__init(Args, ArgStrings),
+	io__init_state(IOState0),
+	io__call(io__main_predicate(ArgStrings), IOState0, IOState),
+	io__final_state(IOState).
+
+:- pred io__init(list(atom), list(string)).
+:- mode io__init(in, out) is det.
+
+io__init(Args, ArgStrings) :-
 	putprop(io__saved_state, depth, 0),
 	atoms_to_strings(Args, ArgStrings),
 	( ArgStrings = [Progname | _] ->
@@ -63,10 +105,7 @@ run(Args) :-
 		assert(io__save_progname(Progname))
 	;
 		true
-	),
-	io__init_state(IOState0),
-	io__call(main_predicate(ArgStrings), IOState0, IOState),
-	io__final_state(IOState).
+	).
 
 	% The following definition of main_predicate/3 is a default
 	% and will normally be overridden by the users main_predicate/3.
@@ -75,8 +114,16 @@ run(Args) :-
 :- pred main_predicate(list(string), io__state, io__state).
 :- mode main_predicate(in, di, uo) is det.
 
-main_predicate(_) -->
-	{ retractall(io__main_started) },	% Fix handling of `abort'.
+main_predicate(Args) -->
+	io__main_predicate(Args).
+
+:- pred io__main_predicate(list(string), io__state, io__state).
+:- mode io__main_predicate(in, di, uo) is det.
+
+io__main_predicate(_) -->
+	{ retractall(io__inhibit_user_main_predicate) },
+	{ assert(io__inhibit_user_main_predicate) },
+	{ retractall(io__exit_on_abort) },
 	{ $mainloop }.
 
 :- pred io__call(pred).
