@@ -177,7 +177,8 @@ UTIL_DIR = $(MERCURY_DIR)/util
 # since it contains no Mercury code.)
 #
 # If you change these, you will also need to change scripts/ml.in,
-# scripts/c2init.in and tools/bootcheck.
+# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
+# and tools/linear.
 RT_LIB_NAME = mer_rt
 STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace

@@ -11,8 +11,8 @@
 # versions, then the script stops after identifying only the file.
 #
 # The test for the composite stage2 compiler is either bootstrap checking
-# (the default, or the successful execution of the all the test cases in
-# one or more dubdirectories of the tests directory.
+# (the default), or the successful execution of the all the test cases in
+# one or more subdirectories of the tests directory.
 
 usage="\
 Usage: $0 [options]
@@ -42,6 +42,11 @@ Options:
 	-t <testdir>, --test-dir <testdir>
 		Execute runtests from the named subdirectory of tests.
 "
+
+# If you change this, you will also need to change scripts/ml.in,
+# scripts/c2init.in, Mmake.common.in, tools/bootcheck, tools/binary
+# and tools/binary_step.
+STD_LIB_NAME=mer_std
 
 bootcheck=""
 compile_only=""
@@ -152,7 +157,7 @@ mkdir library
 cd library
 ln -s $root/library/*.m .
 # ln -s $root/library/*.nl .
-ln -s $root/library/libmercury.init .
+ln -s $root/library/lib$STD_LIB_NAME.init .
 cp $root/library/Mmake* .
 cd $root/stage2
 if test "$copy_runtime" = "true"
@@ -170,6 +175,8 @@ else
 	ln -s $root/runtime .
 fi
 ln -s $root/boehm_gc .
+ln -s $root/browser .
+ln -s $root/trace .
 ln -s $root/doc .
 ln -s $root/scripts .
 ln -s $root/util .
