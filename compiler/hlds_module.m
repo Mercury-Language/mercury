@@ -288,6 +288,11 @@
 :- pred module_info_remove_predid(module_info, pred_id, module_info).
 :- mode module_info_remove_predid(in, in, out) is det.
 
+	% Completely remove a predicate from a module.
+
+:- pred module_info_remove_predicate(pred_id, module_info, module_info).
+:- mode module_info_remove_predicate(in, in, out) is det.
+
 	% Once the module_info has been built, we call module_info_optimize
 	% to attempt to optimize the data structures for lots of accesses
 	% and relatively few insertion/deletions. (This was useful when
@@ -700,6 +705,13 @@ module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo) :-
 	module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 				ModuleInfo).
 
+module_info_remove_predicate(PredId, ModuleInfo0, ModuleInfo) :-
+	module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
+	predicate_table_remove_predicate(PredicateTable0, PredId,
+				PredicateTable),
+	module_info_set_predicate_table(ModuleInfo0, PredicateTable,
+				ModuleInfo).
+
 	% After we have finished constructing the symbol tables,
 	% we balance all the binary trees, to improve performance
 	% in later stages of the compiler.
@@ -825,7 +837,8 @@ hlds_dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 
 	% Set the pred_id->pred_info map.
 	% NB You shouldn't modify the keys in this table, only
-	% use predicate_table_insert and predicate_table_remove_predid.
+	% use predicate_table_insert, predicate_table_remove_predid and
+	% predicate_table_remove_predicate.
 
 :- pred predicate_table_set_preds(predicate_table, pred_table, predicate_table).
 :- mode predicate_table_set_preds(in, in, out) is det.
@@ -840,6 +853,10 @@ hlds_dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 :- pred predicate_table_remove_predid(predicate_table, pred_id,
 					predicate_table).
 :- mode predicate_table_remove_predid(in, in, out) is det.
+
+:- pred predicate_table_remove_predicate(predicate_table, pred_id,
+					predicate_table).
+:- mode predicate_table_remove_predicate(in, in, out) is det.
 
 	% Search the table for (a) predicates or functions
 	% (b) predicates only or (c) functions only
@@ -1079,6 +1096,81 @@ predicate_table_remove_predid(PredicateTable0, PredId, PredicateTable) :-
 	PredicateTable0 = predicate_table(A, B, PredIds0, D, E, F, G, H, I),
 	list__delete_all(PredIds0, PredId, PredIds),
 	PredicateTable = predicate_table(A, B, PredIds, D, E, F, G, H, I).
+
+predicate_table_remove_predicate(PredicateTable0, PredId, PredicateTable) :-
+	PredicateTable0 = predicate_table(Preds0, NextPredId, PredIds0, 
+		PredN0, PredNA0, PredMNA0, FuncN0, FuncNA0, FuncMNA0),
+	list__delete_all(PredIds0, PredId, PredIds),
+	map__det_remove(Preds0, PredId, PredInfo, Preds),
+	pred_info_module(PredInfo, Module),
+	pred_info_name(PredInfo, Name),
+	pred_info_arity(PredInfo, Arity),
+	pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc),
+	(
+		IsPredOrFunc = predicate,
+		predicate_table_remove_from_index(Module, Name, Arity, PredId,
+			PredN0, PredN, PredNA0, PredNA, PredMNA0, PredMNA),
+		PredicateTable = predicate_table(Preds, NextPredId, PredIds, 
+			PredN, PredNA, PredMNA, FuncN0, FuncNA0, FuncMNA0)
+	;
+		IsPredOrFunc = function,
+		FuncArity is Arity - 1,
+		predicate_table_remove_from_index(Module, Name, FuncArity, 
+			PredId, FuncN0, FuncN, FuncNA0, FuncNA, 
+			FuncMNA0, FuncMNA),
+		PredicateTable = predicate_table(Preds, NextPredId, PredIds, 
+			PredN0, PredNA0, PredMNA0, FuncN, FuncNA, FuncMNA)
+	).
+
+:- pred predicate_table_remove_from_index(string, string, int, pred_id, 
+		name_index, name_index, name_arity_index, name_arity_index, 
+		module_name_arity_index, module_name_arity_index).
+:- mode predicate_table_remove_from_index(in, in, in, in, in, out, 
+		in, out, in, out) is det.
+
+predicate_table_remove_from_index(Module, Name, Arity, PredId,
+		N0, N, NA0, NA, MNA0, MNA) :-
+	do_remove_from_index(N0, Name, PredId, N),
+	do_remove_from_index(NA0, Name / Arity, PredId, NA),
+	do_remove_from_m_n_a_index(MNA0, Module, Name, Arity, PredId, MNA).
+
+:- pred do_remove_from_index(map(T, list(pred_id)), T, pred_id, 
+			map(T, list(pred_id))).
+:- mode do_remove_from_index(in, in, in, out) is det.
+
+do_remove_from_index(Index0, T, PredId, Index) :-
+	( map__search(Index0, T, NamePredIds0) ->
+		list__delete_all(NamePredIds0, PredId, NamePredIds),
+		( NamePredIds = [] ->
+			map__delete(Index0, T, Index)	
+		;
+			map__det_update(Index0, T, NamePredIds, Index)
+		)
+	;
+		Index = Index0
+	).
+
+:- pred	do_remove_from_m_n_a_index(module_name_arity_index, 
+		string, string, int, pred_id, module_name_arity_index).
+:- mode do_remove_from_m_n_a_index(in, in, in, in, in, out) is det.
+
+do_remove_from_m_n_a_index(MNA0, Module, Name, Arity, PredId, MNA) :-
+	map__lookup(MNA0, Module - Name, Arities0),
+	map__lookup(Arities0, Arity, PredIds0),
+	list__delete_all(PredIds0, PredId, PredIds),
+	( PredIds = [] ->
+		map__delete(Arities0, Arity, Arities),
+		( map__is_empty(Arities) ->
+			map__delete(MNA0, Module - Name, MNA)	
+		;
+			map__det_update(MNA0, Module - Name, Arities, MNA)
+		)
+	;
+		map__det_update(Arities0, Arity, PredIds, Arities),
+		map__det_update(MNA0, Module - Name, Arities, MNA)
+	).	
+
+%-----------------------------------------------------------------------------%
 
 :- pred predicate_table_reverse_predids(predicate_table, predicate_table).
 :- mode predicate_table_reverse_predids(in, out) is det.

@@ -284,7 +284,16 @@ mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
 	( { FoundError = yes ; IntermodError = yes } ->
 		{ module_info_incr_errors(HLDS0, HLDS1) }
 	;	
-		{ HLDS1 = HLDS0 }
+		globals__io_lookup_bool_option(intermodule_optimization,
+			Intermod),
+		globals__io_lookup_bool_option(make_optimization_interface,
+			MakeOptInt),
+		( { Intermod = yes, MakeOptInt = no } ->
+			% Eliminate unnecessary clauses from `.opt' files.
+			{ dead_pred_elim(HLDS0, HLDS1) }
+		;
+			{ HLDS1 = HLDS0 }
+		)
 	).
 
 :- pred mercury_compile__module_qualify_items(item_list, item_list, string,
@@ -449,8 +458,8 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 
 		% If intermod_unused_args is being performed, run mode and
 		% determinism analysis and polymorphism, then run unused_args
-		% to append the unused argument information to the `.opt' file
-		% written above.
+		% to append the unused argument information to the `.opt.tmp' 
+		% file written above.
 		( { IntermodArgs = yes } ->
 			mercury_compile__frontend_pass_2_by_phases(
 				HLDS1, HLDS2, FoundModeError),
@@ -465,7 +474,11 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 			)
 		;
 			{ HLDS = HLDS1 }
-		)
+		),
+		{ module_info_name(HLDS, ModuleName) },
+		{ string__append(ModuleName, ".opt", OptName) },
+		update_interface(OptName),
+		touch_interface_datestamp(ModuleName, ".optdate")
 	;
 		{ HLDS = HLDS0 }
 	).

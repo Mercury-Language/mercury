@@ -71,8 +71,12 @@
 
 %-----------------------------------------------------------------------------%
 
-% Open the file "<module-name>.opt", and write out the
+% Open the file "<module-name>.opt.tmp", and write out the
 % declarations and clauses for intermodule optimization.
+% Note that update_interface and touch_interface_datestamp
+% are called from mercury_compile.m since they must be called
+% after unused_args.m appends its information to the .opt.tmp
+% file.
 
 intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 	{ module_info_name(ModuleInfo0, ModuleName) },
@@ -109,8 +113,6 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 				PredDecls, IntermodInfo4, IntermodInfo) },
 		intermod__write_intermod_info(IntermodInfo),
 		io__told,
-		{ string__append(ModuleName, ".opt", OptName) },
-		update_interface(OptName),
 		globals__io_lookup_bool_option(intermod_unused_args,
 			UnusedArgs),
 		( { UnusedArgs = yes } ->
@@ -118,8 +120,7 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 				ModuleInfo1, ModuleInfo) }
 		;
 			{ ModuleInfo = ModuleInfo1 }
-		),
-		touch_interface_datestamp(ModuleName, ".optdate")
+		)
 	).
 
 	% a collection of stuff to go in the .opt file

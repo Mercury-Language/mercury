@@ -4,8 +4,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% The job of this module is to delete dead procedures and base_gen_info
-% structures from the HLDS.
+% The job of this module is to delete dead predicates, procedures 
+% and base_gen_info structures from the HLDS.
 %
 % It also computes the usage counts that inlining.m uses for the
 % `--inline-single-use' option.
@@ -30,6 +30,14 @@
 	io__state, io__state).
 :- mode dead_proc_elim__eliminate(in, in, out, di, uo) is det.
 
+	% This is performed immediately after make_hlds.m to avoid doing
+	% semantic checking and optimization on predicates from `.opt' 
+	% files which are not used in the current module. This assumes that
+	% the clauses_info is still valid, so it cannot be run after mode
+	% analysis.
+:- pred dead_pred_elim(module_info, module_info).
+:- mode dead_pred_elim(in, out) is det.
+
 :- type entity		--->	proc(pred_id, proc_id)
 			;	base_gen_info(string, string, int).
 
@@ -40,7 +48,7 @@
 
 :- implementation.
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds.
-:- import_module passes_aux, globals, options.
+:- import_module passes_aux, globals, options, code_util.
 :- import_module int, list, set, queue, map, bool, std_util, require.
 
 %-----------------------------------------------------------------------------%
@@ -574,4 +582,158 @@ dead_proc_elim__eliminate_base_gen_infos([BaseGenInfo0 | BaseGenInfos0], Needed,
 		BaseGenInfos = [NeuteredBaseGenInfo | BaseGenInfos1]
 	).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- type dead_pred_info
+	--->	dead_pred_info(
+			module_info,
+			queue(pred_id),	% preds to examine.
+			set(pred_id),	% preds examined.
+			set(pred_id),	% needed pred_ids.
+			set(sym_name)	% pred names needed.
+		).
+
+dead_pred_elim(ModuleInfo0, ModuleInfo) :-
+	module_info_predids(ModuleInfo0, PredIds),
+	queue__init(Queue0),
+	set__init(Preds0),
+	set__init(Names0),
+	DeadInfo0 = dead_pred_info(ModuleInfo0, Queue0, 
+		Preds0, Preds0, Names0),
+	list__foldl(dead_pred_elim_initialize, PredIds, 
+		DeadInfo0, DeadInfo1),
+	dead_pred_elim_analyze(DeadInfo1, DeadInfo),
+	DeadInfo = dead_pred_info(ModuleInfo1, _, _, NeededPreds, _),
+	set__list_to_set(PredIds, PredIdSet),
+	set__difference(PredIdSet, NeededPreds, DeadPreds),
+	set__to_sorted_list(DeadPreds, DeadPredList),
+	list__foldl(module_info_remove_predicate, DeadPredList,
+		ModuleInfo1, ModuleInfo).
+
+:- pred dead_pred_elim_initialize(pred_id::in, dead_pred_info::in,
+		dead_pred_info::out) is det.
+
+dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
+	DeadInfo0 = dead_pred_info(ModuleInfo, Q0, Ex, Needed, NeededNames0),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	( 
+		pred_info_module(PredInfo, PredModule),
+		(
+			% Don't eliminate special preds since they won't
+			% be actually called from the HLDS until after 
+			% polymorphism.
+			code_util__compiler_generated(PredInfo)
+		;
+			% Don't eliminate preds from mercury_builtin.m since
+			% polymorphism.m needs unify/2 and friends.
+			PredModule = "mercury_builtin"
+		;
+			% Don't attempt to eliminate local preds here, since we
+			% want to do semantic checking on those even if they 
+			% aren't used.
+			\+ pred_info_is_imported(PredInfo), 
+			\+ pred_info_import_status(PredInfo, opt_imported)
+		)
+	->
+		pred_info_name(PredInfo, PredName),
+		set__insert(NeededNames0, qualified(PredModule, PredName), 
+			NeededNames),
+		queue__put(Q0, PredId, Q)
+	;
+		NeededNames = NeededNames0,
+		Q = Q0
+	),
+	DeadInfo = dead_pred_info(ModuleInfo, Q, Ex, Needed, NeededNames).
+
+:- pred dead_pred_elim_analyze(dead_pred_info::in, 
+		dead_pred_info::out) is det.
+
+dead_pred_elim_analyze(DeadInfo0, DeadInfo) :-
+	DeadInfo0 = dead_pred_info(ModuleInfo, Q0, Ex0, Needed0, NeededNames),
+	( queue__get(Q0, PredId, Q) ->
+		( set__member(PredId, Ex0) ->
+			DeadInfo2 = dead_pred_info(ModuleInfo, Q,
+				Ex0, Needed0, NeededNames)
+		;
+			set__insert(Needed0, PredId, Needed),
+			set__insert(Ex0, PredId, Ex),
+			DeadInfo1 = dead_pred_info(ModuleInfo, Q, Ex, 
+				Needed, NeededNames),
+			module_info_pred_info(ModuleInfo, PredId, PredInfo),
+			pred_info_clauses_info(PredInfo, ClausesInfo),
+			ClausesInfo = clauses_info(_,_,_,_, Clauses),
+			list__foldl(dead_pred_elim_process_clause, Clauses,
+				DeadInfo1, DeadInfo2)
+		),
+		dead_pred_elim_analyze(DeadInfo2, DeadInfo)
+	;
+		DeadInfo = DeadInfo0
+	).
+
+:- pred dead_pred_elim_process_clause(clause::in, dead_pred_info::in, 
+		dead_pred_info::out) is det.
+
+dead_pred_elim_process_clause(clause(_, Goal, _)) -->
+	pre_modecheck_examine_goal(Goal).
+
+:- pred pre_modecheck_examine_goal(hlds_goal::in, 
+		dead_pred_info::in, dead_pred_info::out) is det.
+
+pre_modecheck_examine_goal(conj(Goals) - _) -->
+	list__foldl(pre_modecheck_examine_goal, Goals).
+pre_modecheck_examine_goal(disj(Goals, _) - _) -->
+	list__foldl(pre_modecheck_examine_goal, Goals).
+pre_modecheck_examine_goal(if_then_else(_, If, Then, Else, _) - _) -->
+	list__foldl(pre_modecheck_examine_goal, [If, Then, Else]).
+pre_modecheck_examine_goal(switch(_, _, Cases, _) - _) -->
+	{ ExamineCase = lambda([Case::in, Info0::in, Info::out] is det, (
+		Case = case(_, Goal),
+		pre_modecheck_examine_goal(Goal, Info0, Info)
+	)) },
+	list__foldl(ExamineCase, Cases).
+pre_modecheck_examine_goal(higher_order_call(_,_,_,_,_) - _) --> [].
+pre_modecheck_examine_goal(not(Goal) - _) -->
+	pre_modecheck_examine_goal(Goal).
+pre_modecheck_examine_goal(some(_, Goal) - _) -->
+	pre_modecheck_examine_goal(Goal).
+pre_modecheck_examine_goal(call(_, _, _, _, _, PredName) - _) -->
+	dead_pred_info_add_pred_name(PredName).
+pre_modecheck_examine_goal(pragma_c_code(_, _, _, _, _, _, _, _) - _) --> [].
+pre_modecheck_examine_goal(unify(_, Rhs, _, _, _) - _) -->
+	pre_modecheck_examine_unify_rhs(Rhs).
+
+:- pred pre_modecheck_examine_unify_rhs(unify_rhs::in, 
+		dead_pred_info::in, dead_pred_info::out) is det.
+
+pre_modecheck_examine_unify_rhs(var(_)) --> [].
+pre_modecheck_examine_unify_rhs(functor(Functor, _)) -->
+	( { Functor = cons(Name, _) } ->
+		dead_pred_info_add_pred_name(Name)
+	;
+		[]
+	).
+pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, Goal)) -->
+	pre_modecheck_examine_goal(Goal).
+
+:- pred dead_pred_info_add_pred_name(sym_name::in, dead_pred_info::in, 
+		dead_pred_info::out) is det.
+
+dead_pred_info_add_pred_name(Name, DeadInfo0, DeadInfo) :-
+	DeadInfo0 = dead_pred_info(ModuleInfo, Q0, Ex, Needed, NeededNames0),
+	( set__member(Name, NeededNames0) ->	
+		DeadInfo = DeadInfo0
+	;
+		module_info_get_predicate_table(ModuleInfo, PredicateTable),
+		set__insert(NeededNames0, Name, NeededNames),
+		( predicate_table_search_sym(PredicateTable, Name, PredIds) ->
+			queue__put_list(Q0, PredIds, Q)
+		;
+			Q = Q0
+		),
+		DeadInfo = dead_pred_info(ModuleInfo, Q, Ex,
+			Needed, NeededNames)
+	).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
