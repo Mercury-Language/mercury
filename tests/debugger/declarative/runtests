@@ -16,7 +16,7 @@ then
 	echo "the tests in the debugger/declarative directory succeeded"
 	echo "mmakeopts=$mmakeopts"
 	rm -f .allres
-#	. ../../shutdown
+	. ../../shutdown
 	exit 0
 else
 	echo "the tests in the debugger/declarative directory failed"
