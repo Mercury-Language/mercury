@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -279,7 +279,7 @@ static	void	output_init_function(const char *func_name,
 			int *num_bunches_ptr, int *num_calls_in_cur_bunch_ptr,
 			const char *suffix, bool only_full_module);
 static	void	add_rl_data(char *data);
-static	int	getline(FILE *file, char *line, int line_max);
+static	int	get_line(FILE *file, char *line, int line_max);
 static	void	*checked_malloc(size_t size);
 
 /*---------------------------------------------------------------------------*/
@@ -732,7 +732,7 @@ process_init_file(const char *filename, int *num_bunches_ptr,
 		return;
 	}
 
-	while (getline(cfile, line, MAXLINE) > 0) {
+	while (get_line(cfile, line, MAXLINE) > 0) {
 	    if (strncmp(line, init_str, init_strlen) == 0) {
 		int	j;
 
@@ -909,7 +909,7 @@ add_rl_data(char *data)
 /*---------------------------------------------------------------------------*/
 
 static int 
-getline(FILE *file, char *line, int line_max)
+get_line(FILE *file, char *line, int line_max)
 {
 	int	c, num_chars, limit;
 
