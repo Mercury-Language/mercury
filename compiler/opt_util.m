@@ -49,6 +49,12 @@
 :- pred opt_util__can_instr_fall_through(instr, bool).
 :- mode opt_util__can_instr_fall_through(in, out) is det.
 
+	% Determine all the labels and code addresses which are referenced
+	% by an instruction.
+
+:- pred opt_util__instr_labels(instr, list(label), list(code_addr)).
+:- mode opt_util__instr_labels(in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -134,6 +140,7 @@ opt_util__can_instr_branch_away(if_val(_, _), yes).
 opt_util__can_instr_branch_away(incr_sp(_), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
 opt_util__can_instr_branch_away(incr_hp(_), no).
+opt_util__can_instr_branch_away(livevals(_), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
 opt_util__can_instr_fall_through(assign(_, _), yes).
@@ -148,6 +155,26 @@ opt_util__can_instr_fall_through(if_val(_, _), yes).
 opt_util__can_instr_fall_through(incr_sp(_), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
 opt_util__can_instr_fall_through(incr_hp(_), yes).
+opt_util__can_instr_fall_through(livevals(_), yes).
+
+	% opt_util__instr_labels(Instr, Labels, CodeAddresses):
+	% Determine all the labels and code addresses which are referenced
+	% by an instruction.
+
+opt_util__instr_labels(label(_), [], []).
+opt_util__instr_labels(call(Target, Ret), [], [Target, Ret]).
+opt_util__instr_labels(goto(Addr), [], [Addr]).
+opt_util__instr_labels(computed_goto(_, Labels), Labels, []).
+opt_util__instr_labels(mkframe(_, _, Addr), [], [Addr]).
+opt_util__instr_labels(modframe(Addr), [], [Addr]).
+opt_util__instr_labels(if_val(_, Addr), [], [Addr]).
+opt_util__instr_labels(comment(_), [], []).
+opt_util__instr_labels(c_code(_), [], []).
+opt_util__instr_labels(incr_hp(_), [], []).
+opt_util__instr_labels(incr_sp(_), [], []).
+opt_util__instr_labels(decr_sp(_), [], []).
+opt_util__instr_labels(assign(_,_), [], []).
+opt_util__instr_labels(livevals(_), [], []).
 
 :- end_module opt_util.
 

@@ -85,6 +85,7 @@
 		;	peephole_jump_opt
 		;	peephole_label_elim
 		;	peephole_value_number
+		;	static_ground_terms
 		;	optimize
 		;	debug
 		;	grade
@@ -145,6 +146,7 @@ option_defaults([
 	peephole_jump_opt	-	bool(yes),
 	peephole_label_elim	-	bool(yes),
 	peephole_value_number	-	bool(no),
+	static_ground_terms	-	bool(yes),
 		% Miscellaneous Options
 	builtin_module		-	string("mercury_builtin"),
 	heap_space		-	int(0),
@@ -230,6 +232,7 @@ long_option("peephole-local",		peephole_local).
 long_option("peephole-jump-opt",	peephole_jump_opt).
 long_option("peephole-label-elim",	peephole_label_elim).
 long_option("peephole-value-number",	peephole_value_number).
+long_option("static-ground-terms",	static_ground_terms).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -297,6 +300,7 @@ options_help -->
 	io__write_string("\t-l, --line-numbers\n"),
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
+
 	io__write_string("\nCode generation options\n"),
 	io__write_string("\t--gc {none, conservative, accurate}\n"),
 	io__write_string("\t--garbage-collection {none, conservative, accurate}\n"),
@@ -319,26 +323,32 @@ options_help -->
 	io__write_string("\t\teach word as tag bits (default: low).\n"),
 	io__write_string("\t--num-tag-bits <n>\n"),
 	io__write_string("\t\tUse <n> tag bits (used with `--tags high').\n"),
-	io__write_string("\t--debug\n"),
-	io__write_string("\t\tEnable debugging.\n"),
-	io__write_string("\t--optimize\n"),
-	io__write_string("\t\tEnable the C compiler's optimizations.\n"),
-	io__write_string("\t--peephole\n"),
-	io__write_string("\t\tEnable the peephole optimisation pass.\n"),
-	io__write_string("\t--peephole-local\n"),
-	io__write_string("\t\tEnable pattern matching optimisations.\n"),
-	io__write_string("\t--peephole-jump-opt\n"),
-	io__write_string("\t\tEliminate jumps to jumps.\n"),
-	io__write_string("\t--peephole-label-elim\n"),
-	io__write_string("\t\tEliminate useless labels\n"),
-	io__write_string("\t--peephole-value-number\n"),
-	io__write_string("\t\tPerform value numbering\n"),
 	io__write_string("\t--cc <compiler-name>\n"),
 	io__write_string("\t\tSpecify which C compiler to use.\n"),
 	io__write_string("\t--c-include-directory <dir>\n"),
 	io__write_string("\t\tSpecify the directory containing the Mercury C header files.\n"),
 	io__write_string("\t--cflags <options>\n"),
 	io__write_string("\t\tSpecify options to be passed to the C compiler\n"),
+	io__write_string("\t--debug\n"),
+	io__write_string("\t\tEnable debugging.\n"),
+
+	io__write_string("\nOptimization Options\n"),
+	io__write_string("\t--no-peephole\n"),
+	io__write_string("\t\tDisable the peephole optimisation pass.\n"),
+	io__write_string("\t--no-peephole-local\n"),
+	io__write_string("\t\tDisable pattern matching optimisations.\n"),
+	io__write_string("\t--no-peephole-jump-opt\n"),
+	io__write_string("\t\tDisable elimination of jumps to jumps.\n"),
+	io__write_string("\t--no-peephole-label-elim\n"),
+	io__write_string("\t\tDisable eliminatation of useless labels\n"),
+	io__write_string("\t--peephole-value-number\n"),
+	io__write_string("\t\tPerform value numbering\n"),
+	io__write_string("\t--no-static-ground-terms\n"),
+	io__write_string("\t\tConstruct all terms at runtime; disable the optimization\n"),
+	io__write_string("\t\tof constructing constant ground terms at compile time\n"),
+	io__write_string("\t\tand storing them as static constants.\n"),
+	io__write_string("\t--optimize\n"),
+	io__write_string("\t\tEnable the C compiler's optimizations.\n"),
 
 	io__write_string("\nMiscellaneous Options:\n"),
 	io__write_string("\t-H <n>, --heap-space <n>\n"),

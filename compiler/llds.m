@@ -94,13 +94,19 @@
 
 :- type rval		--->	lval(lval)
 			;	var(var)
-			;	create(tag, list(rval))
+			;	create(tag, list(maybe(rval)), int)
+				% tag, arguments, label number
+				% The label number is needed for the case when
+				% we can construct the term at compile-time
+				% and just reference the label.
+				% Only constant term create() rvals should
+				% get output, others will get transformed
+				% to incr_hp and mkword, etc.
 			;	mkword(tag, rval)
 			;       field(tag, rval, int)
 			;	const(rval_const)
 			;	unop(unary_op, rval)
-			;	binop(operator, rval, rval)
-			;	unused.
+			;	binop(operator, rval, rval).
 
 :- type unary_op	--->	mktag
 			;	tag
@@ -289,7 +295,7 @@ output_instruction(livevals(LiveVals)) -->
 	->
 		io__write_string("/*\n * Live Lvalues:\n"),
 		output_livevals(LiveVals),
-		io__write_string(" */\n")
+		io__write_string(" */")
 	;
 		[]
 	).
@@ -392,7 +398,48 @@ output_livevals([Lval|Lvals]) -->
 :- pred output_rval_decls(rval, io__state, io__state).
 :- mode output_rval_decls(in, di, uo) is det.
 
-output_rval_decls(_) --> [].	% currently no rvals require declarations
+output_rval_decls(Rval) --> 
+	( { Rval = create(_Tag, ArgVals, Label) } ->
+		output_cons_arg_decls(ArgVals),
+		io__write_string("static const Word mercury_const_"),
+		io__write_int(Label),
+		io__write_string("[] = {\n\t\t"),
+		output_cons_args(ArgVals),
+		io__write_string("};\n\t  ")
+	;
+		[]
+	).
+
+:- pred output_cons_arg_decls(list(maybe(rval)), io__state, io__state).
+:- mode output_cons_arg_decls(in, di, uo) is det.
+
+output_cons_arg_decls([]) --> [].
+output_cons_arg_decls([Arg | Args]) -->
+	( { Arg = yes(Rval) } ->
+		output_rval_decls(Rval)
+	;
+		[]
+	),
+	output_cons_arg_decls(Args).
+
+:- pred output_cons_args(list(maybe(rval)), io__state, io__state).
+:- mode output_cons_args(in, di, uo) is det.
+
+output_cons_args([]) --> [].
+output_cons_args([Arg | Args]) -->
+	( { Arg = yes(Rval) } ->
+		output_rval(Rval)
+	;
+		% `Arg = no' means the argument is uninitialized,
+		% but that would mean the term isn't ground
+		{ error("output_cons_args: missing argument") }
+	),
+	( { Args \= [] } ->
+		io__write_string(",\n\t\t"),
+		output_cons_args(Args)
+	;
+		io__write_string("\n\t  ")
+	).
 
 :- pred output_lval_decls(lval, io__state, io__state).
 :- mode output_lval_decls(in, di, uo) is det.
@@ -410,7 +457,7 @@ output_code_addr_decls(label(_)) --> [].
 output_code_addr_decls(imported(ProcLabel)) -->
 	io__write_string("extern EntryPoint ENTRY("),
 	output_proc_label(ProcLabel),
-	io__write_string(");\n\t\t").
+	io__write_string(");\n\t  ").
 
 :- pred output_goto(code_addr, io__state, io__state).
 :- mode output_goto(in, di, uo) is det.
@@ -625,12 +672,17 @@ output_rval(field(Tag, Rval, Field)) -->
 	io__write_string(")").
 output_rval(lval(Lval)) -->
 	output_lval(Lval).
-output_rval(create(_,_)) -->
-	{ error("Cannot output a create(_,_) expression in code") }.
+output_rval(create(Tag, _Args, LabelNum)) -->
+		% emit a reference to the static constant which we
+		% declared in output_rval_decls.
+	io__write_string("mkword(mktag("),
+	io__write_int(Tag),
+	io__write_string("), "),
+	io__write_string("mercury_const_"),
+	io__write_int(LabelNum),
+	io__write_string(")").
 output_rval(var(_)) -->
 	{ error("Cannot output a var(_) expression in code") }.
-output_rval(unused) -->
-	{ error("Cannot output a `unused' expression in code") }.
 
 :- pred output_unary_op(unary_op, io__state, io__state).
 :- mode output_unary_op(in, di, uo) is det.

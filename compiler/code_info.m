@@ -46,10 +46,6 @@
 :- pred code_info__get_next_label(label, code_info, code_info).
 :- mode code_info__get_next_label(out, in, out) is det.
 
-		% Get the current local label.
-:- pred code_info__get_current_label(label, code_info, code_info).
-:- mode code_info__get_current_label(out, in, out) is det.
-
 		% Get the variables for the current procedure.
 :- pred code_info__get_varset(varset, code_info, code_info).
 :- mode code_info__get_varset(out, in, out) is det.
@@ -347,13 +343,19 @@
 						code_info, code_info).
 :- mode code_info__generate_call_livevals(in, out, in, out) is det.
 
+:- pred code_info__get_label_count(int, code_info, code_info).
+:- mode code_info__get_label_count(out, in, out) is det.
+
+:- pred code_info__set_label_count(int, code_info, code_info).
+:- mode code_info__set_label_count(in, in, out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 :- implementation.
 
 :- import_module string, require, char, list, map, bimap, tree, int.
 :- import_module varset, term, stack.
-:- import_module type_util.
+:- import_module type_util, options.
 
 :- type code_info	--->
 		code_info(
@@ -393,18 +395,20 @@
 
 :- type register_info	==	map(reg, register_stat).
 
-:- type register_stat	--->	unused
-			;	reserved
+:- type register_stat	--->	reserved
 			;	vars(set(var)).
+			% unused registers simply don't occur in the
+			% register_info map.
 
 :- type target_register	--->	none
 			;	target(lval).
 
 :- type variable_info	==	map(var, variable_stat).
 
-:- type variable_stat	--->	unused
-			;	evaluated(set(lval))
+:- type variable_stat	--->	evaluated(set(lval))
 			;	cached(rval, target_register).
+			% unused variables simply don't occur in the
+			% variable_info map.
 
 :- type fall_through	==	stack(failure_cont).
 
@@ -643,7 +647,7 @@ code_info__produce_variable(Var, Code, Rval) -->
 	(
 		{ VarStat = cached(Expr, _Target) },
 		(
-			{ code_info__expr_is_atomic(Expr) }
+			code_info__expr_is_constant(Expr)
 		->
 			{ Code0 = empty },
 			{ Rval0 = Expr }
@@ -685,9 +689,11 @@ code_info__flush_variable(Var, Code) -->
 			%	there is no other value that _requires_
 			%	this register.
 		(
-			{ TargetReg = reg(Reg) }
+			{ TargetReg = reg(Reg) },
+			{ Code \= empty }
 		->
-			code_info__add_variable_to_register(Var, Reg)
+			{ set__singleton_set(Vars, Var) },
+			code_info__set_register_contents(Reg, vars(Vars))
 		;
 			{ true }
 		),
@@ -698,10 +704,49 @@ code_info__flush_variable(Var, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__expr_is_atomic(rval).
-:- mode code_info__expr_is_atomic(in) is semidet.
+	% Succeed if the expression is a constant, i.e. something
+	% that can be represented just by an rval which doesn't require
+	% any code to be generated.  Note that variables whose value is
+	% cached can be constants.  Note also that create() expressions whose
+	% arguments are constants are themselves constants -- unless the
+	% --static-ground-terms option was disabled.
 
-code_info__expr_is_atomic(const(_)).
+:- pred code_info__expr_is_constant(rval, code_info, code_info).
+:- mode code_info__expr_is_constant(in, in, out) is semidet.
+
+code_info__expr_is_constant(const(_)) --> [].
+
+code_info__expr_is_constant(unop(_Op, Expr)) -->
+	code_info__expr_is_constant(Expr).
+
+code_info__expr_is_constant(binop(_Op, Expr1, Expr2)) -->
+	code_info__expr_is_constant(Expr1),
+	code_info__expr_is_constant(Expr2).
+
+code_info__expr_is_constant(mkword(_Tag, Expr)) -->
+	code_info__expr_is_constant(Expr).
+
+code_info__expr_is_constant(create(_Tag, Args, _Label)) -->
+	code_info__get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, static_ground_terms, yes) },
+	code_info__args_are_constant(Args).
+
+code_info__expr_is_constant(field(_Tag, Rval, _Num)) -->
+	code_info__expr_is_constant(Rval).
+
+code_info__expr_is_constant(var(Var)) -->
+	code_info__get_variables(Variables),
+	{ map__search(Variables, Var, cached(Expr, _)) },
+	code_info__expr_is_constant(Expr).
+
+:- pred code_info__args_are_constant(list(maybe(rval)), 
+					code_info, code_info).
+:- mode code_info__args_are_constant(in, in, out) is semidet.
+
+code_info__args_are_constant([]) --> [].
+code_info__args_are_constant([yes(Arg) | Args]) -->
+	code_info__expr_is_constant(Arg),
+	code_info__args_are_constant(Args).
 
 %---------------------------------------------------------------------------%
 
@@ -710,6 +755,15 @@ code_info__generate_expression(lval(Lval), TargetReg, Code) -->
 		{ Lval = TargetReg }
 	->
 		{ Code = empty }
+	;
+		{ Lval = field(Tag, StructLval, FieldNum) }
+	->
+		code_info__generate_expression_vars(lval(StructLval), Rval, CodeA),
+		{ CodeB = node([
+			assign(TargetReg, field(Tag, Rval, FieldNum))
+				- "Copy field"
+		]) },
+		{ Code = tree(CodeA, CodeB) }
 	;
 		{ Code = node([
 			assign(TargetReg, lval(Lval)) - "Copy lvalue"
@@ -720,8 +774,8 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 	(
 		{ VarStat = evaluated(Lvals0) }
 	->
+		{ code_info__select_lvalue(Lvals0, TargetReg, Lval0) },
 		(
-			{ code_info__select_lvalue(Lvals0, TargetReg, Lval0) },
 			{ Lval0 \= TargetReg }
 		->
 			code_info__make_assignment_comment(Var,
@@ -762,29 +816,38 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 			% Assemble the code
 		{ Code = Code0 }
 	;
-		% { VarStat = unused }
-		{ Code = empty }
+		{ error("invalid variable status") }
 	).
-code_info__generate_expression(create(Tag, Args), TargetReg, Code) -->
+code_info__generate_expression(create(Tag, Args, Label), TargetReg, Code) -->
 	{ list__length(Args, Arity) }, % includes possible tag word
 	(
-		{ Arity > 0 }
+		{ Arity = 0 }
 	->
-		{ CodeA = node([
-			assign(TargetReg, lval(hp)) - "Get the heap memory",
-			incr_hp(Arity) - "Allocate heap space",
-			assign(TargetReg, mkword(Tag, lval(TargetReg))) -
-							"Tag the pointer"
-		]) }
-	;
-		{ CodeA = node([
+		{ Code = node([
 			assign(TargetReg,
 				mkword(	Tag, const(int_const(0)))) -
 					"Assign a constant"
 		]) }
-	),
-	code_info__generate_cons_args(TargetReg, Tag, 0, Args, CodeB),
-	{ Code = tree(CodeA, CodeB) }.
+	;
+		code_info__get_globals(Globals),
+		{ globals__lookup_bool_option(Globals, static_ground_terms,
+			yes) },
+		code_info__args_are_constant(Args)
+	->
+		code_info__generate_expression_cons_vars(Args, Args1, CodeA),
+		{ CodeB = node([
+			assign(TargetReg, create(Tag, Args1, Label))
+				- "Assign a constant ground term"
+		]) },
+		{ Code = tree(CodeA, CodeB) }
+	;
+		{ CodeA = node([
+			assign(TargetReg, mkword(Tag, lval(hp))) - "",
+			incr_hp(Arity) - "Allocate heap space & tag the pointer"
+		]) },
+		code_info__generate_cons_args(TargetReg, Tag, 0, Args, CodeB),
+		{ Code = tree(CodeA, CodeB) }
+	).
 code_info__generate_expression(mkword(Tag, Rval0), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
 	{ Code1 = node([
@@ -819,12 +882,9 @@ code_info__generate_expression(binop(Op, L0, R0), TargetReg, Code) -->
 	{ Code2 = tree(Code1, ThisCode) },
 	{ Code = tree(Code0, Code2) }.
 
-	% unused - do nothing.
-code_info__generate_expression(unused, _, empty) --> [].
-
 %---------------------------------------------------------------------------%
 
-:- pred code_info__generate_cons_args(lval, int, int, list(rval),
+:- pred code_info__generate_cons_args(lval, int, int, list(maybe(rval)),
 				code_tree, code_info, code_info).
 :- mode code_info__generate_cons_args(in, in, in, in, out, in, out) is det.
 
@@ -837,7 +897,14 @@ code_info__generate_expression(unused, _, empty) --> [].
 
 code_info__generate_cons_args(_Reg, _Tag, _Field0, [], empty) --> [].
 code_info__generate_cons_args(Reg, Tag, Field0, [Arg|Args], Code) -->
-	code_info__generate_expression(Arg, field(Tag, Reg, Field0), Code0),
+	(
+		{ Arg = yes(Rval) }
+	->
+		code_info__generate_expression(Rval, field(Tag, Reg, Field0),
+			Code0)
+	;
+		{ Code0 = empty }
+	),
 	{ Field1 is Field0 + 1 },
 	code_info__generate_cons_args(Reg, Tag, Field1, Args, Code1),
 	{ Code = tree(Code0, Code1) }.
@@ -849,36 +916,13 @@ code_info__generate_cons_args(Reg, Tag, Field0, [Arg|Args], Code) -->
 :- mode code_info__generate_expression_vars(in, out, out, in, out) is det.
 
 code_info__generate_expression_vars(lval(Lval), lval(Lval), empty) --> [].
-code_info__generate_expression_vars(var(Var), Result, Code) -->
-	code_info__get_variable(Var, VarStat),
-	(
-		{ VarStat = evaluated(Lvals0) },
-		{ set__to_sorted_list(Lvals0, [Lval0|_]) }
-	->
-		{ Result = lval(Lval0) },
-		{ Code = empty }
-	;
-		{ VarStat = cached(Exprn, Target) }
-	->
-		code_info__target_to_lvalue(Target, Exprn, Var, TargetReg),
-		code_info__generate_expression(Exprn, TargetReg, Code),
-		(
-			{ TargetReg = reg(Reg) }
-		->
-			code_info__add_variable_to_register(Var, Reg)
-		;
-			{ true }
-		),
-		code_info__add_lvalue_to_variable(TargetReg, Var),
-		{ Result = lval(TargetReg) }
-	;
-		% { VarStat = unused },
-		{ Result = unused },
-		{ Code = empty }
-	).
-code_info__generate_expression_vars(create(Tag, Rvals0), create(Tag, Rvals),
-								Code) -->
-	code_info__generate_expression_vars_2(Rvals0, Rvals, Code).
+code_info__generate_expression_vars(var(Var), Rval, Code) -->
+	code_info__produce_variable(Var, CodeA, Rval0),
+	code_info__generate_expression_vars(Rval0, Rval, CodeB),
+	{ Code = tree(CodeA, CodeB) }.
+code_info__generate_expression_vars(create(Tag, MaybeRvals0, Label),
+				create(Tag, MaybeRvals, Label), Code) -->
+	code_info__generate_expression_cons_vars(MaybeRvals0, MaybeRvals, Code).
 code_info__generate_expression_vars(mkword(Tag, Rval0), mkword(Tag, Rval),
 								Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
@@ -894,7 +938,6 @@ code_info__generate_expression_vars(binop(Op, L0, R0),
 	code_info__generate_expression_vars(L0, L, Code0),
 	code_info__generate_expression_vars(R0, R, Code1),
 	{ Code = tree(Code0, Code1) }.
-code_info__generate_expression_vars(unused, unused, empty) --> [].
 
 %---------------------------------------------------------------------------%
 
@@ -906,6 +949,26 @@ code_info__generate_expression_vars_2([], [], empty) --> [].
 code_info__generate_expression_vars_2([R0|Rs0], [R|Rs], Code) -->
 	code_info__generate_expression_vars(R0, R, Code0),
 	code_info__generate_expression_vars_2(Rs0, Rs, Code1),
+	{ Code = tree(Code0, Code1) }.
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__generate_expression_cons_vars(list(maybe(rval)),
+			list(maybe(rval)), code_tree, code_info, code_info).
+:- mode code_info__generate_expression_cons_vars(in, out, out, in, out) is det.
+
+code_info__generate_expression_cons_vars([], [], empty) --> [].
+code_info__generate_expression_cons_vars([R0|Rs0], [R|Rs], Code) -->
+	(
+		{ R0 = yes(Rval0) }
+	->
+		code_info__generate_expression_vars(Rval0, Rval, Code0),
+		{ R = yes(Rval) }
+	;
+		{ R = R0 },
+		{ Code0 = empty }
+	),
+	code_info__generate_expression_cons_vars(Rs0, Rs, Code1),
 	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%
@@ -960,21 +1023,7 @@ code_info__lval_is_free_reg(Lval) -->
 		{ Lval = reg(Reg) }
 	->
 		code_info__get_registers(Registers),
-		(
-			{ map__search(Registers, Reg, RegStat) }
-		->
-			(
-				{ RegStat = vars(_) }
-			->
-				{ fail }
-			;
-				{ RegStat = reserved }
-			->
-				{ fail }
-			)
-		;
-			{ true }
-		)
+		{ \+ map__contains(Registers, Reg) }
 	;
 		{ true }
 	).
@@ -1062,14 +1111,8 @@ code_info__setup_call([Var - arg_info(ArgLoc, Mode)|Vars], Args, CallDirection,
 	->
 		{ code_util__arg_loc_to_register(ArgLoc, Reg) },
 		(
-			code_info__variable_register(Var, Lval0),
-			{ Lval0 = reg(Reg0) },
-			{ Reg \= Reg0 }
-		->
-			code_info__shuffle_register(Var, Args, Reg, CodeA)
-		;
 			code_info__variable_register(Var, Lval1),
-			{ Lval1 = reg(_) }
+			{ Lval1 = reg(Reg) }
 		->
 			{ CodeA = empty }
 		;
@@ -1114,16 +1157,21 @@ code_info__shuffle_register(Var, Args, Reg, Code) -->
 
 code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 	(
-		{ Contents = unused }
-	->
-		{ Code = empty }
-	;
 		{ Contents = reserved }
 	->
 		{ error("Cannot shuffle a reserved register.") }
 	;
-		{ Contents = vars(Vars) },
-		code_info__must_be_swapped(Vars, reg(Reg))
+		(
+			{ Contents = vars(Vars) },
+			code_info__must_be_swapped(Vars, Args, reg(Reg))
+		;
+		% XXX as a temporary hack, due to bugs elsewhere,
+		% we need to swap out *any* argument, even if it's
+		% not live.
+			{ Contents = vars(Vars) },
+			{ set__member(Var, Vars) },
+			{ list__member(Var, Args) }
+		)
 	->
 			% get a spare register
 			% XXX we should make a more intelligent choice
@@ -1131,7 +1179,8 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 			% Update the register info -
 			% remove the entry for the old register,
 			% and set the entry for the new register.
-		code_info__add_variables_to_register(Vars, NewReg),
+		code_info__set_register_contents(NewReg, Contents),
+		code_info__unset_register_contents(Reg),
 			% Update the variable info -
 			% Set the location of the variable to the
 			% new register.
@@ -1142,43 +1191,7 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 				"Swap live variable to a new register"
 		]) }
 	;
-		{ Contents = vars(Vars1) },
-		{ set__to_sorted_list(Vars1, Vars2) },
-		{ code_info__variables_are_args(Vars2, Args) }
-	->
-			% get a spare register
-			% XXX we should make a more intelligent choice
-		code_info__get_free_register(NewReg),
-			% Update the register info -
-			% remove the entry for the old register,
-			% and set the entry for the new register.
-		code_info__add_variables_to_register(Vars1, NewReg),
-			% Update the variable info -
-			% Set the location of the variable to the
-			% new register.
-		code_info__remap_variables(Vars1, reg(Reg), reg(NewReg)),
-			% Generate the code fragment.
-		{ Code = node([
-			assign(reg(NewReg), lval(reg(Reg))) -
-				"Swap arg variable to a new register"
-		]) }
-	;
 		{ Code = empty }
-	).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__variables_are_args(list(var), list(var)).
-:- mode code_info__variables_are_args(in, in) is semidet.
-
-code_info__variables_are_args([], _Args) :- fail.
-code_info__variables_are_args([Var|Vars], Args) :-
-	(
-		list__member(Var, Args)
-	->
-		true
-	;
-		code_info__variables_are_args(Vars, Args)
 	).
 
 %---------------------------------------------------------------------------%
@@ -1186,10 +1199,6 @@ code_info__variables_are_args([Var|Vars], Args) :-
 code_info__save_variable_on_stack(Var, Code) -->
 	code_info__get_variable(Var, VarStat),
 	(
-		{ VarStat = unused }
-	->
-		{ Code = empty }
-	;
 		{ VarStat = evaluated(_) }
 	->
 		code_info__save_variable_in_slot(Var, Code)
@@ -1231,15 +1240,6 @@ code_info__get_next_label(Label) -->
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Label) },
 	code_info__set_label_count(N).
-
-%---------------------------------------------------------------------------%
-
-code_info__get_current_label(Label) -->
-	code_info__get_pred_id(PredId),
-	code_info__get_proc_id(ProcId),
-	code_info__get_label_count(N),
-	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Label) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1438,8 +1438,17 @@ code_info__variable_is_live(Var) -->
 	code_info__get_liveness_info(Liveness),
 	{ set__member(Var, Liveness) }.
 
-:- pred code_info__must_be_swapped(set(var), lval, code_info, code_info).
-:- mode code_info__must_be_swapped(in, in, in, out) is semidet.
+:- pred code_info__must_be_swapped(set(var), list(var), lval, code_info, code_info).
+:- mode code_info__must_be_swapped(in, in, in, in, out) is semidet.
+
+code_info__must_be_swapped(Vars, Args, Lval) -->
+	code_info__get_liveness_info(Liveness),
+	code_info__get_variables(Variables),
+	{ code_info__var_must_be_swapped(Vars, Args, Liveness, Variables, Lval) }.
+
+:- pred code_info__var_must_be_swapped(set(var), list(var), liveness_info,
+					variable_info, lval).
+:- mode code_info__var_must_be_swapped(in, in, in, in, in) is semidet.
 
 	% The contents of a location must be swapped if any
 	% of the variables in it must be swapped.
@@ -1448,24 +1457,14 @@ code_info__variable_is_live(Var) -->
 	% swapped, since we know that the variables must all be
 	% aliased since they share the same storage location.)
 	%
-	% It might be a good idea to use quantification and local
-	% nondeterminism rather than an explicit recursive loop.
-
-code_info__must_be_swapped(Vars, Lval) -->
-	code_info__get_liveness_info(Liveness),
-	code_info__get_variables(Variables),
-	{ code_info__var_must_be_swapped(Vars, Liveness, Variables, Lval) }.
-
-:- pred code_info__var_must_be_swapped(set(var), liveness_info,
-					variable_info, lval).
-:- mode code_info__var_must_be_swapped(in, in, in, in) is semidet.
-
 	% A variable must be swapped iff it is live and
-	% it is not stored anywhere else.
+	% it is not stored anywhere else.  A variable is live
+	% if it is in the livevars or it is one of the remaining
+	% arguments for the current call.
 
-code_info__var_must_be_swapped(Vars, Liveness, Variables, ThisLval) :-
+code_info__var_must_be_swapped(Vars, Args, Liveness, Variables, ThisLval) :-
 	set__member(V, Vars),
-	set__member(V, Liveness),
+	( set__member(V, Liveness) ; list__member(V, Args) ),
 	map__search(Variables, V, evaluated(Lvals)),
 	\+ (set__member(Lval, Lvals), Lval \= ThisLval).
 
@@ -1818,7 +1817,6 @@ code_info__reduce_variables_and_registers_2([Var|Vars], Variables0) -->
 						code_info, code_info).
 :- mode code_info__variable_dependencies(in, in, out, in, out) is det.
 
-code_info__variable_dependencies(unused, V, V) --> [].
 code_info__variable_dependencies(evaluated(_Lvals), V, V) --> [].
 code_info__variable_dependencies(cached(Exprn, _), V0, V) -->
 	code_info__expression_dependencies(Exprn, V0, V).
@@ -1834,6 +1832,22 @@ code_info__expressions_dependencies([], V, V) --> [].
 code_info__expressions_dependencies([R|Rs], V0, V) -->
 	code_info__expression_dependencies(R, V0, V1),
 	code_info__expressions_dependencies(Rs, V1, V).
+
+:- pred code_info__expression_cons_dependencies(list(maybe(rval)),
+						variable_info, variable_info,
+						code_info, code_info).
+:- mode code_info__expression_cons_dependencies(in, in, out, in, out) is det.
+
+code_info__expression_cons_dependencies([], V, V) --> [].
+code_info__expression_cons_dependencies([R|Rs], V0, V) -->
+	(
+		{ R = yes(Rval) }
+	->
+		code_info__expression_dependencies(Rval, V0, V1)
+	;
+		{ V1 = V0 }
+	),
+	code_info__expression_cons_dependencies(Rs, V1, V).
 
 :- pred code_info__expression_dependencies(rval,
 				variable_info, variable_info,
@@ -1851,8 +1865,8 @@ code_info__expression_dependencies(var(Var0), V0, V) -->
 	;
 		{ error("Live variable not found!") }
 	).
-code_info__expression_dependencies(create(_Tag, Rvals), V0, V) -->
-	code_info__expressions_dependencies(Rvals, V0, V).
+code_info__expression_dependencies(create(_Tag, MaybeRvals, _Label), V0, V) -->
+	code_info__expression_cons_dependencies(MaybeRvals, V0, V).
 code_info__expression_dependencies(mkword(_Tag, Rval), V0, V) -->
 	code_info__expression_dependencies(Rval, V0, V).
 code_info__expression_dependencies(unop(_Op, Rval), V0, V) -->
@@ -1863,7 +1877,6 @@ code_info__expression_dependencies(field(_, Rval,_), V0, V) -->
 code_info__expression_dependencies(binop(_, E0, E1), V0, V) -->
 	code_info__expression_dependencies(E0, V0, V1),
 	code_info__expression_dependencies(E1, V1, V).
-code_info__expression_dependencies(unused, V, V) --> [].
 
 %---------------------------------------------------------------------------%
 
@@ -1929,6 +1942,22 @@ code_info__reenter_registers(Var, [L|Ls]) -->
 	code_info__reenter_registers(Var, Ls).
 
 %---------------------------------------------------------------------------%
+
+:- pred code_info__set_register_contents(reg, register_stat, code_info, code_info).
+:- mode code_info__set_register_contents(in, in, in, out) is det.
+
+code_info__set_register_contents(Reg, Contents) -->
+	code_info__get_registers(Registers0),
+	{ map__set(Registers0, Reg, Contents, Registers) },
+	code_info__set_registers(Registers).
+
+:- pred code_info__unset_register_contents(reg, code_info, code_info).
+:- mode code_info__unset_register_contents(in, in, out) is det.
+
+code_info__unset_register_contents(Reg) -->
+	code_info__get_registers(Registers0),
+	{ map__delete(Registers0, Reg, Registers) },
+	code_info__set_registers(Registers).
 
 :- pred code_info__add_variable_to_register(var, reg, code_info, code_info).
 :- mode code_info__add_variable_to_register(in, in, in, out) is det.
@@ -2065,6 +2094,7 @@ code_info__remap_variables_2([Var|Vars], Lval0, Lval) -->
 	code_info__remap_variable(Var, Lval0, Lval),
 	code_info__remap_variables_2(Vars, Lval0, Lval).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 code_info__maybe_save_hp(Maybe, Code) -->
@@ -2313,21 +2343,37 @@ code_info__current_store_map(Map) -->
 
 %---------------------------------------------------------------------------%
 
+	% XXX generate_livevals is broken
+
 code_info__generate_call_livevals(ArgVars, Code) -->
-	code_info__get_live_variables(LiveVars),
-	{ set__list_to_set(ArgVars, VarSet0) },
-	{ set__list_to_set(LiveVars, VarSet1) },
-	{ set__union(VarSet0, VarSet1, VarSet) },
-	{ set__to_sorted_list(VarSet, VarList) },
-	code_info__generate_livevals_2(VarList, LiveVals),
-	{ Code = node([livevals(LiveVals) - ""]) }.
+	code_info__get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, peephole_value_number,
+		ValueNumber) },
+	( { ValueNumber = no } ->
+		{ Code = empty }
+	;
+		code_info__get_live_variables(LiveVars),
+		{ set__list_to_set(ArgVars, VarSet0) },
+		{ set__list_to_set(LiveVars, VarSet1) },
+		{ set__union(VarSet0, VarSet1, VarSet) },
+		{ set__to_sorted_list(VarSet, VarList) },
+		code_info__generate_livevals_2(VarList, LiveVals),
+		{ Code = node([livevals(LiveVals) - ""]) }
+	).
 
 %---------------------------------------------------------------------------%
 
 code_info__generate_livevals(Code) -->
-	code_info__get_live_variables(LiveVars),
-	code_info__generate_livevals_2(LiveVars, LiveVals),
-	{ Code = node([livevals(LiveVals) - ""]) }.
+	code_info__get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, peephole_value_number,
+		ValueNumber) },
+	( { ValueNumber = no } ->
+		{ Code = empty }
+	;
+		code_info__get_live_variables(LiveVars),
+		code_info__generate_livevals_2(LiveVars, LiveVals),
+		{ Code = node([livevals(LiveVals) - ""]) }
+	).
 
 :- pred code_info__generate_livevals_2(list(var), list(lval),
 						code_info, code_info).
@@ -2366,12 +2412,6 @@ code_info__request_unify(TypeId, UniMode) -->
 
 :- pred code_info__set_stackslot_count(int, code_info, code_info).
 :- mode code_info__set_stackslot_count(in, in, out) is det.
-
-:- pred code_info__get_label_count(int, code_info, code_info).
-:- mode code_info__get_label_count(out, in, out) is det.
-
-:- pred code_info__set_label_count(int, code_info, code_info).
-:- mode code_info__set_label_count(in, in, out) is det.
 
 :- pred code_info__get_registers(register_info, code_info, code_info).
 :- mode code_info__get_registers(out, in, out) is det.

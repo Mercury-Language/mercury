@@ -718,7 +718,8 @@ type_assign_var_has_type(TypeAssign0, HeadTypeParams, VarId, Type,
 	
 :- pred typecheck_term_has_type_list(list(term), list(type), int,
 					type_info, type_info).
-:- mode typecheck_term_has_type_list(in, in, in, type_info_di, type_info_uo)		is det.
+:- mode typecheck_term_has_type_list(in, in, in, type_info_di, type_info_uo)
+	is det.
 
 typecheck_term_has_type_list([], [_|_], _) -->
 	{ error("typecheck_term_has_type_list: length mis-match") }.
@@ -1394,8 +1395,8 @@ type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
 		)
 	).
 
-type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams, Bindings0,
-		Bindings) :-
+type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams,
+		Bindings0, Bindings) :-
 	( 
 		map__search(Bindings0, X, BindingOfX)
 	->
@@ -1407,8 +1408,8 @@ type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams, Bindings0
 		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
 	).
 
-type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams, Bindings0,
-		Bindings) :-
+type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams,
+		Bindings0, Bindings) :-
 	( 
 		map__search(Bindings0, X, BindingOfX)
 	->

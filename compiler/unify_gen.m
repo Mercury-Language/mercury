@@ -136,8 +136,7 @@ unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
 
 	% A construction unification consists of a heap-increment to
 	% create a term, and a series of [optional] assignments to
-	% instansiate the arguments of that term. XXX Need to handle
-	% strings, etc.
+	% instantiate the arguments of that term.
 
 	% The current implementation generates the construction
 	% in an eager manner.
@@ -161,28 +160,35 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 	;
 		{ Tag = simple_tag(SimpleTag) }
 	->
-		{ unify_gen__generate_cons_args(Args, RVals) },
-		code_info__cache_expression(Var, create(SimpleTag, RVals)),
-		code_info__flush_variable(Var, CodeA),
-		code_info__get_variable_register(Var, Lval),
-		{ unify_gen__make_fields_and_argvars(Args, Lval, 0, SimpleTag,
-							Fields, ArgVars) },
-		unify_gen__generate_det_unify_args(Fields, ArgVars,
-								Modes, CodeB),
-		{ Code = tree(CodeA, CodeB) }
+		code_info__get_module_info(ModuleInfo),
+		code_info__get_label_count(LabelCount),
+		{ LabelCount1 is LabelCount + 1 },
+		code_info__set_label_count(LabelCount1),
+		{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes,
+			RVals) },
+		code_info__cache_expression(Var, create(SimpleTag, RVals,
+						LabelCount1)),
+			% we need to flush the expression immediately,
+			% since the expression cache doesn't handle the
+			% dependencies in create expressions
+		code_info__produce_variable(Var, Code, _)
 	;
 		{ Tag = complicated_tag(Bits0, Num0) }
 	->
-		{ unify_gen__generate_cons_args(Args, RVals0) },
-		{ RVals = [const(int_const(Num0)) | RVals0] },
-		code_info__cache_expression(Var, create(Bits0, RVals)),
-		code_info__flush_variable(Var, CodeA),
-		code_info__get_variable_register(Var, Lval),
-		{ unify_gen__make_fields_and_argvars(Args, Lval, 1,
-						Bits0, Fields, ArgVars) },
-		unify_gen__generate_det_unify_args(Fields, ArgVars,
-								Modes, CodeB),
-		{ Code = tree(CodeA, CodeB) }
+		code_info__get_module_info(ModuleInfo),
+		code_info__get_label_count(LabelCount),
+		{ LabelCount1 is LabelCount + 1 },
+		code_info__set_label_count(LabelCount1),
+		{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes,
+			RVals0) },
+			% the first field holds the secondary tag
+		{ RVals = [yes(const(int_const(Num0))) | RVals0] },
+		code_info__cache_expression(Var, create(Bits0, RVals,
+						LabelCount1)),
+			% we need to flush the expression immediately,
+			% since the expression cache doesn't handle the
+			% dependencies in create expressions
+		code_info__produce_variable(Var, Code, _)
 	;
 		{ Tag = complicated_constant_tag(Bits1, Num1) }
 	->
@@ -193,16 +199,37 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 		{ error("Unrecognised tag type in construction") }
 	).
 
-:- pred unify_gen__generate_cons_args(list(var), list(rval)).
-:- mode unify_gen__generate_cons_args(in, out) is det.
+:- pred unify_gen__generate_cons_args(list(var), module_info, list(uni_mode),
+					list(maybe(rval))).
+:- mode unify_gen__generate_cons_args(in, in, in, out) is det.
 
-	% Create a list of rvals `unused' for each of the arguments
-	% for a construction unification. When lazy constructions
-	% are implemented, these fields will contain var(Var).
+unify_gen__generate_cons_args(Vars, ModuleInfo, Modes, Args) :-
+	( unify_gen__generate_cons_args_2(Vars, ModuleInfo, Modes, Args0) ->
+		Args = Args0
+	;
+		error("unify_gen__generate_cons_args: length mismatch")
+	).
+		
+	% Create a list of maybe(rval) for the arguments
+	% for a construction unification.  For each argument which
+	% is input to the construction unification, we produce `yes(var(Var))',
+	% but if the argument is free, we just produce `no', meaning don't
+	% generate an assignment to that field.
 
-unify_gen__generate_cons_args([], []).
-unify_gen__generate_cons_args([_Var|Vars], [unused|RVals]) :-
-	unify_gen__generate_cons_args(Vars, RVals).
+:- pred unify_gen__generate_cons_args_2(list(var), module_info, list(uni_mode),
+					list(maybe(rval))).
+:- mode unify_gen__generate_cons_args_2(in, in, in, out) is semidet.
+
+unify_gen__generate_cons_args_2([], _, [], []).
+unify_gen__generate_cons_args_2([Var|Vars], ModuleInfo, [UniMode | UniModes],
+			[Arg|RVals]) :-
+	UniMode = ((_LI - RI) -> (_LF - RF)),
+	( mode_is_input(ModuleInfo, (RI -> RF)) ->
+		Arg = yes(var(Var))
+	;
+		Arg = no
+	),
+	unify_gen__generate_cons_args_2(Vars, ModuleInfo, UniModes, RVals).
 
 %---------------------------------------------------------------------------%
 
