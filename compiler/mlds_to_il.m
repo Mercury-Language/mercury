@@ -3397,13 +3397,15 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 				; Name = "heap_pointer", Arity = 0
 				; Name = "ref", Arity = 1
 				)
-			)
+			),
+			CodeString = "__cpp_code"
 		;
 			DataName = var(_),
-			LibModuleName0 = "private_builtin"
+			LibModuleName0 = "private_builtin",
+			CodeString = "__csharp_code"
 		)
 	->
-		string__append(LibModuleName0, "__cpp_code",
+		string__append(LibModuleName0, CodeString,
 			LibModuleName),
 		ModuleName = mercury_module_name_to_mlds(
 			qualified(qualified(unqualified("mercury"),
