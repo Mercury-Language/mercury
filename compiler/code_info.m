@@ -1182,19 +1182,7 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 		{ error("Cannot shuffle a reserved register.") }
 	;
 		{ Contents = vars(Vars) },
-		(
-			code_info__must_be_swapped(Vars, Args, reg(Reg))
-		;
-		% XXX as a temporary hack, due to bugs elsewhere,
-		% we need to swap out *any* argument, even if it's
-		% not live.
-		% YYY this is not quite the case - it is possible
-		% for a value to be in a register, be needed, and
-		% NOT be live. Eg, a parameter to a call not yet
-		% positioned, etc.
-			{ set__member(Var, Vars) },
-			{ list__member(Var, Args) }
-		)
+		code_info__must_be_swapped(Vars, Args, reg(Reg))
 	->
 			% get a spare register
 			% XXX we should make a more intelligent choice
@@ -1508,7 +1496,20 @@ code_info__variable_is_live(Var) -->
 code_info__must_be_swapped(Vars, Args, Lval) -->
 	code_info__get_liveness_info(Liveness),
 	code_info__get_variables(Variables),
-	{ code_info__var_must_be_swapped(Vars, Args, Liveness, Variables, Lval) }.
+	{ 
+		code_info__var_must_be_swapped(Vars, Args, Liveness,
+			Variables, Lval)
+		;
+		% XXX as a temporary hack, due to bugs elsewhere,
+		% we need to swap out *any* argument, even if it's
+		% not live.
+		% YYY this is not quite the case - it is possible
+		% for a value to be in a register, be needed, and
+		% NOT be live. Eg, a parameter to a call not yet
+		% positioned, etc.
+			set__member(Var, Vars),
+			list__member(Var, Args)
+	}.
 
 :- pred code_info__var_must_be_swapped(set(var), list(var), liveness_info,
 					variable_info, lval).
