@@ -735,19 +735,19 @@ deref_subterm_2(Univ, Path, SubUniv) :-
 		Path = [Dir | Dirs],
 		(
 			Dir = child_num(N),
-		(
-			TypeCtor = type_ctor(univ_type(Univ)),
-			type_ctor_name(TypeCtor) = "array",
-			type_ctor_module_name(TypeCtor) = "array"
-		->
-				% The first element of an array is at
-				% index zero.
-			ArgN = argument(univ_value(Univ), N)
-		;
-			% The first argument of a non-array is numbered
-			% argument 1 by the user but argument 0 by
-			% std_util:argument.
-			ArgN = argument(univ_value(Univ), N - 1)
+			(
+				TypeCtor = type_ctor(univ_type(Univ)),
+				type_ctor_name(TypeCtor) = "array",
+				type_ctor_module_name(TypeCtor) = "array"
+			->
+					% The first element of an array is at
+					% index zero.
+				ArgN = argument(univ_value(Univ), N)
+			;
+				% The first argument of a non-array is numbered
+				% argument 1 by the user but argument 0 by
+				% std_util:argument.
+				ArgN = argument(univ_value(Univ), N - 1)
 			)
 		;
 			Dir = child_name(Name),
