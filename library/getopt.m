@@ -24,16 +24,17 @@
 % (An option can have as many names as you like, long or short.)
 % You must provide a predicate `option_default(Option, OptionData)'
 % which specifies both the type and the default value for every option.
-% We support four different option types: bool, int, string, and
+% We support five different option types: bool, int, string, maybe_string
+% (which have either a value of `no' or `yes(string)'), and
 % "accumulating" (which accumulates a list of strings).
-% For the first three option types, if there are multiple occurrences
+% For the first four option types, if there are multiple occurrences
 % of the same option on the command-line, then the last (right-most)
 % occurrence will take precedence.  For "accumulating" options,
 % multiple occurrences will be appended together into a list.
-% Single-character boolean options can be negated by following them
-% with another `-', e.g. `-x-' will negate the `-x' option.
-% Long boolean options can be negated by preceding them with `--no-',
-% e.g. `--no-foo' will negate the `--foo' option.
+% Single-character boolean or maybe-string options can be negated by
+% following them with another `-', e.g. `-x-' will negate the `-x' option.
+% Long boolean or maybe-string options can be negated by preceding them with
+% `--no-', e.g. `--no-foo' will negate the `--foo' option.
 
 :- module getopt.
 :- interface.
@@ -113,6 +114,7 @@
 	--->	bool(bool)
 	;	int(int)
 	;	string(string)
+	;	maybe_string(maybe(string))
 	;	accumulating(list(string))
 	;	special
 	;	bool_special
@@ -173,7 +175,7 @@ getopt__process_arguments([Option | Args0], Args, OptionOps,
 		getopt__get_long_options(OptionOps, LongOptionPred),
 		( call(LongOptionPred, LongOption, Flag) ->
 			string__append("--", LongOption, OptName),
-			process_negated_bool_option(OptName, Flag,
+			process_negated_option(OptName, Flag,
 				OptionOps, OptionTable0, Result1),
 			( Result1 = ok(OptionTable1) ->
 				getopt__process_arguments(Args0, Args,
@@ -227,7 +229,7 @@ getopt__process_arguments([Option | Args0], Args, OptionOps,
 			( call(ShortOptionPred, SingleShortOpt, Flag) ->
 				string__from_char_list(['-', SingleShortOpt],
 					OptName),
-				process_negated_bool_option(OptName, Flag,
+				process_negated_option(OptName, Flag,
 					OptionOps, OptionTable0, Result1),
 				( Result1 = ok(OptionTable1) ->
 					getopt__process_arguments(Args0, Args,
@@ -407,6 +409,15 @@ getopt__process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
 	;
 		error("string argument expected in getopt__process_option")
 	).
+getopt__process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
+		OptionTable0, Result) :-
+	( MaybeArg = yes(Arg) ->
+		map__set(OptionTable0, Flag, maybe_string(yes(Arg)),
+				OptionTable),
+		Result = ok(OptionTable)
+	;
+		error("string argument expected in getopt__process_option")
+	).
 getopt__process_option(accumulating(List0), _Option, Flag, MaybeArg, _OptionOps,
 		OptionTable0, Result) :-
 	( MaybeArg = yes(Arg) ->
@@ -454,14 +465,18 @@ getopt__process_option(string_special, Option, Flag, MaybeArg, OptionOps,
 		error("string_special argument expected in getopt__process_option")
 	).
 
-:- pred process_negated_bool_option(string, OptionType, option_ops(OptionType),
+:- pred process_negated_option(string, OptionType, option_ops(OptionType),
 	option_table(OptionType), maybe_option_table(OptionType)).
-:- mode process_negated_bool_option(in, in, in(option_ops), in, out) is det.
+:- mode process_negated_option(in, in, in(option_ops), in, out) is det.
 
-process_negated_bool_option(Option, Flag, OptionOps, OptionTable0, Result) :-
+process_negated_option(Option, Flag, OptionOps, OptionTable0, Result) :-
 	( map__search(OptionTable0, Flag, OptionData) ->
 		( OptionData = bool(_) ->
 			map__set(OptionTable0, Flag, bool(no), OptionTable),
+			Result = ok(OptionTable)
+		; OptionData = maybe_string(_) ->
+			map__set(OptionTable0, Flag, maybe_string(no),
+					OptionTable),
 			Result = ok(OptionTable)
 		; OptionData = bool_special ->
 			getopt__process_special(Option, Flag, bool(no),
@@ -509,6 +524,7 @@ getopt__process_special(Option, Flag, OptionData, OptionOps,
 getopt__need_arg(bool(_), no).
 getopt__need_arg(int(_), yes).
 getopt__need_arg(string(_), yes).
+getopt__need_arg(maybe_string(_), yes).
 getopt__need_arg(accumulating(_), yes).
 getopt__need_arg(special, no).
 getopt__need_arg(bool_special, no).
