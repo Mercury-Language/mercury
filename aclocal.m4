@@ -71,6 +71,7 @@ AC_SUBST(READLINE_LIBRARIES)
 AC_DEFUN(MERCURY_CHECK_DOTNET,
 [
 AC_PATH_PROG(ILASM, ilasm)
+AC_PATH_PROG(GACUTIL, gacutil)
 
 AC_MSG_CHECKING(for Microsoft.NET Framework SDK)
 AC_CACHE_VAL(mercury_cv_microsoft_dotnet, [
@@ -86,6 +87,7 @@ fi
 ])
 AC_MSG_RESULT($mercury_cv_microsoft_dotnet)
 ILASM=`basename "$ILASM"`
+GACUTIL=`basename "$GACUTIL"`
 
 AC_PATH_PROG(MS_CL, cl)
 AC_MSG_CHECKING(for Microsoft.NET Visual C++)
@@ -104,6 +106,7 @@ AC_MSG_RESULT($mercury_cv_microsoft_visual_cpp)
 MS_CL=`basename "$MS_CL"`
 
 AC_SUBST(ILASM)
+AC_SUBST(GACUTIL)
 AC_SUBST(MS_CL)
 AC_SUBST(MS_DOTNET_SDK_DIR)
 AC_SUBST(MS_VISUALCPP_DIR)

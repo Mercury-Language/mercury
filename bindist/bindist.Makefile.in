@@ -35,6 +35,10 @@ LIB_PARTS		= bin doc html inc ints lib mdb/mdb_doc modules
 
 EXT_FOR_EXE		= @EXT_FOR_EXE@
 
+FULLARCH		= @FULLARCH@
+
+GACUTIL			= @GACUTIL@
+
 UTIL_PROGS		= util/mkinit util/mdemangle
 UTIL_PROGFILENAMES	= $(UTIL_PROGS:%=%$(EXT_FOR_EXE))
 
@@ -56,7 +60,7 @@ all:
 .PHONY: install
 install: install_lib install_info install_man \
 		install_scripts install_emacs_scripts install_cgi_scripts \
-		install_mmake install_mdb install_util
+		install_mmake install_mdb install_util install_gac
 	@echo
 	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
 	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
@@ -139,5 +143,17 @@ install_mdb:
 install_util: 
 	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
 	cp $(UTILS) $(INSTALL_BINDIR)
+
+ifneq ("$(strip $(GACUTIL))","")
+.PHONY: install_gac
+install_gac: 
+	if test -d $(INSTALL_LIBDIR)/lib/ilc/ ; then 		\
+		cd $(INSTALL_LIBDIR)/lib/ilc/$(FULLARCH) &&	\
+		$(GACUTIL) -i mercury.dll ; 			\
+	fi
+else
+.PHONY: install_gac
+install_gac: 
+endif
 
 #-----------------------------------------------------------------------------#
