@@ -884,7 +884,9 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 		PurityCheckResult = inconsistent_promise
 	;
 		% You shouldn't promise pure unnecessarily.
-		PromisedPurity \= (impure), ActualPurity = PromisedPurity
+		% It's OK in the case of foreign_procs though.
+		PromisedPurity \= (impure), ActualPurity = PromisedPurity,
+		not pred_info_pragma_goal_type(PredInfo)
 	->
 		PurityCheckResult = unnecessary_promise_pure
 	;
