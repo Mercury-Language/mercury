@@ -53,6 +53,7 @@ ORDINARY_PROGS=	\
 		set_test \
 		state_vars_tests \
 		state_vars_typeclasses \
+		string_foldl_substring \
 		string_foldr_substring \
 		string_format_test \
 		string_format_test_2 \

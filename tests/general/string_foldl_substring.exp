@@ -1,0 +1,7 @@
+rev("Hello, World!",  0,  5) = "olleH"
+rev("Hello, World!",  0, 50) = "!dlroW ,olleH"
+rev("Hello, World!",  0, -5) = ""
+rev("Hello, World!", -5, 12) = "dlroW ,olleH"
+rev("Hello, World!", -5, 50) = "!dlroW ,olleH"
+rev("Hello, World!",  7,  0) = ""
+rev("Hello, World!", 50, 10) = ""
