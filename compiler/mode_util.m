@@ -1082,17 +1082,26 @@ recompute_instmap_delta(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
 		)
 	->
 		{ Goal = Goal0 },
-		{ GoalInfo = GoalInfo0 },
-		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) } 
+		{ GoalInfo1 = GoalInfo0 }
 	;
 		recompute_instmap_delta_2(RecomputeAtomic, Goal0,
 			 GoalInfo0, Goal, InstMap0, InstMapDelta0),
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		{ instmap_delta_restrict(InstMapDelta0,
-			NonLocals, InstMapDelta) },
+			NonLocals, InstMapDelta1) },
 		{ goal_info_set_instmap_delta(GoalInfo0,
-			InstMapDelta, GoalInfo) }
-	).
+			InstMapDelta1, GoalInfo1) }
+	),
+
+	% If the initial instmap is unreachable so is the final instmap.
+	( { instmap__is_unreachable(InstMap0) } ->
+		{ instmap_delta_init_unreachable(UnreachableInstMapDelta) },
+		{ goal_info_set_instmap_delta(GoalInfo1,
+			UnreachableInstMapDelta, GoalInfo) }
+	;
+		{ GoalInfo = GoalInfo1 }
+	),
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) }.
 
 :- pred recompute_instmap_delta_2(bool, hlds_goal_expr, hlds_goal_info,
 		hlds_goal_expr, instmap, instmap_delta,

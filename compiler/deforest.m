@@ -1585,14 +1585,16 @@ deforest__unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
 		pd_info_get_size_delta(SizeDelta0),
 		pd_info_get_changed(Changed0),
 
-		{ Goal0 = _ - GoalInfo0 },
-		{ Goal1 = GoalExpr1 - GoalInfo1 },
-
-			% Take the non-locals from the calling goal_info,
-			% everything else from the called goal_info.
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
-		{ goal_info_set_nonlocals(GoalInfo1, NonLocals0, GoalInfo2) },
-		{ Goal2 = GoalExpr1 - GoalInfo2 },
+			% update the quantification if not all the output
+			% arguments are used.
+		{ Goal1 = _ - GoalInfo1 },
+		{ goal_info_get_nonlocals(GoalInfo1, NonLocals1) },
+		{ set__list_to_set(Args, NonLocals) },
+		( { \+ set__equal(NonLocals1, NonLocals) } ->
+			pd_util__requantify_goal(Goal1, NonLocals, Goal2)
+		;
+			{ Goal2 = Goal1 }
+		),
 
 			% Push the extra information from the call 
 			% through the goal.
@@ -1600,7 +1602,7 @@ deforest__unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
 		{ proc_info_arglives(CalledProcInfo, ModuleInfo0, ArgLives) },
 		{ get_live_vars(Args, ArgLives, LiveVars0) },
 		{ set__list_to_set(LiveVars0, LiveVars1) },
-		{ set__intersect(NonLocals0, LiveVars1, LiveVars) },
+		{ set__intersect(NonLocals, LiveVars1, LiveVars) },
 		pd_util__unique_modecheck_goal(LiveVars, Goal2, Goal3, Errors),
 
 		( { Errors = [] } ->
@@ -1641,12 +1643,12 @@ deforest__unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
 				)
 			)
 		->
-			pd_debug__message("inlined - requantifying: cost(%i) size(%i)\n", 
+			{ Goal = Goal4 },
+			pd_debug__message("inlined: cost(%i) size(%i)\n", 
 				[i(CostDelta), i(SizeDelta)]),
-			{ set__list_to_set(Args, NonLocals) },
-			pd_util__requantify_goal(Goal4, NonLocals, Goal),
 			pd_info_incr_size_delta(SizeDelta),
 			pd_info_set_changed(yes),
+			{ Goal0 = _ - GoalInfo0 },
 			{ goal_info_get_determinism(GoalInfo0, Det0) },
 			{ Goal = _ - GoalInfo },
 			{ goal_info_get_determinism(GoalInfo, Det) },
