@@ -260,13 +260,13 @@ inlining__init_subn([A-H|Vs], Subn0, Subn) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__rename_headvars(list(var), map(var, var), list(var)).
-:- mode inlining__rename_headvars(in, in, out) is det.
+:- pred inlining__rename_var_list(list(var), map(var, var), list(var)).
+:- mode inlining__rename_var_list(in, in, out) is det.
 
-inlining__rename_headvars([], _Subn, []).
-inlining__rename_headvars([V|Vs], Subn, [N|Ns]) :-
+inlining__rename_var_list([], _Subn, []).
+inlining__rename_var_list([V|Vs], Subn, [N|Ns]) :-
 	map__lookup(Subn, V, N),
-	inlining__rename_headvars(Vs, Subn, Ns).
+	inlining__rename_var_list(Vs, Subn, Ns).
 
 %-----------------------------------------------------------------------------%
 
@@ -295,17 +295,17 @@ inlining__name_apart_2(switch(Var0, Det, Cases0), Subn,
 
 inlining__name_apart_2(if_then_else(Vars0, Cond0, Then0, Else0), Subn,
 				if_then_else(Vars, Cond, Then, Else)) :-
-	inlining__rename_headvars(Vars0, Subn, Vars),
+	inlining__rename_var_list(Vars0, Subn, Vars),
 	inlining__name_apart(Cond0, Subn, Cond),
 	inlining__name_apart(Then0, Subn, Then),
 	inlining__name_apart(Else0, Subn, Else).
 
 inlining__name_apart_2(not(Vars0, Goal0), Subn, not(Vars, Goal)) :-
-	inlining__rename_headvars(Vars0, Subn, Vars),
+	inlining__rename_var_list(Vars0, Subn, Vars),
 	inlining__name_apart(Goal0, Subn, Goal).
 
 inlining__name_apart_2(some(Vars0, Goal0), Subn, some(Vars, Goal)) :-
-	inlining__rename_headvars(Vars0, Subn, Vars),
+	inlining__rename_var_list(Vars0, Subn, Vars),
 	inlining__name_apart(Goal0, Subn, Goal).
 
 inlining__name_apart_2(
@@ -368,11 +368,11 @@ inlining__rename_term(term__functor(Cons, Terms0, Cont), Subn,
 inlining__rename_unify(construct(Var0, ConsId, Vars0, Modes), Subn,
 			construct(Var, ConsId, Vars, Modes)) :-
 	map__lookup(Subn, Var0, Var),
-	inlining__rename_headvars(Vars0, Subn, Vars).
+	inlining__rename_var_list(Vars0, Subn, Vars).
 inlining__rename_unify(deconstruct(Var0, ConsId, Vars0, Modes, Cat), Subn,
 			deconstruct(Var, ConsId, Vars, Modes, Cat)) :-
 	map__lookup(Subn, Var0, Var),
-	inlining__rename_headvars(Vars0, Subn, Vars).
+	inlining__rename_var_list(Vars0, Subn, Vars).
 inlining__rename_unify(assign(L0, R0), Subn, assign(L, R)) :-
 	map__lookup(Subn, L0, L),
 	map__lookup(Subn, R0, R).
@@ -454,53 +454,8 @@ inlining__name_apart_goalinfo(GoalInfo0, Subn, GoalInfo) :-
 
 inlining__name_apart_set(Vars0, Subn, Vars) :-
 	set__to_sorted_list(Vars0, VarsList0),
-	inlining__rename_headvars(VarsList0, Subn, VarsList),
+	inlining__rename_var_list(VarsList0, Subn, VarsList),
 	set__list_to_set(VarsList, Vars).
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__argument_unifications(list(mode), list(var), list(var),
-		module_info, list(hlds__goal), list(hlds__goal)).
-:- mode inlining__argument_unifications(in, in, in, in, out, out) is semidet.
-
-inlining__argument_unifications([], [], [], _, [], []).
-inlining__argument_unifications([Mode|ArgInfos],
-		[V|Vs], [H|Hs], ModuleInfo, Before, After) :-
-	inlining__argument_unifications(ArgInfos, Vs, Hs, ModuleInfo,
-		Before0, After0),
-	(
-		mode_is_input(ModuleInfo, Mode)
-	->
-		Context = unify_context(explicit, []),
-			% XXX unify context is wrong
-		Unify = unify(term__variable(H), term__variable(V),
-				((free -> ground) - (ground -> ground)),
-				assign(H, V), Context),
-			% XXX bug! the mode is wrong
-		goal_info_init(GoalInfo0),
-		map__init(Inst0),
-		map__insert(Inst0, H, ground, Inst),
-		goal_info_set_instmap_delta(GoalInfo0,
-					reachable(Inst), GoalInfo),
-		Before = [ Unify - GoalInfo | Before0 ],
-		After = After0
-	;
-		mode_is_output(ModuleInfo, Mode)
-	->
-		Context = unify_context(explicit, []),
-		Unify = unify(term__variable(V), term__variable(H),
-				((free -> ground) - (ground -> ground)),
-				assign(V, H), Context),
-		goal_info_init(GoalInfo0),
-		map__init(Inst0),
-		map__insert(Inst0, V, ground, Inst),
-		goal_info_set_instmap_delta(GoalInfo0,
-					reachable(Inst), GoalInfo),
-		Before = Before0,
-		After = [ Unify - GoalInfo | After0 ]
-	;
-		Before = Before0,
-		After = After0
-	).
-
-%-----------------------------------------------------------------------------%
