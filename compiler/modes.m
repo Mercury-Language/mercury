@@ -352,10 +352,10 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 	;
 		{ pred_info_get_marker_list(PredInfo0, Markers) },
 		( { list__member(request(infer_modes), Markers) } ->
-			write_pred_progress_message("% Mode-checking ",
+			write_pred_progress_message("% Mode-analysing ",
 				PredId, ModuleInfo0)
 		;
-			write_pred_progress_message("% Mode-analysing ",
+			write_pred_progress_message("% Mode-checking ",
 				PredId, ModuleInfo0)
 		),
 		modecheck_pred_mode_2(PredId, PredInfo0, ModuleInfo0,
@@ -790,23 +790,24 @@ modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 
 modecheck_goal_2(call(PredId0, _, Args0, _, Context, PredName, Follow),
 		GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "call"),
-	{ list__length(Args0, Arity) },
-	mode_info_set_call_context(call(PredName/Arity)),
-	=(ModeInfo0),
-
 	% do the last step of type-checking
+	=(ModeInfo0),
 	{ resolve_pred_overloading(PredId0, Args0, PredName, ModeInfo0,
 		PredId) },
 
+	mode_checkpoint(enter, "call"),
+	mode_info_set_call_context(call(PredId)),
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
+
 	modecheck_call_pred(PredId, Args0, Mode, Args, ExtraGoals),
+
 	=(ModeInfo),
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 	{ code_util__is_builtin(ModuleInfo, PredId, Mode, Builtin) },
 	{ Call = call(PredId, Mode, Args, Builtin, Context, PredName, Follow) },
 	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
 				InstMap0, ModeInfo, Goal) },
+
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "call").
 
@@ -841,21 +842,17 @@ modecheck_goal_2(switch(Var, CanFail, Cases0, FV), GoalInfo0,
 modecheck_goal_2(pragma_c_code(C_Code, PredId, _ProcId0, Args0, ArgNameMap), 
 		GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_c_code"),
-	=(ModeInfo0),
-	{ mode_info_get_preds(ModeInfo0, Preds) },
-	{ map__lookup(Preds, PredId, PredInfo) },
-	{ pred_info_name(PredInfo, PredName) },
-	{ pred_info_arity(PredInfo, Arity) },
+	mode_info_set_call_context(call(PredId)),
 
-	=(ModeInfo1),
-	{ mode_info_get_instmap(ModeInfo1, InstMap1) },
-	mode_info_set_call_context(call(unqualified(PredName)/Arity)),
-	
-	=(ModeInfo2),
+	=(ModeInfo0),
+	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
 	modecheck_call_pred(PredId, Args0, ProcId, Args, ExtraGoals),
+
+	=(ModeInfo),
 	{ Pragma = pragma_c_code(C_Code, PredId, ProcId, Args0, ArgNameMap) },
 	{ handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
-				InstMap1, ModeInfo2, Goal) },
+				InstMap0, ModeInfo, Goal) },
+
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code").
 
@@ -866,9 +863,7 @@ modecheck_goal_2(pragma_c_code(C_Code, PredId, _ProcId0, Args0, ArgNameMap),
 
 modecheck_higher_order_pred_call(PredVar, Args0, GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "higher-order predicate call"),
-	{ list__length(Args0, Arity) },
-	{ Arity1 is Arity + 1 },
-	mode_info_set_call_context(call(unqualified("call")/Arity1)),
+	mode_info_set_call_context(higher_order_call(predicate)),
 	=(ModeInfo0),
 
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
@@ -890,11 +885,11 @@ modecheck_higher_order_pred_call(PredVar, Args0, GoalInfo0, Goal) -->
 
 modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "higher-order function call"),
-	{ list__length(Args0, Arity) },
-	mode_info_set_call_context(call(unqualified("apply")/Arity)),
-	=(ModeInfo0),
+	mode_info_set_call_context(higher_order_call(function)),
 
+	=(ModeInfo0),
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
+
 	{ list__append(Args0, [RetVar], Args1) },
 	modecheck_higher_order_call(function, FuncVar, Args1,
 			Types, Modes, Det, Args, ExtraGoals),
@@ -904,6 +899,7 @@ modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
 	{ Call = higher_order_call(FuncVar, Args, Types, Modes, Det, Follow) },
 	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args1, Args,
 				InstMap0, ModeInfo, Goal) },
+
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "higher-order function call").
 
@@ -1364,7 +1360,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 			Modes),
 	*********************/
 		mode_list_get_initial_insts(Modes, ModuleInfo0, InitialInsts),
-		modecheck_var_has_inst_list(Args0, InitialInsts, 0,
+		modecheck_var_has_inst_list(Args0, InitialInsts, 1,
 					ModeInfo0, ModeInfo1),
 		mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
 		modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
@@ -1375,10 +1371,12 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 			ModeInfo = ModeInfo2
 		)
 	;
+		% the error occurred in argument 1, i.e. the pred term
+		mode_info_set_call_arg_context(1, ModeInfo0, ModeInfo1),
 		set__singleton_set(WaitingVars, PredVar),
 		mode_info_error(WaitingVars, mode_error_higher_order_pred_var(
 				PredOrFunc, PredVar, PredVarInst, Arity),
-				ModeInfo0, ModeInfo),
+				ModeInfo1, ModeInfo),
 		Modes = [],
 		Det = erroneous,
 		Args = Args0,
@@ -1870,7 +1868,7 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 			ModeVar0 = (VarInst0 -> VarInst),
 			ModeVar = (FinalInst -> VarInst),
 			mode_info_get_mode_context(ModeInfo2, ModeContext),
-			mode_context_to_unify_context(ModeContext,
+			mode_context_to_unify_context(ModeContext, ModeInfo2,
 				UnifyContext),
 			categorize_unify_var_var(ModeVar0, ModeVar,
 				live, dead, Var0, Var, Det, UnifyContext,
@@ -1896,13 +1894,22 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		)
 	).
 
-:- pred mode_context_to_unify_context(mode_context, unify_context).
-:- mode mode_context_to_unify_context(in, out) is det.
+:- pred mode_context_to_unify_context(mode_context, mode_info, unify_context).
+:- mode mode_context_to_unify_context(in, mode_info_ui, out) is det.
 
-mode_context_to_unify_context(unify(UnifyContext, _), UnifyContext).
-mode_context_to_unify_context(call(PredId, Arg),
-		unify_context(call(PredId, Arg), [])).
-mode_context_to_unify_context(uninitialized, _) :-
+mode_context_to_unify_context(unify(UnifyContext, _), _, UnifyContext).
+mode_context_to_unify_context(call(PredId, Arg), ModeInfo,
+		unify_context(call(PredCallId, Arg), [])) :-
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_module(PredInfo, Module),
+	pred_info_name(PredInfo, Name),
+	pred_info_arity(PredInfo, Arity),
+	PredCallId = qualified(Module, Name) / Arity.
+mode_context_to_unify_context(higher_order_call(_PredOrFunc, _Arg), _ModeInfo,
+		unify_context(explicit, [])).
+		% XXX could do better; it's not really explicit
+mode_context_to_unify_context(uninitialized, _, _) :-
 	error("mode_context_to_unify_context: uninitialized context").
 
 %-----------------------------------------------------------------------------%
@@ -2687,7 +2694,8 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 			% ever happen?
 		),
 		mode_info_get_mode_context(ModeInfo4, ModeContext),
-		mode_context_to_unify_context(ModeContext, UnifyContext),
+		mode_context_to_unify_context(ModeContext, ModeInfo4,
+						UnifyContext),
 		categorize_unify_var_var(ModeVar0, ModeVar,
 			live, dead, Var0, Var, Det, UnifyContext,
 			VarTypes, ModeInfo4, AfterGoal, ModeInfo),

@@ -354,6 +354,7 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  mode error: arguments `"),
@@ -364,14 +365,14 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	mercury_output_inst_list(Insts, InstVarSet),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
-	io__write_string("  which does not match any of the modes for `"),
+	io__write_string("  which does not match any of the modes for "),
 	{ mode_info_get_mode_context(ModeInfo, ModeContext) },
 	( { ModeContext = call(PredId, _) } ->
-		hlds_out__write_pred_call_id(PredId)
+		hlds_out__write_pred_id(ModuleInfo, PredId)
 	;
 		{ error("report_mode_error_no_matching_mode: invalid context") }
 	),
-	io__write_string("'.\n").
+	io__write_string(".\n").
 
 :- pred report_mode_error_higher_order_pred_var(mode_info, pred_or_func, var,
 					inst, arity,
@@ -643,7 +644,7 @@ mode_info_write_context(ModeInfo) -->
 	),
 	io__write_string("':\n"),
 	{ mode_info_get_mode_context(ModeInfo, ModeContext) },
-	write_mode_context(ModeContext, Context).
+	write_mode_context(ModeContext, Context, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -692,13 +693,44 @@ mode_context_init(uninitialized).
 
 	% XXX some parts of the mode context never get set up
 
-:- pred write_mode_context(mode_context, term__context, io__state, io__state).
-:- mode write_mode_context(in, in, di, uo) is det.
+:- pred write_mode_context(mode_context, term__context, module_info,
+				io__state, io__state).
+:- mode write_mode_context(in, in, in, di, uo) is det.
 
-write_mode_context(uninitialized, _Context) -->
+write_mode_context(uninitialized, _Context, _ModuleInfo) -->
 	[].
 
-write_mode_context(call(PredId, ArgNum), Context) -->
+write_mode_context(higher_order_call(PredOrFunc, ArgNum), Context, _ModuleInfo)
+		-->
+	prog_out__write_context(Context),
+	io__write_string("  in "),
+	( { ArgNum = 0 } ->
+		io__write_string("higher-order "),
+		hlds_out__write_pred_or_func(PredOrFunc),
+		io__write_string(" call:\n")
+	;
+		io__write_string("argument "),
+		io__write_int(ArgNum),
+		io__write_string(" of higher-order "),
+		hlds_out__write_pred_or_func(PredOrFunc),
+		io__write_string(" call\n"),
+		prog_out__write_context(Context),
+		io__write_string("  (i.e. in "),
+		( { ArgNum = 1 } ->
+			io__write_string("the "),
+			hlds_out__write_pred_or_func(PredOrFunc),
+			io__write_string(" term")
+		;
+			io__write_string("argument "),
+			{ ArgNum1 is ArgNum - 1 },
+			io__write_int(ArgNum1),
+			io__write_string(" of the called "),
+			hlds_out__write_pred_or_func(PredOrFunc)
+		),
+		io__write_string("):\n")
+	).
+
+write_mode_context(call(PredId, ArgNum), Context, ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("  in "),
 	( { ArgNum = 0 } ->
@@ -708,11 +740,11 @@ write_mode_context(call(PredId, ArgNum), Context) -->
 		io__write_int(ArgNum),
 		io__write_string(" of ")
 	),
-	io__write_string("call to predicate `"),
-	hlds_out__write_pred_call_id(PredId),
-	io__write_string("':\n").
+	io__write_string("call to "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string(":\n").
 
-write_mode_context(unify(UnifyContext, _Side), Context) -->
+write_mode_context(unify(UnifyContext, _Side), Context, _ModuleInfo) -->
 	hlds_out__write_unify_context(UnifyContext, Context).
 
 %-----------------------------------------------------------------------------%

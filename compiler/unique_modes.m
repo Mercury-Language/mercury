@@ -504,9 +504,7 @@ unique_modes__check_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
 		Follow), _GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "higher-order call"),
-	{ list__length(Args, Arity) },
-	{ Arity1 is Arity + 1 },
-	mode_info_set_call_context(call(unqualified("call")/Arity1)),
+	mode_info_set_call_context(higher_order_call(predicate)),
 	{ determinism_components(Det, _, at_most_zero) ->
 		NeverSucceeds = yes
 	;
@@ -521,8 +519,7 @@ unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
 unique_modes__check_goal_2(call(PredId, ProcId, Args, Builtin, CallContext,
 		PredName, Follow), _GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "call"),
-	{ list__length(Args, Arity) },
-	mode_info_set_call_context(call(PredName/Arity)),
+	mode_info_set_call_context(call(PredId)),
 	unique_modes__check_call(PredId, ProcId, Args),
 	{ Goal = call(PredId, ProcId, Args, Builtin, CallContext,
 		PredName, Follow) },
@@ -558,12 +555,7 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, FV), GoalInfo0,
 unique_modes__check_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args,
 		ArgNameMap), _GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_c_code"),
-	=(ModeInfo0),
-	{ mode_info_get_preds(ModeInfo0, Preds) },
-	{ map__lookup(Preds, PredId, PredInfo) },
-	{ pred_info_name(PredInfo, PredName) },
-	{ pred_info_arity(PredInfo, Arity) },
-	mode_info_set_call_context(call(unqualified(PredName)/Arity)),
+	mode_info_set_call_context(call(PredId)),
 	unique_modes__check_call(PredId, ProcId, Args),
 	{ Goal = pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap) },
 	mode_info_unset_call_context,

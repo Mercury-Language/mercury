@@ -29,7 +29,12 @@
 	% XXX `side' is not used
 :- type mode_context
 	--->	call(	
-			pred_call_id,	% pred name / arity
+			pred_id,	% pred name / arity
+			int		% argument number
+		)
+	;	higher_order_call(
+			pred_or_func,	% is it call/N (higher-order pred call)
+					% or apply/N (higher-order func call)?
 			int		% argument number
 		)
 	;	unify(
@@ -50,7 +55,8 @@
 
 :- type call_context
 	--->	unify(unify_context)
-	;	call(pred_call_id).
+	;	call(pred_id)
+	;	higher_order_call(pred_or_func).
 
 :- type mode_info.
 
@@ -403,11 +409,17 @@ mode_info_set_call_context(unify(UnifyContext)) -->
 	mode_info_set_mode_context(unify(UnifyContext, left)).
 mode_info_set_call_context(call(PredId)) -->
 	mode_info_set_mode_context(call(PredId, 0)).
+mode_info_set_call_context(higher_order_call(PredOrFunc)) -->
+	mode_info_set_mode_context(higher_order_call(PredOrFunc, 0)).
 
 mode_info_set_call_arg_context(ArgNum, ModeInfo0, ModeInfo) :-
 	mode_info_get_mode_context(ModeInfo0, ModeContext0),
 	( ModeContext0 = call(PredId, _) ->
 		mode_info_set_mode_context(call(PredId, ArgNum),
+			ModeInfo0, ModeInfo)
+	; ModeContext0 = higher_order_call(PredOrFunc, _) ->
+		mode_info_set_mode_context(
+			higher_order_call(PredOrFunc, ArgNum),
 			ModeInfo0, ModeInfo)
 	;
 		error("mode_info_set_call_arg_context")
