@@ -9,9 +9,9 @@
 
 :- module deriv.
 
-:- import_module int, io.
-
 :- interface.
+
+:- import_module int, io.
 
 :- type expr --->	x
 		;	num(int)
