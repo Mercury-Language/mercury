@@ -194,12 +194,15 @@ output_single_c_file(c_file(BaseName, C_HeaderLines, Modules), SplitFiles)
 		),
 		io__write_string("#include ""imp.h""\n"),
 		output_c_header_include_lines(C_HeaderLines),
-		{ set__init(DeclSet0) },
-		output_c_module_list(Modules, DeclSet0, BaseName),
 		io__write_string("\n"),
+		{ gather_c_file_labels(Modules, Labels) },
+		{ set__init(DeclSet0) },
+		output_c_label_decl_list(Labels, DeclSet0, DeclSet),
+		output_c_module_list(Modules, DeclSet, BaseName),
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
+			io__write_string("\n"),
 			output_c_module_init_list(BaseName, Modules)
 		),
 		io__told
@@ -338,14 +341,12 @@ output_c_module_list([M | Ms], DeclSet0, BaseName) -->
 	io__state, io__state).
 :- mode output_c_module(in, in, out, in, di, uo) is det.
 
-output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet, _) -->
-	{ gather_labels(Procedures, Labels) },
-	io__write_string("\n"),
-	output_c_label_decl_list(Labels, DeclSet0, DeclSet),
+output_c_module(c_module(ModuleName, Procedures), DeclSet, DeclSet, _) -->
 	io__write_string("\n"),
 	io__write_string("BEGIN_MODULE("),
 	output_module_name(ModuleName),
 	io__write_string(")\n"),
+	{ gather_c_module_labels(Procedures, Labels) },
 	output_c_label_init_list(Labels),
 	io__write_string("BEGIN_CODE\n"),
 	io__write_string("\n"),
@@ -1653,9 +1654,7 @@ output_label_as_code_addr_decls(exported(ProcLabel)) -->
 output_label_as_code_addr_decls(local(ProcLabel)) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = no } ->
-		io__write_string("Declare_static("),
-		output_label(local(ProcLabel)),
-		io__write_string(");\n")
+		[]
 	;
 		io__write_string("Declare_entry("),
 		output_label(local(ProcLabel)),
@@ -2721,20 +2720,45 @@ llds_out__convert_to_valid_c_identifier_2(String, Name) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gather_labels(list(c_procedure), list(label)).
-:- mode gather_labels(in, out) is det.
+:- pred gather_c_file_labels(list(c_module), list(label)).
+:- mode gather_c_file_labels(in, out) is det.
 
-gather_labels(Procs, Labels) :-
-	gather_labels_2(Procs, [], Labels1),
+gather_c_file_labels(Modules, Labels) :-
+	gather_labels_from_c_modules(Modules, [], Labels1),
 	list__reverse(Labels1, Labels).
 
-:- pred gather_labels_2(list(c_procedure), list(label), list(label)).
-:- mode gather_labels_2(in, in, out) is det.
+:- pred gather_c_module_labels(list(c_procedure), list(label)).
+:- mode gather_c_module_labels(in, out) is det.
 
-gather_labels_2([], Labels, Labels).
-gather_labels_2([c_procedure(_, _, _, Instrs) | Procs], Labels0, Labels) :-
+gather_c_module_labels(Procs, Labels) :-
+	gather_labels_from_c_procs(Procs, [], Labels1),
+	list__reverse(Labels1, Labels).
+
+:- pred gather_labels_from_c_modules(list(c_module), list(label), list(label)).
+:- mode gather_labels_from_c_modules(in, in, out) is det.
+
+gather_labels_from_c_modules([], Labels, Labels).
+gather_labels_from_c_modules([Module | Modules], Labels0, Labels) :-
+	gather_labels_from_c_module(Module, Labels0, Labels1),
+	gather_labels_from_c_modules(Modules, Labels1, Labels).
+
+:- pred gather_labels_from_c_module(c_module, list(label), list(label)).
+:- mode gather_labels_from_c_module(in, in, out) is det.
+
+gather_labels_from_c_module(c_module(_, Procs), Labels0, Labels) :-
+	gather_labels_from_c_procs(Procs, Labels0, Labels).
+gather_labels_from_c_module(c_data(_, _, _, _, _, _), Labels, Labels).
+gather_labels_from_c_module(c_code(_, _), Labels, Labels).
+gather_labels_from_c_module(c_export(_), Labels, Labels).
+
+:- pred gather_labels_from_c_procs(list(c_procedure), list(label), list(label)).
+:- mode gather_labels_from_c_procs(in, in, out) is det.
+
+gather_labels_from_c_procs([], Labels, Labels).
+gather_labels_from_c_procs([c_procedure(_, _, _, Instrs) | Procs],
+		Labels0, Labels) :-
 	gather_labels_from_instrs(Instrs, Labels0, Labels1),
-	gather_labels_2(Procs, Labels1, Labels).
+	gather_labels_from_c_procs(Procs, Labels1, Labels).
 
 :- pred gather_labels_from_instrs(list(instruction), list(label), list(label)).
 :- mode gather_labels_from_instrs(in, in, out) is det.
