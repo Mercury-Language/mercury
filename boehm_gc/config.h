@@ -514,8 +514,16 @@
 #	define MPROTECT_VDB
 #       ifdef __ELF__
 #            define DYNAMIC_LOADING
-	     extern int _etext;
-#            define DATASTART ((ptr_t)((((word) (&_etext)) + 0xfff) & ~0xfff))
+    	     extern char **__environ;
+#            define DATASTART ((ptr_t)(&__environ))
+			      /* hideous kludge: __environ is the first */
+			      /* word in crt0.o, and delimits the start */
+			      /* of the data segment, no matter which   */
+			      /* ld options were passed through.        */
+			      /* We could use _etext instead, but that  */
+			      /* would include .rodata, which may       */
+			      /* contain large read-only data tables    */
+			      /* that we'd rather not scan.		*/
 	     extern int _end;
 #	     define DATAEND (&_end)
 #	else
