@@ -1272,7 +1272,7 @@ write_fact_data(FactNum, Args, StructName, OutputStream) -->
 :- mode write_new_data_array(in, in, in, di, uo) is det.
 
 write_new_data_array(OutputStream, StructName, FactNum) -->
-	io__format(OutputStream, "struct %s_struct %s%d[] = {\n", 
+	io__format(OutputStream, "const struct %s_struct %s%d[] = {\n", 
 		[s(StructName), s(StructName), i(FactNum)]).
 
 	% Write out the closing brace of an array.
@@ -3452,3 +3452,4 @@ void sys_init_%s_module(void) {
 			s(ExtraCodeLabel)
 		],
 		ExtraCode).
+
