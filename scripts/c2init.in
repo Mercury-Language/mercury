@@ -22,14 +22,16 @@ Options:
 	-l, --library
 		Don't generate a \`main()' function.
 		Instead, generate a function
-			mercury_main(int argc, char **argv, char *stack_bottom);
+			mercury_main(int argc, char **argv);
 		(declared in \"init.h\") that can be called from C code.
+		(A more fine-grained interface is also available;
+		see \"init.h\" for details.)
 	-c <n>, --max-calls <n>
 		Break up the initialization into groups of at most <n> function
 		calls.  (Default value of <n> is 40.)
 	-w <label>, --entry-point <label>
 		Set entry point to <label>.
-		(Default value is \`mercury__io__run_0_0'.)
+		(Default value is \`mercury__main_2_0'.)
 Environment variables:
 	MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS, MERCURY_MKINIT.
 "
@@ -40,7 +42,7 @@ MKINIT=${MERCURY_MKINIT=mkinit}
 
 # maximum number of calls to put in a single function
 maxcalls=40
-defentry=mercury__io__run_0_0
+defentry=mercury__main_2_0
 library_opt=""
 while true; do
 	case "$1" in

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1996 The University of Melbourne.
+% Copyright (C) 1994-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -34,6 +34,10 @@
 :- dynamic io__save_progname/1.
 :- dynamic io__save_args/1.
 :- dynamic io__save_exit_status/1.
+
+:- dynamic io__save_user_globals/1.
+:- dynamic io__save_stream_names/1.
+:- dynamic io__save_putback/1.
 
 :- pred main(list(atom)).
 :- mode main(in) is det.
@@ -127,6 +131,8 @@ io__init(Args) :-
 	),
 	assert(io__save_exit_status(0)).
 
+:- pred io__gc_init(io__state::di, io__state::uo) is det.
+io__gc_init --> [].
 
 :- pred atoms_to_strings(list(atom), list(string)).
 :- mode atoms_to_strings(in, out) is det.
@@ -252,7 +258,7 @@ io__gc_call(Goal) -->
 % input predicates
 
 io__read_char_code(Stream, Code, IO_0, IO) :-
-	IO_0 = io__state(A, PutBack0, C, D, E),
+	io__save_putback(PutBack0),
  	(
 		map__search(PutBack0, Stream, PutBackChars),
 		PutBackChars = [Char | Chars]
@@ -262,22 +268,24 @@ io__read_char_code(Stream, Code, IO_0, IO) :-
 		;
 			map__det_update(PutBack0, Stream, Chars, PutBack)
 		),
-		IO = io__state(A, PutBack, C, D, E),
+		retractall(io__save_putback(_)),
+		assert(io__save_putback(PutBack),
 		char__to_int(Char, Code)
  	;
-		get0(Stream, Code),
-		IO = IO_0
- 	).
-	%%% io__update_state.
+		get0(Stream, Code)
+ 	),
+	IO = IO_0.
 
 io__putback_char(Stream, Char, IO_0, IO) :-
-	IO_0 = io__state(A, PutBack0, C, D, E),
+	io__save_putback(PutBack0),
 	( map__search(PutBack0, Stream, Chars) ->
 		map__det_update(PutBack0, Stream, [Char | Chars], PutBack)
 	;
 		map__det_insert(PutBack0, Stream, [Char], PutBack)
 	),
-	IO = io__state(A, PutBack, C, D, E).
+	retractall(io__save_putback(_)),
+	assert(io__save_putback(PutBack),
+	IO = IO_0.
 
 io__putback_byte(_Stream, _Char, IO, IO) :-
 	error("io__putback_byte: binary IO is not implemented for Prolog.").
@@ -454,7 +462,7 @@ io__get_line_number(LineNumber) -->
 
 io__get_line_number(Stream, LineNumber) -->
 	{ lineCount(Stream, LineNumber0) },
-	=(io__state(_, PutBack, _, _, _)),
+	{ io__save_putback(PutBack) },
 	{ map__search(PutBack, Stream, Chars) ->
 		io__adjust_line_num(Chars, LineNumber0, LineNumber)
 	;
@@ -529,6 +537,18 @@ io__get_exit_status(ExitStatus) -->
 io__set_exit_status(ExitStatus) --> 
 	{ retractall(io__save_exit_status(_)) },
 	{ assert(io__save_exit_status(ExitStatus)) }.
+
+io__get_globals(Globals) -->
+	{ io__save_user_globals(Globals) }.
+io__set_globals(Globals) -->
+	{ retractall(io__save_user_globals(_)) },
+	{ assert(io__save_user_globals(Globals) }.
+
+io__get_stream_names(StreamNames) -->
+	{ io__save_stream_names(StreamNames) }.
+io__set_stream_names(StreamNames) -->
+	{ retractall(io__save_stream_names(_)) },
+	{ assert(io__save_stream_names(StreamNames) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
