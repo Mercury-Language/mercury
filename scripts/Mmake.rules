@@ -11,7 +11,7 @@ main_target: $(MAIN_TARGET)
 #-----------------------------------------------------------------------------#
 
 # Beware that the order of suffixes is significant.
-.SUFFIXES: .pp .m .nl .no .err .int .int2 .int3 .opt .dep .depend .doit \
+.SUFFIXES: .m .nl .no .err .int .int2 .int3 .opt .dep .depend .doit \
 		.ugly .date .date3 .optdate .mod .c .nu .o .pic_o .i .s \
 		.garb .ql .pl
 
@@ -19,11 +19,6 @@ main_target: $(MAIN_TARGET)
 
 # All the builtin rules must use $@ as the target, so that they work
 # when $(VPATH) is set.
-
-.pp.m:
-	@-[ ! -f $@ ] || chmod +w $@
-	sed '/^#if *NU_PROLOG/,/^#endif/s/.*//' $< > $@
-	@-chmod -w $@
 
 .m.no:
 	$(MNC) $(MNCFLAGS) -o $@ $<
@@ -60,7 +55,7 @@ main_target: $(MAIN_TARGET)
 	$(MCSI) $(MCSIFLAGS) $<
 
 .m.optdate:
-	$(MCOI) $(MCOIFLAGS) $< > $*.err2 2>&1
+	$(MCOI) $(MCOIFLAGS) $< > $*.err 2>&1
 
 # do not remove the whitespace in the following four rules!
 
@@ -105,9 +100,9 @@ main_target: $(MAIN_TARGET)
 
 .m.c:
 	rm -f $*.c
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
+	$(MCG) --grade $(GRADE) $(MCGFLAGS) $< > $*.err 2>&1
 
-# the next rule is need only for a few files in the `runtime' directory
+# the next rule is needed only for a few files in the `runtime' directory
 
 .mod.c:
 	[ -f $< ] && $(MOD2C) -s $(GRADE) $(MOD2CFLAGS) $< > $@
