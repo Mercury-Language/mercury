@@ -57,6 +57,12 @@ case "$CC" in
 	OPT_OPTS=""
 	COMPILER=lcc
 	;;
+    *cl* | *CL*)
+	ANSI_OPTS=""
+	CHECK_OPTS=""
+	OPT_OPTS=""
+	COMPILER=cl
+	;;
     *)
 	ANSI_OPTS=
 	CHECK_OPTS=
@@ -264,6 +270,12 @@ case $thread_safe in
 			ANSI_OPTS=""
 			;;
 
+		*cygwin32*)
+			case $COMPILER in
+				cl) THREAD_OPTS="-DMR_THREAD_SAFE /MD"
+				;;
+			esac
+			;;
 		*)		THREAD_OPTS=""
 			;;
 	esac ;;

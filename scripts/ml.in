@@ -41,6 +41,21 @@ TMPDIR=${TMPDIR=/tmp}
 LINK=${LINK=/stack:10485760}   # 10 Mb
 export LINK
 
+case "$CC" in
+    *gcc*)
+	COMPILER=gcc
+	;;
+    *lcc*)
+	COMPILER=lcc
+	;;
+    *cl* | *CL*)
+	COMPILER=cl
+	;;
+    *)
+	COMPILER=unknown
+	;;
+esac
+
 # On some systems (Solaris for exemple), we need libraries to be able to 
 # use sockets. The name of the needed libraries is determined by autoconf
 # and passed through this variable.
@@ -543,6 +558,13 @@ case $use_thread_libs in
  		*-osf*)		THREAD_LIBS="-lpthreads -lmach -lc_r" ;;
 		*-linux*)	THREAD_LIBS="-lpthread" ;;
 		*-solaris*)	THREAD_LIBS="-lpthread -ldl" ;;
+		*cygwin*)
+			case $COMPILER in
+				cl)	ARCH_OPTS="/MD"
+					;;
+
+			esac
+			;;
 		*)		echo "$0: warning: don't know which" \
 					"library to use for pthreads" 1>&2
 				THREAD_LIBS=""
