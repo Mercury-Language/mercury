@@ -889,7 +889,7 @@ deforest__create_deforest_goal(EarlierGoal, BetweenGoals, LaterGoal,
 			{ predicate_name(ModuleInfo, PredId, PredName) },
 			pd_debug__message("\nCreated predicate %s\n", 
 				[s(PredName)]),
-			{ CalledPreds = [proc(PredId1, ProcId2),
+			{ CalledPreds = [proc(PredId1, ProcId1),
 					proc(PredId2, ProcId2)] },
 			pd_info_get_parent_versions(Parents0),
 			
