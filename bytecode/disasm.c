@@ -1,5 +1,5 @@
 /*
- *	$Id: disasm.c,v 1.4 1997-02-01 09:21:18 aet Exp $
+ *	$Id: disasm.c,v 1.5 1997-02-01 13:36:01 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -55,7 +55,7 @@ void
 disassemble(FILE* fp)
 {
 	/*int		byte_count = 0; */
-	ushort		bytecode_version_number = 0;
+	short		bytecode_version_number = 0;
 	Bytecode	bytecode;
 
 	/* Read two-byte version number */
@@ -99,7 +99,7 @@ print_bytecode(Bytecode bc)
 	case BC_enter_proc:
 		{
 		int	i;
-		ushort	len;
+		short	len;
 
 		printf(" %d %s %d %d %d", 
 			bc.opt.enter_proc.proc_id,
@@ -228,8 +228,8 @@ print_bytecode(Bytecode bc)
 		break;
 	case BC_construct:
 		{
-			ushort	len;
-			ushort	i;
+			short	len;
+			short	i;
 
 			printf(" %d ", bc.opt.construct.to_var);
 			print_cons_id(bc.opt.construct.consid);
@@ -245,8 +245,8 @@ print_bytecode(Bytecode bc)
 		break;
 	case BC_deconstruct:
 		{
-			ushort	len;
-			ushort	i;
+			short	len;
+			short	i;
 
 			printf(" %d ", bc.opt.deconstruct.from_var);
 			print_cons_id(bc.opt.deconstruct.consid);
@@ -262,8 +262,8 @@ print_bytecode(Bytecode bc)
 		break;
 	case BC_complex_construct:
 		{
-			ushort	len;
-			ushort	i;
+			short	len;
+			short	i;
 
 			printf(" %d ", bc.opt.complex_construct.to_var);
 			print_cons_id(bc.opt.complex_construct.consid);
@@ -279,8 +279,8 @@ print_bytecode(Bytecode bc)
 		break;
 	case BC_complex_deconstruct:
 		{
-			ushort	len;
-			ushort	i;
+			short	len;
+			short	i;
 
 			printf(" %d ", bc.opt.complex_deconstruct.from_var);
 			print_cons_id(bc.opt.complex_deconstruct.consid);
