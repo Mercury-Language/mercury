@@ -291,14 +291,16 @@ generate_method_defn(FunctionDefn) -->
 			{ InstrsTree0 = empty }
 		),
 
-			% If this is main, add the entrypoint and set a
-			% flag.
+			% If this is main, add the entrypoint, set a
+			% flag, and call the initialization instructions
+			% in the cctor of this module.
 		( { PredLabel = pred(predicate, no, "main", 2) },
 		  { MaybeSeqNum = no }
 		->
 			{ EntryPoint = [entrypoint] },
-			=(Info10),
-			dcg_set(Info10 ^ has_main := yes)
+			il_info_add_init_instructions(
+				runtime_initialization_instrs),
+			^ has_main := yes
 		;
 			{ EntryPoint = [] }
 		),
@@ -902,19 +904,18 @@ atomic_statement_to_il(restore_hp(_), node(Instrs)) -->
 
 atomic_statement_to_il(target_code(_Lang, _Code), node(Instrs)) --> 
 	il_info_get_module_name(ModuleName),
-	=(Info),
-	( { Info ^ method_c_code = no } ->
-		dcg_set(Info ^ method_c_code := yes),
+	( no =^ method_c_code  ->
+		^ method_c_code := yes,
 		{ mangle_dataname_module(no, ModuleName, NewModuleName) },
 		{ ClassName = mlds_module_name_to_class_name(NewModuleName) },
-		{ Info ^ signature = signature(_, RetType, Params) }, 
+		signature(_, RetType, Params) =^ signature, 
 			% If there is a return value, put it in succeeded.
 		{ RetType = void ->
 			StoreReturnInstr = []
 		;
 			StoreReturnInstr = [stloc(name("succeeded"))]
 		},
-		{ Info ^ method_name = MethodName },
+		MethodName =^ method_name,
 		{ assoc_list__keys(Params, TypeParams) },
 		{ list__map_foldl((pred(_::in, Instr::out,
 			Num::in, Num + 1::out) is det :-
@@ -2466,6 +2467,20 @@ make_constructor_classdecl(MethodDecls) = method(
 :- func make_fieldref(ilds__type, ilds__class_name, ilds__id) = fieldref.
 make_fieldref(ILType, ClassName, Id) = 
 	fieldref(ILType, class_member_name(ClassName, id(Id))).
+
+
+
+:- func runtime_initialization_instrs = list(instr).
+runtime_initialization_instrs = [
+	call(get_static_methodref(runtime_init_module_name, 
+			runtime_init_method_name, void, []))
+	].
+
+:- func runtime_init_module_name = ilds__class_name.
+runtime_init_module_name = ["mercury", "private_builtin"].
+
+:- func runtime_init_method_name = ilds__member_name.
+runtime_init_method_name = id("init_runtime").
 
 %-----------------------------------------------------------------------------%
 %
