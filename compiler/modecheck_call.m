@@ -94,7 +94,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Modes, Det,
 		Det = Det0,
 		Modes = Modes0,
 		ArgOffset = 1,
-		modecheck_arg_list(ArgOffset, Args0, Args, Modes, ExtraGoals,
+		modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args,
 			ModeInfo0, ModeInfo1),
 
 		( determinism_components(Det, _, at_most_zero) ->
@@ -132,7 +132,7 @@ modecheck_aditi_builtin(AditiBuiltin, CallId,
 
 	% The argument modes are set by post_typecheck.m, so all
 	% that needs to be done here is to check that they match.
-	modecheck_arg_list(ArgOffset, Args0, Args, Modes, ExtraGoals).
+	modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args).
 
 :- pred aditi_builtin_determinism(aditi_builtin, determinism).
 :- mode aditi_builtin_determinism(in, out) is det.
@@ -145,13 +145,13 @@ aditi_builtin_determinism(aditi_delete(_, _), det).
 aditi_builtin_determinism(aditi_bulk_operation(_, _), det).
 aditi_builtin_determinism(aditi_modify(_, _), det).
 
-:- pred modecheck_arg_list(int, list(prog_var), list(prog_var), list(mode),
-		extra_goals, mode_info, mode_info).
+:- pred modecheck_arg_list(int, list(mode), extra_goals,
+		list(prog_var), list(prog_var), mode_info, mode_info).
 :- mode modecheck_arg_list(in, in, out, in, out,
 		mode_info_di, mode_info_uo) is det.
 
-modecheck_arg_list(ArgOffset, Args0, Args, Modes,
-		ExtraGoals, ModeInfo0, ModeInfo) :-
+modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args,
+		ModeInfo0, ModeInfo) :-
 
 	%
 	% Check that `Args0' have livenesses which match the
