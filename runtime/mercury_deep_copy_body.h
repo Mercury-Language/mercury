@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,14 +16,14 @@
 ** Prototypes.
 */
 static  Word    copy_arg(maybeconst Word *data_ptr, 
-			maybeconst Word *parent_data_ptr, 
-			const Word *functor_descriptor, const Word *type_info,
+                        maybeconst Word *parent_data_ptr, 
+                        const Word *functor_descriptor, const Word *type_info,
                         const Word *arg_type_info, const Word *lower_limit,
                         const Word *upper_limit);
 static  Word    *copy_type_info(maybeconst Word *type_info,
                         const Word *lower_limit, const Word *upper_limit);
-static Word 	copy_typeclass_info(maybeconst Word *typeclass_info_ptr, 
-			const Word *lower_limit, const Word *upper_limit);
+static Word     copy_typeclass_info(maybeconst Word *typeclass_info_ptr, 
+                        const Word *lower_limit, const Word *upper_limit);
 
 Word 
 copy(maybeconst Word *data_ptr, const Word *type_info, 
@@ -45,8 +45,6 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
     data_value = (Word *) MR_body(data, data_tag);
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    layout_entry = type_ctor_info->type_ctor_layout[data_tag];
-    entry_value = (Word *) MR_strip_tag(layout_entry);
 
     switch (type_ctor_info->type_ctor_rep) {
         case MR_TYPECTOR_REP_ENUM:
@@ -56,6 +54,8 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
 
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
+            layout_entry = type_ctor_info->type_ctor_layout[data_tag];
+            entry_value = (Word *) MR_strip_tag(layout_entry);
             tag_rep = MR_get_tag_representation(layout_entry);
             switch (tag_rep) {
 
@@ -68,8 +68,8 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                 Word *functor_descriptor;
                 Word *argument_vector, *type_info_vector;
                 int arity, i;
-		int num_extra_args, num_extra_typeinfos,
-			num_extra_typeclassinfos;
+                int num_extra_args, num_extra_typeinfos,
+                        num_extra_typeclassinfos;
 
                 /*
                 ** if the vector containing the secondary tags and the
@@ -85,12 +85,12 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                     type_info_vector = functor_descriptor + 
                             TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET;
 
-		    num_extra_typeinfos = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPEINFO_VARCOUNT(functor_descriptor);
+                    num_extra_typeinfos = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPEINFO_VARCOUNT(functor_descriptor);
 
-		    num_extra_typeclassinfos = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPECLASSINFO_VARCOUNT(functor_descriptor);
+                    num_extra_typeclassinfos = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPECLASSINFO_VARCOUNT(functor_descriptor);
 
-		    num_extra_args = num_extra_typeinfos +
-			    num_extra_typeclassinfos;
+                    num_extra_args = num_extra_typeinfos +
+                            num_extra_typeclassinfos;
 
                     /* allocate space for new args, and secondary tag */
                     incr_saved_hp(new_data, arity + num_extra_args + 1);
@@ -101,25 +101,25 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                     /* copy typeinfo arguments */
                     for (i = 0; i < num_extra_typeinfos; i++) {
                         MR_field(0, new_data, i + 1) = (Word)copy_type_info(
-				&argument_vector[i],
-				lower_limit, upper_limit);
-		    }
+                                &argument_vector[i],
+                                lower_limit, upper_limit);
+                    }
 
                     /* copy typeclassinfo arguments */
                     for (i = num_extra_typeinfos; 
-		    		i < num_extra_args; i++) {
+                                i < num_extra_args; i++) {
                         MR_field(0, new_data, i + 1) = copy_typeclass_info(
-				&argument_vector[i], lower_limit, upper_limit);
-		    }
+                                &argument_vector[i], lower_limit, upper_limit);
+                    }
 
                     /* copy arguments */
                     for (i = 0; i < arity; i++) {
                         MR_field(0, new_data, i + num_extra_args + 1) 
-			    = copy_arg(data_value,
-				    &argument_vector[i + num_extra_args], 
-				    functor_descriptor, type_info,
-				    (Word *) type_info_vector[i], lower_limit,
-				    upper_limit);
+                            = copy_arg(data_value,
+                                    &argument_vector[i + num_extra_args], 
+                                    functor_descriptor, type_info,
+                                    (Word *) type_info_vector[i], lower_limit,
+                                    upper_limit);
                     }
 
                     /* tag this pointer */
@@ -134,8 +134,8 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
 
             case MR_DISCUNIONTAG_UNSHARED: {
                 int arity, i;
-		int num_extra_args, num_extra_typeinfos,
-			num_extra_typeclassinfos;
+                int num_extra_args, num_extra_typeinfos,
+                        num_extra_typeclassinfos;
                 Word *argument_vector, *type_info_vector;
                 Word *functor_descriptor;
                 argument_vector = data_value;
@@ -143,18 +143,18 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                 /* If the argument vector is in range, copy the arguments */
                 if (in_range(argument_vector)) {
 
-		    functor_descriptor = entry_value;
+                    functor_descriptor = entry_value;
 
                     arity = entry_value[TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
 
                     type_info_vector = entry_value + 
                             TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET;
-		    num_extra_typeinfos = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPEINFO_VARCOUNT(functor_descriptor);
+                    num_extra_typeinfos = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPEINFO_VARCOUNT(functor_descriptor);
 
-		    num_extra_typeclassinfos = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPECLASSINFO_VARCOUNT(functor_descriptor);
+                    num_extra_typeclassinfos = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPECLASSINFO_VARCOUNT(functor_descriptor);
 
-		    num_extra_args = num_extra_typeinfos +
-			    num_extra_typeclassinfos;
+                    num_extra_args = num_extra_typeinfos +
+                            num_extra_typeclassinfos;
 
                     /* allocate space for new args. */
                     incr_saved_hp(new_data, arity + num_extra_args);
@@ -162,25 +162,25 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                     /* copy typeinfo arguments */
                     for (i = 0; i < num_extra_typeinfos; i++) {
                         MR_field(0, new_data, i) = (Word)copy_type_info(
-				&argument_vector[i],
-				lower_limit, upper_limit);
-		    }
+                                &argument_vector[i],
+                                lower_limit, upper_limit);
+                    }
 
                     /* copy typeclassinfo arguments */
                     for (i = num_extra_typeinfos; 
-		    		i < num_extra_args; i++) {
+                                i < num_extra_args; i++) {
                         MR_field(0, new_data, i) = copy_typeclass_info(
-				&argument_vector[i], lower_limit, upper_limit);
-		    }
+                                &argument_vector[i], lower_limit, upper_limit);
+                    }
 
                     /* copy arguments */
                     for (i = 0; i < arity; i++) {
                         MR_field(0, new_data, i + num_extra_args) 
-			    = copy_arg(data_value,
-				    &argument_vector[i + num_extra_args],
-				    entry_value,
-				    type_info, (Word *) type_info_vector[i],
-				    lower_limit, upper_limit);
+                            = copy_arg(data_value,
+                                    &argument_vector[i + num_extra_args],
+                                    entry_value,
+                                    type_info, (Word *) type_info_vector[i],
+                                    lower_limit, upper_limit);
                     }
                     /* tag this pointer */
                     new_data = (Word) MR_mkword(data_tag, new_data);
@@ -195,20 +195,26 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
         break;
         case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
+            layout_entry = type_ctor_info->type_ctor_layout[data_tag];
+            entry_value = (Word *) MR_strip_tag(layout_entry);
             new_data = copy_arg(NULL, data_ptr, NULL, type_info, 
                     (Word *) *MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(
                      entry_value), lower_limit, upper_limit);
             break;
 
         case MR_TYPECTOR_REP_EQUIV: 
+            layout_entry = type_ctor_info->type_ctor_layout[data_tag];
+            entry_value = (Word *) MR_strip_tag(layout_entry);
             new_data = copy_arg(NULL, data_ptr, NULL, type_info,
                 (const Word *) MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE((Word *)
                         entry_value), lower_limit, upper_limit);
             break;
 
         case MR_TYPECTOR_REP_EQUIV_VAR:
+            layout_entry = type_ctor_info->type_ctor_layout[data_tag];
+            entry_value = (Word *) MR_strip_tag(layout_entry);
             new_data = copy(data_ptr,
-	            (Word *) type_info[(Word) entry_value],
+                    (Word *) type_info[(Word) entry_value],
                     lower_limit, upper_limit);
             break;
 
@@ -275,11 +281,11 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                 /* copy the arguments */
                 for (i = 0; i < args; i++) {
                     Word *arg_pseudo_type_info =
-                    	(Word *) closure_layout->arg_pseudo_type_info[i];
+                        (Word *) closure_layout->arg_pseudo_type_info[i];
                     new_closure->MR_closure_hidden_args_0[i] =
                         copy_arg(NULL,
                             &old_closure->MR_closure_hidden_args_0[i],
-			    NULL,
+                            NULL,
                             type_info + TYPEINFO_OFFSET_FOR_PRED_ARGS - 1,
                             arg_pseudo_type_info,
                             lower_limit, upper_limit
@@ -374,27 +380,27 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
 
         case MR_TYPECTOR_REP_SUCCIP: /* fallthru */
         case MR_TYPECTOR_REP_REDOIP:
-	    /* code addresses are never relocated */
+            /* code addresses are never relocated */
             new_data = data;
             break;
 
         case MR_TYPECTOR_REP_HP:
             /*
-	    ** Tyson hasn't yet moved the code for copying saved heap pointers
-	    ** here.
-	    */
+            ** Tyson hasn't yet moved the code for copying saved heap pointers
+            ** here.
+            */
             fatal_error("Sorry, not implemented: copying saved heap pointers");
             break;
 
         case MR_TYPECTOR_REP_CURFR: /* fallthru */
         case MR_TYPECTOR_REP_MAXFR:
-	    /* we do not modify the layout of the nondet stack */
+            /* we do not modify the layout of the nondet stack */
             new_data = data;
             break;
 
         case MR_TYPECTOR_REP_TRAIL_PTR:
         case MR_TYPECTOR_REP_TICKET:
-	    /* XXX we do not yet compress the trail when doing gc */
+            /* XXX we do not yet compress the trail when doing gc */
             new_data = data;
             break;
 
@@ -419,8 +425,8 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
 */
 static Word
 copy_arg(maybeconst Word *parent_data_ptr, maybeconst Word *data_ptr, 
-		const Word *functor_descriptor,
-		const Word *term_type_info,
+                const Word *functor_descriptor,
+                const Word *term_type_info,
                 const Word *arg_pseudo_type_info, const Word *lower_limit,
                 const Word *upper_limit)
 {
@@ -430,8 +436,8 @@ copy_arg(maybeconst Word *parent_data_ptr, maybeconst Word *data_ptr,
 
         allocated_memory_cells = NULL;
         new_type_info = MR_make_type_info_maybe_existq(term_type_info, 
-			arg_pseudo_type_info, parent_data_ptr,
-			functor_descriptor, &allocated_memory_cells);
+                        arg_pseudo_type_info, parent_data_ptr,
+                        functor_descriptor, &allocated_memory_cells);
 
         new_data = copy(data_ptr, new_type_info, lower_limit, upper_limit);
         MR_deallocate(allocated_memory_cells);
@@ -473,7 +479,7 @@ copy_type_info(maybeconst Word *type_info_ptr, const Word *lower_limit,
                         new_type_info[1] = arity;
                         offset = 2;
                 } else {
-                        arity = MR_TYPE_CTOR_INFO_GET_TYPE_ARITY(type_ctor_info);
+                        arity = type_ctor_info->arity;
                         incr_saved_hp(LVALUE_CAST(Word, new_type_info),
                                 arity + 1);
                         new_type_info[0] = (Word) type_ctor_info;
@@ -493,7 +499,7 @@ copy_type_info(maybeconst Word *type_info_ptr, const Word *lower_limit,
 
 static Word
 copy_typeclass_info(maybeconst Word *typeclass_info_ptr, 
-	const Word *lower_limit, const Word *upper_limit)
+        const Word *lower_limit, const Word *upper_limit)
 {
         Word *typeclass_info = (Word *) *typeclass_info_ptr;
 
@@ -505,33 +511,33 @@ copy_typeclass_info(maybeconst Word *typeclass_info_ptr,
                 /*
                 ** Note that we assume base_typeclass_infos will always be
                 ** allocated statically, so we never copy them.
-		*/
+                */
 
-		base_typeclass_info = (Word *) *typeclass_info;
+                base_typeclass_info = (Word *) *typeclass_info;
 
-		arity = MR_typeclass_info_instance_arity(typeclass_info);
-		num_super = MR_typeclass_info_num_superclasses(typeclass_info);
-		num_arg_typeinfos = 
-			MR_typeclass_info_num_type_infos(typeclass_info);
-		incr_saved_hp(LVALUE_CAST(Word, new_typeclass_info),
+                arity = MR_typeclass_info_instance_arity(typeclass_info);
+                num_super = MR_typeclass_info_num_superclasses(typeclass_info);
+                num_arg_typeinfos = 
+                        MR_typeclass_info_num_type_infos(typeclass_info);
+                incr_saved_hp(LVALUE_CAST(Word, new_typeclass_info),
                                 arity + num_super + num_arg_typeinfos + 1);
 
-		new_typeclass_info[0] = (Word) base_typeclass_info;
+                new_typeclass_info[0] = (Word) base_typeclass_info;
 
-			/* First, copy all the typeclass infos */
+                        /* First, copy all the typeclass infos */
                 for (i = 1; i < arity + num_super + 1; i++) {
                         new_typeclass_info[i] = (Word) copy_typeclass_info(&typeclass_info[i],
                                 lower_limit, upper_limit);
                 }
-			/* Then, copy all the type infos */
+                        /* Then, copy all the type infos */
                 for (i = arity + num_super + 1; 
-				i < arity + num_super + num_arg_typeinfos + 1; 
-				i++) {
+                                i < arity + num_super + num_arg_typeinfos + 1; 
+                                i++) {
                         new_typeclass_info[i] = (Word) copy_type_info(&typeclass_info[i],
                                 lower_limit, upper_limit);
                 }
-		leave_forwarding_pointer(typeclass_info_ptr, 
-			(Word) new_typeclass_info);
+                leave_forwarding_pointer(typeclass_info_ptr, 
+                        (Word) new_typeclass_info);
                 return (Word) new_typeclass_info;
         } else {
                 found_forwarding_pointer(typeclass_info);

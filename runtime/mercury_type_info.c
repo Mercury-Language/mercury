@@ -1,17 +1,13 @@
 /*
-INIT mercury_sys_init_type_info
-ENDINIT
-*/
-/*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
 ** type_info.c -
-**	Definitions for type_infos, type_layouts, and
-**	type_functors tables needed by the Mercury runtime system..
+**	Definitions for dealing with type_infos needed by the Mercury
+**	runtime system.
 */
 
 #include "mercury_imp.h"
@@ -26,106 +22,8 @@ MR_get_arg_type_info(const Word *term_type_info,
 
 /*---------------------------------------------------------------------------*/
 
-	/* type_ctor_layout for `pred' */
-	/* (this is used for all higher-order types) */
-
-const struct mercury_data___type_ctor_layout_pred_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_pred_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_PREDICATE_VALUE))
-};
-
-	/* type_ctor_functors for `pred' */
-	/* (this is used for all higher-order types) */
-
-const struct mercury_data___type_ctor_functors_pred_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_pred_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* 
-	** type_ctor_info for `func' 
-	** (this is used for all higher-order func types) 
-	**
-	** Note: we use the special predicates, functors and layout for
-	** `pred'.
-	*/
-
-Declare_entry(mercury__builtin_unify_pred_2_0);
-Declare_entry(mercury__builtin_index_pred_2_0);
-Declare_entry(mercury__builtin_compare_pred_3_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_func_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
-	MR_TYPECTOR_REP_PRED,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_pred_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_pred_0,
-	string_const("builtin", 7),
-	string_const("func", 4),
-	MR_RTTI_VERSION
-};
-
-	/*
-	** type_ctor_info for `pred' 
-	** (this is used for all higher-order pred types) 
-	*/
-
-Declare_entry(mercury__builtin_unify_pred_2_0);
-Declare_entry(mercury__builtin_index_pred_2_0);
-Declare_entry(mercury__builtin_compare_pred_3_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_pred_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
-	MR_TYPECTOR_REP_PRED,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_pred_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_pred_0,
-	string_const("builtin", 7),
-	string_const("pred", 4),
-	MR_RTTI_VERSION
-};
-
-Define_extern_entry(mercury__builtin_unify_pred_2_0);
-Define_extern_entry(mercury__builtin_index_pred_2_0);
-Define_extern_entry(mercury__builtin_compare_pred_3_0);
-
-BEGIN_MODULE(mercury__builtin_unify_pred_module)
-	init_entry_ai(mercury__builtin_unify_pred_2_0);
-BEGIN_CODE
-
-/* code for predicate 'builtin_unify_pred'/2 in mode 0 */
-Define_entry(mercury__builtin_unify_pred_2_0);
-	MR_incr_sp_push_msg(2, "private_builtin:builtin_unify_pred");
-	fatal_error("attempted unification of higher-order terms");
-END_MODULE
-
-
-BEGIN_MODULE(mercury__builtin_index_pred_module)
-	init_entry_ai(mercury__builtin_index_pred_2_0);
-BEGIN_CODE
-
-/* code for predicate 'builtin_index_pred'/2 in mode 0 */
-Define_entry(mercury__builtin_index_pred_2_0);
-	r1 = (Integer) -1;
-	proceed();
-END_MODULE
-
-BEGIN_MODULE(mercury__builtin_compare_pred_module)
-	init_entry_ai(mercury__builtin_compare_pred_3_0);
-BEGIN_CODE
-
-/* code for predicate 'builtin_compare_pred'/3 in mode 0 */
-Define_entry(mercury__builtin_compare_pred_3_0);
-	MR_incr_sp_push_msg(2, "private_builtin:builtin_compare_pred");
-	fatal_error("attempted comparison of higher-order terms");
-END_MODULE
+extern	struct MR_TypeCtorInfo_struct	mercury_data___type_ctor_info_pred_0;
+extern	struct MR_TypeCtorInfo_struct	mercury_data___type_ctor_info_func_0;
 
 	/* 
 	** MR_create_type_info():
@@ -163,6 +61,7 @@ END_MODULE
 	** which does much the same thing, only allocating using MR_GC_malloc()
 	** instead of on the Mercury heap.
 	*/
+
 Word * 
 MR_create_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info)
 {
@@ -184,6 +83,7 @@ MR_create_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info
 	** existentially typed type variables, then it is OK
 	** for the data_value and functor_descriptor to be NULL.
 	*/
+
 Word * 
 MR_create_type_info_maybe_existq(const Word *term_type_info, 
 	const Word *arg_pseudo_type_info, const Word *data_value, 
@@ -456,31 +356,36 @@ MR_compare_type_info(Word t1, Word t2)
 Word
 MR_collapse_equivalences(Word maybe_equiv_type_info) 
 {
-	Word *functors, equiv_type_info;
+	MR_TypeCtorInfo	type_ctor_info;
+	Word		*functors;
+	Word		equiv_type_info;
 	
-	functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
-			MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) 
-					maybe_equiv_type_info));
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) 
+					maybe_equiv_type_info);
 
 		/* Look past equivalences */
-	while (MR_TYPE_CTOR_FUNCTORS_INDICATOR(functors) == MR_TYPE_CTOR_FUNCTORS_EQUIV) {
-		equiv_type_info = (Word) MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(functors);
+	while (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_EQUIV
+		|| type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_EQUIV_VAR)
+	{
+		functors = type_ctor_info->type_ctor_functors;
+		equiv_type_info = (Word)
+				MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(functors);
 		equiv_type_info = (Word) MR_create_type_info(
 				(Word *) maybe_equiv_type_info, 
 				(Word *) equiv_type_info);
-		functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
-			MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) 
-				equiv_type_info));
+
 		maybe_equiv_type_info = equiv_type_info;
+		type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) 
+						maybe_equiv_type_info);
 	}
 
 	return maybe_equiv_type_info;
 }
 
-
 /*
 ** MR_deallocate() frees up a list of memory cells
 */
+
 void
 MR_deallocate(MR_MemoryList allocated)
 {
@@ -543,6 +448,7 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 	** the values whose pseudo type-info we are looking at was taken, as
 	** well as the functor descriptor for that functor.
 	*/
+
 Word *
 MR_make_type_info_maybe_existq(const Word *term_type_info, 
 	const Word *arg_pseudo_type_info, const Word *data_value, 
@@ -652,18 +558,6 @@ MR_get_tag_representation(Word layout_entry)
 		default:
 		fatal_error("MR_get_tag_representation: unknown tag representation");
 	}
-}
-
-/*---------------------------------------------------------------------------*/
-
-void mercury_sys_init_type_info(void); /* suppress gcc warning */
-void mercury_sys_init_type_info(void) {
-	mercury__builtin_unify_pred_module();
-	mercury__builtin_index_pred_module();
-	mercury__builtin_compare_pred_module();
-
-	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
-		mercury_data___type_ctor_info_pred_0, _pred_);
 }
 
 /*---------------------------------------------------------------------------*/

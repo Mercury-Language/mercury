@@ -619,12 +619,8 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
     data_value = (Word *) MR_body(data, data_tag);
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    type_ctor_layout = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(type_ctor_info);
-    type_ctor_functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
-                    type_ctor_info);
-
-    layout_for_tag = type_ctor_layout[data_tag];
-    layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
+    type_ctor_layout = type_ctor_info->type_ctor_layout;
+    type_ctor_functors = type_ctor_info->type_ctor_functors;
 
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
@@ -637,7 +633,11 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
         case MR_TYPECTOR_REP_ENUM: 
         case MR_TYPECTOR_REP_ENUM_USEREQ: 
 	{
-            int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
+            int functors;
+
+            layout_for_tag = type_ctor_layout[data_tag];
+            layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
+            functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
                                 layout_vector_for_tag);
             MR_DEBUG_TABLE_ENUM(table, functors, data);
             break;
@@ -645,6 +645,8 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
         case MR_TYPECTOR_REP_DU: 
         case MR_TYPECTOR_REP_DU_USEREQ: 
 	{
+            layout_for_tag = type_ctor_layout[data_tag];
+            layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
             tag_rep = MR_get_tag_representation((Word) layout_for_tag);
             switch(tag_rep) {
             case MR_DISCUNIONTAG_SHARED_LOCAL: {
@@ -717,6 +719,9 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
 	{
             Word *new_type_info;
+
+            layout_for_tag = type_ctor_layout[data_tag];
+            layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
             new_type_info = MR_make_type_info(type_info,
                 (Word *) *MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(
                     layout_vector_for_tag),
@@ -726,6 +731,9 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
         }
         case MR_TYPECTOR_REP_EQUIV: {
             Word *new_type_info;
+
+            layout_for_tag = type_ctor_layout[data_tag];
+            layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
             new_type_info = MR_make_type_info(type_info,
                 (Word *) MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(layout_vector_for_tag),
                 &allocated_memory_cells);
@@ -733,6 +741,8 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             break;
         }
         case MR_TYPECTOR_REP_EQUIV_VAR:
+            layout_for_tag = type_ctor_layout[data_tag];
+            layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
             MR_DEBUG_TABLE_ANY(table,
                 (Word *) type_info[(Word) layout_vector_for_tag], data);
             break;

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997-1999 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -98,6 +98,30 @@
   /* Just fake it by pretending that the array has a fixed size */
   #define	MR_VARIABLE_SIZED	1024
 #endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** C preprocessor tricks.
+*/
+
+/* convert a macro to a string */
+#define MR_STRINGIFY(x)		MR_STRINGIFY_2(x)
+#define MR_STRINGIFY_2(x)	#x
+
+/* paste two macros together */
+#define MR_PASTE2(a,b)			MR_PASTE2_2(a,b)
+#define MR_PASTE2_2(a,b)		a##b
+#define MR_PASTE3(a,b,c)		MR_PASTE3_2(a,b,c)
+#define MR_PASTE3_2(a,b,c)		a##b##c
+#define MR_PASTE4(a,b,c,d)		MR_PASTE4_2(a,b,c,d)
+#define MR_PASTE4_2(a,b,c,d)		a##b##c##d
+#define MR_PASTE5(a,b,c,d,e)		MR_PASTE5_2(a,b,c,d,e)
+#define MR_PASTE5_2(a,b,c,d,e)		a##b##c##d##e
+#define MR_PASTE6(a,b,c,d,e,f)		MR_PASTE6_2(a,b,c,d,e,f)
+#define MR_PASTE6_2(a,b,c,d,e,f)	a##b##c##d##e##f
+#define MR_PASTE7(a,b,c,d,e,f,g)	MR_PASTE7_2(a,b,c,d,e,f,g)
+#define MR_PASTE7_2(a,b,c,d,e,f,g)	a##b##c##d##e##f##g
 
 /*---------------------------------------------------------------------------*/
 

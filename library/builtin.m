@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -241,505 +241,93 @@ promise_only_solution(Pred) = OutVal :-
 
 :- pragma c_code("
 
-
-	/* type_ctor_layout definitions */ 
-
-	/* type_ctor_layout for `int' */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_int_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_int_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_INT_VALUE))
-};
-
-	/* type_ctor_layout for `character' */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_character_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_character_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_CHARACTER_VALUE))
-};
-
-	/* type_ctor_layout for `string' */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_string_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_string_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_STRING_VALUE))
-};
-
-	/* type_ctor_layout for `float' */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_float_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_float_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_FLOAT_VALUE))
-};
-
-	/* type_ctor_layout for `void' */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_void_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_void_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_VOID_VALUE))
-};
-
-#ifdef	NATIVE_GC
-
-	/* type_ctor_layout for `succip' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_succip_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_succip_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_SUCCIP_VALUE))
-};
-
-	/* type_ctor_layout for `hp' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_hp_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_hp_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_HP_VALUE))
-};
-
-	/* type_ctor_layout for `curfr' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_curfr_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_curfr_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_CURFR_VALUE))
-};
-
-	/* type_ctor_layout for `maxfr' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_maxfr_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_maxfr_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_MAXFR_VALUE))
-};
-
-	/* type_ctor_layout for `redofr' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_redofr_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_redofr_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_REDOFR_VALUE))
-};
-
-	/* type_ctor_layout for `redoip' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_redoip_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_redoip_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_REDOIP_VALUE))
-};
-
-#endif /* NATIVE_GC */
-
-	/* type_ctor_layout for `trail ptr' (only used by agc and debugger) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_trail_ptr_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_trail_ptr_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TRAIL_PTR_VALUE))
-};
-
-	/* type_ctor_layout for `ticket' (only used by agc and debugger) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_layout_ticket_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data___type_ctor_layout_ticket_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TICKET_VALUE))
-};
-
-	/* type_ctor_functors definitions */
-
-	/* type_ctor_functors for `int' */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_int_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_int_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_functors for `character' */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_character_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_character_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_functors for `string' */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_string_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_string_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_functors for `float' */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_float_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_float_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_functors for `void' */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_void_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_void_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-#ifdef	NATIVE_GC
-
-	/* type_ctor_functors for `succip' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_succip_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_succip_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_functors for `hp' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_hp_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_hp_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_functors for `curfr' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_curfr_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_curfr_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_functors for `maxfr' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_maxfr_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_maxfr_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_functors for `redofr' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_redofr_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_redofr_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_functors for `redoip' (only used by accurate gc) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_redoip_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_redoip_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-#endif /* NATIVE_GC */
-
-	/* type_ctor_functors for `trail ptr' (only used by agc and debugger) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_trail_ptr_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_trail_ptr_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_functors for `ticket' (only used by agc and debugger) */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___type_ctor_functors_ticket_0_struct {
-	Integer f1;
-} mercury_data___type_ctor_functors_ticket_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-	/* type_ctor_infos definitions */
-
-	/* type_ctor_info for `int' */
-
-Declare_entry(mercury__builtin_unify_int_2_0);
-Declare_entry(mercury__builtin_index_int_2_0);
-Declare_entry(mercury__builtin_compare_int_3_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_int_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_int_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_int_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_int_3_0)),
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , int, 0,
 	MR_TYPECTOR_REP_INT,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_int_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_int_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""int"", 3),
-	MR_RTTI_VERSION
-};
+	mercury__builtin_unify_int_2_0,
+	mercury__builtin_index_int_2_0,
+	mercury__builtin_compare_int_3_0);
 
-	/* type_ctor_info for `character' */
-
-Declare_entry(mercury__builtin_unify_character_2_0);
-Declare_entry(mercury__builtin_index_character_2_0);
-Declare_entry(mercury__builtin_compare_character_3_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_character_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_character_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_character_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_character_3_0)),
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , character, 0,
 	MR_TYPECTOR_REP_CHAR,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_character_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_character_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""character"", 9),
-	MR_RTTI_VERSION
-};
+	mercury__builtin_unify_character_2_0,
+	mercury__builtin_index_character_2_0,
+	mercury__builtin_compare_character_3_0);
 
-	/* type_ctor_info for `string' */
-
-Declare_entry(mercury__builtin_unify_string_2_0);
-Declare_entry(mercury__builtin_index_string_2_0);
-Declare_entry(mercury__builtin_compare_string_3_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_string_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_string_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_string_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_string_3_0)),
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , string, 0,
 	MR_TYPECTOR_REP_STRING,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_string_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_string_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""string"", 6),
-	MR_RTTI_VERSION
-};
+	mercury__builtin_unify_string_2_0,
+	mercury__builtin_index_string_2_0,
+	mercury__builtin_compare_string_3_0);
 
-	/* type_ctor_info for `float' */
-
-Declare_entry(mercury__builtin_unify_float_2_0);
-Declare_entry(mercury__builtin_index_float_2_0);
-Declare_entry(mercury__builtin_compare_float_3_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_float_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_float_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_float_2_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_float_3_0)),
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , float, 0,
 	MR_TYPECTOR_REP_FLOAT,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_float_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_float_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""float"", 5),
-	MR_RTTI_VERSION
-};
+	mercury__builtin_unify_float_2_0,
+	mercury__builtin_index_float_2_0,
+	mercury__builtin_compare_float_3_0);
 
-	/* type_ctor_info for `void' */
+	/* 
+	** One of the following two is used for all higher-order types.
+	** Note that they use the same three predicates.
+	*/
 
-Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_void_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_TYPECTOR_REP_VOID,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_void_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_void_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""void"", 4),
-	MR_RTTI_VERSION
-};
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , func, 0,
+	MR_TYPECTOR_REP_PRED,
+	mercury__builtin_unify_pred_2_0,
+	mercury__builtin_index_pred_2_0,
+	mercury__builtin_compare_pred_3_0);
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , pred, 0,
+	MR_TYPECTOR_REP_PRED,
+	mercury__builtin_unify_pred_2_0,
+	mercury__builtin_index_pred_2_0,
+	mercury__builtin_compare_pred_3_0);
+
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(void, 0, MR_TYPECTOR_REP_VOID);
 
 #ifdef	NATIVE_GC
 
-	/* type_ctor_info for `succip' (only used by accurate gc) */
+/*
+** The following type_ctor_infos are used only by accurate gc.
+*/
 
-Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_succip_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_TYPECTOR_REP_SUCCIP,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_succip_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_succip_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""succip"", 6),
-	MR_RTTI_VERSION
-};
-
-	/* type_ctor_info for `hp' (only used by accurate gc) */
-
-Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_hp_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_TYPECTOR_REP_HP,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_hp_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_hp_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""hp"", 2),
-	MR_RTTI_VERSION
-};
-
-	/* type_ctor_info for `curfr' (only used by accurate gc) */
-
-Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_curfr_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_TYPECTOR_REP_CURFR,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_curfr_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_curfr_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""curfr"", 5),
-	MR_RTTI_VERSION
-};
-
-	/* type_ctor_info for `maxfr' (only used by accurate gc) */
-
-Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_maxfr_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_TYPECTOR_REP_MAXFR,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_maxfr_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_maxfr_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""maxfr"", 5),
-	MR_RTTI_VERSION
-};
-
-	/* type_ctor_info for `redofr' (only used by accurate gc) */
-
-Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_redofr_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_TYPECTOR_REP_REDOFR,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_redofr_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_redofr_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""redofr"", 6),
-	MR_RTTI_VERSION
-};
-
-	/* type_ctor_info for `redoip' (only used by accurate gc) */
-
-Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_redoip_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_TYPECTOR_REP_REDOIP,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_redoip_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_redoip_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""redoip"", 6),
-	MR_RTTI_VERSION
-};
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(succip, 0, MR_TYPECTOR_REP_SUCCIP);
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(hp, 0, MR_TYPECTOR_REP_HP);
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(curfr, 0, MR_TYPECTOR_REP_CURFR);
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(maxfr, 0, MR_TYPECTOR_REP_MAXFR);
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(redofr, 0, MR_TYPECTOR_REP_REDOFR);
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(redoip, 0, MR_TYPECTOR_REP_REDOIP);
 
 #endif /* NATIVE_GC */
 
-	/* type_ctor_info for `trai ptr' (only used by agc and debugger) */
+/*
+** The following type_ctor_infos are used both accurate gc and by the debugger.
+*/
 
-Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_trail_ptr_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_TYPECTOR_REP_TRAIL_PTR,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_trail_ptr_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_trail_ptr_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""trail_ptr"", 9),
-	MR_RTTI_VERSION
-};
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(trailptr, 0, MR_TYPECTOR_REP_TRAIL_PTR);
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(ticket, 0, MR_TYPECTOR_REP_TICKET);
 
-	/* type_ctor_info for `ticket' (only used by agc and debugger) */
-
-Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_ticket_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_TYPECTOR_REP_TICKET,
-	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_ticket_0,
-	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_ticket_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""ticket"", 6),
-	MR_RTTI_VERSION
-};
+Define_extern_entry(mercury__builtin_unify_pred_2_0);
+Define_extern_entry(mercury__builtin_index_pred_2_0);
+Define_extern_entry(mercury__builtin_compare_pred_3_0);
 
 BEGIN_MODULE(builtin_types_module)
-
+	init_entry_ai(mercury__builtin_unify_pred_2_0);
+	init_entry_ai(mercury__builtin_index_pred_2_0);
+	init_entry_ai(mercury__builtin_compare_pred_3_0);
 BEGIN_CODE
+/* code for predicate 'builtin_unify_pred'/2 in mode 0 */
+Define_entry(mercury__builtin_unify_pred_2_0);
+	MR_incr_sp_push_msg(2, ""private_builtin:builtin_unify_pred"");
+	fatal_error(""attempted unification of higher-order terms"");
 
+/* code for predicate 'builtin_index_pred'/2 in mode 0 */
+Define_entry(mercury__builtin_index_pred_2_0);
+	r1 = (Integer) -1;
+	proceed();
+
+/* code for predicate 'builtin_compare_pred'/3 in mode 0 */
+Define_entry(mercury__builtin_compare_pred_3_0);
+	MR_incr_sp_push_msg(2, ""private_builtin:builtin_compare_pred"");
+	fatal_error(""attempted comparison of higher-order terms"");
 END_MODULE
 
 /*
@@ -747,7 +335,8 @@ INIT sys_init_builtin_types_module
 */
 MR_MODULE_STATIC_OR_EXTERN ModuleFunc builtin_types_module;
 extern void mercury__private_builtin__init(void);
-void sys_init_builtin_types_module(void);
+
+void sys_init_builtin_types_module(void); /* suppress gcc warning */
 void sys_init_builtin_types_module(void) {
 
 	builtin_types_module();
@@ -769,6 +358,10 @@ void sys_init_builtin_types_module(void) {
 		mercury_data___type_ctor_info_character_0, _character_);
 	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
 		mercury_data___type_ctor_info_string_0, _string_);
+	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
+		mercury_data___type_ctor_info_pred_0, _pred_);
+	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
+		mercury_data___type_ctor_info_func_0, _pred_);
 	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(
 		mercury_data___type_ctor_info_void_0, mercury__unused_0_0);
 }
@@ -859,46 +452,11 @@ void sys_init_copy_module(void) {
 
 :- pragma c_code("
 
-/*
- * c_pointer has a special value reserved for its layout, since it needs to
- * be handled as a special case.
- */
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_builtin__type_ctor_layout_c_pointer_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_builtin__type_ctor_layout_c_pointer_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_C_POINTER_VALUE))
-};
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct
-mercury_data_builtin__type_ctor_functors_c_pointer_0_struct {
-	Integer f1;
-} mercury_data_builtin__type_ctor_functors_c_pointer_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-Define_extern_entry(mercury____Unify___builtin__c_pointer_0_0);
-Define_extern_entry(mercury____Index___builtin__c_pointer_0_0);
-Define_extern_entry(mercury____Compare___builtin__c_pointer_0_0);
-
-
-const struct MR_TypeCtorInfo_struct
-mercury_data_builtin__type_ctor_info_c_pointer_0 = {
-	(Integer) 0,
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___builtin__c_pointer_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___builtin__c_pointer_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___builtin__c_pointer_0_0)),
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(builtin, c_pointer, 0,
 	MR_TYPECTOR_REP_C_POINTER,
-	(MR_TypeCtorFunctors) &mercury_data_builtin__type_ctor_functors_c_pointer_0,
-	(MR_TypeCtorLayout) &mercury_data_builtin__type_ctor_layout_c_pointer_0,
-	MR_string_const(""builtin"", 7),
-	MR_string_const(""c_pointer"", 9),
-	MR_RTTI_VERSION
-};
-
+	mercury____Unify___builtin__c_pointer_0_0,
+	mercury____Index___builtin__c_pointer_0_0,
+	mercury____Compare___builtin__c_pointer_0_0);
 
 BEGIN_MODULE(unify_c_pointer_module)
 	init_entry(mercury____Unify___builtin__c_pointer_0_0);

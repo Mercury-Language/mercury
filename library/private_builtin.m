@@ -278,31 +278,7 @@ typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 
 	% The definitions for type_ctor_info/1 and type_info/1.
 
-:- pragma c_header_code("
-
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-	mercury_data___type_ctor_info_int_0;
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-	mercury_data___type_ctor_info_string_0;
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-	mercury_data___type_ctor_info_float_0;
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-	mercury_data___type_ctor_info_character_0;
-
-").
-
 :- pragma c_code("
-
-Define_extern_entry(mercury____Unify___private_builtin__type_info_1_0);
-Define_extern_entry(mercury____Index___private_builtin__type_info_1_0);
-Define_extern_entry(mercury____Compare___private_builtin__type_info_1_0);
-
-extern const struct
-	mercury_data_private_builtin__type_ctor_layout_type_info_1_struct
-	mercury_data_private_builtin__type_ctor_layout_type_info_1;
-extern const struct
-	mercury_data_private_builtin__type_ctor_functors_type_info_1_struct
-	mercury_data_private_builtin__type_ctor_functors_type_info_1;
 
 	/*
 	** For most purposes, type_ctor_info can be treated just like
@@ -310,119 +286,21 @@ extern const struct
 	** type_ctor_infos.
 	*/
 
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data_private_builtin__type_ctor_info_type_ctor_info_1 = {
-	((Integer) 1),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Unify___private_builtin__type_info_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Index___private_builtin__type_info_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Compare___private_builtin__type_info_1_0)),
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, type_ctor_info, 1,
 	MR_TYPECTOR_REP_TYPEINFO,
-	(MR_TypeCtorFunctors) &
-	    mercury_data_private_builtin__type_ctor_functors_type_info_1,
-	(MR_TypeCtorLayout) &
-		mercury_data_private_builtin__type_ctor_layout_type_info_1,
-	MR_string_const(""private_builtin"", 15),
-	MR_string_const(""type_ctor_info"", 14),
-	MR_RTTI_VERSION
-};
+	mercury____Unify___private_builtin__type_info_1_0,
+	mercury____Index___private_builtin__type_info_1_0,
+	mercury____Compare___private_builtin__type_info_1_0);
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_info, 1,
+	MR_TYPECTOR_REP_TYPEINFO);
 
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data_private_builtin__type_ctor_info_type_info_1 = {
-	((Integer) 1),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Unify___private_builtin__type_info_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Index___private_builtin__type_info_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Compare___private_builtin__type_info_1_0)),
-	MR_TYPECTOR_REP_TYPEINFO,
-	(MR_TypeCtorFunctors) &
-		mercury_data_private_builtin__type_ctor_functors_type_info_1,
-	(MR_TypeCtorLayout) &
-		mercury_data_private_builtin__type_ctor_layout_type_info_1,
-	MR_string_const(""private_builtin"", 15),
-	MR_string_const(""type_info"", 9),
-	MR_RTTI_VERSION
-};
-
-const struct mercury_data_private_builtin__type_ctor_layout_type_info_1_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_private_builtin__type_ctor_layout_type_info_1 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG,
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE))
-};
-
-const struct mercury_data_private_builtin__type_ctor_functors_type_info_1_struct {
-	Integer f1;
-} mercury_data_private_builtin__type_ctor_functors_type_info_1 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-Define_extern_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
-Define_extern_entry(mercury____Index___private_builtin__typeclass_info_1_0);
-Define_extern_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
-
-extern const struct
-	mercury_data_private_builtin__type_ctor_layout_typeclass_info_1_struct 
-	mercury_data_private_builtin__type_ctor_layout_typeclass_info_1;
-extern const struct
-	mercury_data_private_builtin__type_ctor_functors_typeclass_info_1_struct
-	mercury_data_private_builtin__type_ctor_functors_typeclass_info_1;
-
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1 = {
-	((Integer) 1),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Unify___private_builtin__typeclass_info_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Index___private_builtin__typeclass_info_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Compare___private_builtin__typeclass_info_1_0)),
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, base_typeclass_info, 1,
 	MR_TYPECTOR_REP_TYPECLASSINFO,
-	(MR_TypeCtorFunctors) &
-	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
-	(MR_TypeCtorLayout) &
-	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
-	MR_string_const(""private_builtin"", 15),
-	MR_string_const(""base_typeclass_info"", 19),
-	MR_RTTI_VERSION
-};
-
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data_private_builtin__type_ctor_info_typeclass_info_1 = {
-	((Integer) 1),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Unify___private_builtin__typeclass_info_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Index___private_builtin__typeclass_info_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Compare___private_builtin__typeclass_info_1_0)),
-	MR_TYPECTOR_REP_TYPECLASSINFO,
-	(MR_TypeCtorFunctors) &
-	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
-	(MR_TypeCtorLayout) &
-	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
-	MR_string_const(""private_builtin"", 15),
-	MR_string_const(""typeclass_info"", 14),
-	MR_RTTI_VERSION
-};
-
-const struct
-mercury_data_private_builtin__type_ctor_layout_typeclass_info_1_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_private_builtin__type_ctor_layout_typeclass_info_1 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TYPECLASSINFO_VALUE))
-};
-
-const struct mercury_data_private_builtin__type_ctor_functors_typeclass_info_1_struct {
-	Integer f1;
-} mercury_data_private_builtin__type_ctor_functors_typeclass_info_1 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
+	mercury____Unify___private_builtin__typeclass_info_1_0,
+	mercury____Index___private_builtin__typeclass_info_1_0,
+	mercury____Compare___private_builtin__typeclass_info_1_0);
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
+	MR_TYPECTOR_REP_TYPECLASSINFO);
 
 BEGIN_MODULE(type_info_module)
 	init_entry(mercury____Unify___private_builtin__type_info_1_0);
@@ -1223,6 +1101,19 @@ unused :-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- pragma c_header_code("
+
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+	mercury_data___type_ctor_info_int_0;
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+	mercury_data___type_ctor_info_string_0;
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+	mercury_data___type_ctor_info_float_0;
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+	mercury_data___type_ctor_info_character_0;
+
+").
 
 :- pragma c_code(table_lookup_insert_int(T0::in, I::in, T::out),
 		will_not_call_mercury, "

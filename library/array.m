@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-1999 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -271,39 +271,7 @@ lower bounds other than zero are not supported
 
 :- pragma c_code("
 
-Define_extern_entry(mercury____Unify___array__array_1_0);
-Define_extern_entry(mercury____Index___array__array_1_0);
-Define_extern_entry(mercury____Compare___array__array_1_0);
-
-MR_MODULE_STATIC_OR_EXTERN 
-const struct mercury_data_array__type_ctor_layout_array_1_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_array__type_ctor_layout_array_1 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE))
-};
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_array__type_ctor_functors_array_1_struct {
-	Integer f1;
-} mercury_data_array__type_ctor_functors_array_1 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data_array__type_ctor_info_array_1 = {
-	(Integer) 1,
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___array__array_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___array__array_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___array__array_1_0)),
-	MR_TYPECTOR_REP_ARRAY,
-	(Word *) &mercury_data_array__type_ctor_functors_array_1,
-	(Word *) &mercury_data_array__type_ctor_layout_array_1,
-	MR_string_const(""array"", 5),
-	MR_string_const(""array"", 5),
-	MR_RTTI_VERSION
-};
-
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 
 Declare_entry(mercury__array__array_equal_2_0);
 Declare_entry(mercury__array__array_compare_3_0);

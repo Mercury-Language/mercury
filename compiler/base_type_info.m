@@ -255,7 +255,6 @@ base_type_info__construct_pred_addrs2([proc(PredId, ProcId) | Procs],
 	PredAddrArg = yes(const(code_addr_const(PredAddr))),
 	base_type_info__construct_pred_addrs2(Procs, ModuleInfo, PredAddrArgs).
 
-
 :- type type_ctor_representation 
 	--->	enum
 	;	enum_usereq
@@ -276,10 +275,22 @@ base_type_info__construct_pred_addrs2([proc(PredId, ProcId) | Procs],
 	;	typeinfo
 	;	typeclassinfo
 	;	array
+	;	succip
+	;	hp
+	;	curfr
+	;	maxfr
+	;	redofr
+	;	redoip
+	;	trail_ptr
+	;	ticket
 	;	unknown.
+
+% This table should be kept in sync with the MR_TypeCtorRepresentation enum
+% in runtime/mercury_type_info.h.
 
 :- pred base_type_info__type_ctor_rep_to_int(type_ctor_representation::in,
 	int::out) is det.
+
 base_type_info__type_ctor_rep_to_int(enum, 		0).
 base_type_info__type_ctor_rep_to_int(enum_usereq,	1).
 base_type_info__type_ctor_rep_to_int(du,		2).
@@ -299,8 +310,15 @@ base_type_info__type_ctor_rep_to_int(c_pointer,		15).
 base_type_info__type_ctor_rep_to_int(typeinfo,		16).
 base_type_info__type_ctor_rep_to_int(typeclassinfo,	17).
 base_type_info__type_ctor_rep_to_int(array,		18).
-base_type_info__type_ctor_rep_to_int(unknown,		19).
-
+base_type_info__type_ctor_rep_to_int(succip,		19).
+base_type_info__type_ctor_rep_to_int(hp,		20).
+base_type_info__type_ctor_rep_to_int(curfr,		21).
+base_type_info__type_ctor_rep_to_int(maxfr,		22).
+base_type_info__type_ctor_rep_to_int(redofr,		23).
+base_type_info__type_ctor_rep_to_int(redoip,		24).
+base_type_info__type_ctor_rep_to_int(trail_ptr,		25).
+base_type_info__type_ctor_rep_to_int(ticket,		26).
+base_type_info__type_ctor_rep_to_int(unknown,		27).
 
 :- pred base_type_info__construct_type_ctor_representation(hlds_type_defn,
 		maybe(rval)).
@@ -353,6 +371,3 @@ base_type_info__construct_type_ctor_representation(HldsType, Rvals) :-
 	),
 	base_type_info__type_ctor_rep_to_int(TypeCtorRep, TypeCtorRepInt),
 	Rvals = yes(const(int_const(TypeCtorRepInt))).
-
-
-

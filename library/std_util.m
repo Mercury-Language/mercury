@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -74,7 +74,6 @@
 	%	returns the type_info for the type stored in `Univ'.
 	%
 :- func univ_type(univ) = type_info.
-
 
 	% univ_value(Univ):
 	%	returns the value of the object stored in Univ.
@@ -494,7 +493,6 @@ fst(P,X) :-
 snd(_X-Y) = Y.
 snd(P,X) :-
 	X = snd(P).
-
 
 maybe_pred(Pred, X, Y) :-
 	(
@@ -934,7 +932,6 @@ det_univ_to_type(Univ, X) :-
 
 #include ""mercury_type_info.h""
 
-
 ").
 
 % :- pred type_to_univ(T, univ).
@@ -987,79 +984,21 @@ det_univ_to_type(Univ, X) :-
 
 :- pragma c_code("
 
-/*
- * Univ has a special value reserved for its layout, since it needs to
- * be handled as a special case. See above for information on 
- * the representation of data of type `univ'.
- */
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_info, 0,
+	MR_TYPECTOR_REP_C_POINTER);
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, univ, 0,
+	MR_TYPECTOR_REP_UNIV);
 
-Declare_entry(mercury____Unify___std_util__univ_0_0);
-Declare_entry(mercury____Index___std_util__univ_0_0);
-Declare_entry(mercury____Compare___std_util__univ_0_0);
+#ifndef	COMPACT_ARGS
 
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_std_util__type_ctor_functors_univ_0_struct {
-	Integer f1;
-} mercury_data_std_util__type_ctor_functors_univ_0 = {
-	MR_TYPE_CTOR_FUNCTORS_UNIV
-};
+Declare_label(mercury____Compare___std_util__univ_0_0_i1);
 
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_std_util__type_ctor_layout_univ_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_std_util__type_ctor_layout_univ_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_UNIV_VALUE))
-};
+MR_MAKE_PROC_LAYOUT(mercury____Compare___std_util__univ_0_0,
+	MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR(1),
+	MR_PREDICATE, ""std_util"", ""compare_univ"", 3, 0);
+MR_MAKE_INTERNAL_LAYOUT(mercury____Compare___std_util__univ_0_0, 1);
 
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data_std_util__type_ctor_info_univ_0 = {
-	(Integer) 0,
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___std_util__univ_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___std_util__univ_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___std_util__univ_0_0)),
-	MR_TYPECTOR_REP_UNIV,
-	(Word *) &mercury_data_std_util__type_ctor_functors_univ_0,
-	(Word *) &mercury_data_std_util__type_ctor_layout_univ_0,
-	MR_string_const(""std_util"", 8),
-	MR_string_const(""univ"", 4),
-	MR_RTTI_VERSION
-};
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_std_util__type_ctor_layout_type_info_0_struct
-{
-	TYPE_LAYOUT_FIELDS
-} mercury_data_std_util__type_ctor_layout_type_info_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE))
-};
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct
-mercury_data_std_util__type_ctor_functors_type_info_0_struct {
-	Integer f1;
-} mercury_data_std_util__type_ctor_functors_type_info_0 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-Declare_entry(mercury____Unify___std_util__type_info_0_0);
-Declare_entry(mercury____Index___std_util__type_info_0_0);
-Declare_entry(mercury____Compare___std_util__type_info_0_0);
-
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data_std_util__type_ctor_info_type_info_0 = {
-	(Integer) 0,
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___std_util__type_info_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___std_util__type_info_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___std_util__type_info_0_0)),
-	(Integer) 15,
-	(Word *) &mercury_data_std_util__type_ctor_functors_type_info_0,
-	(Word *) &mercury_data_std_util__type_ctor_layout_type_info_0,
-	MR_string_const(""std_util"", 8),
-	MR_string_const(""type_info"", 9),
-	MR_RTTI_VERSION
-};
+#endif
 
 Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
 Define_extern_entry(mercury____Index___std_util__type_info_0_0);
@@ -1221,7 +1160,6 @@ void sys_init_unify_univ_module(void) {
 
 	% Code for type manipulation.
 
-
 	% Prototypes and type definitions.
 
 :- pragma c_header_code("
@@ -1249,7 +1187,6 @@ Word 	ML_make_type(int arity, MR_TypeCtorInfo type_ctor_info,
 				Word arg_type_list);
 
 ").
-
 
 	% A type_ctor_info is really just a subtype of type_info,
 	% but we should hide this from users as it is an implementation
@@ -1377,11 +1314,9 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info);
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_pred_0);
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 
-
 ").
 
 :- pragma c_code("
-
 
 Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 {
@@ -1406,7 +1341,6 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 }
 
 ").
-
 
 :- pragma c_code(type_ctor_and_args(TypeInfo::in,
 		TypeCtor::out, TypeArgs::out), will_not_call_mercury, "
@@ -1511,17 +1445,17 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 {
 	MR_TypeCtorInfo type_ctor = (MR_TypeCtorInfo) TypeCtor;
 
+	/* XXX zs: I think this code is wrong */
 	if (MR_TYPECTOR_IS_HIGHER_ORDER(type_ctor)) {
-		TypeCtorName = (String) (Word) 
-			MR_TYPECTOR_GET_HOT_NAME(type_ctor);
 		TypeCtorModuleName = (String) (Word) 
 			MR_TYPECTOR_GET_HOT_MODULE_NAME(type_ctor);
+		TypeCtorName = (String) (Word)
+			MR_TYPECTOR_GET_HOT_NAME(type_ctor);
 		TypeCtorArity = MR_TYPECTOR_GET_HOT_ARITY(type_ctor);
 	} else {
-		TypeCtorName = MR_TYPE_CTOR_INFO_GET_TYPE_NAME(type_ctor);
+		TypeCtorModuleName = type_ctor->type_ctor_module_name;
+		TypeCtorName = type_ctor->type_ctor_name;
 		TypeCtorArity = MR_TYPE_CTOR_INFO_GET_TYPE_ARITY(type_ctor);
-		TypeCtorModuleName = 
-			MR_TYPE_CTOR_INFO_GET_TYPE_MODULE_NAME(type_ctor);
 	}
 }
 ").
@@ -1574,6 +1508,7 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 :- pragma c_code(construct(TypeInfo::in, FunctorNumber::in, ArgList::in) =
 	(Term::out), will_not_call_mercury, "
 {
+	MR_TypeCtorInfo		type_ctor_info;
 	Word 	layout_entry, new_data, term_vector;
 	ML_Construct_Info info;
 	bool success;
@@ -1598,9 +1533,11 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 		*/
 	if (success) {
 
-		layout_entry = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT_ENTRY(
-			MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) TypeInfo), 
-				info.primary_tag);
+		type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(
+			(Word *) TypeInfo);
+
+		layout_entry = type_ctor_info->type_ctor_layout[
+			info.primary_tag];
 
 		if (info.vector_type == MR_TYPE_CTOR_FUNCTORS_ENUM) {
 			/*
@@ -1712,13 +1649,19 @@ static int 	ML_get_functor_info(Word type_info, int functor_number,
 	*/
 
 static int 
-ML_get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
+ML_get_functor_info(Word type_info, int functor_number,
+	ML_Construct_Info *info)
 {
+	MR_TypeCtorInfo		type_ctor_info;
 	Word *type_ctor_functors;
 
-	type_ctor_functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
-		MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info));
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
+	if (! MR_type_ctor_rep_is_basically_du(type_ctor_info->type_ctor_rep))
+	{
+		return FALSE;
+	}
 
+	type_ctor_functors = type_ctor_info->type_ctor_functors;
 	info->vector_type = MR_TYPE_CTOR_FUNCTORS_INDICATOR(type_ctor_functors);
 
 	switch (info->vector_type) {
@@ -1856,7 +1799,6 @@ ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
 	}
 }
 
-
 	/*
 	** ML_make_type(arity, type_ctor_info, arg_types_list):
 	**
@@ -1914,7 +1856,6 @@ ML_make_type(int arity, MR_TypeCtorInfo type_ctor, Word arg_types_list)
 	}
 }
 
-
 	/*
 	** ML_get_functors_check_range:
 	**
@@ -1938,7 +1879,6 @@ ML_get_functors_check_range(int functor_number, Word type_info,
 		functor_number >= 0 &&
 		ML_get_functor_info(type_info, functor_number, info);
 }
-
 
 	/* 
 	** ML_copy_argument_typeinfos:
@@ -1983,7 +1923,6 @@ ML_copy_argument_typeinfos(int arity, Word type_info, Word *arg_vector)
 	return type_info_list;
 }
 
-
 	/* 
 	** ML_get_num_functors:
 	**
@@ -1997,21 +1936,27 @@ ML_copy_argument_typeinfos(int arity, Word type_info, Word *arg_vector)
 int 
 ML_get_num_functors(Word type_info)
 {
+	MR_TypeCtorInfo	type_ctor_info;
 	Word *type_ctor_functors;
-	int Functors;
+	int		functors;
 
-	type_ctor_functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
-		MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info));
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
+	if (! MR_type_ctor_rep_is_basically_du(type_ctor_info->type_ctor_rep))
+	{
+		return -1;
+	}
+
+	type_ctor_functors = type_ctor_info->type_ctor_functors;
 
 	switch ((int) MR_TYPE_CTOR_FUNCTORS_INDICATOR(type_ctor_functors)) {
 
 		case MR_TYPE_CTOR_FUNCTORS_DU:
-			Functors = MR_TYPE_CTOR_FUNCTORS_DU_NUM_FUNCTORS(
+			functors = MR_TYPE_CTOR_FUNCTORS_DU_NUM_FUNCTORS(
 					type_ctor_functors);
 			break;
 
 		case MR_TYPE_CTOR_FUNCTORS_ENUM:
-			Functors = MR_TYPE_CTOR_FUNCTORS_ENUM_NUM_FUNCTORS(
+			functors = MR_TYPE_CTOR_FUNCTORS_ENUM_NUM_FUNCTORS(
 					type_ctor_functors);
 			break;
 
@@ -2020,35 +1965,35 @@ ML_get_num_functors(Word type_info)
 			equiv_type = (Word *) 
 				MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(
 					type_ctor_functors);
-			Functors = ML_get_num_functors((Word)
+			functors = ML_get_num_functors((Word)
 					MR_create_type_info((Word *) 
 						type_info, equiv_type));
 			break;
 		}
 
 		case MR_TYPE_CTOR_FUNCTORS_SPECIAL:
-			Functors = -1;
+			functors = -1;
 			break;
 
 		case MR_TYPE_CTOR_FUNCTORS_NO_TAG:
-			Functors = 1;
+			functors = 1;
 			break;
 
 		case MR_TYPE_CTOR_FUNCTORS_UNIV:
-			Functors = -1;
+			functors = -1;
 			break;
 
 		default:
 			fatal_error(""std_util:ML_get_num_functors :""
 				"" unknown indicator"");
 	}
-	return Functors;
+
+	return functors;
 }
 
 ").
 
 %-----------------------------------------------------------------------------%
-
 
 :- pragma c_header_code("
 
@@ -2079,7 +2024,6 @@ ML_get_num_functors(Word type_info)
 	 * (that is, they should not be relied on to remain unchanged).
 	 */
 
-
 typedef struct ML_Expand_Info_Struct {
 	ConstString functor;
 	int arity;
@@ -2090,7 +2034,6 @@ typedef struct ML_Expand_Info_Struct {
 	bool need_functor;
 	bool need_args;
 } ML_Expand_Info;
-
 
 	/* Prototypes */
 
@@ -2154,11 +2097,9 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
     int			data_tag; 
     MR_DiscUnionTagRepresentation tag_rep;
 
-
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    type_ctor_layout = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(type_ctor_info);
-    type_ctor_functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
-        type_ctor_info);
+    type_ctor_layout = type_ctor_info->type_ctor_layout;
+    type_ctor_functors = type_ctor_info->type_ctor_functors;
 
     compare_pred = type_ctor_info->compare_pred;
     info->non_canonical_type = ( compare_pred ==
@@ -2168,13 +2109,12 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
     data_tag = MR_tag(data_word);
     data_value = MR_body(data_word, data_tag);
 
-    layout_for_tag = type_ctor_layout[data_tag];
-    layout_vector_for_tag = MR_strip_tag(layout_for_tag);
-
     switch(type_ctor_info->type_ctor_rep) {
 
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
+            layout_for_tag = type_ctor_layout[data_tag];
+            layout_vector_for_tag = MR_strip_tag(layout_for_tag);
             info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
                 layout_vector_for_tag, data_word);
             info->arity = 0;
@@ -2185,6 +2125,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
+            layout_for_tag = type_ctor_layout[data_tag];
+            layout_vector_for_tag = MR_strip_tag(layout_for_tag);
             tag_rep = MR_get_tag_representation((Word) layout_for_tag);
             switch (tag_rep) {
             case MR_DISCUNIONTAG_SHARED_LOCAL:
@@ -2259,7 +2201,11 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         {
             int i;
-	    Word * functor_descriptor = (Word *) layout_vector_for_tag;
+            Word * functor_descriptor;
+
+            layout_for_tag = type_ctor_layout[data_tag];
+            layout_vector_for_tag = MR_strip_tag(layout_for_tag);
+            functor_descriptor = (Word *) layout_vector_for_tag;
 
             data_value = (Word) data_word_ptr;
 
@@ -2302,18 +2248,19 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
         case MR_TYPECTOR_REP_EQUIV: {
             Word *equiv_type_info;
 
-			equiv_type_info = MR_create_type_info(
-				type_info, 
-				(Word *) MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(
-					layout_vector_for_tag));
+            layout_for_tag = type_ctor_layout[data_tag];
+            layout_vector_for_tag = MR_strip_tag(layout_for_tag);
+            equiv_type_info = MR_create_type_info(type_info, (Word *)
+	    	MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(layout_vector_for_tag));
 			ML_expand(equiv_type_info, data_word_ptr, info);
             break;
         }
         case MR_TYPECTOR_REP_EQUIV_VAR: {
             Word *equiv_type_info;
 
-			equiv_type_info = MR_create_type_info(
-				type_info, 
+            layout_for_tag = type_ctor_layout[data_tag];
+            layout_vector_for_tag = MR_strip_tag(layout_for_tag);
+            equiv_type_info = MR_create_type_info(type_info,
 				(Word *) layout_vector_for_tag);
 			ML_expand(equiv_type_info, data_word_ptr, info);
             break;
@@ -2866,4 +2813,3 @@ converse(F, X, Y) =
 
 pow(F, N, X) =
 	( if N = 0 then X else pow(F, N - 1, F(X)) ).
-

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -28,15 +28,8 @@
 #ifndef MERCURY_GRADES_H
 #define MERCURY_GRADES_H
 
-#include "mercury_tags.h" /* for TAGBITS */
-
-/* convert a macro to a string */
-#define MR_STRINGIFY(x)		MR_STRINGIFY_2(x)
-#define MR_STRINGIFY_2(x)	#x
-
-/* paste two macros together */
-#define MR_PASTE2(p1,p2)	MR_PASTE2_2(p1,p2)
-#define MR_PASTE2_2(p1,p2)	p1##p2
+#include "mercury_std.h"	/* for MR_STRINGIFY and MR_PASTE2 */
+#include "mercury_tags.h"	/* for TAGBITS */
 
 /*
 ** Here we build up the MR_GRADE macro part at a time,

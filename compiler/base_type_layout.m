@@ -36,49 +36,33 @@
 %
 % runtime:	mercury_type_info.h	- defines layout macros
 % 		mercury_deep_copy.{c,h}	- deep_copy
-%		mercury_table_any.c	- tabling
+%		mercury_tabling.c	- tabling
 % 		
 % Any module that uses type_ctor_layouts should register itself here.
-% Changes can by minimized by using the macros in type_info.h.
+% Changes can by minimized by using the macros in mercury_type_info.h.
 %
 %---------------------------------------------------------------------------%
+%
 % Data representation: Layout Tables
 %
 % Arrays are created, designed to allow indexing from actual data words.
 %
-% First index on tag:
+% First index on the primary tag of the data.  The value in the
+% layout table will itself have a tag.
 %
-% Tag 0 - 	CONST  Word = type of constant
+% Tag 0 - 	CONST  Word = pointer to enum vector
 %
-% CONST: No further indexing required, look at word in layout 
-%        to find what sort of constant is here. The data word contains
-%        a representation of this sort of constant.
-%
-% Tag 0 - 	CONST   Word = 0	- unassigned
-% Tag 0 - 	CONST   Word = 1	- unused tag
-% Tag 0 - 	CONST   Word = 2	- string
-% Tag 0 - 	CONST   Word = 3	- float
-% Tag 0 - 	CONST   Word = 4	- int
-% Tag 0 - 	CONST   Word = 5	- character
-% Tag 0 - 	CONST   Word = 6	- univ
-% Tag 0 - 	CONST   Word = 7	- pred
-% Tag 0 - 	CONST   Word = 8	- void
-% Tag 0 - 	CONST   Word = 9	- array
-% Tag 0 - 	CONST   Word = 10	- type_info
-% Tag 0 - 	CONST   Word = 11	- c_pointer
-% Tag 0 - 	CONST   Word = 12	- type_class_info
-% 			Words 13 - 1024 reserved for future use
-% Tag 0 - 	CONST   Word = 1024+	- constant(s) 
-% 					  word is pointer to enum
-% 					  vector.
+% CONST: No further indexing required.
+%        The data word contains a representation of this sort of
+%        constant.
 %
 % enum vector:
 %	- 1 or 0 (1 = enumeration, 0 = shared local)
 %	- S, the number of constants sharing this tag
 %	- S strings (functor names)
 %
-% Note that tag 0 value 0 is presently unassigned. This may be used
-% in future for some common case optimization.
+% If the pointer to the enum vector is NULL, then this tag is unused.
+% If code every encounters and unused tag, it is probably an error.
 %
 % Tag 1 - 	UNSHARED  Word = pointer to functor descriptor
 %
@@ -109,37 +93,7 @@
 %	   argument pointers, which point to a functors descriptors just
 %	   as in UNSHARED above. 
 %
-% Tag 3 - 	VAR/EQ  Word = type variable number, or pointer to 
-% 		 		indicator, equivalent type_ctor_info
-% 		 		and maybe functor.
-%
-% VAR/EQ:  There are 3 cases covered by this tag, all of them forms
-% 	   of equivalences.
-% 	   If under 1024, the rest of the word is a type variable number,
-% 	   that is, the polymophic argument number (starting at 1) of
-% 	   the type. Substitute that variable, and you have the type
-% 	   this type is equivalent to. (Variable numbers greater than
-% 	   `existential_var_base' correspond to existentially quantified
-% 	   variables).
-%
-% 	   If over 1024, it's just a pointer to a vector, containing
-% 	   	- an indicator whether this is a no_tag or not
-% 	   	- a pseudo-typeinfo 
-% 	   	- possibly a string constant - the name of the 
-% 	   	  functor if it is a no_tag.
-%	   If the indicator says it isn't a no_tag, the pseudo-typeinfo
-%	   is the type this type is equivalent to. There is no string
-%	   constant.
-%	   If the indicator says it is a no_tag, then the string
-%	   contains the functor, and the pseudo-typeinfo is the
-%	   type of the argument. Except for the functor, this is much 
-%	   the same as an equivalence - the data word has a type
-%	   given by the pseudo-typeinfo (it might be worth taking
-%	   advantage of the fact that the vector for a no_tag type
-%	   is exactly the same as a functors descriptor).
-%
-% 	   In any case, you need to look at the equivalent type
-% 	   to find out what the data word represents.
+% Tag 3 - 	UNUSED.
 %
 %---------------------------------------------------------------------------%
 %
@@ -271,7 +225,6 @@
 :- type tag_category	--->	unshared 	% tagged pointer
 			; 	shared_remote 	% shared tagged pointer
 			;	shared_local	% shared constants
-			; 	no_tag 		% special case of equivalence 
 			; 	unused.		% unused tag
 
 %---------------------------------------------------------------------------%
@@ -466,28 +419,6 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 
 %---------------------------------------------------------------------------%
 
-	% Constants - these should be kept in check with the runtime
-	% definitions.
-
-:- type const_sort 	--->	unassigned
-			;	unused
-			;	string
-			;	float
-			;	int
-			;	character
-			;	univ
-			;	predicate.
-
-:- pred base_type_layout__const_value(const_sort::in, int::out) is det.
-base_type_layout__const_value(unassigned, 0).
-base_type_layout__const_value(unused, 1).
-base_type_layout__const_value(string, 2).
-base_type_layout__const_value(float, 3).
-base_type_layout__const_value(int, 4).
-base_type_layout__const_value(character, 5).
-base_type_layout__const_value(univ, 6).
-base_type_layout__const_value(predicate, 7).
-
 	% The value we use to indicate whether a type is an no_tag type
 	
 :- pred base_type_layout__no_tag_indicator(bool::in, int::out) is det.
@@ -508,7 +439,6 @@ base_type_layout__max_varint(1024).
 base_type_layout__tag_value(shared_local, 0).
 base_type_layout__tag_value(unshared, 1).
 base_type_layout__tag_value(shared_remote, 2).
-base_type_layout__tag_value(no_tag, 3).
 base_type_layout__tag_value(unused, 0).
 
 :- pred base_type_layout__tag_value_const(int::out) is det.
@@ -614,17 +544,17 @@ base_type_layout__layout_special(_ConsId - ConsTag, LayoutInfo,
 	base_type_layout__tag_value_const(Tag),
 	(
 		ConsTag = string_constant(_),
-		base_type_layout__const_value(string, Value),
+		Value = 0,
 		base_type_layout__encode_mkword(LayoutInfo, Tag, 
 			const(int_const(Value)), Rval)
 	;
 		ConsTag = float_constant(_),
-		base_type_layout__const_value(float, Value),
+		Value = 0,
 		base_type_layout__encode_mkword(LayoutInfo, Tag, 
 			const(int_const(Value)), Rval)
 	;
 		ConsTag = int_constant(_),
-		base_type_layout__const_value(int, Value),
+		Value = 0,
 		base_type_layout__encode_mkword(LayoutInfo, Tag, 
 			const(int_const(Value)), Rval)
 	;
@@ -855,12 +785,9 @@ base_type_layout__generate_rvals([Tag - ConsList | Rest], LayoutInfo0,
 			LayoutInfo1, Rval),
 		list__append(Rval, Rvals0, Rvals1)
 	;
-		Tag = no_tag,
-		error("type_ctor_layout: unexpected no_tag")
-	;
 		Tag = unused,
 		LayoutInfo1 = LayoutInfo0,
-		base_type_layout__const_value(unused, Value),
+		Value = 0,
 		base_type_layout__tag_value(unused, TagValue),
 		base_type_layout__encode_mkword(LayoutInfo1, TagValue, 
 			const(int_const(Value)), Rval),
@@ -1457,7 +1384,7 @@ base_type_layout__tag_type_and_value(shared_remote_tag(Tag, _), Tag,
 	shared_remote).
 base_type_layout__tag_type_and_value(shared_local_tag(Tag, _), Tag, 
 	shared_local).
-base_type_layout__tag_type_and_value(no_tag, -1, no_tag). 
+base_type_layout__tag_type_and_value(no_tag, -1, unused). 
 base_type_layout__tag_type_and_value(string_constant(_), -1, unused). 
 base_type_layout__tag_type_and_value(float_constant(_), -1, unused). 
 base_type_layout__tag_type_and_value(int_constant(_), -1, unused). 
