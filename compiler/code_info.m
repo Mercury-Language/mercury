@@ -1263,7 +1263,6 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 	;
 		{ Contents = vars(Vars) },
 		code_info__must_be_swapped(Vars, Args, reg(Reg))
-%%%		{ true }
 	->
 			% Find all the variables that depend of this reg
 		code_info__variables_depending_on_lval(reg(Reg), AllVars),
@@ -1803,8 +1802,14 @@ code_info__must_be_swapped(Vars, Args, _Lval) -->
 :- mode code_info__variable_depends(in, in, in) is semidet.
 
 code_info__variable_depends(Var, DVar, Variables) :-
-	map__search(Variables, Var, cached(RVal, _)),
-	code_info__variable_depends_rval(DVar, RVal, Variables).
+	(
+		Var = DVar
+	->
+		true
+	;
+		map__search(Variables, Var, cached(RVal, _)),
+		code_info__variable_depends_rval(DVar, RVal, Variables)
+	).
 
 :- pred code_info__variable_depends_rval(var, rval, map(var, variable_stat)).
 :- mode code_info__variable_depends_rval(in, in, in) is semidet.
