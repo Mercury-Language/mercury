@@ -67,7 +67,7 @@ to avoid errors about `mercury_compile: Command not found',
 or `makeinfo: Command not found', you need to do the following:
 
 	touch configure
-	make touch-files
+	make touch_files
 
 Then do
 
