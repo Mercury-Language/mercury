@@ -29,6 +29,7 @@ SOURCES= \
 	higher_order.m \
 	higher_order2.m \
 	higher_order3.m \
+	higher_order_implied_mode.m \
 	ho_inst.m \
 	implied_mode.m \
 	indexing.m \
@@ -86,6 +87,7 @@ GRADE-agc_unbound_typevars	= asm_fast.agc
 GRADE-agc_unbound_typevars2	= asm_fast.agc
 GRADE-agc_unused_in		= asm_fast.agc
 MCFLAGS-compl_unify_bug		= -O3
+MCFLAGS-higher_order_implied_mode = -O-1
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
 MCFLAGS-pred_with_no_modes	= --infer-all
 MCFLAGS-simplify_bug		= -O-1
