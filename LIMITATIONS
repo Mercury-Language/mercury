@@ -24,8 +24,7 @@ are the following:
 We are working on eliminating all of these problems. 
 
 Of course, those are not the only things we're working on.  Among other
-things, we'd like to provide better support for debugging, a better C
-interface and a better garbage collector.  We're also working on a
-parallel/multithreaded version of Mercury, and on adding support for
-constraint solving.
+things, we'd like to provide better support for debugging, and a better
+garbage collector.  We're also working on a parallel/multithreaded
+version of Mercury, and on adding support for constraint solving.
 
