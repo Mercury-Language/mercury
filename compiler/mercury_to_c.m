@@ -49,8 +49,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, map, list, require, std_util, term, term_io, prog_out.
-:- import_module mercury_to_mercury, prog_io, globals, options, set, varset.
+:- import_module string, map, list, require, std_util, term, term_io, getopt.
+:- import_module set, varset.
+:- import_module prog_out, mercury_to_mercury, prog_io, globals, options.
 :- import_module prog_util, mode_util, hlds_out, stack, quantification.
 
 %-----------------------------------------------------------------------------%
@@ -804,7 +805,7 @@ c_gen_disj([Goal|Goals], Label, Indent, CGenInfo0, CGenInfo) -->
 
 :- pred c_gen_case(case, var, int, c_gen_info, c_gen_info,
 				io__state, io__state).
-:- mode c_gen_case(in, in, in, in, out, di, uo) is det.
+:- mode c_gen_case(in, in, in, in, out, di, uo) is erroneous.
 
 c_gen_case(case(_ConsId, Goal), Var, Indent, CGenInfo0, CGenInfo) -->
 	{ sorry(10) },
@@ -817,7 +818,7 @@ c_gen_case(case(_ConsId, Goal), Var, Indent, CGenInfo0, CGenInfo) -->
 
 :- pred c_gen_cases(list(case), var, int, c_gen_info, c_gen_info,
 				io__state, io__state).
-:- mode c_gen_cases(in, in, in, in, out, di, uo) is det.
+:- mode c_gen_cases(in, in, in, in, out, di, uo) is erroneous.
 
 c_gen_cases(CasesList, Var, Indent, CGenInfo0, CGenInfo) -->
 	{ sorry(11) },

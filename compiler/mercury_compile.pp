@@ -25,9 +25,11 @@
 
 :- implementation.
 :- import_module prog_io, make_hlds, typecheck, modes, switch_detection.
-:- import_module cse_detection, polymorphism, garbage_out, shapes, excess.
-:- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
-:- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
+:- import_module cse_detection, polymorphism, excess.
+:- import_module liveness, det_analysis, unique_modes.
+:- import_module inlining, follow_code, follow_vars, live_vars.
+:- import_module arg_info, store_alloc, code_gen, optimize, llds.
+:- import_module garbage_out, shapes.
 :- import_module prog_out, prog_util, hlds_out.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
@@ -39,14 +41,15 @@
 
 main -->
 	io__command_line_arguments(Args0),
-	{ getopt__process_options(Args0, Args, Result0) },
+	{ OptionOps = option_ops(short_option, long_option, option_defaults) },
+	{ getopt__process_options(OptionOps, Args0, Args, Result0) },
 	postprocess_options(Result0, Result), 
 	main_2(Result, Args).
 
 % Convert string-valued options into the appropriate enumeration types,
 % and process implications among the options.
 
-:- pred postprocess_options(maybe_option_table, maybe(string),
+:- pred postprocess_options(maybe_option_table(option), maybe(string),
 	io__state, io__state).
 :- mode postprocess_options(in, out, di, uo) is det.
 
@@ -1784,23 +1787,35 @@ mercury_compile__middle_pass_by_phases(HLDS8, HLDS12, ErrorcheckOnly, Proceed)
 		-->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
-	mercury_compile__check_determinism(HLDS8, HLDS9, FoundError),
+	mercury_compile__check_determinism(HLDS8, HLDS9, FoundDetError),
 	maybe_report_stats(Statistics),
 	mercury_compile__maybe_dump_hlds(HLDS9, "9", "determinism"),
-	( { ErrorcheckOnly = no, FoundError = no } ->
-		% HLDS10 is reserved for uniqueness checking
 
-		mercury_compile__maybe_propagate_constraints(HLDS9, HLDS11),
+	( { ErrorcheckOnly = no, FoundDetError = no } ->
+
+	    mercury_compile__check_unique_modes(HLDS9, HLDS10, FoundUniqError),
+	    maybe_report_stats(Statistics),
+	    mercury_compile__maybe_dump_hlds(HLDS10, "10", "unique_modes"),
+
+	    ( { FoundUniqError = no } ->
+
+		mercury_compile__maybe_propagate_constraints(HLDS10, HLDS11),
 		maybe_report_stats(Statistics),
 		mercury_compile__maybe_dump_hlds(HLDS11, "11", "constraint"),
 
 		mercury_compile__map_args_to_regs(HLDS11, HLDS12),
 		maybe_report_stats(Statistics),
-		mercury_compile__maybe_dump_hlds(HLDS12, "12", "args_to_regs")
+		mercury_compile__maybe_dump_hlds(HLDS12, "12", "args_to_regs"),
+
+		{ Proceed = yes }
+	    ;
+		{ HLDS12 = HLDS10 },
+		{ Proceed = no }
+	    )
 	;
-		{ HLDS12 = HLDS9 }
-	),
-	{ std_util__bool_not(FoundError, Proceed) }.
+	    { HLDS12 = HLDS9 },
+	    { Proceed = no }
+	).
 
 :- pred mercury_compile__check_determinism(module_info, module_info, bool,
 	io__state, io__state).
@@ -1820,6 +1835,29 @@ mercury_compile__check_determinism(HLDS0, HLDS, FoundError) -->
 		{ FoundError = no },
 		maybe_write_string(Verbose,
 			"% Program is determinism-correct.\n")
+	).
+
+:- pred mercury_compile__check_unique_modes(module_info, module_info, bool,
+	io__state, io__state).
+:- mode mercury_compile__check_unique_modes(in, out, out, di, uo) is det.
+
+mercury_compile__check_unique_modes(HLDS0, HLDS, FoundError) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose,
+		"% Checking for backtracking over unique modes...\n"),
+	io__get_exit_status(OldStatus),
+	io__set_exit_status(0),
+	unique_modes__check_module(HLDS0, HLDS),
+	io__get_exit_status(NewStatus),
+	( { NewStatus \= 0 } ->
+		{ FoundError = yes },
+		maybe_write_string(Verbose,
+			"% Program contains unique mode error(s).\n")
+	;
+		{ FoundError = no },
+		maybe_write_string(Verbose,
+			"% Program is unique-mode-correct.\n"),
+		io__set_exit_status(OldStatus)
 	).
 
 :- pred mercury_compile__maybe_propagate_constraints(module_info, module_info,

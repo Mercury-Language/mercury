@@ -21,19 +21,16 @@
 
 :- module options.
 :- interface.
-:- import_module int, string, std_util, list, io, map, require.
-
-:- type option_data	--->	bool(bool)
-			;	int(int)
-			;	string(string)
-			;	accumulating(list(string)).
-
-:- type option_table	==	map(option, option_data).
+:- import_module int, string, std_util, list, io, map, require, getopt.
 
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
-:- pred option_defaults(list(pair(option, option_data))::out) is det.
+:- pred option_defaults(option::out, option_data::out) is nondet.
 
+:- type option_table == option_table(option).
+
+	% XXX these predicates are obsolete - use the versions in getopt
+	% instead
 :- pred options__lookup_bool_option(option_table, option, bool).
 :- mode options__lookup_bool_option(in, in, out) is det.
 
@@ -173,19 +170,12 @@
 	;	optimization_option
 	;	miscellaneous_option.
 
-option_defaults(OptionDefaults) :-
-	option_defaults_2(warning_option, WarningOptions),
-	option_defaults_2(verbosity_option, VerbosityOptions),
-	option_defaults_2(output_option, OutputOptions),
-	option_defaults_2(code_gen_option, CodeGenOptions),
-	option_defaults_2(optimization_option, OptimizationOptions),
-	option_defaults_2(miscellaneous_option, MiscellaneousOptions),
-	list__condense([WarningOptions, VerbosityOptions, OutputOptions,
-		CodeGenOptions, MiscellaneousOptions, OptimizationOptions],
-		OptionDefaults).
+option_defaults(Option, Default) :-
+	option_defaults_2(_Category, OptionsList),
+	list__member(Option - Default, OptionsList).
 
-:- pred option_defaults_2(option_category::in,
-	list(pair(option, option_data))::out) is det.
+:- pred option_defaults_2(option_category::out,
+	list(pair(option, option_data))::out) is multidet.
 
 option_defaults_2(warning_option, [
 		% Warning Options
