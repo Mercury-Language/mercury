@@ -601,6 +601,7 @@ use @samp{mc --help} to get the most up-to-date list.
 * Warning options::   
 * Output options::   
 * Auxiliary output options::   
+* Compilation model options::
 * Code generation options::   
 * Optimization options::   
 * Miscellaneous options::   
@@ -811,6 +812,120 @@ With @samp{--dump-hlds}, dumps some additional info.
 @c Output to file <module>.prof the profiling info.
 @end table
 
+@node Compilation model options
+@section Compilation model options
+
+The following compilation options affect the generated
+code in such a way that the entire program must be
+compiled with the same setting of these options,
+and it must be linked to a version of the Mercury
+library which has been compiled with the same setting.
+Rather than setting them individually, you must
+specify them all at once by selecting a particular
+compilation model ("grade").
+
+@table @code
+@item -s @var{grade}
+@itemx --grade @var{grade}
+Select the compilation model. The @var{grade} should be one of
+@samp{debug}, @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
+@samp{fast}, @samp{asm_fast},
+or one of those with @samp{.gc}, @samp{.prof} or @samp{.gc.prof} appended.
+The default grade is system-dependent; it is chosen at installation time
+by @samp{configure}, the auto-configuration script, but can be overridden
+with the @samp{MERCURY_DEFAULT_GRADE} environment variable if desired.
+Depending on your particular installation, only a subset
+of these possible grades will have been installed.
+Attempting to use a grade which has not been installed
+will result in an error at link time.
+
+@table @code
+@item debug
+--debug, --no-c-optimize
+
+@item none
+
+@item reg
+--use-gcc-global-regisers
+
+@item jump
+--use-gcc-nonlocal gotos
+
+@item fast
+--use-gcc-global-registers --use-asm-labels
+
+@item asm_jump
+--use-gcc-global-registers --use-asm-labels
+
+@item asm_fast
+--use-gcc-global-registers --use-gcc-nonlocal_gotos --use-asm-labels
+
+@item *.gc
+--use-conservative-gc
+
+@item *.prof
+--profiling
+
+@end table
+@sp 1
+
+@sp 1
+@item --gcc-global-registers (grades: reg, fast, asm_fast)
+@itemx --no-gcc-global-registers (grades: debug, none, jump, asm_jump)
+Specify whether or not to use GNU C's global register variables extension.
+
+@sp 1
+@item --gcc-non-local-gotos (grades: jump, fast, asm_jump, asm_fast)
+@item --no-gcc-non-local-gotos (grades: debug, none, reg)
+Specify whether or not to use GNU C's ``labels as values'' extension.
+
+@sp 1
+@item --asm-labels (grades: asm_jump, asm_fast)
+@itemx --no-asm-labels (grades: debug, none, reg, jump, fast)
+Specify whether or not to use GNU C's asm extensions for inline assembler
+labels.
+
+@sp 1
+@item --gc @{none, conservative, accurate@}
+@itemx --garbage-collection @{none, conservative, accurate@}
+`.gc' grades use `--gc conservative', other grades use `--gc none'.
+Specify which method of garbage collection to use
+(default: @samp{conservative}).
+@samp{accurate} is not yet implemented.
+
+@sp 1
+@item --tags @{none, low, high@}
+(This option is not intended for general use.)
+Specify whether to use the low bits or the high bits of
+each word as tag bits (default: low).
+
+@sp 1
+@item --num-tag-bits @var{n}
+(This option is not intended for general use.)
+Use @var{n} tag bits.  This option is required if you specify
+@samp{--tags high}.
+With @samp{--tags low}, the default number of tag bits to use
+is determined by the auto-configuration script.
+
+@sp 1
+@item --profiling (grades: any grade ending in `.prof')
+Enable profiling.  Insert profiling hooks in the
+generated code, and also output some profiling
+information (the static call graph) to the file
+@samp{@var{module}.prof}.
+
+@item --debug (grades: debug)
+Enable debugging.
+Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
+to enable debugging of the generated C code. 
+This option also implies @samp{--no-c-optimize}.
+Debugging support is currently extremely primitive -
+this option is probably not useful to anyone except the Mercury implementors.
+We recommend that you use instead use `mnp' or `msp'.
+See the Mercury User's Guide for details.
+
+@end table
+
 @node Code generation options
 @section Code generation options
 @table @code
@@ -822,25 +937,6 @@ Generate code by phases, not by predicates.
 @c Don't handle polymorphic types.
 @c (Generates slightly more efficient code, but stops
 @c polymorphism from working except in special cases.)
-
-@sp 1
-@item -s @var{grade}
-@itemx --grade @var{grade}
-Select the compilation model.  This is a convenient way of
-selecting a setting for the @samp{--c-optimize}, @samp{--gc},
-@samp{--gcc-global-registers}, @samp{--gcc-non-local-gotos},
-@samp{--asm-labels}, and @samp{--debug} options simultaneously.
-The @var{grade} should be one of
-@samp{debug}, @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
-@samp{fast}, or @samp{asm_fast},
-or one of those with @file{.gc} appended.
-
-@sp 1
-@item --gc @{none, conservative, accurate@}
-@itemx --garbage-collection @{none, conservative, accurate@}
-Specify which method of garbage collection to use
-(default: @samp{conservative}).
-@samp{accurate} is not yet implemented.
 
 @sp 1
 @item --no-follow-code
@@ -868,30 +964,6 @@ to the fail or redo code in the runtime system.
 Don't generate simplified code for simple negations.
 
 @sp 1
-@item --no-gcc-global-registers
-Don't use GNU C's global register variables extension.
-
-@sp 1
-@item --no-gcc-non-local-gotos
-Don't use GNU C's ``labels as values'' extension.
-
-@sp 1
-@item --no-asm-labels
-Don't use inline assembler labels.
-
-@sp 1
-@item --tags @{none, low, high@}
-Specify whether to use the low bits or the high bits of
-each word as tag bits (default: low).
-
-@sp 1
-@item --num-tag-bits @var{n}
-Use @var{n} tag bits.  This option is required if you specify
-@samp{--tags high}.
-With @samp{--tags low}, the default number of tag bits to use
-is determined by the auto-configuration script.
-
-@sp 1
 @item --cc @var{compiler-name}
 Specify which C compiler to use.
 
@@ -913,13 +985,6 @@ first module on the command line, but without the @samp{.m} extension.)
 @sp 1
 @item --link-flags @var{options}
 Specify options to be passed to @samp{ml}, the Mercury linker.
-
-@sp 1
-@item --debug
-Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
-to enable debugging of the generated C code. 
-This option also implies @samp{--no-c-optimize}.
-This option is probably not useful to anyone except the Mercury implementors.
 @end table
 
 @node Optimization options
@@ -1077,6 +1142,18 @@ There should be little need to use these, because the default
 values will generally work fine.
 
 @table @code
+@item MERCURY_DEFAULT_GRADE
+The default grade to use if no @samp{--grade} option is specified.
+
+@sp 1
+@item MERCURY_OPTIONS
+A list of options for the Mercury runtime that gets
+linked into every Mercury program.
+Options are available to set the size of the different memory
+areas, and to enable various debugging traces. 
+Use @samp{MERCURY_OPTIONS=-h} for help.
+
+@sp 1
 @item MERCURY_C_INCL_DIR
 Directory for the Mercury C header files (@file{*.h}).
 
@@ -1126,15 +1203,6 @@ Filename of the Mercury Interpreter.
 @sp 1
 @item MERCURY_MKINIT
 Filename of the program to create the @file{*_init.c} file.
-
-@sp 1
-@item MERCURY_DEFAULT_GRADE
-The default grade to use if no @samp{--grade} option is specified.
-
-@sp 1
-@item MERCURY_OPTIONS
-A list of flags to set runtime memory useage options and generate
-runtime debugging information.
 
 @end table
 
