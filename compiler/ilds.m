@@ -376,7 +376,11 @@ calculate_max_stack_2([I | Instrs], Current, Max) =
 		calculate_max_stack_2(Instrs, NewCurrent, NewMax) :-
 	NewCurrent = Current + get_stack_difference(I),
 	NewMax = max(NewCurrent, Max).
-	
+
+	% Return the difference in stack height after an instruction is
+	% executed.
+	% Stack height is measured in stack items (each item can be a
+	% different size in bits).
 :- func get_stack_difference(ilds__instr) = int.
 get_stack_difference(end_block(_, _)) 				= 0.
 get_stack_difference(comment(_)) 				= 0.
@@ -397,13 +401,10 @@ get_stack_difference(br(_)) 					= 0.
 get_stack_difference(break) 					= 0.
 get_stack_difference(brtrue(_))					= -1.
 get_stack_difference(brfalse(_))				= -1.
-get_stack_difference(call(MethodRef)) = 
-	get_methodref_stack_difference(MethodRef).
-	% Remove an extra argument for the function pointer.
-get_stack_difference(calli(Signature)) = 
-	get_signature_stack_difference(Signature) - 1.
+get_stack_difference(call(MethodRef)) = get_call_stack_difference(MethodRef).
+get_stack_difference(calli(Signature)) = get_calli_stack_difference(Signature).
 get_stack_difference(callvirt(MethodRef)) = 
-	get_methodref_stack_difference(MethodRef).
+	get_call_stack_difference(MethodRef).
 get_stack_difference(ceq) 					= -1. 
 get_stack_difference(cgt(_Signed)) 				= -1.
 get_stack_difference(ckfinite) 					= 0. 
@@ -480,10 +481,12 @@ get_stack_difference(throw)					= -1.
 get_stack_difference(unbox(_Type)) 				= 0.
 
 
-	% Remove the params, and remove "this" if it is an instance
-	% method, but add the return type (if there is one).
-:- func get_methodref_stack_difference(methodref) = int.
-get_methodref_stack_difference(MethodRef) = Diff :-
+	% Count the stack size difference for a call.
+	% A call will remove the params, and remove "this" if it is an
+	% instance method, but will put the return type (if there is one)
+	% on the stack.
+:- func get_call_stack_difference(methodref) = int.
+get_call_stack_difference(MethodRef) = Diff :-
 	( 
 		MethodRef = methoddef(CallConv, RetType, _, Params) 
 	; 
@@ -493,13 +496,15 @@ get_methodref_stack_difference(MethodRef) = Diff :-
 	RetDiff = ( RetType = void -> 0 ; 1),
 	Diff = -(length(Params)) + InstanceDiff + RetDiff.
 
-	% Remove the params, and remove "this" if it is an instance
-	% method, but add the return type (if there is one).
-:- func get_signature_stack_difference(signature) = int.
-get_signature_stack_difference(signature(CallConv, RetType, Params)) = Diff :-
+	
+	% A calli will remove the function pointer, the params, and
+	% remove "this" if it is an instance method, but puts the return
+	% type (if there is one) on the stack.
+:- func get_calli_stack_difference(signature) = int.
+get_calli_stack_difference(signature(CallConv, RetType, Params)) = Diff :-
 	InstanceDiff = ( CallConv = call_conv(yes, _) -> -1 ; 0 ),
 	RetDiff = ( RetType = void -> 0 ; 1),
-	Diff = -(length(Params)) + InstanceDiff + RetDiff.
+	Diff = -(length(Params)) + InstanceDiff + RetDiff - 1.
 
 :- func this_file = string.
 this_file = "ilds.m".
