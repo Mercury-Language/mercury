@@ -664,6 +664,16 @@ det_infer_unify(complicated_unify(_, CanFail, _), Detism) :-
 
 %-----------------------------------------------------------------------------%
 
+% For the at_most_zero, at_most_one, at_most_many,
+% we're just doing abstract interpretation to count
+% the number of solutions.  Similarly, for the can_fail
+% and cannot_fail components, we're doing abstract
+% interpretation to count the possible number of failures.
+% If the num_solns is at_most_many_cc, this means that
+% the goal might have many logical solutions if there were no
+% pruning, but that the goal occurs in a single-solution
+% context, so only the first solution will be returned.
+
 det_conjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_zero,    at_most_one,     at_most_zero).
 det_conjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_zero).
@@ -677,11 +687,14 @@ det_conjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
 det_conjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
 det_conjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_conjunction_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
+det_conjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
+    % if the first conjunct could be cc pruned,
+    % the second conj ought to have been cc pruned too
+	error("det_conjunction_maxsoln: many_cc , many").
 
 det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
+det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
 det_conjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
 
 det_conjunction_canfail(can_fail,    can_fail,    can_fail).
@@ -702,11 +715,17 @@ det_disjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
 det_disjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
 det_disjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
 det_disjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
+det_disjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
+    % if the first disjunct could be cc pruned,
+    % the second disjunct ought to have been cc pruned too
+    error("det_disjunction_maxsoln: cc in first case, not cc in second case").
 
 det_disjunction_maxsoln(at_most_many,    at_most_zero,    at_most_many).
 det_disjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_disjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
+det_disjunction_maxsoln(at_most_many,    at_most_many_cc, _) :-
+    % if the first disjunct could be cc pruned,
+    % the second disjunct ought to have been cc pruned too
+    error("det_disjunction_maxsoln: cc in second case, not cc in first case").
 det_disjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
 
 det_disjunction_canfail(can_fail,    can_fail,    can_fail).
@@ -727,11 +746,17 @@ det_switch_maxsoln(at_most_one,     at_most_many,    at_most_many).
 det_switch_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
 det_switch_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
 det_switch_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
+det_switch_maxsoln(at_most_many_cc, at_most_many,    _) :-
+	% if the first case could be cc pruned,
+	% the second case ought to have been cc pruned too
+	error("det_switch_maxsoln: cc in first case, not cc in second case").
 
 det_switch_maxsoln(at_most_many,    at_most_zero,    at_most_many).
 det_switch_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_switch_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_many,    at_most_many_cc, _) :-
+	% if the first case could be cc pruned,
+	% the second case ought to have been cc pruned too
+	error("det_switch_maxsoln: cc in second case, not cc in first case").
 det_switch_maxsoln(at_most_many,    at_most_many,    at_most_many).
 
 det_switch_canfail(can_fail,    can_fail,    can_fail).
