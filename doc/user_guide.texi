@@ -3322,14 +3322,11 @@ See the next section for details of the commands that are available.
 
 When seeking to determine the validity of
 the assertion corresponding to an EXIT event,
-the declarative debugger prints the exit atom,
-on a single line if possible,
-and prints the question @samp{Valid?} for the user to answer.
-If the atom does not fit on one line,
-the predicate/function name is printed on the first line and
-the arguments are printed one per line
-using the same mechanism that the debugger uses to print values.
-This means they may be abbreviated if they are too large.
+the declarative debugger prints the exit atom
+followed by the question @samp{Valid?} for the user to answer.
+The atom is printed using
+the same mechanism that the debugger uses to print values,
+which means some arguments may be abbreviated if they are too large.
 
 When seeking to determine the validity of
 the assertion corresponding to a FAIL event,
