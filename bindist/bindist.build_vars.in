@@ -1,6 +1,6 @@
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1999 The University of Melbourne.
+# Copyright (C) 1996-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -37,3 +37,16 @@ ALLOW_UNDEFINED="@ALLOW_UNDEFINED@"
 DL_LIBRARY="@DL_LIBRARY@"
 SOCKET_LIBRARY="@SOCKET_LIBRARY@"
 NSL_LIBRARY="@NSL_LIBRARY@"
+OBJFILE_OPT="@OBJFILE_OPT@"
+AR="@AR@"
+ARFLAGS="@ARFLAGS@"
+AR_LIBFILE_OPT="@AR_LIBFILE_OPT@"
+BOEHMGC_MAKEFILE="@BOEHMGC_MAKEFILE@"
+EXE_SUFFIX="@EXE_SUFFIX@"
+OBJ_SUFFIX="@OBJ_SUFFIX@"
+LIB_SUFFIX="@LIB_SUFFIX@"
+LIB_PREFIX="@LIB_PREFIX@"
+LIB_LIBPATH="@LIB_LIBPATH@"
+LINK_LIB="@LINK_LIB@"
+LINK_OPT_SEP="@LINK_OPT_SEP@"
+CYGPATH="@CYGPATH@"

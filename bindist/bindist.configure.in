@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1999 The University of Melbourne. 
+# Copyright (C) 1996-2000 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -67,6 +67,20 @@ AC_SUBST(ERROR_UNDEFINED)
 AC_SUBST(DL_LIBRARY)
 AC_SUBST(SOCKET_LIBRARY)
 AC_SUBST(NSL_LIBRARY)
+
+AC_SUBST(OBJFILE_OPT)
+AC_SUBST(AR)
+AC_SUBST(ARFLAGS)
+AC_SUBST(AR_LIBFILE_OPT)
+AC_SUBST(BOEHMGC_MAKEFILE)
+AC_SUBST(EXE_SUFFIX)
+AC_SUBST(OBJ_SUFFIX)
+AC_SUBST(LIB_SUFFIX)
+AC_SUBST(LIB_PREFIX)
+AC_SUBST(LIB_LIBPATH)
+AC_SUBST(LINK_LIB)
+AC_SUBST(LINK_OPT_SEP)
+AC_SUBST(CYGPATH)
 
 #-----------------------------------------------------------------------------#
 AC_PROG_RANLIB

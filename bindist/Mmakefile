@@ -26,8 +26,11 @@ UTILS		= $(INSTALL_PREFIX)/bin/mkinit$(EXT_FOR_EXE) \
 
 README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
 		  ../NEWS ../RELEASE_NOTES ../BUGS ../WORK_IN_PROGRESS \
-		  ../VERSION ../README.OSF1 ../README.Linux-PPC \
-		  ../README.Linux-Alpha ../README.Solaris
+		  ../VERSION ../README.AIX ../README.BSDI ../README.FreeBSD \
+		  ../README.HPUX ../README.IRIX-5 ../README.Linux \
+		  ../README.Linux-Alpha ../README.Linux-PPC \
+		  ../README.Linux-m68k ../README.MS-VisualC \
+		  ../README.MS-Windows ../README.OSF1 ../README.Solaris
 
 SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/Mmake.rules \
@@ -35,7 +38,9 @@ SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
 
 CONFIG_FILES	= ../config.sub ../config.guess ../install-sh
 
-MISC_FILES	= INSTALL README README.Linux README.MS-Windows \
+# These files have a local version bindist.$filename which will be
+# preprocessed to create the final version.
+MISC_FILES	= INSTALL README \
 		  build_vars Makefile.in configure configure.in
 
 #-----------------------------------------------------------------------------#
