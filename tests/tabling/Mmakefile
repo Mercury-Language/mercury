@@ -61,7 +61,7 @@ MCFLAGS-tc_minimal	=	--no-inlining
 # source code.
 
 tc_loop.out: tc_loop
-	if ./no_fully_strict > $@.tmp 2>&1; then \
+	if ./$< > $@.tmp 2>&1; then \
 		grep . $@.tmp; \
 		exit 1; \
 	else \
@@ -72,7 +72,7 @@ tc_loop.out: tc_loop
 	fi
 
 loopcheck.out: loopcheck
-	if ./no_fully_strict > $@.tmp 2>&1; then \
+	if ./$< > $@.tmp 2>&1; then \
 		grep . $@.tmp; \
 		exit 1; \
 	else \
