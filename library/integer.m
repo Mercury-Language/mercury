@@ -39,7 +39,7 @@
 %
 %	5) Use double-ended lists rather than simple lists. This
 %	  would improve the efficiency of the division algorithm,
-%	  which reverse lists.
+%	  which reverses lists.
 %
 %	6) Add bit operations (XOR, AND, OR, etc). We would treat
 %	  the integers as having a 2's complement bit representation.
@@ -274,6 +274,10 @@ pos_cmp_2([X|Xs], [Y|Ys]) = Cmp :-
 big_plus(i(S1, Ds1), i(S2, Ds2)) = Sum :-
 	( S1 = S2 ->
 		Sum = i(S1, pos_plus(Ds1, Ds2))
+	; S1 = 0 ->
+		Sum = i(S2, Ds2)
+	; S2 = 0 ->
+		Sum = i(S1, Ds1)
 	; S1 = 1 ->
 		C = pos_cmp(Ds1, Ds2),
 		( C = lessthan ->
@@ -285,13 +289,12 @@ big_plus(i(S1, Ds1), i(S2, Ds2)) = Sum :-
 		)
 	;
 		C = pos_cmp(Ds1, Ds2),
-		(
-			C = lessthan ->
-				Sum = i(1, pos_sub(Ds2, Ds1))
-			; C = greaterthan ->
-				Sum = i(-1, pos_sub(Ds1, Ds2))
-			;
-				Sum = zero
+		( C = lessthan ->
+			Sum = i(1, pos_sub(Ds2, Ds1))
+		; C = greaterthan ->
+			Sum = i(-1, pos_sub(Ds1, Ds2))
+		;
+			Sum = zero
 		)
 	).
 
@@ -312,7 +315,7 @@ string_to_integer(CCs) = Result :-
 			Result = i(Sign, Digs),
 			Digs = string_to_integer_acc(Cs, []),
 			pos_cmp(Digs, []) = Cmp,
-			(Cmp = equal ->
+			( Cmp = equal ->
 				Sign = 0
 			;
 				Sign = -1
@@ -321,7 +324,7 @@ string_to_integer(CCs) = Result :-
 			Result = i(Sign, Digs),
 			Digs = string_to_integer_acc(CCs, []),
 			pos_cmp(Digs, []) = Cmp,
-			(Cmp = equal ->
+			( Cmp = equal ->
 				Sign = 0
 			;
 				Sign = 1
