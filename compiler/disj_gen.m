@@ -165,11 +165,6 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		},
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
-			% Kill any variables made zombies by the goal
-			% XXX should not be necessary, since the state
-			% we set up will be discarded anyway
-		code_info__pickup_zombies(Zombies),
-		code_info__make_vars_dead(Zombies),
 
 		{ BranchCode = node([
 			goto(label(EndLabel)) -
@@ -209,11 +204,6 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			% Generate the goal
 		code_gen__generate_goal(CodeModel, Goal0, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
-			% Kill any variables made zombies by the goal
-			% XXX should not be necessary, since we are not
-			% coming out from under a restore anyway
-		code_info__pickup_zombies(Zombies),
-		code_info__make_vars_dead(Zombies),
 
 		{ EndCode = node([
 			label(EndLabel) - "End of pruned disj"
@@ -316,12 +306,6 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			% stack slot
 		code_info__flush_resume_vars_to_stack(FlushResumeVarsCode),
 
-			% Kill any variables made zombies by the goal
-			% XXX should not be necessary, since the state
-			% we set up will be discarded anyway
-		code_info__pickup_zombies(Zombies),
-		code_info__make_vars_dead(Zombies),
-
 		{ BranchCode = node([
 			goto(label(EndLabel)) -
 				"skip to end of nondet disj"
@@ -368,12 +352,6 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 
 		code_gen__generate_goal(model_non, Goal0, GoalCode),
 		code_info__generate_branch_end(model_non, StoreMap, SaveCode),
-
-			% Kill any variables made zombies by the goal
-			% XXX should not be necessary, since we are not
-			% coming out from under a restore anyway
-		code_info__pickup_zombies(Zombies),
-		code_info__make_vars_dead(Zombies),
 
 		{ EndCode = node([
 			label(EndLabel) - "End of pruned disj"

@@ -183,15 +183,17 @@ detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, _, LiveInfo,
 		Liveness, some(Vars, Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo, Liveness, Goal).
 
-detect_liveness_in_goal_2(higher_order_call(A,B,C,D,E), L, _, _, L,
-		higher_order_call(A,B,C,D,E)).
+detect_liveness_in_goal_2(higher_order_call(_,_,_,_,_), _, _, _, _, _) :-
+	error("higher-order-call in detect_liveness_in_goal_2").
 
-detect_liveness_in_goal_2(call(A,B,C,D,E,F), L, _, _, L, call(A,B,C,D,E,F)).
+detect_liveness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
+	error("call in detect_liveness_in_goal_2").
 
-detect_liveness_in_goal_2(unify(A,B,C,D,E), L, _, _, L, unify(A,B,C,D,E)).
+detect_liveness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _) :-
+	error("unify in detect_liveness_in_goal_2").
 
-detect_liveness_in_goal_2(pragma_c_code(A,B,C,D,E,F), L, _, _, L,
-		pragma_c_code(A,B,C,D,E,F)).
+detect_liveness_in_goal_2(pragma_c_code(_,_,_,_,_,_), _, _, _, _, _) :-
+	error("pragma_c_code in detect_liveness_in_goal_2").
 
 %-----------------------------------------------------------------------------%
 
@@ -357,16 +359,17 @@ detect_deadness_in_goal_2(some(Vars, Goal0), _, Deadness0, LiveInfo,
 		Deadness, some(Vars, Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness0, LiveInfo, Deadness, Goal).
 
-detect_deadness_in_goal_2(higher_order_call(A,B,C,D,E), _, Dn, _, Dn,
-			higher_order_call(A,B,C,D,E)).
+detect_deadness_in_goal_2(higher_order_call(_,_,_,_,_), _, _, _, _, _) :-
+	error("higher-order-call in detect_deadness_in_goal_2").
 
-detect_deadness_in_goal_2(call(A,B,C,D,E,F), _, Dn, _, Dn,
-			call(A,B,C,D,E,F)).
+detect_deadness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
+	error("call in detect_deadness_in_goal_2").
 
-detect_deadness_in_goal_2(unify(A,B,C,D,E), _, Dn, _, Dn, unify(A,B,C,D,E)).
+detect_deadness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _) :-
+	error("unify in detect_deadness_in_goal_2").
 
-detect_deadness_in_goal_2(pragma_c_code(A,B,C,D,E,F), _, Dn, _, Dn,
-		pragma_c_code(A,B,C,D,E,F)).
+detect_deadness_in_goal_2(pragma_c_code(_,_,_,_,_,_), _, _, _, _, _) :-
+	error("pragma_c_code in detect_deadness_in_goal_2").
 
 %-----------------------------------------------------------------------------%
 

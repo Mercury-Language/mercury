@@ -26,6 +26,9 @@
 :- pred tree__flatten(tree(T), list(T)).
 :- mode tree__flatten(in, out) is det.
 
+:- pred tree__is_empty(tree(T)).
+:- mode tree__is_empty(in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -42,5 +45,12 @@ tree__flatten_2(node(T), L, [T|L]).
 tree__flatten_2(tree(T1,T2), L0, L) :-
 	tree__flatten_2(T2, L0, L1),
 	tree__flatten_2(T1, L1, L).
+
+%-----------------------------------------------------------------------------%
+
+tree__is_empty(empty).
+tree__is_empty(tree(L, R)) :-
+	tree__is_empty(L),
+	tree__is_empty(R).
 
 %-----------------------------------------------------------------------------%

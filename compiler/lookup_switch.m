@@ -198,21 +198,11 @@ lookup_switch__generate_constants([Case|Cases], Vars, CodeModel,
 	code_info__grab_code_info(CodeInfo),
 	code_gen__generate_goal(CodeModel, Goal, Code),
 	code_info__get_liveness_info(Liveness),
-	{ lookup_switch__code_is_empty(Code) },
+	{ tree__is_empty(Code) },
 	lookup_switch__get_case_rvals(Vars, CaseRvals),
 	{ CaseVal = CaseTag - CaseRvals },
 	code_info__slap_code_info(CodeInfo),
 	lookup_switch__generate_constants(Cases, Vars, CodeModel, Rest, _).
-
-%---------------------------------------------------------------------------%
-
-:- pred lookup_switch__code_is_empty(code_tree).
-:- mode lookup_switch__code_is_empty(in) is semidet.
-
-lookup_switch__code_is_empty(empty).
-lookup_switch__code_is_empty(tree(L, R)) :-
-	lookup_switch__code_is_empty(L),
-	lookup_switch__code_is_empty(R).
 
 %---------------------------------------------------------------------------%
 
@@ -223,7 +213,7 @@ lookup_switch__code_is_empty(tree(L, R)) :-
 lookup_switch__get_case_rvals([], []) --> [].
 lookup_switch__get_case_rvals([Var|Vars], [Rval|Rvals]) -->
 	code_info__produce_variable(Var, Code, Rval),
-	{ lookup_switch__code_is_empty(Code) },
+	{ tree__is_empty(Code) },
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
 	{ exprn_aux__init_exprn_opts(Options, ExprnOpts) },
