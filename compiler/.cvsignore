@@ -23,6 +23,8 @@ mercury_compile
 mercury_compile.dep
 mercury_compile.dv
 top_level
+top_level.dep
+top_level.dv
 mlds_to_gcc.dep
 mlds_to_gcc.dv
 Mercury

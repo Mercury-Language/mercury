@@ -1,12 +1,14 @@
-README INSTALL
+README INSTALL TODO WORK_IN_PROGRESS
 mercury-compiler.spec
 configure
 config.cache
 config.status
 config.log
 configure.log
+configure.help
 so_locations
 Mmake.common
 Mmake.params
 stage1 stage2 stage3
 Mercury.options
+autom4te.cache

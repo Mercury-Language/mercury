@@ -6,3 +6,4 @@ mercury_conf.h.date
 libmer_rt.lib
 mercury_profiling_builtin.c
 mercury_profiling_builtin.h
+mercury_dotnet.cs
