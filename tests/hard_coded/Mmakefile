@@ -151,7 +151,7 @@ all_local:	$(PROGS)
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS = typeclasses sub-modules
+SUBDIRS = typeclasses sub-modules exceptions
 
 dep_subdirs:
 	for dir in $(SUBDIRS); do \

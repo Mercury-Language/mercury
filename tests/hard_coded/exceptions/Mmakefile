@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1998 The University of Melbourne. 
+# Copyright (C) 1997-1999 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -9,6 +9,8 @@
 
 MAIN_TARGET = check
 
+include ../../Mmake.common
+
 PROGS = test_exceptions.m test_uncaught_exception.m test_exceptions_func.m
 
 depend: $(PROGS:.m=.depend)
@@ -16,30 +18,6 @@ all: $(PROGS:.m=)
 check: $(PROGS:.m=.res)
 
 #-----------------------------------------------------------------------------#
-#
-# the following lines are required for exception.m
-# (see the comment at the top of exception.m)
-#
-
-RM_C=:
-C2INITFLAGS=--extra-inits
-$(PROGS:.m=_init.c): $(PROGS:.m=.c) exception.c
-
-#-----------------------------------------------------------------------------#
-#
-# some rules for running test cases
-#
-
-%.out: %
-	./$< > $@
-
-%.res: %.out %.exp
-	diff -c $*.out $*.exp > $@
-
-clean:
-	rm -f *.out
-realclean:
-	rm -f *.res
 
 # test_uncaught_exception is *supposed* to return an error exit status
 test_uncaught_exception.out: test_uncaught_exception

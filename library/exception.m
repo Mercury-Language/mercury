@@ -6,27 +6,14 @@
 
 % File: exception.m.
 % Main author: fjh.
-% Stability: low
+% Stability: medium
 
-% This file contains experimental code for exception handling.
+% This file defines the Mercury interface for exception handling.
 
 % Note that throwing an exception across the C interface won't work.
 % That is, if a Mercury procedure that is exported to C using `pragma export'
 % throws an exception which is not caught within that procedure, then
 % you will get undefined behaviour.
-
-%-----------------------------------------------------------------------------%
-
-% To compile this module you need the following two lines in your Mmakefile:
-%
-%	RM_C=:
-%	C2INITFLAGS=--extra-inits
-%
-% You also need to add dependencies to ensure that Mmake knows that
-% the *_init.c files depend on the *.c files.
-%
-% This ensures that the module initialization code for this module will be run.
-% (Actually these steps are needed only in certain grades, e.g. for profiling.)
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -161,7 +148,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module string, require.
 
 :- pred try(determinism,      	  pred(T),		  exception_result(T)).
 :- mode try(in(bound(det)),	  pred(out) is det,       out(cannot_fail))
@@ -189,7 +176,7 @@
 				    	     out(try_all_nondet)) is cc_multi.
 
 % The functors in this type must be in the same order as the
-% enumeration constants in the C enum `ME_Determinism' defined below.
+% enumeration constants in the C enum `ML_Determinism' defined below.
 :- type determinism
 	--->	det
 	;	semidet
@@ -224,66 +211,66 @@
 % functors in the Mercury type `determinism' defined above.
 :- pragma c_header_code("
 	typedef enum {
-		ME_DET,
-		ME_SEMIDET,
-		ME_CC_MULTI,
-		ME_CC_NONDET,
-		ME_MULTI,
-		ME_NONDET,
-		ME_ERRONEOUS,
-		ME_FAILURE
-	} ME_Determinism;
+		ML_DET,
+		ML_SEMIDET,
+		ML_CC_MULTI,
+		ML_CC_NONDET,
+		ML_MULTI,
+		ML_NONDET,
+		ML_ERRONEOUS,
+		ML_FAILURE
+	} ML_Determinism;
 ").
 
 :- pragma c_code(
 	get_determinism(_Pred::pred(out) is det,
 			Det::out(bound(det))),
 	will_not_call_mercury,
-	"Det = ME_DET"
+	"Det = ML_DET"
 ).
 :- pragma c_code(
 	get_determinism(_Pred::pred(out) is semidet,
 			Det::out(bound(semidet))),
 	will_not_call_mercury,
-	"Det = ME_SEMIDET"
+	"Det = ML_SEMIDET"
 ).
 :- pragma c_code(
 	get_determinism(_Pred::pred(out) is cc_multi,
 			Det::out(bound(cc_multi))),
 	will_not_call_mercury,
-	"Det = ME_CC_MULTI"
+	"Det = ML_CC_MULTI"
 ).
 :- pragma c_code(
 	get_determinism(_Pred::pred(out) is cc_nondet,
 			Det::out(bound(cc_nondet))),
 	will_not_call_mercury,
-	"Det = ME_CC_NONDET"
+	"Det = ML_CC_NONDET"
 ).
 :- pragma c_code(
 	get_determinism(_Pred::pred(out) is multi,
 			Det::out(bound(multi))),
 	will_not_call_mercury,
-	"Det = ME_MULTI"
+	"Det = ML_MULTI"
 ).
 :- pragma c_code(
 	get_determinism(_Pred::pred(out) is nondet,
 			Det::out(bound(nondet))),
 	will_not_call_mercury,
-	"Det = ME_NONDET"
+	"Det = ML_NONDET"
 ).
 
 :- pragma c_code(
 	get_determinism_2(_Pred::pred(out, di, uo) is det,
 			Det::out(bound(det))),
 	will_not_call_mercury,
-	"Det = ME_DET"
+	"Det = ML_DET"
 ).
 
 :- pragma c_code(
 	get_determinism_2(_Pred::pred(out, di, uo) is cc_multi,
 			Det::out(bound(cc_multi))),
 	will_not_call_mercury,
-	"Det = ME_CC_MULTI"
+	"Det = ML_CC_MULTI"
 ).
 
 throw(Exception) :-
@@ -464,7 +451,11 @@ wrap_exception(Exception, exception(Exception)).
 
 :- pragma c_header_code("
 	#include <assert.h>
+	#include <stdio.h>
 	#include ""mercury_deep_copy.h""
+	#include ""mercury_trace_base.h""
+	#include ""mercury_stack_trace.h""
+	#include ""mercury_layout_util.h""
 
 	MR_DECLARE_TYPE_CTOR_INFO_STRUCT( \
 			mercury_data_std_util__type_ctor_info_univ_0);
@@ -951,6 +942,8 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	Word exception = r1;
 	Word handler;
 	enum CodeModel catch_code_model;
+	Word *orig_curfr;
+	Unsigned exception_event_number = MR_trace_event_number;
 
 	/*
 	** let the debugger trace exception throwing
@@ -973,12 +966,53 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** are still on the nondet stack because they left choice points
 	** behind.
 	*/
+	orig_curfr = MR_curfr;
 	while (MR_redoip_slot(MR_curfr) != ENTRY(exception_handler_do_fail)) {
 		MR_curfr = MR_succfr_slot(MR_curfr);
 		if (MR_curfr < MR_CONTEXT(nondetstack_zone)->min) {
-			fatal_error(""builtin_throw/1: uncaught exception"");
+			Word saved_regs[MAX_FAKE_REG];
+			/*
+			** There was no exception handler.
+			** 
+			** We restore the original value of MR_curfr,
+			** print out some diagnostics,
+			** and then terminate execution.
+			**
+			** We need to save & restore the registers to a
+			** separate `saved_reg' array across the call to
+			** ML_report_uncaught_exception(), since that is
+			** Mercury code which may clobber both the real
+			** machine registers and also the fake_reg array.
+			*/
+			MR_curfr = orig_curfr;
+			fflush(stdout);
+			MR_copy_regs_to_saved_regs(MR_MAX_SPECIAL_REG_MR + 1,
+				saved_regs);
+			ML_report_uncaught_exception(exception);
+			MR_copy_saved_regs_to_regs(MR_MAX_SPECIAL_REG_MR + 1,
+				saved_regs);
+			MR_trace_report(stderr);
+			if (exception_event_number > 0) {
+				fprintf(stderr, ""Last trace event before ""
+					""the unhandled exception was ""
+					""event #%ld.\\n"",
+					(long) exception_event_number);
+			}
+			if (MR_trace_enabled) {
+				/*
+				** The stack has already been unwound
+				** by MR_trace_throw(), so we can't dump it.
+				** (In fact, if we tried to dump the now-empty
+				** stack, we'd get incorrect results, since
+				** MR_trace_throw() does not restore MR_succip
+				** to the appropriate value.)
+				*/
+			} else {
+				MR_dump_stack(MR_succip, MR_sp, MR_curfr,
+					FALSE);
+			}
+			exit(1);
 		}
-
 	}
 
 	/*
@@ -1125,8 +1159,8 @@ Define_entry(exception_handler_do_fail);
 	** handle it specially.
 	*/
 	fail();
-
 END_MODULE
+
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
@@ -1144,6 +1178,33 @@ void mercury_sys_init_exceptions(void) {
 
 %-----------------------------------------------------------------------------%
 
+:- pragma export(report_uncaught_exception(in, di, uo),
+	"ML_report_uncaught_exception").
+
+:- pred report_uncaught_exception(univ, io__state, io__state).
+:- mode report_uncaught_exception(in, di, uo) is cc_multi.
+
+report_uncaught_exception(Exception) -->
+	try_io(report_uncaught_exception_2(Exception), Result),
+	(	{ Result = succeeded(_) }
+	;	{ Result = exception(_) }
+		% if we got a further exception while trying to report
+		% the uncaught exception, just ignore it
+	).
+
+:- pred report_uncaught_exception_2(univ, unit, io__state, io__state).
+:- mode report_uncaught_exception_2(in, out, di, uo) is det.
+
+report_uncaught_exception_2(Exception, unit) -->
+	io__stderr_stream(StdErr),
+	io__write_string(StdErr, "Uncaught exception:\n"),
+	( { univ_to_type(Exception, software_error(Message)) } ->
+		io__format(StdErr, "Software Error: %s\n", [s(Message)])
+	;
+		io__write(StdErr, univ_value(Exception)),
+		io__nl(StdErr)
+	).
+
 /*
 ** unsafe_perform_io/2 is the same as unsafe_perform_io/1
 ** (see extras/trailed_update/unsafe.m)
@@ -1157,13 +1218,13 @@ void mercury_sys_init_exceptions(void) {
 unsafe_perform_io(P::(pred(out, di, uo) is det), X::out),
 	may_call_mercury,
 "{
-	ME_exception_call_io_pred_det(TypeInfo_for_T, P, &X);
+	ML_exception_call_io_pred_det(TypeInfo_for_T, P, &X);
 }").
 :- pragma c_code(
 unsafe_perform_io(P::(pred(out, di, uo) is cc_multi), X::out),
 	may_call_mercury,
 "{
-	ME_exception_call_io_pred_cc_multi(TypeInfo_for_T, P, &X);
+	ML_exception_call_io_pred_cc_multi(TypeInfo_for_T, P, &X);
 }").
 
 :- pred call_io_pred(pred(T, io__state, io__state), T, io__state, io__state).
@@ -1171,9 +1232,9 @@ unsafe_perform_io(P::(pred(out, di, uo) is cc_multi), X::out),
 :- mode call_io_pred(pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
 
 :- pragma export(call_io_pred(pred(out, di, uo) is det, out, di, uo),
-		"ME_exception_call_io_pred_det").
+		"ML_exception_call_io_pred_det").
 :- pragma export(call_io_pred(pred(out, di, uo) is cc_multi, out, di, uo),
-		"ME_exception_call_io_pred_cc_multi").
+		"ML_exception_call_io_pred_cc_multi").
 
 call_io_pred(P, X) --> P(X).
 
