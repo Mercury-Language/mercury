@@ -95,6 +95,7 @@ AC_DEFUN(MERCURY_CHECK_LOCAL_C_INCL_DIRS,
 AC_REQUIRE([AC_PROG_CC])
 AC_MSG_CHECKING(whether to pass -I/usr/local/include to C compiler)
 ALL_LOCAL_C_INCL_DIRS=""
+ALL_LOCAL_C_INCL_DIR_MMC_OPTS=""
 if test "$GCC" = yes; then
 	# Don't add -I/usr/local/include, since it causes a warning
 	# with gcc 3.1, and gcc already searches /usr/local/include
@@ -105,11 +106,13 @@ else
 	if test -d /usr/local/include/.; then
 		AC_MSG_RESULT(yes)
 		ALL_LOCAL_C_INCL_DIRS="-I/usr/local/include "
+		ALL_LOCAL_C_INCL_DIR_MMC_OPTS="--c-include-directory /usr/local/include "
 	else
 		AC_MSG_RESULT(no)
 	fi
 fi
 AC_SUBST(ALL_LOCAL_C_INCL_DIRS)
+AC_SUBST(ALL_LOCAL_C_INCL_DIR_MMC_OPTS)
 ])
 #-----------------------------------------------------------------------------#
 #
@@ -122,11 +125,14 @@ AC_MSG_CHECKING(whether to pass -L/usr/local/lib to the linker)
 if test -d /usr/local/lib/.; then
 	AC_MSG_RESULT(yes)
 	ALL_LOCAL_C_LIB_DIRS=/usr/local/lib
+	ALL_LOCAL_C_LIB_DIR_MMC_OPTS=-L/usr/local/lib
 else
 	AC_MSG_RESULT(no)
 	ALL_LOCAL_C_LIB_DIRS=
+	ALL_LOCAL_C_LIB_DIR_MMC_OPTS=
 fi
 AC_SUBST(ALL_LOCAL_C_LIB_DIRS)
+AC_SUBST(ALL_LOCAL_C_LIB_DIR_MMC_OPTS)
 ])
 
 #-----------------------------------------------------------------------------#
