@@ -368,7 +368,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	int *ancestor_level, int *max_mr_num, Code **jumpaddr)
 {
 	char		**words;
-	char		**orig_words;
+	char		**orig_words = NULL;
 	int		word_max;
 	int		word_count;
 	const char	*problem;
