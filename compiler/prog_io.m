@@ -2035,7 +2035,7 @@ make_maybe_where_details(
 				WhereTerm)
 		)
 	;
-		IsSolverType = solver_type,
+		IsSolverType = solver_type
 	->
 		(
 			RepresentationIsResult = ok(yes(RepnType)),
