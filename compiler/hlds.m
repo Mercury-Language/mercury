@@ -499,7 +499,7 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 				%  map, it means that it is not used by
 				%  the C code.  (In particular, the
 				%  type_info variables introduced by
-				%  polymorphism.m will not occur in this
+				%  polymorphism.m might not occur in this
 				%  map.)
 		).
 
