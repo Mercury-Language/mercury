@@ -36,18 +36,18 @@ my_set_compare(Res, _, _) :-
 		Res = (=)
 	).
 
-:- solver type foo
+:- solver type foo(T)
 	where	representation is int,	
 		initialisation is init_foo,
 		ground         is ground,
 		any            is ground.
 
 :- pragma promise_pure(init_foo/1).
-:- pred init_foo(foo::out(any)) is det.
+:- pred init_foo(foo(T)::out(any)) is det.
 init_foo(X) :-
 	( loop ->
 		Y = 42
 	;	
 		Y = 43
 	),
-	impure X = 'representation to any foo/0'(Y).
+	impure X = 'representation to any foo/1'(Y).
