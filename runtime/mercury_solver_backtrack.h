@@ -18,7 +18,7 @@
 #ifndef MERCURY_SOLVER_BACKTRACK_H
 #define MERCURY_SOLVER_BACKTRACK_H
 
-#include <stdio.h>	/* for `FILE' */
+#include <stdio.h>	/* for `FILE' and `size_t' */
 
 
 	/* This constant is also defined in the  */
@@ -37,7 +37,7 @@
 	/* some Mercury variables to keep track of the ticket stack */
 extern int *mercury_solver_sp;
 extern int *mercury_solver_sp_old;
-extern int solver_ticket_stack_size;
+extern size_t solver_ticket_stack_size;
 
 	/* some CLP(R) internals */
 extern int slack_id;
