@@ -111,10 +111,12 @@
   #define ASM_FALLTHROUGH(label) \
   	goto skip(label);
 
-#elif defined(__i386__)
+#elif defined(__i386__) || defined(__mc68000__)
 
   /*
   ** The following hack works around a stack leak on the i386.
+  ** (and apparently the 68000 too).
+  **
   ** The problem is that gcc pushes function parameters onto
   ** the stack when calling C functions such as GC_malloc(),
   ** and only restores the stack pointer in the epilogue.
@@ -135,10 +137,17 @@
   **
   ** I know this is awful.  It wasn't _my_ idea to use non-local gotos ;-)
   */
-  #define ASM_JUMP(label)				\
+  #if defined(__i386__)
+    #define ASM_JUMP(label)				\
   	{ register int stack_pointer __asm__("esp");	\
   	__asm__("" : : "g"(stack_pointer)); }		\
   	goto *(label)
+  #elif defined(__mc68000__)
+    #define ASM_JUMP(label)				\
+  	{ register int stack_pointer __asm__("sp");	\
+  	__asm__("" : : "g"(stack_pointer)); }		\
+  	goto *(label)
+  #endif
 
   /*
   ** That hack above needs to be done for all non-local jumps,
@@ -178,7 +187,9 @@
     ** setjmp()/longjmp() will do that for us automatically,
     ** precisely because it is a callee-save register.
     */
-    #define INLINE_ASM_FIXUP_REGS     				\
+    #if defined(__i386__)
+
+      #define INLINE_ASM_FIXUP_REGS     			\
     	"	call 0f\n"     					\
     	"0:\n"       						\
     	"	popl %%ebx\n"     				\
@@ -192,6 +203,17 @@
 		/* tell gcc we clobber ebx and memory */	\
     		: : : "%ebx", "memory"
 #endif
+    #elif defined(__mc68000__)
+
+	/*
+	**  This piece of magic thanks to Roman Hodek
+	**  <Roman.Hodek@informatik.uni-erlangen.de>
+	*/ 
+
+      #define INLINE_ASM_FIXUP_REGS \
+        "       lea (%%pc,_GLOBAL_OFFSET_TABLE_@GOTPC),%%a5\n" : : : "memory"
+
+    #endif
 
     /*
     ** It is safe to fall through into INLINE_ASM_FIXUP_REGS,

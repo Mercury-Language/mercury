@@ -125,10 +125,20 @@
 **	HAVE_SIGCONTEXT_STRUCT	defined iff normal signal handlers are given
 **				sigcontext_struct arguments that we can use to
 **				figure out the fault address for SIGSEGVs.
+**	HAVE_SIGCONTEXT_STRUCT_3ARG
+**				defined iff signal handlers have three
+**				parameters, the third being the
+**				sigcontext struct.
+**	HAVE_SIGCONTEXT_STRUCT_2ARG
+**				defined iff signal handlers have two
+**				parameters, the second being the
+**				sigcontext struct. 
 */
 #undef	HAVE_SIGINFO
 #undef	HAVE_SIGINFO_T
 #undef	HAVE_SIGCONTEXT_STRUCT
+#undef	HAVE_SIGCONTEXT_STRUCT_3ARG
+#undef	HAVE_SIGCONTEXT_STRUCT_2ARG
 
 /*
 ** For debugging purposes, if we get a fatal signal, we print out the

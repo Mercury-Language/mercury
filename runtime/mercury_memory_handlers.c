@@ -68,12 +68,18 @@
 #include "mercury_trace_base.h"
 #include "mercury_memory_zones.h"
 #include "mercury_memory_handlers.h"
+#include "mercury_faultaddr.h"
 
 /*---------------------------------------------------------------------------*/
 
 #ifdef HAVE_SIGINFO
   #if defined(HAVE_SIGCONTEXT_STRUCT)
-    static	void	complex_sighandler(int, struct sigcontext_struct);
+    #if defined(HAVE_SIGCONTEXT_STRUCT_3ARG)
+      static	void	complex_sighandler_3arg(int, int, 
+		      struct sigcontext_struct);
+    #else
+      static	void	complex_sighandler(int, struct sigcontext_struct);
+    #endif
   #elif defined(HAVE_SIGINFO_T)
     static	void	complex_bushandler(int, siginfo_t *, void *);
     static	void	complex_segvhandler(int, siginfo_t *, void *);
@@ -87,8 +93,13 @@
 
 #ifdef HAVE_SIGINFO
   #if defined(HAVE_SIGCONTEXT_STRUCT)
-    #define     bus_handler	complex_sighandler
-    #define     segv_handler	complex_sighandler
+    #if defined(HAVE_SIGCONTEXT_STRUCT_3ARG)
+      #define     bus_handler	complex_sighandler_3arg
+      #define     segv_handler	complex_sighandler_3arg
+    #else
+      #define     bus_handler	complex_sighandler
+      #define     segv_handler	complex_sighandler
+    #endif
   #elif defined(HAVE_SIGINFO_T)
     #define     bus_handler	complex_bushandler
     #define     segv_handler	complex_segvhandler
@@ -306,11 +317,16 @@ explain_context(void *the_context)
 }
 
 #if defined(HAVE_SIGCONTEXT_STRUCT)
-
-static void
-complex_sighandler(int sig, struct sigcontext_struct sigcontext)
+  #if defined(HAVE_SIGCONTEXT_STRUCT_3ARG)
+    static void
+    complex_sighandler_3arg(int sig, int code,
+		    struct sigcontext_struct sigcontext)
+  #else
+    static void
+    complex_sighandler(int sig, struct sigcontext_struct sigcontext)
+  #endif
 {
-	void *address = (void *) sigcontext.cr2;
+	void *address = (void *) MR_GET_FAULT_ADDR(sigcontext);
   #ifdef PC_ACCESS
 	void *pc_at_signal = (void *) sigcontext.PC_ACCESS;
   #endif
