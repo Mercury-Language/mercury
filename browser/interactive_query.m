@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -425,6 +425,18 @@ compile_file(Options, Succeeded) -->
 		" query.m"], Command) },
 	invoke_system_command(Command, Succeeded0),
 	( { Succeeded0 = yes } ->
+		% Figure out the location of the object file,
+		% which will depend on whether --use-subdirs was specified.
+		% XXX This code doesn't properly handle the case when the
+		% option is later overridden, e.g. if the options are
+		% `--use-subdirs --no-use-subdirs'.  But that case
+		% is not very likely to occur in practice...
+		{ string__sub_string_search(Options, "--use-subdirs", _) ->
+			QueryObject = "Mercury/os/query.o"
+		;
+			QueryObject = "query.o"
+		},
+			
 		% We use the following options:
 		%	--make-shared-lib
 		%		needed so we can dynamically load in the
@@ -438,7 +450,7 @@ compile_file(Options, Succeeded) -->
 			" --trace",
 			" --allow-undefined",
 			" --make-shared-lib ", Options,
-			" -o libquery.so query.o"], Command2) },
+			" -o libquery.so ", QueryObject], Command2) },
 		invoke_system_command(Command2, Succeeded)
 	;
 		{ Succeeded = no }

@@ -278,17 +278,24 @@ tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.dat
 # interactive.inp contains interactive queries that require interactive.ints
 # to have been built.
 
-interactive.out.orig: interactive interactive.inp $(interactive.ints)
-	$(MDB) ./interactive < interactive.inp > interactive.out.orig 2>&1
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+INTERACTIVE_INP = interactive.inp.subdirs
+else
+INTERACTIVE_INP = interactive.inp.nosubdirs
+endif
 
-# We pipe the output through sed to remove some spurious warnings that
-# `ld' issues.
+interactive.out.orig: interactive $(INTERACTIVE_INP) $(interactive.ints)
+	$(MDB) ./interactive < $(INTERACTIVE_INP) > interactive.out.orig 2>&1
+
+# We pipe the output through sed to avoid differences for `--use-subdirs',
+# and to remove some spurious warnings that `ld' issues.
 # XXX we should fix the spurious warnings about unresolved symbols.
 # (The spurious warnings about exception handling are due to a flaw
 # in the Digital Unix 3.2 linker, so that one is DEC's problem.)
 interactive.out: interactive.out.orig
 	cat interactive.out.orig | \
 		sed \
+		    -e '/mdb> mmc_options --use-subdirs/d' \
 		    -e '/\/usr\/bin\/ld:$$/N' \
 		    -e 's/\/usr\/bin\/ld:.//' \
 		    -e '/Warning: Linking some objects which contain exception information sections$$/N' \

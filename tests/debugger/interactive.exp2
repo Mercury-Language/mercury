@@ -102,8 +102,6 @@ mdb> # Test interactive queries.
 Unknown command `#'. Give the command `help' for help.
 mdb> #
 Unknown command `#'. Give the command `help' for help.
-mdb> mmc_options --use-subdirs
-mdb> mmc_options
 mdb> query interactive list
 ?- <stdin>:026: Inferred :- pred query((list:list(character)), (list:list(character))).
 <stdin>:026: Inferred :- mode query(out, out) is multi.

@@ -1,0 +1,75 @@
+echo on
+print *
+
+print *
+
+print *
+
+print *
+
+print *
+
+print *
+
+print *
+
+print *
+level 1
+print *
+up 1
+vars
+print *
+
+print HeadVar__1
+print HeadVar__2
+print HeadVar__3
+
+print *
+
+print *
+
+print *
+
+print *
+
+print *
+
+goto -a 20
+stack
+stack -d
+print *
+#
+# Test interactive queries.
+#
+query interactive list
+append(X, Y, ['a', 'b', 'c']).
+qperm([1,2,3], List).
+qperm([1,2,3], List), List = [2 | _].
+qperm([1,2,3], List), List = [4 | _].
+qperm([1,2,"foo"], List).
+qperm(List, [1]).
+quit.
+cc_query interactive list
+append(X, Y, ['a', 'b', 'c']).
+qperm([1,2,3], List).
+qperm([1,2,3], List), List = [2 | _].
+qperm([1,2,3], List), List = [4 | _].
+quit.
+io_query interactive list
+main.
+if { append(X, Y, ['a', 'b', 'c']) } then print("X = "), print(X), print(", Y = "), print(Y), nl else print("No solution\n").
+if { qperm([1,2,3], List) } then print(List), nl else [].
+if { qperm([1,2,3], List), List = [2 | _] } then print(List), nl else { true }.
+if { qperm([1,2,3], List), List = [4 | _] } then print(List), nl else print("No solution, as expected."), io__nl.
+quit.
+retry
+print *
+finish -a
+register --quiet
+break print_list
+break qdelete
+continue -a
+step -aS 5
+disable 1
+continue -n
+continue -n -S
