@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -469,15 +469,18 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = foreign_type(ForeignType, _MercuryType,
 				MercuryTypeSymName) },
 		io__write_string(":- pragma foreign_type("),
+
+		{ ForeignType = il(ForeignLocStr, ForeignTypeName) },
+		io__write_string("il, "),
+
 		% output_type(varset__init, no, MercuryType),
 		mercury_output_sym_name(MercuryTypeSymName),
 		io__write_string(", "),
-
-		{ ForeignType = il(ForeignLocStr, ForeignTypeName) },
-		io__write_string("il(\""),
+		io__write_string("\"class ["),
 		io__write_string(ForeignLocStr),
-		io__write_string("\", "),
-		mercury_output_sym_name(ForeignTypeName),
+		io__write_string("]"),
+		{ sym_name_to_string(ForeignTypeName, ".", ForeignTypeStr) },
+		io__write_string(ForeignTypeStr),
 		io__write_string("\").\n")
 	;
 		{ Pragma = import(Pred, PredOrFunc, ModeList, Attributes,
