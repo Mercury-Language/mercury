@@ -160,6 +160,13 @@ term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		term_io__write_list_tail(ListTail, VarSet1, N1, VarSet, N),
 		io__write_char(']')
 	;
+		{ Functor = term__atom("[]") },
+		{ Args = [] }
+	->
+		io__write_string("[]"),
+		{ N = N0 },
+		{ VarSet = VarSet0 }
+	;
 		{ Functor = term__atom("{}") },
 		{ Args = [BracedTerm] }
 	->
