@@ -248,7 +248,7 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 	** frames, passing NULL is fine, since output arguments are
 	** not live yet for any call except the top one.
 	*/
-	restore_registers();
+	MR_restore_registers();
 	MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG, saved_regs);
 	if (top_frame) {
 		current_regs = saved_regs;
@@ -322,7 +322,7 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 
 
 	MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG, saved_regs);
-	save_registers();
+	MR_save_registers();
 	free(type_params);
 }
 
