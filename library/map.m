@@ -71,11 +71,11 @@
 :- mode map__values(input, output) is det.
 
 	% convert a map to an association list
-:- pred map__to_assoc_list(map(K,V), list(pair(K,V))).
+:- pred map__to_assoc_list(map(K,V), assoc_list(K,V)).
 :- mode map__to_assoc_list(input, output).
 
 	% convert a map to an association list
-:- pred map__from_assoc_list(list(pair(K,V)), map(K,V)).
+:- pred map__from_assoc_list(assoc_list(K,V), map(K,V)).
 :- mode map__from_assoc_list(input, output).
 
 	% delete a key-value pair from a map

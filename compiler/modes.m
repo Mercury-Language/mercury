@@ -1177,9 +1177,9 @@ find_undef_mode((InstA -> InstB), ErrorContext, _ModeDefns, InstDefns) -->
 find_undef_mode(user_defined_mode(Name, Args), ErrorContext, ModeDefns,
 		InstDefns) -->
 		  %%% no builtin modes as yet
+	{ length(Args, Arity) },
+	{ ModeId = Name - Arity },
 	(
-		{ length(Args, Arity) },
-		{ ModeId = Name - Arity },
 		{ map__contains(ModeDefns, ModeId) }
 	->
 		[]
@@ -1240,9 +1240,9 @@ find_undef_inst(inst_var(_), _, _) --> [].
 find_undef_inst(bound(BoundInsts), ErrorContext, InstDefns) -->
 	find_undef_bound_insts(BoundInsts, ErrorContext, InstDefns).
 find_undef_inst(user_defined_inst(Name, Args), ErrorContext, InstDefns) -->
+	{ length(Args, Arity) },
+	{ InstId = Name - Arity },
 	(
-		{ length(Args, Arity) },
-		{ InstId = Name - Arity },
 		{ map__contains(InstDefns, InstId) }
 	->
 		[]

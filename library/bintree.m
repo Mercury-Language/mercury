@@ -53,16 +53,16 @@
 :- pred bintree__values(bintree(_K,V), list(V)).
 :- mode bintree__values(in, out).
 
-:- pred bintree__from_list(list(pair(K,V)), bintree(K,V)).
+:- pred bintree__from_list(assoc_list(K,V), bintree(K,V)).
 :- mode bintree__from_list(in, out).
 
-:- pred bintree__from_sorted_list(list(pair(K,V)), bintree(K,V)).
+:- pred bintree__from_sorted_list(assoc_list(K,V), bintree(K,V)).
 :- mode bintree__from_sorted_list(in, out).
 
 :- pred bintree__from_corresponding_lists(list(K), list(V), bintree(K,V)).
 :- mode bintree__from_corresponding_lists(in, in, out).
 
-:- pred bintree__to_list(bintree(K,V), list(pair(K,V))).
+:- pred bintree__to_list(bintree(K,V), assoc_list(K,V)).
 :- mode bintree__to_list(in, out).
 
 	% count the number of elements in a tree
@@ -293,7 +293,7 @@ bintree__knock_right(tree(K0, V0, Left, Right), K, V, Tree) :-
 bintree__from_list(List, Tree) :-
 	bintree__from_list_2(List, empty, Tree).
 
-:- pred bintree__from_list_2(list(pair(K,V)), bintree(K,V), bintree(K,V)).
+:- pred bintree__from_list_2(assoc_list(K,V), bintree(K,V), bintree(K,V)).
 :- mode bintree__from_list_2(in, in, out).
 
 bintree__from_list_2([], Tree, Tree).
@@ -307,8 +307,8 @@ bintree__from_sorted_list(List, Tree) :-
 	length(List, Length),
 	bintree__from_sorted_list_2(Length, List, Tree, _).
 
-:- pred bintree__from_sorted_list_2(int, list(pair(K,V)),
-				bintree(K,V), list(pair(K, V))).
+:- pred bintree__from_sorted_list_2(int, assoc_list(K,V),
+				bintree(K,V), assoc_list(K, V)).
 :- mode bintree__from_sorted_list_2(in, in, out, out).
 
 bintree__from_sorted_list_2(Num, List0, Tree, List) :-
@@ -351,7 +351,7 @@ bintree__from_corresponding_lists_2([K | Ks], [V | Vs], Tree0, Tree) :-
 bintree__to_list(Tree, List) :-
 	bintree__to_list_2(Tree, [], List).
 
-:- pred bintree__to_list_2(bintree(K,V), list(pair(K,V)), list(pair(K,V))).
+:- pred bintree__to_list_2(bintree(K,V), assoc_list(K,V), assoc_list(K,V)).
 :- mode bintree__to_list_2(in, in, out).
 
 bintree__to_list_2(empty, List, List).

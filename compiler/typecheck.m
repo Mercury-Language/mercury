@@ -1564,13 +1564,13 @@ find_undef_type(term_functor(F, As, _), ErrorContext, TypeDefns) -->
 	% of checking for undefined types.
 	% The tests are ordered so as to maximize effiency.
 	% Could efficiency be improved further?
+	{ length(As, Arity) },
+	{ make_type_id(F, Arity, TypeId) },
 	(
 		{ is_builtin_atomic_type(TypeId) }
 	->
 		[]
 	;
-		{ length(As, Arity) },
-		{ make_type_id(F, Arity, TypeId) },
 		{ map__contains(TypeDefns, TypeId) }
 	->
 		[]

@@ -26,6 +26,7 @@
 :- pred maybe_report_stats(bool::input, io__state::di, io__state::uo).
 :- pred maybe_write_string(bool::input, string::input,
 			io__state::di, io__state::uo).
+:- pred maybe_flush_output(bool::input, io__state::di, io__state::uo).
 
 :- type option		--->	verbose
 			;	very_verbose
@@ -144,6 +145,9 @@ maybe_report_stats(no) --> [].
 
 maybe_write_string(yes, String) --> io__write_string(String).
 maybe_write_string(no, _) --> [].
+
+maybe_flush_output(yes) --> io__flush_output.
+maybe_flush_output(no) --> [].
 
 :- end_module options.
 

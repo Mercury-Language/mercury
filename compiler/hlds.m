@@ -269,7 +269,7 @@
 				% there's no way to declare the determinism
 				% of a goal.)
 		category, 	% the inferred determinism
-		instmap,		% XXX this is O(N*N)
+		instmap_delta,
 		term__context,
 		set(var)	% the non-local vars in the goal
 	).
@@ -768,14 +768,18 @@ procinfo_set_goal(ProcInfo0, Goal, ProcInfo) :-
 :- pred goalinfo_set_nonlocals(hlds__goal_info, set(var), hlds__goal_info).
 :- mode goalinfo_set_nonlocals(input, input, output).
 
-:- type instmap == map(var, inst).
+	% The instmap delta stores the final instantiatedness
+	% of the non-local variables whose instantiatedness
+	% changed.
 
-:- pred goalinfo_instmap(hlds__goal_info, instmap).
-:- mode goalinfo_instmap(input, output).
+:- type instmap_delta == assoc_list(var, inst).
 
-:- pred goalinfo_set_instmap(hlds__goal_info, instmap,
+:- pred goalinfo_get_instmap_delta(hlds__goal_info, instmap_delta).
+:- mode goalinfo_get_instmap_delta(input, output).
+
+:- pred goalinfo_set_instmap_delta(hlds__goal_info, instmap_delta,
 				hlds__goal_info).
-:- mode goalinfo_set_instmap(input, input, output).
+:- mode goalinfo_set_instmap_delta(input, input, output).
 
 /***** currently not used and not implemented
 :- pred liveness_livevars(map(var, is_live), list(var)).
@@ -796,11 +800,11 @@ goalinfo_init(GoalInfo) :-
 	DeclaredDet = unspecified,
 	InferredDet = nondeterministic, 
 	map__init(Liveness),
-	map__init(InstMap),
+	InstMapDelta = [],
 	set__init(NonLocals),
 	term__context_init("", 0, Context),
 	GoalInfo = goalinfo(Liveness, DeclaredDet, InferredDet,
-				InstMap, Context, NonLocals).
+				InstMapDelta, Context, NonLocals).
 
 goalinfo_liveness(GoalInfo, Liveness) :-
 	GoalInfo = goalinfo(Liveness, _, _, _, _, _).
@@ -819,12 +823,12 @@ goalinfo_set_inferred_determinism(GoalInfo0, InferredDeterminism, GoalInfo) :-
 	GoalInfo0 = goalinfo(A, B, _, D, E, F),
 	GoalInfo = goalinfo(A, B, InferredDeterminism, D, E, F).
 
-goalinfo_instmap(GoalInfo, InstMap) :-
-	GoalInfo = goalinfo(_, _, _, InstMap, _, _).
+goalinfo_get_instmap_delta(GoalInfo, InstMapDelta) :-
+	GoalInfo = goalinfo(_, _, _, InstMapDelta, _, _).
 
-goalinfo_set_instmap(GoalInfo0, InstMap, GoalInfo) :-
+goalinfo_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
 	GoalInfo0 = goalinfo(A, B, C, _, E, F),
-	GoalInfo = goalinfo(A, B, C, InstMap, E, F).
+	GoalInfo = goalinfo(A, B, C, InstMapDelta, E, F).
 
 /*** This is a specification, not an implementation.
      It's not mode-correct.
