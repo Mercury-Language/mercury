@@ -168,12 +168,7 @@ ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 		ml_create_env(EnvName, [], Context, ModuleName, Globals,
 			_EnvTypeDefn, EnvTypeName, _EnvDecls, _InitEnv),
 		
-		globals__get_target(Globals, Target),
-		( Target = il ->
-			EnvPtrTypeName = EnvTypeName
-		;
-			EnvPtrTypeName = mlds__ptr_type(EnvTypeName)
-		),
+		EnvPtrTypeName = ml_make_env_ptr_type(Globals, EnvTypeName),
 
 		%
 		% traverse the function body, finding (and removing)
@@ -472,8 +467,10 @@ ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
 		EnvPtrVal = lval(var(qual(ModuleName,
 				mlds__var_name("env_ptr_arg", no)),
 				mlds__generic_env_ptr_type)),
-		ml_init_env(TypeName, EnvPtrVal, Context, ModuleName, Globals,
-			EnvPtrDecl, InitEnvPtr),
+		EnvPtrVarType = ml_make_env_ptr_type(Globals, TypeName),
+		CastEnvPtrVal = unop(cast(EnvPtrVarType), EnvPtrVal),
+		ml_init_env(TypeName, CastEnvPtrVal, Context, ModuleName,
+			Globals, EnvPtrDecl, InitEnvPtr),
 		FuncBody = mlds__statement(block([EnvPtrDecl],
 				[InitEnvPtr, FuncBody0]), Context),
 		DefnBody = mlds__function(PredProcId, Params, yes(FuncBody)),
@@ -482,6 +479,19 @@ ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
 	;
 		Defn = Defn0,
 		Init = Init0
+	).
+
+:- func ml_make_env_ptr_type(globals, mlds__type) = mlds__type.
+ml_make_env_ptr_type(Globals, EnvType)  = EnvPtrType :-
+		% IL uses classes instead of structs, so the type
+		% is a little different.
+		% XXX Perhaps if we used value classes this could go
+		% away.
+	globals__get_target(Globals, Target),
+	( Target = il ->
+		EnvPtrType = EnvType
+	;
+		EnvPtrType = mlds__ptr_type(EnvType)
 	).
 
 	% Create the environment pointer and initialize it:
@@ -503,16 +513,7 @@ ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 	%
 	EnvPtrVarName = data(var(mlds__var_name("env_ptr", no))),
 	EnvPtrVarFlags = ml_gen_local_var_decl_flags,
-	globals__get_target(Globals, Target),
-		% IL uses classes instead of structs, so the type
-		% is a little different.
-		% XXX Perhaps if we used value classes this could go
-		% away.
-	( Target = il ->
-		EnvPtrVarType = EnvTypeName
-	;
-		EnvPtrVarType = mlds__ptr_type(EnvTypeName)
-	),
+	EnvPtrVarType = ml_make_env_ptr_type(Globals, EnvTypeName),
 	EnvPtrVarDefnBody = mlds__data(EnvPtrVarType, no_initializer),
 	EnvPtrVarDecl = mlds__defn(EnvPtrVarName, Context, EnvPtrVarFlags,
 		EnvPtrVarDefnBody),
@@ -520,13 +521,13 @@ ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 	%
 	% generate the following statement:
 	%
-	%	env_ptr = (EnvPtrVarType) <EnvPtrVal>;
+	%	env_ptr = <EnvPtrVal>;
 	%
-	% XXX Do we need the cast? If so, why?
+	% (note that the caller of this routine is responsible
+	% for inserting a cast in <EnvPtrVal> if needed).
 	%
 	EnvPtrVar = qual(ModuleName, mlds__var_name("env_ptr", no)),
-	AssignEnvPtr = assign(var(EnvPtrVar, EnvPtrVarType),
-		unop(cast(EnvPtrVarType), EnvPtrVal)),
+	AssignEnvPtr = assign(var(EnvPtrVar, EnvPtrVarType), EnvPtrVal),
 	InitEnvPtr = mlds__statement(atomic(AssignEnvPtr), Context).
 
 	% Given the declaration for a function parameter, produce a
@@ -1068,7 +1069,7 @@ fixup_var(ThisVar, ThisVarType, Lval, ElimInfo, ElimInfo) :-
 		FieldName = named_field(qual(EnvModuleName, ThisVarFieldName),
 			EnvPtrVarType),
 		Tag = yes(0),
-		Lval = field(Tag, EnvPtr, FieldName, FieldType, ClassType)
+		Lval = field(Tag, EnvPtr, FieldName, FieldType, EnvPtrVarType)
 	;
 		%
 		% leave everything else unchanged

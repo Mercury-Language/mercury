@@ -73,6 +73,16 @@
 #define	MR_const_mask_field(p, i)	((const MR_Word *) MR_strip_tag(p))[i]
 
 /*
+** The hl_ variants are the same, except their return type is MR_Box
+** rather than MR_Word.  These are used by the MLDS->C back-end.
+*/
+#define	MR_hl_field(t, p, i)		((MR_Box *) MR_body((p), (t)))[i]
+#define	MR_hl_const_field(t, p, i)	((const MR_Box *) MR_body((p), (t)))[i]
+
+#define	MR_hl_mask_field(p, i)		((MR_Box *) MR_strip_tag(p))[i]
+#define	MR_hl_const_mask_field(p, i)	((const MR_Box *) MR_strip_tag(p))[i]
+
+/*
 ** the following macros are used by handwritten C code that needs to access 
 ** Mercury data structures. The definitions of these macros depend on the data 
 ** representation scheme used by compiler/make_tags.m.
