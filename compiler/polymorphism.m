@@ -1300,7 +1300,11 @@ polymorphism__add_unification_typeinfos(TypeInfoLocns,
 	( Unification0 = complicated_unify(Modes, CanFail, _) ->
 		Unification = complicated_unify(Modes, CanFail, TypeInfoVars)
 	;
-		error("polymorphism__unification_typeinfos")
+		% This can happen if an earlier stage of compilation
+		% has already determined that this unification is particular
+		% kind of unification.  In that case, the type_info vars
+		% won't be needed.
+		Unification = Unification0
 	).
 
 :- pred polymorphism__process_unify_functor(prog_var, cons_id, list(prog_var),
