@@ -119,7 +119,7 @@
 :- pred string__int_to_string(int, string).
 :- mode string__int_to_string(in, uo) is det.
 
-	% Convert an integer to a string with commas as thousand seperators.
+	% Convert an integer to a string with commas as thousand separators.
 	%
 :- func string__int_to_string_thousands(int) = string.
 :- mode string__int_to_string_thousands(in) = uo is det.
@@ -133,11 +133,11 @@
 :- pred string__int_to_base_string(int, int, string).
 :- mode string__int_to_base_string(in, in, uo) is det.
 
-	% string__int_to_base_string_group(Int, Base, GroupLength, Seperator,
+	% string__int_to_base_string_group(Int, Base, GroupLength, Separator,
 	%	String):
 	% Convert an integer to a string in a given Base (between 2 and 36)
-	% and insert Seperator between every GroupLength digits.  
-	% If GroupLength is less than one then no seperators will appear in the
+	% and insert Separator between every GroupLength digits.  
+	% If GroupLength is less than one then no separators will appear in the
 	% output.  An exception is thrown if Base is not between 2 and 36.
 	% Useful for formatting numbers like "1,300,000".
 	%
@@ -966,7 +966,7 @@ string__from_char_list(CharList, Str) :-
 string__int_to_string_thousands(N) = 
 	string__int_to_base_string_group(N, 10, 3, ",").
 
-	% Period is how many digits should be between each seperator.
+	% Period is how many digits should be between each separator.
 	%
 string__int_to_base_string_group(N, Base, Period, Sep) = Str :-
 	(
@@ -981,7 +981,7 @@ string__int_to_base_string_group(N, Base, Period, Sep) = Str :-
 :- pred string__int_to_base_string_group_1(int::in, int::in, int::in, 
 	string::in, string::uo) is det.
 
-	% Period is how many digits should be between each seperator.
+	% Period is how many digits should be between each separator.
 	%
 string__int_to_base_string_group_1(N, Base, Period, Sep, Str) :-
 	% Note that in order to handle MININT correctly,
@@ -1003,8 +1003,8 @@ string__int_to_base_string_group_1(N, Base, Period, Sep, Str) :-
 :- pred string__int_to_base_string_group_2(int::in, int::in, int::in, int::in,
 	string::in, string::uo) is det.
 
-	% Period is how many digits should be between each seperator.
-	% Curr is how many digits have been processed since the last seperator
+	% Period is how many digits should be between each separator.
+	% Curr is how many digits have been processed since the last separator
 	% was inserted.
 	% string__int_to_base_string_group_2/6 is almost identical to 
 	% string__int_to_base_string_2/3 above so any changes here might also 
