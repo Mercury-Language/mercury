@@ -3950,8 +3950,8 @@ language_builtin("=", 2).
 language_builtin("\\=", 2).
 language_builtin(",", 2).
 language_builtin(";", 2).
-language_builtin("\\+", 2).
-language_builtin("not", 2).
+language_builtin("\\+", 1).
+language_builtin("not", 1).
 language_builtin("<=>", 2).
 language_builtin("=>", 2).
 language_builtin("<=", 2).
