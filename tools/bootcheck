@@ -1047,19 +1047,19 @@ then
 
 	if test "$test_grade" = "$grade"
 	then
-		stage2_insert="stage2/"
+		stage2_insert="/stage2"
 	else
 		stage2_insert=""
 	fi
 
-	WORKSPACE="$root/${stage2_insert}"
+	WORKSPACE="$root${stage2_insert}"
 	export WORKSPACE	
 
-	MMAKE_DIR="$root/${stage2_insert}scripts"
+	MMAKE_DIR="$root${stage2_insert}/scripts"
 	export MMAKE_DIR
 
 	# Set PATH for mkinit, mmc, mgnuc, ml etc
-	PATH=$root/${stage2_insert}util:$root/${stage2_insert}scripts:$PATH
+	PATH=$root${stage2_insert}/util:$root${stage2_insert}/scripts:$PATH
 	export PATH
 fi
 
