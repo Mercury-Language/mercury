@@ -319,7 +319,7 @@ realclean_local:
 SUBDIRS = typeclasses sub-modules exceptions purity
 
 $(SUBDIR)/Mercury.modules:
-	$(MC) -f source_file_map.m
+	$(MC) -f $(ALL_MCFLAGS) source_file_map.m
 
 dep_subdirs:
 	+for dir in $(SUBDIRS); do \
