@@ -642,6 +642,11 @@ determinism inference for non-exported predicates.
 @item --no-warn-det-decls-too-lax
 Don't warn about determinism declarations
 which could have been stricter.
+
+@sp 1
+@item --no-warn-nothing-exported
+Don't warn about modules whose interface sections have no
+exported predicates, modes or types.
 @end table
 
 @node Verbosity options
