@@ -631,7 +631,7 @@ if_not_there: $(srcdir)/if_not_there.c
 clean: 
 	rm -f gc.a *.o *.exe tests/*.o gctest gctest_dyn_link test_cpp \
 	      setjmp_test  mon.out gmon.out a.out core if_not_there if_mach \
-	      threadlibs $(CORD_OBJS) cord/cordtest cord/de mips_sgi_mach_dep.s
+	      threadlibs $(CORD_OBJS) cord/cordtest cord/de
 	-rm -f *~
 
 gctest: tests/test.o gc.a $(UTILS)
