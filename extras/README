@@ -19,9 +19,8 @@ graphics	A couple of packages for doing graphics programming
 		and GUIs in Mercury: a Mercury interface to tcl/tk
 		and a Mercury binding to OpenGL.
 
-odbc		A Mercury interface to ODBC (Open DataBase Connectivity,
-		I think), for interfacing to standard relational
-		database packages.
+odbc		A Mercury interface to ODBC (Open Database Connectivity),
+		for interfacing to standard relational database packages.
 
 references	A library package containing modules for manipulating
 		ML-style references (mutable state).
