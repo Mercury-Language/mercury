@@ -605,9 +605,9 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 	RestoreStmt = "\t\trestore_transient_registers();\n",
 	GotoStmt = "\t\tif (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);"
 	},
-		{ string__append_list([
-			"\t\tMR_jumpaddr = MR_trace(\n",
-			"\t\t\t(const MR_Stack_Layout_Label *)\n",
+	{ string__append_list([
+		"\t\tMR_jumpaddr = MR_trace(\n",
+		"\t\t\t(const MR_Stack_Layout_Label *)\n",
 		"\t\t\t&mercury_data__layout__", LabelStr, ");\n"],
 		CallStmt) },
 	code_info__add_trace_layout_for_label(Label, Context, Port, Path,
