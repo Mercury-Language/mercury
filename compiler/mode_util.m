@@ -1284,7 +1284,9 @@ inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 inst_apply_substitution(any(Uniq), _, any(Uniq)).
 inst_apply_substitution(free, _, free).
 inst_apply_substitution(free(T), _, free(T)).
-inst_apply_substitution(ground(Uniq, PredStuff), _, ground(Uniq, PredStuff)).
+inst_apply_substitution(ground(Uniq, PredStuff0), Subst,
+			ground(Uniq, PredStuff)) :-
+	maybe_pred_inst_apply_substitution(PredStuff0, Subst, PredStuff).
 inst_apply_substitution(bound(Uniq, Alts0), Subst, bound(Uniq, Alts)) :-
 	alt_list_apply_substitution(Alts0, Subst, Alts).
 inst_apply_substitution(not_reached, _, not_reached).
@@ -1303,7 +1305,6 @@ inst_apply_substitution(defined_inst(InstName0), Subst,
 inst_apply_substitution(abstract_inst(Name, Args0), Subst,
 		    abstract_inst(Name, Args)) :-
 	inst_list_apply_substitution(Args0, Subst, Args).
-
 
 :- pred inst_name_apply_substitution(inst_name, inst_subst, inst_name).
 :- mode inst_name_apply_substitution(in, in, out) is det.
@@ -1343,6 +1344,26 @@ alt_list_apply_substitution([Alt0|Alts0], Subst, [Alt|Alts]) :-
 	inst_list_apply_substitution(Args0, Subst, Args),
 	Alt = functor(Name, Args),
 	alt_list_apply_substitution(Alts0, Subst, Alts).
+
+:- pred maybe_pred_inst_apply_substitution(maybe(pred_inst_info), inst_subst,
+					maybe(pred_inst_info)).
+:- mode maybe_pred_inst_apply_substitution(in, in, out) is det.
+
+maybe_pred_inst_apply_substitution(no, _, no).
+maybe_pred_inst_apply_substitution(yes(pred_inst_info(PredOrFunc, Modes0, Det)),
+			Subst, yes(pred_inst_info(PredOrFunc, Modes, Det))) :-
+	mode_list_apply_substitution(Modes0, Subst, Modes).
+
+	% mode_list_apply_substitution(Modes0, Subst, Modes) is true
+	% iff Mode is the mode that results from applying Subst to Modes0.
+
+:- pred mode_list_apply_substitution(list(mode), inst_subst, list(mode)).
+:- mode mode_list_apply_substitution(in, in, out) is det.
+
+mode_list_apply_substitution([], _, []).
+mode_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
+	mode_apply_substitution(A0, Subst, A),
+	mode_list_apply_substitution(As0, Subst, As).
 
 %-----------------------------------------------------------------------------%
 
