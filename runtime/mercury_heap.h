@@ -15,6 +15,7 @@
 #include "mercury_heap_profile.h"	/* for MR_record_allocation() */
 #include "mercury_deep_profiling.h"	/* for MR_current_call_site_dynamic */
 #include "mercury_std.h"		/* for MR_EXTERN_INLINE */
+#include "mercury_reg_workarounds.h" 	/* for MR_memcpy */
 #ifdef MR_HIGHLEVEL_CODE
   #include "mercury.h"			/* for MR_new_object() */
 #endif
@@ -370,7 +371,7 @@ MR_create3(MR_Word w1, MR_Word w2, MR_Word w3)
 			MR_make_hp_float_aligned();			\
 			MR_incr_hp(MR_LVALUE_CAST(MR_Word, (box)),	\
 					size_in_words);			\
-			*(T *)(box) = (value);				\
+			MR_assign_structure(*(T *)(box), (value));	\
 			MR_maybe_record_allocation(size_in_words,	\
 				"", "foreign type: " MR_STRINGIFY(T));	\
 		} else {						\
@@ -383,7 +384,7 @@ MR_create3(MR_Word w1, MR_Word w2, MR_Word w3)
 				/* part of it uninitialized */		\
 				box_copy = 0;				\
 			}						\
-			memcpy(&box_copy, &(value), sizeof(T));		\
+			MR_memcpy(&box_copy, &(value), sizeof(T));	\
 			(box) = box_copy;				\
 		}							\
 	} while (0)
@@ -398,13 +399,13 @@ MR_create3(MR_Word w1, MR_Word w2, MR_Word w3)
 		MR_CHECK_EXPR_TYPE((value), T);				\
 		MR_CHECK_EXPR_TYPE((box), MR_Box);			\
 		if (sizeof(T) > sizeof(MR_Word)) {			\
-			(value) = *(T *)(box);				\
+			MR_assign_structure((value), *(T *)(box));	\
 		} else {						\
 			/* We can't take the address of `box' here, */	\
 			/* since it might be a global register. */	\
 			/* Hence we need to use a temporary copy. */	\
 			MR_Box box_copy = (box);			\
-			memcpy(&(value), &box_copy, sizeof(T));		\
+			MR_memcpy(&(value), &box_copy, sizeof(T));	\
 		}							\
 	} while (0)
    

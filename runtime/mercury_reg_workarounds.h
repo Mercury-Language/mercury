@@ -1,11 +1,11 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
-** mercury_reg_workarounds.h -	MR_memcpy(), MR_fd_zero()
+** mercury_reg_workarounds.h - MR_assign_structure(), MR_memcpy(), MR_fd_zero()
 */
 
 #ifndef	MERCURY_REG_WORKAROUNDS_H
@@ -21,15 +21,35 @@
 #include <stdlib.h>			/* for size_t */
 
 /*
-** We use our own version of memcpy because gcc recognises calls to the
-** standard memcpy (even in things that do not mention memcpy by name, e.g.
-** structure assignments) and generates inline code for them. Unfortunately
-** this causes gcc to abort because it tries to use a register that we have
-** already reserved.
-** XXX We should fix this eventually by using -fno-builtin since pragma
-** c_code may call the builtin functions.
+** This macro defines a safe way to perform assignment between
+** structures. The obvious way can cause some versions of
+** gcc to abort on x86 processors with the message
+** "fixed or forbidden register was spilled."
 */
-extern	void	MR_memcpy(void *dest, const void *src, size_t nbytes);
+
+#if defined(MR_CANNOT_USE_STRUCTURE_ASSIGNMENT) && \
+	defined(MR_USE_GCC_GLOBAL_REGISTERS)
+
+  #define MR_assign_structure(dest, src) \
+			MR_memcpy(&(dest), &(src), sizeof((dest)))
+
+  /*
+  ** We use our own version of memcpy because gcc recognises calls to the
+  ** standard memcpy (even in things that do not mention memcpy by name, e.g.
+  ** structure assignments) and generates inline code for them. Unfortunately
+  ** this causes gcc to abort because it tries to use a register that we have
+  ** already reserved.
+  ** XXX We should fix this eventually by using -fno-builtin since pragma
+  ** c_code may call the builtin functions.
+  */
+  extern	void	MR_memcpy(void *dest, const void *src, size_t nbytes);
+
+#else /* !MR_CANNOT_USE_STRUCTURE_ASSIGNMENT || !MR_USE_GCC_GLOBAL_REGISTERS */
+
+  #define MR_assign_structure(dest, src)	((dest) = (src))
+  #define MR_memcpy(dest, src, nbytes)		memcpy((dest), (src), (nbytes))
+
+#endif /* !MR_CANNOT_USE_STRUCTURE_ASSIGNMENT || !MR_USE_GCC_GLOBAL_REGISTERS */
 
 /*
 ** We use a forwarding function to FD_ZERO because the Linux headers

@@ -73,6 +73,7 @@ MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-pred_with_no_modes	= --infer-all
 MCFLAGS-quantifier_warning	= --halt-at-warn
+MGNUCFLAGS-reg_bug		= --no-ansi
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-simplify_bug2		= -O3
 MCFLAGS-spurious_purity_warning	= --halt-at-warn
