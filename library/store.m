@@ -96,7 +96,7 @@ I wonder whether it is worth it?
 % references
 %
 
-	% mutvar(T, S):
+	% ref(T, S):
 	% a reference to value of type T in store S
 :- type ref(T, S).
 
