@@ -36,6 +36,10 @@ TYPECLASS_PROGS=	\
 	typeclass_test_6 \
 	use_abstract_instance
 
+# The following tests are not enabled:
+#	complicated_constraint --
+#		because we don't support that feature yet
+
 # These tests are all failing in jump and fast grades b/c we can't use static
 # code initialisers.
 
