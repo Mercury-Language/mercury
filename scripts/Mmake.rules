@@ -113,8 +113,12 @@ main_target: $(MAIN_TARGET)
 .c.o:
 	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $< -o $@
 
-# .c.pic_o:
-# 	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
+# If we aren't removing the .c files, we generate .pic_o files
+# without invoking mmake.
+ifeq ($(RM_C),:)
+.c.pic_o:
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
+endif
 
 .c.s:
 	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -S $< -o $@
@@ -125,6 +129,9 @@ main_target: $(MAIN_TARGET)
 .c.i:
 	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -E $< > $@
 
+# If we aren't removing the .c files, we don't need to invoke mmake
+# for each .c file
+ifneq ($(RM_C),:)
 .m.o:
 	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
 	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $*.c -o $@
@@ -133,6 +140,7 @@ main_target: $(MAIN_TARGET)
 .o.pic_o:
 	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
 	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $*.c -o $@
+endif
 
 %.dir/*.o: %.m
 	rm -f $@
