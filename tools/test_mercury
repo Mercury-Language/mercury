@@ -128,7 +128,12 @@ case $HOST in
 				gcc)	OPTIMIZE=-O5 ;;
 				*)	OPTIMIZE=-O2 ;;
 			esac ;;
-	earth)		OPTIMIZE="-O5 --intermodule-optimization" ;;
+
+			# XXX There are some performance problems
+			# with deforestation (module_qual__process_assert takes
+			# forever to compile with --intermodule-optimization
+			# and --deforestation), so disable it for now.
+	earth)		OPTIMIZE="-O5 --intermodule-optimization --no-deforestation" ;;
 	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
 	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
 esac
