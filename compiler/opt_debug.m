@@ -257,7 +257,7 @@ opt_debug__dump_vninstr(vn_modframe(_), "modframe").
 opt_debug__dump_vninstr(vn_label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
 	string__append_list(["label(", L_str, ")"], Str).
-opt_debug__dump_vninstr(vn_goto(CodeAddr), Str) :-
+opt_debug__dump_vninstr(vn_goto(CodeAddr, _Caller), Str) :-
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["goto(", C_str, ")"], Str).
 opt_debug__dump_vninstr(vn_computed_goto(Vn, _), Str) :-
@@ -648,7 +648,7 @@ opt_debug__dump_instr(modframe(Redoip), Str) :-
 opt_debug__dump_instr(label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
 	string__append_list(["label(", L_str, ")"], Str).
-opt_debug__dump_instr(goto(CodeAddr), Str) :-
+opt_debug__dump_instr(goto(CodeAddr, _Caller), Str) :-
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["goto(", C_str, ")"], Str).
 opt_debug__dump_instr(computed_goto(Rval, Labels), Str) :-

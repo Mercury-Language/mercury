@@ -2634,7 +2634,7 @@ code_info__get_stack_top(StackVar) -->
 code_info__generate_failure(Code) -->
 	code_info__failure_cont(Cont),
 	{ code_info__failure_cont_address(Cont, FailureAddress) },
-	{ Code = node([ goto(FailureAddress) - "fail" ]) }.
+	{ Code = node([ goto(FailureAddress, FailureAddress) - "fail" ]) }.
 
 code_info__generate_test_and_fail(Rval, Code) -->
 	code_info__failure_cont(Cont),
@@ -2677,7 +2677,8 @@ code_info__generate_pre_commit(PreCommit, FailLabel) -->
 code_info__generate_commit(FailLabel, Commit) -->
 	code_info__get_next_label(SuccLabel),
 	{ GotoSuccCode = node([
-		goto(label(SuccLabel)) - "jump to success continuation",
+		goto(label(SuccLabel), label(SuccLabel)) -
+			"jump to success continuation",
 		label(FailLabel) - "failure continuation"
 	]) },
 	{ SuccLabelCode = node([

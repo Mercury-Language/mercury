@@ -186,7 +186,7 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
 	;
-		Uinstr = goto(CodeAddr),
+		Uinstr = goto(CodeAddr, _),
 		opt_util__skip_comments(Moreinstrs, Moreinstrs1),
 		opt_util__livevals_addr(CodeAddr, LivevalsNeeded),
 		( LivevalsNeeded = yes ->
@@ -408,7 +408,9 @@ value_number__post_main([Instr0 | Instrs0], [Instr | Instrs]) :-
 		opt_util__skip_comments_livevals(Instrs0, Instrs1),
 		Instrs1 = [label(Label) - _ | _],
 		list__reverse(BlockInstrs, BlockRevInstrs),
-		BlockRevInstrs = [goto(label(Label)) - _ | RevBlockInstrs1]
+		BlockRevInstrs = [goto(label(Label), label(Label)) -
+					_ | RevBlockInstrs1
+				]
 	->
 		list__reverse(RevBlockInstrs1, BlockInstrs1),
 		Instr = block(TempCount, BlockInstrs1) - Comment

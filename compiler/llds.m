@@ -63,10 +63,13 @@
 
 	;	label(label)
 
-	;	goto(code_addr)
+	;	goto(code_addr, code_addr)
+			% goto(Target, CallerAddress)
 			% Branch to the specified address.
 			% Note that jumps to do_fail, etc., get
 			% optimized into calls to fail(), etc..
+			% CallerAddress is needed for profiling,
+			% when tailcall optimization is turned on.
 
 	;	computed_goto(rval, list(label))
 			% Evaluate rval, which should be an integer,
@@ -413,10 +416,11 @@ output_instruction(label(Label)) -->
 	output_label(Label),
 	io__write_string(":\n\t;").
 	
-output_instruction(goto(CodeAddr)) -->
+output_instruction(goto(CodeAddr, CallerAddr)) -->
 	io__write_string("\t{ "),
 	output_code_addr_decls(CodeAddr),
-	output_goto(CodeAddr),
+	output_code_addr_decls(CallerAddr),
+	output_goto(CodeAddr, CallerAddr),
 	io__write_string(" }").
 
 output_instruction(computed_goto(Rval, Labels)) -->
@@ -435,7 +439,7 @@ output_instruction(if_val(Rval, Target)) -->
 	io__write_string("if ("),
 	output_rval(Rval),
 	io__write_string(")\n\t\t"),
-	output_goto(Target),
+	output_goto(Target, Target),
 	io__write_string(" }").
 
 output_instruction(incr_hp(Lval, MaybeTag, Rval)) -->
@@ -635,31 +639,35 @@ output_code_addr_decls(imported(ProcLabel)) -->
 	output_proc_label(ProcLabel),
 	io__write_string(");\n\t  ").
 
-:- pred output_goto(code_addr, io__state, io__state).
-:- mode output_goto(in, di, uo) is det.
+:- pred output_goto(code_addr, code_addr, io__state, io__state).
+:- mode output_goto(in, in, di, uo) is det.
 
 	% Note that we do some optimization here:
 	% instead of always outputting `GOTO(<label>)', we
 	% output different things for each different kind of label.
 
-output_goto(succip) -->
+output_goto(succip, _) -->
 	io__write_string("proceed();").
-output_goto(do_fail) -->
+output_goto(do_fail, _) -->
 	io__write_string("fail();").
-output_goto(do_succeed) -->
+output_goto(do_succeed, _) -->
 	io__write_string("succeed();").
-output_goto(do_redo) -->
+output_goto(do_redo, _) -->
 	io__write_string("redo();").
-output_goto(imported(ProcLabel)) -->
+output_goto(imported(ProcLabel), CallerAddr) -->
 	io__write_string("tailcall(ENTRY("),
 	output_proc_label(ProcLabel),
-	io__write_string("));").
-output_goto(label(Label)) -->
+	io__write_string("),\n\t\t"),
+	output_code_addr(CallerAddr),
+	io__write_string(");").
+output_goto(label(Label), CallerAddr) -->
 	(
 		{ Label = local(_) ; Label = exported(_) }
 	->
 		io__write_string("localtailcall("),
 		output_label(Label),
+		io__write_string(",\n\t\t"),
+		output_code_addr(CallerAddr),
 		io__write_string(");")
 	;
 		{ Label = local(_,_) }

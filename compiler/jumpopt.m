@@ -126,7 +126,7 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 			Mod0 = yes
 		)
 	;
-		Uinstr0 = goto(label(TargetLabel))
+		Uinstr0 = goto(label(TargetLabel), _CallerAddress)
 	->
 		(
 			opt_util__is_this_label_next(TargetLabel, Instrs0, _)
@@ -149,20 +149,20 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 		;
 			map__search(Procmap, TargetLabel, Between)
 		->
-			list__append(Between, [goto(succip) - "shortcircuit"],
-				Newinstrs),
+			list__append(Between, [goto(succip, succip) -
+				"shortcircuit"], Newinstrs),
 			Mod0 = yes
 		;
 			map__search(Sdprocmap, TargetLabel, Between)
 		->
-			list__append(Between, [goto(succip) - "shortcircuit"],
-				Newinstrs),
+			list__append(Between, [goto(succip, succip) -
+				"shortcircuit"], Newinstrs),
 			Mod0 = yes
 		;
 			map__search(Succmap, TargetLabel, Between)
 		->
-			list__append(Between, [goto(do_succeed) - "shortcircuit"],
-				Newinstrs),
+			list__append(Between, [goto(do_succeed, do_succeed) -
+				"shortcircuit"], Newinstrs),
 			Mod0 = yes
 		;
 			map__search(Instrmap, TargetLabel, TargetInstr)
@@ -182,8 +182,8 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 					Newinstrs = [Instr0],
 					Mod0 = no
 				;
-					Newinstrs = [goto(label(Destlabel))
-							- Shorted],
+					Newinstrs = [goto(label(Destlabel),
+						label(Destlabel)) - Shorted],
 					Mod0 = yes
 				)
 			)
@@ -267,7 +267,7 @@ jumpopt__final_dest(SrcLabel, SrcInstr, Instrmap, DestLabel, DestInstr) :-
 	(
 		SrcInstr = SrcUinstr - _Comment,
 		(
-			SrcUinstr = goto(label(TargetLabel))
+			SrcUinstr = goto(label(TargetLabel), _CallerAddress)
 		;
 			SrcUinstr = label(TargetLabel)
 		),

@@ -120,7 +120,7 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 		% For compiler-generated type-specific predicates,
 		% we should really store the type as a separate
 		% field in pred_info.
-		% Instead we use some nast hacks:
+		% Instead we use some nasty hacks:
 		% for __Index__(...TypeInfos..., T, int)
 		% we use the type of the second last argument,
 		% and for __Compare__(...TypeInfos..., comparison_result, T, T)

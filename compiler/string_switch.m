@@ -278,7 +278,8 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, Det, FailLabel, EndLabe
 			label(Label) - Comment
 		]) },
 		{ FinishCode = node([
-			goto(label(EndLabel)) - "jump to end of switch"
+			goto(label(EndLabel), label(EndLabel)) -
+				"jump to end of switch"
 		]) },
 		(
 			{ string_switch__this_is_last_case(Slot, TblSize,

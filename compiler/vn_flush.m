@@ -109,12 +109,13 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, Vn_tables0, Vn_tables,
 			Vn_instr = vn_label(Label),
 			Vn_tables = Vn_tables0,
 			Templocs = Templocs0,
-			Instrs = [goto(label(Label)) - "eliminated by postopt"]
+			Instrs = [goto(label(Label), label(Label)) -
+				"eliminated by postopt"]
 		;
-			Vn_instr = vn_goto(TargetAddr),
+			Vn_instr = vn_goto(TargetAddr, CallerAddr),
 			Vn_tables = Vn_tables0,
 			Templocs = Templocs0,
-			Instrs = [goto(TargetAddr) - ""]
+			Instrs = [goto(TargetAddr, CallerAddr) - ""]
 		;
 			Vn_instr = vn_computed_goto(Vn, Labels),
 			vn__flush_vn(Vn, [src_ctrl(N)], Rval,

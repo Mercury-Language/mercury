@@ -64,7 +64,7 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		% of the if-then-else
 	{ ThenCode = tree(
 		tree(HPPopCode, ThenGoalCode),
-		node([ goto(label(EndLab)) -
+		node([ goto(label(EndLab), label(EndLab)) -
 			"Jump to the end of if-then-else" ])
 	) },
 	{ ElseCode = tree(
@@ -121,7 +121,7 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 			HPPopCode,
 			ThenGoalCode
 		),
-		node([ goto(label(EndLab)) -
+		node([ goto(label(EndLab), label(EndLab)) -
 			"Jump to the end of if-then-else" ])
 	) },
 	{ ElseCode = tree(
@@ -198,7 +198,7 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 			),
 			ThenGoalCode
 		),
-		node([ goto(label(EndLab)) -
+		node([ goto(label(EndLab), label(EndLab)) -
 			"Jump to the end of if-then-else" ])
 	) },
 	{ ElseCode = tree(

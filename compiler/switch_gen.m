@@ -233,7 +233,7 @@ switch_gen__generate_all_cases(Cases, Var, Det, LocalDet, EndLabel, Code) -->
 					Case2Code)),
 			tree(
 				node([
-					goto(label(EndLabel)) -
+					goto(label(EndLabel), label(EndLabel)) -
 						"skip to the end of the switch",
 					label(ElseLab) - "next case" ]),
 				tree(
@@ -278,7 +278,7 @@ switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, Det, LocalDet,
 		code_info__pop_failure_cont,
 		code_gen__generate_forced_goal(Det, Goal, ThisCode),
 		{ ElseCode = node([
-			goto(label(EndLabel)) -
+			goto(label(EndLabel), label(EndLabel)) -
 				"skip to the end of the switch",
 			label(ElseLabel) - "next case"
 		]) },

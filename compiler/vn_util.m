@@ -504,7 +504,7 @@ vn__build_uses_from_ctrl(Ctrl, Ctrlmap, Vn_tables0, Vn_tables) :-
 			VnInstr = vn_label(_),
 			Vn_tables1 = Vn_tables0
 		;
-			VnInstr = vn_goto(_),
+			VnInstr = vn_goto(_, _),
 			Vn_tables1 = Vn_tables0
 		;
 			VnInstr = vn_computed_goto(Vn, _),
@@ -677,7 +677,7 @@ vn__block_cost_2([Uinstr - _Comment | Instrs],  A0, A, O0, O, S0, S, H0, H) :-
 		S2 = S0,
 		H2 = H0
 	;
-		Uinstr = goto(_),
+		Uinstr = goto(_, _),
 		A1 = A0,
 		O2 = O0,
 		S2 = S0,

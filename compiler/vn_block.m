@@ -176,10 +176,11 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Livevals0, Incrhp, SeenLive,
 		vn__opt_non_block([Instr0 | Instrs0], Livemap, Instrs1),
 		list__append(FlushInstrs, Instrs1, Instrs)
 	;
-		Uinstr0 = goto(CodeAddr),
-		vn__new_ctrl_node(vn_goto(CodeAddr), Livemap, SeenLive,
-			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
-			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
+		Uinstr0 = goto(CodeAddr, CallerAddr),
+		vn__new_ctrl_node(vn_goto(CodeAddr, CallerAddr), 
+			Livemap, SeenLive, Vn_tables0, Vn_tables1, Livevals0,
+			Livevals1, Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1,
+			Ctrl0, Ctrl1),
 		vn__flush_all_nodes(Livevals1, Vn_tables1, Livemap,
 			Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			[Instr0 | Prev], FlushInstrs),
@@ -303,7 +304,7 @@ vn__new_ctrl_node(Vn_instr, Livemap, SeenLive,
 		vn__record_one_label(Label, Livemap, Vn_tables0, Vn_tables,
 			Livevals0, Livevals, FlushEntry0, FlushEntry)
 	;
-		Vn_instr = vn_goto(TargetAddr),
+		Vn_instr = vn_goto(TargetAddr, _),
 		(
 			TargetAddr = label(Label),
 			map__search(Livemap, Label, _)

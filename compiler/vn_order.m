@@ -312,7 +312,7 @@ vn__vn_ctrl_order(Ctrl, Ctrlmap, Vn_tables0, Vn_tables,
 			Predmap1 = Predmap0,
 			Vn_tables1 = Vn_tables0
 		;
-			Vn_instr = vn_goto(_),
+			Vn_instr = vn_goto(_, _),
 			Succmap1 = Succmap0,
 			Predmap1 = Predmap0,
 			Vn_tables1 = Vn_tables0
@@ -931,7 +931,7 @@ vn__boundary_instr(call_closure(_, _, _), yes).
 vn__boundary_instr(mkframe(_, _, _), yes).
 vn__boundary_instr(modframe(_), yes).
 vn__boundary_instr(label(_), yes).
-vn__boundary_instr(goto(_), yes).
+vn__boundary_instr(goto(_, _), yes).
 vn__boundary_instr(computed_goto(_, _), yes).
 vn__boundary_instr(c_code(_), yes).
 vn__boundary_instr(if_val(_, _), yes).

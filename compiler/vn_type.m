@@ -54,7 +54,7 @@
 			;	vn_mkframe(string, int, code_addr)
 			;	vn_modframe(code_addr)
 			;	vn_label(label)
-			;	vn_goto(code_addr)
+			;	vn_goto(code_addr, code_addr)
 			;	vn_computed_goto(vn, list(label))
 			;	vn_if_val(vn, code_addr)
 			;	vn_mark_hp(vnlval)

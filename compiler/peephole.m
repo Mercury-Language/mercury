@@ -193,21 +193,21 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap,
 peephole__match(livevals(Livevals), Comment, Procmap, Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
-	Instrs1 = [call(CodeAddress, label(ContLabel), _Caller, _LiveVals)
+	Instrs1 = [call(CodeAddress, label(ContLabel), Caller, _LiveVals)
 							- Comment2 | _],
 	( map__search(Procmap, ContLabel, Between0) ->
 		opt_util__filter_out_livevals(Between0, Between1),
 		string__append(Comment2, " (redirected return)", Redirect),
 		list__append(Between1,
 			[livevals(Livevals) - Comment,
-			goto(CodeAddress) - Redirect | Instrs0], Instrs)
+			goto(CodeAddress, Caller) - Redirect | Instrs0], Instrs)
 	; map__search(Forkmap, ContLabel, Between0) ->
 		opt_util__filter_out_livevals(Between0, Between1),
 		opt_util__filter_out_r1(Between1, Between2),
 		string__append(Comment2, " (redirected return)", Redirect),
 		list__append(Between2,
 			[livevals(Livevals) - Comment,
-			goto(CodeAddress) - Redirect | Instrs0], Instrs)
+			goto(CodeAddress, Caller) - Redirect | Instrs0], Instrs)
 	;
 		fail
 	).
@@ -219,7 +219,7 @@ peephole__match(livevals(Livevals), Comment, Procmap, Forkmap,
 	%	<comments, labels>	=>	<comments, labels>
 	%     next:			      next:
 
-peephole__match(goto(label(Label)), _Comment, _Procmap, _Forkmap,
+peephole__match(goto(label(Label), _Caller), _Comment, _Procmap, _Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__is_this_label_next(Label, Instrs0, _),
 	Instrs = Instrs0.
@@ -243,7 +243,7 @@ peephole__match(goto(label(Label)), _Comment, _Procmap, _Forkmap,
 peephole__match(if_val(Rval, label(Target)), _C1, _Procmap, _Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
-	( Instrs1 = [goto(Somewhere) - C2 | Instrs2] ->
+	( Instrs1 = [goto(Somewhere, Somewhere) - C2 | Instrs2] ->
 		opt_util__is_this_label_next(Target, Instrs2, _),
 		code_util__neg_rval(Rval, NotRval),
 		Instrs = [if_val(NotRval, Somewhere) - C2 | Instrs2]

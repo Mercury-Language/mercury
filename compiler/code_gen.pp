@@ -557,7 +557,8 @@ code_gen__generate_det_epilog(ExitCode) -->
 		{ NS = NS0 },
 		{ CodeC = empty }
 	),
-	{ CodeB1 = node([ goto(succip) - "Return from procedure call"]) },
+	{ CodeB1 = node([ goto(succip, succip) -
+		"Return from procedure call"]) },
 	(
 		{ NS = 0 }
 	->
@@ -694,7 +695,8 @@ code_gen__generate_semi_epilog(Instr) -->
 	{ ExitCode = tree(
 		tree(
 			tree(Success, SLiveValCode),
-			node([ goto(succip) - "Return from procedure call" ])
+			node([ goto(succip, succip)
+				- "Return from procedure call" ])
 		),
 		tree(
 			node([
@@ -702,7 +704,8 @@ code_gen__generate_semi_epilog(Instr) -->
 			]),
 			tree(
 				tree(Failure, FLiveValCode),
-				node([ goto(succip) - "Return from procedure call" ])
+				node([ goto(succip, succip) -
+					"Return from procedure call" ])
 			)
 		)
 	) },
@@ -765,7 +768,7 @@ code_gen__generate_non_epilog(Instr) -->
 		livevals(LiveArgs) - ""
 	]) },
 	{ ExitCode = tree(LiveValCode, node([
-		goto(do_succeed) - "Succeed"
+		goto(do_succeed, do_succeed) - "Succeed"
 	])) },
 	{ EStart = node([comment("Start of procedure epilogue") - ""]) },
 	{ EEnd = node([comment("End of procedure epilogue") - ""]) },
@@ -1105,7 +1108,7 @@ code_gen__add_saved_succip([], _N, []).
 code_gen__add_saved_succip([I0-S|Is0], N, [I-S|Is]) :-
 	(
 		I0 = livevals(L0),
-		Is0 \= [goto(succip) - _|_]
+		Is0 \= [goto(succip, succip) - _|_]
 		% XXX we should also test for tailcalls
 		% once we start generating them directly
 	->

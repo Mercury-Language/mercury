@@ -190,13 +190,14 @@ middle_rec__gen_det(Goal, Instrs) -->
 			TestAuxReg,
 			LiveValCode,
 			[
-				goto(succip) - "exit from recursive case",
+				goto(succip, succip) -
+					"exit from recursive case",
 				label(BaseLabel) - "start of base case"
 			],
 			BaseList,
 			LiveValCode,
 			[
-				goto(succip) - "exit from base case"
+				goto(succip, succip) - "exit from base case"
 			]
 		], InstrList) },
 		{ Instrs = node(InstrList) }
@@ -315,7 +316,7 @@ middle_rec__find_used_registers_instr(call_closure(_, _, _), Used, Used).
 middle_rec__find_used_registers_instr(mkframe(_, _, _), Used, Used).
 middle_rec__find_used_registers_instr(modframe(_), Used, Used).
 middle_rec__find_used_registers_instr(label(_), Used, Used).
-middle_rec__find_used_registers_instr(goto(_), Used, Used).
+middle_rec__find_used_registers_instr(goto(_, _), Used, Used).
 middle_rec__find_used_registers_instr(computed_goto(Rval, _), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(c_code(_), Used, Used).

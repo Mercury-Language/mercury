@@ -213,7 +213,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, First, SetupFrame0,
 				First, SetupFrame1, SetupSuccip1,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
-			Uinstr0 = goto(Target),
+			Uinstr0 = goto(Target, _CallerAddress),
 			frameopt__targeting_code_addr(Target,
 				SetupFrame0, FrameSet0, FrameSet1),
 			frameopt__targeting_code_addr(Target,
@@ -584,7 +584,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 				ProcLabel, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
-			Uinstr0 = goto(TargetAddr),
+			Uinstr0 = goto(TargetAddr, _CallerAddress),
 			( TargetAddr = label(Label) ->
 				set__is_member(Label, FrameSet, SetupFrame1),
 				set__is_member(Label, SuccipSet, SetupSuccip1),
@@ -770,7 +770,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 					],
 					ExtraCode,
 					[
-						goto(label(Label))
+						goto(label(Label), label(Label))
 							- "branch after setup",
 						label(NewLabel)
 							- "fallthrough"
@@ -913,7 +913,7 @@ frameopt__generate_labels([Label | Labels], SetupFrame0, SetupSuccip0,
 					- "setup bridging label"
 			],
 			GotoCode = [
-				goto(label(Label))
+				goto(label(Label), label(Label))
 					- "cross the bridge"
 			],
 			list__condense([LabelCode, SetupCode, GotoCode, SetupCodes1],
@@ -1008,7 +1008,7 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 			SeenSuccip0, SeenDecrsp1, SeenExtra0,
 			Tail, Teardown, Goto, Remain)
 	;
-		Uinstr1 = goto(_),
+		Uinstr1 = goto(_, _),
 		SeenDecrsp0 = [_],
 		list__append(SeenSuccip0, SeenDecrsp0, Teardown),
 		Tail = SeenExtra0,
