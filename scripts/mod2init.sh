@@ -11,11 +11,11 @@
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR:-@LIBDIR@/modules}
 MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS:-@LIBDIR@/modules/*.mod}
 
-defentry=NULL
+defentry=mercury__run_0_0
 while getopts w: c
 do
 	case $c in
-	w)	defentry="\"$OPTARG\"";;
+	w)	defentry="$OPTARG";;
 	\?)	echo "Usage: mod2init -[wentry] modules ..."
 		exit 1;;
 	esac
@@ -37,7 +37,8 @@ echo "";
 echo '#include <stddef.h>';
 echo '#include "init.h"';
 echo "";
-echo "const char *default_entry = $defentry;";
+echo "Declare_entry($defentry);";
+echo "Code *default_entry = ENTRY($defentry);";
 echo "";
 for mod in $modules; do
 	echo "extern void $mod(void);";
@@ -48,4 +49,6 @@ echo "{";
 for mod in $modules; do
 	echo "	$mod();";
 done
+echo "";
+echo "	default_entry = ENTRY($defentry);";
 echo "}";
