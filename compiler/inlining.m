@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -316,9 +316,10 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 					% type variables to variables
 					% where their type_info is
 					% stored.
+		bool,			% Did we actually inline anything?
 		bool			% Did we change the determinism
 					% of any subgoal?
-		).
+	).
 
 :- pred inlining__in_predproc(pred_proc_id, set(pred_proc_id), inline_params,
 		module_info, module_info, io__state, io__state).
@@ -342,27 +343,45 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_typeinfo_varmap(ProcInfo0, TypeInfoVarMap0),
 
+	DidInlining0 = no,
 	DetChanged0 = no,
 
 	InlineInfo0 = inline_info(VarThresh, InlinedProcs, ModuleInfo0,
-		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0, DetChanged0),
+		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0, DidInlining0,
+		DetChanged0),
 
-	inlining__inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
+	inlining__inlining_in_goal(Goal0, Goal1, InlineInfo0, InlineInfo),
 
 	InlineInfo = inline_info(_, _, _, VarSet, VarTypes, TypeVarSet, 
-		TypeInfoVarMap, DetChanged),
+		TypeInfoVarMap, DidInlining, DetChanged),
+
+	% YYY  This is overkill.  We should only recompute the instmap_deltas
+	%      in very high optimisation grades.  However, we haven't yet
+	%      implemented anything simpler...
+	( DidInlining = yes,
+		proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0,
+			Instmap0),
+		proc_info_inst_table(ProcInfo0, InstTable0),
+		recompute_instmap_delta(yes, Goal1, Goal, Instmap0,
+			InstTable0, InstTable, ModuleInfo0, ModuleInfo1),
+		proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1)
+	; DidInlining = no,
+		Goal = Goal1,
+		ModuleInfo1 = ModuleInfo0,
+		ProcInfo1 = ProcInfo0
+	),
 
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
 
-	proc_info_set_variables(ProcInfo0, VarSet, ProcInfo1),
-	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
-	proc_info_set_typeinfo_varmap(ProcInfo2, TypeInfoVarMap, ProcInfo3),
-	proc_info_set_goal(ProcInfo3, Goal, ProcInfo),
+	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
+	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
+	proc_info_set_typeinfo_varmap(ProcInfo3, TypeInfoVarMap, ProcInfo4),
+	proc_info_set_goal(ProcInfo4, Goal, ProcInfo),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
+	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
 
 		% If the determinism of some sub-goals has changed,
 		% then we re-run determinism analysis, because
@@ -370,10 +389,10 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		% the procedure may lead to more efficient code.
 	( DetChanged = yes,	
 		globals__io_get_globals(Globals, IoState0, IoState),
-		det_infer_proc(PredId, ProcId, ModuleInfo1, ModuleInfo,
+		det_infer_proc(PredId, ProcId, ModuleInfo2, ModuleInfo,
 			Globals, _, _, _)
 	; DetChanged = no,
-		ModuleInfo = ModuleInfo1,
+		ModuleInfo = ModuleInfo2,
 		IoState = IoState0
 	).
 
@@ -413,7 +432,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 
 	InlineInfo0 = inline_info(VarThresh, InlinedProcs, ModuleInfo,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
-		DetChanged0),
+		DidInlining0, DetChanged0),
 
 	% should we inline this call?
 	(
@@ -501,6 +520,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		;
 			DetChanged = yes
 		),
+		DidInlining = yes,
 
 		apply_substitutions_to_var_map(CalledTypeInfoVarMap0, 
 			TypeRenaming, Subn, CalledTypeInfoVarMap1),
@@ -513,10 +533,12 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		VarTypes = VarTypes0,
 		TypeVarSet = TypeVarSet0,
 		TypeInfoVarMap = TypeInfoVarMap0,
+		DidInlining = DidInlining0,
 		DetChanged = DetChanged0
 	),
 	InlineInfo = inline_info(VarThresh, InlinedProcs, ModuleInfo,
-		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DetChanged).
+		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DidInlining,
+		DetChanged).
 
 inlining__inlining_in_goal(higher_order_call(A, B, C, D, E, F) - GoalInfo,
 		higher_order_call(A, B, C, D, E, F) - GoalInfo) --> [].

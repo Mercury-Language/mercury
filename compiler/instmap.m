@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -257,7 +257,7 @@
 :- import_module mode_util, inst_match, prog_data, mode_errors, goal_util.
 :- import_module mercury_to_mercury, hlds_data, hlds_module, inst_util.
 :- import_module std_util, bool, map, set, assoc_list, require, multi_map.
-:- import_module int, list, varset.
+:- import_module int, list, varset, set_bbbtree.
 
 :- type instmap_delta	==	instmap.
 
@@ -500,7 +500,6 @@ instmap_delta_delete_vars(reachable(InstMapping0, _), Vars,
 
 instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
-	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	get_reachable_instmaps(InstMapList, InstMappingList),
 	(
@@ -510,18 +509,24 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 		ModeInfo2 = ModeInfo0,
 		InstTable = InstTable0
 	;
-%		InstMap0 = reachable(_, _),
-%		InstMappingList = [InstMapping]
-%	->
-%		map__init(BwdMap0),
-%		bwd_mapping_from_instmapping(InstMapping, BwdMap0, BwdMap),
-%		InstMap = reachable(InstMapping, BwdMap),
-%		ModeInfo2 = ModeInfo0,
-%		InstTable = InstTable0
-%	;
+/*******************
+	% YYY This doesn't seem to work.  Why not?  And is it worth it anyway?
+		InstMap0 = reachable(_, _),
+		InstMappingList = [InstMapping]
+	->
+		map__init(BwdMap0),
+		bwd_mapping_from_instmapping(InstMapping, BwdMap0, BwdMap),
+		InstMap = reachable(InstMapping, BwdMap),
+		ModeInfo2 = ModeInfo0,
+		InstTable = InstTable0
+	;
+*******************/
 		InstMap0 = reachable(InstMapping0, _BwdMap0)
 	->
 		set__to_sorted_list(NonLocals, NonLocalsList),
+		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+		% instmap__get_relevant_inst_keys(NonLocalsList, InstMapList,
+		% 		ModuleInfo0, InstTable0, RelevantIKs),
 		instmap__merge_2(NonLocalsList, InstMapList, InstTable0,
 			ModuleInfo0, InstMapping0, InstTable, ModuleInfo,
 			InstMapping, ErrorList),
@@ -558,6 +563,110 @@ get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
 	;
 		get_reachable_instmaps(InstMaps, Reachables)
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% instmap__get_relevant_inst_keys(Vars, InstMaps, InstTable, SeenKeys,
+	%		DuplicateKeys, InstKeys):
+	%	Return a set of all inst_keys which appear more than
+	%	once in the instmaps.
+
+:- pred instmap__get_relevant_inst_keys(list(var), list(instmap), module_info,
+			inst_table, set_bbbtree(inst_key)).
+:- mode instmap__get_relevant_inst_keys(in, in, in, in, out) is det.
+
+instmap__get_relevant_inst_keys(Vars, InstMaps, ModuleInfo, InstTable,
+		RelevantIKs) :-
+	set_bbbtree__init(Seen0),
+	set_bbbtree__init(Duplicate0),
+	list__foldl2(instmap__get_relevant_inst_keys_2(Vars, ModuleInfo,
+				InstTable),
+		InstMaps, Seen0, _Seen, Duplicate0, Duplicate),
+	RelevantIKs = Duplicate.
+
+:- pred instmap__get_relevant_inst_keys_2(list(var), module_info, inst_table,
+		instmap, set_bbbtree(inst_key), set_bbbtree(inst_key),
+		set_bbbtree(inst_key), set_bbbtree(inst_key)).
+:- mode instmap__get_relevant_inst_keys_2(in, in, in, in,
+		in, out, in, out) is det.
+
+instmap__get_relevant_inst_keys_2([], _InstTable, _ModuleInfo, _InstMap,
+                Seen, Seen, Duplicate, Duplicate).
+instmap__get_relevant_inst_keys_2([V | Vs], ModuleInfo, InstTable, InstMap,
+                Seen0, Seen, Duplicate0, Duplicate) :-
+	instmap__lookup_var(InstMap, V, Inst),
+	set_bbbtree__init(Recursive),
+	instmap__get_relevant_inst_keys_in_inst(Inst, Recursive, ModuleInfo,
+		InstTable, Seen0, Seen1, Duplicate0, Duplicate1),
+	instmap__get_relevant_inst_keys_2(Vs, ModuleInfo, InstTable, InstMap,
+                Seen1, Seen, Duplicate1, Duplicate).
+
+:- pred instmap__get_relevant_inst_keys_in_inst(inst, set_bbbtree(inst_name),
+		module_info, inst_table, set_bbbtree(inst_key),
+		set_bbbtree(inst_key), set_bbbtree(inst_key),
+		set_bbbtree(inst_key)).
+:- mode instmap__get_relevant_inst_keys_in_inst(in, in, in, in,
+		in, out, in, out) is det.
+
+instmap__get_relevant_inst_keys_in_inst(any(_), _, _, _, S, S, D, D).
+instmap__get_relevant_inst_keys_in_inst(alias(Key), Recursive, ModuleInfo,
+		InstTable, S0, S, D0, D) :-
+	inst_table_get_inst_key_table(InstTable, IKT),
+	inst_key_table_lookup(IKT, Key, Inst),
+	( set_bbbtree__member(Key, S0) ->
+		set_bbbtree__insert(D0, Key, D1),
+		S1 = S0
+	;
+		set_bbbtree__insert(S0, Key, S1),
+		D1 = D0
+	),
+	instmap__get_relevant_inst_keys_in_inst(Inst, Recursive, ModuleInfo,
+		InstTable, S1, S, D1, D).
+instmap__get_relevant_inst_keys_in_inst(free, _, _, _, S, S, D, D).
+instmap__get_relevant_inst_keys_in_inst(free(_), _, _, _, S, S, D, D).
+instmap__get_relevant_inst_keys_in_inst(bound(_, BoundInsts), Rec, ModuleInfo,
+		InstTable, S0, S, D0, D) :-
+	list__foldl2(lambda([BoundInst :: in, AS0 :: in, AS :: out,
+				AD0 :: in, AD :: out] is det,
+			( BoundInst = functor(_, Insts),
+			  list__foldl2(lambda([Inst :: in, BS0 :: in, BS :: out,
+						BD0 :: in, BD :: out] is det,
+				instmap__get_relevant_inst_keys_in_inst(Inst,
+					Rec, ModuleInfo, InstTable,
+					BS0, BS, BD0, BD)),
+				Insts, AS0, AS, AD0, AD)
+			)
+		), BoundInsts, S0, S, D0, D).
+instmap__get_relevant_inst_keys_in_inst(ground(_, _), _, _, _, S, S, D, D).
+instmap__get_relevant_inst_keys_in_inst(not_reached, _, _, _, _, _, _, _) :-
+	error("instmap__get_relevant_inst_keys_in_inst: not_reached").
+instmap__get_relevant_inst_keys_in_inst(inst_var(_), _, _, _, _, _, _, _) :-
+	error("instmap__get_relevant_inst_keys_in_inst: inst_var").
+instmap__get_relevant_inst_keys_in_inst(defined_inst(InstName), Recursive0,
+		ModuleInfo, InstTable, S0, S, D0, D) :-
+	% This is tricky, because an inst_key is "relevant" if it
+	% appears only once in an inst which is recursive.  (If we
+	% were to unfold the inst, it would appear multiple times.)
+	( set_bbbtree__member(InstName, Recursive0) ->
+		set_bbbtree__union(S0, D0, D),
+		S = S0
+	;
+		set_bbbtree__insert(Recursive0, InstName, Recursive),
+		set_bbbtree__init(NewS0),
+		inst_lookup(InstTable, ModuleInfo, InstName, Inst),
+		instmap__get_relevant_inst_keys_in_inst(Inst, Recursive,
+			ModuleInfo, InstTable, NewS0, NewS, D0, D1),
+		set_bbbtree__intersect(NewS, S0, NewD),
+		set_bbbtree__union(NewD, D1, D),
+		set_bbbtree__union(NewS, S0, S)
+	).
+instmap__get_relevant_inst_keys_in_inst(abstract_inst(_, Insts), Rec,
+                ModuleInfo, InstTable, S0, S, D0, D) :-
+	list__foldl2(lambda([Inst :: in, AS0 :: in, AS :: out,
+				AD0 :: in, AD :: out] is det,
+			instmap__get_relevant_inst_keys_in_inst(Inst,
+				Rec, ModuleInfo, InstTable, AS0, AS, AD0, AD)),
+		Insts, S0, S, D0, D).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1508,6 +1508,9 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap0, [Mode | Modes],
 		RI = RI0
 	).
 
+:- pred breakpoint is det.
+breakpoint.
+
 :- pred recompute_instmap_delta_unify(var, unify_rhs, unification, unification,
 	unify_mode, unify_mode, hlds_goal_info, instmap, instmap_delta,
 	unify_rhs, recompute_info, recompute_info).
@@ -1588,11 +1591,16 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 
 		mode_util__modes_to_uni_modes(ModeOfXArgs, ModeArgs,
 				ModuleInfo, UniModes),
-		( Unification0 = construct(Var, ConsId, Vars, _) ->
-			Unification = construct(Var, ConsId, Vars, UniModes)
-		; Unification0 = deconstruct(Var, ConsId, Vars, _, CanFail) ->
-			Unification = deconstruct(Var, ConsId, Vars, UniModes,
+		(
+			Unification0 = construct(_, RealConsId, _, _)
+		->
+			Unification = construct(Var, RealConsId, Vars, UniModes)
+		;
+			Unification0 = deconstruct(_, RealConsId, _, _,
 					CanFail)
+		->
+			Unification = deconstruct(Var, RealConsId, Vars,
+					UniModes, CanFail)
 		;
 			error("recompute_instmap_delta_unify: bad var-functor unification")
 		),
@@ -1602,6 +1610,7 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 		RI = recompute_info(Atomic, ModuleInfo, InstTable)
 	; UnifyRhs0 = lambda_goal(PredOrFunc, Vars, LambdaModes, LambdaDet,
 			_, Goal0),
+		breakpoint,
 
 		% var-lambda unification
 
@@ -1612,18 +1621,18 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 
 		instmap__pre_lambda_update(ModuleInfo0, Vars, LambdaModes,
 			IMDelta, InstTable0, InstTable1, InstMap0, InstMap1),
-		RI1 = recompute_info(Atomic, ModuleInfo0, InstTable1),
 
 		% Analyse the lambda goal
+
+		RI1 = recompute_info(Atomic, ModuleInfo0, InstTable1),
 		recompute_instmap_delta_2(Goal0, Goal, InstMap1,
 			_, _, RI1, RI2),
+		RI2 = recompute_info(_, ModuleInfo2, InstTable2),
 
 		instmap__lookup_var(InstMap0, Var, InstOfX),
 
 		LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes,
 			LambdaDet),
-
-		RI2 = recompute_info(_, ModuleInfo2, InstTable2),
 		InstOfY = ground(unique, yes(LambdaPredInfo)),
 
 		(
@@ -1648,12 +1657,16 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 		UniMode = ModeOfX - ModeOfY,
 		UnifyRhs = lambda_goal(PredOrFunc, Vars, LambdaModes,
 				LambdaDet, IMDelta, Goal),
-		( Unification0 = construct(Var, ConsId, Vars, _) ->
-			instmap__lookup_vars(Vars, InstMap0, ArgInsts),
+		( Unification0 = construct(_, RealConsId, _, _) ->
+			Goal = _ - GoalGoalInfo,
+			goal_info_get_nonlocals(GoalGoalInfo, GoalNonLocals),
+			set__delete_list(GoalNonLocals, Vars, ArgVarsSet),
+			set__to_sorted_list(ArgVarsSet, ArgVars),
+			instmap__lookup_vars(ArgVars, InstMap0, ArgInsts),
 			inst_lists_to_mode_list(ArgInsts, ArgInsts, ArgModes0),
 			mode_util__modes_to_uni_modes(ArgModes0, ArgModes0,
 				ModuleInfo, ArgModes),
-			Unification = construct(Var, ConsId, Vars, ArgModes)
+			Unification = construct(Var, RealConsId, Vars, ArgModes)
 		;
 			error("recompute_instmap_delta_unify: bad var-lambda unification")
 		),
