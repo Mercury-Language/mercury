@@ -66,6 +66,16 @@ stored in the io__state, using the type globals defined in globals.m.
 	modules.m has the code to write out `.int', `.int2', `.d'
 	and `.dep' files.
 
+* module qualification of types, insts and modes
+
+	module_qual.m - 
+	Adds module qualifiers to all types insts and modes,
+	checking that a given type, inst or mode exists and that 
+	there is only possible match.  This is done here because 
+	it must be done before the interface files are written.
+	This also checks whether imports are really needed in the
+	interface.
+
 * expansion of equivalence types (prog_util.m)
 
 	This is really part of type-checking, but is done
@@ -105,7 +115,6 @@ in an HLDS goal.
 
 * type checking
 
-	- undef_types.m checks for undefined types.
 	- typecheck.m handles type checking, overloading resolution &
 	  module name resolution, and almost fully qualifies all predicate
 	  and functor names.  It sets the map(var, type) field in the
@@ -121,16 +130,17 @@ in an HLDS goal.
 
 * mode analysis
 
-	- undef_modes.m checks for undefined insts and modes
 	- modes.m is the main mode analysis module.  
 	  It checks that the code is mode-correct, reordering it
 	  if necessary, and annotates each goal with a delta-instmap
 	  that specifies the changes in instantiatedness of each
 	  variable over that goal.  It also converts higher-order
-	  pred terms into lambda expressions.  It also converts function
-	  calls into predicate calls, and does the final step
-	  of figuring out which pred_id to use for a call to an
-	  overloaded predicate.
+	  pred terms into lambda expressions.  Modes of lambda
+	  expressions are module qualified during mode analysis.
+	  It also converts function calls into predicate calls, and
+	  does the final step of figuring out which pred_id to use
+	  for a call to an overloaded predicate.
+
 	  It use the following sub-modules:
 		mode_info.m (the main data structure for mode analysis)
 		delay_info.m (a sub-component of the mode_info data
@@ -411,14 +421,6 @@ CURRENTLY USELESS
 The following modules do not serve any function at the moment.
 Some of them are obsolete; other are work-in-progress.
 (For some of them its hard to say which!)
-
-	utils.m
-		Higher-order predicates.  Has suffered from software rot.
-		Should go in library/{list,map,...}.m anyway.
-
-	swi_lib.m, swi_builtin.m:
-		Support for SWI-Prolog.  Incomplete.
-		Should go in the library directory anyway.
 
 	no_builtin.m:
 		An empty module, for debugging purposes.
