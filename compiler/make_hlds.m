@@ -3901,7 +3901,8 @@ add_annotation(mixed, _, mixed).
 get_mode_annotation(Arg0, Arg, MaybeAnnotation) :-
 	(
 		Arg0 = term__functor(term__atom("::"), [Arg1, ModeTerm], _),
-		convert_mode(term__coerce(ModeTerm), Mode)
+		convert_mode(allow_constrained_inst_var, term__coerce(ModeTerm),
+			Mode)
 	->
 		Arg = Arg1,
 		MaybeAnnotation = yes(Mode)
@@ -4621,13 +4622,22 @@ marker_must_be_exported(base_relation).
 :- pred get_procedure_matching_argmodes(assoc_list(proc_id, proc_info),
 		list(mode), module_info, proc_id).
 :- mode get_procedure_matching_argmodes(in, in, in, out) is semidet.
-get_procedure_matching_argmodes([P|Procs], Modes, ModuleInfo, OurProcId) :-
+
+get_procedure_matching_argmodes(Procs, Modes0, ModuleInfo, ProcId) :-
+	list__map(constrain_inst_vars_in_mode, Modes0, Modes),
+	get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, ProcId).
+
+:- pred get_procedure_matching_argmodes_2(assoc_list(proc_id, proc_info),
+		list(mode), module_info, proc_id).
+:- mode get_procedure_matching_argmodes_2(in, in, in, out) is semidet.
+
+get_procedure_matching_argmodes_2([P|Procs], Modes, ModuleInfo, OurProcId) :-
 	P = ProcId - ProcInfo,
 	proc_info_argmodes(ProcInfo, ArgModes),
 	( mode_list_matches(Modes, ArgModes, ModuleInfo) ->
 		OurProcId = ProcId
 	;
-		get_procedure_matching_argmodes(Procs, Modes, ModuleInfo, 
+		get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, 
 			OurProcId)
 	).
 
@@ -4637,13 +4647,22 @@ get_procedure_matching_argmodes([P|Procs], Modes, ModuleInfo, OurProcId) :-
 :- pred get_procedure_matching_declmodes(assoc_list(proc_id, proc_info),
 		list(mode), module_info, proc_id).
 :- mode get_procedure_matching_declmodes(in, in, in, out) is semidet.
-get_procedure_matching_declmodes([P|Procs], Modes, ModuleInfo, OurProcId) :-
+
+get_procedure_matching_declmodes(Procs, Modes0, ModuleInfo, ProcId) :-
+	list__map(constrain_inst_vars_in_mode, Modes0, Modes),
+	get_procedure_matching_declmodes_2(Procs, Modes, ModuleInfo, ProcId).
+
+:- pred get_procedure_matching_declmodes_2(assoc_list(proc_id, proc_info),
+		list(mode), module_info, proc_id).
+:- mode get_procedure_matching_declmodes_2(in, in, in, out) is semidet.
+
+get_procedure_matching_declmodes_2([P|Procs], Modes, ModuleInfo, OurProcId) :-
 	P = ProcId - ProcInfo,
 	proc_info_declared_argmodes(ProcInfo, ArgModes),
 	( mode_list_matches(Modes, ArgModes, ModuleInfo) ->
 		OurProcId = ProcId
 	;
-		get_procedure_matching_declmodes(Procs, Modes, ModuleInfo, 
+		get_procedure_matching_declmodes_2(Procs, Modes, ModuleInfo, 
 			OurProcId)
 	).
 

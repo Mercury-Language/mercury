@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1997, 1999-2000, 2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,7 +23,7 @@
 %     `abstract_cons_id' and use that here instead of `cons_id'.
 
 :- import_module prog_data, hlds_data.
-:- import_module list, map.
+:- import_module list, map, set.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -39,6 +39,11 @@
 				% about the ground inst.
 	;		not_reached
 	;		inst_var(inst_var)
+				% constrained_inst_vars is a set of inst
+				% variables that are constrained to have the
+				% same uniqueness as and to match_final the
+				% specified inst.
+	;		constrained_inst_vars(set(inst_var), inst)
 				% A defined_inst is possibly recursive
 				% inst whose value is stored in the
 				% inst_table.  This is used both for
@@ -69,9 +74,6 @@
 :- type ground_inst_info
 	--->	higher_order(pred_inst_info)
 			% The ground inst is higher-order.
-	;	constrained_inst_var(inst_var)
-			% The ground inst is an inst variable that is
-			% constrained to be ground.
 	;	none.
 			% No extra information is available.
 

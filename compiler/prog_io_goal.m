@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -277,7 +277,8 @@ parse_lambda_expression(LambdaExpressionTerm, Args, Modes, Det) :-
 				[LambdaArgsTerm, DetTerm], _),
 	DetTerm = term__functor(term__atom(DetString), [], _),
 	standard_det(DetString, Det),
-	parse_lambda_args(LambdaArgsTerm, Args, Modes).
+	parse_lambda_args(LambdaArgsTerm, Args, Modes),
+	inst_var_constraints_are_consistent_in_modes(Modes).
 
 :- pred parse_lambda_args(term, list(prog_term), list(mode)).
 :- mode parse_lambda_args(in, out, out) is semidet.
@@ -303,7 +304,8 @@ parse_lambda_args(Term, Args, Modes) :-
 parse_lambda_arg(Term, ArgTerm, Mode) :-
 	Term = term__functor(term__atom("::"), [ArgTerm0, ModeTerm], _),
 	term__coerce(ArgTerm0, ArgTerm),
-	convert_mode(ModeTerm, Mode).
+	convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
+	constrain_inst_vars_in_mode(Mode0, Mode).
 
 %-----------------------------------------------------------------------------%
 
@@ -314,7 +316,8 @@ parse_pred_expression(PredTerm, EvalMethod, Args, Modes, Det) :-
 	standard_det(DetString, Det),
 	parse_lambda_eval_method(PredEvalArgsTerm, EvalMethod, PredArgsTerm),
 	PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
-	parse_pred_expr_args(PredArgsList, Args, Modes).
+	parse_pred_expr_args(PredArgsList, Args, Modes),
+	inst_var_constraints_are_consistent_in_modes(Modes).
 
 parse_dcg_pred_expression(PredTerm, EvalMethod, Args, Modes, Det) :-
 	PredTerm = term__functor(term__atom("is"),
@@ -323,7 +326,8 @@ parse_dcg_pred_expression(PredTerm, EvalMethod, Args, Modes, Det) :-
 	standard_det(DetString, Det),
 	parse_lambda_eval_method(PredEvalArgsTerm, EvalMethod, PredArgsTerm),
 	PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
-	parse_dcg_pred_expr_args(PredArgsList, Args, Modes).
+	parse_dcg_pred_expr_args(PredArgsList, Args, Modes),
+	inst_var_constraints_are_consistent_in_modes(Modes).
 
 parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 	%
@@ -340,7 +344,8 @@ parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 	( parse_pred_expr_args(FuncArgsList, Args0, Modes0) ->
 		parse_lambda_arg(RetTerm, RetArg, RetMode),
 		list__append(Args0, [RetArg], Args),
-		list__append(Modes0, [RetMode], Modes)
+		list__append(Modes0, [RetMode], Modes),
+		inst_var_constraints_are_consistent_in_modes(Modes)
 	;
 		%
 		% the argument modes default to `in',
@@ -377,6 +382,7 @@ parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 	RetMode = OutMode,
 	Det = det,
 	list__append(Modes0, [RetMode], Modes),
+	inst_var_constraints_are_consistent_in_modes(Modes),
 	list__append(Args0, [RetTerm], Args1),
 	list__map(term__coerce, Args1, Args).
 
@@ -412,10 +418,12 @@ parse_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
 		list(mode)).
 :- mode parse_dcg_pred_expr_args(in, out, out) is semidet.
 
-parse_dcg_pred_expr_args([DCGModeTerm0, DCGModeTerm1], [],
-		[DCGMode0, DCGMode1]) :-
-	convert_mode(DCGModeTerm0, DCGMode0),
-	convert_mode(DCGModeTerm1, DCGMode1).
+parse_dcg_pred_expr_args([DCGModeTermA, DCGModeTermB], [],
+		[DCGModeA, DCGModeB]) :-
+	convert_mode(allow_constrained_inst_var, DCGModeTermA, DCGModeA0),
+	convert_mode(allow_constrained_inst_var, DCGModeTermB, DCGModeB0),
+	constrain_inst_vars_in_mode(DCGModeA0, DCGModeA),
+	constrain_inst_vars_in_mode(DCGModeB0, DCGModeB).
 parse_dcg_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
 	Terms = [_, _|_],
 	parse_lambda_arg(Term, Arg, Mode),

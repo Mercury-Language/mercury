@@ -51,6 +51,7 @@ OTHER_SOURCES= \
 	common_struct_bug.m \
 	compl_unify_bug.m \
 	complicated_unify.m \
+	constrained_poly_insts.m \
 	constructor_arg_names.m \
 	dcg_test.m \
 	deforest_bug.m \

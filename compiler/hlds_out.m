@@ -3431,6 +3431,7 @@ map_inst_to_term(Context, Inst) = inst_to_term(Inst, Context).
 inst_to_term(Inst) = inst_to_term(Inst, term__context_init).
 
 :- func inst_to_term(inst, prog_context) = prog_term.
+
 inst_to_term(any(Uniq), Context) =
 	make_atom(any_inst_uniqueness(Uniq), Context).
 inst_to_term(free, Context) =
@@ -3463,14 +3464,17 @@ inst_to_term(ground(Uniq, GroundInstInfo), Context) = Term :-
 		construct_qualified_term(unqualified("is"), [
 			ModesTerm, det_to_term(Det, Context)], Context, Term)
 	;
-		GroundInstInfo = constrained_inst_var(Var),
-		Term = term__coerce(term__variable(Var))
-	;
 		GroundInstInfo = none,
 		Term = make_atom(inst_uniqueness(Uniq, "ground"), Context)
 	).
 inst_to_term(inst_var(Var), _) =
 	term__coerce(term__variable(Var)).
+inst_to_term(constrained_inst_vars(Vars, Inst), Context) =
+	set__fold(func(Var, Term) =
+			term__functor(term__atom("=<"),
+				[term__coerce(term__variable(Var)), Term],
+				Context),
+		Vars, inst_to_term(Inst, Context)).
 inst_to_term(abstract_inst(Name, Args), Context) =
 	inst_name_to_term(user_inst(Name, Args), Context).
 inst_to_term(defined_inst(InstName), Context) =

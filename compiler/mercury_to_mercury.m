@@ -1001,11 +1001,6 @@ mercury_format_structured_inst(ground(Uniq, GroundInstInfo), Indent, VarSet)
 			add_string(")\n")
 		)
 	;
-		{ GroundInstInfo = constrained_inst_var(Var) },
-		mercury_format_tabs(Indent),
-		mercury_format_var(Var, VarSet, no),
-		add_string("\n")
-	;
 		{ GroundInstInfo = none},
 		mercury_format_uniqueness(Uniq, "ground"),
 		add_string("\n")
@@ -1013,6 +1008,11 @@ mercury_format_structured_inst(ground(Uniq, GroundInstInfo), Indent, VarSet)
 mercury_format_structured_inst(inst_var(Var), Indent, VarSet) -->
 	mercury_format_tabs(Indent),
 	mercury_format_var(Var, VarSet, no),
+	add_string("\n").
+mercury_format_structured_inst(constrained_inst_vars(Vars, Inst), Indent,
+		VarSet) -->
+	mercury_format_tabs(Indent),
+	mercury_format_constrained_inst_vars(Vars, Inst, VarSet),
 	add_string("\n").
 mercury_format_structured_inst(abstract_inst(Name, Args), Indent, VarSet) -->
 	mercury_format_structured_inst_name(user_inst(Name, Args), Indent,
@@ -1084,14 +1084,13 @@ mercury_format_inst(ground(Uniq, GroundInstInfo), VarSet) -->
 			add_string(")")
 		)
 	;
-		{ GroundInstInfo = constrained_inst_var(Var) },
-		mercury_format_var(Var, VarSet, no)
-	;
 		{ GroundInstInfo = none },
 		mercury_format_uniqueness(Uniq, "ground")
 	).
 mercury_format_inst(inst_var(Var), VarSet) -->
 	mercury_format_var(Var, VarSet, no).
+mercury_format_inst(constrained_inst_vars(Vars, Inst), VarSet) -->
+	mercury_format_constrained_inst_vars(Vars, Inst, VarSet).
 mercury_format_inst(abstract_inst(Name, Args), VarSet) -->
 	mercury_format_inst_name(user_inst(Name, Args), VarSet).
 mercury_format_inst(defined_inst(InstName), VarSet) -->
@@ -1447,6 +1446,20 @@ mercury_format_cons_id(deep_profiling_proc_static(_), _) -->
 	add_string("<deep_profiling_proc_static>").
 mercury_format_cons_id(table_io_decl(_), _) -->
 	add_string("<table_io_decl>").
+
+:- pred mercury_format_constrained_inst_vars(set(inst_var)::in, (inst)::in,
+		inst_varset::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_constrained_inst_vars(Vars0, Inst, VarSet) -->
+	( { set__remove_least(Vars0, Var, Vars1) } ->
+		add_string("("),
+		mercury_format_var(Var, VarSet, no),
+		add_string(" =< "),
+		mercury_format_constrained_inst_vars(Vars1, Inst, VarSet),
+		add_string(")")
+	;
+		mercury_format_inst(Inst, VarSet)
+	).
 
 :- pred mercury_format_mode_defn(inst_varset::in, sym_name::in,
 	list(inst_var)::in, mode_defn::in, prog_context::in,

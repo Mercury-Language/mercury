@@ -1355,8 +1355,10 @@ parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
 			varset__search_name(VarSet, Var, VarName)
 		->
 			(
-				convert_mode(ModeTerm, Mode)
+				convert_mode(allow_constrained_inst_var,
+					ModeTerm, Mode0)
 			->
+				constrain_inst_vars_in_mode(Mode0, Mode),
 				term__coerce_var(Var, ProgVar),
 				P = (pragma_var(ProgVar, VarName, Mode)),
 				parse_pragma_c_code_varlist(VarSet, 
@@ -1466,11 +1468,19 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
 	(
 	    PredAndArgsResult =
 		ok(PredName, ArgModeTerms - MaybeRetModeTerm),
-	    ( convert_mode_list(ArgModeTerms, ArgModes0) ->
+	    (
+	    	convert_mode_list(allow_constrained_inst_var, ArgModeTerms,
+	    		ArgModes0)
+	    ->
 		(
 		    MaybeRetModeTerm = yes(RetModeTerm),
-		    ( convert_mode(RetModeTerm, RetMode) ->
-			list__append(ArgModes0, [RetMode], ArgModes),
+		    (
+		    	convert_mode(allow_constrained_inst_var, RetModeTerm,
+				RetMode)
+		    ->
+			list__append(ArgModes0, [RetMode], ArgModes1),
+			list__map(constrain_inst_vars_in_mode, ArgModes1,
+			    ArgModes),
 			Result = ok(PredName - function, ArgModes)
 		    ;
 			string__append("error in return mode in ",

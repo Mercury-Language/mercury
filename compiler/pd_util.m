@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 University of Melbourne.
+% Copyright (C) 1998-2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -918,6 +918,9 @@ pd_util__inst_size_2(_, free, _, 0).
 pd_util__inst_size_2(_, free(_), _, 0).
 pd_util__inst_size_2(_, ground(_, _), _, 0).
 pd_util__inst_size_2(_, inst_var(_), _, 0).
+pd_util__inst_size_2(ModuleInfo, constrained_inst_vars(_, Inst), Expansions,
+		Size) :-
+	pd_util__inst_size_2(ModuleInfo, Inst, Expansions, Size).
 pd_util__inst_size_2(_, abstract_inst(_, _), _, 0).
 pd_util__inst_size_2(ModuleInfo, defined_inst(InstName), Expansions0, Size) :-
 	( set__member(InstName, Expansions0) ->

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2000-2001 The University of Melbourne.
+% Copyright (C) 1995-1998, 2000-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,19 +51,16 @@ mode system to distinguish between different representations.
 	% part of the inst is a defined inst, and if so replaces it
 	% with the definition.
 
+:- pred inst_expand_and_remove_constrained_inst_vars(module_info, inst, inst).
+:- mode inst_expand_and_remove_constrained_inst_vars(in, in, out) is det.
+
+	% inst_expand_and_remove_constrained_inst_vars is the same as
+	% inst_expand except that it also removes constrained_inst_vars from the
+	% top level, replacing them with the constraining inst.
+
 %-----------------------------------------------------------------------------%
 
-:- pred inst_matches_initial(inst, inst, type, module_info).
-:- mode inst_matches_initial(in, in, in, in) is semidet.
-
-:- pred inst_matches_initial(inst, inst, type, module_info, module_info,
-		inst_var_sub, inst_var_sub).
-:- mode inst_matches_initial(in, in, in, in, out, in, out) is semidet.
-
-:- pred inst_matches_final(inst, inst, type, module_info).
-:- mode inst_matches_final(in, in, in, in) is semidet.
-
-	% inst_matches_initial(InstA, InstB, ModuleInfo):
+	% inst_matches_initial(InstA, InstB, Type, ModuleInfo):
 	%	Succeed iff `InstA' specifies at least as much
 	%	information as `InstB', and in those parts where they
 	%	specify the same information, `InstA' is at least as
@@ -74,6 +71,17 @@ mode system to distinguish between different representations.
 	%	inst_matches_initial(bound(a), bound(a;b), _) should
 	%	succeed, but not vice versa.
 
+:- pred inst_matches_initial(inst, inst, type, module_info).
+:- mode inst_matches_initial(in, in, in, in) is semidet.
+
+	% This version of inst_matches_initial builds up a substitution map
+	% (inst_var_sub).  For each inst_var which occurs in InstA there will be
+	% a substitution to the corresponding inst in InstB.
+
+:- pred inst_matches_initial(inst, inst, type, module_info, module_info,
+		inst_var_sub, inst_var_sub).
+:- mode inst_matches_initial(in, in, in, in, out, in, out) is semidet.
+
 	% inst_matches_final(InstA, InstB, ModuleInfo):
 	%	Succeed iff InstA is compatible with InstB,
 	%	i.e. iff InstA will satisfy the final inst
@@ -82,7 +90,19 @@ mode system to distinguish between different representations.
 	%	great as that specified by InstB, and where the information
 	%	is the same and both insts specify a binding, the binding
 	%	must be identical.
-	%
+
+:- pred inst_matches_final(inst, inst, module_info).
+:- mode inst_matches_final(in, in, in) is semidet.
+
+	% This version of inst_matches_final allows you to pass in the type of
+	% the variables being compared.  This allows it to be more precise (i.e.
+	% less conservative) for cases such as
+	%	inst_matches_final(ground(...), bound(...), ...).
+	% This version is to be preferred when the type is available.
+
+:- pred inst_matches_final(inst, inst, type, module_info).
+:- mode inst_matches_final(in, in, in, in) is semidet.
+
 	%	The difference between inst_matches_initial and
 	%	inst_matches_final is that inst_matches_initial requires
 	%	only something which is at least as instantiated,
@@ -287,10 +307,10 @@ inst_matches_initial(InstA, InstB, Type, ModuleInfo0, ModuleInfo, Sub0, Sub) :-
 
 inst_matches_initial_1(InstA, InstB, Type, ModuleInfo0, ModuleInfo,
 		MaybeSub0, MaybeSub) :-
-	Info0 = init_inst_match_info(ModuleInfo0)^sub := MaybeSub0,
+	Info0 = init_inst_match_info(ModuleInfo0) ^ maybe_sub := MaybeSub0,
 	inst_matches_initial_2(InstA, InstB, yes(Type), Info0, Info),
 	ModuleInfo = Info^module_info,
-	MaybeSub = Info^sub.
+	MaybeSub = Info ^ maybe_sub.
 
 :- type expansions == set(pair(inst)).
 
@@ -298,8 +318,18 @@ inst_matches_initial_1(InstA, InstB, Type, ModuleInfo0, ModuleInfo,
 	--->	inst_match_info(
 			module_info	:: module_info,
 			expansions	:: expansions,
-			sub		:: maybe(inst_var_sub)
+			maybe_sub	:: maybe(inst_var_sub)
 		).
+
+:- func sub(inst_match_info) = inst_var_sub is semidet.
+
+sub(Info) = Sub :-
+	Info ^ maybe_sub = yes(Sub).
+
+:- func 'sub :='(inst_match_info, inst_var_sub) = inst_match_info.
+
+'sub :='(Info, Sub) =
+	Info ^ maybe_sub := yes(Sub).
 
 :- func init_inst_match_info(module_info) = inst_match_info.
 
@@ -327,89 +357,97 @@ inst_matches_initial_2(InstA, InstB, Type, Info0, Info) :-
 		inst_match_info, inst_match_info).
 :- mode inst_matches_initial_3(in, in, in, in, out) is semidet.
 
+inst_matches_initial_3(InstA, InstB, Type, Info0, Info) :-
+	( InstB = constrained_inst_vars(InstVarsB, InstB1) ->
+		% InstB is a constrained_inst_var with upper bound InstB1.
+		% We need to check that InstA matches_initial InstB1 and add the
+		% appropriate inst_var substitution.
+
+		inst_matches_initial_2(InstA, InstB1, Type, Info0, Info1),
+
+		ModuleInfo0 = Info1^module_info,
+
+		% Call abstractly_unify_inst to calculate the uniqueness of the
+		% inst represented by the constrained_inst_var.
+		% We pass `Live = dead' because we want
+		% abstractly_unify(unique, unique) = unique, not shared.
+		Live = dead,
+		abstractly_unify_inst(Live, InstA, InstB1, fake_unify,
+			ModuleInfo0, Inst, _Det, ModuleInfo1),
+		Info2 = Info1 ^ module_info := ModuleInfo1,
+		update_inst_var_sub(InstVarsB, Inst, Type, Info2, Info)
+	; InstA = constrained_inst_vars(_InstVarsA, InstA1) ->
+		inst_matches_initial_2(InstA1, InstB, Type, Info0, Info)
+	;
+		inst_matches_initial_4(InstA, InstB, Type, Info0, Info)
+	).
+
+:- pred inst_matches_initial_4(inst, inst, maybe(type), 
+		inst_match_info, inst_match_info).
+:- mode inst_matches_initial_4(in, in, in, in, out) is semidet.
+
 	% To avoid infinite regress, we assume that
 	% inst_matches_initial is true for any pairs of insts which
 	% occur in `Expansions'.
 
-inst_matches_initial_3(any(UniqA), any(UniqB), _, I, I) :-
+inst_matches_initial_4(any(UniqA), any(UniqB), _, I, I) :-
 	unique_matches_initial(UniqA, UniqB).
-inst_matches_initial_3(any(_), free, _, I, I).
-inst_matches_initial_3(free, any(_), _, I, I).
-inst_matches_initial_3(free, free, _, I, I).
-inst_matches_initial_3(bound(UniqA, ListA), any(UniqB), _, Info, Info) :-
+inst_matches_initial_4(any(_), free, _, I, I).
+inst_matches_initial_4(free, any(_), _, I, I).
+inst_matches_initial_4(free, free, _, I, I).
+inst_matches_initial_4(bound(UniqA, ListA), any(UniqB), _, Info, Info) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_matches_uniq(ListA, UniqB, Info^module_info).
-inst_matches_initial_3(bound(_Uniq, _List), free, _, I, I).
-inst_matches_initial_3(bound(UniqA, ListA), bound(UniqB, ListB), Type,
+inst_matches_initial_4(bound(_Uniq, _List), free, _, I, I).
+inst_matches_initial_4(bound(UniqA, ListA), bound(UniqB, ListB), Type,
 		Info0, Info) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_matches_initial(ListA, ListB, Type, Info0, Info).
-inst_matches_initial_3(bound(UniqA, ListA), ground(UniqB, none), _,
+inst_matches_initial_4(bound(UniqA, ListA), ground(UniqB, none), _,
 		Info, Info) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_is_ground(ListA, Info^module_info),
 	bound_inst_list_matches_uniq(ListA, UniqB, Info^module_info).
-inst_matches_initial_3(bound(UniqA, ListA),
-		ground(UniqB, constrained_inst_var(InstVarB)), MaybeType,
-		Info0, Info) :-
-	unique_matches_initial(UniqA, UniqB),
-	ModuleInfo0 = Info0^module_info,
-	Sub0 = Info0^sub,
-	bound_inst_list_is_ground(ListA, ModuleInfo0),
-	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo0),
-
-	% Call abstractly_unify_inst to calculate the uniqueness of the 
-	% bound_inst arguments.  We pass `Live = dead' because we want
-	% abstractly_unify(unique, unique) = unique, not shared.
-	Live = dead,
-	abstractly_unify_inst(Live, bound(UniqA, ListA), ground(UniqB, none),
-		fake_unify, ModuleInfo0, Inst, _Det, ModuleInfo1),
-	update_inst_var_sub(InstVarB, Inst, MaybeType, ModuleInfo1, ModuleInfo,
-		Sub0, Sub),
-	Info = (Info0^module_info := ModuleInfo)
-		^sub := Sub.
-inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), _, Info, Info) :-
+inst_matches_initial_4(bound(Uniq, List), abstract_inst(_,_), _, Info, Info) :-
 	Uniq = unique,
 	bound_inst_list_is_ground(List, Info^module_info),
 	bound_inst_list_is_unique(List, Info^module_info).
-inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), _, Info, Info) :-
+inst_matches_initial_4(bound(Uniq, List), abstract_inst(_,_), _, Info, Info) :-
 	Uniq = mostly_unique,
 	bound_inst_list_is_ground(List, Info^module_info),
 	bound_inst_list_is_mostly_unique(List, Info^module_info).
-inst_matches_initial_3(ground(UniqA, GroundInstInfoA), any(UniqB), _,
+inst_matches_initial_4(ground(UniqA, GroundInstInfoA), any(UniqB), _,
 		Info, Info) :-
 	\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
 		Info^module_info),
 	unique_matches_initial(UniqA, UniqB).
-inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, I, I).
-inst_matches_initial_3(ground(UniqA, GII_A), bound(UniqB, ListB), MaybeType,
+inst_matches_initial_4(ground(_Uniq, _PredInst), free, _, I, I).
+inst_matches_initial_4(ground(UniqA, _GII_A), bound(UniqB, ListB), MaybeType,
 		Info0, Info) :-
 	MaybeType = yes(Type),
 		% We can only check this case properly if the type is known.
-	GII_A \= constrained_inst_var(_),
-		% Don't overly constrain the inst_var.
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_is_complete_for_type(set__init, Info0^module_info,
 		ListB, Type),
 	ground_matches_initial_bound_inst_list(UniqA, ListB, yes(Type),
 		Info0, Info).
-inst_matches_initial_3(ground(UniqA, GroundInstInfoA),
+inst_matches_initial_4(ground(UniqA, GroundInstInfoA),
 		ground(UniqB, GroundInstInfoB), Type, Info0, Info) :-
 	unique_matches_initial(UniqA, UniqB),
 	ground_inst_info_matches_initial(GroundInstInfoA, GroundInstInfoB,
 		UniqB, Type, Info0, Info).
-inst_matches_initial_3(ground(_UniqA, none), abstract_inst(_,_),_,_,_) :-
+inst_matches_initial_4(ground(_UniqA, none), abstract_inst(_,_),_,_,_) :-
 		% I don't know what this should do.
 		% Abstract insts aren't really supported.
 	error("inst_matches_initial(ground, abstract_inst) == ??").
-inst_matches_initial_3(abstract_inst(_,_), any(shared), _, I, I).
-inst_matches_initial_3(abstract_inst(_,_), free, _, I, I).
-inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
+inst_matches_initial_4(abstract_inst(_,_), any(shared), _, I, I).
+inst_matches_initial_4(abstract_inst(_,_), free, _, I, I).
+inst_matches_initial_4(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		_Type, Info0, Info) :-
 	list__duplicate(length(ArgsA), no, MaybeTypes),
 		% XXX how do we get the argument types for an abstract inst?
 	inst_list_matches_initial(ArgsA, ArgsB, MaybeTypes, Info0, Info).
-inst_matches_initial_3(not_reached, _, _, I, I).
+inst_matches_initial_4(not_reached, _, _, I, I).
 
 %-----------------------------------------------------------------------------%
 
@@ -516,23 +554,27 @@ equivalent_sym_names(qualified(QualA, S), qualified(QualB, S)) :-
 	% Update the inst_var_sub that is computed by inst_matches_initial.
 	% The inst_var_sub records what inst should be substituted for each
 	% inst_var that occurs in the called procedure's argument modes.
-:- pred update_inst_var_sub(inst_var, inst, maybe(type), module_info,
-		module_info, maybe(inst_var_sub), maybe(inst_var_sub)).
-:- mode update_inst_var_sub(in, in, in, in, out, in, out) is semidet.
+:- pred update_inst_var_sub(set(inst_var), inst, maybe(type), inst_match_info,
+		inst_match_info).
+:- mode update_inst_var_sub(in, in, in, in, out) is semidet.
 
-update_inst_var_sub(_, _, _, ModuleInfo, ModuleInfo, no, no).
-update_inst_var_sub(InstVar, InstA, MaybeType, ModuleInfo0, ModuleInfo,
-		yes(Sub0), yes(Sub)) :-
-	( map__search(Sub0, InstVar, InstB) ->
-		% If InstVar already has an inst associated with it,
-		% merge the old inst and the new inst.  Fail if this merge
-		% is not possible.
-		inst_merge(InstA, InstB, MaybeType, ModuleInfo0, Inst,
-			ModuleInfo),
-		map__det_update(Sub0, InstVar, Inst, Sub)
+update_inst_var_sub(InstVars, InstA, MaybeType) -->
+	( yes(_) =^ maybe_sub ->
+		set__fold((pred(InstVar::in, in, out) is semidet -->
+			( InstB =^ sub ^ elem(InstVar) ->
+				% If InstVar already has an inst associated with
+				% it, merge the old inst and the new inst.  Fail
+				% if this merge is not possible.
+				M0 =^ module_info,
+				{ inst_merge(InstA, InstB, MaybeType, M0,
+					Inst, M) },
+				^ module_info := M,
+				^ sub ^ elem(InstVar) := Inst
+			;
+				^ sub ^ elem(InstVar) := InstA
+			)), InstVars)
 	;
-		ModuleInfo = ModuleInfo0,
-		map__det_insert(Sub0, InstVar, InstA, Sub)
+		[]
 	).
 
 %-----------------------------------------------------------------------------%
@@ -555,15 +597,6 @@ ground_inst_info_matches_initial(none, higher_order(PredInstB), _, Type) -->
 ground_inst_info_matches_initial(higher_order(PredInstA),
 		higher_order(PredInstB), _, MaybeType) -->
 	pred_inst_matches_initial(PredInstA, PredInstB, MaybeType).
-ground_inst_info_matches_initial(GroundInstInfoA,
-		constrained_inst_var(InstVarB), UniqB, MaybeType) -->
-	{ Inst = ground(UniqB, GroundInstInfoA) },
-	ModuleInfo0 =^ module_info,
-	Sub0 =^ sub,
-	{ update_inst_var_sub(InstVarB, Inst, MaybeType, ModuleInfo0,
-		ModuleInfo, Sub0, Sub) },
-	^module_info := ModuleInfo,
-	^sub := Sub.
 
 :- pred pred_inst_matches_initial(pred_inst_info, pred_inst_info, maybe(type),
 	inst_match_info, inst_match_info).
@@ -574,16 +607,15 @@ pred_inst_matches_initial(pred_inst_info(PredOrFunc, ModesA, Det),
 	{ maybe_get_higher_order_arg_types(MaybeType, length(ModesA),
 		MaybeTypes) },
 	pred_inst_argmodes_matches_initial(ModesA, ModesB, MaybeTypes),
-	MaybeSub =^ sub,
-	{ 
-		MaybeSub = yes(Sub)
+	( 
+		Sub =^ sub
 	->
-		mode_list_apply_substitution(ModesA, Sub, ModesASub),
-		mode_list_apply_substitution(ModesB, Sub, ModesBSub)
+		{ mode_list_apply_substitution(ModesA, Sub, ModesASub) },
+		{ mode_list_apply_substitution(ModesB, Sub, ModesBSub) }
 	;
-		ModesASub = ModesA,
-		ModesBSub = ModesB
-	},
+		{ ModesASub = ModesA },
+		{ ModesBSub = ModesB }
+	),
 	pred_inst_argmodes_matches(ModesASub, ModesBSub, MaybeTypes).
 
 :- pred pred_inst_argmodes_matches_initial(list(mode), list(mode),
@@ -749,7 +781,21 @@ inst_expand(ModuleInfo, Inst0, Inst) :-
 		Inst = Inst0
 	).
 
+inst_expand_and_remove_constrained_inst_vars(ModuleInfo, Inst0, Inst) :-
+	( Inst0 = defined_inst(InstName) ->
+		inst_lookup(ModuleInfo, InstName, Inst1),
+		inst_expand(ModuleInfo, Inst1, Inst)
+	; Inst0 = constrained_inst_vars(_, Inst1) ->
+		inst_expand(ModuleInfo, Inst1, Inst)
+	;
+		Inst = Inst0
+	).
+
 %-----------------------------------------------------------------------------%
+
+inst_matches_final(InstA, InstB, ModuleInfo) :-
+	Info0 = init_inst_match_info(ModuleInfo),
+	inst_matches_final_2(InstA, InstB, no, Info0, _).
 
 inst_matches_final(InstA, InstB, Type, ModuleInfo) :-
 	Info0 = init_inst_match_info(ModuleInfo),
@@ -838,6 +884,16 @@ inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		% XXX how do we get the argument types for an abstract inst?
 	inst_list_matches_final(ArgsA, ArgsB, MaybeTypes, Info0, Info).
 inst_matches_final_3(not_reached, _, _, I, I).
+inst_matches_final_3(constrained_inst_vars(InstVarsA, InstA), InstB, MaybeType,
+		Info0, Info) :-
+	( InstB = constrained_inst_vars(InstVarsB, InstB1) ->
+		% Constrained_inst_vars match_final only if InstVarsA contains
+		% all the variables in InstVarsB
+		InstVarsB `set__subset` InstVarsA,
+		inst_matches_final_2(InstA, InstB1, MaybeType, Info0, Info)
+	;
+		inst_matches_final_2(InstA, InstB, MaybeType, Info0, Info)
+	).
 
 :- pred ground_inst_info_matches_final(ground_inst_info, ground_inst_info,
 		maybe(type), inst_match_info, inst_match_info).
@@ -855,8 +911,6 @@ ground_inst_info_matches_final(none, higher_order(PredInstB), Type) -->
 ground_inst_info_matches_final(higher_order(PredInstA),
 		higher_order(PredInstB), MaybeType) -->
 	pred_inst_matches_2(PredInstA, PredInstB, MaybeType).
-ground_inst_info_matches_final(constrained_inst_var(InstVar),
-		constrained_inst_var(InstVar), _) --> [].
 
 :- pred inst_list_matches_final(list(inst), list(inst), list(maybe(type)),
 		inst_match_info, inst_match_info).
@@ -913,8 +967,10 @@ inst_matches_binding_2(InstA, InstB, MaybeType, Info0, Info) :-
 	( set__member(ThisExpansion, Info0^expansions) ->
 		Info = Info0
 	;
-		inst_expand(Info0^module_info, InstA, InstA2),
-		inst_expand(Info0^module_info, InstB, InstB2),
+		inst_expand_and_remove_constrained_inst_vars(Info0^module_info,
+			InstA, InstA2),
+		inst_expand_and_remove_constrained_inst_vars(Info0^module_info,
+			InstB, InstB2),
 		set__insert(Info0^expansions, ThisExpansion, Expansions1),
 		inst_matches_binding_3(InstA2, InstB2, MaybeType,
 			Info0^expansions := Expansions1, Info)
@@ -931,9 +987,6 @@ inst_matches_binding_3(bound(_UniqA, ListA), bound(_UniqB, ListB), MaybeType,
 	bound_inst_list_matches_binding(ListA, ListB, MaybeType, Info0, Info).
 inst_matches_binding_3(bound(_UniqA, ListA), ground(_UniqB, none), _,
 		Info, Info) :-
-	bound_inst_list_is_ground(ListA, Info^module_info).
-inst_matches_binding_3(bound(_UniqA, ListA),
-		ground(_UniqB, constrained_inst_var(_)), _, Info, Info) :-
 	bound_inst_list_is_ground(ListA, Info^module_info).
 inst_matches_binding_3(ground(_UniqA, _), bound(_UniqB, ListB), MaybeType,
 		Info, Info) :-
@@ -975,8 +1028,6 @@ ground_inst_info_matches_binding(none, higher_order(PredInstB), MaybeType,
 ground_inst_info_matches_binding(higher_order(PredInstA),
 		higher_order(PredInstB), MaybeType, ModuleInfo) :-
 	pred_inst_matches_1(PredInstA, PredInstB, MaybeType, ModuleInfo).
-ground_inst_info_matches_binding(constrained_inst_var(InstVar),
-		constrained_inst_var(InstVar), _, _).
 
 :- pred inst_list_matches_binding(list(inst), list(inst), list(maybe(type)),
 		inst_match_info, inst_match_info).
@@ -1036,6 +1087,8 @@ inst_is_clobbered(_, bound(clobbered, _)).
 inst_is_clobbered(_, bound(mostly_clobbered, _)).
 inst_is_clobbered(_, inst_var(_)) :-
         error("internal error: uninstantiated inst parameter").
+inst_is_clobbered(ModuleInfo, constrained_inst_vars(_, Inst)) :-
+	inst_is_clobbered(ModuleInfo, Inst).
 inst_is_clobbered(ModuleInfo, defined_inst(InstName)) :-
         inst_lookup(ModuleInfo, InstName, Inst),
         inst_is_clobbered(ModuleInfo, Inst).
@@ -1048,6 +1101,8 @@ inst_is_free(_, free).
 inst_is_free(_, free(_Type)).
 inst_is_free(_, inst_var(_)) :-
         error("internal error: uninstantiated inst parameter").
+inst_is_free(ModuleInfo, constrained_inst_vars(_, Inst)) :-
+	inst_is_free(ModuleInfo, Inst).
 inst_is_free(ModuleInfo, defined_inst(InstName)) :-
         inst_lookup(ModuleInfo, InstName, Inst),
         inst_is_free(ModuleInfo, Inst).
@@ -1062,6 +1117,8 @@ inst_is_bound(_, ground(_, _)).
 inst_is_bound(_, bound(_, _)).
 inst_is_bound(_, inst_var(_)) :-
         error("internal error: uninstantiated inst parameter").
+inst_is_bound(ModuleInfo, constrained_inst_vars(_, Inst)) :-
+	inst_is_bound(ModuleInfo, Inst).
 inst_is_bound(ModuleInfo, defined_inst(InstName)) :-
         inst_lookup(ModuleInfo, InstName, Inst),
         inst_is_bound(ModuleInfo, Inst).
@@ -1074,6 +1131,9 @@ inst_is_bound(_, abstract_inst(_, _)).
 inst_is_bound_to_functors(_, bound(_Uniq, Functors), Functors).
 inst_is_bound_to_functors(_, inst_var(_), _) :-
         error("internal error: uninstantiated inst parameter").
+inst_is_bound_to_functors(ModuleInfo, constrained_inst_vars(_, Inst),
+		Functors) :-
+	inst_is_bound_to_functors(ModuleInfo, Inst, Functors).
 inst_is_bound_to_functors(ModuleInfo, defined_inst(InstName), Functors) :-
         inst_lookup(ModuleInfo, InstName, Inst),
         inst_is_bound_to_functors(ModuleInfo, Inst, Functors).
@@ -1100,6 +1160,9 @@ inst_is_ground_2(ModuleInfo, bound(_, List), Expansions0, Expansions) :-
 inst_is_ground_2(_, ground(_, _), Expansions, Expansions).
 inst_is_ground_2(_, inst_var(_), Expansions, Expansions) :-
         error("internal error: uninstantiated inst parameter").
+inst_is_ground_2(ModuleInfo, Inst, Expansions0, Expansions) :-
+	Inst = constrained_inst_vars(_, Inst2),
+	inst_is_ground_2(ModuleInfo, Inst2, Expansions0, Expansions).
 inst_is_ground_2(ModuleInfo, Inst, Expansions0, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions0) ->
@@ -1133,6 +1196,9 @@ inst_is_ground_or_any_2(_, any(_), Expansions, Expansions).
 inst_is_ground_or_any_2(_, inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
 inst_is_ground_or_any_2(ModuleInfo, Inst, Expansions0, Expansions) :-
+	Inst = constrained_inst_vars(_, Inst2),
+	inst_is_ground_or_any_2(ModuleInfo, Inst2, Expansions0, Expansions).
+inst_is_ground_or_any_2(ModuleInfo, Inst, Expansions0, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions0) ->
                 Expansions = Expansions0
@@ -1165,6 +1231,9 @@ inst_is_unique_2(_, free, Expansions, Expansions).
 inst_is_unique_2(_, ground(unique, _), Expansions, Expansions).
 inst_is_unique_2(_, inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
+inst_is_unique_2(ModuleInfo, Inst, Expansions0, Expansions) :-
+	Inst = constrained_inst_vars(_, Inst2),
+	inst_is_unique_2(ModuleInfo, Inst2, Expansions0, Expansions).
 inst_is_unique_2(ModuleInfo, Inst, Expansions0, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions0) ->
@@ -1206,6 +1275,9 @@ inst_is_mostly_unique_2(_, ground(mostly_unique, _), Expansions, Expansions).
 inst_is_mostly_unique_2(_, inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
 inst_is_mostly_unique_2(ModuleInfo, Inst, Expansions0, Expansions) :-
+	Inst = constrained_inst_vars(_, Inst2),
+	inst_is_mostly_unique_2(ModuleInfo, Inst2, Expansions0, Expansions).
+inst_is_mostly_unique_2(ModuleInfo, Inst, Expansions0, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions0) ->
                 Expansions = Expansions0
@@ -1241,6 +1313,9 @@ inst_is_not_partly_unique_2(_, any(shared), Expansions, Expansions).
 inst_is_not_partly_unique_2(_, ground(shared, _), Expansions, Expansions).
 inst_is_not_partly_unique_2(_, inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
+inst_is_not_partly_unique_2(ModuleInfo, Inst, Expansions0, Expansions) :-
+	Inst = constrained_inst_vars(_, Inst2),
+	inst_is_not_partly_unique_2(ModuleInfo, Inst2, Expansions0, Expansions).
 inst_is_not_partly_unique_2(ModuleInfo, Inst, Expansions0, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions0) ->
@@ -1284,6 +1359,9 @@ inst_is_not_fully_unique_2(_, ground(shared, _), Expansions, Expansions).
 inst_is_not_fully_unique_2(_, ground(mostly_unique, _), Expansions, Expansions).
 inst_is_not_fully_unique_2(_, inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
+inst_is_not_fully_unique_2(ModuleInfo, Inst, Expansions0, Expansions) :-
+	Inst = constrained_inst_vars(_, Inst2),
+	inst_is_not_fully_unique_2(ModuleInfo, Inst2, Expansions0, Expansions).
 inst_is_not_fully_unique_2(ModuleInfo, Inst, Expansions0, Expansions) :-
 	Inst = defined_inst(InstName),
         ( set__member(Inst, Expansions0) ->
@@ -1551,6 +1629,10 @@ inst_contains_instname_2(free(_T), _, _, no, Expns, Expns).
 inst_contains_instname_2(ground(_Uniq, _), _, _, no, Expns, Expns).
 inst_contains_instname_2(inst_var(_), _, _, no, Expns, Expns).
 inst_contains_instname_2(not_reached, _, _, no, Expns, Expns).
+inst_contains_instname_2(constrained_inst_vars(_, Inst), ModuleInfo, InstName,
+		Result, Expansions0, Expansions) :-
+	inst_contains_instname_2(Inst, ModuleInfo, InstName, Result,
+		Expansions0, Expansions).
 inst_contains_instname_2(defined_inst(InstName1), ModuleInfo, InstName,
 		Result, Expansions0, Expansions) :-
 	( InstName = InstName1 ->

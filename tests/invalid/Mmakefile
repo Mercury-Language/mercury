@@ -38,6 +38,7 @@ SINGLEMODULE_SOURCES= \
 	builtin_int.m \
 	builtin_proc.m \
 	circ_type.m \
+	constrained_poly_insts.m \
 	constructor_warning.m \
 	det_errors.m \
 	duplicate_modes.m \

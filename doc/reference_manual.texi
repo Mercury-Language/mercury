@@ -1821,6 +1821,7 @@ update_field_in_map(Map, Index, Value) =
 @menu
 * Insts modes and mode definitions::
 * Predicate and function mode declarations::
+* Constrained polymorphic modes::
 * Different clauses for different modes::
 @end menu
 
@@ -2139,6 +2140,68 @@ the resulting instantiatedness of the procedure's arguments
 is the same as the one given by the procedure's declaration.
 
 The mode analysis algorithm annotates each call with the mode used.
+
+@node Constrained polymorphic modes
+@section Constrained polymorphic modes
+
+Mode declarations for predicates and functions may also have inst parameters.
+However, such parameters must be constrained to be @emph{compatible} with some
+other inst.
+In a predicate or function mode declaration,
+an inst of the form @samp{@var{InstParam} =< @var{Inst}},
+where @var{InstParam} is a variable and @var{Inst} is an inst,
+states that 
+@var{InstParam} is constrained to be @emph{compatible} with @var{Inst},
+that is,
+@var{InstParam} represents some inst that can be used anywhere where
+@var{Inst} is required.
+If an inst parameter occurs more than once in a declaration, it must have the
+same constraint on each occurrence.
+
+For example, in the mode declaration
+@example
+	:- mode append(in(list_skel(I =< ground)), in(list_skel(I =< ground)),
+	        out(list_skel(I =< ground))).
+@end example
+@noindent
+@code{I} is an inst parameter which is constrained to be ground.  
+If @samp{append} is called with the first two arguments having an inst of, say,
+@samp{list_skel(bound(f))} then after @samp{append} returns, all three arguments
+will have inst @samp{list_skel(bound(f))}.
+If the mode of append had been simply
+@example
+	:- mode append(in(list_skel(ground)), in(list_skel(ground)),
+	        out(list_skel(ground))).
+@end example
+@noindent
+then we would only have been able to infer an inst of @samp{list_skel(ground)}
+for the third argument, not the more specific inst.
+
+Note that attempting to call @samp{append} when the first two arguments do not
+have ground insts (e.g. @samp{list_skel(bound(g(free)))}) is a mode error
+because it violates the constraint on the inst parameter.
+
+To avoid having to repeat a constraint everywhere that an inst parameter occurs,
+it is possible to list the constraints after the rest of the mode declaration,
+following a @samp{<=}.
+E.g. the above example could have been written as
+@example
+	:- mode append(in(list_skel(I)), in(list_skel(I)), out(list_skel(I)))
+	              <= I =< ground.
+@end example
+
+Also, if the constraint on an inst parameter is @samp{ground} then it
+is not necessary to give the constraint in the declaration.
+The example can be further shorted to
+@example
+	:- mode append(in(list_skel(I)), in(list_skel(I)), out(list_skel(I))).
+@end example
+
+
+Constrained polymorphic modes are particularly useful when passing
+objects with higher-order types to polymorphic predicates
+since they allow the higher-order mode information to be retained
+(@pxref{Higher-order}).
 
 @node Different clauses for different modes
 @section Different clauses for different modes

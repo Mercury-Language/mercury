@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001 University of Melbourne.
+% Copyright (C) 1997-2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module prog_data, prog_io_util.
+:- import_module prog_data, prog_io_util, (inst).
 :- import_module list, varset, term.
 
 	% parse a typeclass declaration. 
@@ -30,11 +30,19 @@
 		maybe1(list(class_constraint))).
 :- mode parse_class_constraints(in, in, out) is det.
 
+	% parse a list of class and inst constraints
+:- pred parse_class_and_inst_constraints(module_name, term,
+		maybe_class_and_inst_constraints).
+:- mode parse_class_and_inst_constraints(in, in, out) is det.
+
+:- type maybe_class_and_inst_constraints ==
+		maybe2(list(class_constraint), inst_var_sub).
+
 :- implementation.
 
 :- import_module prog_io, prog_io_goal, prog_util, hlds_pred.
 :- import_module term, varset.
-:- import_module int, string, std_util, require, type_util, set.
+:- import_module int, string, std_util, require, type_util, set, map.
 
 parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
 		%XXX should return an error if we get more than one arg,
@@ -259,8 +267,12 @@ find_errors([X|Xs], Result) :-
 % Parse constraints on a pred or func declaration,
 % or on an existentially quantified type definition.
 
-parse_class_constraints(ModuleName, Constraints, Result) :-
-	parse_simple_class_constraints(ModuleName, Constraints, 
+parse_class_constraints(ModuleName, ConstraintsTerm, Result) :-
+	parse_class_and_inst_constraints(ModuleName, ConstraintsTerm, Result0),
+	extract_class_constraints(Result0, Result).
+
+parse_class_and_inst_constraints(ModuleName, ConstraintsTerm, Result) :-
+	parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm, 
 		"sorry, not implemented: constraints may only constrain type variables, not compound types",
 		Result).
 
@@ -270,77 +282,116 @@ parse_class_constraints(ModuleName, Constraints, Result) :-
 		maybe1(list(class_constraint))).
 :- mode parse_simple_class_constraints(in, in, in, out) is det.
 
-parse_simple_class_constraints(ModuleName, Constraints, ErrorMessage,
+parse_simple_class_constraints(ModuleName, ConstraintsTerm, ErrorMessage,
 		Result) :-
-	parse_arbitrary_class_constraints(ModuleName, Constraints,
-		ParsedConstraints),
+	parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm,
+		ErrorMessage, Result0),
+	extract_class_constraints(Result0, Result).
+
+:- pred parse_simple_class_and_inst_constraints(module_name, term, string,
+		maybe_class_and_inst_constraints).
+:- mode parse_simple_class_and_inst_constraints(in, in, in, out) is det.
+
+parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm,
+		ErrorMessage, Result) :-
+	parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm,
+		Result0),
 	(
-		ParsedConstraints = ok(ConstraintList),
+		Result0 = ok(ConstraintList, _),
 		(
 			list__member(Constraint, ConstraintList),
 			Constraint = constraint(_, Types),
 			list__member(Type, Types),
 			\+ type_util__var(Type, _)
 		->
-			Result = error(ErrorMessage, Constraints)
+			Result = error(ErrorMessage, ConstraintsTerm)
 		;
-			Result = ParsedConstraints
+			Result = Result0
 		)
 	;
-		ParsedConstraints = error(_, _),
-		Result = ParsedConstraints
+		Result0 = error(_, _),
+		Result = Result0
 	).
 
 % Parse constraints which can constrain arbitrary types
 
-:- pred parse_arbitrary_class_constraints(module_name, term,
-		maybe1(list(class_constraint))).
-:- mode parse_arbitrary_class_constraints(in, in, out) is det.
+:- pred parse_arbitrary_class_and_inst_constraints(module_name, term,
+		maybe_class_and_inst_constraints).
+:- mode parse_arbitrary_class_and_inst_constraints(in, in, out) is det.
 
-parse_arbitrary_class_constraints(ModuleName, Constraints, ParsedConstraints) :-
-	conjunction_to_list(Constraints, ConstraintList),
-	parse_class_constraint_list(ModuleName, ConstraintList, 
-		ParsedConstraints).
+parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm,
+		Result) :-
+	conjunction_to_list(ConstraintsTerm, ConstraintList),
+	parse_class_and_inst_constraint_list(ModuleName, ConstraintList, 
+		Result).
 
-:- pred parse_class_constraint_list(module_name, list(term),
-		maybe1(list(class_constraint))).
-:- mode parse_class_constraint_list(in, in, out) is det.
+:- pred parse_class_and_inst_constraint_list(module_name, list(term),
+		maybe_class_and_inst_constraints).
+:- mode parse_class_and_inst_constraint_list(in, in, out) is det.
 
-parse_class_constraint_list(_, [], ok([])).
-parse_class_constraint_list(ModuleName, [C0|C0s], Result) :-
-	parse_class_constraint(ModuleName, C0, Result0),
+parse_class_and_inst_constraint_list(_, [], ok([], map__init)).
+parse_class_and_inst_constraint_list(ModuleName, [C0|C0s], Result) :-
+	parse_class_or_inst_constraint(ModuleName, C0, Result0),
+	parse_class_and_inst_constraint_list(ModuleName, C0s, Result1),
+	Result = combine_class_and_inst_constraints(Result0, Result1).
+
+:- func combine_class_and_inst_constraints(maybe1(class_or_inst_constraint),
+		maybe_class_and_inst_constraints) =
+		maybe_class_and_inst_constraints.
+
+combine_class_and_inst_constraints(error(String, Term), _) =
+		error(String, Term).
+combine_class_and_inst_constraints(ok(_), error(String, Term)) =
+		error(String, Term).
+combine_class_and_inst_constraints(ok(class_constraint(ClassConstraint)),
+			ok(ClassConstraints, InstConstraints)) =
+		ok([ClassConstraint | ClassConstraints], InstConstraints).
+combine_class_and_inst_constraints(ok(inst_constraint(InstVar, Inst)),
+			ok(ClassConstraints, InstConstraints)) =
+		ok(ClassConstraints, InstConstraints ^ elem(InstVar) := Inst).
+
+:- type class_or_inst_constraint
+	--->	class_constraint(class_constraint)
+	;	inst_constraint(inst_var, inst).
+
+:- pred parse_class_or_inst_constraint(module_name, term,
+		maybe1(class_or_inst_constraint)).
+:- mode parse_class_or_inst_constraint(in, in, out) is det.
+
+parse_class_or_inst_constraint(_ModuleName, ConstraintTerm, Result) :-
 	(
-		Result0 = ok(C),
-		parse_class_constraint_list(ModuleName, C0s, Result1),
-		(
-			Result1 = ok(Cs),
-			Result = ok([C|Cs])
-		;
-			Result1 = error(_, _),
-			Result = Result1
-		)
+		parse_inst_constraint(ConstraintTerm, InstVar, Inst)
+	->
+		Result = ok(inst_constraint(InstVar, Inst))
 	;
-		Result0 = error(String, Term),
-		Result = error(String, Term)
-	).
-
-:- pred parse_class_constraint(module_name, term,
-		maybe1(class_constraint)).
-:- mode parse_class_constraint(in, in, out) is det.
-
-parse_class_constraint(_ModuleName, Constraint, Result) :-
-	(
-		parse_qualified_term(Constraint, Constraint,
+		parse_qualified_term(ConstraintTerm, ConstraintTerm,
 			"class constraint", ok(ClassName, Args0))
 	->
 		% we need to enforce the invariant that types in type class
 		% constraints do not contain any info in their prog_context
 		% fields
 		list__map(convert_type, Args0, Args),
-		Result = ok(constraint(ClassName, Args))
+		Result = ok(class_constraint(constraint(ClassName, Args)))
 	;
-		Result = error("expected atom as class name", Constraint)
+		Result = error("expected atom as class name or inst constraint",
+			ConstraintTerm)
 	).
+
+:- pred parse_inst_constraint(term, inst_var, inst).
+:- mode parse_inst_constraint(in, out, out) is semidet.
+
+parse_inst_constraint(Term, InstVar, Inst) :-
+	Term = term__functor(term__atom("=<"), [Arg1, Arg2], _),
+	Arg1 = term__variable(InstVar0),
+	term__coerce_var(InstVar0, InstVar),
+	convert_inst(no_allow_constrained_inst_var, Arg2, Inst).
+
+:- pred extract_class_constraints(maybe_class_and_inst_constraints,
+		maybe1(list(class_constraint))).
+:- mode extract_class_constraints(in, out) is det.
+
+extract_class_constraints(ok(ClassConstraints, _), ok(ClassConstraints)).
+extract_class_constraints(error(String, Term), error(String, Term)).
 
 %-----------------------------------------------------------------------------%
 

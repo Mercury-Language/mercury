@@ -1275,12 +1275,12 @@ recompilation_usage__find_items_used_by_inst(ground(_, GroundInstInfo)) -->
 		{ GroundInstInfo = higher_order(pred_inst_info(_, Modes, _)) },
 		recompilation_usage__find_items_used_by_modes(Modes)
 	;
-		{ GroundInstInfo = constrained_inst_var(_) }
-	;
 		{ GroundInstInfo = none }
 	).
 recompilation_usage__find_items_used_by_inst(not_reached) --> [].
 recompilation_usage__find_items_used_by_inst(inst_var(_)) --> [].
+recompilation_usage__find_items_used_by_inst(constrained_inst_vars(_, Inst)) -->
+	recompilation_usage__find_items_used_by_inst(Inst).
 recompilation_usage__find_items_used_by_inst(defined_inst(InstName)) -->
 	recompilation_usage__find_items_used_by_inst_name(InstName).
 recompilation_usage__find_items_used_by_inst(

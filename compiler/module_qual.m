@@ -753,15 +753,14 @@ qualify_inst(ground(Uniq, GroundInstInfo0), ground(Uniq, GroundInstInfo),
 		qualify_mode_list(Modes0, Modes, Info0, Info),
 		{ GroundInstInfo = higher_order(pred_inst_info(A, Modes, Det)) }
 	;
-		{ GroundInstInfo0 = constrained_inst_var(Var) },
-		{ GroundInstInfo = constrained_inst_var(Var) },
-		{ Info = Info0 }
-	;
 		{ GroundInstInfo0 = none },
 		{ GroundInstInfo = none },
 		{ Info = Info0 }
 	).
 qualify_inst(inst_var(Var), inst_var(Var), Info, Info) --> [].
+qualify_inst(constrained_inst_vars(Vars, Inst0),
+		constrained_inst_vars(Vars, Inst), Info0, Info) -->
+	qualify_inst(Inst0, Inst, Info0, Info).
 qualify_inst(defined_inst(InstName0), defined_inst(InstName), Info0, Info) -->
 	qualify_inst_name(InstName0, InstName, Info0, Info).
 qualify_inst(abstract_inst(Name, Args0), abstract_inst(Name, Args),

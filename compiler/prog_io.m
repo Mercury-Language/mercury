@@ -55,7 +55,7 @@
 
 :- interface.
 
-:- import_module prog_data, prog_io_util, timestamp.
+:- import_module prog_data, prog_io_util, timestamp, (inst).
 :- import_module bool, varset, term, list, io, std_util. 
 
 %-----------------------------------------------------------------------------%
@@ -191,6 +191,26 @@
 :- mode parse_implicitly_qualified_term(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
+
+	% Replace all occurrences of inst_var(I) with
+	% constrained_inst_var(I, ground(shared, none)).
+:- pred constrain_inst_vars_in_mode(mode, mode).
+:- mode constrain_inst_vars_in_mode(in, out) is det.
+
+	% Replace all occurrences of inst_var(I) with
+	% constrained_inst_var(I, Inst) where I -> Inst is in the inst_var_sub.
+	% If I is not in the inst_var_sub, default to ground(shared, none).
+:- pred constrain_inst_vars_in_mode(inst_var_sub, mode, mode).
+:- mode constrain_inst_vars_in_mode(in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+	% Check that for each constrained_inst_var all occurrences have the
+	% same constraint.
+:- pred inst_var_constraints_are_consistent_in_modes(list(mode)).
+:- mode inst_var_constraints_are_consistent_in_modes(in) is semidet.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -198,11 +218,11 @@
 :- import_module prog_io_goal, prog_io_dcg, prog_io_pragma, prog_io_util.
 :- import_module prog_io_typeclass.
 :- import_module hlds_data, hlds_pred, prog_util, prog_out.
-:- import_module globals, options, (inst).
+:- import_module globals, options.
 :- import_module recompilation, recompilation_version.
 
 :- import_module int, string, std_util, parser, term_io, dir, require.
-:- import_module assoc_list, map, time.
+:- import_module assoc_list, map, time, set.
 
 %-----------------------------------------------------------------------------%
 
@@ -926,8 +946,7 @@ process_decl(ModuleName, VarSet, "func", [FuncDecl], Attributes, Result) :-
 	parse_type_decl_func(ModuleName, VarSet, FuncDecl, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "mode", [ModeDecl], Attributes, Result) :-
-	parse_mode_decl(ModuleName, VarSet, ModeDecl, Result0),
-	check_no_attributes(Result0, Attributes, Result).
+	parse_mode_decl(ModuleName, VarSet, ModeDecl, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "inst", [InstDecl], Attributes, Result) :-
 	parse_inst_decl(ModuleName, VarSet, InstDecl, Result0),
@@ -1392,14 +1411,15 @@ parse_type_decl_func(ModuleName, VarSet, Func, Attributes, R) :-
 	% if Pred is a predicate mode declaration, and binds Condition
 	% to the condition for that declaration (if any), and Result to
 	% a representation of the declaration.
-:- pred parse_mode_decl_pred(module_name, varset, term, maybe1(item)).
-:- mode parse_mode_decl_pred(in, in, in, out) is det.
+:- pred parse_mode_decl_pred(module_name, varset, term, decl_attrs,
+		maybe1(item)).
+:- mode parse_mode_decl_pred(in, in, in, in, out) is det.
 
-parse_mode_decl_pred(ModuleName, VarSet, Pred, Result) :-
+parse_mode_decl_pred(ModuleName, VarSet, Pred, Attributes, Result) :-
 	get_condition(Pred, Body, Condition),
 	get_determinism(Body, Body2, MaybeDeterminism),
-	process_maybe1_to_t(process_mode(ModuleName, VarSet, Body2, Condition),
-			MaybeDeterminism, Result).
+	process_maybe1_to_t(process_mode(ModuleName, VarSet, Body2, Condition,
+			Attributes), MaybeDeterminism, Result).
 
 %-----------------------------------------------------------------------------%
 
@@ -1781,44 +1801,53 @@ convert_constructor(ModuleName, Term0, Result) :-
 
 process_pred(ModuleName, VarSet, PredType, Cond, MaybeDet, Attributes0,
 		Result) :-
-	get_class_context(ModuleName, Attributes0, Attributes, MaybeContext),
+	get_class_context_and_inst_constraints(ModuleName, Attributes0,
+		Attributes, MaybeContext),
 	(
-		MaybeContext = ok(ExistQVars, Constraints),
+		MaybeContext = ok(ExistQVars, Constraints, InstConstraints),
 		parse_implicitly_qualified_term(ModuleName,
 			PredType, PredType, "`:- pred' declaration",
 			R),
-		process_pred_2(R, PredType, VarSet, MaybeDet, Cond,
-			ExistQVars, Constraints, Attributes, Result)
+		process_pred_2(R, PredType, VarSet, MaybeDet, Cond, ExistQVars,
+			Constraints, InstConstraints, Attributes, Result)
 	;
 		MaybeContext = error(String, Term),
 		Result = error(String, Term)
 	).
 
 :- pred process_pred_2(maybe_functor, term, varset, maybe(determinism),
-			condition, existq_tvars, class_constraints, decl_attrs,
-			maybe1(item)).
-:- mode process_pred_2(in, in, in, in, in, in, in, in, out) is det.
+			condition, existq_tvars, class_constraints,
+			inst_var_sub, decl_attrs, maybe1(item)).
+:- mode process_pred_2(in, in, in, in, in, in, in, in, in, out) is det.
 
 process_pred_2(ok(F, As0), PredType, VarSet0, MaybeDet, Cond, ExistQVars,
-		ClassContext, Attributes0, Result) :-
-	( convert_type_and_mode_list(As0, As) ->
-		( verify_type_and_mode_list(As) ->
-	        	get_purity(Attributes0, Purity, Attributes),
-			varset__coerce(VarSet0, TVarSet),
-			varset__coerce(VarSet0, IVarSet),
-			Result0 = ok(pred_or_func(TVarSet, IVarSet, ExistQVars,
-				predicate, F, As, MaybeDet, Cond, Purity,
-				ClassContext)),
-			check_no_attributes(Result0, Attributes, Result)
+		ClassContext, InstConstraints, Attributes0, Result) :-
+	( convert_type_and_mode_list(InstConstraints, As0, As) ->
+	    ( verify_type_and_mode_list(As) ->
+		get_purity(Attributes0, Purity, Attributes),
+		varset__coerce(VarSet0, TVarSet),
+		varset__coerce(VarSet0, IVarSet),
+		(
+		    inst_var_constraints_are_consistent_in_type_and_modes(As)
+		->
+		    Result0 = ok(pred_or_func(TVarSet, IVarSet, ExistQVars,
+			predicate, F, As, MaybeDet, Cond, Purity,
+			ClassContext)),
+		    check_no_attributes(Result0, Attributes, Result)
 		;
-			Result = error("some but not all arguments have modes",
-				PredType)
+		    Result = error(
+	"inconsistent constraints on inst variables in predicate declaration",
+			    PredType)
 		)
+	    ;
+		Result = error("some but not all arguments have modes",
+		    PredType)
+	    )
 	;
-		Result = error("syntax error in `:- pred' declaration",
+	    Result = error("syntax error in `:- pred' declaration",
 				PredType)
 	).
-process_pred_2(error(M, T), _, _, _, _, _, _, _, error(M, T)).
+process_pred_2(error(M, T), _, _, _, _, _, _, _, _, error(M, T)).
 
 :- pred get_purity(decl_attrs, purity, decl_attrs).
 :- mode get_purity(in, out, out) is det.
@@ -1837,18 +1866,23 @@ get_purity(Attributes0, Purity, Attributes) :-
 	% We could perhaps get rid of some code duplication between here and
 	% prog_io_typeclass.m?
 
-	% get_class_context(ModuleName, Attributes0, Attributes, MaybeContext):
-	% Parse type quantifiers and type class constraints from the
-	% declaration attributes in Attributes0.
+	% get_class_context_and_inst_constraints(ModuleName, Attributes0,
+	%	Attributes, MaybeContext, MaybeInstConstraints):
+	% Parse type quantifiers, type class constraints and inst constraints
+	% from the declaration attributes in Attributes0.
 	% MaybeContext is either bound to the correctly parsed context, or
 	% an appropriate error message (if there was a syntax error).
+	% MaybeInstConstraints is either bound to a map containing the inst
+	% constraints or an appropriate error message (if there was a syntax
+	% error).
 	% Attributes is bound to the remaining attributes.
 
-:- pred get_class_context(module_name, decl_attrs, decl_attrs,
-			maybe2(existq_tvars, class_constraints)).
-:- mode get_class_context(in, in, out, out) is det.
+:- pred get_class_context_and_inst_constraints(module_name, decl_attrs,
+	decl_attrs, maybe3(existq_tvars, class_constraints, inst_var_sub)).
+:- mode get_class_context_and_inst_constraints(in, in, out, out) is det.
 
-get_class_context(ModuleName, RevAttributes0, RevAttributes, MaybeContext) :-
+get_class_context_and_inst_constraints(ModuleName, RevAttributes0,
+		RevAttributes, MaybeContext) :-
 	%
 	% constraints and quantifiers should occur in the following
 	% order (outermost to innermost):
@@ -1898,16 +1932,17 @@ get_class_context(ModuleName, RevAttributes0, RevAttributes, MaybeContext) :-
 	combine_quantifier_results(MaybeUnivConstraints, MaybeExistConstraints,
 			ExistQVars, MaybeContext).
 
-:- pred combine_quantifier_results(maybe1(list(class_constraint)),
-		maybe1(list(class_constraint)), existq_tvars,
-		maybe2(existq_tvars, class_constraints)).
+:- pred combine_quantifier_results(maybe_class_and_inst_constraints,
+		maybe_class_and_inst_constraints, existq_tvars,
+		maybe3(existq_tvars, class_constraints, inst_var_sub)).
 :- mode combine_quantifier_results(in, in, in, out) is det.
 
 combine_quantifier_results(error(Msg, Term), _, _, error(Msg, Term)).
-combine_quantifier_results(ok(_), error(Msg, Term), _, error(Msg, Term)).
-combine_quantifier_results(
-	ok(UnivConstraints), ok(ExistConstraints), ExistQVars,
-	ok(ExistQVars, constraints(UnivConstraints, ExistConstraints))).
+combine_quantifier_results(ok(_, _), error(Msg, Term), _, error(Msg, Term)).
+combine_quantifier_results(ok(UnivConstraints, InstConstraints0),
+	ok(ExistConstraints, InstConstraints1), ExistQVars,
+	ok(ExistQVars, constraints(UnivConstraints, ExistConstraints),
+		InstConstraints0 `map__merge` InstConstraints1)).
 
 :- pred get_quant_vars(quantifier_type, module_name, decl_attrs, list(var),
 		decl_attrs, list(var)).
@@ -1927,7 +1962,7 @@ get_quant_vars(QuantType, ModuleName, Attributes0, Vars0,
 	).
 
 :- pred get_constraints(quantifier_type, module_name, decl_attrs, decl_attrs, 
-			maybe1(list(class_constraint))).
+			maybe_class_and_inst_constraints).
 :- mode get_constraints(in, in, in, out, out) is det.
 
 get_constraints(QuantType, ModuleName, Attributes0, Attributes,
@@ -1936,7 +1971,7 @@ get_constraints(QuantType, ModuleName, Attributes0, Attributes,
 		Attributes0 = [constraints(QuantType, ConstraintsTerm) - _Term
 				| Attributes1]
 	->
-		parse_class_constraints(ModuleName, ConstraintsTerm,
+		parse_class_and_inst_constraints(ModuleName, ConstraintsTerm,
 			MaybeConstraints0),
 		% there may be more constraints of the same type --
 		% collect them all and combine them
@@ -1946,18 +1981,17 @@ get_constraints(QuantType, ModuleName, Attributes0, Attributes,
 			MaybeConstraints0, MaybeConstraints)
 	;
 		Attributes = Attributes0,
-		MaybeConstraints = ok([])
+		MaybeConstraints = ok([], map__init)
 	).
 
-:- pred combine_constraint_list_results(maybe1(list(class_constraint)),
-	maybe1(list(class_constraint)), maybe1(list(class_constraint))).
+:- pred combine_constraint_list_results(maybe_class_and_inst_constraints,
+	maybe_class_and_inst_constraints, maybe_class_and_inst_constraints).
 :- mode combine_constraint_list_results(in, in, out) is det.
 
 combine_constraint_list_results(error(Msg, Term), _, error(Msg, Term)).
-combine_constraint_list_results(ok(_), error(Msg, Term), error(Msg, Term)).
-combine_constraint_list_results(ok(Constraints0), ok(Constraints1),
-		ok(Constraints)) :-
-	list__append(Constraints0, Constraints1, Constraints).
+combine_constraint_list_results(ok(_, _), error(Msg, Term), error(Msg, Term)).
+combine_constraint_list_results(ok(CC0, IC0), ok(CC1, IC1),
+		ok(CC0 ++ CC1, IC0 `map__merge` IC1)).
 
 :- pred get_existential_constraints_from_term(module_name, term, term,
 			maybe1(list(class_constraint))).
@@ -2012,212 +2046,360 @@ verify_type_and_mode_list_2([Head | Tail], First) :-
 :- mode process_func(in, in, in, in, in, in, out) is det.
 
 process_func(ModuleName, VarSet, Term, Cond, Attributes0, MaybeDet, Result) :-
-	get_class_context(ModuleName, Attributes0, Attributes, MaybeContext),
+	get_class_context_and_inst_constraints(ModuleName, Attributes0,
+		Attributes, MaybeContext),
 	(
-		MaybeContext = ok(ExistQVars, Constraints),
+		MaybeContext = ok(ExistQVars, Constraints, InstConstraints),
 		process_func_2(ModuleName, VarSet, Term,
-			Cond, MaybeDet, ExistQVars, Constraints, Attributes,
-			Result) 
+			Cond, MaybeDet, ExistQVars, Constraints,
+			InstConstraints, Attributes, Result) 
 	;
 		MaybeContext = error(String, ErrorTerm),
 		Result = error(String, ErrorTerm)
 	).
 
 :- pred process_func_2(module_name, varset, term, condition,
-	maybe(determinism), existq_tvars, class_constraints, decl_attrs,
-	maybe1(item)).
-:- mode process_func_2(in, in, in, in, in, in, in, in, out) is det.
+	maybe(determinism), existq_tvars, class_constraints, inst_var_sub,
+	decl_attrs, maybe1(item)).
+:- mode process_func_2(in, in, in, in, in, in, in, in, in, out) is det.
 
 process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet, 
-		ExistQVars, Constraints, Attributes, Result) :-
+		ExistQVars, Constraints, InstConstraints, Attributes, Result) :-
 	(
 		Term = term__functor(term__atom("="),
 				[FuncTerm, ReturnTypeTerm], _Context)
 	->
 		parse_implicitly_qualified_term(ModuleName, FuncTerm, Term,
 			"`:- func' declaration", R),
-		process_func_3(R, FuncTerm, ReturnTypeTerm, VarSet, MaybeDet,
-				Cond, ExistQVars, Constraints, Attributes,
-				Result)
+		process_func_3(R, FuncTerm, ReturnTypeTerm, Term, VarSet,
+			MaybeDet, Cond, ExistQVars, Constraints,
+			InstConstraints, Attributes, Result)
 	;
 		Result = error("`=' expected in `:- func' declaration", Term)
 	).
 
 
-:- pred process_func_3(maybe_functor, term, term, varset, maybe(determinism),
-			condition, existq_tvars, class_constraints, decl_attrs,
-			maybe1(item)).
-:- mode process_func_3(in, in, in, in, in, in, in, in, in, out) is det.
+:- pred process_func_3(maybe_functor, term, term, term, varset,
+	maybe(determinism), condition, existq_tvars, class_constraints,
+	inst_var_sub, decl_attrs, maybe1(item)).
+:- mode process_func_3(in, in, in, in, in, in, in, in, in, in, in, out) is det.
 
-process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet0, MaybeDet, Cond,
-		ExistQVars, ClassContext, Attributes0, Result) :-
-	( convert_type_and_mode_list(As0, As) ->
-		( \+ verify_type_and_mode_list(As) ->
-			Result = error("some but not all arguments have modes",
-					FuncTerm)
-		; convert_type_and_mode(ReturnTypeTerm, ReturnType) ->
-			(
-				As = [type_and_mode(_, _) | _],
-				ReturnType = type_only(_)
-			->
-				Result = error(
+process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet0,
+		MaybeDet, Cond, ExistQVars, ClassContext, InstConstraints,
+		Attributes0, Result) :-
+	( convert_type_and_mode_list(InstConstraints, As0, As) ->
+	    (
+		\+ verify_type_and_mode_list(As)
+	    ->
+		Result = error("some but not all arguments have modes",
+		    FuncTerm)
+	    ;
+		convert_type_and_mode(InstConstraints, ReturnTypeTerm,
+		    ReturnType)
+	    ->
+		(
+		    As = [type_and_mode(_, _) | _],
+		    ReturnType = type_only(_)
+		->
+		    Result = error(
 		"function arguments have modes, but function result doesn't",
-					FuncTerm)
-			;
-				As = [type_only(_) | _],
-				ReturnType = type_and_mode(_, _)
-			->
-				Result = error(
-		"function result has mode, but function arguments don't",
-					FuncTerm)
-			;
-				get_purity(Attributes0, Purity, Attributes),
-				varset__coerce(VarSet0, TVarSet),
-				varset__coerce(VarSet0, IVarSet),
-				list__append(As, [ReturnType], Args),
-				Result0 = ok(pred_or_func(TVarSet, IVarSet,
-					ExistQVars, function, F, Args,
-					MaybeDet, Cond, Purity, ClassContext)),
-				check_no_attributes(Result0, Attributes,
-					Result)
-			)
+				    FuncTerm)
 		;
+		    As = [type_only(_) | _],
+		    ReturnType = type_and_mode(_, _)
+		->
+		    Result = error(
+		"function result has mode, but function arguments don't",
+				    FuncTerm)
+		;
+		    get_purity(Attributes0, Purity, Attributes),
+		    varset__coerce(VarSet0, TVarSet),
+		    varset__coerce(VarSet0, IVarSet),
+		    list__append(As, [ReturnType], Args),
+		    (
+			inst_var_constraints_are_consistent_in_type_and_modes(
+			    Args)
+		    ->
+				
+			Result0 = ok(pred_or_func(TVarSet, IVarSet, ExistQVars,
+			    function, F, Args, MaybeDet, Cond, Purity,
+			    ClassContext)),
+			check_no_attributes(Result0, Attributes, Result)
+		    ;
 			Result = error(
-			"syntax error in return type of `:- func' declaration",
-					ReturnTypeTerm)
+	"inconsistent constraints on inst variables in function declaration",
+			    FullTerm)
+		    )
 		)
-	;
+	    ;
 		Result = error(
-			"syntax error in arguments of `:- func' declaration",
+		    "syntax error in return type of `:- func' declaration",
+					ReturnTypeTerm)
+	    )
+	;
+	    Result = error("syntax error in arguments of `:- func' declaration",
 					FuncTerm)
 	).
-process_func_3(error(M, T), _, _, _, _, _, _, _, _, error(M, T)).
+process_func_3(error(M, T), _, _, _, _, _, _, _, _, _, _, error(M, T)).
 
 %-----------------------------------------------------------------------------%
 
 	% parse a `:- mode p(...)' declaration
 
-:- pred process_mode(module_name, varset, term, condition, maybe(determinism),
-		maybe1(item)).
-:- mode process_mode(in, in, in, in, in, out) is det.
+:- pred process_mode(module_name, varset, term, condition, decl_attrs,
+		maybe(determinism), maybe1(item)).
+:- mode process_mode(in, in, in, in, in, in, out) is det.
 
-process_mode(ModuleName, VarSet, Term, Cond, MaybeDet, Result) :-
+process_mode(ModuleName, VarSet, Term, Cond, Attributes, MaybeDet, Result) :-
 	(
 		Term = term__functor(term__atom("="),
 				[FuncTerm, ReturnTypeTerm], _Context)
 	->
 		parse_implicitly_qualified_term(ModuleName, FuncTerm, Term,
 				"function `:- mode' declaration", R),
-		process_func_mode(R, FuncTerm, ReturnTypeTerm, VarSet, MaybeDet,
-				Cond, Result)
+		process_func_mode(R, ModuleName, FuncTerm, ReturnTypeTerm,
+		    Term, VarSet, MaybeDet, Cond, Attributes, Result)
 	;
 		parse_implicitly_qualified_term(ModuleName, Term, Term,
 				"predicate `:- mode' declaration", R),
-		process_pred_mode(R, Term, VarSet, MaybeDet, Cond, Result)
+		process_pred_mode(R, ModuleName, Term, VarSet, MaybeDet, Cond,
+		    Attributes, Result)
 	).
 
-:- pred process_pred_mode(maybe_functor, term, varset, maybe(determinism),
-			condition, maybe1(item)).
-:- mode process_pred_mode(in, in, in, in, in, out) is det.
+:- pred process_pred_mode(maybe_functor, module_name, term, varset,
+		maybe(determinism), condition, decl_attrs, maybe1(item)).
+:- mode process_pred_mode(in, in, in, in, in, in, in, out) is det.
 
-process_pred_mode(ok(F, As0), PredMode, VarSet0, MaybeDet, Cond, Result) :-
+process_pred_mode(ok(F, As0), ModuleName, PredMode, VarSet0, MaybeDet, Cond,
+		Attributes0, Result) :-
 	(
-		convert_mode_list(As0, As1)
+	    convert_mode_list(allow_constrained_inst_var, As0, As1)
 	->
-		list__map(constrain_inst_vars_in_mode, As1, As),
+	    get_class_context_and_inst_constraints(ModuleName, Attributes0,
+		Attributes, MaybeConstraints),
+	    (
+		MaybeConstraints = ok(_, _, InstConstraints),
+		list__map(constrain_inst_vars_in_mode(InstConstraints),
+			As1, As),
 		varset__coerce(VarSet0, VarSet),
-		Result = ok(pred_or_func_mode(VarSet, predicate, F, As,
-				MaybeDet, Cond))
+		( inst_var_constraints_are_consistent_in_modes(As) ->
+		    Result0 = ok(pred_or_func_mode(VarSet, predicate, F, As,
+				    MaybeDet, Cond))
+		;
+		    Result0 = error("inconsistent constraints on inst variables in predicate mode declaration",
+			PredMode)
+		)
+	    ;
+		MaybeConstraints = error(String, Term),
+		Result0 = error(String, Term)
+	    ),
+	    check_no_attributes(Result0, Attributes, Result)
 	;
 		Result = error("syntax error in predicate mode declaration",
 				PredMode)
 	).
-process_pred_mode(error(M, T), _, _, _, _, error(M, T)).
+process_pred_mode(error(M, T), _, _, _, _, _, _, error(M, T)).
 
-:- pred process_func_mode(maybe_functor, term, term, varset, maybe(determinism),
-			condition, maybe1(item)).
-:- mode process_func_mode(in, in, in, in, in, in, out) is det.
+:- pred process_func_mode(maybe_functor, module_name, term, term, term, varset,
+		maybe(determinism), condition, decl_attrs, maybe1(item)).
+:- mode process_func_mode(in, in, in, in, in, in, in, in, in, out) is det.
 
-process_func_mode(ok(F, As0), FuncMode, RetMode0, VarSet0, MaybeDet, Cond,
-		Result) :-
+process_func_mode(ok(F, As0), ModuleName, FuncMode, RetMode0, FullTerm,
+		VarSet0, MaybeDet, Cond, Attributes0, Result) :-
 	(
-		convert_mode_list(As0, As1)
+	    convert_mode_list(allow_constrained_inst_var, As0, As1)
 	->
-		list__map(constrain_inst_vars_in_mode, As1, As),
-		( convert_mode(RetMode0, RetMode1) ->
-			constrain_inst_vars_in_mode(RetMode1, RetMode),
-			varset__coerce(VarSet0, VarSet),
-			list__append(As, [RetMode], ArgModes),
-			Result = ok(pred_or_func_mode(VarSet, function, F,
-					ArgModes, MaybeDet, Cond))
+	    get_class_context_and_inst_constraints(ModuleName, Attributes0,
+		Attributes, MaybeConstraints),
+	    (
+		MaybeConstraints = ok(_, _, InstConstraints),
+		list__map(constrain_inst_vars_in_mode(InstConstraints),
+		    As1, As),
+		(
+		    convert_mode(allow_constrained_inst_var, RetMode0, RetMode1)
+		->
+		    constrain_inst_vars_in_mode(InstConstraints, RetMode1,
+			RetMode),
+		    varset__coerce(VarSet0, VarSet),
+		    list__append(As, [RetMode], ArgModes),
+		    ( inst_var_constraints_are_consistent_in_modes(ArgModes) ->
+			Result0 = ok(pred_or_func_mode(VarSet, function,
+			    F, ArgModes, MaybeDet, Cond))
+		    ;
+			Result0 = error(
+	"inconsistent constraints on inst variables in function mode declaration",
+			    FullTerm)
+		    )
 		;
-			Result = error(
-		"syntax error in return mode of function mode declaration",
-					RetMode0)
+		    Result0 = error(
+		    "syntax error in return mode of function mode declaration",
+			RetMode0)
 		)
+	    ;
+		MaybeConstraints = error(String, Term),
+		Result0 = error(String, Term)
+	    ),
+	    check_no_attributes(Result0, Attributes, Result)
 	;
-		Result = error(
+	    Result = error(
 		"syntax error in arguments of function mode declaration",
-				FuncMode)
+		FuncMode)
 	).
-process_func_mode(error(M, T), _, _, _, _, _, error(M, T)).
+process_func_mode(error(M, T), _, _, _, _, _, _, _, _, error(M, T)).
 
 %-----------------------------------------------------------------------------%
 
-% Replace all occurrences of inst_var(I) with
-% ground(shared, constrained_inst_var(I)).
+constrain_inst_vars_in_mode(Mode0, Mode) :-
+	constrain_inst_vars_in_mode(map__init, Mode0, Mode).
 
-:- pred constrain_inst_vars_in_mode(mode, mode).
-:- mode constrain_inst_vars_in_mode(in, out) is det.
-
-constrain_inst_vars_in_mode(I0 -> F0, I -> F) :-
-	constrain_inst_vars_in_inst(I0, I),
-	constrain_inst_vars_in_inst(F0, F).
-constrain_inst_vars_in_mode(user_defined_mode(Name, Args0),
+constrain_inst_vars_in_mode(InstConstraints, I0 -> F0, I -> F) :-
+	constrain_inst_vars_in_inst(InstConstraints, I0, I),
+	constrain_inst_vars_in_inst(InstConstraints, F0, F).
+constrain_inst_vars_in_mode(InstConstraints, user_defined_mode(Name, Args0),
 		user_defined_mode(Name, Args)) :-
-	list__map(constrain_inst_vars_in_inst, Args0, Args).
+	list__map(constrain_inst_vars_in_inst(InstConstraints), Args0, Args).
 
-:- pred constrain_inst_vars_in_inst(inst, inst).
-:- mode constrain_inst_vars_in_inst(in, out) is det.
+:- pred constrain_inst_vars_in_inst(inst_var_sub, inst, inst).
+:- mode constrain_inst_vars_in_inst(in, in, out) is det.
 
-constrain_inst_vars_in_inst(any(U), any(U)).
-constrain_inst_vars_in_inst(free, free).
-constrain_inst_vars_in_inst(free(T), free(T)).
-constrain_inst_vars_in_inst(bound(U, BIs0), bound(U, BIs)) :-
+constrain_inst_vars_in_inst(_, any(U), any(U)).
+constrain_inst_vars_in_inst(_, free, free).
+constrain_inst_vars_in_inst(_, free(T), free(T)).
+constrain_inst_vars_in_inst(InstConstraints, bound(U, BIs0), bound(U, BIs)) :-
 	list__map((pred(functor(C, Is0)::in, functor(C, Is)::out) is det :-
-		list__map(constrain_inst_vars_in_inst, Is0, Is)), BIs0, BIs).
-constrain_inst_vars_in_inst(ground(U, none), ground(U, none)).
-constrain_inst_vars_in_inst(ground(U, higher_order(PredInstInfo0)),
+	    list__map(constrain_inst_vars_in_inst(InstConstraints), Is0, Is)),
+	    BIs0, BIs).
+constrain_inst_vars_in_inst(_, ground(U, none), ground(U, none)).
+constrain_inst_vars_in_inst(InstConstraints,
+		ground(U, higher_order(PredInstInfo0)),
 		ground(U, higher_order(PredInstInfo))) :-
-	constrain_inst_vars_in_pred_inst_info(PredInstInfo0, PredInstInfo).
-constrain_inst_vars_in_inst(ground(U, constrained_inst_var(V)),
-		ground(U, constrained_inst_var(V))).
-constrain_inst_vars_in_inst(not_reached, not_reached).
-constrain_inst_vars_in_inst(inst_var(V),
-		ground(shared, constrained_inst_var(V))).
-constrain_inst_vars_in_inst(defined_inst(Name0), defined_inst(Name)) :-
-	constrain_inst_vars_in_inst_name(Name0, Name).
-constrain_inst_vars_in_inst(abstract_inst(N, Is0), abstract_inst(N, Is)) :-
-	list__map(constrain_inst_vars_in_inst, Is0, Is).
+	constrain_inst_vars_in_pred_inst_info(InstConstraints, PredInstInfo0,
+		PredInstInfo).
+constrain_inst_vars_in_inst(InstConstraints,
+		constrained_inst_vars(Vars0, Inst0),
+		constrained_inst_vars(Vars, Inst)) :-
+	constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst1),
+	( Inst1 = constrained_inst_vars(Vars2, Inst2) ->
+		Vars = Vars0 `set__union` Vars2,
+		Inst = Inst2
+	;
+		Vars = Vars0,
+		Inst = Inst1
+	).
+constrain_inst_vars_in_inst(_, not_reached, not_reached).
+constrain_inst_vars_in_inst(InstConstraints, inst_var(Var),
+		constrained_inst_vars(set__make_singleton_set(Var), Inst)) :-
+	Inst = ( map__search(InstConstraints, Var, Inst0) -> 
+	    	Inst0
+	;
+		ground(shared, none)
+	).
+constrain_inst_vars_in_inst(InstConstraints, defined_inst(Name0),
+		defined_inst(Name)) :-
+	constrain_inst_vars_in_inst_name(InstConstraints, Name0, Name).
+constrain_inst_vars_in_inst(InstConstraints, abstract_inst(N, Is0),
+		abstract_inst(N, Is)) :-
+	list__map(constrain_inst_vars_in_inst(InstConstraints), Is0, Is).
 
-:- pred constrain_inst_vars_in_pred_inst_info(pred_inst_info, pred_inst_info).
-:- mode constrain_inst_vars_in_pred_inst_info(in, out) is det.
+:- pred constrain_inst_vars_in_pred_inst_info(inst_var_sub, pred_inst_info,
+		pred_inst_info).
+:- mode constrain_inst_vars_in_pred_inst_info(in, in, out) is det.
 
-constrain_inst_vars_in_pred_inst_info(PII0, PII) :-
+constrain_inst_vars_in_pred_inst_info(InstConstraints, PII0, PII) :-
 	PII0 = pred_inst_info(PredOrFunc, Modes0, Det),
-	list__map(constrain_inst_vars_in_mode, Modes0, Modes),
+	list__map(constrain_inst_vars_in_mode(InstConstraints), Modes0, Modes),
 	PII = pred_inst_info(PredOrFunc, Modes, Det).
 
-:- pred constrain_inst_vars_in_inst_name(inst_name, inst_name).
-:- mode constrain_inst_vars_in_inst_name(in, out) is det.
+:- pred constrain_inst_vars_in_inst_name(inst_var_sub, inst_name, inst_name).
+:- mode constrain_inst_vars_in_inst_name(in, in, out) is det.
 
-constrain_inst_vars_in_inst_name(Name0, Name) :-
+constrain_inst_vars_in_inst_name(InstConstraints, Name0, Name) :-
 	( Name0 = user_inst(SymName, Args0) ->
-		list__map(constrain_inst_vars_in_inst, Args0, Args),
+		list__map(constrain_inst_vars_in_inst(InstConstraints),
+			Args0, Args),
 		Name = user_inst(SymName, Args)
 	;
 		Name = Name0
 	).
+
+%-----------------------------------------------------------------------------%
+
+inst_var_constraints_are_consistent_in_modes(Modes) :-
+	inst_var_constraints_are_consistent_in_modes(Modes, map__init, _).
+
+:- pred inst_var_constraints_are_consistent_in_modes(list(mode),
+		inst_var_sub, inst_var_sub).
+:- mode inst_var_constraints_are_consistent_in_modes(in, in, out) is semidet.
+
+inst_var_constraints_are_consistent_in_modes(Modes) -->
+	list__foldl(inst_var_constraints_are_consistent_in_mode, Modes).
+
+:- pred inst_var_constraints_are_consistent_in_type_and_modes(
+		list(type_and_mode)).
+:- mode inst_var_constraints_are_consistent_in_type_and_modes(in) is semidet.
+
+inst_var_constraints_are_consistent_in_type_and_modes(TypeAndModes) :-
+	list__foldl((pred(TypeAndMode::in, in, out) is semidet -->
+		( { TypeAndMode = type_only(_) }
+		; { TypeAndMode = type_and_mode(_, Mode) },
+			inst_var_constraints_are_consistent_in_mode(Mode)
+		)), TypeAndModes, map__init, _).
+
+:- pred inst_var_constraints_are_consistent_in_mode(mode, inst_var_sub,
+		inst_var_sub).
+:- mode inst_var_constraints_are_consistent_in_mode(in, in, out) is semidet.
+
+inst_var_constraints_are_consistent_in_mode(InitialInst -> FinalInst) -->
+	inst_var_constraints_are_consistent_in_inst(InitialInst),
+	inst_var_constraints_are_consistent_in_inst(FinalInst).
+inst_var_constraints_are_consistent_in_mode(user_defined_mode(_, ArgInsts)) -->
+	inst_var_constraints_are_consistent_in_insts(ArgInsts).
+
+:- pred inst_var_constraints_are_consistent_in_insts(list(inst), inst_var_sub,
+		inst_var_sub).
+:- mode inst_var_constraints_are_consistent_in_insts(in, in, out) is semidet.
+
+inst_var_constraints_are_consistent_in_insts(Insts) -->
+	list__foldl(inst_var_constraints_are_consistent_in_inst, Insts).
+
+:- pred inst_var_constraints_are_consistent_in_inst(inst, inst_var_sub,
+		inst_var_sub).
+:- mode inst_var_constraints_are_consistent_in_inst(in, in, out) is semidet.
+
+inst_var_constraints_are_consistent_in_inst(any(_)) --> [].
+inst_var_constraints_are_consistent_in_inst(free) --> [].
+inst_var_constraints_are_consistent_in_inst(free(_)) --> [].
+inst_var_constraints_are_consistent_in_inst(bound(_, BoundInsts)) -->
+	list__foldl((pred(functor(_, Insts)::in, in, out) is semidet -->
+		inst_var_constraints_are_consistent_in_insts(Insts)),
+		BoundInsts).
+inst_var_constraints_are_consistent_in_inst(ground(_, GroundInstInfo)) -->
+	( { GroundInstInfo = none }
+	; { GroundInstInfo = higher_order(pred_inst_info(_, Modes, _)) },
+		inst_var_constraints_are_consistent_in_modes(Modes)
+	).
+inst_var_constraints_are_consistent_in_inst(not_reached) --> [].
+inst_var_constraints_are_consistent_in_inst(inst_var(_)) -->
+	{ error("inst_var_constraints_are_consistent_in_inst: unconstrained inst_var") }.
+inst_var_constraints_are_consistent_in_inst(defined_inst(InstName)) -->
+	( { InstName = user_inst(_, Insts) } ->
+		inst_var_constraints_are_consistent_in_insts(Insts)
+	;
+		[]
+	).
+inst_var_constraints_are_consistent_in_inst(abstract_inst(_, Insts)) -->
+	inst_var_constraints_are_consistent_in_insts(Insts).
+inst_var_constraints_are_consistent_in_inst(
+		constrained_inst_vars(InstVars, Inst)) -->
+	set__fold((pred(InstVar::in, in, out) is semidet -->
+		( Inst0 =^ map__elem(InstVar) ->
+			% Check that the inst_var constraint is consistent with
+			% the previous constraint on this inst_var.
+			{ Inst = Inst0 }
+		;
+			^ map__elem(InstVar) := Inst
+		)), InstVars),
+	inst_var_constraints_are_consistent_in_inst(Inst).
 
 %-----------------------------------------------------------------------------%
 
@@ -2303,7 +2485,8 @@ convert_inst_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
 			% inst, i.e. that it does not have the form of
 			% one of the builtin insts
 			\+ (
-				convert_inst(Head, UserInst),
+				convert_inst(no_allow_constrained_inst_var,
+					Head, UserInst),
 				UserInst = defined_inst(user_inst(_, _))
 			)
 		->
@@ -2311,7 +2494,8 @@ convert_inst_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
 		;
 			% should improve the error message here
 			(
-				convert_inst(Body, ConvertedBody)
+				convert_inst(no_allow_constrained_inst_var,
+					Body, ConvertedBody)
 			->
 				list__map(term__coerce_var, Args, InstArgs),
 				Result = ok(
@@ -2378,9 +2562,10 @@ make_inst_defn(VarSet0, Cond, processed_inst_body(Name, Params, InstDefn),
 
 	% parse a `:- mode foo :: ...' or `:- mode foo = ...' definition.
 
-:- pred parse_mode_decl(module_name, varset, term, maybe1(item)).
-:- mode parse_mode_decl(in, in, in, out) is det.
-parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
+:- pred parse_mode_decl(module_name, varset, term, decl_attrs, maybe1(item)).
+:- mode parse_mode_decl(in, in, in, in, out) is det.
+
+parse_mode_decl(ModuleName, VarSet, ModeDefn, Attributes, Result) :-
 	( %%% some [H, B]
 		mode_op(ModeDefn, H, B)
 	->
@@ -2388,7 +2573,8 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
 		convert_mode_defn(ModuleName, H, Body, R),
 		process_maybe1(make_mode_defn(VarSet, Condition), R, Result)
 	;
-		parse_mode_decl_pred(ModuleName, VarSet, ModeDefn, Result)
+		parse_mode_decl_pred(ModuleName, VarSet, ModeDefn, Attributes,
+			Result)
 	).
 
 	% People never seemed to remember what the right operator to use
@@ -2461,7 +2647,8 @@ convert_mode_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
 		;
 			% should improve the error message here
 			(
-				convert_mode(Body, ConvertedBody)
+				convert_mode(no_allow_constrained_inst_var,
+					Body, ConvertedBody)
 			->
 				list__map(term__coerce_var, Args, InstArgs),
 				Result = ok(processed_mode_body(Name,
@@ -2478,23 +2665,24 @@ convert_mode_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
 		Result = error("mode parameters must be variables", Head)
 	).
 
-:- pred convert_type_and_mode_list(list(term), list(type_and_mode)).
-:- mode convert_type_and_mode_list(in, out) is semidet.
-convert_type_and_mode_list([], []).
-convert_type_and_mode_list([H0|T0], [H|T]) :-
-	convert_type_and_mode(H0, H),
-	convert_type_and_mode_list(T0, T).
+:- pred convert_type_and_mode_list(inst_var_sub, list(term),
+		list(type_and_mode)).
+:- mode convert_type_and_mode_list(in, in, out) is semidet.
+convert_type_and_mode_list(_, [], []).
+convert_type_and_mode_list(InstConstraints, [H0|T0], [H|T]) :-
+	convert_type_and_mode(InstConstraints, H0, H),
+	convert_type_and_mode_list(InstConstraints, T0, T).
 
-:- pred convert_type_and_mode(term, type_and_mode).
-:- mode convert_type_and_mode(in, out) is semidet.
-convert_type_and_mode(Term, Result) :-
+:- pred convert_type_and_mode(inst_var_sub, term, type_and_mode).
+:- mode convert_type_and_mode(in, in, out) is semidet.
+convert_type_and_mode(InstConstraints, Term, Result) :-
 	(
 		Term = term__functor(term__atom("::"), [TypeTerm, ModeTerm],
 				_Context)
 	->
 		convert_type(TypeTerm, Type),
-		convert_mode(ModeTerm, Mode0),
-		constrain_inst_vars_in_mode(Mode0, Mode),
+		convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
+		constrain_inst_vars_in_mode(InstConstraints, Mode0, Mode),
 		Result = type_and_mode(Type, Mode)
 	;
 		convert_type(Term, Type),

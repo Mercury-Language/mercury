@@ -492,7 +492,8 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 			error("get_mode_of_args failed")
 		),
 		(
-			inst_expand(ModuleInfo1, InstOfX, InstOfX1),
+			inst_expand_and_remove_constrained_inst_vars(
+				ModuleInfo1, InstOfX, InstOfX1),
 			list__length(ArgVars0, Arity),
 			get_arg_insts(InstOfX1, InstConsId, Arity, InstOfXArgs),
 			get_mode_of_args(Inst, InstOfXArgs, ModeOfXArgs0)
@@ -1193,6 +1194,8 @@ bind_args(bound(_Uniq, List), Args) -->
 		{ List = [functor(_, InstList)] },
 		bind_args_2(Args, InstList)
 	).
+bind_args(constrained_inst_vars(_, Inst), Args) -->
+	bind_args(Inst, Args).
 
 :- pred bind_args_2(list(prog_var), list(inst), mode_info, mode_info).
 :- mode bind_args_2(in, in, mode_info_di, mode_info_uo) is semidet.
@@ -1235,6 +1238,8 @@ get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-
 		List = [functor(_Name, ArgInstsB)],
 		get_mode_of_args_2(ArgInstsA, ArgInstsB, ArgModes)
 	).
+get_mode_of_args(constrained_inst_vars(_, Inst), ArgInsts, ArgModes) :-
+	get_mode_of_args(Inst, ArgInsts, ArgModes).
 
 :- pred get_mode_of_args_2(list(inst), list(inst), list(mode)).
 :- mode get_mode_of_args_2(in, in, out) is semidet.
