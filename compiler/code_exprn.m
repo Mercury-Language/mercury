@@ -140,9 +140,8 @@
 :- import_module exprn_aux.
 :- import_module bool, map, bag, set, require, int, term, string.
 
-:- type var_stat	--->
-		evaled(set(rval))
-	;	cached(rval).
+:- type var_stat	--->	evaled(set(rval))
+			;	cached(rval).
 
 :- type var_map	==	map(var, var_stat).
 
@@ -793,21 +792,26 @@ code_exprn__cache_exprn(Var, Rval) -->
 code_exprn__place_var(Var, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
 	(
-		{ map__search(Vars0, Var, Stat0) }
+		{ map__search(Vars0, Var, Stat) }
 	->
-		{ Stat = Stat0 }
+		(
+			{ Stat = cached(Exprn) },
+			code_exprn__place_cached(Exprn, Var, Lval, Code)
+		;
+			{ Stat = evaled(Rvals) },
+			code_exprn__place_evaled(Rvals, Var, Lval, Code)
+		)
 	;
 		code_exprn__get_var_name(Var, Name),
 		{ string__append_list(["variable ", Name, " not found"], Msg) },
 		{ error(Msg) }
-	),
-	code_exprn__place_var_2(Stat, Var, Lval, Code).
+	).
 
-:- pred code_exprn__place_var_2(var_stat, var, lval, code_tree,
+:- pred code_exprn__place_cached(rval, var, lval, code_tree,
 						exprn_info, exprn_info).
-:- mode code_exprn__place_var_2(in, in, in, out, in, out) is det.
+:- mode code_exprn__place_cached(in, in, in, out, in, out) is det.
 
-code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
+code_exprn__place_cached(Exprn0, Var, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
 	(
 		{ exprn_aux__vars_in_rval(Exprn0, []) }
@@ -856,7 +860,11 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 		code_exprn__place_expression(Exprn0, Var, Lval, Code)
 	).
 
-code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
+:- pred code_exprn__place_evaled(set(rval), var, lval, code_tree,
+						exprn_info, exprn_info).
+:- mode code_exprn__place_evaled(in, in, in, out, in, out) is det.
+
+code_exprn__place_evaled(Rvals0, Var, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
 	(
 		{ set__member(lval(Lval), Rvals0) }
@@ -965,6 +973,21 @@ code_exprn__place_expression(Exprn0, Var, Lval, Code) -->
 :- mode code_exprn__clear_lval(in, in, out, out, in, out) is det.
 
 code_exprn__clear_lval(Lval, Rval0, Rval, Code) -->
+	code_exprn__clear_lval_return_shuffle(Lval, MaybeShuffle, Code),
+	(
+		{ MaybeShuffle = yes(NewLval) }
+	->
+		{ exprn_aux__substitute_lval_in_rval(Lval, NewLval,
+			Rval0, Rval) }
+	;
+		{ Rval = Rval0 }
+	).
+
+:- pred code_exprn__clear_lval_return_shuffle(lval, maybe(lval),
+				code_tree, exprn_info, exprn_info).
+:- mode code_exprn__clear_lval_return_shuffle(in, out, out, in, out) is det.
+
+code_exprn__clear_lval_return_shuffle(Lval, MaybeShuffle, Code) -->
 	(
 		code_exprn__get_vars(Vars0),
 		{ code_exprn__lval_in_use(Lval, Vars0) }
@@ -974,14 +997,13 @@ code_exprn__clear_lval(Lval, Rval0, Rval, Code) -->
 		code_exprn__relocate_lval(VarsList0, Lval, reg(Reg), VarsList),
 		{ map__from_assoc_list(VarsList, Vars) },
 		code_exprn__set_vars(Vars),
-		{ exprn_aux__substitute_lval_in_rval(Lval, reg(Reg),
-								Rval0, Rval) },
+		{ MaybeShuffle = yes(reg(Reg)) },
 		{ Code = node([
 			assign(reg(Reg), lval(Lval)) -
 				"shuffle lval"
 		]) }
 	;
-		{ Rval = Rval0 },
+		{ MaybeShuffle = no },
 		{ Code = empty }
 	).
 
