@@ -61,29 +61,51 @@ peephole__opt_proc_list(Options, [P0|Ps0], [P|Ps]) :-
 
 peephole__opt_proc(Options, c_procedure(Name, Arity, Mode, Instructions0),
 		   c_procedure(Name, Arity, Mode, Instructions)) :-
+	peephole__repeat_opts(Options, Instructions0, Instructions1),
+	peephole__nonrepeat_opts(Options, Instructions1, Instructions).
+
+:- pred peephole__repeat_opts(option_table, list(instruction),
+	list(instruction)).
+:- mode peephole__repeat_opts(in, in, out) is det.
+
+peephole__repeat_opts(Options, Instructions0, Instructions) :-
 	options__lookup_bool_option(Options, peephole_jump_opt, Jumpopt),
 	( Jumpopt = yes ->
-		peephole__jumpopt_instr_list(Instructions0, Instructions1)
+		peephole__short_circuit(Instructions0, Instructions1, Mod0)
 	;
-		Instructions1 = Instructions0
+		Instructions1 = Instructions0,
+		Mod0 = no
 	),
 	options__lookup_bool_option(Options, peephole_local, Local),
 	( Local = yes ->
-		peephole__opt_instr_list(Instructions1, Instructions2)
+		peephole__local_opt(Instructions1, Instructions2, Mod1)
 	;
-		Instructions2 = Instructions1
+		Instructions2 = Instructions1,
+		Mod1 = no
 	),
 	options__lookup_bool_option(Options, peephole_label_elim, LabelElim),
 	( LabelElim = yes ->
-		peephole__label_elim(Instructions2, Instructions3)
+		peephole__label_elim(Instructions2, Instructions3, Mod2)
 	;
-		Instructions3 = Instructions2
+		Instructions3 = Instructions2,
+		Mod2 = no
 	),
+	( Mod0 = no, Mod1 = no, Mod2 = no ->
+		Instructions = Instructions3
+	;
+		peephole__repeat_opts(Options, Instructions3, Instructions)
+	).
+
+:- pred peephole__nonrepeat_opts(option_table, list(instruction),
+	list(instruction)).
+:- mode peephole__nonrepeat_opts(in, in, out) is det.
+
+peephole__nonrepeat_opts(Options, Instructions0, Instructions) :-
 	options__lookup_bool_option(Options, peephole_value_number, ValueNumber),
 	( ValueNumber = yes ->
-		value_number__optimize(Instructions3, Instructions)
+		value_number__optimize(Instructions0, Instructions)
 	;
-		Instructions = Instructions3
+		Instructions = Instructions0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -93,13 +115,13 @@ peephole__opt_proc(Options, c_procedure(Name, Arity, Mode, Instructions0),
 
 :- type jumpmap == map(label, instruction).
 
-:- pred peephole__jumpopt_instr_list(list(instruction), list(instruction)).
-:- mode peephole__jumpopt_instr_list(in, out) is det.
+:- pred peephole__short_circuit(list(instruction), list(instruction), bool).
+:- mode peephole__short_circuit(in, out, out) is det.
 
-peephole__jumpopt_instr_list(Instructions0, Instructions) :-
+peephole__short_circuit(Instructions0, Instructions, Mod) :-
 	map__init(Jumpmap0),
 	peephole__jumpopt_build_jumpmap(Instructions0, Jumpmap0, Jumpmap),
-	peephole__jumpopt_instr_list(Instructions0, Jumpmap, Instructions).
+	peephole__jumpopt_instr_list(Instructions0, Jumpmap, Instructions, Mod).
 
 :- pred peephole__jumpopt_build_jumpmap(list(instruction), jumpmap, jumpmap).
 :- mode peephole__jumpopt_build_jumpmap(in, di, uo) is det.
@@ -127,12 +149,12 @@ peephole__jumpopt_build_jumpmap([Instr - _Comment|Instructions],
 	peephole__jumpopt_build_jumpmap(Instructions, Jumpmap1, Jumpmap).
 
 :- pred peephole__jumpopt_instr_list(list(instruction),
-	map(label, instruction), list(instruction)).
-:- mode peephole__jumpopt_instr_list(in, in, out) is det.
+	map(label, instruction), list(instruction), bool).
+:- mode peephole__jumpopt_instr_list(in, in, out, out) is det.
 
-peephole__jumpopt_instr_list([], _Jumpmap, []).
+peephole__jumpopt_instr_list([], _Jumpmap, [], no).
 peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
-		[Instr|Moreinstr]) :-
+		[Instr|Moreinstr], Mod) :-
 	Instr0 = Uinstr0 - Comment0,
 	string__append(Comment0, " (redirected return)", Redirect),
 	( Uinstr0 = call(Proc, Retlabel) ->
@@ -140,33 +162,40 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
 		( Retlabel = Destlabel ->
-			Instr = Instr0
+			Instr = Instr0,
+			Mod0 = no
 		;
-			Instr = call(Proc, Destlabel) - Redirect
+			Instr = call(Proc, Destlabel) - Redirect,
+			Mod0 = yes
 		)
 	; Uinstr0 = entrycall(Proc, Retlabel) ->
 		map__lookup(Jumpmap, Retlabel, Retinstr),
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
 		( Retlabel = Destlabel ->
-			Instr = Instr0
+			Instr = Instr0,
+			Mod0 = no
 		;
-			Instr = entrycall(Proc, Destlabel) - Redirect
+			Instr = entrycall(Proc, Destlabel) - Redirect,
+			Mod0 = yes
 		)
 	; Uinstr0 = unicall(Unilabel, Retlabel) ->
 		map__lookup(Jumpmap, Retlabel, Retinstr),
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
 		( Retlabel = Destlabel ->
-			Instr = Instr0
+			Instr = Instr0,
+			Mod0 = no
 		;
-			Instr = unicall(Unilabel, Destlabel) - Redirect
+			Instr = unicall(Unilabel, Destlabel) - Redirect,
+			Mod0 = yes
 		)
 	; Uinstr0 = goto(Targetlabel) ->
 		( Moreinstr0 = [label(Targetlabel) - _|_] ->
 			% eliminating the goto (by the local peephole pass)
 			% is better than shortcircuiting it here
-			Instr = Instr0
+			Instr = Instr0,
+			Mod0 = no
 		;
 			map__lookup(Jumpmap, Targetlabel, Targetinstr),
 			peephole__jumpopt_final_dest(Targetlabel, Targetinstr,
@@ -176,19 +205,28 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 				Comment0, Shorted),
 			code_util__can_instr_fall_through(Udestinstr, Canfallthrough),
 			( Canfallthrough = no ->
-				Instr = Udestinstr - Shorted
+				Instr = Udestinstr - Shorted,
+				Mod0 = yes
 			;
 				( Targetlabel = Destlabel ->
-					Instr = Instr0
+					Instr = Instr0,
+					Mod0 = no
 				;
-					Instr = goto(Destlabel) - Shorted
+					Instr = goto(Destlabel) - Shorted,
+					Mod0 = yes
 				)
 			)
 		)
 	;
-		Instr = Instr0
+		Instr = Instr0,
+		Mod0 = no
 	),
-	peephole__jumpopt_instr_list(Moreinstr0, Jumpmap, Moreinstr).
+	peephole__jumpopt_instr_list(Moreinstr0, Jumpmap, Moreinstr, Mod1),
+	( Mod0 = no, Mod1 = no ->
+		Mod = no
+	;
+		Mod = yes
+	).
 
 :- pred peephole__jumpopt_final_dest(label, instruction, jumpmap,
 	label, instruction).
@@ -235,19 +273,24 @@ peephole__jumpopt_final_dest(Srclabel, Srcinstr, Jumpmap,
 	% when we find a sequence we can't optimize, we back up try
 	% so optimize the sequence starting with the previous instruction.
 
-:- pred peephole__opt_instr_list(list(instruction), list(instruction)).
-:- mode peephole__opt_instr_list(in, out) is det.
+:- pred peephole__local_opt(list(instruction), list(instruction), bool).
+:- mode peephole__local_opt(in, out, out) is det.
 
-peephole__opt_instr_list([], []).
-peephole__opt_instr_list([Instr0 - Comment|Instructions0], Instructions) :-
-	peephole__opt_instr_list(Instructions0, Instructions1),
-	peephole__opt_instr(Instr0, Comment, Instructions1, Instructions).
+peephole__local_opt([], [], no).
+peephole__local_opt([Instr0 - Comment|Instructions0], Instructions, Mod) :-
+	peephole__local_opt(Instructions0, Instructions1, Mod0),
+	peephole__opt_instr(Instr0, Comment, Instructions1, Instructions, Mod1),
+	( Mod0 = no, Mod1 = no ->
+		Mod = no
+	;
+		Mod = yes
+	).
 
 :- pred peephole__opt_instr(instr, string, list(instruction),
-				list(instruction)).
-:- mode peephole__opt_instr(in, in, in, out) is det.
+				list(instruction), bool).
+:- mode peephole__opt_instr(in, in, in, out, out) is det.
 
-peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions) :-
+peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions, Mod) :-
 	(
 		peephole__skip_comments(Instructions0, Instructions1),
 		peephole__opt_instr_2(Instr0, Comment0, Instructions1,
@@ -255,12 +298,14 @@ peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions) :-
 	->
 		( Instructions2 = [Instr2 - Comment2 | Instructions3] ->
 			peephole__opt_instr(Instr2, Comment2, Instructions3,
-				Instructions)
+				Instructions, _)
 		;
 			Instructions = Instructions2
-		)
+		),
+		Mod = yes
 	;
-		Instructions = [Instr0 - Comment0 | Instructions0]
+		Instructions = [Instr0 - Comment0 | Instructions0],
+		Mod = no
 	).
 
 :- pred peephole__opt_instr_2(instr, string, list(instruction),
@@ -270,7 +315,9 @@ peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions) :-
 	% A `call' followed by a `proceed' can be replaced with a `tailcall'.
 	%
 	%	call(Foo, &&ret);		tailcall(Foo)
+	%       <comments,labels>		<comments,labels>
 	%     ret:			=>    ret:
+	%       <comments,labels>		<comments,labels>
 	%	proceed				proceed
 	%
 	% Note that we can't delete the `ret: proceed', since `ret'
@@ -278,7 +325,9 @@ peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions) :-
 	% elimination will get rid of it later.
 
 peephole__opt_instr_2(call(CodeAddress, ContLabel), Comment, Instrs0, Instrs) :-
-	Instrs0 = [label(ContLabel) - _, proceed - _ | _],
+	peephole__is_this_label_next(ContLabel, Instrs0, Instrs1),
+	peephole__skip_comments_labels(Instrs1, Instrs2),
+	Instrs2 = [proceed - _ | _],
 	Instrs = [tailcall(CodeAddress) - Comment | Instrs0 ].
 
 	% if a `mkframe' is followed by a `modframe', with the instructions
@@ -304,14 +353,16 @@ peephole__opt_instr_2(mkframe(Descr, Slots, _), Comment, Instrs0, Instrs) :-
 	% dead code after a `goto' is deleted in label-elim.
 
 peephole__opt_instr_2(goto(Label), _Comment, Instrs0, Instrs) :-
-	peephole__is_this_label_next(Label, Instrs0),
+	peephole__is_this_label_next(Label, Instrs0, _),
 	Instrs = Instrs0.
 
 	% a conditional branch over a branch can be replaced
 	% by an inverse conditional branch
 	%
 	%	if (x) goto skip;		if (!x) goto somewhere
-	%	goto somewhere;		=>    skip:
+	%	<comments>			omit <comments>
+	%	goto somewhere;		=>	<comments, labels>
+	%	<comments, labels>	      skip:
 	%     skip:
 	%
 	% a conditional branch around a redo or fail can be replaced
@@ -319,31 +370,37 @@ peephole__opt_instr_2(goto(Label), _Comment, Instrs0, Instrs) :-
 	% the label can later be eliminated)
 	%
 	%	if (x) goto skip;		if (!x) redo;
-	%	redo;			=>    skip:
+	%	<comments>			omit <comments>
+	%	redo;			=>      <comments, labels>
+	%	<comments, labels>	      skip:
 	%     skip:
 	%
 	% a conditional branch to the very next instruction
 	% can be deleted
-	%	if (x) goto next;	=>    next:
+	%	if (x) goto next;	=>	<comments, labels>
+	%	<comments, labels>	      next:
 	%     next:
 
 peephole__opt_instr_2(if_val(Rval, goto(Target)), _C1, Instrs0, Instrs) :-
-	( Instrs0 = [goto(Somewhere) - C2, label(Target) - C3 | Instrs1] ->
+	peephole__skip_comments(Instrs0, Instrs1),
+	( Instrs1 = [goto(Somewhere) - C2 | Instrs2] ->
+		peephole__is_this_label_next(Target, Instrs2, _),
 		code_util__neg_rval(Rval, NotRval),
-		Instrs = [if_val(NotRval, goto(Somewhere)) - C2,
-			label(Target) - C3 | Instrs1]
-	; Instrs0 = [redo - C2, label(Target) - C3 | Instrs1] ->
+		Instrs = [if_val(NotRval, goto(Somewhere)) - C2 | Instrs2]
+
+	; Instrs1 = [redo - C2 | Instrs2] ->
+		peephole__is_this_label_next(Target, Instrs2, _),
 		code_util__neg_rval(Rval, NotRval),
-		Instrs = [if_val(NotRval, redo) - C2,
-			label(Target) - C3 | Instrs1]
-	; Instrs0 = [fail - C2, label(Target) - C3 | Instrs1] ->
+		Instrs = [if_val(NotRval, redo) - C2 | Instrs2]
+
+	; Instrs1 = [fail - C2 | Instrs2] ->
+		peephole__is_this_label_next(Target, Instrs2, _),
 		code_util__neg_rval(Rval, NotRval),
-		Instrs = [if_val(NotRval, fail) - C2,
-			label(Target) - C3 | Instrs1]
-	; Instrs0 = [label(Target) - _ | _] ->
-		Instrs = Instrs0
+		Instrs = [if_val(NotRval, fail) - C2 | Instrs2]
+
 	;
-		fail
+		peephole__is_this_label_next(Target, Instrs1, _),
+		Instrs = Instrs0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -355,13 +412,14 @@ peephole__opt_instr_2(if_val(Rval, goto(Target)), _C1, Instrs0, Instrs) :-
 
 :- type usemap == bintree_set(label).
 
-:- pred peephole__label_elim(list(instruction), list(instruction)).
-:- mode peephole__label_elim(in, out) is det.
+:- pred peephole__label_elim(list(instruction), list(instruction), bool).
+:- mode peephole__label_elim(in, out, out) is det.
 
-peephole__label_elim(Instructions0, Instructions) :-
+peephole__label_elim(Instructions0, Instructions, Mod) :-
 	bintree_set__init(Usemap0),
 	peephole__label_elim_build_usemap(Instructions0, Usemap0, Usemap),
-	peephole__label_elim_instr_list(Instructions0, Usemap, Instructions).
+	peephole__label_elim_instr_list(Instructions0, Usemap,
+		Instructions, Mod).
 
 :- pred peephole__label_elim_build_usemap(list(instruction), usemap, usemap).
 :- mode peephole__label_elim_build_usemap(in, di, uo) is det.
@@ -403,19 +461,19 @@ peephole__code_addr_build_usemap(Code_addr, Usemap0, Usemap) :-
 	).
 
 :- pred peephole__label_elim_instr_list(list(instruction),
-	usemap, list(instruction)).
-:- mode peephole__label_elim_instr_list(in, in, out) is det.
+	usemap, list(instruction), bool).
+:- mode peephole__label_elim_instr_list(in, in, out, out) is det.
 
-peephole__label_elim_instr_list(Instrs0, Usemap, Instrs) :-
-	peephole__label_elim_instr_list(Instrs0, yes, Usemap, Instrs).
+peephole__label_elim_instr_list(Instrs0, Usemap, Instrs, Mod) :-
+	peephole__label_elim_instr_list(Instrs0, yes, Usemap, Instrs, Mod).
 
 :- pred peephole__label_elim_instr_list(list(instruction),
-	bool, usemap, list(instruction)).
-:- mode peephole__label_elim_instr_list(in, in, in, out) is det.
+	bool, usemap, list(instruction), bool).
+:- mode peephole__label_elim_instr_list(in, in, in, out, out) is det.
 
-peephole__label_elim_instr_list([], _Fallthrough, _Usemap, []).
+peephole__label_elim_instr_list([], _Fallthrough, _Usemap, [], no).
 peephole__label_elim_instr_list([Instr0 | Moreinstrs0],
-		Fallthrough, Usemap, [Instr | Moreinstrs]) :-
+		Fallthrough, Usemap, [Instr | Moreinstrs], Mod) :-
 	( Instr0 = label(Label) - Comment ->
 		(
 		    (   Label = entrylabel(_, _, _, _)
@@ -423,16 +481,19 @@ peephole__label_elim_instr_list([Instr0 | Moreinstrs0],
 		    )
 		->
 			Instr = Instr0,
-			Fallthrough1 = yes
+			Fallthrough1 = yes,
+			Mod0 = no
 		;
-			peephole__eliminate(Instr0, yes(Fallthrough), Instr),
+			peephole__eliminate(Instr0, yes(Fallthrough), Instr,
+				Mod0),
 			Fallthrough1 = Fallthrough
 		)
 	;
 		( Fallthrough = yes ->
-			Instr = Instr0
+			Instr = Instr0,
+			Mod0 = no
 		;
-			peephole__eliminate(Instr0, no, Instr)
+			peephole__eliminate(Instr0, no, Instr, Mod0)
 		),
 		Instr0 = Uinstr0 - Comment,
 		code_util__can_instr_fall_through(Uinstr0, Canfallthrough),
@@ -443,15 +504,21 @@ peephole__label_elim_instr_list([Instr0 | Moreinstrs0],
 		)
 	),
 	peephole__label_elim_instr_list(Moreinstrs0, Fallthrough1, Usemap,
-				Moreinstrs).
+				Moreinstrs, Mod1),
+	( Mod0 = no, Mod1 = no ->
+		Mod = no
+	;
+		Mod = yes
+	).
 
-:- pred peephole__eliminate(instruction, maybe(bool), instruction).
-:- mode peephole__eliminate(in, in, out) is det.
+:- pred peephole__eliminate(instruction, maybe(bool), instruction, bool).
+:- mode peephole__eliminate(in, in, out, out) is det.
 
-peephole__eliminate(Uinstr0 - Comment0, Label, Uinstr - Comment) :-
+peephole__eliminate(Uinstr0 - Comment0, Label, Uinstr - Comment, Mod) :-
 	( Uinstr0 = comment(_) ->
 		Comment = Comment0,
-		Uinstr = Uinstr0
+		Uinstr = Uinstr0,
+		Mod = no
 	;
 		(
 			Label = yes(Follow)
@@ -468,7 +535,8 @@ peephole__eliminate(Uinstr0 - Comment0, Label, Uinstr - Comment) :-
 			% Label = no,
 			Uinstr = comment("eliminated instruction")
 		),
-		Comment = Comment0
+		Comment = Comment0,
+		Mod = yes
 	).
 
 %-----------------------------------------------------------------------------%
@@ -484,6 +552,18 @@ peephole__eliminate(Uinstr0 - Comment0, Label, Uinstr - Comment) :-
 peephole__skip_comments(Instrs0, Instrs) :-
 	( Instrs0 = [comment(_) - _ | Instrs1] ->
 		peephole__skip_comments(Instrs1, Instrs)
+	;
+		Instrs = Instrs0
+	).
+
+:- pred peephole__skip_comments_labels(list(instruction), list(instruction)).
+:- mode peephole__skip_comments_labels(in, out) is det.
+
+peephole__skip_comments_labels(Instrs0, Instrs) :-
+	( Instrs0 = [comment(_) - _ | Instrs1] ->
+		peephole__skip_comments_labels(Instrs1, Instrs)
+	; Instrs0 = [label(_) - _ | Instrs1] ->
+		peephole__skip_comments_labels(Instrs1, Instrs)
 	;
 		Instrs = Instrs0
 	).
@@ -512,20 +592,23 @@ peephole__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 		)
 	).
 
-	% Check whether the named label follows without any intervening code
+	% Check whether the named label follows without any intervening code.
+	% If yes, return code after label.
 
-:- pred peephole__is_this_label_next(label, list(instruction)).
-:- mode peephole__is_this_label_next(in, in) is semidet.
+:- pred peephole__is_this_label_next(label, list(instruction),
+	list(instruction)).
+:- mode peephole__is_this_label_next(in, in, out) is semidet.
 
-peephole__is_this_label_next(Label, [Instr | Moreinstr]) :-
+peephole__is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
 	Instr = Uinstr - _Comment,
 	( Uinstr = comment(_) ->
-		peephole__is_this_label_next(Label, Moreinstr)
+		peephole__is_this_label_next(Label, Moreinstr, Remainder)
 	; Uinstr = label(NextLabel) ->
 		( Label = NextLabel ->
-			true
+			Remainder = Moreinstr
 		;
-			peephole__is_this_label_next(Label, Moreinstr)
+			peephole__is_this_label_next(Label, Moreinstr,
+				Remainder)
 		)
 	;
 		fail
