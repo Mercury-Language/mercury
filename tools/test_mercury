@@ -444,6 +444,7 @@ cd $HOSTDIR
 rm -rf build.*/mercury
 rm -rf build.*/tests
 rm -rf build.*/mercury-cvs
+rm -rf build.*/mercury-gcc
 # Note that we do NOT want to clean out the GCC directory,
 # because checking out the GCC sources from the FSF's repository in
 # California takes a *long* time and a *lot* of network bandwidth,
@@ -469,9 +470,7 @@ cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
 	hg)
 		# Check out the Mercury gcc back-end interface sources
-		[ -d mercury-cvs ] || mkdir mercury-cvs
-		(cd mercury-cvs && cvs checkout $CHECKOUT_OPTS gcc/mercury) ||
-			{ false; exit 1; }
+		cvs checkout $CHECKOUT_OPTS mercury-gcc || { false; exit 1; }
 		# Check out the main gcc sources.
 		# See <http://gcc.gnu.org/cvs.html>.
 		#
@@ -500,7 +499,7 @@ case $HOST in
 		# into the appropriate place in the gcc sources
 		pwd
 		(cd gcc/gcc && rm -f mercury && \
-			ln -s ../../mercury-cvs/gcc/mercury mercury) \
+			ln -s ../../mercury-gcc mercury) \
 			|| { false; exit 1; }
 		# Now configure and build the gcc directory.
 		# The gcc cvs repository includes some automatically
