@@ -1012,7 +1012,8 @@
 			% exception otherwise.	
 
 :- type pragma_foreign_proc_extra_attribute
-	--->	max_stack_size(int).
+	--->	max_stack_size(int)
+	;	backend(backend).
 
 :- type pragma_foreign_proc_extra_attributes ==
 	list(pragma_foreign_proc_extra_attribute).
@@ -1561,7 +1562,7 @@
 		% applies to all of the following items in the list,
 		% not just up to the next pseudo-declaration.
 
-	;	external(sym_name_specifier)
+	;	external(maybe(backend), sym_name_specifier)
 
 	;	export(sym_list)
 	;	import(sym_list)
@@ -1573,6 +1574,10 @@
 		% of items in an interface file for use in
 		% smart recompilation.
 	;	version_numbers(module_name, recompilation__version_numbers).
+
+:- type backend
+	--->	high_level_backend
+	;	low_level_backend.
 
 :- type section
 	--->	implementation
@@ -1785,6 +1790,8 @@ add_extra_attribute(NewAttribute, Attributes0,
 :- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute)
 	= string.
 
+extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
+extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
 extra_attribute_to_string(max_stack_size(Size)) =
 	"max_stack_size(" ++ string__int_to_string(Size) ++ ")".
 

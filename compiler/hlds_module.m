@@ -94,8 +94,8 @@
 	% specializations, and a list of predicates which should be
 	% processed by higher_order.m to ensure the production of those
 	% versions.
-:- type type_spec_info
-	---> type_spec_info(
+:- type type_spec_info --->
+	type_spec_info(
 		set(pred_proc_id),	% Procedures for which there are
 					% user-requested type specializations.
 		set(pred_id),		% Set of procedures which need to be
@@ -1397,38 +1397,42 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 
 :- type predicate_table --->
 	predicate_table(
-		preds		:: pred_table,		% map from pred_id to
-							% pred_info
-		next_pred_id	:: pred_id,		% next available pred_id
-		pred_ids	:: list(pred_id),	% the keys of the
-							% pred_table - cached
-							% here for efficiency
-		accessibility_table :: accessibility_table,
-							% How is the predicate
-							% accessible?
+		preds			:: pred_table,
+					% map from pred_id to pred_info
+
+		next_pred_id		:: pred_id,
+					% next available pred_id
+
+		pred_ids		:: list(pred_id),
+					% the keys of the pred_table - cached
+					% here for efficiency
+
+		accessibility_table	:: accessibility_table,
+					% How is the predicate accessible?
 
 		% indexes on predicates
 
-		pred_name_index		:: name_index,	% map from pred name
-							% to pred_id
+		pred_name_index		:: name_index,
+					% map from pred name to pred_id
+
 		pred_name_arity_index	:: name_arity_index,
-							% map from pred name &
-							% arity to pred_id
+					% map from pred name & arity to pred_id
+
 		pred_module_name_arity_index :: module_name_arity_index,
-							% map from pred module,
-							% name & arity to
-							% pred_id
+					% map from pred module, name & arity
+					% to pred_id
 
 		% indexes on functions
-		func_name_index		:: name_index,	% map from func name
-							% to pred_id
+
+		func_name_index		:: name_index,
+					% map from func name to pred_id
+
 		func_name_arity_index	:: name_arity_index,
-							% map from func name &
-							% arity to pred_id
+					% map from func name & arity to pred_id
+
 		func_module_name_arity_index :: module_name_arity_index
-							% map from func module,
-							% name & arity to
-							% pred_id
+					% map from func module, name & arity
+					% to pred_id
 	).
 
 :- type accessibility_table == map(pred_id, name_accessibility).
@@ -1457,9 +1461,9 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 
 predicate_table_init(PredicateTable) :-
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
-				AccessibilityTable,
-				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
-				Func_N_Index, Func_NA_Index, Func_MNA_Index),
+		AccessibilityTable,
+		Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
+		Func_N_Index, Func_NA_Index, Func_MNA_Index),
 	map__init(Preds),
 	NextPredId = hlds_pred__initial_pred_id,
 	PredIds = [],
@@ -1473,8 +1477,8 @@ predicate_table_init(PredicateTable) :-
 
 predicate_table_optimize(PredicateTable0, PredicateTable) :-
 	PredicateTable0 = predicate_table(A, B, C, D,
-				Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
-				Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
+		Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
+		Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
 	map__optimize(Pred_N_Index0, Pred_N_Index),
 	map__optimize(Pred_NA_Index0, Pred_NA_Index),
 	map__optimize(Pred_MNA_Index0, Pred_MNA_Index),
@@ -1482,8 +1486,8 @@ predicate_table_optimize(PredicateTable0, PredicateTable) :-
 	map__optimize(Func_NA_Index0, Func_NA_Index),
 	map__optimize(Func_MNA_Index0, Func_MNA_Index),
 	PredicateTable = predicate_table(A, B, C, D,
-				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
-				Func_N_Index, Func_NA_Index, Func_MNA_Index).
+		Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
+		Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
 predicate_table_get_preds(PredicateTable, PredicateTable ^ preds).
 

@@ -438,9 +438,21 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
         )
     ; ModuleDefn = include_module(_) ->
         true
-    ; ModuleDefn = external(External) ->
+    ; ModuleDefn = external(MaybeBackend, External) ->
         ( External = name_arity(Name, Arity) ->
-            module_mark_as_external(Name, Arity, Context, !ModuleInfo, !IO)
+            lookup_current_backend(CurrentBackend, !IO),
+            (
+                (
+                    MaybeBackend = no
+                ;
+                    MaybeBackend = yes(Backend),
+                    Backend = CurrentBackend
+                )
+            ->
+                module_mark_as_external(Name, Arity, Context, !ModuleInfo, !IO)
+            ;
+                true
+            )
         ;
             prog_out__write_context(Context, !IO),
             report_warning("Warning: `external' declaration requires arity.\n",
@@ -5081,10 +5093,8 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
     globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
-        io__write_string("% Processing `:- pragma foreign_proc' for ",
-            !IO),
-        hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity,
-            !IO),
+        io__write_string("% Processing `:- pragma foreign_proc' for ", !IO),
+        hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
         io__write_string("...\n", !IO)
     ;
         VeryVerbose = no
@@ -5095,11 +5105,10 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
         % Lookup the pred declaration in the predicate table.
         % (If it's not there, print an error message and insert
         % a dummy declaration for the predicate.)
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
+    module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     (
-        predicate_table_search_pf_sym_arity(PredicateTable0,
-            is_fully_qualified, PredOrFunc, PredName,
-            Arity, [PredId0])
+        predicate_table_search_pf_sym_arity(PredTable0, is_fully_qualified,
+            PredOrFunc, PredName, Arity, [PredId0])
     ->
         PredId = PredId0
     ;
@@ -5108,104 +5117,105 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
             "`:- pragma foreign_proc' declaration",
             PredId, !ModuleInfo, !IO)
     ),
-        % Lookup the pred_info for this pred,
-        % add the pragma to the proc_info in the proc_table in the
-        % pred_info, and save the pred_info.
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
-    predicate_table_get_preds(PredicateTable1, Preds0),
-    map__lookup(Preds0, PredId, PredInfo0),
-    % opt_imported preds are initially tagged as imported and are
-    % tagged as opt_imported only if/when we see a clause (including
-    % a `pragma c_code' clause) for them
-    ( Status = opt_imported ->
-        pred_info_set_import_status(opt_imported,
-            PredInfo0, PredInfo1a)
-    ;
-        PredInfo1a = PredInfo0
-    ),
-    (
-        % If this procedure was previously defined as clauses only
-        % then we need to turn all the non mode-specific clauses
-        % into mode-specific clauses.
-        pred_info_clause_goal_type(PredInfo1a)
-    ->
-        pred_info_clauses_info(PredInfo1a, CInfo0),
-        clauses_info_clauses(CInfo0, ClauseList0),
-        ClauseList = list__map(
-            (func(C) =
-                ( C = clause([], Goal, mercury, Ctxt) ->
-                    clause(AllProcIds, Goal, mercury, Ctxt)
-                ;
-                    C
-                ) :-
-                AllProcIds = pred_info_all_procids(PredInfo1a)
-            ), ClauseList0),
-        clauses_info_set_clauses(ClauseList, CInfo0, CInfo),
-        pred_info_set_clauses_info(CInfo, PredInfo1a, PredInfo1)
-    ;
-        PredInfo1 = PredInfo1a
-    ),
-    (
-        pred_info_is_imported(PredInfo1)
-    ->
-        module_info_incr_errors(!ModuleInfo),
-        prog_out__write_context(Context, !IO),
-        io__write_string("Error: `:- pragma foreign_proc' " ++
-            "(or `pragma c_code')\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("declaration for imported ", !IO),
-        hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-        io__write_string(".\n", !IO)
-    ;
-            % Don't add clauses for foreign languages other
-            % than the ones we can generate code for.
-        not list__member(PragmaForeignLanguage, BackendForeignLangs)
-    ->
-        pred_info_update_goal_type(pragmas, PredInfo0, PredInfo),
-        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
-    ;
-        % add the pragma declaration to the proc_info for this procedure
-        pred_info_procedures(PredInfo1, Procs),
-        map__to_assoc_list(Procs, ExistingProcs),
-        pragma_get_modes(PVars, Modes),
-        (
-            get_procedure_matching_argmodes(ExistingProcs, Modes,
-                !.ModuleInfo, ProcId)
-        ->
-            pred_info_clauses_info(PredInfo1, Clauses0),
 
-            pred_info_arg_types(PredInfo1, ArgTypes),
-            pred_info_get_purity(PredInfo1, Purity),
-            clauses_info_add_pragma_foreign_proc(Purity,
-                Attributes, PredId, ProcId, VarSet, PVars,
-                ArgTypes, PragmaImpl, Context, PredOrFunc,
-                PredName, Arity, Clauses0, Clauses,
-                !ModuleInfo, !IO),
-            pred_info_set_clauses_info(Clauses,
-                PredInfo1, PredInfo2),
-            pred_info_update_goal_type(pragmas,
-                PredInfo2, PredInfo),
-            map__det_update(Preds0, PredId, PredInfo, Preds),
-            predicate_table_set_preds(Preds,
-                PredicateTable1, PredicateTable),
-            module_info_set_predicate_table(PredicateTable,
-                !ModuleInfo),
-            pragma_get_var_infos(PVars, ArgInfo),
-            maybe_warn_pragma_singletons(PragmaImpl,
-                PragmaForeignLanguage, ArgInfo,
-                Context, PredOrFunc - PredName/Arity,
-                !.ModuleInfo, !IO)
+        % Lookup the pred_info for this pred, add the pragma to the proc_info
+        % in the proc_table in the pred_info, and save the pred_info.
+    module_info_get_predicate_table(!.ModuleInfo, PredTable1),
+    predicate_table_get_preds(PredTable1, Preds0),
+    some [!PredInfo] (
+        map__lookup(Preds0, PredId, !:PredInfo),
+        PredInfo0 = !.PredInfo,
+
+        % opt_imported preds are initially tagged as imported and are
+        % tagged as opt_imported only if/when we see a clause (including
+        % a `pragma c_code' clause) for them
+        ( Status = opt_imported ->
+            pred_info_set_import_status(opt_imported, !PredInfo)
         ;
+            true
+        ),
+        (
+            % If this procedure was previously defined as clauses only
+            % then we need to turn all the non mode-specific clauses
+            % into mode-specific clauses.
+            pred_info_clause_goal_type(!.PredInfo)
+        ->
+            pred_info_clauses_info(!.PredInfo, CInfo0),
+            clauses_info_clauses(CInfo0, ClauseList0),
+            ClauseList = list__map(
+                (func(C) =
+                    ( C = clause([], Goal, mercury, Ctxt) ->
+                        clause(AllProcIds, Goal, mercury, Ctxt)
+                    ;
+                        C
+                    ) :-
+                    AllProcIds = pred_info_all_procids(!.PredInfo)
+                ), ClauseList0),
+            clauses_info_set_clauses(ClauseList, CInfo0, CInfo),
+            pred_info_set_clauses_info(CInfo, !PredInfo)
+        ;
+            true
+        ),
+        lookup_current_backend(CurrentBackend, !IO),
+        (
+            ExtraAttrs = extra_attributes(Attributes),
+            is_applicable_for_current_backend(CurrentBackend, ExtraAttrs) = no
+        ->
+            % Ignore this foreign_proc.
+            true
+        ;
+            pred_info_is_imported(!.PredInfo)
+        ->
             module_info_incr_errors(!ModuleInfo),
             prog_out__write_context(Context, !IO),
-            io__write_string("Error: `:- pragma foreign_proc' ",
-                !IO),
-            io__write_string("declaration for undeclared mode ",
-                !IO),
-            io__write_string("of ", !IO),
-            hlds_out__write_simple_call_id(PredOrFunc,
-                PredName/Arity, !IO),
+            io__write_string("Error: `:- pragma foreign_proc' " ++
+                "(or `pragma c_code')\n", !IO),
+            prog_out__write_context(Context, !IO),
+            io__write_string("declaration for imported ", !IO),
+            hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
             io__write_string(".\n", !IO)
+        ;
+                % Don't add clauses for foreign languages other
+                % than the ones we can generate code for.
+            not list__member(PragmaForeignLanguage, BackendForeignLangs)
+        ->
+            pred_info_update_goal_type(pragmas, PredInfo0, !:PredInfo),
+            module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
+        ;
+            % add the pragma declaration to the proc_info for this procedure
+            pred_info_procedures(!.PredInfo, Procs),
+            map__to_assoc_list(Procs, ExistingProcs),
+            pragma_get_modes(PVars, Modes),
+            (
+                get_procedure_matching_argmodes(ExistingProcs, Modes,
+                    !.ModuleInfo, ProcId)
+            ->
+                pred_info_clauses_info(!.PredInfo, Clauses0),
+                pred_info_arg_types(!.PredInfo, ArgTypes),
+                pred_info_get_purity(!.PredInfo, Purity),
+                clauses_info_add_pragma_foreign_proc(Purity, Attributes,
+                    PredId, ProcId, VarSet, PVars, ArgTypes, PragmaImpl,
+                    Context, PredOrFunc, PredName, Arity, Clauses0, Clauses,
+                    !ModuleInfo, !IO),
+                pred_info_set_clauses_info(Clauses, !PredInfo),
+                pred_info_update_goal_type(pragmas, !PredInfo),
+                map__det_update(Preds0, PredId, !.PredInfo, Preds),
+                predicate_table_set_preds(Preds, PredTable1, PredTable),
+                module_info_set_predicate_table(PredTable, !ModuleInfo),
+                pragma_get_var_infos(PVars, ArgInfo),
+                maybe_warn_pragma_singletons(PragmaImpl, PragmaForeignLanguage,
+                    ArgInfo, Context, PredOrFunc - PredName/Arity,
+                    !.ModuleInfo, !IO)
+            ;
+                module_info_incr_errors(!ModuleInfo),
+                prog_out__write_context(Context, !IO),
+                io__write_string("Error: `:- pragma foreign_proc' ", !IO),
+                io__write_string("declaration for undeclared mode ", !IO),
+                io__write_string("of ", !IO),
+                hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity,
+                    !IO),
+                io__write_string(".\n", !IO)
+            )
         )
     ).
 
@@ -6313,29 +6323,26 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         PVarSet, PVars, OrigArgTypes, PragmaImpl0, Context, PredOrFunc,
         PredName, Arity, !ClausesInfo, !ModuleInfo, !IO) :-
 
-    !.ClausesInfo = clauses_info(VarSet0, VarTypes, TVarNameMap,
-        VarTypes1, HeadVars, ClauseList, TI_VarMap, TCI_VarMap,
+    !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
+        InferredVarTypes, HeadVars, ClauseList, TI_VarMap, TCI_VarMap,
         _HasForeignClauses),
 
         % Find all the existing clauses for this mode, and
         % extract their implementation language and clause number
         % (that is, their index in the list).
-    NewLang = foreign_language(Attributes0),
-
     globals__io_get_globals(Globals, !IO),
     globals__io_get_target(Target, !IO),
-
-    list__foldl2(decide_action(Globals, Target, NewLang, ProcId),
-        ClauseList, add, FinalAction, 1, _),
+    NewLang = foreign_language(Attributes0),
+    list__foldl2(decide_action(Globals, Target, NewLang, ProcId), ClauseList,
+        add, FinalAction, 1, _),
 
     globals__io_get_backend_foreign_languages(BackendForeignLanguages, !IO),
     pragma_get_vars(PVars, Args0),
     pragma_get_var_infos(PVars, ArgInfo),
 
     %
-    % If the foreign language not one of the backend
-    % languages, we will have to generate an interface to it in a
-    % backend language.
+    % If the foreign language not one of the backend languages, we will
+    % have to generate an interface to it in a backend language.
     %
     foreign__extrude_pragma_implementation(BackendForeignLanguages,
         PVars, PredName, PredOrFunc, Context, !ModuleInfo,
@@ -6410,9 +6417,38 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
             NewClauseList = [NewClause | NewClauseListTail]
         ),
         HasForeignClauses = yes,
-        !:ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap,
-            VarTypes1, HeadVars, NewClauseList,
+        !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
+            InferredVarTypes, HeadVars, NewClauseList,
             TI_VarMap, TCI_VarMap, HasForeignClauses)
+    ).
+
+:- func is_applicable_for_current_backend(backend,
+    list(pragma_foreign_proc_extra_attribute)) = bool.
+
+is_applicable_for_current_backend(_CurrentBackend, []) = yes.
+is_applicable_for_current_backend(CurrentBackend, [Attr | Attrs]) = Result :-
+    (
+        Attr = max_stack_size(_),
+        Result = is_applicable_for_current_backend(CurrentBackend, Attrs)
+    ;
+        Attr = backend(Backend),
+        ( Backend = CurrentBackend ->
+            Result = is_applicable_for_current_backend(CurrentBackend, Attrs)
+        ;
+            Result = no
+        )
+    ).
+
+:- pred lookup_current_backend(backend::out, io::di, io::uo) is det.
+
+lookup_current_backend(CurrentBackend, !IO) :-
+    globals__io_lookup_bool_option(highlevel_code, HighLevel, !IO),
+    (
+        HighLevel = yes,
+        CurrentBackend = high_level_backend
+    ;
+        HighLevel= no,
+        CurrentBackend = low_level_backend
     ).
 
     % As we traverse the clauses, at each one decide which action to perform.

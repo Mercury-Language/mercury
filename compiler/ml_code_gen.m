@@ -2953,9 +2953,11 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
 	pragma_foreign_proc_extra_attributes) = target_code_attributes.
 
 get_target_code_attributes(_, []) = [].
-get_target_code_attributes(Lang, [max_stack_size(N) | Xs]) =
+get_target_code_attributes(Lang, [backend(_Backend) | Attrs]) =
+		get_target_code_attributes(Lang, Attrs).
+get_target_code_attributes(Lang, [max_stack_size(N) | Attrs]) =
 	( Lang = il ->
-		[max_stack_size(N) | get_target_code_attributes(Lang, Xs)]
+		[max_stack_size(N) | get_target_code_attributes(Lang, Attrs)]
 	;
 		[]
 	).
