@@ -14,12 +14,10 @@
 #include "mercury_debug.h"	/* we need to debug them */
 #include "mercury_prof.h"	/* we need to profile them */
 
-#define	MR_noprof_localcall(label, succ_cont)			\
-		do {						\
-			MR_debugcall(MR_LABEL(label), (succ_cont));\
-			MR_succip = (succ_cont);		\
-			MR_GOTO_LABEL(label);			\
-		} while (0)
+/*
+** The noprof (no profiling) versions of call, call_localret, localcall,
+** tailcall, and localtailcall.
+*/
 
 /*
 ** On some systems [basically those using PIC (Position Independent MR_Code)],
@@ -72,14 +70,61 @@
 		MR_noprof_call((proc), MR_LABEL(succ_cont))
 #endif
 
-#define	MR_localcall(label, succ_cont, current_label)		\
+#define	MR_noprof_localcall(label, succ_cont)			\
 		do {						\
-			MR_debugcall(MR_LABEL(label), (succ_cont)); \
+			MR_debugcall(MR_LABEL(label), (succ_cont));\
 			MR_succip = (succ_cont);		\
-			MR_PROFILE(MR_LABEL(label), (current_label)); \
-			MR_set_prof_current_proc(MR_LABEL(label)); \
 			MR_GOTO_LABEL(label);			\
 		} while (0)
+
+#define	MR_noprof_tailcall(proc)				\
+		do {						\
+			MR_debugtailcall(proc);			\
+			MR_GOTO(proc);				\
+		} while (0)
+
+#define	MR_noprof_localtailcall(label)				\
+		do {						\
+			MR_debugtailcall(MR_LABEL(label));	\
+			MR_GOTO_LABEL(label);			\
+		} while (0)
+
+/*
+** The shorthand versions of the non-profiling versions of
+** call_localret, localcall, tailcall, and localtailcall.
+** To a first approximation, just plain call doesn't occur at all,
+** so it isn't worth a shorthand form.
+*/
+
+#define	MR_np_call_localret(proc, succ_cont)			\
+	MR_noprof_call_localret(MR_add_prefix(proc), MR_add_prefix(succ_cont))
+
+#define	MR_np_call_localret_ent(proc, succ_cont)		\
+	MR_noprof_call_localret(MR_ENTRY_AP(proc), MR_add_prefix(succ_cont))
+
+#define	MR_np_localcall(label, succ_cont)			\
+	MR_noprof_localcall(MR_add_prefix(label), MR_add_prefix(succ_cont))
+
+#define	MR_np_localcall_ent(label, succ_cont)			\
+	MR_noprof_localcall(MR_add_prefix(label), MR_ENTRY_AP(succ_cont))
+
+#define	MR_np_localcall_lab(label, succ_cont)			\
+	MR_noprof_localcall(MR_add_prefix(label), MR_LABEL_AP(succ_cont))
+
+#define	MR_np_tailcall(proc)					\
+	MR_noprof_tailcall(MR_add_prefix(proc))
+
+#define	MR_np_tailcall_ent(proc)				\
+	MR_noprof_tailcall(MR_ENTRY_AP(proc))
+
+#define	MR_np_localtailcall(label)				\
+	MR_noprof_localtailcall(MR_add_prefix(label))
+
+/*
+** The plain (possibly profiling, depending on #defines) versions of
+** call, call_localret, localcall, tailcall, and localtailcall.
+** These take an extra argument, the current label.
+*/
 
 #define	MR_call(proc, succ_cont, current_label)			\
 		do {						\
@@ -95,33 +140,30 @@
 			MR_noprof_call_localret(proc, succ_cont);\
 		} while (0)
 
-#define	MR_localtailcall(label, current_label)			\
+#define	MR_localcall(label, succ_cont, current_label)		\
 		do {						\
-			MR_debugtailcall(MR_LABEL(label));	\
 			MR_PROFILE(MR_LABEL(label), (current_label)); \
 			MR_set_prof_current_proc(MR_LABEL(label)); \
-			MR_GOTO_LABEL(label);			\
-		} while (0)
-
-#define	MR_noprof_localtailcall(label)				\
-		do {						\
-			MR_debugtailcall(MR_LABEL(label));	\
-			MR_GOTO_LABEL(label);			\
+			MR_noprof_localcall(label, succ_cont);	\
 		} while (0)
 
 #define	MR_tailcall(proc, current_label)			\
 		do {						\
-			MR_debugtailcall(proc);			\
 			MR_PROFILE((proc), (current_label));	\
 			MR_set_prof_current_proc(proc);		\
-			MR_GOTO(proc);				\
+			MR_noprof_tailcall(proc); 		\
 		} while (0)
 
-#define	MR_noprof_tailcall(proc)				\
+#define	MR_localtailcall(label, current_label)			\
 		do {						\
-			MR_debugtailcall(proc);			\
-			MR_GOTO(proc);				\
+			MR_PROFILE(MR_LABEL(label), (current_label)); \
+			MR_set_prof_current_proc(MR_LABEL(label)); \
+			MR_noprof_localtailcall(label); 	\
 		} while (0)
+
+/*
+** The macros for returning from calls from procedures.
+*/
 
 #define	MR_proceed()						\
 		do {						\

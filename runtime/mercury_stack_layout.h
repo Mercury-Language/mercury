@@ -402,6 +402,9 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 #define	MR_LAYOUT_FROM_LABEL(label)					\
 	MR_PASTE2(mercury_data__label_layout__, label)
 
+#define	MR_LABEL_LAYOUT_REF(label)					\
+	((const MR_Label_Layout *) &MR_LAYOUT_FROM_LABEL(MR_add_prefix(label)))
+
 #define MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(label, entry) \
 	MR_Label_Layout_No_Var_Info					\
 	MR_LAYOUT_FROM_LABEL(label) = {					\

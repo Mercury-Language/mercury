@@ -74,9 +74,11 @@
 
 #define	MR_field(t, p, i)		((MR_Word *) MR_body((p), (t)))[i]
 #define	MR_const_field(t, p, i)		((const MR_Word *) MR_body((p), (t)))[i]
+#define	MR_cfield(t, p, i)		(MR_const_field(t, p, i))
 
 #define	MR_tfield(t, p, i)		(MR_field(MR_mktag(t), p, i))
 #define	MR_const_tfield(t, p, i)	(MR_const_field(MR_mktag(t), p, i))
+#define	MR_ctfield(t, p, i)		(MR_const_tfield(t, p, i))
 
 #define	MR_mask_field(p, i)		((MR_Word *) MR_strip_tag(p))[i]
 #define	MR_const_mask_field(p, i)	((const MR_Word *) MR_strip_tag(p))[i]
@@ -338,5 +340,28 @@
         x = MR_CONVERT_C_ENUM_CONSTANT(MR_PASTE2(x, _val)), \
         MR_PASTE2(mercury__private_builtin__,x) = x, \
         MR_PASTE2(x, _dummy) = MR_PASTE2(x, _val)
+
+#define	MR_INT_EQ(rval, val)	(((MR_Integer) (rval)) == ((MR_Integer) (val)))
+#define	MR_INT_NE(rval, val)	(((MR_Integer) (rval)) != ((MR_Integer) (val)))
+#define	MR_INT_LT(rval, val)	(((MR_Integer) (rval)) <  ((MR_Integer) (val)))
+#define	MR_INT_LE(rval, val)	(((MR_Integer) (rval)) <= ((MR_Integer) (val)))
+#define	MR_INT_GT(rval, val)	(((MR_Integer) (rval)) >  ((MR_Integer) (val)))
+#define	MR_INT_GE(rval, val)	(((MR_Integer) (rval)) >= ((MR_Integer) (val)))
+
+#define	MR_PTAG_TEST(rval, ptag)					\
+	(MR_tag(rval) == MR_mktag(ptag))
+#define	MR_PTAG_TESTR(rval, ptag)					\
+	(!MR_PTAG_TEST((rval), (ptag)))
+
+#define	MR_RTAGS_TEST(rval, ptag, stag)					\
+	((MR_tag(rval) == MR_mktag(ptag)) &&				\
+	(MR_const_tfield((ptag), (rval), 0) == (stag)))
+#define	MR_RTAGS_TESTR(rval, ptag, stag)				\
+	(!MR_RTAGS_TEST((rval), (ptag), (stag)))
+
+#define	MR_LTAGS_TEST(rval, ptag, stag)					\
+	(((MR_Integer) (rval)) == ((MR_Integer) (MR_tbmkword(ptag, stag))))
+#define	MR_LTAGS_TESTR(rval, ptag, stag)				\
+	(!MR_LTAGS_TEST((rval), (ptag), (stag)))
 
 #endif	/* not MERCURY_TAGS_H */

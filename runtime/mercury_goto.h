@@ -887,6 +887,14 @@
 
 #endif /* !defined(MR_USE_GCC_NONLOCAL_GOTOS) */
 
+#define MR_ENTRY_AP(label) 		MR_ENTRY(MR_add_prefix(label))
+#define MR_LOCAL_AP(label)		MR_LOCAL(MR_add_prefix(label))
+#define MR_LABEL_AP(label)		MR_LABEL(MR_add_prefix(label))
+#define MR_GOTO_AP(label)		MR_GOTO(MR_add_prefix(label))
+#define MR_GOTO_ENT(label) 		MR_GOTO_ENTRY(MR_add_prefix(label))
+#define MR_GOTO_LOC(label) 		MR_GOTO_LOCAL(MR_add_prefix(label))
+#define MR_GOTO_LAB(label) 		MR_GOTO_LABEL(MR_add_prefix(label))
+
 #define	MR_decl_user_entry(mod, name, arity, mode) \
 	MR_declare_entry(MR_proc_entry_user_name(mod, name, arity, mode))
 #define	MR_decl_uci_entry(mod, name, type, arity, mode) \
