@@ -508,9 +508,13 @@
 				% If the compiler cannot guarantee termination
 				% then it must give an error message.
 
-	;	only_accessible_via_fully_qualifed_name
-				% This predicate can only be accessed by 
-				% its fully qualified name.
+	;	not_accessible_by_unqualifed_name
+				% This predicate is not accessible by its
+				% unqualified name.
+
+	;	not_accessible_by_partially_qualified_names
+				% This predicate is not accessible by any
+				% partially qualified names.
 	.
 
 

@@ -1785,26 +1785,32 @@ predicate_table_restrict(PartialQualInfo,
 	% new predicate inserted into the table gets its pred_id
 	% added at the start of the list).
 	PredicateTable = list__foldr(
-			(func(PredId, Table0) = Table :-
-				PredInfo = map__lookup(Preds, PredId),
-				pred_info_get_markers(PredInfo, Markers),
-				(
-				    check_marker(Markers,
-					only_accessible_via_fully_qualifed_name)
-				->
-				    NeedQual = must_be_qualified,
-				    MaybeQualInfo = no
-				;
-				    NeedQual = may_be_unqualified,
-				    MaybeQualInfo = yes(PartialQualInfo)
-				),
+		(func(PredId, Table0) = Table :-
+			PredInfo = map__lookup(Preds, PredId),
+			pred_info_get_markers(PredInfo, Markers),
+			(
+			    check_marker(Markers,
+				not_accessible_by_unqualifed_name)
+			->
+			    NeedQual = must_be_qualified
+			;
+			    NeedQual = may_be_unqualified
+			),
+			(
+			    check_marker(Markers,
+			    	not_accessible_by_partially_qualified_names)
+			->
+			    MaybeQualInfo = no
+			;
+			    MaybeQualInfo = yes(PartialQualInfo)
+			),
 
-				predicate_table_insert_2(Table0,
-						yes(PredId), PredInfo,
-						NeedQual, MaybeQualInfo,
-						_, Table)
-				
-			), PredIds, PredicateTable0).
+			predicate_table_insert_2(Table0,
+					yes(PredId), PredInfo,
+					NeedQual, MaybeQualInfo,
+					_, Table)
+			
+		), PredIds, PredicateTable0).
 
 :- pred predicate_table_reset(predicate_table::in, predicate_table::out) is det.
 
@@ -1911,18 +1917,19 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 		NA = Name / Arity,
 		multi_map__set(NA_Index0, NA, PredId, NA_Index),
 
-		PredInfo = PredInfo0
+		PredInfo1 = PredInfo0
 	;
 		N_Index = N_Index0,
 		NA_Index = NA_Index0,
 
-		pred_info_get_markers(PredInfo0, Markers0),
-		add_marker(Markers0, only_accessible_via_fully_qualifed_name,
-				Markers),
-		pred_info_set_markers(PredInfo0, Markers, PredInfo)
+		pred_info_get_markers(PredInfo0, MarkersA0),
+		add_marker(MarkersA0, not_accessible_by_unqualifed_name,
+				MarkersA),
+		pred_info_set_markers(PredInfo0, MarkersA, PredInfo1)
 	),
 
 	( MaybeQualInfo = yes(QualInfo) ->
+
 			% insert partially module-qualified versions
 			% of the name into the module:name/arity index
 		get_partial_qualifiers(Module, QualInfo, PartialQuals),
@@ -1930,9 +1937,17 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 				MNAs0::in, MNAs::out] is det,
 			insert_into_mna_index(AncModule, Name, Arity, PredId,
 					MNAs0, MNAs)),
-			PartialQuals, _, MNA_Index0, MNA_Index1)
+			PartialQuals, _, MNA_Index0, MNA_Index1),
+
+		PredInfo = PredInfo1
 	;
-		MNA_Index1 = MNA_Index0
+		MNA_Index1 = MNA_Index0,
+
+		pred_info_get_markers(PredInfo1, MarkersB0),
+		add_marker(MarkersB0,
+				not_accessible_by_partially_qualified_names,
+				MarkersB),
+		pred_info_set_markers(PredInfo1, MarkersB, PredInfo)
 	),
 
 		% insert the fully-qualified name into the
