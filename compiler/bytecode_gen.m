@@ -353,8 +353,7 @@ bytecode_gen__call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
-	module_info_preds(ModuleInfo, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
+	module_info_pred_info(ModuleInfo, PredId, PredTable),
 	bytecode_gen__get_is_func(PredInfo, IsFunc),
 
 	call_gen__input_arg_locs(ArgVarsInfos, InputArgs),
@@ -667,8 +666,7 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 			predicate_id(ModuleInfo, PredId,
 				ModuleName, PredName, Arity),
 
-			module_info_preds(ModuleInfo, PredTable),
-			map__lookup(PredTable, PredId, PredInfo),
+			module_info_pred_info(ModuleInfo, PredId, PredTable),
 			bytecode_gen__get_is_func(PredInfo, IsFunc),
 				
 			proc_id_to_int(ProcId, ProcInt),
@@ -808,14 +806,14 @@ bytecode_gen__get_next_temp(ByteInfo0, Temp0, ByteInfo) :-
 bytecode_gen__get_counts(byte_info(_, _, _, Label, Temp), Label, Temp).
 
 %---------------------------------------------------------------------------%
+
 :- pred bytecode_gen__get_is_func(pred_info, byte_is_func).
 :- mode bytecode_gen__get_is_func(in, out) is det.
 
 bytecode_gen__get_is_func(PredInfo, IsFunc) :-
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-	(PredOrFunc = predicate ->
-		IsFunc = 0
-	;
-		IsFunc = 1
+	(	PredOrFunc = predicate
+	->	IsFunc = 0
+	;	IsFunc = 1
 	).
 
