@@ -397,9 +397,17 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 #undef	select_compare_code
 }
 
+#endif /* not MR_HIGHLEVEL_CODE */
+
+/*
+** The initialization function needs to be defined even when
+** MR_HIGHLEVEL_CODE is set, because it will get included
+** in the list of initialization functions that get called.
+** So for MR_HIGHLEVEL_CODE it just does nothing.
+*/
 void mercury_sys_init_call(void); /* suppress gcc warning */
 void mercury_sys_init_call(void) {
+#ifndef MR_HIGHLEVEL_CODE
 	call_module();
-}
-
 #endif /* not MR_HIGHLEVEL_CODE */
+}
