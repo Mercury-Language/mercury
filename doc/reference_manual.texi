@@ -86,9 +86,8 @@ into another language, under the above conditions for modified versions.
                       with closures, lambda expressions, and currying
 * Modules::           Modules allow you to divide a program into smaller parts
 * Semantics::         Declarative and operational semantics of Mercury programs
-* Pragmas::           Pragma declarations give information to the Mercury 
-                      compiler allowing a Mercury-C interface, and the ability 
-                      to inline predicates.
+* Pragmas::           Various compiler directives, used for the C interface
+                      and to control optimization.
 @end menu
 
 @node Introduction
@@ -2390,14 +2389,16 @@ fair search rule; and so forth.
 @chapter Pragmas
 
 @ifinfo
-There are two main uses for @code{pragma} declarations:
+There are several uses for @code{pragma} declarations:
 @end ifinfo
 
 @menu
 * C interface::                 The C interface allows C code to be called
-                                from Mercury code.
+                                from Mercury code, and vice versa.
 * Inlining::                    Calls to Mercury predicates can be inlined
                                 by the compiler to improve efficiency.
+* Obsolescence::		Library developers can declare old versions
+				of predicates or functions to be obsolete.
 @end menu
 
 @node C interface
@@ -2408,6 +2409,8 @@ There are two main uses for @code{pragma} declarations:
                                         a call to a Mercury predicate.
 * Including C headers::                 Using functions with prototypes from a
                                         non-standard header file.
+* Including C code::                    Including definitions of C
+					functions in your Mercury code.
 * Linking with C object files::         Linking with C object files and 
                                         libraries.
 * Passing data to and from C::          Exchanging simple data types between
@@ -2422,16 +2425,17 @@ There are two main uses for @code{pragma} declarations:
 A declaration of the form
 
 @example
-:- pragma(c_code, Pred(Var1::Mode1, Var2::Mode2, ...), C_Code).
+:- pragma c_code(recursive, @var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...), @var{C_Code}).
 @end example
 
+@noindent
 results in any calls to @var{Pred} with variables in modes (@var{Mode1}, 
 @var{Mode2}, ...) being replaced by the C code given in @var{C_Code}.
 
-If there is a @code{pragma(c_code, ...)} declaration for a mode of a predicate,
+If there is a @code{pragma c_code} declaration for a mode of a predicate,
 then that mode of the predicate must be deterministic, there must not be
 any clauses for that predicate, and there must be a
-@code{pragma(c_code, ...)} goal for every mode of the predicate.
+@code{pragma c_code} goal for every mode of the predicate.
 
 For example, the following piece of code gives a predicate, 
 @samp{c_write_string/3}, which has a similar effect to the Mercury library 
@@ -2441,9 +2445,21 @@ predicate @samp{io__write_string/3}:
 :- pred c_write_string(string, io__state, io__state).
 :- mode c_write_string(in, di, uo) is det.
 
-:- pragma(c_code, c_write_string(String::in, IO0::di, IO::uo),
-        "puts(String); IO = IO0;").
+:- pragma c_code(recursive, c_write_string(S::in, IO0::di, IO::uo),
+        "puts(S); IO = IO0;").
 @end example
+
+If the C code does not recursively invoke Mercury code, as in the
+above example, then you can use a declaration of the form
+
+@example
+:- pragma c_code(non_recursive, @var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...), @var{C_Code}).
+@end example
+
+This allows the compiler to use a more efficient calling convention.
+(If you use this form, and the C code @emph{does} invoke Mercury code,
+then the behaviour is undefined --- your program may misbehave or
+crash.)
 
 @node Including C headers
 @subsection Including C headers
@@ -2453,36 +2469,62 @@ that are used in @samp{c_code} pragmas must be included using a
 @samp{c_header_code} declaration of the form
 
 @example
-:- pragma(c_header_code, HeaderCode).
+:- pragma c_header_code(@var{HeaderCode}).
 @end example
 
+@noindent
 @var{HeaderCode} can be a C @samp{#include} line, for example
 
 @example
-:- pragma(c_header_code, "#include <math.h>")
+:- pragma c_header_code("#include <math.h>")
 @end example
 
+@noindent
 or
 
 @example
-:- pragma(c_header_code, "#include ""tcl.h""").
+:- pragma c_header_code("#include ""tcl.h""").
 @end example
 
+@noindent
 or it may contain any C declarations, for example
 
 @example
-:- pragma(c_header_code, "
+:- pragma c_header_code("
         extern int errno;
         #define SIZE 200
         struct Employee @{
                 char name[SIZE];
         @}
+	extern int bar;
+	extern void foo(void);
 ").
 @end example
 
 Mercury automatically includes certain headers such as @code{<stdio.h>},
 but you should not rely on this, as the set of headers which Mercury
 automatically includes is subject to change.
+
+@node Including C code
+@subsection Including C code
+
+Definitions of C functions or global variables may be
+included using a declaration of the form
+
+@example
+:- pragma c_code(@var{Code}).
+@end example
+
+For example,
+
+@example
+:- pragma c_code("
+	int bar = 42;
+	void foo(void) @{@}
+").
+@end example
+
+Such code is copied verbatim into the generated C file.
 
 @node Linking with C object files 
 @subsection Linking with C object files 
@@ -2531,6 +2573,9 @@ list_empty()            /* create an empty list */
 list_cons(head,tail)    /* construct a list with the given head and tail */
 @end example
 
+The @samp{list_cons} macro should only be used in C code called
+using the @samp{non_recursive} calling convention.
+
 @node Using C pointers
 @subsection Using C pointers
 
@@ -2556,15 +2601,16 @@ between C functions which are called from Mercury.  For example:
 % Our C structure is implemented as a c_pointer.
 :- type complicated_c_structure == c_pointer.
 
-:- pragma(c_header_code, "
+:- pragma c_header_code("
         extern struct foo *init_struct(void);
         extern struct foo *perform_calculation(int, struct foo *);
 ");
 
-:- pragma(c_code, initialise_complicated_structure(Structure::uo),
+:- pragma c_code(recursive, initialise_complicated_structure(Structure::uo),
         "Structure = init_struct();").
 
-:- pragma(c_code, do_calculation(Value::in, Structure0::di, Structure::uo,
+:- pragma c_code(recursive,
+	do_calculation(Value::in, Structure0::di, Structure::uo,
         "Structure = perform_calculation(Value, Structure0);").
 @end example
 
@@ -2574,11 +2620,12 @@ between C functions which are called from Mercury.  For example:
 A declaration of the form
 
 @example
-:- pragma(inline, @var{Predname}/@var{Arity}).
+:- pragma inline(@var{Name}/@var{Arity}).
 @end example
 
-is a hint to the compiler that all calls to the predicate @var{Predname}
-with arity @var{Arity} should be inlined.
+@noindent
+is a hint to the compiler that all calls to the predicate(s) or function(s)
+with name @var{Name} and arity @var{Arity} should be inlined.
 
 The current Mercury implementation is smart enough to inline many
 simple predicates even without this hint.  However, in the current
@@ -2586,6 +2633,33 @@ Mercury implementation, cross-module inlining is not yet supported, so
 if a predicate for which there is an @samp{inline} pragma is called
 from a module other than the one it is defined in, the compiler will
 ignore the hint.
+
+@node Obsolescence
+@section Obsolescence
+
+A declaration of the form
+
+@example
+:- pragma obsolete(@var{Name}/@var{Arity}).
+@end example
+
+@noindent
+declares that the predicate(s) or function(s)
+with name @var{Name} and arity @var{Arity} are ``obsolete'':
+it instructs the compiler to issue a warning whenever the named
+predicate(s) or function(s) are used.
+
+@samp{pragma obsolete} declarations are intended for use by library
+developers, to allow gradual (rather than abrupt) evolution of library
+interfaces.  If a library developer changes the interface of a library
+predicate, they should leave the old version of that predicate in the
+library, but mark it as obsolete using a @samp{pragma obsolete}
+declaration, and document how library users should modify their code to
+suit the new interface.  The users of the library will then get a
+warning if they use obsolete features, and can consult the library
+documentation to determine how to fix their code.  Eventually, when the
+library developer deems that users have had sufficient warning, they
+can remove the old version entirely.
 
 @contents
 @bye
