@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,8 +53,8 @@
 	% Fail if the type isn't the sort of type that has a range
 	% or if the type's range is too big to switch on (e.g. int).
 	%
-:- pred switch_util__type_range(type_category, type, module_info, int, int).
-:- mode switch_util__type_range(in, in, in, out, out) is semidet.
+:- pred switch_util__type_range(type_category::in, (type)::in, module_info::in,
+	int::out, int::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -174,49 +174,43 @@ switch_util__string_hash_cases([Case | Cases], HashMask, Map) :-
 
 switch_util__calc_hash_slots(HashValList, HashMap, Map) :-
 	map__init(Map0),
-	switch_util__calc_hash_slots_1(HashValList, HashMap, Map0, 0,
-		Map, _).
+	switch_util__calc_hash_slots_1(HashValList, HashMap, Map0, Map, 0, _).
 
-:- pred switch_util__calc_hash_slots_1(assoc_list(int, cases_list),
-	map(int, cases_list), map(int, hash_slot), int,
-	map(int, hash_slot), int).
-:- mode switch_util__calc_hash_slots_1(in, in, in, in, out, out) is det.
+:- pred switch_util__calc_hash_slots_1(assoc_list(int, cases_list)::in,
+	map(int, cases_list)::in,
+	map(int, hash_slot)::in, map(int, hash_slot)::out,
+	int::in, int::out) is det.
 
-switch_util__calc_hash_slots_1([], _, Map, LastUsed, Map, LastUsed).
-switch_util__calc_hash_slots_1([HashVal-Cases | Rest], HashMap, Map0,
-		LastUsed0, Map, LastUsed) :-
-	switch_util__calc_hash_slots_2(Cases, HashVal, HashMap, Map0,
-		LastUsed0, Map1, LastUsed1),
-	switch_util__calc_hash_slots_1(Rest, HashMap, Map1,
-		LastUsed1, Map, LastUsed).
+switch_util__calc_hash_slots_1([], _, !Map, !LastUsed).
+switch_util__calc_hash_slots_1([HashVal - Cases | Rest], HashMap,
+		!Map, !LastUsed) :-
+	switch_util__calc_hash_slots_2(Cases, HashVal, HashMap,
+		!Map, !LastUsed),
+	switch_util__calc_hash_slots_1(Rest, HashMap, !Map, !LastUsed).
 
-:- pred switch_util__calc_hash_slots_2(cases_list, int,
-	map(int, cases_list), map(int, hash_slot), int,
-	map(int, hash_slot), int).
-:- mode switch_util__calc_hash_slots_2(in, in, in, in, in, out, out) is det.
+:- pred switch_util__calc_hash_slots_2(cases_list::in, int::in,
+	map(int, cases_list)::in,
+	map(int, hash_slot)::in, map(int, hash_slot)::out,
+	int::in, int::out) is det.
 
-switch_util__calc_hash_slots_2([], _HashVal, _HashMap, Map, LastUsed,
-		Map, LastUsed).
-switch_util__calc_hash_slots_2([Case | Cases], HashVal, HashMap, Map0,
-		LastUsed0, Map, LastUsed) :-
-	switch_util__calc_hash_slots_2(Cases, HashVal, HashMap, Map0,
-		LastUsed0, Map1, LastUsed1),
-	( map__contains(Map1, HashVal) ->
-		switch_util__follow_hash_chain(Map1, HashVal, ChainEnd),
-		switch_util__next_free_hash_slot(Map1, HashMap, LastUsed1,
-			Next),
-		map__lookup(Map1, ChainEnd, hash_slot(PrevCase, _)),
-		map__det_update(Map1, ChainEnd, hash_slot(PrevCase, Next),
-			Map2),
-		map__det_insert(Map2, Next, hash_slot(Case, -1), Map),
-		LastUsed = Next
+switch_util__calc_hash_slots_2([], _HashVal, _HashMap, !Map, !LastUsed).
+switch_util__calc_hash_slots_2([Case | Cases], HashVal, HashMap,
+		!Map, !LastUsed) :-
+	switch_util__calc_hash_slots_2(Cases, HashVal, HashMap,
+		!Map, !LastUsed),
+	( map__contains(!.Map, HashVal) ->
+		switch_util__follow_hash_chain(!.Map, HashVal, ChainEnd),
+		switch_util__next_free_hash_slot(!.Map, HashMap, !LastUsed),
+		map__lookup(!.Map, ChainEnd, hash_slot(PrevCase, _)),
+		map__det_update(!.Map, ChainEnd,
+			hash_slot(PrevCase, !.LastUsed), !:Map),
+		map__det_insert(!.Map, !.LastUsed, hash_slot(Case, -1), !:Map)
 	;
-		map__det_insert(Map1, HashVal, hash_slot(Case, -1), Map),
-		LastUsed = LastUsed1
+		map__det_insert(!.Map, HashVal, hash_slot(Case, -1), !:Map)
 	).
 
-:- pred switch_util__follow_hash_chain(map(int, hash_slot), int, int).
-:- mode switch_util__follow_hash_chain(in, in, out) is det.
+:- pred switch_util__follow_hash_chain(map(int, hash_slot)::in,
+	int::in, int::out) is det.
 
 switch_util__follow_hash_chain(Map, Slot, LastSlot) :-
 	map__lookup(Map, Slot, hash_slot(_, NextSlot)),
@@ -235,9 +229,8 @@ switch_util__follow_hash_chain(Map, Slot, LastSlot) :-
 	%	going to be used a primary slot (contained in H_M),
 	%	starting at the slot after LastUsed.
 
-:- pred switch_util__next_free_hash_slot(map(int, hash_slot),
-	map(int, cases_list), int, int).
-:- mode switch_util__next_free_hash_slot(in, in, in, out) is det.
+:- pred switch_util__next_free_hash_slot(map(int, hash_slot)::in,
+	map(int, cases_list)::in, int::in, int::out) is det.
 
 switch_util__next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
 	NextSlot = LastUsed + 1,
@@ -345,7 +338,7 @@ switch_util__get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
 	hlds_data__get_type_defn_body(TypeDefn, Body),
 	( ConsTable = Body ^ du_type_cons_tag_values ->
 		map__to_assoc_list(ConsTable, ConsList),
-		switch_util__cons_list_to_tag_list(ConsList, TagList)
+		assoc_list__values(ConsList, TagList)
 	;
 		error("non-du type in switch_util__get_ptag_counts")
 	),
@@ -353,28 +346,27 @@ switch_util__get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
 	switch_util__get_ptag_counts_2(TagList, -1, MaxPrimary,
 		PtagCountMap0, PtagCountMap).
 
-:- pred switch_util__get_ptag_counts_2(list(cons_tag), int, int,
-	ptag_count_map, ptag_count_map).
-:- mode switch_util__get_ptag_counts_2(in, in, out, in, out) is det.
+:- pred switch_util__get_ptag_counts_2(list(cons_tag)::in, int::in, int::out,
+	ptag_count_map::in, ptag_count_map::out) is det.
 
-switch_util__get_ptag_counts_2([], Max, Max, PtagCountMap, PtagCountMap).
-switch_util__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
-		PtagCountMap0, PtagCountMap) :-
+switch_util__get_ptag_counts_2([], !Max, !PtagCountMap).
+switch_util__get_ptag_counts_2([ConsTag | TagList], !MaxPrimary,
+		!PtagCountMap) :-
 	(
 		( ConsTag = single_functor, Primary = 0
 		; ConsTag = unshared_tag(Primary)
 		)
 	->
-		int__max(MaxPrimary0, Primary, MaxPrimary1),
-		( map__search(PtagCountMap0, Primary, _) ->
+		int__max(Primary, !MaxPrimary),
+		( map__search(!.PtagCountMap, Primary, _) ->
 			error("unshared tag is shared")
 		;
-			map__det_insert(PtagCountMap0, Primary, none - (-1),
-				PtagCountMap1)
+			map__det_insert(!.PtagCountMap, Primary, none - (-1),
+				!:PtagCountMap)
 		)
 	; ConsTag = shared_remote_tag(Primary, Secondary) ->
-		int__max(MaxPrimary0, Primary, MaxPrimary1),
-		( map__search(PtagCountMap0, Primary, Target) ->
+		int__max(Primary, !MaxPrimary),
+		( map__search(!.PtagCountMap, Primary, Target) ->
 			Target = TagType - MaxSoFar,
 			( TagType = remote ->
 				true
@@ -382,15 +374,15 @@ switch_util__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 				error("remote tag is shared with non-remote")
 			),
 			int__max(Secondary, MaxSoFar, Max),
-			map__det_update(PtagCountMap0, Primary, remote - Max,
-				PtagCountMap1)
+			map__det_update(!.PtagCountMap, Primary, remote - Max,
+				!:PtagCountMap)
 		;
-			map__det_insert(PtagCountMap0, Primary,
-				remote - Secondary, PtagCountMap1)
+			map__det_insert(!.PtagCountMap, Primary,
+				remote - Secondary, !:PtagCountMap)
 		)
 	; ConsTag = shared_local_tag(Primary, Secondary) ->
-		int__max(MaxPrimary0, Primary, MaxPrimary1),
-		( map__search(PtagCountMap0, Primary, Target) ->
+		int__max(Primary, !MaxPrimary),
+		( map__search(!.PtagCountMap, Primary, Target) ->
 			Target = TagType - MaxSoFar,
 			( TagType = local ->
 				true
@@ -398,41 +390,40 @@ switch_util__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 				error("local tag is shared with non-local")
 			),
 			int__max(Secondary, MaxSoFar, Max),
-			map__det_update(PtagCountMap0, Primary, local - Max,
-				PtagCountMap1)
+			map__det_update(!.PtagCountMap, Primary, local - Max,
+				!:PtagCountMap)
 		;
-			map__det_insert(PtagCountMap0, Primary,
-				local - Secondary, PtagCountMap1)
+			map__det_insert(!.PtagCountMap, Primary,
+				local - Secondary, !:PtagCountMap)
 		)
 	;
 		error("non-du tag in switch_util__get_ptag_counts_2")
 	),
-	switch_util__get_ptag_counts_2(TagList, MaxPrimary1, MaxPrimary,
-		PtagCountMap1, PtagCountMap).
+	switch_util__get_ptag_counts_2(TagList, !MaxPrimary, !PtagCountMap).
 
 %-----------------------------------------------------------------------------%
 
 	% Group together all the cases that depend on the given variable
 	% having the same primary tag value.
 
-switch_util__group_cases_by_ptag([], PtagCaseMap, PtagCaseMap).
-switch_util__group_cases_by_ptag([Case0 | Cases0], PtagCaseMap0, PtagCaseMap) :-
+switch_util__group_cases_by_ptag([], !PtagCaseMap).
+switch_util__group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
 	Case0 = case(_Priority, Tag, _ConsId, Goal),
 	(
 		( Tag = single_functor, Primary = 0
 		; Tag = unshared_tag(Primary)
 		)
 	->
-		( map__search(PtagCaseMap0, Primary, _Group) ->
+		( map__search(!.PtagCaseMap, Primary, _Group) ->
 			error("unshared tag is shared")
 		;
 			map__init(StagGoalMap0),
 			map__det_insert(StagGoalMap0, -1, Goal, StagGoalMap),
-			map__det_insert(PtagCaseMap0, Primary,
-				none - StagGoalMap, PtagCaseMap1)
+			map__det_insert(!.PtagCaseMap, Primary,
+				none - StagGoalMap, !:PtagCaseMap)
 		)
 	; Tag = shared_remote_tag(Primary, Secondary) ->
-		( map__search(PtagCaseMap0, Primary, Group) ->
+		( map__search(!.PtagCaseMap, Primary, Group) ->
 			Group = StagLoc - StagGoalMap0,
 			( StagLoc = remote ->
 				true
@@ -441,17 +432,17 @@ switch_util__group_cases_by_ptag([Case0 | Cases0], PtagCaseMap0, PtagCaseMap) :-
 			),
 			map__det_insert(StagGoalMap0, Secondary, Goal,
 				StagGoalMap),
-			map__det_update(PtagCaseMap0, Primary,
-				remote - StagGoalMap, PtagCaseMap1)
+			map__det_update(!.PtagCaseMap, Primary,
+				remote - StagGoalMap, !:PtagCaseMap)
 		;
 			map__init(StagGoalMap0),
 			map__det_insert(StagGoalMap0, Secondary, Goal,
 				StagGoalMap),
-			map__det_insert(PtagCaseMap0, Primary,
-				remote - StagGoalMap, PtagCaseMap1)
+			map__det_insert(!.PtagCaseMap, Primary,
+				remote - StagGoalMap, !:PtagCaseMap)
 		)
 	; Tag = shared_local_tag(Primary, Secondary) ->
-		( map__search(PtagCaseMap0, Primary, Group) ->
+		( map__search(!.PtagCaseMap, Primary, Group) ->
 			Group = StagLoc - StagGoalMap0,
 			( StagLoc = local ->
 				true
@@ -460,19 +451,19 @@ switch_util__group_cases_by_ptag([Case0 | Cases0], PtagCaseMap0, PtagCaseMap) :-
 			),
 			map__det_insert(StagGoalMap0, Secondary, Goal,
 				StagGoalMap),
-			map__det_update(PtagCaseMap0, Primary,
-				local - StagGoalMap, PtagCaseMap1)
+			map__det_update(!.PtagCaseMap, Primary,
+				local - StagGoalMap, !:PtagCaseMap)
 		;
 			map__init(StagGoalMap0),
 			map__det_insert(StagGoalMap0, Secondary, Goal,
 				StagGoalMap),
-			map__det_insert(PtagCaseMap0, Primary,
-				local - StagGoalMap, PtagCaseMap1)
+			map__det_insert(!.PtagCaseMap, Primary,
+				local - StagGoalMap, !:PtagCaseMap)
 		)
 	;
 		error("non-du tag in switch_util__group_cases_by_ptag")
 	),
-	switch_util__group_cases_by_ptag(Cases0, PtagCaseMap1, PtagCaseMap).
+	switch_util__group_cases_by_ptag(Cases0, !PtagCaseMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -504,19 +495,19 @@ switch_util__order_ptags_by_count(PtagCountList0, PtagCaseMap0, PtagCaseList) :-
 		( map__is_empty(PtagCaseMap0) ->
 			PtagCaseList = []
 		;
-			error("PtagCaseMap0 is not empty in switch_util__order_ptags_by_count")
+			error("PtagCaseMap0 is not empty in " ++
+				"switch_util__order_ptags_by_count")
 		)
 	).
 
 	% Select the most frequently used primary tag based on the number of
 	% secondary tags associated with it.
 
-:- pred switch_util__select_frequent_ptag(ptag_count_list, tag_bits, int,
-	ptag_count_list).
-:- mode switch_util__select_frequent_ptag(in, out, out, out) is semidet.
+:- pred switch_util__select_frequent_ptag(ptag_count_list::in, tag_bits::out,
+	int::out, ptag_count_list::out) is semidet.
 
-switch_util__select_frequent_ptag([PtagCount0 | PtagCountList1], Primary, Count,
-		PtagCountList) :-
+switch_util__select_frequent_ptag([PtagCount0 | PtagCountList1], Primary,
+		Count, PtagCountList) :-
 	PtagCount0 = Primary0 - (_ - Count0),
 	(
 		switch_util__select_frequent_ptag(PtagCountList1,
@@ -555,19 +546,9 @@ switch_util__order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
 		( map__is_empty(PtagCaseMap0) ->
 			PtagCaseList = []
 		;
-			error("PtagCaseMap0 is not empty in order_ptags_by_value")
+			error("PtagCaseMap0 is not empty in " ++
+				"order_ptags_by_value")
 		)
 	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred switch_util__cons_list_to_tag_list(assoc_list(cons_id, cons_tag),
-	list(cons_tag)).
-:- mode switch_util__cons_list_to_tag_list(in, out) is det.
-
-switch_util__cons_list_to_tag_list([], []).
-switch_util__cons_list_to_tag_list([_ConsId - ConsTag | ConsList],
-		[ConsTag | Tagslist]) :-
-	switch_util__cons_list_to_tag_list(ConsList, Tagslist).
 
 %-----------------------------------------------------------------------------%

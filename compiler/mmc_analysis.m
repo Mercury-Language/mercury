@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003 University of Melbourne.
+% Copyright (C) 2003-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,8 +58,8 @@ module_id_to_module_name(ModuleId) = ModuleName :-
 	string_to_sym_name(ModuleId, ".", ModuleName).
 
 pred_or_func_name_arity_to_func_id(PredOrFunc, Name, Arity, ProcId) = FuncId :-
-	hlds_out__simple_call_id_to_string(
-		PredOrFunc - unqualified(Name)/Arity, FuncId0),
+	FuncId0 = hlds_out__simple_call_id_to_string(PredOrFunc
+		- unqualified(Name)/Arity),
 	proc_id_to_int(ProcId, ProcInt),
 	FuncId = FuncId0 ++ "-" ++ int_to_string(ProcInt).
 

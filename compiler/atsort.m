@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,12 +18,26 @@
 
 :- type relmap(T) == map(T, list(T)).
 
-:- pred atsort(relmap(T), relmap(T), relmap(T), relmap(T), list(T),
-	list(list(T))).
-:- mode atsort(in, in, in, in, in, out) is det.
+	% atsort(Succmap, Predmap, MustSuccmap, MustPredmap, PrefOrder,
+	%	Sortlist):
+	%
+	% Succmap and Predmap describe the graph to sort: they map nodes to
+	% the list of their successors and predecessors respectively. This
+	% graph may have cycles. MustSuccmap and MustPredmap describe an
+	% acyclic subset of this graph. The final node order, Sortlist, must
+	% obey the order described by MustSuccmap and MustPredmap. PrefOrder
+	% gives a preference for the order of the nodes.
 
-:- pred atsort__closure(list(T), relmap(T), list(T)).
-:- mode atsort__closure(in, in, out) is det.
+:- pred atsort(relmap(T)::in, relmap(T)::in, relmap(T)::in, relmap(T)::in,
+	list(T)::in, list(list(T))::out) is det.
+
+	% atsort__closure(Nodes, Map, Reachable):
+	%
+	% Set Reachable to the set of nodes reachable from Nodes via Map.
+	% Reachable is in no particular order, and won't include members of
+	% Nodes unless they are reachable from other members.
+
+:- pred atsort__closure(list(T)::in, relmap(T)::in, list(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -65,9 +79,8 @@ atsort(Succmap, Predmap, MustSuccmap, MustPredmap, PrefOrder, Sortlist) :-
 	atsort__main(Nodelist, Succmap, Predmap, MustSuccmap, MustPredmap,
 		PrefOrder, Sortlist).
 
-:- pred atsort__main(list(T), relmap(T), relmap(T), relmap(T), relmap(T),
-	list(T), list(list(T))).
-:- mode atsort__main(in, in, in, in, in, in, out) is det.
+:- pred atsort__main(list(T)::in, relmap(T)::in, relmap(T)::in,
+	relmap(T)::in, relmap(T)::in, list(T)::in, list(list(T))::out) is det.
 
 atsort__main(Nodes0, Succmap0, Predmap0, MustSuccmap, MustPredmap, PrefOrder,
 		Sorted) :-
@@ -95,9 +108,10 @@ atsort__main(Nodes0, Succmap0, Predmap0, MustSuccmap, MustPredmap, PrefOrder,
 
 %-----------------------------------------------------------------------------%
 
-:- pred atsort__choose(list(T), relmap(T), relmap(T), relmap(T), relmap(T),
-	relmap(T), relmap(T), list(T), T, list(T)).
-:- mode atsort__choose(in, in, out, in, out, in, in, in, out, out) is det.
+:- pred atsort__choose(list(T)::in,
+	relmap(T)::in, relmap(T)::out, relmap(T)::in, relmap(T)::out,
+	relmap(T)::in, relmap(T)::in, list(T)::in, T::out, list(T)::out)
+	is det.
 
 atsort__choose(Nodes, Succmap0, Succmap, Predmap0, Predmap,
 		_MustSuccmap, MustPredmap, PrefOrder, Chosen, NotChosen) :-
@@ -114,9 +128,8 @@ atsort__choose(Nodes, Succmap0, Succmap, Predmap0, Predmap,
 	% See whether this node can be chosen ahead of the given list of nodes.
 	% Do not give preference to nodes that occur in MustPredmap.
 
-:- pred atsort__can_choose(list(T), list(T), relmap(T), list(T), list(T)).
-% :- mode atsort__can_choose(in, in, in, di, uo) is det.
-:- mode atsort__can_choose(in, in, in, in, out) is det.
+:- pred atsort__can_choose(list(T)::in, list(T)::in, relmap(T)::in,
+	list(T)::in, list(T)::out) is det.
 
 atsort__can_choose([], _All, _MustPredmap, CanChoose, CanChoose).
 atsort__can_choose([Node | Nodes], All, MustPredmap, CanChoose0, CanChoose) :-
@@ -133,16 +146,14 @@ atsort__can_choose([Node | Nodes], All, MustPredmap, CanChoose0, CanChoose) :-
 
 	% None of the members of the first list occur in the second.
 
-:- pred atsort__must_avoid(list(T), list(T)).
-:- mode atsort__must_avoid(in, in) is semidet.
+:- pred atsort__must_avoid(list(T)::in, list(T)::in) is semidet.
 
 atsort__must_avoid([], _).
 atsort__must_avoid([Head | Tail], Avoidlist) :-
 	\+ list__member(Head, Avoidlist),
 	atsort__must_avoid(Tail, Avoidlist).
 
-:- pred atsort__choose_pref(list(T), list(T), T).
-:- mode atsort__choose_pref(in, in, out) is det.
+:- pred atsort__choose_pref(list(T)::in, list(T)::in, T::out) is det.
 
 atsort__choose_pref([], _CanChoose, _Chosen) :-
 	error("cannot choose any node in atsort").
@@ -155,13 +166,10 @@ atsort__choose_pref([Pref | Prefs], CanChoose, Chosen) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred atsort__repeat_source_sink(list(T),
-	relmap(T), relmap(T), relmap(T), relmap(T),
-	list(list(T)), list(list(T)), list(T), list(list(T)), list(list(T))).
-% :- mode atsort__repeat_source_sink(in, di, uo, di, uo,
-% 	di, uo, out, di, uo) is det.
-:- mode atsort__repeat_source_sink(in, in, out, in, out,
-	in, out, out, in, out) is det.
+:- pred atsort__repeat_source_sink(list(T)::in,
+	relmap(T)::in, relmap(T)::out, relmap(T)::in, relmap(T)::out,
+	list(list(T))::in, list(list(T))::out, list(T)::out,
+	list(list(T))::in, list(list(T))::out) is det.
 
 atsort__repeat_source_sink(Nodes0, Succmap0, Succmap, Predmap0, Predmap,
 		Source0, Source, Mid, Sink0, Sink) :-
@@ -201,85 +209,67 @@ atsort__repeat_source_sink(Nodes0, Succmap0, Succmap, Predmap0, Predmap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred atsort__source_sink(list(T), relmap(T), relmap(T),
-	list(T), list(T), list(T), list(T), list(T), list(T)).
-% :- mode atsort__source_sink(in, in, in, di, uo, di, uo, di, uo) is det.
-:- mode atsort__source_sink(in, in, in, in, out, in, out, in, out) is det.
+:- pred atsort__source_sink(list(T)::in, relmap(T)::in, relmap(T)::in,
+	list(T)::in, list(T)::out, list(T)::in, list(T)::out,
+	list(T)::in, list(T)::out) is det.
 
-atsort__source_sink([], _, _, Source, Source, Mid, Mid, Sink, Sink).
-atsort__source_sink([Node | Nodes], Succmap, Predmap,
-		Source0, Source, Mid0, Mid, Sink0, Sink) :-
+atsort__source_sink([], _, _, !Source, !Mid, !Sink).
+atsort__source_sink([Node | Nodes], Succmap, Predmap, !Source, !Mid, !Sink) :-
 	(
 		map__search(Succmap, Node, Succnodes),
 		Succnodes = []
 	->
-		Source1 = Source0,
-		Mid1 = Mid0,
-		Sink1 = [Node | Sink0]
+		!:Sink = [Node | !.Sink]
 	;
 		map__search(Predmap, Node, Prednodes),
 		Prednodes = []
 	->
-		Source1 = [Node | Source0],
-		Mid1 = Mid0,
-		Sink1 = Sink0
+		!:Source = [Node | !.Source]
 	;
-		Source1 = Source0,
-		Mid1 = [Node | Mid0],
-		Sink1 = Sink0
+		!:Mid = [Node | !.Mid]
 	),
-	atsort__source_sink(Nodes, Succmap, Predmap,
-		Source1, Source, Mid1, Mid, Sink1, Sink).
+	atsort__source_sink(Nodes, Succmap, Predmap, !Source, !Mid, !Sink).
 
 %-----------------------------------------------------------------------------%
 
-:- pred atsort__map_delete_all_source_links(list(T),
-	relmap(T), relmap(T), relmap(T)).
-% :- mode atsort__map_delete_all_source_links(in, in, di, uo) is det.
-:- mode atsort__map_delete_all_source_links(in, in, in, out) is det.
+:- pred atsort__map_delete_all_source_links(list(T)::in,
+	relmap(T)::in, relmap(T)::in, relmap(T)::out) is det.
 
-atsort__map_delete_all_source_links([], _Succmap, Predmap, Predmap).
-atsort__map_delete_all_source_links([Source | Sources],
-		Succmap, Predmap0, Predmap) :-
+atsort__map_delete_all_source_links([], _Succmap, !Predmap).
+atsort__map_delete_all_source_links([Source | Sources], Succmap, !Predmap) :-
 	map__lookup(Succmap, Source, Succnodes),
-	atsort__map_delete_this_element(Succnodes, Source, Predmap0, Predmap1),
-	atsort__map_delete_all_source_links(Sources,
-		Succmap, Predmap1, Predmap).
+	atsort__map_delete_this_element(Succnodes, Source, !Predmap),
+	atsort__map_delete_all_source_links(Sources, Succmap, !Predmap).
 
-:- pred atsort__map_delete_all_sink_links(list(T),
-	relmap(T), relmap(T), relmap(T)).
-% :- mode atsort__map_delete_all_sink_links(in, in, di, uo) is det.
-:- mode atsort__map_delete_all_sink_links(in, in, in, out) is det.
+:- pred atsort__map_delete_all_sink_links(list(T)::in,
+	relmap(T)::in, relmap(T)::in, relmap(T)::out) is det.
 
-atsort__map_delete_all_sink_links([], _Predmap, Succmap, Succmap).
-atsort__map_delete_all_sink_links([Sink | Sinks],
-		Predmap, Succmap0, Succmap) :-
+atsort__map_delete_all_sink_links([], _Predmap, !Succmap).
+atsort__map_delete_all_sink_links([Sink | Sinks], Predmap, !Succmap) :-
 	map__lookup(Predmap, Sink, Prednodes),
-	atsort__map_delete_this_element(Prednodes, Sink, Succmap0, Succmap1),
-	atsort__map_delete_all_sink_links(Sinks,
-		Predmap, Succmap1, Succmap).
+	atsort__map_delete_this_element(Prednodes, Sink, !Succmap),
+	atsort__map_delete_all_sink_links(Sinks, Predmap, !Succmap).
 
-:- pred atsort__map_delete_this_element(list(T), T, relmap(T), relmap(T)).
-:- mode atsort__map_delete_this_element(in, in, in, out) is det.
+:- pred atsort__map_delete_this_element(list(T)::in, T::in,
+	relmap(T)::in, relmap(T)::out) is det.
 
-atsort__map_delete_this_element([], _, Map, Map).
-atsort__map_delete_this_element([Node | Nodes], Elt, Map0, Map) :-
-	( map__search(Map0, Node, List0) ->
+atsort__map_delete_this_element([], _, !Map).
+atsort__map_delete_this_element([Node | Nodes], Elt, !Map) :-
+	( map__search(!.Map, Node, List0) ->
 		list__delete_all(List0, Elt, List1),
-		map__det_update(Map0, Node, List1, Map1)
+		map__det_update(!.Map, Node, List1, !:Map)
 	;
-		Map1 = Map0
+		true
 	),
-	atsort__map_delete_this_element(Nodes, Elt, Map1, Map).
+	atsort__map_delete_this_element(Nodes, Elt, !Map).
 
-:- pred atsort__map_delete_all_nodes(list(T), relmap(T), relmap(T)).
-% :- mode atsort__map_delete_all_nodes(in, di, uo) is det.
-:- mode atsort__map_delete_all_nodes(in, in, out) is det.
+:- pred atsort__map_delete_all_nodes(list(T)::in,
+	relmap(T)::in, relmap(T)::out) is det.
 
-atsort__map_delete_all_nodes([], Map, Map).
-atsort__map_delete_all_nodes([Node | Nodes], Map0, Map) :-
-	map__delete(Map0, Node, Map1),
-	atsort__map_delete_all_nodes(Nodes, Map1, Map).
+atsort__map_delete_all_nodes([], !Map).
+atsort__map_delete_all_nodes([Node | Nodes], !Map) :-
+	map__delete(!.Map, Node, !:Map),
+	atsort__map_delete_all_nodes(Nodes, !Map).
 
 %-----------------------------------------------------------------------------%
 
@@ -292,33 +282,29 @@ atsort__closure(Nodes, Map, Reachable) :-
 
 	% XXX Should think about making Reachable be a bintree set.
 
-:- pred atsort__closure_2(list(T), relmap(T), list(T), list(T)).
-% :- mode atsort__closure_2(in, in, di, uo) is det.
-:- mode atsort__closure_2(in, in, in, out) is det.
+:- pred atsort__closure_2(list(T)::in, relmap(T)::in,
+	list(T)::in, list(T)::out) is det.
 
-atsort__closure_2([], _, Reachable, Reachable).
-atsort__closure_2([Node | Nodes0], Map, Reachable0, Reachable) :-
-	( list__member(Node, Reachable0) ->
-		Nodes1 = Nodes0,
-		Reachable1 = Reachable0
+atsort__closure_2([], _, !Reachable).
+atsort__closure_2([Node | Nodes0], Map, !Reachable) :-
+	( list__member(Node, !.Reachable) ->
+		Nodes1 = Nodes0
 	;
 		map__lookup(Map, Node, Neighbours),
 		atsort__maybe_insert(Neighbours, Nodes0, Nodes1),
-		Reachable1 = [Node | Reachable0]
+		!:Reachable = [Node | !.Reachable]
 	),
-	atsort__closure_2(Nodes1, Map, Reachable1, Reachable).
+	atsort__closure_2(Nodes1, Map, !Reachable).
 
-:- pred atsort__maybe_insert(list(T), list(T), list(T)).
-% :- mode atsort__maybe_insert(in, di, uo) is det.
-:- mode atsort__maybe_insert(in, in, out) is det.
+:- pred atsort__maybe_insert(list(T)::in, list(T)::in, list(T)::out) is det.
 
-atsort__maybe_insert([], List, List).
-atsort__maybe_insert([Node | Nodes], List0, List) :-
-	( list__member(Node, List0) ->
-		List1 = List0
+atsort__maybe_insert([], !List).
+atsort__maybe_insert([Node | Nodes], !List) :-
+	( list__member(Node, !.List) ->
+		!:List = !.List
 	;
-		List1 = [Node | List0]
+		!:List = [Node | !.List]
 	),
-	atsort__maybe_insert(Nodes, List1, List).
+	atsort__maybe_insert(Nodes, !List).
 
 %-----------------------------------------------------------------------------%

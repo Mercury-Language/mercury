@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003 University of Melbourne.
+% Copyright (C) 2003-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,17 +53,16 @@
 	where
 [
 	func analysis_name(FuncInfo::unused, Call::unused, Answer::unused) =
-			(analysis_name::out) is det,
+		(analysis_name::out) is det,
 
 	% The version number should be changed when the Call or Answer
 	% types are changed so that results which use the old types
 	% can be discarded.
 	func analysis_version_number(FuncInfo::unused, Call::unused,
-			Answer::unused) = (int::out) is det,
+		Answer::unused) = (int::out) is det,
 
-	func preferred_fixpoint_type(FuncInfo::unused,
-			Call::unused, Answer::unused) =
-			(fixpoint_type::out) is det
+	func preferred_fixpoint_type(FuncInfo::unused, Call::unused,
+		Answer::unused) = (fixpoint_type::out) is det
 ].
 
 :- type fixpoint_type
@@ -74,8 +73,7 @@
 	;
 			% Start at `top'.
 			% Can stop at any time.
-		greatest_fixpoint
-	.
+		greatest_fixpoint.
 
 :- typeclass call_pattern(FuncInfo, Call)
 		<= (partial_order(FuncInfo, Call), to_string(Call)) where [].
@@ -87,10 +85,8 @@
 ].
 
 :- typeclass partial_order(FuncInfo, Call) where [
-	pred more_precise_than(FuncInfo::in,
-			Call::in, Call::in) is semidet,
-	pred equivalent(FuncInfo::in,
-			Call::in, Call::in) is semidet
+	pred more_precise_than(FuncInfo::in, Call::in, Call::in) is semidet,
+	pred equivalent(FuncInfo::in, Call::in, Call::in) is semidet
 ].
 
 :- typeclass to_string(S) where [
@@ -140,7 +136,7 @@
 	FuncInfo::in, Call::in, analysis_info::in, analysis_info::out) is det
 	<= call_pattern(FuncInfo, Call).
 
-	% Should be called after all analysis is completed to write the 
+	% Should be called after all analysis is completed to write the
 	% requests and results for the current compilation to the
 	% analysis files.
 :- pred write_analysis_files(module_id::in, analysis_info::in,
@@ -215,8 +211,8 @@ lookup_results(ModuleId, FuncId, _FuncInfo, ResultList, !Info, !IO) :-
 		ResultList = []
 	).
 
-lookup_best_result(ModuleId, FuncId, FuncInfo, Call,
-		MaybeBestResult, !Info, !IO) :-
+lookup_best_result(ModuleId, FuncId, FuncInfo, Call, MaybeBestResult,
+		!Info, !IO) :-
 	%io__write_string("looking up best result for ", !IO),
 	%io__write_string(FuncId, !IO),
 	%io__nl(!IO),
@@ -313,7 +309,7 @@ record_request(AnalysisName, ModuleId, FuncId, _FuncInfo,
 			CallPattern) | FuncResults1]))).
 
 write_analysis_files(ModuleId, Info, !IO) :-
-	
+
 	%
 	% Write the results for the current module.
 	%
@@ -329,6 +325,5 @@ write_analysis_files(ModuleId, Info, !IO) :-
 	%
 	map__foldl(write_module_analysis_requests(Info),
 		Info ^ analysis_requests, !IO),
-		
-	empty_request_file(Info, ModuleId, !IO).
 
+	empty_request_file(Info, ModuleId, !IO).

@@ -97,7 +97,7 @@
 % Perform the transformation on the specified predicate.
 :- pred process_proc_msg(construct_transform::in, pred_id::in, proc_id::in,
 	proc_info::in, proc_info::out, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -199,18 +199,19 @@
 	).
 
 process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
-		ModuleInfo0, ModuleInfo, !IO) :-
+		!ModuleInfo, !IO) :-
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
 	( VeryVerbose = yes ->
 		io__write_string("% Adding typeinfos in ", !IO),
-		hlds_out__write_pred_proc_id(ModuleInfo0, PredId, ProcId, !IO),
+		hlds_out__write_pred_proc_id(!.ModuleInfo, PredId, ProcId,
+			!IO),
 		io__write_string(": ", !IO),
 		process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
-			ModuleInfo0, ModuleInfo),
+			!ModuleInfo),
 		io__write_string("done.\n", !IO)
 	;
 		process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
-			ModuleInfo0, ModuleInfo)
+			!ModuleInfo)
 	).
 
 :- pred process_proc(construct_transform::in, pred_id::in, proc_id::in,

@@ -82,15 +82,15 @@
 	pred_or_func::in, arity::in, list(type)::in, pred_markers::in,
 	term__context::in, import_status::in, clauses_info::out,
 	module_info::in, module_info::out, qual_info::in, qual_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% Move the recompilation_info from the qual_info to the module_info
 	% after make_hlds is finished with it and the qual_info is dead.
 :- pred set_module_recompilation_info(qual_info::in,
 	module_info::in, module_info::out) is det.
 
-:- pred next_mode_id(proc_table, maybe(determinism), proc_id).
-:- mode next_mode_id(in, in, out) is det.
+:- pred next_mode_id(proc_table::in, maybe(determinism)::in, proc_id::out)
+	is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -212,7 +212,7 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	Module = !.Module
     ).
 
-:- pred check_for_errors(pred(module_info, module_info, io__state, io__state)
+:- pred check_for_errors(pred(module_info, module_info, io, io)
 	::pred(in, out, di, uo) is det, bool::out,
 	module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -285,8 +285,7 @@ add_item_list_decls_pass_1([Item - Context | Items], Status0, !Module,
 	% sure that there isn't a mode declaration for the function.
 
 :- pred add_item_list_decls_pass_2(item_list::in, item_status::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 add_item_list_decls_pass_2([], _, !Module, !IO).
 add_item_list_decls_pass_2([Item - Context | Items], Status0, !Module, !IO) :-
@@ -300,9 +299,9 @@ add_item_list_decls_pass_2([Item - Context | Items], Status0, !Module, !IO) :-
 	% Check that the declarations for field extraction
 	% and update functions are sensible.
 
-:- pred add_item_list_clauses(item_list::in, import_status::in, module_info::in,
-	module_info::out, qual_info::in, qual_info::out,
-	io__state::di, io__state::uo) is det.
+:- pred add_item_list_clauses(item_list::in, import_status::in,
+	module_info::in, module_info::out, qual_info::in, qual_info::out,
+	io::di, io::uo) is det.
 
 add_item_list_clauses([], _Status, !Module, !Info, !IO).
 add_item_list_clauses([Item - Context | Items], Status0, !Module, !Info,
@@ -317,7 +316,7 @@ add_item_list_clauses([Item - Context | Items], Status0, !Module, !Info,
 
 :- pred add_item_decl_pass_1(item::in, prog_context::in,
 	item_status::in, item_status::out, module_info::in, module_info::out,
-	bool::out, io__state::di, io__state::uo) is det.
+	bool::out, io::di, io::uo) is det.
 
 	% Dispatch on the different types of items.
 
@@ -437,7 +436,7 @@ add_item_decl_pass_1(instance(_, _, _, _, _,_), _, !Status, !Module, no, !IO).
 
 :- pred add_item_decl_pass_2(item::in, prog_context::in, item_status::in,
 	item_status::out, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 add_item_decl_pass_2(module_defn(_VarSet, ModuleDefn), _Context,
 		!Status, !Module, !IO) :-
@@ -694,8 +693,7 @@ module_defn_update_import_status(abstract_imported,
 	% so that the procedures are not ignored by the code
 	% generation annotation passes (e.g. arg_info.m).
 :- pred maybe_enable_aditi_compilation(item_status::in, term__context::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_enable_aditi_compilation(_Status, Context, !Module, !IO) :-
 	globals__io_lookup_bool_option(aditi, Aditi, !IO),
@@ -718,7 +716,7 @@ maybe_enable_aditi_compilation(_Status, Context, !Module, !IO) :-
 
 :- pred add_item_clause(item::in, import_status::in, import_status::out,
 	prog_context::in, module_info::in, module_info::out,
-	qual_info::in, qual_info::out, io__state::di, io__state::uo) is det.
+	qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 add_item_clause(clause(VarSet, PredOrFunc, PredName, Args, Body),
 		!Status, Context, !Module, !Info, !IO) :-
@@ -874,7 +872,7 @@ add_item_clause(instance(_, _, _, _, _, _), !Status, _, !Module, !Info, !IO).
 :- pred add_promise_clause(promise_type::in, list(term(prog_var_type))::in,
 	prog_varset::in, goal::in, prog_context::in, import_status::in,
 	module_info::in, module_info::out, qual_info::in, qual_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
 		!Module, !Info, !IO) :-
@@ -904,7 +902,7 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
 %-----------------------------------------------------------------------------%
 
 :- pred check_not_exported(import_status::in, prog_context::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 check_not_exported(Status, Context, Message, !IO) :-
 		%
@@ -1074,8 +1072,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !Module,
 
 :- pred add_pragma_unused_args(pred_or_func::in, sym_name::in, arity::in,
 	mode_num::in, list(int)::in, prog_context::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
 		Context, !Module, !IO) :-
@@ -1102,7 +1099,7 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
 
 :- pred add_pragma_type_spec(pragma_type::in(type_spec), term__context::in,
 	module_info::in, module_info::out, qual_info::in, qual_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 add_pragma_type_spec(Pragma, Context, !Module, !Info, !IO) :-
 	Pragma = type_spec(SymName, _, Arity, MaybePredOrFunc, _, _, _, _),
@@ -1130,7 +1127,7 @@ add_pragma_type_spec(Pragma, Context, !Module, !Info, !IO) :-
 
 :- pred add_pragma_type_spec_2(pragma_type::in(type_spec), prog_context::in,
 	pred_id::in, transform_info::in, transform_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 add_pragma_type_spec_2(Pragma0, Context, PredId,
 		transform_info(ModuleInfo0, Info0), TransformInfo, !IO) :-
@@ -1300,7 +1297,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 	assoc_list(tvar, type)::in, pred_info::in, tvarset::in, tvarset::out,
 	list(type)::out, existq_tvars::out, class_constraints::out,
 	maybe(tsubst)::out, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
 		Types, ExistQVars, ClassContext, SubstOk, !ModuleInfo, !IO) :-
@@ -1563,7 +1560,7 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
 	list(mode)::in, maybe(pragma_arg_size_info)::in,
 	maybe(pragma_termination_info)::in,
 	prog_context::in, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 add_pragma_termination_info(PredOrFunc, SymName, ModeList,
 		MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo,
@@ -1672,8 +1669,7 @@ add_stratified_pred(PragmaName, Name, Arity, Context, !Module, !IO) :-
 	% an error.
 :- pred add_pred_marker(string::in, sym_name::in, arity::in, import_status::in,
 	prog_context::in, marker::in, list(marker)::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 add_pred_marker(PragmaName, Name, Arity, Status, Context, Marker,
 		ConflictMarkers, !Module, !IO) :-
@@ -1695,7 +1691,7 @@ add_pred_marker(PragmaName, Name, Arity, Status, Context, Marker,
 
 :- pred set_pred_owner(sym_name::in, arity::in, string::in, import_status::in,
 	prog_context::in, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 set_pred_owner(Name, Arity, Owner, Status, Context, !Module, !IO) :-
 	SetOwner = (pred(PredInfo0::in, PredInfo::out) is det :-
@@ -1707,7 +1703,7 @@ set_pred_owner(Name, Arity, Owner, Status, Context, !Module, !IO) :-
 
 :- pred add_base_relation_index(sym_name::in, arity::in, index_spec::in,
 	import_status::in, prog_context::in, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 add_base_relation_index(Name, Arity, Index, Status, Context, !Module, !IO) :-
 	AddIndex = (pred(PredInfo0::in, PredInfo::out) is det :-
@@ -1726,7 +1722,7 @@ add_base_relation_index(Name, Arity, Index, Status, Context, !Module, !IO) :-
 
 	% Check that the index attributes are legal for the predicate's arity.
 :- pred check_index_attribute(sym_name::in, arity::in, term__context::in,
-	int::in, io__state::di, io__state::uo) is det.
+	int::in, io::di, io::uo) is det.
 
 check_index_attribute(Name, Arity, Context, Attr, !IO) :-
 	( ( Attr > 0, Attr =< Arity ) ->
@@ -1747,8 +1743,7 @@ check_index_attribute(Name, Arity, Context, Attr, !IO) :-
 	% Check that a relation with an index specified is a base relation
 	% and that the indexed attributes do not include aditi__states.
 :- pred check_index_attribute_pred(module_info::in, sym_name::in, arity::in,
-	term__context::in, list(int)::in, pred_id::in,
-	io__state::di, io__state::uo) is det.
+	term__context::in, list(int)::in, pred_id::in, io::di, io::uo) is det.
 
 check_index_attribute_pred(ModuleInfo, Name, Arity, Context, Attrs, PredId,
 		!IO) :-
@@ -1803,7 +1798,7 @@ check_index_attribute_pred(ModuleInfo, Name, Arity, Context, Attrs, PredId,
 	import_status::in, bool::in, term__context::in,
 	add_marker_pred_info::in(add_marker_pred_info),
 	module_info::in, module_info::out, list(pred_id)::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
 		UpdatePredInfo, !Module, PredIds, !IO) :-
@@ -2046,7 +2041,7 @@ check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
 :- type id == pair(sym_name, arity).
 
 :- pred report_circular_equiv_error(string::in, id::in, id::in, list(id)::in,
-	prog_context::in, io__state::di, io__state::uo) is det.
+	prog_context::in, io::di, io::uo) is det.
 
 report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context, !IO) :-
 	( Id = OrigId ->
@@ -2358,7 +2353,7 @@ check_foreign_type_visibility(OldStatus, NewDefnStatus) :-
 	% Add the constructors and special preds for a type to the HLDS.
 :- pred process_type_defn(type_ctor::in, hlds_type_defn::in,
 	bool::in, bool::out, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 process_type_defn(TypeCtor, TypeDefn, !FoundError, !Module, !IO) :-
 	hlds_data__get_type_defn_context(TypeDefn, Context),
@@ -2845,8 +2840,7 @@ do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
 	maybe(determinism)::in, condition::in, purity::in,
 	class_constraints::in, pred_markers::in, prog_context::in,
 	item_status::in, maybe(pair(pred_id, proc_id))::out,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
 		PredOrFunc, PredName, TypesAndModes, MaybeDet, Cond, Purity,
@@ -2903,7 +2897,7 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
 :- pred module_add_class_defn(list(class_constraint)::in, sym_name::in,
 	list(tvar)::in, class_interface::in, tvarset::in, prog_context::in,
 	item_status::in, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 module_add_class_defn(Constraints, Name, Vars, Interface, VarSet, Context,
 		Status, !Module, !IO) :-
@@ -3046,8 +3040,7 @@ superclass_constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
 :- pred module_add_class_interface(sym_name::in, list(tvar)::in,
 	list(class_method)::in, item_status::in,
 	list(maybe(pair(pred_id, proc_id)))::out,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 module_add_class_interface(Name, Vars, Methods, Status, PredProcIds,
 		!Module, !IO) :-
@@ -3059,8 +3052,7 @@ module_add_class_interface(Name, Vars, Methods, Status, PredProcIds,
 :- pred module_add_class_interface_2(sym_name::in, list(tvar)::in,
 	list(class_method)::in, item_status::in,
 	list(maybe(pair(pred_id, proc_id)))::out,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 module_add_class_interface_2(_, _, [], _, [], !Module, !IO).
 module_add_class_interface_2(Name, Vars, [M | Ms], Status, [P | Ps],
@@ -3070,8 +3062,7 @@ module_add_class_interface_2(Name, Vars, [M | Ms], Status, [P | Ps],
 
 :- pred module_add_class_method(class_method::in, sym_name::in, list(tvar)::in,
 	item_status::in, maybe(pair(pred_id, proc_id))::out,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 		!Module, !IO) :-
@@ -3115,8 +3106,7 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 :- pred check_method_modes(list(class_method)::in,
 	list(maybe(pair(pred_id, proc_id)))::in,
 	list(maybe(pair(pred_id, proc_id)))::out,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 check_method_modes([], !PredProcIds, !Module, !IO).
 check_method_modes([Method | Methods], !PredProcIds, !Module, !IO) :-
@@ -3176,8 +3166,7 @@ check_method_modes([Method | Methods], !PredProcIds, !Module, !IO) :-
 :- pred module_add_instance_defn(module_name::in, list(class_constraint)::in,
 	sym_name::in, list(type)::in, instance_body::in, tvarset::in,
 	import_status::in, prog_context::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
 		Types, Body0, VarSet, Status, Context, !Module, !IO) :-
@@ -3248,8 +3237,7 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
 	list(type)::in, condition::in, purity::in, class_constraints::in,
 	pred_markers::in, prog_context::in, import_status::in,
 	need_qualifier::in, pred_or_func::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 % NB.  Predicates are also added in lambda.m, which converts
 % lambda expressions into separate predicates, so any changes may need
@@ -3297,8 +3285,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Cond, Purity, ClassContext,
 			module_info_pred_info(!.Module, OrigPred,
 				OrigPredInfo),
 			pred_info_context(OrigPredInfo, OrigContext),
-			hlds_out__pred_or_func_to_str(PredOrFunc,
-				DeclString),
+			DeclString = hlds_out__pred_or_func_to_str(PredOrFunc),
 			adjust_func_arity(PredOrFunc, OrigArity, Arity),
 			multiple_def_error(ItemStatus, PredName, OrigArity,
 				DeclString, Context, OrigContext, FoundError,
@@ -3468,7 +3455,7 @@ check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
 	io::di, io::uo) is det.
 
 report_field_status_mismatch(Context, CallId, !IO) :-
-	hlds_out__simple_call_id_to_string(CallId, CallIdString),
+	CallIdString = hlds_out__simple_call_id_to_string(CallId),
 	ErrorPieces = [
 		words("In declaration of"),
 		fixed(string__append(CallIdString, ":")),
@@ -3901,7 +3888,7 @@ add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
 	maybe(determinism)::in, condition::in, import_status::in,
 	prog_context::in, pred_or_func::in, bool::in,
 	pair(pred_id, proc_id)::out, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% We should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments.
@@ -3945,8 +3932,7 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, _Cond, Status, MContext,
 
 :- pred module_do_add_mode(inst_varset::in, arity::in, list(mode)::in,
 	maybe(determinism)::in, bool::in, prog_context::in,
-	pred_info::in, pred_info::out, proc_id::out,
-	io__state::di, io__state::uo) is det.
+	pred_info::in, pred_info::out, proc_id::out, io::di, io::uo) is det.
 
 module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
 		!PredInfo, ProcId, !IO) :-
@@ -3995,7 +3981,7 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
 :- pred preds_add_implicit_report_error(module_name::in, pred_or_func::in,
 	sym_name::in, arity::in, import_status::in, bool::in, prog_context::in,
 	string::in, pred_id::out, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
 		Status, IsClassMethod, Context, Description, PredId,
@@ -4088,7 +4074,7 @@ next_mode_id(Procs, _MaybeDet, ModeId) :-
 :- pred module_add_clause(prog_varset::in, pred_or_func::in, sym_name::in,
 	list(prog_term)::in, goal::in, import_status::in, prog_context::in,
 	goal_type::in, module_info::in, module_info::out,
-	qual_info::in, qual_info::out, io__state::di, io__state::uo) is det.
+	qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 		Context, GoalType, !ModuleInfo, !Info, !IO) :-
@@ -4195,8 +4181,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 		Status \= opt_imported
 	->
 		module_info_incr_errors(!ModuleInfo),
-		hlds_out__simple_call_id_to_string(
-			PredOrFunc - PredName/Arity, CallIdString0),
+		CallIdString0 = hlds_out__simple_call_id_to_string(
+			PredOrFunc - PredName/Arity),
 		string__append(CallIdString0, ".", CallIdString),
 		ErrorPieces0 = [
 			words("Error: clause for automatically generated"),
@@ -4296,7 +4282,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 	import_status::in, prog_context::in, pred_id::in, pred_info::in,
 	list(prog_term)::out, list(proc_id)::out,
 	module_info::in, module_info::out, qual_info::in, qual_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
 		Args, ProcIds, !ModuleInfo, !Info, !IO) :-
@@ -4483,8 +4469,7 @@ produce_instance_method_clauses(clauses(InstanceClauses), PredOrFunc,
 :- pred produce_instance_method_clause(pred_or_func::in,
 	prog_context::in, import_status::in, item::in,
 	module_info::in, module_info::out, qual_info::in, qual_info::out,
-	clauses_info::in, clauses_info::out, io__state::di, io__state::uo)
-	is det.
+	clauses_info::in, clauses_info::out, io::di, io::uo) is det.
 
 produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
 		!ModuleInfo, !QualInfo, !ClausesInfo, !IO) :-
@@ -4543,7 +4528,7 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
 :- pred module_add_pragma_import(sym_name::in, pred_or_func::in, list(mode)::in,
 	pragma_foreign_proc_attributes::in, string::in, import_status::in,
 	prog_context::in, module_info::in, module_info::out,
-	qual_info::in, qual_info::out, io__state::di, io__state::uo) is det.
+	qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
 		Status, Context, !ModuleInfo, !Info, !IO) :-
@@ -4688,7 +4673,7 @@ pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
 	sym_name::in, pred_or_func::in, list(pragma_var)::in, prog_varset::in,
 	pragma_foreign_code_impl::in, import_status::in, prog_context::in,
 	module_info::in, module_info::out, qual_info::in, qual_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc, PVars, VarSet,
 		PragmaImpl, Status, Context, !ModuleInfo, !Info, !IO) :-
@@ -4831,7 +4816,7 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc, PVars, VarSet,
 :- pred module_add_pragma_tabled(eval_method::in, sym_name::in, int::in,
 	maybe(pred_or_func)::in, maybe(list(mode))::in, import_status::in,
 	prog_context::in, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 		MaybeModes, Status, Context, !ModuleInfo, !IO) :-
@@ -4889,7 +4874,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 :- pred module_add_pragma_tabled_2(eval_method::in, sym_name::in, int::in,
 	maybe(pred_or_func)::in, maybe(list(mode))::in, prog_context::in,
 	pred_id::in, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 module_add_pragma_tabled_2(EvalMethod, PredName, Arity0, MaybePredOrFunc,
 		MaybeModes, Context, PredId, !ModuleInfo, !IO) :-
@@ -5525,8 +5510,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo, Context,
 		PragmaImpl = import(_, _, _, _)
 	).
 
-:- pred write_variable_warning_start(list(string)::in,
-	io__state::di, io__state::uo) is det.
+:- pred write_variable_warning_start(list(string)::in, io::di, io::uo) is det.
 
 write_variable_warning_start(UnmentionedVars) -->
 	( { UnmentionedVars = [_] } ->
@@ -5724,7 +5708,7 @@ clauses_info_init(Arity, ClausesInfo) :-
 	goal_type::in, hlds_goal::out, prog_varset::out, tvarset::out,
 	clauses_info::in, clauses_info::out, list(quant_warning)::out,
 	module_info::in, module_info::out, qual_info::in, qual_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
 		Status, PredOrFunc, Arity, GoalType, Goal, VarSet, TVarSet,
@@ -5815,8 +5799,7 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
 	prog_varset::in, list(pragma_var)::in, list(type)::in,
 	pragma_foreign_code_impl::in, prog_context::in, pred_or_func::in,
 	sym_name::in, arity::in, clauses_info::in, clauses_info::out,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
 		PVarSet, PVars, OrigArgTypes, PragmaImpl0, Context, PredOrFunc,
@@ -5996,8 +5979,7 @@ allocate_vars_for_saved_vars([Name | Names], [Var - Name | VarNames],
 	list(prog_term)::in, goal::in, prog_context::in, pred_or_func::in,
 	arity::in, goal_type::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out, list(quant_warning)::out,
-	transform_info::in, transform_info::out,
-	io__state::di, io__state::uo) is det.
+	transform_info::in, transform_info::out, io::di, io::uo) is det.
 
 transform(Subst, HeadVars, Args0, Body0, Context, PredOrFunc, Arity, GoalType,
 		Goal, !VarSet, Warnings, !Info, !IO) :-
@@ -6035,7 +6017,7 @@ transform(Subst, HeadVars, Args0, Body0, Context, PredOrFunc, Arity, GoalType,
 :- pred transform_goal(goal::in, prog_substitution::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 transform_goal(Goal0 - Context, Subst, Goal1 - GoalInfo1, !VarSet,
 		!Info, !SInfo, !IO) :-
@@ -6047,7 +6029,7 @@ transform_goal(Goal0 - Context, Subst, Goal1 - GoalInfo1, !VarSet,
 	prog_substitution::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 transform_goal_2(fail, _, _, disj([]) - GoalInfo, !VarSet, !Info, !SInfo,
 		!IO) :-
@@ -6287,7 +6269,7 @@ You probably meant !.%s or !:%s.\n", [s(Name), s(Name)]), !IO).
 	list(prog_term)::in, prog_context::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, !VarSet,
 		!Info, !SInfo, !IO) :-
@@ -6360,7 +6342,7 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, !VarSet,
 	list(prog_term)::in, prog_context::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
 		!VarSet, !Info, !SInfo, !IO) :-
@@ -6452,7 +6434,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
 	prog_varset::in, prog_varset::out, cons_id::out,
 	pair(cons_id, unify_sub_contexts)::out, hlds_goal::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 expand_set_field_function_call(Context, MainContext, SubContext0, FieldNames,
 		FieldValueVar, TermInputVar, TermOutputVar, !VarSet, Functor,
@@ -6470,7 +6452,7 @@ expand_set_field_function_call(Context, MainContext, SubContext0, FieldNames,
 	prog_varset::in, prog_varset::out, cons_id::out,
 	pair(cons_id, unify_sub_contexts)::out, list(hlds_goal)::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 expand_set_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _, _, _, _,
 		_, _, !IO) :-
@@ -6540,7 +6522,7 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
 	prog_varset::in, prog_varset::out, cons_id::out,
 	pair(cons_id, unify_sub_contexts)::out, hlds_goal::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 expand_dcg_field_extraction_goal(Context, MainContext, SubContext,
 		FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
@@ -6573,7 +6555,7 @@ expand_dcg_field_extraction_goal(Context, MainContext, SubContext,
 	prog_var::in, prog_var::in, prog_varset::in, prog_varset::out,
 	cons_id::out, pair(cons_id, unify_sub_contexts)::out, hlds_goal::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 expand_get_field_function_call(Context, MainContext, SubContext0,
 		FieldNames, FieldValueVar, TermInputVar, !VarSet,
@@ -6589,7 +6571,7 @@ expand_get_field_function_call(Context, MainContext, SubContext0,
 	prog_var::in, prog_var::in, prog_varset::in, prog_varset::out,
 	cons_id::out, pair(cons_id, unify_sub_contexts)::out,
 	list(hlds_goal)::out, transform_info::in, transform_info::out,
-	svar_info::in, svar_info::out, io__state::di, io__state::uo) is det.
+	svar_info::in, svar_info::out, io::di, io::uo) is det.
 
 expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _, _, _,
 		_, _, !IO) :-
@@ -6698,7 +6680,7 @@ parse_field_list(Term, MaybeFieldNames) :-
 	list(prog_term)::in, prog_context::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 transform_aditi_builtin(UpdateStr, Args0, Context, Goal, !VarSet,
 		!Info, !SInfo, !IO) :-
@@ -6726,7 +6708,7 @@ transform_aditi_builtin(UpdateStr, Args0, Context, Goal, !VarSet,
 	list(prog_term)::in, prog_context::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 transform_aditi_tuple_update(UpdateStr, Update, Args0, Context,
 		Goal, !VarSet, !Info, !SInfo, !IO) :-
@@ -6807,7 +6789,7 @@ transform_aditi_tuple_update(UpdateStr, Update, Args0, Context,
 	list(prog_term)::in, prog_context::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
 		!VarSet, !Info, !SInfo, !IO) :-
@@ -7085,7 +7067,7 @@ conjoin_aditi_update_goal_with_call(PredOrFunc, SymName, Args, Goal0, Goal) :-
 	Goal = conj([CallGoal, Goal0]) - GoalInfo.
 
 :- pred output_expected_aditi_update_syntax(prog_context::in,
-	aditi_bulk_update::in, io__state::di, io__state::uo) is det.
+	aditi_bulk_update::in, io::di, io::uo) is det.
 
 output_expected_aditi_update_syntax(Context, bulk_insert) -->
 	output_insert_or_delete_expected_syntax(Context, "aditi_bulk_insert").
@@ -7106,7 +7088,7 @@ output_expected_aditi_update_syntax(Context, bulk_modify) -->
 	output_aditi_closure_syntax(Context, Name).
 
 :- pred output_insert_or_delete_expected_syntax(prog_context::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_insert_or_delete_expected_syntax(Context, Name) -->
 	prog_out__write_context(Context),
@@ -7116,7 +7098,7 @@ output_insert_or_delete_expected_syntax(Context, Name) -->
 	output_aditi_closure_syntax(Context, Name).
 
 :- pred output_aditi_closure_syntax(prog_context::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_aditi_closure_syntax(Context, Name) -->
 	prog_out__write_context(Context),
@@ -7127,7 +7109,7 @@ output_aditi_closure_syntax(Context, Name) -->
 	% Report an error for an Aditi update with the wrong number
 	% of arguments.
 :- pred aditi_update_arity_error(prog_context::in, string::in, int::in,
-	list(int)::in, io__state::di, io__state::uo) is det.
+	list(int)::in, io::di, io::uo) is det.
 
 aditi_update_arity_error(Context, UpdateStr, Arity, ExpectedArities) -->
 	io__set_exit_status(1),
@@ -7183,7 +7165,7 @@ invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet) :-
 	prog_context::in, arg_context::in, hlds_goal::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 insert_arg_unifications(HeadVars, Args0, Context, ArgContext,
 		!Goal, !VarSet, !Info, !SInfo, !IO) :-
@@ -7205,7 +7187,7 @@ insert_arg_unifications(HeadVars, Args0, Context, ArgContext,
 	list(hlds_goal)::in, list(hlds_goal)::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 insert_arg_unifications_2([], [_|_], _, _, _, _, _, _, _, _, _, _, _, !IO) :-
 	error("insert_arg_unifications_2: length mismatch").
@@ -7231,7 +7213,7 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 	prog_context::in, hlds_goal::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out,
-	svar_info::in, svar_info::out, io__state::di, io__state::uo) is det.
+	svar_info::in, svar_info::out, io::di, io::uo) is det.
 
 insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0, ArgContexts,
 		Context, !Goal, !VarSet, !Info, !SInfo, !IO) :-
@@ -7254,7 +7236,7 @@ insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0, ArgContexts,
 	prog_context::in, list(hlds_goal)::in, list(hlds_goal)::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 insert_arg_unifications_with_supplied_contexts_2(Vars, Terms, ArgContexts,
 		Context, !List, !VarSet, !Info, !SInfo, !IO) :-
@@ -7280,7 +7262,7 @@ insert_arg_unifications_with_supplied_contexts_2(Vars, Terms, ArgContexts,
 :- pred insert_arg_unification(prog_var::in, prog_term::in, prog_context::in,
 	arg_context::in, int::in, prog_varset::in, prog_varset::out,
 	list(hlds_goal)::out, transform_info::in, transform_info::out,
-	svar_info::in, svar_info::out, io__state::di, io__state::uo) is det.
+	svar_info::in, svar_info::out, io::di, io::uo) is det.
 
 insert_arg_unification(Var, Arg, Context, ArgContext, N1, !VarSet,
 		ArgUnifyConj, !Info, !SInfo, !IO) :-
@@ -7304,7 +7286,7 @@ insert_arg_unification(Var, Arg, Context, ArgContext, N1, !VarSet,
 	prog_context::in, arg_context::in, hlds_goal::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 append_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal, !VarSet,
 		!Info, !SInfo, !IO) :-
@@ -7325,7 +7307,7 @@ append_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal, !VarSet,
 	list(hlds_goal)::in, list(hlds_goal)::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 append_arg_unifications_2([], [_|_], _, _, _, _, _, _, _, _, _, _, _, !IO) :-
 	error("append_arg_unifications_2: length mismatch").
@@ -7345,7 +7327,7 @@ append_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 	arg_context::in, int::in, list(hlds_goal)::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 append_arg_unification(Var, Arg, Context, ArgContext, N1, ConjList,
 		!VarSet, !Info, !SInfo, !IO) :-
@@ -7430,7 +7412,7 @@ make_fresh_arg_var(Arg, Var, Vars0, VarSet0, VarSet) :-
 	unify_main_context::in, unify_sub_contexts::in, purity::in,
 	hlds_goal::out, prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out,
-	svar_info::in, svar_info::out, io__state::di, io__state::uo) is det.
+	svar_info::in, svar_info::out, io::di, io::uo) is det.
 
 unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
 		Purity, Goal, !VarSet, !Info, !SInfo, !IO) :-
@@ -7443,7 +7425,7 @@ unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
 	unify_main_context::in, unify_sub_contexts::in, purity::in,
 	hlds_goal::out, prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% `X = Y' needs no unravelling.
 
@@ -7762,7 +7744,7 @@ parse_purity_annotation(Term0, Purity, Term) :-
 
 :- pred make_hlds__qualify_lambda_mode_list(list(mode)::in, list(mode)::out,
 	prog_context::in, transform_info::in, transform_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 make_hlds__qualify_lambda_mode_list(Modes0, Modes, Context, !Info, !IO) :-
 	% The modes in `.opt' files are already fully module qualified.
@@ -7780,8 +7762,7 @@ make_hlds__qualify_lambda_mode_list(Modes0, Modes, Context, !Info, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred check_expr_purity(purity::in, prog_context::in,
-	transform_info::in, transform_info::out, io__state::di, io__state::uo)
-	is det.
+	transform_info::in, transform_info::out, io::di, io::uo) is det.
 
 check_expr_purity(Purity, Context, !Info, !IO) :-
 	( Purity \= pure ->
@@ -7819,7 +7800,7 @@ parse_rule_term(Context, RuleTerm, HeadTerm, GoalTerm) :-
 	unify_sub_contexts::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out,
-	svar_info::in, io__state::di, io__state::uo) is det.
+	svar_info::in, io::di, io::uo) is det.
 
 build_lambda_expression(X, Purity, PredOrFunc, EvalMethod, Args0, Modes, Det,
 		ParsedGoal, Context, MainContext, SubContext, Goal, !VarSet,
@@ -8110,7 +8091,7 @@ substitute_var(Subst, Var0) = Var :-
 :- pred get_rev_conj(goal::in, prog_substitution::in, list(hlds_goal)::in,
 	list(hlds_goal)::out, prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 get_rev_conj(Goal, Subst, RevConj0, RevConj, !VarSet, !Info, !SInfo, !IO) :-
 	( Goal = (A,B) - _Context ->
@@ -8132,7 +8113,7 @@ get_rev_conj(Goal, Subst, RevConj0, RevConj, !VarSet, !Info, !SInfo, !IO) :-
 :- pred get_rev_par_conj(goal::in, prog_substitution::in, list(hlds_goal)::in,
 	list(hlds_goal)::out, prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 get_rev_par_conj(Goal, Subst, RevParConj0, RevParConj, !VarSet, !Info, !SInfo,
 		!IO) :-
@@ -8155,7 +8136,7 @@ get_rev_par_conj(Goal, Subst, RevParConj0, RevParConj, !VarSet, !Info, !SInfo,
 :- pred get_disj(goal::in, prog_substitution::in, hlds_goal_svar_infos::in,
 	hlds_goal_svar_infos::out, prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 get_disj(Goal, Subst, Disj0, Disj, !VarSet, !Info, SInfo, !IO) :-
 	( Goal = (A;B) - _Context ->
@@ -8384,7 +8365,7 @@ undefined_mode_error(Name, Arity, Context, Description) -->
 	% Similar to undefined_mode_error, but gives more information.
 :- pred undeclared_mode_error(list(mode)::in, prog_varset::in,
 	pred_id::in, pred_info::in, module_info::in, prog_context::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
 		Context, !IO) :-
@@ -8476,7 +8457,7 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
 		io__write_string("\n"),
 		prog_out__write_context(Context),
 		io__write_string("  without preceding `"),
-		{ hlds_out__pred_or_func_to_str(PredOrFunc, DeclString) },
+		{ DeclString = hlds_out__pred_or_func_to_str(PredOrFunc) },
 		io__write_string(DeclString),
 		io__write_string("' declaration.\n")
 	).
@@ -8606,7 +8587,7 @@ pragma_conflict_error(Name, Arity, Context, PragmaName) -->
 
 :- pred module_add_pragma_fact_table(sym_name::in, arity::in, string::in,
 	import_status::in, prog_context::in, module_info::in, module_info::out,
-	qual_info::in, qual_info::out, io__state::di, io__state::uo) is det.
+	qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 		!Module, !Info, !IO) :-
@@ -8692,7 +8673,7 @@ module_add_fact_table_procedures([ProcID | ProcIDs], PrimaryProcID, ProcTable,
 :- pred module_add_fact_table_proc(proc_id::in, proc_id::in, proc_table::in,
 	sym_name::in, pred_or_func::in, arity::in, list(type)::in,
 	import_status::in, prog_context::in, module_info::in, module_info::out,
-	qual_info::in, qual_info::out, io__state::di, io__state::uo) is det.
+	qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 		PredOrFunc, Arity, ArgTypes, Status, Context, !Module,

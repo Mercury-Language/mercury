@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 The University of Melbourne.
+% Copyright (C) 1998-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,14 +29,14 @@
 :- pred browse__browse(T::in, io__input_stream::in,
 	io__output_stream::in, maybe(list(dir))::out,
 	browser_persistent_state::in, browser_persistent_state::out,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 	% As above, except that the supplied format will override the default.
 	%
 :- pred browse__browse_format(T::in, io__input_stream::in,
 	io__output_stream::in, portray_format::in,
 	browser_persistent_state::in, browser_persistent_state::out,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 	% A version of browse__browse that works on synthetic terms
 	% in the sense of browser_info:browser_term.
@@ -44,7 +44,7 @@
 :- pred browse__browse_synthetic(string::in, list(univ)::in, bool::in,
 	io__input_stream::in, io__output_stream::in, maybe(list(dir))::out,
 	browser_persistent_state::in, browser_persistent_state::out,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 	% A version of browse__browse_format that works on synthetic terms
 	% in the sense of browser_info:browser_term.
@@ -52,7 +52,7 @@
 :- pred browse__browse_format_synthetic(string::in, list(univ)::in, bool::in,
 	io__input_stream::in, io__output_stream::in, portray_format::in,
 	browser_persistent_state::in, browser_persistent_state::out,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 	% The browser interface for the external debugger.  The caller type
 	% will be `browse', and the default format will be used.
@@ -60,38 +60,34 @@
 :- pred browse__browse_external(T::in, io__input_stream::in,
 	io__output_stream::in,
 	browser_persistent_state::in, browser_persistent_state::out,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 	% The non-interactive term browser.  The caller type should be either
 	% `print' or `print_all'.  The default portray format for that
 	% caller type is used.
 	%
 :- pred browse__print(T::in, io__output_stream::in, browse_caller_type::in,
-	browser_persistent_state::in, io__state::di, io__state::uo)
-	is cc_multi.
+	browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
 	% A version of browse__print that works on synthetic terms
 	% in the sense of browser_info:browser_term.
 	%
 :- pred browse__print_synthetic(string::in, list(univ)::in, bool::in,
 	io__output_stream::in, browse_caller_type::in,
-	browser_persistent_state::in, io__state::di, io__state::uo)
-	is cc_multi.
+	browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
 	% As above, except that the supplied format will override the default.
 	%
 :- pred browse__print_format(T::in, io__output_stream::in,
 	browse_caller_type::in, portray_format::in,
-	browser_persistent_state::in, io__state::di, io__state::uo)
-	is cc_multi.
+	browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
 	% A version of browse__print_format that works on synthetic terms
 	% in the sense of browser_info:browser_term.
 	%
 :- pred browse__print_format_synthetic(string::in, list(univ)::in, bool::in,
 	io__output_stream::in, browse_caller_type::in, portray_format::in,
-	browser_persistent_state::in, io__state::di, io__state::uo)
-	is cc_multi.
+	browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
 	% Estimate the total term size, in characters,
 	% We count the number of characters in the functor,
@@ -175,101 +171,101 @@
 % Non-interactive display
 %
 
-browse__print(Term, OutputStream, Caller, State) -->
+browse__print(Term, OutputStream, Caller, State, !IO) :-
 	browse__print_common(plain_term(univ(Term)), OutputStream,
-		Caller, no, State).
+		Caller, no, State, !IO).
 
-browse__print_format(Term, OutputStream, Caller, Format, State) -->
+browse__print_format(Term, OutputStream, Caller, Format, State, !IO):-
 	browse__print_common(plain_term(univ(Term)), OutputStream,
-		Caller, yes(Format), State).
+		Caller, yes(Format), State, !IO).
 
 browse__print_synthetic(FunctorString, Args, IsFunc, OutputStream,
-		Caller, State) -->
-	{ synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
-		BrowserTerm) },
-	browse__print_common(BrowserTerm, OutputStream, Caller, no, State).
+		Caller, State, !IO):-
+	synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
+		BrowserTerm),
+	browse__print_common(BrowserTerm, OutputStream, Caller, no, State,
+		!IO).
 
 browse__print_format_synthetic(FunctorString, Args, IsFunc, OutputStream,
-		Caller, Format, State) -->
-	{ synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
-		BrowserTerm) },
+		Caller, Format, State, !IO):-
+	synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
+		BrowserTerm),
 	browse__print_common(BrowserTerm, OutputStream,
-		Caller, yes(Format), State).
+		Caller, yes(Format), State, !IO).
 
 :- pred browse__print_common(browser_term::in, io__output_stream::in,
 	browse_caller_type::in, maybe(portray_format)::in,
-	browser_persistent_state::in, io__state::di, io__state::uo)
-	is cc_multi.
+	browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
-browse__print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State) -->
-	{ Info = browser_info__init(BrowserTerm, Caller, MaybeFormat, State) },
-	io__set_output_stream(OutputStream, OldStream),
-	{ browser_info__get_format(Info, Caller, MaybeFormat, Format) },
+browse__print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State,
+		!IO):-
+	Info = browser_info__init(BrowserTerm, Caller, MaybeFormat, State),
+	io__set_output_stream(OutputStream, OldStream, !IO),
+	browser_info__get_format(Info, Caller, MaybeFormat, Format),
 	%
 	% For plain terms, we assume that the variable name has been printed
 	% on the first part of the line.  If the format is something other than
 	% `flat', then we need to start on the next line.
 	%
 	(
-		{ BrowserTerm = plain_term(_) },
-		{ Format \= flat }
+		BrowserTerm = plain_term(_),
+		Format \= flat
 	->
-		io__nl
+		io__nl(!IO)
 	;
-		[]
+		true
 	),
-	portray(internal, Caller, no, Info),
-	io__set_output_stream(OldStream, _).
+	portray(internal, Caller, no, Info, !IO),
+	io__set_output_stream(OldStream, _, !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Interactive display
 %
 
-browse__browse(Object, InputStream, OutputStream, MaybeMark, State0, State) -->
+browse__browse(Object, InputStream, OutputStream, MaybeMark, !State, !IO) :-
 	browse_common(internal, plain_term(univ(Object)),
-		InputStream, OutputStream, no, MaybeMark, State0, State).
+		InputStream, OutputStream, no, MaybeMark, !State, !IO).
 
 browse__browse_format(Object, InputStream, OutputStream, Format,
-		State0, State) -->
+		!State, !IO) :-
 	browse_common(internal, plain_term(univ(Object)),
-		InputStream, OutputStream, yes(Format), _, State0, State).
+		InputStream, OutputStream, yes(Format), _, !State, !IO).
 
 browse__browse_synthetic(FunctorString, Args, IsFunc,
-		InputStream, OutputStream, MaybeMark, State0, State) -->
-	{ synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
-		BrowserTerm) },
+		InputStream, OutputStream, MaybeMark, !State, !IO) :-
+	synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
+		BrowserTerm),
 	browse_common(internal, BrowserTerm,
-		InputStream, OutputStream, no, MaybeMark, State0, State).
+		InputStream, OutputStream, no, MaybeMark, !State, !IO).
 
 browse__browse_format_synthetic(FunctorString, Args, IsFunc,
-		InputStream, OutputStream, Format, State0, State) -->
-	{ synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
-		BrowserTerm) },
+		InputStream, OutputStream, Format, !State, !IO) :-
+	synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
+		BrowserTerm),
 	browse_common(internal, BrowserTerm,
-		InputStream, OutputStream, yes(Format), _, State0, State).
+		InputStream, OutputStream, yes(Format), _, !State, !IO).
 
-browse__browse_external(Object, InputStream, OutputStream, State0, State) -->
+browse__browse_external(Object, InputStream, OutputStream, !State, !IO) :-
 	browse_common(external, plain_term(univ(Object)),
-		InputStream, OutputStream, no, _, State0, State).
+		InputStream, OutputStream, no, _, !State, !IO).
 
 :- pred browse_common(debugger::in, browser_term::in, io__input_stream::in,
 	io__output_stream::in, maybe(portray_format)::in,
 	maybe(list(dir))::out, browser_persistent_state::in,
-	browser_persistent_state::out, io__state::di, io__state::uo)
-	is cc_multi.
+	browser_persistent_state::out, io::di, io::uo) is cc_multi.
 
 browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
-		MaybeMark, State0, State) -->
-	{ Info0 = browser_info__init(Object, browse, MaybeFormat, State0) },
-	io__set_input_stream(InputStream, OldInputStream),
-	io__set_output_stream(OutputStream, OldOutputStream),
+		MaybeMark, !State, !IO) :-
+	Info0 = browser_info__init(Object, browse, MaybeFormat, !.State),
+	io__set_input_stream(InputStream, OldInputStream, !IO),
+	io__set_output_stream(OutputStream, OldOutputStream, !IO),
 	% startup_message,
-	browse_main_loop(Debugger, Info0, Info),
-	io__set_input_stream(OldInputStream, _),
-	io__set_output_stream(OldOutputStream, _),
-	{ MaybeMark = Info ^ maybe_mark },
-	{ State = Info ^ state }.
+	browse_main_loop(Debugger, Info0, Info, !IO),
+	io__set_input_stream(OldInputStream, _, !IO),
+	io__set_output_stream(OldOutputStream, _, !IO),
+	MaybeMark = Info ^ maybe_mark,
+	!:State = Info ^ state.
 
 % This predicate converts synthetic terms from the representation used in the
 % trace directory (as a list of arguments, the last of which represents the
@@ -295,34 +291,33 @@ synthetic_term_to_browser_term(FunctorString, Args, IsFunc, BrowserTerm) :-
 	).
 
 :- pred browse_main_loop(debugger::in, browser_info::in, browser_info::out,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
-browse_main_loop(Debugger, Info0, Info) -->
+browse_main_loop(Debugger, !Info, !IO) :-
 	(
-		{ Debugger = internal },
-		{ prompt(Prompt) },
-		parse__read_command(Prompt, Command)
+		Debugger = internal,
+		prompt(Prompt),
+		parse__read_command(Prompt, Command, !IO)
 	;
-		{ Debugger = external },
-		parse__read_command_external(Command)
+		Debugger = external,
+		parse__read_command_external(Command, !IO)
 	),
-	run_command(Debugger, Command, Quit, Info0, Info1),
+	run_command(Debugger, Command, Quit, !Info, !IO),
 	(
-		{ Quit = yes },
-		% write_string_debugger(Debugger, "quitting...\n")
+		Quit = yes,
+		% write_string_debugger(Debugger, "quitting...\n", !IO)
 		(
-			{ Debugger = external },
-			send_term_to_socket(browser_quit)
+			Debugger = external,
+			send_term_to_socket(browser_quit, !IO)
 		;
-			{ Debugger = internal }
-		),
-		{ Info = Info1 }
+			Debugger = internal
+		)
 	;
-		{ Quit = no },
-		browse_main_loop(Debugger, Info1, Info)
+		Quit = no,
+		browse_main_loop(Debugger, !Info, !IO)
 	).
 
-:- pred startup_message(debugger::in, io__state::di, io__state::uo) is det.
+:- pred startup_message(debugger::in, io::di, io::uo) is det.
 
 startup_message(Debugger) -->
 	write_string_debugger(Debugger, "-- Simple Mercury Term Browser.\n"),
@@ -333,8 +328,7 @@ startup_message(Debugger) -->
 prompt("browser> ").
 
 :- pred run_command(debugger::in, command::in, bool::out,
-	browser_info::in, browser_info::out, io__state::di, io__state::uo)
-	is cc_multi.
+	browser_info::in, browser_info::out, io::di, io::uo) is cc_multi.
 
 run_command(Debugger, Command, Quit, !Info, !IO) :-
 	% XXX The commands `set', `ls' and `print' should allow the format
@@ -429,7 +423,7 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
 
 :- pred do_portray(debugger::in, browse_caller_type::in,
 	maybe(maybe_option_table(format_option))::in, browser_info::in,
-	maybe(path)::in, io__state::di, io__state::uo) is cc_multi.
+	maybe(path)::in, io::di, io::uo) is cc_multi.
 
 do_portray(Debugger, CallerType, MaybeMaybeOptionTable, Info,
 		MaybePath, !IO) :-
@@ -507,7 +501,7 @@ set_browse_param(OptionTable, Setting, Info0, Info) :-
 		Setting, Info0 ^ state, NewState),
 	Info = Info0 ^ state := NewState.
 
-:- pred help(debugger::in, io__state::di, io__state::uo) is det.
+:- pred help(debugger::in, io::di, io::uo) is det.
 
 help(Debugger) -->
 	{ string__append_list([
@@ -545,7 +539,7 @@ help(Debugger) -->
 
 :- pred portray_maybe_path(debugger::in, browse_caller_type::in,
 	maybe(portray_format)::in, browser_info::in,
-	maybe(path)::in, io__state::di, io__state::uo) is cc_multi.
+	maybe(path)::in, io::di, io::uo) is cc_multi.
 
 portray_maybe_path(Debugger, Caller, MaybeFormat, Info, MaybePath, !IO) :-
 	(
@@ -558,44 +552,44 @@ portray_maybe_path(Debugger, Caller, MaybeFormat, Info, MaybePath, !IO) :-
 
 :- pred portray(debugger::in, browse_caller_type::in,
 	maybe(portray_format)::in, browser_info::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
-portray(Debugger, Caller, MaybeFormat, Info) -->
-	{ browser_info__get_format(Info, Caller, MaybeFormat, Format) },
-	{ browser_info__get_format_params(Info, Caller, Format, Params) },
+portray(Debugger, Caller, MaybeFormat, Info, !IO) :-
+	browser_info__get_format(Info, Caller, MaybeFormat, Format),
+	browser_info__get_format_params(Info, Caller, Format, Params),
 	(
-		{ deref_subterm(Info ^ term, Info ^ dirs, SubUniv) }
+		deref_subterm(Info ^ term, Info ^ dirs, SubUniv)
 	->
 		(
-			{ Format = flat },
-			portray_flat(Debugger, SubUniv, Params)
+			Format = flat,
+			portray_flat(Debugger, SubUniv, Params, !IO)
 		;
-			{ Format = raw_pretty },
-			portray_raw_pretty(Debugger, SubUniv, Params)
+			Format = raw_pretty,
+			portray_raw_pretty(Debugger, SubUniv, Params, !IO)
 		;
-			{ Format = verbose },
-			portray_verbose(Debugger, SubUniv, Params)
+			Format = verbose,
+			portray_verbose(Debugger, SubUniv, Params, !IO)
 		;
-			{ Format = pretty },
-			portray_pretty(Debugger, SubUniv, Params)
+			Format = pretty,
+			portray_pretty(Debugger, SubUniv, Params, !IO)
 		)
 	;
-		write_string_debugger(Debugger, "error: no such subterm")
+		write_string_debugger(Debugger, "error: no such subterm", !IO)
 	),
-	nl_debugger(Debugger).
+	nl_debugger(Debugger, !IO).
 
 :- pred portray_path(debugger::in, browse_caller_type::in,
 	maybe(portray_format)::in, browser_info::in, path::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
-portray_path(Debugger, Caller, MaybeFormat, Info0, Path) -->
-	{ set_path(Path, Info0, Info) },
-	portray(Debugger, Caller, MaybeFormat, Info).
+portray_path(Debugger, Caller, MaybeFormat, Info0, Path, !IO) :-
+	set_path(Path, Info0, Info),
+	portray(Debugger, Caller, MaybeFormat, Info, !IO).
 
 :- pred portray_flat(debugger::in, browser_term::in, format_params::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
-portray_flat(Debugger, BrowserTerm, Params) -->
+portray_flat(Debugger, BrowserTerm, Params, !IO) :-
 	%
 	% io__write handles the special cases such as lists,
 	% operators, etc. better, so we prefer to use it if we
@@ -606,76 +600,70 @@ portray_flat(Debugger, BrowserTerm, Params) -->
 	%
 	% XXX this ignores the maximum number of lines
 	%
-	{ browser_term_size_left_from_max(BrowserTerm, max_print_size,
-		RemainingSize) },
-	( { RemainingSize >= 0 } ->
-		portray_flat_write_browser_term(BrowserTerm)
+	browser_term_size_left_from_max(BrowserTerm, max_print_size,
+		RemainingSize),
+	( RemainingSize >= 0 ->
+		portray_flat_write_browser_term(BrowserTerm, !IO)
 	;
-		io__get_stream_db(StreamDb),
-		{ BrowserDb = browser_db(StreamDb) },
-		{ browser_term_to_string(BrowserDb, BrowserTerm, Params ^ size,
-			Params ^ depth, Str) },
-		write_string_debugger(Debugger, Str)
+		io__get_stream_db(StreamDb, !IO),
+		BrowserDb = browser_db(StreamDb),
+		browser_term_to_string(BrowserDb, BrowserTerm, Params ^ size,
+			Params ^ depth, Str),
+		write_string_debugger(Debugger, Str, !IO)
 	).
 
 :- pred portray_flat_write_browser_term(browser_term::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
-portray_flat_write_browser_term(plain_term(Univ)) -->
-	io__output_stream(Stream),
-	io__write_univ(Stream, include_details_cc, Univ).
-portray_flat_write_browser_term(synthetic_term(Functor, Args, MaybeReturn)) -->
-	io__write_string(Functor),
-	io__output_stream(Stream),
-	( { Args = [] } ->
-		[]
+portray_flat_write_browser_term(plain_term(Univ), !IO) :-
+	io__output_stream(Stream, !IO),
+	io__write_univ(Stream, include_details_cc, Univ, !IO).
+portray_flat_write_browser_term(synthetic_term(Functor, Args, MaybeReturn),
+		!IO) :-
+	io__write_string(Functor, !IO),
+	io__output_stream(Stream, !IO),
+	( Args = [] ->
+		true
 	;
-		io__write_string("("),
-		io__write_list(Args, ", ", pred(U::in, di, uo) is cc_multi -->
-			(
-				{ univ_to_type(U, _ `with_type` unbound) }
-			->
-				io__write_char(Stream, '_')
-			;
-				io__write_univ(Stream, include_details_cc, U)
-			)),
-		io__write_string(")")
+		io__write_string("(", !IO),
+		io__write_list(Args, ", ", write_univ_or_unbound(Stream), !IO),
+		io__write_string(")", !IO)
 	),
 	(
-		{ MaybeReturn = yes(Return) },
-		io__write_string(" = "),
-		io__write_univ(Stream, include_details_cc, Return)
+		MaybeReturn = yes(Return),
+		io__write_string(" = ", !IO),
+		io__write_univ(Stream, include_details_cc, Return, !IO)
 	;
-		{ MaybeReturn = no }
+		MaybeReturn = no
 	).
 
 :- pred portray_verbose(debugger::in, browser_term::in, format_params::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
-portray_verbose(Debugger, BrowserTerm, Params) -->
-	io__get_stream_db(StreamDb),
-	{ BrowserDb = browser_db(StreamDb) },
-	{ browser_term_to_string_verbose(BrowserDb, BrowserTerm, Params ^ size,
-		Params ^ depth, Params ^ width, Params ^ lines, Str) },
-	write_string_debugger(Debugger, Str).
+portray_verbose(Debugger, BrowserTerm, Params, !IO) :-
+	io__get_stream_db(StreamDb, !IO),
+	BrowserDb = browser_db(StreamDb),
+	browser_term_to_string_verbose(BrowserDb, BrowserTerm, Params ^ size,
+		Params ^ depth, Params ^ width, Params ^ lines, Str),
+	write_string_debugger(Debugger, Str, !IO).
 
 :- pred portray_raw_pretty(debugger::in, browser_term::in, format_params::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-portray_raw_pretty(Debugger, BrowserTerm, Params) -->
-	{ browser_term_to_string_raw_pretty(BrowserTerm, Params ^ width,
-		Params ^ depth, Str) },
-	write_string_debugger(Debugger, Str).
+portray_raw_pretty(Debugger, BrowserTerm, Params, !IO) :-
+	browser_term_to_string_raw_pretty(BrowserTerm, Params ^ width,
+		Params ^ depth, Str),
+	write_string_debugger(Debugger, Str, !IO).
 
 :- pred portray_pretty(debugger::in, browser_term::in, format_params::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
-portray_pretty(Debugger, BrowserTerm, Params) -->
-	io__get_stream_db(StreamDb),
-	{ BrowserDb = browser_db(StreamDb) },
-	{ sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
-		Params ^ width, Params ^ lines, Str) },
-	write_string_debugger(Debugger, Str).
+portray_pretty(Debugger, BrowserTerm, Params, !IO) :-
+	io__get_stream_db(StreamDb, !IO),
+	BrowserDb = browser_db(StreamDb),
+	sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
+		Params ^ width, Params ^ lines, Str),
+	write_string_debugger(Debugger, Str, !IO).
 
 	% The maximum estimated size for which we use `io__write'.
 :- func max_print_size = int.
@@ -724,6 +712,16 @@ browser_term_size_left_from_max(BrowserTerm, MaxSize, RemainingSize) :-
 		MaxArgsSize = MaxSize - PrincipalSize,
 		list__foldl(term_size_left_from_max,
 			Args, MaxArgsSize, RemainingSize)
+	).
+
+:- pred write_univ_or_unbound(io__output_stream::in, univ::in, io::di, io::uo)
+	is cc_multi.
+
+write_univ_or_unbound(Stream, Univ, !IO) :-
+	( univ_to_type(Univ, _ `with_type` unbound) ->
+		io__write_char(Stream, '_', !IO)
+	;
+		io__write_univ(Stream, include_details_cc, Univ, !IO)
 	).
 
 %---------------------------------------------------------------------------%
@@ -1055,58 +1053,58 @@ unlines([Line | Lines], Str) :-
 % Miscellaneous path handling
 %
 
-:- pred write_path(debugger, list(dir), io__state, io__state).
-:- mode write_path(in, in, di, uo) is det.
-write_path(Debugger, []) -->
-	write_string_debugger(Debugger, "/").
-write_path(Debugger, [Dir]) -->
-	(
-		{ Dir = parent },
-		write_string_debugger(Debugger, "/")
-	;
-		{ Dir = child_num(N) },
-		write_string_debugger(Debugger, "/"),
-		write_int_debugger(Debugger, N)
-	;
-		{ Dir = child_name(Name) },
-		write_string_debugger(Debugger, "/"),
-		write_string_debugger(Debugger, Name)
-	).
-write_path(Debugger, [Dir, Dir2 | Dirs]) -->
-	write_path_2(Debugger, [Dir, Dir2 | Dirs]).
+:- pred write_path(debugger::in, list(dir)::in, io::di, io::uo) is det.
 
-:- pred write_path_2(debugger, list(dir), io__state, io__state).
-:- mode write_path_2(in, in, di, uo) is det.
-write_path_2(Debugger, []) -->
-	write_string_debugger(Debugger, "/").
-write_path_2(Debugger, [Dir]) -->
+write_path(Debugger, [], !IO) :-
+	write_string_debugger(Debugger, "/", !IO).
+write_path(Debugger, [Dir], !IO) :-
 	(
-		{ Dir = parent },
-		write_string_debugger(Debugger, "/..")
+		Dir = parent,
+		write_string_debugger(Debugger, "/", !IO)
 	;
-		{ Dir = child_num(N) },
-		write_string_debugger(Debugger, "/"),
-		write_int_debugger(Debugger, N)
+		Dir = child_num(N),
+		write_string_debugger(Debugger, "/", !IO),
+		write_int_debugger(Debugger, N, !IO)
 	;
-		{ Dir = child_name(Name) },
-		write_string_debugger(Debugger, "/"),
-		write_string_debugger(Debugger, Name)
+		Dir = child_name(Name),
+		write_string_debugger(Debugger, "/", !IO),
+		write_string_debugger(Debugger, Name, !IO)
 	).
-write_path_2(Debugger, [Dir, Dir2 | Dirs]) -->
+write_path(Debugger, [Dir, Dir2 | Dirs], !IO) :-
+	write_path_2(Debugger, [Dir, Dir2 | Dirs], !IO).
+
+:- pred write_path_2(debugger::in, list(dir)::in, io::di, io::uo) is det.
+
+write_path_2(Debugger, [], !IO) :-
+	write_string_debugger(Debugger, "/", !IO).
+write_path_2(Debugger, [Dir], !IO) :-
 	(
-		{ Dir = parent },
-		write_string_debugger(Debugger, "/.."),
-		write_path_2(Debugger, [Dir2 | Dirs])
+		Dir = parent,
+		write_string_debugger(Debugger, "/..", !IO)
 	;
-		{ Dir = child_num(N) },
-		write_string_debugger(Debugger, "/"),
-		write_int_debugger(Debugger, N),
-		write_path_2(Debugger, [Dir2 | Dirs])
+		Dir = child_num(N),
+		write_string_debugger(Debugger, "/", !IO),
+		write_int_debugger(Debugger, N, !IO)
 	;
-		{ Dir = child_name(Name) },
-		write_string_debugger(Debugger, "/"),
-		write_string_debugger(Debugger, Name),
-		write_path_2(Debugger, [Dir2 | Dirs])
+		Dir = child_name(Name),
+		write_string_debugger(Debugger, "/", !IO),
+		write_string_debugger(Debugger, Name, !IO)
+	).
+write_path_2(Debugger, [Dir, Dir2 | Dirs], !IO) :-
+	(
+		Dir = parent,
+		write_string_debugger(Debugger, "/..", !IO),
+		write_path_2(Debugger, [Dir2 | Dirs], !IO)
+	;
+		Dir = child_num(N),
+		write_string_debugger(Debugger, "/", !IO),
+		write_int_debugger(Debugger, N, !IO),
+		write_path_2(Debugger, [Dir2 | Dirs], !IO)
+	;
+		Dir = child_name(Name),
+		write_string_debugger(Debugger, "/", !IO),
+		write_string_debugger(Debugger, Name, !IO),
+		write_path_2(Debugger, [Dir2 | Dirs], !IO)
 	).
 
 	% We assume a root-relative path. We assume Term is the entire term
@@ -1190,18 +1188,18 @@ deref_subterm_2(Univ, Path, SubUniv) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred get_path(browser_info, path).
-:- mode get_path(in, out) is det.
+:- pred get_path(browser_info::in, path::out) is det.
+
 get_path(Info, root_rel(Info ^ dirs)).
 
-:- pred set_path(path, browser_info, browser_info).
-:- mode set_path(in, in, out) is det.
+:- pred set_path(path::in, browser_info::in, browser_info::out) is det.
+
 set_path(NewPath, Info0, Info) :-
 	change_dir(Info0 ^ dirs, NewPath, NewDirs),
 	Info = Info0 ^ dirs := NewDirs.
 
-:- pred change_dir(list(dir), path, list(dir)).
-:- mode change_dir(in, in, out) is det.
+:- pred change_dir(list(dir)::in, path::in, list(dir)::out) is det.
+
 change_dir(PwdDirs, Path, RootRelDirs) :-
 	(
 		Path = root_rel(Dirs),
@@ -1231,7 +1229,7 @@ set_browser_term(BrowserTerm, Info, Info ^ term := BrowserTerm).
 %
 
 :- pred show_settings(debugger::in, browser_info::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 show_settings(Debugger, Info, !IO) :-
 	show_settings_caller(Debugger, Info, browse, "Browser", !IO),
@@ -1250,7 +1248,7 @@ show_settings(Debugger, Info, !IO) :-
 
 :- pred show_settings_caller(debugger::in, browser_info::in,
 	browse_caller_type::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 show_settings_caller(Debugger, Info, Caller, CallerName, !IO) :-
 	browser_info__get_format(Info, Caller, no, Format),
@@ -1283,7 +1281,7 @@ show_settings_caller(Debugger, Info, Caller, CallerName, !IO) :-
 
 :- pred show_settings_caller_format(debugger::in, browser_info::in,
 	browse_caller_type::in, string::in, portray_format::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 show_settings_caller_format(Debugger, Info, Caller, CallerName,
 		Format, FormatName, !IO) :-
@@ -1318,15 +1316,13 @@ size_len      = 10.
 x_len         = 10.
 y_len         = 10.
 
-:- pred string_to_path(string, path).
-:- mode string_to_path(in, out) is semidet.
+:- pred string_to_path(string::in, path::out) is semidet.
 
 string_to_path(Str, Path) :-
 	string__to_char_list(Str, Cs),
 	chars_to_path(Cs, Path).
 
-:- pred chars_to_path(list(char), path).
-:- mode chars_to_path(in, out) is semidet.
+:- pred chars_to_path(list(char)::in, path::out) is semidet.
 
 chars_to_path([C | Cs], Path) :-
 	( C = ('/') ->
@@ -1337,15 +1333,13 @@ chars_to_path([C | Cs], Path) :-
 		chars_to_dirs([C | Cs], Dirs)
 	).
 
-:- pred chars_to_dirs(list(char), list(dir)).
-:- mode chars_to_dirs(in, out) is semidet.
+:- pred chars_to_dirs(list(char)::in, list(dir)::out) is semidet.
 
 chars_to_dirs(Cs, Dirs) :-
 	split_dirs(Cs, Names),
 	names_to_dirs(Names, Dirs).
 
-:- pred names_to_dirs(list(string), list(dir)).
-:- mode names_to_dirs(in, out) is semidet.
+:- pred names_to_dirs(list(string)::in, list(dir)::out) is semidet.
 
 names_to_dirs([], []).
 names_to_dirs([Name | Names], Dirs) :-
@@ -1362,8 +1356,7 @@ names_to_dirs([Name | Names], Dirs) :-
 		names_to_dirs(Names, RestDirs)
 	).
 
-:- pred split_dirs(list(char), list(string)).
-:- mode split_dirs(in, out) is det.
+:- pred split_dirs(list(char)::in, list(string)::out) is det.
 
 split_dirs(Cs, Names) :-
 	takewhile(not_slash, Cs, NameCs, Rest),
@@ -1379,8 +1372,7 @@ split_dirs(Cs, Names) :-
 		error("split_dirs: software error")
 	).
 
-:- pred not_slash(char).
-:- mode not_slash(in) is semidet.
+:- pred not_slash(char::in) is semidet.
 
 not_slash(C) :-
 	C \= ('/').
@@ -1389,8 +1381,7 @@ not_slash(C) :-
 	% a form that lacks ".." entries.
 	% NB: This can be done more efficiently than simple iteration
 	% to a limit.
-:- pred simplify_dirs(list(dir), list(dir)).
-:- mode simplify_dirs(in, out) is det.
+:- pred simplify_dirs(list(dir)::in, list(dir)::out) is det.
 
 simplify_dirs(Dirs, SimpleDirs) :-
 	util__limit(simplify, Dirs, SimpleDirs).
@@ -1401,8 +1392,7 @@ simplify_dirs(Dirs, SimpleDirs) :-
 	% or:
 	%	- "/.." (parent of root is root)
 	%
-:- pred simplify(list(dir), list(dir)).
-:- mode simplify(in, out) is det.
+:- pred simplify(list(dir)::in, list(dir)::out) is det.
 
 simplify([], []).
 simplify([First | Rest], Simplified) :-
@@ -1419,57 +1409,53 @@ simplify([First | Rest], Simplified) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred write_string_debugger(debugger, string, io__state, io__state).
-:- mode write_string_debugger(in, in, di, uo) is det.
+:- pred write_string_debugger(debugger::in, string::in, io::di, io::uo) is det.
 
-write_string_debugger(internal, String) -->
-	io__write_string(String).
-write_string_debugger(external, String) -->
-	send_term_to_socket(browser_str(String)).
+write_string_debugger(internal, String, !IO) :-
+	io__write_string(String, !IO).
+write_string_debugger(external, String, !IO) :-
+	send_term_to_socket(browser_str(String), !IO).
 
-:- pred nl_debugger(debugger, io__state, io__state).
-:- mode nl_debugger(in, di, uo) is det.
+:- pred nl_debugger(debugger::in, io::di, io::uo) is det.
 
-nl_debugger(internal) -->
-	io__nl.
-nl_debugger(external) -->
-	send_term_to_socket(browser_nl).
+nl_debugger(internal, !IO) :-
+	io__nl(!IO).
+nl_debugger(external, !IO) :-
+	send_term_to_socket(browser_nl, !IO).
 
-:- pred write_int_debugger(debugger, int, io__state, io__state).
-:- mode write_int_debugger(in, in, di, uo) is det.
+:- pred write_int_debugger(debugger::in, int::in, io::di, io::uo) is det.
 
-write_int_debugger(internal, Int) -->
-	io__write_int(Int).
-write_int_debugger(external, Int) -->
-	send_term_to_socket(browser_int(Int)).
+write_int_debugger(internal, Int, !IO) :-
+	io__write_int(Int, !IO).
+write_int_debugger(external, Int, !IO) :-
+	send_term_to_socket(browser_int(Int), !IO).
 
-:- pred print_format_debugger(debugger, portray_format, io__state, io__state).
-:- mode print_format_debugger(in, in, di, uo) is det.
+:- pred print_format_debugger(debugger::in, portray_format::in,
+	io::di, io::uo) is det.
 
-print_format_debugger(internal, X) -->
-	io__print(X).
-print_format_debugger(external, X) -->
+print_format_debugger(internal, X, !IO) :-
+	io__print(X, !IO).
+print_format_debugger(external, X, !IO) :-
 	(
-		{ X = flat },
-		send_term_to_socket(browser_str("flat"))
+		X = flat,
+		send_term_to_socket(browser_str("flat"), !IO)
 	;
-		{ X = raw_pretty },
-		send_term_to_socket(browser_str("raw_pretty"))
+		X = raw_pretty,
+		send_term_to_socket(browser_str("raw_pretty"), !IO)
 	;
-		{ X = verbose },
-		send_term_to_socket(browser_str("verbose"))
+		X = verbose,
+		send_term_to_socket(browser_str("verbose"), !IO)
 	;
-		{ X = pretty },
-		send_term_to_socket(browser_str("pretty"))
+		X = pretty,
+		send_term_to_socket(browser_str("pretty"), !IO)
 	).
 
-:- pred send_term_to_socket(term_browser_response, io__state, io__state).
-:- mode send_term_to_socket(in, di, uo) is det.
+:- pred send_term_to_socket(term_browser_response::in, io::di, io::uo) is det.
 
-send_term_to_socket(Term) -->
-	write(Term),
-	print(".\n"),
-	flush_output.
+send_term_to_socket(Term, !IO) :-
+	write(Term, !IO),
+	print(".\n", !IO),
+	flush_output(!IO).
 
 %---------------------------------------------------------------------------%
 

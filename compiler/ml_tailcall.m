@@ -636,8 +636,8 @@ report_nontailcall_warning(tailcall_warning(PredLabel, ProcId, Context),
 	(
 		PredLabel = pred(PredOrFunc, _MaybeModule, Name, Arity,
 			_CodeModel, _NonOutputFunc),
-		hlds_out__simple_call_id_to_string(PredOrFunc -
-			unqualified(Name) / Arity, CallId),
+		CallId = hlds_out__simple_call_id_to_string(PredOrFunc -
+			unqualified(Name) / Arity),
 		proc_id_to_int(ProcId, ProcNumber0),
 		ProcNumber = ProcNumber0 + 1,
 		ProcNumberStr = string__int_to_string(ProcNumber),

@@ -1104,7 +1104,7 @@ report_aditi_pragma(PredInfo, ErrorPieces) :-
 	),
 	string__append_list(["`:- pragma ", Pragma, "'"], PragmaStr),
 	CallId = PredOrFunc - qualified(Module, Name)/Arity,
-	hlds_out__simple_call_id_to_string(CallId, CallIdStr),
+	CallIdStr = hlds_out__simple_call_id_to_string(CallId),
 	ErrorPieces = [fixed("Error:"), fixed(PragmaStr),
 		words("declaration for"), fixed(CallIdStr)].
 

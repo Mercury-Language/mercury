@@ -34,11 +34,9 @@
 :- mode determinism_to_code_model(in, out) is det.
 :- mode determinism_to_code_model(out, in) is multi.
 
-:- pred proc_info_interface_code_model(proc_info, code_model).
-:- mode proc_info_interface_code_model(in, out) is det.
+:- pred proc_info_interface_code_model(proc_info::in, code_model::out) is det.
 
-:- pred goal_info_get_code_model(hlds_goal_info, code_model).
-:- mode goal_info_get_code_model(in, out) is det.
+:- pred goal_info_get_code_model(hlds_goal_info::in, code_model::out) is det.
 
 %-----------------------------------------------------------------------------%
 

@@ -29,21 +29,20 @@
 	% of a foreign function named in a `pragma export' declaration,
 	% which is used to allow a call to be made to a Mercury
 	% procedure from the foreign language.
-:- pred export__get_foreign_export_decls(module_info, foreign_export_decls).
-:- mode export__get_foreign_export_decls(in, out) is det.
+:- pred export__get_foreign_export_decls(module_info::in,
+	foreign_export_decls::out) is det.
 
 	% From the module_info, get a list of foreign_export_defns,
 	% each of which is a string containing the foreign code
 	% for defining a foreign function named in a `pragma export' decl.
-:- pred export__get_foreign_export_defns(module_info, foreign_export_defns).
-:- mode export__get_foreign_export_defns(in, out) is det.
+:- pred export__get_foreign_export_defns(module_info::in,
+	foreign_export_defns::out) is det.
 
 	% Produce an interface file containing declarations for the
 	% exported foreign functions (if required in this foreign
 	% language).
-:- pred export__produce_header_file(foreign_export_decls, module_name,
-					io__state, io__state).
-:- mode export__produce_header_file(in, in, di, uo) is det.
+:- pred export__produce_header_file(foreign_export_decls::in, module_name::in,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -53,14 +52,12 @@
 	% Generate C code to convert an rval (represented as a string), from
 	% a C type to a mercury C type (ie. convert strings and floats to
 	% words) and return the resulting C code as a string.
-:- pred convert_type_to_mercury(string, type, string).
-:- mode convert_type_to_mercury(in, in, out) is det.
+:- pred convert_type_to_mercury(string::in, (type)::in, string::out) is det.
 
 	% Generate C code to convert an rval (represented as a string), from
 	% a mercury C type to a C type. (ie. convert words to strings and
 	% floats if required) and return the resulting C code as a string.
-:- pred convert_type_from_mercury(string, type, string).
-:- mode convert_type_from_mercury(in, in, out) is det.
+:- pred convert_type_from_mercury(string::in, (type)::in, string::out) is det.
 
 	% Succeeds iff the given C type is known by the compiler to be
 	% an integer or pointer type the same size as MR_Word.
@@ -104,13 +101,12 @@ export__get_foreign_export_decls(HLDS, ForeignExportDecls) :-
 
 	ForeignExportDecls = foreign_export_decls(ForeignDecls, C_ExportDecls).
 
-:- pred export__get_foreign_export_decls_2(pred_table,
-		list(pragma_exported_proc), globals,
-		module_info, list(foreign_export_decl)).
-:- mode export__get_foreign_export_decls_2(in, in, in, in, out) is det.
+:- pred export__get_foreign_export_decls_2(pred_table::in,
+	list(pragma_exported_proc)::in, globals::in, module_info::in,
+	list(foreign_export_decl)::out) is det.
 
 export__get_foreign_export_decls_2(_Preds, [], _, _, []).
-export__get_foreign_export_decls_2(Preds, [E|ExportedProcs], Globals, Module,
+export__get_foreign_export_decls_2(Preds, [E | ExportedProcs], Globals, Module,
 		C_ExportDecls) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
 	get_export_info(Preds, PredId, ProcId, Globals, Module, _HowToDeclare,
@@ -224,9 +220,8 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%	return retval;
 	% #endif
 	% }
-:- pred export__to_c(pred_table, list(pragma_exported_proc), module_info,
-		list(string)).
-:- mode export__to_c(in, in, in, out) is det.
+:- pred export__to_c(pred_table::in, list(pragma_exported_proc)::in,
+	module_info::in, list(string)::out) is det.
 
 export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
@@ -297,7 +292,6 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	export__to_c(Preds, ExportedProcs, Module, TheRest),
 	ExportedProcsCode = [Code|TheRest].
 
-
 	% get_export_info(Preds, PredId, ProcId, Globals, DeclareString,
 	%		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSuccess,
 	%		ArgInfoTypes):
@@ -309,11 +303,9 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	%	- the actions on success and failure, and
 	%	- the argument locations/modes/types.
 
-:- pred get_export_info(pred_table, pred_id, proc_id, globals, module_info,
-			string, string, string, string, string,
-			assoc_list(arg_info, type)).
-:- mode get_export_info(in, in, in, in, in,
-		out, out, out, out, out, out) is det.
+:- pred get_export_info(pred_table::in, pred_id::in, proc_id::in, globals::in,
+	module_info::in, string::out, string::out, string::out, string::out,
+	string::out, assoc_list(arg_info, type)::out) is det.
 
 get_export_info(Preds, PredId, ProcId, Globals, Module,
 		HowToDeclareLabel, C_RetType, MaybeDeclareRetval,
@@ -420,6 +412,7 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 	%	the arguments of the exported C function.
 	%
 :- pred export__include_arg(pair(arg_info, type)::in) is semidet.
+
 export__include_arg(arg_info(_Loc, Mode) - Type) :-
 	Mode \= top_unused,
 	\+ type_util__is_dummy_argument_type(Type).
@@ -428,17 +421,15 @@ export__include_arg(arg_info(_Loc, Mode) - Type) :-
 	% build a string to declare the argument types (and if
 	% NameThem = yes, the argument names) of a C function.
 
-:- pred get_argument_declarations(assoc_list(arg_info, type), bool,
-		module_info, string).
-:- mode get_argument_declarations(in, in, in, out) is det.
+:- pred get_argument_declarations(assoc_list(arg_info, type)::in, bool::in,
+	module_info::in, string::out) is det.
 
 get_argument_declarations([], _, _, "void").
 get_argument_declarations([X|Xs], NameThem, Module, Result) :-
 	get_argument_declarations_2([X|Xs], 0, NameThem, Module, Result).
 
-:- pred get_argument_declarations_2(assoc_list(arg_info, type), int, bool,
-				module_info, string).
-:- mode get_argument_declarations_2(in, in, in, in, out) is det.
+:- pred get_argument_declarations_2(assoc_list(arg_info, type)::in, int::in,
+	bool::in, module_info::in, string::out) is det.
 
 get_argument_declarations_2([], _, _, _, "").
 get_argument_declarations_2([AT|ATs], Num0, NameThem, Module, Result) :-
@@ -457,9 +448,8 @@ get_argument_declarations_2([AT|ATs], Num0, NameThem, Module, Result) :-
 			Result)
 	).
 
-:- pred get_argument_declaration(arg_info, type, int, bool, module_info,
-		string, string).
-:- mode get_argument_declaration(in, in, in, in, in, out, out) is det.
+:- pred get_argument_declaration(arg_info::in, (type)::in, int::in, bool::in,
+	module_info::in, string::out, string::out) is det.
 
 get_argument_declaration(ArgInfo, Type, Num, NameThem, Module,
 		TypeString, ArgName) :-
@@ -519,8 +509,8 @@ get_input_args([AT|ATs], Num0, ModuleInfo, Result) :-
 	get_input_args(ATs, Num, ModuleInfo, TheRest),
 	string__append(InputArg, TheRest, Result).
 
-:- pred copy_output_args(assoc_list(arg_info, type), int, module_info, string).
-:- mode copy_output_args(in, in, in, out) is det.
+:- pred copy_output_args(assoc_list(arg_info, type)::in, int::in,
+	module_info::in, string::out) is det.
 
 copy_output_args([], _, _, "").
 copy_output_args([AT|ATs], Num0, ModuleInfo, Result) :-
@@ -559,8 +549,7 @@ copy_output_args([AT|ATs], Num0, ModuleInfo, Result) :-
 
 	% convert an argument location (currently just a register number)
 	% to a string representing a C code fragment that names it.
-:- pred argloc_to_string(arg_loc, string).
-:- mode argloc_to_string(in, out) is det.
+:- pred argloc_to_string(arg_loc::in, string::out) is det.
 
 argloc_to_string(RegNum, RegName) :-
 	string__int_to_string(RegNum, RegNumString),
@@ -613,29 +602,34 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 
 % This procedure is used for both the MLDS and LLDS back-ends.
 
-export__produce_header_file(ForeignExportDecls, ModuleName) -->
+export__produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
 		% We always produce a .mh file because with intermodule
 		% optimization enabled the .o file depends on all the
 		% .mh files of the imported modules so we always need to
 		% produce a .mh file even if it contains nothing.
-	{ ForeignExportDecls = foreign_export_decls(ForeignDecls,
-			C_ExportDecls) },
-	{ HeaderExt = ".mh" },
-	module_name_to_file_name(ModuleName, HeaderExt, yes, FileName),
-	io__open_output(FileName ++ ".tmp", Result),
+	ForeignExportDecls = foreign_export_decls(ForeignDecls,
+			C_ExportDecls),
+	HeaderExt = ".mh",
+	module_name_to_file_name(ModuleName, HeaderExt, yes, FileName, !IO),
+	io__open_output(FileName ++ ".tmp", Result, !IO),
 	(
-		{ Result = ok(FileStream) }
+		Result = ok(FileStream)
 	->
-		io__set_output_stream(FileStream, OutputStream),
-		module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
-		{ library__version(Version) },
-		io__write_strings(["/*\n** Automatically generated from `",
-			SourceFileName,
-			"' by the\n** Mercury compiler, version ", Version,
-			".\n** Do not edit.\n*/\n"]),
-		{ MangledModuleName = sym_name_mangle(ModuleName) },
-		{ string__to_upper(MangledModuleName, UppercaseModuleName) },
-		{ string__append(UppercaseModuleName, "_H", GuardMacroName) },
+		io__set_output_stream(FileStream, OutputStream, !IO),
+		module_name_to_file_name(ModuleName, ".m", no, SourceFileName,
+			!IO),
+		library__version(Version),
+		io__write_strings([
+			"/*\n",
+			"** Automatically generated from `",
+				SourceFileName, "'\n",
+			"** by the Mercury compiler,\n",
+			"** version ", Version, ".\n",
+			"** Do not edit.\n",
+			"*/\n"], !IO),
+		MangledModuleName = sym_name_mangle(ModuleName),
+		string__to_upper(MangledModuleName, UppercaseModuleName),
+		string__append(UppercaseModuleName, "_H", GuardMacroName),
 		io__write_strings([
 			"#ifndef ", GuardMacroName, "\n",
 			"#define ", GuardMacroName, "\n",
@@ -654,38 +648,40 @@ export__produce_header_file(ForeignExportDecls, ModuleName) -->
 			"#ifdef MR_DEEP_PROFILING\n",
 			"#include ""mercury_deep_profiling.h""\n",
 			"#endif\n",
-			"\n"]),
+			"\n"], !IO),
 
-		io__write_strings(["#ifndef ", decl_guard(ModuleName),
-				 "\n#define ", decl_guard(ModuleName), "\n"]),
-		list__foldl(output_foreign_decl, ForeignDecls),
-		io__write_string("\n#endif\n"),
+		io__write_strings([
+			"#ifndef ", decl_guard(ModuleName), "\n",
+			"#define ", decl_guard(ModuleName), "\n"],
+			!IO),
+		list__foldl(output_foreign_decl, ForeignDecls, !IO),
+		io__write_string("\n#endif\n", !IO),
 
-		export__produce_header_file_2(C_ExportDecls),
+		export__produce_header_file_2(C_ExportDecls, !IO),
 		io__write_strings([
 			"\n",
 			"#ifdef __cplusplus\n",
 			"}\n",
 			"#endif\n",
 			"\n",
-			"#endif /* ", GuardMacroName, " */\n"]),
-		io__set_output_stream(OutputStream, _),
-		io__close_output(FileStream),
+			"#endif /* ", GuardMacroName, " */\n"], !IO),
+		io__set_output_stream(OutputStream, _, !IO),
+		io__close_output(FileStream, !IO),
 		% rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
-		update_interface(FileName)
+		update_interface(FileName, !IO)
 	;
-		io__progname_base("export.m", ProgName),
-		io__write_string("\n"),
-		io__write_string(ProgName),
-		io__write_string(": can't open `"),
-		io__write_string(FileName ++ ".tmp"),
-		io__write_string("' for output\n"),
-		io__set_exit_status(1)
+		io__progname_base("export.m", ProgName, !IO),
+		io__write_string("\n", !IO),
+		io__write_string(ProgName, !IO),
+		io__write_string(": can't open `", !IO),
+		io__write_string(FileName ++ ".tmp", !IO),
+		io__write_string("' for output\n", !IO),
+		io__set_exit_status(1, !IO)
 	).
 
-:- pred export__produce_header_file_2(list(foreign_export_decl),
-		io__state, io__state).
-:- mode export__produce_header_file_2(in, di, uo) is det.
+:- pred export__produce_header_file_2(list(foreign_export_decl)::in,
+	io::di, io::uo) is det.
+
 export__produce_header_file_2([]) --> [].
 export__produce_header_file_2([E|ExportedProcs]) -->
 	{ E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls) },

@@ -28,23 +28,20 @@
 
 :- type dead_proc_pass
 	--->	warning_pass
-	;	final_optimization_pass
-	.
+	;	final_optimization_pass.
 
 	% Eliminate dead procedures.
 	% If the first argument is `warning_pass',
 	% also warn about any user-defined procedures that are dead.
 	% If the first argument is `final_optimization_pass',
 	% also eliminate any opt_imported procedures.
-:- pred dead_proc_elim(dead_proc_pass, module_info, module_info,
-		io__state, io__state).
-:- mode dead_proc_elim(in, in, out, di, uo) is det.
+:- pred dead_proc_elim(dead_proc_pass::in, module_info::in, module_info::out,
+	io::di, io::uo) is det.
 
 	% Analyze which entities are needed, and for those entities
 	% which are needed, record how many times they are referenced
 	% (this information is used by our inlining heuristics).
-:- pred dead_proc_elim__analyze(module_info, needed_map).
-:- mode dead_proc_elim__analyze(in, out) is det.
+:- pred dead_proc_elim__analyze(module_info::in, needed_map::out) is det.
 
 	% Optimize away any dead predicates.
 	% This is performed immediately after make_hlds.m to avoid doing
@@ -52,8 +49,7 @@
 	% files which are not used in the current module. This assumes that
 	% the clauses_info is still valid, so it cannot be run after mode
 	% analysis.
-:- pred dead_pred_elim(module_info, module_info).
-:- mode dead_pred_elim(in, out) is det.
+:- pred dead_pred_elim(module_info::in, module_info::out) is det.
 
 :- type entity
 	--->	proc(pred_id, proc_id)
@@ -122,33 +118,32 @@ dead_proc_elim__analyze(ModuleInfo0, Needed) :-
 	% Note: changes here are likely to require changes to
 	% dead_pred_elim as well.
 
-:- pred dead_proc_elim__initialize(module_info, entity_queue, needed_map).
-:- mode dead_proc_elim__initialize(in, out, out) is det.
+:- pred dead_proc_elim__initialize(module_info::in,
+	entity_queue::out, needed_map::out) is det.
 
-dead_proc_elim__initialize(ModuleInfo, Queue, Needed) :-
-	queue__init(Queue0),
-	map__init(Needed0),
+dead_proc_elim__initialize(ModuleInfo, !:Queue, !:Needed) :-
+	!:Queue = queue__init,
+	!:Needed = map__init,
 	module_info_predids(ModuleInfo, PredIds),
 	module_info_preds(ModuleInfo, PredTable),
-	dead_proc_elim__initialize_preds(PredIds, PredTable,
-		Queue0, Queue1, Needed0, Needed1),
+	dead_proc_elim__initialize_preds(PredIds, PredTable, !Queue, !Needed),
 	module_info_get_pragma_exported_procs(ModuleInfo, PragmaExports),
 	dead_proc_elim__initialize_pragma_exports(PragmaExports,
-		Queue1, Queue2, Needed1, Needed2),
+		!Queue, !Needed),
 	module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
 	dead_proc_elim__initialize_base_gen_infos(TypeCtorGenInfos,
-		Queue2, Queue3, Needed2, Needed3),
+		!Queue, !Needed),
 	module_info_classes(ModuleInfo, Classes),
 	module_info_instances(ModuleInfo, Instances),
 	dead_proc_elim__initialize_class_methods(Classes, Instances,
-		Queue3, Queue, Needed3, Needed).
+		!Queue, !Needed).
 
 	% Add all normally exported procedures within the listed predicates
 	% to the queue and map.
 
-:- pred dead_proc_elim__initialize_preds(list(pred_id), pred_table,
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__initialize_preds(in, in, in, out, in, out) is det.
+:- pred dead_proc_elim__initialize_preds(list(pred_id)::in, pred_table::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
 dead_proc_elim__initialize_preds([], _PredTable, !Queue, !Needed).
 dead_proc_elim__initialize_preds([PredId | PredIds], PredTable,
@@ -160,41 +155,41 @@ dead_proc_elim__initialize_preds([PredId | PredIds], PredTable,
 
 	% Add the listed procedures to the queue and map.
 
-:- pred dead_proc_elim__initialize_procs(pred_id, list(proc_id),
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__initialize_procs(in, in, in, out, in, out) is det.
+:- pred dead_proc_elim__initialize_procs(pred_id::in, list(proc_id)::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-dead_proc_elim__initialize_procs(_PredId, [], Queue, Queue, Needed, Needed).
+dead_proc_elim__initialize_procs(_PredId, [], !Queue, !Needed).
 dead_proc_elim__initialize_procs(PredId, [ProcId | ProcIds],
-		Queue0, Queue, Needed0, Needed) :-
-	queue__put(Queue0, proc(PredId, ProcId), Queue1),
-	map__set(Needed0, proc(PredId, ProcId), no, Needed1),
-	dead_proc_elim__initialize_procs(PredId, ProcIds,
-		Queue1, Queue, Needed1, Needed).
+		!Queue, !Needed) :-
+	queue__put(!.Queue, proc(PredId, ProcId), !:Queue),
+	map__set(!.Needed, proc(PredId, ProcId), no, !:Needed),
+	dead_proc_elim__initialize_procs(PredId, ProcIds, !Queue, !Needed).
 
 	% Add procedures exported to C by a pragma(export, ...) declaration
 	% to the queue and map.
 
-:- pred dead_proc_elim__initialize_pragma_exports(list(pragma_exported_proc),
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__initialize_pragma_exports(in, in, out, in, out) is det.
+:- pred dead_proc_elim__initialize_pragma_exports(
+	list(pragma_exported_proc)::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-dead_proc_elim__initialize_pragma_exports([], Queue, Queue, Needed, Needed).
+dead_proc_elim__initialize_pragma_exports([], !Queue, !Needed).
 dead_proc_elim__initialize_pragma_exports([PragmaProc | PragmaProcs],
-		Queue0, Queue, Needed0, Needed) :-
+		!Queue, !Needed) :-
 	PragmaProc = pragma_exported_proc(PredId, ProcId, _CFunction, _Ctxt),
-	queue__put(Queue0, proc(PredId, ProcId), Queue1),
-	map__set(Needed0, proc(PredId, ProcId), no, Needed1),
+	queue__put(!.Queue, proc(PredId, ProcId), !:Queue),
+	map__set(!.Needed, proc(PredId, ProcId), no, !:Needed),
 	dead_proc_elim__initialize_pragma_exports(PragmaProcs,
-		Queue1, Queue, Needed1, Needed).
+		!Queue, !Needed).
 
-:- pred dead_proc_elim__initialize_base_gen_infos(list(type_ctor_gen_info),
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__initialize_base_gen_infos(in, in, out, in, out) is det.
+:- pred dead_proc_elim__initialize_base_gen_infos(list(type_ctor_gen_info)::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-dead_proc_elim__initialize_base_gen_infos([], Queue, Queue, Needed, Needed).
+dead_proc_elim__initialize_base_gen_infos([], !Queue, !Needed).
 dead_proc_elim__initialize_base_gen_infos([TypeCtorGenInfo | TypeCtorGenInfos],
-		Queue0, Queue, Needed0, Needed) :-
+		!Queue, !Needed) :-
 	TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
 		Arity, _Status, _HldsDefn, _Unify, _Compare),
 	(
@@ -217,35 +212,32 @@ dead_proc_elim__initialize_base_gen_infos([TypeCtorGenInfo | TypeCtorGenInfos],
 		semidet_succeed
 	->
 		Entity = base_gen_info(ModuleName, TypeName, Arity),
-		queue__put(Queue0, Entity, Queue1),
-		map__set(Needed0, Entity, no, Needed1)
+		queue__put(!.Queue, Entity, !:Queue),
+		map__set(!.Needed, Entity, no, !:Needed)
 	;
-		Queue1 = Queue0,
-		Needed1 = Needed0
+		true
 	),
 	dead_proc_elim__initialize_base_gen_infos(TypeCtorGenInfos,
-		Queue1, Queue, Needed1, Needed).
+		!Queue, !Needed).
 
-:- pred dead_proc_elim__initialize_class_methods(class_table, instance_table,
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__initialize_class_methods(in, in,
-	in, out, in, out) is det.
+:- pred dead_proc_elim__initialize_class_methods(class_table::in,
+	instance_table::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-dead_proc_elim__initialize_class_methods(Classes, Instances, Queue0, Queue,
-		Needed0, Needed) :-
-	map__values(Instances, InstanceDefns0),
-	list__condense(InstanceDefns0, InstanceDefns),
-	list__foldl2(get_instance_pred_procs, InstanceDefns, Queue0, Queue1,
-		Needed0, Needed1),
+dead_proc_elim__initialize_class_methods(Classes, Instances,
+		!Queue, !Needed) :-
+	map__values(Instances, InstanceDefnsLists),
+	list__condense(InstanceDefnsLists, InstanceDefns),
+	list__foldl2(get_instance_pred_procs, InstanceDefns, !Queue, !Needed),
 	map__values(Classes, ClassDefns),
-	list__foldl2(get_class_pred_procs, ClassDefns, Queue1, Queue,
-		Needed1, Needed).
+	list__foldl2(get_class_pred_procs, ClassDefns, !Queue, !Needed).
 
-:- pred get_instance_pred_procs(hlds_instance_defn, entity_queue, entity_queue,
-	needed_map, needed_map).
-:- mode get_instance_pred_procs(in, in, out, in, out) is det.
+:- pred get_instance_pred_procs(hlds_instance_defn::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-get_instance_pred_procs(Instance, Queue0, Queue, Needed0, Needed) :-
+get_instance_pred_procs(Instance, !Queue, !Needed) :-
 	Instance = hlds_instance_defn(_, _, _, _, _, _, PredProcIds, _, _),
 
 	%
@@ -254,46 +246,42 @@ get_instance_pred_procs(Instance, Queue0, Queue, Needed0, Needed) :-
 	%
 	(
 			% This should never happen
-		PredProcIds = no,
-		Queue = Queue0,
-		Needed = Needed0
+		PredProcIds = no
 	;
 		PredProcIds = yes(Ids),
 		list__foldl2(get_class_interface_pred_proc, Ids,
-			Queue0, Queue, Needed0, Needed)
+			!Queue, !Needed)
 	).
 
-:- pred get_class_pred_procs(hlds_class_defn, entity_queue, entity_queue,
-		needed_map, needed_map).
-:- mode get_class_pred_procs(in, in, out, in, out) is det.
+:- pred get_class_pred_procs(hlds_class_defn::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-get_class_pred_procs(Class, Queue0, Queue, Needed0, Needed) :-
+get_class_pred_procs(Class, !Queue, !Needed) :-
 	Class = hlds_class_defn(_, _, _, _, Methods, _, _),
-	list__foldl2(get_class_interface_pred_proc, Methods,
-		Queue0, Queue, Needed0, Needed).
+	list__foldl2(get_class_interface_pred_proc, Methods, !Queue, !Needed).
 
 :- pred get_class_interface_pred_proc(hlds_class_proc::in,
 	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
 	is det.
 
-get_class_interface_pred_proc(ClassProc, Queue0, Queue, Needed0, Needed) :-
+get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
 	ClassProc = hlds_class_proc(PredId, ProcId),
-	queue__put(Queue0, proc(PredId, ProcId), Queue),
-	map__set(Needed0, proc(PredId, ProcId), no, Needed).
+	queue__put(!.Queue, proc(PredId, ProcId), !:Queue),
+	map__set(!.Needed, proc(PredId, ProcId), no, !:Needed).
 
 %-----------------------------------------------------------------------------%
 
-:- pred dead_proc_elim__examine(entity_queue, examined_set, module_info,
-	needed_map, needed_map).
-:- mode dead_proc_elim__examine(in, in, in, in, out) is det.
+:- pred dead_proc_elim__examine(entity_queue::in, examined_set::in,
+	module_info::in, needed_map::in, needed_map::out) is det.
 
-dead_proc_elim__examine(Queue0, Examined0, ModuleInfo, Needed0, Needed) :-
+dead_proc_elim__examine(Queue0, Examined0, ModuleInfo, !Needed) :-
 	% see if the queue is empty
 	( queue__get(Queue0, Entity, Queue1) ->
 		% see if the next element has been examined before
 		( set__member(Entity, Examined0) ->
 			dead_proc_elim__examine(Queue1, Examined0, ModuleInfo,
-				Needed0, Needed)
+				!Needed)
 		;
 			set__insert(Examined0, Entity, Examined1),
 			(
@@ -301,44 +289,42 @@ dead_proc_elim__examine(Queue0, Examined0, ModuleInfo, Needed0, Needed) :-
 				PredProcId = proc(PredId, ProcId),
 				dead_proc_elim__examine_proc(
 					PredProcId, ModuleInfo,
-					Queue1, Queue2, Needed0, Needed1)
+					Queue1, Queue2, !Needed)
 			;
 				Entity = base_gen_info(Module, Type, Arity),
 				dead_proc_elim__examine_base_gen_info(
 					Module, Type, Arity, ModuleInfo,
-					Queue1, Queue2, Needed0, Needed1)
+					Queue1, Queue2, !Needed)
 			),
 			dead_proc_elim__examine(Queue2, Examined1, ModuleInfo,
-				Needed1, Needed)
+				!Needed)
 		)
 	;
-		Needed = Needed0
+		true
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred dead_proc_elim__examine_base_gen_info(module_name, string, arity,
-	module_info, entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__examine_base_gen_info(in, in, in, in, in, out, in, out)
+:- pred dead_proc_elim__examine_base_gen_info(module_name::in, string::in,
+	arity::in, module_info::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
 	is det.
 
 dead_proc_elim__examine_base_gen_info(ModuleName, TypeName, Arity, ModuleInfo,
-		Queue0, Queue, Needed0, Needed) :-
+		!Queue, !Needed) :-
 	module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
 	(
 		dead_proc_elim__find_base_gen_info(ModuleName, TypeName,
 			Arity, TypeCtorGenInfos, Refs)
 	->
-		dead_proc_elim__examine_refs(Refs, Queue0, Queue,
-			Needed0, Needed)
+		dead_proc_elim__examine_refs(Refs, !Queue, !Needed)
 	;
-		Queue = Queue0,
-		Needed = Needed0
+		true
 	).
 
-:- pred dead_proc_elim__find_base_gen_info(module_name, string, arity,
-	list(type_ctor_gen_info), list(pred_proc_id)).
-:- mode dead_proc_elim__find_base_gen_info(in, in, in, in, out) is semidet.
+:- pred dead_proc_elim__find_base_gen_info(module_name::in, string::in,
+	arity::in, list(type_ctor_gen_info)::in, list(pred_proc_id)::out)
+	is semidet.
 
 dead_proc_elim__find_base_gen_info(ModuleName, TypeName, TypeArity,
 		[TypeCtorGenInfo | TypeCtorGenInfos], Refs) :-
@@ -348,36 +334,34 @@ dead_proc_elim__find_base_gen_info(ModuleName, TypeName, TypeArity,
 			Unify, Compare)
 	->
 		Refs = [Unify, Compare]
-		% dead_proc_elim__maybe_add_ref(MaybePretty,  Refs0, Refs)
 	;
 		dead_proc_elim__find_base_gen_info(ModuleName, TypeName,
 			TypeArity, TypeCtorGenInfos, Refs)
 	).
 
-:- pred dead_proc_elim__maybe_add_ref(maybe(pred_proc_id),
-	list(pred_proc_id), list(pred_proc_id)).
-:- mode dead_proc_elim__maybe_add_ref(in, in, out) is det.
+:- pred dead_proc_elim__maybe_add_ref(maybe(pred_proc_id)::in,
+	list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 dead_proc_elim__maybe_add_ref(no, Refs, Refs).
 dead_proc_elim__maybe_add_ref(yes(Ref), Refs, [Ref | Refs]).
 
-:- pred dead_proc_elim__examine_refs(list(pred_proc_id),
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__examine_refs(in, in, out, in, out) is det.
+:- pred dead_proc_elim__examine_refs(list(pred_proc_id)::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-dead_proc_elim__examine_refs([], Queue, Queue, Needed, Needed).
-dead_proc_elim__examine_refs([Ref | Refs], Queue0, Queue, Needed0, Needed) :-
+dead_proc_elim__examine_refs([], !Queue, !Needed).
+dead_proc_elim__examine_refs([Ref | Refs], !Queue, !Needed) :-
 	Ref = proc(PredId, ProcId),
 	Entity = proc(PredId, ProcId),
-	queue__put(Queue0, Entity, Queue1),
-	map__set(Needed0, Entity, no, Needed1),
-	dead_proc_elim__examine_refs(Refs, Queue1, Queue, Needed1, Needed).
+	queue__put(!.Queue, Entity, !:Queue),
+	map__set(!.Needed, Entity, no, !:Needed),
+	dead_proc_elim__examine_refs(Refs, !Queue, !Needed).
 
 %-----------------------------------------------------------------------------%
 
-:- pred dead_proc_elim__examine_proc(pred_proc_id, module_info,
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__examine_proc(in, in, in, out, in, out) is det.
+:- pred dead_proc_elim__examine_proc(pred_proc_id::in, module_info::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
 dead_proc_elim__examine_proc(proc(PredId, ProcId), ModuleInfo,
 		!Queue, !Needed) :-
@@ -396,106 +380,82 @@ dead_proc_elim__examine_proc(proc(PredId, ProcId), ModuleInfo,
 		true
 	).
 
-:- pred dead_proc_elim__examine_goals(list(hlds_goal), pred_proc_id,
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__examine_goals(in, in, in, out, in, out) is det.
+:- pred dead_proc_elim__examine_goals(list(hlds_goal)::in, pred_proc_id::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-dead_proc_elim__examine_goals([], _, Queue, Queue, Needed, Needed).
-dead_proc_elim__examine_goals([Goal | Goals], CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
-	dead_proc_elim__examine_goal(Goal, CurrProc, Queue0, Queue1,
-		Needed0, Needed1),
-	dead_proc_elim__examine_goals(Goals, CurrProc, Queue1, Queue,
-		Needed1, Needed).
+dead_proc_elim__examine_goals([], _, !Queue, !Needed).
+dead_proc_elim__examine_goals([Goal | Goals], CurrProc, !Queue, !Needed) :-
+	dead_proc_elim__examine_goal(Goal, CurrProc, !Queue, !Needed),
+	dead_proc_elim__examine_goals(Goals, CurrProc, !Queue, !Needed).
 
-:- pred dead_proc_elim__examine_cases(list(case), pred_proc_id,
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__examine_cases(in, in, in, out, in, out) is det.
+:- pred dead_proc_elim__examine_cases(list(case)::in, pred_proc_id::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-dead_proc_elim__examine_cases([], _CurrProc, Queue, Queue, Needed, Needed).
-dead_proc_elim__examine_cases([case(_, Goal) | Cases], CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
-	dead_proc_elim__examine_goal(Goal, CurrProc, Queue0, Queue1,
-		Needed0, Needed1),
-	dead_proc_elim__examine_cases(Cases, CurrProc, Queue1, Queue,
-		Needed1, Needed).
+dead_proc_elim__examine_cases([], _CurrProc, !Queue, !Needed).
+dead_proc_elim__examine_cases([case(_, Goal) | Cases], CurrProc,
+		!Queue, !Needed) :-
+	dead_proc_elim__examine_goal(Goal, CurrProc, !Queue, !Needed),
+	dead_proc_elim__examine_cases(Cases, CurrProc, !Queue, !Needed).
 
-:- pred dead_proc_elim__examine_goal(hlds_goal, pred_proc_id,
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__examine_goal(in, in, in, out, in, out) is det.
+:- pred dead_proc_elim__examine_goal(hlds_goal::in, pred_proc_id::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-dead_proc_elim__examine_goal(GoalExpr - _, CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
-	dead_proc_elim__examine_expr(GoalExpr, CurrProc, Queue0, Queue,
-		Needed0, Needed).
+dead_proc_elim__examine_goal(GoalExpr - _, CurrProc, !Queue, !Needed) :-
+	dead_proc_elim__examine_expr(GoalExpr, CurrProc, !Queue, !Needed).
 
-:- pred dead_proc_elim__examine_expr(hlds_goal_expr, pred_proc_id,
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__examine_expr(in, in, in, out, in, out) is det.
+:- pred dead_proc_elim__examine_expr(hlds_goal_expr::in, pred_proc_id::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-dead_proc_elim__examine_expr(disj(Goals), CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
-	dead_proc_elim__examine_goals(Goals, CurrProc, Queue0, Queue,
-		Needed0, Needed).
-dead_proc_elim__examine_expr(conj(Goals), CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
-	dead_proc_elim__examine_goals(Goals, CurrProc, Queue0, Queue,
-		Needed0, Needed).
-dead_proc_elim__examine_expr(par_conj(Goals), CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
-	dead_proc_elim__examine_goals(Goals, CurrProc, Queue0, Queue,
-		Needed0, Needed).
-dead_proc_elim__examine_expr(not(Goal), CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
-	dead_proc_elim__examine_goal(Goal, CurrProc, Queue0, Queue,
-		Needed0, Needed).
-dead_proc_elim__examine_expr(some(_, _, Goal), CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
-	dead_proc_elim__examine_goal(Goal, CurrProc, Queue0, Queue,
-		Needed0, Needed).
-dead_proc_elim__examine_expr(switch(_, _, Cases), CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
-	dead_proc_elim__examine_cases(Cases, CurrProc, Queue0, Queue,
-		Needed0, Needed).
-dead_proc_elim__examine_expr(if_then_else(_, Cond, Then, Else),
-		CurrProc, Queue0, Queue, Needed0, Needed) :-
-	dead_proc_elim__examine_goal(Cond, CurrProc, Queue0, Queue1,
-		Needed0, Needed1),
-	dead_proc_elim__examine_goal(Then, CurrProc, Queue1, Queue2,
-		Needed1, Needed2),
-	dead_proc_elim__examine_goal(Else, CurrProc, Queue2, Queue,
-		Needed2, Needed).
-dead_proc_elim__examine_expr(generic_call(_,_,_,_), _,
-		Queue, Queue, Needed, Needed).
+dead_proc_elim__examine_expr(disj(Goals), CurrProc, !Queue, !Needed) :-
+	dead_proc_elim__examine_goals(Goals, CurrProc, !Queue, !Needed).
+dead_proc_elim__examine_expr(conj(Goals), CurrProc, !Queue, !Needed) :-
+	dead_proc_elim__examine_goals(Goals, CurrProc, !Queue, !Needed).
+dead_proc_elim__examine_expr(par_conj(Goals), CurrProc, !Queue, !Needed) :-
+	dead_proc_elim__examine_goals(Goals, CurrProc, !Queue, !Needed).
+dead_proc_elim__examine_expr(not(Goal), CurrProc, !Queue, !Needed) :-
+	dead_proc_elim__examine_goal(Goal, CurrProc, !Queue, !Needed).
+dead_proc_elim__examine_expr(some(_, _, Goal), CurrProc, !Queue, !Needed) :-
+	dead_proc_elim__examine_goal(Goal, CurrProc, !Queue, !Needed).
+dead_proc_elim__examine_expr(switch(_, _, Cases), CurrProc, !Queue, !Needed) :-
+	dead_proc_elim__examine_cases(Cases, CurrProc, !Queue, !Needed).
+dead_proc_elim__examine_expr(if_then_else(_, Cond, Then, Else), CurrProc,
+		!Queue, !Needed) :-
+	dead_proc_elim__examine_goal(Cond, CurrProc, !Queue, !Needed),
+	dead_proc_elim__examine_goal(Then, CurrProc, !Queue, !Needed),
+	dead_proc_elim__examine_goal(Else, CurrProc, !Queue, !Needed).
+dead_proc_elim__examine_expr(generic_call(_,_,_,_), _, !Queue, !Needed).
 dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
-		CurrProc, Queue0, Queue, Needed0, Needed) :-
-	queue__put(Queue0, proc(PredId, ProcId), Queue),
+		CurrProc, !Queue, !Needed) :-
+	queue__put(!.Queue, proc(PredId, ProcId), !:Queue),
 	( proc(PredId, ProcId) = CurrProc ->
 		% if it's reachable and recursive, then we can't
 		% eliminate or inline it
 		NewNotation = no,
-		map__set(Needed0, proc(PredId, ProcId), NewNotation, Needed)
-	; map__search(Needed0, proc(PredId, ProcId), OldNotation) ->
+		map__set(!.Needed, proc(PredId, ProcId), NewNotation, !:Needed)
+	; map__search(!.Needed, proc(PredId, ProcId), OldNotation) ->
 		(
 			OldNotation = no,
 			NewNotation = no
 		;
-			OldNotation = yes(Count0),
-			Count = Count0 + 1,
-			NewNotation = yes(Count)
+			OldNotation = yes(Count),
+			NewNotation = yes(Count + 1)
 		),
-		map__det_update(Needed0, proc(PredId, ProcId), NewNotation,
-			Needed)
+		map__det_update(!.Needed, proc(PredId, ProcId), NewNotation,
+			!:Needed)
 	;
 		NewNotation = yes(1),
-		map__set(Needed0, proc(PredId, ProcId), NewNotation, Needed)
+		map__set(!.Needed, proc(PredId, ProcId), NewNotation, !:Needed)
 	).
-dead_proc_elim__examine_expr(foreign_proc(_, PredId, ProcId, _,
-		_, _, _), _CurrProc, Queue0, Queue, Needed0, Needed) :-
-	queue__put(Queue0, proc(PredId, ProcId), Queue),
-	map__set(Needed0, proc(PredId, ProcId), no, Needed).
-dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
+dead_proc_elim__examine_expr(foreign_proc(_, PredId, ProcId, _, _, _, _),
+		_CurrProc, !Queue, !Needed) :-
+	queue__put(!.Queue, proc(PredId, ProcId), !:Queue),
+	map__set(!.Needed, proc(PredId, ProcId), no, !:Needed).
+dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc,
+		!Queue, !Needed) :-
 	(
 		Uni = construct(_, ConsId, _, _, _, _, _),
 		(
@@ -506,11 +466,10 @@ dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
 			Entity = base_gen_info(Module, TypeName, Arity)
 		)
 	->
-		queue__put(Queue0, Entity, Queue),
-		map__set(Needed0, Entity, no, Needed)
+		queue__put(!.Queue, Entity, !:Queue),
+		map__set(!.Needed, Entity, no, !:Needed)
 	;
-		Queue = Queue0,
-		Needed = Needed0
+		true
 	).
 dead_proc_elim__examine_expr(shorthand(_), _, _, _, _, _) :-
 	% these should have been expanded out by now
@@ -536,20 +495,21 @@ dead_proc_elim__examine_expr(shorthand(_), _, _, _, _, _) :-
 	module_info::in, module_info::out, io__state::di, io__state::uo)
 	is det.
 
-dead_proc_elim__eliminate(Pass, Needed0, !ModuleInfo, !IO) :-
+dead_proc_elim__eliminate(Pass, !.Needed, !ModuleInfo, !IO) :-
 	module_info_predids(!.ModuleInfo, PredIds),
 	module_info_preds(!.ModuleInfo, PredTable0),
 
 	Changed0 = no,
-	ElimInfo0 = elimination_info(Needed0, !.ModuleInfo, PredTable0,
+	ElimInfo0 = elimination_info(!.Needed, !.ModuleInfo, PredTable0,
 		Changed0),
 	list__foldl2(dead_proc_elim__eliminate_pred(Pass), PredIds,
 		ElimInfo0, ElimInfo, !IO),
-	ElimInfo = elimination_info(Needed, !:ModuleInfo, PredTable, Changed),
+	ElimInfo = elimination_info(!:Needed, !:ModuleInfo, PredTable,
+		Changed),
 
 	module_info_set_preds(PredTable, !ModuleInfo),
 	module_info_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos0),
-	dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, Needed,
+	dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, !.Needed,
 		TypeCtorGenInfos),
 	module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, !ModuleInfo),
 	(
@@ -564,12 +524,12 @@ dead_proc_elim__eliminate(Pass, Needed0, !ModuleInfo, !IO) :-
 
 		% eliminate any unused procedures for this pred
 
-:- pred dead_proc_elim__eliminate_pred(dead_proc_pass, pred_id,
-	elim_info, elim_info, io__state, io__state).
-:- mode dead_proc_elim__eliminate_pred(in, in, in, out, di, uo) is det.
+:- pred dead_proc_elim__eliminate_pred(dead_proc_pass::in, pred_id::in,
+	elim_info::in, elim_info::out, io::di, io::uo) is det.
 
-dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo, !IO) :-
-	ElimInfo0 = elimination_info(Needed, ModuleInfo, PredTable0, Changed0),
+dead_proc_elim__eliminate_pred(Pass, PredId, !ElimInfo, !IO) :-
+	!.ElimInfo = elimination_info(Needed, ModuleInfo, PredTable0,
+		Changed0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_import_status(PredInfo0, Status),
 	(
@@ -613,9 +573,9 @@ dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo, !IO) :-
 	->
 		ProcIds = pred_info_procids(PredInfo0),
 		pred_info_procedures(PredInfo0, ProcTable0),
-		list__foldl2(dead_proc_elim__eliminate_proc(Pass, PredId,
-			Keep, WarnForThisProc, ElimInfo0),
-			ProcIds, Changed0 - ProcTable0, Changed - ProcTable,
+		list__foldl3(dead_proc_elim__eliminate_proc(Pass, PredId,
+			Keep, WarnForThisProc, !.ElimInfo),
+			ProcIds, ProcTable0, ProcTable, Changed0, Changed,
 			!IO),
 		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable)
@@ -663,69 +623,65 @@ dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo, !IO) :-
 		PredTable = PredTable0,
 		Changed = Changed0
 	),
-	ElimInfo = elimination_info(Needed, ModuleInfo, PredTable, Changed).
+	!:ElimInfo = elimination_info(Needed, ModuleInfo, PredTable, Changed).
 
 		% eliminate a procedure, if unused
 
-:- pred dead_proc_elim__eliminate_proc(dead_proc_pass, pred_id, maybe(proc_id),
-	bool, elim_info, proc_id,
-	pair(bool, proc_table), pair(bool, proc_table),
-	io__state, io__state).
-:- mode dead_proc_elim__eliminate_proc(in, in, in, in, in, in, in, out, di, uo)
-	is det.
+:- pred dead_proc_elim__eliminate_proc(dead_proc_pass::in, pred_id::in,
+	maybe(proc_id)::in, bool::in, elim_info::in, proc_id::in,
+	proc_table::in, proc_table::out, bool::in, bool::out,
+	io::di, io::uo) is det.
 
 dead_proc_elim__eliminate_proc(Pass, PredId, Keep, WarnForThisProc, ElimInfo,
-		ProcId, Changed0 - ProcTable0, Changed - ProcTable) -->
-	{ ElimInfo = elimination_info(Needed, ModuleInfo, _PredTable, _) },
+		ProcId, !ProcTable, !Changed, !IO) :-
+	ElimInfo = elimination_info(Needed, ModuleInfo, _PredTable, _),
 	(
 		% Keep the procedure if it is in the needed map
 		% or if it is to be kept because it is exported.
-		( { map__search(Needed, proc(PredId, ProcId), _) }
-		; { Keep = yes(ProcId) }
+		( map__search(Needed, proc(PredId, ProcId), _)
+		; Keep = yes(ProcId)
 		)
 	->
-		{ ProcTable = ProcTable0 },
-		{ Changed = Changed0 }
+		true
 	;
-		{ Changed = yes },
-		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-		( { VeryVerbose = yes } ->
+		!:Changed = yes,
+		globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+		( VeryVerbose = yes ->
 			write_proc_progress_message(
 				"% Eliminated the dead procedure ",
-				PredId, ProcId, ModuleInfo)
+				PredId, ProcId, ModuleInfo, !IO)
 		;
-			[]
+			true
 		),
 		(
-			{ Pass = warning_pass },
-			{ WarnForThisProc = yes }
+			Pass = warning_pass,
+			WarnForThisProc = yes
 			% we don't need to check the warn_dead_procs option
 			% since that is already checked by mercury_compile.m
 			% when deciding whether to invoke this warning_pass
 		->
-			{ proc_info_context(ProcTable0 ^ det_elem(ProcId),
-				Context) },
-			warn_dead_proc(PredId, ProcId, Context, ModuleInfo)
+			proc_info_context(!.ProcTable ^ det_elem(ProcId),
+				Context),
+			warn_dead_proc(PredId, ProcId, Context, ModuleInfo,
+				!IO)
 		;
-			[]
+			true
 		),
-		{ map__delete(ProcTable0, ProcId, ProcTable) }
+		map__delete(!.ProcTable, ProcId, !:ProcTable)
 	).
 
-:- pred warn_dead_proc(pred_id, proc_id, prog_context, module_info,
-		io__state, io__state).
-:- mode warn_dead_proc(in, in, in, in, di, uo) is det.
+:- pred warn_dead_proc(pred_id::in, proc_id::in, prog_context::in,
+	module_info::in, io::di, io::uo) is det.
 
 warn_dead_proc(PredId, ProcId, Context, ModuleInfo, !IO) :-
 	describe_one_proc_name(ModuleInfo, proc(PredId, ProcId),
 		ProcName),
 	Components = [words("Warning:"), fixed(ProcName),
-			words("is never called.")],
+		words("is never called.")],
 	error_util__report_warning(Context, 0, Components, !IO).
 
-:- pred dead_proc_elim__eliminate_base_gen_infos(list(type_ctor_gen_info),
-	needed_map, list(type_ctor_gen_info)).
-:- mode dead_proc_elim__eliminate_base_gen_infos(in, in, out) is det.
+:- pred dead_proc_elim__eliminate_base_gen_infos(list(type_ctor_gen_info)::in,
+	needed_map::in, list(type_ctor_gen_info)::out) is det.
 
 dead_proc_elim__eliminate_base_gen_infos([], _Needed, []).
 dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],

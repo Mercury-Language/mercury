@@ -12,7 +12,7 @@
 	%
 	%	* (--inline-simple and --inline-simple-threshold N)
 	%	  procedures whose size is below the given threshold,
-	%	  PLUS	  
+	%	  PLUS
 	%	  procedures that are flat (ie contain no branched structures)
 	%	  and are composed of inline builtins (eg arithmetic),
 	%	  and whose size is less than three times the given threshold
@@ -27,7 +27,7 @@
 	%
 	% 	* procedures which have a `:- pragma inline(name/arity).'
 	%
-	% It will not inline procedures which have a 
+	% It will not inline procedures which have a
 	% 	`:- pragma no_inline(name/arity).'
 	%
 	% If inlining a procedure takes the total number of variables over
@@ -90,14 +90,11 @@
 
 :- import_module bool, io, list, map.
 
-:- pred inlining(module_info, module_info, io__state, io__state).
-:- mode inlining(in, out, di, uo) is det.
+:- pred inlining(module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred inlining__is_simple_clause_list(list(clause), int).
-:- mode inlining__is_simple_clause_list(in, in) is semidet.
+:- pred inlining__is_simple_clause_list(list(clause)::in, int::in) is semidet.
 
-:- pred inlining__is_simple_goal(hlds_goal, int).
-:- mode inlining__is_simple_goal(in, in) is semidet.
+:- pred inlining__is_simple_goal(hlds_goal::in, int::in) is semidet.
 
 	% inlining__do_inline_call(UnivQVars, Args,
 	%	CalledPredInfo, CalledProcInfo,
@@ -109,41 +106,35 @@
 	% for the called goal and various information about the variables
 	% and types in the procedure currently being analysed, rename the
 	% goal for the called procedure so that it can be inlined.
-:- pred inlining__do_inline_call(list(tvar), list(prog_var),
-		pred_info, proc_info, prog_varset, prog_varset,
-		map(prog_var, type), map(prog_var, type),
-		tvarset, tvarset, map(tvar, type_info_locn), 
-		map(tvar, type_info_locn), hlds_goal).
-:- mode inlining__do_inline_call(in, in, in, in, in, out, in, out,
-	in, out, in, out, out) is det.
+:- pred inlining__do_inline_call(list(tvar)::in, list(prog_var)::in,
+	pred_info::in, proc_info::in, prog_varset::in, prog_varset::out,
+	vartypes::in, vartypes::out, tvarset::in, tvarset::out,
+	map(tvar, type_info_locn)::in, map(tvar, type_info_locn)::out,
+	hlds_goal::out) is det.
 
 	% inlining__get_type_substitution(CalleeArgTypes, CallerArgTypes,
 	%	HeadTypeParams, CalleeExistQTVars, TypeSubn).
 	%
 	% Work out a type substitution to map the callee's argument
 	% types into the caller's.
-:- pred inlining__get_type_substitution(list(type), list(type),
-		head_type_params, list(tvar), map(tvar, type)).
-:- mode inlining__get_type_substitution(in, in, in, in, out) is det.
+:- pred inlining__get_type_substitution(list(type)::in, list(type)::in,
+	head_type_params::in, list(tvar)::in, map(tvar, type)::out) is det.
 
 	% inlining__rename_goal(CalledProcHeadVars, CallArgs,
 	%	CallerVarSet0, CalleeVarSet, CallerVarSet,
 	%	CallerVarTypes0, CalleeVarTypes, CallerVarTypes,
 	%	VarRenaming, CalledGoal, RenamedGoal).
-:- pred inlining__rename_goal(list(prog_var), list(prog_var), prog_varset,
-		prog_varset, prog_varset, map(prog_var, type),
-		map(prog_var, type), map(prog_var, type),
-		map(prog_var, prog_var), hlds_goal, hlds_goal). 
-:- mode inlining__rename_goal(in, in, in, in, out,
-		in, in, out, out, in, out) is det.
+:- pred inlining__rename_goal(list(prog_var)::in, list(prog_var)::in,
+	prog_varset::in, prog_varset::in, prog_varset::out,
+	vartypes::in, vartypes::in, vartypes::out,
+	map(prog_var, prog_var)::out, hlds_goal::in, hlds_goal::out) is det.
 
 	% inlining__can_inline_proc(PredId, ProcId, BuiltinState,
 	% 	InlinePromisedPure, CallingPredMarkers, ModuleInfo).
 	%
 	% Determine whether a predicate can be inlined.
-:- pred inlining__can_inline_proc(pred_id, proc_id, builtin_state,
-		bool, pred_markers, module_info).
-:- mode inlining__can_inline_proc(in, in, in, in, in, in) is semidet.
+:- pred inlining__can_inline_proc(pred_id::in, proc_id::in, builtin_state::in,
+	bool::in, pred_markers::in, module_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -188,10 +179,10 @@
 			any_tracing		:: bool
 						% Is any procedure being traced
 						% in the module?
-						
+
 		).
 
-inlining(ModuleInfo0, ModuleInfo) -->
+inlining(!ModuleInfo, !IO) :-
 		%
 		% Package up all the inlining options
 		% - whether to inline simple conj's of builtins
@@ -207,17 +198,20 @@ inlining(ModuleInfo0, ModuleInfo) -->
 		%   this threshold then we don't inline it.
 		% - whether we're in an MLDS grade
 		%
-	globals__io_lookup_bool_option(inline_simple, Simple),
-	globals__io_lookup_bool_option(inline_single_use, SingleUse),
-	globals__io_lookup_int_option(inline_compound_threshold,
-							CompoundThreshold),
-	globals__io_lookup_int_option(inline_simple_threshold, SimpleThreshold),
-	globals__io_lookup_int_option(inline_vars_threshold, VarThreshold),
-	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
-	globals__io_get_trace_level(TraceLevel),
-	{ AnyTracing = bool__not(given_trace_level_is_none(TraceLevel)) },
-	{ Params = params(Simple, SingleUse, CompoundThreshold,
-		SimpleThreshold, VarThreshold, HighLevelCode, AnyTracing) },
+	globals__io_get_globals(Globals, !IO),
+	globals__lookup_bool_option(Globals, inline_simple, Simple),
+	globals__lookup_bool_option(Globals, inline_single_use, SingleUse),
+	globals__lookup_int_option(Globals, inline_compound_threshold,
+		CompoundThreshold),
+	globals__lookup_int_option(Globals, inline_simple_threshold,
+		SimpleThreshold),
+	globals__lookup_int_option(Globals, inline_vars_threshold,
+		VarThreshold),
+	globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+	globals__io_get_trace_level(TraceLevel, !IO),
+	AnyTracing = bool__not(given_trace_level_is_none(TraceLevel)),
+	Params = params(Simple, SingleUse, CompoundThreshold,
+		SimpleThreshold, VarThreshold, HighLevelCode, AnyTracing),
 
 		%
 		% Get the usage counts for predicates
@@ -225,13 +219,13 @@ inlining(ModuleInfo0, ModuleInfo) -->
 		% or --inline-compound-threshold has been specified)
 		%
 	(
-		( { SingleUse = yes }
-		; { CompoundThreshold > 0 }
+		( SingleUse = yes
+		; CompoundThreshold > 0
 		)
 	->
-		{ dead_proc_elim__analyze(ModuleInfo0, NeededMap) }
+		dead_proc_elim__analyze(!.ModuleInfo, NeededMap)
 	;
-		{ map__init(NeededMap) }
+		map__init(NeededMap)
 	),
 
 		% build the call graph and extract the topological sort
@@ -245,83 +239,80 @@ inlining(ModuleInfo0, ModuleInfo) -->
 		% to break the cycle so that the procedure(s) that are called
 		% by higher SCCs are processed last, but we do not implement
 		% that yet.
-	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo1) },
-	{ module_info_dependency_info(ModuleInfo1, DepInfo) },
-	{ hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs) },
-	{ list__condense(SCCs, PredProcs) },
-	{ set__init(InlinedProcs0) },
+	module_info_ensure_dependency_info(!ModuleInfo),
+	module_info_dependency_info(!.ModuleInfo, DepInfo),
+	hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+	list__condense(SCCs, PredProcs),
+	set__init(InlinedProcs0),
 	inlining__do_inlining(PredProcs, NeededMap, Params, InlinedProcs0,
-		ModuleInfo1, ModuleInfo2),
+		!ModuleInfo, !IO),
 
-		% The dependency graph is now out of date and 
+		% The dependency graph is now out of date and
 		% needs to be rebuilt.
-	{ module_info_clobber_dependency_info(ModuleInfo2, ModuleInfo) }.
+	module_info_clobber_dependency_info(!ModuleInfo).
 
-:- pred inlining__do_inlining(list(pred_proc_id), needed_map, inline_params,
-		set(pred_proc_id), module_info, module_info,
-		io__state, io__state).
-:- mode inlining__do_inlining(in, in, in, in, in, out, di, uo) is det.
+:- pred inlining__do_inlining(list(pred_proc_id)::in, needed_map::in,
+	inline_params::in, set(pred_proc_id)::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-inlining__do_inlining([], _Needed, _Params, _Inlined, Module, Module) --> [].
-inlining__do_inlining([PPId | PPIds], Needed, Params, Inlined0,
-		Module0, Module) -->
-	inlining__in_predproc(PPId, Inlined0, Params, Module0, Module1),
-	inlining__mark_predproc(PPId, Needed, Params, Module1,
-		Inlined0, Inlined1),
-	inlining__do_inlining(PPIds, Needed, Params, Inlined1, Module1, Module).
+inlining__do_inlining([], _Needed, _Params, _Inlined, !Module, !IO).
+inlining__do_inlining([PPId | PPIds], Needed, Params, !.Inlined, !Module,
+		!IO) :-
+	inlining__in_predproc(PPId, !.Inlined, Params, !Module, !IO),
+	inlining__mark_predproc(PPId, Needed, Params, !.Module, !Inlined, !IO),
+	inlining__do_inlining(PPIds, Needed, Params, !.Inlined, !Module, !IO).
 
-:- pred inlining__mark_predproc(pred_proc_id, needed_map, inline_params,
-		module_info, set(pred_proc_id), set(pred_proc_id),
-		io__state, io__state).
-:- mode inlining__mark_predproc(in, in, in, in, in, out, di, uo) is det.
+:- pred inlining__mark_predproc(pred_proc_id::in, needed_map::in,
+	inline_params::in, module_info::in,
+	set(pred_proc_id)::in, set(pred_proc_id)::out, io::di, io::uo) is det.
 
 %
 % This predicate effectively adds implicit `pragma inline'
 % directives for procedures that match its heuristic.
 %
 
-inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, 
-		InlinedProcs0, InlinedProcs) -->
+inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
+		!InlinedProcs, !IO) :-
 	(
-		{ Simple = Params ^ simple },
-		{ SingleUse = Params ^ single_use },
-		{ CompoundThreshold = Params ^ size_threshold },
-		{ SimpleThreshold = Params ^ simple_goal_threshold },
-		{ PredProcId = proc(PredId, ProcId) },
-		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ pred_info_procedures(PredInfo, Procs) },
-		{ map__lookup(Procs, ProcId, ProcInfo) },
-		{ proc_info_goal(ProcInfo, CalledGoal) },
-		{ Entity = proc(PredId, ProcId) },
+		Simple = Params ^ simple,
+		SingleUse = Params ^ single_use,
+		CompoundThreshold = Params ^ size_threshold,
+		SimpleThreshold = Params ^ simple_goal_threshold,
+		PredProcId = proc(PredId, ProcId),
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_procedures(PredInfo, Procs),
+		map__lookup(Procs, ProcId, ProcInfo),
+		proc_info_goal(ProcInfo, CalledGoal),
+		Entity = proc(PredId, ProcId),
 
 		%
 		% the heuristic represented by the following code
 		% could be improved
 		%
 		(
-			{ Simple = yes },
-			{ inlining__is_simple_goal(CalledGoal,
-				SimpleThreshold) }
+			Simple = yes,
+			inlining__is_simple_goal(CalledGoal,
+				SimpleThreshold)
 		;
-			{ CompoundThreshold > 0 },
-			{ map__search(NeededMap, Entity, Needed) },
-			{ Needed = yes(NumUses) },
-			{ goal_size(CalledGoal, Size) },
-			{ Size * NumUses =< CompoundThreshold }
+			CompoundThreshold > 0,
+			map__search(NeededMap, Entity, Needed),
+			Needed = yes(NumUses),
+			goal_size(CalledGoal, Size),
+			Size * NumUses =< CompoundThreshold
 		;
-			{ SingleUse = yes },
-			{ map__search(NeededMap, Entity, Needed) },
-			{ Needed = yes(NumUses) },
-			{ NumUses = 1 }
+			SingleUse = yes,
+			map__search(NeededMap, Entity, Needed),
+			Needed = yes(NumUses),
+			NumUses = 1
 		),
 		% Don't inline recursive predicates
 		% (unless explicitly requested)
-		{ \+ goal_calls(CalledGoal, PredProcId) }
+		\+ goal_calls(CalledGoal, PredProcId)
 	->
 		inlining__mark_proc_as_inlined(PredProcId, ModuleInfo,
-			InlinedProcs0, InlinedProcs)
+			!InlinedProcs, !IO)
 	;
-		{ InlinedProcs = InlinedProcs0 }
+		true
 	).
 
 	% this heuristic is used for both local and intermodule inlining
@@ -341,7 +332,7 @@ inlining__is_simple_clause_list(Clauses, SimpleThreshold) :-
 		%
 		inlining__is_flat_simple_goal(Goal)
 	).
-		
+
 inlining__is_simple_goal(CalledGoal, SimpleThreshold) :-
 	goal_size(CalledGoal, Size),
 	(
@@ -376,19 +367,18 @@ inlining__is_flat_simple_goal_list([Goal | Goals]) :-
 	inlining__is_flat_simple_goal(Goal),
 	inlining__is_flat_simple_goal_list(Goals).
 
-:- pred inlining__mark_proc_as_inlined(pred_proc_id, module_info,
-	set(pred_proc_id), set(pred_proc_id), io__state, io__state).
-:- mode inlining__mark_proc_as_inlined(in, in, in, out, di, uo) is det.
+:- pred inlining__mark_proc_as_inlined(pred_proc_id::in, module_info::in,
+	set(pred_proc_id)::in, set(pred_proc_id)::out, io::di, io::uo) is det.
 
 inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
-		InlinedProcs0, InlinedProcs) -->
-	{ set__insert(InlinedProcs0, proc(PredId, ProcId), InlinedProcs) },
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	( { pred_info_requested_inlining(PredInfo) } ->
-		[]
+		!InlinedProcs, !IO) :-
+	set__insert(!.InlinedProcs, proc(PredId, ProcId), !:InlinedProcs),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	( pred_info_requested_inlining(PredInfo) ->
+		true
 	;
 		write_proc_progress_message("% Inlining ", PredId, ProcId,
-			ModuleInfo)
+			ModuleInfo, !IO)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -401,7 +391,7 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 		% It also stores some necessary information that is not
 		% updated.
 
-:- type inline_info	
+:- type inline_info
 	---> inline_info(
 		int,			% variable threshold for inlining
 		bool,			% highlevel_code option
@@ -418,9 +408,9 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 			% the following fields are updated as a result
 			% of inlining
 		prog_varset,		% varset
-		map(prog_var, type),	% variable types
+		vartypes,		% variable types
 		tvarset,		% type variables
-		map(tvar, type_info_locn),% type_info varset, a mapping from 
+		map(tvar, type_info_locn),% type_info varset, a mapping from
 					% type variables to variables
 					% where their type_info is
 					% stored.
@@ -433,9 +423,9 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 					% any subgoal.
 	).
 
-:- pred inlining__in_predproc(pred_proc_id, set(pred_proc_id), inline_params,
-		module_info, module_info, io__state, io__state).
-:- mode inlining__in_predproc(in, in, in, in, out, di, uo) is det.
+:- pred inlining__in_predproc(pred_proc_id::in, set(pred_proc_id)::in,
+	inline_params::in, module_info::in, module_info::out,
+	io::di, io::uo) is det.
 
 inlining__in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
 	VarThresh = Params ^ var_threshold,
@@ -519,7 +509,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
 		% the procedure may lead to more efficient code.
 	globals__io_get_globals(Globals, !IO),
 	(
-		DetChanged = yes,	
+		DetChanged = yes,
 		det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, _, _, _)
 	;
 		DetChanged = no
@@ -527,45 +517,81 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_goal(hlds_goal, hlds_goal, inline_info,
-		inline_info).
-:- mode inlining__inlining_in_goal(in, out, in, out) is det.
+:- pred inlining__inlining_in_goal(hlds_goal::in, hlds_goal::out,
+	inline_info::in, inline_info::out) is det.
 
-inlining__inlining_in_goal(conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo) -->
-	inlining__inlining_in_conj(Goals0, Goals).
+inlining__inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
+	(
+		Goal0 = conj(Goals0),
+		inlining__inlining_in_conj(Goals0, Goals, !Info),
+		Goal = conj(Goals),
+		GoalInfo = GoalInfo0
+	;
+		Goal0 = par_conj(Goals0),
+		inlining__inlining_in_disj(Goals0, Goals, !Info),
+		Goal = par_conj(Goals),
+		GoalInfo = GoalInfo0
+	;
+		Goal0 = disj(Goals0),
+		inlining__inlining_in_disj(Goals0, Goals, !Info),
+		Goal = disj(Goals),
+		GoalInfo = GoalInfo0
+	;
+		Goal0 = switch(Var, Det, Cases0),
+		inlining__inlining_in_cases(Cases0, Cases, !Info),
+		Goal = switch(Var, Det, Cases),
+		GoalInfo = GoalInfo0
+	;
+		Goal0 = if_then_else(Vars, Cond0, Then0, Else0),
+		inlining__inlining_in_goal(Cond0, Cond, !Info),
+		inlining__inlining_in_goal(Then0, Then, !Info),
+		inlining__inlining_in_goal(Else0, Else, !Info),
+		Goal = if_then_else(Vars, Cond, Then, Else),
+		GoalInfo = GoalInfo0
+	;
+		Goal0 = not(SubGoal0),
+		inlining__inlining_in_goal(SubGoal0, SubGoal, !Info),
+		Goal = not(SubGoal),
+		GoalInfo = GoalInfo0
+	;
+		Goal0 = some(Vars, CanRemove, SubGoal0),
+		inlining__inlining_in_goal(SubGoal0, SubGoal, !Info),
+		Goal = some(Vars, CanRemove, SubGoal),
+		GoalInfo = GoalInfo0
+	;
+		Goal0 = generic_call(_, _, _, _),
+		Goal = Goal0,
+		GoalInfo = GoalInfo0
+	;
+		Goal0 = unify(_, _, _, _, _),
+		Goal = Goal0,
+		GoalInfo = GoalInfo0
+	;
+		Goal0 = foreign_proc(_, _, _, _, _, _, _),
+		Goal = Goal0,
+		GoalInfo = GoalInfo0
+	;
+		Goal0 = shorthand(_),
+		% these should have been expanded out by now
+		error("inlining__inlining_in_goal: unexpected shorthand")
+	;
+		Goal0 = call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
+		inlining__inlining_in_call(PredId, ProcId, ArgVars, Builtin,
+			Context, Sym, Goal, GoalInfo0, GoalInfo, !Info)
+	).
 
-inlining__inlining_in_goal(par_conj(Goals0) - GoalInfo,
-		par_conj(Goals) - GoalInfo) -->
-	inlining__inlining_in_disj(Goals0, Goals).
+:- pred inlining__inlining_in_call(pred_id::in, proc_id::in,
+	list(prog_var)::in, builtin_state::in, maybe(call_unify_context)::in,
+	sym_name::in, hlds_goal_expr::out,
+	hlds_goal_info::in, hlds_goal_info::out,
+	inline_info::in, inline_info::out) is det.
 
-inlining__inlining_in_goal(disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo) -->
-	inlining__inlining_in_disj(Goals0, Goals).
-
-inlining__inlining_in_goal(switch(Var, Det, Cases0) - GoalInfo,
-		switch(Var, Det, Cases) - GoalInfo) -->
-	inlining__inlining_in_cases(Cases0, Cases).
-
-inlining__inlining_in_goal(
-		if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo,
-		if_then_else(Vars, Cond, Then, Else) - GoalInfo) -->
-	inlining__inlining_in_goal(Cond0, Cond),
-	inlining__inlining_in_goal(Then0, Then),
-	inlining__inlining_in_goal(Else0, Else).
-
-inlining__inlining_in_goal(not(Goal0) - GoalInfo, not(Goal) - GoalInfo) -->
-	inlining__inlining_in_goal(Goal0, Goal).
-
-inlining__inlining_in_goal(some(Vars, CanRemove, Goal0) - GoalInfo,
-		some(Vars, CanRemove, Goal) - GoalInfo) -->
-	inlining__inlining_in_goal(Goal0, Goal).
-
-inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
-		Sym) - GoalInfo0, Goal - GoalInfo, InlineInfo0, InlineInfo) :-
-
-	InlineInfo0 = inline_info(VarThresh, HighLevelCode, AnyTracing,
+inlining__inlining_in_call(PredId, ProcId, ArgVars, Builtin,
+		Context, Sym, Goal, GoalInfo0, GoalInfo, !Info) :-
+	!.Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
 		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
-		DidInlining0, Requantify0, DetChanged0, PurityChanged0),
+		_DidInlining0, Requantify0, DetChanged0, PurityChanged0),
 
 	% should we inline this call?
 	(
@@ -586,9 +612,9 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		TotalVars = ThisMany + CalleeThisMany,
 		TotalVars =< VarThresh
 	->
-		inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, 
+		inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo,
 			ProcInfo, VarSet0, VarSet, VarTypes0, VarTypes,
-			TypeVarSet0, TypeVarSet, TypeInfoVarMap0, 
+			TypeVarSet0, TypeVarSet, TypeInfoVarMap0,
 			TypeInfoVarMap, Goal - GoalInfo),
 
 			%
@@ -610,7 +636,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		;
 			PurityChanged = yes
 		),
-			
+
 			% If the inferred determinism of the called
 			% goal differs from the declared determinism,
 			% flag that we should re-run determinism analysis
@@ -622,42 +648,20 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 			DetChanged = DetChanged0
 		;
 			DetChanged = yes
-		)
+		),
+		!:Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
+			InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
+			VarSet, VarTypes, TypeVarSet, TypeInfoVarMap,
+			DidInlining, Requantify, DetChanged, PurityChanged)
 	;
 		Goal = call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
-		GoalInfo = GoalInfo0,
-		VarSet = VarSet0,
-		VarTypes = VarTypes0,
-		TypeVarSet = TypeVarSet0,
-		TypeInfoVarMap = TypeInfoVarMap0,
-		DidInlining = DidInlining0,
-		Requantify = Requantify0,
-		DetChanged = DetChanged0,
-		PurityChanged = PurityChanged0
-	),
-	InlineInfo = inline_info(VarThresh, HighLevelCode, AnyTracing,
-		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
-		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DidInlining,
-		Requantify, DetChanged, PurityChanged).
-
-inlining__inlining_in_goal(generic_call(A, B, C, D) - GoalInfo,
-		generic_call(A, B, C, D) - GoalInfo) --> [].
-
-inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
-		unify(A, B, C, D, E) - GoalInfo) --> [].
-
-inlining__inlining_in_goal(
-		foreign_proc(A, B, C, D, E, F, G) - GoalInfo,
-		foreign_proc(A, B, C, D, E, F, G) - GoalInfo) --> [].
-
-inlining__inlining_in_goal(shorthand(_) - _, _) -->
-	% these should have been expanded out by now
-	{ error("inlining__inlining_in_goal: unexpected shorthand") }.
+		GoalInfo = GoalInfo0
+	).
 
 %-----------------------------------------------------------------------------%
 
-inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo, 
-		VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet, 
+inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
+		VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
 		TypeInfoVarMap0, TypeInfoVarMap, Goal) :-
 
 	proc_info_goal(ProcInfo, CalledGoal),
@@ -732,7 +736,7 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 		VarSet, VarTypes1, CalleeVarTypes, VarTypes, Subn,
 		CalledGoal, Goal),
 
-	apply_substitutions_to_var_map(CalleeTypeInfoVarMap0, 
+	apply_substitutions_to_var_map(CalleeTypeInfoVarMap0,
 		TypeRenaming, TypeSubn, Subn, CalleeTypeInfoVarMap1),
 
 	% Prefer the type_info_locn from the caller.
@@ -747,7 +751,7 @@ inlining__get_type_substitution(HeadTypes, ArgTypes,
 		HeadTypeParams, CalleeExistQVars, TypeSubn) :-
 	( CalleeExistQVars = [] ->
 		( type_list_subsumes(HeadTypes, ArgTypes, TypeSubn0) ->
-			TypeSubn = TypeSubn0 
+			TypeSubn = TypeSubn0
 		;
 			% The head types should always be unifiable with the
 			% actual argument types, otherwise it is a type error
@@ -792,42 +796,39 @@ inlining__rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet,
 	% inlining__inlining_in_disj is used for both disjunctions and
 	% parallel conjunctions.
 
-:- pred inlining__inlining_in_disj(list(hlds_goal), list(hlds_goal), 
-		inline_info, inline_info).
-:- mode inlining__inlining_in_disj(in, out, in, out) is det.
+:- pred inlining__inlining_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
+	inline_info::in, inline_info::out) is det.
 
-inlining__inlining_in_disj([], []) --> [].
-inlining__inlining_in_disj([Goal0 | Goals0], [Goal | Goals]) -->
-	inlining__inlining_in_goal(Goal0, Goal),
-	inlining__inlining_in_disj(Goals0, Goals).
+inlining__inlining_in_disj([], [], !Info).
+inlining__inlining_in_disj([Goal0 | Goals0], [Goal | Goals], !Info) :-
+	inlining__inlining_in_goal(Goal0, Goal, !Info),
+	inlining__inlining_in_disj(Goals0, Goals, !Info).
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_cases(list(case), list(case), inline_info, 
-		inline_info).
-:- mode inlining__inlining_in_cases(in, out, in, out) is det.
+:- pred inlining__inlining_in_cases(list(case)::in, list(case)::out,
+	inline_info::in, inline_info::out) is det.
 
-inlining__inlining_in_cases([], []) --> [].
+inlining__inlining_in_cases([], [], !Info).
 inlining__inlining_in_cases([case(Cons, Goal0) | Goals0],
-		[case(Cons, Goal) | Goals]) -->
-	inlining__inlining_in_goal(Goal0, Goal),
-	inlining__inlining_in_cases(Goals0, Goals).
+		[case(Cons, Goal) | Goals], !Info) :-
+	inlining__inlining_in_goal(Goal0, Goal, !Info),
+	inlining__inlining_in_cases(Goals0, Goals, !Info).
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_conj(list(hlds_goal), list(hlds_goal),
-		inline_info, inline_info).
-:- mode inlining__inlining_in_conj(in, out, in, out) is det.
+:- pred inlining__inlining_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+	inline_info::in, inline_info::out) is det.
 
 	% Since a single goal may become a conjunction,
 	% we flatten the conjunction as we go.
 
-inlining__inlining_in_conj([], []) --> [].
-inlining__inlining_in_conj([Goal0 | Goals0], Goals) -->
-	inlining__inlining_in_goal(Goal0, Goal1),
-	{ goal_to_conj_list(Goal1, Goal1List) },
-	inlining__inlining_in_conj(Goals0, Goals1),
-	{ list__append(Goal1List, Goals1, Goals) }.
+inlining__inlining_in_conj([], [], !Info).
+inlining__inlining_in_conj([Goal0 | Goals0], Goals, !Info) :-
+	inlining__inlining_in_goal(Goal0, Goal1, !Info),
+	goal_to_conj_list(Goal1, Goal1List),
+	inlining__inlining_in_conj(Goals0, Goals1, !Info),
+	list__append(Goal1List, Goals1, Goals).
 
 %-----------------------------------------------------------------------------%
 
@@ -842,10 +843,9 @@ inlining__inlining_in_conj([Goal0 | Goals0], Goals) -->
 	% for this procedure, or the procedure was marked by
 	% inlining__mark_predproc as having met its heuristic.
 
-:- pred inlining__should_inline_proc(pred_id, proc_id, builtin_state,
-	bool, bool, set(pred_proc_id), pred_markers, module_info).
-:- mode inlining__should_inline_proc(in, in, in, in, in, in, in, in)
-	is semidet.
+:- pred inlining__should_inline_proc(pred_id::in, proc_id::in,
+	builtin_state::in, bool::in, bool::in, set(pred_proc_id)::in,
+	pred_markers::in, module_info::in) is semidet.
 
 inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 		_Tracing, InlinedProcs, CallingPredMarkers, ModuleInfo) :-
@@ -866,14 +866,13 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 inlining__can_inline_proc(PredId, ProcId, BuiltinState, InlinePromisedPure,
 		CallingPredMarkers, ModuleInfo) :-
 	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode), 
+	globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 	inlining__can_inline_proc(PredId, ProcId, BuiltinState,
 		HighLevelCode, InlinePromisedPure,
 		CallingPredMarkers, ModuleInfo).
 
-:- pred inlining__can_inline_proc(pred_id, proc_id, builtin_state, bool,
-	bool, pred_markers, module_info).
-:- mode inlining__can_inline_proc(in, in, in, in, in, in, in) is semidet.
+:- pred inlining__can_inline_proc(pred_id::in, proc_id::in, builtin_state::in,
+	bool::in, bool::in, pred_markers::in, module_info::in) is semidet.
 
 inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 		InlinePromisedPure, CallingPredMarkers, ModuleInfo) :-
@@ -881,7 +880,7 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	% don't inline builtins, the code generator will handle them
 	BuiltinState = not_builtin,
 
-	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, 
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo,
 		ProcInfo),
 
 	% don't try to inline imported predicates, since we don't
@@ -898,10 +897,10 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	% Only try to inline procedures which are evaluated using
 	% normal evaluation. Currently we can't inline procs evaluated
 	% using any of the other methods because the code generator for
-	% the methods can only handle whole procedures not code 
+	% the methods can only handle whole procedures not code
 	% fragments.
 	proc_info_eval_method(ProcInfo, eval_normal),
-	
+
 	% Don't inlining anything we have been specifically requested
 	% not to inline.
 	\+ pred_info_requested_no_inlining(PredInfo),
@@ -944,7 +943,7 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 		\+ check_marker(CallingPredMarkers, aditi),
 		check_marker(CalledPredMarkers, aditi)
 	),
-	
+
 	(
 		InlinePromisedPure = yes
 	;
@@ -965,8 +964,10 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	% supports inline code in that language.
 :- pred ok_to_inline_language(foreign_language::in, compilation_target::in)
 	is semidet.
+
 ok_to_inline_language(c, c).
-% ok_to_inline_language(il, il). % 
+
+% ok_to_inline_language(il, il). %
 % XXX we need to fix the handling of parameter marhsalling for inlined code
 % before we can enable this -- see the comments in
 % ml_gen_ordinary_pragma_il_proc in ml_code_gen.m.

@@ -1980,7 +1980,7 @@ mercury_format_pred_or_func_type_2(PredOrFunc, VarSet, ExistQVars, PredName,
 	),
 	add_purity_prefix(Purity),
 
-	{ hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr) },
+	{ PredOrFuncStr = hlds_out__pred_or_func_to_str(PredOrFunc) },
 	add_string(PredOrFuncStr),
 	add_string(" "),
 

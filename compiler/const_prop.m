@@ -36,8 +36,8 @@
 	% Otherwise it fails.
 
 :- pred evaluate_call(pred_id::in, proc_id::in, list(prog_var)::in,
-		hlds_goal_info::in, vartypes::in, instmap::in, module_info::in,
-		hlds_goal_expr::out, hlds_goal_info::out) is semidet.
+	hlds_goal_info::in, vartypes::in, instmap::in, module_info::in,
+	hlds_goal_expr::out, hlds_goal_info::out) is semidet.
 
 %------------------------------------------------------------------------------%
 
@@ -67,8 +67,8 @@
 
 	% This type groups the information from the HLDS
 	% about a procedure call argument.
-:- type arg_hlds_info
-	---> arg_hlds_info(
+:- type arg_hlds_info --->
+	arg_hlds_info(
 		arg_var		:: prog_var,
 		arg_type	:: prog_data__type,
 		arg_inst	:: (inst)
@@ -97,18 +97,12 @@ evaluate_call_2(Module, Pred, ModeNum, Args, GoalInfo0, Goal, GoalInfo) :-
 	% -- not yet:
 	% Module = qualified(unqualified("std"), Mod),
 	Module = unqualified(Mod),
-	(
-		evaluate_det_call(Mod, Pred, ModeNum, Args, OutputArg, Cons)
-	->
+	( evaluate_det_call(Mod, Pred, ModeNum, Args, OutputArg, Cons) ->
 		make_construction_goal(OutputArg, Cons, GoalInfo0,
 			Goal, GoalInfo)
-	;
-		evaluate_test(Mod, Pred, ModeNum, Args, Succeeded)
-	->
+	; evaluate_test(Mod, Pred, ModeNum, Args, Succeeded) ->
 		make_true_or_fail(Succeeded, GoalInfo0, Goal, GoalInfo)
-	;
-		evaluate_semidet_call(Mod, Pred, ModeNum, Args, Result)
-	->
+	; evaluate_semidet_call(Mod, Pred, ModeNum, Args, Result) ->
 		(
 			Result = yes(OutputArg - const(Cons)),
 			make_construction_goal(OutputArg, Cons, GoalInfo0,
@@ -140,8 +134,7 @@ evaluate_call_2(Module, Pred, ModeNum, Args, GoalInfo0, Goal, GoalInfo) :-
 	% Otherwise it fails.
 
 :- pred evaluate_det_call(string::in, string::in, int::in,
-		list(arg_hlds_info)::in, arg_hlds_info::out, cons_id::out)
-		is semidet.
+	list(arg_hlds_info)::in, arg_hlds_info::out, cons_id::out) is semidet.
 
 %
 % Unary operators
@@ -337,7 +330,7 @@ evaluate_det_call("string", Name, _, [X, Y, Z], Z, string_const(ZVal)) :-
 	% or cannot be statically evaluated), evaluate_test fails.
 
 :- pred evaluate_test(string::in, string::in, int::in,
-		list(arg_hlds_info)::in, bool::out) is semidet.
+	list(arg_hlds_info)::in, bool::out) is semidet.
 
 	% Integer comparisons
 
@@ -454,8 +447,8 @@ evaluate_test("private_builtin", "typed_unify", Mode, Args, Result) :-
 	;	var(arg_hlds_info).
 
 :- pred evaluate_semidet_call(string::in, string::in, int::in,
-		list(arg_hlds_info)::in,
-		maybe(pair(arg_hlds_info, arg_val))::out) is semidet.
+	list(arg_hlds_info)::in, maybe(pair(arg_hlds_info, arg_val))::out)
+	is semidet.
 
 evaluate_semidet_call("std_util", "dynamic_cast", 0, Args, Result) :-
 	evaluate_semidet_call("private_builtin", "typed_unify", 1,
@@ -488,6 +481,7 @@ evaluate_semidet_call("private_builtin", "typed_unify", Mode, Args, Result) :-
 	% cannot be statically evaluated), evaluate_unify fails.
 
 :- pred eval_unify(arg_hlds_info::in, arg_hlds_info::in, bool::out) is semidet.
+
 eval_unify(X, Y, Result) :-
 	(
 		X ^ arg_var = Y ^ arg_var
@@ -515,8 +509,8 @@ eval_unify(X, Y, Result) :-
 %------------------------------------------------------------------------------%
 
 :- pred make_assignment_goal(arg_hlds_info::in, arg_hlds_info::in,
-		hlds_goal_info::in, hlds_goal_expr::out, hlds_goal_info::out)
-		is det.
+	hlds_goal_info::in, hlds_goal_expr::out, hlds_goal_info::out) is det.
+
 make_assignment_goal(OutputArg, InputArg, GoalInfo0, Goal, GoalInfo) :-
 	make_assignment(OutputArg, InputArg, Goal),
 	goal_info_get_instmap_delta(GoalInfo0, Delta0),
@@ -527,8 +521,8 @@ make_assignment_goal(OutputArg, InputArg, GoalInfo0, Goal, GoalInfo) :-
 
 
 :- pred make_construction_goal(arg_hlds_info::in, cons_id::in,
-		hlds_goal_info::in, hlds_goal_expr::out, hlds_goal_info::out)
-		is det.
+	hlds_goal_info::in, hlds_goal_expr::out, hlds_goal_info::out) is det.
+
 make_construction_goal(OutputArg, Cons, GoalInfo0, Goal, GoalInfo) :-
 	make_construction(OutputArg, Cons, Goal),
 	goal_info_get_instmap_delta(GoalInfo0, Delta0),
@@ -553,16 +547,16 @@ make_assignment(OutputArg, InputArg, Goal) :-
 
 	% recompute_instmap_delta is run by simplify.m if anything changes,
 	% so the insts are not important here.
-:- pred make_construction(arg_hlds_info, cons_id, hlds_goal_expr).
-:- mode make_construction(in, in, out) is det.
+:- pred make_construction(arg_hlds_info::in, cons_id::in, hlds_goal_expr::out)
+	is det.
 
 make_construction(Arg, ConsId, Goal) :-
 	make_const_construction(Arg ^ arg_var, ConsId, Goal - _).
 
 %------------------------------------------------------------------------------%
 
-:- pred make_true_or_fail(bool, hlds_goal_info, hlds_goal_expr, hlds_goal_info).
-:- mode make_true_or_fail(in, in, out, out) is det.
+:- pred make_true_or_fail(bool::in, hlds_goal_info::in,
+	hlds_goal_expr::out, hlds_goal_info::out) is det.
 
 make_true_or_fail(yes, GoalInfo, conj([]), GoalInfo).
 make_true_or_fail(no, GoalInfo, disj([]), GoalInfo).

@@ -6,7 +6,7 @@
 %
 % term_errors.m
 % Main author: crs.
-% 
+%
 % This module prints out the various error messages that are produced by
 % the various modules of termination analysis.
 %
@@ -35,7 +35,7 @@
 			% whose code is not accessible.
 
 	;	can_loop_proc_called(pred_proc_id, pred_proc_id)
-			% can_loop_proc_called(Caller, Callee, Context)  
+			% can_loop_proc_called(Caller, Callee, Context)
 			% The call from Caller to Callee at the associated
 			% context is to a procedure (Callee) whose termination
 			% info is set to can_loop.
@@ -111,10 +111,10 @@
 
 	;	does_not_term_pragma(pred_id)
 			% The given procedure has a does_not_terminate pragma.
-	
+
 	;	inconsistent_annotations
 			% The pragma terminates/does_not_terminate declarations
-			% for the procedures in this SCC are inconsistent. 
+			% for the procedures in this SCC are inconsistent.
 
 	;	does_not_term_foreign(pred_proc_id).
 			% The procedure contains foreign code that may
@@ -124,8 +124,7 @@
 :- type term_errors__error == pair(prog_context, termination_error).
 
 :- pred term_errors__report_term_errors(list(pred_proc_id)::in,
-	list(term_errors__error)::in, module_info::in,
-	io__state::di, io__state::uo) is det.
+	list(term_errors__error)::in, module_info::in, io::di, io::uo) is det.
 
 % An error is considered an indirect error if it is due either to a
 % language feature we cannot analyze or due to an error in another part
@@ -134,8 +133,7 @@
 % and in the second case, the piece of code that the programmer *can* do
 % something about is not this piece.
 
-:- pred indirect_error(term_errors__termination_error).
-:- mode indirect_error(in) is semidet.
+:- pred indirect_error(term_errors__termination_error::in) is semidet.
 
 :- implementation.
 
@@ -160,114 +158,118 @@ indirect_error(can_loop_proc_called(_, _)).
 indirect_error(horder_args(_, _)).
 indirect_error(does_not_term_pragma(_)).
 
-term_errors__report_term_errors(SCC, Errors, Module) -->
-	{ get_context_from_scc(SCC, Module, Context) },
-	( { SCC = [PPId] } ->
-		{ Pieces0 = [words("Termination of")] },
-		{ describe_one_proc_name(Module, PPId, PredName) },
-		{ list__append(Pieces0, [fixed(PredName)], Pieces1) },
-		{ Single = yes(PPId) }
+term_errors__report_term_errors(SCC, Errors, Module, !IO) :-
+	get_context_from_scc(SCC, Module, Context),
+	( SCC = [PPId] ->
+		Pieces0 = [words("Termination of")],
+		describe_one_proc_name(Module, PPId, PredName),
+		list__append(Pieces0, [fixed(PredName)], Pieces1),
+		Single = yes(PPId)
 	;
-		{ Pieces0 = [words("Termination of the mutually recursive procedures")] },
-		{ describe_several_proc_names(Module, SCC, ProcNamePieces) },
-		{ list__append(Pieces0, ProcNamePieces, Pieces1) },
-		{ Single = no }
+		Pieces0 = [words("Termination of the "),
+			words("mutually recursive procedures")],
+		describe_several_proc_names(Module, SCC, ProcNamePieces),
+		list__append(Pieces0, ProcNamePieces, Pieces1),
+		Single = no
 	),
 	(
-		{ Errors = [] },
+		Errors = [],
 		% XXX this should never happen
 		% XXX but for some reason, it often does
-		% { error("empty list of errors") }
-		{ Pieces2 = [words("not proven, for unknown reason(s).")] },
-		{ list__append(Pieces1, Pieces2, Pieces) },
-		write_error_pieces(Context, 0, Pieces)
+		% error("empty list of errors")
+		Pieces2 = [words("not proven, for unknown reason(s).")],
+		list__append(Pieces1, Pieces2, Pieces),
+		write_error_pieces(Context, 0, Pieces, !IO)
 	;
-		{ Errors = [Error] },
-		{ Pieces2 = [words("not proven for the following reason:")] },
-		{ list__append(Pieces1, Pieces2, Pieces) },
-		write_error_pieces(Context, 0, Pieces),
-		term_errors__output_error(Error, Single, no, 0, Module)
+		Errors = [Error],
+		Pieces2 = [words("not proven for the following reason:")],
+		list__append(Pieces1, Pieces2, Pieces),
+		write_error_pieces(Context, 0, Pieces, !IO),
+		term_errors__output_error(Error, Single, no, 0, Module, !IO)
 	;
-		{ Errors = [_, _ | _] },
-		{ Pieces2 = [words("not proven for the following reasons:")] },
-		{ list__append(Pieces1, Pieces2, Pieces) },
-		write_error_pieces(Context, 0, Pieces),
-		term_errors__output_errors(Errors, Single, 1, 0, Module)
+		Errors = [_, _ | _],
+		Pieces2 = [words("not proven for the following reasons:")],
+		list__append(Pieces1, Pieces2, Pieces),
+		write_error_pieces(Context, 0, Pieces, !IO),
+		term_errors__output_errors(Errors, Single, 1, 0, Module, !IO)
 	).
 
 :- pred term_errors__report_arg_size_errors(list(pred_proc_id)::in,
 	list(term_errors__error)::in, module_info::in,
 	io__state::di, io__state::uo) is det.
 
-term_errors__report_arg_size_errors(SCC, Errors, Module) -->
-	{ get_context_from_scc(SCC, Module, Context) },
-	( { SCC = [PPId] } ->
-		{ Pieces0 = [words("Termination constant of")] },
-		{ describe_one_proc_name(Module, PPId, ProcName) },
-		{ list__append(Pieces0, [fixed(ProcName)], Pieces1) },
-		{ Single = yes(PPId) }
+term_errors__report_arg_size_errors(SCC, Errors, Module, !IO) :-
+	get_context_from_scc(SCC, Module, Context),
+	( SCC = [PPId] ->
+		Pieces0 = [words("Termination constant of")],
+		describe_one_proc_name(Module, PPId, ProcName),
+		list__append(Pieces0, [fixed(ProcName)], Pieces1),
+		Single = yes(PPId)
 	;
-		{ Pieces0 = [words("Termination constants"),
-			words("of the mutually recursive procedures")] },
-		{ describe_several_proc_names(Module, SCC, ProcNamePieces) },
-		{ list__append(Pieces0, ProcNamePieces, Pieces1) },
-		{ Single = no }
+		Pieces0 = [words("Termination constants"),
+			words("of the mutually recursive procedures")],
+		describe_several_proc_names(Module, SCC, ProcNamePieces),
+		list__append(Pieces0, ProcNamePieces, Pieces1),
+		Single = no
 	),
-	{ Piece2 = words("set to infinity for the following") },
+	Piece2 = words("set to infinity for the following"),
 	(
-		{ Errors = [] },
-		{ error("empty list of errors") }
+		Errors = [],
+		error("empty list of errors")
 	;
-		{ Errors = [Error] },
-		{ Piece3 = words("reason:") },
-		{ list__append(Pieces1, [Piece2, Piece3], Pieces) },
-		write_error_pieces(Context, 0, Pieces),
-		term_errors__output_error(Error, Single, no, 0, Module)
+		Errors = [Error],
+		Piece3 = words("reason:"),
+		list__append(Pieces1, [Piece2, Piece3], Pieces),
+		write_error_pieces(Context, 0, Pieces, !IO),
+		term_errors__output_error(Error, Single, no, 0, Module, !IO)
 	;
-		{ Errors = [_, _ | _] },
-		{ Piece3 = words("reasons:") },
-		{ list__append(Pieces1, [Piece2, Piece3], Pieces) },
-		write_error_pieces(Context, 0, Pieces),
-		term_errors__output_errors(Errors, Single, 1, 0, Module)
+		Errors = [_, _ | _],
+		Piece3 = words("reasons:"),
+		list__append(Pieces1, [Piece2, Piece3], Pieces),
+		write_error_pieces(Context, 0, Pieces, !IO),
+		term_errors__output_errors(Errors, Single, 1, 0, Module, !IO)
 	).
 
 :- pred term_errors__output_errors(list(term_errors__error)::in,
 	maybe(pred_proc_id)::in, int::in, int::in, module_info::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-term_errors__output_errors([], _, _, _, _) --> [].
-term_errors__output_errors([Error | Errors], Single, ErrNum0, Indent, Module)
-		-->
-	term_errors__output_error(Error, Single, yes(ErrNum0), Indent, Module),
-	{ ErrNum1 = ErrNum0 + 1 },
-	term_errors__output_errors(Errors, Single, ErrNum1, Indent, Module).
+term_errors__output_errors([], _, _, _, _, !IO).
+term_errors__output_errors([Error | Errors], Single, ErrNum0, Indent, Module,
+		!IO) :-
+	term_errors__output_error(Error, Single, yes(ErrNum0), Indent, Module,
+		!IO),
+	term_errors__output_errors(Errors, Single, ErrNum0 + 1, Indent, Module,
+		!IO).
 
 :- pred term_errors__output_error(term_errors__error::in,
 	maybe(pred_proc_id)::in, maybe(int)::in, int::in, module_info::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-term_errors__output_error(Context - Error, Single, ErrorNum, Indent, Module) -->
-	{ term_errors__description(Error, Single, Module, Pieces0, Reason) },
-	{ ErrorNum = yes(N) ->
+term_errors__output_error(Context - Error, Single, ErrorNum, Indent, Module,
+		!IO) :-
+	term_errors__description(Error, Single, Module, Pieces0, Reason),
+	( ErrorNum = yes(N) ->
 		string__int_to_string(N, Nstr),
 		string__append_list(["Reason ", Nstr, ":"], Preamble),
 		Pieces = [fixed(Preamble) | Pieces0]
 	;
 		Pieces = Pieces0
-	},
-	write_error_pieces(Context, Indent, Pieces),
-	( { Reason = yes(InfArgSizePPId) } ->
-		{ lookup_proc_arg_size_info(Module, InfArgSizePPId, ArgSize) },
-		( { ArgSize = yes(infinite(ArgSizeErrors)) } ->
+	),
+	write_error_pieces(Context, Indent, Pieces, !IO),
+	( Reason = yes(InfArgSizePPId) ->
+		lookup_proc_arg_size_info(Module, InfArgSizePPId, ArgSize),
+		( ArgSize = yes(infinite(ArgSizeErrors)) ->
 			% XXX the next line is cheating
-			{ ArgSizePPIdSCC = [InfArgSizePPId] },
+			ArgSizePPIdSCC = [InfArgSizePPId],
 			term_errors__report_arg_size_errors(ArgSizePPIdSCC,
-				ArgSizeErrors, Module)
+				ArgSizeErrors, Module, !IO)
 		;
-			{ error("inf arg size procedure does not have inf arg size") }
+			error("inf arg size procedure " ++
+				"does not have inf arg size")
 		)
 	;
-		[]
+		true
 	).
 
 :- pred term_errors__description(termination_error::in,
@@ -429,7 +431,8 @@ term_errors__description(does_not_term_pragma(PredId), Single, Module,
 	(
 		Single = yes(PPId),
 		PPId = proc(SCCPredId, _),
-		require(unify(PredId, SCCPredId), "does not terminate pragma outside this SCC"),
+		require(unify(PredId, SCCPredId),
+			"does not terminate pragma outside this SCC"),
 		Piece2 = words("it.")
 	;
 		Single = no,
@@ -458,7 +461,7 @@ term_errors_var_bag_description(HeadVars, Varset, Pieces) :-
 		Pieces).
 
 :- pred term_errors_var_bag_description_2(assoc_list(prog_var, int)::in,
-		prog_varset::in, bool::in, list(string)::out) is det.
+	prog_varset::in, bool::in, list(string)::out) is det.
 
 term_errors_var_bag_description_2([], _, _, ["{}"]).
 term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001,2003 The University of Melbourne.
+% Copyright (C) 1998-2001,2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,8 +28,7 @@
 :- import_module ll_backend__llds.
 :- import_module io.
 
-:- pred transform_llds(c_file, c_file, io__state, io__state).
-:- mode transform_llds(in, out, di, uo) is det.
+:- pred transform_llds(c_file::in, c_file::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -45,33 +44,34 @@
 
 :- import_module bool, int, string, list, require, std_util, counter.
 
-transform_llds(LLDS0, LLDS) -->
-	transform_c_file(LLDS0, LLDS).
+transform_llds(LLDS0, LLDS, !IO) :-
+	globals__io_get_globals(Globals, !IO),
+	transform_c_file(LLDS0, LLDS, Globals).
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_c_file(c_file, c_file, io__state, io__state).
-:- mode transform_c_file(in, out, di, uo) is det.
+:- pred transform_c_file(c_file::in, c_file::out, globals::in) is det.
 
-transform_c_file(c_file(ModuleName, HeaderInfo, A, B, C, D, Modules0),
-		c_file(ModuleName, HeaderInfo, A, B, C, D, Modules)) -->
+transform_c_file(CFile0, CFile, Globals) :-
+	CFile0 = c_file(ModuleName, _, _, _, _, _, Modules0),
 	% split up large computed gotos
-	globals__io_lookup_int_option(max_jump_table_size, MaxJumpTableSize),
-	( { MaxJumpTableSize = 0 } ->
-		{ Modules1 = Modules0 }
+	globals__lookup_int_option(Globals, max_jump_table_size, MaxSize),
+	( MaxSize = 0 ->
+		Modules1 = Modules0
 	;
-		transform_c_module_list(Modules0, Modules1)
+		transform_c_module_list(Modules0, Modules1, MaxSize)
 	),
 	% append an end label for accurate GC
-	globals__io_get_gc_method(GC),
-	{ GC = accurate, Modules1 \= [] ->
+	globals__get_gc_method(Globals, GC),
+	( GC = accurate, Modules1 \= [] ->
 		list__last_det(Modules1, LastModule),
 		LastModule = comp_gen_c_module(LastModuleName, _),
 		Modules = Modules1 ++
 			[gen_end_label_module(ModuleName, LastModuleName)]
 	;
 		Modules = Modules1
-	}.
+	),
+	CFile = CFile0 ^ cfile_code := Modules.
 
 %
 % For LLDS native GC, we need to add a dummy comp_gen_c_module at the end of
@@ -95,7 +95,9 @@ transform_c_file(c_file(ModuleName, HeaderInfo, A, B, C, D, Modules0),
 % corresponds to a new C function).  XXX Hopefully GCC won't mess with the
 % order of the functions...
 %
+
 :- func gen_end_label_module(module_name, string) = comp_gen_c_module.
+
 gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
 	Arity = 0,
 	ProcId = hlds_pred__initial_proc_id,
@@ -106,145 +108,104 @@ gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
 	Instrs = [label(local(ProcLabel)) -
 		"label to indicate end of previous procedure"],
 	DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId),
-				Instrs, ProcLabel,
-				counter__init(0), must_not_alter_rtti),
+		Instrs, ProcLabel, counter__init(0), must_not_alter_rtti),
 	EndLabelModule = comp_gen_c_module(LastModule ++ "_END", [DummyProc]).
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_c_module_list(list(comp_gen_c_module),
-	list(comp_gen_c_module), io__state, io__state).
-:- mode transform_c_module_list(in, out, di, uo) is det.
+:- pred transform_c_module_list(list(comp_gen_c_module)::in,
+	list(comp_gen_c_module)::out, int::in) is det.
 
-transform_c_module_list([], []) --> [].
-transform_c_module_list([M0 | M0s], [M | Ms]) -->
-	transform_c_module(M0, M),
-	transform_c_module_list(M0s, Ms).
+transform_c_module_list([], [], _MaxSize).
+transform_c_module_list([Module0 | Module0s], [Module | Modules], MaxSize) :-
+	transform_c_module(Module0, Module, MaxSize),
+	transform_c_module_list(Module0s, Modules, MaxSize).
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_c_module(comp_gen_c_module, comp_gen_c_module,
-	io__state, io__state).
-:- mode transform_c_module(in, out, di, uo) is det.
+:- pred transform_c_module(comp_gen_c_module::in, comp_gen_c_module::out,
+	int::in) is det.
 
 transform_c_module(comp_gen_c_module(Name, Procedures0),
-		comp_gen_c_module(Name, Procedures)) -->
-	transform_c_procedure_list(Procedures0, Procedures).
+		comp_gen_c_module(Name, Procedures), MaxSize) :-
+	transform_c_procedure_list(Procedures0, Procedures, MaxSize).
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_c_procedure_list(list(c_procedure), list(c_procedure),
-		io__state, io__state).
-:- mode transform_c_procedure_list(in, out, di, uo) is det.
+:- pred transform_c_procedure_list(list(c_procedure)::in,
+	list(c_procedure)::out, int::in) is det.
 
-transform_c_procedure_list([], []) --> [].
-transform_c_procedure_list([P0 | P0s], [P | Ps]) -->
-	transform_c_procedure(P0, P),
-	transform_c_procedure_list(P0s, Ps).
-
-%-----------------------------------------------------------------------------%
-
-:- pred transform_c_procedure(c_procedure, c_procedure, io__state, io__state).
-:- mode transform_c_procedure(in, out, di, uo) is det.
-
-transform_c_procedure(Proc0, Proc) -->
-	{ Proc0 = c_procedure(Name, Arity, PPId, Instrs0,
-		ProcLabel, C0, Recons) },
-	{ Proc  = c_procedure(Name, Arity, PPId, Instrs,
-		ProcLabel, C, Recons) },
-	transform_instructions(Instrs0, ProcLabel, C0, C, Instrs).
+transform_c_procedure_list([], [], _MaxSize).
+transform_c_procedure_list([Proc0 | Proc0s], [Proc | Procs], MaxSize) :-
+	transform_c_procedure(Proc0, Proc, MaxSize),
+	transform_c_procedure_list(Proc0s, Procs, MaxSize).
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_instructions(list(instruction), proc_label, counter, counter,
-		list(instruction), io__state, io__state).
-:- mode transform_instructions(in, in, in, out, out, di, uo) is det.
+:- pred transform_c_procedure(c_procedure::in, c_procedure::out, int::in)
+	is det.
 
-transform_instructions(Instrs0, ProcLabel, C0, C, Instrs) -->
-	transform_instructions_2(Instrs0, ProcLabel, C0, C, Instrs).
+transform_c_procedure(Proc0, Proc, MaxSize) :-
+	Proc0 = c_procedure(_, _, _, Instrs0, ProcLabel, C0, _),
+	transform_instructions(Instrs0, Instrs, C0, C, ProcLabel, MaxSize),
+	Proc = (Proc0 ^ cproc_code := Instrs) ^ cproc_label_nums := C.
 
-:- pred transform_instructions_2(list(instruction), proc_label,
-		counter, counter, list(instruction), io__state, io__state).
-:- mode transform_instructions_2(in, in, in, out, out, di, uo) is det.
+:- pred transform_instructions(list(instruction)::in, list(instruction)::out,
+	counter::in, counter::out, proc_label::in, int::in) is det.
 
-transform_instructions_2([], _, C, C, []) --> [].
-transform_instructions_2([Instr0 | Instrs0], ProcLabel, C0, C, Instrs) -->
-	transform_instruction(Instr0, ProcLabel, C0, InstrsA, C1),
-	transform_instructions_2(Instrs0, ProcLabel, C1, C, InstrsB),
-	{ list__append(InstrsA, InstrsB, Instrs) }.
-
-%-----------------------------------------------------------------------------%
-
-:- pred transform_instruction(instruction, proc_label, counter,
-		list(instruction), counter, io__state, io__state).
-:- mode transform_instruction(in, in, in, out, out, di, uo) is det.
-
-transform_instruction(Instr0, ProcLabel, C0, Instrs, C) -->
-	globals__io_lookup_int_option(max_jump_table_size, Size),
+transform_instructions([], [], !C, _, _).
+transform_instructions([Instr0 | Instrs0], Instrs, !C, ProcLabel, MaxSize) :-
+	transform_instructions(Instrs0, InstrsTail, !C, ProcLabel, MaxSize),
 	(
-		{ Size \= 0 },
-		{ Instr0 = computed_goto(_Rval, Labels) - _},
-		{ list__length(Labels, L) },
-		{ L > Size }
+		Instr0 = computed_goto(Rval, Labels) - Comment,
+		list__length(Labels, NumLabels),
+		NumLabels > MaxSize
 	->
-		split_computed_goto(Instr0, Size, L, ProcLabel, C0, Instrs, C)
+		split_computed_goto(Rval, Labels, Comment, InstrsHead, !C,
+			MaxSize, NumLabels, ProcLabel),
+		list__append(InstrsHead, InstrsTail, Instrs)
 	;
-		{ Instrs = [Instr0] },
-		{ C = C0 }
+		Instrs = [Instr0 | InstrsTail]
 	).
 
 %-----------------------------------------------------------------------------%
 
 	%
-	% split_computed_goto(I, S, L, P, N0, Is, N)
+	% Given the pieces of a computed_goto instruction, split the table
+	% in half as many times as necessary to bring the jump table size
+	% below MaxSize, doing a binary search on the way.
 	%
-	% If instruction, I, is a computed_goto whose jump_table size is
-	% greater then S, then split the table in half and insert the
-	% instructions, Is, to do a binary search down to a jump_table
-	% whose size is sufficiently small.
-	%
-:- pred split_computed_goto(instruction, int, int, proc_label, counter,
-		list(instruction), counter, io__state, io__state).
-:- mode split_computed_goto(in, in, in, in, in, out, out, di, uo) is det.
+:- pred split_computed_goto(rval::in, list(label)::in, string::in,
+	list(instruction)::out, counter::in, counter::out, int::in, int::in,
+	proc_label::in) is det.
 
-split_computed_goto(Instr0, MaxSize, Length, ProcLabel, C0, Instrs, C) -->
-	(
-		{ Length =< MaxSize }
-	->
-		{ Instrs = [Instr0] },
-		{ C = C0 }
+split_computed_goto(Rval, Labels, Comment, Instrs, !C, MaxSize, NumLabels,
+		ProcLabel) :-
+	( NumLabels =< MaxSize ->
+		Instrs = [computed_goto(Rval, Labels) - Comment]
 	;
-		{ Instr0 = computed_goto(Rval, Labels) - _Comment }
-	->
-		{ counter__allocate(N, C0, C1) },
-		{ Mid = Length // 2 },
-
-		(
-			{ list__split_list(Mid, Labels, Start0, End0) }
-		->
-			{ Start = Start0, End = End0 }
+		counter__allocate(LabelNum, !C),
+		Mid = NumLabels // 2,
+		( list__split_list(Mid, Labels, StartPrime, EndPrime) ->
+			Start = StartPrime,
+			End = EndPrime
 		;
-			{ error("split_computed_goto: list__split_list") }
+			error("split_computed_goto: list__split_list")
 		),
 
-		{ Index     = binop((-), Rval, const(int_const(Mid))) },
-		{ Test      = binop((>=), Rval, const(int_const(Mid))) },
-		{ ElseAddr  = label(local(N, ProcLabel)) },
-		{ ElseLabel = label(local(N, ProcLabel)) - ""},
-		{ IfInstr   = if_val(Test, ElseAddr ) - "Binary search"},
+		Index     = binop((-), Rval, const(int_const(Mid))),
+		Test      = binop((>=), Rval, const(int_const(Mid))),
+		ElseAddr  = label(local(LabelNum, ProcLabel)),
+		IfInstr   = if_val(Test, ElseAddr) - "binary search",
+		ElseInstr = label(local(LabelNum, ProcLabel)) - "",
 
-		{ ThenInstr = computed_goto(Rval, Start) - "Then section" },
-		{ ElseInstr = computed_goto(Index, End) - "Else section" },
+		split_computed_goto(Rval, Start, Comment ++ " then",
+			ThenInstrs, !C, MaxSize, Mid, ProcLabel),
+		split_computed_goto(Index, End, Comment ++ " else",
+			ElseInstrs, !C, MaxSize, NumLabels - Mid, ProcLabel),
 
-		split_computed_goto(ThenInstr, MaxSize, Mid, ProcLabel, C1,
-				ThenInstrs, C2),
-		split_computed_goto(ElseInstr, MaxSize, Length - Mid,
-				ProcLabel, C2, ElseInstrs, C),
-
-		{ list__append(ThenInstrs, [ElseLabel | ElseInstrs], InstrsA) },
-		{ Instrs = [IfInstr | InstrsA] }
-	;
-		{ error("split_computed_goto") }
+		list__append([IfInstr | ThenInstrs], [ElseInstr | ElseInstrs],
+			Instrs)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -1695,7 +1695,7 @@ generate_loop_error_goal(TableInfo, Context, Msg, !VarTypes, !VarSet, Goal) :-
 	Name = pred_info_name(PredInfo),
 	Arity = pred_info_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-	hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncS),
+	PredOrFuncS = hlds_out__pred_or_func_to_str(PredOrFunc),
 	prog_out__sym_name_to_string(qualified(Module, Name), NameS),
 	string__int_to_string(Arity, ArityS),
 	string__append_list([Msg, " in ", PredOrFuncS,

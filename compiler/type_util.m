@@ -723,8 +723,7 @@ type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) :-
 			TypeArgs0)
 	->
 		TypeArgs = TypeArgs0,
-		hlds_out__pred_or_func_to_str(PredOrFunc,
-			PredOrFuncStr),
+		PredOrFuncStr = hlds_out__pred_or_func_to_str(PredOrFunc),
 		TypeCtor = unqualified(PredOrFuncStr) - 0
 	;
 		type_is_tuple(Type, TypeArgs1)

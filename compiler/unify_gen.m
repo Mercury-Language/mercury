@@ -199,7 +199,7 @@ unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
 		Reverse = no
 	),
 	VarName = code_info__variable_to_string(!.CI, Var),
-	hlds_out__cons_id_to_string(ConsId, ConsIdName),
+	ConsIdName = hlds_out__cons_id_to_string(ConsId),
 	(
 		Reverse = no,
 		string__append_list(["checking that ", VarName,

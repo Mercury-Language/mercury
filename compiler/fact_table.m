@@ -400,7 +400,7 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
 				ProcStreams, MaybeOutput, FactNum, Result,
 				!Errors, !IO)
 		;
-			hlds_out__pred_or_func_to_full_str(PredOrFunc, PFStr),
+			PFStr = hlds_out__pred_or_func_to_full_str(PredOrFunc),
 			string__format("Error: invalid clause for %s `%s/%d'.",
 				[s(PFStr), s(PredString), i(Arity0)], Msg),
 			add_error_report(Context, [words(Msg)], !Errors),

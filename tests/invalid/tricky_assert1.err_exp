@@ -1,4 +1,5 @@
 tricky_assert1.m:005: In interface for module `tricky_assert1':
-tricky_assert1.m:005:   error: exported promise refers to predicate `tricky_assert1.local/0'
-tricky_assert1.m:005:   which is defined in the implementation of module `tricky_assert1'.
+tricky_assert1.m:005:   error: exported promise refers to predicate
+tricky_assert1.m:005:   `tricky_assert1.local/0' which is defined in the
+tricky_assert1.m:005:   implementation section of module `tricky_assert1'.
 For more information, try recompiling with `-E'.

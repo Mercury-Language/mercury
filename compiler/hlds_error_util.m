@@ -29,6 +29,9 @@
 :- pred describe_one_pred_name(module_info::in, pred_id::in,
 	string::out) is det.
 
+:- pred describe_one_pred_name_mode(module_info::in, pred_id::in,
+	inst_varset::in, list(mode)::in, string::out) is det.
+
 :- pred describe_several_pred_names(module_info::in,
 	list(pred_id)::in, list(format_component)::out) is det.
 
@@ -47,6 +50,8 @@
 
 :- implementation.
 
+:- import_module check_hlds__mode_util.
+:- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -69,7 +74,8 @@ describe_one_pred_name(Module, PredId, Piece) :-
 	(
 		pred_info_get_goal_type(PredInfo, promise(PromiseType))
 	->
-		Piece = "`" ++ promise_to_string(PromiseType) ++ "' declaration"
+		Piece = "`" ++ promise_to_string(PromiseType)
+			++ "' declaration"
 	;
 		string__int_to_string(OrigArity, ArityPart),
 		string__append_list([
@@ -82,6 +88,41 @@ describe_one_pred_name(Module, PredId, Piece) :-
 			ArityPart,
 			"'"], Piece)
 	).
+
+describe_one_pred_name_mode(Module, PredId, InstVarSet, ArgModes, Piece) :-
+	module_info_pred_info(Module, PredId, PredInfo),
+	ModuleName = pred_info_module(PredInfo),
+	prog_out__sym_name_to_string(ModuleName, ModuleNameString),
+	PredName = pred_info_name(PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+	PredOrFuncPart = pred_or_func_to_string(PredOrFunc),
+	strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
+	(
+		PredOrFunc = predicate,
+		ArgModesPart =
+			"(" ++
+			mercury_mode_list_to_string(StrippedArgModes,
+				InstVarSet) ++
+			")"
+	;
+		PredOrFunc = function,
+		pred_args_to_func_args(StrippedArgModes, FuncArgModes,
+			FuncRetMode),
+		ArgModesPart =
+			"(" ++
+			mercury_mode_list_to_string(FuncArgModes,
+				InstVarSet) ++
+			") = " ++
+			mercury_mode_to_string(FuncRetMode, InstVarSet)
+	),
+	string__append_list([
+		PredOrFuncPart,
+		" `",
+		ModuleNameString,
+		".",
+		PredName,
+		ArgModesPart,
+		"'"], Piece).
 
 describe_several_pred_names(Module, PredId, Pieces) :-
 	list__map(describe_one_pred_name(Module), PredId, Pieces0),

@@ -51,8 +51,7 @@
 :- pred hlds_out__write_class_id(class_id::in, io::di, io::uo) is det.
 
 :- pred hlds_out__write_cons_id(cons_id::in, io::di, io::uo) is det.
-
-:- pred hlds_out__cons_id_to_string(cons_id::in, string::out) is det.
+:- func hlds_out__cons_id_to_string(cons_id) = string.
 
 :- pred hlds_out__aditi_builtin_name(aditi_builtin::in, string::out) is det.
 
@@ -75,15 +74,17 @@
 
 :- pred hlds_out__write_simple_call_id(simple_call_id::in, io::di, io::uo)
 	is det.
+:- func hlds_out__simple_call_id_to_string(simple_call_id) = string.
 
 :- pred hlds_out__write_simple_call_id(pred_or_func::in,
 	sym_name_and_arity::in, io::di, io::uo) is det.
+:- func hlds_out__simple_call_id_to_string(pred_or_func, sym_name_and_arity)
+	= string.
 
 :- pred hlds_out__write_simple_call_id(pred_or_func::in, sym_name::in,
 	arity::in, io::di, io::uo) is det.
-
-:- pred hlds_out__simple_call_id_to_string(simple_call_id::in, string::out)
-	is det.
+:- func hlds_out__simple_call_id_to_string(pred_or_func, sym_name, arity)
+	= string.
 
 	% Write "argument %i of call to pred_or_func `foo/n'".
 	% The pred_markers argument is used to tell if the calling
@@ -97,11 +98,10 @@
 :- pred hlds_out__write_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
 
 	% Return "predicate" or "function" depending on the given value.
-:- pred hlds_out__pred_or_func_to_full_str(pred_or_func::in, string::out)
-	is det.
+:- func hlds_out__pred_or_func_to_full_str(pred_or_func) = string.
 
 	% Return "pred" or "func" depending on the given value.
-:- pred hlds_out__pred_or_func_to_str(pred_or_func::in, string::out) is det.
+:- func hlds_out__pred_or_func_to_str(pred_or_func) = string.
 
 	% hlds_out__write_unify_context/5 writes out a message such as
 	%	foo.m:123:   in argument 3 of functor `foo/5':
@@ -126,13 +126,16 @@
 	prog_context::in, bool::out, io::di, io::uo) is det.
 
 :- pred hlds_out__write_determinism(determinism::in, io::di, io::uo) is det.
+:- func hlds_out__determinism_to_string(determinism) = string.
 
 :- pred hlds_out__write_can_fail(can_fail::in, io::di, io::uo) is det.
+:- func hlds_out__can_fail_to_string(can_fail) = string.
 
 :- pred hlds_out__write_eval_method(eval_method::in, io::di, io::uo) is det.
 
 :- pred hlds_out__write_import_status(import_status::in, io::di, io::uo)
 	is det.
+:- func hlds_out__import_status_to_string(import_status) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -277,7 +280,7 @@ hlds_out__write_type_ctor(Name - Arity, !IO) :-
 hlds_out__write_class_id(class_id(Name, Arity), !IO) :-
 	prog_out__write_sym_name_and_arity(Name / Arity, !IO).
 
-hlds_out__cons_id_to_string(cons(SymName, Arity), String) :-
+hlds_out__cons_id_to_string(cons(SymName, Arity)) = String :-
 	prog_out__sym_name_to_string(SymName, SymNameString0),
 	( string__contains_char(SymNameString0, '*') ->
 		% We need to protect against the * appearing next to a /
@@ -296,26 +299,27 @@ hlds_out__cons_id_to_string(cons(SymName, Arity), String) :-
 	string__int_to_string(Arity, ArityString),
 	string__append_list([SymNameString, "/", ArityString], String).
 
-hlds_out__cons_id_to_string(int_const(Int), String) :-
+hlds_out__cons_id_to_string(int_const(Int)) = String :-
 	string__int_to_string(Int, String).
 
-hlds_out__cons_id_to_string(string_const(String), S) :-
+hlds_out__cons_id_to_string(string_const(String)) = S :-
 	string__append_list(["""", String, """"], S).
 
-hlds_out__cons_id_to_string(float_const(_), "<float>").
-hlds_out__cons_id_to_string(pred_const(_, _, _), "<pred>").
-hlds_out__cons_id_to_string(type_ctor_info_const(_, _, _), "<type_ctor_info>").
-hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _),
-	"<base_typeclass_info>").
-hlds_out__cons_id_to_string(type_info_cell_constructor(_),
-	"<type_info_cell_constructor>").
-hlds_out__cons_id_to_string(typeclass_info_cell_constructor,
-	"<typeclass_info_cell_constructor>").
-hlds_out__cons_id_to_string(tabling_pointer_const(_, _),
-	"<tabling_pointer>").
-hlds_out__cons_id_to_string(deep_profiling_proc_static(_),
-	"<deep_profiling_proc_static>").
-hlds_out__cons_id_to_string(table_io_decl(_), "<table_io_decl>").
+hlds_out__cons_id_to_string(float_const(_)) = "<float>".
+hlds_out__cons_id_to_string(pred_const(_, _, _)) = "<pred>".
+hlds_out__cons_id_to_string(type_ctor_info_const(_, _, _)) =
+	"<type_ctor_info>".
+hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _)) =
+	"<base_typeclass_info>".
+hlds_out__cons_id_to_string(type_info_cell_constructor(_)) =
+	"<type_info_cell_constructor>".
+hlds_out__cons_id_to_string(typeclass_info_cell_constructor) =
+	"<typeclass_info_cell_constructor>".
+hlds_out__cons_id_to_string(tabling_pointer_const(_, _)) =
+	"<tabling_pointer>".
+hlds_out__cons_id_to_string(deep_profiling_proc_static(_)) =
+	"<deep_profiling_proc_static>".
+hlds_out__cons_id_to_string(table_io_decl(_)) = "<table_io_decl>".
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
 	prog_out__write_sym_name_and_arity(SymName / Arity).
@@ -387,12 +391,24 @@ hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO) :-
 	io__write_int(ModeNum, !IO).
 
 hlds_out__write_simple_call_id(PredOrFunc - Name/Arity, !IO) :-
-	hlds_out__write_simple_call_id(PredOrFunc, Name, Arity, !IO).
+	Str = hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity),
+	io__write_string(Str, !IO).
 
 hlds_out__write_simple_call_id(PredOrFunc, Name/Arity, !IO) :-
-	hlds_out__write_simple_call_id(PredOrFunc, Name, Arity, !IO).
+	Str = hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity),
+	io__write_string(Str, !IO).
 
 hlds_out__write_simple_call_id(PredOrFunc, Name, Arity, !IO) :-
+	Str = hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity),
+	io__write_string(Str, !IO).
+
+hlds_out__simple_call_id_to_string(PredOrFunc - Name/Arity) =
+	hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity).
+
+hlds_out__simple_call_id_to_string(PredOrFunc, Name/Arity) =
+	hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity).
+
+hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity) = Str :-
 		% XXX when printed, promises are differentiated from
 		%     predicates or functions by module name, so the module
 		%     names `promise', `promise_exclusive', etc. should be
@@ -415,20 +431,17 @@ hlds_out__write_simple_call_id(PredOrFunc, Name, Arity, !IO) :-
 	;
 		Promise = none	% no, it is really a pred or func
 	),
-
 	(
-		Promise = promise(PromiseType)
-	->
-		io__write_string("`", !IO),
-		prog_out__write_promise_type(PromiseType, !IO),
-		io__write_string("' declaration", !IO)
+		Promise = promise(PromiseType),
+		PromiseStr = promise_to_string(PromiseType),
+		Str = "`" ++ PromiseStr ++ "' declaration"
 	;
-		hlds_out__write_pred_or_func(PredOrFunc, !IO),
-		io__write_string(" `", !IO),
+		Promise = none,
+		PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
 		hlds_out__simple_call_id_to_sym_name_and_arity(
 			PredOrFunc - Name/Arity, SymArity),
-		prog_out__write_sym_name_and_arity(SymArity, !IO),
-		io__write_string("'", !IO)
+		sym_name_and_arity_to_string(SymArity, SymArityStr),
+		Str = PredOrFuncStr ++ " `" ++ SymArityStr ++ "'"
 	).
 
 :- pred hlds_out__simple_call_id_to_sym_name_and_arity(simple_call_id::in,
@@ -437,15 +450,6 @@ hlds_out__write_simple_call_id(PredOrFunc, Name, Arity, !IO) :-
 hlds_out__simple_call_id_to_sym_name_and_arity(PredOrFunc - SymName/Arity,
 		SymName/OrigArity) :-
 	adjust_func_arity(PredOrFunc, OrigArity, Arity).
-
-hlds_out__simple_call_id_to_string(CallId, String) :-
-	hlds_out__simple_call_id_to_sym_name_and_arity(CallId, NameArity),
-	CallId = PredOrFunc - _,
-	( PredOrFunc = predicate, PorFString = "predicate"
-	; PredOrFunc = function, PorFString = "function"
-	),
-	prog_out__sym_name_and_arity_to_string(NameArity, NameArityString),
-	string__append_list([PorFString, " `", NameArityString, "'"], String).
 
 hlds_out__write_call_id(call(PredCallId), !IO) :-
 	hlds_out__write_simple_call_id(PredCallId, !IO).
@@ -599,11 +603,11 @@ hlds_out__write_pred_or_func(predicate, !IO) :-
 hlds_out__write_pred_or_func(function, !IO) :-
 	io__write_string("function", !IO).
 
-hlds_out__pred_or_func_to_full_str(predicate, "predicate").
-hlds_out__pred_or_func_to_full_str(function, "function").
+hlds_out__pred_or_func_to_full_str(predicate) = "predicate".
+hlds_out__pred_or_func_to_full_str(function) = "function".
 
-hlds_out__pred_or_func_to_str(predicate, "pred").
-hlds_out__pred_or_func_to_str(function, "func").
+hlds_out__pred_or_func_to_str(predicate) = "pred".
+hlds_out__pred_or_func_to_str(function) = "func".
 
 %-----------------------------------------------------------------------------%
 
@@ -2086,7 +2090,7 @@ hlds_out__write_aditi_builtin(_ModuleInfo, Builtin, CallId,
 	io__write_string(UpdateName, !IO),
 	io__write_string("(", !IO),
 	CallId = PredOrFunc - _,
-	hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
+	PredOrFuncStr = hlds_out__pred_or_func_to_str(PredOrFunc),
 	io__write_string(PredOrFuncStr, !IO),
 	io__write_string(" ", !IO),
 	hlds_out__simple_call_id_to_sym_name_and_arity(CallId, SymArity),
@@ -2696,39 +2700,41 @@ hlds_out__write_instmap_delta_vars(InstMapDelta, VarSet, AppendVarnums, !IO) :-
 		hlds_out__write_vars(Vars, VarSet, AppendVarnums, !IO)
 	).
 
-hlds_out__write_import_status(local) -->
-	io__write_string("local").
-hlds_out__write_import_status(exported) -->
-	io__write_string("exported").
-hlds_out__write_import_status(opt_exported) -->
-	io__write_string("opt_exported").
-hlds_out__write_import_status(abstract_exported) -->
-	io__write_string("abstract_exported").
-hlds_out__write_import_status(pseudo_exported) -->
-	io__write_string("pseudo_exported").
-hlds_out__write_import_status(imported(interface)) -->
-	io__write_string("imported in the interface").
-hlds_out__write_import_status(imported(implementation)) -->
-	io__write_string("imported in the implementation").
-hlds_out__write_import_status(imported(ancestor_private_interface)) -->
-	io__write_string("imported from an ancestor's private interface").
-hlds_out__write_import_status(imported(ancestor)) -->
-	io__write_string("imported by an ancestor").
-hlds_out__write_import_status(external(Status)) -->
-	io__write_string("external (and "),
-	hlds_out__write_import_status(Status),
-	io__write_string(")").
-hlds_out__write_import_status(abstract_imported) -->
-	io__write_string("abstract_imported").
-hlds_out__write_import_status(opt_imported) -->
-	io__write_string("opt_imported").
-hlds_out__write_import_status(pseudo_imported) -->
-	io__write_string("pseudo_imported").
-hlds_out__write_import_status(exported_to_submodules) -->
-	io__write_string("exported_to_submodules").
+hlds_out__write_import_status(Status, !IO) :-
+	io__write_string(hlds_out__import_status_to_string(Status), !IO).
+
+hlds_out__import_status_to_string(local) =
+	"local".
+hlds_out__import_status_to_string(exported) =
+	"exported".
+hlds_out__import_status_to_string(opt_exported) =
+	"opt_exported".
+hlds_out__import_status_to_string(abstract_exported) =
+	"abstract_exported".
+hlds_out__import_status_to_string(pseudo_exported) =
+	"pseudo_exported".
+hlds_out__import_status_to_string(imported(interface)) =
+	"imported in the interface".
+hlds_out__import_status_to_string(imported(implementation)) =
+	"imported in the implementation".
+hlds_out__import_status_to_string(imported(ancestor_private_interface)) =
+	"imported from an ancestor's private interface".
+hlds_out__import_status_to_string(imported(ancestor)) =
+	"imported by an ancestor".
+hlds_out__import_status_to_string(external(Status)) =
+	"external (and " ++ hlds_out__import_status_to_string(Status) ++ ")".
+hlds_out__import_status_to_string(abstract_imported) =
+	"abstract_imported".
+hlds_out__import_status_to_string(opt_imported) =
+	"opt_imported".
+hlds_out__import_status_to_string(pseudo_imported) =
+	"pseudo_imported".
+hlds_out__import_status_to_string(exported_to_submodules) =
+	"exported_to_submodules".
 
 :- pred hlds_out__write_type_list(list(type)::in, tvarset::in, bool::in,
-		io::di, io::uo) is det.
+	io::di, io::uo) is det.
+
 hlds_out__write_type_list(Types, TypeVarSet, AppendVarNums) -->
 	list__foldl((pred(Type::in, di, uo) is det -->
 		mercury_output_term(Type, TypeVarSet, AppendVarNums),
@@ -3565,53 +3571,26 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 %		{ error("This cannot happen") }
 %	).
 
-hlds_out__write_determinism(det) -->
-	io__write_string("det").
-hlds_out__write_determinism(semidet) -->
-	io__write_string("semidet").
-hlds_out__write_determinism(nondet) -->
-	io__write_string("nondet").
-hlds_out__write_determinism(multidet) -->
-	io__write_string("multi").
-hlds_out__write_determinism(cc_nondet) -->
-	io__write_string("cc_nondet").
-hlds_out__write_determinism(cc_multidet) -->
-	io__write_string("cc_multi").
-hlds_out__write_determinism(erroneous) -->
-	io__write_string("erroneous").
-hlds_out__write_determinism(failure) -->
-	io__write_string("failure").
+hlds_out__write_determinism(Detism, !IO) :-
+	io__write_string(hlds_out__determinism_to_string(Detism), !IO).
 
-hlds_out__write_can_fail(can_fail) -->
-	io__write_string("can_fail").
-hlds_out__write_can_fail(cannot_fail) -->
-	io__write_string("cannot_fail").
+hlds_out__determinism_to_string(det) = "det".
+hlds_out__determinism_to_string(semidet) = "semidet".
+hlds_out__determinism_to_string(nondet) = "nondet".
+hlds_out__determinism_to_string(multidet) = "multi".
+hlds_out__determinism_to_string(cc_nondet) = "cc_nondet".
+hlds_out__determinism_to_string(cc_multidet) = "cc_multi".
+hlds_out__determinism_to_string(erroneous) = "erroneous".
+hlds_out__determinism_to_string(failure) = "failure".
 
-hlds_out__write_eval_method(eval_normal) -->
-	io__write_string("normal").
-hlds_out__write_eval_method(eval_loop_check) -->
-	io__write_string("loop_check").
-hlds_out__write_eval_method(eval_memo) -->
-	io__write_string("memo").
-hlds_out__write_eval_method(eval_minimal) -->
-	io__write_string("minimal").
-hlds_out__write_eval_method(eval_table_io(IsDecl, IsUnitize)) -->
-	io__write_string("table_io("),
-	(
-		{ IsDecl = table_io_decl },
-		io__write_string("decl, ")
-	;
-		{ IsDecl = table_io_proc },
-		io__write_string("proc, ")
-	),
-	(
-		{ IsUnitize = table_io_unitize },
-		io__write_string("unitize")
-	;
-		{ IsUnitize = table_io_alone },
-		io__write_string("alone")
-	),
-	io__write_string(")").
+hlds_out__write_can_fail(CanFail, !IO) :-
+	io__write_string(hlds_out__can_fail_to_string(CanFail), !IO).
+
+hlds_out__can_fail_to_string(can_fail) = "can_fail".
+hlds_out__can_fail_to_string(cannot_fail) = "cannot_fail".
+
+hlds_out__write_eval_method(EvalMethod, !IO) :-
+	io__write_string(eval_method_to_string(EvalMethod), !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -1193,7 +1193,7 @@ ml_cons_name(HLDS_ConsId, QualifiedConsId) :-
 		ConsId = ctor_id(ConsName, Arity),
 		ModuleName = mercury_module_name_to_mlds(SymModuleName)
 	;
-		hlds_out__cons_id_to_string(HLDS_ConsId, ConsName),
+		ConsName = hlds_out__cons_id_to_string(HLDS_ConsId),
 		ConsId = ctor_id(ConsName, 0),
 		ModuleName = mercury_module_name_to_mlds(unqualified(""))
 	),

@@ -37,7 +37,7 @@
 
 :- import_module parse_tree__prog_data.
 
-:- import_module char, io, list, std_util.
+:- import_module bool, char, io, list, std_util.
 
 :- type format_component
 	--->	fixed(string)	% This string should appear in the output
@@ -81,6 +81,11 @@
 	% displayed message.
 :- pred write_error_pieces_not_first_line(prog_context::in, int::in,
 	list(format_component)::in, io::di, io::uo) is det.
+
+	% Display the given error message. The bool is true iff
+	% this is the first line.
+:- pred write_error_pieces_maybe_first_line(bool::in, prog_context::in,
+	int::in, list(format_component)::in, io::di, io::uo) is det.
 
 :- pred write_error_pieces_maybe_with_context(maybe(prog_context)::in, int::in,
 	list(format_component)::in, io::di, io::uo) is det.
@@ -146,7 +151,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module bool, io, list, term, char, string, int, require.
+:- import_module io, list, term, char, string, int, require.
 
 list_to_pieces([], []).
 list_to_pieces([Elem], [words(Elem)]).
@@ -177,6 +182,17 @@ write_error_pieces(Context, Indent, Components, !IO) :-
 write_error_pieces_not_first_line(Context, Indent, Components, !IO) :-
 	write_error_pieces_maybe_with_context(no, yes(Context),
 		Indent, Components, !IO).
+
+write_error_pieces_maybe_first_line(IsFirst, Context, Indent, Components,
+		!IO) :-
+	(
+		IsFirst = yes,
+		write_error_pieces(Context, Indent, Components, !IO)
+	;
+		IsFirst = no,
+		write_error_pieces_not_first_line(Context, Indent, Components,
+			!IO)
+	).
 
 write_error_pieces_maybe_with_context(MaybeContext, Indent, Components, !IO) :-
 	write_error_pieces_maybe_with_context(yes, MaybeContext,

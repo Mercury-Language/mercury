@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
 :- import_module io.
 
 :- pred delay_construct_proc(pred_id::in, proc_id::in, module_info::in,
-	proc_info::in, proc_info::out, io__state::di, io__state::uo) is det.
+	proc_info::in, proc_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2003 The University of Melbourne.
+% Copyright (C) 1995-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,7 +45,7 @@
 				module_info, module_info,
 				io__state, io__state))
 		% It would be better to use an existentially-quantified type
-		% rather than `univ' here, but the current version of Mercury 
+		% rather than `univ' here, but the current version of Mercury
 		% doesn't support existentially-quantified types.
 		;	update_module_cookie(pred(
 				pred_id, proc_id, proc_info, proc_info,
@@ -53,39 +53,34 @@
 				univ)
 		.
 
-
 :- type pred_error_task ==
 		pred(pred_id, module_info, module_info, pred_info, pred_info,
 			int, int, io__state, io__state).
 
-/****************
-
-Note that update_module_cookie causes some difficulties.
-Ideally, it should be implemented using existential types:
-
-	:- type task --->
-			...
-		;	some [T] update_module_cookie(pred(
-				pred_id, proc_id, proc_info, proc_info,
-				T, T, module_info, module_info),
-				T)
-
-That would avoid the need for messing about with type_to_univ and
-univ_to_type.
-
-Originally, it was implemented by changing `task' to `task(T)':
-
-	:- type task(T) --->
-			...
-		;	update_module_cookie(pred(
-				pred_id, proc_id, proc_info, proc_info,
-				T, T, module_info, module_info),
-				T)
-
-but that is not a good solution, because it causes a lot of warnings
-about unbound type variables.
-
-****************/
+% Note that update_module_cookie causes some difficulties.
+% Ideally, it should be implemented using existential types:
+%
+% 	:- type task --->
+% 			...
+% 		;	some [T] update_module_cookie(pred(
+% 				pred_id, proc_id, proc_info, proc_info,
+% 				T, T, module_info, module_info),
+% 				T)
+%
+% That would avoid the need for messing about with type_to_univ and
+% univ_to_type.
+%
+% Originally, it was implemented by changing `task' to `task(T)':
+%
+% 	:- type task(T) --->
+% 			...
+% 		;	update_module_cookie(pred(
+% 				pred_id, proc_id, proc_info, proc_info,
+% 				T, T, module_info, module_info),
+% 				T)
+%
+% but that is not a good solution, because it causes a lot of warnings
+% about unbound type variables.
 
 :- inst task =	bound(( update_proc(pred(in, in, out) is det)
 		;	update_proc_predid(pred(in, in, in, out) is det)
@@ -110,72 +105,58 @@ about unbound type variables.
 
 :- mode task ::	task -> task.
 
-:- pred process_all_nonimported_procs(task, module_info, module_info,
-	io__state, io__state).
-:- mode process_all_nonimported_procs(task, in, out, di, uo) is det.
+:- pred process_all_nonimported_procs(task::task,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 	% Process procedures for which a given test succeeds.
-:- pred process_matching_nonimported_procs(task, pred(pred_info),
-	module_info, module_info, io__state, io__state).
-:- mode process_matching_nonimported_procs(task, pred(in) is semidet,
-	in, out, di, uo) is det.
+:- pred process_matching_nonimported_procs(task::task,
+	pred(pred_info)::in(pred(in) is semidet),
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred process_matching_nonimported_procs(task, task, pred(pred_info),
-	module_info, module_info, io__state, io__state).
-:- mode process_matching_nonimported_procs(task, out(task),
-	pred(in) is semidet, in, out, di, uo) is det.
+:- pred process_matching_nonimported_procs(task::task, task::out(task),
+	pred(pred_info)::in(pred(in) is semidet),
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred process_all_nonimported_nonaditi_procs(task, module_info, module_info,
-	io__state, io__state).
-:- mode process_all_nonimported_nonaditi_procs(task, in, out, di, uo) is det.
+:- pred process_all_nonimported_nonaditi_procs(task::task,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred process_all_nonimported_nonaditi_procs(task, task,
-	module_info, module_info, io__state, io__state).
-:- mode process_all_nonimported_nonaditi_procs(task, out(task),
-	in, out, di, uo) is det.
+:- pred process_all_nonimported_nonaditi_procs(task::task, task::out(task),
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred process_all_nonimported_procs(task, task,
-	module_info, module_info, io__state, io__state).
-:- mode process_all_nonimported_procs(task, out(task), in, out, di, uo) is det.
+:- pred process_all_nonimported_procs(task::task, task::out(task),
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred write_pred_progress_message(string::in, pred_id::in, module_info::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- pred write_proc_progress_message(string::in, pred_id::in, proc_id::in,
-	module_info::in, io__state::di, io__state::uo) is det.
+	module_info::in, io::di, io::uo) is det.
 
-:- pred maybe_report_stats(bool::in, io__state::di, io__state::uo) is det.
-:- pred maybe_write_string(bool::in, string::in,
-	io__state::di, io__state::uo) is det.
-:- pred maybe_flush_output(bool::in, io__state::di, io__state::uo) is det.
+:- pred maybe_report_stats(bool::in, io::di, io::uo) is det.
+:- pred maybe_write_string(bool::in, string::in, io::di, io::uo) is det.
+:- pred maybe_flush_output(bool::in, io::di, io::uo) is det.
 
-:- pred report_error(string::in, io__state::di, io__state::uo) is det.
-:- pred report_error(io__output_stream::in, string::in,
-		io__state::di, io__state::uo) is det.
+:- pred report_error(string::in, io::di, io::uo) is det.
+:- pred report_error(io__output_stream::in, string::in, io::di, io::uo) is det.
 
-:- pred maybe_report_sizes(module_info::in, io__state::di, io__state::uo)
-	is det.
+:- pred maybe_report_sizes(module_info::in, io::di, io::uo) is det.
 
-:- pred report_pred_proc_id(module_info, pred_id, proc_id, 
-		maybe(prog_context), prog_context, io__state, io__state).
-:- mode report_pred_proc_id(in, in, in, in, out, di, uo) is det.
+:- pred report_pred_proc_id(module_info::in, pred_id::in, proc_id::in,
+	maybe(prog_context)::in, prog_context::out, io::di, io::uo) is det.
 
-:- pred report_pred_name_mode(pred_or_func, string, list((mode)),
-				io__state, io__state).
-:- mode report_pred_name_mode(in, in, in, di, uo) is det.
+:- pred report_pred_name_mode(pred_or_func::in, string::in, list(mode)::in,
+	io::di, io::uo) is det.
 
 	% Write to a given filename, giving appropriate status
 	% messages and error messages if the file cannot be opened.
-:- pred output_to_file(string, pred(io__state, io__state),
-		io__state, io__state).
-:- mode output_to_file(in, pred(di, uo) is det, di, uo) is det.
+:- pred output_to_file(string::in, pred(io, io)::in(pred(di, uo) is det),
+	io::di, io::uo) is det.
 
 	% Same as output_to_file/4 above, but allow the writing predicate
 	% to generate some output.
-:- pred output_to_file(string, pred(T, io__state, io__state),
-				maybe(T), io__state, io__state).
-:- mode output_to_file(in, pred(out, di, uo) is det, out, di, uo) is det.
-
+:- pred output_to_file(string::in,
+	pred(T, io, io)::in(pred(out, di, uo) is det),
+	maybe(T)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -200,7 +181,7 @@ about unbound type variables.
 	% Both standard and error output will go to the
 	% specified output stream.
 	% XXX Use of this predicate should be avoided -- it requires
-	% a Unix shell to be present, so it won't work properly 
+	% a Unix shell to be present, so it won't work properly
 	% with native Windows.
 :- pred invoke_shell_command(io__output_stream::in,
 	command_verbosity::in, string::in, bool::out,
@@ -214,7 +195,7 @@ about unbound type variables.
 	% specified output stream after being piped through
 	% `ProcessOutput'.
 	% XXX Use of this predicate should be avoided -- it requires
-	% a Unix shell to be present, so it won't work properly 
+	% a Unix shell to be present, so it won't work properly
 	% with native Windows.
 :- pred invoke_shell_command(io__output_stream::in,
 	command_verbosity::in, string::in, maybe(string)::in, bool::out,
@@ -263,27 +244,27 @@ about unbound type variables.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ True = (pred(_PredInfo::in) is semidet :- true) },
-	process_matching_nonimported_procs(Task, True, 
+	process_matching_nonimported_procs(Task, True,
 		ModuleInfo0, ModuleInfo).
 
 process_all_nonimported_nonaditi_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ NotAditi = (pred(PredInfo::in) is semidet :-
 		\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
-	) }, 
-	process_matching_nonimported_procs(Task, NotAditi, 
+	) },
+	process_matching_nonimported_procs(Task, NotAditi,
 		ModuleInfo0, ModuleInfo).
 
 process_all_nonimported_nonaditi_procs(Task0, Task,
 		ModuleInfo0, ModuleInfo) -->
 	{ NotAditi = (pred(PredInfo::in) is semidet :-
 		\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
-	) }, 
-	process_matching_nonimported_procs(Task0, Task, NotAditi, 
+	) },
+	process_matching_nonimported_procs(Task0, Task, NotAditi,
 		ModuleInfo0, ModuleInfo).
 
 process_all_nonimported_procs(Task0, Task, ModuleInfo0, ModuleInfo) -->
 	{ True = (pred(_PredInfo::in) is semidet :- true) },
-	process_matching_nonimported_procs(Task0, Task, True, 
+	process_matching_nonimported_procs(Task0, Task, True,
 		ModuleInfo0, ModuleInfo).
 
 process_matching_nonimported_procs(Task, Filter, ModuleInfo0, ModuleInfo) -->
@@ -296,16 +277,15 @@ process_matching_nonimported_procs(Task, Filter, ModuleInfo0, ModuleInfo) -->
 			ModuleInfo0, ModuleInfo)
 	).
 
-process_matching_nonimported_procs(Task0, Task, Filter, 
+process_matching_nonimported_procs(Task0, Task, Filter,
 		ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
 	process_nonimported_procs_in_preds(PredIds, Task0, Task, Filter,
 		ModuleInfo0, ModuleInfo).
 
-:- pred process_nonimported_pred(pred_error_task, pred(pred_info), pred_id, 
-	module_info, module_info, io__state, io__state).
-:- mode process_nonimported_pred(in(pred_error_task), pred(in) is semidet, in,
-	in, out, di, uo) is det.
+:- pred process_nonimported_pred(pred_error_task::in(pred_error_task),
+	pred(pred_info)::in(pred(in) is semidet), pred_id::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !IO) :-
 	module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
@@ -322,10 +302,9 @@ process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !IO) :-
 		passes_aux__handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO)
 	).
 
-:- pred process_nonimported_procs_in_preds(list(pred_id), task, task,
-	pred(pred_info), module_info, module_info, io__state, io__state).
-:- mode process_nonimported_procs_in_preds(in, task, out(task), 
-	pred(in) is semidet, in, out, di, uo) is det.
+:- pred process_nonimported_procs_in_preds(list(pred_id)::in,
+	task::task, task::out(task), pred(pred_info)::in(pred(in) is semidet),
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 process_nonimported_procs_in_preds([], !Task, _, !ModuleInfo, !IO).
 process_nonimported_procs_in_preds([PredId | PredIds], !Task, Filter,
@@ -342,10 +321,9 @@ process_nonimported_procs_in_preds([PredId | PredIds], !Task, Filter,
 	process_nonimported_procs_in_preds(PredIds, !Task, Filter,
 		!ModuleInfo, !IO).
 
-:- pred process_nonimported_procs(list(proc_id), pred_id, task, task,
-	module_info, module_info, io__state, io__state).
-:- mode process_nonimported_procs(in, in, task, out(task), in, out, di, uo)
-	is det.
+:- pred process_nonimported_procs(list(proc_id)::in, pred_id::in,
+	task::task, task::out(task),
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 process_nonimported_procs([], _PredId, !Task, !ModuleInfo, !IO).
 process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
@@ -444,9 +422,8 @@ report_error(Stream, ErrorMessage) -->
 	report_error(ErrorMessage),
 	io__set_output_stream(OldStream, _).
 
-:- pred passes_aux__handle_errors(int, int, module_info, module_info,
-		io__state, io__state).
-:- mode passes_aux__handle_errors(in, in, in, out, di, uo) is det.
+:- pred passes_aux__handle_errors(int::in, int::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 passes_aux__handle_errors(WarnCnt, ErrCnt, ModuleInfo1, ModuleInfo8,
 		State1, State9) :-
@@ -490,10 +467,10 @@ invoke_system_command(ErrorStream, Verbosity, Command,
 	(
 		{ Verbosity = verbose },
 		{ PrintCommand = Verbose }
-	;	
+	;
 		{ Verbosity = verbose_commands },
 		globals__io_lookup_bool_option(verbose_commands, PrintCommand)
-	),	
+	),
 	( { PrintCommand = yes } ->
 		io__write_string("% Invoking system command `"),
 		io__write_string(Command),
@@ -515,7 +492,7 @@ invoke_system_command(ErrorStream, Verbosity, Command,
 		% XXX the output will go to the wrong place!
 		CommandRedirected = Command
 	;
-		CommandRedirected = 
+		CommandRedirected =
 			string__append_list([Command, " > ", TmpFile, " 2>&1"])
 	},
 	io__call_system_return_signal(CommandRedirected, Result),
@@ -659,16 +636,15 @@ use_dotnet :- semidet_fail.
 % See comment above for why it is OK to just succeed here.
 use_win32 :- semidet_succeed.
 
-maybe_report_sizes(HLDS) -->
-	globals__io_lookup_bool_option(statistics, Statistics),
-	( { Statistics = yes } ->
-		report_sizes(HLDS)
+maybe_report_sizes(HLDS, !IO) :-
+	globals__io_lookup_bool_option(statistics, Statistics, !IO),
+	( Statistics = yes ->
+		report_sizes(HLDS, !IO)
 	;
-		[]
+		true
 	).
 
-:- pred report_sizes(module_info, io__state, io__state).
-:- mode report_sizes(in, di, uo) is det.
+:- pred report_sizes(module_info::in, io::di, io::uo) is det.
 
 report_sizes(ModuleInfo) -->
 	{ module_info_preds(ModuleInfo, Preds) },
@@ -678,8 +654,7 @@ report_sizes(ModuleInfo) -->
 	{ module_info_ctors(ModuleInfo, Ctors) },
 	tree_stats("Constructor table", Ctors).
 
-:- pred tree_stats(string, map(_K, _V), io__state, io__state).
-:- mode tree_stats(in, in, di, uo) is det.
+:- pred tree_stats(string::in, map(_K, _V)::in, io::di, io::uo) is det.
 
 tree_stats(Description, Tree) -->
 	{ map__count(Tree, Count) },
@@ -706,7 +681,7 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	{ NumToDrop = NumArgModes - Arity },
 	( { list__drop(NumToDrop, ArgModes0, ArgModes1) } ->
 		{ ArgModes = ArgModes1 }
-	;	
+	;
 		{ error("report_pred_proc_id: list__drop failed") }
 	),
 	(
@@ -720,34 +695,33 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	report_pred_name_mode(PredOrFunc, PredName, ArgModes),
 	io__write_string("':\n").
 
-
-report_pred_name_mode(predicate, PredName, ArgModes) -->
-	io__write_string(PredName),
-	( { ArgModes \= [] } ->
-		{ varset__init(InstVarSet) },	% XXX inst var names
-		io__write_string("("),
-		{ strip_builtin_qualifiers_from_mode_list(ArgModes,
-								ArgModes1) },
-		mercury_output_mode_list(ArgModes1, InstVarSet),
-		io__write_string(")")
+report_pred_name_mode(predicate, PredName, ArgModes, !IO) :-
+	io__write_string(PredName, !IO),
+	( ArgModes \= [] ->
+		varset__init(InstVarSet),	% XXX inst var names
+		io__write_string("(", !IO),
+		strip_builtin_qualifiers_from_mode_list(ArgModes,
+			StrippedArgModes),
+		mercury_output_mode_list(StrippedArgModes, InstVarSet, !IO),
+		io__write_string(")", !IO)
 	;
-		[]
+		true
 	).
 
-report_pred_name_mode(function, FuncName, ArgModes) -->
-	{ varset__init(InstVarSet) },	% XXX inst var names
-	{ strip_builtin_qualifiers_from_mode_list(ArgModes, ArgModes1) },
-	{ pred_args_to_func_args(ArgModes1, FuncArgModes, FuncRetMode) },
-	io__write_string(FuncName),
-	( { FuncArgModes \= [] } ->
-		io__write_string("("),
-		mercury_output_mode_list(FuncArgModes, InstVarSet),
-		io__write_string(")")
+report_pred_name_mode(function, FuncName, ArgModes, !IO) :-
+	varset__init(InstVarSet),	% XXX inst var names
+	strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
+	pred_args_to_func_args(StrippedArgModes, FuncArgModes, FuncRetMode),
+	io__write_string(FuncName, !IO),
+	( FuncArgModes \= [] ->
+		io__write_string("(", !IO),
+		mercury_output_mode_list(FuncArgModes, InstVarSet, !IO),
+		io__write_string(")", !IO)
 	;
-		[]
+		true
 	),
-	io__write_string(" = "),
-	mercury_output_mode(FuncRetMode, InstVarSet).
+	io__write_string(" = ", !IO),
+	mercury_output_mode(FuncRetMode, InstVarSet, !IO).
 
 %-----------------------------------------------------------------------------%
 

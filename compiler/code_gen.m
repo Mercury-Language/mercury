@@ -1328,7 +1328,7 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 	;
 		FullPredName = PredName
 	),
-	pred_or_func_to_str(PredOrFunc, PredOrFuncString),
+	PredOrFuncString = pred_or_func_to_str(PredOrFunc),
 	prog_out__sym_name_to_string(ModuleName, ModuleNameString),
 	string__int_to_string(Arity, ArityStr),
 	proc_id_to_int(ProcId, ProcNum),

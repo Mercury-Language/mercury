@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2003 The University of Melbourne.
+% Copyright (C) 1995-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,24 +27,23 @@
 	% we select the clauses for that mode, disjoin them together,
 	% and save this in the proc_info.
 
-:- pred copy_module_clauses_to_procs(list(pred_id), module_info, module_info).
-:- mode copy_module_clauses_to_procs(in, in, out) is det.
+:- pred copy_module_clauses_to_procs(list(pred_id)::in,
+	module_info::in, module_info::out) is det.
 
-:- pred copy_clauses_to_procs(pred_info, pred_info).
-:- mode copy_clauses_to_procs(in, out) is det.
+:- pred copy_clauses_to_procs(pred_info::in, pred_info::out) is det.
 
-:- pred copy_clauses_to_proc(proc_id, clauses_info, proc_info, proc_info).
-:- mode copy_clauses_to_proc(in, in, in, out) is det.
+:- pred copy_clauses_to_proc(proc_id::in, clauses_info::in,
+	proc_info::in, proc_info::out) is det.
 
 	% Before copying the clauses to the procs, we need to add
 	% a default mode of `:- mode foo(in, in, ..., in) = out is det.'
 	% for functions that don't have an explicit mode declaration.
 
-:- pred maybe_add_default_func_modes(list(pred_id), pred_table, pred_table).
-:- mode maybe_add_default_func_modes(in, in, out) is det.
+:- pred maybe_add_default_func_modes(list(pred_id)::in,
+	pred_table::in, pred_table::out) is det.
 
-:- pred maybe_add_default_func_mode(pred_info, pred_info, maybe(proc_id)).
-:- mode maybe_add_default_func_mode(in, out, out) is det.
+:- pred maybe_add_default_func_mode(pred_info::in, pred_info::out,
+	maybe(proc_id)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -112,8 +111,8 @@ copy_module_clauses_to_procs(PredIds, !ModuleInfo) :-
 	copy_module_clauses_to_procs_2(PredIds, Preds0, Preds),
 	module_info_set_preds(Preds, !ModuleInfo).
 
-:- pred copy_module_clauses_to_procs_2(list(pred_id), pred_table, pred_table).
-:- mode copy_module_clauses_to_procs_2(in, in, out) is det.
+:- pred copy_module_clauses_to_procs_2(list(pred_id)::in,
+	pred_table::in, pred_table::out) is det.
 
 copy_module_clauses_to_procs_2([], Preds, Preds).
 copy_module_clauses_to_procs_2([PredId | PredIds], Preds0, Preds) :-
@@ -139,9 +138,8 @@ copy_clauses_to_procs(!PredInfo) :-
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs0, Procs),
 	pred_info_set_procedures(Procs, !PredInfo).
 
-:- pred copy_clauses_to_procs_2(list(proc_id), clauses_info,
-	proc_table, proc_table).
-:- mode copy_clauses_to_procs_2(in, in, in, out) is det.
+:- pred copy_clauses_to_procs_2(list(proc_id)::in, clauses_info::in,
+	proc_table::in, proc_table::out) is det.
 
 copy_clauses_to_procs_2([], _, Procs, Procs).
 copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
@@ -156,28 +154,17 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 	select_matching_clauses(Clauses, ProcId, MatchingClauses),
 	get_clause_goals(MatchingClauses, GoalList),
 	( GoalList = [SingleGoal] ->
-		(
-			SingleGoal = foreign_proc(_, _, _, Args,
-					ArgNames, _, _) - _
-		->
+		SingleGoal = SingleExpr - _,
+		( SingleExpr = foreign_proc(_, _, _, Args, ArgNames, _, _) ->
 			%
 			% Use the original variable names for the headvars
 			% of foreign_proc clauses, not the introduced
 			% `HeadVar__n' names.
 			%
 			ArgsAndNames = assoc_list__from_corresponding_lists(
-					Args, ArgNames),
-			VarSet = list__foldl(
-			    (func(Arg - MaybeArgName, Vars0) = Vars :-
-				(
-				    MaybeArgName = yes(ArgName - _),
-				    varset__name_var(Vars0, Arg, ArgName, Vars)
-				;
-				    MaybeArgName = no,
-				    Vars = Vars0
-				)
-			    ),
-			    ArgsAndNames, VarSet0)
+				Args, ArgNames),
+			VarSet = list__foldl(set_arg_names, ArgsAndNames,
+				VarSet0)
 		;
 			VarSet = VarSet0
 		),
@@ -231,14 +218,25 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, Proc).
 
-:- pred get_purity(hlds_goal, purity).
-:- mode get_purity(in, out) is det.
+:- func set_arg_names(pair(prog_var, maybe(pair(string, mode))), prog_varset)
+	= prog_varset.
+
+set_arg_names(Arg - MaybeArgName, Vars0) = Vars :-
+	(
+		MaybeArgName = yes(ArgName - _),
+		varset__name_var(Vars0, Arg, ArgName, Vars)
+	;
+		MaybeArgName = no,
+		Vars = Vars0
+	).
+
+:- pred get_purity(hlds_goal::in, purity::out) is det.
 
 get_purity(_Goal - GoalInfo, Purity) :-
 	infer_goal_info_purity(GoalInfo, Purity).
 
-:- pred select_matching_clauses(list(clause), proc_id, list(clause)).
-:- mode select_matching_clauses(in, in, out) is det.
+:- pred select_matching_clauses(list(clause)::in, proc_id::in,
+	list(clause)::out) is det.
 
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
@@ -261,4 +259,3 @@ get_clause_goals([Clause | Clauses], Goals) :-
 	goal_to_disj_list(Goal, GoalList),
 	list__append(GoalList, Goals1, Goals),
 	get_clause_goals(Clauses, Goals1).
-

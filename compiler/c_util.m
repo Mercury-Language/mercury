@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2003 The University of Melbourne.
+% Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,14 +33,12 @@
 	%	emit a #line directive to set the specified filename & linenum
 	%	so that C compiler error messages etc. will refer to the
 	%	correct location in the original source file location.
-:- pred c_util__set_line_num(string, int, io__state, io__state).
-:- mode c_util__set_line_num(in, in, di, uo) is det.
+:- pred c_util__set_line_num(string::in, int::in, io::di, io::uo) is det.
 
 	%	emit a #line directive to cancel the effect of any previous
 	%	#line directives, so that C compiler error messages etc. will
 	%	refer to the appropriate location in the generated .c file.
-:- pred c_util__reset_line_num(io__state, io__state).
-:- mode c_util__reset_line_num(di, uo) is det.
+:- pred c_util__reset_line_num(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -50,34 +48,29 @@
 	% Print out a string suitably escaped for use as a C string literal.
 	% This doesn't actually print out the enclosing double quotes --
 	% that is the caller's responsibility.
-:- pred c_util__output_quoted_string(string, io__state, io__state).
-:- mode c_util__output_quoted_string(in, di, uo) is det.
+:- pred c_util__output_quoted_string(string::in, io::di, io::uo) is det.
 
 	% output_quoted_multi_string is like output_quoted_string
 	% except that the string may contain embedded NUL characters
 	% (i.e. '\0').  The int specifies the length of the string.
 :- type multi_string == string.
-:- pred c_util__output_quoted_multi_string(int, multi_string,
-		io__state, io__state).
-:- mode c_util__output_quoted_multi_string(in, in, di, uo) is det.
+:- pred c_util__output_quoted_multi_string(int::in, multi_string::in,
+	io::di, io::uo) is det.
 
 	% Print out a char suitably escaped for use as a C char literal.
 	% This doesn't actually print out the enclosing single quotes --
 	% that is the caller's responsibility.
-:- pred c_util__output_quoted_char(char, io__state, io__state).
-:- mode c_util__output_quoted_char(in, di, uo) is det.
+:- pred c_util__output_quoted_char(char::in, io::di, io::uo) is det.
 
 	% Convert a string to a form that is suitably escaped for use as a
 	% C string literal.  This doesn't actually add the enclosing double
 	% quotes -- that is the caller's responsibility.
-:- pred c_util__quote_string(string, string).
-:- mode c_util__quote_string(in, out) is det.
+:- pred c_util__quote_string(string::in, string::out) is det.
 
 	% Convert a character to a form that is suitably escaped for use as a
 	% C character literal.  This doesn't actually add the enclosing single
 	% quotes -- that is the caller's responsibility.
-:- pred c_util__quote_char(char, string).
-:- mode c_util__quote_char(in, out) is det.
+:- pred c_util__quote_char(char::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -106,45 +99,38 @@
 	% The operator returned will be <, >, etc.;
 	% it can be used in the form `strcmp(<Arg1>, <Arg2>) <Op> 0'.
 	% 
-:- pred c_util__string_compare_op(binary_op, string).
-:- mode c_util__string_compare_op(in, out) is semidet.
+:- pred c_util__string_compare_op(binary_op::in, string::out) is semidet.
 
 	% The operator returned will be +, *, etc.;
 	% the arguments should be floats and the result will be a float.
-:- pred c_util__float_op(binary_op, string).
-:- mode c_util__float_op(in, out) is semidet.
+:- pred c_util__float_op(binary_op::in, string::out) is semidet.
 
 	% The operator returned will be <, >, etc.;
 	% the arguments should be floats and the result will be a boolean.
-:- pred c_util__float_compare_op(binary_op, string).
-:- mode c_util__float_compare_op(in, out) is semidet.
+:- pred c_util__float_compare_op(binary_op::in, string::out) is semidet.
 
 	% The operator returned will be an infix operator.
 	% The arguments should be cast to MR_Unsigned,
 	% and the result will be a boolean.
-:- pred c_util__unsigned_compare_op(binary_op, string).
-:- mode c_util__unsigned_compare_op(in, out) is semidet.
+:- pred c_util__unsigned_compare_op(binary_op::in, string::out) is semidet.
 
 	% The operator returned will be either a prefix operator
 	% or a macro or function name.  The operand needs
 	% to be placed in parentheses after the operator name.
-:- pred c_util__unary_prefix_op(unary_op, string).
-:- mode c_util__unary_prefix_op(in, out) is det.
+:- pred c_util__unary_prefix_op(unary_op::in, string::out) is det.
 
 	% The operator returned will be an infix operator.
 	% The arguments should be integer or booleans
 	% and the result will be an integer or a boolean.
-:- pred c_util__binary_infix_op(binary_op, string).
-:- mode c_util__binary_infix_op(in, out) is semidet.
+:- pred c_util__binary_infix_op(binary_op::in, string::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
 	% Currently the `.rlo' files are stored as static data in the
 	% executable. It may be better to store them in separate files
 	% in a known location and load them at runtime.
-:- pred c_util__output_rl_file(module_name, maybe(rl_file),
-		io__state, io__state).
-:- mode c_util__output_rl_file(in, in, di, uo) is det.
+:- pred c_util__output_rl_file(module_name::in, maybe(rl_file)::in,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -155,8 +141,8 @@
 	% configuration.  SourceFileName is the name of the file from
 	% which the C is generated, while Version is the version name
 	% of the mercury compiler.
-:- pred output_c_file_intro_and_grade(string, string, io__state, io__state).
-:- mode output_c_file_intro_and_grade(in, in, di, uo) is det.
+:- pred output_c_file_intro_and_grade(string::in, string::in,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -174,44 +160,43 @@
 % Line numbering.
 %
 
-c_util__set_line_num(File, Line) -->
-	globals__io_lookup_bool_option(line_numbers, LineNumbers),
-	( { LineNumbers = yes } ->
+c_util__set_line_num(File, Line, !IO) :-
+	globals__io_lookup_bool_option(line_numbers, LineNumbers, !IO),
+	( LineNumbers = yes ->
 		(
-			{ Line > 0 },
-			{ File \= "" }
+			Line > 0,
+			File \= ""
 		->
-			io__write_string("#line "),
-			io__write_int(Line),
-			io__write_string(" """),
-			c_util__output_quoted_string(File),
-			io__write_string("""\n")
+			io__write_string("#line ", !IO),
+			io__write_int(Line, !IO),
+			io__write_string(" """, !IO),
+			c_util__output_quoted_string(File, !IO),
+			io__write_string("""\n", !IO)
 		;
-			c_util__reset_line_num
+			c_util__reset_line_num(!IO)
 		)
 	;
-		[]
+		true
 	).
 
-c_util__reset_line_num -->
+c_util__reset_line_num(!IO) :-
 	% We want to generate another #line directive to reset the C compiler's
 	% idea of what it is processing back to the file we are generating.
-	io__get_output_line_number(Line),
-	io__output_stream_name(FileName),
-	globals__io_lookup_bool_option(line_numbers, LineNumbers),
+	io__get_output_line_number(Line, !IO),
+	io__output_stream_name(FileName, !IO),
+	globals__io_lookup_bool_option(line_numbers, LineNumbers, !IO),
 	(
-		{ Line > 0 },
-		{ FileName \= "" },
-		{ LineNumbers = yes }
+		Line > 0,
+		FileName \= "",
+		LineNumbers = yes
 	->
-		io__write_string("#line "),
-		{ NextLine = Line + 1 },
-		io__write_int(NextLine),
-		io__write_string(" """),
-		c_util__output_quoted_string(FileName),
-		io__write_string("""\n")
+		io__write_string("#line ", !IO),
+		io__write_int(Line + 1, !IO),
+		io__write_string(" """, !IO),
+		c_util__output_quoted_string(FileName, !IO),
+		io__write_string("""\n", !IO)
 	;
-		[]
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -222,40 +207,40 @@ c_util__reset_line_num -->
 %     trigraph sequences in string literals.
 %
 
-c_util__output_quoted_string(S0) -->
-	c_util__output_quoted_multi_string(string__length(S0), S0).
+c_util__output_quoted_string(S0, !IO) :-
+	c_util__output_quoted_multi_string(string__length(S0), S0, !IO).
 
-c_util__output_quoted_multi_string(Len, S) -->
-	c_util__output_quoted_multi_string_2(0, Len, S).
+c_util__output_quoted_multi_string(Len, S, !IO) :-
+	c_util__output_quoted_multi_string_2(0, Len, S, !IO).
 
 :- pred c_util__output_quoted_multi_string_2(int::in, int::in, string::in,
 	io__state::di, io__state::uo) is det.
 
-c_util__output_quoted_multi_string_2(Cur, Len, S) -->
-	( { Cur < Len } ->
+c_util__output_quoted_multi_string_2(Cur, Len, S, !IO) :-
+	( Cur < Len ->
 			% Avoid a limitation in the MSVC compiler where
 			% string literals can be no longer then 2048
 			% chars.  However if you output the string in
 			% chunks, eg "part a" "part b" it will accept a
 			% string longer then 2048 chars, go figure!
-		( { Cur \= 0, Cur mod 512 = 0 } ->
-			io__write_string("\" \"")
+		( Cur \= 0, Cur mod 512 = 0 ->
+			io__write_string("\" \"", !IO)
 		;
-			[]
+			true
 		),
 
 			% we must use unsafe index, because we want to be able
 			% to access chars beyond the first NUL
-		{ string__unsafe_index(S, Cur, Char) },
-		c_util__output_quoted_char(Char),
-		output_quoted_multi_string_2(Cur + 1, Len, S)
+		string__unsafe_index(S, Cur, Char),
+		c_util__output_quoted_char(Char, !IO),
+		output_quoted_multi_string_2(Cur + 1, Len, S, !IO)
 	;
-		[]
+		true
 	).
 
-c_util__output_quoted_char(Char) -->
-	{ c_util__quote_char(Char, EscapedChars) },
-	io__write_string(EscapedChars).
+c_util__output_quoted_char(Char, !IO) :-
+	c_util__quote_char(Char, EscapedChars),
+	io__write_string(EscapedChars, !IO).
 
 c_util__quote_char(Char, QuotedChar) :-
 	c_util__quote_one_char(Char, [], RevQuotedChar),
@@ -267,6 +252,7 @@ c_util__quote_string(String, QuotedString) :-
 
 :- pred c_util__quote_one_char(char::in, list(char)::in, list(char)::out)
 	is det.
+
 c_util__quote_one_char(Char, RevChars0, RevChars) :-
 	( c_util__escape_special_char(Char, EscapeChar) ->
 		RevChars = [EscapeChar, '\\' | RevChars0]
@@ -280,6 +266,7 @@ c_util__quote_one_char(Char, RevChars0, RevChars) :-
 	).
 
 :- pred c_util__escape_special_char(char::in, char::out) is semidet.
+
 c_util__escape_special_char('"', '"').
 c_util__escape_special_char('\\', '\\').
 c_util__escape_special_char('\n', 'n').
@@ -290,30 +277,32 @@ c_util__escape_special_char('\v', 'v').
 c_util__escape_special_char('\r', 'r').
 c_util__escape_special_char('\f', 'f').
 
-% This succeeds iff the specified character is allowed as an (unescaped)
-% character in standard-conforming C source code.
+	% This succeeds iff the specified character is allowed as an (unescaped)
+	% character in standard-conforming C source code.
+
 :- pred c_util__is_c_source_char(char::in) is semidet.
+
 c_util__is_c_source_char(Char) :-
 	( char__is_alnum(Char)
 	; string__contains_char(c_graphic_chars, Char)
 	).
 
-% This returns a string containing all the characters that the C standard
-% specifies as being included in the "basic execution character set",
-% except for the letters (a-z A-Z) and digits (0-9).
+	% This returns a string containing all the characters that the C
+	% standard specifies as being included in the "basic execution
+	% character set", except for the letters (a-z A-Z) and digits (0-9).
+
 :- func c_graphic_chars = string.
+
 c_graphic_chars = " !\"#%&'()*+,-./:;<=>?[\\]^_{|}~".
 
-
 	% reverse_append(Xs, Ys, Zs) <=> Zs = list__reverse(Xs) ++ Ys.
-:- pred reverse_append(list(T), list(T), list(T)).
-:- mode reverse_append(in, in, out) is det.
-reverse_append([], L, L).
-reverse_append([X|Xs], L0, L) :-
-	reverse_append(Xs, [X|L0], L).
+:- pred reverse_append(list(T)::in, list(T)::in, list(T)::out) is det.
 
-:- pred escape_any_char(char, list(char)).
-:- mode escape_any_char(in, out) is det.
+reverse_append([], L, L).
+reverse_append([X | Xs], L0, L) :-
+	reverse_append(Xs, [X | L0], L).
+
+:- pred escape_any_char(char::in, list(char)::out) is det.
 
         % Convert a character to the corresponding C octal escape code.
 	% XXX This assumes that the target language compiler's representation
@@ -340,8 +329,8 @@ escape_any_char(Char, EscapeCodeChars) :-
 	%
 make_float_literal(Float) = string__format("%#.17g", [f(Float)]).
 
-output_float_literal(Float) -->
-	io__write_string(make_float_literal(Float)).
+output_float_literal(Float, !IO) :-
+	io__write_string(make_float_literal(Float), !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -433,8 +422,7 @@ c_util__output_rl_file(ModuleName, MaybeRLFile) -->
 		io__write_string(";\n\n")
 	).
 
-:- pred c_util__output_rl_byte(int, io__state, io__state).
-:- mode c_util__output_rl_byte(in, di, uo) is det.
+:- pred c_util__output_rl_byte(int::in, io::di, io::uo) is det.
 
 c_util__output_rl_byte(Byte) -->
 	io__write_int(Byte),
@@ -448,9 +436,10 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 	globals__io_lookup_bool_option(unboxed_float, UnboxedFloat),
 	{ UnboxedFloatStr = convert_bool_to_string(UnboxedFloat) },
 
-	io__write_strings(["/*\n",
-		"** Automatically generated from `", SourceFileName,
-			"' by the Mercury compiler,\n",
+	io__write_strings([
+		"/*\n",
+		"** Automatically generated from `", SourceFileName, "'\n",
+		"** by the Mercury compiler,\n",
 		"** version ", Version, ".\n",
 		"** Do not edit.\n",
 		"**\n",

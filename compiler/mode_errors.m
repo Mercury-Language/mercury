@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -443,7 +443,7 @@ report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
 		prog_out__write_context(Context),
 		io__write_string("  inside the condition of an if-then-else.\n")
 	; { Reason = lambda(PredOrFunc) },
-		{ hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncS) },
+		{ PredOrFuncS = hlds_out__pred_or_func_to_str(PredOrFunc) },
 		io__write_string("attempt to bind a non-local variable inside\n"),
 		prog_out__write_context(Context),
 		io__write_strings(["  a ", PredOrFuncS, " lambda goal.\n"])
