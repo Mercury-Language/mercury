@@ -21,11 +21,8 @@ include Mercury.options
 
 run.runtest: run.res
 
-MCFLAGS=#--pd --no-inlining -d 35 -D petdr #-d 99
+#MCFLAGS += --pd --no-inlining -d 35 -D petdr #-d 99
 #GRADE=asm_fast.gc.prof
-#MLFLAGS=--static
+#MLFLAGS += --static
 
-clean:	run.clean
-realclean:	run.realclean
 depend:	run.depend
-
