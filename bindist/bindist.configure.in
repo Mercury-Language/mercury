@@ -3,6 +3,13 @@
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
+#
+# Define a macro MERCURY_MSG, similar to AC_MSG_RESULT, for displaying output.
+#
+dnl MERCURY_MSG(MESSAGE)
+define(MERCURY_MSG,
+[echo $1 1>&AC_FD_MSG])
+#-----------------------------------------------------------------------------#
 
 AC_INIT(./build_vars)
 AC_PREFIX_DEFAULT(/usr/local/mercury-<VERSION>)
