@@ -27,7 +27,7 @@ do
 	case $c in
 	c)	maxcalls="$OPTARG"; shift 2;;
 	w)	defentry="$OPTARG"; shift 2;;
-	\?)	echo "Usage: mod2init [-w<entry-point>] [-c<maxcalls>]" \
+	\?)	echo "Usage: c2init [-w<entry-point>] [-c<maxcalls>]" \
 			"modules ..."
 		exit 1;;
 	esac
