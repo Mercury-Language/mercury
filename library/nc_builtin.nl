@@ -133,5 +133,6 @@ termExpansion((:- pragma(_, _, _)), (:- fail)).
 % doesn't even have any hooks for extending is/2.)
 
 termExpansion((_ = _), (:- fail)).
+termExpansion(((_ = _) :- _), (:- fail)).
 
 %-----------------------------------------------------------------------------%
