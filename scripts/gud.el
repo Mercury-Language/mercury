@@ -6,7 +6,7 @@
 ;; Keywords: unix, tools
 
 ;; Copyright (C) 1992, 1993, 1994, 1995, 1996 Free Software Foundation, Inc.
-;; Copyright (C) 1998-1999 Fergus Henderson.
+;; Copyright (C) 1998-2000 Fergus Henderson.
 
 ;; This file is part of GNU Emacs.
 
@@ -1146,12 +1146,12 @@ containing the executable being debugged.")
 	    (let
 		((msg (substring result (match-beginning 1) (match-end 1)))
 		 ;; match 2 is for the optional path
-		 (caller-file
+		 (file
 		   (substring result (match-beginning 3) (match-end 3)))
-		 (caller-line
+		 (line
 		   (substring result (match-beginning 4) (match-end 4)))
-		 (file (substring result (match-beginning 5) (match-end 5)))
-		 (line (substring result (match-beginning 6) (match-end 6))))
+		 (caller-file (substring result (match-beginning 5) (match-end 5)))
+		 (caller-line (substring result (match-beginning 6) (match-end 6))))
 	      (message "%s" msg)
               (save-excursion
                 (let ((abs-caller-file (gud-mdb-file-name caller-file))
