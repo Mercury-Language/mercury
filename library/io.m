@@ -1445,6 +1445,7 @@ mercury_close(MercuryFile* mf)
 ").
 
 :- pragma(c_header_code, "#include ""init.h""").
+:- pragma(c_header_code, "#include ""prof.h""").
 :- pragma(c_code, "
 
 Declare_entry(mercury__io__init_state_2_0);
@@ -1461,18 +1462,31 @@ BEGIN_CODE
 Define_entry(mercury__io__run_0_0);
         mkframe(""mercury__io__run_0_0"", 0, ENTRY(do_fail));
 	r1 = initial_external_state();
-	call(ENTRY(mercury__io__init_state_2_0),
-		LABEL(mercury__io__run_0_0_i1),
-		LABEL(mercury__io__run_0_0));
+	noprof_call(ENTRY(mercury__io__init_state_2_0),
+		LABEL(mercury__io__run_0_0_i1));
 Define_label(mercury__io__run_0_0_i1);
 	r1 = r2;
 	if (program_entry_point == NULL) {
 		fatal_error(""no program entry point supplied"");
 	}
-	call(program_entry_point,
-		LABEL(mercury__io__run_0_0_i2),
-		LABEL(mercury__io__run_0_0));
+
+#ifdef  PROFILE_TIME
+	prof_init_time_profile();
+#endif
+
+	noprof_call(program_entry_point,
+		LABEL(mercury__io__run_0_0_i2));
+
 Define_label(mercury__io__run_0_0_i2);
+
+#ifdef  PROFILE_TIME
+	prof_turn_off_time_profiling();
+	prof_output_addr_table();
+#endif
+#ifdef  PROFILE_CALLS
+	prof_output_addr_pair_table();
+#endif
+
 	final_io_state(r2);
 	succeed();
 END_MODULE
