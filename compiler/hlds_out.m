@@ -401,8 +401,12 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 	( { Verbose = yes } ->
 		{ goal_info_context(GoalInfo, Context) },
 		{ term__context_file(Context, FileName) },
-		( { FileName = "" } ->
-			prog_out__write_context(Context),
+		{ term__context_line(Context, LineNumber) },
+		( { FileName \= "" } ->
+			io__write_string("% context: file `"),
+			io__write_string(FileName),
+			io__write_string("', line "),
+			io__write_int(LineNumber),
 			mercury_output_newline(Indent)
 		;
 			[]
