@@ -3513,7 +3513,25 @@ report_error_apply_instead_of_pred(TypeCheckInfo) -->
 		io__write_string(
 			"  If you're trying to invoke a higher-order\n"),
 		prog_out__write_context(Context),
-		io__write_string("  predicate, use `call', not `apply'.\n")
+		io__write_string("  predicate, use `call', not `apply'.\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+			"  If you're trying to curry a higher-order\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+			"  function, use a forwarding function:\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+			"  e.g. instead of `NewFunc = apply(OldFunc, X)'\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+			"  use `NewFunc = my_apply(OldFunc, X)'\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+		"  where `my_apply' is defined with the appropriate arity,\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+			"  e.g. `my_apply(Func, X, Y) :- apply(Func, X, Y).'\n")
 	;
 		[]
 	).
@@ -3589,7 +3607,16 @@ report_error_undef_cons(TypeCheckInfo, Functor, Arity) -->
 		"  If you are trying to invoke a higher-order\n"),
 				prog_out__write_context(Context),
 				io__write_string(
-		"  function, you should use `apply', not `call'.\n")
+		"  function, you should use `apply', not `call'.\n"),
+				prog_out__write_context(Context),
+				io__write_string(
+		"  If you're trying to curry a higher-order predicate,\n"),
+				prog_out__write_context(Context),
+				io__write_string(
+		"  see the ""Creating higher-order terms"" section of the\n"),
+				prog_out__write_context(Context),
+				io__write_string(
+		"  Mercury Language Reference Manual.\n")
 			;
 			    []
 			)

@@ -1917,6 +1917,8 @@ higher-order procedures.)
 
 @node Creating higher-order terms
 @section Creating higher-order terms
+@c NB. This section is pointed to by an error message in compiler/typecheck.m,
+@c so if you change the section name, you need to update that error message.
 
 To create a higher-order predicate or function term, you can use
 a lambda expression, or, if the predicate or function has only one
@@ -1996,6 +1998,50 @@ Double = scalar_product(2)
 binds @samp{Double} to a higher-order function term of type
 @samp{func(list(int)) = list(int)}.
 
+Note that when constructing a higher-order term, you cannot just use
+the name of a builtin language construct such as @samp{=}, @samp{\=},
+@samp{call}, or @samp{apply}, and nor can such constructs be curried.  
+Instead, you must either use an explicit lambda expression,
+or you must write a forwarding predicate or function.
+For example, instead of
+
+@example
+list__filter([1,2,3], \=(2), List)
+@end example
+
+@noindent
+you must write either
+
+@example
+list__filter([1,2,3], (pred(X::in) is semidet :- X \= 2), List)
+@end example
+
+@noindent
+or
+
+@example
+list__filter([1,2,3], not_equal(2), List)
+@end example
+
+@noindent
+where you have defined @samp{not_equal} using
+
+@example
+:- pred not_equal(T::in, T::in) is semidet.
+not_equal(X, Y) :- X \= Y.
+@end example
+
+Another case when this arises is when want to curry a higher-order
+term.  Suppose, for example, that you have a higher-order predicate
+term @samp{OldPred} of type @samp{pred(int, char, float)}, and you want
+to construct a new higher-order predicate term @samp{NewPred} of type
+@samp{pred(char, float)} from @samp{OldPred} by supplying a value for
+for just the first argument.  The solution is the same: use
+an explicit lambda expression or a forwarding predicate.
+In either case, the body of the lambda expression or the forwarding
+predicate must contain a higher-order call with all the arguments
+supplied.
+
 @node Calling higher-order terms
 @section Calling higher-order terms
 
@@ -2073,9 +2119,9 @@ solutions(Pred, List) is true iff
 @end example
 
 @noindent
-where @samp{call(Pred, X)} is a call to the standard library predicate
-@samp{call/2} which invokes the higher-order predicate term @samp{Pred}
-with argument @samp{X}, and where @samp{list__member/2} is the standard
+where @samp{call(Pred, X)} invokes the higher-order predicate term
+@samp{Pred} with argument @samp{X},
+and where @samp{list__member/2} is the standard
 library predicate for list membership.  In other words,
 @samp{solutions(Pred, List)} finds all the values of @samp{X}
 for which @samp{call(Pred, X)} is true, collects these solutions
@@ -2103,6 +2149,10 @@ in sorted order:
 @example
 L = [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]].
 @end example
+
+See also @samp{unsorted_solutions/2} and @samp{solutions_set/2}, which
+are defined in the standard library module @samp{std_util} and documented
+in the Mercury Library Reference Manual.
 
 @node Higher-order modes
 @section Higher-order modes
