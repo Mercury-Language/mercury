@@ -63,6 +63,10 @@
 :- pred mode_to_arg_mode(module_info, mode, type, arg_mode).
 :- mode mode_to_arg_mode(in, in, in, out) is det.
 
+:- pred modes_to_arg_modes(module_info, list(mode), list(type),
+		list(arg_mode)).
+:- mode modes_to_arg_modes(in, in, in, out) is det.
+
 	% Given an expanded inst and a cons_id and its arity, return the 
 	% insts of the arguments of the top level functor, failing if the
 	% inst could not be bound to the functor.
@@ -295,6 +299,17 @@ mode_is_unused(ModuleInfo, Mode) :-
 	inst_is_free(ModuleInfo, FinalInst).
 
 %-----------------------------------------------------------------------------%
+
+modes_to_arg_modes(ModuleInfo, Modes, Types, ArgModes) :-
+	( Modes = [], Types = [] ->
+		ArgModes = []
+	; Modes = [Mode | Modes1], Types = [Type | Types1] ->
+		mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+		modes_to_arg_modes(ModuleInfo, Modes1, Types1, ArgModes1),
+		ArgModes = [ArgMode | ArgModes1]
+	;
+		error("modes_to_arg_modes: length mismatch")
+	).
 
 mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
 	mode_to_arg_mode_2(ModuleInfo, Mode, Type, [], ArgMode).
