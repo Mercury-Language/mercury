@@ -55,6 +55,8 @@ Changes to the Mercury standard library:
 * exception.m now contains a predicate finally/6 which can be used to
   ensure that resources are released whether a called closure exits
   normally or throws an exception.
+* We've added predicates multi_map.to_flat_assoc_list/2 and
+  multi_map.from_flat_assoc_list/2. 
 
 Portability improvements:
 * Nothing yet.
@@ -144,6 +146,9 @@ Changes to the Mercury standard library:
 * exception.m now contains a predicate finally/6 which can be used to
   ensure that resources are released whether a called closure exits
   normally or throws an exception.
+
+* We've added predicates multi_map.to_flat_assoc_list/2 and
+  multi_map.from_flat_assoc_list/2. 
 
 * Several new functions have been added to the string module, namely
   elem/2, unsafe_elem/2, chomp/1, lstrip/1, lstrip/2, rstrip/1, rstrip/2,

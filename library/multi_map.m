@@ -104,16 +104,28 @@
 :- mode multi_map__values(in, out) is det.
 
 	% convert a multi_map to an association list
-:- pred multi_map__to_assoc_list(multi_map(K,V), assoc_list(K,list(V))).
-:- mode multi_map__to_assoc_list(in, out) is det.
+:- pred multi_map__to_flat_assoc_list(multi_map(K,V), assoc_list(K, V)).
+:- mode multi_map__to_flat_assoc_list(in, out) is det.
 
 	% convert an association list to a multi_map
-:- pred multi_map__from_assoc_list(assoc_list(K,list(V)), multi_map(K,V)).
+:- pred multi_map__from_flat_assoc_list(assoc_list(K, V), multi_map(K,V)).
+:- mode multi_map__from_flat_assoc_list(in, out) is det.
+
+	% convert a multi_map to an association list, with all the
+	% values for each key in one element of the association list.
+:- pred multi_map__to_assoc_list(multi_map(K, V),
+		assoc_list(K, list(V))).
+:- mode multi_map__to_assoc_list(in, out) is det.
+
+	% convert an association list with all the values for each
+	% key in one element of the list to a multi_map
+:- pred multi_map__from_assoc_list(assoc_list(K, list(V)),
+		multi_map(K,V)).
 :- mode multi_map__from_assoc_list(in, out) is det.
 
 	% convert a sorted association list to a multi_map
 :- pred multi_map__from_sorted_assoc_list(assoc_list(K, list(V)), 
-			multi_map(K, V)).
+		multi_map(K, V)).
 :- mode multi_map__from_sorted_assoc_list(in, out) is det.
 
 	% delete a key and data from a multi_map
@@ -252,14 +264,30 @@ multi_map__values(MultiMap, KeyList) :-
 	map__values(MultiMap, KeyList0),
 	list__condense(KeyList0, KeyList).
 
-multi_map__to_assoc_list(MultiMap, AList) :-
-	map__to_assoc_list(MultiMap, AList).
+multi_map__from_flat_assoc_list(AList, MultiMap) :-
+	MultiMap = list__foldl(
+		(func(Key - Value, Map0) = Map  :-
+			multi_map__set(Map0, Key, Value, Map)
+		),
+		AList, map__init).
+
+multi_map__to_flat_assoc_list(MultiMap, AList) :-
+	AList = list__reverse(map__foldl(
+		(func(Key, Values, AL) =
+			list__reverse(
+				list__map((func(Value) = Key - Value), Values)
+			) ++ AL
+		),
+		MultiMap, [])).
 
 multi_map__from_assoc_list(AList, MultiMap) :-
 	map__from_assoc_list(AList, MultiMap).
 
 multi_map__from_sorted_assoc_list(AList, MultiMap) :-
 	map__from_sorted_assoc_list(AList, MultiMap).
+
+multi_map__to_assoc_list(MultiMap, AList) :-
+	map__to_assoc_list(MultiMap, AList).
 
 multi_map__delete(MultiMap0, Key, MultiMap) :-
 	map__delete(MultiMap0, Key, MultiMap).
@@ -306,18 +334,8 @@ multi_map__count_list([_A|As], Count0, Count) :-
 	% XXX inefficient
 
 multi_map__inverse_search(MultiMap, Value, Key) :-
-	map__to_assoc_list(MultiMap, AssocList),
-	multi_map__assoc_list_member(Value, AssocList, Key).
-
-:- pred multi_map__assoc_list_member(Value, assoc_list(Key, list(Value)), Key).
-:- mode multi_map__assoc_list_member(in, in, out) is nondet.
-multi_map__assoc_list_member(Value, [(AKey - AValues) | AList], Key) :-
-	(
-		list__member(Value, AValues),
-		Key = AKey
-	;
-		multi_map__assoc_list_member(Value, AList, Key)
-	).
+	map__member(MultiMap, Key, ValueList),
+	list__member(Value, ValueList).
 
 %-----------------------------------------------------------------------------%
 
