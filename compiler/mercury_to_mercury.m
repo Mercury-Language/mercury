@@ -171,6 +171,7 @@
 :- import_module prog_out, prog_util, hlds_pred, hlds_out, instmap.
 :- import_module globals, options, termination.
 :- import_module bool, int, string, set, term_io, lexer, std_util, require.
+:- import_module char.
 
 %-----------------------------------------------------------------------------%
 
@@ -1790,8 +1791,125 @@ mercury_output_some(Vars, VarSet) -->
 
 mercury_output_pragma_c_header(C_HeaderString) -->
 	io__write_string(":- pragma c_header_code("),
-	term_io__quote_string(C_HeaderString),
+	mercury_output_c_code_string(C_HeaderString),
 	io__write_string(").\n").
+
+%-----------------------------------------------------------------------------%
+
+% The code here is similar to the code for term_io__quote_string,
+% but \n and \t are output directly, rather than escaped.
+% Any changes here may require corresponding changes to term_io and vice versa.
+
+:- pred mercury_output_c_code_string(string::in, io__state::di, io__state::uo)
+	is det.
+mercury_output_c_code_string(S) -->
+	io__write_char('"'),
+	mercury_write_escaped_string(S),
+	io__write_char('"').
+
+:- pred mercury_write_escaped_string(string::in, io__state::di, io__state::uo)
+	is det.
+mercury_write_escaped_string(String) -->
+	string__foldl(mercury_write_escaped_char, String).
+
+:- pred mercury_write_escaped_char(char::in, io__state::di, io__state::uo)
+	is det.
+mercury_write_escaped_char(Char) -->
+	( { escape_special_char(Char, QuoteChar) } ->
+		io__write_char('\\'),
+		io__write_char(QuoteChar)
+	; { mercury_is_source_char(Char) } ->
+		io__write_char(Char)
+	;
+		{ mercury_escape_char(Char, String) },
+		io__write_string(String)
+	).
+
+:- pred mercury_escape_char(char, string).
+:- mode mercury_escape_char(in, out) is det.
+
+	% Convert a character to the corresponding octal escape code.
+
+	% XXX Note that we use C-style octal escapes rather than ISO-Prolog
+	% octal escapes.  This is for backwards compatibility with
+	% NU-Prolog and (old versions of?) SICStus Prolog.
+	% The Mercury lexer accepts either, so this should work
+	% ok so long as you don't have two escaped characters
+	% in a row :-(
+
+mercury_escape_char(Char, EscapeCode) :-
+	char__to_int(Char, Int),
+	string__int_to_base_string(Int, 8, OctalString0),
+	string__pad_left(OctalString0, '0', 3, OctalString),
+	string__first_char(EscapeCode, '\\', OctalString).
+
+:- pred mercury_is_source_char(char).
+:- mode mercury_is_source_char(in) is semidet.
+
+	% Succeed if Char is a character which is allowed in
+	% Mercury string and character literals.
+
+mercury_is_source_char(Char) :-
+	( char__is_alnum(Char)
+	; is_mercury_punctuation_char(Char)
+	; Char = '\n'
+	; Char = '\t'
+	).
+
+	% Currently we only allow the following characters.
+	% XXX should we just use is_printable(Char) instead?
+
+:- pred is_mercury_punctuation_char(char).
+:- mode is_mercury_punctuation_char(in) is semidet.
+
+is_mercury_punctuation_char(' ').
+is_mercury_punctuation_char('!').
+is_mercury_punctuation_char('@').
+is_mercury_punctuation_char('#').
+is_mercury_punctuation_char('$').
+is_mercury_punctuation_char('%').
+is_mercury_punctuation_char('^').
+is_mercury_punctuation_char('&').
+is_mercury_punctuation_char('*').
+is_mercury_punctuation_char('(').
+is_mercury_punctuation_char(')').
+is_mercury_punctuation_char('-').
+is_mercury_punctuation_char('_').
+is_mercury_punctuation_char('+').
+is_mercury_punctuation_char('=').
+is_mercury_punctuation_char('`').
+is_mercury_punctuation_char('~').
+is_mercury_punctuation_char('{').
+is_mercury_punctuation_char('}').
+is_mercury_punctuation_char('[').
+is_mercury_punctuation_char(']').
+is_mercury_punctuation_char(';').
+is_mercury_punctuation_char(':').
+is_mercury_punctuation_char('''').
+is_mercury_punctuation_char('"').
+is_mercury_punctuation_char('<').
+is_mercury_punctuation_char('>').
+is_mercury_punctuation_char('.').
+is_mercury_punctuation_char(',').
+is_mercury_punctuation_char('/').
+is_mercury_punctuation_char('?').
+is_mercury_punctuation_char('\\').
+is_mercury_punctuation_char('|').
+
+%-----------------------------------------------------------------------------%
+
+	% escape_special_char(Char, EscapeChar)
+	% is true iff Char is character for which there is a special
+	% backslash-escape character EscapeChar that can be used
+	% after a backslash in Mercury c_code string literals represent Char.
+
+:- pred escape_special_char(char, char).
+:- mode escape_special_char(in, out) is semidet.
+
+escape_special_char('''', '''').
+escape_special_char('"', '"').
+escape_special_char('\\', '\\').
+escape_special_char('\b', 'b').
 
 %-----------------------------------------------------------------------------%
 
@@ -1812,7 +1930,7 @@ mercury_output_pragma_source_file(SourceFileString) -->
 
 mercury_output_pragma_c_body_code(C_CodeString) -->
 	io__write_string(":- pragma c_code("),
-	term_io__quote_string(C_CodeString),
+	mercury_output_c_code_string(C_CodeString),
 	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%
@@ -1855,18 +1973,18 @@ mercury_output_pragma_c_code(MayCallMercury, PredName, PredOrFunc, Vars0,
 	),
 	(
 		{ PragmaCode = ordinary(C_Code, _) },
-		term_io__quote_string(C_Code)
+		mercury_output_c_code_string(C_Code)
 	;
 		{ PragmaCode = nondet(Fields, _, First, _,
 			Later, _, Treat, Shared, _) },
 		io__write_string("local_vars("),
-		term_io__quote_string(Fields),
+		mercury_output_c_code_string(Fields),
 		io__write_string("), "),
 		io__write_string("first_code("),
-		term_io__quote_string(First),
+		mercury_output_c_code_string(First),
 		io__write_string("), "),
 		io__write_string("retry_code("),
-		term_io__quote_string(Later),
+		mercury_output_c_code_string(Later),
 		io__write_string("), "),
 		(
 			{ Treat = share },
@@ -1878,7 +1996,7 @@ mercury_output_pragma_c_code(MayCallMercury, PredName, PredOrFunc, Vars0,
 			{ Treat = automatic },
 			io__write_string("common_code(")
 		),
-		term_io__quote_string(Shared),
+		mercury_output_c_code_string(Shared),
 		io__write_string(")")
 	),
 	io__write_string(").\n").
