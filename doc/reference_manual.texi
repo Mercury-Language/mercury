@@ -6,7 +6,7 @@
 @ifinfo
 @format
 START-INFO-DIR-ENTRY
-* Mercury: (mercury_ref).	The Mercury Language Reference Manual
+* Mercury: (mercury_ref).        The Mercury Language Reference Manual
 END-INFO-DIR-ENTRY
 @end format
 @end ifinfo
@@ -175,8 +175,10 @@ using @samp{:- type @var{type} ---> @var{body}}.
 (Note there are @emph{three} dashes in that arrow.  It should
 not be confused with the two-dash arrow used for DCGs or the
 one-dash arrow used for if-then-else.)
-The @var{type} term is a functor whose arguments
-(if any) are all variables.  The @var{body} term is as
+If the @var{type} term is a functor of arity zero, it names
+a monomorphic type.  Otherwise, it names a polymorphic type;
+the arguments of the functor must be distinct type variables.
+The @var{body} term is as
 sequence of constructor definitions separated by semi-colons.
 Each constructor definition is a functor whose arguments (if any) are types.
 Type definitions must be @dfn{transparent}: all type variables
@@ -230,7 +232,7 @@ The following example illustrates this:
 
 @item
 Equivalence types: these are type abbreviations.  They are defined
-using `==' as follows.
+using `==' as follows.  They may be polymorphic.
 
 @example
         :- type money == int.
@@ -238,7 +240,7 @@ using `==' as follows.
                 == list(pair(KeyType, ValueType)).
 @end example
 
-Like discriminated union definitions, equivalence type definitions must
+Like discriminated union type definitions, equivalence type definitions must
 be transparent.
 
 @item
@@ -260,6 +262,236 @@ This means that the type names will be exported, but the constructors
 
 @node Modes, Determinism, Types, Top
 @chapter Modes
+
+The @dfn{mode} of a predicate is a mapping
+from the initial state of instantiation of the arguments of the predicate
+to their final state of instantiation.
+To describe states of instantiation,
+we use information provided by the type system.
+Types can be viewed as regular trees with two kinds of nodes:
+or-nodes representing types
+and and-nodes representing function symbols.
+The children of an or-node are the function symbols
+that can be used to construct terms of that type;
+the children of an and-node are the types
+of the arguments of the function symbol.
+We attach mode information to the or-nodes of type trees.
+
+An @dfn{instantiatedness tree} is an assignment
+of an @dfn{instantiatedness} --- either @dfn{free} or @dfn{bound} ---
+to each or-node of a type tree,
+with the constraint that all descendants of a free node must be free.
+
+A term is @dfn{approximated by} an instantiatedness tree
+if for every node in the instantiatedness tree,
+
+@itemize
+@item
+if the node is ``free'',
+then the corresponding node in the term (if any)
+is a free variable that does not share with any other variable
+(we call such variables @dfn{distinct});
+
+@item
+if the node is ``bound'',
+then the corresponding node in the term (if any)
+is a function symbol.
+
+@end itemize
+
+When an instantiatedness tree tells us that a variable is bound,
+there may be several alternative function symbols to which it could be
+bound.
+The instantiatedness tree does not tell us which of these it
+is bound to; instead for each possible function symbol it tells us
+exactly which arguments of the function symbol will be free and which
+will be bound.  The same principle applies recursively to
+these bound arguments.
+
+Mercury's mode system allows users to declare names for instantiatedness
+trees using declarations such as
+
+@example
+:- inst listskel ---> bound( [] ; [free | listskel] ).
+@end example
+
+This instantiatedness tree describes lists
+whose skeleton is known but whose elements are distinct variables.
+As such, it approximates the term @code{[A,B]}
+but not the term @code{[H|T]} (only part of the skeleton is known),
+the term @code{[A,2]} (not all elements are variables),
+or the term @code{[A,A]} (the elements are not distinct variables).
+
+As a shorthand, the mode system provides @samp{free} and @samp{ground}
+as names for instantiatedness trees
+all of whose nodes are free and bound respectively.
+The shape of these trees is determined by
+the type of the variable to which they apply.
+
+As execution proceeds, variables may become more instantiated.
+A @dfn{mode mapping} is a mapping
+from an initial instantiatedness tree to a final instantiatedness tree,
+with the constraint that no node of the type tree
+is transformed from bound to free.
+Our language allows the user to specify mode mappings directly
+by expressions such as @code{inst1 -> inst2},
+or to give them a name using declarations such as
+
+@example
+:- mode m :: inst1 -> inst2.
+@end example
+
+We provide two standard shorthand modes
+corresponding to the standard notions of inputs and outputs:
+
+@example
+:- mode in :: ground -> ground.
+:- mode out :: free -> ground.
+@end example
+
+These two modes are enough for most predicates.
+Nevertheless, Mercury's mode system is sufficiently
+expressive to handle more complex data-flow patterns, including those
+involving partially instantiated data structures.  For example, consider an
+interface to a database that associates data with keys, and provides
+read and write access to the items it stores.  To represent accesses to
+the database over a network, we will need declarations such as
+
+@example
+:- type operation --->
+        lookup(key, data)
+      ; set(key, data).
+:- inst request ---> bound(
+        lookup(ground, free)
+      ; set(ground, ground)).
+:- mode create_request ::
+   free -> request.
+:- mode satisfy_request ::
+   request -> ground.
+@end example
+
+A @dfn{predicate mode declaration}
+assigns a mode mapping to each argument of a predicate.
+Given the mode names defined by
+
+@example
+:- mode out_listskel ::
+   free -> listskel.
+:- mode in_listskel ::
+   listskel -> listskel.
+@end example
+
+the (type and) mode declarations of the predicates length and append
+are as follows:
+
+@example
+:- pred length(list(T), int).
+:- mode length(in_listskel, out).
+:- mode length(out_listskel, in).
+
+:- pred append(list(T), list(T),
+	   list(T)).
+:- mode append(in, in, out).
+:- mode append(out, out, in).
+@end example
+
+A predicate mode declaration is an assertion by the programmer
+that for all possible argument terms for the predicate
+that are approximated by the initial instantiatedness trees
+of the mode declaration and all of whose free variables are distinct,
+if the predicate succeeds then
+the resulting binding of those argument terms
+will in turn be approximated
+by the final instantiatedness trees of the mode declaration.
+We refer to such assertions as @dfn{mode declaration constraints}.
+These assertions are checked by the compiler,
+which rejects programs if it cannot prove
+that their mode declaration constraints are satisfied.
+
+@ignore
+Note that for every mode of a predicate
+in which a node is @dfn{produced} (mapped from free to bound)
+there is another mode for that predicate
+in which the node is @dfn{consumed} (mapped from bound to bound),
+and for every mode in which a node is ignored (mapped from free to free)
+there is another mode in which the node is mapped from bound to bound.
+Such modes are called @dfn{implied modes}.
+@end ignore
+
+The @dfn{mode set} for a predicate
+is the set of mode declarations for the predicate
+plus all their implied modes.
+A mode set is an assertion by the programmer
+that the predicate should only be called with argument terms
+that are approximated by the initial instantiatedness trees
+of one of the mode declarations in the set
+(i.e. the specified modes and the modes they imply
+are the only allowed modes for this predicate).
+We refer to the assertion associated with a mode set
+as the @dfn{mode set constraint};
+these are also checked by the compiler.
+
+A predicate p is @dfn{well-moded
+with respect to a given mode declaration}
+if given that the predicates called by p
+all satisfy their mode declaration constraints,
+there exists an ordering of the literals in the definition of p
+such that
+
+@itemize
+@item
+p satisfies its mode declaration constraint, and
+@item
+p satisfies the mode set constraint of all of the predicates it calls
+@end itemize
+
+We say that a predicate is well-moded
+if it is well-moded with respect to
+all the mode declarations in its mode set,
+and we say that a program is well-moded
+if all its predicates are well-moded.
+
+The bodies of clauses in Mercury
+may contain negations, disjunctions and if-then-elses.
+To remove one level of processing,
+the compiler converts any predicate definition with two or more clauses
+into a single clause with an explicit disjunction.
+The type and mode analysis algorithms work with such rich clauses
+that have been converted into @dfn{superhomogeneous form},
+where each atom is of one of the forms
+
+@example
+p(X_1, ..., X_n)
+Y = X
+Y = f(X_1, ..., X_n)
+@end example
+
+Any clause can be converted to superhomogeneous form
+by replacing with distinct variables
+the arguments in the head and in calls in the body,
+generating explicit unifications for these variables in the body,
+and then breaking complex unifications down into several simpler ones.
+
+The mode analysis algorithm checks one mode of one predicate at a time.
+It abstractly interprets the definition of the predicate,
+keeping track of the instantiatedness of each variable,
+and selecting a mode for each call and unification in the definition.
+To ensure that
+the mode set constraints of called predicates are satisfied,
+it may reorder the elements of conjunctions;
+it reports an error if no satisfactory order exists.
+Finally it checks that
+the resulting instantiatedness of the predicate's arguments
+is the same as the one given by the predicate's mode declaration.
+
+The mode analysis algorithm annotates each call with the mode used.
+
+@ignore
+% Reordering of conjunctions for each mode means that the
+% order of execution is more flexible than standard Prolog,
+% although not quite as flexible as in coroutining languages such as
+% NU-Prolog, SICStus Prolog, and G\"odel.
+@end ignore
 
 @node Determinism,, Modes, Top
 @chapter Determinism
@@ -392,7 +624,12 @@ inferred determinism (in the partial ordering above), it is an error.
 If the declared determinism is less than the inferred determinism,
 it is not an error, but the implementation may issue a warning.
 
-The compiler infers the determinism category of each goal as follows.
+The determinism category of each goal is inferred according to the
+following rules.  However, if the inferred category was @code{nondet}
+or @code{multidet} but the goal does not have any output variables,
+the inferred category is replaced with @code{semidet} or @code{det}
+respectively; the compiler will implicitly prune away any duplicate
+solutions.
 
 @table @asis
 @item Calls
@@ -460,8 +697,8 @@ are disjoint, but it can index them if you write the code as
 @example
         p(f(X)) :-
                 ( X = a, ...
-		; X = b, ...
-		).
+                ; X = b, ...
+                ).
 @end example
 
 If any of the disjuncts will never fail, then the disjunction
@@ -486,6 +723,44 @@ Otherwise, the determinism of the negation is @code{semidet}.
 @end table
 
 Note that ``perfect'' determinism inference is an undecideable
+problem, because it requires solving the halting problem.
+(For instance, in the following example
+
+@example
+:- pred p is det.
+p :-
+        something_complicated,
+        fail.
+@end example
+
+@noindent
+@samp{p/0} can fail only if @samp{something_complicated} halts.)
+Sometimes, the rules specified by the Mercury language for determinism
+inference will infer a determinism that is not as precise as you would like.
+However, it is generally easy to overcome such problems.  The way to do
+this is to replace the compiler's static checking with some manual run-time
+checking.  For example, if you know that a particular goal should never fail,
+but the compiler infers that goal to be @code{semidet}, you can check
+at runtime that the goal does succeed, and if it fails, call the library
+predicate @samp{error/1}.
+
+@example
+        :- pred p is det.
+        p :-
+                ( goal_that_should_never_fail ->
+                        true
+                ;
+                        error("goal_that_should_never_fail failed!")
+                ).
+@end example
+
+@noindent
+The predicate @code{error/1} has determininsm @code{erroneous}, which means
+the compiler knows that it will never succeed or fail, so the inferred
+determinism for the body of @code{p/1} is @code{det}.
+(Note that checking assumptions like this is good coding style anyway.
+The small amount of up-front work that Mercury requires is paid back in
+reduced debugging time.)
 
 @contents
 @bye
