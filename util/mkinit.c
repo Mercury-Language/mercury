@@ -730,6 +730,7 @@ output_aditi_load_function(void)
 
 	printf("\n/*\n** Load the Aditi-RL code for the program into the\n");
 	printf("** currently connected database.\n*/\n");
+	printf("#include \"aditi_api_config.h\"\n");
 	printf("#include \"aditi_clnt.h\"\n");
 
 	/*
