@@ -2519,8 +2519,8 @@ Mercury provides support for abstract data types, by allowing the
 definition of a type to be kept hidden, with the interface
 only exporting the type name.
 The interface section may contain definitions of types,
-typeclasses, data constructors, instantiation states, and
-modes, and declarations for abstract data types, abstract typeclass
+type classes, data constructors, instantiation states, and
+modes, and declarations for abstract data types, abstract type class
 instances, functions, predicates, and (sub-)modules.
 The interface section may not contain definitions for functions or
 predicates (i.e. clauses), or definitions of (sub-)modules. 
@@ -2532,7 +2532,7 @@ Any entities declared in this section are local to the module
 The implementation section must contain definitions
 for all abstract data types, abstract instance declarations,
 functions, predicates, and sub-modules exported by the module,
-as well as for all local types, typeclass instances, functions,
+as well as for all local types, type class instances, functions,
 predicates, and sub-modules.
 The implementation section can be omitted if it is empty.
 
@@ -2558,7 +2558,7 @@ entities are only used in the implementation section, the
 the implementation section.
 
 The names of predicates, functions, constructors, types, modes, insts,
-typeclasses,
+type classes,
 and (sub-)modules can be explicitly module qualified using the @samp{:}
 operator, e.g. @samp{module:name} or @samp{module:submodule:name}.
 This is useful both for readability and for resolving name conflicts.
@@ -2802,7 +2802,7 @@ of operations is defined.
 * Instance declarations::
 * Abstract instance declarations::
 * Type class constraints on predicates and functions::
-* Type class constraints on typeclass declarations::
+* Type class constraints on type class declarations::
 * Type class constraints on instance declarations::
 @end menu
 
@@ -2839,7 +2839,7 @@ For example,
 @end example
 
 @noindent
-declares the typeclass @code{point}, which
+declares the type class @code{point}, which
 represents points in two dimensional space. 
 
 @code{pred}, @code{func} and @code{mode} declarations are the only legal
@@ -2853,13 +2853,13 @@ is allowed:
 
 The parameters must be distinct variables.
 
-There must not be more than one typeclass declaration with the
+There must not be more than one type class declaration with the
 same name and arity in the same module.
 
 @node Instance declarations
 @section Instance declarations
 
-Once the interface of the typeclass has been defined in the @code{typeclass}
+Once the interface of the type class has been defined in the @code{typeclass}
 declaration, we can use an @code{instance} declaration to define how a
 particular type satisfies the interface declared in the @code{typeclass}
 declaration.
@@ -2874,7 +2874,7 @@ An instance declaration has the form
 @end example
 
 An @samp{instance} declaration gives a type for each parameter of the
-typeclass.  Each of these types must be either a type with no arguments, or 
+type class.  Each of these types must be either a type with no arguments, or 
 a polymorphic type whose arguments are all distinct type variables.
 For example @code{int}, @code{list(T)} and @code{bintree(K,V)} are allowed,
 but @code{T}, @code{list(int)} and @code{bintree(T,T)} are not.
@@ -2882,7 +2882,7 @@ The types in an instance declaration must not be abstract types which
 are elsewhere defined as equivalence types.
 A program may not contain more than one @code{instance} declaration for a
 particular type (or set of types, in the case of a multi-parameter
-typeclass).  These restrictions ensure that there are no overlapping instance
+type class).  These restrictions ensure that there are no overlapping instance
 declarations, ie. there is at most one instance declaration that may be 
 applied to any type (or set of types).
 
@@ -2895,7 +2895,7 @@ purity are at least as permissive as the declared type, modes,
 determinism, and purity of the class method with the specified
 @var{methodname} and @var{arity}, after the types of the arguments
 in the instance declaration have substituted in place of the
-parameters in the typeclass declaration.
+parameters in the type class declaration.
 Each @samp{instance} declaration must define an implementation for
 every method declared in the corresponding @samp{typeclass} declaration.
 It is an error to define more than one implemention for the same
@@ -2903,7 +2903,7 @@ method within a single @samp{instance} declaration.
 
 Any call to a method must have arguments types (and in the case of functions,
 return type) which are constrained to be a member of that method's
-typeclass, or which match one of the instance declarations visible at
+type class, or which match one of the instance declarations visible at
 the point of the call.  A method call will invoke the 
 predicate or function specified for that method in the
 instance declaration that matches the types of the arguments
@@ -2935,9 +2935,9 @@ coordinate_translate(coordinate(X, Y), Dx, Dy) = coordinate(X + Dx, Y + Dy).
 @end example
 
 We have now made the @code{coordinate} type an instance of the @code{point}
-typeclass.  If we introduce a new type, @code{coloured_coordinate} which
+type class.  If we introduce a new type, @code{coloured_coordinate} which
 represents a point in two dimensional space with a colour associated with it, 
-it can also become an instance of the typeclass:
+it can also become an instance of the type class:
 
 @example
 :- type rgb
@@ -2978,7 +2978,7 @@ If we call @samp{translate/3} with the first argument having type
 Likewise, if we call @samp{translate/3} with the first argument having type
 @samp{coordinate}, this will invoke @samp{coordinate_translate}.
 
-Further instances of the typeclass could be made, e.g. a type which represents
+Further instances of the type class could be made, e.g. a type which represents
 the point using polar coordinates.
 
 @node Abstract instance declarations
@@ -3026,17 +3026,17 @@ hash_string(S) = H :-
 @node Type class constraints on predicates and functions
 @section Type class constraints on predicates and functions
 
-Mercury allows a typeclass constraint to appear as part of a predicate or
+Mercury allows a type class constraint to appear as part of a predicate or
 functions's type signature.  This constrains the values that can be taken
-by type variables in the signature to belong to particular typeclasses.
+by type variables in the signature to belong to particular type classes.
 
-A typeclass constraint is of the form:
+A type class constraint is of the form:
 
 @example
         <= @var{Typeclass}(@var{TypeVariable}, @dots{}), @dots{}
 @end example
 
-where @var{Typeclass} is the name of a typeclass and @var{TypeVariable} is 
+where @var{Typeclass} is the name of a type class and @var{TypeVariable} is 
 a type variable that appears in the predicate's or function's type signature.
 
 For example
@@ -3058,16 +3058,16 @@ distance between any two points, regardless of their representation, as long
 as the @code{coords} operation has been defined.  These
 constraints are checked at compile time.
 
-@node Type class constraints on typeclass declarations
-@section Type class constraints on typeclass declarations
+@node Type class constraints on type class declarations
+@section Type class constraints on type class declarations
 
 Type class constraints may also appear in @code{typeclass} declarations, 
-meaning that one typeclass is a ``superclass'' of another. 
+meaning that one type class is a ``superclass'' of another. 
 
-The variables that appear as arguments to the typeclasses in the constraints
-must also be arguments to the typeclass in question.
+The variables that appear as arguments to the type classes in the constraints
+must also be arguments to the type class in question.
 
-For example, the following declares the @samp{ring} typeclass, which describes
+For example, the following declares the @samp{ring} type class, which describes
 types with a particular set of numerical operations defined:
 
 @example
@@ -3091,13 +3091,13 @@ We can now add the following declaration:
 ].
 @end example
 
-This introduces a new typeclass, @code{euclidean}, of which @code{ring} is a
-superclass.  The operations defined by the @code{euclidean} typeclass are
+This introduces a new type class, @code{euclidean}, of which @code{ring} is a
+superclass.  The operations defined by the @code{euclidean} type class are
 @code{div}, @code{mod}, as well as all those defined by the @code{ring}
-typeclass.  Any type declared to be an instance of @code{euclidean} must also 
+type class.  Any type declared to be an instance of @code{euclidean} must also 
 be declared to be an instance of @code{ring}.
 
-Typeclass constraints on typeclass declarations gives rise to a superclass
+Typeclass constraints on type class declarations gives rise to a superclass
 relation.  This relation must be acyclic.  That is, it is an error if a type 
 class is its own (direct or indirect) superclass.
 
@@ -3105,10 +3105,10 @@ class is its own (direct or indirect) superclass.
 @section Type class constraints on instance declarations
 
 Typeclass constraints may also be placed upon instance declarations.  The
-variables that appear as arguments to the typeclasses in the constraints must
+variables that appear as arguments to the type classes in the constraints must
 all be type variables that appear in the types in the instance declarations.
 
-For example, consider the following declaration of a typeclass of types that 
+For example, consider the following declaration of a type class of types that 
 may be printed:
 
 @example
@@ -3132,7 +3132,7 @@ The programmer could declare instances such as
 However, when it comes to writing the instance declaration for a type such as
 @code{list(T)}, we want to be able print out the list elements using the
 @code{portray/3} for the particular type of the list elements.  This can be
-achieved by placing a typeclass constraint on the @code{instance} declaration,
+achieved by placing a type class constraint on the @code{instance} declaration,
 as in the following example:
 
 @example
@@ -3146,9 +3146,9 @@ as in the following example:
 portray_list([]) --> 
         [].
 portray_list([X|Xs]) --> 
-        print(X),
-        io__write_char(' '),
-        portray_list(Xs).
+	portray(X),
+	io__write_char(' '),
+	portray_list(Xs).
 @end example
 
 For abstract instance declarations, the type class constraints on an
