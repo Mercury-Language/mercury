@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -238,9 +238,15 @@
 	% on a code location. Updates to these fields must remain effective
 	% even when the code generator resets its location-dependent state.
 
-:- type code_info	--->
+:- type code_info --->
 	code_info(
-		% STATIC fields
+		code_info_static	:: code_info_static,
+		code_info_loc_dep	:: code_info_loc_dep,
+		code_info_persistent	:: code_info_persistent
+	).
+
+:- type code_info_static --->
+	code_info_static(
 		globals :: globals,
 				% For the code generation options.
 		module_info :: module_info,
@@ -259,13 +265,15 @@
 				% for storing variables.
 				% (Some extra stack slots are used
 				% for saving and restoring registers.)
-		maybe_trace_info :: maybe(trace_info),
+		maybe_trace_info :: maybe(trace_info)
 				% Information about which stack slots
 				% the call sequence number and depth
 				% are stored in, provided tracing is
 				% switched on.
+	).
 
-		% LOCATION DEPENDENT fields
+:- type code_info_loc_dep --->
+	code_info_loc_dep(
 		forward_live_vars :: set(prog_var),
 				% Variables that are forward live
 				% after this goal.
@@ -286,10 +294,12 @@
 				% is one of the persistent fields below. Any
 				% keys in that map which are not in this set
 				% are free for reuse.
-		fail_info :: fail_info,
+		fail_info :: fail_info
 				% Information about how to manage failures.
+	).
 
-		% PERSISTENT fields
+:- type code_info_persistent --->
+	code_info_persistent(
  		label_num_src :: counter,
 				% Counter for the local labels used
 				% by this procedure.
@@ -396,31 +406,36 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 	trace__reserved_slots(ModuleInfo, ProcInfo, Globals, FixedSlots, _),
 	int__max(VarSlotMax, FixedSlots, SlotMax),
 	CodeInfo0 = code_info(
-		Globals,
-		ModuleInfo,
-		PredId,
-		ProcId,
-		ProcInfo,
-		VarSet,
-		SlotMax,
-		no,
-
-		Liveness,
-		InstMap,
-		Zombies,
-		VarLocnsInfo,
-		TempsInUse,
-		DummyFailInfo,		% code_info__init_fail_info
+		code_info_static(
+			Globals,
+			ModuleInfo,
+			PredId,
+			ProcId,
+			ProcInfo,
+			VarSet,
+			SlotMax,
+			no
+		),
+		code_info_loc_dep(
+			Liveness,
+			InstMap,
+			Zombies,
+			VarLocnsInfo,
+			TempsInUse,
+			DummyFailInfo	% code_info__init_fail_info
 					% will override this dummy value
-		counter__init(1),
-		CellCounter,
-		SaveSuccip,
-		LayoutMap,
-		0,
-		TempContentMap,
-		[],
-		-1,
-		no
+		),
+		code_info_persistent(
+			counter__init(1),
+			CellCounter,
+			SaveSuccip,
+			LayoutMap,
+			0,
+			TempContentMap,
+			[],
+			-1,
+			no
+		)
 	),
 	code_info__init_maybe_trace_info(TraceLevel, Globals, ProcInfo,
 		ModuleInfo, TraceSlotInfo, CodeInfo0, CodeInfo1),
@@ -443,48 +458,63 @@ code_info__init_maybe_trace_info(TraceLevel, Globals, ProcInfo, ModuleInfo,
 
 %---------------------------------------------------------------------------%
 
-code_info__get_globals(CI^globals, CI, CI).
-code_info__get_module_info(CI^module_info, CI, CI).
-code_info__get_pred_id(CI^pred_id, CI, CI).
-code_info__get_proc_id(CI^proc_id, CI, CI).
-code_info__get_proc_info(CI^proc_info, CI, CI).
-code_info__get_varset(CI^varset, CI, CI).
-code_info__get_var_slot_count(CI^var_slot_count, CI, CI).
-code_info__get_maybe_trace_info(CI^maybe_trace_info, CI, CI).
-code_info__get_forward_live_vars(CI^forward_live_vars, CI, CI).
-code_info__get_instmap(CI^instmap, CI, CI).
-code_info__get_zombies(CI^zombies, CI, CI).
-code_info__get_var_locns_info(CI^var_locns_info, CI, CI).
-code_info__get_temps_in_use(CI^temps_in_use, CI, CI).
-code_info__get_fail_info(CI^fail_info, CI, CI).
-code_info__get_label_counter(CI^label_num_src, CI, CI).
-code_info__get_cell_counter(CI^cell_num_src, CI, CI).
-code_info__get_succip_used(CI^store_succip, CI, CI).
-code_info__get_layout_info(CI^label_info, CI, CI).
-code_info__get_max_temp_slot_count(CI^stackslot_max, CI, CI).
-code_info__get_temp_content_map(CI^temp_contents, CI, CI).
-code_info__get_non_common_static_data(CI^comp_gen_c_data, CI, CI).
-code_info__get_max_reg_in_use_at_trace(CI^max_reg_used, CI, CI).
-code_info__get_created_temp_frame(CI^created_temp_frame, CI, CI).
+code_info__get_globals(CI^code_info_static^globals, CI, CI).
+code_info__get_module_info(CI^code_info_static^module_info, CI, CI).
+code_info__get_pred_id(CI^code_info_static^pred_id, CI, CI).
+code_info__get_proc_id(CI^code_info_static^proc_id, CI, CI).
+code_info__get_proc_info(CI^code_info_static^proc_info, CI, CI).
+code_info__get_varset(CI^code_info_static^varset, CI, CI).
+code_info__get_var_slot_count(CI^code_info_static^var_slot_count, CI, CI).
+code_info__get_maybe_trace_info(CI^code_info_static^maybe_trace_info, CI, CI).
+code_info__get_forward_live_vars(CI^code_info_loc_dep^forward_live_vars,
+	CI, CI).
+code_info__get_instmap(CI^code_info_loc_dep^instmap, CI, CI).
+code_info__get_zombies(CI^code_info_loc_dep^zombies, CI, CI).
+code_info__get_var_locns_info(CI^code_info_loc_dep^var_locns_info, CI, CI).
+code_info__get_temps_in_use(CI^code_info_loc_dep^temps_in_use, CI, CI).
+code_info__get_fail_info(CI^code_info_loc_dep^fail_info, CI, CI).
+code_info__get_label_counter(CI^code_info_persistent^label_num_src, CI, CI).
+code_info__get_cell_counter(CI^code_info_persistent^cell_num_src, CI, CI).
+code_info__get_succip_used(CI^code_info_persistent^store_succip, CI, CI).
+code_info__get_layout_info(CI^code_info_persistent^label_info, CI, CI).
+code_info__get_max_temp_slot_count(CI^code_info_persistent^stackslot_max,
+	CI, CI).
+code_info__get_temp_content_map(CI^code_info_persistent^temp_contents, CI, CI).
+code_info__get_non_common_static_data(CI^code_info_persistent^comp_gen_c_data,
+	CI, CI).
+code_info__get_max_reg_in_use_at_trace(CI^code_info_persistent^max_reg_used,
+	CI, CI).
+code_info__get_created_temp_frame(CI^code_info_persistent^created_temp_frame,
+	CI, CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__set_maybe_trace_info(TI, CI, CI^maybe_trace_info := TI).
-code_info__set_forward_live_vars(LV, CI, CI^forward_live_vars := LV).
-code_info__set_instmap(IM, CI, CI^instmap := IM).
-code_info__set_zombies(Zs, CI, CI^zombies := Zs).
-code_info__set_var_locns_info(EI, CI, CI^var_locns_info := EI).
-code_info__set_temps_in_use(TI, CI, CI^temps_in_use := TI).
-code_info__set_fail_info(FI, CI, CI^fail_info := FI).
-code_info__set_label_counter(LC, CI, CI^label_num_src := LC).
-code_info__set_cell_counter(CC, CI, CI^cell_num_src := CC).
-code_info__set_succip_used(SU, CI, CI^store_succip := SU).
-code_info__set_layout_info(LI, CI, CI^label_info := LI).
-code_info__set_max_temp_slot_count(TM, CI, CI^stackslot_max := TM).
-code_info__set_temp_content_map(CM, CI, CI^temp_contents := CM).
-code_info__set_non_common_static_data(CG, CI, CI^comp_gen_c_data := CG).
-code_info__set_max_reg_in_use_at_trace(MR, CI, CI^max_reg_used := MR).
-code_info__set_created_temp_frame(MR, CI, CI^created_temp_frame := MR).
+code_info__set_maybe_trace_info(TI, CI,
+	CI^code_info_static^maybe_trace_info := TI).
+code_info__set_forward_live_vars(LV, CI,
+	CI^code_info_loc_dep^forward_live_vars := LV).
+code_info__set_instmap(IM, CI, CI^code_info_loc_dep^instmap := IM).
+code_info__set_zombies(Zs, CI, CI^code_info_loc_dep^zombies := Zs).
+code_info__set_var_locns_info(EI, CI,
+	CI^code_info_loc_dep^var_locns_info := EI).
+code_info__set_temps_in_use(TI, CI, CI^code_info_loc_dep^temps_in_use := TI).
+code_info__set_fail_info(FI, CI, CI^code_info_loc_dep^fail_info := FI).
+code_info__set_label_counter(LC, CI,
+	CI^code_info_persistent^label_num_src := LC).
+code_info__set_cell_counter(CC, CI,
+	CI^code_info_persistent^cell_num_src := CC).
+code_info__set_succip_used(SU, CI, CI^code_info_persistent^store_succip := SU).
+code_info__set_layout_info(LI, CI, CI^code_info_persistent^label_info := LI).
+code_info__set_max_temp_slot_count(TM, CI,
+	CI^code_info_persistent^stackslot_max := TM).
+code_info__set_temp_content_map(CM, CI,
+	CI^code_info_persistent^temp_contents := CM).
+code_info__set_non_common_static_data(CG, CI,
+	CI^code_info_persistent^comp_gen_c_data := CG).
+code_info__set_max_reg_in_use_at_trace(MR, CI,
+	CI^code_info_persistent^max_reg_used := MR).
+code_info__set_created_temp_frame(MR, CI,
+	CI^code_info_persistent^created_temp_frame := MR).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -915,13 +945,9 @@ code_info__add_non_common_static_data(NonCommonData) -->
 code_info__remember_position(position_info(C), C, C).
 
 code_info__reset_to_position(position_info(PosCI), CurCI, NextCI) :-
-		% The static fields in PosCI and CurCI should be identical.
-	PosCI  = code_info(_,  _,  _,  _,  _,  _,  _,  _, 
-		LA, LB, LC, LD, LE, LF, _,  _,  _,  _,  _,  _,  _,  _,  _ ),
-	CurCI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		_,  _,  _,  _,  _,  _,  PA, PB, PC, PD, PE, PF, PG, PH, PI),
-	NextCI = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH, PI).
+	PosCI  = code_info(_, LocDep, _),
+	CurCI  = code_info(Static, _, Persistent),
+	NextCI = code_info(Static, LocDep, Persistent).
 
 code_info__reset_resume_known(BranchStart) -->
 	{ BranchStart = position_info(BranchStartCI) },
