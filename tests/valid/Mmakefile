@@ -180,7 +180,7 @@ else
 endif
 
 DEPS =	$(SOURCES:%.m=%.depend)
-OBJS =	$(SOURCES:%.m=$(os_subdir)%.o)
+OBJS =	$(SOURCES:%.m=$(os_subdir)%.$O)
 PROGS =	$(SOURCES:%.m=%)
 
 all:	objs
