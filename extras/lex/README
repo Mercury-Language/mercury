@@ -1,0 +1,81 @@
+lex 1.0 (very alpha)
+Fri Aug 25 17:54:28  2000
+Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
+
+    THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
+    BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
+    BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
+
+
+
+This package defines a lexer for Mercury.  There is plenty of scope
+for optimization, however it is reasonably efficient and does provide
+the holy grail of piecemeal lexing of stdin (and strings, and lists,
+and ...)
+
+The interface is simple.
+
+1. Import module lex.
+
+    :- import_module lex.
+
+2. Set up a token type.
+
+    :- type token
+        --->    comment
+        ;       id
+        ;       num.
+
+3. Set up a list of annotated_lexemes.
+
+    Lexemes = [
+        lexeme(noval(comment),      (atom('%'), star(dot))),
+        lexeme(value(id),           identifier),
+        lexeme(ignore,              whitespace)
+    ]
+
+noval tokens are simply identified;
+value tokens are identified and returned with the string matched;
+ignore regexps are simply passed over.
+
+4. Set up a lexer with an appropriate read predicate (see the buf module).
+
+    Lexer = lex__init(Lexemes, lex__read_from_stdin)
+
+5. Obtain a live lexer state.
+
+    State0 = lex__start(Lexer, IO0)
+
+6. Use it to lex the input stream.
+
+    lex__read(Result, State0, State1),
+    ( Result = ok(NoValToken), ...
+    ; Result = ok(ValueToken, String), ...
+    ; Result = error(OffsetInInputStream), ...
+    ; Result = eof, ...
+    )
+
+7. If you need to manipulate the source object, you can.
+
+    lex__manipulate_source(io__print("Not finished yet?"), State1, State2)
+
+8. When you're done, retrieve the source object.
+
+    IO = lex__stop(State)
+
+And that's basically it.
+
+In future I plan to add several optimizations to the implementation
+and the option to write out a compilable source file for the lexer.
+
+
+
+OPPORTUNITIES FOR OPTIMIZATION
+
+1. Move from chars to bytes.
+2. Implement a byte_array rather than using a wasteful array(char) for the
+input buffer.
+3. Implement the first-byte optimization whereby the set of `live lexemes'
+is decided by the first byte read in on a lexing pass.
+4. Implement state machine minimization (may or may not be worthwhile.)
+
