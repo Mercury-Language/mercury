@@ -161,6 +161,12 @@ MR_garbage_collect(void)
     maybe_clear_old_heap(old_heap, old_hp);
 
     /*
+    ** Compute the new size at which to GC,
+    ** and reset the gc_threshold on the new heap.
+    */
+    resize_and_reset_gc_threshold(old_heap, new_heap);
+
+    /*
     ** Print some more debugging messages,
     */
     if (MR_agc_debug) {
@@ -180,6 +186,35 @@ traverse_stack(struct MR_StackChain *stack_chain)
         (*stack_chain->trace)(stack_chain);
         stack_chain = stack_chain->prev;
     }
+}
+
+/*
+** Compute the new size at which to GC,
+** and reset the redzone on the new heap.
+*/
+static void
+resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
+{
+    /* These counts include some wasted space between ->min and ->bottom. */
+    size_t old_heap_space =
+        (char *) old_heap->gc_threshold - (char *) old_heap->bottom;
+    size_t new_heap_usage =
+        (char *) MR_virtual_hp - (char *) new_heap->bottom;
+    size_t gc_heap_size;
+
+    /*
+    ** Set the size at which to GC to be MR_heap_expansion_factor
+    ** (which defaults to two) times the current usage,
+    ** or the size at which we GC'd last time, whichever is larger.
+    */
+    gc_heap_size = MR_round_up(
+            (size_t) (MR_heap_expansion_factor * new_heap_usage),
+            MR_unit);
+    if (gc_heap_size < old_heap_space) {
+        gc_heap_size = old_heap_space;
+    }
+    old_heap->gc_threshold = (MR_Word *)
+            ((char *) old_heap->bottom + gc_heap_size);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -271,6 +306,9 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
                 fprintf(stderr, "at address %p "
                         "has no stack layout info\n", entry_label->e_addr);
             }
+            fprintf(stderr, "Mercury runtime: PC address = %p\n", pc_at_signal);
+            fprintf(stderr, "Mercury runtime: PC = label + 0x%lx\n",
+                (long) ((char *)pc_at_signal - (char *)entry_label->e_addr));
         } else {
             fprintf(stderr, "Mercury runtime: no entry label ");
             fprintf(stderr, "for PC address %p\n", pc_at_signal);
@@ -884,30 +922,29 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
 static void
 resize_and_reset_redzone(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
 {
-    /* Reset the redzone on the new heap */
-    {
-        /* These counts include some wasted space between ->min and ->bottom. */
-        size_t old_heap_space =
-            (char *) old_heap->redzone_base - (char *) old_heap->bottom;
-        size_t new_heap_usage =
-            (char *) MR_virtual_hp - (char *) new_heap->bottom;
-        size_t gc_heap_size;
+    /* These counts include some wasted space between ->min and ->bottom. */
+    size_t old_heap_space =
+        (char *) old_heap->redzone_base - (char *) old_heap->bottom;
+    size_t new_heap_usage =
+        (char *) MR_virtual_hp - (char *) new_heap->bottom;
+    size_t gc_heap_size;
 
-        /*
-        ** Set the size at which to GC to be MR_heap_expansion_factor
-        ** (which defaults to two) times the current usage,
-        ** or the size at which we GC'd last time, whichever is larger.
-        */
-        gc_heap_size = MR_round_up(
-                (size_t) (MR_heap_expansion_factor * new_heap_usage),
-                MR_unit);
-        if (gc_heap_size < old_heap_space) {
-            gc_heap_size = old_heap_space;
-        }
-        old_heap->redzone_base = (MR_Word *)
-                ((char *) old_heap->bottom + gc_heap_size);
-        MR_reset_redzone(old_heap);
+    /*
+    ** Set the size at which to GC to be MR_heap_expansion_factor
+    ** (which defaults to two) times the current usage,
+    ** or the size at which we GC'd last time, whichever is larger.
+    */
+    gc_heap_size = MR_round_up(
+            (size_t) (MR_heap_expansion_factor * new_heap_usage),
+            MR_unit);
+    if (gc_heap_size < old_heap_space) {
+        gc_heap_size = old_heap_space;
     }
+
+    /* Reset the redzone on the new heap */
+    old_heap->redzone_base = (MR_Word *)
+            ((char *) old_heap->bottom + gc_heap_size);
+    MR_reset_redzone(old_heap);
 }
 
 #endif /* !MR_HIGHLEVEL_CODE */
