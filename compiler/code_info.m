@@ -1866,13 +1866,13 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 			% inside MR_commit_{mark,cut}.
 			Components = [
 				pragma_c_raw_code(
-					"\tMR_save_transient_registers();\n",
+					"\t\tMR_save_transient_registers();\n",
 					live_lvals_info(set__init)),
 				pragma_c_raw_code(
-					"\tMR_commit_mark();\n",
+					"\t\tMR_commit_mark();\n",
 					live_lvals_info(set__init)),
 				pragma_c_raw_code(
-					"\tMR_restore_transient_registers();\n",
+					"\t\tMR_restore_transient_registers();\n",
 					live_lvals_info(set__init))
 			],
 			MarkCode = node([
@@ -1951,7 +1951,7 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 			UseMinimalModel = yes,
 			% See the comment in prepare_for_semi_commit above.
 			Components = [
-				pragma_c_raw_code("\tMR_commit_cut();\n",
+				pragma_c_raw_code("\t\tMR_commit_cut();\n",
 					live_lvals_info(set__init))
 			],
 			CutCode = node([

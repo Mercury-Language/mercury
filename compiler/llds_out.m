@@ -1865,7 +1865,7 @@ output_instruction(pragma_c(Decls, Components, _, _, _, _, _, _), _) -->
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
 	output_pragma_c_components(Components),
-	io__write_string("\n\t}\n").
+	io__write_string("\t}\n").
 
 output_instruction(init_sync_term(Lval, N), _) -->
 	io__write_string("\tMR_init_sync_term("),

@@ -511,14 +511,14 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 	string__append_list([
 		"\t\t", EventNumStr, " = MR_trace_event_number;\n",
 		"\t\t", CallNumStr, " = MR_trace_incr_seq();\n",
-		"\t\t", CallDepthStr, " = MR_trace_incr_depth();"
+		"\t\t", CallDepthStr, " = MR_trace_incr_depth();\n"
 	], FillThreeSlots),
 	(
 		MaybeIoSeqSlot = yes(IoSeqLval),
 		trace__stackref_to_string(IoSeqLval, IoSeqStr),
 		string__append_list([
-			FillThreeSlots, "\n",
-			"\t\t", IoSeqStr, " = MR_io_tabling_counter;"
+			FillThreeSlots,
+			"\t\t", IoSeqStr, " = MR_io_tabling_counter;\n"
 		], FillSlotsUptoIoSeq)
 	;
 		MaybeIoSeqSlot = no,
@@ -531,10 +531,10 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		LayoutAddrStr =
 			layout_out__make_label_layout_name(RedoLayoutLabel),
 		string__append_list([
-			FillSlotsUptoIoSeq, "\n",
+			FillSlotsUptoIoSeq,
 			"\t\t", RedoLayoutStr,
 				" = (MR_Word) (const MR_Word *) &",
-				LayoutAddrStr, ";"
+				LayoutAddrStr, ";\n"
 		], FillSlotsUptoRedo),
 		MaybeLayoutLabel = yes(RedoLayoutLabel)
 	;
@@ -551,9 +551,9 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		trace__stackref_to_string(TrailLval, TrailLvalStr),
 		trace__stackref_to_string(TicketLval, TicketLvalStr),
 		string__append_list([
-			FillSlotsUptoRedo, "\n",
+			FillSlotsUptoRedo,
 			"\t\tMR_mark_ticket_stack(", TicketLvalStr, ");\n",
-			"\t\tMR_store_ticket(", TrailLvalStr, ");"
+			"\t\tMR_store_ticket(", TrailLvalStr, ");\n"
 		], FillSlotsUptoTrail)
 	;
 		MaybeTrailLvals = no,
@@ -566,10 +566,10 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		string__append_list([
 			"\t\t", CallFromFullSlotStr, " = MR_trace_from_full;\n",
 			"\t\tif (MR_trace_from_full) {\n",
-			FillSlotsUptoTrail, "\n",
+			FillSlotsUptoTrail,
 			"\t\t} else {\n",
 			"\t\t\t", CallDepthStr, " = MR_trace_call_depth;\n",
-			"\t\t}"
+			"\t\t}\n"
 		], TraceStmt1)
 	;
 		MaybeFromFullSlot = no,
@@ -594,7 +594,7 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		MaybeCallTableLval = yes(CallTableLval),
 		trace__stackref_to_string(CallTableLval, CallTableLvalStr),
 		string__append_list([
-			"\t\t", CallTableLvalStr, " = 0;"
+			"\t\t", CallTableLvalStr, " = 0;\n"
 		], TraceStmt3),
 		TraceCode3 = node([
 			pragma_c([], [pragma_c_raw_code(TraceStmt3,
@@ -818,7 +818,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 	DeclStmt = "\t\tMR_Code *MR_jumpaddr;\n",
 	SaveStmt = "\t\tMR_save_transient_registers();\n",
 	RestoreStmt = "\t\tMR_restore_transient_registers();\n",
-	GotoStmt = "\t\tif (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);"
+	GotoStmt = "\t\tif (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);\n"
 	},
 	{ string__append_list([
 		"\t\tMR_jumpaddr = MR_trace(\n",
