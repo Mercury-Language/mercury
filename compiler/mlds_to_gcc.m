@@ -1794,7 +1794,9 @@ build_type(mlds__array_type(Type), ArraySize, GlobalInfo, GCC_ArrayType) -->
 build_type(mlds__func_type(Params), _, GlobalInfo, GCC_FuncPtrType) -->
 	{ Signature = mlds__get_func_signature(Params) },
 	{ Signature = mlds__func_signature(ArgTypes, RetTypes) },
-	( { RetTypes = [RetType] } ->
+	( { RetTypes = [] } ->
+		{ GCC_RetType = gcc__void_type_node }
+	; { RetTypes = [RetType] } ->
 		build_type(RetType, no_size, GlobalInfo, GCC_RetType)
 	;
 		{ sorry(this_file, "multiple return types") }
@@ -2967,13 +2969,24 @@ build_lval(var(qual(ModuleName, VarName)), DefnInfo, Expr) -->
 	->
 		{ Expr = gcc__var_expr(GlobalVarDecl) }
 	;
-		% check if its in the private_builtin module
+		% check if it's in the private_builtin module
 		% and is an RTTI enumeration constant
 		{ mercury_private_builtin_module(PrivateBuiltin) },
 		{ mercury_module_name_to_mlds(PrivateBuiltin) = ModuleName },
 		{ rtti_enum_const(VarName, IntVal) }
 	->
 		gcc__build_int(IntVal, Expr)
+	;
+		% check if it's private_builtin:dummy_var
+		{ mercury_private_builtin_module(PrivateBuiltin) },
+		{ mercury_module_name_to_mlds(PrivateBuiltin) = ModuleName },
+		{ VarName = "dummy_var" }
+	->
+		% if so, generate an extern declaration for it, and use that.
+		{ GCC_VarName = build_data_var_name(ModuleName, var(VarName)) },
+		{ Type = 'MR_Word' },
+		gcc__build_extern_var_decl(GCC_VarName, Type, Decl),
+		{ Expr = gcc__var_expr(Decl) }
 	;
 		{ unexpected(this_file, "undeclared variable: " ++
 			build_qualified_name(Name)) }
