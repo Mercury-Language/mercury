@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2001 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -708,7 +708,7 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 :- pragma inline(bounds_checks/0).
 
 :- pragma foreign_proc("C", bounds_checks,
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 #ifdef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	SUCCESS_INDICATOR = FALSE;
 #else
@@ -717,7 +717,7 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 ").		
 
 :- pragma foreign_proc("MC++", bounds_checks,
-		[thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 #if ML_OMIT_ARRAY_BOUNDS_CHECKS
 	SUCCESS_INDICATOR = FALSE;
 #else
@@ -764,21 +764,21 @@ array__init(Size, Item, Array) :-
 
 :- pragma foreign_proc("C", 
 		array__init_2(Size::in, Item::in, Array::array_uo),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_make_array(Size, Item);
 ").
 
 :- pragma foreign_proc("C",
 		array__make_empty_array(Array::array_uo),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	MR_maybe_record_allocation(1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_make_array(0, 0);
 ").
 
 :- pragma foreign_proc("C#", 
 		array__init_2(Size::in, Item::in, Array::array_uo),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Array = System.Array.CreateInstance(Item.GetType(), Size);
 	for (int i = 0; i < Size; i++) {
 		Array.SetValue(Item, i);
@@ -787,7 +787,7 @@ array__init(Size, Item, Array) :-
 
 :- pragma foreign_proc("C#",
 		array__make_empty_array(_Array::array_uo),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
         mercury.runtime.Errors.SORRY(""foreign code for this predicate"");
 ").
 
@@ -796,48 +796,48 @@ array__init(Size, Item, Array) :-
 
 :- pragma foreign_proc("C",
 		array__min(Array::array_ui, Min::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	/* Array not used */
 	Min = 0;
 ").
 :- pragma foreign_proc("C", 
 		array__min(Array::in, Min::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	/* Array not used */
 	Min = 0;
 ").
 
 :- pragma foreign_proc("C#",
 		array__min(Array::array_ui, Min::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	/* Array not used */
 	Min = 0;
 ").
 :- pragma foreign_proc("C#", 
 		array__min(Array::in, Min::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	/* Array not used */
 	Min = 0;
 ").
 
 :- pragma foreign_proc("C", 
 		array__max(Array::array_ui, Max::out), 
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
 :- pragma foreign_proc("C",
 		array__max(Array::in, Max::out), 
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
 :- pragma foreign_proc("C#", 
 		array__max(Array::array_ui, Max::out), 
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Max = Array.Length - 1;
 ").
 :- pragma foreign_proc("C#",
 		array__max(Array::in, Max::out), 
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Max = Array.Length - 1;
 ").
 
@@ -850,23 +850,23 @@ array__bounds(Array, Min, Max) :-
 
 :- pragma foreign_proc("C",
 		array__size(Array::array_ui, Max::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size;
 ").
 :- pragma foreign_proc("C",
 		array__size(Array::in, Max::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size;
 ").
 
 :- pragma foreign_proc("C#",
 		array__size(Array::array_ui, Max::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Max = Array.Length;
 ").
 :- pragma foreign_proc("C#",
 		array__size(Array::in, Max::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Max = Array.Length;
 ").
 
@@ -908,25 +908,25 @@ array__lookup(Array, Index, Item) :-
 
 :- pragma foreign_proc("C",
 		array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
-		[will_not_call_mercury, thread_safe], "{
+		[will_not_call_mercury, promise_pure, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 	Item = array->elements[Index];
 }").
 :- pragma foreign_proc("C",
 		array__unsafe_lookup(Array::in, Index::in, Item::out),
-		[will_not_call_mercury, thread_safe], "{
+		[will_not_call_mercury, promise_pure, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 	Item = array->elements[Index];
 }").
 
 :- pragma foreign_proc("C#",
 		array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
-		[will_not_call_mercury, thread_safe], "{
+		[will_not_call_mercury, promise_pure, thread_safe], "{
 	Item = Array.GetValue(Index);
 }").
 :- pragma foreign_proc("C#",
 		array__unsafe_lookup(Array::in, Index::in, Item::out),
-		[will_not_call_mercury, thread_safe], "{
+		[will_not_call_mercury, promise_pure, thread_safe], "{
 	Item = Array.GetValue(Index);
 }").
 
@@ -946,7 +946,7 @@ array__set(Array0, Index, Item, Array) :-
 :- pragma foreign_proc("C",
 		array__unsafe_set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
-		[will_not_call_mercury, thread_safe], "{
+		[will_not_call_mercury, promise_pure, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array0;
 	array->elements[Index] = Item;	/* destructive update! */
 	Array = Array0;
@@ -955,7 +955,7 @@ array__set(Array0, Index, Item, Array) :-
 :- pragma foreign_proc("C#",
 		array__unsafe_set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
-		[will_not_call_mercury, thread_safe], "{
+		[will_not_call_mercury, promise_pure, thread_safe], "{
 	Array0.SetValue(Item, Index);	/* destructive update! */
 	Array = Array0;
 }").
@@ -1004,7 +1004,8 @@ ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 
 :- pragma foreign_proc("C",
 		array__resize(Array0::array_di, Size::in, Item::in,
-		Array::array_uo), [will_not_call_mercury, thread_safe], "
+		Array::array_uo),
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_resize_array(
 				(MR_ArrayType *) Array0, Size, Item);
@@ -1012,7 +1013,8 @@ ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 
 :- pragma foreign_proc("C#",
 		array__resize(Array0::array_di, Size::in, Item::in,
-		Array::array_uo), [will_not_call_mercury, thread_safe], "
+		Array::array_uo),
+		[will_not_call_mercury, promise_pure, thread_safe], "
 
 	if (Array0.Length == Size) {
 		Array = Array0;
@@ -1075,7 +1077,7 @@ array__shrink(Array0, Size, Array) :-
 
 :- pragma foreign_proc("C",
 		array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_shrink_array(
 				(MR_ArrayType *) Array0, Size);
@@ -1083,7 +1085,7 @@ array__shrink(Array0, Size, Array) :-
 
 :- pragma foreign_proc("C#",
 		array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Array = System.Array.CreateInstance(
 				Array0.GetType().GetElementType(), Size);
 	System.Array.Copy(Array0, Array, Size);
@@ -1121,7 +1123,7 @@ ML_copy_array(MR_ArrayType *old_array)
 
 :- pragma foreign_proc("C",
 		array__copy(Array0::array_ui, Array::array_uo),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
 		MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
@@ -1129,7 +1131,7 @@ ML_copy_array(MR_ArrayType *old_array)
 
 :- pragma foreign_proc("C",
 		array__copy(Array0::in, Array::array_uo),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
 		MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
@@ -1137,7 +1139,7 @@ ML_copy_array(MR_ArrayType *old_array)
 
 :- pragma foreign_proc("C#",
 		array__copy(Array0::array_ui, Array::array_uo),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 
 	// XXX we implement the same as ML_copy_array, which doesn't appear
 	// to deep copy the array elements
@@ -1148,7 +1150,7 @@ ML_copy_array(MR_ArrayType *old_array)
 
 :- pragma foreign_proc("C#",
 		array__copy(Array0::in, Array::array_uo),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 		// XXX need to deep copy it
 	Array = Array0;

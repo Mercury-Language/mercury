@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 The University of Melbourne.
+% Copyright (C) 1998-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -200,7 +200,7 @@ int	ML_DL_closure_counter = 0;
 :- func make_closure_layout = c_pointer.
 
 :- pragma foreign_proc("C", make_closure_layout = (ClosureLayout::out),
-	[will_not_call_mercury, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	MR_Closure_Id			*closure_id;
 	MR_Closure_Dyn_Link_Layout	*closure_layout;

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -75,24 +75,28 @@ extern void ML_report_full_memory_stats(void);
 
 "). % end pragma foreign_decl
 
-:- pragma foreign_proc("C", report_stats, will_not_call_mercury,
+:- pragma foreign_proc("C", report_stats,
+	[will_not_call_mercury, promise_pure],
 "
 	ML_report_stats();
 ").
 
-:- pragma foreign_proc("C", report_full_memory_stats, will_not_call_mercury,
+:- pragma foreign_proc("C", report_full_memory_stats,
+	[will_not_call_mercury, promise_pure],
 "
 #ifdef	MR_MPROF_PROFILE_MEMORY
 	ML_report_full_memory_stats();
 #endif
 ").
 
-:- pragma foreign_proc("MC++", report_stats, will_not_call_mercury,
+:- pragma foreign_proc("MC++", report_stats,
+	[will_not_call_mercury, promise_pure],
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
-:- pragma foreign_proc("MC++", report_full_memory_stats, will_not_call_mercury,
+:- pragma foreign_proc("MC++", report_full_memory_stats,
+	[will_not_call_mercury, promise_pure],
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
@@ -706,13 +710,13 @@ repeat(N) :-
 :- impure pred new_int_reference(int::in, int_reference::out) is det.
 :- pragma inline(new_int_reference/2).
 :- pragma foreign_proc("C",
-	new_int_reference(X::in, Ref::out), will_not_call_mercury,
+	new_int_reference(X::in, Ref::out), [will_not_call_mercury],
 "
 	MR_incr_hp(Ref, 1);
 	* (MR_Integer *) Ref = X;
 ").
 :- pragma foreign_proc("MC++",
-	new_int_reference(_X::in, _Ref::out), will_not_call_mercury, 
+	new_int_reference(_X::in, _Ref::out), [will_not_call_mercury], 
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
@@ -725,23 +729,25 @@ incr_ref(Ref) :-
 
 :- semipure pred ref_value(int_reference::in, int::out) is det.
 :- pragma inline(ref_value/2).
-:- pragma foreign_proc("C",
-	ref_value(Ref::in, X::out), will_not_call_mercury, "
+:- pragma foreign_proc("C", ref_value(Ref::in, X::out),
+		[will_not_call_mercury, promise_semipure],
+"
 	X = * (MR_Integer *) Ref;
 ").
-:- pragma foreign_proc("MC++",
-	ref_value(_Ref::in, _X::out), will_not_call_mercury, "
+:- pragma foreign_proc("MC++", ref_value(_Ref::in, _X::out),
+		[will_not_call_mercury, promise_semipure],
+"
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- impure pred update_ref(int_reference::in, T::in) is det.
 :- pragma inline(update_ref/2).
 :- pragma foreign_proc("C",
-	update_ref(Ref::in, X::in), will_not_call_mercury, "
+	update_ref(Ref::in, X::in), [will_not_call_mercury], "
 	* (MR_Integer *) Ref = X;
 ").
 :- pragma foreign_proc("MC++",
-	update_ref(_Ref::in, _X::in), will_not_call_mercury, "
+	update_ref(_Ref::in, _X::in), [will_not_call_mercury], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 

@@ -124,12 +124,16 @@
 :- type pseudo_type_info ---> pred_type(c_pointer).
 
 :- pragma foreign_proc("C#",
-	get_type_info(_T::unused) = (TypeInfo::out), [], " 
+	get_type_info(_T::unused) = (TypeInfo::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+" 
 	TypeInfo = TypeInfo_for_T;
 ").
 
 :- pragma foreign_proc("C",
-	get_type_info(_T::unused) = (TypeInfo::out), [], "
+	get_type_info(_T::unused) = (TypeInfo::out), 
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	TypeInfo = TypeInfo_for_T;
 ").
 
@@ -327,28 +331,28 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 
 :- pragma foreign_proc("MC++",
 	semidet_call_3(Pred::in, X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_3(Pred, X, Y);
 ").
 :- pragma foreign_proc("MC++",
 	semidet_call_4(Pred::in, A::in, X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_4(Pred, A, X, Y);
 ").
 :- pragma foreign_proc("MC++",
 	semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_5(Pred, A, B, X, Y);
 ").
 :- pragma foreign_proc("MC++",
 	semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_6(Pred, A, B, C,
@@ -356,7 +360,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 ").
 :- pragma foreign_proc("MC++",
 	semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_7(Pred, A, B, C, D,
@@ -365,7 +369,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 :- pragma foreign_proc("MC++",
 	semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in,
 		X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_8(Pred, A, B, C, D,
@@ -376,32 +380,32 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 
 :- pragma foreign_proc("C#",
 	result_call_4(Pred::in, Res::out, X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_4(Pred, ref Res, X, Y);
 ").
 
 :- pragma foreign_proc("C#",
 	result_call_5(Pred::in, Res::out, A::in, X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_5(Pred, A, ref Res, X, Y);
 ").
 :- pragma foreign_proc("C#",
 	result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_6(Pred, A, B, ref Res, X, Y);
 ").
 :- pragma foreign_proc("C#",
 	result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_7(Pred, A, B, C, ref Res, X, Y);
 ").
 :- pragma foreign_proc("C#",
 	result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_8(Pred, A, B, C, D,
 		ref Res, X, Y);
@@ -409,7 +413,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 :- pragma foreign_proc("C#",
 	result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
 		X::in, Y::in), 
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_9(Pred, 
 		A, B, C, D, E, ref Res, X, Y);
@@ -1044,7 +1048,8 @@ pseudotypeinfo_max_var = 1024.
 ").
 
 :- pragma foreign_proc("C#",
-	get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out), [],
+	get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	try {
 		TypeCtorInfo = (object[]) TypeInfo[0];
@@ -1054,7 +1059,8 @@ pseudotypeinfo_max_var = 1024.
 ").
 
 :- pragma foreign_proc("C",
-	get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out), [],
+	get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeCtorInfo = (MR_Word) MR_TYPEINFO_GET_TYPE_CTOR_INFO(
 		(MR_TypeInfo) TypeInfo);
@@ -1067,13 +1073,18 @@ pseudotypeinfo_max_var = 1024.
 same_pointer_value(X, Y) :- same_pointer_value_untyped(X, Y).
 
 :- pragma foreign_proc("MC++",
-	same_pointer_value_untyped(T1::in, T2::in), [], "
+	same_pointer_value_untyped(T1::in, T2::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	SUCCESS_INDICATOR = (T1 == T2);
 ").
 :- pragma foreign_proc("C",
-	same_pointer_value_untyped(T1::in, T2::in), [], "
+	same_pointer_value_untyped(T1::in, T2::in), 
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	SUCCESS_INDICATOR = (T1 == T2);
 ").
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1303,7 +1314,8 @@ type_info_index(_::in, TypeInfo::in) = (TypeInfo::out) :-
 	det_unimplemented("type_info_index").
 
 :- pragma foreign_proc("C#",
-	type_info_index(X::in, TypeInfo::in) = (TypeInfoAtIndex::out), [], "
+	type_info_index(X::in, TypeInfo::in) = (TypeInfoAtIndex::out),
+		[will_not_call_mercury, promise_pure], "
 	TypeInfoAtIndex = (object[]) TypeInfo[X];
 ").
 
@@ -1315,7 +1327,7 @@ update_type_info_index(_::in, _::in, X::di, X::uo) :-
 
 :- pragma foreign_proc("C#",
 	update_type_info_index(X::in, NewValue::in, OldTypeInfo::di,
-		NewTypeInfo::uo), [], "
+		NewTypeInfo::uo), [will_not_call_mercury, promise_pure], "
 	OldTypeInfo[X] = NewValue;
 	NewTypeInfo = OldTypeInfo;
 ").
@@ -1343,36 +1355,48 @@ det_unimplemented(S) :-
 
 :- func type_ctor_arity(type_ctor_info) = int.
 :- pragma foreign_proc("C#",
-	type_ctor_arity(TypeCtorInfo::in) = (Arity::out), [], "
+	type_ctor_arity(TypeCtorInfo::in) = (Arity::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Arity = (int) TypeCtorInfo[
 			(int) type_ctor_info_field_nums.type_ctor_arity];
 ").
 :- pragma foreign_proc("C",
-	type_ctor_arity(TypeCtorInfo::in) = (Arity::out), [], "
+	type_ctor_arity(TypeCtorInfo::in) = (Arity::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	Arity = tci->arity;
 ").
 
 :- some [P] func type_ctor_unify_pred(type_ctor_info) = P.
 :- pragma foreign_proc("C#",
-	type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out), [], "
+	type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	UnifyPred = TypeCtorInfo[
 			(int) type_ctor_info_field_nums.type_ctor_unify_pred];
 ").
 :- pragma foreign_proc("C",
-	type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out), [], "
+	type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	UnifyPred = (MR_Integer) tci->unify_pred;
 ").
 
 :- some [P] func type_ctor_compare_pred(type_ctor_info) = P.
 :- pragma foreign_proc("C#",
-	type_ctor_compare_pred(TypeCtorInfo::in) = (UnifyPred::out), [], "
+	type_ctor_compare_pred(TypeCtorInfo::in) = (UnifyPred::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	UnifyPred = TypeCtorInfo[
 			(int) type_ctor_info_field_nums.type_ctor_compare_pred];
 ").
 :- pragma foreign_proc("C",
-	type_ctor_compare_pred(TypeCtorInfo::in) = (UnifyPred::out), [], "
+	type_ctor_compare_pred(TypeCtorInfo::in) = (UnifyPred::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	UnifyPred = (MR_Integer) tci->compare_pred;
 ").
@@ -1381,14 +1405,18 @@ det_unimplemented(S) :-
 
 :- func type_ctor_rep(type_ctor_info) = type_ctor_rep.
 :- pragma foreign_proc("C#",
-	type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out), [], "
+	type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	int rep;
 	rep = (int) TypeCtorInfo[
 		(int) type_ctor_info_field_nums.type_ctor_rep];
 	TypeCtorRep = mercury.runtime.LowLevelData.make_enum(rep);
 ").
 :- pragma foreign_proc("C",
-	type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out), [], "
+	type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	TypeCtorRep = MR_type_ctor_rep(tci);
 ").
@@ -1397,14 +1425,18 @@ det_unimplemented(S) :-
 :- func type_ctor_module_name(type_ctor_info) = string.
 
 :- pragma foreign_proc("C#",
-	type_ctor_module_name(TypeCtorInfo::in) = (Name::out), [], "
+	type_ctor_module_name(TypeCtorInfo::in) = (Name::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Name = (string)
 		TypeCtorInfo[(int)
 		type_ctor_info_field_nums.type_ctor_module_name];
 ").
 
 :- pragma foreign_proc("C",
-	type_ctor_module_name(TypeCtorInfo::in) = (Name::out), [], "
+	type_ctor_module_name(TypeCtorInfo::in) = (Name::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	Name = (MR_String) tci->type_ctor_module_name;
 ").
@@ -1414,12 +1446,16 @@ det_unimplemented(S) :-
 :- func type_ctor_name(type_ctor_info) = string.
 
 :- pragma foreign_proc("C#",
-	type_ctor_name(TypeCtorInfo::in) = (Name::out), [], "
+	type_ctor_name(TypeCtorInfo::in) = (Name::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	Name = (string)
 		TypeCtorInfo[(int) type_ctor_info_field_nums.type_ctor_name];
 ").
 :- pragma foreign_proc("C",
-	type_ctor_name(TypeCtorInfo::in) = (Name::out), [], "
+	type_ctor_name(TypeCtorInfo::in) = (Name::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	Name = (MR_String) tci->type_ctor_name;
 ").
@@ -1428,25 +1464,29 @@ det_unimplemented(S) :-
 :- func type_layout(type_ctor_info) = type_layout.
 
 :- pragma foreign_proc("C#",
-	type_layout(TypeCtorInfo::in) = (TypeLayout::out), [], "
+	type_layout(TypeCtorInfo::in) = (TypeLayout::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	TypeLayout = (object[])
 		TypeCtorInfo[(int) type_ctor_info_field_nums.type_layout];
 ").
 :- pragma foreign_proc("C",
-	type_layout(TypeCtorInfo::in) = (TypeLayout::out), [], "
+	type_layout(TypeCtorInfo::in) = (TypeLayout::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	TypeLayout = (MR_Word) &(tci->type_layout); 
 ").
 
 :- pragma foreign_proc("C",
 	unsafe_cast(VarIn::in) = (VarOut::out),
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	VarOut = VarIn;
 ").
 :- pragma foreign_proc("C#",
 	unsafe_cast(VarIn::in) = (VarOut::out),
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	VarOut = VarIn;
 ").

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -161,11 +161,11 @@ builtin_compare_string(R, S1, S2) :-
 :- mode builtin_strcmp(out, in, in) is det.
 
 :- pragma foreign_proc("C", builtin_strcmp(Res::out, S1::in, S2::in),
-	[will_not_call_mercury, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 	"Res = strcmp(S1, S2);").
 
 :- pragma foreign_proc("MC++", builtin_strcmp(Res::out, S1::in, S2::in),
-	[will_not_call_mercury, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Res = System::String::Compare(S1, S2);
 ").
@@ -734,14 +734,16 @@ static void init_runtime(void)
 
 :- pragma foreign_proc("C",
 	type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
-		TypeInfo::out), [will_not_call_mercury, thread_safe],
+		TypeInfo::out),
+			[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("C",
 	unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
-		Index::in, TypeInfo::out), [will_not_call_mercury, thread_safe],
+		Index::in, TypeInfo::out),
+			[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeInfo = MR_typeclass_info_unconstrained_type_info(TypeClassInfo,
 			Index);
@@ -749,7 +751,8 @@ static void init_runtime(void)
 
 :- pragma foreign_proc("C",
 	superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
-		TypeClassInfo::out), [will_not_call_mercury, thread_safe],
+		TypeClassInfo::out),
+			[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
@@ -758,7 +761,7 @@ static void init_runtime(void)
 :- pragma foreign_proc("C",
 	instance_constraint_from_typeclass_info(TypeClassInfo0::in,
 		Index::in, TypeClassInfo::out),
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
@@ -766,14 +769,16 @@ static void init_runtime(void)
 
 :- pragma foreign_proc("MC++",
 	type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
-		TypeInfo::out), [will_not_call_mercury, thread_safe],
+		TypeInfo::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("MC++",
 	unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
-		Index::in, TypeInfo::out), [will_not_call_mercury, thread_safe],
+		Index::in, TypeInfo::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeInfo = MR_typeclass_info_unconstrained_type_info(TypeClassInfo,
 			Index);
@@ -781,7 +786,8 @@ static void init_runtime(void)
 
 :- pragma foreign_proc("MC++",
 	superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
-		TypeClassInfo::out), [will_not_call_mercury, thread_safe],
+		TypeClassInfo::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
@@ -790,7 +796,7 @@ static void init_runtime(void)
 :- pragma foreign_proc("MC++",
 	instance_constraint_from_typeclass_info(TypeClassInfo0::in,
 		Index::in, TypeClassInfo::out),
-		[will_not_call_mercury, thread_safe],
+		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
@@ -1103,11 +1109,11 @@ free_heap(_::di) :-
 	error("private_builtin__free_heap/1").
 
 :- pragma foreign_proc("C", free_heap(Val::di),
-	[will_not_call_mercury, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 	"MR_free_heap((void *) Val);").
 
 :- pragma foreign_proc("MC++", free_heap(_Val::di),
-	[will_not_call_mercury, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe], "
 	mercury::runtime::Errors::SORRY(""foreign code for free_heap/1"");
 ").
 

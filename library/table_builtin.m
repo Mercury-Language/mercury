@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 The University of Melbourne.
+% Copyright (C) 1998-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -180,7 +180,7 @@
 :- implementation.
 
 :- pragma foreign_proc("C",
-	table_simple_is_complete(T::in), will_not_call_mercury, "
+	table_simple_is_complete(T::in), [will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -198,7 +198,7 @@
 ").
 
 :- pragma foreign_proc("C",
-	table_simple_has_succeeded(T::in), will_not_call_mercury, "
+	table_simple_has_succeeded(T::in), [will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -215,7 +215,7 @@
 ").
 
 :- pragma foreign_proc("C",
-	table_simple_has_failed(T::in), will_not_call_mercury, "
+	table_simple_has_failed(T::in), [will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -232,7 +232,7 @@
 ").
 
 :- pragma foreign_proc("C",
-	table_simple_is_active(T::in), will_not_call_mercury, "
+	table_simple_is_active(T::in), [will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -249,7 +249,7 @@
 ").
 
 :- pragma foreign_proc("C",
-	table_simple_is_inactive(T::in), will_not_call_mercury, "
+	table_simple_is_inactive(T::in), [will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -266,7 +266,7 @@
 ").
 
 :- pragma foreign_proc("C",
-	table_simple_mark_as_succeeded(T::in), will_not_call_mercury, "
+	table_simple_mark_as_succeeded(T::in), [will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -280,7 +280,7 @@
 ").
 
 :- pragma foreign_proc("C",
-	table_simple_mark_as_failed(T::in), will_not_call_mercury, "
+	table_simple_mark_as_failed(T::in), [will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -294,7 +294,7 @@
 ").
 
 :- pragma foreign_proc("C",
-	table_simple_mark_as_active(T::in), will_not_call_mercury, "
+	table_simple_mark_as_active(T::in), [will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -308,7 +308,7 @@
 ").
 
 :- pragma foreign_proc("C",
-	table_simple_mark_as_inactive(T::in), will_not_call_mercury, "
+	table_simple_mark_as_inactive(T::in), [will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -324,47 +324,47 @@
 
 
 :- pragma foreign_proc("MC++",
-	table_simple_is_complete(_T::in), will_not_call_mercury, "
+	table_simple_is_complete(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_simple_has_succeeded(_T::in), will_not_call_mercury, "
+	table_simple_has_succeeded(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_simple_has_failed(_T::in), will_not_call_mercury, "
+	table_simple_has_failed(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_simple_is_active(_T::in), will_not_call_mercury, "
+	table_simple_is_active(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_simple_is_inactive(_T::in), will_not_call_mercury, "
+	table_simple_is_inactive(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_simple_mark_as_succeeded(_T::in), will_not_call_mercury, "
+	table_simple_mark_as_succeeded(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_simple_mark_as_failed(_T::in), will_not_call_mercury, "
+	table_simple_mark_as_failed(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_simple_mark_as_active(_T::in), will_not_call_mercury, "
+	table_simple_mark_as_active(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_simple_mark_as_inactive(_T::in), will_not_call_mercury, "
+	table_simple_mark_as_inactive(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
@@ -463,7 +463,7 @@
 
 :- pragma foreign_proc("C",
 	table_io_in_range(T::out, Counter::out, Start::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "
 	if (MR_io_tabling_enabled) {
 		MR_io_tabling_counter++;
@@ -490,7 +490,7 @@
 ").
 
 :- pragma foreign_proc("C", table_io_has_occurred(T::in),
-		[will_not_call_mercury],
+		[will_not_call_mercury, promise_pure],
 "
 	MR_TrieNode	table;
 
@@ -506,26 +506,26 @@
 ").
 
 :- pragma foreign_proc("C", table_io_copy_io_state(S0::di, S::uo),
-		[will_not_call_mercury],
+		[will_not_call_mercury, promise_pure],
 "
 	S = S0;
 ").
 
 :- pragma foreign_proc("MC++", 
 	table_io_in_range(_T::out, _Counter::out, _Start::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++", table_io_has_occurred(_T::in),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++", table_io_copy_io_state(_S0::di, _S::uo),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
@@ -598,7 +598,7 @@
 :- implementation.
 
 :- pragma foreign_proc("C",
-	table_nondet_setup(T0::in, T::out), will_not_call_mercury, "
+	table_nondet_setup(T0::in, T::out), [will_not_call_mercury, promise_pure], "
 #ifndef	MR_USE_MINIMAL_MODEL
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #else
@@ -660,7 +660,7 @@
 ").
 
 :- pragma foreign_proc("MC++",
-	table_nondet_setup(_T0::in, _T::out), will_not_call_mercury, "
+	table_nondet_setup(_T0::in, _T::out), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
@@ -674,7 +674,7 @@
 XXX :- external stops us from using this
 
 :- pragma foreign_proc("MC++",
-	table_nondet_suspend(_A::in, _B::out), [will_not_call_mercury],
+	table_nondet_suspend(_A::in, _B::out), [will_not_call_mercury, promise_pure],
 	local_vars(""),
 	first_code(""),
 	retry_code(""),
@@ -685,14 +685,14 @@ XXX :- external stops us from using this
 ).
 
 :- pragma foreign_proc("MC++",
-	table_nondet_resume(_A::in), [will_not_call_mercury], "
+	table_nondet_resume(_A::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 */
 
 :- pragma foreign_proc("C",
-	table_nondet_is_complete(T::in), [will_not_call_mercury], "
+	table_nondet_is_complete(T::in), [will_not_call_mercury, promise_pure], "
 #ifdef	MR_USE_MINIMAL_MODEL
 	MR_TrieNode	table;
 
@@ -705,7 +705,7 @@ XXX :- external stops us from using this
 ").
 
 :- pragma foreign_proc("C",
-	table_nondet_is_active(T::in), will_not_call_mercury, "
+	table_nondet_is_active(T::in), [will_not_call_mercury, promise_pure], "
 #ifdef	MR_USE_MINIMAL_MODEL
 	MR_TrieNode	table;
 
@@ -718,7 +718,7 @@ XXX :- external stops us from using this
 ").
 
 :- pragma foreign_proc("C",
-	table_nondet_mark_as_active(T::in), will_not_call_mercury, "
+	table_nondet_mark_as_active(T::in), [will_not_call_mercury, promise_pure], "
 #ifdef	MR_USE_MINIMAL_MODEL
 	MR_TrieNode	table;
 
@@ -734,7 +734,7 @@ XXX :- external stops us from using this
 
 :- pragma foreign_proc("C",
 	table_nondet_get_ans_table(T::in, AT::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 #ifdef	MR_USE_MINIMAL_MODEL
 	MR_TrieNode	table;
 
@@ -748,7 +748,7 @@ XXX :- external stops us from using this
 
 :- pragma foreign_proc("C",
 	table_nondet_answer_is_not_duplicate(T::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 #ifndef	MR_USE_MINIMAL_MODEL
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #else
@@ -772,7 +772,7 @@ XXX :- external stops us from using this
 
 :- pragma foreign_proc("C",
 	table_nondet_new_ans_slot(T::in, Slot::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 #ifndef	MR_USE_MINIMAL_MODEL
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #else
@@ -843,7 +843,7 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 	is det.
 
 :- pragma foreign_proc("C", pickup_answer_list(T::in, CurNode::out),
-	[will_not_call_mercury], "
+	[will_not_call_mercury, promise_pure], "
 #ifdef MR_USE_MINIMAL_MODEL
 		MR_TrieNode	table;
 
@@ -864,7 +864,7 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 
 :- pragma foreign_proc("C",
 	return_next_answer(CurNode0::in, AnswerBlock::out, CurNode::out),
-	[will_not_call_mercury], "
+	[will_not_call_mercury, promise_pure], "
 #ifdef MR_USE_MINIMAL_MODEL
 	MR_AnswerList	cur_node0;
 
@@ -882,47 +882,47 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 ").
 
 :- pragma foreign_proc("MC++",
-	table_nondet_is_complete(_T::in), [will_not_call_mercury], "
+	table_nondet_is_complete(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_nondet_is_active(_T::in), will_not_call_mercury, "
+	table_nondet_is_active(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_nondet_mark_as_active(_T::in), will_not_call_mercury, "
+	table_nondet_mark_as_active(_T::in), [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_nondet_get_ans_table(_T::in, _AT::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_nondet_answer_is_not_duplicate(_T::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_nondet_new_ans_slot(_T::in, _Slot::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	pickup_answer_list(_T::in, _CurNode::out),
-		[will_not_call_mercury], "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	return_next_answer(_CurNode0::in, _AnswerBlock::out, _CurNode::out),
-		[will_not_call_mercury], "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
@@ -1081,7 +1081,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 ").
 
 :- pragma foreign_proc("C", table_lookup_insert_int(T0::in, I::in, T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
@@ -1091,7 +1091,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_lookup_insert_start_int(T0::in, S::in, I::in, T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
@@ -1102,7 +1102,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_lookup_insert_char(T0::in, C::in, T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
@@ -1111,7 +1111,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 ").
 
 :- pragma foreign_proc("C", table_lookup_insert_string(T0::in, S::in, T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
@@ -1120,7 +1120,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 ").
 
 :- pragma foreign_proc("C", table_lookup_insert_float(T0::in, F::in, T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
@@ -1130,7 +1130,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C", 
 	table_lookup_insert_enum(T0::in, R::in, V::in, T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
@@ -1140,7 +1140,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_lookup_insert_user(T0::in, V::in, T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
@@ -1150,7 +1150,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_lookup_insert_poly(T0::in, V::in, T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
@@ -1160,7 +1160,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_save_int_ans(T::in, Offset::in, I::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1170,7 +1170,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_save_char_ans(T::in, Offset::in, C::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1180,7 +1180,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_save_string_ans(T::in, Offset::in, S::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1190,7 +1190,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_save_float_ans(T::in, Offset::in, F::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1207,7 +1207,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_save_io_state_ans(T::in, Offset::in, S::ui),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1217,7 +1217,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C", 
 	table_save_any_ans(T::in, Offset::in, V::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1226,7 +1226,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_restore_int_ans(T::in, Offset::in, I::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1235,7 +1235,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_restore_char_ans(T::in, Offset::in, C::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1244,7 +1244,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_restore_string_ans(T::in, Offset::in, S::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1253,7 +1253,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_restore_float_ans(T::in, Offset::in, F::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1266,7 +1266,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_restore_io_state_ans(T::in, Offset::in, V::uo),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1275,7 +1275,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_restore_any_ans(T::in, Offset::in, V::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
@@ -1284,7 +1284,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 :- pragma foreign_proc("C",
 	table_create_ans_block(T0::in, Size::in, T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	MR_TrieNode	table0;
 
 	table0 = (MR_TrieNode) T0;
@@ -1296,140 +1296,140 @@ table_loopcheck_error(Message) :-
 	error(Message).
 
 :- pragma foreign_proc("C",
-	table_report_statistics, will_not_call_mercury, "
+	table_report_statistics, [will_not_call_mercury, promise_pure], "
 	MR_table_report_statistics(stderr);
 ").
 
 
 :- pragma foreign_proc("MC++",
 	table_lookup_insert_int(_T0::in, _I::in, _T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_lookup_insert_start_int(_T0::in, _S::in, _I::in, _T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_lookup_insert_char(_T0::in, _C::in, _T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_lookup_insert_string(_T0::in, _S::in, _T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_lookup_insert_float(_T0::in, _F::in, _T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++", 
 	table_lookup_insert_enum(_T0::in, _R::in, _V::in, _T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_lookup_insert_user(_T0::in, _V::in, _T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_lookup_insert_poly(_T0::in, _V::in, _T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_save_int_ans(_T::in, _Offset::in, _I::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_save_char_ans(_T::in, _Offset::in, _C::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_save_string_ans(_T::in, _Offset::in, _S::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_save_float_ans(_T::in, _Offset::in, _F::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_save_io_state_ans(_T::in, _Offset::in, _S::ui),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 
 :- pragma foreign_proc("MC++",
 	table_save_any_ans(_T::in, _Offset::in, _V::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_restore_int_ans(_T::in, _Offset::in, _I::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_restore_char_ans(_T::in, _Offset::in, _C::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_restore_string_ans(_T::in, _Offset::in, _S::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_restore_float_ans(_T::in, _Offset::in, _F::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_restore_io_state_ans(_T::in, _Offset::in, _V::uo),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_restore_any_ans(_T::in, _Offset::in, _V::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
 	table_create_ans_block(_T0::in, _Size::in, _T::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("MC++",
-	table_report_statistics, will_not_call_mercury, "
+	table_report_statistics, [will_not_call_mercury, promise_pure], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001 The University of Melbourne.
+% Copyright (C) 1997-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -251,51 +251,51 @@
 :- pragma foreign_proc("C",
 	get_determinism(_Pred::pred(out) is det,
 			Det::out(bound(det))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"Det = ML_DET"
 ).
 :- pragma foreign_proc("C",
 	get_determinism(_Pred::pred(out) is semidet,
 			Det::out(bound(semidet))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"Det = ML_SEMIDET"
 ).
 :- pragma foreign_proc("C",
 	get_determinism(_Pred::pred(out) is cc_multi,
 			Det::out(bound(cc_multi))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"Det = ML_CC_MULTI"
 ).
 :- pragma foreign_proc("C",
 	get_determinism(_Pred::pred(out) is cc_nondet,
 			Det::out(bound(cc_nondet))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"Det = ML_CC_NONDET"
 ).
 :- pragma foreign_proc("C",
 	get_determinism(_Pred::pred(out) is multi,
 			Det::out(bound(multi))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"Det = ML_MULTI"
 ).
 :- pragma foreign_proc("C",
 	get_determinism(_Pred::pred(out) is nondet,
 			Det::out(bound(nondet))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"Det = ML_NONDET"
 ).
 
 :- pragma foreign_proc("C",
 	get_determinism_2(_Pred::pred(out, di, uo) is det,
 			Det::out(bound(det))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"Det = ML_DET"
 ).
 
 :- pragma foreign_proc("C",
 	get_determinism_2(_Pred::pred(out, di, uo) is cc_multi,
 			Det::out(bound(cc_multi))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"Det = ML_CC_MULTI"
 ).
 
@@ -327,51 +327,51 @@
 :- pragma foreign_proc("MC++",
 	get_determinism(_Pred::pred(out) is det,
 			Det::out(bound(det))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"MR_newenum(Det, ML_DET);"
 ).
 :- pragma foreign_proc("MC++",
 	get_determinism(_Pred::pred(out) is semidet,
 			Det::out(bound(semidet))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"MR_newenum(Det, ML_SEMIDET);"
 ).
 :- pragma foreign_proc("MC++",
 	get_determinism(_Pred::pred(out) is cc_multi,
 			Det::out(bound(cc_multi))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"MR_newenum(Det, ML_CC_MULTI);"
 ).
 :- pragma foreign_proc("MC++",
 	get_determinism(_Pred::pred(out) is cc_nondet,
 			Det::out(bound(cc_nondet))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"MR_newenum(Det, ML_CC_NONDET);"
 ).
 :- pragma foreign_proc("MC++",
 	get_determinism(_Pred::pred(out) is multi,
 			Det::out(bound(multi))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"MR_newenum(Det, ML_MULTI);"
 ).
 :- pragma foreign_proc("MC++",
 	get_determinism(_Pred::pred(out) is nondet,
 			Det::out(bound(nondet))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"MR_newenum(Det, ML_NONDET);"
 ).
 
 :- pragma foreign_proc("MC++",
 	get_determinism_2(_Pred::pred(out, di, uo) is det,
 			Det::out(bound(det))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"MR_newenum(Det, ML_DET);"
 ).
 
 :- pragma foreign_proc("MC++",
 	get_determinism_2(_Pred::pred(out, di, uo) is cc_multi,
 			Det::out(bound(cc_multi))),
-	will_not_call_mercury,
+	[will_not_call_mercury, promise_pure],
 	"MR_newenum(Det, ML_CC_MULTI);"
 ).
 
@@ -1102,14 +1102,15 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	% For the .NET backend we override throw_impl as it is easier to 
 	% implement these things using foreign_proc.
 
-:- pragma foreign_proc("C#", throw_impl(T::in), [will_not_call_mercury], "
+:- pragma foreign_proc("C#", throw_impl(T::in),
+		[will_not_call_mercury, promise_pure], "
 	throw new mercury.runtime.Exception(T);
 ").
 
 
 :- pragma foreign_proc("C#", 
-	catch_impl(Pred::pred(out) is det,
-		Handler::in(handler), T::out), [will_not_call_mercury], "
+	catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
+		[will_not_call_mercury, promise_pure], "
 	try {
 		mercury.exception.mercury_code.ML_call_goal_det(
 			TypeInfo_for_T, Pred, ref T);
@@ -1120,8 +1121,8 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	}
 ").
 :- pragma foreign_proc("C#", 
-	catch_impl(Pred::pred(out) is cc_multi,
-		Handler::in(handler), T::out), [will_not_call_mercury], "
+	catch_impl(Pred::pred(out) is cc_multi, Handler::in(handler), T::out),
+		[will_not_call_mercury, promise_pure], "
 	try {
 		mercury.exception.mercury_code.ML_call_goal_det(
 			TypeInfo_for_T, Pred, ref T);
@@ -1137,14 +1138,14 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	% for the C# interface.
 
 :- pragma foreign_proc("C#", 
-	catch_impl(Pred::pred(out) is semidet,
-		Handler::in(handler), T::out), [will_not_call_mercury], "
+	catch_impl(Pred::pred(out) is semidet, Handler::in(handler), T::out),
+		[will_not_call_mercury, promise_pure], "
 	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("C#", 
-	catch_impl(Pred::pred(out) is cc_nondet,
-		Handler::in(handler), T::out), [will_not_call_mercury], "
+	catch_impl(Pred::pred(out) is cc_nondet, Handler::in(handler), T::out),
+		[will_not_call_mercury, promise_pure], "
 	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 ").
 
@@ -1153,8 +1154,8 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	% is not possible.
 
 :- pragma foreign_proc("C#", 
-	catch_impl(_Pred::pred(out) is multi,
-		_Handler::in(handler), _T::out), [will_not_call_mercury], 
+	catch_impl(_Pred::pred(out) is multi, _Handler::in(handler), _T::out),
+		[will_not_call_mercury, promise_pure], 
 	local_vars(""),
 	first_code(""),
 	retry_code(""),
@@ -1163,8 +1164,8 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	")
 ).
 :- pragma foreign_proc("C#", 
-	catch_impl(_Pred::pred(out) is nondet,
-		_Handler::in(handler), _T::out), [will_not_call_mercury], 
+	catch_impl(_Pred::pred(out) is nondet, _Handler::in(handler), _T::out),
+		[will_not_call_mercury, promise_pure], 
 	local_vars(""),
 	first_code(""),
 	retry_code(""),

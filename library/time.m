@@ -2,7 +2,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2001 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -189,13 +189,13 @@ time__clock(Result, IO0, IO) :-
 :- mode time__c_clock(out, di, uo) is det.
 
 :- pragma foreign_proc("C", time__c_clock(Ret::out, IO0::di, IO::uo),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	Ret = (MR_Integer) clock();
 	update_io(IO0, IO);
 }").
 :- pragma foreign_proc("MC++", time__c_clock(_Ret::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
@@ -212,12 +212,12 @@ time__clocks_per_sec = Val :-
 :- mode time__c_clocks_per_sec(out) is det.
 
 :- pragma foreign_proc("C", time__c_clocks_per_sec(Ret::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	Ret = (MR_Integer) CLOCKS_PER_SEC;
 }").
 :- pragma foreign_proc("MC++", time__c_clocks_per_sec(_Ret::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
@@ -242,7 +242,7 @@ time__times(Tms, Result, IO0, IO) :-
 :- pragma foreign_proc("C",
 	time__c_times(Ret::out, Ut::out, St::out, CUt::out,
                                CSt::out, IO0::di, IO::uo),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 #ifdef MR_HAVE_POSIX_TIMES
 	struct tms t;
@@ -261,7 +261,7 @@ time__times(Tms, Result, IO0, IO) :-
 :- pragma foreign_proc("MC++",
 	time__c_times(_Ret::out, _Ut::out, _St::out, _CUt::out,
                                _CSt::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
@@ -285,14 +285,14 @@ time__time(Result, IO0, IO) :-
 
 :- pragma foreign_proc("C",
 	time__c_time(Ret::out, IO0::di, IO::uo),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	Ret = (MR_Integer) time(NULL);
 	update_io(IO0, IO);
 }").
 :- pragma foreign_proc("MC++",
 	time__c_time(_Ret::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
@@ -309,13 +309,13 @@ time__difftime(T1, T0) = Diff :-
 
 :- pragma foreign_proc("C",
 	time__c_difftime(T1::in, T0::in, Diff::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	Diff = (MR_Float) difftime((time_t) T1, (time_t) T0);
 }").
 :- pragma foreign_proc("MC++",
 	time__c_difftime(_T1::in, _T0::in, _Diff::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
@@ -335,7 +335,7 @@ time__localtime(Time) = TM :-
 :- pragma foreign_proc("C",
 	time__c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
 		Min::out, Sec::out, YD::out, WD::out, N::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	struct tm* p;
 	time_t t;
@@ -360,7 +360,7 @@ time__localtime(Time) = TM :-
 :- pragma foreign_proc("MC++",
 	time__c_localtime(_Time::in, _Yr::out, _Mnt::out, _MD::out, _Hrs::out,
 		_Min::out, _Sec::out, _YD::out, _WD::out, _N::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
@@ -379,7 +379,7 @@ time__gmtime(Time) = TM :-
 :- pragma foreign_proc("C",
 	time__c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
 		Min::out, Sec::out, YD::out, WD::out, N::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	struct tm* p;
 	time_t t;
@@ -404,7 +404,7 @@ time__gmtime(Time) = TM :-
 :- pragma foreign_proc("MC++",
 	time__c_gmtime(_Time::in, _Yr::out, _Mnt::out, _MD::out, _Hrs::out,
 		_Min::out, _Sec::out, _YD::out, _WD::out, _N::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
@@ -435,7 +435,7 @@ time__mktime(TM) = Time :-
 :- pragma foreign_proc("C",
 	time__c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
 		YD::in, WD::in, N::in, Time::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
  "{
 	struct tm t;
 
@@ -455,7 +455,7 @@ time__mktime(TM) = Time :-
 :- pragma foreign_proc("MC++",
 	time__c_mktime(_Yr::in, _Mnt::in, _MD::in, _Hrs::in,
 		_Min::in, _Sec::in, _YD::in, _WD::in, _N::in, _Time::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
@@ -486,7 +486,7 @@ time__asctime(TM) = Str :-
 :- pragma foreign_proc("C",
 	time__c_asctime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
 		YD::in, WD::in, N::in, Str::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	struct tm t;
 	char* s;
@@ -509,7 +509,7 @@ time__asctime(TM) = Str :-
 :- pragma foreign_proc("MC++",
 	time__c_asctime(_Yr::in, _Mnt::in, _MD::in, _Hrs::in,
 		_Min::in, _Sec::in, _YD::in, _WD::in, _N::in, _Str::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
@@ -526,7 +526,7 @@ time__ctime(Time) = Str :-
 
 :- pragma foreign_proc("C",
 	time__c_ctime(Time::in, Str::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	char *s;
 	time_t t;
@@ -540,7 +540,7 @@ time__ctime(Time) = Str :-
 
 :- pragma foreign_proc("MC++",
 	time__c_ctime(_Time::in, _Str::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2001 The University of Melbourne.
+% Copyright (C) 1993-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -52,7 +52,7 @@
 % might not have a Mercury compiler around to compile library.m with.
 
 :- pragma foreign_proc("C",
-	library__version(Version::out), will_not_call_mercury,
+	library__version(Version::out), [will_not_call_mercury, promise_pure],
 "
 	MR_ConstString version_string = 
 		MR_VERSION "", configured for "" MR_FULLARCH;
@@ -68,7 +68,7 @@
 ").
 
 :- pragma foreign_proc("MC++",
-	library__version(Version::out), will_not_call_mercury,
+	library__version(Version::out), [will_not_call_mercury, promise_pure],
 "
 	// XXX we should use string literals with an S at the start
 	// so this code uses just managed types.

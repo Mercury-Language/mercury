@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -234,19 +234,19 @@ promise_only_solution(Pred) = OutVal :-
 
 :- pragma foreign_proc("C", cc_cast(X :: (pred(out) is cc_multi)) =
                         (Y :: out(pred(out) is det)),
-                [will_not_call_mercury, thread_safe],
+                [will_not_call_mercury, promise_pure, thread_safe],
                 "Y = X;").
 :- pragma foreign_proc("C", cc_cast(X :: (pred(out) is cc_nondet)) =
                         (Y :: out(pred(out) is semidet)),
-                [will_not_call_mercury, thread_safe],
+                [will_not_call_mercury, promise_pure, thread_safe],
                 "Y = X;").
 :- pragma foreign_proc("C#", cc_cast(X :: (pred(out) is cc_multi)) =
                         (Y :: out(pred(out) is det)),
-                [will_not_call_mercury, thread_safe],
+                [will_not_call_mercury, promise_pure, thread_safe],
                 "Y = X;").
 :- pragma foreign_proc("C#", cc_cast(X :: (pred(out) is cc_nondet)) =
                         (Y :: out(pred(out) is semidet)),
-                [will_not_call_mercury, thread_safe],
+                [will_not_call_mercury, promise_pure, thread_safe],
                 "Y = X;").
 
 promise_only_solution_io(Pred, X) -->
@@ -259,12 +259,12 @@ promise_only_solution_io(Pred, X) -->
 :- pragma foreign_proc("C",
 	cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) = 
 		(Y :: out(pred(out, di, uo) is det)),
-                [will_not_call_mercury, thread_safe],
+                [will_not_call_mercury, promise_pure, thread_safe],
                 "Y = X;").
 :- pragma foreign_proc("C#", 
 		cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
 		(Y :: out(pred(out, di, uo) is det)),
-                [will_not_call_mercury, thread_safe],
+                [will_not_call_mercury, promise_pure, thread_safe],
                 "Y = X;").
 
 %-----------------------------------------------------------------------------%

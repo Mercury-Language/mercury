@@ -75,7 +75,7 @@ my_get_functor_info(Univ, FunctorInfo) :-
 
 :- pragma foreign_proc("C", 
 	get_notag_functor_info(_Univ::in, _ExpUniv::out),
-	will_not_call_mercury, "
+	[will_not_call_mercury, promise_pure], "
 {
 	abort();
 }").
@@ -85,7 +85,7 @@ my_get_functor_info(Univ, FunctorInfo) :-
 
 :- pragma foreign_proc("C",
 	get_equiv_functor_info(_Univ::in, _ExpUniv::out),
-    will_not_call_mercury, "
+    [will_not_call_mercury, promise_pure], "
 {
 	abort();
 }").
@@ -94,7 +94,7 @@ my_get_functor_info(Univ, FunctorInfo) :-
 
 :- pragma foreign_proc("C",
 	get_enum_functor_info(_Univ::in, _Enum::out),
-	will_not_call_mercury, "
+	[will_not_call_mercury, promise_pure], "
 {
 	abort();
 }").
@@ -103,7 +103,8 @@ my_get_functor_info(Univ, FunctorInfo) :-
     list(univ)::out) is semidet.
 
 :- pragma foreign_proc("C", get_du_functor_info(_Univ::in, _Where::out,
-    _Ptag::out, _Sectag::out, _Args::out), will_not_call_mercury, "
+    _Ptag::out, _Sectag::out, _Args::out),
+    [will_not_call_mercury, promise_pure], "
 {
 	abort();
 }").

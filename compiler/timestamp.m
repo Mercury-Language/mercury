@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 University of Melbourne.
+% Copyright (C) 2001-2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -68,7 +68,7 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
 :- pragma foreign_proc("C",
 	gmtime_to_timestamp(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
 		YD::in, WD::in, N::in) = (Result::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	int size;
 	struct tm t;
@@ -92,7 +92,7 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
 :- pragma foreign_proc("MC++",
 	gmtime_to_timestamp(_Yr::in, _Mnt::in, _MD::in, _Hrs::in, _Min::in,
 		_Sec::in, _YD::in, _WD::in, _N::in) = (_Result::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -318,7 +318,7 @@ X rem Y = Rem :-
 :- pragma inline(domain_checks/0).
 
 :- pragma foreign_proc("C", domain_checks,
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
 	SUCCESS_INDICATOR = FALSE;
 #else
@@ -476,12 +476,12 @@ is(X, X).
 :- mode int__to_float(in, out) is det.
 */
 :- pragma foreign_proc("C", int__to_float(IntVal::in, FloatVal::out),
-		will_not_call_mercury,
+		[will_not_call_mercury, promise_pure],
 "
 	FloatVal = IntVal;
 ").
 :- pragma foreign_proc("MC++", int__to_float(IntVal::in, FloatVal::out),
-		will_not_call_mercury,
+		[will_not_call_mercury, promise_pure],
 "
 	FloatVal = (MR_Float) IntVal;
 ").
@@ -505,7 +505,7 @@ is(X, X).
 ").
 
 :- pragma foreign_proc("C", int__max_int(Max::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	if (sizeof(MR_Integer) == sizeof(int))
 		Max = INT_MAX;
 	else if (sizeof(MR_Integer) == sizeof(long))
@@ -515,7 +515,7 @@ is(X, X).
 ").
 
 :- pragma foreign_proc("C", int__min_int(Min::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	if (sizeof(MR_Integer) == sizeof(int))
 		Min = INT_MIN;
 	else if (sizeof(MR_Integer) == sizeof(long))
@@ -525,38 +525,38 @@ is(X, X).
 ").
 
 :- pragma foreign_proc("C", int__bits_per_int(Bits::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Bits = ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C", int__quot_bits_per_int(Int::in) = (Div::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Div = Int / ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C", int__times_bits_per_int(Int::in) = (Result::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Result = Int * ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C", int__rem_bits_per_int(Int::in) = (Rem::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Rem = Int % ML_BITS_PER_INT;
 ").
 
 
 :- pragma foreign_proc("MC++", int__max_int(Max::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Max = System::Int32::MaxValue;
 ").
 
 :- pragma foreign_proc("MC++", int__min_int(Min::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Min = System::Int32::MinValue;
 ").
 
 :- pragma foreign_proc("MC++", int__bits_per_int(Bits::out),
-		[will_not_call_mercury, thread_safe], "
+		[will_not_call_mercury, promise_pure, thread_safe], "
 	Bits = ML_BITS_PER_INT;
 ").
 
