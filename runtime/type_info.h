@@ -337,10 +337,15 @@
 */
 
 /*
-** A fairly generic static code address initializer.
+** A fairly generic static code address initializer - at least for entry
+** labels.
 */
 #define MR_INIT_CODE_ADDR(Base, PredAddr, Offset)			\
-	((Word *) (Word) &Base)[Offset]	= (Word) ENTRY(PredAddr)
+	do {								\
+		Declare_entry(PredAddr);				\
+		((Word *) (Word) &Base)[Offset]	= (Word) ENTRY(PredAddr);\
+	} while (0)
+			
 
 #define MR_SPECIAL_PRED_INIT(Base, TypeId, Offset, Pred)	\
 	MR_INIT_CODE_ADDR(Base, mercury____##Pred##___##TypeId, Offset)
