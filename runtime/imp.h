@@ -65,6 +65,27 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 	}
 #define AND ,	/* used to separate the labels */
 
+#ifdef __GNUC__
+
+/* Note that hash_string is also defined in compiler/string.nl and in
+   code/aux.c.  The three definitions must be kept equivalent.
+*/
+
+#define hash_string(s)					\
+	({ int len = 0;					\
+	   int hash = 0;				\
+	   while(((char *)s)[len]) {			\
+		hash ^= (hash << 5);			\
+		hash ^= ((char *)s)[len];		\
+		len++;					\
+	   }						\
+	   hash ^= len;					\
+	   hash;					\
+	})
+#else
+int hash_string(const char *);
+#endif
+
 #include	"engine.h"
 
 /* DEFINITIONS FOR CALLS AND RETURNS */

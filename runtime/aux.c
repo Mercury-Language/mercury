@@ -379,3 +379,25 @@ void oldmem(void *p)
 {
 	free(p);
 }
+
+#ifndef __GNUC__
+
+/*
+**  Note that hash_string is also defined in compiler/string.nl
+**  and code/imp.h.  The three definitions must be kept equivalent.
+*/
+
+int hash_string(const char *s)
+{
+	int len = 0;
+	int hash = 0;
+	while(((char *)s)[len]) {
+		hash ^= (hash << 5);
+		hash ^= ((char *)s)[len];
+		len++;
+	}
+	hash ^= len;
+	return hash;
+}
+
+#endif /* not __GNUC__ */
