@@ -11,6 +11,7 @@
 % the time taken by called predicates.
 %
 %-----------------------------------------------------------------------------%
+
 :- module transform_hlds__pd_cost.
 
 :- interface.
@@ -33,6 +34,7 @@
 :- pred pd_cost__recursive_fold(int::out) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds__hlds_data.

@@ -31,6 +31,7 @@
 % 	useful (necessary?) if we start propagating equality constraints.
 %
 %-----------------------------------------------------------------------------%
+
 :- module transform_hlds__pd_term.
 
 :- interface.
@@ -50,10 +51,9 @@
 	% (CallGoal1, BetweenGoals, CallGoal2) without the deforestation
 	% process looping.
 :- pred pd_term__global_check(module_info::in, hlds_goal::in,
-		list(hlds_goal)::in, maybe(hlds_goal)::in,
-		instmap::in, version_index::in,
-		global_term_info::in, global_term_info::out,
-		global_check_result::out) is det.
+	list(hlds_goal)::in, maybe(hlds_goal)::in, instmap::in,
+	version_index::in, global_term_info::in,
+	global_term_info::out, global_check_result::out) is det.
 
 	% A proc_pair holds the pred_proc_ids of the procedures called at
 	% the ends of a conjunction to be deforested.
@@ -68,27 +68,27 @@
 
 	% Check whether a call can be unfolded without the
 	% unfolding process looping.
-:- pred pd_term__local_check(module_info::in, hlds_goal::in,
-	instmap::in, local_term_info::in, local_term_info::out) is semidet.
+:- pred pd_term__local_check(module_info::in, hlds_goal::in, instmap::in,
+	local_term_info::in, local_term_info::out) is semidet.
 
 :- pred pd_term__global_term_info_init(global_term_info::out) is det.
 
 :- pred pd_term__local_term_info_init(local_term_info::out) is det.
 
 :- pred pd_term__get_proc_term_info(local_term_info::in, pred_proc_id::in,
-		pd_proc_term_info::out) is semidet.
+	pd_proc_term_info::out) is semidet.
 
 	% Update the global termination information when we find
 	% out the pred_proc_id that has been assigned to a version.
-:- pred pd_term__update_global_term_info(global_term_info::in,
-		proc_pair::in, pred_proc_id::in,
-		int::in, global_term_info::out) is det.
+:- pred pd_term__update_global_term_info(proc_pair::in, pred_proc_id::in,
+	int::in, global_term_info::in,global_term_info::out) is det.
 
 :- type global_term_info.
 :- type local_term_info.
 :- type pd_proc_term_info.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds__mode_util.
@@ -98,11 +98,11 @@
 
 :- import_module assoc_list, bool, int, map, require, set.
 
-:- type global_term_info
-	--->	global_term_info(
-			single_covering_goals,
-			multiple_covering_goals
-		).
+:- type global_term_info --->
+	global_term_info(
+		single_covering_goals,
+		multiple_covering_goals
+	).
 
 	% We only deal with single atoms while unfolding.
 :- type local_term_info == single_covering_goals.
@@ -135,8 +135,8 @@ pd_term__get_proc_term_info(TermInfo, PredProcId, ProcTermInfo) :-
 %-----------------------------------------------------------------------------%
 
 pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
-		_InstMap, Versions, Info0, Info, Result) :-
-	Info0 = global_term_info(SingleGoalCover0, MultipleGoalCover0),
+		_InstMap, Versions, !Info, Result) :-
+	!.Info = global_term_info(SingleGoalCover0, MultipleGoalCover0),
 	(
 		EarlierGoal = call(PredId1, ProcId1, _, _, _, _) - _,
 		Hd = (pred(List::in, Head::out) is semidet :-
@@ -199,7 +199,7 @@ pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
 	;
 		error("pd_term__global_check")
 	),
-	Info = global_term_info(SingleGoalCover, MultipleGoalCover).
+	!:Info = global_term_info(SingleGoalCover, MultipleGoalCover).
 
 	% We don't want to use folded calls to parent versions
 	% when doing the global termination check, since that
@@ -210,13 +210,13 @@ pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
 	% 	new3 ......... pred1
 	% Instead, we expand to predicates from the original program,
 	% which must contain a finite number of pairs of pred_proc_ids.
-:- pred expand_calls(pred(list(pred_proc_id), pred_proc_id), version_index,
-		pred_proc_id, pred_proc_id).
-:- mode expand_calls(pred(in, out) is semidet, in, in, out) is semidet.
+:- pred expand_calls(pred(list(pred_proc_id), pred_proc_id)::
+	in(pred(in, out) is semidet), version_index::in,
+	pred_proc_id::in, pred_proc_id::out) is semidet.
 
 expand_calls(GetEnd, Versions, PredProcId0, PredProcId) :-
 	( map__search(Versions, PredProcId0, VersionInfo) ->
-		VersionInfo = version_info(_, Calls, _, _, _, _, _, _, _),
+		Calls = VersionInfo ^ version_deforest_calls,
 		call(GetEnd, Calls, PredProcId1),
 		expand_calls(GetEnd, Versions, PredProcId1, PredProcId)
 	;
@@ -225,23 +225,22 @@ expand_calls(GetEnd, Versions, PredProcId0, PredProcId) :-
 
 %-----------------------------------------------------------------------------%
 
-pd_term__local_check(ModuleInfo, Goal1, InstMap, Cover0, Cover) :-
+pd_term__local_check(ModuleInfo, Goal1, InstMap, !Cover) :-
 	Goal1 = call(PredId, ProcId, Args, _, _, _) - _,
-	( map__search(Cover0, proc(PredId, ProcId), CoveringInstSizes0) ->
+	( map__search(!.Cover, proc(PredId, ProcId), CoveringInstSizes0) ->
 		pd_term__do_local_check(ModuleInfo, InstMap, Args,
 			CoveringInstSizes0, CoveringInstSizes),
-		map__set(Cover0, proc(PredId, ProcId),
-			CoveringInstSizes, Cover)
+		map__set(!.Cover, proc(PredId, ProcId), CoveringInstSizes,
+			!:Cover)
 	;
 		pd_term__initial_sizes(ModuleInfo, InstMap,
 			Args, 1, ArgInstSizes),
-		map__set(Cover0, proc(PredId, ProcId),
-			ArgInstSizes, Cover)
+		map__set(!.Cover, proc(PredId, ProcId), ArgInstSizes, !:Cover)
 	).
 
 :- pred pd_term__do_local_check(module_info::in, instmap::in,
-		list(prog_var)::in, assoc_list(int, int)::in,
-		assoc_list(int, int)::out) is semidet.
+	list(prog_var)::in, assoc_list(int, int)::in,
+	assoc_list(int, int)::out) is semidet.
 
 pd_term__do_local_check(ModuleInfo, InstMap, Args, OldSizes, NewSizes) :-
 	pd_term__get_matching_sizes(ModuleInfo, InstMap, Args,
@@ -255,16 +254,15 @@ pd_term__do_local_check(ModuleInfo, InstMap, Args, OldSizes, NewSizes) :-
 
 %-----------------------------------------------------------------------------%
 
-pd_term__update_global_term_info(TermInfo0, ProcPair,
-		PredProcId, Size, TermInfo) :-
-	TermInfo0 = global_term_info(Single, Multiple0),
+pd_term__update_global_term_info(ProcPair, PredProcId, Size, !TermInfo) :-
+	!.TermInfo = global_term_info(Single, Multiple0),
 	map__set(Multiple0, ProcPair, Size - yes(PredProcId), Multiple),
-	TermInfo = global_term_info(Single, Multiple).
+	!:TermInfo = global_term_info(Single, Multiple).
 
 %-----------------------------------------------------------------------------%
 
-:- pred pd_term__initial_sizes(module_info::in, instmap::in, list(prog_var)::in,
-		int::in, assoc_list(int, int)::out) is det.
+:- pred pd_term__initial_sizes(module_info::in, instmap::in,
+	list(prog_var)::in, int::in, assoc_list(int, int)::out) is det.
 
 pd_term__initial_sizes(_, _, [], _, []).
 pd_term__initial_sizes(ModuleInfo, InstMap, [Arg | Args], ArgNo,
@@ -277,8 +275,8 @@ pd_term__initial_sizes(ModuleInfo, InstMap, [Arg | Args], ArgNo,
 %-----------------------------------------------------------------------------%
 
 :- pred pd_term__get_matching_sizes(module_info::in, instmap::in,
-		list(prog_var)::in, assoc_list(int, int)::in,
-		assoc_list(int, int)::out, int::out, int::out) is det.
+	list(prog_var)::in, assoc_list(int, int)::in,
+	assoc_list(int, int)::out, int::out, int::out) is det.
 
 pd_term__get_matching_sizes(_, _, _, [], [], 0, 0).
 pd_term__get_matching_sizes(ModuleInfo, InstMap, Args,
@@ -295,8 +293,8 @@ pd_term__get_matching_sizes(ModuleInfo, InstMap, Args,
 %-----------------------------------------------------------------------------%
 
 :- pred pd_term__split_out_non_increasing(assoc_list(int, int)::in,
-		assoc_list(int, int)::in, bool::out,
-		assoc_list(int, int)::out) is semidet.
+	assoc_list(int, int)::in, bool::out, assoc_list(int, int)::out)
+	is semidet.
 
 pd_term__split_out_non_increasing([], [], no, []).
 pd_term__split_out_non_increasing([_|_], [], _, _) :-
