@@ -1355,6 +1355,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		}
 	} else if (MR_streq(words[0], "print")) {
 		MR_Browse_Format	format;
+		int			n;
 
 		if (! MR_trace_options_format(&format, &words, &word_count,
 					"browsing", "print"))
@@ -1396,11 +1397,25 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 			}
+		} else if (word_count == 3 && streq(words[1], "action")
+				&& MR_trace_is_number(words[2], &n))
+		{
+			const char	*problem;
+
+			problem = MR_trace_browse_action(MR_mdb_out, n,
+					MR_trace_browse_goal_internal,
+					MR_BROWSE_CALLER_PRINT, format);
+
+			if (problem != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+			}
 		} else {
 			MR_trace_usage("browsing", "print");
 		}
 	} else if (MR_streq(words[0], "browse")) {
 		MR_Browse_Format	format;
+		int			n;
 
 		if (! MR_trace_options_format(&format, &words, &word_count,
 					"browsing", "browse"))
@@ -1434,6 +1449,19 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					MR_BROWSE_CALLER_BROWSE, format,
 					MR_TRUE);
 			}
+
+			if (problem != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+			}
+		} else if (word_count == 3 && streq(words[1], "action")
+				&& MR_trace_is_number(words[2], &n))
+		{
+			const char	*problem;
+
+			problem = MR_trace_browse_action(MR_mdb_out, n,
+					MR_trace_browse_goal_internal,
+					MR_BROWSE_CALLER_BROWSE, format);
 
 			if (problem != NULL) {
 				fflush(MR_mdb_out);

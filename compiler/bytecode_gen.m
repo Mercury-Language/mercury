@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -741,6 +741,9 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ConsId = tabling_pointer_const(_, _),
 		sorry(this_file, "bytecode cannot implement tabling")
 	;
+		ConsId = table_io_decl(_),
+		sorry(this_file, "bytecode cannot implement table io decl")
+	;
 		ConsId = deep_profiling_proc_static(_),
 		sorry(this_file, "bytecode cannot implement deep profiling")
 	).
@@ -773,6 +776,8 @@ bytecode_gen__map_cons_tag(tabling_pointer_constant(_, _), _) :-
 	unexpected(this_file, "tabling_pointer_constant cons tag for non-tabling_pointer_constant cons id").
 bytecode_gen__map_cons_tag(deep_profiling_proc_static_tag(_), _) :-
 	unexpected(this_file, "deep_profiling_proc_static_tag cons tag for non-deep_profiling_proc_static cons id").
+bytecode_gen__map_cons_tag(table_io_decl_tag(_), _) :-
+	unexpected(this_file, "table_io_decl_tag cons tag for non-table_io_decl cons id").
 bytecode_gen__map_cons_tag(reserved_address(_), _) :-
 	% These should only be generated if the --num-reserved-addresses
 	% or --num-reserved-objects options are used.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -71,6 +71,14 @@
 			proc_static_line_number :: int,
 			proc_is_in_interface	:: bool,
 			call_site_statics	:: list(call_site_static_data)
+		)
+	;	table_io_decl_data(
+			table_io_decl_proc_ptr	:: rtti_proc_label,
+			table_io_decl_kind	:: proc_layout_kind,
+			table_io_decl_num_ptis	:: int,
+			table_io_decl_ptis	:: rval,
+						% pseudo-typeinfos for headvars
+			table_io_decl_type_params :: rval
 		).
 
 :- type call_site_static_data			% defines MR_CallSiteStatic
@@ -130,6 +138,7 @@
 	--->	proc_layout_exec_trace(
 			call_label_layout	:: layout_name,
 			proc_body		:: maybe(rval),
+			maybe_table_io_decl	:: maybe(layout_name),
 			var_names		:: list(int), % offsets
 			max_var_num		:: int,
 			max_r_num		:: int,
@@ -158,6 +167,7 @@
 	;	proc_layout_var_names(proc_label)
 		% A vector of variable names (represented as offsets into
 		% the string table) for a procedure layout structure.
+	;	table_io_decl(rtti_proc_label)
 	;	closure_proc_id(proc_label, int, proc_label)
 	;	file_layout(module_name, int)
 	;	file_layout_line_number_vector(module_name, int)

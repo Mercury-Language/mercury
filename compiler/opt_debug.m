@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -478,6 +478,10 @@ opt_debug__dump_layout_name(proc_static_call_sites(RttiProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["proc_static_call_sites(", ProcLabelStr, ")"],
 		Str).
+opt_debug__dump_layout_name(table_io_decl(RttiProcLabel), Str) :-
+	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["table_io_decl(", ProcLabelStr, ")"], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

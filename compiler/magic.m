@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 University of Melbourne.
+% Copyright (C) 1998-2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1054,7 +1054,7 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 
 	JoinProcInfo0 = CProcInfo,
 	proc_info_create_var_from_type(JoinProcInfo0,
-		ClosureVarType, ClosureVar, JoinProcInfo1),
+		ClosureVarType, no, ClosureVar, JoinProcInfo1),
 
 
 	%
@@ -1267,7 +1267,7 @@ magic__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
 		hlds_goal::out, proc_info::in, proc_info::out) is det.
 
 magic__make_const(Type, ConsId, Var, Goal, ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, Type, Var, ProcInfo),
+	proc_info_create_var_from_type(ProcInfo0, Type, no, Var, ProcInfo),
 	set__singleton_set(NonLocals, Var),
 	Inst = bound(unique, [functor(ConsId, [])]),
 	instmap_delta_init_reachable(Delta0),
@@ -1630,7 +1630,7 @@ magic__preprocess_call_args([Arg | Args], [NewArg | NewArgs], SeenArgs,
 		{ proc_info_vartypes(ProcInfo0, VarTypes) },
 		{ map__lookup(VarTypes, Arg, ArgType) },
 		{ proc_info_create_var_from_type(ProcInfo0,
-			ArgType, NewArg, ProcInfo) },
+			ArgType, no, NewArg, ProcInfo) },
 		magic_info_set_proc_info(ProcInfo),
 		{ IntroducedArgs1 = [NewArg | IntroducedArgs0] },
 		{ in_mode(InMode) },
@@ -1746,7 +1746,7 @@ magic__rename_and_generate_closures([Arg | Args], ExtraGoals,
 		{ proc_info_vartypes(ProcInfo0, VarTypes0) },
 		{ map__lookup(VarTypes0, Arg, Type) },
 		{ proc_info_create_var_from_type(ProcInfo0, 
-			Type, NewArg, ProcInfo) },
+			Type, no, NewArg, ProcInfo) },
 		magic_info_set_proc_info(ProcInfo),
 		{ map__init(Subn0) },
 		{ map__det_insert(Subn0, Arg, NewArg, Subn) },

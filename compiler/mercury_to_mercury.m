@@ -1442,6 +1442,8 @@ mercury_format_cons_id(tabling_pointer_const(_, _), _) -->
 	add_string("<tabling pointer>").
 mercury_format_cons_id(deep_profiling_proc_static(_), _) -->
 	add_string("<deep_profiling_proc_static>").
+mercury_format_cons_id(table_io_decl(_), _) -->
+	add_string("<table_io_decl>").
 
 :- pred mercury_format_mode_defn(inst_varset::in, sym_name::in,
 	list(inst_var)::in, mode_defn::in, prog_context::in,
@@ -3640,6 +3642,8 @@ output_eval_method(eval_memo) -->
 	output_string("eval_memo").
 output_eval_method(eval_table_io) -->
 	output_string("eval_table_io").
+output_eval_method(eval_table_io_decl) -->
+	output_string("eval_table_io_decl").
 output_eval_method(eval_minimal) -->
 	output_string("eval_minimal").
 

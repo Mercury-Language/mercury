@@ -1,0 +1,100 @@
+       1:      1  1 CALL pred tabled_read_decl:main/2-0 (det) tabled_read_decl.m:17
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> context none
+Contexts will not be printed.
+mdb> table_io
+io tabling has not yet started
+mdb> break tabled_read_decl__test
+ 0: + stop  interface pred tabled_read_decl:test/5-0 (det)
+mdb> table_io start
+io tabling started
+mdb> continue
+       8:      4  3 CALL pred tabled_read_decl:test/5-0 (det)
+mdb> finish -n
+      35:      4  3 EXIT pred tabled_read_decl:test/5-0 (det)
+mdb> print *
+       HeadVar__1             	'<<c_pointer>>'
+       HeadVar__2             	0
+       HeadVar__3             	123
+       HeadVar__5             	state('<<c_pointer>>')
+mdb> retry
+Retry across I/O operations is not always safe.
+Are you sure you want to do it? y
+       8:      4  3 CALL pred tabled_read_decl:test/5-0 (det)
+mdb> print *
+       HeadVar__1             	'<<c_pointer>>'
+       HeadVar__2             	0
+       HeadVar__4             	state('<<c_pointer>>')
+mdb> finish -n
+      35:      4  3 EXIT pred tabled_read_decl:test/5-0 (det)
+mdb> print *
+       HeadVar__1             	'<<c_pointer>>'
+       HeadVar__2             	0
+       HeadVar__3             	123
+       HeadVar__5             	state('<<c_pointer>>')
+mdb> break tabled_read_decl__poly_test
+ 1: + stop  interface pred tabled_read_decl:poly_test/6-0 (det)
+mdb> continue
+123
+      38:     13  3 CALL pred tabled_read_decl:poly_test/6-0 (det)
+mdb> finish -n
+      65:     13  3 EXIT pred tabled_read_decl:poly_test/6-0 (det)
+mdb> print *
+       HeadVar__1             	'<<c_pointer>>'
+       HeadVar__2             	['a', 'b', 'c']
+       HeadVar__3             	0
+       HeadVar__4             	456
+       HeadVar__6             	state('<<c_pointer>>')
+mdb> retry
+Retry across I/O operations is not always safe.
+Are you sure you want to do it? y
+      38:     13  3 CALL pred tabled_read_decl:poly_test/6-0 (det)
+mdb> finish -n
+      65:     13  3 EXIT pred tabled_read_decl:poly_test/6-0 (det)
+mdb> print *
+       HeadVar__1             	'<<c_pointer>>'
+       HeadVar__2             	['a', 'b', 'c']
+       HeadVar__3             	0
+       HeadVar__4             	456
+       HeadVar__6             	state('<<c_pointer>>')
+mdb> delete *
+ 0: E stop  interface pred tabled_read_decl:test/5-0 (det)
+ 1: E stop  interface pred tabled_read_decl:poly_test/6-0 (det)
+mdb> break part_2
+ 0: + stop  interface pred tabled_read_decl:part_2/3-0 (det)
+mdb> continue
+456
+      69:     22  2 CALL pred tabled_read_decl:part_2/3-0 (det)
+mdb> table_io end
+io tabling ended
+mdb> print action 0
+open_input("tabled_read_decl.data", 0, '<<c_pointer>>')
+mdb> print action 1
+read_char_code('<<c_pointer>>', 49)
+mdb> browse action 1
+browser> p
+read_char_code('<<c_pointer>>', 49)
+browser> ^1
+browser> p
+'<<c_pointer>>'
+browser> quit
+mdb> print action 2
+read_char_code('<<c_pointer>>', 50)
+mdb> print action 3
+read_char_code('<<c_pointer>>', 51)
+mdb> print action 4
+read_char_code('<<c_pointer>>', 10)
+mdb> print action 5
+poly_read_char_code(<<typeinfo>>, <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 52)
+mdb> print action 6
+poly_read_char_code(<<typeinfo>>, <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 53)
+mdb> print action 7
+poly_read_char_code(<<typeinfo>>, <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 54)
+mdb> print action 8
+poly_read_char_code(<<typeinfo>>, <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 10)
+mdb> print action 9
+mdb: I/O action number not in range.
+mdb> continue -S
+789

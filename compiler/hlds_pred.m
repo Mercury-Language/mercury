@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1499,6 +1499,26 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% left-to-right, from zero.)
 		).
 
+:- type table_io_decl_arg_info
+	--->	table_io_decl_arg_info(
+			headvar		:: prog_var,
+			slot_num	:: int,
+			arg_type	:: (type)
+		).
+
+	% This type is analogous to llds:layout_locn, but it refers to slots in
+	% the extended answer blocks used by I/O action tabling for declarative
+	% debugging, not to lvals.
+:- type table_io_decl_locn
+	--->	direct(int)
+	;	indirect(int, int).
+
+:- type table_io_decl_info
+	--->	table_io_decl_info(
+			list(table_io_decl_arg_info),
+			map(tvar, table_io_decl_locn)
+		).
+
 :- pred proc_info_init(arity, list(type), list(mode), maybe(list(mode)),
 	maybe(list(is_live)), maybe(determinism), prog_context,
 	is_address_taken, proc_info).
@@ -1691,6 +1711,13 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set_call_table_tip(proc_info, maybe(prog_var), proc_info).
 :- mode proc_info_set_call_table_tip(in, in, out) is det.
 
+:- pred proc_info_get_table_io_decl(proc_info, maybe(table_io_decl_info)).
+:- mode proc_info_get_table_io_decl(in, out) is det.
+
+:- pred proc_info_set_table_io_decl(proc_info, maybe(table_io_decl_info),
+	proc_info).
+:- mode proc_info_set_table_io_decl(in, in, out) is det.
+
 :- pred proc_info_get_maybe_deep_profile_info(proc_info::in,
 	maybe(deep_profile_proc_info)::out) is det.
 
@@ -1718,8 +1745,9 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- mode proc_info_ensure_unique_names(in, out) is det.
 
 	% Create a new variable of the given type to the procedure.
-:- pred proc_info_create_var_from_type(proc_info, type, prog_var, proc_info).
-:- mode proc_info_create_var_from_type(in, in, out, out) is det.
+:- pred proc_info_create_var_from_type(proc_info, type, maybe(string),
+	prog_var, proc_info).
+:- mode proc_info_create_var_from_type(in, in, in, out, out) is det.
 
 	% Create a new variable for each element of the list of types.
 :- pred proc_info_create_vars_from_types(proc_info,
@@ -1926,6 +1954,18 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% relevant backend must record this
 					% fact in a place accessible to the
 					% debugger.
+ 			table_io_decl	:: maybe(table_io_decl_info),
+					% If set, it means that procedure is an
+					% I/O primitive that has been subject
+					% to the --trace-table-decl-io
+					% transformation. The argument will
+					% then describe the structure of the
+					% answer block used by the transformed
+					% code. By putting this information
+					% into a data structure in the
+					% generated code, the compiler
+					% enables the runtime system to print
+					% out I/O action goals.
 			maybe_deep_profile_proc_info
 					:: maybe(deep_profile_proc_info)
 		).
@@ -1960,7 +2000,7 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 		MaybeArgLives, ClauseBody, MContext, StackSlots, MaybeDet,
 		InferredDet, CanProcess, ArgInfo, InitialLiveness, TVarsMap,
 		TCVarsMap, eval_normal, no, no, DeclaredModes, IsAddressTaken,
-		RLExprn, no, no, no
+		RLExprn, no, no, no, no
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
@@ -1975,7 +2015,7 @@ proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		InstVarSet, HeadLives, Goal, Context,
 		StackSlots, DeclaredDetism, InferredDetism, CanProcess, ArgInfo,
 		Liveness, TVarMap, TCVarsMap, eval_normal, ArgSizes,
-		Termination, no, IsAddressTaken, RLExprn, no, no, no).
+		Termination, no, IsAddressTaken, RLExprn, no, no, no, no).
 
 proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet,
 		Detism, Goal, Context, TVarMap, TCVarsMap,
@@ -1996,7 +2036,7 @@ proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet,
 		InstVarSet, MaybeHeadLives, Goal, Context, StackSlots,
 		MaybeDeclaredDetism, Detism, yes, [], Liveness, TVarMap,
 		TCVarsMap, eval_normal, no, no, no, IsAddressTaken,
-		RLExprn, no, no, no).
+		RLExprn, no, no, no, no).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, ProcInfo) :-
@@ -2084,6 +2124,7 @@ proc_info_is_address_taken(ProcInfo, ProcInfo^is_address_taken).
 proc_info_get_rl_exprn_id(ProcInfo, ProcInfo^maybe_aditi_rl_id).
 proc_info_get_need_maxfr_slot(ProcInfo, ProcInfo^need_maxfr_slot).
 proc_info_get_call_table_tip(ProcInfo, ProcInfo^call_table_tip).
+proc_info_get_table_io_decl(ProcInfo, ProcInfo^table_io_decl).
 proc_info_get_maybe_deep_profile_info(ProcInfo,
 	ProcInfo^maybe_deep_profile_proc_info).
 
@@ -2114,8 +2155,9 @@ proc_info_set_address_taken(ProcInfo, AT, ProcInfo^is_address_taken := AT).
 proc_info_set_rl_exprn_id(ProcInfo, ID, ProcInfo^maybe_aditi_rl_id := yes(ID)).
 proc_info_set_need_maxfr_slot(ProcInfo, NMS, ProcInfo^need_maxfr_slot := NMS).
 proc_info_set_call_table_tip(ProcInfo, CTT, ProcInfo^call_table_tip := CTT).
-proc_info_set_maybe_deep_profile_info(ProcInfo, CTT,
-	ProcInfo^maybe_deep_profile_proc_info := CTT).
+proc_info_set_table_io_decl(ProcInfo, TID, ProcInfo^table_io_decl := TID).
+proc_info_set_maybe_deep_profile_info(ProcInfo, DPI,
+	ProcInfo^maybe_deep_profile_proc_info := DPI).
 
 proc_info_get_typeinfo_vars(Vars, VarTypes, TVarMap, TypeInfoVars) :-
 	set__to_sorted_list(Vars, VarList),
@@ -2183,10 +2225,10 @@ proc_info_ensure_unique_names(ProcInfo0, ProcInfo) :-
 	varset__ensure_unique_names(AllVars, "p", VarSet0, VarSet),
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo).
 
-proc_info_create_var_from_type(ProcInfo0, Type, NewVar, ProcInfo) :-
+proc_info_create_var_from_type(ProcInfo0, Type, MaybeName, NewVar, ProcInfo) :-
 	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	varset__new_var(VarSet0, NewVar, VarSet),
+	varset__new_maybe_named_var(VarSet0, MaybeName, NewVar, VarSet),
 	map__det_insert(VarTypes0, NewVar, Type, VarTypes),
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo).
@@ -2715,42 +2757,49 @@ valid_determinism_for_eval_method(eval_minimal, Determinism) :-
 eval_method_to_string(eval_normal,		"normal").
 eval_method_to_string(eval_loop_check,		"loop_check").
 eval_method_to_string(eval_table_io,		"table_io").
+eval_method_to_string(eval_table_io_decl,	"table_io_decl").
 eval_method_to_string(eval_memo,		"memo").
 eval_method_to_string(eval_minimal, 		"minimal_model").
 
 eval_method_needs_stratification(eval_normal) = no.
 eval_method_needs_stratification(eval_loop_check) = no.
 eval_method_needs_stratification(eval_table_io) = no.
+eval_method_needs_stratification(eval_table_io_decl) = no.
 eval_method_needs_stratification(eval_memo) = no.
 eval_method_needs_stratification(eval_minimal) = yes.
 
 eval_method_has_per_proc_tabling_pointer(eval_normal) = no.
 eval_method_has_per_proc_tabling_pointer(eval_loop_check) = yes.
 eval_method_has_per_proc_tabling_pointer(eval_table_io) = no.
+eval_method_has_per_proc_tabling_pointer(eval_table_io_decl) = no.
 eval_method_has_per_proc_tabling_pointer(eval_memo) = yes.
 eval_method_has_per_proc_tabling_pointer(eval_minimal) = yes.
 
 eval_method_requires_tabling_transform(eval_normal) = no.
 eval_method_requires_tabling_transform(eval_loop_check) = yes.
 eval_method_requires_tabling_transform(eval_table_io) = yes.
+eval_method_requires_tabling_transform(eval_table_io_decl) = yes.
 eval_method_requires_tabling_transform(eval_memo) = yes.
 eval_method_requires_tabling_transform(eval_minimal) = yes.
 
 eval_method_requires_ground_args(eval_normal) = no.
 eval_method_requires_ground_args(eval_loop_check) = yes.
 eval_method_requires_ground_args(eval_table_io) = yes.
+eval_method_requires_ground_args(eval_table_io_decl) = yes.
 eval_method_requires_ground_args(eval_memo) = yes.
 eval_method_requires_ground_args(eval_minimal) = yes.
 
 eval_method_destroys_uniqueness(eval_normal) = no.
 eval_method_destroys_uniqueness(eval_loop_check) = yes.
 eval_method_destroys_uniqueness(eval_table_io) = no.
+eval_method_destroys_uniqueness(eval_table_io_decl) = no.
 eval_method_destroys_uniqueness(eval_memo) = yes.
 eval_method_destroys_uniqueness(eval_minimal) = yes.
 
 eval_method_change_determinism(eval_normal, Detism, Detism).
 eval_method_change_determinism(eval_loop_check, Detism, Detism).
 eval_method_change_determinism(eval_table_io, Detism, Detism).
+eval_method_change_determinism(eval_table_io_decl, Detism, Detism).
 eval_method_change_determinism(eval_memo, Detism, Detism).
 eval_method_change_determinism(eval_minimal, Det0, Det) :-
 	det_conjunction_detism(semidet, Det0, Det).

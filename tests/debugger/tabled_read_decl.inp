@@ -1,0 +1,42 @@
+echo on
+register --quiet
+context none
+table_io
+break tabled_read_decl__test
+table_io start
+continue
+finish -n
+print *
+retry
+y
+print *
+finish -n
+print *
+break tabled_read_decl__poly_test
+continue
+finish -n
+print *
+retry
+y
+finish -n
+print *
+delete *
+break part_2
+continue
+table_io end
+print action 0
+print action 1
+browse action 1
+p
+^1
+p
+quit
+print action 2
+print action 3
+print action 4
+print action 5
+print action 6
+print action 7
+print action 8
+print action 9
+continue -S

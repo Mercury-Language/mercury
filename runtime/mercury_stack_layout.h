@@ -32,6 +32,7 @@
 #include "mercury_types.h"
 #include "mercury_std.h"			/* for MR_VARIABLE_SIZED */
 #include "mercury_tags.h"
+#include "mercury_type_info.h"			/* for MR_PseudoTypeInfo */
 
 /* forward declarations */
 typedef	struct MR_Proc_Layout_Struct	MR_Proc_Layout;
@@ -414,6 +415,30 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 */
 
 /*
+** The MR_Table_Io_Decl structure.
+**
+** To enable declarative debugging of I/O actions, the compiler generates one
+** of these structures for each I/O primitive. The compiler transforms the
+** bodies of those primitives to create a block of memory and fill it in with
+** (1) a pointer to the primitive's MR_Table_Io_Decl structure and (2) the
+** values of the primitive's arguments (both input and output, but excluding
+** the I/O states). The array of pseudo-typeinfos pointed to by the ptis field
+** gives the types of these arguments, while the filtered_arity field gives
+** the number of saved arguments, which will be all the arguments except the
+** I/O states. The number in this field is the size of the ptis array, and
+** the size of the block exclusive of the pointer. The proc field allows us
+** to identify the primitive procedure. This is all the information we need
+** to describe the I/O action to the user.
+*/
+
+typedef struct MR_Table_Io_Decl_Struct {
+	const MR_Proc_Layout		*MR_table_io_decl_proc;
+	MR_Integer			MR_table_io_decl_filtered_arity;
+	const MR_PseudoTypeInfo		*MR_table_io_decl_ptis;
+	const MR_Type_Param_Locns	*MR_table_io_decl_type_params;
+} MR_Table_Io_Decl;
+
+/*
 ** The MR_Stack_Traversal structure contains the following fields:
 **
 ** The code_addr field points to the start of the procedure's code.
@@ -576,7 +601,8 @@ typedef	enum {
 	MR_EVAL_METHOD_LOOP_CHECK,
 	MR_EVAL_METHOD_MEMO,
 	MR_EVAL_METHOD_MINIMAL,
-	MR_EVAL_METHOD_TABLE_IO
+	MR_EVAL_METHOD_TABLE_IO,
+	MR_EVAL_METHOD_TABLE_IO_DECL
 } MR_EvalMethod;
 
 typedef	MR_int_least8_t		MR_EvalMethodInt;
@@ -585,6 +611,7 @@ typedef	struct MR_Exec_Trace_Struct {
 	const MR_Label_Layout	*MR_exec_call_label;
 	const MR_Module_Layout	*MR_exec_module_layout;
 	MR_Word			*MR_exec_proc_rep;
+	const MR_Table_Io_Decl	*MR_exec_table_io_decl;
 	const MR_int_least16_t	*MR_exec_used_var_names;
 	MR_int_least16_t	MR_exec_max_var_num;
 	MR_int_least16_t	MR_exec_max_r_num;

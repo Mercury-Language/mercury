@@ -1353,11 +1353,18 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
 		return;
 
 	case MR_EVAL_METHOD_TABLE_IO:
+	case MR_EVAL_METHOD_TABLE_IO_DECL:
 		return;
 	}
 
-	MR_fatal_error(
-		"unknown evaluation method in MR_maybe_record_call_table");
+	{
+		char	buf[256];
+
+		sprintf(buf, "unknown evaluation method %d "
+				"in MR_maybe_record_call_table",
+				MR_sle_eval_method(level_layout));
+		MR_fatal_error(buf);
+	}
 }
 
 static void

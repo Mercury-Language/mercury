@@ -55,7 +55,13 @@
 				% that points to the table that implements
 				% memoization, loop checking or the minimal
 				% model semantics for the given procedure.
-			;	deep_profiling_proc_static(rtti_proc_label).
+			;	deep_profiling_proc_static(rtti_proc_label)
+				% The ProcStatic structure of a procedure,
+				% as documented in the deep profiling paper.
+			;	table_io_decl(rtti_proc_label).
+				% The address of a structure that describes
+				% the layout of the answer block used by
+				% I/O tabling for declarative debugging.
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
 	% or a functor) for a particular type.
@@ -190,7 +196,8 @@ cons_id_arity(tabling_pointer_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of tabling_pointer_const").
 cons_id_arity(deep_profiling_proc_static(_), _) :-
 	error("cons_id_arity: can't get arity of deep_profiling_proc_static").
-
+cons_id_arity(table_io_decl(_), _) :-
+	error("cons_id_arity: can't get arity of table_io_decl").
 
 cons_id_maybe_arity(cons(_, Arity), yes(Arity)).
 cons_id_maybe_arity(int_const(_), yes(0)).
@@ -202,6 +209,7 @@ cons_id_maybe_arity(type_ctor_info_const(_, _, _), no) .
 cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _), no).
 cons_id_maybe_arity(tabling_pointer_const(_, _), no).
 cons_id_maybe_arity(deep_profiling_proc_static(_), no).
+cons_id_maybe_arity(table_io_decl(_), no).
 
 make_functor_cons_id(term__atom(Name), Arity,
 		cons(unqualified(Name), Arity)).
@@ -364,6 +372,10 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 	;	deep_profiling_proc_static_tag(rtti_proc_label)
 			% This is for constants representing procedure
 			% descriptions for deep profiling.
+	;	table_io_decl_tag(rtti_proc_label)
+			% This is for constants representing the structure
+			% that allows us to decode the contents of the memory
+			% block containing the headvars of I/O primitives.
 	;	single_functor
 			% This is for types with a single functor
 			% (and possibly also some constants represented
@@ -469,6 +481,7 @@ get_primary_tag(type_ctor_info_constant(_, _, _)) = no.
 get_primary_tag(base_typeclass_info_constant(_, _, _)) = no.
 get_primary_tag(tabling_pointer_constant(_, _)) = no.
 get_primary_tag(deep_profiling_proc_static_tag(_)) = no.
+get_primary_tag(table_io_decl_tag(_)) = no.
 get_primary_tag(single_functor) = yes(0).
 get_primary_tag(unshared_tag(PrimaryTag)) = yes(PrimaryTag).
 get_primary_tag(shared_remote_tag(PrimaryTag, _SecondaryTag)) =
@@ -488,6 +501,7 @@ get_secondary_tag(type_ctor_info_constant(_, _, _)) = no.
 get_secondary_tag(base_typeclass_info_constant(_, _, _)) = no.
 get_secondary_tag(tabling_pointer_constant(_, _)) = no.
 get_secondary_tag(deep_profiling_proc_static_tag(_)) = no.
+get_secondary_tag(table_io_decl_tag(_)) = no.
 get_secondary_tag(single_functor) = no.
 get_secondary_tag(unshared_tag(_)) = no.
 get_secondary_tag(shared_remote_tag(_PrimaryTag, SecondaryTag)) =

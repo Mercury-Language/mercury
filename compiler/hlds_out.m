@@ -317,6 +317,7 @@ hlds_out__cons_id_to_string(tabling_pointer_const(_, _),
 	"<tabling_pointer>").
 hlds_out__cons_id_to_string(deep_profiling_proc_static(_),
 	"<deep_profiling_proc_static>").
+hlds_out__cons_id_to_string(table_io_decl(_), "<table_io_decl>").
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
 	prog_out__write_sym_name_and_arity(SymName / Arity).
@@ -338,6 +339,8 @@ hlds_out__write_cons_id(tabling_pointer_const(_, _)) -->
 	io__write_string("<tabling_pointer>").
 hlds_out__write_cons_id(deep_profiling_proc_static(_)) -->
 	io__write_string("<deep_profiling_proc_static>").
+hlds_out__write_cons_id(table_io_decl(_)) -->
+	io__write_string("<table_io_decl>").
 
 	% The code of this predicate duplicates the functionality of
 	% error_util__describe_one_pred_name. Changes here should be made
@@ -2211,6 +2214,16 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		io__write_string(" (mode "),
 		io__write_int(ProcIdInt),
 		io__write_string("))")
+	;
+		{ ConsId = table_io_decl(RttiProcLabel) },
+		{ rtti__proc_label_pred_proc_id(RttiProcLabel,
+			PredId, ProcId) },
+		io__write_string("table_io_decl("),
+		hlds_out__write_pred_id(ModuleInfo, PredId),
+		{ proc_id_to_int(ProcId, ProcIdInt) },
+		io__write_string(" (mode "),
+		io__write_int(ProcIdInt),
+		io__write_string("))")
 	).
 
 hlds_out__write_var_modes([], [], _, _, _) --> [].
@@ -3243,6 +3256,8 @@ hlds_out__write_eval_method(eval_minimal) -->
 	io__write_string("minimal").
 hlds_out__write_eval_method(eval_table_io) -->
 	io__write_string("table_io").
+hlds_out__write_eval_method(eval_table_io_decl) -->
+	io__write_string("table_io_decl").
 
 %-----------------------------------------------------------------------------%
 

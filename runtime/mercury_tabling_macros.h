@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2000,2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -374,11 +374,24 @@
 #define MR_TABLE_GET_ANSWER(table, offset)				\
 	(( MR_tabledebug ?						\
 		printf("using answer block: %p -> %p, slot %d\n",	\
-			table, table->MR_answerblock, (int) (offset))	\
+			(table), (table)->MR_answerblock,		\
+			(int) (offset))					\
 	:								\
 		(void) 0 /* do nothing */				\
 	),								\
 	((table)->MR_answerblock)[(offset)])
+
+#define MR_TABLE_SAVE_ANSWER(table, offset, value, type_info)		\
+	do {								\
+		if (MR_tabledebug)					\
+			printf("saving to answer block: %p -> %p, "	\
+				"slot %d = %lx\n",			\
+				(table), (table)->MR_answerblock,	\
+				(int) (offset), (long) (value));	\
+		(table)->MR_answerblock[offset] =			\
+			MR_make_permanent((value),			\
+					(MR_TypeInfo) (type_info));	\
+	} while(0)
 
 #else
 
@@ -391,11 +404,11 @@
 #define MR_TABLE_GET_ANSWER(table, offset)				\
 	((table)->MR_answerblock)[(offset)]
 
-#endif
-
 #define MR_TABLE_SAVE_ANSWER(table, offset, value, type_info)		\
 	do {								\
 		(table)->MR_answerblock[offset] =			\
 			MR_make_permanent((value),			\
 					(MR_TypeInfo) (type_info));	\
 	} while(0)
+
+#endif

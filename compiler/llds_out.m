@@ -55,6 +55,10 @@
 	io__state, io__state).
 :- mode output_rval_decls(in, in, in, in, out, in, out, di, uo) is det.
 
+:- pred output_rvals_decls(list(rval)::in, string::in, string::in,
+	int::in, int::out, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
+
 	% output an rval (not converted to any particular type,
 	% but instead output as its "natural" type)
 
@@ -2299,6 +2303,15 @@ output_rval_decls(mem_addr(MemRef), FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet) -->
 	output_mem_ref_decls(MemRef, FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet).
+
+output_rvals_decls([], _FirstIndent, _LaterIndent, N, N,
+		DeclSet, DeclSet) --> [].
+output_rvals_decls([Rval | Rvals], FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N1,
+		DeclSet0, DeclSet1),
+	output_rvals_decls(Rvals, FirstIndent, LaterIndent, N1, N,
+		DeclSet1, DeclSet).
 
 :- pred output_mem_ref_decls(mem_ref, string, string, int, int,
 	decl_set, decl_set, io__state, io__state).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -75,7 +75,7 @@
 :- import_module code_aux, code_util, middle_rec, llds_out.
 
 % Misc compiler modules
-:- import_module builtin_ops, passes_aux.
+:- import_module builtin_ops, passes_aux, rtti.
 :- import_module globals, options.
 
 % Standard library modules
@@ -313,8 +313,15 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		Instructions = Instructions0
 	),
 
-	( BasicStackLayout = yes ->
+	proc_info_get_table_io_decl(ProcInfo, MaybeTableIoDecl),
+	(
+		( BasicStackLayout = yes
+		; MaybeTableIoDecl = yes(_TableIoDecl)
+		)
+	->
 			% Create the procedure layout structure.
+		RttiProcLabel = rtti__make_proc_label(ModuleInfo,
+			PredId, ProcId),
 		code_info__get_layout_info(InternalMap, CodeInfo, _),
 		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 			no, EntryLabel),
@@ -322,10 +329,11 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
 		proc_info_varset(ProcInfo, VarSet),
 		proc_info_vartypes(ProcInfo, VarTypes),
-		ProcLayout = proc_layout_info(EntryLabel, Detism, TotalSlots,
-			MaybeSuccipSlot, EvalMethod, MaybeTraceCallLabel,
-			MaxTraceReg, Goal, InstMap0, TraceSlotInfo,
-			ForceProcId, VarSet, VarTypes, InternalMap),
+		ProcLayout = proc_layout_info(RttiProcLabel, EntryLabel,
+			Detism, TotalSlots, MaybeSuccipSlot, EvalMethod,
+			MaybeTraceCallLabel, MaxTraceReg, Goal, InstMap0,
+			TraceSlotInfo, ForceProcId, VarSet, VarTypes,
+			InternalMap, MaybeTableIoDecl),
 		global_data_add_new_proc_layout(GlobalData0,
 			proc(PredId, ProcId), ProcLayout, GlobalData1)
 	;

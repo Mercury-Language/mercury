@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -64,6 +64,9 @@ extern	MR_TypeInfoParams	MR_materialize_typeinfos_base(
 extern	MR_TypeInfoParams	MR_materialize_closure_typeinfos(
 					const MR_Type_Param_Locns *tvar_locns,
 					MR_Closure *closure);
+extern	MR_TypeInfoParams	MR_materialize_answer_block_typeinfos(
+					const MR_Type_Param_Locns *tvar_locns,
+					MR_Word *answer_block, int block_size);
 
 
 /*

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -254,6 +254,9 @@ unify_gen__generate_tag_test_rval_2(tabling_pointer_constant(_, _), _, _) :-
 unify_gen__generate_tag_test_rval_2(deep_profiling_proc_static_tag(_), _, _) :-
 	% This should never happen
 	error("Attempted deep_profiling_proc_static_tag unification").
+unify_gen__generate_tag_test_rval_2(table_io_decl_tag(_), _, _) :-
+	% This should never happen
+	error("Attempted table_io_decl_tag unification").
 unify_gen__generate_tag_test_rval_2(no_tag, _Rval, TestRval) :-
 	TestRval = const(true).
 unify_gen__generate_tag_test_rval_2(single_functor, _Rval, TestRval) :-
@@ -417,6 +420,15 @@ unify_gen__generate_construction_2(
 		{ error("unify_gen: deep_profiling_proc_static has args") }
 	),
 	{ DataAddr = layout_addr(proc_static(RttiProcLabel)) },
+	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
+unify_gen__generate_construction_2(table_io_decl_tag(RttiProcLabel),
+		Var, Args, _Modes, _, _, empty) -->
+	( { Args = [] } ->
+		[]
+	;
+		{ error("unify_gen: table_io_decl has args") }
+	),
+	{ DataAddr = layout_addr(table_io_decl(RttiProcLabel)) },
 	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 		Var, Args, _Modes, _, _, empty) -->
@@ -800,6 +812,9 @@ unify_gen__generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code) -->
 	;
 		{ Tag = deep_profiling_proc_static_tag(_) },
 		{ Code = empty }
+	;
+		{ Tag = table_io_decl_tag(_) },
+		{ error("unify_gen__generate_det_deconstruction: table_io_decl_tag") }
 	;
 		{ Tag = no_tag },
 		( { Args = [Arg], Modes = [Mode] } ->

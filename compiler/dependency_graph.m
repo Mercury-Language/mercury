@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -395,6 +395,7 @@ dependency_graph__add_arcs_in_cases([case(Cons, Goal) | Goals], Caller,
 :- pred dependency_graph__add_arcs_in_cons(cons_id, relation_key,
 			dependency_graph, dependency_graph).
 :- mode dependency_graph__add_arcs_in_cons(in, in, in, out) is det.
+
 dependency_graph__add_arcs_in_cons(cons(_, _), _Caller,
 				DepGraph, DepGraph).
 dependency_graph__add_arcs_in_cons(int_const(_), _Caller,
@@ -434,6 +435,8 @@ dependency_graph__add_arcs_in_cons(base_typeclass_info_const(_, _, _, _),
 dependency_graph__add_arcs_in_cons(tabling_pointer_const(_, _),
 				_Caller, DepGraph, DepGraph).
 dependency_graph__add_arcs_in_cons(deep_profiling_proc_static(_),
+				_Caller, DepGraph, DepGraph).
+dependency_graph__add_arcs_in_cons(table_io_decl(_),
 				_Caller, DepGraph, DepGraph).
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -28,7 +28,7 @@
 
 :- module varset.
 :- interface.
-:- import_module term, list, map, set, assoc_list.
+:- import_module std_util, term, list, map, set, assoc_list.
 
 :- type varset(T).
 
@@ -51,6 +51,11 @@
 	% create a new named variable
 :- pred varset__new_named_var(varset(T), string, var(T), varset(T)).
 :- mode varset__new_named_var(in, in, out, out) is det.
+
+	% create a new variable, and maybe give it a name
+:- pred varset__new_maybe_named_var(varset(T), maybe(string),
+	var(T), varset(T)).
+:- mode varset__new_maybe_named_var(in, in, out, out) is det.
 
 	% create multiple new variables
 :- pred varset__new_vars(varset(T), int, list(var(T)), varset(T)).
@@ -223,7 +228,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, int, list, map, std_util, assoc_list.
+:- import_module bool, int, list, map, assoc_list.
 :- import_module set, require, string.
 
 :- type varset(T)	--->	varset(
@@ -254,6 +259,17 @@ varset__new_named_var(varset(MaxId0, Names0, Vals), Name, Var,
 		varset(MaxId, Names, Vals)) :-
 	term__create_var(MaxId0, Var, MaxId),
 	map__set(Names0, Var, Name, Names).
+
+varset__new_maybe_named_var(varset(MaxId0, Names0, Vals), MaybeName, Var,
+		varset(MaxId, Names, Vals)) :-
+	term__create_var(MaxId0, Var, MaxId),
+	(
+		MaybeName = no,
+		Names = Names0
+	;
+		MaybeName = yes(Name),
+		map__set(Names0, Var, Name, Names)
+	).
 
 varset__new_vars(Varset0, NumVars, NewVars, Varset) :-
 	varset__new_vars_2(Varset0, NumVars, [], NewVars, Varset).

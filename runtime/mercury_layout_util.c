@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,6 +17,8 @@
 
 static MR_Word MR_lookup_closure_long_lval(MR_Long_Lval locn,
 	MR_Closure *closure, MR_bool *succeeded);
+static MR_Word MR_lookup_answer_block_long_lval(MR_Long_Lval locn,
+	MR_Word *answer_block, int block_size, bool *succeeded);
 
 void
 MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs)
@@ -149,6 +151,42 @@ MR_materialize_closure_typeinfos(const MR_Type_Param_Locns *tvar_locns,
 	}
 }
 
+MR_TypeInfoParams
+MR_materialize_answer_block_typeinfos(const MR_Type_Param_Locns *tvar_locns,
+	MR_Word *answer_block, int block_size)
+{
+	if (tvar_locns != NULL) {
+		MR_TypeInfoParams	type_params;
+		bool			succeeded;
+		MR_Integer		count;
+		int			i;
+
+		count = tvar_locns->MR_tp_param_count;
+		type_params = (MR_TypeInfoParams)
+			MR_NEW_ARRAY(MR_Word, count + 1);
+
+		for (i = 0; i < count; i++) {
+			if (tvar_locns->MR_tp_param_locns[i] != 0)
+			{
+				type_params[i + 1] = (MR_TypeInfo)
+					MR_lookup_answer_block_long_lval(
+						tvar_locns->
+							MR_tp_param_locns[i],
+						answer_block, block_size,
+						&succeeded);
+				if (! succeeded) {
+					MR_fatal_error("missing type param in "
+					    "MR_materialize_answer_block_typeinfos");
+				}
+			}
+		}
+
+		return type_params;
+	} else {
+		return NULL;
+	}
+}
+
 int
 MR_get_register_number_long(MR_Long_Lval locn)
 {
@@ -268,8 +306,7 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 			if (! *succeeded) {
 				break;
 			}
-			value = MR_typeclass_info_type_info(baseaddr,
-				offset);
+			value = MR_typeclass_info_type_info(baseaddr, offset);
 			*succeeded = MR_TRUE;
 			break;
 
@@ -282,6 +319,110 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 		default:
 			if (MR_print_locn) {
 				printf("closure DEFAULT\n");
+			}
+			break;
+	}
+
+	return value;
+}
+
+static MR_Word
+MR_lookup_answer_block_long_lval(MR_Long_Lval locn, MR_Word *answer_block,
+	int block_size, bool *succeeded)
+{
+	int	locn_num;
+	int	offset;
+	MR_Word	value;
+	MR_Word	baseaddr;
+	MR_Word	sublocn;
+
+	*succeeded = MR_FALSE;
+	value = 0;
+
+	locn_num = (int) MR_LONG_LVAL_NUMBER(locn);
+	switch (MR_LONG_LVAL_TYPE(locn)) {
+		case MR_LONG_LVAL_TYPE_R:
+			if (MR_print_locn) {
+				printf("answer_block r%d\n", locn_num);
+			}
+			if (locn_num <= block_size) {
+				value = answer_block[locn_num];
+				*succeeded = MR_TRUE;
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_F:
+			if (MR_print_locn) {
+				printf("answer_block f%d\n", locn_num);
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_STACKVAR:
+			if (MR_print_locn) {
+				printf("answer_block stackvar%d\n", locn_num);
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_FRAMEVAR:
+			if (MR_print_locn) {
+				printf("answer_block framevar%d\n", locn_num);
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_SUCCIP:
+			if (MR_print_locn) {
+				printf("answer_block succip\n");
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_MAXFR:
+			if (MR_print_locn) {
+				printf("answer_block maxfr\n");
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_CURFR:
+			if (MR_print_locn) {
+				printf("answer_block curfr\n");
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_HP:
+			if (MR_print_locn) {
+				printf("answer_block hp\n");
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_SP:
+			if (MR_print_locn) {
+				printf("answer_block sp\n");
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_INDIRECT:
+			offset = MR_LONG_LVAL_INDIRECT_OFFSET(locn_num);
+			sublocn = MR_LONG_LVAL_INDIRECT_BASE_LVAL(locn_num);
+			if (MR_print_locn) {
+				printf("answer_block offset %d from ", offset);
+			}
+			baseaddr = MR_lookup_answer_block_long_lval(sublocn,
+					answer_block, block_size, succeeded);
+			if (! *succeeded) {
+				break;
+			}
+			value = MR_typeclass_info_type_info(baseaddr, offset);
+			*succeeded = MR_TRUE;
+			break;
+
+		case MR_LONG_LVAL_TYPE_UNKNOWN:
+			if (MR_print_locn) {
+				printf("answer_block unknown\n");
+			}
+			break;
+
+		default:
+			if (MR_print_locn) {
+				printf("answer_block DEFAULT\n");
 			}
 			break;
 	}

@@ -21,7 +21,8 @@ RETRY_PROGS = \
 	mdb_command_test		\
 	queens				\
 	retry				\
-	tabled_read
+	tabled_read			\
+	tabled_read_decl
 
 NONRETRY_PROGS = \
 	breakpoints			\
@@ -45,6 +46,7 @@ NONRETRY_PROGS = \
 
 MCFLAGS-shallow = --trace shallow
 MCFLAGS-tabled_read = --trace-table-io
+MCFLAGS-tabled_read_decl = --trace-table-io-decl
 # By default, we reclaim heap on failure in non-Boehm-gc grades.
 # The extra stack slots required for this reclamation cause spurious
 # differences from the expected output on the nondet_stack test case.
@@ -254,8 +256,12 @@ retry.out: retry retry.inp
 shallow.out: shallow shallow.inp
 	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1
 
-tabled_read.out: tabled_read tabled_read.inp
+tabled_read.out: tabled_read tabled_read.inp tabled_read.data
 	$(MDB) ./tabled_read < tabled_read.inp > tabled_read.out 2>&1
+
+tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.data
+	$(MDB) ./tabled_read_decl < tabled_read_decl.inp \
+		> tabled_read_decl.out 2>&1
 
 # Note that interactive.out.orig depends on $(interactive.ints) because
 # interactive.inp contains interactive queries that require interactive.ints

@@ -954,10 +954,10 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
 		[IndexGoal, CallGoal | Goals],
 		[ResultVar | Vars], ProcInfo0, ProcInfo) :-
 	MakeResultType(Arg, ResultType),
-	proc_info_create_var_from_type(ProcInfo0, ResultType,
+	proc_info_create_var_from_type(ProcInfo0, ResultType, no,
 		ResultVar, ProcInfo1),
 	MaybeContext = no,
-	make_int_const_construction(Index, IndexGoal,
+	make_int_const_construction(Index, no, IndexGoal,
 		IndexVar, ProcInfo1, ProcInfo2),
 	CallArgs = [TypeClassInfoVar, IndexVar, ResultVar],
 
@@ -2206,7 +2206,8 @@ generate_unsafe_type_cast(ModuleInfo, Context, ToType, Arg, CastArg, Goal,
 		error("generate_unsafe_type_cast: pred table lookup failed")
 	),
 	hlds_pred__initial_proc_id(ProcId),
-	proc_info_create_var_from_type(ProcInfo0, ToType, CastArg, ProcInfo),
+	proc_info_create_var_from_type(ProcInfo0, ToType, no,
+		CastArg, ProcInfo),
 	set__list_to_set([Arg, CastArg], NonLocals),
 	instmap_delta_from_assoc_list([CastArg - ground(shared, none)],
 		InstMapDelta),
@@ -2220,8 +2221,8 @@ generate_unsafe_type_cast(ModuleInfo, Context, ToType, Arg, CastArg, Goal,
 
 unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg, UnwrappedArg,
 		Goal, ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, WrappedType, UnwrappedArg,
-		ProcInfo),
+	proc_info_create_var_from_type(ProcInfo0, WrappedType, no,
+		UnwrappedArg, ProcInfo),
 	ConsId = cons(Constructor, 1),
 	UniModes = [(ground(shared, none) - free) ->
 			(ground(shared, none) - ground(shared, none))],

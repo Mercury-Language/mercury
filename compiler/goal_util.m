@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -211,9 +211,9 @@
 	% for generating calls to known builtin procedures.
 	%
 :- pred goal_util__generate_simple_call(module_name::in, string::in,
-		list(prog_var)::in, determinism::in, maybe(goal_feature)::in,
-		assoc_list(prog_var, inst)::in, module_info::in,
-		term__context::in, hlds_goal::out) is det.
+	list(prog_var)::in, determinism::in, maybe(goal_feature)::in,
+	assoc_list(prog_var, inst)::in, module_info::in, term__context::in,
+	hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1272,15 +1272,14 @@ goal_util__generate_simple_call(ModuleName, PredName, Args, Detism,
 	;
 		instmap_delta_from_assoc_list(InstMap, InstMapDelta)
 	),
-	goal_info_init(NonLocals, InstMapDelta, Detism,
+	goal_info_init(NonLocals, InstMapDelta, Detism, Context,
 		CallGoalInfo0),
-	goal_info_set_context(CallGoalInfo0, Context, CallGoalInfo1),
 	(
 		MaybeFeature = yes(Feature),
-		goal_info_add_feature(CallGoalInfo1, Feature, CallGoalInfo)
+		goal_info_add_feature(CallGoalInfo0, Feature, CallGoalInfo)
 	;
 		MaybeFeature = no,
-		CallGoalInfo = CallGoalInfo1
+		CallGoalInfo = CallGoalInfo0
 	),
 	CallGoal = Call - CallGoalInfo.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -52,7 +52,7 @@
 :- interface.
 
 :- import_module llds, hlds_module, hlds_pred, hlds_goal, prog_data.
-:- import_module (inst), instmap, trace, globals.
+:- import_module (inst), instmap, trace, rtti, globals.
 :- import_module bool, std_util, list, assoc_list, set, map.
 
 	%
@@ -61,6 +61,8 @@
 	%
 :- type proc_layout_info
 	--->	proc_layout_info(
+			rtti_proc_label	:: rtti_proc_label,
+					% The identity of the procedure.
 			entry_label	:: label,
 					% Determines which stack is used.
 			detism		:: determinism,
@@ -104,9 +106,10 @@
 			varset		:: prog_varset,
 					% The names of all the variables.
 			vartypes	:: vartypes,
-			internal_map	:: proc_label_layout_info
+			internal_map	:: proc_label_layout_info,
 					% Info for each internal label,
 					% needed for basic_stack_layouts.
+			table_io_decl	:: maybe(table_io_decl_info)
 		).
 
 	%
@@ -306,6 +309,9 @@
 :- pred continuation_info__find_typeinfos_for_tvars(list(tvar)::in,
 	map(prog_var, set(lval))::in, proc_info::in,
 	map(tvar, set(layout_locn))::out) is det.
+
+:- pred continuation_info__generate_table_decl_io_layout(proc_info::in,
+	assoc_list(prog_var, int)::in, table_io_decl_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -727,6 +733,75 @@ continuation_info__find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo,
 			string__format("%s: %s %s",
 			    [s("continuation_info__find_typeinfos_for_tvars"),
 				s("can't find rval for type_info var"),
+				s(VarString)], ErrStr),
+			error(ErrStr)
+		)
+	)),
+	list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
+	map__from_corresponding_lists(TypeVars, TypeInfoVarLocns,
+		TypeInfoDataMap).
+
+%---------------------------------------------------------------------------%
+
+continuation_info__generate_table_decl_io_layout(ProcInfo, NumberedVars,
+		TableIoDeclLayout) :-
+	proc_info_vartypes(ProcInfo, VarTypes),
+	set__init(TypeVars0),
+	continuation_info__build_table_io_decl_arg_info(VarTypes,
+		NumberedVars, ArgLayouts, TypeVars0, TypeVars),
+	set__to_sorted_list(TypeVars, TypeVarsList),
+	continuation_info__find_typeinfos_for_tvars_table_io_decl(TypeVarsList,
+		NumberedVars, ProcInfo, TypeInfoDataMap),
+	TableIoDeclLayout = table_io_decl_info(ArgLayouts, TypeInfoDataMap).
+
+:- pred continuation_info__build_table_io_decl_arg_info(vartypes::in,
+	assoc_list(prog_var, int)::in, list(table_io_decl_arg_info)::out,
+	set(tvar)::in, set(tvar)::out) is det.
+
+continuation_info__build_table_io_decl_arg_info(_, [], [], TypeVars, TypeVars).
+continuation_info__build_table_io_decl_arg_info(VarTypes,
+		[Var - SlotNum | NumberedVars], [ArgLayout | ArgLayouts],
+		TypeVars0, TypeVars) :-
+	map__lookup(VarTypes, Var, Type),
+	ArgLayout = table_io_decl_arg_info(Var, SlotNum, Type),
+	type_util__real_vars(Type, VarTypeVars),
+	set__insert_list(TypeVars0, VarTypeVars, TypeVars1),
+	continuation_info__build_table_io_decl_arg_info(VarTypes,
+		NumberedVars, ArgLayouts, TypeVars1, TypeVars).
+
+%---------------------------------------------------------------------------%
+
+:- pred continuation_info__find_typeinfos_for_tvars_table_io_decl(
+	list(tvar)::in, assoc_list(prog_var, int)::in, proc_info::in,
+	map(tvar, table_io_decl_locn)::out) is det.
+
+continuation_info__find_typeinfos_for_tvars_table_io_decl(TypeVars,
+		NumberedVars, ProcInfo, TypeInfoDataMap) :-
+	proc_info_varset(ProcInfo, VarSet),
+	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
+	map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns),
+	FindLocn = lambda([TypeInfoLocn::in, Locn::out] is det, (
+		(
+			(
+				TypeInfoLocn = typeclass_info(TypeInfoVar,
+					FieldNum),
+				assoc_list__search(NumberedVars, TypeInfoVar,
+					Slot),
+				LocnPrime = indirect(Slot, FieldNum)
+			;
+				TypeInfoLocn = type_info(TypeInfoVar),
+				assoc_list__search(NumberedVars, TypeInfoVar,
+					Slot),
+				LocnPrime = direct(Slot)
+			)
+		->
+			Locn = LocnPrime
+		;
+			type_info_locn_var(TypeInfoLocn, TypeInfoVar),
+			varset__lookup_name(VarSet, TypeInfoVar, VarString),
+			string__format("%s: %s %s",
+				[s("continuation_info__find_typeinfos_for_tvars_table_io_decl"),
+				s("can't find slot for type_info var"),
 				s(VarString)], ErrStr),
 			error(ErrStr)
 		)

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 University of Melbourne.
+% Copyright (C) 2000-2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -98,6 +98,8 @@ prog_rep__represent_cons_id(tabling_pointer_const(_, _), Rep) :-
 	Rep = "$tabling_pointer_const".
 prog_rep__represent_cons_id(deep_profiling_proc_static(_), Rep) :-
 	Rep = "$deep_profiling_procedure_data".
+prog_rep__represent_cons_id(table_io_decl(_), Rep) :-
+	Rep = "$table_io_decl".
 
 :- pred prog_rep__represent_sym_name(sym_name::in, string::out) is det.
 

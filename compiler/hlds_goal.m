@@ -925,50 +925,51 @@
 :- pred make_const_construction(prog_var, cons_id, hlds_goal).
 :- mode make_const_construction(in, in, out) is det.
 
-:- pred make_int_const_construction(int, hlds_goal, prog_var,
-		map(prog_var, type), map(prog_var, type),
-		prog_varset, prog_varset).
-:- mode make_int_const_construction(in, out, out, in, out, in, out) is det.
+:- pred make_int_const_construction(int, maybe(string), hlds_goal, prog_var,
+	map(prog_var, type), map(prog_var, type), prog_varset, prog_varset).
+:- mode make_int_const_construction(in, in, out, out, in, out, in, out) is det.
 
-:- pred make_string_const_construction(string, hlds_goal, prog_var,
-		map(prog_var, type), map(prog_var, type),
-		prog_varset, prog_varset).
-:- mode make_string_const_construction(in, out, out, in, out, in, out) is det.
+:- pred make_string_const_construction(string, maybe(string),
+	hlds_goal, prog_var, map(prog_var, type), map(prog_var, type),
+	prog_varset, prog_varset).
+:- mode make_string_const_construction(in, in, out, out, in, out, in, out)
+	is det.
 
-:- pred make_float_const_construction(float, hlds_goal, prog_var,
-		map(prog_var, type), map(prog_var, type),
-		prog_varset, prog_varset).
-:- mode make_float_const_construction(in, out, out, in, out, in, out) is det.
+:- pred make_float_const_construction(float, maybe(string),
+	hlds_goal, prog_var, map(prog_var, type), map(prog_var, type),
+	prog_varset, prog_varset).
+:- mode make_float_const_construction(in, in, out, out, in, out, in, out)
+	is det.
 
-:- pred make_char_const_construction(char, hlds_goal, prog_var,
-		map(prog_var, type), map(prog_var, type),
-		prog_varset, prog_varset).
-:- mode make_char_const_construction(in, out, out, in, out, in, out) is det.
+:- pred make_char_const_construction(char, maybe(string), hlds_goal, prog_var,
+	map(prog_var, type), map(prog_var, type), prog_varset, prog_varset).
+:- mode make_char_const_construction(in, in, out, out, in, out, in, out)
+	is det.
 
-:- pred make_const_construction(cons_id, (type), hlds_goal, prog_var,
-		map(prog_var, type), map(prog_var, type),
-		prog_varset, prog_varset).
-:- mode make_const_construction(in, in, out, out, in, out, in, out) is det.
+:- pred make_const_construction(cons_id, (type), maybe(string),
+	hlds_goal, prog_var, map(prog_var, type), map(prog_var, type),
+	prog_varset, prog_varset).
+:- mode make_const_construction(in, in, in, out, out, in, out, in, out) is det.
 
-:- pred make_int_const_construction(int, hlds_goal, prog_var,
+:- pred make_int_const_construction(int, maybe(string), hlds_goal, prog_var,
 		proc_info, proc_info).
-:- mode make_int_const_construction(in, out, out, in, out) is det.
+:- mode make_int_const_construction(in, in, out, out, in, out) is det.
 
-:- pred make_string_const_construction(string, hlds_goal, prog_var,
-		proc_info, proc_info).
-:- mode make_string_const_construction(in, out, out, in, out) is det.
+:- pred make_string_const_construction(string, maybe(string),
+	hlds_goal, prog_var, proc_info, proc_info).
+:- mode make_string_const_construction(in, in, out, out, in, out) is det.
 
-:- pred make_float_const_construction(float, hlds_goal, prog_var,
-		proc_info, proc_info).
-:- mode make_float_const_construction(in, out, out, in, out) is det.
+:- pred make_float_const_construction(float, maybe(string),
+	hlds_goal, prog_var, proc_info, proc_info).
+:- mode make_float_const_construction(in, in, out, out, in, out) is det.
 
-:- pred make_char_const_construction(char, hlds_goal, prog_var,
-		proc_info, proc_info).
-:- mode make_char_const_construction(in, out, out, in, out) is det.
+:- pred make_char_const_construction(char, maybe(string), hlds_goal, prog_var,
+	proc_info, proc_info).
+:- mode make_char_const_construction(in, in, out, out, in, out) is det.
 
-:- pred make_const_construction(cons_id, (type), hlds_goal, prog_var,
-		proc_info, proc_info).
-:- mode make_const_construction(in, in, out, out, in, out) is det.
+:- pred make_const_construction(cons_id, (type), maybe(string), hlds_goal,
+	prog_var, proc_info, proc_info).
+:- mode make_const_construction(in, in, in, out, out, in, out) is det.
 
 	% Given the variable info field from a pragma foreign_code, get all the
 	% variable names.
@@ -1729,53 +1730,62 @@ create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
 
 %-----------------------------------------------------------------------------%
 
-make_int_const_construction(Int, Goal, Var, ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, int_type, Var, ProcInfo),
+make_int_const_construction(Int, MaybeName, Goal, Var, ProcInfo0, ProcInfo) :-
+	proc_info_create_var_from_type(ProcInfo0, int_type, MaybeName,
+		Var, ProcInfo),
 	make_int_const_construction(Var, Int, Goal).
 
-make_string_const_construction(String, Goal, Var, ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, string_type, Var, ProcInfo),
+make_string_const_construction(String, MaybeName, Goal, Var,
+		ProcInfo0, ProcInfo) :-
+	proc_info_create_var_from_type(ProcInfo0, string_type, MaybeName,
+		Var, ProcInfo),
 	make_string_const_construction(Var, String, Goal).
 
-make_float_const_construction(Float, Goal, Var, ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, float_type, Var, ProcInfo),
+make_float_const_construction(Float, MaybeName, Goal, Var,
+		ProcInfo0, ProcInfo) :-
+	proc_info_create_var_from_type(ProcInfo0, float_type, MaybeName,
+		Var, ProcInfo),
 	make_float_const_construction(Var, Float, Goal).
 
-make_char_const_construction(Char, Goal, Var, ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, char_type, Var, ProcInfo),
+make_char_const_construction(Char, MaybeName, Goal, Var,
+		ProcInfo0, ProcInfo) :-
+	proc_info_create_var_from_type(ProcInfo0, char_type, MaybeName,
+		Var, ProcInfo),
 	make_char_const_construction(Var, Char, Goal).
 
-make_const_construction(ConsId, Type, Goal, Var, ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, Type, Var, ProcInfo),
+make_const_construction(ConsId, Type, MaybeName, Goal, Var,
+		ProcInfo0, ProcInfo) :-
+	proc_info_create_var_from_type(ProcInfo0, Type, MaybeName,
+		Var, ProcInfo),
 	make_const_construction(Var, ConsId, Goal).
 
-make_int_const_construction(Int, Goal, Var, VarTypes0, VarTypes,
+make_int_const_construction(Int, MaybeName, Goal, Var, VarTypes0, VarTypes,
 		VarSet0, VarSet) :-
-	varset__new_var(VarSet0, Var, VarSet),
+	varset__new_maybe_named_var(VarSet0, MaybeName, Var, VarSet),
 	map__det_insert(VarTypes0, Var, int_type, VarTypes),
 	make_int_const_construction(Var, Int, Goal).
 
-make_string_const_construction(String, Goal, Var, VarTypes0, VarTypes,
-		VarSet0, VarSet) :-
-	varset__new_var(VarSet0, Var, VarSet),
+make_string_const_construction(String, MaybeName, Goal, Var,
+		VarTypes0, VarTypes, VarSet0, VarSet) :-
+	varset__new_maybe_named_var(VarSet0, MaybeName, Var, VarSet),
 	map__det_insert(VarTypes0, Var, string_type, VarTypes),
 	make_string_const_construction(Var, String, Goal).
 
-make_float_const_construction(Float, Goal, Var, VarTypes0, VarTypes,
-		VarSet0, VarSet) :-
-	varset__new_var(VarSet0, Var, VarSet),
+make_float_const_construction(Float, MaybeName, Goal, Var,
+		VarTypes0, VarTypes, VarSet0, VarSet) :-
+	varset__new_maybe_named_var(VarSet0, MaybeName, Var, VarSet),
 	map__det_insert(VarTypes0, Var, float_type, VarTypes),
 	make_float_const_construction(Var, Float, Goal).
 
-make_char_const_construction(Char, Goal, Var, VarTypes0, VarTypes,
-		VarSet0, VarSet) :-
-	varset__new_var(VarSet0, Var, VarSet),
+make_char_const_construction(Char, MaybeName, Goal, Var,
+		VarTypes0, VarTypes, VarSet0, VarSet) :-
+	varset__new_maybe_named_var(VarSet0, MaybeName, Var, VarSet),
 	map__det_insert(VarTypes0, Var, char_type, VarTypes),
 	make_char_const_construction(Var, Char, Goal).
 
-make_const_construction(ConsId, Type, Goal, Var, VarTypes0, VarTypes,
-		VarSet0, VarSet) :-
-	varset__new_var(VarSet0, Var, VarSet),
+make_const_construction(ConsId, Type, MaybeName, Goal, Var,
+		VarTypes0, VarTypes, VarSet0, VarSet) :-
+	varset__new_maybe_named_var(VarSet0, MaybeName, Var, VarSet),
 	map__det_insert(VarTypes0, Var, Type, VarTypes),
 	make_const_construction(Var, ConsId, Goal).
 

@@ -110,11 +110,23 @@ extern	const char	*MR_trace_headvar_num(int n, int *num);
 /*
 ** Print the call of the current level as a goal.
 **
-** The names are printed to the given file if the file pointer is non-NULL.
+** The goal is printed to the given file if the file pointer is non-NULL.
 ** The goal is printed by giving it to the specified browser.
 */
 
 extern	const char	*MR_trace_browse_one_goal(FILE *out,
+				MR_GoalBrowser browser,
+				MR_Browse_Caller_Type caller,
+				MR_Browse_Format format);
+
+/*
+** Print I/O action <action_number> as a goal.
+**
+** The goal is printed to the given file if the file pointer is non-NULL.
+** The goal is printed by giving it to the specified browser.
+*/
+
+extern	const char	*MR_trace_browse_action(FILE *out, int action_number,
 				MR_GoalBrowser browser,
 				MR_Browse_Caller_Type caller,
 				MR_Browse_Format format);

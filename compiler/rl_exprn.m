@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 University of Melbourne.
+% Copyright (C) 1998-2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -503,6 +503,9 @@ rl_exprn__set_term_arg_cons_id_code(tabling_pointer_const(_, _),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
 rl_exprn__set_term_arg_cons_id_code(deep_profiling_proc_static(_),
+		_, _, _, _, _, _) -->
+	{ error("rl_exprn__set_term_arg_cons_id_code") }.
+rl_exprn__set_term_arg_cons_id_code(table_io_decl(_),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
 
@@ -1154,6 +1157,9 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
 	; 
 		{ ConsId = deep_profiling_proc_static(_) },
 		{ error("rl_exprn__unify: unsupported cons_id - deep_profiling_proc_static") }
+	; 
+		{ ConsId = table_io_decl(_) },
+		{ error("rl_exprn__unify: unsupported cons_id - table_io_decl") }
 	).
 		
 rl_exprn__unify(deconstruct(Var, ConsId, Args, UniModes, CanFail, _CanCGC),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -694,6 +694,7 @@ code_util__cons_id_to_tag(tabling_pointer_const(PredId,ProcId), _, _,
 		tabling_pointer_constant(PredId,ProcId)).
 code_util__cons_id_to_tag(deep_profiling_proc_static(PPId), _, _,
 		deep_profiling_proc_static_tag(PPId)).
+code_util__cons_id_to_tag(table_io_decl(PPId), _, _, table_io_decl_tag(PPId)).
 code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	(
 			% handle the `character' type specially

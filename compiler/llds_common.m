@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,20 +191,29 @@ llds_common__process_layout_data(LayoutData0, LayoutData, Info, Info) :-
 llds_common__process_layout_data(LayoutData0, LayoutData, Info, Info) :-
 	LayoutData0 = proc_static_data(_, _, _, _, _),
 	LayoutData = LayoutData0.
+llds_common__process_layout_data(LayoutData0, LayoutData, Info0, Info) :-
+	LayoutData0 = table_io_decl_data(RttiProcLabel, Kind, NumPTIs,
+		PTIVector0, TVarLocnMap0),
+	llds_common__process_rval(PTIVector0, PTIVector, Info0, Info1),
+	llds_common__process_rval(TVarLocnMap0, TVarLocnMap, Info1, Info),
+	LayoutData = table_io_decl_data(RttiProcLabel, Kind, NumPTIs,
+		PTIVector, TVarLocnMap).
 
 :- pred llds_common__process_exec_trace(proc_layout_exec_trace::in,
 	proc_layout_exec_trace::out, common_info::in, common_info::out) is det.
 
 llds_common__process_exec_trace(ExecTrace0, ExecTrace, Info0, Info) :-
 	ExecTrace0 = proc_layout_exec_trace(CallLabel, MaybeProcBody0,
-		VarNames, MaxVarNum, MaxReg, MaybeFromFullSlot, MaybeIoSeqSlot,
-		MaybeTrailSlot, MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
+		MaybeTableIoDecl, VarNames, MaxVarNum, MaxReg,
+		MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
+		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
 		MaybeDeclDebugSlot),
 	llds_common__process_maybe_rval(MaybeProcBody0, MaybeProcBody,
 		Info0, Info),
 	ExecTrace = proc_layout_exec_trace(CallLabel, MaybeProcBody,
-		VarNames, MaxVarNum, MaxReg, MaybeFromFullSlot, MaybeIoSeqSlot,
-		MaybeTrailSlot, MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
+		MaybeTableIoDecl, VarNames, MaxVarNum, MaxReg,
+		MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
+		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
 		MaybeDeclDebugSlot).
 
 :- pred llds_common__process_procs(list(c_procedure)::in,

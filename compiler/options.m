@@ -116,6 +116,7 @@
 		;	trace
 		;	trace_optimized
 		;	trace_table_io
+		;	trace_table_io_decl
 		;	trace_table_io_states
 		;	delay_death
 		;	suppress_trace
@@ -614,6 +615,7 @@ option_defaults_2(aux_output_option, [
 	trace			-	string("default"),
 	trace_optimized		-	bool(no),
 	trace_table_io		-	bool(no),
+	trace_table_io_decl	-	bool(no),
 	trace_table_io_states	-	bool(no),
 	suppress_trace		-	string(""),
 	delay_death		-	bool(yes),
@@ -1099,6 +1101,7 @@ long_option("trace",			trace).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
 long_option("trace-table-io",		trace_table_io).
+long_option("trace-table-io-decl",	trace_table_io_decl).
 long_option("trace-table-io-states",	trace_table_io_states).
 long_option("suppress-trace",		suppress_trace).
 long_option("delay-death",		delay_death).
@@ -2075,6 +2078,9 @@ options_help_aux_output -->
 %		"--trace-table-io",
 %		"\tEnable the tabling of I/O actions, to allow the debugger",
 %		"\tto execute retry commands across I/O actions.",
+%		"--trace-table-io-decl",
+%		"\tSet up I/O tabling so that the declarative debugger can",
+%		"\tmake use of it.",
 %		"--trace-table-io-states",
 %		"\tWhen tabling I/O actions, table the io__state arguments",
 %		"\ttogether with the others. This should be required iff",
