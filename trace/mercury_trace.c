@@ -170,7 +170,7 @@ MR_trace_real(const MR_Label_Layout *layout)
 		case MR_CMD_COLLECT:
 		  {
 		        MR_Event_Info	event_info;
-			Word		*saved_regs = event_info.MR_saved_regs;
+			MR_Word		*saved_regs = event_info.MR_saved_regs;
 			int		max_r_num;
 			const char	*path;
 			bool    	stop_collecting = FALSE;
