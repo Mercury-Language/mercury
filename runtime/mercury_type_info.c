@@ -53,6 +53,9 @@ Declare_entry(mercury__builtin_compare_pred_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_pred_2_0);
 #endif
+#ifdef MR_USE_INIT
+Declare_entry(mercury__builtin_init_pred_1_0);
+#endif
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data___type_ctor_info_func_0 = {
 	((Integer) 0),
@@ -61,6 +64,9 @@ mercury_data___type_ctor_info_func_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_pred_2_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_init_pred_1_0)),
 #endif
 	MR_TYPECTOR_REP_PRED,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_pred_0,
@@ -80,6 +86,9 @@ Declare_entry(mercury__builtin_compare_pred_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_pred_2_0);
 #endif
+#ifdef MR_USE_INIT
+Declare_entry(mercury__builtin_init_pred_1_0);
+#endif
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data___type_ctor_info_pred_0 = {
 	((Integer) 0),
@@ -88,6 +97,9 @@ mercury_data___type_ctor_info_pred_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_pred_2_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_init_pred_1_0)),
 #endif
 	MR_TYPECTOR_REP_PRED,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_pred_0,
@@ -101,6 +113,9 @@ Define_extern_entry(mercury__builtin_index_pred_2_0);
 Define_extern_entry(mercury__builtin_compare_pred_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury__builtin_solve_equal_pred_2_0);
+#endif
+#ifdef MR_USE_INIT
+Define_extern_entry(mercury__builtin_init_pred_1_0);
 #endif
 
 BEGIN_MODULE(mercury__builtin_unify_pred_module)
@@ -143,6 +158,18 @@ BEGIN_CODE
 Define_entry(mercury__builtin_solve_equal_pred_2_0);
 	incr_sp_push_msg(2, "private_builtin:builtin_solve_equal_pred");
 	fatal_error("attempted solve equal of higher-order terms");
+END_MODULE
+#endif
+
+#ifdef MR_USE_INIT
+BEGIN_MODULE(mercury__builtin_init_pred_module)
+	init_entry_ai(mercury__builtin_init_pred_1_0);
+BEGIN_CODE
+
+/* code for predicate 'builtin_init_pred'/1 in mode 0 */
+Define_entry(mercury__builtin_init_pred_1_0);
+	incr_sp_push_msg(2, "private_builtin:builtin_init_pred");
+	fatal_error("attempted init of higher-order terms");
 END_MODULE
 #endif
 

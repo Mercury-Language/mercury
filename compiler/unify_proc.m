@@ -865,6 +865,10 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 			unify_proc__generate_solve_equal_clauses(TypeBody,
 				H1, H2, Context, ModuleInfo, Type, Clauses,
 				VarTypeInfo1, VarTypeInfo)
+		; SpecialPredId = init, Args = [X] ->
+			unify_proc__generate_init_clauses(TypeBody,
+				X, Context, ModuleInfo, Type, Clauses,
+				VarTypeInfo1, VarTypeInfo)
 		;
 			error("unknown special pred")
 		)
@@ -1066,6 +1070,56 @@ unify_proc__generate_solve_equal_clauses(_TypeBody, H1, H2, Context,
 					Context, Clauses)
 		)
 */
+	).
+
+:- pred unify_proc__generate_init_clauses(hlds_type_body, prog_var,
+		prog_context, module_info, type, list(clause),
+		unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_init_clauses(in, in, in, in, in, out,
+		in, out) is det.
+
+unify_proc__generate_init_clauses(_TypeBody, X, Context,
+		ModuleInfo, Type, Clauses) -->
+	% Check to see whether a predicate for this has been provided
+	{ module_info_get_predicate_table(ModuleInfo, PredTable) },
+	( { type_util__type_to_type_id(Type, TypeSymName - TypeArity0, _) } ->
+		( { TypeSymName = unqualified(_) },
+			{ error("unify_proc__generate_init_clauses: Cannot generate init clauses for unqualified type") }
+		; { TypeSymName = qualified(ModuleName, TypeName0) },
+			{ llds_out__name_mangle(TypeName0, TypeName) }
+		),
+		{ TypeArity = TypeArity0 }
+	;
+		{ error("unify_proc__generate_init_clauses: type_to_type_id failed") }
+	),
+	% Construct predicate name
+	{ string__int_to_string(TypeArity, TypeArityString) },
+	{ string__append_list( [TypeName, "_", TypeArityString,
+			"___Init__"], PredName) },
+
+	{ ArgVars = [X] },
+	( { predicate_table_search_pred_m_n_a(PredTable, ModuleName, PredName,
+			1, [_|_]) } ->
+		%
+		% Just generate a call to the provided predicate.
+		% (The pred_id and proc_id will be figured
+		% out by type checking and mode analysis.)
+		%
+		{ invalid_pred_id(PredId) },
+		{ invalid_proc_id(ModeId) },
+		{ Call = call(PredId, ModeId, ArgVars, not_builtin, no,
+				unqualified(PredName)) },
+		{ goal_info_init(GoalInfo0) },
+		{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
+		{ Goal = Call - GoalInfo },
+		unify_proc__quantify_clause_body(ArgVars, Goal, Context,
+				Clauses)
+	;
+		unify_proc__build_call(
+			"builtin_init_non_solver_type",
+			ArgVars, Context, Goal),
+		unify_proc__quantify_clause_body(ArgVars,
+			Goal, Context, Clauses)
 	).
 
 

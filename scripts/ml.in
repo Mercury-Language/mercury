@@ -99,6 +99,7 @@ Grade options:
 	--use-trail
 	--reserve-tag
 	--use-solve-equal
+	--use-init
 	--pic-reg
 		See the documentation in the \"Invocation\" section
 		of the Mercury User's Guide."
@@ -401,6 +402,10 @@ case $reserve_tag in
 esac
 case $use_solve_equal in
 	true)		GRADE="$GRADE.se" ;;
+	false)		;;
+esac
+case $use_init in
+	true)		GRADE="$GRADE.init" ;;
 	false)		;;
 esac
 case $stack_trace,$require_tracing in

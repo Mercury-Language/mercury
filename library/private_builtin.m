@@ -44,30 +44,35 @@
 :- pred builtin_index_int(int::in, int::out) is det.
 :- pred builtin_compare_int(comparison_result::uo, int::in, int::in) is det.
 :- pred builtin_solve_equal_int(int::in, int::in) is semidet.
+:- pred builtin_init_int(int::out(any)) is det.
 
 :- pred builtin_unify_character(character::in, character::in) is semidet.
 :- pred builtin_index_character(character::in, int::out) is det.
 :- pred builtin_compare_character(comparison_result::uo, character::in,
 	character::in) is det.
 :- pred builtin_solve_equal_character(character::in, character::in) is semidet.
+:- pred builtin_init_character(character::out(any)) is det.
 
 :- pred builtin_unify_string(string::in, string::in) is semidet.
 :- pred builtin_index_string(string::in, int::out) is det.
 :- pred builtin_compare_string(comparison_result::uo, string::in, string::in)
 	is det.
 :- pred builtin_solve_equal_string(string::in, string::in) is semidet.
+:- pred builtin_init_string(string::out(any)) is det.
 
 :- pred builtin_unify_float(float::in, float::in) is semidet.
 :- pred builtin_index_float(float::in, int::out) is det.
 :- pred builtin_compare_float(comparison_result::uo, float::in, float::in)
 	is det.
 :- pred builtin_solve_equal_float(float::in, float::in) is semidet.
+:- pred builtin_init_float(float::out(any)) is det.
 
 :- pred builtin_unify_pred((pred)::in, (pred)::in) is semidet.
 :- pred builtin_index_pred((pred)::in, int::out) is det.
 :- pred builtin_compare_pred(comparison_result::uo, (pred)::in, (pred)::in)
 	is det.
 :- pred builtin_solve_equal_pred((pred)::in, (pred)::in) is semidet.
+:- pred builtin_init_pred((pred)::out(any)) is det.
 
 	% The following two preds are used for index/1 or compare/3
 	% on non-canonical types (types for which there is a
@@ -83,6 +88,10 @@
 % (i.e. types for which no solve predicate has been specified).
 :- pred builtin_solve_equal_non_solver_type(T::(any->any), T::(any->any))
 		is semidet.
+
+% The following pred is used for calls to init/1 for non-solver types
+% (i.e. types for which no init predicate has been specified).
+:- pred builtin_init_non_solver_type(T::(free->any)) is det.
 
 	% The builtin < operator on ints, used in the code generated
 	% for compare/3 preds.
@@ -139,6 +148,9 @@ builtin_compare_int(R, X, Y) :-
 
 builtin_solve_equal_int(X, X).
 
+builtin_init_int(X) :-
+	builtin_init_non_solver_type(X).
+
 builtin_unify_character(C, C).
 
 builtin_index_character(C, N) :-
@@ -157,6 +169,9 @@ builtin_compare_character(R, X, Y) :-
 
 builtin_solve_equal_character(C, C).
 
+builtin_init_character(C) :-
+	builtin_init_non_solver_type(C).
+
 builtin_unify_string(S, S).
 
 builtin_index_string(_, -1).
@@ -173,6 +188,9 @@ builtin_compare_string(R, S1, S2) :-
 
 builtin_solve_equal_string(S, S).
 
+builtin_init_string(S) :-
+	builtin_init_non_solver_type(S).
+
 builtin_unify_float(F, F).
 
 builtin_index_float(_, -1).
@@ -188,6 +206,9 @@ builtin_compare_float(R, F1, F2) :-
 
 builtin_solve_equal_float(F, F).
 
+builtin_init_float(F) :-
+	builtin_init_non_solver_type(F).
+
 :- pred builtin_strcmp(int, string, string).
 :- mode builtin_strcmp(out, in, in) is det.
 
@@ -199,6 +220,7 @@ builtin_solve_equal_float(F, F).
 :- external(builtin_index_pred/2).
 :- external(builtin_compare_pred/3).
 :- external(builtin_solve_equal_pred/2).
+:- external(builtin_init_pred/1).
 
 builtin_index_non_canonical_type(_, -1).
 
@@ -232,6 +254,22 @@ builtin_solve_equal_non_solver_type(X, _Y) :-
 	;
 		% the following is never executed
 		semidet_succeed
+	).
+
+builtin_init_non_solver_type(X) :-
+	% suppress determinism warning
+	( semidet_succeed ->
+		string__append_list([
+			"call to init/1 for non-solver type `",
+			type_name(type_of(X)),
+			"'"],
+			Message),
+		error(Message)
+	;
+		% the following is never executed
+		% We use a recursive call to init/1 to get the mode of X
+		% right.
+		init(X)
 	).
 
 	% XXX These could be implemented more efficiently using
@@ -329,6 +367,9 @@ Define_extern_entry(mercury____Compare___private_builtin__type_info_1_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury____SolveEqual___private_builtin__type_info_1_0);
 #endif
+#ifdef MR_USE_INIT
+Define_extern_entry(mercury____Init___private_builtin__type_info_1_0);
+#endif
 
 extern const struct
 	mercury_data_private_builtin__type_ctor_layout_type_info_1_struct
@@ -356,6 +397,10 @@ mercury_data_private_builtin__type_ctor_info_type_ctor_info_1 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____SolveEqual___private_builtin__type_info_1_0)),
 #endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Init___private_builtin__type_info_1_0)),
+#endif
 	MR_TYPECTOR_REP_TYPEINFO,
 	(MR_TypeCtorFunctors) &
 	    mercury_data_private_builtin__type_ctor_functors_type_info_1,
@@ -377,6 +422,10 @@ mercury_data_private_builtin__type_ctor_info_type_info_1 = {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____SolveEqual___private_builtin__type_info_1_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Init___private_builtin__type_info_1_0)),
 #endif
 	MR_TYPECTOR_REP_TYPEINFO,
 	(MR_TypeCtorFunctors) &
@@ -407,6 +456,9 @@ Define_extern_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury____SolveEqual___private_builtin__typeclass_info_1_0);
 #endif
+#ifdef MR_USE_INIT
+Define_extern_entry(mercury____Init___private_builtin__typeclass_info_1_0);
+#endif
 
 extern const struct
 	mercury_data_private_builtin__type_ctor_layout_typeclass_info_1_struct 
@@ -427,6 +479,10 @@ mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1 = {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____SolveEqual___private_builtin__typeclass_info_1_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Init___private_builtin__typeclass_info_1_0)),
 #endif
 	MR_TYPECTOR_REP_TYPECLASSINFO,
 	(MR_TypeCtorFunctors) &
@@ -449,6 +505,10 @@ mercury_data_private_builtin__type_ctor_info_typeclass_info_1 = {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____SolveEqual___private_builtin__typeclass_info_1_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Init___private_builtin__typeclass_info_1_0)),
 #endif
 	MR_TYPECTOR_REP_TYPECLASSINFO,
 	(MR_TypeCtorFunctors) &
@@ -482,11 +542,17 @@ BEGIN_MODULE(type_info_module)
 #ifdef MR_USE_SOLVE_EQUAL
 	init_entry(mercury____SolveEqual___private_builtin__type_info_1_0);
 #endif
+#ifdef MR_USE_INIT
+	init_entry(mercury____Init___private_builtin__type_info_1_0);
+#endif
 	init_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 	init_entry(mercury____Index___private_builtin__typeclass_info_1_0);
 	init_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 #ifdef MR_USE_SOLVE_EQUAL
 	init_entry(mercury____SolveEqual___private_builtin__typeclass_info_1_0);
+#endif
+#ifdef MR_USE_INIT
+	init_entry(mercury____Init___private_builtin__typeclass_info_1_0);
 #endif
 BEGIN_CODE
 Define_entry(mercury____Unify___private_builtin__type_info_1_0);
@@ -546,6 +612,13 @@ Define_entry(mercury____SolveEqual___private_builtin__type_info_1_0);
 }
 #endif
 
+#ifdef MR_USE_INIT
+Define_entry(mercury____Init___private_builtin__type_info_1_0);
+{
+	fatal_error(""Cannot init a private_builtin:type_info/1"");
+}
+#endif
+
 Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 {
 	fatal_error(""attempt to unify typeclass_info"");
@@ -563,6 +636,13 @@ Define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 Define_entry(mercury____SolveEqual___private_builtin__typeclass_info_1_0);
 {
 	fatal_error(""attempt to solve_equal typeclass_info"");
+}
+#endif
+
+#ifdef MR_USE_INIT
+Define_entry(mercury____Init___private_builtin__typeclass_info_1_0);
+{
+	fatal_error(""attempt to init typeclass_info"");
 }
 #endif
 END_MODULE

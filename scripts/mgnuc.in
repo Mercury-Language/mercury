@@ -35,6 +35,7 @@ Options:
 	--use-trail
 	--reserve-tag
 	--use-solve-equal
+	--use-init
 	--pic-reg
 	--inline-alloc
 	--split-c-files
@@ -278,6 +279,11 @@ case $use_solve_equal in
 	false)		SOLVE_EQUAL_OPTS="" ;;
 esac
 
+case $use_init in
+	true)		INIT_OPTS="-DMR_USE_INIT" ;;
+	false)		INIT_OPTS="" ;;
+esac
+
 case $use_minimal_model in
 	true)		MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL" ;;
 	false)		MINIMAL_MODEL_OPTS="" ;;
@@ -453,7 +459,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
 		$TRACE_OPTS $STACK_TRACE_OPTS $LLDEBUG_OPTS $C_DEBUG_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $RESERVE_TAG_OPTS \
-		$SOLVE_EQUAL_OPTS $MINIMAL_MODEL_OPTS $SPLIT_OPTS \
+		$SOLVE_EQUAL_OPTS $INIT_OPTS $MINIMAL_MODEL_OPTS $SPLIT_OPTS \
 		$THREAD_OPTS $PICREG_OPTS $ARCH_OPTS $ARG_OPTS"
 
 case $verbose in true)

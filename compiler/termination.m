@@ -520,9 +520,13 @@ special_pred_id_to_termination(index, HeadVars, ArgSize, Termination) :-
 	term_util__make_bool_list(HeadVars, [no, no], OutList),
 	ArgSize = finite(0, OutList),
 	Termination = cannot_loop.
-		% XXX Don't really know - just guessing here (WH)
+		% XXX Don't really know - just guessing here (warwick)
 special_pred_id_to_termination(solve_equal, HeadVars, ArgSize, Termination) :-
 	term_util__make_bool_list(HeadVars, [yes, yes], OutList),
+	ArgSize = finite(0, OutList),
+	Termination = cannot_loop.
+special_pred_id_to_termination(init, HeadVars, ArgSize, Termination) :-
+	term_util__make_bool_list(HeadVars, [no], OutList),
 	ArgSize = finite(0, OutList),
 	Termination = cannot_loop.
 

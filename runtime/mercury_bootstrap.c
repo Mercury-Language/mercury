@@ -45,6 +45,9 @@ Define_extern_entry(mercury____Compare___std_util__type_info_0_0_bootstrap);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury____SolveEqual___std_util__type_info_0_0_bootstrap);
 #endif
+#ifdef MR_USE_INIT
+Define_extern_entry(mercury____Init___std_util__type_info_0_0_bootstrap);
+#endif
 
 
 
@@ -56,6 +59,9 @@ mercury_data_std_util__type_ctor_info_type_info_0 = {
 	ENTRY(mercury____Compare___std_util__type_info_0_0_bootstrap),
 #ifdef MR_USE_SOLVE_EQUAL
 	ENTRY(mercury____SolveEqual___std_util__type_info_0_0_bootstrap),
+#endif
+#ifdef MR_USE_INIT
+	ENTRY(mercury____Init___std_util__type_info_0_0_bootstrap),
 #endif
 	(Integer) 15,
 	(Word *) &mercury_data_std_util__type_ctor_functors_type_info_0_bootstrap,
@@ -71,6 +77,9 @@ BEGIN_MODULE(unify_univ_module_bootstrap)
 	init_entry(mercury____Compare___std_util__type_info_0_0_bootstrap);
 #ifdef MR_USE_SOLVE_EQUAL
 	init_entry(mercury____SolveEqual___std_util__type_info_0_0_bootstrap);
+#endif
+#ifdef MR_USE_INIT
+	init_entry(mercury____Init___std_util__type_info_0_0_bootstrap);
 #endif
 BEGIN_CODE
 Define_entry(mercury____Unify___std_util__type_info_0_0_bootstrap);
@@ -126,6 +135,14 @@ Define_entry(mercury____SolveEqual___std_util__type_info_0_0_bootstrap);
 	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
 	r1 = (comp == COMPARE_EQUAL);
+	proceed();
+}
+#endif
+
+#ifdef MR_USE_INIT
+Define_entry(mercury____Init___std_util__type_info_0_0_bootstrap);
+{
+	fatal_error("Cannnot init a std_util:type_info");
 	proceed();
 }
 #endif

@@ -165,8 +165,13 @@
 :- pred unify(T::in, T::in) is semidet.
 
 	% solve_equal(X, Y) is true iff X = Y.
-	% Should only be used with --use-solve-equal compiler option
+	% Should only be used with the --use-solve-equal compiler option.
 :- pred solve_equal(T::in(any), T::in(any)) is semidet.
+
+	% init(X) initialises a "solver" variable X.
+	% Aborts if X is not initialisable.  XXX is this the right thing to do?
+	% Should only be used with the --use-init compiler option.
+:- pred init(T::out(any)) is det.
 
 :- type comparison_result ---> (=) ; (<) ; (>).
 
@@ -239,6 +244,7 @@ promise_only_solution(Pred) = OutVal :-
 :- external(index/2).
 :- external(compare/3).
 :- external(solve_equal/2).
+:- external(init/1).
 
 %-----------------------------------------------------------------------------%
 
@@ -478,6 +484,9 @@ Declare_entry(mercury__builtin_compare_int_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_int_2_0);
 #endif
+#ifdef MR_USE_INIT
+Declare_entry(mercury__builtin_init_int_1_0);
+#endif
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data___type_ctor_info_int_0 = {
 	((Integer) 0),
@@ -486,6 +495,9 @@ mercury_data___type_ctor_info_int_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_int_3_0)),
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_int_2_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_init_int_1_0)),
 #endif
 	MR_TYPECTOR_REP_INT,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_int_0,
@@ -502,6 +514,9 @@ Declare_entry(mercury__builtin_compare_character_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_character_2_0);
 #endif
+#ifdef MR_USE_INIT
+Declare_entry(mercury__builtin_init_character_1_0);
+#endif
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data___type_ctor_info_character_0 = {
 	((Integer) 0),
@@ -510,6 +525,9 @@ mercury_data___type_ctor_info_character_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_character_3_0)),
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_character_2_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_init_character_1_0)),
 #endif
 	MR_TYPECTOR_REP_CHAR,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_character_0,
@@ -526,6 +544,9 @@ Declare_entry(mercury__builtin_compare_string_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_string_2_0);
 #endif
+#ifdef MR_USE_INIT
+Declare_entry(mercury__builtin_init_string_1_0);
+#endif
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data___type_ctor_info_string_0 = {
 	((Integer) 0),
@@ -534,6 +555,9 @@ mercury_data___type_ctor_info_string_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_string_3_0)),
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_string_2_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_init_string_1_0)),
 #endif
 	MR_TYPECTOR_REP_STRING,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_string_0,
@@ -550,6 +574,9 @@ Declare_entry(mercury__builtin_compare_float_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_float_2_0);
 #endif
+#ifdef MR_USE_INIT
+Declare_entry(mercury__builtin_init_float_1_0);
+#endif
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data___type_ctor_info_float_0 = {
 	((Integer) 0),
@@ -558,6 +585,9 @@ mercury_data___type_ctor_info_float_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_float_3_0)),
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_float_2_0)),
+#endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_init_float_1_0)),
 #endif
 	MR_TYPECTOR_REP_FLOAT,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_float_0,
@@ -576,6 +606,9 @@ mercury_data___type_ctor_info_void_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#endif
+#ifdef MR_USE_INIT
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
 	MR_TYPECTOR_REP_VOID,
@@ -599,6 +632,9 @@ mercury_data___type_ctor_info_succip_0 = {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#endif
 	(const Word *) & mercury_data___type_ctor_layout_succip_0,
 	(const Word *) & mercury_data___type_ctor_functors_succip_0,
 	(const Word *) & mercury_data___type_ctor_layout_succip_0,
@@ -616,6 +652,9 @@ mercury_data___type_ctor_info_hp_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#endif
+#ifdef MR_USE_INIT
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
 	(const Word *) & mercury_data___type_ctor_layout_hp_0,
@@ -637,6 +676,9 @@ mercury_data___type_ctor_info_curfr_0 = {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#endif
 	(const Word *) & mercury_data___type_ctor_layout_curfr_0,
 	(const Word *) & mercury_data___type_ctor_functors_curfr_0,
 	(const Word *) & mercury_data___type_ctor_layout_curfr_0,
@@ -654,6 +696,9 @@ mercury_data___type_ctor_info_maxfr_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#endif
+#ifdef MR_USE_INIT
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
 	(const Word *) & mercury_data___type_ctor_layout_maxfr_0,
@@ -675,6 +720,9 @@ mercury_data___type_ctor_info_redoip_0 = {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
+#ifdef MR_USE_INIT
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#endif
 	(const Word *) & mercury_data___type_ctor_layout_redoip_0,
 	(const Word *) & mercury_data___type_ctor_functors_redoip_0,
 	(const Word *) & mercury_data___type_ctor_layout_redoip_0,
@@ -692,6 +740,9 @@ mercury_data___type_ctor_info_redofr_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#endif
+#ifdef MR_USE_INIT
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
 	(const Word *) & mercury_data___type_ctor_layout_redofr_0,
@@ -853,6 +904,9 @@ Define_extern_entry(mercury____Compare___builtin__c_pointer_0_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury____SolveEqual___builtin__c_pointer_0_0);
 #endif
+#ifdef MR_USE_INIT
+Define_extern_entry(mercury____Init___builtin__c_pointer_0_0);
+#endif
 
 
 const struct MR_TypeCtorInfo_struct
@@ -863,6 +917,9 @@ mercury_data_builtin__type_ctor_info_c_pointer_0 = {
 	ENTRY(mercury____Compare___builtin__c_pointer_0_0),
 #ifdef MR_USE_SOLVE_EQUAL
 	ENTRY(mercury____SolveEqual___builtin__c_pointer_0_0),
+#endif
+#ifdef MR_USE_INIT
+	ENTRY(mercury____Init___builtin__c_pointer_0_0),
 #endif
 	MR_TYPECTOR_REP_C_POINTER,
 	(MR_TypeCtorFunctors) &mercury_data_builtin__type_ctor_functors_c_pointer_0,
@@ -878,6 +935,9 @@ BEGIN_MODULE(unify_c_pointer_module)
 	init_entry(mercury____Compare___builtin__c_pointer_0_0);
 #ifdef MR_USE_SOLVE_EQUAL
 	init_entry(mercury____SolveEqual___builtin__c_pointer_0_0);
+#endif
+#ifdef MR_USE_INIT
+	init_entry(mercury____Init___builtin__c_pointer_0_0);
 #endif
 
 BEGIN_CODE
@@ -910,6 +970,11 @@ Define_entry(mercury____SolveEqual___builtin__c_pointer_0_0);
 	*/
 	tailcall(ENTRY(mercury____Unify___builtin__c_pointer_0_0),
 		ENTRY(mercury____SolveEqual___builtin__c_pointer_0_0));
+#endif
+
+#ifdef MR_USE_INIT
+Define_entry(mercury____Init___builtin__c_pointer_0_0);
+	fatal_error(""Cannot init a builtin:c_pointer"");
 #endif
 
 END_MODULE

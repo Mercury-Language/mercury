@@ -17,6 +17,7 @@
 :- interface.
 :- import_module prog_data, hlds_data, hlds_pred.
 :- import_module bool, list, map, std_util.
+:- import_module globals.
 
 :- type special_pred_map	==	map(special_pred, pred_id).
 
@@ -26,7 +27,8 @@
 	--->	unify
 	;	index
 	;	compare
-	;	solve_equal.
+	;	solve_equal
+	;	init.
 
 :- pred special_pred_info(special_pred_id, type, string, list(type),
 			argument_modes, determinism).
@@ -46,11 +48,11 @@
 :- pred special_pred_mode_num(special_pred_id, int).
 :- mode special_pred_mode_num(in, out) is det.
 
-:- pred special_pred_list(bool, list(special_pred_id)).
-:- mode special_pred_list(in, out) is det.
-
 :- pred special_pred_list(list(special_pred_id), io__state, io__state).
 :- mode special_pred_list(out, di, uo) is det.
+
+:- pred special_pred_list(globals, list(special_pred_id)).
+:- mode special_pred_list(in, out) is det.
 
 :- pred special_pred_get_type(string, list(Type), Type).
 :- mode special_pred_get_type(in, in, out) is semidet.
@@ -61,19 +63,31 @@
 :- implementation.
 
 :- import_module type_util, mode_util, prog_util, inst_table.
-:- import_module globals, options.
+:- import_module options.
 
 special_pred_list(PredList) -->
 	io_lookup_bool_option(use_solve_equal, UseSolveEqual),
-	{ special_pred_list(UseSolveEqual, PredList) }.
+	io_lookup_bool_option(use_init, UseInit),
+	{ special_pred_list_2(UseSolveEqual, UseInit, PredList) }.
 
-special_pred_list(yes, [unify, index, compare, solve_equal]).
-special_pred_list(no, [unify, index, compare]).
+special_pred_list(Globals, PredList) :-
+	lookup_bool_option(Globals, use_solve_equal, UseSolveEqual),
+	lookup_bool_option(Globals, use_init, UseInit),
+	special_pred_list_2(UseSolveEqual, UseInit, PredList).
+
+:- pred special_pred_list_2(bool, bool, list(special_pred_id)).
+:- mode special_pred_list_2(in, in, out) is det.
+
+special_pred_list_2(yes, yes, [unify, index, compare, solve_equal, init]).
+special_pred_list_2(yes, no,  [unify, index, compare, solve_equal]).
+special_pred_list_2(no,  yes, [unify, index, compare, init]).
+special_pred_list_2(no,  no,  [unify, index, compare]).
 
 special_pred_name_arity(unify, "unify", "__Unify__", 2).
 special_pred_name_arity(index, "index", "__Index__", 2).
 special_pred_name_arity(compare, "compare", "__Compare__", 3).
 special_pred_name_arity(solve_equal, "solve_equal", "__SolveEqual__", 2).
+special_pred_name_arity(init, "init", "__Init__", 1).
 
 	% mode num for special procs is always 0 (the first mode)
 special_pred_mode_num(_, 0).
@@ -109,6 +123,10 @@ special_pred_info_2(solve_equal, Type,
 		"__SolveEqual__", [Type, Type], [Any, Any], semidet) :-
 	in_any_mode(Any).
 
+special_pred_info_2(init, Type,
+		"__Init__", [Type], [Any], det) :-
+	out_any_mode(Any).
+
 	% Given the mangled predicate name and the list of argument types,
 	% work out which type this special predicate is for.
 	% Note that this gets called after the polymorphism.m pass, so
@@ -136,11 +154,16 @@ special_pred_get_type("__SolveEqual__", Types, T) :-
 	list__reverse(Types, [T | _]).
 special_pred_get_type("solve_equal", Types, T) :-
 	list__reverse(Types, [T | _]).
+special_pred_get_type("__Init__", Types, T) :-
+	list__reverse(Types, [T | _]).
+special_pred_get_type("init", Types, T) :-
+	list__reverse(Types, [T | _]).
 
 
 special_pred_description(unify, "unification predicate").
 special_pred_description(compare, "comparison predicate").
 special_pred_description(index, "indexing predicate").
 special_pred_description(solve_equal, "full unification/solve predicate").
+special_pred_description(init, "initialisation predicate").
 
 %-----------------------------------------------------------------------------%

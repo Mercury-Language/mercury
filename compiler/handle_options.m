@@ -560,6 +560,7 @@ long_usage -->
 	;	trail		% whether or not to use trailing
 	;	tag		% whether or not to reserve a tag
 	;	solve_equal	% whether or not to generate solve_equal slots
+	;	init		% whether or not to generate init slots
 	;	minimal_model	% whether we set up for minimal model tabling
 	;	args		% argument passing convention
 	;	trace		% tracing/debugging options
@@ -700,6 +701,9 @@ grade_component_table("rt", tag, [reserve_tag - bool(yes)]).
 	% Solve equal components
 grade_component_table("se", solve_equal, [use_solve_equal - bool(yes)]).
 
+	% Init components
+grade_component_table("init", init, [use_init - bool(yes)]).
+
 	% Mimimal model tabling components
 grade_component_table("mm", minimal_model,
 	[use_minimal_model - bool(yes)]).
@@ -732,6 +736,7 @@ grade_start_values(require_tracing - bool(no)).
 grade_start_values(use_trail - bool(no)).
 grade_start_values(reserve_tag - bool(no)).
 grade_start_values(use_solve_equal - bool(no)).
+grade_start_values(use_init - bool(no)).
 grade_start_values(use_minimal_model - bool(no)).
 
 :- pred split_grade_string(string, list(string)).

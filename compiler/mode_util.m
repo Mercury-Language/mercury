@@ -226,11 +226,12 @@
 %-----------------------------------------------------------------------------%
 
 	% Construct a mode corresponding to the standard `in',
-	% `out', `uo', `in(any)' or `unused' mode.
+	% `out', `uo', `in(any)', `out(any)' or `unused' mode.
 :- pred in_mode((mode)::out) is det.
 :- pred out_mode((mode)::out) is det.
 :- pred uo_mode((mode)::out) is det.
 :- pred in_any_mode((mode)::out) is det.
+:- pred out_any_mode((mode)::out) is det.
 :- pred unused_mode((mode)::out) is det.
 
 	% Construct the modes used for `aditi__state' arguments.
@@ -2401,6 +2402,8 @@ out_mode(Mode) :- make_std_mode("out", [], Mode).
 uo_mode(Mode) :- make_std_mode("uo", [], Mode).
 
 in_any_mode(Mode) :- make_std_mode("in", [any(shared)], Mode).
+
+out_any_mode(Mode) :- make_std_mode("out", [any(shared)], Mode).
 
 unused_mode(Mode) :- make_std_mode("unused", [], Mode).
 

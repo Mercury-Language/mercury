@@ -81,6 +81,7 @@ Define_extern_entry(mercury__compare_3_2);
 Define_extern_entry(mercury__compare_3_3);
 Declare_label(mercury__compare_3_0_i1);
 Define_extern_entry(mercury__solve_equal_2_0);
+Define_extern_entry(mercury__init_1_0);
 
 BEGIN_MODULE(call_module)
 	init_entry_ai(do_call_det_closure);
@@ -103,6 +104,7 @@ BEGIN_MODULE(call_module)
 	init_entry_ai(mercury__compare_3_2);
 	init_entry_ai(mercury__compare_3_3);
 	init_entry(mercury__solve_equal_2_0);
+	init_entry(mercury__init_1_0);
 BEGIN_CODE
 
 Define_entry(do_call_det_closure);
@@ -429,7 +431,7 @@ Define_entry(mercury__compare_3_3);
 #ifdef MR_USE_SOLVE_EQUAL
 /*
 ** mercury__solve_equal_2_0 is called as `solve_equal(TypeInfo, X, Y)'
-** in the mode `solve_equal(in(any), in(any), in) is semidet'.
+** in the mode `solve_equal(in, in(any), in(any)) is semidet'.
 **
 ** We call the type-specific unification routine as
 ** `SolveEqualPred(...ArgTypeInfos..., X, Y)' is semidet, with all arguments
@@ -485,6 +487,63 @@ Define_entry(mercury__solve_equal_2_0);
 	incr_sp_push_msg(2, "builtin:solve_equal");
 	fatal_error("solve_equal not available in this grade");
 #endif /* not MR_USE_SOLVE_EQUAL */
+
+#ifdef MR_USE_INIT
+/*
+** mercury__init_1_0 is called as `init(TypeInfo, X)'
+** in the mode `init(in, out(any)) is semidet'.
+**
+** We call the type-specific unification routine as
+** `InitPred(...ArgTypeInfos..., X)' is det, with all arguments
+** input.
+*/
+
+Define_entry(mercury__init_1_0);
+{
+	Code	*init_pred;	/* address of the init pred for this type */
+	int	type_arity;	/* number of type_info args */
+	Word	args_base;	/* the address of the word before */
+				/* the first type_info argument */
+	Word	x;
+	int	i;
+
+	Word	type_info;
+	Word	type_ctor_info;
+
+	type_info = r1;
+	x = r2;
+
+	type_ctor_info = field(0, type_info, 0);
+	if (type_ctor_info == 0) {
+		type_arity = 0;
+		init_pred = (Code *) field(0, type_info,
+				OFFSET_FOR_INIT_PRED);
+		/* args_base will not be needed */
+		args_base = 0; /* just to supress a gcc warning */
+	} else {
+		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
+		init_pred = (Code *) field(0, type_ctor_info,
+				OFFSET_FOR_INIT_PRED);
+		args_base = type_info;
+	}
+
+	save_registers();
+
+	/* we call `InitPred(...ArgTypeInfos..., X)' */
+	for (i = 1; i <= type_arity; i++) {
+		virtual_reg(i) = field(0, args_base, i);
+	}
+	virtual_reg(type_arity + 1) = x;
+
+	restore_registers();
+
+	tailcall(init_pred, LABEL(mercury__init_1_0));
+}
+#else /* not MR_USE_INIT */
+Define_entry(mercury__init_1_0);
+	incr_sp_push_msg(2, "builtin:init");
+	fatal_error("init not available in this grade");
+#endif /* not MR_USE_INIT */
 
 END_MODULE
 

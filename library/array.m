@@ -285,6 +285,9 @@ Define_extern_entry(mercury____Compare___array__array_1_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury____SolveEqual___array__array_1_0);
 #endif
+#ifdef MR_USE_INIT
+Define_extern_entry(mercury____Init___array__array_1_0);
+#endif
 
 MR_MODULE_STATIC_OR_EXTERN 
 const struct mercury_data_array__type_ctor_functors_array_1_struct
@@ -300,6 +303,9 @@ mercury_data_array__type_ctor_info_array_1 = {
 	ENTRY(mercury____Compare___array__array_1_0),
 #ifdef MR_USE_SOLVE_EQUAL
 	ENTRY(mercury____SolveEqual___array__array_1_0),
+#endif
+#ifdef MR_USE_INIT
+	ENTRY(mercury____Init___array__array_1_0),
 #endif
 	MR_TYPECTOR_REP_ARRAY,
 	(Word *) &mercury_data_array__type_ctor_functors_array_1,
@@ -333,6 +339,9 @@ BEGIN_MODULE(array_module_builtins)
 #ifdef MR_USE_SOLVE_EQUAL
 	init_entry(mercury____SolveEqual___array__array_1_0);
 #endif
+#ifdef MR_USE_INIT
+	init_entry(mercury____Init___array__array_1_0);
+#endif
 BEGIN_CODE
 
 Define_entry(mercury____Unify___array__array_1_0);
@@ -357,6 +366,11 @@ Define_entry(mercury____SolveEqual___array__array_1_0);
 	tailcall(ENTRY(mercury__array__array_solve_equal_2_0),
 		ENTRY(mercury____SolveEqual___array__array_1_0));
 */
+#endif
+
+#ifdef MR_USE_INIT
+Define_entry(mercury____Init___array__array_1_0);
+	fatal_error(""init not defined for array:array/1"");
 #endif
 END_MODULE
 

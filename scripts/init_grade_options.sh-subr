@@ -23,6 +23,7 @@ profile_memory=false
 use_trail=false
 reserve_tag=false
 use_solve_equal=false
+use_init=false
 use_minimal_model=false
 stack_trace=false
 require_tracing=false

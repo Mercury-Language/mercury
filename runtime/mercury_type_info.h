@@ -47,19 +47,27 @@ typedef	Word	MR_PseudoTypeInfo;
 #define OFFSET_FOR_INDEX_PRED 2
 #define OFFSET_FOR_COMPARE_PRED 3
 #ifdef MR_USE_SOLVE_EQUAL
-#define OFFSET_FOR_SOLVE_EQUAL_PRED 4
-#define OFFSET_FOR_TYPE_CTOR_REPRESENTATION 5
-#define OFFSET_FOR_BASE_TYPE_FUNCTORS 6
-#define OFFSET_FOR_BASE_TYPE_LAYOUT 7
-#define OFFSET_FOR_TYPE_MODULE_NAME 8
-#define OFFSET_FOR_TYPE_NAME 9
+	#define OFFSET_FOR_SOLVE_EQUAL_PRED 4
+	#ifdef MR_USE_INIT
+		#define OFFSET_FOR_INIT_PRED 5
+		#define OTCR 6
+	#else
+		#define OTCR 5
+	#endif
 #else
-#define OFFSET_FOR_TYPE_CTOR_REPRESENTATION 4
-#define OFFSET_FOR_BASE_TYPE_FUNCTORS 5
-#define OFFSET_FOR_BASE_TYPE_LAYOUT 6
-#define OFFSET_FOR_TYPE_MODULE_NAME 7
-#define OFFSET_FOR_TYPE_NAME 8
+	#ifdef MR_USE_INIT
+		#define OFFSET_FOR_INIT_PRED 4
+		#define OTCR 5
+	else
+		#define OTCR 4
+	#endif
 #endif
+#define OFFSET_FOR_TYPE_CTOR_REPRESENTATION	OTCR
+#define OFFSET_FOR_BASE_TYPE_FUNCTORS		(OTCR + 1)
+#define OFFSET_FOR_BASE_TYPE_LAYOUT		(OTCR + 2)
+#define OFFSET_FOR_TYPE_MODULE_NAME		(OTCR + 3)
+#define OFFSET_FOR_TYPE_NAME			(OTCR + 4)
+#undef OTCR
 
 /*
 ** Define offsets of fields in the type_info structure.
@@ -376,79 +384,179 @@ enum MR_TypeLayoutValue {
 
   #define MR_STATIC_CODE_CONST
 
+  /* Should come up with a better solution than defining these 8 times. */
+
   #ifdef USE_TYPE_TO_TERM
 
     #ifdef MR_USE_SOLVE_EQUAL
 
-      #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
-      do {								\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
-		OFFSET_FOR_UNIFY_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
-		OFFSET_FOR_INDEX_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 		\
-		OFFSET_FOR_COMPARE_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_solve_equal##T##2_0,	\
-		OFFSET_FOR_SOLVE_EQUAL_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,	\
-		OFFSET_FOR_TYPE_TO_TERM_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_term_to_type##T##2_0,	\
-		OFFSET_FOR_TERM_TO_TYPE_PRED);				\
-      } while (0)
+      #ifdef MR_USE_INIT
 
-      #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
-      do {								\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_SOLVE_EQUAL_PRED);		\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TYPE_TO_TERM_PRED);		\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TERM_TO_TYPE_PRED);		\
-      } while (0)
+	#define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
+		  OFFSET_FOR_UNIFY_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
+		  OFFSET_FOR_INDEX_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+		  OFFSET_FOR_COMPARE_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_solve_equal##T##2_0,	\
+		  OFFSET_FOR_SOLVE_EQUAL_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_init##T##2_0,		\
+		  OFFSET_FOR_INIT_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,	\
+		  OFFSET_FOR_TYPE_TO_TERM_PRED);			\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_term_to_type##T##2_0,	\
+		  OFFSET_FOR_TERM_TO_TYPE_PRED);			\
+	} while (0)
 
-      #define	MR_INIT_TYPE_CTOR_INFO(B, T) \
-      do {								\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);	\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);	\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare);	\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_SOLVE_EQUAL_PRED, Solve_Equal); \
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TERM_TO_TYPE_PRED, Term_To_Type);\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TYPE_TO_TERM_PRED, Type_To_Term);\
-      } while (0)
+	#define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
+	do {								\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_SOLVE_EQUAL_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INIT_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TYPE_TO_TERM_PRED);	\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TERM_TO_TYPE_PRED);	\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_SOLVE_EQUAL_PRED,	\
+	  	  Solve_Equal);						\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INIT_PRED, Init);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TERM_TO_TYPE_PRED,	\
+	  	  Term_To_Type);					\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TYPE_TO_TERM_PRED,	\
+	  	  Type_To_Term);					\
+	} while (0)
+
+      #else /* not MR_USE_INIT */
+
+	#define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
+		  OFFSET_FOR_UNIFY_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
+		  OFFSET_FOR_INDEX_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+		  OFFSET_FOR_COMPARE_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_solve_equal##T##2_0,	\
+		  OFFSET_FOR_SOLVE_EQUAL_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,	\
+		  OFFSET_FOR_TYPE_TO_TERM_PRED);			\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_term_to_type##T##2_0,	\
+		  OFFSET_FOR_TERM_TO_TYPE_PRED);			\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
+	do {								\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_SOLVE_EQUAL_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TYPE_TO_TERM_PRED);	\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TERM_TO_TYPE_PRED);	\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_SOLVE_EQUAL_PRED,	\
+	  	  Solve_Equal);						\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TERM_TO_TYPE_PRED,	\
+	  	  Term_To_Type);					\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TYPE_TO_TERM_PRED,	\
+	  	  Type_To_Term);					\
+	} while (0)
+
+      #endif /* not MR_USE_INIT */
 
     #else /* not MR_USE_SOLVE_EQUAL */
 
-      #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
-      do {								\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
-		OFFSET_FOR_UNIFY_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
-		OFFSET_FOR_INDEX_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 		\
-		OFFSET_FOR_COMPARE_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,	\
-		OFFSET_FOR_TYPE_TO_TERM_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_term_to_type##T##2_0,	\
-		OFFSET_FOR_TERM_TO_TYPE_PRED);				\
-      } while (0)
+      #ifdef MR_USE_INIT
 
-      #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
-      do {								\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TYPE_TO_TERM_PRED);		\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TERM_TO_TYPE_PRED);		\
-      } while (0)
+	#define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
+		  OFFSET_FOR_UNIFY_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
+		  OFFSET_FOR_INDEX_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+		  OFFSET_FOR_COMPARE_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_init##T##2_0,		\
+		  OFFSET_FOR_INIT_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,	\
+		  OFFSET_FOR_TYPE_TO_TERM_PRED);			\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_term_to_type##T##2_0,	\
+		  OFFSET_FOR_TERM_TO_TYPE_PRED);			\
+	} while (0)
 
-      #define	MR_INIT_TYPE_CTOR_INFO(B, T) \
-      do {								\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);	\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);	\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare);	\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TERM_TO_TYPE_PRED, Term_To_Type);\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TYPE_TO_TERM_PRED, Type_To_Term);\
-      } while (0)
+	#define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
+	do {								\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INIT_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TYPE_TO_TERM_PRED);	\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TERM_TO_TYPE_PRED);	\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INIT_PRED, Init);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TERM_TO_TYPE_PRED,	\
+	  	  Term_To_Type);					\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TYPE_TO_TERM_PRED,	\
+	  	  Type_To_Term);					\
+	} while (0)
+
+      #else /* not MR_USE_INIT */
+
+	#define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
+		  OFFSET_FOR_UNIFY_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
+		  OFFSET_FOR_INDEX_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+		  OFFSET_FOR_COMPARE_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,	\
+		  OFFSET_FOR_TYPE_TO_TERM_PRED);			\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_term_to_type##T##2_0,	\
+		  OFFSET_FOR_TERM_TO_TYPE_PRED);			\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
+	do {								\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TYPE_TO_TERM_PRED);	\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TERM_TO_TYPE_PRED);	\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare);	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TERM_TO_TYPE_PRED,	\
+	  	  Term_To_Type);					\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TYPE_TO_TERM_PRED,	\
+	  	  Type_To_Term);					\
+	} while (0)
+
+      #endif /* not MR_USE_INIT */
 
     #endif /* not MR_USE_SOLVE_EQUAL */
 
@@ -456,59 +564,133 @@ enum MR_TypeLayoutValue {
 
     #ifdef MR_USE_SOLVE_EQUAL
 
-      #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
-      do {								\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
-		OFFSET_FOR_UNIFY_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
-		OFFSET_FOR_INDEX_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 		\
-		OFFSET_FOR_COMPARE_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_solve_equal##T##2_0,	\
-		OFFSET_FOR_SOLVE_EQUAL_PRED);				\
-      } while (0)
+      #ifdef MR_USE_INIT
 
-      #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
-      do {								\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_SOLVE_EQUAL_PRED);		\
-      } while (0)
+	#define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
+		  OFFSET_FOR_UNIFY_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
+		  OFFSET_FOR_INDEX_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+		  OFFSET_FOR_COMPARE_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_solve_equal##T##2_0,	\
+		  OFFSET_FOR_SOLVE_EQUAL_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_init##T##2_0,		\
+		  OFFSET_FOR_INIT_PRED);				\
+	} while (0)
 
-      #define	MR_INIT_TYPE_CTOR_INFO(B, T) \
-      do {	\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);     \
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare); \
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_SOLVE_EQUAL_PRED, Solve_Equal); \
-      } while (0)
+	#define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
+	do {								\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_SOLVE_EQUAL_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INIT_PRED);		\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO(B, T) \
+	do {	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);     \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare); \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_SOLVE_EQUAL_PRED,	\
+	  	  Solve_Equal);						\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INIT_PRED, Init); 	\
+	} while (0)
+
+      #else /* not MR_USE_INIT */
+
+	#define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
+		  OFFSET_FOR_UNIFY_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
+		  OFFSET_FOR_INDEX_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+		  OFFSET_FOR_COMPARE_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_solve_equal##T##2_0,	\
+		  OFFSET_FOR_SOLVE_EQUAL_PRED);				\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
+	do {								\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_SOLVE_EQUAL_PRED);		\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO(B, T) \
+	do {	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);     \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare); \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_SOLVE_EQUAL_PRED,	\
+	  	  Solve_Equal);						\
+	} while (0)
+
+      #endif /* not MR_USE_INIT */
 
     #else /* not MR_USE_SOLVE_EQUAL */
 
-      #define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
-      do {								\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 	\
-		OFFSET_FOR_UNIFY_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 	\
-		OFFSET_FOR_INDEX_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
-		OFFSET_FOR_COMPARE_PRED);				\
-      } while (0)
+      #ifdef MR_USE_INIT
 
-      #define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
-      do {								\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
-	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
-      } while (0)
+	#define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0,		\
+		  OFFSET_FOR_UNIFY_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0,		\
+		  OFFSET_FOR_INDEX_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+		  OFFSET_FOR_COMPARE_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_init##T##2_0,		\
+		  OFFSET_FOR_INIT_PRED);				\
+	} while (0)
 
-      #define	MR_INIT_TYPE_CTOR_INFO(B, T) \
-      do {	\
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);     \
-	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare); \
-      } while (0)
+	#define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
+	do {								\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INIT_PRED);		\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO(B, T) \
+	do {	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);     \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare); \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INIT_PRED, Init); 	\
+	} while (0)
+
+      #else /* not MR_USE_INIT */
+
+	#define	MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T) \
+	do {								\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0,		\
+		  OFFSET_FOR_UNIFY_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0,		\
+		  OFFSET_FOR_INDEX_PRED);				\
+	  MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+		  OFFSET_FOR_COMPARE_PRED);				\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)			\
+	do {								\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);		\
+	  MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
+	} while (0)
+
+	#define	MR_INIT_TYPE_CTOR_INFO(B, T) \
+	do {	\
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);     \
+	  MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare); \
+	} while (0)
+
+      #endif /* not MR_USE_INIT */
 
     #endif /* not MR_USE_SOLVE_EQUAL */
 
@@ -882,6 +1064,9 @@ struct MR_TypeCtorInfo_struct {
 	Code *compare_pred;
 #ifdef MR_USE_SOLVE_EQUAL
 	Code *solve_equal_pred;
+#endif
+#ifdef MR_USE_INIT
+	Code *init_pred;
 #endif
 		/* 
 		** The representation that is used for this

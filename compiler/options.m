@@ -143,6 +143,7 @@
 		;	use_trail
 		;	reserve_tag
 		;	use_solve_equal
+		;	use_init
 		;	use_minimal_model
 		;	pic_reg
 		;	tags
@@ -507,6 +508,7 @@ option_defaults_2(compilation_model_option, [
 	use_trail		-	bool(no),
 	reserve_tag		-	bool(no),
 	use_solve_equal		-	bool(no),
+	use_init		-	bool(no),
 	use_minimal_model	-	bool(no),
 	pic_reg			-	bool(no),
 	tags			-	string("low"),
@@ -871,6 +873,7 @@ long_option("debug",			debug).
 long_option("use-trail",		use_trail).
 long_option("reserve-tag",		reserve_tag).
 long_option("use-solve-equal",		use_solve_equal).
+long_option("use-init",			use_init).
 long_option("use-minimal-model",	use_minimal_model).
 long_option("pic-reg",			pic_reg).
 long_option("tags",			tags).
@@ -1732,6 +1735,10 @@ options_help_compilation_model -->
 		"\tGenerate and use the \"solve equal\" slot.",
 		"\tThis is necessary for HAL to be able to perform polymorphic",
 		"\t\"old-old\" unification.",
+		"--use-init\t\t\t(grade modifier: `.init')",
+		"\tGenerate and use the \"init\" slot.",
+		"\tThis is necessary for the Herbrand solver to be fully",
+		"\tfunctional in polymorphic contexts.",
 		"-p, --profiling, --time-profiling",
 		"\t\t\t\t(grade modifier: `.prof')",
 		"\tEnable time and call profiling.  Insert profiling hooks in the",

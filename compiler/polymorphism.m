@@ -47,13 +47,16 @@
 % #ifdef MR_USE_SOLVE_EQUAL
 %	word 4		<solve_equal/2 predicate for type>
 % #endif
-%	word 4/5	<MR_TypeCtorRepresentation for type constructor>
-%	word 5/6	<type_ctor_functors for type>
-%	word 6/7	<type_ctor_layout for type>
-%	word 7/8	<string name of type constructor>
+% #ifdef MR_USE_INIT
+%	word 4/5	<init/1 predicate for type>
+% #endif
+%	word 4/5/6	<MR_TypeCtorRepresentation for type constructor>
+%	word 5/6/7	<type_ctor_functors for type>
+%	word 6/7/8	<type_ctor_layout for type>
+%	word 7/8/9	<string name of type constructor>
 %			e.g. "int" for `int', "list" for `list(T)',
 %			"map" for `map(K,V)'
-%	word 8/9	<string name of module>
+%	word 8/9/10	<string name of module>
 %
 % The other cell is the type_info structure, laid out like this:
 %
@@ -133,6 +136,7 @@
 %			'__Index__'<list/1>,
 %			'__Compare__'<list/1>,
 %		[	'__SolveEqual__'<list/1>,	]
+%		[	'__Init__'<list/1>,		]
 %			<type_ctor_layout for list/1>,
 %			<type_ctor_functors for list/1>,
 %			"list",
@@ -598,9 +602,9 @@ polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) -->
 	% and computing some information in the poly_info.
 	%
 	{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
-	io_lookup_bool_option(use_solve_equal, UseSolveEqual),
+	io_get_globals(Globals),
 	{ polymorphism__process_clause_info(
-			ClausesInfo0, PredInfo0, ModuleInfo0, UseSolveEqual,
+			ClausesInfo0, PredInfo0, ModuleInfo0, Globals,
 			ClausesInfo, PolyInfo, ExtraArgModes) },
 	{ poly_info_get_module_info(PolyInfo, ModuleInfo1) },
 	{ poly_info_get_typevarset(PolyInfo, TypeVarSet) },
@@ -622,11 +626,11 @@ polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) -->
 		ModuleInfo) }.
 
 :- pred polymorphism__process_clause_info(clauses_info, pred_info, module_info,
-			bool, clauses_info, poly_info, list(mode)).
+			globals, clauses_info, poly_info, list(mode)).
 :- mode polymorphism__process_clause_info(in, in, in, in, out, out, out) is det.
 
 polymorphism__process_clause_info(ClausesInfo0, PredInfo0, ModuleInfo0,
-			UseSolveEqual, ClausesInfo, PolyInfo, ExtraArgModes) :-
+			Globals, ClausesInfo, PolyInfo, ExtraArgModes) :-
 
 	init_poly_info(ModuleInfo0, PredInfo0, ClausesInfo0, PolyInfo0),
 	clauses_info_headvars(ClausesInfo0, HeadVars0),
@@ -641,7 +645,7 @@ polymorphism__process_clause_info(ClausesInfo0, PredInfo0, ModuleInfo0,
 	list__map_foldl(polymorphism__process_clause(PredInfo0,
 				HeadVars0, HeadVars, UnconstrainedTVars,
 				ExtraTypeInfoHeadVars,
-				ExistTypeClassInfoHeadVars, UseSolveEqual),
+				ExistTypeClassInfoHeadVars, Globals),
 			Clauses0, Clauses, PolyInfo1, PolyInfo),
 
 	%
@@ -657,7 +661,7 @@ polymorphism__process_clause_info(ClausesInfo0, PredInfo0, ModuleInfo0,
 				TypeInfoMap, TypeClassInfoMap).
 
 :- pred polymorphism__process_clause(pred_info, list(prog_var), list(prog_var),
-		list(tvar), list(prog_var), list(prog_var), bool,
+		list(tvar), list(prog_var), list(prog_var), globals,
 		clause, clause, poly_info, poly_info).
 :- mode polymorphism__process_clause(in, in, in, in, in, in, in,
 		in, out, in, out) is det.
@@ -665,7 +669,7 @@ polymorphism__process_clause_info(ClausesInfo0, PredInfo0, ModuleInfo0,
 polymorphism__process_clause(PredInfo0, OldHeadVars, NewHeadVars,
 			UnconstrainedTVars,
 			ExtraTypeInfoHeadVars, ExistTypeClassInfoHeadVars,
-			UseSolveEqual,
+			Globals,
 			Clause0, Clause) -->
 	(
 		{ pred_info_is_imported(PredInfo0) }
@@ -676,7 +680,7 @@ polymorphism__process_clause(PredInfo0, OldHeadVars, NewHeadVars,
 		%
 		% process any polymorphic calls inside the goal
 		%
-		polymorphism__process_goal(Goal0, Goal1, UseSolveEqual),
+		polymorphism__process_goal(Goal0, Goal1, Globals),
 
 		%
 		% generate code to construct the type-class-infos
@@ -991,21 +995,20 @@ polymorphism__assign_var_2(Var1, Var2, Goal) :-
 %-----------------------------------------------------------------------------%
 
 :- pred polymorphism__process_goal(hlds_goal, hlds_goal,
-			bool, poly_info, poly_info).
+			globals, poly_info, poly_info).
 :- mode polymorphism__process_goal(in, out, in, in, out) is det.
 
-polymorphism__process_goal(Goal0 - GoalInfo0, Goal, UseSolveEqual) -->
-	polymorphism__process_goal_expr(Goal0, GoalInfo0, Goal,
-			UseSolveEqual).
+polymorphism__process_goal(Goal0 - GoalInfo0, Goal, Globals) -->
+	polymorphism__process_goal_expr(Goal0, GoalInfo0, Goal, Globals).
 
 :- pred polymorphism__process_goal_expr(hlds_goal_expr, hlds_goal_info,
-		hlds_goal, bool, poly_info, poly_info).
+		hlds_goal, globals, poly_info, poly_info).
 :- mode polymorphism__process_goal_expr(in, in, out, in, in, out) is det.
 
 	% We don't need to add type-infos for higher-order calls,
 	% since the type-infos are added when the closures are
 	% constructed, not when they are called.
-polymorphism__process_goal_expr(GoalExpr0, GoalInfo0, Goal, _UseSolveEqual) -->
+polymorphism__process_goal_expr(GoalExpr0, GoalInfo0, Goal, _Globals) -->
 	{ GoalExpr0 = generic_call(GenericCall, Args0, Modes0, Det) },
 
 	%
@@ -1048,7 +1051,7 @@ polymorphism__process_goal_expr(GoalExpr0, GoalInfo0, Goal, _UseSolveEqual) -->
 	).
 
 polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0, Builtin,
-		UnifyContext, Name0), GoalInfo, Goal, UseSolveEqual) -->
+		UnifyContext, Name0), GoalInfo, Goal, Globals) -->
 	% Check for a call to a special predicate like compare/3
 	% for which the type is known at compile-time.
 	% Replace such calls with calls to the particular version
@@ -1070,7 +1073,7 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0, Builtin,
 		% don't try this for any special preds if they're not
 		% implemented
 
-		{ special_pred_list(UseSolveEqual, SpecialPredIds) },
+		{ special_pred_list(Globals, SpecialPredIds) },
 		{ list__member(SpecialPredId, SpecialPredIds) }
 	->
 		{ poly_info_get_module_info(Info0, ModuleInfo) },
@@ -1090,7 +1093,7 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0, Builtin,
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
-polymorphism__process_goal_expr(Goal0, GoalInfo, Goal, _UseSolveEqual) -->
+polymorphism__process_goal_expr(Goal0, GoalInfo, Goal, _Globals) -->
 	{ Goal0 = pragma_c_code(IsRecursive, PredId, ProcId,
 		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode) },
 	polymorphism__process_call(PredId, ArgVars0, GoalInfo,
@@ -1130,44 +1133,44 @@ polymorphism__process_goal_expr(Goal0, GoalInfo, Goal, _UseSolveEqual) -->
 	).
 
 polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, UnifyContext),
-				GoalInfo, Goal, UseSolveEqual) -->
+				GoalInfo, Goal, Globals) -->
 	polymorphism__process_unify(XVar, Y, Mode, Unification, UnifyContext,
-				GoalInfo, Goal, UseSolveEqual).
+				GoalInfo, Goal, Globals).
 
 	% the rest of the clauses just process goals recursively
 
 polymorphism__process_goal_expr(conj(Goals0), GoalInfo,
-		conj(Goals) - GoalInfo, UseSolveEqual) -->
-	polymorphism__process_goal_list(Goals0, Goals, UseSolveEqual).
+		conj(Goals) - GoalInfo, Globals) -->
+	polymorphism__process_goal_list(Goals0, Goals, Globals).
 polymorphism__process_goal_expr(par_conj(Goals0, SM), GoalInfo,
-		par_conj(Goals, SM) - GoalInfo, UseSolveEqual) -->
-	polymorphism__process_goal_list(Goals0, Goals, UseSolveEqual).
+		par_conj(Goals, SM) - GoalInfo, Globals) -->
+	polymorphism__process_goal_list(Goals0, Goals, Globals).
 polymorphism__process_goal_expr(disj(Goals0, SM), GoalInfo, 
-		disj(Goals, SM) - GoalInfo, UseSolveEqual) -->
-	polymorphism__process_goal_list(Goals0, Goals, UseSolveEqual).
+		disj(Goals, SM) - GoalInfo, Globals) -->
+	polymorphism__process_goal_list(Goals0, Goals, Globals).
 polymorphism__process_goal_expr(not(Goal0), GoalInfo, 
-		not(Goal) - GoalInfo, UseSolveEqual) -->
-	polymorphism__process_goal(Goal0, Goal, UseSolveEqual).
+		not(Goal) - GoalInfo, Globals) -->
+	polymorphism__process_goal(Goal0, Goal, Globals).
 polymorphism__process_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo,
-		switch(Var, CanFail, Cases, SM) - GoalInfo, UseSolveEqual) -->
-	polymorphism__process_case_list(Cases0, Cases, UseSolveEqual).
+		switch(Var, CanFail, Cases, SM) - GoalInfo, Globals) -->
+	polymorphism__process_case_list(Cases0, Cases, Globals).
 polymorphism__process_goal_expr(some(Vars, CanRemove, Goal0), GoalInfo,
-		some(Vars, CanRemove, Goal) - GoalInfo, UseSolveEqual) -->
-	polymorphism__process_goal(Goal0, Goal, UseSolveEqual).
+		some(Vars, CanRemove, Goal) - GoalInfo, Globals) -->
+	polymorphism__process_goal(Goal0, Goal, Globals).
 polymorphism__process_goal_expr(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
-		if_then_else(Vars, A, B, C, SM) - GoalInfo, UseSolveEqual) -->
-	polymorphism__process_goal(A0, A, UseSolveEqual),
-	polymorphism__process_goal(B0, B, UseSolveEqual),
-	polymorphism__process_goal(C0, C, UseSolveEqual).
+		if_then_else(Vars, A, B, C, SM) - GoalInfo, Globals) -->
+	polymorphism__process_goal(A0, A, Globals),
+	polymorphism__process_goal(B0, B, Globals),
+	polymorphism__process_goal(C0, C, Globals).
 
 :- pred polymorphism__process_unify(prog_var, unify_rhs,
 		unify_mode, unification, unify_context, hlds_goal_info,
-		hlds_goal, bool, poly_info, poly_info).
+		hlds_goal, globals, poly_info, poly_info).
 :- mode polymorphism__process_unify(in, in, in, in, in, in, out, in,
 		in, out) is det.
 
 polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
-			GoalInfo0, Goal, UseSolveEqual) -->
+			GoalInfo0, Goal, Globals) -->
 	% switch on Y
 	(
 		{ Y = var(_YVar) },
@@ -1197,8 +1200,7 @@ polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
 	; 
 		{ Y = functor(ConsId, Args) },
 		polymorphism__process_unify_functor(XVar, ConsId, Args, Mode,
-			Unification0, UnifyContext, GoalInfo0, Goal,
-			UseSolveEqual)
+			Unification0, UnifyContext, GoalInfo0, Goal, Globals)
 	;
 		{ Y = lambda_goal(PredOrFunc, EvalMethod, FixModes,
 			ArgVars0, LambdaVars, Modes, Det, IMD, LambdaGoal0) },
@@ -1206,8 +1208,7 @@ polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
 		% for lambda expressions, we must recursively traverse the
 		% lambda goal
 		%
-		polymorphism__process_goal(LambdaGoal0, LambdaGoal1,
-				UseSolveEqual),
+		polymorphism__process_goal(LambdaGoal0, LambdaGoal1, Globals),
 		% Currently we don't allow lambda goals to be
 		% existentially typed
 		{ ExistQVars = [] },
@@ -1259,13 +1260,13 @@ polymorphism__unification_typeinfos(Type, TypeInfoMap,
 
 :- pred polymorphism__process_unify_functor(prog_var, cons_id, list(prog_var),
 		unify_mode, unification, unify_context, hlds_goal_info,
-		hlds_goal, bool, poly_info, poly_info).
+		hlds_goal, globals, poly_info, poly_info).
 :- mode polymorphism__process_unify_functor(in, in, in, in, in, in, in, out,
 		in, in, out) is det.
 
 polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		Unification0, UnifyContext, GoalInfo0, Goal,
-		UseSolveEqual, PolyInfo0, PolyInfo) :-
+		Globals, PolyInfo0, PolyInfo) :-
 	poly_info_get_module_info(PolyInfo0, ModuleInfo0),
 	poly_info_get_var_types(PolyInfo0, VarTypes0),
 	map__lookup(VarTypes0, X0, TypeOfX),
@@ -1365,7 +1366,7 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% now process it
 		%
 		polymorphism__process_goal_expr(FuncCall, GoalInfo0, Goal,
-			UseSolveEqual, PolyInfo0, PolyInfo)
+			Globals, PolyInfo0, PolyInfo)
 	;
 
 	%
@@ -1418,7 +1419,7 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		%
 		polymorphism__process_unify(X0, Functor0, Mode0,
 				Unification0, UnifyContext, GoalInfo0, Goal,
-				UseSolveEqual, PolyInfo1, PolyInfo)
+				Globals, PolyInfo1, PolyInfo)
 	;
 		%
 		% is this a construction or deconstruction of an
@@ -1817,26 +1818,24 @@ polymorphism__c_code_add_typeinfos_2([TVar|TVars], TypeVarSet, Mode,
 	).
 
 :- pred polymorphism__process_goal_list(list(hlds_goal), list(hlds_goal),
-				bool, poly_info, poly_info).
+				globals, poly_info, poly_info).
 :- mode polymorphism__process_goal_list(in, out, in, in, out) is det.
 
-polymorphism__process_goal_list([], [], _UseSolveEqual) --> [].
-polymorphism__process_goal_list([Goal0 | Goals0], [Goal | Goals],
-		UseSolveEqual) -->
-	polymorphism__process_goal(Goal0, Goal, UseSolveEqual),
-	polymorphism__process_goal_list(Goals0, Goals, UseSolveEqual).
+polymorphism__process_goal_list([], [], _Globals) --> [].
+polymorphism__process_goal_list([Goal0 | Goals0], [Goal | Goals], Globals) -->
+	polymorphism__process_goal(Goal0, Goal, Globals),
+	polymorphism__process_goal_list(Goals0, Goals, Globals).
 
 :- pred polymorphism__process_case_list(list(case), list(case),
-				bool, poly_info, poly_info).
+				globals, poly_info, poly_info).
 :- mode polymorphism__process_case_list(in, out, in, in, out) is det.
 
-polymorphism__process_case_list([], [], _UseSolveEqual) --> [].
-polymorphism__process_case_list([Case0 | Cases0], [Case | Cases],
-		UseSolveEqual) -->
+polymorphism__process_case_list([], [], _Globals) --> [].
+polymorphism__process_case_list([Case0 | Cases0], [Case | Cases], Globals) -->
 	{ Case0 = case(ConsId, IMDelta, Goal0) },
-	polymorphism__process_goal(Goal0, Goal, UseSolveEqual),
+	polymorphism__process_goal(Goal0, Goal, Globals),
 	{ Case = case(ConsId, IMDelta, Goal) },
-	polymorphism__process_case_list(Cases0, Cases, UseSolveEqual).
+	polymorphism__process_case_list(Cases0, Cases, Globals).
 
 %-----------------------------------------------------------------------------%
 
