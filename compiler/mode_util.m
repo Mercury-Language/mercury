@@ -364,7 +364,7 @@ inst_name_apply_substitution(merge_inst(InstA0, InstB0), Subst,
 	inst_apply_substitution(InstA0, Subst, InstA),
 	inst_apply_substitution(InstB0, Subst, InstB).
 inst_name_apply_substitution(ground_inst(Inst0), Subst, ground_inst(Inst)) :-
-	inst_apply_substitution(Inst0, Subst, Inst).
+	inst_name_apply_substitution(Inst0, Subst, Inst).
 
 :- pred alt_list_apply_substitution(list(bound_inst), inst_subst,
 				list(bound_inst)).

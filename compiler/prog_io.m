@@ -193,7 +193,7 @@
 :- type inst_name	--->	user_inst(sym_name, list(inst))
 			;	merge_inst(inst, inst)
 			;	unify_inst(inst, inst)
-			;	ground_inst(inst).
+			;	ground_inst(inst_name).
 
 % mode_defn/3 defined above
 

@@ -162,7 +162,7 @@
 
 :- type merge_inst_table ==	map(pair(inst), maybe_inst).
 
-:- type ground_inst_table == 	map(inst, maybe_inst).
+:- type ground_inst_table == 	map(inst_name, maybe_inst).
 
 :- type maybe_inst	--->	unknown
 			;	known(inst).

@@ -242,9 +242,9 @@ mercury_output_inst_name(unify_inst(InstA, InstB), VarSet) -->
 	io__write_string("$unify("),
 	mercury_output_inst_list([InstA, InstB], VarSet),
 	io__write_string(")").
-mercury_output_inst_name(ground_inst(Inst), VarSet) -->
+mercury_output_inst_name(ground_inst(InstName), VarSet) -->
 	io__write_string("$ground("),
-	mercury_output_inst(Inst, VarSet),
+	mercury_output_inst_name(InstName, VarSet),
 	io__write_string(")").
 
 :- pred mercury_output_bound_insts(list(bound_inst), varset, io__state,
