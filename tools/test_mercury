@@ -43,8 +43,8 @@ CHECKOUT_OPTS=-A
 # To build one of the official releases, uncomment the following two lines
 # which specify the release number and the cvs checkout option needed to
 # retrieve it.
-### RELEASE_VERSION=0.7
-### CHECKOUT_OPTS=-rversion-0_7		
+### RELEASE_VERSION=0.8.1
+### CHECKOUT_OPTS=-rversion-0_8_1
 
 #-----------------------------------------------------------------------------#
 
@@ -67,6 +67,7 @@ TEST_CFLAGS=""
 TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
+### INSTALL_DIR=/home/mercury/public/mercury-0.8/$FULLARCH
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
 BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
@@ -80,7 +81,8 @@ case $ARCH in
 		# due to a bug in the DEC loader, INSTALL_DIR should be
 		# as short as possible, to avoid overflow of fixed length
 		# buffers for -rpath options. The above definition is too long.
-		INSTALL_DIR=/home/mercury/public/.a
+		INSTALL_DIR=/home/mercury/public/.a	# for mercury-latest
+		### INSTALL_DIR=/home/mercury/public/.b	# for 0.8
 		;;
 esac
 
