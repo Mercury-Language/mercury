@@ -248,7 +248,8 @@ time__clock(Result, IO0, IO) :-
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	// XXX Ticks is long in .NET!
-	Ret = (int) System.Diagnostics.Process.GetCurrentProcess.UserProcessorTime.Ticks;
+	Ret = (int) System.Diagnostics.Process.GetCurrentProcess
+		.UserProcessorTime.Ticks;
 }").
 */
 
@@ -270,7 +271,7 @@ time__clocks_per_sec = Val :-
 :- pragma foreign_proc("C#", time__c_clocks_per_sec(Ret::out),
 	[will_not_call_mercury, promise_pure],
 "{
-	// XXX TicksPerSecond is long in .NET!
+	// TicksPerSecond is guaranteed to be 10,000,000
 	Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
 
@@ -337,6 +338,12 @@ time__clk_tck = Ret :-
 #else
 	Ret = -1;
 #endif
+}").
+:- pragma foreign_proc("C#", time__clk_tck = (Ret::out),
+	[will_not_call_mercury, promise_pure],
+"{
+	// TicksPerSecond is guaranteed to be 10,000,000
+	Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
 
 %-----------------------------------------------------------------------------%
@@ -465,6 +472,11 @@ time__localtime(time_t(Time)) = TM :-
 	WD = (int) t.DayOfWeek;
 	MD = t.Day;
 	YD = t.DayOfYear - 1;
+	// XXX On the day when you switch back to standard time from daylight
+	// savings time, the time '2:30am' occurs twice, once during daylight
+	// savings time (N = 1), and then again an hour later, during standard
+	// time (N = 0).  The .NET API does not seem to provide any way to
+	// get the right answer in both cases.
 	if (System.TimeZone.CurrentTimeZone.IsDaylightSavingTime(t)) {
 		N = 1;
 	} else {
@@ -580,8 +592,11 @@ time__mktime(TM) = time_t(Time) :-
 	// On the day when you switch back to standard time from daylight
 	// savings time, the time '2:30am' occurs twice, once during daylight
 	// savings time (N = 1), and then again an hour later, during standard
-	// time (N = 0).
- 	Time = new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
+	// time (N = 0).  The .NET API does not seem to provide any way to
+	// get the right answer in both cases.
+	System.DateTime local_time = 
+		new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
+	Time = local_time.ToUniversalTime();
 }").
 
 :- func maybe_dst_to_int(maybe(dst)) = int.
