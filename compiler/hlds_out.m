@@ -402,7 +402,7 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 			% mode for them
 			{ pred_info_is_pseudo_imported(PredInfo) },
 			{ pred_info_procids(PredInfo, ProcIds) },
-			{ ProcIds \= [0] }
+			{ ProcIds = [0] }
 		->
 			[]
 		;

@@ -448,6 +448,7 @@ dead_proc_elim__eliminate_pred(PredId, Needed, ModuleInfo,
 		% If yes, find out also whether any of its procedures
 		% must be kept.
 		( Status = local, Keep = no
+		; Status = pseudo_imported, Keep = no
 		; Status = pseudo_exported, Keep = yes(0)
 		)
 	->
