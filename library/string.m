@@ -1741,7 +1741,10 @@ void sys_init_string_append_module(void) {
 	** The pragma_c_code will generate a mkframe();
 	** we need to pop off that frame before jumping to the hand-coded
 	** fragment above.
+	**
+	** We mention S1, S2 and S3 here to shut up a warning.
 	*/
+
 	maxfr = curprevfr;
 	curfr = cursuccfr;
 	GOTO(ENTRY(mercury__string__append_3_3_xx));
