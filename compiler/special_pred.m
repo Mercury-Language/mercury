@@ -118,14 +118,14 @@ out_mode(user_defined_mode(unqualified("out"), [])).
 	% find the type at a known position from the end of the list
 	% (by using list__reverse).
 
-	% Currently for all special predicates the type variable can be
-	% found in the last type argument, except for term_to_type, for
-	% which it is the second-last argument.
+	% Currently for most of the special predicates the type variable can be
+	% found in the last type argument, except for index and term_to_type,
+	% for which it is the second-last argument.
 
 special_pred_get_type("__Unify__", Types, T) :-
 	list__reverse(Types, [T | _]).
 special_pred_get_type("__Index__", Types, T) :-
-	list__reverse(Types, [T | _]).
+	list__reverse(Types, [_, T | _]).
 special_pred_get_type("__Compare__", Types, T) :-
 	list__reverse(Types, [T | _]).
 special_pred_get_type("__Type_To_Term__", Types, T) :-
