@@ -257,3 +257,64 @@ remove_dupl(L0, L) :-
 	).   
 
 
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: proof_tree,
+	arg_list	: [ProgramCall],
+	arg_type_list	: [is_mercury_program_call],
+	abbrev		: pt,
+	interface	: button,
+	command_type	: opium,
+	implementation	: proof_tree_Op,
+	parameters	: [ps_viewer],
+	message		:
+"Computes the program proof tree."
+	).
+
+proof_tree_Op(Program) :-
+	run(Program),
+	generate_filename(Program, ".pt.dot", ".pt.ps", DotFile, PsFile),
+	generate_proof_tree_graph(Graph),
+	display_graph(Graph, DotFile, PsFile).
+
+%
+%:- pred generate_dynamic_call_graph(graph).
+%:- mode generate_dynamic_call_graph(out) is det.
+%
+
+generate_proof_tree_graph(G) :-
+	getenv("MERCURY_MORPHINE_DIR", MorphineDir),
+	append_strings(MorphineDir, "/source/collect__proof_tree", 
+		CollectFile),
+	collect(CollectFile, Result),
+	( Result = ct(ProofTree), ! ; Result = pb(Msg), print(Msg), abort), 
+	tree_to_graph(0:toplevel, ProofTree, G).
+
+tree_to_graph(Father, leaf(CN, PredUniv), [arc(Father, CN:Pred)]) :-
+	remove_type_pred(PredUniv, Pred).
+tree_to_graph(Father, tree(CN, PredUniv, TreeList), Graph) :-
+	remove_type_pred(PredUniv, Pred),
+	maplist(tree_to_graph(CN:Pred), TreeList, GraphList),
+	list_of_list_to_list(GraphList, Graph0),
+	Graph = [arc(Father, CN:Pred) | Graph0].
+
+remove_type_pred(p(NameStr, _Arity, ArgUnivList), Pred) :-
+	maplist(remove_type_arg, ArgUnivList, ArgList),
+	( string(NameStr) -> atom_string(Name, NameStr) ; Name = NameStr),
+	append([Name], ArgList, NameArgList),
+	Pred =.. NameArgList.
+
+remove_type_arg(univ_cons(state('<<c_pointer>>')), '-'). % We don't display that
+remove_type_arg(univ_cons(Arg), Arg).
+
+
+list_of_list_to_list([], []).
+list_of_list_to_list([List], List).
+list_of_list_to_list([List1, List2 | Tail], LList) :-
+	append(List1, List2, List),
+	LList0 = [List | Tail],
+	list_of_list_to_list(LList0, LList).
+
+
