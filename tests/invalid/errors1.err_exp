@@ -1,3 +1,4 @@
+errors1.m:  1: Warning: interface for module `errors1' does not export anything.
 errors1.m:051: In definition of type `errors1:du_type_which_references_undefined_type'/0:
 errors1.m:051:   error: undefined type `undefined_type'/0.
 errors1.m:053: In definition of type `errors1:eqv_type_which_references_undefined_type'/0:
