@@ -92,10 +92,10 @@ process_prof_file(File, StaticCallGraph0, StaticCallGraph) -->
 		{ Result = error(Error) },
 		{ StaticCallGraph = StaticCallGraph0 },
 
-		io__seen,
 		{ io__error_message(Error, ErrorMsg) },
-		io__write_string(ErrorMsg),
-		io__write_string("\n")
+		io__stderr_stream(StdErr),
+		io__write_strings(StdErr, ["mprof: error opening file `",
+			File, "': ", ErrorMsg, "\n"])
 	).
 
 :- pred process_prof_file_2(relation(string), relation(string), 

@@ -67,20 +67,26 @@ process_file__main(Prof, DynamicCallGraph) -->
 :- mode process_addr_decl(out, out, di, uo) is det.
 
 process_addr_decl(AddrDeclMap, ProfNodeMap) -->
+	{ map__init(AddrDeclMap0) },
+	{ map__init(ProfNodeMap0) },
 	globals__io_lookup_string_option(declfile, DeclFile),
 	io__see(DeclFile, Result),
 	(
-		{ Result = ok }
-	->
-		{ map__init(AddrDeclMap0) },
-		{ map__init(ProfNodeMap0) },
+		{ Result = ok },
 		process_addr_decl_2(AddrDeclMap0, ProfNodeMap0, AddrDeclMap, 
 								ProfNodeMap),
 		io__seen
 	;
-		{ error("process_addr_decl: Couldn't open declaration file\n") }
-	).
+		{ Result = error(Error) },
+                { io__error_message(Error, ErrorMsg) },
+                io__stderr_stream(StdErr),
+                io__write_strings(StdErr,
+			["mprof: error opening declaration file `",
+                        DeclFile, "': ", ErrorMsg, "\n"]),
 
+		{ ProfNodeMap = ProfNodeMap0 },
+		{ AddrDeclMap = AddrDeclMap0 }
+	).
 
 :- pred process_addr_decl_2(addrdecl, prof_node_map, addrdecl, prof_node_map,
 							io__state, io__state).
@@ -131,16 +137,23 @@ process_addr(ProfNodeMap0, ProfNodeMap, Hertz, ClockTicks, TotalCounts) -->
 	globals__io_lookup_string_option(countfile, CountFile),
 	io__see(CountFile, Result),
 	(
-		{ Result = ok }
-	->
+		{ Result = ok },
 		read_int(Hertz),
 		read_int(ClockTicks),
 		process_addr_2(0, ProfNodeMap0, TotalCounts, ProfNodeMap),
 		io__seen
 	;
-		{ error("process_addr: Couldn't open count file\n") }
-	).
+		{ Result = error(Error) },
+		{ io__error_message(Error, ErrorMsg) },
+		io__stderr_stream(StdErr),
+		io__write_strings(StdErr, ["mprof: error opening count file `",
+			CountFile, "': ", ErrorMsg, "\n"]),
 
+		{ ProfNodeMap = ProfNodeMap0 },
+		{ Hertz = 1 },
+		{ ClockTicks = 1 },
+		{ TotalCounts = 0 }
+	).
 
 :- pred process_addr_2(int, prof_node_map, int, prof_node_map, 
 							io__state, io__state).
@@ -152,14 +165,28 @@ process_addr_2(TotalCounts0, ProfNodeMap0, TotalCounts, ProfNodeMap) -->
 		{ MaybeLabelAddr = yes(LabelAddr) },
 		read_int(Count),
 
-		% Add to initial counts.
-		lookup_addr(ProfNodeMap0, LabelAddr, ProfNode0),
-		{ prof_node_get_initial_counts(ProfNode0, InitCount0) },
-		{ InitCount is InitCount0 + Count },
-		{ prof_node_set_initial_counts(InitCount, ProfNode0, ProfNode) },
-		{ map__set(ProfNodeMap0, LabelAddr, ProfNode, ProfNodeMap1) },
+		% XXX This is a just a quick hack to avoid an error
+		% with the "0 1" line in the Prof.Counts file.
+		% Probably a better fix would be to ensure that 
+		% that line never gets generated.
+		% But really I have no idea what the right solution is. -fjh.
+		( { LabelAddr = 0, Count = 1 } ->
+			{ ProfNodeMap1 = ProfNodeMap0 },
+			{ TC1 = TotalCounts0 }
+		;
 
-		{ TC1 is TotalCounts0 + Count },
+			% Add to initial counts.
+			lookup_addr(ProfNodeMap0, LabelAddr, ProfNode0),
+			{ prof_node_get_initial_counts(ProfNode0, InitCount0) },
+			{ InitCount is InitCount0 + Count },
+			{ prof_node_set_initial_counts(InitCount, ProfNode0,
+							ProfNode) },
+			{ map__set(ProfNodeMap0, LabelAddr, ProfNode,
+				ProfNodeMap1) },
+
+			{ TC1 is TotalCounts0 + Count }
+
+		),
 
 		process_addr_2(TC1, ProfNodeMap1, TotalCounts, ProfNodeMap)
 	;
@@ -187,13 +214,19 @@ process_addr_pair(ProfNodeMap0, DynamicCallGraph, ProfNodeMap) -->
 	globals__io_lookup_string_option(pairfile, PairFile),
 	io__see(PairFile, Result),
 	(
-		{ Result = ok }
-	->
+		{ Result = ok },
 		process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic,
 						DynamicCallGraph, ProfNodeMap),
 		io__seen
 	;
-		{ error("process_addr_pair: Couldn't open pair file\n") }
+		{ Result = error(Error) },
+                { io__error_message(Error, ErrorMsg) },
+                io__stderr_stream(StdErr),
+                io__write_strings(StdErr, ["mprof: error opening pair file `",
+                        PairFile, "': ", ErrorMsg, "\n"]),
+
+		{ DynamicCallGraph = DynamicCallGraph0 },
+		{ ProfNodeMap = ProfNodeMap0 }
 	).
 
 :- pred process_addr_pair_2(relation(string), prof_node_map, bool, 
