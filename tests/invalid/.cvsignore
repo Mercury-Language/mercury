@@ -8,5 +8,6 @@
 *.int0
 *.int2
 *.int3
+*.dv
 .allres
 CLEAN
