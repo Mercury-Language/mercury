@@ -1,8 +1,8 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module require.
 
@@ -75,7 +75,7 @@ Define_extern_entry(mercury__require__error_internal_1_0);
 
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury__require__error_internal_1_0);
 
-BEGIN_MODULE(require_module_internal)
+BEGIN_MODULE(require_internal_module)
         init_entry(mercury__require__error_internal_1_0);
 BEGIN_CODE
 
@@ -92,8 +92,20 @@ Define_entry(mercury__require__error_internal_1_0);
 	exit(1);
 }
 END_MODULE
+
+/*
+** Ensure that the initialization function for the above module gets run.
+*/
+/*
+INIT sys_init_require_internal_module
+*/
+extern ModuleFunc require_internal_module;
+void sys_init_require_internal_module(void);
+void sys_init_require_internal_module(void) {
+	require_internal_module();
+}
 ").
 
 :- end_module require.
 
-/*---------------------------------------------------------------------------*/
+%-----------------------------------------------------------------------------%
