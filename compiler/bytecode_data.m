@@ -23,6 +23,9 @@
 :- pred output_string(string, io__state, io__state).
 :- mode output_string(in, di, uo) is det.
 
+:- pred string_to_byte_list(string, list(int)).
+:- mode string_to_byte_list(in, out) is det.
+
 :- pred output_byte(int, io__state, io__state).
 :- mode output_byte(in, di, uo) is det.
 
@@ -75,11 +78,17 @@
 
 :- implementation.
 
-:- import_module require.
+:- import_module char, require.
 
 output_string(Val) -->
 	io__write_bytes(Val),
 	io__write_byte(0).
+
+string_to_byte_list(Val, List) :-
+	string__to_char_list(Val, Chars),
+	ToInt = (pred(C::in, I::out) is det :- char__to_int(C, I)),
+	list__map(ToInt, Chars, List0),
+	list__append(List0, [0], List).
 
 output_byte(Val) -->
 	( { Val < 256 } ->
