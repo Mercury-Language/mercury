@@ -3841,6 +3841,8 @@ mercury_compile__link_module_list(Modules) -->
 	    ;
 		TraceOpt = ""
 	    },
+	    globals__io_get_globals(Globals),
+	    { compute_grade(Globals, Grade) },
 
 	    globals__io_lookup_accumulating_option(init_file_directories,
 			InitFileDirsList),
@@ -3854,8 +3856,9 @@ mercury_compile__link_module_list(Modules) -->
 
 	    join_module_list(Modules, ".c", [], CFileNames),
 	    { MkInitCmd = string__append_list(
-	    	["c2init ", TraceOpt, " -o ", InitCFileName, " ",
-		InitFileDirs, " ", InitFileNames, " " | CFileNames]) },
+	    	["c2init --grade ", Grade, " ", TraceOpt,
+		" --init-c-file ", InitCFileName, " ", InitFileDirs, " ",
+		InitFileNames, " " | CFileNames]) },
 	    invoke_shell_command(MkInitCmd, MkInitOK),
 	    maybe_report_stats(Stats),
 	    ( { MkInitOK = no } ->
@@ -3871,8 +3874,6 @@ mercury_compile__link_module_list(Modules) -->
 		    report_error("compilation of init file failed.")
 		;
 		    maybe_write_string(Verbose, "% Linking...\n"),
-		    globals__io_get_globals(Globals),
-		    { compute_grade(Globals, Grade) },
 		    globals__io_lookup_bool_option(target_debug, Target_Debug),
 		    { Target_Debug = yes ->
 		    	Target_Debug_Opt = "--no-strip "
