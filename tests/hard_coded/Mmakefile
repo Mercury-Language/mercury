@@ -110,6 +110,7 @@ ORDINARY_PROGS=	\
 	type_to_term_bug \
 	tuple_test \
 	user_defined_equality \
+	user_defined_equality2 \
 	write \
 	write_reg1
 

@@ -1838,6 +1838,8 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 		type_is_no_tag_type(ModuleInfo, SpecialPredType, 
 			Constructor, WrappedType),
 		\+ type_has_user_defined_equality_pred(ModuleInfo,
+			SpecialPredType, _),
+		\+ type_has_user_defined_equality_pred(ModuleInfo,
 			WrappedType, _),
 
 		% This could be done for non-atomic types, but it would
