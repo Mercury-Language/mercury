@@ -61,7 +61,7 @@
 :- implementation.
 
 :- import_module code_aux, code_util, hlds_goal, hlds_data, prog_data, instmap.
-:- import_module dependency_graph, det_analysis, excess, mode_util.
+:- import_module dependency_graph, det_analysis, mode_util.
 :- import_module require, map, list, string, int, bool, std_util, term, varset.
 
 	% Traverse the module structure.
