@@ -67,6 +67,9 @@
 :- pred mercury_quote_string(string, io__state, io__state).
 :- mode mercury_quote_string(input, di, uo).
 
+:- pred mercury_quote_atom(string, io__state, io__state).
+:- mode mercury_quote_atom(input, di, uo).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -204,15 +207,22 @@ io__write_constant(term_integer(I)) -->
 io__write_constant(term_float(F)) -->
 	io__write_float(F).
 io__write_constant(term_atom(A))  -->
-	io__write_char('\''),
-	mercury_quote_string(A),
-	io__write_char('\'').
+	mercury_quote_atom(A).
 io__write_constant(term_string(S)) -->
 	io__write_char('"'),
 	mercury_quote_string(S),
 	io__write_char('"').
 
 %-----------------------------------------------------------------------------%
+
+mercury_quote_atom(S) -->
+	( { string__is_alnum_or_underscore(S) } ->
+		io__write_string(S)
+	;
+		io__write_char('\''),
+		mercury_quote_string(S),
+		io__write_char('\'')
+	).
 
 mercury_quote_string(S0) -->
 	( { string__first_char(S0, Char, S1) } ->

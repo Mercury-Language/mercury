@@ -8,6 +8,9 @@
 
 % This modules provides basic string handling facilities.
 
+% XXX The efficiency of many of these operations is very poor with
+%     the current implementation.
+
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -58,6 +61,18 @@
 :- mode string__to_int(input, output).
 %	Convert a string (of digits) to an int. If the string contains
 %	non-digit characters, string__to_int fails.
+
+:- pred string__is_alpha(string).
+:- mode string__is_alpha(in).
+	% True if string contains only alphabetic characters (letters).
+
+:- pred string__is_alpha_or_underscore(string).
+:- mode string__is_alpha_or_underscore(in).
+	% True if string contains only alphabetic characters and underscores.
+
+:- pred string__is_alnum_or_underscore(string).
+:- mode string__is_alnum_or_underscore(in).
+	% True if string contains only letters, digits, and underscores.
 
 %-----------------------------------------------------------------------------%
 
@@ -154,6 +169,30 @@ string__uncapitalize_first(S0, S) :-
 	string__first_char(S0, C, S1),
 	to_lower(C, LowerC),
 	string__first_char(S, LowerC, S1).
+
+string__is_alpha(S) :-
+	( string__first_char(S, C, S1) ->
+		is_alpha(C),
+		string__is_alpha(S1)
+	;
+		true
+	).
+
+string__is_alpha_or_underscore(S) :-
+	( string__first_char(S, C, S1) ->
+		is_alpha_or_underscore(C),
+		string__is_alpha_or_underscore(S1)
+	;
+		true
+	).
+
+string__is_alnum_or_underscore(S) :-
+	( string__first_char(S, C, S1) ->
+		is_alnum_or_underscore(C),
+		string__is_alnum_or_underscore(S1)
+	;
+		true
+	).
 
 :- end_module string.
 

@@ -2149,9 +2149,10 @@ write_argument_name(VarSet, VarId) -->
 :- pred write_unify_context(unify_context, term__context, io__state, io__state).
 :- mode write_unify_context(in, in, di, uo).
 
-write_unify_context(unify_context(MainContext, SubContexts), Context) -->
+write_unify_context(unify_context(MainContext, RevSubContexts), Context) -->
 	prog_out__write_context(Context),
 	write_unify_main_context(MainContext),
+	{ reverse(RevSubContexts, SubContexts) },
 	write_unify_sub_contexts(SubContexts, Context).
 
 :- pred write_unify_main_context(unify_main_context, io__state, io__state).
@@ -2164,7 +2165,7 @@ write_unify_main_context(head(ArgNum)) -->
 	io__write_int(ArgNum),
 	io__write_string(" of clause head:\n").
 write_unify_main_context(call(PredId, ArgNum)) -->
-	io__write_string("in argument "),
+	io__write_string("  in argument "),
 	io__write_int(ArgNum),
 	io__write_string(" of call to predicate `"),
 	hlds_out__write_pred_id(PredId),

@@ -42,6 +42,14 @@
 :- mode is_alpha(in).
 	% True iff the character is a letter.
 
+:- pred is_alpha_or_underscore(character).
+:- mode is_alpha_or_underscore(in).
+	% True iff the character is a letter or an underscore.
+
+:- pred is_alnum_or_underscore(character).
+:- mode is_alnum_or_underscore(in).
+	% True iff the character is a letter, a digit or an underscore.
+
 :- pred is_digit(character).
 :- mode is_digit(in).
 	% True iff the character is a decimal digit.
@@ -69,6 +77,20 @@ is_alpha(Char) :-
 		true
 	;
 		fail
+	).
+
+is_alpha_or_underscore(Char) :-
+	( Char = '_' ->
+		true
+	;	
+		is_alpha(Char)
+	).
+
+is_alnum_or_underscore(Char) :-
+	( is_digit(Char) ->
+		true
+	;	
+		is_alpha_or_underscore(Char)
 	).
 
 is_lower(Lower) :-

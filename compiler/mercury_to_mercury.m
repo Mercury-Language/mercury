@@ -37,9 +37,9 @@ convert_to_mercury(ProgName, OutputFileName, Items) -->
 		;
 			[]
 		),
-		io__write_string(":- module ("),
-		io__write_constant(term_atom(ProgName)),
-		io__write_string(").\n"),
+		io__write_string(":- module "),
+		mercury_output_bracketed_constant(term_atom(ProgName)),
+		io__write_string(".\n"),
 		mercury_output_item_list(Items),
 		( { Verbose = yes } ->
 			io__write_string(StdErr, "% done\n")
@@ -143,7 +143,7 @@ mercury_output_module_defn(_VarSet, Module, _Context) -->
 
 mercury_write_module_spec_list([]) --> [].
 mercury_write_module_spec_list([ModuleName | ModuleNames]) -->
-	io__write_constant(term_atom(ModuleName)),
+	mercury_output_bracketed_constant(term_atom(ModuleName)),
 	( { ModuleNames = [] } ->
 		[]
 	;
@@ -199,10 +199,10 @@ mercury_output_inst(ground, _) -->
 mercury_output_inst(inst_var(Var), VarSet) -->
 	mercury_output_var(Var, VarSet).
 mercury_output_inst(abstract_inst(Name, Args), VarSet) -->
-	mercury_output_sym_name(Name),
 	( { Args = [] } ->
-		[]
+		mercury_output_bracketed_sym_name(Name)
 	;
+		mercury_output_sym_name(Name),
 		io__write_string("("),
 		mercury_output_inst_list(Args, VarSet),
 		io__write_string(")")
@@ -216,10 +216,10 @@ mercury_output_inst(user_defined_inst(Name, Args), VarSet) -->
 
 mercury_output_bound_insts([], _) --> [].
 mercury_output_bound_insts([functor(Name, Args) | BoundInsts], VarSet) -->
-	io__write_constant(Name),
 	( { Args = [] } ->
-		[]
+		mercury_output_bracketed_constant(Name)
 	;
+		io__write_constant(Name),
 		io__write_string("("),
 		mercury_output_inst_list(Args, VarSet),
 		io__write_string(")")
@@ -269,10 +269,10 @@ mercury_output_mode(InstA -> InstB, VarSet) -->
 	mercury_output_inst(InstB, VarSet),
 	io__write_string(")").
 mercury_output_mode(user_defined_mode(Name, Args), VarSet) -->
-	mercury_output_sym_name(Name),
 	( { Args = [] } ->
-		[]
+		mercury_output_bracketed_sym_name(Name)
 	;
+		mercury_output_sym_name(Name),
 		io__write_string("("),
 		mercury_output_inst_list(Args, VarSet),
 		io__write_string(")")
@@ -339,16 +339,16 @@ mercury_output_ctors([Name - ArgTypes | Ctors], VarSet) -->
 	;
 		[]
 	),
-	mercury_output_sym_name(Name),
 	(
 		{ ArgTypes = [ArgType | Rest] }
 	->
+		mercury_output_sym_name(Name),
 		io__write_string("("),
 		mercury_output_term(ArgType, VarSet),
 		mercury_output_remaining_terms(Rest, VarSet),
 		io__write_string(")")
 	;
-		[]
+		mercury_output_bracketed_sym_name(Name)
 	),
 	(
 		{ Arity = 2 },
@@ -388,16 +388,16 @@ mercury_output_pred_decl(VarSet, PredName, TypesAndModes, Det, Context) -->
 
 mercury_output_pred_type(VarSet, PredName, Types, _Context) -->
 	io__write_string(":- pred "),
-	mercury_output_sym_name(PredName),
 	(
 		{ Types = [Type | Rest] }
 	->
+		mercury_output_sym_name(PredName),
 		io__write_string("("),
 		mercury_output_term(Type, VarSet),
 		mercury_output_remaining_terms(Rest, VarSet),
 		io__write_string(")")
 	;
-		[]
+		mercury_output_bracketed_sym_name(PredName)
 	),
 
 	% We need to handle is/2 specially, because it's used for
@@ -439,15 +439,15 @@ mercury_output_remaining_terms([Term | Terms], VarSet) -->
 
 mercury_output_mode_decl(VarSet, PredName, Modes, Det, _Context) -->
 	io__write_string(":- mode "),
-	mercury_output_sym_name(PredName),
 	(
 		{ Modes \= [] }
 	->
+		mercury_output_sym_name(PredName),
 		io__write_string("("),
 		mercury_output_mode_list(Modes, VarSet),
 		io__write_string(")")
 	;
-		[]
+		mercury_output_bracketed_sym_name(PredName)
 	),
 	( { Det = unspecified } ->
 		[]
@@ -466,6 +466,13 @@ mercury_output_det(semidet) -->
 	io__write_string("semidet").
 mercury_output_det(nondet) -->
 	io__write_string("nondet").
+
+:- pred mercury_output_bracketed_sym_name(sym_name, io__state, io__state).
+:- mode mercury_output_bracketed_sym_name(in, di, uo).
+
+mercury_output_bracketed_sym_name(Name) -->
+	{ unqualify_name(Name, Name2) },
+	mercury_output_bracketed_constant(term_atom(Name2)).
 
 :- pred mercury_output_sym_name(sym_name, io__state, io__state).
 :- mode mercury_output_sym_name(in, di, uo).
@@ -702,7 +709,7 @@ mercury_output_term(term_functor(Functor, Args, _), VarSet) -->
 	    	}
 	->
 		io__write_string("("),
-		io__write_constant(Functor),
+		io__write_string(FunctorName),
 		io__write_string(" "),
 		mercury_output_term(PrefixArg, VarSet),
 		io__write_string(")")
@@ -715,7 +722,7 @@ mercury_output_term(term_functor(Functor, Args, _), VarSet) -->
 		io__write_string("("),
 		mercury_output_term(PostfixArg, VarSet),
 		io__write_string(" "),
-		io__write_constant(Functor),
+		io__write_string(FunctorName),
 		io__write_string(")")
 	;
 		{ Args = [Arg1, Arg2],
@@ -726,22 +733,20 @@ mercury_output_term(term_functor(Functor, Args, _), VarSet) -->
 		io__write_string("("),
 		mercury_output_term(Arg1, VarSet),
 		io__write_string(" "),
-		io__write_constant(Functor),
+		io__write_string(FunctorName),
 		io__write_string(" "),
 		mercury_output_term(Arg2, VarSet),
 		io__write_string(")")
 	;
+		{ Args = [Y | Ys] }
+	->
 		io__write_constant(Functor),
-		(
-			{ Args = [Y | Ys] }
-		->
-			io__write_string("("),
-			mercury_output_term(Y, VarSet),
-			mercury_output_remaining_terms(Ys, VarSet),
-			io__write_string(")")
-		;
-			[]
-		)
+		io__write_string("("),
+		mercury_output_term(Y, VarSet),
+		mercury_output_remaining_terms(Ys, VarSet),
+		io__write_string(")")
+	;
+		mercury_output_bracketed_constant(Functor)
 	).
 
 	% output a comma-separated list of variables
@@ -786,9 +791,49 @@ mercury_output_var(Var, VarSet) -->
 		io__write_string(VarName)
 	).
 
+:- pred mercury_output_bracketed_constant(const, io__state, io__state).
+:- mode mercury_output_bracketed_constant(input, di, uo).
+
+mercury_output_bracketed_constant(Const) -->
+	( { Const= term_atom(Op), mercury_op(Op) } ->
+		io__write_string("("),
+		io__write_constant(Const),
+		io__write_string(")")
+	;
+		io__write_constant(Const)
+	).
+
 %-----------------------------------------------------------------------------%
 
 	% Predicates to test whether a functor is a Mercury operator
+
+:- pred mercury_op(string).
+:- mode mercury_op(input).
+
+mercury_op(Op) :-
+	(
+	    (
+		mercury_infix_op(Op)
+	    ;
+		mercury_binary_prefix_op(Op)
+	    ;
+		mercury_unary_prefix_op(Op)
+	    ;
+		mercury_unary_postfix_op(Op)
+	    )
+	->
+		true
+	;
+		fail
+	).
+
+:- pred mercury_binary_prefix_op(string).
+:- mode mercury_binary_prefix_op(input).
+
+mercury_binary_prefix_op("some").
+mercury_binary_prefix_op("all").
+mercury_binary_prefix_op("gSome").
+mercury_binary_prefix_op("gAll").
 
 :- pred mercury_infix_op(string).
 :- mode mercury_infix_op(input).
