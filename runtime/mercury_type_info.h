@@ -386,14 +386,14 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
     */
   #define MR_ENUM_TAG         MR_mktag(MR_FIRST_UNRESERVED_RAW_TAG)
  
-  #define MR_COMPARE_EQUAL    MR_mkword(MR_ENUM_TAG, MR_mkbody(0))
-  #define MR_COMPARE_LESS     MR_mkword(MR_ENUM_TAG, MR_mkbody(1))
-  #define MR_COMPARE_GREATER  MR_mkword(MR_ENUM_TAG, MR_mkbody(2))         
+  #define MR_COMPARE_EQUAL    ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(0)))
+  #define MR_COMPARE_LESS     ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(1)))
+  #define MR_COMPARE_GREATER  ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(2)))
 
-  #define MR_BOOL_NO          MR_mkword(MR_ENUM_TAG, MR_mkbody(0))
-  #define MR_BOOL_YES         MR_mkword(MR_ENUM_TAG, MR_mkbody(1))
+  #define MR_BOOL_NO          ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(0)))
+  #define MR_BOOL_YES         ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(1)))
 
-  #define MR_UNBOUND          MR_mkword(MR_ENUM_TAG, MR_mkbody(0))
+  #define MR_UNBOUND          ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(0)))
 #else
   #define MR_COMPARE_EQUAL    0
   #define MR_COMPARE_LESS     1
