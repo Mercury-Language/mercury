@@ -1641,7 +1641,7 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
 
 		/* Arrange to retry the call once it is finished. */
-		MR_insert_line_at_head("retry");
+		MR_insert_line_at_head("retry -f");
 		return STOP_INTERACTING;
 
 	case MR_RETRY_OK_FAIL_FIRST:
@@ -1652,7 +1652,7 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
 
 		/* Arrange to retry the call once it is finished. */
-		MR_insert_line_at_head("retry");
+		MR_insert_line_at_head("retry -f");
 		return STOP_INTERACTING;
 
 	case MR_RETRY_ERROR:
@@ -3344,11 +3344,11 @@ MR_trace_cmd_unhide_events(char **words, int word_count,
 {
 	if (word_count == 2 && MR_streq(words[1], "off")) {
 		MR_trace_unhide_events = MR_FALSE;
-		fprintf(MR_mdb_out, "hidden events values are hidden\n");
+		fprintf(MR_mdb_out, "hidden events are hidden\n");
 	} else if (word_count == 2 && MR_streq(words[1], "on")) {
 		MR_trace_unhide_events = MR_TRUE;
 		MR_trace_have_unhid_events = MR_TRUE;
-		fprintf(MR_mdb_out, "hidden events values are exposed\n");
+		fprintf(MR_mdb_out, "hidden events are exposed\n");
 	} else if (word_count == 1)  {
 		fprintf(MR_mdb_out,
 			"hidden events are %s\n",
