@@ -181,6 +181,19 @@ typedef Char *String;
 #define string_const(string, len) ((Word)string)
 #define string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
 
+
+/* 
+** If the string is aligned, set ptr equal to it, otherwise allocate one
+** on the heap.
+*/
+#define make_aligned_string(ptr, string) \
+	( ((Word)string & (sizeof(Word) - 1)) ? (ptr) = (string) : \
+		incr_hp_atomic((ptr), strlen(string) + sizeof(Word) / \
+			sizeof(Word)), \
+		strcpy((ptr), (string)) ); 
+
+
+
 /*
 ** Note that hash_string is also defined in library/string.m.
 ** The definition here and the definition in string.m

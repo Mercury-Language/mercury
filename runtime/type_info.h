@@ -223,4 +223,21 @@
 
 #define TYPELAYOUT_MAX_VARINT		1024
 
+
+/*
+** Offsets for functors and arities.
+**
+** Constant and enumeration values start at 0, so the functor
+** is at OFFSET + const/enum value. 
+** 
+** Functors for simple tags are at OFFSET + arity (the functor is
+** stored after all the argument info.
+**
+*/
+
+#define TYPELAYOUT_CONST_FUNCTOR_OFFSET		2
+#define TYPELAYOUT_ENUM_FUNCTOR_OFFSET		2
+#define TYPELAYOUT_SIMPLE_FUNCTOR_OFFSET	1
+#define TYPELAYOUT_SIMPLE_ARITY_OFFSET  	0
+
 #endif
