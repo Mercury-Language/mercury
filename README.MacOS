@@ -25,6 +25,8 @@ You can get better performance by using the hlc.gc grade.
 The fast.gc and asm_fast.gc grades are not supported on PowerPC.
 
 The following features are not yet supported on MacOS:
-	- shared libraries
 	- interactive queries in mdb
 	- the `--split-c-files' option to mmc
+
+Linking to shared versions of the Mercury libraries works on Mac OS 10.3, but
+hasn't been tested on previous versions of Mac OS X (although it should work).

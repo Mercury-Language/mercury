@@ -94,6 +94,8 @@ DEFAULT_MCFLAGS=\
 		--linker-rpath-separator "@EXE_RPATH_SEP@" \
 		--shlib-linker-rpath-flag "@SHLIB_RPATH_OPT@" \
 		--shlib-linker-rpath-separator "@SHLIB_RPATH_SEP@" \
+		@SHLIB_USE_INSTALL_NAME@ \
+		--shlib-linker-install-name-flag "@SHLIB_INSTALL_NAME_FLAG@" \
 		--linker-allow-undefined-flag "@ALLOW_UNDEFINED@" \
 		--linker-error-undefined-flag "@ERROR_UNDEFINED@" \
 		--fullarch "@FULLARCH@" \

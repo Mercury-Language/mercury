@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003 University of Melbourne. 
+# Copyright (C) 1995-2004 University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -38,6 +38,8 @@ lib$(GC_GRADE).so: submake
 
 lib$(GC_GRADE).dll: submake
 
+lib$(GC_GRADE).dylib: submake
+
 endif
 
 MMAKEFLAGS=
@@ -75,6 +77,7 @@ submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(MMAKEFLAGS) -j1 GRADE=$(GRADE) GC_GRADE=$(GC_GRADE) \
 		lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) \
+		FINAL_INSTALL_MERC_GC_LIB_DIR=$(FINAL_INSTALL_MERC_GC_LIB_DIR) \
 		$(EXT_FOR_SHARED_LIB)
 
 clean_local:

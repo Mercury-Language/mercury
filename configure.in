@@ -231,10 +231,13 @@ EOF
 		# Note that we need to set --grade to an LLDS grade
 		# when doing this test because term size profiling
 		# requires an LLDS grade.
+		# This also tests for the --shlib-linker-intall-name-flag
+		# option.
 		$BOOTSTRAP_MC \
 			--grade none.gc \
 			--record-term-sizes-as-words \
 			--output-grade-string \
+			--shlib-linker-install-name-flag "-dummy_flag" \
 			</dev/null >&AC_FD_CC 2>&1
 	then
 		AC_MSG_RESULT(yes)
@@ -2964,6 +2967,10 @@ EXE_RPATH_OPT="-Wl,-rpath,"
 EXE_RPATH_SEP=" -Wl,-rpath,"
 SHLIB_RPATH_OPT="-Wl,-rpath,"
 SHLIB_RPATH_SEP=" -Wl,-rpath,"
+
+SHLIB_USE_INSTALL_NAME=""
+SHLIB_INSTALL_NAME_FLAG="-install_name "
+
 CFLAGS_FOR_PIC="-fpic -DMR_PIC"
 EXT_FOR_PIC_OBJECTS=pic_o
 # Object files with extension $EXT_FOR_LINK_WITH_PIC_OBJECTS are used
@@ -3194,6 +3201,28 @@ case "$host" in
 		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		DEFAULT_LINKAGE=static
 		;;
+	*powerpc*apple*darwin*)
+		# If the compiler is gcc then use darwin style dynamic linking.
+		# Otherwise use static linking.
+		if test "$GCC_PROG" != ""; then
+		    SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
+		    SHLIB_INSTALL_NAME_FLAG="-install_name "
+		    LINK_SHARED_OBJ="$GCC_PROG -dynamiclib -single_module"
+		    LINK_SHARED_OBJ_SH="$GCC_PROG -dynamiclib -single_module"
+		    EXT_FOR_SHARED_LIB=dylib
+		    EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+		    CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
+		    ERROR_UNDEFINED="-undefined error"
+		    ALLOW_UNDEFINED="-undefined suppress"
+		    AC_MSG_RESULT(yes)
+		else
+		    CFLAGS_FOR_PIC=
+		    EXT_FOR_PIC_OBJECTS=o
+		    EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+		    DEFAULT_LINKAGE=static
+		    AC_MSG_RESULT(no)
+		fi
+		;;
 	*)
 		# CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating
 		# libgc.a.  If the system doesn't support shared libraries,
@@ -3363,6 +3392,8 @@ AC_SUBST(EXE_RPATH_OPT)
 AC_SUBST(EXE_RPATH_SEP)
 AC_SUBST(SHLIB_RPATH_OPT)
 AC_SUBST(SHLIB_RPATH_SEP)
+AC_SUBST(SHLIB_USE_INSTALL_NAME)
+AC_SUBST(SHLIB_INSTALL_NAME_FLAG)
 AC_SUBST(CFLAGS_FOR_PIC)
 AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_LINK_WITH_PIC_OBJECTS)
@@ -3887,6 +3918,9 @@ case $reconfiguring in no)
 	# then don't do a `make clean' before running `make'.
 	rm -f runtime/libmer_rt.so library/libmer_std.so bytecode/libmbi.so
 	rm -f trace/libmer_trace.so browser/libmer_browse.so
+	rm -f runtime/libmer_rt.dylib library/libmer_std.dylib 
+	rm -f boehm_gc/libgc.dylib bytecode/libmbi.dylib
+	rm -f trace/libmer_trace.dylib browser/libmer_browser.dylib
 	;;
 esac],
 [reconfiguring=$reconfiguring]

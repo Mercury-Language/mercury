@@ -137,6 +137,7 @@ $(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
 	exit $$status
 
 lib$(BROWSER_LIB_NAME).so: lib$(MDBCOMP_LIB_NAME).so
+lib$(BROWSER_LIB_NAME).dylib: lib$(MDBCOMP_LIB_NAME).dylib
 lib$(BROWSER_LIB_NAME): lib$(MDBCOMP_LIB_NAME)
 lib$(BROWSER_LIB_NAME).int3s: lib$(MDBCOMP_LIB_NAME).int3s
 lib$(BROWSER_LIB_NAME).ints: lib$(MDBCOMP_LIB_NAME).ints
@@ -204,8 +205,8 @@ dates:
 # with the package name prefixed to the file name with a ".", not a "/".
 # So we copy the Java source files to where the Java compiler expects them to be.
 #
-# XXX This is a hack.  We ought to change the Mercury compiler so that it generates
-# the Java files with the right names in the first place.
+# XXX This is a hack.  We ought to change the Mercury compiler so that it
+# generates the Java files with the right names in the first place.
 #
 
 mdb/%.java: mdb.%.java

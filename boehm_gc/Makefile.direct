@@ -521,6 +521,11 @@ lib$(GC_GRADE).so: $(OBJS) $(UTILS) # dyn_load_sunos53.o
 	./if_not_there on_sparc_sunos5_so \
 	$(LINK_SHARED_OBJ) -o lib$(GC_GRADE).so $(OBJS) dyn_load.o -lc
 
+# Darwin shared library version of the gc.
+lib$(GC_GRADE).dylib: $(OBJS) $(UTILS)
+	$(LINK_SHARED_OBJ) -install_name \
+		$(FINAL_INSTALL_MERC_GC_LIB_DIR)/lib$(GC_GRADE).dylib \
+		-o lib$(GC_GRADE).dylib $(OBJS) dyn_load.o -lc
 
 # SunOS5 shared library version of the collector
 sunos5gc.so: $(OBJS) dyn_load_sunos53.o
@@ -727,13 +732,16 @@ user_namespace: $(SRCS)
 #-----------------------------------------------------------------------------#
 
 # The Mmakefile invokes `make $(EXT_FOR_SHARED_LIB)',
-# so we need targets `a', `so', and `dll'.
+# so we need targets `a', `so', `dylib' and `dll'.
 
 .PHONY: a
 a: lib$(GC_GRADE).a
 
 .PHONY: so
 so: lib$(GC_GRADE).so
+
+.PHONY: dylib
+dylib: lib$(GC_GRADE).dylib
 
 #-----------------------------------------------------------------------------#
 # support for DLLs using gnu-win32

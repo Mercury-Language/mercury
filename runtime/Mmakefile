@@ -331,6 +331,14 @@ lib$(RT_LIB_NAME).so: $(PIC_OBJS)
 		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
 
+# For Darwin we should pass the -install_name option.
+lib$(RT_LIB_NAME).dylib: $(PIC_OBJS)
+	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED) 				\
+		-o lib$(RT_LIB_NAME).dylib $(PIC_OBJS)			\
+		-install_name $(FINAL_INSTALL_MERC_LIB_DIR)/lib$(RT_LIB_NAME).dylib \
+		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
+		$(SHARED_LIBS)
+
 endif
 endif
 

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003 The University of Melbourne. 
+# Copyright (C) 1995-2004 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -104,6 +104,12 @@ SHLIB_RPATH_OPT	= @SHLIB_RPATH_OPT@''
 SHLIB_RPATH_SEP	= ''@SHLIB_RPATH_SEP@''
 EXE_RPATH_OPT	= @EXE_RPATH_OPT@''
 EXE_RPATH_SEP	= ''@EXE_RPATH_SEP@''
+
+# These variables can be used to set the install-name for the mercury
+# shared libraries on systems that use the install-name option (such as 
+# Darwin).
+SHLIB_USE_INSTALL_NAME = @SHLIB_USE_INSTALL_NAME@
+SHLIB_INSTALL_NAME_FLAG = @SHLIB_INSTALL_NAME_FLAG@''
 
 # Specify any extra libraries that must be linked in when linking shared
 # objects.

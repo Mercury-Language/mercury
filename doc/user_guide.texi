@@ -6928,6 +6928,16 @@ to search for libraries.
 Append @var{directory} to the list of directories in which
 to search for shared libraries at runtime.
 
+@sp 1
+@item --shlib-linker-install-name-path @var{directory}
+@findex --shlib-linker-install-name-path
+@cindex Mac OS X, Darwin, Install name
+Specify the path where a shared library will be installed.
+This option is useful on systems where the runtime search
+path is obtained from the shared library and not via the
+-R option (such as Mac OS X).
+
+@sp 1
 @item -l @var{library}
 @itemx --library @var{library}
 @findex -l

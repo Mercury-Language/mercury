@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2003 The University of Melbourne.
+# Copyright (C) 1998-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -147,6 +147,14 @@ lib$(TRACE_LIB_NAME).so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED)				\
 		-o lib$(TRACE_LIB_NAME).so $(PIC_OBJS)			\
 		$(RPATH_1)$(RPATH_2)					\
+		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
+		$(SHARED_LIBS)
+		
+# For Darwin:
+lib$(TRACE_LIB_NAME).dylib: $(PIC_OBJS)
+	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED)				\
+		-o lib$(TRACE_LIB_NAME).dylib $(PIC_OBJS)		\
+		-install_name $(FINAL_INSTALL_MERC_LIB_DIR)/lib$(TRACE_LIB_NAME).dylib		\
 		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
 

@@ -43,6 +43,7 @@ Changes to the Mercury compiler:
 
 Portability improvements:
 * We have made the implementation compatible with gcc 3.4.
+* Shared libraries now work on Mac OS X.
 
 Changes to the Mercury debugger:
 * Users can now limit the output from stack traces.
@@ -329,7 +330,8 @@ Changes to the Mercury compiler:
 
 Portability improvements:
 
-* Nothing yet.
+* We have made the implementation compatible with gcc 3.4.
+* Shared libraries now work on Mac OS X.
 
 Changes to the Mercury debugger:
 
