@@ -133,14 +133,14 @@
 :- pred module_predicates(module_info, list(pred_id)).
 :- mode module_predicates(input, output).
 
-:- pred predicate_module(module_info, pred_id, string).
-:- mode predicate_module(input, input, output).
+:- pred predicate_module(pred_id, string).
+:- mode predicate_module(input, output).
 
-:- pred predicate_name(module_info, pred_id, string).
-:- mode predicate_name(input, input, output).
+:- pred predicate_name(pred_id, string).
+:- mode predicate_name(input, output).
 
-:- pred predicate_arity(module_info, pred_id, int).
-:- mode predicate_arity(input, input, output).
+:- pred predicate_arity(pred_id, int).
+:- mode predicate_arity(input, output).
 
 :- pred predicate_modes(module_info, pred_id, list(pred_mode_id)).
 :- mode predicate_modes(input, input, output).
@@ -261,7 +261,7 @@ moduleinfo_name(ModuleInfo, Name) :-
 moduleinfo_predids(ModuleInfo, PredIDs) :-
 	ModuleInfo = module(_Name, PredIDs, _Preds, _TypeIDs, _Types,
 		_InstIDs, _Insts, _ModeIDs,  _Modes).
-moduleinfo_preds(ModuleInfo, Name) :-
+moduleinfo_preds(ModuleInfo, Preds) :-
 	ModuleInfo = module(_Name, _PredIDs, Preds, _TypeIDs, _Types,
 		_InstIDs, _Insts, _ModeIDs,  _Modes).
 moduleinfo_typeids(ModuleInfo, TypeIDs) :-
@@ -312,6 +312,11 @@ procinfo_modeinfo(ProcInfo, ModeInfo) :-
 	ProcInfo = procedure(_Category, _Vars, _HeadVars, ModeInfo, _Goal).
 procinfo_goal(ProcInfo, Goal) :-
 	ProcInfo = procedure(_Category, _Vars, _HeadVars, _ModeInfo, Goal).
+
+%-----------------------------------------------------------------------------%
+
+goalinfo_liveness(GoalInfo, Liveness) :-
+	GoalInfo = goalinfo(Liveness).
 
 %-----------------------------------------------------------------------------%
 

@@ -858,7 +858,7 @@ convert_constructors_2(Term.Terms, Constr.Constrs) :-
 :- pred convert_constructor(term, constructor).
 :- mode convert_constructor(input, output).
 convert_constructor(Term, Result) :-
-	parse_qualified_term(Term, "constructor definition", ok(F, As))
+	parse_qualified_term(Term, "constructor definition", ok(F, As)),
 	convert_type_list(As, ArgTypes),
 	Result = F - ArgTypes.
 
