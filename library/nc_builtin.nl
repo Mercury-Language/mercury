@@ -123,4 +123,10 @@ termExpansion((:- external(_)), (:- fail)).
 termExpansion((:- pragma(_, _)), (:- fail)).
 termExpansion((:- pragma(_, _, _)), (:- fail)).
 
+% Ignore clauses for functions. 
+% (What else can we do?  NU-Prolog doesn't support them, and it
+% doesn't even have any hooks for extending is/2.)
+
+termExpansion((_ = _), (:- fail)).
+
 %-----------------------------------------------------------------------------%
