@@ -27,11 +27,19 @@ while true; do
 done
 
 for file in "$@"; do
-	echo "mnc: compiling \`$file'"
+	rootname="`dirname $file`/`basename $file .nl`"
 	tmp=/tmp/mnc$$
 	trap 'rm -f $tmp.nl $tmp.ns $tmp.no; exit 1' 1 2 3 13 15
-	cat $nc_builtin_nl $file > $tmp.nl
+	cat $nc_builtin_nl > $tmp.nl
+	if [ -f "$rootname.pp" ]; then
+		echo "mnc: compiling \`$rootname.pp'"
+		sed -e '/^#if *NU_PROLOG/s/.*//' -e '/^#endif/s/.*//' \
+			"$rootname.pp" >> $tmp.nl
+	else
+		echo "mnc: compiling \`$file'"
+		cat $file >> $tmp.nl
+	fi
 	nc -c $options $tmp.nl
 	rm $tmp.nl $tmp.ns
-	mv $tmp.no ${target:-`dirname $file`/`basename $file .nl`.no}
+	mv $tmp.no ${target:-"$rootname.no"}
 done
