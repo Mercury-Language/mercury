@@ -109,6 +109,7 @@ ORDINARY_PROGS=	\
 	type_qual \
 	type_to_term_bug \
 	tuple_test \
+	type_spec_modes \
 	user_defined_equality \
 	user_defined_equality2 \
 	write \

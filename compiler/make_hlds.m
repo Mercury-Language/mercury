@@ -1279,9 +1279,7 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
 		->
 			{ map__lookup(Procs0, ProcId, ProcInfo) },
 			{ map__init(Procs1) },
-			{ hlds_pred__initial_proc_id(NewProcId) },
-			{ map__det_insert(Procs1, NewProcId,
-				ProcInfo, Procs) },
+			{ map__det_insert(Procs1, ProcId, ProcInfo, Procs) },
 			{ ProcIds = [ProcId] },
 			{ ModesOk = yes },
 			{ ModuleInfo = ModuleInfo0 }
