@@ -25,11 +25,14 @@
 
 :- import_module parser, lexer, ops.
 
-:- pred library__version(float::out) is det.
+:- pred library__version(string::out) is det.
+
+
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-library__version(0.3).
+library__version("0.3").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
