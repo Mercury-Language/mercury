@@ -1,10 +1,11 @@
 /*
- *	$Id: disasm.c,v 1.3 1997-01-31 04:23:23 aet Exp $
+ *	$Id: disasm.c,v 1.4 1997-02-01 09:21:18 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
 
 /* Imports */
+
 #include	<stdlib.h>
 #include	<stdio.h>
 #include	<assert.h>
@@ -30,9 +31,26 @@ print_var_dir(Var_dir var_dir);
 static void
 print_op_arg(Op_arg op_arg);
 
+static CString
+bytecode_to_name(Byte bytecode_id);
+
+static CString
+determinism_to_name(Byte determinism_id);
+
+static CString
+binop_to_name(Byte binop);
+
+static CString
+unop_to_name(Byte unop);
+
+static CString
+quote_cstring(CString str);
+
 /* Implementation */
 
-/* XXX: disassemble is still a stub */
+/*
+ * We emulate Zoltan's .bytedebug file format.
+ */
 void
 disassemble(FILE* fp)
 {
@@ -43,12 +61,6 @@ disassemble(FILE* fp)
 	/* Read two-byte version number */
 	if (read_bytecode_version_number(fp, &bytecode_version_number))
 	{
-/* XXX: Emulate Zoltan's disassembler */
-#if 0
-		printf("Bytecode Version number: %d\n",
-			bytecode_version_number
-		);
-#endif	/* 0 */
 		printf("%d\n", bytecode_version_number);
 		/* XXX: We should check the version number is 
 		 * what we expect. Should use major and minor version
@@ -63,7 +75,6 @@ disassemble(FILE* fp)
 	while (read_bytecode(fp, &bytecode))
 	{
 		print_bytecode(bytecode);
-		fflush(stdout);
 	} 
 } /* disassemble */
 
@@ -72,9 +83,9 @@ static void
 print_bytecode(Bytecode bc)
 {
 	/* XXX: nuke the extraneous printed shit */
-	printf("%s", bytecode_to_name(bc.bc));
+	printf("%s", bytecode_to_name(bc.id));
 
-	switch (bc.bc)
+	switch (bc.id)
 	{
 	case BC_enter_pred:
 		printf(" %s %d", bc.opt.enter_pred.pred_name,
@@ -389,7 +400,7 @@ print_bytecode(Bytecode bc)
 static void
 print_cons_id(Cons_id cons_id)
 {
-	switch (cons_id.cons_id_type)
+	switch (cons_id.id)
 	{
 	case CONSID_CONS:
 		{
@@ -400,22 +411,27 @@ print_cons_id(Cons_id cons_id)
 		break;
 	case CONSID_INT_CONST:
 		{
-			printf("%d", cons_id.opt.int_const);
+			printf("int_const %d", cons_id.opt.int_const);
 		}
 		break;
 	case CONSID_STRING_CONST:
 		{
-			printf("\"%s\"", cons_id.opt.string_const);
+			/* 
+			 * XXX: This string printing is shitful.
+			 * Should quote newlines, backslashes, etc.
+			 */
+			printf("string_const \"%s\"", cons_id.opt.string_const);
 		}
 		break;
 	case CONSID_FLOAT_CONST:
 		{
 			/* XXX: What's Float defined to be??? */
-			printf("%f", cons_id.opt.float_const);
+			printf("float_const %f", cons_id.opt.float_const);
 		}
 		break;
 	case CONSID_PRED_CONST:
 		{
+			printf("%s", "pred_const ");
 			printf("%s ", cons_id.opt.pred_const.module_id);
 			printf("%s ", cons_id.opt.pred_const.pred_id);
 			printf("%d ", cons_id.opt.pred_const.arity);
@@ -424,6 +440,7 @@ print_cons_id(Cons_id cons_id)
 		break;
 	case CONSID_CODE_ADDR_CONST:
 		{
+			printf("%s", "code_addr_const ");
 			printf("%s ", cons_id.opt.code_addr_const.module_id);
 			printf("%s ", cons_id.opt.code_addr_const.pred_id);
 			printf("%d ", cons_id.opt.code_addr_const.arity);
@@ -432,6 +449,7 @@ print_cons_id(Cons_id cons_id)
 		break;
 	case CONSID_BASE_TYPE_INFO_CONST:
 		{
+			printf("%s", "base_type_info_const ");
 			printf("%s ", cons_id.opt.base_type_info_const
 				.module_id);
 			printf("%s ", cons_id.opt.base_type_info_const.
@@ -452,7 +470,7 @@ print_cons_id(Cons_id cons_id)
 static void
 print_tag(Tag tag)
 {
-	switch (tag.tag_type)
+	switch (tag.id)
 	{
 	case SIMPLE_TAG:
 		{
@@ -486,7 +504,7 @@ print_tag(Tag tag)
 	default:
 		{
 			fprintf(stderr, "ERROR: invalid tag: %d\n", 
-				tag.tag_type);
+				tag.id);
 			assert(FALSE); /*XXX*/
 		}
 		break;
@@ -504,7 +522,7 @@ print_var_dir(Var_dir var_dir)
 static void
 print_op_arg(Op_arg op_arg)
 {
-	switch (op_arg.arg_type)
+	switch (op_arg.id)
 	{
 	case ARG_VAR:
 		{
@@ -531,3 +549,191 @@ print_op_arg(Op_arg op_arg)
 	return;
 } /* print_op_arg */
 
+
+static CString
+bytecode_table[] =
+	{
+	"enter_pred",
+	"endof_pred",
+	"enter_proc",
+	"endof_proc",
+	"label",
+	"enter_disjunction",
+	"endof_disjunction",
+	"enter_disjunct",
+	"endof_disjunct",
+	"enter_switch",
+	"endof_switch",
+	"enter_switch_arm",
+	"endof_switch_arm",
+	"enter_if",
+	"enter_then",
+	"endof_then",	/* XXX: change to enter_else */
+	"endof_if",
+	"enter_negation",
+	"endof_negation",
+	"enter_commit",
+	"endof_commit",
+	"assign",
+	"test",
+	"construct",
+	"deconstruct",
+	"complex_construct",
+	"complex_deconstruct",
+	"place_arg",
+	"pickup_arg",
+	"call",
+	"higher_order_call",
+	"builtin_binop",
+	"builtin_unop",
+	"builtin_bintest",
+	"builtin_untest",
+	"semidet_succeed",
+	"semidet_success_check",
+	"fail",
+	"context",
+	"not_supported"
+	};
+
+static CString
+bytecode_to_name(Byte bytecode_id)
+{
+	if (bytecode_id >= sizeof(bytecode_table) / sizeof(CString))
+	{
+		return "<<unknown bytecode>>"; /*XXX*/
+	}
+	else
+	{
+		return bytecode_table[bytecode_id];
+	}
+}
+
+/*
+ *	XXX: Currently we depend on the order of elements in the table.
+ */
+static CString
+determinism_table[] =
+	{
+	"det",
+	"semidet",
+	"multidet",
+	"nondet",
+	"cc_multidet",
+	"cc_nondet",
+	"erroneous",
+	"failure"
+	};
+
+/*
+ * Return a const string
+ */
+static CString
+determinism_to_name(Byte determinism_id)
+{
+	if (determinism_id >= sizeof(determinism_table) / sizeof(CString))
+	{
+		return "<<unknown determinism>>"; /*XXX*/
+	}
+	else
+	{
+		return determinism_table[determinism_id];
+	}
+}
+
+/*
+ *	XXX: Currently we depend on the order of elements in the table.
+ */
+static CString
+binop_table[] = {
+	"+",
+	"-",
+	"*",
+	"/",
+	"<<",
+	">>",
+	"&",
+	"|",
+	"^",
+	"and",
+	"or",
+	"eq",
+	"ne",
+	"array_index",
+	"str_eq",
+	"str_ne",
+	"str_lt",
+	"str_gt",
+	"str_le",
+	"str_ge",
+	"<",
+	">",
+	"<=",
+	">=",
+	"float_plus",
+	"float_minus",
+	"float_times",
+	"float_divide",
+	"float_eq",
+	"float_ne",
+	"float_lt",
+	"float_gt",
+	"float_le",
+	"float_ge"
+};
+
+static CString
+binop_to_name(Byte binop)
+{
+	/* bounds check */
+	if (binop >= sizeof(binop_table) / sizeof(CString))
+	{
+		return "<<unknown binop>>"; /*XXX*/
+	}
+	else
+	{
+		return binop_table[binop];
+	}
+} /* binop_to_name */
+
+/*
+ *	XXX: Currently we depend on the order of elements in the table.
+ */
+static CString
+unop_table[] = {
+	"mktag",
+	"tag",
+	"unmktag",
+	"mkbody",
+	"body",
+	"unmkbody",
+	"cast_to_unsigned",
+	"hash_string",
+	"bitwise_complement",
+	"not"
+};
+
+static CString
+unop_to_name(Byte unop)
+{
+	/* bounds check */
+	if (unop >= sizeof(unop_table) / sizeof(CString))
+	{
+		return "<<unknown unop>>"; /*XXX*/
+	}
+	else
+	{
+		return unop_table[unop];
+	}
+} /* unop_to_name */
+
+
+/*
+ * Return a quoted C String.
+ * XXX: put in util module?
+ */
+static CString
+quote_cstring(CString str)
+{
+	/* XXX: Stubbed out for now. */
+	return str;
+}
