@@ -7088,7 +7088,8 @@ construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args, GoalInfo,
 		goal_info_get_context(GoalInfo, Context),
 		create_atomic_unification(RetArg,
 			functor(ConsId, FuncArgs), Context,
-			explicit, [], Goal)
+			explicit, [], GoalExpr - _),
+		Goal = GoalExpr - GoalInfo
 	).
 
 %-----------------------------------------------------------------------------%
