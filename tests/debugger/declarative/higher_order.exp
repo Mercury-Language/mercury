@@ -1,0 +1,21 @@
+       1:      1  1 CALL pred higher_order:main/2-0 (det) higher_order.m:8
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred higher_order:p/2-0 (det)
+mdb> continue
+       2:      2  2 CALL pred higher_order:p/2-0 (det) higher_order.m:15 (higher_order.m:9)
+mdb> finish
+       7:      2  2 EXIT pred higher_order:p/2-0 (det) higher_order.m:15 (higher_order.m:9)
+mdb> dd
+p(3, 81)
+Valid? no
+q('IntroducedFrom__pred__p__16__1', 3, 81)
+Valid? yes
+Found incorrect contour:
+p(3, 81)
+Is this a bug? yes
+       7:      2  2 EXIT pred higher_order:p/2-0 (det) higher_order.m:15 (higher_order.m:9)
+mdb> continue
+81

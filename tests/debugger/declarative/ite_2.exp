@@ -1,0 +1,51 @@
+       1:      1  1 CALL pred ite_2:main/2-0 (cc_multi) ite_2.m:8
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break ite
+Ambiguous procedure specification. The matches are:
+0: pred ite_2:ite/3-1 (multi)
+1: pred ite_2:ite/3-0 (det)
+
+Which do you want to put a breakpoint on (0-1 or *)? *
+ 0: + stop  interface pred ite_2:ite/3-1 (multi)
+ 1: + stop  interface pred ite_2:ite/3-0 (det)
+mdb> continue
+       2:      2  2 CALL pred ite_2:ite/3-0 (det) ite_2.m:27 (ite_2.m:9)
+mdb> finish
+       9:      2  2 EXIT pred ite_2:ite/3-0 (det) ite_2.m:27 (ite_2.m:9)
+mdb> dd
+ite(a, 1, 1)
+Valid? no
+a(1, 1)
+Valid? yes
+c(1, 1)
+Valid? yes
+Found incorrect contour:
+ite(a, 1, 1)
+Is this a bug? yes
+       9:      2  2 EXIT pred ite_2:ite/3-0 (det) ite_2.m:27 (ite_2.m:9)
+mdb> continue
+      10:      5  2 CALL pred ite_2:ite/3-1 (multi) ite_2.m:27 (ite_2.m:10)
+mdb> finish
+      23:      5  2 EXIT pred ite_2:ite/3-1 (multi) ite_2.m:27 (ite_2.m:10)
+mdb> dd
+ite(b, 1, 1)
+Valid? no
+b(1, 0)
+Valid? yes
+b(1, 1)
+Valid? yes
+Call b(1, _)
+Solutions:
+	b(1, 0)
+	b(1, 1)
+Complete? yes
+Found incorrect contour:
+ite(b, 1, 1)
+Is this a bug? yes
+      23:      5  2 EXIT pred ite_2:ite/3-1 (multi) ite_2.m:27 (ite_2.m:10)
+mdb> continue
+ite(a, 1, 1).
+ite(b, 1, 1).
+

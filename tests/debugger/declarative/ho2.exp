@@ -1,0 +1,45 @@
+       1:      1  1 CALL pred ho2:main/2-0 (det) ho2.m:8
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred ho2:p/3-0 (det)
+mdb> continue
+       2:      2  2 CALL pred ho2:p/3-0 (det) ho2.m:21 (ho2.m:9)
+mdb> finish
+       7:      2  2 EXIT pred ho2:p/3-0 (det) ho2.m:21 (ho2.m:9)
+mdb> dd
+p(0, 3, 27)
+Valid? no
+q('IntroducedFrom__pred__p__22__1'(3), 3, 27)
+Valid? yes
+Found incorrect contour:
+p(0, 3, 27)
+Is this a bug? yes
+       7:      2  2 EXIT pred ho2:p/3-0 (det) ho2.m:21 (ho2.m:9)
+mdb> continue
+       8:      5  2 CALL pred ho2:p/3-0 (det) ho2.m:21 (ho2.m:10)
+mdb> finish
+      13:      5  2 EXIT pred ho2:p/3-0 (det) ho2.m:21 (ho2.m:10)
+mdb> dd
+p(1, 3, 27)
+Valid? no
+Found incorrect contour:
+p(1, 3, 27)
+Is this a bug? yes
+      13:      5  2 EXIT pred ho2:p/3-0 (det) ho2.m:21 (ho2.m:10)
+mdb> continue
+      14:      8  2 CALL pred ho2:p/3-0 (det) ho2.m:21 (ho2.m:11)
+mdb> finish
+      19:      8  2 EXIT pred ho2:p/3-0 (det) ho2.m:21 (ho2.m:11)
+mdb> dd
+p(2, 4, 64)
+Valid? no
+q('IntroducedFrom__pred__p__22__1'(4), 4, 64)
+Valid? yes
+Found incorrect contour:
+p(2, 4, 64)
+Is this a bug? yes
+      19:      8  2 EXIT pred ho2:p/3-0 (det) ho2.m:21 (ho2.m:11)
+mdb> continue
+27, 27, 64

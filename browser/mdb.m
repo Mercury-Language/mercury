@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 The University of Melbourne.
+% Copyright (C) 1998-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,6 +22,7 @@
 
 :- include_module frame, parse, util, sized_pretty.
 :- include_module declarative_analyser, declarative_oracle, declarative_user.
+:- include_module tree234_cc.
 
 	% XXX these modules are more generally useful, but the
 	% dynamic linking library is not yet installed anywhere.

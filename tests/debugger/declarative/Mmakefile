@@ -30,8 +30,11 @@ DECLARATIVE_PROGS=		\
 	filter			\
 	func_call		\
 	gcf			\
+	higher_order		\
+	ho2			\
 	if_then_else		\
 	input_term_dep		\
+	ite_2			\
 	lpe_example		\
 	neg_conj		\
 	negation		\
@@ -48,8 +51,6 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 	untraced_subgoal
 
 NONWORKING_DECLARATIVE_PROGS=	\
-	higher_order		\
-	ite_2			\
 	solutions
 
 MCFLAGS += --trace decl
@@ -147,6 +148,9 @@ gcf.out: gcf gcf.inp
 
 higher_order.out: higher_order higher_order.inp
 	$(MDB) ./higher_order < higher_order.inp > higher_order.out 2>&1
+
+ho2.out: ho2 ho2.inp
+	$(MDB) ./ho2 < ho2.inp > ho2.out 2>&1
 
 if_then_else.out: if_then_else if_then_else.inp
 	$(MDB) ./if_then_else < if_then_else.inp > if_then_else.out 2>&1

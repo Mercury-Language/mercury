@@ -64,12 +64,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mdb__declarative_user, mdb__util.
-:- import_module bool, std_util, map, set, require.
+:- import_module mdb__declarative_user, mdb__tree234_cc, mdb__util.
+:- import_module bool, std_util, set, require.
 
 query_oracle(Questions, Response, Oracle0, Oracle) -->
 	{ get_oracle_kb(Oracle0, KB0) },
-	{ list__filter_map(query_oracle_kb(KB0), Questions, Answers) },
+	{ query_oracle_kb_list(KB0, Questions, Answers) },
 	(
 		{ Answers = [] }
 	->
@@ -154,25 +154,27 @@ set_oracle_user(oracle(KB, _), UI, oracle(KB, UI)).
 		% case that the user supplies a truth value for a
 		% "wrong answer" node.
 		%
-		map(decl_atom, decl_truth),
+		map_cc(decl_atom, decl_truth),
 
 		% Mapping from call atoms to their solution sets.
 		% The sets in this map are all complete---but they may
 		% contain wrong answers.
 		%
-		map(decl_atom, set(decl_atom)),
+		map_cc(decl_atom, set(decl_atom)),
 
 		% Mapping from call atoms to their solution sets.
 		% The sets in this map are all incomplete---there
 		% exists a correct solution which is not in the set.
 		%
-		map(decl_atom, set(decl_atom)),
+		map_cc(decl_atom, set(decl_atom)),
 
 		% Mapping from call atoms to information about which
 		% exceptions are possible or impossible.
 		%
-		map(decl_atom, known_exceptions)
+		map_cc(decl_atom, known_exceptions)
 	).
+
+:- type map_cc(K, V) == tree234_cc(K, V).
 
 :- type known_exceptions
 	--->	known_excp(
@@ -184,49 +186,49 @@ set_oracle_user(oracle(KB, _), UI, oracle(KB, UI)).
 :- mode oracle_kb_init(out) is det.
 
 oracle_kb_init(oracle_kb(G, Y, N, X)) :-
-	map__init(G),
-	map__init(Y),
-	map__init(N),
-	map__init(X).
+	tree234_cc__init(G),
+	tree234_cc__init(Y),
+	tree234_cc__init(N),
+	tree234_cc__init(X).
 
-:- pred get_kb_ground_map(oracle_kb, map(decl_atom, decl_truth)).
+:- pred get_kb_ground_map(oracle_kb, map_cc(decl_atom, decl_truth)).
 :- mode get_kb_ground_map(in, out) is det.
 
 get_kb_ground_map(oracle_kb(Map, _, _, _), Map).
 
-:- pred set_kb_ground_map(oracle_kb, map(decl_atom, decl_truth), oracle_kb).
+:- pred set_kb_ground_map(oracle_kb, map_cc(decl_atom, decl_truth), oracle_kb).
 :- mode set_kb_ground_map(in, in, out) is det.
 
 set_kb_ground_map(oracle_kb(_, Y, N, X), G, oracle_kb(G, Y, N, X)).
 
-:- pred get_kb_complete_map(oracle_kb, map(decl_atom, set(decl_atom))).
+:- pred get_kb_complete_map(oracle_kb, map_cc(decl_atom, set(decl_atom))).
 :- mode get_kb_complete_map(in, out) is det.
 
 get_kb_complete_map(oracle_kb(_, Map, _, _), Map).
 
-:- pred set_kb_complete_map(oracle_kb, map(decl_atom, set(decl_atom)),
+:- pred set_kb_complete_map(oracle_kb, map_cc(decl_atom, set(decl_atom)),
 		oracle_kb).
 :- mode set_kb_complete_map(in, in, out) is det.
 
 set_kb_complete_map(oracle_kb(G, _, N, X), Y, oracle_kb(G, Y, N, X)).
 
-:- pred get_kb_incomplete_map(oracle_kb, map(decl_atom, set(decl_atom))).
+:- pred get_kb_incomplete_map(oracle_kb, map_cc(decl_atom, set(decl_atom))).
 :- mode get_kb_incomplete_map(in, out) is det.
 
 get_kb_incomplete_map(oracle_kb(_, _, Map, _), Map).
 
-:- pred set_kb_incomplete_map(oracle_kb, map(decl_atom, set(decl_atom)),
+:- pred set_kb_incomplete_map(oracle_kb, map_cc(decl_atom, set(decl_atom)),
 		oracle_kb).
 :- mode set_kb_incomplete_map(in, in, out) is det.
 
 set_kb_incomplete_map(oracle_kb(G, Y, _, X), N, oracle_kb(G, Y, N, X)).
 
-:- pred get_kb_exceptions_map(oracle_kb, map(decl_atom, known_exceptions)).
+:- pred get_kb_exceptions_map(oracle_kb, map_cc(decl_atom, known_exceptions)).
 :- mode get_kb_exceptions_map(in, out) is det.
 
 get_kb_exceptions_map(oracle_kb(_, _, _, Map), Map).
 
-:- pred set_kb_exceptions_map(oracle_kb, map(decl_atom, known_exceptions),
+:- pred set_kb_exceptions_map(oracle_kb, map_cc(decl_atom, known_exceptions),
 		oracle_kb).
 :- mode set_kb_exceptions_map(in, in, out) is det.
 
@@ -234,41 +236,85 @@ set_kb_exceptions_map(oracle_kb(G, Y, N, _), X, oracle_kb(G, Y, N, X)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred query_oracle_kb(oracle_kb, decl_question(T), decl_answer(T)).
-:- mode query_oracle_kb(in, in, out) is semidet.
+:- pred query_oracle_kb_list(oracle_kb, list(decl_question(T)),
+		list(decl_answer(T))).
+:- mode query_oracle_kb_list(in, in, out) is cc_multi.
 
-query_oracle_kb(KB, Question, truth_value(Node, Truth)) :-
+query_oracle_kb_list(_, [], []).
+query_oracle_kb_list(KB, [Q | Qs0], As) :-
+	query_oracle_kb_list(KB, Qs0, As0),
+	query_oracle_kb(KB, Q, MaybeA),
+	(
+		MaybeA = yes(A),
+		As = [A | As0]
+	;
+		MaybeA = no,
+		As = As0
+	).
+
+:- pred query_oracle_kb(oracle_kb, decl_question(T), maybe(decl_answer(T))).
+:- mode query_oracle_kb(in, in, out) is cc_multi.
+
+query_oracle_kb(KB, Question, Result) :-
 	Question = wrong_answer(Node, Atom),
 	get_kb_ground_map(KB, Map),
-	map__search(Map, Atom, Truth).
+	tree234_cc__search(Map, Atom, MaybeTruth),
+	(
+		MaybeTruth = yes(Truth),
+		Result = yes(truth_value(Node, Truth))
+	;
+		MaybeTruth = no,
+		Result = no
+	).
 
-query_oracle_kb(KB, Question, truth_value(Node, Truth)) :-
+query_oracle_kb(KB, Question, Result) :-
 	Question = missing_answer(Node, Call, Solns),
 	set__list_to_set(Solns, Ss),
 	get_kb_complete_map(KB, CMap),
+	tree234_cc__search(CMap, Call, MaybeCSs),
 	(
-		map__search(CMap, Call, CSs),
+		MaybeCSs = yes(CSs),
 		set__subset(CSs, Ss)
 	->
-		Truth = yes
+		Result = yes(truth_value(Node, yes))
 	;
 		get_kb_incomplete_map(KB, IMap),
-		map__search(IMap, Call, ISs),
-		set__subset(Ss, ISs),
-		Truth = no
+		tree234_cc__search(IMap, Call, MaybeISs),
+		(
+			MaybeISs = yes(ISs),
+			(
+				set__subset(Ss, ISs)
+			->
+				Result = yes(truth_value(Node, no))
+			;
+				Result = no
+			)
+		;
+			MaybeISs = no,
+			Result = no
+		)
 	).
 
-query_oracle_kb(KB, Question, truth_value(Node, Truth)) :-
+query_oracle_kb(KB, Question, Result) :-
 	Question = unexpected_exception(Node, Call, Exception),
 	get_kb_exceptions_map(KB, XMap),
-	map__search(XMap, Call, known_excp(Possible, Impossible)),
+	tree234_cc__search(XMap, Call, MaybeX),
 	(
-		set__member(Exception, Possible)
-	->
-		Truth = yes
+		MaybeX = no,
+		Result = no
 	;
-		set__member(Exception, Impossible),
-		Truth = no
+		MaybeX = yes(known_excp(Possible, Impossible)),
+		(
+			set__member(Exception, Possible)
+		->
+			Result = yes(truth_value(Node, yes))
+		;
+			set__member(Exception, Impossible)
+		->
+			Result = yes(truth_value(Node, no))
+		;
+			Result = no
+		)
 	).
 
 	% assert_oracle_kb/3 assumes that the asserted fact is consistent
@@ -278,30 +324,32 @@ query_oracle_kb(KB, Question, truth_value(Node, Truth)) :-
 	%
 :- pred assert_oracle_kb(decl_question(T), decl_answer(T), oracle_kb,
 		oracle_kb).
-:- mode assert_oracle_kb(in, in, in, out) is det.
+:- mode assert_oracle_kb(in, in, in, out) is cc_multi.
 
 assert_oracle_kb(_, suspicious_subterm(_, _, _), KB, KB).
 
 assert_oracle_kb(wrong_answer(_, Atom), truth_value(_, Truth), KB0, KB) :-
 	get_kb_ground_map(KB0, Map0),
-	map__det_insert(Map0, Atom, Truth, Map),
+	tree234_cc__set(Map0, Atom, Truth, Map),
 	set_kb_ground_map(KB0, Map, KB).
 
 assert_oracle_kb(missing_answer(_, Call, Solns), truth_value(_, yes),
 		KB0, KB) :-
 	get_kb_complete_map(KB0, Map0),
 	set__list_to_set(Solns, Ss0),
+	tree234_cc__search(Map0, Call, MaybeOldSs),
 	(
-		map__search(Map0, Call, OldSs)
-	->
+		MaybeOldSs = yes(OldSs),
+			%
 			% The sets are both complete, so their
 			% intersection must be also.
 			%
-		set__intersect(OldSs, Ss0, Ss),
-		map__set(Map0, Call, Ss, Map)
+		set__intersect(OldSs, Ss0, Ss)
 	;
-		map__det_insert(Map0, Call, Ss0, Map)
+		MaybeOldSs = no,
+		Ss = Ss0
 	),
+	tree234_cc__set(Map0, Call, Ss, Map),
 	set_kb_complete_map(KB0, Map, KB).
 
 assert_oracle_kb(missing_answer(_, Call, Solns), truth_value(_, no), KB0, KB) :-
@@ -311,30 +359,29 @@ assert_oracle_kb(missing_answer(_, Call, Solns), truth_value(_, no), KB0, KB) :-
 		% XXX should also keep the old incomplete set around, too.
 		% It can still give us information that the new one can't.
 		%
-	map__set(Map0, Call, Ss, Map),
+	tree234_cc__set(Map0, Call, Ss, Map),
 	set_kb_incomplete_map(KB0, Map, KB).
 
 assert_oracle_kb(unexpected_exception(_, Call, Exception),
 		truth_value(_, Truth), KB0, KB) :-
 	get_kb_exceptions_map(KB0, Map0),
+	tree234_cc__search(Map0, Call, MaybeX),
 	(
-		map__search(Map0, Call, known_excp(Possible0, Impossible0))
-	->
-		Possible1 = Possible0,
-		Impossible1 = Impossible0
+		MaybeX = yes(known_excp(Possible0, Impossible0))
 	;
-		set__init(Possible1),
-		set__init(Impossible1)
+		MaybeX = no,
+		set__init(Possible0),
+		set__init(Impossible0)
 	),
 	(
 		Truth = yes,
-		set__insert(Possible1, Exception, Possible),
-		Impossible = Impossible1
+		set__insert(Possible0, Exception, Possible),
+		Impossible = Impossible0
 	;
 		Truth = no,
-		Possible = Possible1,
-		set__insert(Impossible1, Exception, Impossible)
+		Possible = Possible0,
+		set__insert(Impossible0, Exception, Impossible)
 	),
-	map__set(Map0, Call, known_excp(Possible, Impossible), Map),
+	tree234_cc__set(Map0, Call, known_excp(Possible, Impossible), Map),
 	set_kb_exceptions_map(KB0, Map, KB).
 
