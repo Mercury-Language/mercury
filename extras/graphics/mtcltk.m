@@ -130,13 +130,11 @@ int *tclDummyMathPtr = (int *) matherr;
 ").
 
 :- pragma c_header_code("
-	extern Word mtcltk_current_io_state;
 	extern Word mtcltk_mercury_initializer;
 	char *mtcltk_strdup(const char *str);
 ").
 
 :- pragma c_code("
-	Word mtcltk_current_io_state;
 	Word mtcltk_mercury_initializer;
 ").
 
@@ -161,9 +159,8 @@ int *tclDummyMathPtr = (int *) matherr;
 
     mtcltk_mercury_initializer = Closure;
 
-    mtcltk_current_io_state = IO0;
     Tk_Main(argc, argv, Tcl_AppInit);
-    IO = mtcltk_current_io_state;
+    IO = IO0;
 }").
 
 :- pred call_mercury_initializer(pred(tcl_interp, io__state, io__state),
@@ -211,8 +208,7 @@ Tcl_AppInit(Tcl_Interp *interp)
     }
     Tcl_StaticPackage(interp, tk_str, Tk_Init, (Tcl_PackageInitProc *) NULL);
 
-    mtcltk_call_mercury_initializer(mtcltk_mercury_initializer,
-	(Word)interp, mtcltk_current_io_state, &mtcltk_current_io_state);
+    mtcltk_call_mercury_initializer(mtcltk_mercury_initializer, (Word)interp);
 
     Tcl_SetVar(interp, tcl_rcFileName_str, gwarsrc_str, TCL_GLOBAL_ONLY);
 
@@ -227,7 +223,6 @@ Tcl_AppInit(Tcl_Interp *interp)
 {
 	int err;
 
-	mtcltk_current_io_state = IO0;
 	err = Tcl_Eval((Tcl_Interp *)Interp, (char *)Cmd);
 	switch (err) {
 		case TCL_OK:
@@ -241,7 +236,7 @@ Tcl_AppInit(Tcl_Interp *interp)
 					""TCL_OK or TCL_ERROR"");
 	}
 	Result = mtcltk_strdup(((Tcl_Interp *)Interp)->result);
-	IO = mtcltk_current_io_state;
+	IO = IO0;
 }
 ").
 
@@ -294,8 +289,7 @@ int mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
 	}
 
 	mtcltk_call_mercury_closure((Word) clientData, (Word) interp,
-		args, &status, &interp->result,
-		mtcltk_current_io_state, &mtcltk_current_io_state);
+		args, &status, &interp->result);
 /*
 	fprintf(stderr, ""mercury result: `%s'\n"", interp->result);
 */
@@ -311,20 +305,18 @@ tcl_status_ok(tcl_ok).
 			Closure::pred(in, in, out, out, di, uo) is det,
 			IO0::di, IO::uo), may_call_mercury,
 "{
-	mtcltk_current_io_state = IO0;
 	Tcl_CreateCommand((Tcl_Interp *)Interp, Name, mtcltk_do_callback,
 				(ClientData)Closure, NULL);
-	IO = mtcltk_current_io_state;
+	IO = IO0;
 }").
 
 :- pragma c_code(delete_command(Interp::in, Name::in, Result::out,
 			IO0::di, IO::uo),
 "{
 	int err;
-	mtcltk_current_io_state = IO0;
 	err = Tcl_DeleteCommand((Tcl_Interp *)Interp, Name);
 	Result = (err == 0 ? 0 : 1);
-	IO = mtcltk_current_io_state;
+	IO = IO0;
 }").
 
 :- pragma c_code("

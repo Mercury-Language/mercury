@@ -51,6 +51,8 @@
 	;	insert_width(int)
 	;	jump(bool)
 	;	justify(string)
+	;	label(string)
+	;	menu(widget)
 	;	multiple_select(bool)
 	;	orient(orientation)
 	;	outline_color(string)
@@ -62,6 +64,7 @@
 	;	scale_height(int)
 	;	scale_range(int, int)
 	;	scale_text(string)
+	;	screen(string)
 	;	scroll_region(int, int)
 	;	select_background(string)
 	;	select_border_width(int)
@@ -113,6 +116,8 @@
 	;	insert_width(ground)
 	;	jump(ground)
 	;	justify(ground)
+	;	label(ground)
+	;	menu(bound(menu(ground)))
 	;	multiple_select(ground)
 	;	orient(ground)
 	;	outline_color(ground)
@@ -124,6 +129,7 @@
 	;	scale_height(ground)
 	;	scale_range(ground, ground)
 	;	scale_text(ground)
+	;	screen(ground)
 	;	scroll_region(ground, ground)
 	;	select_background(ground)
 	;	select_border_width(ground)
@@ -188,6 +194,8 @@
 	;	wrap_length(ground)
 	)).
 
+:- inst canvas = bound(canvas(ground)).
+
 :- inst entry = bound(entry(ground)).
 
 :- inst entry_config = bound((
@@ -241,6 +249,8 @@
 	;	take_focus(ground)
 	;	width(ground)
 	)).
+
+:- inst radiobutton = bound(radiobutton(ground)).
 
 :- inst scrollbar = bound(scrollbar(ground)).
 
@@ -320,7 +330,8 @@
 	:- mode disable(in, in(button), di, uo) is det.
 
 :- pred canvas(tcl_interp, list(config), widget, widget, io__state, io__state).
-:- mode canvas(in, in(list_skel(config)), in(window), out, di, uo) is det.
+:- mode canvas(in, in(list_skel(config)), in(window), out(canvas),
+		di, uo) is det.
 
 	:- type canvas_item.
 
@@ -335,17 +346,43 @@
 			;	text(int, int)
 			.
 
-	:- pred create(tcl_interp, widget, canvas_item_type, list(config),
-			canvas_item, io__state, io__state).
-	:- mode create(in, in, in, in(list_skel(config)), out, di, uo) is det.
+	:- type item_config
+		--->	anchor(anchor)
+		;	background(string)
+		;	bitmap(string)
+		;	extent(int)
+		;	fill(string)
+		;	foreground(string)
+		;	outline(string)
+		;	start(int)
+		;	type(string)
+		;	width(int)
+		.
 
-	:- type deletion_spec
+	:- type item_spec
 			--->	item(canvas_item)
 			;	(all)
 			.
 
-	:- pred canvas_delete(tcl_interp, widget, deletion_spec, io__state, io__state).
+	:- pred create(tcl_interp, widget, canvas_item_type, list(item_config),
+			canvas_item, io__state, io__state).
+	:- mode create(in, in, in, in, out, di, uo) is det.
+
+	:- pred canvas_delete(tcl_interp, widget, item_spec,
+			io__state, io__state).
 	:- mode canvas_delete(in, in, in, di, uo) is det.
+
+	:- pred canvas_item_configure(tcl_interp, widget, canvas_item,
+			list(item_config), io__state, io__state).
+	:- mode canvas_item_configure(in, in, in, in, di, uo) is det.
+
+	:- pred canvas_item_coords(tcl_interp, widget, canvas_item, int, int,
+			io__state, io__state).
+	:- mode canvas_item_coords(in, in, in, in, in, di, uo) is det.
+
+	:- pred canvas_move(tcl_interp, widget, canvas_item, int, int,
+			io__state, io__state).
+	:- mode canvas_move(in, in, in, in, in, di, uo) is det.
 
 :- pred entry(tcl_interp, list(config), widget, widget, io__state, io__state).
 :- mode entry(in, in(list_skel(entry_config)), in(window), out(entry),
@@ -397,12 +434,26 @@
 
 	:- type menu_item
 		--->	command
+		;	separator
 		.
 
 	:- pred add_menu_item(tcl_interp, widget, menu_item, list(config),
 			io__state, io__state).
 	:- mode add_menu_item(in, in(menu), in, in(list_skel(config)),
 			di, uo) is det.
+
+:- type radio_group.
+
+:- pred new_radio_group(tcl_interp, radio_group, io__state, io__state).
+:- mode new_radio_group(in, out, di, uo) is det.
+
+:- pred set_radio_group(tcl_interp, radio_group, string, io__state, io__state).
+:- mode set_radio_group(in, in, in, di, uo) is det.
+
+:- pred radiobutton(tcl_interp, list(config), widget, radio_group, string,
+		widget, io__state, io__state).
+:- mode radiobutton(in, in(list_skel(config)), in(window), in, in,
+		out(radiobutton), di, uo) is det.
 
 :- pred scrollbar(tcl_interp, list(config), widget, widget,
 		io__state, io__state).
@@ -496,12 +547,24 @@
 	;	visibility
 	.
 
-:- type event_data.
+:- type event_data_spec
+	--->	button
+	;	key
+	;	x
+	;	y
+	.
 
-:- pred bind(tcl_interp, widget, event,
-		pred(tcl_interp, event_data, io__state, io__state),
+:- type event_data
+	--->	button(int)
+	;	key(int)
+	;	x(int)
+	;	y(int)
+	.
+
+:- pred bind(tcl_interp, widget, event, list(event_data_spec),
+		pred(tcl_interp, list(event_data), io__state, io__state),
 		io__state, io__state).
-:- mode bind(in, in(toplevel), in, pred(in, in, di, uo) is det, di, uo) is det.
+:- mode bind(in, in, in, in, pred(in, in, di, uo) is det, di, uo) is det.
 
 :- pred configure(tcl_interp, widget, list(config), io__state, io__state).
 :- mode configure(in, in, in(list_skel(config)), di, uo) is det.
@@ -516,6 +579,9 @@
 
 :- pred get_selection(tcl_interp, widget, string, io__state, io__state).
 :- mode get_selection(in, in, out, di, uo) is det.
+
+:- pred ensure_window(widget, widget).
+:- mode ensure_window(in, out(window)) is det.
 
 % XXX hack until we can implement cget.
 :- pred unbind_command(tcl_interp, widget, io__state, io__state).
@@ -537,6 +603,7 @@
 	;	listbox(wpath)
 	;	menubutton(wpath)
 	;	menu(wpath)
+	;	radiobutton(wpath)
 	;	scrollbar(wpath)
 	;	text(wpath)
 	.
@@ -544,8 +611,6 @@
 :- type wpath	==	string.
 
 :- type canvas_item	==	string.
-
-:- type event_data	--->	junk.
 
 %------------------------------------------------------------------------------%
 
@@ -611,7 +676,7 @@ canvas(Interp, Configs, ParentWidget, canvas(Widget)) -->
 
 create(Interp, Widget, ItemType, Configs, CanvasItem) -->
 	{ unwrap(Widget, Path) },
-	stringify_configs(Interp, Configs, ConfStr),
+	{ stringify_item_configs(Configs, ConfStr) },
 	{ stringify_itemtype(ItemType, ItemStr) },
 	{ string__format("%s create %s %s", [s(Path), s(ItemStr), s(ConfStr)],
 		CmdStr) },
@@ -626,6 +691,28 @@ canvas_delete(Interp, Widget, item(CanvasItem)) -->
 canvas_delete(Interp, Widget, all) -->
 	{ unwrap(Widget, Path) },
 	{ string__format("%s delete all", [s(Path)], CmdStr) },
+	eval(Interp, CmdStr, Res, ResStr),
+	{ Res = tcl_ok -> true ; error(ResStr) }.
+
+canvas_item_configure(Interp, Widget, Item, Configs) -->
+	{ unwrap(Widget, Path) },
+	{ stringify_item_configs(Configs, ConfStr) },
+	{ string__format("%s itemconfigure %s %s", [s(Path),
+		s(Item), s(ConfStr)], CmdStr) },
+	eval(Interp, CmdStr, Res, ResStr),
+	{ Res = tcl_ok -> true ; error(ResStr) }.
+
+canvas_item_coords(Interp, Widget, Item, Dx, Dy) -->
+	{ unwrap(Widget, Path) },
+	{ string__format("%s coords %s %d %d", [s(Path), s(Item), i(Dx), i(Dy)],
+		CmdStr) },
+	eval(Interp, CmdStr, Res, ResStr),
+	{ Res = tcl_ok -> true ; error(ResStr) }.
+
+canvas_move(Interp, Widget, Item, Dx, Dy) -->
+	{ unwrap(Widget, Path) },
+	{ string__format("%s move %s %d %d", [s(Path), s(Item), i(Dx), i(Dy)],
+		CmdStr) },
 	eval(Interp, CmdStr, Res, ResStr),
 	{ Res = tcl_ok -> true ; error(ResStr) }.
 
@@ -662,6 +749,47 @@ stringify_points([X - Y|Rest], Str) :-
 	stringify_points(Rest, RestStr),
 	string__format("%d %d ", [i(X), i(Y)], ThisStr),
 	string__append(ThisStr, RestStr, Str).
+
+:- pred stringify_item_configs(list(item_config), string).
+:- mode stringify_item_configs(in, out) is det.
+
+stringify_item_configs([], "").
+stringify_item_configs([Cfg|Cfgs], Str) :-
+	(
+		Cfg = anchor(Anc),
+		stringify_anchor(Anc, AStr),
+		string__format("-anchor %s ", [s(AStr)], CfgStr)
+	;
+		Cfg =	background(Col),
+		string__format("-background %s ", [s(Col)], CfgStr)
+	;
+		Cfg =	bitmap(Bitm),
+		string__format("-bitmap %s ", [s(Bitm)], CfgStr)
+	;
+		Cfg =	extent(Ext),
+		string__format("-extent %d ", [i(Ext)], CfgStr)
+	;
+		Cfg =	fill(Col),
+		string__format("-fill %s ", [s(Col)], CfgStr)
+	;
+		Cfg =	foreground(Col),
+		string__format("-foreground %s ", [s(Col)], CfgStr)
+	;
+		Cfg =	outline(Col),
+		string__format("-outline %s ", [s(Col)], CfgStr)
+	;
+		Cfg =	start(St),
+		string__format("-width %d ", [i(St)], CfgStr)
+	;
+		Cfg =	type(Col),
+		string__format("-type %s ", [s(Col)], CfgStr)
+	;
+		Cfg =	width(Int),
+		string__format("-width %d ", [i(Int)], CfgStr)
+	),
+	stringify_item_configs(Cfgs, Str0),
+	string__append(CfgStr, Str0, Str).
+
 
 %------------------------------------------------------------------------------%
 
@@ -800,6 +928,40 @@ add_menu_item(Interp, Widget, command, Configs) -->
 	{ unwrap(Widget, Path) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__format("%s add command %s", [s(Path), s(Str1)], Str) },
+	eval(Interp, Str, Res, ResStr),
+	{ Res = tcl_ok -> true ; error(ResStr) }.
+
+add_menu_item(Interp, Widget, separator, Configs) -->
+	{ unwrap(Widget, Path) },
+	stringify_configs(Interp, Configs, Str1),
+	{ string__format("%s add separator %s", [s(Path), s(Str1)], Str) },
+	eval(Interp, Str, Res, ResStr),
+	{ Res = tcl_ok -> true ; error(ResStr) }.
+
+%------------------------------------------------------------------------------%
+
+:- type radio_group	==	string.
+
+new_radio_group(_Interp, RadioVar) -->
+	get_thingy_counter(Id),
+	set_thingy_counter(Id+1),
+	{ string__format("radiovar%d", [i(Id)], RadioVar) }.
+
+set_radio_group(Interp, RadVar, Value) -->
+	{ string__format("set %s %s", [s(RadVar), s(Value)], CmdStr) },
+	eval(Interp, CmdStr, Res, ResStr),
+	{ Res = tcl_ok -> true ; error(ResStr) }.
+
+radiobutton(Interp, Configs, ParentWidget, RadioVar, Value,
+		radiobutton(Widget)) -->
+	{ unwrap(ParentWidget, Parent) },
+	get_thingy_counter(Id),
+	set_thingy_counter(Id+1),
+	{ string__format("%s.radiobutton%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("radiobutton %s -indicatoron 0 -variable %s -value %s ",
+		[s(Widget), s(RadioVar), s(Value)], Str0) },
+	stringify_configs(Interp, Configs, Str1),
+	{ string__append(Str0, Str1, Str) },
 	eval(Interp, Str, Res, ResStr),
 	{ Res = tcl_ok -> true ; error(ResStr) }.
 
@@ -948,26 +1110,35 @@ destroy(Interp, Widget) -->
 
 %------------------------------------------------------------------------------%
 
-bind(Interp, Widget, Event, Closure) -->
+bind(Interp, Widget, Event, EDataSpecs, Closure) -->
 	{ unwrap(Widget, Path) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id+1),
 	{ string__format("cmd%d", [i(Id)], CmdName) },
 	{ stringify_event(Event, EventStr) },
-	create_command(Interp, CmdName, bind_wrapper(Closure)),
-	{ string__format("bind %s %s %s", [s(Path), s(EventStr), s(CmdName)],
-		Str) },
+	{ stringify_edata_specs(EDataSpecs, EDataStr) },
+	create_command(Interp, CmdName, bind_wrapper(Closure, EDataSpecs)),
+	{ string__format("bind %s %s { %s %s }", [s(Path), s(EventStr),
+		s(CmdName), s(EDataStr)], Str) },
 	eval(Interp, Str, Res, ResStr),
 	{ Res = tcl_ok -> true ; error(ResStr) }.
 
-:- pred bind_wrapper(pred(tcl_interp, event_data, io__state, io__state),
+:- pred bind_wrapper(pred(tcl_interp, list(event_data), io__state, io__state),
+		list(event_data_spec),
 		tcl_interp, list(string), tcl_status, string,
 		io__state, io__state).
-:- mode bind_wrapper(pred(in, in, di, uo) is det, in, in, out, out,
+:- mode bind_wrapper(pred(in, in, di, uo) is det, in, in, in, out, out,
 		di, uo) is det.
 
-bind_wrapper(Closure, Interp, _Args, tcl_ok, "") -->
-	call(Closure, Interp, junk).
+bind_wrapper(Closure, EDataSpecs, Interp, Args0, tcl_ok, "") -->
+	(
+		{ Args0 = [] },
+		{ error("bind_wrapper: no args") }
+	;
+		{ Args0 = [_|Args] },
+		{ decode_edata(EDataSpecs, Args, EData) },
+		call(Closure, Interp, EData)
+	).
 
 :- pred stringify_event(event, string).
 :- mode stringify_event(in, out) is det.
@@ -1039,6 +1210,59 @@ stringify_mod(alt, "Alt").
 stringify_mod(double, "Double").
 stringify_mod(triple, "Triple").
 
+:- pred stringify_edata_specs(list(event_data_spec), string).
+:- mode stringify_edata_specs(in, out) is det.
+
+stringify_edata_specs([], "").
+stringify_edata_specs([Spec|Rest], Str) :-
+	(	Spec = button,	SpecStr = "%b "
+	;	Spec = key,	SpecStr = "%k "
+	;	Spec = x,	SpecStr = "%x "
+	;	Spec = y,	SpecStr = "%y "
+	),
+	stringify_edata_specs(Rest, Str0),
+	string__append(SpecStr, Str0, Str).
+
+:- pred decode_edata(list(event_data_spec), list(string), list(event_data)).
+:- mode decode_edata(in, in, out) is det.
+
+decode_edata([], [], []).
+decode_edata([_|_], [], _) :-
+	error("decode_edata: ran out of args").
+decode_edata([], [_|_], _) :-
+	error("decode_edata: too many args").
+decode_edata([Spec|Specs], [Str|Strs], [Datum|Data]) :-
+	decode_edata(Specs, Strs, Data),
+	(
+		Spec = button,
+		( string__to_int(Str, Int) ->
+			Datum = button(Int)
+		;
+			error("decode_edata: data format error")
+		)
+	;
+		Spec = key,
+		( string__to_int(Str, Int) ->
+			Datum = key(Int)
+		;
+			error("decode_edata: data format error")
+		)
+	;
+		Spec = x,
+		( string__to_int(Str, Int) ->
+			Datum = x(Int)
+		;
+			error("decode_edata: data format error")
+		)
+	;
+		Spec = y,
+		( string__to_int(Str, Int) ->
+			Datum = y(Int)
+		;
+			error("decode_edata: data format error")
+		)
+	).
+
 %------------------------------------------------------------------------------%
 
 configure(Interp, Widget, Configs) -->
@@ -1047,6 +1271,19 @@ configure(Interp, Widget, Configs) -->
 	{ string__format("%s configure %s", [s(Path), s(ConfStr)], Str) },
 	eval(Interp, Str, Res, ResStr),
 	{ Res = tcl_ok -> true ; error(ResStr) }.
+
+%------------------------------------------------------------------------------%
+
+ensure_window(Widget0, Widget) :-
+	( (
+		Widget0 = window(_)
+	;
+		Widget0 = frame(_)
+	) ->
+		Widget = Widget0
+	;
+		error("ensure_window: not a window")
+	).
 
 %------------------------------------------------------------------------------%
 
@@ -1118,7 +1355,7 @@ stringify_config(_Interp, active(Indicator), Str, IO, IO) :-
 	(
 		Indicator = yes, IndicatorStr = "normal"
 	;
-		Indicator = no, IndicatorStr = "diabled"
+		Indicator = no, IndicatorStr = "disabled"
 	),
 	string__format("-state %s", [s(IndicatorStr)], Str).
 
@@ -1132,16 +1369,7 @@ stringify_config(_Interp, active_relief(Relief), Str, IO, IO) :-
 	string__format("-activerelief %s", [s(Relief)], Str).
 
 stringify_config(_Interp, anchor(Ank), Str, IO, IO) :-
-	( Ank = n, AnkStr = "n"
-	; Ank = s, AnkStr = "s"
-	; Ank = e, AnkStr = "e"
-	; Ank = w, AnkStr = "w"
-	; Ank = ne, AnkStr = "ne"
-	; Ank = nw, AnkStr = "nw"
-	; Ank = se, AnkStr = "se"
-	; Ank = sw, AnkStr = "sw"
-	; Ank = c, AnkStr = "c"
-	),
+	stringify_anchor(Ank, AnkStr),
 	string__format("-anchor %s", [s(AnkStr)], Str).
 
 stringify_config(_Interp, aspect(Asp), Str, IO, IO) :-
@@ -1238,6 +1466,12 @@ stringify_config(_Interp, jump(Indicator), Str, IO, IO) :-
 stringify_config(_Interp, justify(Just), Str, IO, IO) :-
 	string__format("-justify %s", [s(Just)], Str).
 
+stringify_config(_Interp, label(Label), Str, IO, IO) :-
+	string__format("-label {%s}", [s(Label)], Str).
+
+stringify_config(_Interp, menu(menu(Path)), Str, IO, IO) :-
+	string__format("-menu %s", [s(Path)], Str).
+
 stringify_config(_Interp, multiple_select(Indicator), Str, IO, IO) :-
 	(
 		Indicator = yes, IndicatorStr = "extended"
@@ -1280,6 +1514,9 @@ stringify_config(_Interp, scale_range(Min, Max), Str, IO, IO) :-
 
 stringify_config(_Interp, scroll_region(H, W), Str, IO, IO) :-
 	string__format("-scrollregion {0 0 %d %d}", [i(H), i(W)], Str).
+
+stringify_config(_Interp, screen(Txt), Str, IO, IO) :-
+	string__format("-screen %s", [s(Txt)], Str).
 
 stringify_config(_Interp, scale_text(Txt), Str, IO, IO) :-
 	string__format("-label %s", [s(Txt)], Str).
@@ -1351,6 +1588,20 @@ stringify_config(_Interp, wrap(Indicator), Str, IO, IO) :-
 stringify_config(_Interp, wrap_length(Width), Str, IO, IO) :-
 	string__format("-wraplength %d", [i(Width)], Str).
 
+:- pred stringify_anchor(anchor::in, string::out) is det.
+
+stringify_anchor(Ank, AnkStr) :-
+	( Ank = n, AnkStr = "n"
+	; Ank = s, AnkStr = "s"
+	; Ank = e, AnkStr = "e"
+	; Ank = w, AnkStr = "w"
+	; Ank = ne, AnkStr = "ne"
+	; Ank = nw, AnkStr = "nw"
+	; Ank = se, AnkStr = "se"
+	; Ank = sw, AnkStr = "sw"
+	; Ank = c, AnkStr = "c"
+	).
+
 :- pred unwrap(widget, wpath).
 :- mode unwrap(in, out) is det.
 
@@ -1362,6 +1613,7 @@ unwrap(label(Path), Path).
 unwrap(listbox(Path), Path).
 unwrap(menubutton(Path), Path).
 unwrap(menu(Path), Path).
+unwrap(radiobutton(Path), Path).
 unwrap(scrollbar(Path), Path).
 unwrap(text(Path), Path).
 unwrap(window(Path), Path).
