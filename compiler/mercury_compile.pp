@@ -2296,6 +2296,8 @@ mercury_compile__maybe_find_abstr_exports(HLDS0, HLDS) -->
 
 %-----------------------------------------------------------------------------%
 
+:- type compiler_type ---> gcc ; lcc ; unknown.
+
 :- pred mercury_compile__c_to_obj(string, bool, io__state, io__state).
 :- mode mercury_compile__c_to_obj(in, out, di, uo) is det.
 
@@ -2364,16 +2366,36 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 	;
 		DebugOpt = "-DSPEED "
 	},
+	{ string__sub_string_search(CC, "gcc", _) ->
+		CompilerType = gcc
+	; string__sub_string_search(CC, "lcc", _) ->
+		CompilerType = lcc
+	;
+		CompilerType = unknown
+	},
 	globals__io_lookup_bool_option(c_optimize, C_optimize),
 	{ C_optimize = yes, Debug = no ->
-		OptimizeOpt = "-O2 -fomit-frame-pointer "
+		( CompilerType = gcc ->
+			OptimizeOpt = "-O2 -fomit-frame-pointer "
+		; CompilerType = lcc ->
+			OptimizeOpt = ""
+		;
+			OptimizeOpt = "-O "
+		)
 	;
 		OptimizeOpt = ""
+	},
+	{ CompilerType = gcc ->
+		WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused "
+	; CompilerType = lcc ->
+		WarningOpt = "-w "
+	;
+		WarningOpt = ""
 	},
 	{ string__append_list([CC, " ", InclOpt, CFLAGS_FOR_REGS, RegOpt,
 		CFLAGS_FOR_GOTOS, GotoOpt, AsmOpt,
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
-		OptimizeOpt, CFLAGS, " -c ", C_File], Command) },
+		OptimizeOpt, WarningOpt, CFLAGS, " -c ", C_File], Command) },
 	mercury_compile__invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem compiling C file.")
