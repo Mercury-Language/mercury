@@ -176,6 +176,10 @@ java_util__is_keyword("throw").
 java_util__is_keyword("throws").
 java_util__is_keyword("transient").
 java_util__is_keyword("true").
+java_util__is_keyword("try").
+java_util__is_keyword("void").
+java_util__is_keyword("volatile").
+java_util__is_keyword("while").
 
 :- func this_file = string.
 this_file = "java_util.m".

@@ -12,8 +12,8 @@ public class TypeCtorInfo_Struct {
 	public int                              type_ctor_version;
 	public mercury.runtime.TypeCtorRep      type_ctor_rep;
 	public int                              type_ctor_num_ptags; // if DU
-	public mercury.runtime.Unify            unify_pred;
-	public mercury.runtime.Compare          compare_pred;
+	public mercury.runtime.MethodPtr        unify_pred;
+	public mercury.runtime.MethodPtr        compare_pred;
 	public java.lang.String                 type_ctor_module_name;
 	public java.lang.String                 type_ctor_name;
 	public mercury.runtime.TypeFunctors     type_functors;

@@ -801,7 +801,9 @@ ml_append_return_statement(CodeModel, CopiedOutputVarLvals, Context,
 		MLDS_Statements0, MLDS_Statements) -->
 	( { CodeModel = model_semi } ->
 		ml_gen_test_success(Succeeded),
-		{ ReturnStmt = return([Succeeded]) },
+		{ CopiedOutputVarRvals = list__map(func(Lval) = lval(Lval),
+			CopiedOutputVarLvals) },
+		{ ReturnStmt = return([Succeeded | CopiedOutputVarRvals]) },
 		{ ReturnStatement = mlds__statement(ReturnStmt,
 			mlds__make_context(Context)) },
 		{ MLDS_Statements = list__append(MLDS_Statements0,
