@@ -172,7 +172,8 @@
 	% order.  Fails if the element is not present.  If the
 	% element to be found appears multiple times, the index of
 	% the first occurrence is returned.
-:- pred array__bsearch(array(T), T, pred(T, T, comparison_result), maybe(int)).
+:- pred array__bsearch(array(T), T, pred(T, T, comparison_result),
+			maybe(int)).
 :- mode array__bsearch(array_ui, in, pred(in, in, out) is det, out) is det.
 :- mode array__bsearch(in, in, pred(in, in, out) is det, out) is det.
 
