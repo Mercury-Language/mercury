@@ -582,37 +582,51 @@ mode_info_add_goals_live_vars([Goal | Goals]) -->
 
 modecheck_conj_list_2([], []) --> [].
 modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
+
+		% Hang onto the original instmap & delay_info
+	mode_info_dcg_get_instmap(InstMap0),
 	=(ModeInfo0),
+	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
+
+		% Modecheck the goal, noting first that the non-locals
+		% which occur in the goal might not be live anymore.
 	{ goal_get_nonlocals(Goal0, NonLocalVars) },
 	mode_info_remove_live_vars(NonLocalVars),
 	modecheck_goal(Goal0, Goal),
+
+		% Now see whether the goal was successfully scheduled.
+		% If we didn't manage to schedule the goal, then we
+		% restore the original instmap, delay_info & livevars here,
+		% and delay the goal.
 	=(ModeInfo1),
 	{ mode_info_get_errors(ModeInfo1, Errors) },
-	( { Errors = [] } ->
-		{ Goals = [Goal | Goals1] },
-		{ mode_info_get_delay_info(ModeInfo1, DelayInfo0) },
-		(
-			{ delay_info_wakeup_goal(DelayInfo0, WokenGoal,
-				DelayInfo) }
-		->
-			mode_checkpoint(wakeup, "goal"),
-			mode_info_set_delay_info(DelayInfo),
-			modecheck_conj_list_2([WokenGoal | Goals0], Goals1)
-		;
-			modecheck_conj_list_2(Goals0, Goals1)
-		)
-	;
-			% If we didn't manage to schedule the goal, then we
-			% restore the original mode_info here.
-		dcg_set_state(ModeInfo0),
-
-		{ Errors = [ FirstError | _] },
-		{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
+	( { Errors = [ FirstError | _] } ->
+		mode_info_set_errors([]),
+		mode_info_set_instmap(InstMap0),
+		mode_info_add_live_vars(NonLocalVars),
 		{ delay_info_delay_goal(DelayInfo0, FirstError, Goal0,
-					DelayInfo) },
-		mode_info_set_delay_info(DelayInfo),
-		modecheck_conj_list_2(Goals0, Goals)
-	).
+					DelayInfo1) }
+	;
+		{ mode_info_get_delay_info(ModeInfo1, DelayInfo1) }
+	),
+
+		% Next, we attempt to wake up any pending goals,
+		% and then continue scheduling the rest of the goal.
+	( { delay_info_wakeup_goal(DelayInfo1, WokenGoal, DelayInfo2) } ->
+		mode_checkpoint(wakeup, "goal"),
+		{ DelayInfo = DelayInfo2 },
+		{ Goals1 = [WokenGoal | Goals0] }
+	;
+		{ DelayInfo = DelayInfo1 },
+		{ Goals1 = Goals0 }
+	),
+	mode_info_set_delay_info(DelayInfo),
+	( { Errors = [] } ->
+		{ Goals = [Goal | Goals2] }
+	;
+		{ Goals = Goals2 }
+	),
+	modecheck_conj_list_2(Goals1, Goals2).
 
 :- pred dcg_set_state(T, T, T).
 :- mode dcg_set_state(in, in, out).
@@ -2639,8 +2653,8 @@ mode_info_set_delay_info(DelayInfo, mode_info(A,B,C,D,E,F,G,H,_,J,K),
 
 :- type pending_goals_table == map(depth_num, list(seq_num)).
 	
-:- type goal_num == pair(depth_num, seq_num).	/* Eeek! Pointers! */
-:- type depth_num == int.
+:- type goal_num == pair(depth_num, seq_num).
+:- type depth_num == int.		/* Eeek! Pointers! */
 :- type seq_num == int.
 
 %-----------------------------------------------------------------------------%
@@ -2692,6 +2706,9 @@ delay_info_leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
 
 %-----------------------------------------------------------------------------%
 
+	% We are going to delay a goal.
+	% Update the delay info structure to record the delayed goal.
+
 :- pred delay_info_delay_goal(delay_info, mode_error_info,
 				hlds__goal, delay_info).
 :- mode delay_info_delay_goal(in, in, in, out) is det.
@@ -2719,6 +2736,13 @@ delay_info_delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
 	
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, PendingGoals, NextSeqNums).
+
+
+	% add_waiting_vars(Vars, Goal, AllVars, WGT0, WGT):
+	% update the waiting goals table by adding indexes
+	% from each of the variables in Vars to Goal.
+	% AllVars must be the list of all the variables which the goal is
+	% waiting on.
 
 :- pred add_waiting_vars(list(var), goal_num, list(var), waiting_goals_table,
 				waiting_goals_table).
