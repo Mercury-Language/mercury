@@ -292,11 +292,11 @@ mangle_mlds_sym_name_for_java(unqualified(Name), _Qualifier, JavaSafeName) :-
 mangle_mlds_sym_name_for_java(qualified(ModuleName, PlainName), Qualifier,
 		MangledName) :-
 	mangle_mlds_sym_name_for_java(ModuleName, Qualifier,
-			MangledModuleName),
+		MangledModuleName),
 	MangledPlainName = name_mangle(PlainName),
 	JavaSafePlainName = valid_symbol_name(MangledPlainName),
 	java_qualify_mangled_name(MangledModuleName, JavaSafePlainName,
-			Qualifier, MangledName).
+		Qualifier, MangledName).
 
 :- pred java_qualify_mangled_name(string::in, string::in, string::in,
 	string::out) is det.
@@ -582,8 +582,8 @@ method_ptrs_in_stmt(mlds__call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
 	method_ptrs_in_rvals(Rvals, !CodeAddrs).
 method_ptrs_in_stmt(mlds__atomic(AtomicStatement), !CodeAddrs) :-
 	( 
-		AtomicStatement = mlds__new_object(Lval, _MaybeTag, _Bool, _Type,
-			_MemRval, _MaybeCtorName, Rvals, _Types) 
+		AtomicStatement = mlds__new_object(Lval, _MaybeTag, _Bool,
+			_Type, _MemRval, _MaybeCtorName, Rvals, _Types) 
 	->
 	 	% We don't need to check "_MemRval" since this just stores
 		% the amount of memory needed for the new object.
@@ -955,11 +955,12 @@ pred_label_string(special_pred(PredName, MaybeTypeModule,
 % Code to output the start and end of a source file. 
 % 
 
-:- pred output_src_start(indent::in, mercury_module_name::in, mlds__imports::in, 
-	list(foreign_decl_code)::in, mlds__defns::in, io::di, io::uo) is det.
+:- pred output_src_start(indent::in, mercury_module_name::in,
+	mlds__imports::in, list(foreign_decl_code)::in, mlds__defns::in,
+	io::di, io::uo) is det.
 
 output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
-		 !IO) :-
+		!IO) :-
 	MLDSModuleName = mercury_module_name_to_mlds(MercuryModuleName),
 	ModuleSymName = mlds_module_name_to_sym_name(MLDSModuleName),
 	JavaSafeModuleName = valid_module_name(ModuleSymName),
@@ -1011,20 +1012,24 @@ maybe_write_main_driver(Indent, JavaSafeModuleName, Defns, !IO) :-
 		%
 		unqualify_name(JavaSafeModuleName, ClassName),
 		indent_line(Indent + 1, !IO),	
-		io__write_string("mercury.runtime.JavaInternal.progname = """, !IO),
+		io__write_string("mercury.runtime.JavaInternal.progname = """,
+			!IO),
 		io__write_string(ClassName, !IO),
 		io__write_string(""";\n", !IO),
 		indent_line(Indent + 1, !IO),	
-		io__write_string("mercury.runtime.JavaInternal.args = args;\n", !IO),
+		io__write_string("mercury.runtime.JavaInternal.args = args;\n",
+			!IO),
 		indent_line(Indent + 1, !IO),	
-		io__write_string("mercury.runtime.JavaInternal.exit_status = ", !IO),
+		io__write_string("mercury.runtime.JavaInternal.exit_status = ",
+			!IO),
 		io__write_string("0;\n", !IO),
 		indent_line(Indent + 1, !IO),
 		prog_out__write_sym_name(JavaSafeModuleName, !IO),
 		io__write_string(".main_2_p_0();\n", !IO),
 		indent_line(Indent + 1, !IO),
 		io__write_string("java.lang.System.exit", !IO),
-		io__write_string("(mercury.runtime.JavaInternal.exit_status);", !IO),
+		io__write_string("(mercury.runtime.JavaInternal.exit_status);",
+			!IO),
 		io__nl(!IO),
 		indent_line(Indent, !IO),
 		io__write_string("}\n", !IO) 
@@ -1033,7 +1038,8 @@ maybe_write_main_driver(Indent, JavaSafeModuleName, Defns, !IO) :-
 	),
 	io__nl(!IO).
 
-:- pred output_src_end(indent::in, mercury_module_name::in, io::di, io::uo) is det.
+:- pred output_src_end(indent::in, mercury_module_name::in, io::di, io::uo)
+	is det.
 
 output_src_end(Indent, ModuleName, !IO) :-
 	io__write_string("}\n", !IO),
@@ -1250,7 +1256,8 @@ defn_is_const(Defn) :-
 	% Output a (Java) constructor for the class representing
 	% the enumeration. 
 	%
-:- pred output_enum_ctor(indent::in, mlds__entity_name::in, io::di, io::uo) is det.
+:- pred output_enum_ctor(indent::in, mlds__entity_name::in, io::di, io::uo)
+	is det.
 
 output_enum_ctor(Indent, UnqualName, !IO) :-
 	indent_line(Indent, !IO),
@@ -1456,7 +1463,8 @@ output_initializer_body(init_array(ElementInits), MaybeType, ModuleName, !IO) :-
 	io__write_string(" {\n\t\t", !IO),
 	io__write_list(ElementInits, ",\n\t\t",
 		(pred(ElementInit::in, !.IO::di, !:IO::uo) is det :-
-			output_initializer_body(ElementInit, no, ModuleName, !IO)),
+			output_initializer_body(ElementInit, no, ModuleName,
+				!IO)),
 		!IO),
 	io__write_string("}", !IO).
 
@@ -1482,12 +1490,14 @@ output_pred_proc_id(proc(PredId, ProcId), !IO) :-
 	).
 
 :- pred output_func(indent::in, qualified_entity_name::in, ctor_data::in,
-	mlds__context::in, func_params::in, function_body::in, io::di, io::uo) is det.
+	mlds__context::in, func_params::in, function_body::in, io::di,
+	io::uo) is det.
 
 output_func(Indent, Name, CtorData, Context, Signature, MaybeBody, !IO) :-
 	(
 		MaybeBody = defined_here(Body),
-		output_func_decl(Indent, Name, CtorData, Context, Signature, !IO),
+		output_func_decl(Indent, Name, CtorData, Context, Signature,
+			!IO),
 		io__write_string("\n", !IO),
 		indent_line(Context, Indent, !IO),
 		io__write_string("{\n", !IO),
@@ -1502,7 +1512,8 @@ output_func(Indent, Name, CtorData, Context, Signature, MaybeBody, !IO) :-
 :- pred output_func_decl(indent::in, qualified_entity_name::in, ctor_data::in,
 	mlds__context::in, func_params::in, io::di, io::uo) is det.
 
-output_func_decl(Indent, QualifiedName, cname(CtorName), Context, Signature, !IO) :-
+output_func_decl(Indent, QualifiedName, cname(CtorName), Context, Signature,
+		!IO) :-
 	Signature = mlds__func_params(Parameters, _RetTypes),
 	output_name(CtorName, !IO),
 	output_params(Indent, QualifiedName ^ mod_name, Context, Parameters, !IO).
@@ -2002,7 +2013,8 @@ mod_name(qual(ModuleName, _)) = ModuleName.
 	list(mlds__statement)::in, exit_methods::out, io::di, io::uo) is det.
 
 output_statements(_, _, [], set__make_singleton_set(can_fall_through), !IO).
-output_statements(Indent, FuncInfo, [Statement | Statements], ExitMethods, !IO) :-
+output_statements(Indent, FuncInfo, [Statement | Statements], ExitMethods,
+		!IO) :-
 	output_statement(Indent, FuncInfo, Statement, StmtExitMethods, !IO),
 	( set__member(can_fall_through, StmtExitMethods) ->
 		output_statements(Indent, FuncInfo, Statements,
@@ -2031,8 +2043,8 @@ output_statement(Indent, FuncInfo, mlds__statement(Statement, Context),
 	output_context(Context, !IO),
 	output_stmt(Indent, FuncInfo, Statement, Context, ExitMethods, !IO).
 
-:- pred output_stmt(indent::in, func_info::in, mlds__stmt::in, mlds__context::in,
-	exit_methods::out, io::di, io::uo) is det.
+:- pred output_stmt(indent::in, func_info::in, mlds__stmt::in,
+	mlds__context::in, exit_methods::out, io::di, io::uo) is det.
 
 	%
 	% sequence
@@ -2056,7 +2068,8 @@ output_stmt(Indent, FuncInfo, block(Defns, Statements), Context,
 	%
 	% iteration
 	%
-output_stmt(Indent, FuncInfo, while(Cond, Statement, no), _, ExitMethods, !IO) :-
+output_stmt(Indent, FuncInfo, while(Cond, Statement, no), _, ExitMethods,
+		!IO) :-
 	indent_line(Indent, !IO),
 	io__write_string("while (", !IO),
 	output_rval(Cond, FuncInfo ^ func_info_name ^ mod_name, !IO),
@@ -2124,7 +2137,8 @@ output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
 	( MaybeElse = yes(Else) ->
 		indent_line(Context, Indent, !IO),
 		io__write_string("else\n", !IO),
-		output_statement(Indent + 1, FuncInfo, Else, ElseExitMethods, !IO),
+		output_statement(Indent + 1, FuncInfo, Else, ElseExitMethods,
+			!IO),
 		% An if-then-else statement can complete normally iff the 
 		% then-statement can complete normally or the else-statement
 		% can complete normally.
@@ -2727,8 +2741,8 @@ output_atomic_stmt(_Indent, _FuncInfo,
 :- pred output_target_code_component(mlds_module_name::in, mlds__context::in,
 	target_code_component::in, io::di, io::uo) is det.
 
-output_target_code_component(_ModuleName, _Context, user_target_code(CodeString,
-		_MaybeUserContext, _Attrs), !IO) :-
+output_target_code_component(_ModuleName, _Context,
+		user_target_code(CodeString, _MaybeUserContext, _Attrs), !IO) :-
 	% XXX Java does not have an equivalent of the C #line preprocessor
 	%     directive.  If it did, we should use it here.
 	io__write_string(CodeString, !IO).
@@ -2774,7 +2788,8 @@ output_init_args([Arg | Args], [_ArgType | ArgTypes], ArgNum, HasSecTag,
 			io__write_string(", ", !IO)
 		)
 	),
-	output_init_args(Args, ArgTypes, ArgNum + 1, HasSecTag, ModuleName, !IO).
+	output_init_args(Args, ArgTypes, ArgNum + 1, HasSecTag, ModuleName,
+		!IO).
 
 %-----------------------------------------------------------------------------%
 %
