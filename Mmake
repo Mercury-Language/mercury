@@ -158,7 +158,7 @@ tar:
 	cd util && mmake realclean
 	-rm -f errs errs2
 	-rm -f config.status config.log config.cache
-	-rm -f runtime/conf.h compiler/conf.m
+	-rm -f runtime/conf.h # XXX compiler/conf.m
 	-rm -f Mmake.common
 	cd .. && (tar -cf - mercury | gzip -9 > mercury.tar.gz)
 
