@@ -52,17 +52,18 @@
 :- type length_list	==	list(int).
 :- type contents_list	==	list(int).
 
-:- type shape_num       --->    num(int)
-                        ;       succip
-                        ;       hp
-                        ;       maxfr
-                        ;       curfr
-                        ;       redoip
-			;	succfr
-			;	prevfr
-                        ;       sp
-			;	unwanted.
 
+:- type shape_num       --->    num(int)
+                         ;       succip
+                         ;       hp
+                         ;       maxfr
+                         ;       curfr
+                         ;       redoip
+                         ;       succfr
+                         ;       prevfr
+                         ;       sp
+                         ;       unwanted.
+ 
 :- pred shapes__init_shape_table(shape_table).
 :- mode shapes__init_shape_table(out) is det.
 

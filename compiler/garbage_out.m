@@ -202,15 +202,10 @@ garbage_out__get_det([L | Ls], Det) :-
 :- mode garbage_out__output(in, in, in, di, uo) is det.
 
 garbage_out__output(List, Shapes, Abs_Exports) --> 
-	io__write_string("garbage_out(\n[\n"),
 	garbage_out__write_cont_list(List),
-	io__write_string("],\n"),
-	io__write_string("[\n"),
 	garbage_out__write_shape_table(Shapes),
-	io__write_string("],\n"),
 	{ map__to_assoc_list(Abs_Exports, Abs_Exports_List) },
-	garbage_out__write_abs_exports(Abs_Exports_List),
-	io__write_string(").\n").
+	garbage_out__write_abs_exports(Abs_Exports_List).
 
 %-----------------------------------------------------------------------------%
 % Write the continuation list.
@@ -234,8 +229,7 @@ garbage_out__write_cont_list([G|Gs]) -->
 	io__write_int(Num_Slots),
 	io__write_string(", ["),
 	garbage_out__write_liveinfo_list(Live_Info_List),
-	io__write_string("])"),
-	garbage_out__maybe_write_comma_newline(Gs),
+	io__write_string("]).\n"),
 	garbage_out__write_cont_list(Gs).
 
 %-----------------------------------------------------------------------------%
@@ -363,10 +357,11 @@ garbage_out__write_shape_table(ShapeTable - _NextNum) -->
 
 garbage_out__write_shapes([]) --> { true }.
 garbage_out__write_shapes([ShapeNum - Shape | Shapes]) --> 
+	io__write_string("shapeinfo("),
 	shapes__write_shape_num(ShapeNum),
-	io__write_string(" - "),
+	io__write_string(", "),
 	garbage_out__write_shape(Shape),
-	garbage_out__maybe_write_comma_newline(Shapes),
+	io__write_string(").\n"),
 	garbage_out__write_shapes(Shapes).
 
 %-----------------------------------------------------------------------------%
@@ -492,8 +487,6 @@ garbage_out__write_int_list([ShapeNum | Shape_List]) -->
 	garbage_out__maybe_write_comma_space(Shape_List),
 	garbage_out__write_int_list(Shape_List).
 
-
-
 %-----------------------------------------------------------------------------%
 % Write out the abstract export table (all the shapes that are exported from
 % this module that could be abstracts in another module).
@@ -502,9 +495,7 @@ garbage_out__write_int_list([ShapeNum | Shape_List]) -->
 		io__state, io__state).
 :- mode garbage_out__write_abs_exports(in, di, uo) is det.
 garbage_out__write_abs_exports(AE_List) -->
-	io__write_string("["),
-	garbage_out__write_abs_list(AE_List),
-	io__write_string("]").
+	garbage_out__write_abs_list(AE_List).
 
 %-----------------------------------------------------------------------------%
 % Output each item in the abstract exports list.
@@ -525,8 +516,7 @@ garbage_out__write_abs_list([T_Id - M_SN | As]) -->
 		io__write_string(", yes("),
 		shapes__write_shape_num(S_Num)
 	),
-	io__write_string("))"),
-	garbage_out__maybe_write_comma_newline(As),
+	io__write_string(")).\n"),
 	garbage_out__write_abs_list(As).
 
 %-----------------------------------------------------------------------------%
