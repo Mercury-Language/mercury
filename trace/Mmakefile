@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998 The University of Melbourne.
+# Copyright (C) 1998-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -28,6 +28,7 @@ HDRS		=	\
 			mercury_trace.h			\
 			mercury_trace_alias.h		\
 			mercury_trace_browse.h		\
+			mercury_trace_declarative.h	\
 			mercury_trace_external.h 	\
 			mercury_trace_help.h		\
 			mercury_trace_internal.h	\
@@ -40,6 +41,7 @@ CFILES		= 	\
 			mercury_trace.c			\
 			mercury_trace_alias.c		\
 			mercury_trace_browse.c		\
+			mercury_trace_declarative.c	\
 			mercury_trace_external.c 	\
 			mercury_trace_help.c		\
 			mercury_trace_internal.c	\

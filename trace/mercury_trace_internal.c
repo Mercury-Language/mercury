@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -13,6 +13,7 @@
 #include "mercury_imp.h"
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
+#include "mercury_trace_declarative.h"
 #include "mercury_trace_alias.h"
 #include "mercury_trace_help.h"
 #include "mercury_trace_browse.h"
@@ -111,12 +112,6 @@ typedef struct MR_Line_Struct {
 static	MR_Line			*MR_line_head = NULL;
 static	MR_Line			*MR_line_tail = NULL;
 
-typedef struct MR_Event_Details_Struct {
-	int			MR_call_seqno;
-	int			MR_call_depth;
-	int			MR_event_number;
-} MR_Event_Details;
-
 typedef enum {
 	KEEP_INTERACTING,
 	STOP_INTERACTING
@@ -132,6 +127,12 @@ typedef struct {
 	int			MR_var_spec_number; /* valid if VAR_NUMBER */
 	const char		*MR_var_spec_name;  /* valid if VAR_NAME   */
 } MR_Var_Spec;
+
+#ifdef	MR_USE_DECLARATIVE_DEBUGGER
+
+MR_Trace_Mode MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+
+#endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
 static	void	MR_trace_internal_ensure_init(void);
 static	void	MR_trace_internal_init_from_env(void);
@@ -157,10 +158,6 @@ static	bool	MR_trace_options_detailed(bool *detailed, char ***words,
 static	bool	MR_trace_options_confirmed(bool *confirmed, char ***words,
 			int *word_count, const char *cat, const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
-static	void	MR_trace_retry(const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Event_Details *event_details,
-			int seqno, int depth, int *max_mr_num,
-			Code **jumpaddr);
 static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label,
 			Word *saved_regs, const char *name, bool *succeeded);
 static	void	MR_trace_internal_add_spy_point(MR_Spy_When when,
@@ -208,10 +205,6 @@ static	char	*MR_trace_getline_raw(FILE *fp);
 static	void	MR_insert_line_at_head(const char *line);
 static	void	MR_insert_line_at_tail(const char *line);
 
-static	Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
-			const MR_Stack_Layout_Label *layout, Word *saved_regs,
-			MR_Trace_Port port, int seqno, int depth,
-			const char *path, int *max_mr_num);
 static	void	MR_trace_event_print_internal_report(
 			const MR_Stack_Layout_Label *layout,
 			MR_Trace_Port port, int seqno, int depth,
@@ -240,6 +233,13 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 		return MR_trace_event_internal_report(cmd, layout, saved_regs,
 				port, seqno, depth, path, max_mr_num);
 	}
+
+#ifdef	MR_USE_DECLARATIVE_DEBUGGER
+	if (MR_trace_decl_mode == MR_TRACE_WRONG_ANSWER) {
+		return MR_trace_decl_wrong_answer(cmd, layout, saved_regs,
+				port, seqno, depth, path, max_mr_num);
+	}
+#endif	MR_USE_DECLARATIVE_DEBUGGER
 
 	MR_trace_enabled = FALSE;
 	MR_trace_internal_ensure_init();
@@ -1229,6 +1229,23 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		} else {
 			MR_trace_usage("misc", "quit");
 		}
+#ifdef	MR_USE_DECLARATIVE_DEBUGGER
+        } else if (streq(words[0], "dd_wrong")) {
+		if (word_count != 1) {
+			fprintf(stderr,
+				"mdb: dd_wrong requires no arguments.\n");
+		} else if (port != MR_PORT_EXIT) {
+			fprintf(stderr, "mdb: wrong answer analysis is only "
+					"available from EXIT events.\n");
+		} else if (MR_trace_start_wrong_answer(cmd, layout,
+				saved_regs, event_details, seqno, depth,
+				max_mr_num, jumpaddr)) {
+			goto return_stop_interacting;
+		} else {
+			fprintf(stderr, "mdb: unable to start declarative "
+					"debugging.\n");
+		}
+#endif  /* MR_USE_DECLARATIVE_DEBUGGER */
 	} else {
 		fprintf(MR_mdb_err, "Unknown command `%s'. "
 			"Give the command `help' for help.\n", words[0]);
@@ -1464,7 +1481,7 @@ MR_trace_usage(const char *cat, const char *item)
 		item, item);
 }
 
-static void
+void
 MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 	MR_Event_Details *event_details, int seqno, int depth,
 	int *max_mr_num, Code **jumpaddr)
@@ -2341,7 +2358,7 @@ MR_insert_line_at_tail(const char *contents)
 	}
 }
 
-static Code *
+Code *
 MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 	const MR_Stack_Layout_Label *layout, Word *saved_regs,
 	MR_Trace_Port port, int seqno, int depth, const char *path,
