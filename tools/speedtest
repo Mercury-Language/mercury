@@ -3,7 +3,7 @@
 # A program to test different versions of the compiler.
 
 usage="Usage: speedtest [-c cmd] [-dns] batchname"
-limit=4
+limit=8
 cmd="mmc -C -O2 -I../compiler --no-lazy-code make_hlds.m"
 debug=false
 size=false
