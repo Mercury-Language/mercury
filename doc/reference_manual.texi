@@ -77,6 +77,9 @@ into another language, under the above conditions for modified versions.
 * Syntax::            Mercury's syntax is similar to ISO Prolog
 * Types::             Mercury has a strong parametric polymorphic type system
 * Modes::             Modes allow you to specify the direction of data flow
+* Unique modes::      Unique modes allow you to specify when there is only one
+		      reference to a particular value, so the compiler can
+		      safely use destructive update to modify that value.
 * Determinism::       Determinism declarations let you specify that a predicate
                       should never fail or should never succeed more than once
 * Higher-order::      Mercury supports higher-order predicates, closures,
@@ -266,11 +269,11 @@ operator notation, as in Prolog.
 A lambda expression is a compound term of the form
 
 @example
-lambda([Var1::Mode1, Var2::Mode2, ...] is Det, Goal)
+lambda([Var1::Mode1, Var2::Mode2, @dots{}] is Det, Goal)
 @end example
 
 @noindent
-where Var1, Var2, ... are variables, Mode1, Mode2, ... are
+where Var1, Var2, @dots{} are variables, Mode1, Mode2, @dots{} are
 modes [@xref{Modes}], Det is a determinism [@xref{Determinism}],
 and Goal is a goal [@xref{Goals}].  See @xref{Higher-order}.
 
@@ -340,79 +343,79 @@ declaration in this module.  The @var{Body} must be a valid goal.
 
 A goal is a term of one of the following forms:
 
-@table @code
-@item some @var{Vars} @var{Goal}
+@table @asis
+@item @code{some @var{Vars} @var{Goal}}
 An existential quantification.
 @var{Vars} must be a list of variables.
 @var{Goal} must be a valid goal.
 
-@item all @var{Vars} @var{Goal}
+@item @code{all @var{Vars} @var{Goal}}
 A universal quantification.
 @var{Vars} must be a list of variables.
 @var{Goal} must be a valid goal.
 This is an abbreviation for @samp{not (some @var{Vars} not @var{Goal})}.
 
-@item @var{Goal1}, @var{Goal2}
+@item @code{@var{Goal1}, @var{Goal2}}
 A conjunction.
 @var{Goal1} and @var{Goal2} must be valid goals.
 
-@item @var{Goal1} ; @var{Goal2}
+@item @code{@var{Goal1} ; @var{Goal2}}
 where @var{Goal1} is not of the form @samp{Goal1a -> Goal1b}:
 a disjunction.
 @var{Goal1} and @var{Goal2} must be valid goals.
 
-@item true
+@item @code{true}
 The empty conjunction.
 Always succeeds.
 
-@item fail
+@item @code{fail}
 The empty disjunction.
 Always fails.
 
-@item not @var{Goal}
-@itemx \+ @var{Goal}
+@item @code{not @var{Goal}}
+@itemx @code{\+ @var{Goal}}
 A negation.
 The two different syntaxes have identical semantics.
 @var{Goal} must be a valid goal.
 
-@item @var{Goal1} => @var{Goal2}
+@item @code{@var{Goal1} => @var{Goal2}}
 An implication.
 This is an abbreviation for @samp{not (@var{Goal1}, not @var{Goal2})}.
 
-@item @var{Goal1} <= @var{Goal2}
+@item @code{@var{Goal1} <= @var{Goal2}}
 A reverse implication.
 This is an abbreviation for @samp{not (@var{Goal2}, not @var{Goal1})}.
 
-@item @var{Goal1} <=> @var{Goal2}
+@item @code{@var{Goal1} <=> @var{Goal2}}
 A logical equivalence.
 This is an abbreviation for
 @samp{(@var{Goal1} => @var{Goal2}), (@var{Goal1} <= @var{Goal2}}).
 
-@item if @var{CondGoal} then @var{ThenGoal} else @var{ElseGoal}
-@itemx @var{CondGoal} -> @var{ThenGoal} ; @var{ElseGoal}
+@item @code{if @var{CondGoal} then @var{ThenGoal} else @var{ElseGoal}}
+@itemx @code{@var{CondGoal} -> @var{ThenGoal} ; @var{ElseGoal}}
 An if-then-else.
 The two different syntaxes have identical semantics.
 @var{CondGoal}, @var{ThenGoal}, and @var{ElseGoal} must be valid goals.
 Note that the ``else'' part is @emph{not} optional.
 
-@item @var{Term1} = @var{Term2}
+@item @code{@var{Term1} = @var{Term2}}
 A unification.
 
-@item @var{Term1} \= @var{Term2}
+@item @code{@var{Term1} \= @var{Term2}}
 An inequality. 
 This is an abbreviation for @samp{not (@var{Term1} = @var{Term2})}.
 
-@item call(Closure)
-@itemx call(Closure1, Arg1)
-@itemx call(Closure2, Arg1, Arg2)
-@itemx call(Closure3, Arg1, Arg2, Arg3)
-@itemx ...
+@item @code{call(Closure)}
+@itemx @code{call(Closure1, Arg1)}
+@itemx @code{call(Closure2, Arg1, Arg2)}
+@itemx @code{call(Closure3, Arg1, Arg2, Arg3)}
+@itemx @dots{}
 A higher-order predicate call.  @samp{call(Closure)} just calls
 the specified closure.  The other forms append the specified
 arguments onto the argument list of the closure before calling it.
 See @xref{Higher-order}.
 
-@item @var{Call}
+@item @code{@var{Call}}
 Any term which does not match any of the above forms
 must be a predicate call.
 If the term is a variable @var{Var},
@@ -511,7 +514,7 @@ Semantics:
 transform(V_in, V_out, @{ Goal @}) = (Goal, V_out = V_in)
 @end example
 
-@itemx [@var{Term}, ...]
+@itemx [@var{Term}, @dots{}]
 A DCG input match.
 Unifies the implicit DCG input variable V_in,
 which must have type @samp{list(_)},
@@ -520,7 +523,7 @@ and whose tail is the implicit DCG output variable V_out.
 
 Semantics:
 @example
-transform(V_in, V_out, [Term1, ...]) = (V_in = [Term, ... | V_Out])
+transform(V_in, V_out, [Term1, @dots{}]) = (V_in = [Term, @dots{} | V_Out])
 @end example
 
 @item []
@@ -577,8 +580,8 @@ Then, the two implicit DCG arguments are appended to the specified arguments.
 
 Semantics:
 @example
-transform(V_in, V_out, p(A1, ..., AN)) =
-p(A1, ..., AN, V_in, V_out)
+transform(V_in, V_out, p(A1, @dots{}, AN)) =
+p(A1, @dots{}, AN, V_in, V_out)
 @end example
 
 @end table
@@ -1054,6 +1057,48 @@ is the same as the one given by the predicate's mode declaration.
 
 The mode analysis algorithm annotates each call with the mode used.
 
+@node Unique modes
+@chapter Unique modes
+
+Mode declarations can also specify so-called ``unique modes''.
+Mercury's unique modes are similar to ``linear types'' in some
+functional programming languages such as Clean.  They allow you to
+specify when there is only one reference to a particular value, and
+when there will be no more references to that value.  If the compiler
+knows there are will be more references to a value, it can perform
+``compile-time garbage collection'' by automatically inserting code
+to deallocate the storage associated with that value.  Even more
+importantly, the compiler can also simply reuse the storage immediately,
+for example by destructively updating one element of an array rather
+than making a new copy of the entire array in order to change one element.
+Unique modes are also the mechanism Mercury uses to provide declarative I/O.
+
+We have not yet implemented unique modes fully, and the details are
+still in a state of flux.  So the following should be considered
+tentative.
+
+In addition to the insts mentioned above (@samp{free}, @samp{ground},
+and @samp{bound(@dots{})}), Mercury also provides ``unique'' insts
+@samp{unique} and @samp{unique(@dots{})} which are like @samp{ground}
+and @samp{bound(@dots{})} respectively, except that they carry the
+additional constraint that there can only be one reference to the
+corresponding value.  There is also an inst @samp{dead} which means
+that there are no references to the corresponding value.
+The following modes
+
+@example
+% unique output
+:- mode uo :: free -> unique.
+
+% unique input
+:- mode ui :: unique -> unique.
+
+% destructive input
+:- mode di :: unique -> dead.
+@end example
+
+are also provided.
+
 @node Determinism
 @chapter Determinism
 
@@ -1486,10 +1531,10 @@ For example, if you have declared a predicate
 the following two unifications have the same effect:
 
 @example
-...
+@dots{}
 X = lambda([List::in, Length::out] is det, sum(List, Length)),
 Y = sum,
-...
+@dots{}
 @end example
 
 In the above example, the type of both @samp{X} and @samp{Y} is
@@ -1502,12 +1547,12 @@ Once you have created a higher-order predicate term (sometimes known
 as a closure), the next thing you want to do is to call it.  
 For this, you use the builtin call/N:
 
-@table @code
-@item call(Closure)
-@itemx call(Closure1, Arg1)
-@itemx call(Closure2, Arg1, Arg2)
-@itemx call(Closure3, Arg1, Arg2, Arg3)
-@itemx ...
+@table @asis
+@item @code{call(Closure)}
+@itemx @code{call(Closure1, Arg1)}
+@itemx @code{call(Closure2, Arg1, Arg2)}
+@itemx @code{call(Closure3, Arg1, Arg2, Arg3)}
+@itemx @dots{}
 A higher-order predicate call.  @samp{call(Closure)} just calls
 the specified closure.  The other forms append the specified
 arguments onto the argument list of the closure before calling it.

@@ -241,7 +241,7 @@ You then link the object code of each module
 with the object code of the initialization file to yield the executable:
 
 @example
-ml -o @var{main_module} @var{module1}.o @var{module2}.o ... @var{main_module2}_init.o
+ml -o @var{main_module} @var{module1}.o @var{module2}.o ... @var{main_module}_init.o
 @end example
 
 @samp{ml}, the Mercury linker, is another shell script
@@ -554,7 +554,7 @@ Removes the automatically generated files
 that contain the compiled code of the program
 and the error messages produced by the compiler.
 Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
-@samp{.no}, @samp{.ql}, @samp{.err}, and @samp{.err} files
+@samp{.no}, @samp{.ql}, @samp{.err}, and @samp{.err2} files
 belonging to the named @var{main-module} or its imported modules.
 
 @item @var{main-module}.realclean
@@ -650,8 +650,8 @@ records the number of times that execution was in each predicate
 when a profiling interrupt occurred.)
 
 It would be nice if there was a way to combine profiling data from
-multiple runs of the same program, but unfortunately there is as yet no
-way to do that.
+multiple runs of the same program, but unfortunately there is not yet
+any way to do that.
 
 Due to a known timing-related bug in our code, you may occaisionally get
 segmentation violations when running your program with profiling enabled.
@@ -833,7 +833,7 @@ declaration of that predicate in the source code.  For example,
 of @samp{list__delete/3}.
 
 Now for the parent and child predicates the self and descendent time have
-slightly different meanings.  For the parent predicates the self and desdendent
+slightly different meanings.  For the parent predicates the self and descendent
 time represent the proportion of the current predicate's self and descendent 
 time due to that parent.  These times are obtained using the assumption that
 each call contributes equally to the total time of the current predicate.
@@ -900,7 +900,7 @@ Don't warn about variables which only occur once.
 
 @sp 1
 @item --no-warn-missing-det-decls
-For predicate that are local to a module (those that
+For predicates that are local to a module (those that
 are not exported), don't issue a warning if the @samp{pred}
 or @samp{mode} declaration does not have a determinism annotation.
 Use this option if you want the compiler to perform automatic
@@ -1088,7 +1088,7 @@ Attempting to use a grade which has not been installed
 will result in an error at link time.
 
 The following table shows the options that are selected by each grade; it
-is followed by a descriptions of those options.
+is followed by descriptions of those options.
 
 @table @asis
 @item @var{Grade}
@@ -1101,22 +1101,22 @@ is followed by a descriptions of those options.
 None.
 
 @item @samp{reg}
-@code{--use-gcc-global-registers}.
+@code{--gcc-global-registers}.
 
 @item @samp{jump}
-@code{--use-gcc-nonlocal gotos}.
+@code{--gcc-nonlocal gotos}.
 
 @item @samp{fast}
-@code{--use-gcc-global-registers --use-asm-labels}.
+@code{--gcc-global-registers --asm-labels}.
 
 @item @samp{asm_jump}
-@code{--use-gcc-global-registers --use-asm-labels}.
+@code{--gcc-global-registers --asm-labels}.
 
 @item @samp{asm_fast}
-@code{--use-gcc-global-registers --use-gcc-nonlocal_gotos --use-asm-labels}.
+@code{--gcc-global-registers --gcc-nonlocal_gotos --asm-labels}.
 
 @item Any of the above followed by @samp{.gc}
-As above, plus @code{--use-conservative-gc}.
+As above, plus @code{--conservative-gc}.
 
 @item Any of the above followed by @samp{.prof}
 As above, plus @code{--profiling}.
@@ -1179,7 +1179,7 @@ This option also implies @samp{--no-c-optimize}.
 Debugging support is currently extremely primitive -
 this option is probably not useful to anyone except the Mercury implementors.
 We recommend that you use instead use `mnp' or `msp'.
-See the Mercury User's Guide for details.
+@xref{Using Prolog} for details.
 
 @end table
 
@@ -1187,7 +1187,7 @@ See the Mercury User's Guide for details.
 @section Code generation options
 @table @code
 @item --no-trad-passes
-The default --trad-passes completely processes each predicate
+The default @samp{--trad-passes} completely processes each predicate
 before going on to the next predicate.
 This option tells the compiler
 to complete each phase of code generation on all predicates
@@ -1395,7 +1395,7 @@ Print a usage message.
 @end table
 
 @node Environment
-@chapter Environment Variables
+@chapter Environment variables
 
 The shell scripts in the Mercury compilation environment
 will use the following environment variables if they are set.
@@ -1412,7 +1412,7 @@ A list of options for the Mercury runtime that gets
 linked into every Mercury program.
 Options are available to set the size of the different memory
 areas, and to enable various debugging traces. 
-Use @samp{MERCURY_OPTIONS=-h} for help.
+Set @samp{MERCURY_OPTIONS} to @samp{-h} for help.
 
 @sp 1
 @item MERCURY_C_INCL_DIR

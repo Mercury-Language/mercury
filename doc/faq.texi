@@ -108,7 +108,7 @@ if your code uses lists.
 @emph{Why doesn't @samp{X <= 3} work?}
 @sp 1
 
-In Mercury, less-than-or-equal to is written as @samp{=<} not
+In Mercury, less-than-or-equal-to is written as @samp{=<} not
 as @samp{<=}, which is used for reverse implication.
 
 @sp 1
