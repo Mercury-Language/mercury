@@ -3540,13 +3540,41 @@ if test "$BOOTSTRAP_MC" != "" ; then
 fi
 #-----------------------------------------------------------------------------#
 
+AC_MSG_CHECKING(for C shell executable)
+cshpath=""
+for prog in tcsh csh 
+do
+	for dir in `echo $PATH | tr '[:]' '[ ]'`
+	do
+		if test -x "$dir/$prog"
+		then
+			if test "$cshpath" = ""
+			then
+				cshpath="$dir/$prog"
+			fi
+		fi
+	done
+done
+
+if test "$cshpath" = ""
+then
+	AC_MSG_RESULT(no)
+	CSHPATH="no csh path"
+else
+	AC_MSG_RESULT($cshpath)
+	CSHPATH="$cshpath"
+fi
+AC_SUBST(CSHPATH)
+
+#-----------------------------------------------------------------------------#
+
 # Any new entries here may need to be handled by scripts/mercury_config.
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc
 scripts/mercury.bat scripts/mprof scripts/mercury_update_interface
 scripts/mgnuc scripts/parse_ml_options.sh-subr scripts/ml
 scripts/c2init scripts/mmake scripts/mdb scripts/mdbrc scripts/mdprof
 scripts/mkfifo_using_mknod bindist/bindist.INSTALL bindist/bindist.Makefile
-scripts/mercury_config scripts/Mercury.config tools/lmc
+scripts/mercury_config scripts/Mercury.config tools/lmc tools/dotime
 ,
 [
 # Only do this when compiling the source, not when reconfiguring

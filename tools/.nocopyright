@@ -13,7 +13,7 @@ cur_param
 cvdr
 cvspatch
 divide
-dotime
+dotime.in
 expand_params
 gdbrun
 generate_index_html
@@ -24,7 +24,7 @@ list.mercury
 list.mundook
 list.murlibobo
 list.muse
-lmc
+lmc.in
 make_arena
 makebatch
 next_param

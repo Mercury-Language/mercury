@@ -11,7 +11,7 @@ MAIN_TARGET=all
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
 
-CONFIGURED_SCRIPTS = lmc
+CONFIGURED_SCRIPTS = lmc dotime
 
 .SUFFIXES: .in
 
