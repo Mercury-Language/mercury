@@ -181,10 +181,16 @@ inlining__inlining_in_goal_2(
 			apply_rec_substitution_to_type_map(CalleeVarTypes1,
 				TypeSubn, CalleeVarTypes)
 		;
-			% the head types should always subsume the
+			% The head types should always subsume the
 			% actual argument types, otherwise it is a type error
 			% that should have been detected by typechecking
-			error("inlining.m: subsumption check failed")
+			% But polymorphism.m introduces type-incorrect code --
+			% e.g. compare(Res, EnumA, EnumB) gets converted
+			% into builtin_compare_int(Res, EnumA, EnumB), which
+			% is a type error since it assumes that an enumeration
+			% is an int.  In those cases, we don't need to
+			% worry about the type substitution.
+			CalleeVarTypes = CalleeVarTypes1
 		),
 
 		%
