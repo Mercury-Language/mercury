@@ -18,7 +18,7 @@
 @ifinfo
 This file documents the Mercury programming language.
 
-Copyright (C) 1995-1999 The University of Melbourne.
+Copyright (C) 1995-2000 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -51,7 +51,7 @@ into another language, under the above conditions for modified versions.
 @author Chris Speirs
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1999 The University of Melbourne.
+Copyright @copyright{} 1995-2000 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -326,9 +326,9 @@ operator notation, as in Prolog.
 Operators can also be formed by enclosing an variable or name between grave
 accents (backquotes).  Any variable or name may
 be used as an operator in this way.  If @var{fun} is a variable or name,
-then a term of the form @code{x `fun` y} is equivalent to 
-@code{fun(x,y)}.  The operator is treated as having the highest precedence
-possible and is left associative.
+then a term of the form @code{x `@var{fun}` y} is equivalent to 
+@code{@var{fun}(x,y)}.  The operator is treated as having the highest
+precedence possible and is left associative.
 
 A higher-order term is a variable followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),
