@@ -611,15 +611,16 @@ sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
     static int
     special___Unify___array_1_0(MR_Word type_info, MR_Array x, MR_Array y)
     {
-            mercury::runtime::Errors::SORRY(""unify for array"");
-            return 0;
+            return mercury::array::mercury_code::ML_array_equal(
+	    	type_info, x, y);
     }
 
     static void
     special___Compare___array_1_0(
             MR_Word type_info, MR_Word_Ref result, MR_Array x, MR_Array y)
     {
-            mercury::runtime::Errors::SORRY(""compare for array"");
+            mercury::array::mercury_code::ML_array_compare(
+	    	type_info, result, x, y);
     }
 
     static int
@@ -644,6 +645,10 @@ sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
 
 
 %-----------------------------------------------------------------------------%
+
+
+:- pragma export(array_equal(in, in), "ML_array_equal").
+:- pragma export(array_compare(out, in, in), "ML_array_compare").
 
 	% unify/2 for arrays
 
