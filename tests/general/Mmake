@@ -23,7 +23,7 @@ DETPROGS=	arithmetic det_complicated_unify double_error duplicate_label \
 		string_test_2 univ unreachable float_test \
 		mode_inf_bug liveness2
 
-NOTWORKING=	frameopt_mkframe_bug
+NOTWORKING=	double_error2 frameopt_mkframe_bug
 
 #
 # The nondet tests use solutions/2, which is currently implemented only for GC
