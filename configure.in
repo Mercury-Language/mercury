@@ -2030,6 +2030,10 @@ AC_ARG_ENABLE(par-grades,
 [  --disable-par-grades    do not install thread-safe versions of the library],
 enable_par_grades="$enableval",enable_par_grades=yes)
 
+AC_ARG_ENABLE(mm-grades,
+[  --enable-mm-grades      install minimal model versions of the library],
+enable_mm_grades="$enableval",enable_mm_grades=no)
+
 AC_ARG_ENABLE(hlc-prof-grades,
 [  --enable-hlc-prof-grades
                           install profiling versions of the high level C grade],
@@ -2048,6 +2052,7 @@ if test "$enable_most_grades" = no; then
 	enable_nogc_grades=no
 	enable_prof_grades=no
 	enable_trail_grades=no
+	enable_mm_grades=no
 	enable_hlc_prof_grades=no
 	enable_par_grades=no
 fi
@@ -2113,6 +2118,11 @@ if test "$enable_trail_grades" = yes; then
 			LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof.tr"
 		fi
 	fi
+fi
+
+# add `.mm' (--minimal-model) grades
+if test "$enable_mm_grades" = yes; then
+	LIBGRADES="$LIBGRADES $BEST_GRADE.gc.mm $BEST_GRADE.gc.mm.debug"
 fi
 
 # add `.debug' (--debug) grades
