@@ -875,11 +875,15 @@ make_ground_inst(bound(Uniq0, BoundInsts0), IsLive, Uniq1, Real, M0,
 	make_ground_bound_inst_list(BoundInsts0, IsLive, Uniq1, Real, M0,
 					BoundInsts, Det1, M),
 	det_par_conjunction_detism(Det1, semidet, Det).
-make_ground_inst(ground(Uniq0, _GII0), IsLive, Uniq1, Real, M,
-		ground(Uniq, none), semidet, M) :-
+make_ground_inst(ground(Uniq0, GroundInstInfo), IsLive, Uniq1, Real, M,
+		ground(Uniq, GroundInstInfo), semidet, M) :-
 	unify_uniq(IsLive, Real, semidet, Uniq0, Uniq1, Uniq).
 make_ground_inst(inst_var(_), _, _, _, _, _, _, _) :-
 	error("free inst var").
+make_ground_inst(constrained_inst_vars(InstVars, InstConstraint), IsLive,
+		Uniq, Real, M0, Inst, Det, M) :-
+	abstractly_unify_constrained_inst_vars(IsLive, InstVars,
+		InstConstraint, ground(Uniq, none), Real, M0, Inst, Det, M).
 make_ground_inst(abstract_inst(_,_), _, _, _, M, ground(shared, none),
 		semidet, M).
 make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
@@ -990,6 +994,10 @@ make_any_inst(ground(Uniq0, PredInst), IsLive, Uniq1, Real, M,
 	unify_uniq(IsLive, Real, semidet, Uniq0, Uniq1, Uniq).
 make_any_inst(inst_var(_), _, _, _, _, _, _, _) :-
 	error("free inst var").
+make_any_inst(constrained_inst_vars(InstVars, InstConstraint), IsLive,
+		Uniq, Real, M0, Inst, Det, M) :-
+	abstractly_unify_constrained_inst_vars(IsLive, InstVars,
+		InstConstraint, any(Uniq), Real, M0, Inst, Det, M).
 make_any_inst(abstract_inst(_,_), _, _, _, M, any(shared),
 		semidet, M).
 make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
