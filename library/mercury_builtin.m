@@ -154,8 +154,8 @@ builtin_unify_int(X, X).
 builtin_unify_string(S, S).
 
 builtin_unify_pred(_Pred1, _Pred2) :-
-	error("attempted higher-order unification"),
-	fail. % suppress determinism warning
+	semidet_succeed,	% suppress determinism warning
+	error("attempted higher-order unification").
 
 :- end_module mercury_builtin.
 
