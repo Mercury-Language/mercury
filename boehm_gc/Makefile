@@ -21,14 +21,15 @@ include ../Mmake.common
 #      	 and runs some tests of collector and cords.  Does not add cords or
 #	 c++ interface to gc.a
 # cord/de - builds dumb editor based on cords.
+ABI_FLAG= 
 
-# CC=cc
+# CC=cc $(ABI_FLAG)
 CC=../scripts/mgnuc --grade $(GRADE) --no-ansi --no-check
 
-CXX=CC
+CXX=CC $(ABI_FLAG)
 # Needed only for "make c++", which adds the c++ interface
 
-# AS=as
+# AS=as $(ABI_FLAG)
 #  The above doesn't work with gas, which doesn't run cpp.
 #  Define AS as `gcc -c -x assembler-with-cpp' instead.
 #  But you may have to do it in ../scripts/mgnuc rather than here.
@@ -36,8 +37,8 @@ AS=../scripts/mgnuc --grade $(GRADE) --assemble
 #  Under Irix 6, you will have to specify the ABI for as if you specify
 #  it for the C compiler.
 
-# CFLAGS= -O -DNO_SIGNALS -DALL_INTERIOR_POINTERS -DATOMIC_UNCOLLECTABLE \
-#	-DNO_EXECUTE_PERMISSION -DSILENT
+# CFLAGS= -O -DNO_SIGNALS -DALL_INTERIOR_POINTERS -DNO_EXECUTE_PERMISSION
+#	-DSILENT
 CFLAGS= -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING -DNO_EXECUTE_PERMISSION \
 	$(CFLAGS_FOR_PIC) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 # Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
@@ -109,6 +110,8 @@ CFLAGS= -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING -DNO_EXECUTE_PERMISSION \
 #   in a sepearte postpass, and hence their memory won't be reclaimed.
 #   Not recommended unless you are implementing a language that specifies
 #   these semantics.
+# -DFINALIZE_ON_DEMAND causes finalizers to be run only in response
+#   to explicit GC_invoke_finalizers() calls.
 # -DATOMIC_UNCOLLECTABLE includes code for GC_malloc_atomic_uncollectable.
 #   This is useful if either the vendor malloc implementation is poor,
 #   or if REDIRECT_MALLOC is used.

@@ -493,6 +493,10 @@
 #       endif
 #	define PROC_VDB
 #	define HEURISTIC1
+#	include <unistd.h>
+#       define GETPAGESIZE()  sysconf(_SC_PAGESIZE)
+		/* getpagesize() appeared to be missing from at least one */
+		/* Solaris 5.4 installation.  Weird.			  */
 #   endif
 #   ifdef SUNOS4
 #	define OS_TYPE "SUNOS4"
@@ -572,10 +576,27 @@
 #	define MPROTECT_VDB
 #       ifdef __ELF__
 #            define DYNAMIC_LOADING
-	     /* This may require a recent version of libc and/or binutils.
-	        Works with libc6 and binutils 2.9. */
-	     extern int __data_start;
-#            define DATASTART (&__data_start)
+#	     ifdef UNDEFINED	/* includes ro data */
+	       extern int _etext;
+#              define DATASTART ((ptr_t)((((word) (&_etext)) + 0xfff) & ~0xfff))
+#	     endif
+#	     include <linux/version.h>
+#	     include <features.h>
+#	     if LINUX_VERSION_CODE >= 0x20000 && defined(__GLIBC__) && __GLIBC__ >= 2
+		 extern int __data_start;
+#		 define DATASTART ((ptr_t)(&__data_start))
+#	     else
+     	         extern char **__environ;
+#                define DATASTART ((ptr_t)(&__environ))
+			      /* hideous kludge: __environ is the first */
+			      /* word in crt0.o, and delimits the start */
+			      /* of the data segment, no matter which   */
+			      /* ld options were passed through.        */
+			      /* We could use _etext instead, but that  */
+			      /* would include .rodata, which may       */
+			      /* contain large read-only data tables    */
+			      /* that we'd rather not scan.		*/
+#	     endif
 	     extern int _end;
 #	     define DATAEND (&_end)
 #	else
@@ -754,6 +775,7 @@
 #   define DYNAMIC_LOADING
 #   include <unistd.h>
 #   define GETPAGESIZE() sysconf(_SC_PAGE_SIZE)
+	/* They misspelled the Posix macro?	*/
 # endif
 
 # ifdef ALPHA
@@ -839,14 +861,14 @@
 # endif
 
 # if defined(SVR4) && !defined(GETPAGESIZE)
-# include <unistd.h>
-  int
-  GC_getpagesize()
-  {
-    return sysconf(_SC_PAGESIZE);
-  }
+#    include <unistd.h>
+#    define GETPAGESIZE()  sysconf(_SC_PAGESIZE)
 # endif
+
 # ifndef GETPAGESIZE
+#   if defined(SUNOS5) || defined(IRIX5)
+#	include <unistd.h>
+#   endif
 #   define GETPAGESIZE() getpagesize()
 # endif
 

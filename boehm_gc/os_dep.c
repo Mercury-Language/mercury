@@ -18,6 +18,9 @@
 # include "gc_priv.h"
 # include "mercury_boehm_gc_conf.h"
 
+# include <stdio.h>
+# include <signal.h>
+
 # if defined(LINUX) && !defined(POWERPC)
 #   include <linux/version.h>
 #   if (LINUX_VERSION_CODE <= 0x10400)
@@ -29,17 +32,26 @@
 #     include <asm/signal.h>
 #     undef __KERNEL__
 #   else
-      /* This used to be conditional on (LINUX_VERSION_CODE < 0x20100), */
-      /* but that is not the right test, since it is needed for at    */
-      /* least one 2.1.35 (LINUX_VERSION_CODE = 0x20103) release.     */
-      /* For the moment I'll just make it unconditional.  If you get  */
-      /* a compilation error at the line below, just comment it out.  */
+      /* Kernels prior to 2.1.1 defined struct sigcontext_struct instead of */
+      /* struct sigcontext.  libc6 (glibc2) uses "struct sigcontext" in     */
+      /* prototypes, so we have to include the top-level sigcontext.h to    */
+      /* make sure the former gets defined to be the latter if appropriate. */
+#     include <features.h>
+#     if 2 <= __GLIBC__
+#       include <sigcontext.h>
+#     else /* not 2 <= __GLIBC__ */
+        /* libc5 doesn't have <sigcontext.h>: go directly with the kernel   */
+        /* one.  Check LINUX_VERSION_CODE to see which we should reference. */
+#       include <asm/sigcontext.h>
+#     endif /* 2 <= __GLIBC__ */
+#if 0
       /*  							      */
       /* 10-Feb-1998 Modified to use autoconf to handle this for      */
       /*             Mercury -- Tyson Dowd <trd@cs.mu.oz.au>          */
 #     ifdef MERCURY_LINUX_NEED_ASM_SIGCONTEXT
 #        include <asm/sigcontext.h>
 #     endif
+#endif
 #   endif
 # endif
 # if !defined(OS2) && !defined(PCR) && !defined(AMIGA) && !defined(MACOS)
@@ -48,8 +60,6 @@
 #   	include <unistd.h>
 #   endif
 # endif
-# include <stdio.h>
-# include <signal.h>
 
 /* Blatantly OS dependent routines, except for those that are related 	*/
 /* dynamic loading.							*/
@@ -474,7 +484,7 @@ ptr_t GC_get_stack_base()
 	typedef void (*handler)();
 #   endif
 
-#   ifdef SUNOS5SIGS
+#   if defined(SUNOS5SIGS) || defined(IRIX5)
 	static struct sigaction oldact;
 #   else
         static handler old_segv_handler, old_bus_handler;
@@ -482,7 +492,7 @@ ptr_t GC_get_stack_base()
     
     void GC_setup_temporary_fault_handler()
     {
-#	ifdef SUNOS5SIGS
+#	if defined(SUNOS5SIGS) || defined(IRIX5)
 	  struct sigaction	act;
 
 	  act.sa_handler	= GC_fault_handler;
@@ -494,7 +504,14 @@ ptr_t GC_get_stack_base()
           /* signal mask.                                               */
 
 	  (void) sigemptyset(&act.sa_mask);
-	  (void) sigaction(SIGSEGV, &act, &oldact);
+#	  ifdef IRIX_THREADS
+		/* Older versions have a bug related to retrieving and	*/
+		/* and setting a handler at the same time.		*/
+	        (void) sigaction(SIGSEGV, 0, &oldact);
+	        (void) sigaction(SIGSEGV, &act, 0);
+#	  else
+	        (void) sigaction(SIGSEGV, &act, &oldact);
+#	  endif	/* IRIX_THREADS */
 #	else
     	  old_segv_handler = signal(SIGSEGV, GC_fault_handler);
 #	  ifdef SIGBUS
@@ -505,7 +522,7 @@ ptr_t GC_get_stack_base()
     
     void GC_reset_fault_handler()
     {
-#       ifdef SUNOS5SIGS
+#       if defined(SUNOS5SIGS) || defined(IRIX5)
 	  (void) sigaction(SIGSEGV, &oldact, 0);
 #       else
   	  (void) signal(SIGSEGV, old_segv_handler);
@@ -970,14 +987,14 @@ void GC_register_data_segments()
 ptr_t GC_unix_get_mem(bytes)
 word bytes;
 {
-    caddr_t cur_brk = sbrk(0);
+    caddr_t cur_brk = (caddr_t)sbrk(0);
     caddr_t result;
     SBRK_ARG_T lsbs = (word)cur_brk & (GC_page_size-1);
     static caddr_t my_brk_val = 0;
     
     if ((SBRK_ARG_T)bytes < 0) return(0); /* too big */
     if (lsbs != 0) {
-        if(sbrk(GC_page_size - lsbs) == (caddr_t)(-1)) return(0);
+        if((caddr_t)(sbrk(GC_page_size - lsbs)) == (caddr_t)(-1)) return(0);
     }
     if (cur_brk == my_brk_val) {
     	/* Use the extra block we allocated last time. */
@@ -1537,7 +1554,7 @@ SIG_PF GC_old_segv_handler;	/* Also old MSWIN32 ACCESS_VIOLATION filter */
             set_pht_entry_from_index(GC_dirty_pages, index);
         }
         UNPROTECT(h, GC_page_size);
-#	if defined(IRIX5) || defined(OSF1) || defined(LINUX)
+#	if defined(OSF1) || defined(LINUX)
 	    /* These reset the signal handler each time by default. */
 	    signal(SIGSEGV, (SIG_PF) GC_write_fault_handler);
 #	endif
@@ -1585,10 +1602,15 @@ struct hblk *h;
 
 void GC_dirty_init()
 {
-#if defined(SUNOS5SIGS)
+#if defined(SUNOS5SIGS) || defined(IRIX5)
     struct sigaction	act, oldact;
-    act.sa_sigaction	= GC_write_fault_handler;
-    act.sa_flags	= SA_RESTART | SA_SIGINFO;
+#   ifdef IRIX5
+    	act.sa_flags	= SA_RESTART;
+        act.sa_handler  = GC_write_fault_handler;
+#   else
+    	act.sa_flags	= SA_RESTART | SA_SIGINFO;
+        act.sa_sigaction = GC_write_fault_handler;
+#   endif
     (void)sigemptyset(&act.sa_mask); 
 #endif
 #   ifdef PRINTSTATS
@@ -1611,7 +1633,7 @@ void GC_dirty_init()
 #	endif
       }
 #   endif
-#   if defined(IRIX5) || defined(OSF1) || defined(SUNOS4) || defined(LINUX)
+#   if defined(OSF1) || defined(SUNOS4) || defined(LINUX)
       GC_old_segv_handler = signal(SIGSEGV, (SIG_PF)GC_write_fault_handler);
       if (GC_old_segv_handler == SIG_IGN) {
         GC_err_printf0("Previously ignored segmentation violation!?");
@@ -1623,8 +1645,13 @@ void GC_dirty_init()
 #	endif
       }
 #   endif
-#   if defined(SUNOS5SIGS)
-      sigaction(SIGSEGV, &act, &oldact);
+#   if defined(SUNOS5SIGS) || defined(IRIX5)
+#     ifdef IRIX_THREADS
+      	sigaction(SIGSEGV, 0, &oldact);
+      	sigaction(SIGSEGV, &act, 0);
+#     else
+      	sigaction(SIGSEGV, &act, &oldact);
+#     endif
       if (oldact.sa_flags & SA_SIGINFO) {
           GC_old_segv_handler = (SIG_PF)(oldact.sa_sigaction);
       } else {
