@@ -2524,26 +2524,7 @@ typecheck_info_get_final_info(TypeCheckInfo, OldConstraints, NewTypeVarSet,
 		% Next, create a new typevarset with the same number of
 		% variables. 
 		%
-		list__length(TypeVars, NumTypeVars),
-		varset__init(NewTypeVarSet0),
-		varset__new_vars(NewTypeVarSet0, NumTypeVars, 
-			NewTypeVars0, NewTypeVarSet1),
-		%
-		% We need to sort the fresh variables, to
-		% ensure that the type substitution that we create below
-		% does not alter the relative ordering of the type variables
-		% (since that affects the order in which type_info
-		% parameters will be passed).
-		%
-		list__sort(NewTypeVars0, NewTypeVars),
-		%
-		% Copy the type variable names across from the old
-		% typevarset to the new typevarset.
-		%
-		varset__var_name_list(OldTypeVarSet, TypeVarNames),
-		map__from_corresponding_lists(TypeVars, NewTypeVars, TSubst),
-		copy_type_var_names(TypeVarNames, TSubst, NewTypeVarSet1,
-			NewTypeVarSet),
+		varset__squash(OldTypeVarSet, TypeVars, NewTypeVarSet, TSubst),
 		%
 		% Finally, rename the types and type class constraints
 		% to use the new typevarset type variables.
@@ -2583,21 +2564,6 @@ expand_types([Var | Vars], TypeSubst, VarTypes0, VarTypes) :-
 	term__apply_rec_substitution(Type0, TypeSubst, Type),
 	map__det_update(VarTypes0, Var, Type, VarTypes1),
 	expand_types(Vars, TypeSubst, VarTypes1, VarTypes).
-
-:- pred copy_type_var_names(assoc_list(tvar, string), map(tvar, tvar),
-				tvarset, tvarset).
-:- mode copy_type_var_names(in, in, in, out) is det.
-
-copy_type_var_names([], _TSubst, NewTypeVarSet, NewTypeVarSet).
-copy_type_var_names([OldTypeVar - Name | Rest], TypeSubst, NewTypeVarSet0,
-			NewTypeVarSet) :-
-	( map__search(TypeSubst, OldTypeVar, NewTypeVar) ->
-		varset__name_var(NewTypeVarSet0, NewTypeVar, Name,
-			NewTypeVarSet1)
-	;
-		NewTypeVarSet1 = NewTypeVarSet0
-	),
-	copy_type_var_names(Rest, TypeSubst, NewTypeVarSet1, NewTypeVarSet).
 
 :- pred rename_class_constraint(map(tvar, tvar), class_constraint,
 				class_constraint).

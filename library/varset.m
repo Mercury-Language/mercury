@@ -151,6 +151,14 @@
 :- pred varset__select(varset, set(var), varset).
 :- mode varset__select(in, in, out) is det.
 
+	% Given a varset and a list of variables, construct a new varset
+	% containing one variable for each one in the list (and no others).
+	% Also return a substitution mapping the selected variables in the
+	% original varset into variables in the new varset. The relative
+	% ordering of variables in the original varset is maintained.
+:- pred varset__squash(varset, list(var), varset, map(var, var)).
+:- mode varset__squash(in, in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -428,6 +436,43 @@ varset__select(varset(Supply, VarNameMap0, Values0), Vars,
 		varset(Supply, VarNameMap, Values)) :-
 	map__select(VarNameMap0, Vars, VarNameMap),
 	map__select(Values0, Vars, Values).
+
+%-----------------------------------------------------------------------------%
+
+varset__squash(OldVarSet, KeptVars, NewVarSet, Subst) :-
+	%
+	% Create a new varset with the same number of variables. 
+	%
+	list__length(KeptVars, NumVars),
+	varset__init(NewVarSet0),
+	varset__new_vars(NewVarSet0, NumVars, 
+		NewVars0, NewVarSet1),
+	%
+	% We need to sort the fresh variables, to
+	% ensure that the substitution that we create below
+	% does not alter the relative ordering of the variables
+	%
+	list__sort(NewVars0, NewVars),
+
+	%
+	% Copy the variable names across from the old
+	% varset to the new varset.
+	%
+	varset__var_name_list(OldVarSet, VarNames),
+	map__from_corresponding_lists(KeptVars, NewVars, Subst),
+	copy_var_names(VarNames, Subst, NewVarSet1, NewVarSet).
+
+:- pred copy_var_names(assoc_list(var, string), map(var, var), varset, varset).
+:- mode copy_var_names(in, in, in, out) is det.
+
+copy_var_names([], _Subst, NewVarSet, NewVarSet).
+copy_var_names([OldVar - Name | Rest], Subst, NewVarSet0, NewVarSet) :-
+	( map__search(Subst, OldVar, NewVar) ->
+		varset__name_var(NewVarSet0, NewVar, Name, NewVarSet1)
+	;
+		NewVarSet1 = NewVarSet0
+	),
+	copy_var_names(Rest, Subst, NewVarSet1, NewVarSet).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -182,6 +182,10 @@
 	class_constraint).
 :- mode apply_subst_to_constraint(in, in, out) is det.
 
+:- pred apply_variable_renaming_to_constraint(map(var, var), 
+	class_constraint, class_constraint).
+:- mode apply_variable_renaming_to_constraint(in, in, out) is det.
+
 % strip out the term__context fields, replacing them with empty
 % term__contexts (as obtained by term__context_init/1)
 % in a type or list of types
@@ -745,6 +749,12 @@ apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
 	term__apply_substitution_to_list(Types0, Subst, Types),
 	Constraint  = constraint(ClassName, Types).
+
+apply_variable_renaming_to_constraint(Renaming, Constraint0, Constraint) :-
+	Constraint0 = constraint(ClassName, ClassArgTypes0),
+	term__apply_variable_renaming_to_list(ClassArgTypes0,
+		Renaming, ClassArgTypes),
+	Constraint = constraint(ClassName, ClassArgTypes).
 
 strip_term_contexts(Terms, StrippedTerms) :-
 	list__map(strip_term_context, Terms, StrippedTerms).
