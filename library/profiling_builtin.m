@@ -700,9 +700,9 @@
 "{
 /* shut up warning: CSD, CSN, OuterCount1 */
 #define MR_PROCNAME		""save_recursion_depth_1""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \
-					CSN);				     \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \\
+					CSN);				     \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -715,11 +715,11 @@
 "{
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2 */
 #define MR_PROCNAME		""save_recursion_depth_2""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -732,13 +732,13 @@
 "{
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 #define MR_PROCNAME		""save_recursion_depth_3""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -753,15 +753,15 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4 */
 #define MR_PROCNAME		""save_recursion_depth_4""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -776,17 +776,17 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4, OuterCount5 */
 #define MR_PROCNAME		""save_recursion_depth_5""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -801,19 +801,19 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6 */
 #define MR_PROCNAME		""save_recursion_depth_6""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -829,21 +829,21 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
 #define MR_PROCNAME		""save_recursion_depth_7""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount7,	     \
-					MR_csn_vector_field(CSNsVector, 6)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount7,	     \\
+					MR_csn_vector_field(CSNsVector, 6)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -860,23 +860,23 @@
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
 /* shut up warning: OuterCount8 */
 #define MR_PROCNAME		""save_recursion_depth_8""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount7,	     \
-					MR_csn_vector_field(CSNsVector, 6)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount8,	     \
-					MR_csn_vector_field(CSNsVector, 7)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount7,	     \\
+					MR_csn_vector_field(CSNsVector, 6)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount8,	     \\
+					MR_csn_vector_field(CSNsVector, 7)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -893,25 +893,25 @@
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
 /* shut up warning: OuterCount8, OuterCount9 */
 #define MR_PROCNAME		""save_recursion_depth_9""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount7,	     \
-					MR_csn_vector_field(CSNsVector, 6)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount8,	     \
-					MR_csn_vector_field(CSNsVector, 7)); \
-				MR_SAVE_DEPTH_ACTION(OuterCount9,	     \
-					MR_csn_vector_field(CSNsVector, 8)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_SAVE_DEPTH_ACTION(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount7,	     \\
+					MR_csn_vector_field(CSNsVector, 6)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount8,	     \\
+					MR_csn_vector_field(CSNsVector, 7)); \\
+				MR_SAVE_DEPTH_ACTION(OuterCount9,	     \\
+					MR_csn_vector_field(CSNsVector, 8)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -928,9 +928,9 @@
 "{
 /* shut up warning: CSD, CSN, OuterCount1 */
 #define MR_PROCNAME		""restore_recursion_depth_exit_1""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \
-					CSN);				     \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \\
+					CSN);				     \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -944,11 +944,11 @@
 "{
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2 */
 #define MR_PROCNAME		""restore_recursion_depth_exit_2""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -962,13 +962,13 @@
 "{
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 #define MR_PROCNAME		""restore_recursion_depth_exit_3""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -984,15 +984,15 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4 */
 #define MR_PROCNAME		""restore_recursion_depth_exit_4""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1008,17 +1008,17 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4, OuterCount5 */
 #define MR_PROCNAME		""restore_recursion_depth_exit_5""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1034,19 +1034,19 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6 */
 #define MR_PROCNAME		""restore_recursion_depth_exit_6""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1063,21 +1063,21 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
 #define MR_PROCNAME		""restore_recursion_depth_exit_7""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount7,	     \
-					MR_csn_vector_field(CSNsVector, 6)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount7,	     \\
+					MR_csn_vector_field(CSNsVector, 6)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1095,23 +1095,23 @@
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
 /* shut up warning: OuterCount8 */
 #define MR_PROCNAME		""restore_recursion_depth_exit_8""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount7,	     \
-					MR_csn_vector_field(CSNsVector, 6)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount8,	     \
-					MR_csn_vector_field(CSNsVector, 7)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount7,	     \\
+					MR_csn_vector_field(CSNsVector, 6)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount8,	     \\
+					MR_csn_vector_field(CSNsVector, 7)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1129,25 +1129,25 @@
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
 /* shut up warning: OuterCount8, OuterCount9 */
 #define MR_PROCNAME		""restore_recursion_depth_exit_9""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount7,	     \
-					MR_csn_vector_field(CSNsVector, 6)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount8,	     \
-					MR_csn_vector_field(CSNsVector, 7)); \
-				MR_RESTORE_DEPTH_EXIT(OuterCount9,	     \
-					MR_csn_vector_field(CSNsVector, 8)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount7,	     \\
+					MR_csn_vector_field(CSNsVector, 6)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount8,	     \\
+					MR_csn_vector_field(CSNsVector, 7)); \\
+				MR_RESTORE_DEPTH_EXIT(OuterCount9,	     \\
+					MR_csn_vector_field(CSNsVector, 8)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1165,9 +1165,9 @@
 "{
 /* shut up warning: CSD, CSN, OuterCount1 */
 #define MR_PROCNAME		""restore_recursion_depth_fail_1""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \
-					CSN);				     \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \\
+					CSN);				     \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1181,11 +1181,11 @@
 "{
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2 */
 #define MR_PROCNAME		""restore_recursion_depth_fail_2""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1199,13 +1199,13 @@
 "{
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 #define MR_PROCNAME		""restore_recursion_depth_fail_3""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1221,15 +1221,15 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4 */
 #define MR_PROCNAME		""restore_recursion_depth_fail_4""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1245,17 +1245,17 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4, OuterCount5 */
 #define MR_PROCNAME		""restore_recursion_depth_fail_5""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1271,19 +1271,19 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6 */
 #define MR_PROCNAME		""restore_recursion_depth_fail_6""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1300,21 +1300,21 @@
 /* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
 #define MR_PROCNAME		""restore_recursion_depth_fail_7""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount7,	     \
-					MR_csn_vector_field(CSNsVector, 6)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount7,	     \\
+					MR_csn_vector_field(CSNsVector, 6)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1332,23 +1332,23 @@
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
 /* shut up warning: OuterCount8 */
 #define MR_PROCNAME		""restore_recursion_depth_fail_8""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount7,	     \
-					MR_csn_vector_field(CSNsVector, 6)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount8,	     \
-					MR_csn_vector_field(CSNsVector, 7)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount7,	     \\
+					MR_csn_vector_field(CSNsVector, 6)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount8,	     \\
+					MR_csn_vector_field(CSNsVector, 7)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
@@ -1366,25 +1366,25 @@
 /* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
 /* shut up warning: OuterCount8, OuterCount9 */
 #define MR_PROCNAME		""restore_recursion_depth_fail_9""
-#define MR_REC_DEPTH_BODY	{					     \
-				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \
-					MR_csn_vector_field(CSNsVector, 0)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \
-					MR_csn_vector_field(CSNsVector, 1)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \
-					MR_csn_vector_field(CSNsVector, 2)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \
-					MR_csn_vector_field(CSNsVector, 3)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount5,	     \
-					MR_csn_vector_field(CSNsVector, 4)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount6,	     \
-					MR_csn_vector_field(CSNsVector, 5)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount7,	     \
-					MR_csn_vector_field(CSNsVector, 6)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount8,	     \
-					MR_csn_vector_field(CSNsVector, 7)); \
-				MR_RESTORE_DEPTH_FAIL(OuterCount9,	     \
-					MR_csn_vector_field(CSNsVector, 8)); \
+#define MR_REC_DEPTH_BODY	{					     \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount1,	     \\
+					MR_csn_vector_field(CSNsVector, 0)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount2,	     \\
+					MR_csn_vector_field(CSNsVector, 1)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount3,	     \\
+					MR_csn_vector_field(CSNsVector, 2)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount4,	     \\
+					MR_csn_vector_field(CSNsVector, 3)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount5,	     \\
+					MR_csn_vector_field(CSNsVector, 4)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount6,	     \\
+					MR_csn_vector_field(CSNsVector, 5)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount7,	     \\
+					MR_csn_vector_field(CSNsVector, 6)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount8,	     \\
+					MR_csn_vector_field(CSNsVector, 7)); \\
+				MR_RESTORE_DEPTH_FAIL(OuterCount9,	     \\
+					MR_csn_vector_field(CSNsVector, 8)); \\
 				}
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
