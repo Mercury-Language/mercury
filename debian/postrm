@@ -1,0 +1,3 @@
+#!/bin/sh -e
+
+install-info --quiet --remove /usr/info/mercury.info
