@@ -3678,14 +3678,14 @@ of method definitions that it can contain:
 :- typeclass foo(T) where [
 	func method1(T, T) = int,
 	func method2(T) = int,
-	pred method3(T::in, int::out) is det
-	pred method4(T::in, io__state::di, io__state::uo) is det
+	pred method3(T::in, int::out) is det,
+	pred method4(T::in, io__state::di, io__state::uo) is det,
 	func method5(bool, T) = T
 ].
 
 :- instance foo(int) where [
 	% method defined by naming the implementation
-	func(method1/1) is (+),
+	func(method1/2) is (+),
 
 	% method defined by a fact
 	method2(X) = X + 1,
