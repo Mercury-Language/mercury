@@ -199,6 +199,11 @@
 
 	/*
 	** Mathematical constants.
+	**
+	** The maximum number of significant decimal digits which
+	** can be packed into an IEEE-754 extended precision
+	** floating point number is 18.  Therefore 20 significant
+	** decimal digits for these constants should be plenty.
 	*/
 
 	#define	ML_FLOAT_E		2.7182818284590452354
@@ -211,6 +216,7 @@
 
 :- pragma c_code("
 
+	#include <mercury_trace.h>
 	#include <stdio.h>
 
 	/*
@@ -884,7 +890,7 @@
 ").
 
 %
-% math__cos(X, Sin) is true if Cos is the cosine of X.
+% math__cos(X, Cos) is true if Cos is the cosine of X.
 %
 :- pragma c_code(math__cos(X::in, Cos::out),
 		[will_not_call_mercury, thread_safe], "
