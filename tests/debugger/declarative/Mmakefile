@@ -36,7 +36,6 @@ DECLARATIVE_PROGS=		\
 	neg_conj		\
 	negation		\
 	oracle_db		\
-	output_term_dep		\
 	propositional		\
 	queens			\
 	small			\
@@ -50,6 +49,7 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 NONWORKING_DECLARATIVE_PROGS=	\
 	higher_order		\
 	ite_2			\
+	output_term_dep		\
 	solutions
 
 MCFLAGS = --trace decl
