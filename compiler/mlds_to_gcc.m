@@ -1638,12 +1638,22 @@ get_module_name(ModuleName) = MangledModuleName :-
 		list(gcc__type)::out, gcc__param_types::out,
 		io__state::di, io__state::uo) is det.
 
-build_param_types([], _, [], gcc__empty_param_types) --> [].
+build_param_types(ArgTypes, GlobalInfo, GCC_Types, ParamTypes) -->
+	build_param_types(ArgTypes, GlobalInfo, GCC_Types, gcc__empty_param_types,
+		ParamTypes).
+
+% build a list of parameter types, and prepend this list to the gcc__param_types list
+% passed as input
+:- pred build_param_types(mlds__arg_types::in, global_info::in,
+		list(gcc__type)::out, gcc__param_types::in, gcc__param_types::out,
+		io__state::di, io__state::uo) is det.
+
+build_param_types([], _, [], ParamTypes, ParamTypes) --> [].
 build_param_types([ArgType | ArgTypes], GlobalInfo, [GCC_Type | GCC_Types],
-		ParamTypes) -->
-	build_param_types(ArgTypes, GlobalInfo, GCC_Types, ParamTypes0),
+		ParamTypes0, ParamTypes) -->
+	build_param_types(ArgTypes, GlobalInfo, GCC_Types, ParamTypes0, ParamTypes1),
 	build_type(ArgType, GlobalInfo, GCC_Type),
-	{ ParamTypes = gcc__cons_param_types(GCC_Type, ParamTypes0) }.
+	{ ParamTypes = gcc__cons_param_types(GCC_Type, ParamTypes1) }.
 
 :- pred build_param_types_and_decls(mlds__arguments::in, mlds_module_name::in,
 		global_info::in, gcc__param_types::out, gcc__param_decls::out,
@@ -1778,31 +1788,28 @@ build_type(mlds__generic_type, _, _, 'MR_Box') --> [].
 build_type(mlds__generic_env_ptr_type, _, _, gcc__ptr_type_node) --> [].
 build_type(mlds__type_info_type, _, _, 'MR_TypeInfo') --> [].
 build_type(mlds__pseudo_type_info_type, _, _, 'MR_PseudoTypeInfo') --> [].
-build_type(mlds__cont_type(ArgTypes), _, _, GCC_Type) -->
-	( { ArgTypes = [] } ->
-		globals__io_lookup_bool_option(gcc_nested_functions,
-			GCC_NestedFuncs),
-		( { GCC_NestedFuncs = yes } ->
-			% typedef void (*MR_NestedCont)(void)
-			gcc__build_function_type(gcc__void_type_node,
-				gcc__empty_param_types, FuncType),
-			gcc__build_pointer_type(FuncType, MR_NestedCont),
-			{ GCC_Type = MR_NestedCont }
-		;
-			% typedef void (*MR_Cont)(void *)
-			gcc__build_function_type(gcc__void_type_node,
-				gcc__cons_param_types(gcc__ptr_type_node,
-					gcc__empty_param_types),
-				FuncType),
-			gcc__build_pointer_type(FuncType, MR_Cont),
-			{ GCC_Type = MR_Cont }
-		)
+build_type(mlds__cont_type(ArgTypes), _, GlobalInfo, GCC_Type) -->
+	% mlds_to_c treats the ArgTypes = [] case specially -- it generates
+	% references to typedefs `MR_NestedCont' and `MR_Cont', which are
+	% defined as follows:
+	%	typedef void MR_CALL (*MR_NestedCont)(void)
+	%	typedef void MR_CALL (*MR_Cont)(void *)
+	% However, the generic code here works fine for those cases too,
+	% i.e. it generates the same types.
+
+	% first get the type for the environment parameter, if needed,
+	globals__io_lookup_bool_option(gcc_nested_functions, GCC_NestedFuncs),
+	( { GCC_NestedFuncs = no } ->
+		{ GCC_ParamTypes0 = gcc__cons_param_types(gcc__ptr_type_node,
+				gcc__empty_param_types) }
 	;
-		% This case only happens for --nondet-copy-out
-		% (See mlds_to_c.m for what we ought to do.)
-		{ sorry(this_file,
-			"cont_type (`--nondet-copy-out' & `--target asm')") }
-	).
+		{ GCC_ParamTypes0 = gcc__empty_param_types }
+	),
+	% then prepend the types for the other arguments
+	build_param_types(ArgTypes, GlobalInfo, _GCC_Types,
+		GCC_ParamTypes0, GCC_ParamTypes),
+	gcc__build_function_type(gcc__void_type_node, GCC_ParamTypes, FuncType),
+	gcc__build_pointer_type(FuncType, GCC_Type).
 build_type(mlds__commit_type, _, _, gcc__jmpbuf_type_node) --> [].
 build_type(mlds__rtti_type(RttiName), InitializerSize, _GlobalInfo,
 		GCC_Type) -->
