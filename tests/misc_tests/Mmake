@@ -17,7 +17,7 @@ PROGS=
 
 DEPS=	$(PROGS:%=%.dep)
 DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out)
+OUTS=	$(PROGS:%=%.out) mdemangle_test.out
 RESS=	$(PROGS:%=%.res) mdemangle_test.res
 MODS=	$(PROGS:%=%.mod)
 
