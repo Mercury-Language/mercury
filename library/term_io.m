@@ -323,6 +323,13 @@ term_io__quote_single_char(Char) -->
 
 	% Convert a character to the corresponding octal escape code.
 
+	% XXX Note that we use C-style octal escapes rather than ISO-Prolog
+	% octal escapes.  This is for backwards compatibility with
+	% NU-Prolog and (old versions of?) SICStus Prolog.
+	% The Mercury lexer accepts either, so this should work
+	% ok so long as you don't have two escaped characters
+	% in a row :-(
+
 mercury_escape_char(Char, EscapeCode) :-
 	char__to_int(Char, Int),
 	string__int_to_base_string(Int, 8, OctalString0),
