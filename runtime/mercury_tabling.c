@@ -1120,7 +1120,7 @@ Declare_entry(MR_do_trace_redo_fail);
 Declare_entry(MR_table_nondet_commit);
 Define_extern_entry(mercury__table_nondet_suspend_2_0);
 MR_MAKE_PROC_LAYOUT(mercury__table_nondet_suspend_2_0,
-	MR_DETISM_NON, 0, MR_LVAL_TYPE_UNKNOWN,
+	MR_DETISM_NON, 0, MR_LONG_LVAL_TYPE_UNKNOWN,
 	MR_PREDICATE, "private_builtin", "table_nondet_suspend", 2, 0);
 BEGIN_MODULE(table_nondet_suspend_module)
 	init_entry_sl(mercury__table_nondet_suspend_2_0);
@@ -1297,7 +1297,7 @@ Declare_label(mercury__table_nondet_resume_1_0_ReturnAnswer);
 Declare_label(mercury__table_nondet_resume_1_0_RedoPoint);
 
 MR_MAKE_PROC_LAYOUT(mercury__table_nondet_resume_1_0,
-	MR_DETISM_NON, MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_DETISM_NON, MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
 	MR_PREDICATE, "private_builtin", "table_nondet_resume", 1, 0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_nondet_resume_1_0_ChangeLoop,
