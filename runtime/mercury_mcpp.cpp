@@ -53,6 +53,10 @@ public:
     {
         return x;
     }
+    static MR_Box ToObject(MR_Float x)
+    {
+        return ConvertImpl::ToObject(x);
+    }
 
 
     static MR_Char ToChar(MR_Box x)

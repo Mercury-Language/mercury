@@ -346,6 +346,13 @@ get_ftn_ptr_univ_unify() {
 	ret
 }
 
+.method static default class System.Object ToObject(float64 fval)
+{
+	ldarg fval
+	newobj instance void mercury.runtime.BoxedFloat::.ctor(float64)
+	ret
+}
+
 .method static default int32 ToInt32(class System.Object obj)
 {
 	ldarg obj
