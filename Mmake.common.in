@@ -27,6 +27,9 @@ INSTALL_BINDIR 		= $(INSTALL_PREFIX)/bin
 INSTALL_LIBDIR 		= $(INSTALL_PREFIX)/lib/mercury
 INSTALL_INFO_DIR 	= $(INSTALL_PREFIX)/info
 INSTALL_DVI_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_TEXT_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_PS_DIR 		= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_MAN_DIR 	= $(INSTALL_PREFIX)/man
 INSTALL_HTML_DIR 	= $(INSTALL_PREFIX)/lib/mercury/html
 
 # Specify the Mercury compiler to use for bootstrapping
