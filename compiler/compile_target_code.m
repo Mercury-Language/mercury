@@ -230,7 +230,7 @@ compile_managed_cplusplus_file(ErrorStream,
 
 	{ string__append_list([MCPP, " -CLR ", DebugOpt, InclOpts,
 		DLLDirOpts, MCPPFlags, " ", MCPPFileName,
-		" /LD -out:", DLLFileName],
+		" /LD /link -out:", DLLFileName],
 		Command) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
