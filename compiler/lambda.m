@@ -69,8 +69,7 @@
 
 :- interface. 
 
-:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
-:- import_module list, map, set.
+:- import_module hlds_module, hlds_pred.
 
 :- pred lambda__process_module(module_info, module_info).
 :- mode lambda__process_module(in, out) is det.
@@ -78,24 +77,16 @@
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
 
-:- pred lambda__transform_lambda(pred_or_func, lambda_eval_method, string,
-		list(prog_var), list(mode), determinism, list(prog_var),
-		set(prog_var), hlds_goal, unification, prog_varset,
-		map(prog_var, type), class_constraints, tvarset,
-		map(tvar, type_info_locn), map(class_constraint, prog_var),
-		pred_markers, aditi_owner, module_info, unify_rhs,
-		unification, module_info).
-:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in,
-		in, in, in, in, in, in, in, in, in, out, out, out) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module hlds_goal, prog_data.
 :- import_module hlds_data, make_hlds, globals, options, type_util.
 :- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
 
+:- import_module list, map, set.
 :- import_module term, varset, bool, string, std_util, require.
 
 :- type lambda_info --->
@@ -291,11 +282,12 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 :- mode lambda__process_lambda(in, in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
-lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Det,
+lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		OrigNonLocals0, LambdaGoal, Unification0, Functor,
 		Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
-		TVarMap, TCVarMap, Markers, POF, PredName, Owner, ModuleInfo0),
+		TVarMap, TCVarMap, Markers, POF, OrigPredName, Owner,
+		ModuleInfo0),
 
 		% Calculate the constraints which apply to this lambda
 		% expression. 
@@ -317,31 +309,8 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Det,
 	set__insert_list(LambdaGoalNonLocals, Vars, LambdaNonLocals),
 	goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap, VarTypes,
 		ExistQVars, LambdaNonLocals, ExtraTypeInfos),
-	lambda__transform_lambda(PredOrFunc, EvalMethod, PredName, Vars, Modes,
-		Det, OrigNonLocals0, ExtraTypeInfos, LambdaGoal, Unification0,
-		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
-		Markers, Owner, ModuleInfo0, Functor, Unification, ModuleInfo),
-	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-		TVarMap, TCVarMap, Markers, POF, PredName, Owner, ModuleInfo).
+	OrigVars = OrigNonLocals0,
 
-:- pred lambda__constraint_contains_vars(list(tvar), class_constraint).
-:- mode lambda__constraint_contains_vars(in, in) is semidet.
-
-lambda__constraint_contains_vars(LambdaVars, ClassConstraint) :-
-	ClassConstraint = constraint(_, ConstraintTypes),
-	list__map(type_util__vars, ConstraintTypes, ConstraintVarsList),
-	list__condense(ConstraintVarsList, ConstraintVars),
-		% Probably not the most efficient way of doing it, but I
-		% wouldn't think that it matters.
-	set__list_to_set(LambdaVars, LambdaVarsSet),
-	set__list_to_set(ConstraintVars, ConstraintVarsSet),
-	set__subset(ConstraintVarsSet, LambdaVarsSet).
-
-lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
-		Detism, OrigVars, ExtraTypeInfos, LambdaGoal, Unification0,
-		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
-		Markers, Owner, ModuleInfo0, Functor,
-		Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0, _, _, _)
 	->
@@ -351,26 +320,26 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 		error("lambda__transform_lambda: weird unification")
 	),
 
-	% Optimize a special case: replace
-	%	`lambda([Y1, Y2, ...] is Detism, p(X1, X2, ..., Y1, Y2, ...))'
-	% where `p' has determinism `Detism' with
-	%	`p(X1, X2, ...)'
-	%
-	% This optimization is only valid if the modes of the Xi are
-	% input, since only input arguments can be curried.
-	% It's also only valid if all the inputs in the Yi precede the
-	% outputs.  It's also not valid if any of the Xi are in the Yi.
-
-	LambdaGoal = _ - LambdaGoalInfo,
-	goal_info_get_nonlocals(LambdaGoalInfo, NonLocals0),
-	set__delete_list(NonLocals0, Vars, NonLocals1),
+	set__delete_list(LambdaGoalNonLocals, Vars, NonLocals1),
 
 	% We need all the typeinfos, including the ones that are not used,
 	% for the layout structure describing the closure.
 	set__union(NonLocals1, ExtraTypeInfos, NonLocals),
 
 	set__to_sorted_list(NonLocals, ArgVars1),
+
 	( 
+		% Optimize a special case: replace
+		%	`lambda([Y1, Y2, ...] is Detism,
+		%		p(X1, X2, ..., Y1, Y2, ...))'
+		% where `p' has determinism `Detism' with
+		%	`p(X1, X2, ...)'
+		%
+		% This optimization is only valid if the modes of the Xi are
+		% input, since only input arguments can be curried.
+		% It's also only valid if all the inputs in the Yi precede the
+		% outputs.  It's also not valid if any of the Xi are in the Yi.
+
 		LambdaGoal = call(PredId0, ProcId0, CallVars,
 					_, _, PredName0) - _,
 		module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0,
@@ -442,7 +411,7 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 		goal_info_get_context(LambdaGoalInfo, LambdaContext),
 		% The TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter.
-		% XXX existentially typed lambda expressions are not
+		% Existentially typed lambda expressions are not
 		% yet supported (see the documentation at top of this file)
 		ExistQVars = [],
 		lambda__uni_modes_to_modes(UniModes1, OrigArgModes),
@@ -543,7 +512,23 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 	VarToReuse = no,
 	RLExprnId = no,
 	Unification = construct(Var, ConsId, ArgVars, UniModes,
-		VarToReuse, cell_is_unique, RLExprnId).
+		VarToReuse, cell_is_unique, RLExprnId),
+	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
+		TVarMap, TCVarMap, Markers, POF, OrigPredName, Owner,
+		ModuleInfo).
+
+:- pred lambda__constraint_contains_vars(list(tvar), class_constraint).
+:- mode lambda__constraint_contains_vars(in, in) is semidet.
+
+lambda__constraint_contains_vars(LambdaVars, ClassConstraint) :-
+	ClassConstraint = constraint(_, ConstraintTypes),
+	list__map(type_util__vars, ConstraintTypes, ConstraintVarsList),
+	list__condense(ConstraintVarsList, ConstraintVars),
+		% Probably not the most efficient way of doing it, but I
+		% wouldn't think that it matters.
+	set__list_to_set(LambdaVars, LambdaVarsSet),
+	set__list_to_set(ConstraintVars, ConstraintVarsSet),
+	set__subset(ConstraintVarsSet, LambdaVarsSet).
 
 :- pred lambda__uni_modes_to_modes(list(uni_mode), list(mode)).
 :- mode lambda__uni_modes_to_modes(in, out) is det.
