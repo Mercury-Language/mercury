@@ -2180,41 +2180,40 @@ For each mode of a predicate or function,
 we categorise that mode according to how many times it can succeed,
 and whether or not it can fail before producing its first solution.
 
+If all possible calls to a particular mode of a predicate or function
+which return to the caller (calls which terminate, do not throw
+an exception and do not cause a fatal runtime error)
+
 @itemize @bullet
 @item
-If all possible calls to a particular mode of a predicate or function
 have exactly one solution,
-then that mode is @dfn{deterministic} (@code{det}).
+then that mode is @dfn{deterministic} (@code{det});
 
 @item
-If all possible calls to a particular mode of a predicate or function
 either have no solutions or have one solution,
-then that mode is @dfn{semideterministic} (@code{semidet}).
+then that mode is @dfn{semideterministic} (@code{semidet});
 
 @item
-If all possible calls to a particular mode of a predicate or function
 have at least one solution but may have more,
-then that mode is @dfn{multisolution} (@code{multi}).
+then that mode is @dfn{multisolution} (@code{multi});
 
 @item
-If some possible calls to a particular mode of a predicate or function
-have no solution but other calls may have more than one solution,
-then that mode is @dfn{nondeterministic} (@code{nondet}).
+have zero or more solutions,
+then that mode is @dfn{nondeterministic} (@code{nondet});
 
 @item
-If all possible calls to a particular mode of a predicate or function
 fail without producing a solution,
 then that mode has a determinism of @code{failure}.
-
-@item
-If all possible calls to a particular mode of a predicate or function
-lead to a runtime error, i.e. neither succeed nor fail,
-then that mode has a determinism of @code{erroneous}.
 @end itemize
 
+If no possible calls to a particular mode of a predicate or
+function can return to the caller, then that mode has a
+determinism of @code{erroneous}.
+
 The determinism annotation @code{erroneous} is used on the library
-predicate @samp{error/1}, but apart from that those last two determinism
-annotations are generally not needed.
+predicates @samp{require__error/1} and @samp{exception__throw/1},
+but apart from that determinism annotations @code{erroneous} and
+@code{failure} are generally not needed.
 
 To summarize:
 
@@ -4537,10 +4536,10 @@ different semantics, which can be selected with different
 combinations of the @samp{--no-reorder-conj}, @samp{--no-reorder-disj},
 and @samp{--fully-strict} options.  (The @samp{--fully-strict} option
 prevents the compiler from improving completeness by optimizing away infinite
-loops or calls to @code{error/1}.)  The default semantics are the
-commutative semantics.  Enabling all of these options gives you the
-the strict sequential semantics.  Enabling just some of them gives
-you a semantics somewhere in between.
+loops or calls to @code{require__error/1} or @code{exception__throw/1}.)
+The default semantics are the commutative semantics.  Enabling all of these
+options gives you the the strict sequential semantics.  Enabling just some
+of them gives you a semantics somewhere in between.
 
 Future implementations of Mercury may wish to offer other operational semantics.
 For example, they may wish to provide semantics in which function
