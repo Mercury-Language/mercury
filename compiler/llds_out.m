@@ -3354,15 +3354,15 @@ output_goto(do_call_closure, CallerLabel, !IO) :-
 	% see comment in output_call for why we use `noprof_' etc. here
 	io__write_string("MR_set_prof_ho_caller_proc(", !IO),
 	output_label_as_code_addr(CallerLabel, !IO),
-	io__write_string(");\n\t\t", !IO),
+	io__write_string(");\n\t", !IO),
 	io__write_string("MR_np_tailcall_ent(do_call_closure_compact);\n",
 		!IO).
 output_goto(do_call_class_method, CallerLabel, !IO) :-
 	% see comment in output_call for why we use `noprof_' etc. here
 	io__write_string("MR_set_prof_ho_caller_proc(", !IO),
 	output_label_as_code_addr(CallerLabel, !IO),
-	io__write_string(");\n\t\t", !IO),
-	io__write_string("MR_np_tailcall(do_call_class_method_compact));\n",
+	io__write_string(");\n\t", !IO),
+	io__write_string("MR_np_tailcall(do_call_class_method_compact);\n",
 		!IO).
 output_goto(do_not_reached, CallerLabel, !IO) :-
 	io__write_string("MR_tailcall(MR_ENTRY(MR_do_not_reached),\n\t\t",
