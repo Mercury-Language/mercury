@@ -100,6 +100,9 @@
 %		ExprnInfo)
 %		Produces code to materialize any vars that occur in `Rval0'
 %		and substitutes their value to produce `Rval'.
+%		`Rval' is only valid in code between the call to
+%		code_exprn__materialize_vars_in_rval and the next goal which
+%		may modify the ExprnInfo structure.
 
 :- pred code_exprn__materialize_vars_in_rval(rval, rval, code_tree,
 		exprn_info, exprn_info).
@@ -1063,8 +1066,12 @@ code_exprn__place_exprn(MaybeLval, MaybeVar, Rval0, StandAlone, IsConst,
 			{ VarCode = empty },
 			{ Rval = Rval2 }
 		;
-			code_exprn__materialize_vars_in_rval(Rval2, Rval,
-				VarCode),
+			{ exprn_aux__vars_in_rval(Rval2, VarList) },
+			code_exprn__produce_vars(VarList, VarLocList, VarCode),
+			code_exprn__rem_rval_reg_dependencies(Rval2),
+			{ exprn_aux__substitute_vars_in_rval(VarLocList,
+				Rval2, Rval) },
+			code_exprn__add_rval_reg_dependencies(Rval),
 			code_exprn__maybe_set_evaled(MaybeVar, [Rval])
 		),
 		code_exprn__construct_code(Lval, VarName, Rval, RealCode),
@@ -1098,10 +1105,7 @@ code_exprn__maybe_fix_clearcode(ClearCode, ExprnCode, Code) -->
 code_exprn__materialize_vars_in_rval(Rval0, Rval, Code) -->
 	{ exprn_aux__vars_in_rval(Rval0, VarList) },
 	code_exprn__produce_vars(VarList, VarLocList, Code),
-	code_exprn__rem_rval_reg_dependencies(Rval0),
-	{ exprn_aux__substitute_vars_in_rval(VarLocList,
-		Rval0, Rval) },
-	code_exprn__add_rval_reg_dependencies(Rval).
+	{ exprn_aux__substitute_vars_in_rval(VarLocList, Rval0, Rval) }.
 
 %------------------------------------------------------------------------------%
 
