@@ -50,13 +50,8 @@
   int
   MR_ungetch(MR_StreamInfo *info, int ch)
   {
-	int res;
 	MR_assert(info != NULL);		
-	res = ungetc(ch, info->file);
-	if (res == EOF) {
-		mercury_io_error(NULL, "io__putback_char: ungetc failed");
-	}
-	return (int) res;
+	return ungetc(ch, info->file);
   }
 
   int
