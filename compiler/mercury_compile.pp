@@ -662,7 +662,7 @@ mercury_compile__semantic_pass(HLDS1, HLDS, FoundError) -->
 
 #if NU_PROLOG
 	{ putprop(mc, mc, HLDS - Proceed), fail }.
-mercury_compile__semantic_pass_by_phases(_, HLDS5, _, Proceed) -->
+mercury_compile__semantic_pass(_, HLDS, Proceed) -->
 	{ getprop(mc, mc, HLDS - Proceed, Ref), erase(Ref) },
 #endif
 

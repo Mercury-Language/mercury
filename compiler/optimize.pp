@@ -172,7 +172,7 @@ optimize__repeated(Instrs0, DoVn, Final, TeardownMap, Instrs, Mod) -->
 #if NU_PROLOG
 	{ putprop(opt, opt, Instrs - Mod) },
 	{ fail }.
-optimize__repeated(Instrs0, _, _, Instrs, Mod) -->
+optimize__repeated(Instrs0, _, _, _, Instrs, Mod) -->
 	{ getprop(opt, opt, Instrs - Mod, Ref) },
 	{ erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),

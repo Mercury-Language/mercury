@@ -286,7 +286,7 @@ inst_is_bound(_, abstract_inst(_, _)).
 	% `bound(_Uniq, Functors)' or is a user-defined inst which expands to
 	% `bound(_Uniq, Functors)'.
 
-:- inst_is_bound_to_functors(_, _, X) when X.		% NU-Prolog indexing.
+:- inst_is_bound_to_functors(_, X, _) when X.		% NU-Prolog indexing.
 
 inst_is_bound_to_functors(_, bound(_Uniq, Functors), Functors).
 inst_is_bound_to_functors(_, inst_var(_), _) :-
