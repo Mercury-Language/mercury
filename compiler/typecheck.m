@@ -392,10 +392,11 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				TypeCheckInfo3),
 		typecheck_check_for_ambiguity(whole_pred, HeadVars,
 				TypeCheckInfo3, TypeCheckInfo4),
-		typecheck_info_get_final_info(TypeCheckInfo4, ExistQVars0,
-				TypeVarSet, HeadTypeParams2, InferredVarTypes0,
-				InferredTypeConstraints0, ConstraintProofs,
-				TVarRenaming, ExistTypeRenaming),
+		typecheck_info_get_final_info(TypeCheckInfo4, HeadTypeParams1, 
+				ExistQVars0, TypeVarSet, HeadTypeParams2,
+				InferredVarTypes0, InferredTypeConstraints0,
+				ConstraintProofs, TVarRenaming,
+				ExistTypeRenaming),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
 		ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
 				InferredVarTypes, HeadVars, Clauses),
@@ -2813,10 +2814,13 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 
 %-----------------------------------------------------------------------------%
 
-% typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars,
+% typecheck_info_get_final_info(TypeCheckInfo, 
+% 		OldHeadTypeParams, OldExistQVars,
 %		NewTypeVarSet, New* ..., TypeRenaming, ExistTypeRenaming):
 %	extracts the final inferred types from TypeCheckInfo.
 %
+%	OldHeadTypeParams should be the type variables from the head of the
+%	predicate.
 %	OldExistQVars should be the declared existentially quantified
 %	type variables (if any).
 %	New* is the newly inferred types, in NewTypeVarSet.
@@ -2826,16 +2830,17 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 %	applying TypeRenaming) to rename existential type variables
 %	in OldExistQVars.
 
-:- pred typecheck_info_get_final_info(typecheck_info, existq_tvars,
+:- pred typecheck_info_get_final_info(typecheck_info, list(tvar), existq_tvars,
 		tvarset, existq_tvars, map(var, type),
 		class_constraints, map(class_constraint, constraint_proof),
 		map(tvar, tvar), map(tvar, tvar)).
-:- mode typecheck_info_get_final_info(in, in, out, out, out, out, out, out, out)
-		is det.
+:- mode typecheck_info_get_final_info(in, in, in, 
+		out, out, out, out, out, out, out) is det.
 
-typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
-		NewHeadTypeParams, NewVarTypes, NewTypeConstraints,
-		NewConstraintProofs, TSubst, ExistTypeRenaming) :-
+typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars, 
+		NewTypeVarSet, NewHeadTypeParams, NewVarTypes,
+		NewTypeConstraints, NewConstraintProofs, TSubst,
+		ExistTypeRenaming) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign | _] ->
 		type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
@@ -2851,11 +2856,11 @@ typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
 		expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
 
 		%
-		% figure out how we should renaming the existential types
+		% figure out how we should rename the existential types
 		% in the type declaration (if any)
 		%
-		get_existq_tvar_renaming(OldExistQVars, TypeBindings,
-			ExistTypeRenaming),
+		get_existq_tvar_renaming(OldHeadTypeParams, OldExistQVars,
+			TypeBindings, ExistTypeRenaming),
 
 		%
 		% We used to just use the OldTypeVarSet that we got
@@ -2915,19 +2920,23 @@ typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
 
 %
 % We rename any existentially quantified type variables which
-% get mapped to other type variables.
+% get mapped to other type variables, unless they are mapped to 
+% universally quantified type variables from the head of the predicate.
 %
-:- pred get_existq_tvar_renaming(existq_tvars, tsubst, map(tvar, tvar)).
-:- mode get_existq_tvar_renaming(in, in, out) is det.
+:- pred get_existq_tvar_renaming(list(tvar), existq_tvars, tsubst, 
+	map(tvar, tvar)).
+:- mode get_existq_tvar_renaming(in, in, in, out) is det.
 
-get_existq_tvar_renaming(ExistQVars, TypeBindings, ExistTypeRenaming) :-
+get_existq_tvar_renaming(OldHeadTypeParams, ExistQVars, TypeBindings,
+		ExistTypeRenaming) :-
 	MaybeAddToMap = lambda([TVar::in, Renaming0::in, Renaming::out] is det,
 		(
 			term__apply_rec_substitution(term__variable(TVar),
 				TypeBindings, Result),
 			(
 				Result = term__variable(NewTVar),
-				NewTVar \= TVar
+				NewTVar \= TVar,
+				\+ list__member(NewTVar, OldHeadTypeParams)
 			->
 				map__det_insert(Renaming0, TVar, NewTVar,
 					Renaming)
