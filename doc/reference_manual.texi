@@ -878,6 +878,7 @@ lambda([Arg1::Mode1, Arg2::Mode2, @dots{}] is Det, Goal)
 pred(Arg1::Mode1, Arg2::Mode2, @dots{}) is Det :- Goal
 pred(Arg1::Mode1, Arg2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
 func(Arg1::Mode1, Arg2::Mode2, @dots{}) = (Result::Mode) is Det :- Goal
+func(Arg1, Arg2, @dots{}) = (Result) is Det :- Goal
 func(Arg1, Arg2, @dots{}) = Result :- Goal
 @end example
 
@@ -1991,6 +1992,10 @@ then the determinism annotation goes on the @code{:- pred} declaration
 (and similarly for functions).
 In particular, this is necessary
 if a predicate does not have any argument variables.
+If the determinism declaration is given on a @code{:- func} declaration
+without the mode, the function is assumed to have the default mode
+(see @ref{Modes} for more information on default modes of functions).
+
 For example:
 
 @example

@@ -2233,12 +2233,29 @@ module_add_func(Module0, TypeVarSet, InstVarSet, ExistQVars, FuncName,
 	;
 		DeclStatus = Status
 	},
-	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
-	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode) },
+
+	{ split_types_and_modes(TypesAndModes, Types, MaybeModes0) },
+	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode0) },
 	{ list__append(Types, [RetType], Types1) },
 	add_new_pred(Module0, TypeVarSet, ExistQVars, FuncName, Types1, Cond,
 		Purity, ClassContext, Markers, Context, DeclStatus, NeedQual,
 		function, Module1),
+	{
+		% If there are no modes, but there is a determinism
+		% declared, assume the function has the default modes.
+		(MaybeModes0 = no ; MaybeRetMode0 = no),
+		MaybeDet = yes(_)
+	->
+		list__length(Types, Arity),
+		in_mode(InMode),
+		list__duplicate(Arity, InMode, InModes),
+		MaybeModes = yes(InModes),
+		out_mode(OutMode),
+		MaybeRetMode = yes(OutMode)
+	;
+		MaybeModes = MaybeModes0,
+		MaybeRetMode = MaybeRetMode0
+	},
 	(
 		{ MaybeModes = yes(Modes) },
 		{ MaybeRetMode = yes(RetMode) }

@@ -3,10 +3,10 @@
 :- interface.
 :- import_module int.
 
-% it is an error to declare determinism but not modes,
-% or to only declare some of the modes
 
-:- func foo(int, int) = int is semidet.
+% it is an error to only declare some of the modes
+
+
 :- func bar(int::in, int) = int is semidet.
 :- func baz(int::in, int::in) = int is semidet.
 :- func quux(int, int) = (int::out) is semidet.

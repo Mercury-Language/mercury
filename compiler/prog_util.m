@@ -219,6 +219,8 @@ split_types_and_modes_2([TM|TMs], Result0, [T|Ts], [M|Ms], Result) :-
 	% if a pred declaration specifies modes for some but
 	% not all of the arguments, then the modes are ignored
 	% - should this be an error instead?
+	% trd: this should never happen because prog_io.m will detect
+	% these cases
 
 :- pred split_type_and_mode(type_and_mode, bool, type, mode, bool).
 :- mode split_type_and_mode(in, in, out, out, out) is det.
