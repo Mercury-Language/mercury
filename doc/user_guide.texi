@@ -4355,11 +4355,11 @@ Specify options to be passed to @samp{ml}, the Mercury linker.
 
 @sp 1
 @item -L @var{directory}
-@item --library-directory @var{directory}
+@itemx --library-directory @var{directory}
 Append @var{dir} to the list of directories in which to search for libraries.
 
 @item -l @var{library}
-@item --library @var{library}
+@itemx --library @var{library}
 Link with the specified library.
 
 @item --link-object @var{object}
@@ -4586,7 +4586,7 @@ rather than from standard input.
 
 @sp 1
 @item -o @var{filename}
-@item --mdb-out @var{filename}
+@itemx --mdb-out @var{filename}
 Print debugger output to the file or device specified by @var{filename},
 rather than to standard output.
 
