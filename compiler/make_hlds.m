@@ -789,15 +789,17 @@ transform_goal(not(Vars0, A0), VarSet0, Subst,
 	transform_goal(A0, VarSet0, Subst, A, VarSet),
 	goal_info_init(GoalInfo).
 
-transform_goal((A0,B0), VarSet0, Subst, conj(L) - GoalInfo, VarSet) :-
+transform_goal((A0,B0), VarSet0, Subst, Goal, VarSet) :-
 	get_conj(B0, Subst, [], VarSet0, L0, VarSet1),
 	get_conj(A0, Subst, L0, VarSet1, L, VarSet),
-	goal_info_init(GoalInfo).
+	goal_info_init(GoalInfo),
+	conj_list_to_goal(L, GoalInfo, Goal).
 
-transform_goal((A0;B0), VarSet0, Subst, disj(L) - GoalInfo, VarSet) :-
+transform_goal((A0;B0), VarSet0, Subst, Goal, VarSet) :-
 	get_disj(B0, Subst, [], VarSet0, L0, VarSet1),
 	get_disj(A0, Subst, L0, VarSet1, L, VarSet),
-	goal_info_init(GoalInfo).
+	goal_info_init(GoalInfo),
+	disj_list_to_goal(L, GoalInfo, Goal).
 
 transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 
@@ -881,7 +883,7 @@ insert_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
 		goal_to_conj_list(Goal0, List0),
 		insert_arg_unifications_2(HeadVars, Args, ArgContext, 0,
 			List0, VarSet0, List, VarSet),
-		Goal = conj(List) - GoalInfo
+		conj_list_to_goal(List, GoalInfo, Goal)
 	).
 
 :- pred insert_arg_unifications_2(list(var), list(term), arg_context, int,
@@ -928,7 +930,7 @@ append_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
 		goal_to_conj_list(Goal0, List0),
 		append_arg_unifications_2(HeadVars, Args, ArgContext, 0,
 			List0, VarSet0, List, VarSet),
-		Goal = conj(List) - GoalInfo
+		conj_list_to_goal(List, GoalInfo, Goal)
 	).
 
 :- pred append_arg_unifications_2(list(var), list(term), arg_context, int,
@@ -1114,7 +1116,7 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 	goal_to_conj_list(Goal0, ConjList0),
 	goal_to_conj_list(Goal1, ConjList1),
 	list__append(ConjList0, ConjList1, ConjList),
-	Goal2 = conj(ConjList) - GoalInfo,
+	conj_list_to_goal(ConjList, GoalInfo, Goal2),
 	append_arg_unifications(RightHeadVars, RightAs, RightArgContext,
 				Goal2, VarSet3, Goal3, VarSet4),
 	append_arg_unifications(LeftHeadVars, LeftAs, LeftArgContext, Goal3,
