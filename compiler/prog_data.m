@@ -96,6 +96,12 @@
 				% C function name.
 			;	source_file(string)
 				% Source file name.
+			;	unused_args(pred_or_func, sym_name, int,
+					proc_id, list(int))
+				% PredName, Arity, Mode, Optimized pred name,
+				% 	Removed arguments.
+				% Used for inter-module unused argument
+				% removal, should only appear in .opt files.
 			;	fact_table(sym_name, arity, string)
 				% Predname, Arity, Fact file name.
 			.

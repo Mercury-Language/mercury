@@ -197,7 +197,7 @@ detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E,F), _, _, _, _,
 
 :- type cases == map(cons_id, list(hlds__goal)).
 
-:- type sorted_case_list == assoc_list(cons_id, list(hlds__goal)).
+:- type sorted_case_list == list(case).
 	% the sorted_case_list should always be sorted on cons_id -
 	% `delete_unreachable_cases' relies on this.
 
@@ -214,7 +214,7 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, SM, InstMap,
 	(
 		instmap__lookup_var(InstMap, Var, VarInst0),
 		inst_is_bound(ModuleInfo, VarInst0),
-		partition_disj(Goals0, Var, Left, CasesList)
+		partition_disj(Goals0, Var, GoalInfo, Left, CasesList)
 	->
 		% are there any disjuncts that are not part of the switch?
 		(
@@ -316,15 +316,16 @@ detect_switches_in_conj([Goal0 | Goals0], InstMap0, VarTypes, ModuleInfo,
 	% We partition the goals by abstractly interpreting the unifications
 	% at the start of each disjunction, to build up a substitution.
 
-:- pred partition_disj(list(hlds__goal), var, list(hlds__goal),
+:- pred partition_disj(list(hlds__goal), var, hlds__goal_info, list(hlds__goal),
 	sorted_case_list).
-:- mode partition_disj(in, in, out, out) is semidet.
+:- mode partition_disj(in, in, in, out, out) is semidet.
 
-partition_disj(Goals0, Var, Left, CasesAssocList) :-
+partition_disj(Goals0, Var, GoalInfo, Left, CasesList) :-
 	map__init(Cases0),
 	partition_disj_trial(Goals0, Var, [], Left, Cases0, Cases),
 	map__to_assoc_list(Cases, CasesAssocList),
-	CasesAssocList = [_, _ | _].	% there must be more than one case
+	fix_case_list(CasesAssocList, GoalInfo, CasesList),
+	CasesList = [_, _ | _].	% there must be more than one case
 
 :- pred partition_disj_trial(list(hlds__goal), var,
 	list(hlds__goal), list(hlds__goal), cases, cases).
@@ -428,7 +429,7 @@ find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 	store_map, instmap, module_info, hlds__goal_expr).
 :- mode cases_to_switch(in, in, in, in, in, in, in, out) is det.
 
-cases_to_switch(CasesList, Var, VarTypes, GoalInfo, SM, InstMap, ModuleInfo,
+cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, SM, InstMap, ModuleInfo,
 		Goal) :-
 	instmap__lookup_var(InstMap, Var, VarInst),
 	( inst_is_bound_to_functors(ModuleInfo, VarInst, Functors) ->
@@ -442,15 +443,15 @@ cases_to_switch(CasesList, Var, VarTypes, GoalInfo, SM, InstMap, ModuleInfo,
 		)
 	;
 		map__lookup(VarTypes, Var, Type),
-		( switch_covers_all_cases(CasesList, Type, ModuleInfo) ->
+		CasesList1 = CasesList,
+		( switch_covers_all_cases(CasesList1, Type, ModuleInfo) ->
 			CanFail = cannot_fail
 		;
 			CanFail = can_fail
-		),
-		CasesList1 = CasesList
+		)
 	),
-	fix_case_list(CasesList1, GoalInfo, Cases0),
-	detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo, Cases),
+	detect_switches_in_cases(CasesList1, InstMap, VarTypes,
+		ModuleInfo, Cases),
 
 	% We turn switches with no arms into fail, since this avoids having
 	% the code generator flush the control variable of the switch.
@@ -467,44 +468,10 @@ cases_to_switch(CasesList, Var, VarTypes, GoalInfo, SM, InstMap, ModuleInfo,
 		Goal = switch(Var, CanFail, Cases, SM)
 	).
 
-:- pred delete_unreachable_cases(sorted_case_list, list(cons_id),
-	sorted_case_list).
-:- mode delete_unreachable_cases(in, in, out) is det.
-
-	% Given a list of cases, and a list of the possible cons_ids
-	% that the switch variable could be bound to, select out only
-	% those cases whose cons_id occurs in the list of cases
-	% We assume that the list of cases and the list of cons_ids
-	% are sorted, so that we can do this using a simple sorted merge.
-
-delete_unreachable_cases([], _, []).
-delete_unreachable_cases([_ | _], [], []).
-delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
-	Case = CaseConsId - _DisjList,
-	( CaseConsId = ConsId ->
-		Cases = [Case | Cases1],
-		delete_unreachable_cases(Cases0, ConsIds, Cases1)
-	; compare(<, CaseConsId, ConsId) ->
-		delete_unreachable_cases(Cases0, [ConsId | ConsIds], Cases)
-	;
-		delete_unreachable_cases([Case | Cases0], ConsIds, Cases)
-	).
-
-	% Given a list of bound_insts, get the corresponding list of cons_ids
-	% 
-:- pred functors_to_cons_ids(list(bound_inst), list(cons_id)).
-:- mode functors_to_cons_ids(in, out) is det.
-
-functors_to_cons_ids([], []).
-functors_to_cons_ids([Functor | Functors], [ConsId | ConsIds]) :-
-	Functor = functor(ConsId, _ArgInsts),
-	functors_to_cons_ids(Functors, ConsIds).
-
 	% check whether a switch handles all the possible
 	% constants/functors for the type
 
-:- pred switch_covers_all_cases(assoc_list(cons_id, list(hlds__goal)),
-	type, module_info).
+:- pred switch_covers_all_cases(sorted_case_list, type, module_info).
 :- mode switch_covers_all_cases(in, in, in) is semidet.
 
 switch_covers_all_cases(CasesList, Type, _ModuleInfo) :-

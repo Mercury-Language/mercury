@@ -30,6 +30,16 @@
 :- pred update_instmap(hlds__goal, instmap, instmap).
 :- mode update_instmap(in, in, out) is det.
 
+	% Given a list of cases, and a list of the possible cons_ids
+	% that the switch variable could be bound to, select out only
+	% those cases whose cons_id occurs in the list of cases
+	% We assume that the list of cases and the list of cons_ids
+	% are sorted, so that we can do this using a simple sorted merge.
+
+:- pred delete_unreachable_cases(list(case), list(cons_id),
+	list(case)).
+:- mode delete_unreachable_cases(in, in, out) is det.
+
 	% Update the current substitution to account for the effects
 	% of the given unification.
 
@@ -71,6 +81,9 @@
 :- pred det_info_get_fully_strict(det_info, bool).
 :- mode det_info_get_fully_strict(in, out) is det.
 
+:- pred det_info_set_module_info(det_info, module_info, det_info).
+:- mode det_info_set_module_info(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -81,6 +94,19 @@
 update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
 	instmap__apply_instmap_delta(InstMap0, DeltaInstMap, InstMap).
+
+delete_unreachable_cases([], _, []).
+delete_unreachable_cases([_ | _], [], []).
+delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
+	Case = case(CaseConsId, _DisjList),
+	( CaseConsId = ConsId ->
+		Cases = [Case | Cases1],
+		delete_unreachable_cases(Cases0, ConsIds, Cases1)
+	; compare(<, CaseConsId, ConsId) ->
+		delete_unreachable_cases(Cases0, [ConsId | ConsIds], Cases)
+	;
+		delete_unreachable_cases([Case | Cases0], ConsIds, Cases)
+	).
 
 interpret_unify(X, var(Y), Subst0, Subst) :-
 	term__unify(term__variable(X), term__variable(Y), Subst0, Subst).
@@ -153,3 +179,6 @@ det_info_get_proc_id(det_info(_, _, ProcId, _, _, _), ProcId).
 det_info_get_reorder_conj(det_info(_, _, _, ReorderConj, _, _), ReorderConj).
 det_info_get_reorder_disj(det_info(_, _, _, _, ReorderDisj, _), ReorderDisj).
 det_info_get_fully_strict(det_info(_, _, _, _, _, FullyStrict), FullyStrict).
+
+det_info_set_module_info(det_info(_, B, C, D, E, F), ModuleInfo,
+		det_info(ModuleInfo, B, C, D, E, F)).

@@ -34,7 +34,7 @@
 
 :- interface.
 
-:- import_module hlds_goal.
+:- import_module hlds_goal, hlds_pred.
 :- import_module list, set, term.
 
 :- pred implicitly_quantify_clause_body(list(var),
@@ -46,6 +46,9 @@
 :- pred implicitly_quantify_goal(hlds__goal, varset, map(var, type), set(var),
 		hlds__goal, varset, map(var, type), list(quant_warning)).
 :- mode implicitly_quantify_goal(in, in, in, in, out, out, out, out) is det.
+
+:- pred requantify_proc(proc_info, proc_info) is det.
+:- mode requantify_proc(in, out) is det.
 
 	% We return a list of warnings back to make_hlds.m.
 	% Currently the only thing we warn about is variables with
@@ -116,6 +119,17 @@ implicitly_quantify_clause_body(HeadVars, Goal0, Varset0, VarTypes0,
 	set__list_to_set(HeadVars, OutsideVars),
 	implicitly_quantify_goal(Goal0, Varset0, VarTypes0,
 			OutsideVars, Goal, Varset, VarTypes, Warnings).
+
+requantify_proc(ProcInfo0, ProcInfo) :-
+	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
+	proc_info_headvars(ProcInfo0, HeadVars),
+	proc_info_goal(ProcInfo0, Goal0),
+	implicitly_quantify_clause_body(HeadVars, Goal0, Varset0, VarTypes0,
+		Goal, Varset, VarTypes, _),
+	proc_info_set_variables(ProcInfo0, Varset, ProcInfo1),
+	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
+	proc_info_set_goal(ProcInfo2, Goal, ProcInfo).
 
 implicitly_quantify_goal(Goal0, Varset0, VarTypes0, OutsideVars,
 				Goal, Varset, VarTypes, Warnings) :-

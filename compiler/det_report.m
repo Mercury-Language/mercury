@@ -6,8 +6,6 @@
 
 % det_report.m - reporting of determinism errors and warnings.
 
-% XXX all warnings should be disable-able.  Many of the warnings here aren't.
-
 % author: zs.
 
 %-----------------------------------------------------------------------------%
@@ -34,6 +32,9 @@
 				% warning about calls to predicates
 				% for which there is a `:- pragma obsolete'
 				% declaration.
+		;	duplicate_call(seen_call_id, term__context,
+				hlds__goal_info)
+				% multiple calls with the same input args.
 			% errors
 		;	cc_pred_in_wrong_context(hlds__goal_info, determinism,
 				pred_id, proc_id)
@@ -42,6 +43,10 @@
 		;	error_in_lambda(
 				determinism, determinism, % declared, inferred
 				hlds__goal, hlds__goal_info, pred_id, proc_id).
+
+:- type seen_call_id
+	--->	seen_call(pred_id, proc_id)
+	;	higher_order_call.
 
 %-----------------------------------------------------------------------------%
 
@@ -63,7 +68,7 @@
 	% and update the module info accordingly.
 
 :- pred det_report_and_handle_msgs(list(det_msg), module_info, module_info,
-	io__state, io__state).
+		io__state, io__state).
 :- mode det_report_and_handle_msgs(in, in, out, di, uo) is det.
 
 	% Print some determinism warning and/or error messages,
@@ -776,33 +781,57 @@ det_report_and_handle_msgs(Msgs, ModuleInfo0, ModuleInfo) -->
 	).
 
 det_report_msgs(Msgs, ModuleInfo, WarnCnt, ErrCnt) -->
-	det_report_msgs_2(Msgs, ModuleInfo, 0, WarnCnt, 0, ErrCnt).
+	globals__io_lookup_bool_option(warn_simple_code, Warn),
+	det_report_msgs_2(Msgs, Warn, ModuleInfo, 0, WarnCnt, 0, ErrCnt).
 
-:- pred det_report_msgs_2(list(det_msg), module_info, int, int, int, int,
-	io__state, io__state).
-:- mode det_report_msgs_2(in, in, in, out, in, out, di, uo) is det.
+:- pred det_report_msgs_2(list(det_msg), bool,  module_info, int, int,
+	int, int, io__state, io__state).
+:- mode det_report_msgs_2(in, in, in, in, out, in, out, di, uo) is det.
 
-det_report_msgs_2([], _ModuleInfo, WarnCnt, WarnCnt, ErrCnt, ErrCnt) --> [].
-det_report_msgs_2([Msg | Msgs], ModuleInfo,
+det_report_msgs_2([], _, _ModuleInfo, WarnCnt, WarnCnt, ErrCnt, ErrCnt) --> [].
+det_report_msgs_2([Msg | Msgs], Warn, ModuleInfo,
 		WarnCnt0, WarnCnt, ErrCnt0, ErrCnt) -->
-	det_report_msg(Msg, ModuleInfo, Type),
-	(
-		{ Type = warning },
-		{ WarnCnt1 is WarnCnt0 + 1 },
+	{ det_msg_get_type(Msg, MsgType) },
+	( { Warn = no, MsgType = warning } ->
+		{ WarnCnt1 = WarnCnt0 },
 		{ ErrCnt1 = ErrCnt0 }
 	;
-		{ Type = error },
-		{ ErrCnt1 is ErrCnt0 + 1 },
-		{ WarnCnt1 = WarnCnt0 }
+		det_report_msg(Msg, ModuleInfo),
+		(
+			{ MsgType = warning },
+			{ WarnCnt1 is WarnCnt0 + 1 },
+			{ ErrCnt1 = ErrCnt0 }
+		;
+			{ MsgType = error },
+			{ ErrCnt1 is ErrCnt0 + 1 },
+			{ WarnCnt1 = WarnCnt0 }
+		)
 	),
-	det_report_msgs_2(Msgs, ModuleInfo,
+	det_report_msgs_2(Msgs, Warn, ModuleInfo,
 		WarnCnt1, WarnCnt, ErrCnt1, ErrCnt).
 
-:- pred det_report_msg(det_msg, module_info, det_msg_type,
-	io__state, io__state).
-:- mode det_report_msg(in, in, out, di, uo) is det.
+:- pred det_msg_get_type(det_msg, det_msg_type).
+:- mode det_msg_get_type(in, out) is det.
 
-det_report_msg(multidet_disj(GoalInfo, Disjuncts0), _, warning) -->
+det_msg_get_type(multidet_disj(_, _), warning).
+det_msg_get_type(det_disj(_, _), warning).
+det_msg_get_type(semidet_disj(_, _), warning).
+det_msg_get_type(zero_soln_disj(_, _), warning).
+det_msg_get_type(zero_soln_disjunct(_), warning).
+det_msg_get_type(ite_cond_cannot_fail(_), warning).
+det_msg_get_type(ite_cond_cannot_succeed(_), warning).
+det_msg_get_type(negated_goal_cannot_fail(_), warning).
+det_msg_get_type(negated_goal_cannot_succeed(_), warning).
+det_msg_get_type(warn_obsolete(_, _), warning).
+det_msg_get_type(duplicate_call(_, _, _), warning).
+det_msg_get_type(cc_pred_in_wrong_context(_, _, _, _), error).
+det_msg_get_type(higher_order_cc_pred_in_wrong_context(_, _), error).
+det_msg_get_type(error_in_lambda(_, _, _, _, _, _), error).
+
+:- pred det_report_msg(det_msg, module_info, io__state, io__state).
+:- mode det_report_msg(in, in, di, uo) is det.
+
+det_report_msg(multidet_disj(GoalInfo, Disjuncts0), _) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
@@ -811,7 +840,7 @@ det_report_msg(multidet_disj(GoalInfo, Disjuncts0), _, warning) -->
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  has no outputs, but can succeed more than once.\n").
-det_report_msg(det_disj(GoalInfo, Disjuncts0), _, warning) -->
+det_report_msg(det_disj(GoalInfo, Disjuncts0), _) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
@@ -820,7 +849,7 @@ det_report_msg(det_disj(GoalInfo, Disjuncts0), _, warning) -->
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  will succeed exactly once.\n").
-det_report_msg(semidet_disj(GoalInfo, Disjuncts0), _, warning) -->
+det_report_msg(semidet_disj(GoalInfo, Disjuncts0), _) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
@@ -829,7 +858,7 @@ det_report_msg(semidet_disj(GoalInfo, Disjuncts0), _, warning) -->
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  is semidet, yet it has an output.\n").
-det_report_msg(zero_soln_disj(GoalInfo, Disjuncts0), _, warning) -->
+det_report_msg(zero_soln_disj(GoalInfo, Disjuncts0), _) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
@@ -838,34 +867,44 @@ det_report_msg(zero_soln_disj(GoalInfo, Disjuncts0), _, warning) -->
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  cannot succeed.\n").
-det_report_msg(zero_soln_disjunct(GoalInfo), _, warning) -->
+det_report_msg(zero_soln_disjunct(GoalInfo), _) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: this disjunct will never have any solutions.\n").
-det_report_msg(ite_cond_cannot_fail(GoalInfo), _, warning) -->
+det_report_msg(ite_cond_cannot_fail(GoalInfo), _) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the condition of this if-then-else cannot fail.\n").
-det_report_msg(ite_cond_cannot_succeed(GoalInfo), _, warning) -->
+det_report_msg(ite_cond_cannot_succeed(GoalInfo), _) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the condition of this if-then-else cannot succeed.\n").
-det_report_msg(negated_goal_cannot_fail(GoalInfo), _, warning) -->
+det_report_msg(negated_goal_cannot_fail(GoalInfo), _) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the negated goal cannot fail.\n").
-det_report_msg(negated_goal_cannot_succeed(GoalInfo), _, warning) -->
+det_report_msg(negated_goal_cannot_succeed(GoalInfo), _) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the negated goal cannot succeed.\n").
-det_report_msg(warn_obsolete(PredId, GoalInfo), ModuleInfo, warning) -->
+det_report_msg(warn_obsolete(PredId, GoalInfo), ModuleInfo) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: call to obsolete "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string(".\n").
+det_report_msg(duplicate_call(SeenCall, PrevContext, GoalInfo), ModuleInfo) -->
+	{ goal_info_get_context(GoalInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Warning: redundant "),
+	det_report_seen_call_id(SeenCall, ModuleInfo),
+	io__write_string(".\n"),
+	prog_out__write_context(PrevContext),
+	io__write_string("Here is the previous "),
+	det_report_seen_call_id(SeenCall, ModuleInfo),
+	io__write_string(".\n").
 det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId),
-		ModuleInfo, error) -->
+		ModuleInfo) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Error: call to "),
@@ -877,7 +916,7 @@ det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId),
 	io__write_string("  occurs in a context which requires all solutions.\n"),
 	io__set_exit_status(1).
 det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism),
-		_ModuleInfo, error) -->
+		_ModuleInfo) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Error: higher-order call to predicate with determinism `"),
@@ -887,7 +926,7 @@ det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism),
 	io__write_string("  occurs in a context which requires all solutions.\n"),
 	io__set_exit_status(1).
 det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
-			PredId, ProcId), ModuleInfo, error) -->
+			PredId, ProcId), ModuleInfo) -->
 	report_pred_proc_id(ModuleInfo, PredId, ProcId, no, _ProcContext),
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
@@ -903,6 +942,20 @@ det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
 	det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _),
 	io__set_exit_status(1).
 
+%-----------------------------------------------------------------------------%
+
+:- pred det_report_seen_call_id(seen_call_id::in, module_info::in,
+		io__state::di, io__state::uo) is det.
+	
+det_report_seen_call_id(SeenCall, ModuleInfo) -->
+	(
+		{ SeenCall = seen_call(PredId, _) },
+		io__write_string("call to "),
+		hlds_out__write_pred_id(ModuleInfo, PredId)
+	;
+		{ SeenCall = higher_order_call },
+		io__write_string("higher-order call")
+	).
 %-----------------------------------------------------------------------------%
 
 	% Insertion sort is good enough.

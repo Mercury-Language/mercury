@@ -1035,41 +1035,6 @@ ground_args(Uniq, [Arg | Args]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred get_arg_insts(inst, cons_id, arity, list(inst)).
-:- mode get_arg_insts(in, in, in, out) is semidet.
-
-get_arg_insts(not_reached, _ConsId, Arity, ArgInsts) :-
-	list__duplicate(Arity, not_reached, ArgInsts).
-get_arg_insts(ground(Uniq, _PredInst), _ConsId, Arity, ArgInsts) :-
-	list__duplicate(Arity, ground(Uniq, no), ArgInsts).
-get_arg_insts(bound(_Uniq, List), ConsId, Arity, ArgInsts) :-
-	( get_arg_insts_2(List, ConsId, ArgInsts0) ->
-		ArgInsts = ArgInsts0
-	;
-		% the code is unreachable
-		list__duplicate(Arity, not_reached, ArgInsts)
-	).
-get_arg_insts(free, _ConsId, Arity, ArgInsts) :-
-	list__duplicate(Arity, free, ArgInsts).
-get_arg_insts(free(_Type), _ConsId, Arity, ArgInsts) :-
-	list__duplicate(Arity, free, ArgInsts).
-get_arg_insts(any(Uniq), _ConsId, Arity, ArgInsts) :-
-	list__duplicate(Arity, any(Uniq), ArgInsts).
-
-:- pred get_arg_insts_2(list(bound_inst), cons_id, list(inst)).
-:- mode get_arg_insts_2(in, in, out) is semidet.
-
-get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
-	(
-		BoundInst = functor(ConsId, ArgInsts0)
-	->
-		ArgInsts = ArgInsts0
-	;
-		get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
-	).
-
-%-----------------------------------------------------------------------------%
-
 % get_mode_of_args(FinalInst, InitialArgInsts, ArgModes):
 %       for a var-functor unification,
 %       given the final inst of the var

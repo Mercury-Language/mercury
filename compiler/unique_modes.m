@@ -701,8 +701,9 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 		[]
 	),
 
-	unique_modes__check_goal(Goal0, Goal),
+	unique_modes__check_goal(Goal0, Goal1),
 	mode_info_dcg_get_instmap(InstMap),
+	{ fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal) },
 	mode_info_set_instmap(InstMap0),
 	unique_modes__check_case_list(Cases0, Var, Cases, InstMaps).
 

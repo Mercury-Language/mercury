@@ -464,7 +464,7 @@ vn_order__use_sink_before_redef(Sink, VnTables, Liveset,
 		(
 			{ vn_table__search_desired_value(Vnlval, Vn,
 				VnTables) },
-			{ map__search(Succmap1, node_shared(Vn), _) }
+			{ map__search(Succmap1, node_shared(NewVn), _) }
 		->
 			vn_order__add_users(Users, node_shared(Vn), Vnlval,
 				VnTables, Liveset,

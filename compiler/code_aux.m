@@ -25,6 +25,10 @@
 :- pred code_aux__contains_only_builtins(hlds__goal).
 :- mode code_aux__contains_only_builtins(in) is semidet.
 
+	% Succeeds if the goal cannot loop or call error/1.
+:- pred code_aux__goal_cannot_loop(module_info, hlds__goal).
+:- mode code_aux__goal_cannot_loop(in, in) is semidet.
+
 	% code_aux__goal_is_flat(Goal) is true if Goal does not contain
 	% any branched structures (ie if-then-else or disjunctions or
 	% switches.)
@@ -100,6 +104,53 @@ code_aux__contains_only_builtins_list([]).
 code_aux__contains_only_builtins_list([Goal|Goals]) :-
 	code_aux__contains_only_builtins(Goal),
 	code_aux__contains_only_builtins_list(Goals).
+
+%-----------------------------------------------------------------------------%
+
+code_aux__goal_cannot_loop(ModuleInfo, Goal) :-
+	Goal = GoalExpr - _,
+	code_aux__goal_cannot_loop_2(ModuleInfo, GoalExpr).
+
+:- pred code_aux__goal_cannot_loop_2(module_info, hlds__goal_expr).
+:- mode code_aux__goal_cannot_loop_2(in, in) is semidet.
+
+code_aux__goal_cannot_loop_2(ModuleInfo, conj(Goals)) :-
+	\+  (
+		list__member(Goal, Goals),
+		\+ code_aux__goal_cannot_loop(ModuleInfo, Goal)
+	).
+code_aux__goal_cannot_loop_2(ModuleInfo, disj(Goals, _)) :-
+	\+  (
+		list__member(Goal, Goals),
+		\+ code_aux__goal_cannot_loop(ModuleInfo, Goal)
+	).
+code_aux__goal_cannot_loop_2(ModuleInfo, switch(_Var, _Category, Cases, _)) :-
+	\+  (
+		list__member(Case, Cases),
+		Case = case(_, Goal),
+		\+ code_aux__goal_cannot_loop(ModuleInfo, Goal)
+	).
+code_aux__goal_cannot_loop_2(ModuleInfo, not(Goal)) :-
+	code_aux__goal_cannot_loop(ModuleInfo, Goal).
+code_aux__goal_cannot_loop_2(ModuleInfo, some(_Vars, Goal)) :-
+	code_aux__goal_cannot_loop(ModuleInfo, Goal).
+code_aux__goal_cannot_loop_2(ModuleInfo,
+		if_then_else(_Vars, Cond, Then, Else, _)) :-
+	code_aux__goal_cannot_loop(ModuleInfo, Cond),
+	code_aux__goal_cannot_loop(ModuleInfo, Then),
+	code_aux__goal_cannot_loop(ModuleInfo, Else).
+code_aux__goal_cannot_loop_2(_, unify(_, _, _, Uni, _)) :-
+	(
+		Uni = assign(_, _)
+	;
+		Uni = simple_test(_, _)
+	;
+		Uni = construct(_, _, _, _)
+	;
+		Uni = deconstruct(_, _, _, _, _)
+	).
+		% Complicated unifies are _non_builtin_
+	
 
 %-----------------------------------------------------------------------------%
 

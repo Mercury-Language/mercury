@@ -187,10 +187,9 @@ base_type_layout__gen_base_gen_layouts([TypeId | TypeIds], TypeTable,
 		( TypeModuleName = ModuleName ->
 			map__lookup(TypeTable, TypeId, TypeDefn),
 			hlds_data__get_type_defn_status(TypeDefn, Status),
-			map__lookup(TypeTable, TypeId, HldsType),
 
 			Info = base_gen_layout(TypeId, ModuleName, TypeName,
-				TypeArity, Status, HldsType),
+				TypeArity, Status, TypeDefn),
 			
 			BaseGenInfos = [Info | BaseGenInfos1]
 		;

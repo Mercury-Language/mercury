@@ -97,6 +97,10 @@
 :- pred type_constructors(type, module_info, list(constructor)).
 :- mode type_constructors(in, in, out) is semidet.
 
+	% Work out the types of the arguments of a functor.
+:- pred type_util__get_cons_id_arg_types(module_info::in, (type)::in,
+		cons_id::in, list(type)::out) is det.
+
 	% Given a list of constructors for a type,
 	% check whether that type is a no_tag type
 	% (i.e. one with only one constructor, and
@@ -314,6 +318,30 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 	TypeBody = du_type(Constructors0, _, _),
 	substitute_type_args(TypeParams, TypeArgs, Constructors0,
 		Constructors).
+
+%-----------------------------------------------------------------------------%
+
+type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
+	(
+		type_to_type_id(VarType, TypeId, TypeArgs),
+		module_info_ctors(ModuleInfo, Ctors),
+		map__lookup(Ctors, ConsId, ConsDefns),
+		CorrectCons = lambda([ConsDefn::in] is semidet, (
+				ConsDefn = hlds__cons_defn(_, TypeId, _)
+			)),
+		list__filter(CorrectCons, ConsDefns,
+			[hlds__cons_defn(ArgTypes0, _, _)]),
+		ArgTypes0 \= []
+	->
+		module_info_types(ModuleInfo, Types),
+		map__lookup(Types, TypeId, TypeDefn),
+		hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
+		term__term_list_to_var_list(TypeDefnParams, TypeDefnVars),
+		term__substitute_corresponding_list(TypeDefnVars, TypeArgs,
+			ArgTypes0, ArgTypes)
+	;
+		ArgTypes = []
+	).
 
 %-----------------------------------------------------------------------------%
 

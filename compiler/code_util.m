@@ -239,9 +239,10 @@ code_util__make_internal_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	Label = local(ProcLabel, LabelNum).
 
 code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
-	predicate_module(ModuleInfo, PredId, ModuleName),
-	predicate_name(ModuleInfo, PredId, PredName),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_module(PredInfo, ModuleName),
+	pred_info_name(PredInfo, PredName),
+	module_info_name(ModuleInfo, ThisModule),
 	(
 		code_util__compiler_generated(PredInfo)
 	->
@@ -258,13 +259,34 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 			error(ErrorMessage)
 		),
 		TypeId = TypeName - Arity,
-		ProcLabel = special_proc(ModuleName, PredName, TypeName,
+		ProcLabel = special_proc(ThisModule, PredName, TypeName,
 				Arity, ProcId)
 	;
+		( 
+			pred_info_import_status(PredInfo, local),
+			ThisModule \= ModuleName
+		->	
+			% When generating code for a specialized version
+			% of a predicate from another module, use this
+			% module's name in the qualifier and add the other
+			% module's name to the front of the predicate name
+			% to avoid name conflicts.
+			string__append(ModuleName, "__", UnderScoresModule),
+			(
+				string__append(UnderScoresModule,
+					PredName1, PredName)
+			->
+				PredName2 = PredName1
+			;
+				PredName2 = PredName
+			)
+		;
+			PredName2 = PredName
+		),
 		pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 		pred_info_arity(PredInfo, Arity),
-		ProcLabel = proc(ModuleName, PredOrFunc, PredName, Arity,
-				ProcId)
+		ProcLabel = proc(ModuleName, PredOrFunc,
+				PredName2, Arity, ProcId)
 	).
 
 code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-

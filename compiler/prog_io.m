@@ -81,6 +81,18 @@
 	message_list, item_list, io__state, io__state).
 :- mode prog_io__read_module(in, in, in, out, out, out, di, uo) is det.
 
+	% Same as prog_io__read_module, but use intermod_directories
+	% instead of search_directories when searching for the file.
+:- pred prog_io__read_opt_file(string, string, bool, module_error,
+	message_list, item_list, io__state, io__state).
+:- mode prog_io__read_opt_file(in, in, in, out, out, out, di, uo) is det.
+
+	% search_for_file(Dirs, FileName, Found, IO0, IO)
+	%
+	% Search Dirs for FileName, opening the file if it is found.
+:- pred search_for_file(list(string), string, bool, io__state, io__state).
+:- mode search_for_file(in, in, out, di, uo) is det.
+
 	% Convert a single term into a goal.
 	%
 :- pred parse_goal(term, varset, goal, varset).
@@ -176,6 +188,17 @@
 :- type maybe_item_and_context
 			==	maybe2(item, term__context).
 
+
+prog_io__read_module(FileName, ModuleName, Search, Error, Messages, Items) -->
+	prog_io__read_module_2(FileName, ModuleName, Search,
+		search_directories, Error, Messages, Items).
+
+prog_io__read_opt_file(FileName, ModuleName, Search, 
+		Error, Messages, Items) -->
+	prog_io__read_module_2(FileName, ModuleName, Search, 
+		intermod_directories, Error, Messages, Items).
+		
+
 % This implementation uses io__read_term to read in the program
 % term at a time, and then converts those terms into clauses and
 % declarations, checking for errors as it goes.
@@ -184,11 +207,16 @@
 % and then reverse them afterwards.  (Using difference lists would require
 % late-input modes.)
 
-prog_io__read_module(FileName, ModuleName, Search, Error, Messages, Items) -->
+:- pred prog_io__read_module_2(string, string, bool, option, module_error,
+	message_list, item_list, io__state, io__state).
+:- mode prog_io__read_module_2(in, in, in, in, out, out, out, di, uo) is det.
+
+prog_io__read_module_2(FileName, ModuleName, Search,
+		SearchOpt, Error, Messages, Items) -->
 	( 
 		{ Search = yes }
 	->
-		globals__io_lookup_accumulating_option(search_directories, 
+		globals__io_lookup_accumulating_option(SearchOpt, 
 			Dirs)
 	;
 		{ dir__this_directory(CurrentDir) },
@@ -218,9 +246,6 @@ prog_io__read_module(FileName, ModuleName, Search, Error, Messages, Items) -->
 		  Items = []
 		}
 	).
-
-:- pred search_for_file(list(string), string, bool, io__state, io__state).
-:- mode search_for_file(in, in, out, di, uo) is det.
 
 search_for_file([], _, no) --> [].
 search_for_file([Dir | Dirs], FileName, R) -->
@@ -1658,6 +1683,39 @@ parse_pragma_type(ModuleName, "obsolete", PragmaTerms,
 			Pragma = obsolete(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
+	% pragma unused_args should never appear in user programs,
+	% only in .opt files.
+parse_pragma_type(_ModuleName, "unused_args", PragmaTerms,
+			ErrorTerm, _VarSet, Result) :-
+	(
+		PragmaTerms = [
+			PredOrFuncTerm,
+			PredNameTerm,
+			term__functor(term__integer(Arity), [], _),
+			term__functor(term__integer(ProcId), [], _),
+			UnusedArgsTerm
+		],
+		(
+			PredOrFuncTerm = term__functor(
+					term__atom("predicate"), [], _),
+			PredOrFunc = predicate
+		;
+			PredOrFuncTerm = term__functor(
+					term__atom("function"), [], _),
+			PredOrFunc = function 
+		),
+		parse_qualified_term(PredNameTerm,
+			"predicate name", PredNameResult),
+		PredNameResult = ok(PredName, []),
+		convert_int_list(UnusedArgsTerm, UnusedArgsResult),
+		UnusedArgsResult = ok(UnusedArgs)
+	->	
+		Result = ok(pragma(unused_args(PredOrFunc, PredName,
+				Arity, ProcId, UnusedArgs)))
+	;
+		Result = error("error in pragma unused_args", ErrorTerm)
+	).
+	
 parse_pragma_type(ModuleName, "fact_table", PragmaTerms, 
 		ErrorTerm, _VarSet, Result) :-
 	(
@@ -1738,6 +1796,34 @@ parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 		 PragmaType, "(...)' declaration"], ErrorMsg),
 	    Result = error(ErrorMsg, ErrorTerm)
        ).
+
+
+:- pred convert_int_list(term::in, maybe1(list(int))::out) is det.
+
+convert_int_list(term__variable(V),
+			error("variable in int list", term__variable(V))).
+convert_int_list(term__functor(Functor, Args, Context), Result) :-
+	( 
+		Functor = term__atom("."),
+		Args = [term__functor(term__integer(Int), [], _), RestTerm]
+	->	
+		convert_int_list(RestTerm, RestResult),
+		(
+			RestResult = ok(List0),
+			Result = ok([Int | List0])
+		;
+			RestResult = error(_, _),
+			Result = RestResult
+		)
+	;
+		Functor = term__atom("[]"),
+		Args = []
+	->
+		Result = ok([])
+	;
+		Result = error("error in int list",
+				term__functor(Functor, Args, Context))
+	).
 
 %-----------------------------------------------------------------------------%
 

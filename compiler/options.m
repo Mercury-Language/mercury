@@ -44,6 +44,7 @@
 		;	warn_interface_imports
 		;	warn_missing_opt_files
 		;	warn_non_stratification
+		;	warn_simple_code
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -149,8 +150,10 @@
 		;	common_goal
 		;	constraint_propagation
 		;	optimize_unused_args
+		;	intermod_unused_args
 		;	optimize_higher_order
 		;	optimize_constructor_last_call
+		;	optimize_duplicate_calls
 		;	excess_assign
 		;	optimize_saved_vars
 		;	follow_code
@@ -199,6 +202,8 @@
 	% Miscellaneous Options
 		;	heap_space
 		;	search_directories
+		;	intermod_directories
+		;	use_search_directories_for_intermod
 		;	help.
 
 :- implementation.
@@ -241,7 +246,8 @@ option_defaults_2(warning_option, [
 	warn_unused_args	-	bool(no),
 	warn_interface_imports	-	bool(no),
 	warn_non_stratification -	bool(no),
-	warn_missing_opt_files  -	bool(yes)
+	warn_missing_opt_files  -	bool(yes),
+	warn_simple_code	-	bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -390,11 +396,13 @@ option_defaults_2(optimization_option, [
 		% common_goal is not really an optimization, since
 		% it affects the semantics
 	constraint_propagation	-	bool(no),
+	optimize_duplicate_calls -	bool(no),
 	excess_assign		-	bool(no),
 	optimize_saved_vars	-	bool(no),
 	prev_code		-	bool(no),
 	follow_code		-	bool(no),
 	optimize_unused_args	-	bool(no),
+	intermod_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
@@ -454,6 +462,9 @@ option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
 	heap_space		-	int(0),
 	search_directories 	-	accumulating(["."]),
+	intermod_directories	-	accumulating([]),
+	use_search_directories_for_intermod
+				-	bool(yes),
 	help 			-	bool(no)
 ]).
 
@@ -498,6 +509,7 @@ long_option("warn-unused-args",		warn_unused_args).
 long_option("warn-interface-imports",	warn_interface_imports).
 long_option("warn-non-stratification",	warn_non_stratification).
 long_option("warn-missing-opt-files",	warn_missing_opt_files).
+long_option("warn-simple-code",		warn_simple_code).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -623,6 +635,8 @@ long_option("inline-vars-threshold",		inline_vars_threshold).
 long_option("common-struct",		common_struct).
 long_option("common-goal",		common_goal).
 long_option("excess-assign",		excess_assign).
+long_option("optimize-duplicate-calls", optimize_duplicate_calls).
+long_option("optimise-duplicate-calls", optimize_duplicate_calls).
 long_option("optimize-saved-vars",	optimize_saved_vars).
 long_option("optimise-saved-vars",	optimize_saved_vars).
 long_option("prev-code",		prev_code).
@@ -630,6 +644,7 @@ long_option("follow-code",		follow_code).
 long_option("constraint-propagation",	constraint_propagation).
 long_option("optimize-unused-args",	optimize_unused_args).
 long_option("optimise-unused-args",	optimize_unused_args).
+long_option("intermod-unused-args",	intermod_unused_args).
 long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
 long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
@@ -702,6 +717,9 @@ long_option("link-object",		link_objects).
 long_option("help",			help).
 long_option("heap-space",		heap_space).
 long_option("search-directory",		search_directories).
+long_option("intermod-directory",	intermod_directories).
+long_option("use-search-directories-for-intermod",
+					use_search_directories_for_intermod).	
 
 %-----------------------------------------------------------------------------%
 
@@ -739,7 +757,8 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_singleton_vars	-	bool(Inhibit),
 			warn_overlapping_scopes	-	bool(Inhibit),
 			warn_det_decls_too_lax	-	bool(Inhibit),
-			warn_nothing_exported	-	bool(Inhibit)
+			warn_nothing_exported	-	bool(Inhibit),
+			warn_simple_code	-	bool(Inhibit)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
 	override_options([
@@ -868,6 +887,7 @@ opt_level(2, _, [
 	inline_single_use	-	bool(yes),
 	inline_compound_threshold -	int(10),
 	common_struct		-	bool(yes),
+	optimize_duplicate_calls -	bool(yes),
 	simple_neg		-	bool(yes)
 ]).
 
@@ -976,7 +996,10 @@ options_help_warning -->
 	io__write_string("\t--warn-non-stratification\n"),
 	io__write_string("\t\tWarn about possible non-stratification in the module.\n"),
 	io__write_string("\t\tNon-stratification occurs when a predicate/function can call\n"),
-	io__write_string("\t\titself negatively through some path along its call graph.\n").
+	io__write_string("\t\titself negatively through some path along its call graph.\n"),
+	io__write_string("\t--no-warn-simple-code\n"),
+	io__write_string("\t\tDisable warnings about constructs which are so\n"),
+	io__write_string("\t\tsimple that they are likely to be programming errors.\n").
 	
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
 
@@ -1336,15 +1359,23 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tDon't migrate into the end of branched goals.\n"),
 	io__write_string("\t--excess-assign\n"),
 	io__write_string("\t\tRemove excess assignment unifications.\n"),
+	io__write_string("\t\t--optimize-duplicate-calls\n"),
+	io__write_string("\t\tOptimize away multiple calls to a predicate\n"),
+	io__write_string("\t\twith the same input arguments.\n"),
 	io__write_string("\t--optimize-saved-vars\n"),
 	io__write_string("\t\tReorder goals to minimize the number of variables\n"),
 	io__write_string("\t\tthat have to be saved across calls.\n"),
-	io__write_string("\t--no-optimize-unused-args\n"),
-	io__write_string("\t\tDisable removal of unused predicate arguments.\n"),
-	io__write_string("\t\tThis will cause the compiler to generate less\n"),
+	io__write_string("\t--optimize-unused-args\n"),
+	io__write_string("\t\tRemove unused predicate arguments.\n"),
+	io__write_string("\t\tThis will cause the compiler to generate more\n"),
 	io__write_string("\t\tefficient code for many polymorphic predicates.\n"),
-	io__write_string("\t--no-optimize-higher-order\n"),
-	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
+	io__write_string("\t--intermod-unused-args\n"),
+	io__write_string("\t\tPerform unused argument removal across module boundaries.\n"),
+	io__write_string("\t\tThis option implies `--optimize-unused-args' and\n"),
+	io__write_string("\t\t`--intermodule-optimization'.\n"),
+
+	io__write_string("\t--optimize-higher-order\n"),
+	io__write_string("\t\tEnable specialization higher-order predicates.\n"),
 	io__write_string("\t--optimize-constructor-last-call\n"),
 	io__write_string("\t\tEnable the optimization of ""last"" calls that are followed by\n"),
 	io__write_string("\t\tconstructor application.\n").
@@ -1476,7 +1507,15 @@ options_help_misc -->
 	% io__write_string("\t\tmessage.\n"),
 
 	io__write_string("\t-I <dir>, --search-directory <dir>\n"),
-	io__write_string("\t\tAdd <dir> to the list of directories to be searched for \n\t\timported modules.\n").
+	io__write_string("\t\tAdd <dir> to the list of directories to be searched for \n\t\timported modules.\n"),
+	io__write_string("\t--intermod-directory <dir>\n"),
+	io__write_string("\t\tAdd <dir> to the list of directories to be\n"),
+	io__write_string("\t\tsearched for `.opt' files.\n"),
+	io__write_string("\t--no-use-search-directories-for-intermod\n"),
+	io__write_string("\t\tDon't add arguments to --search-directory to the list\n"),
+	io__write_string("\t\tof directories to search for `.opt' files - use onlythe\n"),
+	io__write_string("\t\tdirectories given by --intermod-directory.\n").
+
 
 :- end_module options.
 

@@ -50,6 +50,10 @@
 		list(pragma_var), varset, string, io__state, io__state).
 :- mode mercury_output_pragma_c_code(in, in, in, in, in, in, di, uo) is det.
 
+:- pred mercury_output_pragma_unused_args(pred_or_func, sym_name,
+		int, proc_id, list(int), io__state, io__state) is det.
+:- mode mercury_output_pragma_unused_args(in, in, in, in, in, di, uo) is det.
+
 	% Output the given c_header_code declaration
 :- pred mercury_output_pragma_c_header(string, io__state, io__state).
 :- mode mercury_output_pragma_c_header(in, di, uo) is det.
@@ -131,7 +135,7 @@
 
 :- implementation.
 
-:- import_module prog_out, prog_util, hlds_pred.
+:- import_module prog_out, prog_util, hlds_pred, hlds_out.
 :- import_module globals, options.
 :- import_module bool, int, string, set, term_io, std_util, require.
 
@@ -264,6 +268,11 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = inline(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, "inline")
 	;
+		{ Pragma = unused_args(PredOrFunc, PredName,
+			Arity, ProcId, UnusedArgs) },
+		mercury_output_pragma_unused_args(PredOrFunc,
+			PredName, Arity, ProcId, UnusedArgs)
+	;
 		{ Pragma = fact_table(Pred, Arity, FileName) },
 		mercury_output_pragma_fact_table(Pred, Arity, FileName)
 	).
@@ -272,6 +281,38 @@ mercury_output_item(pragma(Pragma), Context) -->
 mercury_output_item(nothing, _) --> [].
 
 %-----------------------------------------------------------------------------%
+
+
+mercury_output_pragma_unused_args(PredOrFunc, SymName,
+		Arity, ProcId, UnusedArgs) -->
+	io__write_string(":- pragma unused_args("),
+	hlds_out__write_pred_or_func(PredOrFunc),
+	io__write_string(", "),
+	mercury_output_bracketed_sym_name(SymName),
+	io__write_string(", "),
+	io__write_int(Arity),
+	io__write_string(", "),
+	io__write_int(ProcId),
+	io__write_string(", ["),
+	mercury_output_int_list(UnusedArgs),
+	io__write_string("]).\n").
+
+:- pred mercury_output_int_list(list(int)::in,
+		io__state::di, io__state::uo) is det.
+
+mercury_output_int_list([]) --> [].
+mercury_output_int_list([First | Rest]) -->
+	io__write_int(First),
+	mercury_output_int_list_2(Rest).
+
+:- pred mercury_output_int_list_2(list(int)::in,
+		io__state::di, io__state::uo) is det.
+
+mercury_output_int_list_2([]) --> [].
+mercury_output_int_list_2([First | Rest]) -->
+	io__write_string(", "),
+	io__write_int(First),
+	mercury_output_int_list_2(Rest).
 
 :- pred mercury_output_module_defn(varset, module_defn, term__context,
 			io__state, io__state).

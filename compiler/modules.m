@@ -426,7 +426,9 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 			% is to make sure the module gets type-checked without
 			% having the definitions of abstract types from other
 			% modules.
-			get_curr_dir_deps(LongDeps, [], OptDeps),
+			globals__io_lookup_accumulating_option(
+				intermod_directories, IntermodDirs),
+			get_opt_deps(LongDeps, IntermodDirs, [], OptDeps),
 			write_dependencies_list([ModuleName | OptDeps],
 				".opt", DepStream)
 		;
@@ -456,21 +458,29 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 		report_error(Message)
 	).
 
-	% Filter out the dependencies that are in the current directory.
-:- pred get_curr_dir_deps(list(string)::in, list(string)::in, 
+	% For each dependency, search intermod_directories for a .opt
+	% file or a .m file, filtering out those for which the search fails.
+:- pred get_opt_deps(list(string)::in, list(string)::in, list(string)::in, 
 		list(string)::out, io__state::di, io__state::uo) is det.
 
-get_curr_dir_deps([], CurrDirDeps, CurrDirDeps) --> [].
-get_curr_dir_deps([Dep | Deps], CurrDirDeps0, CurrDirDeps) -->
+get_opt_deps([], _, OptDeps, OptDeps) --> [].
+get_opt_deps([Dep | Deps], IntermodDirs, OptDeps0, OptDeps) -->
 	{ string__append(Dep, ".m", DepName) },
-	io__see(DepName, Res),
-	( { Res = ok } ->
-		{ CurrDirDeps1 = [Dep | CurrDirDeps0] },
+	search_for_file(IntermodDirs, DepName, Result1),
+	( { Result1 = yes } ->
+		{ OptDeps1 = [Dep | OptDeps0] },
 		io__seen
 	;
-		{ CurrDirDeps1 = CurrDirDeps0 }
+		{ string__append(Dep, ".opt", OptName) },
+		search_for_file(IntermodDirs, OptName, Result2),
+		( { Result2 = yes } ->
+			{ OptDeps1 = [Dep | OptDeps0] },
+			io__seen
+		;
+			{ OptDeps1 = OptDeps0 }
+		)
 	),
-	get_curr_dir_deps(Deps, CurrDirDeps1, CurrDirDeps).
+	get_opt_deps(Deps, IntermodDirs, OptDeps1, OptDeps).
 
 %-----------------------------------------------------------------------------%
 

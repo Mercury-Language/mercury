@@ -58,7 +58,7 @@ insert explicit calls to initialize constraint variables.
 
 	% inst_matches_initial(InstA, InstB, ModuleInfo):
 	%	Succeed iff `InstA' specifies at least as much
-	%	information as InstA, and in those parts where they
+	%	information as `InstB', and in those parts where they
 	%	specify the same information, `InstA' is at least as
 	%	instantiated as `InstB'.
 	%	Thus, inst_matches_initial(not_reached, ground, _)

@@ -20,6 +20,11 @@
 % :- mode move_follow_code_in_proc(di, uo, di, uo) is det.
 :- mode move_follow_code_in_proc(in, out, in, out) is det.
 
+	% Split a list of goals into the prefix of builtins and the rest.
+:- pred move_follow_code_select(list(hlds__goal), list(hlds__goal),
+	list(hlds__goal)).
+:- mode move_follow_code_select(in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -50,7 +55,10 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 		proc_info_headvars(ProcInfo0, HeadVars),
 		implicitly_quantify_clause_body(HeadVars, Goal1,
 			Varset0, VarTypes0, Goal2, Varset, VarTypes, _Warnings),
-		recompute_instmap_delta(Goal2, Goal, ModuleInfo0, ModuleInfo)
+		proc_info_get_initial_instmap(ProcInfo0,
+			ModuleInfo0, InstMap0),
+		recompute_instmap_delta(no, Goal2, Goal, InstMap0,
+			ModuleInfo0, ModuleInfo)
 	;
 		Goal = Goal0,
 		Varset = Varset0,
@@ -187,10 +195,6 @@ move_follow_code_in_conj_2([Goal0 | Goals0], RevPrevGoals0, RevPrevGoals,
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_select(list(hlds__goal), list(hlds__goal),
-	list(hlds__goal)).
-:- mode move_follow_code_select(in, out, out) is det.
-
 move_follow_code_select([], [], []).
 move_follow_code_select([Goal|Goals], FollowGoals, RestGoals) :-
 	(
@@ -219,8 +223,10 @@ move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 		Goal = disj(Goals, SM)
 	;
 		Goal0 = if_then_else(Vars, Cond, Then0, Else0, SM),
-		conjoin_goal_and_goal_list(Then0, FollowGoals, Then),
-		conjoin_goal_and_goal_list(Else0, FollowGoals, Else),
+		follow_code__conjoin_goal_and_goal_list(Then0,
+			FollowGoals, Then),
+		follow_code__conjoin_goal_and_goal_list(Else0,
+			FollowGoals, Else),
 		Goal = if_then_else(Vars, Cond, Then, Else, SM)
 	).
 
@@ -233,7 +239,7 @@ move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 move_follow_code_move_goals_cases([], _FollowGoals, []).
 move_follow_code_move_goals_cases([Case0|Cases0], FollowGoals, [Case|Cases]) :-
 	Case0 = case(Cons, Goal0),
-	conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal),
+	follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal),
 	Case = case(Cons, Goal),
 	move_follow_code_move_goals_cases(Cases0, FollowGoals, Cases).
 
@@ -245,30 +251,35 @@ move_follow_code_move_goals_cases([Case0|Cases0], FollowGoals, [Case|Cases]) :-
 
 move_follow_code_move_goals_disj([], _FollowGoals, []).
 move_follow_code_move_goals_disj([Goal0|Goals0], FollowGoals, [Goal|Goals]) :-
-	conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal),
+	follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal),
 	move_follow_code_move_goals_disj(Goals0, FollowGoals, Goals).
 
 %-----------------------------------------------------------------------------%
 
 	% Takes a goal and a list of goals, and conjoins them
-	% (with a potentially blank goal_info).
+	% (with a potentially blank goal_info), checking that the
+	% determinism of the goal is not changed.
 
-:- pred conjoin_goal_and_goal_list(hlds__goal, list(hlds__goal),
+:- pred follow_code__conjoin_goal_and_goal_list(hlds__goal, list(hlds__goal),
 	hlds__goal).
-:- mode conjoin_goal_and_goal_list(in, in, out) is semidet.
+:- mode follow_code__conjoin_goal_and_goal_list(in, in, out) is semidet.
 
-conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
+follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
 	Goal0 = GoalExpr0 - GoalInfo0,
 	goal_info_get_determinism(GoalInfo0, Detism0),
 	determinism_components(Detism0, CanFail0, MaxSolns0),
-	check_follow_code_detism(FollowGoals, CanFail0, MaxSolns0),
-	( GoalExpr0 = conj(GoalList0) ->
-		list__append(GoalList0, FollowGoals, GoalList),
-		GoalExpr = conj(GoalList)
+	( MaxSolns0 = at_most_zero ->	
+		Goal = Goal0
 	;
-		GoalExpr = conj([Goal0 | FollowGoals])
-	),
-	Goal = GoalExpr - GoalInfo0.
+		check_follow_code_detism(FollowGoals, CanFail0, MaxSolns0),
+		( GoalExpr0 = conj(GoalList0) ->
+			list__append(GoalList0, FollowGoals, GoalList),
+			GoalExpr = conj(GoalList)
+		;
+			GoalExpr = conj([Goal0 | FollowGoals])
+		),
+		Goal = GoalExpr - GoalInfo0
+	).
 
 	% This check is necessary to make sure that follow_code
 	% doesn't change the determinism of the goal.

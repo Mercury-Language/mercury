@@ -247,6 +247,39 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		globals__io_set_option(trad_passes, bool(no))
 	;
 		[]
+	),
+	% --intermod-unused-args implies --intermodule-optimization and
+	% --optimize-unused-args.
+	globals__io_lookup_bool_option(intermod_unused_args, Intermod),
+	( { Intermod = yes } ->
+		globals__io_set_option(intermodule_optimization, bool(yes)),
+		globals__io_set_option(optimize_unused_args, bool(yes))
+	;
+		[]
+	),
+	% Don't do the unused_args optimization when making the
+	% optimization interface.
+	globals__io_lookup_bool_option(make_optimization_interface, MakeOpt),
+	( { MakeOpt = yes } ->
+		globals__io_set_option(optimize_unused_args, bool(no))
+	;
+		[]
+	),
+	% If --use-search-directories-for-intermod is true, append the
+	% search directories to the list of directories to search for
+	% .opt files.
+	globals__io_lookup_bool_option(use_search_directories_for_intermod,
+		UseSearchDirs),
+	( { UseSearchDirs = yes } ->
+		globals__io_lookup_accumulating_option(intermod_directories,
+			IntermodDirs0),
+		globals__io_lookup_accumulating_option(search_directories,
+			SearchDirs),
+		{ list__append(IntermodDirs0, SearchDirs, IntermodDirs) },
+		globals__io_set_option(intermod_directories,
+			accumulating(IntermodDirs))
+	;
+		[]
 	).
 
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)

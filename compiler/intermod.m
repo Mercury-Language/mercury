@@ -40,8 +40,9 @@
 :- import_module io.
 :- import_module hlds_module, modules.
 
-:- pred intermod__write_optfile(module_info, io__state, io__state).
-:- mode intermod__write_optfile(in, di, uo) is det.
+:- pred intermod__write_optfile(module_info, module_info,
+				io__state, io__state).
+:- mode intermod__write_optfile(in, out, di, uo) is det.
 
 	% Add the items from the .opt files of imported modules to
 	% the items for this module.
@@ -73,7 +74,7 @@
 % Open the file "<module-name>.opt", and write out the
 % declarations and clauses for intermodule optimization.
 
-intermod__write_optfile(ModuleInfo0) -->
+intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ string__append(ModuleName, ".opt.tmp", TmpName) },
 	io__tell(TmpName, Result2),
@@ -82,7 +83,8 @@ intermod__write_optfile(ModuleInfo0) -->
 		{ io__error_message(Err2, Msg2) },
 		io__stderr_stream(ErrStream2),
 		io__write_string(ErrStream2, Msg2),
-		io__set_exit_status(1)
+		io__set_exit_status(1),
+		{ ModuleInfo = ModuleInfo0 }
 	;
 		{ Result2 = ok },
 		{ module_info_predids(ModuleInfo0, PredIds) },
@@ -95,24 +97,30 @@ intermod__write_optfile(ModuleInfo0) -->
 				IntermodInfo2) },
 		{ intermod_info_get_pred_decls(PredDeclsSet,
 				IntermodInfo2, IntermodInfo3) },
-		{ intermod_info_get_module_info(ModuleInfo,
-				IntermodInfo3, _) },
-		{ module_info_insts(ModuleInfo, Insts) },
+		{ intermod_info_get_module_info(ModuleInfo1,
+				IntermodInfo3, IntermodInfo4) },
+		{ module_info_insts(ModuleInfo1, Insts) },
 		{ inst_table_get_user_insts(Insts, UserInsts) },
 		{ user_inst_table_get_inst_defns(UserInsts, InstDefns) },
-		{ module_info_modes(ModuleInfo, Modes) },
+		{ module_info_modes(ModuleInfo1, Modes) },
 		{ mode_table_get_mode_defns(Modes, ModeDefns) },
 		{ set__to_sorted_list(PredDeclsSet, PredDecls) },
-		{ intermod__gather_modes(ModuleInfo, ModeDefns, InstDefns,
-				PredDecls, IntermodInfo2, IntermodInfo) },
+		{ intermod__gather_modes(ModuleInfo1, ModeDefns, InstDefns,
+				PredDecls, IntermodInfo4, IntermodInfo) },
 		intermod__write_intermod_info(IntermodInfo),
 		io__told,
 		{ string__append(ModuleName, ".opt", OptName) },
 		update_interface(OptName),
+		globals__io_lookup_bool_option(intermod_unused_args,
+			UnusedArgs),
+		( { UnusedArgs = yes } ->
+			{ do_adjust_pred_import_status(IntermodInfo,
+				ModuleInfo1, ModuleInfo) }
+		;
+			{ ModuleInfo = ModuleInfo1 }
+		),
 		touch_interface_datestamp(ModuleName, ".optdate")
 	).
-
-
 
 	% a collection of stuff to go in the .opt file
 :- type intermod_info
@@ -360,12 +368,6 @@ intermod__traverse_goal(
 	->
 		intermod_info_add_proc(PredId, DoWrite)
 	;
-		intermod_info_get_module_info(ModuleInfo),
-		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ \+ code_util__compiler_generated(PredInfo) }
-	->
-		intermod_info_add_proc(PredId, DoWrite)
-	;
 		{ DoWrite = yes }
 	).
 
@@ -511,13 +513,18 @@ fix_function_or_higher_order_in_unify_rhs(LVar, functor(Functor0, Vars),
 	intermod_info_get_tvarset(TVarSet),
 	intermod_info_get_var_types(VarTypes),
 	(
-		{
-		Functor0 = cons(unqualified(FuncName), Arity),
-		predicate_table_search_func_name_arity(PredTable, FuncName,
-				Arity, PredIds),
-		list__append(Vars, [LVar], FuncArgs),
-		map__apply_to_list(FuncArgs, VarTypes, ArgTypes),
-		typecheck__find_matching_pred_id(PredIds, ModuleInfo,
+		{ 
+			Functor0 = cons(QualifiedFuncName, Arity),
+			QualifiedFuncName = qualified(FuncModule, FuncName),
+			predicate_table_search_func_m_n_a(PredTable,
+				FuncModule, FuncName, Arity, [PredId])
+		;
+			Functor0 = cons(unqualified(FuncName), Arity),
+			predicate_table_search_func_name_arity(PredTable,
+					FuncName, Arity, PredIds),
+			list__append(Vars, [LVar], FuncArgs),
+			map__apply_to_list(FuncArgs, VarTypes, ArgTypes),
+			typecheck__find_matching_pred_id(PredIds, ModuleInfo,
 				TVarSet, ArgTypes, PredId, QualifiedFuncName)
 		}
 	->
@@ -527,16 +534,21 @@ fix_function_or_higher_order_in_unify_rhs(LVar, functor(Functor0, Vars),
 	;
 		intermod_info_get_var_types(VarTypes),
 		{
-		Functor0 = cons(unqualified(PredName), Arity),
-		map__lookup(VarTypes, LVar, LVarType),
-		type_is_higher_order(LVarType, PredOrFunc, PredArgTypes),
-		get_pred_id_and_proc_id(PredName, Arity, PredOrFunc,
-			PredArgTypes, ModuleInfo, PredId, _ProcId)
+			Functor0 = cons(qualified(Module, PredName), Arity),
+			predicate_table_search_sym(PredTable,
+				qualified(Module, PredName), [PredId])
+		;
+			Functor0 = cons(unqualified(PredName), Arity),
+			map__lookup(VarTypes, LVar, LVarType),
+			type_is_higher_order(LVarType,
+				PredOrFunc, PredArgTypes),
+			get_pred_id_and_proc_id(PredName, Arity, PredOrFunc,
+				PredArgTypes, ModuleInfo, PredId, _ProcId),
+			module_info_pred_info(ModuleInfo, PredId, PredInfo),
+			pred_info_module(PredInfo, Module)
 		}
 	->
 			% The unification creates a higher-order pred constant.
-		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ pred_info_module(PredInfo, Module) },
 		{ Functor = cons(qualified(Module, PredName), Arity) },
 		intermod_info_add_proc(PredId, DoWrite)
 	;
@@ -886,7 +898,7 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 		intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 						Clauses, Procs)
 	;
-		{ pred_info_typevarset(PredInfo, _TVarSet) },
+		% { pred_info_typevarset(PredInfo, TVarSet) },
 		hlds_out__write_clauses(1, ModuleInfo, PredId, Varset, no,
 			HeadVars, PredOrFunc, Clauses, no)
 		%	HeadVars, Clauses, yes(TVarSet, VarTypes))
@@ -1084,20 +1096,22 @@ intermod_info_set_tvarset(TVarSet, info(A,B,C,D,E,F,G,H,I,_),
 %-----------------------------------------------------------------------------%
 
 	% Make sure the labels of local preds needed by predicates in 
-	% the .opt file are exported.
+	% the .opt file are exported, and inhibit dead proc elimination
+	% on those preds.
 intermod__adjust_pred_import_status(Module0, Module) :-
 	init_intermod_info(Module0, Info0),
 	module_info_predids(Module0, PredIds),
-
-	% The .opt file may have been written with a higher 
-	% --inline-simple-threshold value, so to be safe all
-	% preds called by exported preds need to be exported too.
-
 	module_info_globals(Module0, Globals),
 	globals__lookup_int_option(Globals, intermod_inline_simple_threshold, 
 			Threshold),
 	intermod__gather_preds(PredIds, yes, Threshold, Info0, Info1),
-	intermod_info_get_pred_decls(PredDecls0, Info1, Info),
+	do_adjust_pred_import_status(Info1, Module0, Module).
+
+:- pred do_adjust_pred_import_status(intermod_info::in,
+		module_info::in, module_info::out) is det.
+
+do_adjust_pred_import_status(Info, Module0, Module) :-
+	intermod_info_get_pred_decls(PredDecls0, Info, _),
 	intermod_info_get_types(TypeIds0, Info, _),
 	set__to_sorted_list(PredDecls0, PredDecls),
 	set__to_sorted_list(TypeIds0, TypeIds),
@@ -1180,17 +1194,40 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	globals__io_set_option(inhibit_warnings, NoWarn),
 	{ Module2 = module_imports(_, DirectImports, IndirectImports,
 		InterfaceItems, IntError) },
-	{ ( IntError \= no ; OptError = yes ) ->
+	{ list__append(OptItems, InterfaceItems, NewItems) },
+	{ term__context_init("blah", 0, Context) },
+		% Let make_hlds know the opt_imported stuff is coming.
+	globals__io_lookup_bool_option(intermod_unused_args, UnusedArgs),
+	{ varset__init(Varset) },
+
+		%
+		% Get the :- pragma unused_args(...) declarations created
+		% when writing the .opt file for the current module. These
+		% are needed because we can probably remove more arguments
+		% with intermod_unused_args, but the interface for other
+		% modules must remain the same.
+		%
+
+	( { UnusedArgs = yes } ->
+		read_optimization_interfaces([ModuleName], [],
+				LocalItems, no, UAError),
+		{ IsPragmaUnusedArgs = lambda([Item::in] is semidet, (
+					Item = pragma(PragmaType) - _,
+					PragmaType = unused_args(_,_,_,_,_)
+				)) },
+		{ list__filter(IsPragmaUnusedArgs, LocalItems, PragmaItems) }
+	;
+		{ PragmaItems = [] },
+		{ UAError = no }
+	),
+	{ ( IntError \= no ; OptError = yes ; UAError = yes) ->
 		FoundError = yes
 	;
 		FoundError = no
 	},
-	{ list__append(OptItems, InterfaceItems, NewItems) },
-	{ term__context_init(Context) },
-		% Let make_hlds know the opt_imported stuff is coming.
-	{ varset__init(Varset) },
 	{ OptDefn = module_defn(Varset, opt_imported) - Context },
-	{ list__append(Items0, [OptDefn | NewItems], Items) }, 
+	{ list__append([OptDefn | PragmaItems], NewItems, NewItems2) }, 
+	{ list__append(Items0, NewItems2, Items) },
 	{ Module = module_imports(ModuleName, DirectImports,
 				IndirectImports, Items, no) }.
 
@@ -1216,6 +1253,14 @@ read_optimization_interfaces([Import | Imports],
 		prog_io__read_module(FileName, Import, yes,
 				ModuleError, Messages, Items1)
         ),
+	update_error_status(FileName, ModuleError, Messages, Error0, Error1),
+	{ list__append(Items0, Items1, Items2) },
+	read_optimization_interfaces(Imports, Items2, Items, Error1, Error).
+
+:- pred update_error_status(string::in, module_error::in, message_list::in, 
+		bool::in, bool::out, io__state::di, io__state::uo) is det.
+
+update_error_status(FileName, ModuleError, Messages, Error0, Error1) -->
 	(
 		{ ModuleError = no },
 		{ Error1 = Error0 }
@@ -1240,8 +1285,6 @@ read_optimization_interfaces([Import | Imports],
 		;
 			{ Error1 = Error0 }	
 		)
-	),
-	{ list__append(Items0, Items1, Items2) },
-	read_optimization_interfaces(Imports, Items2, Items, Error1, Error).
+	).
 
 %-----------------------------------------------------------------------------%

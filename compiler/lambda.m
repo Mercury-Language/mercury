@@ -280,7 +280,7 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 		ProcId = ProcId0,
 		PredName = PredName0,
 		ModuleInfo = ModuleInfo0,
-		list__length(ArgVars, NumArgVars)
+		NumArgVars = NumInitialVars
 	;
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate

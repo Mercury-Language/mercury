@@ -71,11 +71,8 @@ special_pred_mode_num(compare, 10000).
 special_pred_mode_num(type_to_term, 10000).
 special_pred_mode_num(term_to_type, 0).
 
-special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In2], semidet) :-
-	in_mode(In),
-	in_mode(In2).
-		% we use `In2' to work around a bug with --static-ground-terms
-		% which causes a duplicate label in the generated C code
+special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In], semidet) :-
+	in_mode(In).
 
 special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
 	construct_type(unqualified("int") - 0, [], IntType),
@@ -83,11 +80,10 @@ special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
 	out_mode(Out).
 
 special_pred_info(compare, Type,
-		 "__Compare__", [ResType, Type, Type], [Out, In, In2], det) :-
+		 "__Compare__", [ResType, Type, Type], [Out, In, In], det) :-
 	construct_type(qualified("mercury_builtin", "comparison_result") - 0,
 							[], ResType),
 	in_mode(In),
-	in_mode(In2),
 	out_mode(Out).
 
 special_pred_info(term_to_type, Type,

@@ -324,6 +324,34 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 			{ module_info_incr_errors(Module0, Module) }
 		)
 	;
+			% Used for inter-module unused argument elimination.
+			% This can only appear in .opt files.
+		{ Pragma = unused_args(PredOrFunc, SymName,
+				Arity, ProcId, UnusedArgs) },
+		( { Status \= opt_imported } ->
+			prog_out__write_context(Context),
+			io__write_string("Error: unknown pragma unused_args.\n"),
+			{ module_info_incr_errors(Module0, Module) }
+		;
+			{ module_info_get_predicate_table(Module0, Preds) },
+			(
+				{ predicate_table_search_pf_sym_arity(Preds,
+					PredOrFunc, SymName, Arity, [PredId]) }
+			->
+				{ module_info_unused_arg_info(Module0,
+					UnusedArgInfo0) },
+				{ map__set(UnusedArgInfo0,
+					proc(PredId, ProcId), UnusedArgs,
+					UnusedArgInfo) },
+				{ module_info_set_unused_arg_info(Module0,
+					UnusedArgInfo, Module) }
+			;
+				prog_out__write_context(Context),
+				io__write_string("Internal compiler error: unknown predicate in pragma unused_args\n"),
+				{ module_info_incr_errors(Module0, Module) }
+			)
+		)
+	;
 		% Handle pragma fact_table decls later on (when we process
 		% clauses).
 		{ Pragma = fact_table(_, _, _) },
@@ -1051,7 +1079,9 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 		% construct a clause containing that pseudo-recursive call
 		%
 	goal_info_init(GoalInfo0),
-	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+	set__list_to_set(HeadVars, NonLocals),
+	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo),
 	Goal = Call - GoalInfo,
 	Clause = clause([], Goal, Context),
 

@@ -1327,6 +1327,11 @@ hlds_out__write_case(case(ConsId, Goal), Var, ModuleInfo, VarSet,
 	io__write_string(" has functor "),
 	hlds_out__write_cons_id(ConsId),
 	io__write_string("\n"),
+	% XXX if the output of this is to be used, e.g. in
+	% inter-module optimization, output a unification to bind the
+	% Var to the functor, since simplify.m and unused_args.m remove
+	% the unification. At the moment this is not a problem, since
+	% intermod.m works on the unoptimized clauses.
 	hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarnums,
 		Indent, "", VarTypes).
 

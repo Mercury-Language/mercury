@@ -94,7 +94,7 @@
 
 :- import_module hlds_pred, hlds_goal, globals, options.
 :- import_module dead_proc_elim, type_util, mode_util, goal_util.
-:- import_module passes_aux, code_aux.
+:- import_module passes_aux, code_aux, quantification.
 
 :- import_module bool, int, list, assoc_list, map, set, std_util.
 :- import_module term, varset, require, hlds_data, dependency_graph.
@@ -296,7 +296,8 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 
 	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, TypeVarSet,
-		ModuleInfo0, InlinedProcs, VarThresh, Goal, Varset, VarTypes),
+		ModuleInfo0, InlinedProcs, VarThresh, Goal,
+		Varset, VarTypes),
 
 	proc_info_set_variables(ProcInfo0, Varset, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
@@ -439,9 +440,8 @@ inlining__inlining_in_goal_2(
 
 		% Now rename apart the variables in the called goal.
 
-		varset__vars(CalleeVarset, CalleeVars0),
 		map__from_corresponding_lists(HeadVars, ArgVars, Subn0),
-		goal_util__create_variables(CalleeVars0, Varset0,
+		goal_util__create_variables(CalleeListOfVars, Varset0,
 			VarTypes0, Subn0, CalleeVarTypes, CalleeVarset,
 				Varset, VarTypes, Subn),
 		goal_util__must_rename_vars_in_goal(CalledGoal, Subn,

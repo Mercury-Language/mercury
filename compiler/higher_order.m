@@ -69,13 +69,26 @@ process_requests(Requests0, GoalSizes0, NextHOid0, NextHOid,
 		{ map__keys(NewPredsForThisPass, SpecializedPreds) },
 		{ map__merge(NewPreds0, NewPredsForThisPass, NewPreds1) },
 		{ set__to_sorted_list(PredProcsToFix, PredProcs) },
+			% The dependencies have changed, so the
+			% dependency graph needs to rebuilt for
+			% inlining to work properly.
+			% XXX Is it worth rebuilding the dependency graph
+			% here completely rebuilding it later? (it's only
+			% necessary in profiling grades, since otherwise
+			% the dependency graph isn't built before here). 
 		{ fixup_preds(PredProcs, NewPreds1, ModuleInfo2, ModuleInfo3) },
+		{ SpecializedPreds = [] ->
+			module_info_clobber_dependency_info(ModuleInfo3,
+				ModuleInfo4)
+		;
+			ModuleInfo4 = ModuleInfo3
+		},
 		{ set__init(NewRequests0) },
 		{ create_specialized_versions(SpecializedPreds, NewPreds1,
 				NewRequests0, NewRequests, GoalSizes0,
-				GoalSizes, ModuleInfo3, ModuleInfo4) },
+				GoalSizes, ModuleInfo4, ModuleInfo5) },
 		process_requests(NewRequests, GoalSizes, NextHOid1,
-			NextHOid, NewPreds1, NewPreds, ModuleInfo4, ModuleInfo)
+			NextHOid, NewPreds1, NewPreds, ModuleInfo5, ModuleInfo)
 	).
 
 
@@ -193,17 +206,11 @@ get_specialization_requests_2([PredId | PredIds], Requests0, Requests,
 		traverse_goal(Goal0, Goal1, PredProcId, Changed,
 				GoalSize, Info0, info(_, Requests1,_,_)),
 		map__set(GoalSizes0, PredId, GoalSize, GoalSizes1),
+		proc_info_set_goal(ProcInfo0, Goal1, ProcInfo1),
 		(
 			Changed = changed
 		->
-			proc_info_vartypes(ProcInfo0, VarTypes0),
-			proc_info_headvars(ProcInfo0, HeadVars),
-			proc_info_variables(ProcInfo0, Varset0),
-			implicitly_quantify_clause_body(HeadVars, Goal1,
-				Varset0, VarTypes0, Goal, Varset, VarTypes, _),
-			proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-			proc_info_set_variables(ProcInfo1, Varset, ProcInfo2),
-			proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
+			requantify_proc(ProcInfo1, ProcInfo),
 			map__det_update(Procs0, ProcId, ProcInfo, Procs1)
 		;
 			Procs1 = Procs0
@@ -218,7 +225,7 @@ get_specialization_requests_2([PredId | PredIds], Requests0, Requests,
 			module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1)
 		;
 			ModuleInfo1 = ModuleInfo0,
-			Requests2 = Requests1	
+			Requests2 = Requests1
 		)
 	),
 	get_specialization_requests_2(PredIds, Requests2, Requests,
@@ -370,6 +377,12 @@ traverse_disj_2([Goal0 | Goals0], [Goal | Goals], PredProcId, Changed0, Changed,
 				GoalSize1, GoalSize, InitialInfo, Info1, Info).
 
 
+				% The dependencies have changed, so the
+				% dependency graph needs to rebuilt for
+				% inlining to work properly.
+				% XXX Fix the graph here instead of 
+				% completely rebuilding it later (only
+				% a problem in profiling grades).
 		% Switches are treated in exactly the same way as disjunctions.
 :- pred traverse_cases(list(case)::in, list(case)::out, pred_proc_id::in,
 		changed::out, int::out, higher_order_info::in,
@@ -746,14 +759,12 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 		new_pred(NewPredId, NewProcId, Name, HOArgs), NextHOid0,
 		NextHOid, ModuleInfo0, ModuleInfo, IOState0, IOState) :- 
 	CalledPredProc = proc(CalledPred, _),
-	module_info_get_predicate_table(ModuleInfo0,
-					 PredTable0),
+	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_get_preds(PredTable0, Preds0),
 	map__lookup(Preds0, CalledPred, PredInfo0),
 	pred_info_name(PredInfo0, Name0),
 	pred_info_arity(PredInfo0, Arity),
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
-	module_info_name(ModuleInfo0, ModuleName),
 	pred_info_module(PredInfo0, PredModule),
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose,
 							IOState0, IOState1),
@@ -774,12 +785,7 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
        	),
 	string__int_to_string(NextHOid0, IdStr),
 	NextHOid is NextHOid0 + 1,
-	( ModuleName = PredModule ->
-		NamePrefix = ""
-	;
-		string__append(PredModule, "__", NamePrefix)
-	),
-	string__append_list([NamePrefix, Name0, "__ho", IdStr], PredName),
+	string__append_list([Name0, "__ho", IdStr], PredName),
 	pred_info_typevarset(PredInfo0, TypeVars),
 	remove_listof_higher_order_args(Types0, 1, HOArgs, Types),
 	pred_info_context(PredInfo0, Context),
@@ -794,8 +800,8 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 	pred_info_get_goal_type(PredInfo0, GoalType),
 		% *** This will need to be fixed when the condition
 		%       field of the pred_info becomes used
-	Name = qualified(ModuleName, PredName),
-	pred_info_init(ModuleName, Name, Arity, Tvars,
+	Name = qualified(PredModule, PredName),
+	pred_info_init(PredModule, Name, Arity, Tvars,
 		Types, true, Context, ClausesInfo, local, Inline, GoalType,
 		PredOrFunc, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo2),
@@ -949,12 +955,11 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	apply_substitution_to_type_map(VarTypes0, Substitution, VarTypes1),
 	map__apply_to_list(HeadVars, VarTypes1, ArgTypes0),
 	term__vars_list(ArgTypes0, TypeVars),
-	varset__init(ArgTVarset0),
+	varset__init(VarSet0),
 	map__init(DummyVarTypes), % type vars don't have a type
 	map__init(Renaming0),
-	varset__init(OldVarNames),
-	goal_util__create_variables(TypeVars, ArgTVarset0, DummyVarTypes,
-		Renaming0, DummyVarTypes, OldVarNames, ArgTVarset, _, Renaming),
+	goal_util__create_variables(TypeVars, VarSet0, DummyVarTypes,
+		Renaming0, DummyVarTypes, VarSet0, ArgTVarset, _, Renaming),
 	term__apply_variable_renaming_to_list(ArgTypes0, Renaming, ArgTypes),
 	pred_info_set_arg_types(NewPredInfo1, ArgTVarset, ArgTypes,
 							 NewPredInfo2),
@@ -967,7 +972,9 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 					
 	implicitly_quantify_clause_body(HeadVars, Goal2, Varset0, VarTypes1,
 					Goal3, Varset, VarTypes, _),
-	recompute_instmap_delta(Goal3, Goal4, ModuleInfo0, ModuleInfo1),
+	proc_info_get_initial_instmap(NewProcInfo1, ModuleInfo0, InstMap0),
+	recompute_instmap_delta(no, Goal3, Goal4, InstMap0,
+		ModuleInfo0, ModuleInfo1),
 	proc_info_set_goal(NewProcInfo1, Goal4, NewProcInfo1a),
 	proc_info_set_variables(NewProcInfo1a, Varset, NewProcInfo2),
 	proc_info_set_vartypes(NewProcInfo2, VarTypes, NewProcInfo3),

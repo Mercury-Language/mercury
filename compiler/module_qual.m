@@ -573,6 +573,8 @@ qualify_pragma(obsolete(A, B), obsolete(A, B), Info, Info) --> [].
 qualify_pragma(export(Name, PredOrFunc, Modes0, CFunc),
 		export(Name, PredOrFunc, Modes, CFunc), Info0, Info) -->
 	qualify_mode_list(Modes0, Modes, Info0, Info).
+qualify_pragma(unused_args(A, B, C, D, E), unused_args(A, B, C, D, E),
+				Info, Info) --> [].
 qualify_pragma(fact_table(SymName, Arity, FileName),
 	fact_table(SymName, Arity, FileName), Info, Info) --> [].
 

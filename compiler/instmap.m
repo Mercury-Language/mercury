@@ -78,6 +78,10 @@
 :- pred instmap_delta_from_assoc_list(assoc_list(var, inst), instmap_delta).
 :- mode instmap_delta_from_assoc_list(in, out) is det.
 
+:- pred instmap_delta_from_mode_list(list(var), list(mode),
+		module_info, instmap_delta).
+:- mode instmap_delta_from_mode_list(in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% Return the set of variables in an instmap.
@@ -117,17 +121,31 @@
 :- pred instmap__lookup_vars(list(var), instmap, list(inst)).
 :- mode instmap__lookup_vars(in, in, out) is det.
 
-	% Set an entry in an instmap.
-	%
-:- pred instmap__set(instmap, var, inst, instmap).
-:- mode instmap__set(in, in, in, out) is det.
-
 	% Insert an entry into an instmap_delta.  Note that you
 	% cannot call instmap_delta_insert for a variable already
 	% present.
 	%
 :- pred instmap_delta_insert(instmap_delta, var, inst, instmap_delta).
 :- mode instmap_delta_insert(in, in, in, out) is det.
+
+	% Set an entry in an instmap.
+	%
+:- pred instmap__set(instmap, var, inst, instmap).
+:- mode instmap__set(in, in, in, out) is det.
+
+:- pred instmap_delta_set(instmap_delta, var, inst, instmap_delta).
+:- mode instmap_delta_set(in, in, in, out) is det.
+
+	% Bind a variable in an instmap to a functor at the beginning
+	% of a case in a switch.
+	% (note: cons_id_to_const must succeed given the cons_id).
+:- pred instmap_delta_bind_var_to_functor(var, cons_id, instmap,
+		instmap_delta, instmap_delta, module_info, module_info).
+:- mode instmap_delta_bind_var_to_functor(in, in, in, in, out, in, out) is det.
+
+:- pred instmap__bind_var_to_functor(var, cons_id,
+		instmap, instmap, module_info, module_info).
+:- mode instmap__bind_var_to_functor(in, in, in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -189,10 +207,13 @@
 :- pred instmap__no_output_vars(instmap, instmap_delta, set(var), module_info).
 :- mode instmap__no_output_vars(in, in, in, in) is semidet.
 
-	% merge_instmap_delta
-:- pred merge_instmap_delta(instmap_delta, instmap_delta, instmap_delta,
-				module_info, module_info).
-:- mode merge_instmap_delta(in, in, out, in, out) is det.
+	% merge_instmap_delta(InitialInstMap, NonLocals,
+	%	InstMapDeltaA, InstMapDeltaB, ModuleInfo0, ModuleInfo)
+	% Merge the instmap_deltas of different branches of an ite, disj
+	% or switch.
+:- pred merge_instmap_delta(instmap, set(var), instmap_delta, instmap_delta,
+		instmap_delta, module_info, module_info).
+:- mode merge_instmap_delta(in, in, in, in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -205,6 +226,9 @@
 :- pred instmap_delta_apply_sub(instmap_delta, bool, map(var, var),
 		instmap_delta).
 :- mode instmap_delta_apply_sub(in, in, in, out) is det.
+
+:- pred instmap__apply_sub(instmap, bool, map(var, var), instmap).
+:- mode instmap__apply_sub(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -220,7 +244,8 @@
 :- implementation.
 
 :- import_module mode_util, inst_match, prog_data, mode_errors, goal_util.
-:- import_module std_util, bool, map, set, assoc_list, require.
+:- import_module hlds_data.
+:- import_module list, std_util, bool, map, set, assoc_list, require.
 
 :- type instmap_delta	==	instmap.
 
@@ -260,6 +285,34 @@ instmap__from_assoc_list(AL, reachable(Instmapping)) :-
 
 instmap_delta_from_assoc_list(AL, reachable(Instmapping)) :-
 	map__from_assoc_list(AL, Instmapping).
+
+%-----------------------------------------------------------------------------%
+
+instmap_delta_from_mode_list(Var, Modes, ModuleInfo, InstMapDelta) :-
+	instmap_delta_init_reachable(InstMapDelta0),
+	instmap_delta_from_mode_list_2(Var, Modes, ModuleInfo,
+		InstMapDelta0, InstMapDelta).
+	
+:- pred instmap_delta_from_mode_list_2(list(var), list(mode),
+		module_info, instmap_delta, instmap_delta).
+:- mode instmap_delta_from_mode_list_2(in, in, in, in, out) is det.
+
+instmap_delta_from_mode_list_2([], [], _, InstMapDelta, InstMapDelta).
+instmap_delta_from_mode_list_2([], [_|_], _, _, _) :-
+	error("instmap_delta_from_mode_list_2").
+instmap_delta_from_mode_list_2([_|_], [], _, _, _) :-
+	error("instmap_delta_from_mode_list_2").
+instmap_delta_from_mode_list_2([Var | Vars], [Mode | Modes], ModuleInfo,
+		InstMapDelta0, InstMapDelta) :-
+	mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
+	( Inst1 = Inst2 ->
+		instmap_delta_from_mode_list_2(Vars, Modes, ModuleInfo,
+			InstMapDelta0, InstMapDelta)
+	;
+		instmap_delta_set(InstMapDelta0, Var, Inst2, InstMapDelta1),
+		instmap_delta_from_mode_list_2(Vars, Modes, ModuleInfo,
+			InstMapDelta1, InstMapDelta)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -309,10 +362,71 @@ instmap__set(reachable(InstMapping0), Var, Inst,
 		reachable(InstMapping)) :-
 	map__set(InstMapping0, Var, Inst, InstMapping).
 
+instmap_delta_set(unreachable, _Var, _Inst, unreachable).
+instmap_delta_set(reachable(InstMapping0), Var, Inst,
+		reachable(InstMapping)) :-
+	map__set(InstMapping0, Var, Inst, InstMapping).
+
 instmap_delta_insert(unreachable, _Var, _Inst, unreachable).
 instmap_delta_insert(reachable(InstMapping0), Var, Inst,
 		reachable(InstMapping)) :-
 	map__det_insert(InstMapping0, Var, Inst, InstMapping).
+
+%-----------------------------------------------------------------------------%
+
+instmap_delta_bind_var_to_functor(Var, ConsId, InstMap,
+		InstmapDelta0, InstmapDelta, ModuleInfo0, ModuleInfo) :-
+	( 
+		InstmapDelta0 = unreachable,
+		InstmapDelta = unreachable,
+		ModuleInfo = ModuleInfo0
+	;
+		InstmapDelta0 = reachable(InstmappingDelta0),
+		( map__search(InstmappingDelta0, Var, Inst0) ->
+			Inst1 = Inst0
+		;
+			instmap__lookup_var(InstMap, Var, Inst1)
+		),
+		bind_inst_to_functor(Inst1, ConsId, Inst,
+			ModuleInfo0, ModuleInfo),
+		( Inst \= Inst1 ->
+			instmap_delta_set(InstmapDelta0, Var,
+				Inst, InstmapDelta)
+		;
+			InstmapDelta = InstmapDelta0
+		)
+	).
+
+instmap__bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
+		ModuleInfo0, ModuleInfo) :-
+	instmap__lookup_var(InstMap0, Var, Inst0),
+	bind_inst_to_functor(Inst0, ConsId, Inst, ModuleInfo0, ModuleInfo),
+	instmap__set(InstMap0, Var, Inst, InstMap).
+
+:- pred bind_inst_to_functor((inst), cons_id, (inst),
+		module_info, module_info). 
+:- mode bind_inst_to_functor(in, in, out, in, out) is det.
+
+bind_inst_to_functor(Inst0, ConsId, Inst, ModuleInfo0, ModuleInfo) :-
+	( cons_id_to_const(ConsId, Name1, Arity) ->
+		list__duplicate(Arity, dead, ArgLives),
+		list__duplicate(Arity, free, ArgInsts),
+		Name = Name1
+	;
+		error("bind_inst_to_functor: cons_id to const failed")
+	),
+	(
+		abstractly_unify_inst_functor(dead, Inst0, Name, ArgInsts, 
+			ArgLives, real_unify, ModuleInfo0, Inst1, ModuleInfo1)
+	->
+		ModuleInfo = ModuleInfo1,
+		Inst = Inst1
+	;
+		error("bind_inst_to_functor: mode error")
+	).
+
+%-----------------------------------------------------------------------------%
+
 
 %-----------------------------------------------------------------------------%
 
@@ -517,51 +631,61 @@ instmap__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% Given two instmap deltas, merge them to produce a new instmap.
+	% Given two instmap deltas, merge them to produce a new instmap_delta.
 
-merge_instmap_delta(unreachable, InstMap, InstMap) --> [].
-merge_instmap_delta(reachable(InstMapping), unreachable,
+merge_instmap_delta(_, _, unreachable, InstMapDelta, InstMapDelta) --> [].
+merge_instmap_delta(_, _, reachable(InstMapping), unreachable,
 				reachable(InstMapping)) --> [].
-merge_instmap_delta(reachable(InstMappingA), reachable(InstMappingB),
-			reachable(InstMapping)) -->
-	merge_instmapping_delta(InstMappingA, InstMappingB, InstMapping).
+merge_instmap_delta(InstMap, NonLocals, reachable(InstMappingA),
+		reachable(InstMappingB), reachable(InstMapping)) -->
+	merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
+		InstMappingB, InstMapping).
 
-:- pred merge_instmapping_delta(instmapping, instmapping, instmapping,
-				module_info, module_info).
-:- mode merge_instmapping_delta(in, in, out, in, out) is det.
+:- pred merge_instmapping_delta(instmap, set(var), instmapping, instmapping,
+		instmapping, module_info, module_info).
+:- mode merge_instmapping_delta(in, in, in, in, out, in, out) is det.
 
-merge_instmapping_delta(InstMappingA, InstMappingB, InstMapping) -->
+merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
+		InstMappingB, InstMapping) -->
 	{ map__keys(InstMappingA, VarsInA) },
-	merge_instmapping_delta_2(VarsInA, InstMappingA, InstMappingB,
-		InstMapping).
+	{ map__keys(InstMappingB, VarsInB) },
+	{ set__sorted_list_to_set(VarsInA, SetofVarsInA) },
+	{ set__insert_list(SetofVarsInA, VarsInB, SetofVars0) },
+	{ set__intersect(SetofVars0, NonLocals, SetofVars) },
+	{ map__init(InstMapping0) },
+	{ set__to_sorted_list(SetofVars, ListofVars) },
+	merge_instmapping_delta_2(ListofVars, InstMap, InstMappingA,
+		InstMappingB, InstMapping0, InstMapping).
 
-:- pred merge_instmapping_delta_2(list(var), instmapping, instmapping,
-				instmapping, module_info, module_info).
-:- mode merge_instmapping_delta_2(in, in, in, out, in, out) is det.
+:- pred merge_instmapping_delta_2(list(var), instmap, instmapping, instmapping,
+			instmapping, instmapping, module_info, module_info).
+:- mode merge_instmapping_delta_2(in, in, in, in, in, out, in, out) is det.
 
-merge_instmapping_delta_2([], _, InstMapping, InstMapping, ModInfo, ModInfo).
-merge_instmapping_delta_2([Var | Vars], MergeInstMapping, InstMapping0,
-			InstMapping, ModuleInfo0, ModuleInfo) :-
-	map__lookup(MergeInstMapping, Var, MergeInst),
-	( map__search(InstMapping0, Var, Inst0) ->
-	    ( inst_merge(Inst0, MergeInst, ModuleInfo0, Inst, ModuleInfoPrime) ->
-		ModuleInfo1 = ModuleInfoPrime,
-		map__det_update(InstMapping0, Var, Inst, InstMapping1)
-	    ;
-		error("merge_instmapping_delta_2: unexpected mode error")
-	    )
+merge_instmapping_delta_2([], _, _, _, InstMapping, InstMapping,
+		ModInfo, ModInfo).
+merge_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
+			InstMapping0, InstMapping, ModuleInfo0, ModuleInfo) :-
+	( map__search(InstMappingA, Var, InstInA) ->
+		InstA = InstInA
 	;
-	    % if a variable only occurs in one of the instmap deltas,
-	    % then mode correctness means that the delta must be adding
-	    % information only, not binding the variable any further;
-	    % since we don't know which path will actually get executed,
-	    % we should not add that information - the merged delta should
-	    % not have any entry for that variable.
-	    ModuleInfo1 = ModuleInfo0,
-	    InstMapping1 = InstMapping0
+		instmap__lookup_var(InstMap, Var, InstA)
 	),
-	merge_instmapping_delta_2(Vars, MergeInstMapping, InstMapping1,
-				InstMapping, ModuleInfo1, ModuleInfo).
+	( map__search(InstMappingB, Var, InstInB) ->
+		InstB = InstInB
+	;
+		instmap__lookup_var(InstMap, Var, InstB)
+	),
+	(
+		inst_merge(InstA, InstB, ModuleInfo0,
+			Inst, ModuleInfoPrime)
+	->
+		ModuleInfo1 = ModuleInfoPrime,
+		map__det_insert(InstMapping0, Var, Inst, InstMapping1)
+	;
+		error("merge_instmapping_delta_2: unexpected mode error")
+	),
+	merge_instmapping_delta_2(Vars, InstMap, InstMappingA, InstMappingB,
+		InstMapping1, InstMapping, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -573,6 +697,9 @@ instmap_delta_apply_sub(reachable(OldInstMapping), Must, Sub,
 	map__init(InstMapping0),
 	instmap_delta_apply_sub_2(InstMappingAL, Must, Sub,
 		InstMapping0, InstMapping).
+
+instmap__apply_sub(InstMap0, Must, Sub, InstMap) :-
+	instmap_delta_apply_sub(InstMap0, Must, Sub, InstMap).
 
 :- pred instmap_delta_apply_sub_2(assoc_list(var, inst), bool, map(var, var),
 		instmapping, instmapping).

@@ -152,6 +152,10 @@ a variable live if its value will be used later on in the computation.
 			io__state, io__state).
 :- mode modecheck_proc(in, in, in, out, out, di, uo) is det.
 
+:- pred modecheck_proc_info(proc_id, pred_id, module_info, proc_info,
+		module_info, proc_info, int, io__state, io__state).
+:- mode modecheck_proc_info(in, in, in, in, out, out, out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 % The following predicates are used by unique_modes.m.
@@ -454,6 +458,11 @@ modecheck_proc_2(ProcId, PredId, ModuleInfo0, Changed0,
 		{ map__set(Preds1, PredId, PredInfo, Preds) },
 		{ module_info_set_preds(ModuleInfo1, Preds, ModuleInfo) }
 	).
+
+modecheck_proc_info(ProcId, PredId, ModuleInfo0, ProcInfo0,
+		ModuleInfo, ProcInfo, NumErrors) -->
+	modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, no,
+		ModuleInfo, ProcInfo, _Changed, NumErrors).
 
 :- pred modecheck_proc_3(proc_id, pred_id, module_info, proc_info, bool,
 			module_info, proc_info, bool, int,
@@ -1067,8 +1076,10 @@ modecheck_case_list([Case0 | Cases0], Var,
 		[]
 	),
 
-	modecheck_goal(Goal0, Goal),
+	modecheck_goal(Goal0, Goal1),
 	mode_info_dcg_get_instmap(InstMap),
+	% Don't lose the information added by the functor test above.
+	{ fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal) },
 	mode_info_set_instmap(InstMap0),
 	modecheck_case_list(Cases0, Var, Cases, InstMaps).
 

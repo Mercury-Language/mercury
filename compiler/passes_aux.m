@@ -24,7 +24,7 @@
 				pred_id, proc_id, module_info,
 				proc_info, proc_info, io__state, io__state))
 		;	update_proc_error(pred(
-				pred_id, proc_id, module_info,
+				pred_id, proc_id, module_info, module_info,
 				proc_info, proc_info, int, int,
 				io__state, io__state))
 		;	update_module(pred(
@@ -37,8 +37,8 @@
 
 :- inst task =	bound(( update_proc(pred(in, in, out) is det)
 		;	update_proc_io(pred(in, in, in, in, out, di, uo) is det)
-		;	update_proc_error(pred(in, in, in, in, out, out, out,
-				di, uo) is det)
+		;	update_proc_error(pred(in, in, in, out, in, out,
+				out, out, di, uo) is det)
 		;	update_module(pred(in, out, in, out) is det)
 		;	update_module_cookie(pred(in, in, in, out, in, out,
 				in, out) is det, ground)
@@ -153,7 +153,7 @@ process__nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 		Task1 = Task0
 	;
 		Task0 = update_proc_error(Closure),
-		call(Closure, PredId, ProcId, ModuleInfo0,
+		call(Closure, PredId, ProcId, ModuleInfo0, ModuleInfo1,
 			Proc0, Proc, WarnCnt, ErrCnt, State0, State1),
 		globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn,
 			State1, State9),
@@ -166,9 +166,9 @@ process__nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 				HaltAtWarn = yes
 			)
 		->
-			module_info_incr_errors(ModuleInfo0, ModuleInfo8)
+			module_info_incr_errors(ModuleInfo1, ModuleInfo8)
 		;
-			ModuleInfo8 = ModuleInfo0
+			ModuleInfo8 = ModuleInfo1
 		)
 	;
 		Task0 = update_module_cookie(Closure, Cookie0),

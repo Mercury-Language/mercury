@@ -32,7 +32,7 @@
 		% Initially only the sym_name and arguments
 		% are filled in. Type analysis fills in the
 		% pred_id. Mode analysis fills in the
-		% proc_id and the is_builtin field.
+		% proc_id and the builtin_state field.
 
 	;	call(
 			pred_id,	% which predicate are we calling?
@@ -575,6 +575,18 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred disj_list_to_goal(list(hlds__goal), hlds__goal_info, hlds__goal).
 :- mode disj_list_to_goal(in, in, out) is det.
 
+	% Takes a goal and a list of goals, and conjoins them
+	% (with a potentially blank goal_info).
+
+:- pred conjoin_goal_and_goal_list(hlds__goal, list(hlds__goal),
+	hlds__goal).
+:- mode conjoin_goal_and_goal_list(in, in, out) is det.
+
+	% Conjoin two goals (with a potentially blank goal_info).
+	
+:- pred conjoin_goals(hlds__goal, hlds__goal, hlds__goal).
+:- mode conjoin_goals(in, in, out) is det.
+
 	% A goal is atomic iff it doesn't contain any sub-goals
 	% (except possibly goals inside lambda expressions --
 	% but lambda expressions will get transformed into separate
@@ -779,6 +791,24 @@ disj_list_to_goal(DisjList, GoalInfo, Goal) :-
 		Goal = disj(DisjList, Empty) - GoalInfo
 	).
 
+conjoin_goal_and_goal_list(Goal0, Goals, Goal) :-
+	Goal0 = GoalExpr0 - GoalInfo0,
+	( GoalExpr0 = conj(GoalList0) ->
+		list__append(GoalList0, Goals, GoalList),
+		GoalExpr = conj(GoalList)
+	;
+		GoalExpr = conj([Goal0 | Goals])
+	),
+	Goal = GoalExpr - GoalInfo0.
+
+conjoin_goals(Goal1, Goal2, Goal) :-
+	( Goal2 = conj(Goals2) - _ ->
+		GoalList = Goals2
+	;
+		GoalList = [Goal2]
+	),
+	conjoin_goal_and_goal_list(Goal1, GoalList, Goal).
+	
 %-----------------------------------------------------------------------------%
 
 goal_is_atomic(conj([])).

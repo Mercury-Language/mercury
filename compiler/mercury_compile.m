@@ -33,8 +33,8 @@
 :- import_module make_hlds, typecheck, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module simplify, intermod, bytecode_gen, bytecode, (lambda).
-:- import_module polymorphism, intermod, higher_order, inlining, common, dnf.
-:- import_module constraint, unused_args, dead_proc_elim, excess, saved_vars.
+:- import_module polymorphism, intermod, higher_order, inlining, dnf.
+:- import_module constraint, unused_args, dead_proc_elim, saved_vars.
 :- import_module lco, liveness, stratify.
 :- import_module follow_code, live_vars, arg_info, store_alloc.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
@@ -208,7 +208,7 @@ mercury_compile(Module, FactDeps) -->
 	    globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly),
 	    globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
 	    globals__io_lookup_bool_option(make_optimization_interface,
-	    	MakeOptInt),
+		MakeOptInt),
 	    ( { TypeCheckOnly = yes } ->
 		[]
 	    ; { ErrorCheckOnly = yes } ->
@@ -248,12 +248,12 @@ mercury_compile(Module, FactDeps) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__pre_hlds_pass(module_imports, list(string), 
+:- pred mercury_compile__pre_hlds_pass(module_imports, list(string),
 		module_info, bool, bool, bool, io__state, io__state).
-:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out, 
+:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out,
 		di, uo) is det.
 
-mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes, 
+mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
 		UndefModes, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
@@ -399,20 +399,17 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		{ HLDS = HLDS3 },
 		{ FoundError = FoundTypeError }
 	    ;
-		globals__io_lookup_bool_option(make_optimization_interface,
-							MakeOptInt),
-		( { MakeOptInt = yes }, { FoundTypeError = no } ->
-			intermod__write_optfile(HLDS3),
-			{ FoundError = no },
-			{ HLDS = HLDS3 }
-		;
+		( { FoundTypeError = no } ->
+		    mercury_compile__maybe_write_optfile(MakeOptInt,
+		    		HLDS3, HLDS4),
+		    ( { MakeOptInt = no } ->
 			%
 			% We can't continue after an undefined insts/mode
 			% error, since mode analysis would get internal errors
 			%
 			( { FoundUndefModeError = yes } ->
 			    { FoundError = yes },
-			    { HLDS = HLDS3 },
+			    { HLDS = HLDS4 },
 			    maybe_write_string(Verbose,
 		"% Program contains undefined inst or undefined mode error(s).\n"),
 			    io__set_exit_status(1)
@@ -421,13 +418,52 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 			    % Now go ahead and do the rest of mode checking and
 			    % determinism analysis
 			    %
-			    mercury_compile__frontend_pass_2_by_phases(HLDS3,
+			    mercury_compile__frontend_pass_2_by_phases(HLDS4,
 			    		HLDS, FoundModeOrDetError),
 			    { bool__or(FoundTypeError, FoundModeOrDetError,
 					FoundError) }
 			)
+		    ;
+		    	{ HLDS = HLDS4 },
+		    	{ FoundError = FoundTypeError }
+		    )
+		;
+			{ FoundError = yes },
+			{ HLDS = HLDS3 }
 		)
 	    )
+	).
+
+
+
+:- pred mercury_compile__maybe_write_optfile(bool::out, module_info::in,
+		module_info::out, io__state::di, io__state::uo) is det.
+
+mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(make_optimization_interface,
+		MakeOptInt),
+	globals__io_lookup_bool_option(intermod_unused_args, IntermodArgs),
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
+	( { MakeOptInt = yes } ->
+		intermod__write_optfile(HLDS0, HLDS1),
+		( { IntermodArgs = yes } ->
+			mercury_compile__frontend_pass_2_by_phases(
+				HLDS1, HLDS2, FoundModeError),
+			( { FoundModeError = no } ->
+				mercury_compile__maybe_polymorphism(HLDS2,
+					Verbose, Stats, HLDS3),
+				mercury_compile__maybe_unused_args(HLDS3,
+					Verbose, Stats, HLDS)
+			;
+				io__set_exit_status(1),
+				{ HLDS = HLDS2 }
+			)
+		;
+			{ HLDS = HLDS1 }
+		)
+	;
+		{ HLDS = HLDS0 }
 	).
 
 :- pred mercury_compile__frontend_pass_2(module_info, module_info,
@@ -481,9 +517,12 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 		
 		mercury_compile__check_stratification(HLDS9, Verbose, Stats, 
 			HLDS10, FoundStratError),
-		mercury_compile__maybe_dump_hlds(HLDS10, "10", "stratification"),
+		mercury_compile__maybe_dump_hlds(HLDS10, "10",
+			"stratification"),
 
-		mercury_compile__simplify(HLDS10, Verbose, Stats, HLDS11),
+		globals__io_lookup_bool_option(warn_simple_code, Warn),
+		mercury_compile__simplify(HLDS10, Warn, no,
+			Verbose, Stats, HLDS11),
 		mercury_compile__maybe_dump_hlds(HLDS11, "11", "simplify"),
 
 		%
@@ -498,7 +537,9 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 			{ FoundError = no },
 			globals__io_lookup_bool_option(intermodule_optimization,
 								Intermod),
-			{ Intermod = yes ->
+			globals__io_lookup_bool_option(
+				make_optimization_interface, MakeOptInt),
+			{ Intermod = yes, MakeOptInt = no ->
 				intermod__adjust_pred_import_status(HLDS11,
 					HLDS12)
 			;
@@ -535,10 +576,7 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__maybe_excess_assigns(HLDS25, Verbose, Stats, HLDS26),
-	mercury_compile__maybe_dump_hlds(HLDS26, "26", "excessassign"),
-
-	mercury_compile__maybe_polymorphism(HLDS26, Verbose, Stats, HLDS28),
+	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS28),
 	mercury_compile__maybe_dump_hlds(HLDS28, "28", "polymorphism"),
 
 	mercury_compile__maybe_base_type_infos(HLDS28, Verbose, Stats, HLDS29),
@@ -555,12 +593,9 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	mercury_compile__maybe_do_inlining(HLDS31, Verbose, Stats, HLDS34),
 	mercury_compile__maybe_dump_hlds(HLDS34, "34", "inlining"),
 
-	mercury_compile__maybe_common_struct(HLDS34, Verbose, Stats, HLDS37),
-	mercury_compile__maybe_dump_hlds(HLDS37, "37", "common"),
-
 	% dnf transformations should be after inlining
 	% magic sets transformations should be before constraints
-	mercury_compile__maybe_transform_dnf(HLDS37, Verbose, Stats, HLDS38),
+	mercury_compile__maybe_transform_dnf(HLDS34, Verbose, Stats, HLDS38),
 	mercury_compile__maybe_dump_hlds(HLDS38, "38", "dnf"),
 
 	mercury_compile__maybe_constraints(HLDS38, Verbose, Stats, HLDS40),
@@ -614,8 +649,8 @@ mercury_compile__backend_pass_by_phases(HLDS50, HLDS99, LLDS) -->
 	mercury_compile__maybe_followcode(HLDS50, Verbose, Stats, HLDS52),
 	mercury_compile__maybe_dump_hlds(HLDS52, "52", "followcode"),
 
-	mercury_compile__maybe_excess_assigns(HLDS52, Verbose, Stats, HLDS53),
-	mercury_compile__maybe_dump_hlds(HLDS53, "53", "excessassign"),
+	mercury_compile__simplify(HLDS52, no, yes, Verbose, Stats, HLDS53),
+	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"),
 
 	mercury_compile__maybe_saved_vars(HLDS53, Verbose, Stats, HLDS56),
 	mercury_compile__maybe_dump_hlds(HLDS56, "56", "savedvars"),
@@ -722,11 +757,11 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		{ ModuleInfo1 = ModuleInfo0 }
 	),
 	globals__io_lookup_bool_option(excess_assign, ExcessAssign),
-	( { ExcessAssign = yes } ->
-		{ excess_assignments_proc(ProcInfo1, ModuleInfo1, ProcInfo2) }
-	;
-		{ ProcInfo2 = ProcInfo1 }
-	),
+	globals__io_lookup_bool_option(common_struct, Common),
+	globals__io_lookup_bool_option(optimize_duplicate_calls, Calls),
+	simplify__proc(simplify(no, yes, yes, Common, ExcessAssign, Calls),
+		PredId, ProcId, ModuleInfo1, ModuleInfo2,
+		ProcInfo1, ProcInfo2, _, _),
 	globals__io_lookup_bool_option(optimize_saved_vars, SavedVars),
 	( { SavedVars = yes } ->
 		saved_vars_proc(PredId, ProcId, ModuleInfo1,
@@ -734,15 +769,15 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	;
 		{ ProcInfo3 = ProcInfo2 }
 	),
-	detect_liveness_proc(PredId, ProcId, ModuleInfo1, ProcInfo3, ProcInfo4),
-	{ allocate_stack_slots_in_proc(ProcInfo4, ModuleInfo1, ProcInfo5) },
-	{ store_alloc_in_proc(ProcInfo5, ModuleInfo1, ProcInfo6) },
-	{ module_info_get_shapes(ModuleInfo1, Shapes0) },
-	{ module_info_get_cell_count(ModuleInfo1, CellCount0) },
-	generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo1,
+	detect_liveness_proc(PredId, ProcId, ModuleInfo2, ProcInfo3, ProcInfo4),
+	{ allocate_stack_slots_in_proc(ProcInfo4, ModuleInfo2, ProcInfo5) },
+	{ store_alloc_in_proc(ProcInfo5, ModuleInfo2, ProcInfo6) },
+	{ module_info_get_shapes(ModuleInfo2, Shapes0) },
+	{ module_info_get_cell_count(ModuleInfo2, CellCount0) },
+	generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo2,
 		Shapes0, CellCount0, Shapes, CellCount, Proc0),
-	{ module_info_set_shapes(ModuleInfo1, Shapes, ModuleInfo2) },
-	{ module_info_set_cell_count(ModuleInfo2, CellCount, ModuleInfo) },
+	{ module_info_set_shapes(ModuleInfo2, Shapes, ModuleInfo3) },
+	{ module_info_set_cell_count(ModuleInfo3, CellCount, ModuleInfo) },
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->
 		optimize__proc(Proc0, Proc)
@@ -879,15 +914,19 @@ mercury_compile__check_stratification(HLDS0, Verbose, Stats, HLDS,
 		{ HLDS = HLDS0 }
 	).
 
-:- pred mercury_compile__simplify(module_info, bool, bool, module_info,
-	io__state, io__state).
-:- mode mercury_compile__simplify(in, in, in, out, di, uo) is det.
+:- pred mercury_compile__simplify(module_info, bool, bool, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__simplify(in, in, in, in, in, out, di, uo) is det.
 
-mercury_compile__simplify(HLDS0, Verbose, Stats, HLDS) -->
+mercury_compile__simplify(HLDS0, Warn, Once, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Simplifying goals...\n"),
 	maybe_flush_output(Verbose),
+	globals__io_lookup_bool_option(common_struct, Common),
+	globals__io_lookup_bool_option(excess_assign, Excess),
+	globals__io_lookup_bool_option(optimize_duplicate_calls, Calls),
+	{ Simplify = simplify(Warn, Once, yes, Common, Excess, Calls) },
 	process_all_nonimported_procs(
-		update_proc_error(simplify__proc),
+		update_proc_error(simplify__proc(Simplify)),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, "% done\n"),
 	maybe_report_stats(Stats).
@@ -1093,23 +1132,6 @@ mercury_compile__maybe_do_inlining(HLDS0, Verbose, Stats, HLDS) -->
 		{ HLDS = HLDS0 }
 	).
 
-:- pred mercury_compile__maybe_common_struct(module_info, bool, bool,
-	module_info, io__state, io__state).
-:- mode mercury_compile__maybe_common_struct(in, in, in, out, di, uo)
-	is det.
-
-mercury_compile__maybe_common_struct(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_lookup_bool_option(common_struct, CommonStruct),
-	( { CommonStruct = yes } ->
-		maybe_write_string(Verbose, "% Detecting common structures..."),
-		maybe_flush_output(Verbose),
-		{ common__optimise_common_subexpressions(HLDS0, HLDS) },
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Stats)
-	;
-		{ HLDS0 = HLDS }
-	).
-
 :- pred mercury_compile__maybe_transform_dnf(module_info, bool, bool,
 	module_info, io__state, io__state).
 :- mode mercury_compile__maybe_transform_dnf(in, in, in, out, di, uo) is det.
@@ -1148,9 +1170,10 @@ mercury_compile__maybe_constraints(HLDS0, Verbose, Stats, HLDS) -->
 :- mode mercury_compile__maybe_unused_args(in, in, in, out, di, uo) is det.
 
 mercury_compile__maybe_unused_args(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(intermod_unused_args, Intermod),
 	globals__io_lookup_bool_option(optimize_unused_args, Optimize),
 	globals__io_lookup_bool_option(warn_unused_args, Warn),
-	( { Optimize = yes; Warn = yes } ->
+	( { Optimize = yes; Warn = yes ; Intermod = yes } ->
 		maybe_write_string(Verbose, "% Finding unused arguments ...\n"),
 		maybe_flush_output(Verbose),
 		unused_args__process_module(HLDS0, HLDS),
@@ -1211,23 +1234,6 @@ mercury_compile__map_args_to_regs(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 
-:- pred mercury_compile__maybe_excess_assigns(module_info, bool, bool,
-	module_info, io__state, io__state).
-:- mode mercury_compile__maybe_excess_assigns(in, in, in, out, di, uo)
-	is det.
-
-mercury_compile__maybe_excess_assigns(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_lookup_bool_option(excess_assign, ExcessAssign),
-	( { ExcessAssign = yes } ->
-		maybe_write_string(Verbose, "% Removing excess assignments..."),
-		maybe_flush_output(Verbose),
-		process_all_nonimported_procs(update_proc(
-			excess_assignments_proc), HLDS0, HLDS),
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Stats)
-	;
-		{ HLDS0 = HLDS }
-	).
 
 :- pred mercury_compile__maybe_saved_vars(module_info, bool, bool,
 	module_info, io__state, io__state).

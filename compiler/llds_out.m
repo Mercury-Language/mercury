@@ -2052,7 +2052,22 @@ get_proc_label(special_proc(Module, PredName, TypeName0, TypeArity,
 	string__int_to_string(TypeArity, TypeArityString),
 	ModeNum is ModeNum0 mod 10000,		% strip off the priority
 	string__int_to_string(ModeNum, ModeNumString),
-	string__append_list( [LabelName, "_", TypeName, 
+	( 
+		ModeNum \= 0,	
+		PredName = "__Unify__",
+		TypeName0 = qualified(TypeModule, _),
+		Module \= TypeModule
+	->
+		% Avoid duplicate label names for unify preds for types
+		% from other modules. Compare and index preds and mode 0
+		% unify preds don't need special attention here because
+		% they are only generated in the same module as the type.
+		llds_out__name_mangle(Module, ExtraModule0),
+		string__append(ExtraModule0, "__", ExtraModule)
+	;
+		ExtraModule = ""
+	),
+	string__append_list( [LabelName, "_", ExtraModule, TypeName, 
 		"_", TypeArityString, "_", ModeNumString], 
 		ProcLabelString).
 
