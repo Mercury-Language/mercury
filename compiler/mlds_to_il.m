@@ -525,8 +525,8 @@ rename_code_addr(proc(Label, Signature))
 rename_code_addr(internal(Label, Seq, Signature))
 	= internal(rename_proc_label(Label), Seq, Signature).
 
-rename_proc_label(qual(Module, Name))
-	= qual(append_wrapper_class(Module), Name).
+rename_proc_label(qual(Module, _QualKind, Name))
+	= qual(append_wrapper_class(Module), type_qual, Name).
 
 :- func rename_lval(mlds__lval) = mlds__lval.
 
@@ -565,8 +565,8 @@ rename_data_addr(data_addr(ModuleName, Name))
 	% Again append a wrapper class qualifier to the var name.
 :- func rename_var(mlds__var, mlds__type) = mlds__var.
 
-rename_var(qual(ModuleName, Name), _Type)
-	= qual(append_wrapper_class(ModuleName), Name).
+rename_var(qual(ModuleName, _QualKind, Name), _Type)
+	= qual(append_wrapper_class(ModuleName), type_qual, Name).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1297,7 +1297,7 @@ mangle_dataname(tabling_pointer(_)) = _MangledName :-
 
 mlds_export_to_mlds_defn(
 	ml_pragma_export(ExportName, EntityName, Params, Context), Defn) :-
-	EntityName = qual(ModuleName, UnqualName),
+	EntityName = qual(ModuleName, _QualKind, UnqualName),
 
 	Params = mlds__func_params(Inputs, RetTypes),
 	list__map_foldl(
@@ -1310,12 +1310,12 @@ mlds_export_to_mlds_defn(
 			RV = ml_gen_mlds_var_decl(
 				var(VN), RT, no_initializer, GC_TraceCode,
 				Context),
-			Lval = var(qual(ModuleName, VN), RT)
+			Lval = var(qual(ModuleName, module_qual, VN), RT)
 		), RetTypes, ReturnVars, 0, _),
 
 	EntNameToVarName = (func(EntName) = VarName :-
 		( EntName = data(var(VarName0)) ->
-			VarName = qual(ModuleName, VarName0)
+			VarName = qual(ModuleName, module_qual, VarName0)
 		;
 			error("exported method has argument without var name")
 		)
@@ -1335,7 +1335,7 @@ mlds_export_to_mlds_defn(
 		UnqualName = function(PredLabel, ProcId, _MaybeSeq, _PredId)
 	->
 		CodeRval = const(code_addr_const(proc(
-			qual(ModuleName, PredLabel - ProcId),
+			qual(ModuleName, module_qual, PredLabel - ProcId),
 			Signature)))
 	;
 		error("exported entity is not a function")
@@ -1386,8 +1386,8 @@ generate_defn_initializer(defn(Name, Context, _DeclFlags, Entity),
 		;
 			( { DataName = var(VarName) } ->
 				il_info_get_module_name(ModuleName),
-				{ Lval = var(qual(ModuleName, VarName),
-					MLDSType) },
+				{ Lval = var(qual(ModuleName, module_qual,
+					VarName), MLDSType) },
 				get_load_store_lval_instrs(Lval,
 					LoadMemRefInstrs, StoreLvalInstrs),
 				{ NameString = mangle_mlds_var_name(VarName) }
@@ -1983,7 +1983,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
 			%
 		{ ClassName0 = mlds_type_to_ilds_class_name(DataRep, Type) },
 		( { MaybeCtorName = yes(QualifiedCtorName) } ->
-			{ QualifiedCtorName = qual(_,
+			{ QualifiedCtorName = qual(_, _,
 				ctor_id(CtorName, CtorArity)) },
 			{ CtorType = entity_name_to_ilds_id(
 				type(CtorName, CtorArity)) },
@@ -3131,8 +3131,8 @@ mercury_type_to_highlevel_class_type(MercuryType) = ILType :-
 :- func mlds_class_name_to_ilds_class_name(mlds__class, arity) =
 	ilds__class_name.
 
-mlds_class_name_to_ilds_class_name(
-		qual(MldsModuleName, MldsClassName0), Arity) = IldsClassName :-
+mlds_class_name_to_ilds_class_name(QualClassName, Arity) = IldsClassName :-
+	QualClassName = qual(MldsModuleName, _QualKind, MldsClassName0),
 	MldsClassName = string__format("%s_%d", [s(MldsClassName0), i(Arity)]),
 	IldsClassName = append_toplevel_class_name(
 		mlds_module_name_to_class_name(MldsModuleName), MldsClassName).
@@ -3279,7 +3279,7 @@ predlabel_to_id(special_pred(PredName, MaybeModuleName, TypeName, Arity),
 :- func make_static_fieldref(il_data_rep, mlds__var, mlds__type)
 	 = fieldref.
 make_static_fieldref(DataRep, Var, VarType) = FieldRef :-
-	Var = qual(ModuleName, VarName),
+	Var = qual(ModuleName, _QualKind, VarName),
 	mangle_mlds_var(Var, MangledVarStr),
 	mangle_dataname_module(yes(var(VarName)), ModuleName, NewModuleName),
 	ClassName = mlds_module_name_to_class_name(NewModuleName),
@@ -3383,7 +3383,7 @@ mangle_dataname(tabling_pointer(_), _MangledName) :-
 	error("unimplemented: mangling tabling_pointer").
 
 	% We turn procedures into methods of classes.
-mangle_mlds_proc_label(qual(ModuleName, PredLabel - ProcId), MaybeSeqNum,
+mangle_mlds_proc_label(qual(ModuleName, _, PredLabel - ProcId), MaybeSeqNum,
 		ClassName, PredStr) :-
 	ClassName = mlds_module_name_to_class_name(ModuleName),
 	predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, PredStr).
@@ -3402,7 +3402,7 @@ mangle_entity_name(export(_), _MangledName) :-
 	% Any valid Mercury identifier will be fine here too.
 	% We quote all identifiers before we output them, so
 	% even funny characters should be fine.
-mangle_mlds_var(qual(_ModuleName, VarName), Str) :-
+mangle_mlds_var(qual(_ModuleName, _, VarName), Str) :-
 	Str = mangle_mlds_var_name(VarName).
 
 :- func mangle_mlds_var_name(mlds__var_name) = string.
@@ -3502,7 +3502,7 @@ is_local(VarName, Info) :-
 is_local_field(Var, VarType, Info, FieldRef) :-
 	mangle_mlds_var(Var, VarName),
 	set__member(VarName, Info ^ field_names),
-	Var = qual(ModuleName, _),
+	Var = qual(ModuleName, _, _),
 	ClassName = mlds_module_name_to_class_name(ModuleName),
 	FieldRef = make_fieldref(
 			mlds_type_to_ilds_type(Info ^ il_data_rep, VarType),
@@ -3649,7 +3649,7 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType0,
 		),
 		CastClassInstrs = empty
 	;
-		FieldNum = named_field(qual(ModuleName, FieldId), _CtorType),
+		FieldNum = named_field(qual(ModuleName, _, FieldId), _CtorType),
 		% The MLDS doesn't record which qualifiers are class qualifiers
 		% and which are namespace qualifiers... we first generate
 		% a name for the CtorClass as if it wasn't nested, and then
@@ -3728,7 +3728,7 @@ defn_to_local(ModuleName,
 		Entity = mlds__data(MLDSType0, _Initializer, _GC_TraceCode)
 	->
 		mangle_dataname(DataName, MangledDataName),
-		mangle_mlds_var(qual(ModuleName,
+		mangle_mlds_var(qual(ModuleName, module_qual,
 			var_name(MangledDataName, no)), Id),
 		MLDSType0 = MLDSType
 	;

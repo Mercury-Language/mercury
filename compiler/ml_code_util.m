@@ -1364,7 +1364,7 @@ ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval, !Info) :-
 		),
 		Signature = mlds__func_signature(ArgTypes, [])
 	),
-	ProcLabel = qual(PredModule, PredLabel - ProcId),
+	ProcLabel = qual(PredModule, module_qual, PredLabel - ProcId),
 	FuncLabelRval = const(code_addr_const(internal(ProcLabel,
 		FuncLabel, Signature))).
 
@@ -1502,8 +1502,8 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
 		mercury_private_builtin_module(PrivateBuiltin),
 		MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
 		ml_gen_type(Info, Type, MLDS_Type),
-		Lval = var(qual(MLDS_Module, var_name("dummy_var", no)),
-			MLDS_Type)
+		Lval = var(qual(MLDS_Module, module_qual,
+			var_name("dummy_var", no)), MLDS_Type)
 	;
 		ml_gen_info_get_varset(Info, VarSet),
 		VarName = ml_gen_var_name(VarSet, Var),
@@ -1576,7 +1576,8 @@ ml_format_static_const_name(Info, BaseName, SequenceNum, ConstName) :-
 ml_gen_var_lval(Info, VarName, VarType, QualifiedVarLval) :-
 	ml_gen_info_get_module_name(Info, ModuleName),
 	MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-	QualifiedVarLval = var(qual(MLDS_Module, VarName), VarType).
+	QualifiedVarLval = var(qual(MLDS_Module, module_qual, VarName),
+		VarType).
 
 	% Generate a declaration for an MLDS variable, given its HLDS type.
 	%
@@ -1932,7 +1933,8 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
 	InnerFuncParams0 = func_params(InnerArgs0, Rets),
 	InnerArgRvals = list__map(
 		(func(mlds__argument(Data, Type, _GC) )
-				= lval(var(qual(MLDS_Module, VarName), Type)) :-
+				= lval(var(qual(MLDS_Module, module_qual,
+					VarName), Type)) :-
 			( Data = data(var(VarName0)) ->
 				VarName = VarName0
 			;
@@ -1947,8 +1949,8 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
 	PassedContGCTraceCode = no,
 	PassedContArg = mlds__argument(data(var(PassedContVarName)),
 		InnerFuncArgType, PassedContGCTraceCode),
-	InnerFuncRval = lval(var(qual(MLDS_Module, PassedContVarName),
-		InnerFuncArgType)),
+	InnerFuncRval = lval(var(qual(MLDS_Module, module_qual,
+		PassedContVarName), InnerFuncArgType)),
 	InnerFuncParams = func_params([PassedContArg | InnerArgs0],
 			Rets),
 
@@ -1968,7 +1970,8 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
 			defined_here(_), _))
 	->
 		% We call the proxy function.
-		QualProcLabel = qual(MLDS_Module, PredLabel - ProcId),
+		QualProcLabel = qual(MLDS_Module, module_qual,
+			PredLabel - ProcId),
 		ProxyFuncRval = const(code_addr_const(
 			internal(QualProcLabel, SeqNum, ProxySignature))),
 
@@ -2262,7 +2265,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
 	ProcId = hlds_pred__initial_proc_id,
 	mercury_private_builtin_module(PredModule),
 	MLDS_Module = mercury_module_name_to_mlds(PredModule),
-	Proc = qual(MLDS_Module, Pred - ProcId),
+	Proc = qual(MLDS_Module, module_qual, Pred - ProcId),
 	CPointerType = mercury_type(c_pointer_type, user_ctor_type,
 		non_foreign_type(c_pointer_type)),
 	ArgTypes = [mlds__pseudo_type_info_type, CPointerType],
@@ -2477,8 +2480,8 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
 		% atomic_statement occurs, rather than at the
 		% local variable declaration.
 		%
-		VarLval = mlds__var(qual(!.Fixup ^ module_name, VarName),
-			VarType),
+		VarLval = mlds__var(qual(!.Fixup ^ module_name, module_qual,
+				VarName), VarType),
 		PtrRval = mlds__unop(cast(PointerType), mem_addr(VarLval)),
 		list__map_foldl(
 			init_field_n(PointerType, PtrRval, Context),

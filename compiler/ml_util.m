@@ -182,9 +182,9 @@ can_optimize_tailcall(Name, Call) :-
 		CodeAddr = internal(QualifiedProcLabel, SeqNum, _Sig),
 		MaybeSeqNum = yes(SeqNum)
 	),
-	QualifiedProcLabel = qual(ModuleName, PredLabel - ProcId),
+	QualifiedProcLabel = qual(ModuleName, module_qual, PredLabel - ProcId),
 	% check that the module name matches
-	Name = qual(ModuleName, FuncName),
+	Name = qual(ModuleName, module_qual, FuncName),
 	% check that the PredLabel, ProcId, and MaybeSeqNum match
 	FuncName = function(PredLabel, ProcId, MaybeSeqNum, _),
 
@@ -432,8 +432,8 @@ target_code_component_contains_var(target_code_input(Rval), Name) :-
 target_code_component_contains_var(target_code_output(Lval), Name) :-
 	lval_contains_var(Lval, Name).
 target_code_component_contains_var(name(EntityName), DataName) :-
-	EntityName = qual(ModuleName, data(UnqualDataName)),
-	DataName = qual(ModuleName, UnqualDataName),
+	EntityName = qual(ModuleName, QualKind, data(UnqualDataName)),
+	DataName = qual(ModuleName, QualKind, UnqualDataName),
 	% this is a place where we can succeed
 	true.
 
@@ -571,7 +571,7 @@ rval_contains_var(mkword(_Tag, Rval), Name) :-
 rval_contains_var(const(Const), QualDataName) :-
 	Const = data_addr_const(DataAddr),
 	DataAddr = data_addr(ModuleName, DataName),
-	QualDataName = qual(ModuleName, DataName),
+	QualDataName = qual(ModuleName, _QualKind, DataName),
 	% this is a place where we can succeed
 	true.
 rval_contains_var(unop(_Op, Rval), Name) :-
@@ -591,8 +591,8 @@ lval_contains_var(field(_MaybeTag, Rval, _FieldId, _, _), Name) :-
 	rval_contains_var(Rval, Name).
 lval_contains_var(mem_ref(Rval, _Type), Name) :-
 	rval_contains_var(Rval, Name).
-lval_contains_var(var(qual(ModuleName, Name), _Type),
-		qual(ModuleName, var(Name))) :-
+lval_contains_var(var(qual(ModuleName, QualKind, Name), _Type),
+		qual(ModuleName, QualKind, var(Name))) :-
 	% this is another place where we can succeed
 	true.
 

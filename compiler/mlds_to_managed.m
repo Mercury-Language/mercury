@@ -655,7 +655,7 @@ write_lval(Lang, field(_, Rval, named_field(FieldId, _Type), _, _)) -->
 	write_rval(Lang, Rval),
 	io__write_string(")"),
 	write_field_selector(Lang),
-	{ FieldId = qual(_, FieldName) },
+	{ FieldId = qual(_, _, FieldName) },
 	io__write_string(FieldName).
 write_lval(Lang, field(_, Rval, offset(OffSet), _, _)) -->
 	io__write_string("("),
@@ -672,7 +672,7 @@ write_lval(Lang, mem_ref(Rval, _)) -->
 	),
 	write_rval(Lang, Rval).
 write_lval(_Lang, var(Var, _VarType)) -->
-	{ Var = qual(_, VarName) },
+	{ Var = qual(_, _, VarName) },
 	write_mlds_var_name_for_parameter(VarName).
 
 :- pred write_field_selector(foreign_language::in(managed_lang),

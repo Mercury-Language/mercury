@@ -1322,12 +1322,12 @@ no_clauses(PredName) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("Java", "
-    public static class ref_1
+    public static class Ref_1
     {
      	// XXX stub only
     }
 
-    public static class heap_pointer_0
+    public static class Heap_pointer_0
     {
      	// XXX stub only
     }
@@ -1400,8 +1400,8 @@ no_clauses(PredName) :-
 
 	public static boolean
 	__Unify____ref_1_0(mercury.runtime.TypeInfo_Struct ti,
-		mercury.private_builtin.ref_1 x,
-		mercury.private_builtin.ref_1 y)
+		mercury.private_builtin.Ref_1 x,
+		mercury.private_builtin.Ref_1 y)
 	{
 		// stub only
 		throw new java.lang.Error
@@ -1409,8 +1409,8 @@ no_clauses(PredName) :-
 	}
 
 	public static boolean
-	__Unify____heap_pointer_0_0 (mercury.private_builtin.heap_pointer_0 x,
-		mercury.private_builtin.heap_pointer_0 y)
+	__Unify____heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
+		mercury.private_builtin.Heap_pointer_0 y)
 	{
 		// stub only
 		throw new java.lang.Error(""unify/2 for type heap_pointer/0"");
@@ -1453,25 +1453,25 @@ no_clauses(PredName) :-
 			(""unify/2 for type typeclass_info/1"");
 	}
 
-	public static mercury.builtin.comparison_result_0
+	public static mercury.builtin.Comparison_result_0
 	__Compare____ref_1_0(mercury.runtime.TypeInfo_Struct ti,
-		mercury.private_builtin.ref_1 x,
-		mercury.private_builtin.ref_1 y)
+		mercury.private_builtin.Ref_1 x,
+		mercury.private_builtin.Ref_1 y)
 	{
 		// stub only
 		throw new java.lang.Error
 		    (""called compare/3 for type private_builtin.ref"");
 	}
 
-	public static mercury.builtin.comparison_result_0
-	__Compare____heap_pointer_0_0 (mercury.private_builtin.heap_pointer_0 x,
-		mercury.private_builtin.heap_pointer_0 y)
+	public static mercury.builtin.Comparison_result_0
+	__Compare____heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
+		mercury.private_builtin.Heap_pointer_0 y)
 	{
 		// stub only
 		throw new java.lang.Error(""compare/2 for type heap_pointer/0"");
 	}
 
-	public static mercury.builtin.comparison_result_0
+	public static mercury.builtin.Comparison_result_0
 	__Compare____type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
 		mercury.runtime.TypeCtorInfo_Struct x,
 		mercury.runtime.TypeCtorInfo_Struct y)
@@ -1481,7 +1481,7 @@ no_clauses(PredName) :-
 			(""compare/2 for type type_ctor_info/1"");
 	}
 
-	public static mercury.builtin.comparison_result_0
+	public static mercury.builtin.Comparison_result_0
 	__Compare____type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
 		mercury.runtime.TypeInfo_Struct x,
 		mercury.runtime.TypeInfo_Struct y)
@@ -1491,7 +1491,7 @@ no_clauses(PredName) :-
 			(""compare/2 for type type_info/1"");
 	}
 
-	public static mercury.builtin.comparison_result_0
+	public static mercury.builtin.Comparison_result_0
 	__Compare____base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
 		java.lang.Object[] x, java.lang.Object[] y)
 	{
@@ -1499,7 +1499,7 @@ no_clauses(PredName) :-
 		throw new java.lang.Error(""compare/2 for type typeclass_info/1"");
 	}
 
-	public static mercury.builtin.comparison_result_0
+	public static mercury.builtin.Comparison_result_0
 	__Compare____typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
 		java.lang.Object[] x, java.lang.Object[] y)
 	{

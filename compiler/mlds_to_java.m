@@ -113,7 +113,7 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_io.
 
-:- import_module bool, int, string, library, list, map, set.
+:- import_module bool, int, char, string, library, list, map, set.
 :- import_module assoc_list, term, std_util, require.
 
 %-----------------------------------------------------------------------------%
@@ -283,26 +283,36 @@ reverse_string(String0, String) :-
 	string__to_char_list(String0, String1),
 	string__from_rev_char_list(String1, String).
 
-:- pred mangle_mlds_sym_name_for_java(sym_name::in, string::in,
+:- pred mangle_mlds_sym_name_for_java(sym_name::in, qual_kind::in, string::in,
 	string::out) is det.
 
-mangle_mlds_sym_name_for_java(unqualified(Name), _Qualifier, JavaSafeName) :-
-	MangledName = name_mangle(Name),
+mangle_mlds_sym_name_for_java(unqualified(Name), QualKind, _QualifierOp,
+		JavaSafeName) :-
+	(
+		QualKind = module_qual,
+		FlippedName = Name
+	;
+		QualKind = type_qual,
+		FlippedName = flip_initial_case(Name)
+	),
+	MangledName = name_mangle(FlippedName),
 	JavaSafeName = valid_symbol_name(MangledName).
-mangle_mlds_sym_name_for_java(qualified(ModuleName, PlainName), Qualifier,
-		MangledName) :-
-	mangle_mlds_sym_name_for_java(ModuleName, Qualifier,
+mangle_mlds_sym_name_for_java(qualified(ModuleName0, PlainName), QualKind,
+		QualifierOp, JavaSafeName) :-
+	mangle_mlds_sym_name_for_java(ModuleName0, module_qual, QualifierOp,
 		MangledModuleName),
-	MangledPlainName = name_mangle(PlainName),
+	(
+		QualKind = module_qual,
+		FlippedPlainName = PlainName
+	;
+		QualKind = type_qual,
+		FlippedPlainName = flip_initial_case(PlainName)
+	),
+	MangledPlainName = name_mangle(FlippedPlainName),
 	JavaSafePlainName = valid_symbol_name(MangledPlainName),
-	java_qualify_mangled_name(MangledModuleName, JavaSafePlainName,
-		Qualifier, MangledName).
-
-:- pred java_qualify_mangled_name(string::in, string::in, string::in,
-	string::out) is det.
-
-java_qualify_mangled_name(Module0, Name0, Qualifier, Name) :-
-	string__append_list([Module0, Qualifier, Name0], Name).
+	string__append_list(
+		[MangledModuleName, QualifierOp, JavaSafePlainName],
+		JavaSafeName).
 
 %-----------------------------------------------------------------------------%
 %
@@ -722,7 +732,7 @@ generate_code_addr_wrappers(Indent, [CodeAddr | CodeAddrs], !Defns) :-
 	Context = mlds__make_context(term__context_init),
 	InterfaceModuleName = mercury_module_name_to_mlds(
 			qualified(unqualified("mercury"), "runtime")),
-	Interface = qual(InterfaceModuleName, "MethodPtr"),
+	Interface = qual(InterfaceModuleName, module_qual, "MethodPtr"),
 	generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn),
 	!:Defns = [ ClassDefn | !.Defns ],
 	generate_code_addr_wrappers(Indent, CodeAddrs, !Defns).
@@ -739,7 +749,7 @@ generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
 		CodeAddr = mlds__internal(ProcLabel, SeqNum, _FuncSig),
 		MaybeSeqNum = yes(SeqNum)
 	),
-	ProcLabel = mlds__qual(ModuleQualifier, PredLabel - ProcID),
+	ProcLabel = mlds__qual(ModuleQualifier, QualKind, PredLabel - ProcID),
 	PredName = make_pred_name_string(PredLabel, ProcID, MaybeSeqNum),
 	%
 	% Create class components.
@@ -757,8 +767,9 @@ generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
 	% method (predicate) name.
 	%
 	ModuleQualifierSym = mlds_module_name_to_sym_name(ModuleQualifier),
-	mangle_mlds_sym_name_for_java(ModuleQualifierSym, "__", ModuleNameStr),
-	ClassEntityName = "AddrOf__" ++ ModuleNameStr ++
+	mangle_mlds_sym_name_for_java(ModuleQualifierSym, QualKind, "__",
+		ModuleNameStr),
+	ClassEntityName = "addrOf__" ++ ModuleNameStr ++
 		"__" ++ PredName,
 	MangledClassEntityName = name_mangle(ClassEntityName),
 	%
@@ -815,7 +826,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
 	% original method.
 	%
 	ReturnVarName = var_name("return_value", no),
-	ReturnVar = mlds__qual(ModuleName, ReturnVarName),
+	ReturnVar = mlds__qual(ModuleName, module_qual, ReturnVarName),
 	%
 	% Create a declaration for this variable.
 	%
@@ -839,7 +850,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
 	%
 	% Create the call to the original method:
 	%
-	CallArgLabel = mlds__qual(ModuleName, MethodArgVariable),
+	CallArgLabel = mlds__qual(ModuleName, module_qual, MethodArgVariable),
 	generate_call_method_args(OrigArgTypes, CallArgLabel, 0, [], CallArgs),
 	CallRval = mlds__const(mlds__code_addr_const(CodeAddr)),
         %
@@ -1099,13 +1110,13 @@ output_defn(Indent, ModuleName, CtorData, Defn, !IO) :-
 		% must be given in `pragma java_code' in the same module.)
 		io__write_string("/* external:\n", !IO),
 		output_decl_flags(Flags, Name, !IO),
-		output_defn_body(Indent, qual(ModuleName, Name), CtorData,
-			Context, DefnBody, !IO),
+		output_defn_body(Indent, qual(ModuleName, module_qual, Name),
+			CtorData, Context, DefnBody, !IO),
 		io__write_string("*/\n", !IO)
 	;
 		output_decl_flags(Flags, Name, !IO),
-		output_defn_body(Indent, qual(ModuleName, Name), CtorData,
-			Context, DefnBody, !IO)
+		output_defn_body(Indent, qual(ModuleName, module_qual, Name),
+			CtorData, Context, DefnBody, !IO)
 	).
 
 :- pred output_defn_body(indent::in, mlds__qualified_entity_name::in,
@@ -1132,7 +1143,7 @@ output_defn_body(Indent, Name, _, Context, mlds__class(ClassDefn), !IO) :-
 	mlds__context::in, mlds__class_defn::in, io::di, io::uo) is det.
 
 output_class(Indent, Name, _Context, ClassDefn, !IO) :-
-	Name = qual(ModuleName, UnqualName),
+	Name = qual(ModuleName, _QualKind, UnqualName),
 	( UnqualName = type(_, _) ->
 		true
 	;
@@ -1145,7 +1156,7 @@ output_class(Indent, Name, _Context, ClassDefn, !IO) :-
 	;
 		io__write_string("class ", !IO)
 	),
-	output_class_name(UnqualName, !IO),
+	output_class_name_and_arity(UnqualName, !IO),
 	io__nl(!IO),
 	output_extends_list(Indent + 1, BaseClasses, !IO),
 	output_implements_list(Indent + 1, Implements, !IO),
@@ -1192,9 +1203,13 @@ output_implements_list(Indent, InterfaceList, !IO)  :-
 :- pred output_interface(mlds__interface_id::in, io::di, io::uo) is det.
 
 output_interface(Interface, !IO) :-
-	 ( Interface = class_type(qual(ModuleQualifier, Name), Arity, _) ->
+	(
+		Interface = class_type(qual(ModuleQualifier, QualKind, Name),
+	 		Arity, _)
+	->
 		SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-		mangle_mlds_sym_name_for_java(SymName, ".", ModuleName),
+		mangle_mlds_sym_name_for_java(SymName, QualKind, ".",
+			ModuleName),
 		io__format("%s.%s", [s(ModuleName), s(Name)], !IO),
 		%
 		% Check if the interface is one of the ones in the runtime
@@ -1231,7 +1246,7 @@ output_class_body(_Indent, mlds__struct, _, _AllMembers, _, _, _) :-
 
 output_class_body(Indent, mlds__enum, Name, AllMembers, _, !IO) :-
 	list__filter(defn_is_const, AllMembers, EnumConsts),
-	Name = qual(ModuleName, UnqualName),
+	Name = qual(ModuleName, _QualKind, UnqualName),
 	output_enum_constants(Indent + 1, ModuleName, EnumConsts, !IO),
 	indent_line(Indent + 1, !IO),
 	io__write_string("public int value;\n\n", !IO),
@@ -1309,7 +1324,7 @@ output_enum_constant(Indent, EnumModuleName, Defn, !IO) :-
 :- pred output_data_decl(mlds__qualified_entity_name::in, mlds__type::in,
 	io::di, io::uo) is det.
 
-output_data_decl(qual(_, Name), Type, !IO) :-
+output_data_decl(qual(_, _, Name), Type, !IO) :-
 	output_type(Type, !IO),
 	io__write_char(' ', !IO),
 	output_name(Name, !IO).
@@ -1529,7 +1544,7 @@ output_func_decl(Indent, QualifiedName, none, Context, Signature, !IO) :-
 		io__write_string("java.lang.Object []", !IO)
 	),
 	io__write_char(' ', !IO),
-	QualifiedName = qual(ModuleName, Name),
+	QualifiedName = qual(ModuleName, _QualKind, Name),
 	output_name(Name, !IO),
 	output_params(Indent, ModuleName, Context, Parameters, !IO).
 
@@ -1574,7 +1589,7 @@ output_maybe_qualified_name(QualifiedName, CurrentModuleName, !IO) :-
 	% and is also necessary in the case of local variables
 	% and function parameters, which must not be qualified.
 	%
-	QualifiedName = qual(ModuleName, Name),
+	QualifiedName = qual(ModuleName, _QualKind, Name),
 	( ModuleName = CurrentModuleName ->
 		output_name(Name, !IO)
 	;
@@ -1598,14 +1613,12 @@ output_fully_qualified_proc_label(QualifiedName, Qualifier, !IO) :-
 	pred(T, io, io)::pred(in, di, uo) is det, string::in, io::di,
 	io::uo) is det.
 
-output_fully_qualified(qual(ModuleName, Name), OutputFunc, Qualifier, !IO) :-
+output_fully_qualified(qual(ModuleName, QualKind, Name), OutputFunc,
+		Qualifier, !IO) :-
 	SymName = mlds_module_name_to_sym_name(ModuleName),
-	mangle_mlds_sym_name_for_java(SymName, Qualifier,
+	mangle_mlds_sym_name_for_java(SymName, QualKind, Qualifier,
 		MangledModuleName),
-	% XXX Name mangling code should be put here when we start enforcing
-	%     Java's naming convention.
-	MangledModuleName = JavaMangledName,
-	io__write_string(JavaMangledName, !IO),
+	io__write_string(MangledModuleName, !IO),
 	io__write_string(Qualifier, !IO),
 	OutputFunc(Name, !IO).
 
@@ -1614,21 +1627,31 @@ output_fully_qualified(qual(ModuleName, Name), OutputFunc, Qualifier, !IO) :-
 output_module_name(ModuleName, !IO) :-
 	io__write_string(sym_name_mangle(ModuleName), !IO).
 
-:- pred output_class_name(mlds__entity_name::in, io::di, io::uo) is det.
+:- pred output_class_name_and_arity(mlds__entity_name::in, io::di, io::uo)
+	is det.
 
-output_class_name(type(Name, Arity), !IO) :-
+output_class_name_and_arity(type(Name, Arity)) -->
+	output_class_name(Name),
+	io__format("_%d", [i(Arity)]).
+output_class_name_and_arity(data(_)) -->
+	{ unexpected(this_file, "output_class_name_and_arity") }.
+output_class_name_and_arity(function(_, _, _, _)) -->
+	{ unexpected(this_file, "output_class_name_and_arity") }.
+output_class_name_and_arity(export(_)) -->
+	{ unexpected(this_file, "output_class_name_and_arity") }.
+
+:- pred output_class_name(mlds__class_name::in, io::di, io::uo) is det.
+
+output_class_name(Name, !IO) :-
 	MangledName = name_mangle(Name),
-	io__format("%s_%d", [s(MangledName), i(Arity)], !IO).
-
-output_class_name(data(_), !IO).
-output_class_name(function(_, _, _, _), !IO).
-output_class_name(export(_), !IO).
+	% By convention, class names should start with a capital letter.
+	UppercaseMangledName = flip_initial_case(MangledName),
+	io__write_string(UppercaseMangledName, !IO).
 
 :- pred output_name(mlds__entity_name::in, io::di, io::uo) is det.
 
 output_name(type(Name, Arity), !IO) :-
-	MangledName = name_mangle(Name),
-	io__format("%s_%d", [s(MangledName), i(Arity)], !IO).
+	output_class_name_and_arity(type(Name, Arity), !IO).
 output_name(data(DataName), !IO) :-
 	output_data_name(DataName, !IO).
 output_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId), !IO) :-
@@ -1749,24 +1772,18 @@ output_type(mlds__foreign_type(ForeignType), !IO) :-
 		ForeignType = c(_),
 		unexpected(this_file, "output_type: c foreign_type")
 	;
-		 ForeignType = il(_),
-		 unexpected(this_file, "output_type: il foreign_type")
+		ForeignType = il(_),
+		unexpected(this_file, "output_type: il foreign_type")
 	).
-output_type(mlds__class_type(Name, Arity, ClassKind), !IO) :-
-	( ClassKind = mlds__enum ->
-		output_fully_qualified(Name, output_mangled_name, ".", !IO),
-		io__format("_%d", [i(Arity)], !IO)
-	;
-		output_fully_qualified(Name, output_mangled_name, ".", !IO),
-		io__format("_%d", [i(Arity)], !IO)
-	).
+output_type(mlds__class_type(Name, Arity, _ClassKind), !IO) :-
+	% We used to treat enumerations specially here, outputting
+	% them as "int", but now we do the same for all classes.
+	output_fully_qualified(Name, output_class_name, ".", !IO),
+	io__format("_%d", [i(Arity)], !IO).
 output_type(mlds__ptr_type(Type), !IO) :-
-	( Type = mlds__class_type(Name, Arity, _Kind) ->
-		output_fully_qualified(Name, output_mangled_name, ".", !IO),
-		io__format("_%d", [i(Arity)], !IO)
-	;
-		output_type(Type, !IO)
-	).
+	% XXX should we report an error here, if the type pointed to
+	%     is not a class type?
+	output_type(Type, !IO).
 output_type(mlds__array_type(Type), !IO) :-
 	output_type(Type, !IO),
 	io__write_string("[]", !IO).
@@ -2007,7 +2024,7 @@ maybe_output_comment(Comment, !IO) :-
 
 :- func mod_name(mlds__fully_qualified_name(T)) = mlds_module_name.
 
-mod_name(qual(ModuleName, _)) = ModuleName.
+mod_name(qual(ModuleName, _, _)) = ModuleName.
 
 :- pred output_statements(indent::in, func_info::in,
 	list(mlds__statement)::in, exit_methods::out, io::di, io::uo) is det.
@@ -2674,10 +2691,9 @@ output_atomic_stmt(Indent, FuncInfo, NewObject, Context, !IO) :-
 	->
 		output_type(Type, !IO),
 		io__write_char('.', !IO),
-		QualifiedCtorId = qual(_ModuleName, CtorDefn),
+		QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
 		CtorDefn = ctor_id(CtorName, CtorArity),
-		MangledCtorName = name_mangle(CtorName),
-		io__format("%s_%d", [s(MangledCtorName), i(CtorArity)], !IO)
+		output_class_name_and_arity(type(CtorName, CtorArity), !IO)
 	;
 		output_type(Type, !IO)
 	),
@@ -2823,7 +2839,7 @@ output_lval(field(_MaybeTag, Rval, offset(OffsetRval), FieldType, _),
 output_lval(field(_, PtrRval, named_field(FieldName, CtorType), _, _),
 		ModuleName, !IO) :-
 	(
-		FieldName = qual(_, UnqualFieldName),
+		FieldName = qual(_, _, UnqualFieldName),
 	 	MangledFieldName = name_mangle(UnqualFieldName),
 	  	MangledFieldName = "data_tag"
 	->
@@ -2847,14 +2863,14 @@ output_lval(field(_, PtrRval, named_field(FieldName, CtorType), _, _),
 			% the actual variable
 		io__write_string(").", !IO)
 	),
-	FieldName = qual(_, UnqualFieldName),
+	FieldName = qual(_, _, UnqualFieldName),
 	output_valid_mangled_name(UnqualFieldName, !IO).    % the field name
 
 output_lval(mem_ref(Rval, _Type), ModuleName, !IO) :-
 	output_bracketed_rval(Rval, ModuleName, !IO).
 
-output_lval(var(qual(ModName, Name), _), CurrentModuleName, !IO) :-
-	output_maybe_qualified_name(qual(ModName, data(var(Name))),
+output_lval(var(qual(ModName, QualKind, Name), _), CurrentModuleName, !IO) :-
+	output_maybe_qualified_name(qual(ModName, QualKind, data(var(Name))),
 		CurrentModuleName, !IO).
 
 :- pred output_mangled_name(string::in, io::di, io::uo) is det.
@@ -3240,7 +3256,7 @@ mlds_output_proc_label(PredLabel - ProcId, !IO) :-
 
 mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
 	SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-	mangle_mlds_sym_name_for_java(SymName, ".", ModuleName),
+	mangle_mlds_sym_name_for_java(SymName, module_qual, ".", ModuleName),
 	io__write_string(ModuleName, !IO),
 	io__write_string(".", !IO),
 	output_data_name(DataName, !IO).

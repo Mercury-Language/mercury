@@ -218,7 +218,7 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 	(
 		globals__lookup_bool_option(OptInfo ^ globals,
 			optimize_tailcalls, yes),
-		can_optimize_tailcall(qual(OptInfo ^ module_name,
+		can_optimize_tailcall(qual(OptInfo ^ module_name, module_qual,
 			OptInfo ^ entity_name), Stmt0)
 	->
 		CommentStatement = statement(
@@ -251,7 +251,7 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 		% the --target asm back-end, whereas generating the
 		% appropriate MLDS instructions does.
 		%
-		FuncRval = const(code_addr_const(proc(qual(ModName,
+		FuncRval = const(code_addr_const(proc(qual(ModName, module_qual,
                         pred(predicate, _DefnModName, PredName, _Arity,
 				_CodeModel, _NonOutputFunc) - _ProcId),
 			_FuncSignature))),
@@ -320,7 +320,8 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
 		%
 		Name = data(var(VarName))
 	->
-		QualVarName = qual(OptInfo ^ module_name, VarName),
+		QualVarName = qual(OptInfo ^ module_name, module_qual,
+			VarName),
 		(
 			%
 			% don't bother assigning a variable to itself
@@ -356,7 +357,7 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
 			VarName = mlds__var_name(VarNameStr, MaybeNum),
 			TempName = mlds__var_name(VarNameStr ++ "__tmp_copy",
 				MaybeNum),
-			QualTempName = qual(OptInfo ^ module_name,
+			QualTempName = qual(OptInfo ^ module_name, module_qual,
 				TempName),
 			Initializer = no_initializer,
 			% We don't need to trace the temporary variables
@@ -406,7 +407,8 @@ optimize_func_stmt(OptInfo, mlds__statement(Stmt0, Context)) =
 		stmt_contains_statement(Stmt0, Call),
 		Call = mlds__statement(CallStmt, _),
 		can_optimize_tailcall(
-			qual(OptInfo ^ module_name, OptInfo ^ entity_name),
+			qual(OptInfo ^ module_name, module_qual,
+				OptInfo ^ entity_name),
 			CallStmt)
 	->
 		Comment = atomic(comment("tailcall optimized into a loop")),
@@ -599,8 +601,8 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
 		!.Statements = [AssignStatement | !:Statements],
 		AssignStatement = statement(atomic(assign(LHS, RHS)), _),
 		LHS = var(ThisVar, _ThisType),
-		ThisVar = qual(Qualifier, VarName),
-		ThisData = qual(Qualifier, var(VarName)),
+		ThisVar = qual(Qualifier, QualKind, VarName),
+		ThisData = qual(Qualifier, QualKind, var(VarName)),
 		Qualifier = OptInfo ^ module_name,
 		list__takewhile(isnt(var_defn(VarName)), !.Defns,
 			_PrecedingDefns, [_VarDefn | FollowingDefns]),
@@ -616,7 +618,8 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
 			list__member(OtherDefn, FollowingDefns),
 			OtherDefn = mlds__defn(data(OtherVarName),
 				_, _, data(_Type, OtherInitializer, _GC)),
-			( rval_contains_var(RHS, qual(Qualifier, OtherVarName))
+			( rval_contains_var(RHS,
+				qual(Qualifier, QualKind, OtherVarName))
 			; initializer_contains_var(OtherInitializer, ThisData)
 			)
 		)
@@ -744,7 +747,7 @@ try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Statements) :-
 	DefnBody = mlds__data(_Type, Initializer, _MaybeGCTraceCode),
 
 	% ... with a known initial value.
-	QualVarName = qual(OptInfo ^ module_name, VarName),
+	QualVarName = qual(OptInfo ^ module_name, module_qual, VarName),
 	(
 		Initializer = init_obj(Rval)
 	;
@@ -855,8 +858,8 @@ find_initial_val_in_statements(VarName, Rval, [Statement0 | Statements0],
 		% Statement0.  Only if we are sure that Statement0
 		% can't modify the variable's value is it safe to go
 		% on and look for the initial value in Statements0.
-		VarName = qual(Mod, UnqualVarName),
-		DataName = qual(Mod, var(UnqualVarName)),
+		VarName = qual(Mod, QualKind, UnqualVarName),
+		DataName = qual(Mod, QualKind, var(UnqualVarName)),
 		\+ statement_contains_var(Statement0, DataName),
 		\+ (
 			statement_contains_statement(Statement0, Label),
@@ -878,8 +881,8 @@ find_initial_val_in_statement(Var, Rval, Statement0, Statement) :-
 		% delete the assignment, by replacing it with an empty block
 		Stmt = block([], [])
 	; Stmt0 = block(Defns0, SubStatements0) ->
-		Var = qual(Mod, UnqualVarName),
-		Data = qual(Mod, var(UnqualVarName)),
+		Var = qual(Mod, QualKind, UnqualVarName),
+		Data = qual(Mod, QualKind, var(UnqualVarName)),
 		\+ defns_contains_var(Defns0, Data),
 		find_initial_val_in_statements(Var, Rval,
 			SubStatements0, SubStatements),

@@ -232,7 +232,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
 		ClosureArgDefns ++ [ClosureLayoutDefn],
 	module_info_name(ModuleInfo, ModuleName),
 	MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-	ClosureLayoutRval = lval(var(qual(MLDS_ModuleName, Name),
+	ClosureLayoutRval = lval(var(qual(MLDS_ModuleName, module_qual, Name),
 		ClosureLayoutType)).
 
 :- pred ml_gen_closure_proc_id(module_info::in, prog_context::in,
@@ -462,7 +462,8 @@ ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName, Context,
 		Defns = [Defn],
 		module_info_name(ModuleInfo, ModuleName),
 		MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-		MLDS_Rval = lval(var(qual(MLDS_ModuleName, TvarVectorName),
+		MLDS_Rval = lval(var(
+			qual(MLDS_ModuleName, module_qual, TvarVectorName),
 			ArrayType))
 	).
 

@@ -221,7 +221,8 @@
 
 % 2. Packages.
 %
-% MLDS packages should be mapped directly to target packages, if possible.
+% MLDS packages should be mapped directly to the corresponding notion
+% in the target language, if possible.
 % If the target doesn't have a notion of packages, then they should be
 % mapped to names of the form "foo.bar.baz" or if dots are not allowed
 % then to "foo__bar__baz".
@@ -349,14 +350,17 @@
 %
 :- type mlds
 	---> mlds(
-			% The Mercury module name.
+			% The original Mercury module name.
 		name		:: mercury_module_name,
 
 			% Code defined in some other language, e.g.  for
 			% `pragma c_header_code', etc.
 		foreign_code	:: map(foreign_language, mlds__foreign_code),
 
+			%
 			% The MLDS code itself
+			%
+
 			% Packages/classes to import
 		toplevel_imports :: mlds__imports,
 
@@ -380,6 +384,7 @@
 	--->	user_visible_interface
 	;	compiler_visible_interface.
 
+% An mlds__import specifies  FIXME
 % Currently an import just gives the name of the package to be imported.
 % This might perhaps need to be expanded to cater to different kinds of
 % imports, e.g. imports with wild-cards ("import java.lang.*").
@@ -430,8 +435,10 @@
 % Given an MLDS module name (e.g. `foo.bar'), append another class qualifier
 % (e.g. for a class `baz'), and return the result (e.g. `foo.bar.baz').
 % The `arity' argument specifies the arity of the class.
-:- func mlds__append_class_qualifier(mlds_module_name, mlds__class_name,
-		arity) = mlds_module_name.
+% The qual_kind argument specifies the qualifier kind of the module_name
+% argument.
+:- func mlds__append_class_qualifier(mlds_module_name, mlds__qual_kind,
+		globals, mlds__class_name, arity) = mlds_module_name.
 
 % Append a wrapper class qualifier to the module name and leave the
 % package name unchanged.
@@ -467,10 +474,16 @@
 % If the target language has restrictions on what names can be used
 % in identifiers, then it is the responsibility of the target language
 % generator to mangle these names accordingly.
-:- type mlds__fully_qualified_name(T)
-	---> 	qual(mlds_module_name, T).
 :- type mlds__qualified_entity_name
 	==	mlds__fully_qualified_name(mlds__entity_name).
+:- type mlds__fully_qualified_name(T)
+	--->	qual(mlds_module_name, mlds__qual_kind, T).
+% For the Java back-end, we need to distinguish between module qualifiers
+% and type qualifiers, because type names get the case of their initial 
+% letter inverted (i.e. lowercase => uppercase).
+:- type mlds__qual_kind
+	--->	module_qual
+	;	type_qual.
 
 :- type mlds__entity_name
 	--->	type(mlds__class_name, arity)	% Name, arity.
@@ -1707,6 +1720,16 @@ XXX Full exception handling support is not yet implemented.
 		).
 
 %-----------------------------------------------------------------------------%
+
+	% Invert the case of the first letter of the string.
+	% This is used for the Java back-end.
+:- func flip_initial_case(string) = string.
+
+	% Invert the case of the first letter of the last component of
+	% a (possibly) qualified name.  This is used for the Java back-end.
+:- func flip_initial_case_of_final_part(sym_name) = sym_name.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1717,7 +1740,7 @@ XXX Full exception handling support is not yet implemented.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
 
-:- import_module int, term, string, require.
+:- import_module char, int, term, string, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -1839,7 +1862,7 @@ mlds__get_arg_types(Parameters) = ArgTypes :-
 
 %-----------------------------------------------------------------------------%
 
-% A mercury module name consists of two parts.  One part is the package
+% An MLDS module name consists of two parts.  One part is the package
 % which the module name is defined in, and the other part is the actual
 % module name.  For example the module name System.XML could be defined
 % in the package XML.
@@ -1879,8 +1902,22 @@ mlds_module_name_to_sym_name(Module) = Module ^ module_name.
 
 mlds_module_name_to_package_name(Module) = Module ^ package_name.
 
-mlds__append_class_qualifier(name(Package, Module), ClassName, ClassArity) =
-		name(Package, qualified(Module, ClassQualifier)) :-
+mlds__append_class_qualifier(name(Package, Module), QualKind, Globals,
+			ClassName, ClassArity) =
+		name(Package, qualified(AdjustedModule, ClassQualifier)) :-
+	%
+	% For the Java back-end, we flip the initial case of an type
+	% qualifiers, in order to match the usual Java conventions.
+	%
+	(
+		globals__get_target(Globals, CompilationTarget),
+		CompilationTarget = java,
+	  	QualKind = type_qual
+	->
+		AdjustedModule = flip_initial_case_of_final_part(Module)
+	;
+		AdjustedModule = Module
+	),
 	string__format("%s_%d", [s(ClassName), i(ClassArity)],
 		ClassQualifier).
 
@@ -1890,6 +1927,26 @@ mlds__append_name(name(Package, Module), Name)
 	= name(Package, qualified(Module, Name)).
 
 wrapper_class_name = "mercury_code".
+
+flip_initial_case_of_final_part(unqualified(Name)) =
+	unqualified(flip_initial_case(Name)).
+flip_initial_case_of_final_part(qualified(Qual, Name)) =
+	qualified(Qual, flip_initial_case(Name)).
+
+	% Invert the case of the first letter of the string.
+flip_initial_case(S0) = S :-
+	( string__first_char(S0, First0, Rest) ->
+		( char__is_upper(First0) ->
+			First = char__to_lower(First0)
+		; char__is_lower(First0) ->
+			First = char__to_upper(First0)
+		;
+			First = First0
+		),
+		string__first_char(S, First, Rest)
+	;
+		S = S0
+	).
 
 %-----------------------------------------------------------------------------%
 

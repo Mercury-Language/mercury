@@ -483,7 +483,7 @@ mlds_output_init_fn_decls(ModuleName, !IO) :-
 mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns, !IO) :-
 	output_init_fn_name(ModuleName, "", !IO),
 	io__write_string("\n{\n", !IO),
-	io_get_globals(Globals, !IO),
+	globals__io_get_globals(Globals, !IO),
 	(
 		need_to_init_entries(Globals),
 		FuncDefns \= []
@@ -562,7 +562,8 @@ mlds_output_calls_to_init_entry(_ModuleName, [], !IO).
 mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns], !IO) :-
 	FuncDefn = mlds__defn(EntityName, _, _, _),
 	io__write_string("\tMR_init_entry(", !IO),
-	mlds_output_fully_qualified_name(qual(ModuleName, EntityName), !IO),
+	mlds_output_fully_qualified_name(
+		qual(ModuleName, module_qual, EntityName), !IO),
 	io__write_string(");\n", !IO),
 	mlds_output_calls_to_init_entry(ModuleName, FuncDefns, !IO).
 
@@ -577,7 +578,8 @@ mlds_output_calls_to_register_tci(ModuleName,
 		[TypeCtorInfoDefn | TypeCtorInfoDefns], !IO) :-
 	TypeCtorInfoDefn = mlds__defn(EntityName, _, _, _),
 	io__write_string("\tMR_register_type_ctor_info(&", !IO),
-	mlds_output_fully_qualified_name(qual(ModuleName, EntityName), !IO),
+	mlds_output_fully_qualified_name(
+		qual(ModuleName, module_qual, EntityName), !IO),
 	io__write_string(");\n", !IO),
 	mlds_output_calls_to_register_tci(ModuleName, TypeCtorInfoDefns, !IO).
 
@@ -706,7 +708,7 @@ mlds_output_pragma_export_defn(ModuleName, Indent, PragmaExport, !IO) :-
 mlds_output_pragma_export_func_name(ModuleName, Indent,
 		ml_pragma_export(C_name, _MLDS_Name, Signature, Context),
 		!IO) :-
-	Name = qual(ModuleName, export(C_name)),
+	Name = qual(ModuleName, module_qual, export(C_name)),
 	mlds_indent(Context, Indent, !IO),
 	% For functions exported using `pragma export',
 	% we use the default C calling convention.
@@ -878,8 +880,8 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
 
 mlds_output_pragma_input_arg(ModuleName, Arg, !IO) :-
 	Arg = mlds__argument(Name, Type, _GC_TraceCode),
-	QualName = qual(ModuleName, Name),
-	BoxedQualName = qual(ModuleName, boxed_name(Name)),
+	QualName = qual(ModuleName, module_qual, Name),
+	BoxedQualName = qual(ModuleName, module_qual, boxed_name(Name)),
 	io__write_string("\tMR_MAYBE_BOX_FOREIGN_TYPE(", !IO),
 	mlds_output_pragma_export_type(Type, !IO),
 	io__write_string(", ", !IO),
@@ -893,8 +895,8 @@ mlds_output_pragma_input_arg(ModuleName, Arg, !IO) :-
 
 mlds_output_pragma_output_arg(ModuleName, Arg, !IO) :-
 	Arg = mlds__argument(Name, Type, _GC_TraceCode),
-	QualName = qual(ModuleName, Name),
-	BoxedQualName = qual(ModuleName, boxed_name(Name)),
+	QualName = qual(ModuleName, module_qual, Name),
+	BoxedQualName = qual(ModuleName, module_qual, boxed_name(Name)),
 	io__write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
 	mlds_output_pragma_export_type(pointed_to_type(Type), !IO),
 	io__write_string(", ", !IO),
@@ -911,7 +913,7 @@ mlds_output_pragma_export_input_defns(ModuleName, Arg, !IO) :-
 	io__write_string("\t", !IO),
 	mlds_output_data_decl_ho(mlds_output_type_prefix,
 		mlds_output_type_suffix,
-		qual(ModuleName, boxed_name(Name)), Type, !IO),
+		qual(ModuleName, module_qual, boxed_name(Name)), Type, !IO),
 	io__write_string(";\n", !IO).
 
 :- pred mlds_output_pragma_export_output_defns(mlds_module_name::in,
@@ -922,7 +924,8 @@ mlds_output_pragma_export_output_defns(ModuleName, Arg, !IO) :-
 	io__write_string("\t", !IO),
 	mlds_output_data_decl_ho(mlds_output_type_prefix,
 		mlds_output_type_suffix,
-		qual(ModuleName, boxed_name(Name)), pointed_to_type(Type),
+		qual(ModuleName, module_qual, boxed_name(Name)),
+		pointed_to_type(Type),
 		!IO),
 	io__write_string(";\n", !IO).
 
@@ -967,20 +970,21 @@ mlds_output_pragma_export_arg(ModuleName, Arg, !IO) :-
 		% This is a foreign_type input.  Pass in the already-boxed
 		% value.
 		BoxedName = boxed_name(Name),
-		mlds_output_fully_qualified_name(qual(ModuleName, BoxedName),
-			!IO)
+		mlds_output_fully_qualified_name(
+			qual(ModuleName, module_qual, BoxedName), !IO)
 	; Type = mlds__ptr_type(mlds__foreign_type(c(_))) ->
 		% This is a foreign_type output.  Pass in the address of the
 		% local variable which will hold the boxed value.
 		io__write_string("&", !IO),
 		BoxedName = boxed_name(Name),
-		mlds_output_fully_qualified_name(qual(ModuleName, BoxedName),
-			!IO)
+		mlds_output_fully_qualified_name(
+			qual(ModuleName, module_qual, BoxedName), !IO)
 	;
 		% Otherwise, no boxing or unboxing is needed.
 		% Just cast the argument to the right type.
 		mlds_output_cast(Type, !IO),
-		mlds_output_fully_qualified_name(qual(ModuleName, Name), !IO)
+		mlds_output_fully_qualified_name(
+			qual(ModuleName, module_qual, Name), !IO)
 	).
 
 	%
@@ -1091,7 +1095,8 @@ mlds_output_decl(Indent, ModuleName, Defn, !IO) :-
 		mlds_indent(Context, Indent, !IO),
 		mlds_output_decl_flags(Flags, forward_decl, Name, DefnBody,
 			!IO),
-		mlds_output_decl_body(Indent, qual(ModuleName, Name), Context,
+		mlds_output_decl_body(Indent,
+			qual(ModuleName, module_qual, Name), Context,
 			DefnBody, !IO)
 	).
 
@@ -1169,8 +1174,8 @@ mlds_output_defn(Indent, ModuleName, Defn, !IO) :-
 	),
 	mlds_indent(Context, Indent, !IO),
 	mlds_output_decl_flags(Flags, definition, Name, DefnBody, !IO),
-	mlds_output_defn_body(Indent, qual(ModuleName, Name), Context,
-		DefnBody, !IO).
+	mlds_output_defn_body(Indent, qual(ModuleName, module_qual, Name),
+		Context, DefnBody, !IO).
 
 :- pred mlds_output_decl_body(indent::in, mlds__qualified_entity_name::in,
 	mlds__context::in, mlds__entity_defn::in, io::di, io::uo) is det.
@@ -1265,10 +1270,11 @@ mlds_output_class(Indent, Name, Context, ClassDefn, !IO) :-
 	% of discriminated union types.)
 	% Here we compute the appropriate qualifier.
 	%
-	Name = qual(ModuleName, UnqualName),
+	Name = qual(ModuleName, QualKind, UnqualName),
 	( UnqualName = type(ClassName, ClassArity) ->
+		globals__io_get_globals(Globals, !IO),
 		ClassModuleName = mlds__append_class_qualifier(ModuleName,
-			ClassName, ClassArity)
+			QualKind, Globals, ClassName, ClassArity)
 	;
 		error("mlds_output_enum_constants")
 	),
@@ -1394,8 +1400,8 @@ mlds_output_enum_constant(Indent, EnumModuleName, Defn, !IO) :-
 		DefnBody = data(Type, Initializer, _GC_TraceCode)
 	->
 		mlds_indent(Context, Indent, !IO),
-		mlds_output_fully_qualified_name(qual(EnumModuleName, Name),
-			!IO),
+		mlds_output_fully_qualified_name(
+			qual(EnumModuleName, type_qual, Name), !IO),
 		mlds_output_initializer(Type, Initializer, !IO)
 	;
 		error("mlds_output_enum_constant: constant is not data")
@@ -1579,7 +1585,7 @@ mlds_output_func_decl_ho(Indent, QualifiedName, Context,
 	io__write_char(' ', !IO),
 	io__write_string(CallingConvention, !IO),
 	mlds_output_fully_qualified_name(QualifiedName, !IO),
-	QualifiedName = qual(ModuleName, _),
+	QualifiedName = qual(ModuleName, _, _),
 	mlds_output_params(OutputPrefix, OutputSuffix,
 		Indent, ModuleName, Context, Parameters, !IO),
 	( RetTypes = [RetType2] ->
@@ -1619,7 +1625,7 @@ mlds_output_params(OutputPrefix, OutputSuffix, Indent, ModuleName,
 mlds_output_param(OutputPrefix, OutputSuffix, Indent, ModuleName, Context,
 		Arg, !IO) :-
 	Arg = mlds__argument(Name, Type, Maybe_GC_TraceCode),
-	QualName = qual(ModuleName, Name),
+	QualName = qual(ModuleName, module_qual, Name),
 	mlds_indent(Context, Indent, !IO),
 	mlds_output_data_decl_ho(OutputPrefix, OutputSuffix, QualName, Type,
 		!IO),
@@ -1674,7 +1680,7 @@ mlds_output_param_type(mlds__argument(_Name, Type, _GC_TraceCode), !IO) :-
 	io::di, io::uo) is det.
 
 mlds_output_fully_qualified_name(QualifiedName, !IO) :-
-	QualifiedName = qual(_ModuleName, Name),
+	QualifiedName = qual(_ModuleName, _QualKind, Name),
 	(
 		(
 			%
@@ -1705,7 +1711,7 @@ mlds_output_fully_qualified_proc_label(QualifiedName, !IO) :-
 		%
 		% don't module-qualify main/2
 		%
-		QualifiedName = qual(_ModuleName, Name),
+		QualifiedName = qual(_ModuleName, _QualKind, Name),
 		Name = PredLabel - _ProcId,
 		PredLabel = pred(predicate, no, "main", 2, model_det, no)
 	->
@@ -1718,7 +1724,8 @@ mlds_output_fully_qualified_proc_label(QualifiedName, !IO) :-
 :- pred mlds_output_fully_qualified(mlds__fully_qualified_name(T)::in,
 	pred(T, io, io)::in(pred(in, di, uo) is det), io::di, io::uo) is det.
 
-mlds_output_fully_qualified(qual(ModuleName, Name), OutputFunc, !IO) :-
+mlds_output_fully_qualified(qual(ModuleName, _QualKind, Name), OutputFunc,
+		!IO) :-
 	SymName = mlds_module_name_to_sym_name(ModuleName),
 	MangledModuleName = sym_name_mangle(SymName),
 	io__write_string(MangledModuleName, !IO),
@@ -2255,7 +2262,7 @@ mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements), Context, !IO) :-
 	io__write_string("{\n", !IO),
 	( Defns \= [] ->
 		FuncInfo = func_info(FuncName, _),
-		FuncName = qual(ModuleName, _),
+		FuncName = qual(ModuleName, _, _),
 
 		% output forward declarations for any nested functions
 		% defined in this block, in case they are referenced before
@@ -2710,7 +2717,7 @@ mlds_maybe_output_heap_profile_instr(Context, Indent, Args, FuncName,
 		io__write_string(""", ", !IO),
 		( MaybeCtorName = yes(CtorId) ->
 			io__write_char('"', !IO),
-			CtorId = qual(_ModuleName, CtorDefn),
+			CtorId = qual(_ModuleName, _QualKind, CtorDefn),
 			CtorDefn = ctor_id(CtorName, _CtorArity),
 			c_util__output_quoted_string(CtorName, !IO),
 			io__write_char('"', !IO)
@@ -2915,7 +2922,7 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context, !IO) :-
 	io__write_string(", ", !IO),
 	( MaybeCtorName = yes(QualifiedCtorId) ->
 		io__write_char('"', !IO),
-		QualifiedCtorId = qual(_ModuleName, CtorDefn),
+		QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
 		CtorDefn = ctor_id(CtorName, _CtorArity),
 		c_util__output_quoted_string(CtorName, !IO),
 		io__write_char('"', !IO)

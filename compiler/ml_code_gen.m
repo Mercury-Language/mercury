@@ -946,7 +946,7 @@ ml_gen_pragma_export_proc(ModuleInfo,
 	ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, ModuleName),
 	FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
 	MLDS_Context = mlds__make_context(ProgContext),
-	Defn = ml_pragma_export(C_Name, qual(ModuleName, Name),
+	Defn = ml_pragma_export(C_Name, qual(ModuleName, module_qual, Name),
 		FuncParams, MLDS_Context).
 
 %-----------------------------------------------------------------------------%
@@ -2521,7 +2521,7 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
 			var(SuccessIndicatorVarName),
 			mlds__native_bool_type,
 			no_initializer, no, MLDSContext),
-		SuccessIndicatorLval = var(qual(MLDSModuleName,
+		SuccessIndicatorLval = var(qual(MLDSModuleName, module_qual,
 			SuccessIndicatorVarName), mlds__native_bool_type),
 		SuccessIndicatorStatement = ml_gen_assign(SucceededLval,
 			lval(SuccessIndicatorLval), Context),
@@ -2661,7 +2661,7 @@ ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, ArgMap,
 	MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type),
 
 	VarName = ml_gen_var_name(VarSet, Var),
-	QualVarName = qual(MLDSModuleName, VarName),
+	QualVarName = qual(MLDSModuleName, module_qual, VarName),
 	(
 		IsByRef = yes,
 		OutputVarLval = mem_ref(lval(var(QualVarName, MLDSType)),
@@ -2673,7 +2673,7 @@ ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, ArgMap,
 
 	MaybeNameMode = yes(UserVarNameString - _),
 	NonMangledVarName = mlds__var_name(UserVarNameString, no),
-	QualLocalVarName= qual(MLDSModuleName, NonMangledVarName),
+	QualLocalVarName= qual(MLDSModuleName, module_qual, NonMangledVarName),
 	LocalVarLval = var(QualLocalVarName, MLDSType),
 
 	Statement = ml_gen_assign(OutputVarLval, lval(LocalVarLval), Context).
@@ -2709,7 +2709,7 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
 	;
 		MLDSType = mercury_type_to_mlds_type(
 			ModuleInfo, Type),
-		QualVarName = qual(MLDSModuleName, VarName),
+		QualVarName = qual(MLDSModuleName, module_qual, VarName),
 		Initializer = init_obj(
 			lval(var(QualVarName, MLDSType)))
 	),
@@ -2944,7 +2944,7 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
 	ml_gen_info_get_proc_id(Info, ProcId),
 	ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, Module),
 	HashDefine = [raw_target_code("#define MR_PROC_LABEL ", []),
-		name(qual(Module, Name)),
+		name(qual(Module, module_qual, Name)),
 		raw_target_code("\n", [])].
 
 :- func get_target_code_attributes(foreign_language,
@@ -3200,7 +3200,8 @@ ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
 		module_info_name(ModuleInfo, ModuleName),
 		MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
 		NonMangledVarName = mlds__var_name(ArgName, no),
-		QualLocalVarName = qual(MLDSModuleName, NonMangledVarName),
+		QualLocalVarName = qual(MLDSModuleName, module_qual,
+			NonMangledVarName),
 		% XXX MLDSType is the incorrect type for this variable.
 		% It should have the Java foreign language representation
 		% of that type. Unfortunately this is not easily expressed

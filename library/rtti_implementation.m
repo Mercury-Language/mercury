@@ -1896,7 +1896,7 @@ sectag_locn(PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 "
 	mercury.runtime.Sectag_Locn SL_struct = PTagEntry.sectag_locn;
 
-	SectagLocn = new mercury.rtti_implementation.sectag_locn_0(
+	SectagLocn = new mercury.rtti_implementation.Sectag_locn_0(
 			SL_struct.value);
 ").
 
@@ -2154,7 +2154,7 @@ type_ctor_compare_pred(_) = "dummy value" :-
 	type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	TypeCtorRep = new type_ctor_rep_0(
+	TypeCtorRep = new Type_ctor_rep_0(
 			((mercury.runtime.TypeCtorInfo_Struct) TypeCtorInfo).
 			type_ctor_rep.value);
 ").

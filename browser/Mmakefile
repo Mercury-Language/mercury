@@ -58,9 +58,21 @@ MCFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
 MLLIBS +=	$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)	\
 		$(READLINE_LIBRARIES)
 
+JAVACFLAGS = -classpath $(LIBRARY_DIR)
+
 MTAGS	=	$(SCRIPTS_DIR)/mtags
 
 LN	=	ln
+
+#-----------------------------------------------------------------------------#
+
+# The IL and Java implementations of the standard library are not yet complete,
+# so we need to pass `--allow-stubs' to get them to compile.
+# Since the standard library is compiled with `--halt-at-warn',
+# we also need `--no-warn-stubs'.
+ifneq ("$(filter il% java%,$(GRADE))","")
+MCFLAGS += --allow-stubs --no-warn-stubs
+endif
 
 #-----------------------------------------------------------------------------#
 
@@ -183,6 +195,39 @@ $(MDBCOMP_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
 .PHONY: dates
 dates:
 	touch $($(BROWSER_LIB_NAME).dates) $($(MDBCOMP_LIB_NAME).dates)
+
+#-----------------------------------------------------------------------------#
+
+#
+# Some Java compilers require the Java source files to be put in directories
+# which match their package names.  But the Mercury compiler generates them
+# with the package name prefixed to the file name with a ".", not a "/".
+# So we copy the Java source files to where the Java compiler expects them to be.
+#
+# XXX This is a hack.  We ought to change the Mercury compiler so that it generates
+# the Java files with the right names in the first place.
+#
+
+mdb/%.java: mdb.%.java
+	[ -d mdb ] || mkdir mdb
+	cp $< $@
+
+mdbcomp/%.java: mdbcomp.%.java
+	[ -d mdbcomp ] || mkdir mdbcomp
+	cp $< $@
+
+RENAMED_JAVAS = $($(BROWSER_LIB_NAME).javas:mdb.%.java=mdb/%.java) \
+	$($(MDBCOMP_LIB_NAME).javas:mdbcomp.%.java=mdbcomp/%.java)
+
+RENAMED_CLASSES = $($(BROWSER_LIB_NAME).classes:mdb.%.class=mdb/%.class) \
+	$($(MDBCOMP_LIB_NAME).classes:mdbcomp.%.class=mdbcomp/%.class)
+
+.PHONY: javas
+javas: $(RENAMED_JAVAS)
+
+.PHONY: classes
+classes: $(RENAMED_JAVAS)
+	$(JAVAC) $(ALL_JAVACFLAGS) -d $(classes_subdir) $(RENAMED_JAVAS)
 
 #-----------------------------------------------------------------------------#
 

@@ -172,7 +172,8 @@ ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
 	MLDS_Context = mlds__make_context(Context),
 
 	% generate the class name
-	ml_gen_type_name(TypeCtor, qual(_, MLDS_ClassName), MLDS_ClassArity),
+	ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
+	QualifiedClassName = qual(_, _, MLDS_ClassName),
 
 	% generate the class members
 	ValueMember = ml_gen_enum_value_member(Context),
@@ -333,9 +334,11 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
 	ml_gen_type_name(TypeCtor, QualBaseClassName, BaseClassArity),
 	BaseClassId = mlds__class_type(QualBaseClassName, BaseClassArity,
 		mlds__class),
-	QualBaseClassName = qual(BaseClassModuleName, BaseClassName),
+	QualBaseClassName = qual(BaseClassModuleName, QualKind, BaseClassName),
+	module_info_globals(ModuleInfo, Globals),
 	BaseClassQualifier = mlds__append_class_qualifier(
-		BaseClassModuleName, BaseClassName, BaseClassArity),
+		BaseClassModuleName, QualKind, Globals,
+		BaseClassName, BaseClassArity),
 
 	(
 		%
@@ -378,7 +381,6 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
 			TagMembers = TagMembers0,
 			TagClassId = BaseClassId
 		;
-			module_info_globals(ModuleInfo, Globals),
 			globals__get_target(Globals, Target),
 			ml_gen_secondary_tag_class(MLDS_Context,
 				BaseClassQualifier, BaseClassId, TagMembers0,
@@ -523,7 +525,7 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId,
 	% Note: the secondary tag class is nested inside the
 	% base class for this type.
 	UnqualClassName = "tag_type",
-	ClassName = qual(BaseClassQualifier, UnqualClassName),
+	ClassName = qual(BaseClassQualifier, type_qual, UnqualClassName),
 	ClassArity = 0,
 	SecondaryTagClassId = mlds__class_type(ClassName, ClassArity,
 		mlds__class),
@@ -656,15 +658,16 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 				CtorClassType = BaseClassId,
 				CtorClassQualifier = BaseClassQualifier
 			;
-				CtorClassType = mlds__class_type(qual(
-					BaseClassQualifier, UnqualCtorName),
+				CtorClassType = mlds__class_type(
+					qual(BaseClassQualifier, type_qual,
+						UnqualCtorName),
 					CtorArity, mlds__class),
 				CtorClassQualifier =
 				    mlds__append_class_qualifier(
-					BaseClassQualifier, UnqualCtorName,
-					CtorArity)
+					BaseClassQualifier, type_qual,
+					Globals, UnqualCtorName, CtorArity)
 			),
-			CtorFunction = gen_constructor_function(Target,
+			CtorFunction = gen_constructor_function(Globals,
 				BaseClassId, CtorClassType, CtorClassQualifier,
 				SecondaryTagClassId, MaybeSecTagVal, Members,
 				MLDS_Context),
@@ -681,7 +684,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 				),
 				Members \= []
 			->
-				ZeroArgCtor = gen_constructor_function(Target,
+				ZeroArgCtor = gen_constructor_function(Globals,
 					BaseClassId, CtorClassType,
 					CtorClassQualifier,
 					SecondaryTagClassId, no, [],
@@ -770,22 +773,23 @@ target_requires_module_qualified_params(il)	 = no.
 target_requires_module_qualified_params(java)    = yes.
 target_requires_module_qualified_params(asm)	 = no.
 
-:- func gen_constructor_function(compilation_target, mlds__class_id,
+:- func gen_constructor_function(globals, mlds__class_id,
 	mlds__type, mlds_module_name, mlds__class_id, maybe(int), mlds__defns,
 	mlds__context) = mlds__defn.
 
-gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
+gen_constructor_function(Globals, BaseClassId, ClassType, ClassQualifier,
 		SecondaryTagClassId, MaybeTag, Members, Context) = CtorDefn :-
 	Args = list__map(make_arg, Members),
 	ReturnValues = [],
 
+	globals__get_target(Globals, Target),
 	InitMembers0 = list__map(gen_init_field(Target, BaseClassId,
 			ClassType, ClassQualifier), Members),
 	(
 		MaybeTag = yes(TagVal)
 	->
 		InitTag = gen_init_tag(ClassType, SecondaryTagClassId, TagVal,
-			Context),
+			Context, Globals),
 		InitMembers = [InitTag | InitMembers0]
 	;
 		InitMembers = InitMembers0
@@ -839,18 +843,18 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
 	(
 		target_requires_module_qualified_params(Target) = yes
 	->
-		( BaseClassId = mlds__class_type(qual(ModuleName, _), _, _) ->
-			QualVarName = qual(ModuleName, VarName)
+		( BaseClassId = mlds__class_type(qual(ModuleName, _, _), _, _) ->
+			QualVarName = qual(ModuleName, module_qual, VarName)
 		;
 			unexpected(this_file,
 				"gen_init_field: invalid BaseClassId")
 		)
 	;
-		QualVarName = qual(ClassQualifier, VarName)
+		QualVarName = qual(ClassQualifier, type_qual, VarName)
 	),
 	Param = mlds__lval(mlds__var(QualVarName, Type)),
 	Field = mlds__field(yes(0), self(ClassType),
-			named_field(qual(ClassQualifier, Name),
+			named_field(qual(ClassQualifier, type_qual, Name),
 				mlds__ptr_type(ClassType)),
 				% XXX we should use ClassType rather than
 				% BaseClassId here.  But doing so breaks the
@@ -860,14 +864,16 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
 	Statement = mlds__statement(atomic(assign(Field, Param)), Context).
 
 	% Generate "this->data_tag = <TagVal>;".
-:- func gen_init_tag(mlds__type, mlds__class_id, int, mlds__context)
+:- func gen_init_tag(mlds__type, mlds__class_id, int, mlds__context, globals)
 	= mlds__statement.
 
-gen_init_tag(ClassType, SecondaryTagClassId, TagVal, Context) = Statement :-
+gen_init_tag(ClassType, SecondaryTagClassId, TagVal, Context, Globals)
+		= Statement :-
 	( SecondaryTagClassId = mlds__class_type(TagClass, TagArity, _) ->
-		TagClass = qual(BaseClassQualifier, TagClassName),
+		TagClass = qual(BaseClassQualifier, QualKind, TagClassName),
 		TagClassQualifier = mlds__append_class_qualifier(
-				BaseClassQualifier, TagClassName, TagArity)
+			BaseClassQualifier, QualKind, Globals,
+			TagClassName, TagArity)
 	;
 		unexpected(this_file,
 				"gen_init_tag: class_id should be a class")
@@ -876,7 +882,7 @@ gen_init_tag(ClassType, SecondaryTagClassId, TagVal, Context) = Statement :-
 	Type = mlds__native_int_type,
 	Val = const(int_const(TagVal)),
 	Field = mlds__field(yes(0), self(ClassType),
-			named_field(qual(TagClassQualifier, Name),
+			named_field(qual(TagClassQualifier, type_qual, Name),
 				mlds__ptr_type(SecondaryTagClassId)),
 			Type, ClassType),
 	Statement = mlds__statement(atomic(assign(Field, Val)), Context).
@@ -937,7 +943,7 @@ ml_gen_mlds_field_decl(DataName, MLDS_Type, Context) = MLDS_Defn :-
 % Miscellaneous helper routines.
 %
 
-ml_gen_type_name(Name - Arity, qual(MLDS_Module, TypeName), Arity) :-
+ml_gen_type_name(Name - Arity, QualifiedTypeName, Arity) :-
 	(
 		Name = qualified(ModuleName, TypeName)
 	;
@@ -946,7 +952,8 @@ ml_gen_type_name(Name - Arity, qual(MLDS_Module, TypeName), Arity) :-
 		Name = unqualified(TypeName),
 		mercury_public_builtin_module(ModuleName)
 	),
-	MLDS_Module = mercury_module_name_to_mlds(ModuleName).
+	MLDS_Module = mercury_module_name_to_mlds(ModuleName),
+	QualifiedTypeName = qual(MLDS_Module, module_qual, TypeName).
 
 	% For interoperability, we ought to generate an `==' member
 	% for types which have a user-defined equality, if the target

@@ -486,7 +486,8 @@ check_const(Const, Locals) :-
 	; Const = data_addr_const(DataAddr) ->
 		DataAddr = data_addr(ModuleName, DataName),
 		( DataName = var(VarName) ->
-			\+ var_is_local(qual(ModuleName, VarName), Locals)
+			\+ var_is_local(qual(ModuleName, module_qual,
+				VarName), Locals)
 		;
 			true
 		)
@@ -510,7 +511,7 @@ check_const(Const, Locals) :-
 var_is_local(Var, Locals) :-
 		% XXX we ignore the ModuleName --
 		% that is safe, but overly conservative
-	Var = qual(_ModuleName, VarName),
+	Var = qual(_ModuleName, _QualKind, VarName),
 	some [Local] (
 		locals_member(Local, Locals),
 		Local = data(var(VarName))
@@ -533,7 +534,7 @@ function_is_local(CodeAddr, Locals) :-
 	),
 		% XXX we ignore the ModuleName --
 		% that is safe, but might be overly conservative
-	QualifiedProcLabel = qual(_ModuleName, ProcLabel),
+	QualifiedProcLabel = qual(_ModuleName, _QualKind, ProcLabel),
 	ProcLabel = PredLabel - ProcId,
 	some [Local] (
 		locals_member(Local, Locals),
@@ -623,7 +624,7 @@ nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
 		CodeAddr = internal(QualProcLabel, SeqNum, _Sig),
 		MaybeSeqNum = yes(SeqNum)
 	),
-	QualProcLabel = qual(CallerModule, PredLabel - ProcId),
+	QualProcLabel = qual(CallerModule, module_qual, PredLabel - ProcId),
 	CallerFuncName = function(PredLabel, ProcId, MaybeSeqNum, _PredId),
 	% if so, construct an appropriate warning
 	Warning = tailcall_warning(PredLabel, ProcId, Context).

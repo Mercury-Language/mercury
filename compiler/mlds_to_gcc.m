@@ -392,7 +392,7 @@ gen_init_fn_defns(MLDS_ModuleName, GlobalInfo0, GlobalInfo) -->
 	{ map__init(SymbolTable) },
 	{ map__init(LabelTable) },
 	{ DefnInfo = defn_info(GlobalInfo,
-		qual(MLDS_ModuleName, Name),
+		qual(MLDS_ModuleName, module_qual, Name),
 		SymbolTable, LabelTable) },
 	{ term__context_init(Context) },
 	{ FuncBody = mlds__statement(block([], []),
@@ -531,9 +531,10 @@ mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns]) -->
 	% 	MR_insert_entry_label(const char *name, MR_Code *addr,
 	% 		const MR_Stack_Layout_Entry *entry_layout);
 	io__write_string("\tMR_insert_entry_label("""),
-	mlds_output_fully_qualified_name(qual(ModuleName, EntityName)),
+	{ QualifiedName = qual(ModuleName, module_qual, EntityName) },
+	mlds_output_fully_qualified_name(QualifiedName),
 	io__write_string("\t"", "),
-	mlds_output_fully_qualified_name(qual(ModuleName, EntityName)),
+	mlds_output_fully_qualified_name(QualifiedName),
 	io__write_string(", NULL);\n"),
 	mlds_output_calls_to_init_entry(ModuleName, FuncDefns).
 
@@ -548,7 +549,8 @@ mlds_output_calls_to_register_tci(ModuleName,
 		[TypeCtorInfoDefn | TypeCtorInfoDefns]) -->
 	{ TypeCtorInfoDefn = mlds__defn(EntityName, _, _, _) },
 	io__write_string("\tMR_register_type_ctor_info(&"),
-	mlds_output_fully_qualified_name(qual(ModuleName, EntityName)),
+	mlds_output_fully_qualified_name(
+		qual(ModuleName, module_qual, EntityName)),
 	io__write_string(");\n"),
 	mlds_output_calls_to_register_tci(ModuleName, TypeCtorInfoDefns).
 ********************/
@@ -594,7 +596,7 @@ mlds_output_pragma_export_defn(ModuleName, Indent, PragmaExport) -->
 
 mlds_output_pragma_export_func_name(ModuleName, Indent,
 		ml_pragma_export(C_name, _MLDS_Name, Signature, Context)) -->
-	{ Name = qual(ModuleName, export(C_name)) },
+	{ Name = qual(ModuleName, module_qual, export(C_name)) },
 	mlds_indent(Context, Indent),
 	% For functions exported using `pragma export',
 	% we use the default C calling convention.
@@ -698,7 +700,7 @@ write_func_args(ModuleName, [Arg | Args]) -->
 
 mlds_output_name_with_cast(ModuleName, Name - Type) -->
 	mlds_output_cast(Type),
-	mlds_output_fully_qualified_name(qual(ModuleName, Name)).
+	mlds_output_fully_qualified_name(qual(ModuleName, module_qual, Name)).
 
 ************************/
 
@@ -737,7 +739,7 @@ build_local_defns([Defn|Defns], ModuleName, DefnInfo0, DefnInfo) -->
 	{ Defn = mlds__defn(Name, _, _, _) },
 	{ DefnInfo1 = DefnInfo0 ^ local_vars :=
 		map__det_insert(DefnInfo0 ^ local_vars,
-			qual(ModuleName, Name), GCC_Defn) },
+			qual(ModuleName, module_qual, Name), GCC_Defn) },
 	build_local_defns(Defns, ModuleName, DefnInfo1, DefnInfo).
 
 	% Handle MLDS definitions that are nested inside a type,
@@ -757,7 +759,7 @@ build_field_defns([Defn|Defns], ModuleName, GlobalInfo, FieldList,
 	( { Name = data(var(FieldName)) } ->
 		{ GCC_FieldName = ml_var_name_to_string(FieldName) },
 		{ FieldTable1 = map__det_insert(FieldTable0,
-			qual(ModuleName, GCC_FieldName),
+			qual(ModuleName, type_qual, GCC_FieldName),
 			GCC_FieldDefn) }
 	;
 		{ unexpected(this_file, "non-var field") }
@@ -772,8 +774,8 @@ build_field_defns([Defn|Defns], ModuleName, GlobalInfo, FieldList,
 
 gen_defn(ModuleName, Defn, GlobalInfo0, GlobalInfo) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
-	gen_defn_body(qual(ModuleName, Name), Context, Flags, DefnBody,
-		GlobalInfo0, GlobalInfo).
+	gen_defn_body(qual(ModuleName, module_qual, Name), Context, Flags,
+		DefnBody, GlobalInfo0, GlobalInfo).
 
 :- pred build_local_defn(mlds__defn, defn_info, mlds_module_name,
 		gcc__var_decl, io__state, io__state).
@@ -781,7 +783,8 @@ gen_defn(ModuleName, Defn, GlobalInfo0, GlobalInfo) -->
 
 build_local_defn(Defn, DefnInfo, ModuleName, GCC_Defn) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
-	build_local_defn_body(qual(ModuleName, Name), DefnInfo, Context, Flags,
+	build_local_defn_body(qual(ModuleName, module_qual, Name),
+		DefnInfo, Context, Flags,
 		DefnBody, GCC_Defn).
 
 :- pred build_field_defn(mlds__defn, mlds_module_name, global_info,
@@ -790,8 +793,8 @@ build_local_defn(Defn, DefnInfo, ModuleName, GCC_Defn) -->
 
 build_field_defn(Defn, ModuleName, GlobalInfo, GCC_Defn) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
-	build_field_defn_body(qual(ModuleName, Name), Context, Flags, DefnBody,
-		GlobalInfo, GCC_Defn).
+	build_field_defn_body(qual(ModuleName, type_qual, Name),
+		Context, Flags, DefnBody, GlobalInfo, GCC_Defn).
 
 :- pred gen_defn_body(mlds__qualified_entity_name,
 		mlds__context, mlds__decl_flags, mlds__entity_defn,
@@ -1143,7 +1146,7 @@ add_func_abstractness_flag(concrete, _GCC_Defn) -->
 build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 	build_type(Type, initializer_array_size(Initializer),
 		DefnInfo ^ global_info, GCC_Type),
-	{ Name = qual(_ModuleName, UnqualName) },
+	{ Name = qual(_ModuleName, _QualKind, UnqualName) },
 	( { UnqualName = data(var(VarName0)) } ->
 		{ VarName = VarName0 }
 	;
@@ -1191,7 +1194,7 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 build_field_data_defn(Name, Type, Initializer, GlobalInfo, GCC_Defn) -->
 	build_type(Type, initializer_array_size(Initializer),
 		GlobalInfo, GCC_Type),
-	{ Name = qual(_ModuleName, UnqualName) },
+	{ Name = qual(_ModuleName, _QualKind, UnqualName) },
 	( { UnqualName = data(var(VarName)) } ->
 		{ GCC_VarName = ml_var_name_to_string(VarName) },
 		gcc__build_field_decl(GCC_VarName, GCC_Type, GCC_Defn)
@@ -1282,10 +1285,11 @@ gen_class(Name, Context, ClassDefn, GlobalInfo0, GlobalInfo) -->
 	% of discriminated union types.)
 	% Here we compute the appropriate qualifier.
 	%
-	{ Name = qual(ModuleName, UnqualName) },
+	{ Name = qual(ModuleName, QualKind, UnqualName) },
+	globals__io_get_globals(Globals),
 	{ UnqualName = type(ClassName, ClassArity) ->
 		ClassModuleName = mlds__append_class_qualifier(ModuleName,
-			ClassName, ClassArity)
+			QualKind, Globals, ClassName, ClassArity)
 	;
 		error("mlds_output_enum_constants")
 	},
@@ -1452,7 +1456,8 @@ mlds_output_enum_constant(Indent, EnumModuleName, Defn) -->
 		{ DefnBody = data(Type, Initializer) }
 	->
 		mlds_indent(Context, Indent),
-		mlds_output_fully_qualified_name(qual(EnumModuleName, Name)),
+		mlds_output_fully_qualified_name(
+			qual(EnumModuleName, type_qual, Name)),
 		mlds_output_initializer(Type, Initializer)
 	;
 		{ error("mlds_output_enum_constant: constant is not data") }
@@ -1569,7 +1574,7 @@ get_return_type(List, GlobalInfo, GCC_Type) -->
 :- pred get_qualified_func_name(mlds__qualified_entity_name::in,
 		mlds_module_name::out, string::out, string::out) is det.
 get_qualified_func_name(Name, ModuleName, FuncName, AsmFuncName) :-
-	Name = qual(ModuleName, EntityName),
+	Name = qual(ModuleName, _QualKind, EntityName),
 	get_func_name(EntityName, FuncName, AsmFuncName0),
 	maybe_add_module_qualifier(Name, AsmFuncName0, AsmFuncName).
 
@@ -1693,7 +1698,7 @@ build_param_types_and_decls([Arg|Args], ModuleName, GlobalInfo,
 		{ GCC_ArgVarName = ml_var_name_to_string(ArgVarName) },
 		gcc__build_param_decl(GCC_ArgVarName, GCC_Type, ParamDecl),
 		{ SymbolTable = map__det_insert(SymbolTable0,
-			qual(ModuleName, ArgName), ParamDecl) }
+			qual(ModuleName, module_qual, ArgName), ParamDecl) }
 	;
 		{ error("build_param_types_and_decls: invalid param name") }
 	),
@@ -1752,8 +1757,9 @@ build_type(mlds__class_type(Name, Arity, ClassKind), _, GlobalInfo,
 		% Check to see whether we already have a definition for
 		% this type.
 		%
-		{ Name = qual(ModuleName, TypeName) },
-		{ EntityName = qual(ModuleName, type(TypeName, Arity)) },
+		{ Name = qual(ModuleName, QualKind, TypeName) },
+		{ EntityName = qual(ModuleName, QualKind,
+			type(TypeName, Arity)) },
 		(
 			{ map__search(GlobalInfo ^ type_table, EntityName,
 				gcc_type_info(GCC_TypeDecl, _)) }
@@ -2512,14 +2518,14 @@ build_fields([Type - Name | Fields0], GCC_Fields) -->
 :- func build_qualified_name(mlds__qualified_entity_name) = string.
 
 build_qualified_name(QualifiedName) = AsmName :-
-	QualifiedName = qual(_ModuleName, Name),
+	QualifiedName = qual(_ModuleName, _QualKind, Name),
 	AsmName0 = build_name(Name),
 	maybe_add_module_qualifier(QualifiedName, AsmName0, AsmName).
 
 :- pred maybe_add_module_qualifier(mlds__qualified_entity_name::in,
 		string::in, string::out) is det.
 maybe_add_module_qualifier(QualifiedName, AsmName0, AsmName) :-
-	QualifiedName = qual(ModuleName, Name),
+	QualifiedName = qual(ModuleName, _QualKind, Name),
 	(
 		(
 			%
@@ -2700,7 +2706,7 @@ gen_statement(DefnInfo, mlds__statement(Statement, Context)) -->
 gen_stmt(DefnInfo0, block(Defns, Statements), _Context) -->
 	gcc__start_block,
 	{ FuncName = DefnInfo0 ^ func_name },
-	{ FuncName = qual(ModuleName, _) },
+	{ FuncName = qual(ModuleName, _, _) },
 	build_local_defns(Defns, ModuleName, DefnInfo0, DefnInfo),
 	gen_statements(DefnInfo, Statements),
 	gcc__end_block.
@@ -3264,7 +3270,8 @@ build_lval(mem_ref(PointerRval, _Type), DefnInfo, Expr) -->
 	build_rval(PointerRval, DefnInfo, PointerExpr),
 	gcc__build_pointer_deref(PointerExpr, Expr).
 
-build_lval(var(qual(ModuleName, VarName), _VarType), DefnInfo, Expr) -->
+build_lval(var(qual(ModuleName, QualKind, VarName), _VarType), DefnInfo,
+		Expr) -->
 	%
 	% Look up the variable in the symbol table.
 	% We try the symbol table for local vars first,
@@ -3272,7 +3279,7 @@ build_lval(var(qual(ModuleName, VarName), _VarType), DefnInfo, Expr) -->
 	% symbol table.  If it's not in either of those,
 	% we check if its an RTTI enumeration constant.
 	%
-	{ Name = qual(ModuleName, data(var(VarName))) },
+	{ Name = qual(ModuleName, QualKind, data(var(VarName))) },
 	(
 		{ map__search(DefnInfo ^ local_vars, Name, LocalVarDecl) }
 	->
@@ -3317,8 +3324,8 @@ get_class_type_name(Type) = Name :-
 						Arity, _Kind))
 		)
 	->
-		ClassName = qual(ModuleName, UnqualClassName),
-		Name = qual(ModuleName, type(UnqualClassName, Arity))
+		ClassName = qual(ModuleName, QualKind, UnqualClassName),
+		Name = qual(ModuleName, QualKind, type(UnqualClassName, Arity))
 	;
 		unexpected(this_file, "non-class_type in get_type_name")
 	).
@@ -3646,8 +3653,8 @@ build_code_addr(CodeAddr, GlobalInfo, Expr) -->
 	),
 	% convert the label into a entity_name,
 	% so we can use make_func_decl below
-	{ Label = qual(ModuleName, PredLabel - ProcId) },
-	{ Name = qual(ModuleName, function(PredLabel, ProcId,
+	{ Label = qual(ModuleName, QualKind, PredLabel - ProcId) },
+	{ Name = qual(ModuleName, QualKind, function(PredLabel, ProcId,
 		MaybeSeqNum, invalid_pred_id)) },
 	% build a function declaration for the function,
 	% and take its address.

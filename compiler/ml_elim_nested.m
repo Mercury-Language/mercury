@@ -535,7 +535,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 		% stack chain pointer at any `try_commit' statements.
 		%
 		ElimInfo0 = elim_info_init(Action, ModuleName,
-			OuterVars, EnvTypeName, EnvPtrTypeName),
+			OuterVars, EnvTypeName, EnvPtrTypeName, Globals),
 		Params0 = mlds__func_params(Arguments0, RetValues),
 		ml_maybe_add_args(Arguments0, FuncBody0, ModuleName,
 			Context, ElimInfo0, ElimInfo1),
@@ -768,14 +768,15 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
 		% struct:
 		%	env_ptr->foo = foo;
 		%
-		QualVarName = qual(ModuleName, VarName),
-		EnvModuleName = ml_env_module_name(ClassType),
+		QualVarName = qual(ModuleName, mlds__module_qual, VarName),
+		EnvModuleName = ml_env_module_name(ClassType,
+			ElimInfo ^ elim_info_globals),
 		FieldNameString = ml_var_name_to_string(VarName),
-		FieldName = named_field(qual(EnvModuleName, FieldNameString),
-			EnvPtrTypeName),
+		FieldName = named_field(qual(EnvModuleName, mlds__type_qual,
+			FieldNameString), EnvPtrTypeName),
 		Tag = yes(0),
 		EnvPtrName = env_name_base(ElimInfo ^ action) ++ "_ptr",
-		EnvPtr = lval(var(qual(ModuleName,
+		EnvPtr = lval(var(qual(ModuleName, mlds__module_qual,
 				mlds__var_name(EnvPtrName, no)),
 			EnvPtrTypeName)),
 		EnvArgLval = field(Tag, EnvPtr, FieldName, FieldType,
@@ -805,8 +806,8 @@ ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
 	;
 		EnvTypeKind = mlds__struct
 	),
-	EnvTypeName = class_type(qual(ModuleName, EnvClassName), 0,
-		EnvTypeKind).
+	EnvTypeName = class_type(qual(ModuleName, module_qual, EnvClassName),
+		0, EnvTypeKind).
 
 	% Create the environment struct type,
 	% the declaration of the environment variable,
@@ -920,7 +921,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
 	% declare the `env_ptr' var, and
 	% initialize the `env_ptr' with the address of `env'
 	%
-	EnvVar = qual(ModuleName, EnvVarName),
+	EnvVar = qual(ModuleName, module_qual, EnvVarName),
 
 	%
 	% generate code to initialize the environment pointer,
@@ -960,7 +961,8 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
 	%	struct foo_frame *frame;
 	%	frame = (struct foo_frame *) this_frame;
 	%
-	ThisFrameName = qual(ModuleName, var_name("this_frame", no)),
+	ThisFrameName = qual(ModuleName, module_qual,
+		var_name("this_frame", no)),
 	ThisFrameRval = lval(var(ThisFrameName,
 		mlds__generic_type)),
 	CastThisFrameRval = unop(cast(mlds__ptr_type(EnvTypeName)),
@@ -1038,7 +1040,7 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
 	%	 stack_chain = frame_ptr;
 	%
 	EnvPtrTypeName = ml_make_env_ptr_type(Globals, EnvTypeName),
-	EnvPtr = lval(var(qual(ModuleName,
+	EnvPtr = lval(var(qual(ModuleName, module_qual,
 			mlds__var_name("frame_ptr", no)),
 		EnvPtrTypeName)),
 	AssignToStackChain = assign(StackChain, EnvPtr),
@@ -1074,7 +1076,7 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
 		NewSeqNum = SeqNum + 100000,
 		GCTraceFuncName = function(PredLabel, ProcId, yes(NewSeqNum),
 			PredId),
-		ProcLabel = qual(PredModule, PredLabel - ProcId),
+		ProcLabel = qual(PredModule, module_qual, PredLabel - ProcId),
 		GCTraceFuncAddr = internal(ProcLabel, NewSeqNum, Signature)
 	;
 		error("gen_gc_trace_func: not a function")
@@ -1179,10 +1181,10 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
 	(
 		DefnBody0 = mlds__function(PredProcId, Params,
 			defined_here(FuncBody0), Attributes),
-		statement_contains_var(FuncBody0, qual(ModuleName,
+		statement_contains_var(FuncBody0, qual(ModuleName, module_qual,
 			var(mlds__var_name("env_ptr", no))))
 	->
-		EnvPtrVal = lval(var(qual(ModuleName,
+		EnvPtrVal = lval(var(qual(ModuleName, module_qual,
 				mlds__var_name("env_ptr_arg", no)),
 				mlds__generic_env_ptr_type)),
 		EnvPtrVarType = ml_make_env_ptr_type(Globals, TypeName),
@@ -1254,7 +1256,7 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 	% (note that the caller of this routine is responsible
 	% for inserting a cast in <EnvPtrVal> if needed).
 	%
-	EnvPtrVar = qual(ModuleName, EnvPtrVarName),
+	EnvPtrVar = qual(ModuleName, module_qual, EnvPtrVarName),
 	AssignEnvPtr = assign(var(EnvPtrVar, EnvPtrVarType), EnvPtrVal),
 	InitEnvPtr = mlds__statement(atomic(AssignEnvPtr), Context).
 
@@ -1305,8 +1307,8 @@ ml_block(VarDecls, Statements, Context) =
 ml_stack_chain_var = StackChain :-
 	mercury_private_builtin_module(PrivateBuiltin),
 	MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
-	StackChain = var(qual(MLDS_Module, var_name("stack_chain", no)),
-		ml_stack_chain_type).
+	StackChain = var(qual(MLDS_Module, module_qual,
+		var_name("stack_chain", no)), ml_stack_chain_type).
 
 	% the type of the `stack_chain' pointer, i.e. `void *'.
 :- func ml_stack_chain_type = mlds__type.
@@ -1715,7 +1717,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
 				Defn1 = mlds__defn(Name, Context, Flags0,
 					DefnBody1),
 				VarLval = var(qual(!.Info ^ module_name,
-					VarName), Type),
+					module_qual, VarName), Type),
 				InitStatements = [mlds__statement(
 					atomic(assign(VarLval, Rval)),
 					Context)]
@@ -1791,7 +1793,7 @@ ml_should_add_local_data(Info, DataName, MaybeGCTraceCode,
 
 ml_need_to_hoist(ModuleName, DataName,
 		FollowingDefns, FollowingStatements) :-
-	QualDataName = qual(ModuleName, DataName),
+	QualDataName = qual(ModuleName, module_qual, DataName),
 	(
 		list__member(FollowingDefn, FollowingDefns)
 	;
@@ -2000,12 +2002,13 @@ fixup_lval(var(Var0, VarType), VarLval, !Info) :-
 	elim_info::in, elim_info::out) is det.
 
 fixup_var(ThisVar, ThisVarType, Lval, !Info) :-
-	ThisVar = qual(ThisVarModuleName, ThisVarName),
+	ThisVar = qual(ThisVarModuleName, QualKind, ThisVarName),
 	ModuleName = elim_info_get_module_name(!.Info),
 	Locals = elim_info_get_local_data(!.Info),
 	ClassType = elim_info_get_env_type_name(!.Info),
 	EnvPtrVarType = elim_info_get_env_ptr_type_name(!.Info),
 	Action = !.Info ^ action,
+	Globals = !.Info ^ elim_info_globals,
 	(
 		%
 		% Check for references to local variables
@@ -2021,12 +2024,13 @@ fixup_var(ThisVar, ThisVarType, Lval, !Info) :-
 			),
 		solutions(IsLocalVar, [FieldType])
 	->
-		EnvPtr = lval(var(qual(ModuleName,
+		EnvPtr = lval(var(qual(ModuleName, QualKind,
 			mlds__var_name(env_name_base(Action) ++ "_ptr", no)),
 			EnvPtrVarType)),
-		EnvModuleName = ml_env_module_name(ClassType),
+		EnvModuleName = ml_env_module_name(ClassType, Globals),
 		ThisVarFieldName = ml_var_name_to_string(ThisVarName),
-		FieldName = named_field(qual(EnvModuleName, ThisVarFieldName),
+		FieldName = named_field(
+			qual(EnvModuleName, type_qual, ThisVarFieldName),
 			EnvPtrVarType),
 		Tag = yes(0),
 		Lval = field(Tag, EnvPtr, FieldName, FieldType, EnvPtrVarType)
@@ -2061,7 +2065,7 @@ fixup_var(ThisVar, ThisVarType, Lval, !Info) :-
 % 		list__member(Var, Locals),
 % 		Var = mlds__defn(data(var(ThisVarName)), _, _, _)
 % 	->
-% 		Env = var(qual(ModuleName, "env")),
+% 		Env = var(qual(ModuleName, module_qual, "env")),
 % 		FieldName = named_field(ThisVar),
 % 		Tag = yes(0),
 % 		Lval = field(Tag, mem_addr(Env), FieldName)
@@ -2075,7 +2079,7 @@ fixup_var(ThisVar, ThisVarType, Lval, !Info) :-
 % 		ThisVarModuleName = ModuleName,
 % 		outervar_member(ThisVarName, OuterVars, 1, Depth)
 % 	->
-% 		EnvPtrName = qual(ModuleName, "env_ptr"),
+% 		EnvPtrName = qual(ModuleName, module_qual, "env_ptr"),
 % 		EnvPtr = lval(var(EnvPtrName)),
 % 		Lval = make_envptr_ref(Depth, EnvPtr, EnvPtrName, ThisVar)
 % 	;
@@ -2116,12 +2120,13 @@ fixup_var(ThisVar, ThisVarType, Lval, !Info) :-
 % 		Lval = make_envptr_ref(Depth - 1, NewEnvPtr, EnvPtrVar, Var)
 % 	).
 
-:- func ml_env_module_name(mlds__type) = mlds_module_name.
+:- func ml_env_module_name(mlds__type, globals) = mlds_module_name.
 
-ml_env_module_name(ClassType) = EnvModuleName :-
-	( ClassType = class_type(qual(ClassModule, ClassName), Arity, _Kind) ->
+ml_env_module_name(ClassType, Globals) = EnvModuleName :-
+	( ClassType = class_type(ClassModuleName, Arity, _Kind) ->
+		ClassModuleName = qual(ClassModule, QualKind, ClassName),
 		EnvModuleName = mlds__append_class_qualifier(ClassModule,
-			ClassName, Arity)
+			QualKind, Globals, ClassName, Arity)
 	;
 		error("ml_env_module_name: ClassType is not a class")
 	).
@@ -2451,7 +2456,7 @@ gen_saved_stack_chain_var(Id, Context) = Defn :-
 	mlds__statement.
 
 gen_save_stack_chain_var(MLDS_Module, Id, Context) = SaveStatement :-
-	SavedStackChain = var(qual(MLDS_Module,
+	SavedStackChain = var(qual(MLDS_Module, module_qual,
 		ml_saved_stack_chain_name(Id)), ml_stack_chain_type),
 	Assignment = assign(SavedStackChain, lval(ml_stack_chain_var)),
 	SaveStatement = mlds__statement(atomic(Assignment), Context).
@@ -2462,7 +2467,7 @@ gen_save_stack_chain_var(MLDS_Module, Id, Context) = SaveStatement :-
 	mlds__statement.
 
 gen_restore_stack_chain_var(MLDS_Module, Id, Context) = RestoreStatement :-
-	SavedStackChain = var(qual(MLDS_Module,
+	SavedStackChain = var(qual(MLDS_Module, module_qual,
 		ml_saved_stack_chain_name(Id)), ml_stack_chain_type),
 	Assignment = assign(ml_stack_chain_var, lval(SavedStackChain)),
 	RestoreStatement = mlds__statement(atomic(Assignment), Context).
@@ -2521,7 +2526,9 @@ ml_saved_stack_chain_name(Id) = var_name("saved_stack_chain", yes(Id)).
 
 				% A counter used to number the local variables
 				% used to save the stack chain
-			saved_stack_chain_counter :: counter
+			saved_stack_chain_counter :: counter,
+
+			elim_info_globals :: globals
 	).
 
 	% The lists of local variables for
@@ -2530,11 +2537,12 @@ ml_saved_stack_chain_name(Id) = var_name("saved_stack_chain", yes(Id)).
 :- type outervars == list(list(mlds__defn)).
 
 :- func elim_info_init(action, mlds_module_name, outervars,
-	mlds__type, mlds__type) = elim_info.
+	mlds__type, mlds__type, globals) = elim_info.
 
-elim_info_init(Action, ModuleName, OuterVars, EnvTypeName, EnvPtrTypeName) =
+elim_info_init(Action, ModuleName, OuterVars, EnvTypeName, EnvPtrTypeName,
+		Globals) =
 	elim_info(Action, ModuleName, OuterVars, [], [],
-		EnvTypeName, EnvPtrTypeName, counter__init(0)).
+		EnvTypeName, EnvPtrTypeName, counter__init(0), Globals).
 
 :- func elim_info_get_module_name(elim_info) = mlds_module_name.
 :- func elim_info_get_outer_vars(elim_info) = outervars.

@@ -253,7 +253,7 @@ special___Unify___type_desc_0_0(object[] x, object[] y)
 	type_of(_Value::unused) = (TypeInfo::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	TypeInfo = new mercury.type_desc.type_desc_0(
+	TypeInfo = new mercury.type_desc.Type_desc_0(
 			(mercury.runtime.TypeInfo_Struct) TypeInfo_for_T);
 ").
 
@@ -276,7 +276,7 @@ special___Unify___type_desc_0_0(object[] x, object[] y)
 	has_type(_Arg::unused, TypeInfo::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	TypeInfo_for_T = ((mercury.type_desc.type_desc_0) TypeInfo).struct;
+	TypeInfo_for_T = ((mercury.type_desc.Type_desc_0) TypeInfo).struct;
 ").
 
 
@@ -411,20 +411,20 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 "
 	java.lang.Object [] result =
 			mercury.rtti_implementation.type_ctor_and_args_3_p_0(
-			((mercury.type_desc.type_desc_0) TypeDesc).struct);
+			((mercury.type_desc.Type_desc_0) TypeDesc).struct);
 
-	TypeCtorDesc = new type_ctor_desc_0((TypeCtorInfo_Struct) result[0]);
+	TypeCtorDesc = new Type_ctor_desc_0((TypeCtorInfo_Struct) result[0]);
 	ArgTypes = result[1];
 
 	// Convert list from TypeInfo_Struct to type_desc_0
-	mercury.list.list_1 type_list = (mercury.list.list_1) ArgTypes;
+	mercury.list.List_1 type_list = (mercury.list.List_1) ArgTypes;
 	while (type_list.data_tag == 1) {
-		((mercury.list.list_1.f_cons_2) type_list).F1 =
-			new mercury.type_desc.type_desc_0(
+		((mercury.list.List_1.F_cons_2) type_list).F1 =
+			new mercury.type_desc.Type_desc_0(
 			(TypeInfo_Struct)
-			((mercury.list.list_1.f_cons_2) type_list).F1);
-		type_list = (mercury.list.list_1)
-			((mercury.list.list_1.f_cons_2) type_list).F2;
+			((mercury.list.List_1.F_cons_2) type_list).F1);
+		type_list = (mercury.list.List_1)
+			((mercury.list.List_1.F_cons_2) type_list).F2;
 	}
 ").
 
@@ -546,7 +546,7 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 "
 	Object[] result = mercury.rtti_implementation.
 		type_ctor_name_and_arity_4_p_0(
-		((type_ctor_desc_0) TypeCtorDesc).struct);
+		((Type_ctor_desc_0) TypeCtorDesc).struct);
 
 	TypeCtorModuleName = (java.lang.String) result[0];
 	TypeCtorName = (java.lang.String) result[1];
@@ -580,17 +580,17 @@ get_type_info_for_type_info = TypeDesc :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("Java", "
-	public static class type_desc_0 {
+	public static class Type_desc_0 {
 		public mercury.runtime.TypeInfo_Struct struct;
 
-		public type_desc_0(mercury.runtime.TypeInfo_Struct init) {
+		public Type_desc_0(mercury.runtime.TypeInfo_Struct init) {
 			struct = init;
 		}
 	}
-	public static class type_ctor_desc_0 {
+	public static class Type_ctor_desc_0 {
 		public mercury.runtime.TypeCtorInfo_Struct struct;
 
-		public type_ctor_desc_0(
+		public Type_ctor_desc_0(
 				mercury.runtime.TypeCtorInfo_Struct init)
 		{
 			struct = init;
@@ -598,33 +598,33 @@ get_type_info_for_type_info = TypeDesc :-
 	}
 
 	public static boolean
-	__Unify____type_desc_0_0(mercury.type_desc.type_desc_0 x,
-		mercury.type_desc.type_desc_0 y)
+	__Unify____type_desc_0_0(mercury.type_desc.Type_desc_0 x,
+		mercury.type_desc.Type_desc_0 y)
 	{
 		return x.struct.unify(y.struct);
 	}
 
 	public static boolean
-	__Unify____type_ctor_desc_0_0(mercury.type_desc.type_ctor_desc_0 x,
-		mercury.type_desc.type_ctor_desc_0 y)
+	__Unify____type_ctor_desc_0_0(mercury.type_desc.Type_ctor_desc_0 x,
+		mercury.type_desc.Type_ctor_desc_0 y)
 	{
 		// stub only
 		throw new java.lang.Error
 			(""unify/2 for type_ctor_desc type not implemented"");
 	}
 
-	public static mercury.builtin.comparison_result_0
-	__Compare____type_desc_0_0(mercury.type_desc.type_desc_0 x,
-		mercury.type_desc.type_desc_0 y)
+	public static mercury.builtin.Comparison_result_0
+	__Compare____type_desc_0_0(mercury.type_desc.Type_desc_0 x,
+		mercury.type_desc.Type_desc_0 y)
 	{
 		// stub only
 		throw new java.lang.Error
 			(""compare/3 for type_desc type implemented"");
 	}
 
-	public static mercury.builtin.comparison_result_0
-	__Compare____type_ctor_desc_0_0(mercury.type_desc.type_ctor_desc_0 x,
-		mercury.type_desc.type_ctor_desc_0 y)
+	public static mercury.builtin.Comparison_result_0
+	__Compare____type_ctor_desc_0_0(mercury.type_desc.Type_ctor_desc_0 x,
+		mercury.type_desc.Type_ctor_desc_0 y)
 	{
 		// stub only
 		throw new java.lang.Error

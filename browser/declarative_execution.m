@@ -399,6 +399,7 @@
 
 :- pragma foreign_type("C", proc_layout, "const MR_Proc_Layout *",
 	[can_pass_as_mercury_type, stable]).
+:- pragma foreign_type("Java", proc_layout, "Object", []). % stub only
 
 get_proc_id_from_layout(Layout) = ProcId :-
 	( proc_layout_is_uci(Layout) ->

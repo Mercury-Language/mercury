@@ -1488,9 +1488,9 @@
 :- pragma foreign_code("Java",
 "
 	static java.lang.Object	ML_io_stream_db =
-		new mercury.tree234.tree234_2.empty_0();
+		new mercury.tree234.Tree234_2.Empty_0();
 	static java.lang.Object	ML_io_user_globals =
-		new mercury.tree234.tree234_2.empty_0();
+		new mercury.tree234.Tree234_2.Empty_0();
 ").
 
 :- type io__stream_putback ==	map(io__stream_id, list(char)).
@@ -2502,14 +2502,14 @@ file_type_implemented :- semidet_fail.
 	// directories, and for everything else it just returns unknown.
 
 	if (file.isFile()) {
-		Result = new mercury.io.res_1.ok_1(new mercury.io.file_type_0(
-			mercury.io.file_type_0.regular_file));
+		Result = new mercury.io.Res_1.Ok_1(new mercury.io.File_type_0(
+			mercury.io.File_type_0.regular_file));
 	} else if (file.isDirectory()) {
-		Result = new mercury.io.res_1.ok_1(new mercury.io.file_type_0(
-			mercury.io.file_type_0.directory));
+		Result = new mercury.io.Res_1.Ok_1(new mercury.io.File_type_0(
+			mercury.io.File_type_0.directory));
 	} else {
-		Result = new mercury.io.res_1.ok_1(new mercury.io.file_type_0(
-			mercury.io.file_type_0.unknown));
+		Result = new mercury.io.Res_1.Ok_1(new mercury.io.File_type_0(
+			mercury.io.File_type_0.unknown));
 	}
 ").
 
@@ -2624,13 +2624,13 @@ io__check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 	java.lang.String permissions = null;
 
 	if (access_types_includes_read_1_p_0(
-		(mercury.list.list_1) AccessTypes))
+		(mercury.list.List_1) AccessTypes))
 	{
 		permissions = ""read"";
 	}
 
 	if (access_types_includes_write_1_p_0(
-		(mercury.list.list_1) AccessTypes))
+		(mercury.list.List_1) AccessTypes))
 	{
 		if (permissions == null) {
 			permissions = ""write"";
@@ -2640,7 +2640,7 @@ io__check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 	}
 
 	if (access_types_includes_execute_1_p_0(
-		(mercury.list.list_1) AccessTypes))
+		(mercury.list.List_1) AccessTypes))
 	{
 		if (permissions == null) {
 			permissions = ""execute"";

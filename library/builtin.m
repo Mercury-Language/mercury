@@ -761,11 +761,11 @@ namespace mercury.builtin {
 }
 ").
 :- pragma foreign_code("Java", "
-	public static class void_0
+	public static class Void_0
 	{
 		// Make the constructor private to ensure that we can
 		// never create an instance of this class.
-		private void_0()
+		private Void_0()
 		{
 		}
 	}
@@ -779,17 +779,17 @@ namespace mercury.builtin {
 	// Definitions of builtin types
 	//
 
-	public static class tuple_0
+	public static class Tuple_0
 	{
 		// stub only
 	}
 
-	public static class func_0
+	public static class Func_0
 	{
 		// stub only
 	}
 
-	public static class c_pointer_0
+	public static class C_pointer_0
 	{
 		// stub only
 	}
@@ -806,7 +806,7 @@ namespace mercury.builtin {
 		throw new java.lang.Error (""unify/3 not implemented"");
 	}
 
-	public static comparison_result_0
+	public static Comparison_result_0
 	compare_3_p_0 (mercury.runtime.TypeInfo_Struct ti,
 		       java.lang.Object x, java.lang.Object y)
 	{
@@ -814,28 +814,28 @@ namespace mercury.builtin {
 		throw new java.lang.Error (""compare/3 not implemented"");
 	}
 
-	public static comparison_result_0
+	public static Comparison_result_0
 	compare_3_p_1 (mercury.runtime.TypeInfo_Struct ti,
 		       java.lang.Object x, java.lang.Object y)
 	{
 		return compare_3_p_0(ti, x, y);
 	}
 
-	public static comparison_result_0
+	public static Comparison_result_0
 	compare_3_p_2 (mercury.runtime.TypeInfo_Struct ti,
 		       java.lang.Object x, java.lang.Object y)
 	{
 		return compare_3_p_0(ti, x, y);
 	}
 
-	public static comparison_result_0
+	public static Comparison_result_0
 	compare_3_p_3 (mercury.runtime.TypeInfo_Struct ti,
 		       java.lang.Object x, java.lang.Object y)
 	{
 		return compare_3_p_0(ti, x, y);
 	}
 
-	public static comparison_result_0
+	public static Comparison_result_0
 	compare_representation_3_p_0 (mercury.runtime.TypeInfo_Struct ti,
 		       java.lang.Object x, java.lang.Object y)
 	{
@@ -850,7 +850,7 @@ namespace mercury.builtin {
 
 	public static boolean
 	__Unify____tuple_0_0
-		(mercury.builtin.tuple_0 x, mercury.builtin.tuple_0 y)
+		(mercury.builtin.Tuple_0 x, mercury.builtin.Tuple_0 y)
 	{
 		// stub only
 		throw new java.lang.Error (""unify/2 for tuple types not implemented"");
@@ -858,7 +858,7 @@ namespace mercury.builtin {
 
 	public static boolean
 	__Unify____func_0_0
-		(mercury.builtin.func_0 x, mercury.builtin.func_0 y)
+		(mercury.builtin.Func_0 x, mercury.builtin.Func_0 y)
 	{
 		// stub only
 		throw new java.lang.Error (""unify/2 for tuple types not implemented"");
@@ -875,7 +875,7 @@ namespace mercury.builtin {
 
 	public static boolean
 	__Unify____void_0_0
-		(mercury.builtin.void_0 x, mercury.builtin.void_0 y)
+		(mercury.builtin.Void_0 x, mercury.builtin.Void_0 y)
 	{
 		// there should never be any values of type void/0
 		throw new java.lang.Error (""unify/2 called for void type"");
@@ -885,24 +885,24 @@ namespace mercury.builtin {
 	// Type-specific comparison routines for builtin types
 	//
 
-	public static comparison_result_0
+	public static Comparison_result_0
 	__Compare____tuple_0_0
-		(mercury.builtin.tuple_0 x, mercury.builtin.tuple_0 y)
+		(mercury.builtin.Tuple_0 x, mercury.builtin.Tuple_0 y)
 	{
 		// stub only
 		throw new java.lang.Error
 			(""compare/3 for tuple types not implemented"");
 	}
 
-	public static comparison_result_0
+	public static Comparison_result_0
 	__Compare____func_0_0
-		(mercury.builtin.func_0 x, mercury.builtin.func_0 y)
+		(mercury.builtin.Func_0 x, mercury.builtin.Func_0 y)
 	{
 		// comparing values of higher-order types is a run-time error
 		throw new java.lang.Error (""compare/3 called for func type"");
 	}
 
-	public static comparison_result_0
+	public static Comparison_result_0
 	__Compare____c_pointer_0_0
 		(java.lang.Object x, java.lang.Object y)
 	{
@@ -911,9 +911,9 @@ namespace mercury.builtin {
 			(""compare/3 called for c_pointer type"");
 	}
 
-	public static comparison_result_0
+	public static Comparison_result_0
 	__Compare____void_0_0
-		(mercury.builtin.void_0 x, mercury.builtin.void_0 y)
+		(mercury.builtin.Void_0 x, mercury.builtin.Void_0 y)
 	{
 		// there should never be any values of type void/0
 		throw new java.lang.Error (""compare/3 called for void type"");
