@@ -11,15 +11,16 @@ int main(int argc, char **argv) {
 	char dummy;
 	Integer value;
 	MercuryList list;
+	int exit_status;
 
 	printf("In main().\n");
 
 	/*
-	** call mercury_main() to initialize the Mercury engine.
+	** call mercury_init() to initialize the Mercury engine.
 	** This must be done before we can call any Mercury predicates
 	** or functions.
 	*/
-	mercury_main(argc, argv, &dummy);
+	mercury_init(argc, argv, &dummy);
 
 	/*
 	** call the C function foo_test(), which is the interface
@@ -79,8 +80,15 @@ int main(int argc, char **argv) {
 		printf("baz(100, &value) returns FALSE\n");
 	}
 
+	/*
+	** call mercury_terminate() to shutdown the Mercury engine.
+	** This should be done after we have finished calling Mercury
+	** predicates or functions.
+	*/
+	exit_status = mercury_terminate();
+
 	printf("Returning from main().\n");
-	return 0;
+	return exit_status;
 }
 
 static void print_list(MercuryList list) {
