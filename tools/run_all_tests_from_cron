@@ -19,9 +19,11 @@ tm_dir=/home/mercury/public/test_mercury
 
 ulimit -c 0
 
+C_COMPILER=gcc
 case $# in
 	1)	HOST=$1 ;;
-	*)	echo "Usage: $0 host" 1>&2; exit 1 ;;
+	2)	HOST=$1; C_COMPILER=$2 ;;
+	*)	echo "Usage: $0 host [c-compiler]" 1>&2; exit 1 ;;
 esac
 
 case $HOST in
@@ -39,7 +41,7 @@ case $HOST in
 	venus)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
 	*)		echo "$0: unknown HOST $HOST" 1>&2; exit 1 ;;
 esac
-
+	
 case $HOST in
 	kryten|taifun) 	mail="rsh mundook /bin/mail" ;;
 	hydra|ender|roy|venus) mail=/usr/bin/mail ;;
@@ -74,6 +76,7 @@ cvs checkout mercury/tools/generate_index_html
 
 echo run_test $HOST
 
+mv -f $tm_dir/logs/old/test_mercury_$HOST.out $tm_dir/logs/old2 2>/dev/null
 mv -f $tm_dir/logs/test_mercury_$HOST.out $tm_dir/logs/old 2>/dev/null
 
 tmpfile=/tmp/run_test$$
@@ -83,7 +86,7 @@ echo Subject: Mercury auto-test on $HOST
 echo
 logfile=$tm_dir/logs/test_mercury_$HOST.out
 
-if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH \
+if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $C_COMPILER \
 		> $logfile 2>&1
 then
 	echo test passed

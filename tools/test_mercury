@@ -11,8 +11,8 @@
 echo "test_mercury starting at `date`" 1>&2
 
 case $# in
-	3)	HOST=$1; ARCH=$2; FULLARCH=$3 ;;
-	*)	echo "Usage: $0 host arch fullarch" 1>&2; exit 1 ;;
+	4)	HOST=$1; ARCH=$2; FULLARCH=$3; C_COMPILER=$4 ;;
+	*)	echo "Usage: $0 host arch fullarch c_compiler" 1>&2; exit 1 ;;
 esac
 
 PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
@@ -120,7 +120,10 @@ case $HOST in
 	roy) 		OPTIMIZE=-O4 ;;	# hlc
 	hydra)		OPTIMIZE=-O2 ;;
 	ender)		OPTIMIZE=-O3 ;;
-	venus) 		OPTIMIZE=-O5 ;;
+	venus) 		case $C_COMPILER in
+				gcc)	OPTIMIZE=-O5 ;;
+				*)	OPTIMIZE=-O2 ;;
+			esac ;;
 	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
 	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
 esac
@@ -165,10 +168,14 @@ TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 
 case $HOST in
-	hg|ender|roy|venus)
+	hg|ender|roy|venus) 	
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH ;;
+esac
+case $C_COMPILER in
+	gcc)	;;
+	*)	INSTALL_DIR="$INSTALL_DIR-$C_COMPILER" ;;
 esac
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
@@ -363,6 +370,8 @@ cd mercury || { false; exit 1; }
 
 autoconf || { false; exit 1; }
 rm -f config.cache
+CC=$C_COMPILER
+export CC
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
 mmake depend $PARALLEL || { false; exit 1; }
 mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
@@ -445,7 +454,10 @@ case $HOST in
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
 	hg|quicksilver|hydra|ender|kryten|taifun|venus)
-		GRADES="asm_fast.gc.tr"
+		case $C_COMPILER in
+			gcc)	GRADES="asm_fast.gc.tr" ;;
+			*)	GRADES="" ;;
+		esac
 		;;
 	roy)
 		GRADES="hlc.gc.tr hl.gc.tr"
@@ -570,10 +582,15 @@ case $HOST in
 			asm_fast.par.gc hlc.gc"
 		;;
 	venus)
-		GRADES="asm_fast.gc asm_fast
-			asm_fast.gc.prof asm_fast.prof
-			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
-			hlc.gc"
+		case $C_COMPILER in
+			gcc)	GRADES="asm_fast.gc asm_fast
+				asm_fast.gc.prof asm_fast.prof
+				asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+				hlc.gc" ;;
+			*)	GRADES="none.gc none none.gc.prof
+				none.prof none.gc.memprof none.gc.tr
+				none.gc.debug.tr.debug hlc.gc" ;;
+		esac
 		;;
 	roy)
 		GRADES="hlc.gc hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc
@@ -704,6 +721,11 @@ case $fullname in
 		;;
 esac
 
+case $C_COMPILER in
+	gcc)	;;
+	*)	fullname="$fullname-$C_COMPILER" ;;
+esac
+
 # cvs does not allow `.' in tag names, so we use `_' instead
 fullname_tag=`echo $fullname | tr . _`
 
@@ -746,7 +768,10 @@ case $status in
     0)
 	: if we get this far, then it worked.
 	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
-	date >> $TESTDIR/logs/successful_tests.$INSTALL_DIR_NAME.$HOST
+	case $C_COMPILER in
+		gcc) date >> $TESTDIR/logs/successful_tests.$INSTALL_DIR_NAME.$HOST ;;
+		*) date >> $TESTDIR/logs/successful_tests.$INSTALL_DIR_NAME.$HOST."$C_COMPILER" ;;
+	esac
 	case $HOST in murlibobo)
 	    cd $DIR &&
 		# Delete older stable versions that this one replaces
