@@ -703,11 +703,15 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 	),
 	( { string__contains_char(Verbose, 'P') } ->
 		{ goal_info_get_goal_path(GoalInfo, Path) },
-		{ trace__path_to_string(Path, PathStr) },
-		hlds_out__write_indent(Indent),
-		io__write_string("% goal path: "),
-		io__write_string(PathStr),
-		io__write_string("\n")
+		( { Path \= [] } ->
+			{ trace__path_to_string(Path, PathStr) },
+			hlds_out__write_indent(Indent),
+			io__write_string("% goal path: "),
+			io__write_string(PathStr),
+			io__write_string("\n")
+		;
+			[]
+		)
 	;
 		[]
 	),
