@@ -1,3 +1,4 @@
+
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -20,7 +21,7 @@
 %	ML_DI_output_current
 %	ML_DI_found_match
 %	ML_DI_read_request_from_socket
-% These are used by runtime/mercury_trace.c.
+% These are used by runtime/mercury_trace_external.c.
 
 :- pred dummy_pred_to_avoid_warning_about_nothing_exported is det.
 
@@ -86,26 +87,19 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			match(goal_path_string)
 		)
 
-		% A `current' request instructs the debuggee to
-		% retrieve the specified attributes of the current
-		% trace event and report them to the debugger
-		% via the socket.
-	;	current(
-			wanted,	% event_number
-			wanted,	% call_number
-			wanted,	% depth_number
-			wanted,	% port
-			wanted,	% module name
-			wanted,	% pred name
-			wanted,	% arity
-			wanted,	% proc_id (mode number)
-			wanted,	% determinism
-			wanted,	% arguments
-				% XXX should provide a way of getting
+		% A `current_slots' request instructs the debuggee to
+		% retrieve the attributes of the current trace
+		% event (except for argument slot) and report them 
+		% to the debugger via the socket.
+	;	current_slots
+		% A `current_vars' request instructs the debuggee to
+		% retrieve the list of values and the list of internal
+		% names of live variables of the current event and
+		% report it to the debugger via the socket.
+	;	current_vars    % 
+ 				% XXX should provide a way of getting
 				% just part of the arguments
-				% (to reduce unnecessary socket traffic)
-			wanted	% goal_path_string
-		)
+ 				% (to reduce unnecessary socket traffic)
 	;	abort_prog
 			% just abort the program
 	;	no_trace
@@ -144,19 +138,21 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	forward_move_match_found
 	;	forward_move_match_not_found
 	% responses to current 
-	;	current(
-			maybe(event_number),
-			maybe(call_number),
-			maybe(depth_number),
-			maybe(trace_port_type),
-			maybe(string),	% module name
-			maybe(string),	% pred name
-			maybe(arity),
-			maybe(int),	% mode number
-			maybe(determinism),
-			maybe(list(univ)),
-			maybe(goal_path_string)
-		)
+	% responses to current_slots 
+	;	current_slots(
+			event_number,
+			call_number,
+			depth_number,
+			trace_port_type,
+			string,		% module name
+			string,		% pred name
+			arity,
+			int,		% mode number
+			determinism,
+			goal_path_string
+ 		)
+	% responses to current_vars
+	;	current_vars(list(univ), list(string))
 	;	last_event
 	% responses to abort_prog or no_trace
 	;	ok
@@ -164,77 +160,55 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	error(string)
 	.
 
-% `wanted' is called "current status" in the Opium documentation
-:- type wanted == bool.
-
-
 %-----------------------------------------------------------------------------%
-
-% output_currentML_DI_output_current":
 %	send to the debugger (e.g. Opium) the wanted features.
 
-:- pragma export(output_current(in, in, in, in, in, in, in, in, in, in,
-		in, in, in, di, uo), "ML_DI_output_current").
+% output_current_slots "ML_DI_output_current_slots":
+%	send to the debugger (e.g. Opium) the attributes of the current event
+%	except the list of arguments.
+
+:- pragma export(output_current_slots(in, in, in, in, in, in, in, in, in,
+		in, in, di, uo), "ML_DI_output_current_slots").
 			
-:- pred output_current(event_number, call_number, depth_number, trace_port_type,
-	/* module name */ string, /* pred name */ string, arity,
-	/* mode num */ int, determinism, /* the arguments */ list(univ),
-	goal_path_string, debugger_request,
+:- pred output_current_slots(event_number, call_number, depth_number, 
+	trace_port_type, /* module name */ string, /* pred name */ string, 
+	arity, /* mode num */ int, determinism, goal_path_string, 
 	io__output_stream, io__state, io__state).
-:- mode output_current(in, in, in, in, in, in, in, in, in, in, in, in, in,
-	di, uo) is det.
+:- mode output_current_slots(in, in, in, in, in, in, in, in, in, in, in,
+ 	di, uo) is det.
 
-output_current(EventNumber, CallNumber, DepthNumber, Port,
-		ModuleName, PredName, Arity, ModeNum, Determinism, Args,
-		Path, DebuggerRequest, OutputStream) -->
-	(
-		{ DebuggerRequest = current(WantEventNumber,
-			WantCallNumber, WantDepthNumber, WantPort,
-			WantModuleName, WantPredName, WantArity,
-			WantModeNum, WantDeterminism, WantArgs, WantPath) }
-	->
-		{
-		get_if_wanted(WantEventNumber, EventNumber,
-				MaybeEventNumber),
-		get_if_wanted(WantCallNumber, CallNumber, MaybeCallNumber),
-		get_if_wanted(WantDepthNumber, DepthNumber,
-				MaybeDepthNumber),
-		get_if_wanted(WantPort, Port, MaybePort),
-		get_if_wanted(WantModuleName, ModuleName, MaybeModuleName),
-		get_if_wanted(WantPredName, PredName, MaybePredName),
-		get_if_wanted(WantArity, Arity, MaybeArity),
-		get_if_wanted(WantModeNum, ModeNum, MaybeModeNum),
-		get_if_wanted(WantDeterminism, Determinism,
-				MaybeDeterminism),
-		get_if_wanted(WantArgs, Args, MaybeArgs),
-		get_if_wanted(WantPath, Path, MaybePath),
-		CurrentTraceInfo = current(MaybeEventNumber,
-			MaybeCallNumber, MaybeDepthNumber, MaybePort,
-			MaybeModuleName, MaybePredName, MaybeArity,
-			MaybeModeNum, MaybeDeterminism, MaybeArgs,
-			MaybePath)
-		},
-		/****
-		io__print("debugger_interface: Send to Opium: "),
-		io__write(CurrentTraceInfo),
-		io__print(".\n"),	
-		****/
-		io__write(OutputStream, CurrentTraceInfo),
-		io__print(OutputStream, ".\n"),
-		io__flush_output(OutputStream)
-	;
-		{ error("output_current: current expected") }
-	).
 
-:- pred get_if_wanted(wanted, T, maybe(T)).
-:- mode get_if_wanted(in, in, out) is det.
-% get_if_wanted(Wanted, Value, MaybeValue).
-get_if_wanted(yes, X, yes(X)).
-get_if_wanted(no, _, no).
+output_current_slots(EventNumber, CallNumber, DepthNumber, Port,
+	ModuleName, PredName, Arity, ModeNum, Determinism,
+	Path, OutputStream) -->
+	
+	{ CurrentTraceInfo = current_slots(EventNumber, CallNumber, 
+		DepthNumber, Port, ModuleName, PredName, Arity,
+		ModeNum, Determinism, Path) },
+	io__write(OutputStream, CurrentTraceInfo),
+	io__print(OutputStream, ".\n"),
+	io__flush_output(OutputStream).
+
+% output_current_vars "ML_DI_output_current_vars":
+%	send to the debugger the list of the live arguments of the current event.
+
+:- pragma export(output_current_vars(in, in, in, di, uo), "ML_DI_output_current_vars").
+			
+:- pred output_current_vars(list(univ), list(string), 
+	io__output_stream, io__state, io__state).
+:- mode output_current_vars(in, in, in, di, uo) is det.
+
+
+output_current_vars(VarList, StringList, OutputStream) -->
+		
+	{ CurrentTraceInfo = current_vars(VarList, StringList) },
+	io__write(OutputStream, CurrentTraceInfo),
+	io__print(OutputStream, ".\n"),
+	io__flush_output(OutputStream).
 
 %-----------------------------------------------------------------------------%
 
-:- pragma export(found_match(in, in, in, in, in, in, in, in, in,  in,
+:- pragma export(found_match(in, in, in, in, in, in, in, in, in, in,
 			in, in), "ML_DI_found_match").
 			
 :- pred found_match(event_number, call_number, depth_number, trace_port_type,
@@ -243,12 +217,12 @@ get_if_wanted(no, _, no).
 				% XXX we could provide better ways of
 				% matching on arguments
 	goal_path_string, debugger_request).
-:- mode found_match(in, in, in, in, in, in, in, in, in,  in, in, in)
+:- mode found_match(in, in, in, in, in, in, in, in, in, in, in, in)
 	is semidet.
 
-found_match(EventNumber, CallNumber, DepthNumber, Port,
-		ModuleName, PredName, Arity, ModeNum, Determinism, Args,
-		Path, DebuggerRequest) :-
+found_match(EventNumber, CallNumber, DepthNumber, Port, ModuleName, 
+		PredName, Arity, ModeNum, Determinism, Args, Path, 
+		DebuggerRequest) :-
 	(
 		DebuggerRequest = forward_move(MatchEventNumber,
 			MatchCallNumber, MatchDepthNumber, MatchPort,
@@ -324,13 +298,15 @@ read_request_from_socket(SocketStream, Request, RequestType) -->
 :- mode classify_request(in, out) is det.
 
 % the numbers here should match the definition of
-% MR_debugger_request_type in runtime/mercury_trace.c.
+% MR_debugger_request_type in runtime/mercury_trace_external.c.
 
 classify_request(hello_reply, 0).
 classify_request(forward_move(_, _, _, _, _, _, _, _, _, _, _), 1).
-classify_request(current(_, _, _, _, _, _, _, _, _, _, _), 2).
-classify_request(abort_prog, 3).
+classify_request(current_vars, 2).
+classify_request(current_slots, 3).
 classify_request(no_trace, 4).
-classify_request(error(_), 5).
+classify_request(abort_prog, 5).
+classify_request(error(_), 6).
+
 
 %-----------------------------------------------------------------------------%

@@ -57,12 +57,14 @@ extern	void		(*address_of_init_gc)(void);
 ** Similarly, these are for the debugger interface; they're defined in
 ** library/debugger_interface.m.
 */
-void	(*MR_DI_output_current)(Integer, Integer, Integer, Word, String,
-		String, Integer, Integer, Integer, Word, String, Word, Word);
-		/* normally ML_DI_output_current (output_current/13) */
+void	(*MR_DI_output_current_vars)(Word, Word, Word);
+		/* normally ML_DI_output_current_vars (output_current_vars/3) */
+void	(*MR_DI_output_current_slots)(Integer, Integer, Integer, Word, String,
+		String, Integer, Integer, Integer, String, Word);
+		/* normally ML_DI_output_current_slots (output_current_slots/13) */
 bool	(*MR_DI_found_match)(Integer, Integer, Integer, Word, String, String,
 		Integer, Integer, Integer, Word, String, Word);
-		/* normally ML_DI_found_match (output_current/12) */
+		/* normally ML_DI_found_match (found_match/12) */
 void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
 		/* normally ML_DI_read_request_from_socket
 		   (read_request_from_socket/5) */

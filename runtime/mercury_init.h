@@ -97,10 +97,13 @@ extern	void	mercury_init_io(void);		/* in the Mercury library */
 extern	void	ML_io_init_state(void);		/* in the Mercury library */
 extern	void	ML_io_finalize_state(void);	/* in the Mercury library */
 
+
 /* in library/debugger_interface.m */
-void	ML_DI_output_current(Integer, Integer, Integer, Word, String,
-		String, Integer, Integer, Integer, Word, String, Word, Word);
-		/* normally ML_DI_output_current (output_current/13) */
+void	ML_DI_output_current_vars(Word, Word, Word);
+		/* normally ML_DI_output_current_vars (output_current_vars/4) */
+void	ML_DI_output_current_slots(Integer, Integer, Integer, Word, String,
+		String, Integer, Integer, Integer, String, Word);
+		/* normally ML_DI_output_current_slots (output_current_slots/13) */
 bool	ML_DI_found_match(Integer, Integer, Integer, Word, String, String,
 		Integer, Integer, Integer, Word, String, Word);
 		/* normally ML_DI_found_match (found_match/12) */

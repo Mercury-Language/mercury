@@ -43,12 +43,14 @@
 */
 
 typedef enum {
-	MR_REQUEST_HELLO_REPLY = 0,  /* initiate debugging session	    */
-	MR_REQUEST_FORWARD_MOVE = 1, /* go to the next matching trace event */
-	MR_REQUEST_CURRENT = 2,	     /* report data for current trace event */
-	MR_REQUEST_NO_TRACE = 3,     /* continue to end, not tracing	    */
-	MR_REQUEST_ABORT_PROG = 4,   /* abort the current execution	    */
-	MR_REQUEST_ERROR = 5         /* something went wrong                */
+	MR_REQUEST_HELLO_REPLY   = 0, /* initiate debugging session	      */
+	MR_REQUEST_FORWARD_MOVE  = 1, /* go to the next matching trace event  */
+	MR_REQUEST_CURRENT_VARS  = 2, /* report data for current_vars query   */
+	MR_REQUEST_CURRENT_SLOTS = 3, /* report data for current_slots query  */
+	MR_REQUEST_NO_TRACE      = 4, /* continue to end, not tracing	      */
+	MR_REQUEST_ABORT_PROG    = 5, /* abort the current execution	      */
+	MR_REQUEST_ERROR         = 6, /* something went wrong                 */
+
 } MR_debugger_request_type;
 
 static MercuryFile MR_debugger_socket_in;
@@ -63,10 +65,11 @@ static bool	MR_found_match(const MR_Stack_Layout_Label *layout,
 			MR_trace_port port, Unsigned seqno, Unsigned depth,
 			/* XXX registers */
 			const char *path, Word search_data);
-static void	MR_output_current(const MR_Stack_Layout_Label *layout,
-			MR_trace_port port, Unsigned seqno, Unsigned depth,
-			Word var_list,
-			const char *path, Word current_request);
+static void	MR_output_current_slots(const MR_Stack_Layout_Label *layout,
+			MR_trace_port port, Unsigned seqno, Unsigned depth, 
+			const char *path);
+static void	MR_output_current_vars(Word var_list, Word string_list);
+static Word	MR_trace_make_var_names_list(const MR_Stack_Layout_Label *layout);
 
 #if 0
 This pseudocode should go in the debugger process:
@@ -236,7 +239,7 @@ MR_trace_init_external(void)
 	/*
 	** Convert the socket fd to a Mercury stream
 	*/
-	file_in = fdopen(fd, "r"); 
+	file_in = fdopen(fd, "r");
 	file_out = fdopen(fd, "w");
 	if ((file_in == NULL)||(file_out == NULL)) {
 		fprintf(stderr, "Mercury runtime: fdopen() failed: %s\n",
@@ -277,7 +280,7 @@ MR_trace_init_external(void)
 	** Send start to start the synchronous communication with the debugger
 	*/
 
-	MR_send_message_to_socket("start"); 
+	MR_send_message_to_socket("start");
 	if (MR_debug_socket) {
 		fprintf(stderr, "Mercury runtime: start send\n");
 	}
@@ -310,8 +313,8 @@ MR_trace_event_external(MR_trace_cmd_info *cmd,
 	static bool searching = FALSE;
 	static Word search_data;
 	Word debugger_request;
-	Integer debugger_request_type;
-	Word var_list;
+	Integer debugger_request_type, live_var_number;
+	Word var_list, var_names_list, type_list, var;
 
 	if (searching) {
 		/* XXX should also pass registers here,
@@ -344,17 +347,26 @@ MR_trace_event_external(MR_trace_cmd_info *cmd,
 				search_data = debugger_request;
 			        searching = TRUE;
 				return;
-			       			      		
-			case MR_REQUEST_CURRENT:
+
+			case MR_REQUEST_CURRENT_VARS:
 				if (MR_debug_socket) {
 					fprintf(stderr, "\nMercury runtime: "
-						"REQUEST_CURRENT\n");
+						"REQUEST_CURRENT_VARS\n");
 				}
 				var_list = MR_trace_make_var_list(layout);
-				MR_output_current(layout, port, seqno, depth,
-					var_list, path, debugger_request);
+				var_names_list = MR_trace_make_var_names_list(layout);
+				MR_output_current_vars(var_list, var_names_list);
 				break;
-				
+
+			case MR_REQUEST_CURRENT_SLOTS:
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_CURRENT_SLOTS\n");
+				}
+				MR_output_current_slots(layout, port, seqno, 
+							depth, path);
+				break;
+
 			case MR_REQUEST_NO_TRACE:
 				cmd->MR_trace_cmd = MR_CMD_TO_END;
 				return;
@@ -366,13 +378,13 @@ MR_trace_event_external(MR_trace_cmd_info *cmd,
 	}
 }
 
+
+
 static void
-MR_output_current(const MR_Stack_Layout_Label *layout,
-	MR_trace_port port, Unsigned seqno, Unsigned depth,
-	Word var_list,
-	const char *path, Word current_request)
+MR_output_current_slots(const MR_Stack_Layout_Label *layout,
+	MR_trace_port port, Unsigned seqno, Unsigned depth, const char *path)
 {
-	MR_DI_output_current(
+	MR_DI_output_current_slots(
 		MR_trace_event_number,
 		seqno,
 		depth,
@@ -382,11 +394,19 @@ MR_output_current(const MR_Stack_Layout_Label *layout,
 		layout->MR_sll_entry->MR_sle_arity,
 		layout->MR_sll_entry->MR_sle_mode,
 		layout->MR_sll_entry->MR_sle_detism,
-		var_list,
 		(String) (Word) path,
-		current_request,
 		(Word) &MR_debugger_socket_out);
 }
+
+static void
+MR_output_current_vars(Word var_list, Word string_list)
+{
+	MR_DI_output_current_vars(
+		var_list,
+		string_list,
+		(Word) &MR_debugger_socket_out);
+}
+
 
 static void
 MR_read_request_from_socket(
@@ -410,7 +430,7 @@ MR_found_match(const MR_Stack_Layout_Label *layout,
 	bool result;
 
 	/* XXX get live vars from registers */
-	Word arguments = /* XXX FIXME!!! */ 0; 
+	Word arguments = /* XXX FIXME!!! */ 0;
 	result = MR_DI_found_match(
 		MR_trace_event_number,
 		seqno,
@@ -434,5 +454,40 @@ MR_send_message_to_socket(const char *message)
 	fflush(MR_debugger_socket_out.file);
 	MR_debugger_socket_out.line_number++;
 }
+
+
+
+/*
+** This function returns the list of the internal names of currently live
+** variables.
+*/
+
+static Word
+MR_trace_make_var_names_list(const MR_Stack_Layout_Label *layout)
+{
+	int 				var_count;
+	const MR_Stack_Layout_Vars 	*vars;
+	int				i;
+	const char			*name;
+
+	Word				var_names_list;
+
+	var_count = layout->MR_sll_var_count;
+	vars = &layout->MR_sll_var_info;
+
+	restore_transient_registers();
+	var_names_list = list_empty();
+	save_transient_registers();
+	for (i = var_count - 1; i >= 0; i--) {
+
+		name = MR_name_if_present(vars, i);
+		restore_transient_registers();
+		var_names_list = list_cons(name, var_names_list);
+		save_transient_registers();
+	}
+
+	return var_names_list;
+}
+
 
 #endif /* MR_USE_EXTERNAL_DEBUGGER */
