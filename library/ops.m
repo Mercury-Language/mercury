@@ -115,7 +115,7 @@ ops__op_table("=", after, xfx, 700).
 % ops__op_table("=..", after, xfx, 700).
 % ops__op_table("=:=", after, xfx, 700).
 ops__op_table("=<", after, xfx, 700).
-% ops__op_table("==", after, xfx, 700).
+ops__op_table("==", after, xfx, 700).
 ops__op_table("=>", after, xfy, 920).
 % ops__op_table("=\\=", after, xfx, 700).
 ops__op_table(">", after, xfx, 700).
