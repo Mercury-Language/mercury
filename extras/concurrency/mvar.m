@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %---------------------------------------------------------------------------%
@@ -104,7 +104,7 @@ mvar__put(mvar(Full, Empty, Ref), Data) -->
 :- pragma c_code(new_ref(Ref::out),
 		[will_not_call_mercury, thread_safe],
 "
-	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""mvar:ref/1"");
+	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""mvar:ref/1"");
 	*(MR_Word *) Ref = (MR_Word) NULL;
 ").
 
