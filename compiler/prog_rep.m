@@ -27,10 +27,22 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp__program_representation.
 
-:- import_module list.
+:- import_module list, map, std_util.
 
-:- pred prog_rep__represent_proc(list(prog_var)::in, hlds_goal::in,
-	instmap::in, vartypes::in, module_info::in, proc_rep::out) is det.
+% A var_num_map maps each variable that occurs in any of a procedure's layout
+% structures to a number that uniquely identifies that variable, and to its
+% name.
+%
+% The integer returned by term__var_to_int are a dense set when we consider
+% all the original variables of a procedure. However, it can become less dense
+% when an optimization removes all references to a variable, and becomes less
+% dense still when we consider only variables that occur in a layout structure.
+% This is why we allocate our own id numbers.
+
+:- type var_num_map	== map(prog_var, pair(int, string)).
+
+:- func prog_rep__represent_proc(list(prog_var), hlds_goal,
+	instmap, vartypes, var_num_map, module_info) = proc_rep.
 
 :- implementation.
 
@@ -42,15 +54,16 @@
 
 :- type prog_rep__info
 	--->	info(
-			vartypes    :: vartypes,
-			module_info :: module_info
+			vartypes	:: vartypes,
+			var_num_map	:: var_num_map,
+			module_info	:: module_info
 		).
 
-prog_rep__represent_proc(HeadVars, Goal, InstMap0, VarTypes, ModuleInfo,
-		proc_rep(HeadVarsRep, GoalRep)) :-
+prog_rep__represent_proc(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
+		ModuleInfo) = proc_rep(HeadVarsRep, GoalRep) :-
 	list__map(term__var_to_int, HeadVars, HeadVarsRep),
-	prog_rep__represent_goal(Goal, InstMap0, info(VarTypes, ModuleInfo),
-		GoalRep).
+	prog_rep__represent_goal(Goal, InstMap0,
+		info(VarTypes, VarNumMap, ModuleInfo), GoalRep).
 
 :- pred prog_rep__represent_goal(hlds_goal::in, instmap::in,
 	prog_rep__info::in, goal_rep::out) is det.

@@ -568,8 +568,8 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
 		MaybeProcRepRval = no
 	;
 		MaybeGoal = yes(Goal),
-		prog_rep__represent_proc(HeadVars, Goal, InstMap, VarTypes,
-			ModuleInfo, ProcRep),
+		ProcRep = prog_rep__represent_proc(HeadVars, Goal, InstMap,
+			VarTypes, VarNumMap, ModuleInfo),
 		type_to_univ(ProcRep, ProcRepUniv),
 		StaticCellInfo0 = !.Info ^ static_cell_info,
 		static_term__term_to_rval(ProcRepUniv, ProcRepRval,
@@ -680,18 +680,6 @@ stack_layout__construct_var_name_rvals([Var - Name | VarNamesTail], CurNum,
 		!MaxNum, OffsetsTail, !Info).
 
 %---------------------------------------------------------------------------%
-
-% A var_num_map maps each variable that occurs in any of a procedure's layout
-% structures to a number that uniquely identifies that variable, and to its
-% name.
-%
-% The integer returned by term__var_to_int are a dense set when we consider
-% all the original variables of a procedure. However, it can become less dense
-% when an optimization removes all references to a variable, and becomes less
-% dense still when we consider only variables that occur in a layout structure.
-% This is why we allocate our own id numbers.
-
-:- type var_num_map	== map(prog_var, pair(int, string)).
 
 :- pred compute_var_number_map(list(prog_var)::in, prog_varset::in,
 	assoc_list(int, internal_layout_info)::in, maybe(hlds_goal)::in,
