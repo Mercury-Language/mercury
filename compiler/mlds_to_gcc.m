@@ -185,8 +185,18 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 		io__state::di, io__state::uo) is det.
 
 do_call_gcc_backend(ModuleName, Result) -->
+	% XXX should use new --pic option rather than
+	% reusing --pic-reg
+	globals__io_lookup_bool_option(pic_reg, Pic),
+	{ Pic = yes ->
+		PicExt = ".pic_s",
+		PicOpt = "-fpic "
+	;
+		PicExt = ".s",
+		PicOpt = ""
+	},
 	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
-	module_name_to_file_name(ModuleName, ".s", yes, AsmFileName),
+	module_name_to_file_name(ModuleName, PicExt, yes, AsmFileName),
 	% XXX should use new gcc_* options rather than
 	% reusing cflags, c_optimize
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -212,7 +222,7 @@ do_call_gcc_backend(ModuleName, Result) -->
 		C_Flags_List)) },
 	% Be careful with the order here.
 	% Also be careful that each option is separated by spaces.
-	{ string__append_list(["""<GCC back-end>"" ",
+	{ string__append_list(["""<GCC back-end>"" ", PicOpt,
 		QuietOption, OptimizeOpt, Target_DebugOpt, CFLAGS,
 		SourceFileName, " -o ", AsmFileName], CommandLine) },
 	globals__io_lookup_bool_option(verbose, Verbose),
