@@ -95,24 +95,24 @@ io__get_token_list(Tokens, LineNumber) :-
 %-----------------------------------------------------------------------------%
 
 	% The "varmap" ADT.
-	% A varmap is a mapping from variables to (var_id, name).
+	% A varmap is a mapping from variables to (var, name).
 	% This is used when converting terms to our nice ground representation.
 
 :- type varmap == list(varmap_2).
-:- type varmap_2 ---> var(var, maybe_name, maybe_id).
+:- type varmap_2 ---> var(prolog_free_var, maybe_name, maybe_id).
 :- type maybe_name ---> name(string) ; no_name.
-:- type maybe_id ---> id(var_id) ; no_id.
-:- type var == any.
+:- type maybe_id ---> id(var) ; no_id.
+:- type prolog_free_var == any.
 
 	% Initialize a varmap, given a list of variables and a list
 	% of their corresponding names.
-:- pred varmap__init(list(var), list(string), varmap).
+:- pred varmap__init(list(prolog_free_var), list(string), varmap).
 varmap__init([], [], []).
 varmap__init(Var.Vars, Name.Names, var(Var,name(Name),no_id).Rest) :-
 	varmap__init(Vars, Names, Rest).
 
 	% Set the id for a variable.
-:- pred varmap__set_id(varmap, var, var_id, varmap).
+:- pred varmap__set_id(varmap, prolog_free_var, var, varmap).
 varmap__set_id([], Var, Id, [var(Var, no_name, id(Id))]).
 varmap__set_id(V0.VarMap0, Var, Id, V.VarMap) :-
 	V0 = var(ThisVar, Name, OldId),
@@ -126,7 +126,7 @@ varmap__set_id(V0.VarMap0, Var, Id, V.VarMap) :-
 	).
 
 	% Lookup the name and id of a variable.
-:- pred varmap__lookup(varmap, var, maybe_name, maybe_id).
+:- pred varmap__lookup(varmap, prolog_free_var, maybe_name, maybe_id).
 varmap__lookup([], _, no_name, no_id).
 varmap__lookup(var(V,N,I).Rest, Var, Name, Id) :-
 	( Var == V ->

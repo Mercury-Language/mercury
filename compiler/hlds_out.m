@@ -752,7 +752,7 @@ hlds_out__write_varset(Indent, varset(Id, VarNames, VarTerms)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
-:- pred hlds_out__write_varnames(int, map(var_id, string), io_state, io_state).
+:- pred hlds_out__write_varnames(int, map(var, string), io_state, io_state).
 :- mode hlds_out__write_varnames(input, input, input, output).
 
 hlds_out__write_varnames(Indent, VarNames) -->
@@ -771,7 +771,7 @@ hlds_out__write_varnames(Indent, VarNames) -->
 		io__write_string("]\n")
 	).
 
-:- pred hlds_out__write_varnames_2(int, list(pair(var_id, string)),
+:- pred hlds_out__write_varnames_2(int, list(pair(var, string)),
 							io_state, io_state).
 :- mode hlds_out__write_varnames_2(input, input, input, output).
 
@@ -805,7 +805,7 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 		hlds_out__write_varnames_2(Indent, VarNameList)
 	).
 
-:- pred hlds_out__write_varterms(int, map(var_id, term), io_state, io_state).
+:- pred hlds_out__write_varterms(int, map(var, term), io_state, io_state).
 :- mode hlds_out__write_varterms(input, input, input, output).
 
 hlds_out__write_varterms(Indent, VarTerms) -->
@@ -824,7 +824,7 @@ hlds_out__write_varterms(Indent, VarTerms) -->
 		io__write_string("]\n")
 	).
 
-:- pred hlds_out__write_varterms_2(int, list(pair(var_id, term)), io_state, io_state).
+:- pred hlds_out__write_varterms_2(int, list(pair(var, term)), io_state, io_state).
 :- mode hlds_out__write_varterms_2(input, input, input, output).
 
 hlds_out__write_varterms_2(Indent, VarTermList0) -->

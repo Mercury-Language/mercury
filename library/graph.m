@@ -27,8 +27,25 @@
 
 :- module graph.
 :- interface.
-:- export_pred	graph__init, graph__new_node, graph__set_node,
-		graph__lookup_node.
+
+:- type graph(T).
+:- type node_id(T).
+
+	% initialize a graph
+:- pred graph__init(graph(_T)).
+:- mode graph__init(output).
+
+	% create a new node with the specified value
+:- pred graph__new_node(graph(T), T, node_id(T), graph(T)).
+:- mode graph__new_node(input, input, output, output).
+
+	% replace the value stored in a given node
+:- pred graph__set_node(graph(T), node_id(T), T, graph(T)).
+:- mode graph__set_node(input, input, input, output).
+
+	% lookup the value stored in a given node
+:- pred graph__lookup_node(graph(T), node_id(T), T).
+:- mode graph__lookup_node(input, input, output).
 
 % Axioms:
 %	% (also determinism of graph__init, graph__new_node, graph__set_node)
@@ -49,11 +66,7 @@
 %			all [V2] graph_lookup(G, N, V2) => V2 = V
 %		    )
 %	    ).
-
-%			graph__lookup(G, N, V2)
-%	    =>
-%		V = V2
-%	    ),
+%  etc.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -62,23 +75,19 @@
 
 :- import_module int, map.
 
-:- type node_id(_T)	==	integer.
+:- type node_id(_T)	==	int.
 
 :- type graph(T)	--->	graph(node_id(T), map(node_id(T), T)).
 
 %-----------------------------------------------------------------------------%
 
 	% initialize a graph
-:- pred graph__init(graph(_T)).
-:- mode graph__init(output).
 graph__init(graph(0, Nodes)) :-
 	map__init(Nodes).
 
 %-----------------------------------------------------------------------------%
 
 	% create a new node with the specified value
-:- pred graph__new_node(graph(T), T, node_id(T), graph(T)).
-:- mode graph__new_node(input, input, output, output).
 graph__new_node(graph(MaxId0, Nodes0), Val, MaxId0, graph(MaxId, Nodes)) :-
 	MaxId is MaxId0 + 1,
 	map__set(Nodes0, MaxId0, Val, Nodes).
@@ -86,16 +95,12 @@ graph__new_node(graph(MaxId0, Nodes0), Val, MaxId0, graph(MaxId, Nodes)) :-
 %-----------------------------------------------------------------------------%
 
 	% replace the value stored in a given node
-:- pred graph__set_node(graph(T), node_id(T), T, graph(T)).
-:- mode graph__set_node(input, input, input, output).
 graph__set_node(graph(MaxId, Nodes0), Id, Val, graph(MaxId, Nodes)) :-
 	map__set(Nodes0, Id, Val, Nodes).
 
 %-----------------------------------------------------------------------------%
 
 	% lookup the value stored in a given node
-:- pred graph__lookup_node(graph(T), node_id(T), T).
-:- mode graph__lookup_node(input, input, output).
 graph__lookup_node(graph(_, Nodes), Id, Val) :-
 	map__search(Nodes, Id, Val).
 

@@ -449,7 +449,7 @@ typecheck_var_has_type_list([Var|Vars], [Type|Types]) -->
 	typecheck_var_has_type(Var, Type),
 	typecheck_var_has_type_list(Vars, Types).
 
-:- pred typecheck_var_has_type(var_id, type, type_info, type_info).
+:- pred typecheck_var_has_type(var, type, type_info, type_info).
 :- mode typecheck_var_has_type(input, input, typeinfo_di, typeinfo_uo).
 
 typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
@@ -506,7 +506,7 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 		L = [TypeStuff | L0]
 	).
 
-:- pred typecheck_var_has_type_2(type_assign_set, var_id, type,
+:- pred typecheck_var_has_type_2(type_assign_set, var, type,
 				type_assign_set, type_assign_set).
 :- mode typecheck_var_has_type_2(input, input, input, input, output).
 
@@ -515,7 +515,7 @@ typecheck_var_has_type_2([TypeAssign0 | TypeAssignSet0], VarId, Type) -->
 	type_assign_var_has_type(TypeAssign0, VarId, Type),
 	typecheck_var_has_type_2(TypeAssignSet0, VarId, Type).
 
-:- pred type_assign_var_has_type(type_assign, var_id, type,
+:- pred type_assign_var_has_type(type_assign, var, type,
 				type_assign_set, type_assign_set).
 :- mode type_assign_var_has_type(input, input, input, input, output).
 

@@ -3,22 +3,21 @@
 %
 % Main author: fjh.
 %
-% This file provides facilities for manipulating logical terms.
+% This file provides facilities for manipulating collections of
+% variables and terms.
 % It provides the 'varset' ADT. A varset is a set of variables.
 % (These variables are object-level variables, and are represented
 % as ground terms, so it might help to think of them as "variable ids"
 % rather than variables.)
-% Associated with each id there can be both a name and a value (binding).
+% Associated with each variable there can be both a name and a value (binding).
 % [But at the moment, the rest of the code is only using varsets to store
 % names, not values.]
 %
-% Currently ids are implemented as integers and bindings as maps,
-% but we should re-implement this using addresses as ids (if and
-% when NU-Prolog supports the necessary primitive operations).
-%
-% Design problem: this is slightly over-specialized.
-% Really, there should be a general "graph" data type for manipulating
-% arbitrary graphs and varset should be implemented using that.
+% There may be some design flaws in the relationship between varset.nl,
+% term.nl, and graph.nl.  Once we have implemented unique modes and
+% destructive assignment, we will need to rethink the design;  we may
+% end up modifying these modules considerably, or we may end up
+% making new single-threaded versions of these modules.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -28,8 +27,6 @@
 :- import_module string, term.
 
 :- type varset.
-
-:- type var_id	==	variable.
 
 	% construct an empty varset.
 :- pred varset__init(varset).
