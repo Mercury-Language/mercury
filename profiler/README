@@ -24,7 +24,7 @@ signals can wreck a malloc.  Then rebuild the library.
 
 
 
-2. DISPALYING THE PROFILE
+2. DISPLAYING THE PROFILE
 
 The profile generated is actually a statistical approximation of the real
 profile.  Hence there a few steps that should be taken to ensure 
@@ -37,16 +37,16 @@ the profiler to use.
 
 The advantage of using the static call graph over the dynamic call graph
 which is inherent in the data collected is due to the presence of cycles.
-Cycles are groups of procedure's that can eventually call themselves again.
-Due to the way the profiler propogate's time through the call graph more
-meaningful result's will be obtained if you can guarantee the same cycle's
+Cycles are groups of procedures that can eventually call themselves again.
+Due to the way the profiler propagates time through the call graph more
+meaningful results will be obtained if you can guarantee the same cycles
 will be present in the call graph no matter which run of the program you
 are profiling.
 
 Then just type 
 	mprof *.prof
 
-NB. If you don't have all of the prof file's inculding the library ones.
+NB. If you don't have all of the prof files including the library ones,
     just type mprof and that will generate the dynamic graph.
 
 
