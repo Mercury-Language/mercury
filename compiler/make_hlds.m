@@ -1800,7 +1800,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 			;
 				{ Body = uu_type(_) }
 			;
-				{ type_id_is_hand_defined(TypeId) }
+				{ type_id_has_hand_defined_rtti(TypeId) }
 			)
 		->
 			{ special_pred_list(SpecialPredIds) },

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -225,7 +225,16 @@ unify_proc__request_unify(UnifyId, Determinism, Context, ModuleInfo0,
 			unify_proc__search_mode_num(ModuleInfo0, TypeId,
 				UnifyMode, Determinism, _)
 		; 
-			type_id_is_hand_defined(TypeId)
+			TypeId = TypeName - _TypeArity,
+			TypeName = qualified(TypeModuleName, _),
+			module_info_name(ModuleInfo0, ModuleName),
+			ModuleName = TypeModuleName,
+			module_info_types(ModuleInfo0, TypeTable),
+			map__lookup(TypeTable, TypeId, TypeDefn),
+			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+			TypeBody = abstract_type
+		; 
+			type_id_has_hand_defined_rtti(TypeId)
 		)
 	->
 		ModuleInfo = ModuleInfo0

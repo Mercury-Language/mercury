@@ -262,9 +262,11 @@ base_type_layout__gen_base_gen_layouts([TypeId | TypeIds], TypeTable,
 		SymName = qualified(TypeModuleName, TypeName),
 		( 
 			TypeModuleName = ModuleName,
-			\+ type_id_is_hand_defined(TypeId)
-		->
 			map__lookup(TypeTable, TypeId, TypeDefn),
+			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+			TypeBody \= abstract_type,
+			\+ type_id_has_hand_defined_rtti(TypeId)
+		->
 			hlds_data__get_type_defn_status(TypeDefn, Status),
 
 			Info = base_gen_layout(TypeId, ModuleName, TypeName,

@@ -71,9 +71,11 @@ base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
 		SymName = qualified(TypeModuleName, TypeName),
 		( 
 			TypeModuleName = ModuleName,
-			\+ type_id_is_hand_defined(TypeId)
-		->
 			map__lookup(TypeTable, TypeId, TypeDefn),
+			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+			TypeBody \= abstract_type,
+			\+ type_id_has_hand_defined_rtti(TypeId)
+		->
 			hlds_data__get_type_defn_status(TypeDefn, Status),
 			special_pred_list(Specials),
 			module_info_globals(ModuleInfo, Globals),

@@ -66,12 +66,13 @@
 :- pred type_util__remove_aditi_state(list(type), list(T), list(T)).
 :- mode type_util__remove_aditi_state(in, in, out) is det.
 
-	% A test for types that are defined by hand (not including
-	% the builtin types).  Don't generate type_ctor_*
-	% for these types.
+	% A test for types that are defined in Mercury, but whose definitions
+	% are `lies', i.e. they are not sufficiently accurate for RTTI
+	% structures describing the types. Since the RTTI will be hand defined,
+	% the compiler shouldn't generate RTTI for these types.
 
-:- pred type_id_is_hand_defined(type_id).
-:- mode type_id_is_hand_defined(in) is semidet.
+:- pred type_id_has_hand_defined_rtti(type_id).
+:- mode type_id_has_hand_defined_rtti(in) is semidet.
 
 	% A test for type_info-related types that are introduced by
 	% polymorphism.m.  Mode inference never infers unique modes
@@ -367,20 +368,14 @@ type_is_atomic(Type, ModuleInfo) :-
 
 type_util__var(term__variable(Var), Var).
 
-type_id_is_hand_defined(qualified(unqualified("builtin"), "c_pointer") - 0).
-type_id_is_hand_defined(qualified(unqualified("std_util"), "univ") - 0).
-type_id_is_hand_defined(qualified(unqualified("std_util"), "type_info") - 0).
-type_id_is_hand_defined(qualified(unqualified("univ"), "univ") - 0).
-type_id_is_hand_defined(qualified(unqualified("reflection"), "type_info") - 0).
-type_id_is_hand_defined(qualified(unqualified("array"), "array") - 1).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "type_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "type_ctor_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "typeclass_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "base_typeclass_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
+type_id_has_hand_defined_rtti(qualified(PB, "type_info") - 1) :-
+	mercury_private_builtin_module(PB).
+type_id_has_hand_defined_rtti(qualified(PB, "type_ctor_info") - 1) :-
+	mercury_private_builtin_module(PB).
+type_id_has_hand_defined_rtti(qualified(PB, "typeclass_info") - 1) :-
+	mercury_private_builtin_module(PB).
+type_id_has_hand_defined_rtti(qualified(PB, "base_typeclass_info") - 1) :-
+	mercury_private_builtin_module(PB).
 
 is_introduced_type_info_type(Type) :-
 	sym_name_and_args(Type, TypeName, _),
