@@ -488,9 +488,9 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 			% queries. Currently all nondet lambda expressions
 			% within Aditi predicates are treated as aggregate
 			% inputs.
+			% EvalMethod = (aditi_bottom_up),
 			determinism_components(Detism, _, at_most_many),
-			check_marker(Markers, aditi),
-			EvalMethod = (aditi_bottom_up)
+			check_marker(Markers, aditi)
 		->
 			markers_to_marker_list(Markers, MarkerList0),
 			list__filter(
@@ -509,6 +509,10 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 				)),
 				MarkerList0, MarkerList),
 			marker_list_to_markers(MarkerList, LambdaMarkers)
+		;
+			EvalMethod = (aditi_bottom_up)
+		->
+			marker_list_to_markers([aditi], LambdaMarkers)
 		;
 			EvalMethod = (aditi_top_down)
 		->
