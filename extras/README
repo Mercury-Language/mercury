@@ -13,7 +13,8 @@ complex_numbers
 		complex and imaginary numbers.
 
 curses		A Mercury library providing a (partial) binding to 
-		curses.
+		curses; a package that provides methods for manipulating
+		the text screen (creating windows, placing characters, etc).
 
 dynamic_linking
 		An interface to the C functions dlopen(), dlsym(), etc.

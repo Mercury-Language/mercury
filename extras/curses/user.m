@@ -22,7 +22,7 @@
 %     * Colour on a character by character basis.
 %
 %----------------------------------------------------------------------------%
-:- module mcurses:user.
+:- module mcurses__user.
 :- interface.
 
 :- import_module char, io, list, std_util.
@@ -73,7 +73,9 @@
 :- type chtype == pair(char, list(cattr)).
 
   % init(Root, IO0, IO)
-  % initilise curses, giving back the root window.
+  % Initialise curses, giving back the root window.
+	% The initialisation procedures in this library turn off echoing, and
+	% enable character-at-a-time input.
 :- pred init(win, io__state, io__state).
 :- mode init(out, di, uo) is det.
 

@@ -13,7 +13,7 @@
 %
 %----------------------------------------------------------------------------%
 
-:- module mcurses:misc.
+:- module mcurses__misc.
 :- interface.
 
 :- import_module array, int.
@@ -25,27 +25,28 @@
   %
   % Example:
   %
-  % for(0, 5, (pred(Num::in, IO1::di, IO2::uo) is det :-
-  %     io__print(Num, IO1, IO2)
-  % ), IO0, IO)
+  % main -->
+  %     for(0, 5, (pred(Num::in, di, uo) is det -->
+  %             io__print(Num)
+  %     )).
   %
-  % Would print "12345".
+  % Would print "012345".
 :- pred for(int, int, pred(int, T, T), T, T).
 :- mode for(in, in, pred(in, in, out) is det, in, out) is det.
 :- mode for(in, in, pred(in, in, out) is semidet, in, out) is semidet.
 :- mode for(in, in, pred(in, di, uo) is det, di, uo) is det.
 :- mode for(in, in, pred(in, array_di, array_uo) is det,
-		array_di, array_uo) is det.
+    array_di, array_uo) is det.
 
 %----------------------------------------------------------------------------%
 
 :- implementation.
 
 for(Min, Max, Pred, Acc0, Acc) :-
-	( Min =< Max ->
-		Pred(Min, Acc0, Acc1),
-		for(Min+1, Max, Pred, Acc1, Acc)
-	;
-		Acc = Acc0
-	).
+  ( Min =< Max ->
+    Pred(Min, Acc0, Acc1),
+    for(Min + 1, Max, Pred, Acc1, Acc)
+  ;
+    Acc = Acc0
+  ).
 

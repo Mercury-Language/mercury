@@ -26,12 +26,12 @@
 %
 %----------------------------------------------------------------------------%
 
-:- module mcurses:basics.
+:- module mcurses__basics.
 :- interface.
 
 :- import_module char, int, io, string.
 
-  % Initilise curses. This is used by user.m, and should not be called by the
+  % Initialise curses. This is used by user.m, and should not be called by the
   % programmer.
 :- pred init(io__state, io__state).
 :- mode init(di, uo) is det.
@@ -41,8 +41,8 @@
 :- pred endwin(io__state, io__state).
 :- mode endwin(di, uo) is det.
 
-  % Initilise the colour mode for curses. This must be called before attempting
-  % to use anything with colour.
+  % Initialise the colour mode for curses. This must be called before
+  % attempting to use anything with colour.
 :- pred start_colour(io__state, io__state).
 :- mode start_colour(di, uo) is det.
 
