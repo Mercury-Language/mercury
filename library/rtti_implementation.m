@@ -518,6 +518,9 @@ collapse_equivalences(TypeInfo) = NewTypeInfo :-
 	TypeInfoAtIndex = (object[]) TypeInfo[X];
 ").
 
+	% This is an "unimplemented" definition in Mercury, which will be
+	% used by default.
+
 index(_::in, TypeInfo::in) = (TypeInfo::out) :- 
 	det_unimplemented("index").
 
@@ -525,7 +528,7 @@ index(_::in, TypeInfo::in) = (TypeInfo::out) :-
 :- pred semidet_unimplemented(string::in) is semidet.
 semidet_unimplemented(S) :-
 	( std_util__semidet_succeed ->
-		error("unimplemented: " ++ S)
+		error("rtti_implementation: unimplemented: " ++ S)
 	;
 		std_util__semidet_succeed
 	).
@@ -533,7 +536,7 @@ semidet_unimplemented(S) :-
 :- pred det_unimplemented(string::in) is det.
 det_unimplemented(S) :-
 	( std_util__semidet_succeed ->
-		error("unimplemented: " ++ S)
+		error("rtti_implementation: unimplemented: " ++ S)
 	;
 		true
 	).
