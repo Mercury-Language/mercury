@@ -691,6 +691,72 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 extern	int	hash_string(const char *);
 #endif
 
+/* FLOATING POINT HANDLING */
+
+#ifdef USE_SINGLE_PREC_FLOAT
+
+typedef float Float;
+
+#else
+
+typedef double Float;
+#define BOXED_FLOAT
+
+#endif
+
+#ifdef BOXED_FLOAT 
+
+#define word_to_float(w) (*(Float *)(w))
+
+#define FLOAT_WORDS ((sizeof(Float) + sizeof(Word) - 1) / sizeof(Word))
+
+#ifdef CONSERVATIVE_GC
+#define float_to_word(f) ( \
+		hp_alloc(FLOAT_WORDS), \
+		*(Float *)(void *)(hp - FLOAT_WORDS) = f, \
+		/* return */ hp \
+	)
+#else
+/* we need to ensure that what we allocated on the heap is properly
+   aligned */
+#define float_to_word(f) ( \
+		hp_alloc(FLOAT_WORDS), /* XXX alignment!!! */ \
+		*(Float *)(void *)(hp - FLOAT_WORDS) = f, \
+		/* return */ (Word) hp \
+	)
+#endif
+
+#ifdef __GNUC__
+#define float_const(f) ({ static const Float d = f; (Word)&d; })
+#else
+#define float_const(f) float_to_word(f)	/* inefficient */
+#endif
+
+#else /* not BOXED_FLOAT */
+
+/* unboxed float means we can assume sizeof(Float) == sizeof(Word) */
+
+#define float_const(f) ((Float)f)
+
+union FloatWord {
+	Float f;
+	Word w;
+};
+
+#ifdef __GNUC__
+
+#define float_to_word(f) (__extension__ ((union FloatWord)(f)).w)
+#define word_to_float(w) (__extension__ ((union FloatWord)(w)).f)
+
+#else
+
+static Word float_to_word(Float f) { union FloatWord tmp = f; return f.w; }
+static Float word_to_float(Word w) { union FloatWord tmp = w; return w.f; }
+
+#endif
+
+#endif
+
 /* DEFINITIONS TO SUPPORT DEBUGGING */
 
 #ifdef __GNUC__
