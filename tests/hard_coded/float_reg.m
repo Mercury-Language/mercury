@@ -23,5 +23,9 @@
 
 main -->
 	io__write_float(2.88e32),
+	io__write_string("\n"),
+	io__write_float(1.0e32),
+	io__write_string("\n"),
+	io__write_float(1.0e10),
 	io__write_string("\n").
 
