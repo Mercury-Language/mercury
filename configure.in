@@ -2553,12 +2553,22 @@ AC_ARG_ENABLE(most-grades,
 enable_most_grades="$enableval",enable_most_grades=yes)
 
 AC_ARG_ENABLE(nogc-grades,
-[  --enable-nogc-grades   install no-gc versions of the library],
+[  --enable-nogc-grades    install no-gc versions of the library],
 enable_nogc_grades="$enableval",enable_nogc_grades=no)
 
 AC_ARG_ENABLE(agc-grades,
-[  --enable-agc-grades   install accurate GC versions of the library],
+[  --enable-agc-grades     install accurate GC versions of the library],
 enable_agc_grades="$enableval",enable_agc_grades=no)
+
+AC_ARG_ENABLE(debug-grades,
+[  --disable-debug-grades  do not install the debugging versions of the library],
+enable_debug_grades="enableval",enable_debug_grades=yes)
+
+AC_ARG_ENABLE(decl-debug-grades,
+[  --disable-decl-debug-grades
+                          do not install the declarative debugging versions
+                          of the library],
+enable_decl_debug_grades="enableval",enable_decl_debug_grades=yes)
 
 AC_ARG_ENABLE(prof-grades,
 [  --disable-prof-grades   do not install profiling versions of the library],
@@ -2588,7 +2598,7 @@ enable_dotnet_grades="$enableval",enable_dotnet_grades=yes)
 # XXX The java backend is currently broken, so we don't 
 # enable the java grade by default.
 AC_ARG_ENABLE(java-grade,
-[  --enable-java-grade    install the Java grade],
+[  --enable-java-grade     install the Java grade],
 enable_java_grade="$enableval",enable_java_grade=no)
 
 AC_ARG_ENABLE(libgrades,
@@ -2750,8 +2760,13 @@ if test "$enable_mm_grades" = yes; then
 		$BEST_LLDS_BASE_GRADE.gc.mmsc.debug"
 fi
 
-# add `.debug' (--debug) grades
-LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.debug"
+# add `.debug' (--debug) and `.decldebug' (--decl-debug) grades
+if test "$enable_debug_grades" = yes; then
+	LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.debug"
+	if test "$enable_decl_debug_grades" = yes; then
+		LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.decldebug"
+	fi
+fi
 
 # Add the .par (thread-safe) grade, if it is supported for this system
 if test "$enable_par_grades" = yes -a "$CFLAGS_FOR_THREADS" != ""; then
