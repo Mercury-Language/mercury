@@ -1125,7 +1125,7 @@ if (open(FILE, "> $docu_toc")) {
 	foreach (split(/\n/, $value{'subtitle'})) {
 	    $_ = &substitute_style($_);
 	    &unprotect_texi;
-	    print FILE "<H2>$_</H2>\n";
+	    print FILE "<H3>$_</H3>\n";
 	}
     }
     if ($value{'author'}) {
