@@ -3073,6 +3073,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_headvars(Proc, HeadVars) },
 	{ proc_info_argmodes(Proc, HeadModes) },
 	{ proc_info_maybe_arglives(Proc, MaybeArgLives) },
+	{ proc_info_arg_info(Proc, ArgInfos) },
 	{ proc_info_goal(Proc, Goal) },
 	{ proc_info_context(Proc, ModeContext) },
 	{ proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize) },
@@ -3188,6 +3189,18 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		hlds_out__write_indent(Indent),
 		io__write_string("% arg lives: "),
 		io__print(ArgLives),
+		io__nl
+	;
+		[]
+	),
+
+	(
+		{ string__contains_char(Verbose, 'A') },
+		{ ArgInfos \= [] }
+	->
+		hlds_out__write_indent(Indent),
+		io__write_string("% arg_infos: "),
+		io__print(ArgInfos),
 		io__nl
 	;
 		[]
