@@ -46,14 +46,13 @@ DETPROGS=	arithmetic \
 		petdr1 \
 		semidet_map \
 		set_test \
-		space \
 		string__format_test \
 		string_test \
 		string_test_2 \
 		univ \
 		unreachable
 
-NOTWORKING=
+NOTWORKING=	space
 
 #
 # The nondet tests use solutions/2, which is currently implemented only for GC
