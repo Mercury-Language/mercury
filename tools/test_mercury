@@ -1071,11 +1071,10 @@ ulimit -S -t unlimited
 		cp $TEST_ERROR_FILE \
 			$UNSTABLE/mercury-test-failures-$version.$fullname.txt
 	else 
-		rm $UNSTABLE/mercury-test-failures-$version.$fullname.txt
+		rm -f $UNSTABLE/mercury-test-failures-$version.$fullname.txt
 	fi &&
 	mv mercury/mercury-$version.$fullarch.tar.gz \
 		$UNSTABLE/mercury-$version.$fullname.tar.gz &&
-	:
 	echo "test_mercury tagging unstable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
 	cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
 	cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
