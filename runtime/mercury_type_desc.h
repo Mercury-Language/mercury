@@ -11,9 +11,10 @@
 #ifndef MERCURY_TYPE_DESC_H
 #define MERCURY_TYPE_DESC_H
 
-#include "mercury_wrapper.h" /* for MR_address_of_type_ctor_info_for_pred ... */
 #include "mercury_types.h"
 #include "mercury_type_info.h"
+#include "mercury_builtin_types.h"	/* for the type_ctor_infos of the   */
+					/* variable arity type constructors */
 
 /*
 ** Values of type `types:type_desc' are represented the same way as
@@ -107,11 +108,11 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 	  (MR_ConstString) "builtin" )
 #define MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(T)			\
 	( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-	  ((MR_Unsigned) (T) % 4 == 0)					\
-		? (MR_address_of_type_ctor_info_for_pred)		\
+	  (((MR_Unsigned) (T) % 4 == 0)					\
+		? &MR_TYPE_CTOR_INFO_NAME(builtin, pred, 0)		\
 		: (((MR_Unsigned) (T) % 4 == 1)				\
-			? (MR_address_of_type_ctor_info_for_func)	\
-			: (MR_address_of_type_ctor_info_for_tuple) ) )
+			? &MR_TYPE_CTOR_INFO_NAME(builtin, func, 0)	\
+			: &MR_TYPE_CTOR_INFO_NAME(builtin, tuple, 0))) )
 #define MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(T)				\
 	( MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(T)				\
 	  ? MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(T)			\

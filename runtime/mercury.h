@@ -29,6 +29,7 @@
 #include "mercury_thread.h"	/* for the MR_*_GLOBAL_LOCK() macros */
 #include "mercury_std.h"	/* for the MR_CALL macro (and others) */
 #include "mercury_type_info.h"
+#include "mercury_builtin_types.h" 
 #include "mercury_ho_call.h"	/* for the `MR_Closure' type */
 #include "mercury_bootstrap.h"
 #include "mercury_memory.h"	/* for memory allocation routines */
@@ -122,49 +123,15 @@ struct MR_StackChain {
   extern void *mercury__private_builtin__stack_chain;
 #endif
 
-/* declare MR_TypeCtorInfo_Structs for the builtin types */
-extern const MR_TypeCtorInfo_Struct
-	mercury__builtin__builtin__type_ctor_info_int_0,
-	mercury__builtin__builtin__type_ctor_info_string_0,
-	mercury__builtin__builtin__type_ctor_info_float_0,
-	mercury__builtin__builtin__type_ctor_info_character_0,
-	mercury__builtin__builtin__type_ctor_info_void_0,
-	mercury__builtin__builtin__type_ctor_info_c_pointer_0,
-	mercury__private_builtin__private_builtin__type_ctor_info_heap_pointer_0,
-	mercury__builtin__builtin__type_ctor_info_pred_0,
-	mercury__builtin__builtin__type_ctor_info_func_0,
-	mercury__builtin__builtin__type_ctor_info_tuple_0,
-	mercury__array__array__type_ctor_info_array_1,
-	mercury__std_util__std_util__type_ctor_info_univ_0,
-	mercury__type_desc__type_desc__type_ctor_info_type_ctor_desc_0,
-	mercury__type_desc__type_desc__type_ctor_info_type_desc_0,
-	mercury__private_builtin__private_builtin__type_ctor_info_type_ctor_info_1,
-	mercury__private_builtin__private_builtin__type_ctor_info_type_info_1,
-	mercury__private_builtin__private_builtin__type_ctor_info_typeclass_info_1,
-	mercury__private_builtin__private_builtin__type_ctor_info_base_typeclass_info_1;
-
 /*
-** XXX this is a bit of a hack: really we should change it so that
-** the generated MLDS code always qualifies things with `builtin:',
-** but currently it doesn't, so we use the following #defines as
-** a work-around.
+** Declare the TypeCtorInfos of the library types that are not already
+** declared in mercury_builtin_types.h
 */
-#define mercury__builtin____type_ctor_info_int_0 \
-	mercury__builtin__builtin__type_ctor_info_int_0
-#define mercury__builtin____type_ctor_info_string_0 \
-	mercury__builtin__builtin__type_ctor_info_string_0
-#define mercury__builtin____type_ctor_info_float_0 \
-	mercury__builtin__builtin__type_ctor_info_float_0
-#define mercury__builtin____type_ctor_info_character_0 \
-	mercury__builtin__builtin__type_ctor_info_character_0
-#define mercury__builtin____type_ctor_info_pred_0 \
-	mercury__builtin__builtin__type_ctor_info_pred_0
-#define mercury__builtin____type_ctor_info_func_0 \
-	mercury__builtin__builtin__type_ctor_info_func_0
-#define mercury__builtin____type_ctor_info_tuple_0 \
-	mercury__builtin__builtin__type_ctor_info_tuple_0
-#define mercury__builtin____type_ctor_info_void_0 \
-	mercury__builtin__builtin__type_ctor_info_void_0
+
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	mercury__array__array__type_ctor_info_array_1);
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	mercury__std_util__std_util__type_ctor_info_univ_0);
 
 /*
 ** The compiler used to generate references to this constant.

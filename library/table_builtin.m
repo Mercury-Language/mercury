@@ -1152,30 +1152,7 @@ return_next_answer(_, _, _) :-
 #include ""mercury_type_info.h""	/* for MR_TypeCtorInfo_Struct; */
 #include ""mercury_tabling.h""		/* for MR_TrieNode, etc. */
 
-#ifdef MR_HIGHLEVEL_CODE
-  #define MR_TYPE_CTOR_INFO_INT	      \
-  	mercury__builtin__builtin__type_ctor_info_int_0
-  #define MR_TYPE_CTOR_INFO_STRING    \
-  	mercury__builtin__builtin__type_ctor_info_string_0
-  #define MR_TYPE_CTOR_INFO_FLOAT     \
-  	mercury__builtin__builtin__type_ctor_info_float_0
-  #define MR_TYPE_CTOR_INFO_CHAR      \
-  	mercury__builtin__builtin__type_ctor_info_character_0
-  #define MR_TYPE_CTOR_INFO_IO_STATE  \
-  	mercury__io__io__type_ctor_info_state_0
-#else
-  #define MR_TYPE_CTOR_INFO_INT	      mercury_data___type_ctor_info_int_0
-  #define MR_TYPE_CTOR_INFO_STRING    mercury_data___type_ctor_info_string_0
-  #define MR_TYPE_CTOR_INFO_FLOAT     mercury_data___type_ctor_info_float_0
-  #define MR_TYPE_CTOR_INFO_CHAR      mercury_data___type_ctor_info_character_0
-  #define MR_TYPE_CTOR_INFO_IO_STATE  mercury_data_io__type_ctor_info_state_0
-#endif
-
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_INT);
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_STRING);
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_FLOAT);
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_CHAR);
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 ").
 
@@ -1274,7 +1251,8 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
-	MR_TABLE_SAVE_ANSWER(table, Offset, I, &MR_TYPE_CTOR_INFO_INT);
+	MR_TABLE_SAVE_ANSWER(table, Offset, I,
+		&MR_TYPE_CTOR_INFO_NAME(builtin, int, 0));
 ").
 
 :- pragma foreign_proc("C",
@@ -1284,7 +1262,8 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
-	MR_TABLE_SAVE_ANSWER(table, Offset, C, &MR_TYPE_CTOR_INFO_CHAR);
+	MR_TABLE_SAVE_ANSWER(table, Offset, C,
+		&MR_TYPE_CTOR_INFO_NAME(builtin, character, 0));
 ").
 
 :- pragma foreign_proc("C",
@@ -1295,7 +1274,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 	table = (MR_TrieNode) T;
 	MR_TABLE_SAVE_ANSWER(table, Offset, (MR_Word) S,
-		&MR_TYPE_CTOR_INFO_STRING);
+		&MR_TYPE_CTOR_INFO_NAME(builtin, string, 0));
 ").
 
 :- pragma foreign_proc("C",
@@ -1307,10 +1286,10 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 	table = (MR_TrieNode) T;
 #ifdef MR_HIGHLEVEL_CODE
 	MR_TABLE_SAVE_ANSWER(table, Offset, (MR_Word) MR_box_float(F),
-		&MR_TYPE_CTOR_INFO_FLOAT);
+		&MR_TYPE_CTOR_INFO_NAME(builtin, float, 0));
 #else
 	MR_TABLE_SAVE_ANSWER(table, Offset, MR_float_to_word(F),
-		&MR_TYPE_CTOR_INFO_FLOAT);
+		&MR_TYPE_CTOR_INFO_NAME(builtin, float, 0));
 #endif
 ").
 
@@ -1322,7 +1301,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_IO_STATE);
 
 	table = (MR_TrieNode) T;
 	MR_TABLE_SAVE_ANSWER(table, Offset, (MR_Word) S,
-		&MR_TYPE_CTOR_INFO_IO_STATE);
+		&MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 ").
 
 :- pragma foreign_proc("C", 

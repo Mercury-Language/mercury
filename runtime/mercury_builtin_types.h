@@ -12,9 +12,6 @@
 #ifndef MERCURY_BUILTIN_TYPES_H
 #define MERCURY_BUILTIN_TYPES_H
 
-/* Everything in this file is specific to the high-level-code back-end */
-#ifdef MR_HIGHLEVEL_CODE
-
 #include "mercury_types.h"
 #include "mercury_std.h" 		/* for MR_CALL */
 #include "mercury_float.h" 		/* for MR_Float etc */
@@ -27,29 +24,46 @@
 */
 
 /* declare MR_TypeCtorInfo_Structs for the builtin types */
-extern const MR_TypeCtorInfo_Struct
-	mercury__builtin__builtin__type_ctor_info_int_0,
-	mercury__builtin__builtin__type_ctor_info_string_0,
-	mercury__builtin__builtin__type_ctor_info_float_0,
-	mercury__builtin__builtin__type_ctor_info_character_0,
-	mercury__builtin__builtin__type_ctor_info_void_0,
-	mercury__builtin__builtin__type_ctor_info_c_pointer_0,
-	mercury__builtin__builtin__type_ctor_info_pred_0,
-	mercury__builtin__builtin__type_ctor_info_func_0,
-	mercury__builtin__builtin__type_ctor_info_tuple_0,
-	mercury__private_builtin__private_builtin__type_ctor_info_heap_pointer_0,
-	mercury__private_builtin__private_builtin__type_ctor_info_type_ctor_info_1,
-	mercury__private_builtin__private_builtin__type_ctor_info_type_info_1,
-	mercury__private_builtin__private_builtin__type_ctor_info_typeclass_info_1,
-	mercury__private_builtin__private_builtin__type_ctor_info_base_typeclass_info_1,
-	mercury__array__array__type_ctor_info_array_1,
-	mercury__std_util__std_util__type_ctor_info_univ_0,
-	mercury__type_desc__type_desc__type_ctor_info_type_ctor_desc_0,
-	mercury__type_desc__type_desc__type_ctor_info_type_desc_0;
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(builtin, int, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(builtin, string, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(builtin, float, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(builtin, character, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(builtin, void, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(builtin, c_pointer, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(builtin, pred, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(builtin, func, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(builtin, tuple, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(private_builtin, heap_pointer, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(private_builtin, type_ctor_info, 1));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(private_builtin, typeclass_info, 1));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 1));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(type_desc, type_ctor_desc, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(type_desc, type_desc, 0));
 
 /*---------------------------------------------------------------------------*/
+
+#ifdef MR_HIGHLEVEL_CODE
+
 /*
-** Function declarations
+** Function declarations for manipulating builtin types. All these functions
+** are specific to the high-level-code back-end.
 */
 
 MR_bool MR_CALL mercury__builtin____Unify____int_0_0(MR_Integer x,
