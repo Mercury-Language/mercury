@@ -636,10 +636,12 @@ assemble(ErrorStream, PIC, ModuleName, Succeeded) -->
 	globals__io_lookup_bool_option(pic, Pic),
 	{ ( Pic = yes ; PIC = pic ) ->
 		AsmExt = ".pic_s",
-		GCCFLAGS_FOR_PIC = ""
+		GCCFLAGS_FOR_ASM = "-x assembler ",
+		GCCFLAGS_FOR_PIC = "-fpic "
 	;
 		AsmExt = ".s",
-		GCCFLAGS_FOR_PIC = "-fpic"
+		GCCFLAGS_FOR_ASM = "",
+		GCCFLAGS_FOR_PIC = ""
 	},
 	module_name_to_file_name(ModuleName, AsmExt, no, AsmFile),
 	globals__io_lookup_string_option(object_file_extension, Obj),
@@ -659,7 +661,8 @@ assemble(ErrorStream, PIC, ModuleName, Succeeded) -->
 	% Be careful with the order here.
 	% Also be careful that each option is separated by spaces.
 	{ string__append_list([CC, " ", CFLAGS, " ", GCCFLAGS_FOR_PIC,
-		" -c ", AsmFile, " ", NameObjectFile, ObjFile], Command) },
+		GCCFLAGS_FOR_ASM, "-c ", AsmFile, " ",
+		NameObjectFile, ObjFile], Command) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
 
