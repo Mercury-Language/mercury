@@ -320,7 +320,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
 		%
 		\+ (some [Ctor] (
 			list__member(Ctor, Ctors),
-			ml_uses_secondary_tag(TagValues, Ctor, _)
+			ml_needs_secondary_tag(TagValues, Ctor)
 		))
 	->
 		TagMembers = [],
@@ -347,7 +347,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
 			(all [Ctor] (
 				list__member(Ctor, Ctors)
 			=>
-				ml_uses_secondary_tag(TagValues, Ctor, _)
+				ml_needs_secondary_tag(TagValues, Ctor)
 			))
 		->
 			TagMembers = TagMembers0,
@@ -425,27 +425,46 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
 	).
 
 	%
-	% Check if this constructor uses a secondary tag,
+	% Check if this constructor's representation uses a secondary tag,
 	% and if so, return the secondary tag value.
+	% BEWARE that this is not the same as ml_needs_secondary_tag, below.
 	%
 ml_uses_secondary_tag(ConsTagValues, Ctor, SecondaryTag) :-
-	Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
-	list__length(Args, Arity),
-	map__lookup(ConsTagValues, cons(Name, Arity), TagVal),
+	TagVal = get_tagval(ConsTagValues, Ctor),
 	get_secondary_tag(TagVal) = yes(SecondaryTag).
 
 	%
+	% Check if this constructor needs a secondary tag.
+	% This is true if its representation uses a secondary
+	% tag, obviously. But it is also true if its
+	% representation is the address of a reserved object;
+	% in that case, for some back-ends (e.g. C)
+	% we need a field of some kind to ensure
+	% that the reserved object had non-zero size,
+	% which in turn is needed to ensure that its
+	% address is distinct from any other reserved objects
+	% for the same type.
+	%
+:- pred ml_needs_secondary_tag(cons_tag_values, constructor).
+:- mode ml_needs_secondary_tag(in, in) is semidet.
+
+ml_needs_secondary_tag(TagValues, Ctor) :-
+	TagVal = get_tagval(TagValues, Ctor),
+	( get_secondary_tag(TagVal) = yes(_)
+	; tagval_is_reserved_addr(TagVal, reserved_object(_, _, _))
+	).
+
+	%
 	% Check if this constructor is a constant whose
-	% value is represented as the address of a reserved object.
+	% value is represented as a reserved address.
 	%
 :- pred ml_uses_reserved_addr(cons_tag_values, constructor, reserved_address).
 :- mode ml_uses_reserved_addr(in, in, out) is semidet.
 
 ml_uses_reserved_addr(ConsTagValues, Ctor, RA) :-
-	Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
-	list__length(Args, Arity),
-	map__lookup(ConsTagValues, cons(Name, Arity), TagVal),
+	TagVal = get_tagval(ConsTagValues, Ctor),
 	tagval_is_reserved_addr(TagVal, RA).
+
 
 :- pred tagval_is_reserved_addr(cons_tag::in, reserved_address::out)
 	is semidet.
@@ -453,6 +472,13 @@ ml_uses_reserved_addr(ConsTagValues, Ctor, RA) :-
 tagval_is_reserved_addr(reserved_address(RA), RA).
 tagval_is_reserved_addr(shared_with_reserved_addresses(_, TagVal), RA) :-
 	tagval_is_reserved_addr(TagVal, RA).
+
+:- func get_tagval(cons_tag_values, constructor) = cons_tag.
+
+get_tagval(ConsTagValues, Ctor) = TagVal :-
+	Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
+	list__length(Args, Arity),
+	map__lookup(ConsTagValues, cons(Name, Arity), TagVal).
 
 	%
 	% Generate a definition for the class used for the secondary tag
@@ -513,15 +539,23 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 	unqualify_name(CtorName, UnqualCtorName),
 	list__length(Args, CtorArity),
 
-	( ml_uses_reserved_addr(ConsTagValues, Ctor, ReservedAddr) ->
+	TagVal = get_tagval(ConsTagValues, Ctor),
+	( tagval_is_reserved_addr(TagVal, ReservedAddr) ->
 		( ReservedAddr = reserved_object(_, _, _) ->
 			%
-			% Generate a reserved object for this constructor
+			% Generate a reserved object for this constructor.
+			% Note that we use the SecondaryTagClassId for the
+			% type of this reserved object; we can't use the
+			% BaseClassId because for some back-ends,
+			% we need to ensure that the type used for the
+			% reserved object has at least one data member,
+			% to make sure that each reserved object gets a
+			% distinct address.
 			%
 			MLDS_ReservedObjName = ml_format_reserved_object_name(
 				UnqualCtorName, CtorArity),
 			MLDS_ReservedObjDefn = ml_gen_static_const_defn(
-				MLDS_ReservedObjName, BaseClassId,
+				MLDS_ReservedObjName, SecondaryTagClassId,
 				public, no_initializer, Context),
 			MLDS_Defns = [MLDS_ReservedObjDefn | MLDS_Defns0]
 		;
@@ -570,12 +604,12 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 		% we inherit either the base class for this type,
 		% or the secondary tag class, depending on whether
 		% we need a secondary tag
-		( ml_uses_secondary_tag(ConsTagValues, Ctor, TagVal) ->
+		( get_secondary_tag(TagVal) = yes(SecondaryTag) ->
 			ParentClassId = SecondaryTagClassId,
-			MaybeTagVal = yes(TagVal)
+			MaybeSecTagVal = yes(SecondaryTag)
 		;
 			ParentClassId = BaseClassId,
-			MaybeTagVal = no
+			MaybeSecTagVal = no
 		),
 		Imports = [],
 		Inherits = [ParentClassId],
@@ -594,7 +628,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 				BaseClassQualifier, UnqualCtorName, CtorArity),
 			CtorFunction = gen_constructor_function(BaseClassId,
 				CtorClassType, CtorClassQualifier,
-				SecondaryTagClassId, MaybeTagVal, Members,
+				SecondaryTagClassId, MaybeSecTagVal, Members,
 				MLDS_Context),
 			Ctors = [CtorFunction]
 		;

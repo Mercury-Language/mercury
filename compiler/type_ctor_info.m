@@ -326,12 +326,11 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 					num_tag_bits, NumTagBits),
 				int__pow(2, NumTagBits, NumTags),
 				MaxPtag = NumTags - 1,
-				TypeCtorRep = du(EqualityAxioms),
 				type_ctor_info__make_du_tables(Ctors,
 					ConsTagMap, MaxPtag, RttiTypeId,
-					ModuleInfo,
+					EqualityAxioms, ModuleInfo,
 					TypeTables, NumPtags,
-					FunctorsInfo, LayoutInfo)
+					FunctorsInfo, LayoutInfo, TypeCtorRep)
 			)
 		)
 	).
@@ -490,12 +489,14 @@ type_ctor_info__make_enum_functor_tables([Functor | Functors], NextOrdinal0,
 % (including reserved_addr types).
 
 :- pred type_ctor_info__make_du_tables(list(constructor)::in,
-	cons_tag_values::in, int::in, rtti_type_id::in, module_info::in,
-	list(rtti_data)::out, int::out,
-	type_ctor_functors_info::out, type_ctor_layout_info::out) is det.
+	cons_tag_values::in, int::in, rtti_type_id::in, equality_axioms::in,
+	module_info::in, list(rtti_data)::out, int::out,
+	type_ctor_functors_info::out, type_ctor_layout_info::out,
+	type_ctor_rep::out) is det.
 
 type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeId,
-		ModuleInfo, TypeTables, NumPtags, FunctorInfo, LayoutInfo) :-
+		EqualityAxioms, ModuleInfo, TypeTables, NumPtags, 
+		FunctorInfo, LayoutInfo, TypeCtorRep) :-
 	module_info_globals(ModuleInfo, Globals),
 	(
 		globals__lookup_bool_option(Globals, reserve_tag, yes)
@@ -526,14 +527,16 @@ type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeId,
 		TypeTables0),
 	( map__is_empty(ReservedAddrMap) ->
 		TypeTables = TypeTables0,
-		LayoutInfo = DuLayoutInfo
+		LayoutInfo = DuLayoutInfo,
+		TypeCtorRep = du(EqualityAxioms)
 	;
 		type_ctor_info__make_reserved_addr_layout(RttiTypeId,
 			ReservedAddrMap, ValueOrderedTableRttiName,
 			RALayoutRttiName, RALayoutTables),
 				% XXX does it matter what order they go in?
 		TypeTables = RALayoutTables ++ TypeTables0,
-		LayoutInfo = reserved_addr_layout(RALayoutRttiName)
+		LayoutInfo = reserved_addr_layout(RALayoutRttiName),
+		TypeCtorRep = reserved_addr(EqualityAxioms)
 	).
 
 :- pred type_ctor_info__make_reserved_addr_layout(rtti_type_id::in,
