@@ -29,6 +29,9 @@
 :- pred bag__contains(T, bag(T)).
 :- mode bag__contains(in, in) is semidet.
 
+:- pred bag__to_list_without_duplicates(bag(T), list(T)).
+:- mode bag__to_list_without_duplicates(in, out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -81,6 +84,11 @@ bag__remove_all(B0, I, B) :-
 
 bag__contains(I, B) :-
 	map__contains(B, I).
+
+%---------------------------------------------------------------------------%
+
+bag__to_list_without_duplicates(Bag, List) :-
+	map__keys(Bag, List).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

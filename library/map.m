@@ -17,7 +17,7 @@
 
 :- module map.
 :- interface.
-:- import_module list, std_util, require.
+:- import_module set, list, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -131,6 +131,12 @@
 	% over MapA.
 :- pred map__overlay(map(K,V), map(K,V), map(K,V)).
 :- mode map__overlay(in, in, out) is det.
+
+	% map__select takes a map and a set of keys and returns
+	% a map containing the keys in the set and their corresponding
+	% values.
+:- pred map__select(map(K,V), set(K), map(K,V)).
+:- mode map__select(in, in, out) is det.
 
 	% Given a list of keys, produce a list of their corresponding
 	% values in a specified map.
@@ -290,6 +296,27 @@ map__overlay_2([K - V | AssocList], Map0, Map) :-
 	map__set(Map0, K, V, Map1),
 	map__overlay_2(AssocList, Map1, Map).
 	
+%-----------------------------------------------------------------------------%
+
+map__select(Original, KeySet, NewMap) :-
+	set__to_sorted_list(KeySet, KeyList),
+	map__init(NewMap0),
+	map__select_2(KeyList, Original, NewMap0, NewMap).
+
+:- pred map__select_2(list(K), map(K,V), map(K,V), map(K,V)).
+:- mode map__select_2(in, in, in, out) is det.
+
+map__select_2([], _Original, New, New).
+map__select_2([K|Ks], Original, New0, New) :-
+	(
+		map__search(Original, K, V)
+	->
+		map__set(New0, K, V, New1)
+	;
+		New1 = New0
+	),
+	map__select_2(Ks, Original, New1, New).
+
 %-----------------------------------------------------------------------------%
 
 map__apply_to_list([], _, []).
