@@ -84,8 +84,6 @@ SINGLEMODULE_SOURCES= \
 	occurs.m \
 	overloading.m \
 	polymorphic_unification.m \
-	pragma_c_code_and_clauses1.m \
-	pragma_c_code_and_clauses2.m \
 	pragma_c_code_dup_var.m \
 	pragma_c_code_no_det.m \
 	predmode.m \
