@@ -2076,44 +2076,42 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		}
 #ifdef	MR_USE_DECLARATIVE_DEBUGGER
 	} else if (streq(words[0], "dd")) {
-		MR_Trace_Port	port = event_info->MR_trace_port;
-
 		if (word_count != 1) {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err,
 				"mdb: dd requires no arguments.\n");
-		} else if (MR_port_is_final(port)) {
-			if (MR_trace_start_decl_debug((const char *) NULL, cmd,
+		} else {
+			if (MR_trace_start_decl_debug(MR_TRACE_DECL_DEBUG,
+						(const char *) NULL, cmd,
 						event_info, event_details,
 						jumpaddr))
 			{
 				return STOP_INTERACTING;
 			}
-		} else {
-			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err,
-				"mdb: declarative debugging is only "
-				"available from EXIT, FAIL or EXCP events.\n");
 		}
         } else if (streq(words[0], "dd_dd")) {
-		MR_Trace_Port	port = event_info->MR_trace_port;
+		MR_Trace_Mode	trace_mode;
+		const char	*filename;
 
-		if (word_count != 2) {
+		if (word_count > 2) {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err,
-				"mdb: dd_dd requires one argument.\n");
-		} else if (MR_port_is_final(port)) {
-			if (MR_trace_start_decl_debug((const char *) words[1],
+				"mdb: dd_dd takes at most one argument.\n");
+		} else {
+			if (word_count == 2) {
+				trace_mode = MR_TRACE_DECL_DEBUG_DUMP;
+				filename = (const char *) words[1];
+			} else {
+				trace_mode = MR_TRACE_DECL_DEBUG_DEBUG;
+				filename = (const char *) NULL;
+			}
+
+			if (MR_trace_start_decl_debug(trace_mode, filename,
 						cmd, event_info, event_details,
 						jumpaddr))
 			{
 				return STOP_INTERACTING;
 			}
-		} else {
-			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err,
-				"mdb: declarative debugging is only "
-				"available from EXIT, FAIL or EXCP events.\n");
 		}
 #endif  /* MR_USE_DECLARATIVE_DEBUGGER */
 	} else {

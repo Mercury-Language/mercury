@@ -255,9 +255,6 @@ static	MR_Code *
 MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details);
 
-static	void
-MR_decl_diagnosis_test(MR_Trace_Node root);
-
 static	MR_Code *
 MR_decl_handle_bug_found(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details);
@@ -448,22 +445,8 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		/*
 		** Call the front end.
 		*/
-		switch (MR_trace_decl_mode) {
-			case MR_TRACE_DECL_DEBUG:
-				return MR_decl_diagnosis(
-						MR_trace_current_node, cmd,
-						event_info, &event_details);
-
-			case MR_TRACE_DECL_DEBUG_TEST:
-				MR_decl_diagnosis_test(MR_trace_current_node);
-				break;
-
-			default:
-				MR_fatal_error("MR_trace_decl_debug: "
-						"unexpected mode");
-		}
-		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		return MR_trace_event_internal(cmd, TRUE, event_info);
+		return MR_decl_diagnosis(MR_trace_current_node, cmd,
+					event_info, &event_details);
 	}
 
 	MR_trace_enabled = TRUE;
@@ -1163,9 +1146,9 @@ MR_trace_decl_ensure_init(void)
 }
 
 bool
-MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
-		MR_Event_Info *event_info, MR_Event_Details *event_details,
-		MR_Code **jumpaddr)
+MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
+		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+		MR_Event_Details *event_details, MR_Code **jumpaddr)
 {
 	MR_Retry_Result		result;
 	const MR_Proc_Layout 	*entry;
@@ -1173,6 +1156,14 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 	MR_Unsigned		depth_limit;
 	const char		*message;
 	MR_Trace_Level		trace_level;
+
+	if (!MR_port_is_final(event_info->MR_trace_port)) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err,
+			"mdb: declarative debugging is only available"
+			" from EXIT, FAIL or EXCP events.\n");
+		return FALSE;
+	}
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
@@ -1212,11 +1203,7 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 	}
 #endif /* MR_USE_DECL_STACK_SLOT */
 
-	if (outfile == (const char *) NULL) {
-		/* Normal debugging mode */
-		MR_trace_decl_mode = MR_TRACE_DECL_DEBUG;
-	} else {
-		/* Test mode */
+	if (trace_mode == MR_TRACE_DECL_DEBUG_DUMP) {
 		out = fopen(outfile, "w");
 		if (out == NULL) {
 			fflush(MR_mdb_out);
@@ -1225,10 +1212,11 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 					outfile, strerror(errno));
 			return FALSE;
 		} else {
-			MR_trace_decl_mode = MR_TRACE_DECL_DEBUG_TEST;
 			MR_trace_store_file = out;
 		}
 	}
+
+	MR_trace_decl_mode = trace_mode;
 
 	MR_trace_decl_ensure_init();
 	depth_limit = event_info->MR_call_depth + MR_EDT_DEPTH_STEP_SIZE;
@@ -1339,19 +1327,35 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	MR_Unsigned		bug_event;
 	MR_Unsigned		final_event;
 	MR_Unsigned		topmost_seqno;
-
-#if 0
-	/*
-	** This is a quick and dirty way to debug the front end.
-	*/
-	MR_trace_enabled = TRUE;
-#endif
+	MercuryFile		stream;
 
 	if (MR_edt_compiler_flag_warning) {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "Warning: some modules were compiled with"
 				" a trace level lower than `decl'.\n"
 				"This may result in calls being omitted from"
 				" the debugging tree.\n");
+	}
+
+	if (MR_trace_decl_mode == MR_TRACE_DECL_DEBUG_DUMP) {
+		MR_mercuryfile_init(MR_trace_store_file, 1, &stream);
+
+		MR_TRACE_CALL_MERCURY(
+			MR_DD_save_trace((MR_Word) &stream,
+						MR_trace_node_store, root);
+		);
+
+		fclose(MR_trace_store_file);
+		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+		MR_trace_enabled = TRUE;
+		return MR_trace_event_internal(cmd, TRUE, event_info);
+	}
+
+	if (MR_trace_decl_mode == MR_TRACE_DECL_DEBUG_DEBUG) {
+		/*
+		** This is a quick and dirty way to debug the front end.
+		*/
+		MR_trace_enabled = TRUE;
 	}
 
 	MR_TRACE_CALL_MERCURY(
@@ -1435,20 +1439,6 @@ MR_decl_handle_bug_found(MR_Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
 	MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 	MR_trace_enabled = TRUE;
 	return jumpaddr;
-}
-
-static	void
-MR_decl_diagnosis_test(MR_Trace_Node root)
-{
-	MercuryFile stream;
-
-	MR_mercuryfile_init(MR_trace_store_file, 1, &stream);
-
-	MR_TRACE_CALL_MERCURY(
-		MR_DD_save_trace((MR_Word) &stream, MR_trace_node_store, root);
-	);
-
-	fclose(MR_trace_store_file);
 }
 
 static	MR_String
