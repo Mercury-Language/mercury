@@ -39,15 +39,20 @@ clean:
 .PHONY: install
 install: install_headers install_lib
 
-# As well as installing gc.h, we also install gc_inl.h and
-# private/gc_priv.h for use with `-DINLINE_ALLOC'.
+# As well as installing gc.h, we also install gc_inl.h (and hence
+# private/gc_priv.h, private/gc_hdrs.h, and private/config.h),
+# for use with `-DINLINE_ALLOC'.
+
+HEADERS=gc.h include/gc_inl.h
+PRIVATE_HEADERS=gc_priv.h gc_hdrs.h config.h
+
 .PHONY: install_headers
-install_headers: gc.h include/gc_inl.h gc_priv.h
+install_headers:
 	-[ -d $(INSTALL_INC_DIR) ] || mkdir -p $(INSTALL_INC_DIR)
-	cp `vpath_find gc.h include/gc_inl.h` $(INSTALL_INC_DIR)
 	-[ -d $(INSTALL_INC_DIR)/private ] || \
 		mkdir -p $(INSTALL_INC_DIR)/private
-	cp `vpath_find gc_priv.h` $(INSTALL_INC_DIR)/private
+	cp $(HEADERS) $(INSTALL_INC_DIR)
+	cp $(PRIVATE_HEADERS) $(INSTALL_INC_DIR)/private
 
 .PHONY: install_lib
 install_lib: libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB)
