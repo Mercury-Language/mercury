@@ -254,6 +254,10 @@ do
 
 	if $save_stage2
 	then
+		# If a directory with this name already exists,
+		# it probably came from a previous invocation of this script.
+		# This invocation supersedes earlier ones.
+		/bin/rm -fr stage2.batch.$visn > /dev/null
 		mv stage2 stage2.batch.$visn
 	fi
 
