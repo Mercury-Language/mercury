@@ -629,7 +629,7 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredInfo, ClausesInfo,
 	->
 		% 
 		% We need to set these fields in the proc_info here, because
-		% some parts of the compiler (e.g. unused_args.m) depend on the
+		% some parts of the compiler (e.g. unused_args.m) depend on
 		% these fields being valid even for imported procedures.
 		%
 		clauses_info_headvars(ClausesInfo, HeadVars),
