@@ -1058,12 +1058,16 @@ mercury_data_std_util__type_ctor_functors_type_info_0_struct {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
-const struct MR_TypeCtorInfo_struct
+Declare_entry(mercury____Unify___std_util__type_info_0_0);
+Declare_entry(mercury____Index___std_util__type_info_0_0);
+Declare_entry(mercury____Compare___std_util__type_info_0_0);
+
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data_std_util__type_ctor_info_type_info_0 = {
 	(Integer) 0,
-	ENTRY(mercury____Unify___std_util__type_info_0_0),
-	ENTRY(mercury____Index___std_util__type_info_0_0),
-	ENTRY(mercury____Compare___std_util__type_info_0_0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___std_util__type_info_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___std_util__type_info_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___std_util__type_info_0_0)),
 	(Integer) 15,
 	(Word *) &mercury_data_std_util__type_ctor_functors_type_info_0,
 	(Word *) &mercury_data_std_util__type_ctor_layout_type_info_0,
@@ -1071,17 +1075,6 @@ mercury_data_std_util__type_ctor_info_type_info_0 = {
 	string_const(""type_info"", 9),
 	MR_RTTI_VERSION
 };
-
-#ifndef	COMPACT_ARGS
-
-Declare_label(mercury____Compare___std_util__univ_0_0_i1);
-
-MR_MAKE_PROC_LAYOUT(mercury____Compare___std_util__univ_0_0,
-	MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR(1),
-	MR_PREDICATE, ""std_util"", ""compare_univ"", 3, 0);
-MR_MAKE_INTERNAL_LAYOUT(mercury____Compare___std_util__univ_0_0, 1);
-
-#endif
 
 Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
 Define_extern_entry(mercury____Index___std_util__type_info_0_0);
