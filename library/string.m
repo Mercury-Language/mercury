@@ -785,7 +785,7 @@ string__remove_suffix(A, B, C) :-
 	string__to_char_list(A, LA),
 	string__to_char_list(B, LB),
 	string__to_char_list(C, LC),
-	list__remove_suffix(LA, LB, LC).
+	char_list_remove_suffix(LA, LB, LC).
 
 :- pragma promise_pure(string__prefix/2).
 
@@ -1449,7 +1449,7 @@ width(Width, PolyTypes0, PolyTypes) -->
 		zero_or_more_occurences(digit),
 		=(Final),
 
-		{ list__remove_suffix(Init, Final, Width) },
+		{ char_list_remove_suffix(Init, Final, Width) },
 		{ PolyTypes = PolyTypes0 }
 	).
 
@@ -1476,7 +1476,7 @@ prec(Prec, PolyTypes0, PolyTypes) -->
 		zero_or_more_occurences(digit),
 		=(Final)
 	->
-		{ list__remove_suffix(Init, Final, Prec) },
+		{ char_list_remove_suffix(Init, Final, Prec) },
 		{ PolyTypes = PolyTypes0 }
 	;
 			% When no number follows the '.' the precision
@@ -4055,6 +4055,27 @@ suffix_length_2(I, N, P, S) =
 	       )
 	  else N - (I + 1)
 	).
+
+%------------------------------------------------------------------------------%
+
+% char_list_remove_suffix/3 : We use this instead of the more general
+% list__remove_suffix so that (for example) string__format will succeed in
+% grade Java, even though Unification has not yet been implemented.
+
+:- pred char_list_remove_suffix(list(char), list(char), list(char)).
+:- mode char_list_remove_suffix(in, in, out) is semidet.
+
+char_list_remove_suffix(List, Suffix, Prefix) :-
+	list__length(List, ListLength),
+	list__length(Suffix, SuffixLength),
+	PrefixLength = ListLength - SuffixLength,
+	list__split_list(PrefixLength, List, Prefix, Rest),
+	char_list_equal(Suffix, Rest).
+
+:- pred char_list_equal(list(char)::in, list(char)::in) is semidet.
+	char_list_equal([], []).
+	char_list_equal([X|Xs], [X|Ys]) :-
+	char_list_equal(Xs, Ys).
 
 %------------------------------------------------------------------------------%
 
