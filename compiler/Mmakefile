@@ -79,7 +79,7 @@ endif
 # module can't really benefit from those algorithms anyway. With -O1, the 26
 # minutes drops to less than 26 seconds.
 
-MGNUCFLAGS-rl_code=-O1
+CFLAGS-rl_code=-O1
 
 #-----------------------------------------------------------------------------#
 
