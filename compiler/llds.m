@@ -43,9 +43,11 @@
 			% Assign the value specified by rval to the location
 			% specified by lval.
 
-	;	call(code_addr, code_addr, list(liveinfo)) 
+	;	call(code_addr, code_addr, code_addr, list(liveinfo)) 
 			% call(Target, Continuation) is the same as
 			% succip = Continuation; goto(Target).
+			% The third code_addr is the entry address for
+			% the caller predicate and is used for profiling.
 
 	;	call_closure(bool, code_addr, list(liveinfo))
 			% Setup the arguments and branch to a higher
@@ -363,11 +365,12 @@ output_instruction(assign(Lval, Rval)) -->
 	output_rval(Rval),
 	io__write_string("; }").
 
-output_instruction(call(Target, Continuation, LiveVals)) -->
+output_instruction(call(Target, Continuation, CallerAddress, LiveVals)) -->
 	io__write_string("\t{ "),
 	output_code_addr_decls(Target),
 	output_code_addr_decls(Continuation),
-	output_call(Target, Continuation),
+	output_code_addr_decls(CallerAddress),
+	output_call(Target, Continuation, CallerAddress),
 	io__write_string(" }\n"),
 	output_gc_livevals(LiveVals).
 
@@ -668,21 +671,25 @@ output_goto(label(Label)) -->
 	% outputting `localcall' rather than `call' for
 	% calls to local labels.
 
-:- pred output_call(code_addr, code_addr, io__state, io__state).
-:- mode output_call(in, in, di, uo) is det.
+:- pred output_call(code_addr, code_addr, code_addr, io__state, io__state).
+:- mode output_call(in, in, in, di, uo) is det.
 
-output_call(Target, Continuation) -->
+output_call(Target, Continuation, CallerAddress) -->
 	( { Target = label(Label) } ->
 		io__write_string("localcall("),
 		output_label(Label),
 		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation),
+		io__write_string(",\n\t\t"),
+		output_code_addr(CallerAddress),
 		io__write_string(");")
 	;
 		io__write_string("call("),
 		output_code_addr(Target),
 		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation),
+		io__write_string(",\n\t\t"),
+		output_code_addr(CallerAddress),
 		io__write_string(");")
 	).
 

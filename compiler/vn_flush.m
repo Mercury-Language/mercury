@@ -84,10 +84,12 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, Vn_tables0, Vn_tables,
 		Nodes = Nodes0,
 		map__lookup(Ctrlmap, N, Vn_instr),
 		(
-			Vn_instr = vn_call(ProcAddr, RetAddr, LiveInfo),
+			Vn_instr = vn_call(ProcAddr, RetAddr, CallerAddr,
+				LiveInfo),
 			Vn_tables = Vn_tables0,
 			Templocs = Templocs0,
-			Instrs = [call(ProcAddr, RetAddr, LiveInfo) - ""]
+			Instrs = [call(ProcAddr, RetAddr, CallerAddr,
+				LiveInfo) - ""]
 		;
 			Vn_instr = vn_call_closure(ClAddr, RetAddr, LiveInfo),
 			Vn_tables = Vn_tables0,

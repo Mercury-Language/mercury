@@ -112,7 +112,7 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 	Instr0 = Uinstr0 - Comment0,
 	string__append(Comment0, " (redirected return)", Redirect),
 	(
-		Uinstr0 = call(Proc, label(Retlabel), LiveVals),
+		Uinstr0 = call(Proc, label(Retlabel), Caller, LiveVals),
 		map__search(Instrmap, Retlabel, Retinstr)
 	->
 		jumpopt__final_dest(Retlabel, Retinstr, Instrmap,
@@ -121,8 +121,8 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 			Newinstrs = [Instr0],
 			Mod0 = no
 		;
-			Newinstrs = [call(Proc, label(Destlabel), LiveVals)
-								- Redirect],
+			Newinstrs = [call(Proc, label(Destlabel), Caller,
+				LiveVals) - Redirect],
 			Mod0 = yes
 		)
 	;

@@ -112,8 +112,9 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Livevals0, Incrhp, SeenLive,
 			Livevals1, Incrhp, SeenLive,
 			Ctrlmap0, Flushmap0, Ctrl0, Prev1, Instrs)
 	;
-		Uinstr0 = call(ProcAddr, ReturnAddr, LiveInfo),
-		vn__new_ctrl_node(vn_call(ProcAddr, ReturnAddr, LiveInfo),
+		Uinstr0 = call(ProcAddr, ReturnAddr, CallerAddr, LiveInfo),
+		vn__new_ctrl_node(vn_call(ProcAddr, ReturnAddr, CallerAddr,
+			LiveInfo),
 			Livemap, SeenLive,
 			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
@@ -267,7 +268,7 @@ vn__new_ctrl_node(Vn_instr, Livemap, SeenLive,
 	map__set(Ctrlmap0, Ctrl0, Vn_instr, Ctrlmap),
 	map__init(FlushEntry0),
 	(
-		Vn_instr = vn_call(_, _, _),
+		Vn_instr = vn_call(_, _, _, _),
 		vn__record_at_call(Vn_tables0, Vn_tables, Livevals0, Livevals,
 			FlushEntry0, FlushEntry)
 	;

@@ -47,7 +47,8 @@
 			;	node_origlval(vnlval)
 			;	node_ctrl(int).
 
-:- type vn_instr	--->	vn_call(code_addr, code_addr, list(liveinfo))
+:- type vn_instr	--->	vn_call(code_addr, code_addr, code_addr, 
+					list(liveinfo))
 			;	vn_call_closure(bool, code_addr, list(liveinfo))
 			;	vn_mkframe(string, int, code_addr)
 			;	vn_modframe(code_addr)

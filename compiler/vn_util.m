@@ -479,7 +479,7 @@ vn__build_uses(Livevals, Ctrlmap, Vn_tables0, Vn_tables) :-
 vn__build_uses_from_ctrl(Ctrl, Ctrlmap, Vn_tables0, Vn_tables) :-
 	( map__search(Ctrlmap, Ctrl, VnInstr) ->
 		(
-			VnInstr = vn_call(_, _, _),
+			VnInstr = vn_call(_, _, _, _),
 			Vn_tables1 = Vn_tables0
 		;
 			VnInstr = vn_call_closure(_, _, _),
@@ -637,7 +637,7 @@ vn__block_cost_2([Uinstr - _Comment | Instrs],  A0, A, O0, O, S0, S, H0, H) :-
 		vn__lval_cost(Lval, O0, O1, S0, S1, H0, H1),
 		vn__rval_cost(Rval, O1, O2, S1, S2, H1, H2)
 	;
-		Uinstr = call(_, _, _),
+		Uinstr = call(_, _, _, _),
 		A1 = A0,
 		O2 = O0,
 		S2 = S0,

@@ -120,7 +120,7 @@ garbage_out__proc_instr_list([I - _Comment | Is ], Cs0, Cout) :-
 garbage_out__proc_instr(I, Cs, Cout) :- 
 	(
 		(
-			I = call(_Target, Contn, LiveInfo0)
+			I = call(_Target, Contn, _, LiveInfo0)
 		;
 			I = call_closure(_, Contn, LiveInfo0)
 		)

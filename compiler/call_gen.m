@@ -73,8 +73,12 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutputArguments, OutLiveVals),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
+	code_info__get_pred_id(CallerPredId),
+	code_info__get_proc_id(CallerProcId),
+	{ code_util__make_entry_label(ModuleInfo, CallerPredId, CallerProcId, 
+		CallerAddress) },
 	{ CodeC1 = node([
-		call(Address, label(ReturnLabel), OutLiveVals) - % XXX
+		call(Address, label(ReturnLabel), CallerAddress, OutLiveVals) -
 					"branch to det procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
@@ -131,8 +135,12 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutputArguments, OutLiveVals),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
-	{ CodeC1 = node([
-		call(Address, label(ReturnLabel), OutLiveVals) - % XXX
+        code_info__get_pred_id(CallerPredId),
+        code_info__get_proc_id(CallerProcId),
+        { code_util__make_entry_label(ModuleInfo, CallerPredId, CallerProcId,
+                CallerAddress) },
+        { CodeC1 = node([
+                call(Address, label(ReturnLabel), CallerAddress, OutLiveVals) -
 			"branch to semidet procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
@@ -161,8 +169,12 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutputArguments, OutLiveVals),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
-	{ CodeC1 = node([
-		call(Address, label(ReturnLabel), OutLiveVals) - % XXX
+        code_info__get_pred_id(CallerPredId),
+        code_info__get_proc_id(CallerProcId),
+        { code_util__make_entry_label(ModuleInfo, CallerPredId, CallerProcId,
+                CallerAddress) },
+        { CodeC1 = node([
+                call(Address, label(ReturnLabel), CallerAddress, OutLiveVals) -
 			"branch to nondet procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
@@ -406,8 +418,13 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 		;
 			Address = label(local(UniLabel))
 		},
+		code_info__get_pred_id(CallerPredId),
+		code_info__get_proc_id(CallerProcId),
+		{ code_util__make_entry_label(ModuleInfo, CallerPredId, 
+			CallerProcId, CallerAddress) },
 		{ CodeC1 = node([
-			call(Address, label(ReturnLabel), OutLiveVals) - % XXX
+			call(Address, label(ReturnLabel), CallerAddress,
+				 OutLiveVals) -
 				"branch to out-of-line unification procedure",
 			label(ReturnLabel) - "Continuation label"
 		]) }

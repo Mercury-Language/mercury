@@ -138,7 +138,7 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
 	;
-		Uinstr = call(_, _, _),
+		Uinstr = call(_, _, _, _),
 		opt_util__skip_comments(Moreinstrs, Moreinstrs1),
 		(
 			Moreinstrs1 = [Nextinstr | Evenmoreinstrs],

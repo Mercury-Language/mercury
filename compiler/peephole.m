@@ -193,7 +193,7 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap,
 peephole__match(livevals(Livevals), Comment, Procmap, Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
-	Instrs1 = [call(CodeAddress, label(ContLabel), _LiveVals)
+	Instrs1 = [call(CodeAddress, label(ContLabel), _Caller, _LiveVals)
 							- Comment2 | _],
 	( map__search(Procmap, ContLabel, Between0) ->
 		opt_util__filter_out_livevals(Between0, Between1),

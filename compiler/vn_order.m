@@ -276,7 +276,7 @@ vn__vn_ctrl_order(Ctrl, Ctrlmap, Vn_tables0, Vn_tables,
 		Succmap0, Succmap, Predmap0, Predmap) :-
 	( map__search(Ctrlmap, Ctrl, Vn_instr) ->
 		(
-			Vn_instr = vn_call(_, _, _),
+			Vn_instr = vn_call(_, _, _, _),
 			Succmap1 = Succmap0,
 			Predmap1 = Predmap0,
 			Vn_tables1 = Vn_tables0
@@ -857,7 +857,7 @@ vn__boundary_instr(comment(_), no).
 vn__boundary_instr(livevals(_), no).
 vn__boundary_instr(block(_, _), no).
 vn__boundary_instr(assign(_,_), no).
-vn__boundary_instr(call(_, _, _), yes).
+vn__boundary_instr(call(_, _, _, _), yes).
 vn__boundary_instr(call_closure(_, _, _), yes).
 vn__boundary_instr(mkframe(_, _, _), yes).
 vn__boundary_instr(modframe(_), yes).
