@@ -1270,6 +1270,9 @@ nyi_foreign_type_compare(Result, _, _) :-
 % imp/0 is used to make pure predicates impure.
 :- impure pred imp is det.
 
+% semip/0 is used to make pure predicates semipure.
+:- semipure pred semip is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1300,6 +1303,20 @@ no_clauses(PredName) :-
 :- pragma foreign_proc("Java",
 	imp,
 	[will_not_call_mercury, thread_safe],
+"").
+
+:- pragma foreign_proc(c,
+	semip,
+	[will_not_call_mercury, thread_safe, promise_semipure],
+"").
+:- pragma foreign_proc(il,	
+	semip,
+	[will_not_call_mercury, thread_safe, promise_semipure,
+		max_stack_size(0)],
+"").
+:- pragma foreign_proc("Java",
+	semip,
+	[will_not_call_mercury, thread_safe, promise_semipure],
 "").
 
 %-----------------------------------------------------------------------------%

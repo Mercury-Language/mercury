@@ -208,8 +208,13 @@
 #endif
 
 #ifdef MR_USE_MINIMAL_MODEL
-  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _mm)
-  #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".mm"
+  #ifdef MR_MINIMAL_MODEL_DEBUG
+    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _dmm)
+    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".dmm"
+  #else
+    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _mm)
+    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".mm"
+  #endif
 #else
   #define MR_GRADE_PART_8	MR_GRADE_PART_7
   #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7

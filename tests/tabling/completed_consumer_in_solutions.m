@@ -8,19 +8,19 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int, list.
 :- import_module std_util.
 
-main --> 
-	{ q(Solns1, Solns2) },
-	io__write(Solns1),
-	io__write_string("\n"),
-	io__write(Solns2),
-	io__write_string("\n").
+main(!IO) :-
+	q(Solns1, Solns2),
+	io__write(Solns1, !IO),
+	io__write_string("\n", !IO),
+	io__write(Solns2, !IO),
+	io__write_string("\n", !IO).
 
 :- pred q(list(int)::out, list(int)::out) is det.
 

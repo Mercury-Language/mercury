@@ -83,6 +83,7 @@ SINGLEMODULE= \
 	invalid_typeclass \
 	io_in_ite_cond \
 	lambda_syntax_error \
+	loopcheck \
 	magicbox \
 	make_opt_error \
 	merge_ground_any \

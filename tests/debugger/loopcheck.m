@@ -15,7 +15,7 @@ main -->
 	io__write_string("Hello, world\n").
 
 :- pragma loop_check(loop/1).
-:- pred loop(int::in) is erroneous.
+:- pred loop(int::in) is det.
 
 loop(X) :-
 	loop(X).

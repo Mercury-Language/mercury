@@ -579,8 +579,16 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
 		ReserveTagOpt = ""
 	),
 	globals__io_lookup_bool_option(use_minimal_model, MinimalModel, !IO),
+	globals__io_lookup_bool_option(minimal_model_debug, MinimalModelDebug,
+		!IO),
 	( MinimalModel = yes ->
-		MinimalModelOpt = "-DMR_USE_MINIMAL_MODEL "
+		(
+			MinimalModelDebug = yes,
+			MinimalModelOpt = "-DMR_USE_MINIMAL_MODEL -DMR_MINIMAL_MODEL_DEBUG"
+		;
+			MinimalModelDebug = no,
+			MinimalModelOpt = "-DMR_USE_MINIMAL_MODEL "
+		)
 	;
 		MinimalModelOpt = ""
 	),

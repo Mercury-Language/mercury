@@ -2545,7 +2545,7 @@ no_type_info_builtin_2(private_builtin,
 no_type_info_builtin_2(private_builtin, "type_info_from_typeclass_info", 3).
 no_type_info_builtin_2(private_builtin,
 			"unconstrained_type_info_from_typeclass_info", 3).
-no_type_info_builtin_2(table_builtin, "table_restore_any_ans", 3).
+no_type_info_builtin_2(table_builtin, "table_restore_any_answer", 3).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
 no_type_info_builtin_2(term_size_prof_builtin, "increment_size", 2).
 
@@ -3009,12 +3009,37 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 :- import_module check_hlds__det_analysis.
 
 valid_determinism_for_eval_method(eval_normal, _) = yes.
-valid_determinism_for_eval_method(eval_loop_check, _) = yes.
+valid_determinism_for_eval_method(eval_loop_check, Detism) = Valid :-
+	% We can't handle at_most_many because we don't mark the subgoal
+	% as active again when we backtrack into it.
+	determinism_components(Detism, _, MaxSoln),
+	( ( MaxSoln = at_most_one ; MaxSoln = at_most_many_cc ) ->
+		Valid = yes
+	;
+		Valid = no
+	).
+valid_determinism_for_eval_method(eval_memo, Detism) = Valid :-
+	% We can't handle at_most_many because the memoing data structures
+	% cannot record more than one answer, and the minimal model data
+	% structures are unsuitable.
+	determinism_components(Detism, _, MaxSoln),
+	( ( MaxSoln = at_most_one ; MaxSoln = at_most_many_cc ) ->
+		Valid = yes
+	;
+		Valid = no
+	).
 valid_determinism_for_eval_method(eval_table_io(_, _), _) = _ :-
 	error("valid_determinism_for_eval_method called after tabling phase").
-valid_determinism_for_eval_method(eval_memo, _) = yes.
-valid_determinism_for_eval_method(eval_minimal, Determinism) = Valid :-
-	( determinism_components(Determinism, can_fail, _) ->
+valid_determinism_for_eval_method(eval_minimal, Detism) = Valid :-
+	% Determinism analysis isn't yet smart enough to know whether
+	% a cannot_fail execution path is guaranteed not to go through
+	% a call to a predicate that is mutually recursive with this one,
+	% which (if this predicate is minimal model) is the only way that
+	% the predicate can be properly cannot_fail. The problem is that in
+	% in general, the mutually recursive predicate may be in another
+	% module.
+	determinism_components(Detism, CanFail, _),
+	( CanFail = can_fail ->
 		Valid = yes
 	;
 		Valid = no

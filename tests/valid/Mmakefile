@@ -222,7 +222,7 @@ else
 	# its own builtin GC.
 	# The agc.* tests also don't work in minimal model grades,
 	# because the collector doesn't scan the copied areas of the stacks.
-	ifneq "$(findstring il,$(GRADE))$(findstring .mm,$(GRADE))" ""
+	ifneq "$(findstring il,$(GRADE))$(findstring mm,$(GRADE))" ""
 		PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 	else
 		PROGS0 = $(AGC_PROGS) $(TYPECLASS_PROGS) $(OTHER_PROGS)
@@ -246,7 +246,7 @@ else
 	endif
 endif
 
-ifneq "$(findstring .mm,$(GRADE))" ""
+ifneq "$(findstring mm,$(GRADE))" ""
 	PROGS2=$(PROGS1)
 else
 	PROGS2=$(PROGS1) $(TRAIL_PROGS)

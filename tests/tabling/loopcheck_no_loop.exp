@@ -1,2 +1,8 @@
 6
 3
+6
+3
+semisum(-2) failed
+count(3) succeeded
+count(2) succeeded
+count(-2) failed

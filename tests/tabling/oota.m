@@ -1,17 +1,16 @@
-/*
-  Test taken from the XSB testsuite.
-
-  Under local evaluation it results in:
-    318 variant call check/insert ops: 120 generators, 198 consumers.
-    120 answer check/insert ops: 120 unique inserts, 0 redundant.
- 
-  If d/4 is declared semidet, the program compiles with a warning that
-  the determinism declaration of d/1 could be tighter, but when the
-  program executes, it produces the right answer.
-
-  If d/4 is declared nondet, The program compiles without warnings,
-  but produces no answer when it executes.
-*/
+% Test taken from the XSB testsuite.
+%
+% Under local evaluation it results in:
+% 318 variant call check/insert ops: 120 generators, 198 consumers.
+% 120 answer check/insert ops: 120 unique inserts, 0 redundant.
+%
+% If d/4 is declared semidet, the program compiles with a warning that
+% the determinism declaration of d/1 could be tighter, but when the
+% program executes, it produces the right answer.
+%
+% If d/4 is declared nondet, the program compiles without warnings,
+% but produces no answer when it executes.
+%
 
 :- module oota.
 
@@ -19,49 +18,49 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- import_module list.
-
 :- import_module std_util, int, list.
 
-main -->
-	{ solutions(d, Solns) },
-	io__write_string("D = "),
-	io__write(Solns),
-	io__write_string("\n").
+main(!IO) :-
+	( d(Out) ->
+		io__write_string("D = ", !IO),
+		io__write_int(Out, !IO),
+		io__write_string("\n", !IO)
+	;
+		io__write_string("failed\n", !IO)
+	).
 
-:- pred d(int::out) is nondet.
+:- pred d(int::out) is semidet.
 
 d(D) :-
 	GC = 10, I = 11, J = 9,
 	d(GC, I, J, D).
 
-% :- pred d(int::in, int::in, int::in, int::out) is nondet.
 :- pred d(int::in, int::in, int::in, int::out) is semidet.
-:- pragma minimal_model(d/4).
+:- pragma memo(d/4).
 
 d(GC, I, J, D) :-
 	( I = 0, J = 0 ->
-	    D = 0
+		D = 0
 	; I = 0 ->
-	    J1 = J - 1,
-	    d(GC, 0, J1, D1),
-	    D = D1 + GC
+		J1 = J - 1,
+		d(GC, 0, J1, D1),
+		D = D1 + GC
 	; J = 0 ->
-	    I1 = I - 1,
-	    d(GC, I1, 0, D1),
-	    D = D1 + GC
+		I1 = I - 1,
+		d(GC, I1, 0, D1),
+		D = D1 + GC
 	;
-	    I1 = I - 1,
-	    J1 = J - 1,
-	    ms(I, J, MS),
-	    d(GC, I1,J1, D1), D_MS = D1 + MS,
-	    d(GC, I1, J, D2), D_G1 = D2 + GC,
-	    d(GC, I, J1, D3), D_G2 = D3 + GC,
-	    min([D_MS, D_G1, D_G2], D)
+		I1 = I - 1,
+		J1 = J - 1,
+		ms(I, J, MS),
+		d(GC, I1,J1, D1), D_MS = D1 + MS,
+		d(GC, I1, J, D2), D_G1 = D2 + GC,
+		d(GC, I, J1, D3), D_G2 = D3 + GC,
+		min([D_MS, D_G1, D_G2], D)
 	).
 
 :- pred min(list(int)::in, int::out) is semidet.

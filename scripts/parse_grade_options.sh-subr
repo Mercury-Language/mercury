@@ -153,6 +153,11 @@
 	--no-use-minimal-model)
 		use_minimal_model=false ;;
 
+	--minimal-model-debug)
+		minimal_model_debug=true ;;
+	--no-minimal-model-debug)
+		minimal_model_debug=false ;;
+
 	--pic-reg)
 		pic_reg=true ;;
 	--no-pic-reg)
@@ -196,6 +201,7 @@
 		use_trail=false
 		reserve_tag=false
 		use_minimal_model=false
+		minimal_model_debug=false
 		pic_reg=false
 		debug=false
 		decl_debug=false
@@ -392,6 +398,12 @@
 
 				mm)
 					use_minimal_model=true
+					minimal_model_debug=false
+					;;
+
+				dmm)
+					use_minimal_model=true
+					minimal_model_debug=true
 					;;
 
 				picreg)

@@ -54,6 +54,7 @@
 ** MR_USE_TRAIL
 ** MR_RESERVE_TAG
 ** MR_USE_MINIMAL_MODEL
+** MR_MINIMAL_MODEL_DEBUG
 ** MR_SPLIT_C_FILES
 ** MR_INLINE_ALLOC
 ** MR_PIC_REG
@@ -73,6 +74,7 @@
 **		--use-trail
 **		--reserve-tag
 **		--use-minimal-model
+**		--minimal-model-debug
 **		--split-c-files
 **		--inline-alloc
 **		--pic-reg
@@ -434,6 +436,10 @@
   #error "MR_THREAD_SAFE and MR_STACK_FRAME_STATS are not supported together"
 #endif
 
+#ifdef MR_MINIMAL_MODEL_DEBUG
+  #define MR_TABLE_STATISTICS
+#endif
+
 /*---------------------------------------------------------------------------*/
 /*
 ** Settings of configuration parameters which can be passed on
@@ -605,7 +611,7 @@
 **			   the names of the labels they correspond to.
 */
 
-/* MR_TABLE_DEBUG and MR_DEBUG_RETRY imply MR_DEBUG_LABEL_NAMES */
+/* These debugging facilities require label names */
 #if defined(MR_DEEP_PROFILING_LOWLEVEL_DEBUG) || defined(MR_TABLE_DEBUG) \
 	|| defined(MR_DEBUG_RETRY)
   #define MR_DEBUG_LABEL_NAMES

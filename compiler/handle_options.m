@@ -1052,6 +1052,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	% tabling can't find them without label layout info. Since we want
 	% to allow tabling in grades that do not have label layout info,
 	% we disable hijacks instead.
+	% XXX we should allow hijacks in table_builtin.m
 	option_implies(use_minimal_model, allow_hijacks, bool(no)),
 
 	% --dump-hlds and --statistics require compilation by phases
@@ -1838,7 +1839,10 @@ grade_component_table("tr", trail, [use_trail - bool(yes)], no).
 grade_component_table("rt", tag, [reserve_tag - bool(yes)], no).
 
 	% Mimimal model tabling components
-grade_component_table("mm", minimal_model, [use_minimal_model - bool(yes)], no).
+grade_component_table("mm", minimal_model,
+	[use_minimal_model - bool(yes), minimal_model_debug - bool(no)], no).
+grade_component_table("dmm", minimal_model,
+	[use_minimal_model - bool(yes), minimal_model_debug - bool(yes)], no).
 
 	% Pic reg components
 grade_component_table("picreg", pic, [pic_reg - bool(yes)], no).
@@ -1876,6 +1880,7 @@ grade_start_values(profile_memory - bool(no)).
 grade_start_values(use_trail - bool(no)).
 grade_start_values(reserve_tag - bool(no)).
 grade_start_values(use_minimal_model - bool(no)).
+grade_start_values(minimal_model_debug - bool(no)).
 grade_start_values(pic_reg - bool(no)).
 grade_start_values(exec_trace - bool(no)).
 grade_start_values(decl_debug - bool(no)).

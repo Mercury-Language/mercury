@@ -6,24 +6,25 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module bool, int, float, list, assoc_list, std_util, random, require.
 
-main -->
-	{ random__init(0, RS0) },
-	{ random__permutation(range(0, 1023), Perm, RS0, RS1) },
-	{ choose_signs_and_enter(Perm, Solns, RS1, _RS) },
-	( { test_tables(Solns, yes) } ->
-		io__write_string("Test successful.\n")
+main(!IO) :-
+	random__init(0, RS0),
+	random__permutation(range(0, 1023), Perm, RS0, RS1),
+	choose_signs_and_enter(Perm, Solns, RS1, _RS),
+	( test_tables(Solns, yes) ->
+		io__write_string("Test successful.\n", !IO)
 	;
-		io__write_string("Test unsuccessful.\n")
+		io__write_string("Test unsuccessful.\n", !IO)
 	).
-	% io__report_tabling_stats.
+	% io__report_tabling_stats(!IO).
 
 :- func range(int, int) = list(int).
+
 range(Min, Max) =
 	(if Min > Max then
 		[]

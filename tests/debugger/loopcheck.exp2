@@ -4,17 +4,17 @@ Command echo enabled.
 mdb> context nextline
 Contexts will be printed on the next line.
 mdb> continue -a
-       2:      2  2 CALL pred loopcheck.loop/1-0 (erroneous)
+       2:      2  2 CALL pred loopcheck.loop/1-0 (det)
                          loopcheck.m:21 (from loopcheck.m:14)
-       3:      3  3 CALL pred loopcheck.loop/1-0 (erroneous)
+       3:      3  3 CALL pred loopcheck.loop/1-0 (det)
                          loopcheck.m:21 (from loopcheck.m:21)
        4:      4  4 CALL pred require.error/1-0 (erroneous)
                          require.m:NNNN (from loopcheck.m:21)
        5:      4  4 EXCP pred require.error/1-0 (erroneous)
                          require.m:NNNN (from loopcheck.m:21)
-       6:      3  3 EXCP pred loopcheck.loop/1-0 (erroneous)
+       6:      3  3 EXCP pred loopcheck.loop/1-0 (det)
                          loopcheck.m:21 (from loopcheck.m:21)
-       7:      2  2 EXCP pred loopcheck.loop/1-0 (erroneous)
+       7:      2  2 EXCP pred loopcheck.loop/1-0 (det)
                          loopcheck.m:21 (from loopcheck.m:14)
        8:      1  1 EXCP pred loopcheck.main/2-0 (det)
                          loopcheck.m:14

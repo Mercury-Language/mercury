@@ -4,18 +4,19 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module std_util, list.
 
-main -->
-	{ solutions(tc(1), Solns) },
-	( { Solns = [] } ->
-		io__write_string("loopcheck failed, tc has no solutions\n")
+main(!IO) :-
+	solutions(tc(1), Solns),
+	( Solns = [] ->
+		io__write_string("loopcheck failed, tc has no solutions\n",
+			!IO)
 	;
-		io__write_string("loopcheck failed, tc has solutions\n")
+		io__write_string("loopcheck failed, tc has solutions\n", !IO)
 	).
 
 :- pred tc(int::in, int::out) is nondet.

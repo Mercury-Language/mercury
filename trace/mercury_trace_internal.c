@@ -4582,17 +4582,17 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
 			MR_trace_print_subgoal(proc, subgoal);
 		}
 	} else if (MR_sle_eval_method(proc) == MR_EVAL_METHOD_MEMO) {
-		switch (table->MR_simpletable_status) {
-			case MR_SIMPLETABLE_UNINITIALIZED:
+		switch (table->MR_memo_status) {
+			case MR_MEMO_INACTIVE:
 				fprintf(MR_mdb_out, "uninitialized\n");
 				break;
-			case MR_SIMPLETABLE_WORKING:
+			case MR_MEMO_ACTIVE:
 				fprintf(MR_mdb_out, "working\n");
 				break;
-			case MR_SIMPLETABLE_FAILED:
+			case MR_MEMO_FAILED:
 				fprintf(MR_mdb_out, "failed\n");
 				break;
-			case MR_SIMPLETABLE_SUCCEEDED:
+			case MR_MEMO_SUCCEEDED:
 				fprintf(MR_mdb_out, "succeeded (no outputs)\n");
 				break;
 			default:
@@ -4603,11 +4603,11 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
 				break;
 		}
 	} else if (MR_sle_eval_method(proc) == MR_EVAL_METHOD_LOOP_CHECK) {
-		switch (table->MR_simpletable_status) {
-			case MR_SIMPLETABLE_UNINITIALIZED:
+		switch (table->MR_loop_status) {
+			case MR_LOOP_INACTIVE:
 				fprintf(MR_mdb_out, "uninitialized\n");
 				break;
-			case MR_SIMPLETABLE_WORKING:
+			case MR_LOOP_ACTIVE:
 				fprintf(MR_mdb_out, "working\n");
 				break;
 			default:

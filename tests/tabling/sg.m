@@ -6,19 +6,19 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module std_util, list.
 
-main -->
-	{ solutions(sg1, Solns1) },
-	io__write(Solns1),
-	io__write_string("\n"),
-	{ solutions(sg, Solns) },
-	io__write_int(list__length(Solns)),
-	io__write_string("\n").
+main(!IO) :-
+	solutions(sg1, Solns1),
+	io__write(Solns1, !IO),
+	io__write_string("\n", !IO),
+	solutions(sg, Solns),
+	io__write_int(list__length(Solns), !IO),
+	io__write_string("\n", !IO).
 
 :- pred sg(pair(int, int)::out) is nondet.
 

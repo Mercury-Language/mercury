@@ -233,6 +233,7 @@
 		;	parallel
 		;	use_trail
 		;	use_minimal_model
+		;	minimal_model_debug
 		;	type_layout
 
 		% Data representation compilation model options
@@ -886,6 +887,7 @@ option_defaults_2(compilation_model_option, [
 	parallel		-	bool(no),
 	use_trail		-	bool(no),
 	use_minimal_model	-	bool(no),
+	minimal_model_debug	-	bool(no),
 	type_layout		-	bool(yes),
 
 		% Data representation compilation model options
@@ -1529,6 +1531,7 @@ long_option("type-layout",		type_layout).
 	% Data represention options
 long_option("reserve-tag",		reserve_tag).
 long_option("use-minimal-model",	use_minimal_model).
+long_option("minimal-model-debug",	minimal_model_debug).
 long_option("pic",			pic).
 long_option("pic-reg",			pic_reg).
 long_option("tags",			tags).
@@ -3284,6 +3287,11 @@ your program compiled with different options.
 		"--use-minimal-model",
 		"(This option is not for general use.)",
 		"\tEnable the use of minimal model tabling.",
+
+		"--minimal-model-debug",
+		"(This option is not for general use.)",
+		"\tEnables extra data structures that assist in debugging",
+		"\tminimal model tabling.",
 
 		"--no-type-layout",
 		"(This option is not for general use.)",

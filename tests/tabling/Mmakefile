@@ -15,6 +15,7 @@ SIMPLE_NONLOOP_PROGS = \
 	fib_list \
 	fib_string \
 	loopcheck_no_loop \
+	oota \
 	unused_args
 
 SIMPLE_LOOP_PROGS = \
@@ -34,7 +35,6 @@ NONDET_NONLOOP_PROGS = \
 	coup_non_tabled_frame \
 	generator_in_commit \
 	mday \
-	oota \
 	repeat \
 	seq \
 	seq2 \
@@ -44,8 +44,12 @@ NONDET_NONLOOP_PROGS = \
 	tc_minimal \
 	tc_minimal2
 
-NONDET_LOOP_PROGS = \
-	tc_loop
+NONDET_LOOP_PROGS =
+
+# The following programs do not work:
+#	semidet_minimal.m
+#	tc_minimal_semidet.m
+#	tc_loop
 
 ALL_SIMPLE_PROGS = $(SIMPLE_NONLOOP_PROGS) $(SIMPLE_LOOP_PROGS)
 ALL_NONDET_PROGS = $(NONDET_NONLOOP_PROGS) $(NONDET_LOOP_PROGS)

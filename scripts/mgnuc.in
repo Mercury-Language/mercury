@@ -403,9 +403,10 @@ case $reserve_tag in
 	false)          RESERVE_TAG_OPTS="" ;;
 esac
 
-case $use_minimal_model in
-	true)		MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL" ;;
-	false)		MINIMAL_MODEL_OPTS="" ;;
+case $use_minimal_model,$minimal_model_debug in
+	true,false)	MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL" ;;
+	true,true)	MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL -DMR_MINIMAL_MODEL_DEBUG" ;;
+	*)		MINIMAL_MODEL_OPTS="" ;;
 esac
 
 case $pic_reg in

@@ -7210,7 +7210,8 @@ rather than to standard error.
 @itemx --mdb-tty @var{filename}
 @findex -m (runtime option)
 @findex --mdb-tty (runtime option)
-Redirect all three debugger I/O streams --- input, output, and error messages ---
+Redirect all three debugger I/O streams
+--- input, output, and error messages ---
 to the file or device specified by @var{filename}.
 
 @c --mdb-in-window is for use only by the mdb script, so it's
@@ -7225,6 +7226,11 @@ to the file or device specified by @var{filename}.
 Output information to the standard error stream about the locking and
 unlocking occurring in each module which has been compiled with the C macro
 symbol @samp{MR_DEBUG_THREADS} defined.
+
+@sp 1
+@item --tabling-statistics @var{size}
+@findex --tabling-statistics
+Prints statistics about tabling when the program terminates.
 
 @end table
 

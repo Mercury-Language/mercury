@@ -930,7 +930,7 @@ MR_nofail_ip(MR_Code *ip)
         return MR_FALSE;
     }
 #ifdef  MR_USE_MINIMAL_MODEL
-    if (ip == MR_ENTRY(MR_RESUME_ENTRY)) {
+    if (ip == MR_ENTRY(MR_COMPLETION_ENTRY)) {
         return MR_FALSE;
     }
 #endif
@@ -1225,7 +1225,7 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
         fprintf(fp, "%21s", "");
     }
 
-#ifdef  MR_TABLE_DEBUG
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_TABLE_DEBUG)
     if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
         MR_print_detstackptr(fp, base_sp);
     } else {

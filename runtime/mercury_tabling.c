@@ -198,6 +198,8 @@ next_prime(MR_Integer old_size)
 
 #ifdef  MR_TABLE_STATISTICS
 static  MR_Unsigned     MR_table_hash_resizes = 0;
+static  MR_Unsigned     MR_table_hash_resize_old_entries = 0;
+static  MR_Unsigned     MR_table_hash_resize_new_entries = 0;
 static  MR_Unsigned     MR_table_hash_allocs  = 0;
 static  MR_Unsigned     MR_table_hash_lookups = 0;
 static  MR_Unsigned     MR_table_hash_inserts = 0;
@@ -218,14 +220,20 @@ static  MR_Unsigned     MR_table_hash_insert_probes = 0;
                                                 probe_count;                  \
                                         MR_table_hash_inserts++;              \
                                 } while (0)
-  #define record_resize_count() do { MR_table_hash_resizes++; } while (0)
+  #define record_resize_count(old, new)                                       \
+                                do {                                          \
+                                    MR_table_hash_resizes++;                  \
+                                    MR_table_hash_resize_old_entries += (old);\
+                                    MR_table_hash_resize_new_entries += (new);\
+                                } while (0)
   #define record_alloc_count()  do { MR_table_hash_allocs++; } while (0)
 #else
   #define DECLARE_PROBE_COUNT
   #define record_probe_count()  ((void) 0)
   #define record_lookup_count() ((void) 0)
   #define record_insert_count() ((void) 0)
-  #define record_resize_count() ((void) 0)
+  #define record_resize_count(old, new)                                       \
+                                ((void) 0)
   #define record_alloc_count()  ((void) 0)
 #endif
 
@@ -321,126 +329,6 @@ static  MR_Unsigned     MR_table_hash_insert_probes = 0;
         table_ptr = newtable;                                               \
     } while (0)
 
-#define MR_GENERIC_HASH_LOOKUP_OR_ADD                                       \
-    MR_HashTable    *table;                                                 \
-    table_type      *slot;                                                  \
-    MR_Integer      abs_hash;                                               \
-    MR_Integer      home;                                                   \
-    DECLARE_PROBE_COUNT                                                     \
-                                                                            \
-    debug_key_msg(key, key_format, key_cast);                               \
-                                                                            \
-    /* Has the table been built? */                                         \
-    if (t->MR_hash_table == NULL) {                                         \
-        MR_CREATE_HASH_TABLE(t->MR_hash_table, table_type,                  \
-            table_field, HASH_TABLE_START_SIZE);                            \
-    }                                                                       \
-                                                                            \
-    table = t->MR_hash_table; /* Deref the table pointer */                 \
-                                                                            \
-    /* Rehash the table if it has grown too full */                         \
-    if (table->value_count > table->threshold) {                            \
-        MR_HashTableSlotPtr     *new_hash_table;                            \
-        int                     new_size;                                   \
-        int                     new_threshold;                              \
-        int                     old_bucket;                                 \
-        int                     new_bucket;                                 \
-        table_type              *next_slot;                                 \
-                                                                            \
-        new_size = next_prime(table->size);                                 \
-        new_threshold = (MR_Integer) ((float) new_size  * MAX_LOAD_FACTOR); \
-        debug_resize_msg(table->size, new_size, new_threshold);             \
-        record_resize_count();                                              \
-                                                                            \
-        new_hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr, new_size); \
-        for (new_bucket = 0; new_bucket < new_size; new_bucket++) {         \
-            new_hash_table[new_bucket].table_field = NULL;                  \
-        }                                                                   \
-                                                                            \
-        for (old_bucket = 0; old_bucket < table->size; old_bucket++) {      \
-            slot = table->hash_table[old_bucket].table_field;               \
-            while (slot != NULL) {                                          \
-                debug_rehash_msg(old_bucket);                               \
-                                                                            \
-                abs_hash = hash(slot->key);                                 \
-                if (abs_hash < 0) {                                         \
-                    abs_hash = -abs_hash;                                   \
-                }                                                           \
-                                                                            \
-                new_bucket = abs_hash % new_size;                           \
-                next_slot = slot->next;                                     \
-                slot->next = new_hash_table[new_bucket].table_field;        \
-                new_hash_table[new_bucket].table_field = slot;              \
-                                                                            \
-                slot = next_slot;                                           \
-            }                                                               \
-        }                                                                   \
-                                                                            \
-        MR_table_free(table->hash_table);                                   \
-        table->hash_table = new_hash_table;                                 \
-        table->size = new_size;                                             \
-        table->threshold = new_threshold;                                   \
-    }                                                                       \
-                                                                            \
-    abs_hash = hash(key);                                                   \
-    if (abs_hash < 0) {                                                     \
-            abs_hash = -abs_hash;                                           \
-    }                                                                       \
-                                                                            \
-    home = abs_hash % table->size;                                          \
-                                                                            \
-    /* Find the element if it is present. */                                \
-    slot = table->hash_table[home].table_field;                             \
-    while (slot != NULL) {                                                  \
-        debug_probe_msg(home);                                              \
-        record_probe_count();                                               \
-                                                                            \
-        if (equal_keys(key, slot->key)) {                                   \
-            record_lookup_count();                                          \
-            debug_lookup_msg(home);                                         \
-            return &slot->data;                                             \
-        }                                                                   \
-                                                                            \
-        slot = slot->next;                                                  \
-    }                                                                       \
-                                                                            \
-    /* Check whether we are allowed to add the element. */                  \
-    if (lookup_only) {                                                      \
-        return NULL;                                                        \
-    }                                                                       \
-                                                                            \
-    /* Add the element. */                                                  \
-    debug_insert_msg(home);                                                 \
-    record_insert_count();                                                  \
-                                                                            \
-    if (table->freeleft == 0) {                                             \
-        MR_AllocRecord  *record;                                            \
-                                                                            \
-        table->freespace.table_field = MR_TABLE_NEW_ARRAY(table_type,       \
-            CHUNK_SIZE);                                                    \
-        table->freeleft = CHUNK_SIZE;                                       \
-                                                                            \
-        record = MR_TABLE_NEW(MR_AllocRecord);                              \
-        record->chunk.table_field = table->freespace.table_field;           \
-        record->next = table->allocrecord;                                  \
-        table->allocrecord = record;                                        \
-                                                                            \
-        record_alloc_count();                                               \
-    }                                                                       \
-                                                                            \
-    slot = table->freespace.table_field;                                    \
-    table->freespace.table_field++;                                         \
-    table->freeleft--;                                                      \
-                                                                            \
-    slot->key = key;                                                        \
-    slot->data.MR_integer = 0;                                              \
-    slot->next = table->hash_table[home].table_field;                       \
-    table->hash_table[home].table_field = slot;                             \
-                                                                            \
-    table->value_count++;                                                   \
-                                                                            \
-    return &slot->data;
-
 MR_TrieNode
 MR_int_hash_lookup_or_add(MR_TrieNode t, MR_Integer key)
 {
@@ -451,7 +339,7 @@ MR_int_hash_lookup_or_add(MR_TrieNode t, MR_Integer key)
 #define hash(key)               (key)
 #define equal_keys(k1, k2)      ((k1) == (k2))
 #define lookup_only             MR_FALSE
-MR_GENERIC_HASH_LOOKUP_OR_ADD
+#include "mercury_hash_lookup_or_add_body.h"
 #undef  key_format
 #undef  key_cast
 #undef  table_type
@@ -471,7 +359,7 @@ MR_int_hash_lookup(MR_TrieNode t, MR_Integer key)
 #define hash(key)               (key)
 #define equal_keys(k1, k2)      ((k1) == (k2))
 #define lookup_only             MR_TRUE
-MR_GENERIC_HASH_LOOKUP_OR_ADD
+#include "mercury_hash_lookup_or_add_body.h"
 #undef  key_format
 #undef  key_cast
 #undef  table_type
@@ -497,7 +385,7 @@ MR_float_hash_lookup_or_add(MR_TrieNode t, MR_Float key)
 #define hash(key)               (MR_hash_float(key))
 #define equal_keys(k1, k2)      (memcmp(&(k1), &(k2), sizeof(MR_Float)) == 0)
 #define lookup_only             MR_FALSE
-MR_GENERIC_HASH_LOOKUP_OR_ADD
+#include "mercury_hash_lookup_or_add_body.h"
 #undef  key_format
 #undef  key_cast
 #undef  table_type
@@ -517,7 +405,7 @@ MR_float_hash_lookup(MR_TrieNode t, MR_Float key)
 #define hash(key)               (MR_hash_float(key))
 #define equal_keys(k1, k2)      (memcmp(&(k1), &(k2), sizeof(MR_Float)) == 0)
 #define lookup_only             MR_TRUE
-MR_GENERIC_HASH_LOOKUP_OR_ADD
+#include "mercury_hash_lookup_or_add_body.h"
 #undef  key_format
 #undef  key_cast
 #undef  table_type
@@ -537,7 +425,7 @@ MR_string_hash_lookup_or_add(MR_TrieNode t, MR_ConstString key)
 #define hash(key)               (MR_hash_string(key))
 #define equal_keys(k1, k2)      (MR_strtest((k1), (k2)) == 0)
 #define lookup_only             MR_FALSE
-MR_GENERIC_HASH_LOOKUP_OR_ADD
+#include "mercury_hash_lookup_or_add_body.h"
 #undef  key_format
 #undef  key_cast
 #undef  table_type
@@ -557,7 +445,7 @@ MR_string_hash_lookup(MR_TrieNode t, MR_ConstString key)
 #define hash(key)               (MR_hash_string(key))
 #define equal_keys(k1, k2)      (MR_strtest((k1), (k2)) == 0)
 #define lookup_only             MR_TRUE
-MR_GENERIC_HASH_LOOKUP_OR_ADD
+#include "mercury_hash_lookup_or_add_body.h"
 #undef  key_format
 #undef  key_cast
 #undef  table_type
@@ -1227,22 +1115,22 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 void
 MR_table_report_statistics(FILE *fp)
 {
-    fprintf(fp, "hash table search statistics:\n");
+    fprintf(fp, "hash table search/insert statistics:\n");
 
 #ifdef  MR_TABLE_STATISTICS
     if (MR_table_hash_lookups == 0) {
-        fprintf(fp, "no successful searches\n");
+        fprintf(fp, "no successful probes\n");
     } else {
-        fprintf(fp, "successful   %6d, with an average of %6.3f comparisons\n",
+        fprintf(fp, "successful   %8d, with an average of %6.3f comparisons\n",
             MR_table_hash_lookups,
             (float) MR_table_hash_lookup_probes /
                 (float) MR_table_hash_lookups);
     }
 
     if (MR_table_hash_inserts == 0) {
-        fprintf(fp, "no unsuccessful searches\n");
+        fprintf(fp, "no unsuccessful probes\n");
     } else {
-        fprintf(fp, "unsuccessful %6d, with an average of %6.3f comparisons\n",
+        fprintf(fp, "unsuccessful %8d, with an average of %6.3f comparisons\n",
             MR_table_hash_inserts,
             (float) MR_table_hash_insert_probes /
                 (float) MR_table_hash_inserts);
@@ -1252,7 +1140,16 @@ MR_table_report_statistics(FILE *fp)
         MR_table_hash_resizes,
         (float) (100 * MR_table_hash_resizes) /
             (float) (MR_table_hash_lookups + MR_table_hash_inserts));
+    fprintf(fp, "slots rehashed by rehash operations: %d\n",
+        MR_table_hash_resize_old_entries);
+    fprintf(fp, "slots initialized by rehash operations: %d\n",
+        MR_table_hash_resize_new_entries);
     fprintf(fp, "chunk allocations: %d\n", MR_table_hash_allocs);
+
+  #ifdef    MR_USE_MINIMAL_MODEL
+    fprintf(fp, "\n");
+    MR_minimal_model_report_stats(fp);
+  #endif
 #else
     fprintf(fp, "not enabled\n");
 #endif

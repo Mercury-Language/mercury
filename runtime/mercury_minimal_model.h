@@ -19,12 +19,15 @@
 #include "mercury_tabling.h"
 #include "mercury_reg_workarounds.h"
 #include "mercury_goto.h"		/* for MR_declare_entry */
+#include <stdio.h>
 
 struct MR_AnswerListNode_Struct {
-	MR_Integer	MR_aln_answer_num;
 	MR_TableNode	MR_aln_answer_data;
 				/* always uses the MR_answerblock member */
 	MR_AnswerList	MR_aln_next_answer;
+#ifdef	MR_MINIMAL_MODEL_DEBUG
+	MR_Integer	MR_aln_answer_num;
+#endif
 };
 
 /*
@@ -62,16 +65,18 @@ typedef struct {
 	MR_Word			*MR_ss_cur_fr;
 	MR_Word			*MR_ss_max_fr;
 	MR_Word			*MR_ss_common_ancestor_fr;
+	MR_Integer		MR_ss_gen_sp;
 
 	MR_Word			*MR_ss_non_stack_real_start;
-	MR_Word			MR_ss_non_stack_block_size;
+	MR_Integer		MR_ss_non_stack_block_size;
 	MR_Word			*MR_ss_non_stack_saved_block;
 
 	MR_Word			*MR_ss_det_stack_real_start;
-	MR_Word			MR_ss_det_stack_block_size;
+	MR_Integer		MR_ss_det_stack_block_size;
 	MR_Word			*MR_ss_det_stack_saved_block;
 
-	MR_Integer		MR_ss_gen_next;
+	MR_Integer		MR_ss_gen_stack_real_start;
+	MR_Integer		MR_ss_gen_stack_block_size;
 	MR_GenStackFrame	*MR_ss_gen_stack_saved_block;
 
 	MR_Integer		MR_ss_cut_next;
@@ -80,8 +85,10 @@ typedef struct {
 	MR_Integer		MR_ss_pneg_next;
 	MR_PNegStackFrame	*MR_ss_pneg_stack_saved_block;
 
+#ifdef	MR_MINIMAL_MODEL_DEBUG
 	/* to make it possible to generate more detailed debugging output */
 	const MR_Label_Layout	*MR_ss_top_layout;
+#endif
 } MR_SavedState;
 
 /*
@@ -111,7 +118,7 @@ struct MR_ConsumerListNode_Struct {
 
 /*
 ** The following structure is used to hold the state and variables used in 
-** the table_resume procedure.
+** the table_mm_completion procedure.
 */
 
 typedef struct {
@@ -121,7 +128,7 @@ typedef struct {
 	MR_ConsumerList		MR_ri_consumer_list; /* for the cur subgoal */
 	MR_Consumer		*MR_ri_cur_consumer;
 	MR_Code			*MR_ri_saved_succip;
-} MR_ResumeInfo;
+} MR_CompletionInfo;
 
 struct MR_SubgoalListNode_Struct {
 	MR_Subgoal		*MR_sl_item;
@@ -145,9 +152,9 @@ struct MR_SubgoalListNode_Struct {
 ** the MR_sg_followers list, to allow us to add new elements at the tail in
 ** constant time.
 **
-** The MR_sg_resume_info field, when non-NULL, points to a data structure
+** The MR_sg_completion_info field, when non-NULL, points to a data structure
 ** containing the local variables of the algorithm executed by the builtin
-** predicate table_nondet_resume. The execution of that algorithm invokes
+** predicate table_mm_completion. The execution of that algorithm invokes
 ** general Mercury code and moves stack segments around many times, which
 ** is why its local variables cannot be stored in a stack frame.
 **
@@ -178,7 +185,7 @@ struct MR_Subgoal_Struct {
 	MR_Subgoal		*MR_sg_leader;
 	MR_SubgoalList		MR_sg_followers;
 	MR_SubgoalList		*MR_sg_followers_tail;
-	MR_ResumeInfo		*MR_sg_resume_info;
+	MR_CompletionInfo	*MR_sg_completion_info;
 	MR_TableNode		MR_sg_answer_table;
 	MR_Integer		MR_sg_num_ans;
 	MR_AnswerList		MR_sg_answer_list;
@@ -187,9 +194,9 @@ struct MR_Subgoal_Struct {
 	MR_ConsumerList		*MR_sg_consumer_list_tail;
 	MR_Word			*MR_sg_generator_fr;
 	MR_Word			*MR_sg_deepest_nca_fr;
-#ifdef	MR_TABLE_DEBUG
+#ifdef	MR_MINIMAL_MODEL_DEBUG
 	const MR_Proc_Layout	*MR_sg_proc_layout;
-#endif	/* MR_TABLE_DEBUG */
+#endif
 };
 
 /*---------------------------------------------------------------------------*/
@@ -226,17 +233,38 @@ extern	void		MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc,
 
 extern	MR_Subgoal	*MR_setup_subgoal(MR_TrieNode);
 
+#ifdef	MR_TABLE_STATISTICS
+extern	void		MR_minimal_model_report_stats(FILE *fp);
+extern	int		MR_minmodel_stats_cnt_dupl_check;
+extern	int		MR_minmodel_stats_cnt_dupl_check_not_dupl;
+/* XXX */
+#endif
+
 #endif	/* MR_USE_MINIMAL_MODEL */
 
 #ifndef	MR_HIGHLEVEL_CODE
 
-  #define MR_SUSPEND_ENTRY     MR_proc_entry_user_name(table_builtin,	\
-		  			table_nondet_suspend, 2, 0)
-  #define MR_RESUME_ENTRY      MR_proc_entry_user_name(table_builtin,	\
-		  			table_nondet_resume, 1, 0)
+  #define MR_SUSPEND_ENTRY						\
+	MR_proc_entry_user_name(table_builtin,				\
+		table_mm_suspend_consumer, 2, 0)
+  #define MR_COMPLETION_ENTRY						\
+	MR_proc_entry_user_name(table_builtin,				\
+		table_mm_completion, 1, 0)
+  #define MR_RET_ALL_NONDET_ENTRY					\
+	MR_proc_entry_user_name(table_builtin,				\
+		table_mm_return_all_nondet, 2, 0)
+  #define MR_RET_ALL_MULTI_ENTRY					\
+	MR_proc_entry_user_name(table_builtin,				\
+		table_mm_return_all_multi, 2, 0)
+  #define MR_IS_NOT_DUPL_ENTRY						\
+	MR_proc_entry_user_name(table_builtin,				\
+		table_mm_answer_is_not_duplicate, 1, 0)
 
   MR_declare_entry(MR_SUSPEND_ENTRY);
-  MR_declare_entry(MR_RESUME_ENTRY);
+  MR_declare_entry(MR_COMPLETION_ENTRY);
+  MR_declare_entry(MR_RET_ALL_NONDET_ENTRY);
+  MR_declare_entry(MR_RET_ALL_MULTI_ENTRY);
+  MR_declare_entry(MR_IS_NOT_DUPL_ENTRY);
 
 #endif	/* !MR_HIGHLEVEL_CODE */
 

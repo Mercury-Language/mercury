@@ -8,17 +8,17 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int, list.
 :- import_module std_util.
 
-main --> 
-	{ solutions(p, Solns) },
-	io__write(Solns),
-	io__write_string("\n").
+main(!IO) :-
+	solutions(p, Solns),
+	io__write(Solns, !IO),
+	io__write_string("\n", !IO).
 
 :- pred p(int).
 :- mode p(out) is nondet.

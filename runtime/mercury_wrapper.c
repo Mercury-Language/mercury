@@ -234,6 +234,8 @@ static	int	MR_num_output_args = 0;
 
 unsigned	MR_num_threads = 1;
 
+static	MR_bool	MR_print_table_statistics = MR_FALSE;
+
 /* timing */
 int		MR_time_at_last_stat;
 int		MR_time_at_start;
@@ -920,7 +922,8 @@ enum MR_long_option {
 	MR_FORCE_READLINE,
 	MR_NUM_OUTPUT_ARGS,
 	MR_DEBUG_THREADS_OPT,
-	MR_DEEP_PROF_DEBUG_FILE_OPT
+	MR_DEEP_PROF_DEBUG_FILE_OPT,
+	MR_TABLING_STATISTICS_OPT
 };
 
 struct MR_option MR_long_opts[] = {
@@ -944,7 +947,8 @@ struct MR_option MR_long_opts[] = {
 	{ "force-readline",		0, 0, MR_FORCE_READLINE },
 	{ "num-output-args", 		1, 0, MR_NUM_OUTPUT_ARGS },
 	{ "debug-threads",		0, 0, MR_DEBUG_THREADS_OPT },
-	{ "deep-debug-file",		0, 0, MR_DEEP_PROF_DEBUG_FILE_OPT }
+	{ "deep-debug-file",		0, 0, MR_DEEP_PROF_DEBUG_FILE_OPT },
+	{ "tabling-statistics",		0, 0, MR_TABLING_STATISTICS_OPT }
 };
 
 static void
@@ -1100,6 +1104,10 @@ process_options(int argc, char **argv)
 
 		case MR_DEEP_PROF_DEBUG_FILE_OPT:
 			MR_deep_prof_debug_file_flag = MR_TRUE;
+			break;
+
+		case MR_TABLING_STATISTICS_OPT:
+			MR_print_table_statistics = MR_TRUE;
 			break;
 
 		case 'a':
@@ -1936,6 +1944,10 @@ mercury_runtime_terminate(void)
 		MR_write_out_profiling_tree();
 	}
 #endif
+
+	if (MR_print_table_statistics) {
+		MR_table_report_statistics(stdout);
+	}
 
 #ifndef MR_HIGHLEVEL_CODE
   #ifdef MR_THREAD_SAFE

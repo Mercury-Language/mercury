@@ -247,6 +247,18 @@
 :- pred term__apply_variable_renaming_to_list(list(term(T))::in,
 	map(var(T), var(T))::in, list(term(T))::out) is det.
 
+	% Applies term__apply_variable_renaming to a var.
+:- func term__apply_variable_renaming_to_var(map(var(T), var(T)),
+	var(T)) = var(T).
+:- pred term__apply_variable_renaming_to_var(map(var(T), var(T))::in,
+	var(T)::in, var(T)::out) is det.
+
+	% Applies term__apply_variable_renaming to a list of vars.
+:- func term__apply_variable_renaming_to_vars(map(var(T), var(T)),
+	list(var(T))) = list(var(T)).
+:- pred term__apply_variable_renaming_to_vars(map(var(T), var(T))::in,
+	list(var(T))::in, list(var(T))::out) is det.
+
 	% term__is_ground(Term, Bindings) is true iff no variables contained
 	% in Term are non-ground in Bindings.
 :- pred term__is_ground(term(T)::in, substitution(T)::in) is semidet.
@@ -1015,16 +1027,25 @@ term__apply_variable_renaming(term__functor(Const, Args0, Cont), Renaming,
 	term__apply_variable_renaming_to_list(Args0, Renaming, Args).
 term__apply_variable_renaming(term__variable(Var0), Renaming,
 		term__variable(Var)) :-
+	term__apply_variable_renaming_to_var(Renaming, Var0, Var).
+
+term__apply_variable_renaming_to_list([], _, []).
+term__apply_variable_renaming_to_list([Term0|Terms0], Renaming, [Term|Terms]) :-
+	term__apply_variable_renaming(Term0, Renaming, Term),
+	term__apply_variable_renaming_to_list(Terms0, Renaming, Terms).
+
+term__apply_variable_renaming_to_var(Renaming, Var0, Var) :-
 	( map__search(Renaming, Var0, NewVar) ->
 		Var = NewVar
 	;
 		Var = Var0
 	).
 
-term__apply_variable_renaming_to_list([], _, []).
-term__apply_variable_renaming_to_list([Term0|Terms0], Renaming, [Term|Terms]) :-
-	term__apply_variable_renaming(Term0, Renaming, Term),
-	term__apply_variable_renaming_to_list(Terms0, Renaming, Terms).
+term__apply_variable_renaming_to_vars(_Renaming, [], []).
+term__apply_variable_renaming_to_vars(Renaming, [Var0 | Vars0],
+		[Var | Vars]) :-
+	term__apply_variable_renaming_to_var(Renaming, Var0, Var),
+	term__apply_variable_renaming_to_vars(Renaming, Vars0, Vars).
 
 %-----------------------------------------------------------------------------%
 
@@ -1158,6 +1179,12 @@ term__apply_variable_renaming(T1, M) = T2 :-
 
 term__apply_variable_renaming_to_list(Ts1, M) = Ts2 :-
 	term__apply_variable_renaming_to_list(Ts1, M, Ts2).
+
+term__apply_variable_renaming_to_vars(M, Vs0) = Vs :-
+	term__apply_variable_renaming_to_vars(M, Vs0, Vs).
+
+term__apply_variable_renaming_to_var(M, V0) = V :-
+	term__apply_variable_renaming_to_var(M, V0, V).
 
 term__var_to_int(V) = N :-
 	term__var_to_int(V, N).

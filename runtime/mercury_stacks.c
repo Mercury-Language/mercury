@@ -114,9 +114,13 @@ MR_print_stack_frame_stats(void)
 
 /***************************************************************************/
 
+#undef MR_TABLE_DEBUG
+
 #ifdef	MR_USE_MINIMAL_MODEL
 
+#ifdef	MR_MINIMAL_MODEL_DEBUG
 static	int	MR_pneg_cut_depth = 0;
+#endif
 
 static	void	MR_print_gen_stack_entry(FILE *fp, MR_Integer i,
 			MR_GenStackFrame *p);
@@ -231,9 +235,11 @@ MR_commit_mark(void)
 	MR_cut_stack[MR_cut_next].MR_cut_frame = MR_maxfr;
 	MR_cut_stack[MR_cut_next].MR_cut_gen_next = MR_gen_next;
 	MR_cut_stack[MR_cut_next].MR_cut_generators = NULL;
+#ifdef	MR_MINIMAL_MODEL_DEBUG
 	MR_cut_stack[MR_cut_next].MR_cut_depth = MR_pneg_cut_depth;
-	MR_cut_next++;
 	MR_pneg_cut_depth++;
+#endif
+	MR_cut_next++;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -259,7 +265,10 @@ MR_commit_cut(void)
 	MR_CutGeneratorList	g;
 
 	--MR_cut_next;
+
+#ifdef	MR_MINIMAL_MODEL_DEBUG
 	--MR_pneg_cut_depth;
+#endif
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -391,8 +400,12 @@ MR_print_cut_stack_entry(FILE *fp, MR_Integer i, MR_CutStackFrame *p)
 
 	fprintf(fp, "cut %ld = <", (long) i);
 	MR_print_nondstackptr(fp, p->MR_cut_frame);
-	fprintf(fp, ">, cut_gen_next %d, ", (int) p->MR_cut_gen_next);
-	fprintf(fp, "pneg+cut stack depth %d\n", (int) p->MR_cut_depth);
+	fprintf(fp, ">");
+	fprintf(fp, ", cut_gen_next %d", (int) p->MR_cut_gen_next);
+#ifdef	MR_MINIMAL_MODEL_DEBUG
+	fprintf(fp, ", pneg+cut stack depth %d", (int) p->MR_cut_depth);
+#endif
+	fprintf(fp, "\n");
 
 	fprintf(fp, "registered generators:");
 	gen_list = p->MR_cut_generators;
@@ -440,11 +453,13 @@ MR_pneg_enter_cond(void)
 	MR_restore_transient_registers();
 
 	MR_pneg_stack[MR_pneg_next].MR_pneg_frame = MR_maxfr;
+	MR_pneg_stack[MR_pneg_next].MR_pneg_consumers = NULL;
+#ifdef	MR_MINIMAL_MODEL_DEBUG
 	MR_pneg_stack[MR_pneg_next].MR_pneg_gen_next = MR_gen_next;
 	MR_pneg_stack[MR_pneg_next].MR_pneg_depth = MR_pneg_cut_depth;
-	MR_pneg_stack[MR_pneg_next].MR_pneg_consumers = NULL;
-	MR_pneg_next++;
 	MR_pneg_cut_depth++;
+#endif
+	MR_pneg_next++;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -464,7 +479,10 @@ MR_pneg_enter_then(void)
 	MR_restore_transient_registers();
 
 	--MR_pneg_next;
+
+#ifdef	MR_MINIMAL_MODEL_DEBUG
 	--MR_pneg_cut_depth;
+#endif
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -493,7 +511,10 @@ MR_pneg_enter_else(void)
 	MR_restore_transient_registers();
 
 	--MR_pneg_next;
+
+#ifdef	MR_MINIMAL_MODEL_DEBUG
 	--MR_pneg_cut_depth;
+#endif
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -551,8 +572,12 @@ MR_print_pneg_stack_entry(FILE *fp, MR_Integer i, MR_PNegStackFrame *p)
 
 	fprintf(fp, "pneg %d = <", (int) i);
 	MR_print_nondstackptr(fp, p->MR_pneg_frame);
-	fprintf(fp, ">, pneg_gen_next %d, ", (int) p->MR_pneg_gen_next);
-	fprintf(fp, "pneg+cut stack depth %d\n", (int) p->MR_pneg_depth);
+	fprintf(fp, ">");
+#ifdef	MR_MINIMAL_MODEL_DEBUG
+	fprintf(fp, ", pneg_gen_next %d", (int) p->MR_pneg_gen_next);
+	fprintf(fp, ", pneg+cut stack depth %d\n", (int) p->MR_pneg_depth);
+#endif
+	fprintf(fp, "\n");
 
 	fprintf(fp, "registered consumers: ");
 	if (p->MR_pneg_consumers == NULL) {

@@ -148,7 +148,7 @@ MR_trace_real(const MR_Label_Layout *layout)
         depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);
     }
 
-#if defined(MR_USE_MINIMAL_MODEL) && defined(MR_TABLE_DEBUG)
+#if defined(MR_USE_MINIMAL_MODEL) && defined(MR_MINIMAL_MODEL_DEBUG)
     if ((MR_Trace_Port) layout->MR_sll_port == MR_PORT_CALL) {
         MR_subgoal_debug_cur_proc = layout->MR_sll_entry;
     }

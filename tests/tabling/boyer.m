@@ -16,7 +16,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -24,7 +24,7 @@
 
 main --> boyer.
 
-:- pred boyer(io__state::di, io__state::uo) is det .
+:- pred boyer(io::di, io::uo) is det .
 
 boyer -->
 	{wff(Wff)} ,

@@ -1445,7 +1445,7 @@ void mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp);
 ** (2) In deep profiling grades, execute the actions appropriate for
 **     execution leaving the procedure invocation via the exception port.
 **     (Deep profiling grades always set MR_STACK_TRACE, so in such grades
-**     we *will* be able to traverse the stack all the way.
+**     we *will* be able to traverse the stack all the way.)
 **
 ** The arguments base_sp and base_curfr always hold MR_sp and MR_curfr.
 ** They exist only because we cannot take the addresses of MR_sp and MR_curfr.

@@ -13,8 +13,6 @@ case $# in
 		;;
 esac
 
-set -x
-
 status=0
 failed=""
 testcases=`mmake echo_nondet_nonloop_progs echo_simple_nonloop_progs`
@@ -22,38 +20,36 @@ for testcase in $testcases
 do
 	echo "testing $testcase"
 
+	/bin/rm $testcase $testcase.mmake $testcase.res > /dev/null 2>&1
 	if $mmc_cmd --grade asm_fast.gc.mm $testcase.m
 	then
-		if test -f $testcase.inp
+		mmake $testcase.res > $testcase.mmake 2>&1
+		if test -f $testcase.res
 		then
-			inputfile=$testcase.inp
-		else
-			inputfile="/dev/null"
-		fi
-
-		if ./$testcase < $inputfile > $testcase.out
-		then
-			diff -u $testcase.exp $testcase.out > $testcase.res
 			if test -s $testcase.res
 			then
-				echo "$testcase generated unexpected output"
+				echo "unexpected output from $testcase"
 				failed="$failed $testcase"
-				status=1
+				cat $testcase.res
+			else
+				mmake $testcase.depend > /dev/null 2>&1
+				mmake $testcase.realclean > /dev/null 2>&1
+				/bin/rm $testcase $testcase.out $testcase.res > /dev/null 2>&1
 			fi
 		else
 			echo "execution of $testcase failed"
 			failed="$failed $testcase"
-			status=1
+			cat $testcase.mmake
 		fi
 	else
 		echo "compilation of $testcase failed"
-		status=1
 		failed="$failed $testcase"
 	fi
 done
 
 if test "$failed" != ""
 then
+	status=1
 	echo "failed test cases: $failed"
 fi
 

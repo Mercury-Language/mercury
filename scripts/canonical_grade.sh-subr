@@ -115,9 +115,10 @@ case $reserve_tag in
 	false)		;;
 esac
 
-case $use_minimal_model in
-	true)	GRADE="$GRADE.mm" ;;
-	false)	;;
+case $use_minimal_model,$minimal_model_debug in
+	true,false)	GRADE="$GRADE.mm" ;;
+	true,true)	GRADE="$GRADE.dmm" ;;
+	*)	;;
 esac
 
 # We ignore the value of $picreg in computing the name of the grade
@@ -128,21 +129,21 @@ esac
 # esac
 
 case $debug,$decl_debug in
-	true,true)		GRADE="$GRADE.decldebug" ;;
-	true,false)		GRADE="$GRADE.debug" ;;
-	false,false)		;;
-	*)			progname=`basename $0`
-				echo "$progname: error: invalid combination of debugging options." 1>&2
-				exit 1
-				;;
+	true,true)	GRADE="$GRADE.decldebug" ;;
+	true,false)	GRADE="$GRADE.debug" ;;
+	false,false)	;;
+	*)		progname=`basename $0`
+			echo "$progname: error: invalid combination of debugging options." 1>&2
+			exit 1
+			;;
 esac
 
 case $record_term_sizes_as_words,$record_term_sizes_as_cells in
-	true,false)		GRADE="$GRADE.tsw" ;;
-	false,true)		GRADE="$GRADE.tsc" ;;
-	false,false)		;;
-	*)			progname=`basename $0`
-				echo "$progname: error: invalid combination of term size profiling options." 1>&2
-				exit 1
-				;;
+	true,false)	GRADE="$GRADE.tsw" ;;
+	false,true)	GRADE="$GRADE.tsc" ;;
+	false,false)	;;
+	*)		progname=`basename $0`
+			echo "$progname: error: invalid combination of term size profiling options." 1>&2
+			exit 1
+			;;
 esac

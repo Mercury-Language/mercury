@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000,2002-2003 The University of Melbourne.
+** Copyright (C) 1997-2000,2002-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -64,18 +64,22 @@
 ** The start table field implements a dynamically expandable trie node,
 ** simply indexed by the difference between an integer value and a start value.
 **
-** The MR_simpletable_status member of the union gives the status of a
-** model_det or model_semi subgoal; it should be interpreted using the
-** MR_SIMPLETABLE_* macros below. Note that this word, which is at the end of
-** the chain of trie nodes given by the input arguments of the tabled subgoal,
-** will be overwritten by a pointer to the answer block containing the output
-** arguments when the goal succeeds; the MR_SIMPLETABLE_SUCCEEDED status code
-** is used only when the goal has no outputs, and thus no answer block.
-** This is why MR_SIMPLETABLE_SUCCEEDED must have the highest value, and
-** why code looking at MR_simpletable_status must test for success with
-** "table->MR_simpletable_status >= MR_SIMPLETABLE_SUCCEEDED".
+** The MR_loop_status member of the union gives the status of a loopcheck
+** subgoal, it should be interpreted using the MR_LOOP_* macros below.
 **
-** The subgoal field contains the status of a model_non subgoal.
+** The MR_memo_status member of the union gives the status of a memo subgoal,
+** it should be interpreted using the MR_MEMO_* macros below. Note that this
+** word, which is at the end of the chain of trie nodes given by the input
+** arguments of the tabled subgoal, will be overwritten by a pointer to the
+** answer block containing the output arguments when the goal succeeds;
+** the MR_MEMO_SUCCEEDED status code is used only when the goal has no
+** outputs, and thus no answer block. This is why code looking at
+** MR_memo_status must consider "table->MR_memo_status >= MR_MEMO_BLOCK"
+** to be the same as MR_MEMO_SUCCEEDED. The value MR_MEMO_FAILED is last,
+** because the types memo_det_status and memo_semi_status Mercury types
+** are implemented by the first three and four MR_MEMO_* macros respectively.
+**
+** The subgoal field contains the state of a model_non subgoal.
 **
 ** The answer block field contains a pointer to an array of words, with
 ** one word per output argument.
@@ -116,27 +120,34 @@
 typedef	MR_Word		*MR_AnswerBlock;
 typedef	MR_Subgoal	*MR_SubgoalPtr;
 
+/* these macros are used to interpret the MR_loop_status field */
+#define	MR_LOOP_INACTIVE	0
+#define	MR_LOOP_ACTIVE		1
+
+/* these macros are used to interpret the MR_memo_status field */
+#define	MR_MEMO_INACTIVE	0
+#define	MR_MEMO_ACTIVE		1
+#define	MR_MEMO_SUCCEEDED	2
+#define	MR_MEMO_FAILED		3
+#define	MR_MEMO_BLOCK		4
+
+typedef enum {
+	MR_SUBGOAL_INACTIVE,
+	MR_SUBGOAL_ACTIVE,
+	MR_SUBGOAL_COMPLETE
+} MR_SubgoalStatus;
+
 union MR_TableNode_Union {
 	MR_Integer	MR_integer;
 	MR_HashTable	*MR_hash_table;
 	MR_TableNode	*MR_fix_table;
 	MR_TableNode	*MR_start_table;
-	MR_Unsigned	MR_simpletable_status;
+	MR_Unsigned	MR_loop_status;
+	MR_Unsigned	MR_memo_status;
 	MR_Subgoal	*MR_subgoal;
 	MR_AnswerBlock	MR_answerblock;
 	MR_Dlist	*MR_type_table;
 };
-
-#define	MR_SIMPLETABLE_UNINITIALIZED	0
-#define	MR_SIMPLETABLE_WORKING		1
-#define	MR_SIMPLETABLE_FAILED		2
-#define	MR_SIMPLETABLE_SUCCEEDED	3
-
-typedef enum {
-   	MR_SUBGOAL_INACTIVE,
-	MR_SUBGOAL_ACTIVE,
-	MR_SUBGOAL_COMPLETE
-} MR_SubgoalStatus;
 
 /*---------------------------------------------------------------------------*/
 
@@ -242,7 +253,6 @@ extern	void		MR_print_answerblock(FILE *fp,
 				const MR_Proc_Layout *proc,
 				MR_Word *answer_block);
 
-
 /*---------------------------------------------------------------------------*/
 
 #ifndef MR_NATIVE_GC
@@ -344,5 +354,6 @@ extern	void		MR_print_answerblock(FILE *fp,
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_tabling_macros.h"
+#include "mercury_tabling_preds.h"
 
 #endif	/* not MERCURY_TABLING_H */

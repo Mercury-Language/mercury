@@ -4,16 +4,16 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int, std_util.
 
-main -->
-	{ solutions(a, Solns) },
-	io__write(Solns),
-	io__nl.
+main(!IO) :-
+	solutions(a, Solns),
+	io__write(Solns, !IO),
+	io__nl(!IO).
 
 :- pred a(int::out) is nondet.
 :- pred b(int::out) is multi.

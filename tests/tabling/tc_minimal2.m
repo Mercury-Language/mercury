@@ -6,25 +6,25 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module std_util, list.
 
-main -->
-	{ solutions(tc_l(1), SolnsL) },
-	io__write_string("L = "),
-	io__write(SolnsL),
-	io__write_string("\n"),
-	{ solutions(tc_r(1), SolnsR) },
-	io__write_string("R = "),
-	io__write(SolnsR),
-	io__write_string("\n"),
-	{ solutions(tc_d(1), SolnsD) },
-	io__write_string("D = "),
-	io__write(SolnsD),
-	io__write_string("\n").
+main(!IO) :-
+	solutions(tc_l(1), SolnsL),
+	io__write_string("L = ", !IO),
+	io__write(SolnsL, !IO),
+	io__write_string("\n", !IO),
+	solutions(tc_r(1), SolnsR),
+	io__write_string("R = ", !IO),
+	io__write(SolnsR, !IO),
+	io__write_string("\n", !IO),
+	solutions(tc_d(1), SolnsD),
+	io__write_string("D = ", !IO),
+	io__write(SolnsD, !IO),
+	io__write_string("\n", !IO).
 
 :- pred tc_l(int::in, int::out) is nondet.
 :- pragma minimal_model(tc_l/2).

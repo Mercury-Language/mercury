@@ -6,20 +6,20 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int, list.
 :- import_module std_util.
 
-main --> 
-	{ solutions(p, Solns1) },
-	io__write(Solns1),
-	io__write_string("\n"),
-	{ solutions(p, Solns2) },
-	io__write(Solns2),
-	io__write_string("\n").
+main(!IO) :-
+	solutions(p, Solns1),
+	io__write(Solns1, !IO),
+	io__write_string("\n", !IO),
+	solutions(p, Solns2),
+	io__write(Solns2, !IO),
+	io__write_string("\n", !IO).
 
 :- pragma minimal_model(p/1).
 :- pred p(int).

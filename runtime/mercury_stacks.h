@@ -540,9 +540,11 @@ struct MR_CutGeneratorListNode {
 
 struct MR_CutStackFrameStruct {
 	MR_Word			*MR_cut_frame;
-	MR_Integer		MR_cut_gen_next;
 	MR_CutGeneratorList	MR_cut_generators;
+	MR_Integer		MR_cut_gen_next;
+#ifdef	MR_MINIMAL_MODEL_DEBUG
 	int			MR_cut_depth;
+#endif
 };
 
 extern	void			MR_commit_mark(void);
@@ -586,10 +588,12 @@ struct MR_PNegConsumerListNodeStruct {
 };
 
 struct MR_PNegStackFrameStruct {
-	MR_Word			*MR_pneg_frame;
-	MR_Integer		MR_pneg_gen_next;
 	MR_PNegConsumerList	MR_pneg_consumers;
+	MR_Word			*MR_pneg_frame;
+#ifdef	MR_MINIMAL_MODEL_DEBUG
+	MR_Integer		MR_pneg_gen_next;
 	int			MR_pneg_depth;
+#endif
 };
 
 extern	void			MR_register_suspension(MR_Consumer *consumer);

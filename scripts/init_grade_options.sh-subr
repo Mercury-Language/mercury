@@ -41,6 +41,7 @@ Grade options:
 	--use-trail
 	--reserve-tag
 	--use-minimal-model
+	--minimal-model-debug
 	--pic-reg
 	--no-stack-trace
 	--debug
@@ -71,6 +72,7 @@ record_term_sizes_as_cells=false
 use_trail=false
 reserve_tag=false
 use_minimal_model=false
+minimal_model_debug=false
 pic_reg=false
 debug=false
 decl_debug=false

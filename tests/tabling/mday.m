@@ -4,15 +4,15 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main(IO0, IO) :-
+main(!IO) :-
 	( x(_) ->
-		write_string("yes\n", IO0, IO)
+		write_string("yes\n", !IO)
 	;
-		write_string("no\n", IO0, IO)
+		write_string("no\n", !IO)
 	).
 
 :- pred x(int::out) is nondet.

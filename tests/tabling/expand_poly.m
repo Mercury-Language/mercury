@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -16,36 +16,37 @@
 
 :- type record(T1, T2)	--->	record(T1, T1, T2).
 
-main -->
-	{ random__init(0, RS0) },
-	{ random__permutation(range(0, 1023), Perm, RS0, RS1) },
-	{ choose_signs_and_enter(Perm, 42, Solns1, RS1, RS2) },
-	( { test_tables(Solns1, yes) } ->
-		io__write_string("First test successful.\n")
+main(!IO) :-
+	random__init(0, RS0),
+	random__permutation(range(0, 1023), Perm, RS0, RS1),
+	choose_signs_and_enter(Perm, 42, Solns1, RS1, RS2),
+	( test_tables(Solns1, yes) ->
+		io__write_string("First test successful.\n", !IO)
 	;
-		io__write_string("First test unsuccessful.\n")
+		io__write_string("First test unsuccessful.\n", !IO)
 	),
-	{ choose_signs_and_enter(Perm, [53], Solns2, RS2, RS3) },
-	( { test_tables(Solns2, yes) } ->
-		io__write_string("Second test successful.\n")
+	choose_signs_and_enter(Perm, [53], Solns2, RS2, RS3),
+	( test_tables(Solns2, yes) ->
+		io__write_string("Second test successful.\n", !IO)
 	;
-		io__write_string("Second test unsuccessful.\n")
+		io__write_string("Second test unsuccessful.\n", !IO)
 	),
-	{ choose_signs_and_enter(Perm, [[64, 75]], Solns3, RS3, RS4) },
-	( { test_tables(Solns3, yes) } ->
-		io__write_string("Third test successful.\n")
+	choose_signs_and_enter(Perm, [[64, 75]], Solns3, RS3, RS4),
+	( test_tables(Solns3, yes) ->
+		io__write_string("Third test successful.\n", !IO)
 	;
-		io__write_string("Third test unsuccessful.\n")
+		io__write_string("Third test unsuccessful.\n", !IO)
 	),
-	{ choose_signs_and_enter(Perm, record("a", "b", [1]), Solns4, RS4, _) },
-	( { test_tables(Solns4, yes) } ->
-		io__write_string("Fourth test successful.\n")
+	choose_signs_and_enter(Perm, record("a", "b", [1]), Solns4, RS4, _),
+	( test_tables(Solns4, yes) ->
+		io__write_string("Fourth test successful.\n", !IO)
 	;
-		io__write_string("Fourth test unsuccessful.\n")
+		io__write_string("Fourth test unsuccessful.\n", !IO)
 	).
-	% io__report_tabling_stats.
+	% io__report_tabling_stats(!IO).
 
 :- func range(int, int) = list(int).
+
 range(Min, Max) =
 	(if Min > Max then
 		[]

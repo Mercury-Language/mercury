@@ -82,6 +82,7 @@ HDRS		=	\
 			mercury_string.h	\
 			mercury_tabling.h	\
 			mercury_tabling_macros.h	\
+			mercury_tabling_preds.h	\
 			mercury_tags.h		\
 			mercury_term_size.h	\
 			mercury_thread.h	\
@@ -110,6 +111,7 @@ BODY_HDRS	=	\
 			mercury_exception_catch_body.h	\
 			mercury_hand_compare_body.h	\
 			mercury_hand_unify_body.h	\
+			mercury_hash_lookup_or_add_body.h \
 			mercury_make_type_info_body.h	\
 			mercury_ml_arg_body.h		\
 			mercury_ml_deconstruct_body.h	\
