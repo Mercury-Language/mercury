@@ -2101,9 +2101,9 @@ case "$host" in
 		HAVE_DELAY_SLOT=
 		;;
 	alpha*-*)
-		# NUM_REAL_REGS=6
+		# NUM_REAL_REGS=7
 		# but succip, sp, and hp are real regs, so subtract 3
-		NUM_REAL_R_REGS=3
+		NUM_REAL_R_REGS=4
 		NUM_REAL_R_TEMPS=6
 		HAVE_DELAY_SLOT=
 		;;
