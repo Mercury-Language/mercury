@@ -37,6 +37,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 		Result = Result0
 	;
 		% old syntax: `:- pragma(foo, ...).'
+		% XXX we should issue a warning; this syntax is deprecated.
 		PragmaTerms = [PragmaTypeTerm | PragmaArgs2],
 		PragmaTypeTerm = term__functor(term__atom(PragmaType), [], _),
 		parse_pragma_type(ModuleName, PragmaType, PragmaArgs2,
@@ -102,8 +103,8 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 	;
     	    PragmaTerms = [PredAndVarsTerm, C_CodeTerm]
 	->
+	    % XXX we should issue a warning; this syntax is deprecated.
 	    % Result = error("pragma c_code doesn't say whether it can call mercury", PredAndVarsTerm)
-	    % XXX obsolete code; temporary for bootstrapping
 	    MayCallMercury = will_not_call_mercury,
 	    parse_pragma_c_code(ModuleName, MayCallMercury, PredAndVarsTerm,
 	    		no, C_CodeTerm, VarSet, Result)
@@ -113,6 +114,10 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 	    ( parse_may_call_mercury(MayCallMercuryTerm, MayCallMercury) ->
 	        parse_pragma_c_code(ModuleName, MayCallMercury, PredAndVarsTerm,
 			no, C_CodeTerm, VarSet, Result)
+	    ; parse_may_call_mercury(PredAndVarsTerm, MayCallMercury) ->
+		% XXX we should issue a warning; this syntax is deprecated
+	        parse_pragma_c_code(ModuleName, MayCallMercury,
+			MayCallMercuryTerm, no, C_CodeTerm, VarSet, Result)
 	    ;
 		Result = error("invalid second argument in `:- pragma c_code(..., ..., ...)' declaration -- expecting either `may_call_mercury' or `will_not_call_mercury'",
 			MayCallMercuryTerm)
