@@ -26,7 +26,7 @@ echo "$img_bak <a href=../>Parent Directory</a><br>" >> $INDEX
 
 for file in * 
 do
-    if [ $file != index.html ]  && [ $file != README ]
+    if [ `expr $file : index\.html` -ne 10 ]  && [ $file != README ]
     then
         if [ -d $file ]
         then
