@@ -58,20 +58,21 @@ CHECKOUT_OPTS=-A
 case $HOST in
 	# test things at different optimization levels...
 	murlibobo)	OPTIMIZE=-O5 ;;
-	kryten) 	OPTIMIZE=-O1 ;;
 	taifun) 	OPTIMIZE=-O1 ;;
-	rimmer) 	OPTIMIZE=-O1 ;;
 	quicksilver) 	OPTIMIZE=-O3 ;;
 	hg) 		OPTIMIZE=-O4 ;;
 	hydra)		OPTIMIZE=-O2 ;;
-	munta)		OPTIMIZE=-O0 ;;
+	ender)		OPTIMIZE=-O0 ;;
+	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
+	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
+	munta)		OPTIMIZE=-O0 ;; # dead
 esac
 
-# on hg, the file system we're using does not support links
-case $HOST in
-	hg)		LN="cp -r"; LN_S="cp -r" ;;
-	*)		LN="ln"; LN_S="ln -s" ;;
-esac
+# on some systems, the file system we're using does not support links
+#case $HOST in
+#	hg)		LN="cp -r"; LN_S="cp -r" ;;
+#	*)		LN="ln"; LN_S="ln -s" ;;
+#esac
 
 # flags for building the compiler
 INSTALL_MCFLAGS="$OPTIMIZE --opt-space"
@@ -145,7 +146,7 @@ esac
 
 # version of the mercury compiler to use for bootstrapping
 case $HOST in
-	hg)
+	hg|ender)
 		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
 	*)
@@ -219,6 +220,11 @@ case $HOST in
 		# doesn't detect these problems, so we need to pass these
 		# options manually.
 		CONFIG_OPTS="--disable-extern-debug --disable-dynamic-link" ;;
+	ender)
+		# Test out these options, to make sure they continue
+		# to work
+		CONFIG_OPTS="--enable-hlc-grades \
+			--enable-new-mercuryfile-struct"
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -347,7 +353,7 @@ case $HOST in
 		# requires --enable-all-grades
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	hg|quicksilver|hydra|kryten|taifun)
+	hg|quicksilver|hydra|ender|kryten|taifun)
 		GRADES="asm_fast.gc.tr"
 		;;
 	*)
@@ -474,6 +480,13 @@ case $HOST in
 			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
 			asm_fast.gc.par hlc.gc"
 		;;
+	ender)
+		GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+			asm_fast.gc.par
+			hlc.gc hlc.gc.par hlc.gc.prof hlc.gc.memprof"
+		;;
 	quicksilver)
 		GRADES="asm_fast.gc asm_fast asm_fast.gc.tr.debug"
 		# Don't bother with these, otherwise it would take forever...
@@ -543,15 +556,20 @@ esac
 
 # For the Linux systems, we need to distinguish them based
 # on the version of GNU libc.
+# Also we distinguish them based on what optimization level
+# they were compiled with.
 case $HOST in
 	hg)	
-		fullname=i686-pc-linux-libc2.1-gnu
+		fullname=i686-pc-linux-libc2.1-gnu-O4
 		;;
 	quicksilver)	
-		fullname=i586-pc-linux-libc2.1-gnu
+		fullname=i586-pc-linux-libc2.1-gnu-O3
 		;;
 	hydra)	
-		fullname=i686-pc-linux-libc2.0-gnu
+		fullname=i686-pc-linux-libc2.1-gnu-O2
+		;;
+	ender)	
+		fullname=i686-pc-linux-libc2.1-gnu-O0
 		;;
 	*)
 		fullname=$fullarch
