@@ -194,9 +194,10 @@ dates		:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs ils library.dlls dlls
+.PHONY: os cs ss ils library.dlls dlls
 os: $(library.os)
 cs: $(library.cs)
+ss: $(library.ss)
 ils: $(library.ils)
 library.dlls = $(library.mods:%=%.dll)
 dlls: $(library.dlls)

@@ -63,6 +63,7 @@
 :- pragma c_header_code("
 	#include <stdio.h>
 	#include ""mercury_conf.h""
+	#include ""mercury_string.h""	/* for MR_make_aligned_string_copy() */
 #ifdef HAVE_DLFCN_H
 	#include <dlfcn.h>
 #endif
@@ -180,7 +181,6 @@ int	ML_DL_closure_counter = 0;
 :- pragma foreign_code("C", make_closure_layout = (ClosureLayout::out),
 	[will_not_call_mercury, thread_safe],
 "{
-	extern	int			ML_DL_closure_counter;
 	MR_Closure_Id			*closure_id;
 	MR_Closure_Dyn_Link_Layout	*closure_layout;
 	char				buf[80];

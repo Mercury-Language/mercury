@@ -162,7 +162,19 @@ mlds_output_hdr_imports(_Indent, _Imports) --> [].
 :- mode mlds_output_src_imports(in, in, di, uo) is det.
 
 mlds_output_src_imports(Indent, Imports) -->
-	list__foldl(mlds_output_src_import(Indent), Imports).
+	globals__io_get_target(Target),
+	( { Target = asm } ->
+		% For --target asm, we don't create the header files
+		% for modules that don't contain C code, so we'd better
+		% not include them, since they might not exist.
+		% XXX This is a hack; it may lead to warnings or errors
+		% when compiling the generated code, since the functions
+		% that we call (e.g. for `pragma export') may not have
+		% been declared.
+		[]
+	;
+		list__foldl(mlds_output_src_import(Indent), Imports)
+	).
 
 :- pred mlds_output_src_import(indent, mlds__import, io__state, io__state).
 :- mode mlds_output_src_import(in, in, di, uo) is det.

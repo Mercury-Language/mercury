@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -443,7 +443,10 @@ compile_file(Options, Succeeded) -->
 % executable was compiled in, in a form suitable for
 % passing as a `--grade' option to mmc or ml.
 %
-:- pragma c_header_code("#include ""mercury_grade.h""").
+:- pragma c_header_code("
+	#include ""mercury_grade.h""
+	#include ""mercury_string.h""
+").
 :- pragma c_code(grade_option = (GradeOpt::out),
 	[thread_safe, will_not_call_mercury],
 	"MR_make_aligned_string(GradeOpt, (MR_String) MR_GRADE_OPT);").

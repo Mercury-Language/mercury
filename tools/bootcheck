@@ -24,8 +24,12 @@ Options:
 		Keep the stage 2 object files even if stage 2 is successful.
 	-m <mmake-args>, --mmake-opts <mmake-args>
 		Pass <mmake-args> as options to \`mmake'.
+	-M <make-args>, --make-opts <make-args>
+		Pass <make-args> as options to \`make'.
 	-o <filename>, --output-file <filename>
 		Output results to <filename>.
+	--target <target>
+		Specify the target to use in creating stages 2 and 3.
 	-G <grade>, --grade <grade>
 		Specify the grade to use in creating stages 2 and 3.
 		The tests will also be executed in this grade, unless
@@ -95,12 +99,14 @@ testdirs=""
 extras=false
 jfactor=""
 keep_objs=false
-mmake_opts="-k"
+mmake_opts=""
+make_opts="-k"
 outfile=""
 runtests=true
 do_bootcheck=true
 check_namespace=true
 grade=
+target=c
 test_grade=
 test_params=false
 copy_runtime=false
@@ -152,13 +158,22 @@ while [ $# -gt 0 ]; do
 	-k|--keep-objs)
 		keep_objs=true ;;
 
-	-m|--mmake)
+	-m|--mmake|--mmake-opts)
 		mmake_opts="$mmake_opts $2"; shift ;;
+	-M|--make-opts)
+		make_opts="$make_opts $2"; shift ;;
 
 	-o|--output-file)
 		outfile="$2"; shift ;;
 	-o*)
 		outfile="` expr $1 : '-o\(.*\)' `"; ;;
+
+	--target)
+		case "$2" in
+		c|asm)	target="$2"; shift ;;
+		*)	echo "unknown target \`$2'" 1>&2; exit 1 ;;
+		esac
+		;;
 
 	-G|--grade)
 		grade="$2"; shift ;;
@@ -237,8 +252,26 @@ fi
 
 case $use_subdirs in
 	yes)	cs_subdir=Mercury/cs/
+		ss_subdir=Mercury/ss/
 		;;
 	no)	cs_subdir=
+		ss_subdir=
+		;;
+esac
+
+case $target in
+	c)	target_ext=c
+		target_subdir=$cs_subdir
+		target_opt=
+		;;
+	asm)	target_ext=s
+		target_subdir=$ss_subdir
+		target_opt="--target asm"
+		# If the stage 1 directory was built without --target asm, 
+		# but the stage 2 will be built with `--target asm',
+		# then we need to copy the profiler directory.
+		# So to be safe, we just enable this by default.
+		copy_profiler=true
 		;;
 esac
 
@@ -465,6 +498,7 @@ then
 
 	# Use the new mmake to build stage 2
 	MMAKE=$MMAKE_DIR/mmake
+	mmake_opts="$mmake_opts $target_opt"
 
 	if (cd stage2 && $MMAKE $mmake_opts $jfactor runtime)
 	then
@@ -639,7 +673,7 @@ then
 
 	if 	(cd stage3/library &&
 		$MMAKE $mmake_opts $jfactor all-ints &&
-		$MMAKE $mmake_opts $jfactor cs)
+		$MMAKE $mmake_opts $jfactor ${target_ext}s)
 	then
 		echo "building of stage 3 library successful"
 	else
@@ -648,7 +682,7 @@ then
 		# try again, in case the failure cause was transient
 		if 	(cd stage3/library &&
 			$MMAKE $mmake_opts $jfactor all-ints &&
-			$MMAKE $mmake_opts $jfactor cs)
+			$MMAKE $mmake_opts $jfactor ${target_ext}s)
 		then
 			echo "building of stage 3 library successful"
 		else
@@ -671,14 +705,14 @@ then
 		xargs /bin/rm -f
 	fi
 
-	if (cd stage3/browser && $MMAKE $mmake_opts $jfactor cs)
+	if (cd stage3/browser && $MMAKE $mmake_opts $jfactor ${target_ext}s)
 	then
 		echo "building of stage 3 browser successful"
 	else
 		echo "building of stage 3 browser initially not successful"
 		df .
 		# try again, in case the failure cause was transient
-		if (cd stage3/browser && $MMAKE $mmake_opts $jfactor cs)
+		if (cd stage3/browser && $MMAKE $mmake_opts $jfactor ${target_ext}s)
 		then
 			echo "building of stage 3 browser successful"
 		else
@@ -687,14 +721,14 @@ then
 		fi
 	fi
 
-	if (cd stage3/compiler && $MMAKE $mmake_opts $jfactor cs)
+	if (cd stage3/compiler && $MMAKE $mmake_opts $jfactor ${target_ext}s)
 	then
 		echo "building of stage 3 compiler successful"
 	else
 		echo "building of stage 3 compiler initially not successful"
 		df .
 		# try again, in case the failure cause was transient
-		if (cd stage3/compiler && $MMAKE $mmake_opts $jfactor cs)
+		if (cd stage3/compiler && $MMAKE $mmake_opts $jfactor ${target_ext}s)
 		then
 			echo "building of stage 3 compiler successful"
 		else
@@ -719,7 +753,7 @@ then
 	fi
 
 	for dir in library browser compiler; do
-		for file in stage2/$dir/${cs_subdir}*.c; do
+		for file in stage2/$dir/${target_subdir}*.${target_ext}; do
 		    diff -u $file stage3/$dir/${cs_subdir}`basename $file` ||
 			diff_status=1
 		done

@@ -353,7 +353,30 @@ mlds_to_gcc__compile_to_gcc(MLDS, ContainsCCode) -->
 	{ list__filter(defn_contains_foreign_code(lang_asm), Defns0,
 		ForeignDefns, Defns) },
 	(
-		{ ForeignCode = mlds__foreign_code([], [], []) },
+		% Check if there is any code from pragma foreign_code,
+		% pragma export, or pragma foreign_proc declarations.
+		%
+		% We don't call mlds_to_c to generate `.c' and `.h' files
+		% if the module contains only `pragma foreign_decls'.
+		% This is needed to avoid calling mlds_to_c when intermodule
+		% optimization is enabled and `pragma foreign_decls'
+		% declarations have been read in from the `.opt' files
+		% and have propagated through to the MLDS.
+		% Calling mlds_to_c when the module itself doesn't contain
+		% C code breaks things, since Mmake won't compile and link
+		% in the generated `.c' files, but those files contain the
+		% definition of the `*__init_type_tables()' functions that
+		% are referenced by `*_init.c'.
+		%
+		% XXX This is not quite right, since if the module itself
+		% contains `pragma foreign_decls', the `.h' file might
+		% be needed.  But the Mercury standard library needs
+		% intermodule optimization enabled for `make install'
+		% to work.  A better fix would be to ignore foreign_decls
+		% that were defined in other modules, but to call mlds_to_c
+		% for foreign_decls that were defined in the module that
+		% we're compiling.
+		{ ForeignCode = mlds__foreign_code(_Decls, [], []) },
 		{ ForeignDefns = [] }
 	->
 		{ ContainsCCode = no },
@@ -362,9 +385,10 @@ mlds_to_gcc__compile_to_gcc(MLDS, ContainsCCode) -->
 		{ NeedInitFn = yes }
 	;
 		% create a new MLDS containing just the foreign code
-		% and pass that to mlds_to_c.m
+		% (with all definitions made public, so we can use
+		% them from the asm file!) and pass that to mlds_to_c.m
 		{ ForeignMLDS = mlds(ModuleName, ForeignCode, Imports,
-			ForeignDefns) },
+			list__map(make_public, ForeignDefns)) },
 		mlds_to_c__output_mlds(ForeignMLDS),
 		% XXX currently the only foreign code we handle is C;
 		%     see comments above (at the declaration for
@@ -436,6 +460,11 @@ mlds_output_grade_var -->
 	io__write_string(
 		"static const void *const MR_grade = &MR_GRADE_VAR;\n").
 ******/
+
+:- func make_public(mlds__defn) = mlds__defn.
+make_public(mlds__defn(Name, Context, Flags0, Defn)) =
+	    mlds__defn(Name, Context, Flags, Defn) :-
+	Flags = mlds__set_access(Flags0, public).
 
 %-----------------------------------------------------------------------------%
 

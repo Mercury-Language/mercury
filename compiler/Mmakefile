@@ -26,6 +26,7 @@ GCC_EXTRA_LIBS = $(filter -l%,$(GCC_LIBS))
 GCC_MAIN_LIBS = $(patsubst %,$(GCC_SRC_DIR)/gcc/%,$(filter-out -l%,$(GCC_LIBS)))
 GCC_BACKEND_LIBS = $(GCC_MAIN_LIBS) $(GCC_EXTRA_LIBS)
 else
+GCC_MAIN_LIBS =
 GCC_BACKEND_LIBS =
 endif
 
@@ -220,6 +221,7 @@ mercury_compile: $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A
 # Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
 # if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
 # so just leave it out.
+mercury_compile: $(GCC_MAIN_LIBS)
 
 mercury_compile_init.c: $(UTIL_DIR)/mkinit
 
@@ -248,9 +250,10 @@ dates		:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs
+.PHONY: os cs ss
 os: $(mercury_compile.os) $(os_subdir)mercury_compile_init.$O
 cs: $(mercury_compile.cs) $(cs_subdir)mercury_compile_init.c
+ss: $(mercury_compile.ss)
 
 #-----------------------------------------------------------------------------#
 

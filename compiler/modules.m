@@ -3255,8 +3255,15 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
 item_list_contains_foreign_code([Item|Items]) :-
 	(
 		Item = pragma(Pragma) - _Context,
-		(	Pragma = foreign_decl(_Lang, _)
-		;	Pragma = foreign(_Lang, _)
+		% The code here should match the way that mlds_to_gcc.m
+		% decides whether or not to call mlds_to_c.m.
+		% XXX Note that we do NOT count foreign_decls here.
+		% We only link in a foreign object file if mlds_to_gcc
+		% called mlds_to_c.m to generate it, which it will only
+		% do if there is some foreign_code, not just foreign_decls.
+		% Counting foreign_decls here causes problems with
+		% intermodule optimization.
+		(	Pragma = foreign(_Lang, _)
 		;	Pragma = foreign(_, _, _, _, _, _)
 		;	% XXX `pragma export' should not be treated as
 			% foreign, but currently mlds_to_gcc.m doesn't

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -101,6 +101,7 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 	#include ""mercury_string.h""
 	#include ""mercury_trace_base.h""
 	#include ""mercury_trace_internal.h""
+	#include ""mercury_library_types.h""
 ").
 
 :- pragma c_code(call_trace_getline(MdbIn::in, MdbOut::in, Prompt::in,

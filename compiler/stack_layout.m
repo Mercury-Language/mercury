@@ -143,6 +143,12 @@ stack_layout__data_addr_to_maybe_rval(DataAddr, yes(Rval)) :-
 :- pred stack_layout__concat_string_list(list(string)::in, int::in,
 	string::out) is det.
 
+:- pragma c_header_code("
+	#include ""mercury_tags.h""	/* for MR_list_*() */
+	#include ""mercury_heap.h""	/* for MR_incr_hp_atomic*() */
+	#include ""mercury_misc.h""	/* for MR_fatal_error() */
+").
+
 :- pragma c_code(stack_layout__concat_string_list(StringList::in,
 		ArenaSize::in, Arena::out),
 		[will_not_call_mercury, thread_safe], "{
