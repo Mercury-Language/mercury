@@ -41,6 +41,11 @@
 :- mode string__int_to_string(in, out).
 %	Convert an integer to a string.
 
+:- pred string__int_to_base_string(int, int, string).
+:- mode string__int_to_base_string(in, in, out).
+%	string__int_to_base_string(Int, Base, String):
+%	Convert an integer to a string in a given Base (between 2 and 36).
+
 :- pred string__first_char(string, character, string).
 :- mode string__first_char(in, out, out).
 :- mode string__first_char(out, in, in).
@@ -116,28 +121,45 @@ string__char_to_string(Char, String) :-
 	char_to_int(Char, Code).
 
 string__int_to_string(N, Str) :-
+	string__int_to_base_string(N, 10, Str).
+
+string__int_to_base_string(N, Base, Str) :-
+	Base >= 2, Base =< 36,
 	(
 		N < 0
 	->
 		N1 is 0 - N,
-		string__int_to_string(N1, Str1),
+		string__int_to_base_string_2(N1, Base, Str1),
 		string__append("-", Str1, Str)
 	;
-		N < 10
+		string__int_to_base_string_2(N, Base, Str)
+	).
+
+:- pred string__int_to_base_string_2(int, int, string).
+:- mode string__int_to_base_string_2(in, in, out) is det.
+
+string__int_to_base_string_2(N, Base, Str) :-
+	(
+		N < Base
 	->
 		digit_to_string(N,Str)
 	;
-		N10 is N mod 10,
-		N1 is N // 10,
-		digit_to_string(N10, Digit),
-		string__int_to_string(N1, Str1),
+		N10 is N mod Base,
+		N1 is N // Base,
+		( digit_to_string(N10, Digit0) ->
+			Digit = Digit0
+		;
+			error(
+			"string__int_to_base_string_2: digit_to_string failed")
+		),
+		string__int_to_base_string_2(N1, Base, Str1),
 		string__append(Str1, Digit, Str)
 	).
 
 % Simple-minded, but extremely portable.
 
 :- pred digit_to_string(int, string).
-:- mode digit_to_string(in, out).
+:- mode digit_to_string(in, out) is semidet.
 
 digit_to_string(0, "0").
 digit_to_string(1, "1").
@@ -149,6 +171,32 @@ digit_to_string(6, "6").
 digit_to_string(7, "7").
 digit_to_string(8, "8").
 digit_to_string(9, "9").
+digit_to_string(10, "A").
+digit_to_string(11, "B").
+digit_to_string(12, "C").
+digit_to_string(13, "D").
+digit_to_string(14, "E").
+digit_to_string(15, "F").
+digit_to_string(16, "G").
+digit_to_string(17, "H").
+digit_to_string(18, "I").
+digit_to_string(19, "J").
+digit_to_string(20, "K").
+digit_to_string(21, "L").
+digit_to_string(22, "M").
+digit_to_string(23, "N").
+digit_to_string(24, "O").
+digit_to_string(25, "P").
+digit_to_string(26, "Q").
+digit_to_string(27, "R").
+digit_to_string(28, "S").
+digit_to_string(29, "T").
+digit_to_string(30, "U").
+digit_to_string(31, "V").
+digit_to_string(32, "W").
+digit_to_string(33, "X").
+digit_to_string(34, "Y").
+digit_to_string(35, "Z").
 
 string__first_char(String0, Char, String) :-
 	string__to_int_list(String0, List0),
