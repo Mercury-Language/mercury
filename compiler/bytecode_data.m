@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,9 +20,11 @@
 
 :- import_module io, int, list, string.
 
+	% XXX this assumes strings contain 8-bit characters
 :- pred output_string(string, io__state, io__state).
 :- mode output_string(in, di, uo) is det.
 
+	% XXX this assumes strings contain 8-bit characters
 :- pred string_to_byte_list(string, list(int)).
 :- mode string_to_byte_list(in, out) is det.
 
@@ -81,10 +83,22 @@
 :- import_module char, require.
 
 output_string(Val) -->
+	% XXX this assumes strings contain 8-bit characters
+	%     Using write_bytes here is wrong; the output will depend
+	%     on the Mercury implementation's representation of chars,
+	%     so it may be different for different Mercury implementations.
+	%     In particular, it will do the wrong thing for Mercury
+	%     implementations which represent characters in Unicode.
 	io__write_bytes(Val),
 	io__write_byte(0).
 
 string_to_byte_list(Val, List) :-
+	% XXX this assumes strings contain 8-bit characters
+	%     Using char__to_int here is wrong; the output will depend
+	%     on the Mercury implementation's representation of chars,
+	%     so it may be different for different Mercury implementations.
+	%     In particular, it will do the wrong thing for Mercury
+	%     implementations which represent characters in Unicode.
 	string__to_char_list(Val, Chars),
 	ToInt = (pred(C::in, I::out) is det :- char__to_int(C, I)),
 	list__map(ToInt, Chars, List0),
