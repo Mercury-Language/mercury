@@ -914,7 +914,6 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		(
 			\+ frameopt__prev_instrs_fill_slot(Rval,
 				PrevInstrs),
-			First = yes,
 			CodeAddr = label(TargetLabel),
 			frameopt__delay_slot(Instrs0, Rval, TargetLabel,
 				Livemap, DelaySlotInstr, Instrs1Prime)
