@@ -28,6 +28,7 @@ TYPECLASS_SOURCES= \
 
 OTHER_SOURCES= \
 	base_relation.m \
+	base_relation2.m \
 	common_struct_bug.m \
 	compl_unify_bug.m \
 	complicated_unify.m \
@@ -188,6 +189,7 @@ GRADEFLAGS-semi_fail_in_non_ite	= --use-trail
 
 MCFLAGS-aditi_update		= --aditi
 MCFLAGS-base_relation		= --aditi
+MCFLAGS-base_relation2		= --aditi
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-context_anc		= --aditi
 MCFLAGS-deforest_loop		= -O3 --intermodule-optimization

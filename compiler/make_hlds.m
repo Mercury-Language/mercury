@@ -569,33 +569,29 @@ module_defn_update_import_status(opt_imported,
 
 %-----------------------------------------------------------------------------%
 
-	% If there are local, exported or opt_imported Aditi procedures
-	% enable Aditi compilation. opt_imported procedures which are not
-	% specialised will be made imported by dead_proc_elim.m, and
-	% having Aditi compilation enabled for them will be harmless.
+	% If there are any Aditi procedures enable Aditi compilation.
+	% If there are only imported Aditi procedures, magic.m still
+	% needs to remove the `aditi' and `base_relation' markers
+	% so that the procedures are not ignored by the code
+	% generation annotation passes (e.g. arg_info.m).
 :- pred maybe_enable_aditi_compilation(item_status, term__context,
 		module_info, module_info, io__state, io__state).
 :- mode maybe_enable_aditi_compilation(in, in, in, out, di, uo) is det.
 
-maybe_enable_aditi_compilation(Status, Context, Module0, Module) -->
-	{ Status = item_status(ItemStatus, _) },
-	( { ItemStatus \= imported(_) } ->
-		globals__io_lookup_bool_option(aditi, Aditi),
-		( { Aditi = no } ->
-			prog_out__write_context(Context),
-			io__write_string("Error: compilation of Aditi procedures\n"),
-			prog_out__write_context(Context),
-			io__write_string("  requires the `--aditi' option.\n"),
-			io__set_exit_status(1),
-			{ module_info_incr_errors(Module0, Module) }
-		;
-			% There are local Aditi procedures - enable Aditi
-			% code generation.
-			{ module_info_set_do_aditi_compilation(Module0,
-				Module) }
-		)
+maybe_enable_aditi_compilation(_Status, Context, Module0, Module) -->
+	globals__io_lookup_bool_option(aditi, Aditi),
+	( { Aditi = no } ->
+		prog_out__write_context(Context),
+		io__write_string("Error: compilation of Aditi procedures\n"),
+		prog_out__write_context(Context),
+		io__write_string("  requires the `--aditi' option.\n"),
+		io__set_exit_status(1),
+		{ module_info_incr_errors(Module0, Module) }
 	;
-		{ Module = Module0 }
+		% There are local Aditi procedures - enable Aditi
+		% code generation.
+		{ module_info_set_do_aditi_compilation(Module0,
+			Module) }
 	).
 
 %-----------------------------------------------------------------------------%
