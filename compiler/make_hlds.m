@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2003 The University of Melbourne.
+% Copyright (C) 1993-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9160,13 +9160,17 @@ finish_head_and_body(Context, FinalSVarMap, Head, Body, Goal, SInfo) :-
 :- func svar_unifiers(prog_context, svar_map, svar_map) = hlds_goals.
 
 svar_unifiers(Context, LHSMap, RHSMap) =
-	map__foldl(
-		func(StateVar, Var, Unifiers) =
-			  [ svar_unification(Context,
-			  	Var, RHSMap ^ det_elem(StateVar))
-			  | Unifiers ],
-		LHSMap,
-		[]
+	map__foldl(add_svar_unifier(RHSMap, Context), LHSMap, []).
+
+:- func add_svar_unifier(svar_map, prog_context, svar, prog_var, hlds_goals)
+	= hlds_goals.
+
+add_svar_unifier(RHSMap, Context, StateVar, Var, Unifiers0) = Unifiers :-
+	( RHSVar = RHSMap ^ elem(StateVar) ->
+		Unifier = svar_unification(Context, Var, RHSVar),
+		Unifiers = [Unifier | Unifiers0]
+	;
+		Unifiers = Unifiers0
 	).
 
 %------------------------------------------------------------------------------%

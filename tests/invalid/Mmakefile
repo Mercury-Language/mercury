@@ -117,6 +117,7 @@ SINGLEMODULE= \
 	state_vars_test2 \
 	state_vars_test3 \
 	state_vars_test4 \
+	state_vars_test5 \
 	tc_err1 \
 	tc_err2 \
 	tricky_assert1 \
