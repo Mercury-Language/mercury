@@ -140,15 +140,10 @@ ORDINARY_PROGS=	\
 	write_reg1 \
 	write_reg2
 
-# Deep profiling cannot yet handle exceptions being caught, which the
-# user_defined_equality test case does.
-
-ifeq "$(findstring profdeep,$(GRADE))" ""
-	EXCEPTION_PROGS = \
-		user_defined_equality
-else
-	EXCEPTION_PROGS =
-endif
+# These test require the implementation to support closure layouts
+CLOSURE_LAYOUT_PROGS = \
+	copy_pred \
+	copy_pred_2
 
 # We do not pass the following tests at all:
 #
@@ -160,11 +155,18 @@ endif
 #
 # XXX needs_init doesn't work yet in profiling grades.
 
-# The following tests are passed only in some grades:
-#
-# XXX copy_pred and copy_pred_2 do not work in the hl* grades (e.g. hlc.gc),
-# because the MLDS back-end doesn't generate the closure layout
-# information needed to copy closures.
+# The following tests are passed only in some grades.
+
+# Deep profiling cannot yet handle exceptions being caught, which the
+# user_defined_equality test case does.
+
+ifeq "$(findstring profdeep,$(GRADE))" ""
+	EXCEPTION_PROGS = \
+		user_defined_equality
+else
+	EXCEPTION_PROGS =
+endif
+
 #
 # factt_non does not work in the hl* grades (e.g. hlc.gc),
 # because the code for nondet fact tables assumes that
@@ -179,14 +181,10 @@ endif
 ifeq "$(findstring hl,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
 		BACKEND_PROGS = \
-			copy_pred \
-			copy_pred_2 \
 			factt_non \
 			type_tables 
 	else
 		BACKEND_PROGS = \
-			copy_pred \
-			copy_pred_2 \
 			type_tables
 	endif
 else
@@ -207,7 +205,8 @@ else
 	endif
 endif
 
-PROGS = $(ORDINARY_PROGS) $(EXCEPTION_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS)
+PROGS = $(ORDINARY_PROGS) $(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
+	$(BACKEND_PROGS) $(NONDET_C_PROGS)
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.

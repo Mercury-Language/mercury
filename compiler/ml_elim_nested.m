@@ -389,7 +389,13 @@ ml_elim_nested(Action, MLDS0, MLDS) -->
 		ml_elim_nested_defns(Action, MLDS_ModuleName, Globals,
 			OuterVars),
 		Defns0) },
-	{ Defns = list__condense(DefnsList) }.
+	{ Defns1 = list__condense(DefnsList) },
+	% The MLDS code generator sometimes generates two definitions of the
+	% same RTTI constant as local constants in two different functions.
+	% When we hoist them out, that leads to duplicate definitions here.
+	% So we need to check for and eliminate any duplicate definitions
+	% of constants.
+	{ Defns = list__remove_dups(Defns1) }.
 
 	% Either eliminated nested functions:
 	% Hoist out any nested function occurring in a single mlds__defn.
@@ -625,8 +631,8 @@ ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context) -->
 	(
 		{ Arg = mlds__argument(data(var(VarName)), _Type,
 			GC_TraceCode) },
-		{ ml_should_add_local_data(ElimInfo, VarName, GC_TraceCode,
-			[], [FuncBody]) }
+		{ ml_should_add_local_data(ElimInfo, var(VarName),
+			GC_TraceCode, [], [FuncBody]) }
 	->
 		{ ml_conv_arg_to_var(Context, Arg, ArgToCopy) },
 		elim_info_add_and_flatten_local_data(ArgToCopy)
@@ -653,7 +659,7 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
 	(
 		Arg = mlds__argument(data(var(VarName)), FieldType,
 			GC_TraceCode),
-		ml_should_add_local_data(ElimInfo, VarName, GC_TraceCode,
+		ml_should_add_local_data(ElimInfo, var(VarName), GC_TraceCode,
 			[], [FuncBody])
 	->
 		ml_conv_arg_to_var(Context, Arg, ArgToCopy),
@@ -1072,7 +1078,7 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
 		DefnBody0 = mlds__function(PredProcId, Params,
 			defined_here(FuncBody0), Attributes),
 		statement_contains_var(FuncBody0, qual(ModuleName,
-			mlds__var_name("env_ptr", no)))
+			var(mlds__var_name("env_ptr", no))))
 	->
 		EnvPtrVal = lval(var(qual(ModuleName,
 				mlds__var_name("env_ptr_arg", no)),
@@ -1589,9 +1595,10 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
 			{ InitStatements = [] }
 		;
 			% Hoist ordinary local variables
-			{ Name = data(var(VarName)) },
+			{ Name = data(DataName) },
+			{ DataName = var(VarName) },
 			{ ml_should_add_local_data(ElimInfo,
-				VarName, MaybeGCTraceCode0,
+				DataName, MaybeGCTraceCode0,
 				FollowingDefns, FollowingStatements) }
 		->
 			% we need to strip out the initializer (if any)
@@ -1647,11 +1654,11 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
 	% it should be added to the environment struct
 	% (if it's a variable) or hoisted out to the top level
 	% (if it's a static const).
-:- pred ml_should_add_local_data(elim_info, mlds__var_name,
+:- pred ml_should_add_local_data(elim_info, mlds__data_name,
 		mlds__maybe_gc_trace_code, mlds__defns, mlds__statements).
 :- mode ml_should_add_local_data(in, in, in, in, in) is semidet.
 
-ml_should_add_local_data(ElimInfo, VarName, MaybeGCTraceCode,
+ml_should_add_local_data(ElimInfo, DataName, MaybeGCTraceCode,
 		FollowingDefns, FollowingStatements) :-
 	Action = ElimInfo ^ action,
 	(
@@ -1659,7 +1666,7 @@ ml_should_add_local_data(ElimInfo, VarName, MaybeGCTraceCode,
 		MaybeGCTraceCode = yes(_)
 	;
 		Action = hoist_nested_funcs,
-		ml_need_to_hoist(ElimInfo ^ module_name, VarName,
+		ml_need_to_hoist(ElimInfo ^ module_name, DataName,
 			FollowingDefns, FollowingStatements)
 	).
 
@@ -1680,13 +1687,13 @@ ml_should_add_local_data(ElimInfo, VarName, MaybeGCTraceCode,
 	% XXX Do we need to check for references from the GC_TraceCode
 	% fields here?
 	%
-:- pred ml_need_to_hoist(mlds_module_name, mlds__var_name,
+:- pred ml_need_to_hoist(mlds_module_name, mlds__data_name,
 		mlds__defns, mlds__statements).
 :- mode ml_need_to_hoist(in, in, in, in) is semidet.
 
-ml_need_to_hoist(ModuleName, VarName,
+ml_need_to_hoist(ModuleName, DataName,
 		FollowingDefns, FollowingStatements) :-
-	QualVarName = qual(ModuleName, VarName),
+	QualDataName = qual(ModuleName, DataName),
 	(
 		list__member(FollowingDefn, FollowingDefns)
 	;
@@ -1696,12 +1703,12 @@ ml_need_to_hoist(ModuleName, VarName,
 	(
 		FollowingDefn = mlds__defn(_, _, _,
 			mlds__function(_, _, _, _)),
-		defn_contains_var(FollowingDefn, QualVarName)
+		defn_contains_var(FollowingDefn, QualDataName)
 	;
 		FollowingDefn = mlds__defn(_, _, _,
 			mlds__data(_, Initializer, _)),
 		ml_decl_is_static_const(FollowingDefn),
-		initializer_contains_var(Initializer, QualVarName)
+		initializer_contains_var(Initializer, QualDataName)
 	).
 
 	%

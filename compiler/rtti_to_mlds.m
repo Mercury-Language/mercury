@@ -101,6 +101,8 @@ rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
 
 
 	% Return the declaration flags appropriate for an rtti_data.
+	% Note that this must be the same as ml_static_const_decl_flags,
+	% except for the access, so that ml_decl_is_static_const works.
 	%
 :- func rtti_data_decl_flags(bool) = mlds__decl_flags.
 rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
@@ -111,7 +113,7 @@ rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
 	),
 	PerInstance = one_copy,
 	Virtuality = non_virtual,
-	Finality = overridable,
+	Finality = final,
 	Constness = const,
 	Abstractness = concrete,
 	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,

@@ -510,10 +510,6 @@ try_again:
                 for (i = 0; i < args; i++) {
                     MR_PseudoTypeInfo arg_pseudo_type_info;
 
-#ifdef MR_HIGHLEVEL_CODE
-                    /* the closure_layout is NULL */
-                    MR_fatal_error("Sorry, not implemented: copying closures");
-#endif
                     arg_pseudo_type_info =
                         closure_layout->MR_closure_arg_pseudo_type_info[i];
                     new_closure->MR_closure_hidden_args_0[i] =

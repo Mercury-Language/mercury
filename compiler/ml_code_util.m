@@ -962,7 +962,7 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
 	%
 ml_decl_is_static_const(Defn) :-
 	Defn = mlds__defn(Name, _Context, Flags, _DefnBody),
-	Name = data(var(_)),
+	Name = data(_),
 	Flags = ml_static_const_decl_flags.
 
 	% Given a function label and the statement which will comprise
@@ -1672,6 +1672,8 @@ ml_gen_local_var_decl_flags = MLDS_DeclFlags :-
 
 	% Return the declaration flags appropriate for an
 	% initialized local static constant.
+	% Note that rtti_decl_flags, in rtti_to_mlds.m,
+	% must be the same as this apart from the access.
 	%
 ml_static_const_decl_flags = MLDS_DeclFlags :-
 	Access = local,

@@ -522,6 +522,7 @@ convert_assignments_into_initializers(Defns0, Statements0, OptInfo,
 		AssignStatement = statement(atomic(assign(LHS, RHS)), _),
 		LHS = var(ThisVar, _ThisType),
 		ThisVar = qual(Qualifier, VarName),
+		ThisData = qual(Qualifier, var(VarName)),
 		Qualifier = OptInfo ^ module_name,
 		list__takewhile(isnt(var_defn(VarName)), Defns0, 
 			_PrecedingDefns, [_VarDefn | FollowingDefns]),
@@ -532,13 +533,13 @@ convert_assignments_into_initializers(Defns0, Statements0, OptInfo,
 		% We must also check that the initializers (if any)
 		% of the variables that follow this one don't
 		% refer to this variable.
-		\+ rval_contains_var(RHS, ThisVar),
+		\+ rval_contains_var(RHS, ThisData),
 		\+ (
 			list__member(OtherDefn, FollowingDefns),
-			OtherDefn = mlds__defn(data(var(OtherVarName)),
+			OtherDefn = mlds__defn(data(OtherVarName),
 				_, _, data(_Type, OtherInitializer, _GC)),
 			( rval_contains_var(RHS, qual(Qualifier, OtherVarName))
-			; initializer_contains_var(OtherInitializer, ThisVar)
+			; initializer_contains_var(OtherInitializer, ThisData)
 			)
 		)
 	->
@@ -781,7 +782,9 @@ find_initial_val_in_statements(VarName, [Statement0 | Statements0],
 		% Statement0.  Only if we are sure that Statement0
 		% can't modify the variable's value is it safe to go
 		% on and look for the initial value in Statements0.
-		\+ statement_contains_var(Statement0, VarName),
+		VarName = qual(Mod, UnqualVarName),
+		DataName = qual(Mod, var(UnqualVarName)),
+		\+ statement_contains_var(Statement0, DataName),
 		\+ (
 			statement_contains_statement(Statement0, Label),
 			Label = mlds__statement(label(_), _)
@@ -802,7 +805,9 @@ find_initial_val_in_statement(Var, Statement0, Rval, Statement) :-
 		% delete the assignment, by replacing it with an empty block
 		Stmt = block([], [])
 	; Stmt0 = block(Defns0, SubStatements0) ->
-		\+ defns_contains_var(Defns0, Var),
+		Var = qual(Mod, UnqualVarName),
+		Data = qual(Mod, var(UnqualVarName)),
+		\+ defns_contains_var(Defns0, Data),
 		find_initial_val_in_statements(Var, SubStatements0,
 			Rval, SubStatements),
 		Stmt = block(Defns0, SubStatements)

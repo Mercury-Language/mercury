@@ -49,7 +49,7 @@
 
 	% succeeds iff this statement contains a reference to the
 	% specified variable
-:- pred statement_contains_var(mlds__statement, mlds__var).
+:- pred statement_contains_var(mlds__statement, mlds__data).
 :- mode statement_contains_var(in, in) is semidet.
 
 :- pred has_foreign_languages(mlds__statement, list(foreign_language)).
@@ -102,12 +102,12 @@
 
 	% Succeeds iff these definitions contains a reference to
 	% the specified variable.
-:- pred defns_contains_var(mlds__defns, mlds__var).
+:- pred defns_contains_var(mlds__defns, mlds__data).
 :- mode defns_contains_var(in, in) is semidet.
 
 	% Succeeds iff this definition contains a reference to
 	% the specified variable.
-:- pred defn_contains_var(mlds__defn, mlds__var).
+:- pred defn_contains_var(mlds__defn, mlds__data).
 :- mode defn_contains_var(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -126,22 +126,22 @@
 	%	the specified variable.
 	%
 
-:- pred initializer_contains_var(mlds__initializer, mlds__var).
+:- pred initializer_contains_var(mlds__initializer, mlds__data).
 :- mode initializer_contains_var(in, in) is semidet.
 
-:- pred rvals_contains_var(list(mlds__rval), mlds__var).
+:- pred rvals_contains_var(list(mlds__rval), mlds__data).
 :- mode rvals_contains_var(in, in) is semidet.
 
-:- pred maybe_rval_contains_var(maybe(mlds__rval), mlds__var).
+:- pred maybe_rval_contains_var(maybe(mlds__rval), mlds__data).
 :- mode maybe_rval_contains_var(in, in) is semidet.
 
-:- pred rval_contains_var(mlds__rval, mlds__var).
+:- pred rval_contains_var(mlds__rval, mlds__data).
 :- mode rval_contains_var(in, in) is semidet.
 
-:- pred lvals_contains_var(list(mlds__lval), mlds__var).
+:- pred lvals_contains_var(list(mlds__lval), mlds__data).
 :- mode lvals_contains_var(in, in) is semidet.
 
-:- pred lval_contains_var(mlds__lval, mlds__var).
+:- pred lval_contains_var(mlds__lval, mlds__data).
 :- mode lval_contains_var(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -292,14 +292,14 @@ default_contains_statement(default_case(Statement), SubStatement) :-
 %	Succeeds iff the specified construct contains a reference to
 %	the specified variable.
 
-:- pred statements_contains_var(mlds__statements, mlds__var).
+:- pred statements_contains_var(mlds__statements, mlds__data).
 :- mode statements_contains_var(in, in) is semidet.
 
 statements_contains_var(Statements, Name) :-
 	list__member(Statement, Statements),
 	statement_contains_var(Statement, Name).
 
-:- pred maybe_statement_contains_var(maybe(mlds__statement), mlds__var).
+:- pred maybe_statement_contains_var(maybe(mlds__statement), mlds__data).
 :- mode maybe_statement_contains_var(in, in) is semidet.
 
 % maybe_statement_contains_var(no, _) :- fail.
@@ -311,7 +311,7 @@ statement_contains_var(Statement, Name) :-
 	Statement = mlds__statement(Stmt, _Context),
 	stmt_contains_var(Stmt, Name).
 
-:- pred stmt_contains_var(mlds__stmt, mlds__var).
+:- pred stmt_contains_var(mlds__stmt, mlds__data).
 :- mode stmt_contains_var(in, in) is semidet.
 
 stmt_contains_var(Stmt, Name) :-
@@ -370,7 +370,7 @@ stmt_contains_var(Stmt, Name) :-
 		atomic_stmt_contains_var(AtomicStmt, Name)
 	).
 
-:- pred cases_contains_var(list(mlds__switch_case), mlds__var).
+:- pred cases_contains_var(list(mlds__switch_case), mlds__data).
 :- mode cases_contains_var(in, in) is semidet.
 
 cases_contains_var(Cases, Name) :-
@@ -378,7 +378,7 @@ cases_contains_var(Cases, Name) :-
 	Case = _MatchConds - Statement,
 	statement_contains_var(Statement, Name).
 
-:- pred default_contains_var(mlds__switch_default, mlds__var).
+:- pred default_contains_var(mlds__switch_default, mlds__data).
 :- mode default_contains_var(in, in) is semidet.
 
 % default_contains_var(default_do_nothing, _) :- fail.
@@ -386,7 +386,7 @@ cases_contains_var(Cases, Name) :-
 default_contains_var(default_case(Statement), Name) :-
 	statement_contains_var(Statement, Name).
 
-:- pred atomic_stmt_contains_var(mlds__atomic_statement, mlds__var).
+:- pred atomic_stmt_contains_var(mlds__atomic_statement, mlds__data).
 :- mode atomic_stmt_contains_var(in, in) is semidet.
 
 % atomic_stmt_contains_var(comment(_), _Name) :- fail.
@@ -410,7 +410,7 @@ atomic_stmt_contains_var(inline_target_code(_Lang, Components), Name) :-
 	list__member(Component, Components),
 	target_code_component_contains_var(Component, Name).
 
-:- pred trail_op_contains_var(trail_op, mlds__var).
+:- pred trail_op_contains_var(trail_op, mlds__data).
 :- mode trail_op_contains_var(in, in) is semidet.
 
 trail_op_contains_var(store_ticket(Lval), Name) :-
@@ -424,7 +424,7 @@ trail_op_contains_var(mark_ticket_stack(Lval), Name) :-
 trail_op_contains_var(prune_tickets_to(Rval), Name) :-
 	rval_contains_var(Rval, Name).
 
-:- pred target_code_component_contains_var(target_code_component, mlds__var).
+:- pred target_code_component_contains_var(target_code_component, mlds__data).
 :- mode target_code_component_contains_var(in, in) is semidet.
 
 %target_code_component_contains_var(raw_target_code(_Code), _Name) :-
@@ -435,9 +435,11 @@ target_code_component_contains_var(target_code_input(Rval), Name) :-
 	rval_contains_var(Rval, Name).
 target_code_component_contains_var(target_code_output(Lval), Name) :-
 	lval_contains_var(Lval, Name).
-target_code_component_contains_var(name(EntityName), VarName) :-
-	EntityName = qual(ModuleName, data(var(UnqualVarName))),
-	VarName = qual(ModuleName, UnqualVarName).
+target_code_component_contains_var(name(EntityName), DataName) :-
+	EntityName = qual(ModuleName, data(UnqualDataName)),
+	DataName = qual(ModuleName, UnqualDataName),
+	% this is a place where we can succeed
+	true.
 
 has_foreign_languages(Statement, Langs) :-
 	GetTargetCode = (pred(Lang::out) is nondet :-
@@ -508,7 +510,7 @@ defns_contains_var(Defns, Name) :-
 defn_contains_var(mlds__defn(_Name, _Context, _Flags, DefnBody), Name) :-
 	defn_body_contains_var(DefnBody, Name).
 
-:- pred defn_body_contains_var(mlds__entity_defn, mlds__var).
+:- pred defn_body_contains_var(mlds__entity_defn, mlds__data).
 :- mode defn_body_contains_var(in, in) is semidet.
 
 	% XXX Should we include variables in the GC_TraceCode field here?
@@ -524,7 +526,7 @@ defn_body_contains_var(mlds__class(ClassDefn), Name) :-
 	; defns_contains_var(CtorDefns, Name)
 	).
 
-:- pred function_body_contains_var(function_body, mlds__var).
+:- pred function_body_contains_var(function_body, mlds__data).
 :- mode function_body_contains_var(in, in) is semidet.
 
 % function_body_contains_var(external, _) :- fail.
@@ -569,7 +571,12 @@ rval_contains_var(lval(Lval), Name) :-
 	lval_contains_var(Lval, Name).
 rval_contains_var(mkword(_Tag, Rval), Name) :-
 	rval_contains_var(Rval, Name).
-% rval_contains_var(const(_Const), _Name) :- fail.
+rval_contains_var(const(Const), QualDataName) :-
+	Const = data_addr_const(DataAddr),
+	DataAddr = data_addr(ModuleName, DataName),
+	QualDataName = qual(ModuleName, DataName),
+	/* this is a place where we can succeed */
+	true.
 rval_contains_var(unop(_Op, Rval), Name) :-
 	rval_contains_var(Rval, Name).
 rval_contains_var(binop(_Op, X, Y), Name) :-
@@ -587,6 +594,9 @@ lval_contains_var(field(_MaybeTag, Rval, _FieldId, _, _), Name) :-
 	rval_contains_var(Rval, Name).
 lval_contains_var(mem_ref(Rval, _Type), Name) :-
 	rval_contains_var(Rval, Name).
-lval_contains_var(var(Name, _Type), Name).  /* this is where we can succeed! */
+lval_contains_var(var(qual(ModuleName, Name), _Type),
+		qual(ModuleName, var(Name))) :-
+	/* this is another place where we can succeed */
+	true.
 
 %-----------------------------------------------------------------------------%

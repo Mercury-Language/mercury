@@ -42,6 +42,10 @@
 	create_arg_types::out, comp_gen_c_data::out,
 	counter::in, counter::out) is det.
 
+	% Construct a representation of a variable location as a 32-bit
+	% integer.
+:- pred stack_layout__represent_locn_as_int(layout_locn::in, int::out) is det.
+
 :- implementation.
 
 :- import_module globals, options, llds_out, trace_params, trace.
@@ -1214,8 +1218,6 @@ stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
 stack_layout__represent_locn_as_int_rval(Locn, Rval) :-
 	stack_layout__represent_locn_as_int(Locn, Word),
 	Rval = const(int_const(Word)).
-
-:- pred stack_layout__represent_locn_as_int(layout_locn::in, int::out) is det.
 
 stack_layout__represent_locn_as_int(direct(Lval), Word) :-
 	stack_layout__represent_lval(Lval, Word).

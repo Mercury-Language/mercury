@@ -3233,7 +3233,15 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 		HLDS60),
 	mercury_compile__maybe_dump_hlds(HLDS60, "60", "mark_static"),
 
-	{ HLDS = HLDS60 },
+	% We need to do map_args_to_regs, even though that module is meant
+	% for the LLDS back-end, because with the MLDS back-end the arg_infos
+	% that map_args_to_regs generates are used by continuation_info.m,
+	% which is used by ml_unify_gen.m when outputting closure layout
+	% structs.
+	mercury_compile__map_args_to_regs(HLDS60, Verbose, Stats, HLDS70),
+	mercury_compile__maybe_dump_hlds(HLDS70, "70", "args_to_regs"),
+
+	{ HLDS = HLDS70 },
 	mercury_compile__maybe_dump_hlds(HLDS, "99", "final"),
 
 	maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n"),
