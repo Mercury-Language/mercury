@@ -76,7 +76,8 @@ static void demangle(char *name) {
 	static const char unify[]   = "__Unify___";
 	static const char compare[] = "__Compare___";
 	static const char mindex[]  = "__Index___";
-	/* avoid a naming conflict with strchr's alter ego */
+	/* we call it `mindex' rather than `index' to
+	   avoid a naming conflict with strchr's alter ego index() */
 	char *start = name;
 	char *end = name + strlen(name);
 	int mode_num;
