@@ -393,14 +393,53 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	% eqv_type = equivalence type (a type defined to be eqv to some
 	% other type)
 
-:- type hlds__type_body	--->	du_type(list(constructor))
-			;	uu_type(list(type))
-			;	eqv_type(type)
-			;	abstract_type.
+:- type hlds__type_body
+	--->	du_type(
+			list(constructor), 	% the ctors for this type
+			cons_tag_values,	% their tag values
+			bool		% is this type an enumeration?
+		)
+	;	uu_type(list(type))	% not yet implemented!
+	;	eqv_type(type)
+	;	abstract_type.
 
-:- type hlds__inst_defn --->	hlds__inst_defn(varset, list(inst_param),
-					hlds__inst_body,
-					condition, term__context).
+:- type cons_tag_values
+	== map(cons_id, cons_tag).
+
+:- type cons_tag
+	--->	enum_tag(int)
+			% Just like an enum constant in C
+	;	simple_tag(tag_bits)	
+			% This is for constants or functors which only
+			% require a simple (two-bit) tag.
+			% For constants we store a tagged zero, for functors 
+			% we store a tagged pointer to the argument vector.
+	;	complicated_tag(tag_bits, int)
+			% This is for functors or constants which
+			% require more than just a two-bit tag.  In this case,
+			% we use both a primary and a secondary tag.
+			% The secondary tag is stored as the first word of
+			% the argument vector.  (If it's a constant, then
+			% in this case there is an argument vector of size 1
+			% which just holds the secondary tag.)
+	;	complicated_constant_tag(tag_bits, int).
+			% This is for constants which require more than a 
+			% two-bit tag.  In this case, we use both a primary
+			% and a secondary tag, but this time the secondary
+			% tag is stored in the rest of the main word rather
+			% than in the first word of the argument vector.
+
+:- type tag_bits
+	== int.		% actually only 2 (or maybe 3) bits
+
+:- type hlds__inst_defn
+	--->	hlds__inst_defn(
+			varset,
+			list(inst_param),
+			hlds__inst_body,
+			condition,
+			term__context
+		).
 
 :- type hlds__inst_body	--->	eqv_inst(inst)
 			;	abstract_inst.

@@ -64,7 +64,7 @@ find_undef_type_body(eqv_type(Type), ErrorContext, TypeDefns) -->
 	find_undef_type(Type, ErrorContext, TypeDefns).
 find_undef_type_body(uu_type(Types), ErrorContext, TypeDefns) -->
 	find_undef_type_list(Types, ErrorContext, TypeDefns).
-find_undef_type_body(du_type(Constructors), ErrorContext, TypeDefns) -->
+find_undef_type_body(du_type(Constructors, _, _), ErrorContext, TypeDefns) -->
 	find_undef_type_du_body(Constructors, ErrorContext, TypeDefns).
 find_undef_type_body(abstract_type, _ErrorContext, _TypeDefns) --> [].
 

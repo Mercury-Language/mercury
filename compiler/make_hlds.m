@@ -26,9 +26,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_util, prog_out, set, require, globals, options.
-:- import_module hlds_out, bintree, list, map, std_util, varset, term_io.
-:- import_module string, term, int.
+:- import_module string, int, set, bintree, list, map, require, std_util.
+:- import_module term, term_io, varset.
+:- import_module prog_util, prog_out, hlds_out.
+:- import_module globals, options.
+:- import_module make_tags.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
@@ -163,7 +165,6 @@ add_item_clause(nothing, _, Module, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
-
 :- pred module_add_inst_defn(module_info, varset, inst_defn, condition,
 			term__context, module_info, io__state, io__state).
 :- mode module_add_inst_defn(in, in, in, in, in, out, di, uo) is det.
@@ -296,7 +297,7 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 		  map__set(Types0, TypeId, T, Types)
 		},
 		( %%% some [ConsList]
-			{ Body = du_type(ConsList) }
+			{ Body = du_type(ConsList, _, _) }
 		->
 			{ module_info_ctors(Module0, Ctors0) },
 			ctors_add(ConsList, TypeId, Context, Ctors0, Ctors),
@@ -320,7 +321,9 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 :- pred type_name_args(type_defn, sym_name, list(type_param), hlds__type_body).
 :- mode type_name_args(in, out, out, out) is det.
 
-type_name_args(du_type(Name, Args, Body), Name, Args, du_type(Body)).
+type_name_args(du_type(Name, Args, Body), Name, Args,
+		du_type(Body, CtorTags, IsEnum)) :-
+	assign_constructor_tags(Body, CtorTags, IsEnum).
 type_name_args(uu_type(Name, Args, Body), Name, Args, uu_type(Body)).
 type_name_args(eqv_type(Name, Args, Body), Name, Args, eqv_type(Body)).
 type_name_args(abstract_type(Name, Args), Name, Args, abstract_type).
@@ -367,7 +370,7 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 	{ map__set(Ctors0, ConsId, ConsDefns2, Ctors1) },
 	ctors_add(Rest, TypeId, Context, Ctors1, Ctors).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred module_add_pred(module_info, varset, sym_name, list(type_and_mode),
 		determinism, condition, term__context, module_info,

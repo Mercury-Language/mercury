@@ -91,16 +91,8 @@ type_is_enumeration(Type, ModuleInfo) :-
 	module_info_types(ModuleInfo, TypeDefnTable),
 	map__lookup(TypeDefnTable, TypeId, TypeDefn),
 	TypeDefn = hlds__type_defn(_, _, TypeBody, _, _),
-	TypeBody = du_type(Constructors),
-	constructors_are_all_constants(Constructors).
-
-:- pred constructors_are_all_constants(list(constructor)).
-:- mode constructors_are_all_constants(in) is semidet.
-
-constructors_are_all_constants([]).
-constructors_are_all_constants([_Name - ArgTypes | Constructors]) :-
-	ArgTypes = [],
-	constructors_are_all_constants(Constructors).
+	TypeBody = du_type(_, _, IsEnum),
+	IsEnum = yes.
 
 :- pred type_to_type_id(type, type_id).
 :- mode type_to_type_id(in, out) is det.
