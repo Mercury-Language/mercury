@@ -1,10 +1,11 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
 % frame - minimally implements ASCII graphics frames.
+% This module is used by the term browser for displaying terms.
 %
 % XXX: This implementation is:
 %	- very inefficient.

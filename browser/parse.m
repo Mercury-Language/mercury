@@ -1,7 +1,16 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
+%
+% file: parse.m:
+% author: aet
+
+% This file contains the parser for the mdb browser command language.
+% This parses the stuff you type at the "browser> " prompt after
+% typing "browse" from the mdb prompt.
+
 %---------------------------------------------------------------------------%
 
 % The Command Language
