@@ -1,6 +1,6 @@
 
 /*
- *	$Id: bytecode.h,v 1.2 1997-01-28 01:59:57 aet Exp $
+ *	$Id: bytecode.h,v 1.3 1997-01-29 01:41:04 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -8,30 +8,18 @@
 #if	! defined(BYTECODE_H)
 #define	BYTECODE_H
 
-typedef int
-	NOT_IMPLEMENTED;
 
-/* XXX: We shouldn't use typedefs for structs. We should also explicitly
- * label struct variables with `struct' instead.
- * Hmm.. Maybe this convention is bullshit.
- */
-#if 0 
 typedef struct Tag {
 		Byte	tag_type;
-		union extra_tags {
+		union {
 			Byte	primary;
-			int	secondary;
-		} extra_tags;
-	} Tag;
-#endif	/* 0 */
-
-struct Tag {
-		Byte	tag_type;
-		union extra_tags {
-			Byte	primary;
-			int	secondary;
-		} extra_tags;
-};
+			struct {
+				Byte	primary;
+				Word	secondary; 
+			} pair;
+			Word	enum_tag;
+		} opt;
+} Tag;
 
 
 /* 
@@ -61,33 +49,45 @@ typedef Byte
 #define	ERRONEOUS	6
 #define	FAILURE		7
 
-typedef NOT_IMPLEMENTED
-	Op_arg;
+typedef struct Op_arg {
+	Byte	arg_type;
+	union {
+		ushort	var;
+		Int	int_const;
+		Float	float_const;
+	} opt;
+} Op_arg;
+
+#define	ARG_VAR	0
+#define	ARG_INT_CONST	1
+#define	ARG_FLOAT_CONST	2
 
 typedef Byte
-	Dir;
+	Direction;
 /*
- *	Dir
+ *	Direction
  */
 #define	TO_ARG		0
 #define	TO_VAR		1
 #define	TO_NONE		2
 
 
-typedef CString
-	Var_dir;
+typedef struct Var_dir {
+	ushort		var;
+	Direction	dir;
+} Var_dir;
 
-struct Cons_id {
+typedef struct Cons_id {
 	Byte	cons_id_type;
-	union options {
+	union {
 		struct {
 			CString		string;
 			ushort		arity;
-			struct Tag	tag;
+			Tag	tag;
 		} cons;
-		int 	int_const;	
+		Int 	int_const;	
 		CString	string_const;
-		float	float_const;
+		Float	float_const;
 		struct {
 			CString		module_id;
 			CString		pred_id;
@@ -105,8 +105,8 @@ struct Cons_id {
 			CString		type_name;
 			Byte		type_arity;
 		} base_type_info_const;
-	} options;
-} ;
+	} opt;
+} Cons_id;
 
 #define	CONSID_CONS		0
 #define	CONSID_INT_CONST	1
@@ -117,9 +117,9 @@ struct Cons_id {
 #define	CONSID_BASE_TYPE_INFO_CONST	6
 
 
-struct Bytecode {
+typedef struct Bytecode {
 	Byte	bc;	/* Which bytecode instruction. e.g. BC_fail */
-	union args {
+	union {
 		struct {
 			CString		pred_name;	/* XXX: malloc */
 			ushort		proc_count;
@@ -157,7 +157,7 @@ struct Bytecode {
 		/* endof_switch */
 
 		struct {
-			struct Cons_id		cons_id;
+			Cons_id		cons_id;
 			ushort			next_label;
 		} enter_switch_arm;
 
@@ -197,30 +197,30 @@ struct Bytecode {
 
 		struct {
 			ushort			to_var;
-			struct Cons_id		consid;
+			Cons_id		consid;
 			ushort			list_length;
 			ushort		*var_list;	/* XXX: malloc */
 		} construct;
 
 		struct {
 			ushort			from_var;
-			struct Cons_id		consid;
-			ushort			list_length;
-			Var_dir		*var_dir_list;	/* XXX: malloc */	
-		} complex_construct;
-
-		struct {
-			ushort			from_var;
-			struct Cons_id		consid;
+			Cons_id		consid;
 			ushort			list_length;
 			ushort		*var_list;	/* XXX: malloc */
 		} deconstruct;
 
 		struct {
 			ushort			from_var;
-			struct Cons_id		consid;
+			Cons_id		consid;
 			ushort			list_length;
-			Var_dir		*var_dir_list;	/* XXX: malloc */
+			Var_dir		*var_dir_list;/* XXX: malloc */	
+		} complex_construct;
+
+		struct {
+			ushort			from_var;
+			Cons_id		consid;
+			ushort			list_length;
+			Var_dir		*var_dir_list;/* XXX: malloc */
 		} complex_deconstruct;
 
 		struct {
@@ -271,23 +271,26 @@ struct Bytecode {
 
 		/* not_supported */
 
-	} args;
-};
+	} opt;
+} Bytecode;
 
 Bool
-bytecode_to_name(Byte bytecode, CString* name_p);
+bytecode_to_name(Byte bytecode, CString *name_p);
 
 Bool
-determinism_to_name(Byte determinism_code, CString* name_p);
+determinism_to_name(Byte determinism_code, CString *name_p);
 
 Bool
-read_bytecode_version_number(FILE* fp, int* version_number_p);
+read_bytecode_version_number(FILE* fp, ushort *version_number_p);
 
 Bool
-read_tag(FILE *fp, struct Tag *tag_p);
+read_tag(FILE *fp, Tag *tag_p);
 
 Bool
-read_cons_id(FILE *fp, struct Cons_id *cons_id_p);
+read_cons_id(FILE *fp, Cons_id *cons_id_p);
+
+Bool
+read_var_dir(FILE *fp, Var_dir *var_dir_p);
 
 Bool
 read_op_arg(FILE *fp, Op_arg *op_arg_p);
@@ -308,20 +311,19 @@ Bool
 read_int(FILE *fp, Int *int_p);
 
 Bool
-read_byte(FILE* fp, Byte* byte_p);
+read_word(FILE *fp, Word *word_p);
 
 Bool
-read_cstring(FILE* fp, CString* str);
-
-
-Bool
-read_int(FILE* fp, Int* int_p);
+read_byte(FILE* fp, Byte *byte_p);
 
 Bool
-read_ushort(FILE* fp, ushort* ushort_p);
+read_cstring(FILE* fp, CString *str);
 
 Bool
-read_bytecode(FILE* fp, struct Bytecode  *bc_p);
+read_ushort(FILE* fp, ushort *ushort_p);
+
+Bool
+read_bytecode(FILE* fp, struct Bytecode *bc_p);
 
 /*
  *	We use #defines rather than an enumeration here since
