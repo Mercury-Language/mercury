@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -283,26 +283,16 @@ typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 	% only in some grades is not possible.  Unfortunately, if we
 	% implement it in Mercury as:
 	% 	typed_solve_equal(X, Y) :- solve_equal(univ(X), univ(Y)).
-	% then the compiler aborts with an error in non-`se' grades.  So we
-	% have to implement it partially in C.
-typed_solve_equal(X, Y) :- solve_equal_univ(univ(X), univ(Y)).
+	% then the compiler aborts with an error in non-`se' grades, while
+	% trying to specialise the solve_equal/2 call based on the type.
+	% So we use the following hack to get around it.
+typed_solve_equal(X, Y) :- my_solve_equal(univ(X), univ(Y)).
 
-:- pred solve_equal_univ(univ, univ).
-:- mode solve_equal_univ((any->any), (any->any)) is semidet.
+:- pred my_solve_equal(T, T).
+:- mode my_solve_equal((any->any), (any->any)) is semidet.
 
-:- pragma c_code(solve_equal_univ(X::(any->any), Y::(any->any)), "
-#ifdef MR_USE_SOLVE_EQUAL
-
-Declare_entry(mercury____SolveEqual___std_util__univ_0_0);
-
-	r1 = X;
-	r2 = Y;
-	tailcall(ENTRY(mercury____SolveEqual___std_util__univ_0_0),
-		LABEL(mercury__private_builtin__solve_equal_univ_2_0));
-#else
-	fatal_error(""Call to solve_equal/2 not supported in this grade"");
-#endif
-").
+my_solve_equal(X, Y) :-
+	solve_equal(X, Y).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
