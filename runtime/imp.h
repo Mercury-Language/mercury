@@ -180,10 +180,8 @@ extern	int	hash_string(const char *);
 
 #include "gc.h"
 
-#define	tag_incr_hp(dest,tag,count)	(			\
-				(dest) = mkword(tag, (Word)GC_MALLOC(count)), \
-				(void)0				\
-			)
+#define	tag_incr_hp(dest,tag,count) \
+	((dest) = mkword(tag, (Word)GC_MALLOC(count * sizeof(Word))))
 #define	mark_hp(dest)	((void)0)
 #define	restore_hp(src)	((void)0)
 #define hp_alloc(count) (incr_hp(hp,(count)), hp += (count), (void)0)
@@ -226,7 +224,6 @@ extern	int	hash_string(const char *);
 				hp_alloc(1),			\
 				hp[-1] = (Word) (w1),		\
 				debugcr1(hp[-1], hp),		\
-				heap_overflow_check(),		\
 				/* return */ (Word) (hp - 1)	\
 			)
 
@@ -237,7 +234,6 @@ extern	int	hash_string(const char *);
 				hp[-2] = (Word) (w1),		\
 				hp[-1] = (Word) (w2),		\
 				debugcr2(hp[-2], hp[-1], hp),	\
-				heap_overflow_check(),		\
 				/* return */ (Word) (hp - 2)	\
 			)
 
@@ -248,7 +244,6 @@ extern	int	hash_string(const char *);
 				hp[-3] = (Word) (w1),		\
 				hp[-2] = (Word) (w2),		\
 				hp[-1] = (Word) (w3),		\
-				heap_overflow_check(),		\
 				/* return */ (Word) (hp - 3)	\
 			)
 
