@@ -265,12 +265,12 @@ case $FULLARCH in
 		# shared libraries (and we need to use shared libraries to
 		# avoid running out of disk space...)
 		case $BRANCH in
-		    latest)
-			TEST_MCFLAGS="$TEST_MCFLAGS --mercury-linkage shared"
-		    	;;
-		    *)
+		    0.11)
 			TEST_MCFLAGS="$TEST_MCFLAGS --pic-reg"
 			;;
+		    *)
+			TEST_MCFLAGS="$TEST_MCFLAGS --mercury-linkage shared"
+		    	;;
 		esac
 		TEST_MGNUCFLAGS="$TEST_MGNUCFLAGS --pic-reg"
 		TEST_MLFLAGS="$TEST_MLFLAGS --shared"
