@@ -5,6 +5,7 @@ MCFLAGS-constraint_order =	--constraint-propagation --enable-termination
 MCFLAGS-deforest_cc_bug =	--deforestation
 MCFLAGS-lp		=	--intermodule-optimization -O3
 MCFLAGS-boyer		=	--infer-all
+MCFLAGS-float_consistency =	--optimize-constant-propagation
 MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-ho_order2	=	--optimize-higher-order
