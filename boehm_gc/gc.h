@@ -708,7 +708,12 @@ GC_API void (*GC_is_visible_print_proc)
 /* Note also that the collector cannot see thread specific data.	*/
 /* Thread specific data should generally consist of pointers to		*/
 /* uncollectable objects, which are deallocated using the destructor	*/
-/* facility in thr_keycreate.						*/
+/* facility in thr_keycreate.  But unless your uncollectable objects	*/
+/* are also atomic, you must take care to ensure that the thread 	*/
+/* specific data is also stored on the thread stack, so that the	*/
+/* collector doesn't try to reclaim collectable objects pointed to	*/
+/* only by uncollectable objects which are reachable only from		*/
+/* thread-local storage.						*/
 # include <thread.h>
 # include <signal.h>
   int GC_thr_create(void *stack_base, size_t stack_size,
