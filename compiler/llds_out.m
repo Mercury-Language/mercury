@@ -486,10 +486,10 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 
 		{ gather_c_file_labels(Modules, Labels) },
 		{ decl_set_init(DeclSet0) },
+		output_c_data_type_def_list(Datas, DeclSet0, DeclSet1),
 		output_c_label_decl_list(Labels, StackLayoutLabels,
-			DeclSet0, DeclSet1),
-		output_comp_gen_c_var_list(Vars, DeclSet1, DeclSet2),
-		output_c_data_type_def_list(Datas, DeclSet2, DeclSet3),
+			DeclSet1, DeclSet2),
+		output_comp_gen_c_var_list(Vars, DeclSet2, DeclSet3),
 		output_comp_gen_c_data_list(Datas, DeclSet3, DeclSet4),
 		output_comp_gen_c_module_list(Modules, StackLayoutLabels,
 			DeclSet4, _DeclSet),
