@@ -38,7 +38,7 @@ MNL	=	MERCURY_NU_LIB_DIR=. \
 MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
 MSL	=	MERCURY_SP_LIB_DIR=. \
 		MERCURY_SICSTUS_PROLOG=./sicstus_saved_state \
-		MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql \
+		MERCURY_SP_LIB_OBJS="`vpath_find $(qls_subdir)sp_builtin.ql \
 				$(library.qls) $(NU_LIBRARY_QLS) \
 				$(qls_subdir)portray.ql`" \
 		MERCURY_SP_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_QLS)" \
