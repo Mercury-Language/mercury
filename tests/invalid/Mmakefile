@@ -41,6 +41,7 @@ SOURCES= \
 	prog_io_erroneous.m \
 	qual_basic_test2.m \
 	qualified_cons_id2.m \
+	some.m \
 	spurious_mode_error.m \
 	test_nested.m \
 	type_inf_loop.m \

@@ -4706,6 +4706,14 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 			[]
 		)
 	;
+		{ PredName = unqualified("some"), Arity = 2 }
+	->
+		io__write_string(
+		    "  syntax error in existential quantification: first\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+		    "  argument of `some' should be a list of variables.\n")
+	;
 		io__write_string("  error: undefined predicate `"),
 		hlds_out__write_pred_call_id(PredCallId),
 		io__write_string("'"),
@@ -4977,6 +4985,8 @@ language_builtin("<=", 2).
 language_builtin("call", _).
 language_builtin("impure", 1).
 language_builtin("semipure", 1).
+language_builtin("all", 2).
+language_builtin("some", 2).
 
 :- pred write_call_context(term__context, pred_call_id, int, unify_context,
 				io__state, io__state).

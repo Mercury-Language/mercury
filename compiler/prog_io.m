@@ -1044,14 +1044,6 @@ parse_decl_attribute("all", [TVars, Decl],
 		quantifier(univ, TVarsList), Decl) :-
 	parse_list_of_vars(TVars, TVarsList).
 
-:- pred parse_list_of_vars(term, list(var)).
-:- mode parse_list_of_vars(in, out) is semidet.
-	
-parse_list_of_vars(term__functor(term__atom("[]"), [], _), []).
-parse_list_of_vars(term__functor(term__atom("."), [Head, Tail], _), [V|Vs]) :-
-	Head = term__variable(V),
-	parse_list_of_vars(Tail, Vs).
-
 :- pred check_no_attributes(maybe1(item), decl_attrs, maybe1(item)).
 :- mode check_no_attributes(in, in, out) is det.
 

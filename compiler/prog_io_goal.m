@@ -193,7 +193,7 @@ parse_goal_2("<=>", [A0, B0], V0, equivalent(A, B), V):-
 	parse_goal(B0, V1, B, V).
 
 parse_goal_2("some", [Vars0, A0], V0, some(Vars, A), V):-
-	term__vars(Vars0, Vars),
+	parse_list_of_vars(Vars0, Vars),
 	parse_goal(A0, V0, A, V).
 
 	% The following is a temporary hack to handle `is' in
@@ -227,9 +227,10 @@ parse_goal_with_purity(A0, V0, Purity, A, V) :-
 
 parse_some_vars_goal(A0, VarSet0, Vars, A, VarSet) :-
 	( 
-		A0 = term__functor(term__atom("some"), [Vars0, A1], _Context)
+		A0 = term__functor(term__atom("some"), [Vars0, A1], _Context),
+		parse_list_of_vars(Vars0, Vars1)
 	->
-		term__vars(Vars0, Vars),
+		Vars = Vars1,
 		parse_goal(A1, VarSet0, A, VarSet)
 	;
 		Vars = [],
