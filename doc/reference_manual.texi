@@ -6,7 +6,7 @@
 @ifinfo
 @format
 START-INFO-DIR-ENTRY
-* Mercury: (mercury_ref).		The Mercury Language Reference Manual
+* Mercury: (mercury_ref).	The Mercury Language Reference Manual
 END-INFO-DIR-ENTRY
 @end format
 @end ifinfo
@@ -185,34 +185,34 @@ occuring in the @var{body} must also occur in the @var{type}.
 Here are some examples:
 
 @example
-	:- type fruit
-		--->	apple
-		;	orange
-		;	banana
-		;	pear.
+        :- type fruit
+                --->    apple
+                ;       orange
+                ;       banana
+                ;       pear.
 
-	:- type strange
-		--->	foo(int)
-		;	bar(string).
+        :- type strange
+                --->    foo(int)
+                ;       bar(string).
 
-	:- type employee
-		--->	employee(
-				string,		% name
-				int,		% age
-				string		% department
-			).
+        :- type employee
+                --->    employee(
+                               string,               % name
+                               int,                  % age
+                               string                % department
+                        ).
 
-	:- type tree
-		--->	empty
-		;	leaf(int)
-		;	branch(tree, tree).
+        :- type tree
+                --->    empty
+                ;       leaf(int)
+                ;       branch(tree, tree).
 
-	:- type list(T)
-		--->	[]
-		;	[T | list(T)].
+        :- type list(T)
+                --->    []
+                ;       [T | list(T)].
 
-	:- type pair(T1, T2)
-		--->	T1 - T2.
+        :- type pair(T1, T2)
+                --->    T1 - T2.
 @end example
 
 If the body of a discriminated union type definition contains a term whose
@@ -223,9 +223,9 @@ the semi-colon.  It is then also necessary to quote curly braces.
 The following example illustrates this:
 
 @example
-	:- type tricky
-		--->	@{ int ; int @}
-		;	@{ @{ int @} @}.
+        :- type tricky
+                --->    @{ int ; int @}
+                ;       @{ @{ int @} @}.
 @end example
 
 @item
@@ -233,9 +233,9 @@ Equivalence types: these are type abbreviations.  They are defined
 using `==' as follows.
 
 @example
-	:- type money == int.
-	:- type assoc_list(KeyType, ValueType)
-		== list(pair(KeyType, ValueType)).
+        :- type money == int.
+        :- type assoc_list(KeyType, ValueType)
+                == list(pair(KeyType, ValueType)).
 @end example
 
 Like discriminated union definitions, equivalence type definitions must
@@ -246,8 +246,8 @@ Abstract types: these are types whose implementation is hidden.
 The type declarations
 
 @example
-	:- type t1.
-	:- type t2(T1, T2).
+        :- type t1.
+        :- type t2(T1, T2).
 @end example
 
 @noindent
@@ -286,6 +286,9 @@ solution but may fail, then that mode of the predicate is
 If all calls to a particular mode of a predicate do not fail, but may
 have more than one solution, then that mode of the predicate is
 @dfn{multideterministic} (@code{multidet}).
+[@strong{Warning}: the current implementation treats @code{multidet}
+as an alias for @code{nondet}.  We will implement @code{multidet} properly
+sometime in the near future.]
 
 @item
 If some calls to a particular mode of a predicate
@@ -331,8 +334,8 @@ If the mode of the predicate is given in the @code{:- pred} declaration
 rather than in a separate @code{:- mode} declaration,
 then the determinism annotation goes on the @code{:- pred} declaration.
 In particular, this is necessary if the predicate does not have any
-argument variables.
-For example:
+argument variables.  For example:
+
 @example
 :- pred loop(int::in) is erroneous.
 loop(X) :- loop(X).
@@ -349,16 +352,6 @@ q :- fail.
 The determinism categories form a lattice, as specified by
 the following ordering:
 
-@center erroneous > failure
-@center erroneous > det
-@center failure > semidet
-@center det > semidet
-@center semidet > nondet
-@center det > multidet
-@center multidet > nondet
-
-Graphically:
-
 @example
              erroneous
               /     \
@@ -369,7 +362,37 @@ Graphically:
                    nondet
 @end example
 
-The compiler infers the determinism category of each goal as follows:
+@center erroneous > failure
+@center erroneous > det
+@center failure > semidet
+@center det > semidet
+@center semidet > nondet
+@center det > multidet
+@center multidet > nondet
+
+The determinism of goals is inferred from the determinism
+of their component parts, according to the rules below.
+The inferred determinism of a procedure is just the inferred
+determinism of the procedure's body.
+
+For procedures that are local to a module, the determinism annotations
+may be omitted; in that case, their determinism will be inferred.
+(To be precise, the determinism of procedures without a determinism
+annotation is defined as the least fixpoint of the transformation
+which, given an initial assignment of determism to such procedures,
+applies those rules to infer a new such assignment.)
+
+For procedures that are exported from their containing module,
+it is an error to omit the determinism annotation.
+
+If a determinism annotation is supplied for a predicate,
+the declared determinism is compared against the inferred determinism.
+If the declared determinism is greater than or not comparable to the
+inferred determinism (in the partial ordering above), it is an error.
+If the declared determinism is less than the inferred determinism,
+it is not an error, but the implementation may issue a warning.
+
+The compiler infers the determinism category of each goal as follows.
 
 @table @asis
 @item Calls
@@ -381,6 +404,9 @@ The determinism of a unification is either @code{det}, @code{semidet},
 or @code{failure}, depending on its mode.
 
 @item Conjunctions
+The determinism of the empty conjunction (the goal @samp{true})
+is @code{det}.
+
 The determinism of @samp{(@var{A}, @var{B})} is defined as
 follows.  If the determinism of @var{A} is @code{erroneous} or
 @code{failure}, then the determinism of the conjunction is also
@@ -390,20 +416,76 @@ determinism of the conjuncts.
 @comment XXX meet? should that be join?
 
 @item Disjunctions
-The determinism of a disjunction is defined as follows.
-Firstly, if the disjunction has an input variable for
-which there is a partition of the disjuncts such that
-each 
+The determinism of the empty disjunction (the goal @samp{fail})
+is @code{failure}.
+
+The determinism of a non-empty disjunction is defined in terms of
+its @dfn{local determinism} and the determinism of the disjuncts.
+
+The local determinism of a disjunction is @code{nondet} unless the
+compiler can detect that the disjunction is actually a switch and
+hence @dfn{index} the disjunction.
+Precisely describing the rules for detecting switches is somewhat tricky,
+and I won't attempt to do so, but they are
+reasonable easy to understand in practice.
+The compiler can index on any input variable to a disjunction
+(not just the first head variable).  It can also index on more than
+one variable, since after indexing on the first one, switch detection is
+applied to all sub-disjunctions.  The current implementation does
+not do the common sub-expression hoisting that is necessary for
+deep indexing (indexing on a sub-term, not just on the top-level
+functor), but you can do the common-subexpression hoisting yourself.
+For example, it cannot detect that the following two clauses
+
+@example
+        :- mode p(in).
+        p(f(a)) :-
+                ...
+        p(f(b)) :- 
+                ..
+@end example
+
+The local determinism of a switch is @code{det} if the different
+cases of the switch cover all the possible alternatives for the
+input variable; otherwise, it is @code{semidet}.
+
+If the disjunction is not a switch, but some subset of the disjuncts
+form a @code{det} switch, then the determinism of the disjunction
+
+
+
+@noindent
+are disjoint, but it can index them if you write the code as
+
+@example
+        p(f(X)) :-
+                ( X = a, ...
+		; X = b, ...
+		).
+@end example
+
+If any of the disjuncts will never fail, then the disjunction
+will never fail
 
 @item If-then-else
 
+If the determinism of the condition of the if-then-else is
+@code{erroneous} or @code{failure}, the determinism of the if-then-else
+is @code{erroneous}.  If the condition is @code{det}, the determinism
+of the if-then-else is the same as the determinism of the @samp{then}
+part.  If the condition is @code{semidet}, the determinism 
+
 @item Negations
+
+If the determinism of the negated goal is @code{erroneous},
+then the determinism of the negation is @code{erroneous}.
+If the determinism of the negated goal is @code{det},
+the determinism of the negation is @code{failure}.
+Otherwise, the determinism of the negation is @code{semidet}.
 
 @end table
 
-If a predicate is not exported from its containing module, the
-determinism declaration may be omitted.  In this case, the compiler
-will infer the most appropriate determinism declaration.
+Note that ``perfect'' determinism inference is an undecideable
 
 @contents
 @bye

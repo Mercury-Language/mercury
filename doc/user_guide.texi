@@ -316,8 +316,13 @@ Nothing special here - just use the command @samp{./@var{module}
 @subsection Using the debugger.
 Use the command @samp{mnp}.
 Inside the debugger, load your source files with @samp{[@var{module}]}.
+
+Alternately, you can use the --debug option to mnl when linking.
+This will produce an executable whose entry point is the NU-Prolog
+debugger, rather than main/2 in your program.
+
 To start executing your program, type
-@samp{run("@var{module} @var{arguments}")}.
+@samp{r("@var{module} @var{arguments}")}.
 
 All the NU-Prolog debugging commands work as usual.
 Use the @code{trace} and @code{spy} commands, and in the tracer use
@@ -326,10 +331,10 @@ For more information, see the NU-Prolog documentation.
 
 By default the debugger only displays the top-level of terms;
 you can use the @code{|} command to enter an interactive term
-browser.  (Note that in the debugger, we use a version of
+browser.  Also note that in the debugger, we use a version of
 @code{error/1} which fails rather than aborting after printing the
 "Software Error:" message; this makes debugging easier, but will of course
-change the behaviour after an error occurs.)
+change the behaviour after an error occurs.
 
 @subsection Hazards of using NU-Prolog
 There are some Mercury programs which are not valid NU-Prolog programs.
