@@ -12,6 +12,7 @@ List3 ^ e_next ^ e_data = "new value"
 size(List3 ^ e_next ^ e_data) = 9
 Pair0 ^ fst = 1
 Pair = "new first elem" - 2
+size of `type_and_size("string", 6)' = 6
 'fst:=' [4,5,6] = [4 - 2, 5 - 2, 6 - 2]
 DCG ^ arg1 = 1
 DCG ^ arg3 ^ arg4 = 3

@@ -30,6 +30,12 @@
 	;	e_nil
 	.
 
+:- type type_and_size(T)
+	---> type_and_size(
+		type_and_size_data :: T,
+		data_size :: int
+	).
+
 :- typeclass has_size(T) where [
 		func size(T) = int
 	].
@@ -37,6 +43,7 @@
 :- instance has_size(int).
 :- instance has_size(string).
 :- instance has_size(char).
+:- instance has_size(type_and_size(T)).
 
 :- type my_pair(T, U).
 
@@ -82,7 +89,11 @@ main -->
 	write_arg("Pair0 ^ fst", Pair0 ^ fst),
 	{ Pair = Pair0 ^ fst := "new first elem" },
 	write_arg("Pair", Pair),
-	
+
+	{ TypeAndSize = type_and_size("string", 6) },
+	io__write_string("size of `type_and_size(""string"", 6)' = "),
+	io__write_int(size(TypeAndSize)),
+	io__nl,
 
 	% Test taking the address of an update function
 	% for which a mode declaration has been supplied.
@@ -104,6 +115,10 @@ main -->
 
 :- instance has_size(char) where [
 		func(size/1) is char__to_int
+	].
+
+:- instance has_size(type_and_size(T)) where [
+		func(size/1) is data_size
 	].
 
 :- func id(T) = T.

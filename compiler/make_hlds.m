@@ -3664,23 +3664,8 @@ produce_instance_method_clauses(name(InstancePredName), PredOrFunc, PredArity,
 	varset__init(VarSet0),
 	make_n_fresh_vars("HeadVar__", PredArity, VarSet0, HeadVars, VarSet), 
 	invalid_pred_id(InvalidPredId),
-	invalid_proc_id(InvalidProcId),
-	(
-		PredOrFunc = predicate,
-		Call = call(InvalidPredId, InvalidProcId, HeadVars, not_builtin,
-			no, InstancePredName),
-		IntroducedGoal = Call - GoalInfo
-	;
-		PredOrFunc = function,
-		pred_args_to_func_args(HeadVars, RealHeadVars, ReturnVar),
-		create_atomic_unification(ReturnVar, 
-			functor(cons(InstancePredName, PredArity),
-				RealHeadVars), 
-			Context, explicit, [], IntroducedGoal0),
-		% set the goal_info
-		IntroducedGoal0 = IntroducedGoalExpr - _,
-		IntroducedGoal = IntroducedGoalExpr - GoalInfo
-	),
+	construct_pred_or_func_call(InvalidPredId, PredOrFunc,
+		InstancePredName, HeadVars, GoalInfo, IntroducedGoal),
 	IntroducedClause = clause([], IntroducedGoal, Context),
 
 	map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
