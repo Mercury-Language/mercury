@@ -289,7 +289,10 @@ generate_method_c_code(ModuleName,
 		{ Entity = mlds__function(_, Params, yes(Statement)) },
 		{ has_target_code_statement(Statement) }
 	->
-		{ params_to_il_signature(ModuleName, Params, ILSignature) },
+		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+		{ DataRep = il_data_rep(HighLevelData) },
+		{ ILSignature = params_to_il_signature(DataRep, 
+			ModuleName, Params) },
 		{ predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, Id) },
 		io__write_string("static "),
 		{ ILSignature = signature(_CallConv, ReturnType, ILArgs) },
@@ -339,6 +342,7 @@ generate_method_c_code(ModuleName,
 	io__state, io__state).
 :- mode write_managed_cpp_statement(in, di, uo) is det.
 write_managed_cpp_statement(Statement) -->
+	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 	( 
 			% XXX this ignores the language target.
 		{ Statement = statement(atomic(target_code(
@@ -405,8 +409,8 @@ write_managed_cpp_statement(Statement) -->
 		{ Statement = statement(atomic(
 			new_object(Target, _MaybeTag, Type, _MaybeSize, 
 				_MaybeCtorName, _Args, _ArgTypes)), _) },
-		{ ILType = mlds_type_to_ilds_type(Type) },
-		{ ILType = ilds__type([], class(ClassName)) }
+		{ ClassName = mlds_type_to_ilds_class_name(
+			il_data_rep(HighLevelData), Type) }
 	->
 		write_managed_cpp_lval(Target),
 		io__write_string(" = new "),
@@ -574,8 +578,10 @@ write_managed_cpp_defn_decl(Defn) -->
 :- pred write_managed_cpp_type(mlds__type, io__state, io__state).
 :- mode write_managed_cpp_type(in, di, uo) is det.
 write_managed_cpp_type(Type) -->
-	{ ILType = mlds_type_to_ilds_type(Type) },
-	write_il_type_as_managed_cpp_type(ILType).
+	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+	{ DataRep = il_data_rep(HighLevelData) },
+	write_il_type_as_managed_cpp_type(
+		mlds_type_to_ilds_type(DataRep, Type)).
 
 	% XXX this could be more efficient
 :- pred has_target_code_statement(mlds__statement).
