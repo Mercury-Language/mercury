@@ -37,6 +37,7 @@
 :- include_module posix__dup.
 :- include_module posix__exec.
 :- include_module posix__fork.
+:- include_module posix__getpid.
 :- include_module posix__kill.
 :- include_module posix__lseek.
 :- include_module posix__mkdir.
