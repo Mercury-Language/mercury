@@ -54,6 +54,7 @@ typedef struct String_List_struct {
 static const char *MR_progname = NULL;
 
 /* options and arguments, set by parse_options() */
+static const char *output_file_name = NULL;
 static const char *entry_point = "mercury__main_2_0";
 static const char *hl_entry_point = "main_2_p_0";
 static int maxcalls = MAXCALLS;
@@ -260,6 +261,7 @@ static const char if_need_to_init[] =
 /* --- function prototypes --- */
 static	void	parse_options(int argc, char *argv[]);
 static	void	usage(void);
+static	void	set_output_file(void);
 static	void	do_path_search(void);
 static	char	*find_init_file(const char *base_name);
 static	bool	file_exists(const char *filename);
@@ -324,6 +326,8 @@ main(int argc, char **argv)
 
 	parse_options(argc, argv);
 
+	set_output_file();
+
 	do_path_search();
 	output_headers();
 
@@ -348,6 +352,10 @@ main(int argc, char **argv)
 		fputs("/* Force syntax error, since there were */\n", stdout);
 		fputs("/* errors in the generation of this file */\n", stdout);
 		fputs("#error \"You need to remake this file\"\n", stdout);
+		if (output_file_name != NULL) {
+			(void) fclose(stdout);
+			(void) remove(output_file_name);
+		}
 		return EXIT_FAILURE;
 	}
 
@@ -363,7 +371,7 @@ parse_options(int argc, char *argv[])
 	int		i;
 	String_List	*tmp_slist;
 
-	while ((c = getopt(argc, argv, "ac:iI:ltw:x")) != EOF) {
+	while ((c = getopt(argc, argv, "ac:iI:lo:tw:x")) != EOF) {
 		switch (c) {
 		case 'a':
 			aditi = TRUE;
@@ -397,6 +405,14 @@ parse_options(int argc, char *argv[])
 			output_main_func = FALSE;
 			break;
 
+		case 'o':
+			if (strcmp(optarg, "-") == 0) {
+				output_file_name = NULL; /* output to stdout */
+			} else {
+				output_file_name = optarg;
+			}
+			break;
+
 		case 't':
 			need_tracing = TRUE;
 			need_initialization_code = TRUE;
@@ -427,8 +443,31 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-"Usage: mkinit [-a] [-c maxcalls] [-w entry] [-i] [-l] [-t] [-x] files...\n");
-	exit(1);
+"Usage: mkinit [options] files...\n"
+"Options: [-a] [-c maxcalls] [-o filename] [-w entry] [-i] [-l] [-t] [-x]\n");
+	exit(EXIT_FAILURE);
+}
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** If the `-o' option was used to specify the output file,
+** and the file name specified is not `-' (which we take to mean stdout),
+** then reassign stdout to the specified file.
+*/
+static void
+set_output_file(void)
+{
+	if (output_file_name != NULL) {
+		FILE *result = freopen(output_file_name, "w", stdout);
+		if (result == NULL) {
+			fprintf(stderr,
+				"%s: error opening output file `%s': %s\n",
+				MR_progname, output_file_name,
+				strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+	}
 }
 
 /*---------------------------------------------------------------------------*/
@@ -681,7 +720,7 @@ process_c_file(const char *filename, int *num_bunches_ptr,
 				"special characters are not supported.\n");
 			fprintf(stderr, "File name `%s' contains special "
 				"character `%c'.\n", filename, filename[i]);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -949,7 +988,7 @@ checked_malloc(size_t size)
 	void *mem;
 	if ((mem = malloc(size)) == NULL) {
 		fprintf(stderr, "Out of memory\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	return mem;
 }

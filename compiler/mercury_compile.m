@@ -3101,7 +3101,7 @@ mercury_compile__link_module_list(Modules) -->
 	    ;
 		TraceOpt = ""
 	    },
-	    join_module_list(Modules, ".c", ["> ", InitCFileName], MkInitCmd0),
+	    join_module_list(Modules, ".c", ["-o ", InitCFileName], MkInitCmd0),
 	    { string__append_list(["c2init ", TraceOpt | MkInitCmd0],
 	    	MkInitCmd) },
 	    invoke_shell_command(MkInitCmd, MkInitOK),

@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2000 The University of Melbourne.
+# Copyright (C) 1995-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -33,6 +33,7 @@ library_opt=""
 extra_inits_opt=""
 aditi_opt=""
 extra_init_dirs=""
+output_file="-"
 
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
@@ -69,6 +70,9 @@ Options:
 	-I <directory>, --init-file-directory <directory>
 		Include <directory> in the list of directories searched to
 		locate \`.init' files.
+	-o <filename>, --output <filename>
+		Output the generated C program to the specified file,
+		rather than sending it to the standard output.
 	-w <label>, --entry-point <label>
 		Set entry point to <label>.
 		(Default value corresponds to main/2.)
@@ -109,6 +113,9 @@ while true; do
 
 	-I|--init-file-directory)
 		extra_init_dirs="$extra_init_dirs -I $2"; shift;;
+	
+	-o|--output)
+		output_file="$2"; shift;;
 
 	-w|--entry-point)
 		defentry_opt="-w$2"; shift;;
@@ -174,10 +181,12 @@ esac
 case $# in
 	0) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
+		-o "$output_file" \
 		$extra_init_dirs $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
 	   ;;
 	*) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
+		-o "$output_file" \
 		$extra_init_dirs "$@" $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
 	   ;;
 esac

@@ -3043,7 +3043,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		InitCFileName, " : ", DepFileName, " ", DvFileName, " ",
 			All_C2InitArgsDepString, "\n",
 		"\t$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) $(",
-			MakeVarName, ".init_cs) $(ALL_C2INITARGS) > ",
+			MakeVarName, ".init_cs) $(ALL_C2INITARGS) -o ",
 			InitCFileName, "\n\n"
 	]),
 
