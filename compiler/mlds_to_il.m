@@ -2522,8 +2522,14 @@ unaryop_to_il(unbox(UnboxedType), Rval, Instrs) -->
 	}.
 
 :- pred already_boxed(ilds__type::in) is semidet.
+already_boxed(ilds__type(_, object)).
+already_boxed(ilds__type(_, string)).
+already_boxed(ilds__type(_, refany)).
 already_boxed(ilds__type(_, class(_))).
+already_boxed(ilds__type(_, interface(_))).
 already_boxed(ilds__type(_, '[]'(_, _))).
+already_boxed(ilds__type(_, '&'(_))).
+already_boxed(ilds__type(_, '*'(_))).
 
 :- pred binaryop_to_il(binary_op, instr_tree, il_info,
 	il_info) is det.
