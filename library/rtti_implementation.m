@@ -5,7 +5,7 @@
 %-----------------------------------------------------------------------------%
 
 % File: rtti_implementation.m.
-% Main author: trd.
+% Main author: trd, petdr.
 % Stability: low.
 
 % This file is intended to provide portable RTTI functionality by implementing
@@ -14,9 +14,12 @@
 % This is simpler writing large amounts of low-level C code, and is much
 % easier to maintain and port to new platforms.
 %
-% This module is not complete, currently only enough functionality is
-% present to implement type_info comparisons and unifications (which is enough
-% to get univ working).
+% This module is not complete, the majority of the functionality is
+% implemented, but the following still needs to be implemented
+% 	* functionality required to support construct.construct
+% 	* functionality required to support type_desc.type_ctor
+% 	* currently we recognise RTTI for higher order types, however
+% 	  we don't interpret that RTTI fully.
 %
 % The plan is to migrate most of the Mercury level data structures in
 % compiler/rtti.m here, and to interpret them, instead of relying on access
