@@ -3523,7 +3523,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(
 	io__progname(DefaultProgname::in, PrognameOut::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	if (progname) {
+	if (MR_progname) {
 		/*
 		** The silly casting below is needed to avoid
 		** a gcc warning about casting away const.
@@ -3534,7 +3534,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		*/
 		MR_make_aligned_string(
 			MR_LVALUE_CAST(MR_ConstString, PrognameOut),
-			progname);
+			MR_progname);
 	} else {
 		PrognameOut = DefaultProgname;
 	}
