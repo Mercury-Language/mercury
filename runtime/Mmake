@@ -125,4 +125,7 @@ clean_mod_c:
 		rm -f `basename $$file .mod`.c; \
 	done
 
+realclean:
+	rm -f libmer.a libmer.so
+
 #-----------------------------------------------------------------------------#
