@@ -274,10 +274,13 @@ endif
 
 # Static linking doesn't work on Solaris in debug grades
 # ('-ldl' doesn't work with static linking).
+STATIC_LINK_PROGS =
 ifneq "$(findstring solaris,$(FULLARCH)) $(findstring debug,$(GRADE))" "solaris debug"
-	STATIC_LINK_PROGS = parse
-else
-	STATIC_LINK_PROGS =
+	# The `parse' test also links with the debug libraries,
+	# so it only works in LLDS grades.
+	ifeq "$(filter hl% java% il%,$(GRADE))" ""
+		STATIC_LINK_PROGS = parse
+	endif
 endif
 
 PROGS = $(ORDINARY_PROGS) $(BROKEN_FOR_LCC_PROGS) $(CLOSURE_LAYOUT_PROGS) \
