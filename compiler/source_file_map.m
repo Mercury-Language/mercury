@@ -189,7 +189,7 @@ write_source_file_map_2(MapStream, FileName) -->
 		;
 			PartialFileName = FileName
 		},
-		{ file_name_to_module_name(dir__basename(PartialFileName),
+		{ file_name_to_module_name(dir__basename_det(PartialFileName),
 			DefaultModuleName) },
 		(
 			% Only include a module in the mapping if the

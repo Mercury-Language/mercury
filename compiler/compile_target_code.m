@@ -839,7 +839,7 @@ link_module_list(Modules, Succeeded) -->
     	    ( { TargetType = executable } ->
 		{ list__map(
 		    (pred(ModuleStr::in, ModuleName::out) is det :-
-			dir__basename(ModuleStr, ModuleStrBase),
+			ModuleStrBase = dir__basename_det(ModuleStr),
 			file_name_to_module_name(ModuleStrBase, ModuleName)
 		    ),
 		    Modules, ModuleNames) },
@@ -1589,7 +1589,7 @@ join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
 join_module_list([], _Extension, Terminator, Terminator) --> [].
 join_module_list([Module | Modules], Extension, Terminator,
 			[FileName, " " | Rest]) -->
-	{ dir__basename(Module, BaseName) },
+	{ BaseName = dir__basename_det(Module) },
 	{ file_name_to_module_name(BaseName, ModuleName) },
 	module_name_to_file_name(ModuleName, Extension, no, FileName),
 	join_module_list(Modules, Extension, Terminator, Rest).

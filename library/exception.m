@@ -62,6 +62,11 @@
 :- mode try(pred(out) is cc_multi,  out(cannot_fail)) is cc_multi.
 :- mode try(pred(out) is cc_nondet, out)              is cc_multi.
 
+% As above. This version has only one mode, so it can be passed
+% as a closure (e.g. to builtin.promise_only_solution).
+:- pred try_det(pred(T),		exception_result(T)).
+:- mode try_det(pred(out) is det,       out(cannot_fail)) is cc_multi.
+
 %
 % try_io(Goal, Result, IO_0, IO):
 %    Operational semantics:
@@ -83,6 +88,13 @@
 :- mode try_io(pred(out, di, uo) is cc_multi,
 		out(cannot_fail), di, uo) is cc_multi.
 
+% As above. This version has only one mode, so it can be passed
+% as a closure (e.g. to builtin.promise_only_solution_io).
+:- pred try_io_det(pred(T, io__state, io__state),
+		exception_result(T), io__state, io__state).
+:- mode try_io_det(pred(out, di, uo) is det,     
+		out(cannot_fail), di, uo) is cc_multi.
+
 %
 % try_store(Goal, Result, Store_0, Store):
 %    Just like try_io, but for stores rather than io__states.
@@ -92,6 +104,13 @@
 :- mode try_store(pred(out, di, uo) is det,     
 		out(cannot_fail), di, uo) is cc_multi.
 :- mode try_store(pred(out, di, uo) is cc_multi,
+		out(cannot_fail), di, uo) is cc_multi.
+
+% As above. This version has only one mode, so it can be passed
+% as a closure (e.g. to builtin.promise_only_solution_io).
+:- pred try_store_det(pred(T, store(S), store(S)),
+		exception_result(T), store(S), store(S)).
+:- mode try_store_det(pred(out, di, uo) is det,     
 		out(cannot_fail), di, uo) is cc_multi.
 
 %
@@ -154,6 +173,24 @@
 
 :- func rethrow(exception_result(T)) = _.
 :- mode rethrow(in(bound(exception(ground)))) = out is erroneous.
+
+%
+% finally(P, PRes, Cleanup, CleanupRes, IO0, IO).
+%	Call P and ensure that Cleanup is called afterwards,
+%	no matter whether P succeeds or throws an exception.
+%	PRes is bound to the output of P.
+%	CleanupRes is bound to the output of Cleanup.
+%	A exception thrown by P will be rethrown after Cleanup
+%	is called, unless Cleanup throws an exception.
+%	This predicate performs the same function as the `finally'
+%	clause (`try {...} finally {...}') in languages such as Java.
+:- pred finally(pred(T, io__state, io__state), T,
+		pred(io__res, io__state, io__state), io__res,
+		io__state, io__state).
+:- mode finally(pred(out, di, uo) is det, out,
+		pred(out, di, uo) is det, out, di, uo) is det.
+:- mode finally(pred(out, di, uo) is cc_multi, out,
+		pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -288,6 +325,67 @@ rethrow(exception(Univ)) :-
 rethrow(ExceptionResult) = _ :-
 	rethrow(ExceptionResult).
 
+:- pragma promise_pure(finally/6).
+finally(P::(pred(out, di, uo) is det), PRes::out,
+		Cleanup::(pred(out, di, uo) is det), CleanupRes::out,
+		!.IO::di, !:IO::uo) :-
+	promise_only_solution_io(
+		(pred(Res::out, !.IO::di, !:IO::uo) is cc_multi :-
+			finally_2(P, Cleanup, Res, !IO)
+		), {PRes, CleanupRes}, !IO).
+finally(P::(pred(out, di, uo) is cc_multi), PRes::out,
+		Cleanup::(pred(out, di, uo) is cc_multi), CleanupRes::out,
+		!.IO::di, !:IO::uo) :-
+	finally_2(P, Cleanup, {PRes, CleanupRes}, !IO).
+
+:- pred finally_2(pred(T, io__state, io__state),
+		pred(io__res, io__state, io__state), {T, io__res},
+		io__state, io__state).
+:- mode finally_2(pred(out, di, uo) is det,
+		pred(out, di, uo) is det, out, di, uo) is cc_multi.
+:- mode finally_2(pred(out, di, uo) is cc_multi,
+		pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
+:- pragma promise_pure(finally_2/5).
+
+finally_2(P, Cleanup, {PRes, CleanupRes}, !IO) :-
+	try_io(P, ExcpResult, !IO),
+	(
+		ExcpResult = succeeded(PRes),
+		Cleanup(CleanupRes, !IO)
+	;
+		ExcpResult = exception(_),
+		Cleanup(_, !IO),
+		% The io__state resulting from Cleanup can't
+		% possibly be used, so we have to trick the
+		% compiler into not removing the call.
+		(
+			semidet_succeed,
+			impure use(!.IO)
+		->
+			rethrow(ExcpResult)		
+		;
+			error("exception.finally_2")
+		)
+	).
+
+:- impure pred use(T).
+:- mode use(in) is det.
+
+:- pragma foreign_proc("C",
+	use(_T::in),
+	[will_not_call_mercury, thread_safe],
+	";").
+:- pragma foreign_proc("C#",
+	use(_T::in),
+	[will_not_call_mercury, thread_safe],
+	";").
+:- pragma foreign_proc("Java",
+	use(_T::in),
+	[will_not_call_mercury, thread_safe],
+	";").
+
+%-----------------------------------------------------------------------------%
+
 :- pred wrap_success(pred(T), exception_result(T)) is det.
 :- mode wrap_success(pred(out) is det, out) is det.
 :- mode wrap_success(pred(out) is semidet, out) is semidet.
@@ -317,6 +415,8 @@ wrap_success_or_failure(Goal, Result) :-
 try(_Detism, Goal, Result) :-
 	builtin_catch(wrap_success_or_failure(Goal), wrap_exception, Result).
 *********************/
+
+try_det(Goal, Result) :- try(Goal, Result).
 
 try(Goal, Result) :-
 	get_determinism(Goal, Detism),
@@ -392,6 +492,8 @@ incremental_try_all(Goal, AccPred, Acc0, Acc) :-
 % We need to switch on the Detism argument
 % for the same reason as above.
 
+try_store_det(StoreGoal, Result) --> try_store(StoreGoal, Result).
+
 try_store(StoreGoal, Result) -->
 	{ get_determinism_2(StoreGoal, Detism) },
 	try_store(Detism, StoreGoal, Result).
@@ -436,6 +538,8 @@ handle_store_result(Result0, Result, Store0, Store) :-
 		% the store was from the goal which just threw an exception.
 		unsafe_promise_unique(Store0, Store)
 	).
+
+try_io_det(IO_Goal, Result) --> try_io(IO_Goal, Result).
 
 try_io(IO_Goal, Result) -->
 	{ get_determinism_2(IO_Goal, Detism) },

@@ -664,10 +664,10 @@ mercury_check_for_functions \
 		mprotect memalign memmove \
 		sigaction siginterrupt setitimer \
 		snprintf _snprintf vsnprintf _vsnprintf strerror \
-		open close dup dup2 fdopen fileno fstat stat isatty \
+		open close dup dup2 fdopen fileno fstat stat lstat isatty \
 		getpid setpgid fork execlp wait kill \
 		grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
-		access sleep opendir readdir closedir
+		access sleep opendir readdir closedir mkdir symlink readlink
 
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_FOR_HEADERS( \

@@ -185,22 +185,21 @@ read_options_file(ErrorIfNotExist0, Search, MaybeDirName, OptionsFile0,
 		{ ErrorIfNotExist = ErrorIfNotExist0 },
 		{ SearchDirs = [dir__this_directory] }
 	),
-	{ dir__split_name(OptionsFile0, OptionsDir, OptionsFile) },
-	(
-		% Is it an absolute pathname?
-		% XXX This won't work on Windows
-		% (but GNU Make does it this way too).
-		{ string__index(OptionsDir, 0,
-			dir__directory_separator) }
-	->
-		{ FileToFind = OptionsFile },
-		{ Dirs = [OptionsDir] }
-	;
-		{ MaybeDirName = yes(DirName) }
-	->
-		{ FileToFind = OptionsFile },
-		{ Dirs = [dir__make_path_name(DirName, OptionsDir)
-				| SearchDirs] }
+	( { dir__split_name(OptionsFile0, OptionsDir, OptionsFile) } ->
+		(
+			{ dir__path_name_is_absolute(OptionsDir) }
+		->
+			{ FileToFind = OptionsFile },
+			{ Dirs = [OptionsDir] }
+		;
+			{ MaybeDirName = yes(DirName) }
+		->
+			{ FileToFind = OptionsFile },
+			{ Dirs = [DirName/OptionsDir | SearchDirs] }
+		;
+			{ Dirs = SearchDirs },
+			{ FileToFind = OptionsFile0 }
+		)
 	;
 		{ Dirs = SearchDirs },
 		{ FileToFind = OptionsFile0 }
@@ -212,7 +211,7 @@ read_options_file(ErrorIfNotExist0, Search, MaybeDirName, OptionsFile0,
 		debug_msg(
 			(pred(di, uo) is det -->
 				io__write_string("Reading options file "),
-				io__write_string(FoundDir / OptionsFile),
+				io__write_string(FoundDir/FileToFind),
 				io__nl
 			)),
 
@@ -226,9 +225,9 @@ read_options_file(ErrorIfNotExist0, Search, MaybeDirName, OptionsFile0,
 		( { ErrorIfNotExist = error } ->
 			{ Dirs = [SingleDir] ->
 				ErrorFile = maybe_add_path_name(SingleDir,
-						OptionsFile)	
+						FileToFind)
 			;
-				ErrorFile = OptionsFile
+				ErrorFile = FileToFind
 			},
 			io__write_string("Error reading options file `"),
 			io__write_string(ErrorFile),

@@ -1095,7 +1095,7 @@ module_name_to_make_var_name(ModuleName, MakeVarName) :-
 	prog_out__sym_name_to_string(ModuleName, ".", MakeVarName).
 
 make_directory(DirName) -->
-	make_directory(DirName, _Result).
+	modules__make_directory(DirName, _Result).
 
 make_directory(DirName, Result) -->
 	( { dir__this_directory(DirName) } ->
@@ -5431,7 +5431,11 @@ read_mod_from_file(FileName, Extension, Descr, Search, ReturnTimestamp,
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
 	{ string__append(FileName, Extension, FullFileName) },
-	{ dir__basename(FileName, BaseFileName) },
+	{ dir__basename(FileName, BaseFileName0) ->
+		BaseFileName = BaseFileName0
+	;
+		BaseFileName = ""
+	},
 	{ file_name_to_module_name(BaseFileName, DefaultModuleName) },
 	( { Search = yes } ->
 		globals__io_lookup_accumulating_option(search_directories,

@@ -27,6 +27,30 @@ Changes to the Mercury standard library:
 * Several new functions have been added to the string module, namely
   elem/2, unsafe_elem/2, chomp/1, lstrip/1, lstrip/2, rstrip/1, rstrip/2,
   strip/1, prefix_length/2, and suffix_length/2.
+* The dir module now handles Microsoft Windows pathnames correctly.
+* dir__split_name and dir__basename are now semidet, not det.
+* We've added some new predicates and functions to the dir module:
+	basename_det/1,
+	expand_braces/1,
+	is_directory_separator/1,
+	make_directory/4,
+	make_single_directory/4,
+	foldl2/6,
+	parent_directory/0,
+	path_name_is_absolute/1,
+	path_name_is_root_directory/1,
+	recursive_foldl2/7.
+* We've added several new predicates to the io module:
+	have_symlinks/0,
+	make_symlink/4,
+	follow_symlink/4,
+	check_file_accessibility/5,
+	file_type/4,
+	input_stream_foldl2_io_maybe_stop/{6,7},
+	binary_input_stream_foldl2_io_maybe_stop/{6,7}.
+* exception.m now contains a predicate finally/6 which can be used to
+  ensure that resources are released whether a called closure exits
+  normally or throws an exception.
 
 Portability improvements:
 * Nothing yet.
@@ -85,6 +109,42 @@ Changes to the Mercury standard library:
   in the leaf nodes.  Joining two cords together to construct a new cord
   is therefore an O(1) operation.
 
+* The dir module now handles Microsoft Windows pathnames correctly.
+
+* dir__split_name and dir__basename are now semidet, not det.
+  dir__split_name fails for root directories or pathnames not
+  containing a directory separator.
+  dir__basename fails for root directories.
+
+* We've added some new predicates and functions to the dir module:
+	basename_det/1,
+	expand_braces/1,
+	is_directory_separator/1,
+	make_directory/4,
+	make_single_directory/4,
+	foldl2/6,
+	parent_directory/0,
+	path_name_is_absolute/1,
+	path_name_is_root_directory/1,
+	recursive_foldl2/7.
+
+* We've added several new predicates to the io module:
+	have_symlinks/0,
+	make_symlink/4,
+	follow_symlink/4,
+	check_file_accessibility/5,
+	file_type/4,
+	input_stream_foldl2_io_maybe_stop/{6,7},
+	binary_input_stream_foldl2_io_maybe_stop/{6,7}.
+
+* We've added predicates try_det/2, try_io_det/4 and try_store_det/4
+  to exception.m.  These predicates have only one mode, so it's more
+  convenient to pass them to promise_only_solution.
+
+* exception.m now contains a predicate finally/6 which can be used to
+  ensure that resources are released whether a called closure exits
+  normally or throws an exception.
+
 * Several new functions have been added to the string module, namely
   elem/2, unsafe_elem/2, chomp/1, lstrip/1, lstrip/2, rstrip/1, rstrip/2,
   strip/1, prefix_length/2, and suffix_length/2.
@@ -96,8 +156,6 @@ Changes to the Mercury standard library:
 * We've added a new predicate, map__common_subset, to map.m.
 
 * We've added a predicate, map_fold, to set.m.
-
-* We've added a predicate, expand_braces, to dir.m.
 
 * We've added a function, pred_to_bool, to bool.m.
 

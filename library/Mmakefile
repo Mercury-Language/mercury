@@ -340,10 +340,11 @@ endif	#
 endif	# GRADE != il && GRADE != java
 #-----------------------------------------------------------------------------#
 
-# Ensure we recompile library__version if VERSION is changed.
-$(os_subdir)library.$O \
-$(os_subdir)library.pic_o \
-	: $(RUNTIME_DIR)/mercury_conf.h
+# Rebuild all the object files if the configuration macros or VERSION
+# have changed. Only some source files use the configuration macros,
+# but these uses may leak into other object files with inter-module
+# optimization.
+$(mer_std.os): $(RUNTIME_DIR)/mercury_conf.h
 
 # The object files in this directory depend on many of the header files
 # in the runtime. However, changes to many of these header files require

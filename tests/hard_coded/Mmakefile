@@ -36,6 +36,7 @@ ORDINARY_PROGS=	\
 	deep_copy_exist \
 	deforest_cc_bug \
 	det_in_semidet_cntxt \
+	dir_test \
 	division_test \
 	dot_separator \
 	dupcall_types_bug \
@@ -366,6 +367,21 @@ no_fully_strict.out: no_fully_strict
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
 	fi
+
+#-----------------------------------------------------------------------------#
+
+dir_test.out: prepare_for_dir_test
+
+prepare_for_dir_test:
+	rm -rf test_dir unwritable
+	touch unwritable
+	chmod -w unwritable
+
+dir_test.clean: clean_dir_test
+
+.PHONY: clean_dir_test
+clean_dir_test:
+	rm -rf test_dir unwritable
 
 #-----------------------------------------------------------------------------#
 

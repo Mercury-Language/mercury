@@ -693,12 +693,16 @@
 ** MR_WIN32_GETSYSTEMINFO -- Is GetSystemInfo() available?
 **
 ** MR_WIN32_VIRTUAL_ALLOC -- Is VirtualAlloc() available?
+**
+** MR_BROKEN_ST_INO - Is the st_ino field of `struct stat' junk.
+**	Windows doesn't fill in this field correctly.
 */
 #if _WIN32
   #define MR_WIN32
   #define MR_WIN32_GETSYSTEMINFO
   #define MR_WIN32_VIRTUAL_ALLOC
   #define MR_WIN32_GETPROCESSTIMES
+  #define MR_BROKEN_ST_INO
 #endif
 
 /*---------------------------------------------------------------------------*/

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2002 The University of Melbourne.
+** Copyright (C) 1995-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -200,6 +200,7 @@
 **	MR_HAVE_DLSYM   	we have the dlsym() function.
 **	MR_HAVE_DLERROR   	we have the dlerror() function.
 **	MR_HAVE_STAT 		we have the stat() function.
+**	MR_HAVE_LSTAT 		we have the lstat() function.
 **	MR_HAVE_FSTAT 		we have the fstat() function.
 **	MR_HAVE_FDOPEN 		we have the fdopen() function.
 **	MR_HAVE_OPEN		we have the open() function.
@@ -227,6 +228,9 @@
 **	MR_HAVE_OPENDIR		we have the opendir() function.
 **	MR_HAVE_READDIR		we have the readdir() function.
 **	MR_HAVE_CLOSEDIR	we have the closedir() function.
+**	MR_HAVE_MKDIR		we have the mkdir function.
+**	MR_HAVE_SYMLINK		we have the symlink function.
+**	MR_HAVE_READLINK	we have the readlink function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -253,6 +257,7 @@
 #undef	MR_HAVE_DLSYM
 #undef	MR_HAVE_DLERROR
 #undef	MR_HAVE_STAT
+#undef	MR_HAVE_LSTAT
 #undef	MR_HAVE_FSTAT
 #undef	MR_HAVE_FDOPEN
 #undef	MR_HAVE_OPEN
@@ -277,6 +282,9 @@
 #undef	MR_HAVE_OPENDIR
 #undef	MR_HAVE_READDIR
 #undef	MR_HAVE_CLOSEDIR
+#undef	MR_HAVE_MKDIR
+#undef	MR_HAVE_SYMLINK
+#undef	MR_HAVE_READLINK
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.

@@ -1,4 +1,4 @@
-%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------r
 % Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -24,7 +24,7 @@
 
 :- module io.
 :- interface.
-:- import_module char, string, std_util, list, time, deconstruct.
+:- import_module bool, char, string, std_util, list, time, deconstruct.
 
 %-----------------------------------------------------------------------------%
 
@@ -173,6 +173,20 @@
 %		Applies the given closure to each character read from
 %		the input stream in turn, until eof or error.
 
+:- pred io__input_stream_foldl2_io_maybe_stop(
+			pred(char, bool, T, T, io__state, io__state),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__input_stream_foldl2_io_maybe_stop(
+			(pred(in, out, in, out, di, uo) is det),
+			in, out, di, uo) is det.
+:- mode io__input_stream_foldl2_io_maybe_stop(
+			(pred(in, out, in, out, di, uo) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each character read from
+%		the input stream in turn, until eof or error, or the
+%		closure returns `no' as its second argument.
+
+
 :- pred io__putback_char(char, io__state, io__state).
 :- mode io__putback_char(in, di, uo) is det.
 %		Un-reads a character from the current input stream.
@@ -246,6 +260,19 @@
 			in, out, di, uo) is cc_multi.
 %		Applies the given closure to each character read from
 %		the input stream in turn, until eof or error.
+
+:- pred io__input_stream_foldl2_io_maybe_stop(io__input_stream,
+			pred(char, bool, T, T, io__state, io__state),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__input_stream_foldl2_io_maybe_stop(in,
+			(pred(in, out, in, out, di, uo) is det),
+			in, out, di, uo) is det.
+:- mode io__input_stream_foldl2_io_maybe_stop(in,
+			(pred(in, out, in, out, di, uo) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each character read from
+%		the input stream in turn, until eof or error, or the
+%		closure returns `no' as its second argument.
 
 :- pred io__putback_char(io__input_stream, char, io__state, io__state).
 :- mode io__putback_char(in, in, di, uo) is det.
@@ -774,6 +801,19 @@
 %		Applies the given closure to each byte read from the
 %		current binary input stream in turn, until eof or error.
 
+:- pred io__binary_input_stream_foldl2_io_maybe_stop(
+			pred(int, bool, T, T, io__state, io__state),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__binary_input_stream_foldl2_io_maybe_stop(
+			(pred(in, out, in, out, di, uo) is det),
+			in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io_maybe_stop(
+			(pred(in, out, in, out, di, uo) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each byte read from the
+%		current binary input stream in turn, until eof or error,
+%		or the closure returns `no' as its second argument.
+
 :- pred io__binary_input_stream_foldl(io__binary_input_stream,
 			pred(int, T, T), T, io__maybe_partial_res(T),
 			io__state, io__state).
@@ -805,6 +845,20 @@
 			in, out, di, uo) is cc_multi.
 %		Applies the given closure to each byte read from the
 %		given binary input stream in turn, until eof or error.
+
+:- pred io__binary_input_stream_foldl2_io_maybe_stop(
+			io__binary_input_stream,
+			pred(int, bool, T, T, io__state, io__state),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__binary_input_stream_foldl2_io_maybe_stop(in,
+			(pred(in, out, in, out, di, uo) is det),
+			in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io_maybe_stop(in,
+			(pred(in, out, in, out, di, uo) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each byte read from the
+%		given binary input stream in turn, until eof or error,
+%		or the closure returns `no' as its second argument.
 
 :- pred io__putback_byte(int, io__state, io__state).
 :- mode io__putback_byte(in, di, uo) is det.
@@ -1105,9 +1159,12 @@
 	% io__make_temp(Name, IO0, IO) creates an empty file
 	% whose name which is different to the name of any existing file.
 	% Name is bound to the name of the file.
-	% The file will reside in /tmp if the TMPDIR environment variable
-	% is not set, or in the directory specified by TMPDIR if it
-	% is set.
+	% On Microsoft Windows systems, the file will reside in the current
+	% directory if the TMP environment variable is not set, or in the
+	% directory specified by TMP if it is set.
+	% On other systems, the file will reside in /tmp if the TMPDIR
+	% environment variable is not set, or in the directory specified
+	% by TMPDIR if it is set.
 	% It is the responsibility of the program to delete the file
 	% when it is no longer needed.
 
@@ -1141,14 +1198,64 @@
 	% on some systems, the file previously named `NewFileName' will be
 	% deleted and replaced with the file previously named `OldFileName'.
 
+:- pred io__have_symlinks is semidet.
+	% Can this platform read and create symbolic links.
+
+:- pred io__make_symlink(string, string, io__res, io__state, io__state).
+:- mode io__make_symlink(in, in, out, di, uo) is det.
+	% io__make_symlink(FileName, LinkFileName, Result, IO0, IO)
+	% attempts to make `LinkFileName' be a symbolic link to `FileName'.
+	% If `FileName' is a relative path, it is interpreted relative
+	% to the directory containing `LinkFileName'.
+
+:- pred io__read_symlink(string, io__res(string), io__state, io__state).
+:- mode io__read_symlink(in, out, di, uo) is det.
+	% io__read_symlink(FileName, Result, IO0, IO) returns
+	% `ok(LinkTarget)' if `FileName' is a symbolic link pointing
+	% to `LinkTarget', and `error(Error)' otherwise.
+	% If `LinkTarget' is a relative path, it should be interpreted
+	% relative the directory containing `FileName', not the current
+	% directory.
+
+:- type io__access_type
+	--->	read
+	;	write
+	;	execute
+	.
+
+:- pred io__check_file_accessibility(string, list(access_type),
+		io__res, io__state, io__state).
+:- mode io__check_file_accessibility(in, in, out, di, uo) is det.
+	% io__check_file_accessibility(FileName, AccessTypes, Result)
+	% Check whether the current process can perform the operations
+	% given in `AccessTypes' on `FileName'.
+	% XXX When using the .NET CLI, this predicate will sometimes
+	% report that a directory is writable when in fact it is not.
+
+:- type io__file_type
+	--->	regular_file
+	;	directory
+	;	symbolic_link
+	;	named_pipe
+	;	socket
+	;	character_device
+	;	block_device
+	;	message_queue
+	;	semaphore
+	;	shared_memory
+	;	unknown
+	. 
+
+:- pred io__file_type(bool, string, io__res(file_type), io__state, io__state).
+:- mode io__file_type(in, in, out, di, uo) is det.
+	% io__file_type(FollowSymLinks, FileName, TypeResult)
+	% finds the type of the given file.
+
 :- pred io__file_modification_time(string, io__res(time_t),
 		io__state, io__state).
 :- mode io__file_modification_time(in, out, di, uo) is det.
 	% io__file_modification_time(FileName, TimeResult)
 	% finds the last modification time of the given file.
-	% This predicate will only work on systems which provide
-	% the POSIX C library function stat(). On other systems the
-	% returned result will always be bound to error/1.
 
 %-----------------------------------------------------------------------------%
 
@@ -1301,6 +1408,66 @@
 %-----------------------------------------------------------------------------%
 :- interface.
 
+% For use by dir.m:
+
+	% A system-dependent error indication.
+	% For C, this is the value of errno.
+:- type io__system_error.
+:- pragma foreign_type(c, io__system_error, "MR_Integer").
+:- pragma foreign_type(il, io__system_error,
+		"class [mscorlib]System.Exception").
+
+% io__make_err_msg(Error, MessagePrefix, Message):
+%	`Message' is an error message obtained by looking up the
+%	message for the given errno value and prepending
+%	`MessagePrefix'.
+:- pred io__make_err_msg(io__system_error, string, string,
+		io__state, io__state).
+:- mode io__make_err_msg(in, in, out, di, uo) is det.
+
+% Succeeds iff the Win32 API is available.
+:- pred have_win32 is semidet.
+
+% Succeeds iff the .NET class library is available.
+:- pred have_dotnet is semidet.
+
+% io__make_win32_err_msg(Error, MessagePrefix, Message):
+%	`Message' is an error message obtained by looking up the
+%	error message for the given Win32 error number and prepending
+%	`MessagePrefix'.
+%	This will abort if called on a system which does not support
+%	the Win32 API.
+:- pred io__make_win32_err_msg(io__system_error,
+		string, string, io__state, io__state).
+:- mode io__make_win32_err_msg(in, in, out, di, uo) is det.
+
+% io__make_maybe_win32_err_msg(Error, MessagePrefix, Message):
+%	`Message' is an error message obtained by looking up the
+%	last Win32 error message and prepending `MessagePrefix'.
+%	On non-Win32 systems, the message corresponding to the
+%	current value of errno will be used.
+:- pred io__make_maybe_win32_err_msg(io__system_error,
+		string, string, io__state, io__state).
+:- mode io__make_maybe_win32_err_msg(in, in, out, di, uo) is det.
+
+% io__file_id(FileName, FileId).
+%
+%	Return a unique identifier for the given file (after following
+%	symlinks in FileName).
+%	XXX On Cygwin sometimes two files will have the same file_id.
+%	This is because MS-Windows does not use inodes, so Cygwin
+%	hashes the absolute file name.
+%	On Windows without Cygwin this will always return error(_).
+%	That doesn't matter, because this function is only used for
+%	checking for symlink loops in dir.foldl2, but plain Windows
+%	doesn't support symlinks.
+:- type file_id.
+:- pred io__file_id(string, io__res(file_id), io__state, io__state).
+:- mode io__file_id(in, out, di, uo) is det.
+
+% Succeeds if io__file_id is implemented on this platform.
+:- pred io__have_file_ids is semidet.
+
 % For use by term_io.m:
 
 :- import_module ops.
@@ -1349,7 +1516,7 @@
 
 :- implementation.
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
-:- import_module bool, int, parser, exception.
+:- import_module bool, enum, int, parser, exception.
 :- use_module table_builtin.
 :- use_module rtti_implementation.
 
@@ -1885,6 +2052,31 @@ io__input_stream_foldl2_io(Stream, Pred, T0, Res) -->
 		{ Res = error(T0, Error) }
 	).
 
+io__input_stream_foldl2_io_maybe_stop(Pred, T0, Res) -->
+	io__input_stream(Stream),
+	io__input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res).
+
+io__input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res) -->
+	io__read_char(Stream, CharResult),
+	(
+		{ CharResult = ok(Char) },
+		Pred(Char, Continue, T0, T1),
+		(
+			{ Continue = no },
+			{ Res = ok(T1) }
+		;
+			{ Continue = yes },
+			io__input_stream_foldl2_io_maybe_stop(Stream,
+				Pred, T1, Res)
+		)
+	;
+		{ CharResult = eof },
+		{ Res = ok(T0) }
+	;
+		{ CharResult = error(Error) },
+		{ Res = error(T0, Error) }
+	).
+
 %-----------------------------------------------------------------------------%
 
 :- pred io__clear_err(stream, io__state, io__state).
@@ -1943,7 +2135,7 @@ io__check_err(Stream, Res) -->
 		RetVal = -1;
 	}
 
-	ML_maybe_make_err_msg(RetVal != 0, ""read failed: "",
+	ML_maybe_make_err_msg(RetVal != 0, errno, ""read failed: "",
 		MR_PROC_LABEL, RetStr);
 	MR_update_io(IO0, IO);
 }").
@@ -1957,28 +2149,88 @@ io__check_err(Stream, Res) -->
 	MR_update_io(IO0, IO);
 }").
 
-% io__make_err_msg(MessagePrefix, Message):
-%	`Message' is an error message obtained by looking up the
-%	message for the current value of errno and prepending
-%	`MessagePrefix'.
 :- pred io__make_err_msg(string, string, io__state, io__state).
 :- mode io__make_err_msg(in, out, di, uo) is det.
 
+io__make_err_msg(Msg0, Msg) -->
+	io__get_system_error(Error),
+	io__make_err_msg(Error, Msg0, Msg).
+
+:- pred io__get_system_error(io__system_error, io__state, io__state).
+:- mode io__get_system_error(out, di, uo) is det.
+
 :- pragma foreign_proc("C",
-	make_err_msg(Msg0::in, Msg::out, IO0::di, IO::uo),
+	io__get_system_error(Error::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"{
+	Error = errno;
+	MR_update_io(IO0, IO);
+}").
+
+:- pragma foreign_proc("MC++",
+	io__get_system_error(Error::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"{
+	Error = MR_io_exception;
+	MR_update_io(IO0, IO);
+}").
+
+:- pragma export(make_err_msg(in, in, out, di, uo), "ML_make_err_msg").
+:- pragma foreign_proc("C",
+	make_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	ML_maybe_make_err_msg(MR_TRUE, Msg0, MR_PROC_LABEL, Msg);
+	ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_PROC_LABEL, Msg);
 	MR_update_io(IO0, IO);
 }").
 
 :- pragma foreign_proc("MC++", 
-	make_err_msg(Msg0::in, Msg::out, _IO0::di, _IO::uo),
+	make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure],
 "{
-	Msg = System::String::Concat(Msg0, MR_io_exception->Message);
+	Msg = System::String::Concat(Msg0, Error->Message);
 }").
 
+have_win32 :- semidet_fail.
+
+:- pragma foreign_proc("C",
+	have_win32,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+#ifdef MR_WIN32
+  SUCCESS_INDICATOR = MR_TRUE;
+#else
+  SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+
+have_dotnet :- semidet_fail.
+
+:- pragma foreign_proc("C#",
+	have_dotnet,
+	[will_not_call_mercury, promise_pure, thread_safe],
+	"SUCCESS_INDICATOR = true;").
+
+:- pragma export(make_win32_err_msg(in, in, out, di, uo),
+		"ML_make_win32_err_msg").
+
+make_win32_err_msg(_, _, _, _, _) :-
+	error("io__make_win32_err_msg called for non Win32 back-end").
+
+:- pragma foreign_proc("C",
+	make_win32_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"{
+	ML_maybe_make_win32_err_msg(MR_TRUE, Error, Msg0, MR_PROC_LABEL, Msg);
+	MR_update_io(IO0, IO);
+}").
+
+make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
+	( have_win32 ->
+		make_win32_err_msg(Error, Msg0, Msg, !IO)
+	;
+		make_err_msg(Error, Msg0, Msg, !IO)
+	).		
 
 %-----------------------------------------------------------------------------%
 
@@ -1995,6 +2247,7 @@ io__check_err(Stream, Res) -->
 #ifdef MR_HAVE_SYS_STAT_H
 	#include <sys/stat.h>
 #endif
+#include ""mercury_types.h"" /* for MR_Integer */
 ").
 
 :- pragma foreign_proc("C",
@@ -2062,7 +2315,7 @@ io__file_modification_time(File, Result) -->
 		Msg = MR_string_const("""", 0);
 		Status = 1;
 	} else {
-		ML_maybe_make_err_msg(MR_TRUE, ""stat() failed: "",
+		ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
 			MR_PROC_LABEL, Msg);
 		Status = 0;
 	}
@@ -2074,15 +2327,547 @@ io__file_modification_time(File, Result) -->
 	MR_update_io(IO0, IO);
 
 }").
+ 
+%-----------------------------------------------------------------------------%
 
-io__file_modification_time_2(_FileName, Status, Msg, Time) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ Status = 0 },
-	{ Msg = "io__file_modification_time not implemented for this target "
-		++ "(or compiler back-end)" },
-	% This value will not be used
-	{ Time = rtti_implementation.unsafe_cast(0) }.
+io__file_type(FollowSymLinks, FileName, MaybeType) -->
+	( { file_type_implemented } -> 
+		{ FollowSymLinksInt = ( FollowSymLinks = yes -> 1 ; 0 ) },
+		io__file_type_2(FollowSymLinksInt, FileName, MaybeType)
+	;
+		{ MaybeType = error(io__make_io_error(
+		"Sorry, io.file_type not implemented on this platform")) }
+	).
+
+:- pred file_type_implemented is semidet.
+
+file_type_implemented :- semidet_fail.
+:- pragma foreign_proc("C", file_type_implemented,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+#ifdef MR_HAVE_STAT
+	SUCCESS_INDICATOR = MR_TRUE;
+#else
+	SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+:- pragma foreign_proc("C#", file_type_implemented,
+	[will_not_call_mercury, promise_pure, thread_safe],
+	"SUCCESS_INDICATOR = true;"
+).
+
+:- pred io__file_type_2(int, string, io__res(io__file_type),
+		io__state, io__state).
+:- mode io__file_type_2(in, in, out, di, uo) is det.
+
+:- pragma foreign_proc("C",
+	io__file_type_2(FollowSymLinks::in, FileName::in,
+		Result::out, IO0::di, IO::uo),
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"{
+#ifdef MR_HAVE_STAT
+	struct stat s;
+	int stat_result;
+
+	if (FollowSymLinks == 1) {
+		stat_result = stat(FileName, &s);
+	} else {
+		#ifdef MR_HAVE_LSTAT
+			stat_result = lstat(FileName, &s);
+		#else
+			stat_result = stat(FileName, &s);
+		#endif
+	}
+
+	if (stat_result == 0) {
+		MR_Word type;
+
+		#if defined(S_ISREG)
+			if (S_ISREG(s.st_mode)) {
+				type = ML_file_type_regular();
+			} else
+		#elif defined(S_IFMT) && defined(S_IFREG)
+			if ((s.st_mode & S_IFMT) == S_IFREG) {
+				type = ML_file_type_regular();
+			} else
+		#endif
+
+		#if defined(S_ISDIR)
+			if (S_ISDIR(s.st_mode)) {
+				type = ML_file_type_directory();
+			} else
+		#elif defined(S_IFMT) && defined(S_IFDIR)
+			if ((s.st_mode & S_IFMT) == S_IFDIR) {
+				type = ML_file_type_directory();
+			} else
+		#endif
+
+		#if defined(S_ISBLK)
+			if (S_ISBLK(s.st_mode)) {
+				type = ML_file_type_block_device();
+			} else
+		#elif defined(S_IFMT) && defined(S_IFBLK)
+			if ((s.st_mode & S_IFMT) == S_IFBLK) {
+				type = ML_file_type_block_device();
+			} else
+		#endif
+
+		#if defined(S_ISCHR)
+			if (S_ISCHR(s.st_mode)) {
+				type = ML_file_type_character_device();
+			} else
+		#elif defined(S_IFMT) && defined(S_IFCHR)
+			if ((s.st_mode & S_IFMT) == S_IFCHR) {
+				type = ML_file_type_character_device();
+			} else
+		#endif
+
+		#if defined(S_ISFIFO)
+			if (S_ISFIFO(s.st_mode)) {
+				type = ML_file_type_fifo();
+			} else
+		#elif defined(S_IFMT) && defined(S_IFIFO)
+			if ((s.st_mode & S_IFMT) == S_IFIFO) {
+				type = ML_file_type_fifo();
+			} else
+		#endif
+
+		#if defined(S_ISLNK)
+			if (S_ISLNK(s.st_mode)) {
+				type = ML_file_type_symbolic_link();
+			} else
+		#elif defined(S_IFMT) && defined(S_IFLNK)
+			if ((s.st_mode & S_IFMT) == S_IFLNK) {
+				type = ML_file_type_symbolic_link();
+			} else
+		#endif
+
+		#if defined(S_ISSOCK)
+			if (S_ISSOCK(s.st_mode)) {
+				type = ML_file_type_socket();
+			} else
+		#elif defined(S_IFMT) && defined(S_IFSOCK)
+			if ((s.st_mode & S_IFMT) == S_IFSOCK) {
+				type = ML_file_type_socket();
+			} else
+		#endif
+
+		#ifdef S_TYPEISMQ
+			if (S_TYPEISMQ(&s)) {
+				type = ML_file_type_message_queue();
+			} else
+		#endif
+
+		#ifdef S_TYPEISSEM
+			if (S_TYPEISSEM(&s)) {
+				type = ML_file_type_semaphore();
+			} else
+		#endif
+
+		#ifdef S_TYPEISSHM
+			if (S_TYPEISSHM(&s)) {
+				type = ML_file_type_shared_memory();
+			} else
+		#endif
+
+			{
+				type = ML_file_type_unknown();
+			}
+
+		Result = ML_make_io_res_1_ok_file_type(type);
+	} else {
+		/*
+		** We can't just call ML_make_err_msg here because
+		** it uses `hp' and this procedure can call Mercury.
+		*/
+		ML_make_io_res_1_error_file_type(errno,
+			MR_make_string_const(""io.file_type failed: ""),
+			&Result);
+	}
+#else
+	MR_fatal_error(
+		""Sorry, io.file_type not implemented on this platform"") }
+#endif
+	MR_update_io(IO0, IO);
+}").
+
+:- pragma foreign_proc("C#",
+	io__file_type_2(_FollowSymLinks::in, FileName::in,
+		Result::out, _IO0::di, _IO::uo),
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+	System.IO.FileAttributes attrs =
+		System.IO.File.GetAttributes(FileName);
+	if ((attrs & System.IO.FileAttributes.Directory) ==
+			System.IO.FileAttributes.Directory)
+	{
+	    Result = mercury.io.mercury_code.ML_make_io_res_1_ok_file_type(
+			mercury.io.mercury_code.ML_file_type_directory());
+	}
+	else if ((attrs & System.IO.FileAttributes.Device) ==
+			System.IO.FileAttributes.Device)
+	{
+	    // XXX It may be a block device, but .NET doesn't
+	    // distinguish between character and block devices.
+	    Result = mercury.io.mercury_code.ML_make_io_res_1_ok_file_type(
+		mercury.io.mercury_code.ML_file_type_character_device());
+	}
+	else
+	{
+	    Result = mercury.io.mercury_code.ML_make_io_res_1_ok_file_type(
+		mercury.io.mercury_code.ML_file_type_regular());
+	}
+    } catch (System.Exception e) {
+	    mercury.io.mercury_code.ML_make_io_res_1_error_file_type(e,
+		""can't find file type: "", ref Result);
+    }
+").
+
+:- func file_type_character_device = file_type.
+:- func file_type_block_device = file_type.
+:- func file_type_fifo = file_type.
+:- func file_type_directory  = file_type.
+:- func file_type_socket  = file_type.
+:- func file_type_symbolic_link = file_type.
+:- func file_type_regular = file_type.
+:- func file_type_message_queue = file_type.
+:- func file_type_semaphore = file_type.
+:- func file_type_shared_memory = file_type.
+:- func file_type_unknown = file_type.
+
+file_type_character_device = character_device.
+file_type_block_device = block_device.
+file_type_fifo = named_pipe.
+file_type_directory = directory.
+file_type_socket = socket.
+file_type_symbolic_link = symbolic_link.
+file_type_regular = regular_file.
+file_type_message_queue = message_queue.
+file_type_semaphore = semaphore.
+file_type_shared_memory = shared_memory.
+file_type_unknown = unknown.
+
+:- pragma export(file_type_character_device = out,
+			"ML_file_type_character_device").
+:- pragma export(file_type_block_device = out, "ML_file_type_block_device").
+:- pragma export(file_type_fifo = out, "ML_file_type_fifo").
+:- pragma export(file_type_directory = out, "ML_file_type_directory").
+:- pragma export(file_type_socket = out, "ML_file_type_socket").
+:- pragma export(file_type_symbolic_link = out, "ML_file_type_symbolic_link").
+:- pragma export(file_type_regular = out, "ML_file_type_regular").
+:- pragma export(file_type_message_queue = out, "ML_file_type_message_queue").
+:- pragma export(file_type_semaphore = out, "ML_file_type_semaphore").
+:- pragma export(file_type_shared_memory = out, "ML_file_type_shared_memory").
+:- pragma export(file_type_unknown = out, "ML_file_type_unknown ").
+
+%-----------------------------------------------------------------------------%
+
+io__check_file_accessibility(FileName, AccessTypes, Result) -->
+	( { have_dotnet } ->
+		io__check_file_accessibility_dotnet(FileName, AccessTypes,
+			Result)
+	;
+		io__check_file_accessibility_2(FileName, AccessTypes, Result)
+	).
+
+:- pred io__check_file_accessibility_2(string, list(access_type),
+		io__res, io__state, io__state).
+:- mode io__check_file_accessibility_2(in, in, out, di, uo) is det.
+
+:- pragma foreign_proc("C",
+	io__check_file_accessibility_2(FileName::in, AccessTypes::in,
+		Result::out, IO0::di, IO::uo),
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"{
+#if defined(MR_HAVE_ACCESS)
+  #ifdef F_OK
+	int mode = F_OK;
+  #else 
+	int mode = 0;
+  #endif
+	int access_result;
+
+	if (ML_access_types_includes_execute(AccessTypes)) {
+		#ifdef X_OK
+			mode |= X_OK;
+		#else
+			mode |= 1;
+		#endif
+	}
+	if (ML_access_types_includes_write(AccessTypes)) {
+		#ifdef W_OK
+			mode |= W_OK;
+		#else
+			mode |= 2;
+		#endif
+	}
+	if (ML_access_types_includes_read(AccessTypes)) {
+		#ifdef R_OK
+			mode |= R_OK;
+		#else
+			mode |= 4;
+		#endif
+	}
+
+	access_result = access(FileName, mode);
+	if (access_result == 0) {
+		Result = ML_make_io_res_0_ok();
+	} else {
+		ML_make_io_res_0_error(errno,
+			MR_make_string_const(
+				""file not accessible: ""),
+			&Result);
+	}
+#else /* !MR_HAVE_ACCESS */
+	Result = ML_make_io_res_0_error_msg(
+	""io.check_file_accessibility not supported on this platform"");
+#endif
+	IO = IO0;
+}").
+
+	% The .NET CLI doesn't provide an equivalent of access(), so
+	% we have to try to open the file to see if it is accessible.
+:- pred io__check_file_accessibility_dotnet(string::in, list(access_type)::in,
+		io__res::out, io__state::di, io__state::uo) is det.
+
+io__check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
+	CheckRead0 = pred_to_bool(access_types_includes_read(AccessTypes)),
+	CheckWrite = pred_to_bool(access_types_includes_write(AccessTypes)),
+
+	CheckExec = pred_to_bool(access_types_includes_execute(AccessTypes)),
+	% We need to be able to read a file to execute it.
+	CheckRead = bool__or(CheckRead0, CheckExec),
+
+	io__file_type(yes, FileName, FileTypeRes, !IO),
+	(
+		FileTypeRes = ok(FileType),
+		( FileType = directory ->
+			check_directory_accessibility_dotnet(FileName,
+				to_int(CheckRead), to_int(CheckWrite),
+				Result, !IO)
+		;
+			( CheckRead = yes ->
+				io__open_input(FileName, InputRes, !IO),
+				(
+					InputRes = ok(InputStream),
+					io__close_input(InputStream, !IO),
+					CheckReadRes = ok
+				;
+					InputRes = error(InputError),
+					CheckReadRes = error(InputError)
+				)
+			;
+				CheckReadRes = ok
+			),
+			( CheckReadRes = ok, CheckWrite = yes ->
+				io__open_append(FileName, OutputRes, !IO),
+				(
+					OutputRes = ok(OutputStream),
+					io__close_output(OutputStream, !IO),
+					CheckWriteRes = ok
+				;
+					OutputRes = error(OutputError),
+					CheckWriteRes = error(OutputError)
+				)
+			;
+				CheckWriteRes = CheckReadRes
+			),
+			(
+				CheckWriteRes = ok,
+
+				% Unix programs need to check whether the
+				% execute bit is set for the directory, but
+				% we can't actually execute the directory.
+				CheckExec = yes
+			->
+				have_dotnet_exec_permission(Result, !IO)
+			;
+				Result = CheckWriteRes
+			)
+		)
+	;
+		FileTypeRes = error(FileTypeError),
+		Result = error(FileTypeError)
+	).
+
+:- pred have_dotnet_exec_permission(io__res, io__state, io__state).
+:- mode have_dotnet_exec_permission(out, di, uo) is det.
+
+have_dotnet_exec_permission(_, !IO) :-
+	error(
+	"io.have_dotnet_exec_permission invoked for non-.NET CLI backend").
+
+:- pragma foreign_proc("C#",
+	have_dotnet_exec_permission(Result::out, _IO0::di, _IO::uo),
+	[promise_pure, may_call_mercury, thread_safe],
+"{
+    try {
+        // We need unrestricted permissions to execute
+        // unmanaged code.
+        (new System.Security.Permissions.SecurityPermission(
+            System.Security.Permissions.SecurityPermissionFlag.AllFlags)).
+            Demand();
+        Result = mercury.io.mercury_code.ML_make_io_res_0_ok();
+    } catch (System.Exception e) {
+        mercury.io.mercury_code.ML_make_io_res_0_error(e,
+            ""execute permission check failed: "", ref Result);
+    }
+
+}").
+
+:- pred check_directory_accessibility_dotnet(string::in, int::in, int::in,
+		io__res::out, io__state::di, io__state::uo) is det.
+
+check_directory_accessibility_dotnet(_, _, _, _, _, _) :-
+	error(
+"io.check_directory_accessibility_dotnet called for non-.NET CLI backend").
+
+:- pragma foreign_proc("C#",
+	check_directory_accessibility_dotnet(FileName::in, CheckRead::in,
+		CheckWrite::in, Result::out, _IO0::di, _IO::uo),
+	[promise_pure, may_call_mercury, tabled_for_io, thread_safe],
+"{
+	try {
+		if (CheckRead != 0) {
+			// XXX This is less efficient than I would like.
+			// Unfortunately the .NET CLI has no function
+			// corresponding to access() or opendir().
+			System.IO.Directory.GetFileSystemEntries(FileName);
+		}
+		if (CheckWrite != 0) {
+			// This will fail if the .NET CLI security regime
+			// we're operating under doesn't allow writing
+			// to the file. Even if this succeeds, the file
+			// system may disallow write access.
+			System.IO.Directory.SetLastAccessTime(FileName,
+				System.DateTime.Now);
+
+			// XXX This isn't quite right.
+			// Just because the directory isn't read-only
+			// doesn't mean we have permission to write to it.
+			// The only way to test whether a directory is
+			// writable is to write a file to it.
+			// The ideal way to do that would be io__make_temp,
+			// but currently the .NET backend version of that
+			// ignores the directory passed to it.
+			System.IO.FileAttributes attrs =
+				System.IO.File.GetAttributes(FileName);
+			if ((attrs & System.IO.FileAttributes.ReadOnly) ==
+				System.IO.FileAttributes.ReadOnly)
+			{
+				throw (new
+				    System.Exception(""file is read-only""));
+			}
+		}
+		Result = mercury.io.mercury_code.ML_make_io_res_0_ok();
+	} catch (System.Exception e) {
+		mercury.io.mercury_code.ML_make_io_res_0_error(e,
+			""permission check failed: "", ref Result);
+	}
+}").
+
+:- pred access_types_includes_read(list(access_type)::in) is semidet.
+:- pragma export(access_types_includes_read(in),
+		"ML_access_types_includes_read").
+access_types_includes_read(Access) :- list__member(read, Access).
+
+:- pred access_types_includes_write(list(access_type)::in) is semidet.
+:- pragma export(access_types_includes_write(in),
+		"ML_access_types_includes_write").
+access_types_includes_write(Access) :- list__member(write, Access).
+
+:- pred access_types_includes_execute(list(access_type)::in) is semidet.
+:- pragma export(access_types_includes_execute(in),
+		"ML_access_types_includes_execute").
+access_types_includes_execute(Access) :- list__member(execute, Access).
+
+:- func make_io_res_0_ok = io__res.
+:- pragma export((make_io_res_0_ok = out), "ML_make_io_res_0_ok").
+make_io_res_0_ok = ok.
+
+:- pred make_io_res_0_error(io__system_error::in, string::in, io__res::out,
+		io__state::di, io__state::uo) is det.
+:- pragma export(make_io_res_0_error(in, in, out, di, uo),
+		"ML_make_io_res_0_error").
+make_io_res_0_error(Error, Msg0, error(make_io_error(Msg))) -->
+	io__make_err_msg(Error, Msg0, Msg).
+
+:- func make_io_res_0_error_msg(string) = io__res.
+:- pragma export((make_io_res_0_error_msg(in) = out),
+		"ML_make_io_res_0_error_msg").
+make_io_res_0_error_msg(Msg) = error(make_io_error(Msg)).
+
+:- func make_io_res_1_ok_file_type(file_type) = io__res(file_type).
+:- pragma export((make_io_res_1_ok_file_type(in) = out),
+		"ML_make_io_res_1_ok_file_type").
+make_io_res_1_ok_file_type(FileType) = ok(FileType).
+
+:- pred make_io_res_1_error_file_type(io__system_error::in,
+		string::in, io__res(file_type)::out,
+		io__state::di, io__state::uo) is det.
+:- pragma export(make_io_res_1_error_file_type(in, in, out, di, uo),
+		"ML_make_io_res_1_error_file_type").
+make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg))) -->
+	io__make_err_msg(Error, Msg0, Msg).
+
+%-----------------------------------------------------------------------------%
+
+:- type file_id
+	---> file_id(device :: int, inode :: int).
+
+io__file_id(FileName, Result) -->
+	( { have_file_ids } ->
+		io__file_id_2(FileName, Status, Msg, Device, Inode),
+		( { Status = 1 } ->
+			{ Result = ok(file_id(Device, Inode)) }
+		;
+			{ Result = error(io_error(Msg)) }
+		)
+	;
+		{ Result = error(
+	make_io_error("io.file_id not implemented on this platform")) }
+	).
+
+:- pred io__file_id_2(string, int, string, int, int,
+		io__state, io__state).
+:- mode io__file_id_2(in, out, out, out, out, di, uo) is det.
+
+:- pragma foreign_proc("C",
+	io__file_id_2(FileName::in, Status::out, Msg::out,
+		Device::out, Inode::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"{
+#ifdef MR_HAVE_STAT
+	struct stat s;
+	if (stat(FileName, &s) == 0) {
+		Device = s.st_dev;
+		Inode = s.st_ino;
+		Msg = MR_string_const("""", 0);
+		Status = 1;
+	} else {
+		ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
+			MR_PROC_LABEL, Msg);
+		Status = 0;
+	}
+	MR_update_io(IO0, IO);
+#else
+	MR_fatal_error(""io.file_id_2 called but not supported"");
+#endif
+}").
+
+% Can we retrieve inode numbers on this system.
+have_file_ids :- semidet_fail.
+:- pragma foreign_proc("C", have_file_ids,
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+#if defined(MR_BROKEN_STAT_ST_INO) || !defined(MR_HAVE_STAT)
+	/* Win32 returns junk in the st_ino field of `struct stat'. */
+	SUCCESS_INDICATOR = MR_FALSE;
+#else
+	SUCCESS_INDICATOR = MR_TRUE;
+#endif
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -2308,6 +3093,31 @@ io__binary_input_stream_foldl2_io(Stream, Pred, T0, Res) -->
 		{ ByteResult = ok(Byte) },
 		Pred(Byte, T0, T1),
 		io__binary_input_stream_foldl2_io(Stream, Pred, T1, Res)
+	;
+		{ ByteResult = eof },
+		{ Res = ok(T0) }
+	;
+		{ ByteResult = error(Error) },
+		{ Res = error(T0, Error) }
+	).
+
+io__binary_input_stream_foldl2_io_maybe_stop(Pred, T0, Res) -->
+	io__binary_input_stream(Stream),
+	io__binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res).
+
+io__binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res) -->
+	io__read_byte(Stream, ByteResult),
+	(
+		{ ByteResult = ok(Byte) },
+		Pred(Byte, Continue, T0, T1),
+		(
+			{ Continue = no },
+			{ Res = ok(T1) }
+		;
+			{ Continue = yes },
+			io__binary_input_stream_foldl2_io_maybe_stop(Stream,
+				Pred, T1, Res)
+		)
 	;
 		{ ByteResult = eof },
 		{ Res = ok(T0) }
@@ -3256,7 +4066,7 @@ io__insert_stream_name(Stream, Name) -->
 
 io__progname_base(DefaultName, PrognameBase) -->
 	io__progname(DefaultName, Progname),
-	{ dir__basename(Progname, PrognameBase) }.
+	{ PrognameBase = dir__basename_det(Progname) }.
 
 
 	% XXX we call a pred version of io__get_stream_id, which is a
@@ -3517,6 +4327,7 @@ io__get_io_output_stream_type(Type) -->
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
 
 #ifdef MR_HAVE_SYS_WAIT_H
   #include <sys/wait.h>		/* for WIFEXITED, WEXITSTATUS, etc. */
@@ -3701,7 +4512,7 @@ static MR_MercuryFile mercury_current_binary_input = mercury_stdin_binary;
 static MR_MercuryFile mercury_current_binary_output = mercury_stdout_binary;
 
 // XXX not thread-safe! */
-static System::IO::IOException *MR_io_exception;
+static System::Exception *MR_io_exception;
 
 ").
 
@@ -3763,7 +4574,7 @@ static mercury_open(MR_String filename, MR_String openmode,
 
 		stream = System::IO::File::Open(filename, mode, access, share);
 
-	} catch (System::IO::IOException* e) {
+	} catch (System::Exception* e) {
 		MR_io_exception = e;
 	}
 
@@ -5323,7 +6134,7 @@ io__close_binary_output(Stream) -->
 		** that the system call was killed by signal number 1. 
 		*/
 		Status = 127;
-		ML_maybe_make_err_msg(MR_TRUE,
+		ML_maybe_make_err_msg(MR_TRUE, errno,
 			""error invoking system command: "",
 			MR_PROC_LABEL, Msg);
 	} else {
@@ -5544,17 +6355,23 @@ io__tmpnam(Dir, Prefix, Name) -->
 	% We need to do an explicit check of TMPDIR because not all
 	% systems check TMPDIR for us (eg Linux #$%*@&).
 io__make_temp(Name) -->
-	io__get_environment_var("TMPDIR", Result),
+	{ Var = ( dir__use_windows_paths -> "TMP" ; "TMPDIR" ) },
+	io__get_environment_var(Var, Result),
 	(
 		{ Result = yes(Dir) }
 	;
 		{ Result = no },
-		{ Dir = "/tmp" }
+		{ dir__use_windows_paths ->
+			Dir = dir__this_directory
+		;
+			Dir = "/tmp"
+		}
 	),
 	io__make_temp(Dir, "mtmp", Name).
 
 io__make_temp(Dir, Prefix, Name) -->
-	io__do_make_temp(Dir, Prefix, Name, Err, Message),
+	io__do_make_temp(Dir, Prefix, char_to_string(dir__directory_separator),
+		Name, Err, Message),
 	{ Err \= 0 ->
 		throw_io_error(Message)
 	;
@@ -5563,9 +6380,9 @@ io__make_temp(Dir, Prefix, Name) -->
 
 /*---------------------------------------------------------------------------*/
 
-:- pred io__do_make_temp(string, string, string, int, string,
+:- pred io__do_make_temp(string, string, string, string, int, string,
 	io__state, io__state).
-:- mode io__do_make_temp(in, in, out, out, out, di, uo) is det.
+:- mode io__do_make_temp(in, in, in, out, out, out, di, uo) is det.
 
 /*
 ** XXX	The code for io__make_temp assumes POSIX.
@@ -5595,7 +6412,7 @@ io__make_temp(Dir, Prefix, Name) -->
 ").
 
 :- pragma foreign_proc("C",
-	io__do_make_temp(Dir::in, Prefix::in, FileName::out,
+	io__do_make_temp(Dir::in, Prefix::in, Sep::in, FileName::out,
 		Error::out, ErrorMessage::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
@@ -5622,7 +6439,7 @@ io__make_temp(Dir, Prefix, Name) -->
 	do {
 		sprintf(countstr, ""%06lX"", ML_io_tempnam_counter & 0xffffffL);
 		strcpy(FileName, Dir);
-		strcat(FileName, ""/"");
+		strcat(FileName, Sep);
 		strncat(FileName, Prefix, 5);
 		strncat(FileName, countstr, 3);
 		strcat(FileName, ""."");
@@ -5633,12 +6450,14 @@ io__make_temp(Dir, Prefix, Name) -->
 	} while (fd == -1 && errno == EEXIST &&
 		num_tries < ML_MAX_TEMPNAME_TRIES);
 	if (fd == -1) {
-		ML_maybe_make_err_msg(MR_TRUE, ""error opening temporary file: "",
+		ML_maybe_make_err_msg(MR_TRUE, errno,
+			""error opening temporary file: "",
 			MR_PROC_LABEL, ErrorMessage);
 		Error = -1;
 	}  else {
 		err = close(fd);
-		ML_maybe_make_err_msg(err, ""error closing temporary file: "",
+		ML_maybe_make_err_msg(err, errno,
+			""error closing temporary file: "",
 			MR_PROC_LABEL, ErrorMessage);
 		Error = err;
 	}
@@ -5653,7 +6472,7 @@ io__make_temp(Dir, Prefix, Name) -->
 */
 
 :- pragma foreign_proc("MC++",
-	io__do_make_temp(Dir::in, Prefix::in, FileName::out,
+	io__do_make_temp(Dir::in, Prefix::in, _Sep::in, FileName::out,
 		Error::out, ErrorMessage::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
@@ -5714,7 +6533,7 @@ io__make_temp(Dir, Prefix, Name) -->
 #include <errno.h>
 
 /*
-** ML_maybe_make_err_msg(was_error, msg, procname, error_msg):
+** ML_maybe_make_err_msg(was_error, errno, msg, procname, error_msg):
 **	if `was_error' is true, then append `msg' and `strerror(errno)'
 **	to give `error_msg'; otherwise, set `error_msg' to NULL.
 **
@@ -5728,14 +6547,14 @@ io__make_temp(Dir, Prefix, Name) -->
 ** It also needs to be a macro because MR_incr_hp_atomic_msg()
 ** stringizes the procname argument.
 */
-#define ML_maybe_make_err_msg(was_error, msg, procname, error_msg)	\\
+#define ML_maybe_make_err_msg(was_error, error, msg, procname, error_msg) \\
 	do {								\\
 		char *errno_msg;					\\
 		size_t total_len;					\\
 		MR_Word tmp;						\\
 									\\
 		if (was_error) {					\\
-			errno_msg = strerror(errno);			\\
+			errno_msg = strerror(error);			\\
 			total_len = strlen(msg) + strlen(errno_msg);	\\
 			MR_incr_hp_atomic_msg(tmp,			\\
 				(total_len + sizeof(MR_Word))		\\
@@ -5749,6 +6568,73 @@ io__make_temp(Dir, Prefix, Name) -->
 			(error_msg) = NULL;				\\
 		}							\\
 	} while(0)
+
+/*
+** ML_maybe_make_win32_err_msg(was_error, error, msg, procname, error_msg):
+**	if `was_error' is true, then append `msg' and the string
+**	returned by the Win32 API function FormatMessage() for the
+**	last error to give `error_msg'; otherwise, set `error_msg' to NULL.
+**	Aborts if MR_WIN32 is not defined.
+**
+** WARNING: this must only be called when the `hp' register is valid.
+** That means it must only be called from procedures declared
+** `[will_not_call_mercury]'.
+**
+** This is defined as a macro rather than a C function
+** to avoid worrying about the `hp' register being
+** invalidated by the function call.
+** It also needs to be a macro because MR_incr_hp_atomic_msg()
+** stringizes the procname argument.
+*/
+#ifdef MR_WIN32
+
+#include <windows.h>
+
+#define ML_maybe_make_win32_err_msg(was_error, error, msg, procname, error_msg) \\
+	do {								\\
+		size_t total_len;					\\
+		MR_Word tmp;						\\
+									\\
+		if (was_error) {					\\
+			LPVOID err_buf;					\\
+			MR_bool free_err_buf = MR_TRUE;			\\
+			if (!FormatMessage(				\\
+				FORMAT_MESSAGE_ALLOCATE_BUFFER		\\
+				| FORMAT_MESSAGE_FROM_SYSTEM		\\
+				| FORMAT_MESSAGE_IGNORE_INSERTS,	\\
+				NULL,					\\
+				error,					\\
+				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), \\
+				(LPTSTR) &err_buf,			\\
+				0,					\\
+				NULL))					\\
+			{						\\
+				free_err_buf = MR_FALSE;		\\
+				err_buf = ""could not retrieve error message""; \\
+			}						\\
+			total_len = strlen(msg) + strlen((char *)err_buf); \\
+			MR_incr_hp_atomic_msg(tmp,			\\
+				(total_len + sizeof(MR_Word))		\\
+					/ sizeof(MR_Word),		\\
+				procname,				\\
+				""string:string/0"");			\\
+			(error_msg) = (char *)tmp;			\\
+			strcpy((error_msg), msg);			\\
+			strcat((error_msg), (char *)err_buf);		\\
+			if (free_err_buf) {				\\
+				LocalFree(err_buf);			\\
+			}						\\
+		} else {						\\
+			(error_msg) = NULL;				\\
+		}							\\
+	} while(0)
+
+#else /* !MR_WIN32 */
+
+#define ML_maybe_make_win32_err_msg(was_error, error, msg, procname, error_msg) \\
+	MR_fatal_error(""ML_maybe_make_win32_err_msg called on non-Windows platform"")
+
+#endif /* !MR_WIN32 */
 
 ").
 
@@ -5769,7 +6655,7 @@ io__remove_file(FileName, Result, IO0, IO) :-
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	RetVal = remove(FileName);
-	ML_maybe_make_err_msg(RetVal != 0, ""remove failed: "",
+	ML_maybe_make_err_msg(RetVal != 0, errno, ""remove failed: "",
 		MR_PROC_LABEL, RetStr);
 	MR_update_io(IO0, IO);
 }").
@@ -5812,7 +6698,7 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	RetVal = rename(OldFileName, NewFileName);
-	ML_maybe_make_err_msg(RetVal != 0, ""rename failed: "",
+	ML_maybe_make_err_msg(RetVal != 0, errno, ""rename failed: "",
 		MR_PROC_LABEL, RetStr);
 	MR_update_io(IO0, IO);
 }").
@@ -5837,6 +6723,117 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 		RetStr = e.Message;
 	}
 }").
+
+io__have_symlinks :- semidet_fail.
+
+:- pragma foreign_proc("C", io__have_symlinks,
+		[will_not_call_mercury, promise_pure, thread_safe],
+"
+#if defined(MR_HAVE_SYMLINK) && defined(MR_HAVE_READLINK)
+	SUCCESS_INDICATOR = MR_TRUE;
+#else
+	SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+
+io__make_symlink(FileName, LinkFileName, Result) -->
+	( { io__have_symlinks } ->
+		io__make_symlink_2(FileName, LinkFileName, Status),
+		( { Status = 0 } ->
+			io__make_err_msg("io.make_symlink failed: ", Msg),
+			{ Result = error(make_io_error(Msg)) }
+		;
+			{ Result = ok }
+		)
+	;
+		{ Result = error(make_io_error(
+			"io.make_symlink not supported on this platform")) }
+	).
+
+:- pred io__make_symlink_2(string::in, string::in, int::out,
+		io__state::di, io__state::uo) is det.
+
+:- pragma foreign_proc("C",
+	io__make_symlink_2(FileName::in, LinkFileName::in,
+		Status::out, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"{
+#ifdef MR_HAVE_SYMLINK
+	Status = (symlink(FileName, LinkFileName) == 0);
+#else
+	Status = 0;
+#endif
+	MR_update_io(IO0, IO);
+}").
+
+io__read_symlink(FileName, Result) -->
+	( { io__have_symlinks } ->
+		io__read_symlink_2(FileName, TargetFileName, Status, Error),
+		( { Status = 0 } ->
+			io__make_err_msg(Error,
+				"io.read_symlink failed: ", Msg),
+			{ Result = error(make_io_error(Msg)) }
+		;
+			{ Result = ok(TargetFileName) }
+		)
+	;
+		{ Result = error(make_io_error(
+			"io.read_symlink not supported on this platform")) }
+	).
+
+:- pred io__read_symlink_2(string::in, string::out, int::out,
+		io__system_error::out, io__state::di, io__state::uo) is det.
+
+:- pragma foreign_proc("C",
+	io__read_symlink_2(FileName::in, TargetFileName::out,
+		Status::out, Error::out, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"{
+#ifdef MR_HAVE_READLINK
+  #ifndef PATH_MAX
+  #define PATH_MAX 256
+  #endif
+	int num_chars;
+	char *buffer2 = NULL;
+	int buffer_size2 = PATH_MAX;
+	char buffer[PATH_MAX + 1];
+
+	/* readlink() does not null-terminate the buffer */
+	num_chars = readlink(FileName, buffer, PATH_MAX);
+
+	if (num_chars == PATH_MAX) {
+		do {
+			buffer_size2 *= 2;
+			buffer2 = MR_RESIZE_ARRAY(buffer2, char, buffer_size2);
+			num_chars = readlink(FileName, buffer2, PATH_MAX);
+		} while (num_chars == buffer_size2);
+		if (num_chars == -1) {
+			Error = errno;
+			TargetFileName = MR_make_string_const("""");
+			Status = 0;
+		} else {
+			buffer2[num_chars] = '\\0';
+			MR_make_aligned_string_copy(TargetFileName, buffer2);
+			Status = 1;
+		}
+		MR_free(buffer2);
+	} else if (num_chars == -1) {
+		TargetFileName = MR_make_string_const("""");
+		Error = errno;
+		Status = 0;
+	} else {
+		buffer[num_chars] = '\\0';
+		MR_make_aligned_string_copy(TargetFileName,
+			buffer);
+		Status = 1;	
+	}
+#else /* !MR_HAVE_READLINK */
+	TargetFileName = NULL;
+	Status = 0;
+#endif
+	MR_update_io(IO0, IO);
+}").
+
 
 /*---------------------------------------------------------------------------*/
 
