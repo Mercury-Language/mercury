@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne.
+# Copyright (C) 1995-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -448,15 +448,6 @@ esac
 
 case "$MKFIFO" in
     none) demangle=false ;;
-esac
-
-#
-# The MLDS (--high-level-code) back-end uses a different
-# name mangling scheme which the current demangler doesn't
-# know how to demangle.
-#
-case "$highlevel_code" in
-    true) demangle=false ;;
 esac
 
 LINKER_PRE_FLAGS="$UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
