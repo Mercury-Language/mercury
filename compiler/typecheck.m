@@ -159,7 +159,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, prog_util, type_util, code_util.
+:- import_module hlds_goal, prog_util, type_util, modules, code_util.
 :- import_module prog_data, prog_io, prog_io_util, prog_out, hlds_out.
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
 :- import_module passes_aux, clause_to_proc, special_pred, inst_match.
@@ -4681,7 +4681,36 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 	;
 		io__write_string("  error: undefined predicate `"),
 		hlds_out__write_pred_call_id(PredCallId),
-		io__write_string("'.\n")
+		io__write_string("'"),
+		( { PredName = qualified(ModQual, _) } ->
+			maybe_report_missing_import(TypeCheckInfo, ModQual)
+		;
+			io__write_string(".\n")
+		)
+	).
+
+:- pred maybe_report_missing_import(typecheck_info, module_specifier,
+		io__state, io__state).
+:- mode maybe_report_missing_import(typecheck_info_no_io, in, di, uo) is det.
+
+maybe_report_missing_import(TypeCheckInfo, ModuleQualifier) -->
+	{ typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo) },
+	{ module_info_name(ModuleInfo, ThisModule) },
+	{ module_info_get_imported_module_specifiers(ModuleInfo,
+		ImportedModules) },
+	(
+		{ \+ set__member(ModuleQualifier, ImportedModules) },
+		{ get_ancestors(ThisModule, ParentModules) },
+		{ \+ list__member(ModuleQualifier, ParentModules) }
+	->
+		io__write_string("\n"),
+		{ typecheck_info_get_context(TypeCheckInfo, Context) },
+		prog_out__write_context(Context),
+		io__write_string("  (the module `"),
+		mercury_output_bracketed_sym_name(ModuleQualifier),
+		io__write_string("' has not been imported).\n")
+	;
+		io__write_string(".\n")
 	).
 
 :- pred report_error_func_instead_of_pred(typecheck_info, pred_call_id,
@@ -4872,7 +4901,16 @@ report_error_undef_cons(TypeCheckInfo, Functor, Arity) -->
 			{ strip_builtin_qualifier_from_cons_id(Functor, 
 				Functor1) },
 			hlds_out__write_cons_id(Functor1),
-			io__write_string("'.\n")
+			io__write_string("'"),
+			(
+				{ Functor = cons(Constructor, _) },
+				{ Constructor = qualified(ModQual, _) }
+			->
+				maybe_report_missing_import(TypeCheckInfo,
+					ModQual)
+			;
+				io__write_string(".\n")
+			)
 		)
 	).
 

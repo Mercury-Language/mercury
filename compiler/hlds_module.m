@@ -170,6 +170,14 @@
 :- pred module_info_set_cell_count(module_info, int, module_info).
 :- mode module_info_set_cell_count(in, in, out) is det.
 
+:- pred module_add_imported_module_specifiers(list(module_specifier),
+		module_info, module_info).
+:- mode module_add_imported_module_specifiers(in, in, out) is det.
+
+:- pred module_info_get_imported_module_specifiers(module_info,
+		set(module_specifier)).
+:- mode module_info_get_imported_module_specifiers(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_name(module_info, module_name).
@@ -401,6 +409,10 @@
 :- pred module_sub_get_model_non_pragma_count(module_sub_info, int).
 :- mode module_sub_get_model_non_pragma_count(in, out) is det.
 
+:- pred module_sub_get_imported_module_specifiers(module_sub_info,
+		set(module_specifier)).
+:- mode module_sub_get_imported_module_specifiers(in, out) is det.
+
 :- pred module_sub_set_c_header_info(module_sub_info, c_header_info,
 	module_sub_info).
 :- mode module_sub_set_c_header_info(in, in, out) is det.
@@ -442,6 +454,10 @@
 :- pred module_sub_set_model_non_pragma_count(module_sub_info, int,
 	module_sub_info).
 :- mode module_sub_set_model_non_pragma_count(in, in, out) is det.
+
+:- pred module_sub_set_imported_module_specifiers(module_sub_info,
+		set(module_specifier), module_sub_info).
+:- mode module_sub_set_imported_module_specifiers(in, in, out) is det.
 
 :- type module_info
 	--->	module(
@@ -486,8 +502,11 @@
 					% predicates in the current
 					% module which has been exported
 					% in .opt files.
-			int		% number of the structure types defined
+			int,		% number of the structure types defined
 					% so far for model_non pragma C codes
+			set(module_specifier)
+					% All the imported module specifiers
+					% (used during type checking).
 		).
 
 	% A predicate which creates an empty module
@@ -506,8 +525,9 @@ module_info_init(Name, Globals, ModuleInfo) :-
 	map__init(ClassTable),
 	map__init(InstanceTable),
 	map__init(SuperClassTable),
+	set__init(ModuleNames),
 	ModuleSubInfo = module_sub(Name, Globals, [], [], no, 0, 0, [], 
-		[], [], StratPreds, UnusedArgInfo, 0),
+		[], [], StratPreds, UnusedArgInfo, 0, ModuleNames),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, ContinuationInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, 0).
@@ -537,8 +557,11 @@ module_info_init(Name, Globals, ModuleInfo) :-
 %					% predicates in the current
 %					% module which has been exported
 %					% in .opt files.
-% M			int		% number of the structure types defined
+% M			int,		% number of the structure types defined
 %					% so far for model_non pragma C codes
+% N			set(module_name)
+%					% All the imported module names
+%					% (used during type checking).
 %		).
 
 %-----------------------------------------------------------------------------%
@@ -546,91 +569,98 @@ module_info_init(Name, Globals, ModuleInfo) :-
 	% Various predicates which access the module_sub_info data structure.
 
 module_sub_get_name(MI0, A) :-
-	MI0 = module_sub(A, _, _, _, _, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(A, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_globals(MI0, B) :-
-	MI0 = module_sub(_, B, _, _, _, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, B, _, _, _, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_c_header_info(MI0, C) :-
-	MI0 = module_sub(_, _, C, _, _, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, C, _, _, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_c_body_info(MI0, D) :-
-	MI0 = module_sub(_, _, _, D, _, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, D, _, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_maybe_dependency_info(MI0, E) :-
-	MI0 = module_sub(_, _, _, _, E, _, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, E, _, _, _, _, _, _, _, _, _).
 
 module_sub_get_num_errors(MI0, F) :-
-	MI0 = module_sub(_, _, _, _, _, F, _, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, F, _, _, _, _, _, _, _, _).
 
 module_sub_get_lambda_count(MI0, G) :-
-	MI0 = module_sub(_, _, _, _, _, _, G, _, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, G, _, _, _, _, _, _, _).
 
 module_sub_get_pragma_exported_procs(MI0, H) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, H, _, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, H, _, _, _, _, _, _).
 
 module_sub_get_base_gen_infos(MI0, I) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, I, _, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, I, _, _, _, _, _).
 
 module_sub_get_base_gen_layouts(MI0, J) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, _, J, _, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, J, _, _, _, _).
 
 module_sub_get_stratified_preds(MI0, K) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, K, _, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, K, _, _, _).
 
 module_sub_get_unused_arg_info(MI0, L) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, L, _).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, L, _, _).
 
 module_sub_get_model_non_pragma_count(MI0, M) :-
-	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, _, M).
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, _, M, _).
+
+module_sub_get_imported_module_specifiers(MI0, N) :-
+	MI0 = module_sub(_, _, _, _, _, _, _, _, _, _, _, _, _, N).
 
 %-----------------------------------------------------------------------------%
 
 	% Various predicates which modify the module_sub_info data structure.
 
 module_sub_set_c_header_info(MI0, C, MI) :-
-	MI0 = module_sub(A, B, _, D, E, F, G, H, I, J, K, L, M),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, _, D, E, F, G, H, I, J, K, L, M, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 module_sub_set_c_body_info(MI0, D, MI) :-
-	MI0 = module_sub(A, B, C, _, E, F, G, H, I, J, K, L, M),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, C, _, E, F, G, H, I, J, K, L, M, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 module_sub_set_maybe_dependency_info(MI0, E, MI) :-
-	MI0 = module_sub(A, B, C, D, _, F, G, H, I, J, K, L, M),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, C, D, _, F, G, H, I, J, K, L, M, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 module_sub_set_num_errors(MI0, F, MI) :-
-	MI0 = module_sub(A, B, C, D, E, _, G, H, I, J, K, L, M),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, C, D, E, _, G, H, I, J, K, L, M, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 module_sub_set_lambda_count(MI0, G, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, _, H, I, J, K, L, M),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, C, D, E, F, _, H, I, J, K, L, M, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 module_sub_set_pragma_exported_procs(MI0, H, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, _, I, J, K, L, M),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, C, D, E, F, G, _, I, J, K, L, M, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 module_sub_set_base_gen_infos(MI0, I, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, _, J, K, L, M),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, _, J, K, L, M, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 module_sub_set_base_gen_layouts(MI0, J, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, I, _, K, L, M),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, _, K, L, M, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 module_sub_set_stratified_preds(MI0, K, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, _, L, M),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, _, L, M, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 module_sub_set_unused_arg_info(MI0, L, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, _, M),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, _, M, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 module_sub_set_model_non_pragma_count(MI0, M, MI) :-
-	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, _),
-	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, _, N),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+
+module_sub_set_imported_module_specifiers(MI0, N, MI) :-
+	MI0 = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, _),
+	MI  = module_sub(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 %-----------------------------------------------------------------------------%
 
@@ -810,6 +840,10 @@ module_info_get_model_non_pragma_count(MI0, M) :-
 	module_info_get_sub_info(MI0, MS0),
 	module_sub_get_model_non_pragma_count(MS0, M).
 
+module_info_get_imported_module_specifiers(MI0, S) :-
+	module_info_get_sub_info(MI0, MS0),
+	module_sub_get_imported_module_specifiers(MS0, S).
+
 %-----------------------------------------------------------------------------%
 
 	% Various predicates which modify the module_sub_info data structure
@@ -868,6 +902,13 @@ module_info_set_unused_arg_info(MI0, L, MI) :-
 module_info_set_model_non_pragma_count(MI0, M, MI) :-
 	module_info_get_sub_info(MI0, MS0),
 	module_sub_set_model_non_pragma_count(MS0, M, MS),
+	module_info_set_sub_info(MI0, MS, MI).
+
+module_add_imported_module_specifiers(Ss, MI0, MI) :-
+	module_info_get_sub_info(MI0, MS0),
+	module_sub_get_imported_module_specifiers(MS0, SpecSet0),
+	set__insert_list(SpecSet0, Ss, SpecSet),
+	module_sub_set_imported_module_specifiers(MS0, SpecSet, MS),
 	module_info_set_sub_info(MI0, MS, MI).
 
 %-----------------------------------------------------------------------------%
