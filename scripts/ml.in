@@ -91,7 +91,7 @@ case $strip in
 	false)  STRIP_OPTS="" ;;
 esac
 
-LIBS=${MERCURY_LIBS="-lmer -lmercury -lmer $LIBGC -lm"}
+LIBS=${MERCURY_LIBS="-lmercury -lmer $LIBGC -lm"}
 
 case @FULLARCH@ in
 	*-solaris*)
