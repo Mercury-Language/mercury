@@ -105,17 +105,6 @@ MTAGS	=	$(SCRIPTS_DIR)/mtags
 
 #-----------------------------------------------------------------------------#
 
-# We need to override library.hs manually here, since the default
-# definition of library.hs does not include the `mercury.' prefix.
-# (We could modify compiler/modules.m to generate it correctly,
-# but it's easier to just manually override it here.)
-# This definition is only correct for MLDS grades, but fortunately
-# it is also only used for MLDS grades.
-
-library.hs = $(library.mods:%=mercury.%.h)
-
-#-----------------------------------------------------------------------------#
-
 # Stuff for Windows DLLS using gnu-win32
 
 ifeq ($(USE_DLLS),yes)

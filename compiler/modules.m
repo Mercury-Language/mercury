@@ -3479,19 +3479,31 @@ write_file_dependencies_list([FileName | FileNames], Suffix, DepStream) -->
 	maybe(pair(string)), io__output_stream, io__state, io__state).
 :- mode write_compact_dependencies_list(in, in, in, in, in, di, uo) is det.
 
-write_compact_dependencies_list(Modules, _Prefix, Suffix, no, DepStream) -->
-	write_dependencies_list(Modules, Suffix, DepStream).
-write_compact_dependencies_list(_Modules, Prefix, Suffix,
-		yes(VarName - OldSuffix), DepStream) -->
-	io__write_string(DepStream, "$("),
-	io__write_string(DepStream, VarName),
-	io__write_string(DepStream, ":%"),
-	io__write_string(DepStream, OldSuffix),
-	io__write_string(DepStream, "="),
-	io__write_string(DepStream, Prefix),
-	io__write_string(DepStream, "%"),
-	io__write_string(DepStream, Suffix),
-	io__write_string(DepStream, ")").
+write_compact_dependencies_list(Modules, Prefix, Suffix, Basis, DepStream) -->
+	(
+		{ Basis = yes(VarName - OldSuffix) },
+		% Don't use the compact dependency lists for names of header
+		% files for modules in the standard library, because it
+		% doesn't take into account the "mercury." prefix
+		% that gets added to those header file names in MLDS grades.
+		\+ {
+			(Suffix = ".h" ; Suffix = ".h.tmp"),
+			list__member(unqualified(StdLibModule), Modules),
+			mercury_std_library_module(StdLibModule)
+		}
+	->
+		io__write_string(DepStream, "$("),
+		io__write_string(DepStream, VarName),
+		io__write_string(DepStream, ":%"),
+		io__write_string(DepStream, OldSuffix),
+		io__write_string(DepStream, "="),
+		io__write_string(DepStream, Prefix),
+		io__write_string(DepStream, "%"),
+		io__write_string(DepStream, Suffix),
+		io__write_string(DepStream, ")")
+	;
+		write_dependencies_list(Modules, Suffix, DepStream)
+	).
 
 :- pred write_compact_dependencies_separator(maybe(pair(string)),
 	io__output_stream, io__state, io__state).
