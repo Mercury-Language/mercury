@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1197,8 +1197,25 @@ make_ground_bound_inst_list([Bound0 | Bounds0], IsLive, Uniq, Real, UI0,
 :- mode make_any_inst(in, in, in, in, in, out, out, out) is semidet.
 
 make_any_inst(not_reached, _, _, _, UI, not_reached, erroneous, UI).
-make_any_inst(alias(_), _, _, _, _, _, _, _) :-
-	error("make_any_inst: alias() NYI").	% YYY
+make_any_inst(alias(IK0), IsLive, Uniq0, Real, UI0, alias(IK), Det, UI) :-
+	unify_inst_info_get_inst_table(UI0, InstTable0),
+	inst_table_get_inst_key_table(InstTable0, IKT0),
+	unify_inst_info_get_instmap(UI0, InstMap0),
+	instmap__inst_key_table_lookup(InstMap0, IKT0, IK0, Inst0),
+	make_any_inst(Inst0, IsLive, Uniq0, Real, UI0, Inst, Det, UI1),
+	( Inst = Inst0 ->
+		IK = IK0,
+		UI = UI1
+	;
+		unify_inst_info_get_inst_table(UI1, InstTable1),
+		inst_table_get_inst_key_table(InstTable1, IKT1),
+		inst_key_table_add(IKT1, Inst, IK, IKT),
+		inst_table_set_inst_key_table(InstTable1, IKT, InstTable),
+		unify_inst_info_set_inst_table(UI1, InstTable, UI2),
+		unify_inst_info_get_instmap(UI2, InstMap2),
+		instmap__add_alias(InstMap2, IK0, IK, InstMap),
+		unify_inst_info_set_instmap(UI2, InstMap, UI)
+	).
 make_any_inst(any(Uniq0), IsLive, Uniq1, Real, UI, any(Uniq),
 		semidet, UI) :-
 	allow_unify_bound_any(Real),
