@@ -684,7 +684,7 @@ A conditional expression is an expression of either of the two following
 forms
 
 @example
-(if @var{Goal} then @var{Expression1} else @var{Expression1})
+(if @var{Goal} then @var{Expression1} else @var{Expression2})
 (@var{Goal} -> @var{Expression1} ; @var{Expression2})
 @end example
 
