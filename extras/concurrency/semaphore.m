@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003 The University of Melbourne.
+% Copyright (C) 2000-2001,2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -172,7 +172,7 @@ public class ME_Semaphore {
 			&&signal_skip_to_the_end_1;
 		MR_schedule(MR_ENGINE(MR_eng_this_context));
 		MR_runnext();
-signal_skip_to_the_end_1:
+signal_skip_to_the_end_1: ;
 	} else {
 		sem->count++;
 		MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
@@ -182,7 +182,7 @@ signal_skip_to_the_end_1:
 			&&signal_skip_to_the_end_2;
 		MR_schedule(MR_ENGINE(MR_eng_this_context));
 		MR_runnext();
-signal_skip_to_the_end_2:
+signal_skip_to_the_end_2: ;
 	}
 #else
 	sem->count++;
@@ -228,7 +228,7 @@ signal_skip_to_the_end_2:
 		sem->suspended = MR_ENGINE(MR_eng_this_context);
 		MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
 		MR_runnext();
-wait_skip_to_the_end:
+wait_skip_to_the_end: ;
 	}
 #else
 	while (sem->count <= 0) {
