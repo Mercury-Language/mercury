@@ -302,7 +302,8 @@ AC_MSG_CHECKING(for the number of low tag bits)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,
 	AC_TRY_RUN([
 	#include <stdio.h>
-	main() {
+	#include <stdlib.h>
+	int main() {
 		FILE *fp;
 
 		fp = fopen("conftest.tags", "w");
@@ -318,7 +319,6 @@ AC_CACHE_VAL(mercury_cv_low_tag_bits,
 		if (sizeof(void *) == 8)
 		{
 			fprintf(fp, "3\n");
-			exit(0);
 		}
 
 		fprintf(fp, "0\n");
@@ -329,6 +329,10 @@ AC_CACHE_VAL(mercury_cv_low_tag_bits,
 	[mercury_cv_low_tag_bits=0])
 )
 AC_MSG_RESULT($mercury_cv_low_tag_bits)
+# XXX tag bits != 2 causes bootstrapping problems
+if test "$mercury_cv_low_tag_bits" != 2; then
+	AC_MSG_ERROR("cannot bootstrap: low tag bits not equal to 2")
+fi
 AC_DEFINE_UNQUOTED(LOW_TAG_BITS, $mercury_cv_low_tag_bits)
 LOW_TAG_BITS=$mercury_cv_low_tag_bits
 AC_SUBST(LOW_TAG_BITS)
