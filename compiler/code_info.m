@@ -1144,23 +1144,24 @@ code_info__failure_cont_address(unknown, do_redo).
 
 code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	code_info__get_next_label(FailLabel, yes),
-	code_info__push_temp(maxfr, MaxfrSlot),
-	code_info__push_temp(redoip(lval(maxfr)), RedoipSlot),
+	code_info__push_temp(curfr, CurfrSlot),
+	code_info__push_temp(redoip(lval(curfr)), RedoipSlot),
 	{ SaveCode = node([
-		assign(MaxfrSlot, lval(maxfr)) -
-				"Save pointer to top of nondet stack",
-		assign(RedoipSlot, lval(redoip(lval(maxfr)))) - "Save the top redoip"
+		assign(CurfrSlot, lval(curfr)) -
+				"Save nondet frame pointer",
+		assign(curfr, lval(maxfr)) - "Point to top of nondet stack",
+		assign(RedoipSlot, lval(redoip(lval(curfr)))) -
+				"Save the top redoip"
 	]) },
 	code_info__push_failure_cont(known(FailLabel)),
 	{ SetRedoIp = node([
-		assign(redoip(lval(maxfr)),
-				const(address_const(label(FailLabel)))) -
-			"Hijack the topmost failure continuation"
+		assign(redoip(lval(curfr)),
+		 		const(address_const(label(FailLabel)))) -
+			"Hijack the failure continuation"
 	]) },
 	{ PreCommit = tree(SaveCode, SetRedoIp) }.
 
 code_info__generate_commit(FailLabel, Commit) -->
-	% XXX Not sure if this label can be accessed externally
 	code_info__get_next_label(SuccLabel, yes),
 	{ GotoSuccCode = node([
 		goto(label(SuccLabel), label(SuccLabel)) -
@@ -1172,18 +1173,22 @@ code_info__generate_commit(FailLabel, Commit) -->
 	]) },
 	code_info__pop_failure_cont,
 	code_info__pop_temp(RedoIpSlot),
-	code_info__pop_temp(MaxfrSlot),
+	code_info__pop_temp(CurfrSlot),
 	{ RestoreMaxfr = node([
-		assign(maxfr, lval(MaxfrSlot)) -
+		assign(maxfr, lval(curfr)) -
 			"Prune away unwanted choice-points"
 	]) },
 	{ RestoreRedoIp = node([
 		assign(redoip(lval(maxfr)), lval(RedoIpSlot)) -
 			"Restore the top redoip"
 	]) },
+	{ RestoreCurfr = node([
+		assign(curfr, lval(CurfrSlot)) -
+			"Prune nondet frame pointer"
+	]) },
 	code_info__generate_failure(Fail),
-	{ SuccessCode = tree(RestoreMaxfr, RestoreRedoIp) },
-	{ FailCode = tree(RestoreRedoIp, Fail) },
+	{ SuccessCode = tree(RestoreMaxfr, tree(RestoreRedoIp, RestoreCurfr)) },
+	{ FailCode = tree(RestoreRedoIp, tree(RestoreCurfr, Fail)) },
 	{ Commit = tree(GotoSuccCode, tree(FailCode,
 		tree(SuccLabelCode, SuccessCode))) }.
 
