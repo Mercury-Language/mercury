@@ -205,6 +205,7 @@ AC_SUBST(AS)
 #-----------------------------------------------------------------------------#
 AC_PROG_CC
 MERCURY_CHECK_CC_NEEDS_TRAD_CPP
+MERCURY_CHECK_LOCAL_INCL_DIRS
 AC_SUBST(CC)
 #-----------------------------------------------------------------------------#
 # Microsoft.NET configuration (the bindist may be installed on a machine
