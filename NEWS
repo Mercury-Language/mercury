@@ -2,6 +2,10 @@ NEWS since Mercury release 0.10.1
 ---------------------------------
 
 Changes to the Mercury standard library:
+* We've removed the buggy reverse modes of the arithmetic functions in
+  float.m (because of rounding errors the functions aren't actually
+  reversible).
+
 * We've fixed a bug in time.m. Type `tm' didn't store the day of the month,
   which meant that the functions which required that field (e.g. time__asctime,
   time__mktime) did not work.
