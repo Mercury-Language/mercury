@@ -253,7 +253,10 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 			% If not in the library, but we have foreign code,
 			% declare the foreign module as an assembly we
 			% reference
-		list__map(mangle_foreign_code_module(ModuleName),
+		list__map((pred(F::in, I::out) is det :-
+				mangle_foreign_code_module(ModuleName, F, N),
+				I = mercury_import(N)
+			),
 			set__to_sorted_list(ForeignLangs),
 			ForeignCodeAssemblerRefs),
 		AssemblerRefs = list__append(ForeignCodeAssemblerRefs, Imports)
@@ -2736,8 +2739,12 @@ make_class_constructor_class_member(DoneFieldRef, Imports, AllocInstrs,
 		MethodDecls) },
 	test_rtti_initialization_field(DoneFieldRef, TestInstrs),
 	set_rtti_initialization_field(DoneFieldRef, SetInstrs),
-	{ CCtorCalls = list__map((func(X) = call_class_constructor(
-		class_name(X, wrapper_class_name))), Imports) },
+	{ CCtorCalls = list__filter_map(
+		(func(I::in) = (C::out) is semidet :-
+			I = mercury_import(ImportName),
+			C = call_class_constructor(
+				class_name(ImportName, wrapper_class_name))
+		), Imports) },
 	{ AllInstrs = list__condense([TestInstrs, AllocInstrs, SetInstrs,
 		CCtorCalls, InitInstrs, [ret]]) },
 	{ MethodDecls = [instrs(AllInstrs)] }.
@@ -3875,7 +3882,8 @@ mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
 		AsmDecls = []
 	),
 	Gen = (pred(Import::in, Decl::out) is semidet :-
-		AsmName = mlds_module_name_to_assembly_name(Import),
+		AsmName = mlds_module_name_to_assembly_name(
+				Import ^ import_name),
 		( AsmName = assembly(Assembly),
 			Assembly \= "mercury",
 			Decl = [extern_assembly(Assembly, AsmDecls)]

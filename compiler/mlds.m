@@ -321,9 +321,16 @@
 % Currently an import just gives the name of the package to be imported.
 % This might perhaps need to be expanded to cater to different kinds of
 % imports, e.g. imports with wild-cards ("import java.lang.*").
-:- type mlds__import == mlds_module_name.
-					% Specifies the name of a package or
-					% class to import.
+:- type mlds__import
+	--->	mercury_import(
+			import_name		:: mlds_module_name
+		)
+	;	foreign_import(
+			foreign_import_name	:: foreign_import_name
+		).
+
+:- type foreign_import_name
+	--->	il_assembly_name(mlds_module_name).
 
 % An mlds_module_name specifies the name of an mlds package or class.
 :- type mlds_module_name.

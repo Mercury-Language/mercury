@@ -838,9 +838,23 @@ ml_gen_foreign_code(ModuleInfo, All_MLDS_ForeignCode) -->
 :- mode ml_gen_imports(in, out) is det.
 
 ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
+		% Determine all the mercury imports.
 	module_info_get_all_deps(ModuleInfo, AllImports),
-	MLDS_ImportList = list__map(mercury_module_name_to_mlds,
-		set__to_sorted_list(AllImports)).
+	P = (func(Name) = mercury_import(mercury_module_name_to_mlds(Name))),
+
+		% For every foreign type determine the import needed to
+		% find the declaration for that type.
+	module_info_types(ModuleInfo, Types),
+	list__filter_map((pred(TypeDefn::in, Import::out) is semidet :-
+			hlds_data__get_type_defn_body(TypeDefn, Body),
+			Body = foreign_type(_, Location),
+			Name = il_assembly_name(mercury_module_name_to_mlds(
+					unqualified(Location))),
+			Import = foreign_import(Name)
+		), map__values(Types), ForeignTypeImports),
+
+	MLDS_ImportList = ForeignTypeImports ++ 
+			list__map(P, set__to_sorted_list(AllImports)).
 
 :- pred ml_gen_defns(module_info, mlds__defns, io__state, io__state).
 :- mode ml_gen_defns(in, out, di, uo) is det.

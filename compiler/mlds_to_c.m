@@ -179,7 +179,11 @@ mlds_output_src_imports(Indent, Imports) -->
 :- mode mlds_output_src_import(in, in, di, uo) is det.
 
 mlds_output_src_import(_Indent, Import) -->
-	{ SymName = mlds_module_name_to_sym_name(Import) },
+	{ Import = mercury_import(ImportName)
+	; Import = foreign_import(_),
+		unexpected(this_file, "foreign import in C backend")
+	},
+	{ SymName = mlds_module_name_to_sym_name(ImportName) },
 	module_name_to_file_name(SymName, ".h", no, HeaderFile),
 	io__write_strings(["#include """, HeaderFile, """\n"]).
 
@@ -297,7 +301,7 @@ mlds_output_src_start(Indent, ModuleName) -->
 	io__write_string("/* :- implementation. */\n"),
 	mlds_output_src_bootstrap_defines, io__nl,
 	mlds_output_src_import(Indent,
-		mercury_module_name_to_mlds(ModuleName)),
+		mercury_import(mercury_module_name_to_mlds(ModuleName))),
 	io__nl.
 
 	%
