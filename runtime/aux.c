@@ -390,15 +390,16 @@ void *checked_malloc(size_t n)
 	return p;
 }
 
-#ifndef __GNUC__
-
 /*
-**  Note that hash_string is actually defined in imp.h.
+**  Note that hash_string is actually defined as a macro in imp.h,
+**  if we're using GNU C.  We define it here whether or not we're using
+**  gcc, so that users can easily switch between gcc and cc without
+**  rebuilding the libraries.
 */
+
+#undef hash_string
 
 int hash_string(Word s)
 {
 	HASH_STRING_FUNC_BODY
 }
-
-#endif /* not __GNUC__ */

@@ -177,12 +177,12 @@ typedef Char *String;
 
 extern	int	hash_string(Word);
 
+#endif
+
 #define HASH_STRING_FUNC_BODY				\
 	   int hash;					\
 	   do_hash_string(hash, s);			\
 	   return hash;
-
-#endif
 
 /* FLOATING POINT HANDLING */
 
