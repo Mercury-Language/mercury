@@ -67,6 +67,8 @@ OTHER_SOURCES= \
 	intermod_quote.m \
 	intermod_test.m \
 	intermod_typeclass.m \
+	intermod_user_equality.m \
+	intermod_user_equality_nested.m \
 	ite_to_disj.m \
 	lambda_inference.m\
 	lambda_instmap_bug.m \
@@ -197,6 +199,10 @@ MCFLAGS-intermod_test		= --intermodule-optimization
 MCFLAGS-intermod_test2		= --intermodule-optimization
 MCFLAGS-intermod_typeclass	= --intermodule-optimization
 MCFLAGS-intermod_typeclass2	= --intermodule-optimization
+MCFLAGS-intermod_user_equality	= --intermodule-optimization
+MCFLAGS-intermod_user_equality2	= --intermodule-optimization
+MCFLAGS-intermod_user_equality_nested	= --intermodule-optimization
+MCFLAGS-intermod_user_equality_nested2	= --intermodule-optimization
 MCFLAGS-ite_to_disj		= --aditi
 MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
@@ -211,6 +217,7 @@ MCFLAGS-zero_arity		= --infer-modes
 
 # XXX mmake should automatically handle this dependency.
 intermod_nested_module2.date: intermod_nested_module2.date0
+intermod_user_equality_nested2.date: intermod_user_equality_nested2.date0
 
 check:	objs aditi_update.err
 
