@@ -381,7 +381,7 @@ int_offset(I) = 1 + int__quot_bits_per_int(I).
     % than rem.  Do modern back-ends do the decent thing here if
     % int__bits_per_int is the expected power of two?
     %
-bitmask(I) = 1 `unchecked_left_shift` int_rem_bits_per_int(I).
+bitmask(I) = 1 `unchecked_left_shift` int__rem_bits_per_int(I).
 
 % ---------------------------------------------------------------------------- %
 
@@ -396,19 +396,6 @@ bitmask(I) = 1 `unchecked_left_shift` int_rem_bits_per_int(I).
 bitsmask(I) = BitsMask :-
     BitMask  = bitmask(I),
     BitsMask = BitMask \/ (BitMask - 1).
-
-% ---------------------------------------------------------------------------- %
-
-    % XXX To go in int.m
-    %
-    % int_rem_bits_per_int(I) = I `rem` int__bits_per_int.
-    %
-    % XXX This assumes that int__bits_per_int is a power of two.
-    %
-:- func int_rem_bits_per_int(int) = int.
-
-int_rem_bits_per_int(I) =
-    I /\ (int__bits_per_int - 1).
 
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %

@@ -243,6 +243,13 @@
 	% int__times_bits_per_int(X) = X * bits_per_int.		
 :- func int__times_bits_per_int(int) = int.
 
+	% Used by bitmap.m.  Like the ones above, the purpose of
+	% defining this in C is to make it clearer to gcc that
+	% this can be optimized.
+
+	% int__rem_bits_per_int(X) = X `rem` bits_per_int.		
+:- func int__rem_bits_per_int(int) = int.
+
 %-----------------------------------------------------------------------------%
 
 %
@@ -535,6 +542,11 @@ is(X, X).
 	Result = Int * ML_BITS_PER_INT;
 ").
 
+:- pragma foreign_code("C", int__rem_bits_per_int(Int::in) = (Rem::out),
+		[will_not_call_mercury, thread_safe], "
+	Rem = Int % ML_BITS_PER_INT;
+").
+
 
 :- pragma foreign_code("MC++", int__max_int(Max::out),
 		[will_not_call_mercury, thread_safe], "
@@ -559,6 +571,11 @@ is(X, X).
 :- pragma foreign_code("MC++", int__times_bits_per_int(Int::in) = (Result::out),
 		[will_not_call_mercury, thread_safe], "
 	Result = Int * ML_BITS_PER_INT;
+").
+
+:- pragma foreign_code("MC++", int__rem_bits_per_int(Int::in) = (Rem::out),
+		[will_not_call_mercury, thread_safe], "
+	Rem = Int % ML_BITS_PER_INT;
 ").
 
 
