@@ -12,6 +12,8 @@ type system
   should not be allowed to test two values of that type for equality (similar
   to Ada's limited private types). This would be useful for e.g. sets
   represented as unordered lists with possible duplicates.
+  	[this is a subset of the functionality of type classes]
+
 
 mode analysis
 -------------
@@ -55,6 +57,10 @@ code generation
 - take advantage of unique modes to do compile-time garbage collection
   and structure reuse.
 
+- floating point registers
+  	- allow floating point fields of structures without boxing
+	(need multi-word fields)
+
 module system
 -------------
 
@@ -80,22 +86,42 @@ module system
 C interface
 -----------
 
-- make C interface bidirectional: allow C programs to call Mercury programs
-	  [is being done by dgj]
+- nondeterministic C code
 
-- support functions (currently c_code pragmas are only allowed for predicates,
-  not functions)
+- exporting things for manipulating Mercury types from C
+
+- better support for types defined in C, and documentation
+
+general
+-------
+
+- coroutining and parallel versions of Mercury
+	[being worked on by conway]
+
+- implement streams (need coroutining at least)
+
 
 *******************************************************************************
 
 WISH LIST
 ---------
 
-typechecking
-------------
+type-system
+-----------
 
 - allow explicit type qualifications `X : Type'
 	[being done by stayl]
+
+- type classes
+
+- existential types (possibly)
+
+- subtypes
+
+- optimisation of type representation and manipulation (possibly
+  profiler guided) 
+
+- fold/unfolding of types
 
 mode analysis:
 --------------
@@ -124,7 +150,6 @@ higher-order preds:
 - allow taking the address of a predicate with multiple modes
   (This would require mode inference.)
 
-
 code generation:
 ----------------
 
@@ -134,18 +159,26 @@ code generation:
   routine allocated the memory.  Then we can do heap-allocation
   profiling to identify which routines use up all the bloody memory.
 
+- inter-procedural register allocation 
+
+- stack allocation of structures
+
+- retarget code generator to Java VM
 
 source-level transformations
 ----------------------------
 
 - more work on module system, separate compilation, and the multiple
-  specialization problem
+  specialisation problem
 
 - deforestation
 
 - transform non-tail-recursive predicates into tail-recursive form
   using accumulators
   [being worked on by jammb]
+
+- partial deduction
+  [being worked on by stayl]
 
 low-level optimizations
 -----------------------
@@ -162,6 +195,7 @@ low-level optimizations
 - trim stack frames before making recursive calls, to minimize stack usage
   [this would probably be a pessimization much of the time - zs]
 
+  
 compilation speed
 -----------------
 
@@ -197,8 +231,6 @@ better diagnostics
 general
 -------
 
-- coroutining and parallel versions of Mercury
-	[being worked on by conway]
 
 - implement a very fast turn-around bytecode compiler/interpreter/debugger,
   similar to Gofer
@@ -210,9 +242,36 @@ general
 - implement "accurate" garbage collection
 	[being worked on by trd]
 
+- implement parallel garbage collection
+
 - implement user-defined operators:
 	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
 	change prog_io.m to parse this construct and call io__op
 	accordingly.  But how does this fit in with the module system?
+
+- support for easier formal specification translation (eg a Z library,
+  or Z to Mercury).
+
+- improve support for constraint programming
+
+- implement a source visualisation tool
+
+- distributed Mercury
+
+- improved development environment
+
+- additional software engineering tools
+  	- coverage analysis
+	- automatic testing
+
+- literate Mercury
+
+- implement a GUI library (eg Hugs - Fudgets)
+
+- profiling guided optimisations
+	- use profiling information to direct linker for optimal
+	  code placement (Alpha has a tool for this).
+
+- attribute grammars
 
 *******************************************************************************
