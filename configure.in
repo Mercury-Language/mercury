@@ -1918,6 +1918,9 @@ AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 
 #-----------------------------------------------------------------------------#
+#
+# Check whether sockets work (we need them for the external debugger)
+#
 
 #
 # check whether we need -lsocket
@@ -2089,12 +2092,10 @@ AC_TRY_LINK([
 ],[mercury_cv_sockets_work=yes],[mercury_cv_sockets_work=no]))
 
 #
-# figure out whether the test succeeded, and if so,
-# enable the external debugger
+# figure out whether the test succeeded
 #
 if test "$mercury_cv_sockets_work" = yes; then
 	AC_MSG_RESULT(yes)
-	AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
 else
 	AC_MSG_RESULT(no)
 fi
@@ -2103,6 +2104,36 @@ fi
 # restore the previous value of LIBS
 #
 LIBS="$save_LIBS"
+
+#-----------------------------------------------------------------------------#
+#
+# Add an option that enables the external debugger support.
+# By default, external debugger support is enabled if and only if
+# sockets work.  But it is also possible to explicitly disable this
+# by passing the `--disable-extern-debug' option.  This is needed on
+# some platforms because the test for sockets working sometimes gets
+# some false positives (e.g. if they work with dynamic linking but
+# not static linking, then the test will pass, but it will cause
+# problems later on when we try to link things statically).
+#
+AC_ARG_ENABLE(extern-debug,
+[  --disable-extern-debug  disable the external (separate process) debugger],
+mercury_cv_enable_extern_debug="$enableval",
+mercury_cv_enable_extern_debug="$mercury_cv_sockets_work")
+
+AC_MSG_CHECKING(whether to enable the external debugger)
+if test "$mercury_cv_enable_extern_debug" = "yes"; then
+	if test "$mercury_cv_sockets_work" = yes; then
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
+	else
+		AC_MSG_RESULT(no)
+		AC_MSG_ERROR(Cannot enable external debugger)
+		AC_MSG_ERROR(because sockets do not work)
+	fi		
+else
+	AC_MSG_RESULT(no)
+fi
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
