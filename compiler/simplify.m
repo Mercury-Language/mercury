@@ -1599,7 +1599,7 @@ simplify__extract_type_info(TypeVar, TypeClassInfoVar, Index,
 
 	polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 		ModuleInfo, Goals, TypeInfoVar,
-		VarSet0, VarTypes0, VarSet, VarTypes),
+		VarSet0, VarSet, VarTypes0, VarTypes),
 
 	simplify_info_set_var_types(Info0, VarTypes, Info1),
 	simplify_info_set_varset(Info1, VarSet, Info).

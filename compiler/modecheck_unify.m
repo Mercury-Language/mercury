@@ -174,8 +174,8 @@ modecheck_unification(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
 		convert_pred_to_lambda_goal(Purity, EvalMethod,
 			X0, PredId, ProcId, ArgVars0, PredArgTypes,
 			UnifyContext, GoalInfo0, Context,
-			ModuleInfo0, VarSet0, VarTypes0,
-			Functor0, VarSet, VarTypes),
+			ModuleInfo0, Functor0,
+			VarSet0, VarSet, VarTypes0, VarTypes),
 		mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),
 		mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo2),
 		%
@@ -759,7 +759,7 @@ modecheck_unify__create_var_var_unification(Var0, Var, Type, ModeInfo,
 	mode_info_get_predid(ModeInfo, PredId),
 	mode_info_get_procid(ModeInfo, ProcId),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-			_PredInfo, ProcInfo),
+		_PredInfo, ProcInfo),
 	proc_info_typeinfo_varmap(ProcInfo, TypeInfoVarMap),
 
 	%
@@ -771,7 +771,7 @@ modecheck_unify__create_var_var_unification(Var0, Var, Type, ModeInfo,
 		Goal0 = unify(X, Y, Mode, Unification0, FinalUnifyContext)
 	->
 		polymorphism__unification_typeinfos(Type, TypeInfoVarMap,
-			Unification0, GoalInfo2, Unification, GoalInfo),
+			Unification0, Unification, GoalInfo2, GoalInfo),
 		Goal = unify(X, Y, Mode, Unification, FinalUnifyContext)
 	;
 		error("modecheck_unify__create_var_var_unification")
