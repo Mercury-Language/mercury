@@ -1,6 +1,0 @@
-This directory contains a library for handling complex numbers.
-
-The subdirectory `tests' contains a test case.
-
-The subdirectory `samples' contains an example module using this library.
-
