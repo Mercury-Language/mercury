@@ -190,7 +190,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	( pred_info_is_imported(PredInfo0) ->
 	    ModuleInfo2 = ModuleInfo0,
 	    IOState2 = IOState0,
-	    Error1 = Error0
+	    Error2 = Error0
 	;
 	    pred_info_arg_types(PredInfo0, TypeVarSet, ArgTypes),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
@@ -200,14 +200,13 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 		report_warning_no_clauses(PredId, PredInfo0,
 			ModuleInfo0, IOState0, IOState2),
 		module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo2),
-		Error1 = Error0
+		Error2 = Error0
 	    ;
 		write_progress_message(PredId, ModuleInfo0, IOState0, IOState1),
 		term__vars_list(ArgTypes, HeadTypeParams),
 		type_info_init(IOState1, ModuleInfo0, PredId,
 				TypeVarSet, VarSet, VarTypes0, HeadTypeParams,
-				TypeInfo0),
-		type_info_set_found_error(TypeInfo0, Error0, TypeInfo1),
+				TypeInfo1),
 		typecheck_clause_list(Clauses0, HeadVars, ArgTypes, Clauses,
 				TypeInfo1, TypeInfo2),
 		type_info_get_vartypes(TypeInfo2, VarTypes1),
@@ -223,11 +222,17 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 		;
 			ModuleInfo2 = ModuleInfo1
 		),
+		join_error(Error0, Error1, Error2),
 		type_info_get_io_state(TypeInfo2, IOState2)
 	    )
 	),
-	typecheck_pred_types_2(PredIds, ModuleInfo2, Error1, ModuleInfo, Error,
+	typecheck_pred_types_2(PredIds, ModuleInfo2, Error2, ModuleInfo, Error,
 		IOState2, IOState).
+
+:- pred join_error(bool, bool, bool).
+:- mode join_error(in, in, out) is det.
+join_error(yes, _, yes).
+join_error(no, Error, Error).
 
 :- pred write_progress_message(pred_id, module_info, io__state, io__state).
 :- mode write_progress_message(in, in, di, uo) is det.
