@@ -193,6 +193,8 @@ The "mercury-extras" distribution contains some extra libraries for:
         -  an ODBC database interface
 and
      o  the Morphine trace analysis system
+     o  two (!) curses bindings, one more complete than the other
+     o  a general purpose lexer
      o  Moose, a parser generator for Mercury.
 
 The "mercury-tests" distribution contains a test suite.
