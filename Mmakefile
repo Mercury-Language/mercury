@@ -139,7 +139,7 @@ doc: scripts util
 	cd doc && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
-profiler: dep_profiler scripts util boehm_gc runtime library browser
+profiler: dep_profiler scripts util boehm_gc runtime library browser trace
 	cd profiler && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
