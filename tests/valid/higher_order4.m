@@ -4,8 +4,10 @@
 
 :- import_module io, list, std_util.
 
+:- type myunit(T) ---> myunit.
+
 :- type analysis_request
-	---> some [FuncInfo, Call] analysis_request(unit(FuncInfo), Call)
+	---> some [FuncInfo, Call] analysis_request(myunit(FuncInfo), Call)
 				=> call_pattern(FuncInfo, Call).
 :- type module_analysis_map(T) == mymap(analysis_name, func_analysis_map(T)).
 :- type func_analysis_map(T) == mymap(func_id, list(T)).
