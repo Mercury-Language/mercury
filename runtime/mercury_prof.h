@@ -28,7 +28,7 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 ** A pointer to the "Prof.Decl" file.
 */
 #ifdef PROFILE_CALLS
-  extern FILE	*decl_fptr;
+  extern FILE	*MR_prof_decl_fptr;
 #endif
 
 /*

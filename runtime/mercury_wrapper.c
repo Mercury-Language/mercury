@@ -425,7 +425,7 @@ do_init_modules(void)
 	}
 
 #ifdef PROFILE_CALLS
-	fclose(decl_fptr);
+	fclose(MR_prof_decl_fptr);
 #endif
 }
 

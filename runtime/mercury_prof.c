@@ -101,7 +101,7 @@ static volatile	int		in_profiling_code = FALSE;
 
 
 #ifdef PROFILE_CALLS
-  FILE 			*decl_fptr = NULL;
+  FILE 			*MR_prof_decl_fptr = NULL;
   static prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
 #endif
 
@@ -469,10 +469,10 @@ print_addr_pair_node(FILE *fptr, prof_call_node *node)
 void
 MR_prof_output_addr_decl(const char *name, const MR_Code *address)
 {
-	if (!decl_fptr) {
-		decl_fptr = checked_fopen("Prof.Decl", "create", "w");
+	if (!MR_prof_decl_fptr) {
+		MR_prof_decl_fptr = checked_fopen("Prof.Decl", "create", "w");
 	}
-	fprintf(decl_fptr, "%ld\t%s\n", (long) address, name);
+	fprintf(MR_prof_decl_fptr, "%ld\t%s\n", (long) address, name);
 }
 
 #endif /* PROFILE_CALLS */
@@ -619,8 +619,8 @@ MR_prof_finish(void)
 #endif
 
 #ifdef PROFILE_CALLS
-	if (decl_fptr) {
-		checked_fclose(decl_fptr, "Prof.Decl");
+	if (MR_prof_decl_fptr) {
+		checked_fclose(MR_prof_decl_fptr, "Prof.Decl");
 	}
 	prof_output_addr_pair_table();
 #endif
