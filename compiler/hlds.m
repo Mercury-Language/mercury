@@ -55,7 +55,8 @@
 :- type clause_list	=	list(clause).
 
 :- type clause		--->	clause(
-					list(mode_id),	% modes for which
+					list(pred_mode_id),
+							% modes for which
 							% this clause applies
 					varset,		% variable names
 					map(var_id, type), % variable types

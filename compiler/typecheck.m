@@ -3,8 +3,7 @@
 % Main author: fjh.
 %
 % This file contains a type-checker which I started writing a fair while
-% ago.  It still needs quite a bit of work to integrate it with
-% the rest of the stuff in this directory and to get it to actually work.
+% ago.  It still needs a bit of work to get it to actually work.
 % 
 % The predicates in this module are named as follows:
 % 
@@ -49,7 +48,7 @@
 %	char, int, float, string
 %	(plus types for higher-order preds, details to be worked out later).
 %       These types have special syntax for constants.
-%	There may be other types (short integers, complex numbers,
+%	There may be other types (short integers, complex numbers, rationals,
 %	etc.) provided by the system, but they can just be part of the
 %	standard library.
 %
@@ -150,7 +149,7 @@ typecheck_clause_list([Clause0|Clauses0], PredId, TypeVarSet, ArgTypes,
 	%
 	% Note that this may cause exponential time & space usage
 	% in the presence of overloading of predicates and/or
-	% functors.  This is a potentially very serious problem, but
+	% functors.  This is a potentially serious problem, but
 	% there's no easy solution apparent.
 	%
 	% It would be more natural to use non-determinism to write
@@ -183,8 +182,9 @@ typecheck_clause(Clause0, PredId, TypeVarSet, ArgTypes, ModuleInfo, Clause,
 		% finish up
 
 	typeinfo_get_type_assign_set(TypeInfo, TypeAssignSet),
-	typecheck_finish_up(TypeAssignSet, TypeInfo, VarTypes),
-	typeinfo_get_io_state(TypeInfo, IOState),
+	typeinfo_get_io_state(TypeInfo, IOState1),
+	typecheck_finish_up(TypeAssignSet, VarTypes, FoundError,
+			IOState1, IOState),
 	Clause = clause(Modes, VarSet, VarTypes, HeadVars, Body, Context).
 
 	% At this stage, there are three possibilities.
@@ -196,10 +196,51 @@ typecheck_clause(Clause0, PredId, TypeVarSet, ArgTypes, ModuleInfo, Clause,
 
 	% XXX incomplete!!
 
-typecheck_finish_up([], _TypeInfo, VarTypes).
-typecheck_finish_up([VarTypes], _TypeInfo, VarTypes) :-
-typecheck_finish_up([VarTypes1, VarTypes2 | _], _TypeInfo, VarTypes) :-
-	report_ambiguity_error(VarTypes1, VarTypes2).
+:- pred typecheck_finish_up(type_assign_set, type_info, type_assign, yes_or_no,
+		io__state, io__state).
+:- mode typecheck_finish_up(input, input, output, di, uo).
+
+typecheck_finish_up([], _TypeInfo, VarTypes, yes) :-
+	map__init(VarTypes).
+typecheck_finish_up([TypeAssign], _TypeInfo, VarTypes, no) :-
+	type_assign_get_vartypes(TypeAssign, VarTypes).
+typecheck_finish_up([TypeAssign1, TypeAssign2 | _], TypeInfo, VarTypes1, yes) :-
+	type_assign_get_vartypes(TypeAssign1, VarTypes1),
+	report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2).
+
+:- pred report_ambiguity_error(type_info, type_assign, type_assign,
+				io__state, io__state).
+:- mode report_ambiguity_error(input, input, input, di, uo).
+
+report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
+	{ typeinfo_get_predid(TypeInfo, PredId) },
+	{ typeinfo_get_context(TypeInfo, Context) },
+	{ typeinfo_get_varset(TypeInfo, VarSet) },
+	{ type_assign_get_varset(TypeAssign1
+	prog_out__write_context(Context),
+	io__write_string("type ambiguity in clause for predicate "),
+	write_pred_id(PredId),
+	io__write_string_nl(".\n"),
+	io__write_string_nl("possible type assignments include:\n"),
+	map__keys(VarTypes1, Vars1),
+	report_ambiguity_error_2(Vars1, VarTypes1, VarTypes2).
+
+:- pred report_ambiguity_error_2(list(var), type_assign, type_assign,
+				io__state, io__state).
+:- mode report_ambiguity_error_2(input, input, input, di, uo).
+
+report_ambiguity_error_2([], _VarTypes1, _VarTypes2) --> [].
+report_ambiguity_error_2([V | Vs], VarTypes1, VarTypes2) :-
+	(if { map__contains(VarTypes2, V) } then
+		{ map__search(VarTypes1, V, T1) },
+		{ map__search(VarTypes2, V, T2) },
+		if (map__contains(
+
+
+		io__write_int(
+		io__write_string("V
+
+	report_ambiguity_error_2(VarTypes1, VarTypes2).
 
 %-----------------------------------------------------------------------------%
 
@@ -991,7 +1032,7 @@ builtin_type(term_integer(_), "integer").
 builtin_type(term_float(_), "float").
 builtin_type(term_string(_), "string").
 builtin_type(term_atom(String), "char") :-
-	char_to_string(_, String).
+	string__char_to_string(_, String).
 
 	% is_builtin_type(TypeId)
 	%	is true iff 'TypeId' is the type_id of a builting type
@@ -1039,6 +1080,13 @@ typeinfo_init(IOState, ModuleInfo, PredId, TypeVarSet, VarSet, TypeInfo) :-
 		IOState, Preds, Types, Ctors, PredId, false, TypeVarSet,
 		[type_assign(VarSet, VarTypes, TypeVarSet, TypeBindings)]
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typeinfo_get_predid(type_info, pred_id).
+:- mode typeinfo_get_predid(input, output).
+
+typeinfo_get_predid(typeinfo(_,_,_,_,PredId,_,_,_), PredId).
 
 %-----------------------------------------------------------------------------%
 

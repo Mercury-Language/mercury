@@ -25,11 +25,14 @@
 			;	(int__expr - int__expr)
 			;	(int__expr / int__expr).
 
-	% builtin in NU-Prolog
 :- pred is(int, int__expr).
 :- mode is(output, input).
 
 :- implementation.
+
+/*
+:- external("NU-Prolog", is/2).
+*/
 
 int__abs(I0, I) :-
 	(if

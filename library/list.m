@@ -30,7 +30,7 @@
 :- mode length(input_list_skel, output).
 :- mode length(ouput_list_skel, input).
 
-:- pred condense(list(list(T)),list(T)).
+:- pred condense(list(list(T)), list(T)).
 :- mode condense(input, output).
 
 :- pred same_length(list(T), list(T)).
@@ -40,6 +40,13 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+/*
+:- external("NU-Prolog", append/3).
+:- external("NU-Prolog", member/2).
+:- external("NU-Prolog", member/3).
+:- external("NU-Prolog", length/2).
+*/
 
 condense([], []).
 condense([L|Ls], R) :-

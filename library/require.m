@@ -23,17 +23,9 @@
 
 :- implementation.
 
-require(Goal, Message) :-
-	( call(Goal) ->
-		true
-	;
-		error(Message),
-		fail
-	).
-
-error(Message) :-
-	format("~s\n", [Message]),
-	trace,		% this doesn't work with NU-Prolog, unfortunately.
-	abort.
+/*
+:- external("NU-Prolog", require/2).
+:- external("NU-Prolog", error/1).
+*/
 
 :- end_module require.

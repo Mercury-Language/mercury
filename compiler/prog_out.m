@@ -251,12 +251,12 @@ prog_out__write_goal(if_then_else(Vars,C,A,B), I, T, VarSet) -->
 	prog_out__indent(I1),
 	io__write_string("else"),
 	prog_out__write_goal(B, I1, (else), VarSet),
-	(if {T \= (else)} then
+	(if {T = (else)} then
+		[]
+	else
 		io__write_string("\n"),
 		prog_out__indent(I1),
 		io__write_string(")")
-	else
-		[]
 	).
 
 prog_out__write_goal(if_then(Vars,C,A), I, T, VarSet) -->
@@ -272,12 +272,12 @@ prog_out__write_goal(if_then(Vars,C,A), I, T, VarSet) -->
 	prog_out__write_goal(C, I, '(', VarSet),
 	io__write_string(" then"),
 	prog_out__write_goal(A, I1, (then), VarSet),
-	(if {T \= (else)} then
+	(if {T = (else)} then
+		[]
+	else
 		io__write_string("\n"),
 		prog_out__indent(I1),
 		io__write_string(")")
-	else
-		[]
 	).
 
 prog_out__write_goal((P ; Q), I, T, VarSet) -->

@@ -351,7 +351,7 @@ check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
 
         (if some [ModuleName2, Context2] (
             EndModule = yes(ModuleName2, Context2),
-            ModuleName1 \= ModuleName2
+            not ModuleName1 = ModuleName2
             )
         then
 	    dummy_term_with_context(Context2, Term),
@@ -631,6 +631,8 @@ parse_goal_2( term_functor(term_atom("else"),[
 	parse_goal(B0, B),
 	parse_goal(C0, C).
 parse_goal_2( term_functor(term_atom("not"), [A0], _), not([],A) ) :-
+	parse_goal(A0, A).
+parse_goal_2( term_functor(term_atom("\+"), [A0], _), not([],A) ) :-
 	parse_goal(A0, A).
 parse_goal_2( term_functor(term_atom("all"),[Vars0,A0],_),all(Vars,A) ):-
 	term__vars(Vars0, Vars),
@@ -1388,7 +1390,7 @@ convert_type_and_mode_list([H0|T0], [H|T]) :-
 :- mode convert_type_and_mode(input, output).
 convert_type_and_mode(Term, Result) :-
 	(if some [ModeTerm, TypeTerm, Context]
-		Term = term_functor(term_atom("::"), [ModeTerm, TypeTerm],
+		Term = term_functor(term_atom("::"), [TypeTerm, ModeTerm],
 				Context)
 	then
 		convert_type(TypeTerm, Type),

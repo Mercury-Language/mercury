@@ -6,9 +6,8 @@
 
 % TODO:
 % (Crucial)
-%	handle escapes in string constants;
-%	handle Mercury's overloaded functors (this will require a
-%		very serious rewrite!);
+%	handle Mercury's non-alphanumeric functors
+%	handle Mercury's overloaded functors 
 %
 % (Important)
 %	handle Mercury's implicit quantification;
@@ -646,7 +645,7 @@ goedel_output_goal(unify(A, B), VarSet, _Indent) -->
 :- mode goedel_output_call(input, input, input, di, uo).
 
 goedel_output_call(term_variable(Var), VarSet, _Indent) -->
-	goedel_output_var(Var, VarSet, term_var).
+	goedel_output_var(Var, VarSet).
 goedel_output_call(term_functor(Functor, Args, Context), VarSet, Indent) -->
 	(if %%% some [Cond, Message]
 		{ Functor = term_atom("require"),
@@ -796,7 +795,7 @@ goedel_output_list_args(Term, VarSet) -->
 :- mode goedel_output_term(input, input, di, uo).
 
 goedel_output_term(term_variable(Var), VarSet) -->
-	goedel_output_var(Var, VarSet, term_var).
+	goedel_output_var(Var, VarSet).
 goedel_output_term(term_functor(Functor, Args, _), VarSet) -->
 	(if %%% some [X, Xs]
 	    	{ Functor = term_atom("."),
@@ -884,8 +883,33 @@ goedel_output_constant(term_atom(Name)) -->
 	io__write_string(GoedelName).
 goedel_output_constant(term_string(S)) -->
 	io__write_string("\""),
-	io__write_string(S), 
+	goedel_quote_string(S), 
 	io__write_string("\"").
+
+:- pred goedel_quote_string(string, io__state, io__state).
+:- mode goedel_quote_string(input, di, uo).
+
+goedel_quote_string(S0) -->
+	( { string__first_char(S0, Char, S1) } ->
+		( { goedel_quote_char(Char, QuoteChar) } ->
+			io__write_char('\\'),
+			io__write_char(QuoteChar)
+		;
+			io__write_char(Char)
+		),
+		goedel_quote_string(S1)
+	;
+		[]
+	).
+
+:- pred goedel_quote_char(character, character).
+:- mode goedel_quote_char(input, output).
+
+goedel_quote_char('\"', '"').
+goedel_quote_char('\\', '\\').
+goedel_quote_char('\n', 'n').
+goedel_quote_char('\t', 't').
+goedel_quote_char('\b', 'b').
 
 	% output a comma-separated list of variables
 
@@ -894,7 +918,7 @@ goedel_output_constant(term_string(S)) -->
 
 goedel_output_vars([], _VarSet) --> [].
 goedel_output_vars([Var | Vars], VarSet) -->
-	goedel_output_var(Var, VarSet, term_var),
+	goedel_output_var(Var, VarSet),
 	goedel_output_vars_2(Vars, VarSet).
 
 :- pred goedel_output_vars_2(list(var), varset, io__state, io__state).
@@ -903,29 +927,27 @@ goedel_output_vars([Var | Vars], VarSet) -->
 goedel_output_vars_2([], _VarSet) --> [].
 goedel_output_vars_2([Var | Vars], VarSet) -->
 	io__write_string(", "),
-	goedel_output_var(Var, VarSet, term_var),
+	goedel_output_var(Var, VarSet),
 	goedel_output_vars_2(Vars, VarSet).
 
-	% output a single variable
+	% Output a single variable.
+	% Variables that didn't have names are given the name "v_<n>"
+	% where <n> is there variable id.
+	% Variables whose name originally started with `v_' have their
+	% name changed to start with `v__' to avoid name clashes.
 
-:- type var_category ---> type_var ; term_var.
+:- pred goedel_output_var(var, varset, io__state, io__state).
+:- mode goedel_output_var(input, input, di, uo).
 
-:- pred goedel_output_var(var, varset, var_category, io__state, io__state).
-:- mode goedel_output_var(input, input, input, di, uo).
-
-goedel_output_var(Id, VarSet, VarCategory) -->
-	(if %%% some [Name]	% NU-Prolog inconsistency
+goedel_output_var(Id, VarSet) -->
+	(
 		{ varset__lookup_name(VarSet, Id, Name) }
-	then
-		{ convert_var_name(Name, VarCategory, GoedelName) },
+	->
+		{ convert_var_name(Name, GoedelName) },
 		io__write_string(GoedelName)
-	else
-		{ intToString(Id, Num),
-		  (if VarCategory = type_var then
-		  	string__append("v_", Num, VarName)
-		  else
-		  	string__append("_v_", Num, VarName)
-		  )
+	;
+		{ string__int_to_string(Id, Num),
+		  string__append("v_", Num, VarName)
 		},
 		io__write_string(VarName)
 	).
@@ -938,7 +960,7 @@ goedel_output_var(Id, VarSet, VarCategory) -->
 :- mode goedel_output_type(input, input, di, uo).
 
 goedel_output_type(term_variable(Var), VarSet) -->
-	goedel_output_var(Var, VarSet, type_var).
+	goedel_output_var(Var, VarSet).
 goedel_output_type(term_functor(Functor, Args, _), VarSet) -->
 	goedel_output_constant(Functor),
 	(if %%% some [X,Xs]		% NU-Prolog inconsistency
@@ -1006,43 +1028,156 @@ goedel_infix_pred("is").
 
 %-----------------------------------------------------------------------------%
 
-	% Convert a name starting with a lower-case letter
-	% into a name starting with an upper-case letter.
+	% Convert a Mercury functor name into a Goedel functor name.
+
+	% XXX handle non-alphanumeric functors
 
 :- pred convert_functor_name(string, string).
 :- mode convert_functor_name(input, output).
 
 convert_functor_name(Name, GoedelName) :-
-	string__capitalize_first(Name, GoedelName).
-
-	% Convert a Prolog variable name into a Goedel variable name,
-	% by converting the first non-underline character to lower-case.
-	% For some strange reason Goedel type variables names can't start
-	% with underlines, so we handle them differently (we just
-	% strip off any leading underlines).
-
-:- pred convert_var_name(string, var_category, string).
-:- mode convert_var_name(input, input, output).
-
-convert_var_name(Name, VarCategory, GoedelName) :-
-	(if some [FirstChar, Rest]
-		string__first_char(Name, FirstChar, Rest)
-	then
-		(if (FirstChar = '_') then
-			(if VarCategory = type_var then
-				convert_var_name(Rest, VarCategory, GoedelName)
-			else
-				convert_var_name(Rest, VarCategory, GoedelRest),
-				string__first_char(GoedelName, FirstChar,
-					GoedelRest)
-			)
-		else
-			to_lower(FirstChar, GoedelFirstChar),
-			string__first_char(GoedelName, GoedelFirstChar, Rest)
-
+	(
+		string__first_char(Name, Char, Rest),
+		is_lower(Char),
+		valid_functor_tail(Rest)
+	->
+		string__capitalize_first(Name, GoedelName0),
+		(
+			string__append("F_", Suffix, GoedelName0)
+		->
+			string__append("F__", Suffix, GoedelName)
+		;
+			GoedelName = GoedelName0
 		)
-	else
-		GoedelName = Name
+	;
+		convert_to_valid_functor_name(Name, GoedelName)
+	).
+
+valid_functor_tail(String) :-
+	( string__first_char(String, Char, Rest) ->
+		some [] (
+			is_alpha(Char) ;
+			is_digit(Char) ;
+			Char = '_'
+		),
+		valid_functor_tail(Rest)
+	;
+		true
+	).
+
+:- pred convert_to_valid_functor_name(string, string).
+:- mode convert_to_valid_functor_name(input, output).
+
+convert_to_valid_functor_name(String, Name) :-	
+	(
+		string__first_char(String, Char, ""),
+		is_upper(Char)
+	->
+		string__append("F_", String, Name)
+	;
+		conversion_table(String, Name0)
+	->
+		Name = Name0
+	;
+		convert_to_valid_functor_name_2(String, Name0),
+		string__append("F", Name0, Name)
+	).
+
+	% A table used to convert Mercury functors into
+	% Goedel functors.  Feel free to add any new translations you want.
+	% The Goedel functor names should start with "F_" if
+	% they are alphanumeric, to avoid introducing name clashes.
+	% If the functor name is not found in the table, then
+	% we use a fall-back method which produces ugly names.
+
+:- pred conversion_table(string, string).
+:- mode conversion_table(input, output).
+
+conversion_table("[]", "[]").
+conversion_table("\=", "~=").
+conversion_table(">=", ">=").
+conversion_table("=<", "=<").
+conversion_table("=", "=").
+conversion_table("<", "<").
+conversion_table(">", ">").
+conversion_table("-", "-").
+conversion_table("+", "+").
+conversion_table("*", "*").
+conversion_table("/", "/").
+conversion_table(",", "F_Comma").
+conversion_table(";", "F_Semicolon").
+conversion_table("0", "F_Digit_0").
+conversion_table("1", "F_Digit_1").
+conversion_table("2", "F_Digit_2").
+conversion_table("3", "F_Digit_3").
+conversion_table("4", "F_Digit_4").
+conversion_table("5", "F_Digit_5").
+conversion_table("6", "F_Digit_6").
+conversion_table("7", "F_Digit_7").
+conversion_table("8", "F_Digit_8").
+conversion_table("9", "F_Digit_9").
+
+	% This is the fall-back method.
+	% Given a string, produce the tail of a functor name
+	% for that string by concatenating the decimal
+	% expansions of the character codes in the string,
+	% separated by underlines.
+	% The functor name will start with "F_"; this predicate
+	% constructs everything except the initial "F".
+	%
+	% For example, given the input "\n\t" we return "_10_8".
+
+:- pred convert_to_valid_functor_name_2(string, string).
+:- mode convert_to_valid_functor_name_2(input, output).
+
+convert_to_valid_functor_name_2(String, Name) :-	
+	(
+		string__first_char(String, Char, Rest)
+	->
+		char_to_int(Char, Code),
+		string__int_to_string(Code, CodeString),
+		string__append("_", CodeString, ThisCharString),
+		convert_to_valid_functor_name_2(Rest, Name0),
+		string__append(ThisCharString, Name0, Name)
+	;
+		% String is the empty string
+		Name = String
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Convert a Mercury variable name into a Goedel variable name.
+	% We can't use Goedel variable names starting with an underscore,
+	% because these have special semantics.
+	% We have to be careful that every possible Mercury name
+	% (including variables which only have numbers, not names!)
+	% is mapped to a distinct Goedel name.  The following table
+	% shows how this is done:
+	%
+	%	Goedel name	Mercury Name
+	%	-----------	------------
+	%	v_[0-9]*	none
+	%	v__.*		_.*
+	%	v_V_.*		V_.*
+	%	v[^_].*		V[^_].*
+	%	[^v].*		[^V_].*
+	%
+	% If the Mercury variable name starts with an underline, or with
+	% "V_", then we insert "v_" at the start; otherwise we just change
+	% the first letter to lower-case.  Goedel names starting with "v_" and
+	% a sequence of digits are reserved for variables which didn't
+	% have any Mercury name (eg. implicit DCG arguments).
+
+:- pred convert_var_name(string, string).
+:- mode convert_var_name(input, output).
+
+convert_var_name(Name, GoedelName) :-
+	( string__prefix(Name, "_") ->
+		string__append("v_", Name, GoedelName)
+	; string__prefix(Name, "V_") ->
+		string__append("v_", Name, GoedelName)
+	;
+		string__uncapitalize_first(Name, GoedelName)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1051,6 +1186,7 @@ convert_var_name(Name, VarCategory, GoedelName) :-
 
 :- pred unqualify_name(sym_name, string).
 :- mode unqualify_name(input, output).
+
 unqualify_name(unqualified(Name), Name).
 unqualify_name(qualified(_Module, Name), Name).
 

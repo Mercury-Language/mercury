@@ -7,8 +7,6 @@
 % This file encapsulates all the file I/O.
 % We implement a purely logical I/O system using Prolog's horrible
 % non-logical I/O primitives.
-% This includes predicates to read and write terms in the
-% nice ground representation provided in ground.nl.
 %
 % This library is still pretty yucko because it's based on
 % the old dec-10 Prolog I/O (see, seeing, seen, tell, telling, told)
@@ -18,7 +16,7 @@
 %-----------------------------------------------------------------------------%
 
 :- module io.
-:- import_module int, float, string, list, varset, term, require.
+:- import_module char, int, float, string.
 :- interface.
 
 % External interface: imported predicate
@@ -29,577 +27,104 @@
 
 % External interface: exported types
 
-% :- type io__state.
+:- export_type io__state.
 
 % External interface: exported predicates
 
 :- pred io__progname(string, io__state, io__state).
-%	io__progname(Progname).
+:- mode io__progname(output, di, uo).
 %		Returns the name that the program was invoked with.
+%		Does not modify the IO state.
 
 :- pred io__write_string(string, io__state, io__state).
-%	io__write_string(String, IO0, IO1).
+:- mode io__write_string(input, di, uo).
 %		Writes a string to standard output.
 
-:- pred io__write_int(integer, io__state, io__state).
-%	io__write_int(Int, IO0, IO1).
+:- pred io__write_char(character, io__state, io__state).
+:- mode io__write_char(input, di, uo).
+%		Writes a character to standard output.
+
+:- pred io__write_int(int, io__state, io__state).
+:- mode io__write_int(input, di, uo).
 %		Writes an integer to standard output.
 
 :- pred io__write_float(float, io__state, io__state).
 %	io__write_float(Float, IO0, IO1).
 %		Writes a floating point number to standard output.
 
+:- pred io__write_anything(_T, io__state, io__state).
+:- mode io__write_anything(input, di, uo).
+%		Writes it's argument to standard output.
+%		The argument may be of any type.
 
 :- type res ---> ok ; error.
 :- pred io__see(string, res, io__state, io__state).
+:- mode io__see(input, output, di, uo).
 %	io__see(File, Result, IO0, IO1).
+%		Redirects the current input stream.
 %		As per Prolog see/1. Result is either 'ok' or 'error'.
 
 :- pred io__seen(io__state, io__state).
-%	io__seen(IO0, IO1).
+:- mode io__seen(di, uo).
+%		Closes the current input stream.
+%		The default input stream reverts to standard input.
 %		As per Prolog seen/0.
 
 :- pred io__tell(string, res, io__state, io__state).
+:- mode io__tell(input, output, di, uo).
 %	io__tell(File, Result, IO0, IO1).
+%		Redirects the current output stream.
 %		As per Prolog tell/1. Result is either 'ok' or 'error'.
 
 :- pred io__told(io__state, io__state).
+:- mode io__told(di, uo).
 %	io__told(IO0, IO1).
+%		Closes the current output stream.
+%		The default output stream reverts to standard output.
 %		As per Prolog told/0.
-
-:- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fyx; fyy.
-:- pred io__op(integer, op_type, string, io__state, io__state).
-%	io__op(Prec, Type, OpName, IOState0, IOState1).
-%		Define an operator as per Prolog op/3 for future calls to
-%		io__read_term.
-
-:- type op_details ---> op(integer, op_type, string).
-:- pred io__current_ops(list(op_details), io__state, io__state).
-%	io__current_ops(Ops, IOState0, IOState1).
-%		Return a list containing all the current operator definitions.
-
 
 :- pred io__get_line_number(int, io__state, io__state).
 :- mode io__get_line_number(output, di, uo).
 %	Return the line number of the current stream
 %	(as per NU-Prolog lineCount/1).
 
-:- type read_term ---> eof ; error(string) ; term(varset, term).
-:- pred io__read_term(read_term, io__state, io__state).
-
-%	io__read_term(Result, IO0, IO1).
-%		Read a term from standard input. Similar to NU-Prolog
-%		read_term/2, except that resulting term is in the ground
-%		representation. Binds Result to either 'eof' or
-%		'term(VarSet, Term)'.
-
-:- pred io__write_term(varset, term, io__state, io__state).
-%	io__write_term(VarSet, Term, IO0, IO1).
-%		Writes a term to standard output.
-
-:- pred io__write_term_nl(varset, term, io__state, io__state).
-%	io__write_term_nl(VarSet, Term, IO0, IO1).
-%		As above, except it appends a period and new-line.
-
-:- pred io__write_constant(const, io__state, io__state).
-%	io__write_constant(Const, IO0, IO1).
-%		Writes a constant (integer, float, or atom) to stdout.
-
-:- pred io__gc_call(pred, io__state, io__state).
+% XXX The type and mode of io__gc_call/3 are a bit tricky.
+% :- pred io__gc_call(pred(M, io__state::di, io__state::uo) :: M,
+%			io__state::di, io__state::uo).
 %	io__gc_call(Goal, IO0, IO1).
 %		Execute Goal, passing IO0, and IO1, and
 %		collect any garbage created during it's execution.
 
 :- pred io__flush_output(io__state, io__state).
+:- mode io__flush_output(di, uo).
 %	Flush the output buffer of the current output stream.
-
-:- pred gc_call(pred).
-gc_call(Goal) :-
-	findall(Goal, Goal, List),
-	member(Goal, List).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-io__gc_call(Goal) -->
-	io__update_state,
-	{ io__call(Goal) }.
-
-%%% :- dynamic(main_predicate/3).	% needed so that spy will work.
-%%% :- spy(main_predicate/3).	% for debugging
+/* Most of these predicates are implemented using non-logical NU-Prolog code
+   in io.nu.nl. */
 
 :- type io__state ---> io__state(io__state_2).
 :- type io__state_2 ---> old ; current.
 
-%-----------------------------------------------------------------------------%
-
-:- pred main(list(atom)).
-main(Args) :-
-	run(Args).
-
-:- pred run(list(atom)).
-run(Args) :-
-	atoms_to_strings(Args,ArgStrings),
-	save_progname(ArgStrings),
-	io__call(main_predicate(ArgStrings)).
-
-:- pred io__call(pred).
-io__call(Goal) :-
-	io__init_state(IOState0),
-	findall(Goal, ( call(Goal, IOState0, IOState1),
-			io__final_state(IOState1) ), Solutions),
-	io__call_2(Goal, Solutions).
-
-:- pred io__call_2(pred, list(_)).
-io__call_2(Goal, Solutions) :-
-	(Solutions = [] ->
-		write('\nio.nl: error: goal "'),
-		print(Goal),
-		write('." failed.\n')
-	; Solutions = [SingleSolution] ->
-		Goal = SingleSolution
-	;
-		write('\nio.nl: error: goal "'),
-		print(Goal),
-		write('." not deterministic.\n')
-	).
-
-:- pred atoms_to_strings(list(atom), list(string)).
-atoms_to_strings([],[]).
-atoms_to_strings(A.As,S.Ss) :-
-	name(A,S),
-	atoms_to_strings(As,Ss).
-
-% ?- dynamic(io__progname/1).
-% save_progname(Progname._) :-
-% 	assert(io__progname(Progname, X, X)).
-
-	% !! this is wrong, but is necessary to avoid bugs in nit.
-save_progname(_).
-io__progname("typecheck", X, X).
-	
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- io__op(P, T, O, IO0, _) when P and T and ground(O) and IO0.
-io__op(Prec, Type, OpName) -->
-	{ name(Op, OpName), op(Prec, Type, Op) },
-	io__update_state.
-
-:- io__current_ops(_, IO0, _) when IO0.
-io__current_ops(Ops) -->
-	{ findall(op(Prec, Type, OpName),
-		  (currentOp(Prec, Type, Op), name(Op, OpName)),
-		  Ops)
-	}. 
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- io__get_line_number(_, IO0, _) when IO0.
-io__get_line_number(LineNumber) -->
-	{ currentInput(Stream) },
-	{ lineCount(Stream, LineNumber) }.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% Declarative versions of Prolog's see/1 and seen/0.
-
-:- io__see(File, _, IO0, _) when ground(File) and IO0.
-io__see(File, Result) -->
-	{
-		name(FileName, File),
-		(if see(FileName) then
-			Result = ok
-		else
-			Result = error
-		)
-	},
-	io__update_state.
-
-:- io__seen(IO0, _) when IO0.
-io__seen -->
-	{ seen },
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% Declarative versions of Prolog's tell/1 and told/0.
-
-:- io__tell(File, _, IO0, _) when ground(File) and IO0.
-io__tell(File, Result) -->
-	{
-		name(FileName, File),
-		(if tell(FileName) then
-			Result = ok
-		else
-			Result = error
-		)
-	},
-	io__update_state.
-
-:- io__told(IO0, _) when IO0.
-io__told -->
-	{ told },
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- io__read_term(_, IO0, _) when IO0.
-io__read_term(Result) -->
-	{
-	    io__get_token_list(Tokens0, LineNumber),
-	    term__context_init(LineNumber, Context),
-	    convert_tokens(Tokens0, Tokens),
-	    ( treadTerm(Tokens, Term0, NameList, VarList) ->
-		expandTerm(Term0, Term1),
-		( nonvar(Term1), eof(Term1) ->
-			Result = eof
-		;
-			convert_term(Term1, NameList, VarList, Context,
-					VarSet, Term),
-			Result = term(VarSet, Term)
-		)
-	    ;
-		% NU-Prolog just dumps to error message to stderr.
-		% This is the best we can do:
-		Result = error("syntax error")
-	    )
-	},
-	io__update_state.
-
-	% convert "double-quoted string" tokens into
-	% '$string'("double_quoted string") so that they don't get
-	% confused with lists of integers.
-	% NB we need to take care that we don't use $string directly,
-	% so that this file is self-applicable.
-
-magic_string_atom(Name) :-
-	name(Name, "$string").
-
-convert_tokens([], []).
-convert_tokens(Tok0.Toks0, Toks) :-
-	Tok0 = _Val.Type,
-	(Type = string ->
-		magic_string_atom(String),
-		Toks = [String.atom, '('.atom, Tok0, ')'.atom | Toks1]
-	;
-		Toks = [Tok0 | Toks1]
-	),
-	convert_tokens(Toks0, Toks1).
-
-
-	% This gets a term's worth of tokens, and
-	% also returns the linenumber at the start of the term.
-	% (Actually we return the linenumber after the first token
-	% of the term.)
-
-io__get_token_list(Tokens, LineNumber) :-
-	getToken(Token, Type),
-	currentInput(Stream),
-	lineCount(Stream, LineNumber),
-	( Type = end_of_file ->
-		Tokens = [(Token.Type)]
-	;
-		getTokenList(Tokens0),
-		Tokens = [(Token.Type) | Tokens0]
-	).
-
-%-----------------------------------------------------------------------------%
-
-% XXX nested module
-
-% :- module varmap.
-% :- export_pred varmap__init, varmap__set_id, varmap__lookup.
-% :- export_type maybe_name, maybe_id.
-
-	% The "varmap" ADT.
-	% A varmap is a mapping from variables to (var_id, name).
-	% This is used when converting terms to our nice ground representation.
-
-:- type varmap == list(varmap_2).
-:- type varmap_2 ---> var(var, maybe_name, maybe_id).
-:- type maybe_name ---> name(string) ; no_name.
-:- type maybe_id ---> id(var_id) ; no_id.
-:- type var == any.
-
-	% Initialize a varmap, given a list of variables and a list
-	% of their corresponding names.
-:- pred varmap__init(list(var), list(string), varmap).
-varmap__init([], [], []).
-varmap__init(Var.Vars, Name.Names, var(Var,name(Name),no_id).Rest) :-
-	varmap__init(Vars, Names, Rest).
-
-	% Set the id for a variable.
-:- pred varmap__set_id(varmap, var, var_id, varmap).
-varmap__set_id([], Var, Id, [var(Var, no_name, id(Id))]).
-varmap__set_id(V0.VarMap0, Var, Id, V.VarMap) :-
-	V0 = var(ThisVar, Name, OldId),
-	( Var == ThisVar ->
-		require(OldId = no_id, "io.nl: internal error (varmap)"),
-		V = var(ThisVar, Name, id(Id)),
-		VarMap = VarMap0
-	;
-		V = V0,
-		varmap__set_id(VarMap0, Var, Id, VarMap)
-	).
-
-	% Lookup the name and id of a variable.
-:- pred varmap__lookup(varmap, var, maybe_name, maybe_id).
-varmap__lookup([], _, no_name, no_id).
-varmap__lookup(var(V,N,I).Rest, Var, Name, Id) :-
-	( Var == V ->
-		Name = N,
-		Id = I
-	;
-		varmap__lookup(Rest, Var, Name, Id)
-	).
-
-% :- end_module varmap.
-
-%-----------------------------------------------------------------------------%
-
-	% Given a term, a list of the named variables in the term and
-	% a list of their corresponding names, return a VarSet and
-	% a properly structured ground representation of that term.
-convert_term(Term0, NameList, VarList, Context, VarSet, Term) :-
-	varset__init(VarSet0),
-	varmap__init(VarList, NameList, VarMap0),
-	convert_term_2(Term0, VarSet0, VarMap0, Context, Term, VarSet, _).
-
-convert_term_2(Term0, VarSet0, VarMap0, Context, Term, VarSet, VarMap) :-
-	( var(Term0) ->
-		varmap__lookup(VarMap0, Term0, Name, Id),
-		convert_term_3(Id, Name, Term0, VarSet0, VarMap0,
-				VarId, VarSet, VarMap),
-		Term = term_variable(VarId)
-	; integer(Term0) ->
-		Term = term_functor(term_integer(Term0), [], Context),
-		VarSet = VarSet0,
-		VarMap = VarMap0
-	; float(Term0) ->
-		Term = term_functor(term_float(Term0), [], Context),
-		VarSet = VarSet0,
-		VarMap = VarMap0
-	; magic_string_atom(S),
-	  Term0 =.. [S, String] ->
-		Term = term_functor(term_string(String), [], Context),
-		VarSet = VarSet0,
-		VarMap = VarMap0
-	; functor(Term0, F ,_) ->
-		name(F, Name),
-		Term = term_functor(term_atom(Name), Args, Context),
-		Term0 =.. [_|Args0],
-		convert_term_2_list(Args0, VarSet0, VarMap0,
-					Context, Args, VarSet, VarMap)
-	;
-		fail
-	).
-
-	% convert a list of terms
-convert_term_2_list([], VarSet, VarMap, _Context, [], VarSet, VarMap).
-convert_term_2_list(X0.Xs0, VarSet0, VarMap0, Context, X.Xs, VarSet, VarMap) :-
-	convert_term_2(X0, VarSet0, VarMap0, Context, X, VarSet1, VarMap1),
-	convert_term_2_list(Xs0, VarSet1, VarMap1, Context, Xs, VarSet, VarMap).
-
-	% If a variable does not already have an Id, then get the
-	% VarSet to allocate a new id for that variable and save
-	% the id in the VarMap.
-convert_term_3(id(VarId), _, _, VarSet, VarMap, VarId, VarSet, VarMap).
-convert_term_3(no_id, Name, Var, VarSet0, VarMap0, VarId, VarSet, VarMap) :-
-	varset__new_var(VarSet0, VarId, VarSet1),
-	varmap__set_id(VarMap0, Var, VarId, VarMap),
-	convert_term_4(Name, VarId, VarSet1, VarSet).
-
-	% If a variable has a name, then notify the VarSet of that name.
-convert_term_4(no_name, _, VarSet, VarSet).
-convert_term_4(name(Name), VarId, VarSet0, VarSet) :-
-	varset__name_var(VarSet0, VarId, Name, VarSet).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% write a term to standard output.
-	% use the variable names specified by varset and write _N
-	% for all unnamed variables with N starting at 0.
-
-:- io__write_term(V, T, IO0, _) when ground(V) and ground(T) and IO0.
-io__write_term(VarSet, Term) -->
-	{ io__write_term_2(Term, VarSet, 0, _, _) },
-	io__update_state.
-
-io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) :-
-	(if some [Name] varset__lookup_name(VarSet0, Id, Name) then
-		N = N0,
-		VarSet = VarSet0,
-		write_string(Name)
-	else
-		intToString(N0, Num),
-		append("_", Num, VarName),
-		varset__name_var(VarSet0, Id, VarName, VarSet),
-		N is N0 + 1,
-		write_string(VarName)
-	).
-io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) :-
-	(if some [PrefixArg] (
-		Args = [PrefixArg],
-		io__unary_prefix_op(Functor)
-	    )
-	then
-		write('('),
-		io__write_constant_2(Functor),
-		write(' '),
-		io__write_term_2(PrefixArg, VarSet0, N0, VarSet, N),
-		write(')')
-	else
-	if some [PostfixArg] (
-		Args = [PostfixArg],
-		io__unary_postfix_op(Functor)
-	    )
-	then
-		write('('),
-		io__write_term_2(PostfixArg, VarSet0, N0, VarSet, N),
-		write(' '),
-		io__write_constant_2(Functor),
-		write(')')
-	else
-	if some [Arg1, Arg2] (
-		Args = [Arg1, Arg2],
-		io__infix_op(Functor)
-	    )
-	then
-		write('('),
-		io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
-		write(' '),
-		io__write_constant_2(Functor),
-		write(' '),
-		io__write_term_2(Arg2, VarSet1, N1, VarSet, N),
-		write(')')
-	else
-		io__write_constant_2(Functor),
-		(if some [X,Xs] Args = X.Xs then
-			write('('),
-			io__write_term_2(X, VarSet0, N0, VarSet1, N1),
-			io__write_term_args(Xs, VarSet1, N1, VarSet, N),
-			write(')')
-		else
-			N = N0,
-			VarSet = VarSet0
-		)
-	).
-
-io__current_op(Type, Prec, term_atom(OpName)) :-
-	name(Op, OpName),
-	currentOp(Type, Prec, Op).
-
-io__infix_op(Op) :-
-	some [Type, Prec] (
-		io__current_op(Prec, Type, Op),
-		member(Type, [xfx, xfy, yfx])
-	).
-
-io__unary_prefix_op(Op) :-
-	some [Type, Prec] (
-		io__current_op(Prec, Type, Op),
-		member(Type, [fx, fy])
-	).
-
-io__unary_postfix_op(Op) :-
-	some [Type, Prec] (
-		io__current_op(Prec, Type, Op),
-		member(Type, [xf, yf])
-	).
-
-	% write the remaining arguments
-io__write_term_args([], VarSet, N, VarSet, N).
-io__write_term_args(X.Xs, VarSet0, N0, VarSet, N) :-
-	write(', '),
-	io__write_term_2(X, VarSet0, N0, VarSet1, N1),
-	io__write_term_args(Xs, VarSet1, N1, VarSet, N).
-
-	% write the functor
-io__write_constant(Const) -->
-	io__update_state,
-	{ io__write_constant_2(Const) }.
-
-	% write the functor
-io__write_constant_2(term_integer(I))   :- write(I).
-io__write_constant_2(term_float(F)) :- write(F).
-io__write_constant_2(term_atom(A))  :- write_string(A).
-io__write_constant_2(term_string(S)) :- write('"'), write_string(S), write('"').
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- io__write_int(I, IO0, _) when I and IO0.
-io__write_int(I) -->
-	{ write(I) },
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-
-:- io__write_anything(I, IO0, _) when I and IO0.
-io__write_anything(I) -->
-	{ write(I) },
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-
-:- io__write_float(F, IO0, _) when F and IO0.
-io__write_float(F) -->
-	{ write(F) },
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-
-:- io__write_string(S, IO0, _) when ground(S) and IO0.
-io__write_string(S) -->
-	{ write_string(S) },
-	io__update_state.
-	
-write_string(S) :-
-	format("~s",[S]).
-
-io__flush_output -->
-	{ 
-	  currentOutput(Stream),
-	  flushOutput(Stream)
-	},
-	io__update_state.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-io__write_term_nl(VarSet, Term) -->
-	io__write_term(VarSet, Term),
-	io__write_string(".\n").
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% These predicates are used to enforce correct usage
-	% of io__states. io__update_state uses destructive assignment
-	% to ensure that once an io state has been used it can't be
-	% used again.
-
-:- pred io__init_state(io__state).
-io__init_state(io__state(current)).
-
-:- pred io__update_state(io__state, io__state).
-io__update_state(IOState0, IOState) :-
-	require(IOState0 = io__state(current),
-		"\nio.nl: cannot retry I/O operation"),
-	$replacn(1, IOState0, old),
-	IOState = io__state(current).
-
-:- pred io__final_state(io__state).
-io__final_state(IOState) :-
-	io__update_state(IOState, _).
+/*
+:- external("NU-Prolog", io__progname/2).
+:- external("NU-Prolog", io__write_string/3).
+:- external("NU-Prolog", io__write_char/3).
+:- external("NU-Prolog", io__write_int/3).
+:- external("NU-Prolog", io__write_float/3).
+:- external("NU-Prolog", io__write_anything/3).
+:- external("NU-Prolog", io__see/4).
+:- external("NU-Prolog", io__seen/2).
+:- external("NU-Prolog", io__tell/4).
+:- external("NU-Prolog", io__told/2).
+:- external("NU-Prolog", io__get_line_number/3).
+:- external("NU-Prolog", io__gc_call/3).
+:- external("NU-Prolog", io__flush_output/2).
+*/
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -6,7 +6,7 @@
 
 :- module llds.		
 
-:- import_module io, list, string, int.
+:- import_module io, list, string, int. % and float, eventually.
 
 %-----------------------------------------------------------------------------%
 
@@ -20,8 +20,10 @@
 :- type c_module	--->	c_module(string, list(c_procedure)).
 			%	module name, code
 
-:- type c_procedure	--->	c_procedure(string, int, mode_id,
+:- type c_procedure	--->	c_procedure(string, int, llds__pred_mode_id,
 						list(instruction)).
+:- type llds__pred_mode_id == int.
+
 			%	predicate name, arity, mode, code
 :- type instruction	--->	instr - string.	
 			%	 instruction, comment
@@ -69,7 +71,7 @@
 			;	label(string, string, int, int, int).
 				% module, predicate, arity, mode #, #
 
-:- type tag		=	integer.
+:- type tag		==	integer.
 
 :- pred output_c_file(c_file, io__state, io__state).
 :- mode output_c_file(i, di, uo).
@@ -155,12 +157,12 @@ output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
 output_instruction_list([]) --> [].
 output_instruction_list([Inst - Comment|Instructions]) -->
 	output_instruction(Inst),
-	(if { Comment \= "" } then
+	(if { Comment = "" } then
+		io__write_string("\n")
+	else
 		io__write_string("\t/* "),
 		io__write_string(Comment),
 		io__write_string(" */\n")
-	else
-		io__write_string("\n")
 	),
 	output_instruction_list(Instructions).
 
@@ -174,7 +176,7 @@ output_instruction(assign(Lval, Rval)) -->
 	output_rval(Rval),
 	io__write_string(";").
 
-output_instruction(call(local(Label),ContLabel)) -->
+output_instruction(call(local(Label), ContLabel)) -->
 	io__write_string("\t"),
 	io__write_string("call(LABEL("),
 	output_label(Label),
@@ -182,7 +184,9 @@ output_instruction(call(local(Label),ContLabel)) -->
 	output_label(ContLabel),
 	io__write_string("));").
 
-output_instruction(call(nonlocal(Pred, Mode),ContLabel)) -->
+	% XXX we need to do something with the module name and arity.
+
+output_instruction(call(nonlocal(_Module, Pred, _Arity, Mode), ContLabel)) -->
 	io__write_string("\t"),
 	io__write_string("callentry("),
 	io__write_string(Pred),
@@ -198,7 +202,9 @@ output_instruction(tailcall(local(Label))) -->
 	output_label(Label),
 	io__write_string("));").
 
-output_instruction(tailcall(nonlocal(Pred, Mode))) -->
+	% XXX we need to do something with the module name and arity.
+
+output_instruction(tailcall(nonlocal(_Module, Pred, _Arity, Mode))) -->
 	io__write_string("\t"),
 	io__write_string("tailcallentry("),
 	io__write_string(Pred),
