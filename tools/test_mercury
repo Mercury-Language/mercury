@@ -309,49 +309,25 @@ case $status in 0)
         true)	cd mercury || { false; exit 1; } ;;
     esac
 
+    # Previously we had lots of special case code here for installing on
+    # IRIX systems.   We don't currently have any IRIX boxes, and this 
+    # code was a bit of a pain to maintain.  If we ever get an IRIX box
+    # again, look back in the CVS archives for version 1.114 to see
+    # the necessary code.
+
+    mmake install MMAKEFLAGS=$PARALLEL || status=1
+    mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
+	|| status=1
+
+	# If you want to add extra grades to install on specific hosts,
+	# do it here.
     case $HOST in
-	munta)
-		# see README.IRIX for an explanation of these contortions
-		
-		mmake install LIBGRADES="asm_fast.gc.prof asm_fast" \
-			MMAKEFLAGS=$PARALLEL || status=1
-
-		# mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL
-		#
-		# the above line doesn't work, due to a bug in gcc 2.6.3;
-		# the following hack avoids the bug by compiling modules.o
-		# with -O1 rather than -O2
-		#
-		(cd library && \
-		\
-		PATH=../scripts:../util:$PATH \
-		MMAKE_VPATH=. MMAKE_DIR=../scripts \
-		../scripts/mmake EXTRA_CFLAGS="$INSTALL_CFLAGS -O1" \
-		int.dir/*.o && \
-		\
-		PATH=../scripts:../util:$PATH \
-		MMAKE_VPATH=. MMAKE_DIR=../scripts \
-		../scripts/mmake install_split_library \
-		) || status=1
-
-		: install the shared library grades
-		mmake install_grades LIBGRADES="reg.gc reg.gc.prof" \
-			MMAKEFLAGS="$PARALLEL EXT_FOR_SHARED_LIB=so" || status=1
-
-		: must reinstall a non-shared libgc.a and libgc_prof.a
-		(cd boehm_gc && \
-		mmake install MMAKEFLAGS=$PARALLEL && \
-		mmake clean MMAKEFLAGS=$PARALLEL && \
-		mmake install GRADE=asm_fast.gc.prof PROF=_prof \
-		 	MMAKEFLAGS=$PARALLEL \
-		) || status=1
+    	hg)	mmake install_grades LIBGRADES="asm_fast.gc.par" || status=1
 		;;
 	*)
-		mmake install MMAKEFLAGS=$PARALLEL || status=1
-		mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
-			|| status=1
 		;;
     esac
+
     case $install_anyway in
         false)	cd ../.. || status=1 ;;
         true)	cd .. || status=1 ;;
@@ -483,10 +459,16 @@ case $HOST in
 		# Don't bother with these, otherwise it would take forever...
 		#	reg.prof asm_fast.prof reg.gc.memprof reg.gc.tr reg.gc.tr.debug
 		;;
-	hg|hydra)
+	hydra)
 		GRADES="asm_fast.gc asm_fast
 			asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug"
+		;;
+	hg)
+		GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+			asm_fast.gc.par hlc.gc"
 		;;
 	quicksilver)
 		GRADES="asm_fast.gc asm_fast asm_fast.gc.tr.debug"
