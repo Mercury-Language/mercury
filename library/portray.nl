@@ -26,7 +26,7 @@ portray(Term) :-
 	myportray(Term).
 
 myportray(Term) :-
-	( list_of_char_codes(Term) ->
+	( compound(Term), list_of_char_codes(Term) ->
 		format("""~s""", [Term])
 	; compound(Term) ->
 		Term =.. [F|Args],
@@ -50,7 +50,7 @@ portray_args_2([X|Xs]) :-
 	portray_args_2(Xs).
 
 portray2(Term) :-
-	( list_of_char_codes(Term) ->
+	( compound(Term), list_of_char_codes(Term) ->
 		format("""~s""", [Term])
 	; compound(Term) ->
 		functor(Term,F,N),
