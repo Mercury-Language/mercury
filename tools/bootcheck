@@ -320,6 +320,7 @@ then
 		ln -s $root/profiler .
 	fi
 	ln -s $root/conf* .
+	ln -s $root/aclocal.m4 .
 	ln -s $root/VERSION .
 	ln -s $root/.*.in .
 	rm -f config*.log
@@ -466,6 +467,7 @@ then
 	ln -s $root/util .
 	ln -s $root/profiler .
 	ln -s $root/conf* .
+	ln -s $root/aclocal.m4 .
 	ln -s $root/VERSION .
 	ln -s $root/.*.in .
 	rm -f config*.log
