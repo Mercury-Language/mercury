@@ -789,7 +789,8 @@ lexer__get_name(Chars, Token) -->
 	% (specifying the line number) followed by a newline.
 	% Such a token sets the source line number for the next
 	% line, but it is otherwise ignored.  This means that line number
-	% directives may appear anywhere, including in the middle of terms.
+	% directives may appear anywhere that a token may appear, including
+	% in the middle of terms.
 	% (The source file name can be set with a `:- pragma source_file' 
 	% declaration.)
 	%
