@@ -670,8 +670,8 @@ code_info__set_created_temp_frame(MR, CI,
 :- mode code_info__succip_is_used(in, out) is det.
 
 :- pred code_info__add_trace_layout_for_label(label, term__context,
-	trace_port, goal_path, layout_label_info, code_info, code_info).
-:- mode code_info__add_trace_layout_for_label(in, in, in,in,  in, in, out)
+	trace_port, bool, goal_path, layout_label_info, code_info, code_info).
+:- mode code_info__add_trace_layout_for_label(in, in, in, in, in, in, in, out)
 	is det.
 
 :- pred code_info__get_cur_proc_label(proc_label, code_info, code_info).
@@ -897,9 +897,11 @@ code_info__get_next_cell_number(N) -->
 code_info__succip_is_used -->
 	code_info__set_succip_used(yes).
 
-code_info__add_trace_layout_for_label(Label, Context, Port, Path, Layout) -->
+code_info__add_trace_layout_for_label(Label, Context, Port, IsHidden, Path,
+		Layout) -->
 	code_info__get_layout_info(Internals0),
-	{ Exec = yes(trace_port_layout_info(Context, Port, Path, Layout)) },
+	{ Exec = yes(trace_port_layout_info(Context, Port, IsHidden,
+		Path, Layout)) },
 	{ map__search(Internals0, Label, Internal0) ->
 		Internal0 = internal_layout_info(Exec0, Resume, Return),
 		( Exec0 = no ->

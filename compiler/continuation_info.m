@@ -215,10 +215,11 @@
 
 :- type trace_port_layout_info
 	--->	trace_port_layout_info(
-			prog_context,
-			trace_port,
-			goal_path,
-			layout_label_info
+			port_context	:: prog_context,
+			port_type	:: trace_port,
+			port_is_hidden	:: bool,
+			port_path	:: goal_path,
+			port_label	:: layout_label_info
 		).
 
 :- type return_layout_info

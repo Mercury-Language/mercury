@@ -145,7 +145,7 @@ llds_common__process_data(layout_data(LayoutData0), layout_data(LayoutData),
 
 llds_common__process_layout_data(LayoutData0, LayoutData, Info0, Info) :-
 	LayoutData0 = label_layout_data(Label, ProcLayoutName,
-		MaybePort, MaybeGoalPath, MaybeVarInfo0),
+		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo0),
 	(
 		MaybeVarInfo0 = no,
 		LayoutData = LayoutData0,
@@ -164,7 +164,7 @@ llds_common__process_layout_data(LayoutData0, LayoutData, Info0, Info) :-
 			LocnsTypes, VarNums, TypeParams),
 		MaybeVarInfo = yes(VarInfo),
 		LayoutData = label_layout_data(Label, ProcLayoutName,
-			MaybePort, MaybeGoalPath, MaybeVarInfo)
+			MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo)
 	).
 llds_common__process_layout_data(LayoutData0, LayoutData, Info0, Info) :-
 	LayoutData0 = proc_layout_data(ProcLabel, Traversal, MaybeRest0),

@@ -241,6 +241,13 @@ typedef enum {
 ** with events, this will be the port of the event. For return labels,
 ** this port will be exception (since exception events are associated with
 ** the return from the call that raised the exception).
+** 
+** The MR_sll_hidden field contains a boolean which is meaningful only if the
+** label corresponds to an execution tracing event. It will be true if the
+** event should have no effects that the user can see (no message printed, no
+** increment of the event number etc), and false otherwise. Hidden events
+** are sometimes needed by the declarative debugger to provide the proper
+** context for other events. XXX this field is not used yet.
 **
 ** The MR_sll_goal_path field contains an offset into the module-wide string
 ** table, leading to a string that gives the goal path associated with the
@@ -330,7 +337,8 @@ typedef	struct MR_Type_Param_Locns_Struct {
 
 typedef	struct MR_Label_Layout_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
-	MR_int_least16_t		MR_sll_port;
+	MR_int_least8_t			MR_sll_port;
+	MR_int_least8_t			MR_sll_hidden;
 	MR_int_least16_t		MR_sll_goal_path;
 	MR_Integer			MR_sll_var_count; /* >= 0 */
 	const void			*MR_sll_locns_types;

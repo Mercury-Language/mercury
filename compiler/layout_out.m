@@ -83,9 +83,11 @@
 :- import_module int, char, string, require, std_util, list.
 
 output_layout_data_defn(label_layout_data(Label, ProcLayoutAddr,
-		MaybePort, MaybeGoalPath, MaybeVarInfo), DeclSet0, DeclSet) -->
+		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo),
+		DeclSet0, DeclSet) -->
 	output_label_layout_data_defn(Label, ProcLayoutAddr,
-		MaybePort, MaybeGoalPath, MaybeVarInfo, DeclSet0, DeclSet).
+		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo,
+		DeclSet0, DeclSet).
 output_layout_data_defn(proc_layout_data(ProcLabel, Traversal, MaybeRest),
 		DeclSet0, DeclSet) -->
 	output_proc_layout_data_defn(ProcLabel, Traversal, MaybeRest,
@@ -134,9 +136,9 @@ output_maybe_layout_data_decl(LayoutData, DeclSet0, DeclSet) -->
 
 :- pred extract_layout_name(layout_data::in, layout_name::out) is det.
 
-extract_layout_name(label_layout_data(Label, _, _, _, yes(_)), LayoutName) :-
+extract_layout_name(label_layout_data(Label, _, _, _, _, yes(_)), LayoutName) :-
 	LayoutName = label_layout(Label, label_has_var_info).
-extract_layout_name(label_layout_data(Label, _, _, _, no), LayoutName) :-
+extract_layout_name(label_layout_data(Label, _, _, _, _, no), LayoutName) :-
 	LayoutName = label_layout(Label, label_has_no_var_info).
 extract_layout_name(proc_layout_data(ProcLabel, _, MaybeRest), LayoutName) :-
 	Kind = maybe_proc_layout_and_exec_trace_kind(MaybeRest, ProcLabel),
@@ -395,11 +397,12 @@ kind_to_type(proc_layout_exec_trace(compiler)) = "MR_Proc_Layout_Compiler_Exec".
 %-----------------------------------------------------------------------------%
 
 :- pred output_label_layout_data_defn(label::in, layout_name::in,
-	maybe(trace_port)::in, maybe(int)::in, maybe(label_var_info)::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	maybe(trace_port)::in, maybe(bool)::in, maybe(int)::in,
+	maybe(label_var_info)::in, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
 
-output_label_layout_data_defn(Label, ProcLayoutAddr, MaybePort, MaybeGoalPath,
-		MaybeVarInfo, DeclSet0, DeclSet) -->
+output_label_layout_data_defn(Label, ProcLayoutAddr, MaybePort, MaybeIsHidden,
+		MaybeGoalPath, MaybeVarInfo, DeclSet0, DeclSet) -->
 	output_layout_decl(ProcLayoutAddr, DeclSet0, DeclSet1),
 	(
 		{ MaybeVarInfo = yes(VarInfo0) },
@@ -430,6 +433,18 @@ output_label_layout_data_defn(Label, ProcLayoutAddr, MaybePort, MaybeGoalPath,
 	;
 		{ MaybePort = no },
 		io__write_string("MR_PORT_NONE")
+	),
+	io__write_string(",\n\t"),
+	(
+		{ MaybeIsHidden = yes(yes) },
+		io__write_string("MR_TRUE")
+	;
+		{ MaybeIsHidden = yes(no) },
+		io__write_string("MR_FALSE")
+	;
+		{ MaybeIsHidden = no },
+		% the value we write here shouldn't matter
+		io__write_string("MR_FALSE")
 	),
 	io__write_string(",\n\t"),
 	(

@@ -321,7 +321,7 @@ stack_layout__update_label_table((Label - LabelVars) - InternalInfo,
 		stack_layout__update_label_table_2(Label, LabelVars,
 			Context, IsReturn, LabelTables0, LabelTables)
 	;
-		Port = yes(trace_port_layout_info(Context, _, _, _)),
+		Port = yes(trace_port_layout_info(Context, _, _, _, _)),
 		stack_layout__context_is_valid(Context)
 	->
 		stack_layout__update_label_table_2(Label, LabelVars,
@@ -597,7 +597,7 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 		{ set__init(TraceLiveVarSet) },
 		{ map__init(TraceTypeVarMap) }
 	;
-		{ Trace = yes(trace_port_layout_info(_, _, _, TraceLayout)) },
+		{ Trace = yes(trace_port_layout_info(_,_,_,_, TraceLayout)) },
 		{ TraceLayout = layout_label_info(TraceLiveVarSet,
 			TraceTypeVarMap) }
 	),
@@ -611,9 +611,11 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 			ResumeTypeVarMap)
 	},
 	(
-		{ Trace = yes(trace_port_layout_info(_, Port, GoalPath, _)) },
+		{ Trace = yes(trace_port_layout_info(_, Port, IsHidden,
+			GoalPath, _)) },
 		{ Return = no },
 		{ MaybePort = yes(Port) },
+		{ MaybeIsHidden = yes(IsHidden) },
 		{ trace__path_to_string(GoalPath, GoalPathStr) },
 		stack_layout__lookup_string_in_table(GoalPathStr, GoalPathNum),
 		{ MaybeGoalPath = yes(GoalPathNum) }
@@ -625,6 +627,7 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 			% (Since exception events are interface events,
 			% the goal path field is not meaningful then.)
 		{ MaybePort = yes(exception) },
+		{ MaybeIsHidden = yes(no) },
 			% We only ever use the goal path fields of these
 			% layout structures when we process "fail" commands
 			% in the debugger.
@@ -650,6 +653,7 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 		{ Trace = no },
 		{ Return = no },
 		{ MaybePort = no },
+		{ MaybeIsHidden = no },
 		{ MaybeGoalPath = no }
 	;
 		{ Trace = yes(_) },
@@ -708,7 +712,7 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 	),
 
 	{ LayoutData = label_layout_data(Label, ProcLayoutName,
-		MaybePort, MaybeGoalPath, MaybeVarInfo) },
+		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo) },
 	{ CData = layout_data(LayoutData) },
 	{ LayoutName = label_layout(Label, LabelVars) },
 	stack_layout__add_internal_layout_data(CData, Label, LayoutName).

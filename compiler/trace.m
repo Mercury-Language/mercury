@@ -825,7 +825,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 		"\t\t\t(const MR_Label_Layout *)\n",
 		"\t\t\t&", LabelStr, ");\n"],
 		CallStmt) },
-	code_info__add_trace_layout_for_label(Label, Context, Port, Path,
+	code_info__add_trace_layout_for_label(Label, Context, Port, no, Path,
 		LayoutLabelInfo),
 	(
 		{ Port = fail },
@@ -842,7 +842,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 		% for the redo event, whose layout information is filled in
 		% when we get to the fail event.
 		code_info__add_trace_layout_for_label(RedoLabel, Context, redo,
-			Path, LayoutLabelInfo)
+			no, Path, LayoutLabelInfo)
 	;
 		[]
 	),

@@ -41,6 +41,7 @@
 			label			:: label,
 			proc_layout_name	:: layout_name,
 			maybe_port		:: maybe(trace_port),
+			maybe_is_hidden		:: maybe(bool),
 			maybe_goal_path		:: maybe(int), % offset
 			maybe_var_info		:: maybe(label_var_info)
 		)
