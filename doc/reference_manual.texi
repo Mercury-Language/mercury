@@ -1952,6 +1952,7 @@ as well for all local types and predicates.
 The module may optionally end with an @code{end_module} declaration.
 
 @c XXX should we mention multipart interfaces and implementations?
+@c ===> no
 
 If a module wishes to make use of entities exported by other modules,
 then it must explicitly import those modules
@@ -1975,7 +1976,7 @@ must be declared as either
 or
 
 @example
-:- pred main(io__state::di, io__state::uo) is multi.
+:- pred main(io__state::di, io__state::uo) is cc_multi.
 @end example
 
 @noindent
@@ -2034,6 +2035,15 @@ lists, stacks, queues, priority queues, sets, bags (multi-sets),
 maps (dictionaries), random number generation, input/output
 and filename and directory handling. 
 See the Mercury Library Reference Manual for details.
+
+The Mercury standard library has a standard naming convention in which
+every entity exported by a module is prefixed by the module name and
+two underscores.  We have found this convention improves the
+readability and maintainability of our code, and so we recommend that
+you follow it in your code too.  (Later versions of Mercury may provide
+explicit linguistic support for module qualifiers using an infix `:'
+operator, i.e. `module:name'; this would allow you to omit the prefix
+in places where it does not improve readability.)
 
 @node Semantics
 @chapter Semantics
