@@ -199,6 +199,11 @@ lexer__rev_char_list_to_string(RevChars, String) :-
 	list__reverse(RevChars, Chars),
 	string__from_char_list(Chars, String).
 
+string__contains_char(String, Char) :-
+	string__to_char_list(String, CharList),
+	member(Char, CharList),
+	!.
+
 report_stats :-
 	statistics(global_stack, [Heap,_]),
 	statistics(program, [Program,_]),
