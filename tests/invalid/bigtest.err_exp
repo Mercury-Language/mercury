@@ -5,8 +5,8 @@ bigtest.m:  1: Warning: interface for module `bigtest' does not export anything.
 bigtest.m:001: Warning: declaration not yet implemented.
 bigtest.m:002: Warning: declaration not yet implemented.
 bigtest.m:003: Warning: declaration not yet implemented.
-bigtest.m:016: Sorry, not implemented: undiscriminated union type.
-bigtest.m:016: (The syntax for type equivalence is `:- type t1 == t2'.)
+bigtest.m:016: Error in type declaration: 
+bigtest.m:016:   the syntax for type equivalence is `:- type t1 == t2'.
 bigtest.m:005: Error: clause for predicate `bigtest:fact/0'
 bigtest.m:005:   without preceding `pred' declaration.
 bigtest.m:005: Inferred :- pred fact.

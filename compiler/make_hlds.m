@@ -1948,11 +1948,10 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 			io__stderr_stream(StdErr),
 			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
-			io__write_string(
-	"Sorry, not implemented: undiscriminated union type.\n"),
+			io__write_string("Error in type declaration: \n"),
 			prog_out__write_context(Context),
 			io__write_string(
-	"(The syntax for type equivalence is `:- type t1 == t2'.)\n"),
+	"  the syntax for type equivalence is `:- type t1 == t2'.\n"),
 			io__set_exit_status(1),
 			io__set_output_stream(OldStream, _)
 		;

@@ -1,3 +1,3 @@
-uu_type.m:022: Sorry, not implemented: undiscriminated union type.
-uu_type.m:022: (The syntax for type equivalence is `:- type t1 == t2'.)
+uu_type.m:022: Error in type declaration: 
+uu_type.m:022:   the syntax for type equivalence is `:- type t1 == t2'.
 For more information, try recompiling with `-E'.
