@@ -110,7 +110,7 @@ call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code) -->
 
 		% If the call can fail, generate code to check for and
 		% handle the failure.
-	call_gen__handle_failure(CodeModel, FailHandlingCode),
+	call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode),
 
 	{ Code =
 		tree(SetupCode,
@@ -200,7 +200,7 @@ call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args0,
 
 		% If the call can fail, generate code to check for and
 		% handle the failure.
-	call_gen__handle_failure(CodeModel, FailHandlingCode),
+	call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode),
 
 	{ Code =
 		tree(SetupCode,
@@ -520,26 +520,31 @@ call_gen__prepare_for_call(CodeModel, CallModel, TraceCode) -->
 	),
 	trace__prepare_for_call(TraceCode).
 
-:- pred call_gen__handle_failure(code_model::in, code_tree::out,
-	code_info::in, code_info::out) is det.
+:- pred call_gen__handle_failure(code_model::in, hlds_goal_info::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
-call_gen__handle_failure(CodeModel, FailHandlingCode) -->
+call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode) -->
 	( { CodeModel = model_semi } ->
-		code_info__get_next_label(ContLab),
-		{ FailTestCode = node([
-			if_val(lval(reg(r, 1)), label(ContLab))
-				- "test for success"
-		]) },
-		code_info__generate_failure(FailCode),
-		{ ContLabelCode = node([
-			label(ContLab)
-				- ""
-		]) },
-		{ FailHandlingCode =
-			tree(FailTestCode,
-			tree(FailCode,
-			     ContLabelCode))
-		}
+		{ goal_info_get_determinism(GoalInfo, Detism) },
+		( { Detism = failure } ->
+			code_info__generate_failure(FailHandlingCode)
+		;
+			code_info__get_next_label(ContLab),
+			{ FailTestCode = node([
+				if_val(lval(reg(r, 1)), label(ContLab))
+					- "test for success"
+			]) },
+			code_info__generate_failure(FailCode),
+			{ ContLabelCode = node([
+				label(ContLab)
+					- ""
+			]) },
+			{ FailHandlingCode =
+				tree(FailTestCode,
+				tree(FailCode,
+				     ContLabelCode))
+			}
+		)
 	;
 		{ FailHandlingCode = empty }
 	).
