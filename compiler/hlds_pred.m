@@ -128,8 +128,8 @@
 							% the following two
 							% fields are computed
 							% by polymorphism.m
-			type_info_varmap	:: type_info_varmap,
-			typeclass_info_varmap	:: typeclass_info_varmap
+			clause_type_info_varmap	:: type_info_varmap,
+			clause_typeclass_info_varmap :: typeclass_info_varmap
 		).
 
 :- type vartypes == map(prog_var, type).
@@ -1104,16 +1104,17 @@ clauses_info_explicit_vartypes(CI, CI^explicit_vartypes).
 clauses_info_vartypes(CI, CI^vartypes).
 clauses_info_headvars(CI, CI^headvars).
 clauses_info_clauses(CI, CI^clauses).
-clauses_info_type_info_varmap(CI, CI^type_info_varmap).
-clauses_info_typeclass_info_varmap(CI, CI^typeclass_info_varmap).
+clauses_info_type_info_varmap(CI, CI^clause_type_info_varmap).
+clauses_info_typeclass_info_varmap(CI, CI^clause_typeclass_info_varmap).
 
 clauses_info_set_varset(CI, X, CI^varset := X).
 clauses_info_set_explicit_vartypes(CI, X, CI^explicit_vartypes := X).
 clauses_info_set_vartypes(CI, X, CI^vartypes := X).
 clauses_info_set_headvars(CI, X, CI^headvars := X).
 clauses_info_set_clauses(CI, X, CI^clauses := X).
-clauses_info_set_type_info_varmap(CI, X, CI^type_info_varmap := X).
-clauses_info_set_typeclass_info_varmap(CI, X, CI^typeclass_info_varmap := X).
+clauses_info_set_type_info_varmap(CI, X, CI^clause_type_info_varmap := X).
+clauses_info_set_typeclass_info_varmap(CI, X,
+	CI^clause_typeclass_info_varmap := X).
 
 %-----------------------------------------------------------------------------%
 
@@ -1432,54 +1433,61 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 :- type proc_info
 	--->	procedure(
-			maybe(determinism),
+			declared_detism	:: maybe(determinism),
 					% _declared_ determinism
 					% or `no' if there was no detism decl
-			prog_varset,	% variable names
-			vartypes,	% variable types
-			list(prog_var),	% head vars
-			list(mode), 	% modes of args
-			maybe(list(is_live)),
-					% liveness (in the mode analysis sense)
-					% of the arguments
-			hlds_goal,	% Body
-			prog_context,
+			prog_varset	:: prog_varset,
+			var_types	:: vartypes,
+			head_vars	:: list(prog_var),
+			actual_head_modes :: list(mode),
+			head_var_caller_liveness :: maybe(list(is_live)),
+					% Liveness (in the mode analysis sense)
+					% of the arguments in the caller; says
+					% whether each argument may be used
+					% after the call.
+			body		:: hlds_goal,
+			proc_context	:: prog_context,
 					% The context of the `:- mode' decl
 					% (or the context of the first clause,
 					% if there was no mode declaration).
-			stack_slots,	% stack allocations
-			determinism,	% _inferred_ determinism
-			bool,		% no if we must not process this
+			stack_slots	:: stack_slots,
+					% stack allocations
+			inferred_detism	:: determinism,
+			can_process	:: bool,
+					% no if we must not process this
 					% procedure yet (used to delay
 					% mode checking etc. for complicated
 					% modes of unification procs until
 					% the end of the unique_modes pass.)
-			list(arg_info),	% calling convention of each arg:
+			arg_pass_info	:: list(arg_info),
+					% calling convention of each arg:
 					% information computed by arg_info.m
 					% (based on the modes etc.)
 					% and used by code generation
 					% to determine how each argument
 					% should be passed.
-			liveness_info,	% the initial liveness,
+			initial_liveness :: liveness_info,
+					% the initial liveness,
 					% for code generation
-			type_info_varmap,	
+			proc_type_info_varmap :: type_info_varmap,	
 					% typeinfo vars for type parameters
-			typeclass_info_varmap,
+			proc_typeclass_info_varmap :: typeclass_info_varmap,
 					% typeclass_info vars for class
 					% constraints
-			eval_method,	% how should the proc be evaluated	
-			maybe(arg_size_info),
+			eval_method	:: eval_method,
+					% how should the proc be evaluated	
+			maybe_arg_sizes	:: maybe(arg_size_info),
 					% Information about the relative sizes
 					% of the input and output args of the
 					% procedure. Set by termination
 					% analysis.
-			maybe(termination_info),
+			maybe_termination :: maybe(termination_info),
 					% The termination properties of the
 					% procedure. Set by termination
 					% analysis.
-			maybe(list(mode)),
+			maybe_declared_head_modes :: maybe(list(mode)),
 					% declared modes of arguments.
-			is_address_taken,
+			is_address_taken :: is_address_taken,
 					% Is the address of this procedure
 					% taken? If yes, we will need to use
 					% typeinfo liveness for them, so that
@@ -1490,7 +1498,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% must be considered as having its
 					% address taken, since it is possible
 					% that some other module may do so.
-			maybe(rl_exprn_id)
+			maybe_aditi_rl_id :: maybe(rl_exprn_id)
 					% For predicates with an
 					% `aditi_top_down' marker, which are
 					% executed top-down on the Aditi side
@@ -1553,10 +1561,12 @@ proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, ProcInfo) :-
-	ProcInfo0 = procedure(A, _, _, _, E, F, _,
-		H, I, J, K, L, M, _, _, P, Q, R, S, T, U),
-	ProcInfo = procedure(A, VarSet, VarTypes, HeadVars, E, F, Goal,
-		H, I, J, K, L, M, TI_VarMap, TCI_VarMap, P, Q, R, S, T, U).
+	ProcInfo = ((((((ProcInfo0^prog_varset := VarSet)
+				^var_types := VarTypes)
+				^head_vars := HeadVars)
+				^body := Goal)
+				^proc_type_info_varmap := TI_VarMap)
+				^proc_typeclass_info_varmap := TCI_VarMap).
 
 proc_info_interface_determinism(ProcInfo, Determinism) :-
 	proc_info_declared_determinism(ProcInfo, MaybeDeterminism),
@@ -1612,263 +1622,52 @@ proc_info_declared_argmodes(ProcInfo, ArgModes) :-
 		proc_info_argmodes(ProcInfo, ArgModes)
 	).
 
-proc_info_declared_determinism(ProcInfo, A) :-
-	ProcInfo = procedure(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-    		_, _, _, _, _).
+proc_info_declared_determinism(ProcInfo, ProcInfo^declared_detism).
+proc_info_varset(ProcInfo, ProcInfo^prog_varset).
+proc_info_vartypes(ProcInfo, ProcInfo^var_types).
+proc_info_headvars(ProcInfo, ProcInfo^head_vars).
+proc_info_argmodes(ProcInfo, ProcInfo^actual_head_modes).
+proc_info_maybe_arglives(ProcInfo, ProcInfo^head_var_caller_liveness).
+proc_info_goal(ProcInfo, ProcInfo^body).
+proc_info_context(ProcInfo, ProcInfo^proc_context).
+proc_info_stack_slots(ProcInfo, ProcInfo^stack_slots).
+proc_info_inferred_determinism(ProcInfo, ProcInfo^inferred_detism).
+proc_info_can_process(ProcInfo, ProcInfo^can_process).
+proc_info_arg_info(ProcInfo, ProcInfo^arg_pass_info).
+proc_info_liveness_info(ProcInfo, ProcInfo^initial_liveness).
+proc_info_typeinfo_varmap(ProcInfo, ProcInfo^proc_type_info_varmap).
+proc_info_typeclass_info_varmap(ProcInfo, ProcInfo^proc_typeclass_info_varmap).
+proc_info_eval_method(ProcInfo, ProcInfo^eval_method).
+proc_info_get_maybe_arg_size_info(ProcInfo, ProcInfo^maybe_arg_sizes).
+proc_info_get_maybe_termination_info(ProcInfo, ProcInfo^maybe_termination).
+proc_info_maybe_declared_argmodes(ProcInfo, ProcInfo^maybe_declared_head_modes).
+proc_info_is_address_taken(ProcInfo, ProcInfo^is_address_taken).
+proc_info_get_rl_exprn_id(ProcInfo, ProcInfo^maybe_aditi_rl_id).
 
-proc_info_varset(ProcInfo, B) :-
-	ProcInfo = procedure(_, B, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_vartypes(ProcInfo, C) :-
-	ProcInfo = procedure(_, _, C, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_headvars(ProcInfo, D) :-
-	ProcInfo = procedure(_, _, _, D, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_argmodes(ProcInfo, E) :-
-	ProcInfo = procedure(_, _, _, _, E, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_maybe_arglives(ProcInfo, F) :-
-	ProcInfo = procedure(_, _, _, _, _, F, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_goal(ProcInfo, G) :-
-	ProcInfo = procedure(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_context(ProcInfo, H) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_stack_slots(ProcInfo, I) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, I, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_inferred_determinism(ProcInfo, J) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, J, _, _, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_can_process(ProcInfo, K) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, K, _, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_arg_info(ProcInfo, L) :- 
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, L, _, _, _, _, 
-		_, _, _, _, _).
-
-proc_info_liveness_info(ProcInfo, M) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, M, _, _, _,
-		_, _, _, _, _).
-
-proc_info_typeinfo_varmap(ProcInfo, N) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, 
-		_, _, _, _, _).
-
-proc_info_typeclass_info_varmap(ProcInfo, O) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, 
-		_, _, _, _, _).
-
-proc_info_eval_method(ProcInfo, P) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, 
-		_, _, _, _, _).
-
-proc_info_get_maybe_arg_size_info(ProcInfo, Q) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		Q, _, _, _, _).
-
-proc_info_get_maybe_termination_info(ProcInfo, R) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, R, _, _, _).
-
-proc_info_maybe_declared_argmodes(ProcInfo, S) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, S, _, _).
-
-proc_info_is_address_taken(ProcInfo, T) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, T, _).
-
-proc_info_get_rl_exprn_id(ProcInfo, U) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, U).
-
-% :- type proc_info
-% 	--->	procedure(
-% A			maybe(determinism),
-% 					% _declared_ determinism
-% 					% or `no' if there was no detism decl
-% B			varset,		% variable names
-% C 			map(var, type),	% variable types
-% D			list(prog_var),	% head vars
-% E			list(mode), 	% modes of args
-% F			maybe(list(is_live)),
-% 					% liveness (in the mode analysis sense)
-% 					% of the arguments
-% G			hlds_goal,	% Body
-% H			prog_context,
-%					% The context of the `:- mode' decl
-% 					% (or the context of the first clause,
-% 					% if there was no mode declaration).
-% I			stack_slots,	% stack allocations
-% J			determinism,	% _inferred_ determinism
-% K			bool,		% no if we must not process this
-% 					% procedure yet (used to delay
-% 					% mode checking etc. for complicated
-% 					% modes of unification procs until
-% 					% the end of the unique_modes pass.)
-% L			list(arg_info),	% calling convention of each arg:
-% 					% information computed by arg_info.m
-% 					% (based on the modes etc.)
-% 					% and used by code generation
-% 					% to determine how each argument
-% 					% should be passed.
-% M			liveness_info,	% the initial liveness,
-% 					% for code generation
-% N			type_info_varmap,	
-% 					% typeinfo vars for type parameters
-% O			typeclass_info_varmap,
-% 					% typeclass_info vars for class
-% 					% constraints
-% P			eval_method,
-%					% info on how the proc sould be 
-%					% evaluated
-% Q			maybe(arg_size_info),
-% 					% Information about the relative sizes
-% 					% of the input and output args of the
-% 					% procedure. Set by termination
-% 					% analysis.
-% R			maybe(termination_info),
-% 					% The termination properties of the
-% 					% procedure. Set by termination
-% 					% analysis.
-% S			maybe(list(mode)),
-% 					% declared modes of arguments.
-% T			is_address_taken
-%					% Is the address of this procedure
-%					% taken? If yes, we will need to use
-%					% typeinfo liveness for them, so that
-%					% deep_copy and accurate gc have the
-%					% RTTI they need for copying closures.
-% U			maybe(rl_exprn_id)
-%					% For predicates with an
-%					% `aditi_top_down' marker, which are
-%					% executed top-down on the Aditi side
-%					% of the connection, we generate an RL
-%					% expression, for which this is an
-%					% identifier. See rl_update.m.
-%		).
-
-proc_info_set_varset(ProcInfo0, B, ProcInfo) :-
-	ProcInfo0 = procedure(A, _, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_vartypes(ProcInfo0, C, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, _, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_headvars(ProcInfo0, D, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_argmodes(ProcInfo0, E, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_maybe_arglives(ProcInfo0, F, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_goal(ProcInfo0, G, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_stack_slots(ProcInfo0, I, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_inferred_determinism(ProcInfo0, J, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_can_process(ProcInfo0, K, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_arg_info(ProcInfo0, L, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_liveness_info(ProcInfo0, M, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_typeinfo_varmap(ProcInfo0, N, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_typeclass_info_varmap(ProcInfo0, O, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, 
-		P, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_eval_method(ProcInfo0, P, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
-		_, Q, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
-		P, Q, R, S, T, U).
-
-proc_info_set_maybe_arg_size_info(ProcInfo0, Q, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, _, R, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_maybe_termination_info(ProcInfo0, R, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, _, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_address_taken(ProcInfo0, T, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, _, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_rl_exprn_id(ProcInfo0, U, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, _),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, yes(U)).
+proc_info_set_varset(ProcInfo, VS, ProcInfo^prog_varset := VS).
+proc_info_set_vartypes(ProcInfo, VT, ProcInfo^var_types := VT).
+proc_info_set_headvars(ProcInfo, HV, ProcInfo^head_vars := HV).
+proc_info_set_argmodes(ProcInfo, AM, ProcInfo^actual_head_modes := AM).
+proc_info_set_maybe_arglives(ProcInfo, CL,
+	ProcInfo^head_var_caller_liveness := CL).
+proc_info_set_goal(ProcInfo, G, ProcInfo^body := G).
+proc_info_set_stack_slots(ProcInfo, SS, ProcInfo^stack_slots := SS).
+proc_info_set_inferred_determinism(ProcInfo, ID,
+	ProcInfo^inferred_detism := ID).
+proc_info_set_can_process(ProcInfo, CP, ProcInfo^can_process := CP).
+proc_info_set_arg_info(ProcInfo, AP, ProcInfo^arg_pass_info := AP).
+proc_info_set_liveness_info(ProcInfo, IL, ProcInfo^initial_liveness := IL).
+proc_info_set_typeinfo_varmap(ProcInfo, TI,
+	ProcInfo^proc_type_info_varmap := TI).
+proc_info_set_typeclass_info_varmap(ProcInfo, TC,
+	ProcInfo^proc_typeclass_info_varmap := TC).
+proc_info_set_eval_method(ProcInfo, EM, ProcInfo^eval_method := EM).
+proc_info_set_maybe_arg_size_info(ProcInfo, MAS,
+	ProcInfo^maybe_arg_sizes := MAS).
+proc_info_set_maybe_termination_info(ProcInfo, MT,
+	ProcInfo^maybe_termination := MT).
+proc_info_set_address_taken(ProcInfo, AT, ProcInfo^is_address_taken := AT).
+proc_info_set_rl_exprn_id(ProcInfo, ID, ProcInfo^maybe_aditi_rl_id := yes(ID)).
 
 proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars, TypeInfoVars) :-
 	set__to_sorted_list(Vars, VarList),
