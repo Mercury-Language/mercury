@@ -35,6 +35,15 @@ Changes to the Mercury language:
   reference manual (it's at the end of the "C interface" section,
   which is in the chapter on "Pragmas").
 
+* It is now possible to stop the compiler from optimizing "impure"
+  Mercury code inappropriately.
+
+  This is accomplished by declaring impure predicates to be impure,
+  allowing the compiler to treat them cautiously.  The compiler tracks
+  impurity, and requires all impure predicates, and calls to them, to
+  be declared.  For more information, see "Impurity" section of the
+  Mercury language reference manual.
+
 * We now support user-defined equality predicates.
 
   See the Mercury language reference manual for details.
