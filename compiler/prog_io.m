@@ -774,7 +774,7 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 			Term = term__functor(term__atom(Functor), Args, Context)
 		;
 			Term = term__functor(term__atom("call"), [
-					Term,
+					Term0,
 					term__variable(Var0),
 					term__variable(Var)
 				], Context)
@@ -1149,8 +1149,9 @@ parse_type_decl_pred(VarSet, Pred, R) :-
 	( Determinism = ok(Determinism1) ->
 		process_pred(VarSet, Body2, Determinism1, Condition, R)
 	;
-		% just pass the error up
-		R = Determinism
+		% just pass the error up (after conversion to the right type)
+		Determinism = error(Term, Reason),
+		R = error(Term, Reason)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1180,8 +1181,9 @@ parse_mode_decl_pred(VarSet, Pred, R) :-
 	( Determinism = ok(Determinism1) ->
 		process_mode(VarSet, Body2, Determinism1, Condition, R)
 	;
-		% just pass the error up
-		R = Determinism
+		% just pass the error up (after conversion to the right type)
+		Determinism = error(Term, Reason),
+		R = error(Term, Reason)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1208,7 +1210,7 @@ get_determinism(B, Body, Determinism) :-
 		->
 			Determinism = ok(Determinism3)
 		;
-			Determinism = error("invalid category", Determinism2)
+			Determinism = error(Determinism2, "invalid category")
 		)
 	;
 		Body = B,

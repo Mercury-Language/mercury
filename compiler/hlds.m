@@ -588,6 +588,9 @@ module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo) :-
 :- pred make_functor_cons_id(const, int, cons_id).
 :- mode make_functor_cons_id(in, in, out) is det.
 
+:- pred cons_id_get_name(cons_id, const).
+:- mode cons_id_get_name(in, out) is det.
+
 :- pred make_cons_id(sym_name, list(type), type_id, cons_id).
 :- mode make_cons_id(in, in, in, out) is det.
 
@@ -599,6 +602,11 @@ make_functor_cons_id(term__atom(Name), Arity, cons(Name, Arity)).
 make_functor_cons_id(term__integer(Int), _, int_const(Int)).
 make_functor_cons_id(term__string(String), _, string_const(String)).
 make_functor_cons_id(term__float(Float), _, float_const(Float)).
+
+cons_id_get_name(cons(Name, _Arity), term__atom(Name)).
+cons_id_get_name(int_const(Int), term__integer(Int)).
+cons_id_get_name(string_const(String), term__string(String)).
+cons_id_get_name(float_const(Float), term__float(Float)).
 
 make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
 	length(Args, Arity).

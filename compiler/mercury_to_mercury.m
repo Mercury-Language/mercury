@@ -831,7 +831,7 @@ mercury_output_hlds_disj(GoalList, VarSet, Indent) -->
 
 mercury_output_hlds_case(case(ConsId, ArgVars, Goal), Var, VarSet, Indent) -->
 	{ term_list_to_var_list(Args, ArgVars) },
-	{ make_functor_cons_id(Name, _, ConsId) },
+	{ cons_id_get_name(ConsId, Name) },
 	{ term__context_init(0, Context) },
 	mercury_output_var(Var, VarSet),
 	io__write_string(" = "),

@@ -53,7 +53,9 @@
 
 type_is_atomic(Type, ModuleInfo) :-
 	classify_type(Type, ModuleInfo, BuiltinType),
-	BuiltinType \= usertype(_).
+		% XXX we can't use \= until the compiler handles
+		% scopes for \= properly.
+	\+ BuiltinType = usertype(_).
 
 %-----------------------------------------------------------------------------%
 

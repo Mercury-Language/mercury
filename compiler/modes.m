@@ -445,12 +445,6 @@ modecheck_goal_2(call(PredId, _, Args, Builtin), _,
 	mode_info_set_call_context(call(PredId)),
 	modecheck_call_pred(PredId, Args, Mode),
 	mode_info_unset_call_context,
-	mode_info_never_succeeds(PredId, Mode, Result),
-	( { Result = yes } ->
-		mode_info_set_instmap(unreachable)
-	;
-		[]
-	),
 	mode_checkpoint(exit, "call").
 
 modecheck_goal_2(unify(A, B, _, _, UnifyContext), _,
@@ -463,11 +457,10 @@ modecheck_goal_2(unify(A, B, _, _, UnifyContext), _,
 
 	% Return Result = yes if the called predicate never succeeds.
 
-:- pred mode_info_never_succeeds(pred_id, proc_id, bool, mode_info, mode_info).
-:- mode mode_info_never_succeeds(in, in, out, mode_info_di, mode_info_uo)
-	is det.
+:- pred mode_info_never_succeeds(mode_info, pred_id, proc_id, bool).
+:- mode mode_info_never_succeeds(mode_info_ui, in, in, out) is det.
 
-mode_info_never_succeeds(PredId, ProcId, Result, ModeInfo, ModeInfo) :-
+mode_info_never_succeeds(ModeInfo, PredId, ProcId, Result) :-
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
@@ -541,7 +534,7 @@ instmap_lookup_arg_list([Arg|Args], InstMap, [Inst|Insts]) :-
 
 :- pred modecheck_conj_list(list(hlds__goal), list(hlds__goal),
 				mode_info, mode_info).
-:- mode modecheck_conj_list(in, in, mode_info_di, mode_info_uo) is det.
+:- mode modecheck_conj_list(in, out, mode_info_di, mode_info_uo) is det.
 
 modecheck_conj_list(Goals0, Goals) -->
 	=(ModeInfo0),
@@ -585,7 +578,7 @@ mode_info_add_goals_live_vars([Goal | Goals]) -->
 
 :- pred modecheck_conj_list_2(list(hlds__goal), list(hlds__goal),
 				mode_info, mode_info).
-:- mode modecheck_conj_list_2(in, in, mode_info_di, mode_info_uo) is det.
+:- mode modecheck_conj_list_2(in, out, mode_info_di, mode_info_uo) is det.
 
 modecheck_conj_list_2([], []) --> [].
 modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
@@ -679,25 +672,27 @@ instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	get_reachable_instmaps(InstMapList, InstMappingList),
 	( InstMappingList = [] ->
-		InstMap = unreachable
+		InstMap = unreachable,
+		ModeInfo1 = ModeInfo0
 	; InstMap0 = reachable(InstMapping0) ->
 		set__to_sorted_list(NonLocals, NonLocalsList),
 		instmap_merge_2(NonLocalsList, InstMapList, ModuleInfo,
 					InstMapping0, InstMapping, ErrorList),
 		( ErrorList = [] ->
-			ModeInfo2 = ModeInfo0
+			ModeInfo1 = ModeInfo0
 		;
 			ErrorList = [Var - _|_], 
 			mode_info_error([Var],
 				mode_error_disj(MergeContext, ErrorList),
-				ModeInfo0, ModeInfo2
+				ModeInfo0, ModeInfo1
 			)
 		),
 		InstMap = reachable(InstMapping)
 	;
-		InstMap = unreachable
+		InstMap = unreachable,
+		ModeInfo1 = ModeInfo0
 	),
-	mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo).
+	mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo).
 
 :- pred get_reachable_instmaps(list(instmap), list(map(var,inst))).
 :- mode get_reachable_instmaps(in, out) is det.
@@ -705,7 +700,7 @@ instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 :- get_reachable_instmaps([], _) when ever.
 :- get_reachable_instmaps([X|_], _) when X.
 
-get_reachable_instmaps([], _).
+get_reachable_instmaps([], []).
 get_reachable_instmaps([reachable(InstMapping) | InstMaps], Reachables) :-
 	Reachables = [InstMapping | Reachables1],
 	get_reachable_instmaps(InstMaps, Reachables1).
@@ -766,7 +761,7 @@ instmap_merge_var([InstMap | InstMaps], Var, ModuleInfo, InstList, Inst, Error)
 %-----------------------------------------------------------------------------%
 
 :- pred modecheck_call_pred(pred_id, list(term), proc_id, mode_info, mode_info).
-:- mode modecheck_call_pred(in, in, in, mode_info_di, mode_info_uo) is det.
+:- mode modecheck_call_pred(in, in, out, mode_info_di, mode_info_uo) is det.
 
 modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
 	term_list_to_var_list(Args, ArgVars),
@@ -794,7 +789,13 @@ modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
 					ModeInfo0, ModeInfo1),
 		mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 		modecheck_set_var_inst_list(ArgVars, FinalInsts,
-					ModeInfo1, ModeInfo)
+					ModeInfo1, ModeInfo2),
+		mode_info_never_succeeds(ModeInfo2, PredId, ProcId, Result),
+		( Result = yes ->
+			mode_info_set_instmap(unreachable, ModeInfo2, ModeInfo)
+		;
+			ModeInfo = ModeInfo2
+		)
 	;
 			% set the current error list to empty (and
 			% save the old one in `OldErrors').  This is so the
@@ -802,7 +803,7 @@ modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
 		mode_info_get_errors(ModeInfo0, OldErrors),
 		mode_info_set_errors([], ModeInfo0, ModeInfo1),
 
-		modecheck_call_pred_2(ProcIds, Procs, ArgVars,
+		modecheck_call_pred_2(ProcIds, PredId, Procs, ArgVars,
 			[], TheProcId, ModeInfo1, ModeInfo2),
 
 			% restore the error list, appending any new error(s)
@@ -811,12 +812,12 @@ modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
 		mode_info_set_errors(Errors, ModeInfo2, ModeInfo)
 	).
 
-:- pred modecheck_call_pred_2(list(proc_id), proc_table, list(var), list(var),
-				proc_id, mode_info, mode_info).
-:- mode modecheck_call_pred_2(in, in, in, in, out, mode_info_di, mode_info_uo)
-	is det.
+:- pred modecheck_call_pred_2(list(proc_id), pred_id, proc_table, list(var),
+				list(var), proc_id, mode_info, mode_info).
+:- mode modecheck_call_pred_2(in, in, in, in, in, out,
+				mode_info_di, mode_info_uo) is det.
 
-modecheck_call_pred_2([], _Procs, ArgVars, WaitingVars, 0, ModeInfo0,
+modecheck_call_pred_2([], _PredId, _Procs, ArgVars, WaitingVars, 0, ModeInfo0,
 		ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap),
 	get_var_insts(ArgVars, InstMap, ArgInsts),
@@ -824,7 +825,7 @@ modecheck_call_pred_2([], _Procs, ArgVars, WaitingVars, 0, ModeInfo0,
 		mode_error_no_matching_mode(ArgVars, ArgInsts),
 		ModeInfo0, ModeInfo).
 	
-modecheck_call_pred_2([ProcId | ProcIds], Procs, ArgVars, WaitingVars,
+modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars, WaitingVars,
 			TheProcId, ModeInfo0, ModeInfo) :-
 
 		% find the initial insts for this mode of the called pred
@@ -845,16 +846,22 @@ modecheck_call_pred_2([ProcId | ProcIds], Procs, ArgVars, WaitingVars,
 			% specified in the mode for the called pred
 		mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 		modecheck_set_var_inst_list(ArgVars, FinalInsts, ModeInfo1,
-			ModeInfo),
-		TheProcId = ProcId
+			ModeInfo2),
+		TheProcId = ProcId,
+		mode_info_never_succeeds(ModeInfo2, PredId, ProcId, Result),
+		( Result = yes ->
+			mode_info_set_instmap(unreachable, ModeInfo2, ModeInfo)
+		;
+			ModeInfo = ModeInfo2
+		)
 	;
 			% otherwise, keep trying with the other modes
 			% for the called pred
 		Errors = [mode_error_info(WaitingVars2, _, _, _) | _],
 		append(WaitingVars2, WaitingVars, WaitingVars3),
 
-		modecheck_call_pred_2(ProcIds, Procs, ArgVars, WaitingVars3,
-				TheProcId, ModeInfo0, ModeInfo)
+		modecheck_call_pred_2(ProcIds, PredId, Procs, ArgVars,
+				WaitingVars3, TheProcId, ModeInfo0, ModeInfo)
 	).
 
 :- pred get_var_insts(list(var), instmap, list(inst)).

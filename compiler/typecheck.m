@@ -553,9 +553,11 @@ rename_apart(TypeInfo0, PredTypeVarSet, PredArgTypes0, TypeInfo, PredArgTypes)
 		rename_apart_2(TypeAssigns0, PredTypeVarSet, PredArgTypes0,
 				  TypeAssigns, PredArgTypes),
 		TypeAssignSet = [TypeAssign | TypeAssigns],
-		type_info_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
+		type_info_set_type_assign_set(TypeInfo0, TypeAssignSet,
+				TypeInfo)
 	;
-		TypeInfo = TypeInfo0
+		TypeInfo = TypeInfo0,
+		PredArgTypes = PredArgTypes0
 	).
 
 :- pred rename_apart_2(type_assign_set, tvarset, list(type),
