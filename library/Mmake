@@ -181,7 +181,7 @@ install_ints: $(library.ints)
 .PHONY: install_init
 install_init: library.init
 	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
-	cp library.init $(INSTALL_MODULE_DIR)
+	cp `vpath_find library.init` $(INSTALL_MODULE_DIR)
 
 .PHONY: install_library
 install_library: libmercury.a libmercury.$(SO)
@@ -206,19 +206,20 @@ install_interpreter_nu: library.nu
 	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find library.nu` \
 		> $(INSTALL_NU_ARCH_DIR)/library.nu
 	-chmod +x $(INSTALL_NU_ARCH_DIR)/library.nu
-	cp library.nu.save $(INSTALL_NU_ARCH_DIR)
+	cp `vpath_find library.nu.save` $(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_sicstus
 install_sicstus: install_interpreter_sicstus install_sicstus_compile
 
 .PHONY: install_interpreter_sicstus
-install_interpreter_sicstus: library.sicstus.debug
+install_interpreter_sicstus: library.sicstus library.sicstus.debug
 	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
-	cp library.sicstus.debug $(INSTALL_SP_ARCH_DIR)
+	cp `vpath_find library.sicstus library.sicstus.debug` \
+		$(INSTALL_SP_ARCH_DIR)
 
 .PHONY: install_sicstus_compile
 install_sicstus_compile: sicstus_compile
 	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
-	cp sicstus_compile $(INSTALL_SP_ARCH_DIR)
+	cp `vpath_find sicstus_compile` $(INSTALL_SP_ARCH_DIR)
 
 #-----------------------------------------------------------------------------#
