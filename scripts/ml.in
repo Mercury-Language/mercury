@@ -79,7 +79,7 @@ case $FULLARCH in
 esac
 demangle=true
 GRADE=$DEFAULT_GRADE
-SHARED_OR_STATIC_OPT=""
+STATIC_OR_SHARED_OPT=""
 
 while true; do
     case "$1" in
@@ -284,6 +284,8 @@ case $demangle in
 	;;
 esac
 case $# in
-	0) exec $CC $STRIP_OPTS $ARCH_OPTS $LIBDIR_OPTS $LIBS ;;
-	*) exec $CC $STRIP_OPTS $ARCH_OPTS "$@" $LIBDIR_OPTS $LIBS ;;
+	0) exec $CC $STRIP_OPTS $STATIC_OR_SHARED_OPT $ARCH_OPTS \
+		$LIBDIR_OPTS $LIBS ;;
+	*) exec $CC $STRIP_OPTS $STATIC_OR_SHARED_OPT $ARCH_OPTS "$@" \
+		$LIBDIR_OPTS $LIBS ;;
 esac
