@@ -17,13 +17,13 @@
 
 :- import_module int.
 
-:- pred p(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pred p(aditi__state::aditi_mui, int::out, int::out) is nondet.
 :- pragma base_relation(p/3).
 
-:- func q(aditi__state::aditi_ui, int::out) = (int::out) is nondet.
+:- func q(aditi__state::aditi_mui, int::out) = (int::out) is nondet.
 :- pragma base_relation(q/2).
 
-:- pred anc(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pred anc(aditi__state::aditi_mui, int::out, int::out) is nondet.
 :- pragma aditi(anc/3).
 
 aditi_update_syntax -->
@@ -37,7 +37,7 @@ aditi_update_syntax -->
 	aditi_delete(q(_, X) = _Y, _),
 
 	{ InsertP =
-	    (aditi_bottom_up pred(_::aditi_ui, A1::out, A2::out) is nondet :-
+	    (aditi_bottom_up pred(_::aditi_mui, A1::out, A2::out) is nondet :-
 		( A1 = 1, A2 = 2
 		; A1 = 2, A2 = 3
 		)
@@ -54,7 +54,7 @@ aditi_update_syntax -->
 	),
 
 	{ InsertQ =
-	    (aditi_bottom_up func(_::aditi_ui, A1::out)
+	    (aditi_bottom_up func(_::aditi_mui, A1::out)
 	    		= (A2::out) is nondet :-
 		( A1 = 1, A2 = 2
 		; A1 = 2, A2 = 3
@@ -68,7 +68,7 @@ aditi_update_syntax -->
 	aditi_bulk_modify(q(_, _X0) ==> _Y0),
 
 	{ ModifyP =
-	    (aditi_bottom_up pred(DB::aditi_ui, X0::out, Y0::out,
+	    (aditi_bottom_up pred(DB::aditi_mui, X0::out, Y0::out,
 			_::unused, X::out, Y::out) is nondet :-
 		p(DB, X0, Y0),
 		X0 = 1,
@@ -79,7 +79,7 @@ aditi_update_syntax -->
 	aditi_bulk_modify(pred p/3, ModifyP, foo),
 
 	{ ModifyQ =
-	    (aditi_bottom_up pred(DB::aditi_ui, X0::out, Y0::out,
+	    (aditi_bottom_up pred(DB::aditi_mui, X0::out, Y0::out,
 			_::unused, X::out, Y::out) is nondet :-
 		q(DB, X) = Y,
 		X0 = 1,
@@ -105,7 +105,7 @@ aditi_update_types -->
 	aditi_bulk_delete(p(_, X) :- X < 2.0),
 	aditi_bulk_delete(q(_) = Y :- Y < 2),
 
-	{ DeleteP = (aditi_bottom_up pred(_::aditi_ui, 2::out) is nondet) },
+	{ DeleteP = (aditi_bottom_up pred(_::aditi_mui, 2::out) is nondet) },
 	aditi_bulk_delete(pred p/3, DeleteP),
 	aditi_bulk_delete(pred q/2, DeleteP),
 
@@ -116,12 +116,12 @@ aditi_update_types -->
 	aditi_bulk_delete(func p/3, DeleteQ),
 
 	{ DeleteQ2 =
-		(func(_::aditi_ui) = (2::out) is nondet)
+		(func(_::aditi_mui) = (2::out) is nondet)
 	},
 	aditi_bulk_delete(func q/2, DeleteQ2),
 
 	{ InsertP =
-	    (aditi_bottom_up pred(_::aditi_ui, A1::out, A2::out) is nondet :-
+	    (aditi_bottom_up pred(_::aditi_mui, A1::out, A2::out) is nondet :-
 		( A1 = 1, A2 = 2.0
 		; A1 = 2, A2 = 3.0
 		)
@@ -131,7 +131,7 @@ aditi_update_types -->
 	aditi_bulk_delete(pred q/2, InsertP),
 
 	{ InsertP2 =
-	    (pred(_::aditi_ui, A1::out, A2::out) is nondet :-
+	    (pred(_::aditi_mui, A1::out, A2::out) is nondet :-
 		( A1 = 1, A2 = 2.0
 		; A1 = 2, A2 = 3.0
 		)
@@ -139,7 +139,7 @@ aditi_update_types -->
 	aditi_bulk_insert(pred p/3, InsertP2),
 
 	{ InsertQ =
-	    (aditi_bottom_up func(_::aditi_ui, A1::out)
+	    (aditi_bottom_up func(_::aditi_mui, A1::out)
 	    		= (A2::out) is nondet :-
 		( A1 = 1, A2 = 2
 		; A1 = 2, A2 = 3
@@ -154,7 +154,7 @@ aditi_update_types -->
 	aditi_bulk_modify(q(_, X0, Y0) ==> q(_, X0 + 1, Y0 + 1)),
 
 	{ ModifyP =
-	    (aditi_bottom_up pred(DB::aditi_ui, X0::out, Y0::out,
+	    (aditi_bottom_up pred(DB::aditi_mui, X0::out, Y0::out,
 			_::unused, X::out, Y::out) is nondet :-
 		p(DB, X0, Y0),
 		X0 = 1.0,
@@ -164,7 +164,7 @@ aditi_update_types -->
 	aditi_bulk_modify(pred p/3, ModifyP),
 
 	{ ModifyQ =
-	    (aditi_bottom_up func(DB::aditi_ui, X0::out, Y0::out,
+	    (aditi_bottom_up func(DB::aditi_mui, X0::out, Y0::out,
 			_::unused, X::out) = (Y::out) is nondet :-
 		X0 = 1,
 		X = X0 + Y0,

@@ -268,13 +268,13 @@
 		% An ugly syntax:
 		%
 		% InsertPred = (aditi_bottom_up
-		%	pred(DB::aditi_ui, X::out, Y::out) :- 
+		%	pred(DB::aditi_mui, X::out, Y::out) :- 
 		%		q(DB, X, Y)
 		% ),
 		% aditi_bulk_insert(pred p/3, InsertPred).
 		%
 		% DeletePred = (aditi_bottom_up
-		%	pred(DB::aditi_ui, X::out, Y::out) :- 
+		%	pred(DB::aditi_mui, X::out, Y::out) :- 
 		%		p(DB, X, Y),
 		%		q(DB, X, Y)
 		% ),

@@ -189,7 +189,7 @@
 	% Construct the modes used for `aditi__state' arguments.
 	% XXX These should be unique, but are not yet because that
 	% would require alias tracking.
-:- func aditi_ui_mode = (mode).
+:- func aditi_mui_mode = (mode).
 :- func aditi_di_mode = (mode).
 :- func aditi_uo_mode = (mode).
 
@@ -1636,7 +1636,7 @@ uo_mode(Mode) :- make_std_mode("uo", [], Mode).
 
 unused_mode(Mode) :- make_std_mode("unused", [], Mode).
 
-aditi_ui_mode = Mode :- in_mode(Mode). 
+aditi_mui_mode = Mode :- in_mode(Mode). 
 
 aditi_di_mode = Mode :- in_mode(Mode).
 

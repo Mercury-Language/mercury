@@ -6296,13 +6296,13 @@ Predicate and function names in Aditi update goals may be module qualified.
 
 The examples make use of the following declarations:
 @example
-:- pred p(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pred p(aditi__state::aditi_mui, int::out, int::out) is nondet.
 :- pragma base_relation(p/3).
 
-:- func f(aditi__state::aditi_ui, int::out) = (int::out) is nondet.
+:- func f(aditi__state::aditi_mui, int::out) = (int::out) is nondet.
 :- pragma base_relation(f/2).
 
-:- pred ancestor(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pred ancestor(aditi__state::aditi_mui, int::out, int::out) is nondet.
 :- pragma aditi(ancestor/3).
 @end example
 
@@ -6432,7 +6432,7 @@ being updated.
 the same type signature as the base relation being updated.
 
 The @samp{aditi__state} argument of @samp{@var{Closure}} must have
-mode @samp{aditi_ui}. All other arguments must have mode @samp{out}.
+mode @samp{aditi_mui}. All other arguments must have mode @samp{out}.
 The determinism of @samp{@var{Closure}} must be @samp{nondet}.
 
 @samp{@var{Closure}} must be evaluable bottom-up by the Aditi
@@ -6458,7 +6458,7 @@ is equivalent to
 
 @example
 Closure = (aditi_bottom_up
-        pred(@var{DB1}::aditi_ui, @var{Arg2}::out, @dots{}) is nondet :- @var{Goal}),
+        pred(@var{DB1}::aditi_mui, @var{Arg2}::out, @dots{}) is nondet :- @var{Goal}),
 aditi_bulk_insert(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
 @end example 
 
@@ -6477,7 +6477,7 @@ is equivalent to
 
 @example
 DeleteClosure = (aditi_bottom_up
-        pred(@var{DB1}::aditi_ui, @var{Arg2}::out, @dots{}) is nondet :-
+        pred(@var{DB1}::aditi_mui, @var{Arg2}::out, @dots{}) is nondet :-
         @var{PredName}(@var{DB1}, @var{Arg2}, @dots{}),
         @var{Goal}
 ),
@@ -6498,7 +6498,7 @@ bulk_insert_example_2(DB0, DB) :-
 
 bulk_insert_example_3(DB0, DB) :-
         InsertP = (aditi_bottom_up
-                pred(DB1::aditi_ui, X::out, Y::out) is nondet :-
+                pred(DB1::aditi_mui, X::out, Y::out) is nondet :-
                         ancestor(DB1, X, Y)
                 ),
         aditi_bulk_insert(pred p/3, InsertP, DB0, DB).
@@ -6512,7 +6512,7 @@ bulk_delete_example_1 -->
 
 bulk_delete_example_2(DB0, DB) :-
         DeleteP = (aditi_bottom_up
-                pred(DB1::aditi_ui, X::out, Y::out) is nondet :-
+                pred(DB1::aditi_mui, X::out, Y::out) is nondet :-
                         p(DB1, X, Y),
                         X > 1,
                         X < 5
@@ -6524,7 +6524,7 @@ bulk_delete_example_3(DB0, DB) :-
 
 bulk_delete_example_4(DB0, DB) :-
         DeleteQ = (aditi_bottom_up
-                func(DB1::aditi_ui, X::out) = (Y::out) is nondet :-
+                func(DB1::aditi_mui, X::out) = (Y::out) is nondet :-
                         q(DB1, X) = Y,
                         X > 1,
                         X < 5
@@ -6534,7 +6534,7 @@ bulk_delete_example_4(DB0, DB) :-
 
 The type of @samp{InsertP} is
 @w{@samp{aditi_bottom_up pred(aditi__state, int, int)}}.
-Its inst is @w{@samp{pred(aditi_ui, out, out) is nondet}},
+Its inst is @w{@samp{pred(aditi_mui, out, out) is nondet}},
 as for a normal lambda expression.
 
 Note that in @samp{bulk_delete_example_1} the extra set of parentheses around
@@ -6595,7 +6595,7 @@ must be data-terms.
 The original tuple is given by the first set of arguments, which
 have mode @samp{out}. The updated tuple is given by the second set
 of arguments, which have mode @samp{out}. The @samp{aditi__state}
-argument for the original tuple has mode @samp{aditi_ui}.
+argument for the original tuple has mode @samp{aditi_mui}.
 The @samp{aditi__state} argument for the updated tuple has mode
 @samp{unused}.
 
@@ -6613,14 +6613,14 @@ When modifying a predicate with type declaration
 must have type
 @samp{aditi_bottom_up pred(aditi__state, @var{Type1}, @dots{}, aditi__state, @var{Type1}, @dots{})},
 and inst
-@w{@samp{pred(aditi_ui, out, @dots{}, unused, out, @dots{}) is nondet}}.
+@w{@samp{pred(aditi_mui, out, @dots{}, unused, out, @dots{}) is nondet}}.
 
 When modifying a function with type declaration
 @w{@samp{:- func p(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
 @samp{@var{Closure}} must have type
 @samp{aditi_bottom_up pred(aditi__state, @var{Type1}, @dots{}, @var{Type2}, aditi__state, @var{Type1}, @dots{}, @var{Type2})},
 and inst
-@w{@samp{pred(aditi_ui, out, @dots{}, out, unused, out, @dots{}, out) is nondet}}.
+@w{@samp{pred(aditi_mui, out, @dots{}, out, unused, out, @dots{}, out) is nondet}}.
 
 It is an error for the closure to return a solution for which the arguments
 corresponding to the original tuple do not match a tuple in the relation
@@ -6648,7 +6648,7 @@ is equivalent to
 
 @example
 ModifyClosure =
-        (aditi_bottom_up pred(@var{DB1}::aditi_ui, @var{OldArg1}::out, @var{OldArg2}::out, @dots{},
+        (aditi_bottom_up pred(@var{DB1}::aditi_mui, @var{OldArg1}::out, @var{OldArg2}::out, @dots{},
                 @var{_DB}::unused, @var{NewArg1}::out, @var{NewArg2}::out, @dots{}) is nondet :-
                 @var{PredName}(@var{DB1}, @var{OldArg1}, @var{OldArg2}, @dots{}),
                 @var{Goal}
@@ -6668,11 +6668,11 @@ is almost equivalent to
 
 @example
 DeleteClosure =
-        (aditi_bottom_up pred(DB1::aditi_ui, X1::out, Y1::out) is nondet :-
+        (aditi_bottom_up pred(DB1::aditi_mui, X1::out, Y1::out) is nondet :-
                 Closure(DB1, X1, Y1, _, _)
         ),
 InsertClosure =
-        (aditi_bottom_up pred(DB1::aditi_ui, X2::out, Y2::out) is nondet :-
+        (aditi_bottom_up pred(DB1::aditi_mui, X2::out, Y2::out) is nondet :-
                 Closure(DB1, _, _, X2, Y2)
         ),
 aditi_bulk_delete(pred p/3, DeleteClosure, DB0, DB1),
@@ -6702,7 +6702,7 @@ bulk_modify_example_2(DB0, DB) :-
                 ), DB0, DB).
 
 bulk_modify_example_3(DB0, DB) :-
-        ModifyP = (aditi_bottom_up pred(DB1::aditi_ui, X::in, Y0::in,
+        ModifyP = (aditi_bottom_up pred(DB1::aditi_mui, X::in, Y0::in,
                         _::unused, X::out, Y::out) is nondet :-
                     p(DB1, X, Y0),
                     X > 2,
@@ -6712,7 +6712,7 @@ bulk_modify_example_3(DB0, DB) :-
         aditi_bulk_modify(pred p/3, ModifyP, DB0, DB).
 
 bulk_modify_example_4(DB0, DB) :-
-        ModifyF = (aditi_bottom_up pred(DB1::aditi_ui, X::in, Y0::in,
+        ModifyF = (aditi_bottom_up pred(DB1::aditi_mui, X::in, Y0::in,
                         _::unused, X::out, Y::out) is nondet :-
                     f(DB1, X) = Y0,
                     X > 2, X < 5, Y = Y0 + 1
@@ -6733,7 +6733,7 @@ of the @samp{aditi_bulk_modify} call, resulting in a syntax error.
 
 The type of @samp{ModifyP} is
 @w{@samp{aditi_bottom_up pred(aditi__state, int, int, aditi__state, int, int)}}.
-Its inst is @w{@samp{pred(aditi_ui, out, out, unused, out, out) is nondet}},
+Its inst is @w{@samp{pred(aditi_mui, out, out, unused, out, out) is nondet}},
 as for a normal lambda expression.
 
 @node Aditi glossary

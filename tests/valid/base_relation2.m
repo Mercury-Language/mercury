@@ -13,7 +13,7 @@
 
 :- import_module aditi.
 
-:- pred query(aditi__state::aditi_ui, int::in, int::out) is nondet.
+:- pred query(aditi__state::aditi_mui, int::in, int::out) is nondet.
 
 %-----------------------------------------------------------------------------%
 :- implementation.

@@ -588,7 +588,7 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, PredInfo0, PredInfo,
 				EvalMethod = (aditi_bottom_up),
 				% Make sure `aditi_bottom_up' expressions have
 				% a `ui' mode for their aditi_state.
-				StateMode = aditi_ui_mode
+				StateMode = aditi_mui_mode
 			),
 			pred_info_clauses_info(PredInfo, ClausesInfo),
 			clauses_info_vartypes(ClausesInfo, VarTypes),

@@ -7,7 +7,7 @@
 :- type aditi__state.
 :- mode aditi_di :: in.
 :- mode aditi_uo :: out.
-:- mode aditi_ui :: in.
+:- mode aditi_mui :: in.
 
 :- implementation.
 

@@ -445,7 +445,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 post_typecheck__insert_delete_modify_closure_info(bulk_insert, PredOrFunc,
 		ArgTypes, PredOrFunc, ClosureArgModes, nondet) :-
 	out_mode(OutMode),
-	AditiStateMode = aditi_ui_mode,
+	AditiStateMode = aditi_mui_mode,
 	aditi_builtin_modes(OutMode, AditiStateMode,
 		ArgTypes, ClosureArgModes).
 post_typecheck__insert_delete_modify_closure_info(delete(BulkOrFilter),
@@ -457,7 +457,7 @@ post_typecheck__insert_delete_modify_closure_info(delete(BulkOrFilter),
 		BulkOrFilter = filter,
 		in_mode(ArgMode)
 	),
-	AditiStateMode = aditi_ui_mode,
+	AditiStateMode = aditi_mui_mode,
 	aditi_builtin_modes(ArgMode, AditiStateMode,
 		ArgTypes, ClosureArgModes).
 post_typecheck__insert_delete_modify_closure_info(modify(BulkOrFilter),
@@ -470,7 +470,7 @@ post_typecheck__insert_delete_modify_closure_info(modify(BulkOrFilter),
 	(
 		BulkOrFilter = bulk,
 		DeleteArgMode = OutMode,
-		DeleteAditiStateMode = aditi_ui_mode
+		DeleteAditiStateMode = aditi_mui_mode
 	;
 		BulkOrFilter = filter,
 		DeleteArgMode = InMode,
@@ -752,7 +752,7 @@ check_aditi_state_modes(ModuleInfo, PredInfo, ArgTypes, ProcId) -->
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
 	(
 		{ MaybeArgModes = yes(ArgModes) },
-		{ AditiUi = aditi_ui_mode },
+		{ AditiUi = aditi_mui_mode },
 		{ mode_get_insts(ModuleInfo, AditiUi, AditiUiInitialInst, _) },
 		(
 			{ check_aditi_state_modes_2(ModuleInfo, ArgTypes,
@@ -809,7 +809,7 @@ report_no_input_aditi_state(PredInfo, Context) -->
 	{ report_aditi_pragma(PredInfo, PredErrorPieces) },
 	{ list__append(PredErrorPieces,
 		[words(
-		"without an `aditi__state' argument with mode `aditi_ui'.")],
+		"without an `aditi__state' argument with mode `aditi_mui'.")],
 		ErrorPieces) },
 	error_util__write_error_pieces(Context, 0, ErrorPieces).
 

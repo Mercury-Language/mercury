@@ -59,7 +59,7 @@
 :- inst aditi_unique = ground.
 :- mode aditi_di :: in(aditi_unique).
 :- mode aditi_uo :: out(aditi_unique).
-:- mode aditi_ui :: in(aditi_unique).
+:- mode aditi_mui :: in(aditi_unique).
 
 :- type aditi__result(T)
 	--->	ok(T)

@@ -35,13 +35,13 @@
 
 :- import_module int.
 
-:- pred p(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pred p(aditi__state::aditi_mui, int::out, int::out) is nondet.
 :- pragma base_relation(p/3).
 
-:- func q(aditi__state::aditi_ui, int::out) = (int::out) is nondet.
+:- func q(aditi__state::aditi_mui, int::out) = (int::out) is nondet.
 :- pragma base_relation(q/2).
 
-:- pred anc(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pred anc(aditi__state::aditi_mui, int::out, int::out) is nondet.
 :- pragma aditi(anc/3).
 
 anc(_, X, X).
@@ -79,7 +79,7 @@ aditi_update_modes7 -->
 
 aditi_update_modes8 -->
 	{ InsertP =
-	    (aditi_bottom_up pred(_::aditi_ui, A1::in, A2::out) is nondet :-
+	    (aditi_bottom_up pred(_::aditi_mui, A1::in, A2::out) is nondet :-
 		( A1 = 1, A2 = 2
 		; A1 = 2, A2 = 3
 		)
@@ -89,7 +89,7 @@ aditi_update_modes8 -->
 
 aditi_update_modes9 -->
 	{ InsertQ =
-	    (aditi_bottom_up func(_::aditi_ui, A1::in)
+	    (aditi_bottom_up func(_::aditi_mui, A1::in)
 	    		= (A2::out) is nondet :-
 		( A1 = 1, A2 = 2
 		; A1 = 2, A2 = 3
