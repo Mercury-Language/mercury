@@ -2961,6 +2961,9 @@ build_rval(mem_addr(Lval), DefnInfo, AddrExpr) -->
 	build_lval(Lval, DefnInfo, Expr),
 	gcc__build_addr_expr(Expr, AddrExpr).
 
+build_rval(self(_), _DefnInfo, _Expr) -->
+	{ unexpected(this_file, "self rval") }.
+
 :- pred build_unop(mlds__unary_op, mlds__rval, defn_info, gcc__expr,
 		io__state, io__state).
 :- mode build_unop(in, in, in, out, di, uo) is det.
