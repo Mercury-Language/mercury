@@ -25,7 +25,7 @@
 :- implementation.
 
 	% library modules
-:- import_module int, list, map, set, std_util, dir, tree234, require.
+:- import_module int, list, map, set, std_util, dir, require.
 :- import_module library, getopt, term, varset.
 
 	% the main compiler passes (in order of execution)
