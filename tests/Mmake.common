@@ -2,7 +2,17 @@
 
 MGNUCFLAGS=-g
 
-HAVE_NUPROLOG=$(shell if grep `uname -n` ../NUPROLOG > /dev/null 2>&1 ; then echo yes ; else echo no ; fi)
+# the following code tests for the presence of NU-Prolog
+# by trying to invoke `np' and seeing if it the output
+# starts with the text "NU-Prolog".
+HAVE_NUPROLOG=$(shell \
+	if [ "`expr \"`sh -c 'np' 2>&1 < /dev/null`\" : \(NU-Prolog\)`" \
+		= NU-Prolog ]; \
+	then \
+		echo yes; \
+	else \
+		echo no; \
+	fi)
 
 #-----------------------------------------------------------------------------#
 
@@ -33,6 +43,3 @@ clean_res:
 	rm -f *.res
 
 #-----------------------------------------------------------------------------#
-
-test:
-	@echo $(HAVE_NUPROLOG)
