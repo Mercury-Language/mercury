@@ -408,9 +408,7 @@ Changes to the Mercury implementation:
   To use this debugger, you need to build your program with debugging
   enabled, which is normally done using the `--debug' (or `-g') option,
   and then run it using the `mdb' command, e.g. `mdb a.out'.
-  Type `h' at the `mtrace>' prompt for a list of the available commands.
-
-  XXX We should document this in the Mercury User's Guide.
+  Type `h' at the `mdb>' prompt for a list of the available commands.
 
 * The support for debugging using Prolog now includes support for
   detailed control over how terms are printed out during debugging.
@@ -483,8 +481,6 @@ Changes to the Mercury implementation:
 * We've updated to version 4.13alpha2 of the Boehm garbage collector.
 
 * Numerous bug fixes.
-
-* XXX remove the X debugger command
 
 * We've made the MERCURY_OPTIONS environment variable somewhat easier to use.
 
