@@ -2168,6 +2168,7 @@ ml_gen_goal_expr(shorthand(_), _, _, _, _) -->
 	%				CONT();
 	%			}
 	%			if (MR_done) break;
+	%			MR_succeeded = FALSE;
 	%			<obtain global lock>
 	%			<user's later_code C code>
 	%		}
@@ -2309,6 +2310,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 	{ Ending_C_Code = [
 			raw_target_code("\t\t}\n", []),
 			raw_target_code("\t\tif (MR_done) break;\n", []),
+			raw_target_code("\tMR_succeeded = MR_FALSE;\n", []),
 			raw_target_code(ObtainLock, []),
 			raw_target_code("\t\t{\n", []),
 			user_target_code(LaterCode, LaterContext, []),
