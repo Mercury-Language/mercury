@@ -1717,10 +1717,10 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		->
 			Goal = conj([])
 		;
-			X = X0,
 			Functor = functor(Name, ArgVars),
 			Unify = unify(X, Functor, Mode, Unification,
 				UnifyContext),
+			X = X0,
 			%
 			% modecheck_unification sometimes needs to introduce
 			% new goals to handle complicated sub-unifications
