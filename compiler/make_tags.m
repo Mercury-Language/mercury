@@ -73,9 +73,13 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 		assign_enum_constants(Ctors, 0, CtorTags0, CtorTags)
 	;
 		IsEnum = no,
-		( Ctors = [SingleFunc - [SingleArg]] ->
+		(
 			% assign single functor of arity one a `no_tag' tag
+			% (unless it is type_info/1)
+			Ctors = [SingleFunc - [SingleArg]],
 			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
+			SingleConsId \= cons("type_info", 1)
+		->
 			map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
 		; NumTagBits = 0 ->
 			( Ctors = [_SingleCtor] ->
