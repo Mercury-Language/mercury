@@ -1686,6 +1686,7 @@ long_option("aditi",			aditi).
 long_option("aditi-user",		aditi_user).
 long_option("fullarch",			fullarch).
 long_option("bug-intermod-2002-06-13",	compiler_sufficiently_recent).
+long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
 
 %-----------------------------------------------------------------------------%
 
