@@ -233,32 +233,32 @@ detect_cse_in_goal_2(conj(Goals0), _GoalInfo, InstMap, CseInfo0, CseInfo,
 		Redo, conj(Goals)) :-
 	detect_cse_in_conj(Goals0, InstMap, CseInfo0, CseInfo, Redo, Goals).
 
-detect_cse_in_goal_2(disj(Goals0, FV), GoalInfo, InstMap, CseInfo0, CseInfo,
+detect_cse_in_goal_2(disj(Goals0, SM), GoalInfo, InstMap, CseInfo0, CseInfo,
 		Redo, Goal) :-
 	( Goals0 = [] ->
 		CseInfo = CseInfo0,
 		Redo = no,
-		Goal = disj([], FV)
+		Goal = disj([], SM)
 	;
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		set__to_sorted_list(NonLocals, NonLocalsList),
 		detect_cse_in_disj(NonLocalsList, Goals0, GoalInfo,
-			FV, InstMap, CseInfo0, CseInfo, Redo, Goal)
+			SM, InstMap, CseInfo0, CseInfo, Redo, Goal)
 	).
 
-detect_cse_in_goal_2(switch(Var, CanFail, Cases0, FV), GoalInfo, InstMap,
+detect_cse_in_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo, InstMap,
 		CseInfo0, CseInfo, Redo, Goal) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__to_sorted_list(NonLocals, NonLocalsList),
 	detect_cse_in_cases(NonLocalsList, Var, CanFail, Cases0, GoalInfo,
-		FV, InstMap, CseInfo0, CseInfo, Redo, Goal).
+		SM, InstMap, CseInfo0, CseInfo, Redo, Goal).
 
-detect_cse_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV), GoalInfo,
+detect_cse_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM), GoalInfo,
 		InstMap, CseInfo0, CseInfo, Redo, Goal) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__to_sorted_list(NonLocals, NonLocalsList),
 	detect_cse_in_ite(NonLocalsList, Vars, Cond0, Then0, Else0, GoalInfo,
-		FV, InstMap, CseInfo0, CseInfo, Redo, Goal).
+		SM, InstMap, CseInfo0, CseInfo, Redo, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -287,13 +287,13 @@ detect_cse_in_conj([Goal0 | Goals0], InstMap0, CseInfo0, CseInfo,
 	% branch matches that variable against the same functor.
 
 :- pred detect_cse_in_disj(list(var), list(hlds__goal), hlds__goal_info,
-	follow_vars, instmap, cse_info, cse_info, bool, hlds__goal_expr).
+	store_map, instmap, cse_info, cse_info, bool, hlds__goal_expr).
 :- mode detect_cse_in_disj(in, in, in, in, in, in, out, out, out) is det.
 
-detect_cse_in_disj([], Goals0, _, FV, InstMap, CseInfo0, CseInfo,
-		Redo, disj(Goals, FV)) :-
+detect_cse_in_disj([], Goals0, _, SM, InstMap, CseInfo0, CseInfo,
+		Redo, disj(Goals, SM)) :-
 	detect_cse_in_disj_2(Goals0, InstMap, CseInfo0, CseInfo, Redo, Goals).
-detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, FV, InstMap,
+detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, SM, InstMap,
 		CseInfo0, CseInfo, Redo, Goal) :-
 	(
 		instmap__lookup_var(InstMap, Var, VarInst0),
@@ -306,10 +306,10 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, FV, InstMap,
 			Unify, Goals)
 	->
 		CseInfo = CseInfo1,
-		Goal = conj([Unify, disj(Goals, FV) - GoalInfo0]),
+		Goal = conj([Unify, disj(Goals, SM) - GoalInfo0]),
 		Redo = yes
 	;
-		detect_cse_in_disj(Vars, Goals0, GoalInfo0, FV, InstMap,
+		detect_cse_in_disj(Vars, Goals0, GoalInfo0, SM, InstMap,
 			CseInfo0, CseInfo, Redo, Goal)
 	).
 
@@ -325,17 +325,17 @@ detect_cse_in_disj_2([Goal0 | Goals0], InstMap0, CseInfo0, CseInfo, Redo,
 	bool__or(Redo1, Redo2, Redo).
 
 :- pred detect_cse_in_cases(list(var), var, can_fail, list(case),
-	hlds__goal_info, follow_vars, instmap, cse_info, cse_info, bool,
+	hlds__goal_info, store_map, instmap, cse_info, cse_info, bool,
 	hlds__goal_expr).
 :- mode detect_cse_in_cases(in, in, in, in, in, in, in, in, out, out, out)
 	is det.
 
-detect_cse_in_cases([], SwitchVar, CanFail, Cases0, _GoalInfo, FV, InstMap,
+detect_cse_in_cases([], SwitchVar, CanFail, Cases0, _GoalInfo, SM, InstMap,
 		CseInfo0, CseInfo, Redo,
-		switch(SwitchVar, CanFail, Cases, FV)) :-
+		switch(SwitchVar, CanFail, Cases, SM)) :-
 	detect_cse_in_cases_2(Cases0, InstMap, CseInfo0, CseInfo, Redo, Cases).
 detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
-		FV, InstMap, CseInfo0, CseInfo, Redo, Goal) :-
+		SM, InstMap, CseInfo0, CseInfo, Redo, Goal) :-
 	(
 		Var \= SwitchVar,
 		instmap__lookup_var(InstMap, Var, VarInst0),
@@ -348,12 +348,12 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 			Unify, Cases)
 	->
 		CseInfo = CseInfo1,
-		Goal = conj([Unify, switch(SwitchVar, CanFail, Cases, FV)
+		Goal = conj([Unify, switch(SwitchVar, CanFail, Cases, SM)
 			- GoalInfo]),
 		Redo = yes
 	;
 		detect_cse_in_cases(Vars, SwitchVar, CanFail, Cases0, GoalInfo,
-			FV, InstMap, CseInfo0, CseInfo, Redo, Goal)
+			SM, InstMap, CseInfo0, CseInfo, Redo, Goal)
 	).
 
 :- pred detect_cse_in_cases_2(list(case), instmap, cse_info, cse_info,
@@ -371,16 +371,16 @@ detect_cse_in_cases_2([Case0 | Cases0], InstMap, CseInfo0, CseInfo, Redo,
 
 :- pred detect_cse_in_ite(list(var), list(var),
 	hlds__goal, hlds__goal, hlds__goal, hlds__goal_info,
-	follow_vars, instmap, cse_info, cse_info, bool, hlds__goal_expr).
+	store_map, instmap, cse_info, cse_info, bool, hlds__goal_expr).
 :- mode detect_cse_in_ite(in, in, in, in, in, in, in, in, in, out, out, out)
 	is det.
 
-detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, FV, InstMap, CseInfo0,
-		CseInfo, Redo, if_then_else(IfVars, Cond, Then, Else, FV)) :-
+detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, SM, InstMap, CseInfo0,
+		CseInfo, Redo, if_then_else(IfVars, Cond, Then, Else, SM)) :-
 	detect_cse_in_ite_2(Cond0, Then0, Else0,
 		InstMap, CseInfo0, CseInfo, Redo, Cond, Then, Else).
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
-		FV, InstMap, CseInfo0, CseInfo, Redo, Goal) :-
+		SM, InstMap, CseInfo0, CseInfo, Redo, Goal) :-
 	(
 		CseInfo0 = cse_info(_, _, ModuleInfo),
 		instmap__lookup_var(InstMap, Var, VarInst0),
@@ -393,12 +393,12 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
 		Goals = [Then, Else]
 	->
 		CseInfo = CseInfo1,
-		Goal = conj([Unify, if_then_else(IfVars, Cond0, Then, Else, FV)
+		Goal = conj([Unify, if_then_else(IfVars, Cond0, Then, Else, SM)
 			- GoalInfo]),
 		Redo = yes
 	;
 		detect_cse_in_ite(Vars, IfVars, Cond0, Then0, Else0, GoalInfo,
-			FV, InstMap, CseInfo0, CseInfo, Redo, Goal)
+			SM, InstMap, CseInfo0, CseInfo, Redo, Goal)
 	).
 
 :- pred detect_cse_in_ite_2(hlds__goal, hlds__goal, hlds__goal,

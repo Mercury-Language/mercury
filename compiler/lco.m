@@ -63,15 +63,15 @@ lco_in_goal_2(conj(Goals0), ModuleInfo, conj(Goals)) :-
 	list__reverse(Goals0, RevGoals0),
 	lco_in_conj(RevGoals0, [], ModuleInfo, Goals).
 
-lco_in_goal_2(disj(Goals0, FV), ModuleInfo, disj(Goals, FV)) :-
+lco_in_goal_2(disj(Goals0, SM), ModuleInfo, disj(Goals, SM)) :-
 	lco_in_disj(Goals0, ModuleInfo, Goals).
 
-lco_in_goal_2(switch(Var, Det, Cases0, FV), ModuleInfo,
-		switch(Var, Det, Cases, FV)) :-
+lco_in_goal_2(switch(Var, Det, Cases0, SM), ModuleInfo,
+		switch(Var, Det, Cases, SM)) :-
 	lco_in_cases(Cases0, ModuleInfo, Cases).
 
-lco_in_goal_2(if_then_else(Vars, Cond, Then0, Else0, FV), ModuleInfo,
-		if_then_else(Vars, Cond, Then, Else, FV)) :-
+lco_in_goal_2(if_then_else(Vars, Cond, Then0, Else0, SM), ModuleInfo,
+		if_then_else(Vars, Cond, Then, Else, SM)) :-
 	lco_in_goal(Then0, ModuleInfo, Then),
 	lco_in_goal(Else0, ModuleInfo, Else).
 

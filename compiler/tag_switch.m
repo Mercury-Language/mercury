@@ -19,10 +19,9 @@
 
 	% Generate intelligent indexing code for tag based switches.
 
-:- pred tag_switch__generate(list(extended_case), var,
-	code_model, can_fail, label, code_tree, code_info, code_info).
-:- mode tag_switch__generate(in, in, in, in, in, out, in, out)
-	is det.
+:- pred tag_switch__generate(list(extended_case), var, code_model, can_fail,
+	store_map, label, code_tree, code_info, code_info).
+:- mode tag_switch__generate(in, in, in, in, in, in, out, in, out) is det.
 
 :- implementation.
 
@@ -65,7 +64,8 @@
 	% with the most shared primary tag. This arrangement minimizes the
 	% expected number of primary tag comparisons.
 
-tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
+tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
+		-->
 	% group the cases based on primary tag value
 	% and find out how many constructors share each primary tag value
 
@@ -128,8 +128,8 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 	),
 
 	tag_switch__generate_primary_tag_codes(TagCaseList,
-		TagRval, VarRval, CodeModel, CanFail, EndLabel, FailLabel,
-		TagCountMap, CasesCode),
+		TagRval, VarRval, CodeModel, CanFail, StoreMap,
+		EndLabel, FailLabel, TagCountMap, CasesCode),
 	{ EndCode = node([label(EndLabel) - "end of tag switch"]) },
 	{ Code = tree(tree(tree(VarCode, TagCode), CasesCode),
 		tree(FailCode, EndCode)) }.
@@ -140,16 +140,15 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 	% Jump tables are used only on secondary tags.
 
 :- pred tag_switch__generate_primary_tag_codes(tag_case_list,
-	rval, rval, code_model, can_fail, label, label,
+	rval, rval, code_model, can_fail, store_map, label, label,
 	tag_count_map, code_tree, code_info, code_info).
-:- mode tag_switch__generate_primary_tag_codes(in, in, in, in, in, in, in,
+:- mode tag_switch__generate_primary_tag_codes(in, in, in, in, in, in, in, in,
 	in, out, in, out) is det.
 
-tag_switch__generate_primary_tag_codes([], _TagRval, _VarRval, _CodeModel,
-		_CanFail, _EndLabel, _FailLabel, _TagCountMap, empty) -->
+tag_switch__generate_primary_tag_codes([], _, _, _, _, _, _, _, _, empty) -->
 	[].
 tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
-		TagRval, VarRval, CodeModel, CanFail,
+		TagRval, VarRval, CodeModel, CanFail, StoreMap,
 		EndLabel, FailLabel, TagCountMap, Code) -->
 	{ TagGroup = Primary - (StagLoc - TagGoalMap) },
 	{ map__lookup(TagCountMap, Primary, CountInfo) },
@@ -170,7 +169,7 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
 			- "test primary tag only"]) },
 		tag_switch__generate_primary_tag_code(TagGoalMap,
 			Primary, MaxSecondary, StagLoc, VarRval, CodeModel,
-			EndLabel, FailLabel, TagCode),
+			StoreMap, EndLabel, FailLabel, TagCode),
 		{ ElseCode = node([
 			goto(label(EndLabel)) - "skip to end of tag switch",
 			label(ElseLabel) - "handle next primary tag"]) },
@@ -183,11 +182,11 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
 	;
 		tag_switch__generate_primary_tag_code(TagGoalMap,
 			Primary, MaxSecondary, StagLoc, VarRval, CodeModel,
-			EndLabel, FailLabel, ThisTagCode)
+			StoreMap, EndLabel, FailLabel, ThisTagCode)
 	),
 	tag_switch__generate_primary_tag_codes(TagGroups,
-		TagRval, VarRval, CodeModel, CanFail, EndLabel, FailLabel,
-		TagCountMap, OtherTagsCode),
+		TagRval, VarRval, CodeModel, CanFail, StoreMap,
+		EndLabel, FailLabel, TagCountMap, OtherTagsCode),
 	{ Code = tree(ThisTagCode, OtherTagsCode) }.
 
 %-----------------------------------------------------------------------------%
@@ -197,19 +196,20 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups],
 	% use a jump table to implement the secondary switch.
 
 :- pred tag_switch__generate_primary_tag_code(tag_goal_map, tag_bits, int,
-	stag_loc, rval, code_model,
+	stag_loc, rval, code_model, store_map,
 	label, label, code_tree, code_info, code_info).
-:- mode tag_switch__generate_primary_tag_code(in, in, in, in, in, in,
+:- mode tag_switch__generate_primary_tag_code(in, in, in, in, in, in, in,
 	in, in, out, in, out) is det.
 
-tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary,
-		StagLoc, Rval, CodeModel, EndLabel, FailLabel, Code) -->
+tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
+		Rval, CodeModel, StoreMap, EndLabel, FailLabel, Code) -->
 	{ map__to_assoc_list(GoalMap, GoalList) },
 	(
 		{ StagLoc = none }
 	->
 		( { GoalList = [-1 - Goal] } ->
-			code_gen__generate_forced_goal(CodeModel, Goal, Code)
+			code_gen__generate_forced_goal(CodeModel, Goal,
+				StoreMap, Code)
 		;
 			{ error("more than one goal for non-shared tag") }
 		)
@@ -241,11 +241,12 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary,
 			{ CanFail = can_fail }
 		),
 		tag_switch__generate_secondary_tag_chain(GoalList, SecTagRval,
-			CodeModel, CanFail, EndLabel, FailLabel, Codes),
+			CodeModel, CanFail, StoreMap, EndLabel, FailLabel,
+			Codes),
 		{ Code = tree(SecTagCode, Codes) }
 	;
 		tag_switch__generate_secondary_tag_table(GoalList,
-			0, MaxSecondary, CodeModel,
+			0, MaxSecondary, CodeModel, StoreMap,
 			EndLabel, FailLabel, Labels, CasesCode),
 		{ StagLoc = remote ->
 			Index = lval(field(Primary, Rval, const(int_const(0))))
@@ -263,12 +264,13 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary,
 	% if-then-elses, the conditions of which check only the secondary tag.
 
 :- pred tag_switch__generate_secondary_tag_chain(tag_goal_list, rval,
-	code_model, can_fail, label, label, code_tree, code_info, code_info).
-:- mode tag_switch__generate_secondary_tag_chain(in, in, in, in, in, in, out,
-	in, out) is det.
+	code_model, can_fail, store_map, label, label,
+	code_tree, code_info, code_info).
+:- mode tag_switch__generate_secondary_tag_chain(in, in, in, in, in, in, in,
+	out, in, out) is det.
 
-tag_switch__generate_secondary_tag_chain([], _SecTagRval,
-		_CodeModel, CanFail, _EndLabel, FailLabel, Code) -->
+tag_switch__generate_secondary_tag_chain([], _SecTagRval, _CodeModel, CanFail,
+		_StoreMap, _EndLabel, FailLabel, Code) -->
 	( { CanFail = can_fail } ->
 		{ Code = node([goto(label(FailLabel))
 			- "secondary tag does not match"]) }
@@ -276,7 +278,7 @@ tag_switch__generate_secondary_tag_chain([], _SecTagRval,
 		{ Code = empty }
 	).
 tag_switch__generate_secondary_tag_chain([Case0 | Cases0], SecTagRval,
-		CodeModel, CanFail, EndLabel, FailLabel, Code) -->
+		CodeModel, CanFail, StoreMap, EndLabel, FailLabel, Code) -->
 	{ Case0 = Secondary - Goal },
 	( { Cases0 = [_|_] ; CanFail = can_fail } ->
 		code_info__grab_code_info(CodeInfo),
@@ -284,7 +286,8 @@ tag_switch__generate_secondary_tag_chain([Case0 | Cases0], SecTagRval,
 		{ TestCode = node([if_val(binop(ne, SecTagRval,
 			const(int_const(Secondary))),
 			label(ElseLabel)) - "test remote sec tag only"]) },
-		code_gen__generate_forced_goal(CodeModel, Goal, GoalCode),
+		code_gen__generate_forced_goal(CodeModel, Goal, StoreMap,
+			GoalCode),
 		{ ElseCode = node([
 			goto(label(EndLabel)) - "skip to end of tag switch",
 			label(ElseLabel) - "handle next secondary tag"]) },
@@ -295,10 +298,11 @@ tag_switch__generate_secondary_tag_chain([Case0 | Cases0], SecTagRval,
 			[]
 		)
 	;
-		code_gen__generate_forced_goal(CodeModel, Goal, ThisCode)
+		code_gen__generate_forced_goal(CodeModel, Goal, StoreMap,
+			ThisCode)
 	),
 	tag_switch__generate_secondary_tag_chain(Cases0, SecTagRval,
-		CodeModel, CanFail, EndLabel, FailLabel, OtherCode),
+		CodeModel, CanFail, StoreMap, EndLabel, FailLabel, OtherCode),
 	{ Code = tree(ThisCode, OtherCode) }.
 
 %-----------------------------------------------------------------------------%
@@ -307,12 +311,13 @@ tag_switch__generate_secondary_tag_chain([Case0 | Cases0], SecTagRval,
 	% that has an entry for all possible secondary tag values.
 
 :- pred tag_switch__generate_secondary_tag_table(tag_goal_list, int, int,
-	code_model, label, label, list(label), code_tree, code_info, code_info).
-:- mode tag_switch__generate_secondary_tag_table(in, in, in,
+	code_model, store_map, label, label, list(label),
+	code_tree, code_info, code_info).
+:- mode tag_switch__generate_secondary_tag_table(in, in, in, in,
 	in, in, in, out, out, in, out) is det.
 
 tag_switch__generate_secondary_tag_table(CaseList, CurSecondary, MaxSecondary,
-		CodeModel, EndLabel, FailLabel, Labels, Code) -->
+		CodeModel, StoreMap, EndLabel, FailLabel, Labels, Code) -->
 	( { CurSecondary > MaxSecondary } ->
 		{ CaseList = [] ->
 			true
@@ -327,11 +332,11 @@ tag_switch__generate_secondary_tag_table(CaseList, CurSecondary, MaxSecondary,
 			code_info__get_next_label(NewLabel),
 			( { CaseList1 = [] } ->
 				code_gen__generate_forced_goal(CodeModel, Goal,
-					GoalCode)
+					StoreMap, GoalCode)
 			;
 				code_info__grab_code_info(CodeInfo),
 				code_gen__generate_forced_goal(CodeModel, Goal,
-					GoalCode),
+					StoreMap, GoalCode),
 				code_info__slap_code_info(CodeInfo)
 			),
 			{ LabelCode = node([label(NewLabel) -
@@ -340,14 +345,16 @@ tag_switch__generate_secondary_tag_table(CaseList, CurSecondary, MaxSecondary,
 				"branch to end of tag switch"]) },
 			tag_switch__generate_secondary_tag_table(CaseList1,
 				NextSecondary, MaxSecondary, CodeModel,
-				EndLabel, FailLabel, OtherLabels, OtherCode),
+				StoreMap, EndLabel, FailLabel, OtherLabels,
+				OtherCode),
 			{ Labels = [NewLabel | OtherLabels] },
 			{ Code = tree(tree(LabelCode, GoalCode),
 				tree(GotoCode, OtherCode)) }
 		;
 			tag_switch__generate_secondary_tag_table(CaseList,
 				NextSecondary, MaxSecondary, CodeModel,
-				EndLabel, FailLabel, OtherLabels, Code),
+				StoreMap, EndLabel, FailLabel, OtherLabels,
+				Code),
 			{ Labels = [FailLabel | OtherLabels] }
 		)
 	).

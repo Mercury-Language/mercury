@@ -20,8 +20,8 @@
 :- import_module hlds_goal, llds, switch_gen, code_info.
 
 :- pred string_switch__generate(cases_list, var, code_model,
-	can_fail, label, code_tree, code_info, code_info).
-:- mode string_switch__generate(in, in, in, in, in, out, in, out)
+	can_fail, store_map, label, code_tree, code_info, code_info).
+:- mode string_switch__generate(in, in, in, in, in, in, out, in, out)
 	is det.
 
 %-----------------------------------------------------------------------------%
@@ -31,7 +31,8 @@
 :- import_module hlds_data, code_gen, tree.
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 
-string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
+string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
+		EndLabel, Code) -->
 	code_info__produce_variable(Var, VarCode, VarRval),
 	code_info__acquire_reg(SlotR),
 	{ SlotReg = reg(SlotR) },
@@ -80,7 +81,8 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 		% Generate the code etc. for the hash table
 		%
 	string_switch__gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
-		FailLabel, EndLabel, Strings, Labels, NextSlots, SlotsCode),
+		StoreMap, FailLabel, EndLabel, Strings, Labels,
+		NextSlots, SlotsCode),
 
 		% Generate code which does the hash table lookup
 	{
@@ -123,7 +125,7 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 	{ Code = tree(tree(VarCode, tree(HashLookupCode, FailCode)),
 			tree(JumpCode, SlotsCode))
 	},
-	code_info__remake_with_store_map.
+	code_info__remake_with_store_map(StoreMap).
 
 :- pred string_switch__hash_cases(cases_list, int, map(int, cases_list)).
 :- mode string_switch__hash_cases(in, in, out) is det.
@@ -237,13 +239,14 @@ string_switch__next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
 	).
 
 :- pred string_switch__gen_hash_slots(int, int, map(int, hash_slot),
-	code_model, label, label, list(maybe(rval)), list(label),
+	code_model, store_map, label, label, list(maybe(rval)), list(label),
 	list(maybe(rval)), code_tree, code_info, code_info).
-:- mode string_switch__gen_hash_slots(in, in, in, in, in, in,
+:- mode string_switch__gen_hash_slots(in, in, in, in, in, in, in,
 	out, out, out, out, in, out) is det.
 
 string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
-		FailLabel, EndLabel, Strings, Labels, NextSlots, Code) -->
+		StoreMap, FailLabel, EndLabel, Strings, Labels,
+		NextSlots, Code) -->
 	( { Slot = TableSize } ->
 		{
 			Strings = [],
@@ -255,8 +258,8 @@ string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
 		}
 	;
 		string_switch__gen_hash_slot(Slot, TableSize, HashSlotMap,
-					CodeModel, FailLabel, EndLabel,
-					String, Label, NextSlot, SlotCode),
+				CodeModel, StoreMap, FailLabel, EndLabel,
+				String, Label, NextSlot, SlotCode),
 		{ Slot1 is Slot + 1 },
 		{ 
 			Strings = [String | Strings0],
@@ -265,18 +268,19 @@ string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
 			Code = tree(SlotCode, Code0)
 		},
 		string_switch__gen_hash_slots(Slot1, TableSize, HashSlotMap,
-					CodeModel, FailLabel, EndLabel,
-					Strings0, Labels0, NextSlots0, Code0)
+				CodeModel, StoreMap, FailLabel, EndLabel,
+				Strings0, Labels0, NextSlots0, Code0)
 	).
 
 :- pred string_switch__gen_hash_slot(int, int, map(int, hash_slot),
-	code_model, label, label, maybe(rval), label, maybe(rval), code_tree,
-	code_info, code_info).
-:- mode string_switch__gen_hash_slot(in, in, in, in, in, in,
+	code_model, store_map, label, label, maybe(rval), label,
+	maybe(rval), code_tree, code_info, code_info).
+:- mode string_switch__gen_hash_slot(in, in, in, in, in, in, in,
 	out, out, out, out, in, out) is det.
 
-string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, FailLabel,
-		EndLabel, yes(StringRval), Label, yes(NextSlotRval), Code) -->
+string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
+		FailLabel, EndLabel, yes(StringRval), Label,
+		yes(NextSlotRval), Code) -->
 	(
 		{ map__search(HashSlotMap, Slot, hash_slot(Case, Next)) }
 	->
@@ -300,10 +304,12 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, FailLabel,
 			{ string_switch__this_is_last_case(Slot, TblSize,
 				HashSlotMap) }
 		->
-			code_gen__generate_forced_goal(CodeModel, Goal, GoalCode)
+			code_gen__generate_forced_goal(CodeModel, Goal,
+				StoreMap, GoalCode)
 		;
 			code_info__grab_code_info(CodeInfo),
-			code_gen__generate_forced_goal(CodeModel, Goal, GoalCode),
+			code_gen__generate_forced_goal(CodeModel, Goal,
+				StoreMap, GoalCode),
 			code_info__slap_code_info(CodeInfo)
 		),
 		{ Code = tree(LabelCode, tree(GoalCode, FinishCode)) }
@@ -313,7 +319,6 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, FailLabel,
 		{ NextSlotRval = const(int_const(-2)) },
 		{ Code = empty }
 	).
-
 
 :- pred string_switch__this_is_last_case(int, int, map(int, hash_slot)).
 :- mode string_switch__this_is_last_case(in, in, in) is semidet.

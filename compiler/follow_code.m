@@ -80,18 +80,18 @@ move_follow_code_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, Flags, R0, R) :-
 move_follow_code_in_goal_2(conj(Goals0), conj(Goals), Flags, R0, R) :-
 	move_follow_code_in_conj(Goals0, Goals, Flags, R0, R).
 
-move_follow_code_in_goal_2(disj(Goals0, FV), disj(Goals, FV), Flags, R0, R) :-
+move_follow_code_in_goal_2(disj(Goals0, SM), disj(Goals, SM), Flags, R0, R) :-
 	move_follow_code_in_disj(Goals0, Goals, Flags, R0, R).
 
 move_follow_code_in_goal_2(not(Goal0), not(Goal), Flags, R0, R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, R0, R).
 
-move_follow_code_in_goal_2(switch(Var, Det, Cases0, FV),
-		switch(Var, Det, Cases, FV), Flags, R0, R) :-
+move_follow_code_in_goal_2(switch(Var, Det, Cases0, SM),
+		switch(Var, Det, Cases, SM), Flags, R0, R) :-
 	move_follow_code_in_cases(Cases0, Cases, Flags, R0, R).
 
-move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
-		if_then_else(Vars, Cond, Then, Else, FV), Flags, R0, R) :-
+move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
+		if_then_else(Vars, Cond, Then, Else, SM), Flags, R0, R) :-
 	move_follow_code_in_goal(Cond0, Cond, Flags, R0, R1),
 	move_follow_code_in_goal(Then0, Then, Flags, R1, R2),
 	move_follow_code_in_goal(Else0, Else, Flags, R2, R).
@@ -210,18 +210,18 @@ move_follow_code_select([Goal|Goals], FollowGoals, RestGoals) :-
 
 move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 	(
-		Goal0 = switch(Var, Det, Cases0, FV),
+		Goal0 = switch(Var, Det, Cases0, SM),
 		move_follow_code_move_goals_cases(Cases0, FollowGoals, Cases),
-		Goal = switch(Var, Det, Cases, FV)
+		Goal = switch(Var, Det, Cases, SM)
 	;
-		Goal0 = disj(Goals0, FV),
+		Goal0 = disj(Goals0, SM),
 		move_follow_code_move_goals_disj(Goals0, FollowGoals, Goals),
-		Goal = disj(Goals, FV)
+		Goal = disj(Goals, SM)
 	;
-		Goal0 = if_then_else(Vars, Cond, Then0, Else0, FV),
+		Goal0 = if_then_else(Vars, Cond, Then0, Else0, SM),
 		conjoin_goal_and_goal_list(Then0, FollowGoals, Then),
 		conjoin_goal_and_goal_list(Else0, FollowGoals, Else),
-		Goal = if_then_else(Vars, Cond, Then, Else, FV)
+		Goal = if_then_else(Vars, Cond, Then, Else, SM)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -898,7 +898,7 @@ fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 						Changed, Goals0, Goals).
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		disj(Goals0, FV) - GoalInfo, disj(Goals, FV) - GoalInfo) :-
+		disj(Goals0, SM) - GoalInfo, disj(Goals, SM) - GoalInfo) :-
 	fixup_disjuncts(ModuleInfo, UnusedVars, ProcCallInfo,
 				no, Changed, Goals0, Goals).
 
@@ -908,14 +908,14 @@ fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 				Changed, NegGoal0, NegGoal).
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		switch(Var, CanFail, Cases0, FV) - GoalInfo,
-		switch(Var, CanFail, Cases, FV) - GoalInfo) :-
+		switch(Var, CanFail, Cases0, SM) - GoalInfo,
+		switch(Var, CanFail, Cases, SM) - GoalInfo) :-
 	fixup_cases(ModuleInfo, UnusedVars, ProcCallInfo,
 				no, Changed, Cases0, Cases).
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		if_then_else(Vars, Cond0, Then0, Else0, FV) - GoalInfo, 
-		if_then_else(Vars, Cond, Then, Else, FV) - GoalInfo) :- 
+		if_then_else(Vars, Cond0, Then0, Else0, SM) - GoalInfo, 
+		if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo) :- 
 	fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed1, Cond0, Cond),
 	fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed2, Then0, Then),
 	fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed3, Else0, Else),

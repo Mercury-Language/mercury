@@ -374,8 +374,8 @@ det_infer_goal_2(conj(Goals0), _, InstMap0, SolnContext, DetInfo, _, _,
 	det_infer_conj(Goals0, InstMap0, SolnContext, DetInfo,
 		Goals, Detism, Msgs).
 
-det_infer_goal_2(disj(Goals0, FV), _, InstMap0, SolnContext, DetInfo, _, _,
-		disj(Goals, FV), Detism, Msgs) :-
+det_infer_goal_2(disj(Goals0, SM), _, InstMap0, SolnContext, DetInfo, _, _,
+		disj(Goals, SM), Detism, Msgs) :-
 	det_infer_disj(Goals0, InstMap0, SolnContext, DetInfo,
 		can_fail, at_most_zero, Goals, Detism, Msgs).
 
@@ -384,9 +384,9 @@ det_infer_goal_2(disj(Goals0, FV), _, InstMap0, SolnContext, DetInfo, _, _,
 	% then it is semideterministic or worse - this is determined
 	% in switch_detection.m and handled via the SwitchCanFail field.
 
-det_infer_goal_2(switch(Var, SwitchCanFail, Cases0, FV), _,
+det_infer_goal_2(switch(Var, SwitchCanFail, Cases0, SM), _,
 		InstMap0, SolnContext, DetInfo, _, _,
-		switch(Var, SwitchCanFail, Cases, FV), Detism, Msgs) :-
+		switch(Var, SwitchCanFail, Cases, SM), Detism, Msgs) :-
 	det_infer_switch(Cases0, InstMap0, SolnContext, DetInfo,
 		cannot_fail, at_most_zero, Cases, CasesDetism, Msgs),
 	determinism_components(CasesDetism, CasesCanFail, CasesSolns),
@@ -461,9 +461,9 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, _SolnContext,
 	),
 	det_infer_unify(U, UnifyDet).
 
-det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV), _GoalInfo0,
+det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM), _GoalInfo0,
 		InstMap0, SolnContext, DetInfo, _NonLocalVars, _DeltaInstMap,
-		if_then_else(Vars, Cond, Then, Else, FV), Detism, Msgs) :-
+		if_then_else(Vars, Cond, Then, Else, SM), Detism, Msgs) :-
 
 	% We process the goal right-to-left, doing the `then' before
 	% the condition of the if-then-else, so that we can propagate

@@ -1317,22 +1317,22 @@ recompute_instmap_delta(Goal0 - GoalInfo0, Goal - GoalInfo, InstMapDelta) -->
 				instmap_delta, module_info, module_info).
 :- mode recompute_instmap_delta_2(in, out, out, in, out) is det.
 
-recompute_instmap_delta_2(switch(Var, Det, Cases0, FV),
-		switch(Var, Det, Cases, FV), InstMapDelta) -->
+recompute_instmap_delta_2(switch(Var, Det, Cases0, SM),
+		switch(Var, Det, Cases, SM), InstMapDelta) -->
 	recompute_instmap_delta_cases(Cases0, Cases, InstMapDelta).
 
 recompute_instmap_delta_2(conj(Goals0), conj(Goals), InstMapDelta) -->
 	recompute_instmap_delta_conj(Goals0, Goals, InstMapDelta).
 
-recompute_instmap_delta_2(disj(Goals0, FV), disj(Goals, FV), InstMapDelta) -->
+recompute_instmap_delta_2(disj(Goals0, SM), disj(Goals, SM), InstMapDelta) -->
 	recompute_instmap_delta_disj(Goals0, Goals, InstMapDelta).
 
 recompute_instmap_delta_2(not(Goal0), not(Goal), InstMapDelta) -->
 	{ instmap_delta_init_reachable(InstMapDelta) },
 	recompute_instmap_delta(Goal0, Goal).
 
-recompute_instmap_delta_2(if_then_else(Vars, A0, B0, C0, FV),
-			if_then_else(Vars, A, B, C, FV), InstMapDelta) -->
+recompute_instmap_delta_2(if_then_else(Vars, A0, B0, C0, SM),
+			if_then_else(Vars, A, B, C, SM), InstMapDelta) -->
 	recompute_instmap_delta(A0, A, InstMapDelta1),
 	recompute_instmap_delta(B0, B, InstMapDelta2),
 	recompute_instmap_delta(C0, C, InstMapDelta3),

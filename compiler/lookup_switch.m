@@ -58,9 +58,9 @@
 	% Generate code for a switch using a lookup table.
 
 :- pred lookup_switch__generate(var, list(var), case_consts,
-		int, int, can_fail, can_fail, maybe(set(var)), code_tree,
-		code_info, code_info).
-:- mode lookup_switch__generate(in, in, in, in, in, in, in, in,
+		int, int, can_fail, can_fail, maybe(set(var)), store_map,
+		code_tree, code_info, code_info).
+:- mode lookup_switch__generate(in, in, in, in, in, in, in, in, in,
 		out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -269,7 +269,7 @@ lookup_switch__rvals_are_constant([MRval|MRvals], ExprnOpts) :-
 
 lookup_switch__generate(Var, OutVars, CaseValues,
 		StartVal, EndVal, NeedRangeCheck, NeedBitVecCheck,
-		MLiveness, Code) -->
+		MLiveness, StoreMap, Code) -->
 		% Evaluate the variable which we are going to be switching on
 	code_info__produce_variable(Var, VarCode, Rval),
 		% If the case values start at some number other than 0,
@@ -313,12 +313,12 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 		{ MLiveness = no },
 		{ error("lookup_switch__generate: no liveness!") }
 	),
-	code_info__generate_forced_saves(LookupCode),
+	code_info__generate_forced_saves(StoreMap, LookupCode),
 		% Assemble to code together
 	{ Comment = node([comment("lookup switch") - ""]) },
 	{ Code = tree(tree(tree(Comment, VarCode), RangeCheck),
 			tree(CheckBitVec, LookupCode)) },
-	code_info__remake_with_store_map.
+	code_info__remake_with_store_map(StoreMap).
 
 %------------------------------------------------------------------------------%
 

@@ -8,18 +8,20 @@
 % Major modification by zs.
 
 % This module traverses the goal for every procedure, filling in the
-% follow_vars field for call(...) goals, and filling in the initial
-% follow_vars in the proc_info.  These follow_vars fields are
-% a map(var, lval) which constitute an advisory indication to the code
-% generator as to which register each variable should be placed in.
+% follow_vars fields of some goals. These fields constitute an advisory
+% indication to the code generator as to what location each variable
+% should be placed in.
 %
-% They are computed by traversing the goal BACKWARDS.
-% At the end of the goal, we want the output variables to go into their
-% corresponding registers, so we initialize the follow_vars accordingly.
-% As we traverse throught the goal, at each call(...) we attach the 
-% follow_vars map we have computed, and start computing a new one to
-% be attached to the preceding call.  When we finish traversing the goal,
-% we attach the last computed follow_vars to the proc_info.
+% The desired locations of variables are computed by traversing the goal
+% BACKWARDS. At the end of the procedure, we want the output variables
+% to go into their corresponding registers, so we initialize the follow_vars
+% accordingly. At each call or higher order call we reset the follow_vars set
+% to reflect where variables should be to make the setting up of the arguments
+% of the call as efficient as possible.
+
+% See notes/ALLOCATION for a description of the framework that this pass
+% operates within, and for a description of which goals have their follow_vars
+% field filled in.
 
 %-----------------------------------------------------------------------------%
 

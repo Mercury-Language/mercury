@@ -34,7 +34,7 @@
 middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 	Goal = GoalExpr - GoalInfo,
 	(
-		GoalExpr = switch(Var, cannot_fail, [Case1, Case2], FV),
+		GoalExpr = switch(Var, cannot_fail, [Case1, Case2], SM),
 		Case1 = case(ConsId1, Goal1),
 		Case2 = case(ConsId2, Goal2),
 		(
@@ -43,19 +43,19 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 				CodeInfo0, _)
 		->
 			middle_rec__generate_switch(Var, ConsId1, Goal1, Goal2,
-				FV, GoalInfo, Instrs, CodeInfo0, CodeInfo)
+				SM, GoalInfo, Instrs, CodeInfo0, CodeInfo)
 		;
 			code_aux__contains_only_builtins(Goal2),
 			code_aux__contains_simple_recursive_call(Goal1,
 				CodeInfo0, _)
 		->
 			middle_rec__generate_switch(Var, ConsId2, Goal2, Goal1,
-				FV, GoalInfo, Instrs, CodeInfo0, CodeInfo)
+				SM, GoalInfo, Instrs, CodeInfo0, CodeInfo)
 		;
 			fail
 		)
 	;
-		GoalExpr = if_then_else(Vars, Cond, Then, Else, FV),
+		GoalExpr = if_then_else(Vars, Cond, Then, Else, SM),
 		(
 			code_aux__contains_only_builtins(Cond),
 			code_aux__contains_only_builtins(Then),
@@ -64,7 +64,7 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 		->
 			semidet_fail,
 			middle_rec__generate_ite(Vars, Cond, Then, Else,
-				in_else, FV, GoalInfo, Instrs,
+				in_else, SM, GoalInfo, Instrs,
 				CodeInfo0, CodeInfo)
 		;
 			code_aux__contains_only_builtins(Cond),
@@ -74,7 +74,7 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 		->
 			semidet_fail,
 			middle_rec__generate_ite(Vars, Cond, Then, Else,
-				in_then, FV, GoalInfo, Instrs,
+				in_then, SM, GoalInfo, Instrs,
 				CodeInfo0, CodeInfo)
 		;
 			fail
@@ -86,12 +86,12 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred middle_rec__generate_ite(list(var), hlds__goal, hlds__goal,
-	hlds__goal, ite_rec, follow_vars, hlds__goal_info,
+	hlds__goal, ite_rec, store_map, hlds__goal_info,
 	code_tree, code_info, code_info).
 :- mode middle_rec__generate_ite(in, in, in, in, in, in, in, out, in, out)
 	is det.
 
-middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _FV,
+middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _SM,
 		Instrs) -->
 	( { semidet_fail } ->
 		{ Instrs = empty }
@@ -102,13 +102,12 @@ middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _FV,
 %---------------------------------------------------------------------------%
 
 :- pred middle_rec__generate_switch(var, cons_id, hlds__goal, hlds__goal,
-	follow_vars, hlds__goal_info, code_tree, code_info, code_info).
+	store_map, hlds__goal_info, code_tree, code_info, code_info).
 :- mode middle_rec__generate_switch(in, in, in, in, in, in, out, in, out)
 	is semidet.
 
-middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
+middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 		SwitchGoalInfo, Instrs) -->
-	code_info__push_store_map(FollowVars),
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
 	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
@@ -127,13 +126,14 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 	{ list__condense(EntryTestListList, EntryTestList) },
 
 	code_info__grab_code_info(CodeInfo),
-	code_gen__generate_forced_goal(model_det, Base, BaseCodeFrag),
+	code_gen__generate_forced_goal(model_det, Base, StoreMap,
+		BaseCodeFrag),
 	code_info__slap_code_info(CodeInfo),
-	code_gen__generate_forced_goal(model_det, Recursive, RecCodeFrag),
+	code_gen__generate_forced_goal(model_det, Recursive, StoreMap,
+		RecCodeFrag),
 
 	code_aux__post_goal_update(SwitchGoalInfo),
-	code_info__remake_with_store_map,
-	code_info__pop_store_map,
+	code_info__remake_with_store_map(StoreMap),
 
 	code_info__get_arginfo(ArgModes),
 	code_info__get_headvars(HeadVars),

@@ -17,15 +17,15 @@
 
 :- import_module hlds_goal, llds, code_info.
 
-:- pred disj_gen__generate_det_disj(list(hlds__goal),
+:- pred disj_gen__generate_det_disj(list(hlds__goal), store_map,
 					code_tree, code_info, code_info).
-:- mode disj_gen__generate_det_disj(in, out, in, out) is det.
+:- mode disj_gen__generate_det_disj(in, in, out, in, out) is det.
 
-:- pred disj_gen__generate_semi_disj(list(hlds__goal), follow_vars,
+:- pred disj_gen__generate_semi_disj(list(hlds__goal), store_map,
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_semi_disj(in, in, out, in, out) is det.
 
-:- pred disj_gen__generate_non_disj(list(hlds__goal), follow_vars,
+:- pred disj_gen__generate_non_disj(list(hlds__goal), store_map,
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_non_disj(in, in, out, in, out) is det.
 
@@ -38,7 +38,7 @@
 
 %---------------------------------------------------------------------------%
 
-disj_gen__generate_det_disj(Goals, Code) -->
+disj_gen__generate_det_disj(Goals, StoreMap, Code) -->
 		% If we are using constraints, save the current solver state
 		% before the first disjunct.
 	code_info__get_globals(Globals),
@@ -54,22 +54,22 @@ disj_gen__generate_det_disj(Goals, Code) -->
 
 		% Generate all the cases
 	code_info__get_next_label(EndLabel),
-	disj_gen__generate_det_disj_2(Goals, EndLabel, SavedHP, MustRestoreHP,
-		GoalsCode),
+	disj_gen__generate_det_disj_2(Goals, StoreMap, EndLabel,
+		SavedHP, MustRestoreHP, GoalsCode),
 	{ Code = tree(SaveTicketCode, GoalsCode) }.
 
-:- pred disj_gen__generate_det_disj_2(list(hlds__goal), label, bool, bool,
-					code_tree, code_info, code_info).
-:- mode disj_gen__generate_det_disj_2(in, in, in, in, out, in, out) is det.
+:- pred disj_gen__generate_det_disj_2(list(hlds__goal), store_map,
+			label, bool, bool, code_tree, code_info, code_info).
+:- mode disj_gen__generate_det_disj_2(in, in, in, in, in, out, in, out) is det.
 
 	% To generate code for a det disjunction, we generate a
 	% chain (if-then-else style) of goals until we come to
 	% one that cannot fail. When we get to a goal that can't
 	% fail, we just generate that goal.
-disj_gen__generate_det_disj_2([], _, _, _, _) -->
+disj_gen__generate_det_disj_2([], _, _, _, _, _) -->
 	{ error("Empty det disj!") }.
-disj_gen__generate_det_disj_2([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
-		Code) -->
+disj_gen__generate_det_disj_2([Goal | Goals], StoreMap, EndLabel,
+		SavedHP, MustRestoreHP, Code) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_determinism(GoalInfo, GoalDet) },
 	{ goal_info_get_code_model(GoalInfo, GoalModel) },
@@ -95,7 +95,8 @@ disj_gen__generate_det_disj_2([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 			RestoreTicketCode),
 
 			% Generate the goal
-		code_gen__generate_forced_goal(GoalModel, Goal, GoalCode),
+		code_gen__generate_forced_goal(GoalModel, Goal, StoreMap,
+			GoalCode),
 
 		{ EndCode = node([label(EndLabel) - "end of det disj"]) },
 		{ Code = tree(RestoreHPCode,
@@ -103,7 +104,7 @@ disj_gen__generate_det_disj_2([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 			 tree(RestoreTicketCode,
 			 tree(GoalCode,
 			      EndCode)))) },
-		code_info__remake_with_store_map
+		code_info__remake_with_store_map(StoreMap)
 	;
 		code_info__get_live_variables(VarList),
 		{ set__list_to_set(VarList, Vars) },
@@ -140,7 +141,8 @@ disj_gen__generate_det_disj_2([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 		code_info__grab_code_info(CodeInfo),
 
 			% generate the case as a semi-deterministic goal
-		code_gen__generate_forced_goal(GoalModel, Goal, GoalCode),
+		code_gen__generate_forced_goal(GoalModel, Goal, StoreMap,
+			GoalCode),
 		{ BranchCode = node([goto(label(EndLabel)) -
 						"skip to end of det disj"]) },
 		{ ThisCode = tree(GoalCode, BranchCode) },
@@ -153,8 +155,9 @@ disj_gen__generate_det_disj_2([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 		(
 			{ Goals \= [] }
 		->
-			disj_gen__generate_det_disj_2(Goals, EndLabel,
-				SavedHP_Next, MustRestoreHP_Next, RestCode)
+			disj_gen__generate_det_disj_2(Goals, StoreMap,
+				EndLabel, SavedHP_Next, MustRestoreHP_Next,
+				RestCode)
 		;
 			% a det disj should have at least one det disjunct
 			{ error("disj_gen__generate_det_disj: huh?") }
@@ -170,18 +173,18 @@ disj_gen__generate_det_disj_2([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 
 %---------------------------------------------------------------------------%
 
-disj_gen__generate_semi_disj(Goals, FollowVars, Code) -->
+disj_gen__generate_semi_disj(Goals, StoreMap, Code) -->
 	( { Goals = [] } ->
 		code_info__generate_failure(Code)
 	;
-		disj_gen__generate_semi_disj_2(Goals, FollowVars, Code)
+		disj_gen__generate_semi_disj_2(Goals, StoreMap, Code)
 	).
 
-:- pred disj_gen__generate_semi_disj_2(list(hlds__goal), follow_vars,
+:- pred disj_gen__generate_semi_disj_2(list(hlds__goal), store_map,
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_semi_disj_2(in, in, out, in, out) is det.
 
-disj_gen__generate_semi_disj_2(Goals, _FollowVars, Code) -->
+disj_gen__generate_semi_disj_2(Goals, StoreMap, Code) -->
 		% If we are using constraints, save the current solver state
 		% before the first disjunct.
 	code_info__get_globals(Globals),
@@ -197,23 +200,23 @@ disj_gen__generate_semi_disj_2(Goals, _FollowVars, Code) -->
 
 		% Generate all the cases
 	code_info__get_next_label(EndLabel),
-	disj_gen__generate_semi_cases(Goals, EndLabel, SavedHP, MustRestoreHP,
-		GoalsCode),
+	disj_gen__generate_semi_cases(Goals, StoreMap, EndLabel,
+		SavedHP, MustRestoreHP, GoalsCode),
 
 		% Remake the code_info using the store map for the
 		% variable locations at the end of the disjunction.
-	code_info__remake_with_store_map,
+	code_info__remake_with_store_map(StoreMap),
 
 	{ Code = tree(SaveTicketCode, GoalsCode) }.
 
-:- pred disj_gen__generate_semi_cases(list(hlds__goal), label, bool, bool,
-					code_tree, code_info, code_info).
-:- mode disj_gen__generate_semi_cases(in, in, in, in, out, in, out) is det.
+:- pred disj_gen__generate_semi_cases(list(hlds__goal), store_map, label,
+			bool, bool, code_tree, code_info, code_info).
+:- mode disj_gen__generate_semi_cases(in, in, in, in, in, out, in, out) is det.
 
-disj_gen__generate_semi_cases([], _, _, _, _) -->
+disj_gen__generate_semi_cases([], _, _, _, _, _) -->
 	{ error("disj_gen__generate_semi_cases") }.
-disj_gen__generate_semi_cases([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
-		GoalsCode) -->
+disj_gen__generate_semi_cases([Goal | Goals], StoreMap, EndLabel,
+		SavedHP, MustRestoreHP, GoalsCode) -->
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals,
 			constraints, RestoreTicket) },
@@ -231,7 +234,8 @@ disj_gen__generate_semi_cases([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 			RestoreTicketCode),
 
 			% Generate the case as a semi-deterministic goal
-		code_gen__generate_forced_goal(model_semi, Goal, ThisCode),
+		code_gen__generate_forced_goal(model_semi, Goal, StoreMap,
+			ThisCode),
 
 		{ EndCode = node([
 			label(EndLabel) - "End of model_semi disj"
@@ -279,7 +283,8 @@ disj_gen__generate_semi_cases([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 		code_info__grab_code_info(CodeInfo),
 
 			% generate the case as a semi-deterministic goal
-		code_gen__generate_forced_goal(model_semi, Goal, ThisCode),
+		code_gen__generate_forced_goal(model_semi, Goal, StoreMap,
+			ThisCode),
 
 			% If there are more cases, then we need to restore
 			% the machine state, and clear registers, since
@@ -288,7 +293,7 @@ disj_gen__generate_semi_cases([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 		code_info__restore_failure_cont(RestoreContCode),
 
 			% generate the rest of the cases.
-		disj_gen__generate_semi_cases(Goals, EndLabel,
+		disj_gen__generate_semi_cases(Goals, StoreMap, EndLabel,
 			SavedHP_Next, MustRestoreHP_Next, GoalsCode0),
 		{ SuccCode = node([
 			goto(label(EndLabel)) - "Jump to end of model_semi disj"
@@ -305,7 +310,7 @@ disj_gen__generate_semi_cases([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 
 %---------------------------------------------------------------------------%
 
-disj_gen__generate_non_disj(Goals1, _FollowVars, Code) -->
+disj_gen__generate_non_disj(Goals1, StoreMap, Code) -->
 
 		% Sanity check
 	{ Goals1 = [] ->
@@ -328,7 +333,7 @@ disj_gen__generate_non_disj(Goals1, _FollowVars, Code) -->
 			constraints, SaveTicket) },
 	code_info__maybe_save_ticket(SaveTicket, SaveTicketCode),
 	code_info__get_next_label(EndLab),
-	disj_gen__generate_non_disj_2(Goals1, EndLab, GoalsCode),
+	disj_gen__generate_non_disj_2(Goals1, StoreMap, EndLab, GoalsCode),
 	{ Code = tree(HijackCode, 
 		tree(SaveHeapCode, 
 		tree(SaveTicketCode, GoalsCode))) },
@@ -337,13 +342,13 @@ disj_gen__generate_non_disj(Goals1, _FollowVars, Code) -->
 		% we must set the current failure continuation to unkown.
 	code_info__unset_failure_cont.
 
-:- pred disj_gen__generate_non_disj_2(list(hlds__goal), label,
+:- pred disj_gen__generate_non_disj_2(list(hlds__goal), store_map, label,
 					code_tree, code_info, code_info).
-:- mode disj_gen__generate_non_disj_2(in, in, out, in, out) is det.
+:- mode disj_gen__generate_non_disj_2(in, in, in, out, in, out) is det.
 
-disj_gen__generate_non_disj_2([], _EndLab, _Code) -->
+disj_gen__generate_non_disj_2([], _StoreMap, _EndLab, _Code) -->
 	{ error("disj_gen__generate_non_disj_2") }.
-disj_gen__generate_non_disj_2([Goal | Goals], EndLab, DisjCode) -->
+disj_gen__generate_non_disj_2([Goal | Goals], StoreMap, EndLab, DisjCode) -->
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals,
 			reclaim_heap_on_nondet_failure, ReclaimHeap) },
@@ -352,7 +357,7 @@ disj_gen__generate_non_disj_2([Goal | Goals], EndLab, DisjCode) -->
 	code_info__get_live_variables(Vars),
 	code_gen__ensure_vars_are_saved(Vars, GoalCode0), 
 	code_info__grab_code_info(CodeInfo),
-	code_gen__generate_forced_goal(model_non, Goal, GoalCode1),
+	code_gen__generate_forced_goal(model_non, Goal, StoreMap, GoalCode1),
 	{ GoalCode = tree(GoalCode0, GoalCode1) },
 	code_info__slap_code_info(CodeInfo),
 	{ SuccCode =
@@ -372,7 +377,8 @@ disj_gen__generate_non_disj_2([Goal | Goals], EndLab, DisjCode) -->
 			% the final arm of the disjunction
 		code_info__maybe_restore_ticket_and_pop(RestoreTicket, 
 			RestorePopCode),
-		code_gen__generate_forced_goal(model_non, Goal2, Goal2Code),
+		code_gen__generate_forced_goal(model_non, Goal2, StoreMap,
+			Goal2Code),
 		{ EndCode = node([
 			label(EndLab) - "End of disj"
 		]) },
@@ -388,7 +394,8 @@ disj_gen__generate_non_disj_2([Goal | Goals], EndLab, DisjCode) -->
 		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHeapCode),
 		code_info__maybe_restore_ticket(RestoreTicket, 
 			RestoreTicketCode),
-		disj_gen__generate_non_disj_2(Goals, EndLab, RestCode),
+		disj_gen__generate_non_disj_2(Goals, StoreMap, EndLab,
+			RestCode),
 		{ DisjCode = tree(tree(GoalCode, SuccCode),
 				tree(ModifyFailureContCode,
 				tree(RestoreHeapCode, 

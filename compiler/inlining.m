@@ -289,21 +289,21 @@ inlining__inlining_in_goal_2(conj(Goals0), Varset0, VarTypes0, TVarSet,
 	inlining__inlining_in_conj(Goals0, Varset0, VarTypes0, TVarSet,
 		ModuleInfo, InlinedProcs, Thresh, Goals, Varset, VarTypes).
 
-inlining__inlining_in_goal_2(disj(Goals0, FV), Varset0, VarTypes0, TVarset,
+inlining__inlining_in_goal_2(disj(Goals0, SM), Varset0, VarTypes0, TVarset,
 		ModuleInfo, InlinedProcs, Thresh,
-		disj(Goals, FV), Varset, VarTypes) :-
+		disj(Goals, SM), Varset, VarTypes) :-
 	inlining__inlining_in_disj(Goals0, Varset0, VarTypes0, TVarset,
 		ModuleInfo, InlinedProcs, Thresh, Goals, Varset, VarTypes).
 
-inlining__inlining_in_goal_2(switch(Var, Det, Cases0, FV),
+inlining__inlining_in_goal_2(switch(Var, Det, Cases0, SM),
 		Varset0, VarTypes0, TVarset, ModuleInfo, InlinedProcs, Thresh,
-		switch(Var, Det, Cases, FV), Varset, VarTypes) :-
+		switch(Var, Det, Cases, SM), Varset, VarTypes) :-
 	inlining__inlining_in_cases(Cases0, Varset0, VarTypes0, TVarset,
 		ModuleInfo, InlinedProcs, Thresh, Cases, Varset, VarTypes).
 
-inlining__inlining_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
+inlining__inlining_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		Varset0, VarTypes0, TVarSet, ModuleInfo, InlinedProcs, Thresh,
-		if_then_else(Vars, Cond, Then, Else, FV), Varset, VarTypes) :-
+		if_then_else(Vars, Cond, Then, Else, SM), Varset, VarTypes) :-
 	inlining__inlining_in_goal(Cond0, Varset0, VarTypes0, TVarSet,
 		ModuleInfo, InlinedProcs, Thresh, Cond, Varset1, VarTypes1),
 	inlining__inlining_in_goal(Then0, Varset1, VarTypes1, TVarSet,

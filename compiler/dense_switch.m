@@ -32,9 +32,9 @@
 
 	% Generate code for a switch using a dense jump table.
 
-:- pred dense_switch__generate(cases_list, int, int,
-	var, code_model, can_fail, label, code_tree, code_info, code_info).
-:- mode dense_switch__generate(in, in, in, in, in, in, in,
+:- pred dense_switch__generate(cases_list, int, int, var, code_model,
+	can_fail, store_map, label, code_tree, code_info, code_info).
+:- mode dense_switch__generate(in, in, in, in, in, in, in, in,
 	out, in, out) is det.
 
 	% also used by lookup_switch
@@ -131,7 +131,7 @@ dense_switch__type_range(enum_type, Type, TypeRange) -->
 %---------------------------------------------------------------------------%
 
 dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
-		EndLabel, Code) -->
+		StoreMap, EndLabel, Code) -->
 		% Evaluate the variable which we are going to be switching on
 	code_info__produce_variable(Var, VarCode, Rval),
 		% If the case values start at some number other than 0,
@@ -156,7 +156,7 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 	),
 		% Now generate the jump table and the cases
 	dense_switch__generate_cases(Cases, StartVal, EndVal, CodeModel,
-			EndLabel, Labels, CasesCode, no, MLiveness),
+			StoreMap, EndLabel, Labels, CasesCode, no, MLiveness),
 		% We keep track of what variables are supposed to be
 		% live at the end of cases. We have to do this explicitly
 		% because generating a `fail' slot last would yield the
@@ -174,16 +174,16 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 	]) },
 		% Assemble to code together
 	{ Code = tree(tree(VarCode, RangeCheck), tree(DoJump, CasesCode)) },
-	code_info__remake_with_store_map.
+	code_info__remake_with_store_map(StoreMap).
 
 :- pred dense_switch__generate_cases(cases_list, int, int,
-	code_model, label, list(label), code_tree, 
+	code_model, store_map, label, list(label), code_tree, 
 	maybe(liveness_info), maybe(liveness_info), code_info, code_info).
-:- mode dense_switch__generate_cases(in, in, in, in, in, out, out,
+:- mode dense_switch__generate_cases(in, in, in, in, in, in, out, out,
 	in, out, in, out) is det.
 
-dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, EndLabel,
-		Labels, Code, Liveness0, Liveness) -->
+dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, StoreMap,
+		EndLabel, Labels, Code, Liveness0, Liveness) -->
 	(
 		{ NextVal > EndVal }
 	->
@@ -193,7 +193,7 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, EndLabel,
 	;
 		code_info__get_next_label(ThisLabel),
 		dense_switch__generate_case(Cases0, NextVal, CodeModel,
-					Cases1, ThisCode, Comment, NewLiveness),
+			StoreMap, Cases1, ThisCode, Comment, NewLiveness),
 		{ ThisCaseCode = tree(
 			node([ label(ThisLabel) - Comment ]),
 			tree(	ThisCode,
@@ -206,7 +206,7 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, EndLabel,
 			% generate the rest of the cases.
 		{ NextVal1 is NextVal + 1 },
 		dense_switch__generate_cases(Cases1, NextVal1, EndVal,
-			CodeModel, EndLabel, Labels1, OtherCasesCode,
+			CodeModel, StoreMap, EndLabel, Labels1, OtherCasesCode,
 			Liveness1, Liveness),
 		{ Labels = [ThisLabel | Labels1] },
 		{ Code = tree(ThisCaseCode, OtherCasesCode) }
@@ -214,14 +214,14 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, EndLabel,
 
 %---------------------------------------------------------------------------%
 
-:- pred dense_switch__generate_case(cases_list, int, code_model,
+:- pred dense_switch__generate_case(cases_list, int, code_model, store_map,
 		cases_list, code_tree, string,
 			maybe(liveness_info), code_info, code_info).
-:- mode dense_switch__generate_case(in, in, in, out, out, out, out, in, out)
+:- mode dense_switch__generate_case(in, in, in, in, out, out, out, out, in, out)
 	is det.
 
-dense_switch__generate_case(Cases0, NextVal, CodeModel, Cases, Code, Comment,
-		ML) -->
+dense_switch__generate_case(Cases0, NextVal, CodeModel, StoreMap, Cases,
+		Code, Comment, ML) -->
 	(
 		{ Cases0 = [Case | Cases1] },
 		{ Case = case(_, int_constant(NextVal), _, Goal) }
@@ -230,7 +230,8 @@ dense_switch__generate_case(Cases0, NextVal, CodeModel, Cases, Code, Comment,
 		% and restore them when we've finished
 		{ Comment = "case of dense switch" },
 		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_forced_goal(CodeModel, Goal, Code),
+		code_gen__generate_forced_goal(CodeModel, Goal, StoreMap,
+			Code),
 		code_info__get_liveness_info(L),
 		code_info__slap_code_info(CodeInfo),
 		{ ML = yes(L) },

@@ -575,11 +575,11 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
 typecheck_goal_2(conj(List0), conj(List)) -->
 	checkpoint("conj"),
 	typecheck_goal_list(List0, List).
-typecheck_goal_2(disj(List0, FV), disj(List, FV)) -->
+typecheck_goal_2(disj(List0, SM), disj(List, SM)) -->
 	checkpoint("disj"),
 	typecheck_goal_list(List0, List).
-typecheck_goal_2(if_then_else(Vs, A0, B0, C0, FV),
-		if_then_else(Vs, A, B, C, FV)) -->
+typecheck_goal_2(if_then_else(Vs, A0, B0, C0, SM),
+		if_then_else(Vs, A, B, C, SM)) -->
 	checkpoint("if"),
 	typecheck_goal(A0, A),
 	checkpoint("then"),

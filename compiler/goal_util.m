@@ -176,23 +176,23 @@ goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Must, Subn, Goal - GoalInfo) :
 goal_util__name_apart_2(conj(Goals0), Must, Subn, conj(Goals)) :-
 	goal_util__name_apart_list(Goals0, Must, Subn, Goals).
 
-goal_util__name_apart_2(disj(Goals0, FV0), Must, Subn, disj(Goals, FV)) :-
+goal_util__name_apart_2(disj(Goals0, SM0), Must, Subn, disj(Goals, SM)) :-
 	goal_util__name_apart_list(Goals0, Must, Subn, Goals),
-	goal_util__rename_follow_vars(FV0, Must, Subn, FV).
+	goal_util__rename_var_maps(SM0, Must, Subn, SM).
 
-goal_util__name_apart_2(switch(Var0, Det, Cases0, FV0), Must, Subn,
-		switch(Var, Det, Cases, FV)) :-
+goal_util__name_apart_2(switch(Var0, Det, Cases0, SM0), Must, Subn,
+		switch(Var, Det, Cases, SM)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var),
 	goal_util__name_apart_cases(Cases0, Must, Subn, Cases),
-	goal_util__rename_follow_vars(FV0, Must, Subn, FV).
+	goal_util__rename_var_maps(SM0, Must, Subn, SM).
 
-goal_util__name_apart_2(if_then_else(Vars0, Cond0, Then0, Else0, FV0),
-		Must, Subn, if_then_else(Vars, Cond, Then, Else, FV)) :-
+goal_util__name_apart_2(if_then_else(Vars0, Cond0, Then0, Else0, SM0),
+		Must, Subn, if_then_else(Vars, Cond, Then, Else, SM)) :-
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	goal_util__rename_vars_in_goal(Cond0, Must, Subn, Cond),
 	goal_util__rename_vars_in_goal(Then0, Must, Subn, Then),
 	goal_util__rename_vars_in_goal(Else0, Must, Subn, Else),
-	goal_util__rename_follow_vars(FV0, Must, Subn, FV).
+	goal_util__rename_var_maps(SM0, Must, Subn, SM).
 
 goal_util__name_apart_2(not(Goal0), Must, Subn, not(Goal)) :-
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
@@ -304,23 +304,23 @@ goal_util__rename_unify(complicated_unify(Modes, Cat), _Must, _Subn,
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__rename_follow_vars(map(var, T), bool,
+:- pred goal_util__rename_var_maps(map(var, T), bool,
 				map(var, var), map(var, T)).
-:- mode goal_util__rename_follow_vars(in, in, in, out) is det.
+:- mode goal_util__rename_var_maps(in, in, in, out) is det.
 
-goal_util__rename_follow_vars(Follow0, Must, Subn, Follow) :-
-	map__to_assoc_list(Follow0, FollowList0),
-	goal_util__rename_follow_vars_2(FollowList0, Must, Subn, FollowList),
-	map__from_assoc_list(FollowList, Follow).
+goal_util__rename_var_maps(Map0, Must, Subn, Map) :-
+	map__to_assoc_list(Map0, AssocList0),
+	goal_util__rename_var_maps_2(AssocList0, Must, Subn, AssocList),
+	map__from_assoc_list(AssocList, Map).
 
-:- pred goal_util__rename_follow_vars_2(assoc_list(var, T),
+:- pred goal_util__rename_var_maps_2(assoc_list(var, T),
 				bool, map(var, var), assoc_list(var, T)).
-:- mode goal_util__rename_follow_vars_2(in, in, in, out) is det.
+:- mode goal_util__rename_var_maps_2(in, in, in, out) is det.
 
-goal_util__rename_follow_vars_2([], _Must, _Subn, []).
-goal_util__rename_follow_vars_2([V - L | Vs], Must, Subn, [N - L | Ns]) :-
+goal_util__rename_var_maps_2([], _Must, _Subn, []).
+goal_util__rename_var_maps_2([V - L | Vs], Must, Subn, [N - L | Ns]) :-
 	goal_util__rename_var(V, Must, Subn, N),
-	goal_util__rename_follow_vars_2(Vs, Must, Subn, Ns).
+	goal_util__rename_var_maps_2(Vs, Must, Subn, Ns).
 
 %-----------------------------------------------------------------------------%
 
@@ -361,10 +361,21 @@ goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
 	( MaybeContLives0 = yes(ContLives0) ->
 		goal_util__name_apart_set(ContLives0, Must, Subn, ContLives),
 		MaybeContLives = yes(ContLives),
-		goal_info_set_cont_lives(GoalInfo7, MaybeContLives, GoalInfo)
+		goal_info_set_cont_lives(GoalInfo7, MaybeContLives, GoalInfo8)
 	;
-		GoalInfo = GoalInfo7
-	).
+		GoalInfo8 = GoalInfo7
+	),
+
+	goal_info_follow_vars(GoalInfo8, MaybeFollowVars0),
+	(
+		MaybeFollowVars0 = no,
+		MaybeFollowVars = no
+	;
+		MaybeFollowVars0 = yes(FollowVars0),
+		goal_util__rename_var_maps(FollowVars0, Must, Subn, FollowVars),
+		MaybeFollowVars = yes(FollowVars)
+	),
+	goal_info_set_follow_vars(GoalInfo8, MaybeFollowVars, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

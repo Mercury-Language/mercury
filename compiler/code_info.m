@@ -149,8 +149,9 @@
 :- pred code_info__get_live_variables(list(var), code_info, code_info).
 :- mode code_info__get_live_variables(out, in, out) is det.
 
-:- pred code_info__generate_forced_saves(code_tree, code_info, code_info).
-:- mode code_info__generate_forced_saves(out, in, out) is det.
+:- pred code_info__generate_forced_saves(store_map, code_tree,
+	code_info, code_info).
+:- mode code_info__generate_forced_saves(in, out, in, out) is det.
 
 :- pred code_info__grab_code_info(code_info, code_info, code_info).
 :- mode code_info__grab_code_info(out, in, out) is det.
@@ -167,8 +168,8 @@
 :- pred code_info__set_succip_used(bool, code_info, code_info).
 :- mode code_info__set_succip_used(in, in, out) is det.
 
-:- pred code_info__remake_with_store_map(code_info, code_info).
-:- mode code_info__remake_with_store_map(in, out) is det.
+:- pred code_info__remake_with_store_map(store_map, code_info, code_info).
+:- mode code_info__remake_with_store_map(in, in, out) is det.
 
 :- pred code_info__remake_with_stack_slots(code_info, code_info).
 :- mode code_info__remake_with_stack_slots(in, out) is det.
@@ -393,15 +394,6 @@
 
 :- pred code_info__set_globals(globals, code_info, code_info).
 :- mode code_info__set_globals(in, in, out) is det.
-
-:- pred code_info__push_store_map(map(var, lval), code_info, code_info).
-:- mode code_info__push_store_map(in, in, out) is det.
-
-:- pred code_info__pop_store_map(code_info, code_info).
-:- mode code_info__pop_store_map(in, out) is det.
-
-:- pred code_info__current_store_map(map(var, lval), code_info, code_info).
-:- mode code_info__current_store_map(out, in, out) is det.
 
 :- pred code_info__variable_type(var, type, code_info, code_info).
 :- mode code_info__variable_type(in, out, in, out) is det.
@@ -879,8 +871,7 @@ code_info__get_arginfo(ArgInfo) -->
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-code_info__generate_forced_saves(Code) --> 
-	code_info__current_store_map(StoreMap),
+code_info__generate_forced_saves(StoreMap, Code) --> 
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_live_variables(Vars),
 	code_info__generate_forced_saves_2(Vars, StoreMap, StackSlots, Code).
@@ -966,12 +957,11 @@ code_info__get_headvars(HeadVars) -->
 % magic to use the register versions of variables if possible in the
 % first disjunct).
 
-code_info__remake_with_store_map -->
+code_info__remake_with_store_map(StoreMap) -->
 	code_info__get_varset(Varset),
 	code_info__get_live_variables(VarList),
 	{ set__list_to_set(VarList, Vars) },
 	code_info__get_stack_slots(StackSlots),
-	code_info__current_store_map(StoreMap),
 	{ map__overlay(StackSlots, StoreMap, LvalMap0) },
 	{ map__select(LvalMap0, Vars, LvalMap) },
 	{ map__to_assoc_list(LvalMap, VarLvals0) },
@@ -1046,36 +1036,69 @@ code_info__make_vars_dead_2([V | Vs]) -->
 
 %---------------------------------------------------------------------------%
 
+	% Make these variables appear magically live.
+	% We don't care where they are put.
+
 code_info__make_vars_live(Vars) -->
 	{ set__to_sorted_list(Vars, VarList) },
-	code_info__make_vars_live_2(VarList).
+	code_info__make_vars_live_2(VarList, 1).
 
-:- pred code_info__make_vars_live_2(list(var), code_info, code_info).
-:- mode code_info__make_vars_live_2(in, in, out) is det.
+:- pred code_info__make_vars_live_2(list(var), int, code_info, code_info).
+:- mode code_info__make_vars_live_2(in, in, in, out) is det.
 
-code_info__make_vars_live_2([]) --> [].
-code_info__make_vars_live_2([V | Vs]) -->
+code_info__make_vars_live_2([], _) --> [].
+code_info__make_vars_live_2([V | Vs], N0) -->
+	code_info__get_exprn_info(Exprn0),
+	code_info__get_stack_slots(StackSlots),
 	(
-		code_info__current_store_map(Store),
-		{ map__search(Store, V, Lval0) }
-	->
-		{ Lval = Lval0 }
-	;
-		code_info__get_stack_slots(StackSlots),
 		{ map__search(StackSlots, V, Lval0) }
 	->
-		{ Lval = Lval0 }
+		{ Lval = Lval0 },
+		{ N1 = N0 }
 	;
-		code_info__get_varset(Varset),
-		{ varset__lookup_name(Varset, V, Name) },
-		{ string__append("I don't know where to put variable ",
-			Name, Msg) },
-		{ error(Msg) }
+		{ code_info__find_unused_reg(N0, Exprn0, N1) },
+		{ Lval = reg(r(N1)) }
 	),
-	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__maybe_set_var_location(V, Lval, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn),
-	code_info__make_vars_live_2(Vs).
+	code_info__make_vars_live_2(Vs, N1).
+
+:- pred code_info__find_unused_reg(int, exprn_info, int).
+:- mode code_info__find_unused_reg(in, in, out) is det.
+
+code_info__find_unused_reg(N0, Exprn0, N) :-
+	( code_exprn__lval_in_use(reg(r(N0)), Exprn0, _) ->
+		N1 is N0 + 1,
+		code_info__find_unused_reg(N1, Exprn0, N)
+	;
+		N = N0
+	).
+
+% :- pred code_info__make_vars_live_2(list(var), code_info, code_info).
+% :- mode code_info__make_vars_live_2(in, in, out) is det.
+% 
+% code_info__make_vars_live_2([], _) --> [].
+% code_info__make_vars_live_2([V | Vs]) -->
+% 	(
+% 		{ map__search(StoreMap, V, Lval0) }
+% 	->
+% 		{ Lval = Lval0 }
+% 	;
+% 		code_info__get_stack_slots(StackSlots),
+% 		{ map__search(StackSlots, V, Lval0) }
+% 	->
+% 		{ Lval = Lval0 }
+% 	;
+% 		code_info__get_varset(Varset),
+% 		{ varset__lookup_name(Varset, V, Name) },
+% 		{ string__append("I don't know where to put variable ",
+% 			Name, Msg) },
+% 		{ error(Msg) }
+% 	),
+% 	code_info__get_exprn_info(Exprn0),
+% 	{ code_exprn__maybe_set_var_location(V, Lval, Exprn0, Exprn) },
+% 	code_info__set_exprn_info(Exprn),
+% 	code_info__make_vars_live_2(Vs, StoreMap).
 
 %---------------------------------------------------------------------------%
 
@@ -2098,28 +2121,6 @@ code_info__flatten_varlval_list_2([R | Rs], V, [V - R | Rest]) :-
 
 %---------------------------------------------------------------------------%
 
-code_info__push_store_map(Map) -->
-	code_info__get_store_map(Maps0),
-	{ stack__push(Maps0, Map, Maps) },
-	code_info__set_store_map(Maps).
-
-code_info__pop_store_map -->
-	code_info__get_store_map(Maps0),
-	{ stack__pop_det(Maps0, _, Maps) },
-	code_info__set_store_map(Maps).
-
-code_info__current_store_map(Map) -->
-	code_info__get_store_map(Maps0),
-	(
-		{ stack__top(Maps0, Map0) }
-	->
-		{ Map = Map0 }
-	;
-		{ error("No store map on stack") }
-	).
-
-%---------------------------------------------------------------------------%
-
 code_info__generate_stack_livevals(Args, LiveVals) -->
 	code_info__get_live_variables(LiveVars),
 	{ set__list_to_set(LiveVars, Vars0) },
@@ -2315,12 +2316,6 @@ code_info__variable_type(Var, Type) -->
 :- pred code_info__set_max_push_count(int, code_info, code_info).
 :- mode code_info__set_max_push_count(in, in, out) is det.
 
-:- pred code_info__get_store_map(stack(map(var, lval)), code_info, code_info).
-:- mode code_info__get_store_map(out, in, out) is det.
-
-:- pred code_info__set_store_map(stack(map(var, lval)), code_info, code_info).
-:- mode code_info__set_store_map(in, in, out) is det.
-
 :- pred code_info__get_pushed_values(stack(pair(lval, lval_or_ticket)), 
 	code_info, code_info).
 :- mode code_info__get_pushed_values(out, in, out) is det.
@@ -2461,16 +2456,6 @@ code_info__set_liveness_info(M, CI0, CI) :-
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
 		T, U, V).
 
-code_info__get_store_map(N, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, _, _, _,
-		_, _, _).
-
-code_info__set_store_map(N, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
-
 code_info__get_proc_model(O, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _, _,
 		_, _, _).
@@ -2565,14 +2550,12 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__set_label_count(L, C0, C2),
 	code_info__get_succip_used(S, C1, _),
 	code_info__set_succip_used(S, C2, C3),
-	code_info__get_store_map(F, C1, _),
-	code_info__set_store_map(F, C3, C4),
 	code_info__get_fall_through(J, C0, _),
-	code_info__set_fall_through(J, C4, C5),
+	code_info__set_fall_through(J, C3, C4),
 	code_info__get_max_push_count(PC, C1, _),
-	code_info__set_max_push_count(PC, C5, C6),
+	code_info__set_max_push_count(PC, C4, C5),
 	code_info__get_shapes(Shapes, C1, _),
-	code_info__set_shapes(Shapes, C6, C).
+	code_info__set_shapes(Shapes, C5, C).
 
 %---------------------------------------------------------------------------%
 

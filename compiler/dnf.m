@@ -196,24 +196,24 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 			Goals, NewPredIds0, NewPredIds),
 		Goal = conj(Goals) - GoalInfo
 	;
-		GoalExpr0 = disj(Goals0, FV),
+		GoalExpr0 = disj(Goals0, SM),
 		dnf__transform_disj(Goals0, InstMap0, MaybeNonAtomic,
 			ModuleInfo0, ModuleInfo, Base, 0, DnfInfo,
 			Goals, NewPredIds0, NewPredIds),
-		Goal = disj(Goals, FV) - GoalInfo
+		Goal = disj(Goals, SM) - GoalInfo
 	;
-		GoalExpr0 = switch(Var, CanFail, Cases0, FV),
+		GoalExpr0 = switch(Var, CanFail, Cases0, SM),
 		dnf__transform_switch(Cases0, InstMap0, MaybeNonAtomic,
 			ModuleInfo0, ModuleInfo, Base, 0, DnfInfo,
 			Cases, NewPredIds0, NewPredIds),
-		Goal = switch(Var, CanFail, Cases, FV) - GoalInfo
+		Goal = switch(Var, CanFail, Cases, SM) - GoalInfo
 	;
-		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0, FV),
+		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0, SM),
 		% XXX should handle nonempty Vars
 		dnf__transform_ite(Cond0, Then0, Else0, InstMap0,
 			MaybeNonAtomic, ModuleInfo0, ModuleInfo, Base, 0,
 			DnfInfo, Cond, Then, Else, NewPredIds0, NewPredIds),
-		Goal = if_then_else(Vars, Cond, Then, Else, FV) - GoalInfo
+		Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo
 	;
 		GoalExpr0 = higher_order_call(_, _, _, _, _),
 		ModuleInfo = ModuleInfo0,

@@ -388,7 +388,7 @@ unique_modes__check_goal_2(conj(List0), _GoalInfo0, conj(List)) -->
 	),
 	mode_checkpoint(exit, "conj").
 
-unique_modes__check_goal_2(disj(List0, FV), GoalInfo0, disj(List, FV)) -->
+unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->
 		{ List = [] },
@@ -420,7 +420,7 @@ unique_modes__check_goal_2(disj(List0, FV), GoalInfo0, disj(List, FV)) -->
 	),
 	mode_checkpoint(exit, "disj").
 
-unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal)
+unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 		-->
 	mode_checkpoint(enter, "if-then-else"),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
@@ -489,7 +489,7 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal)
 		{ Goal = if_then_else(Vs, A, B, C) }
 	),
 */
-	{ Goal = if_then_else(Vs, A, B, C, FV) },
+	{ Goal = if_then_else(Vs, A, B, C, SM) },
 	mode_checkpoint(exit, "if-then-else").
 
 unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
@@ -546,8 +546,8 @@ unique_modes__check_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
 
-unique_modes__check_goal_2(switch(Var, CanFail, Cases0, FV), GoalInfo0,
-		switch(Var, CanFail, Cases, FV)) -->
+unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
+		switch(Var, CanFail, Cases, SM)) -->
 	mode_checkpoint(enter, "switch"),
 	( { Cases0 = [] } ->
 		{ Cases = [] },

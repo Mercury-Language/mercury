@@ -134,10 +134,10 @@ simplify__goal_2(conj(Goals0), GoalInfo0, InstMap0, DetInfo, Goal, Msgs) :-
 		)
 	).
 
-simplify__goal_2(disj(Disjuncts0, FV), _GoalInfo, InstMap0, DetInfo,
+simplify__goal_2(disj(Disjuncts0, SM), _GoalInfo, InstMap0, DetInfo,
 		Goal, Msgs) :-
 	( Disjuncts0 = [] ->
-		Goal = disj([], FV),
+		Goal = disj([], SM),
 		Msgs = []
 	; Disjuncts0 = [SingleGoal0] ->
 		% a singleton disjunction is equivalent to the goal itself
@@ -163,17 +163,17 @@ simplify__goal_2(disj(Disjuncts0, FV), _GoalInfo, InstMap0, DetInfo,
 				OutputVars = yes
 			),
 			simplify__fixup_disj(Disjuncts, Detism, OutputVars,
-				GoalInfo, FV, InstMap0, DetInfo, Goal,
+				GoalInfo, SM, InstMap0, DetInfo, Goal,
 				MsgsA, Msgs)
 		;
 	****/
-			Goal = disj(Disjuncts, FV),
+			Goal = disj(Disjuncts, SM),
 			Msgs = MsgsA
 		)
 	).
 
-simplify__goal_2(switch(Var, SwitchCanFail, Cases0, FV), _, InstMap0, DetInfo,
-		switch(Var, SwitchCanFail, Cases, FV), Msgs) :-
+simplify__goal_2(switch(Var, SwitchCanFail, Cases0, SM), _, InstMap0, DetInfo,
+		switch(Var, SwitchCanFail, Cases, SM), Msgs) :-
 	simplify__switch(Cases0, InstMap0, DetInfo, Cases, Msgs).
 
 simplify__goal_2(higher_order_call(A, B, C, D, E), _, _, _,
@@ -223,7 +223,7 @@ simplify__goal_2(unify(LT, RT0, M, U, C), _, InstMap0, DetInfo,
 	% conjunction construct. This will change when constraint pushing
 	% is finished, or when we start doing coroutining.
 
-simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV), GoalInfo0,
+simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM), GoalInfo0,
 		InstMap0, DetInfo, Goal, Msgs) :-
 	Cond0 = _ - CondInfo,
 	goal_info_get_determinism(CondInfo, CondDetism),
@@ -264,7 +264,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV), GoalInfo0,
 		simplify__goal(Else0, InstMap0, DetInfo, Else, ElseMsgs),
 		list__append(ThenMsgs, ElseMsgs, AfterMsgs),
 		list__append(CondMsgs, AfterMsgs, Msgs),
-		Goal = if_then_else(Vars, Cond, Then, Else, FV)
+		Goal = if_then_else(Vars, Cond, Then, Else, SM)
 	).
 
 simplify__goal_2(not(Goal0), GoalInfo0, InstMap0, DetInfo, Goal, Msgs) :-
@@ -385,9 +385,9 @@ simplify__switch([Case0 | Cases0], InstMap0, DetInfo, [Case | Cases], Msgs) :-
 	list(det_msg), list(det_msg)).
 :- mode simplify__fixup_disj(in, in, in, in, in, in, in, out, in, out) is det.
 
-simplify__fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, FV,
+simplify__fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, SM,
 		InstMap, DetInfo, Goal, Msgs0, Msgs0) :-
-	det_disj_to_ite(Disjuncts, GoalInfo, FV, IfThenElse),
+	det_disj_to_ite(Disjuncts, GoalInfo, SM, IfThenElse),
 	simplify__goal(IfThenElse, InstMap, DetInfo, Simplified, _Msgs1),
 	Simplified = Goal - _.
 
@@ -412,9 +412,9 @@ simplify__fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, FV,
 	hlds__goal).
 :- mode det_disj_to_ite(in, in, in, out) is det.
 
-det_disj_to_ite([], _GoalInfo, _FV, _) :-
+det_disj_to_ite([], _GoalInfo, _SM, _) :-
 	error("reached base case of det_disj_to_ite").
-det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, FV, Goal) :-
+det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, SM, Goal) :-
 	( Disjuncts = [] ->
 		Goal = Disjunct
 	;
@@ -428,7 +428,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, FV, Goal) :-
 		goal_info_set_determinism(ThenGoalInfo1, det, ThenGoalInfo),
 		Then = conj([]) - ThenGoalInfo,
 
-		det_disj_to_ite(Disjuncts, GoalInfo, FV, Rest),
+		det_disj_to_ite(Disjuncts, GoalInfo, SM, Rest),
 		Rest = _RestGoal - RestGoalInfo,
 
 		goal_info_get_nonlocals(CondGoalInfo, CondNonLocals),
@@ -455,7 +455,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, FV, Goal) :-
 		determinism_components(Detism, CanFail, MaxSoln),
 		goal_info_set_determinism(NewGoalInfo1, Detism, NewGoalInfo),
 
-		Goal = if_then_else([], Cond, Then, Rest, FV) - NewGoalInfo
+		Goal = if_then_else([], Cond, Then, Rest, SM) - NewGoalInfo
 	).
 
 %-----------------------------------------------------------------------------%

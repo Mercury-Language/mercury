@@ -57,6 +57,9 @@
 :- pred code_exprn__maybe_set_var_location(var, lval, exprn_info, exprn_info).
 :- mode code_exprn__maybe_set_var_location(in, in, in, out) is det.
 
+:- pred code_exprn__lval_in_use(lval, exprn_info, exprn_info).
+:- mode code_exprn__lval_in_use(in, in, out) is semidet.
+
 %	code_exprn__var_becomes_dead(Var, ExprnInfo0, ExprnInfo)
 %		Frees any code generator resources used by Var
 %		in ExprnInfo0 to produce ExprnInfo (in the implementation,
@@ -397,9 +400,6 @@ code_exprn__maybe_set_var_location(Var, Lval) -->
 	code_exprn__add_lval_reg_dependencies(Lval).
 
 %------------------------------------------------------------------------------%
-
-:- pred code_exprn__lval_in_use(lval, exprn_info, exprn_info).
-:- mode code_exprn__lval_in_use(in, in, out) is semidet.
 
 code_exprn__lval_in_use(Lval) -->
 	code_exprn__lval_in_use_except(Lval, no).

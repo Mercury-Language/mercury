@@ -17,6 +17,9 @@
 % If the appropriate option is set, the code calls the follow_vars module
 % to help guide its decisions.
 
+% See notes/ALLOCATION for a description of the framework that this pass
+% operates within.
+
 %-----------------------------------------------------------------------------%
 
 :- module store_alloc.
@@ -219,10 +222,13 @@ store_alloc_in_cases([case(Cons, Goal0) | Goals0], Liveness0,
 
 	% Given a follow_map which
 	%
-	% 1 may contain entries for non-live variables,
-	% 2 may contain no entry for a live variable,
-	% 3 which may map two live variables to one lval, and/or
-	% 4 map an lval to the artificial location reg(r(-1)) by convention,
+	% 1	may contain entries for non-live variables,
+	%
+	% 2	may contain no entry for a live variable,
+	%
+	% 3	which may map two live variables to one lval, and/or
+	%
+	% 4	map an lval to the artificial location reg(r(-1)),
 	%
 	% generate a store map that maps every live variable to its own
 	% real location.
@@ -231,14 +237,17 @@ store_alloc_in_cases([case(Cons, Goal0) | Goals0], Liveness0,
 :- mode store_alloc_allocate_storage(in, in, out) is det.
 
 store_alloc_allocate_storage(LiveVars, FollowVars, StoreMap) :-
-	map__keys(FollowVars, FollowKeys),
+
 	% This addresses point 1
+	map__keys(FollowVars, FollowKeys),
 	store_alloc_remove_nonlive(FollowKeys, LiveVars, FollowVars, StoreMap0),
+
+	% This addresses points 3 and 4
 	map__keys(StoreMap0, StoreVars),
 	set__init(SeenLvals0),
-	% This addresses points 3 and 4
 	store_alloc_handle_conflicts_and_nonreal(StoreVars, 1, N,
 		SeenLvals0, SeenLvals, StoreMap0, StoreMap1),
+
 	% This addresses point 2
 	store_alloc_allocate_extras(LiveVars, N, SeenLvals,
 		StoreMap1, StoreMap).
@@ -301,6 +310,12 @@ store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0,
 	store_alloc_allocate_extras(Vars, N1, SeenLvals1, StoreMap1, StoreMap).
 
 %-----------------------------------------------------------------------------%
+
+	% The follow_vars pass maps some variables r(-1) as a hint to the
+	% code generator to put them in any free register. Since store maps
+	% require real locations, we can't use such hints directly.
+
+	% For robustness, we check for N < 1 instead of N = -1.
 
 :- pred artificial_lval(lval).
 :- mode artificial_lval(in) is semidet.

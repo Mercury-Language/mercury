@@ -194,11 +194,11 @@ implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some(Vars, Goal)) -->
 implicitly_quantify_goal_2(conj(List0), _, conj(List)) -->
 	implicitly_quantify_conj(List0, List).
 
-implicitly_quantify_goal_2(disj(Goals0, FV), _, disj(Goals, FV)) -->
+implicitly_quantify_goal_2(disj(Goals0, SM), _, disj(Goals, SM)) -->
 	implicitly_quantify_disj(Goals0, Goals).
 
-implicitly_quantify_goal_2(switch(Var, Det, Cases0, FV), _,
-					switch(Var, Det, Cases, FV)) -->
+implicitly_quantify_goal_2(switch(Var, Det, Cases0, SM), _,
+					switch(Var, Det, Cases, SM)) -->
 	implicitly_quantify_cases(Cases0, Cases),
 		% The switch variable is guaranteed to be non-local to the
 		% switch, since it has to be bound elsewhere, so we put it
@@ -222,8 +222,8 @@ implicitly_quantify_goal_2(not(Goal0), _, not(Goal)) -->
 	quantification__set_outside(OutsideVars),
 	quantification__set_quant_vars(QuantVars).
 
-implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0, FV),
-			Context, if_then_else(Vars, Cond, Then, Else, FV)) -->
+implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0, SM),
+			Context, if_then_else(Vars, Cond, Then, Else, SM)) -->
 	quantification__get_quant_vars(QuantVars),
 	quantification__get_outside(OutsideVars),
 	quantification__get_lambda_outside(LambdaOutsideVars),

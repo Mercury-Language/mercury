@@ -45,7 +45,7 @@
 :- import_module hlds_goal, hlds_data, code_info.
 
 :- pred switch_gen__generate_switch(code_model, var, can_fail, list(case),
-	follow_vars, hlds__goal_info, code_tree, code_info, code_info).
+	store_map, hlds__goal_info, code_tree, code_info, code_info).
 :- mode switch_gen__generate_switch(in, in, in, in, in, in, out, in, out)
 	is det.
 
@@ -74,7 +74,7 @@
 	% Choose which method to use to generate the switch.
 	% CanFail says whether the switch covers all cases.
 
-switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, _FollowVars,
+switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, StoreMap,
 		GoalInfo, Code) -->
 	switch_gen__determine_category(CaseVar, SwitchCategory),
 	code_info__get_next_label(EndLabel),
@@ -99,7 +99,7 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, _FollowVars,
 	->
 		lookup_switch__generate(CaseVar, OutVars, CaseVals,
 			FirstVal, LastVal, NeedRangeCheck,
-			NeedBitVecCheck, MLiveness, Code)
+			NeedBitVecCheck, MLiveness, StoreMap, Code)
 	;
 		{ Indexing = yes },
 		{ SwitchCategory = atomic_switch },
@@ -114,7 +114,7 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, _FollowVars,
 	->
 		dense_switch__generate(TaggedCases,
 			FirstVal, LastVal, CaseVar, CodeModel, CanFail1,
-			EndLabel, Code)
+			StoreMap, EndLabel, Code)
 	;
 		{ Indexing = yes },
 		{ SwitchCategory = string_switch },
@@ -124,7 +124,7 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, _FollowVars,
 		{ NumCases >= StringSize }
 	->
 		string_switch__generate(TaggedCases, CaseVar, CodeModel,
-			CanFail, EndLabel, Code)
+			CanFail, StoreMap, EndLabel, Code)
 	;
 		{ Indexing = yes },
 		{ SwitchCategory = tag_switch },
@@ -133,17 +133,17 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, _FollowVars,
 			TagSize) },
 		{ NumCases >= TagSize }
 	->
-		tag_switch__generate(TaggedCases,
-			CaseVar, CodeModel, CanFail, EndLabel, Code)
+		tag_switch__generate(TaggedCases, CaseVar, CodeModel, CanFail,
+			StoreMap, EndLabel, Code)
 	;
 		% To generate a switch, first we flush the
 		% variable on whose tag we are going to switch, then we
 		% generate the cases for the switch.
 
-		switch_gen__generate_all_cases(TaggedCases,
-			CaseVar, CodeModel, CanFail, EndLabel, Code)
+		switch_gen__generate_all_cases(TaggedCases, CaseVar,
+			CodeModel, CanFail, StoreMap, EndLabel, Code)
 	),
-	code_info__remake_with_store_map.
+	code_info__remake_with_store_map(StoreMap).
 
 %---------------------------------------------------------------------------%
 
@@ -231,11 +231,13 @@ switch_gen__priority(base_type_info_constant(_, _, _), 6).% should never occur
 	% case, while using a negated form of the test for the first case,
 	% since this is cheaper.
 
-:- pred switch_gen__generate_all_cases(list(extended_case), var,
-	code_model, can_fail, label, code_tree, code_info, code_info).
-:- mode switch_gen__generate_all_cases(in, in, in, in, in, out, in, out) is det.
+:- pred switch_gen__generate_all_cases(list(extended_case), var, code_model,
+	can_fail, store_map, label, code_tree, code_info, code_info).
+:- mode switch_gen__generate_all_cases(in, in, in, in, in, in, out, in, out)
+	is det.
 
-switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
+switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, StoreMap,
+		EndLabel, Code) -->
 	code_info__produce_variable(Var, VarCode, _Rval),
 	(
 		{ CodeModel = model_det },
@@ -246,11 +248,13 @@ switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, EndLabel, Code) -
 		unify_gen__generate_tag_test(Var, Cons1, branch_on_failure,
 			NextLab, TestCode),
 		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_forced_goal(CodeModel, Goal1, Case1Code),
+		code_gen__generate_forced_goal(CodeModel, Goal1, StoreMap,
+			Case1Code),
 
 		{ Case2 = case(_, _, _Cons2, Goal2) },
 		code_info__slap_code_info(CodeInfo),
-		code_gen__generate_forced_goal(CodeModel, Goal2, Case2Code),
+		code_gen__generate_forced_goal(CodeModel, Goal2, StoreMap,
+			Case2Code),
 
 		{ tree__flatten(TestCode, TestListList) },
 		{ list__condense(TestListList, TestList) },
@@ -273,19 +277,20 @@ switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, EndLabel, Code) -
 		}
 	;
 		switch_gen__generate_cases(Cases, Var, CodeModel, CanFail,
-			EndLabel, CasesCode),
+			StoreMap, EndLabel, CasesCode),
 		{ Code = tree(VarCode, CasesCode) }
 	).
 
-:- pred switch_gen__generate_cases(list(extended_case), var,
-	code_model, can_fail, label, code_tree, code_info, code_info).
-:- mode switch_gen__generate_cases(in, in, in, in, in, out, in, out) is det.
+:- pred switch_gen__generate_cases(list(extended_case), var, code_model,
+	can_fail, store_map, label, code_tree, code_info, code_info).
+:- mode switch_gen__generate_cases(in, in, in, in, in, in, out, in, out) is det.
 
 	% At the end of a locally semidet switch, we fail because we
 	% came across a tag which was not covered by one of the cases.
 	% It is followed by the end of switch label to which the cases
 	% branch.
-switch_gen__generate_cases([], _Var, _CodeModel, CanFail, EndLabel, Code) -->
+switch_gen__generate_cases([], _Var, _CodeModel, CanFail, _StoreMap,
+		EndLabel, Code) -->
 	( { CanFail = can_fail } ->
 		code_info__generate_failure(FailCode)
 	;
@@ -297,14 +302,15 @@ switch_gen__generate_cases([], _Var, _CodeModel, CanFail, EndLabel, Code) -->
 	% A case consists of a tag-test followed by a 
 	% goal and a label for the start of the next case.
 switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, CodeModel,
-				CanFail, EndLabel, CasesCode) -->
+		CanFail, StoreMap, EndLabel, CasesCode) -->
 	code_info__grab_code_info(CodeInfo),
 	(
 		{ Cases = [_|_] ; CanFail = can_fail }
 	->
 		unify_gen__generate_tag_test(Var, Cons, branch_on_failure,
 			NextLab, TestCode),
-		code_gen__generate_forced_goal(CodeModel, Goal, ThisCode),
+		code_gen__generate_forced_goal(CodeModel, Goal, StoreMap,
+			ThisCode),
 		{ ElseCode = node([
 			goto(label(EndLabel)) - "skip to the end of the switch",
 			label(NextLab) - "next case"
@@ -313,13 +319,14 @@ switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, CodeModel,
 		code_info__grab_code_info(CodeInfo1),
 		code_info__slap_code_info(CodeInfo)
 	;
-		code_gen__generate_forced_goal(CodeModel, Goal, ThisCaseCode),
+		code_gen__generate_forced_goal(CodeModel, Goal, StoreMap,
+			ThisCaseCode),
 		code_info__grab_code_info(CodeInfo1),
 		code_info__slap_code_info(CodeInfo)
 	),
 		% generate the rest of the cases.
-	switch_gen__generate_cases(Cases, Var, CodeModel, CanFail, EndLabel,
-		CasesCode0),
+	switch_gen__generate_cases(Cases, Var, CodeModel, CanFail, StoreMap,
+		EndLabel, CasesCode0),
 	{ CasesCode = tree(ThisCaseCode, CasesCode0) },
 	code_info__slap_code_info(CodeInfo1).
 

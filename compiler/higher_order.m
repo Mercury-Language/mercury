@@ -273,13 +273,13 @@ traverse_goal(conj(Goals0) - Info, conj(Goals) - Info,
 	traverse_conj(Goals0, Goals, PredProcId, unchanged, Changed,
 					0, GoalSize).
 
-traverse_goal(disj(Goals0, FV) - Info, disj(Goals, FV) - Info,
+traverse_goal(disj(Goals0, SM) - Info, disj(Goals, SM) - Info,
 				PredProcId, Changed, GoalSize) -->
 	traverse_disj(Goals0, Goals, PredProcId, Changed, GoalSize).
 
 		% a switch is treated as a disjunction
-traverse_goal(switch(Var, CanFail, Cases0, FV) - Info,
-		switch(Var, CanFail, Cases, FV) - Info,
+traverse_goal(switch(Var, CanFail, Cases0, SM) - Info,
+		switch(Var, CanFail, Cases, SM) - Info,
 		PredProcId, Changed, GoalSize) -->
 	traverse_cases(Cases0, Cases, PredProcId, Changed, GoalSize).
 
@@ -295,14 +295,14 @@ traverse_goal(Goal0, Goal, PredProcId, Changed, 1) -->
 
 		% if-then-elses are handled as disjunctions
 traverse_goal(Goal0, Goal, PredProcId, Changed, GoalSize, Info0, Info) :- 
-	Goal0 = if_then_else(Vars, Cond0, Then0, Else0, FV) - GoalInfo,
+	Goal0 = if_then_else(Vars, Cond0, Then0, Else0, SM) - GoalInfo,
 	traverse_goal(Cond0, Cond, PredProcId, Changed1,
 						GoalSize1, Info0, Info1),
 	traverse_goal(Then0, Then, PredProcId, Changed2,
 						GoalSize2, Info1, Info2),
 	traverse_goal(Else0, Else, PredProcId, Changed3,
 						GoalSize3, Info0, Info3),
-	Goal = if_then_else(Vars, Cond, Then, Else, FV) - GoalInfo,
+	Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo,
 	GoalSize is GoalSize1 + GoalSize2 + GoalSize3,
 	update_changed_status(Changed1, Changed2, Changed4),
 	update_changed_status(Changed4, Changed3, Changed),
