@@ -15,12 +15,12 @@
 #ifndef MERCURY_TRACE_BASE_H
 #define MERCURY_TRACE_BASE_H
 
-#include <stdio.h>
+#include "mercury_engine.h"	/* for MR_MAXFLAG */
 #include "mercury_stack_layout.h"
 #include "mercury_std.h"
 #include "mercury_tabling.h"	/* for MR_TableNode */
-#include "mercury_engine.h"	/* for MR_MAXFLAG */
 #include "mercury_goto.h"	/* for MR_declare_entry */
+#include <stdio.h>		/* for FILE; should be after mercury headers */
 
 /*
 ** This enum should EXACTLY match the definition of the `trace_port_type'
