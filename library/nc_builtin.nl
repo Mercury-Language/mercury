@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
 % :- op(1199, fx, (import_adt)).
 % :- op(1199, fx, (import_op)).
 
-% :- op(1199, fx, (use_module)).
+:- op(1199, fx, (use_module)).
 % :- op(1199, fx, (use_sym)).
 % :- op(1199, fx, (use_pred)).
 % :- op(1199, fx, (use_cons)).
