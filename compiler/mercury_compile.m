@@ -1270,11 +1270,9 @@ mercury_compile__maybe_base_type_infos(HLDS0, Verbose, Stats, HLDS) -->
 :- mode mercury_compile__maybe_base_type_layouts(in, in, in, out, di, uo) is det.
 
 mercury_compile__maybe_base_type_layouts(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_get_type_info_method(TypeInfoMethod),
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	( 
-		{ TypeInfoMethod = shared_one_or_two_cell, 
-		  TypeLayoutOption = yes } 
+		{ TypeLayoutOption = yes } 
 	->
 		maybe_write_string(Verbose,
 			"% Generating base_type_layout structures..."),
@@ -1944,11 +1942,6 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		ArgsOpt = ""
 	},
-	globals__io_get_type_info_method(TypeInfoMethod),
-	{ 
-		TypeInfoMethod = shared_one_or_two_cell,
-		TypeInfoOpt = "-DSHARED_ONE_OR_TWO_CELL_TYPEINFO "
-	},
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	{ TypeLayoutOption = no ->
 		TypeLayoutOpt = "-DNO_TYPE_LAYOUT "
@@ -1995,7 +1988,7 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
 		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt, DebugOpt,
-		UseTrailOpt, ArgsOpt, TypeInfoOpt, TypeLayoutOpt,
+		UseTrailOpt, ArgsOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),
