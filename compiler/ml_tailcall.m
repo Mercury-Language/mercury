@@ -296,7 +296,12 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
 			% local variables or nested functions
 			%
 			check_maybe_rval(Obj, Locals),
-			check_rvals(Args, Locals)
+			check_rvals(Args, Locals),
+			%
+			% the call must not be to a function nested within
+			% this function
+			%
+			check_rval(Func, Locals)
 		->
 			% mark this call as a tail call
 			CallKind = tail_call,
