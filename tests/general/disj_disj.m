@@ -1,4 +1,4 @@
-:- module x.
+:- module disj_disj.
 :- interface.
 :- import_module io.
 

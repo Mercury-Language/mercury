@@ -1,8 +1,8 @@
-:- module x.
+:- module nondet_disj.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is nondet.
+:- pred main(io__state::di, io__state::uo) is multidet.
 
 :- implementation.
 
@@ -14,7 +14,7 @@ main -->
 	io__write_int(Y),
 	io__write_string("\n").
 
-:- pred q(int::out, int::out) is nondet.
+:- pred q(int::out, int::out) is multidet.
 
 q(X, Y) :-
 	p(X),

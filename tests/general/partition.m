@@ -18,13 +18,18 @@ exiting from signal handler
 :- interface.
 :- import_module io, int, list.
 
-:- pred main(io__state::di, io__state::uo) is nondet.
+:- pred main(io__state::di, io__state::uo) is multidet.
 
 :- implementation.
 
 main -->
-        { part(3,[4,2,1,3], Le, Gr) }, print_intlist(Le), print_intlist(Gr),
-        nl.
+        ( { part(3,[4,2,1,3], Le, Gr) } ->
+		print_intlist(Le),
+		print_intlist(Gr),
+		nl
+	;
+		io__write_string("No solution\n")
+	).
 
 :- pred part(int,list(int),list(int),list(int)).
 :- mode part(in,in,out,out) is nondet.
