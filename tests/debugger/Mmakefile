@@ -305,15 +305,10 @@ else
 USE_SUBDIRS_OPT =
 endif
 
-# We need $(...) style command substitution for the rule below.
-# (MC_MAKE_FLAGS can contain `...` style command substitution,
-# which can't be nested).
-SHELL=/usr/local/bin/bash
-
 interactive.out.orig: interactive interactive.inp $(interactive.ints)
 	echo "echo on" > interactive.inp.tmp
 	echo mmc_options $(USE_SUBDIRS_OPT) \
-			$$(echo $(MC_MAKE_FLAGS) $(ALL_MCFLAGS)) \
+			$(shell echo $(ALL_MC_MAKE_FLAGS)) \
 			--trace minimum >> interactive.inp.tmp
 	cat interactive.inp >> interactive.inp.tmp
 	$(MDB) ./interactive < interactive.inp.tmp > interactive.out.orig 2>&1
