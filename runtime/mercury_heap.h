@@ -88,6 +88,8 @@
 		(void)0							\
 	)
 
+  #define MR_free_heap(ptr)	GC_free((ptr))
+
 #else /* not CONSERVATIVE_GC */
 
   #define tag_incr_hp(dest, tag, count) 			\
@@ -125,6 +127,8 @@
   
   #define hp_alloc(count)  	 incr_hp(LVALUE_CAST(Word, MR_hp), count)
   #define hp_alloc_atomic(count) incr_hp_atomic(LVALUE_CAST(Word, MR_hp), count)
+
+  #define MR_free_heap(ptr)	((void)0)
   
 #endif /* not CONSERVATIVE_GC */
   
