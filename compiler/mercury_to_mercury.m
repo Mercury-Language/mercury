@@ -505,8 +505,9 @@ mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
 		(
 			{ PredOrFunc = predicate },
 			( { Modes = [] } ->
-				io__write_string("(pred) is "),
-				mercury_output_det(Det)
+				io__write_string("((pred) is "),
+				mercury_output_det(Det),
+				io__write_string(")")
 			;
 				io__write_string("(pred("),
 				mercury_output_mode_list(Modes, VarSet),
@@ -517,9 +518,14 @@ mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
 		;
 			{ PredOrFunc = function },
 			{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
-			io__write_string("(func("),
-			mercury_output_mode_list(ArgModes, VarSet),
-			io__write_string(") = "),
+			( { ArgModes = [] } ->
+				io__write_string("((func)")
+			;
+				io__write_string("(func("),
+				mercury_output_mode_list(ArgModes, VarSet),
+				io__write_string(")")
+			),
+			io__write_string(" = "),
 			mercury_output_mode(RetMode, VarSet),
 			io__write_string(" is "),
 			mercury_output_det(Det),
