@@ -47,6 +47,14 @@ MLOBJS-target_mlobjs	=	target_mlobjs_c.o
 # tracking it down.
 MLFLAGS-mode_choice = --no-strip
 
+# parse.m gets compiled with --trace deep and linked with --trace because
+# it is a regression test for a bug that only showed up with tracing enabled.
+# It needs to be compiled with --no-pic-reg, since it is linked
+# statically.  I have no idea why it gets linked statically.
+# However, currently it is the only test case we have which gets linked
+# statically, and we do want to have at least one test case to test
+# static linking.
+MGNUCFLAGS-parse	=	--no-pic-reg
 MLFLAGS-parse		=	--trace --static
 
 MLFLAGS-split-c-files	=	--trace
