@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1162,31 +1162,41 @@ unify_proc__quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-%	For a type such as
+% For a type such as
 %
-%		type t(X) ---> a ; b(int) ; c(X); d(int, X, t)
+%	type t ---> a1 ; a2 ; b(int) ; c(float); d(int, string, t).
 %
-%	we want to generate code
+% we want to generate the code
 %
-%		eq(H1, H2) :-
-%			(
-%				H1 = a,
-%				H2 = a
-%			;
-%				H1 = b(X1),
-%				H2 = b(X2),
-%				X1 = X2,
-%			;
-%				H1 = c(Y1),
-%				H2 = c(Y2),
-%				Y1 = Y2,
-%			;
-%				H1 = d(A1, B1, C1),
-%				H2 = c(A2, B2, C2),
-%				A1 = A2,
-%				B1 = B2,
-%				C1 = C2
-%			).
+%	__Unify__(X, Y) :-
+%		(
+%			X = a1,
+%			Y = X
+%		;
+%			X = a2,
+%			Y = X
+%		;
+%			X = b(X1),
+%			Y = b(Y2),
+%			X1 = Y2,
+%		;
+%			X = c(X1),
+%			Y = c(Y1),
+%			X1 = X2,
+%		;
+%			X = d(X1, X2, X3),
+%			Y = c(Y1, Y2, Y3),
+%			X1 = y1,
+%			X2 = Y2,
+%			X3 = Y3
+%		).
+%
+% Note that in the disjuncts handling constants, we want to unify Y with X,
+% not with the constant. This allows dupelim to take the code fragments
+% implementing the switch arms for constants and eliminate all but one of them.
+% This can be a significant code size saving for types with lots of constants,
+% such as the one representing Aditi bytecodes, which can lead to significant
+% reductions in C compilation time.
 
 :- pred unify_proc__generate_du_unify_clauses(list(constructor), prog_var,
 		prog_var, prog_context, list(clause),
@@ -1194,49 +1204,80 @@ unify_proc__quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
 :- mode unify_proc__generate_du_unify_clauses(in, in, in, in, out, in, out)
 	is det.
 
-unify_proc__generate_du_unify_clauses([], _H1, _H2, _Context, []) --> [].
-unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
-		[Clause | Clauses]) -->
-	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
-	{ list__length(ArgTypes, FunctorArity) },
-	{ FunctorConsId = cons(FunctorName, FunctorArity) },
-	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
-	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
-	{ create_atomic_unification(
-		H1, functor(FunctorConsId, no, Vars1), Context, explicit, [], 
-		UnifyH1_Goal) },
-	{ create_atomic_unification(
-		H2, functor(FunctorConsId, no, Vars2), Context, explicit, [], 
-		UnifyH2_Goal) },
-	unify_proc__unify_var_lists(ArgTypes, ExistQTVars, Vars1, Vars2,
-		UnifyArgs_Goal),
-	{ GoalList = [UnifyH1_Goal, UnifyH2_Goal | UnifyArgs_Goal] },
-	{ goal_info_init(GoalInfo0) },
-	{ goal_info_set_context(GoalInfo0, Context,
-		GoalInfo) },
-	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
-	unify_proc__quantify_clause_body([H1, H2], Goal, Context, Clause),
-	unify_proc__generate_du_unify_clauses(Ctors, H1, H2, Context, Clauses).
+unify_proc__generate_du_unify_clauses([], _X, _Y, _Context, [], !Info).
+unify_proc__generate_du_unify_clauses([Ctor | Ctors], X, Y, Context,
+		[Clause | Clauses], !Info) :-
+	Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes),
+	list__length(ArgTypes, FunctorArity),
+	FunctorConsId = cons(FunctorName, FunctorArity),
+	(
+		ArgTypes = [],
+		can_compare_constants_as_ints(!.Info) = yes
+	->
+		create_atomic_unification(
+			X, functor(FunctorConsId, no, []), Context,
+			explicit, [], UnifyX_Goal),
+		unify_proc__info_new_named_var(int_type, "CastX", CastX,
+			!Info),
+		unify_proc__info_new_named_var(int_type, "CastY", CastY,
+			!Info),
+		generate_unsafe_cast(X, CastX, Context, CastXGoal),
+		generate_unsafe_cast(Y, CastY, Context, CastYGoal),
+		create_atomic_unification(CastY, var(CastX), Context,
+			explicit, [], UnifyY_Goal),
+		GoalList = [UnifyX_Goal, CastXGoal, CastYGoal, UnifyY_Goal]
+	;
+		unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1,
+			!Info),
+		unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2,
+			!Info),
+		create_atomic_unification(
+			X, functor(FunctorConsId, no, Vars1), Context,
+			explicit, [], UnifyX_Goal),
+		create_atomic_unification(
+			Y, functor(FunctorConsId, no, Vars2), Context,
+			explicit, [], UnifyY_Goal),
+		unify_proc__unify_var_lists(ArgTypes, ExistQTVars,
+			Vars1, Vars2, UnifyArgs_Goals, !Info),
+		GoalList = [UnifyX_Goal, UnifyY_Goal | UnifyArgs_Goals]
+	),
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	conj_list_to_goal(GoalList, GoalInfo, Goal),
+	unify_proc__quantify_clause_body([X, Y], Goal, Context, Clause, !Info),
+	unify_proc__generate_du_unify_clauses(Ctors, X, Y, Context, Clauses,
+		!Info).
+
+	% Succeed iff the target back end guarantees that comparing two
+	% constants for equality can be done by casting them both to integers
+	% and comparing the integers for equality.
+:- func can_compare_constants_as_ints(unify_proc_info) = bool.
+
+can_compare_constants_as_ints(Info) = CanCompareAsInt :-
+	ModuleInfo = Info ^ module_info,
+	module_info_globals(ModuleInfo, Globals),
+	lookup_bool_option(Globals, can_compare_constants_as_ints,
+		CanCompareAsInt).
 
 %-----------------------------------------------------------------------------%
 
-%	For a type such as 
+% For a type such as 
 %
-%		:- type foo ---> f ; g(a, b, c) ; h(foo).
+%	:- type foo ---> f ; g(a, b, c) ; h(foo).
 %
-%	we want to generate code
+% we want to generate the code
 %
-%		index(X, Index) :-
-%			(
-%				X = f,
-%				Index = 0
-%			;
-%				X = g(_, _, _),
-%				Index = 1
-%			;
-%				X = h(_),
-%				Index = 2
-%			).
+%	index(X, Index) :-
+%		(
+%			X = f,
+%			Index = 0
+%		;
+%			X = g(_, _, _),
+%			Index = 1
+%		;
+%			X = h(_),
+%			Index = 2
+%		).
 
 :- pred unify_proc__generate_du_index_clauses(list(constructor), prog_var,
 		prog_var, prog_context, int, list(clause),
@@ -1296,36 +1337,61 @@ unify_proc__generate_du_compare_clauses(Type, Ctors, Res, H1, H2,
 
 %-----------------------------------------------------------------------------%
 
-%	For a du type, such as
+% For a du type, such as
 %
-%		:- type foo ---> f(a) ; g(a, b, c)
+%	:- type foo ---> f(a) ; g(a, b, c) ; h.
 %
-%   	the quadratic code we want to generate is
+% the quadratic code we want to generate is
 %
-%		compare(Res, X, Y) :-
-%			(
-%				X = f(X1),
-%				Y = f(Y1),
-%				compare(R, X1, Y1)
-%			;
-%				X = f(_),
-%				Y = g(_, _, _),
-%				R = (<)
-%			;
-%				X = g(_, _, _),
-%				Y = f(_),
-%				R = (>)
-%			;
-%				X = g(X1, X2, X3),
-%				Y = g(Y1, Y2, Y3),
-%				( compare(R1, X1, Y1), R1 \= (=) ->
-%					R = R1
-%				; compare(R2, X2, Y2), R2 \= (=) ->
-%					R = R2
-%				; 
-%					compare(R, X3, Y3)
-%				)
-%			).
+%	compare(Res, X, Y) :-
+%		(
+%			X = f(X1),
+%			Y = f(Y1),
+%			compare(R, X1, Y1)
+%		;
+%			X = f(_),
+%			Y = g(_, _, _),
+%			R = (<)
+%		;
+%			X = f(_),
+%			Y = h,
+%			R = (<)
+%		;
+%			X = g(_, _, _),
+%			Y = f(_),
+%			R = (>)
+%		;
+%			X = g(X1, X2, X3),
+%			Y = g(Y1, Y2, Y3),
+%			( compare(R1, X1, Y1), R1 \= (=) ->
+%				R = R1
+%			; compare(R2, X2, Y2), R2 \= (=) ->
+%				R = R2
+%			; 
+%				compare(R, X3, Y3)
+%			)
+%		;
+%			X = g(_, _, _),
+%			Y = h,
+%			R = (<)
+%		;
+%			X = f(_),
+%			Y = h,
+%			R = (<)
+%		;
+%			X = g(_, _, _),
+%			Y = h,
+%			R = (<)
+%		;
+%			X = h,
+%			Y = h,
+%			R = (<)
+%		).
+%
+% Note that in the clauses handling two copies of the same constant,
+% we unify Y with the constant, not with X. This is required to get
+% switch_detection and det_analysis to recognize the determinism of the
+% predicate.
 
 :- pred unify_proc__generate_du_quad_compare_clauses(list(constructor)::in,
 	prog_var::in, prog_var::in, prog_var::in, prog_context::in,
@@ -1369,7 +1435,7 @@ unify_proc__generate_du_quad_compare_clauses_2(LeftCtor,
 		Cases0, Cases) -->
 	( { LeftCtor = RightCtor } ->
 		unify_proc__generate_compare_case(LeftCtor, R, X, Y, Context,
-			Case),
+			quad, Case),
 		{ Cmp1 = "<" }
 	;
 		unify_proc__generate_asymmetric_compare_case(LeftCtor,
@@ -1381,41 +1447,46 @@ unify_proc__generate_du_quad_compare_clauses_2(LeftCtor,
 
 %-----------------------------------------------------------------------------%
 
-%	For a du type, such as 
+% For a du type, such as 
 %
-%		:- type foo ---> f ; g(a) ; h(b, foo).
+%	:- type foo ---> f ; g(a) ; h(b, foo).
 %
-%   	the linear code we want to generate is
+% the linear code we want to generate is
 %
-%		compare(Res, X, Y) :-
-%			__Index__(X, X_Index),	% Call_X_Index
-%			__Index__(Y, Y_Index),	% Call_Y_Index
-%			( X_Index < Y_Index ->	% Call_Less_Than
-%				Res = (<)	% Return_Less_Than
-%			; X_Index > Y_Index ->	% Call_Greater_Than
-%				Res = (>)	% Return_Greater_Than
+%	compare(Res, X, Y) :-
+%		__Index__(X, X_Index),	% Call_X_Index
+%		__Index__(Y, Y_Index),	% Call_Y_Index
+%		( X_Index < Y_Index ->	% Call_Less_Than
+%			Res = (<)	% Return_Less_Than
+%		; X_Index > Y_Index ->	% Call_Greater_Than
+%			Res = (>)	% Return_Greater_Than
+%		;
+%			% This disjunction is generated by
+%			% unify_proc__generate_compare_cases, below.
+%			(
+%				X = f
+%				R = (=)
 %			;
-%				% This disjunction is generated by
-%				% unify_proc__generate_compare_cases, below.
-%				(
-%					X = f, Y = f,
-%					R = (=)
-%				;
-%					X = g(X1), Y = g(Y1),
-%					compare(R, X1, Y1)
-%				;
-%					X = h(X1, X2), Y = h(Y1, Y2),
-%					( compare(R1, X1, Y1), R1 \= (=) ->
-%						R = R1
-%					; 
-%						compare(R, X2, Y2)
-%					)
+%				X = g(X1),
+%				Y = g(Y1),
+%				compare(R, X1, Y1)
+%			;
+%				X = h(X1, X2),
+%				Y = h(Y1, Y2),
+%				( compare(R1, X1, Y1), R1 \= (=) ->
+%					R = R1
+%				; 
+%					compare(R, X2, Y2)
 %				)
-%			->
-%				Res = R		% Return_R
-%			;
-%				compare_error 	% Abort
-%			).
+%			)
+%		->
+%			Res = R		% Return_R
+%		;
+%			compare_error 	% Abort
+%		).
+%
+% Note that disjuncts covering constants do not test Y, since for constants
+% X_Index = Y_Index implies X = Y.
 
 :- pred unify_proc__generate_du_linear_compare_clauses((type)::in,
 	list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
@@ -1487,29 +1558,33 @@ unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
 		- GoalInfo
 	]) - GoalInfo }.
 
-%	unify_proc__generate_compare_cases: for a type such as 
+% unify_proc__generate_compare_cases: for a type such as 
 %
-%		:- type foo ---> f ; g(a) ; h(b, foo).
+%	:- type foo ---> f ; g(a) ; h(b, foo).
 %
-%   	we want to generate code
+% we want to generate code
 %
-%		(
-%			X = f,		% UnifyX_Goal
-%			Y = f,		% UnifyY_Goal
-%			R = (=)		% CompareArgs_Goal
-%		;
-%			X = g(X1),	
-%			Y = g(Y1),
-%			compare(R, X1, Y1)
-%		;
-%			X = h(X1, X2),
-%			Y = h(Y1, Y2),
-%			( compare(R1, X1, Y1), R1 \= (=) ->
-%				R = R1
-%			; 
-%				compare(R, X2, Y2)
-%			)
+%	(
+%		X = f,		% UnifyX_Goal
+%		Y = X,		% UnifyY_Goal
+%		R = (=)		% CompareArgs_Goal
+%	;
+%		X = g(X1),	
+%		Y = g(Y1),
+%		compare(R, X1, Y1)
+%	;
+%		X = h(X1, X2),
+%		Y = h(Y1, Y2),
+%		( compare(R1, X1, Y1), R1 \= (=) ->
+%			R = R1
+%		; 
+%			compare(R, X2, Y2)
 %		)
+%	)
+%
+% Note that in the clauses for constants, we unify Y with X, not with
+% the constant. This is to allow dupelim to eliminate all but one of
+% the code fragments implementing such switch arms.
 
 :- pred unify_proc__generate_compare_cases(list(constructor), prog_var,
 		prog_var, prog_var, prog_context, list(hlds_goal),
@@ -1520,30 +1595,55 @@ unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
 unify_proc__generate_compare_cases([], _R, _X, _Y, _Context, []) --> [].
 unify_proc__generate_compare_cases([Ctor | Ctors], R, X, Y, Context,
 		[Case | Cases]) -->
-	unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Case),
+	unify_proc__generate_compare_case(Ctor, R, X, Y, Context, linear,
+		Case),
 	unify_proc__generate_compare_cases(Ctors, R, X, Y, Context, Cases).
 
-:- pred unify_proc__generate_compare_case(constructor, prog_var, prog_var,
-		prog_var, prog_context, hlds_goal,
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__generate_compare_case(in, in, in, in, in, out, in, out)
-	is det.
+:- type linear_or_quad	--->	linear ; quad.
 
-unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Case) -->
+:- pred unify_proc__generate_compare_case(constructor::in,
+	prog_var::in, prog_var::in, prog_var::in, prog_context::in,
+	linear_or_quad::in, hlds_goal::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+
+unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Kind, Case) -->
 	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
-	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
-	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
-	{ create_atomic_unification(
-		X, functor(FunctorConsId, no, Vars1), Context, explicit, [], 
-		UnifyX_Goal) },
-	{ create_atomic_unification(
-		Y, functor(FunctorConsId, no, Vars2), Context, explicit, [], 
-		UnifyY_Goal) },
-	unify_proc__compare_args(ArgTypes, ExistQTVars, Vars1, Vars2,
-		R, Context, CompareArgs_Goal),
-	{ GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgs_Goal] },
+	(
+		{ ArgTypes = [] },
+		{ create_atomic_unification(
+			X, functor(FunctorConsId, no, []), Context,
+			explicit, [], UnifyX_Goal) },
+		{ unify_proc__generate_return_equal(R, Context, EqualGoal) },
+		(
+			{ Kind = linear },
+			% The disjunct we are generating is executed only if
+			% the index values of X and Y are the same, so if X is
+			% bound to a constant, Y must also be bound to that
+			% same constant.
+			{ GoalList = [UnifyX_Goal, EqualGoal] }
+		;
+			{ Kind = quad },
+			{ create_atomic_unification(
+				Y, functor(FunctorConsId, no, []), Context,
+				explicit, [], UnifyY_Goal) },
+			{ GoalList = [UnifyX_Goal, UnifyY_Goal, EqualGoal] }
+		)
+	;
+		{ ArgTypes = [_ | _] },
+		unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
+		unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
+		{ create_atomic_unification(
+			X, functor(FunctorConsId, no, Vars1), Context,
+			explicit, [], UnifyX_Goal) },
+		{ create_atomic_unification(
+			Y, functor(FunctorConsId, no, Vars2), Context,
+			explicit, [], UnifyY_Goal) },
+		unify_proc__compare_args(ArgTypes, ExistQTVars, Vars1, Vars2,
+			R, Context, CompareArgs_Goal),
+		{ GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgs_Goal] }
+	),
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Case) }.
@@ -1578,29 +1678,29 @@ unify_proc__generate_asymmetric_compare_case(Ctor1, Ctor2, CompareOp, R, X, Y,
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Case) }.
 
-%	unify_proc__compare_args: for a constructor such as
+% unify_proc__compare_args: for a constructor such as
 %
-%		h(list(int), foo, string)
+%	h(list(int), foo, string)
 %
-%	we want to generate code
+% we want to generate code
 %
-%		(
-%			compare(R1, X1, Y1),	% Do_Comparison
-%			R1 \= (=)		% Check_Not_Equal
-%		->
-%			R = R1			% Return_R1
-%		;
-%			compare(R2, X2, Y2),
-%			R2 \= (=)
-%		->
-%			R = R2
-%		; 
-%			compare(R, X3, Y3)	% Return_Comparison
-%		)
+%	(
+%		compare(R1, X1, Y1),	% Do_Comparison
+%		R1 \= (=)		% Check_Not_Equal
+%	->
+%		R = R1			% Return_R1
+%	;
+%		compare(R2, X2, Y2),
+%		R2 \= (=)
+%	->
+%		R = R2
+%	; 
+%		compare(R, X3, Y3)	% Return_Comparison
+%	)
 %
-%	For a constructor with no arguments, we want to generate code
+% For a constructor with no arguments, we want to generate code
 %
-%		R = (=)		% Return_Equal
+%	R = (=)		% Return_Equal
 
 :- pred unify_proc__compare_args(list(constructor_arg), existq_tvars,
 		list(prog_var), list(prog_var), prog_var, prog_context,
@@ -1624,10 +1724,7 @@ unify_proc__compare_args(ArgTypes, ExistQTVars, Xs, Ys, R, Context, Goal) -->
 		is semidet.
 
 unify_proc__compare_args_2([], _, [], [], R, Context, Return_Equal) -->
-	{ create_atomic_unification(
-		R, functor(cons(unqualified("="), 0), no, []),
-		Context, explicit, [], 
-		Return_Equal) }.
+	{ unify_proc__generate_return_equal(R, Context, Return_Equal) }.
 unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
 		R, Context, Goal) -->
 	{ goal_info_init(GoalInfo0) },
@@ -1670,6 +1767,14 @@ unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
 		unify_proc__compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R,
 			Context, ElseCase)
 	).
+
+:- pred unify_proc__generate_return_equal(prog_var::in, prog_context::in,
+	hlds_goal::out) is det.
+
+unify_proc__generate_return_equal(ResultVar, Context, Return_Equal) :-
+	create_atomic_unification(
+		ResultVar, functor(cons(unqualified("="), 0), no, []),
+		Context, explicit, [], Return_Equal).
 
 %-----------------------------------------------------------------------------%
 

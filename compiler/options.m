@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -339,6 +339,14 @@
 				% the predicates deciding interface typeinfo
 				% liveness, should go through there.
 		;	body_typeinfo_liveness
+				% Should be set to yes if the target back end
+				% guarantees that comparing two values for
+				% equality, at least one of which is a
+				% constant, can be done by casting them both
+				% to integers and comparing the integers
+				% for equality.
+		;	can_compare_constants_as_ints
+
 	% Options for internal use only
 	% (setting these options to non-default values can result in
 	% programs that do not link, or programs that dump core)
@@ -944,6 +952,7 @@ option_defaults_2(internal_use_option, [
 	procid_stack_layout	-	bool(no),
 	trace_stack_layout	-	bool(no),
 	body_typeinfo_liveness	-	bool(no),
+	can_compare_constants_as_ints -	bool(no),
 	special_preds		-	bool(yes),
 	type_ctor_info		-	bool(yes),
 	type_ctor_layout	-	bool(yes),
@@ -1575,6 +1584,7 @@ long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
 long_option("trace-stack-layout",	trace_stack_layout).
 long_option("body-typeinfo-liveness",	body_typeinfo_liveness).
+long_option("can-compare-constants-as-ints",	can_compare_constants_as_ints).
 long_option("special-preds",		special_preds).
 long_option("type-ctor-info",		type_ctor_info).
 long_option("type-ctor-layout",		type_ctor_layout).
@@ -3313,6 +3323,11 @@ your program compiled with different options.
 
 		% This is a developer only option.
 %		"--body-typeinfo-liveness",
+%		"(This option is not for general use.)",
+%		For documentation, see the comment in the type declaration.
+
+		% This is a developer only option.
+%		"--can-compare-constants-as-ints",
 %		"(This option is not for general use.)",
 %		For documentation, see the comment in the type declaration.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,7 +96,7 @@
 :- pred globals__get_options(globals::in, option_table::out) is det.
 :- pred globals__get_target(globals::in, compilation_target::out) is det.
 :- pred globals__get_backend_foreign_languages(globals::in,
-		list(foreign_language)::out) is det.
+	list(foreign_language)::out) is det.
 :- pred globals__get_gc_method(globals::in, gc_method::out) is det.
 :- pred globals__get_tags_method(globals::in, tags_method::out) is det.
 :- pred globals__get_termination_norm(globals::in, termination_norm::out) 
@@ -104,22 +104,21 @@
 :- pred globals__get_trace_level(globals::in, trace_level::out) is det.
 :- pred globals__get_trace_suppress(globals::in, trace_suppress_items::out)
 	is det.
-:- pred globals__get_source_file_map(globals::in,
-		maybe(source_file_map)::out) is det.
+:- pred globals__get_source_file_map(globals::in, maybe(source_file_map)::out)
+	is det.
 
 :- pred globals__set_options(globals::in, option_table::in, globals::out)
 	is det.
-
 :- pred globals__set_gc_method(globals::in, gc_method::in, globals::out)
 	is det.
-
+:- pred globals__set_tags_method(globals::in, tags_method::in, globals::out)
+	is det.
 :- pred globals__set_trace_level(globals::in, trace_level::in, globals::out)
 	is det.
 :- pred globals__set_trace_level_none(globals::in, globals::out) is det.
 
-
 :- pred globals__set_source_file_map(globals::in, maybe(source_file_map)::in,
-		globals::out) is det.
+	globals::out) is det.
 
 :- pred globals__lookup_option(globals::in, option::in, option_data::out)
 	is det.
@@ -201,6 +200,9 @@
 :- pred globals__io_set_gc_method(gc_method::in,
 	io__state::di, io__state::uo) is det.
 
+:- pred globals__io_set_tags_method(tags_method::in,
+	io__state::di, io__state::uo) is det.
+
 :- pred globals__io_set_trace_level(trace_level::in,
 	io__state::di, io__state::uo) is det.
 
@@ -209,8 +211,8 @@
 :- pred globals__io_lookup_option(option::in, option_data::out,
 	io__state::di, io__state::uo) is det.
 
-:- pred globals__io_lookup_bool_option(option, bool, io__state, io__state).
-:- mode globals__io_lookup_bool_option(in, out, di, uo) is det.
+:- pred globals__io_lookup_bool_option(option::in, bool::out,
+	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_lookup_int_option(option::in, int::out,
 	io__state::di, io__state::uo) is det.
@@ -319,6 +321,9 @@ globals__set_options(Globals, Options, Globals ^ options := Options).
 
 globals__set_gc_method(Globals, GC_Method,
 	Globals ^ gc_method := GC_Method).
+
+globals__set_tags_method(Globals, Tags_Method,
+	Globals ^ tags_method := Tags_Method).
 
 globals__set_trace_level(Globals, TraceLevel,
 	Globals ^ trace_level := TraceLevel).
@@ -502,6 +507,14 @@ globals__io_set_option(Option, OptionData) -->
 globals__io_set_gc_method(GC_Method) -->
 	globals__io_get_globals(Globals0),
 	{ globals__set_gc_method(Globals0, GC_Method, Globals1) },
+	{ unsafe_promise_unique(Globals1, Globals) },
+		% XXX there is a bit of a design flaw with regard to
+		% uniqueness and io__set_globals
+	globals__io_set_globals(Globals).
+
+globals__io_set_tags_method(Tags_Method) -->
+	globals__io_get_globals(Globals0),
+	{ globals__set_tags_method(Globals0, Tags_Method, Globals1) },
 	{ unsafe_promise_unique(Globals1, Globals) },
 		% XXX there is a bit of a design flaw with regard to
 		% uniqueness and io__set_globals

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -264,10 +264,10 @@ postprocess_options(ok(OptionTable), Error) -->
     trace_level::in, trace_suppress_items::in, maybe(string)::out,
     io__state::di, io__state::uo) is det.
 
-postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
+postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 		TermNorm, TraceLevel, TraceSuppress, Error) -->
 	{ unsafe_promise_unique(OptionTable0, OptionTable1) }, % XXX
-	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod,
+	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod0,
 		TermNorm, TraceLevel, TraceSuppress),
 
 	% Conservative GC implies --no-reclaim-heap-*
@@ -281,7 +281,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	),
 
 	% --tags none implies --num-tag-bits 0.
-	( { TagsMethod = none } ->
+	( { TagsMethod0 = none } ->
 		{ NumTagBits0 = 0 }
 	;
 		globals__io_lookup_int_option(num_tag_bits, NumTagBits0)
@@ -292,7 +292,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% (the autoconf-determined value is passed from the `mc' script
 	% using the undocumented --conf-low-tag-bits option)
 	(
-		{ TagsMethod = low },
+		{ TagsMethod0 = low },
 		{ NumTagBits0 = -1 }
 	->
 		globals__io_lookup_int_option(conf_low_tag_bits, NumTagBits1)
@@ -315,6 +315,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	),
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
+	( { NumTagBits = 0 } ->
+		{ TagsMethod = none },
+		globals__io_set_tags_method(TagsMethod)
+	;
+		{ TagsMethod = TagsMethod0 }
+	),
 
 	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 	globals__io_lookup_bool_option(automatic_intermodule_optimization,
@@ -681,7 +687,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	globals__io_lookup_bool_option(use_trail, UseTrail),
 	globals__io_lookup_bool_option(use_minimal_model, UseMinimalModel),
 	{ UseTrail = yes, UseMinimalModel = yes ->
-		Error = yes("trailing and minimal model tabling are not compatible")
+		Error = yes("trailing and minimal model tabling " ++
+			"are not compatible")
 	;
 		Error = no
 	},
@@ -1302,6 +1309,22 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		)
 	;
 		[]
+	),
+
+	(
+		% In the non-C backends, it may not be possible to cast a value
+		% of a non-enum du type to an integer.
+		{ Target = c ; Target = asm },
+
+		% To ensure that ll constants in general du types are allocated
+		% in one word, make_tags.m need to have at least one tag bit
+		% left over after --reserve-tags possibly takes one.
+		{ TagsMethod = low ; TagsMethod = high },
+		{ NumTagBits >= 2 }
+	->
+		globals__io_set_option(can_compare_constants_as_ints, bool(yes))
+	;
+		globals__io_set_option(can_compare_constants_as_ints, bool(no))
 	),
 
 	( { HighLevel = no } ->
