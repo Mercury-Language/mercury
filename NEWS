@@ -71,6 +71,17 @@ Changes to the Mercury language:
 
 Changes to the standard library:
 
+* We've changed the semantics of deconstruct/4, in light of the introduction
+  of existentially quantified types. Previously, if deconstruct/4 was given
+  a value of type `univ' it automagically unwrapped it and gave back the
+  functor, arity and arguments of the unwrapped value. This behaviour was
+  not documented, but made sense because there was no way to unwrap a
+  univ without knowing (or guessing) its type. Now that univ is defined
+  as a normal (existentially quantified) type, this behaviour is unnecessary,
+  and a wart besides, so has been removed. If you have a univ and you want
+  to get the unwrapped value's functor, arity and arguments, then you can
+  call "univ_value(Univ)" to extract the value before calling deconstruct.
+
 * We've added new predicates map__foldl2, tree234__foldl2 and
   std_util__aggregate2, and builtin__promise_only_solution_io.
 

@@ -285,7 +285,8 @@
 %		foreign language interface (pragma foreign_code), the text
 %		output will only describe the type that is being printed, not
 %		the value, and the result may not be parsable by `io__read'.
-%		For the types `univ' and `typeinfo', the result may not be
+%		For the types containing existential quantifiers,
+%		the type `type_desc' and closure types, the result may not be
 %		parsable by `io__read', either.  But in all other cases the
 %		format used is standard Mercury syntax, and if you do append a
 %		period and newline (".\n"), then the results can be read in
@@ -2049,8 +2050,6 @@ io__write_univ(Univ, Priority) -->
 		io__write_type_desc(TypeDesc)
 	; { univ_to_type(Univ, TypeCtorDesc) } ->
 		io__write_type_ctor_desc(TypeCtorDesc)
-	; { univ_to_type(Univ, OrigUniv) } ->
-		io__write_univ_as_univ(OrigUniv)
 	; { univ_to_type(Univ, C_Pointer) } ->
 		io__write_c_pointer(C_Pointer)
 	;
@@ -2115,7 +2114,8 @@ same_private_builtin_type(_, _).
 :- pred io__write_ordinary_term(univ, ops__priority, io__state, io__state).
 :- mode io__write_ordinary_term(in, in, di, uo) is det.
 
-io__write_ordinary_term(Term, Priority) -->
+io__write_ordinary_term(Univ, Priority) -->
+	{ univ_value(Univ) = Term },
 	{ deconstruct(Term, Functor, _Arity, Args) },
 	io__get_op_table(OpTable),
 	(
@@ -2246,7 +2246,8 @@ adjust_priority(Priority, x, Priority - 1).
 :- pred io__write_list_tail(univ, io__state, io__state).
 :- mode io__write_list_tail(in, di, uo) is det.
 
-io__write_list_tail(Term) -->
+io__write_list_tail(Univ) -->
+	{ Term = univ_value(Univ) },
 	( 
 		{ deconstruct(Term, ".", _Arity, [ListHead, ListTail]) }
 	->
@@ -2259,7 +2260,7 @@ io__write_list_tail(Term) -->
 		[]
 	;
 		io__write_string(" | "),
-		io__write_univ(Term)
+		io__write_univ(Univ)
 	).
 
 :- pred io__write_term_args(list(univ), io__state, io__state).
@@ -2320,17 +2321,6 @@ io__write_type_ctor_desc(TypeCtorDesc) -->
 	;
 		io__format("%s:%s/%d", [s(ModuleName), s(Name), i(Arity)])
 	).
-
-:- pred io__write_univ_as_univ(univ, io__state, io__state).
-:- mode io__write_univ_as_univ(in, di, uo) is det.
-
-io__write_univ_as_univ(Univ) -->
-	io__write_string("univ("),
-	io__write_univ(Univ),
-	% XXX what is the right TYPE_QUAL_OP to use here?
-	io__write_string(" : "),
-	io__write_string(type_name(univ_type(Univ))),
-	io__write_string(")").
 
 :- pred io__write_c_pointer(c_pointer, io__state, io__state).
 :- mode io__write_c_pointer(in, di, uo) is det.

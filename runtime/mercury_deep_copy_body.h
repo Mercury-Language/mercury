@@ -502,53 +502,6 @@ try_again:
         }
         break;
 
-    case MR_TYPECTOR_REP_UNIV:
-        {
-            MR_Word    *data_value;
-
-            assert(MR_tag(data) == 0);
-            data_value = (MR_Word *) MR_body(data, MR_mktag(0));
-
-            /* if the univ is stored in range, copy it */
-            if (in_range(data_value)) {
-                MR_Word *new_data_ptr;
-
-                /* allocate space for a univ */
-                MR_incr_saved_hp(new_data, 2);
-                new_data_ptr = (MR_Word *) new_data;
-                /*
-                ** Copy the fields across.
-                ** Note: we must copy the data before the type_info,
-                ** because when copying the data, we need the type_info
-                ** to still contain the type rather than just holding
-                ** a forwarding pointer.
-                */
-                new_data_ptr[MR_UNIV_OFFSET_FOR_DATA] = copy(
-                        &data_value[MR_UNIV_OFFSET_FOR_DATA],
-                        (const MR_TypeInfo)
-                            data_value[MR_UNIV_OFFSET_FOR_TYPEINFO],
-                        lower_limit, upper_limit);
-                new_data_ptr[MR_UNIV_OFFSET_FOR_TYPEINFO] =
-                    (MR_Word) copy_type_info((MR_TypeInfo *)
-		    	&data_value[MR_UNIV_OFFSET_FOR_TYPEINFO],
-                        lower_limit, upper_limit);
-                leave_forwarding_pointer(data_ptr, new_data);
-	    } else if (in_traverse_range(data_value)) {
-		copy(&data_value[MR_UNIV_OFFSET_FOR_DATA],
-			(const MR_TypeInfo) 
-			    data_value[MR_UNIV_OFFSET_FOR_TYPEINFO],
-			lower_limit, upper_limit);
-	        copy_type_info((MR_TypeInfo *)
-			&data_value[MR_UNIV_OFFSET_FOR_TYPEINFO],
-			lower_limit, upper_limit);
-		new_data = data;
-            } else {
-                new_data = data;
-                found_forwarding_pointer(data);
-            }
-        }
-        break;
-
     case MR_TYPECTOR_REP_VOID:
         MR_fatal_error("Cannot copy a void type");
         break;

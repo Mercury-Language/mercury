@@ -839,19 +839,6 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 break;
             }
 
-        case MR_TYPECTOR_REP_UNIV:
-            {
-                MR_Word    *data_value;
-
-                data_value = (MR_Word *) data;
-                MR_DEBUG_TABLE_TYPEINFO(table,
-                    (MR_TypeInfo) data_value[MR_UNIV_OFFSET_FOR_TYPEINFO]);
-                MR_DEBUG_TABLE_ANY(table,
-                    (MR_TypeInfo) data_value[MR_UNIV_OFFSET_FOR_TYPEINFO],
-                    data_value[MR_UNIV_OFFSET_FOR_DATA]);
-                break;
-            }
-
         case MR_TYPECTOR_REP_VOID:
             MR_fatal_error("Cannot table a void type");
             break;

@@ -448,38 +448,6 @@ start_label:
 #endif
             }
 
-        case MR_TYPECTOR_REP_UNIV:
-            {
-                MR_TypeInfo type_info_x, type_info_y;
-                int         result;
-
-                /* First compare the type_infos */
-                type_info_x = (MR_TypeInfo) MR_field(MR_mktag(0), x,
-                        MR_UNIV_OFFSET_FOR_TYPEINFO);
-                type_info_y = (MR_TypeInfo) MR_field(MR_mktag(0), y,
-                        MR_UNIV_OFFSET_FOR_TYPEINFO);
-                MR_save_transient_registers();
-                result = MR_compare_type_info(type_info_x, type_info_y);
-                MR_restore_transient_registers();
-                if (result != MR_COMPARE_EQUAL) {
-#ifdef  select_compare_code
-                    return_answer(result);
-#else
-                    return_answer(FALSE);
-#endif
-                }
-
-                /*
-                ** If the types are the same, then recurse on
-                ** the unwrapped args.
-                */
-
-                type_info = type_info_x;
-                x = MR_field(MR_mktag(0), x, MR_UNIV_OFFSET_FOR_DATA);
-                y = MR_field(MR_mktag(0), y, MR_UNIV_OFFSET_FOR_DATA);
-                goto start_label;
-            }
-
         case MR_TYPECTOR_REP_C_POINTER:
 #ifdef	select_compare_code
             if ((void *) x == (void *) y) {

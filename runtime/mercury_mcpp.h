@@ -132,6 +132,8 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP_FLOAT_val			10
 #define MR_TYPECTOR_REP_STRING_val			11
 #define MR_TYPECTOR_REP_PRED_val		    	12
+	// MR_TYPECTOR_REP_UNIV_val is unused - it is retained
+	// only for backwards compatability.
 #define MR_TYPECTOR_REP_UNIV_val		    	13
 #define MR_TYPECTOR_REP_VOID_val		    	14
 #define MR_TYPECTOR_REP_C_POINTER_val			15

@@ -116,6 +116,8 @@ __gc public class Constants {
     static int MR_TYPECTOR_REP_FLOAT			=10;
     static int MR_TYPECTOR_REP_STRING			=11;
     static int MR_TYPECTOR_REP_PRED		    	=12;
+	// MR_TYPECTOR_REP_UNIV is unused - it is retained
+	// only for backwards compatability.
     static int MR_TYPECTOR_REP_UNIV		    	=13;
     static int MR_TYPECTOR_REP_VOID		    	=14;
     static int MR_TYPECTOR_REP_C_POINTER		=15;

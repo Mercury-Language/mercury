@@ -100,6 +100,7 @@
 	% the types are equal it unifies the values.
 :- pred typed_unify(T1, T2).
 :- mode typed_unify(in, in) is semidet.
+:- mode typed_unify(in, out) is semidet.
 
 	% A "typed" version of compare/3 -- i.e. one that can handle arguments
 	% of different types.  It first compares the types, and then if the
@@ -242,11 +243,24 @@ builtin_compare_non_canonical_type(Res, X, _Y) :-
 compare_error :-
 	error("internal error in compare/3").
 
-	% XXX These could be implemented more efficiently using
-	%     `pragma foreign_code' -- the implementation below does some
-	%     unnecessary memory allocatation.
-typed_unify(X, Y) :- univ(X) = univ(Y).
-typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
+%-----------------------------------------------------------------------------%
+
+typed_unify(X, Y) :-
+	( type_of(X) = type_of(Y) ->
+		unsafe_type_cast(X, Y)
+	;
+		fail
+	).
+
+typed_compare(R, X, Y) :-
+	compare(R0, type_of(X), type_of(Y)),
+	( R0 = (=) ->
+		unsafe_type_cast(X, Z),
+		compare(R, Z, Y)
+	;
+		R = R0
+	).
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -895,6 +909,47 @@ static void free_heap_1_p_0(MR_Box X)
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
 }
 
+").
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+% var/1 is intended to make it possible to write code that effectively
+% has different implementations for different modes (see type_to_univ
+% in std_util.m as an example).
+% It has to be impure to ensure that reordering doesn't cause the wrong
+% mode to be selected.
+
+:- impure pred var(T).
+:- 	  mode var(ui) is failure.
+:- 	  mode var(in) is failure.
+:- 	  mode var(unused) is det.
+
+:- impure pred nonvar(T).
+:- 	  mode nonvar(ui) is det.
+:- 	  mode nonvar(in) is det.
+:- 	  mode nonvar(unused) is failure.
+
+:- implementation.
+
+:- pragma c_code(var(X::ui), [thread_safe, will_not_call_mercury], "
+	/* X */
+	SUCCESS_INDICATOR = FALSE;
+").
+:- pragma c_code(var(X::in), [thread_safe, will_not_call_mercury], "
+	/* X */
+	SUCCESS_INDICATOR = FALSE;
+").
+:- pragma c_code(var(X::unused), [thread_safe, will_not_call_mercury], "
+	/* X */
+").
+
+:- pragma c_code(nonvar(X::ui), [thread_safe, will_not_call_mercury], "/*X*/").
+:- pragma c_code(nonvar(X::in), [thread_safe, will_not_call_mercury], "/*X*/").
+:- pragma c_code(nonvar(X::unused), [thread_safe, will_not_call_mercury], "
+	/* X */
+	SUCCESS_INDICATOR = FALSE;
 ").
 
 %-----------------------------------------------------------------------------%
