@@ -19,7 +19,6 @@ SOURCES= \
 	errors2.m \
 	external.m \
 	ext_type_bug.m \
-	ext_data_type.m \
 	func_errors.m \
 	funcs_as_preds.m \
 	ho_type_mode_bug.m \
