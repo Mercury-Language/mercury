@@ -974,12 +974,6 @@ then
 	MERCURY_DEBUGGER_INIT=$root/scripts/test_mdbrc
 	export MERCURY_DEBUGGER_INIT
 
-	# Avoid picking up parameter settings from $HOME/.mdbrc that could
-	# cause spurious differences between the outputs of the debugger test
-	# cases and their expected outputs.
-	HOME=/nonexistent
-	export HOME
-
 	if test "$test_grade" != ""
 	then
 		test_grade_opt="GRADE=$test_grade"

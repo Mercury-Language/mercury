@@ -49,6 +49,16 @@ DIFF_OPTS=-c
 # deep profiling.
 RUN_RECOMPILATION_TESTS=yes
 
+# We avoid picking up parameter settings from $HOME/.mdbrc that could
+# cause spurious differences between the outputs of the debugger test
+# cases and their expected outputs.
+
+# We suppress the printing of the banner, because different workspaces
+# may get different version numbers printed in it. This would otherwise be
+# the source of irrelevant difference between the actual and expected outputs.
+
+MDB = HOME=/nonexistent MERCURY_SUPPRESS_MDB_BANNER=yes mdb
+
 #-----------------------------------------------------------------------------#
 
 # .PRECIOUS: %.c %.o %_init.c

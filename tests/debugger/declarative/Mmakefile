@@ -4,14 +4,6 @@ THIS_DIR = debugger/declarative
 
 #-----------------------------------------------------------------------------#
 
-# We suppress the printing of the banner, because different workspaces
-# may get different version numbers printed in it. This would otherwise be
-# the source of irrelevant difference between the actual and expected outputs.
-
-MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
-
-#-----------------------------------------------------------------------------#
-
 DECLARATIVE_PROGS=		\
 	aadebug			\
 	app			\
