@@ -52,11 +52,6 @@ Changes to the Mercury standard library:
 	file_type/4,
 	input_stream_foldl2_io_maybe_stop/{6,7},
 	binary_input_stream_foldl2_io_maybe_stop/{6,7}.
-* exception.m now contains a predicate finally/6 which can be used to
-  ensure that resources are released whether a called closure exits
-  normally or throws an exception.
-* We've added predicates multi_map.to_flat_assoc_list/2 and
-  multi_map.from_flat_assoc_list/2. 
 
 Portability improvements:
 * Nothing yet.
