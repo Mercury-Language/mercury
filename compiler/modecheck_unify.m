@@ -425,37 +425,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 	% Fully module qualify all cons_ids
 	% (except for builtins such as ints and characters).
 	%
-	(
-		ConsId0 = cons(Name0, OrigArity),
-		type_to_ctor_and_args(TypeOfX, TypeCtor, _),
-		TypeCtor = qualified(TypeModule, _) - _
-	->
-		unqualify_name(Name0, UnqualName),
-		Name = qualified(TypeModule, UnqualName),
-		ConsId = cons(Name, OrigArity),
-		%
-		% Fix up the cons_id arity for type(class)_info constructions.
-		% The cons_id for type(class)_info constructions always has
-		% arity 1, to match the arity in the declaration in
-		% library/private_builtin.m,
-		% but for the inst we need the arity of the cons_id
-		% to match the number of arguments.
-		%
-		(
-			mercury_private_builtin_module(TypeModule),
-			( UnqualName = "typeclass_info"
-			; UnqualName = "type_info"
-			)
-		->
-			list__length(ArgVars0, InstArity),
-			InstConsId = cons(Name, InstArity)
-		;
-			InstConsId = ConsId
-		)
-	;
-		ConsId = ConsId0,
-		InstConsId = ConsId
-	),
+	qualify_cons_id(TypeOfX, ArgVars0, ConsId0, ConsId, InstConsId),
+
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap__lookup_var(InstMap0, X0, InstOfX0),
 	instmap__lookup_vars(ArgVars0, InstMap0, InstArgs),

@@ -265,6 +265,15 @@
 :- pred type_util__get_cons_defn(module_info::in, type_ctor::in, cons_id::in,
 		hlds_cons_defn::out) is semidet.
 
+	% Module-qualify the cons_id using module information from the type.
+	% The second output value is the cons_id required for use in insts which
+	% can be different from that used in types for typeclass_info and
+	% type_info.
+	% The list(prog_var) is the list of arguments to the cons_id and is just
+	% used for obtaining the arity for typeclass_info and type_info
+	% cons_ids.
+:- pred qualify_cons_id((type)::in, list(prog_var)::in, cons_id::in,
+		cons_id::out, cons_id::out) is det.
 
 	% Given a type and a cons_id, look up the definition of that
 	% constructor; if it is existentially typed, return its definition,
@@ -1140,6 +1149,41 @@ type_util__get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
 			ThisConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
 		)),
 	list__filter(MatchingCons, ConsDefns, [ConsDefn]).
+
+%-----------------------------------------------------------------------------%
+
+qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
+	(
+		ConsId0 = cons(Name0, OrigArity),
+		type_to_ctor_and_args(Type, TypeCtor, _),
+		TypeCtor = qualified(TypeModule, _) - _
+	->
+		unqualify_name(Name0, UnqualName),
+		Name = qualified(TypeModule, UnqualName),
+		ConsId = cons(Name, OrigArity),
+		%
+		% Fix up the cons_id arity for type(class)_info constructions.
+		% The cons_id for type(class)_info constructions always has
+		% arity 1, to match the arity in the declaration in
+		% library/private_builtin.m,
+		% but for the inst we need the arity of the cons_id
+		% to match the number of arguments.
+		%
+		(
+			mercury_private_builtin_module(TypeModule),
+			( UnqualName = "typeclass_info"
+			; UnqualName = "type_info"
+			)
+		->
+			list__length(Args, InstArity),
+			InstConsId = cons(Name, InstArity)
+		;
+			InstConsId = ConsId
+		)
+	;
+		ConsId = ConsId0,
+		InstConsId = ConsId
+	).
 	
 %-----------------------------------------------------------------------------%
 
