@@ -86,7 +86,9 @@ HDRS		=	\
 			mercury_wrapper.h	\
 			$(LIB_DLL_H)
 
-# The headers in $(BODY_HDRS) do not have to be syntactically well-formed.
+# The headers in $(BODY_HDRS) contain code schemes included multiple times
+# in one source file each. Their dependencies must be explicitly listed.
+# They do not have to be syntactically well-formed.
 
 BODY_HDRS	=	\
 			mercury_deep_copy_body.h \
@@ -192,7 +194,11 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-$(OBJS) $(PIC_OBJS): $(HDRS) $(BODY_HDRS) $(MACHHDRS)
+$(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
+
+mercury_deep_copy.o:	mercury_deep_copy_body.h
+mercury_type_info.o:	mercury_make_type_info_body.h
+mercury_ho_call.o:	mercury_unify_compare_body.h
 
 #-----------------------------------------------------------------------------#
 
