@@ -7,23 +7,31 @@ main_target: check
 PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
 	pragma_c_code pragma_inline higher_order_func_test \
 	free_free_mode func_test string_alignment tim_qual1 c_write_string \
-	float_rounding_bug
+	no_fully_strict float_rounding_bug
 
 # we do not yet pass the following tests:
-#	nasty_func_test
+#	nasty_func_test string_loop
 
 #-----------------------------------------------------------------------------#
 
-%.out: %
+no_fully_strict: no_fully_strict.m
+	mc --no-fully-strict no_fully_strict.m
+
+no_fully_strict.out: no_fully_strict
+	-./no_fully_strict > no_fully_strict.out 2>&1;
+
+#-----------------------------------------------------------------------------#
+
+%.out:	%
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
 
-%.res: %.out %.exp
+%.res:	%.out %.exp
 	-rm -f $@
 	diff $*.exp $*.out > $@
 
 #-----------------------------------------------------------------------------#
 
-DEPS=$(PROGS:%=%.dep)
+DEPS=	$(PROGS:%=%.dep)
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
 RESS=	$(PROGS:%=%.res)
@@ -31,17 +39,17 @@ MODS=	$(PROGS:%=%.mod)
 
 #-----------------------------------------------------------------------------#
 
-dep: $(DEPS)
+dep:	$(DEPS)
 
-depend: $(DEPENDS)
+depend:	$(DEPENDS)
 
-check: $(OUTS) $(RESS)
+check:	$(OUTS) $(RESS)
 
-mods: $(MODS)
+mods:	$(MODS)
 
 all:	$(PROGS)
 
-clean: clean_out clean_res
+clean:	clean_out clean_res
 
 clean_mc: clean_c clean_o clean_out clean_res
 
