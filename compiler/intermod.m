@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -262,12 +262,20 @@ intermod__gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
 			HigherOrderSizeLimit, Deforestation, ModuleInfo0) }
 	->
 		=(IntermodInfo0),
-		{ pred_info_typevarset(PredInfo0, TVarSet) },
-		{ clauses_info_vartypes(ClausesInfo0, VarTypes) },
+		% Write a declaration to the `.opt' file for
+		% `exported_to_submodules' predicates.
+		intermod__add_proc(PredId, DoWrite0),
 		{ clauses_info_clauses(ClausesInfo0, Clauses0) },
-		intermod_info_set_var_types(VarTypes),
-		intermod_info_set_tvarset(TVarSet),
-		intermod__traverse_clauses(Clauses0, Clauses, DoWrite),
+		( { DoWrite0 = yes } ->
+			{ clauses_info_vartypes(ClausesInfo0, VarTypes) },
+			{ pred_info_typevarset(PredInfo0, TVarSet) },
+			intermod_info_set_var_types(VarTypes),
+			intermod_info_set_tvarset(TVarSet),
+			intermod__traverse_clauses(Clauses0, Clauses, DoWrite)
+		;
+			{ Clauses = Clauses0 },
+			{ DoWrite = no }
+		),
 		( { DoWrite = yes } ->
 			{ clauses_info_set_clauses(ClausesInfo0, Clauses,
 				ClausesInfo) },
