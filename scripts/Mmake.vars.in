@@ -64,6 +64,11 @@ MSLFLAGS	= $(EXTRA_MSLFLAGS)
 MSP		= msp
 MSPFLAGS	= $(EXTRA_MSPFLAGS)
 
+AR		= ar
+ARFLAGS		= cr
+RANLIB		= @RANLIB@
+RANLIBFLAGS	=
+
 # $(CFLAGS_FOR_PIC) is passed to the C compiler when creating `.pic_o' files
 # (We use `.pic_o' as the extension for `.o' files that must have
 # position-independent code.)

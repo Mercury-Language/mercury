@@ -723,87 +723,87 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".nos = "),
 	write_compact_dependencies_list(Modules, ".no", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".qls = "),
 	write_compact_dependencies_list(Modules, ".ql", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".cs = "),
 	write_compact_dependencies_list(Modules, ".c", Basis, DepStream),
 	write_dependencies_list(ExtraLinkObjs, ".c", DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".os = "),
 	write_compact_dependencies_list(Modules, ".o", Basis, DepStream),
 	write_dependencies_list(ExtraLinkObjs, ".o", DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".pic_os = "),
 	write_compact_dependencies_list(Modules, ".$(EXT_FOR_PIC_OBJECTS)",
 		Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".dirs = "),
 	write_compact_dependencies_list(Modules, ".dir", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".dir_os = "),
 	write_compact_dependencies_list(Modules, ".dir/*.o", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".ss = "),
 	write_compact_dependencies_list(Modules, ".s", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".errs = "),
 	write_compact_dependencies_list(Modules, ".err", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".dates = "),
 	write_compact_dependencies_list(Modules, ".date", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".date3s = "),
 	write_compact_dependencies_list(Modules, ".date3", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".optdates = "),
 	write_compact_dependencies_list(Modules, ".optdate", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".ds = "),
 	write_compact_dependencies_list(Modules, ".d", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".hs = "),
 	write_compact_dependencies_list(Modules, ".h", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".ints = "),
 	write_compact_dependencies_list(Modules, ".int", Basis, DepStream),
 	write_compact_dependencies_separator(Basis, DepStream),
 	write_compact_dependencies_list(Modules, ".int2", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".int3s = "),
 	write_compact_dependencies_list(Modules, ".int3", Basis, DepStream),
-	io__write_string(DepStream, "\n\n"),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".opts = "),
@@ -829,32 +829,43 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		ModuleName, ".split.a : $(", ModuleName, ".dir_os)\n",
 		"\trm -f ", ModuleName, ".split.a\n",
-		"\tar cr ", ModuleName, ".split.a\n",
+		"\t$(AR) $(ARFLAGS) ", ModuleName, ".split.a\n",
 		"\tfor dir in $(", ModuleName, ".dirs); do \\\n",
-		"\t	ar q ", ModuleName, ".split.a $$dir/*.o; \\\n",
+		"\t	$(AR) q ", ModuleName, ".split.a $$dir/*.o; \\\n",
 		"\tdone\n",
-		"\tranlib ", ModuleName, ".split.a\n\n"
-	]),
-
-/************
-% I decided to leave the rules for `foo.so' and `foo.a' out,
-% mainly because the rule for `foo.so' is hard to make portable.
-% The rules here would conflict with the one in library/Mmake.
-
-	io__write_strings(DepStream, [
-		ModuleName, ".so : $(", ModuleName, ".pic_os)\n",
-		"\t$(LINK_SHARED_LIB) -o ", ModuleName, ".so ",
-			"$(", ModuleName, ".pic_os)\n\n"
+		"\t$(RANLIB) $(RANLIBFLAGS) ", ModuleName, ".split.a\n\n"
 	]),
 
 	io__write_strings(DepStream, [
-		ModuleName, ".a : $(", ModuleName, ".os)\n",
+		"lib", ModuleName, " : ",
+		"lib", ModuleName, ".a ",
+		"lib", ModuleName, ".$(EXT_FOR_SHARED_LIB) \\\n",
+		"\t\t$(", ModuleName, ".ints) ",
+		"$(", ModuleName, ".opts) ",
+		ModuleName, ".init\n\n"
+	]),
+
+	io__write_strings(DepStream, [
+		"lib", ModuleName, ".so : $(", ModuleName, ".pic_os)\n",
+		"\t$(ML) --make-shared-lib $(MLFLAGS) -o ",
+			"lib", ModuleName, ".so \\\n",
+		"\t\t$(", ModuleName, ".pic_os) $(MLLIBS)\n\n"
+	]),
+
+	io__write_strings(DepStream, [
+		"lib", ModuleName, ".a : $(", ModuleName, ".os)\n",
 		"\trm -f ", ModuleName, ".a\n",
-		"\tar cr ", ModuleName, ".a ",
+		"\t$(AR) $(ARFLAGS) lib", ModuleName, ".a ",
 			"$(", ModuleName, ".os)\n",
-		"\tranlib ", ModuleName, ".a\n\n"
+		"\t$(RANLIB) $(RANLIBFLAGS) lib", ModuleName, ".a\n\n"
 	]),
-************/
+
+	io__write_strings(DepStream, [
+		ModuleName, ".init : ", ModuleName, ".dep\n",
+		"\tfor file in $(", ModuleName, ".ms); do \\\n",
+		"\t\techo ""INIT mercury__`basename $$file .m`__init""; \\\n",
+		"\tdone > ", ModuleName, ".init\n\n"
+	]),
 
 	io__write_strings(DepStream, [
 		ModuleName, "_init.c :\n",
@@ -914,8 +925,14 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", ModuleName, ".os) ", ModuleName, "_init.o\n",
 		"\t-rm -f $(", ModuleName, ".hs)\n",
 		"\t-rm -f $(", ModuleName, ".ds)\n",
-		"\t-rm -f ", ModuleName, ".dep ", ModuleName, "\n",
-		"\t-rm -f ", ModuleName, ".split ", ModuleName,".split.a\n\n"
+		"\t-rm -f ",
+			ModuleName, " ",
+			ModuleName, ".split ",
+			ModuleName, ".split.a ",
+			ModuleName, ".init ",
+			"lib", ModuleName, ".a ",
+			"lib", ModuleName, ".so ",
+			ModuleName, ".dep\n\n"
 	]),
 
 	io__write_strings(DepStream, [
@@ -938,6 +955,9 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 			ModuleName, " ",
 			ModuleName, ".split ",
 			ModuleName, ".split.a ",
+			ModuleName, ".init ",
+			"lib", ModuleName, ".a ",
+			"lib", ModuleName, ".so ",
 			ModuleName, ".nu ",
 			ModuleName, ".nu.save ",
 			ModuleName, ".nu.debug.save ",

@@ -41,9 +41,6 @@ GRADE			= @GRADE@
 # Specify the additional compilation models to install the library for
 LIBGRADES  		= @LIBGRADES@
 
-# Specify the ranlib program, if needed.
-RANLIB  		= @RANLIB@
-
 # Specify the name of the Sicstus Prolog interpreter.
 SP			= @SP@
 
