@@ -10,4 +10,3 @@ queens	io__init_state(I0), main3(_,I0,_), fail
 query	io__init_state(I0), main3(_,I0,_), fail
 serial	io__init_state(I0), main3(_,I0,_), fail
 tak	io__init_state(I0), main3(_,I0,_), fail
-q	io__init_state(I0), main3(_,I0,_), fail
