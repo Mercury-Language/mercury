@@ -20,6 +20,10 @@
 % called predicate (e.g. if a predicate is overloaded with both
 % `ui' and `in' modes)?
 
+% Variables can become nondet live in several places:
+% in negations, in the conditions of if-then-elses,
+% and in disjunctions, and at nondet calls.
+
 % XXX we currently make the conservative assumption that
 % any non-local variable in a disjunction or nondet call
 % is nondet-live - and stays nondet-live.
@@ -572,7 +576,7 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes, CodeModel, NeverSucceeds,
 	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 	modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,
 		NewArgVars, ExtraGoals, ModeInfo1, ModeInfo2),
-	( NewArgVars = ArgVars, ExtraGoals = [] - [] ->
+	( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
 		true
 	;	
 		% this shouldn't happen, since modes.m should do

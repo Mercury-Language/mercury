@@ -37,6 +37,14 @@
 :- mode categorize_unify_var_var(in, in, in, in, in, in, in, in, in,
 			mode_info_di, out, mode_info_uo) is det.
 
+	% Given a unification goal, which must be something that can be
+	% returned from categorize_unify_var_var (i.e.  a unification
+	% of two vars, a unification of a var and a functor, or a
+	% conjunction thereof), return a list of all the variables in the
+	% goal.
+:- pred unify_vars(hlds_goal_expr, list(var)).
+:- mode unify_vars(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -45,7 +53,7 @@
 :- import_module hlds_module, hlds_goal, hlds_pred, hlds_data, hlds_out.
 :- import_module mode_debug, mode_util, mode_info, modes, mode_errors.
 :- import_module inst_match, inst_util, unify_proc, code_util, unique_modes.
-:- import_module typecheck, modecheck_call, (inst).
+:- import_module typecheck, modecheck_call, (inst), quantification.
 :- import_module bool, list, std_util, int, map, set, require, varset.
 :- import_module string, assoc_list.
 
@@ -514,7 +522,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 			% return any old garbage
 		Unification = Unification0,
 		ArgVars = ArgVars0,
-		ExtraGoals = [] - []
+		ExtraGoals = no_extra_goals
 	;
 		abstractly_unify_inst_functor(LiveX, InstOfX, ConsId,
 			InstArgs, LiveArgs, real_unify, ModuleInfo0,
@@ -580,7 +588,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 			% return any old garbage
 		Unification = Unification0,
 		ArgVars = ArgVars0,
-		ExtraGoals = [] - []
+		ExtraGoals = no_extra_goals
 	),
 
 	%
@@ -620,7 +628,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		%
 		(
 			HowToCheckGoal = check_unique_modes,
-			ExtraGoals \= [] - []
+			ExtraGoals \= no_extra_goals
 		->
 			error("unique_modes.m: re-modecheck of unification encountered complicated sub-unifies")
 		;
@@ -639,7 +647,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	% into separate unifications by introducing fresh variables here.
 
 :- pred split_complicated_subunifies(unification, list(var),
-			unification, list(var), pair(list(hlds_goal)),
+			unification, list(var), extra_goals,
 			mode_info, mode_info).
 :- mode split_complicated_subunifies(in, in, out, out, out,
 			mode_info_di, mode_info_uo) is det.
@@ -664,16 +672,16 @@ split_complicated_subunifies(Unification0, ArgVars0,
 	;
 		{ Unification = Unification0 },
 		{ ArgVars = ArgVars0 },
-		{ ExtraGoals = [] - [] }
+		{ ExtraGoals = no_extra_goals }
 	).
 
 :- pred split_complicated_subunifies_2(list(var), list(uni_mode),
-			list(var), list(uni_mode), pair(list(hlds_goal)),
+			list(var), list(uni_mode), extra_goals,
 			mode_info, mode_info).
 :- mode split_complicated_subunifies_2(in, in, out, out, out,
-		mode_info_di, mode_info_uo) is semidet.
+			mode_info_di, mode_info_uo) is semidet.
 
-split_complicated_subunifies_2([], [], [], [], [] - []) --> [].
+split_complicated_subunifies_2([], [], [], [], no_extra_goals) --> [].
 split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 			Vars, UniModes, ExtraGoals, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
@@ -686,23 +694,22 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		mode_to_arg_mode(ModuleInfo, ModeX, VarType, top_in),
 		mode_to_arg_mode(ModuleInfo, ModeY, VarType, top_in)
 	->
-		split_complicated_subunifies_2(Vars0, UniModes0,
-				Vars1, UniModes1, ExtraGoals0,
-				ModeInfo0, ModeInfo1),
-		ExtraGoals0 = BeforeGoals - AfterGoals0,
-
 		% introduce a new variable `Var'
-		mode_info_get_varset(ModeInfo1, VarSet1),
-		mode_info_get_var_types(ModeInfo1, VarTypes1),
-		varset__new_var(VarSet1, Var, VarSet),
-		map__set(VarTypes1, Var, VarType, VarTypes),
-		mode_info_set_varset(VarSet, ModeInfo1, ModeInfo2),
-		mode_info_set_var_types(VarTypes, ModeInfo2, ModeInfo3),
+		mode_info_get_varset(ModeInfo0, VarSet0),
+		mode_info_get_var_types(ModeInfo0, VarTypes0),
+		varset__new_var(VarSet0, Var, VarSet),
+		map__set(VarTypes0, Var, VarType, VarTypes),
+		mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),
+		mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo2),
 
 		% change the main unification to use `Var' instead of Var0
 		UniMode = (InitialInstX - free -> InitialInstX - InitialInstX),
-		UniModes = [UniMode | UniModes1],
-		Vars = [Var | Vars1],
+
+		% Compute the instmap that results after the main unification.
+		% We just need to set the inst of `Var'.
+		mode_info_get_instmap(ModeInfo2, OrigInstMap),
+		instmap__set(OrigInstMap, Var, InitialInstX, InstMapAfterMain),
+		mode_info_set_instmap(InstMapAfterMain, ModeInfo2, ModeInfo3),
 
 		% create code to do a unification between `Var' and `Var0'
 		ModeVar0 = (InitialInstY -> FinalInstY),
@@ -728,32 +735,43 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 						UnifyContext),
 		categorize_unify_var_var(ModeVar0, ModeVar,
 			live, dead, Var0, Var, Det, UnifyContext,
-			VarTypes, ModeInfo4, AfterGoal, ModeInfo),
+			VarTypes, ModeInfo4, NewUnifyGoal, ModeInfo5),
+		unify_vars(NewUnifyGoal, NewUnifyGoalVars),
 
 		% compute the goal_info nonlocal vars & instmap delta
 		% for the newly created goal
-		set__list_to_set([Var0, Var], NonLocals),
+		% N.B. This may overestimate the set of non-locals,
+		% but that shouldn't cause any problems.
+		set__list_to_set(NewUnifyGoalVars, NonLocals),
 		( InitialInstY = FinalInstY ->
-			InstMapAL0 = []
+			InstMapDeltaAL0 = []
 		;
-			InstMapAL0 = [Var0 - FinalInstY]
+			InstMapDeltaAL0 = [Var0 - FinalInstY]
 		),
-		InstMapAL = [Var - FinalInstX | InstMapAL0],
-		instmap_delta_from_assoc_list(InstMapAL, InstMapDelta),
+		InstMapDeltaAL = [Var - FinalInstX | InstMapDeltaAL0],
+		instmap_delta_from_assoc_list(InstMapDeltaAL, InstMapDelta),
 		goal_info_init(GoalInfo0),
-		goal_info_set_nonlocals(GoalInfo0, NonLocals,
-			GoalInfo1),
+		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 		goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo),
 
-		% insert the unification between `Var' and `Var0' at
-		% the start of the AfterGoals
-		AfterGoals = [AfterGoal - GoalInfo | AfterGoals0],
-		ExtraGoals = BeforeGoals - AfterGoals
-	;
-		Vars = [Var0 | Vars1],
-		UniModes = [UniMode0 | UniModes1],
+		% insert the new unification at
+		% the start of the extra goals
+		ExtraGoals0 = extra_goals(InstMapAfterMain,
+					[NewUnifyGoal - GoalInfo]),
+
+		% recursive call to handle the remaining variables...
 		split_complicated_subunifies_2(Vars0, UniModes0,
-			Vars1, UniModes1, ExtraGoals, ModeInfo0, ModeInfo)
+				Vars1, UniModes1, ExtraGoals1,
+				ModeInfo5, ModeInfo),
+		Vars = [Var | Vars1],
+		UniModes = [UniMode | UniModes1],
+		append_extra_goals(ExtraGoals0, ExtraGoals1, ExtraGoals)
+	;
+		split_complicated_subunifies_2(Vars0, UniModes0,
+				Vars1, UniModes1, ExtraGoals,
+				ModeInfo0, ModeInfo),
+		Vars = [Var0 | Vars1],
+		UniModes = [UniMode0 | UniModes1]
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1083,6 +1101,36 @@ make_fresh_vars([Type|Types], VarSet0, VarTypes0,
 	varset__new_var(VarSet0, Var, VarSet1),
 	map__det_insert(VarTypes0, Var, Type, VarTypes1),
 	make_fresh_vars(Types, VarSet1, VarTypes1, Vars, VarSet, VarTypes).
+
+%-----------------------------------------------------------------------------%
+
+	% Given a unification goal, which must be something that can be
+	% returned from categorize_unify_var_var (i.e. a unification
+	% of two vars, a unification of a var and a functor,
+	% an empty disjunction (fail), or a conjunction thereof),
+	% return a list of all the variables in the goal.
+unify_vars(Unify, UnifyVars) :-
+	( Unify = unify(LHS, RHS, _, _, _), RHS = var(RHS_Var) ->
+		UnifyVars = [LHS, RHS_Var]
+	; Unify = unify(LHS, RHS, _, _, _), RHS = functor(_, RHS_ArgVars) ->
+		UnifyVars = [LHS | RHS_ArgVars]
+	; Unify = conj(List) ->
+		unify_conj_vars(List, UnifyVars)
+	; Unify = disj([], _StoreMap) ->
+		UnifyVars = []
+	;
+		error("modecheck_unify: unify_vars")
+	).
+
+:- pred unify_conj_vars(list(hlds_goal), list(var)).
+:- mode unify_conj_vars(in, out) is det.
+
+unify_conj_vars([], []).
+unify_conj_vars([Goal | Goals], Vars) :-
+	quantification__goal_vars(Goal, Vars1Set),
+	set__to_sorted_list(Vars1Set, Vars1),
+	unify_conj_vars(Goals, Vars2),
+	list__append(Vars1, Vars2, Vars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

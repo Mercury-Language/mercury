@@ -25,13 +25,13 @@
 :- import_module term.
 
 :- pred modecheck_call_pred(pred_id, list(var), proc_id, list(var),
-				pair(list(hlds_goal)), mode_info, mode_info).
+				extra_goals, mode_info, mode_info).
 :- mode modecheck_call_pred(in, in, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_higher_order_call(pred_or_func, var, list(var),
 				list(type), list(mode), determinism, list(var),
-				pair(list(hlds_goal)), mode_info, mode_info).
+				extra_goals, mode_info, mode_info).
 :- mode modecheck_higher_order_call(in, in, in, out, out, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
@@ -151,7 +151,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		Modes = [],
 		Det = erroneous,
 		Args = Args0,
-		ExtraGoals = [] - []
+		ExtraGoals = no_extra_goals
 	).
 
 modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
@@ -179,7 +179,7 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 			ModeInfo0, ModeInfo),
 		invalid_proc_id(TheProcId),
 		ArgVars = ArgVars0,
-		ExtraGoals = [] - []
+		ExtraGoals = no_extra_goals
 	;
 		ProcIds = [ProcId],
 		\+ list__member(request(infer_modes), Markers)
@@ -234,13 +234,13 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 	).
 
 :- pred modecheck_call_pred_2(list(proc_id), pred_id, proc_table, list(var),
-			set(var), proc_id, list(var), pair(list(hlds_goal)),
+			set(var), proc_id, list(var), extra_goals,
 			mode_info, mode_info).
 :- mode modecheck_call_pred_2(in, in, in, in, in, out, out, out,
 			mode_info_di, mode_info_uo) is det.
 
 modecheck_call_pred_2([], PredId, _Procs, ArgVars, WaitingVars,
-			TheProcId, ArgVars, [] - [], ModeInfo0, ModeInfo) :-
+		TheProcId, ArgVars, no_extra_goals, ModeInfo0, ModeInfo) :-
 	%
 	% There were no matching modes.
 	% If we're inferring modes for this called predicate, then
