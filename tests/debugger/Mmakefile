@@ -48,7 +48,8 @@ MCFLAGS-tabled_read = --trace-table-io
 # By default, we reclaim heap on failure in non-Boehm-gc grades.
 # The extra stack slots required for this reclamation cause spurious
 # differences from the expected output on the nondet_stack test case.
-MCFLAGS-nondet_stack = --no-reclaim-heap-on-failure
+# The optimization level also affects stack frame sizes.
+MCFLAGS-nondet_stack = -O2 --no-reclaim-heap-on-failure
 
 MCFLAGS = --trace deep
 MLFLAGS = --trace
