@@ -13,7 +13,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS		= -I$(MERCURY_DIR)/runtime -I $(MERCURY_DIR)/boehm_gc -g \
+CFLAGS		= -I$(MERCURY_DIR)/runtime -I$(MERCURY_DIR)/boehm_gc -g \
 		  $(EXTRA_CFLAGS)
 MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= --no-ansi $(CFLAGS)
