@@ -15,6 +15,7 @@ SIMPLE_PROGS = \
 	fib_list \
 	fib_string \
 	loopcheck \
+	loopcheck_no_loop \
 	unused_args
 
 NONDET_PROGS = \
@@ -30,10 +31,12 @@ NONDET_PROGS = \
 
 # We don't yet pass the following minimal model tests. The reason is that
 # they contain interactions between tabling and constructs that function
-# as negated contexts.
+# as commited or negated contexts.
 #
 #	consumer_in_commit
 #	consumer_in_solutions
+#	combine
+#	mday
 
 # Tabling does not yet work in .rt grades
 ifneq "$(findstring .gc,$(GRADE))" ""
