@@ -21,8 +21,8 @@ NEWS for Mercury release 0.4
 * We generate better code for calls to `\='.
 * We generate better code for `compare/3'.
 * A few other new optimizations.
-* The profiler now works (documentation is sparse, though - see
-  the file profiler/README).
+* The profiler now works (see the documentation in the Mercury
+  user guide).
 * Some new library predicates, including `string__format'
   (like C's sprintf).
 * `set__join/2' has been renamed as `set__power_union/2'.
