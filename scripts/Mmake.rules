@@ -11,7 +11,7 @@ main_target: $(MAIN_TARGET)
 #-----------------------------------------------------------------------------#
 
 .SUFFIXES: .pp .m .nl .no .err .int .int2 .dep .depend .doit .ugly \
-		.date .mod .c .nu .o .pic_o .s .garb .mod_h .ql .pl
+		.date .mod .c .nu .o .pic_o .i .s .garb .mod_h .ql .pl
 
 .PRECIOUS: %.date
 
@@ -110,6 +110,9 @@ main_target: $(MAIN_TARGET)
 
 .c.s:
 	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -S $< -o $@
+
+.c.i:
+	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -E $< > $@
 
 #-----------------------------------------------------------------------------#
 
