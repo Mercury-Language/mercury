@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2003 The University of Melbourne.
+** Copyright (C) 1998-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -596,14 +596,44 @@ static void
 MR_init_nondet_branch_infos(MR_Word *base_maxfr,
 	const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
 {
+    const MR_Label_Layout *label_layout = top_layout;
+    MR_Word *stack_pointer = base_sp;
+    MR_Word *current_frame = base_curfr;
+
     MR_nondet_branch_info_next = 0;
-    MR_ensure_room_for_next(MR_nondet_branch_info, MR_Nondet_Branch_Info,
-            MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
-    MR_nondet_branch_infos[0].branch_sp = base_sp;
-    MR_nondet_branch_infos[0].branch_curfr = base_curfr;
-    MR_nondet_branch_infos[0].branch_layout = top_layout;
-    MR_nondet_branch_infos[0].branch_topfr = base_curfr;
-    MR_nondet_branch_info_next++;
+
+    /*
+    ** Skip past any model_det frames.
+    */
+    do {
+        const MR_Proc_Layout            *proc_layout;
+        MR_Stack_Walk_Step_Result       result;
+        const char                      *problem;
+
+        proc_layout = label_layout->MR_sll_entry;
+        if (!MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
+            break;
+        }
+        result = MR_stack_walk_step(proc_layout, &label_layout,
+            &stack_pointer, &current_frame, &problem);
+        if (result == MR_STEP_ERROR_BEFORE || result == MR_STEP_ERROR_AFTER) {
+            MR_fatal_error(problem);
+        } 
+
+    } while (label_layout != NULL);
+
+    /* double-check that we didn't skip any model_non frames */
+    assert(current_frame == base_curfr);
+
+    if (label_layout != NULL) {
+        MR_ensure_room_for_next(MR_nondet_branch_info, MR_Nondet_Branch_Info,
+                MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
+        MR_nondet_branch_infos[0].branch_sp = stack_pointer;
+        MR_nondet_branch_infos[0].branch_curfr = current_frame;
+        MR_nondet_branch_infos[0].branch_layout = label_layout;
+        MR_nondet_branch_infos[0].branch_topfr = base_curfr;
+        MR_nondet_branch_info_next++;
+    }
 }
 
 static const char *
