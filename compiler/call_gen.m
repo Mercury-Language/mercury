@@ -202,7 +202,8 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode)|Args]) -->
 		{ Mode = top_out }
 	->
 		{ code_util__arg_loc_to_register(ArgLoc, Register) },
-		code_info__add_lvalue_to_variable(reg(Register), Var)
+		code_info__add_lvalue_to_variable(reg(Register), Var),
+		code_info__add_variable_to_register(Var, Register)
 	;
 		{ true }
 	),

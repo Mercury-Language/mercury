@@ -239,6 +239,9 @@
 :- pred code_info__add_lvalue_to_variable(lval, var, code_info, code_info).
 :- mode code_info__add_lvalue_to_variable(in, in, in, out) is det.
 
+:- pred code_info__add_variable_to_register(var, reg, code_info, code_info).
+:- mode code_info__add_variable_to_register(in, in, in, out) is det.
+
 :- pred code_info__get_module_info(module_info, code_info, code_info).
 :- mode code_info__get_module_info(out, in, out) is det.
 
@@ -638,7 +641,27 @@ code_info__flush_exp_cache_2([Var|Vars], Code) -->
 code_info__generate_eager_flush(Code) -->
 		% There's probably a more efficient way to do
 		% this if we know we are flushing between every goal
-	code_info__flush_expression_cache(Code).
+	code_info__get_variables(Variables0),
+	{ map__keys(Variables0, VarList) },
+	code_info__generate_eager_flush_2(VarList, Code).
+
+:- pred code_info__generate_eager_flush_2(list(var), code_tree,
+						code_info, code_info).
+:- mode code_info__generate_eager_flush_2(in, out, in, out) is det.
+
+code_info__generate_eager_flush_2([], empty) --> [].
+code_info__generate_eager_flush_2([Var|Vars], Code) -->
+	code_info__generate_eager_flush_2(Vars, Code0),
+	code_info__get_variables(Variables),
+	(
+		{ map__search(Variables, Var, _) }
+	->
+		code_info__flush_variable(Var, Code1)
+	;
+		{ Code1 = empty }
+	),
+	{ Code = tree(Code0, Code1) }.
+
 
 %---------------------------------------------------------------------------%
 
@@ -2047,9 +2070,6 @@ code_info__unset_register_contents(Reg) -->
 	code_info__set_registers(Registers).
 
 %---------------------------------------------------------------------------%
-
-:- pred code_info__add_variable_to_register(var, reg, code_info, code_info).
-:- mode code_info__add_variable_to_register(in, in, in, out) is det.
 
 code_info__add_variable_to_register(Var, Reg) -->
 	code_info__get_registers(Registers0),
