@@ -15,7 +15,6 @@ main -->
 	).
  
 :- inst nonempty(I) ---> [I | list(I)].
-:- inst list(I) ---> [I | list(I)] ; [].
 
 :- type intlist == list(int).
 :- inst bit == bound(0 ; 1).
