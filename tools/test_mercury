@@ -378,6 +378,14 @@ case $HOST in
 		CONFIG_OPTS="" ;;
 esac
 
+
+	# The deep profiler needs to be included in the source distribution.
+case $HOST in $ROTD_HOST)
+	CONFIG_OPTS="$CONFIG_OPTS \
+	    --enable-deep-profiler=/home/mercury/public/installed_w3/cgi-bin"
+	;;
+esac
+
 #-----------------------------------------------------------------------------#
 
 # Sometimes, bootstrapping problems mean that we need to install
