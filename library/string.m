@@ -50,6 +50,11 @@
 :- mode string__uncapitalize_first(input, output).
 %	Convert the first character (if any) of a string to lowercase.
 
+:- pred string__to_int(string, int).
+:- mode string__to_int(input, output).
+%	Convert a string (of digits) to an int. If the string contains
+%	non-digit characters, string__to_int fails.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.

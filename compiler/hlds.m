@@ -58,7 +58,7 @@
 :- type clause_list	==	list(clause).
 
 :- type clause		--->	clause(
-					list(pred_mode_id),
+					list(proc_id),
 							% modes for which
 							% this clause applies
 					varset,		% variable names
@@ -69,14 +69,14 @@
 				).
 
 %%% :- export_type proc_table.
-:- type proc_table	==	map(pred_mode_id, proc_info).
+:- type proc_table	==	map(proc_id, proc_info).
 
 :- type proc_info	--->	procedure(
 					category,
 					varset,		% variable names
 					varset,		% variable types
 					list(var),	% head vars
-					list(mode),	% modes of args
+					list(mode), % modes of args
 					hlds__goal,	% Body
 					term__context,	% The context of
 							% the :- mode decl,
@@ -100,12 +100,12 @@
 %%% :- export_type pred_table.
 :- type pred_table	==	map(pred_id, pred_info).
 
-:- type proc_id		--->	proc(pred_id, pred_mode_id).
+:- type procedure_id		--->	proc(pred_id, proc_id).
 
-	% a pred_mode_id is a mode number within a particular predicate -
+	% a proc_id is a mode number within a particular predicate -
 	% not to be confused with a mode_id, which is the name of a
 	% user-defined mode.
-:- type pred_mode_id	==	int.
+:- type proc_id		==	int.
 
 %-----------------------------------------------------------------------------%
 
@@ -127,7 +127,7 @@
 %%% :- export_type mode_table.
 :- type mode_table	==	map(mode_id, hlds__mode_defn).
 
-:- type mode_info	==	map(var, hlds__mode_defn).
+:- type mode_info	==	map(var, mode).
 
 %-----------------------------------------------------------------------------%
 
@@ -163,11 +163,11 @@
 
 				% Initially only the pred_id and arguments
 				% are filled in.  Mode analysis fills in the
-				% pred_mode_id.  Just before code generation,
+				% proc_id.  Just before code generation,
 				% we do a pass over the hlds which recognizes
 				% the builtins and fills in the is_builtin
 				% field.
-			;	call(pred_id, pred_mode_id, list(term), is_builtin)
+			;	call(pred_id, proc_id, list(term), is_builtin)
 
 				% Deterministic disjunctions are converted
 				% into case statements by the determinism
@@ -462,8 +462,8 @@ moduleinfo_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
 :- pred predicate_arity(pred_id, int).
 :- mode predicate_arity(input, output).
 
-:- pred predinfo_modes(pred_info, list(pred_mode_id)).
-:- mode predinfo_modes(input, output).
+:- pred predinfo_proc_ids(pred_info, list(proc_id)).
+:- mode predinfo_proc_ids(input, output).
 
 :- pred predinfo_arg_types(pred_info, varset, list(type)).
 :- mode predinfo_arg_types(input, output, output).
@@ -490,9 +490,9 @@ predicate_name(pred(_Module,Name,_Arity), Name).
 
 predicate_arity(pred(_Module,_Name,Arity), Arity).
 
-predinfo_modes(PredInfo, Modes) :-
+predinfo_proc_ids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _),
-	map__keys(Procs, Modes).
+	map__keys(Procs, ProcIds).
 
 predinfo_procedures(PredInfo, Procs) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _).
@@ -529,7 +529,7 @@ predinfo_context(PredInfo, Context) :-
 :- pred procinfo_headvars(proc_info, list(var)).
 :- mode procinfo_headvars(input, output).
 
-:- pred procinfo_argmodes(proc_info, list(hlds__mode_defn)).
+:- pred procinfo_argmodes(proc_info, list(mode)).
 :- mode procinfo_argmodes(input, output).
 
 :- pred procinfo_goal(proc_info, hlds__goal).
@@ -666,8 +666,8 @@ unqualify_name(qualified(_Module, Name), Name).
 :- pred mode_is_output(module_info, mode).
 :- mode mode_is_output(input, input).
 
-:- pred pred_mode_id_to_int(pred_mode_id, int).
-:- mode pred_mode_id_to_int(input, output).
+:- pred mode_id_to_int(mode_id, int).
+:- mode mode_id_to_int(input, output).
 
 %-----------------------------------------------------------------------------%
 
@@ -843,7 +843,7 @@ alt_list_apply_substitution([Alt0|Alts0], Subst, [Alt|Alts]) :-
 	% In case we later decided to change the representation
 	% of mode_ids.
 
-pred_mode_id_to_int(X, X).
+mode_id_to_int(X, X).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -14,7 +14,7 @@
 %-----------------------------------------------------------------------------%
 
 :- module array.
-:- import_module int, list.
+:- import_module int, list, require.
 
 :- type array(T)	--->	node(T)
 			;	two(

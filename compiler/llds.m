@@ -6,7 +6,7 @@
 
 :- module llds.		
 
-:- import_module io, list, string, int, require. % and float, eventually.
+:- import_module io, list, term, string, int, require. % and float, eventually.
 
 %-----------------------------------------------------------------------------%
 
@@ -42,14 +42,22 @@
 			;	decr_sp(int)
 			;	incr_hp(int).
 
-:- type lval		--->	reg(reg)
+:- type lval		--->	reg(reg)	% either an int or float reg
+			;	stackvar(int)	% det stack slots
+			;	succip
+			;	hp
+			;	sp
 			;	field(tag, lval, int).
 
 :- type rval		--->	lval(lval)
+			;	var(var)
+			;	create(abstag, list(rval))
 			;	mkword(tag, rval)
 			;	iconst(int)		% integer constants
 			;	sconst(string)		% string constants
-			;	binop(operator,rval,rval).
+			;       field(int, rval, int)
+			;	binop(operator, rval, rval)
+			;	unused.
 
 :- type operator	--->	(+)
 			;	(-)
@@ -57,10 +65,6 @@
 			;	(/).
 
 :- type reg		--->	r(int)		% integer regs
-			;	succip
-			;	hp
-			;	sp
-			;	stackvar(int)	% det stack slots
 			;	f(int).		% floating point regs
 
 :- type code_addr 	--->	nonlocal(string, string, int, int)
@@ -73,6 +77,10 @@
 				% module, predicate, arity, mode #, #
 
 :- type tag		==	int.
+
+:- type abstag          --->    simple(tag)
+			;       unsimple(tag).
+
 
 :- pred output_c_file(c_file, io__state, io__state).
 :- mode output_c_file(i, di, uo).
@@ -287,21 +295,6 @@ output_reg(r(N)) -->
 	},
 	io__write_string("r"),
 	io__write_int(N).
-output_reg(succip) -->
-	io__write_string("LVALUE_CAST(Word,succip)").
-output_reg(sp) -->
-	io__write_string("LVALUE_CAST(Word,sp)").
-output_reg(hp) -->
-	io__write_string("LVALUE_CAST(Word,hp)").
-output_reg(stackvar(N)) -->
-	{ (N < 0) ->
-		error("stack var out of range")
-	;
-		true
-	},
-	io__write_string("stackvar("),
-	io__write_int(N),
-	io__write_string(")").
 output_reg(f(_)) -->
 	{ error("Floating point registers not implemented") }.
 
@@ -346,6 +339,21 @@ output_lval(field(Tag, Lval, FieldNum)) -->
 	output_lval(Lval),
 	io__write_string(", "),
 	io__write_int(FieldNum),
+	io__write_string(")").
+output_lval(succip) -->
+	io__write_string("LVALUE_CAST(Word,succip)").
+output_lval(sp) -->
+	io__write_string("LVALUE_CAST(Word,sp)").
+output_lval(hp) -->
+	io__write_string("LVALUE_CAST(Word,hp)").
+output_lval(stackvar(N)) -->
+	{ (N < 0) ->
+		error("stack var out of range")
+	;
+		true
+	},
+	io__write_string("stackvar("),
+	io__write_int(N),
 	io__write_string(")").
 
 :- pred output_operator(operator, io__state, io__state).
