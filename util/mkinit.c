@@ -162,6 +162,12 @@ static void output_sub_init_functions(void)
 {
 	int filenum;
 
+	fputs("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "
+		"!defined(USE_ASM_LABELS)) \\\n", stdout);
+	fputs("\t|| defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n",
+		stdout);
+	fputs("\t|| defined(DEBUG_LABELS) || !defined(SPEED)\n\n", stdout);
+
 	fputs("static void init_modules_0(void)\n", stdout);
 	fputs("{\n", stdout);
 
@@ -170,7 +176,8 @@ static void output_sub_init_functions(void)
 		process_file(files[filenum]);
 	}
 
-	fputs("}\n\n", stdout);
+	fputs("}\n", stdout);
+	fputs("\n#endif\n\n", stdout);
 }
 
 static void output_default_entry_defn(void)
@@ -193,10 +200,21 @@ static void output_main_init_function(void)
 
 	fputs("void init_modules(void)\n", stdout);
 	fputs("{\n", stdout);
+
+	fputs("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "
+		"!defined(USE_ASM_LABELS)) \\\n", stdout);
+	fputs("\t|| defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n",
+		stdout);
+	fputs("\t|| defined(DEBUG_LABELS) || !defined(SPEED)\n\n", stdout);
 	for (i = 0; i <= num_modules; i++)
 		printf("\tinit_modules_%d();\n", i);
+	fputs("#endif\n\n", stdout);
 
-	printf("\n\tdefault_entry = ENTRY(%s);\n", default_entry);
+	fputs("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "
+		"!defined(USE_ASM_LABELS))\n", stdout);
+	printf("\tdefault_entry = ENTRY(%s);\n", default_entry);
+	fputs("#endif\n", stdout);
+
 	fputs("}\n", stdout);
 }
 
