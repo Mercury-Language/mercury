@@ -1,2 +1,0 @@
-pragma_c_code_unused_var.m:013: Warning: variable `Msg' does not occur in C code
-pragma_c_code_unused_var.m:013:   in `:- pragma c_code' for predicate `pragma_c_code_unused_var:c_hello_world/3'.

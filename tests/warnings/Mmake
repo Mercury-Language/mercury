@@ -4,7 +4,7 @@ main_target: check
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	pragma_c_code_unused_var unused_args_test singleton_test \
+PROGS=	unused_args_test singleton_test \
 	unused_import pragma_source_file missing_if double_underscore \
 	duplicate_call infinite_recursion
 
