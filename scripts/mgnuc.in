@@ -309,9 +309,11 @@ case $thread_safe in
 esac
 
 case $gc_method in
-	accurate)		GC_OPTS="-DMR_NATIVE_GC" ;;
-	boehm|conservative)	GC_OPTS="-DMR_BOEHM_GC -DMR_CONSERVATIVE_GC" ;;
-	none)			GC_OPTS="" ;;
+	accurate)	GC_OPTS="-DMR_NATIVE_GC" ;;
+	boehm)		GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC" ;;
+	conservative)	GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC" ;;
+	mps)		GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_MPS_GC" ;;
+	none)		GC_OPTS="" ;;
 esac
 
 case $profile_time in

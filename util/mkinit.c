@@ -266,7 +266,7 @@ static const char mercury_funcs1[] =
 	"#endif\n"
 	"\n"
 	"void\n"
-	"mercury_init(int argc, char **argv, char *stackbottom)\n"
+	"mercury_init(int argc, char **argv, void *stackbottom)\n"
 	"{\n"
 	"\n"
 	"#ifdef MR_CONSERVATIVE_GC\n"
@@ -385,7 +385,13 @@ static const char mercury_funcs3[] =
 	"int\n"
 	"mercury_main(int argc, char **argv)\n"
 	"{\n"
-	"	char dummy;\n"
+		/*
+		** Note that the address we use for the stack base
+		** needs to be word-aligned (the MPS GC requires this).
+		** That's why we give dummy the type `void *' rather than
+		** e.g. `char'.
+		*/
+	"	void *dummy;\n"
 	"	mercury_init(argc, argv, &dummy);\n"
 	"	mercury_call_main();\n"
 	"	return mercury_terminate();\n"
