@@ -469,7 +469,7 @@
 	% element of List (working left-to-right) and an accumulator
 	% (with the initial value of Start), and returns the final
 	% value in End.
-:- pred list__foldl(pred(X, Y, Y), list(X), Y, Y).
+:- pred list__foldl(pred(L, A, A), list(L), A, A).
 :- mode list__foldl(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list__foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode list__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
@@ -477,13 +477,13 @@
 :- mode list__foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode list__foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
-:- func list__foldl(func(X, Y) = Y, list(X), Y) = Y.
+:- func list__foldl(func(L, A) = A, list(L), A) = A.
 
 	% list__foldr(Pred, List, Start, End) calls Pred with each
 	% element of List (working right-to-left) and an accumulator
 	% (with the initial value of Start), and returns the final
 	% value in End.
-:- pred list__foldr(pred(X, Y, Y), list(X), Y, Y).
+:- pred list__foldr(pred(L, A, A), list(L), A, A).
 :- mode list__foldr(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list__foldr(pred(in, in, out) is det, in, in, out) is det.
 :- mode list__foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
@@ -491,13 +491,13 @@
 :- mode list__foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode list__foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
-:- func list__foldr(func(X, Y) = Y, list(X), Y) = Y.
+:- func list__foldr(func(L, A) = A, list(L), A) = A.
 
 	% list__foldl2(Pred, List, !Acc1, !Acc2)
 	% Does the same job as list__foldl, but with two accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
-:- pred list__foldl2(pred(X, Y, Y, Z, Z), list(X), Y, Y, Z, Z).
+:- pred list__foldl2(pred(L, A, A, Z, Z), list(L), A, A, Z, Z).
 :- mode list__foldl2(pred(in, in, out, in, out) is det,
 	in, in, out, in, out) is det.
 :- mode list__foldl2(pred(in, in, out, in, out) is cc_multi,
@@ -523,8 +523,8 @@
 	% Does the same job as list__foldl, but with three accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
-:- pred list__foldl3(pred(L, A1, A1, A2, A2, A3, A3), list(L),
-	A1, A1, A2, A2, A3, A3).
+:- pred list__foldl3(pred(L, A, A, B, B, C, C), list(L),
+	A, A, B, B, C, C).
 :- mode list__foldl3(pred(in, in, out, in, out, in, out) is det,
 	in, in, out, in, out, in, out) is det.
 :- mode list__foldl3(pred(in, in, out, in, out, in, out) is cc_multi,
@@ -542,8 +542,8 @@
 	% Does the same job as list__foldl, but with four accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
-:- pred list__foldl4(pred(L, A1, A1, A2, A2, A3, A3, A4, A4), list(L),
-	A1, A1, A2, A2, A3, A3, A4, A4).
+:- pred list__foldl4(pred(L, A, A, B, B, C, C, D, D), list(L),
+	A, A, B, B, C, C, D, D).
 :- mode list__foldl4(pred(in, in, out, in, out, in, out, in, out) is det,
 	in, in, out, in, out, in, out, in, out) is det.
 :- mode list__foldl4(pred(in, in, out, in, out, in, out, in, out) is cc_multi,
@@ -561,8 +561,8 @@
 	% Does the same job as list__foldl, but with five accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
-:- pred list__foldl5(pred(L, A1, A1, A2, A2, A3, A3, A4, A4, A5, A5), list(L),
-	A1, A1, A2, A2, A3, A3, A4, A4, A5, A5).
+:- pred list__foldl5(pred(L, A, A, B, B, C, C, D, D, E, E), list(L),
+	A, A, B, B, C, C, D, D, E, E).
 :- mode list__foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
 	is det,
 	in, in, out, in, out, in, out, in, out, in, out) is det.
@@ -582,12 +582,37 @@
 	is cc_multi,
 	in, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
+	% list__foldl6(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6)
+	% Does the same job as list__foldl, but with five accumulators.
+	% (Although no more expressive than list__foldl, this is often
+	% a more convenient format, and a little more efficient).
+:- pred list__foldl6(pred(L, A, A, B, B, C, C, D, D, E, E, F, F), list(L),
+	A, A, B, B, C, C, D, D, E, E, F, F).
+:- mode list__foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+	in, out) is det,
+	in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode list__foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+	in, out) is cc_multi,
+	in, in, out, in, out, in, out, in, out, in, out, in, out) is cc_multi.
+:- mode list__foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+	in, out) is semidet,
+	in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode list__foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+	in, out) is nondet,
+	in, in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
+:- mode list__foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+	di, uo) is det,
+	in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode list__foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+	di, uo) is cc_multi,
+	in, in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
+
 	% list__map_foldl(Pred, InList, OutList, Start, End) calls Pred
 	% with an accumulator (with the initial value of Start) on
 	% each element of InList (working left-to-right) to transform
 	% InList into OutList.  The final value of the accumulator is
 	% returned in End.
-:- pred list__map_foldl(pred(X, Y, Z, Z), list(X), list(Y), Z, Z).
+:- pred list__map_foldl(pred(L, M, A, A), list(L), list(M), A, A).
 :- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
 	is det.
 :- mode list__map_foldl(pred(in, out, in, out) is det, in, out, in, out)
@@ -602,8 +627,8 @@
 	is nondet.
 
 	% Same as list__map_foldl, but with two mapped outputs.
-:- pred list__map2_foldl(pred(X, Y1, Y2, Z, Z), list(X), list(Y1), list(Y2),
-	Z, Z).
+:- pred list__map2_foldl(pred(L, M, N, A, A), list(L), list(M), list(N),
+	A, A).
 :- mode list__map2_foldl(pred(in, out, out, di, uo) is det, in, out, out,
 	di, uo) is det.
 :- mode list__map2_foldl(pred(in, out, out, in, out) is det, in, out, out,
@@ -618,7 +643,7 @@
 	in, out) is nondet.
 
 	% Same as list__map_foldl, but with two accumulators.
-:- pred list__map_foldl2(pred(X, Y, A, A, B, B), list(X), list(Y), A, A, B, B).
+:- pred list__map_foldl2(pred(L, M, A, A, B, B), list(L), list(M), A, A, B, B).
 :- mode list__map_foldl2(pred(in, out, in, out, di, uo) is det,
 	in, out, in, out, di, uo) is det.
 :- mode list__map_foldl2(pred(in, out, in, out, in, out) is det,
@@ -633,7 +658,7 @@
 	in, out, in, out, in, out) is nondet.
 
 	% Same as list__map_foldl, but with three accumulators.
-:- pred list__map_foldl3(pred(X, Y, A, A, B, B, C, C), list(X), list(Y),
+:- pred list__map_foldl3(pred(L, M, A, A, B, B, C, C), list(L), list(M),
 	A, A, B, B, C, C).
 :- mode list__map_foldl3(pred(in, out, in, out, in, out, di, uo) is det,
 	in, out, in, out, in, out, di, uo) is det.
@@ -649,7 +674,7 @@
 	in, out, in, out, in, out, in, out) is nondet.
 
 	% Same as list__map_foldl, but with four accumulators.
-:- pred list__map_foldl4(pred(X, Y, A, A, B, B, C, C, D, D), list(X), list(Y),
+:- pred list__map_foldl4(pred(L, M, A, A, B, B, C, C, D, D), list(L), list(M),
 	A, A, B, B, C, C, D, D).
 :- mode list__map_foldl4(pred(in, out, in, out, in, out, in, out, di, uo)
 	is det,
@@ -671,8 +696,8 @@
 	in, out, in, out, in, out, in, out, in, out) is nondet.
 
 	% Same as list__map_foldl, but with five accumulators.
-:- pred list__map_foldl5(pred(X, Y, A, A, B, B, C, C, D, D, E, E),
-	list(X), list(Y), A, A, B, B, C, C, D, D, E, E).
+:- pred list__map_foldl5(pred(L, M, A, A, B, B, C, C, D, D, E, E),
+	list(L), list(M), A, A, B, B, C, C, D, D, E, E).
 :- mode list__map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
 	di, uo) is det,
 	in, out, in, out, in, out, in, out, in, out, di, uo) is det.
@@ -691,6 +716,32 @@
 :- mode list__map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
 	in, out) is nondet,
 	in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
+
+	% Same as list__map_foldl, but with six accumulators.
+:- pred list__map_foldl6(pred(L, M, A, A, B, B, C, C, D, D, E, E, F, F),
+	list(L), list(M), A, A, B, B, C, C, D, D, E, E, F, F).
+:- mode list__map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+	in, out, di, uo) is det,
+	in, out, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode list__map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+	in, out, in, out) is det,
+	in, out, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode list__map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+	in, out, di, uo) is cc_multi,
+	in, out, in, out, in, out, in, out, in, out, in, out, di, uo)
+	is cc_multi.
+:- mode list__map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+	in, out, in, out) is cc_multi,
+	in, out, in, out, in, out, in, out, in, out, in, out, in, out)
+	is cc_multi.
+:- mode list__map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+	in, out, in, out) is semidet,
+	in, out, in, out, in, out, in, out, in, out, in, out, in, out)
+	is semidet.
+:- mode list__map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+	in, out, in, out) is nondet,
+	in, out, in, out, in, out, in, out, in, out, in, out, in, out)
+	is nondet.
 
 	% list__all_true(Pred, List) takes a closure with one input argument.
 	% If Pred succeeds for every member of List, all_true succeeds.
@@ -1423,6 +1474,11 @@ list__foldl5(P, [H | T], !A, !B, !C, !D, !E) :-
 	call(P, H, !A, !B, !C, !D, !E),
 	list__foldl5(P, T, !A, !B, !C, !D, !E).
 
+list__foldl6(_, [], !A, !B, !C, !D, !E, !F).
+list__foldl6(P, [H | T], !A, !B, !C, !D, !E, !F) :-
+	call(P, H, !A, !B, !C, !D, !E, !F),
+	list__foldl6(P, T, !A, !B, !C, !D, !E, !F).
+
 list__map_foldl(_, [], [], !A).
 list__map_foldl(P, [H0 | T0], [H | T], !A) :-
 	call(P, H0, H, !A),
@@ -1452,6 +1508,11 @@ list__map_foldl5(_, [], [], !A, !B, !C, !D, !E).
 list__map_foldl5(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E) :-
 	call(P, H0, H, !A, !B, !C, !D, !E),
 	list__map_foldl5(P, T0, T, !A, !B, !C, !D, !E).
+
+list__map_foldl6(_, [], [], !A, !B, !C, !D, !E, !F).
+list__map_foldl6(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E, !F) :-
+	call(P, H0, H, !A, !B, !C, !D, !E, !F),
+	list__map_foldl6(P, T0, T, !A, !B, !C, !D, !E, !F).
 
 list__foldr(_, [], !A).
 list__foldr(P, [H | T], !A) :-

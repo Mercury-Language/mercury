@@ -49,6 +49,15 @@
 :- mode char__to_int(in, in) is semidet.	% implied
 :- mode char__to_int(out, in) is semidet.
 
+	% Converts an integer to its corresponding character, if any.
+	% A more expressive name for the reverse mode of char__to_int.
+:- pred char__from_int(int::in, char::out) is semidet.
+
+	% Converts an integer to its corresponding character. Aborts
+	% if there isn't one.
+:- pred char__det_from_int(int::in, char::out) is det.
+:- func char__det_from_int(int) = char.
+
 	% Returns the maximum numerical character code.
 :- func char__max_char_value = int.
 :- pred char__max_char_value(int::out) is det.
@@ -403,6 +412,19 @@ char__lower_upper('y', 'Y').
 char__lower_upper('z', 'Z').
 
 %-----------------------------------------------------------------------------%
+
+char__from_int(Int, Char) :-
+	char__to_int(Char, Int).
+
+char__det_from_int(Int, Char) :-
+	( char__from_int(Int, CharPrime) ->
+		Char = CharPrime
+	;
+		error("char__det_from_int: conversion failed")
+	).
+
+char__det_from_int(Int) = Char :-
+	char__det_from_int(Int, Char).
 
 :- pragma foreign_proc("C",
 	char__to_int(Character::in, Int::out),

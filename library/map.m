@@ -350,6 +350,11 @@
 :- func map__det_union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- mode map__det_union(func(in, in) = out is semidet, in, in) = out is det.
 
+	% Consider the original map a set of key-value pairs. This predicate
+	% returns a map that maps each value to the set of keys it is paired
+	% with in the original map.
+:- func map__reverse_map(map(K, V)) = map(V, set(K)).
+
 	% Field selection for maps.
 
 	% Map ^ elem(Key) = map__search(Map, Key).
@@ -429,7 +434,7 @@
 
 
 :- implementation.
-:- import_module std_util, require, string.
+:- import_module svmap, svset, std_util, require, string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -965,6 +970,20 @@ map__union(F, M1, M2) = M3 :-
 map__det_union(F, M1, M2) = M3 :-
 	P = ( pred(X::in, Y::in, Z::out) is semidet :- Z = F(X, Y) ),
 	map__det_union(P, M1, M2, M3).
+
+map__reverse_map(Map) = RevMap :-
+	map__foldl(map__reverse_map_2, Map, map__init, RevMap).
+
+:- pred map__reverse_map_2(K::in, V::in,
+	map(V, set(K))::in, map(V, set(K))::out) is det.
+
+map__reverse_map_2(Key, Value, !RevMap) :-
+	( map__search(!.RevMap, Value, Keys0) ->
+		svset__insert(Key, Keys0, Keys),
+		svmap__det_update(Value, Keys, !RevMap)
+	;
+		svmap__det_insert(Value, set__make_singleton_set(Key), !RevMap)
+	).
 
 map__elem(Key, Map) = map__search(Map, Key).
 

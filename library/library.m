@@ -97,7 +97,10 @@
 :- import_module std_util.
 :- import_module store.
 :- import_module string.
+:- import_module svarray.
+:- import_module svbimap.
 :- import_module svmap.
+:- import_module svqueue.
 :- import_module svset.
 :- import_module term.
 :- import_module term_io.
@@ -223,7 +226,10 @@ mercury_std_library_module("stack").
 mercury_std_library_module("std_util").
 mercury_std_library_module("store").
 mercury_std_library_module("string").
+mercury_std_library_module("svarray").
+mercury_std_library_module("svbimap").
 mercury_std_library_module("svmap").
+mercury_std_library_module("svqueue").
 mercury_std_library_module("svset").
 mercury_std_library_module("table_builtin").
 mercury_std_library_module("term").
