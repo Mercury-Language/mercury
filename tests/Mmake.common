@@ -3,6 +3,7 @@
 GRADEFLAGS = --grade $(GRADE) $(GRADEFLAGS-$*) $(EXTRA_GRADEFLAGS)
 MCFLAGS = $(MCFLAGS-$*) $(EXTRA_MCFLAGS)
 MGNUCFLAGS=-g $(EXTRA_MGNUCFLAGS) $(EXTRA_CFLAGS)
+MLFLAGS = $(MLFLAGS-$@) $(EXTRA_MLFLAGS)
 
 # override this with `mmake HAVE_NUPROLOG=yes'
 # if you want to rebuild the `.exp' files.
