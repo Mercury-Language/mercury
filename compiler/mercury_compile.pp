@@ -600,7 +600,7 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "_init.c : $("),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".cs)\n"),
-	io__write_string(DepStream, "\t$(MKINIT) $(MKINITFLAGS) $("),
+	io__write_string(DepStream, "\t$(C2INIT) $(C2INITFLAGS) $("),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".cs) > "),
 	io__write_string(DepStream, ModuleName),
@@ -2053,7 +2053,7 @@ mercury_compile__link_module_list(Modules) -->
 	    { string__append(Module, "_init.c", C_Init_File) },
 	    { join_string_list(Modules, ".c ", ["> ", C_Init_File],
 				MkInitCmd0) },
-	    { string__append_list(["mkinit " | MkInitCmd0], MkInitCmd) },
+	    { string__append_list(["c2init " | MkInitCmd0], MkInitCmd) },
 	    mercury_compile__invoke_system_command(MkInitCmd, MkInitOK),
 	    maybe_report_stats(Statistics),
 	    ( { MkInitOK = no } ->
