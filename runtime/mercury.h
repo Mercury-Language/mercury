@@ -132,7 +132,7 @@ typedef const MR_Closure *MR_ClosurePtr;
   typedef MR_ClosurePtr MR_Func;
   typedef struct mercury__array__array_1_s * MR_Array;
   typedef struct mercury__std_util__univ_0_s * MR_Univ;
-  typedef struct mercury__std_util__type_desc_0_s * MR_Type_Desc;
+  typedef struct mercury__type_desc__type_desc_0_s * MR_Type_Desc;
   typedef struct mercury__private_builtin__type_info_1_s *
   	MR_Mercury_Type_Info;
   typedef struct mercury__private_builtin__type_ctor_info_1_s *
