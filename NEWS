@@ -182,6 +182,7 @@ Changes to the Mercury compiler:
 
 * We have fixed a few minor bugs.
 
+
 NEWS for Mercury release 0.7.3
 ------------------------------
 
@@ -204,4 +205,42 @@ But as well as bug fixes, there are a few minor improvements:
 
 * We've fixed one of the limitations: unique mode declarations
   no longer have to precede non-unique mode declarations.
+
+
+NEWS since release 0.7.3:
+-------------------------
+
+* Array bounds checking can now be disabled.
+
+  To disable array bounds checking, you must compile with
+  `--intermodule-optimization' enabled and you must also
+  define the C macro ML_OMIT_ARRAY_BOUNDS_CHECKS (e.g. by using
+  `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmake file). 
+  [XXX we also need to fix problems with intermodule inlining heuristics.]
+
+* The support for debugging using Prolog now includes support for
+  detailed control over how terms are printed out during debugging.
+
+  See the "Using Prolog" section of the Mercury User's Guide for details.
+
+* The profiler now supports profiling just user time, or profiling
+  real (elapsed) time, rather than profiling user + system time.
+
+  See the "Profiling" chapter of the Mercury User's Guide for details.
+
+* Profiling should now work on MS Windows.
+
+  To enable profiling on MS Windows, you need to have Sergey
+  Okhapkin's latest version of gnu-win32 that includes his patch to add
+  support for setitimer().  Sergey's "CoolView" version of cygwin.dll
+  is available via <http://miracle.geol.msu.ru/sos/>; his patch will
+  probably also be included in the next (b19) release of gnu-win32.
+  Note that on Windows, you must use the Mercury runtime system's `-Tr'
+  (profile real time) option; profiling just user time or user + system
+  time is still not supported on Windows, because to the best of our
+  knowledge Windows doesn't provide the necessary system calls.
+
+* Ported to Linux/PPC.
+
+* We've updated to version 4.12 of the Boehm garbage collector.
 
