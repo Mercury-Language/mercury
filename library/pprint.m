@@ -89,32 +89,35 @@
 % EXAMPLES
 % --------
 %
+% The doc/1 type class has types string, char, int, float and doc as
+% instances.  Hence these types can all be converted to docs by
+% applying doc/1.  This happens automatically to the arguments of ++/2.
+% Users may find it convenient to add other types as instances of the
+% doc/1 type class.
+%
 % Below are some docs followed by the ways they might be
 % displayed by the pretty printer given various line widths.
 %
-% 1. text("Hello ") `<>` line `<>` text("world")
+% 1. "Hello " ++ line ++ "world"
 % 
 %   Hello
 %   world
 %
-% 2. group(text("Hello ") `<>` line `<>` text("world"))
+% 2. group("Hello " ++ line ++ "world")
 %
 %   Hello world
 %
 %   Hello
 %   world
 %
-% 3. group(text("Hello ") `<>` nest(3, line `<>` text("world")))
+% 3. group("Hello " ++ nest(3, line ++ "world"))
 %
 %   Hello world
 %
 %   Hello
 %      world
 %
-% 4. group(
-%   text("Goodbye ") `<>`
-%   nest(3, line `<>` text("cruel ") `<>` line `<>` text("world")
-% )
+% 4. group("Goodbye " ++ nest(3, line ++ "cruel " ++ line ++ "world")
 %
 %   Goodbye cruel world
 %
@@ -122,12 +125,7 @@
 %      cruel
 %      world
 %
-% 5. group(
-%   text("Goodbye ") `<>`
-%   nest(3, line `<>`
-%     group(text("cruel ") `<>` line `<>` text("world"))
-%   )
-% )
+% 5. group("Goodbye " ++ nest(3, line ++ group("cruel " ++ line ++ "world")))
 %
 %   Goodbye cruel world
 %
@@ -138,15 +136,9 @@
 %      cruel
 %      world
 %
-% 6. label("Look! ",
-%   line `<>`
-%   group(
-%     text("Goodbye ") `<>`
-%     nest(3, line `<>`
-%       group(text("cruel ") `<>` line `<>` text("world"))
-%     )
-%   )
-% )
+% 6. label("Look! ", line ++
+%                    group("Goodbye " ++
+%                          nest(3, line ++ group("cruel " ++ line ++ "world"))))
 %
 %   Look! Goodbye cruel world
 %
@@ -163,12 +155,46 @@
 
 :- interface.
 
-:- import_module std_util, int, string, list, io.
+:- import_module std_util, int, string, char, float, list, io.
 
     % Clients must translate data structures into docs for
     % the pretty printer to display.
     %
 :- type doc.
+
+    % This typeclass can be used to simplify the construction of docs.
+    %
+:- typeclass doc(T) where [
+
+        % Convert a T do a doc, placing a limit on how much of the
+        % term will be fully converted as follows:
+        %
+        % doc(_, f         ) = f
+        % doc(N, f(A, B, C)) = f/3 if N =< 0
+        % doc(N, f(A, B, C)) = some representation of the term whereby
+        %   A is converted as doc(N - 1, A),
+        %   B is converted as doc(N - 2, B), and
+        %   C is converted as doc(N - 3, C)
+        %   - if there are more than N arguments, the N+1th and subsequent
+        %     arguments should be replaced with a single ellipsis.
+        %
+    func doc(int, T) = doc
+].
+
+:- instance doc(doc).
+:- instance doc(string).
+:- instance doc(int).
+:- instance doc(float).
+:- instance doc(char).
+
+    % Fully convert an instance of doc/1.
+    %
+:- func doc(T) = doc <= (doc(T)).
+
+    % An alternative to the <>/2 concatenation operator that works
+    % on members of the doc/1 typeclass.
+    %
+:- func T1 ++ T2 = doc <= (doc(T1), doc(T2)).
 
     % The empty document corresponding to the null string.
     %
@@ -176,9 +202,16 @@
 
     % The document consisting of a single string.
     %
+    % NOTE: since string is now an instance of the doc/1
+    % type class, it is simpler to just apply the doc/1
+    % method.
+    %
 :- func text(string)        = doc.
 
     % The composition of two docs with no intervening space.
+    %
+    % NOTE: with the addition of the doc/1 type class, it is
+    % simpler to construct compound docs using ++/2.
     %
 :- func doc `<>` doc        = doc.
 
@@ -193,13 +226,13 @@
     % by the pretty printer are followed by the given number
     % of spaces (nested `nest's add up).
     %
-:- func nest(int, doc)      = doc.
+:- func nest(int, T)        = doc <= (doc(T)).
 
     % Identical to a nest doc except that indentation is
     % extended with a string label rather than some number
     % of spaces.
     %
-:- func label(string, doc)  = doc.
+:- func label(string, T)    = doc <= (doc(T)).
 
     % A group doc gives the pretty printer a choice: if
     % the doc can be printed without line wrapping then
@@ -208,28 +241,32 @@
     % the pretty printer treats the group body literally,
     % although nested group docs remain as choice points.
     %
-:- func group(doc)          = doc.
+:- func group(T)            = doc <= (doc(T)).
 
     % This function can be used to convert strings, chars,
     % ints and floats to their text doc equivalents.
     %
+    % NOTE: since these types are now instances of the doc/1
+    % type class, it is simpler to just apply the doc/1
+    % method to these types.
+    %
 :- func poly(string__poly_type) = doc.
 
-    % Shorthand for doc `<>` line `<>` doc.
+    % Shorthand for doc ++ line ++ doc.
     %
 :- func doc `</>` doc       = doc.
 
     % Various bracketing functions.
     %
-    %   bracketed(L, R, Doc) = text(L) `<>` Doc `<>` text(R)
+    %   bracketed(L, R, Doc) = L ++ Doc ++ R
     %       parentheses(Doc) = bracketed("(", ")", Doc)
     %          brackets(Doc) = bracketed("[", "]", Doc)
     %            braces(Doc) = bracketed("{", "}", Doc)
     %
-:- func bracketed(string, string, doc)  = doc.
-:- func parentheses(doc)                = doc.
-:- func brackets(doc)                   = doc.
-:- func braces(doc)                     = doc.
+:- func bracketed(T1, T2, T3)  = doc <= (doc(T1), doc(T2), doc(T3)).
+:- func parentheses(T)         = doc <= (doc(T)).
+:- func brackets(T)            = doc <= (doc(T)).
+:- func braces(T)              = doc <= (doc(T)).
 
     % packed(Sep, [X1, X2, .., Xn]) = G1 `<>` G2 `<>` .. `<>` Gn where
     % Gi = group(line `<>` Xi `<>` Sep), except for Gn where
@@ -240,13 +277,13 @@
     % The resulting doc tries to pack as many items on a line as
     % possible.
     %
-:- func packed(doc, list(doc)) = doc.
+:- func packed(T1, list(T2)) = doc <= (doc(T1), doc(T2)).
 
     % A variant of the above whereby only the first N elements of
     % the list are formatted and the rest are replaced by a single
     % ellipsis.
     %
-:- func packed(int, doc, list(doc)) = doc.
+:- func packed(int, T1, list(T2)) = doc <= (doc(T1), doc(T2)).
 
     % packed_cs(Xs) = packed(comma_space, Xs).
     %
@@ -255,13 +292,13 @@
     %
     %   brackets(nest(2, packed_cs(Xs)))
     % 
-:- func packed_cs(list(doc)) = doc.
+:- func packed_cs(list(T)) = doc <= (doc(T)).
 
     % A variant of the above whereby only the first N elements of
     % the list are formatted and the rest are replaced by a single
     % ellipsis.
     %
-:- func packed_cs(int, list(doc)) = doc.
+:- func packed_cs(int, list(T)) = doc <= (doc(T)).
 
     % This is like a depth-limited version of packed_cs/1 that first
     % calls to_doc/2 on each member of the argument list.
@@ -276,7 +313,7 @@
     % separated(PP, Sep, [X1,...,Xn]) =
     %   PP(X1) `<>` Sep `<>` ... Sep `<>` PP(Xn)
     %
-:- func separated(func(T) = doc, doc, list(T)) = doc.
+:- func separated(func(T1) = doc, T2, list(T1)) = doc <= (doc(T2)).
 
     % Handy punctuation docs and versions with following
     % spaces and/or line breaks.
@@ -305,10 +342,9 @@
     % Convert arbitrary terms to docs.  This requires
     % std_util__functor/3 to work on all components of the
     % object being converted.  The second version places a
-    % maximum depth on terms which are otherwise truncated;
-    % when the depth limit is reached, all arguments of a
-    % functor are replaced by `/<arity>' where <arity> is
-    % the number of arguments.
+    % maximum depth on terms which are otherwise truncated
+    % in the manner described in the documentation for the
+    % doc/2 method of the doc/1 type class.
     %
     % This may throw an exception or cause a runtime abort
     % if the term in question has user-defined equality.
@@ -324,10 +360,10 @@
     % Write docs out in pretty printed format.  The int
     % argument specifies a page width in characters.
     %
-:- pred write(int, doc, io__state, io__state).
+:- pred write(int, T, io__state, io__state) <= doc(T).
 :- mode write(in, in, di, uo) is det.
 
-:- pred write(io__output_stream, int, doc, io__state, io__state).
+:- pred write(io__output_stream, int, T, io__state, io__state) <= doc(T).
 :- mode write(in, in, in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
@@ -335,7 +371,7 @@
 
 :- implementation.
 
-:- import_module char, array, map, exception.
+:- import_module array, map, exception.
 
 :- type doc
     --->    'NIL'
@@ -360,13 +396,29 @@
 
 %------------------------------------------------------------------------------%
 
+doc(X) = doc(int__max_int, X).
+
+%------------------------------------------------------------------------------%
+
+:- instance doc(doc)       where [ doc(_, Doc)    = Doc            ].
+:- instance doc(string)    where [ doc(_, String) = text(String)   ].
+:- instance doc(int)       where [ doc(_, Int)    = poly(i(Int))   ].
+:- instance doc(float)     where [ doc(_, Float)  = poly(f(Float)) ].
+:- instance doc(char)      where [ doc(_, Char)   = poly(c(Char))  ].
+
+%------------------------------------------------------------------------------%
+
+Doc1 ++ Doc2 = doc(Doc1) `<>` doc(Doc2).
+
+%------------------------------------------------------------------------------%
+
 nil                     = 'NIL'.
 X `<>` Y                = 'SEQ'(X, Y).
-nest(I, X)              = 'NEST'(I, X).
-label(L, X)             = 'LABEL'(L, X).
+nest(I, X)              = 'NEST'(I, doc(X)).
+label(L, X)             = 'LABEL'(L, doc(X)).
 text(S)                 = 'TEXT'(S).
 line                    = 'LINE'.
-group(X)                = 'GROUP'(X).
+group(X)                = 'GROUP'(doc(X)).
 
 poly(s(S))              = text(string__format("%s", [s(S)])).
 poly(c(C))              = text(string__format("%c", [c(C)])).
@@ -379,9 +431,9 @@ to_string(W, X) = S :-
     layout_best(pred(H::in, T::in, [H | T]::out) is det, W, X, [], Ss),
     S = string__append_list(list__reverse(Ss)).
 
-write(W, X)             --> layout_best(io__write_string, W, X).
+write(W, X)             --> layout_best(io__write_string, W, doc(X)).
 
-write(Stream, W, X)     --> layout_best(io__write_string(Stream), W, X).
+write(Stream, W, X)     --> layout_best(io__write_string(Stream), W, doc(X)).
 
 %------------------------------------------------------------------------------%
 
@@ -512,11 +564,11 @@ extend(I, J) = I ++ string__duplicate_char(' ', J).
 
 %------------------------------------------------------------------------------%
 
-X `</>` Y               = X `<>` line `<>` Y.
+X `</>` Y               = X ++ line ++ Y.
 
 %------------------------------------------------------------------------------%
 
-bracketed(L, R, D)      = text(L) `<>` D `<>` text(R).
+bracketed(L, R, D)      = L ++ D ++ R.
 parentheses(D)          = bracketed("(", ")", D).
 brackets(D)             = bracketed("[", "]", D).
 braces(D)               = bracketed("{", "}", D).
@@ -527,7 +579,7 @@ separated(_,  _,   []) = nil.
 
 separated(PP, Sep, [X | Xs]) =
     ( if Xs = [] then PP(X)
-                 else PP(X) `<>` (Sep `<>` separated(PP, Sep, Xs))
+                 else PP(X) ++ (Sep ++ separated(PP, Sep, Xs))
     ).
 
 %------------------------------------------------------------------------------%
@@ -536,12 +588,12 @@ packed(_N, _Sep, []           ) =
     nil.
 
 packed(N,  _Sep, [X]          ) =
-    group(line `<>` (if 0 < N then X else ellipsis)).
+    group(line ++ (if 0 < N then doc(X) else ellipsis)).
 
 packed(N,  Sep,  [X1, X2 | Xs]) =
     ( if   0 < N
-      then group(line `<>` X1 `<>` Sep) `<>` packed(N - 1, Sep, [X2 | Xs])
-      else group(line `<>` ellipsis)
+      then group(line ++ X1 ++ Sep) ++ packed(N - 1, Sep, [X2 | Xs])
+      else group(line ++ ellipsis)
     ).
 
 %------------------------------------------------------------------------------%
@@ -550,11 +602,11 @@ packed(Sep, Xs) = packed(int__max_int, Sep, Xs).
 
 %------------------------------------------------------------------------------%
 
-packed_cs(N, Xs) = packed(N, comma_space, Xs).
+packed_cs(N, Xs) = packed(N, ", ", Xs).
 
 %------------------------------------------------------------------------------%
 
-packed_cs(Xs) = packed(comma_space, Xs).
+packed_cs(Xs) = packed(", ", Xs).
 
 %------------------------------------------------------------------------------%
 
@@ -575,13 +627,13 @@ space                   = text(" ").
 comma_space             = text(", ").
 semic_space             = text("; ").
 colon_space             = text(": ").
-comma_line              = comma `<>` line.
-semic_line              = semic `<>` line.
-colon_line              = colon `<>` line.
-space_line              = space `<>` line.
-comma_space_line        = text(", ") `<>` line.
-semic_space_line        = text("; ") `<>` line.
-colon_space_line        = text(": ") `<>` line.
+comma_line              = "," ++ line.
+semic_line              = ";" ++ line.
+colon_line              = ":" ++ line.
+space_line              = " " ++ line.
+comma_space_line        = ", " ++ line.
+semic_space_line        = "; " ++ line.
+colon_space_line        = ": " ++ line.
 ellipsis                = text("...").
 
 %------------------------------------------------------------------------------%
@@ -719,7 +771,7 @@ out_of_depth_term_to_doc(X) = Doc :-
     functor(X, Name, Arity),
 
     Doc = ( if Arity = 0 then text(Name)
-                         else text(Name) `<>` text("/") `<>` poly(i(Arity))
+                         else Name ++ "/" ++ Arity
     ).
 
 %------------------------------------------------------------------------------%
@@ -734,7 +786,7 @@ generic_term_to_doc(Depth, X) = Doc :-
         ( if    Arity = 0
           then  text(Name)
           else  group(
-                    text(Name) `<>` parentheses(
+                    Name ++ parentheses(
                         nest(2, packed_cs_univ_args(Depth - 1, UnivArgs))
                     )
                 )
@@ -748,10 +800,7 @@ generic_term_to_doc(Depth, X) = Doc :-
 :- func array_to_doc(int, array(T)) = doc.
 
 array_to_doc(Depth, A) =
-    group(
-        text("array") `<>`
-            parentheses(list_to_doc(Depth - 1, array__to_list(A)))
-    ).
+    group("array" ++ parentheses(list_to_doc(Depth - 1, array__to_list(A)))).
 
 %------------------------------------------------------------------------------%
 
@@ -766,10 +815,7 @@ list_to_doc(Depth, Xs) =
 
 map_to_doc(Depth, X) = Doc :-
     KVs = list__map(mk_map_pair, map__to_assoc_list(X)),
-    Doc =
-        group(
-            text("map") `<>` parentheses(list_to_doc(Depth - 1, KVs))
-        ).
+    Doc = group("map" ++ parentheses(list_to_doc(Depth - 1, KVs))).
 
 
 :- func mk_map_pair(pair(K, V)) = map_pair(K, V).
@@ -781,8 +827,8 @@ mk_map_pair(K - V) = map_pair(K, V).
 :- func map_pair_to_doc(int, map_pair(T1, T2)) = doc.
 
 map_pair_to_doc(Depth, map_pair(Key, Value)) =
-    to_doc(Depth - 1, Key) `<>` text(" -> ") `<>`
-        group(nest(2, line `<>` to_doc(Depth - 1, Value))).
+    to_doc(Depth - 1, Key) ++ text(" -> ") ++
+        group(nest(2, line ++ to_doc(Depth - 1, Value))).
 
 %------------------------------------------------------------------------------%
 
@@ -798,12 +844,7 @@ tuple_to_doc(Depth, Tuple) = Doc :-
 %------------------------------------------------------------------------------%
 
 word_wrapped(String) =
-    packed(
-        space,
-        list__map(
-            func(Word) = text(Word),
-            string__words(char__is_whitespace, String)
-        )
-    ).
+    packed(space, list__map(func(Word) = text(Word),
+                            string__words(char__is_whitespace, String))).
 
 %------------------------------------------------------------------------------%

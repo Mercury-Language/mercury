@@ -108,6 +108,8 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We have added the type class `pprint__doc/1' and a new concatenation
+  operator, `++/2', which should make it easier to construct doc values.
 * Performance bugs in `pprint__to_doc' have now been fixed.  Even
   very large terms can now be converted to docs and pretty printed without
   causing a machine to thrash or run out of memory.
