@@ -523,8 +523,11 @@ simplex(A0, A, Result, IO0, IO) :-
 				index(A0, Row, Q, CellVal),
 				rhs_col(A0, RHSC),
 				index(A0, Row, RHSC, MVal),
-				MaxVal1 is MVal/CellVal,
-				( CellVal > 0.0, MaxVal1 =< MaxVal0 ->
+				(
+					CellVal > 0.0,
+					MaxVal1 is MVal/CellVal,
+					MaxVal1 =< MaxVal0
+				->
 					Max = yes(Row - MaxVal1)
 				;
 					Max = Max0
