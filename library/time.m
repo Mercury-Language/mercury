@@ -39,9 +39,8 @@
 
 % benchmark_nondet(Pred, In, Count, Repeats, Time) is for benchmarking
 % the nondet predicate Pred. benchmark_nondet is similar to benchmark_det,
-% but since solutions/2 is not yet available in all grades, it can't
-% return the list of solutions, so it returns the count of solutions
-% as the next best thing. The number of milliseconds required to generate
+% but it returns only a count of the solutions, rather than solutions
+% themselves.  The number of milliseconds required to generate
 % all solutions of Pred with input In Repeats times is returned as Time.
 
 :- pred benchmark_nondet(pred(T1, T2), T1, int, int, int).
