@@ -330,7 +330,9 @@ void *newmem(size_t n)
 
 void oldmem(void *p)
 {
-#ifndef CONSERVATIVE_GC
+#ifdef CONSERVATIVE_GC
+	GC_FREE(p);
+#else
 	free(p);
 #endif
 }
@@ -351,7 +353,7 @@ void* resizemem(void *p, size_t size)
 }
 
 void fatal_error(const char *message) {
-	fprintf(stderr, "%s\n", message);
+	fprintf(stderr, "Mercury runtime: %s\n", message);
 	exit(1);
 }
 

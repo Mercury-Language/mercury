@@ -39,6 +39,7 @@
 #endif 
 
 #include <stdio.h>
+#include <string.h>
 
 #ifdef	HAVE_MPROTECT
 #include <sys/mman.h>
@@ -131,7 +132,7 @@ static	unsigned	page_size;
 
 void init_memory(void)
 {
-	char	*arena;
+	char		*arena;
 	unsigned	total_size;
 	unsigned	fake_reg_offset, heap_offset,
 			detstack_offset, nondstack_offset;
@@ -193,9 +194,9 @@ void init_memory(void)
 		fprintf(stderr, "cannot allocate arena: memalign() failed\n");
 		exit(1);
 	}
-	arena = (char *) round_up((int) arena, unit);
+	arena = (char *) round_up((Unsigned) arena, unit);
 	
-	fake_reg_offset = (unsigned) fake_reg % pcache_size;
+	fake_reg_offset = (Unsigned) fake_reg % pcache_size;
 	heap_offset = (fake_reg_offset + pcache_size / 4) % pcache_size;
 	detstack_offset = (heap_offset + pcache_size / 4) % pcache_size;
 	nondstack_offset = (detstack_offset + pcache_size / 4) % pcache_size;
@@ -208,7 +209,7 @@ void init_memory(void)
 	heap    = (Word *) arena;
 	heapmin = (Word *) ((char *) heap + heap_offset);
 	heapend = (Word *) ((char *) heap + heap_size + unit);
-	assert(((unsigned) heapend) % unit == 0);
+	assert(((Unsigned) heapend) % unit == 0);
 #endif
 
 #ifdef CONSERVATIVE_GC
@@ -218,12 +219,12 @@ void init_memory(void)
 #endif
 	detstackmin = (Word *) ((char *) detstack + detstack_offset);
 	detstackend = (Word *) ((char *) detstack + detstack_size + unit);
-	assert(((unsigned) detstackend) % unit == 0);
+	assert(((Unsigned) detstackend) % unit == 0);
 
 	nondstack    = detstackend;
 	nondstackmin = (Word *) ((char *) nondstack + nondstack_offset);
 	nondstackend = (Word *) ((char *) nondstack + nondstack_size + unit);
-	assert(((unsigned) nondstackend) % unit == 0);
+	assert(((Unsigned) nondstackend) % unit == 0);
 
 #ifndef	SPEED
 	nondstackmin[PREDNM] = (Word) "bottom";
@@ -231,7 +232,8 @@ void init_memory(void)
 
 	if (arena + total_size <= (char *) nondstackend)
 	{
-		fprintf(stderr, "Mercury runtime: allocated too much memory\n");
+		fprintf(stderr, "Mercury runtime: internal error: "
+				"allocated too much memory\n");
 		exit(1);
 	}
 
@@ -249,59 +251,59 @@ void init_memory(void)
 			unit, unit);
 
 		fprintf(stderr, "\n");
-		fprintf(stderr, "fake_reg       = %p (offset %d)\n",
-			(void *) fake_reg, (int) fake_reg & (unit-1));
+		fprintf(stderr, "fake_reg       = %p (offset %ld)\n",
+			(void *) fake_reg, (long) fake_reg & (unit-1));
 		fprintf(stderr, "\n");
 
-		fprintf(stderr, "heap           = %p (offset %d)\n",
-			(void *) heap, (int) heap & (unit-1));
-		fprintf(stderr, "heapmin        = %p (offset %d)\n",
-			(void *) heapmin, (int) heapmin & (unit-1));
-		fprintf(stderr, "heapend        = %p (offset %d)\n",
-			(void *) heapend, (int) heapend & (unit-1));
-		fprintf(stderr, "heap_zone      = %p (offset %d)\n",
-			(void *) heap_zone, (int) heap_zone & (unit-1));
+		fprintf(stderr, "heap           = %p (offset %ld)\n",
+			(void *) heap, (long) heap & (unit-1));
+		fprintf(stderr, "heapmin        = %p (offset %ld)\n",
+			(void *) heapmin, (long) heapmin & (unit-1));
+		fprintf(stderr, "heapend        = %p (offset %ld)\n",
+			(void *) heapend, (long) heapend & (unit-1));
+		fprintf(stderr, "heap_zone      = %p (offset %ld)\n",
+			(void *) heap_zone, (long) heap_zone & (unit-1));
 
 		fprintf(stderr, "\n");
-		fprintf(stderr, "detstack       = %p (offset %d)\n",
-			(void *) detstack, (int) detstack & (unit-1));
-		fprintf(stderr, "detstackmin    = %p (offset %d)\n",
-			(void *) detstackmin, (int) detstackmin & (unit-1));
-		fprintf(stderr, "detstackend    = %p (offset %d)\n",
-			(void *) detstackend, (int) detstackend & (unit-1));
-		fprintf(stderr, "detstack_zone  = %p (offset %d)\n",
-			(void *) detstack_zone, (int) detstack_zone & (unit-1));
+		fprintf(stderr, "detstack       = %p (offset %ld)\n",
+			(void *) detstack, (long) detstack & (unit-1));
+		fprintf(stderr, "detstackmin    = %p (offset %ld)\n",
+			(void *) detstackmin, (long) detstackmin & (unit-1));
+		fprintf(stderr, "detstackend    = %p (offset %ld)\n",
+			(void *) detstackend, (long) detstackend & (unit-1));
+		fprintf(stderr, "detstack_zone  = %p (offset %ld)\n",
+			(void *) detstack_zone, (long) detstack_zone & (unit-1));
 
 		fprintf(stderr, "\n");
-		fprintf(stderr, "nondstack      = %p (offset %d)\n",
-			(void *) nondstack, (int) nondstack & (unit-1));
-		fprintf(stderr, "nondstackmin   = %p (offset %d)\n",
-			(void *) nondstackmin, (int) nondstackmin & (unit-1));
-		fprintf(stderr, "nondstackend   = %p (offset %d)\n",
-			(void *) nondstackend, (int) nondstackend & (unit-1));
-		fprintf(stderr, "nondstack_zone = %p (offset %d)\n",
+		fprintf(stderr, "nondstack      = %p (offset %ld)\n",
+			(void *) nondstack, (long) nondstack & (unit-1));
+		fprintf(stderr, "nondstackmin   = %p (offset %ld)\n",
+			(void *) nondstackmin, (long) nondstackmin & (unit-1));
+		fprintf(stderr, "nondstackend   = %p (offset %ld)\n",
+			(void *) nondstackend, (long) nondstackend & (unit-1));
+		fprintf(stderr, "nondstack_zone = %p (offset %ld)\n",
 			(void *) nondstack_zone,
-			(int) nondstack_zone & (unit-1));
+			(long) nondstack_zone & (unit-1));
 
 		fprintf(stderr, "\n");
-		fprintf(stderr, "arena start    = %p (offset %d)\n",
-			(void *) arena, (int) arena & (unit-1));
-		fprintf(stderr, "arena end      = %p (offset %d)\n",
+		fprintf(stderr, "arena start    = %p (offset %ld)\n",
+			(void *) arena, (long) arena & (unit-1));
+		fprintf(stderr, "arena end      = %p (offset %ld)\n",
 			(void *) (arena+total_size),
-			(int) (arena+total_size) & (unit-1));
+			(long) (arena+total_size) & (unit-1));
 
 		fprintf(stderr, "\n");
-		fprintf(stderr, "heap size      = %d (0x%x)\n",
-			(char *) heapend - (char *) heapmin,
-			(char *) heapend - (char *) heapmin);
-		fprintf(stderr, "detstack size  = %d (0x%x)\n",
-			(char *) detstackend - (char *) detstackmin,
-			(char *) detstackend - (char *) detstackmin);
-		fprintf(stderr, "nondstack size = %d (0x%x)\n",
-			(char *) nondstackend - (char *) nondstackmin,
-			(char *) nondstackend - (char *) nondstackmin);
-		fprintf(stderr, "arena size     = %d (0x%x)\n",
-			total_size, total_size);
+		fprintf(stderr, "heap size      = %ld (0x%lx)\n",
+			(long) ((char *) heapend - (char *) heapmin),
+			(long) ((char *) heapend - (char *) heapmin));
+		fprintf(stderr, "detstack size  = %ld (0x%lx)\n",
+			(long) ((char *) detstackend - (char *) detstackmin),
+			(long) ((char *) detstackend - (char *) detstackmin));
+		fprintf(stderr, "nondstack size = %ld (0x%lx)\n",
+			(long) ((char *) nondstackend - (char *) nondstackmin),
+			(long) ((char *) nondstackend - (char *) nondstackmin));
+		fprintf(stderr, "arena size     = %ld (0x%lx)\n",
+			(long) total_size, (long) total_size);
 	}
 }
 
@@ -393,7 +395,8 @@ static bool try_munprotect(void *addr)
 		if (memdebug)
 			fprintf(stderr, "address is in heap red zone\n");
 
-		new_zone = (char *) round_up((int) fault_addr+4, unit);
+		new_zone = (char *) round_up((Unsigned) fault_addr +
+							sizeof(Word), unit);
 		if (new_zone <= heap_zone + heap_zone_left)
 		{
 			if (new_zone >= (char *) heapend)
@@ -437,7 +440,8 @@ static bool try_munprotect(void *addr)
 		if (memdebug)
 			fprintf(stderr, "address is in detstack red zone\n");
 
-		new_zone = (char *) round_up((int) fault_addr+4, unit);
+		new_zone = (char *) round_up((Unsigned) fault_addr +
+							sizeof(Word), unit);
 		if (new_zone <= detstack_zone + detstack_zone_left)
 		{
 			if (memdebug)
@@ -481,7 +485,8 @@ static bool try_munprotect(void *addr)
 		if (memdebug)
 			fprintf(stderr, "address is in nondstack red zone\n");
 
-		new_zone = (char *) round_up((int) fault_addr+4, unit);
+		new_zone = (char *) round_up((Unsigned) fault_addr +
+							sizeof(Word), unit);
 		if (new_zone <= nondstack_zone + nondstack_zone_left)
 		{
 			if (memdebug)
@@ -611,9 +616,11 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 
 		}
 
+#ifdef PC_INDEX
 		fprintf(stderr, "PC at signal: %d (%x)\n",
 			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX],
 			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX]);
+#endif
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);
 	}
@@ -648,9 +655,11 @@ static void explain_segv(siginfo_t *info, void *context)
 
 		}
 
+#ifdef PC_INDEX
 		fprintf(stderr, "PC at signal: %d (%x)\n",
 			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX],
 			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX]);
+#endif
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);
 

@@ -58,11 +58,7 @@ mercury_open(const char *filename, const char *type)
 	
 	f = fopen(filename, type);
 	if (!f) return NULL;
-	mf = (MercuryFile*) newmem(sizeof(MercuryFile));
-	if (!mf) {
-		fclose(f);
-		return NULL;
-	}
+	mf = make(MercuryFile);
 	mf->file = f;
 	mf->line_number = 1;
 	return mf;

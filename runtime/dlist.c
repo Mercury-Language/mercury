@@ -234,7 +234,7 @@ void delete(List *list, List *item, void (* func)(void *))
 /*
 **	Free a whole list, including the header and maybe the data
 **	pointed to by the list. Of course, if they were not allocated
-**	by newmem and malloc, then all Hell will break loose.
+**	by newmem, then all Hell will break loose.
 */
 
 void oldlist(List *list, void (* func)(void *))

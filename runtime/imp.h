@@ -23,7 +23,7 @@
 
 typedef	unsigned WORD_TYPE	Word;
 typedef WORD_TYPE		Integer;
-typedef unsigned WORD_TYPE	Uinteger;
+typedef unsigned WORD_TYPE	Unsigned;
 typedef void			Code; /* should be `typedef function_t Code' */
 
 /* Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*) */

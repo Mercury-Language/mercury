@@ -59,6 +59,8 @@
     #include "machdeps/mips_regs.h"
   #elif defined(__sparc__)
     #include "machdeps/sparc_regs.h"
+  #elif defined(__alpha__)
+    #include "machdeps/alpha_regs.h"
   #else
     #error "USE_GCC_GLOBAL_REGISTERS not yet supported on this machine."
   #endif

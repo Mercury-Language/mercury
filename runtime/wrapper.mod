@@ -213,9 +213,9 @@ static void process_options(int argc, char **argv)
 				{
 					Label	*label;
 					label = (Label *) ldata(ptr);
-					printf("%u %x %s\n",
-						(unsigned) label->e_addr,
-						(unsigned) label->e_addr,
+					printf("%lu %lx %s\n",
+						(unsigned long) label->e_addr,
+						(unsigned long) label->e_addr,
 						label->e_name);
 				}
 

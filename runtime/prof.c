@@ -29,6 +29,13 @@
 #include	<sys/time.h>
 #endif
 
+/* 
+** if `HZ' is not defined, we may be able to use `sysconf(_SC_CLK_TCK)' instead
+*/
+#if !defined(HZ) && defined(HAVE_SYSCONF) && defined(_SC_CLK_TCK)
+#define HZ ((int)sysconf(_SC_CLK_TCK))
+#endif
+
 #if !defined(HZ) || !defined(SIGPROF) || !defined(HAVE_SETITIMER)
 #error "Time profiling not supported on this system"
 #endif
@@ -89,6 +96,36 @@ static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 
 /* ======================================================================== */
 
+/* utility routines for opening and closing files */
+
+static FILE*
+checked_fopen(const char *filename, const char *mode, const char *message)
+{
+	FILE *file;
+
+	errno = 0;
+	file = fopen(filename, mode);
+	if (!file) {
+		fprintf(stderr, "Mercury runtime: couldn't %s file `%s': %s\n",
+				message, filename, strerror(errno));
+		exit(1);
+	}
+	return file;
+}
+
+static void checked_fclose(FILE* file)
+{
+	errno = 0;
+	if (fclose(file) != 0) {
+		fprintf(stderr,
+			"Mercury runtime: error closing file `%s': %s\n",
+			message, filename, strerror(errno));
+		exit(1);
+	}
+}
+
+/* ======================================================================== */
+
 #ifdef PROFILE_TIME
 
 /*
@@ -102,28 +139,21 @@ static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 
 void prof_init_time_profile()
 {
-	FILE 	*fptr = NULL;
-	struct itimerval *itime = NULL;
+	FILE 	*fptr;
+	struct itimerval itime;
 
 	/* output the value of HZ */
-	errno = 0;
-	if ( !(fptr = fopen("Prof.Counts", "w")) ) {
-		fprintf(stderr, "%s %s\n%s\n", "Mercury runtime: Couldn't open",
-			"the file 'Prof.Counts'!", strerror(errno));
-		exit(1);
-	}
-
+	fptr = checked_fopen("Prof.Counts", "create", "w");
 	fprintf(fptr, "%d\n", HZ);
-	fclose(fptr);
+	checked_fclose(fptr);
 
-	itime = make(struct itimerval);
-	itime->it_value.tv_sec = 0;
-	itime->it_value.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS; 
-	itime->it_interval.tv_sec = 0;
-	itime->it_interval.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS;
+	itime.it_value.tv_sec = 0;
+	itime.it_value.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS; 
+	itime.it_interval.tv_sec = 0;
+	itime.it_interval.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS;
 
 	signal(SIGPROF, prof_time_profile);
-	setitimer(ITIMER_PROF, itime, NULL);
+	setitimer(ITIMER_PROF, &itime, NULL);
 }
 
 #endif /* PROFILE_TIME */
@@ -138,31 +168,18 @@ void prof_init_time_profile()
 
 void prof_call_profile(Code *Callee, Code *Caller)
 {
-        prof_call_node *temp, *prev, *new_node;
-	int indice;
+        prof_call_node *node, **node_addr, *new_node;
+	int hash_value;
 
-	indice = hash_addr_pair(Callee, Caller);
+	hash_value = hash_addr_pair(Callee, Caller);
 
-        temp = prev = addr_pair_table[indice];
-
-	/* Special case of when pointer in array is NULL */
-	if (!temp) {
-		new_node = make(prof_call_node);
-		new_node->Callee = Callee;
-		new_node->Caller = Caller;
-		new_node->count = 1;
-		new_node->next = NULL;
-		addr_pair_table[indice] = new_node;
-		return;
-	}
-
-        while (temp) {
-                if ( (temp->Callee == Callee) && (temp->Caller == Caller) ) {
-                        temp->count++;
+        node_addr = &addr_pair_table[hash_value];
+        while ((node = *node_addr) != NULL) {
+                if ( (node->Callee == Callee) && (node->Caller == Caller) ) {
+                        node->count++;
                         return;
                 }
-                prev = temp;
-                temp = temp->next;
+                node_addr = &node->next;
         }
 
         new_node = make(prof_call_node);
@@ -170,9 +187,7 @@ void prof_call_profile(Code *Callee, Code *Caller)
         new_node->Caller = Caller;
         new_node->count = 1;
         new_node->next = NULL;
-        prev->next = new_node;
-
-        return;
+        *node_addr = new_node;
 }
 
 /* ======================================================================== */
@@ -188,39 +203,26 @@ void prof_call_profile(Code *Callee, Code *Caller)
 
 void prof_time_profile(int signum)
 {
-        prof_time_node *temp, *prev, *new_node;
-        int indice;
+        prof_time_node *node, **node_addr, *new_node;
+        int hash_value;
 
-        indice = hash_prof_addr(prof_current_proc);
+        hash_value = hash_prof_addr(prof_current_proc);
 
-        temp = prev = addr_table[indice];
-
-        /* Special case of when pointer in array is NULL */
-        if (!temp) {
-                new_node = make(prof_time_node);
-                new_node->Addr = prof_current_proc;
-                new_node->count = 1;
-                new_node->next = NULL;
-                addr_table[indice] = new_node;
-		signal(SIGPROF, prof_time_profile);
-                return;
-        }
-
-        while (temp) {
-                if ( (temp->Addr == prof_current_proc) ) {
-                        temp->count++;
+        node_addr = &addr_table[hash_value];
+        while ((node = *node_addr) != NULL) {
+                if ( (node->Addr == prof_current_proc) ) {
+                        node->count++;
 			signal(SIGPROF, prof_time_profile);
                         return;
                 }
-                prev = temp;
-                temp = temp->next;
+                node_addr = &node->next;
         }
 
         new_node = make(prof_time_node);
         new_node->Addr = prof_current_proc;
         new_node->count = 1;
         new_node->next = NULL;
-        prev->next = new_node;
+        *node_addr = new_node;
 
 	signal(SIGPROF, prof_time_profile);
         return;
@@ -235,15 +237,14 @@ void prof_time_profile(int signum)
 
 void prof_turn_off_time_profiling()
 {
-	struct itimerval *itime = NULL;
+	struct itimerval itime;
 
-	itime = make(struct itimerval);
-        itime->it_value.tv_sec = 0;
-        itime->it_value.tv_usec = 0;
-        itime->it_interval.tv_sec = 0;
-        itime->it_interval.tv_usec = 0;
+        itime.it_value.tv_sec = 0;
+        itime.it_value.tv_usec = 0;
+        itime.it_interval.tv_sec = 0;
+        itime.it_interval.tv_usec = 0;
 
-        setitimer(ITIMER_PROF, itime, NULL);
+        setitimer(ITIMER_PROF, &itime, NULL);
 }
 	
 #endif /* PROFILE_TIME */
@@ -261,23 +262,17 @@ void prof_output_addr_pair_table(void)
 	FILE *fptr;
 	int  i;
 	prof_call_node *current;
-	errno = 0;
-	if ( (fptr = fopen("Prof.CallPair", "w")) ) {
-		for (i = 0; i < CALL_TABLE_SIZE ; i++) {
-			current = addr_pair_table[i];
-			while (current) {
-				fprintf(fptr, "%p %p %lu\n", current->Caller,
-					current->Callee, current->count);
-				current = current->next;
-			}
+
+	fptr = checked_fopen("Prof.CallPair", "create", "w");
+	for (i = 0; i < CALL_TABLE_SIZE ; i++) {
+		current = addr_pair_table[i];
+		while (current) {
+			fprintf(fptr, "%p %p %lu\n", current->Caller,
+				current->Callee, current->count);
+			current = current->next;
 		}
 	}
-	else {
-		fprintf(stderr, "%s %s\n%s\n", "Mercury runtime: Couldn't",
-			"create Prof.CallPair", strerror(errno));
-		exit(1);
-	}
-
+	checked_fclose(fptr);
 }
 
 /* ======================================================================== */
@@ -286,27 +281,15 @@ void prof_output_addr_pair_table(void)
 **	prof_output_addr_decls:
 **		Ouputs the main predicate labels as well as their machine
 **		addresses to a file called "Prof.Decl".
-**		At the moment I think the best place to insert this call
-**		is in the insert_entry call in label.c
+**		This is called from insert_entry() in label.c.
 */
 
 void prof_output_addr_decls(const char *name, const Code *address)
 {
-	if (declfptr) {
-		fprintf(declfptr, "%p\t%s\n", address, name);
+	if (!declfptr) {
+		declfptr = checked_fopen("Prof.Decl", "w");
 	}
-	else {
-		errno = 0;
-		if ( (declfptr = fopen("Prof.Decl", "w") ) ) {
-			fprintf(declfptr, "%p\t%s\n", address, name);
-		}
-		else {
-			fprintf(stderr, "%s %s\n%s\n", "Mercury runtime:",
-			       "Couldn't create Prof.Decl", strerror(errno));
-			exit(1);
-		}
-	}
-	return;
+	fprintf(declfptr, "%p\t%s\n", address, name);
 }
 
 /* ======================================================================== */
@@ -325,22 +308,16 @@ void prof_output_addr_table()
 	int  i;
 	prof_time_node *current;
 
-	errno = 0;
-	if ( (fptr = fopen("Prof.Counts", "a")) ) {
-		for (i = 0; i < TIME_TABLE_SIZE ; i++) {
-			current = addr_table[i];
-			while (current) {
-				fprintf(fptr, "%p %lu\n", current->Addr,
-					current->count);
-				current = current->next;
-			}
+	fptr = checked_fopen("Prof.Counts", "append to", "a");
+	for (i = 0; i < TIME_TABLE_SIZE ; i++) {
+		current = addr_table[i];
+		while (current) {
+			fprintf(fptr, "%p %lu\n", current->Addr,
+				current->count);
+			current = current->next;
 		}
 	}
-	else {
-		fprintf(stderr, "%s %s\n%s\n", "Mercury runtime: Couldn't",
-				"create Prof.Counts", strerror(errno));
-		exit(1);
-	}
+	checked_fclose(fptr);
 }
 
 #endif /* PROFILE_TIME */

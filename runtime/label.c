@@ -114,5 +114,5 @@ static int hash_name(const void *name)
 
 static int hash_addr(const void *addr)
 {
-	return (((Uinteger) addr) >> 3) % entry_table_size;
+	return (((Unsigned) addr) >> 3) % entry_table_size;
 }
