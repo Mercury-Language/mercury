@@ -7,7 +7,6 @@ Required to bootstrap:
 ----------------------
 
 - generate code for complicated unifications
-- get determinism analysis right for complicated unifications
 - polymorphic unifications
 - compare/3
 - term_io__read_term etc.
