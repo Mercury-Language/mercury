@@ -14,7 +14,8 @@
 ** should be included here.
 **
 ** IMPORTANT: any changes here may also require changes to
-** 	scripts/mgnuc.in
+** 	scripts/parse_grade_options.sh-subr
+** 	scripts/ml.in
 **	compiler/handle_options.m
 **	compiler/mercury_compile.m
 */
