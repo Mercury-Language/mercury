@@ -2043,19 +2043,35 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				"endif"
 		]),
 
+		% The .date and .date0 files depend on the .int0 files
+		% for the parent modules, and the .int3 files for the
+		% directly and indirectly imported modules.
+		%
+		% For nested sub-modules, the `.date' files for the
+		% parent modules also depend on the same things as the
+		% `.date' files for this module, since all the `.date'
+		% files will get produced by a single mmc command.
+		% XXX The same is true for the `.date0' files, but
+		% including those dependencies here might result in
+		% cyclic dependencies(?).
+
 		module_name_to_file_name(ModuleName, ".date", no,
 						DateFileName),
 		module_name_to_file_name(ModuleName, ".date0", no,
 						Date0FileName),
 		io__write_strings(DepStream, [
 				"\n\n", DateFileName, " ",
-				Date0FileName, " : ",
+				Date0FileName
+		]),
+		write_dependencies_list(ParentDeps, ".date", DepStream),
+		io__write_strings(DepStream, [
+				" : ",
 				SourceFileName
 		]),
 		write_dependencies_list(ParentDeps, ".int0", DepStream),
 		write_dependencies_list(LongDeps, ".int3", DepStream),
 		write_dependencies_list(ShortDeps, ".int3", DepStream),
-			
+
 		module_name_to_file_name(ModuleName, ".dir", no, DirFileName),
 		module_name_to_split_c_file_name(ModuleName, 0, ".$O",
 			SplitCObj0FileName),
