@@ -1698,9 +1698,9 @@ INIT mercury_sys_init_table_modules
 */
 
 #ifdef	MR_USE_MINIMAL_MODEL
-extern ModuleFunc table_nondet_suspend_module;
-extern ModuleFunc table_nondet_resume_module;
-extern ModuleFunc table_nondet_commit_module;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc table_nondet_suspend_module;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc table_nondet_resume_module;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc table_nondet_commit_module;
 #endif
 
 void mercury_sys_init_table_modules(void);
