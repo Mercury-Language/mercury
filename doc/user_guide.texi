@@ -3183,6 +3183,11 @@ The following commands are intended for use by the developers
 of the Mercury implementation.
 @sp 1
 @table @code
+@item gen_stack
+@kindex gen_stack (mdb command)
+Prints the contents of the frames on the generator stack,
+which is part of the implementation of minimal model tabling.
+@sp 1
 @item nondet_stack [-d]
 @kindex nondet_stack (mdb command)
 Prints the contents of the frames on the nondet stack.

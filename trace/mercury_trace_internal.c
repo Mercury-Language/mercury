@@ -535,11 +535,9 @@ static MR_Next	MR_trace_cmd_clear_histogram(char **words, int word_count,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
 #endif	/* MR_TRACE_HISTOGRAM */
 
-#ifdef MR_USE_MINIMAL_MODEL
 static MR_Next	MR_trace_cmd_gen_stack(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
-#endif /* MR_USE_MINIMAL_MODEL */
 
 static MR_Next	MR_trace_cmd_nondet_stack(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
@@ -3156,13 +3154,13 @@ MR_trace_cmd_help(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	return KEEP_INTERACTING;
 }
 
-#ifdef	MR_TRACE_HISTOGRAM
-
 static MR_Next
 MR_trace_cmd_histogram_all(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
+#ifdef	MR_TRACE_HISTOGRAM
+
 	if (word_count == 2) {
 		FILE	*fp;
 
@@ -3189,6 +3187,13 @@ MR_trace_cmd_histogram_all(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_trace_usage("exp", "histogram_all");
 	}
 
+#else	/* MR_TRACE_HISTOGRAM */
+
+	fprintf(MR_mdb_out, "mdb: the `histogram_all' command is available "
+		"only when histogram gathering is enabled.\n");
+
+#endif	/* MR_TRACE_HISTOGRAM */
+
 	return KEEP_INTERACTING;
 }
 
@@ -3197,6 +3202,8 @@ MR_trace_cmd_histogram_exp(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
+#ifdef	MR_TRACE_HISTOGRAM
+
 	if (word_count == 2) {
 		FILE	*fp;
 
@@ -3223,6 +3230,13 @@ MR_trace_cmd_histogram_exp(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_trace_usage("exp", "histogram_exp");
 	}
 
+#else	/* MR_TRACE_HISTOGRAM */
+
+	fprintf(MR_mdb_out, "mdb: the `histogram_exp' command is available "
+		"only when histogram gathering is enabled.\n");
+
+#endif	/* MR_TRACE_HISTOGRAM */
+
 	return KEEP_INTERACTING;
 }
 
@@ -3231,6 +3245,8 @@ MR_trace_cmd_clear_histogram(char **words, int word_count,
 	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 	MR_Event_Details *event_details, MR_Code **jumpaddr)
 {
+#ifdef	MR_TRACE_HISTOGRAM
+
 	if (word_count == 1) {
 		int i;
 
@@ -3241,18 +3257,23 @@ MR_trace_cmd_clear_histogram(char **words, int word_count,
 		MR_trace_usage("exp", "clear_histogram");
 	}
 
-	return KEEP_INTERACTING;
-}
+#else	/* MR_TRACE_HISTOGRAM */
+
+	fprintf(MR_mdb_out, "mdb: the `clear_histogram' command is available "
+		"only when histogram gathering is enabled.\n");
 
 #endif	/* MR_TRACE_HISTOGRAM */
 
-#ifdef	MR_USE_MINIMAL_MODEL
+	return KEEP_INTERACTING;
+}
 
 static MR_Next
 MR_trace_cmd_gen_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
+#ifdef	MR_USE_MINIMAL_MODEL
+
 	if (word_count == 1) {
 		MR_bool	saved_tabledebug;
 
@@ -3265,10 +3286,15 @@ MR_trace_cmd_gen_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_trace_usage("developer", "gen_stack");
 	}
 
+#else	/* MR_USE_MINIMAL_MODEL */
+
+	fprintf(MR_mdb_out, "mdb: the `gen_stack' command is available "
+		"only in minimal model grades.\n");
+
+#endif	/* MR_USE_MINIMAL_MODEL */
+
 	return KEEP_INTERACTING;
 }
-
-#endif
 
 static MR_Next
 MR_trace_cmd_nondet_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
@@ -6187,19 +6213,15 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "misc", "quit", MR_trace_cmd_quit,
 		MR_trace_quit_cmd_args, NULL},
 
-#ifdef	MR_TRACE_HISTOGRAM
 	{ "exp", "histogram_all", MR_trace_cmd_histogram_all,
 		NULL, MR_trace_filename_completer },
 	{ "exp", "histogram_exp", MR_trace_cmd_histogram_exp,
 		NULL, MR_trace_filename_completer },
 	{ "exp", "clear_histogram", MR_trace_cmd_clear_histogram,
 		NULL, MR_trace_null_completer },
-#endif
 
-#ifdef	MR_USE_MINIMAL_MODEL
 	{ "developer", "gen_stack", MR_trace_cmd_gen_stack,
 		NULL, MR_trace_null_completer },
-#endif
 	{ "developer", "nondet_stack", MR_trace_cmd_nondet_stack,
 		MR_trace_stack_cmd_args, MR_trace_null_completer },
 	{ "developer", "stack_regs", MR_trace_cmd_stack_regs,
