@@ -20,7 +20,7 @@
 :- pred construct_exist_cons(exist_cons::out) is det.
 
 :- pred arg_type_error(cons::out) is det.
-
+:- mode field8(in) = out is det.
 :- implementation.
 
 dcg_syntax -->

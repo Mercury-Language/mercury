@@ -1,3 +1,5 @@
+record_syntax_errors.m:023: Error: mode declaration for function `record_syntax_errors:field8/1'
+record_syntax_errors.m:023:   without preceding `func' declaration.
 record_syntax_errors.m:028: In DCG field update goal:
 record_syntax_errors.m:028:   error: expected field name at term `Field'.
 record_syntax_errors.m:031: Error: expected `Field =^ field1 ^ ... ^ fieldN'
@@ -53,3 +55,4 @@ record_syntax_errors.m:050:   and term `'field4:='(V_5, V_4)':
 record_syntax_errors.m:050:   type error in argument(s) of functor `field4:=/2'.
 record_syntax_errors.m:050:   Argument 1 has type `(record_syntax_errors:cons2)',
 record_syntax_errors.m:050:   expected type was `(record_syntax_errors:cons)'.
+record_syntax_errors.m:023: Inferred :- func field8((record_syntax_errors:cons2)) = int.

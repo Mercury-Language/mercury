@@ -1574,7 +1574,7 @@ If the declaration of the field is in the interface section of the module,
 the corresponding field selection function is also exported from the module.
 
 By default, this function has no declared modes --- the modes are inferred at
-each call to the function. However, the modes of this function may be
+each call to the function. However, the type and modes of this function may be
 explicitly declared, in which case it will have only the declared modes.
 
 To create a higher-order term from a field selection function, an
@@ -1601,7 +1601,7 @@ If the declaration of the field is in the interface section of the module,
 the corresponding field update function is also exported from the module.
 
 By default, this function has no declared modes --- the modes are inferred at
-each call to the function. However, the modes of this function may be
+each call to the function. However, the type and modes of this function may be
 explicitly declared, in which case it will have only the declared modes.
 
 To create a higher-order term from a field update function, an
@@ -1629,9 +1629,9 @@ Type and mode declarations for compiler-generated field access functions
 for fields of constructors local to a module may be placed in the interface
 section of the module. This allows the implementation of a type to be hidden
 while still allowing client modules to use record syntax to manipulate values
-of the type. Supplying a single mode declaration also allows higher-order
-terms to be created from a field access function without using explicit
-lambda expressions.
+of the type. Supplying a type declaration and a single mode declaration also
+allows higher-order terms to be created from a field access function without
+using explicit lambda expressions.
 
 Declarations for field access functions for fields occurring in the interface
 section of a module must also occur in the interface section.

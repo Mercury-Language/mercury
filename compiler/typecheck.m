@@ -416,10 +416,15 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		%
 		dual_constraints(PredConstraints, Constraints),
 
+		( pred_info_is_field_access_function(ModuleInfo, PredInfo1) ->
+			IsFieldAccessFunction = yes
+		;
+			IsFieldAccessFunction = no
+		),
 		typecheck_info_init(IOState1, ModuleInfo, PredId,
-				TypeVarSet0, VarSet, ExplicitVarTypes0,
-				HeadTypeParams1, Constraints, Status,
-				TypeCheckInfo1),
+				IsFieldAccessFunction, TypeVarSet0, VarSet,
+				ExplicitVarTypes0, HeadTypeParams1,
+				Constraints, Status, TypeCheckInfo1),
 		typecheck_info_get_type_assign_set(TypeCheckInfo1,
 				OrigTypeAssignSet),
 		typecheck_clause_list(Clauses0, HeadVars, ArgTypes0, Clauses,
@@ -2790,8 +2795,7 @@ builtin_apply_type(_TypeCheckInfo, Functor, Arity, ConsTypeInfos) :-
 	% builtin_field_access_function_type(TypeCheckInfo, Functor,
 	%	Arity, ConsTypeInfos):
 	% Succeed if Functor is the name of one the automatically
-	% generated field access functions (fieldname, '<fieldname>:=') for
-	% which the user has not supplied a definition.
+	% generated field access functions (fieldname, '<fieldname>:=').
 :- pred builtin_field_access_function_type(typecheck_info, cons_id, arity,
 		list(cons_type_info), list(invalid_field_update)).
 :- mode builtin_field_access_function_type(typecheck_info_ui, in, in,
@@ -2852,15 +2856,21 @@ get_field_access_constructor(TypeCheckInfo, FuncName, Arity, _AccessType,
 	TypeId = qualified(TypeModule, _) - _,
 
 	%
-	% If the user has supplied a definition, we use that instead
-	% of the automatically generated version.
-	% Those cases will be picked up by builtin_pred_type.
+	% If the user has supplied a declaration, we use that instead
+	% of the automatically generated version, unless we are typechecking
+	% the clause introduced for the user-supplied declaration.
+	% The user-declared version will be picked up by builtin_pred_type.
 	%
 	typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo),
 	module_info_get_predicate_table(ModuleInfo, PredTable),
 	unqualify_name(FuncName, UnqualFuncName),
-	\+ predicate_table_search_func_m_n_a(PredTable, TypeModule,
-		UnqualFuncName, Arity, _),
+	(
+		TypeCheckInfo ^ is_field_access_function = no,
+		\+ predicate_table_search_func_m_n_a(PredTable, TypeModule,
+			UnqualFuncName, Arity, _)
+	;
+		TypeCheckInfo ^ is_field_access_function = yes
+	),
 
 	module_info_ctors(ModuleInfo, Ctors),
 	map__lookup(Ctors, ConsId, ConsDefns0),
@@ -3094,43 +3104,59 @@ project_rename_flip_class_constraints(CallTVars, TVarRenaming,
 
 :- type typecheck_info
 	---> typecheck_info(
-			io__state, 	% The io state
+			io_state :: io__state, 
+					% The io state
 
-			module_info, 	% The global symbol tables
+			module_info :: module_info,
+					% The global symbol tables
 
-			call_id,	% The call_id of the pred
+			call_id :: call_id,
+					% The call_id of the pred
 					% being called (if any)
 
-			int,		% The argument number within
+			arg_num :: int,	
+					% The argument number within
 					% a pred call 
 
-			pred_id,	% The pred we're checking
+			pred_id :: pred_id,
+					% The pred we're checking
 
-			prog_context,	% The context of the goal
+			import_status :: import_status,
+					% Import status of the pred
+					% being checked
+
+			is_field_access_function :: bool,
+					% Is the pred we're checking
+					% a field access function?
+					% If so, there should only
+					% be a field access function
+					% application in the body, not
+					% predicate or function calls
+					% or constructor applications.
+
+			context :: prog_context,
+					% The context of the goal
 					% we're checking
 
-			unify_context,	% The original source of the
+			unify_context :: unify_context,
+					% The original source of the
 					% unification we're checking
 
-			prog_varset,	% Variable names
+			varset :: prog_varset,
+					% Variable names
 
-			type_assign_set,
+			type_assign_set :: type_assign_set,
 					% This is the main piece of
 					% information that we are
 					% computing and which gets
 					% updated as we go along
 
-			bool,		% did we find any type errors?
+			found_error :: bool,	
+					% did we find any type errors?
 
-			unit,		% UNUSED junk field
-
-			unit,		% UNUSED junk field
-
-			bool,		% Have we already warned about
+			warned_about_overloading :: bool
+					% Have we already warned about
 					% highly ambiguous overloading?
-			import_status
-					% Import status of the pred
-					% being checked
 		).
 
 	% The normal inst of a typecheck_info struct: ground, with
@@ -3176,15 +3202,16 @@ project_rename_flip_class_constraints(CallTVars, TVarRenaming,
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_info_init(io__state, module_info, pred_id, tvarset,
+:- pred typecheck_info_init(io__state, module_info, pred_id, bool, tvarset,
 	prog_varset, map(prog_var, type), headtypes, class_constraints,
 	import_status, typecheck_info).
-:- mode typecheck_info_init(di, in, in, in, in, in, in, in, in,
+:- mode typecheck_info_init(di, in, in, in, in, in, in, in, in, in,
 	typecheck_info_uo)
 	is det.
 
-typecheck_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
-		VarTypes, HeadTypeParams, Constraints, Status, TypeCheckInfo) :-
+typecheck_info_init(IOState0, ModuleInfo, PredId, IsFieldAccessFunction,
+		TypeVarSet, VarSet, VarTypes, HeadTypeParams,
+		Constraints, Status, TypeCheckInfo) :-
 	CallPredId = call(predicate - unqualified("") / 0),
 	term__context_init(Context),
 	map__init(TypeBindings),
@@ -3193,12 +3220,12 @@ typecheck_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 	WarnedAboutOverloading = no,
 	unsafe_promise_unique(IOState0, IOState),	% XXX
 	TypeCheckInfo = typecheck_info(
-		IOState, ModuleInfo, CallPredId, 0, PredId, Context,
+		IOState, ModuleInfo, CallPredId, 0, PredId, Status,
+		IsFieldAccessFunction, Context,
 		unify_context(explicit, []), VarSet, 
 		[type_assign(VarTypes, TypeVarSet, HeadTypeParams,
 			TypeBindings, Constraints, Proofs)],
-		FoundTypeError, unit, unit,
-		WarnedAboutOverloading, Status
+		FoundTypeError, WarnedAboutOverloading
 	).
 
 %-----------------------------------------------------------------------------%
@@ -3206,9 +3233,8 @@ typecheck_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 :- pred typecheck_info_get_io_state(typecheck_info, io__state).
 :- mode typecheck_info_get_io_state(typecheck_info_get_io_state, uo) is det.
 
-typecheck_info_get_io_state(typecheck_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_,_), 
-		IOState) :-
-	unsafe_promise_unique(IOState0, IOState).	% XXX
+typecheck_info_get_io_state(TypeCheckInfo, IOState) :-
+	unsafe_promise_unique(TypeCheckInfo ^ io_state, IOState). % XXX
 
 %-----------------------------------------------------------------------------%
 
@@ -3216,9 +3242,8 @@ typecheck_info_get_io_state(typecheck_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_,_),
 :- mode typecheck_info_set_io_state(typecheck_info_set_io_state, di, 
 				typecheck_info_uo) is det.
 
-typecheck_info_set_io_state(typecheck_info(_,B,C,D,E,F,G,H,I,J,K,L,M,N), 
-			IOState0,
-			typecheck_info(IOState,B,C,D,E,F,G,H,I,J,K,L,M,N)) :-
+typecheck_info_set_io_state(TypeCheckInfo, IOState0,
+		TypeCheckInfo ^ io_state := IOState) :-
 	unsafe_promise_unique(IOState0, IOState).	% XXX
 
 %-----------------------------------------------------------------------------%
@@ -3227,16 +3252,14 @@ typecheck_info_set_io_state(typecheck_info(_,B,C,D,E,F,G,H,I,J,K,L,M,N),
 :- mode typecheck_info_get_module_name(in, out) is det.
 
 typecheck_info_get_module_name(TypeCheckInfo, Name) :-
-	TypeCheckInfo = typecheck_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_),
-	module_info_name(ModuleInfo, Name).
+	module_info_name(TypeCheckInfo ^ module_info, Name).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_info_get_module_info(typecheck_info, module_info).
 :- mode typecheck_info_get_module_info(in, out) is det.
 
-typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo) :-
-	TypeCheckInfo = typecheck_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_).
+typecheck_info_get_module_info(TypeCheckInfo, TypeCheckInfo ^ module_info).
 
 %-----------------------------------------------------------------------------%
 
@@ -3244,8 +3267,7 @@ typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo) :-
 :- mode typecheck_info_get_preds(in, out) is det.
 
 typecheck_info_get_preds(TypeCheckInfo, Preds) :-
-	TypeCheckInfo = typecheck_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_), 
-	module_info_get_predicate_table(ModuleInfo, Preds).
+	module_info_get_predicate_table(TypeCheckInfo ^ module_info, Preds).
 
 %-----------------------------------------------------------------------------%
 
@@ -3253,8 +3275,7 @@ typecheck_info_get_preds(TypeCheckInfo, Preds) :-
 :- mode typecheck_info_get_types(in, out) is det.
 
 typecheck_info_get_types(TypeCheckInfo, Types) :-
-	TypeCheckInfo = typecheck_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_),
-	module_info_types(ModuleInfo, Types).
+	module_info_types(TypeCheckInfo ^ module_info, Types).
 
 %-----------------------------------------------------------------------------%
 
@@ -3262,16 +3283,14 @@ typecheck_info_get_types(TypeCheckInfo, Types) :-
 :- mode typecheck_info_get_ctors(in, out) is det.
 
 typecheck_info_get_ctors(TypeCheckInfo, Ctors) :-
-	TypeCheckInfo = typecheck_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_),
-	module_info_ctors(ModuleInfo, Ctors).
+	module_info_ctors(TypeCheckInfo ^ module_info, Ctors).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_info_get_called_predid(typecheck_info, call_id).
 :- mode typecheck_info_get_called_predid(in, out) is det.
 
-typecheck_info_get_called_predid(TypeCheckInfo, PredId) :-
-	TypeCheckInfo = typecheck_info(_,_,PredId,_,_,_,_,_,_,_,_,_,_,_).
+typecheck_info_get_called_predid(TypeCheckInfo, TypeCheckInfo ^ call_id).
 
 %-----------------------------------------------------------------------------%
 
@@ -3280,17 +3299,15 @@ typecheck_info_get_called_predid(TypeCheckInfo, PredId) :-
 :- mode typecheck_info_set_called_predid(in, typecheck_info_di,
 			typecheck_info_uo) is det.
 
-typecheck_info_set_called_predid(PredCallId, TypeCheckInfo0, TypeCheckInfo) :-
-	TypeCheckInfo0 = typecheck_info(A,B,_,D,E,F,G,H,I,J,K,L,M,N),
-	TypeCheckInfo = typecheck_info(A,B,PredCallId,D,E,F,G,H,I,J,K,L,M,N).
+typecheck_info_set_called_predid(PredCallId, TypeCheckInfo,
+		TypeCheckInfo ^ call_id := PredCallId).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_info_get_arg_num(typecheck_info, int).
 :- mode typecheck_info_get_arg_num(in, out) is det.
 
-typecheck_info_get_arg_num(TypeCheckInfo, ArgNum) :-
-	TypeCheckInfo = typecheck_info(_,_,_,ArgNum,_,_,_,_,_,_,_,_,_,_).
+typecheck_info_get_arg_num(TypeCheckInfo, TypeCheckInfo ^ arg_num).
 
 %-----------------------------------------------------------------------------%
 
@@ -3298,25 +3315,22 @@ typecheck_info_get_arg_num(TypeCheckInfo, ArgNum) :-
 :- mode typecheck_info_set_arg_num(in, typecheck_info_di, 
 		typecheck_info_uo) is det.
 
-typecheck_info_set_arg_num(ArgNum, TypeCheckInfo0, TypeCheckInfo) :-
-	TypeCheckInfo0 = typecheck_info(A,B,C,_,E,F,G,H,I,J,K,L,M,N),
-	TypeCheckInfo = typecheck_info(A,B,C,ArgNum,E,F,G,H,I,J,K,L,M,N).
+typecheck_info_set_arg_num(ArgNum, TypeCheckInfo,
+		TypeCheckInfo ^ arg_num := ArgNum).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_info_get_predid(typecheck_info, pred_id).
 :- mode typecheck_info_get_predid(in, out) is det.
 
-typecheck_info_get_predid(TypeCheckInfo, PredId) :- 
-	TypeCheckInfo = typecheck_info(_,_,_,_,PredId,_,_,_,_,_,_,_,_,_).
+typecheck_info_get_predid(TypeCheckInfo, TypeCheckInfo ^ pred_id).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_info_get_context(typecheck_info, prog_context).
 :- mode typecheck_info_get_context(in, out) is det.
 
-typecheck_info_get_context(TypeCheckInfo, Context) :-
-	TypeCheckInfo = typecheck_info(_,_,_,_,_,Context,_,_,_,_,_,_,_,_).
+typecheck_info_get_context(TypeCheckInfo, TypeCheckInfo ^ context).
 
 %-----------------------------------------------------------------------------%
 
@@ -3325,17 +3339,15 @@ typecheck_info_get_context(TypeCheckInfo, Context) :-
 :- mode typecheck_info_set_context(in, typecheck_info_di, 
 			typecheck_info_uo) is det.
 
-typecheck_info_set_context(Context, TypeCheckInfo0, TypeCheckInfo) :-
-	TypeCheckInfo0 = typecheck_info(A,B,C,D,E,_,G,H,I,J,K,L,M,N),
-	TypeCheckInfo = typecheck_info(A,B,C,D,E,Context,G,H,I,J,K,L,M,N).
+typecheck_info_set_context(Context, TypeCheckInfo,
+		TypeCheckInfo ^ context := Context).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_info_get_unify_context(typecheck_info, unify_context).
 :- mode typecheck_info_get_unify_context(in, out) is det.
 
-typecheck_info_get_unify_context(TypeCheckInfo, UnifyContext) :-
-	TypeCheckInfo = typecheck_info(_,_,_,_,_,_,UnifyContext,_,_,_,_,_,_,_).
+typecheck_info_get_unify_context(TypeCheckInfo, TypeCheckInfo ^ unify_context).
 
 %-----------------------------------------------------------------------------%
 
@@ -3344,25 +3356,23 @@ typecheck_info_get_unify_context(TypeCheckInfo, UnifyContext) :-
 :- mode typecheck_info_set_unify_context(in, typecheck_info_di, 
 			typecheck_info_uo) is det.
 
-typecheck_info_set_unify_context(UnifyContext, TypeCheckInfo0, TypeCheckInfo) :-
-	TypeCheckInfo0 = typecheck_info(A,B,C,D,E,F,_,H,I,J,K,L,M,N),
-	TypeCheckInfo = typecheck_info(A,B,C,D,E,F,UnifyContext,H,I,J,K,L,M,N).
+typecheck_info_set_unify_context(UnifyContext, TypeCheckInfo,
+		TypeCheckInfo ^ unify_context := UnifyContext).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_info_get_varset(typecheck_info, prog_varset).
 :- mode typecheck_info_get_varset(in, out) is det.
 
-typecheck_info_get_varset(TypeCheckInfo, VarSet) :-
-	TypeCheckInfo = typecheck_info(_,_,_,_,_,_,_,VarSet,_,_,_,_,_,_).
+typecheck_info_get_varset(TypeCheckInfo, TypeCheckInfo ^ varset).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_info_get_type_assign_set(typecheck_info, type_assign_set).
 :- mode typecheck_info_get_type_assign_set(in, out) is det.
 
-typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
-	TypeCheckInfo = typecheck_info(_,_,_,_,_,_,_,_,TypeAssignSet,_,_,_,_,_).
+typecheck_info_get_type_assign_set(TypeCheckInfo,
+		TypeCheckInfo ^ type_assign_set).
 
 %-----------------------------------------------------------------------------%
 
@@ -3554,18 +3564,15 @@ rename_constraint_proof(TSubst, superclass(ClassConstraint0),
 :- mode typecheck_info_set_type_assign_set(typecheck_info_di, in,
 			typecheck_info_uo) is det.
 
-typecheck_info_set_type_assign_set(TypeCheckInfo0, TypeAssignSet, 
-					TypeCheckInfo) :-
-	TypeCheckInfo0 = typecheck_info(A,B,C,D,E,F,G,H,_,J,K,L,M,N),
-	TypeCheckInfo = typecheck_info(A,B,C,D,E,F,G,H,TypeAssignSet,J,K,L,M,N).
+typecheck_info_set_type_assign_set(TypeCheckInfo, TypeAssignSet,
+		TypeCheckInfo ^ type_assign_set := TypeAssignSet).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_info_get_found_error(typecheck_info, bool).
 :- mode typecheck_info_get_found_error(typecheck_info_ui, out) is det.
 
-typecheck_info_get_found_error(TypeCheckInfo, FoundError) :-
-	TypeCheckInfo = typecheck_info(_,_,_,_,_,_,_,_,_,FoundError,_,_,_,_).
+typecheck_info_get_found_error(TypeCheckInfo, TypeCheckInfo ^ found_error).
 
 %-----------------------------------------------------------------------------%
 
@@ -3573,48 +3580,8 @@ typecheck_info_get_found_error(TypeCheckInfo, FoundError) :-
 :- mode typecheck_info_set_found_error(typecheck_info_di, in, 
 			typecheck_info_uo) is det.
 
-typecheck_info_set_found_error(TypeCheckInfo0, FoundError, TypeCheckInfo) :-
-	TypeCheckInfo0 = typecheck_info(A,B,C,D,E,F,G,H,I,_,K,L,M,N),
-	TypeCheckInfo = typecheck_info(A,B,C,D,E,F,G,H,I,FoundError,K,L,M,N).
-
-%-----------------------------------------------------------------------------%
-
-:- pred typecheck_info_get_junk(typecheck_info, unit).
-:- mode typecheck_info_get_junk(typecheck_info_ui, out) is det.
-
-typecheck_info_get_junk(TypeCheckInfo, Junk) :-
-	TypeCheckInfo =
-		typecheck_info(_,_,_,_,_,_,_,_,_,_,Junk,_,_,_).
-
-%-----------------------------------------------------------------------------%
-
-:- pred typecheck_info_set_junk(typecheck_info, unit, typecheck_info).
-:- mode typecheck_info_set_junk(typecheck_info_di, in, typecheck_info_uo)
-	is det.
-
-typecheck_info_set_junk(TypeCheckInfo0, Junk,
-					TypeCheckInfo) :-
-	TypeCheckInfo0 = typecheck_info(A,B,C,D,E,F,G,H,I,J,_,L,M,N),
-	TypeCheckInfo = typecheck_info(A,B,C,D,E,F,G,H,I,J,Junk,L,M,N).
-
-%-----------------------------------------------------------------------------%
-
-:- pred typecheck_info_get_junk2(typecheck_info, unit).
-:- mode typecheck_info_get_junk2(typecheck_info_ui, out) is det.
-
-typecheck_info_get_junk2(TypeCheckInfo, Junk) :-
-	TypeCheckInfo =
-		typecheck_info(_,_,_,_,_,_,_,_,_,_,_,Junk,_,_).
-
-%-----------------------------------------------------------------------------%
-
-:- pred typecheck_info_set_junk2(typecheck_info, unit, typecheck_info).
-:- mode typecheck_info_set_junk2(typecheck_info_di, in, 
-			typecheck_info_uo) is det.
-
-typecheck_info_set_junk2(TypeCheckInfo0, Junk, TypeCheckInfo) :-
-	TypeCheckInfo0 = typecheck_info(A,B,C,D,E,F,G,H,I,J,K,_,M,N),
-	TypeCheckInfo = typecheck_info(A,B,C,D,E,F,G,H,I,J,K,Junk,M,N).
+typecheck_info_set_found_error(TypeCheckInfo, FoundError,
+	TypeCheckInfo ^ found_error := FoundError).
 
 %-----------------------------------------------------------------------------%
 
@@ -3622,8 +3589,8 @@ typecheck_info_set_junk2(TypeCheckInfo0, Junk, TypeCheckInfo) :-
 :- mode typecheck_info_get_warned_about_overloading(typecheck_info_ui, out)
 			is det.
 
-typecheck_info_get_warned_about_overloading(TypeCheckInfo, Warned) :-
-	TypeCheckInfo = typecheck_info(_,_,_,_,_,_,_,_,_,_,_,_,Warned,_).
+typecheck_info_get_warned_about_overloading(TypeCheckInfo,
+		TypeCheckInfo ^ warned_about_overloading).
 
 %-----------------------------------------------------------------------------%
 
@@ -3632,27 +3599,24 @@ typecheck_info_get_warned_about_overloading(TypeCheckInfo, Warned) :-
 :- mode typecheck_info_set_warned_about_overloading(typecheck_info_di, in, 
 			typecheck_info_uo) is det.
 
-typecheck_info_set_warned_about_overloading(TypeCheckInfo0, Warned,
-				TypeCheckInfo) :-
-	TypeCheckInfo0 = typecheck_info(A,B,C,D,E,F,G,H,I,J,K,L,_,N),
-	TypeCheckInfo = typecheck_info(A,B,C,D,E,F,G,H,I,J,K,L,Warned,N).
+typecheck_info_set_warned_about_overloading(TypeCheckInfo, Warned,
+		TypeCheckInfo ^ warned_about_overloading := Warned).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_info_get_pred_import_status(typecheck_info, import_status).
 :- mode typecheck_info_get_pred_import_status(typecheck_info_ui, out) is det.
 
-typecheck_info_get_pred_import_status(TypeCheckInfo, Status) :-
-	TypeCheckInfo = typecheck_info(_,_,_,_,_,_,_,_,_,_,_,_,_,Status).
+typecheck_info_get_pred_import_status(TypeCheckInfo,
+		TypeCheckInfo ^ import_status).
 
 :- pred typecheck_info_set_pred_import_status(typecheck_info, import_status,
 			typecheck_info).
 :- mode typecheck_info_set_pred_import_status(typecheck_info_di, in,
 			typecheck_info_uo) is det.
 
-typecheck_info_set_pred_import_status(TypeCheckInfo0, Status, TypeCheckInfo) :-
-	TypeCheckInfo0 = typecheck_info(A,B,C,D,E,F,G,H,I,J,K,L,M,_),
-	TypeCheckInfo = typecheck_info(A,B,C,D,E,F,G,H,I,J,K,L,M,Status).
+typecheck_info_set_pred_import_status(TypeCheckInfo, Status,
+		TypeCheckInfo ^ import_status := Status).
 
 %-----------------------------------------------------------------------------%
 
@@ -3669,6 +3633,28 @@ typecheck_info_get_ctor_list(TypeCheckInfo, Functor, Arity,
 	->
 		ConsInfoList = ApplyConsInfoList,
 		InvalidFieldUpdates = []
+	;
+		%
+		% If we're typechecking the clause added for
+		% a field access function for which the user
+		% has supplied type or mode declarations, the
+		% goal should only contain an application of the
+		% field access function, not constructor applications
+		% or function calls.
+		%
+		TypeCheckInfo ^ is_field_access_function = yes
+	->
+		(
+			builtin_field_access_function_type(TypeCheckInfo,
+				Functor, Arity, FieldAccessConsInfoList,
+				InvalidFieldUpdates0)
+		->
+			ConsInfoList = FieldAccessConsInfoList,
+			InvalidFieldUpdates = InvalidFieldUpdates0
+		;
+			ConsInfoList = [],
+			InvalidFieldUpdates = []
+		)
 	;
 		typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 			ConsInfoList, InvalidFieldUpdates)
@@ -3788,8 +3774,8 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 	),
 	
 	%
-	% Check if Functor is a field access function which has not
-	% been overridden by the user.
+	% Check if Functor is a field access function for which the
+	% user has not supplied a declaration.
 	%
 	(
 		builtin_field_access_function_type(TypeCheckInfo,
