@@ -33,12 +33,12 @@ install: install_mmake install_scripts
 
 .PHONY: install_mmake
 install_mmake: Mmake.vars Mmake.rules
-	mkdir -p $(INSTALL_LIBDIR)/mmake
+	[ -d $(INSTALL_LIBDIR)/mmake ] || mkdir -p $(INSTALL_LIBDIR)/mmake
 	cp `vpath_find Mmake.vars Mmake.rules` $(INSTALL_LIBDIR)/mmake
 
 .PHONY: install_scripts
 install_scripts: $(SCRIPTS)
-	mkdir -p $(INSTALL_BINDIR)
+	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	cp $(SCRIPTS) $(INSTALL_BINDIR) 
 
 #-----------------------------------------------------------------------------#
