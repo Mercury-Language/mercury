@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -232,6 +232,14 @@
 	% on this machine.
 :- func int__bits_per_int = int.
 :- pred int__bits_per_int(int::out) is det.
+
+	% fold_up(F, Acc, Low, High) = list.foldl(F, Low `..` High, Acc)
+	%
+:- func int__fold_up(func(int, T) = T, T, int, int) = T.
+
+	% fold_down(F, Acc, Low, High) = list.foldr(F, Low `..` High, Acc)
+	%
+:- func int__fold_down(func(int, T) = T, T, int, int) = T.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -659,3 +667,16 @@ int__min_int = X :-
 
 int__bits_per_int = X :-
 	int__bits_per_int(X).
+
+%-----------------------------------------------------------------------------%
+
+int__fold_up(F, A, Lo, Hi) =
+	( if Lo =< Hi then int__fold_up(F, F(Lo, A), Lo + 1, Hi) else A ).
+
+%-----------------------------------------------------------------------------%
+
+int__fold_down(F, A, Lo, Hi) =
+	( if Lo =< Hi then int__fold_down(F, F(Hi, A), Lo, Hi - 1) else A ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

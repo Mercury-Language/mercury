@@ -92,6 +92,7 @@ ORDINARY_PROGS=	\
 	impossible_unify \
 	impure_foreign \
 	impure_prune \
+	int_fold_up_down \
 	integer_test \
 	intermod_c_code \
 	intermod_foreign_type \

@@ -90,6 +90,9 @@ Changes to the Mercury language:
   
 Changes to the Mercury standard library:
 
+* We've added two new functions, fold_up/4 and fold_down/4, to int.m. 
+  These functions support iteration over contiguous integer ranges.
+
 * We've added a new library module, `array2d', for two-dimensional arrays.
 
 * We've added a new module, cord, for sequences with O(1) consing and
