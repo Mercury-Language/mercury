@@ -126,10 +126,12 @@ library.init: $(library.cs)
 # isn't part of the application, but in this case it is.
 
 library.nu library.nu.debug: $(NU_LIBRARY_NOS)
-library.sicstus library.sicstus.debug: $(NU_LIBRARY_QLS)
+library.sicstus library.sicstus.debug: sp_builtin.ql $(NU_LIBRARY_QLS)
 
 library.nu.debug: error.no debug.no
 library.sicstus.debug: error.ql
+
+sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS): sicstus_compile
 
 #-----------------------------------------------------------------------------#
 
