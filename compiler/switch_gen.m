@@ -144,6 +144,7 @@ switch_gen__determine_category(CaseVar, SwitchCategory) -->
 switch_gen__type_cat_to_switch_cat(enum_type, atomic_switch).
 switch_gen__type_cat_to_switch_cat(int_type,  atomic_switch).
 switch_gen__type_cat_to_switch_cat(char_type, atomic_switch).
+switch_gen__type_cat_to_switch_cat(float_type, other_switch).
 switch_gen__type_cat_to_switch_cat(str_type,  string_switch).
 switch_gen__type_cat_to_switch_cat(pred_type, other_switch).
 switch_gen__type_cat_to_switch_cat(user_type(_), tag_switch).

@@ -37,7 +37,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, std_util, term, varset.
+:- import_module int, float, list, std_util, term, varset.
 :- import_module lexer, ops.
 
 %-----------------------------------------------------------------------------%
@@ -137,11 +137,9 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 			NegX is 0 - X,
 			Term = term__functor(term__integer(NegX), [],
 						TermContext)
-		/************** float not yet implemented
-		; Op = "-", RightTerm = term__functor(term__float(X), [], _) ->
-			NegX is 0.0 - X,
-			Term = term__functor(term__float(NegX), [], TermContext)
-		**************/
+		; Op = "-", RightTerm = term__functor(term__float(F), [], _) ->
+			builtin_float_minus(0.0, F, NegF),
+			Term = term__functor(term__float(NegF), [], TermContext)
 		;
 			Term = term__functor(term__atom(Op), [RightTerm],
 						TermContext)

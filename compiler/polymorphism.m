@@ -695,9 +695,7 @@ polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
 polymorphism__get_category_name(int_type, "int").
 polymorphism__get_category_name(char_type, "int").
 polymorphism__get_category_name(enum_type, "int").
-/**** float not implemented
 polymorphism__get_category_name(float_type, "float").
-****/
 polymorphism__get_category_name(str_type, "string").
 polymorphism__get_category_name(pred_type, "pred").
 polymorphism__get_category_name(polymorphic_type, _) :-

@@ -20,4 +20,7 @@ string__to_float(String, Float) :-
 	sread(String, Float),
 	float(Float).
 
+string__float_to_string(Float, String) :-
+	sformat("~f", [Float], String).
+
 %-----------------------------------------------------------------------------%

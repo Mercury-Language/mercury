@@ -60,6 +60,10 @@
 %	string__int_to_base_string(Int, Base, String):
 %	Convert an integer to a string in a given Base (between 2 and 36).
 
+:- pred string__float_to_string(float, string).
+:- mode string__float_to_string(in, out) is det.
+%	Convert an float to a string.
+
 :- pred string__first_char(string, character, string).
 :- mode string__first_char(in, in, in) is semidet.	% implied
 :- mode string__first_char(in, out, in) is semidet.	% implied
@@ -196,6 +200,7 @@
 :- mode string__to_int_list(out, in) is det.
 :- mode string__to_int_list(in, in) is semidet. % implied
 
+:- external(string__float_to_string/2).
 :- external(string__to_float/2).
 :- external(string__to_int_list/2).
 

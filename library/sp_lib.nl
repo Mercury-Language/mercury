@@ -58,6 +58,9 @@ portray(Stream, Term) :-
 intToString(I, S) :-
 	number_chars(I, S).
 
+string__to_float(String, Float) :-
+	number_chars(Float, String).
+
 %-----------------------------------------------------------------------------%
 
 % Sheesh - do I really have to define these myself!

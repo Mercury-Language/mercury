@@ -148,12 +148,10 @@
 :- pred builtin_compare_string(comparison_result::out, string::in, string::in)
 	is det.
 
-/***** float not yet implemented
 :- pred builtin_unify_float(float::in, float::in) is semidet.
 :- pred builtin_index_float(float::in, int::out) is det.
 :- pred builtin_compare_float(comparison_result::out, float::in, float::in)
 	is det.
-*****/
 
 :- pred builtin_unify_pred((pred)::in, (pred)::in) is semidet.
 :- pred builtin_index_pred((pred)::in, int::out) is det.
@@ -176,7 +174,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, std_util.
+:- import_module require, std_util, float.
 
 % Many of the predicates defined in this module are builtin -
 % the compiler generates code for them inline.
@@ -217,6 +215,19 @@ builtin_compare_string(R, S1, S2) :-
 		R = (=)
 	;
 		R = (>)
+	).
+
+builtin_unify_float(F, F).
+
+builtin_index_float(_, -1).
+
+builtin_compare_float(R, F1, F2) :-
+	( builtin_float_lt(F1, F2) ->
+		R = (<)
+	; builtin_float_gt(F1, F2) ->
+		R = (>)
+	;
+		R = (=)
 	).
 
 :- pred builtin_strcmp(int, string, string).

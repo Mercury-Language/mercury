@@ -31,7 +31,7 @@
 :- type builtin_type	--->	int_type
 			;	char_type
 			;	str_type
-			/*	float_type */
+			;	float_type
 			;	pred_type
 			;	enum_type
 			;	polymorphic_type
@@ -112,12 +112,10 @@ classify_type(VarType, ModuleInfo, Type) :-
 	->
 		Type = int_type
 	;
-/********
 		VarType = term__functor(term__atom("float"), [], _)
 	->
 		Type = float_type
 	;
-********/
 		VarType = term__functor(term__atom("string"), [], _)
 	->
 		Type = str_type

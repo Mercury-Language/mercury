@@ -86,7 +86,7 @@ unify_gen__generate_assignment(VarA, VarB, empty) -->
 	% variables from the cache, and producing code that branches
 	% to the fall-through point if the two values are not the same.
 	% Simple tests are in-in unifications on enumerations, integers,
-	% strings and floats. XXX handle floats.
+	% strings and floats.
 
 unify_gen__generate_test(VarA, VarB, Code) -->
 	code_info__produce_variable(VarA, Code0, ValA),
@@ -95,6 +95,8 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 	code_info__variable_type(VarA, Type),
 	{ Type = term__functor(term__atom("string"), [], _) ->
 		Op = str_eq
+	; Type = term__functor(term__atom("float"), [], _) ->
+		Op = float_eq
 	;
 		Op = eq
 	},
@@ -112,7 +114,10 @@ unify_gen__generate_tag_test(Var, ConsId, Code) -->
 	->
 		code_info__variable_type(Var, Type),
 		code_aux__lookup_type_defn(Type, TypeDefn),
-		{ TypeDefn = hlds__type_defn(_, _, du_type(_, ConsTable, _), _, _) ->  
+		{
+			TypeDefn = hlds__type_defn(_, _,
+					du_type(_, ConsTable, _), _, _)
+		->  
 			map__to_assoc_list(ConsTable, ConsList),
 			(
 				ConsList = [ConsId - _, OtherConsId - _],
@@ -167,8 +172,8 @@ unify_gen__generate_tag_rval(Var, ConsId, TestRval, Code) -->
 
 unify_gen__generate_tag_rval_2(string_constant(String), Rval, TestRval) :-
 	TestRval = binop(str_eq, Rval, const(string_const(String))).
-unify_gen__generate_tag_rval_2(float_constant(_String), _, _) :-
-	error("Sorry, float tests not implemented").
+unify_gen__generate_tag_rval_2(float_constant(Float), Rval, TestRval) :-
+	TestRval = binop(float_eq, Rval, const(float_const(Float))).
 unify_gen__generate_tag_rval_2(int_constant(Int), Rval, TestRval) :-
 	TestRval = binop(eq, Rval, const(int_const(Int))).
 unify_gen__generate_tag_rval_2(pred_closure_tag(_, _), _Rval, _TestRval) :-
@@ -217,9 +222,10 @@ unify_gen__generate_construction_2(int_constant(Int),
 		Var, _Args, _Modes, Code) -->
 	{ Code = empty },
 	code_info__cache_expression(Var, const(int_const(Int))).
-unify_gen__generate_construction_2(float_constant(_Float),
-		_Var, _Args, _Modes, _Code) -->
-	{ error("Float constructions unimplemented") }.
+unify_gen__generate_construction_2(float_constant(Float),
+		Var, _Args, _Modes, Code) -->
+	{ Code = empty },
+	code_info__cache_expression(Var, const(float_const(Float))).
 unify_gen__generate_construction_2(simple_tag(SimpleTag),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),

@@ -218,6 +218,14 @@ code_util__builtin_binop(">", 2, (>)).
 code_util__builtin_binop("<", 2, (<)).
 code_util__builtin_binop(">=", 2, (>=)).
 code_util__builtin_binop("=<", 2, (<=)).
+code_util__builtin_binop("builtin_float_plus", 3, float_plus).
+code_util__builtin_binop("builtin_float_minus", 3, float_minus).
+code_util__builtin_binop("builtin_float_times", 3, float_times).
+code_util__builtin_binop("builtin_float_divide", 3, float_divide).
+code_util__builtin_binop("builtin_float_gt", 2, float_gt).
+code_util__builtin_binop("builtin_float_lt", 2, float_lt).
+code_util__builtin_binop("builtin_float_ge", 2, float_ge).
+code_util__builtin_binop("builtin_float_le", 2, float_le).
 
 code_util__builtin_unop("builtin_bit_neg", 2, bitwise_complement).
 
@@ -308,6 +316,12 @@ code_util__neg_op(str_lt, str_ge).
 code_util__neg_op(str_le, str_gt).
 code_util__neg_op(str_gt, str_le).
 code_util__neg_op(str_ge, str_lt).
+code_util__neg_op(float_eq, float_ne).
+code_util__neg_op(float_ne, float_eq).
+code_util__neg_op(float_lt, float_ge).
+code_util__neg_op(float_le, float_gt).
+code_util__neg_op(float_gt, float_le).
+code_util__neg_op(float_ge, float_lt).
 
 code_util__negate_the_test([], _) :-
 	error("code_util__negate_the_test on empty list").

@@ -531,6 +531,8 @@ opt_debug__dump_const(true, "true").
 opt_debug__dump_const(false, "false").
 opt_debug__dump_const(int_const(I), Str) :-
 	string__int_to_string(I, Str).
+opt_debug__dump_const(float_const(F), Str) :-
+	string__float_to_string(F, Str).
 opt_debug__dump_const(string_const(I), Str) :-
 	string__append_list(["""", I, """"], Str).
 opt_debug__dump_const(address_const(_CodeAddress),

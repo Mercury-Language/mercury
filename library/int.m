@@ -2,7 +2,7 @@
 %-----------------------------------------------------------------------------%
 % int - some predicates for dealing with machine-size integer numbers.
 %
-% Main author: conway.
+% Main authors: conway, fjh.
 %
 %-----------------------------------------------------------------------------%
 
@@ -46,8 +46,8 @@
 
 /*
 
-% Undiscriminated unions aren't implemented yet,
-% so this won't work.
+% If Mercury had undiscriminated unions (like the NU-Prolog type checker)
+% we could handle is/2 better:
 
 :- type int__expr 	= 	int__expr_2 + int.
 :- type int__expr_2	--->	(int__expr + int__expr)
@@ -59,6 +59,8 @@
 :- pred is(int :: out, int__expr :: (in)) is det.
 
 */
+
+% Instead, we use some hacks in the parser.
 
 :- type int__simple_expr --->	(int + int)
 			;	(int * int)
@@ -75,7 +77,7 @@
 :- pred is(int :: out, int__simple_expr :: in) is det.
 
 /* NB: calls to `is' get automagically converted into
-   calls to builtin_whatever by the (wait for it...) *parser*.
+   calls to builtin_whatever by the parser.
    That is a quick hack to allow us to generate efficient code for it.
 */
 
@@ -117,6 +119,19 @@
 :- import_module require.
 
 :- external((is)/2).
+/*
+Z is (X + Y)	:-	builtin_plus(X, Y, Z).
+Z is (X * Y)	:-	builtin_times(X, Y, Z).
+Z is (X - Y)	:-	builtin_minus(X, Y, Z).
+Z is (X mod Y)	:-	builtin_mod(X, Y, Z).
+Z is (X // Y)	:-	builtin_div(X, Y, Z).
+Z is (X << Y)	:-	builtin_left_shift(X, Y, Z).
+Z is (X >> Y)	:-	builtin_right_shift(X, Y, Z).
+Z is (X /\ Y)	:-	builtin_bit_and(X, Y, Z).
+Z is (X \/ Y)	:-	builtin_bit_or(X, Y, Z).
+Z is (X ^ Y)	:-	builtin_bit_xor(X, Y, Z).
+Z is (\ X)	:-	builtin_bit_neg(X, Z).
+*/
 
 int__abs(Num, Abs) :-
 	(

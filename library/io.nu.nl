@@ -156,7 +156,12 @@ io__main -->
 	{ retractall(io__inhibit_user_main) },
 	{ assert(io__inhibit_user_main) },
 	{ retractall(io__exit_on_abort) },
-	{ '$mainloop' }.
+	{ nuprolog ->
+		'$mainloop'
+	;
+		version,
+		break
+	}.
 
 :- pred io__call(pred).
 

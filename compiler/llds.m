@@ -8,9 +8,8 @@
 
 :- module llds.		
 :- interface.
-:- import_module io, std_util, list, bintree_set, term, string, int.
+:- import_module io, std_util, list, bintree_set, term, string, int, float.
 :- import_module tree.
-		% and float, eventually.
 
 %-----------------------------------------------------------------------------%
 
@@ -152,6 +151,7 @@
 :- type rval_const	--->	true
 			;	false
 			;	int_const(int)
+			;	float_const(float)
 			;	string_const(string)
 			;	address_const(code_addr).
 
@@ -190,7 +190,17 @@
 			;	(<)	% integer comparions
 			;	(>)
 			;	(<=)
-			;	(>=).
+			;	(>=)
+			;	float_plus
+			;	float_minus
+			;	float_times
+			;	float_divide
+			;	float_eq
+			;	float_ne
+			;	float_lt
+			;	float_gt
+			;	float_le
+			;	float_ge.
 
 :- type reg		--->	r(int)		% integer regs
 			;	f(int).		% floating point regs
@@ -930,6 +940,26 @@ output_rval(binop(Op, X, Y)) -->
 		io__write_string(OpStr),
 		io__write_string("0)")
 	;
+		{ llds__float_compare_op(Op, OpStr) }
+	->
+		io__write_string("(word_to_float("),
+		output_rval(X),
+		io__write_string(") "),
+		io__write_string(OpStr),
+		io__write_string(" word_to_float("),
+		output_rval(Y),
+		io__write_string("))")
+	;
+		{ llds__float_op(Op, OpStr) }
+	->
+		io__write_string("float_to_word(word_to_float("),
+		output_rval(X),
+		io__write_string(") "),
+		io__write_string(OpStr),
+		io__write_string(" word_to_float("),
+		output_rval(Y),
+		io__write_string("))")
+	;
 		{ Op = (+) },
 		{ Y = const(int_const(C)) },
 		{ C < 0 }
@@ -1007,11 +1037,33 @@ llds__string_op(str_ge, ">=").
 llds__string_op(str_lt, "<").
 llds__string_op(str_gt, ">").
 
+:- pred llds__float_op(binary_op, string).
+:- mode llds__float_op(in, out) is semidet.
+
+llds__float_op(float_plus, "+").
+llds__float_op(float_minus, "-").
+llds__float_op(float_times, "*").
+llds__float_op(float_divide, "/").
+
+:- pred llds__float_compare_op(binary_op, string).
+:- mode llds__float_compare_op(in, out) is semidet.
+
+llds__float_compare_op(float_eq, "==").
+llds__float_compare_op(float_ne, "!=").
+llds__float_compare_op(float_le, "<=").
+llds__float_compare_op(float_ge, ">=").
+llds__float_compare_op(float_lt, "<").
+llds__float_compare_op(float_gt, ">").
+
 :- pred output_rval_const(rval_const, io__state, io__state).
 :- mode output_rval_const(in, di, uo) is det.
 
 output_rval_const(int_const(N)) -->
 	io__write_int(N).
+output_rval_const(float_const(Float)) -->
+	io__write_string("float_const("),
+	io__write_float(Float),
+	io__write_string(")").
 output_rval_const(string_const(String)) -->
 	io__write_string("string_const("""),
 	output_c_quoted_string(String),
@@ -1193,6 +1245,16 @@ llds__binary_op_to_string(str_lt, "str_lt").
 llds__binary_op_to_string(str_gt, "str_gt").
 llds__binary_op_to_string(str_le, "str_le").
 llds__binary_op_to_string(str_ge, "str_ge").
+llds__binary_op_to_string(float_eq, "float_eq").
+llds__binary_op_to_string(float_ne, "float_ne").
+llds__binary_op_to_string(float_lt, "float_lt").
+llds__binary_op_to_string(float_gt, "float_gt").
+llds__binary_op_to_string(float_le, "float_le").
+llds__binary_op_to_string(float_ge, "float_ge").
+llds__binary_op_to_string(float_plus, "float_plus").
+llds__binary_op_to_string(float_minus, "float_minus").
+llds__binary_op_to_string(float_times, "float_times").
+llds__binary_op_to_string(float_divide, "float_divide").
 
 %-----------------------------------------------------------------------------%
 
