@@ -14,6 +14,9 @@
 *.int3
 *.date
 *.date3
+*.opt
+*.optdate
+*.trans_opt
 *.*_date
 mercury_profile
 mercury_profile.dep

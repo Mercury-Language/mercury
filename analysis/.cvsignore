@@ -20,6 +20,9 @@
 *.mh
 *.mih
 *.*_date
+*.opt
+*.optdate
+*.trans_opt
 mer_analysis.init
 Mercury
 *.ilk
