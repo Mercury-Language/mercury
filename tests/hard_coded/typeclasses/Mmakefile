@@ -59,7 +59,7 @@ MCFLAGS-extra_typeinfo = --optimize-higher-order --no-type-specialization \
 				--typeinfo-liveness
 MCFLAGS-inference_test = --infer-all
 MCFLAGS-inference_test_2 = --infer-all
-MCFLAGS-existential_type_classes = --infer-all
+MCFLAGS-existential_type_classes = --infer-all --trace all
 MCFLAGS-lambda_multi_constraint_same_tvar = --infer-all
 
 #-----------------------------------------------------------------------------#
