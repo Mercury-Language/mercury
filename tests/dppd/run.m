@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module benchmarking, list, string, int, std_util.
+:- import_module benchmarking, gc, list, string, int, std_util.
 
 	% The imports which are modules to be benchmarked.
 :- import_module 
@@ -18,7 +18,7 @@
 	applast,
 	doubleapp,
 	flip,
-	% grammar,
+	grammar,
 	imperative_solve_power,
 	map_reduce,
 	map_rev,
@@ -33,7 +33,7 @@
 	relative,
 	remove,
 	remove2,
-	% ssuply,
+	ssuply,
 	transpose,
 	upto_sum1,
 	upto_sum2,
@@ -83,23 +83,13 @@ run_benchmark(Iterations, Name, Closure) -->
 	io__write_int(Time),
 	io__nl,
 	io__flush_output,
-	collect.
-
-:- pred collect(io__state::di, io__state::uo) is det.
-:- pragma c_code(collect(IO0::di, IO::uo),
-"{
-	IO = IO0;
-	GC_gcollect();
-}").
+	garbage_collect.
 
 :- func benchmark_list = list(benchmark).
 :- mode benchmark_list = list_skel_out(benchmark).
 
 :- type benchmark == pair(string, pred).
 :- inst benchmark = pair(ground, (pred) is semidet).
-
-:- inst pair(T, U)
-	--->	'-'(T, U).
 
 use(_) :- semidet_succeed.
 
@@ -110,14 +100,14 @@ benchmark_list = [
 		"contains_lam" - contains_lam,
 		"doubleapp" - doubleapp,
 		"flip" - flip, 
-		% "grammar" - grammar,
+		"grammar" - grammar,
 		"imperative_solve_power" - imperative_solve_power,
 		"map_reduce" - map_reduce,
 		"map_rev" - map_rev,
 		"match_kmp" - match_kmp,
 		"match" - match,
 		"match_append" - match_append,
-		% "maxlength" - maxlength,
+		"maxlength" - maxlength,
 		"missionaries" - missionaries,
 		"regexp_r1" - regexp_r1,
 		"regexp_r2" - regexp_r2,
@@ -126,7 +116,7 @@ benchmark_list = [
 		"remove" - remove,
 		"remove2" - remove2,
 		"rotateprune" - rotateprune,
-		% "ssuply" - ssuply,
+		"ssuply" - ssuply,
 		"transpose" - transpose,
 		"upto_sum1" - upto_sum1,
 		"upto_sum2" - upto_sum2

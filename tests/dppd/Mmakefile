@@ -1,16 +1,23 @@
-TESTS_DIR=..
+THIS_DIR = dppd
+TESTS_DIR = ..
+SUBDIRS =
+# For this directory, rather than having a separate main
+# for each test, there is a single Mercury test harness which
+# invokes all of the different tests.
+TESTS = run
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
 include Mercury.options
 
+%.runtest: %.res
+
 MCFLAGS=#--pd --no-inlining -d 35 -D petdr #-d 99
 #GRADE=asm_fast.gc.prof
-MLFLAGS=--static
-
-default_target:	run
+#MLFLAGS=--static
 
 clean:	run.clean
 realclean:	run.realclean
 depend:	run.depend
+

@@ -20,7 +20,12 @@
 	;	that
 	;	suchthat
 	;	(is)
-	;	subscripted(variable, variable).
+	;	subscripted(variable, variable)
+	;	(where)
+	;	(when)
+	;	'(' ; ')' ; '[' ; ']' ; '{' ; '}'
+	;	(',') ; (':') ; (';') ; ('..') ; ('=')
+	.
 
 :- pred expression_query(list(variable)::in) is semidet.
  
@@ -43,7 +48,7 @@ expression_query(String) :-
 	expression(n, none, String, []).	
 
 :- pred expression(expression::in, qualifier::in, 
-		list(variable)::in, list(variable)::out) is det.
+		list(variable)::in, list(variable)::out) is nondet.
 
 :- implementation.
 
@@ -52,7 +57,7 @@ expression( Term, Qualifiers ) -->
 expression( Term, none ) -->
     value( Term ).
 
-:- pred value(variable::in, list(variable)::in, list(variable)::out) is det.
+:- pred value(variable::in, list(variable)::in, list(variable)::out) is nondet.
 value( Term ) --> identifier( Term ).
 value( Term ) --> numeric( Term ).
 value( Term ) --> built_in( Term ).
@@ -63,7 +68,7 @@ value( Term ) --> leftparen, value( Term ), rightparen.
 
 
 :- pred qualification(qualifier::in, list(variable)::in,
-		list(variable)::out) is det.
+		list(variable)::out) is nondet.
 qualification( merge_qualifiers( Qualifier, Qualifiers ) ) -->
     qualifier( Qualifier ),
     qualification( Qualifiers ).
@@ -71,12 +76,12 @@ qualification( Qualifier ) -->
     qualifier( Qualifier ).
 
 :- pred qualifier(qualifier::in, list(variable)::in,
-		list(variable)::out) is det.
+		list(variable)::out) is nondet.
 qualifier( such_that( Left, Right ) ) -->
     such_that, value( Left ), equals, value( Right ).
 qualifier( for_all( Term ) ) --> for_all, subrange( Term ).
-qualifier( 'when'( Term ) )    --> when, value( Term ).
-qualifier( 'where'( Term ) )   --> where, is_a( Term ).
+qualifier( 'when'( Term ) )    --> (when), value( Term ).
+qualifier( 'where'( Term ) )   --> (where), is_a( Term ).
 
 :- pred leftparen(list(variable)::in, list(variable)::out) is semidet.
 leftparen --> ['('].
@@ -118,22 +123,22 @@ is_a --> [is].
 such_that --> [suchthat].
 such_that --> [such], [that].
 
-:- pred for_all(list(variable)::in, list(variable)::out) is nondet.
+:- pred for_all(list(variable)::in, list(variable)::out) is semidet.
 for_all --> [forall].
 for_all --> [for], [all].
 
-:- pred start_subscript(list(variable)::in, list(variable)::out) is nondet.
+:- pred start_subscript(list(variable)::in, list(variable)::out) is semidet.
 start_subscript --> ['{'].
 
-:- pred end_subscript(list(variable)::in, list(variable)::out) is nondet.
+:- pred end_subscript(list(variable)::in, list(variable)::out) is semidet.
 end_subscript --> ['}'].
 
-:- pred identifier(variable::out, list(variable)::in, list(variable)::out) is nondet.
+:- pred identifier(variable::in, list(variable)::in, list(variable)::out) is semidet.
 identifier( Identifier ) --> common_function( Identifier ).
 identifier( Identifier ) --> common_variable( Identifier ).
 
 :- pred common_variable(variable::in, 
-		list(variable)::in, list(variable)::out) is nondet.
+		list(variable)::in, list(variable)::out) is semidet.
 
 common_variable( a ) --> [a].
 common_variable( n ) --> [n].
@@ -147,14 +152,21 @@ common_variable( res ) --> [res].
 
 :- pred numeric(variable::in, list(variable)::in, 
 		list(variable)::out) is failure.
-numeric( _, _, _ ) --> fail.
+numeric( _) --> fail.
 :- pred built_in(variable::in, list(variable)::in, 
 		list(variable)::out) is failure.
-built_in( _, _, _ ) --> fail.
+built_in( _) --> fail.
 :- pred bracketted(variable::in, list(variable)::in, 
 		list(variable)::out) is failure.
-bracketted( _, _, _ ) --> fail.
+bracketted( _) --> fail.
 :- pred common_function(variable::in, list(variable)::in, 
 		list(variable)::out) is failure.
-common_function( _, _, _ ) --> fail.
+common_function( _) --> fail.
+:- pred is_a(variable::in, list(variable)::in, list(variable)::out) is failure.
+is_a(_) --> fail.
+:- pred subrange(variable::in, list(variable)::in, list(variable)::out) is failure.
+subrange(_) --> fail.
+
+:- pred fail(T::in, T::out) is failure.
+fail --> { fail }.
 

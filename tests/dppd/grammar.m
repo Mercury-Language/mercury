@@ -23,7 +23,7 @@ The "grammar" Benchmark
 :- import_module grammar_impl, list.
 
 grammar :-
- 	expression_query( n, [], ['(','(','(','(',n,')',')',')',')'], [] ).
+ 	expression_query( ['(','(','(','(',n,')',')',')',')'] ).
 
 /*
   The benchmark program (in ordinary clause format)

@@ -25,7 +25,13 @@ The "map.reduce" Benchmark
 :- import_module list, run, map_impl.
 
 map_reduce :-
-	map_reduce_add([[1,2],[1,2,3]],[_L1,_L2]),
+	% XXX the commented-out line below results in a mode error,
+	%     due to the Mercury compiler's lack of support for partially
+	%     instantiated data structures.  Therefore it has been
+	%     replaced with the line below it.  (The commented-out code here
+	%     is also reproduced in a separate test case in tests/dppd/bug.m.)
+	/* map_reduce_add([[1,2],[1,2,3]],[_L1,_L2]), */
+	map_reduce_add([[1,2],[1,2,3]],Res0), Res0 = [_L1,_L2],
 	map_reduce_add([[],[1,2],[5,6,7],[8,9,10]],Res1),
 	use(Res1),
 	map_reduce_add([[],[1,2],[5,6,7],[],[8,9,10],[11,12],

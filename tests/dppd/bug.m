@@ -1,3 +1,10 @@
+% XXX The Mercury compiler reports a spurious mode error for this code,
+%     due to the lack of support for partially instantiated data
+%     structures.
+%
+% XXX This test, which is extracted from tests/dppd/map_reduce.m,
+%     should go in tests/valid.
+
 :- module bug.
 
 :- interface.
