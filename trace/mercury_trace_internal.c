@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -2311,8 +2311,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				layout->MR_sll_entry, layout,
 				&problem);
 		MR_maybe_print_spy_point(slot, problem);
-	} else if (word_count == 2 &&
-			MR_parse_proc_spec(words[1], &spec))
+	} else if (word_count == 2 && MR_parse_proc_spec(words[1], &spec))
 	{
 		MR_Matches_Info	matches;
 		int		slot;

@@ -332,7 +332,9 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	** There must be at least one character before the qualifier.
 	*/
 	while (end > str) {
-		if (*end == ':' || *end == '.' || (*end == '_' && *(end + 1) == '_')) {
+		if (*end == ':' || *end == '.'
+			|| (*end == '_' && *(end + 1) == '_'))
+		{
 			if (*end  == ':' || *end == '.') {
 				spec->MR_proc_name = end + 1;
 			} else {
