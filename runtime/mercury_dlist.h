@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997,2000 The University of Melbourne.
+** Copyright (C) 1995-1997,2000, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -38,12 +38,6 @@ struct	MR_Dlist_Struct {
 						MR_dlist_union.MR_dlist_data)
 #define	MR_dlist_last(list)		((list)->MR_dlist_prev->	\
 						MR_dlist_union.MR_dlist_data)
-
-#define	MR_dlist_makelist(d)		MR_dlist_makelist(d)
-#define	MR_dlist_addhead(l, d)		MR_dlist_addhead(l, d)
-#define	MR_dlist_addtail(l, d)		MR_dlist_addtail(l, d)
-#define	MR_dlist_insert_before(l, w, d)	MR_dlist_insert_before(l, w, d)
-#define	MR_dlist_insert_after(l, w, d)	MR_dlist_insert_after(l, w, d)
 
 #define	MR_for_dlist(p, l) 						\
 	for (								\
