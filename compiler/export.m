@@ -602,22 +602,16 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 
 %-----------------------------------------------------------------------------%
 
-% Should this predicate go in llds_out.m?
+% This procedure is used for both the MLDS and LLDS back-ends.
 
 export__produce_header_file(ForeignExportDecls, ModuleName) -->
 		% We always produce a .mh file because with intermodule
 		% optimization enabled the .o file depends on all the
 		% .mh files of the imported modules so we always need to
 		% produce a .mh file even if it contains nothing.
-	export__produce_header_file(ForeignExportDecls, ModuleName, ".mh").
-
-:- pred export__produce_header_file(foreign_export_decls,
-		module_name, string, io__state, io__state).
-:- mode export__produce_header_file(in, in, in, di, uo) is det.
-
-export__produce_header_file(ForeignExportDecls, ModuleName, HeaderExt) -->
 	{ ForeignExportDecls = foreign_export_decls(ForeignDecls,
 			C_ExportDecls) },
+	{ HeaderExt = ".mh" },
 	module_name_to_file_name(ModuleName, HeaderExt, yes, FileName),
 	io__open_output(FileName, Result),
 	(
