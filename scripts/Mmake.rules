@@ -267,11 +267,15 @@ $(il_dates_subdir)%.il_date : %.m
 # processing user code that is in a .cpp file, and we'd like to avoid going via
 # IL to generate a DLL if we are in a non-IL grade.
 ifeq ($(findstring il,$(GRADE)),il)        
+
+# Note that we use `-' rather than `/' as the option character for options
+# to $(MS_CL), to avoid confusion with Unix-style path names.
+# `cl' supports both variants.
 $(os_subdir)%.dll : %.cpp
 	$(MS_CL) -CLR$(MS_CL_NOASM) $(ALL_MS_CLFLAGS) \
 		-I`$(FIX_PATH_FOR_CL) $(MERC_C_INCL_DIR)` \
 		-AI`$(FIX_PATH_FOR_CL) $(MERC_DLL_DIR)` $< \
-		/LD $(MS_CL_LIBS) -out:$@
+		-LD -o $@ $(MS_CL_LIBS)
 	rm -f $*.obj
 
 $(os_subdir)%.dll : %.cs
@@ -380,7 +384,7 @@ ifeq ($(findstring il,$(GRADE)),il)
 	$(MS_CL) -CLR$(MS_CL_NOASM) $(ALL_MS_CLFLAGS) \
 		-I`$(FIX_PATH_FOR_CL) $(MERC_C_INCL_DIR)` \
 		-AI`$(FIX_PATH_FOR_CL) $(MERC_DLL_DIR)` $< \
-		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
+		-LD -o $@ $(MS_CL_LIBS)
 	rm -f $*.obj
 
 .cs.dll:

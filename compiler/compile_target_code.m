@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 University of Melbourne.
+% Copyright (C) 2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -230,7 +230,7 @@ compile_managed_cplusplus_file(ErrorStream,
 
 	{ string__append_list([MCPP, " -CLR ", DebugOpt, InclOpts,
 		DLLDirOpts, MCPPFlags, " ", MCPPFileName,
-		" /LD /link -out:", DLLFileName],
+		" -LD -o ", DLLFileName],
 		Command) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
