@@ -680,7 +680,8 @@ copy_typeclass_info(maybeconst Word *typeclass_info_ptr,
         Word    *new_typeclass_info;
         int     num_arg_typeinfos;
         int     num_super;
-        int     arity;
+        int     num_instance_constraints;
+        int     num_unconstrained;
         int     i;
 
         /*
@@ -690,22 +691,47 @@ copy_typeclass_info(maybeconst Word *typeclass_info_ptr,
 
         base_typeclass_info = (Word *) *typeclass_info;
 
-        arity = MR_typeclass_info_instance_arity(typeclass_info);
+        num_instance_constraints = 
+		MR_typeclass_info_num_instance_constraints(typeclass_info);
+	num_unconstrained = 
+		MR_typeclass_info_num_extra_instance_args(typeclass_info) 
+		- num_instance_constraints;
         num_super = MR_typeclass_info_num_superclasses(typeclass_info);
         num_arg_typeinfos = MR_typeclass_info_num_type_infos(typeclass_info);
         incr_saved_hp(LVALUE_CAST(Word, new_typeclass_info),
-            arity + num_super + num_arg_typeinfos + 1);
+            num_instance_constraints + num_super + num_arg_typeinfos + 1);
 
         new_typeclass_info[0] = (Word) base_typeclass_info;
 
-                /* First, copy all the typeclass infos */
-        for (i = 1; i < arity + num_super + 1; i++) {
+                /* 
+		** First, copy typeinfos for unconstrained tvars from
+		** the instance declaration 
+		*/
+        for (i = 1; i < num_unconstrained + 1; i++) {
+            new_typeclass_info[i] = (Word) copy_type_info(
+		(MR_TypeInfo *)(&typeclass_info[i]), lower_limit, upper_limit);
+        }
+		/*
+		** Next, copy all the typeclass infos: both the ones for
+		** constraints on the instance declaration (instance
+		** constraints), and the ones for constraints on the
+		** typeclass declaration (superclass constraints).  
+		*/
+        for (i = num_unconstrained + 1; 
+		i < num_unconstrained + num_instance_constraints + num_super + 1; 
+		i++) 
+	{
             new_typeclass_info[i] = (Word) copy_typeclass_info(
                 &typeclass_info[i], lower_limit, upper_limit);
         }
-                /* Then, copy all the type infos */
-        for (i = arity + num_super + 1;
-            i < arity + num_super + num_arg_typeinfos + 1;
+
+		/*
+		** Then, copy all the type infos for types in the
+		** head of the type class declaration.
+		*/
+        for (i = num_unconstrained + num_instance_constraints + num_super + 1;
+            i < num_unconstrained + num_instance_constraints + 
+	    		num_super + num_arg_typeinfos + 1;
             i++)
         {
             new_typeclass_info[i] = (Word) copy_type_info(

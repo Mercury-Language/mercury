@@ -330,17 +330,19 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** Mercury typeclass_info.
 */
 
-#define MR_typeclass_info_instance_arity(tci)                       \
+#define	MR_typeclass_info_num_extra_instance_args(tci)              \
     ((Integer)(*(Word **)(tci))[0])
-#define MR_typeclass_info_num_superclasses(tci)                     \
+#define MR_typeclass_info_num_instance_constraints(tci)             \
     ((Integer)(*(Word **)(tci))[1])
-#define MR_typeclass_info_num_type_infos(tci)                       \
+#define MR_typeclass_info_num_superclasses(tci)                     \
     ((Integer)(*(Word **)(tci))[2])
-#define MR_typeclass_info_num_methods(tci)                          \
+#define MR_typeclass_info_num_type_infos(tci)                       \
     ((Integer)(*(Word **)(tci))[3])
+#define MR_typeclass_info_num_methods(tci)                          \
+    ((Integer)(*(Word **)(tci))[4])
 #define MR_typeclass_info_class_method(tci, n)                      \
-    ((Code *)(*(Word **)tci)[(n+3)])
-#define MR_typeclass_info_arg_typeclass_info(tci, n)                \
+    ((Code *)(*(Word **)tci)[(n+4)])
+#define	MR_typeclass_info_arg_typeclass_info(tci, n)                \
     (((Word *)(tci))[(n)])
 
 /*
@@ -349,10 +351,10 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** number of superclass_infos for the class added to it.
 */
 
-#define MR_typeclass_info_superclass_info(tci, n)                   \
-    (((Word *)(tci))[MR_typeclass_info_instance_arity(tci) + (n)])
-#define MR_typeclass_info_type_info(tci, n)                         \
-    (((Word *)(tci))[MR_typeclass_info_instance_arity(tci) + (n)])
+#define	MR_typeclass_info_superclass_info(tci, n)                   \
+    (((Word *)(tci))[MR_typeclass_info_num_extra_instance_args(tci) + (n)])
+#define	MR_typeclass_info_type_info(tci, n)                         \
+    (((Word *)(tci))[MR_typeclass_info_num_extra_instance_args(tci) + (n)])
 
 /*---------------------------------------------------------------------------*/
 

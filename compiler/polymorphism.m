@@ -13,6 +13,9 @@
 % These arguments are structures that contain, amoung other things,
 % higher-order predicate terms for the polymorphic procedures or methods.
 
+% See notes/type_class_transformation.html for a description of the
+% transformation and data structures used to implement type classes.
+
 % XXX The way the code in this module handles existential type classes
 % and type class constraints is a bit ad-hoc, in general; there are
 % definitely parts of this code (marked with XXXs below) that could
@@ -152,140 +155,6 @@
 % single shared type_ctor_info.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-%
-% Tranformation of code using typeclasses:
-%
-% Every predicate which has a typeclass constraint is given an extra
-% argument for every constraint in the predicate's type declaration.
-% The argument is the "dictionary", or "typeclass_info" for the typeclass.
-% The dictionary contains pointers to each of the class methods.
-%
-%-----------------------------------------------------------------------------%
-%
-% Representation of a typeclass_info:
-%	The typeclass_info is represented in two parts (the typeclass_info
-%	itself, and a base_typeclass_info), in a similar fashion to the
-%	type_info being represented in two parts (the type_info and the
-%	type_ctor_info).
-%
-%		The base_typeclass_info contains:
-%		  * the number of constraints on the instance decl. (`l')
-%		  * the number of constraints on the typeclass decl. (`m')
-%		  * the number of parameters (type variables) from 
-%		         the typeclass decl. (`n')
-%		  * the number of constraints on the typeclass decl. (`p')
-%		  * pointer to method #1
-%		    ...
-%		  * pointer to method #p
-%
-%		The typeclass_info contains:
-%		  * a pointer to the base typeclass info
-%		  * typeclass info #1 for constraint on instance decl
-%		  * ...
-%		  * typeclass info #l for constraint on instance decl
-%		  * typeclass info for superclass #1
-%		    ...
-%		  * typeclass info for superclass #m
-%		  * type info #1 
-%		  * ...
-%		  * type info #n
-%
-% The base_typeclass_info is produced statically, and there is one for
-% each instance declaration. For each constraint on the instance
-% declaration, the corresponding typeclass_info is stored in the second
-% part.
-%
-% eg. for the following program:
-%
-%	:- typeclass foo(T) where [...].
-%	:- instance  foo(int) where [...].
-%	:- instance  foo(list(T)) <= foo(T) where [...].
-%
-%	The typeclass_info for foo(int) is:
-%		The base_typeclass_info:
-%		  * 0 (arity of the instance declaration) 
-%		  * pointer to method #1
-%		    ...
-%		  * pointer to method #n
-%
-%		The typeclass_info:
-%		  * a pointer to the base typeclass info
-%		  * type_info for int
-%
-%	The typeclass_info for foo(list(T)) is:
-%		The base_typeclass_info:
-%		  * 1 (arity of the instance declaration)
-%		  * pointer to method #1
-%		    ...
-%		  * pointer to method #n
-%
-%		The typeclass_info contains:
-%		  * a pointer to the base typeclass info
-%		  * typeclass info for foo(T)
-%		  * type_info for list(T)
-%
-% If the "T" for the list is known, the whole typeclass_info will be static
-% data. When we do not know until runtime, the typeclass_info is constructed
-% dynamically.
-%
-%-----------------------------------------------------------------------------%
-%
-% Example of transformation:
-%
-% Take the following code as an example (assuming the declarations above),
-% ignoring the requirement for super-homogeneous form for clarity:
-%
-%	:- pred p(T1) <= foo(T1).
-%	:- pred q(T2, T3) <= foo(T2), bar(T3).
-%	:- pred r(T4, T5) <= foo(T4).
-%
-%	p(X) :- q([X], 0), r(X, 0).
-%
-% We add an extra argument for each type class constraint, and one
-% argument for each unconstrained type variable.
-%
-%	:- pred p(typeclass_info(foo(T1)), T1).
-%	:- pred q(typeclass_info(foo(T2)), typeclass_info(bar(T3)), T2, T3).
-%	:- pred r(typeclass_info(foo(T4)), type_info(T5), T4, T5).
-%
-% We transform the body of p to this:
-%
-%	p(TypeClassInfoT1, X) :-
-%		BaseTypeClassInfoT2 = base_typeclass_info(
-%			1,
-%			...
-%			... (The methods for the foo class from the list
-%			...  instance)
-%			...
-%			),
-%		TypeClassInfoT2 = typeclass_info(
-%			BaseTypeClassInfoT2,
-%			TypeClassInfoT1,
-%			<type_info for list(T1)>),
-%		BaseTypeClassInfoT3 = base_typeclass_info(
-%			0,
-%			...
-%			... (The methods for the bar class from the int
-%			...  instance)
-%			...
-%			),
-%		TypeClassInfoT3 = typeclass_info(
-%			BaseTypeClassInfoT3,
-%			<type_info for int>),
-%		q(TypeClassInfoT2, TypeClassInfoT3, [X], 0),
-%		BaseTypeClassInfoT4 = baseclass_type_info(
-%			0,
-%			...
-%			... (The methods for the foo class from the int
-%			...  instance)
-%			...
-%			),
-%		TypeClassInfoT4 = typeclass_info(
-%			BaseTypeClassInfoT4,
-%			<type_info for int>),
-%		r(TypeClassInfoT1, <type_info for int>, X, 0).
-%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
@@ -2071,9 +1940,13 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 				InstanceConstraints0, InstanceTypes0, _, _, 
 				InstanceTVarset, SuperClassProofs0),
 
+			term__vars_list(InstanceTypes0, InstanceTvars),
+			get_unconstrained_tvars(InstanceTvars,
+				InstanceConstraints0, UnconstrainedTvars0),
+
 				% We can ignore the typevarset because all the
-				% type variables that are created are bound.
-				% When we call type_list_subsumes then apply
+				% type variables that are created are bound
+				% when we call type_list_subsumes then apply
 				% the resulting bindings.
 			varset__merge_subst(TypeVarSet, InstanceTVarset,
 				_NewTVarset, RenameSubst),
@@ -2097,6 +1970,14 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 			apply_rec_subst_to_constraint_proofs(InstanceSubst,
 				SuperClassProofs1, SuperClassProofs),
 
+			term__var_list_to_term_list(UnconstrainedTvars0,
+				UnconstrainedTypes0),
+			term__apply_substitution_to_list(UnconstrainedTypes0,
+				RenameSubst, UnconstrainedTypes1),
+			term__apply_rec_substitution_to_list(
+				UnconstrainedTypes1, InstanceSubst, 
+				UnconstrainedTypes),
+
 				% Make the type_infos for the types
 				% that are constrained by this. These
 				% are packaged in the typeclass_info
@@ -2114,6 +1995,15 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 				[], InstanceExtraTypeClassInfoVars0, 
 				ExtraGoals0, ExtraGoals1, 
 				Info1, Info2),
+
+				% Make the type_infos for the unconstrained
+				% type variables from the head of the
+				% instance declaration
+			polymorphism__make_type_info_vars(
+				UnconstrainedTypes, Context, 
+				InstanceExtraTypeInfoUnconstrainedVars, 
+				UnconstrainedTypeInfoGoals,
+				Info2, Info3),
 			
 				% The variables are built up in 
 				% reverse order.
@@ -2121,12 +2011,13 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 				InstanceExtraTypeClassInfoVars),
 
 			polymorphism__construct_typeclass_info(
+				InstanceExtraTypeInfoUnconstrainedVars,
 				InstanceExtraTypeInfoVars, 
 				InstanceExtraTypeClassInfoVars, 
 				ClassId, Constraint, InstanceNum,
 				ConstrainedTypes,
 				SuperClassProofs, ExistQVars, Var, NewGoals, 
-				Info2, Info),
+				Info3, Info),
 
 			MaybeVar = yes(Var),
 
@@ -2134,10 +2025,14 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 				% already been reversed, so lets
 				% reverse them back.
 			list__reverse(TypeInfoGoals, RevTypeInfoGoals),
+			list__reverse(UnconstrainedTypeInfoGoals, 
+				RevUnconstrainedTypeInfoGoals),
 
 			list__append(ExtraGoals1, RevTypeInfoGoals,
 				ExtraGoals2),
-			list__append(NewGoals, ExtraGoals2, ExtraGoals)
+			list__append(NewGoals, ExtraGoals2, ExtraGoals3),
+			list__append(RevUnconstrainedTypeInfoGoals,
+				ExtraGoals3, ExtraGoals)
 		;
 				% We have to extract the typeclass_info from
 				% another one
@@ -2251,14 +2146,15 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 		)
 	).
 
-:- pred polymorphism__construct_typeclass_info(list(prog_var), list(prog_var),
-	class_id, class_constraint, int, 
+:- pred polymorphism__construct_typeclass_info(list(prog_var), list(prog_var), 
+	list(prog_var), class_id, class_constraint, int, 
 	list(type), map(class_constraint, constraint_proof),
 	existq_tvars, prog_var, list(hlds_goal), poly_info, poly_info).
-:- mode polymorphism__construct_typeclass_info(in, in, in, in, in, in, in, in,
-	out, out, in, out) is det.
+:- mode polymorphism__construct_typeclass_info(in, in, in, in, in, 
+	in, in, in, in, out, out, in, out) is det.
 
-polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
+polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars, 
+		ArgTypeInfoVars, ArgTypeClassInfoVars,
 		ClassId, Constraint, InstanceNum,
 		InstanceTypes, SuperClassProofs, ExistQVars,
 		NewVar, NewGoals, Info0, Info) :-
@@ -2278,7 +2174,8 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 		% lay out the argument variables as expected in the
 		% typeclass_info
 	list__append(ArgTypeClassInfoVars, ArgSuperClassVars, ArgVars0),
-	list__append(ArgVars0, ArgTypeInfoVars, ArgVars),
+	list__append(ArgVars0, ArgTypeInfoVars, ArgVars1),
+	list__append(ArgUnconstrainedTypeInfoVars, ArgVars1, ArgVars),
 
 	ClassId = class_id(ClassName, _Arity),
 

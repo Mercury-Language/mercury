@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -8,9 +8,9 @@
 % to hold the base_typeclass_info structures of the typeclass instances defined
 % by the current module.
 %
-% See polymorphism.m for a description of the various ways to represent
-% type information, including a description of the base_typeclass_info
-% structures.
+% See notes/type_class_transformation.html for a description of the various 
+% ways to represent type information, including a description of the
+% base_typeclass_info structures.
 %
 % Author: dgj.
 %
@@ -37,6 +37,7 @@
 :- import_module hlds_data, hlds_pred, hlds_out.
 :- import_module code_util, globals, options, term.
 :- import_module bool, string, map, std_util, require, assoc_list.
+:- import_module type_util, int.
 
 %---------------------------------------------------------------------------%
 
@@ -90,8 +91,8 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 		DataName = base_typeclass_info(ClassId, InstanceString),
 
 		base_typeclass_info__gen_rvals_and_procs(PredProcIds,
-			InstanceConstraints, ModuleInfo, ClassId, 
-			Rvals, Procs),
+			InstanceTypes, InstanceConstraints, ModuleInfo, 
+			ClassId, Rvals, Procs),
 		
 			% XXX Need we always export it from the module?
 			% (Note that linkage/2 in llds_out.m assumes
@@ -110,17 +111,23 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 %----------------------------------------------------------------------------%
 
 :- pred base_typeclass_info__gen_rvals_and_procs(maybe(list(hlds_class_proc)),
-	list(class_constraint), module_info, class_id, list(maybe(rval)),
-	list(pred_proc_id)).
-:- mode base_typeclass_info__gen_rvals_and_procs(in, in, in, in, 
+	list(type), list(class_constraint), module_info, class_id,
+	list(maybe(rval)), list(pred_proc_id)).
+:- mode base_typeclass_info__gen_rvals_and_procs(in, in, in, in, in, 
 	out, out) is det.
 
-base_typeclass_info__gen_rvals_and_procs(no, _, _, _, [], []) :-
+base_typeclass_info__gen_rvals_and_procs(no, _, _, _, _, [], []) :-
 	error("pred_proc_ids should have been filled in by check_typeclass.m").
-base_typeclass_info__gen_rvals_and_procs(yes(PredProcIds0), Constraints,
+base_typeclass_info__gen_rvals_and_procs(yes(PredProcIds0), Types, Constraints,
 		ModuleInfo, ClassId, Rvals, PredProcIds) :-
-	list__length(Constraints, InstanceArity),
-	ArityArg = yes(const(int_const(InstanceArity))),
+
+
+	term__vars_list(Types, TypeVars),
+	get_unconstrained_tvars(TypeVars, Constraints, Unconstrained),
+	list__length(Constraints, NumConstraints),
+	list__length(Unconstrained, NumUnconstrained),
+	NumExtraArg = yes(const(int_const(NumConstraints+NumUnconstrained))),
+	NumConstraintsArg = yes(const(int_const(NumConstraints))),
 	ExtractPredProcId = lambda([HldsPredProc::in, PredProc::out] is det,
 		(
 			HldsPredProc = hlds_class_proc(PredId, ProcId),
@@ -133,8 +140,8 @@ base_typeclass_info__gen_rvals_and_procs(yes(PredProcIds0), Constraints,
 			SuperClassCount, ClassArity),
 	list__length(PredAddrArgs, NumMethods),
 	NumMethodsArg = yes(const(int_const(NumMethods))),
-	Rvals = [ ArityArg, SuperClassCount, ClassArity, NumMethodsArg 
-			| PredAddrArgs ].
+	Rvals = [ NumExtraArg, NumConstraintsArg, SuperClassCount, 
+			ClassArity, NumMethodsArg | PredAddrArgs ].
 
 :- pred base_typeclass_info__construct_pred_addrs(list(pred_proc_id),
 	module_info, list(maybe(rval))).

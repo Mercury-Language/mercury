@@ -352,6 +352,9 @@
 :- pred constraint_get_tvars(class_constraint, list(tvar)).
 :- mode constraint_get_tvars(in, out) is det.
 
+:- pred get_unconstrained_tvars(list(tvar), list(class_constraint), list(tvar)).
+:- mode get_unconstrained_tvars(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1299,5 +1302,9 @@ constraint_list_get_tvars(Constraints, TVars) :-
 
 constraint_get_tvars(constraint(_Name, Args), TVars) :-
 	term__vars_list(Args, TVars).
+
+get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
+	constraint_list_get_tvars(Constraints, ConstrainedTvars),
+	list__delete_elems(Tvars, ConstrainedTvars, Unconstrained).
 
 %-----------------------------------------------------------------------------%
