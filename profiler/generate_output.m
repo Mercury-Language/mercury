@@ -83,7 +83,7 @@ process_prof_node_list([PN | PNs], Prof, VVerbose, OutputProf0, OutputProf) -->
 		{ VVerbose = yes }
 	->
 		{ prof_node_get_pred_name(PN, LabelName) },
-		io__write_string("\n\t% Processing predicate "),
+		io__write_string("\n\t% Processing "),
 		io__write_string(LabelName)
 	;
 		[]
