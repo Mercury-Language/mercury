@@ -445,6 +445,8 @@ qualify_inst_list([Inst0 | Insts0], [Inst | Insts], Info0, Info) -->
 			io__state::di, io__state::uo) is det.
 
 qualify_inst(any(A), any(A), Info, Info) --> [].
+qualify_inst(alias(V), alias(V), Info, Info) -->
+	{ error("qualify_inst: alias") }.
 qualify_inst(free, free, Info, Info) --> [].
 qualify_inst(not_reached, not_reached, Info, Info) --> [].
 qualify_inst(free(_), _, _, _) -->

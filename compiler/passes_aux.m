@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, prog_data.
+:- import_module hlds_module, hlds_pred, prog_data, (inst).
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
@@ -118,8 +118,8 @@ about unbound type variables.
 :- mode report_pred_proc_id(in, in, in, in, out, di, uo) is det.
 
 :- pred report_pred_name_mode(pred_or_func, string, list((mode)),
-				io__state, io__state).
-:- mode report_pred_name_mode(in, in, in, di, uo) is det.
+			inst_key_table, io__state, io__state).
+:- mode report_pred_name_mode(in, in, in, in, di, uo) is det.
 	
 
 %-----------------------------------------------------------------------------%
@@ -330,6 +330,8 @@ tree_stats(Description, Tree) -->
 report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
+	% YYY Change for local inst_key_tables
+	{ module_info_inst_key_table(ModuleInfo, InstKeyTable) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_arity(PredInfo, Arity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
@@ -354,35 +356,36 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	),
 	prog_out__write_context(OutContext),
 	io__write_string("In `"),
-	report_pred_name_mode(PredOrFunc, PredName, ArgModes),
+	report_pred_name_mode(PredOrFunc, PredName, ArgModes, InstKeyTable),
 	io__write_string("':\n").
 
 
-report_pred_name_mode(predicate, PredName, ArgModes) -->
+report_pred_name_mode(predicate, PredName, ArgModes, InstKeyTable) -->
 	io__write_string(PredName),
 	( { ArgModes \= [] } ->
 		{ varset__init(InstVarSet) },	% XXX inst var names
 		io__write_string("("),
 		{ strip_builtin_qualifiers_from_mode_list(ArgModes,
 								ArgModes1) },
-		mercury_output_mode_list(ArgModes1, InstVarSet),
+		mercury_output_mode_list(ArgModes1, InstVarSet, InstKeyTable),
 		io__write_string(")")
 	;
 		[]
 	).
 
-report_pred_name_mode(function, FuncName, ArgModes) -->
+report_pred_name_mode(function, FuncName, ArgModes, InstKeyTable) -->
 	{ varset__init(InstVarSet) },	% XXX inst var names
 	{ strip_builtin_qualifiers_from_mode_list(ArgModes, ArgModes1) },
 	{ pred_args_to_func_args(ArgModes1, FuncArgModes, FuncRetMode) },
 	io__write_string(FuncName),
 	( { FuncArgModes \= [] } ->
 		io__write_string("("),
-		mercury_output_mode_list(FuncArgModes, InstVarSet),
+		mercury_output_mode_list(FuncArgModes, InstVarSet,
+			InstKeyTable),
 		io__write_string(")")
 	;
 		[]
 	),
 	io__write_string(" = "),
-	mercury_output_mode(FuncRetMode, InstVarSet).
+	mercury_output_mode(FuncRetMode, InstVarSet, InstKeyTable).
 %-----------------------------------------------------------------------------%

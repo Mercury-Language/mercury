@@ -163,7 +163,9 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	%
 	% At last we're ready to construct the initial mode_info
 	%
-	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId, Context,
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo0, IKT0),
+	mode_info_init(IOState0, ModuleInfo0, IKT0, PredId, ProcId, Context,
 			LiveVars, InstMap0, ModeInfo0),
 	%
 	% Modecheck the goal
@@ -185,7 +187,10 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% Get the info we need from the mode_info and stuff it back
 	% in the proc_info
 	%
-	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_module_info(ModeInfo, ModuleInfo1),
+	mode_info_get_inst_key_table(ModeInfo, IKT),
+	% YYY Change for local inst_key_tables
+	module_info_set_inst_key_table(ModuleInfo1, IKT, ModuleInfo),
 	mode_info_get_io_state(ModeInfo, IOState1),
 	mode_info_get_errors(ModeInfo, Errors),
 	( Errors = [] ->
@@ -313,11 +318,12 @@ select_changed_inst_vars([], _DeltaInstMap, _ModeInfo, []).
 select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_instmap(ModeInfo, InstMap0),
+	mode_info_get_inst_key_table(ModeInfo, IKT),
 	instmap__lookup_var(InstMap0, Var, Inst0),
 	(
 		instmap_delta_is_reachable(DeltaInstMap),
 		instmap_delta_search_var(DeltaInstMap, Var, Inst),
-		\+ inst_matches_final(Inst, Inst0, ModuleInfo)
+		\+ inst_matches_final(Inst, Inst0, IKT, ModuleInfo)
 	->
 		ChangedVars = [Var | ChangedVars1],
 		select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo,
@@ -341,6 +347,7 @@ make_var_list_mostly_uniq([Var | Vars], ModeInfo0, ModeInfo) :-
 make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_info_get_inst_key_table(ModeInfo0, IKT0),
 	(
 		%
 		% only variables which are `unique' need to be changed
@@ -349,16 +356,20 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 		instmap__vars_list(InstMap0, Vars),
 		list__member(Var, Vars),
 		instmap__lookup_var(InstMap0, Var, Inst0),
-		inst_expand(ModuleInfo0, Inst0, Inst1),
+		inst_expand(IKT0, ModuleInfo0, Inst0, Inst1),
 		( Inst1 = ground(unique, _)
 		; Inst1 = bound(unique, _)
 		; Inst1 = any(unique)
 		)
 	->
-		make_mostly_uniq_inst(Inst0, ModuleInfo0, Inst, ModuleInfo),
+		map__init(Sub0),
+		make_mostly_uniq_inst(Inst0, IKT0, ModuleInfo0, Sub0, Inst,
+			IKT, ModuleInfo, Sub),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
+		mode_info_set_inst_key_table(ModeInfo1, IKT, ModeInfo2),
+		mode_info_apply_inst_key_sub([Inst], Sub, ModeInfo2, ModeInfo3),
 		instmap__set(InstMap0, Var, Inst, InstMap),
-		mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo)
+		mode_info_set_instmap(InstMap, ModeInfo3, ModeInfo)
 	;
 		ModeInfo = ModeInfo0
 	).
@@ -648,10 +659,7 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 
 		% record the fact that Var was bound to ConsId in the
 		% instmap before processing this case
-	{ cons_id_arity(ConsId, Arity) },
-	{ list__duplicate(Arity, free, ArgInsts) },
-	modecheck_set_var_inst(Var,
-		bound(unique, [functor(ConsId, ArgInsts)])),
+	mode_info_bind_var_to_functor(Var, ConsId),
 
 	unique_modes__check_goal(Goal0, Goal1),
 	mode_info_dcg_get_instmap(InstMap),

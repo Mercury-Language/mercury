@@ -288,7 +288,8 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 						% for each of the pred's type
 						% parameters
 			string,			% pred name
-			module_info
+			module_info,
+			inst_key_table
 		).
 
 :- pred polymorphism__process_proc(proc_info, pred_info, module_info,
@@ -306,6 +307,9 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_argmodes(ProcInfo0, ArgModes0),
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo0, IKT0),
+
 	% insert extra head variables to hold the address of the
 	% equality predicate for each polymorphic type in the predicate's
 	% type declaration
@@ -323,11 +327,11 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 	map__from_corresponding_lists(HeadTypeVars, ExtraHeadVars,
 				TypeInfoMap0),
 	Info0 = poly_info(VarSet1, VarTypes1, TypeVarSet0,
-				TypeInfoMap0, PredName, ModuleInfo0),
+				TypeInfoMap0, PredName, ModuleInfo0, IKT0),
 	polymorphism__process_goal(Goal0, Goal1, Info0, Info1),
 	polymorphism__fixup_quantification(Goal1, Goal, Info1, Info),
 	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeInfoMap, _PredName,
-		ModuleInfo),
+		ModuleInfo, _),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo1),
@@ -368,7 +372,8 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
 		{ list__length(ArgVars0, Arity) },
 		{ special_pred_name_arity(SpecialPredId, PredName0,
 						MangledPredName, Arity) },
-		=(poly_info(_, VarTypes, _, _TypeInfoMap, _PN, ModuleInfo)),
+		=(poly_info(_, VarTypes, _, _TypeInfoMap, _PN, ModuleInfo,
+			_IKT)),
 		{ special_pred_get_type(MangledPredName, ArgVars0, MainVar) },
 		{ map__lookup(VarTypes, MainVar, Type) },
 		{ Type \= term__variable(_) },
@@ -401,10 +406,11 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
 polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 				GoalInfo, Goal) -->
 	(
-		{ Unification = complicated_unify(UniMode, CanFail) },
+		{ Unification = complicated_unify(UniMode0, CanFail) },
 		{ Y = var(YVar) }
 	->
-		=(poly_info(_, VarTypes, _, TypeInfoMap, _PName, ModuleInfo)),
+		=(poly_info(_, VarTypes, _, TypeInfoMap, _PName, ModuleInfo,
+			_IKT)),
 		{ map__lookup(VarTypes, XVar, Type) },
 		( { Type = term__variable(TypeVar) } ->
 			% Convert polymorphic unifications into calls to
@@ -469,6 +475,9 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 				SpecialPredMap) },
 			{ map__lookup(SpecialPredMap, unify - TypeId, PredId) },
 			{ determinism_components(Det, CanFail, at_most_one) },
+			% YYY Optimise UniMode0 in the case where there are
+			%     no shared inst_keys.
+			{ UniMode0 = UniMode },
 			{ unify_proc__lookup_mode_num(ModuleInfo, TypeId,
 				UniMode, Det, ProcId) },
 			{ SymName = unqualified("__Unify__") },
@@ -537,7 +546,7 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId,
 	% so that the c_code can refer to the type_info variable
 	% for type T as `TypeInfo_for_T'.
 	%
-	=(poly_info(_, _, _, _, _, ModuleInfo)),
+	=(poly_info(_, _, _, _, _, ModuleInfo, _)),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes) },
 	{ term__vars_list(PredArgTypes, PredTypeVars0) },
@@ -613,7 +622,7 @@ polymorphism__process_case_list([Case0 | Cases0], [Case | Cases]) -->
 polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 				ExtraVars, ExtraGoals, Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet0,
-				TypeInfoMap0, PredName, ModuleInfo),
+				TypeInfoMap0, PredName, ModuleInfo, IKT),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
 		% rename apart
@@ -645,7 +654,7 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 				VarTypes),
 		list__append(ExtraVars, ArgVars0, ArgVars),
 		Info = poly_info(VarSet, VarTypes, TypeVarSet,
-				TypeInfoMap, PredName, ModuleInfo)
+				TypeInfoMap, PredName, ModuleInfo, IKT)
 	).
 
 :- pred polymorphism__fixup_quantification(hlds_goal, hlds_goal,
@@ -661,7 +670,7 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 
 polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeVarMap,
-			PredName, ModuleInfo),
+			PredName, ModuleInfo, IKT),
 	( map__is_empty(TypeVarMap) ->
 		Info = Info0,
 		Goal = Goal0
@@ -685,7 +694,7 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
 			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
 		Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarMap,
-				PredName, ModuleInfo)
+				PredName, ModuleInfo, IKT)
 	).
 
 :- pred polymorphism__process_lambda(pred_or_func, list(var),
@@ -698,13 +707,13 @@ polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
 		LambdaGoal, Unification0, Functor, Unification,
 		PolyInfo0, PolyInfo) :-
 	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, TVarMap, PredName,
-			ModuleInfo0),
+			ModuleInfo0, IKT),
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
 		OrigNonLocals, LambdaGoal, Unification0, VarSet, VarTypes,
-		TVarSet, TVarMap, ModuleInfo0, Functor,
+		TVarSet, TVarMap, IKT, ModuleInfo0, Functor,
 		Unification, ModuleInfo),
 	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, TVarMap, PredName,
-			ModuleInfo).
+			ModuleInfo, IKT).
 
 %---------------------------------------------------------------------------%
 
@@ -1244,14 +1253,14 @@ polymorphism__new_type_info_var(Type, Symbol, VarSet0, VarTypes0,
 :- mode polymorphism__get_module_info(out, in, out) is det.
 
 polymorphism__get_module_info(ModuleInfo, PolyInfo, PolyInfo) :-
-	PolyInfo = poly_info(_, _, _, _, _, ModuleInfo).
+	PolyInfo = poly_info(_, _, _, _, _, ModuleInfo, _).
 
 :- pred polymorphism__set_module_info(module_info, poly_info, poly_info).
 :- mode polymorphism__set_module_info(in, in, out) is det.
 
 polymorphism__set_module_info(ModuleInfo, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, C, D, E, _),
-	PolyInfo = poly_info(A, B, C, D, E, ModuleInfo).
+	PolyInfo0 = poly_info(A, B, C, D, E, _, F),
+	PolyInfo = poly_info(A, B, C, D, E, ModuleInfo, F).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

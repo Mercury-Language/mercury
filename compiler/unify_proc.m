@@ -86,6 +86,8 @@
 			clauses_info).
 :- mode unify_proc__generate_clause_info(in, in, in, in, in, out) is det.
 
+:- pred unify_proc__sanity_check(module_info :: in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -172,8 +174,10 @@ unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Determinism, ProcId) :-
 	UniMode = (XInitial - YInitial -> _Final),
 	(
 		Determinism = semidet,
-		inst_is_ground(ModuleInfo, XInitial),
-		inst_is_ground(ModuleInfo, YInitial)
+		% YYY Fix for local inst_key_tables
+		module_info_inst_key_table(ModuleInfo, IKT),
+		inst_is_ground(XInitial, IKT, ModuleInfo),
+		inst_is_ground(YInitial, IKT, ModuleInfo)
 	->
 		hlds_pred__in_in_unification_proc_id(ProcId)
 	;
@@ -287,9 +291,14 @@ modecheck_unify_procs(HowToCheckGoal, ModuleInfo0, ModuleInfo) -->
 			io__write_string("% with insts `"),
 			{ UniMode = ((InstA - InstB) -> _FinalInst) },
 			{ varset__init(InstVarSet) },
-			mercury_output_inst(InstA, InstVarSet),
+			% YYY Change for local inst_key_tables
+			{ module_info_inst_key_table(ModuleInfo1,
+				InstKeyTable) },
+			mercury_output_inst(expand_noisily, InstA, InstVarSet,
+				InstKeyTable),
 			io__write_string("', `"),
-			mercury_output_inst(InstB, InstVarSet),
+			mercury_output_inst(expand_noisily, InstB, InstVarSet,
+				InstKeyTable),
 			io__write_string("'\n")
 		;
 			[]
@@ -1019,4 +1028,23 @@ unify_proc__info_get_module_info(ModuleInfo, VarTypeInfo, VarTypeInfo) :-
 
 % :- end_module unify_proc_info.
 
+%-----------------------------------------------------------------------------%
+
+/*
+unify_proc__sanity_check(HLDS) :-
+	module_info_get_unify_requests(HLDS, Requests),
+	unify_proc__get_req_map(Requests, ReqMap),
+	module_info_get_special_pred_map(HLDS, SpecialPredMap),
+	all [ProcId] (
+		map__member(ReqMap, TypeId - _UniMode, ProcId)
+	=>
+		( map__lookup(SpecialPredMap, unify - TypeId, PredId),
+		module_info_pred_proc_info(HLDS, PredId, ProcId, _, _) )
+	),
+	semidet_succeed.
+*/
+unify_proc__sanity_check(_HLDS) :-
+	semidet_succeed.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

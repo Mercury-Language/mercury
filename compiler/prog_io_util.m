@@ -96,7 +96,7 @@
 
 :- implementation.
 
-:- import_module prog_io_goal, hlds_data, hlds_pred, options, globals.
+:- import_module prog_io_goal, hlds_data, hlds_pred, options, globals, instmap.
 :- import_module bool, string, std_util.
 
 add_context(error(M, T), _, error(M, T)).

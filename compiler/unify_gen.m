@@ -62,7 +62,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, prog_data, code_util.
+:- import_module hlds_module, hlds_pred, prog_data, code_util, (inst).
 :- import_module mode_util, code_aux, hlds_out, tree.
 :- import_module bool, string, int, map, term, require, std_util.
 
@@ -259,9 +259,10 @@ unify_gen__generate_construction_2(no_tag, Var, Args, Modes, Code) -->
 unify_gen__generate_construction_2(simple_tag(SimpleTag),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
+	code_info__get_inst_key_table(IKT),
 	code_info__get_next_cell_number(CellNo),
 	unify_gen__var_types(Args, ArgTypes),
-	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
+	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, IKT, ModuleInfo,
 		RVals) },
 	{ Code = empty },
 	% XXX Later we will need to worry about
@@ -270,9 +271,10 @@ unify_gen__generate_construction_2(simple_tag(SimpleTag),
 unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
+	code_info__get_inst_key_table(IKT),
 	code_info__get_next_cell_number(CellNo),
 	unify_gen__var_types(Args, ArgTypes),
-	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
+	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, IKT, ModuleInfo,
 		RVals0) },
 		% the first field holds the secondary tag
 	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
@@ -455,11 +457,11 @@ unify_gen__generate_pred_args([Var|Vars], [ArgInfo|ArgInfos], [Rval|Rvals]) :-
 	unify_gen__generate_pred_args(Vars, ArgInfos, Rvals).
 
 :- pred unify_gen__generate_cons_args(list(var), list(type), list(uni_mode),
-					module_info, list(maybe(rval))).
-:- mode unify_gen__generate_cons_args(in, in, in, in, out) is det.
+			inst_key_table, module_info, list(maybe(rval))).
+:- mode unify_gen__generate_cons_args(in, in, in, in, in, out) is det.
 
-unify_gen__generate_cons_args(Vars, Types, Modes, ModuleInfo, Args) :-
-	( unify_gen__generate_cons_args_2(Vars, Types, Modes, ModuleInfo,
+unify_gen__generate_cons_args(Vars, Types, Modes, IKT, ModuleInfo, Args) :-
+	( unify_gen__generate_cons_args_2(Vars, Types, Modes, IKT, ModuleInfo,
 			Args0) ->
 		Args = Args0
 	;
@@ -473,19 +475,19 @@ unify_gen__generate_cons_args(Vars, Types, Modes, ModuleInfo, Args) :-
 	% generate an assignment to that field.
 
 :- pred unify_gen__generate_cons_args_2(list(var), list(type), list(uni_mode),
-					module_info, list(maybe(rval))).
-:- mode unify_gen__generate_cons_args_2(in, in, in, in, out) is semidet.
+			inst_key_table, module_info, list(maybe(rval))).
+:- mode unify_gen__generate_cons_args_2(in, in, in, in, in, out) is semidet.
 
-unify_gen__generate_cons_args_2([], [], [], _, []).
+unify_gen__generate_cons_args_2([], [], [], _, _, []).
 unify_gen__generate_cons_args_2([Var|Vars], [Type|Types], [UniMode|UniModes],
-			ModuleInfo, [Arg|RVals]) :-
+			IKT, ModuleInfo, [Arg|RVals]) :-
 	UniMode = ((_LI - RI) -> (_LF - RF)),
-	( mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, top_in) ->
+	( mode_to_arg_mode(IKT, ModuleInfo, (RI -> RF), Type, top_in) ->
 		Arg = yes(var(Var))
 	;
 		Arg = no
 	),
-	unify_gen__generate_cons_args_2(Vars, Types, UniModes, ModuleInfo,
+	unify_gen__generate_cons_args_2(Vars, Types, UniModes, IKT, ModuleInfo,
 		RVals).
 
 %---------------------------------------------------------------------------%
@@ -634,8 +636,9 @@ unify_gen__generate_unify_args_2([L|Ls], [R|Rs], [M|Ms], [T|Ts], Code) -->
 unify_gen__generate_sub_unify(L, R, Mode, Type, Code) -->
 	{ Mode = ((LI - RI) -> (LF - RF)) },
 	code_info__get_module_info(ModuleInfo),
-	{ mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode) },
-	{ mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode) },
+	code_info__get_inst_key_table(IKT),
+	{ mode_to_arg_mode(IKT, ModuleInfo, (LI -> LF), Type, LeftMode) },
+	{ mode_to_arg_mode(IKT, ModuleInfo, (RI -> RF), Type, RightMode) },
 	(
 			% Input - input == test unification
 		{ LeftMode = top_in },
