@@ -51,6 +51,8 @@ Changes to the Mercury language:
  
 Changes to the standard library:
 
+* We've added a pretty printing module, `pprint', to the standard library.
+
 * We've added a new function to the Mercury standard library:
 	std_util__construct_tuple/1.
 
@@ -63,7 +65,7 @@ Changes to the standard library:
 * There is a new predicate `random__permutation', for
   computing a random permutation of a list.
 
-* There is a new library module for managing counters.
+* There is a new library module `counter' for managing counters.
 
 * Four new parametric instantiations `maybe/1', `maybe_error/1',
   `pair/2' and `pair/1' have been added to the `std_util' library
