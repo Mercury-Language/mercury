@@ -1554,6 +1554,11 @@ hlds_out__write_goal_2(pragma_c_code(_, _, _, ArgVars, ArgNames, _,
 		),
 		io__write_string(Shared),
 		io__write_string(""")")
+	;
+		{ PragmaCode = import(Name, _, _, _Context) },
+		io__write_string(""""),
+		io__write_string(Name),
+		io__write_string("""")
 	),
 	io__write_string(")"),
 	io__write_string(Follow).

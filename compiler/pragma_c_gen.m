@@ -316,6 +316,12 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 			Fields, FieldsContext, First, FirstContext,
 			Later, LaterContext, Treat, Shared, SharedContext,
 			Code)
+	;	{ PragmaImpl = import(Name, HandleReturn, Vars, Context) },
+		{ C_Code = string__append_list([HandleReturn, " ",
+				Name, "(", Vars, ");"]) },
+		pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
+			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			C_Code, Context, Code)
 	).
 
 %---------------------------------------------------------------------------%

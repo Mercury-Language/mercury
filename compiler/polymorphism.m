@@ -919,7 +919,7 @@ polymorphism__process_goal_expr(Goal0, GoalInfo, Goal) -->
 
 polymorphism__process_goal_expr(Goal0, GoalInfo, Goal) -->
 	{ Goal0 = pragma_c_code(IsRecursive, PredId, ProcId,
-		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode) },
+		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode0) },
 	polymorphism__process_call(PredId, ArgVars0, GoalInfo,
 		ArgVars, ExtraVars, CallGoalInfo, ExtraGoals),
 
@@ -946,6 +946,29 @@ polymorphism__process_goal_expr(Goal0, GoalInfo, Goal) -->
 		{ list__length(ExtraVars, NumExtraVars) },
 		{ polymorphism__process_c_code(PredInfo, NumExtraVars,
 			OrigArgTypes0, OrigArgTypes, ArgInfo0, ArgInfo) },
+
+		%
+		% Add the type info arguments to the list of variables
+		% to call for a pragma import.
+		%
+		(
+			{ PragmaCode0 = import(Name, HandleReturn,
+					Variables0, MaybeContext) }
+		->
+			(
+				{ list__remove_suffix(ArgInfo, ArgInfo0,
+						TypeVarArgInfos) }
+			->
+				{ Variables = type_info_vars(ModuleInfo,
+					TypeVarArgInfos, Variables0) }
+			;
+				{ error("polymorphism__process_goal_expr") }
+			),
+			{ PragmaCode = import(Name, HandleReturn,
+					Variables, MaybeContext) }
+		;
+			{ PragmaCode = PragmaCode0 }
+		),
 
 		%
 		% plug it all back together
@@ -988,6 +1011,32 @@ polymorphism__process_goal_expr(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 polymorphism__process_goal_expr(bi_implication(_, _), _, _) -->
 	% these should have been expanded out by now
 	{ error("polymorphism__process_goal_expr: unexpected bi_implication") }.
+
+
+	% type_info_vars prepends a comma seperated list of variables
+	% onto a string of variables.
+	% It places an & at the start of the variable name if variable
+	% is an output variable.
+:- func type_info_vars(module_info, list(maybe(pair(string, mode))),
+		string) = string.
+
+type_info_vars(_ModuleInfo, [], InitString) = InitString.
+type_info_vars(ModuleInfo, [ArgInfo | ArgInfos], InitString) = String :-
+	String0 = type_info_vars(ModuleInfo, ArgInfos, InitString),
+	( ArgInfo = yes(ArgName0 - Mode) ->
+		( mode_is_output(ModuleInfo, Mode) ->
+			string__append("&", ArgName0, ArgName)
+		;
+			ArgName = ArgName0
+		),
+		( String0 = "" ->
+			String = ArgName
+		;
+			String = string__append_list([ArgName, ", ", String0])
+		)
+	;
+		String = String0
+	).
 
 :- pred polymorphism__process_unify(prog_var, unify_rhs,
 		unify_mode, unification, unify_context, hlds_goal_info,

@@ -385,6 +385,15 @@
 					% Shared code that is executed after
 					% both the previous code fragments.
 					% May not access the input variables.
+		)
+	;	import(
+			string,		% Pragma imported C func name
+			string,		% Code to handle return value
+			string,		% Comma seperated variables which
+					% the import function is called
+					% with.
+
+			maybe(prog_context)
 		).
 
 	% The use of this type is explained in the comment at the top of

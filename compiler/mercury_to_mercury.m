@@ -2116,7 +2116,13 @@ mercury_output_pragma_c_body_code(C_CodeString) -->
 	% Output the given pragma c_code declaration
 mercury_output_pragma_c_code(Attributes, PredName, PredOrFunc, Vars0,
 		VarSet, PragmaCode) -->
-	io__write_string(":- pragma c_code("),
+	(
+		{ PragmaCode = import(_, _, _, _) }
+	->
+		io__write_string(":- pragma import(")
+	;
+		io__write_string(":- pragma c_code(")
+	),
 	mercury_output_sym_name(PredName),
 	{
 		PredOrFunc = predicate,
@@ -2172,6 +2178,11 @@ mercury_output_pragma_c_code(Attributes, PredName, PredOrFunc, Vars0,
 		),
 		mercury_output_c_code_string(Shared),
 		io__write_string(")")
+	;
+		{ PragmaCode = import(Name, _, _, _) },
+		io__write_string(""""),
+		io__write_string(Name),
+		io__write_string("""")
 	),
 	io__write_string(").\n").
 

@@ -1556,6 +1556,13 @@ ml_gen_goal_expr(pragma_c_code(Attributes,
 			OuterContext, LocalVarsDecls, LocalVarsContext,
 			FirstCode, FirstContext, LaterCode, LaterContext,
 			SharedCode, SharedContext, MLDS_Decls, MLDS_Statements)
+	;
+		{ PragmaImpl = import(Name, HandleReturn, Vars, _Context) },
+		{ C_Code = string__append_list([HandleReturn, " ",
+				Name, "(", Vars, ");"]) },
+                ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
+                        PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+                        C_Code, OuterContext, MLDS_Decls, MLDS_Statements)
         ).
 
 ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->

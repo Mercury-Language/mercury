@@ -3492,10 +3492,6 @@ module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
 %	the `pragma import' declaration applies to, and adding a clause
 %	for that predicate containing an appropriate HLDS `pragma_c_code'
 %	instruction.
-%	(Note: `pragma import' and `pragma c_code' are distinct at the
-%	parse_tree stage, but make_hlds converts both `pragma import'
-%	and `pragma c_code' into HLDS `pragma_c_code' instructions,
-%	so from HLDS onwards they are indistinguishable.)
 %
 %	NB. Any changes here might also require similar changes to the
 %	handling of `pragma export' declarations, in export.m.
@@ -3656,25 +3652,26 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 			PragmaVarsAndTypes) },
 
 	%
-	% Construct the C_Code string for calling C_Function.
+	% Construct parts of the C_Code string for calling C_Function.
 	% This C code fragment invokes the specified C function
 	% with the appropriate arguments from the list constructed
 	% above, passed in the appropriate manner (by value, or by
 	% passing the address to simulate pass-by-reference), and
 	% assigns the return value (if any) to the appropriate place.
+	% As this phase occurs before polymorphism, we don't know about
+	% the type-infos yet.  polymorphism.m is responsible for adding
+	% the type-info arguments to the list of variables.
 	%
 	{ handle_return_value(CodeModel, PredOrFunc, PragmaVarsAndTypes,
-			ModuleInfo0, ArgPragmaVarsAndTypes, C_Code0) },
-	{ string__append_list([C_Code0, C_Function, "("], C_Code1) },
+			ModuleInfo0, ArgPragmaVarsAndTypes, Return) },
 	{ assoc_list__keys(ArgPragmaVarsAndTypes, ArgPragmaVars) },
 	{ create_pragma_import_c_code(ArgPragmaVars, ModuleInfo0,
-			C_Code1, C_Code2) },
-	{ string__append(C_Code2, ");", C_Code) },
+			"", Variables) },
 
 	%
 	% Add the C_Code for this `pragma import' to the clauses_info
 	%
-	{ PragmaImpl = ordinary(C_Code, no) },
+	{ PragmaImpl = import(C_Function, Return, Variables, yes(Context)) },
 	clauses_info_add_pragma_c_code(Clauses0, Purity, Attributes,
 		PredId, ProcId, VarSet, PragmaVars, ArgTypes, PragmaImpl,
 		Context, PredOrFunc, qualified(PredModule, PredName),
@@ -4656,6 +4653,8 @@ warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo,
 			),
 			io__set_output_stream(OldStream4, _)
 		)
+	;
+		{ PragmaImpl = import(_, _, _, _) }
 	).
 
 %-----------------------------------------------------------------------------%
