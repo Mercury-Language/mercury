@@ -62,9 +62,9 @@ PROGS=	\
 	sum \
 	vangelder
 
-DEPENDS = $(PROGS:=.depend)
-TRANS_OPTS = $(PROGS:=.trans_opt)
-TRANS_OPT_RESS = $(PROGS:=.trans_opt_res)
+DEPENDS = $(PROGS:%=%.depend)
+TRANS_OPTS = $(PROGS:%=%.trans_opt)
+TRANS_OPT_RESS = $(PROGS:%=%.trans_opt_res)
 
 #-----------------------------------------------------------------------------#
 
