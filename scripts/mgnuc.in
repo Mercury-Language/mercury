@@ -40,7 +40,6 @@ CHECK_OPTS="-ansi
       -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow
       -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
 OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
-OPT_OPTS="-O2 -g -DSPEED"
 DEBUG_OPTS="-g"
 
 grade=$DEFAULT_GRADE
