@@ -86,8 +86,12 @@ typedef enum {
 	MR_REQUEST_BROWSE	 = 17,/* call the term browser	              */
 	MR_REQUEST_LINK_COLLECT	 = 18,/* dynamically link the collect module  */
 	MR_REQUEST_COLLECT	 = 19,/* collecting monitoring informations   */
-	MR_REQUEST_CURRENT_GRADE = 20 /* retrieving the grade of the current
+	MR_REQUEST_CURRENT_GRADE = 20,/* retrieving the grade of the current
 					 program has been compiled with       */
+	MR_REQUEST_COLLECT_ARG_ON
+				 = 21,/* switch the arguments collecting on   */
+	MR_REQUEST_COLLECT_ARG_OFF
+				 = 22 /* switch the arguments collecting off  */
 
 } MR_debugger_request_type;
 
@@ -131,6 +135,13 @@ static	void	(*send_collect_result_ptr)(Word, Word);
 */
 
 static	Word	collect_lib_maybe_handle;
+
+/*
+** Static variable that tells whether the list of arguments is available 
+** within a collect module.
+*/
+
+static	bool	MR_collect_arguments = FALSE;
 
 /*
 ** Use a GNU C extension to enforce static type checking
@@ -183,7 +194,7 @@ static void	MR_get_variable_name(Word debugger_request, String *var_name_ptr);
 static void	MR_trace_browse_one_external(MR_Var_Spec which_var);
 static void	MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, 
 			Word, Word, String, String, String, Integer, Integer, 
-			Integer, String, Word, Word *, Char *), Unsigned seqno, 
+			Word, Integer, String, Word, Word *, Char *), Unsigned seqno, 
 			Unsigned depth, MR_Trace_Port port, 
 			const MR_Stack_Layout_Label *layout, const char *path, 
 			bool *stop_collecting);
@@ -460,7 +471,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	static void	(*initialize_ptr)(Word *);
 	static void    	(*filter_ptr)(Integer, Integer, Integer, Word,
 				Word, String, String, String, Integer,
-				Integer, Integer, String, Word, Word *, Char *);
+				Integer, Word, Integer, String, Word, Word *, Char *);
 	static void	(*get_collect_var_type_ptr)(Word *);
 	static bool    	collect_linked = FALSE;
 	bool    	stop_collecting = FALSE;
@@ -521,15 +532,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			break;
 
 		case MR_collecting:
-			/* 
-			** XXX Add a another request that takes 
-			** arguments into account. We need two kinds 
-			** of request in order to not penalize the 
-			** performance of collect in the cases where 
-			** arguments are not used.
-			**  
-			** arguments = MR_make_var_list(layout, saved_regs);
-			*/
+		 
 			MR_COLLECT_filter(*filter_ptr, seqno, depth, port,
 				layout, path, &stop_collecting);
 
@@ -840,6 +843,27 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				MR_send_message_to_socket_format(
 						"grade(\"%s\").\n", 
 						MR_GRADE_OPT);
+				break;
+			  }
+
+			case MR_REQUEST_COLLECT_ARG_ON:
+			  {
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_COLLECT_ARG_ON\n");
+				}
+				MR_collect_arguments = TRUE;
+				MR_send_message_to_socket("collect_arg_on_ok");
+				break;
+			  }
+			case MR_REQUEST_COLLECT_ARG_OFF:
+			  {
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_COLLECT_ARG_OFF\n");
+				}
+				MR_collect_arguments = FALSE;
+				MR_send_message_to_socket("collect_arg_off_ok");
 				break;
 			  }
 			default:
@@ -1438,13 +1462,30 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 */
 static void
 MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, Word, Word, 
-	String, String, String, Integer, Integer, Integer, String, Word, Word *,
-        Char *), Unsigned seqno, Unsigned depth, MR_Trace_Port port, 
+	String, String, String, Integer, Integer, Word, Integer, String, Word, 
+	Word *, Char *), Unsigned seqno, Unsigned depth, MR_Trace_Port port, 
 	const MR_Stack_Layout_Label *layout, const char *path, 
 	bool *stop_collecting)
 {
 	Char	result;		
+	Word	arguments;
 
+	/* 
+	** Only pass the arguments list down filter
+	** if required, i.e. if MR_collect_arguments
+	** is set to TRUE. We need to do that in 
+	** order to not penalize the performance 
+	** of collect in the cases where the argument
+	** list (which might be very big) is not used.
+	** 
+	*/
+	if (MR_collect_arguments) {
+		arguments = MR_trace_make_var_list();
+	} else {
+		MR_TRACE_USE_HP(
+			arguments = MR_list_empty()
+		);
+	}
 	MR_TRACE_CALL_MERCURY((*filter_ptr)(
 		MR_trace_event_number,
 		seqno,
@@ -1456,6 +1497,7 @@ MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, Word, Word,
 		(String) layout->MR_sll_entry->MR_sle_user.MR_user_name,
 		layout->MR_sll_entry->MR_sle_user.MR_user_arity,
 		layout->MR_sll_entry->MR_sle_user.MR_user_mode,
+		arguments,
 		layout->MR_sll_entry->MR_sle_detism,
 		(String) path,
 		MR_collecting_variable,

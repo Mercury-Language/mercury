@@ -183,6 +183,10 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			% retrieve the grade the current execution has been 
 			% compiled with
 	;	current_grade
+			% switch the argument collecting on (for collect request)
+	;	collect_arg_on
+			% switch the argument collecting off (for collect request)
+	;	collect_arg_off
 	.
 
 :- type event_number == int.
@@ -290,6 +294,10 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	execution_continuing
 	% sent if the execution is terminated after a collect request
 	;	execution_terminated
+	% responses to collect_arg_on
+	;	collect_arg_on_ok
+	% responses to collect_arg_off
+	;	collect_arg_off_ok
 	.
 
 
@@ -685,6 +693,8 @@ classify_request(browse(_),17).
 classify_request(link_collect(_),18).
 classify_request(collect,19).
 classify_request(current_grade,20).
+classify_request(collect_arg_on,21).
+classify_request(collect_arg_off,22).
 
 
 %-----------------------------------------------------------------------------%
