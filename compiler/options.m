@@ -35,6 +35,7 @@
 			;	dump_hlds
 			;	verbose_dump_hlds
 			;	generate_code
+			;	generate_dependencies
 			;	builtin_module
 			;	make_interface
 			;	heap_space
@@ -60,6 +61,7 @@ option_defaults([
 	dump_hlds		-	bool(no),
 	verbose_dump_hlds	-	bool(no),
 	generate_code		-	bool(no),
+	generate_dependencies	-	bool(no),
 	builtin_module		-	string("mercury_builtin"),
 	make_interface		-	bool(no),
 	heap_space		-	int(0),
@@ -95,6 +97,7 @@ short_option('l', 			line_numbers).
 short_option('m', 			modecheck).
 short_option('T', 			debug_types).
 short_option('N', 			debug_modes).
+short_option('M', 			generate_dependencies).
 
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
@@ -119,6 +122,7 @@ long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("modecheck",		modecheck).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
+long_option("generate-dependencies",	generate_dependencies).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -150,13 +154,18 @@ options_help -->
 	io__write_string("\t\tOutput detailed debugging traces of the mode checking.\n"),
 
 	io__write_string("\nOutput Options:\n"),
-	io__write_string("\t-i, --make-interface\n"),
-	io__write_string("\t\tWrite the module interface to `<module>.int'.\n"),
+	io__write_string("\t-M, --generate-dependencies\n"),
+	io__write_string("\t\tOutput `Make'-style dependencies for the module\n"),
+	io__write_string("\t\tand all of its dependencies to `<module>.dep'.\n"),
 	io__write_string("\t\tOnly syntax analysis will be performed - this option\n"),
 	io__write_string("\t\tdisables all the later phases of compilation.\n"),
+	io__write_string("\t-i, --make-interface\n"),
+	io__write_string("\t\tWrite the module interface to `<module>.int'.\n"),
+	io__write_string("\t\tAlso write the short interface to `<module>.int2'\n"),
+	io__write_string("\t\tAs with -M, this disables type-checking, etc.\n"),
 	io__write_string("\t-G, --convert-to-goedel\n"),
 	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'\n"),
-	io__write_string("\t\tAs with -i, this disables type-checking, etc.\n"),
+	io__write_string("\t\tAs with -M, this disables type-checking, etc.\n"),
 	io__write_string("\t-P, --convert-to-mercury\n"),
 	io__write_string("\t\tConvert to Mercury. Output to file `<module>.ugly'\n"),
 	io__write_string("\t\tThis option acts as a Mercury ugly-printer.\n"),

@@ -332,7 +332,7 @@ prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 		}
 	).
 
-:- pred search_for_file(list(string), string, res, io__state, io__state).
+:- pred search_for_file(list(string), string, io__res, io__state, io__state).
 :- mode search_for_file(in, in, out, di, uo) is det.
 
 search_for_file([], _, error) --> [].
@@ -518,7 +518,7 @@ read_items_loop_2(syntax_error(ErrorMsg, LineNumber), Msgs0, Items0, _Error0,
 	% if the next item was a syntax error, then insert it in
 	% the list of messages and continue looping
 	io__input_stream(Stream),
-	io__stream_name(Stream, StreamName),
+	io__input_stream_name(Stream, StreamName),
 	{
 	  term__context_init(StreamName, LineNumber, Context),
 	  dummy_term_with_context(Context, Term),
