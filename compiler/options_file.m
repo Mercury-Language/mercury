@@ -730,8 +730,10 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 	->
 		assoc_list__from_corresponding_lists(VariableTypes,
 			Values, VariableValues),
-		Result = yes(list__condense(
-			list__map(convert_to_mmc_options, VariableValues)))
+		% Default to `-O2', even when mercury_compile
+		% is called directly, not by the mmc script.
+		Result = yes(["-O2" | list__condense(
+			list__map(convert_to_mmc_options, VariableValues))])
 	;
 		Result = no
 	}.
@@ -901,9 +903,7 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result) -->
 		{ ExtraFlagsResult = yes(ExtraFlags) },
 		{ ModuleFlagsResult = yes(TargetFlags) }
 	->
-		% Default to `-O2', even when mercury_compile
-		% is called directly, not by the mmc script.
-		{ Result = yes(list__condense([["-O2" | DefaultFlags],
+		{ Result = yes(list__condense([DefaultFlags,
 				Flags, ExtraFlags, TargetFlags])) }
 	;
 		{ Result = no }
