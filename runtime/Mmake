@@ -41,7 +41,7 @@ OBJS		= $(MOD_OS) $(ORIG_OS)
 # OBJS		= engine.o io_rt.o wrapper.o call.o solutions.o \
 # 		  access.o aux.o dlist.o dummy.o label.o \
 # 		  memory.o table.o timing.o
-PIC_OBJS	= $(OBJS:.o=.$(PIC_O))
+PIC_OBJS	= $(OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
 
 #-----------------------------------------------------------------------------#
 
@@ -50,7 +50,7 @@ $(OBJS): $(HDRS) $(MACHHDRS)
 #-----------------------------------------------------------------------------#
 
 .PHONY: lib
-lib: libmer.a libmer.$(SO) runtime.init
+lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB) runtime.init
 
 libmer.a: $(OBJS)
 	ar cr libmer.a $(OBJS)
@@ -97,9 +97,10 @@ install_init: runtime.init
 	cp `vpath_find runtime.init` $(INSTALL_MODULE_DIR)
 
 .PHONY: install_lib
-install_lib: libmer.a libmer.$(SO)
+install_lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB)
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
-	cp `vpath_find libmer.a libmer.$(SO)` $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find libmer.a libmer.$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_LIB_DIR)
 
 #-----------------------------------------------------------------------------#
 
