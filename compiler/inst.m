@@ -196,10 +196,32 @@ inst_key_table_add(InstKeyTable0, Inst, ThisKey, InstKeyTable) :-
 		error("inst_key_table_add: Attempt to create an inst_key for alias(_).  This makes bad things happen later on.")
 	;
 		InstKeyTable0 = inst_key_table(ThisKey, FwdMap0),
-		NextKey is ThisKey + 1,
-		map__det_insert(FwdMap0, ThisKey, Inst, FwdMap),
-		InstKeyTable = inst_key_table(NextKey, FwdMap)
+		(
+			% sanity check
+			inst_contains_invalid_inst_key(Inst, ThisKey,
+				InstKeyTable0)
+		->
+			error("inst_key_table_add: inst key already in use.  Are you sure you're using the right inst key table?")
+		;
+			NextKey is ThisKey + 1,
+			map__det_insert(FwdMap0, ThisKey, Inst, FwdMap),
+			InstKeyTable = inst_key_table(NextKey, FwdMap)
+		)
 	).
+
+	% Sanity check.  If the inst we're inserting into the inst key
+	% table contains an inst key >= the current inst key in
+	% the table then something is wrong.  This probably means that
+	% we are using the wrong inst key table.
+:- pred inst_contains_invalid_inst_key(inst, inst_key, inst_key_table).
+:- mode inst_contains_invalid_inst_key(in, in, in) is semidet.
+
+inst_contains_invalid_inst_key(alias(IK), ThisIK, _IKT) :-
+	IK >= ThisIK.
+inst_contains_invalid_inst_key(bound(_, BoundInsts), ThisIK, IKT) :-
+	list__member(functor(_, ArgInsts), BoundInsts),
+	list__member(Inst, ArgInsts),
+	inst_contains_invalid_inst_key(Inst, ThisIK, IKT).
 
 inst_key_table_update(InstKeyTable0, Key, Inst, InstKeyTable) :-
 	( Inst = alias(_) ->

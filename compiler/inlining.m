@@ -107,6 +107,15 @@
 :- mode inlining__do_inline_call(in, in, in, in, in, out, in, out,
 	in, out, in, out, out) is det.
 
+	% inlining__get_type_substitution(CalleeArgTypes, CallerArgTypes,
+	%	HeadTypeParams, CalleeExistQTVars, TypeSubn).
+	%
+	% Work out a type substitution to map the callee's argument
+	% types into the caller's.
+:- pred inlining__get_type_substitution(list(type), list(type),
+		head_type_params, list(tvar), map(tvar, type)).
+:- mode inlining__get_type_substitution(in, in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -546,7 +555,8 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 	% we may need to bind type variables in the caller.
 	% For example, if we call `:- pred some [T] foo(T)',
 	% and the definition of `foo' binds `T' to `int',
-	% then we need 
+	% then we need to replace all occurrences of type `T'
+	% with type `int' in the caller.
 
 	% first, rename apart the type variables in the callee.
 	% (we can almost throw away the new typevarset, since we
@@ -562,7 +572,7 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 	% next, compute the type substitution and then apply it
 
 	% Note: there's no need to update the type_info locations maps,
-	% either for the caller or calle, since for any type vars in the
+	% either for the caller or callee, since for any type vars in the
 	% callee which get bound to type vars in the caller, the type_info
 	% location will be given by the entry in the caller's
 	% type_info locations map (and vice versa).  It doesn't matter if the
@@ -573,49 +583,24 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 	map__apply_to_list(HeadVars, CalleeVarTypes1, HeadTypes),
 	map__apply_to_list(ArgVars, VarTypes0, ArgTypes),
 
-	% handle the common case of non-existentially specially,
-	% since we can do things more efficiently in that case
 	pred_info_get_exist_quant_tvars(PredInfo, CalleeExistQVars),
+	inlining__get_type_substitution(HeadTypes, ArgTypes, HeadTypeParams,
+		CalleeExistQVars, TypeSubn),
+
+	% handle the common case of non-existentially typed preds specially,
+	% since we can do things more efficiently in that case
 	( CalleeExistQVars = [] ->
-	    (
-		type_list_subsumes(HeadTypes, ArgTypes, TypeSubn)
-	    ->
 		% update types in callee only
 		apply_rec_substitution_to_type_map(CalleeVarTypes1,
 			TypeSubn, CalleeVarTypes),
 		VarTypes1 = VarTypes0
-	    ;
-		% The head types should always be unifiable with the
-		% actual argument types, otherwise it is a type error
-		% that should have been detected by typechecking.
-		% But polymorphism.m introduces type-incorrect code --
-		% e.g. compare(Res, EnumA, EnumB) gets converted
-		% into builtin_compare_int(Res, EnumA, EnumB), which
-		% is a type error since it assumes that an enumeration
-		% is an int.  In those cases, we don't need to
-		% worry about the type substitution.
-		% (Perhaps it would be better if polymorphism introduced
-		% calls to unsafe_type_cast/2 for such cases.)
-		CalleeVarTypes = CalleeVarTypes1,
-		VarTypes1 = VarTypes0
-	    )
 	;
-	    % for calls to existentially type preds, we may need to
-	    % bind type variables in the caller, not just those in the callee
-	    (
-		map__init(TypeSubn0),
-		type_unify_list(HeadTypes, ArgTypes, HeadTypeParams,
-			TypeSubn0, TypeSubn)
-	    ->
 		% update types in callee
 		apply_rec_substitution_to_type_map(CalleeVarTypes1,
 			TypeSubn, CalleeVarTypes),
 		% update types in caller
 		apply_rec_substitution_to_type_map(VarTypes0,
 			TypeSubn, VarTypes1)
-	    ;
-	        error("inlining.m: type unification failed")
-	    )
 	),
 
 	% Now rename apart the variables in the called goal.
@@ -627,9 +612,43 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 	goal_util__must_rename_vars_in_goal(CalledGoal, Subn, Goal),
 
 	apply_substitutions_to_var_map(CalleeTypeInfoVarMap0, 
-		TypeRenaming, Subn, CalleeTypeInfoVarMap1),
+		TypeRenaming, TypeSubn, Subn, CalleeTypeInfoVarMap1),
 	map__merge(TypeInfoVarMap0, CalleeTypeInfoVarMap1,
 		TypeInfoVarMap).
+
+inlining__get_type_substitution(HeadTypes, ArgTypes,
+		HeadTypeParams, CalleeExistQVars, TypeSubn) :-
+	( CalleeExistQVars = [] ->
+		( type_list_subsumes(HeadTypes, ArgTypes, TypeSubn0) ->
+			TypeSubn = TypeSubn0 
+		;
+			% The head types should always be unifiable with the
+			% actual argument types, otherwise it is a type error
+			% that should have been detected by typechecking.
+			% But polymorphism.m introduces type-incorrect code --
+			% e.g. compare(Res, EnumA, EnumB) gets converted
+			% into builtin_compare_int(Res, EnumA, EnumB), which
+			% is a type error since it assumes that an enumeration
+			% is an int.  In those cases, we don't need to
+			% worry about the type substitution.
+			% (Perhaps it would be better if polymorphism introduced
+			% calls to unsafe_type_cast/2 for such cases.)
+			map__init(TypeSubn)
+		)
+	;
+		    % for calls to existentially type preds, we may need to
+		    % bind type variables in the caller, not just those in
+		    % the callee
+		(
+			map__init(TypeSubn0),
+			type_unify_list(HeadTypes, ArgTypes, HeadTypeParams,
+				TypeSubn0, TypeSubn1)
+		->
+			TypeSubn = TypeSubn1
+		;
+			error("inlining.m: type unification failed")
+		)
+	).
 
 %-----------------------------------------------------------------------------%
 

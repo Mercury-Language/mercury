@@ -481,13 +481,9 @@ common_deconstruct(Goals0, Var, CseInfo0, CseInfo, Unify, Goals) :-
 common_deconstruct_2([], _Var, MaybeUnify, CseInfo, CseInfo, [], MaybeUnify).
 common_deconstruct_2([Goal0 | Goals0], Var, MaybeUnify0,
 		CseInfo0, CseInfo, [Goal | Goals], MaybeUnify) :-
-	goal_to_conj_list(Goal0, ConjList0),
-	Goal0 = _ - GoalInfo,
-	map__init(Substitution),
-	find_bind_var_for_cse(ConjList0, Substitution, Var, MaybeUnify0,
-		CseInfo0, CseInfo1, ConjList, _NewSubstitution, MaybeUnify1),
+	find_bind_var(Var, find_bind_var_for_cse_in_deconstruct, Goal0, Goal,
+		MaybeUnify0 - no, MaybeUnify1 - yes, CseInfo0, CseInfo1),
 	MaybeUnify1 = yes(_),
-	conj_list_to_goal(ConjList, GoalInfo, Goal),
 	common_deconstruct_2(Goals0, Var, MaybeUnify1, CseInfo1, CseInfo,
 		Goals, MaybeUnify).
 
@@ -512,127 +508,54 @@ common_deconstruct_cases_2([], _Var, MaybeUnify, CseInfo, CseInfo,
 common_deconstruct_cases_2([case(ConsId, IMDelta, Goal0) | Cases0], Var,
 		MaybeUnify0, CseInfo0, CseInfo,
 		[case(ConsId, IMDelta, Goal) | Cases], MaybeUnify) :-
-	goal_to_conj_list(Goal0, ConjList0),
-	Goal0 = _ - GoalInfo,
-	map__init(Substitution),
-	find_bind_var_for_cse(ConjList0, Substitution, Var, MaybeUnify0,
-		CseInfo0, CseInfo1, ConjList, _NewSubstitution, MaybeUnify1),
+	find_bind_var(Var, find_bind_var_for_cse_in_deconstruct, Goal0, Goal,
+		MaybeUnify0 - no, MaybeUnify1 - yes, CseInfo0, CseInfo1),
 	MaybeUnify1 = yes(_),
-	conj_list_to_goal(ConjList, GoalInfo, Goal),
 	common_deconstruct_cases_2(Cases0, Var, MaybeUnify1, CseInfo1, CseInfo,
 		Cases, MaybeUnify).
 
 %-----------------------------------------------------------------------------%
 
-	%	Searches through Goals0 looking for a deconstruction
-	%	unification with `Var'.
-	%
-	%	If MaybeUnify0 is no, a unification with any functor
-	%	is acceptable; if it is yes(Unify), only a unification
-	%	involving the same variable and function symbol is OK.
-	%
-	%	If we do find an acceptable deconstruction, we replace it
-	%	in the goal with pairwise equalities between the arguments
-	%	of the functor in that unification and the arguments of the
-	%	functor in Unify, where in Maybeunify = yes(Unify).
-	%	If MaybeUnify0 was no, we have to create the variables in Unify.
-	%
-	%	If we do not find an acceptable deconstruction, we set
-	%	MaybeUnify to no and set `Subst' to the substitution resulting
-	%	from interpreting through the goal.
+	% The hlds_goal is the common unification we are attemping to hoist.
+	% The boolean states whether such a deconstruction has been seen in
+	% this branch.
+:- type cse_result == pair(maybe(hlds_goal), bool).
 
-:- pred find_bind_var_for_cse(list(hlds_goal), substitution, var,
-	maybe(hlds_goal), cse_info, cse_info, list(hlds_goal), 
-	substitution, maybe(hlds_goal)).
-:- mode find_bind_var_for_cse(in, in, in, in, in, out, out, out, out) is det.
+:- pred find_bind_var_for_cse_in_deconstruct(var, hlds_goal, list(hlds_goal),
+	cse_result, cse_result, cse_info, cse_info).
+:- mode find_bind_var_for_cse_in_deconstruct(in, in, out,
+	in, out, in, out) is det.
 
-find_bind_var_for_cse([], Substitution, _Var, _MaybeUnify0, CseInfo, CseInfo,
-	[], Substitution, no).
-find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
-		CseInfo0, CseInfo, Goals, Substitution, MaybeUnify) :-
-	GoalPair0 = Goal0 - GoalInfo,
-	( Goal0 = conj(SubGoals0) ->
-		find_bind_var_for_cse(SubGoals0, Substitution0, Var,
-			MaybeUnify0, CseInfo0, CseInfo1,
-			SubGoals, Substitution1, MaybeUnify1),
-		Goal = conj(SubGoals),
-		( MaybeUnify1 = yes(_) ->
-			Goals = [Goal - GoalInfo | Goals0],
-			Substitution = Substitution1,
-			MaybeUnify = MaybeUnify1,
-			CseInfo = CseInfo1
-		;
-			find_bind_var_for_cse(Goals0, Substitution1, Var,
-				MaybeUnify0, CseInfo1, CseInfo,
-				Goals1, Substitution, MaybeUnify),
-			Goals = [Goal0 - GoalInfo | Goals1]
-		)
-	; Goal0 = unify(A, B, _, UnifyInfo0, _) ->
-		term__apply_rec_substitution(term__variable(Var),
-			Substitution0, Term),
-		(
-			Term = term__variable(Var1),
-			UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _),
-			term__apply_rec_substitution(term__variable(UnifyVar),
-				Substitution0, term__variable(UnifyVar1)),
-			Var1 = UnifyVar1,
-			MaybeUnify0 = no
-		->
-			CseInfo0 = cse_info(Varset0, Typemap0, InstTable,
-				ModuleInfo),
-			construct_common_unify(Var, Goal0 - GoalInfo, Goal,
-				Varset0, Varset, Typemap0, Typemap,
-				Replacements),
-			CseInfo = cse_info(Varset, Typemap, InstTable,
-				ModuleInfo),
-			MaybeUnify = yes(Goal),
-			list__append(Replacements, Goals0, Goals),
-			Substitution = Substitution0
-		;
-			Term = term__variable(Var1),
-			UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _),
-			term__apply_rec_substitution(term__variable(UnifyVar),
-				Substitution0, term__variable(UnifyVar1)),
-			Var1 = UnifyVar1,
-			UnifyInfo0 = deconstruct(_, _, _, _, _),
-			MaybeUnify0 = yes(OldUnifyGoal),
-			goal_info_get_context(GoalInfo, Context),
-			find_similar_deconstruct(OldUnifyGoal, UnifyInfo0,
-				Context, Replacements)
-		->
-			list__append(Replacements, Goals0, Goals),
-			Substitution = Substitution0,
-			CseInfo = CseInfo0,
-			MaybeUnify = MaybeUnify0
-		;
-		%
-		% if the variable was bound, but the deconstruction wasn't
-		% similar, then stop searching
-		%
-			Term = term__functor(_, _, _)
-		->
-			Goals = [Goal0 - GoalInfo | Goals0],
-			Substitution = Substitution0,
-			CseInfo = CseInfo0,
-			MaybeUnify = no
-		;
-			( interpret_unify(A, B, Substitution0, Substitution1) ->
-				Substitution2 = Substitution1
-			;
-				% the unification must fail - just ignore it
-				Substitution2 = Substitution0
-			),
-			find_bind_var_for_cse(Goals0, Substitution2, Var,
-				MaybeUnify0, CseInfo0, CseInfo,
-				Goals1, Substitution, MaybeUnify),
-			Goals = [Goal0 - GoalInfo | Goals1]
-		)
+find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
+		CseResult0, CseResult, CseInfo0, CseInfo) :-
+	CseResult0 = MaybeUnify0 - _,
+	(
+		MaybeUnify0 = no,
+		CseInfo0 = cse_info(Varset0, Typemap0, InstTable, ModuleInfo),
+		construct_common_unify(Var, Goal0, Goal,
+			Varset0, Varset, Typemap0, Typemap, Goals),
+		CseInfo = cse_info(Varset, Typemap, InstTable, ModuleInfo),
+		MaybeUnify = yes(Goal),
+		Seen = yes
 	;
-		Goals = [Goal0 - GoalInfo | Goals0],
-		Substitution = Substitution0,
+		MaybeUnify0 = yes(OldUnifyGoal),
 		CseInfo = CseInfo0,
-		MaybeUnify = no
-	).
+		Goal0 = _ - GoalInfo,
+		goal_info_get_context(GoalInfo, Context),
+		(
+			find_similar_deconstruct(OldUnifyGoal,
+				Goal0, Context, Goals0)
+		->
+			Goals = Goals0,
+			MaybeUnify = MaybeUnify0,
+			Seen = yes
+		;	
+			Goals = [Goal0],
+			MaybeUnify = no,
+			Seen = no
+		)
+	),
+	CseResult = MaybeUnify - Seen.
 
 :- pred construct_common_unify(var, hlds_goal, hlds_goal, varset, varset,
 	map(var, type), map(var, type), list(hlds_goal)).
@@ -680,14 +603,15 @@ create_parallel_subterms([OFV | OFV0], Context, UnifyContext, Varset0, Varset,
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_similar_deconstruct(hlds_goal, unification, term__context,
+:- pred find_similar_deconstruct(hlds_goal, hlds_goal, term__context,
 	list(hlds_goal)).
 :- mode find_similar_deconstruct(in, in, in, out) is semidet.
 
-find_similar_deconstruct(OldUnifyGoal, NewUnifyInfo, Context, Replacements) :-
+find_similar_deconstruct(OldUnifyGoal, NewUnifyGoal, Context, Replacements) :-
 	(
 		OldUnifyGoal = unify(_OT1, _OT2, _OM, OldUnifyInfo, OC) - _,
 		OldUnifyInfo = deconstruct(_OV, OF, OFV, _OUM, _OCF),
+		NewUnifyGoal = unify(_NT1, _NT2, _NM, NewUnifyInfo, _NC) - _,
 		NewUnifyInfo = deconstruct(_NV, NF, NFV, _NUM, _NCF)
 	->
 		OF = NF,

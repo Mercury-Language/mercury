@@ -1803,7 +1803,7 @@ generate_dependencies(ModuleName, DepsMap0) -->
 	{ module_imports_get_error(ModuleImports, Error) },
 	( { Error = fatal } ->
 		{ prog_out__sym_name_to_string(ModuleName, ModuleString) },
-		{ string__append_list(["fatal error reading module `",
+		{ string__append_list(["can't read source file for module `",
 			ModuleString, "'."], Message) },
 		report_error(Message)
 	;

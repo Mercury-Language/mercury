@@ -107,11 +107,16 @@ special_pred_info_2(compare, Type,
 
 special_pred_get_type("__Unify__", Types, T) :-
 	list__reverse(Types, [T | _]).
+special_pred_get_type("unify", Types, T) :-
+	list__reverse(Types, [T | _]).
 special_pred_get_type("__Index__", Types, T) :-
+	list__reverse(Types, [_, T | _]).
+special_pred_get_type("index", Types, T) :-
 	list__reverse(Types, [_, T | _]).
 special_pred_get_type("__Compare__", Types, T) :-
 	list__reverse(Types, [T | _]).
-
+special_pred_get_type("compare", Types, T) :-
+	list__reverse(Types, [T | _]).
 
 special_pred_description(unify, "unification predicate").
 special_pred_description(compare, "comparison predicate").

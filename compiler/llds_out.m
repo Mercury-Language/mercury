@@ -484,6 +484,24 @@ output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
 	io__write_string("\n"),
 	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
 	output_cons_arg_decls(ArgVals, "", "", 0, _, DeclSet0, DeclSet1),
+
+	%
+	% sanity check: check that the (redundant) ExportedFromModule field
+	% in the c_data, which we use for the definition, matches the linkage
+	% computed by linkage/2 from the dataname, which we use for any
+	% prior declarations.
+	%
+	{ linkage(VarName, Linkage) },
+	{
+		( Linkage = extern, ExportedFromModule = yes
+		; Linkage = static, ExportedFromModule = no
+		)
+	->
+		true
+	;
+		error("linkage mismatch")
+	},
+	
 		% The code for data local to a Mercury module
 		% should normally be visible only within the C file
 		% generated for that module. However, if we generate
@@ -2132,7 +2150,26 @@ output_data_addr_decls(data_addr(ModuleName, VarName),
 		FirstIndent, LaterIndent, N0, N) -->
 	output_indent(FirstIndent, LaterIndent, N0),
 	{ N is N0 + 1 },
-	io__write_string("extern "),
+
+	%
+	% Previously we used to always write `extern' here, but
+	% declaring something `extern' and then later defining it as
+	% `static' causes undefined behavior -- on many systems, it
+	% works, but on some systems such as RS/6000s running AIX
+	% it results in link errors.
+	%
+	{ linkage(VarName, Linkage) },
+	globals__io_lookup_bool_option(split_c_files, SplitFiles),
+	(
+		( { Linkage = extern }
+		; { SplitFiles = yes }
+		)
+	->
+		io__write_string("extern ")
+	;
+		io__write_string("static ")
+	),
+
 	globals__io_get_globals(Globals),
 
 		% Don't make decls of base_type_infos `const' if we
@@ -2152,6 +2189,27 @@ output_data_addr_decls(data_addr(ModuleName, VarName),
 	io__write_string("\t"),
 	output_data_addr(ModuleName, VarName), 
 	io__write_string(";\n").
+
+%
+% Note that we need to know the linkage not just at the definition,
+% but also at every use, because if the use is prior to the definition,
+% then we need to declare the name first, and the linkage used in that
+% declaration must be consistent with the linkage in the definition.
+% For this reason, the field in c_data (which holds the information about
+% the definition) which says whether or not a data name is exported
+% is not useful.  Instead, we need to determine whether or not something
+% is exported from its `data_name'.
+%
+
+:- type linkage ---> extern ; static.
+
+:- pred linkage(data_name::in, linkage::out) is det.
+linkage(base_typeclass_info(_, _), extern).
+linkage(base_type(info, _, _),     extern).
+linkage(base_type(layout, _, _),   static).
+linkage(base_type(functors, _, _), static).
+linkage(common(_),                 static).
+linkage(stack_layout(_),           static).
 
 %-----------------------------------------------------------------------------%
 

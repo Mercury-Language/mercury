@@ -673,7 +673,7 @@ code_util__cons_id_to_tag(code_addr_const(P,M), _, _, code_addr_constant(P,M)).
 code_util__cons_id_to_tag(pred_const(P,M), _, _, pred_closure_tag(P,M)).
 code_util__cons_id_to_tag(base_type_info_const(M,T,A), _, _,
 		base_type_info_constant(M,T,A)).
-code_util__cons_id_to_tag(base_typeclass_info_const(M,C,N), _, _,
+code_util__cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _,
 		base_typeclass_info_constant(M,C,N)).
 code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	(

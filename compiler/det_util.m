@@ -88,6 +88,9 @@
 :- pred det_info_set_module_info(det_info, module_info, det_info).
 :- mode det_info_set_module_info(in, in, out) is det.
 
+:- pred det_info_set_inst_table(det_info, inst_table, det_info).
+:- mode det_info_set_inst_table(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -190,3 +193,5 @@ det_info_get_fully_strict(det_info(_, _, _, _, _, _, FullyStrict), FullyStrict).
 det_info_set_module_info(det_info(_, B, C, D, E, F, G), ModuleInfo,
 		det_info(ModuleInfo, B, C, D, E, F, G)).
 
+det_info_set_inst_table(det_info(A, B, C, _, E, F, G), InstTable,
+		det_info(A, B, C, InstTable, E, F, G)).

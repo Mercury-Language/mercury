@@ -52,7 +52,8 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_data, det_report, globals.
+:- import_module hlds_goal, hlds_module, hlds_pred, hlds_data, instmap.
+:- import_module det_report, det_util, globals.
 :- import_module list, std_util, io.
 
 	% Perform determinism inference for local predicates with no
@@ -73,6 +74,22 @@
 :- pred det_infer_proc(pred_id, proc_id, module_info, module_info, globals,
 	determinism, determinism, list(det_msg)).
 :- mode det_infer_proc(in, in, in, out, in, out, out, out) is det.
+
+	% Infers the determinism of `Goal0' and returns this in `Detism'.
+	% It annotates the goal and all its subgoals with their determinism
+	% and returns the annotated goal in `Goal'.
+
+:- pred det_infer_goal(hlds_goal, instmap, soln_context, det_info,
+	hlds_goal, determinism, list(det_msg)).
+:- mode det_infer_goal(in, in, in, in, out, out, out) is det.
+
+	% Work out how many solutions are needed for a given determinism.
+:- pred det_get_soln_context(determinism, soln_context).
+:- mode det_get_soln_context(in, out) is det.
+
+:- type soln_context
+	--->	all_solns
+	;	first_soln.
 
 	% The tables for computing the determinism of compound goals
 	% from the determinism of their components.
@@ -108,9 +125,9 @@
 
 :- implementation.
 
-:- import_module hlds_goal, prog_data, det_report, det_util.
+:- import_module prog_data, det_report.
 :- import_module type_util, modecheck_call, mode_util, options, passes_aux.
-:- import_module hlds_out, mercury_to_mercury, instmap.
+:- import_module hlds_out, mercury_to_mercury.
 :- import_module assoc_list, bool, map, set, require, term.
 
 %-----------------------------------------------------------------------------%
@@ -219,8 +236,6 @@ global_final_pass(ModuleInfo0, ProcList, Debug, ModuleInfo) -->
 
 %-----------------------------------------------------------------------------%
 
-:- type soln_context	--->	all_solns ; first_soln.
-
 det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 		Detism0, Detism, Msgs) :-
 
@@ -237,11 +252,9 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 		% context or not.  Currently we only assume so if
 		% the predicate has an explicit determinism declaration
 		% that says so.
-	(
-		proc_info_declared_determinism(Proc0, yes(DeclaredDetism)),
-		determinism_components(DeclaredDetism, _, at_most_many_cc)
-	->
-		SolnContext = first_soln
+	proc_info_declared_determinism(Proc0, MaybeDeclaredDetism),
+	( MaybeDeclaredDetism = yes(DeclaredDetism) ->
+		det_get_soln_context(DeclaredDetism, SolnContext)
 	;	
 		SolnContext = all_solns
 	),
@@ -283,14 +296,6 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
-
-	% Infers the determinism of `Goal0' and returns this in `Detism'.
-	% It annotates the goal and all its subgoals with their determinism
-	% and returns the annotated goal in `Goal'.
-
-:- pred det_infer_goal(hlds_goal, instmap, soln_context, det_info,
-	hlds_goal, determinism, list(det_msg)).
-:- mode det_infer_goal(in, in, in, in, out, out, out) is det.
 
 det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		Goal - GoalInfo, Detism, Msgs) :-
@@ -941,6 +946,15 @@ det_infer_unify_canfail(simple_test(_, _), can_fail).
 det_infer_unify_canfail(complicated_unify(_, CanFail), CanFail).
 
 %-----------------------------------------------------------------------------%
+
+det_get_soln_context(DeclaredDetism, SolnContext) :-
+	(
+		determinism_components(DeclaredDetism, _, at_most_many_cc)
+	->
+		SolnContext = first_soln
+	;	
+		SolnContext = all_solns
+	).
 
 % When figuring out the determinism of a conjunction,
 % if the second goal is unreachable, then then the

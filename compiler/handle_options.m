@@ -307,6 +307,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		globals__io_set_option(inline_compound_threshold, int(0)),
 		globals__io_set_option(optimize_unused_args, bool(no)),
 		globals__io_set_option(optimize_higher_order, bool(no)),
+		globals__io_set_option(type_specialization, bool(no)),
 		globals__io_set_option(deforestation, bool(no)),
 		globals__io_set_option(optimize_duplicate_calls, bool(no)),
 		globals__io_set_option(optimize_constructor_last_call,
@@ -363,12 +364,6 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% `procid' and `agc' stack layouts need `basic' stack layouts
 	option_implies(procid_stack_layout, basic_stack_layout, bool(yes)),
 	option_implies(agc_stack_layout, basic_stack_layout, bool(yes)),
-
-	% XXX higher_order.m does not update the typeinfo_varmap
-	% for specialised versions.
-	% This causes the compiler to abort in unused_args.m when compiling
-	% tests/valid/agc_ho_pred.m with `-O3 --intermodule-optimization'.
-	option_implies(typeinfo_liveness, optimize_higher_order, bool(no)),
 
 	% XXX deforestation does not perform folding on polymorphic
 	% predicates correctly with --typeinfo-liveness.

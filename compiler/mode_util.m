@@ -1421,11 +1421,18 @@ recompute_instmap_delta_2(Goal0 - GoalInfo0, Goal - GoalInfo,
 		InstMap0, InstMap, InstMapDelta, RI0, RI) :-
 	recompute_instmap_delta_3(Goal0, GoalInfo0, Goal, GoalInfo1, InstMap0,
 			InstMapDelta, RI0, RI1),
-	goal_info_get_determinism(GoalInfo0, Det),
-
-	% If the determinism is erroneous or failure the instmap_delta
-	% should be "unreachable".
-	( determinism_components(Det, _, at_most_zero) ->
+	(
+		( 
+			% If the initial instmap is unreachable so is
+			% the final instmap.
+			instmap__is_unreachable(InstMap0)
+		;
+			% If the determinism is erroneous or failure the
+			% instmap_delta should be "unreachable".
+			goal_info_get_determinism(GoalInfo0, Det),
+			determinism_components(Det, _, at_most_zero)
+		)
+	->
 		instmap_delta_init_unreachable(Unreachable),
 		goal_info_set_instmap_delta(GoalInfo1, Unreachable, GoalInfo),
 		instmap__init_unreachable(InstMap)
@@ -1933,7 +1940,7 @@ recompute_instmap_delta_unify(Var, lambda_goal(PredOrFunc, LambdaNonLocals,
 	recompute_info_get_module_info(RI2, ModuleInfo2),
 	recompute_info_get_inst_table(RI2, InstTable2),
 
-	instmap__lookup_var(InstMap0, Var, InstOfX),
+	instmap__lookup_var(InstMap1, Var, InstOfX),
 
 	LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes,
 		LambdaDet),
@@ -1941,18 +1948,18 @@ recompute_instmap_delta_unify(Var, lambda_goal(PredOrFunc, LambdaNonLocals,
 
 	(
 		abstractly_unify_inst(dead, InstOfX, InstOfY,
-			real_unify, InstTable2, ModuleInfo2, InstMap0,
-			UnifyInst0, Det0, InstTable3, ModuleInfo3, InstMap1)
+			real_unify, InstTable2, ModuleInfo2, InstMap1,
+			UnifyInst0, Det0, InstTable3, ModuleInfo3, InstMap2)
 	->
 		InstTable = InstTable3,
-		InstMap2 = InstMap1,
+		InstMap3 = InstMap2,
 		UnifyInst0 = UnifyInst,
 		ModuleInfo = ModuleInfo3,
 		Det = Det0
 	;
 		error("recompute_instmap_delta_unify: var-lambda unify failed")
 	),
-	instmap__set(InstMap2, Var, UnifyInst, InstMapUnify),
+	instmap__set(InstMap3, Var, UnifyInst, InstMapUnify),
 	compute_instmap_delta(InstMap0, InstMapUnify, InstMapDelta),
 
 	ModeOfX = (InstOfX - UnifyInst),

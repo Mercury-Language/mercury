@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- import_module code_gen, code_util, trace, options, globals.
+:- import_module code_gen, code_util, trace, options, globals, instmap.
 :- import_module bool, set, tree, list, map, std_util, term, require.
 
 ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
@@ -116,13 +116,23 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 
 		% XXX release any temp slots holding heap or trail pointers
 
-		% XXX If instmap indicates we cannot reach then part,
-		% do not attempt to generate it (may cause aborts)
-
-		% Generate the then branch
-	trace__maybe_generate_internal_event_code(ThenGoal, ThenTraceCode),
-	code_gen__generate_goal(CodeModel, ThenGoal, ThenCode),
-	code_info__generate_branch_end(StoreMap, no, MaybeEnd0, ThenSaveCode),
+	code_info__get_instmap(EndCondInstMap),
+	( { instmap__is_unreachable(EndCondInstMap) } ->
+		% If instmap indicates we cannot reach then part,
+		% do not attempt to generate it (may cause aborts).
+		{ ThenTraceCode = empty },
+		{ ThenCode = empty },
+		{ map__init(EmptyStoreMap) },
+		code_info__generate_branch_end(EmptyStoreMap, no,
+			MaybeEnd0, ThenSaveCode)
+	;	
+			% Generate the then branch
+		trace__maybe_generate_internal_event_code(ThenGoal,
+			ThenTraceCode),
+		code_gen__generate_goal(CodeModel, ThenGoal, ThenCode),
+		code_info__generate_branch_end(StoreMap, no,
+			MaybeEnd0, ThenSaveCode)
+	),
 
 		% Generate the entry to the else branch
 	code_info__reset_to_position(BranchStart),

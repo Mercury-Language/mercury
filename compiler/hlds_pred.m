@@ -15,8 +15,8 @@
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
 :- import_module purity, globals.
-:- import_module bool, list, set, map, std_util, term, varset.
 :- import_module term_util.
+:- import_module bool, list, set, map, std_util, term, varset.
 
 :- implementation.
 
@@ -280,20 +280,22 @@
 :- pred type_info_locn_set_var(type_info_locn::in, var::in, 
 		type_info_locn::out) is det.
 
-	% hlds_pred__define_new_pred(Goal, CallGoal, Args, InstMap, PredName,
-	% 	TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, 
+	% hlds_pred__define_new_pred(Goal, CallGoal, Args, ExtraArgs, InstMap,
+	% 	PredName, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, 
 	%	VarSet, Markers, InstTable, ModuleInfo0, ModuleInfo, PredProcId)
 	%
 	% Create a new predicate for the given goal, returning a goal to 
-	% call the created predicate. This must only be called after 
-	% polymorphism.m.
-:- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(var),
+	% call the created predicate. ExtraArgs is the list of extra
+	% type_infos and typeclass_infos required by --typeinfo-liveness
+	% which were added to the front of the argument list.
+	% This must only be called after polymorphism.m.
+:- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(var), list(var),
 		instmap, string, tvarset, map(var, type),
 		class_constraints, map(tvar, type_info_locn),
 		map(class_constraint, var), varset, pred_markers, inst_table,
 		module_info, module_info, pred_proc_id).
-:- mode hlds_pred__define_new_pred(in, out, in, in, in, in, in, in,
-		in, in, in, in, in, in, out, out) is det.
+:- mode hlds_pred__define_new_pred(in, out, in, out, in, in, in, in,
+		in, in, in, in, in, in, in, out, out) is det.
 
 	% Various predicates for accessing the information stored in the
 	% pred_id and pred_info data structures.
@@ -884,9 +886,10 @@ markers_to_marker_list(Markers, Markers).
 
 %-----------------------------------------------------------------------------%
 
-hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, InstMap0, PredName, TVarSet, 
-		VarTypes0, ClassContext, TVarMap, TCVarMap, VarSet0, 
-		Markers, InstTable, ModuleInfo0, ModuleInfo, PredProcId) :-
+hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
+		PredName, TVarSet, VarTypes0, ClassContext, TVarMap, TCVarMap,
+		VarSet0, Markers, InstTable, ModuleInfo0, ModuleInfo,
+		PredProcId) :-
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -901,13 +904,15 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, InstMap0, PredName, TVarSet,
 	globals__lookup_bool_option(Globals, typeinfo_liveness,
 		TypeInfoLiveness),
 	( TypeInfoLiveness = yes ->
+		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap,
-			VarTypes0, ExistQVars, Goal0, ExtraTypeInfos0),
-		set__delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos),
-		set__to_sorted_list(ExtraTypeInfos, ExtraArgs),
-		list__append(ExtraArgs, ArgVars0, ArgVars)
+			VarTypes0, ExistQVars, NonLocals, ExtraTypeInfos0),
+		set__delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos1),
+		set__to_sorted_list(ExtraTypeInfos1, ExtraTypeInfos),
+		list__append(ExtraTypeInfos, ArgVars0, ArgVars)
 	;
-		ArgVars = ArgVars0
+		ArgVars = ArgVars0,
+		ExtraTypeInfos = []
 	),
 
 	goal_info_get_context(GoalInfo, Context),

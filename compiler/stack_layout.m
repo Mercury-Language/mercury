@@ -314,6 +314,8 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 	{ Exported = no },	% XXX With the new profiler, we will need to
 				% set this to `yes' if the profiling option
 				% is given and if the procedure is exported.
+				% Beware however that linkage/2 in llds_out.m
+				% assumes that this is `no'.
 	{ CModule = c_data(ModuleName, stack_layout(EntryLabel), Exported,
 		MaybeRvals, []) },
 	stack_layout__add_cmodule(CModule, EntryLabel).

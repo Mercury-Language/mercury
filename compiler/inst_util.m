@@ -1152,7 +1152,8 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, UI0,
 make_ground_inst(alias(InstKey), IsLive, Uniq, Real, UI0, Inst, Det, UI) :-
 	unify_inst_info_get_inst_table(UI0, InstTable0),
 	inst_table_get_inst_key_table(InstTable0, IKT0),
-	inst_key_table_lookup(IKT0, InstKey, Inst0),
+	unify_inst_info_get_instmap(UI0, InstMap0),
+	instmap__inst_key_table_lookup(InstMap0, IKT0, InstKey, Inst0),
 	make_ground_inst(Inst0, IsLive, Uniq, Real, UI0, Inst1, Det, UI1),
 	( Inst0 = Inst1 ->
 		Inst = alias(InstKey),

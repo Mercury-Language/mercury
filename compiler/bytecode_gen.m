@@ -649,7 +649,7 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 			TypeArity)
 	;
 		ConsId = base_typeclass_info_const(ModuleName, ClassId,
-			Instance),
+			_, Instance),
 		ByteConsId = base_typeclass_info_const(ModuleName, ClassId,
 			Instance)
 	).

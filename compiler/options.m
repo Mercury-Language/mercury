@@ -218,6 +218,8 @@
 		;	optimize_unused_args
 		;	intermod_unused_args
 		;	optimize_higher_order
+		;	type_specialization
+		;	higher_order_size_limit
 		;	optimize_constructor_last_call
 		;	optimize_duplicate_calls
 		;	constant_propagation
@@ -535,6 +537,8 @@ option_defaults_2(optimization_option, [
 	optimize_unused_args	-	bool(no),
 	intermod_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
+	type_specialization	-	bool(no),
+	higher_order_size_limit	-	int(20),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
 	deforestation		-	bool(no),
@@ -838,6 +842,9 @@ long_option("optimise-unused-args",	optimize_unused_args).
 long_option("intermod-unused-args",	intermod_unused_args).
 long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
+long_option("type-specialization",	type_specialization).
+long_option("type-specialisation",	type_specialization).
+long_option("higher-order-size-limit",	higher_order_size_limit).
 long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-dead-procs",	optimize_dead_procs).
@@ -876,7 +883,7 @@ long_option("try-switch-size",		try_switch_size).
 long_option("binary-switch-size",	binary_switch_size).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("middle-rec",		middle_rec).
-long_option("simple_neg",		simple_neg).
+long_option("simple-neg",		simple_neg).
 long_option("follow-vars",		follow_vars).
 long_option("allow-hijacks",		allow_hijacks).
 
@@ -1147,7 +1154,7 @@ opt_level(3, _, [
 	optimize_saved_vars	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
 	%optimize_higher_order	-	bool(yes), % YYY
-	%deforestation		-	bool(yes), % causes an abort
+	%deforestation		-	bool(yes), % YYY
 	constant_propagation	-	bool(yes),
 	optimize_repeat		-	int(4)
 ]).
@@ -1801,7 +1808,14 @@ options_help_hlds_hlds_optimization -->
 		"\t`--intermodule-optimization'.",
 
 		"--optimize-higher-order",
-		"\tEnable specialization higher-order predicates.",
+		"\tEnable specialization of higher-order predicates.",
+		"--type-specialization",
+		"\tEnable specialization of polymorphic predicates.",
+		"--higher-order-size-limit",
+		"\tSet the maximum goal size of specialized versions created by",
+		"\t`--optimize-higher-order' and `--type-specialization'.",
+		"\tGoal size is measured as the number of calls, unifications",
+		"\tand branched goals.",
 		"--optimize-constructor-last-call",
 		"\tEnable the optimization of ""last"" calls that are followed by",
 		"\tconstructor application.",

@@ -36,12 +36,15 @@
 				% whereas a code_addr_const is just an address.
 			;	base_type_info_const(module_name, string, int)
 				% module name, type name, type arity
-			;	base_typeclass_info_const(module_name, class_id,
-					string)
-				% name of module containing instance
-				% declaration, class name and arity, a string
-				% encoding the type names and arities of
-				% arguments to the instance declaration
+			;	base_typeclass_info_const(module_name,
+					class_id, int, string)
+				% module name of instace declaration
+				% (not filled in so that link errors result
+				% from overlapping instances),
+				% class name and arity,
+				% class instance, a string encoding the type
+				% names and arities of the arguments to the
+				% instance declaration 
 			.
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
@@ -122,7 +125,7 @@ cons_id_arity(code_addr_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of code_addr_const").
 cons_id_arity(base_type_info_const(_, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_type_info_const").
-cons_id_arity(base_typeclass_info_const(_, _, _), _) :-
+cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
 
 make_functor_cons_id(term__atom(Name), Arity, cons(unqualified(Name), Arity)).
@@ -782,12 +785,24 @@ determinism_to_code_model(failure,     model_semi).
 
 	% `Proof' of why a constraint is redundant
 :- type constraint_proof			
-			% Apply the following instance rule, the second 
-			% argument being the number of the instance decl.
-	--->	apply_instance(hlds_instance_defn, int)
+			% Apply the instance decl with the given number.
+			% Note that we don't store the actual 
+			% hlds_instance_defn for two reasons:
+			% - That would require storing a renamed version of
+			%   the constraint_proofs for *every* use of an
+			%   instance declaration. This would't even get GCed
+			%   for a long time because it would be stored in
+			%   the pred_info.
+			% - The superclass proofs stored in the
+			%   hlds_instance_defn would need to store all the
+			%   constraint_proofs for all its ancestors. This
+			%   would require the class relation to be
+			%   topologically sorted before checking the
+			%   instance declarations.
+	--->	apply_instance(int)
 
-			% The constraint is redundant because of the following
-			% class's superclass declaration
+			% The constraint is redundant because of the
+			% following class's superclass declaration
 	;	superclass(class_constraint).
 
 %-----------------------------------------------------------------------------%

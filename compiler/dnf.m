@@ -386,7 +386,7 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		% This ClassContext is a conservative approximation.
 		% We could get rid of some constraints on variables
 		% that are not part of the goal.
-	hlds_pred__define_new_pred(Goal0, Goal, ArgVars, InstMap0, PredName,
+	hlds_pred__define_new_pred(Goal0, Goal, ArgVars, _, InstMap0, PredName,
 		TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, VarSet,
 		Markers, InstTable, ModuleInfo0, ModuleInfo, PredProcId),
 	PredProcId = proc(PredId, _).

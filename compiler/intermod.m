@@ -302,7 +302,7 @@ goal_contains_one_branched_goal([], yes).
 goal_contains_one_branched_goal([Goal | Goals], FoundBranch0) :-
 	Goal = GoalExpr - _,
 	(
-		goal_is_branched(GoalExpr),
+		goal_util__goal_is_branched(GoalExpr),
 		FoundBranch0 = no,
 		FoundBranch = yes
 	;

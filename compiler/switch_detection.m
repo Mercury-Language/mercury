@@ -16,13 +16,33 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds_goal, hlds_module, hlds_pred.
+:- import_module io, list, term.
 
 :- pred detect_switches(module_info, module_info, io__state, io__state).
 :- mode detect_switches(in, out, di, uo) is det.
 
 :- pred detect_switches_in_proc(proc_id, pred_id, module_info, module_info).
 :- mode detect_switches_in_proc(in, in, in, out) is det.
+
+	% find_bind_var(Var, ProcessUnify, Goal0, Goals, Subst0, Subst,
+	%		Result0, Result, Continue):
+	% 	Used by both switch_detection and cse_detection.
+	%	Searches through `Goal0' looking for the first deconstruction
+	%	unification with `Var' or an alias of `Var'.
+	%	`ProcessUnify' is called if a deconstruction unification with
+	%	`Var' is found, returning either the cons_id for
+	%	switch_detection or the common deconstruction for cse_detection.
+	%	If a deconstruction unification of the variable is found,
+	%	`ProcessUnify' is called to handle it and searching is stopped.
+	%	If not, `Result' is set to `Result0'.
+:- pred find_bind_var(var, process_unify(Result, Info), hlds_goal, hlds_goal,
+	Result, Result, Info, Info).
+:- mode find_bind_var(in, in(process_unify), in, out, in, out, in, out) is det.
+
+:- type process_unify(Result, Info) ==
+	pred(var, hlds_goal, list(hlds_goal), Result, Result, Info, Info).
+:- inst process_unify = (pred(in, in, out, in, out, in, out) is det).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -32,7 +52,7 @@
 :- import_module hlds_goal, hlds_data, prog_data, instmap, inst_match, (inst).
 :- import_module modes, mode_util, type_util, det_util.
 :- import_module passes_aux.
-:- import_module char, int, list, assoc_list, map, set, std_util, term, require.
+:- import_module bool, char, int, assoc_list, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -403,9 +423,8 @@ partition_disj(Goals0, Var, GoalInfo, Left, CasesList) :-
 
 partition_disj_trial([], _Var, Left, Left, Cases, Cases).
 partition_disj_trial([Goal0 | Goals], Var, Left0, Left, Cases0, Cases) :-
-	map__init(Substitution),
-	find_bind_var_for_switch(Goal0, Substitution, Var,
-			Goal, _NewSubstitution, MaybeFunctor),
+	find_bind_var(Var, find_bind_var_for_switch_in_deconstruct,
+		Goal0, Goal, no, MaybeFunctor, unit, _),
 	(
 		MaybeFunctor = yes(Functor),
 		Left1 = Left0,
@@ -423,56 +442,75 @@ partition_disj_trial([Goal0 | Goals], Var, Left0, Left, Cases0, Cases) :-
 	),
 	partition_disj_trial(Goals, Var, Left1, Left, Cases1, Cases).
 
-	% find_bind_var_for_switch(Goal0, Subst0, Var, Goal, Subst,
-	%		MaybeFunctor):
-	% conj_find_bind_var_for_switch(Goals0, Subst0, Var, Goals, Subst,
-	%		MaybeFunctor):
-	%	Searches through Goals0 looking for a deconstruction
-	%	unification with `Var'. If found, sets `MaybeFunctor'
-	% 	to `yes(Functor)', where Functor is the
-	%	functor which `Var' gets unified, and
-	%	sets `Goals' to be `Goals0' with that deconstruction
-	%	unification made deterministic. If not found, sets
-	%	`MaybeFunctor' to `no', and computes `Subst' as the
-	%	resulting substitution from interpreting through the goal.
+:- pred find_bind_var_for_switch_in_deconstruct(var, hlds_goal,
+		list(hlds_goal), maybe(cons_id), maybe(cons_id), unit, unit).
+:- mode find_bind_var_for_switch_in_deconstruct(in, in, out,
+		in, out, in, out) is det.
 
-:- pred find_bind_var_for_switch(hlds_goal, substitution, var,
-	hlds_goal, substitution, maybe(cons_id)).
-:- mode find_bind_var_for_switch(in, in, in, out, out, out) is det.
+find_bind_var_for_switch_in_deconstruct(_UnifyVar, Goal0, Goals, 
+		_Result0, Result, _, unit) :-
+	(
+		Goal0 = unify(A, B, C, UnifyInfo0, E) - GoalInfo,
+		UnifyInfo0 = deconstruct(A, Functor, F, G, _)
+	->
+		Result = yes(Functor),
+			% The deconstruction unification now becomes
+			% deterministic, since the test will get
+			% carried out in the switch.
+		UnifyInfo = deconstruct(A, Functor, F, G,
+			cannot_fail),
+		Goals = [unify(A, B, C, UnifyInfo, E) - GoalInfo]
+	;
+		error("find_bind_var_for_switch_in_deconstruct")
+	).
 
-find_bind_var_for_switch(Goal0 - GoalInfo, Substitution0, Var,
-		Goal - GoalInfo, Substitution, MaybeFunctor) :-
+%-----------------------------------------------------------------------------%
+
+find_bind_var(Var, ProcessUnify, Goal0, Goal,
+		Result0, Result, Info0, Info) :-
+	map__init(Substitution),
+	find_bind_var(Var, ProcessUnify, Goal0, Goal, Substitution,
+		_, Result0, Result, Info0, Info, _).
+
+:- pred find_bind_var(var, process_unify(Result, Info), hlds_goal, hlds_goal,
+	substitution, substitution, Result, Result, Info, Info, bool).
+:- mode find_bind_var(in, in(process_unify), in, out, in,
+	out, in, out, in, out, out) is det.
+
+find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal, Substitution0,
+		Substitution, Result0, Result, Info0, Info, Continue) :-
 	( Goal0 = some(Vars, SubGoal0) ->
-		find_bind_var_for_switch(SubGoal0, Substitution0, Var,
-			SubGoal, Substitution, MaybeFunctor),
-		Goal = some(Vars, SubGoal)
+		find_bind_var(Var, ProcessUnify, SubGoal0, SubGoal,
+			Substitution0, Substitution, Result0, Result,
+			Info0, Info, Continue),
+		Goal = some(Vars, SubGoal) - GoalInfo
 	; Goal0 = conj(SubGoals0) ->
-		conj_find_bind_var_for_switch(SubGoals0, Substitution0, Var,
-			SubGoals, Substitution, MaybeFunctor),
-		Goal = conj(SubGoals)
-	; Goal0 = unify(A, B, C, UnifyInfo0, E) ->
+		conj_find_bind_var(Var, ProcessUnify, SubGoals0, SubGoals,
+			Substitution0, Substitution, Result0, Result,
+			Info0, Info, Continue),
+		Goal = conj(SubGoals) - GoalInfo
+	; Goal0 = unify(A, B, _, UnifyInfo0, _) ->
+		(
 			% check whether the unification is a deconstruction
 			% unification on Var or a variable aliased to Var
-		(
-			UnifyInfo0 = deconstruct(UnifyVar, Functor, F, G, _),
+			UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _),
 			term__apply_rec_substitution(term__variable(Var),
 				Substitution0, term__variable(Var1)),
 			term__apply_rec_substitution(term__variable(UnifyVar),
 				Substitution0, term__variable(UnifyVar1)),
 			Var1 = UnifyVar1
 		->
-			MaybeFunctor = yes(Functor),
-				% The deconstruction unification now becomes
-				% deterministic, since the test will get
-				% carried out in the switch.
-			UnifyInfo = deconstruct(UnifyVar, Functor, F, G,
-				cannot_fail),
-			Goal = unify(A, B, C, UnifyInfo, E),
+			call(ProcessUnify, Var, Goal0 - GoalInfo, Goals,
+				Result0, Result, Info0, Info),
+			conj_list_to_goal(Goals, GoalInfo, Goal),
+			Continue = no,
 			Substitution = Substitution0
 		;
+			Goal = Goal0 - GoalInfo,
+			Continue = yes,
 			% otherwise abstractly interpret the unification
-			MaybeFunctor = no,
-			Goal = Goal0,
+			Result = Result0,
+			Info = Info0,
 			( interpret_unify(A, B, Substitution0, Substitution1) ->
 				Substitution = Substitution1
 			;
@@ -481,29 +519,40 @@ find_bind_var_for_switch(Goal0 - GoalInfo, Substitution0, Var,
 			)
 		)
 	;
-		Goal = Goal0,
+		Goal = Goal0 - GoalInfo,
 		Substitution = Substitution0,
-		MaybeFunctor = no
+		Result = Result0,
+		Info = Info0,
+		Continue = yes
 	).
 
-:- pred conj_find_bind_var_for_switch(list(hlds_goal), substitution, var,
-	list(hlds_goal), substitution, maybe(cons_id)).
-:- mode conj_find_bind_var_for_switch(in, in, in, out, out, out) is det.
+:- pred conj_find_bind_var(var, process_unify(Result, Info), 
+	list(hlds_goal), list(hlds_goal), substitution, substitution,
+	Result, Result, Info, Info, bool).
+:- mode conj_find_bind_var(in, in(process_unify), in, out,
+	in, out, in, out, in, out, out) is det.
 
-conj_find_bind_var_for_switch([], Substitution, _Var, [], Substitution, no).
-conj_find_bind_var_for_switch([Goal0 | Goals0], Substitution0, Var,
-		[Goal | Goals], Substitution, MaybeFunctor) :-
-	find_bind_var_for_switch(Goal0,
-		Substitution0, Var,
-		Goal, Substitution1, MaybeFunctor1),
-	( MaybeFunctor1 = yes(_) ->
+conj_find_bind_var(_Var, _, [], [], Substitution, Substitution,
+		Result, Result, Info, Info, yes).
+conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
+		Substitution0, Substitution, Result0, Result,
+		Info0, Info, Continue) :-
+	find_bind_var(Var, ProcessUnify, Goal0, Goal, Substitution0,
+		Substitution1, Result0, Result1,
+		Info0, Info1, Continue1),
+	( Continue1 = no ->
+		Continue = no,
 		Goals = Goals0,
 		Substitution = Substitution1,
-		MaybeFunctor = MaybeFunctor1
+		Result = Result1,
+		Info = Info1
 	;
-		conj_find_bind_var_for_switch(Goals0, Substitution1, Var,
-			Goals, Substitution, MaybeFunctor)
+		conj_find_bind_var(Var, ProcessUnify, Goals0, Goals,
+			Substitution1, Substitution, Result1, Result,
+			Info1, Info, Continue)
 	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred cases_to_switch(sorted_case_list, var, map(var, type), hlds_goal_info,
 	store_map, instmap, inst_table, module_info, hlds_goal_expr).
