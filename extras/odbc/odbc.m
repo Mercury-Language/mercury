@@ -1,6 +1,6 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997 Mission Critical.
-% Copyright (C) 1997-2000, 2002, 2004 The University of Melbourne.
+% Copyright (C) 1997-2000, 2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -74,7 +74,7 @@
 
 		% A closure to be executed atomically. 
 :- type odbc__transaction(T)	== 	pred(T, odbc__state, odbc__state).
-:- mode odbc__transaction	::	pred(out, di, uo) is det.
+:- mode odbc__transaction	==	(pred(out, di, uo) is det).
 
 :- type odbc__state.
 
