@@ -34,8 +34,8 @@ Added `multidet'.
 Enabled the use of tag bits in combination with conservative garbage
 collection (this improved the speed of the compiler by about 20%).
 Compile directly to C rather than via the old .mod files, which were
-post-processed by a Perl script (improves compilation speed, removes
-dependency on Perl).
+post-processed by a Perl script (improves compilation speed, reduces
+disk space requirements, removes dependency on Perl).
 Lots of bug fixes.
 
 Mercury 0.3
