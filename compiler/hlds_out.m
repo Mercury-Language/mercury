@@ -787,7 +787,7 @@ hlds_out__write_var_types_2([Var | Vars], Indent, VarSet, VarTypes, TypeVarSet)
 	mercury_output_term(Type, TypeVarSet),
 	io__write_string("\n"),
 	hlds_out__write_var_types_2(Vars, Indent, VarSet, VarTypes, TypeVarSet).
-	
+
 :- pred hlds_out__write_call_info(int, call_info, varset,
 					io__state, io__state).
 :- mode hlds_out__write_call_info(in, in, in, di, uo) is det.
@@ -811,7 +811,7 @@ hlds_out__write_call_info_2([Var - Slot | Vars], Indent, VarSet) -->
 	io__write_anything(Slot),
 	io__write_string("\n"),
 	hlds_out__write_call_info_2(Vars, Indent, VarSet).
-	
+
 :- pred hlds_out__write_types(int, type_table, io__state, io__state).
 :- mode hlds_out__write_types(in, in, di, uo) is det.
 

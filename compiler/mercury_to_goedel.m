@@ -102,7 +102,7 @@ goedel_replace_int_integer(Items0, Items) :-
 	term__context_init(Context),
 	prog_util__replace_eqv_type_list(Items0, VarSet, "int", [],
 		term__functor(term__atom("integer"), [], Context), Items).
-	
+
 %-----------------------------------------------------------------------------%
 
 	% add the declarations one by one to the module

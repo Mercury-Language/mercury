@@ -130,7 +130,7 @@ modecheck(Module0, Module) -->
 	io__set_output_stream(OldStream, _).
 
 %-----------------------------------------------------------------------------%
-	
+
 	% Mode-check the code for all the predicates in a module.
 
 :- pred check_pred_modes(module_info, module_info, io__state, io__state).
@@ -1008,7 +1008,7 @@ modecheck_call_pred_2([], _PredId, _Procs, ArgVars, WaitingVars,
 	mode_info_error(WaitingVars,
 		mode_error_no_matching_mode(ArgVars, ArgInsts),
 		ModeInfo0, ModeInfo).
-	
+
 modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 			TheProcId, ArgVars, ExtraGoals, ModeInfo0, ModeInfo) :-
 

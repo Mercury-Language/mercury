@@ -372,7 +372,7 @@ call_gen__partition_args([arg_info(_Loc,Mode) - V|Rest], Ins, Outs) :-
 	;
 		error("call_gen__partition_args: top_unused")
 	).
-		
+
 :- pred call_gen__partition_args_2(assoc_list(arg_info, var), list(var)).
 :- mode call_gen__partition_args_2(in, out) is det.
 
@@ -445,7 +445,6 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 			c_code(
 	"fatal_error(""Sorry, polymorphic unifications not implemented"");") -
 				"Temporary hack"
-			
 		]) }
 	),
 	(

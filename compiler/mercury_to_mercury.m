@@ -1154,7 +1154,7 @@ strip_trailing_primes(Name0, Name, Num) :-
 		Num = 0,
 		Name = Name0
 	).
-	
+
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_output_line_number(term__context, io__state, io__state).

@@ -361,7 +361,7 @@ detect_deadness_in_goal_2(switch(Var, Det, Cases0), Deadness0,
 	detect_deadness_in_cases(Cases0, Deadness0, ModuleInfo, Union0,
 								Union, Cases),
 	set__union(Deadness0, Union, Deadness).
-	
+
 detect_deadness_in_goal_2(some(Vars, Goal0), Deadness0, ModuleInfo,
 		Deadness, some(Vars, Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness0, ModuleInfo, Deadness, Goal).
@@ -580,7 +580,7 @@ add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
 	add_nondet_lives_to_goal(Else0, Liveness0, Extras0,
 					Else1, Liveness, Extras3),
 	set__union(Extras2, Extras3, Extras),
-	
+
 		% Anything that became nondet-live in the condition
 		% or the "then" can safely be killed off in the "else"
 		% so long as it isn't live!
@@ -656,7 +656,7 @@ add_nondet_lives_to_disj([G0|Gs0], Liveness0, Extras0,
 						Gs, _Liveness1, Extras1),
 	add_nondet_lives_to_goal(G0, Liveness0, Extras0, G, Liveness, Extras2),
 	set__union(Extras1, Extras2, Extras).
-	
+
 :- pred add_nondet_lives_to_switch(list(case), set(var), set(var), set(var),
 				list(case), set(var), set(var)).
 :- mode add_nondet_lives_to_switch(in, in, in, in, out, out, out) is det.

@@ -677,7 +677,7 @@ output_instruction(modframe(FailureContinuation)) -->
 output_instruction(label(Label)) -->
 	output_label_defn(Label),
 	maybe_output_update_prof_counter(Label).
-	
+
 output_instruction(goto(CodeAddr, CallerAddr)) -->
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },

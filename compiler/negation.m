@@ -115,7 +115,7 @@ negation__transform_item(Item_In, Item_Out) :-
 	% negation__transform_goal/2
 	% Just calls negation__transform_goal_2, passing the context
 	% through unchanged.
-	
+
 negation__transform_goal(Goal_In - Context, Goal_Out - Context) :-
 	negation__transform_goal_2(Goal_In, Goal_Out).
 
@@ -142,7 +142,7 @@ negation__transform_goal_2(not(Goal), Goal_Out) :-
 	% up by the implication and negation transformations.
 	% If they cause any problems they can be safely removed
 	% without any other changes to the code being necessary.
-	
+
 % clip from here --------------------------------------
 	% (1)   ~(~P ^ ~Q) ----> (P v Q)
 		Goal = (not(P) - _, not(Q) - _) - _

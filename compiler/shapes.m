@@ -63,7 +63,7 @@
                          ;       prevfr
                          ;       sp
                          ;       unwanted.
- 
+
 :- pred shapes__init_shape_table(shape_table).
 :- mode shapes__init_shape_table(out) is det.
 
@@ -203,7 +203,6 @@ shapes__add_shape_numbers([T - S | Ts] , Types, ShapeTab0, ShapeTab,
 	;
 		error("shapes__add_shape_numbers: Unreachable case reached!") 
 	).
-	
 
 %-----------------------------------------------------------------------------%
 % We want to 'remove' the context of the types that we lookup and deal with
@@ -220,7 +219,7 @@ shapes__replace_context(Type - Inst, NewType - Inst) :-
 	;
 		error("shapes__replace_context - empty list returned")
 	).
-	
+
 %-----------------------------------------------------------------------------%
 % Want to also remove all type argument contexts, recursively. 
 %-----------------------------------------------------------------------------%
@@ -302,7 +301,7 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 			map__from_corresponding_lists(TypeParamVars, TypeArgs,
 				TypeSubst),
 			shapes__apply_to_ctors(Ctors0, TypeSubst, Ctors),
-			
+
 			Shape = quad(A,B,C,D),
 			shapes__create_shapeA(Type_Id, Ctors, TagVals,
 				bit_zero, A, Type_Tab, S_Tab0, S_Tab1),
@@ -313,7 +312,6 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 			shapes__create_shapeA(Type_Id, Ctors, TagVals,
 				bit_three, D, Type_Tab, S_Tab3, S_Tab) 
 		;
-			
 			Hlds_Type = hlds__type_defn(_, _TypeParams, 
 				abstract_type, _, _) 
 
@@ -335,9 +333,8 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 				S_Tab = S_Tab0
 			) 
 		;
-	
 			Hlds_Type = hlds__type_defn(_, _, eqv_type(ET), _, _)
-		
+
 			% The case where a type is equivalent to 
 			% another type - we just find the type it is 
 			% equivalent to and store it as a reference.

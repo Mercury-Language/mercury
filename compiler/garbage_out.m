@@ -561,4 +561,3 @@ garbage_out__write_type_id(unqualified(TypeName) - Arity) -->
 garbage_out__write_type_id(qualified(Module,TypeName) - Arity) -->
 	io__write_strings(["qualified(", Module, ", ", TypeName, ") - "]),
 	io__write_int(Arity).
-	

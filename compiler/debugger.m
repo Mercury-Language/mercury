@@ -304,7 +304,7 @@ do_goal2_det(call(PredId,ProcId,Vars,_isbuiltin,PredName,_followvars)
 	),
 	io__write_string("Leaving Pred "), io__write_string(Name),
 	io__write_string("\n").
-	
+
 do_goal2_det(unify(A,B,_,Unification,_),INFO,VarSet,VarSetOut,Result) -->
 	{ INFO = highinfo(_HLDS,Headinlist) },
 	( { Unification = assign(_,_) },
@@ -387,7 +387,6 @@ do_goal2_det_conj([Goal|Goals],INFO,VarSet,VarSetOut,Result) -->
 	  { Result = no },
 	  { VarSetOut = VarSet }
 	).
-	
  
 :- pred do_output_goal_args(module_info,varset,list(pair(var,mode)),io__state,io__state).
 :- mode do_output_goal_args(in,in,in,di,uo) is det.
@@ -610,7 +609,7 @@ do_goal2_semidet(call(PredId,ProcId,Vars,_isbuiltin,PredName,_followvars)
 	),
 	io__write_string("Leaving Pred "), io__write_string(Name),
 	io__write_string("\n").
-	
+
 do_goal2_semidet(unify(A,B,_,Unification,_),INFO,VarSet,VarSetOut,Result) -->
 	{ INFO = highinfo(_HLDS,Headinlist) },
 	( { Unification = assign(_,_) },

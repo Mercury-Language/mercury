@@ -29,7 +29,7 @@
 			;	accumulating(list(string)).
 
 :- type option_table	==	map(option, option_data).
-		
+
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(list(pair(option, option_data))::out) is det.
@@ -243,7 +243,7 @@ option_defaults_2(optimization_option, [
 	optimize_fulljumps	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(no),
-	optimize_value_number	-	bool(no),
+	optimize_value_number	-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_repeat		-	int(3),
 	optimize_vnrepeat	-	int(1),

@@ -283,6 +283,11 @@
 :- pred opt_util__rvals_free_of_lval(list(rval), lval).
 :- mode opt_util__rvals_free_of_lval(in, in) is semidet.
 
+	% Count the number of hp increments in a block of code.
+
+:- pred opt_util__count_incr_hp(list(instruction), int).
+:- mode opt_util__count_incr_hp(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -818,12 +823,9 @@ opt_util__filter_out_bad_livevals([Instr0 | Instrs0], Instrs) :-
 	opt_util__filter_out_bad_livevals(Instrs0, Instrs1),
 	(
 		Instr0 = livevals(_) - _,
-		Instrs1 = [Uinstr1 - _ | _],
-		opt_util__can_use_livevals(Uinstr1, no)
-% XXX should be restored when proven OK
-%		opt_util__skip_comments(Instrs1, Instrs2),
-%		Instrs2 = [Uinstr2 - _ | _],
-%		opt_util__can_use_livevals(Uinstr2, no)
+		opt_util__skip_comments(Instrs1, Instrs2),
+		Instrs2 = [Uinstr2 - _ | _],
+		opt_util__can_use_livevals(Uinstr2, no)
 	->
 		Instrs = Instrs1
 	;
@@ -1265,5 +1267,22 @@ opt_util__rval_free_of_lval(unop(_, Rval), Forbidden) :-
 opt_util__rval_free_of_lval(binop(_, Rval1, Rval2), Forbidden) :-
 	opt_util__rval_free_of_lval(Rval1, Forbidden),
 	opt_util__rval_free_of_lval(Rval2, Forbidden).
+
+%-----------------------------------------------------------------------------%
+
+opt_util__count_incr_hp(Instrs, N) :-
+	opt_util__count_incr_hp_2(Instrs, 0, N).
+
+:- pred opt_util__count_incr_hp_2(list(instruction), int, int).
+:- mode opt_util__count_incr_hp_2(in, in, out) is det.
+
+opt_util__count_incr_hp_2([], N, N).
+opt_util__count_incr_hp_2([Uinstr0 - _ | Instrs], N0, N) :-
+	( Uinstr0 = incr_hp(_, _, _) ->
+		N1 is N0 + 1
+	;
+		N1 = N0
+	),
+	opt_util__count_incr_hp_2(Instrs, N1, N).
 
 %-----------------------------------------------------------------------------%

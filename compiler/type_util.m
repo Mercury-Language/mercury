@@ -85,7 +85,7 @@
 type_util__type_id_module(_ModuleInfo, _TypeId, ModuleName) :-
 	% XXX Module qualifiers not yet implemented
 	ModuleName = "xxx".
-	
+
 type_util__type_id_name(_ModuleInfo, Name0 - _Arity, Name) :-
 	unqualify_name(Name0, Name).
 

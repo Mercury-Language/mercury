@@ -417,7 +417,7 @@ inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 
 :- pred inst_merge_2(inst, inst, module_info, inst, module_info).
 :- mode inst_merge_2(in, in, in, out, out) is semidet.
-			
+
 inst_merge_2(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 /*********
 		% would this test improve efficiency??
@@ -631,7 +631,7 @@ abstractly_unify_inst_3(live, free,	ground(UniqY, PredInst),	M,
 	unify_uniq(live, unique, UniqY, Uniq).
 
 % abstractly_unify_inst_3(live, free,	abstract_inst(_,_), _, _, _, _) :- fail.
-	
+
 abstractly_unify_inst_3(live,		bound(UniqY, List0), free,	M0,
 					bound(Uniq, List), det,	 M) :-
 	unify_uniq(live, unique, UniqY, Uniq),
@@ -670,7 +670,7 @@ abstractly_unify_inst_3(live, ground(UniqA, yes(PredInstA)),
 		fail
 	),
 	unify_uniq(live, UniqA, UniqB, Uniq).
-	
+
 abstractly_unify_inst_3(live, ground(Uniq, no), Inst0, M0,
 				Inst, Det, M) :-
 	( inst_is_free(M0, Inst0) ->
@@ -703,7 +703,7 @@ abstractly_unify_inst_3(live, abstract_inst(Name, ArgsA),
 abstractly_unify_inst_3(dead, not_reached, _, M, not_reached, det, M).
 
 abstractly_unify_inst_3(dead, free, Inst, M, Inst, det, M).
-	
+
 abstractly_unify_inst_3(dead, bound(UniqX, List), free, ModuleInfo,
 				bound(Uniq, List), det, ModuleInfo) :-
 	unify_uniq(dead, UniqX, unique, Uniq).

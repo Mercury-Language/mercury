@@ -206,7 +206,7 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 						% parameters
 			module_info
 		).
-	
+
 :- pred polymorphism__process_proc(proc_info, pred_info, module_info,
 				proc_info, pred_info, module_info).
 :- mode polymorphism__process_proc(in, in, in, out, out, out) is det.
@@ -267,14 +267,14 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
 	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo),
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
-	
+
 :- pred polymorphism__process_goal(hlds__goal, hlds__goal,
 					poly_info, poly_info).
 :- mode polymorphism__process_goal(in, out, in, out) is det.
 
 polymorphism__process_goal(Goal0 - GoalInfo0, Goal) -->
 	polymorphism__process_goal_2(Goal0, GoalInfo0, Goal).
-	
+
 :- pred polymorphism__process_goal_2(hlds__goal_expr, hlds__goal_info,
 					hlds__goal, poly_info, poly_info).
 :- mode polymorphism__process_goal_2(in, in, out, in, out) is det.
@@ -719,7 +719,7 @@ polymorphism__make_vars([Type|Types], ModuleInfo, TypeInfoMap,
 		%	:- pred p(T1, pred(T1, T1)).
 		%	:- pred q(T2, pred(T2, T2)).
 		%	p(TypeInfo, X) :- q(TypeInfo, X).
-		
+
 		Var = TypeInfoVar,
 		ExtraGoals1 = [],
 		VarSet4 = VarSet0,

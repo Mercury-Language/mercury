@@ -416,7 +416,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 			[]
 		)
 	).
-			
+
 :- pred add_abstract_export(module_info, type, type_id, module_info).
 :- mode add_abstract_export(in, in, in, out) is det.
 add_abstract_export(Module0, Type, TypeId, Module) :-
@@ -683,7 +683,6 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, MContext,
 				PredId, PredicateTable1) }
-		
 	),
 
 		% Lookup the pred_info for this predicate
@@ -868,7 +867,6 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_c_header(string, term__context, module_info, module_info).
-	
 :- mode module_add_c_header(in, in, in, out) is det.
 
 module_add_c_header(C_Header, Context, Module0, Module) :-
@@ -876,7 +874,7 @@ module_add_c_header(C_Header, Context, Module0, Module) :-
 		% XXX use of append is inefficient - O(N*N)
 	list__append(C_HeaderIndex0, [C_Header - Context], C_HeaderIndex1),
 	module_info_set_c_header(Module0, C_HeaderIndex1, Module).
-	
+
 %-----------------------------------------------------------------------------%
 
 	% Warn about variables which occur only once but don't start with

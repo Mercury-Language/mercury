@@ -11,7 +11,6 @@
 
 :- type highinfo ---> highinfo(module_info,list(var)).
 
-	
 :- pred do_termvar2termconst(varset,term,term).
 :- mode do_termvar2termconst(in,in,out) is det.
 

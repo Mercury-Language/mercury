@@ -253,7 +253,7 @@
 % mode/4 defined above
 
 %-----------------------------------------------------------------------------%
-	
+
 	% This is how module-system declarations (such as imports
 	% and exports) are represented.
 
@@ -783,7 +783,7 @@ parse_goal_2("\\+", [A0], V0, not(A), V) :-
 parse_goal_2("all", [Vars0,A0], V0, all(Vars,A), V ):-
 	term__vars(Vars0, Vars),
 	parse_goal(A0, V0, A, V).
-	
+
 	% handle implication
 parse_goal_2("<=", [A0,B0], V0, implies(B,A), V ):-
 	parse_goal(A0, V0, A, V1),
@@ -1473,7 +1473,7 @@ parse_type_decl_type("--->", [H,B], Condition, R) :-
 parse_type_decl_type("=", [H,B], Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_uu_type(H, Body, R).
-	
+
 parse_type_decl_type("==", [H,B], Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_eqv_type(H, Body, R).
@@ -1691,7 +1691,7 @@ process_abstract_type_2(ok(Functor, Args), ok(abstract_type(Functor, Args))).
 %-----------------------------------------------------------------------------%
 
 	%  check a type definition for errors
-	
+
 :- pred check_for_errors(term, term, maybe_functor).
 :- mode check_for_errors(in, in, out) is det.
 check_for_errors(Head, Body, Result) :-
@@ -2986,7 +2986,7 @@ parse_op_specifier(Term, Result) :-
 :- mode process_op_specifier(in, out) is det.
 process_op_specifier(ok(X), ok(sym(X))).
 process_op_specifier(error(M,T), error(M,T)).
-	
+
 %-----------------------------------------------------------------------------%
 
 	% types are represented just as ordinary terms

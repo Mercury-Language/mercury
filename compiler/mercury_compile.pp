@@ -98,7 +98,7 @@ postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
 
 	{ copy(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, Tags_Method),
-	
+
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->
 		globals__io_set_option(
@@ -858,7 +858,7 @@ lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps, DepsMap)
 	).
 
 	% Read a module to determine its dependencies.
-	
+
 :- pred read_dependencies(string, list(string), list(string), module_error,
 				io__state, io__state).
 :- mode read_dependencies(in, out, out, out, di, uo) is det.
@@ -981,7 +981,7 @@ read_mod_interface(Module, Descr, Items, Error) -->
 
 process_module_interfaces([], IndirectImports, Module0, Module) -->
 	process_module_short_interfaces(IndirectImports, Module0, Module).
-	
+
 process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		-->
 	{ Module0 = module(ModuleName, DirectImports0, _, Items0, Error0) },
@@ -1040,7 +1040,6 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 	is det.
 
 process_module_short_interfaces([], Module, Module) --> [].
-	
 process_module_short_interfaces([Import | Imports], Module0, Module) -->
 	{ Module0 = module(ModuleName, DirectImports, IndirectImports0,
 			Items0, Error0) },
@@ -1526,7 +1525,6 @@ mercury_compile__maybe_write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	;
 		{ ModuleInfo0 = ModuleInfo }
 	).
-	
 
         % Output's the file <module_name>.prof, which contains the static
         % call graph in terms of label names, if the profiling flag enabled.
@@ -2310,7 +2308,7 @@ mercury_compile__link_module_list(Modules) -->
 	;
 	    { OutputFile = OutputFile0 }
 	),
-	    
+
 	    % create the initialization C file
 	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
 	    { string__append(OutputFile, "_init.c", C_Init_File) },

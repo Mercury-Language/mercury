@@ -436,7 +436,7 @@ unify_proc__generate_write_clauses(TypeBody, X, Term, Clauses) -->
 	For a type such as
 
 		type t(X) ---> a ; b(int) ; c(X); d(int, X, t)
-	
+
 	we want to generate code
 
 		eq(H1, H2) :-
@@ -493,7 +493,7 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2,
 	For a type such as 
 
 		:- type foo ---> f ; g(a, b, c) ; h(foo).
-	
+
 	we want to generate code
 
 		index(X, Index) :-
@@ -705,7 +705,7 @@ unify_proc__generate_compare_case(Ctor, R, X, Y, Case) -->
 /*	unify_proc__compare_args: for a constructor such as
 
 		h(list(int), foo, string)
-	
+
 	we want to generate code
 
 		(

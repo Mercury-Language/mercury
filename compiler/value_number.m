@@ -134,7 +134,16 @@ vn__optimize_block(Instrs0, Livemap, ParEntries, LabelNo0, LabelNo, Instrs,
 :- mode vn__optimize_fragment(in, in, in, in, out, out, di, uo) is det.
 
 vn__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
-	( { vn__separate_tag_test(Instrs0, Instrs1) } ->
+	(
+		{ vn__separate_tag_test(Instrs0, Instrs1) },
+		globals__io_lookup_string_option(gc, Gc),
+		{ Gc = "conservative" ->
+			opt_util__count_incr_hp(Instrs1, Incr),
+			Incr < 2
+		;
+			true
+		}
+	->
 		vn__optimize_fragment_2(Instrs1, Livemap, ParEntries,
 			LabelNo0, Tuple, Instrs)
 	;

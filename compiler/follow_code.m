@@ -381,7 +381,7 @@ move_prev_code(Goal, Goal, _, RevPrevGoals, RevPrevGoals, R, R).
 % :- pred move_prev_code_breakup_branched(hlds__goal, hlds__goal, hlds__goal,
 % 	hlds__goal).
 % :- mode move_prev_code_breakup_branched(in, out, out, out) is semidet.
- 
+
 :- pred move_prev_code_forbidden_vars(list(hlds__goal), set(var)).
 :- mode move_prev_code_forbidden_vars(in, out) is det.
 

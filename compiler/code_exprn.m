@@ -172,7 +172,7 @@ code_exprn__init_state_2([V - L|Rest], Vars0, Vars, Regs0, Regs) :-
 		Regs1 = Regs0
 	),
 	code_exprn__init_state_2(Rest, Vars1, Vars, Regs1, Regs).
-	
+
 %------------------------------------------------------------------------------%
 
 code_exprn__get_varlocs(Locations) -->
@@ -430,7 +430,7 @@ code_exprn__add_rval_reg_dependencies(unop(_Op, Rval)) -->
 code_exprn__add_rval_reg_dependencies(binop(_Op, Rval0, Rval1)) -->
 	code_exprn__add_rval_reg_dependencies(Rval0),
 	code_exprn__add_rval_reg_dependencies(Rval1).
-	
+
 :- pred code_exprn__add_arg_reg_dependencies(list(maybe(rval)),
 						exprn_info, exprn_info).
 :- mode code_exprn__add_arg_reg_dependencies(in, in, out) is det.
@@ -492,7 +492,7 @@ code_exprn__rem_rval_reg_dependencies(unop(_Op, Rval)) -->
 code_exprn__rem_rval_reg_dependencies(binop(_Op, Rval0, Rval1)) -->
 	code_exprn__rem_rval_reg_dependencies(Rval0),
 	code_exprn__rem_rval_reg_dependencies(Rval1).
-	
+
 :- pred code_exprn__rem_arg_reg_dependencies(list(maybe(rval)),
 						exprn_info, exprn_info).
 :- mode code_exprn__rem_arg_reg_dependencies(in, in, out) is det.

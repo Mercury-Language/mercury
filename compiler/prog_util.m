@@ -22,7 +22,7 @@
 :- pred prog_util__expand_eqv_types(list(item_and_context),
 					list(item_and_context)).
 :- mode prog_util__expand_eqv_types(in, out) is det.
-	
+
 	% The following predicate prog_util__replace_eqv_type_list
 	% performs substititution of a single type on a list
 	% of items.  It is used in mercury_to_goedel to rename
@@ -132,7 +132,7 @@ prog_util__replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
 	term__apply_substitution(Body0, Subst, Body),
 	prog_util__replace_eqv_type_pred(TypesAndModes0, Name, Args, Body,
 		no, TypesAndModes, yes).
-	
+
 :- pred prog_util__replace_eqv_type_defn(type_defn, string, list(type_param),
 					type, type_defn).
 :- mode prog_util__replace_eqv_type_defn(in, in, in, in, out) is semidet.

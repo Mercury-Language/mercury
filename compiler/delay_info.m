@@ -101,7 +101,7 @@
 	% For each goal, we store all the variables that it is waiting on.
 
 :- type pending_goals_table == map(depth_num, list(seq_num)).
-	
+
 :- type goal_num == pair(depth_num, seq_num).
 :- type depth_num == int.		/* Eeek! Pointers! */
 :- type seq_num == int.
@@ -155,7 +155,7 @@ waiting_goals_check_invariant([V|Vs], WaitingGoalsTable) :-
 :- pred waiting_goal_check_invariant(list(goal_num), waiting_goals,
 					waiting_goals_table).
 :- mode waiting_goal_check_invariant(in, in, in) is semidet.
-	
+
 waiting_goal_check_invariant([], _, _).
 waiting_goal_check_invariant([GoalNum | GoalNums], WaitingGoals,
 		WaitingGoalsTable) :-
@@ -277,7 +277,7 @@ delay_info__delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
 	set__to_sorted_list(Vars, VarList),
 	add_waiting_vars(VarList, GoalNum, VarList, WaitingGoalsTable0,
 				WaitingGoalsTable),
-	
+
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, PendingGoals, NextSeqNums),
 	delay_info__check_invariant(DelayInfo).
@@ -342,7 +342,7 @@ delay_info__bind_var(DelayInfo0, Var, DelayInfo) :-
 	% Add a collection of goals, identified by depth_num and seq_num
 	% (depth of nested conjunction and sequence number within conjunction),
 	% to the collection of pending goals.
-	
+
 :- pred add_pending_goals(list(goal_num), map(goal_num, list(var)),
 			pending_goals_table, pending_goals_table,
 			waiting_goals_table, waiting_goals_table).

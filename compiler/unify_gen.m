@@ -391,7 +391,7 @@ unify_gen__generate_cons_args(Vars, ModuleInfo, Modes, Args) :-
 	;
 		error("unify_gen__generate_cons_args: length mismatch")
 	).
-		
+
 	% Create a list of maybe(rval) for the arguments
 	% for a construction unification.  For each argument which
 	% is input to the construction unification, we produce `yes(var(Var))',

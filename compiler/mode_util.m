@@ -730,7 +730,7 @@ mode_substitute_arg_list(Mode0, Params, Args, Mode) :-
 		map__from_corresponding_lists(Params, Args, Subst),
 		mode_apply_substitution(Mode0, Subst, Mode)
 	).
-		
+
 	% inst_substitute_arg_list(Inst0, Params, Args, Inst) is true
 	% iff Inst is the inst that results from substituting all
 	% occurrences of Params in Inst0 with the corresponding

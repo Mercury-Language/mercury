@@ -1247,6 +1247,9 @@ frameopt__is_succip_restored([Uinstr - _Comment | Instrs]) :-
 	(
 		Uinstr = assign(succip, lval(stackvar(_)))
 	;
+		Uinstr = block(_, BlockInstrs),
+		frameopt__is_succip_restored(BlockInstrs)
+	;
 		frameopt__is_succip_restored(Instrs)
 	).
 

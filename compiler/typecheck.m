@@ -181,7 +181,7 @@ typecheck(Module0, Module, FoundError) -->
 	io__set_output_stream(OldStream, _).
 
 %-----------------------------------------------------------------------------%
-	
+
 	% Type-check the code for all the predicates in a module.
 
 :- pred check_pred_types(module_info, module_info, bool, io__state, io__state).
@@ -508,7 +508,7 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
 	typecheck_goal_2(Goal0, Goal, TypeInfo1, TypeInfo2),
 
 	check_warn_too_much_overloading(TypeInfo2, TypeInfo).
-	
+
 :- pred typecheck_goal_2(hlds__goal_expr, hlds__goal_expr,
 				type_info, type_info).
 :- mode typecheck_goal_2(in, out, type_info_di, type_info_uo) is det.
@@ -979,7 +979,7 @@ type_assign_list_var_has_type_list([], _, _, _) --> [].
 type_assign_list_var_has_type_list([TA | TAs], Args, Types, TypeInfo) -->
 	type_assign_var_has_type_list(Args, Types, TA, TypeInfo),
 	type_assign_list_var_has_type_list(TAs, Args, Types, TypeInfo).
-	
+
 %-----------------------------------------------------------------------------%
 
 	% Because we allow overloading, type-checking is NP-complete.
@@ -1279,7 +1279,7 @@ typecheck_unify_var_var_2([], _, _, _) --> [].
 typecheck_unify_var_var_2([TypeAssign0 | TypeAssigns0], X, Y, TypeInfo) -->
 	type_assign_unify_var_var(X, Y, TypeAssign0, TypeInfo),
 	typecheck_unify_var_var_2(TypeAssigns0, X, Y, TypeInfo).
-	
+
 %-----------------------------------------------------------------------------%
 
 	% Type-check the unification of two variables,
@@ -1418,7 +1418,7 @@ get_cons_stuff(ConsDefn, TypeAssign0, _TypeInfo, ConsType, ArgTypes,
 	;
 		error("get_cons_stuff: type_assign_rename_apart failed")
 	).
-	
+
 %-----------------------------------------------------------------------------%
 
 	% typecheck_lambda_var_has_type(Var, ArgVars, ...)
@@ -1529,7 +1529,7 @@ check_circular_types_2([], Types, Types) --> [].
 check_circular_types_2([TypeId | TypeIds], Types0, Types) -->
 
 JUNK ****/
-	
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1623,7 +1623,7 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 :- type type_info
 	---> type_info(
 			io__state, 	% The io state
-			
+
 			module_info, 	% The global symbol tables
 
 			pred_call_id,	% The pred_call_id of the pred
@@ -2364,7 +2364,7 @@ write_type_of_functor(Functor, Arity, Context, ConsDefnList) -->
 		write_cons_type_list(ConsDefnList, Functor, Arity, Context),
 		io__write_string(" }")
 	).
-		
+
 :- pred write_cons_type(cons_type_info, const, term__context,
 			io__state, io__state).
 :- mode write_cons_type(in, in, in, di, uo) is det.

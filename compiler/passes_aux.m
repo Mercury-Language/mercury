@@ -32,4 +32,3 @@ write_progress_message(Message, PredId, ModuleInfo) -->
 	;
 		[]
 	).
-	

@@ -97,7 +97,7 @@ determinism_declarations(ModuleInfo, DeclaredProcs, UndeclaredProcs) :-
 
 	% get_all_pred_procs takes a module_info and returns a list
 	% of all the procedures ids for that module.
-	
+
 :- pred get_all_pred_procs(module_info, predproclist).
 :- mode get_all_pred_procs(in, out) is det.
 

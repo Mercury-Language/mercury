@@ -96,7 +96,7 @@ code_aux__contains_only_builtins_list([]).
 code_aux__contains_only_builtins_list([Goal|Goals]) :-
 	code_aux__contains_only_builtins(Goal),
 	code_aux__contains_only_builtins_list(Goals).
-	
+
 %-----------------------------------------------------------------------------%
 
 code_aux__goal_is_flat(Goal - _GoalInfo) :-
@@ -123,7 +123,7 @@ code_aux__goal_is_flat_list([]).
 code_aux__goal_is_flat_list([Goal|Goals]) :-
 	code_aux__goal_is_flat(Goal),
 	code_aux__goal_is_flat_list(Goals).
-	
+
 %-----------------------------------------------------------------------------%
 
 code_aux__contains_simple_recursive_call(Goal - _, Last, CodeInfo, CodeInfo) :-
@@ -151,7 +151,7 @@ code_aux__contains_simple_recursive_call_2([Goal|Goals], Last,
 			Last = no
 		)
 	).
-		
+
 :- pred code_aux__is_recursive_call(hlds__goal_expr, code_info).
 :- mode code_aux__is_recursive_call(in, in) is semidet.
 
