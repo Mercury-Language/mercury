@@ -20,7 +20,8 @@ usage="\
 Usage: $0 [options]
 Options:
 	-b, --no-bootcheck
-		Do not perform a bootcheck; check only the tests directory.
+		Do not perform a bootcheck; check only the tests directory
+		or the single command.
 	-c, --compile-only
 		Check the successful creation of the stage3 .c files,
 		but do not compare stage2.ok and stage3.
@@ -165,7 +166,7 @@ else
 	exit 1
 fi
 
-if test -f stage2.ok/library/mercury_builtin.o -a -f stage2.bad/library/mercury_builtin.o
+if test -f stage2.ok/library/builtin.o -a -f stage2.bad/library/builtin.o
 then
 	echo "stage2.ok and stage2.bad both seem to have object files"
 else
