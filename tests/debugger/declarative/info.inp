@@ -1,0 +1,12 @@
+register --quiet
+context none
+echo on
+s
+f
+dd
+info
+a
+dd -s divide_and_query
+info
+a
+quit -y

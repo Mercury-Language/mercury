@@ -38,6 +38,7 @@
 	%
 :- type oracle_response(T)
 	--->	oracle_answer(decl_answer(T))
+	;	show_info(io.output_stream)
 	;	exit_diagnosis(T)
 	;	abort_diagnosis.
 
@@ -189,6 +190,9 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
 		add_trusted_module(Module, !Oracle),
 		OracleResponse = oracle_answer(
 			ignore(get_decl_question_node(Question)))
+	;
+		UserResponse = show_info(OutStream),
+		OracleResponse = show_info(OutStream)
 	;
 		UserResponse = exit_diagnosis(Node),
 		OracleResponse = exit_diagnosis(Node)
@@ -571,6 +575,8 @@ assert_oracle_kb(_, suspicious_subterm(_, _, _), KB, KB).
 assert_oracle_kb(_, ignore(_), KB, KB).
 
 assert_oracle_kb(_, skip(_), KB, KB).
+
+assert_oracle_kb(_, show_info(_), KB, KB).
 
 assert_oracle_kb(wrong_answer(_, _, Atom), truth_value(_, Truth), KB0, KB) :-
 	get_kb_ground_map(KB0, Map0),

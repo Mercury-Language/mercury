@@ -39,6 +39,7 @@ DECLARATIVE_PROGS=		\
 	ignore			\
 	if_then_else		\
 	inadmissible		\
+	info			\
 	input_term_dep		\
 	io_stream_test		\
 	ite_2			\
@@ -323,6 +324,10 @@ ignore.out: ignore ignore.$(DEBUG_INP)
 inadmissible.out: inadmissible inadmissible.inp
 	$(MDB_STD) ./inadmissible < inadmissible.inp \
 		> inadmissible.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+info.out: info info.inp
+	$(MDB_STD) ./info < info.inp > info.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 input_term_dep.out: input_term_dep input_term_dep.inp

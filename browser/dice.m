@@ -427,7 +427,8 @@ suspicion_ratio(PassCount, FailCount) =
 
 :- func format_float(int, float) = string.
 
-format_float(DecimalPlaces, Flt) = string.format("%.*f", [i(DecimalPlaces), f(Flt)]). 
+format_float(DecimalPlaces, Flt) 
+	= string.format("%.*f", [i(DecimalPlaces), f(Flt)]). 
 
 :- pred deconstruct_label_count(label_count::in, proc_label::out, 
 	path_port::out, int::out, int::out, int::out, int::out) is det.

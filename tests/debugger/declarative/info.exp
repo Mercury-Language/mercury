@@ -1,0 +1,34 @@
+      E1:     C1 CALL pred info.main/2-0 (det) info.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> s
+      E2:     C2 CALL pred info.p/1-0 (det)
+mdb> f
+      E3:     C2 EXIT pred info.p/1-0 (det)
+mdb> dd
+p(1)
+Valid? info
+
+Context of current question : info.m:19 (info.m:14)
+Search mode                 : top down             
+Number of suspect events    : 2                    
+
+p(1)
+Valid? a
+Diagnosis aborted.
+      E3:     C2 EXIT pred info.p/1-0 (det)
+mdb> dd -s divide_and_query
+p(1)
+Valid? info
+
+Context of current question   : info.m:19 (info.m:14)
+Search mode                   : divide and query     
+Estimated questions remaining : 1                    
+Number of suspect events      : 2                    
+
+p(1)
+Valid? a
+Diagnosis aborted.
+      E3:     C2 EXIT pred info.p/1-0 (det)
+mdb> quit -y

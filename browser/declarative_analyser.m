@@ -22,7 +22,7 @@
 :- import_module mdb.io_action.
 :- import_module mdb.declarative_edt.
 
-:- import_module std_util.
+:- import_module std_util, io.
 
 :- type analyser_response(T)
 
@@ -101,6 +101,12 @@
 	analyser_response(T)::out, analyser_state(T)::in,
 	analyser_state(T)::out) is det <= mercury_edt(S, T).
 
+	% Display information about the current question and the state
+	% of the search to the supplied output stream.
+	%
+:- pred show_info(S::in, io.output_stream::in, analyser_state(T)::in,
+	analyser_response(T)::out, io::di, io::uo) is det <= mercury_edt(S, T).
+
 	% Revise the current analysis.  This is done when a bug determined
 	% by the analyser has been overruled by the oracle.
 	%
@@ -120,7 +126,8 @@
 :- import_module mdb.declarative_edt.
 :- import_module mdbcomp.program_representation.
 
-:- import_module exception, string, map, int, counter, array, list.
+:- import_module exception, counter, array, list, float.
+:- import_module math, string, map, int. 
 
 	% Describes what search strategy is being used by the analyser and the
 	% state of the search.
@@ -363,6 +370,12 @@ process_answer(_, truth_value(_, erroneous), SuspectId, !Analyser) :-
 	assert_suspect_is_erroneous(SuspectId, !.Analyser ^ search_space, 
 		SearchSpace),
 	!:Analyser = !.Analyser ^ search_space := SearchSpace.
+
+	% process_answer shouldn't be called with a show_info oracle response.
+	%
+process_answer(_, show_info(_), _, _, _) :-
+	throw(internal_error("process_answer", "called with show_info/1")).
+
 
 process_answer(Store, suspicious_subterm(Node, ArgPos, TermPath), SuspectId, 
 		!Analyser) :-
@@ -1031,3 +1044,94 @@ max_weight(SearchSpace, SuspectId, {PrevMax, PrevSuspectId},
 		NewMax = PrevMax,
 		NewSuspectId = PrevSuspectId
 	).
+
+%-----------------------------------------------------------------------------%
+
+show_info(Store, OutStream, Analyser, Response, !IO) :-
+	SearchSpace = Analyser ^ search_space,
+	some [!FieldNames, !Data] (
+		!:FieldNames = [], 
+		!:Data = [],
+		%
+		% Get the context of the current question.
+		%
+		(
+			Analyser ^ last_search_question = yes(LastQuestionId),
+			(
+				edt_context(Store, get_edt_node(SearchSpace, 
+					LastQuestionId), FileName -  LineNo, 
+					MaybeReturnContext)
+			->
+				(
+					MaybeReturnContext = 
+						yes(ReturnFileName - 
+						ReturnLineNo),
+					ContextStr = FileName ++ ":" ++ 
+						int_to_string(LineNo) ++
+						" (" ++ ReturnFileName ++ ":" 
+						++ int_to_string(ReturnLineNo) 
+						++ ")"
+				;
+					MaybeReturnContext = no,
+					ContextStr = FileName ++ ":" ++ 
+						int_to_string(LineNo)
+				),
+				list.append(!.FieldNames, 
+					["Context of current question"], 
+					!:FieldNames),
+				list.append(!.Data, [ContextStr], !:Data)
+			;
+				true
+			)
+		;
+			Analyser ^ last_search_question = no,
+			throw(internal_error("show_info", "no last question"))
+		),
+
+		list.append(!.FieldNames, ["Search mode"], 
+			!:FieldNames),
+		list.append(!.Data, [search_mode_to_string(
+			Analyser ^ search_mode)], !:Data),
+
+		(
+			Analyser ^ search_mode = divide_and_query
+		->
+			list.append(!.FieldNames, 
+				["Estimated questions remaining"], 
+				!:FieldNames),
+			EstimatedQuestions = float.ceiling_to_int(
+				math.log2(float(Weight))),
+			list.append(!.Data, 
+				[int_to_string(EstimatedQuestions)], !:Data)
+		;
+			true
+		),
+		
+		list.append(!.FieldNames, ["Number of suspect events"], 
+			!:FieldNames),
+		(
+			root(SearchSpace, RootId)
+		->
+			StartId = RootId
+		;
+			topmost_det(SearchSpace, StartId)
+		),
+		Weight = get_weight(SearchSpace, StartId),
+		list.append(!.Data, [int_to_string_thousands(Weight)], !:Data),
+		
+		InfoMessage = string.format_table([left(!.FieldNames),
+			left(!.Data)], " : ")
+	),
+ 	io.format(OutStream, "\n%s\n\n", [s(InfoMessage)], !IO),
+	Node = get_edt_node(SearchSpace, LastQuestionId),
+	edt_question(Analyser ^ io_action_map, Store, Node,
+		OracleQuestion),
+	Response = oracle_question(OracleQuestion).
+
+:- func search_mode_to_string(search_mode) = string.
+
+search_mode_to_string(top_down) = "top down".
+search_mode_to_string(follow_subterm_end(_, _, _, _)) = 
+	"tracking marked sub-term".
+search_mode_to_string(binary(_, _, _)) = "binary search on path".
+search_mode_to_string(divide_and_query) = "divide and query".

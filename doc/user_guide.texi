@@ -4092,9 +4092,18 @@ the current subterm will be considered incorrect.
 Commence procedural debugging from the current point.
 This command is notionally the inverse of the @samp{dd} command
 in the procedural debugger.
+The session can be resumed with a @samp{dd --resume} command.
 @item abort
 End the declarative debugging session and return to
-the event at which the @samp{dd} command was given.
+the event at which the @samp{dd} command was given.  
+The session can be resume with a @samp{dd --resume} command.
+@sp 1
+@item info
+List the filename and line number of the predicate the current question
+is about as well as the filename and line number where the predicate 
+was called (if this information is available).  Also print some information
+about the state of the bug search, such as the current search mode and
+how many events are yet to be eliminated.
 @sp 1
 @item help
 Summarize the list of available commands.

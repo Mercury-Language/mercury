@@ -65,7 +65,8 @@
 		pred(edt_is_implicit_root/2) is trace_is_implicit_root,
 		pred(edt_same_nodes/3) is trace_same_event_numbers,
 		pred(edt_topmost_node/2) is trace_topmost_node,
- 		pred(edt_weight/4) is trace_weight
+ 		pred(edt_weight/4) is trace_weight,
+ 		pred(edt_context/4) is trace_context
 	].
 
 %-----------------------------------------------------------------------------%
@@ -376,6 +377,31 @@ node_events(wrap(Store), dynamic(Ref), PrevEvents, Events, RecordDups,
 	;
 		throw(internal_error("node_events",
 			"not a final event"))
+	).
+
+:- pred trace_context(wrap(S)::in, edt_node(R)::in, pair(string, int)::out,
+	maybe(pair(string, int))::out) is semidet <= annotated_trace(S, R).
+
+trace_context(wrap(Store), dynamic(Ref), FileName - LineNo, MaybeReturnContext)
+		:-
+	det_trace_node_from_id(Store, Ref, Final),
+	(
+		Final = exit(_, CallId, _, _, _, Label, _)
+	;
+		Final = fail(_, CallId, _, _, Label)
+	;
+		Final = excp(_, CallId, _, _, _, Label)
+	),
+	get_context_from_label_layout(Label, FileName, LineNo),
+	call_node_from_id(Store, CallId, Call),
+	(
+		Call ^ call_return_label = yes(ReturnLabel),
+		get_context_from_label_layout(ReturnLabel, ReturnFileName,
+			ReturnLineNo),
+		MaybeReturnContext = yes(ReturnFileName - ReturnLineNo)
+	;
+		Call ^ call_return_label = no,
+		MaybeReturnContext = no
 	).
 
 :- pred missing_answer_special_case(trace_atom::in) is semidet.
@@ -814,7 +840,8 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
 find_chain_start_inside(Store, CallId, CallNode, ArgPos, ChainStart) :-
 	CallPrecId = CallNode ^ call_preceding,
 	CallAtom = get_trace_call_atom(CallNode),
-	CallPathStr = CallNode ^ call_goal_path,
+	CallPathStr = get_goal_path_from_maybe_label(
+		CallNode ^ call_return_label),
 	path_from_string_det(CallPathStr, CallPath),
 	StartLoc = parent_goal(CallId, CallNode),
 	absolute_arg_num(ArgPos, CallAtom, ArgNum),
@@ -1038,8 +1065,9 @@ make_primitive_list(Store, GoalPaths, Contour, MaybeEnd, ArgNum, TotalArgs,
 :- pred contour_at_end_path(assoc_list(R, trace_node(R))::in, 
 	maybe(goal_path)::in) is semidet.
 
-contour_at_end_path([_ - call(_, _, _, _, _, _, _, CallPathStr, _, _)], 
+contour_at_end_path([_ - call(_, _, _, _, _, _, _, MaybeReturnLabel, _, _)], 
 		yes(EndPath)) :-
+	CallPathStr = get_goal_path_from_maybe_label(MaybeReturnLabel),
 	path_from_string_det(CallPathStr, CallPath),
 	CallPath = EndPath.
 
@@ -1253,8 +1281,10 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
 	->
 		(
 			ContourHeadNode = call(_, _, _, _, _, _, _, 
-				CallPathStr, _, _),
+				MaybeReturnLabel, _, _),
 			Atom = get_trace_call_atom(ContourHeadNode),
+			CallPathStr = get_goal_path_from_maybe_label(
+				MaybeReturnLabel),
 			path_from_string_det(CallPathStr, CallPath),
 			CallPath = EndPath
 		->

@@ -146,7 +146,16 @@
 		% comment at the top of this module for the meaning of 
 		% the weight of a node.
 		%
- 	pred edt_weight(S::in, T::in, int::out, int::out) is det
+ 	pred edt_weight(S::in, T::in, int::out, int::out) is det,
+
+		% Return the filename and line number of the predicate
+		% associated with the given node.  Also return the parent
+		% context if available.  Sometimes the main context may
+		% not be available (for example exception nodes).  In this case
+		% fail.
+		%
+	pred edt_context(S::in, T::in, pair(string, int)::out, 
+		maybe(pair(string, int))::out) is semidet
 ].
 
 :- type subterm_mode

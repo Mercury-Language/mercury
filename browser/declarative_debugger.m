@@ -186,7 +186,12 @@
 	;	ignore(T)
 	
 			% The oracle has deferred answering this question. 
-	;	skip(T).
+	;	skip(T)
+
+			% The oracle has requested that the analyser display
+			% information about the state of the search and
+			% the last question asked.
+	;	show_info(io.output_stream).
 
 	% The evidence that a certain node is a bug.  This consists of the
 	% smallest set of questions whose answers are sufficient to
@@ -466,6 +471,14 @@ handle_oracle_response(Store, oracle_answer(Answer), Response, !Diagnoser,
 	continue_analysis(wrap(Store), Answer, AnalyserResponse,
 		Analyser0, Analyser),
 	diagnoser_set_analyser(Analyser, !Diagnoser),
+	debug_analyser_state(Analyser, MaybeOrigin),
+	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
+		Response, !Diagnoser, !IO).
+
+handle_oracle_response(Store, show_info(OutStream), Response, !Diagnoser, !IO)
+		:-
+	diagnoser_get_analyser(!.Diagnoser, Analyser),
+	show_info(wrap(Store), OutStream, Analyser, AnalyserResponse, !IO),
 	debug_analyser_state(Analyser, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
 		Response, !Diagnoser, !IO).

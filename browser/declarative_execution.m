@@ -50,9 +50,9 @@
 						% At the maximum depth?
 			call_proc_rep		:: maybe(proc_rep),
 						% Body of the called procedure.
-			call_goal_path		:: goal_path_string,
-						% The goal path of the call 
-						% *in its parent*.
+			call_return_label	:: maybe(label_layout),
+						% The return label, if there
+						% is one.
 			call_label		:: label_layout,
 			call_io_seq_num		:: int
 						% The I/O action sequence
@@ -227,6 +227,11 @@
 :- func get_proc_layout_from_label_layout(label_layout) = proc_layout.
 
 :- func get_goal_path_from_label_layout(label_layout) = goal_path_string.
+
+:- func get_goal_path_from_maybe_label(maybe(label_layout)) = goal_path_string.
+
+:- pred get_context_from_label_layout(label_layout::in, string::out, int::out)
+	is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -616,6 +621,22 @@ get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	GoalPath = (MR_String)MR_label_goal_path(Label);
+").
+
+get_goal_path_from_maybe_label(yes(Label)) 
+	= get_goal_path_from_label_layout(Label).
+get_goal_path_from_maybe_label(no) = "".
+
+:- pragma foreign_proc("C", get_context_from_label_layout(Label::in, 
+	FileName::out, LineNo::out), 
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	const char	*filename;
+	
+	SUCCESS_INDICATOR = MR_find_context(Label, &filename, &LineNo);
+	MR_TRACE_USE_HP(
+		MR_make_aligned_string(FileName, (MR_String) filename);
+	);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1106,28 +1127,38 @@ print_trace_node(OutStr, Node, !IO) :-
 	%
 
 :- func construct_call_node(trace_node_id, list(trace_atom_arg), 
-	sequence_number, event_number, bool, string, label_layout, int) 
-	= trace_node(trace_node_id).
+	sequence_number, event_number, bool, maybe(label_layout), 
+	label_layout, int) = trace_node(trace_node_id).
 :- pragma export(construct_call_node(in, in, in, in, in, in, in, in) = out,
 	"MR_DD_construct_call_node").
 
-construct_call_node(Preceding, AtomArgs, SeqNo, EventNo, MaxDepth, Path, Label, 
-		IoSeqNum) = Call :-
+construct_call_node(Preceding, AtomArgs, SeqNo, EventNo, MaxDepth, 
+		MaybeReturnLabel, Label, IoSeqNum) = Call :-
 	Call = call(Preceding, Answer, AtomArgs, SeqNo, EventNo, MaxDepth,
-		no, Path, Label, IoSeqNum),
+		no, MaybeReturnLabel, Label, IoSeqNum),
 	null_trace_node_id(Answer).
 
 :- func construct_call_node_with_goal(trace_node_id, list(trace_atom_arg),
-	sequence_number, event_number, bool, proc_rep, string, label_layout, 
-	int) = trace_node(trace_node_id).
+	sequence_number, event_number, bool, proc_rep, maybe(label_layout), 
+	label_layout, int) = trace_node(trace_node_id).
 :- pragma export(construct_call_node_with_goal(in, in, in, in, in, in, in, in,
 	in) = out, "MR_DD_construct_call_node_with_goal").
 
 construct_call_node_with_goal(Preceding, AtomArgs, SeqNo, EventNo, MaxDepth,
-		ProcRep, Path, Label, IoSeqNum) = Call :-
+		ProcRep, MaybeReturnLabel, Label, IoSeqNum) = Call :-
 	Call = call(Preceding, Answer, AtomArgs, SeqNo, EventNo, MaxDepth,
-		yes(ProcRep), Path, Label, IoSeqNum),
+		yes(ProcRep), MaybeReturnLabel, Label, IoSeqNum),
 	null_trace_node_id(Answer).
+
+:- func make_yes_maybe_label(label_layout) = maybe(label_layout).
+:- pragma export(make_yes_maybe_label(in) = out, "MR_DD_make_yes_maybe_label").
+
+make_yes_maybe_label(Label) = yes(Label).
+
+:- func make_no_maybe_label = maybe(label_layout).
+:- pragma export(make_no_maybe_label = out, "MR_DD_make_no_maybe_label").
+
+make_no_maybe_label = no.
 
 :- func construct_exit_node(trace_node_id, trace_node_id, trace_node_id,
 	list(trace_atom_arg), event_number, label_layout, int) 

@@ -29,6 +29,10 @@
 	--->	user_answer(decl_question(T), decl_answer(T))
 	;	trust_predicate(decl_question(T))
 	;	trust_module(decl_question(T))
+			% Request that the analyser display some information
+			% about the state of the search and the current 
+			% question to the given output stream.
+	;	show_info(io.output_stream)
 	;	exit_diagnosis(T)
 	;	abort_diagnosis.
 
@@ -201,6 +205,8 @@ handle_command(trust_predicate, UserQuestion, trust_predicate(Question),
 handle_command(trust_module, UserQuestion, trust_module(Question), 
 		!User, !IO) :-
 	Question = get_decl_question(UserQuestion).
+
+handle_command(info, _, show_info(!.User ^ outstr), !User, !IO).
 
 handle_command(browse_io(ActionNum), UserQuestion, Response, 
 		!User, !IO) :-
@@ -642,7 +648,10 @@ reverse_and_append([A | As], Bs, Cs) :-
 			
 			% Trust the module being asked about.
 	;	trust_module		
-			
+		
+			% Print some information about the current question.
+	;	info
+
 			% Abort this diagnosis session.
 	;	abort			
 			
@@ -683,6 +692,8 @@ user_help_message(User, !IO) :-
 		"\tp io <n-m>\tprint io <n-m>\tprint the atom's nth to mth I/O actions\n",
 		"\tset [-APBfpv] <param> <value>\t",
 		"set a term browser parameter value\n",
+		"\tinfo\t\t\tDisplay some information about the current\n",
+		"\t\t\t\tquestion and the state of the bug search.\n",
 		"\tpd\t\t\tcommence procedural debugging from this point\n",
 		"\ta\tabort\t\t",
 			"abort this diagnosis session and return to mdb\n",
@@ -753,6 +764,7 @@ cmd_handler("abort",	one_word_cmd(abort)).
 cmd_handler("?",	one_word_cmd(help)).
 cmd_handler("h",	one_word_cmd(help)).
 cmd_handler("help",	one_word_cmd(help)).
+cmd_handler("info",	one_word_cmd(info)).
 cmd_handler("b",	browse_arg_cmd).
 cmd_handler("browse",	browse_arg_cmd).
 cmd_handler("p",	print_arg_cmd).

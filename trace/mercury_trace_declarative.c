@@ -644,6 +644,7 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_String			goal_path;
 	MR_Word				*base_sp;
 	MR_Word				*base_curfr;
+	MR_Word				maybe_return_label;
 
 	if (MR_edt_depth == MR_edt_max_depth) {
 		at_depth_limit = MR_TRUE;
@@ -671,10 +672,10 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 	*/
 
 	if (result == MR_STEP_OK && return_label_layout != NULL) {
-		goal_path = (MR_String) (MR_Integer)
-			MR_label_goal_path(return_label_layout);
+		maybe_return_label = MR_DD_make_yes_maybe_label(
+			return_label_layout);
 	} else {
-		goal_path = (MR_String) (MR_Integer) "";
+		maybe_return_label = MR_DD_make_no_maybe_label();
 	}
 
 	MR_TRACE_CALL_MERCURY(
@@ -685,7 +686,7 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 					(MR_Word) event_info->MR_call_seqno,
 					(MR_Word) event_info->MR_event_number,
 					(MR_Word) at_depth_limit, proc_rep,
-					goal_path, event_label_layout, 
+					maybe_return_label, event_label_layout, 
 					MR_io_tabling_counter);
 		} else {
 			node = (MR_Trace_Node)
@@ -693,8 +694,8 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 					atom_args,
 					(MR_Word) event_info->MR_call_seqno,
 					(MR_Word) event_info->MR_event_number,
-					(MR_Word) at_depth_limit, goal_path,
-					event_label_layout,
+					(MR_Word) at_depth_limit, 
+					maybe_return_label, event_label_layout,
 					MR_io_tabling_counter);
 		}
 	);
