@@ -386,7 +386,7 @@ unify_gen__generate_det_sub_unify(L, R, M, Code) -->
 		{ mode_is_input(ModuleInfo, (LI -> LF)) },
 		{ mode_is_input(ModuleInfo, (RI -> RF)) }
 	->
-		{ Code = node([ c_code("abort()") - "Det test???" ]) }
+		{ Code = node([ c_code("abort();") - "Det test???" ]) }
 		% { error("Det unifications may not contain tests") }
 	;
 			% Input - Output== assignment ->
