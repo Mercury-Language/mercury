@@ -203,7 +203,7 @@ general
 	[a start has been made by fjh]
 
 - implement "accurate" garbage collection
-	[being worked on by tyson]
+	[being worked on by trd]
 
 - implement user-defined operators:
 	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
