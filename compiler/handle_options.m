@@ -1980,8 +1980,8 @@ char_is_not(A, B) :-
 :- pred convert_dump_alias(string::in, string::out) is semidet.
 
 convert_dump_alias("ALL", "abcdfgilmnprstuvBCDIMPTU").
-convert_dump_alias("all", "abcdfgilmnprstuvBCMPT").
 convert_dump_alias("allD", "abcdfgilmnprstuvBCDMPT").
+convert_dump_alias("all", "abcdfgilmnprstuvBCMPT").
 convert_dump_alias("most", "bcdfgilmnprstuvP").
 convert_dump_alias("trans", "bcdglmnstuv").
 convert_dump_alias("codegen", "dfnprsu").

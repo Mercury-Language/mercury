@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1386,36 +1386,54 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums,
 	),
 	( string__contains_char(Verbose, 'B') ->
 		ProducingVars = GoalInfo ^ producing_vars,
-		set__to_sorted_list(ProducingVars, ProducingVarsList),
-		hlds_out__write_indent(Indent, !IO),
-		io__write_string("% producing vars: ", !IO),
-		mercury_output_vars(ProducingVarsList, VarSet, AppendVarNums,
-			!IO),
-		io__write_string("\n", !IO),
+		( set__non_empty(ProducingVars) ->
+			set__to_sorted_list(ProducingVars, ProducingVarsList),
+			hlds_out__write_indent(Indent, !IO),
+			io__write_string("% producing vars: ", !IO),
+			mercury_output_vars(ProducingVarsList, VarSet,
+				AppendVarNums, !IO),
+			io__write_string("\n", !IO)
+		;
+			true
+		),
 
 		ConsumingVars = GoalInfo ^ consuming_vars,
-		set__to_sorted_list(ConsumingVars, ConsumingVarsList),
-		hlds_out__write_indent(Indent, !IO),
-		io__write_string("% consuming vars: ", !IO),
-		mercury_output_vars(ConsumingVarsList, VarSet, AppendVarNums,
-			!IO),
-		io__write_string("\n", !IO),
+		( set__non_empty(ConsumingVars) ->
+			set__to_sorted_list(ConsumingVars, ConsumingVarsList),
+			hlds_out__write_indent(Indent, !IO),
+			io__write_string("% consuming vars: ", !IO),
+			mercury_output_vars(ConsumingVarsList, VarSet,
+				AppendVarNums, !IO),
+			io__write_string("\n", !IO)
+		;
+			true
+		),
 
 		MakeVisibleVars = GoalInfo ^ make_visible_vars,
-		set__to_sorted_list(MakeVisibleVars, MakeVisibleVarsList),
-		hlds_out__write_indent(Indent, !IO),
-		io__write_string("% make_visible vars: ", !IO),
-		mercury_output_vars(MakeVisibleVarsList, VarSet, AppendVarNums,
-			!IO),
-		io__write_string("\n", !IO),
+		( set__non_empty(MakeVisibleVars) ->
+			set__to_sorted_list(MakeVisibleVars,
+				MakeVisibleVarsList),
+			hlds_out__write_indent(Indent, !IO),
+			io__write_string("% make_visible vars: ", !IO),
+			mercury_output_vars(MakeVisibleVarsList, VarSet,
+				AppendVarNums, !IO),
+			io__write_string("\n", !IO)
+		;
+			true
+		),
 
 		NeedVisibleVars = GoalInfo ^ need_visible_vars,
-		set__to_sorted_list(NeedVisibleVars, NeedVisibleVarsList),
-		hlds_out__write_indent(Indent, !IO),
-		io__write_string("% need_visible vars: ", !IO),
-		mercury_output_vars(NeedVisibleVarsList, VarSet, AppendVarNums,
-			!IO),
-		io__write_string("\n", !IO)
+		( set__non_empty(NeedVisibleVars) ->
+			set__to_sorted_list(NeedVisibleVars,
+				NeedVisibleVarsList),
+			hlds_out__write_indent(Indent, !IO),
+			io__write_string("% need_visible vars: ", !IO),
+			mercury_output_vars(NeedVisibleVarsList, VarSet,
+				AppendVarNums, !IO),
+			io__write_string("\n", !IO)
+		;
+			true
+		)
 	;
 		true
 	),
