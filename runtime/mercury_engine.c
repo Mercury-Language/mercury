@@ -277,14 +277,14 @@ MR_call_engine(Code *entry_point, bool catch_exceptions)
 			** If we added an exception hander, but we didn't
 			** get an exception, then we need to remove the
 			** exception handler frames from the nondet stack
-			** and deallocate the trail ticket allocated by
+			** and prune the trail ticket allocated by
 			** MR_create_exception_handler().
 			*/
 			this_frame = MR_curfr;
 			MR_maxfr = MR_prevfr_slot(this_frame);
 			MR_curfr = MR_succfr_slot(this_frame);
 #ifdef MR_USE_TRAIL
-			MR_discard_ticket();
+			MR_prune_ticket();
 #endif
 		}
 		return NULL;
