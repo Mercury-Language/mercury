@@ -6,7 +6,7 @@
 MERCURY_DIR=..
 include ../Mmake.common
 
-MAIN_TARGET=libmercury
+MAIN_TARGET=mercury
 
 #-----------------------------------------------------------------------------#
 
@@ -16,12 +16,12 @@ MAIN_TARGET=libmercury
 
 MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" mnc
 MNL	=	MERCURY_LIB_DIR=. \
-	MERCURY_LIB_OBJS="`vpath_find $(LIBRARY_OBJS) $(NU_LIBRARY_OBJS)`" \
+	MERCURY_LIB_NOS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
 		mnl
 
 MSC	=	MERCURY_SISCTUS_COMPILER=./sicstus_compile msc
 MSL	=	MERCURY_SP_LIB_DIR=. MERCURY_SICSTUS_PROLOG=sp \
-MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(LIBRARY_QLS) $(NU_LIBRARY_QLS)`" \
+MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS)`" \
 		msl
 
 MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mc
@@ -33,16 +33,7 @@ MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
 
 #-----------------------------------------------------------------------------#
 
-LIBRARY_SRCS = $(library.srcs)
-LIBRARY_OBJS = $(library.nos)
-LIBRARY_INTS = $(library.ints)
-library.qls=$(library.nos:.no=.ql)
-LIBRARY_QLS = $(library.qls)
-
-NU_LIBRARY_SRCS = \
-	io.nu.nl require.nu.nl std_util.nu.nl string.nu.nl term_io.nu.nl \
-	mercury_builtin.nu.nl
-NU_LIBRARY_OBJS = \
+NU_LIBRARY_NOS = \
 	io.nu.no require.nu.no std_util.nu.no string.nu.no term_io.nu.no \
 	mercury_builtin.nu.no
 NU_LIBRARY_QLS = \
@@ -54,7 +45,17 @@ NU_LIBRARY_QLS = \
 # targets
 
 .PHONY: all
-all : libmercury library.nu
+all : ints mercury nuprolog sicstus
+
+.PHONY: mercury
+mercury : ints libmercury
+
+.PHONY: nuprolog
+nuprolog : ints library.nu $(library.nos) $(NU_LIBRARY_NOS) \
+			nc_builtin.nl np_builtin.nl
+
+.PHONY: sicstus
+sicstus : ints sicstus_compile library.sicstus.debug
 
 #-----------------------------------------------------------------------------#
 
@@ -110,7 +111,7 @@ libmercury.so : $(library.os)
 # automatic dependencies assume that the library
 # isn't part of the application, but in this case it is.
 
-library.nu library.nu.debug: $(NU_LIBRARY_OBJS)
+library.nu library.nu.debug: $(NU_LIBRARY_NOS)
 library.sicstus library.sicstus.debug: $(NU_LIBRARY_QLS)
 
 library.nu.debug: error.no debug.no
@@ -140,14 +141,18 @@ CHMOD=go+w
 # Installation targets
 
 .PHONY: install
-install: install_ints install_library install_nuprolog install_sicstus
-	-chgrp -R $(CHGRP) $(INSTALL_LIBDIR) 2>/dev/null
-	-chmod -R $(CHMOD) $(INSTALL_LIBDIR) 2>/dev/null
+install: install_mercury
+
+.PHONY: install_all
+install_all: install_mercury install_nuprolog install_sicstus
+
+.PHONY: install_mercury
+install_mercury: install_ints install_mods install_library
 
 .PHONY: install_ints
-install_ints: $(LIBRARY_INTS)
+install_ints: $(library.ints)
 	mkdir -p $(INSTALL_INT_DIR)
-	for file in `vpath_find $(LIBRARY_INTS)`; do \
+	for file in `vpath_find $(library.ints)`; do \
 		target=$(INSTALL_INT_DIR)/`basename $$file`; \
 		cp $$file $$target.tmp; \
 		mercury_update_interface $$target; \
@@ -170,12 +175,12 @@ install_library: libmercury.a libmercury.so
 install_nuprolog: install_library_nu install_interpreter_nu
 
 .PHONY: install_library_nu
-install_library_nu: $(LIBRARY_OBJS) $(NU_LIBRARY_OBJS) \
+install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) \
 			nc_builtin.nl np_builtin.nl
 	mkdir -p $(INSTALL_NU_DIR)
 	cp `vpath_find nc_builtin.nl np_builtin.nl` $(INSTALL_NU_DIR)
 	mkdir -p $(INSTALL_NU_ARCH_DIR)
-	cp `vpath_find $(LIBRARY_OBJS) $(NU_LIBRARY_OBJS)` \
+	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS)` \
 		$(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_interpreter_nu
