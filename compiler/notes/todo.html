@@ -1,16 +1,9 @@
-
-
 <html>
 <head>
-<title>
-	To Do List
-</title>
+<title>To Do List</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body bgcolor="#ffffff" text="#000000">
 
 <hr>
 <!-------------------------->
@@ -32,13 +25,8 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <p>
 
 <ul>
-<li> allow a module exporting an abstract type to specify that other modules
-  should not be allowed to test two values of that type for equality (similar
-  to Ada's limited private types). This would be useful for e.g. sets
-  represented as unordered lists with possible duplicates.
-  	[this is a subset of the functionality of type classes]
+<li> Fix the three known type inference bugs (see comments in typecheck.m).
 
-<li> remove limitation that higher-order terms are monomorphic.
 </ul>
 
 <h2> mode analysis </h2>
@@ -46,20 +34,21 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <p>
 
 <ul>
+<li> fix various bugs in mode inference;
+     in particular need to infer mostly-unique vs unique distinctions,
+     and need to fix it to work properly in the presence of functions.
+
 <li> extend the mode system to allow known aliasing.
-  This is needed to make partially instantiated modes and unique modes work.
-	[will be done by fjh]
+     This is needed to make partially instantiated modes and unique modes work.
+	[being done by bromage, nearly finished]
 
 <li> report an error if two mode declarations for a predicate
-  specify identical modes
+     specify identical modes.
 
 <li> detect incorrect usage of `bound(...)' insts.
-  That is, make sure that all of the functors in a bound(...) inst
-  are valid functors for the type.
+     That is, make sure that all of the functors in a bound(...) inst
+     are valid functors for the type.
 
-<li> split construct/deconstruct unifications into their atomic
-  "micro-unification" pieces when necessary.
-  (When is it necessary?)
 </ul>
 
 <h2> determinism analysis </h2>
@@ -80,19 +69,10 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
   unique_modes.m, if it turns out out to be mostly_unique, we report an
   error.  We should changed unique_modes.m to also look for a
   mostly_unique version before reporting an error.
-</ul>
 
-<h2> code generation </h2>
+<li> we will probably need to extend unique modes a bit,
+     in as-yet-unknown ways; need more experience here
 
-<ul>
-<li> take advantage of unique modes to do compile-time garbage collection
-  and structure reuse.
-
-<li> floating point registers
-	<ul>
-  	<li> allow floating point fields of structures without boxing
-	(need multi-word fields)
-	</ul>
 </ul>
 
 <h2> module system </h2>
@@ -109,33 +89,27 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> imports should not be transitive
   (currently we get this right for predicates, constants, and functors,
   but wrong for types, insts, and modes).
-
-<li> produce warnings for imports that are not needed
-  	[done by stayl]
-
-<li> produce warnings for imports that are in the wrong place
-  (in the interface instead of the implementation, and vice versa)
-  	[done by stayl]
 </ul>
 
 <h2> C interface </h2>
 
 <ul>
+<li> document it properly
+
 <li> nondeterministic C code
 
 <li> exporting things for manipulating Mercury types from C
 
-<li> better support for types defined in C, and documentation
+<li> better support for types defined in C
 </ul>
 
-<h2> general </h2>
+<h2> code generation </h2>
 
 <ul>
-<li> coroutining and parallel versions of Mercury
-	[being worked on by conway]
+<li> take advantage of unique modes to do compile-time garbage collection
+  and structure reuse.
 
-<li> implement streams (need coroutining at least)
-	</ul>
+</ul>
 
 <hr>
 <!-------------------------->
@@ -147,30 +121,44 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <ul>
 <li> allow explicit type qualifications `X : Type'
-	[being done by stayl]
+	[already done, but need to change module qualifier op to `.' first]
+
+<li> allow existential types at the top level of func or pred declarations,
+     e.g. <samp>:- some [T] (func univ_value(univ) = T).</samp>.
+
+<li> allow existential types in data structures
+
+<li> remove limitation that higher-order terms are monomorphic.
+     i.e. allow universal quantifiers at the top level of
+     higher-order types, e.g. <samp>:- pred foo(all [T] pred(T)).</samp>.
 
 <li> type classes
 
-<li> existential types (possibly)
+<li> allow a module exporting an abstract type to specify that other modules
+     should not be allowed to test two values of that type for equality (similar
+     to Ada's limited private types). This would be useful for e.g. sets
+     represented as unordered lists with possible duplicates.
+  	[this is a subset of the functionality of type classes]
 
-<li> subtypes
+<li> subtypes?
 
 <li> optimisation of type representation and manipulation (possibly
-  profiler guided) 
+     profiler guided) 
 
 <li> fold/unfolding of types
 </ul>
 
-<h2> mode analysis: </h2>
+<h2> mode analysis </h2>
 
 <ul>
-<li> implement mode inference
-	[being worked on by pets]
+<li> split construct/deconstruct unifications into their atomic
+     "micro-unification" pieces when necessary.
+     (When is it necessary?)
 
 <li> handle polymorphic modes (some research issues?)
 
 <li> handle abstract insts in the same way abstract types are handled
-  (a research issue - is this possible at all?)
+     (a research issue - is this possible at all?)
 
 <li> implement `willbe(Inst)' insts?
 	  [will be done by conway]
@@ -182,34 +170,53 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <ul>
 <li> propagate information about bindings from the condition of an if-then-else
-  to the else so that
-	<pre>
+     to the else so that
+<pre>
 	(if X = [] then .... else X = [A|As], ...)
-	</pre>
-  is considered det.
+</pre>
+     is considered det.
 
 <li> turn chains of if-then-elses into switchs where possible.
+	[done by fjh, but not committed; zs not convinced that
+	this is a good idea]
+
 </ul>
 
 <h2> higher-order preds: </h2>
 
 <ul>
 <li> implement single-use higher-order predicate modes.
-  Single-use higher-order predicates would be allowed to bind curried
-  arguments, and to have unique modes for curried arguments.
+     Single-use higher-order predicates would be allowed to bind curried
+     arguments, and to have unique modes for curried arguments.
  
 <li> allow taking the address of a predicate with multiple modes
-  (This would require mode inference.)
+</ul>
+
+<h2> module system: </h2>
+
+<ul>
+<li> produce warnings for imports that are not needed
+  	[done by stayl, but not enabled by default, due to some
+	minor problems]
+
+<li> produce warnings for imports that are in the wrong place
+  (in the interface instead of the implementation, and vice versa)
+  	[vice versa done by stayl]
 </ul>
 
 <h2> code generation: </h2>
 
 <ul>
+<li> use floating point registers
+
+<li> allow floating point fields of structures without boxing
+	(need multi-word fields)
+
 <li> The generated code should include some more profiling hooks.
-  In particular, we should add a version of the heap allocation
-  macro which takes an extra string parameter identifying which
-  routine allocated the memory.  Then we can do heap-allocation
-  profiling to identify which routines use up all the bloody memory.
+     In particular, we should add a version of the heap allocation
+     macro which takes an extra string parameter identifying which
+     routine allocated the memory.  Then we can do heap-allocation
+     profiling to identify which routines use up all the bloody memory.
 
 <li> inter-procedural register allocation 
 
@@ -222,34 +229,35 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <ul>
 <li> more work on module system, separate compilation, and the multiple
-  specialisation problem
+     specialisation problem
 
 <li> deforestation
 
 <li> extended DCGs
 
 <li> transform non-tail-recursive predicates into tail-recursive form
-  using accumulators
-  [being worked on by jammb]
+     using accumulators
+	[being worked on by jammb]
 
 <li> partial deduction
-  [being worked on by stayl]
+	[being worked on by stayl]
 </ul>
 
 <h2> low-level optimizations </h2>
 
 <ul>
 <li> reduce the overhead of higher-order predicate calls (avoid copying
-  the real registers into the fake_reg array and back)
+     the real registers into the fake_reg array and back)
 
 <li> tail recursion optimization using pass-by-reference argument conventions
-  [being worked on by jammb]
+	[being worked on by jammb]
 
 <li> other specializations, e.g. if argument is known to be bound to
-  f(X,Y), then just pass X and Y in registers
+     f(X,Y), then just pass X and Y in registers
 
 <li> trim stack frames before making recursive calls, to minimize stack usage
-  [this would probably be a pessimization much of the time - zs]
+     (this would probably be a pessimization much of the time - zs)
+     and to minimize unnecessary garbage retention.
 </ul>
 
   
@@ -257,16 +265,13 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <ul>
 <li> improve efficiency of the expansion of equivalence types (currently O(N^2))
-  (e.g. this is particularly bad when compiling live_vars.m.)
+     (e.g. this is particularly bad when compiling live_vars.m).
 
 <li> improve efficiency of the module import handling (currently O(N^2))
 
 <li> improve the efficiency of mode checking very large facts
-  (e.g. this is particularly bad when compiling eliza.m.)
+     (e.g. this is particularly bad when compiling eliza.m).
 
-<li> improve the efficiency of the type_to_term and term_to_type implementation
-  so that we can enable them in the standard distribution of the Mercury
-  compiler
 </ul>
 
 
@@ -274,29 +279,39 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <ul>
 <li> optional warning for any implicit quantifiers whose scope is not
-  the entire clause (the "John Lloyd" option :-).
+     the entire clause (the "John Lloyd" option :-).
 
 <li> give a better error message for the use of if-then without else.
 
 <li> give a better error message for the use of `<=' instead of `>='
-  (but how?)
+     (but how?)
 
 <li> give a better error message for type errors involving higher-order pred
-  constants (requested by Bart Demoen)
+     constants (requested by Bart Demoen)
 
 <li> give better error messages for syntax errors in lambda expressions
 </ul>
 
 <h2> general </h2>
 
-
 <ul>
+<li> coroutining and parallel versions of Mercury
+	[being worked on by conway]
+
+<li> implement streams (need coroutining at least)
+
+<li> implement tabling
+
+<li> implement 
+
 <li> implement a very fast turn-around bytecode compiler/interpreter/debugger,
-  similar to Gofer
+     similar to Gofer
+     [not-so-fast bytecode compiler done,
+     bytecode interpreter/debugger being worked on by aet]
 
 <li> implement a new backend which compiles to high-level C that can
-  be debugged at the Mercury source code level using gdb
-	[a start has been made by fjh]
+     be debugged at the Mercury source code level using gdb
+	[a small start has been made by fjh]
 
 <li> implement "accurate" garbage collection
 	[being worked on by trd]
@@ -309,7 +324,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 	accordingly.  But how does this fit in with the module system?
 
 <li> support for easier formal specification translation (eg a Z library,
-  or Z to Mercury).
+     or Z to Mercury).
 
 <li> improve support for constraint programming
 
@@ -332,7 +347,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> profiling guided optimisations
 	<ul>
 	<li> use profiling information to direct linker for optimal
-	  code placement (Alpha has a tool for this).
+	     code placement (Alpha has a tool for this).
 	</ul>
 
 <li> attribute grammars
@@ -341,6 +356,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-04-03 05:17:54 $ by $Author: aet $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-04-29 15:01:06 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
