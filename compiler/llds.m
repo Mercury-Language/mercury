@@ -240,7 +240,7 @@ output_c_file(c_file(Name, Modules)) -->
 	(
 		{ Result = ok }
 	->
-		io__write_string("#include \"imp.h\"\n"),
+		io__write_string("#include ""imp.h""\n"),
 		output_c_module_list(Modules),
 		io__told
 	;
@@ -385,9 +385,9 @@ output_instruction(c_code(C_Code_String)) -->
 output_instruction(mkframe(Str, Num, FailureContinuation)) -->
 	io__write_string("\t{ "),
 	output_code_addr_decls(FailureContinuation),
-	io__write_string("mkframe(\""),
+	io__write_string("mkframe("""),
 	io__write_string(Str),
-	io__write_string("\", "),
+	io__write_string(""", "),
 	io__write_int(Num),
 	io__write_string(", "),
 	output_code_addr(FailureContinuation),
@@ -929,10 +929,10 @@ llds__string_op(str_gt, ">").
 output_rval_const(int_const(N)) -->
 	io__write_int(N).
 output_rval_const(string_const(String)) -->
-	io__write_string("string_const(\""),
+	io__write_string("string_const("""),
 	output_c_quoted_string(String),
 	{ string__length(String, StringLength) },
-	io__write_string("\", "),
+	io__write_string(""", "),
 	io__write_int(StringLength),
 	io__write_string(")").
 output_rval_const(true) -->

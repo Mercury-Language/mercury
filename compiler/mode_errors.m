@@ -293,8 +293,8 @@ report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
 		io__write_string("\tnegation, i.e. those which are implicitly existentially quantified\n"),
 		io__write_string("\tinside the scope of the negation.\n"),
 		io__write_string("\tNote that the condition of an if-then-else is implicitly\n"),
-		io__write_string("\tnegated in the \"else\" part, so the condition can only bind\n"),
-		io__write_string("\tvariables in the \"then\" part.\n")
+		io__write_string("\tnegated in the ""else"" part, so the condition can only bind\n"),
+		io__write_string("\tvariables in the ""then"" part.\n")
 	;
 		[]
 	).

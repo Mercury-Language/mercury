@@ -491,7 +491,7 @@ add_unify_pred_decl(Module0, TVarSet, Type, TypeId, Context, Status,
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
 		Context, ClausesInfo0, Status, PredInfo0),
 
-	ArgModes = [ground -> ground, ground -> ground],
+	ArgModes = [(ground -> ground), (ground -> ground)],
 	Det = semidet,
 	pred_info_procedures(PredInfo0, Procs0),
 	next_mode_id(Procs0, Det, ModeId),

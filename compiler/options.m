@@ -401,7 +401,7 @@ options_help -->
 	io__write_string("\t--no-gcc-global-registers\n"),
 	io__write_string("\t\tDon't use GNU C's global register variables extension.\n"),
 	io__write_string("\t--no-gcc-non-local-gotos\n"),
-	io__write_string("\t\tDon' use GNU C's \"labels as values\" extension.\n"),
+	io__write_string("\t\tDon't use GNU C's ""labels as values"" extension.\n"),
 	io__write_string("\t--tags {none, low, high}\n"),
 	io__write_string("\t\tSpecify whether to use the low bits or the high bits of \n"),
 	io__write_string("\t\teach word as tag bits (default: low).\n"),
@@ -458,7 +458,7 @@ options_help -->
 	io__write_string("\t-H <n>, --heap-space <n>\n"),
 	io__write_string("\t\tPre-allocate <n> kilobytes of heap space.\n"),
 	io__write_string("\t\tUse this option to avoid NU-Prolog's\n"),
-	io__write_string("\t\t\t\"Panic: growing stacks has required shifting the heap\"\n"),
+	io__write_string("\t\t\t""Panic: growing stacks has required shifting the heap""\n"),
 	io__write_string("\t\tmessage.\n"),
 
 	io__write_string("\t-b <builtin>, --builtin-module <builtin>\n"),

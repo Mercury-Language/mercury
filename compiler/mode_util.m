@@ -513,7 +513,7 @@ inst_lookup_subst_args(abstract_inst, _Params, Name, Args,
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode.
 
-mode_get_insts(_ModuleInfo, InitialInst -> FinalInst, InitialInst, FinalInst).
+mode_get_insts(_ModuleInfo, (InitialInst -> FinalInst), InitialInst, FinalInst).
 mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	list__length(Args, Arity),
 	module_info_modes(ModuleInfo, Modes),
@@ -563,7 +563,7 @@ inst_substitute_arg_list(Inst0, Params, Args, Inst) :-
 :- pred mode_apply_substitution(mode, inst_subst, mode).
 :- mode mode_apply_substitution(in, in, out) is det.
 
-mode_apply_substitution(I0 -> F0, Subst, I -> F) :-
+mode_apply_substitution((I0 -> F0), Subst, (I -> F)) :-
 	inst_apply_substitution(I0, Subst, I),
 	inst_apply_substitution(F0, Subst, F).
 mode_apply_substitution(user_defined_mode(Name, Args0), Subst,

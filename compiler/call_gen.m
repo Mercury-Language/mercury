@@ -360,7 +360,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 		{ CodeC0 = empty },
 		{ CodeC1 = node([
 			c_code(
-	"fatal_error(\"Sorry, polymorphic unifications not implemented\");") -
+	"fatal_error(""Sorry, polymorphic unifications not implemented"");") -
 				"Temporary hack"
 			
 		]) }

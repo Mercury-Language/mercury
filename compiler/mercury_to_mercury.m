@@ -328,7 +328,7 @@ mercury_output_mode_list([Mode | Modes], VarSet) -->
 :- pred mercury_output_mode(mode, varset, io__state, io__state).
 :- mode mercury_output_mode(in, in, di, uo) is det.
 
-mercury_output_mode(InstA -> InstB, VarSet) -->
+mercury_output_mode((InstA -> InstB), VarSet) -->
 	io__write_string("("),
 	mercury_output_inst(InstA, VarSet),
 	io__write_string(" -> "),
@@ -1070,6 +1070,8 @@ maybe_output_line_number(Context) -->
 		io__write_string("\t% "),
 		prog_out__write_context(Context),
 		io__write_string("\n")
+	;
+		[]
 	).
 
 %-----------------------------------------------------------------------------%

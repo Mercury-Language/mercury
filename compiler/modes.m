@@ -1680,8 +1680,8 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	UniMode0 = (InitialInstX - InitialInstY -> FinalInstX - FinalInstY),
 	(
-		mode_is_input(ModuleInfo, InitialInstX -> FinalInstX),
-		mode_is_input(ModuleInfo, InitialInstY -> FinalInstY)
+		mode_is_input(ModuleInfo, (InitialInstX -> FinalInstX)),
+		mode_is_input(ModuleInfo, (InitialInstY -> FinalInstY))
 	->
 		split_complicated_subunifies_2(Vars0, UniModes0,
 				Vars1, UniModes1, ExtraGoals0,

@@ -273,7 +273,7 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, Det, FailLabel, EndLabe
 		},
 		{ StringRval = const(string_const(String)) },
 		code_info__get_next_label(Label),
-		{ string__append_list(["case \"", String, "\""], Comment) },
+		{ string__append_list(["case """, String, """"], Comment) },
 		{ LabelCode = node([
 			label(Label) - Comment
 		]) },

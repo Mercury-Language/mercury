@@ -89,10 +89,10 @@
 
 :- external(term_io__read_term/3).
 
-/***
+% /***
 term_io__read_term(Result) -->
 	parser__read_term(Result).
-****/
+% ****/
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -277,17 +277,17 @@ term_io__write_constant(term__string(S)) -->
 %-----------------------------------------------------------------------------%
 
 term_io__quote_char(C) -->
-	io__write_char('\''),
+	io__write_char(''''),
 	term_io__quote_single_char(C),
-	io__write_char('\'').
+	io__write_char('''').
 
 term_io__quote_atom(S) -->
 	( { string__is_alnum_or_underscore(S) } ->
 		io__write_string(S)
 	;
-		io__write_char('\''),
+		io__write_char(''''),
 		term_io__quote_string(S),
-		io__write_char('\'')
+		io__write_char('''')
 	).
 
 term_io__quote_string(S0) -->
@@ -364,7 +364,7 @@ is_mercury_punctuation_char('[').
 is_mercury_punctuation_char(']').
 is_mercury_punctuation_char(';').
 is_mercury_punctuation_char(':').
-is_mercury_punctuation_char('\'').
+is_mercury_punctuation_char('''').
 is_mercury_punctuation_char('"').
 is_mercury_punctuation_char('"').
 is_mercury_punctuation_char(',').
@@ -382,8 +382,8 @@ is_mercury_punctuation_char('|').
 :- pred mercury_quote_special_char(character, character).
 :- mode mercury_quote_special_char(in, out) is semidet.
 
-mercury_quote_special_char('\'', '\'').
-mercury_quote_special_char('\"', '"').
+mercury_quote_special_char('''', '''').
+mercury_quote_special_char('"', '"').
 mercury_quote_special_char('\\', '\\').
 mercury_quote_special_char('\n', 'n').
 mercury_quote_special_char('\t', 't').

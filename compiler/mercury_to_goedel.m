@@ -740,9 +740,9 @@ goedel_output_constant(term__atom(Name)) -->
 	{ convert_functor_name(Name, GoedelName) },
 	io__write_string(GoedelName).
 goedel_output_constant(term__string(S)) -->
-	io__write_string("\""),
+	io__write_string(""""),
 	goedel_quote_string(S), 
-	io__write_string("\"").
+	io__write_string("""").
 
 :- pred goedel_quote_string(string, io__state, io__state).
 :- mode goedel_quote_string(in, di, uo) is det.

@@ -35,7 +35,7 @@
 
 main(Args) :-
 	( io__exit_on_abort ->
-		write('Mercury aborting.\n'),
+		write('Mercury aborting.'), nl,
 		exit(1)
 	;
 		assert(io__exit_on_abort),
@@ -141,7 +141,7 @@ io__main_predicate(_) -->
 	{ io__main_has_been_executed ->
 		true
 	;
-		write('Mercury Interpreter 0.1\n'),
+		write('Mercury Interpreter 0.1'), nl,
 		assert(io__main_has_been_executed)
 	},
 	{ retractall(io__inhibit_user_main_predicate) },
@@ -159,23 +159,27 @@ io__call(Goal, IOState0, IOState) :-
 :- pred io__call_2(pred, list(_), io__state).
 io__call_2(Goal, Solutions, IOState) :-
 	(Solutions = [] ->
-		write(user_error, '\nio.nl: error: goal `'),
+		nl(user_error),
+		write(user_error, 'io.nl: error: goal `'),
 		functor(Goal, F, N),
 		write(user_error, F),
 		write(user_error, '/'),
 		write(user_error, N),
-		write(user_error, '\' failed.\n'),
+		write(user_error, ''' failed.'),
+		nl(user_error),
 		abort
 	; Solutions = [SingleSolution - IOState0] ->
 		Goal = SingleSolution,
 		IOState = IOState0
 	;
-		write(user_error, '\nio.nl: error: goal `'),
+		nl(user_error),
+		write(user_error, 'io.nl: error: goal `'),
 		functor(Goal, F, N),
 		write(user_error, F),
 		write(user_error, '/'),
 		write(user_error, N),
-		write(user_error, '\' not deterministic.\n'),
+		write(user_error, ''' not deterministic.'),
+		nl(user_error),
 		abort
 	).
 *****/
@@ -184,12 +188,14 @@ io__call(Goal, IOState0, IOState) :-
 	( call(Goal, IOState0, IOState) ->
 		true
 	;
-		write(user_error, '\nio.nl: error: goal `'),
+		nl(user_error),
+		write(user_error, 'io.nl: error: goal `'),
 		functor(Goal, F, N),
 		write(user_error, F),
 		write(user_error, '/'),
 		write(user_error, N),
-		write(user_error, '\' failed.\n'),
+		write(user_error, ''' failed.'),
+		nl(user_error),
 		abort
 	).
 
@@ -374,14 +380,14 @@ io__update_state(IOState0, IOState) :-
 	% using require/2 here causes rampant memory usage
 	% because the strings get allocated every time
 	( var(IOState0) ->
-		error("\nio.nl: I/O predicate called with free io__state")
+		error("io.nl: I/O predicate called with free io__state")
 	;
 		true
 	),
 	%%% ( IOState0 = io__state(_, _, current) ->
 	%%% 	true
 	%%% ;
-	%%% 	error("\nio.nl: cannot retry I/O operation")
+	%%% 	error("io.nl: cannot retry I/O operation")
 	%%% ),
 	%%% IOState0 = io__state(Names, Globals, _),
 	%%% $replacn(2, IOState0, old),

@@ -109,6 +109,8 @@ optimize__repeated(Instructions0, Instructions, Mod) -->
 			io__write_string("% Optimizing jumps for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
+		;
+			[]
 		),
 		{ jumpopt__main(Instructions0, Instructions1, Mod1) }
 	;
@@ -121,6 +123,8 @@ optimize__repeated(Instructions0, Instructions, Mod) -->
 			io__write_string("% Optimizing locally for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
+		;
+			[]
 		),
 		{ peephole__main(Instructions1, Instructions2, Mod2) }
 	;
@@ -133,6 +137,8 @@ optimize__repeated(Instructions0, Instructions, Mod) -->
 			io__write_string("% Optimizing labels for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
+		;
+			[]
 		),
 		{ labelopt__main(Instructions2, Instructions, Mod3) }
 	;
@@ -172,6 +178,8 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 			io__write_string("% Optimizing value number for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
+		;
+			[]
 		),
 		{ value_number__main(Instructions0, Instructions1) }
 	;
@@ -183,6 +191,8 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 			io__write_string("% Optimizing frames for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
+		;
+			[]
 		),
 		{ frameopt__main(Instructions1, Instructions2, Mod1) }
 	;
@@ -194,6 +204,8 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 			io__write_string("% Optimizing post value number for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
+		;
+			[]
 		),
 		{ value_number__post_main(Instructions2, Instructions3) }
 	;
@@ -209,6 +221,8 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 			io__write_string("% Optimizing jumps for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
+		;
+			[]
 		),
 		{ peephole__main(Instructions3, Instructions4, _) }
 	;
@@ -219,6 +233,8 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 			io__write_string("% Optimizing locally for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
+		;
+			[]
 		),
 		{ peephole__main(Instructions4, Instructions5, _) }
 	;
@@ -229,6 +245,8 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 			io__write_string("% Optimizing labels for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
+		;
+			[]
 		),
 		{ labelopt__main(Instructions5, Instructions, _) }
 	;

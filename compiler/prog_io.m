@@ -920,6 +920,10 @@ parse_dcg_goal_2("=", [A], _, VarSet, N, Var,
 	% If-then (Prolog syntax).
 	% We need to add an else part to unify the DCG args.
 
+/******
+	Since (A -> B) has different semantics in standard Prolog
+	(A -> B ; fail) than it does in NU-Prolog or Mercury (A -> B ; true),
+	for the moment we'll just disallow it.
 parse_dcg_goal_2("->", [A0,B0], _, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	parse_dcg_if_then(A0, B0, VarSet0, N0, Var0,
@@ -930,6 +934,7 @@ parse_dcg_goal_2("->", [A0,B0], _, VarSet0, N0, Var0,
 		Goal = if_then_else(SomeVars, A, B,
 			unify(term__variable(Var), term__variable(Var0)))
 	).
+******/
 
 	% If-then (NU-Prolog syntax).
 parse_dcg_goal_2("if", [

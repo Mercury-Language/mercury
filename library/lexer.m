@@ -116,7 +116,7 @@ lexer__get_token_1(Token) -->
 			lexer__get_dot(Token)
 		; { Char = '%' } ->
 			lexer__skip_to_eol(Token)
-		; { Char = '"' ; Char = '\'' } ->
+		; { Char = '"' ; Char = '''' } ->
 			lexer__get_quoted_name(Char, [], Token)
 		; { Char = '/' } ->
 			lexer__get_slash(Token)
@@ -157,7 +157,7 @@ lexer__get_token_2(Token) -->
 			lexer__get_dot(Token)
 		; { Char = '%' } ->
 			lexer__skip_to_eol(Token)
-		; { Char = '"' ; Char = '\'' } ->
+		; { Char = '"' ; Char = '''' } ->
 			lexer__get_quoted_name(Char, [], Token)
 		; { Char = '/' } ->
 			lexer__get_slash(Token)
@@ -362,7 +362,7 @@ lexer__get_quoted_name_quote(QuoteChar, Chars, Token) -->
 
 lexer__finish_quoted_name(QuoteChar, Chars, Token) :-
 	lexer__rev_char_list_to_string(Chars, String),
-	( QuoteChar = '\'' ->
+	( QuoteChar = '''' ->
 		Token = name(String)
 	; QuoteChar = '"' ->
 		Token = string(String)
@@ -406,7 +406,7 @@ lexer__escape_char('t', '\t').
 lexer__escape_char('n', '\n').
 lexer__escape_char('v', '\v').
 lexer__escape_char('\\', '\\').
-lexer__escape_char('\'', '\'').
+lexer__escape_char('''', '''').
 lexer__escape_char('"', '"').
 lexer__escape_char('`', '`').
 
@@ -580,7 +580,7 @@ lexer__get_zero(Token) -->
 	; { Result = ok(Char) },
 		( { char__is_digit(Char) } ->
 			lexer__get_number([Char], Token)
-		; { Char = '\'' } ->
+		; { Char = '''' } ->
 			lexer__get_char_code(Token)
 		; { Char = 'b' } ->
 			lexer__get_binary(Token)

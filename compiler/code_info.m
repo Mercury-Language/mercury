@@ -828,7 +828,7 @@ code_info__args_are_constant([yes(Arg) | Args]) -->
 
 code_info__generate_expression(Var, Exprn, TargetReg, Code) -->
 	(
-		{ some [N]
+		{ % some [N]
 			(
 				TargetReg = stackvar(N)
 			;

@@ -7,7 +7,7 @@
 
 :- type list(T) ---> [] ; [T | list(T)].
 
-:- inst list_skel(I) = bound([] ; [I | list_skel(I)]).
+:- inst list_skel(I) = bound(([] ; [I | list_skel(I)])).
 :- inst list_skel = list_skel(free).
 
 :- inst non_empty_list = bound([ground | ground]).

@@ -164,7 +164,7 @@ varset__name_var(VarSet0, Id, Name, VarSet) :-
 	(
 		map__search(Counts0, Name, Count)
 	->
-		string__duplicate_char('\'', Count, Primes),
+		string__duplicate_char('''', Count, Primes),
 		string__append(Name, Primes, Name2),
 		bimap__set(Names0, Id, Name2, Names),
 		Count1 is Count + 1,

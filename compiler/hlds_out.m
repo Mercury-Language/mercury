@@ -85,7 +85,7 @@ hlds_out__cons_id_to_string(cons(Name, Arity), String) :-
 hlds_out__cons_id_to_string(int_const(Int), String) :-
 	string__int_to_string(Int, String).
 hlds_out__cons_id_to_string(string_const(String), S) :-
-	string__append_list(["\"", String, "\""], S).
+	string__append_list(["""", String, """"], S).
 hlds_out__cons_id_to_string(float_const(_), "<float>").
 hlds_out__cons_id_to_string(pred_const(_, _), "<pred>").
 

@@ -183,7 +183,7 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 				ExtraHeadVars, VarSet1, VarTypes1),
 	list__append(ExtraHeadVars, HeadVars0, HeadVars),
 	list__length(ExtraHeadVars, NumExtraVars),
-	list__duplicate(NumExtraVars, ground -> ground, ExtraModes),
+	list__duplicate(NumExtraVars, (ground -> ground), ExtraModes),
 	list__append(ExtraModes, ArgModes0, ArgModes),
 
 	pred_info_name(PredInfo0, PredName),
