@@ -551,7 +551,7 @@ mercury_data___base_type_info_character_0_struct {
 	(const Word *) & mercury_data___base_type_layout_character_0,
 	(const Word *) & mercury_data___base_type_functors_character_0,
 	(const Word *) string_const(""mercury_builtin"", 15),
-	(const Word *) string_const(""char"", 4)
+	(const Word *) string_const(""character"", 4)
 #endif
 };
 
