@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -314,6 +314,13 @@ vn_block__handle_instr(restore_hp(Rval),
 	vn_block__new_ctrl_node(vn_restore_hp(Vn), Livemap,
 		Params, VnTables1, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
+vn_block__handle_instr(free_heap(Rval),
+		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
+		SeenIncr, SeenIncr, Tuple0, Tuple) :-
+	vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables1),
+	vn_block__new_ctrl_node(vn_free_heap(Vn), Livemap,
+		Params, VnTables1, VnTables,
+		Liveset0, Liveset, Tuple0, Tuple).
 vn_block__handle_instr(store_ticket(Lval),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		SeenIncr, SeenIncr, Tuple0, Tuple) :-
@@ -460,6 +467,13 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		Parallels = []
 	;
 		VnInstr = vn_restore_hp(_),
+		VnTables = VnTables0,
+		Liveset = Liveset0,
+		FlushEntry = FlushEntry0,
+		LabelNo = LabelNo0,
+		Parallels = []
+	;
+		VnInstr = vn_free_heap(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
@@ -907,6 +921,7 @@ vn_block__is_ctrl_instr(if_val(_, _), yes).
 vn_block__is_ctrl_instr(incr_hp(_, _, _, _), no).
 vn_block__is_ctrl_instr(mark_hp(_), yes).
 vn_block__is_ctrl_instr(restore_hp(_), yes).
+vn_block__is_ctrl_instr(free_heap(_), yes).
 vn_block__is_ctrl_instr(store_ticket(_), yes).
 vn_block__is_ctrl_instr(reset_ticket(_, _), yes).
 vn_block__is_ctrl_instr(discard_ticket, yes).

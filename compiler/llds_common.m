@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -214,6 +214,10 @@ llds_common__process_instr(Instr0, Instr, Info0, Info) :-
 		llds_common__process_rval(Rval0, Rval, Info0, Info),
 		Instr = restore_hp(Rval)
 	;
+		Instr0 = free_heap(_),
+		Instr = Instr0,
+		Info = Info0
+	;
 		Instr0 = store_ticket(_),
 		Instr = Instr0,
 		Info = Info0
@@ -276,7 +280,8 @@ llds_common__process_rval(Rval0, Rval, Info0, Info) :-
 		Rval0 = var(_),
 		error("var rval found in llds_common__process_rval")
 	;
-		Rval0 = create(Tag, Args, ArgTypes, StatDyn, _LabelNo, _Msg),
+		Rval0 = create(Tag, Args, ArgTypes, StatDyn,
+				_LabelNo, _Msg, _Reuse),
 		( StatDyn \= must_be_dynamic ->
 			llds_common__process_create(Tag, Args, ArgTypes, Rval,
 				Info0, Info)

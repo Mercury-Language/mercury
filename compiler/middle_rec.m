@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -413,6 +413,8 @@ middle_rec__find_used_registers_instr(mark_hp(Lval), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used).
 middle_rec__find_used_registers_instr(restore_hp(Rval), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
+middle_rec__find_used_registers_instr(free_heap(Rval), Used0, Used) :-
+	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(store_ticket(Lval), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used).
 middle_rec__find_used_registers_instr(reset_ticket(Rval, _Rsn), Used0, Used) :-
@@ -492,9 +494,9 @@ middle_rec__find_used_registers_rval(Rval, Used0, Used) :-
 		Rval = var(_),
 		error("var found in middle_rec__find_used_registers_rval")
 	;
-		Rval = create(_, MaybeRvals, _, _, _, _),
-		middle_rec__find_used_registers_maybe_rvals(MaybeRvals,
-			Used0, Used)
+		Rval = create(_, MaybeRvals, _, _, _, _, Reuse),
+		middle_rec__find_used_registers_maybe_rvals(
+			[Reuse | MaybeRvals], Used0, Used)
 	;
 		Rval = mkword(_, Rval1),
 		middle_rec__find_used_registers_rval(Rval1, Used0, Used)

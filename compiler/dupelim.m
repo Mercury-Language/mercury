@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -327,6 +327,10 @@ standardize_instr(Instr1, Instr) :-
 		standardize_rval(Rval1, Rval),
 		Instr = restore_hp(Rval)
 	;
+		Instr1 = free_heap(Rval1),
+		standardize_rval(Rval1, Rval),
+		Instr = free_heap(Rval)
+	;
 		Instr1 = store_ticket(Lval1),
 		standardize_lval(Lval1, Lval),
 		Instr = store_ticket(Lval)
@@ -442,7 +446,7 @@ standardize_rval(Rval1, Rval) :-
 		Rval1 = var(_),
 		error("var in standardize_rval")
 	;
-		Rval1 = create(_, _, _, _, _, _),
+		Rval1 = create(_, _, _, _, _, _, _),
 		Rval = Rval1
 	;
 		Rval1 = mkword(_, _),
@@ -604,6 +608,11 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		most_specific_rval(Rval1, Rval2, Rval),
 		Instr = restore_hp(Rval)
 	;
+		Instr1 = free_heap(Rval1),
+		Instr2 = free_heap(Rval2),
+		most_specific_rval(Rval1, Rval2, Rval),
+		Instr = free_heap(Rval)
+	;
 		Instr1 = store_ticket(Lval1),
 		Instr2 = store_ticket(Lval2),
 		most_specific_lval(Lval1, Lval2, Lval),
@@ -736,7 +745,7 @@ most_specific_rval(Rval1, Rval2, Rval) :-
 		Rval1 = var(_),
 		error("var in most_specific_rval")
 	;
-		Rval1 = create(_, _, _, _, _, _),
+		Rval1 = create(_, _, _, _, _, _, _),
 		Rval2 = Rval1,
 		Rval = Rval1
 	;

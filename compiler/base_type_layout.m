@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -565,12 +565,14 @@ base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, StatDyn, CellNumber,
 	(
 		MaxTags < 4
 	->
+		Reuse = no,
 		Rvals = [yes(const(int_const(Tag))), 
 			yes(create(0, Rvals0, uniform(no), StatDyn,
-				CellNumber, "type_layout"))]
+				CellNumber, "type_layout", Reuse))]
 	;
+		Reuse = no,
 		Rvals = [yes(create(Tag, Rvals0, uniform(no), StatDyn,
-			CellNumber, "type_layout"))]
+			CellNumber, "type_layout", Reuse))]
 	).
 
 	% Encode a cons tag (unshared or shared) in rvals.
@@ -1180,8 +1182,9 @@ base_type_layout__functors_enum(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 		LayoutInfo),
 	base_type_layout__functors_value(enum, EnumIndicator),
 	EnumRval = yes(const(int_const(EnumIndicator))),
+	Reuse = no,
 	CreateRval = yes(create(0, VectorRvals, uniform(no), must_be_static,
-		NextCellNumber, "type_layout")),
+		NextCellNumber, "type_layout", Reuse)),
 	Rvals = [EnumRval, CreateRval].
 
 	% type_ctor_functors of a no_tag:
@@ -1200,8 +1203,9 @@ base_type_layout__functors_no_tag(SymName, Type, LayoutInfo0,
 
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo1,
 		LayoutInfo),
+	Reuse = no,
 	CreateRval = yes(create(0, VectorRvals, uniform(no), must_be_static,
-		NextCellNumber, "type_layout")),
+		NextCellNumber, "type_layout", Reuse)),
 
 	base_type_layout__functors_value(no_tag, NoTagIndicator),
 	NoTagRval = yes(const(int_const(NoTagIndicator))),
@@ -1229,9 +1233,10 @@ base_type_layout__functors_du(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 				LayoutInfoA, LayoutInfoB, VectorRvalList),
 			base_type_layout__get_next_cell_number(NextCellNumber,
 				LayoutInfoB, LayoutInfoC),
+			Reuse = no,
 			VectorRval = yes(create(0, VectorRvalList, uniform(no),
 				must_be_static, NextCellNumber,
-				"type_layout")),
+				"type_layout", Reuse)),
 			Rvals1 = [VectorRval | Rvals0],
 			NewAcc = Rvals1 - LayoutInfoC)),
 		ConsList, [] - LayoutInfo0, VectorRvals - LayoutInfo),
@@ -1336,8 +1341,9 @@ base_type_layout__construct_typed_pseudo_type_info(Type, NumUnivQTvars,
 
 		list__append(RealArityArg, PseudoArgs1, PseudoArgs),
 
+		Reuse = no,
 		Pseudo = create(0, [Pseudo0 | PseudoArgs], uniform(no),
-			must_be_static, CNum1, "type_layout")
+			must_be_static, CNum1, "type_layout", Reuse)
 	;
 		type_util__var(Type, Var)
 	->
@@ -1391,7 +1397,7 @@ existential_var_base = 512.
 
 base_type_layout__remove_create(Rval0, Rval) :-
 	(
-		Rval0 = create(_, [PTI], _, _, _, _)
+		Rval0 = create(_, [PTI], _, _, _, _, _)
 	->
 		Rval = PTI
 	;

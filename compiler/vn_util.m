@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -148,7 +148,7 @@ vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables) :-
 		Rval = var(_),
 		error("value_number should never get rval: var")
 	;
-		Rval = create(Tag, Args, ArgTypes, StatDyn, Label, Msg),
+		Rval = create(Tag, Args, ArgTypes, StatDyn, Label, Msg, _),
 		vn_util__vnrval_to_vn(vn_create(Tag, Args, ArgTypes,
 			StatDyn, Label, Msg), Vn, VnTables0, VnTables)
 	;
@@ -1076,7 +1076,7 @@ vn_util__find_lvals_in_rval(Rval, Lvals) :-
 		Rval = var(_),
 		error("var found in vn_util__find_lvals_in_rval")
 	;
-		Rval = create(_, _, _, _, _, _),
+		Rval = create(_, _, _, _, _, _, _),
 		Lvals = []
 	;
 		Rval = mkword(_, Rval1),
@@ -1254,6 +1254,10 @@ vn_util__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 				VnTables0, VnTables1)
 		;
 			VnInstr = vn_restore_hp(Vn),
+			vn_util__record_use(Vn, src_ctrl(Ctrl),
+				VnTables0, VnTables1)
+		;
+			VnInstr = vn_free_heap(Vn),
 			vn_util__record_use(Vn, src_ctrl(Ctrl),
 				VnTables0, VnTables1)
 		;

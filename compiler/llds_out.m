@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1312,6 +1312,8 @@ output_instruction_decls(mark_hp(Lval), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(restore_hp(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(free_heap(Rval), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(store_ticket(Lval), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(reset_ticket(Rval, _Reason), DeclSet0, DeclSet) -->
@@ -1609,6 +1611,11 @@ output_instruction(mark_hp(Lval), _) -->
 output_instruction(restore_hp(Rval), _) -->
 	io__write_string("\trestore_hp("),
 	output_rval_as_type(Rval, word),
+	io__write_string(");\n").
+
+output_instruction(free_heap(Rval), _) -->
+	io__write_string("\tfree_heap("),
+	output_rval_as_type(Rval, data_ptr),
 	io__write_string(");\n").
 
 output_instruction(store_ticket(Lval), _) -->
@@ -2108,7 +2115,8 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 	    { N = N2 },
 	    { DeclSet = DeclSet2 }
 	).
-output_rval_decls(create(_Tag, ArgVals, CreateArgTypes, _StatDyn, Label, _),
+output_rval_decls(
+		create(_Tag, ArgVals, CreateArgTypes, _StatDyn, Label, _, _),
 		FirstIndent, LaterIndent, N0, N, DeclSet0, DeclSet) -->
 	{ CreateLabel = create_label(Label) },
 	( { decl_set_is_member(CreateLabel, DeclSet0) } ->
@@ -3672,7 +3680,7 @@ output_rval(lval(Lval)) -->
 	;
 		output_lval(Lval)
 	).
-output_rval(create(Tag, _Args, _ArgTypes, _StatDyn, CellNum, _Msg)) -->
+output_rval(create(Tag, _Args, _ArgTypes, _StatDyn, CellNum, _Msg, _Reuse)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
 	io__write_string("MR_mkword(MR_mktag("),
@@ -3778,7 +3786,9 @@ output_static_rval(mkword(Tag, Exprn)) -->
 	io__write_string(")").
 output_static_rval(lval(_)) -->
 	{ error("Cannot output an lval(_) in a static initializer") }.
-output_static_rval(create(Tag, _Args, _ArgTypes, _StatDyn, CellNum, _Msg)) -->
+output_static_rval(
+		create(Tag, _Args, _ArgTypes, _StatDyn, CellNum, _Msg, _Reuse))
+	-->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
 	io__write_string("MR_mkword(MR_mktag("),

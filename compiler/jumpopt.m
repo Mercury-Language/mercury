@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -741,9 +741,12 @@ jumpopt__short_labels_rval(lval(Lval0), Instrmap, lval(Lval)) :-
 	jumpopt__short_labels_lval(Lval0, Instrmap, Lval).
 jumpopt__short_labels_rval(var(_), _, _) :-
 	error("var rval in jumpopt__short_labels_rval").
-jumpopt__short_labels_rval(create(Tag, Rvals0, ArgTypes, StatDyn, Cell, Type),
-		Instrmap, create(Tag, Rvals, ArgTypes, StatDyn, Cell, Type)) :-
-	jumpopt__short_labels_maybe_rvals(Rvals0, Instrmap, Rvals).
+jumpopt__short_labels_rval(
+		create(Tag, Rvals0, ArgTypes, StatDyn, Cell, Type, Reuse0),
+		Instrmap,
+		create(Tag, Rvals, ArgTypes, StatDyn, Cell, Type, Reuse)) :-
+	jumpopt__short_labels_maybe_rvals(Rvals0, Instrmap, Rvals),
+	jumpopt__short_labels_maybe_rval(Reuse0, Instrmap, Reuse).
 jumpopt__short_labels_rval(mkword(Tag, Rval0), Instrmap,
 		mkword(Tag, Rval)) :-
 	jumpopt__short_labels_rval(Rval0, Instrmap, Rval).
@@ -787,6 +790,13 @@ jumpopt__short_labels_const(data_addr_const(D), _, data_addr_const(D)).
 jumpopt__short_labels_maybe_rvals([], _, []).
 jumpopt__short_labels_maybe_rvals([MaybeRval0 | MaybeRvals0], Instrmap,
 		[MaybeRval | MaybeRvals]) :-
+	jumpopt__short_labels_maybe_rval(MaybeRval0, Instrmap, MaybeRval),
+	jumpopt__short_labels_maybe_rvals(MaybeRvals0, Instrmap, MaybeRvals).
+
+:- pred jumpopt__short_labels_maybe_rval(maybe(rval), instrmap, maybe(rval)).
+:- mode jumpopt__short_labels_maybe_rval(in, in, out) is det.
+
+jumpopt__short_labels_maybe_rval(MaybeRval0, Instrmap, MaybeRval) :-
 	(
 		MaybeRval0 = no,
 		MaybeRval = no
@@ -794,8 +804,7 @@ jumpopt__short_labels_maybe_rvals([MaybeRval0 | MaybeRvals0], Instrmap,
 		MaybeRval0 = yes(Rval0),
 		jumpopt__short_labels_rval(Rval0, Instrmap, Rval),
 		MaybeRval = yes(Rval)
-	),
-	jumpopt__short_labels_maybe_rvals(MaybeRvals0, Instrmap, MaybeRvals).
+	).
 
 :- pred jumpopt__short_labels_lval(lval, instrmap, lval).
 :- mode jumpopt__short_labels_lval(in, in, out) is det.

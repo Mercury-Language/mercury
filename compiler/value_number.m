@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -113,6 +113,10 @@ value_number_main(Instrs0, LayoutLabelSet, Instrs) -->
 	% deleted, and (b) uses of those control slots in the form of
 	% branches to do_redo and do_fail, since otherwise assignments
 	% to stack variables may be moved across them.
+	%
+	% Operations on a cell which is explicitly freed by a free_heap 
+	% instruction should not be reordered with the free_heap.
+	% We put labels before and after to avoid this.
 
 :- pred value_number__prepare_for_vn(list(instruction), proc_label,
 	bool, set(label), set(label), int, int, list(instruction)).
@@ -193,6 +197,8 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 			)
 		;
 			Uinstr0 = mkframe(_, _)
+		;
+			Uinstr0 = free_heap(_)
 		)
 	->
 		N1 is N0 + 1,
@@ -1090,6 +1096,7 @@ value_number__boundary_instr(if_val(_, _), yes).
 value_number__boundary_instr(incr_hp(_, _, _, _), no).
 value_number__boundary_instr(mark_hp(_), no).
 value_number__boundary_instr(restore_hp(_), no).
+value_number__boundary_instr(free_heap(_), no).
 value_number__boundary_instr(store_ticket(_), no).
 value_number__boundary_instr(reset_ticket(_, _), no).
 value_number__boundary_instr(discard_ticket, no).
