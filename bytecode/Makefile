@@ -1,6 +1,6 @@
 ##########
 #
-#	$Id: Makefile,v 1.2 1997-01-29 06:17:05 aet Exp $
+#	$Id: Makefile,v 1.3 1997-01-31 04:24:03 aet Exp $
 #
 #	Makefile for Mercury bytecode interpreter.
 #
@@ -29,7 +29,9 @@ CFLAGS	=
 DEBUG_FLAGS = -g
 
 CC	= gcc 
-CFLAGS	= -Wall -ansi -Wmissing-prototypes -D_POSIX_SOURCE -D__STDC__
+CFLAGS	= -Wall -ansi -Wmissing-prototypes -D_POSIX_SOURCE -D__STDC__ \
+	-DDEBUGGING \
+#	-DTEST_BYTECODE -DUNIT_TESTING
 DEBUG_FLAGS = -ggdb
 
 MAKEDEPEND=makedepend
@@ -60,6 +62,9 @@ clean:
 
 realclean: clean
 	-$(RM) $(PROG1) $(PROG2)
+
+tags:	$(SRC1) $(SRC2) $(SRC_COMMON) $(HDR) 
+	ctags $(SRC1) $(SRC2) $(SRC_COMMON) $(HDR)
 
 # Create dependencies. 
 depend:	$(SRC1) $(SRC2) $(SRC_COMMON) $(HDR) 
