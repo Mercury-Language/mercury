@@ -60,7 +60,7 @@ convert_to_goedel(ProgName, Items) -->
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, "% Expanding equivalence types..."),
 	io__flush_output(StdErr),
-	{ goedel_expand_eqv_types(Items, Items3) },
+	{ prog_util__expand_eqv_types(Items, Items3) },
 	{ goedel_replace_int_integer(Items3, Items4) },
 	io__write_string(StdErr, " done\n"),
 	{ convert_functor_name(ProgName, GoedelName) },
@@ -96,7 +96,7 @@ convert_to_goedel(ProgName, Items) -->
 goedel_replace_int_integer(Items0, Items) :-
 	varset__init(VarSet),
 	term__context_init(0, Context),
-	goedel_replace_eqv_type_list(Items0, VarSet, "int", [],
+	prog_util__replace_eqv_type_list(Items0, VarSet, "int", [],
 		term__functor(term__atom("integer"), [], Context), Items).
 	
 %-----------------------------------------------------------------------------%

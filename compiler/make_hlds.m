@@ -35,11 +35,11 @@
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification.
-:- import_module unify_proc, type_util.
+:- import_module unify_proc.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
-	add_item_list_decls(Items, local_pred, Module0, Module1),
+	add_item_list_decls(Items, local, Module0, Module1),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 		% balance the binary trees
@@ -112,13 +112,13 @@ add_item_decl(mode(VarSet, PredName, Modes, Det, Cond), Context, Status,
 add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 		Status, Module) -->
 	( { ModuleDefn = interface } ->
-		{ Status = exported_pred },
+		{ Status = exported },
 		{ Module = Module0 }
 	; { ModuleDefn = implementation } ->
-		{ Status = local_pred },
+		{ Status = local },
 		{ Module = Module0 }
 	; { ModuleDefn = imported } ->
-		{ Status = imported_pred },
+		{ Status = imported },
 		{ Module = Module0 }
 	; { ModuleDefn = import(module(_)) } ->
 		{ Status = Status0 },
@@ -295,21 +295,24 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
 			multiple_def_error(Name, Arity, "type", Context)
 		)
 	;
-		{ 
-		  TypeId = Name - Arity,
-		  map__set(Types0, TypeId, T, Types)
-		},
-		( %%% some [ConsList]
-			{ Body = du_type(ConsList, _, _) }
+		{ TypeId = Name - Arity },
+		{ map__set(Types0, TypeId, T, Types) },
+		(
+			{ Body = du_type(ConsList, _, IsEnum) }
 		->
 			{ module_info_ctors(Module0, Ctors0) },
 			ctors_add(ConsList, TypeId, Context, Ctors0, Ctors),
 			{ module_info_set_ctors(Module0, Ctors, Module1) },
-			{ unqualify_name(Name, UnqualifiedName) },
-			{ TypeFunctor = term__atom(UnqualifiedName) },
-			{ Type = term__functor(TypeFunctor, Args, Context) },
-			add_unify_pred(Module1, VarSet, Type, ConsList, Context,
-				Status, Module2)
+			( { IsEnum = no } ->
+				{ unqualify_name(Name, UnqualifiedName) },
+				{ TypeFunctor = term__atom(UnqualifiedName) },
+				{ Type = term__functor(TypeFunctor, Args,
+					Context) },
+				add_unify_pred(Module1, VarSet, Type, ConsList,
+					Context, Status, Module2)
+			;
+				{ Module2 = Module1 }
+			)
 		;
 			{ Module2 = Module0 }
 		),
@@ -429,16 +432,7 @@ preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status, Module) -->
 
 add_unify_pred(Module0, VarSet, Type, Ctors, Context, Status, Module) -->
 	{ module_info_name(Module0, ModuleName) },
-	{ (
-		type_to_type_id(Type, TypeId0, _)
-	->
-		TypeId = TypeId0
-	;
-		error("Cannot find type name.")
-	) },
-	{ type_util__type_id_name(Module0, TypeId, TypeName) },
-	{ string__append(TypeName, "__eq__", PredName0) },
-	{ PredName = unqualified(PredName0) },
+	{ PredName = unqualified("=") },
 	{ Arity = 2 },
 	{ Cond = true },
 	{ ArgTypes = [Type, Type] },
@@ -446,6 +440,7 @@ add_unify_pred(Module0, VarSet, Type, Ctors, Context, Status, Module) -->
 	{ pred_info_init(ModuleName, PredName, Arity, VarSet, ArgTypes, Cond,
 		Context, ClausesInfo0, Status, PredInfo0) },
 
+	% XXX Does it matter if Status = imported???
 	{ ArgModes = [ground -> ground, ground -> ground] },
 	{ Det = unspecified },	% let determinism analysis infer it
 	{ pred_info_procedures(PredInfo0, Procs0) },
@@ -562,7 +557,7 @@ preds_add_implicit(PredicateTable0,
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
-		Context, ClausesInfo, local_pred, PredInfo),
+		Context, ClausesInfo, local, PredInfo),
 	unqualify_name(PredName, PName),	% ignore any module qualifier
 	(
 		\+ predicate_table_search_m_n_a(PredicateTable0,

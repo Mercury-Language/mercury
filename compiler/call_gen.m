@@ -273,26 +273,31 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	code_info__variable_type(Var1, VarType),
-	( { type_to_type_id(VarType, VarTypeId0, _) } ->
-		{ VarTypeId = VarTypeId0 }
+	( { type_to_type_id(VarType, VarTypeId, _) } ->
+		code_info__get_requests(Requests),
+		{ unify_proc__lookup_num(Requests, VarTypeId, UniMode,
+			ModeNum) },
+		{ call_gen__input_args(ArgInfo, InputArguments) },
+		call_gen__generate_call_livevals(InputArguments, CodeC0),
+		{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum,
+			UniLabel) },
+		{ Address = label(local(UniLabel)) },
+		{ CodeC1 = node([
+			call(Address, label(ReturnLabel)) -
+				"branch to out-of-line unification procedure",
+			label(ReturnLabel) - "Continuation label"
+		]) }
 	;
 		% { error("sorry, polymorphic unifications not implemented") }
-		% XXX a temporary hack: pretend polymorphic unificatons
-		% are just `int' unifications XXX
-		{ VarTypeId = unqualified("int") - 0 }
+		% XXX a temporary hack
+		{ CodeC0 = empty },
+		{ CodeC1 = node([
+			c_code(
+	"fatal_error(\"Sorry, polymorphic unifications not implemented\");") -
+				"Temporary hack"
+			
+		]) }
 	),
-	code_info__request_unify(VarTypeId, UniMode),
-	code_info__get_requests(Requests),
-	{ unify_proc__lookup_num(Requests, VarTypeId, UniMode, ModeNum) },
-	{ call_gen__input_args(ArgInfo, InputArguments) },
-	call_gen__generate_call_livevals(InputArguments, CodeC0),
-	{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum, UniLabel) },
-	{ Address = label(local(UniLabel)) },
-	{ CodeC1 = node([
-		call(Address, label(ReturnLabel)) -
-			"branch to out-of-line unification procedure",
-		label(ReturnLabel) - "Continuation label"
-	]) },
 	(
 		{ Det = semideterministic }
 	->

@@ -923,21 +923,6 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 		FoundTypeError, FoundModeError, FoundDeterminismError], Ref),
 	erase(Ref) },
 #endif
-	mercury_compile__compute_liveness(HLDS7, HLDS8),
-
-	mercury_compile__maybe_report_sizes(HLDS8),
-
-	mercury_compile__maybe_dump_hlds(HLDS8),
-
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS8 - [FoundSemanticError,
-		FoundTypeError, FoundModeError, FoundDeterminismError]),
-	fail }.
-mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
-	{ getprop(mc, mc, HLDS8 - [FoundSemanticError, 
-		FoundTypeError, FoundModeError, FoundDeterminismError], Ref),
-	erase(Ref) },
-#endif
 
 	globals__io_lookup_bool_option(generate_code, GenerateCode),
 	globals__io_lookup_bool_option(compile_to_c, CompileToC),
@@ -956,17 +941,36 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 	;
 		{ DoCodeGen = no }
 	),
+
 	( { DoCodeGen = yes } ->
+		mercury_compile__compute_liveness(HLDS7, HLDS8),
+
 		mercury_compile__map_args_to_regs(HLDS8, HLDS9),
 
-		mercury_compile__maybe_compute_followvars(HLDS9, HLDS10),
+		mercury_compile__maybe_compute_followvars(HLDS9, HLDS10)
+	;
+		{ HLDS10 = HLDS7 }
+	),
 
+#if NU_PROLOG
+	{ putprop(mc, mc, HLDS10 - [DoCodeGen, CompileToC, Compile]),
+	fail }.
+mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
+	{ getprop(mc, mc, HLDS10 - [DoCodeGen, CompileToC, Compile], Ref),
+	erase(Ref) },
+#endif
+
+	( { DoCodeGen = yes } ->
 		mercury_compile__compute_stack_vars(HLDS10, HLDS11),
 
 		mercury_compile__allocate_store_map(HLDS11, HLDS12)
 	;
-		{ HLDS12 = HLDS8 }
+		{ HLDS12 = HLDS10 }
 	),
+
+	mercury_compile__maybe_report_sizes(HLDS12),
+
+	mercury_compile__maybe_dump_hlds(HLDS12),
 
 #if NU_PROLOG
 	{ putprop(mc, mc, HLDS12 - [DoCodeGen, CompileToC, Compile]),
@@ -1035,7 +1039,7 @@ mercury_compile__expand_equiv_types(Items0, Items) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Expanding equivalence types..."),
 	maybe_flush_output(Verbose),
-	{ goedel_expand_eqv_types(Items0, Items) },
+	{ prog_util__expand_eqv_types(Items0, Items) },
 	maybe_write_string(Verbose, " done.\n"),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).

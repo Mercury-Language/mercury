@@ -1585,7 +1585,7 @@ JUNK ****/
 :- mode builtin_atomic_type(in, out) is semidet.
 
 builtin_atomic_type(term__integer(_), "int").
-builtin_atomic_type(term__float(_), "float").
+% builtin_atomic_type(term__float(_), "float").	% XXX float not yet implemented
 builtin_atomic_type(term__string(_), "string").
 builtin_atomic_type(term__atom(String), "character") :-
 	string__char_to_string(_, String).

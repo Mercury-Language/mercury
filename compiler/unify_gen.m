@@ -86,7 +86,7 @@ unify_gen__generate_assignment(VarA, VarB, empty) -->
 	% variables from the cache, and producing code that branches
 	% to the fall-through point if the two values are not the same.
 	% Simple tests are in-in unifications on enumerations, integers,
-	% strings and floats. XXX handle strings and floats.
+	% strings and floats. XXX handle floats.
 
 unify_gen__generate_test(VarA, VarB, Code) -->
 	code_info__produce_variable(VarA, Code0, ValA),

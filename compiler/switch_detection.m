@@ -246,10 +246,10 @@ partition_disj_2([Goal0 | Goals], Var, Cases0, Cases) :-
 	partition_disj_2(Goals, Var, Cases1, Cases).
 
 
-	% find_unify_var_functor(Goals0, Var, ConsId, Goals):
+	% find_bind_var(Goals0, Var, Subst, Functor, Goals):
 	%	Searches through Goals0 looking for a deconstruction
 	%	unification with `Var'.  If successful, returns the
-	%	functor which `Var' gets unified with as `ConsId',
+	%	functor which `Var' gets unified with as `Functor',
 	%	sets `Goals' to be `Goals0' with that deconstruction
 	%	unification made deterministic.
 

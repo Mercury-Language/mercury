@@ -75,7 +75,7 @@
 :- import_module char, string, list, varset, term, map, tree, require.
 :- import_module type_util, mode_util, std_util, int, set, bintree_set.
 :- import_module code_util, call_gen, unify_gen, ite_gen, switch_gen.
-:- import_module disj_gen, unify_proc, globals, options, hlds_out.
+:- import_module disj_gen, globals, options, hlds_out.
 :- import_module code_aux, middle_rec.
 
 %---------------------------------------------------------------------------%
@@ -91,27 +91,21 @@ generate_code(ModuleInfo, c_file(Name, [c_module(ModName, Procedures)])) -->
 		% get a list of all the predicate ids
 		% for which we are going to generate code.
 	{ module_info_predids(ModuleInfo, PredIDList) },
-	{ unify_proc__init_requests(Requests0) },
 		% now generate the code for each predicate
-	generate_pred_list_code(ModuleInfo, PredIDList, Requests0,
-			Procedures0, _Requests),
-	% unify_proc__generate_unification_procs(ModuleInfo, Requests,
-	% 	UnifyProcs),
-	% { list__append(Procedures0, UnifyProcs, Procedures) }.
-	{ Procedures = Procedures0 }.
+	generate_pred_list_code(ModuleInfo, PredIDList,
+			Procedures).
 
 %
 % Generate a list of c_procedure structures for each mode of each
 % predicate given in ModuleInfo
 %
-:- pred generate_pred_list_code(module_info, list(pred_id), unify_requests,
-				list(c_procedure), unify_requests,
+:- pred generate_pred_list_code(module_info, list(pred_id), 
+				list(c_procedure),
 				io__state, io__state).
-:- mode generate_pred_list_code(in, in, in, out, out, di, uo) is det.
+:- mode generate_pred_list_code(in, in, out, di, uo) is det.
 
-generate_pred_list_code(_ModuleInfo, [], Requests, [], Requests) --> [].
-generate_pred_list_code(ModuleInfo, [PredId | PredIds], Requests0,
-			Predicates, Requests) -->
+generate_pred_list_code(_ModuleInfo, [], []) --> [].
+generate_pred_list_code(ModuleInfo, [PredId | PredIds], Predicates) -->
 	{ module_info_preds(ModuleInfo, PredInfos) },
 		% get the pred_info structure for this predicate
 	{ map__lookup(PredInfos, PredId, PredInfo) },
@@ -119,34 +113,31 @@ generate_pred_list_code(ModuleInfo, [PredId | PredIds], Requests0,
 			% check to see if this predicate was imported.
 		{ pred_info_is_imported(PredInfo) }
 	->
-		{ Predicates0 = [] },
-		{ Requests1 = Requests0 }
+		{ Predicates0 = [] }
 	;
 			% now generate code for this predicate.
-		generate_pred_code(ModuleInfo, PredId, PredInfo,
-			Requests0, Predicates0, Requests1)
+		generate_pred_code(ModuleInfo, PredId, PredInfo, Predicates0)
 	),
 #if NU_PROLOG
-	{ putprop(codegen, codegen, Predicates0 - Requests1), fail }.
-generate_pred_list_code(ModuleInfo, [PredId | PredIds], Requests0,
-			Predicates, Requests) -->
-	{ getprop(codegen, codegen, Predicates0 - Requests1, Ref),
+	{ putprop(codegen, codegen, Predicates0), fail }.
+generate_pred_list_code(ModuleInfo, [PredId | PredIds], 
+			Predicates) -->
+	{ getprop(codegen, codegen, Predicates0, Ref),
 	  erase(Ref) },
 #endif
 	{ list__append(Predicates0, Predicates1, Predicates) },
 		% and generate the code for the rest of the predicates
-	generate_pred_list_code(ModuleInfo, PredIds, Requests1,
-			Predicates1, Requests).
+	generate_pred_list_code(ModuleInfo, PredIds, Predicates1).
 
 %
 % For the predicate identified by PredId, with the the associated
 % data in ModuleInfo, generate a code_tree.
 %
-:- pred generate_pred_code(module_info, pred_id, pred_info, unify_requests,
-		list(c_procedure), unify_requests, io__state, io__state).
-:- mode generate_pred_code(in, in, in, in, out, out, di, uo) is det.
+:- pred generate_pred_code(module_info, pred_id, pred_info,
+		list(c_procedure), io__state, io__state).
+:- mode generate_pred_code(in, in, in, out, di, uo) is det.
 
-generate_pred_code(ModuleInfo, PredId, PredInfo, Requests0, Code, Requests) -->
+generate_pred_code(ModuleInfo, PredId, PredInfo, Code) -->
 		% extract a list of all the procedure ids for this predicate
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
@@ -164,8 +155,7 @@ generate_pred_code(ModuleInfo, PredId, PredInfo, Requests0, Code, Requests) -->
 	),
 	{ pred_info_proc_ids(PredInfo, ProcIds) },
 		% generate all the procedures for this predicate
-	generate_proc_list_code(ModuleInfo, PredId, PredInfo, ProcIds,
-					Requests0, Code, Requests).
+	generate_proc_list_code(ModuleInfo, PredId, PredInfo, ProcIds, Code).
 
 %
 % For all the modes of predicate PredId, generate the appropriate
@@ -173,13 +163,12 @@ generate_pred_code(ModuleInfo, PredId, PredInfo, Requests0, Code, Requests) -->
 % Currently this predicate does not use an accumulator. Perhaps it should.
 %
 :- pred generate_proc_list_code(module_info, pred_id, pred_info,
-		list(proc_id), unify_requests, list(c_procedure),
-		unify_requests, io__state, io__state).
-:- mode generate_proc_list_code(in, in, in, in, in, out, out, di, uo) is det.
+		list(proc_id), list(c_procedure), io__state, io__state).
+:- mode generate_proc_list_code(in, in, in, in, out, di, uo) is det.
 
-generate_proc_list_code(_ModuleInfo, _PredId, _PredInfo, [], Rs, [], Rs) --> [].
+generate_proc_list_code(_ModuleInfo, _PredId, _PredInfo, [], []) --> [].
 generate_proc_list_code(ModuleInfo, PredId, PredInfo, [ProcId | ProcIds],
-					Requests0, Procedures, Requests) -->
+					Procedures) -->
 	{ pred_info_procedures(PredInfo, ProcInfos) },
 		% locate the proc_info structure for this mode of the predicate
 	{ map__lookup(ProcInfos, ProcId, ProcInfo) },
@@ -193,13 +182,13 @@ generate_proc_list_code(ModuleInfo, PredId, PredInfo, [ProcId | ProcIds],
 		{ code_aux__goal_is_flat(Goal) }
 	->
 		generate_proc_list_code(ModuleInfo, PredId, PredInfo, ProcIds,
-			Requests0, Procedures, Requests)
+			Procedures)
 	;
 			% find out if the proc is deterministic/etc
 		{ proc_info_interface_determinism(ProcInfo, Category) },
 			% now generate the code for this.
 		generate_category_code(ModuleInfo, PredId, ProcId,
-			ProcInfo, Category, Requests0, Instr, Requests1, SUsed),
+			ProcInfo, Category, Instr, SUsed),
 			% turn the code tree into a list
 		{ tree__flatten(Instr, InstrList) },
 			% now the code is a list of
@@ -225,7 +214,7 @@ generate_proc_list_code(ModuleInfo, PredId, PredInfo, [ProcId | ProcIds],
 			% the rest of the procedures
 			% for this predicate.
 		generate_proc_list_code(ModuleInfo, PredId, PredInfo, ProcIds,
-			Requests1, Procedures0, Requests),
+			Procedures0),
 		{ Procedures = [Procedure | Procedures0] }
 	).
 
@@ -233,13 +222,11 @@ generate_proc_list_code(ModuleInfo, PredId, PredInfo, [ProcId | ProcIds],
 % Generate code for the predicate (PredId,Mode).
 %
 :- pred generate_category_code(module_info, pred_id, proc_id, proc_info,
-		category, unify_requests, code_tree, unify_requests,
-					maybe(int), io__state, io__state).
-:- mode generate_category_code(in, in, in, in, in, in,
-						out, out, out, di, uo) is det.
+		category, code_tree, maybe(int), io__state, io__state).
+:- mode generate_category_code(in, in, in, in, in, out, out, di, uo) is det.
 
 generate_category_code(ModuleInfo, PredId, ProcId, ProcInfo, Determinism,
-			Requests0, Instrs, Requests, SUsed) -->
+			Instrs, SUsed) -->
 		% get the goal for this procedure
 	{ proc_info_goal(ProcInfo, Goal) },
 		% get the information about this procedure that we need.
@@ -254,15 +241,16 @@ generate_category_code(ModuleInfo, PredId, ProcId, ProcInfo, Determinism,
 		SaveSuccip = no
 	},
 	globals__io_get_globals(Globals),
+	{ module_info_get_unify_requests(ModuleInfo, UnifyRequests) },
 		% initialise the code_info structure 
 	{ code_info__init(VarInfo, Liveness, CallInfo, SaveSuccip,
 				Globals, PredId, ProcId, ProcInfo, Determinism,
-				Requests0, FollowVars, ModuleInfo, CodeInfo0) },
+				UnifyRequests, FollowVars, ModuleInfo,
+				CodeInfo0) },
 		% generate code for the procedure
 	{ generate_category_code_2(Determinism, Goal, Instrs, SUsed, CodeInfo0,
-		CodeInfo) },
-	{ code_info__get_requests(Requests, CodeInfo, _) }.
-	
+		_CodeInfo) }.
+
 :- pred generate_category_code_2(category, hlds__goal, code_tree, maybe(int),
 				code_info, code_info).
 :- mode generate_category_code_2(in, in, out, out, in, out) is det.

@@ -85,7 +85,7 @@ a local variable, then report the error [this idea not yet implemented].
 
 :- import_module undef_modes, mode_info, delay_info, mode_errors.
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
-:- import_module type_util, mode_util, code_util, prog_io.
+:- import_module type_util, mode_util, code_util, prog_io, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
 
 %-----------------------------------------------------------------------------%
@@ -115,9 +115,10 @@ modecheck(Module0, Module) -->
 :- pred check_pred_modes(module_info, module_info, io__state, io__state).
 :- mode check_pred_modes(in, out, di, uo) is det.
 
-check_pred_modes(Module0, Module) -->
-	{ module_info_predids(Module0, PredIds) },
-	modecheck_pred_modes_2(PredIds, Module0, Module).
+check_pred_modes(ModuleInfo0, ModuleInfo) -->
+	{ module_info_predids(ModuleInfo0, PredIds) },
+	modecheck_pred_modes_2(PredIds, ModuleInfo0, ModuleInfo1),
+	modecheck_unify_procs(ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -220,7 +221,9 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
 	Clause = clause(ProcIds, _, _),
-	( list__member(ProcId, ProcIds) ->
+	( ProcIds = [] ->
+		MatchingClauses = [Clause | MatchingClauses1]
+	; list__member(ProcId, ProcIds) ->
 		MatchingClauses = [Clause | MatchingClauses1]
 	;
 		MatchingClauses = MatchingClauses1

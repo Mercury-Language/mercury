@@ -7,9 +7,7 @@
 
 %-----------------------------------------------------------------------------%
 
-	% XXX change the `goedel_' prefixes
-
-	% The following predicate goedel_expand_eqv_types traverses
+	% The following predicate prog_util__expand_eqv_types traverses
 	% through the list of items.  Each time it finds an eqv_type
 	% definition, it replaces all occurrences of the type (both
 	% before and after it in the list of items) with type that it
@@ -18,17 +16,18 @@
 	% types in the input will cause references to undefined types
 	% in the output.
 
-:- pred goedel_expand_eqv_types(list(item_and_context), list(item_and_context)).
-:- mode goedel_expand_eqv_types(in, out) is det.
+:- pred prog_util__expand_eqv_types(list(item_and_context),
+					list(item_and_context)).
+:- mode prog_util__expand_eqv_types(in, out) is det.
 	
-	% The following predicate goedel_replace_eqv_type_list
+	% The following predicate prog_util__replace_eqv_type_list
 	% performs substititution of a single type on a list
 	% of items.  It is used in mercury_to_goedel to rename
 	% type `int' as `integer'.
 
-:- pred goedel_replace_eqv_type_list(list(item_and_context), varset, string,
-			list(type_param), type, list(item_and_context)).
-:- mode goedel_replace_eqv_type_list(in, in, in, in, in, out) is det.
+:- pred prog_util__replace_eqv_type_list(list(item_and_context), varset,
+		string, list(type_param), type, list(item_and_context)).
+:- mode prog_util__replace_eqv_type_list(in, in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -66,29 +65,31 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-goedel_expand_eqv_types(Items0, Items) :-
-	goedel_replace_all_eqv_types(Items0, [], Items1),
+prog_util__expand_eqv_types(Items0, Items) :-
+	prog_util__replace_all_eqv_types(Items0, [], Items1),
 	list__reverse(Items1, Items).
 
-:- pred goedel_replace_all_eqv_types(list(item_and_context),
+:- pred prog_util__replace_all_eqv_types(list(item_and_context),
 		list(item_and_context), list(item_and_context)).
-:- mode goedel_replace_all_eqv_types(in, in, out) is det.
+:- mode prog_util__replace_all_eqv_types(in, in, out) is det.
 
-goedel_replace_all_eqv_types([], Items, Items).
-goedel_replace_all_eqv_types([Item - Context | Items0], ItemList0, ItemList) :-
+prog_util__replace_all_eqv_types([], Items, Items).
+prog_util__replace_all_eqv_types([Item - Context | Items0], ItemList0,
+		ItemList) :-
 	( Item = type_defn(VarSet, eqv_type(Name, Args, Body), _Cond) ->
 		unqualify_name(Name, Name2),
-		goedel_replace_eqv_type_list(ItemList0, VarSet, Name2, Args,
-				Body, ItemList1),
-		goedel_replace_eqv_type_list(Items0, VarSet, Name2, Args, Body,				Items1)
+		prog_util__replace_eqv_type_list(ItemList0, VarSet, Name2,
+				Args, Body, ItemList1),
+		prog_util__replace_eqv_type_list(Items0, VarSet, Name2, Args,
+				Body, Items1)
 	;
 		Items1 = Items0,
 		ItemList1 = [Item - Context | ItemList0]
 	),
-	goedel_replace_all_eqv_types(Items1, ItemList1, ItemList).
+	prog_util__replace_all_eqv_types(Items1, ItemList1, ItemList).
 
-goedel_replace_eqv_type_list([], _, _, _, _, []).
-goedel_replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
+prog_util__replace_eqv_type_list([], _, _, _, _, []).
+prog_util__replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
 				Body, [Item - Context| Items]) :-
 	% Attempting to replace an equivalence type can cause
 	% quite a bit of memory allocation.  If it turns out that
@@ -96,93 +97,101 @@ goedel_replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
 	% we can quickly reclaim this memory.
 	(
 		%some [Item1]
-		goedel_replace_eqv_type(Item0, VarSet, Name, Args, Body, Item1)
+		prog_util__replace_eqv_type(Item0, VarSet, Name, Args, Body,
+			Item1)
 	->
 		Item = Item1
 	;
 		Item = Item0
 	),
-	goedel_replace_eqv_type_list(Items0, VarSet, Name, Args, Body, Items).
+	prog_util__replace_eqv_type_list(Items0, VarSet, Name, Args, Body,
+		Items).
 
-:- pred goedel_replace_eqv_type(item, varset, string, list(type_param), type,
-			item).
-:- mode goedel_replace_eqv_type(in, in, in, in, in, out) is semidet.
+:- pred prog_util__replace_eqv_type(item, varset, string, list(type_param),
+					type, item).
+:- mode prog_util__replace_eqv_type(in, in, in, in, in, out) is semidet.
 
-goedel_replace_eqv_type(type_defn(VarSet0, TypeDefn0, Cond),
+prog_util__replace_eqv_type(type_defn(VarSet0, TypeDefn0, Cond),
 			TVarSet, Name, Args0, Body0,
 			type_defn(VarSet0, TypeDefn, Cond)) :-
 	varset__merge_subst(VarSet0, TVarSet, _, Subst),
 	term__apply_substitution_to_list(Args0, Subst, Args),
 	term__apply_substitution(Body0, Subst, Body),
-	goedel_replace_eqv_type_defn(TypeDefn0, Name, Args, Body, TypeDefn).
+	prog_util__replace_eqv_type_defn(TypeDefn0, Name, Args, Body, TypeDefn).
 
-goedel_replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
+prog_util__replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
 			TVarSet, Name, Args0, Body0,
 			pred(VarSet0, PredName, TypesAndModes, Det, Cond)) :-
 	varset__merge_subst(VarSet0, TVarSet, _, Subst),
 	term__apply_substitution_to_list(Args0, Subst, Args),
 	term__apply_substitution(Body0, Subst, Body),
-	goedel_replace_eqv_type_pred(TypesAndModes0, Name, Args, Body,
+	prog_util__replace_eqv_type_pred(TypesAndModes0, Name, Args, Body,
 		no, TypesAndModes, yes).
 	
-:- pred goedel_replace_eqv_type_defn(type_defn, string, list(type_param),
+:- pred prog_util__replace_eqv_type_defn(type_defn, string, list(type_param),
 					type, type_defn).
-:- mode goedel_replace_eqv_type_defn(in, in, in, in, out) is semidet.
+:- mode prog_util__replace_eqv_type_defn(in, in, in, in, out) is semidet.
 
-goedel_replace_eqv_type_defn(eqv_type(TName, TArgs, TBody0),
+prog_util__replace_eqv_type_defn(eqv_type(TName, TArgs, TBody0),
 				Name, Args, Body,
 				eqv_type(TName, TArgs, TBody)) :-
-	goedel_replace_eqv_type_type(TBody0, Name, Args, Body, no, TBody, yes).
-goedel_replace_eqv_type_defn(uu_type(TName, TArgs, TBody0),
+	prog_util__replace_eqv_type_type(TBody0, Name, Args, Body, no,
+						TBody, yes).
+
+prog_util__replace_eqv_type_defn(uu_type(TName, TArgs, TBody0),
 				Name, Args, Body,
 				uu_type(TName, TArgs, TBody)) :-
-	goedel_replace_eqv_type_uu(TBody0, Name, Args, Body, no, TBody, yes).
-goedel_replace_eqv_type_defn(du_type(TName, TArgs, TBody0),
+	prog_util__replace_eqv_type_uu(TBody0, Name, Args, Body, no,
+				TBody, yes).
+
+prog_util__replace_eqv_type_defn(du_type(TName, TArgs, TBody0),
 				Name, Args, Body,
 				du_type(TName, TArgs, TBody)) :-
-	goedel_replace_eqv_type_du(TBody0, Name, Args, Body, no, TBody, yes).
+	prog_util__replace_eqv_type_du(TBody0, Name, Args, Body, no,
+				TBody, yes).
 
-
-:- pred goedel_replace_eqv_type_uu(list(type), string, list(type_param),
+:- pred prog_util__replace_eqv_type_uu(list(type), string, list(type_param),
 					type, bool, list(type), bool).
-:- mode goedel_replace_eqv_type_uu(in, in, in, in, in, out, out) is det.
-:- mode goedel_replace_eqv_type_uu(in, in, in, in, in, out, in) is semidet. % implied
+:- mode prog_util__replace_eqv_type_uu(in, in, in, in, in, out, out) is det.
 
-goedel_replace_eqv_type_uu([], _Name, _Args, _Body, Found, [], Found).
-goedel_replace_eqv_type_uu([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
-	goedel_replace_eqv_type_type(T0, Name, Args, Body, Found0, T, Found1),
-	goedel_replace_eqv_type_uu(Ts0, Name, Args, Body, Found1, Ts, Found).
+prog_util__replace_eqv_type_uu([], _Name, _Args, _Body, Found, [], Found).
+prog_util__replace_eqv_type_uu([T0|Ts0], Name, Args, Body, Found0, [T|Ts],
+		Found) :-
+	prog_util__replace_eqv_type_type(T0, Name, Args, Body, Found0,
+					T, Found1),
+	prog_util__replace_eqv_type_uu(Ts0, Name, Args, Body, Found1,
+					Ts, Found).
 
-:- pred goedel_replace_eqv_type_du(list(constructor), string, list(type_param),
-				type, bool, list(constructor), bool).
-:- mode goedel_replace_eqv_type_du(in, in, in, in, in, out, out) is det.
-:- mode goedel_replace_eqv_type_du(in, in, in, in, in, out, in) is semidet. % implied
+:- pred prog_util__replace_eqv_type_du(list(constructor), string,
+		list(type_param), type, bool, list(constructor), bool).
+:- mode prog_util__replace_eqv_type_du(in, in, in, in, in, out, out) is det.
 
-goedel_replace_eqv_type_du([], _Name, _Args, _Body, Found, [], Found).
-goedel_replace_eqv_type_du([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
-	goedel_replace_eqv_type_ctor(T0, Name, Args, Body, Found0, T, Found1),
-	goedel_replace_eqv_type_du(Ts0, Name, Args, Body, Found1, Ts, Found).
+prog_util__replace_eqv_type_du([], _Name, _Args, _Body, Found, [], Found).
+prog_util__replace_eqv_type_du([T0|Ts0], Name, Args, Body, Found0,
+				[T|Ts], Found) :-
+	prog_util__replace_eqv_type_ctor(T0, Name, Args, Body, Found0,
+					T, Found1),
+	prog_util__replace_eqv_type_du(Ts0, Name, Args, Body, Found1,
+					Ts, Found).
 
-:- pred goedel_replace_eqv_type_ctor(constructor, string, list(type_param),
+:- pred prog_util__replace_eqv_type_ctor(constructor, string, list(type_param),
 				type, bool, constructor, bool).
-:- mode goedel_replace_eqv_type_ctor(in, in, in, in, in, out, out) is det.
-:- mode goedel_replace_eqv_type_ctor(in, in, in, in, in, out, in) is semidet. % implied
+:- mode prog_util__replace_eqv_type_ctor(in, in, in, in, in, out, out) is det.
 
-goedel_replace_eqv_type_ctor(TName - Targs0, Name, Args, Body, Found0,
+prog_util__replace_eqv_type_ctor(TName - Targs0, Name, Args, Body, Found0,
 		TName - Targs, Found) :-
-	goedel_replace_eqv_type_uu(Targs0, Name, Args, Body, Found0,
+	prog_util__replace_eqv_type_uu(Targs0, Name, Args, Body, Found0,
 		Targs, Found).
 
-:- pred goedel_replace_eqv_type_type(type, string, list(type_param),
+:- pred prog_util__replace_eqv_type_type(type, string, list(type_param),
 				type, bool, type, bool).
-:- mode goedel_replace_eqv_type_type(in, in, in, in, in, out, out) is det.
-:- mode goedel_replace_eqv_type_type(in, in, in, in, in, out, in) is semidet. % implied
+:- mode prog_util__replace_eqv_type_type(in, in, in, in, in, out, out) is det.
 
-goedel_replace_eqv_type_type(term__variable(V), _Name, _Args, _Body, Found,
+prog_util__replace_eqv_type_type(term__variable(V), _Name, _Args, _Body, Found,
 		term__variable(V), Found).
-goedel_replace_eqv_type_type(term__functor(F, TArgs0, Context), Name, Args,
+prog_util__replace_eqv_type_type(term__functor(F, TArgs0, Context), Name, Args,
 		Body, Found0, Type, Found) :- 
-	goedel_replace_eqv_type_uu(TArgs0, Name, Args, Body, Found0,
+	prog_util__replace_eqv_type_uu(TArgs0, Name, Args, Body, Found0,
 		TArgs1, Found1),
 	(	
 		F = term__atom(Name),
@@ -198,28 +207,31 @@ goedel_replace_eqv_type_type(term__functor(F, TArgs0, Context), Name, Args,
 		Type = term__functor(F, TArgs1, Context)
 	).
 
-:- pred goedel_replace_eqv_type_pred(list(type_and_mode), string,
+:- pred prog_util__replace_eqv_type_pred(list(type_and_mode), string,
 	list(type_param), type, bool, list(type_and_mode), bool).
-:- mode goedel_replace_eqv_type_pred(in, in, in, in, in, out, out) is det.
-:- mode goedel_replace_eqv_type_pred(in, in, in, in, in, out, in) is semidet. % implied
+:- mode prog_util__replace_eqv_type_pred(in, in, in, in, in, out, out) is det.
 
-goedel_replace_eqv_type_pred([], _Name, _Args, _Body, Found, [], Found).
-goedel_replace_eqv_type_pred([TM0|TMs0], Name, Args, Body, Found0,
+prog_util__replace_eqv_type_pred([], _Name, _Args, _Body, Found, [], Found).
+prog_util__replace_eqv_type_pred([TM0|TMs0], Name, Args, Body, Found0,
 				[TM|TMs], Found) :-
-	goedel_replace_eqv_type_tm(TM0, Name, Args, Body, Found0, TM, Found1),
-	goedel_replace_eqv_type_pred(TMs0, Name, Args, Body, Found1,
+	prog_util__replace_eqv_type_tm(TM0, Name, Args, Body, Found0,
+				TM, Found1),
+	prog_util__replace_eqv_type_pred(TMs0, Name, Args, Body, Found1,
 					TMs, Found).
-:- pred goedel_replace_eqv_type_tm(type_and_mode, string, list(type_param),
-				type, bool, type_and_mode, bool).
-:- mode goedel_replace_eqv_type_tm(in, in, in, in, in, out, out) is det.
 
-goedel_replace_eqv_type_tm(type_only(Type0), Name, Args, Body, Found0,
+:- pred prog_util__replace_eqv_type_tm(type_and_mode, string, list(type_param),
+				type, bool, type_and_mode, bool).
+:- mode prog_util__replace_eqv_type_tm(in, in, in, in, in, out, out) is det.
+
+prog_util__replace_eqv_type_tm(type_only(Type0), Name, Args, Body, Found0,
 				type_only(Type), Found) :-
-	goedel_replace_eqv_type_type(Type0, Name, Args, Body, Found0, Type,
+	prog_util__replace_eqv_type_type(Type0, Name, Args, Body, Found0, Type,
 		Found).
-goedel_replace_eqv_type_tm(type_and_mode(Type0, Mode), Name, Args, Body, Found0,
+
+prog_util__replace_eqv_type_tm(type_and_mode(Type0, Mode), Name, Args,
+				Body, Found0,
 				type_and_mode(Type, Mode), Found) :-
-	goedel_replace_eqv_type_type(Type0, Name, Args, Body, Found0, Type,
+	prog_util__replace_eqv_type_type(Type0, Name, Args, Body, Found0, Type,
 		Found).
 
 %-----------------------------------------------------------------------------%

@@ -198,7 +198,7 @@ is_builtin_atomic_type(QualifiedName - 0) :-
 :- is_builtin_atomic_type_2([X|_]) when X.
 
 is_builtin_atomic_type_2("int").
-is_builtin_atomic_type_2("float").
+% is_builtin_atomic_type_2("float").	% XXX float not yet implemented
 is_builtin_atomic_type_2("string").
 is_builtin_atomic_type_2("character").
 

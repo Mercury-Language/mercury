@@ -104,8 +104,25 @@ code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 	predicate_module(ModuleInfo, PredId, ModuleName),
 	predicate_name(ModuleInfo, PredId, PredName),
-	predicate_arity(ModuleInfo, PredId, Arity),
-	ProcLabel = proc(ModuleName, PredName, Arity, ProcId).
+	( PredName = "=" ->
+		module_info_preds(ModuleInfo, Preds),
+		map__lookup(Preds, PredId, PredInfo),
+		pred_info_arg_types(PredInfo, _TypeVarSet, ArgTypes),
+		(
+			ArgTypes = [Type, Type],
+			type_to_type_id(Type, TypeId0, _)
+		->
+			TypeId = TypeId0
+		;
+			error("Cannot find type name.")
+		),
+		type_util__type_id_name(ModuleInfo, TypeId, TypeName),
+		type_util__type_id_arity(ModuleInfo, TypeId, Arity),
+		ProcLabel = unify_proc(ModuleName, TypeName, Arity, ProcId)
+	;
+		predicate_arity(ModuleInfo, PredId, Arity),
+		ProcLabel = proc(ModuleName, PredName, Arity, ProcId)
+	).
 
 code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
 	type_util__type_id_module(ModuleInfo, TypeId, ModuleName),

@@ -164,6 +164,11 @@ bool__and(Bool1, Bool2, Bool3) :-
 	% Some hacks to prevent compiler warnings.
 
 semidet_succeed :-
-	1 = 1.
+	dummy(1).
+
+:- pred dummy(int).
+:- mode dummy(in) is semidet.
+
+dummy(1).
 
 %-----------------------------------------------------------------------------%

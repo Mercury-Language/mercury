@@ -317,7 +317,7 @@ options_help -->
 	io__write_string("\t-e, --verbose-error-messages\n"),
 	io__write_string("\t\tExplain error messages.  Asks the compiler to give you a more\n"),
 	io__write_string("\t\tdetailed explanation of any errors in your program.\n"),
-	io__write_string("\t-s, --statistics\n"),
+	io__write_string("\t-S, --statistics\n"),
 	io__write_string("\t\tOutput messages about the compiler's time/space usage\n"),
 	io__write_string("\t-T, --debug-types\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the type checking.\n"),

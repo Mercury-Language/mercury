@@ -4,19 +4,23 @@
 % unify_proc.nl: 
 %
 %	This module encapsulates access to the unify_requests table,
-%	and handles code generation for out-of-line complicated
+%	and constructs the clauses for out-of-line complicated
 %	unification procedures.
 %
-% Each time we come to generate code for a complicated unification, the
-% compiler just generates a call to an out-of-line unification procedure
-% (this is done in call_gen.nl), and records in the `unify_requests' table
-% that we need to eventually generate code for that out-of-line procedure.
-% After we've generated code for all the ordinary predicates, we then
-% generate code for the out-of-line unification procedures.  Note that
+% During mode analysis, we notice each different complicated unification and 
+% record in the `unify_requests' table that we need to eventually generate
+% code for that out-of-line unification procedure.
+%
+% After we've done mode analysis for all the ordinary predicates, we then
+% do mode analysis for the out-of-line unification procedures.  Note that
 % unification procedures may call other unification procedures which have
 % not yet been enountered, causing new entries to be added to the
 % unify_requests table.  We store the entries in a queue and continue the
 % process until the queue is empty.
+%
+% Each time we come to generate code for a complicated unification, the
+% compiler just generates a call to the out-of-line unification procedure
+% (this is done in call_gen.nl).
 %
 % Currently if the same complicated unification procedure is called by
 % different modules, each module will end up with a copy of the code for
@@ -54,9 +58,8 @@
 	% Generate code for the unification procedures which have been
 	% requested.
 
-:- pred unify_proc__generate_unification_procs(module_info, unify_requests,
-		list(c_procedure), io__state, io__state).
-:- mode unify_proc__generate_unification_procs(in, in, out, di, uo) is det.
+:- pred modecheck_unify_procs(module_info, module_info, io__state, io__state).
+:- mode modecheck_unify_procs(in, out, di, uo) is det.
 
 :- pred unify_proc__lookup_num(unify_requests, type_id, uni_mode,
 				unify_proc_num).
@@ -99,7 +102,7 @@
 unify_proc__init_requests(Requests) :-
 	map__init(ReqMap),
 	queue__init(ReqQueue),
-	Requests = unify_requests(0, ReqMap, ReqQueue).
+	Requests = unify_requests(1, ReqMap, ReqQueue).
 
 %-----------------------------------------------------------------------------%
 
@@ -166,52 +169,41 @@ unify_proc__request_unify(UnifyId, Requests0, Requests) :-
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__generate_unification_procs(ModuleInfo, Requests0, UnifyProcs) -->
+modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
+	{ module_info_get_unify_requests(ModuleInfo0, Requests0) },
 	{ unify_proc__get_req_queue(Requests0, RequestQueue0) },
 	(
 		{ queue__get(RequestQueue0, UnifyProcId, RequestQueue1) }
 	->
 		{ unify_proc__set_req_queue(Requests0, RequestQueue1,
 			Requests1) },
+		{ module_info_set_unify_requests(ModuleInfo0, Requests1,
+			ModuleInfo1) },
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
-			io__write_string("% Generating code for "),
+			io__write_string("% Generating "),
 			unify_proc__write_unify_proc_id(UnifyProcId),
 			io__write_string("\n")
 		;
 			[]
 		),
-		{ unify_proc__generate_unification(UnifyProcId, ModuleInfo,
-			Requests1, Requests2, UnifyProc) },
-		unify_proc__generate_unification_procs(ModuleInfo, Requests2,
-			UnifyProcs0),
-		{ UnifyProcs = [UnifyProc | UnifyProcs0] }
+		{ modecheck_generate_unification(UnifyProcId, ModuleInfo1,
+			ModuleInfo2) },
+		modecheck_unify_procs(ModuleInfo2, ModuleInfo)
 	;
-		{ UnifyProcs = [] }
+		{ ModuleInfo = ModuleInfo0 }
 	).
 
-:- pred unify_proc__generate_unification(unify_proc_id, module_info,
-				unify_requests, unify_requests, c_procedure).
-:- mode unify_proc__generate_unification(in, in, in, out, out) is det.
+:- pred modecheck_generate_unification(unify_proc_id, module_info, module_info).
+:- mode modecheck_generate_unification(in, in, out) is det.
 
-unify_proc__generate_unification(UnifyProcId, ModuleInfo, Requests0,
-				Requests, UnifyProc) :-
+modecheck_generate_unification(_UnifyProcId, ModuleInfo, ModuleInfo).
+	% XXX stub only!!!
+/*
 	unify_proc__get_req_map(Requests0, ReqMap),
 	map__lookup(ReqMap, UnifyProcId, UnifyModeNum),
-	UnifyProcId = TypeId - _,
-	code_util__make_uni_label(ModuleInfo, TypeId, UnifyModeNum, UniLabel),
-	type_util__type_id_name(ModuleInfo, TypeId, TypeName),
-	type_util__type_id_arity(ModuleInfo, TypeId, TypeArity),
-		%
-		% XXX this is a stub!
-		%
-	UnifyProc = c_procedure(TypeName, TypeArity, UnifyModeNum,
-	[
-		label(local(UniLabel)) -
-			"Entry point for out-of-line unification predicate",
-		c_code("fatal_error(\"sorry, complicated unifications not implemented\");") - "Panic!"
-	]),
-	Requests = Requests0.
+	UnifyProcId = TypeId - UnifyMode,
+*/
 
 %-----------------------------------------------------------------------------%
 

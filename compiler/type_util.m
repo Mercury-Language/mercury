@@ -111,7 +111,7 @@ classify_type(VarType, ModuleInfo, Type) :-
 type_is_enumeration(Type, ModuleInfo) :-
 	type_to_type_id(Type, TypeId, _),
 	module_info_types(ModuleInfo, TypeDefnTable),
-	map__lookup(TypeDefnTable, TypeId, TypeDefn),
+	map__search(TypeDefnTable, TypeId, TypeDefn),
 	TypeDefn = hlds__type_defn(_, _, TypeBody, _, _),
 	TypeBody = du_type(_, _, IsEnum),
 	IsEnum = yes.

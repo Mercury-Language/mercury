@@ -5,7 +5,7 @@
 % Main author: fjh.
 %
 % This module defines a data structure for representing Mercury
-% programs.
+% programs, and predicates for parsing them.
 %
 % In some ways the representation of programs here is considerably
 % more complex than is necessary for the compiler.
@@ -263,6 +263,7 @@
 :- type module_name 	== 	string.
 :- type arity		==	int.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 % This module (prog_io) exports the following predicates:

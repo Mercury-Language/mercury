@@ -21,12 +21,12 @@
 
 :- module hlds.
 :- interface.
-:- import_module int, string, list, set, map, std_util.
+:- import_module float, int, string, list, set, map, std_util.
 :- import_module varset, term.
 :- import_module prog_io, llds.
 
 :- implementation.
-:- import_module prog_util, mode_util.
+:- import_module prog_util, mode_util, unify_proc.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -56,7 +56,7 @@
 :- type module_info	--->	module(
 					string,		% module name
 					predicate_table,
-					junk,		% unused
+					unify_requests,
 					junk,		% unused
 					type_table,
 					inst_table,
@@ -69,6 +69,8 @@
 :- type junk ---> junk.
 
 :- interface.
+
+:- type unify_requests.
 
 :- type clauses_info	--->	clauses_info(
 					varset,		% variable names
@@ -502,6 +504,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- pred module_info_reverse_predids(module_info, module_info).
 :- mode module_info_reverse_predids(in, out) is det.
 
+:- pred module_info_get_unify_requests(module_info, unify_requests).
+:- mode module_info_get_unify_requests(in, out) is det.
+
 :- pred module_info_types(module_info, type_table).
 :- mode module_info_types(in, out) is det.
 
@@ -542,6 +547,10 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- pred module_info_set_preds(module_info, pred_table, module_info).
 :- mode module_info_set_preds(in, in, out) is det.
 
+:- pred module_info_set_unify_requests(module_info, unify_requests,
+					module_info).
+:- mode module_info_set_unify_requests(in, in, out) is det.
+
 :- pred module_info_set_types(module_info, type_table, module_info).
 :- mode module_info_set_types(in, in, out) is det.
 
@@ -575,8 +584,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 	% A predicate which creates an empty module
 
-module_info_init(Name, module(Name, PredicateTable, junk, junk, Types, Insts,
-		Modes, Ctors, 0, 0)) :-
+module_info_init(Name, module(Name, PredicateTable, Requests, junk, Types,
+		Insts, Modes, Ctors, 0, 0)) :-
+	unify_proc__init_requests(Requests),
 	predicate_table_init(PredicateTable),
 	map__init(Types),
 	inst_table_init(Insts),
@@ -605,6 +615,9 @@ module_info_reverse_predids(ModuleInfo0, ModuleInfo) :-
 	predicate_table_reverse_predids(PredicateTable0, PredicateTable),
 	module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 		ModuleInfo).
+
+module_info_get_unify_requests(ModuleInfo, Requests) :-
+	ModuleInfo = module(_, _, Requests, _, _, _, _, _, _, _).
 
 module_info_types(ModuleInfo, Types) :-
 	ModuleInfo = module(_, _, _, _, Types, _, _, _, _, _).
@@ -656,6 +669,10 @@ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo) :-
 	predicate_table_set_preds(PredicateTable0, Preds, PredicateTable),
 	module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 		ModuleInfo).
+
+module_info_set_unify_requests(ModuleInfo0, Requests, ModuleInfo) :-
+	ModuleInfo0 = module(A, B, _, D, E, F, G, H, I, J),
+	ModuleInfo = module(A, B, Requests, D, E, F, G, H, I, J).
 
 module_info_set_types(ModuleInfo0, Types, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, _, F, G, H, I, J),
@@ -1011,10 +1028,10 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- interface.
 
 :- type import_status
-	--->	imported_pred	% defined in the interface of some other module
+	--->	imported	% defined in the interface of some other module
 				% or `external' (in some other language)
-	;	exported_pred	% defined in the interface of this module
-	;	local_pred.	% defined in the implementation of this module
+	;	exported	% defined in the interface of this module
+	;	local.		% defined in the implementation of this module
 
 :- pred predicate_module(module_info, pred_id, module_name).
 :- mode predicate_module(in, in, out) is det.
@@ -1157,14 +1174,14 @@ pred_info_arity(PredInfo, Arity) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _).
 
 pred_info_is_imported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, imported_pred).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, imported).
 
 pred_info_is_exported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, exported_pred).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, exported).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported_pred).
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported).
 	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
