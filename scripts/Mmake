@@ -36,6 +36,9 @@ install_mmake: Mmake.vars Mmake.rules
 install_scripts: $(SCRIPTS)
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	cp $(SCRIPTS) $(INSTALL_BINDIR) 
+	for file in $(SCRIPTS); do \
+		chmod +w $(INSTALL_BINDIR)/$$file ;\
+	done
 
 #-----------------------------------------------------------------------------#
 
