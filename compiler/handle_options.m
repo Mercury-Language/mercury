@@ -297,15 +297,17 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	),
 	% Generating Java implies high-level code, turning off nested functions,
 	% using copy-out for both det and nondet output arguments,
-	% using no tags and no static ground terms.
+	% using no tags, not optimizing tailcalls and no static ground terms.
 	% XXX no static ground terms should be eliminated in a later
 	%     version.
+	% XXX The Java backend should eventually support optimizing tailcalls.
 	( { Target = java } ->
 		globals__io_set_option(highlevel_code, bool(yes)),
 		globals__io_set_option(gcc_nested_functions, bool(no)),
 		globals__io_set_option(nondet_copy_out, bool(yes)),
 		globals__io_set_option(det_copy_out, bool(yes)),
 		globals__io_set_option(num_tag_bits, int(0)),
+		globals__io_set_option(optimize_tailcalls, bool(no)),
 		globals__io_set_option(static_ground_terms, bool(no))
 	;
 		[]
@@ -334,6 +336,9 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 
 	% --no-gcc-nested-functions implies --no-gcc-local-labels
 	option_neg_implies(gcc_nested_functions, gcc_local_labels, bool(no)),
+
+	% --no-mlds-optimize implies --no-optimize-tailcalls
+	option_neg_implies(optimize, optimize_tailcalls, bool(no)),
 
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
 	option_implies(check_termination, termination, bool(yes)),

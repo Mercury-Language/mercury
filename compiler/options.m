@@ -368,6 +368,8 @@
 		;	simple_neg
 		;	follow_vars
 		;	allow_hijacks
+	%	- MLDS
+		;	optimize_tailcalls
 	%	- LLDS
 		;	common_data
 		;	optimize	% also used for MLDS->MLDS optimizations
@@ -758,7 +760,8 @@ option_defaults_2(optimization_option, [
 	simple_neg		-	bool(no),
 	follow_vars		-	bool(no),
 	allow_hijacks		-	bool(yes),
-
+% MLDS
+	optimize_tailcalls	- 	bool(no),
 % LLDS
 	common_data		-	bool(no),
 	optimize		-	bool(no),
@@ -1184,6 +1187,8 @@ long_option("allow-hijacks",		allow_hijacks).
 % you can't use both at the same time it doesn't really matter.
 long_option("mlds-optimize",		optimize).
 long_option("mlds-optimise",		optimize).
+long_option("optimize-tailcalls",	optimize_tailcalls).
+long_option("optimise-tailcalls",	optimize_tailcalls).
 
 % LLDS optimizations
 long_option("common-data",		common_data).
@@ -1454,7 +1459,8 @@ opt_level(1, OptionTable, [
 	optimize_delay_slot	-	bool(DelaySlot),
 	follow_vars		-	bool(yes),
 	middle_rec		-	bool(yes),
-	emit_c_loops		-	bool(yes)
+	emit_c_loops		-	bool(yes),
+	optimize_tailcalls	-	bool(yes)
 	% dups?
 ]) :-
 	getopt__lookup_bool_option(OptionTable, have_delay_slot, DelaySlot).
@@ -2530,7 +2536,10 @@ options_help_mlds_mlds_optimization -->
 	io__write_string("\n    MLDS -> MLDS optimizations:\n"),
 	write_tabbed_lines([
 		"--no-mlds-optimize",
-		"\tDisable the MLDS->MLDS optimization passes."
+		"\tDisable the MLDS->MLDS optimization passes.",
+		"--no-optimize-tailcalls",
+		"\tTreat tailcalls as ordinary calls, rather than optimizing",
+		"\tby turning self-tailcalls into loops."
 	]).
 
 

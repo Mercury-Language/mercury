@@ -4097,6 +4097,11 @@ intermediate code.
 @item --no-mlds-optimize
 Disable the MLDS -> MLDS optimization passes.
 
+@sp 1
+@item --no-optimize-tailcalls
+Treat tailcalls as ordinary calls rather than optimizing
+by turning self-tailcalls into loops.
+
 @end table
 
 @node Medium-level (HLDS -> LLDS) optimization options

@@ -2536,11 +2536,15 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS10, "10", "rtti"),
 
-	% XXX this pass should be conditional on a compilation option
-
-	maybe_write_string(Verbose, "% Detecting tail calls...\n"),
-	ml_mark_tailcalls(MLDS10, MLDS20),
-	maybe_write_string(Verbose, "% done.\n"),
+	globals__io_lookup_bool_option(optimize_tailcalls, OptimizeTailCalls),
+	( { OptimizeTailCalls = yes } ->
+		maybe_write_string(Verbose, 
+			"% Detecting tail calls...\n"),
+		ml_mark_tailcalls(MLDS10, MLDS20),
+		maybe_write_string(Verbose, "% done.\n")
+	;
+		{ MLDS10 = MLDS20 }
+	),
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS20, "20", "tailcalls"),
 
