@@ -80,7 +80,8 @@ switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Var, EndLabel,
 			% generate the case as a deterministic goal
 		code_gen__generate_forced_det_goal(Goal, ThisCode),
 		{ ElseLabel = node([
-			goto(EndLabel) - "skip to the end of the det switch",
+			goto(label(EndLabel)) -
+				"skip to the end of the det switch",
 			label(ElseLab) - "next case"
 		]) },
 			% generate the rest of the cases.
@@ -139,7 +140,7 @@ switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Var, Det,
 			% generate the case as a semi-deterministc goal
 		code_gen__generate_forced_semi_goal(Goal, ThisCode),
 		{ ElseLabel = node([
-			goto(EndLabel) -
+			goto(label(EndLabel)) -
 				"skip to the end of the semidet switch",
 			label(ElseLab) - "next case"
 		]) },
@@ -203,7 +204,8 @@ switch_gen__generate_non_cases([case(Cons, Goal)|Cases], Var, Det,
 			% generate the case as a non-deterministc goal
 		code_gen__generate_forced_non_goal(Goal, ThisCode),
 		{ ElseLabel = node([
-			goto(EndLabel) - "skip to the end of the nondet switch",
+			goto(label(EndLabel)) -
+				"skip to the end of the nondet switch",
 			label(ElseLab) - "next case"
 		]) },
 		{ ThisCaseCode = tree(tree(TestCode, ThisCode), ElseLabel) },

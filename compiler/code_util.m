@@ -17,14 +17,13 @@
 :- pred code_util__make_local_entry_label(module_info, pred_id, proc_id, label).
 :- mode code_util__make_local_entry_label(in, in, in, out) is det.
 
-:- pred code_util__make_nonlocal_entry_label(module_info,
-						pred_id, proc_id, code_addr).
-:- mode code_util__make_nonlocal_entry_label(in, in, in, out) is det.
-
 :- pred code_util__make_local_label(module_info, pred_id, proc_id, int, label).
 :- mode code_util__make_local_label(in, in, in, in, out) is det.
 
-:- pred code_util__make_uni_label(module_info, type_id, int, unilabel).
+:- pred code_util__make_proc_label(module_info, pred_id, proc_id, proc_label).
+:- mode code_util__make_proc_label(in, in, in, out) is det.
+
+:- pred code_util__make_uni_label(module_info, type_id, int, proc_label).
 :- mode code_util__make_uni_label(in, in, in, out) is det.
 
 :- pred code_util__arg_loc_to_register(arg_loc, reg).
@@ -69,45 +68,44 @@
 
 %---------------------------------------------------------------------------%
 
-code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
-	predicate_module(ModuleInfo, PredId, ModuleName),
-	predicate_name(ModuleInfo, PredId, PredName),
-	predicate_arity(ModuleInfo, PredId, Arity),
-	Label = entrylabel(ModuleName, PredName, Arity, ProcId).
-
-code_util__make_nonlocal_entry_label(ModuleInfo, PredId, ProcId, Label) :-
-	predicate_module(ModuleInfo, PredId, ModuleName),
-	predicate_name(ModuleInfo, PredId, PredName),
-	predicate_arity(ModuleInfo, PredId, Arity),
-	Label = nonlocal(ModuleName, PredName, Arity, ProcId).
-
-code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
-	predicate_module(ModuleInfo, PredId, ModuleName),
-	predicate_name(ModuleInfo, PredId, PredName),
-	predicate_arity(ModuleInfo, PredId, Arity),
-	Label = label(ModuleName, PredName, Arity, ProcId, LabelNum).
-
 code_util__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	(
 		pred_info_is_imported(PredInfo)
 	->
-		code_util__make_nonlocal_entry_label(ModuleInfo,
-						PredId, ProcId, PredAddress)
+		code_util__make_proc_label(ModuleInfo,
+						PredId, ProcId, ProcLabel),
+		PredAddress = imported(ProcLabel)
 	;
 		code_util__make_local_entry_label(ModuleInfo,
 							PredId, ProcId, Label),
-		PredAddress = local(Label)
+		PredAddress = label(Label)
 	).
+
+%---------------------------------------------------------------------------%
+
+code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
+	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
+	Label = exported(ProcLabel).
+
+code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
+	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
+	Label = local(ProcLabel, LabelNum).
 
 %-----------------------------------------------------------------------------%
 
-code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, Label) :-
+code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
+	predicate_module(ModuleInfo, PredId, ModuleName),
+	predicate_name(ModuleInfo, PredId, PredName),
+	predicate_arity(ModuleInfo, PredId, Arity),
+	ProcLabel = proc(ModuleName, PredName, Arity, ProcId).
+
+code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
 	type_util__type_id_module(ModuleInfo, TypeId, ModuleName),
 	type_util__type_id_name(ModuleInfo, TypeId, TypeName),
 	type_util__type_id_arity(ModuleInfo, TypeId, Arity),
-	Label = unilabel(ModuleName, TypeName, Arity, UniModeNum).
+	ProcLabel = unify_proc(ModuleName, TypeName, Arity, UniModeNum).
 
 %-----------------------------------------------------------------------------%
 
@@ -176,18 +174,11 @@ code_util__goal_list_may_allocate_heap([_ | Goals]) :-
 code_util__can_instr_branch_away(comment(_), no).
 code_util__can_instr_branch_away(assign(_, _), no).
 code_util__can_instr_branch_away(call(_, _), yes).
-code_util__can_instr_branch_away(entrycall(_, _), yes).
-code_util__can_instr_branch_away(unicall(_, _), yes).
-code_util__can_instr_branch_away(tailcall(_), yes).
-code_util__can_instr_branch_away(proceed, yes).
-code_util__can_instr_branch_away(succeed, yes).
-code_util__can_instr_branch_away(fail, yes).
-code_util__can_instr_branch_away(redo, yes).
 code_util__can_instr_branch_away(mkframe(_, _, _), no).
 code_util__can_instr_branch_away(modframe(_), no).
 code_util__can_instr_branch_away(label(_), no).
-code_util__can_instr_branch_away(unilabel(_), no).
 code_util__can_instr_branch_away(goto(_), yes).
+code_util__can_instr_branch_away(computed_goto(_, _), yes).
 code_util__can_instr_branch_away(c_code(_), no).
 code_util__can_instr_branch_away(if_val(_, _), yes).
 code_util__can_instr_branch_away(incr_sp(_), no).
@@ -197,18 +188,11 @@ code_util__can_instr_branch_away(incr_hp(_), no).
 code_util__can_instr_fall_through(comment(_), yes).
 code_util__can_instr_fall_through(assign(_, _), yes).
 code_util__can_instr_fall_through(call(_, _), no).
-code_util__can_instr_fall_through(entrycall(_, _), no).
-code_util__can_instr_fall_through(unicall(_, _), no).
-code_util__can_instr_fall_through(tailcall(_), no).
-code_util__can_instr_fall_through(proceed, no).
-code_util__can_instr_fall_through(succeed, no).
-code_util__can_instr_fall_through(fail, no).
-code_util__can_instr_fall_through(redo, no).
 code_util__can_instr_fall_through(mkframe(_, _, _), yes).
 code_util__can_instr_fall_through(modframe(_), yes).
 code_util__can_instr_fall_through(label(_), yes).
-code_util__can_instr_fall_through(unilabel(_), yes).
 code_util__can_instr_fall_through(goto(_), no).
+code_util__can_instr_fall_through(computed_goto(_, _), no).
 code_util__can_instr_fall_through(c_code(_), yes).
 code_util__can_instr_fall_through(if_val(_, _), yes).
 code_util__can_instr_fall_through(incr_sp(_), yes).
@@ -222,17 +206,18 @@ code_util__neg_rval(Rval, NegRval) :-
 	( code_util__neg_rval_2(Rval, NegRval0) ->
 		NegRval = NegRval0
 	;
-		NegRval = not(Rval)
+		NegRval = unop(not, Rval)
 	).
 
 :- pred code_util__neg_rval_2(rval, rval).
 :- mode code_util__neg_rval_2(in, out) is semidet.
 
-code_util__neg_rval_2(not(Rval), Rval).
+code_util__neg_rval_2(const(Const), const(NegConst)) :-
+	( Const = true, NegConst = false
+	; Const = false, NegConst = true ).
+code_util__neg_rval_2(unop(not, Rval), Rval).
 code_util__neg_rval_2(binop(Op, X, Y), binop(NegOp, X, Y)) :-
 	code_util__neg_op(Op, NegOp).
-code_util__neg_rval_2(false, true).
-code_util__neg_rval_2(true, false).
 	
 :- pred code_util__neg_op(operator, operator).
 :- mode code_util__neg_op(in, out) is semidet.

@@ -69,7 +69,7 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 		code_gen__generate_forced_semi_goal(Goal, ThisCode),
 		code_info__pop_failure_cont,
 		{ ElseLabel = node([
-			goto(EndLabel) - "skip to the end of the disj",
+			goto(label(EndLabel)) - "skip to the end of the disj",
 			label(ElseLab) - "next case"
 		]) },
 			% If there are more cases, the we need to restore
@@ -108,11 +108,11 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		code_info__get_next_label(ContLab0),
 		code_info__push_failure_cont(known(ContLab0)),
 		{ ContCode = node([
-			modframe(yes(ContLab0)) -
+			modframe(label(ContLab0)) -
 					"Set failure continuation"
 		]) },
 		{ SuccCode = node([
-			goto(EndLab) - "Jump to end of disj",
+			goto(label(EndLab)) - "Jump to end of disj",
 			label(ContLab0) - "Start of next disjunct"
 		]) },
 		code_info__grab_code_info(CodeInfo),

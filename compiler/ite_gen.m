@@ -58,7 +58,8 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		% of the if-then-else
 	{ ThenCode = tree(
 		tree(HPPopCode, ThenGoalCode),
-		node([ goto(EndLab) - "Jump to the end of if-then-else" ])
+		node([ goto(label(EndLab)) -
+			"Jump to the end of if-then-else" ])
 	) },
 	{ ElseCode = tree(
 		tree(
@@ -109,7 +110,8 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 			HPPopCode,
 			ThenGoalCode
 		),
-		node([ goto(EndLab) - "Jump to the end of if-then-else" ])
+		node([ goto(label(EndLab)) -
+			"Jump to the end of if-then-else" ])
 	) },
 	{ ElseCode = tree(
 		tree(
@@ -145,7 +147,7 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	{ goal_info_determinism(GoalInfo, CondDeterminism) },
 	{ CondDeterminism = nondeterministic ->
 		ModRedoipCode = node([
-			modframe(yes(ElseLab)) - "Set failure continuation"
+			modframe(label(ElseLab)) - "Set failure continuation"
 		])
 	;
 		ModRedoipCode = empty
@@ -180,7 +182,8 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 			),
 			ThenGoalCode
 		),
-		node([ goto(EndLab) - "Jump to the end of if-then-else" ])
+		node([ goto(label(EndLab)) -
+			"Jump to the end of if-then-else" ])
 	) },
 	{ ElseCode = tree(
 		tree(

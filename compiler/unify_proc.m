@@ -201,7 +201,7 @@ unify_proc__generate_unification(UnifyProcId, ModuleInfo, Requests0,
 		%
 	UnifyProc = c_procedure(TypeName, TypeArity, UnifyModeNum,
 	[
-		unilabel(UniLabel) -
+		label(local(UniLabel)) -
 			"Entry point for out-of-line unification predicate",
 		c_code("abort();") -
 			"Panic - complicated unifies not yet implemented!"

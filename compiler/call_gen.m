@@ -61,21 +61,11 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
-	(
-		call_gen__is_imported(PredId)
-	->
-		{ CodeC = node([
-			entrycall(Label, ReturnLabel) -
-					"branch to non-local procedure",
-			label(ReturnLabel) - "Continuation label"
-		]) }
-	;
-		{ CodeC = node([
-			call(Label, ReturnLabel) - "branch to procedure",
-			label(ReturnLabel) - "Continuation label"
-		]) }
-	),
+	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
+	{ CodeC = node([
+		call(Address, label(ReturnLabel)) - "branch to det procedure",
+		label(ReturnLabel) - "Continuation label"
+	]) },
 	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
 	call_gen__rebuild_registers(Args).
 
@@ -128,24 +118,17 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
-	(
-		call_gen__is_imported(PredId)
-	->
-		{ CodeC = node([
-			entrycall(Label, ReturnLabel) - "branch to procedure",
-			label(ReturnLabel) - "Continuation label"
-		]) }
-	;
-		{ CodeC = node([
-			call(Label, ReturnLabel) - "branch to procedure",
-			label(ReturnLabel) - "Continuation label"
-		]) }
-	),
+	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
+	{ CodeC = node([
+		call(Address, label(ReturnLabel)) -
+			"branch to semidet procedure",
+		label(ReturnLabel) - "Continuation label"
+	]) },
 	code_info__get_next_label(ContLab),
 	code_info__generate_failure(FailCode),
 	{ CodeD = tree(node([
-			if_val(lval(reg(r(1))), goto(ContLab)) - "Test for success"
+		if_val(lval(reg(r(1))), label(ContLab)) -
+			"Test for success"
 		]), tree(FailCode, node([ label(ContLab) - "" ]))) },
 
 	{ Code = tree(CodeA, tree(CodeB, tree(CodeC, CodeD))) },
@@ -161,21 +144,12 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
-	(
-		call_gen__is_imported(PredId)
-	->
-		{ CodeC = node([
-			entrycall(Label, ReturnLabel) -
-					"branch to non-local procedure",
-			label(ReturnLabel) - "Continuation label"
-		]) }
-	;
-		{ CodeC = node([
-			call(Label, ReturnLabel) - "branch to procedure",
-			label(ReturnLabel) - "Continuation label"
-		]) }
-	),
+	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
+	{ CodeC = node([
+		call(Address, label(ReturnLabel)) -
+			"branch to nondet procedure",
+		label(ReturnLabel) - "Continuation label"
+	]) },
 	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
 	call_gen__rebuild_registers(Args),
 		% the nondet procedure may have created choice points,
@@ -286,9 +260,11 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 	code_info__request_unify(VarTypeId, UniMode),
 	code_info__get_requests(Requests),
 	{ unify_proc__lookup_num(Requests, VarTypeId, UniMode, ModeNum) },
-	{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum, Label) },
+	{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum, UniLabel) },
+	{ Address = label(local(UniLabel)) },
 	{ CodeC = node([
-		unicall(Label, ReturnLabel) - "branch to unification proc",
+		call(Address, label(ReturnLabel)) -
+			"branch to out-of-line unification procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
 	(
@@ -297,7 +273,8 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 		code_info__get_next_label(ContLab),
 		code_info__generate_failure(FailCode),
 		{ CodeD = tree(node([
-			if_val(lval(reg(r(1))), goto(ContLab)) - "Test for success"
+			if_val(lval(reg(r(1))), label(ContLab)) -
+				"Test for success"
 			]), tree(FailCode, node([ label(ContLab) - "" ]))) }
 	;
 		{ CodeD = empty }
@@ -308,6 +285,8 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 
 %---------------------------------------------------------------------------%
 
+/**** not used
+
 :- pred call_gen__is_imported(pred_id, code_info, code_info).
 :- mode call_gen__is_imported(in, in, out) is semidet.
 
@@ -316,6 +295,8 @@ call_gen__is_imported(PredId) -->
 	{ module_info_preds(Module, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	{ pred_info_is_imported(PredInfo) }.
+
+****/
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

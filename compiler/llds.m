@@ -27,31 +27,55 @@
 :- type instruction	==	pair(instr, string).
 			%	 instruction, comment
 
-:- type instr		--->	comment(string)
-			;	assign(lval, rval)
-			;	call(code_addr, label)  % pred, continuation
-			;	entrycall(code_addr, label) % pred, continuation
-			;	unicall(unilabel, label)  % pred, continuation
-			;	tailcall(code_addr)
-			;	proceed
-			;	succeed
-			;	fail
-			;	redo
-			;	mkframe(string, int, maybe(label))
-			;	modframe(maybe(label))
-			;	label(label)
-			;	unilabel(unilabel)	% XXX fixme!
-			;	goto(label)
-		%	;	computed_goto(rval, list(label))
-			;	c_code(string)	% insert arbitrary C code
-			;	if_val(rval, cond_instr)
-			;	incr_sp(int)
-			;	decr_sp(int)
-			;	incr_hp(int).
+:- type instr	
+	--->	comment(string)
+			% Insert a comment into the output code.
 
-:- type cond_instr	--->	goto(label)
-			;	fail
-			;	redo.
+	;	assign(lval, rval)
+			% Assign the value specified by rval to the location
+			% specified by lval
+
+	;	call(code_addr, code_addr) 
+			% call(Target, Continuation) is the same as
+			% succip = Continuation; goto(Target)
+
+	;	mkframe(string, int, code_addr)
+			% mkframe(Comment, SlotCount, FailureContinuation)
+			% creates a nondet stack frame
+
+	;	modframe(code_addr)
+			% modframe(FailureContinuation) is the same as
+			% current_redoip = FailureContinuation
+
+	;	label(label)
+
+	;	goto(code_addr)
+			% Branch to the specified address.
+			% Note that jumps to do_fail, etc., get
+			% optimized into calls to fail(), etc..
+
+	;	computed_goto(rval, list(label))
+			% Evaluate rval, which should be an integer,
+			% and jump to the (rval+1)th label in the list.
+			% e.g. computed_goto(2, [A, B, C, D])
+			% will branch to label C.
+
+	;	c_code(string)
+			% do whatever is specified by the string,
+			% which can be any piece of C code that
+			% does not have any non-local flow of control
+
+	;	if_val(rval, code_addr)
+			% if rval is true, then goto code_addr.
+
+	;	incr_sp(int)
+			% increment the det stack pointer
+
+	;	decr_sp(int)
+			% decrement the det stack pointer
+
+	;	incr_hp(int).
+			% increment the heap pointer
 
 :- type lval		--->	reg(reg)	% either an int or float reg
 			;	stackvar(int)	% det stack slots
@@ -68,18 +92,23 @@
 			;	var(var)
 			;	create(tag, list(rval))
 			;	mkword(tag, rval)
-			;	mktag(rval)
-			;	tag(rval)
-			;	mkbody(rval)
-			;	body(rval)
-			;	iconst(int)		% integer constants
-			;	sconst(string)		% string constants
 			;       field(tag, rval, int)
+			;	const(rval_const)
+			;	unop(unary_op, rval)
 			;	binop(operator, rval, rval)
-			;	not(rval)
-			;	true
-			;	false
 			;	unused.
+
+:- type unary_op	--->	mktag
+			;	tag
+			;	mkbody
+			;	body
+			;	not.
+
+:- type rval_const	--->	true
+			;	false
+			;	int_const(int)
+			;	string_const(string).
+
 			/* any additions here also require additions in
 			   code_info__generate_expression
 			   code_info__generate_expression_vars
@@ -104,17 +133,24 @@
 :- type reg		--->	r(int)		% integer regs
 			;	f(int).		% floating point regs
 
-:- type code_addr 	--->	nonlocal(string, string, int, int)
-				%	module, predicate, arity, mode #
-			;	local(label).
+:- type label
+	--->		local(proc_label)
+	;		local(proc_label, int)
+	;		exported(proc_label).
 
-:- type label 		--->	entrylabel(string, string, int, int)
-				%	 module, predicate, arity, mode #
-			;	label(string, string, int, int, int).
-				% module, predicate, arity, mode #, #
+:- type code_addr
+	--->		label(label)
+	;		imported(proc_label)
+	;		succip
+	;		do_succeed
+	;		do_redo
+	;		do_fail.
 
-:- type unilabel	--->	unilabel(string, string, int, int).
-				% module, predicate, arity, mode #
+:- type proc_label 	
+	--->	proc(string, string, int, int)
+		%	 module, predicate name, predicate arity, mode #
+	;	unify_proc(string, string, int, int).
+		%	module, type name, type arity, mode #
 
 :- type tag		==	int.
 
@@ -242,120 +278,76 @@ output_instruction(comment(Comment)) -->
 	).
 
 output_instruction(assign(Lval, Rval)) -->
-	io__write_string("\t"),
+	io__write_string("\t{ "),
+	output_lval_decls(Lval),
+	output_rval_decls(Rval),
 	output_lval(Lval),
 	io__write_string(" = "),
 	output_rval(Rval),
-	io__write_string(";").
+	io__write_string("; }").
 
-output_instruction(call(CodeAddress, ContLabel)) -->
-	io__write_string("\t"),
-	io__write_string("call("),
-	output_code_address(CodeAddress),
-	io__write_string(", LABEL("),
-	output_label(ContLabel),
-	io__write_string("));").
-
-output_instruction(entrycall(CodeAddress, ContLabel)) -->
-	io__write_string("\t"),
-	io__write_string("callentry("),
-	output_code_address(CodeAddress),
-	io__write_string(", LABEL("),
-	output_label(ContLabel),
-	io__write_string("));").
-
-output_instruction(unicall(Label, ContLabel)) -->
-	io__write_string("\t"),
-	io__write_string("call(LABEL("),
-	output_unilabel(Label),
-	io__write_string("), LABEL("),
-	output_label(ContLabel),
-	io__write_string("));").
-
-output_instruction(tailcall(CodeAddress)) -->
-	io__write_string("\t"),
-	io__write_string("tailcall("),
-	output_code_address(CodeAddress),
-	io__write_string(");").
-
-output_instruction(proceed) -->
-	io__write_string("\t"),
-	io__write_string("proceed();").
-
-output_instruction(succeed) -->
-	io__write_string("\t"),
-	io__write_string("succeed();").
-
-output_instruction(redo) -->
-	io__write_string("\t"),
-	io__write_string("redo();").
-
-output_instruction(fail) -->
-	io__write_string("\t"),
-	io__write_string("fail();").
+output_instruction(call(Target, Continuation)) -->
+	io__write_string("\t{ "),
+	output_code_addr_decls(Target),
+	output_code_addr_decls(Continuation),
+	output_call(Target, Continuation),
+	io__write_string(" }").
 
 output_instruction(c_code(C_Code_String)) -->
 	io__write_string("\t"),
 	io__write_string(C_Code_String).
 
-output_instruction(mkframe(Str, Num, Maybe)) -->
-	io__write_string("\t"),
+output_instruction(mkframe(Str, Num, FailureContinuation)) -->
+	io__write_string("\t{"),
+	output_code_addr_decls(FailureContinuation),
 	io__write_string("mkframe(\""),
 	io__write_string(Str),
 	io__write_string("\", "),
 	io__write_int(Num),
 	io__write_string(", "),
-	(
-		{ Maybe = yes(Label) }
-	->
-		io__write_string("LABEL("),
-		output_label(Label),
-		io__write_string(")")
-	;
-		io__write_string("dofail")
-	),
-	io__write_string(");").
+	output_code_addr(FailureContinuation),
+	io__write_string("); }").
 
-output_instruction(modframe(Maybe)) -->
-	io__write_string("\t"),
+output_instruction(modframe(FailureContinuation)) -->
+	io__write_string("\t{"),
+	output_code_addr_decls(FailureContinuation),
 	io__write_string("modframe("),
-	(
-		{ Maybe = yes(Label) }
-	->
-		io__write_string("LABEL("),
-		output_label(Label),
-		io__write_string(")")
-	;
-		io__write_string("dofail")
-	),
-	io__write_string(");").
+	output_code_addr(FailureContinuation),
+	io__write_string("); }").
 
 output_instruction(label(Label)) -->
 	output_label(Label),
 	io__write_string(":\n\t;").
 	
-output_instruction(unilabel(Label)) -->
-	output_unilabel(Label),
-	io__write_string(":\n\t;").
+output_instruction(goto(CodeAddr)) -->
+	io__write_string("\t{ "),
+	output_code_addr_decls(CodeAddr),
+	output_goto(CodeAddr),
+	io__write_string(" }").
 
-output_instruction(goto(Label)) -->
-	io__write_string("\t"),
-	io__write_string("GOTO_LABEL("),
-	output_label(Label),
-	io__write_string(");").
+output_instruction(computed_goto(Rval, Labels)) -->
+	io__write_string("\t{"),
+	output_rval_decls(Rval),
+	io__write_string("COMPUTED_GOTO("),
+	output_label_list(Labels),
+	io__write_string("); }").
 
-output_instruction(if_val(Rval, Cond_instr)) -->
-	io__write_string("\t"),
+output_instruction(if_val(Rval, Target)) -->
+	io__write_string("\t{ "),
+	output_rval_decls(Rval),
+	output_code_addr_decls(Target),
 	io__write_string("if ("),
 	output_rval(Rval),
-	io__write_string(")\n"),
-	output_cond_instr(Cond_instr).
+	io__write_string(") "),
+	output_goto(Target),
+	io__write_string(" }").
 
 output_instruction(incr_sp(N)) -->
 	io__write_string("\t"),
 	io__write_string("incr_sp("),
 	io__write_int(N),
 	io__write_string(");").
+
 output_instruction(decr_sp(N)) -->
 	io__write_string("\t"),
 	io__write_string("decr_sp("),
@@ -368,44 +360,146 @@ output_instruction(incr_hp(N)) -->
 	io__write_int(N),
 	io__write_string(");").
 
-:- pred output_cond_instr(cond_instr, io__state, io__state).
-:- mode output_cond_instr(in, di, uo) is det.
+:- pred output_rval_decls(rval, io__state, io__state).
+:- mode output_rval_decls(in, di, uo) is det.
 
-output_cond_instr(redo) -->
-	io__write_string("\t\tredo();").
-output_cond_instr(fail) -->
-	io__write_string("\t\tfail();").
-output_cond_instr(goto(Label)) -->
-	io__write_string("\t\tGOTO_LABEL("),
-	output_label(Label),
-	io__write_string(");").
+output_rval_decls(_) --> [].	% currently no rvals require declarations
 
-:- pred output_code_address(code_addr, io__state, io__state).
-:- mode output_code_address(in, di, uo) is det.
+:- pred output_lval_decls(lval, io__state, io__state).
+:- mode output_lval_decls(in, di, uo) is det.
 
-output_code_address(local(Label)) -->
+output_lval_decls(_) --> [].	% currently no lvals require declarations
+
+:- pred output_code_addr_decls(code_addr, io__state, io__state).
+:- mode output_code_addr_decls(in, di, uo) is det.
+
+output_code_addr_decls(succip) --> [].
+output_code_addr_decls(do_fail) --> [].
+output_code_addr_decls(do_succeed) --> [].
+output_code_addr_decls(do_redo) --> [].
+output_code_addr_decls(label(_)) --> [].
+output_code_addr_decls(imported(ProcLabel)) -->
+	io__write_string("extern EntryPoint ENTRY("),
+	output_proc_label(ProcLabel),
+	io__write_string(");\n\t\t").
+
+:- pred output_goto(code_addr, io__state, io__state).
+:- mode output_goto(in, di, uo) is det.
+
+	% Note that we do some optimization here:
+	% instead of always outputting `GOTO(<label>)', we
+	% output different things for each different kind of label.
+
+output_goto(succip) -->
+	io__write_string("proceed();").
+output_goto(do_fail) -->
+	io__write_string("fail();").
+output_goto(do_succeed) -->
+	io__write_string("succeed();").
+output_goto(do_redo) -->
+	io__write_string("redo();").
+output_goto(imported(ProcLabel)) -->
+	io__write_string("tailcall(ENTRY("),
+	output_proc_label(ProcLabel),
+	io__write_string("));").
+output_goto(label(Label)) -->
+	(
+		{ Label = local(_) ; Label = exported(_) }
+	->
+		io__write_string("localtailcall("),
+		output_label(Label),
+		io__write_string(");")
+	;
+		{ Label = local(_,_) }
+	->
+		io__write_string("GOTO_LABEL("),
+		output_label(Label),
+		io__write_string(");")
+	;
+		% just in case - this will always work,
+		% but shouldn't be needed
+		io__write_string("GOTO(LABEL("),
+		output_label(Label),
+		io__write_string("));")
+	).
+
+:- pred output_call(code_addr, code_addr, io__state, io__state).
+:- mode output_call(in, in, di, uo) is det.
+
+	% Note that we also do some optimization here by
+	% outputting `localcall' rather than `call' for
+	% calls to local labels.
+
+output_call(Target, Continuation) -->
+	( { Target = label(Label) } ->
+		io__write_string("localcall("),
+		output_label(Label),
+		io__write_string(", "),
+		output_code_addr(Continuation),
+		io__write_string(");")
+	;
+		io__write_string("call("),
+		output_code_addr(Target),
+		io__write_string(", "),
+		output_code_addr(Continuation),
+		io__write_string(");")
+	).
+
+:- pred output_code_addr(code_addr, io__state, io__state).
+:- mode output_code_addr(in, di, uo) is det.
+
+output_code_addr(succip) -->
+	io__write_string("succip").
+output_code_addr(do_fail) -->
+	io__write_string("ENTRY(do_fail)").
+output_code_addr(do_succeed) -->
+	io__write_string("ENTRY(do_succeed)").
+output_code_addr(do_redo) -->
+	io__write_string("ENTRY(do_redo)").
+output_code_addr(label(Label)) -->
 	io__write_string("LABEL("),
 	output_label(Label),
 	io__write_string(")").
+output_code_addr(imported(ProcLabel)) -->
+	io__write_string("ENTRY("),
+	output_proc_label(ProcLabel),
+	io__write_string(")").
 
-	% XXX we need to do something with the module name.
+:- pred output_label_list(list(label), io__state, io__state).
+:- mode output_label_list(in, di, uo) is det.
 
-output_code_address(nonlocal(_Module, Pred, Arity, Mode)) -->
-	io__write_string("\t"),
-	%%% io__write_string("ENTRY("),
-	%%% io__write_string(Module),
-	output_label_prefix,
-	io__write_string(Pred),
-	io__write_string("_"),
-	io__write_int(Arity),
-	io__write_string("_"),
-	io__write_int(Mode).
-	%%% io__write_string(")").
+output_label_list([]) --> [].
+output_label_list([Label | Labels]) -->
+	output_label(Label),
+	output_label_list_2(Labels).
+
+:- pred output_label_list_2(list(label), io__state, io__state).
+:- mode output_label_list_2(in, di, uo) is det.
+
+output_label_list_2([]) --> [].
+output_label_list_2([Label | Labels]) -->
+	io__write_string(" AND "),
+	output_label(Label),
+	output_label_list_2(Labels).
 
 :- pred output_label(label, io__state, io__state).
 :- mode output_label(in, di, uo) is det.
 
-output_label(entrylabel(_Module, Pred, Arity, Mode)) -->
+output_label(exported(ProcLabel)) -->
+	output_proc_label(ProcLabel).
+output_label(local(ProcLabel)) -->
+	output_proc_label(ProcLabel).
+output_label(local(ProcLabel, Num)) -->
+	output_proc_label(ProcLabel),
+	io__write_string("_i"),		% i for "internal" (not Intel ;-)
+	io__write_int(Num).
+
+:- pred output_proc_label(proc_label, io__state, io__state).
+:- mode output_proc_label(in, di, uo) is det.
+
+	% XXX we need to do something with the module name.
+
+output_proc_label(proc(_Module, Pred, Arity, Mode)) -->
 	output_label_prefix,
 	%%% io__write_string(Module),
 	io__write_string(Pred),
@@ -413,23 +507,11 @@ output_label(entrylabel(_Module, Pred, Arity, Mode)) -->
 	io__write_int(Arity),
 	io__write_string("_"),
 	io__write_int(Mode).
-output_label(label(_Module, Pred, Arity, Mode, Num)) -->
+
+output_proc_label(unify_proc(_Module, TypeName, TypeArity, ModeNum)) -->
 	output_label_prefix,
 	%%% io__write_string(Module),
-	io__write_string(Pred),
-	io__write_string("_"),
-	io__write_int(Arity),
-	io__write_string("_"),
-	io__write_int(Mode),
-	io__write_string("_i"),		% i for "internal" (not Intel ;-)
-	io__write_int(Num).
-
-:- pred output_unilabel(unilabel, io__state, io__state).
-:- mode output_unilabel(in, di, uo) is det.
-
-output_unilabel(unilabel(_Module, TypeName, TypeArity, ModeNum)) -->
-	output_label_prefix,
-	%%% io__write_string(Module),
+	io__write_string("unify_"),
 	io__write_string(TypeName),
 	io__write_string("_"),
 	io__write_int(TypeArity),
@@ -471,6 +553,13 @@ output_tag(Tag) -->
 :- pred output_rval(rval, io__state, io__state).
 :- mode output_rval(in, di, uo) is det.
 
+output_rval(const(Const)) -->
+	output_rval_const(Const).
+output_rval(unop(UnaryOp, Exprn)) -->
+	output_unary_op(UnaryOp),
+	io__write_string("("),
+	output_rval(Exprn),
+	io__write_string(")").
 output_rval(binop(Op, X, Y)) -->
 	( { Op = streq } ->
 		io__write_string("string_equal("),
@@ -487,35 +576,10 @@ output_rval(binop(Op, X, Y)) -->
 		output_rval(Y),
 		io__write_string(")")
 	).
-output_rval(iconst(N)) -->
-	io__write_int(N).
-output_rval(sconst(String)) -->
-	io__write_string("string_const(\""),
-	output_c_quoted_string(String),
-	{ string__length(String, StringLength) },
-	io__write_string("\", "),
-	io__write_int(StringLength),
-	io__write_string(")").
 output_rval(mkword(Tag, Exprn)) -->
 	io__write_string("mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
-	output_rval(Exprn),
-	io__write_string(")").
-output_rval(mktag(Exprn)) -->
-	io__write_string("mktag("),
-	output_rval(Exprn),
-	io__write_string(")").
-output_rval(tag(Exprn)) -->
-	io__write_string("tag("),
-	output_rval(Exprn),
-	io__write_string(")").
-output_rval(mkbody(Exprn)) -->
-	io__write_string("mkbody("),
-	output_rval(Exprn),
-	io__write_string(")").
-output_rval(body(Exprn)) -->
-	io__write_string("body("),
 	output_rval(Exprn),
 	io__write_string(")").
 output_rval(field(Tag, Rval, Field)) -->
@@ -528,20 +592,43 @@ output_rval(field(Tag, Rval, Field)) -->
 	io__write_string(")").
 output_rval(lval(Lval)) -->
 	output_lval(Lval).
-output_rval(not(Rval)) -->
-	io__write_string("(! "),
-	output_rval(Rval),
-	io__write_string(")").
-output_rval(true) -->
-	io__write_string("TRUE").
-output_rval(false) -->
-	io__write_string("FALSE").
 output_rval(create(_,_)) -->
 	{ error("Cannot output a create(_,_) expression in code") }.
 output_rval(var(_)) -->
 	{ error("Cannot output a var(_) expression in code") }.
 output_rval(unused) -->
 	{ error("Cannot output a `unused' expression in code") }.
+
+:- pred output_unary_op(unary_op, io__state, io__state).
+:- mode output_unary_op(in, di, uo) is det.
+
+output_unary_op(mktag) -->
+	io__write_string("mktag").
+output_unary_op(tag) -->
+	io__write_string("tag").
+output_unary_op(mkbody) -->
+	io__write_string("mkbody").
+output_unary_op(body) -->
+	io__write_string("body").
+output_unary_op(not) -->
+	io__write_string("!").
+
+:- pred output_rval_const(rval_const, io__state, io__state).
+:- mode output_rval_const(in, di, uo) is det.
+
+output_rval_const(int_const(N)) -->
+	io__write_int(N).
+output_rval_const(string_const(String)) -->
+	io__write_string("string_const(\""),
+	output_c_quoted_string(String),
+	{ string__length(String, StringLength) },
+	io__write_string("\", "),
+	io__write_int(StringLength),
+	io__write_string(")").
+output_rval_const(true) -->
+	io__write_string("TRUE").
+output_rval_const(false) -->
+	io__write_string("FALSE").
 
 :- pred output_lval(lval, io__state, io__state).
 :- mode output_lval(in, di, uo) is det.

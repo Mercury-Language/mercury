@@ -98,37 +98,9 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 unify_gen__generate_tag_test(Var, ConsId, Code) -->
 	code_info__produce_variable(Var, VarCode, Rval),
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
-	unify_gen__generate_tag_test_2(Tag, Rval, TestCode),
+	{ unify_gen__generate_tag_rval_2(Tag, Rval, TestRval) },
+	code_info__generate_test_and_fail(TestRval, TestCode),
 	{ Code = tree(VarCode, TestCode) }.
-
-:- pred unify_gen__generate_tag_test_2(cons_tag, rval, code_tree,
-							code_info, code_info).
-:- mode unify_gen__generate_tag_test_2(in, in, out, in, out) is det.
-
-unify_gen__generate_tag_test_2(string_constant(String), Rval, TestCode) -->
-	code_info__generate_test_and_fail(
-				binop(streq, Rval, sconst(String)),
-								TestCode).
-unify_gen__generate_tag_test_2(float_constant(_String), _, _) -->
-	{ error("Float tests unimplemented") }.
-unify_gen__generate_tag_test_2(int_constant(Int), Rval, TestCode) -->
-	code_info__generate_test_and_fail(
-				binop(eq,Rval, iconst(Int)),
-								TestCode).
-unify_gen__generate_tag_test_2(simple_tag(SimpleTag), Rval, TestCode) -->
-	code_info__generate_test_and_fail(
-			binop(eq,tag(Rval), mktag(iconst(SimpleTag))),
-								TestCode).
-unify_gen__generate_tag_test_2(complicated_tag(Bits, Num), Rval, TestCode) -->
-	code_info__generate_test_and_fail(
-			binop(eq,tag(Rval), mktag(iconst(Bits))), Test1),
-	code_info__generate_test_and_fail(
-			binop(eq,field(Bits, Rval, 0), iconst(Num)), Test2),
-	{ TestCode = tree(Test1, Test2) }.
-unify_gen__generate_tag_test_2(complicated_constant_tag(Bits, Num), Rval,
-		TestCode) -->
-	code_info__generate_test_and_fail(
-		binop(eq, Rval, mkword(Bits, mkbody(iconst(Num)))), TestCode).
 
 %---------------------------------------------------------------------------%
 
@@ -141,19 +113,24 @@ unify_gen__generate_tag_rval(Var, ConsId, TestRval, Code) -->
 :- mode unify_gen__generate_tag_rval_2(in, in, out) is det.
 
 unify_gen__generate_tag_rval_2(string_constant(String), Rval, TestRval) :-
-	TestRval = binop(streq, Rval, sconst(String)).
+	TestRval = binop(streq, Rval, const(string_const(String))).
 unify_gen__generate_tag_rval_2(float_constant(_String), _, _) :-
 	error("Sorry, float tests not implemented").
 unify_gen__generate_tag_rval_2(int_constant(Int), Rval, TestRval) :-
-	TestRval = binop(eq, Rval, iconst(Int)).
+	TestRval = binop(eq, Rval, const(int_const(Int))).
 unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Rval, TestRval) :-
-	TestRval = binop(eq,tag(Rval), mktag(iconst(SimpleTag))).
+	TestRval = binop(eq,	unop(tag, Rval),
+				unop(mktag, const(int_const(SimpleTag)))).
 unify_gen__generate_tag_rval_2(complicated_tag(Bits, Num), Rval, TestRval) :-
-	TestRval = binop(and, binop(eq,tag(Rval), mktag(iconst(Bits))), 
-			binop(eq,field(Bits, Rval, 0), iconst(Num))).
+	TestRval = binop(and,
+			binop(eq,	unop(tag, Rval),
+					unop(mktag, const(int_const(Bits)))), 
+			binop(eq,	field(Bits, Rval, 0),
+					const(int_const(Num)))).
 unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
 		TestRval) :-
-	TestRval = binop(eq, Rval, mkword(Bits, mkbody(iconst(Num)))).
+	TestRval = binop(eq,	Rval,
+			mkword(Bits, unop(mkbody, const(int_const(Num))))).
 
 %---------------------------------------------------------------------------%
 
@@ -171,12 +148,12 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 		{ Tag = string_constant(String) }
 	->
 		{ Code = empty },
-		code_info__cache_expression(Var, sconst(String))
+		code_info__cache_expression(Var, const(string_const(String)))
 	;
 		{ Tag = int_constant(Int) }
 	->
 		{ Code = empty },
-		code_info__cache_expression(Var, iconst(Int))
+		code_info__cache_expression(Var, const(int_const(Int)))
 	;
 		{ Tag = float_constant(_Float) }
 	->
@@ -197,7 +174,7 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 		{ Tag = complicated_tag(Bits0, Num0) }
 	->
 		{ unify_gen__generate_cons_args(Args, RVals0) },
-		{ RVals = [iconst(Num0)|RVals0] },
+		{ RVals = [const(int_const(Num0)) | RVals0] },
 		code_info__cache_expression(Var, create(Bits0, RVals)),
 		code_info__flush_variable(Var, CodeA),
 		code_info__get_variable_register(Var, Lval),
@@ -209,9 +186,8 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 	;
 		{ Tag = complicated_constant_tag(Bits1, Num1) }
 	->
-			% XXX check
 		code_info__cache_expression(Var,
-				mkword(Bits1, mkbody(iconst(Num1)))),
+			mkword(Bits1, unop(mkbody, const(int_const(Num1))))),
 		{ Code = empty }
 	;
 		{ error("Unrecognised tag type in construction") }

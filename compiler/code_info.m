@@ -694,10 +694,7 @@ code_info__flush_variable(Var, Code) -->
 :- pred code_info__expr_is_atomic(rval).
 :- mode code_info__expr_is_atomic(in) is semidet.
 
-code_info__expr_is_atomic(iconst(_)).
-code_info__expr_is_atomic(sconst(_)).
-code_info__expr_is_atomic(true).
-code_info__expr_is_atomic(false).
+code_info__expr_is_atomic(const(_)).
 
 %---------------------------------------------------------------------------%
 
@@ -774,7 +771,8 @@ code_info__generate_expression(create(Tag, Args), TargetReg, Code) -->
 		]) }
 	;
 		{ CodeA = node([
-			assign(TargetReg, mkword(Tag, iconst(0))) -
+			assign(TargetReg,
+				mkword(	Tag, const(int_const(0)))) -
 					"Assign a constant"
 		]) }
 	),
@@ -786,37 +784,15 @@ code_info__generate_expression(mkword(Tag, Rval0), TargetReg, Code) -->
 		assign(TargetReg, mkword(Tag, Rval)) - "Tag a word"
 	]) },
 	{ Code = tree(Code0, Code1) }.
-code_info__generate_expression(mktag(Rval0), TargetReg, Code) -->
+code_info__generate_expression(unop(Unop, Rval0), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
 	{ Code1 = node([
-		assign(TargetReg, mktag(Rval)) - "Make a tag"
+		assign(TargetReg, unop(Unop, Rval)) - "Apply unary operator"
 	]) },
 	{ Code = tree(Code0, Code1) }.
-code_info__generate_expression(tag(Rval0), TargetReg, Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code0),
-	{ Code1 = node([
-		assign(TargetReg, tag(Rval)) - "Extract a word's tag"
-	]) },
-	{ Code = tree(Code0, Code1) }.
-code_info__generate_expression(mkbody(Rval0), TargetReg, Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code0),
-	{ Code1 = node([
-		assign(TargetReg, mkbody(Rval)) - "Prepare to tag a word"
-	]) },
-	{ Code = tree(Code0, Code1) }.
-code_info__generate_expression(body(Rval0), TargetReg, Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code0),
-	{ Code1 = node([
-		assign(TargetReg, body(Rval)) - "Untag a word"
-	]) },
-	{ Code = tree(Code0, Code1) }.
-code_info__generate_expression(iconst(Int), TargetReg, Code) -->
+code_info__generate_expression(const(Const), TargetReg, Code) -->
 	{ Code = node([
-		assign(TargetReg, iconst(Int)) - "Make an integer const"
-	]) }.
-code_info__generate_expression(sconst(Str), TargetReg, Code) -->
-	{ Code = node([
-		assign(TargetReg, sconst(Str)) - "Make a string const"
+		assign(TargetReg, const(Const)) - "Make a constant"
 	]) }.
 code_info__generate_expression(field(Tag, Rval0, Field), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
@@ -835,20 +811,6 @@ code_info__generate_expression(binop(Op, L0, R0), TargetReg, Code) -->
 	]) },
 	{ Code2 = tree(Code1, ThisCode) },
 	{ Code = tree(Code0, Code2) }.
-code_info__generate_expression(not(Rval0), TargetReg, Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code0),
-	{ Code1 = node([
-		assign(TargetReg, not(Rval)) - "Negate a boolean value"
-	]) },
-	{ Code = tree(Code0, Code1) }.
-code_info__generate_expression(true, TargetReg, Code) -->
-	{ Code = node([
-		assign(TargetReg, true) - "Make a boolean const"
-	]) }.
-code_info__generate_expression(false, TargetReg, Code) -->
-	{ Code = node([
-		assign(TargetReg, false) - "Make a boolean const"
-	]) }.
 
 	% unused - do nothing.
 code_info__generate_expression(unused, _, empty) --> [].
@@ -913,16 +875,10 @@ code_info__generate_expression_vars(create(Tag, Rvals0), create(Tag, Rvals),
 code_info__generate_expression_vars(mkword(Tag, Rval0), mkword(Tag, Rval),
 								Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
-code_info__generate_expression_vars(mktag(Rval0), mktag(Rval), Code) -->
+code_info__generate_expression_vars(unop(Unop, Rval0), unop(Unop, Rval), Code)
+		-->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
-code_info__generate_expression_vars(tag(Rval0), tag(Rval), Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code).
-code_info__generate_expression_vars(mkbody(Rval0), mkbody(Rval), Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code).
-code_info__generate_expression_vars(body(Rval0), body(Rval), Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code).
-code_info__generate_expression_vars(iconst(Int), iconst(Int), empty) --> [].
-code_info__generate_expression_vars(sconst(Str), sconst(Str), empty) --> [].
+code_info__generate_expression_vars(const(Const), const(Const), empty) --> [].
 code_info__generate_expression_vars(field(Tag, Rval0, Field),
 					field(Tag, Rval, Field), Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
@@ -931,10 +887,6 @@ code_info__generate_expression_vars(binop(Op, L0, R0),
 	code_info__generate_expression_vars(L0, L, Code0),
 	code_info__generate_expression_vars(R0, R, Code1),
 	{ Code = tree(Code0, Code1) }.
-code_info__generate_expression_vars(not(Rval0), not(Rval), Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code).
-code_info__generate_expression_vars(true, true, empty) --> [].
-code_info__generate_expression_vars(false, false, empty) --> [].
 code_info__generate_expression_vars(unused, unused, empty) --> [].
 
 %---------------------------------------------------------------------------%
@@ -1896,25 +1848,14 @@ code_info__expression_dependencies(create(_Tag, Rvals), V0, V) -->
 	code_info__expressions_dependencies(Rvals, V0, V).
 code_info__expression_dependencies(mkword(_Tag, Rval), V0, V) -->
 	code_info__expression_dependencies(Rval, V0, V).
-code_info__expression_dependencies(mktag(Rval), V0, V) -->
+code_info__expression_dependencies(unop(_Op, Rval), V0, V) -->
 	code_info__expression_dependencies(Rval, V0, V).
-code_info__expression_dependencies(tag(Rval), V0, V) -->
-	code_info__expression_dependencies(Rval, V0, V).
-code_info__expression_dependencies(mkbody(Rval), V0, V) -->
-	code_info__expression_dependencies(Rval, V0, V).
-code_info__expression_dependencies(body(Rval), V0, V) -->
-	code_info__expression_dependencies(Rval, V0, V).
-code_info__expression_dependencies(iconst(_), V, V) --> [].
-code_info__expression_dependencies(sconst(_), V, V) --> [].
+code_info__expression_dependencies(const(_), V, V) --> [].
 code_info__expression_dependencies(field(_, Rval,_), V0, V) -->
 	code_info__expression_dependencies(Rval, V0, V).
 code_info__expression_dependencies(binop(_, E0, E1), V0, V) -->
 	code_info__expression_dependencies(E0, V0, V1),
 	code_info__expression_dependencies(E1, V1, V).
-code_info__expression_dependencies(not(Rval), V0, V) -->
-	code_info__expression_dependencies(Rval, V0, V).
-code_info__expression_dependencies(true, V, V) --> [].
-code_info__expression_dependencies(false, V, V) --> [].
 code_info__expression_dependencies(unused, V, V) --> [].
 
 %---------------------------------------------------------------------------%
@@ -2247,36 +2188,22 @@ code_info__pop_lval(Lval, Code) -->
 
 code_info__generate_failure(Code) -->
 	code_info__failure_cont(Cont),
-	(
-		{ Cont = known(Label) }
-	->
-		{ Code = node([ goto(Label) -
-				"Branch to failure continuation" ]) }
-	;
-		{ Cont = do_fail }
-	->
-		{ Code = node([ fail - "" ]) }
-	;
-		{ Code = node([ redo - "" ]) }
-	).
-
-%---------------------------------------------------------------------------%
+	{ code_info__failure_cont_address(Cont, FailureAddress) },
+	{ Code = node([ goto(FailureAddress) - "fail" ]) }.
 
 code_info__generate_test_and_fail(Rval, Code) -->
 	code_info__failure_cont(Cont),
-	(
-		{ Cont = known(Label) }
-	->
-		{ Failure = goto(Label) }
-	;
-		{ Cont = do_fail }
-	->
-		{ Failure = fail }
-	;
-		{ Failure = redo }
-	),
+	{ code_info__failure_cont_address(Cont, FailureAddress) },
 	{ code_util__neg_rval(Rval, NegRval) },
-	{ Code = node([ if_val(NegRval, Failure) - "" ]) }.
+	{ Code = node([ if_val(NegRval, FailureAddress) -
+				"test for failure" ]) }.
+
+:- pred code_info__failure_cont_address(failure_cont, code_addr).
+:- mode code_info__failure_cont_address(in, out) is det.
+
+code_info__failure_cont_address(known(Label), label(Label)).
+code_info__failure_cont_address(do_fail, do_fail).
+code_info__failure_cont_address(unknown, do_redo).
 
 %---------------------------------------------------------------------------%
 
@@ -2291,14 +2218,14 @@ code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	code_info__push_rval(lval(curredoip), SaveRedoip),
 	code_info__push_failure_cont(known(FailLabel)),
 	{ SetRedoIp = node([
-		modframe(yes(FailLabel)) - "hijack the failure continuation"
+		modframe(label(FailLabel)) - "hijack the failure continuation"
 	]) },
 	{ PreCommit = tree(SaveMaxfr, tree(SaveRedoip, SetRedoIp)) }.
 
 code_info__generate_commit(FailLabel, Commit) -->
 	code_info__get_next_label(SuccLabel),
 	{ GotoSuccCode = node([
-		goto(SuccLabel) - "jump to success continuation",
+		goto(label(SuccLabel)) - "jump to success continuation",
 		label(FailLabel) - "failure continuation"
 	]) },
 	{ SuccLabelCode = node([
@@ -2345,9 +2272,9 @@ code_info__failure_cont(Cont) -->
 code_info__restore_failure_cont(ContCode) -->
 	code_info__failure_cont(FailCont),
 	( { FailCont = known(ContLab) } ->
-		{ Label = yes(ContLab) }
+		{ Label = label(ContLab) }
 	; { FailCont = do_fail } ->
-		{ Label = no }
+		{ Label = do_fail }
 	;
 		{ error("cannot restore unknown failure continuation") }
 	),
