@@ -211,15 +211,24 @@ else
 	exit 1
 fi
 
+exit_status=0
+exec 3>&1		# save stdout in fd 3
 if [ -n "$outfile" ]
 then
-	diff stage2/library stage3/library > "$outfile"
-	diff stage2/compiler stage3/compiler >> "$outfile"
-else
-	diff stage2/library stage3/library
-	diff stage2/compiler stage3/compiler
+	exec > "$outfile"	# redirect stdout to $outfile
 fi
-
+for dir in library compiler; do
+	for file in stage2/$dir/*.c; do
+		diff -u $file stage3/$dir/`basename $file` ||
+			exit_status=1
+	done
+done
+exec >&3		# restore stdout from fd 3
+if [ $exit_status -ne 0 ]; then
+	echo "error - stage 2 and stage 3 differ!"
+else
+	echo "stage 2 and stage 3 compare ok"
+fi
 echo "finishing at `date`"
 
-exit 0
+exit $exit_status
