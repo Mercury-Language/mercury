@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000-2002 The University of Melbourne.
+# Copyright (C) 2000-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -37,3 +37,30 @@ _GC_H
 # but that would be inconsistent with the coding style used in mps_gc/code.
 mercury_mps_h
 #-----------------------------------------------------------------------------#
+# This is defined by the mgnuc script in some grades.
+# It is used for configuring the Boehm collector.
+# XXX it should have a GC_ prefix.
+NO_SIGNALS
+#-----------------------------------------------------------------------------#
+# These are defined automatically by GCC -- gcc optionally passes
+# them on the command line when calling cc1, depending on the
+# exact options which gcc was invoked with.  These are not
+# namespace polution, since they are in the _[A-Z]* namespace
+# which is reserved for the C implementation, and they are being
+# defined by the C implementation.
+_GNU_SOURCE
+__EXTENSIONS__
+__OPTIMIZE__
+__STRICT_ANSI__
+#-----------------------------------------------------------------------------#
+# These are defined in exception.m. They are used to map this set of six
+# names, one for each declared mode of builtin.catch/3, down to the three
+# functions that actually implement them (the modes for a given code model
+# have identical implementations). The initial mercury__ prefix puts these
+# macros into name space reserved for Mercury anyway.
+mercury__exception__builtin_catch_3_p_0
+mercury__exception__builtin_catch_3_p_1
+mercury__exception__builtin_catch_3_p_2
+mercury__exception__builtin_catch_3_p_3
+mercury__exception__builtin_catch_3_p_4
+mercury__exception__builtin_catch_3_p_5

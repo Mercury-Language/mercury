@@ -553,7 +553,8 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 % The --high-level-code implementation
 %
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C",
+"
 /* protect against multiple inclusion */
 #ifndef ML_HLC_EXCEPTION_GUARD
 #define ML_HLC_EXCEPTION_GUARD
