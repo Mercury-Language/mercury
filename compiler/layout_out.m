@@ -25,6 +25,7 @@
 :- import_module ll_backend__layout.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__llds_out.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, io.
 
@@ -77,6 +78,10 @@
 	% user-defined or compiler-generated.
 :- func proc_label_user_or_compiler(proc_label) = proc_layout_user_or_compiler.
 
+	% Output a value of C type MR_PredFunc corrresponding to the argument.
+:- pred output_pred_or_func(pred_or_func::in,
+	io__state::di, io__state::uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -89,7 +94,6 @@
 :- import_module hlds__special_pred.
 :- import_module libs__trace_params.
 :- import_module ll_backend__code_util.
-:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 
 :- import_module int, char, string, require, std_util, list.
@@ -903,13 +907,9 @@ output_proc_id(ProcLabel) -->
 		{ prog_out__sym_name_to_string(DeclaringModule,
 			DeclaringModuleStr) },
 		{ proc_id_to_int(Mode, ModeInt) },
-		(
-			{ PredOrFunc = predicate },
-			io__write_string("\tMR_PREDICATE,\n\t")
-		;
-			{ PredOrFunc = function },
-			io__write_string("\tMR_FUNCTION,\n\t")
-		),
+		io__write_string("\t"),
+		output_pred_or_func(PredOrFunc),
+		io__write_string(",\n\t"),
 		quote_and_write_string(DeclaringModuleStr),
 		io__write_string(",\n\t"),
 		quote_and_write_string(DefiningModuleStr),
@@ -1497,5 +1497,16 @@ output_table_gen_enum_params([MaybeEnumParam | MaybeEnumParams]) -->
 	),
 	io__write_string(",\n"),
 	output_table_gen_enum_params(MaybeEnumParams).
+
+%-----------------------------------------------------------------------------%
+
+output_pred_or_func(PredOrFunc, !IO) :-
+	(
+		PredOrFunc = predicate,
+		io__write_string("MR_PREDICATE", !IO)
+	;
+		PredOrFunc = function,
+		io__write_string("MR_FUNCTION", !IO)
+	).
 
 %-----------------------------------------------------------------------------%

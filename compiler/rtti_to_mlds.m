@@ -150,6 +150,7 @@ rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
 	% occurring in the given module.
 :- pred gen_init_rtti_data_defn(rtti_data::in, module_info::in,
 	mlds__initializer::out, list(mlds__defn)::out) is det.
+
 gen_init_rtti_data_defn(RttiData, ModuleInfo, Init, ExtraDefns) :-
 	RttiData = base_typeclass_info(_InstanceModule, _ClassId, _InstanceStr,
 		BaseTypeClassInfo),
@@ -166,6 +167,12 @@ gen_init_rtti_data_defn(RttiData, ModuleInfo, Init, ExtraDefns) :-
 		gen_init_boxed_int(N5)
 		| MethodInitializers
 	]).
+gen_init_rtti_data_defn(RttiData, _ModuleInfo, _Init, _SubDefns) :-
+	RttiData = type_class_decl(_), 
+	error("gen_init_rtti_data_defn: type_class_decl NYI").
+gen_init_rtti_data_defn(RttiData, _ModuleInfo, _Init, _SubDefns) :-
+	RttiData = type_class_instance(_), 
+	error("gen_init_rtti_data_defn: type_class_instance NYI").
 gen_init_rtti_data_defn(RttiData, ModuleInfo, Init, SubDefns) :-
 	RttiData = type_info(TypeInfo), 
 	gen_type_info_defn(ModuleInfo, TypeInfo, Init, SubDefns).
@@ -961,11 +968,54 @@ gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
 :- func gen_tc_rtti_name(module_name, tc_rtti_name) = mlds__rval.
 
 gen_tc_rtti_name(_ThisModuleName, TCRttiName) = Rval :-
-	TCRttiName = base_typeclass_info(InstanceModuleName, _, _),
-	MLDS_ModuleName = mercury_module_name_to_mlds(InstanceModuleName),
+	(
+		TCRttiName = base_typeclass_info(InstanceModuleName, _, _),
+		MLDS_ModuleName =
+			mercury_module_name_to_mlds(InstanceModuleName)
+	;
+		TCRttiName = type_class_id(TCName),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	;
+		TCRttiName = type_class_decl(TCName),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	;
+		TCRttiName = type_class_decl_super(TCName, _, _),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	;
+		TCRttiName = type_class_decl_supers(TCName),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	;
+		TCRttiName = type_class_id_var_names(TCName),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	;
+		TCRttiName = type_class_id_method_ids(TCName),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	;
+		TCRttiName = type_class_instance(TCName, _Types),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	;
+		TCRttiName = type_class_instance_tc_type_vector(TCName, _Types),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	;
+		TCRttiName = type_class_instance_constraint(TCName, _Types,
+			_, _),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	;
+		TCRttiName = type_class_instance_constraints(TCName, _Types),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	;
+		TCRttiName = type_class_instance_methods(TCName, _Types),
+		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
+	),
 	MLDS_DataName = rtti(tc_rtti_id(TCRttiName)),
 	DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
 	Rval = const(data_addr_const(DataAddr)).
+
+:- func mlds_module_name_from_tc_name(tc_name) = mlds_module_name.
+
+mlds_module_name_from_tc_name(TCName) = MLDS_ModuleName :-
+	TCName = tc_name(ModuleName, _ClassName, _Arity),
+	MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName).
 
 %-----------------------------------------------------------------------------%
 

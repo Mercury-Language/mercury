@@ -19,6 +19,10 @@
 #include "mercury_heap.h"		/* for MR_incr_saved_hp() */
 #include "mercury_builtin_types.h"	/* for void/0's type_ctor_info */
 
+MR_ConstString	MR_ctor_rep_name[] = {
+	MR_CTOR_REP_NAMES
+};
+
 /*---------------------------------------------------------------------------*/
 
 static MR_TypeInfo

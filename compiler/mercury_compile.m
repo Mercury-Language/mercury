@@ -101,6 +101,7 @@
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__export.
 :- import_module backend_libs__base_typeclass_info.
+:- import_module backend_libs__type_class_info.
 
 	% the Aditi-RL back-end
 :- import_module aditi_backend__rl_gen.
@@ -3630,7 +3631,17 @@ mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
 	% rather than output_pass.
 	%
 	{ type_ctor_info__generate_rtti(HLDS, TypeCtorRttiData) },
-	{ base_typeclass_info__generate_rtti(HLDS, TypeClassInfoRttiData) },
+	{ base_typeclass_info__generate_rtti(HLDS, OldTypeClassInfoRttiData) },
+	globals__io_lookup_bool_option(new_type_class_rtti, NewTypeClassRtti),
+	{
+		NewTypeClassRtti = no,
+		TypeClassInfoRttiData = OldTypeClassInfoRttiData
+	;
+		NewTypeClassRtti = yes,
+		type_class_info__generate_rtti(HLDS, NewTypeClassInfoRttiData),
+		list__append(OldTypeClassInfoRttiData, NewTypeClassInfoRttiData,
+			TypeClassInfoRttiData)
+	},
 	{ list__map(llds__wrap_rtti_data, TypeCtorRttiData, TypeCtorTables) },
 	{ list__map(llds__wrap_rtti_data, TypeClassInfoRttiData,
 		TypeClassInfos) },

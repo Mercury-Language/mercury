@@ -1,0 +1,25 @@
+echo on
+register --quiet
+all_type_ctors class_decl
+type_ctor class_decl t1 0
+type_ctor -r class_decl t1 0
+type_ctor -f class_decl t1 0
+type_ctor -rf class_decl t1 0
+type_ctor class_decl t2 1
+type_ctor -r class_decl t2 1
+type_ctor -f class_decl t2 1
+type_ctor -f -r class_decl t2 1
+type_ctor class_decl t1 1
+type_ctor class_decl nonexistent 3
+all_class_decls class_decl
+class_decl class_decl foo 1
+class_decl -m class_decl foo 1
+class_decl -i class_decl foo 1
+class_decl -mi class_decl foo 1
+class_decl class_decl bar 2
+class_decl -m class_decl bar 2
+class_decl -i class_decl bar 2
+class_decl -mi class_decl bar 2
+class_decl class_decl bar 1
+class_decl class_decl bad 2
+continue

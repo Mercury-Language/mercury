@@ -33,6 +33,7 @@
 :- include_module rtti.
 :- include_module switch_util.
 :- include_module type_ctor_info.
+:- include_module type_class_info.
 
 :- end_module backend_libs.
 

@@ -1544,10 +1544,6 @@ mercury_runtime_main(void)
 
 #ifdef	MR_TYPE_CTOR_STATS
 
-static	MR_ConstString	MR_ctor_rep_name[] = {
-	MR_CTOR_REP_NAMES
-};
-
 #define	MR_INIT_CTOR_NAME_ARRAY_SIZE	10
 
 void

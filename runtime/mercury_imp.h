@@ -71,6 +71,7 @@
 #include	"mercury_context.h"
 #include	"mercury_thread.h"
 #include	"mercury_type_info.h"
+#include	"mercury_typeclass_info.h"
 #include	"mercury_type_tables.h"
 #ifdef MR_USE_TRAIL
 #include	"mercury_trail.h"

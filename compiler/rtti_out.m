@@ -75,16 +75,18 @@
 :- import_module backend_libs__name_mangle.
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__type_ctor_info.
-:- import_module hlds__hlds_data.
 :- import_module hlds__error_util.
+:- import_module hlds__hlds_data.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ll_backend__code_util.
+:- import_module ll_backend__layout_out.
 :- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 
-:- import_module int, string, list, assoc_list, map, require, std_util.
+:- import_module int, string, list, assoc_list, map.
+:- import_module counter, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -98,6 +100,10 @@ output_rtti_data_defn(base_typeclass_info(InstanceModuleName, ClassId,
 		InstanceString, BaseTypeClassInfo), !DeclSet, !IO) :-
 	output_base_typeclass_info_defn(InstanceModuleName, ClassId,
 		InstanceString, BaseTypeClassInfo, !DeclSet, !IO).
+output_rtti_data_defn(type_class_decl(TCDecl), !DeclSet, !IO) :-
+	output_type_class_decl_defn(TCDecl, !DeclSet, !IO).
+output_rtti_data_defn(type_class_instance(InstanceDecl), !DeclSet, !IO) :-
+	output_type_class_instance_defn(InstanceDecl, !DeclSet, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -122,6 +128,264 @@ output_base_typeclass_info_defn(InstanceModuleName, ClassId, InstanceString,
 	io__write_string(",\n\t", !IO),
 	io__write_list(CodeAddrs, ",\n\t", output_static_code_addr, !IO),
 	io__write_string("\n};\n", !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_type_class_decl_defn(tc_decl::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_type_class_decl_defn(TCDecl, !DeclSet, !IO) :-
+	TCDecl = tc_decl(TCId, Version, Supers),
+	TCId = tc_id(TCName, TVarNames, MethodIds),
+	TCName = tc_name(ModuleSymName, ClassName, Arity),
+
+	TCIdVarNamesRttiName = type_class_id_var_names(TCName),
+	TCIdVarNamesRttiId = tc_rtti_id(TCIdVarNamesRttiName),
+	TCIdMethodIdsRttiName = type_class_id_method_ids(TCName),
+	TCIdMethodIdsRttiId = tc_rtti_id(TCIdMethodIdsRttiName),
+	TCIdRttiName = type_class_id(TCName),
+	TCIdRttiId = tc_rtti_id(TCIdRttiName),
+	TCDeclSupersRttiName = type_class_decl_supers(TCName),
+	TCDeclSupersRttiId = tc_rtti_id(TCDeclSupersRttiName),
+	TCDeclRttiName = type_class_decl(TCName),
+	TCDeclRttiId = tc_rtti_id(TCDeclRttiName),
+
+	(
+		TVarNames = []
+	;
+		TVarNames = [_ | _],
+		output_generic_rtti_data_defn_start(TCIdVarNamesRttiId,
+			!DeclSet, !IO),
+		io__write_string(" = {\n", !IO),
+		list__foldl(output_type_class_id_tvar_name, TVarNames, !IO),
+		io__write_string("};\n", !IO)
+	),
+
+	(
+		MethodIds = []
+	;
+		MethodIds = [_ | _],
+		output_generic_rtti_data_defn_start(TCIdMethodIdsRttiId,
+			!DeclSet, !IO),
+		io__write_string(" = {\n", !IO),
+		list__foldl(output_type_class_id_method_id, MethodIds, !IO),
+		io__write_string("};\n", !IO)
+	),
+
+	list__length(TVarNames, NumTVarNames),
+	list__length(MethodIds, NumMethodIds),
+	output_generic_rtti_data_defn_start(TCIdRttiId, !DeclSet, !IO),
+	io__write_string(" = {\n\t""", !IO),
+	prog_out__sym_name_to_string(ModuleSymName, ModuleName),
+	c_util__output_quoted_string(ModuleName, !IO),
+	io__write_string(""",\n\t""", !IO),
+	c_util__output_quoted_string(ClassName, !IO),
+	io__write_string(""",\n\t", !IO),
+	io__write_int(Arity, !IO),
+	io__write_string(",\n\t", !IO),
+	io__write_int(NumTVarNames, !IO),
+	io__write_string(",\n\t", !IO),
+	io__write_int(NumMethodIds, !IO),
+	io__write_string(",\n\t", !IO),
+	(
+		TVarNames = [],
+		io__write_string("NULL", !IO)
+	;
+		TVarNames = [_ | _],
+		output_rtti_id(TCIdVarNamesRttiId, !IO)
+	),
+	io__write_string(",\n\t", !IO),
+	(
+		MethodIds = [],
+		io__write_string("NULL", !IO)
+	;
+		MethodIds = [_ | _],
+		output_rtti_id(TCIdMethodIdsRttiId, !IO)
+	),
+	io__write_string("\n};\n", !IO),
+
+	(
+		Supers = []
+	;
+		Supers = [_ | _],
+		list__map_foldl3(output_type_class_constraint(
+			make_tc_decl_super_id(TCName)), Supers, SuperIds,
+			counter__init(1), _, !DeclSet, !IO),
+		output_generic_rtti_data_defn_start(TCDeclSupersRttiId,
+			!DeclSet, !IO),
+		io__write_string(" = {\n", !IO),
+		output_cast_addr_of_rtti_ids("(MR_TypeClassConstraint) ",
+			SuperIds, !IO),
+		io__write_string("};\n", !IO)
+	),
+
+	list__length(Supers, NumSupers),
+	output_generic_rtti_data_defn_start(TCDeclRttiId, !DeclSet, !IO),
+	io__write_string(" = {\n\t&", !IO),
+	output_rtti_id(TCIdRttiId, !IO),
+	io__write_string(",\n\t", !IO),
+	io__write_int(Version, !IO),
+	io__write_string(",\n\t", !IO),
+	io__write_int(NumSupers, !IO),
+	io__write_string(",\n\t", !IO),
+	(
+		Supers = [],
+		io__write_string("NULL", !IO)
+	;
+		Supers = [_ | _],
+		output_rtti_id(TCDeclSupersRttiId, !IO)
+	),
+	io__write_string("\n};\n", !IO).
+
+:- pred output_type_class_id_tvar_name(string::in,
+	io__state::di, io__state::uo) is det.
+
+output_type_class_id_tvar_name(TVarName, !IO) :-
+	io__write_string("\t""", !IO),
+	c_util__output_quoted_string(TVarName, !IO),
+	io__write_string(""",\n", !IO).
+
+:- pred output_type_class_id_method_id(tc_method_id::in,
+	io__state::di, io__state::uo) is det.
+
+output_type_class_id_method_id(MethodId, !IO) :-
+	MethodId = tc_method_id(MethodName, MethodArity, PredOrFunc),
+	io__write_string("\t{ """, !IO),
+	c_util__output_quoted_string(MethodName, !IO),
+	io__write_string(""", ", !IO),
+	io__write_int(MethodArity, !IO),
+	io__write_string(", ", !IO),
+	output_pred_or_func(PredOrFunc, !IO),
+	io__write_string(" },\n", !IO).
+
+:- pred make_tc_decl_super_id(tc_name::in, int::in, int::in, rtti_id::out)
+	is det.
+
+make_tc_decl_super_id(TCName, Ordinal, NumTypes, RttiId) :-
+	RttiId = tc_rtti_id(type_class_decl_super(TCName, Ordinal, NumTypes)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_type_class_instance_defn(tc_instance::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_type_class_instance_defn(Instance, !DeclSet, !IO) :-
+	Instance = tc_instance(TCName, TCTypes, NumTypeVars, Constraints,
+		MethodProcLabels),
+	list__foldl2(output_maybe_pseudo_type_info_defn, TCTypes,
+		!DeclSet, !IO),
+	TCTypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data,
+		TCTypes),
+	TCInstanceTypesRttiId = tc_rtti_id(
+		type_class_instance_tc_type_vector(TCName, TCTypes)),
+	output_generic_rtti_data_defn_start(TCInstanceTypesRttiId,
+		!DeclSet, !IO),
+	io__write_string(" = {\n", !IO),
+	output_cast_addr_of_rtti_datas("(MR_PseudoTypeInfo) ", TCTypeRttiDatas,
+		!IO),
+	io__write_string("};\n", !IO),
+	TCInstanceConstraintsRttiId = tc_rtti_id(
+		type_class_instance_constraints(TCName, TCTypes)),
+	(
+		Constraints = []
+	;
+		Constraints = [_ | _],
+		list__map_foldl3(output_type_class_constraint(
+			make_tc_instance_constraint_id(TCName, TCTypes)),
+			Constraints, ConstraintIds, counter__init(1), _,
+			!DeclSet, !IO),
+		output_generic_rtti_data_defn_start(
+			TCInstanceConstraintsRttiId, !DeclSet, !IO),
+		io__write_string(" = {\n", !IO),
+		output_cast_addr_of_rtti_ids("(MR_TypeClassConstraint) ",
+			ConstraintIds, !IO),
+		io__write_string("};\n", !IO)
+	),
+	TCInstanceMethodsRttiId = tc_rtti_id(
+		type_class_instance_methods(TCName, TCTypes)),
+	(
+		MethodProcLabels = []
+	;
+		MethodProcLabels = [_ | _],
+		MethodCodeAddrs = list__map(make_code_addr, MethodProcLabels),
+		output_code_addrs_decls(MethodCodeAddrs, "", "", 0, _,
+			!DeclSet, !IO),
+		output_generic_rtti_data_defn_start(TCInstanceMethodsRttiId,
+			!DeclSet, !IO),
+		io__write_string(" = {\n", !IO),
+		list__foldl(output_code_addr_in_list, MethodCodeAddrs, !IO),
+		io__write_string("};\n", !IO)
+	),
+	TCDeclRttiId = tc_rtti_id(type_class_decl(TCName)),
+	output_rtti_id_decls(TCDeclRttiId, "", "", 0, _, !DeclSet, !IO),
+	TCInstanceRttiId = tc_rtti_id(type_class_instance(TCName, TCTypes)),
+	output_generic_rtti_data_defn_start(TCInstanceRttiId, !DeclSet, !IO),
+	io__write_string(" = {\n\t&", !IO),
+	output_rtti_id(TCDeclRttiId, !IO),
+	io__write_string(",\n\t", !IO),
+	io__write_int(NumTypeVars, !IO),
+	io__write_string(",\n\t", !IO),
+	io__write_int(list__length(Constraints), !IO),
+	io__write_string(",\n\t", !IO),
+	output_rtti_id(TCInstanceTypesRttiId, !IO),
+	io__write_string(",\n\t", !IO),
+	(
+		Constraints = [],
+		io__write_string("NULL", !IO)
+	;
+		Constraints = [_ | _],
+		output_rtti_id(TCInstanceConstraintsRttiId, !IO)
+	),
+	io__write_string(",\n\t", !IO),
+	(
+		MethodProcLabels = [],
+		io__write_string("NULL", !IO)
+	;
+		MethodProcLabels = [_ | _],
+		io__write_string("&", !IO),
+		output_rtti_id(TCInstanceMethodsRttiId, !IO)
+	),
+	io__write_string("\n};\n", !IO).
+
+:- pred make_tc_instance_constraint_id(tc_name::in, list(tc_type)::in,
+	int::in, int::in, rtti_id::out) is det.
+
+make_tc_instance_constraint_id(TCName, TCTypes, Ordinal, NumTypes, RttiId) :-
+	RttiId = tc_rtti_id(type_class_instance_constraint(TCName, TCTypes,
+		Ordinal, NumTypes)).
+
+:- pred output_code_addr_in_list(code_addr::in,
+	io__state::di, io__state::uo) is det.
+
+output_code_addr_in_list(CodeAddr, !IO) :-
+	io__write_string("\t", !IO),
+	output_static_code_addr(CodeAddr, !IO),
+	io__write_string(",\n", !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_type_class_constraint(
+	pred(int, int, rtti_id)::in(pred(in, in, out) is det),
+	tc_constraint::in, rtti_id::out, counter::in, counter::out,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_type_class_constraint(MakeRttiId, Constraint, TCDeclSuperRttiId,
+		!Counter, !DeclSet, !IO) :-
+	Constraint = tc_constraint(TCName, Types),
+	list__length(Types, NumTypes),
+	counter__allocate(Ordinal, !Counter),
+	MakeRttiId(Ordinal, NumTypes, TCDeclSuperRttiId),
+	TCDeclRttiId = tc_rtti_id(type_class_decl(TCName)),
+	output_generic_rtti_data_decl(TCDeclRttiId, !DeclSet, !IO),
+	list__foldl2(output_maybe_pseudo_type_info_defn, Types, !DeclSet, !IO),
+	TypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Types),
+	output_generic_rtti_data_defn_start(TCDeclSuperRttiId, !DeclSet, !IO),
+	io__write_string(" = {\n\t&", !IO),
+	output_rtti_id(TCDeclRttiId, !IO),
+	io__write_string(",\n\t{\n", !IO),
+	output_cast_addr_of_rtti_datas("(MR_PseudoTypeInfo) ", TypeRttiDatas,
+		!IO),
+	io__write_string("\t}\n};\n", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -162,13 +426,16 @@ output_type_info_defn(TypeInfo, !DeclSet, !IO) :-
 :- pred do_output_type_info_defn(rtti_type_info::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-do_output_type_info_defn(plain_arity_zero_type_info(_), !DeclSet, !IO).
+do_output_type_info_defn(TypeInfo, !DeclSet, !IO) :-
+	TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
+	TypeCtorRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_info),
+	output_rtti_id_decls(TypeCtorRttiId, "", "", 0, _, !DeclSet, !IO).
 do_output_type_info_defn(TypeInfo, !DeclSet, !IO) :-
 	TypeInfo = plain_type_info(RttiTypeCtor, Args),
-	TypeCtorRttiData = type_info(plain_arity_zero_type_info(RttiTypeCtor)),
+	TypeCtorRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_info),
+	output_rtti_id_decls(TypeCtorRttiId, "", "", 0, _, !DeclSet, !IO),
 	ArgRttiDatas = list__map(type_info_to_rtti_data, Args),
-	output_type_ctor_and_arg_defns_and_decls(TypeCtorRttiData,
-		ArgRttiDatas, !DeclSet, !IO),
+	output_type_ctor_arg_defns_and_decls(ArgRttiDatas, !DeclSet, !IO),
 	output_generic_rtti_data_defn_start(
 		ctor_rtti_id(RttiTypeCtor, type_info(TypeInfo)),
 		!DeclSet, !IO),
@@ -180,11 +447,10 @@ do_output_type_info_defn(TypeInfo, !DeclSet, !IO) :-
 do_output_type_info_defn(TypeInfo, !DeclSet, !IO) :-
 	TypeInfo = var_arity_type_info(RttiVarArityId, Args),
 	RttiTypeCtor = var_arity_id_to_rtti_type_ctor(RttiVarArityId),
-	TypeCtorRttiData = type_info(
-		plain_arity_zero_type_info(RttiTypeCtor)),
+	TypeCtorRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_info),
+	output_rtti_id_decls(TypeCtorRttiId, "", "", 0, _, !DeclSet, !IO),
 	ArgRttiDatas = list__map(type_info_to_rtti_data, Args),
-	output_type_ctor_and_arg_defns_and_decls(TypeCtorRttiData,
-		ArgRttiDatas, !DeclSet, !IO),
+	output_type_ctor_arg_defns_and_decls(ArgRttiDatas, !DeclSet, !IO),
 	output_generic_rtti_data_defn_start(
 		ctor_rtti_id(RttiTypeCtor, type_info(TypeInfo)),
 		!DeclSet, !IO),
@@ -219,15 +485,16 @@ output_pseudo_type_info_defn(PseudoTypeInfo, !DeclSet, !IO) :-
 :- pred do_output_pseudo_type_info_defn(rtti_pseudo_type_info::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-do_output_pseudo_type_info_defn(plain_arity_zero_pseudo_type_info(_),
-		!DeclSet, !IO).
+do_output_pseudo_type_info_defn(PseudoTypeInfo, !DeclSet, !IO) :-
+	PseudoTypeInfo = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
+	TypeCtorRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_info),
+	output_rtti_id_decls(TypeCtorRttiId, "", "", 0, _, !DeclSet, !IO).
 do_output_pseudo_type_info_defn(PseudoTypeInfo, !DeclSet, !IO) :-
 	PseudoTypeInfo = plain_pseudo_type_info(RttiTypeCtor, Args),
-	TypeCtorRttiData = pseudo_type_info(
-		plain_arity_zero_pseudo_type_info(RttiTypeCtor)),
+	TypeCtorRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_info),
+	output_rtti_id_decls(TypeCtorRttiId, "", "", 0, _, !DeclSet, !IO),
 	ArgRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Args),
-	output_type_ctor_and_arg_defns_and_decls(TypeCtorRttiData,
-		ArgRttiDatas, !DeclSet, !IO),
+	output_type_ctor_arg_defns_and_decls(ArgRttiDatas, !DeclSet, !IO),
 	output_generic_rtti_data_defn_start(
 		ctor_rtti_id(RttiTypeCtor, pseudo_type_info(PseudoTypeInfo)),
 		!DeclSet, !IO),
@@ -240,11 +507,10 @@ do_output_pseudo_type_info_defn(PseudoTypeInfo, !DeclSet, !IO) :-
 do_output_pseudo_type_info_defn(PseudoTypeInfo, !DeclSet, !IO) :-
 	PseudoTypeInfo = var_arity_pseudo_type_info(RttiVarArityId, Args),
 	RttiTypeCtor = var_arity_id_to_rtti_type_ctor(RttiVarArityId),
-	TypeCtorRttiData = pseudo_type_info(
-		plain_arity_zero_pseudo_type_info(RttiTypeCtor)),
+	TypeCtorRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_info),
+	output_rtti_id_decls(TypeCtorRttiId, "", "", 0, _, !DeclSet, !IO),
 	ArgRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Args),
-	output_type_ctor_and_arg_defns_and_decls(TypeCtorRttiData,
-		ArgRttiDatas, !DeclSet, !IO),
+	output_type_ctor_arg_defns_and_decls(ArgRttiDatas, !DeclSet, !IO),
 	output_generic_rtti_data_defn_start(
 		ctor_rtti_id(RttiTypeCtor, pseudo_type_info(PseudoTypeInfo)),
 		!DeclSet, !IO),
@@ -259,14 +525,10 @@ do_output_pseudo_type_info_defn(PseudoTypeInfo, !DeclSet, !IO) :-
 	io__write_string("}};\n", !IO).
 do_output_pseudo_type_info_defn(type_var(_), !DeclSet, !IO).
 
-:- pred output_type_ctor_and_arg_defns_and_decls(rtti_data::in,
-	list(rtti_data)::in, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+:- pred output_type_ctor_arg_defns_and_decls(list(rtti_data)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_type_ctor_and_arg_defns_and_decls(TypeCtorRttiData, ArgRttiDatas,
-		!DeclSet, !IO) :-
-	output_rtti_data_decls(TypeCtorRttiData, "", "", 0, _,
-		!DeclSet, !IO),
+output_type_ctor_arg_defns_and_decls(ArgRttiDatas, !DeclSet, !IO) :-
 	% We must output the definitions of the rtti_datas of the argument
 	% typeinfos and/or pseudo-typeinfos, because they may contain other
 	% typeinfos and/or pseudo-typeinfos nested within them. However,
@@ -993,8 +1255,9 @@ output_rtti_id_storage_type_name(RttiId, BeingDefined, !IO) :-
 
 output_rtti_type_decl(RttiId, !IO) :-
 	(
-		rtti_type_template_arity(RttiId, Arity),
-		Arity > max_always_declared_arity
+		RttiId = ctor_rtti_id(_, RttiName),
+		rtti_type_ctor_template_arity(RttiName, Arity),
+		Arity > max_always_declared_arity_type_ctor
 	->
 		Template =
 "#ifndef MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
@@ -1004,13 +1267,25 @@ MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY(%d);
 ",
 		io__format(Template, [i(Arity), i(Arity), i(Arity)], !IO)
 	;
+		RttiId = tc_rtti_id(TCRttiName),
+		rtti_type_class_constraint_template_arity(TCRttiName, Arity),
+		Arity > max_always_declared_arity_type_class_constraint
+	->
+		Template =
+"#ifndef MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
+#define MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_%d, %d);
+#endif
+",
+		io__format(Template, [i(Arity), i(Arity), i(Arity), i(Arity)],
+			!IO)
+	;
 		true
 	).
 
-:- pred rtti_type_template_arity(rtti_id::in, int::out) is semidet.
+:- pred rtti_type_ctor_template_arity(ctor_rtti_name::in, int::out) is semidet.
 
-rtti_type_template_arity(RttiId, NumArgTypes) :-
-	RttiId = ctor_rtti_id(_, RttiName),
+rtti_type_ctor_template_arity(RttiName, NumArgTypes) :-
 	RttiName = type_info(TypeInfo),
 	(
 		TypeInfo = plain_type_info(_, ArgTypes)
@@ -1018,8 +1293,7 @@ rtti_type_template_arity(RttiId, NumArgTypes) :-
 		TypeInfo = var_arity_type_info(_, ArgTypes)
 	),
 	NumArgTypes = list__length(ArgTypes).
-rtti_type_template_arity(RttiId, NumArgTypes) :-
-	RttiId = ctor_rtti_id(_, RttiName),
+rtti_type_ctor_template_arity(RttiName, NumArgTypes) :-
 	RttiName = pseudo_type_info(PseudoTypeInfo),
 	(
 		PseudoTypeInfo = plain_pseudo_type_info(_, ArgTypes)
@@ -1028,9 +1302,21 @@ rtti_type_template_arity(RttiId, NumArgTypes) :-
 	),
 	NumArgTypes = list__length(ArgTypes).
 
-:- func max_always_declared_arity = int.
+:- func max_always_declared_arity_type_ctor = int.
 
-max_always_declared_arity = 20.
+max_always_declared_arity_type_ctor = 20.
+
+:- pred rtti_type_class_constraint_template_arity(tc_rtti_name::in, int::out)
+	is semidet.
+
+rtti_type_class_constraint_template_arity(TCRttiName, Arity) :-
+	TCRttiName = type_class_decl_super(_, _, Arity).
+rtti_type_class_constraint_template_arity(TCRttiName, Arity) :-
+	TCRttiName = type_class_instance_constraint(_, _, _, Arity).
+
+:- func max_always_declared_arity_type_class_constraint = int.
+
+max_always_declared_arity_type_class_constraint = 5.
 
 %-----------------------------------------------------------------------------%
 
@@ -1073,6 +1359,15 @@ rtti_out__init_rtti_data_if_nec(Data, !IO) :-
 		io__write_string("#endif /* MR_STATIC_CODE_ADDRESSES */\n",
 			!IO)
 	;
+		Data = type_class_instance(_)
+	->
+		io__write_string("#ifndef MR_STATIC_CODE_ADDRESSES\n", !IO),
+		io__write_string("#error ""type_class_instance " ++
+			"not yet supported without static code addresses""\n",
+			!IO),
+		io__write_string("#endif /* MR_STATIC_CODE_ADDRESSES */\n",
+			!IO)
+	;
 		true
 	).
 
@@ -1082,38 +1377,51 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
 	->
 		RttiTypeCtor = tcd_get_rtti_type_ctor(TypeCtorData),
 		RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_info),
+		io__write_string("\t{\n\t", !IO),
 		(
 			SplitFiles = yes,
-			io__write_string("\t{\n\t", !IO),
 			output_rtti_id_storage_type_name(RttiId, no, !IO),
-			io__write_string(
-				";\n\tMR_register_type_ctor_info(\n\t\t&",
-				!IO),
-			output_rtti_id(RttiId, !IO),
-			io__write_string(");\n\t}\n", !IO)
+			io__write_string(";\n", !IO)
 		;
-			SplitFiles = no,
-			io__write_string(
-				"\tMR_register_type_ctor_info(\n\t\t&", !IO),
-			output_rtti_id(RttiId, !IO),
-			io__write_string(");\n", !IO)
-		)
+			SplitFiles = no
+		),
+		io__write_string("\tMR_register_type_ctor_info(\n\t\t&", !IO),
+		output_rtti_id(RttiId, !IO),
+		io__write_string(");\n\t}\n", !IO)
 	;
-		Data = base_typeclass_info(_InstanceModuleName, _ClassId,
-			_InstanceString, _BaseTypeClassInfo)
+		Data = type_class_decl(TCDecl)
 	->
-		% XXX Registering base_typeclass_infos by themselves is not
-		% enough. A base_typeclass_info doesn't say which types it
-		% declares to be members of which typeclass, and for now
-		% we don't even have any data structures in the runtime system
-		% to describe such membership information.
-		%
-		% io__write_string(
-		%	"\tMR_register_base_typeclass_info(\n\t\t&"),
-		% output_base_typeclass_info_storage_type_name(
-		%	InstanceModuleName, ClassId, InstanceString, no),
-		% io__write_string(");\n")
-		true
+		TCDecl = tc_decl(TCId, _, _),
+		TCId = tc_id(TCName, _, _),
+		RttiId = tc_rtti_id(type_class_decl(TCName)),
+		io__write_string("\t{\n\t", !IO),
+		(
+			SplitFiles = yes,
+			output_rtti_id_storage_type_name(RttiId, no, !IO),
+			io__write_string(";\n", !IO)
+		;
+			SplitFiles = no
+		),
+		io__write_string("\tMR_register_type_class_decl(\n\t\t&", !IO),
+		output_rtti_id(RttiId, !IO),
+		io__write_string(");\n\t}\n", !IO)
+	;
+		Data = type_class_instance(TCInstance)
+	->
+		TCInstance = tc_instance(TCName, TCTypes, _, _, _),
+		RttiId = tc_rtti_id(type_class_instance(TCName, TCTypes)),
+		io__write_string("\t{\n\t", !IO),
+		(
+			SplitFiles = yes,
+			output_rtti_id_storage_type_name(RttiId, no, !IO),
+			io__write_string(";\n", !IO)
+		;
+			SplitFiles = no
+		),
+		io__write_string("\tMR_register_type_class_instance(\n\t\t&",
+			!IO),
+		output_rtti_id(RttiId, !IO),
+		io__write_string(");\n\t}\n", !IO)
 	;
 		true
 	).
@@ -1174,6 +1482,19 @@ output_rtti_id_decls(RttiId, FirstIndent, LaterIndent,
 	output_data_addr_decls(rtti_addr(RttiId), FirstIndent, LaterIndent,
 		N0, N1, !DeclSet, !IO).
 
+:- pred output_cast_addr_of_rtti_ids(string::in, list(rtti_id)::in,
+	io__state::di, io__state::uo) is det.
+
+output_cast_addr_of_rtti_ids(_, [], !IO) :-
+	io__write_string(
+	  "\t/* Dummy entry, since ISO C forbids zero-sized arrays */\n", !IO),
+	io__write_string("\t0\n", !IO).
+output_cast_addr_of_rtti_ids(Cast, [TCRttiName | TCRttiNames], !IO) :-
+	io__write_string("\t", !IO),
+	io__write_list([TCRttiName | TCRttiNames], ",\n\t",
+		output_cast_addr_of_rtti_id(Cast), !IO),
+	io__write_string("\n", !IO).
+
 :- pred output_addr_of_ctor_rtti_names(rtti_type_ctor::in,
 	list(ctor_rtti_name)::in, io__state::di, io__state::uo) is det.
 
@@ -1219,6 +1540,13 @@ output_addr_of_rtti_data(RttiData, !IO) :-
 		rtti_data_to_id(RttiData, RttiId),
 		output_addr_of_rtti_id(RttiId, !IO)
 	).
+
+:- pred output_cast_addr_of_rtti_id(string::in, rtti_id::in,
+	io__state::di, io__state::uo) is det.
+
+output_cast_addr_of_rtti_id(Cast, RttiId, !IO) :-
+	io__write_string(Cast, !IO),
+	output_addr_of_rtti_id(RttiId, !IO).
 
 :- pred output_addr_of_rtti_id(rtti_id::in, io__state::di, io__state::uo)
 	is det.

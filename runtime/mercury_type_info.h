@@ -314,8 +314,7 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
     ((MR_TypeInfoParams) &(type_info)->MR_ti_type_ctor_info)
 
 #define MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)             \
-    ((MR_TypeInfoParams)                                            \
-        &(type_info)->MR_ti_var_arity_arity)
+    ((MR_TypeInfoParams) &(type_info)->MR_ti_var_arity_arity)
 
 /*
 ** Macros for creating type_infos.
@@ -592,6 +591,8 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "REFERENCE",                                \
     "STABLE_C_POINTER",                         \
     "UNKNOWN"
+
+extern  MR_ConstString  MR_ctor_rep_name[];
 
 /*---------------------------------------------------------------------------*/
 

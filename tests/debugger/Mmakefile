@@ -17,6 +17,7 @@ RETRY_PROGS = \
 NONRETRY_PROGS = \
 	breakpoints			\
 	browse_pretty			\
+	class_decl			\
 	cmd_quote			\
 	debugger_regs			\
 	exception_cmd			\
@@ -218,6 +219,12 @@ browse_pretty.out: browse_pretty browse_pretty.inp
 browser_test.out: browser_test browser_test.inp
 	$(MDB_STD) ./browser_test < browser_test.inp 2>&1 | \
 		sed 's/io.m:[0-9]*/io.m:NNNN/g' > browser_test.out 2>&1
+
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
+class_decl.out: class_decl class_decl.inp
+	$(MDB) ./class_decl < class_decl.inp 2>&1 | \
+		sed 's/io.m:[0-9]*/io.m:NNNN/g' > class_decl.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.

@@ -424,6 +424,89 @@
 		methods :: list(rtti_proc_label)
 	).
 
+%-----------------------------------------------------------------------------%
+
+% The types in this block (until the next horizontal line) will eventually
+% replace base_typeclass_infos. For now, the C data structures they describe
+% are generated only on request, and used only by the debugger.
+
+	% This type corresponds to the C type MR_TypeClassMethod.
+:- type tc_method_id
+	--->	tc_method_id(
+			tcm_name		:: string,
+			tcm_arity		:: int,
+			tcm_pred_or_func	:: pred_or_func
+		).
+
+	% Uniquely identifies a type class.
+:- type tc_name
+	--->	tc_name(
+			tcn_module		:: module_name,
+			tcn_name		:: string,
+			tcn_arity		:: int
+		).
+
+	% Values of the tc_id and tc_decl types contain the information about
+	% a type class declaration that we need to interpret other data
+	% structures related to the type class.
+	%
+	% The tc_id type corresponds to the C type MR_TypeClassId, while
+	% the tc_decl type corresponds to the C type MR_TypeClassDecl.
+	%
+	% The reason for splitting the information between two C structures
+	% is to make it easier to allow us to maintain binary compatibility
+	% even if the amount of information we want to record about type class
+	% declarations changes.
+:- type tc_id
+	--->	tc_id(
+			tc_id_name		:: tc_name,
+			tc_id_type_var_names	:: list(string),
+			tc_id_methods		:: list(tc_method_id)
+		).
+
+:- type tc_decl
+	--->	tc_decl(
+			tc_decl_id		:: tc_id,
+			tc_decl_version_number	:: int,
+			tc_decl_supers		:: list(tc_constraint)
+		).
+
+:- type tc_type == rtti_maybe_pseudo_type_info.
+
+	% This type corresponds to the C type MR_TypeClassConstraint_NStruct,
+	% where N is the length of the list in the tcc_types field.
+:- type tc_constraint
+	--->	tc_constraint(
+			tcc_class_name		:: tc_name,
+			tcc_types		:: list(tc_type)
+		).
+
+	% Uniquely identifies an instance declaration, and gives information
+	% about the declaration that we need to interpret other data
+	% structures related to the type class.
+	%
+	% This type corresponds to the C type MR_Instance.
+:- type tc_instance
+	--->	tc_instance(
+			tci_type_class		:: tc_name,
+			tci_types		:: list(tc_type),
+			tci_num_type_vars	:: int,
+			tci_constraints		:: list(tc_constraint),
+			tci_methods		:: list(rtti_proc_label)
+		).
+
+	% This type corresponds to the C type MR_ClassDict.
+	%
+	% XXX We don't yet use this type.
+:- type tc_dict
+	--->	tc_dict(
+			tcd_class		:: tc_name,
+			tcd_types		:: list(rtti_type_info),
+			tcd_methods		:: list(rtti_proc_label)
+		).
+
+%-----------------------------------------------------------------------------%
+
 :- type prog_var_name == string.
 
 	% The rtti_proc_label type holds all the information about a procedure
@@ -490,6 +573,12 @@
 					% types in the instance declaration
 
 			base_typeclass_info
+		)
+	;	type_class_decl(
+			tc_decl
+		)
+	;	type_class_instance(
+			tc_instance
 		).
 
 % All rtti_data data structures and all their components are identified
@@ -533,7 +622,21 @@
 			class_id,	% specifies class name & class arity
 			string		% encodes the names and arities of the
 					% types in the instance declaration
-		).
+		)
+	;	type_class_id(tc_name)
+	;	type_class_id_var_names(tc_name)
+	;	type_class_id_method_ids(tc_name)
+	;	type_class_decl(tc_name)
+	;	type_class_decl_super(tc_name, int, int)
+			% superclass ordinal, constraint arity
+	;	type_class_decl_supers(tc_name)
+	;	type_class_instance(tc_name, list(tc_type))
+	;	type_class_instance_tc_type_vector(tc_name, list(tc_type))
+	;	type_class_instance_constraint(tc_name, list(tc_type),
+			int, int)
+			% constraint ordinal, constraint arity
+	;	type_class_instance_constraints(tc_name, list(tc_type))
+	;	type_class_instance_methods(tc_name, list(tc_type)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -664,6 +767,11 @@
 :- pred tc_rtti_name_java_type(tc_rtti_name::in, string::out, bool::out)
 	is det.
 
+	% Given a type in a type vector in a type class instance declaration,
+	% return its string encoding for use in RTTI data structures, e.g. as
+	% part of C identifiers.
+:- func rtti__encode_tc_instance_type(tc_type) = string.
+
 :- implementation.
 
 :- import_module backend_libs__name_mangle.
@@ -671,6 +779,7 @@
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
 :- import_module parse_tree__prog_util.	% for mercury_public_builtin_module
+:- import_module parse_tree__prog_out.
 
 :- import_module int, string, require, varset.
 
@@ -697,12 +806,25 @@ rtti_data_to_id(pseudo_type_info(PseudoTypeInfo),
 	RttiTypeCtor = pti_get_rtti_type_ctor(PseudoTypeInfo).
 rtti_data_to_id(base_typeclass_info(Module, ClassId, Instance, _),
 		tc_rtti_id(base_typeclass_info(Module, ClassId, Instance))).
+rtti_data_to_id(type_class_decl(tc_decl(TCId, _, _)),
+		tc_rtti_id(type_class_decl(TCName))) :-
+	TCId = tc_id(TCName, _, _).
+rtti_data_to_id(type_class_instance(tc_instance(TCName, TCTypes, _, _, _)),
+		tc_rtti_id(type_class_instance(TCName, TCTypes))).
 
 tcd_get_rtti_type_ctor(TypeCtorData) = RttiTypeCtor :-
 	ModuleName = TypeCtorData ^ tcr_module_name,
 	TypeName = TypeCtorData ^ tcr_type_name,
 	Arity = TypeCtorData ^ tcr_arity,
 	RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, Arity).
+
+:- func maybe_pseudo_get_rtti_type_ctor(rtti_maybe_pseudo_type_info)
+	= rtti_type_ctor.
+
+maybe_pseudo_get_rtti_type_ctor(plain(TypeInfo)) =
+	ti_get_rtti_type_ctor(TypeInfo).
+maybe_pseudo_get_rtti_type_ctor(pseudo(PseudoTypeInfo)) =
+	pti_get_rtti_type_ctor(PseudoTypeInfo).
 
 :- func ti_get_rtti_type_ctor(rtti_type_info) = rtti_type_ctor.
 
@@ -776,6 +898,17 @@ ctor_rtti_name_is_exported(pseudo_type_info(PseudoTypeInfo)) =
 ctor_rtti_name_is_exported(type_hashcons_pointer)    = no.
 
 tc_rtti_name_is_exported(base_typeclass_info(_, _, _)) = yes.
+tc_rtti_name_is_exported(type_class_id(_)) = no.
+tc_rtti_name_is_exported(type_class_id_var_names(_)) = no.
+tc_rtti_name_is_exported(type_class_id_method_ids(_)) = no.
+tc_rtti_name_is_exported(type_class_decl(_)) = yes.
+tc_rtti_name_is_exported(type_class_decl_super(_, _, _)) = no.
+tc_rtti_name_is_exported(type_class_decl_supers(_)) = no.
+tc_rtti_name_is_exported(type_class_instance(_, _)) = yes.
+tc_rtti_name_is_exported(type_class_instance_tc_type_vector(_, _)) = no.
+tc_rtti_name_is_exported(type_class_instance_constraint(_, _, _, _)) = no.
+tc_rtti_name_is_exported(type_class_instance_constraints(_, _)) = no.
+tc_rtti_name_is_exported(type_class_instance_methods(_, _)) = no.
 
 :- func type_info_is_exported(rtti_type_info) = bool.
 
@@ -928,6 +1061,140 @@ rtti__name_to_string(RttiTypeCtor, RttiName, Str) :-
 rtti__tc_name_to_string(TCRttiName, Str) :-
 	TCRttiName = base_typeclass_info(_ModuleName, ClassId, InstanceStr),
 	Str = make_base_typeclass_info_name(ClassId, InstanceStr).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName = type_class_id(TCName),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	string__append_list([ModuleName, "__type_class_id_",
+		ClassName, "_", ArityStr], Str).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName = type_class_id_method_ids(TCName),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	string__append_list([ModuleName, "__type_class_id_method_ids_",
+		ClassName, "_", ArityStr], Str).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName = type_class_id_var_names(TCName),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	string__append_list([ModuleName, "__type_class_id_var_names_",
+		ClassName, "_", ArityStr], Str).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName = type_class_decl(TCName),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	string__append_list([ModuleName, "__type_class_decl_",
+		ClassName, "_", ArityStr], Str).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName = type_class_decl_supers(TCName),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	string__append_list([ModuleName, "__type_class_decl_supers_",
+		ClassName, "_", ArityStr], Str).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName = type_class_decl_super(TCName, Ordinal, _),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	string__int_to_string(Ordinal, OrdinalStr),
+	string__append_list([ModuleName, "__type_class_decl_super_",
+		ClassName, "_", ArityStr, "_", OrdinalStr], Str).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName = type_class_instance(TCName, TCTypes),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	TypeStrs = list__map(rtti__encode_tc_instance_type, TCTypes),
+	TypeVectorStr = string__append_list(TypeStrs),
+	string__append_list([ModuleName, "__type_class_instance_",
+		ClassName, "_", ArityStr, "_", TypeVectorStr], Str).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName = type_class_instance_tc_type_vector(TCName, TCTypes),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	TypeStrs = list__map(rtti__encode_tc_instance_type, TCTypes),
+	TypeVectorStr = string__append_list(TypeStrs),
+	string__append_list([ModuleName,
+		"__type_class_instance_tc_type_vector_",
+		ClassName, "_", ArityStr, "_", TypeVectorStr], Str).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName =
+		type_class_instance_constraint(TCName, TCTypes, Ordinal, _),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	TypeStrs = list__map(rtti__encode_tc_instance_type, TCTypes),
+	TypeVectorStr = string__append_list(TypeStrs),
+	string__int_to_string(Ordinal, OrdinalStr),
+	string__append_list([ModuleName, "__type_class_instance_constraint_",
+		ClassName, "_", ArityStr, "_", OrdinalStr, "_", TypeVectorStr],
+		Str).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName = type_class_instance_constraints(TCName, TCTypes),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	TypeStrs = list__map(rtti__encode_tc_instance_type, TCTypes),
+	TypeVectorStr = string__append_list(TypeStrs),
+	string__append_list([ModuleName, "__type_class_instance_constraints_",
+		ClassName, "_", ArityStr, "_", TypeVectorStr], Str).
+rtti__tc_name_to_string(TCRttiName, Str) :-
+	TCRttiName = type_class_instance_methods(TCName, TCTypes),
+	rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName,
+		ArityStr),
+	TypeStrs = list__map(rtti__encode_tc_instance_type, TCTypes),
+	TypeVectorStr = string__append_list(TypeStrs),
+	string__append_list([ModuleName, "__type_class_instance_methods_",
+		ClassName, "_", ArityStr, "_", TypeVectorStr], Str).
+
+% The encoding we use here depends on the types in instance declarations
+% being type constructors applied to vectors of distinct variables. When
+% we lift that restriction, we will have to change this scheme.
+%
+% The code here is based on the code of base_typeclass_info__type_to_string,
+% but its input is of type `maybe_pseudo_type_info', not of type `type'.
+
+rtti__encode_tc_instance_type(TCType) = Str :-
+	(
+		TCType = plain(TI),
+		(
+			TI = plain_arity_zero_type_info(RttiTypeCtor),
+			ArgTIs = []
+		;
+			TI = plain_type_info(RttiTypeCtor, ArgTIs)
+		;
+			TI = var_arity_type_info(VarArityId, ArgTIs),
+			RttiTypeCtor =
+				var_arity_id_to_rtti_type_ctor(VarArityId)
+		),
+		Arity = list__length(ArgTIs)
+		% XXX We may wish to check that all arguments are variables.
+		% (possible only if Arity = 0)
+	;
+		TCType = pseudo(PTI),
+		(
+			PTI = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
+			ArgPTIs = []
+		;
+			PTI = plain_pseudo_type_info(RttiTypeCtor, ArgPTIs)
+		;
+			PTI = var_arity_pseudo_type_info(VarArityId, ArgPTIs),
+			RttiTypeCtor =
+				var_arity_id_to_rtti_type_ctor(VarArityId)
+		;
+			PTI = type_var(_),
+			error("rtti__encode_tc_instance_type: type_var")
+		),
+		Arity = list__length(ArgPTIs)
+		% XXX We may wish to check that all arguments are variables.
+	),
+	RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, _CtorArity),
+	prog_out__sym_name_to_string(qualified(ModuleName, TypeName), "__", 
+		TypeStr),
+	string__int_to_string(Arity, ArityStr),
+	% XXX This naming scheme is the same as for base_typeclass_infos.
+	% We should think about
+	% - whether encoding guarantees different names for different instance
+	%   declarations;
+	% - whether the encoding is uniquely invertible, and
+	% - whether the encoding may ever need to be uniquely invertible.
+	string__append_list([TypeStr, "__arity", ArityStr, "__"], Str).
 
 :- pred rtti__mangle_rtti_type_ctor(rtti_type_ctor::in,
 	string::out, string::out, string::out) is det.
@@ -936,7 +1203,7 @@ rtti__mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr) :-
 	RttiTypeCtor = rtti_type_ctor(ModuleNameSym0, TypeName0, TypeArity),
 	% This predicate will be invoked only at stages of compilation
 	% that are after everything has been module qualified. The only
-	% things with an empty module name should be the builtins,
+	% things with an empty module name should be the builtins.
 	( ModuleNameSym0 = unqualified("") ->
 		mercury_public_builtin_module(ModuleNameSym)
 	;
@@ -945,6 +1212,15 @@ rtti__mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr) :-
 	ModuleName = sym_name_mangle(ModuleNameSym),
 	TypeName = name_mangle(TypeName0),
 	string__int_to_string(TypeArity, ArityStr).
+
+:- pred rtti__mangle_rtti_type_class_name(tc_name::in,
+	string::out, string::out, string::out) is det.
+
+rtti__mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr) :-
+	TCName = tc_name(ModuleNameSym, ClassName0, Arity),
+	ModuleName = sym_name_mangle(ModuleNameSym),
+	ClassName = name_mangle(ClassName0),
+	string__int_to_string(Arity, ArityStr).
 
 %-----------------------------------------------------------------------------%
 
@@ -1259,6 +1535,21 @@ ctor_rtti_name_would_include_code_addr(pseudo_type_info(PseudoTypeInfo)) =
 	pseudo_type_info_would_incl_code_addr(PseudoTypeInfo).
 
 tc_rtti_name_would_include_code_addr(base_typeclass_info(_, _, _)) = yes.
+tc_rtti_name_would_include_code_addr(type_class_id(_)) = no.
+tc_rtti_name_would_include_code_addr(type_class_id_var_names(_)) = no.
+tc_rtti_name_would_include_code_addr(type_class_id_method_ids(_)) = no.
+tc_rtti_name_would_include_code_addr(type_class_decl(_)) = no.
+tc_rtti_name_would_include_code_addr(type_class_decl_super(_, _, _)) = no.
+tc_rtti_name_would_include_code_addr(type_class_decl_supers(_)) = no.
+tc_rtti_name_would_include_code_addr(type_class_instance(_, _)) = no.
+tc_rtti_name_would_include_code_addr(type_class_instance_tc_type_vector(_, _))
+	= no.
+tc_rtti_name_would_include_code_addr(type_class_instance_constraint(_, _, _, _))
+	= no.
+tc_rtti_name_would_include_code_addr(type_class_instance_constraints(_, _))
+	= no.
+tc_rtti_name_would_include_code_addr(type_class_instance_methods(_, _))
+	= yes.
 
 type_info_would_incl_code_addr(plain_arity_zero_type_info(_)) = yes.
 type_info_would_incl_code_addr(plain_type_info(_, _)) =	no.
@@ -1344,6 +1635,26 @@ ctor_rtti_name_type(pseudo_type_info(PseudoTypeInfo), TypeName, no) :-
 :- pred tc_rtti_name_type(tc_rtti_name::in, string::out, bool::out) is det.
 
 tc_rtti_name_type(base_typeclass_info(_, _, _), "BaseTypeclassInfo", yes).
+tc_rtti_name_type(type_class_id(_),		"TypeClassId", no).
+tc_rtti_name_type(type_class_id_var_names(_),	"ConstString", yes).
+tc_rtti_name_type(type_class_id_method_ids(_),	"TypeClassMethod", yes).
+tc_rtti_name_type(type_class_decl(_),		"TypeClassDeclStruct", no).
+tc_rtti_name_type(type_class_decl_supers(_),	"TypeClassConstraint", yes).
+tc_rtti_name_type(type_class_decl_super(_, _, N), TypeName, no) :-
+	string__int_to_string(N, NStr),
+	string__append_list(["TypeClassConstraint_", NStr, "Struct"],
+		TypeName).
+tc_rtti_name_type(type_class_instance(_, _),	"InstanceStruct", no).
+tc_rtti_name_type(type_class_instance_tc_type_vector(_, _),
+						"PseudoTypeInfo", yes).
+tc_rtti_name_type(type_class_instance_constraint(_, _, _, N), TypeName, no) :-
+	string__int_to_string(N, NStr),
+	string__append_list(["TypeClassConstraint_", NStr, "Struct"],
+		TypeName).
+tc_rtti_name_type(type_class_instance_constraints(_, _),
+						"TypeClassConstraint", yes).
+tc_rtti_name_type(type_class_instance_methods(_, _),
+						"CodePtr", yes).
 
 :- func type_info_name_type(rtti_type_info) = string.
 

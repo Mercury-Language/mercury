@@ -603,6 +603,18 @@
 :- mode list__map_foldl2(pred(in, out, in, out, in, out) is nondet,
 		in, out, in, out, in, out) is nondet.
 
+	% Same as list__map_foldl, but with three accumulators.
+:- pred list__map_foldl3(pred(X, Y, A, A, B, B, C, C), list(X), list(Y),
+		A, A, B, B, C, C).
+:- mode list__map_foldl3(pred(in, out, in, out, in, out, di, uo) is det,
+		in, out, in, out, in, out, di, uo) is det.
+:- mode list__map_foldl3(pred(in, out, in, out, in, out, in, out) is det,
+		in, out, in, out, in, out, in, out) is det.
+:- mode list__map_foldl3(pred(in, out, in, out, in, out, in, out) is semidet,
+		in, out, in, out, in, out, in, out) is semidet.
+:- mode list__map_foldl3(pred(in, out, in, out, in, out, in, out) is nondet,
+		in, out, in, out, in, out, in, out) is nondet.
+
 	% list__filter(Pred, List, TrueList) takes a closure with one
 	% input argument and for each member of List `X', calls the closure.
 	% Iff call(Pred, X) is true, then X is included in TrueList.
@@ -1353,10 +1365,15 @@ list__map2_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2]) -->
 	call(P, H0, H1, H2),
 	list__map2_foldl(P, T0, T1, T2).
 
-list__map_foldl2(_, [], [], A, A) --> [].
-list__map_foldl2(P, [H0 | T0], [H | T], A0, A) -->
-	call(P, H0, H, A0, A1),
-	list__map_foldl2(P, T0, T, A1, A).
+list__map_foldl2(_, [], [], !A, !B).
+list__map_foldl2(P, [H0 | T0], [H | T], !A, !B) :-
+	call(P, H0, H, !A, !B),
+	list__map_foldl2(P, T0, T, !A, !B).
+
+list__map_foldl3(_, [], [], !A, !B, !C).
+list__map_foldl3(P, [H0 | T0], [H | T], !A, !B, !C) :-
+	call(P, H0, H, !A, !B, !C),
+	list__map_foldl3(P, T0, T, !A, !B, !C).
 
 list__foldr(_, [], Acc, Acc).
 list__foldr(P, [H | T], Acc0, Acc) :-

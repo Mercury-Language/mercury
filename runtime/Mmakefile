@@ -79,6 +79,7 @@ HDRS		=	\
 			mercury_type_desc.h	\
 			mercury_type_info.h	\
 			mercury_type_tables.h	\
+			mercury_typeclass_info.h	\
 			mercury_types.h		\
 			mercury_univ.h		\
 			mercury_wrapper.h	\

@@ -60,3 +60,7 @@ print_optionals      xyzzy xyzzy xyzzy xyzzy xyzzy
 unhide_events        xyzzy xyzzy xyzzy xyzzy xyzzy
 dd_dd                xyzzy xyzzy xyzzy xyzzy xyzzy
 table                xyzzy xyzzy xyzzy xyzzy xyzzy
+type_ctor            xyzzy xyzzy xyzzy xyzzy xyzzy
+all_type_ctors       xyzzy xyzzy xyzzy xyzzy xyzzy
+class_decl           xyzzy xyzzy xyzzy xyzzy xyzzy
+all_class_decls      xyzzy xyzzy xyzzy xyzzy xyzzy

@@ -72,6 +72,13 @@
 :- pred opt_debug__dump_rtti_type_ctor(rtti_type_ctor, string).
 :- mode opt_debug__dump_rtti_type_ctor(in, out) is det.
 
+:- pred opt_debug__dump_rtti_type_class_name(tc_name, string).
+:- mode opt_debug__dump_rtti_type_class_name(in, out) is det.
+
+:- pred opt_debug__dump_rtti_type_class_instance_name(tc_name, list(tc_type),
+	string).
+:- mode opt_debug__dump_rtti_type_class_instance_name(in, in, out) is det.
+
 :- pred opt_debug__dump_rtti_name(ctor_rtti_name, string).
 :- mode opt_debug__dump_rtti_name(in, out) is det.
 
@@ -429,6 +436,87 @@ opt_debug__dump_rtti_name(type_hashcons_pointer, Str) :-
 opt_debug__dump_tc_rtti_name(base_typeclass_info(_ModuleName, ClassId,
 		InstanceStr), Str) :-
 	Str = make_base_typeclass_info_name(ClassId, InstanceStr).
+opt_debug__dump_tc_rtti_name(type_class_id(TCName), Str) :-
+	opt_debug__dump_rtti_type_class_name(TCName, TCNameStr),
+	DataNameStr = "id",
+	string__append_list(["tc_rtti_addr(", TCNameStr, ", ",
+		DataNameStr, ")"], Str).
+opt_debug__dump_tc_rtti_name(type_class_decl(TCName), Str) :-
+	opt_debug__dump_rtti_type_class_name(TCName, TCNameStr),
+	DataNameStr = "decl",
+	string__append_list(["tc_rtti_addr(", TCNameStr, ", ",
+		DataNameStr, ")"], Str).
+opt_debug__dump_tc_rtti_name(type_class_decl_super(TCName, Ordinal, _), Str) :-
+	opt_debug__dump_rtti_type_class_name(TCName, TCNameStr),
+	DataNameStr = "decl_super",
+	string__int_to_string(Ordinal, OrdinalStr),
+	string__append_list(["tc_rtti_addr(", TCNameStr, ", ",
+		DataNameStr, "(", OrdinalStr, "))"], Str).
+opt_debug__dump_tc_rtti_name(type_class_decl_supers(TCName), Str) :-
+	opt_debug__dump_rtti_type_class_name(TCName, TCNameStr),
+	DataNameStr = "decl_supers",
+	string__append_list(["tc_rtti_addr(", TCNameStr, ", ",
+		DataNameStr, ")"], Str).
+opt_debug__dump_tc_rtti_name(type_class_id_method_ids(TCName), Str) :-
+	opt_debug__dump_rtti_type_class_name(TCName, TCNameStr),
+	DataNameStr = "id_method_ids",
+	string__append_list(["tc_rtti_addr(", TCNameStr, ", ",
+		DataNameStr, ")"], Str).
+opt_debug__dump_tc_rtti_name(type_class_id_var_names(TCName), Str) :-
+	opt_debug__dump_rtti_type_class_name(TCName, TCNameStr),
+	DataNameStr = "id_var_names",
+	string__append_list(["tc_rtti_addr(", TCNameStr, ", ",
+		DataNameStr, ")"], Str).
+opt_debug__dump_tc_rtti_name(type_class_instance(TCName, TCTypes), Str) :-
+	opt_debug__dump_rtti_type_class_instance_name(TCName, TCTypes,
+		InstanceStr),
+	DataNameStr = "instance",
+	string__append_list(["tc_rtti_addr(", InstanceStr, ", ",
+		DataNameStr, ")"], Str).
+opt_debug__dump_tc_rtti_name(type_class_instance_tc_type_vector(TCName,
+		TCTypes), Str) :-
+	opt_debug__dump_rtti_type_class_instance_name(TCName, TCTypes,
+		InstanceStr),
+	DataNameStr = "instance_tc_types_vector",
+	string__append_list(["tc_rtti_addr(", InstanceStr, ", ",
+		DataNameStr, ")"], Str).
+opt_debug__dump_tc_rtti_name(type_class_instance_constraints(TCName,
+		TCTypes), Str) :-
+	opt_debug__dump_rtti_type_class_instance_name(TCName, TCTypes,
+		InstanceStr),
+	DataNameStr = "instance_constraints",
+	string__append_list(["tc_rtti_addr(", InstanceStr, ", ",
+		DataNameStr, ")"], Str).
+opt_debug__dump_tc_rtti_name(type_class_instance_constraint(TCName,
+		TCTypes, Ordinal, _), Str) :-
+	opt_debug__dump_rtti_type_class_instance_name(TCName, TCTypes,
+		InstanceStr),
+	DataNameStr = "instance_constraint",
+	string__int_to_string(Ordinal, OrdinalStr),
+	string__append_list(["tc_rtti_addr(", InstanceStr, ", ",
+		DataNameStr, "(", OrdinalStr, "))"], Str).
+opt_debug__dump_tc_rtti_name(type_class_instance_methods(TCName, TCTypes),
+		Str) :-
+	opt_debug__dump_rtti_type_class_instance_name(TCName, TCTypes,
+		InstanceStr),
+	DataNameStr = "instance_methods",
+	string__append_list(["tc_rtti_addr(", InstanceStr, ", ",
+		DataNameStr, ")"], Str).
+
+opt_debug__dump_rtti_type_class_name(tc_name(ModuleName, ClassName, Arity),
+		Str) :-
+	ModuleNameStr = sym_name_mangle(ModuleName),
+	ClassNameStr = name_mangle(ClassName),
+	string__int_to_string(Arity, ArityStr),
+	string__append_list(["tc_name(", ModuleNameStr, ", ",
+		ClassNameStr, ArityStr, ")"], Str).
+
+opt_debug__dump_rtti_type_class_instance_name(TCName, TCTypes, Str) :-
+	opt_debug__dump_rtti_type_class_name(TCName, TCNameSTr),
+	EncodedTCTypes = list__map(rtti__encode_tc_instance_type, TCTypes),
+	string__append_list(EncodedTCTypes, TypesStr),
+	string__append_list(["tc_instance(", TCNameSTr, ", ", TypesStr, ")"],
+		Str).
 
 opt_debug__dump_layout_name(label_layout(Label, LabelVars), Str) :-
 	opt_debug__dump_label(Label, LabelStr),

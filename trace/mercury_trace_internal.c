@@ -457,6 +457,10 @@ static	MR_TraceCmdFunc	MR_trace_cmd_proc_body;
 static	MR_TraceCmdFunc	MR_trace_cmd_print_optionals;
 static	MR_TraceCmdFunc	MR_trace_cmd_unhide_events;
 static	MR_TraceCmdFunc	MR_trace_cmd_table;
+static	MR_TraceCmdFunc	MR_trace_cmd_type_ctor;
+static	MR_TraceCmdFunc	MR_trace_cmd_class_decl;
+static	MR_TraceCmdFunc	MR_trace_cmd_all_type_ctors;
+static	MR_TraceCmdFunc	MR_trace_cmd_all_class_decls;
 static	MR_TraceCmdFunc	MR_trace_cmd_save;
 static	MR_TraceCmdFunc	MR_trace_cmd_quit;
 static	MR_TraceCmdFunc	MR_trace_cmd_dd;
@@ -522,6 +526,12 @@ static	MR_bool	MR_trace_options_view(const char **window_cmd,
 static	MR_bool	MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
+static	MR_bool	MR_trace_options_type_ctor(MR_bool *print_rep,
+			MR_bool *print_functors, char ***words,
+			int *word_count, const char *cat, const char *item);
+static	MR_bool	MR_trace_options_class_decl(MR_bool *print_methods,
+			MR_bool *print_instances, char ***words,
+			int *word_count, const char *cat, const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_do_noop(void);
 
@@ -580,6 +590,17 @@ static	void	MR_trace_print_consumer(const MR_Proc_Layout *proc,
 			MR_Consumer *consumer);
 static	void	MR_trace_print_consumer_debug(const MR_Proc_Layout *proc,
 			MR_ConsumerDebug *consumer_debug);
+
+/* Prints the requested information inside the given MR_TypeCtorInfo. */
+static	void	MR_print_type_ctor_info(FILE *fp,
+			MR_TypeCtorInfo type_ctor_info,
+			MR_bool print_rep, MR_bool print_functors);
+/* Prints the requested information inside the given MR_TypeClassDeclInfo. */
+static	void	MR_print_class_decl_info(FILE *fp,
+			MR_TypeClassDeclInfo *type_class_decl_info,
+			MR_bool print_methods, MR_bool print_instances);
+/* Print the given pseudo-typeinfo. */
+static	void	MR_print_pseudo_type_info(FILE *fp, MR_PseudoTypeInfo pseudo);
 
 static	void	MR_trace_set_level_and_report(int ancestor_level,
 			MR_bool detailed, MR_bool print_optionals);
@@ -3566,16 +3587,13 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			return KEEP_INTERACTING;
 		}
 
-		if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE)
-		{
+		if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
 			fprintf(MR_mdb_out,
 				"io tabling has not yet started\n");
-		} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING)
-		{
+		} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING) {
 			fprintf(MR_mdb_out,
 				"io tabling has started\n");
-		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
-		{
+		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER) {
 			fprintf(MR_mdb_out,
 				"io tabling has stopped\n");
 		} else {
@@ -3602,12 +3620,10 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_io_tabling_debug = MR_TRUE;
 #endif
 			fprintf(MR_mdb_out, "io tabling started\n");
-		} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING)
-		{
+		} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING) {
 			fprintf(MR_mdb_out,
 				"io tabling has already started\n");
-		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
-		{
+		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER) {
 			fprintf(MR_mdb_out,
 				"io tabling has already stopped\n");
 		} else {
@@ -3624,19 +3640,16 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			return KEEP_INTERACTING;
 		}
 
-		if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE)
-		{
+		if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
 			fprintf(MR_mdb_out,
 				"io tabling has not yet started\n");
-		} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING)
-		{
+		} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING) {
 			MR_io_tabling_phase = MR_IO_TABLING_AFTER;
 			MR_io_tabling_end = MR_io_tabling_counter_hwm;
 			MR_io_tabling_stop_event_num =
 				event_info->MR_event_number;
 			fprintf(MR_mdb_out, "io tabling stopped\n");
-		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
-		{
+		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER) {
 			fprintf(MR_mdb_out,
 				"io tabling has already stopped\n");
 		} else {
@@ -4509,6 +4522,420 @@ MR_trace_print_consumer_debug(const MR_Proc_Layout *proc,
 #else
 	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
 #endif
+}
+
+static MR_Next
+MR_trace_cmd_type_ctor(char **words, int word_count,
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+	const char	*module_name;
+	const char	*name;
+	int		arity;
+	MR_bool		print_rep;
+	MR_bool		print_functors;
+	MR_TypeCtorInfo	type_ctor_info;
+
+	MR_do_init_modules_type_tables();
+
+	print_rep = MR_FALSE;
+	print_functors = MR_FALSE;
+	if (! MR_trace_options_type_ctor(&print_rep, &print_functors,
+		&words, &word_count, "developer", "type_ctor"))
+	{
+		; /* the usage message has already been printed */
+	} else if (word_count == 4 &&
+		MR_trace_is_natural_number(words[3], &arity))
+	{
+		module_name = words[1];
+		name = words[2];
+		type_ctor_info =
+			MR_lookup_type_ctor_info(module_name, name, arity);
+		if (type_ctor_info != NULL) {
+			MR_print_type_ctor_info(MR_mdb_out, type_ctor_info,
+				print_rep, print_functors);
+		} else {
+			fprintf(MR_mdb_out,
+				"there is no such type constructor\n");
+		}
+	} else {
+		MR_trace_usage("developer", "type_ctor");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_class_decl(char **words, int word_count,
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+	const char		*module_name;
+	const char		*name;
+	int			arity;
+	MR_bool			print_methods;
+	MR_bool			print_instances;
+	MR_TypeClassDeclInfo	*type_class_decl_info;
+
+	MR_do_init_modules_type_tables();
+
+	print_methods = MR_FALSE;
+	print_instances = MR_FALSE;
+	if (! MR_trace_options_class_decl(&print_methods, &print_instances,
+		&words, &word_count, "developer", "class_decl"))
+	{
+		; /* the usage message has already been printed */
+	} else if (word_count == 4 &&
+		MR_trace_is_natural_number(words[3], &arity))
+	{
+		module_name = words[1];
+		name = words[2];
+		type_class_decl_info =
+			MR_lookup_type_class_decl_info(module_name, name,
+				arity);
+		if (type_class_decl_info != NULL) {
+			MR_print_class_decl_info(MR_mdb_out,
+				type_class_decl_info, print_methods,
+				print_instances);
+		} else {
+			fprintf(MR_mdb_out,
+				"there is no such type class\n");
+		}
+	} else {
+		MR_trace_usage("developer", "class_decl");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_all_type_ctors(char **words, int word_count,
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+	MR_bool		print_rep;
+	MR_bool		print_functors;
+	MR_Dlist	*list;
+	MR_Dlist	*element_ptr;
+	MR_TypeCtorInfo	type_ctor_info;
+	const char	*module_name;
+	int		count;
+
+	MR_do_init_modules_type_tables();
+
+	print_rep = MR_FALSE;
+	print_functors = MR_FALSE;
+	if (! MR_trace_options_type_ctor(&print_rep, &print_functors,
+		&words, &word_count, "developer", "all_class_decls"))
+	{
+		; /* the usage message has already been printed */
+	} else if (word_count == 1 || word_count == 2) {
+		if (word_count == 2) {
+			module_name = words[1];
+		} else {
+			module_name = NULL;
+		}
+
+		list = MR_all_type_ctor_infos();
+		count = 0;
+		MR_for_dlist(element_ptr, list) {
+			type_ctor_info = (MR_TypeCtorInfo)
+				MR_dlist_data(element_ptr);
+			if (module_name != NULL && strcmp(module_name,
+				type_ctor_info->MR_type_ctor_module_name) != 0)
+			{
+				continue;
+			}
+
+			if (count > 0) {
+				fprintf(MR_mdb_out, "\n");
+			}
+			MR_print_type_ctor_info(MR_mdb_out, type_ctor_info,
+				print_rep, print_functors);
+			count++;
+		}
+
+		fprintf(MR_mdb_out, "\nnumber of type constructors ");
+		if (module_name == NULL) {
+			fprintf(MR_mdb_out, "in the program: %d\n", count);
+		} else {
+			fprintf(MR_mdb_out, "in module %s: %d\n",
+				module_name, count);
+		}
+	} else {
+		MR_trace_usage("developer", "class_decl");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_all_class_decls(char **words, int word_count,
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+	MR_bool			print_methods;
+	MR_bool			print_instances;
+	MR_Dlist		*list;
+	MR_Dlist		*element_ptr;
+	MR_TypeClassDeclInfo	*type_class_decl_info;
+	const char		*module_name;
+	int			count;
+
+	MR_do_init_modules_type_tables();
+
+	print_methods = MR_FALSE;
+	print_instances = MR_FALSE;
+	if (! MR_trace_options_class_decl(&print_methods, &print_instances,
+		&words, &word_count, "developer", "all_class_decls"))
+	{
+		; /* the usage message has already been printed */
+	} else if (word_count == 1 || word_count == 2) {
+		if (word_count == 2) {
+			module_name = words[1];
+		} else {
+			module_name = NULL;
+		}
+		list = MR_all_type_class_decl_infos();
+		count = 0;
+		MR_for_dlist(element_ptr, list) {
+			type_class_decl_info = (MR_TypeClassDeclInfo *)
+				MR_dlist_data(element_ptr);
+			if (module_name != NULL && strcmp(module_name,
+				type_class_decl_info->MR_tcd_info_decl->
+				MR_tc_decl_id->MR_tc_id_module_name) != 0)
+			{
+				continue;
+			}
+
+			if (count > 0) {
+				fprintf(MR_mdb_out, "\n");
+			}
+			MR_print_class_decl_info(MR_mdb_out,
+				type_class_decl_info, print_methods,
+				print_instances);
+			count++;
+		}
+
+		fprintf(MR_mdb_out, "\nnumber of type classes ");
+		if (module_name == NULL) {
+			fprintf(MR_mdb_out, "in the program: %d\n", count);
+		} else {
+			fprintf(MR_mdb_out, "in module %s: %d\n",
+				module_name, count);
+		}
+	} else {
+		MR_trace_usage("developer", "class_decl");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static void
+MR_print_type_ctor_info(FILE *fp, MR_TypeCtorInfo type_ctor_info,
+	MR_bool print_rep, MR_bool print_functors)
+{
+	MR_TypeCtorRep			rep;
+	MR_EnumFunctorDesc		*enum_functor;
+	MR_DuFunctorDesc		*du_functor;
+	MR_MaybeResAddrFunctorDesc	*maybe_res_functor;
+	MR_NotagFunctorDesc		*notag_functor;
+	int				num_functors;
+	int				i;
+
+	fprintf(fp, "type constructor %s.%s/%d",
+		type_ctor_info->MR_type_ctor_module_name,
+		type_ctor_info->MR_type_ctor_name,
+		type_ctor_info->MR_type_ctor_arity);
+	
+	rep = MR_type_ctor_rep(type_ctor_info);
+	if (print_rep) {
+		fprintf(fp, ": %s\n", MR_ctor_rep_name[rep]);
+	} else {
+		fprintf(fp, "\n");
+	}
+
+	if (print_functors) {
+		num_functors = type_ctor_info->MR_type_ctor_num_functors;
+		switch (rep) {
+			case MR_TYPECTOR_REP_ENUM:
+			case MR_TYPECTOR_REP_ENUM_USEREQ:
+				for (i = 0; i < num_functors; i++) {
+					enum_functor = type_ctor_info->
+						MR_type_ctor_functors.
+						MR_functors_enum[i];
+					if (i > 0) {
+						fprintf(fp, ", ");
+					}
+					fprintf(fp, "%s/0",
+						enum_functor->
+						MR_enum_functor_name);
+				}
+				fprintf(fp, "\n");
+				break;
+
+			case MR_TYPECTOR_REP_DU:
+			case MR_TYPECTOR_REP_DU_USEREQ:
+				for (i = 0; i < num_functors; i++) {
+					du_functor = type_ctor_info->
+						MR_type_ctor_functors.
+						MR_functors_du[i];
+					if (i > 0) {
+						fprintf(fp, ", ");
+					}
+					fprintf(fp, "%s/%d",
+						du_functor->
+						MR_du_functor_name,
+						du_functor->
+						MR_du_functor_orig_arity);
+				}
+				fprintf(fp, "\n");
+				break;
+
+			case MR_TYPECTOR_REP_RESERVED_ADDR:
+			case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
+				for (i = 0; i < num_functors; i++) {
+					maybe_res_functor = &type_ctor_info->
+						MR_type_ctor_functors.
+						MR_functors_res[i];
+					if (i > 0) {
+						fprintf(fp, ", ");
+					}
+					fprintf(fp, "%s/%d",
+						maybe_res_functor->
+						MR_maybe_res_name,
+						maybe_res_functor->
+						MR_maybe_res_arity);
+				}
+				fprintf(fp, "\n");
+				break;
+
+			case MR_TYPECTOR_REP_NOTAG:
+			case MR_TYPECTOR_REP_NOTAG_USEREQ:
+			case MR_TYPECTOR_REP_NOTAG_GROUND:
+			case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+				notag_functor = type_ctor_info->
+					MR_type_ctor_functors.
+					MR_functors_notag;
+				fprintf(fp, "%s/1\n",
+					notag_functor->MR_notag_functor_name);
+				break;
+
+			default:
+				break;
+		}
+	}
+}
+
+static void
+MR_print_class_decl_info(FILE *fp, MR_TypeClassDeclInfo *type_class_decl_info,
+	MR_bool print_methods, MR_bool print_instances)
+{
+	MR_TypeClassDecl		type_class_decl;
+	const MR_TypeClassId		*type_class_id;
+	const MR_TypeClassMethod	*method;
+	MR_Instance			instance;
+	MR_Dlist			*list;
+	MR_Dlist			*element_ptr;
+	int				num_methods;
+	int				i;
+
+	type_class_decl = type_class_decl_info->MR_tcd_info_decl;
+	type_class_id = type_class_decl->MR_tc_decl_id;
+	fprintf(fp, "type class %s.%s/%d\n",
+		type_class_id->MR_tc_id_module_name,
+		type_class_id->MR_tc_id_name,
+		type_class_id->MR_tc_id_arity);
+
+	if (print_methods) {
+		num_methods = type_class_id->MR_tc_id_num_methods;
+		fprintf(fp, "methods: ");
+
+		for (i = 0; i < num_methods; i++) {
+			if (i > 0) {
+				fprintf(fp, ", ");
+			}
+
+			method = &type_class_id->MR_tc_id_methods[i];
+			if (method->MR_tc_method_pred_func == MR_FUNCTION) {
+				fprintf(fp, "func ");
+			} else {
+				fprintf(fp, "pred ");
+			}
+
+			fprintf(fp, "%s/%d",
+				method->MR_tc_method_name,
+				method->MR_tc_method_arity);
+		}
+
+		fprintf(fp, "\n");
+	}
+
+	if (print_instances) {
+		list = type_class_decl_info->MR_tcd_info_instances;
+		MR_for_dlist (element_ptr, list) {
+			instance = (MR_Instance) MR_dlist_data(element_ptr);
+
+			if (instance->MR_tc_inst_type_class != type_class_decl)
+			{
+				MR_fatal_error("instance/type class mismatch");
+			}
+
+			fprintf(fp, "instance ");
+
+			for (i = 0; i < type_class_id->MR_tc_id_arity; i++) {
+				if (i > 0) {
+					fprintf(fp, ", ");
+				}
+
+				MR_print_pseudo_type_info(fp,
+					instance->MR_tc_inst_type_args[i]);
+			}
+
+			fprintf(fp, "\n");
+		}
+	}
+}
+
+static void
+MR_print_pseudo_type_info(FILE *fp, MR_PseudoTypeInfo pseudo)
+{
+	MR_TypeCtorInfo		type_ctor_info;
+	MR_PseudoTypeInfo	*pseudo_args;
+	int			tvar_num;
+	int			arity;
+	int			i;
+
+	if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo)) {
+		tvar_num = (int) pseudo;
+		fprintf(fp, "T%d", tvar_num);
+	} else {
+		type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo);
+		fprintf(fp, "%s.%s",
+			type_ctor_info->MR_type_ctor_module_name,
+			type_ctor_info->MR_type_ctor_name);
+		if (MR_type_ctor_has_variable_arity(type_ctor_info)) {
+			arity = MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pseudo);
+			pseudo_args = (MR_PseudoTypeInfo *)
+				&pseudo->MR_pti_var_arity_arity;
+		} else {
+			arity = type_ctor_info->MR_type_ctor_arity;
+			pseudo_args = (MR_PseudoTypeInfo *)
+				&pseudo->MR_pti_type_ctor_info;
+		}
+
+		if (type_ctor_info->MR_type_ctor_arity > 0) {
+			fprintf(fp, "(");
+			for (i = 1; i <= arity; i++) {
+				if (i > 1) {
+					fprintf(fp, ", ");
+				}
+
+				MR_print_pseudo_type_info(fp, pseudo_args[i]);
+			}
+			fprintf(fp, ")");
+		}
+	}
 }
 
 static MR_Next
@@ -5580,6 +6007,82 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
 	return MR_TRUE;
 }
 
+static struct MR_option MR_trace_type_ctor_opts[] =
+{
+	{ "print-rep",		MR_no_argument,		NULL,	'r' },
+	{ "print-functors",	MR_no_argument,		NULL,	'f' },
+	{ NULL,			MR_no_argument,		NULL,	0 }
+};
+
+static MR_bool
+MR_trace_options_type_ctor(MR_bool *print_rep, MR_bool *print_functors,
+	char ***words, int *word_count, const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "rf",
+		MR_trace_type_ctor_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'f':
+				*print_functors = MR_TRUE;
+				break;
+
+			case 'r':
+				*print_rep = MR_TRUE;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return MR_FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return MR_TRUE;
+}
+
+static struct MR_option MR_trace_class_decl_opts[] =
+{
+	{ "print-methods",	MR_no_argument,		NULL,	'm' },
+	{ "print-instances",	MR_no_argument,		NULL,	'i' },
+	{ NULL,			MR_no_argument,		NULL,	0 }
+};
+
+static MR_bool
+MR_trace_options_class_decl(MR_bool *print_methods, MR_bool *print_instances,
+	char ***words, int *word_count, const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "mi",
+		MR_trace_class_decl_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'm':
+				*print_methods = MR_TRUE;
+				break;
+
+			case 'i':
+				*print_instances = MR_TRUE;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return MR_FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return MR_TRUE;
+}
+
 static void
 MR_trace_usage(const char *cat, const char *item)
 /* cat is unused now, but could be used later */
@@ -6447,6 +6950,14 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "developer", "dd_dd", MR_trace_cmd_dd_dd,
 		NULL, MR_trace_filename_completer },
 	{ "developer", "table", MR_trace_cmd_table,
+		NULL, MR_trace_null_completer },
+	{ "developer", "type_ctor", MR_trace_cmd_type_ctor,
+		NULL, MR_trace_null_completer },
+	{ "developer", "class_decl", MR_trace_cmd_class_decl,
+		NULL, MR_trace_null_completer },
+	{ "developer", "all_type_ctors", MR_trace_cmd_all_type_ctors,
+		NULL, MR_trace_null_completer },
+	{ "developer", "all_class_decls", MR_trace_cmd_all_class_decls,
 		NULL, MR_trace_null_completer },
 
 	/* End of doc/mdb_command_list. */

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -77,53 +77,61 @@ difficult to add later.
 Zoltan.
 */
 
+#ifndef MERCURY_TYPECLASS_INFO_H
+#define MERCURY_TYPECLASS_INFO_H
+
+#include "mercury_types.h"         
+#include "mercury_type_info.h"      /* for MR_PseudoTypeInfo */
+#include "mercury_stack_layout.h"   /* for MR_PredFunc */
+
 /*****************************************************************************/
 
-typedef const struct MR_TypeClass_Struct                MR_TypeClassStruct;
-typedef const struct MR_TypeClass_Struct                *MR_TypeClass;
-typedef const struct MR_Instance_Struct                 MR_InstanceStruct;
+typedef       struct MR_TypeClassDecl_Struct            MR_TypeClassDeclStruct;
+typedef const struct MR_TypeClassDecl_Struct            *MR_TypeClassDecl;
+typedef       struct MR_Instance_Struct                 MR_InstanceStruct;
 typedef const struct MR_Instance_Struct                 *MR_Instance;
+typedef       struct MR_DictId_Struct                   MR_DictIdStruct;
+typedef const struct MR_DictId_Struct                   *MR_DictId;
 typedef       struct MR_Dictionary_Struct               MR_DictionaryStruct;
-typedef       struct MR_Dictionary_Struct               *MR_Dictionary;
+typedef const struct MR_Dictionary_Struct               *MR_Dictionary;
 
 /*
-** A typeclass skeleton is intended to represent a typeclass constraint
-** being applied to a vector of possibly nonground types, as one may find
-** constraining a typeclass declaration, an instance declaration, or a
-** predicate/function declaration.
+** A typeclass constraint asserts the membership of a possibly nonground
+** vector of types in a type class, as one may find constraining a typeclass
+** declaration, an instance declaration, or a predicate/function declaration.
 **
-** Type class skeletons for type classes with arity N will be of type
-** MR_TypeClassSkel_N. Generic code will manipulate them as if they were of
-** type MR_TypeClassSkel, getting the actual number of arguments from
-** MR_tc_skel_type_class_info->MR_tc_id->MR_tc_id_arity.
+** Type class constraints for type classes with arity N will be of type
+** MR_TypeClassConstraint_N. Generic code will manipulate them as if they were
+** of type MR_TypeClassConstraint, getting the actual number of arguments from
+** MR_tc_constr_type_class_info->MR_tc_decl_id->MR_tc_id_arity.
 **
 ** Note that the arity cannot be zero, so we do not have to worry about
 ** zero-size arrays. On the other hand, type classes with more than even two
 ** arguments can be expected to be very rare, so having five as a fixed limit
 ** should not be a problem. If it is, we can lift the limit by defining
-** MR_TypeClassSkel_N on demand for all N > 5.
+** MR_TypeClassConstraint_N on demand for all N > 5.
 **
 ** We will have to rethink this structure once we start supporting constructor
 ** classes.
 */
 
-#define MR_DEFINE_TYPECLASS_SKEL_STRUCT(NAME, ARITY)                        \
+#define MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(NAME, ARITY)                  \
     typedef struct MR_PASTE2(NAME, _Struct) {                               \
-        MR_TypeClass        MR_tc_skel_type_class_info;                     \
-        MR_PseudoTypeInfo   MR_tc_skel_arg_ptis[ARITY];                     \
+        MR_TypeClassDecl    MR_tc_constr_type_class_info;                   \
+        MR_PseudoTypeInfo   MR_tc_constr_arg_ptis[ARITY];                   \
     } MR_PASTE2(NAME, Struct)
 
-MR_DEFINE_TYPECLASS_SKEL_STRUCT(MR_TypeClassSkel_1, 1);
-MR_DEFINE_TYPECLASS_SKEL_STRUCT(MR_TypeClassSkel_2, 2);
-MR_DEFINE_TYPECLASS_SKEL_STRUCT(MR_TypeClassSkel_3, 3);
-MR_DEFINE_TYPECLASS_SKEL_STRUCT(MR_TypeClassSkel_4, 4);
-MR_DEFINE_TYPECLASS_SKEL_STRUCT(MR_TypeClassSkel_5, 5);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_1, 1);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_2, 2);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_3, 3);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_4, 4);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_5, 5);
 
-typedef MR_TypeClassSkel_5Struct        MR_TypeClassSkelStruct;
-typedef MR_TypeClassSkelStruct          *MR_TypeClassSkel;
+typedef MR_TypeClassConstraint_5Struct          MR_TypeClassConstraintStruct;
+typedef const MR_TypeClassConstraintStruct      *MR_TypeClassConstraint;
 
-#define MR_STD_TYPECLASS_SKEL_ADDR(p)   ((MR_TypeClassSkel)                 \
-                                        &((p).MR_tc_skel_type_class_info))
+#define MR_STD_TYPECLASS_CONSTRAINT_ADDR(p) \
+        ((MR_TypeClassConstraint) &((p).MR_tc_constr_type_class_info))
 
 /*
 ** We generate one static MR_TypeClassMethod structure for every method in
@@ -179,36 +187,74 @@ typedef struct {
 */
 
 typedef struct {
-    MR_ConstString              MR_tc_id_module;
+    MR_ConstString              MR_tc_id_module_name;
     MR_ConstString              MR_tc_id_name;
     const MR_int_least8_t       MR_tc_id_arity;
     const MR_int_least8_t       MR_tc_id_num_type_vars;
-    const MR_int_least8_t       MR_tc_id_num_methods;
+    const MR_int_least16_t      MR_tc_id_num_methods;
     const MR_ConstString        *MR_tc_id_type_var_names;
-    const MR_TypeClassMethod    **MR_tc_id_methods;
+    const MR_TypeClassMethod    *MR_tc_id_methods;
 } MR_TypeClassId;
 
 /*
-** We generate one static MR_TypeClass structure for each typeclass
+** We generate one static MR_TypeClassDecl structure for each typeclass
 ** declaration in the program.
 **
-** The MR_tc_id field gives a printable representation of the declaration.
+** The MR_tc_decl_id field gives a printable representation of the declaration.
 ** We point to it instead of including it because we want to allow its size to
 ** change without affecting binary compatibility.
 **
-** The MR_tc_num_super field gives the number of superclasses, while the
-** MR_tc_supers field points to a vector of pointers to superclass descriptors,
-** one for each superclass. (The reason why the vector elements are pointers to
-** descriptors instead of descriptors themselves is that superclasses with
-** different arities have different sizes, so putting them into an array is not
-** practical.)
+** The MR_tc_decl_version_number field specifies the version of the data
+** structures describing runtime information about type classes. Any change
+** to those structures that affects binary compatibility should be accompanied
+** by an increase in this version number. The symbolic names of different
+** versions should follow the form MR_TYPECLASS_VERSION_*, and be listed
+** below.
+**
+** The MR_tc_decl_num_supers field gives the number of superclasses, while the
+** MR_tc_decl_supers field points to a vector of pointers to superclass
+** descriptors, one for each superclass. (The reason why the vector elements
+** are pointers to descriptors instead of descriptors themselves is that
+** superclasses with different arities have different sizes, so putting them
+** into an array is not practical.)
 */
 
-struct MR_TypeClass_Struct {
-    const MR_TypeClassId        *MR_tc_id;
-    const MR_int_least8_t       MR_tc_num_super;
-    const MR_TypeClassSkel      *MR_tc_supers;
+struct MR_TypeClassDecl_Struct {
+    const MR_TypeClassId            *MR_tc_decl_id;
+    const MR_int_least8_t           MR_tc_decl_version_number;
+    const MR_int_least8_t           MR_tc_decl_num_supers;
+    const MR_TypeClassConstraint    *MR_tc_decl_supers;
 };
+
+/*
+** The symbolic names of versions of the run time data structures
+** describing type class information -- useful for bootstrapping.
+**
+** MR_TYPECLASS_VERSION plays the same role for the data structures defined in
+** this file as MR_RTTI_VERSION plays for the data structures defined in
+** mercury_type_info.h. If you write runtime code that checks this version
+** number and can at least handle the previous version of the data
+** structure, it makes it easier to bootstrap changes to these data
+** structures.
+**
+** This number should be kept in sync with type_class_info_rtti_version in
+** compiler/type_class_info.m and with MR_TYPECLASS_VERSION in mercury_mcpp.h.
+*/
+
+#define MR_TYPECLASS_VERSION            MR_TYPECLASS_VERSION_INITIAL
+#define MR_TYPECLASS_VERSION_INITIAL    0
+
+/*
+** Check that the RTTI version number for type class information is in
+** a sensible range. The lower bound should be the lowest currently supported
+** version number. The upper bound is the current version number.
+** If you increase the lower bound you should also increase the binary
+** compatibility version number in runtime/mercury_grade.h (MR_GRADE_PART_0).
+*/
+
+#define MR_TYPE_CLASS_INFO_CHECK_RTTI_VERSION_RANGE(typeclassdecl)      \
+    assert((typeclassdecl)->MR_tc_decl_version_number ==                \
+            MR_TYPECLASS_VERSION__FLAG)
 
 /*
 ** We generate one static MR_Instance structure for each instance declaration
@@ -218,7 +264,7 @@ struct MR_TypeClass_Struct {
 ** declaration creates new instances of.
 **
 ** The MR_tc_inst_type_args field points to a vector of MR_PseudoTypeInfos
-** whose length is MR_tc_inst_type_class->MR_tc_id->MR_tc_id_arity; each
+** whose length is MR_tc_inst_type_class->MR_tc_decl_id->MR_tc_id_arity; each
 ** pseudotypeinfo in this vector will describe the (possibly nonground) type
 ** in the corresponding position in the head of the instance declaration.
 **
@@ -235,7 +281,7 @@ struct MR_TypeClass_Struct {
 **
 ** The MR_tc_inst_methods field gives the methods declared by the instance
 ** declaration. It points to a vector of code addresses, one for each method;
-** the length of the vector is MR_tc_inst_type_class->MR_tc_id->
+** the length of the vector is MR_tc_inst_type_class->MR_tc_decl_id->
 ** MR_tc_id_num_methods. The procedures being pointed to may be polymorphic,
 ** for either one of two reasons: the instance declaration may specify
 ** nonground types, and the method may have universally quantified type
@@ -243,13 +289,17 @@ struct MR_TypeClass_Struct {
 */
 
 struct MR_Instance_Struct {
-    const MR_TypeClass          MR_tc_inst_type_class;
-    const MR_PseudoTypeInfo     *MR_tc_inst_type_args;
-    const MR_int_least8_t       MR_tc_inst_num_type_vars;
-    const MR_int_least8_t       MR_tc_inst_num_instance_constraints;
-    const MR_TypeClassSkel      *MR_tc_inst_instance_constraints;
-    const MR_Code               *MR_tc_inst_methods;
+    const MR_TypeClassDecl          MR_tc_inst_type_class;
+    const MR_int_least8_t           MR_tc_inst_num_type_vars;
+    const MR_int_least8_t           MR_tc_inst_num_instance_constraints;
+    const MR_PseudoTypeInfo         *MR_tc_inst_type_args;
+    const MR_TypeClassConstraint    *MR_tc_inst_instance_constraints;
+    const MR_CodePtr                MR_tc_inst_methods;
 };
+
+/*
+** XXX The rest of this file will probably need some changes.
+*/
 
 /*
 ** An MR_ClassDict structure gives the methods for a ground instance of a type
@@ -279,12 +329,10 @@ struct MR_Instance_Struct {
 
 typedef struct {
     MR_Integer              MR_class_dict_version_number;
-    MR_TypeClass            MR_class_dict_class;
+    MR_TypeClassDecl        MR_class_dict_class;
     MR_TypeInfo             *MR_class_dict_type_binding;
     MR_Code                 *MR_class_dict_methods;
 } MR_ClassDict;
-
-#define MR_TYPECLASS_VERSION    0
 
 /*
 ** A MR_Dictionary_Struct structure corresponds to a fully solved type class
@@ -310,3 +358,5 @@ typedef struct {
     MR_ClassDict            *MR_dict_class_methods;
     MR_ClassDict            **MR_dict_superclass_dicts;
 } MR_Dictionary_Struct;
+
+#endif /* not MERCURY_TYPECLASS_INFO_H */

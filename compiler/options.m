@@ -362,6 +362,14 @@
 				% off, then you're unlikely to be able
 				% to link.
 		;	type_ctor_functors
+				% XXX temporary option: enables the generation
+				% of new style static data structures for
+				% runtime information about type classes.
+				% These are not yet used. When we add code to
+				% generate the matching dynamic data structures
+				% and switch over to use them, we won't need
+				% this option anymore.
+		;	new_type_class_rtti
 				% Generate line number information in the RTTI
 				% when debugging is enabled. For measurement
 				% only -- if you turn this off, then the
@@ -940,7 +948,8 @@ option_defaults_2(internal_use_option, [
 	type_ctor_info		-	bool(yes),
 	type_ctor_layout	-	bool(yes),
 	type_ctor_functors	-	bool(yes),
-	rtti_line_numbers	-	bool(yes)
+	rtti_line_numbers	-	bool(yes),
+	new_type_class_rtti	-	bool(no)
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
@@ -1570,6 +1579,7 @@ long_option("special-preds",		special_preds).
 long_option("type-ctor-info",		type_ctor_info).
 long_option("type-ctor-layout",		type_ctor_layout).
 long_option("type-ctor-functors",	type_ctor_functors).
+long_option("new-type-class-rtti",	new_type_class_rtti).
 long_option("rtti-line-numbers",	rtti_line_numbers).
 
 % code generation options

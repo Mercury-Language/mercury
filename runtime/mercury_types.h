@@ -80,7 +80,7 @@ typedef signed char                     MR_int_least8_t;
 /* 
 ** This section defines the basic types that we use.
 ** Note that we require 
-**      sizeof(MR_Word) == sizeof(MR_Integer) == sizeof(MR_Code*).
+**      sizeof(MR_Word) == sizeof(MR_Integer) == sizeof(MR_CodePtr).
 */
 
 typedef MR_uintptr_t            MR_Word;
@@ -94,11 +94,12 @@ typedef MR_uintptr_t            MR_Unsigned;
 #define MR_bytes_to_words(x)    (((x) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
 
 /*
-** `MR_Code *' is used as a generic pointer-to-label type that can point
-** to any label defined using the Define_* macros in mercury_goto.h.
+** `MR_CodePtr' is used as a generic pointer-to-label type that can point
+** to any label defined using the MR_define_* macros in mercury_goto.h.
 */
 
 typedef void                    MR_Code;
+typedef MR_Code                 *MR_CodePtr;
 
 /*
 ** MR_Float64 is required for the bytecode.

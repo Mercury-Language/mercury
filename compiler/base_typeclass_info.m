@@ -14,6 +14,8 @@
 %
 % Author: dgj.
 %
+% XXX The function of this file will soon be taken over by type_class_info.m.
+%
 %---------------------------------------------------------------------------%
 
 :- module backend_libs__base_typeclass_info.

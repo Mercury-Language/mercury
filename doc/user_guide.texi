@@ -3333,6 +3333,64 @@ whose arguments are all either integers, floats or strings.
 If the user specifies one or more integers on the command line,
 the output is restricted to the entries in the call table in which
 the @var{n}th argument is equal to the @var{n}th number on the command line.
+@sp 1
+@item type_ctor [-fr] @var{modulename} @var{typectorname} @var{arity}
+@kindex type_ctor (mdb command)
+Tests whether there is a type constructor defined in the given module,
+with the given name, and with the given arity.
+If there isn't, it prints a message to that effect.
+If there is, it echoes the identity of the type constructor.
+@sp 1
+If the option @samp{-r} or @samp{--print-rep} option is given,
+it also prints the name of the type representation scheme
+used by the type constructor
+(known as its `type_ctor_rep' in the implementation).
+@sp 1
+If the option @samp{-f} or @samp{--print-functors} option is given,
+it also prints the names and arities
+of function symbols defined by type constructor.
+@sp 1
+@item all_type_ctors [-fr] [@var{modulename}]
+@kindex all_type_ctors (mdb command)
+If the user specifies a module name,
+lists all the type constructors defined in the given module.
+If the user doesn't specify a module name,
+lists all the type constructors defined in the whole program.
+@sp 1
+If the option @samp{-r} or @samp{--print-rep} option is given,
+it also prints the name of the type representation scheme
+of each type constructor
+(known as its `type_ctor_rep' in the implementation).
+@sp 1
+If the option @samp{-f} or @samp{--print-functors} option is given,
+it also prints the names and arities
+of function symbols defined by each type constructor.
+@sp 1
+@item class_decl [-im] @var{modulename} @var{typeclassname} @var{arity}
+@kindex class_decl (mdb command)
+Tests whether there is a type class defined in the given module,
+with the given name, and with the given arity.
+If there isn't, it prints a message to that effect.
+If there is, it echoes the identity of the type class.
+@sp 1
+If the option @samp{-m} or @samp{--print-methods} option is given,
+it also lists all the methods of the type class.
+@sp 1
+If the option @samp{-i} or @samp{--print-instance} option is given,
+it also lists all the instances of the type class.
+@sp 1
+@item all_class_decls [-im] [@var{modulename}]
+@kindex all_class_decls (mdb command)
+If the user specifies a module name,
+lists all the type classes defined in the given module.
+If the user doesn't specify a module name,
+lists all the type classes defined in the whole program.
+@sp 1
+If the option @samp{-m} or @samp{--print-methods} option is given,
+it also lists all the methods of each type class.
+@sp 1
+If the option @samp{-i} or @samp{--print-instance} option is given,
+it also lists all the instances of each type class.
 @end table
 
 @node Declarative debugging

@@ -4399,6 +4399,9 @@ An instance declaration has the form
 An @samp{instance} declaration gives a type for each parameter of the
 type class.  Each of these types must be either a type with no arguments, or 
 a polymorphic type whose arguments are all distinct type variables.
+@c If this restriction is ever lifted, the algorithms for encoding the names of
+@c the data structures describing the instance, in base_typeclass_info.m
+@c and/or rtti.m, would need to be updated as well.
 For example @code{int}, @code{list(T)} and @code{bintree(K,V)} are allowed,
 but @code{T}, @code{list(int)} and @code{bintree(T,T)} are not.
 The types in an instance declaration must not be abstract types which

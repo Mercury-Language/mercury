@@ -1,0 +1,93 @@
+       1:      1  1 CALL pred class_decl.main/2-0 (det) class_decl.m:21
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> all_type_ctors class_decl
+type constructor class_decl.t2/1
+
+type constructor class_decl.t1/0
+
+number of type constructors in module class_decl: 2
+mdb> type_ctor class_decl t1 0
+type constructor class_decl.t1/0
+mdb> type_ctor -r class_decl t1 0
+type constructor class_decl.t1/0: NOTAG_GROUND
+mdb> type_ctor -f class_decl t1 0
+type constructor class_decl.t1/0
+t1/1
+mdb> type_ctor -rf class_decl t1 0
+type constructor class_decl.t1/0: NOTAG_GROUND
+t1/1
+mdb> type_ctor class_decl t2 1
+type constructor class_decl.t2/1
+mdb> type_ctor -r class_decl t2 1
+type constructor class_decl.t2/1: DU
+mdb> type_ctor -f class_decl t2 1
+type constructor class_decl.t2/1
+t2a/1, t2b/2
+mdb> type_ctor -f -r class_decl t2 1
+type constructor class_decl.t2/1: DU
+t2a/1, t2b/2
+mdb> type_ctor class_decl t1 1
+there is no such type constructor
+mdb> type_ctor class_decl nonexistent 3
+there is no such type constructor
+mdb> all_class_decls class_decl
+type class class_decl.foo/1
+
+type class class_decl.bar/2
+
+number of type classes in module class_decl: 2
+mdb> class_decl class_decl foo 1
+type class class_decl.foo/1
+mdb> class_decl -m class_decl foo 1
+type class class_decl.foo/1
+methods: pred foo_method/3
+mdb> class_decl -i class_decl foo 1
+type class class_decl.foo/1
+instance builtin.string
+instance class_decl.t1
+instance class_decl.t2(T1)
+mdb> class_decl -mi class_decl foo 1
+type class class_decl.foo/1
+methods: pred foo_method/3
+instance builtin.string
+instance class_decl.t1
+instance class_decl.t2(T1)
+mdb> class_decl class_decl bar 2
+type class class_decl.bar/2
+mdb> class_decl -m class_decl bar 2
+type class class_decl.bar/2
+methods: pred bar_method/4
+mdb> class_decl -i class_decl bar 2
+type class class_decl.bar/2
+instance builtin.int, builtin.int
+instance builtin.string, builtin.int
+instance builtin.string, builtin.string
+instance class_decl.t1, builtin.int
+instance class_decl.t1, class_decl.t2(T1)
+mdb> class_decl -mi class_decl bar 2
+type class class_decl.bar/2
+methods: pred bar_method/4
+instance builtin.int, builtin.int
+instance builtin.string, builtin.int
+instance builtin.string, builtin.string
+instance class_decl.t1, builtin.int
+instance class_decl.t1, class_decl.t2(T1)
+mdb> class_decl class_decl bar 1
+there is no such type class
+mdb> class_decl class_decl bad 2
+there is no such type class
+mdb> continue
+string: zero
+t1: 10
+t2a: 20
+t2b: 30, 40
+t2b: "thirty", "forty"
+ii: 11, 22
+si: eleven, 22
+ss: eleven, twentytwo
+t1int: 111, 222
+t1t2a: 333, 444
+t1t2b: 333, 444, 555
+t1t2b: 888, "sixsixsix", "sevensevenseven"

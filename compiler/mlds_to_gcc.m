@@ -2152,6 +2152,46 @@ build_rtti_type_name(type_hashcons_pointer, _, MR_TableNodePtrPtr) -->
 build_rtti_type_tc_name(base_typeclass_info(_, _, _), Size, GCC_Type) -->
 	{ MR_BaseTypeclassInfo = gcc__ptr_type_node },
 	build_sized_array_type(MR_BaseTypeclassInfo, Size, GCC_Type).
+build_rtti_type_tc_name(type_class_id(_), _Size, _GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: type_class_id") }.
+build_rtti_type_tc_name(type_class_decl(_), _Size, _GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: type_class_decl") }.
+build_rtti_type_tc_name(type_class_decl_super(_, _, _), _Size, _GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: type_class_decl_super") }.
+build_rtti_type_tc_name(type_class_decl_supers(_), _Size, _GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: type_class_decl_supers") }.
+build_rtti_type_tc_name(type_class_id_var_names(_), _Size, _GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: type_class_id_var_names") }.
+build_rtti_type_tc_name(type_class_id_method_ids(_), _Size, _GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: type_class_id_method_ids") }.
+build_rtti_type_tc_name(type_class_instance(_, _), _Size, _GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: type_class_instance") }.
+build_rtti_type_tc_name(type_class_instance_tc_type_vector(_, _), _Size,
+		_GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: " ++
+		"type_class_instance_tc_type_vector") }.
+build_rtti_type_tc_name(type_class_instance_constraint(_, _, _, _), _Size,
+		_GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: " ++
+		"type_class_instance_constraint") }.
+build_rtti_type_tc_name(type_class_instance_constraints(_, _), _Size,
+		_GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: " ++
+		"type_class_instance_constraints") }.
+build_rtti_type_tc_name(type_class_instance_methods(_, _), _Size,
+		_GCC_Type) -->
+	{ sorry(this_file,
+		"build_rtti_type_tc_name: type_class_instance_methods") }.
 
 :- pred build_type_info_type(rtti_type_info::in,
 	gcc__type::out, io__state::di, io__state::uo) is det.
