@@ -271,6 +271,11 @@ case $COMPILER in gcc)
 					ARCH_OPTS="$ARCH_OPTS -O1" ;;
 				esac
 			esac ;;
+		i?86*)
+			case "$*" in
+			*" call_gen.c "*|*" modules.dir/call_gen"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O0" ;;
+			esac ;;
 	esac ;;
 esac
 
