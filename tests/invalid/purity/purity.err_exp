@@ -31,10 +31,10 @@ purity.m:118: In call to semipure predicate `purity.semi/0':
 purity.m:118:   purity error: call must be preceded by `semipure' indicator.
 purity.m:118: Purity error in closure: closure body is semipure,
 purity.m:118:   but closure was not declared `semipure.'
-purity.m:093: In unification predicate for type (purity.e8):
+purity.m:093: In unification predicate for type constructor purity.e8:
 purity.m:093:   purity error: predicate is impure.
 purity.m:093:   It must be pure.
-purity.m:101: In unification predicate for type (purity.e9):
+purity.m:101: In unification predicate for type constructor purity.e9:
 purity.m:101:   purity error: predicate is semipure.
 purity.m:101:   It must be pure.
 purity.m:083: In clause for `e6':

@@ -1447,16 +1447,14 @@ ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
 ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 		MLDS_Module) :-
 	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,	
-		PredName, PredArity, ArgTypes, PredId, ProcId,
+		PredName, PredArity, _ArgTypes, PredId, ProcId,
 		_HeadVarsWithNames, _ArgModes, CodeModel,
 		IsImported, _IsPseudoImported, _IsExported,
 		IsSpecialPredInstance),
 	(
-		IsSpecialPredInstance = yes
+		IsSpecialPredInstance = yes(SpecialPred - TypeCtor)
 	->
 		(
-			special_pred_get_type(PredName, ArgTypes, Type),
-			type_to_ctor_and_args(Type, TypeCtor, _),
 			% All type_ctors other than tuples here should be
 			% module qualified, since builtin types are handled
 			% separately in polymorphism.m.
@@ -1471,7 +1469,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 		->
 			(
 				ThisModule \= TypeModule,
-				PredName = "__Unify__",
+				SpecialPred = unify,
 				\+ hlds_pred__in_in_unification_proc_id(ProcId)
 			->
 				% This is a locally-defined instance

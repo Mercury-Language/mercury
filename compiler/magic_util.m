@@ -654,11 +654,11 @@ magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
 		% It had better be an in-in unification, since Aditi
 		% relations cannot have non-ground arguments. This is 
 		% checked elsewhere.
-		% XXX __Unify__/2 needs to be special cased in rl_exprn.m 
-		% because we don't add the type_info arguments.
+		% XXX unification predicates need to be special cased
+		% in rl_exprn.m because we don't add the type_info arguments.
 
 		hlds_pred__in_in_unification_proc_id(UniProcId),
-		SymName = unqualified("__Unify__"),
+		XXX SymName = unqualified("__Unify__"),
 		ArgVars = [Var, OutputVar],
 		Test = call(UniPredId, UniProcId, ArgVars, not_builtin,
 			no, SymName) - GoalInfo

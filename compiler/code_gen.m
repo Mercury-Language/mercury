@@ -396,8 +396,11 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		% doesn't need; work out which is and isn't needed and put
 		% inside the else case below
 		GenBytecode = yes,
-		% We don't generate bytecode for __Unify__, __Compare__ etc
-		% Since we will assume this code is already correct
+		% We don't generate bytecode for unify and compare preds.
+		% The automatically generated unify and compare predicates
+		% are correct by construction; for user-defined unify and
+		% compare predicates, we *assume* their correctness for now
+		% (perhaps not wisely).
 		\+ is_unify_or_compare_pred(PredInfo),
 		% Don't generate bytecode for procs with foreign code
 		goal_has_foreign(Goal) = no
@@ -1341,11 +1344,12 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 	pred_info_module(PredInfo, ModuleName),
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, Arity),
-	( special_pred_name_arity(_, _, PredName, Arity) ->
-		pred_info_arg_types(PredInfo, ArgTypes),
-		special_pred_get_type_det(PredName, ArgTypes, Type),
-		code_gen__find_arg_type_ctor_name(Type, TypeName),
-		string__append_list([PredName, "for_", TypeName], FullPredName)
+	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
+	( MaybeSpecial = yes(SpecialId - TypeCtor) ->
+		code_gen__find_arg_type_ctor_name(TypeCtor, TypeName),
+		special_pred_name_arity(SpecialId, SpecialPredName, _),
+		string__append_list([SpecialPredName, "_for_", TypeName],
+			FullPredName)
 	;
 		FullPredName = PredName
 	),
@@ -1361,16 +1365,12 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 	string__append_list([PredOrFuncString, " ", ModuleNameString, ".",
 		FullPredName, "/", ArityStr, "-", ProcNumStr], PushMsg).
 
-:- pred code_gen__find_arg_type_ctor_name((type)::in, string::out) is det.
+:- pred code_gen__find_arg_type_ctor_name((type_ctor)::in, string::out) is det.
 
-code_gen__find_arg_type_ctor_name(Type, TypeName) :-
-	( type_to_ctor_and_args(Type, TypeCtor, _) ->
-		TypeCtor = TypeCtorSymName - TypeCtorArity,
-		prog_out__sym_name_to_string(TypeCtorSymName, TypeCtorName),
-		string__int_to_string(TypeCtorArity, ArityStr),
-		string__append_list([TypeCtorName, "_", ArityStr], TypeName)
-	;
-		TypeName = "unknown"
-	).
-		
+code_gen__find_arg_type_ctor_name(TypeCtor, TypeName) :-
+	TypeCtor = TypeCtorSymName - TypeCtorArity,
+	prog_out__sym_name_to_string(TypeCtorSymName, TypeCtorName),
+	string__int_to_string(TypeCtorArity, ArityStr),
+	string__append_list([TypeCtorName, "_", ArityStr], TypeName).
+
 %---------------------------------------------------------------------------%

@@ -32,25 +32,25 @@
 	;	index
 	;	compare.
 
+	% Return the predicate name we should use for the given special_pred
+	% for the given type constructor.
+:- func special_pred_name(special_pred_id, type_ctor) = string.
+
 	% This predicate always returns determinism `semidet' for 
 	% unification procedures.  For types with only one value, the 
 	% unification is actually `det', however we need to pretend it
 	% is `semidet' so that it can be called correctly from the 
 	% polymorphic `unify' procedure.
-:- pred special_pred_info(special_pred_id, type, string, list(type),
-			list(mode), determinism).
-:- mode special_pred_info(in, in, out, out, out, out) is det.
+:- pred special_pred_interface(special_pred_id, type, list(type),
+	list(mode), determinism).
+:- mode special_pred_interface(in, in, out, out, out) is det.
 
-	% special_pred_name_arity(SpecialPredType, GenericPredName,
-	%		TypeSpecificVersionPredName, Arity):
+	% special_pred_name_arity(SpecialPredType, GenericPredName, Arity):
 	%	true iff there is a special predicate of category
-	%	SpecialPredType, called builtin:GenericPredName/Arity,
-	%	for which the type-specific versions will be called
-	%	TypeSpecificVersionPredName.
-:- pred special_pred_name_arity(special_pred_id, string, string, int).
-:- mode special_pred_name_arity(in, out, out, out) is det.
-:- mode special_pred_name_arity(out, in, out, in) is semidet.
-:- mode special_pred_name_arity(out, out, in, in) is semidet.
+	%	SpecialPredType, called builtin:GenericPredName/Arity.
+:- pred special_pred_name_arity(special_pred_id, string, int).
+:- mode special_pred_name_arity(in, out, out) is det.
+:- mode special_pred_name_arity(out, in, out) is semidet.
 
 :- pred special_pred_mode_num(special_pred_id, int).
 :- mode special_pred_mode_num(in, out) is det.
@@ -58,8 +58,8 @@
 :- pred special_pred_list(list(special_pred_id)).
 :- mode special_pred_list(out) is det.
 
-	% Given the mangled predicate name and the list of argument types,
-	% work out which type this special predicate is for.
+	% Given a special pred id and the list of its arguments, work out
+	% which argument specifies the type that this special predicate is for.
 	% Note that this gets called after the polymorphism.m pass, so
 	% type_info arguments may have been inserted at the start; hence we
 	% find the type at a known position from the end of the list
@@ -69,10 +69,10 @@
 	% can be found in the last type argument, except for index, for
 	% which it is the second-last argument.
 
-:- pred special_pred_get_type(string, list(Type), Type).
+:- pred special_pred_get_type(special_pred_id, list(prog_var), prog_var).
 :- mode special_pred_get_type(in, in, out) is semidet.
 
-:- pred special_pred_get_type_det(string, list(Type), Type).
+:- pred special_pred_get_type_det(special_pred_id, list(prog_var), prog_var).
 :- mode special_pred_get_type_det(in, in, out) is det.
 
 :- pred special_pred_description(special_pred_id, string).
@@ -119,42 +119,36 @@
 
 special_pred_list([unify, index, compare]).
 
-special_pred_name_arity(unify, "unify", "__Unify__", 2).
-special_pred_name_arity(index, "index", "__Index__", 2).
-special_pred_name_arity(compare, "compare", "__Compare__", 3).
+special_pred_name_arity(unify, "unify", 2).
+special_pred_name_arity(index, "index", 2).
+special_pred_name_arity(compare, "compare", 3).
 
 	% mode num for special procs is always 0 (the first mode)
 special_pred_mode_num(_, 0).
 
-special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In], semidet) :-
-	in_mode(In).
+special_pred_name(unify, _TypeCtor) = "__Unify__".
+special_pred_name(index, _TypeCtor) = "__Index__".
+special_pred_name(compare, _TypeCtor) = "__Compare__".
 
-special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
-	construct_type(unqualified("int") - 0, [], IntType),
+special_pred_interface(unify, Type, [Type, Type], [In, In], semidet) :-
+	in_mode(In).
+special_pred_interface(index, Type, [Type, int_type], [In, Out], det) :-
 	in_mode(In),
 	out_mode(Out).
-
-special_pred_info(compare, Type,
-		 "__Compare__", [ResType, Type, Type], [Uo, In, In], det) :-
-	ResType = comparison_result_type,
+special_pred_interface(compare, Type, [comparison_result_type, Type, Type],
+		[Uo, In, In], det) :-
 	in_mode(In),
 	uo_mode(Uo).
 
-special_pred_get_type("__Unify__", Types, T) :-
+special_pred_get_type(unify, Types, T) :-
 	list__reverse(Types, [T | _]).
-special_pred_get_type("unify", Types, T) :-
-	list__reverse(Types, [T | _]).
-special_pred_get_type("__Index__", Types, T) :-
+special_pred_get_type(index, Types, T) :-
 	list__reverse(Types, [_, T | _]).
-special_pred_get_type("index", Types, T) :-
-	list__reverse(Types, [_, T | _]).
-special_pred_get_type("__Compare__", Types, T) :-
-	list__reverse(Types, [T | _]).
-special_pred_get_type("compare", Types, T) :-
+special_pred_get_type(compare, Types, T) :-
 	list__reverse(Types, [T | _]).
 
-special_pred_get_type_det(Name, ArgTypes, Type) :-
-	( special_pred_get_type(Name, ArgTypes, TypePrime) ->
+special_pred_get_type_det(SpecialId, ArgTypes, Type) :-
+	( special_pred_get_type(SpecialId, ArgTypes, TypePrime) ->
 		Type = TypePrime
 	;
 		error("special_pred_get_type_det: special_pred_get_type failed")

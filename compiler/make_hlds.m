@@ -3683,8 +3683,8 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 	% predicates to be defined only for the kinds of types which do not
 	% lead unify_proc__generate_index_clauses to abort.
 
-add_special_preds(Module0, TVarSet, Type, TypeCtor,
-			Body, Context, Status, Module) :-
+add_special_preds(Module0, TVarSet, Type, TypeCtor, Body, Context, Status,
+		Module) :-
 	(
 		special_pred_is_generated_lazily(Module0,
 			TypeCtor, Body, Status)
@@ -3795,17 +3795,15 @@ add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeCtor, TypeBody,
 		)
 	).
 
-add_special_pred_for_real(SpecialPredId,
-		Module0, TVarSet, Type, TypeCtor, TypeBody, Context, Status0,
-		Module) :-
+add_special_pred_for_real(SpecialPredId, Module0, TVarSet, Type, TypeCtor,
+		TypeBody, Context, Status0, Module) :-
 	adjust_special_pred_status(Status0, SpecialPredId, Status),
 	module_info_get_special_pred_map(Module0, SpecialPredMap0),
 	( map__contains(SpecialPredMap0, SpecialPredId - TypeCtor) ->
 		Module1 = Module0
 	;
-		add_special_pred_decl_for_real(SpecialPredId,
-			Module0, TVarSet, Type, TypeCtor, Context, Status,
-			Module1)
+		add_special_pred_decl_for_real(SpecialPredId, Module0,
+			TVarSet, Type, TypeCtor, Context, Status, Module1)
 	),
 	module_info_get_special_pred_map(Module1, SpecialPredMap1),
 	map__lookup(SpecialPredMap1, SpecialPredId - TypeCtor, PredId),
@@ -3828,9 +3826,9 @@ add_special_pred_for_real(SpecialPredId,
 		% Since the compiler did not then know that the type definition
 		% will specify a user-defined equality predicate, it set up
 		% the status as pseudo_imported in order to prevent the
-		% generation of code for mode 0 of the __Unify__ predicate
+		% generation of code for mode 0 of the unify predicate
 		% for the type. However, for types with user-defined equality,
-		% we *do* want to generate code for mode 0 of __Unify__,
+		% we *do* want to generate code for mode 0 of unify,
 		% so we fix the status.
 		pred_info_set_import_status(PredInfo0, Status, PredInfo1)
 	;
@@ -3841,13 +3839,15 @@ add_special_pred_for_real(SpecialPredId,
 	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
 	pred_info_get_markers(PredInfo2, Markers2),
 	add_marker(Markers2, calls_are_fully_qualified, Markers),
-	pred_info_set_markers(PredInfo2, Markers, PredInfo),
+	pred_info_set_markers(PredInfo2, Markers, PredInfo3),
+	pred_info_set_maybe_special_pred(PredInfo3,
+		yes(SpecialPredId - TypeCtor), PredInfo),
 	map__det_update(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Module1, Preds, Module).
 
-:- pred add_special_pred_decl_list(list(special_pred_id),
-			module_info, tvarset, type, type_ctor, hlds_type_body,
-			prog_context, import_status, module_info).
+:- pred add_special_pred_decl_list(list(special_pred_id), module_info,
+	tvarset, type, type_ctor, hlds_type_body, prog_context,
+	import_status, module_info).
 :- mode add_special_pred_decl_list(in, in, in, in, in, in, in, in, out) is det.
 
 add_special_pred_decl_list([], Module, _, _, _, _, _, _, Module).
@@ -3858,9 +3858,8 @@ add_special_pred_decl_list([SpecialPredId | SpecialPredIds], Module0,
 	add_special_pred_decl_list(SpecialPredIds, Module1,
 		TVarSet, Type, TypeCtor, TypeBody, Context, Status, Module).
 
-:- pred add_special_pred_decl(special_pred_id,
-		module_info, tvarset, type, type_ctor, hlds_type_body,
-		prog_context, import_status, module_info).
+:- pred add_special_pred_decl(special_pred_id, module_info, tvarset, type,
+	type_ctor, hlds_type_body, prog_context, import_status, module_info).
 :- mode add_special_pred_decl(in, in, in, in, in, in, in, in, out) is det.
 
 add_special_pred_decl(SpecialPredId, Module0, TVarSet, Type, TypeCtor,
@@ -3878,13 +3877,13 @@ add_special_pred_decl(SpecialPredId, Module0, TVarSet, Type, TypeCtor,
 		Module = Module0
 	).
 
-add_special_pred_decl_for_real(SpecialPredId,
-			Module0, TVarSet, Type, TypeCtor, Context, Status0,
-			Module) :-
+add_special_pred_decl_for_real(SpecialPredId, Module0, TVarSet, Type, TypeCtor,
+		Context, Status0, Module) :-
 	module_info_name(Module0, ModuleName),
+	special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Det),
+	Name = special_pred_name(SpecialPredId, TypeCtor),
 	PredName = unqualified(Name),
-	special_pred_info(SpecialPredId, Type, Name, ArgTypes, ArgModes, Det),
-	special_pred_name_arity(SpecialPredId, _, _, Arity),
+	special_pred_name_arity(SpecialPredId, _, Arity),
 	Cond `with_type` condition = true,
 	clauses_info_init(Arity, ClausesInfo0),
 	adjust_special_pred_status(Status0, SpecialPredId, Status),
@@ -3899,11 +3898,13 @@ add_special_pred_decl_for_real(SpecialPredId,
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ExistQVars,
 		ArgTypes, Cond, Context, ClausesInfo0, Status, Markers,
 		none, predicate, ClassContext, Proofs, Owner, PredInfo0),
+	pred_info_set_maybe_special_pred(PredInfo0,
+		yes(SpecialPredId - TypeCtor), PredInfo1),
 	ArgLives = no,
 	varset__init(InstVarSet),
 		% Should not be any inst vars here so it's ok to use a 
 		% fresh inst_varset.
-	add_new_proc(PredInfo0, InstVarSet, Arity, ArgModes, yes(ArgModes),
+	add_new_proc(PredInfo1, InstVarSet, Arity, ArgModes, yes(ArgModes),
 		ArgLives, yes(Det), Context, address_is_not_taken, PredInfo,
 		_),
 
@@ -3923,7 +3924,7 @@ add_special_pred_decl_for_real(SpecialPredId,
 add_special_pred_unify_status(TypeBody, Status0, Status) :-
 	( TypeBody = du_type(_, _, _, yes(_), _, _) ->
 			% If the type has user-defined equality,
-			% then we create a real __Unify__ predicate
+			% then we create a real unify predicate
 			% for it, whose body calls the user-specified
 			% predicate. The compiler's usual type checking
 			% algorithm will handle any necessary

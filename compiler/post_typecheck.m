@@ -991,9 +991,8 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, PredInfo0, PredInfo) -->
 		% but the polymorphic unify needs to be able to call
 		% the semidet mode.)
 		%
-		{ special_pred_name_arity(unify, _, PredName, PredArity) },
-		{ pred_info_name(PredInfo0, PredName) },
-		{ pred_info_arity(PredInfo0, PredArity) }
+		{ pred_info_get_maybe_special_pred(PredInfo0, MaybeSpecial) },
+		{ MaybeSpecial = yes(unify - _) }
 	->
 		{ PredInfo = PredInfo0 }
 	;

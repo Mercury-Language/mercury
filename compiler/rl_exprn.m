@@ -140,6 +140,7 @@
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
+:- import_module hlds__special_pred.
 :- import_module libs__tree.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
@@ -996,8 +997,7 @@ rl_exprn__call_not_implemented_error(Context,
 	rl_exprn_info::in, rl_exprn_info::out) is det.  
 
 rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
-	{ pred_info_name(PredInfo, PredName) },
-	{ pred_info_arity(PredInfo, Arity) },
+	{ pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial) },
 	(
 		{ pred_info_is_builtin(PredInfo) }
 	->
@@ -1013,8 +1013,7 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 		% Handle unify/2 specially, since it is possibly recursive,
 		% which will cause the code below to fall over. Also, magic.m
 		% doesn't add type_info arguments yet.
-		{ PredName = "__Unify__" },
-		{ Arity = 2 },
+		{ MaybeSpecial = yes(unify - _) },
 		{ list__reverse(Args, [Arg1, Arg2 | _]) },
 		{ hlds_pred__in_in_unification_proc_id(ProcId) }
 	->
@@ -1025,8 +1024,7 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 	;
 		% Handle compare/3 specially for the same reason
 		% as unify/2 above.
-		{ PredName = "__Compare__" },
-		{ Arity = 3 },
+		{ MaybeSpecial = yes(compare - _) },
 		{ list__reverse(Args, [Arg2, Arg1, Res | _]) }
 	->
 		rl_exprn_info_lookup_var(Arg1, Arg1Loc),

@@ -86,6 +86,7 @@
 :- import_module backend_libs__rtti.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
+:- import_module hlds__special_pred.
 :- import_module libs__trace_params.
 :- import_module ll_backend__code_util.
 :- import_module parse_tree__prog_data.
@@ -380,10 +381,10 @@ output_layout_name_storage_type_name(proc_static(RttiProcLabel),
 		{ BeingDefined = yes }
 	),
 	(
-		{ RttiProcLabel ^ is_unify_or_compare_pred = yes },
+		{ RttiProcLabel ^ maybe_special_pred = yes(_) },
 		io__write_string("MR_Compiler_ProcStatic ")
 	;
-		{ RttiProcLabel ^ is_unify_or_compare_pred = no },
+		{ RttiProcLabel ^ maybe_special_pred = no },
 		io__write_string("MR_User_ProcStatic ")
 	),
 	output_layout_name(proc_static(RttiProcLabel)).
@@ -920,7 +921,7 @@ output_proc_id(ProcLabel) -->
 		io__write_int(ModeInt),
 		io__write_string("\n")
 	;
-		{ ProcLabel = special_proc(DefiningModule, PredName,
+		{ ProcLabel = special_proc(DefiningModule, SpecialPredId,
 			TypeModule, TypeName, TypeArity, Mode) },
 		{ prog_out__sym_name_to_string(DefiningModule,
 			DefiningModuleStr) },
@@ -933,6 +934,8 @@ output_proc_id(ProcLabel) -->
 		io__write_string(",\n\t"),
 		quote_and_write_string(DefiningModuleStr),
 		io__write_string(",\n\t"),
+		{ TypeCtor = qualified(TypeModule, TypeName) - TypeArity },
+		{ PredName = special_pred_name(SpecialPredId, TypeCtor) },
 		quote_and_write_string(PredName),
 		io__write_string(",\n\t"),
 		io__write_int(TypeArity),

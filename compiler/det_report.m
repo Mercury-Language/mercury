@@ -143,6 +143,7 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_out.
 :- import_module hlds__passes_aux.
+:- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__mercury_to_mercury.
@@ -886,14 +887,15 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial) },
 	%
-	% if the error was in a call to __Unify__ (i.e. in the unification
-	% itself), then don't print out the predicate name, just print
-	% out the context.  If it wasn't, then print them both out.
-	% (The latter can happen if there is a determinism error in a
-	% function call inside some unification.)
+	% if the error was in a call to a type-specific unification predicate
+	% (i.e. in the unification itself), then don't print out the predicate
+	% name, just print out the context.  If it wasn't, then print them
+	% both out. (The latter can happen if there is a determinism error
+	% in a function call inside some unification.)
 	%
-	( { PredName = "__Unify__" } ->
+	( { MaybeSpecial = yes(unify - _) } ->
 		(
 			{ CallUnifyContext = yes(
 					call_unify_context(LT, RT, UC)) },
@@ -901,12 +903,13 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 			det_report_unify_context(First, Last,
 				Context, UC, DetInfo, LT, RT)
 		;
-			% this shouldn't happen; every call to __Unify__
+			% this shouldn't happen; every call to a compiler
+			% generated type-specific unification predicate
 			% should have a unify_context
 			{ CallUnifyContext = no },
 			prog_out__write_context(Context),
 			io__write_string(
-	"  Some weird unification (or explicit call to `__Unify__'?)")
+	"  Some weird unification (or explicit call to a type-specific unify predicate?)")
 		)
 	;
 		(

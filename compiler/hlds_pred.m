@@ -18,6 +18,7 @@
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_module.
+:- import_module hlds__special_pred.
 :- import_module hlds__instmap.
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
@@ -835,12 +836,19 @@
 :- pred pred_info_set_assertions(pred_info, set(assert_id), pred_info).
 :- mode pred_info_set_assertions(in, in, out) is det.
 
+:- pred pred_info_get_maybe_special_pred(pred_info, maybe(special_pred)).
+:- mode pred_info_get_maybe_special_pred(in, out) is det.
+
+:- pred pred_info_set_maybe_special_pred(pred_info, maybe(special_pred),
+	pred_info).
+:- mode pred_info_set_maybe_special_pred(in, in, out) is det.
+
 :- pred pred_info_get_maybe_instance_method_constraints(pred_info,
-		maybe(instance_method_constraints)).
+	maybe(instance_method_constraints)).
 :- mode pred_info_get_maybe_instance_method_constraints(in, out) is det.
 
 :- pred pred_info_set_maybe_instance_method_constraints(pred_info,
-		maybe(instance_method_constraints), pred_info).
+	maybe(instance_method_constraints), pred_info).
 :- mode pred_info_set_maybe_instance_method_constraints(in, in, out) is det.
 
 :- pred pred_info_get_purity(pred_info, purity).
@@ -1078,6 +1086,10 @@ calls_are_fully_qualified(Markers) =
 			assertions	:: set(assert_id),
 					% List of assertions which
 					% mention this predicate.
+			maybe_special_pred :: maybe(special_pred),
+					% If the predicate is a unify, compare
+					% or index predicate, specify which
+					% one, and for which type constructor.
 			maybe_instance_method_constraints
 					:: maybe(instance_method_constraints) 
 					% If this predicate is a class method
@@ -1101,13 +1113,14 @@ pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
 	UnprovenBodyConstraints = [],
 	Indexes = [],
 	set__init(Assertions),
+	MaybeUCI = no,
 	MaybeInstanceConstraints = no,
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet,
 		GoalType, Markers, Attributes, PredOrFunc, ClassContext,
 		ClassProofs, ExistQVars, HeadTypeParams,
 		UnprovenBodyConstraints, User, Indexes, Assertions,
-		MaybeInstanceConstraints).
+		MaybeUCI, MaybeInstanceConstraints).
 
 pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 		Context, Status, Markers, PredOrFunc, ClassContext, User,
@@ -1136,13 +1149,14 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
 	UnprovenBodyConstraints = [],
 	Indexes = [],
+	MaybeUCI = no,
 	MaybeInstanceConstraints = no,
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, ModuleName, PredName, Arity, Status, TypeVarSet,
 		clauses, Markers, Attributes, PredOrFunc, ClassContext,
 		ClassProofs, ExistQVars, HeadTypeParams,
 		UnprovenBodyConstraints, User, Indexes, Assertions,
-		MaybeInstanceConstraints).
+		MaybeUCI, MaybeInstanceConstraints).
 
 pred_info_all_procids(PredInfo, ProcIds) :-
 	ProcTable = PredInfo ^ procedures,
@@ -1421,6 +1435,12 @@ pred_info_set_indexes(PredInfo, X, PredInfo^indexes := X).
 pred_info_get_assertions(PredInfo, PredInfo^assertions).
 
 pred_info_set_assertions(PredInfo, X, PredInfo^assertions := X).
+
+pred_info_get_maybe_special_pred(PredInfo,
+		PredInfo^maybe_special_pred).
+
+pred_info_set_maybe_special_pred(PredInfo, X,
+		PredInfo^maybe_special_pred := X).
 
 pred_info_get_maybe_instance_method_constraints(PredInfo,
 		PredInfo^maybe_instance_method_constraints).
@@ -2781,9 +2801,9 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 
 	% is_unify_or_compare_pred(PredInfo) succeeds iff
 	% the PredInfo is for a compiler generated instance of a
-	% type-specific special_pred (i.e. one of the __Unify__,
-	% __Index__, or __Compare__ predicates generated as a
-	% type-specific instance of unify/2, index/2, or compare/3).
+	% type-specific special_pred (i.e. one of the unify, compare,
+	% or index predicates generated as a type-specific instance of
+	% unify/2, index/2, or compare/3).
 
 :- pred is_unify_or_compare_pred(pred_info).
 :- mode is_unify_or_compare_pred(in) is semidet.
@@ -2845,12 +2865,11 @@ is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
 	builtin_ops__translate_builtin(ModuleName, PredName, ProcId, Args, _).
 
 :- pred prog_varset_init(prog_varset::out) is det.
+
 prog_varset_init(VarSet) :- varset__init(VarSet).
 
 is_unify_or_compare_pred(PredInfo) :-
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity),
-	special_pred_name_arity(_, _, PredName, PredArity).
+	pred_info_get_maybe_special_pred(PredInfo, yes(_)).
 
 %-----------------------------------------------------------------------------%
 

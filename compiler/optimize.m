@@ -218,7 +218,7 @@ optimize__repeat(Iter0, LayoutLabelSet, Instrs0, ProcLabel, MayAlterRtti,
 optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
 		C0, C, OptDebugInfo0, OptDebugInfo, Instrs, Mod) -->
 	{ opt_util__find_first_label(Instrs0, Label) },
-	{ opt_util__format_label(Label, LabelStr) },
+	{ proc_label_to_c_string(get_proc_label(Label), no) = LabelStr },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	globals__io_lookup_bool_option(optimize_jumps, Jumpopt),
 	globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt),

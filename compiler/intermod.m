@@ -2150,8 +2150,9 @@ set_list_of_preds_exported_2([PredId | PredIds], Preds0, Preds) :-
 		import_status_to_write(Status)
 	->	
 		(
-			pred_info_name(PredInfo0, "__Unify__"),
-			pred_info_arity(PredInfo0, 2)
+			pred_info_get_maybe_special_pred(PredInfo0,
+				MaybeSpecial),
+			MaybeSpecial = yes(unify - _)
 		->
 			NewStatus = pseudo_exported
 		;

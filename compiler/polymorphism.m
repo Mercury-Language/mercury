@@ -2836,7 +2836,7 @@ polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
 		proc_id_to_int(ProcId, ProcInt)
 	;
 		polymorphism__get_category_name(TypeCategory, CategoryName),
-		special_pred_name_arity(SpecialPredId, SpecialName, _, Arity),
+		special_pred_name_arity(SpecialPredId, SpecialName, Arity),
 		string__append_list(
 			["builtin_", SpecialName, "_", CategoryName], Name),
 		lookup_builtin_pred_proc_id(ModuleInfo,

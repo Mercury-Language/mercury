@@ -64,11 +64,11 @@
 	% hlds_out__write_pred_id/4 writes out a message such as
 	% 	predicate `foo:bar/3'
 	% or	function `foo:myfoo/5'
-	% unless the predicate name begins with a double underscore "__",
-	% in which case mercury_output_term is used to print out the
-	% predicate's (or function's) name and argument types (since for
-	% `__Unify__' predicates, the module, name and arity are not
-	% sufficient to indentify the predicate).
+	% unless the predicate is a special (unify, compare or index)
+	% predicate, in which case mercury_output_term is used to print out
+	% the predicate's name and argument types (since for such predicates,
+	% the module, name and arity are not sufficient to identify the
+	% predicate).
 
 :- pred hlds_out__write_pred_id(module_info, pred_id, io__state, io__state).
 :- mode hlds_out__write_pred_id(in, in, di, uo) is det.
@@ -371,19 +371,19 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arity(PredInfo, Arity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial) },
 	( 
-		{ special_pred_name_arity(Kind, _, Name, Arity) } 
+		{ MaybeSpecial = yes(SpecialId - TypeCtor) } 
 	->
-		{ special_pred_description(Kind, Descr) },
+		{ special_pred_description(SpecialId, Descr) },
 		io__write_string(Descr),
-		io__write_string(" for type "),
-		{ pred_info_arg_types(PredInfo, TVarSet, _ExistQVars,
-			ArgTypes) },
-		( { special_pred_get_type(Name, ArgTypes, Type) } ->
-			mercury_output_term(Type, TVarSet, no)
+		{ TypeCtor = _TypeSymName - TypeArity },
+		( { TypeArity = 0 } ->
+			io__write_string(" for type ")
 		;
-			{ error("special_pred_get_type failed!") }
-		)
+			io__write_string(" for type constructor ")
+		),
+		hlds_out__write_type_name(TypeCtor)
 	; 
 		{ pred_info_get_markers(PredInfo, Markers) },
 		{ check_marker(Markers, class_instance_method) }

@@ -93,6 +93,7 @@
 :- implementation.
 
 :- import_module hlds__hlds_pred.
+:- import_module hlds__special_pred.
 :- import_module parse_tree__prog_util.
 
 :- import_module char, int, list, std_util.
@@ -120,10 +121,12 @@ proc_label_to_c_string(proc(DefiningModule, PredOrFunc, PredModule,
 
 	% For a special proc, output a label of the form:
 	% mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
-proc_label_to_c_string(special_proc(Module, PredName, TypeModule,
+proc_label_to_c_string(special_proc(Module, SpecialPredId, TypeModule,
 		TypeName, TypeArity, ModeNum0), AddPrefix) = ProcLabelString :-
 	% figure out the LabelName
 	DummyArity = -1,	% not used by make_pred_or_func_name.
+	TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
+	PredName = special_pred_name(SpecialPredId, TypeCtor),
 	LabelName = make_pred_or_func_name(unqualified(""), predicate,
 		unqualified(""), PredName, DummyArity, AddPrefix),
 

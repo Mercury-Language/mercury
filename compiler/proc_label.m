@@ -21,6 +21,7 @@
 :- import_module backend_libs__rtti.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
+:- import_module hlds__special_pred.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool.
@@ -45,7 +46,7 @@
 		)
 	;	special_proc(
 			module_name,	% defining module
-			string,		% pred name
+			special_pred_id,% indirectly defines pred name
 			module_name,	% type module
 			string,		% type name
 			int,		% type arity
@@ -86,14 +87,12 @@
 
 make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
 	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule,
-		PredModule, PredName, PredArity, ArgTypes, _PredId, ProcId,
+		PredModule, PredName, PredArity, _ArgTypes, _PredId, ProcId,
 		_ProcHeadVarsWithNames, _ArgModes, _CodeModel,
 		IsImported, _IsPseudoImported, _IsExported,
 		IsSpecialPredInstance),
-	( IsSpecialPredInstance = yes ->
+	( IsSpecialPredInstance = yes(SpecialPred - TypeCtor) ->
 		(
-			special_pred_get_type(PredName, ArgTypes, Type),
-			type_to_ctor_and_args(Type, TypeCtor, _),
 			% All type_ctors other than tuples here should be
 			% module qualified, since builtin types are
 			% handled separately in polymorphism.m.
@@ -108,14 +107,14 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
 			TypeCtor = _ - TypeArity,
 			(
 				ThisModule \= TypeModule,
-				PredName = "__Unify__",
+				SpecialPred = unify,
 				\+ hlds_pred__in_in_unification_proc_id(ProcId)
 			->
 				DefiningModule = ThisModule
 			;
 				DefiningModule = TypeModule
 			),
-			ProcLabel = special_proc(DefiningModule, PredName,
+			ProcLabel = special_proc(DefiningModule, SpecialPred,
 				TypeModule, TypeName, TypeArity, ProcId)
 		;
 			string__append_list(["make_proc_label:\n",
@@ -157,7 +156,7 @@ make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
 		;
 			Module = ModuleName
 		),
-		ProcLabel = special_proc(Module, "__Unify__", TypeModule,
+		ProcLabel = special_proc(Module, unify, TypeModule,
 			TypeName, Arity, UniModeNum)
 	;
 		error("make_uni_label: unqualified type_ctor")

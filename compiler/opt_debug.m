@@ -129,11 +129,13 @@
 
 :- import_module backend_libs__name_mangle.
 :- import_module hlds__hlds_pred.
+:- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__llds_out.
 :- import_module ll_backend__opt_util.
+:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 
 :- import_module int, set, map, string.
@@ -598,16 +600,18 @@ opt_debug__dump_proclabel(proc(Module, _PredOrFunc, PredModule,
 	string__int_to_string(Mode, M_str),
 	string__append_list([ExtraModule, ModuleName, "_", PredName,
 		"_", A_str, "_", M_str], Str).
-opt_debug__dump_proclabel(special_proc(Module, Pred, TypeModule,
-		Type, Arity, ProcId), Str) :-
+opt_debug__dump_proclabel(special_proc(Module, SpecialPredId, TypeModule,
+		TypeName, TypeArity, ProcId), Str) :-
 	ModuleName = sym_name_mangle(Module),
 	TypeModuleName = sym_name_mangle(TypeModule),
-	TypeName = qualify_name(TypeModuleName, Type),
-	string__int_to_string(Arity, A_str),
+	QualTypeName = qualify_name(TypeModuleName, TypeName),
+	string__int_to_string(TypeArity, A_str),
 	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, M_str),
-	string__append_list([ModuleName, "_", Pred, "_",
-		TypeName, "_", A_str, "_", M_str], Str).
+	TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
+	SpecialPredStr = special_pred_name(SpecialPredId, TypeCtor),
+	string__append_list([ModuleName, "_", SpecialPredStr, "_",
+		QualTypeName, "_", A_str, "_", M_str], Str).
 
 opt_debug__dump_bool(yes, "yes").
 opt_debug__dump_bool(no, "no").

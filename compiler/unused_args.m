@@ -1018,6 +1018,7 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, Status,
 	pred_info_name(PredInfo0, Name0),
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 	pred_info_arg_types(PredInfo0, Tvars, ExistQVars, ArgTypes0),
+	pred_info_get_maybe_special_pred(PredInfo0, MaybeSpecial),
 		% create a unique new pred name using the old proc_id
 	(
 		string__prefix(Name0, "__"),
@@ -1025,8 +1026,7 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, Status,
 	->
 		(
 				% fix up special pred names
-			special_pred_get_type(Name0, ArgTypes0, Type),
-			type_to_ctor_and_args(Type, TypeCtor, _)
+			MaybeSpecial = yes(_SpecialId - TypeCtor)
 		->
 			type_util__type_ctor_module(ModuleInfo,
 				TypeCtor, TypeModule),

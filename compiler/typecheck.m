@@ -868,19 +868,14 @@ same_structure_2([ConstraintA | ConstraintsA], [ConstraintB | ConstraintsB],
 special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	%
 	% check if the predicate is a compiler-generated special
-	% predicate
+	% predicate, and if so, for which type
 	%
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity),
-	special_pred_name_arity(_, _, PredName, PredArity),
+	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
+	MaybeSpecial = yes(_SpecialId - TypeCtor),
 	%
-	% find out which type it is a special predicate for,
-	% and check whether that type is a type for which there is
+	% check whether that type is a type for which there is
 	% a user-defined equality predicate, or which is existentially typed.
 	%
-	pred_info_arg_types(PredInfo, ArgTypes),
-	special_pred_get_type(PredName, ArgTypes, Type),
-	type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, Body),

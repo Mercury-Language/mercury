@@ -58,6 +58,7 @@
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_pred.
+:- import_module hlds__special_pred.
 :- import_module parse_tree__prog_util.
 
 :- import_module assoc_list, bool, int, require, set, std_util.
@@ -679,20 +680,33 @@ rl_key__extract_key_range_call(PredId, ProcId, Args) -->
 	{ pred_info_module(PredInfo, PredModule) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ list__length(Args, Arity) },
+	{ pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial) },
 	(
 		{ hlds_pred__in_in_unification_proc_id(ProcId) },
-		{ is_builtin_unify_pred(PredModule, PredName, Arity) }
+		{
+			is_builtin_unify_pred(PredModule, PredName, Arity)
+		;
+			MaybeSpecial = yes(unify - _)
+		}
 	->
 		% Find the last two arguments, the rest will be type_infos.
 		{ list__reverse(Args, RevArgs) },
 		( { RevArgs = [Arg1, Arg2 | _] } ->
 			rl_key__unify_var_var(Arg1, Arg2)
 		;
-			{ error("rl_key__extract_key_range_call: __Unify__") }
+			{ error("rl_key__extract_key_range_call: unify") }
 		)
 	; 
-		{ is_builtin_compare_pred(PredModule,
-			PredName, Arity, CompareType) }
+		{
+			is_builtin_compare_pred(PredModule,
+				PredName, Arity, CompareTypePrime)
+		->
+			CompareType = CompareTypePrime
+		;
+			MaybeSpecial = yes(compare - _),
+			% We could do better here
+			CompareType = unknown
+		}
 	->
 		rl_key__update_compare_bounds(CompareType, Args)
 	;
@@ -756,7 +770,6 @@ rl_key__update_compare_bounds_2((=), Arg1, Arg2) -->
 :- pred is_builtin_compare_pred(sym_name::in, string::in,
 		int::in, compare_type::out) is semidet.
 
-is_builtin_compare_pred(_, "__Compare__", _, unknown).
 is_builtin_compare_pred(Module, "compare", 4, unknown) :-
 	mercury_public_builtin_module(Module).
 is_builtin_compare_pred(unqualified("int"), "<", 2, result(<)).
@@ -776,7 +789,6 @@ is_builtin_compare_pred(Module, "builtin_compare_string", 3, unknown) :-
 
 :- pred is_builtin_unify_pred(sym_name::in, string::in, int::in) is semidet.
 
-is_builtin_unify_pred(_, "__Unify__", _).
 is_builtin_unify_pred(Module, "unify", 3) :-
 	mercury_public_builtin_module(Module).
 is_builtin_unify_pred(Module, "builtin_unify_int", 2) :-

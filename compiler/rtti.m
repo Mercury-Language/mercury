@@ -28,6 +28,7 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
+:- import_module hlds__special_pred.
 :- import_module parse_tree__prog_data.
 
 :- import_module assoc_list, bool, list, set, map, std_util.
@@ -429,42 +430,42 @@
 	% The rtti_proc_label type holds all the information about a procedure
 	% that we need to compute the entry label for that procedure
 	% in the target language (the llds__code_addr or mlds__code_addr).
-:- type rtti_proc_label
-	--->	rtti_proc_label(
-			pred_or_func		::	pred_or_func,
-			this_module		::	module_name,
-			pred_module		::	module_name,
-			pred_name		::	string,
-			arity			::	arity,
-			arg_types		::	list(type),
-			pred_id			::	pred_id,
-			proc_id			::	proc_id,
-			proc_headvars		::	assoc_list(prog_var,
-								prog_var_name),
-			proc_arg_modes		::	list(arg_mode),
-			proc_interface_code_model ::	code_model,
-			%
-			% The following booleans hold values computed from the
-			% pred_info, using procedures
-			%	pred_info_is_imported/1,
-			%	pred_info_is_pseudo_imported/1,
-			%	procedure_is_exported/2, and
-			%	is_unify_or_compare_pred/1
-			% respectively.
-			% We store booleans here, rather than storing the
-			% pred_info, to avoid retaining a reference to the
-			% parts of the pred_info that we aren't interested in,
-			% so that those parts can be garbage collected.
-			% We use booleans rather than an import_status
-			% so that we can continue to use the above-mentioned
-			% abstract interfaces rather than hard-coding tests
-			% on the import_status.
-			%
-			is_imported			::	bool,
-			is_pseudo_imported		::	bool,
-			is_exported			::	bool,
-			is_unify_or_compare_pred	::	bool
-		).
+:- type rtti_proc_label --->
+	rtti_proc_label(
+		pred_or_func		::	pred_or_func,
+		this_module		::	module_name,
+		pred_module		::	module_name,
+		pred_name		::	string,
+		arity			::	arity,
+		arg_types		::	list(type),
+		pred_id			::	pred_id,
+		proc_id			::	proc_id,
+		proc_headvars		::	assoc_list(prog_var,
+							prog_var_name),
+		proc_arg_modes		::	list(arg_mode),
+		proc_interface_code_model ::	code_model,
+		%
+		% The following booleans hold values computed from the
+		% pred_info, using procedures
+		%	pred_info_is_imported/1,
+		%	pred_info_is_pseudo_imported/1,
+		%	procedure_is_exported/2, and
+		%	pred_info_get_maybe_special_pred/1
+		% respectively.
+		% We store booleans here, rather than storing the
+		% pred_info, to avoid retaining a reference to the
+		% parts of the pred_info that we aren't interested in,
+		% so that those parts can be garbage collected.
+		% We use booleans rather than an import_status
+		% so that we can continue to use the above-mentioned
+		% abstract interfaces rather than hard-coding tests
+		% on the import_status.
+		%
+		is_imported			::	bool,
+		is_pseudo_imported		::	bool,
+		is_exported			::	bool,
+		maybe_special_pred		::	maybe(special_pred)
+	).
 
 %-----------------------------------------------------------------------------%
 %
@@ -807,15 +808,14 @@ rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	IsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
 	IsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
 	IsExported = (procedure_is_exported(PredInfo, ProcId) -> yes ; no),
-	IsUnifyOrComparePred =
-		(is_unify_or_compare_pred(PredInfo) -> yes ; no),
+	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
 	ProcHeadVarsWithNames = list__map((func(Var) = Var - Name :-
 			Name = varset__lookup_name(ProcVarSet, Var)
 		), ProcHeadVars),
 	ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
 		PredName, Arity, ArgTypes, PredId, ProcId,
 		ProcHeadVarsWithNames, ProcArgModes, ProcCodeModel,
-		IsImported, IsPseudoImp, IsExported, IsUnifyOrComparePred).
+		IsImported, IsPseudoImp, IsExported, MaybeSpecial).
 
 rtti__proc_label_pred_proc_id(ProcLabel, PredId, ProcId) :-
 	ProcLabel = rtti_proc_label(_, _, _, _, _, _, PredId, ProcId,

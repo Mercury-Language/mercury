@@ -326,8 +326,10 @@
 :- import_module backend_libs__builtin_ops.
 :- import_module backend_libs__proc_label.
 :- import_module hlds__hlds_pred.
+:- import_module hlds__special_pred.
 :- import_module ll_backend__exprn_aux.
 :- import_module ll_backend__llds_out.
+:- import_module parse_tree__prog_data.
 
 :- import_module int, string, set, require.
 
@@ -1492,13 +1494,15 @@ opt_util__format_proclabel(proc(_Module, _PredOrFunc, _, Name, Arity, ProcId),
 	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, ModeStr),
 	string__append_list([Name, "/", ArityStr, " mode ", ModeStr], Str).
-opt_util__format_proclabel(special_proc(_Module, Pred, _, Type, Arity, ProcId),
-		Str) :-
-	string__int_to_string(Arity, ArityStr),
+opt_util__format_proclabel(special_proc(_Module, SpecialPredId, TypeModule,
+		TypeName, TypeArity, ProcId), Str) :-
+	string__int_to_string(TypeArity, TypeArityStr),
 	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, ModeStr),
-	string__append_list(
-		[Pred, "_", Type, "/", ArityStr, " mode ", ModeStr], Str).
+	TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
+	PredName = special_pred_name(SpecialPredId, TypeCtor),
+	string__append_list([PredName, "_", TypeName, "/", TypeArityStr,
+		" mode ", ModeStr], Str).
 
 opt_util__has_both_incr_decr_sp(Instrs) :-
 	opt_util__has_both_incr_decr_sp_2(Instrs, no, yes, no, yes).

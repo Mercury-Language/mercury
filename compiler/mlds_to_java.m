@@ -125,22 +125,6 @@ qualified_name_is_stdlib(qualified(Module, Name)) :-
 	 	qualified_name_is_stdlib(Module)
 	 ).
 
-	% Succeeds iff this definition is a function definition which
-	% defines the `unify' or `compare' special predicate.
-	%
-:- pred defn_is_unify_or_compare(mlds__defn).
-:- mode defn_is_unify_or_compare(in) is semidet.
-
-defn_is_unify_or_compare(Defn) :-
-	Defn  = mlds__defn(Name, _Context, _Flags, _Body),
-	Name  = function(Label, _ProcID, _MaybeSeqNum, _PredID),
-	Label = special_pred(PredName, _, _, _),
-	(
-		PredName = "__Compare__"
-	;
-		PredName = "__Unify__"
-	).
-
 	% Succeeds iff this definition is a data definition which
 	% defines RTTI.
 	%

@@ -695,8 +695,7 @@ unify_proc__collect_type_defn(ModuleInfo0, TypeCtor, Type,
 
 unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 		ModuleInfo, ClauseInfo) :-
-	special_pred_info(SpecialPredId, Type,
-		_PredName, ArgTypes, _Modes, _Det),
+	special_pred_interface(SpecialPredId, Type, ArgTypes, _Modes, _Det),
 	unify_proc__info_init(ModuleInfo, VarTypeInfo0),
 	unify_proc__make_fresh_named_vars_from_types(ArgTypes, "HeadVar__", 1,
 		Args, VarTypeInfo0, VarTypeInfo1),
@@ -1574,7 +1573,7 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 	% are the only public builtins called by code generated
 	% by this module.
 	%
-	{ special_pred_name_arity(_, Name, _, Arity) ->
+	{ special_pred_name_arity(_, Name, Arity) ->
 		MercuryBuiltin = mercury_public_builtin_module
 	;
 		MercuryBuiltin = mercury_private_builtin_module
