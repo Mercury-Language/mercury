@@ -81,7 +81,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, BlockMap0, BlockMap,
 		C1 = C0
 	;
 		counter__allocate(N, C0, C1),
-		Label = local(ProcLabel, N),
+		Label = local(N, ProcLabel),
 		LabelInstr = label(Label) - "",
 		RestInstrs = [OrigInstr0 | OrigInstrs0]
 	),

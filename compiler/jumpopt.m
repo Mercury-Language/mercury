@@ -308,7 +308,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			counter__allocate(LabelNum, Counter0, Counter1),
-			NewLabel = local(ProcLabel, LabelNum),
+			NewLabel = local(LabelNum, ProcLabel),
 			NewInstrs = [
 				if_val(binop(ne, lval(curfr), lval(maxfr)),
 					label(NewLabel))

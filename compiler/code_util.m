@@ -272,7 +272,7 @@ choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
 
 code_util__make_internal_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
-	Label = local(ProcLabel, LabelNum).
+	Label = local(LabelNum, ProcLabel).
 
 code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
@@ -379,7 +379,7 @@ code_util__proc_label_from_code_addr(CodeAddr, ProcLabel) :-
 		CodeAddr = imported(ProcLabel)
 	).
 
-code_util__extract_proc_label_from_label(local(ProcLabel, _), ProcLabel).
+code_util__extract_proc_label_from_label(local(_, ProcLabel), ProcLabel).
 code_util__extract_proc_label_from_label(c_local(ProcLabel), ProcLabel).
 code_util__extract_proc_label_from_label(local(ProcLabel), ProcLabel).
 code_util__extract_proc_label_from_label(exported(ProcLabel), ProcLabel).

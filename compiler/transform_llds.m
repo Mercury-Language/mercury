@@ -171,8 +171,8 @@ split_computed_goto(Instr0, MaxSize, Length, ProcLabel, C0, Instrs, C) -->
 
 		{ Index     = binop((-), Rval, const(int_const(Mid))) },
 		{ Test      = binop((>=), Rval, const(int_const(Mid))) },
-		{ ElseAddr  = label(local(ProcLabel, N)) },
-		{ ElseLabel = label(local(ProcLabel, N)) - ""},
+		{ ElseAddr  = label(local(N, ProcLabel)) },
+		{ ElseLabel = label(local(N, ProcLabel)) - ""},
 		{ IfInstr   = if_val(Test, ElseAddr ) - "Binary search"},
 
 		{ ThenInstr = computed_goto(Rval, Start) - "Then section" },

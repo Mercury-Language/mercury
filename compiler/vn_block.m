@@ -731,9 +731,9 @@ vn_block__record_label(Label, Livemap, Params, VnTables0, VnTables,
 			C = C0,
 			Parallels = []
 		;
-			( Label = local(ProcLabel, _) ->
+			( Label = local(_, ProcLabel) ->
 				counter__allocate(N, C0, C),
-				NewLabel = local(ProcLabel, N),
+				NewLabel = local(N, ProcLabel),
 				Parallels = [parallel(Label, NewLabel,
 					ParEntries)]
 			;

@@ -923,7 +923,7 @@
 	;	f.		% floating point regs
 
 :- type label
-	--->	local(proc_label, int)	% not proc entry; internal to a
+	--->	local(int, proc_label)	% not proc entry; internal to a
 					% procedure
 	;	c_local(proc_label)	% proc entry; internal to a C module
 	;	local(proc_label)	% proc entry; internal to a Mercury

@@ -231,7 +231,7 @@ divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, C0, Instrs, C) :-
 				Instrs = [Instr0 | Instrs1]
 			;
 				counter__allocate(N, C0, C1),
-				NewLabel = local(ProcLabel, N),
+				NewLabel = local(N, ProcLabel),
 				NewInstr = label(NewLabel) - "",
 				divide_into_basic_blocks(Instrs0, ProcLabel,
 					C1, Instrs1, C),
@@ -295,7 +295,7 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
 				Instrs2 = Instrs1
 			;
 				counter__allocate(N, C0, C1),
-				NewLabel = local(ProcLabel, N),
+				NewLabel = local(N, ProcLabel),
 				NewInstr = label(NewLabel) - "",
 				Instrs2 = [NewInstr | Instrs1]
 			),
@@ -324,7 +324,7 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
 					[], no, ordinary(Needs)),
 				MaybeTailInfo = yes(TailInfo - Label),
 				counter__allocate(N, C0, C1),
-				NewLabel = local(ProcLabel, N),
+				NewLabel = local(N, ProcLabel),
 				NewInstr = label(NewLabel) - "",
 				LabelledBlock = [NewInstr | Teardown],
 				TeardownLabel = NewLabel,
@@ -1088,7 +1088,7 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, BlockMap0, ParMap0,
 				% stack frame, so we must create one.
 
 				counter__allocate(N, C1, C2),
-				NewLabel = local(ProcLabel, N),
+				NewLabel = local(N, ProcLabel),
 				MaybeFallThrough = yes(NewLabel),
 				MaybeNewLabel = yes(NewLabel),
 				SetupCode = [
@@ -1191,7 +1191,7 @@ mark_parallel(Label0, Label, ProcLabel, C0, C, ParMap0, ParMap) :-
 		ParMap = ParMap0
 	;
 		counter__allocate(N, C0, C),
-		NewParallel = local(ProcLabel, N),
+		NewParallel = local(N, ProcLabel),
 		Label = NewParallel,
 		map__det_insert(ParMap0, Label0, NewParallel, ParMap)
 	).

@@ -1470,7 +1470,7 @@ opt_util__count_temps_lval(Lval, R0, R, F0, F) :-
 % that uses a temp var without defining it.
 opt_util__count_temps_rval(_, R, R, F, F).
 
-opt_util__format_label(local(ProcLabel, _), Str) :-
+opt_util__format_label(local(_, ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).
 opt_util__format_label(c_local(ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).

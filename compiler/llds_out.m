@@ -1122,7 +1122,7 @@ output_stack_layout_decl(Label, DeclSet0, DeclSet) -->
 get_proc_label(exported(ProcLabel)) = ProcLabel.
 get_proc_label(local(ProcLabel)) = ProcLabel.
 get_proc_label(c_local(ProcLabel)) = ProcLabel.
-get_proc_label(local(ProcLabel, _)) = ProcLabel.
+get_proc_label(local(_, ProcLabel)) = ProcLabel.
 
 :- func get_defining_module_name(proc_label) = module_name.
 get_defining_module_name(proc(ModuleName, _, _, _, _, _)) = ModuleName.
@@ -3421,9 +3421,9 @@ output_label_as_code_addr(c_local(ProcLabel)) -->
 	io__write_string("LABEL("),
 	output_label(c_local(ProcLabel)),
 	io__write_string(")").
-output_label_as_code_addr(local(ProcLabel, N)) -->
+output_label_as_code_addr(local(N, ProcLabel)) -->
 	io__write_string("LABEL("),
-	output_label(local(ProcLabel, N)),
+	output_label(local(N, ProcLabel)),
 	io__write_string(")").
 
 :- pred output_label_list(list(label), io__state, io__state).
@@ -3474,9 +3474,9 @@ output_label_defn(c_local(ProcLabel)) -->
 	io__write_string("Define_local("),
 	output_label(c_local(ProcLabel)),
 	io__write_string(");\n").
-output_label_defn(local(ProcLabel, Num)) -->
+output_label_defn(local(Num, ProcLabel)) -->
 	io__write_string("Define_label("),
-	output_label(local(ProcLabel, Num)),
+	output_label(local(Num, ProcLabel)),
 	io__write_string(");\n").
 
 % Note that the suffixes _l and _iN used to be interpreted by mod2c,
@@ -3501,7 +3501,7 @@ llds_out__get_label(local(ProcLabel), AddPrefix, ProcLabelStr) :-
 	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
 llds_out__get_label(c_local(ProcLabel), AddPrefix, ProcLabelStr) :-
 	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
-llds_out__get_label(local(ProcLabel, Num), AddPrefix, LabelStr) :-
+llds_out__get_label(local(Num, ProcLabel), AddPrefix, LabelStr) :-
 	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr),
 	string__int_to_string(Num, NumStr),
 	string__append("_i", NumStr, NumSuffix),
