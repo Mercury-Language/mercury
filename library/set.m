@@ -159,12 +159,6 @@
 :- pred set__difference(set(T), set(T), set(T)).
 :- mode set__difference(in, in, out) is det.
 
-	% `set__join(Sets, Set)' is true iff `Set' is the union of
-	% all of the elements of `Sets'.
-
-:- pred set__join(set(set(T)), set(T)).
-:- mode set__join(in, out) is det.
-
 %--------------------------------------------------------------------------%
 
 :- implementation.
@@ -298,17 +292,4 @@ set__difference_2([E|Es], A, C) :-
 	set__difference_2(Es, B, C).
 
 %--------------------------------------------------------------------------%
-
-set__join(Sets, Set) :-
-	set__to_sorted_list(Sets, SetsAsList),
-	set__init(Set0),
-	set__union_list(Set0, SetsAsList, Set).
-
-:- pred set__union_list(set(T), list(set(T)), set(T)).
-:- mode set__union_list(in, in, out) is det.
-set__union_list(Set, [], Set).
-set__union_list(SetIn, [Set | Sets], SetOut) :-
-	set__union(SetIn, Set, SetOut1),
-	set__union_list(SetOut1, Sets, SetOut).
-
 %--------------------------------------------------------------------------%
