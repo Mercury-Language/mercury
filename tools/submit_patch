@@ -9,26 +9,35 @@
 #	This implements a "commit server".
 #	It takes as input a log message and a patch.
 #	It checks out the Mercury sources, applies the patch,
-#	and it (by bootchecking in a couple of grades),
+#	tests it (by bootchecking in a couple of grades),
 #	and if the tests pass, it commits the patch.
 #	It locks the test directory, so you can submit
 #	multiple patches at once and it will only run
 #	one of them at a time.
 #
 # TODO:
-#	- support committing on a branch
 #	- support testing the native-code back-end
-#	- allow additional options to be passed to configure
 
 usage="\
 Usage: $0 [options] <cvs log message file> <patch file>
 Options:
 	-d <dirname>, --directory <dirname>
 		Run the tests in directory <dirname>.
+	--gcc
+		Test the GCC-based native code back-end.
+		(XXX not yet implemented)
 	-r <CVSROOT>, --repository <CVSROOT>
 		Use the specified CVS repository for checking out mercury.
 	-g <CVSROOT>, --gcc-repository <CVSROOT>
 		Use the specified CVS repository for checking out GCC.
+	--branch <branch>
+		Use the specified branch tag for checking out mercury.
+	--gcc-branch <branch>
+		Use the specified branch tag for checking out GCC.
+	--configure <configure-options>
+		Use the specified options when configuring mercury.
+	--gcc-configure <configure-options>
+		Use the specified options when configuring GCC.
 	-S <megabytes>, --space <megabytes>
 		Require this amount of free disk space.
 	-b <bootcheck-options>, --bootcheck <bootcheck-options>
@@ -36,6 +45,10 @@ Options:
 		the standard bootchecks (asm_fast.gc & hlc.gc).
 	-u <email-address>, --user <email-address>
 		Mail the output to the specified user.
+	-t <title>, --title <title>
+		Specify a name for this patch.
+		The patch title is used in the test sub-directory name,
+		and is also included in the email subject line.
 	-c-, --no-commit
 		Do not commit the patch, even if the tests pass.
 	-h, --help
@@ -58,64 +71,33 @@ test_root=/tmp/$user/mercury
 # Disk space needed (in megabytes)
 disk_space_required=300
 
+# "true" if we should build with the GCC back-end,
+# so that `--target asm' works.
+# XXX not yet implemented
+do_gcc=false
+
 # CVS Repositories
 gcc_cvsroot=:pserver:guest@gcc.gnu.org:/cvs/gcc
 mercury_cvsroot=/home/mercury1/repository
-if [ -d $mercury_cvsroot ]; then
+if [ -d "$mercury_cvsroot/." ]; then
 	:
 else
 	mercury_cvsroot=:pserver:guest@cvs.mercury.cs.mu.oz.au:$mercury_cvsroot
 fi
 
+# CVS branches
+branch=
+gcc_branch=
+
+# Configure options
+configure_opts=
+gcc_configure_opts="--enable-checking --languages=c,mercury"
+
 # A "#"-separated list of bootchecks to run.
 bootchecks="--grade asm_fast.gc # --grade hlc.gc".
 
-#-----------------------------------------------------------------------------#
-
-obtain_lock() {
-	until mkdir $test_root/lock; do
-		sleep 60
-	done
-	echo "Process $$ on host `hostname -f`" > $test_root/lock/info
-}
-
-release_lock() {
-	rm -f $test_root/lock/info
-	rmdir $test_root/lock
-}
-
-#-----------------------------------------------------------------------------#
-
-die() {
-	msg="
-*** check_patch failed:
-*** $@
-
-Log file in $test_dir/OUTPUT.
-
-Leaving the build directory $test_dir intact in case
-you need to use it to debug the problem.
-You must to remove this directory when you have finished with it.
-"
-	echo "$msg" 1>&2
-	echo "$msg" | mail -s "auto-test ($title) failed" $user
-	release_lock
-	exit 1
-}
-
-succeed() {
-	msg="
-*** check_patch succeeded.
-
-Log file in $test_dir/OUTPUT.
-
-Leaving the build directory $test_dir intact in case you want to
-browse $test_dir/OUTPUT.
-You must to remove this directory when you have finished with it.
-"
-	echo "$msg" 1>&2
-	echo "$msg" | mail -s "auto-test ($title) succeeded" $user
-}
+# "true" if we should commit the patch if/when the tests pass.
+commit=true
 
 #-----------------------------------------------------------------------------#
 #
@@ -129,6 +111,9 @@ parse_options() {
 		title="$2"; shift ;;
 	-t*)
 		title="` expr $1 : '-t\(.*\)' `"; ;;
+
+	--gcc)
+		do_gcc=true; shift ;;
 
 	-d|--directory)
 		test_root="$2"; shift ;;
@@ -144,6 +129,19 @@ parse_options() {
 		gcc_cvsroot="$2"; shift ;;
 	-g*)
 		gcc_cvsroot="` expr $1 : '-g\(.*\)' `"; ;;
+
+	--branch)
+		branch="-r$2"; shift ;;
+
+	--gcc-branch)
+		gcc_branch="-r$2"; shift ;;
+
+	--configure)
+		configure_opts="$2"; shift ;;
+
+	--gcc-configure)
+		gcc_configure_opts="$2"; shift ;;
+	
 
 	-s|--space)
 		disk_space_required="$2"; shift ;;
@@ -190,6 +188,53 @@ parse_options() {
     logmessage=$1
     patchfile=$2
     test_dir=$test_root/test_$title
+}
+
+#-----------------------------------------------------------------------------#
+
+obtain_lock() {
+	until mkdir $test_root/lock; do
+		sleep 60
+	done
+	echo "Process $$ on host `hostname -f`" > $test_root/lock/info
+}
+
+release_lock() {
+	rm -f $test_root/lock/info
+	rmdir $test_root/lock
+}
+
+#-----------------------------------------------------------------------------#
+
+die() {
+	msg="
+*** check_patch failed:
+*** $@
+
+Log file in $test_dir/OUTPUT.
+
+Leaving the build directory $test_dir intact in case
+you need to use it to debug the problem.
+You must to remove this directory when you have finished with it.
+"
+	echo "$msg" 1>&2
+	echo "$msg" | mail -s "auto-test ($title) failed" $user
+	release_lock
+	exit 1
+}
+
+succeed() {
+	msg="
+*** check_patch succeeded.
+
+Log file in $test_dir/OUTPUT.
+
+Leaving the build directory $test_dir intact in case you want to
+browse $test_dir/OUTPUT.
+You must to remove this directory when you have finished with it.
+"
+	echo "$msg" 1>&2
+	echo "$msg" | mail -s "auto-test ($title) succeeded" $user
 }
 
 #-----------------------------------------------------------------------------#
@@ -248,23 +293,28 @@ main() {
     mkdir $test_dir			|| die "mkdir $test_dir failed"
     echo "Testing in directory $test_dir"
     {
+        set -x
 	cp $patchfile $test_dir/PATCH	|| die "error copying $patchfile"
 	cp $logmessage $test_dir/CVSLOG	|| die "error copying $logmessage"
 	cd $test_dir			|| die "cd $test_dir failed"
         CVSROOT=$mercury_cvsroot
 	export CVSROOT
-	cvs checkout mercury		|| die "cvs checkout mercury failed"
+	cvs checkout $branch mercury	|| die "cvs checkout mercury failed"
 	cd mercury			|| die "cd mercury failed"
-	cvs checkout tests		|| die "cvs checkout tests failed"
+	cvs checkout $branch tests	|| die "cvs checkout tests failed"
 	find . | sort > ../FILES.old
 	patch -p0 < ../PATCH		|| die "applying patch failed"
 	find . | sort > ../FILES.new
 	do_cvs_add_remove		|| die "do_cvs_add_remove failed"
 	autoconf			|| die "autoconf failed"
-	sh configure --prefix=$test_dir/install || die "configure failed"
+	sh configure --prefix=$test_dir/install $configure_opts \
+					|| die "configure failed"
 	make				|| die "make failed"
 	do_bootchecks			|| die "do_bootchecks failed"
-	cvs commit -m"`cat ../CVSLOG`"	|| die "cvs commit failed"
+	case $commit in true)
+		cvs commit -m"`cat ../CVSLOG`" || die "cvs commit failed"
+		;;
+	esac
 	cd ..				|| die "cd .."
 	rm -rf mercury			|| die "rm -rf mercury failed"
     } > $test_dir/OUTPUT 2>&1
