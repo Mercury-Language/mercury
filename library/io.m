@@ -1502,20 +1502,14 @@ io__check_err(Stream, Res) -->
 :- pred io__stream_file_size(stream, int, io__state, io__state).
 :- mode io__stream_file_size(in, out, di, uo) is det.
 % io__stream_file_size(Stream, Size):
-%	if Stream is a regular file, then Size is its size,
+%	if Stream is a regular file, then Size is its size (in bytes),
 %	otherwise Size is -1.
 
 :- pragma c_header_code("
 	#include <unistd.h>
+#ifdef HAVE_SYS_STAT_H
 	#include <sys/stat.h>
-
-	/*
-	** in case some non-POSIX implementation doesn't have S_ISREG(),
-	** define it to always fail
-	*/
-	#ifndef S_ISREG
-	#define S_ISREG(x) FALSE
-	#endif
+#endif
 ").
 
 :- pragma c_code(io__stream_file_size(Stream::in, Size::out,
@@ -1523,12 +1517,18 @@ io__check_err(Stream, Res) -->
 		[will_not_call_mercury, thread_safe],
 "{
 	MercuryFile *f = (MercuryFile *) Stream;
+#if defined(HAVE_FSTAT) && \
+    (defined(HAVE_FILENO) || defined(fileno)) && \
+    defined(S_ISREG)
 	struct stat s;
 	if (fstat(fileno(f->file), &s) == 0 && S_ISREG(s.st_mode)) {
 		Size = s.st_size;
 	} else {
 		Size = -1;
 	}
+#else
+	Size = -1;
+#endif
 }").
 
 %-----------------------------------------------------------------------------%
@@ -2412,6 +2412,7 @@ io__insert_stream_name(Stream, Name) -->
 
 :- pragma c_code(io__set_globals(Globals::di, IOState0::di, IOState::uo), 
 		will_not_call_mercury, "
+	/* XXX need to globalize the memory */
 	ML_io_user_globals = Globals;
 	update_io(IOState0, IOState);
 ").
@@ -2600,12 +2601,14 @@ io__get_io_output_stream_type(Type) -->
 #include <errno.h>
 
 #ifdef HAVE_SYS_WAIT
-#include <sys/wait.h>
+  #include <sys/wait.h>		/* for WIFEXITED, WEXITSTATUS, etc. */
 #endif
 
 extern MercuryFile mercury_stdin;
 extern MercuryFile mercury_stdout;
 extern MercuryFile mercury_stderr;
+extern MercuryFile mercury_stdin_binary;
+extern MercuryFile mercury_stdout_binary;
 extern MercuryFile *mercury_current_text_input;
 extern MercuryFile *mercury_current_text_output;
 extern MercuryFile *mercury_current_binary_input;
@@ -2630,10 +2633,12 @@ void		mercury_close(MercuryFile* mf);
 MercuryFile mercury_stdin = { NULL, 1 };
 MercuryFile mercury_stdout = { NULL, 1 };
 MercuryFile mercury_stderr = { NULL, 1 };
+MercuryFile mercury_stdin_binary = { NULL, 1 };
+MercuryFile mercury_stdout_binary = { NULL, 1 };
 MercuryFile *mercury_current_text_input = &mercury_stdin;
 MercuryFile *mercury_current_text_output = &mercury_stdout;
-MercuryFile *mercury_current_binary_input = &mercury_stdin;
-MercuryFile *mercury_current_binary_output = &mercury_stdout;
+MercuryFile *mercury_current_binary_input = &mercury_stdin_binary;
+MercuryFile *mercury_current_binary_output = &mercury_stdout_binary;
 
 void
 mercury_init_io(void)
@@ -2641,6 +2646,27 @@ mercury_init_io(void)
 	mercury_stdin.file = stdin;
 	mercury_stdout.file = stdout;
 	mercury_stderr.file = stderr;
+#if defined(HAVE_FDOPEN) && (defined(HAVE_FILENO) || defined(fileno))
+	mercury_stdin_binary.file = fdopen(fileno(stdin), ""rb"");
+	if (mercury_stdin_binary.file == NULL) {
+		fatal_error(""error opening standard input stream in ""
+			""binary mode:\n\tfdopen() failed: %s"",
+			strerror(errno));
+	}
+	mercury_stdout_binary.file = fdopen(fileno(stdout), ""wb"");
+	if (mercury_stdout_binary.file == NULL) {
+		fatal_error(""error opening standard output stream in ""
+			""binary mode:\n\tfdopen() failed: %s"",
+			strerror(errno));
+	}
+#else
+	/*
+	** XXX Standard ANSI/ISO C provides no way to set stdin/stdout
+	** to binary mode.  I guess we just have to punt...
+	*/
+	mercury_stdin_binary.file = stdin;
+	mercury_stdout_binary.file = stdout;
+#endif
 }
 
 ").
@@ -3002,13 +3028,13 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma c_code(io__stdin_binary_stream(Stream::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	Stream = (Word) &mercury_stdin;
+	Stream = (Word) &mercury_stdin_binary;
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__stdout_binary_stream(Stream::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	Stream = (Word) &mercury_stdout;
+	Stream = (Word) &mercury_stdout_binary;
 	update_io(IO0, IO);
 ").
 
@@ -3282,6 +3308,14 @@ io__make_temp(Name) -->
 	io__make_temp(Dir, "mtmp", Name).
 
 /*---------------------------------------------------------------------------*/
+
+/*
+** XXX	The code for io__make_temp assumes POSIX.
+**	It uses the functions open(), close(), and getpid()
+**	and the macros EEXIST, O_WRONLY, O_CREAT, and O_EXCL.
+**	We should be using conditional compilation here to
+**	avoid these POSIX dependencies.
+*/
 
 %#include <stdio.h>
 

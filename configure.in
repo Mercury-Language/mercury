@@ -223,7 +223,8 @@ case "$host" in
 	*-cygwin*)
 		ac_cv_func_mprotect=no ;;
 esac
-AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer strerror memmove)
+AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
+AC_HAVE_FUNCS(strerror memmove fileno fdopen fstat)
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/wait.h, HAVE_SYS_WAIT_H=1)
 if test "$HAVE_SYS_WAIT_H" = 1; then
@@ -259,6 +260,11 @@ fi
 AC_CHECK_HEADER(sys/time.h, HAVE_SYS_TIME_H=1)
 if test "$HAVE_SYS_TIME_H" = 1; then
 	AC_DEFINE(HAVE_SYS_TIME)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/stat.h, HAVE_SYS_STAT_H=1)
+if test "$HAVE_SYS_STAT_H" = 1; then
+	AC_DEFINE(HAVE_SYS_STAT_H)
 fi
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
