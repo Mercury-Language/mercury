@@ -1132,6 +1132,12 @@ get_functor_info(Univ, FunctorInfo) :-
 
 :- pragma foreign_code("C", "
 
+/*
+** MR_make_arg_list is called from only one place above. If this changes, we
+** will need a mechanism to charge the memory we allocate here to the
+** right caller.
+*/
+
 MR_Word
 MR_make_arg_list(MR_TypeInfo type_info, const MR_DuFunctorDesc *functor_desc,
 	MR_Word *arg_vector)
@@ -1139,7 +1145,7 @@ MR_make_arg_list(MR_TypeInfo type_info, const MR_DuFunctorDesc *functor_desc,
 	int		i;
 	MR_Word		args;
 
-	args = MR_list_empty_msg(MR_PROC_LABEL);
+	args = MR_list_empty_msg(mercury__deconstruct__get_du_functor_info_5_0);
 	for (i = functor_desc->MR_du_functor_orig_arity - 1; i >= 0; i--) {
 		MR_Word		arg;
 		MR_TypeInfo	arg_type_info;
@@ -1156,7 +1162,8 @@ MR_make_arg_list(MR_TypeInfo type_info, const MR_DuFunctorDesc *functor_desc,
 		}
 
 		MR_new_univ_on_hp(arg, arg_type_info, arg_vector[i]);
-		args = MR_univ_list_cons_msg(arg, args, MR_PROC_LABEL);
+		args = MR_univ_list_cons_msg(arg, args,
+			mercury__deconstruct__get_du_functor_info_5_0);
 	}
 
 	return args;
