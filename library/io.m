@@ -2670,23 +2670,29 @@ io__tmpnam(Name) -->
 %#include <stdio.h>
 
 :- pragma c_header_code("
-#ifndef IO_HAVE_TEMPNAM
 	#include <sys/stat.h>
 	#include <unistd.h>
-	extern int	ML_io_tempnam_counter;
-	#define	MAX_TEMPNAME_TRIES	5
-#endif
+
+	#define	MAX_TEMPNAME_TRIES	10
+
+	extern int ML_io_tempnam_counter;
 ").
 
 :- pragma c_code("
-#ifndef IO_HAVE_TEMPNAM
 	int	ML_io_tempnam_counter = 0;
-#endif
 ").
 
-:- pragma(c_code, io__tmpnam(Dir::in, Prefix::in, FileName::out,
-		IO0::di, IO::uo), "{
-#ifdef	IO_HAVE_TEMPNAM
+:- pragma c_code(io__tmpnam(Dir::in, Prefix::in, FileName::out,
+		IO0::di, IO::uo),
+		will_not_call_mercury,
+"{
+#if 0
+/*
+** We used to use this code #ifdef IO_HAVE_TEMPNAM,
+** but it does the wrong thing:
+** tempnam() uses the environment variable TMP_DIR
+** in preference to the directory specified by `Dir'.
+*/
 	String tmp;
 
 	tmp = tempnam(Dir, Prefix);
@@ -2700,9 +2706,9 @@ io__tmpnam(Name) -->
 	update_io(IO0, IO);
 #else
 	/*
-	** tempnam was unavailable, so construct a temporary name by
-	** concatenating Dir, `/', the first 5 chars of Prefix, and
-	** a three digit number. The three digit number is generated
+	** Construct a temporary name by concatenating Dir, `/',
+	** the first 5 chars of Prefix, and a three digit number.
+	** The three digit number is generated
 	** by starting with the pid of this process.
 	** Stat is used to check that the file does not exist.
 	*/
@@ -2710,11 +2716,13 @@ io__tmpnam(Name) -->
 	char	countstr[256];
 	struct stat buf;
 
-	len = strlen(Dir) + 1+ 5 + 3 + 1; /* Dir + / + Prefix + counter + \\0 */
+	len = strlen(Dir) + 1 + 5 + 3 + 1;
+		/* Dir + / + Prefix + counter + \\0 */
 	incr_hp_atomic(LVALUE_CAST(Word *,FileName),
 		(len + sizeof(Word)) / sizeof(Word));
-	if (ML_io_tempnam_counter == 0)
+	if (ML_io_tempnam_counter == 0) {
 		ML_io_tempnam_counter = getpid();
+	}
 	num_tries=0;
 	do {
 		sprintf(countstr, ""%0d"", ML_io_tempnam_counter % 1000);
@@ -2725,9 +2733,9 @@ io__tmpnam(Name) -->
 		strncat(FileName, countstr, 3);
 		err = stat(FileName, &buf);
 		num_tries++;
-	} while (err != -1 && errno != ENOENT
+	} while ((err != -1 || errno != ENOENT)
 		&& num_tries < MAX_TEMPNAME_TRIES);
-	if (err != -1 && errno != ENOENT) {
+	if (err != -1 || errno != ENOENT) {
 		fatal_error(""unable to create temporary filename"");
 	}
 	update_io(IO0, IO);
