@@ -2301,15 +2301,7 @@ mlds_maybe_output_heap_profile_instr(Context, Indent, Args, FuncName,
 mlds_maybe_output_call_profile_instr(Context, Indent,
 		CalleeFuncRval, CallerName) -->
 	globals__io_lookup_bool_option(profile_calls, ProfileCalls),
-	(
-		{
-			ProfileCalls = yes,
-
-				% Some functions don't have a
-				% code_addr so we can't record the arc.
-			\+ no_code_address(CalleeFuncRval)
-		}
-	->
+	( { ProfileCalls = yes } ->
 		mlds_indent(Context, Indent),
 		io__write_string("MR_prof_call_profile("),
 		mlds_output_bracketed_rval(CalleeFuncRval),
@@ -2341,17 +2333,6 @@ mlds_maybe_output_time_profile_instr(Context, Indent, Name) -->
 	;
 		[]
 	).
-
-	%
-	% Does the rval represent a special procedure for which a
-	% code address doesn't exist.
-	%
-:- pred no_code_address(mlds__rval::in) is semidet.
-
-no_code_address(const(code_addr_const(proc(qual(Module, PredLabel - _), _)))) :-
-	SymName = mlds_module_name_to_sym_name(Module),
-	SymName = qualified(unqualified("mercury"), "private_builtin"),
-	PredLabel = pred(predicate, _, "unsafe_type_cast", 2).
 
 %-----------------------------------------------------------------------------%
 

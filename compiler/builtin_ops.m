@@ -140,6 +140,10 @@ translate_builtin(FullyQualifiedModule, PredName, ProcId, Args, Code) :-
 :- pred builtin_translation(string, string, int, list(T), simple_code(T)).
 :- mode builtin_translation(in, in, in, in, out) is semidet.
 
+	% Note that the code we generate for unsafe_type_cast is not
+	% type-correct.  Back-ends that require type-correct intermediate
+	% code (e.g. the MLDS back-end) must handle unsafe_type_cast
+	% separately, rather than by calling builtin_translation.
 builtin_translation("private_builtin", "unsafe_type_cast", 0,
 		[X, Y], assign(Y, leaf(X))).
 builtin_translation("builtin", "unsafe_promise_unique", 0,

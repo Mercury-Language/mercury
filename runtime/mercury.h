@@ -351,20 +351,6 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
   #define MR_unbox_float(ptr) (*(MR_Float *)ptr)
 #endif
 
-#ifdef MR_AVOID_MACROS
-  MR_EXTERN_INLINE void mercury__private_builtin__unsafe_type_cast_2_p_0(
-  	MR_Box src, MR_Box *dest);
-
-  MR_EXTERN_INLINE void mercury__private_builtin__unsafe_type_cast_2_p_0(
-  	MR_Box src, MR_Box *dest)
-  {
-  	*dest = src;
-  }
-#else
-  #define mercury__private_builtin__unsafe_type_cast_2_p_0(src, dest) \
-	(*(dest) = (src))
-#endif
-
 /*---------------------------------------------------------------------------*/
 /*
 ** Function declarations

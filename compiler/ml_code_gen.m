@@ -1907,19 +1907,7 @@ ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
 ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, PredName),
 		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	(
-		{
-			BuiltinState = not_builtin
-		;
-			% For the MLDS back-end, we can't treat
-			% private_builtin:unsafe_type_cast as an
-			% inline builtin, since the code that
-			% builtin_ops__translate_builtin generates
-			% for it is not type-correct.  Instead,
-			% we treat it as an ordinary polymorphic
-			% procedure; ml_gen_call will then generate
-			% the proper type conversions automatically.
-			PredName = qualified(_, "unsafe_type_cast")
-		}
+		{ BuiltinState = not_builtin }
 	->
 		ml_gen_var_list(ArgVars, ArgLvals),
 		=(MLDSGenInfo),
@@ -1928,6 +1916,30 @@ ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, PredName),
 		ml_variable_types(ArgVars, ActualArgTypes),
 		ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
 			CodeModel, Context, MLDS_Decls, MLDS_Statements)
+	;
+		% For the MLDS back-end, we can't treat
+		% private_builtin:unsafe_type_cast as an
+		% ordinary builtin, since the code that
+		% builtin_ops__translate_builtin generates
+		% for it is not type-correct.  Instead,
+		% we handle it separately here.
+		{ PredName = qualified(_, "unsafe_type_cast") }
+	->
+		ml_gen_var_list(ArgVars, ArgLvals),
+		ml_variable_types(ArgVars, ArgTypes),
+		(
+			{ ArgLvals = [DestLval, SrcLval] },
+			{ ArgTypes = [DestType, SrcType] }
+		->
+			ml_gen_box_or_unbox_rval(SrcType, DestType,
+				lval(SrcLval), CastRval),
+			{ Assign = ml_gen_assign(DestLval, CastRval,
+				Context) },
+			{ MLDS_Statements = [Assign] },
+			{ MLDS_Decls = [] }
+		;
+			{ error("wrong number of args for unsafe_type_cast") }
+		)
 	;
 		ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
 			MLDS_Decls, MLDS_Statements)
