@@ -1462,7 +1462,7 @@ mercury_output_constraint(VarSet, constraint(Name, Types)) -->
 :- mode output_type(in, in, di, uo) is det.
 
 output_type(VarSet, Type) -->
-	mercury_output_term(Type, VarSet, yes).
+	mercury_output_term(Type, VarSet, no).
 
 %-----------------------------------------------------------------------------%
 
