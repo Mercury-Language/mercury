@@ -104,6 +104,17 @@ BOEHM_GC_DIR = $(MERCURY_DIR)/boehm_gc
 COMPILER_DIR = $(MERCURY_DIR)/compiler
 UTIL_DIR = $(MERCURY_DIR)/util
 
+# By default, GRADESTRING is defined as the result of invoking
+# `mmc --output-grade-string' with $(GRADE) and $(GRADEFLAGS).
+# But when installing the standard library, the compiler will not yet
+# have been installed.  So we need to define GRADESTRING here, in a way
+# that doesn't require invoking mmc.
+#
+# Note that the definition below does _not_ include GRADEFLAGS.
+# So any changes to the grade flags for the standard library or 
+# compiler itself should be done by setting GRADE, not GRADEFLAGS.
+GRADESTRING		= $(GRADE)
+
 # The names of the various libraries.
 # The archives and shared object objects have a "lib" prefix and a ".a" or
 # ".so" (or ".dll") suffix around these names; the initialization files
