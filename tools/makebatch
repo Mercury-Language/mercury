@@ -53,8 +53,8 @@ do
 	-s|--stop-at-failure)
 		failed="stop" ;;
 
-	-t|--no-test-suite)
-		runtests="-t" ;;
+	-t-|--no-test-suite)
+		runtests="-t-" ;;
 
 	--compile-times)
 		compile_times="--compile-times" ;;
@@ -176,7 +176,8 @@ do
 	fi
 
 	echo starting bootcheck of version $visn
-	if tools/bootcheck $gradeopt -r $jfactor $runtests $objects $compile_times $testparams > batch/$batch.out.$visn 2>&1
+	if tools/bootcheck $gradeopt --copy-runtime $jfactor $runtests \
+	   $objects $compile_times $testparams > batch/$batch.out.$visn 2>&1
 	then
 		echo bootcheck of version $visn succeeded
 		if test "$compile_times" = ""

@@ -13,7 +13,7 @@
 usage="\
 Usage: $0 [options]
 Options:
-	-b, --no-bootcheck
+	-b-, --no-bootcheck
 		Do not perform a bootcheck; check only the tests directory.
 	-c, --compile-only
 		Check the successful creation of the stage3 .c files,
@@ -63,7 +63,7 @@ basis="ok"
 while [ $# -gt 0 ]; do
 	case "$1" in
 
-	-b|--no-bootcheck)
+	-b-|--no-bootcheck)
 		bootcheck="false" ;;
 
 	-c|--compile-only)

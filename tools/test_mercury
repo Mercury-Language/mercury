@@ -538,8 +538,8 @@ mmake $target_opts realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 mmake $target_opts depend $PARALLEL || { false; exit 1; }
 version=`mmake $target_opts version` || { false; exit 1; }
 fullarch=`mmake $target_opts fullarch` || { false; exit 1; }
-tools/bootcheck $target_opts -k -r -p -t $PARALLEL ||
-	$install_anyway || { false; exit 1; }
+tools/bootcheck $target_opts --keep-objs --copy-runtime --copy-profiler \
+	--no-test-suite $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
 #-----------------------------------------------------------------------------#

@@ -53,7 +53,7 @@ Options:
 		Copy the profiler directory instead of linking it.
 		This is sometimes necessary for bootstrapping
 		changes.
-	-n, --no-bootcheck
+	-b-, --no-bootcheck
 		Do not run the bootstrap check; execute the test suite and/or
 		the extras only. This option requires a previous bootstrap
 		check to have left a working stage 2 directory.
@@ -153,6 +153,9 @@ BROWSER_LIB_NAME=mer_browser
 while [ $# -gt 0 ]; do
 	case "$1" in
 
+	-b-|--no-bootcheck)
+		do_bootcheck=false ;;
+
 	-d|--test-dir)
 		testdirs="$testdirs $2"; shift ;;
 	-d*)
@@ -209,13 +212,10 @@ while [ $# -gt 0 ]; do
 	-p|--copy-profiler)
 		copy_profiler=true ;;
 
-	-n|--no-bootcheck)
-		do_bootcheck=false ;;
-
 	--no-check-namespace)
 		check_namespace=false ;;
 
-	-t|--no-test-suite)
+	-t-|--no-test-suite)
 		runtests=false ;;
 
 	-2|--keep-stage-2)
