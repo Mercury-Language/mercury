@@ -325,7 +325,7 @@ else
 fi
 echo "using GRADE=$GRADE to compile the compiler"
 AC_SUBST(GRADE)
-DEFAULT_GRADE=GRADE
+DEFAULT_GRADE=$GRADE
 echo "using DEFAULT_GRADE=$GRADE as the default grade for applications"
 AC_SUBST(DEFAULT_GRADE)
 
