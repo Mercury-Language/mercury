@@ -19,11 +19,13 @@ include Mercury.options
 
 #-----------------------------------------------------------------------------#
 
+MDEMANGLE = mdemangle
+
 mdemangle_test.out: mdemangle_test.inp
-	mdemangle < mdemangle_test.inp > mdemangle_test.out 2>&1
+	$(MDEMANGLE) < mdemangle_test.inp > mdemangle_test.out 2>&1
 
 mdemangle_test_hl.out: mdemangle_test_hl.inp
-	mdemangle < mdemangle_test_hl.inp > mdemangle_test_hl.out 2>&1
+	$(MDEMANGLE) < mdemangle_test_hl.inp > mdemangle_test_hl.out 2>&1
 
 pretty_print_test.out: pretty_print_test.ugly
 	cp pretty_print_test.ugly pretty_print_test.out
