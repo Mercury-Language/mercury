@@ -22,9 +22,16 @@
 #include "imp.h"
 #include "misc.h"
 
-	/* CLP(R) headers */
-#include "clpr/clpr/emul.h"
-#include "clpr/clpr/config.h"
+	/* This constant is also defined in the  */
+	/* CLP(R) headers, but we'll define it   */
+	/* here too to make installation simpler */
+	/* XXX This is naughty                   */
+#ifdef SMALLER
+#define DEF_TRAIL_SZ  (60000)
+#else
+#define DEF_TRAIL_SZ  (100000)
+#endif
+
 
 #define SOLVER_STACK_SIZE 10	/* default to 10 kb for the ticket stack */
 
