@@ -1268,7 +1268,7 @@ gen_class(Name, Context, ClassDefn, GlobalInfo0, GlobalInfo) -->
 	{ Ctors = [] ->
 		true
 	;
-		sorry(this_file, "constructors")
+		unexpected(this_file, "constructors")
 	},
 	( { Kind = mlds__enum } ->
 		{ StaticMembers = [] },

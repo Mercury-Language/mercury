@@ -373,13 +373,22 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	EnvTypeEntityName = type(EnvClassName, 0),
 	EnvTypeFlags = env_type_decl_flags,
 	Fields = list__map(convert_local_to_field, LocalVars),
+
+		% IL uses classes instead of structs, so the code
+		% generated needs to be a little different.
+		% XXX Perhaps if we used value classes this could go
+		% away.
+	globals__get_target(Globals, Target),
 	( Target = il ->
+			% Generate a ctor for the class which
+			% initilaises the commit field.
 		ThisPtr = self(mlds__commit_type),
 		FieldType = mlds__commit_type,
 		CtorType = mlds__commit_type,
-			% PtrType is unused by the IL backend.
-			% so this field is the wrong type.
-		PtrType = mlds__commit_type,	
+		PtrType = EnvTypeName,	
+			
+			% Note we have to do the correct name mangling
+			% for the IL backend.
 		FieldName = qual(mlds__append_name(ModuleName,
 				EnvClassName ++ "_0"), "commit_1"),
 		Lval = field(no, ThisPtr, named_field(FieldName, CtorType),
@@ -418,11 +427,7 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	% initialize the `env_ptr' with the address of `env'
 	%
 	EnvVar = qual(ModuleName, mlds__var_name("env", no)),
-	globals__get_target(Globals, Target),
-		% IL uses classes instead of structs, so the code
-		% generated needs to be a little different.
-		% XXX Perhaps if we used value classes this could go
-		% away.
+
 	( Target = il ->
 		EnvVarAddr = lval(var(EnvVar, EnvTypeName)),
 		ml_init_env(EnvTypeName, EnvVarAddr, Context, ModuleName,
@@ -572,6 +577,9 @@ ml_conv_arg_to_var(Context, Name - Type, LocalVar) :-
 	% type declaration.
 :- func env_type_decl_flags = mlds__decl_flags.
 env_type_decl_flags = MLDS_DeclFlags :-
+		% On the IL backend we use classes instead of structs so
+		% these fields must be accessible to the mercury_code
+		% class in the same assembly, hence the public access.
 	Access = public,
 	PerInstance = one_copy,
 	Virtuality = non_virtual,

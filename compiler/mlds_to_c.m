@@ -964,7 +964,8 @@ mlds_output_class(Indent, Name, Context, ClassDefn) -->
 	{ Ctors = [] ->
 		true
 	;
-		error("mlds_output_class: non empty constructor list")
+		unexpected(this_file,
+			"mlds_output_class: non empty constructor list")
 	},
 
 	( { Kind = mlds__enum } ->

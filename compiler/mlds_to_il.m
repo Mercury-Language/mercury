@@ -233,29 +233,19 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 %-----------------------------------------------------------------------------%
 
 	% Move all the top level methods and data definitions into the
-	% mercury_code class, and then rename all the definitions as
-	% necessary to reflect this new hierachy.
+	% mercury_code class, and then fix all the references so that
+	% they refer to their new names.
 :- func transform_mlds(mlds) = mlds.
 
-transform_mlds(mlds(MercuryModuleName, ForeignCode, Imports, Defns))
-	= mlds(
-		MercuryModuleName,
-		ForeignCode,
-		Imports,
-		[mercury_code_class(list__map(rename_defn, Members)) | Others]
-	) :-
+transform_mlds(MLDS0) = MLDS :-
 	list__filter((pred(D::in) is semidet :-
 			( D = mlds__defn(_, _, _, mlds__function(_, _, _))
-				% XXX we need to place all the RTTI
-				% datastructures inside this class, so
-				% they are generated as fields.
-				% Maybe what we should do is make all
-				% the RTTI data structures nested
-				% classes.  I think that would work
-				% better.
 			; D = mlds__defn(_, _, _, mlds__data(_, _))
 			)
-		), Defns, Members, Others).
+		), MLDS0 ^ defns, MercuryCodeMembers, Others),
+	MLDS = MLDS0 ^ defns := [mercury_code_class(
+			list__map(rename_defn, MercuryCodeMembers)) | Others].
+
 
 :- func mercury_code_class(mlds__defns) = mlds__defn.
 
@@ -263,8 +253,7 @@ mercury_code_class(Members)
 	= mlds__defn(
 		export("mercury_code"),
 		mlds__make_context(term__context_init),
-		init_decl_flags(public, per_instance, non_virtual,
-				final, const, concrete),
+		ml_gen_type_decl_flags,
 		mlds__class(
 			mlds__class_defn(mlds__package, [], [], [], [], Members)
 		)
@@ -284,7 +273,7 @@ rename_defn(defn(Name, Context, Flags, Entity0))
 		),
 		Entity = function(MaybePredProcId, Params, MaybeStmt)
 	; Entity0 = class(_),
-		sorry(this_file, "renaming nested classes")
+		unexpected(this_file, "nested class")
 	).
 
 :- func rename_statement(mlds__statement) = mlds__statement.
@@ -359,9 +348,9 @@ rename_cond(match_range(RvalA, RvalB))
 rename_atomic(comment(S)) = comment(S).
 rename_atomic(assign(L, R)) = assign(rename_lval(L), rename_rval(R)).
 rename_atomic(delete_object(O)) = delete_object(rename_lval(O)).
-rename_atomic(new_object(L, T, Type, MaybeSize, C, Args, Types))
-	= new_object(rename_lval(L), T, Type, MaybeSize,
-			C, list__map(rename_rval, Args), Types).
+rename_atomic(new_object(L, Tag, Type, MaybeSize, Ctxt, Args, Types))
+	= new_object(rename_lval(L), Tag, Type, MaybeSize,
+			Ctxt, list__map(rename_rval, Args), Types).
 rename_atomic(mark_hp(L)) = mark_hp(rename_lval(L)).
 rename_atomic(restore_hp(R)) = restore_hp(rename_rval(R)).
 rename_atomic(trail_op(T)) = trail_op(T).
@@ -394,18 +383,11 @@ rename_const(null(T)) = null(T).
 :- func rename_code_addr(mlds__code_addr) = mlds__code_addr.
 
 rename_code_addr(proc(Label, Signature))
-	= proc(rename_label(Label), Signature).
+	= proc(rename_proc_label(Label), Signature).
 rename_code_addr(internal(Label, Seq, Signature))
-	= internal(rename_label(Label), Seq, Signature).
+	= internal(rename_proc_label(Label), Seq, Signature).
 
-:- func rename_data_addr(data_addr) = data_addr.
-
-rename_data_addr(data_addr(ModuleName, Name))
-	= data_addr(append_mercury_code(ModuleName), Name).
-
-:- func rename_label(mlds__qualified_proc_label) = mlds__qualified_proc_label.
-
-rename_label(qual(Module, Name)) = qual(append_mercury_code(Module), Name).
+rename_proc_label(qual(Module, Name)) = qual(append_mercury_code(Module), Name).
 
 :- func rename_lval(mlds__lval) = mlds__lval.
 
@@ -420,11 +402,6 @@ rename_lval(var(Var, Type)) = var(rename_var(Var, Type), Type).
 rename_field_id(offset(Rval)) = offset(rename_rval(Rval)).
 rename_field_id(named_field(Name, Type)) = named_field(Name, Type).
 
-:- func rename_var(mlds__var, mlds__type) = mlds__var.
-
-rename_var(qual(ModuleName, Name), _Type)
-	= qual(append_mercury_code(ModuleName), Name).
-
 :- func rename_initializer(mlds__initializer) = mlds__initializer.
 
 rename_initializer(init_obj(Rval)) = init_obj(rename_rval(Rval)).
@@ -434,6 +411,23 @@ rename_initializer(init_array(Inits))
 	= init_array(list__map(rename_initializer, Inits)).
 rename_initializer(no_initializer) = no_initializer.
 
+	% We need to append a mercury_code so that we access the RTTI
+	% fields correctly.
+:- func rename_data_addr(data_addr) = data_addr.
+
+rename_data_addr(data_addr(ModuleName, Name))
+	= data_addr(append_mercury_code(ModuleName), Name).
+
+	% We need to append a mercury_code so that we refer to the
+	% methods of the mercury_code class.
+:- func rename_proc_label(mlds__qualified_proc_label) =
+		mlds__qualified_proc_label.
+
+	% Again append a mercury_code to the var name.
+:- func rename_var(mlds__var, mlds__type) = mlds__var.
+
+rename_var(qual(ModuleName, Name), _Type)
+	= qual(append_mercury_code(ModuleName), Name).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -441,6 +435,10 @@ rename_initializer(no_initializer) = no_initializer.
 :- pred mlds_defn_to_ilasm_decl(mlds__defn::in, ilasm__decl::out,
 		il_info::in, il_info::out) is det.
 
+	% IL supports top-level (i.e. "global") function definitions and
+	% data definitions, but they're not part of the CLS.
+	% Since they are not part of the CLS, we don't generate them,
+	% and so there's no need to handle them here.
 mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags, data(_Type, _Init)),
 		_Decl, Info, Info) :-
 	sorry(this_file, "top level data definition!").
@@ -478,9 +476,9 @@ mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags, class(ClassDefn)),
 			IlCtors, Info2, Info3),
 	MethodsAndFieldsAndCtors = IlCtors ++ MethodsAndFields,
 
-		% XXX Maybe it would be better to just check to see
-		% whether or not there are any init instructions than
-		% explicitly checking for the name mercury_code.
+		% Only the mercury_code class needs to have the
+		% initialization instructions executed by the class
+		% constructor.
 	( EntityName = "mercury_code" ->
 		Imports = Info3 ^ imports,
 		InitInstrs = list__condense(tree__flatten(Info3 ^ init_instrs)),
@@ -508,6 +506,9 @@ mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags, class(ClassDefn)),
 
 class_name(Module, Name) = structured_name(Assembly, ClassName ++ [Name]) :-
 	ClassName = sym_name_to_list(mlds_module_name_to_sym_name(Module)),
+		% Any name beginning with mercury is in the standard
+		% library.  The standard library is placed into one
+		% assembly called mercury.
 	( ClassName = ["mercury" | _] ->
 		Assembly = "mercury"
 	;
@@ -565,7 +566,7 @@ decl_flags_to_methattrs(Flags)
 	; AccessFlag = private,
 		Access = [private]
 	; AccessFlag = default,
-		error("decl_flags_to_methattrs: default access flag")
+		Access = [assembly]
 	; AccessFlag = local,
 		error("decl_flags_to_methattrs: local access flag")
 	),
@@ -607,7 +608,7 @@ decl_flags_to_fieldattrs(Flags)
 	; AccessFlag = private,
 		Access = [private]
 	; AccessFlag = default,
-		error("decl_flags_to_fieldattrs: default access flag")
+		Access = [assembly]
 	; AccessFlag = local,
 		error("decl_flags_to_fieldattrs: local access flag")
 	),
