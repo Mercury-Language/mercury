@@ -25,6 +25,7 @@ SOURCES= \
 	higher_order3.m \
 	implied_mode.m \
 	indexing.m \
+	intermod_lambda.m \
 	lambda_inference.m\
 	lambda_type.m \
 	lambda_quant.m \
@@ -85,6 +86,13 @@ compl_unify_bug.c: compl_unify_bug.m
 
 vn_float.c: vn_float.m
 	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O5 vn_float.m > vn_float.err 2>&1
+
+# intermod_lambda.m needs inter-module optimization
+intermod_lambda.c:
+	$(MCI) --grade $(GRADE) $(MCIFLAGS) intermod_lambda2.m
+	$(MCOI) --grade $(GRADE) $(MCOIFLAGS) intermod_lambda2.m
+	$(MCG) --grade $(GRADE) $(MCGFLAGS) --intermodule-optimization \
+		intermod_lambda.m
 
 check:	objs
 
