@@ -29,7 +29,7 @@
 :- import_module prog_out, prog_util, hlds_out.
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
-:- import_module int, map, set, std_util, bintree, term, varset, hlds.
+:- import_module int, map, set, std_util, dir, bintree, term, varset, hlds.
 :- import_module implication, negation, call_graph.
 :- import_module common.
 
@@ -253,14 +253,15 @@ process_module_2(ModuleName) -->
 			% automatically imported.  (Well, the actual name
 			% is overrideable using the `--builtin-module' option.) 
 		globals__io_lookup_string_option(builtin_module, BuiltinModule),
-		{ term__context_init(ModuleName, 0, Context) },
 			% we add a pseudo-declaration `:- imported' at the end
 			% of the item list, so that make_hlds knows which items
 			% are imported and which are defined in the main module
 		{ varset__init(VarSet) },
+		{ term__context_init(ModuleName, 0, Context) },
 		{ list__append(Items0,
 			[module_defn(VarSet, imported) - Context], Items1) },
-		{ Module0 = module(ModuleName, [], [], Items1, Error) },
+		{ dir__basename(ModuleName, BaseModuleName) },
+		{ Module0 = module(BaseModuleName, [], [], Items1, Error) },
 		process_module_interfaces([BuiltinModule | ImportedModules], 
 			[], Module0, Module),
 		{ Module = module(_, _, _, _, Error2) },
@@ -621,7 +622,8 @@ check_for_clauses_in_interface([Item0 | Items0], Items) -->
 :- pred read_mod(string, string, string, item_list, bool, io__state, io__state).
 :- mode read_mod(in, in, in, out, out, di, uo) is det.
 
-read_mod(Module, Extension, Descr, Items, Error) -->
+read_mod(ModuleName, Extension, Descr, Items, Error) -->
+	{ dir__basename(ModuleName, Module) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	maybe_write_string(VeryVerbose, "% "),
 	maybe_write_string(VeryVerbose, Descr),
@@ -629,7 +631,7 @@ read_mod(Module, Extension, Descr, Items, Error) -->
 	maybe_write_string(VeryVerbose, Module),
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
-	{ string__append(Module, Extension, FileName) },
+	{ string__append(ModuleName, Extension, FileName) },
 	prog_io__read_module(FileName, Module, Error, Messages, Items),
 	( { Error = yes } ->
 		maybe_write_string(VeryVerbose, "parse error(s).\n")
@@ -998,8 +1000,7 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 		mercury_compile__map_args_to_regs(HLDS8, HLDS9),
 		mercury_compile__maybe_dump_hlds(HLDS9, "9", "args_to_regs"),
 
-		mercury_compile__maybe_compute_followvars(HLDS9, HLDS10),
-		mercury_compile__maybe_dump_hlds(HLDS10, "10", "followvars")
+		mercury_compile__maybe_compute_followvars(HLDS9, HLDS10)
 	;
 		{ HLDS10 = HLDS7 }
 	),
@@ -1266,7 +1267,8 @@ mercury_compile__maybe_migrate_followcode(HLDS0, HLDS) -->
 		{ move_follow_code(HLDS0, HLDS) },
 		maybe_write_string(Verbose, " done.\n"),
 		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics)
+		maybe_report_stats(Statistics),
+		mercury_compile__maybe_dump_hlds(HLDS, "6", "followcode")
 	;
 		{ HLDS0 = HLDS }
 	).
@@ -1355,7 +1357,7 @@ mercury_compile__maybe_compute_followvars(HLDS0, HLDS) -->
 		maybe_write_string(Verbose, " done.\n"),
 		globals__io_lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics),
-		mercury_compile__maybe_dump_hlds(HLDS, "6", "followvars")
+		mercury_compile__maybe_dump_hlds(HLDS, "10", "followvars")
 	;
 		{ HLDS = HLDS0 }
 	).
