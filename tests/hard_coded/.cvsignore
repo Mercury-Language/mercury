@@ -53,3 +53,5 @@ no_inline
 impossible_unify
 erroneous_liveness
 mode_choice
+purity
+eqv_type_bug
