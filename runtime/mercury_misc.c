@@ -12,6 +12,7 @@
 #include	"mercury_misc.h"
 
 #include	<stdio.h>
+#include	<stdarg.h>
 
 /*--------------------------------------------------------------------*/
 
@@ -458,16 +459,45 @@ resizemem(void *p, size_t size)
 	return p;
 }
 
+void
+MR_warning(const char *fmt, ...)
+{
+	va_list args;
+
+	fflush(stdout);		/* in case stdout and stderr are the same */
+
+	fprintf(stderr, "Mercury runtime: ");
+	va_start(args, fmt);
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+	fprintf(stderr, "\n");
+
+	fflush(stderr);
+}
+
 /*
 ** XXX will need to modify this to kill other threads if MR_THREAD_SAFE
 ** (and cleanup resources, etc....)
 */
 
 void 
-fatal_error(const char *message) {
-	fprintf(stderr, "Mercury runtime: %s\n", message);
+fatal_error(const char *fmt, ...)
+{
+	va_list args;
+
+	fflush(stdout);		/* in case stdout and stderr are the same */
+
+	fprintf(stderr, "Mercury runtime: ");
+	va_start(args, fmt);
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+	fprintf(stderr, "\n");
+
 	MR_trace_report(stderr);
-	exit(1);
+
+	fflush(NULL);		/* flushes all stdio output streams */
+
+	exit(EXIT_FAILURE);
 }
 
 	/* See header file for documentation on why we need this function */
