@@ -331,7 +331,10 @@ det__disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 	;
 		Goal = if_then_else([], Cond, Then, Else),
 		Cond = Disjunct,
-		goal_info_init(InitGoalInfo),
+		goal_info_init(InitGoalInfo0),
+		map__init(InstMap),
+		goal_info_set_instmap_delta(InitGoalInfo0,
+				reachable(InstMap), InitGoalInfo),
 		Then = conj([]) - InitGoalInfo,
 		Else = Rest - GoalInfo,
 		det__disj_to_ite(Disjuncts, GoalInfo, Rest)
