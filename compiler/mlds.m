@@ -1061,6 +1061,10 @@ XXX Full exception handling support is not yet implemented.
 			% defined function, which the backend must
 			% generate the definition for (in some other
 			% file perhaps) and calling it.
+			% The lvals are use to generate the appropriate
+			% forwarding code.
+			% XXX we should also store the list of mlds__rvals
+			% where the input values come from, and use
 	.
 
 	%

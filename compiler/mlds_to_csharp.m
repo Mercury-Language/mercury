@@ -54,7 +54,7 @@ output_csharp_code(MLDS) -->
 	output_src_start(ModuleName), 
 	io__nl,
 
-	generate_c_code(MLDS),
+	generate_csharp_code(MLDS),
 
 	output_src_end(ModuleName).
 
@@ -85,9 +85,9 @@ output_src_end(ModuleName) -->
 %-----------------------------------------------------------------------------%
 
 	% XXX we don't output contexts for any of this.
-:- pred generate_c_code(mlds, io__state, io__state).
-:- mode generate_c_code(in, di, uo) is det.
-generate_c_code(MLDS) -->
+:- pred generate_csharp_code(mlds, io__state, io__state).
+:- mode generate_csharp_code(in, di, uo) is det.
+generate_csharp_code(MLDS) -->
 
 	{ MLDS = mlds(ModuleName, ForeignCode, _Imports, Defns) },
 	{ ClassName = mlds_module_name_to_class_name(
@@ -111,9 +111,11 @@ generate_c_code(MLDS) -->
 		Namespace = Namespace0
 	},
 
+		% XXX we should consider what happens if we need to mangle
+		% the namespace name.
 	io__write_list(Namespace, "\n", 
 		(pred(N::in, di, uo) is det -->
-			io__format("namespace %s {", [s(N)])
+			io__format("namespace @%s {", [s(N)])
 	)),
 
 	io__write_strings([
@@ -128,7 +130,7 @@ generate_c_code(MLDS) -->
 
 		% Output the contents of foreign_proc declarations.
 		% Put each one inside a method.
-	list__foldl(generate_method_c_code(
+	list__foldl(generate_method_csharp_code(
 		mercury_module_name_to_mlds(ModuleName)), Defns),
 
 	io__write_string("};\n"),
@@ -180,15 +182,15 @@ generate_foreign_header_code(_ModuleName,
 			)					
 	)).
 
-:- pred generate_method_c_code(mlds_module_name, mlds__defn,
+:- pred generate_method_csharp_code(mlds_module_name, mlds__defn,
 		io__state, io__state).
-:- mode generate_method_c_code(in, in, di, uo) is det.
+:- mode generate_method_csharp_code(in, in, di, uo) is det.
 
 	% XXX we don't handle export
-generate_method_c_code(_, defn(export(_), _, _, _)) --> [].
-generate_method_c_code(_, defn(data(_), _, _, _)) --> [].
-generate_method_c_code(_, defn(type(_, _), _, _, _)) --> [].
-generate_method_c_code(_ModuleName, 
+generate_method_csharp_code(_, defn(export(_), _, _, _)) --> [].
+generate_method_csharp_code(_, defn(data(_), _, _, _)) --> [].
+generate_method_csharp_code(_, defn(type(_, _), _, _, _)) --> [].
+generate_method_csharp_code(_ModuleName, 
 		defn(function(PredLabel, ProcId, MaybeSeqNum, _PredId), 
 	_Context, _DeclFlags, Entity)) -->
 
@@ -207,7 +209,7 @@ generate_method_c_code(_ModuleName,
 				ilds__type(_, SimpleType),
 			ReturnType = simple_type(SimpleType)
 		;
-			% IL doesn't support multiple return values
+			% C# and IL don't support multiple return values
 			sorry(this_file, "multiple return values")
 		},
 
@@ -258,12 +260,8 @@ write_csharp_statement(statement(Statement, _Context)) -->
 			{ sorry(this_file, "multiple return values") }
 		)
 	;
-		{ functor(Statement, SFunctor, Arity) },
-		io__write_string("// unimplemented: "), 
-		io__write_string(SFunctor), 
-		io__write_string("/"), 
-		io__write(Arity),
-		io__nl
+		{ functor(Statement, SFunctor, _Arity) },
+		{ sorry(this_file, "csharp output for " ++ SFunctor) }
 	).
 
 %-------------------------------------------------------------------
@@ -290,7 +288,7 @@ write_csharp_code_component(target_code_output(Lval)) -->
 write_csharp_rval(lval(Lval)) -->
 	write_csharp_lval(Lval).
 write_csharp_rval(mkword(_Tag, _Rval)) -->
-	io__write_string(" /* mkword rval -- unimplemented */ ").
+	{ sorry(this_file, "mkword rval") }.
 write_csharp_rval(const(RvalConst)) -->
 	write_csharp_rval_const(RvalConst).
 write_csharp_rval(unop(Unop, Rval)) -->
@@ -310,8 +308,7 @@ write_csharp_rval(unop(Unop, Rval)) -->
 		io__write_string(") "),
 		write_csharp_rval(Rval)
 	;
-		io__write_string(" /* XXX box or unbox unop -- unimplemented */ "),
-		write_csharp_rval(Rval)
+		{ sorry(this_file, "box or unbox unop") }
 	).
 write_csharp_rval(binop(Binop, Rval1, Rval2)) -->
 	( 
@@ -325,11 +322,11 @@ write_csharp_rval(binop(Binop, Rval1, Rval2)) -->
 		write_csharp_rval(Rval2),
 		io__write_string(")")
 	;
-		io__write_string(" /* binop rval -- unimplemented */ ")
+		{ sorry(this_file, "binop rval") }
 	).
 
 write_csharp_rval(mem_addr(_)) -->
-	io__write_string(" /* mem_addr rval -- unimplemented */ ").
+	{ sorry(this_file, "mem_addr rval") }.
 	
 :- pred write_csharp_rval_const(mlds__rval_const, io__state, io__state).
 :- mode write_csharp_rval_const(in, di, uo) is det.
@@ -340,10 +337,12 @@ write_csharp_rval_const(float_const(F)) --> io__write_float(F).
 	% XXX We don't quote this correctly.
 write_csharp_rval_const(string_const(S)) --> 
 	io__write_string(""""),
-	io__write_string(S),
+	c_util__output_quoted_string(S),
 	io__write_string("""").
-write_csharp_rval_const(multi_string_const(_L, _S)) --> 
-	io__write_string(" /* multi_string_const rval -- unimplemented */ ").
+write_csharp_rval_const(multi_string_const(L, S)) --> 
+	io__write_string(""""),
+	c_util__output_quoted_multi_string(L, S),
+	io__write_string("""").
 write_csharp_rval_const(code_addr_const(CodeAddrConst)) --> 
 	(
 		{ CodeAddrConst = proc(ProcLabel, _FuncSignature) },
@@ -365,9 +364,9 @@ write_csharp_rval_const(code_addr_const(CodeAddrConst)) -->
 
 
 write_csharp_rval_const(data_addr_const(_)) --> 
-	io__write_string(" /* data_addr_const rval -- unimplemented */ ").
+	{ sorry(this_file, "data_addr_const rval") }.
 write_csharp_rval_const(null(_)) --> 
-	io__write_string("0").
+	io__write_string("null").
 
 :- pred write_csharp_lval(mlds__lval, io__state, io__state).
 :- mode write_csharp_lval(in, di, uo) is det.
@@ -398,15 +397,17 @@ write_csharp_lval(var(Var, _VarType)) -->
 :- mode write_csharp_defn_decl(in, di, uo) is det.
 write_csharp_defn_decl(Defn) -->
 	{ Defn = mlds__defn(Name, _Context, _Flags, DefnBody) },
-	( { DefnBody = data(Type, _Initializer) },
-  	  { Name = data(var(VarName)) }
+	(
+		{ DefnBody = data(Type, _Initializer) },
+		{ Name = data(var(VarName)) }
 	->
 		write_csharp_parameter_type(Type),
 		io__write_string(" "),
 		write_mlds_var_name_for_parameter(VarName),
 		io__write_string(";\n")
 	;
-		io__write_string("// unimplemented defn decl\n")
+		% XXX we should implement others
+		{ sorry(this_file, "data_addr_const rval") }
 	).
 
 :- pred write_csharp_parameter_type(mlds__type, io__state, io__state).
@@ -432,52 +433,45 @@ write_il_ret_type_as_csharp_type(simple_type(T)) -->
 :- pred write_il_simple_type_as_csharp_type(simple_type::in,
 	io__state::di, io__state::uo) is det.
 write_il_simple_type_as_csharp_type(int8) --> 
-	io__write_string("int").
+	io__write_string("sbyte").
 write_il_simple_type_as_csharp_type(int16) --> 
-	io__write_string("int").
+	io__write_string("short").
 write_il_simple_type_as_csharp_type(int32) --> 
 	io__write_string("int").
 write_il_simple_type_as_csharp_type(int64) --> 
-	io__write_string("int").
+	io__write_string("long").
 write_il_simple_type_as_csharp_type(uint8) --> 
-	io__write_string("unsigned int").
+	io__write_string("byte").
 write_il_simple_type_as_csharp_type(uint16) --> 
-	io__write_string("unsigned int").
+	io__write_string("ushort").
 write_il_simple_type_as_csharp_type(uint32) --> 
-	io__write_string("unsigned int").
+	io__write_string("uint").
 write_il_simple_type_as_csharp_type(uint64) --> 
-	io__write_string("unsigned int").
+	io__write_string("ulong").
 write_il_simple_type_as_csharp_type(native_int) --> 
 	io__write_string("int").
 write_il_simple_type_as_csharp_type(native_uint) --> 
-	io__write_string("unsigned int").
+	io__write_string("uint").
 write_il_simple_type_as_csharp_type(float32) --> 
 	io__write_string("float").
 write_il_simple_type_as_csharp_type(float64) --> 
-	io__write_string("float").
+	io__write_string("double").
 write_il_simple_type_as_csharp_type(native_float) --> 
 	io__write_string("float").
 write_il_simple_type_as_csharp_type(bool) --> 
-	io__write_string("int").
+	io__write_string("bool").
 write_il_simple_type_as_csharp_type(char) --> 
 	io__write_string("char").
 write_il_simple_type_as_csharp_type(refany) --> 
 	io__write_string("mercury.MR_RefAny").
 write_il_simple_type_as_csharp_type(class(ClassName)) --> 
-	( { ClassName = il_generic_class_name } ->
-		io__write_string("mercury.MR_Box")
-	;
-		write_csharp_class_name(ClassName)
-	).
-		% XXX this is not the right syntax
-write_il_simple_type_as_csharp_type(value_class(ClassName)) --> 
 	write_csharp_class_name(ClassName).
-		% XXX this is not the right syntax
-write_il_simple_type_as_csharp_type(interface(ClassName)) --> 
-	write_csharp_class_name(ClassName).
-		% XXX this needs more work
+write_il_simple_type_as_csharp_type(value_class(_ClassName)) --> 
+	{ sorry(this_file, "value classes") }.
+write_il_simple_type_as_csharp_type(interface(_ClassName)) --> 
+	{ sorry(this_file, "interfaces") }.
 write_il_simple_type_as_csharp_type('[]'(_Type, _Bounds)) --> 
-	io__write_string("object[]").
+	{ sorry(this_file, "arrays") }.
 write_il_simple_type_as_csharp_type('&'(Type)) --> 
 		% XXX is this always right?
 	io__write_string("ref "),
