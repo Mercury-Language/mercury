@@ -196,7 +196,9 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 			    new_array = MR_make_array(array_size);
 			    new_array->size = array_size;
 			    for (i = 0; i < array_size; i++) {
-				new_array->elements[i] = old_array->elements[i];
+				new_array->elements[i] = deep_copy_arg(
+					old_array->elements[i], type_info, 
+					(Word *) 1, lower_limit, upper_limit);
 			    }
 			    new_data = (Word) new_array;
 			} else {
