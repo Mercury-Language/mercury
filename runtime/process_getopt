@@ -15,6 +15,7 @@ do
 	g/\<optopt/s//MR_optopt/g
 	g/\<option/s//MR_option/g
 	g/\<_getopt/s//MR__getopt/g
+	g/#ifndef/s/ELIDE_CODE/XXXELIDE_CODEXXX/
 	w
 	q
 END
@@ -23,6 +24,7 @@ done
 echo finalizing mercury_getopt.h
 ex mercury_getopt.h << END
 1i
+#undef __GNU_LIBRARY__
 #define __GNU_LIBRARY__
 .
 w

@@ -23,7 +23,7 @@
 #include	<string.h>
 #include	<ctype.h>
 #include	<errno.h>
-#include	"mercury_getopt.h"
+#include	"getopt.h"
 #include	"mercury_conf.h"
 #include	"mercury_std.h"
 
@@ -185,11 +185,9 @@ static const char main_func[] =
 	"}\n"
 	;
 
-
 static const char if_need_to_init[] = 
 	"#if defined(MR_MAY_NEED_INITIALIZATION)\n\n"
 	;
-
 
 /* --- function prototypes --- */
 static	void parse_options(int argc, char *argv[]);
@@ -250,10 +248,10 @@ main(int argc, char **argv)
 		fputs("/* Force syntax error, since there were */\n", stdout);
 		fputs("/* errors in the generation of this file */\n", stdout);
 		fputs("#error \"You need to remake this file\"\n", stdout);
-		exit(1);
+		return EXIT_FAILURE;
 	}
 
-	exit(0);
+	return EXIT_SUCCESS;
 }
 
 /*---------------------------------------------------------------------------*/

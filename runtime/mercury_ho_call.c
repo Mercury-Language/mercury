@@ -201,9 +201,6 @@ Define_entry(do_call_nondet_closure);
 	tailcall((Code *) field(0, closure, 1), LABEL(do_call_nondet_closure));
 }
 
-
-
-
 	/*
 	** r1: the typeclass_info
 	** r2: index of class method
