@@ -3,6 +3,7 @@
 # and changed the rule for libgc.so to use the $(LINK_SHARED_LIB) macro
 # defined in ../Mmake.common.
 
+MERCURY_DIR=..
 include ../Mmake.common
 
 # Primary targets:
