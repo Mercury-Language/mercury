@@ -37,28 +37,28 @@
 			% at the end of an extended basic block.
 
 	;	block(int, list(instruction))
-			% a list of instructions that make use of
-			% some local temporary variables
+			% A list of instructions that make use of
+			% some local temporary variables.
 
 	;	assign(lval, rval)
 			% Assign the value specified by rval to the location
-			% specified by lval
+			% specified by lval.
 
 	;	call(code_addr, code_addr, list(liveinfo)) 
 			% call(Target, Continuation) is the same as
-			% succip = Continuation; goto(Target)
+			% succip = Continuation; goto(Target).
 
 	;	call_closure(bool, code_addr, list(liveinfo))
-			% setup the arguments and branch to a higher
+			% Setup the arguments and branch to a higher
 			% order call. The closure is in r1.
 
 	;	mkframe(string, int, code_addr)
 			% mkframe(Comment, SlotCount, FailureContinuation)
-			% creates a nondet stack frame
+			% creates a nondet stack frame.
 
 	;	modframe(code_addr)
 			% modframe(FailureContinuation) is the same as
-			% current_redoip = FailureContinuation
+			% current_redoip = FailureContinuation.
 
 	;	label(label)
 
@@ -74,16 +74,17 @@
 			% will branch to label C.
 
 	;	c_code(string)
-			% do whatever is specified by the string,
+			% Do whatever is specified by the string,
 			% which can be any piece of C code that
-			% does not have any non-local flow of control
+			% does not have any non-local flow of control.
 
 	;	if_val(rval, code_addr)
-			% if rval is true, then goto code_addr.
+			% If rval is true, then goto code_addr.
 
-	;	incr_hp(lval, rval)
-			% get a memory block of a given size
-			% and put its address in the given lval.
+	;	incr_hp(lval, maybe(int), rval)
+			% Get a memory block of a given size
+			% and put its address in the given lval,
+			% possibly after tagging it with an rval.
 
 	;	mark_hp(lval)
 			% Tell the heap sub-system to store a marker
@@ -96,10 +97,10 @@
 			% was allocated since that call to mark_hp.
 
 	;	incr_sp(int)
-			% increment the det stack pointer
+			% Increment the det stack pointer.
 
 	;	decr_sp(int).
-			% decrement the det stack pointer
+			% Decrement the det stack pointer.
 
 :- type liveinfo	--->	live_lvalue(lval, int).
 				% XXX this tuple will need shape information
@@ -435,15 +436,30 @@ output_instruction(if_val(Rval, Target)) -->
 	output_goto(Target),
 	io__write_string(" }").
 
-output_instruction(incr_hp(Lval, Rval)) -->
-	io__write_string("\t{ "),
-	output_lval_decls(Lval),
-	output_rval_decls(Rval),
-	io__write_string("incr_hp("),
-	output_lval(Lval),
-	io__write_string(", "),
-	output_rval(Rval),
-	io__write_string("); }").
+output_instruction(incr_hp(Lval, MaybeTag, Rval)) -->
+	(
+		{ MaybeTag = no },
+		io__write_string("\t{ "),
+		output_lval_decls(Lval),
+		output_rval_decls(Rval),
+		io__write_string("incr_hp("),
+		output_lval(Lval),
+		io__write_string(", "),
+		output_rval(Rval),
+		io__write_string("); }")
+	;
+		{ MaybeTag = yes(Tag) },
+		io__write_string("\t{ "),
+		output_lval_decls(Lval),
+		output_rval_decls(Rval),
+		io__write_string("tag_incr_hp("),
+		output_lval(Lval),
+		io__write_string(", "),
+		output_tag(Tag),
+		io__write_string(", "),
+		output_rval(Rval),
+		io__write_string("); }")
+	).
 
 output_instruction(mark_hp(Lval)) -->
 	io__write_string("\t{ "),

@@ -239,9 +239,9 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, First, SetupFrame0,
 				First, SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
-			Uinstr0 = incr_hp(Lval, Rval),
+			Uinstr0 = incr_hp(Lval, _, Size),
 			opt_util__lval_refers_stackvars(Lval, Use1),
-			opt_util__rval_refers_stackvars(Rval, Use2),
+			opt_util__rval_refers_stackvars(Size, Use2),
 			bool__or(Use1, Use2, Use),
 			frameopt__setup_use(Use,
 				SetupFrame0, SetupFrame1,
@@ -608,9 +608,9 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 				SetupFrame0, SetupSuccip0, FrameSet, SuccipSet,
 				TeardownMap, ProcLabel, N0, N, Instrs)
 		;
-			Uinstr0 = incr_hp(Lval, Rval),
+			Uinstr0 = incr_hp(Lval, _, Size),
 			opt_util__lval_refers_stackvars(Lval, Use1),
-			opt_util__rval_refers_stackvars(Rval, Use2),
+			opt_util__rval_refers_stackvars(Size, Use2),
 			bool__or(Use1, Use2, Use),
 			frameopt__setup_use(Use,
 				SetupFrame0, SetupFrame1,

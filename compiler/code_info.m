@@ -949,10 +949,8 @@ code_info__generate_expression_2(create(Tag, Args, Label), TargetReg, Code) -->
 		{ Code = tree(CodeA, CodeB) }
 	;
 		{ CodeA = node([
-			incr_hp(TargetReg,const(int_const(Arity))) -
-				"Allocate heap",
-			assign(TargetReg, mkword(Tag, lval(TargetReg))) -
-				"Tag the pointer"
+			incr_hp(TargetReg, yes(Tag), const(int_const(Arity))) -
+				"Allocate heap"
 		]) },
 		code_info__generate_cons_args(TargetReg, Tag, 0, Args, CodeB),
 		{ Code = tree(CodeA, CodeB) }

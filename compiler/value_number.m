@@ -176,7 +176,17 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		error("block found in backward scan in vn__build_livemap")
 	;
 		Uinstr = assign(Lval, Rval),
-		vn__build_assign(Lval, Rval, Livevals0, Livevals2),
+
+		% Make dead the variable assigned, but make any variables
+		% needed to access it live. Make the variables in the assigned
+		% expression live as well.
+		% The deletion has to be done first. If the assigned-to lval
+		% appears on the right hand side as well as the left, then we
+		% want make_live to put it back into the liveval set.
+
+		bintree_set__delete(Livevals0, Lval, Livevals1),
+		vn__lval_access_rval(Lval, Rvals),
+		vn__make_live([Rval | Rvals], Livevals1, Livevals2),
 		Livemap1 = Livemap0,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
@@ -289,8 +299,18 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
 	;
-		Uinstr = incr_hp(Lval, Rval),
-		vn__build_assign(Lval, Rval, Livevals0, Livevals2),
+		Uinstr = incr_hp(Lval, _, Rval),
+
+		% Make dead the variable assigned, but make any variables
+		% needed to access it live. Make the variables in the size
+		% expression live as well.
+		% The use of the size expression occurs after the assignment
+		% to lval, but the two should never have any variables in
+		% common. This is why doing the deletion first works.
+
+		bintree_set__delete(Livevals0, Lval, Livevals1),
+		vn__lval_access_rval(Lval, Rvals),
+		vn__make_live([Rval | Rvals], Livevals1, Livevals2),
 		Livemap1 = Livemap0,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
@@ -330,22 +350,6 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		Livemap1, Livemap).
 
 %-----------------------------------------------------------------------------%
-
-	% Make dead the variable assigned, but make any variables
-	% needed to access it live. Make the variables in the assigned
-	% expression live as well.
-
-	% The deletion has to be done first. If the assigned-to lval appears
-	% on the right hand side as well as the left, then we want make_live
-	% to put it back into the liveval set.
-
-:- pred vn__build_assign(lval, rval, lvalset, lvalset).
-:- mode vn__build_assign(in, in, di, uo) is det.
-
-vn__build_assign(Lval, Rval, Livevals0, Livevals) :-
-	bintree_set__delete(Livevals0, Lval, Livevals1),
-	vn__lval_access_rval(Lval, Rvals),
-	vn__make_live([Rval | Rvals], Livevals1, Livevals).
 
 	% Set all lvals found in this rval to live, with the exception of
 	% fields, since they are treated specially (the later stages consider
@@ -599,7 +603,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Templocs0, Livevals1, Incrsp, Decrsp,
 			Ctrlmap1, Flushmap1, Ctrl1, [Instr0 | Prev], Instrs)
 	;
-		Uinstr0 = incr_hp(_Where, _Incr),
+		Uinstr0 = incr_hp(_Where, _MaybeTag, _Incr),
 		error("we do not handle incr_hp in value_number yet")
 	;
 		Uinstr0 = mark_hp(_Dest),

@@ -637,10 +637,18 @@ opt_debug__dump_instr(if_val(Rval, CodeAddr), Str) :-
 	opt_debug__dump_rval(Rval, R_str),
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["if_val(", R_str, ", ", C_str, ")"], Str).
-opt_debug__dump_instr(incr_hp(Lval, Rval), Str) :-
+opt_debug__dump_instr(incr_hp(Lval, MaybeTag, Size), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
-	opt_debug__dump_rval(Rval, R_str),
-	string__append_list(["incr_hp(", L_str, ", ", R_str, ")"], Str).
+	(
+		MaybeTag = no,
+		T_str = "no"
+	;
+		MaybeTag = yes(Tag),
+		string__int_to_string(Tag, T_str)
+	),
+	opt_debug__dump_rval(Size, S_str),
+	string__append_list(["incr_hp(", L_str, ", ", T_str, ", ", S_str, ")"],
+		Str).
 opt_debug__dump_instr(mark_hp(Lval), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	string__append_list(["mark_hp(", L_str, ")"], Str).

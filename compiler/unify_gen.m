@@ -235,7 +235,7 @@ unify_gen__generate_construction_2(pred_constant(PredId, ProcId),
 			assign(NumOldArgsReg,
 				lval(field(0, OldClosure, Zero)))
 				- "get number of arguments",
-			incr_hp(NewClosureReg,
+			incr_hp(NewClosureReg, no,
 				binop(+, lval(NumOldArgsReg),
 				NumNewArgsPlusTwo_Rval))
 				- "allocate new closure",
