@@ -206,6 +206,8 @@
 :- export_type follow_vars.
 :- type follow_vars	--->	map(var_id, register).
 
+:- type register	--->	r(int).
+
 :- export_type unification.
 :- type unification	--->	
 				% Y = f(X) where the top node of Y is output,
@@ -244,6 +246,10 @@
 
 :- export_type is_live.
 :- type is_live		--->	live ; dead.
+
+:- type	var		==	variable.
+
+:- type unify_mode	==	pair(mode, mode).
 
 %-----------------------------------------------------------------------------%
 
