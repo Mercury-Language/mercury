@@ -169,7 +169,16 @@ varset__name_var(VarSet0, Id, Name, VarSet) :-
 %-----------------------------------------------------------------------------%
 
 varset__lookup_name(varset(_, Names, _), Id, Name) :-
-	map__search(Names, Id, Name).
+	map__search(Names, Id, Name0),
+	(
+		map__member(Names, Id1, Name0),
+		Id1 \= Id
+	->
+		term__var_to_int(Id, Int),
+		string__format("%s__%d",[s(Name0),i(Int)], Name)
+	;
+		Name = Name0
+	).
 
 %-----------------------------------------------------------------------------%
 

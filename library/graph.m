@@ -22,25 +22,38 @@
 :- module graph.
 
 :- interface.
-:- import_module set.
+:- import_module set, std_util.
 
 :- type graph(N, A).
+
+:- type graph(N)	== graph(N, unit).
 
 :- type node(N).
 
 :- type arc(A).
 
+:- type arc		== arc(unit).
+
 :- pred graph__init(graph(N, A)).
 :- mode graph__init(out) is det.
 
+:- pred graph__set_node(graph(N, A), N, node(N), graph(N, A)).
+:- mode graph__set_node(in, in, out, out) is det.
+
+:- pred graph__det_insert_node(graph(N, A), N, node(N), graph(N, A)).
+:- mode graph__det_insert_node(in, in, out, out) is det.
+
 :- pred graph__insert_node(graph(N, A), N, node(N), graph(N, A)).
-:- mode graph__insert_node(in, in, out, out) is det.
+:- mode graph__insert_node(in, in, out, out) is semidet.
 
-:- pred graph__find_node(graph(N, A), N, node(N)).
-:- mode graph__find_node(in, in, out) is det.
-
-:- pred graph__lookup_node(graph(N, A), node(N), N).
+:- pred graph__lookup_node(graph(N, A), N, node(N)).
 :- mode graph__lookup_node(in, in, out) is det.
+
+:- pred graph__search_node(graph(N, A), N, node(N)).
+:- mode graph__search_node(in, in, out) is semidet.
+
+:- pred graph__node_contents(graph(N, A), node(N), N).
+:- mode graph__node_contents(in, in, out) is det.
 
 :- pred graph__successors(graph(N, A), node(N), set(node(N))).
 :- mode graph__successors(in, in, out) is det.
@@ -48,13 +61,24 @@
 :- pred graph__nodes(graph(N, A), set(node(N))).
 :- mode graph__nodes(in, out) is det.
 
+:- pred graph__set_edge(graph(N, A), node(N), node(N), A,
+						arc(A), graph(N, A)).
+:- mode graph__set_edge(in, in, in, in, out, out) is det.
+
+:- pred graph__det_insert_edge(graph(N, A), node(N), node(N), A,
+						arc(A), graph(N, A)).
+:- mode graph__det_insert_edge(in, in, in, in, out, out) is det.
+
 :- pred graph__insert_edge(graph(N, A), node(N), node(N), A,
 						arc(A), graph(N, A)).
-:- mode graph__insert_edge(in, in, in, in, out, out) is det.
+:- mode graph__insert_edge(in, in, in, in, out, out) is semidet.
 
-:- pred graph__path(graph(N, A), node(N), node(N)).
-:- mode graph__path(in, in, in) is semidet.
-:- mode graph__path(in, in, out) is nondet.
+:- pred graph__edge_contents(graph(N, A), arc(A), node(N), node(N), A).
+:- mode graph__edge_contents(in, in, out, out, out) is det.
+
+:- pred graph__path(graph(N, A), node(N), node(N), list(arc(A))).
+:- mode graph__path(in, in, in, out) is nondet.
+:- mode graph__path(in, in, out, out) is nondet.
 
 %------------------------------------------------------------------------------%
 
@@ -69,7 +93,7 @@
 			graph__arc_supply,
 			map(node(N), N),
 			map(arc(A), arc_info(N, A)),
-			map(node(N), set(edge(N, A)))
+			map(node(N), map(arc(A), node(N)))
 		).
 
 :- type graph__node_supply	==	int.
@@ -79,8 +103,6 @@
 :- type node(N)			==	int.
 
 :- type arc(A)			==	int.
-
-:- type edge(N, A)	--->	edge(arc(A), node(N)).
 
 :- type arc_info(N, A)	--->	arc_info(node(N), node(N), A).
 
@@ -94,7 +116,7 @@ graph__init(Graph) :-
 
 %------------------------------------------------------------------------------%
 
-graph__insert_node(G0, NInfo, N, G) :-
+graph__set_node(G0, NInfo, N, G) :-
 	graph__get_node_supply(G0, NS0),
 	NS is NS0 + 1,
 	N = NS,
@@ -105,34 +127,61 @@ graph__insert_node(G0, NInfo, N, G) :-
 	graph__set_nodes(G1, Nodes, G2),
 
 	graph__get_edges(G2, Edges0),
-	set__init(EdgeSet),
+	map__init(EdgeMap),
+	map__set(Edges0, N, EdgeMap, Edges),
+	graph__set_edges(G2, Edges, G).
+
+graph__det_insert_node(G0, NInfo, N, G) :-
+	graph__set_node(G0, NInfo, N, G).
+
+graph__insert_node(G0, NInfo, N, G) :-
+	graph__get_node_supply(G0, NS0),
+	NS is NS0 + 1,
+	N = NS,
+	graph__set_node_supply(G0, NS, G1),
+
+	graph__get_nodes(G1, Nodes0),
+	map__insert(Nodes0, N, NInfo, Nodes),
+	graph__set_nodes(G1, Nodes, G2),
+
+	graph__get_edges(G2, Edges0),
+	map__init(EdgeSet),
 	map__set(Edges0, N, EdgeSet, Edges),
 	graph__set_edges(G2, Edges, G).
 
 %------------------------------------------------------------------------------%
 
-graph__find_node(G, I, N) :-
-	graph__get_nodes(G, Ns),
-	map__to_assoc_list(Ns, NList),
-	graph__find_node_2(NList, I, N).
-
-:- pred graph__find_node_2(assoc_list(T,U), U, T).
-:- mode graph__find_node_2(in, in, out) is det.
-
-graph__find_node_2([], _, _) :-
-	error("graph__find_node_2: no such node.").
-graph__find_node_2([K-V|KVs], V0, K0) :-
+graph__lookup_node(G, N, I) :-
 	(
-		V = V0
+		graph__search_node(G, N, I0)
 	->
-		K0 = K
+		I = I0
 	;
-		graph__find_node_2(KVs, V0, K0)
+		error("graph__lookup_node: Node not found.")
 	).
 
 %------------------------------------------------------------------------------%
 
-graph__lookup_node(G, N, I) :-
+graph__search_node(G, N, I) :-
+	graph__get_nodes(G, Ns),
+	map__to_assoc_list(Ns, List),
+	graph__search_node_2(List, N, I).
+
+:- pred graph__search_node_2(assoc_list(node(N), N), N, node(N)).
+:- mode graph__search_node_2(in, in, out) is semidet.
+
+graph__search_node_2([I0 - N0|Rest], N, I) :-
+	(
+		N0 = N
+	->
+		I = I0
+	;
+		graph__search_node_2(Rest, N, I)
+	).
+
+%------------------------------------------------------------------------------%
+
+graph__node_contents(G, N, I) :-
 	graph__get_nodes(G, Ns),
 	map__lookup(Ns, N, I).
 
@@ -141,16 +190,8 @@ graph__lookup_node(G, N, I) :-
 graph__successors(G, N, Ss) :-
 	graph__get_edges(G, Es),
 	map__lookup(Es, N, E),
-	set__to_sorted_list(E, EL),
-	graph__successors_2(EL, SL),
-	set__list_to_set(SL, Ss).
-
-:- pred graph__successors_2(list(edge(T,U)), list(node(T))).
-:- mode graph__successors_2(in, out) is det.
-
-graph__successors_2([], []).
-graph__successors_2([edge(_, S)|Es], [S|Ss]) :-
-	graph__successors_2(Es, Ss).
+	map__values(E, SsList),
+	set__list_to_set(SsList, Ss).
 
 %------------------------------------------------------------------------------%
 
@@ -161,7 +202,7 @@ graph__nodes(G, Ns) :-
 
 %------------------------------------------------------------------------------%
 
-graph__insert_edge(G0, Start, End, Info, Arc, G) :-
+graph__set_edge(G0, Start, End, Info, Arc, G) :-
 	graph__get_arc_supply(G0, AS0),
 	AS is AS0 + 1,
 	Arc = AS,
@@ -172,23 +213,51 @@ graph__insert_edge(G0, Start, End, Info, Arc, G) :-
 	graph__set_arcs(G1, Arcs, G2),
 
 	graph__get_edges(G2, Es0),
-	map__lookup(Es0, Start, EdgeSet0),
-	set__insert(EdgeSet0, edge(Arc, End), EdgeSet),
-	map__set(Es0, Start, EdgeSet, Es),
+	map__lookup(Es0, Start, EdgeMap0),
+	map__set(EdgeMap0, Arc, End, EdgeMap),
+	map__set(Es0, Start, EdgeMap, Es),
+	graph__set_edges(G2, Es, G).
+
+graph__det_insert_edge(G0, Start, End, Info, Arc, G) :-
+	graph__set_edge(G0, Start, End, Info, Arc, G).
+
+%------------------------------------------------------------------------------%
+
+graph__insert_edge(G0, Start, End, Info, Arc, G) :-
+	graph__get_arc_supply(G0, AS0),
+	AS is AS0 + 1,
+	Arc = AS,
+	graph__set_arc_supply(G0, AS, G1),
+
+	graph__get_arcs(G1, Arcs0),
+	map__insert(Arcs0, Arc, arc_info(Start, End, Info), Arcs),
+	graph__set_arcs(G1, Arcs, G2),
+
+	graph__get_edges(G2, Es0),
+	map__lookup(Es0, Start, EdgeMap0),
+	map__set(EdgeMap0, Arc, End, EdgeMap),
+	map__set(Es0, Start, EdgeMap, Es),
 	graph__set_edges(G2, Es, G).
 
 %------------------------------------------------------------------------------%
 
-graph__path(G, S, E) :-
+graph__edge_contents(G, N, S, E, A) :-
+	graph__get_arcs(G, Ns),
+	map__lookup(Ns, N, I),
+	I = arc_info(S, E, A).
+
+%------------------------------------------------------------------------------%
+
+graph__path(G, S, E, Path) :-
 	graph__get_edges(G, Es),
 	map__lookup(Es, S, Arcs),
 	(
-		set__member(E1, Arcs),
-		E1 = edge(_, E)
+		map__member(Arcs, A, E),
+		Path = [A]
 	;
-		set__member(E1, Arcs),
-		E1 = edge(_, N),
-		graph__path(G, N, E)
+		map__member(Arcs, A, N),
+		graph__path(G, N, E, Path0),
+		Path = [A|Path0]
 	).
 
 %------------------------------------------------------------------------------%
@@ -217,7 +286,7 @@ graph__get_nodes(G, N) :-
 graph__get_arcs(G, A) :-
 	G = graph(_NS, _AS, _N, A, _E).
 
-:- pred graph__get_edges(graph(N, A), map(node(N), set(edge(N, A)))).
+:- pred graph__get_edges(graph(N, A), map(node(N), map(arc(A), node(N)))).
 :- mode graph__get_edges(in, out) is det.
 
 graph__get_edges(G, E) :-
@@ -251,7 +320,7 @@ graph__set_arcs(G0, A, G) :-
 	G0 = graph(NS, AS, N, _, E),
 	G = graph(NS, AS, N, A, E).
 
-:- pred graph__set_edges(graph(N, A), map(node(N), set(edge(N, A))), graph(N, A)).
+:- pred graph__set_edges(graph(N, A), map(node(N), map(arc(A), node(N))), graph(N, A)).
 :- mode graph__set_edges(in, in, out) is det.
 
 graph__set_edges(G0, E, G) :-
