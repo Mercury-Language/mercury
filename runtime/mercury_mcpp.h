@@ -19,6 +19,7 @@ namespace mercury {
 typedef int		MR_Integer;
 typedef System::Int32	MR_BoxedInt;
 typedef System::Boolean	MR_Bool;
+typedef System::Boolean	MR_bool;
 
 typedef System::Char	MR_Char; // `Char' is MS's name for unicode characters
 
