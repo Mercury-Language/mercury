@@ -41,7 +41,7 @@ syn keyword mercuryKeyword      cc_nondet cc_multi
 syn keyword mercuryKeyword      typeclass instance where
 syn keyword mercuryKeyword      pragma promise
 syn keyword mercuryPragma       inline no_inline
-syn keyword mercuryPragma       type_spec source_file fact_table
+syn keyword mercuryPragma       type_spec source_file fact_table obsolete
 syn keyword mercuryPragma       memo loop_check minimal_model
 syn keyword mercuryPragma       terminates does_not_terminate check_termination
 syn keyword mercuryCInterface   c_header_code c_code
