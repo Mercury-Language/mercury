@@ -34,7 +34,6 @@
 #include "mercury_memory.h"	/* for memory allocation routines */
 #include "mercury_type_tables.h"	/* for MR_register_type_ctor_info */
 #include "mercury_misc.h"		/* for MR_fatal_error() */
-#include "mercury_heap.h"	/* for MR_MAYBE_(UN)BOX_FOREIGN_TYPE() */
 
 #ifdef MR_CONSERVATIVE_GC
   #ifdef MR_MPS_GC
@@ -342,6 +341,13 @@ MR_Box MR_asm_box_float(MR_Float f);
 	} while (0)
 
 /*---------------------------------------------------------------------------*/
+
+/*
+** The #include of mercury_heap.h needs to come *after* the definition
+** of MR_new_object(), because mercury_heap.h defines some inline
+** functions that reference MR_new_object().
+*/
+#include "mercury_heap.h"	/* for MR_MAYBE_(UN)BOX_FOREIGN_TYPE() */
 
 #endif /* MR_HIGHLEVEL_CODE */
 
