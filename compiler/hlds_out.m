@@ -2637,20 +2637,26 @@ hlds_out__write_type_params_2(Tvarset, [P | Ps]) -->
 	io__state, io__state).
 :- mode hlds_out__write_type_body(in, in, in, di, uo) is det.
 
-hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, _Tags, _Enum,
+hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, Tags, Enum,
 		MaybeEqualityPred)) -->
 	io__write_string(" --->\n"),
-	hlds_out__write_constructors(Indent, Tvarset, Ctors),
+	( { Enum = yes } ->
+		hlds_out__write_indent(Indent),
+		io__write_string("/* enumeration */\n")
+	;
+		[]
+	),
+	hlds_out__write_constructors(Indent, Tvarset, Ctors, Tags),
 	( { MaybeEqualityPred = yes(PredName) } ->
 		io__write_string("\n"),
-		{ Indent1 is Indent + 1 },
-		hlds_out__write_indent(Indent1),
+		hlds_out__write_indent(Indent + 1),
 		io__write_string("where equality is "),
 		prog_out__write_sym_name(PredName)
 	;
 		[]
 	),
 	io__write_string(".\n").
+
 	
 hlds_out__write_type_body(_Indent, _Tvarset, uu_type(_)) -->
 	{ error("hlds_out__write_type_body: undiscriminated union found") }.
@@ -2667,39 +2673,54 @@ hlds_out__write_type_body(_Indent, _Tvarset, foreign_type(_, _)) -->
 	{ error("hlds_out__write_type_body: foreign type body found") }.
 
 :- pred hlds_out__write_constructors(int, tvarset, list(constructor),
-	io__state, io__state).
-:- mode hlds_out__write_constructors(in, in, in, di, uo) is det.
+		cons_tag_values, io__state, io__state).
+:- mode hlds_out__write_constructors(in, in, in, in, di, uo) is det.
 
-hlds_out__write_constructors(_Indent, _Tvarset, []) -->
+hlds_out__write_constructors(_Indent, _Tvarset, [], _) -->
 	{ error("hlds_out__write_constructors: empty constructor list?") }.
 
-hlds_out__write_constructors(Indent, Tvarset, [C]) -->
+hlds_out__write_constructors(Indent, Tvarset, [C], TagValues) -->
 	hlds_out__write_indent(Indent),
 	io__write_char('\t'),
-	mercury_output_ctor(C, Tvarset).
+	hlds_out__write_ctor(C, Tvarset, TagValues).
 
-hlds_out__write_constructors(Indent, Tvarset, [C | Cs]) -->
+hlds_out__write_constructors(Indent, Tvarset, [C | Cs], TagValues) -->
 	{ Cs = [_ | _] },
 	hlds_out__write_indent(Indent),
 	io__write_char('\t'),
-	mercury_output_ctor(C, Tvarset),
+	hlds_out__write_ctor(C, Tvarset, TagValues),
 	io__write_string("\n"),
-	hlds_out__write_constructors_2(Indent, Tvarset, Cs).
+	hlds_out__write_constructors_2(Indent, Tvarset, Cs, TagValues).
 
 :- pred hlds_out__write_constructors_2(int, tvarset, list(constructor),
-	io__state, io__state).
-:- mode hlds_out__write_constructors_2(in, in, in, di, uo) is det.
+		cons_tag_values, io__state, io__state).
+:- mode hlds_out__write_constructors_2(in, in, in, in, di, uo) is det.
 
-hlds_out__write_constructors_2(_Indent, _Tvarset, []) --> [].
-hlds_out__write_constructors_2(Indent, Tvarset, [C | Cs]) -->
+hlds_out__write_constructors_2(_Indent, _Tvarset, [], _) --> [].
+hlds_out__write_constructors_2(Indent, Tvarset, [C | Cs], TagValues) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(";\t"),
-	mercury_output_ctor(C, Tvarset),
+	hlds_out__write_ctor(C, Tvarset, TagValues),
 	( { Cs = [] } ->
 		[]
 	;
 		io__write_string("\n"),
-		hlds_out__write_constructors_2(Indent, Tvarset, Cs)
+		hlds_out__write_constructors_2(Indent, Tvarset, Cs, TagValues)
+	).
+
+:- pred hlds_out__write_ctor(constructor, tvarset,
+		cons_tag_values, io__state, io__state).
+:- mode hlds_out__write_ctor(in, in, in, di, uo) is det.
+
+hlds_out__write_ctor(C, Tvarset, TagValues) -->
+	mercury_output_ctor(C, Tvarset),
+	{ C = ctor(_, _, Name, Args) },
+	{ make_cons_id_from_qualified_sym_name(Name, Args, ConsId) },
+	( { map__search(TagValues, ConsId, TagValue) } ->
+		io__write_string("\t% tag: "),
+		io__print(TagValue)
+	;
+		[]
 	).
 
 %-----------------------------------------------------------------------------%
