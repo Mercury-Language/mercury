@@ -206,10 +206,8 @@ prog_out__write_goal(if_then_else(Vars,C,A,B), I, T, VarSet) -->
 		prog_out__indent(I1)
 	),
 	io__write_string(" if "),
-	prog_out__write_some_vars(Vars),
-	% prog_out__get_op_prec("then", 1, Prec),
-	{ Prec = 1149 },
-	prog_out__qwrite(Prec, VarSet, C),
+	prog_out__write_some_vars(VarSet, Vars),
+	prog_out__write_goal(C, I, '(', VarSet),
 	io__write_string(" then"),
 	prog_out__write_goal(A, I1, (then), VarSet),
 	io__write_string("\n"),
@@ -233,10 +231,8 @@ prog_out__write_goal(if_then(Vars,C,A), I, T, VarSet) -->
 		prog_out__indent(I1)
 	),
 	io__write_string(" if "),
-	prog_out__write_some_vars(Vars),
-	% prog_out__get_op_prec("then", 1, Prec),
-	{ Prec = 1149 },
-	prog_out__qwrite(Prec, VarSet, C)),
+	prog_out__write_some_vars(VarSet, Vars),
+	prog_out__write_goal(C, I, '(', VarSet),
 	io__write_string(" then"),
 	prog_out__write_goal(A, I1, (then), VarSet),
 	(if {T \= (else)} then
@@ -269,7 +265,7 @@ prog_out__write_goal((P ; Q), I, T, VarSet) -->
 		io__write_string(")")
 	).
 
-prog_out__write_goal(not(A), I, _, VarSet) -->
+prog_out__write_goal(not(Vars, A), I, _, VarSet) -->
 	io__write_string("not("),
 	prog_out__write_goal(A, I, '(', VarSet),
 	io__write_string(")").
@@ -281,8 +277,11 @@ prog_out__write_goal(call(X), I, T, VarSet) -->
 	{ Prec = 999 },
 	prog_out__qwrite(Prec, VarSet, X).
 
-prog_out__write_var_list(VarSet, Vars) :-
+prog_out__write_var_list(VarSet, Vars) -->
 	{ write(Vars) }.	% XXX
+
+prog_out__write_some_vars(VarSet, Vars) -->
+	{ write('some '), write(Vars) }.	% XXX
 
 :- pred prog_out__beforelit(context, int, io__state, io__state).
 :- mode prog_out__beforelit(input, input, di, uo).
