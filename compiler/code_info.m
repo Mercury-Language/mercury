@@ -2600,9 +2600,9 @@ code_info__save_variables_on_stack([Var | Vars], Code) -->
 	code_info, code_info).
 :- mode code_info__generate_stack_livevals(in, out, in, out) is det.
 
-:- pred code_info__generate_stack_livelvals(set(var), list(liveinfo),
-	code_info, code_info).
-:- mode code_info__generate_stack_livelvals(in, out, in, out) is det.
+:- pred code_info__generate_stack_livelvals(set(var), instmap, 
+	list(liveinfo), code_info, code_info).
+:- mode code_info__generate_stack_livelvals(in, in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -2662,7 +2662,7 @@ code_info__generate_commit_livevals(Triples0, Vals0, Vals) :-
 
 %---------------------------------------------------------------------------%
 
-code_info__generate_stack_livelvals(Args, LiveVals) -->
+code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
 	code_info__get_known_variables(LiveVars),
 	{ set__list_to_set(LiveVars, Vars0) },
 	{ set__difference(Vars0, Args, Vars) },
@@ -2672,7 +2672,8 @@ code_info__generate_stack_livelvals(Args, LiveVals) -->
 	{ set__to_sorted_list(LiveVals1, LiveVals2) },
 	code_info__get_globals(Globals),
 	{ globals__get_gc_method(Globals, GC_Method) },
-	code_info__livevals_to_livelvals(LiveVals2, GC_Method, LiveVals3),
+	code_info__livevals_to_livelvals(LiveVals2, GC_Method, 
+		AfterCallInstMap, LiveVals3),
 	code_info__get_temps_in_use(TempsSet),
 	{ map__to_assoc_list(TempsSet, Temps) },
 	{ code_info__generate_temp_livelvals(Temps, LiveVals3, LiveVals4) },
@@ -2729,25 +2730,26 @@ code_info__generate_commit_livelvals(Triples0, LiveInfo0, LiveInfo) :-
 	).
 
 :- pred code_info__livevals_to_livelvals(assoc_list(lval, var), gc_method,
-	list(liveinfo), code_info, code_info).
-:- mode code_info__livevals_to_livelvals(in, in, out, in, out) is det.
+	instmap, list(liveinfo), code_info, code_info).
+:- mode code_info__livevals_to_livelvals(in, in, in, out, in, out) is det.
 
-code_info__livevals_to_livelvals([], _GC_Method, []) --> [].
-code_info__livevals_to_livelvals([Lval - Var | Ls], GC_Method,
+code_info__livevals_to_livelvals([], _GC_Method, _, []) --> [].
+code_info__livevals_to_livelvals([Lval - Var | Ls], GC_Method, AfterCallInstMap,
 		[LiveLval | Lives]) -->
 	(
 		{ GC_Method = accurate }
 	->
+		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
+
 		code_info__variable_type(Var, Type),
-		code_info__get_instmap(InstMap),
-		{ instmap__lookup_var(InstMap, Var, Inst) },
 		{ type_util__vars(Type, TypeVars) },
 		code_info__find_type_infos(TypeVars, TypeParams),
 		{ LiveLval = live_lvalue(Lval, var(Type, Inst), TypeParams) }
 	;
 		{ LiveLval = live_lvalue(Lval, unwanted, []) }
 	),
-	code_info__livevals_to_livelvals(Ls, GC_Method, Lives).
+	code_info__livevals_to_livelvals(Ls, GC_Method, AfterCallInstMap, 
+		Lives).
 
 :- pred code_info__get_live_value_type(lval_or_ticket, live_value_type).
 :- mode code_info__get_live_value_type(in, out) is det.

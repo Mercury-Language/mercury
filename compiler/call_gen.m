@@ -21,33 +21,33 @@
 :- import_module hlds_pred, llds, code_info.
 
 :- pred call_gen__generate_higher_order_call(code_model, var, list(var),
-				list(type), list(mode), determinism,
-				code_tree, code_info, code_info).
-:- mode call_gen__generate_higher_order_call(in, in, in, in, in, in, out,
+			list(type), list(mode), determinism, hlds_goal_info,
+			code_tree, code_info, code_info).
+:- mode call_gen__generate_higher_order_call(in, in, in, in, in, in, in, out,
 				in, out) is det.
 
-:- pred call_gen__generate_det_call(pred_id, proc_id, list(var),
-					code_tree, code_info, code_info).
-:- mode call_gen__generate_det_call(in, in, in, out, in, out) is det.
+:- pred call_gen__generate_det_call(pred_id, proc_id, list(var), 
+			hlds_goal_info, code_tree, code_info, code_info).
+:- mode call_gen__generate_det_call(in, in, in, in, out, in, out) is det.
 
 :- pred call_gen__generate_semidet_call(pred_id, proc_id, list(var),
-					code_tree, code_info, code_info).
-:- mode call_gen__generate_semidet_call(in, in, in, out, in, out) is det.
+			hlds_goal_info, code_tree, code_info, code_info).
+:- mode call_gen__generate_semidet_call(in, in, in, in, out, in, out) is det.
 
 :- pred call_gen__generate_nondet_call(pred_id, proc_id, list(var),
-					code_tree, code_info, code_info).
-:- mode call_gen__generate_nondet_call(in, in, in, out, in, out) is det.
+			hlds_goal_info, code_tree, code_info, code_info).
+:- mode call_gen__generate_nondet_call(in, in, in, in, out, in, out) is det.
 
 :- pred call_gen__generate_det_builtin(pred_id, proc_id, list(var),
-					code_tree, code_info, code_info).
+			code_tree, code_info, code_info).
 :- mode call_gen__generate_det_builtin(in, in, in, out, in, out) is det.
 
 :- pred call_gen__generate_semidet_builtin(pred_id, proc_id, list(var),
-					code_tree, code_info, code_info).
+			code_tree, code_info, code_info).
 :- mode call_gen__generate_semidet_builtin(in, in, in, out, in, out) is det.
 
 :- pred call_gen__generate_nondet_builtin(pred_id, proc_id, list(var),
-					code_tree, code_info, code_info).
+			code_tree, code_info, code_info).
 :- mode call_gen__generate_nondet_builtin(in, in, in, out, in, out) is
 					erroneous.
 
@@ -80,6 +80,7 @@
 
 :- import_module hlds_module, hlds_data, prog_data, code_util, globals.
 :- import_module arg_info, type_util, mode_util, unify_proc, instmap.
+:- import_module hlds_goal.
 :- import_module bool, int, list, assoc_list, tree, set, map.
 :- import_module std_util, require.
 
@@ -91,7 +92,7 @@
 	% for the procedure call. We then branch to the procedure
 	% and rebuild the register information to reflect the state
 	% when the callee returns.
-call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
+call_gen__generate_det_call(PredId, ModeId, Arguments, GoalInfo, Code) -->
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
 	{ call_gen__select_out_args(Args, OutArgs) },
@@ -99,11 +100,17 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	code_info__setup_call(Args, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
+
+	code_info__get_instmap(InstMap),
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+	{ instmap__apply_instmap_delta(InstMap, InstMapDelta,
+		AfterCallInstMap) },
+
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
 	{ call_gen__output_arg_locs(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments,
-		OutLiveVals),
+		AfterCallInstMap, OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
 	{ CodeC1 = node([
 		call(Address, label(ReturnLabel), OutLiveVals, det)
@@ -119,7 +126,7 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	% it's a nondet call for which we are pruning all solutions except the
 	% first.
 
-call_gen__generate_semidet_call(PredId, ProcId, Arguments, Code) -->
+call_gen__generate_semidet_call(PredId, ProcId, Arguments, GoalInfo, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
@@ -128,14 +135,15 @@ call_gen__generate_semidet_call(PredId, ProcId, Arguments, Code) -->
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
 	( { CodeModel = model_semi } ->
 		call_gen__generate_semidet_call_2(PredId, ProcId, Arguments,
-			Code)
+			GoalInfo, Code)
 	;
-		call_gen__generate_nondet_call(PredId, ProcId, Arguments, Code)
+		call_gen__generate_nondet_call(PredId, ProcId, Arguments, 
+			GoalInfo, Code)
 	).
 
 :- pred call_gen__generate_semidet_call_2(pred_id, proc_id, list(var),
-					code_tree, code_info, code_info).
-:- mode call_gen__generate_semidet_call_2(in, in, in, out, in, out) is det.
+			hlds_goal_info, code_tree, code_info, code_info).
+:- mode call_gen__generate_semidet_call_2(in, in, in, in, out, in, out) is det.
 
 	% To generate a call to a semideterministic predicate, first
 	% we get the arginfo for the callee.
@@ -150,7 +158,7 @@ call_gen__generate_semidet_call(PredId, ProcId, Arguments, Code) -->
 	% we branch to the appropriate continuation as generated by
 	% code_info__generate_failure.
 
-call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
+call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, GoalInfo, Code) -->
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
 	{ call_gen__select_out_args(Args, OutArgs) },
@@ -161,8 +169,14 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
 	{ call_gen__output_arg_locs(Args, OutputArguments) },
-	call_gen__generate_return_livevals(OutArgs, OutputArguments,	
-		OutLiveVals),
+
+	code_info__get_instmap(InstMap),
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+	{ instmap__apply_instmap_delta(InstMap, InstMapDelta,
+		AfterCallInstMap) },
+
+	call_gen__generate_return_livevals(OutArgs, OutputArguments, 
+		AfterCallInstMap, OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
 	{ CodeC1 = node([
 		call(Address, label(ReturnLabel), OutLiveVals, semidet)
@@ -182,7 +196,7 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
+call_gen__generate_nondet_call(PredId, ModeId, Arguments, GoalInfo, Code) -->
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
 	{ call_gen__select_out_args(Args, OutArgs) },
@@ -195,8 +209,14 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(OutArgs, InputArguments, LiveCode),
 	{ call_gen__output_arg_locs(Args, OutputArguments) },
+
+	code_info__get_instmap(InstMap),
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+	{ instmap__apply_instmap_delta(InstMap, InstMapDelta,
+		AfterCallInstMap) },
+
 	call_gen__generate_return_livevals(OutArgs, OutputArguments,
-		OutLiveVals),
+		AfterCallInstMap, OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
 	{ CallModel = nondet(TailCall) },
 	{ CallCode = node([
@@ -378,7 +398,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 			CodeC0),
 		{ call_gen__output_arg_locs(Args, OutputArguments) },
 		call_gen__generate_return_livevals(OutArgs, OutputArguments, 
-						OutLiveVals),
+				GoalInfo, OutLiveVals),
 		{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum,
 			UniLabel) },
 		{ Address = imported(UniLabel) },
@@ -520,15 +540,17 @@ call_gen__insert_arg_livevals([L | As], LiveVals0, LiveVals) :-
 %---------------------------------------------------------------------------%
 
 :- pred call_gen__generate_return_livevals(set(var), list(pair(var, arg_loc)),
-					list(liveinfo), code_info, code_info).
-:- mode call_gen__generate_return_livevals(in, in, out, in, out) is det.
+		instmap, list(liveinfo), code_info, code_info).
+:- mode call_gen__generate_return_livevals(in, in, in, out, in, out) is det.
 
-call_gen__generate_return_livevals(OutArgs, OutputArgs, LiveVals) -->
-	code_info__generate_stack_livelvals(OutArgs, LiveVals0),
+call_gen__generate_return_livevals(OutArgs, OutputArgs, AfterCallInstMap, 
+		LiveVals) -->
+	code_info__generate_stack_livelvals(OutArgs, AfterCallInstMap, 
+		LiveVals0),
 	code_info__get_globals(Globals),
 	{ globals__get_gc_method(Globals, GC_Method) },
-	call_gen__insert_arg_livelvals(OutputArgs, GC_Method, LiveVals0, 
-		LiveVals).
+	call_gen__insert_arg_livelvals(OutputArgs, GC_Method, AfterCallInstMap,
+		LiveVals0, LiveVals).
 	
 
 % Maybe a varlist to type_id list would be a better way to do this...
@@ -536,18 +558,18 @@ call_gen__generate_return_livevals(OutArgs, OutputArgs, LiveVals) -->
 %---------------------------------------------------------------------------%
 
 :- pred call_gen__insert_arg_livelvals(list(pair(var, arg_loc)), gc_method, 
-	list(liveinfo), list(liveinfo), code_info, code_info).
-:- mode call_gen__insert_arg_livelvals(in, in, in, out, in, out) is det.
+	instmap, list(liveinfo), list(liveinfo), code_info, code_info).
+:- mode call_gen__insert_arg_livelvals(in, in, in, in, out, in, out) is det.
 
-call_gen__insert_arg_livelvals([], _, LiveVals, LiveVals) --> [].
-call_gen__insert_arg_livelvals([Var - L | As], GC_Method, LiveVals0,
-		LiveVals) -->
+call_gen__insert_arg_livelvals([], _, _, LiveVals, LiveVals) --> [].
+call_gen__insert_arg_livelvals([Var - L | As], GC_Method, AfterCallInstMap, 
+		LiveVals0, LiveVals) -->
 	(
 		{ GC_Method = accurate }
 	->
+		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
+
 		code_info__variable_type(Var, Type),
-		code_info__get_instmap(InstMap),
-		{ instmap__lookup_var(InstMap, Var, Inst) },
 		{ type_util__vars(Type, TypeVars) },
 		code_info__find_type_infos(TypeVars, TypeParams),
 		{ LiveVal = live_lvalue(R, var(Type, Inst), TypeParams) }
@@ -555,8 +577,8 @@ call_gen__insert_arg_livelvals([Var - L | As], GC_Method, LiveVals0,
 		{ LiveVal = live_lvalue(R, unwanted, []) }
 	),
 	{ code_util__arg_loc_to_register(L, R) },
-	call_gen__insert_arg_livelvals(As, GC_Method, [LiveVal | LiveVals0], 
-		LiveVals).
+	call_gen__insert_arg_livelvals(As, GC_Method, AfterCallInstMap, 
+		[LiveVal | LiveVals0], LiveVals).
 
 %---------------------------------------------------------------------------%
 
@@ -575,7 +597,7 @@ call_gen__insert_arg_livelvals([Var - L | As], GC_Method, LiveVals0,
 	%
 
 call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
-		Modes, Det, Code) -->
+		Modes, Det, GoalInfo, Code) -->
 	{ determinism_to_code_model(Det, InnerCodeModel) },
 	code_info__get_globals(Globals),
 	code_info__get_module_info(ModuleInfo),
@@ -585,13 +607,14 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgsAndArgInfo) },
 	{ call_gen__partition_args(ArgsAndArgInfo, InVars, OutVars) },
 	call_gen__generate_higher_call(InnerCodeModel, PredVar, InVars, OutVars,
-		Code).
+		GoalInfo, Code).
 
 :- pred call_gen__generate_higher_call(code_model, var, list(var), list(var),
-				code_tree, code_info, code_info).
-:- mode call_gen__generate_higher_call(in, in, in, in, out, in, out) is det.
+			hlds_goal_info, code_tree, code_info, code_info).
+:- mode call_gen__generate_higher_call(in, in, in, in, in, out, in, out) is det.
 
-call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
+call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, GoalInfo,
+		Code) -->
 	code_info__succip_is_used,
 	{ set__list_to_set(OutVars, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),
@@ -627,7 +650,14 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 	),
 	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
 	{ call_gen__output_arg_locs(OutArguments, OutLocs) },
-	call_gen__generate_return_livevals(OutArgs, OutLocs, OutLiveVals),
+
+	code_info__get_instmap(InstMap),
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+	{ instmap__apply_instmap_delta(InstMap, InstMapDelta,
+		AfterCallInstMap) },
+
+	call_gen__generate_return_livevals(OutArgs, OutLocs, AfterCallInstMap, 
+		OutLiveVals),
 	code_info__produce_variable(PredVar, PredVarCode, PredRVal),
 	(
 		{ PredRVal = lval(reg(r, 1)) }
