@@ -211,20 +211,16 @@ then
 			do
 				stage3file="stage3/$dir/`basename $file`"
 				diff -u $file $stage3file >> $outfile ||
-					founddiff="true"
+					founddiff=true
 			done
 		done
 
-		if test $exit_status -ne 0
-		then
-			echo "error - stage2.ok and stage3 differ!"
-		else
-			echo "stage2.ok and stage3 compare ok"
-		fi
-
 		if "$founddiff" = true
 		then
+			echo "error - stage2.ok and stage3 differ!"
 			exit 1
+		else
+			echo "stage2.ok and stage3 compare ok"
 		fi
 	fi
 fi
