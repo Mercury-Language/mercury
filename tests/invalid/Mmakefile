@@ -32,21 +32,21 @@ SOURCES= \
 	pragma_c_code_and_clauses1.m \
 	pragma_c_code_and_clauses2.m \
 	pragma_c_code_no_det.m \
+	prog_io_erroneous.m \
 	qual_basic_test2.m \
+	qualified_cons_id2.m \
 	type_loop.m \
 	type_mismatch.m \
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
 	undef_mode.m \
 	undef_type.m \
+	types.m	\
 	vars_in_wrong_places.m
 
 # we do not yet pass the following tests:
-#	freefree.m \
-#	no_exports.m \
-#	prog_io_erroneous.m \
-#	qualified_cons_id2.m \
-#	types.m
+#	freefree.m 	(need bromage's aliasing stuff)
+#	no_exports.m	(this is really a WISHLIST item)
 
 MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-any_mode	=	--infer-types

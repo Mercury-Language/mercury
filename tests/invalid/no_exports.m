@@ -1,3 +1,7 @@
+%
+% Ideally we ought to issue a warning for this module,
+% e.g. `nothing exported' or `main/2 unused'.
+%
 :- module no_exports.
 
 % :- interface.
