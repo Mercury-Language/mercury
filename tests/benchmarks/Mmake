@@ -21,12 +21,15 @@ OUTS=	$(PROGS:%=%.out)
 EXPS=	$(PROGS:%=%.exp)
 RESS=	$(PROGS:%=%.res)
 SS=	$(PROGS:%=%.s)
+CS=	$(PROGS:%=%.c)
 
 dep: $(DEPS)
 
 depend: $(DEPENDS)
 
 check: $(EXPS) $(OUTS) $(RESS)
+
+cs: $(CS)
 
 ss: $(SS)
 
