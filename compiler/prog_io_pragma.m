@@ -261,6 +261,23 @@ parse_pragma_type(_ModuleName, "foreign_import_module", PragmaTerms, ErrorTerm,
 			"declaration", ErrorTerm)
 	).
 
+:- pred parse_foreign_decl_is_local(term::in, foreign_decl_is_local::out)
+	is semidet.
+
+parse_foreign_decl_is_local(term__functor(Functor, [], _), IsLocal) :-
+	(
+		Functor = term__string(String)
+	;
+		Functor = term__atom(String)
+	),
+	(
+		String = "local",
+		IsLocal = foreign_decl_is_local
+	;
+		String = "exported",
+		IsLocal = foreign_decl_is_exported
+	).
+
 :- pred parse_foreign_language(term, foreign_language).
 :- mode parse_foreign_language(in, out) is semidet.
 
@@ -427,17 +444,24 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
 	string__format("invalid `:- pragma %s' declaration ", [s(Pragma)],
 		InvalidDeclStr),
 	( 
-		PragmaTerms = [Lang, HeaderTerm]
+		(
+			PragmaTerms = [LangTerm, HeaderTerm],
+			IsLocal = foreign_decl_is_exported
+		;
+			PragmaTerms = [LangTerm, IsLocalTerm, HeaderTerm],
+			parse_foreign_decl_is_local(IsLocalTerm, IsLocal)
+		)
 	->
 		( 
-			parse_foreign_language(Lang, ForeignLanguage)
+			parse_foreign_language(LangTerm, ForeignLanguage)
 		->
 			(
 				HeaderTerm = term__functor(term__string(
 					HeaderCode), [], _)
 			->
-				Result = ok(pragma(foreign_decl(
-					ForeignLanguage, HeaderCode)))
+				DeclCode = foreign_decl(ForeignLanguage,
+					IsLocal, HeaderCode),
+				Result = ok(pragma(DeclCode))
 			;
 				ErrMsg = "-- expected string for foreign declaration code",
 				Result = error(string__append(InvalidDeclStr,
@@ -446,7 +470,7 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
 		;
 			ErrMsg = "-- invalid language parameter",
 			Result = error(string__append(InvalidDeclStr, ErrMsg), 
-				Lang)
+				LangTerm)
 		)
 	;
 		string__format("invalid `:- pragma %s' declaration ",

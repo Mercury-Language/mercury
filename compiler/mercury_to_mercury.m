@@ -174,12 +174,12 @@
 :- mode mercury_output_index_spec(in, di, uo) is det.
 
 	% Output the given foreign_decl declaration
-:- pred mercury_output_pragma_foreign_decl(foreign_language, string,
-		io__state, io__state).
-:- mode mercury_output_pragma_foreign_decl(in, in, di, uo) is det.
+:- pred mercury_output_pragma_foreign_decl(foreign_language::in,
+	foreign_decl_is_local::in, string::in,
+	io::di, io::uo) is det.
 
-:- func mercury_pragma_foreign_decl_to_string(foreign_language, string)
-	= string.
+:- func mercury_pragma_foreign_decl_to_string(foreign_language,
+	foreign_decl_is_local, string) = string.
 
 :- pred mercury_output_pragma_foreign_import_module(foreign_language,
 		module_name, io__state, io__state).
@@ -554,8 +554,9 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 		{ Pragma = source_file(SourceFile) },
 		mercury_output_pragma_source_file(SourceFile)
 	;
-		{ Pragma = foreign_decl(Lang, ForeignHeaderString) },
-		mercury_output_pragma_foreign_decl(Lang, ForeignHeaderString)
+		{ Pragma = foreign_decl(Lang, IsLocal, ForeignHeaderString) },
+		mercury_output_pragma_foreign_decl(Lang, IsLocal,
+			ForeignHeaderString)
 	;
 		{ Pragma = foreign_import_module(Lang, ModuleName) },
 		mercury_output_pragma_foreign_import_module(Lang, ModuleName)
@@ -2765,22 +2766,32 @@ mercury_output_some(Vars, StateVars, VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_pragma_foreign_decl(Lang, ForeignDeclString) -->
-	mercury_format_pragma_foreign_decl(Lang, ForeignDeclString).
+mercury_output_pragma_foreign_decl(Lang, IsLocal, ForeignDeclString) -->
+	mercury_format_pragma_foreign_decl(Lang, IsLocal, ForeignDeclString).
 
-mercury_pragma_foreign_decl_to_string(Lang, ForeignDeclString) = String :-
-	mercury_format_pragma_foreign_decl(Lang, ForeignDeclString,
+mercury_pragma_foreign_decl_to_string(Lang, IsLocal, ForeignDeclString)
+		= String :-
+	mercury_format_pragma_foreign_decl(Lang, IsLocal, ForeignDeclString,
 		"", String).
 
-:- pred mercury_format_pragma_foreign_decl(foreign_language::in, string::in,
-	U::di, U::uo) is det <= output(U).
+:- pred mercury_format_pragma_foreign_decl(foreign_language::in,
+	foreign_decl_is_local::in, string::in, U::di, U::uo) is det
+	<= output(U).
 
-mercury_format_pragma_foreign_decl(Lang, ForeignDeclString) -->
-	add_string(":- pragma foreign_decl("),
-	mercury_format_foreign_language_string(Lang),
-	add_string(", "),
-	mercury_format_foreign_code_string(ForeignDeclString),
-	add_string(").\n").
+mercury_format_pragma_foreign_decl(Lang, IsLocal, ForeignDeclString, !U) :-
+	add_string(":- pragma foreign_decl(", !U),
+	mercury_format_foreign_language_string(Lang, !U),
+	add_string(", ", !U),
+	(
+		IsLocal = foreign_decl_is_local,
+		add_string("local", !U)
+	;
+		IsLocal = foreign_decl_is_exported,
+		add_string("exported", !U)
+	),
+	add_string(", ", !U),
+	mercury_format_foreign_code_string(ForeignDeclString, !U),
+	add_string(").\n", !U).
 
 mercury_output_foreign_language_string(Lang) -->
 	mercury_format_foreign_language_string(Lang).

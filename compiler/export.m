@@ -1,4 +1,4 @@
-%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%)
 % Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -654,7 +654,8 @@ export__produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
 			"#ifndef ", decl_guard(ModuleName), "\n",
 			"#define ", decl_guard(ModuleName), "\n"],
 			!IO),
-		list__foldl(output_foreign_decl, ForeignDecls, !IO),
+		list__foldl(output_foreign_decl(yes(foreign_decl_is_exported)),
+			ForeignDecls, !IO),
 		io__write_string("\n#endif\n", !IO),
 
 		export__produce_header_file_2(C_ExportDecls, !IO),
@@ -701,18 +702,28 @@ export__produce_header_file_2([E|ExportedProcs]) -->
 	),
 	export__produce_header_file_2(ExportedProcs).
 
-:- pred output_foreign_decl(foreign_decl_code::in, io::di, io::uo) is det.
+:- pred output_foreign_decl(maybe(foreign_decl_is_local)::in,
+	foreign_decl_code::in, io::di, io::uo) is det.
 
-export__output_foreign_decl(foreign_decl_code(Lang, Code, Context)) -->
-	( { Lang = c } ->
-		{ term__context_file(Context, File) },
-		{ term__context_line(Context, Line) },
-		c_util__set_line_num(File, Line),
-		io__write_string(Code),
-		io__nl,
-		c_util__reset_line_num
+output_foreign_decl(MaybeDesiredIsLocal, DeclCode, !IO) :-
+	DeclCode = foreign_decl_code(Lang, IsLocal, Code, Context),
+	(
+		Lang = c,
+		(
+			MaybeDesiredIsLocal = no
+		;
+			MaybeDesiredIsLocal = yes(DesiredIsLocal),
+			DesiredIsLocal = IsLocal
+		)
+	->
+		term__context_file(Context, File),
+		term__context_line(Context, Line),
+		c_util__set_line_num(File, Line, !IO),
+		io__write_string(Code, !IO),
+		io__nl(!IO),
+		c_util__reset_line_num(!IO)
 	;
-		[]
+		true
 	).
 
 %-----------------------------------------------------------------------------%

@@ -984,7 +984,7 @@ qualify_type(Type0, Type, Info0, Info) -->
 	mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 
 qualify_pragma(X@source_file(_), X, Info, Info) --> [].
-qualify_pragma(X@foreign_decl(_, _), X, Info, Info) --> [].
+qualify_pragma(X@foreign_decl(_, _, _), X, Info, Info) --> [].
 qualify_pragma(X@foreign_code(_, _), X, Info, Info) --> [].
 qualify_pragma(X@foreign_import_module(_, _), X, Info, Info) --> [].
 qualify_pragma(X, Y, Info0, Info) -->

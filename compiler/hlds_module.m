@@ -272,8 +272,9 @@
 :- pred module_info_set_foreign_import_module(foreign_import_module_info::in,
 	module_info::in, module_info::out) is det.
 
-:- pred module_add_foreign_decl(foreign_language::in, string::in,
-	prog_context::in, module_info::in, module_info::out) is det.
+:- pred module_add_foreign_decl(foreign_language::in,
+	foreign_decl_is_local::in, string::in, prog_context::in,
+	module_info::in, module_info::out) is det.
 
 :- pred module_add_foreign_body_code(foreign_language::in, string::in,
 	prog_context::in, module_info::in, module_info::out) is det.
@@ -907,12 +908,12 @@ module_info_get_all_deps(ModuleInfo, AllImports) :-
 	AllImports = (IndirectImports `set__union` DirectImports)
 			`set__union` set__list_to_set(Parents).
 
-module_add_foreign_decl(Lang, ForeignDecl, Context, !Module) :-
+module_add_foreign_decl(Lang, IsLocal, ForeignDecl, Context, !Module) :-
 	module_info_get_foreign_decl(!.Module, ForeignDeclIndex0),
 		% store the decls in reverse order and reverse them later
 		% for efficiency
-	ForeignDeclIndex = [foreign_decl_code(Lang, ForeignDecl, Context) |
-		ForeignDeclIndex0],
+	ForeignDeclIndex = [foreign_decl_code(Lang, IsLocal, ForeignDecl,
+		Context) | ForeignDeclIndex0],
 	module_info_set_foreign_decl(ForeignDeclIndex, !Module).
 
 module_add_foreign_body_code(Lang, Foreign_Body_Code, Context, !Module) :-

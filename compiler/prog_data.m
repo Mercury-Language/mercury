@@ -227,6 +227,10 @@
 % Pragmas
 %
 
+:- type foreign_decl_is_local
+	--->	foreign_decl_is_local
+	;	foreign_decl_is_exported.
+
 :- type pragma_type
 	%
 	% Foreign language interfacing pragmas
@@ -235,6 +239,7 @@
 			% header code.
 	--->	foreign_decl(
 			decl_lang	:: foreign_language,
+			decl_is_local	:: foreign_decl_is_local,
 			decl_decl	:: string
 		)
 

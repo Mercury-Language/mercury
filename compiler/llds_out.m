@@ -1081,22 +1081,17 @@ output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
 			"foreign code other than C")
 	).
 
-	% output_foreign_header_include_lines reverses the list of c
-	% header lines and passes them to
-	% output_c_header_include_lines_2 which outputs them.  The list
-	% must be reversed since they are inserted in reverse order.
 :- pred output_foreign_header_include_lines(list(foreign_decl_code)::in,
 	io::di, io::uo) is det.
 
-output_foreign_header_include_lines(Headers, !IO) :-
-	list__reverse(Headers, RevHeaders),
-	list__foldl(output_foreign_header_include_lines_2, RevHeaders, !IO).
+output_foreign_header_include_lines(Decls, !IO) :-
+	list__foldl(output_foreign_header_include_line, Decls, !IO).
 
-:- pred output_foreign_header_include_lines_2(foreign_decl_code::in,
+:- pred output_foreign_header_include_line(foreign_decl_code::in,
 	io::di, io::uo) is det.
 
-output_foreign_header_include_lines_2(Decl, !IO) :-
-	Decl = foreign_decl_code(Lang, Code, Context),
+output_foreign_header_include_line(Decl, !IO) :-
+	Decl = foreign_decl_code(Lang, _IsLocal, Code, Context),
 	( Lang = c ->
 		globals__io_lookup_bool_option(auto_comments, PrintComments,
 			!IO),

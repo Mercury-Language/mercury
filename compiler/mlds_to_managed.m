@@ -276,7 +276,8 @@ generate_foreign_header_code(Lang, ModuleName,
 
 	{ HeaderCode = list__reverse(RevHeaderCode) },
 	io__write_list(HeaderCode, "\n", 
-		(pred(foreign_decl_code(CodeLang, Code, Context)::in,
+		% XXX Ignoring _IsLocal may not be the right thing to do.
+		(pred(foreign_decl_code(CodeLang, _IsLocal, Code, Context)::in,
 				di, uo) is det -->
 			output_context(Lang, Context),
 			( { CodeLang = Lang } ->

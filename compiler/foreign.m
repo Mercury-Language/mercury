@@ -33,13 +33,27 @@
 :- type foreign_body_info   ==	list(foreign_body_code).
 		% in reverse order
 
-:- type foreign_decl_code	--->
-		foreign_decl_code(foreign_language, string, prog_context).
-:- type foreign_import_module	--->
-		foreign_import_module(foreign_language, module_name,
-			prog_context).
-:- type foreign_body_code	--->
-		foreign_body_code(foreign_language, string, prog_context).
+:- type foreign_decl_code
+	--->	foreign_decl_code(
+			foreign_language,
+			foreign_decl_is_local,
+			string,
+			prog_context
+		).
+
+:- type foreign_import_module
+	--->	foreign_import_module(
+			foreign_language,
+			module_name,
+			prog_context
+		).
+
+:- type foreign_body_code
+	--->	foreign_body_code(
+			foreign_language,
+			string,
+			prog_context
+		).
 
 :- type foreign_export_defns == list(foreign_export).
 :- type foreign_export_decls
@@ -287,7 +301,7 @@ prefer_foreign_language(_Globals, il, Lang1, Lang2) = Comp :-
 prefer_foreign_language(_Globals, java, _Lang1, _Lang2) = no.
 
 foreign__filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
-	list__filter((pred(foreign_decl_code(Lang, _, _)::in) is semidet :-
+	list__filter((pred(foreign_decl_code(Lang, _, _, _)::in) is semidet :-
 			WantedLang = Lang),
 		Decls0, LangDecls, NotLangDecls).
 

@@ -5788,8 +5788,8 @@ compatibility is described in the language specific information below.
 @section Adding foreign declarations
 
 Foreign language declarations (such as type declarations, header file
-inclusions or macro definitions) can included in the Mercury source file as
-part of a @samp{foreign_decl} declaration of the form
+inclusions or macro definitions) can be included in the Mercury source file
+as part of a @samp{foreign_decl} declaration of the form
 
 @example
 :- pragma foreign_decl("@var{Lang}", @var{DeclCode}).
@@ -5806,6 +5806,27 @@ Entities declared in @samp{pragma foreign_decl} declarations are
 visible in @samp{pragma foreign_code}, @samp{pragma foreign_type},
 and @samp{pragma foreign_proc} declarations that specify the same foreign
 language and occur in the same Mercury module.
+
+By default, the contents of @samp{pragma foreign_decl} declarations
+are also visible in the same kinds of declarations in other modules
+that import the module containing the @samp{pragma foreign_decl} declaration.
+This is because they may be required to make sense of
+types defined using @samp{pragma foreign_type} and/or
+predicates defined using @samp{pragma foreign_code}
+in the containing module,
+and these may be visible in other modules,
+especially in the presence of intermodule optimization,
+
+If you do not want the contents of a @samp{pragma foreign_decl} declaration
+to be visible in foreign language code in other modules,
+you can use the following variant of the declaration:
+
+@example
+:- pragma foreign_decl("@var{Lang}", local, @var{DeclCode}).
+@end example
+
+Note: currently only the C backends support this variant
+of the @samp{pragma foreign_decl} declaration.
 
 To make the declarations for Mercury predicates or functions
 exported to a foreign language using a @samp{pragma export}

@@ -443,11 +443,11 @@ output_java_src_file(Indent, MLDS, !IO) :-
 % Code for working with Java `foreign_code'.
 %
 
-:- pred output_java_decl(indent::in, foreign_decl_code::in, io::di,
-	io::uo) is det.
+:- pred output_java_decl(indent::in, foreign_decl_code::in, io::di, io::uo)
+	is det.
 
-output_java_decl(Indent, foreign_decl_code(Lang, Code, Context), !IO) :-
-	% only output Java code
+output_java_decl(Indent, DeclCode, !IO) :-
+	DeclCode = foreign_decl_code(Lang, _IsLocal, Code, Context),
 	( Lang = java ->
 		indent_line(make_context(Context), Indent, !IO),
 		io__write_string(Code, !IO),

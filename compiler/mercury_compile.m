@@ -3815,10 +3815,18 @@ mercury_compile__construct_c_file(_Module,
 			ChunkedModules)
 	),
 	list__map_foldl(make_foreign_import_header_code, C_Includes,
-		C_HeaderCode1, !IO),
+		C_IncludeHeaderCode, !IO),
 
+	% The lists are reversed because insertions into them are at the front.
+	% We don't want to put C_LocalHeaderCode between Start and End, because
+	% C_IncludeHeaderCode may include our own header file, which defines
+	% the module's guard macro, which in turn #ifdefs out the stuff between
+	% Start and End.
+	list__filter(foreign_decl_code_is_local, list__reverse(C_HeaderCode0),
+		C_LocalHeaderCode, C_ExportedHeaderCode),
 	make_decl_guards(ModuleSymName, Start, End),
-	C_HeaderCode = [End | C_HeaderCode0] ++ [Start | C_HeaderCode1],
+	C_HeaderCode = list__reverse(C_IncludeHeaderCode) ++
+		C_LocalHeaderCode ++ [Start | C_ExportedHeaderCode] ++ [End],
 
 	CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode,
 		C_ExportDefns, GlobalVars, AllData, ChunkedModules),
@@ -3830,6 +3838,11 @@ mercury_compile__construct_c_file(_Module,
 	ComponentCount = UserCCodeCount + ExportCount
 		+ CompGenVarCount + CompGenDataCount + CompGenCodeCount.
 
+:- pred foreign_decl_code_is_local(foreign_decl_code::in) is semidet.
+
+foreign_decl_code_is_local(Decl) :-
+	Decl = foreign_decl_code(_, foreign_decl_is_local, _, _).
+
 :- pred make_decl_guards(sym_name::in, foreign_decl_code::out,
 	foreign_decl_code::out) is det.
 
@@ -3837,8 +3850,10 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
 	Define = decl_guard(ModuleName),
 	Start = "#ifndef " ++ Define ++ "\n#define " ++ Define ++ "\n",
 	End = "\n#endif",
-	StartGuard = foreign_decl_code(c, Start, term__context_init),
-	EndGuard = foreign_decl_code(c, End, term__context_init).
+	StartGuard = foreign_decl_code(c, foreign_decl_is_exported, Start,
+		term__context_init),
+	EndGuard = foreign_decl_code(c, foreign_decl_is_exported, End,
+		term__context_init).
 
 :- pred make_foreign_import_header_code(foreign_import_module::in,
 	foreign_decl_code::out, io::di, io::uo) is det.
@@ -3852,7 +3867,8 @@ make_foreign_import_header_code(ForeignImportModule, Include, !IO) :-
 		string__append_list(
 			["#include """, HeaderFileName, """\n"],
 			IncludeString),
-		Include = foreign_decl_code(c, IncludeString, Context)
+		Include = foreign_decl_code(c, foreign_decl_is_exported,
+			IncludeString, Context)
 	;
 		Lang = csharp,
 		error("sorry. :- import_module not yet implemented: " ++

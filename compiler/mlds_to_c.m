@@ -601,17 +601,32 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode, !IO) :-
 	DeclGuard = decl_guard(SymName),
 	io__write_strings(["#ifndef ", DeclGuard,
 		"\n#define ", DeclGuard, "\n"], !IO),
-	io__write_list(HeaderCode, "\n", mlds_output_c_hdr_decl(Indent), !IO),
+	io__write_list(HeaderCode, "\n",
+		mlds_output_c_hdr_decl(Indent, yes(foreign_decl_is_exported)),
+		!IO),
 	io__write_string("\n#endif\n", !IO).
 
-:- pred mlds_output_c_hdr_decl(indent::in, foreign_decl_code::in,
-	io::di, io::uo) is det.
+:- pred mlds_output_c_hdr_decl(indent::in, maybe(foreign_decl_is_local)::in,
+	foreign_decl_code::in, io::di, io::uo) is det.
 
-mlds_output_c_hdr_decl(_Indent, foreign_decl_code(Lang, Code, Context), !IO) :-
-		% only output C code in the C header file.
+mlds_output_c_hdr_decl(_Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
+	DeclCode = foreign_decl_code(Lang, IsLocal, Code, Context),
+	% Only output C code in the C header file.
 	( Lang = c ->
-		mlds_to_c__output_context(mlds__make_context(Context), !IO),
-		io__write_string(Code, !IO)
+		( 
+			(
+				MaybeDesiredIsLocal = no
+			;
+				MaybeDesiredIsLocal = yes(DesiredIsLocal),
+				IsLocal = DesiredIsLocal
+			)
+		->
+			mlds_to_c__output_context(mlds__make_context(Context),
+				!IO),
+			io__write_string(Code, !IO)
+		;
+			true
+		)
 	;
 		sorry(this_file, "foreign code other than C")
 	).
@@ -619,8 +634,13 @@ mlds_output_c_hdr_decl(_Indent, foreign_decl_code(Lang, Code, Context), !IO) :-
 :- pred mlds_output_c_decls(indent::in, mlds__foreign_code::in,
 	io::di, io::uo) is det.
 
-% all of the declarations go in the header file or as c_code
-mlds_output_c_decls(_, _, !IO).
+mlds_output_c_decls(Indent, ForeignCode, !IO) :-
+	ForeignCode = mlds__foreign_code(RevHeaderCode, _RevImports,
+		_RevBodyCode, _ExportDefns),
+	HeaderCode = list__reverse(RevHeaderCode),
+	io__write_list(HeaderCode, "\n",
+		mlds_output_c_hdr_decl(Indent, yes(foreign_decl_is_local)),
+		!IO).
 
 :- pred mlds_output_c_defns(mlds_module_name::in, indent::in,
 	mlds__foreign_code::in, io::di, io::uo) is det.

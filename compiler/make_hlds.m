@@ -475,8 +475,9 @@ add_item_decl_pass_2(pragma(Pragma), Context, !Status, !Module, !IO) :-
 		module_add_foreign_body_code(Lang, Body_Code, Context,
 			!Module)
 	;
-		Pragma  = foreign_decl(Lang, C_Header),
-		module_add_foreign_decl(Lang, C_Header, Context, !Module)
+		Pragma  = foreign_decl(Lang, IsLocal, C_Header),
+		module_add_foreign_decl(Lang, IsLocal, C_Header, Context,
+			!Module)
 	;
 		Pragma  = foreign_import_module(Lang, Import),
 		module_add_foreign_import_module(Lang, Import, Context,
@@ -8624,8 +8625,8 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 
 				% create foreign_decls to declare
 				% extern variables
-			module_add_foreign_decl(c, C_HeaderCode, Context,
-				!Module),
+			module_add_foreign_decl(c, foreign_decl_is_local,
+				C_HeaderCode, Context, !Module),
 
 			module_add_fact_table_file(FileName, !Module),
 

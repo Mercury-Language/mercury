@@ -1660,7 +1660,7 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 % but if we do allow it, we should put it in the generated
 % header file, which currently we don't.
 
-pragma_allowed_in_interface(foreign_decl(_, _), no).
+pragma_allowed_in_interface(foreign_decl(_, _, _), no).
 pragma_allowed_in_interface(foreign_import_module(_, _), yes).
 pragma_allowed_in_interface(foreign_code(_, _), no).
 pragma_allowed_in_interface(foreign_proc(_, _, _, _, _, _), no).
@@ -6927,7 +6927,7 @@ item_needs_foreign_imports(pragma(import(_, _, _, _, _)), c).
 item_needs_foreign_imports(Item @ type_defn(_, _, _, _, _), Lang) :-
 	Item ^ td_ctor_defn = foreign_type(ForeignType, _, _),
 	Lang = foreign_type_language(ForeignType).
-item_needs_foreign_imports(pragma(foreign_decl(Lang, _)), Lang).
+item_needs_foreign_imports(pragma(foreign_decl(Lang, _, _)), Lang).
 item_needs_foreign_imports(pragma(foreign_code(Lang, _)), Lang).
 item_needs_foreign_imports(pragma(foreign_proc(Attrs, _, _, _, _, _)),
 		foreign_language(Attrs)).
