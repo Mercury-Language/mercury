@@ -11,18 +11,19 @@
 
 :- import_module list.
 
+:- pragma promise_pure(main/2).
 main -->
 	{
-	bar(A),
-	bar(B),
-	bar(C),
-	bar(D)
+	impure bar(A),
+	impure bar(B),
+	impure bar(C),
+	impure bar(D)
 	},
 	io__write([A, B, C, D]),
 	io__write_string("\n").
 
 :- pragma no_inline(bar/1).
-:- pred bar(int::out) is det.
+:- impure pred bar(int::out) is det.
 
 :- pragma c_code(bar(Value::out), "
 {
