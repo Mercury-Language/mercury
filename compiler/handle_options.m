@@ -272,12 +272,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod,
 		TermNorm, TraceLevel, TraceSuppress),
 
-	list__foldl(brace_expand_accumulating_option,
-		[c_include_directory, link_library_directories,
-		runtime_link_library_directories, mercury_library_directories,
-		init_file_directories, options_search_directories,
-		search_directories, intermod_directories]),
-
 	% Conservative GC implies --no-reclaim-heap-*
 	( { gc_is_conservative(GC_Method) = yes } ->
 		globals__io_set_option(
@@ -1242,14 +1236,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	;
 		[]
 	).
-
-:- pred brace_expand_accumulating_option(option::in,
-	io__state::di, io__state::uo) is det.
-
-brace_expand_accumulating_option(Option) -->
-	globals__io_lookup_accumulating_option(Option, Strings0),
-	{ list__condense(list__map(expand_braces, Strings0), Strings) },
-	globals__io_set_option(Option, accumulating(Strings)).
 
 	% These option implications only affect the low-level (LLDS) code
 	% generator.  They may in fact be harmful if set for the high-level
