@@ -167,7 +167,7 @@ mercury:	mercury_compile
 libmmc:		libmercury_compile.a mercury_compile_init.$O
 
 # The executable was previous known as `mercury_compile',
-# but now we generate it as `mc'.  For compatibility with
+# but now we generate it as `top_level'.  For compatibility with
 # various existing code, we make links to the old names.
 
 LN = ln
