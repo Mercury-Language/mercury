@@ -1991,130 +1991,72 @@ code_info__generate_failure_cont(FailMap, Code) -->
 	code_info__generate_failure_continuation(FailMap, Code0),
 	{ Code = tree(FixCurFrCode, Code0) }.
 
-:- pred code_info__generate_failure_continuation(failure_map,
-					code_tree, code_info, code_info).
+:- pred code_info__generate_failure_continuation(failure_map, code_tree,
+	code_info, code_info).
 :- mode code_info__generate_failure_continuation(in, out, in, out) is det.
 
-code_info__generate_failure_continuation([], _) -->
-	{ error("code_info__generate_failure_continuation: no mapping!") }.
-code_info__generate_failure_continuation([C | Cs], Code) -->
-	{ C = Map0 - CodeAddr },
-	(
-		{ CodeAddr = label(Label0) }
-	->
-		{ Label = Label0 }
-	;
-		{ error("code_info__generate_failure_continuation: non-label!") }
-	),
+code_info__generate_failure_continuation(Cs, Code) -->
 	(
 		{ Cs = [] },
-		{ Code = node([ label(Label) - "Failure Continuation" ]) },
-		code_info__set_var_locations(Map0)
+		{ error("code_info__generate_failure_continuation: |map| = 0") }
 	;
-		{ Cs = [_ | _] },
-		{ ThisCode = node([ label(Label) - "End of failure continuation" ]) },
-		code_info__generate_failure_cont_2(Cs, Map0, Map, RestCode),
-		code_info__set_var_locations(Map),
-		{ Code = tree(RestCode, ThisCode) }
+		{ Cs = [C1] },
+		{ C1 = Map1 - CodeAddr1 },
+		{ extract_label_from_code_addr(CodeAddr1, Label1) },
+		{ Code = node([label(Label1) - "Failure Continuation" ]) },
+		code_info__set_var_locations(Map1)
+	;
+		{ Cs = [C1, C2] },
+		{ C1 = Map1 - CodeAddr1 },
+		{ C2 = Map2 - CodeAddr2 },
+		{ extract_label_from_code_addr(CodeAddr1, Label1) },
+		{ extract_label_from_code_addr(CodeAddr2, Label2) },
+		{ Entry = node([label(Label2) - "fail continuation entry" ]) },
+		code_info__set_var_locations(Map2),
+		{ map__to_assoc_list(Map1, AssocList1) },
+		code_info__place_resume_vars(AssocList1, PlaceCode),
+		{ Exit = node([label(Label1) - "fail continuation exit" ]) },
+		code_info__set_var_locations(Map1),
+		{ Code = tree(Entry, tree(PlaceCode, Exit)) }
+	;
+		{ Cs = [_, _, _ | _] },
+		{ error("code_info__generate_failure_continuation: |map| > 2") }
 	).
 
-:- pred code_info__generate_failure_cont_2(failure_map,
-		map(var, set(rval)), map(var, set(rval)), code_tree,
-							code_info, code_info).
-:- mode code_info__generate_failure_cont_2(in, in, out, out, in, out) is det.
+:- pred extract_label_from_code_addr(code_addr, label).
+:- mode extract_label_from_code_addr(in, out) is det.
 
-code_info__generate_failure_cont_2([], Map, Map, empty) --> [].
-code_info__generate_failure_cont_2([C0 | Cs], Map0, Map, Code) -->
-	{ C0 = ThisMap - CodeAddr0 },
-	(
-		{ CodeAddr0 = label(Label) },
-		{ map__to_assoc_list(ThisMap, VarLvalList) },
-		code_info__place_cont_vars(VarLvalList, Map0, Map1,
-							PlaceVarsCode),
-		{ ThisContCode = tree(
-			node([ label(Label) - "Part of the failure continuation" ]),
-			PlaceVarsCode
-		) }
+extract_label_from_code_addr(CodeAddr, Label) :-
+	( CodeAddr = label(Label0) ->
+		Label = Label0
 	;
-		{ CodeAddr0 = imported(_ProcLabel) },
-		{ error("what is imported/1 doing in a failure continuation?") }
+		error("code_info__generate_failure_continuation: non-label!")
+	).
+
+:- pred code_info__place_resume_vars(assoc_list(var, set(rval)), code_tree,
+	code_info, code_info).
+:- mode code_info__place_resume_vars(in, out, in, out) is det.
+
+code_info__place_resume_vars([], empty) --> [].
+code_info__place_resume_vars([Var - TargetSet | Rest], Code) -->
+	{ set__to_sorted_list(TargetSet, Targets) },
+	code_info__place_resume_var(Var, Targets, FirstCode),
+	{ Code = tree(FirstCode, RestCode) },
+	code_info__place_resume_vars(Rest, RestCode).
+
+:- pred code_info__place_resume_var(var, list(rval), code_tree,
+	code_info, code_info).
+:- mode code_info__place_resume_var(in, in, out, in, out) is det.
+
+code_info__place_resume_var(_Var, [], empty) --> [].
+code_info__place_resume_var(Var, [Target | Targets], Code) -->
+	( { Target = lval(TargetLval) } ->
+		code_info__place_var(Var, TargetLval, FirstCode)
 	;
-		{ CodeAddr0 = succip },
-		{ error("what is succip/0 doing in a failure continuation?") }
-	;
-		{ CodeAddr0 = do_succeed(_) },
-		{ error("what is do_succeed/1 doing in a failure continuation?") }
-	;
-		{ CodeAddr0 = do_redo },
-		{ ThisContCode = empty },
-		{ Map1 = Map0}
-	;
-		{ CodeAddr0 = do_fail },
-		{ ThisContCode = empty },
-		{ Map1 = Map0}
-	;
-		{ CodeAddr0 = do_det_closure },
-		{ error("what is do_det_closure/0 doing in a failure continuation?") }
-	;
-		{ CodeAddr0 = do_semidet_closure },
-		{ error("what is do_semidet_closure/0 doing in a failure continuation?") }
-	;
-		{ CodeAddr0 = do_nondet_closure },
-		{ error("what is do_nondet_closure/0 doing in a failure continuation?") }
+		{ error("code_info__place_resume_var: not lval") }
 	),
-	{ Code = tree(ThisContCode, RestCode) },
-	code_info__generate_failure_cont_2(Cs, Map1, Map, RestCode).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__place_cont_vars(assoc_list(var, set(rval)),
-		map(var, set(rval)), map(var, set(rval)),
-					code_tree, code_info, code_info).
-:- mode code_info__place_cont_vars(in, in, out, out, in, out) is det.
-
-code_info__place_cont_vars([], Map, Map, empty) --> [].
-	% Map0 has the places where each var may finally be stored,
-	% Map has the places where each var is actually stored.
-code_info__place_cont_vars([Var - CurrSet | Rest], Map0, Map, Code) -->
-	{ map__lookup(Map0, Var, TargetSet) },
-	{ set__intersect(CurrSet, TargetSet, Rvals) },
-	(
-		{ set__empty(Rvals) }
-	->
-		{ set__to_sorted_list(CurrSet, CurrList) },
-		{ set__to_sorted_list(TargetSet, TargetList) },
-		(
-			% Should use cheapest, currently,
-			% just use first.
-			{ CurrList = [Source | _] },
-			{ code_info__lval_member(TargetLval, TargetList) }
-		->
-			{ ThisCode = node([
-				assign(TargetLval, Source) - ""
-			]) },
-			{ set__singleton_set(Rvals2, lval(TargetLval)) },
-			{ map__set(Map0, Var, Rvals2, Map1) }
-		;
-			{ list__member(Thing, TargetList) },
-			{ Thing = create(_, _, _, _) }
-		->
-			{ Map1 = Map0 },
-			{ ThisCode = empty }
-		;
-			{ list__member(Thing, TargetList) },
-			{ Thing = const(_) }
-		->
-			{ Map1 = Map0 },
-			{ ThisCode = empty }
-		;
-			{ error("code_info__place_cont_vars: No vars!") }
-		)
-	;
-		{ map__set(Map0, Var, Rvals, Map1) },
-		{ ThisCode = empty }
-	),
-	{ Code = tree(ThisCode, RestCode) },
-	code_info__place_cont_vars(Rest, Map1, Map, RestCode).
+	{ Code = tree(FirstCode, RestCode) },
+	code_info__place_resume_var(Var, Targets, RestCode).
 
 %---------------------------------------------------------------------------%
 
