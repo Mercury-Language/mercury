@@ -88,6 +88,14 @@
 				io__state, io__state).
 :- mode module_name_to_split_c_file_name(in, in, in, out, di, uo) is det.
 
+	% module_name_to_split_c_file_pattern(Module, Extension, FileName):
+	%	Like module_name_to_split_c_file_name, but generates a
+	%	wildcard pattern to match all such files with the given
+	%	extension for the given module.
+:- pred module_name_to_split_c_file_pattern(module_name, string, file_name,
+				io__state, io__state).
+:- mode module_name_to_split_c_file_pattern(in, in, out, di, uo) is det.
+
 	% fact_table_file_name(Module, FactTableFileName, Ext, FileName):
 	%	Returns the filename to use when compiling fact table
 	%	files.
@@ -631,6 +639,13 @@ module_name_to_split_c_file_name(ModuleName, Num, Ext, FileName) -->
 	{ string__format("%s%c%s_%03d%s",
 		[s(DirName), c(Slash), s(BaseFileName), i(Num), s(Ext)],
 		FileName) }.
+
+module_name_to_split_c_file_pattern(ModuleName, Ext, Pattern) -->
+	module_name_to_file_name(ModuleName, ".dir", no, DirName),
+	{ dir__directory_separator(Slash) },
+	{ string__format("%s%c*%s",
+		[s(DirName), c(Slash), s(Ext)],
+		Pattern) }.
 
 file_name_to_module_name(FileName, ModuleName) :-
 	string_to_sym_name(FileName, ".", ModuleName).
@@ -1439,6 +1454,8 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 		module_name_to_file_name(ModuleName, ".rlo", no, RLOFileName),
 		module_name_to_file_name(ModuleName, ".pic_o", no,
 							PicObjFileName),
+		module_name_to_split_c_file_pattern(ModuleName, ".o",
+			SplitObjPattern),
 		io__write_strings(DepStream, ["\n\n",
 			OptDateFileName, " ",
 			TransOptDateFileName, " ",
@@ -1446,6 +1463,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			ErrFileName, " ",
 			PicObjFileName, " ",
 			ObjFileName, " ",
+			SplitObjPattern, " ",
 			RLOFileName, " : ",
 			SourceFileName
 		] ),
@@ -1478,7 +1496,8 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				TransOptDateFileName, " ",
 				ErrFileName, " ", 
 				PicObjFileName, " ",
-				ObjFileName, " :"
+				ObjFileName, " ",
+				SplitObjPattern, " :"
 			]),
 
 			% The .c file only depends on the .opt files from 
@@ -1507,7 +1526,8 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 					CFileName, " ",
 					ErrFileName, " ", 
 					PicObjFileName, " ", 
-					ObjFileName, " :"
+					ObjFileName, " ",
+					SplitObjPattern, " :"
 				]),
 				write_dependencies_list(TransOptDeps,
 					".trans_opt", DepStream)
@@ -2641,7 +2661,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		".PHONY : ", CleanTargetName, "\n",
 		CleanTargetName, " :\n",
-		"\t-rm -rf ", MakeVarName, ".dir\n",
+		"\t-rm -rf $(", MakeVarName, ".dirs)\n",
 		"\t-rm -f $(", MakeVarName, ".cs) ", InitCFileName, "\n",
 		"\t-rm -f $(", MakeVarName, ".ss) ", InitAsmFileName, "\n",
 		"\t-rm -f $(", MakeVarName, ".os) ", InitObjFileName, "\n",
