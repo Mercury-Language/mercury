@@ -185,6 +185,12 @@
 :- pred code_info__make_vars_live(set(var), code_info, code_info).
 :- mode code_info__make_vars_live(in, in, out) is det.
 
+:- pred code_info__get_liveness_info(liveness_info, code_info, code_info).
+:- mode code_info__get_liveness_info(out, in, out) is det.
+
+:- pred code_info__set_liveness_info(liveness_info, code_info, code_info).
+:- mode code_info__set_liveness_info(in, in, out) is det.
+
 :- pred code_info__acquire_reg(reg, code_info, code_info).
 :- mode code_info__acquire_reg(out, in, out) is det.
 
@@ -1400,12 +1406,6 @@ code_info__variable_type(Var, Type) -->
 		% Set the fall though point for failure
 :- pred code_info__set_fall_through(fall_through, code_info, code_info).
 :- mode code_info__set_fall_through(in, in, out) is det.
-
-:- pred code_info__get_liveness_info(liveness_info, code_info, code_info).
-:- mode code_info__get_liveness_info(out, in, out) is det.
-
-:- pred code_info__set_liveness_info(liveness_info, code_info, code_info).
-:- mode code_info__set_liveness_info(in, in, out) is det.
 
 :- pred code_info__get_proc_model(code_model, code_info, code_info).
 :- mode code_info__get_proc_model(out, in, out) is det.
