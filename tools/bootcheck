@@ -80,6 +80,12 @@ Options:
 	--compile-times
 		Report information about compilation times in the stage 2
 		library and compiler directories.
+	--write-out-profile-data
+		When doing bootcheck in a deep profiling grade, enable the
+		writing out of profile data files. Since all compilations save
+		their profiling data in the same file, this is useful mainly to
+		check that we don't get fatal errors during the writing out
+		process.
 	--type-stats TYPE_STATS_FILE_NAME
 		Collect statistics about the builtin operations (unify, index
 		and compare) performed on various types. The argument of this
@@ -128,6 +134,7 @@ else
 	use_subdirs=${MMAKE_USE_SUBDIRS=no}
 fi
 compile_times=false
+write_out_profile_data=false
 type_stats=""
 
 if test -d .KEEP_OBJS
@@ -232,6 +239,9 @@ while [ $# -gt 0 ]; do
 		compile_times=true ;;
 	--no-compile-times)
 		compile_times=false ;;
+
+	--write-out-profile-data)
+		write_out_profile_data=true ;;
 
 	--type-stats)
 		type_stats="$2"; shift ;;
@@ -370,13 +380,18 @@ then
 		fi
 	fi
 
-	# Turn off the writing out of deep profiling files, since Deep.data
-	# will be overwritten many times in each directory, and thus the time
-	# spent writing them out is wasted. If deep profiling debugging is
-	# enabled, this also avoids the writing of *huge* amounts of stuff
-	# on stderr.
-	MERCURY_OPTIONS="$MERCURY_OPTIONS -s"
-	export MERCURY_OPTIONS
+	if $write_out_profile_data
+	then
+		true
+	else
+		# Turn off the writing out of deep profiling files, since
+		# Deep.data will be overwritten many times in each directory,
+		# and thus the time spent writing them out is wasted. If deep
+		# profiling debugging is enabled, this also avoids the writing
+		# of *huge* amounts of stuff on stderr.
+		MERCURY_OPTIONS="$MERCURY_OPTIONS -s"
+		export MERCURY_OPTIONS
+	fi
 
 	MERCURY_COMPILER=$root/compiler/mercury_compile
 	export MERCURY_COMPILER
