@@ -1264,16 +1264,15 @@ det_univ_to_type(Univ, X) :-
 univ_value(univ_cons(X)) = X.
 
 :- pragma promise_pure(type_to_univ/2).
-type_to_univ(T, Univ) :-
-	(
-		impure private_builtin__var(T),
-		Univ = univ_cons(T0),
-		private_builtin__typed_unify(T0, T)
-	;
-		impure private_builtin__var(Univ),
-		Univ0 = 'new univ_cons'(T),
-		unsafe_promise_unique(Univ0, Univ)
-	).
+type_to_univ(T::di, Univ::uo) :-
+	Univ0 = 'new univ_cons'(T),
+	unsafe_promise_unique(Univ0, Univ).
+type_to_univ(T::in, Univ::out) :-
+	Univ0 = 'new univ_cons'(T),
+	unsafe_promise_unique(Univ0, Univ).
+type_to_univ(T::out, Univ::in) :-
+	Univ = univ_cons(T0),
+	private_builtin__typed_unify(T0, T).
 
 univ_type(Univ) = type_of(univ_value(Univ)).
 
