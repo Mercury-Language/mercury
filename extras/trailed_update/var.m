@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2002-2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2002-2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -162,12 +162,14 @@
 %
 %---------------------------------------------------------------------------%
 
-	% We use '$VAR'/1 as the name for the functor for variable
-	% representations simply because that name is "traditional".
 	% (Note that the representation can be printed out, if you call
 	% io__write(Var), so this is not entirely hidden from the user.)
-:- solver type var(T) ---> '$VAR'(var_rep(T))
-	where equality is (==).
+:- solver type var(T)
+	where	representation	is var_rep(T),
+		initialisation	is init,
+		ground		is ground,
+		any		is any,
+		equality	is (==).
 
 :- type var_rep(T)
 	--->	free
