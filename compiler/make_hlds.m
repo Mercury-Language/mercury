@@ -2356,6 +2356,15 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		io__write_string("  with `:- pragma c_code' declaration preceding.\n"),
 		{ Info = Info0 }
 	;
+		% Ignore clauses for builtins. This makes bootstrapping
+		% easier when redefining builtins to use normal Mercury code.
+		{ code_util__predinfo_is_builtin(PredInfo1) }
+	->
+		prog_out__write_context(Context),
+		report_warning("Warning: clause for builtin.\n"),
+		{ ModuleInfo = ModuleInfo0 },
+		{ Info = Info0 }
+	;
 		{
 		pred_info_clauses_info(PredInfo1, Clauses0),
 		pred_info_typevarset(PredInfo1, TVarSet0),
