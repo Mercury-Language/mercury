@@ -1307,20 +1307,10 @@ mercury_output_pred_type_2(VarSet, ExistQVars, PredName, Types, MaybeDet,
 		mercury_output_term(Type, VarSet, no),
 		mercury_output_remaining_terms(Rest, VarSet, no),
 		io__write_string(")"),
-		mercury_output_class_context(ClassContext, VarSet),
-		( { ExistQVars = [] } -> 
-			[] 
-		; 
-			io__write_string(")")
-		)
+		mercury_output_class_context(ClassContext, VarSet)
 	;
 		mercury_output_bracketed_sym_name(PredName),
 		mercury_output_class_context(ClassContext, VarSet),
-		( { ExistQVars = [] } -> 
-			[] 
-		; 
-			io__write_string(")")
-		),
 		mercury_output_det_annotation(MaybeDet)
 	),
 
@@ -1416,11 +1406,6 @@ mercury_output_func_type_2(VarSet, ExistQVars, FuncName, Types, RetType,
 	io__write_string(" = "),
 	mercury_output_term(RetType, VarSet, no),
 	mercury_output_class_context(ClassContext, VarSet),
-	( { ExistQVars = [] } -> 
-		[] 
-	; 
-		io__write_string(")")
-	),
 	mercury_output_det_annotation(MaybeDet),
 	io__write_string(Separator).
 
@@ -1444,6 +1429,11 @@ mercury_output_quantifier(VarSet, ExistQVars) -->
 mercury_output_class_context(ClassContext, VarSet) -->
 	{ ClassContext = constraints(UnivCs, ExistCs) },
 	mercury_output_class_constraint_list(ExistCs, VarSet, "&"),
+	( { ExistCs = [] } -> 
+		[] 
+	; 
+		io__write_string(")")
+	),
 	mercury_output_class_constraint_list(UnivCs, VarSet, "<=").
 
 :- pred mercury_output_class_constraint_list(list(class_constraint), varset, 
