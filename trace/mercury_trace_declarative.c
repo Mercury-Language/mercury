@@ -381,46 +381,37 @@ MR_trace_decl_save_args(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 	Word				*base_sp;
 	Word				*base_curfr;
 	Word				*type_params;
-	const MR_Stack_Layout_Var	*var;
-	MR_Live_Lval			locn;
 	int				i;
-	bool				succeeded;
-	Word				*pseudo_type_info;
-	Word				type_info;
 
-	arg_count = layout->MR_sll_var_count;
-	if (arg_count < 0) {
+	vars = &layout->MR_sll_var_info;
+	if (!MR_has_valid_var_count(vars)) {
 		fprintf(MR_mdb_err, "mdb: no info about live variables.\n");
 	}
 
-	if (arg_count <= 0) {
+	if (!MR_has_valid_var_info(vars)) {
+		/* there are no live variables */
 		edt_node->MR_edt_node_arg_values = NULL;
 		edt_node->MR_edt_node_arg_types = NULL;
 		return;
 	}
+
+	arg_count = MR_all_desc_var_count(vars);
 	arg_values = allocate_array(Word, arg_count);
 	arg_types = allocate_array(Word, arg_count);
-	vars = &layout->MR_sll_var_info;
+
 	base_sp = MR_saved_sp(saved_regs);
 	base_curfr = MR_saved_curfr(saved_regs);
 	type_params = MR_materialize_typeinfos_base(vars, saved_regs, 
 			base_sp, base_curfr);
 	for (i = 0; i < arg_count; i++) {
-		var = &vars->MR_slvs_pairs[i];
-		MR_get_type_and_value_base(var, saved_regs, base_sp,
+		MR_get_type_and_value_base(vars, i, saved_regs, base_sp,
 				base_curfr, type_params, &arg_types[i],
 				&arg_values[i]);
-		locn = var->MR_slv_locn;
 
 #ifdef MR_DEBUG_DD_BACK_END
-		fprintf(MR_mdb_out, "var %d: lval type = %d, "
-				"lval number = %d, value = ",
-				i,
-				MR_LIVE_LVAL_TYPE(locn),
-				MR_LIVE_LVAL_NUMBER(locn)
-		);
+		fprintf(MR_mdb_out, "\t");
+		fflush(MR_mdb_out);
 		MR_trace_print(arg_types[i], arg_values[i]);
-		fprintf(MR_mdb_out, "\n");
 #endif
 	}
 
@@ -556,13 +547,20 @@ MR_edt_root_node_name(const MR_Stack_Layout_Entry *entry)
 static Word
 MR_edt_root_node_args(const MR_Edt_Node *edt)
 {
-	int			i;
-	int			argc;
-	Word			arglist;
-	Word			tail;
-	Word			head;
+	int				i;
+	int				argc;
+	Word				arglist;
+	Word				tail;
+	Word				head;
+	const MR_Stack_Layout_Vars	*vars;
 
-	argc = edt->MR_edt_node_layout->MR_sll_var_count;
+	vars = &edt->MR_edt_node_layout->MR_sll_var_info;
+
+	if (MR_has_valid_var_info(vars)) {
+		argc = MR_all_desc_var_count(vars);
+	} else {
+		argc = 0;
+	}
 
 	MR_TRACE_USE_HP(
 		arglist = list_empty();
