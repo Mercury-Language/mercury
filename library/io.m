@@ -281,10 +281,12 @@
 %		For higher-order types, or for types defined using the
 %		foreign language interface (pragma c_code), the text output
 %		will only describe the type that is being printed, not the
-%		value, and the result may not be parsable by io__read.
-%		But in all other cases the format used is standard Mercury
-%		syntax, and if you do append a period and newline (".\n"),
-%		then the results can be read in again using `io__read'.
+%		value, and the result may not be parsable by `io__read'.
+%		For the types `univ' and `typeinfo', the result may not
+%		be parsable by `io__read', either.  But in all other cases
+%		the format used is standard Mercury syntax, and if you do
+%		append a period and newline (".\n"), then the results can
+%		be read in again using `io__read'.
 
 :- pred io__nl(io__state, io__state).
 :- mode io__nl(di, uo) is det.

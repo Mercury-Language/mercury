@@ -472,12 +472,30 @@ term__term_to_univ_special_case("array", "array", [ElemType], Term, _Type,
 term__term_to_univ_special_case("builtin", "c_pointer", _, _, _, 
 		_, _) :-
 	fail.
-term__term_to_univ_special_case("std_util", "univ", _, _, _, _, _) :-
+term__term_to_univ_special_case("std_util", "univ", [], Term, _, _, Result) :-
 	% Implementing this properly would require keeping a
 	% global table mapping from type names to type_infos
 	% for all of the types in the program...
-	% so for the moment, we don't allow it.
-	fail.
+	% so for the moment, we only allow it for basic types.
+	Term = term__functor(term__atom("univ"), [Arg], _),
+	Arg = term__functor(term__atom(":"), [Value, Type], _),
+	(
+		Type = term__functor(term__atom("int"), [], _),
+		Value = term__functor(term__integer(Int), [], _),
+		Univ = univ(Int)
+	;
+		Type = term__functor(term__atom("string"), [], _),
+		Value = term__functor(term__string(String), [], _),
+		Univ = univ(String)
+	;
+		Type = term__functor(term__atom("float"), [], _),
+		Value = term__functor(term__float(Float), [], _),
+		Univ = univ(Float)
+	),
+	% The result is a `univ', but it is also wrapped in a `univ'
+	% like all the other results returned from this procedure.
+	Result = ok(univ(Univ)).
+
 term__term_to_univ_special_case("std_util", "type_info", _, _, _, _, _) :-
 	% ditto
 	fail.
