@@ -654,7 +654,7 @@ unify_gen__aliased_vars_set_location_2([Var | Vars], [Type | Types],
 	{ Mode = ((_LI - RI) -> (_LF - RF)) },
 	( 
 		{ insts_to_arg_mode(InstTable, ModuleInfo, RI, InstMap0,
-			RF, InstMap, Type, ref_in) }
+			RF, InstMap, Type, ref_out) }
 	->
 		code_info__acquire_reg_for_var(Var, Reg),
 		code_info__set_var_reference_location(Var, Reg),

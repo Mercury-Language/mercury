@@ -1052,7 +1052,7 @@ initial_liveness_2([V | Vs], [M | Ms], [T | Ts], InstMap, InstTable,
 		ModuleInfo, Liveness0, Liveness, Refs0, Refs) :-
 	mode_to_arg_mode(InstMap, InstTable, ModuleInfo, M, T, ArgMode),
 	(
-		ArgMode = top_in
+		arg_mode_is_input(ArgMode)
 	->
 		set__insert(Liveness0, V, Liveness1)
 	;

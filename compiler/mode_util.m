@@ -385,7 +385,16 @@ insts_to_arg_mode_2(InstTable, ModuleInfo, InstA, InstMapA, InstB, InstMapB,
 			inst_is_free_alias(InstB, InstMapB, InstTable,
 					ModuleInfo)
 		->
-			ArgMode = ref_out
+			( inst_is_free_alias(InstA, InstMapA, InstTable,
+					ModuleInfo)
+			->
+				ArgMode = top_unused
+				% XXX this may eventually require a new arg_mode
+				% `ref_unused', but I can't see a reason for
+				% it at the moment.
+			;
+				ArgMode = ref_out
+			)
 		;
 			ArgMode = top_unused
 		)
@@ -2030,18 +2039,13 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 		inst_key_table, inst_key_table).
 :- mode make_var_alias(in, in, in, out, in, out) is det.
 
-make_var_alias(Var, Live, InstMap0, InstMap, IKT0, IKT) :-
+make_var_alias(Var, _Live, InstMap0, InstMap, IKT0, IKT) :-
 	instmap__lookup_var(InstMap0, Var, Inst),
 	( Inst = alias(_) ->
 		InstMap0 = InstMap,
 		IKT0 = IKT
 	;
-		( Inst = free(_), Live = live ->
-			NewInst = free(alias)
-		;
-			NewInst = Inst
-		),
-		inst_key_table_add(IKT0, NewInst, InstKey, IKT),
+		inst_key_table_add(IKT0, Inst, InstKey, IKT),
 		instmap__set(InstMap0, Var, alias(InstKey), InstMap)
 	).
 

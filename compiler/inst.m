@@ -12,7 +12,7 @@
 :- module (inst).
 :- interface.
 
-:- import_module prog_data, hlds_data, hlds_pred.
+:- import_module prog_data, hlds_data, hlds_pred, instmap.
 :- import_module list, std_util, term, map, io, set.
 
 %-----------------------------------------------------------------------------%
@@ -159,8 +159,8 @@
 :- pred inst_keys_in_inst(inst, list(inst_key), list(inst_key)).
 :- mode inst_keys_in_inst(in, in, out) is det.
 
-:- pred inst_expand_fully(inst_key_table, inst, inst).
-:- mode inst_expand_fully(in, in, out) is det.
+:- pred inst_expand_fully(inst_key_table, instmap, inst, inst).
+:- mode inst_expand_fully(in, in, in, out) is det.
 
 :- pred inst_apply_sub(inst_key_sub, inst, inst).
 :- mode inst_apply_sub(in, in, out) is det.
@@ -462,31 +462,34 @@ inst_keys_in_bound_insts([functor(_ConsId, Insts) | BIs], Keys0, Keys) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-inst_expand_fully(_IKT, any(Uniq), any(Uniq)).
-inst_expand_fully(IKT, alias(Key), Inst) :-
-	inst_key_table_lookup(IKT, Key, Inst0),
-	inst_expand_fully(IKT, Inst0, Inst).
-inst_expand_fully(_IKT, free(A), free(A)).
-inst_expand_fully(_IKT, free(A, Type), free(A, Type)).
-inst_expand_fully(IKT, bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts)) :-
-	bound_insts_expand_fully(IKT, BoundInsts0, BoundInsts).
-inst_expand_fully(_IKT, ground(Uniq, PredInstInfo), ground(Uniq, PredInstInfo)).
-inst_expand_fully(_IKT, not_reached, not_reached).
-inst_expand_fully(_IKT, inst_var(Var), inst_var(Var)).
-inst_expand_fully(_IKT, defined_inst(InstName), defined_inst(InstName)).
-inst_expand_fully(IKT, abstract_inst(SymName, Insts0),
+inst_expand_fully(_IKT, _InstMap, any(Uniq), any(Uniq)).
+inst_expand_fully(IKT, InstMap, alias(Key), Inst) :-
+	instmap__inst_key_table_lookup(InstMap, IKT, Key, Inst0),
+	inst_expand_fully(IKT, InstMap, Inst0, Inst).
+inst_expand_fully(_IKT, _InstMap, free(A), free(A)).
+inst_expand_fully(_IKT, _InstMap, free(A, Type), free(A, Type)).
+inst_expand_fully(IKT, InstMap, bound(Uniq, BoundInsts0),
+		bound(Uniq, BoundInsts)) :-
+	bound_insts_expand_fully(IKT, InstMap, BoundInsts0, BoundInsts).
+inst_expand_fully(_IKT, _InstMap, ground(Uniq, PredInstInfo),
+		ground(Uniq, PredInstInfo)).
+inst_expand_fully(_IKT, _InstMap, not_reached, not_reached).
+inst_expand_fully(_IKT, _InstMap, inst_var(Var), inst_var(Var)).
+inst_expand_fully(_IKT, _InstMap, defined_inst(InstName),
+		defined_inst(InstName)).
+inst_expand_fully(IKT, InstMap, abstract_inst(SymName, Insts0),
 			abstract_inst(SymName, Insts)) :-
-	list__map(inst_expand_fully(IKT), Insts0, Insts).
+	list__map(inst_expand_fully(IKT, InstMap), Insts0, Insts).
 
-:- pred bound_insts_expand_fully(inst_key_table, list(bound_inst),
+:- pred bound_insts_expand_fully(inst_key_table, instmap, list(bound_inst),
 		list(bound_inst)).
-:- mode bound_insts_expand_fully(in, in, out) is det.
+:- mode bound_insts_expand_fully(in, in, in, out) is det.
 
-bound_insts_expand_fully(_IKT, [], []).
-bound_insts_expand_fully(IKT, [functor(ConsId, Insts0) | BIs0],
+bound_insts_expand_fully(_IKT, _InstMap, [], []).
+bound_insts_expand_fully(IKT, InstMap, [functor(ConsId, Insts0) | BIs0],
 		[functor(ConsId, Insts) | BIs]) :-
-	list__map(inst_expand_fully(IKT), Insts0, Insts),
-	bound_insts_expand_fully(IKT, BIs0, BIs).
+	list__map(inst_expand_fully(IKT, InstMap), Insts0, Insts),
+	bound_insts_expand_fully(IKT, InstMap, BIs0, BIs).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

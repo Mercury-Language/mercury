@@ -248,7 +248,8 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
 
 		% XXX - Also, we currently only allow one reference per
 		% variable, so make sure there is no more than one reference
-		% to each output variable in the call.
+		% to each output variable in the call.  This restriction can
+		% be lifted once free(alias_many) is implemented.
 		pred_info_procedures(PredInfo, ProcTable),
 		map__lookup(ProcTable, ProcId, CalledProcInfo),
 		check_only_one_ref_per_var(Unifies1, Vars, Module0,
@@ -393,6 +394,13 @@ check_only_one_ref_per_var_2([Var - Mode | VarModes], UnifVars, CalledInstMap,
 		mode_to_arg_mode(CalledInstMap, CalledInstTable, Module,
 				Mode, Type, top_out)
 	->
+		% Ensure that no single construction uses the var more the once.
+		\+ (
+			list__member(_ - ConsVars0, UnifVars),
+			list__delete_first(ConsVars0, Var, ConsVars1),
+			list__member(Var, ConsVars1)
+		),
+
 		% Ensure that there is at most one construction
 		% that has this variable on its RHS.
 		\+ (
@@ -411,7 +419,8 @@ check_only_one_ref_per_var_2([Var - Mode | VarModes], UnifVars, CalledInstMap,
 			list__member(Var, Vars),
 			list__member(Var - HMode, CallingHeadVarModes),
 			mode_to_arg_mode(CallingInstMap, CallingInstTable,
-				Module, HMode, Type, ArgMode), ( ArgMode = top_out 
+				Module, HMode, Type, ArgMode), 
+			( ArgMode = top_out 
 			; ArgMode = ref_in
 			)
 		)

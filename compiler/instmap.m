@@ -704,7 +704,7 @@ instmap__merge_var([InstMap | InstMaps], Var, InstTable0, ModuleInfo0,
 		InstList0, Inst0, InstTable1, ModuleInfo1, Error0),
 	instmap__lookup_var(InstMap, Var, VarInst0),
 	inst_table_get_inst_key_table(InstTable1, IKT1),
-	inst_expand_fully(IKT1, VarInst0, VarInst),
+	inst_expand_fully(IKT1, InstMap, VarInst0, VarInst),
 	InstList = [VarInst | InstList0],
 	(
 		% YYY Not sure about the returned InstMap here.
