@@ -89,14 +89,16 @@ if test "$BOOTSTRAP_MC" != ""; then
 
 		:- implementation.
 	
-		% Check that we can declare foreign_proc for C and MC++.
-		:- pred foo(int::out) is det.
-		:- pragma foreign_proc("C",    foo(X::out),
-			[[will_not_call_mercury, thread_safe]],
-			" X = 42; ").
-		:- pragma foreign_proc("MC++", foo(X::out),
-			[[will_not_call_mercury, thread_safe]],
-			" X = 42; ").
+        
+		% Different bodies for different modes.
+		:- pragma promise_pure(foo/1).
+		:- pred foo(int).
+		:- mode foo(out) is det.
+		:- mode foo(in) is semidet.
+		foo(X::in) :-
+			X = 42.
+		foo(X::out) :-
+			X = 42.
 
 		% Currently we test that mmc accepts the
 		% --fixed-user-guided-type-specialization flag.
