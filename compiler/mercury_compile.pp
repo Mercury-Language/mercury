@@ -1429,14 +1429,14 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	( { GCC_Regs = yes } ->
 		globals__io_lookup_string_option(cflags_for_regs,
 			CFLAGS_FOR_REGS),
-		{ RegOpt = " -DUSE_GCC_GLOBAL_REGISTERS " }
+		{ RegOpt = "-DUSE_GCC_GLOBAL_REGISTERS " }
 	;
 		{ CFLAGS_FOR_REGS = "" },
 		{ RegOpt = "" }
 	),
 	globals__io_lookup_bool_option(gcc_non_local_gotos, GCC_Gotos),
 	( { GCC_Gotos = yes } ->
-		{ GotoOpt = " -DUSE_GCC_NONLOCAL_GOTOS " },
+		{ GotoOpt = "-DUSE_GCC_NONLOCAL_GOTOS " },
 		globals__io_lookup_string_option(cflags_for_gotos,
 			CFLAGS_FOR_GOTOS)
 	;
@@ -1512,8 +1512,10 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	% Be careful with the order here!  Some options override others,
 	% e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
 	% it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
+	% Also be careful that each option is separated by spaces.
 	{ string__append_list([CC, " ", InclOpt, SplitOpt, OptimizeOpt,
-		RegOpt, GotoOpt, AsmOpt, CFLAGS_FOR_REGS, CFLAGS_FOR_GOTOS,
+		RegOpt, GotoOpt, AsmOpt,
+		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
 		ConstraintsOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
