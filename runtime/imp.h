@@ -1,6 +1,11 @@
 #ifndef IMP_H
 #define IMP_H
 
+#ifdef SPEED
+/* turn off `assert()'s */
+#define NDEBUG
+#endif
+
 #include	<stdio.h>
 #include	<assert.h>
 #include	"getopt.h"
@@ -96,55 +101,7 @@ extern	Code	*dofastnegproceed;
 
 /* DEFINITIONS FOR WORD LAYOUT */
 
-#ifdef	HIGHTAGS
-
-#define	mktag(t)	(t << 30)
-#define	tag(w)		(w & 0xc0000000)
-#define	body(w, t)	(w & ~0xc0000000)
-#define	mkword(t, p)	((uint) t | (uint) p)
-#define	field(t, p, i)	(* (Word *) (body(p) + i * WORDSIZE))
-
-#else
-
-#define	mktag(t)	(t)
-#define	tag(w)		(w & 0x3)
-#define	body(w, t)	(w - t)
-#define	mkword(t, p)	((uint) p | (uint) t)
-#define	field(t, p, i)	(* (Word *) (body(p, t) + i * WORDSIZE))
-
-#endif
-
-#define	bTAG_NIL	0
-#define	bTAG_CONS	1
-#define	bTAG_VAR	3
-
-#define	TAG_NIL		mktag(bTAG_NIL)
-#define	TAG_CONS	mktag(bTAG_CONS)
-#define	TAG_VAR		mktag(bTAG_VAR)
-
-	/* the macro is more efficient than a function, but it requires
-	   GNU C's statement-expressions extension, since we need a loop
-	   inside an expression */
-#ifdef __GNUC__
-#define	deref(p)	__extension__ ({			\
-				reg	Word	pt;		\
-								\
-				pt = p;				\
-				while (tag(pt) == TAG_VAR)	\
-					pt = * (Word *)		\
-						body(pt, TAG_VAR);\
-				/* return */ pt;		\
-			})
-#else
-static Word deref(Word p) {
-	reg	Word	pt;		
-					
-	pt = p;				
-	while (tag(pt) == TAG_VAR)	
-		pt = * (Word *)	body(pt, TAG_VAR);
-	return pt;
-}
-#endif
+#include "tags.h"
 
 /* DEFINITIONS FOR VIRTUAL MACHINE REGISTERS */
 
@@ -321,7 +278,7 @@ extern	Word	*cpstackmin;
 				prevcp = maxcp;			\
 				maxcp += 4;			\
 				maxcp[PREDNM] = (Word) prednm;	\
-				maxcp[REDOIP] = (Word) doresethpfail;\
+				maxcp[REDOIP] = (Word) doresethpfail;	\
 				maxcp[PREVCP] = (Word) prevcp;	\
 				maxcp[SAVEHP] = (Word) hp;	\
 				debugmkreclaim();		\
@@ -381,7 +338,7 @@ extern	Word	*cpstackmin;
 #define	heap_overflow_check()					\
 			(					\
 				IF (hp >= &heap[MAXHEAP],(	\
-					printf("heap overflow\n"),\
+					printf("heap overflow\n"),	\
 					exit(1)			\
 				)),				\
 				IF (hp > heapmax,(		\
@@ -393,7 +350,7 @@ extern	Word	*cpstackmin;
 #define	stack_overflow_check()					\
 			(					\
 				IF (sp >= &stack[MAXSTACK],(	\
-					printf("stack overflow\n"),\
+					printf("stack overflow\n"),	\
 					exit(1)			\
 				)),				\
 				IF (sp > stackmax,(		\
@@ -405,7 +362,7 @@ extern	Word	*cpstackmin;
 #define	stack_underflow_check()					\
 			(					\
 				IF (sp < stackmin,(		\
-					printf("stack underflow\n"),\
+					printf("stack underflow\n"),	\
 					exit(1)			\
 				)),				\
 				(void)0				\
@@ -414,10 +371,10 @@ extern	Word	*cpstackmin;
 #define	cpstack_overflow_check()				\
 			(					\
 				IF (maxcp >= &cpstack[MAXCPSTACK],(	\
-					printf("cpstack overflow\n"),\
+					printf("cpstack overflow\n"),	\
 					exit(1)			\
 				)),				\
-				IF (maxcp > cpstackmax,(		\
+				IF (maxcp > cpstackmax,(	\
 					cpstackmax = maxcp	\
 				)),				\
 				(void)0				\
@@ -425,8 +382,8 @@ extern	Word	*cpstackmin;
 
 #define	cpstack_underflow_check()				\
 			(					\
-				IF (maxcp < cpstackmin,(		\
-					printf("cpstack underflow\n"),\
+				IF (maxcp < cpstackmin,(	\
+					printf("cpstack underflow\n"),	\
 					exit(1)			\
 				)),				\
 				(void)0				\
@@ -579,7 +536,7 @@ extern	void	pop_msg(Word val, const Word *addr);
 extern	void	printregs(const char *msg);
 extern	void	printtmps(void);
 extern	void	printint(Word n);
-extern	void	printstring(char *s);
+extern	void	printstring(const char *s);
 extern	void	printheap(const Word *h);
 extern	void	printstack(const Word *s);
 extern	void	printcpstack(const Word *s);
@@ -587,7 +544,7 @@ extern	void	printlist(Word p);
 extern	void	printlabel(const Code *w);
 extern	void	printregs(const char *);
 extern	void	printframe(const char *);
-extern	void	dumpframe(Word *);
+extern	void	dumpframe(const Word *);
 extern	void	dumpcpstack(void);
 
 #endif /* IMP_H */

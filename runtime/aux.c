@@ -1,4 +1,3 @@
-#include	<assert.h>
 #include	"imp.h"
 
 static Word get_reg(int num);
@@ -48,7 +47,7 @@ void fail_msg(void)
 	printf("\nfailing from procedure %s\n", cpprednm);
 	printf("curr cp: "); printcpstack(curcp);
 	printf("fail cp: "); printcpstack(cpprevcp);
-	printf("fail ip: "); printlabel((Code *) cpprevcp[REDOIP]);
+	printf("fail ip: "); printlabel(bt_redoip(cpprevcp));
 }
 
 void redo_msg(void)
@@ -56,7 +55,7 @@ void redo_msg(void)
 	printf("\nredo from procedure %s\n", cpprednm);
 	printf("curr cp: "); printcpstack(curcp);
 	printf("redo cp: "); printcpstack(maxcp);
-	printf("redo ip: "); printlabel((Code *) maxcp[REDOIP]);
+	printf("redo ip: "); printlabel(bt_redoip(maxcp));
 }
 
 void call_msg(const Code *proc, const Code *succcont)
@@ -110,7 +109,7 @@ void printint(Word n)
 	printf("int %d\n", n);
 }
 
-void printstring(char *s)
+void printstring(const char *s)
 {
 	printf("string %p %s\n", s, s);
 }
@@ -132,31 +131,32 @@ void printcpstack(const Word *s)
 		s, s - cpstackmin, (const char *) s[PREDNM]);
 }
 
-void dumpframe(Word *cp)
+void dumpframe(const Word *cp)
 {
 	reg	int	i;
 
-	if ((cp - (Word *) cp[PREVCP]) == RECLAIM_SIZE)
+	if ((cp - bt_prevcp(cp)) == RECLAIM_SIZE)
 	{
 		printf("reclaim frame at ptr %p, offset %3d words\n",
 			cp, cp - cpstackmin);
-		printf("\t predname  %s\n", (const char *) cp[PREDNM]);
-		printf("\t redoip    "); printlabel((Code *) cp[REDOIP]);
-		printf("\t prevcp    "); printcpstack((Word *) cp[PREVCP]);
-		printf("\t savehp    "); printheap((Word *) cp[SAVEHP]);
+		printf("\t predname  %s\n", bt_prednm(cp));
+		printf("\t redoip    "); printlabel(bt_redoip(cp));
+		printf("\t prevcp    "); printcpstack(bt_prevcp(cp));
+		printf("\t savehp    "); printheap(bt_savehp(cp));
 	}
 	else
 	{
 		printf("cp frame at ptr %p, offset %3d words\n",
 			cp, cp - cpstackmin);
-		printf("\t predname  %s\n", (const char *) cp[PREDNM]);
-		printf("\t succip    "); printlabel((Code *) cp[SUCCIP]);
-		printf("\t redoip    "); printlabel((Word *) cp[REDOIP]);
-		printf("\t succcp    "); printcpstack((Word *) cp[SUCCCP]);
-		printf("\t prevcp    "); printcpstack((Word *) cp[PREVCP]);
+		printf("\t predname  %s\n", bt_prednm(cp));
+		printf("\t succip    "); printlabel(bt_succip(cp));
+		printf("\t redoip    "); printlabel(bt_redoip(cp));
+		printf("\t succcp    "); printcpstack(bt_succcp(cp));
+		printf("\t prevcp    "); printcpstack(bt_prevcp(cp));
 
-		for (i = 0; &cp[SAVEVAL-i] > (Word *) cp[PREVCP]; i++)
-			printf("\t cpvar(%d)  %d %x\n", i, cp[SAVEVAL-i], cp[SAVEVAL-i]);
+		for (i = 0; &bt_var(cp,i) > bt_prevcp(cp); i++)
+			printf("\t cpvar(%d)  %d %x\n",
+				i, bt_var(cp,i), bt_var(cp,i));
 	}
 }
 
@@ -165,7 +165,7 @@ void dumpcpstack(void)
 	reg	Word	*cp;
 
 	printf("\ncpstack dump\n");
-	for (cp = maxcp; cp > cpstackmin; cp = (Word *) cp[PREVCP])
+	for (cp = maxcp; cp > cpstackmin; cp = bt_prevcp(cp))
 		dumpframe(cp);
 }
 
