@@ -214,7 +214,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, prog_data.
+:- import_module hlds_pred, prog_data, builtin_ops.
 
 % To avoid duplication, we use a few things from the LLDS.
 % It would be nice to avoid this dependency...

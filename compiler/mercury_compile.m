@@ -45,7 +45,7 @@
 :- import_module continuation_info, stack_layout.
 
 	% miscellaneous compiler modules
-:- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
+:- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl, mlds.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
 :- import_module dependency_graph, prog_util, rl_dump, rl_file.
 :- import_module options, globals, passes_aux.
