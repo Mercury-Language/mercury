@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999-2000, 2002-2003 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999-2000, 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -23,7 +23,10 @@
 :- module dir.
 :- interface.
 
-:- import_module bool, io, list.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module string.
 
 	% predicates to isolate system dependencies 
 
@@ -229,14 +232,25 @@
 
 :- implementation.
 
-:- import_module char, enum, exception, int, list, require, string, std_util.
+:- import_module char.
+:- import_module enum.
+:- import_module exception.
+:- import_module int.
+:- import_module require.
+:- import_module std_util.
 
 dir__directory_separator = (if have_win32 then ('\\') else ('/')).
 :- pragma foreign_proc("C#", dir__directory_separator = (Sep::out),
 	[promise_pure, will_not_call_mercury, thread_safe],
 "
 	Sep = System.IO.Path.DirectorySeparatorChar;
-").		
+").
+
+:- pragma foreign_proc("Java", dir__directory_separator = (Sep::out),
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	Sep = java.io.File.separatorChar;
+").
 
 :- func dir__alt_directory_separator = char.
 
@@ -813,6 +827,32 @@ dir__make_directory(PathName, Result, !IO) :-
     }
 }").
 
+% Java has a similar library function java.io.File.mkdirs()
+:- pragma foreign_proc("Java",
+	dir__make_directory(DirName::in, Res::out, _IO0::di, _IO::uo),
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+	try {
+		java.io.File dir = new java.io.File(DirName);
+		if (dir.isFile()) {
+                	throw new java.lang.RuntimeException(
+					""a file with that name already"" +
+					"" exists"");
+		}
+		if (dir.isDirectory()) {
+			Res = check_dir_accessibility_4_p_0(DirName);
+		} else {
+			if (!dir.mkdirs()) {
+				throw new java.lang.RuntimeException(
+						""make_directory failed"");
+			}
+			Res = make_mkdir_res_ok_0_f_0();
+		}
+	} catch (java.lang.Exception e) {
+		Res = make_mkdir_res_error_4_p_0(e);
+	}
+").
+
 :- pred can_implement_make_directory is semidet.
 
 can_implement_make_directory :- semidet_fail.
@@ -831,6 +871,11 @@ can_implement_make_directory :- semidet_fail.
 	can_implement_make_directory,
 	[will_not_call_mercury, promise_pure, thread_safe],
 	"SUCCESS_INDICATOR = true;"
+).
+:- pragma foreign_proc("Java",
+	can_implement_make_directory,
+	[will_not_call_mercury, promise_pure, thread_safe],
+	"succeeded = true;"
 ).
 
 dir__make_single_directory(DirName, Result, !IO) :-
@@ -916,6 +961,40 @@ dir__make_single_directory(DirName, Result, !IO) :-
 	mercury.dir.mercury_code.ML_make_mkdir_res_error(e, ref Result);
     }
 }").
+
+:- pragma foreign_proc("Java",
+	dir__make_single_directory_2(ErrorIfExists::in, DirName::in,
+		Result::out, _IO0::di, _IO::uo),
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+	try {
+		java.io.File newDir = new java.io.File(DirName);
+		java.io.File parent = newDir.getParentFile();
+
+		if (parent == null) {
+			Result = make_mkdir_res_error_4_p_0(
+					new java.io.IOException(
+					""can't create root directory""));
+		} else if (!parent.exists()) {
+			Result = make_mkdir_res_error_4_p_0(
+					new java.io.IOException(
+					""parent directory does not exist""));
+		} else if (ErrorIfExists == 1 && newDir.exists()) {
+			Result = make_mkdir_res_error_4_p_0(
+					new java.io.IOException(
+					""directory already exists""));
+		} else {
+			if (!newDir.mkdir()) {
+				throw new java.lang.RuntimeException(
+						""make_single_directory"" +
+						"" failed"");
+			}
+			Result = make_mkdir_res_ok_0_f_0();
+		}
+	} catch (java.lang.Exception e) {
+		Result = make_mkdir_res_error_4_p_0(e);
+	}
+").
 
 :- func dir__make_mkdir_res_ok = io__res.
 :- pragma export((dir__make_mkdir_res_ok = out), "ML_make_mkdir_res_ok"). 
@@ -1169,6 +1248,7 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 :- pragma foreign_type("C", dir__stream, "ML_DIR_STREAM").
 :- pragma foreign_type("il", dir__stream,
 		"class [mscorlib]System.Collections.IEnumerator").
+:- pragma foreign_type("Java", dir__stream, "java.util.Iterator").
 
 :- pred can_implement_dir_foldl is semidet.
 
@@ -1272,6 +1352,21 @@ dir__open(DirName, Res, !IO) :-
 			ref Result);
 	}
 }").
+
+:- pragma foreign_proc("Java",
+	dir__open_2(DirName::in, Result::out, _IO0::di, _IO::uo),
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+	try {
+		java.lang.String[] fileList =
+				(new java.io.File(DirName)).list();
+		java.util.List list = java.util.Arrays.asList(fileList);
+
+		Result = read_first_entry_4_p_0(list.iterator());
+	} catch (java.lang.Exception e) {
+		Result = make_dir_open_result_error_4_p_0(e);
+	}
+").
 
 :- pred dir__check_dir_readable(string, int, io__result({dir__stream, string}),
 		io__state, io__state).
@@ -1432,6 +1527,16 @@ dir__close(Dir, Res, !IO) :-
 	Status = 1;
 }").
 
+:- pragma foreign_proc("Java",
+	dir__close_2(_Dir::in, Status::out, Error::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"{
+	/* Nothing to do. */
+	Error = null;
+	Status = 1;
+}").
+
+
 :- pred dir__read_entry(dir__stream, io__result(string), io__state, io__state).
 :- mode dir__read_entry(in, out, di, uo) is det.
 
@@ -1527,6 +1632,21 @@ dir__read_entry(Dir, Res, !IO) :-
 		Status = 0;
 	}
 }").
+
+:- pragma foreign_proc("Java",
+	dir__read_entry_2(Dir::in, Status::out, Error::out, FileName::out,
+		_IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+	if (Dir.hasNext()) {
+		FileName = (java.lang.String) Dir.next();
+		Status = 1;
+	} else {
+		FileName = null;
+		Status = -1;
+	}
+	Error = null;
+").
 
 %-----------------------------------------------------------------------------%
 
