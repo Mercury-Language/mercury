@@ -37,7 +37,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, std_util, term, varset, prog_io.
+:- import_module int, list, std_util, term, varset.
 :- import_module lexer, ops.
 
 %-----------------------------------------------------------------------------%
