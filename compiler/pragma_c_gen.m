@@ -363,7 +363,7 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		C_Code, Context, GoalInfo, Code, !CI) :-
-	
+
 	%
 	% Extract the attributes
 	%
@@ -610,9 +610,9 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	Code =
 		tree(SaveVarsCode,
-		tree(ReserveR1_Code, 
+		tree(ReserveR1_Code,
 		tree(InputVarsCode,
-		tree(ClearR1_Code, 
+		tree(ClearR1_Code,
 		tree(PragmaCCode,
 		     FailureCode))))).
 
@@ -901,8 +901,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 			tree(ModFrameCode,
 			tree(FirstDisjunctCode,
 			tree(CallBlockCode,
-			tree(RetryLabelCode, 
-			tree(LaterDisjunctCode, 
+			tree(RetryLabelCode,
+			tree(LaterDisjunctCode,
 			     RetryBlockCode)))))
 	;
 		code_info__get_next_label(SharedLabel, !CI),
@@ -1023,10 +1023,10 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 			tree(ModFrameCode,
 			tree(FirstDisjunctCode,
 			tree(CallBlockCode,
-			tree(RetryLabelCode, 
-			tree(LaterDisjunctCode, 
+			tree(RetryLabelCode,
+			tree(LaterDisjunctCode,
 			tree(RetryBlockCode,
-			tree(SharedLabelCode, 
+			tree(SharedLabelCode,
 			     SharedBlockCode)))))))
 	).
 
@@ -1195,7 +1195,7 @@ get_pragma_input_vars([Arg | Args], Inputs, Code, !CI) :-
 		code_info__produce_variable(Var, FirstCode, Rval, !CI),
 		% code_info__produce_variable_in_reg(Var, FirstCode, Lval, !CI)
 		% Rval = lval(Lval),
-		MaybeForeign = get_maybe_foreign_type_name(!.CI, Type),
+		MaybeForeign = get_maybe_foreign_type_info(!.CI, Type),
 		Input = pragma_c_input(Name, Type, Rval, MaybeForeign),
 		get_pragma_input_vars(Args, Inputs1, RestCode, !CI),
 		Inputs = [Input | Inputs1],
@@ -1206,12 +1206,13 @@ get_pragma_input_vars([Arg | Args], Inputs, Code, !CI) :-
 		get_pragma_input_vars(Args, Inputs, Code, !CI)
 	).
 
-:- func get_maybe_foreign_type_name(code_info, (type)) = maybe(string).
+:- func get_maybe_foreign_type_info(code_info, (type)) =
+	maybe(pragma_c_foreign_type).
 
-get_maybe_foreign_type_name(CI, Type) = MaybeForeignType :-
+get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
 	code_info__get_module_info(CI, Module),
 	module_info_types(Module, Types),
-	
+
 	(
 		type_to_ctor_and_args(Type, TypeId, _SubTypes),
 		map__search(Types, TypeId, Defn),
@@ -1219,18 +1220,22 @@ get_maybe_foreign_type_name(CI, Type) = MaybeForeignType :-
 		Body = foreign_type(foreign_type_body(_MaybeIL, MaybeC,
 			_MaybeJava), _)
 	->
-		( MaybeC = yes(c(Name) - _),
-			MaybeForeignType = yes(Name)
-		; MaybeC = no,
+		(
+			MaybeC = yes(Data),
+			Data = foreign_type_lang_data(c(Name), _, Assertions),
+			MaybeForeignTypeInfo = yes(
+				pragma_c_foreign_type(Name, Assertions))
+		;
+			MaybeC = no,
 			% This is ensured by check_foreign_type in
 			% make_hlds.
 			unexpected(this_file, "get_maybe_foreign_type_name: "
 				++ "no c foreign type")
 		)
 	;
-		MaybeForeignType = no
+		MaybeForeignTypeInfo = no
 	).
-		
+
 %---------------------------------------------------------------------------%
 
 % pragma_acquire_regs acquires a list of registers in which to place each
@@ -1261,7 +1266,7 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], Outputs, !CI) :-
 	code_info__release_reg(Reg, !CI),
 	( code_info__variable_is_forward_live(!.CI, Var) ->
 		code_info__set_var_location(Var, Reg, !CI),
-		MaybeForeign = get_maybe_foreign_type_name(!.CI, OrigType),
+		MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
 		( var_is_not_singleton(MaybeName, Name) ->
 			PragmaCOutput = pragma_c_output(Reg, OrigType,
 				Name, MaybeForeign),
@@ -1291,8 +1296,9 @@ input_descs_from_arg_info(CI, [Arg | Args], Inputs) :-
 	( var_is_not_singleton(MaybeName, Name) ->
 		ArgInfo = arg_info(N, _),
 		Reg = reg(r, N),
-		MaybeForeign = get_maybe_foreign_type_name(CI, OrigType),
-		Input = pragma_c_input(Name, OrigType, lval(Reg), MaybeForeign),
+		MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
+		Input = pragma_c_input(Name, OrigType, lval(Reg),
+			MaybeForeign),
 		input_descs_from_arg_info(CI, Args, Inputs1),
 		Inputs = [Input | Inputs1]
 	;
@@ -1315,7 +1321,7 @@ output_descs_from_arg_info(CI, [Arg | Args], Outputs) :-
 	( var_is_not_singleton(MaybeName, Name) ->
 		ArgInfo = arg_info(N, _),
 		Reg = reg(r, N),
-		MaybeForeign = get_maybe_foreign_type_name(CI, OrigType),
+		MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
 		Outputs = [pragma_c_output(Reg, OrigType, Name, MaybeForeign) |
 			Outputs0]
 	;

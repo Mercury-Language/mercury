@@ -897,7 +897,10 @@ foreign_type_required_imports(il, TypeDefn) = Imports :-
 		Body = foreign_type(foreign_type_body(MaybeIL,
 			_MaybeC, _MaybeJava), _)
 	->
-		( MaybeIL = yes(il(_, Location, _) - _) ->
+		(
+			MaybeIL = yes(Data),
+			Data = foreign_type_lang_data(il(_, Location, _), _, _)
+		->
 			Name = il_assembly_name(mercury_module_name_to_mlds(
 				unqualified(Location))),
 			Imports = [foreign_import(Name)]

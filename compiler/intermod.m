@@ -1139,16 +1139,17 @@ intermod__resolve_foreign_type_body_overloading(ModuleInfo,
 	).
 
 :- pred intermod__resolve_foreign_type_body_overloading_2(module_info::in,
-		type_ctor::in, foreign_type_lang_body(T)::in,
-		foreign_type_lang_body(T)::out, intermod_info::in,
-		intermod_info::out) is det.
+	type_ctor::in,
+	foreign_type_lang_body(T)::in, foreign_type_lang_body(T)::out,
+	intermod_info::in, intermod_info::out) is det.
 
-intermod__resolve_foreign_type_body_overloading_2(_, _, no, no, Info, Info).
+intermod__resolve_foreign_type_body_overloading_2(_, _, no, no, !Info).
 intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
-		yes(Body - MaybeEqComp0), yes(Body - MaybeEqComp),
-		Info0, Info) :-
+		yes(foreign_type_lang_data(Body, MaybeEqComp0, Assertions)),
+		yes(foreign_type_lang_data(Body, MaybeEqComp, Assertions)),
+		!Info) :-
 	intermod__resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
-		MaybeEqComp0, MaybeEqComp, Info0, Info).
+		MaybeEqComp0, MaybeEqComp, !Info).
 
 :- pred intermod__resolve_unify_compare_overloading(module_info::in,
 	type_ctor::in, maybe(unify_compare)::in, maybe(unify_compare)::out,
@@ -1338,34 +1339,46 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 		; Body ^ du_type_is_foreign_type = yes(ForeignTypeBody)
 		},
 		{ ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC,
-				MaybeJava) }
+			MaybeJava) }
 	->
-		( { MaybeIL = yes(ILForeignType - ILUserEqComp) },
+		(
+			{ MaybeIL = yes(DataIL) },
+			{ DataIL = foreign_type_lang_data(ILForeignType,
+				ILUserEqComp, AssertionsIL) },
 			mercury_output_item(
 				type_defn(VarSet, Name, Args,
 					foreign_type(il(ILForeignType),
-						ILUserEqComp), true),
+						ILUserEqComp, AssertionsIL),
+				true),
 				Context)
-		; { MaybeIL = no },
-			[]
+		;
+			{ MaybeIL = no }
 		),
-		( { MaybeC = yes(CForeignType - CUserEqComp) },
+		(
+			{ MaybeC = yes(DataC) },
+			{ DataC = foreign_type_lang_data(CForeignType,
+				CUserEqComp, AssertionsC) },
 			mercury_output_item(
 				type_defn(VarSet, Name, Args,
 					foreign_type(c(CForeignType),
-						CUserEqComp), true),
+						CUserEqComp, AssertionsC),
+					true),
 				Context)
-		; { MaybeC = no },
-			[]
+		;
+			{ MaybeC = no }
 		),
-		( { MaybeJava = yes(JavaForeignType - JavaUserEqComp) },
+		(
+			{ MaybeJava = yes(DataJava) },
+			{ DataJava = foreign_type_lang_data(JavaForeignType,
+				JavaUserEqComp, AssertionsJava) },
 			mercury_output_item(
 				type_defn(VarSet, Name, Args,
 					foreign_type(java(JavaForeignType),
-						JavaUserEqComp), true),
+						JavaUserEqComp, AssertionsJava),
+					true),
 				Context)
-		; { MaybeJava = no },
-			[]
+		;
+			{ MaybeJava = no }
 		)
 	;
 		[]

@@ -251,12 +251,14 @@ else
 endif
 
 # Fact tables currently work only in the C grades.
+# The foreign_type_assertion test is currently meaningful only in C grades.
 ifeq "$(filter il% java%,$(GRADE))" ""
-	FACTT_PROGS= \
+	C_ONLY_PROGS= \
 		factt \
-		factt_sort_test
+		factt_sort_test \
+		foreign_type_assertion
 else
-	FACTT_PROGS=
+	C_ONLY_PROGS=
 endif
 
 # XXX test_array2d does not work in at least asm_fast.gc.profdeep; the
@@ -434,7 +436,7 @@ else
 		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
 		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
 		$(CHAR_REP_PROGS) $(BROKEN_FOR_PROFDEEP)  \
-		$(FACTT_PROGS) $(DOTNET_PROGS) $(JAVA_PROGS)
+		$(C_ONLY_PROGS) $(DOTNET_PROGS) $(JAVA_PROGS)
 endif
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),

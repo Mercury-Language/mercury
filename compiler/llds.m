@@ -565,17 +565,37 @@
 	% A pragma_c_input represents the code that initializes one
 	% of the input variables for a pragma_c instruction.
 :- type pragma_c_input
-	--->	pragma_c_input(string, type, rval, maybe(string)).
-				% variable name, type, variable value,
-				% maybe C type if foreign type.
+	--->	pragma_c_input(
+			string, % the variable's name
+			type,	% the variable's type
+			rval,	% the variable's value
+			maybe(pragma_c_foreign_type)
+				% if type is a foreign type,
+				% info about that foreign type
+		).
 
 	% A pragma_c_output represents the code that stores one of
 	% of the outputs for a pragma_c instruction.
 :- type pragma_c_output
-	--->	pragma_c_output(lval, type, string, maybe(string)).
-				% where to put the output val, type and name
-				% of variable containing the output val
-				% followed by maybe C type if foreign type.
+	--->	pragma_c_output(
+			lval,	% where to put the output val,
+			type,
+			string,
+				% type and name of the variable containing
+				% the output val
+			maybe(pragma_c_foreign_type)
+				% if type is a foreign type,
+				% info about that foreign type
+		).
+
+:- type pragma_c_foreign_type
+	--->	pragma_c_foreign_type(
+			string,		% The C type name.
+			list(foreign_type_assertion)
+					% The assertions on the foreign_type
+					% declarations that the C type name
+					% came from.
+		).
 
 	% see runtime/mercury_trail.h
 :- type reset_trail_reason

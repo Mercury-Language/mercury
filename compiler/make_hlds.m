@@ -2647,17 +2647,23 @@ convert_type_defn(du_type(Body, IsSolverType, EqualityPred), TypeCtor, Globals,
 convert_type_defn(eqv_type(Body), _, _, eqv_type(Body)).
 convert_type_defn(abstract_type(IsSolverType), _, _,
 		abstract_type(IsSolverType)).
-convert_type_defn(foreign_type(ForeignType, UserEqComp), _, _,
+convert_type_defn(foreign_type(ForeignType, UserEqComp, Assertions), _, _,
 		foreign_type(Body, non_solver_type)) :-
-	( ForeignType = il(ILForeignType),
-		Body = foreign_type_body(yes(ILForeignType - UserEqComp),
-				no, no)
-	; ForeignType = c(CForeignType),
-		Body = foreign_type_body(no,
-				yes(CForeignType - UserEqComp), no)
-	; ForeignType = java(JavaForeignType),
-		Body = foreign_type_body(no, no,
-				yes(JavaForeignType - UserEqComp))
+	(
+		ForeignType = il(ILForeignType),
+		Data = foreign_type_lang_data(ILForeignType, UserEqComp,
+			Assertions),
+		Body = foreign_type_body(yes(Data), no, no)
+	;
+		ForeignType = c(CForeignType),
+		Data = foreign_type_lang_data(CForeignType, UserEqComp,
+			Assertions),
+		Body = foreign_type_body(no, yes(Data), no)
+	;
+		ForeignType = java(JavaForeignType),
+		Data = foreign_type_lang_data(JavaForeignType, UserEqComp,
+			Assertions),
+		Body = foreign_type_body(no, no, yes(Data))
 	).
 
 :- pred ctors_add(list(constructor)::in, type_ctor::in, tvarset::in,

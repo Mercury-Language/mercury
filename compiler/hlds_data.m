@@ -337,7 +337,14 @@ make_cons_id_from_qualified_sym_name(SymName, Args) = cons(SymName, Arity) :-
 			java	:: foreign_type_lang_body(java_foreign_type)
 		).
 
-:- type foreign_type_lang_body(T) == maybe(pair(T, maybe(unify_compare))).
+:- type foreign_type_lang_body(T) == maybe(foreign_type_lang_data(T)).
+
+:- type foreign_type_lang_data(T)
+	--->	foreign_type_lang_data(
+			T,
+			maybe(unify_compare),
+			list(foreign_type_assertion)
+		).
 
 	% The `cons_tag_values' type stores the information on how
 	% a discriminated union type is represented.

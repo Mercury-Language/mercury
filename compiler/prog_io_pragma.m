@@ -35,12 +35,13 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 	(
 		% new syntax: `:- pragma foo(...).'
 		PragmaTerms = [SinglePragmaTerm0],
-		get_maybe_equality_compare_preds(ModuleName, SinglePragmaTerm0,
-				SinglePragmaTerm, UnifyCompareResult),
+		get_maybe_equality_compare_preds(ModuleName,
+			SinglePragmaTerm0, SinglePragmaTerm,
+			UnifyCompareResult),
 		SinglePragmaTerm = term__functor(term__atom(PragmaType), 
-					PragmaArgs, _),
+			PragmaArgs, _),
 		parse_pragma_type(ModuleName, PragmaType, PragmaArgs,
-				SinglePragmaTerm, VarSet, Result0)
+			SinglePragmaTerm, VarSet, Result0)
 	->
 		(
 			UnifyCompareResult = ok(MaybeUserEqCompare),
@@ -50,12 +51,13 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 			->
 				(
 					Item0 = type_defn(_, _, _, _, _),
-					foreign_type(Type, _) =
+					foreign_type(Type, _, Assertions) =
 						Item0 ^ td_ctor_defn
 				->
 					Result = ok(Item0 ^ td_ctor_defn :=
 						foreign_type(Type,
-							MaybeUserEqCompare))
+							MaybeUserEqCompare,
+							Assertions))
 				;
 					Result = error(
 				"unexpected `where equality/comparison is'",
@@ -102,7 +104,17 @@ parse_pragma_type(_, "source_file", PragmaTerms, ErrorTerm, _VarSet, Result) :-
 
 parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
 		Result) :-
-	( PragmaTerms = [LangTerm, MercuryTypeTerm, ForeignTypeTerm] ->
+	(
+		(
+			PragmaTerms = [LangTerm, MercuryTypeTerm,
+				ForeignTypeTerm],
+			MaybeAssertionTerm = no
+		;
+			PragmaTerms = [LangTerm, MercuryTypeTerm,
+				ForeignTypeTerm, AssertionTerm],
+			MaybeAssertionTerm = yes(AssertionTerm)
+		)
+	->
 		( parse_foreign_language(LangTerm, Language) ->
 			parse_foreign_language_type(ForeignTypeTerm, Language,
 				MaybeForeignType),
@@ -118,12 +130,29 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
 					varset__coerce(VarSet, TVarSet),
 					MercuryArgs = list__map(term__coerce,
 							MercuryArgs0),
-					Result = ok(type_defn(TVarSet,
-						MercuryTypeSymName,
-						MercuryArgs,
-						foreign_type(ForeignType, no),
-						true)) 
-				;
+					( parse_maybe_foreign_type_assertions(
+						MaybeAssertionTerm, Assertions)
+					->
+						Result = ok(type_defn(TVarSet,
+							MercuryTypeSymName,
+							MercuryArgs,
+							foreign_type(
+								ForeignType,
+								no,
+								Assertions),
+							true)) 
+					; MaybeAssertionTerm =
+						yes(ErrorAssertionTerm)
+					->
+						Result = error(
+	"invalid assertion in `:- pragma foreign_type' declaration",
+							ErrorAssertionTerm)
+					;
+						error(
+	"parse_pragma_type: unexpected failure of " ++
+	"parse_maybe_foreign_type_assertion")
+					)
+                ;
 					MaybeTypeDefnHead =
 						error(String, Term),
 					Result = error(String, Term)
@@ -360,6 +389,34 @@ parse_special_il_type_name("unsigned int32", il(value, "mscorlib",
 			qualified(unqualified("System"), "UInt32"))).
 parse_special_il_type_name("unsigned int64", il(value, "mscorlib",
 			qualified(unqualified("System"), "UInt64"))).
+
+:- pred parse_maybe_foreign_type_assertions(maybe(term)::in,
+    list(foreign_type_assertion)::out) is semidet.
+
+parse_maybe_foreign_type_assertions(no, []).
+parse_maybe_foreign_type_assertions(yes(Term), Assertions) :-
+	parse_foreign_type_assertions(Term, Assertions).
+
+:- pred parse_foreign_type_assertions(term::in,
+    list(foreign_type_assertion)::out) is semidet.
+
+parse_foreign_type_assertions(Term, Assertions) :-
+	( Term = term__functor(term__atom("[]"), [], _) ->
+		Assertions = []
+	;
+		Term = term__functor(term__atom("[|]"), [Head, Tail], _),
+		parse_foreign_type_assertion(Head, HeadAssertion),
+		parse_foreign_type_assertions(Tail, TailAssertions),
+		Assertions = [HeadAssertion | TailAssertions]
+	).
+
+:- pred parse_foreign_type_assertion(term::in,
+    foreign_type_assertion::out) is semidet.
+
+parse_foreign_type_assertion(Term, Assertion) :-
+	Term = term__functor(term__atom(Constant), [], _),
+        Constant = "can_pass_as_mercury_type",
+        Assertion = can_pass_as_mercury_type.
 
 	% This predicate parses both c_header_code and foreign_decl pragmas.
 :- pred parse_pragma_foreign_decl_pragma(module_name, string,

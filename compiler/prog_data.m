@@ -1037,10 +1037,25 @@
 % type_defn/3 is defined above as a constructor for item/0
 
 :- type type_defn
-	--->	du_type(list(constructor), is_solver_type, maybe(unify_compare))
-	;	eqv_type(type)
-	;	abstract_type(is_solver_type)
-	;	foreign_type(foreign_language_type, maybe(unify_compare)).
+	--->	du_type(
+			list(constructor),
+			is_solver_type,
+			maybe(unify_compare)
+		)
+	;	eqv_type(
+			type
+		)
+	;	abstract_type(
+			is_solver_type
+		)
+	;	foreign_type(
+			foreign_language_type,
+			maybe(unify_compare),
+			list(foreign_type_assertion)
+		).
+
+:- type foreign_type_assertion
+	--->	can_pass_as_mercury_type.
 
 :- type constructor
 	--->	ctor(

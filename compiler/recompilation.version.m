@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -284,7 +284,7 @@ recompilation__version__gather_items_2(ItemAndContext, !Section) -->
 			{ NameItem = Item },
 			{ BodyItem = Item }
 		;
-			{ Body = foreign_type(_, _) },
+			{ Body = foreign_type(_, _, _) },
 			{ NameItem = Item },
 			{ BodyItem = Item }
 		),

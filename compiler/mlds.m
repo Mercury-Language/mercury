@@ -1761,37 +1761,57 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 	->
 		module_info_globals(ModuleInfo, Globals),
 		globals__get_target(Globals, Target),
-		( Target = c,
-			( MaybeC = yes(CForeignType - _),
+		(
+			Target = c,
+			(
+				MaybeC = yes(Data),
+				Data = foreign_type_lang_data(CForeignType,
+					_, _),
 				ForeignType = c(CForeignType)
-			; MaybeC = no,
+			;
+				MaybeC = no,
 				% This is checked by check_foreign_type
 				% in make_hlds.
 				unexpected(this_file,
 				"mercury_type_to_mlds_type: No C foreign type")
 			)
-		; Target = il,
-			( MaybeIL = yes(ILForeignType - _),
+		;
+			Target = il,
+			(
+				MaybeIL = yes(Data),
+				Data = foreign_type_lang_data(ILForeignType,
+					_, _),
 				ForeignType = il(ILForeignType)
-			; MaybeIL = no,
+			;
+				MaybeIL = no,
 				% This is checked by check_foreign_type
 				% in make_hlds.
 				unexpected(this_file,
 				"mercury_type_to_mlds_type: No IL foreign type")
 			)
-		; Target = java,
-			( MaybeJava = yes(JavaForeignType - _),
+		;
+			Target = java,
+			(
+				MaybeJava = yes(Data),
+				Data = foreign_type_lang_data(JavaForeignType,
+					_, _),
 				ForeignType = java(JavaForeignType)
-			; MaybeJava = no,
+			;
+				MaybeJava = no,
 				% This is checked by check_foreign_type
 				% in make_hlds.
 				unexpected(this_file,
 				"mercury_type_to_mlds_type: No Java foreign type")
 			)	
-		; Target = asm,
-			( MaybeC = yes(CForeignType - _),
+		;
+			Target = asm,
+			(
+				MaybeC = yes(Data),
+				Data = foreign_type_lang_data(CForeignType,
+					_, _),
 				ForeignType = c(CForeignType)
-			; MaybeC = no,
+			;
+				MaybeC = no,
 				% XXX This ought to be checked by the
 				% front-end, e.g. check_foreign_type
 				% in make_hlds.

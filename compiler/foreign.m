@@ -693,30 +693,50 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
 
-	( Target = c,
-		( MaybeC = yes(c(NameStr) - MaybeUserEqComp),
+	(
+		Target = c,
+		(
+			MaybeC = yes(Data),
+			Data = foreign_type_lang_data(c(NameStr),
+				MaybeUserEqComp, _Assertions),
 			Name = unqualified(NameStr)
-		; MaybeC = no,
+		;
+			MaybeC = no,
 			unexpected(this_file,
 				"to_exported_type: no C type")
 		)
-	; Target = il,
-		( MaybeIL = yes(il(_, _, Name) - MaybeUserEqComp)
-		; MaybeIL = no,
+	;
+		Target = il,
+		(
+			MaybeIL = yes(Data),
+			Data = foreign_type_lang_data(il(_, _, Name),
+				MaybeUserEqComp, _Assertions)
+		;
+			MaybeIL = no,
 			unexpected(this_file,
 				"to_exported_type: no IL type")
 		)
-	; Target = java,
-		( MaybeJava = yes(java(NameStr) - MaybeUserEqComp),
+	;
+		Target = java,
+		(
+			MaybeJava = yes(Data),
+			Data = foreign_type_lang_data(java(NameStr),
+				MaybeUserEqComp, _Assertions),
 			Name = unqualified(NameStr)
-		; MaybeJava = no,
+		;
+			MaybeJava = no,
 			unexpected(this_file,
 				"to_exported_type: no Java type")
 		)
-	; Target = asm,
-		( MaybeC = yes(c(NameStr) - MaybeUserEqComp),
+	;
+		Target = asm,
+		(
+			MaybeC = yes(Data),
+			Data = foreign_type_lang_data(c(NameStr),
+				MaybeUserEqComp, _Assertions),
 			Name = unqualified(NameStr)
-		; MaybeC = no,
+		;
+			MaybeC = no,
 			unexpected(this_file,
 				"to_exported_type: no C type")
 		)

@@ -5745,6 +5745,28 @@ type will only be visible in Mercury clauses for predicates or functions with
 @samp{pragma foreign_proc} clauses for all of the languages for which there
 are @samp{foreign_type} declarations for the type. 
 
+You can also associate assertions about the properties
+of the foreign type with the @samp{foreign_type} declaration,
+using the following syntax:
+
+@example
+:- pragma foreign_type(@var{Lang}, @var{MercuryTypeName}, @var{ForeignTypeDescriptor}, [@var{ForeignTypeAssertion}, ...]).
+@end example
+
+Currently, only one kind of assertion is supported:
+@samp{can_pass_as_mercury_type}.
+This asserts that on the C backends, values of the given type
+can be passed to and from Mercury code without boxing,
+via simple casts, which is faster.
+This requires the type to be either an integer type or a pointer type,
+and requires its size to be the same as or less than the size of Mercury word.
+Since deciding whether a C type satisfies this condition
+requires knowledge of the Mercury implementation,
+and violations are very likely to result in
+the generated executable silently doing the wrong thing,
+we do not recommend the use of assertions
+unless you are an implementor of the Mercury system.
+
 As with discriminated union types, programmers can specify the unification
 @w{and/or} comparison predicates to use for values of the type using the
 following syntax (@pxref{User-defined equality and comparison}):
@@ -5759,6 +5781,7 @@ which specify language @var{X} to interface to types that are actually
 written in a different language @var{Y} provided that @var{X} and @var{Y}
 have compatible interface conventions.  Support for this kind of
 compatibility is described in the language specific information below.
+
 @c -----------------------------------------------------------------------
 
 @node Adding foreign declarations

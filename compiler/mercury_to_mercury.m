@@ -1736,7 +1736,8 @@ mercury_output_type_defn(VarSet, Name, Args,
 	io__write_string("\n\t.\n").
 
 mercury_output_type_defn(TVarSet, Name, Args,
-		foreign_type(ForeignType, MaybeEqCompare), _Context) -->
+		foreign_type(ForeignType, MaybeEqCompare, Assertions),
+		_Context) -->
 	io__write_string(":- pragma foreign_type("),
 	( { ForeignType = il(_) }, io__write_string("il, ")
 	; { ForeignType = c(_) }, io__write_string("c, ")
@@ -1750,12 +1751,21 @@ mercury_output_type_defn(TVarSet, Name, Args,
 		; RefOrVal = value, RefOrValStr = "valuetype "
 		),
 		sym_name_to_string(ForeignTypeName, ".", NameStr),
-		ForeignTypeStr = RefOrValStr ++ "[" ++ ForeignLocStr ++
-				"]" ++ NameStr
+		ForeignTypeStr = RefOrValStr ++
+			"[" ++ ForeignLocStr ++ "]" ++ NameStr
 	; ForeignType = c(c(ForeignTypeStr))
 	; ForeignType = java(java(ForeignTypeStr))
 	},
 	io__write_string(ForeignTypeStr),
+	(
+		{ Assertions = [] }
+	;
+		{ Assertions = [_ | _] },
+		io__write_string(", ["),
+		io__write_list(Assertions, ", ",
+			mercury_output_foreign_type_assertion),
+		io__write_string("]")
+	),
 	io__write_string("\")"),
 	( { MaybeEqCompare = yes(_) } ->
 		io__write_string(" ")
@@ -1764,6 +1774,12 @@ mercury_output_type_defn(TVarSet, Name, Args,
 	),
 	mercury_output_equality_compare_preds(MaybeEqCompare),
 	io__write_string(".\n").
+
+:- pred mercury_output_foreign_type_assertion(foreign_type_assertion::in,
+	io::di, io::uo) is det.
+
+mercury_output_foreign_type_assertion(can_pass_as_mercury_type, !IO) :-
+	io__write_string("can_pass_as_mercury_type", !IO).
 
 :- pred mercury_output_begin_type_decl(is_solver_type, io__state, io__state).
 :- mode mercury_output_begin_type_decl(in, di, uo) is det.

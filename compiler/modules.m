@@ -6934,7 +6934,7 @@ item_needs_foreign_imports(pragma(export(_, _, _, _)), Lang) :-
 	% `:- pragma import' is only supported for C.
 item_needs_foreign_imports(pragma(import(_, _, _, _, _)), c).
 item_needs_foreign_imports(Item @ type_defn(_, _, _, _, _), Lang) :-
-	Item ^ td_ctor_defn = foreign_type(ForeignType, _),
+	Item ^ td_ctor_defn = foreign_type(ForeignType, _, _),
 	Lang = foreign_type_language(ForeignType).
 item_needs_foreign_imports(pragma(foreign_decl(Lang, _)), Lang).
 item_needs_foreign_imports(pragma(foreign_code(Lang, _)), Lang).
@@ -6983,7 +6983,7 @@ make_abstract_defn(type_defn(VarSet, Name, Args, TypeDefn, Cond),
 		ShortInterfaceKind = int3,
 		IsSolverType = non_solver_type
 	;
-		TypeDefn = foreign_type(_, _),
+		TypeDefn = foreign_type(_, _, _),
 		% We always need the definitions of foreign types
 		% to handle inter-language interfacing correctly.
 		IsSolverType = non_solver_type,
@@ -7005,9 +7005,9 @@ make_abstract_unify_compare(type_defn(VarSet, Name, Args, TypeDefn0, Cond),
 		TypeDefn  = du_type(Constructors, IsSolverType,
 			yes(abstract_noncanonical_type))
 	;
-		TypeDefn0 = foreign_type(ForeignType, yes(_)),
+		TypeDefn0 = foreign_type(ForeignType, yes(_), Assertions),
 		TypeDefn = foreign_type(ForeignType,
-			yes(abstract_noncanonical_type))
+			yes(abstract_noncanonical_type), Assertions)
 	).
 
 	% All instance declarations must be written

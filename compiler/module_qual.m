@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -746,7 +746,7 @@ qualify_type_defn(du_type(Ctors0, IsSolverType, MaybeEqualityPred0),
 qualify_type_defn(eqv_type(Type0), eqv_type(Type), Info0, Info) -->
 	qualify_type(Type0, Type, Info0, Info).	
 qualify_type_defn(abstract_type(_) @ Defn, Defn, Info, Info) --> [].
-qualify_type_defn(foreign_type(_, _) @ Defn, Defn, Info, Info) --> [].
+qualify_type_defn(foreign_type(_, _, _) @ Defn, Defn, Info, Info) --> [].
 
 :- pred qualify_constructors(list(constructor)::in, list(constructor)::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
