@@ -26,18 +26,24 @@ echo "$img_bak <a href=../>Parent Directory</a><br>" >> $INDEX
 
 for file in * 
 do
-    if [ `expr $file : index\.html` -ne 10 ]  && [ $file != README ]
-    then
-        if [ -d $file ]
-        then
-    	    (cd $file && generate_index_html)
-            echo "$img_dir <a href=$file/>$file/</a><br>" >> $INDEX
-        else
-	    size=`ls -l $file | awk '{ print $5; }'`
-	    sizekb=`expr $size / 1024`
-            echo "$img_txt <a href=$file>$file</a> ($sizekb kilobytes)<br>" >> $INDEX
-        fi
-    fi
+        #
+	# Don't include the README or any of the index files
+	#
+    case $file in
+        README|index.html*) 
+	    ;;
+
+	*)  if [ -d $file ]
+            then
+    	        (cd $file && generate_index_html)
+                echo "$img_dir <a href=$file/>$file/</a><br>" >> $INDEX
+            else
+	        size=`ls -l $file | awk '{ print $5; }'`
+	        sizekb=`expr $size / 1024`
+                echo "$img_txt <a href=$file>$file</a> ($sizekb kilobytes)<br>" >> $INDEX
+            fi
+	    ;;
+    esac
 done
 
 echo "<hr>" >> $INDEX
