@@ -15,6 +15,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module instmap.
 :- import_module list.
 
 	% mode_get_insts returns the initial instantiatedness and
@@ -154,17 +155,6 @@
 :- pred inst_lookup(module_info, inst_name, inst).
 :- mode inst_lookup(in, in, out) is det.
 
-	% Initialize an empty instmap.
-	%
-:- pred instmap_init(instmap).
-:- mode instmap_init(out) is det.
-
-	% Given an instmap and an instmap_delta, apply the instmap_delta
-	% to the instmap to produce a new instmap.
-	%
-:- pred apply_instmap_delta(instmap, instmap_delta, instmap).
-:- mode apply_instmap_delta(in, in, out) is det.
-
 	% Use the instmap deltas for all the atomic sub-goals to recompute
 	% the instmap deltas for all the non-atomic sub-goals of a goal.
 	% Used to ensure that the instmap deltas remain valid after
@@ -175,15 +165,6 @@
 :- pred recompute_instmap_delta(hlds__goal, hlds__goal,
 				module_info, module_info).
 :- mode recompute_instmap_delta(in, out, in, out) is det.
-
-	% Given an instmap and a variable, determine the inst of
-	% that variable.
-	%
-:- pred instmap_lookup_var(instmap, var, inst).
-:- mode instmap_lookup_var(in, in, out) is det.
-
-:- pred instmapping_lookup_var(instmapping, var, inst).
-:- mode instmapping_lookup_var(in, in, out) is det.
 
 	% Given corresponding lists of types and modes, produce a new
 	% list of modes which includes the information provided by the
@@ -1221,61 +1202,6 @@ alt_list_apply_substitution([Alt0|Alts0], Subst, [Alt|Alts]) :-
 mode_id_to_int(_ - X, X).
 
 %-----------------------------------------------------------------------------%
-
-	% Initialize an empty instmap.
-
-instmap_init(reachable(InstMapping)) :-
-	map__init(InstMapping).
-
-%-----------------------------------------------------------------------------%
-
-	% Given an instmap and a variable, determine the inst of
-	% that variable.
-
-instmap_lookup_var(unreachable, _Var, not_reached).
-instmap_lookup_var(reachable(InstMap), Var, Inst) :-
-	instmapping_lookup_var(InstMap, Var, Inst).
-
-instmapping_lookup_var(InstMap, Var, Inst) :-
-	( map__search(InstMap, Var, VarInst) ->
-		Inst = VarInst
-	;
-		Inst = free
-	).
-
-%-----------------------------------------------------------------------------%
-
-	% Given two instmaps, overlay the entries in the second map 
-	% on top of those in the first map to produce a new map.
-
-apply_instmap_delta(unreachable, _, unreachable).
-apply_instmap_delta(reachable(_), unreachable, unreachable).
-apply_instmap_delta(reachable(InstMapping0), reachable(InstMappingDelta), 
-			reachable(InstMapping)) :-
-	map__overlay(InstMapping0, InstMappingDelta, InstMapping).
-
-%-----------------------------------------------------------------------------%
-
-:- pred instmap_restrict(instmap, set(var), instmap).
-:- mode instmap_restrict(in, in, out) is det.
-
-instmap_restrict(unreachable, _, unreachable).
-instmap_restrict(reachable(InstMapping0), Vars, reachable(InstMapping)) :-
-	map_restrict(InstMapping0, Vars, InstMapping).
-
-:- pred map_restrict(map(K,V), set(K), map(K,V)).
-:- mode map_restrict(in, in, out) is det.
-
-map_restrict(Map0, Domain0, Map) :-
-	map__keys(Map0, MapKeys),
-	set__sorted_list_to_set(MapKeys, MapKeysSet),
-	set__intersect(Domain0, MapKeysSet, Domain),
-	set__to_sorted_list(Domain, Keys),
-	map__apply_to_list(Keys, Map0, Values),
-	assoc_list__from_corresponding_lists(Keys, Values, AssocList),
-	map__from_sorted_assoc_list(AssocList, Map).
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% Use the instmap deltas for all the atomic sub-goals to recompute
@@ -1559,4 +1485,5 @@ strip_builtin_qualifiers_from_pred_inst(yes(Pred0), yes(Pred)) :-
 	Pred = pred_inst_info(Uniq, Modes, Det),
 	strip_builtin_qualifiers_from_mode_list(Modes0, Modes).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -68,7 +68,7 @@
 :- implementation.
 
 :- import_module hlds_pred, hlds_goal, hlds_data, llds, (lambda).
-:- import_module prog_data, type_util, mode_util, quantification.
+:- import_module prog_data, type_util, mode_util, quantification, instmap.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
 
 :- import_module bool, int, string, list, set, map.

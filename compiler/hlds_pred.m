@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_goal, hlds_module, prog_data.
+:- import_module hlds_data, hlds_goal, hlds_module, prog_data, instmap.
 :- import_module bool, list, map, std_util, varset.
 
 :- implementation.

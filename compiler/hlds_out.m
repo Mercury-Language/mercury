@@ -159,7 +159,7 @@
 :- implementation.
 
 :- import_module mercury_to_mercury, globals, options.
-:- import_module llds_out, prog_out, prog_util.
+:- import_module llds_out, prog_out, prog_util, instmap.
 
 :- import_module bool, int, string, list, set, map, std_util, assoc_list.
 :- import_module term, term_io, varset, require, getopt.

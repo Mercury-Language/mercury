@@ -34,7 +34,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, llds, mode_util, term, quantification.
+:- import_module hlds_goal, llds, mode_util, term, quantification, instmap.
 :- import_module list, map, set, std_util, assoc_list, globals.
 
 %-----------------------------------------------------------------------------%

@@ -36,7 +36,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_goal, llds.
+:- import_module hlds_pred, hlds_goal, llds, instmap.
 :- import_module code_util, tree, globals, unify_proc.
 :- import_module bool, set, std_util, assoc_list.
 

@@ -97,7 +97,7 @@
 
 :- import_module hlds_goal, prog_data, det_report, det_util.
 :- import_module mode_util, globals, options, passes_aux.
-:- import_module hlds_out, mercury_to_mercury.
+:- import_module hlds_out, mercury_to_mercury, instmap.
 :- import_module bool, list, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%

@@ -34,7 +34,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, options, globals, goal_util, hlds_out.
-:- import_module modes, mode_util, make_hlds, quantification.
+:- import_module modes, mode_util, make_hlds, quantification, instmap.
 :- import_module switch_detection, det_util.
 
 :- import_module int, bool, list, map, set, std_util, require, term, varset.

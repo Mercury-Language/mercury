@@ -78,7 +78,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, mode_util, code_aux, prog_data.
+:- import_module hlds_data, mode_util, code_aux, prog_data, instmap.
 :- import_module int, set, std_util, assoc_list, term, require, varset.
 
 %-----------------------------------------------------------------------------%

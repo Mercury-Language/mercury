@@ -46,7 +46,7 @@
 :- implementation.
 :- import_module list, map, set, std_util.
 :- import_module mode_util, delay_info, term, require.
-:- import_module varset, code_aux, prog_data.
+:- import_module varset, code_aux, prog_data, instmap.
 
 %-----------------------------------------------------------------------------%
 

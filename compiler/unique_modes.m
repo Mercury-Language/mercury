@@ -49,7 +49,7 @@
 
 :- implementation.
 
-:- import_module hlds_data.
+:- import_module hlds_data, mode_debug, modecheck_unify, instmap.
 :- import_module bool, int, list, map, set, std_util, require, term, varset.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
 :- import_module modes, inst_match, prog_data, mode_errors, llds, unify_proc.
@@ -188,7 +188,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	%
 	% If we encountered any errors then report them
 	%
-	modecheck_report_errors(ModeInfo2, ModeInfo),
+	report_mode_errors(ModeInfo2, ModeInfo),
 
 	%
 	% Get the info we need from the mode_info and stuff it back

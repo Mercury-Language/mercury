@@ -51,7 +51,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_data.
+:- import_module hlds_goal, hlds_data, prog_data, instmap.
 :- import_module excess, make_hlds, mode_util.
 :- import_module require, map, list, string, int, bool, std_util.
 

@@ -30,7 +30,7 @@
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data.
+:- import_module hlds_pred, hlds_goal, hlds_data, instmap.
 :- import_module code_util, globals, make_hlds, mode_util, goal_util.
 :- import_module type_util, options, prog_data, quantification.
 :- import_module mercury_to_mercury.

@@ -71,7 +71,7 @@
 :- import_module code_util, call_gen, unify_gen, ite_gen, switch_gen.
 :- import_module disj_gen, globals, options, hlds_out.
 :- import_module code_aux, middle_rec.
-:- import_module prog_data.
+:- import_module prog_data, instmap.
 
 %---------------------------------------------------------------------------%
 

@@ -111,6 +111,13 @@
 
 %-----------------------------------------------------------------------------%
 
+        % If there were any errors recorded in the mode_info,
+        % report them to the user now.
+        %
+:- pred report_mode_errors(mode_info, mode_info).
+:- mode report_mode_errors(mode_info_di, mode_info_uo) is det.
+
+
 	% print an error message describing a mode error
 
 :- pred report_mode_error(mode_error, mode_info, io__state, io__state).
@@ -865,6 +872,27 @@ write_mode_inference_message(PredInfo, ProcInfo) -->
 		mercury_output_func_mode_decl(VarSet, Name, ArgModes, RetMode,
 				MaybeDet, Context)
 	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+        % If there were any errors recorded in the mode_info,
+        % report them to the user now.
+
+report_mode_errors(ModeInfo0, ModeInfo) :-
+        mode_info_get_errors(ModeInfo0, Errors),
+        ( Errors = [FirstError | _] ->	% XXX Why do we only report the first?
+                FirstError = mode_error_info(_, ModeError,
+                                                Context, ModeContext),
+                mode_info_set_context(Context, ModeInfo0, ModeInfo1),
+                mode_info_set_mode_context(ModeContext, ModeInfo1, ModeInfo2),
+                mode_info_get_io_state(ModeInfo2, IOState0),
+                report_mode_error(ModeError, ModeInfo2,
+                                IOState0, IOState),
+                mode_info_set_io_state(ModeInfo2, IOState, ModeInfo)
+        ;
+                ModeInfo = ModeInfo0
+        ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

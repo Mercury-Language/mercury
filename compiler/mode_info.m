@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
 :- import_module mode_errors, delay_info.
 :- import_module map, list, varset, set.
 
@@ -232,6 +232,16 @@
 :- mode mode_info_get_io_state	:: uniq_mode_info -> mode_info_no_io.
 :- mode mode_info_no_io		:: mode_info_no_io -> mode_info_no_io.
 :- mode mode_info_set_io_state	:: mode_info_no_io -> dead.
+
+%-----------------------------------------------------------------------------%
+
+        % record a mode error (and associated context info) in the mode_info.
+
+:- pred mode_info_error(set(var), mode_error, mode_info, mode_info).
+:- mode mode_info_error(in, in, mode_info_di, mode_info_uo) is det.
+
+:- pred mode_info_add_error(mode_error_info, mode_info, mode_info).
+:- mode mode_info_add_error(in, mode_info_di, mode_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -618,6 +628,19 @@ mode_info_get_nondet_live_vars(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,
 mode_info_set_nondet_live_vars(NondetLiveVars,
 			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,_,O),
 			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,NondetLiveVars,O)).
+
+%-----------------------------------------------------------------------------%
+
+mode_info_error(Vars, ModeError, ModeInfo0, ModeInfo) :-
+        mode_info_get_context(ModeInfo0, Context),
+        mode_info_get_mode_context(ModeInfo0, ModeContext),
+        ModeErrorInfo = mode_error_info(Vars, ModeError, Context, ModeContext),
+        mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo).
+
+mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo) :-
+        mode_info_get_errors(ModeInfo0, Errors0),
+        list__append(Errors0, [ModeErrorInfo], Errors),
+        mode_info_set_errors(Errors, ModeInfo0, ModeInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

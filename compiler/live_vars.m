@@ -29,7 +29,7 @@
 :- implementation.
 
 :- import_module llds, arg_info, prog_data, hlds_goal, hlds_data, mode_util.
-:- import_module globals, graph_colour.
+:- import_module globals, graph_colour, instmap.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module int, term, require.
 

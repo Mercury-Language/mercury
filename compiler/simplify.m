@@ -30,7 +30,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_goal, hlds_data.
+:- import_module hlds_module, hlds_goal, hlds_data, instmap.
 :- import_module det_report, det_util, det_analysis.
 :- import_module globals, options, passes_aux.
 :- import_module bool, set, map, require, std_util.

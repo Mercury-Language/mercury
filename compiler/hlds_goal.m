@@ -13,7 +13,7 @@
 :- interface.
 
 :- import_module bool, list, set, map, std_util.
-:- import_module hlds_data, prog_data.
+:- import_module hlds_data, prog_data, instmap.
 
 	% Here is how goals are represented
 
@@ -470,17 +470,6 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 
 :- pred goal_info_has_feature(hlds__goal_info, goal_feature).
 :- mode goal_info_has_feature(in, in) is semidet.
-
-	% The instmap delta stores the final instantiatedness
-	% of the non-local variables whose instantiatedness
-	% changed.
-
-:- type instmap_delta	==	instmap.
-
-:- type instmap		--->	reachable(instmapping)
-			;	unreachable.
-
-:- type instmapping	==	map(var, inst).
 
 :- pred goal_info_get_instmap_delta(hlds__goal_info, instmap_delta).
 :- mode goal_info_get_instmap_delta(in, out) is det.

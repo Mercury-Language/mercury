@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, goal_util, mode_util.
+:- import_module hlds_goal, goal_util, mode_util, instmap.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module int, term, require.
 
