@@ -101,20 +101,21 @@ which by default gets installed in /usr/local/mercury-VERSION/lib/mercury/html,
 using Netscape or MS Internet Explorer.  Or you can get a copy of GNU Emacs
 for NT and use it to browse the INFO version.
 
-There may still be some problems with case-insensitive filenames
+If you use mmake files named `Mmake' rather than `Mmakefile',
+there may still be some problems with case-insensitive filenames
 and the nameclash between `mmake' and `Mmake'.  If you run into any
-such problems, rename the `Mmake' file in each subdirectory to `Mmakefile'.
+such problems, rename your `Mmake' file to `Mmakefile'.
 
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 
 Index: Mmake
 ===================================================================
-RCS file: /home/staff/zs/imp/mercury/Mmake,v
+RCS file: /home/staff/zs/imp/mercury/Mmakefile,v
 retrieving revision 1.62
 diff -u -r1.62 Mmake
---- Mmake	1996/12/05 19:25:00	1.62
-+++ Mmake	1996/12/20 11:40:23
+--- Mmakefile	1996/12/05 19:25:00	1.62
++++ Mmakefile	1996/12/20 11:40:23
 @@ -17,7 +17,9 @@
  
  SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
