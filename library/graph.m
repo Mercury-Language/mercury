@@ -7,6 +7,12 @@
 %
 % This module defines a directed graph data type.
 %
+% graph__insert_node is O(log N) for N nodes.
+% graph__insert_edge is O(log N+log A) for N nodes and A arcs.
+% graph__path(in, in, in) is O(log N) + O(set__member) for N nodes.
+%	The cost of the set__member operation is in the number of
+%	edges leaving the node.
+%
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -25,6 +31,9 @@
 
 :- pred graph__insert_node(graph(N, A), N, node(N), graph(N, A)).
 :- mode graph__insert_node(in, in, out, out) is det.
+
+:- pred graph__find_node(graph(N, A), N, node(N)).
+:- mode graph__find_node(in, in, out) is nondet.
 
 :- pred graph__insert_edge(graph(N, A), node(N), node(N), A,
 						arc(A), graph(N, A)).
@@ -85,6 +94,12 @@ graph__insert_node(G0, NInfo, N, G) :-
 	set__init(EdgeSet),
 	map__set(Edges0, N, EdgeSet, Edges),
 	graph__set_edges(G2, Edges, G).
+
+%------------------------------------------------------------------------------%
+
+graph__find_node(G, I, N) :-
+	graph__get_nodes(G, Ns),
+	map__inverse_search(Ns, I, N).
 
 %------------------------------------------------------------------------------%
 
