@@ -41,16 +41,24 @@
     #define	MR_SIGNAL(cnd)		pthread_cond_signal((cnd))
     #define	MR_WAIT(cnd, mtx)	pthread_cond_wait((cnd), (mtx))
   #else
-    void MR_mutex_lock(MercuryLock *lock, const char *from);
-    void MR_mutex_unlock(MercuryLock *lock, const char *from);
-    void MR_cond_signal(MercuryCond *cond);
-    void MR_cond_wait(MercuryCond *cond, MercuryLock *lock);
+    #define	MR_LOCK(lck, from)					\
+    				( MR_debug_threads ?			\
+					MR_mutex_lock((lck), (from))	\
+				:	pthread_mutex_lock((lck)))
+    #define	MR_UNLOCK(lck, from)					\
+    				( MR_debug_threads ?			\
+    					MR_mutex_unlock((lck), (from))	\
+				:	pthread_mutex_unlock((lck)))
 
-    #define	MR_LOCK(lck, from)	MR_mutex_lock((lck), (from))
-    #define	MR_UNLOCK(lck, from)	MR_mutex_unlock((lck), (from))
+    #define	MR_SIGNAL(cnd)						\
+    				( MR_debug_threads ?			\
+					MR_cond_signal((cnd))		\
+				:	pthread_cond_signal((cnd)))
+    #define	MR_WAIT(cnd, mtx)					\
+    				( MR_debug_threads ?			\
+					MR_cond_wait((cnd), (mtx))	\
+				:	pthread_cond_wait((cnd), (mtx)))
 
-    #define	MR_SIGNAL(cnd)		MR_cond_signal((cnd))
-    #define	MR_WAIT(cnd, mtx)	MR_cond_wait((cnd), (mtx))
   #endif
 
     	/*
@@ -109,6 +117,12 @@
 	*/
   extern MercuryThreadKey MR_exception_handler_key;
 
+  	/*
+	** Variable used to determine whether to print debug messages
+	** for threads.
+	*/
+  extern MR_bool	MR_debug_threads;
+
 #else /* not MR_THREAD_SAFE */
 
   #define MR_LOCK(nothing, from)	do { } while (0)
@@ -158,5 +172,10 @@ extern	MR_bool	MR_init_thread(MR_when_to_use);
 */
 
 extern	void    MR_finalize_thread_engine(void);
+
+void MR_mutex_lock(MercuryLock *lock, const char *from);
+void MR_mutex_unlock(MercuryLock *lock, const char *from);
+void MR_cond_signal(MercuryCond *cond);
+void MR_cond_wait(MercuryCond *cond, MercuryLock *lock);
 
 #endif
