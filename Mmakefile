@@ -216,7 +216,7 @@ tar: README INSTALL
 	cd util && mmake realclean
 	cd doc && mmake distclean
 	-rm -f errs errs2 update.log
-	-rm -f config.status config.cache config.log configure.log
+	-rm -f config.status config.cache config.log configure.log a.out
 	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
 	-rm -f Mmake.common
 	chmod -R a+r *
