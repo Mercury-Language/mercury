@@ -540,8 +540,10 @@ static	MR_bool	MR_trace_options_view(const char **window_cmd,
 			MR_bool *split, MR_bool *close_window, char ***words,
 			int *word_count, const char *cat, const char*item);
 static	MR_bool	MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
-			MR_Integer *depth_step_size, char ***words, 
-			int *word_count, const char *cat, const char *item);
+			MR_Integer *depth_step_size, 
+			MR_Decl_Search_Mode *search_mode, 
+			char ***words, int *word_count, const char *cat, 
+			const char *item);
 static	MR_bool	MR_trace_options_type_ctor(MR_bool *print_rep,
 			MR_bool *print_functors, char ***words,
 			int *word_count, const char *cat, const char *item);
@@ -5510,10 +5512,15 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
+	MR_Decl_Search_Mode	search_mode;
+
 	MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
 	MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
+	search_mode = MR_trace_get_default_search_mode();
+		
 	if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-		&MR_edt_depth_step_size, &words, &word_count, "dd", "dd"))
+		&MR_edt_depth_step_size, &search_mode,
+		&words, &word_count, "dd", "dd"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -5524,6 +5531,8 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				"after `unhide_events on'.\n");
 			return KEEP_INTERACTING;
 		}
+
+		MR_trace_decl_set_fallback_search_mode(search_mode);
 
 		if (MR_trace_start_decl_debug(MR_TRACE_DECL_DEBUG,
 			NULL, cmd, event_info, event_details, jumpaddr))
@@ -5544,11 +5553,15 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 {
 	MR_Trace_Mode	trace_mode;
 	const char	*filename;
+	MR_Decl_Search_Mode	search_mode;
 
 	MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
-	MR_edt_depth_step_size = 3;
+	MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
+	search_mode = MR_trace_get_default_search_mode();
+	
 	if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-		&MR_edt_depth_step_size, &words, &word_count, "dd", "dd_dd"))
+		&MR_edt_depth_step_size, &search_mode,
+		&words, &word_count, "dd", "dd_dd"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count <= 2) {
@@ -5559,6 +5572,8 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			trace_mode = MR_TRACE_DECL_DEBUG_DEBUG;
 			filename = (const char *) NULL;
 		} 
+
+		MR_trace_decl_set_fallback_search_mode(search_mode);
 
 		if (MR_trace_start_decl_debug(trace_mode, filename,
 			cmd, event_info, event_details, jumpaddr))
@@ -6552,20 +6567,21 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 
 static struct MR_option MR_trace_dd_opts[] =
 {
-	{ "assume-all-io-is-tabled",	MR_no_argument,	NULL,	'a' },
-	{ "depth-step-size",	MR_required_argument, 	NULL, 	'd' },
-	{ NULL,			MR_no_argument,		NULL,	0 }
+	{ "assume-all-io-is-tabled",	MR_no_argument,		NULL,	'a' },
+	{ "depth-step-size",		MR_required_argument, 	NULL, 	'd' },
+	{ "search-mode",		MR_required_argument,	NULL,	's' },
+	{ NULL,				MR_no_argument,		NULL,	0 }
 };
 
 static MR_bool
 MR_trace_options_dd(MR_bool *assume_all_io_is_tabled, 
-	MR_Integer *depth_step_size, char ***words, int *word_count, const char
-	*cat, const char *item)
+	MR_Integer *depth_step_size, MR_Decl_Search_Mode *search_mode, 
+	char ***words, int *word_count, const char *cat, const char *item)
 {
 	int	c;
 
 	MR_optind = 0;
-	while ((c = MR_getopt_long(*word_count, *words, "ad:", 
+	while ((c = MR_getopt_long(*word_count, *words, "ad:s:", 
 		MR_trace_dd_opts, NULL)) != EOF)
 	{
 		switch (c) {
@@ -6576,6 +6592,13 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
 			case 'd':
 				if (!MR_trace_is_natural_number(MR_optarg, 
 						depth_step_size)) {
+					MR_trace_usage(cat, item);
+					return MR_FALSE;
+				}
+				break;
+			case 's':
+				if (! MR_trace_is_valid_search_mode_string(
+						MR_optarg, search_mode)) {
 					MR_trace_usage(cat, item);
 					return MR_FALSE;
 				}
@@ -7444,6 +7467,11 @@ static const char *const	MR_trace_context_cmd_args[] =
 static const char *const	MR_trace_scope_cmd_args[] =
 	{ "all", "interface", "entry", NULL };
 
+static const char *const	MR_trace_dd_cmd_args[] =
+	{ "-s", "-a", "-d", "--search-mode", 
+	"--assume-all-io-is-tabled", "--depth-step-size", 
+	"top_down", "divide_and_query", NULL };
+
 /*
 ** "table_io allow" is deliberately not documented as it is developer only
 ** "table_io begin" and "table_io end" are deliberately not documented in an
@@ -7574,11 +7602,11 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		NULL, MR_trace_help_completer },
 
 	{ "dd", "dd", MR_trace_cmd_dd,
+		MR_trace_dd_cmd_args, MR_trace_null_completer },
+	{ "dd", "trust", MR_trace_cmd_trust, 
+		NULL, MR_trace_breakpoint_completer },
+	{ "dd", "untrust", MR_trace_cmd_untrust, 
 		NULL, MR_trace_null_completer },
-	{ "dd", "trust", MR_trace_cmd_trust, NULL, 
-		MR_trace_null_completer },
-	{ "dd", "untrust", MR_trace_cmd_untrust, NULL,
-		MR_trace_null_completer },
 	{ "dd", "trusted", MR_trace_cmd_trusted, NULL,
 		MR_trace_null_completer },
 
@@ -7633,7 +7661,7 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "developer", "unhide_events", MR_trace_cmd_unhide_events,
 		MR_trace_on_off_args, MR_trace_null_completer },
 	{ "developer", "dd_dd", MR_trace_cmd_dd_dd,
-		NULL, MR_trace_filename_completer },
+		MR_trace_dd_cmd_args, MR_trace_filename_completer },
 	{ "developer", "table", MR_trace_cmd_table,
 		NULL, MR_trace_null_completer },
 	{ "developer", "type_ctor", MR_trace_cmd_type_ctor,

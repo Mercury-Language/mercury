@@ -19,6 +19,7 @@ DECLARATIVE_PROGS=		\
 	deep_warning		\
 	dependency		\
 	dependency2		\
+	divide_and_query1	\
 	empty_command		\
 	explicit_subtree	\
 	failed_cond		\
@@ -228,6 +229,11 @@ dependency.out: dependency dependency.inp
 
 dependency2.out: dependency2 dependency2.inp
 	$(MDB) ./dependency2 < dependency2.inp > dependency2.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+divide_and_query1.out: divide_and_query1 divide_and_query1.inp
+	$(MDB_STD) ./divide_and_query1 < divide_and_query1.inp \
+		> divide_and_query1.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 empty_command.out: empty_command empty_command.inp

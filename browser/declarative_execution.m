@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 The University of Melbourne.
+% Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -75,8 +75,10 @@
 	;	redo(
 			redo_preceding		:: R,
 						% Preceding event.
-			redo_exit		:: R
+			redo_exit		:: R,
 						% EXIT event.
+			redo_event		:: event_number
+						% REDO event number.
 		)
 	;	fail(
 			fail_preceding		:: R,
@@ -307,7 +309,7 @@
 :- pred call_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode call_node_from_id(in, in, out(trace_node_call)) is det.
 
-:- inst trace_node_redo ---> redo(ground, ground).
+:- inst trace_node_redo ---> redo(ground, ground, ground).
 
 	% maybe_redo_node_from_id/3 fails if the argument is a
 	% NULL reference.
@@ -651,7 +653,7 @@ step_left_in_contour(Store, Node) = Prec :-
 	Node = fail(_, _, _, _),
 	find_prev_contour(Store, Node, Prec).
 step_left_in_contour(Store, Node) = Prec :-
-	Node = redo(_, _),
+	Node = redo(_, _, _),
 	find_prev_contour(Store, Node, Prec).
 step_left_in_contour(Store, Node) = Prec :-
 	Node = neg_fail(_, _),
@@ -666,13 +668,13 @@ step_left_in_contour(Store, Node) = Prec :-
 
 :- inst trace_node_reverse
 	---> 	fail(ground, ground, ground, ground)
-	;	redo(ground, ground)
+	;	redo(ground, ground, ground)
 	;	neg_fail(ground, ground).
 
 find_prev_contour(Store, fail(_, Call, _, _), OnContour) :-
 	call_node_from_id(Store, Call, CallNode),
 	OnContour = CallNode ^ call_preceding.
-find_prev_contour(Store, redo(_, Exit), OnContour) :-
+find_prev_contour(Store, redo(_, Exit, _), OnContour) :-
 	exit_node_from_id(Store, Exit, ExitNode),
 	OnContour = ExitNode ^ exit_preceding.
 find_prev_contour(Store, neg_fail(_, Neg), OnContour) :-
@@ -694,7 +696,7 @@ step_in_stratum(Store, fail(_, Call, MaybeRedo, _)) =
 	step_over_redo_or_call(Store, Call, MaybeRedo).
 step_in_stratum(Store, excp(_, Call, MaybeRedo, _, _)) =
 	step_over_redo_or_call(Store, Call, MaybeRedo).
-step_in_stratum(Store, redo(_, Exit)) = Next :-
+step_in_stratum(Store, redo(_, Exit, _)) = Next :-
 	exit_node_from_id(Store, Exit, ExitNode),
 	Next = ExitNode ^ exit_preceding.
 step_in_stratum(_, switch(Next, _)) = Next.
@@ -730,7 +732,7 @@ step_over_redo_or_call(Store, Call, MaybeRedo) = Next :-
 	(
 		maybe_redo_node_from_id(Store, MaybeRedo, Redo)
 	->
-		Redo = redo(Next, _)
+		Redo = redo(Next, _, _)
 	;
 		call_node_from_id(Store, Call, CallNode),
 		Next = CallNode ^ call_preceding
@@ -758,7 +760,7 @@ call_node_from_id(Store, NodeId, Node) :-
 maybe_redo_node_from_id(Store, NodeId, Node) :-
 	trace_node_from_id(Store, NodeId, Node0),
 	(
-		Node0 = redo(_, _)
+		Node0 = redo(_, _, _)
 	->
 		Node = Node0
 	;
@@ -950,7 +952,7 @@ set_trace_node_arg(Node0, FieldNum, Val, Node) :-
 
 trace_node_port(call(_, _, _, _, _, _, _, _, _)) = call.
 trace_node_port(exit(_, _, _, _, _, _))	= exit.
-trace_node_port(redo(_, _))		= redo.
+trace_node_port(redo(_, _, _))		= redo.
 trace_node_port(fail(_, _, _, _))	= fail.
 trace_node_port(excp(_, _, _, _, _))	= exception.
 trace_node_port(switch(_, _))		= switch.
@@ -972,7 +974,7 @@ trace_node_port(neg_fail(_, _))		= neg_failure.
 
 trace_node_path(_, call(_, _, _, _, _, _, _, P, _)) = P.
 trace_node_path(_, exit(_, _, _, _, _, _)) = "".
-trace_node_path(_, redo(_, _)) = "".
+trace_node_path(_, redo(_, _, _)) = "".
 trace_node_path(_, fail(_, _, _, _)) = "".
 trace_node_path(_, excp(_, _, _, _, _)) = "".
 trace_node_path(_, switch(_, P)) = P.
@@ -1012,7 +1014,7 @@ trace_node_seqno(S, Node, SeqNo) :-
 :- pragma export(trace_node_call(in, in, out), "MR_DD_trace_node_call").
 
 trace_node_call(_, exit(_, Call, _, _, _, _), Call).
-trace_node_call(S, redo(_, Exit), Call) :-
+trace_node_call(S, redo(_, Exit, _), Call) :-
 	exit_node_from_id(S, Exit, ExitNode),
 	Call = ExitNode ^ exit_call.
 trace_node_call(_, fail(_, Call, _, _), Call).
@@ -1110,12 +1112,12 @@ construct_call_node_with_goal(Preceding, Atom, SeqNo, EventNo, MaxDepth,
 construct_exit_node(Preceding, Call, MaybeRedo, Atom, EventNo, IoSeqNum)
 	= exit(Preceding, Call, MaybeRedo, Atom, EventNo, IoSeqNum).
 
-:- func construct_redo_node(trace_node_id, trace_node_id)
+:- func construct_redo_node(trace_node_id, trace_node_id, event_number)
 		= trace_node(trace_node_id).
-:- pragma export(construct_redo_node(in, in) = out,
+:- pragma export(construct_redo_node(in, in, in) = out,
 		"MR_DD_construct_redo_node").
 
-construct_redo_node(Preceding, Exit) = redo(Preceding, Exit).
+construct_redo_node(Preceding, Exit, Event) = redo(Preceding, Exit, Event).
 
 :- func construct_fail_node(trace_node_id, trace_node_id, trace_node_id,
 		event_number) = trace_node(trace_node_id).
@@ -1372,7 +1374,7 @@ convert_node(_, _) :-
 
 preceding_node(call(P, _, _, _, _, _, _, _, _)) = P.
 preceding_node(exit(P, _, _, _, _, _))	= P.
-preceding_node(redo(P, _))		= P.
+preceding_node(redo(P, _, _))		= P.
 preceding_node(fail(P, _, _, _))	= P.
 preceding_node(excp(P, _, _, _, _))	= P.
 preceding_node(switch(P, _))		= P.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 The University of Melbourne.
+% Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,10 +51,23 @@
 
 :- type analyser_state(T).
 
+:- type search_mode.
+
+:- func divide_and_query_search_mode = search_mode.
+
+:- func top_down_search_mode = search_mode.
+
 :- pred analyser_state_init(io_action_map::in, analyser_state(T)::out) is det.
-	
+
 	% Resets the state of the analyser except for the io_action_map.
+	%
 :- pred reset_analyser(analyser_state(T)::in, analyser_state(T)::out) is det.
+
+	% Make the given search mode the fallback search mode
+	% and the current search mode for the analyser.
+	%
+:- pred set_fallback_search_mode(search_mode::in, 
+	analyser_state(T)::in, analyser_state(T)::out) is det.
 
 :- pred analyser_state_replace_io_map(io_action_map::in,
 	analyser_state(T)::in, analyser_state(T)::out) is det.
@@ -156,7 +169,23 @@
 			suspects	:: array(suspect_id),
 			range		:: pair(int, int),
 			last_tested	:: int
-		).
+		)
+	;
+			% 
+			% An adapted version of the divide and query approach
+			% proposed by Shapiro.  We weight each node with the
+			% number of events executed by descendent children
+			% plus the internal body events of the call.  This is
+			% mainly because it's hard to work out how many
+			% descendents are in unmaterialized portions of the EDT
+			% without using memory proportional to the
+			% unmaterialized portion.
+			%
+		divide_and_query.
+
+divide_and_query_search_mode = divide_and_query.
+
+top_down_search_mode = top_down.
 
 	% Each search algorithm should respond with either a question
 	% or a request for an explicit subtree to be generated for a suspect 
@@ -188,6 +217,11 @@
 				% oracle.
 			search_mode		:: search_mode,
 				
+				% The search mode to use by default. 
+				% Only non-parametrized search modes should
+				% be used as the fallback search mode.
+			fallback_search_mode	:: search_mode,
+
 				% Everytime a search finds a suspect to
 				% ask the oracle about it is put in this field
 				% before asking the oracle, so the analyser
@@ -218,12 +252,17 @@
 	;	explicit_supertree.
 
 analyser_state_init(IoActionMap, Analyser) :-
-	Analyser = analyser(empty_search_space, no, top_down, no, 
-		IoActionMap, no).
+	Analyser = analyser(empty_search_space, no, top_down, 
+		top_down, no, IoActionMap, no).
 
 reset_analyser(!Analyser) :-
-	!:Analyser = analyser(empty_search_space, no, top_down, no, 
-		!.Analyser ^ io_action_map, no).
+	FallBack = !.Analyser ^ fallback_search_mode,
+	!:Analyser = analyser(empty_search_space, no, FallBack, 
+		FallBack, no, !.Analyser ^ io_action_map, no).
+
+set_fallback_search_mode(FallBackSearchMode, !Analyser) :-
+	!:Analyser = !.Analyser ^ fallback_search_mode := FallBackSearchMode,
+	!:Analyser = !.Analyser ^ search_mode := FallBackSearchMode.
 
 analyser_state_replace_io_map(IoActionMap, !Analyser) :-
 	!:Analyser = !.Analyser ^ io_action_map := IoActionMap.
@@ -254,7 +293,7 @@ start_or_resume_analysis(Store, Node, Response, !Analyser) :-
 		% start of a new declarative debugging session.
 		%
 		reset_analyser(!Analyser),
-		initialise_search_space(Node, SearchSpace),
+		initialise_search_space(Store, Node, SearchSpace),
 		!:Analyser = !.Analyser ^ search_space := SearchSpace,
 		topmost_det(SearchSpace, TopMostId),
 		!:Analyser = !.Analyser ^ last_search_question := 
@@ -284,8 +323,9 @@ process_answer(_, skip(_), SuspectId, !Analyser) :-
 	skip_suspect(SuspectId, !.Analyser ^ search_space, SearchSpace),
 	!:Analyser = !.Analyser ^ search_space := SearchSpace.
 
-process_answer(_, ignore(_), SuspectId, !Analyser) :-
-	ignore_suspect(SuspectId, !.Analyser ^ search_space, SearchSpace),
+process_answer(Store, ignore(_), SuspectId, !Analyser) :-
+	ignore_suspect(Store, SuspectId, !.Analyser ^ search_space, 
+		SearchSpace),
 	!:Analyser = !.Analyser ^ search_space := SearchSpace.
 
 process_answer(_, truth_value(_, correct), SuspectId, !Analyser) :-
@@ -337,15 +377,14 @@ revise_analysis(Store, Response, !Analyser) :-
 		edt_question(!.Analyser ^ io_action_map, Store, Node,
 			Question),
 		Response = revise(Question),
-		revise_root(SearchSpace, SearchSpace1),
+		revise_root(Store, SearchSpace, SearchSpace1),
 		!:Analyser = !.Analyser ^ search_space := SearchSpace1,
 		!:Analyser = !.Analyser ^ last_search_question := yes(RootId),
-		!:Analyser = !.Analyser ^ search_mode := top_down
+		!:Analyser = !.Analyser ^ search_mode := 
+			!.Analyser ^ fallback_search_mode
 	;
-		%
 		% There must be a root, since a bug was found (and is now
 		% being revised).
-		%
 		throw(internal_error("revise_analysis", "no root"))
 	).
 
@@ -354,6 +393,11 @@ revise_analysis(Store, Response, !Analyser) :-
 	is det <= mercury_edt(S, T).
 
 decide_analyser_response(Store, Response, !Analyser) :-
+	% Do a sanity check before the search.  So we can determine afterwards
+	% if the search corrupted the search space at all.
+	% XXX this should be removed at some stage as it's relatively slow.
+	check_search_space_consistency(Store, !.Analyser ^ search_space,
+		"Start of decide_analyser_response"),
 	some [!SearchSpace] (
 		!:SearchSpace = !.Analyser ^ search_space,
 		(
@@ -371,7 +415,8 @@ decide_analyser_response(Store, Response, !Analyser) :-
 			are_unknown_suspects(!.SearchSpace)
 		->
 			search(Store, !SearchSpace, !.Analyser ^ search_mode,
-				NewMode, SearchResponse),
+				!.Analyser ^ fallback_search_mode, NewMode, 
+				SearchResponse),
 			!:Analyser = !.Analyser ^ search_space :=
 				!.SearchSpace,
 			!:Analyser = !.Analyser ^ search_mode := NewMode,
@@ -409,7 +454,13 @@ decide_analyser_response(Store, Response, !Analyser) :-
 				)
 			)
 		)
-	).
+	),
+	% Do a sanity check after the search to determine if the search 
+	% corrupted the search space at all. 
+	% XXX this should be removed at some stage as it's relatively slow.
+	check_search_space_consistency(Store, !.Analyser ^ search_space,
+		"End of decide_analyser_response").
+
 
 :- pred handle_search_response(S::in, search_response::in, 
 	analyser_state(T)::in, analyser_state(T)::out, 
@@ -495,26 +546,34 @@ bug_response(Store, IoActionMap, SearchSpace, BugId, Evidence,
 	% next time round.
 	% 
 :- pred search(S::in, search_space(T)::in, search_space(T)::out, 
-	search_mode::in, search_mode::out, search_response::out) 
-	is det <= mercury_edt(S, T).
+	search_mode::in, search_mode::in, 
+	search_mode::out, search_response::out) is det <= mercury_edt(S, T).
 
-search(Store, !SearchSpace, top_down, NewMode, Response) :-
-	top_down_search(Store, !SearchSpace, Response, NewMode).
+search(Store, !SearchSpace, top_down, FallBackSearchMode, NewMode, Response) :-
+	top_down_search(Store, !SearchSpace, Response),
+	% We always go back to the fallback search mode after a top-down
+	% search, because some fallback searches (such as divide and query)
+	% use top-down as a fail safe and we want the fallback search to 
+	% resume after the top-down search.
+	NewMode = FallBackSearchMode.
 
 search(Store, !SearchSpace, follow_subterm_end(SuspectId, ArgPos, TermPath,	
-		LastUnknown), NewMode, Response) :-
+		LastUnknown), FallBackSearchMode, NewMode, Response) :-
 	follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, 
-		ArgPos, TermPath, NewMode, Response).
+		ArgPos, TermPath, FallBackSearchMode, NewMode, Response).
 
 search(Store, !SearchSpace, binary(PathArray, Top - Bottom, LastTested),
-		NewMode, Response) :-
+		FallBackSearchMode, NewMode, Response) :-
 	binary_search(Store, PathArray, Top, Bottom, LastTested, !SearchSpace, 
-		NewMode, Response).
+		FallBackSearchMode, NewMode, Response).
+
+search(Store, !SearchSpace, divide_and_query, _, NewMode, Response) :-
+	divide_and_query_search(Store, !SearchSpace, Response, NewMode).
 
 :- pred top_down_search(S::in, search_space(T)::in, search_space(T)::out,
-	search_response::out, search_mode::out) is det <= mercury_edt(S, T).
+	search_response::out) is det <= mercury_edt(S, T).
 
-top_down_search(Store, !SearchSpace, Response, NewMode) :-
+top_down_search(Store, !SearchSpace, Response) :-
 	%
 	% If there's no root yet (because the oracle hasn't asserted any nodes
 	% are erroneous yet) then use the topmost suspect as a starting point.
@@ -533,16 +592,14 @@ top_down_search(Store, !SearchSpace, Response, NewMode) :-
 		SearchSpace1 = !:SearchSpace,
 		(
 			MaybeDescendent = yes(Unknown),
-			Response = question(Unknown),
-			NewMode = top_down
+			Response = question(Unknown)
 		;
 			MaybeDescendent = no,
 			(
 				choose_skipped_suspect(!.SearchSpace,
 					SkippedSuspect)
 			->
-				Response = question(SkippedSuspect),
-				NewMode = top_down
+				Response = question(SkippedSuspect)
 			;
 				throw(internal_error("top_down_search",
 					"no unknown or skipped suspects"))
@@ -563,8 +620,7 @@ top_down_search(Store, !SearchSpace, Response, NewMode) :-
 		(
 			pick_implicit_root(Store, !.SearchSpace, ImplicitRoot)
 		->
-			Response = require_explicit_subtree(ImplicitRoot),
-			NewMode = top_down
+			Response = require_explicit_subtree(ImplicitRoot)
 		;
 			throw(internal_error("top_down_search",
 				"first_unknown_descendent requires an "
@@ -577,11 +633,11 @@ top_down_search(Store, !SearchSpace, Response, NewMode) :-
 
 :- pred follow_subterm_end_search(S::in, search_space(T)::in,
 	search_space(T)::out, maybe(suspect_id)::in, suspect_id::in,
-	arg_pos::in, term_path::in, search_mode::out,
+	arg_pos::in, term_path::in, search_mode::in, search_mode::out,
 	search_response::out) is det <= mercury_edt(S, T).
 
 follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos, 
-		TermPath, NewMode, SearchResponse) :-
+		TermPath, FallBackSearchMode, NewMode, SearchResponse) :-
 	find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 		FindOriginResponse),
 	(
@@ -605,9 +661,10 @@ follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos,
 					Unknown, NewMode)
 			;
 				LastUnknown = no,
-				top_down_search(Store, !SearchSpace, 
-					SearchResponse, NewMode)
-			)
+				search(Store, !SearchSpace, FallBackSearchMode, 
+					FallBackSearchMode, NewMode, 
+					SearchResponse)
+				)
 		)
 	;
 		FindOriginResponse = not_found,
@@ -618,8 +675,8 @@ follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos,
 				Unknown, NewMode)
 		;
 			LastUnknown = no,
-			top_down_search(Store, !SearchSpace,
-				SearchResponse, NewMode)
+			search(Store, !SearchSpace, FallBackSearchMode, 
+				FallBackSearchMode, NewMode, SearchResponse)
 		)
 	;
 		FindOriginResponse = require_explicit_subtree,
@@ -663,8 +720,9 @@ follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos,
 					Unknown, NewMode)
 			;
 				LastUnknown = no,
-				top_down_search(Store, !SearchSpace,
-					SearchResponse, NewMode)
+				search(Store, !SearchSpace, FallBackSearchMode, 
+					FallBackSearchMode, NewMode, 
+					SearchResponse)
 			)
 		;
 			%
@@ -677,7 +735,7 @@ follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos,
 			%
 			follow_subterm_end_search(Store, !SearchSpace, 
 				NewLastUnknown, OriginId, OriginArgPos,
-				OriginTermPath, NewMode, 
+				OriginTermPath, FallBackSearchMode, NewMode, 
 				SearchResponse)
 		)
 	).
@@ -713,11 +771,11 @@ setup_binary_search(SearchSpace, SuspectId, SearchMode) :-
 	).
 
 :- pred binary_search(S::in, array(suspect_id)::in, int::in, int::in, int::in,
-	search_space(T)::in, search_space(T)::out, search_mode::out,
-	search_response::out) is det <= mercury_edt(S, T).
+	search_space(T)::in, search_space(T)::out, search_mode::in,
+	search_mode::out, search_response::out) is det <= mercury_edt(S, T).
 
-binary_search(Store, PathArray, Top, Bottom, LastTested, !SearchSpace, NewMode, 
-		Response) :-
+binary_search(Store, PathArray, Top, Bottom, LastTested, !SearchSpace, 
+		FallBackSearchMode, NewMode, Response) :-
 	SuspectId = PathArray ^ elem(LastTested),
 	%
 	% Check what the result of the query about LastTested was and adjust
@@ -743,8 +801,10 @@ binary_search(Store, PathArray, Top, Bottom, LastTested, !SearchSpace, NewMode,
 	(
 		NewTop > NewBottom
 	->
-		% Revert to top down search when binary search is over.
-		top_down_search(Store, !SearchSpace, Response, NewMode)
+		% Revert to the fallback search mode when binary search is 
+		% over.
+		search(Store, !SearchSpace, FallBackSearchMode,
+			FallBackSearchMode, NewMode, Response)
 	;
 		(
 			find_unknown_closest_to_middle(!.SearchSpace, 
@@ -757,9 +817,9 @@ binary_search(Store, PathArray, Top, Bottom, LastTested, !SearchSpace, NewMode,
 				UnknownClosestToMiddle))
 		;
 			% No unknown suspects on the path, so revert to
-			% top down search.
-			top_down_search(Store, !SearchSpace, Response, 
-				NewMode)
+			% the fallback search mode.
+			search(Store, !SearchSpace, FallBackSearchMode, 
+				FallBackSearchMode, NewMode, Response)
 		)
 	).
 
@@ -810,3 +870,147 @@ find_unknown_closest_to_range(SearchSpace, PathArray, OuterTop, OuterBottom,
 			OuterTop, OuterBottom, InnerTop - 1, InnerBottom + 1,
 			Unknown)
 	).	
+
+:- pred divide_and_query_search(S::in, search_space(T)::in, 
+	search_space(T)::out, search_response::out, search_mode::out) is det
+	<= mercury_edt(S, T).
+
+divide_and_query_search(Store, !SearchSpace, Response, NewMode) :-
+	%
+	% If there's no root yet (because the oracle hasn't asserted any nodes
+	% are erroneous yet), then use top-down search.
+	%
+	(
+		root(!.SearchSpace, RootId)
+	->
+		NewMode = divide_and_query,
+		(
+			children(Store, RootId, !SearchSpace, Children)
+		->
+			find_middle_weight(Store, Children, RootId, no,
+				!SearchSpace, Response)
+		;
+			Response = require_explicit_subtree(RootId)
+		)
+	;
+		top_down_search(Store, !SearchSpace, Response),
+		NewMode = divide_and_query
+	).
+
+	% Call find_middle_weight/7 if we are able to find the children of the
+	% given suspect id, otherwise return a require_explicit_subtree
+	% search response in the last argument.
+	%
+:- pred find_middle_weight_if_children(S::in, suspect_id::in, suspect_id::in,
+	maybe(suspect_id)::in, search_space(T)::in, search_space(T)::out,
+	search_response::out) is det <= mercury_edt(S, T).
+
+find_middle_weight_if_children(Store, SuspectId, TopId, MaybeLastUnknown,
+		!SearchSpace, Response) :-
+	(
+		children(Store, SuspectId, !SearchSpace, Children)
+	->
+		find_middle_weight(Store, Children, TopId,
+			MaybeLastUnknown, !SearchSpace, Response)
+	;
+		Response = require_explicit_subtree(SuspectId)
+	).
+
+	% find_middle_weight(Store, SuspectIds, TopId, MaybeLastUnknown,
+	%	!SearchSpace, Response).
+	% Find the unknown suspect whose weight is closest to half the weight
+	% of TopId, considering only the heaviest suspect in SuspectIds, the
+	% heaviest child of the heaviest suspect in SuspectIds and so on.
+	% MaybeLastUnknown is the last node that was unknown in the search (if
+	% any).  
+	%
+:- pred find_middle_weight(S::in, list(suspect_id)::in, suspect_id::in,
+	maybe(suspect_id)::in, search_space(T)::in, 
+	search_space(T)::out, search_response::out)
+	is det <= mercury_edt(S, T).
+
+find_middle_weight(Store, [], _, MaybeLastUnknown, !SearchSpace, Response) :-
+	(
+		MaybeLastUnknown = yes(LastUnknown),
+		Response = question(LastUnknown)
+	;
+		MaybeLastUnknown = no,
+		% This could happen when there were no unknown suspects 
+		% encountered during the search, in which case we revert 
+		% to top-down search.
+		top_down_search(Store, !SearchSpace, Response)
+	).
+find_middle_weight(Store, [SuspectId | SuspectIds], TopId, MaybeLastUnknown, 
+		!SearchSpace, Response) :-
+	Target = get_weight(!.SearchSpace, TopId) // 2,
+	%
+	% Find the heaviest suspect:
+	%
+	Weight = get_weight(!.SearchSpace, SuspectId),
+	list.foldl(max_weight(!.SearchSpace), SuspectIds, 
+		{Weight, SuspectId}, {MaxWeight, Heaviest}),
+	(
+		MaxWeight > Target
+	->
+		(
+			suspect_unknown(!.SearchSpace, Heaviest)
+		->
+			NewMaybeLastUnknown = yes(Heaviest)
+		;
+			NewMaybeLastUnknown = MaybeLastUnknown
+		),
+		find_middle_weight_if_children(Store, Heaviest, TopId,
+			NewMaybeLastUnknown, !SearchSpace, Response)
+	;
+		(
+			suspect_unknown(!.SearchSpace, Heaviest)
+		->
+			(
+				MaybeLastUnknown = yes(LastUnknown),
+				LastUnknownWeight = get_weight(!.SearchSpace, 
+					LastUnknown),
+				%
+				% If the last unknown suspect was closer to
+				% the target weight then ask about it.
+				%
+				( 
+					LastUnknownWeight - Target <
+						Target - MaxWeight
+				->
+					Response = question(LastUnknown)
+				;					
+					Response = question(Heaviest)
+				)
+			;
+				MaybeLastUnknown = no,
+				Response = question(Heaviest)
+			)
+		;
+			(
+				MaybeLastUnknown = yes(LastUnknown),
+				Response = question(LastUnknown)
+			;
+				MaybeLastUnknown = no,
+				% Look deeper until we find an unknown:
+				find_middle_weight_if_children(Store, Heaviest,
+					TopId, no, !SearchSpace, Response)
+			)
+		)		
+	).
+
+:- pred max_weight(search_space(T)::in, suspect_id::in, 
+	{int, suspect_id}::in, {int, suspect_id}::out) 
+	is det.
+
+max_weight(SearchSpace, SuspectId, {PrevMax, PrevSuspectId},
+	{NewMax, NewSuspectId}) :-
+	Weight = get_weight(SearchSpace, SuspectId),
+	(
+		Weight > PrevMax
+	->
+		NewMax = Weight,
+		NewSuspectId = SuspectId
+	;
+		NewMax = PrevMax,
+		NewSuspectId = PrevSuspectId
+	).

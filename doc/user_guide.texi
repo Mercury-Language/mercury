@@ -75,6 +75,7 @@ into another language, under the above conditions for modified versions.
 @author Peter Ross
 @author Tyson Dowd
 @author Mark Brown
+@author Ian MacLarty
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995--2005 The University of Melbourne.
@@ -3256,7 +3257,7 @@ The following commands relate to the declarative debugger.  See
 @ref{Declarative debugging} for details.
 @sp 1
 @table @code
-@item dd
+@item dd [-d@var{depth}] [-s@var{search-mode}]
 @c @item dd [--assume-all-io-is-tabled]
 @c The --assume-all-io-is-tabled option is for developers only. Specifying it
 @c makes an assertion, and if the assertion is incorrect, the resulting
@@ -3272,6 +3273,13 @@ much of the execution trace to gather when it reruns the program.  A higher
 @var{depth} will require more memory, but will improve the performance of the
 declarative debugger for long running programs since it will not have to rerun
 the program as much.
+@sp 1
+The @samp{-s@var{search-mode}} or @samp{--search-mode
+@var{search-mode}} option tells the declarative debugger which 
+search mode to use.  Either @samp{top-down} or @samp{divide-and-query}
+may be specified.  See @ref{Search Modes} for a more detailed description of
+the available search modes.  @samp{top-down} is the default when this option is
+not given.
 @sp 1
 @item trust @var{module-name}|@var{proc-spec}
 @kindex trust (mdb command)
@@ -3504,8 +3512,8 @@ Tells the debugger to expose events that are normally hidden.
 Tells the debugger to hide events that are normally hidden.
 @sp 1
 @item dd_dd
-@c @item dd_dd [filename]
-@c @item dd_dd [--assume-all-io-is-tabled] [filename]
+@c @item dd_dd [-d@var{depth}] [-s@var{search-mode}] [filename]
+@c @item dd_dd [--assume-all-io-is-tabled] 
 @c The --assume-all-io-is-tabled option is for developers only. Specifying it
 @c makes an assertion, and if the assertion is incorrect, the resulting
 @c behaviour would be hard for non-developers to understand. The option is
@@ -3623,6 +3631,7 @@ The main limitations are pointed out in the following sections.
 * Oracle questions::
 * Declarative debugging commands::
 * Diagnoses::
+* Search Modes::
 * Improving the search::
 @end menu
 
@@ -3892,6 +3901,39 @@ or they may be asked entirely new questions.
 If the user aborts the diagnosis,
 they are returned to the event at which the @samp{dd} command was given.
 
+@node Search Modes
+@subsection Search Modes
+
+Currently the declarative debugger can operate in one of two modes when
+searching for a bug.  The mode to use can be specified as an option to the
+@samp{dd} command.  See @ref{Declarative debugging mdb commands} for
+information on how to do this.  The specified search mode will always be used
+unless a sub-term is marked or the user hasn't answered `no' to any questions
+yet (In which case top-down search is used until `no' is answered to at least
+one question).
+
+@subsubsection Top-down Search
+
+Using this mode the declarative debugger will ask about the children of the
+last atom whose assertion was false.  This makes the search more predictable
+from the user's point of view as the questions will more or less follow the
+program execution.  The drawback of top-down search is that it may require a
+lot of questions to be answered before a bug is found, especially with deeply
+recursive program runs.
+
+This search mode is used by default when no other mode is specified.
+
+@subsubsection Divide and Query Search
+
+With this search mode the declarative debugger will attempt to halve the size of
+the search space with each question.  In many cases this will result in the 
+bug being found after O(log(N)) questions where N is the number of events
+between the event where the @samp{dd} command was given and the corresponding
+@samp{CALL} event.  This makes the search feasible for deeply recursive runs
+where top-down search would require an unreasonably large number of questions
+to be answered.  However, the questions may appear to come from unrelated parts
+of the program which can make them harder to answer.
+
 @node Improving the search
 @subsection Improving the search
 
@@ -3975,13 +4017,13 @@ marked the year subterm in which case the next question would have been about
 the call that constructed the year part of the date.
 
 This feature is also useful when using the procedural debugger.  For example,
-suppose that you come across a CALL event and you would like to know the source
-of a particular input to the call.  To find out you could first go to the final
-event by issuing a @samp{finish} command.  Invoke the declarative debugger with
-a @samp{dd} command and then mark the input term you are interested in.  The
-next question should be about the call that bound the term.  Issue a @samp{pd}
-command at this point to return to the procedural debugger. It will now show
-the final event of the call that bound the term.
+suppose that you come across a @samp{CALL} event and you would like to know the
+source of a particular input to the call.  To find out you could first go to
+the final event by issuing a @samp{finish} command.  Invoke the declarative
+debugger with a @samp{dd} command and then mark the input term you are
+interested in.  The next question should be about the call that bound the term.
+Issue a @samp{pd} command at this point to return to the procedural debugger.
+It will now show the final event of the call that bound the term.
 
 @subsubsection Trusting predicates, functions and modules
 

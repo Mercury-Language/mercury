@@ -1,0 +1,160 @@
+      E1:     C1 CALL pred divide_and_query1.main/2-0 (det) divide_and_query1.m:17
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> set format flat
+mdb> set size 100
+mdb> break to_b
+ 0: + stop  interface pred divide_and_query1.to_b/2-0 (det)
+mdb> c -n
+      E2:     C2 CALL pred divide_and_query1.to_b/2-0 (det)
+mdb> f -n
+      E3:     C2 EXIT pred divide_and_query1.to_b/2-0 (det)
+mdb> dd -s divide_and_query
+to_b([a, a, a, a, a, a, a, a, a, a], [b, b, b, b, b, b, b, b, b, b])
+Valid? n
+to_b([a, a, a, a], [b, b, b, b])
+Valid? n
+to_b([a], [b])
+Valid? y
+to_b([a, a], [b, b])
+Valid? y
+to_b([a, a, a], [b, b, b])
+Valid? y
+Found incorrect contour:
+to_b([a, a, a], [b, b, b])
+to_b([a, a, a, a], [b, b, b, b])
+Is this a bug? y
+      E4:     C3 EXIT pred divide_and_query1.to_b/2-0 (det)
+mdb> delete *
+ 0: E stop  interface pred divide_and_query1.to_b/2-0 (det)
+mdb> break abba
+ 0: + stop  interface pred divide_and_query1.abba/1-0 (semidet)
+mdb> c
+      E5:     C4 CALL pred divide_and_query1.abba/1-0 (semidet)
+mdb> f -n
+      E6:     C4 EXIT pred divide_and_query1.abba/1-0 (semidet)
+mdb> dd -s divide_and_query
+abba([b, a, a, b])
+Valid? n
+abba_perm([a, a, b], [a, b, a])
+Valid? y
+abba_perm([b, a, a, b], [a, b, b, a])
+Valid? n
+abba_delete([a, b, b, a], b, [a, b, a])
+Valid? n
+abba_delete([b, b, a], b, [b, a])
+Valid? y
+Found incorrect contour:
+abba_delete([b, b, a], b, [b, a])
+abba_delete([a, b, b, a], b, [a, b, a])
+Is this a bug? y
+      E7:     C5 EXIT pred divide_and_query1.abba_delete/3-0 (multi)
+mdb> c
+      E6:     C4 EXIT pred divide_and_query1.abba/1-0 (semidet)
+mdb> c
+      E8:     C6 CALL pred divide_and_query1.abba/1-0 (semidet)
+mdb> f
+      E9:     C6 FAIL pred divide_and_query1.abba/1-0 (semidet)
+mdb> dd -s divide_and_query
+Call abba([a, a, a, b])
+No solutions.
+Complete? n
+Call abba_perm([a, a, a, b], _)
+Solutions:
+	abba_perm([a, a, a, b], [a, a, a, b])
+	abba_perm([a, a, a, b], [a, a, a, b])
+	abba_perm([a, a, a, b], [a, a, a, b])
+	abba_perm([a, a, a, b], [a, a, b, a])
+	abba_perm([a, a, a, b], [a, a, a, b])
+	abba_perm([a, a, a, b], [a, a, a, b])
+	abba_perm([a, a, a, b], [a, a, a, b])
+	abba_perm([a, a, a, b], [a, a, b, a])
+	abba_perm([a, a, a, b], [a, a, b, a])
+	abba_perm([a, a, a, b], [a, a, b, a])
+	abba_perm([a, a, a, b], [a, b, a, a])
+	abba_perm([a, a, a, b], [a, b, a, a])
+	abba_perm([a, a, a, b], [a, a, b, a])
+	abba_perm([a, a, a, b], [a, a, b, a])
+	abba_perm([a, a, a, b], [a, b, a, a])
+	abba_perm([a, a, a, b], [a, b, a, a])
+	abba_perm([a, a, a, b], [a, b, a, a])
+	abba_perm([a, a, a, b], [b, a, a, a])
+	abba_perm([a, a, a, b], [b, a, a, a])
+	abba_perm([a, a, a, b], [b, a, a, a])
+	abba_perm([a, a, a, b], [a, b, a, a])
+	abba_perm([a, a, a, b], [b, a, a, a])
+	abba_perm([a, a, a, b], [b, a, a, a])
+	abba_perm([a, a, a, b], [b, a, a, a])
+Complete? n
+Call abba_perm([a, a, b], _)
+Solutions:
+	abba_perm([a, a, b], [a, a, b])
+	abba_perm([a, a, b], [a, a, b])
+	abba_perm([a, a, b], [a, b, a])
+	abba_perm([a, a, b], [a, b, a])
+	abba_perm([a, a, b], [b, a, a])
+	abba_perm([a, a, b], [b, a, a])
+Complete? y
+abba_perm([a, a, b], [b, a, a])
+Valid? n
+abba_perm([a, b], [b, a])
+Valid? n
+abba_perm([b], [b])
+Valid? y
+abba_delete([b, a], a, [b])
+Valid? y
+Found incorrect contour:
+abba_perm([b], [b])
+abba_delete([b, a], a, [b])
+abba_perm([a, b], [b, a])
+Is this a bug? y
+     E10:     C7 EXIT pred divide_and_query1.abba_perm/2-0 (multi)
+mdb> c
+      E9:     C6 FAIL pred divide_and_query1.abba/1-0 (semidet)
+mdb> c
+     E11:     C8 CALL pred divide_and_query1.abba/1-0 (semidet)
+mdb> f
+     E12:     C8 EXIT pred divide_and_query1.abba/1-0 (semidet)
+mdb> trust abba_delete
+Trusting pred divide_and_query1.abba_delete/3
+mdb> dd -s divide_and_query
+abba([a, a, b, b])
+Valid? n
+abba_perm([a, a, b, b], [a, b, b, a])
+Valid? n
+abba_perm([a, b, b], [a, b, b])
+Valid? n
+abba_perm([b, b], [b, b])
+Valid? n
+Found incorrect contour:
+abba_perm([b], [b])
+abba_delete([b, b], b, [b])
+abba_perm([b, b], [b, b])
+Is this a bug? y
+     E13:     C9 EXIT pred divide_and_query1.abba_perm/2-0 (multi)
+mdb> delete *
+ 0: E stop  interface pred divide_and_query1.abba/1-0 (semidet)
+mdb> break to_b2
+ 0: + stop  interface pred divide_and_query1.to_b2/2-0 (det)
+mdb> c
+     E14:    C10 CALL pred divide_and_query1.to_b2/2-0 (det)
+mdb> f
+     E15:    C10 EXIT pred divide_and_query1.to_b2/2-0 (det)
+mdb> dd -s divide_and_query
+to_b2([c, c, c, c, c, c, c], [b, b, b, b, b, b, b])
+Valid? b 2
+browser> cd 2/2
+browser> mark
+to_b([c, c, c, c, c], [b, b, b, b, b])
+Valid? n
+to_b([c, c], [b, b])
+Valid? y
+to_b([c, c, c], [b, b, b])
+Valid? n
+Found incorrect contour:
+to_b([c, c], [b, b])
+to_b([c, c, c], [b, b, b])
+Is this a bug? y
+     E16:    C11 EXIT pred divide_and_query1.to_b/2-0 (det)
+mdb> quit -y

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2004 The University of Melbourne.
+** Copyright (C) 1998-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -679,7 +679,8 @@ MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev)
 					(MR_Word) call);
 		node = (MR_Trace_Node) MR_DD_construct_redo_node(
 					(MR_Word) prev,
-					last_interface);
+					last_interface,
+					(MR_Word) event_info->MR_event_number);
 		MR_DD_call_node_set_last_interface((MR_Word) call,
 					(MR_Word) node);
 	);
@@ -1172,6 +1173,40 @@ MR_trace_decl_ensure_init(void)
 		);
 		done = MR_TRUE;
 	}
+}
+
+void
+MR_trace_decl_set_fallback_search_mode(MR_Decl_Search_Mode search_mode)
+{
+	MR_trace_decl_ensure_init();
+	MR_TRACE_CALL_MERCURY(
+		MR_DD_decl_set_fallback_search_mode(search_mode,
+			MR_trace_front_end_state,
+			&MR_trace_front_end_state);
+	);		
+}
+
+MR_bool
+MR_trace_is_valid_search_mode_string(const char *search_mode_string,
+	MR_Decl_Search_Mode *search_mode)
+{
+	if (MR_streq(search_mode_string, "top_down")) {
+		*search_mode =
+			MR_DD_decl_top_down_search_mode();
+		return MR_TRUE;
+	} else if (MR_streq(search_mode_string, "divide_and_query")) {
+		*search_mode =
+			MR_DD_decl_divide_and_query_search_mode();
+		return MR_TRUE;
+	} else {
+		return MR_FALSE;
+	}
+}
+
+MR_Decl_Search_Mode
+MR_trace_get_default_search_mode()
+{
+	return MR_DD_decl_top_down_search_mode();
 }
 
 void

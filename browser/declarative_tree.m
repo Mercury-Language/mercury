@@ -60,7 +60,8 @@
 		pred(edt_subterm_mode/5) is trace_subterm_mode,
 		pred(edt_is_implicit_root/2) is trace_is_implicit_root,
 		pred(edt_same_nodes/3) is trace_same_event_numbers,
-		pred(edt_topmost_node/2) is trace_topmost_node
+		pred(edt_topmost_node/2) is trace_topmost_node,
+ 		pred(edt_weight/4) is trace_weight
 	].
 
 %-----------------------------------------------------------------------------%
@@ -152,7 +153,7 @@ trace_question(IoActionMap, wrap(Store), dynamic(Ref), Root) :-
 
 get_answers(IoActionMap, Store, RedoId, DeclAtoms0, DeclAtoms) :-
 	(
-		maybe_redo_node_from_id(Store, RedoId, redo(_, ExitId))
+		maybe_redo_node_from_id(Store, RedoId, redo(_, ExitId, _))
 	->
 		exit_node_from_id(Store, ExitId, ExitNode),
 		NextId = ExitNode ^ exit_prev_redo,
@@ -285,6 +286,95 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 trace_is_implicit_root(wrap(Store), dynamic(Ref)) :-
 	get_edt_call_node(Store, Ref, CallId),
 	\+ not_at_depth_limit(Store, CallId).
+
+:- pred trace_weight(wrap(S)::in, edt_node(R)::in, int::out, int::out)
+	is det <= annotated_trace(S, R).
+
+trace_weight(Store, NodeId, Weight, ExcessWeight) :- 
+	node_events(Store, NodeId, 0, Weight, no, 0, 0, ExcessWeight).
+
+	% Conservatively guess the number of events in the descendents of the
+	% call corresponding to the given final event plus the number of
+	% internal body events for the call.  Also return the number of events
+	% that could be duplicated in siblings of the node in the EDT if the 
+	% node is a FAIL event.
+	%
+	% We include all the events between the final event and the last
+	% REDO before the final event, plus all the events between previous
+	% EXITs and REDOs and the initial CALL.  For EXIT and EXCP events
+	% this is an over approximation, but we can't know which events
+	% will be included in descendent contours when those descendent
+	% events are in unmaterialized portions of the annotated trace.
+	%
+	% node_events(Store, Node, PrevEvents, Events, RecordDups,
+	%	DupFactor, PrevDupEvents, DupEvents)
+	% True iff Events is the (conservative approximation of) the number of
+	% descendent events of Node and DupEvents is the number of events that
+	% could be duplicated in siblings.  PrevEvents and PrevDupEvents are
+	% accumulators which should initially be zero.  RecordDups keeps track
+	% of whether the final node was a FAIL or not - duplicates need only be
+	% recorded for FAIL nodes.  This should be `no' initially.  DupFactor
+	% keeps track of how many times the events before the last REDO could
+	% have been duplicated and should initially be zero.
+	%
+:- pred node_events(wrap(S)::in, edt_node(R)::in, int::in, int::out, bool::in,
+	int::in, int::in, int::out) is det <= annotated_trace(S, R).
+
+node_events(wrap(Store), dynamic(Ref), PrevEvents, Events, RecordDups,
+		DupFactor, PrevDupEvents, DupEvents) :-
+	det_trace_node_from_id(Store, Ref, Final),
+	(
+		(
+			Final = exit(_, CallId, RedoId, _, FinalEvent, _),
+			NewRecordDups = RecordDups
+		;
+			Final = fail(_, CallId, RedoId, FinalEvent),
+			NewRecordDups = yes
+		;
+			Final = excp(_, CallId, RedoId, _, FinalEvent),
+			NewRecordDups = RecordDups
+		)
+	->
+		(
+			maybe_redo_node_from_id(Store, RedoId, Redo),
+			Redo = redo(_, ExitId, RedoEvent)
+		->
+			(
+				NewRecordDups = yes,
+				NewPrevDupEvents = PrevDupEvents + DupFactor 
+					* (FinalEvent - RedoEvent + 1)
+			;
+				NewRecordDups = no,
+				NewPrevDupEvents = 0
+			),
+			node_events(wrap(Store), dynamic(ExitId), PrevEvents +
+				FinalEvent - RedoEvent + 1, Events, 
+				NewRecordDups, DupFactor + 1, 
+				NewPrevDupEvents, DupEvents)
+		;
+			det_trace_node_from_id(Store, CallId, Call),
+			(
+				CallEvent = Call ^ call_event
+			->
+				Events = PrevEvents + FinalEvent - CallEvent 
+					+ 1,
+				(
+					NewRecordDups = yes,
+					DupEvents = PrevDupEvents + DupFactor *
+						(FinalEvent - CallEvent + 1)
+				;
+					NewRecordDups = no,
+					DupEvents = 0
+				)
+			;
+				throw(internal_error("node_events",
+					"not a CALL"))
+			)
+		)
+	;
+		throw(internal_error("node_events",
+			"not a final event"))
+	).
 
 :- pred missing_answer_special_case(trace_atom::in) is semidet.
 

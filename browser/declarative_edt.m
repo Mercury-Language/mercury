@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 The University of Melbourne.
+% Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,9 +11,9 @@
 % Search spaces are also defined as a layer on top of EDTs.  
 %
 % The search space records extra information like which nodes have been
-% eliminated from the bug search and which nodes have been skipped or are
-% trusted and in future might also store information like the probability of
-% each node being buggy, based on some heursitic(s).
+% eliminated from the bug search, which nodes have been skipped or are
+% trusted, the weight of each node, and in future might also store information
+% like the probability of each node being buggy, based on some heursitic(s).
 %
 % The search space provides a consistent view of the debug tree - combining
 % seperately generated EDT subtrees into one tree.  Each node in the search
@@ -24,7 +24,7 @@
 % only correspond to implicit roots when an explicit version of the EDT subtree
 % rooted at the node has not yet been generated.
 %
-% Every node in the EDT may not have a corresponing node in the search space:
+% Every node in the EDT may not have a corresponding node in the search space:
 % nodes are only added to the search space when they are needed by a
 % particular search algorithm.
 %
@@ -35,6 +35,19 @@
 % the search space that must contain a bug based on the answers received so
 % far and the term "topmost" for the suspect in the search space with the
 % lowest depth.
+%
+% Each suspect in the search space can be assigned a weight to be used for
+% divide and query search.  Any heuristic can be used, as long as the combined
+% weight of all the children of a suspect does not exceed the suspect's own
+% weight.  Sometimes the weight may depend on the weights of unmaterialized
+% portions of the EDT resulting in the situation where the combined weight of
+% the children of a suspect exceeds the parent's weight.  If this happens then
+% an "excess weight" may be specified along with the normal weight which will
+% be added to all the ancestor's of the overweight suspect.  For example if the
+% number of events in descendent suspects is being used as a weight, then for a
+% FAIL node some events may be repeated in siblings of the FAIL node.  In this
+% case the duplicate events might not have been included in the ancestor's
+% weights, so should be added.
 %
 
 :- module mdb.declarative_edt.
@@ -126,7 +139,14 @@
 		% True if it is not possible to materialize any nodes 
 		% above the given node.
 		%
-	pred edt_topmost_node(S::in, T::in) is semidet
+	pred edt_topmost_node(S::in, T::in) is semidet,
+ 
+ 		% edt_weight(Store, Node, Weight, ExcessWeight).
+		% Find the weight and excess weight for a node.  See the 
+		% comment at the top of this module for the meaning of 
+		% the weight of a node.
+		%
+ 	pred edt_weight(S::in, T::in, int::out, int::out) is det
 ].
 
 :- type subterm_mode
@@ -190,7 +210,8 @@
 	% Creates a new search space containing just the one EDT node with 
 	% an initial status of unknown.
 	%
-:- pred initialise_search_space(T::in, search_space(T)::out) is det.
+:- pred initialise_search_space(S::in, T::in, search_space(T)::out) 
+	is det <= mercury_edt(S, T).
 
 	% The root of the search space is the root of the subtree of the EDT
 	% that we think contains a bug, based on information received so far.
@@ -237,8 +258,8 @@
 
 	% Marks the suspect correct and alls its decendents as pruned.
 	%
-:- pred assert_suspect_is_correct(suspect_id::in, search_space(T)::in,
-	search_space(T)::out) is det.
+:- pred assert_suspect_is_correct(suspect_id::in, 
+	search_space(T)::in, search_space(T)::out) is det.
 
 	% Marks the supect erroneous and marks the complement of the subtree
 	% rooted at the erroneous suspect as in_erroneous_subtree_complement.
@@ -248,13 +269,13 @@
 
 	% Marks the suspect inadmissible and alls its decendents as pruned.
 	%
-:- pred assert_suspect_is_inadmissible(suspect_id::in, search_space(T)::in,
-	search_space(T)::out) is det.
+:- pred assert_suspect_is_inadmissible(suspect_id::in, 
+	search_space(T)::in, search_space(T)::out) is det.
 
 	% Marks the suspect ignored.
 	%
-:- pred ignore_suspect(suspect_id::in, search_space(T)::in, 
-	search_space(T)::out) is det.
+:- pred ignore_suspect(S::in, suspect_id::in, search_space(T)::in, 
+	search_space(T)::out) is det <= mercury_edt(S, T).
 
 	% Marks the suspect as skipped.
 	%
@@ -332,6 +353,10 @@
 	% Return the EDT node corresponding to the suspect_id.
 	%
 :- func get_edt_node(search_space(T), suspect_id) = T.
+
+	% Return the weight of the suspect.
+	%
+:- func get_weight(search_space(T), suspect_id) = int.
 
 	% Succeeds if the suspect has been marked correct or inadmissible
 	% or is the descendent of a suspect that was marked correct or 
@@ -424,18 +449,22 @@
 	% Mark the root and it's non-ignored children as unknown.
 	% Throws an exception if the search space doesn't have a root.
 	%
-:- pred revise_root(search_space(T)::in, search_space(T)::out) is det.
+:- pred revise_root(S::in, search_space(T)::in, search_space(T)::out) 
+	is det <= mercury_edt(S, T).
 
 	% Check the consistency of the search space and throw an exception
-	% if it's not consistent.  Used for debugging.
+	% if it's not consistent.  Used for assertion checking during
+	% debugging.
 	%
-:- pred check_search_space_consistency(search_space(T)::in, string::in) is det.
+:- pred check_search_space_consistency(S::in, search_space(T)::in, string::in) 
+	is det <= mercury_edt(S, T).
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module exception, map, int, counter, std_util, string, bool, bimap.
+:- import_module float.
 
 	% A suspect is an edt node with some additional information relevant
 	% to the bug search.
@@ -466,7 +495,11 @@
 				% no then the children have not yet been 
 				% explored.  Children are only added to the
 				% search space when they are required.
-			children		:: maybe(list(suspect_id))
+			children		:: maybe(list(suspect_id)),
+
+				% A weighting used for divide and query
+				% search.
+			weight			:: int
 	).
 
 :- type suspect_status
@@ -716,9 +749,9 @@ give_up_subterm_tracking(SearchSpace, SuspectId) :-
 
 assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-	map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
-		Status, Store),
-	!:SearchSpace = !.SearchSpace ^ store := Store,
+	map.set(!.SearchSpace ^ store, SuspectId, 
+		(Suspect ^ status := Status) ^ weight := 0, SuspectStore),
+	!:SearchSpace = !.SearchSpace ^ store := SuspectStore,
 	adjust_unknown_count(yes(Suspect ^ status), Status, !SearchSpace),
 	(
 		Suspect ^ children = yes(Children),
@@ -729,6 +762,9 @@ assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
 		adjust_unexplored_leaves(yes(Suspect ^ status), Status, 
 			!SearchSpace)
 	),
+	% Remove the suspect's weight from its ancestors, since its weight is
+	% now zero.
+	add_weight_to_ancestors(SuspectId, - Suspect ^ weight, !SearchSpace),
 	%
 	% If the suspect was erroneous or excluded because of another erronoeus
 	% suspect, then we should update the complement of the subtree rooted
@@ -770,32 +806,24 @@ assert_suspect_is_erroneous(SuspectId, !SearchSpace) :-
 		adjust_unexplored_leaves(yes(Suspect ^ status), erroneous, 
 			!SearchSpace)
 	;
-		Suspect ^ children = yes(Children),
-		%
-		% If the suspect was correct, inadmissible or pruned then we
-		% should make all the descendents unknown again.
-		%
-		(
-			excluded_subtree(Suspect ^ status, yes)
-		->
-			list.foldl(propagate_status_downwards(unknown, 
-				[correct, inadmissible]), Children,
-				!SearchSpace)
-		;
-			true
-		)
+		Suspect ^ children = yes(_)
 	),
-	propagate_status_upwards(in_erroneous_subtree_complement, [erroneous], 
-		SuspectId, _, !SearchSpace),
+	propagate_status_upwards(in_erroneous_subtree_complement, 
+		[erroneous, correct, inadmissible], SuspectId, _,
+		!SearchSpace),
 	!:SearchSpace = !.SearchSpace ^ root := yes(SuspectId).
 
-ignore_suspect(SuspectId, !SearchSpace) :-
+ignore_suspect(Store, SuspectId, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-	map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
-		ignored, Store),
 	adjust_unknown_count(yes(Suspect ^ status), ignored, !SearchSpace),
-	!:SearchSpace = !.SearchSpace ^ store := Store.
-	
+	calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children, 
+		ignored, !.SearchSpace, Weight, _),
+	map.set(!.SearchSpace ^ store, SuspectId, 
+		(Suspect^ status := ignored) ^ weight := Weight, SuspectStore),
+	!:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+	add_weight_to_ancestors(SuspectId, Weight - Suspect ^ weight,
+		!SearchSpace).
+
 skip_suspect(SuspectId, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	counter.allocate(N, !.SearchSpace ^ skip_counter, SkipCounter),
@@ -804,27 +832,44 @@ skip_suspect(SuspectId, !SearchSpace) :-
 		skipped(N), Store),
 	!:SearchSpace = !.SearchSpace ^ store := Store.
 
-revise_root(!SearchSpace) :-
+revise_root(Store, !SearchSpace) :-
 	(
 		!.SearchSpace ^ root = yes(RootId),
 		force_propagate_status_downwards(unknown, 
-			[correct, inadmissible], RootId, Leaves, !SearchSpace),
-		list.foldl(force_propagate_status_downwards(unknown, [correct,
-			inadmissible]), Leaves, !SearchSpace),
-		propagate_status_upwards(unknown, [erroneous], RootId, Lowest, 
+			[correct, inadmissible], RootId, StopSuspects, 
 			!SearchSpace),
-		(
-			suspect_erroneous(!.SearchSpace, Lowest)
-		->
+		list.foldl(force_propagate_status_downwards(unknown, [correct,
+			inadmissible]), StopSuspects, !SearchSpace),
+		propagate_status_upwards(unknown, [erroneous, correct,
+			inadmissible], RootId, Lowest, !SearchSpace),
+		( suspect_erroneous(!.SearchSpace, Lowest) ->
 			!:SearchSpace = !.SearchSpace ^ root := yes(Lowest)
 		;
 			!:SearchSpace = !.SearchSpace ^ root := no
-		)
+		),
+		%
+		% Recompute the suspect weights from the bottom up.
+		%
+		map.keys(!.SearchSpace ^ store, AllSuspects),
+		list.filter(suspect_is_leaf(!.SearchSpace), AllSuspects, 
+			Leaves),
+		recalc_weights_upto_ancestor(Store, Lowest, Leaves, 
+			!SearchSpace)
 	;
 		!.SearchSpace ^ root = no,
 		throw(internal_error("revise_root", "no root"))
 	).
-	
+
+	% True if the suspect is a leaf node in the search space (i.e. it has
+	% either `no' or `yes([])' in its children field.
+	%
+:- pred suspect_is_leaf(search_space(T)::in, suspect_id::in)
+	is semidet.
+
+suspect_is_leaf(SearchSpace, SuspectId) :-
+	lookup_suspect(SearchSpace, SuspectId, Suspect),
+	(Suspect ^ children = no ; Suspect ^ children = yes([])).
+
 suspect_depth(SearchSpace, SuspectId) = Suspect ^ depth :-
 	lookup_suspect(SearchSpace, SuspectId, Suspect).
 
@@ -979,24 +1024,22 @@ lookup_suspect(SearchSpace, SuspectId, Suspect) :-
 			"couldn't find suspect"))
 	).
 
-	% propagate_status_downwards(Status, StopStatusSet, SuspectId, Leaves, 
-	%	!SearchSpace). 
+	% propagate_status_downwards(Status, StopStatusSet, SuspectId, 
+	%	StopSuspects, !SearchSpace). 
 	% Sets the status of SuspectId and all it's descendents to Status.
 	% If a descendent (including the suspect) already has a status in
 	% StopStatusSet then propagate_status_downwards won't update any
 	% further descendents.  The list of all the children of the lowest
-	% updated suspects is returned in Leaves.
+	% updated suspects is returned in StopSuspects.
 	% 
 :- pred propagate_status_downwards(suspect_status::in, 
 	list(suspect_status)::in, suspect_id::in, list(suspect_id)::out, 
 	search_space(T)::in, search_space(T)::out) is det.
 
-	% An accumulator version of propagate_status_downwards.
-	%
-propagate_status_downwards(Status, StopStatusSet, SuspectId, Leaves, 
+propagate_status_downwards(Status, StopStatusSet, SuspectId, StopSuspects, 
 	!SearchSpace) :-
 	propagate_status_downwards(Status, StopStatusSet, SuspectId, [], 
-		Leaves, !SearchSpace).
+		StopSuspects, !SearchSpace).
 
 	% A version of propagate_status_downwards which doesn't return leaves.
 	%
@@ -1008,12 +1051,14 @@ propagate_status_downwards(Status, StopStatusSet, SuspectId, !SearchSpace) :-
 	propagate_status_downwards(Status, StopStatusSet, SuspectId, _, 
 		!SearchSpace).
 
+	% An accumulator version of propagate_status_downwards.
+	%
 :- pred propagate_status_downwards(suspect_status::in, 
 	list(suspect_status)::in, suspect_id::in, 
 	list(suspect_id)::in, list(suspect_id)::out, 
 	search_space(T)::in, search_space(T)::out) is det.
 
-propagate_status_downwards(Status, StopStatusSet, SuspectId, !Leaves, 
+propagate_status_downwards(Status, StopStatusSet, SuspectId, !StopSuspects, 
 		!SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	(
@@ -1025,7 +1070,7 @@ propagate_status_downwards(Status, StopStatusSet, SuspectId, !Leaves,
 		(
 			Suspect ^ children = yes(Children),
 			list.foldl2(propagate_status_downwards(Status, 
-				StopStatusSet), Children, !Leaves,
+				StopStatusSet), Children, !StopSuspects,
 				!SearchSpace)
 		;
 			Suspect ^ children = no,
@@ -1035,7 +1080,7 @@ propagate_status_downwards(Status, StopStatusSet, SuspectId, !Leaves,
 		adjust_unknown_count(yes(Suspect ^ status), Status, 
 			!SearchSpace)
 	;
-		list.cons(SuspectId, !Leaves)
+		list.cons(SuspectId, !StopSuspects)
 	).
 
 	% force_propagate_status_downwards is like propagate_status_downwards,
@@ -1055,8 +1100,8 @@ force_propagate_status_downwards(Status, StopStatusSet, SuspectId,
 	list(suspect_status)::in, suspect_id::in, list(suspect_id)::out,
 	search_space(T)::in, search_space(T)::out) is det.
 
-force_propagate_status_downwards(Status, StopStatusSet, SuspectId, Leaves, 
-		!SearchSpace) :-
+force_propagate_status_downwards(Status, StopStatusSet, SuspectId, 
+		StopSuspects, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	map.set(!.SearchSpace ^ store, SuspectId, 
 		Suspect ^ status := Status, Store),
@@ -1064,12 +1109,12 @@ force_propagate_status_downwards(Status, StopStatusSet, SuspectId, Leaves,
 	(
 		Suspect ^ children = yes(Children),
 		list.foldl2(propagate_status_downwards(Status, StopStatusSet), 
-			Children, [], Leaves, !SearchSpace)
+			Children, [], StopSuspects, !SearchSpace)
 	;
 		Suspect ^ children = no,
 		adjust_unexplored_leaves(yes(Suspect ^ status), Status, 
 			!SearchSpace),
-		Leaves = []
+		StopSuspects = []
 	),
 	adjust_unknown_count(yes(Suspect ^ status), Status, !SearchSpace).
 
@@ -1152,7 +1197,7 @@ decrement_unexplored_leaves(OldStatus, !SearchSpace) :-
 		true
 	).
 
-check_search_space_consistency(SearchSpace, Context) :-
+check_search_space_consistency(Store, SearchSpace, Context) :-
 	(
 		SearchSpace ^ unknown_count \= calc_num_unknown(SearchSpace)
 	->
@@ -1169,9 +1214,156 @@ check_search_space_consistency(SearchSpace, Context) :-
 			++ string(SearchSpace) ++ "\n Context is:\n" ++
 			Context))
 	;
+		find_inconsistency_in_weights(Store, SearchSpace, Message)
+	->
+		throw(internal_error("check_search_space_consistency",
+			Message))
+	;
 		true
 	).
-	
+
+	% Calculate the weight of a suspect based on the weights of its
+	% children.  If the node is correct or inadmissible then the weight is
+	% zero.  If the node is ignored then the weight is the sum of the
+	% weights of the children plus the sum of the excess weights of the
+	% children.  Otherwise the weight is the original weight of the node
+	% as reported by edt_weight/4 minus the original weights of the
+	% children as reported by edt_weight/4 plus the current weight of
+	% the children plus any excess weight in the children.
+	%
+:- pred calc_suspect_weight(S::in, T::in, maybe(list(suspect_id))::in,
+	suspect_status::in, search_space(T)::in, int::out, int::out) 
+	is det <= mercury_edt(S, T).
+
+calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
+		ExcessWeight) :-
+	(
+		( Status = correct
+		; Status = inadmissible
+		)
+	->
+		Weight = 0,
+		ExcessWeight = 0
+	;
+		edt_weight(Store, Node, OriginalWeight, ExcessWeight),
+		(
+			MaybeChildren = no,
+			Weight = OriginalWeight
+		;
+			MaybeChildren = yes(Children),
+			list.map(lookup_suspect(SearchSpace), Children,
+				ChildrenSuspects),
+			ChildrenNodes = list.map(
+				func(S) = N :- N = S ^ edt_node, 
+				ChildrenSuspects),
+			list.foldl2(add_original_weight(Store), 
+				ChildrenNodes, 0, ChildrenOriginalWeight,
+				0, ChildrenExcess),
+			list.foldl(add_existing_weight, ChildrenSuspects, 0,
+				ChildrenWeight),
+			(
+				Status = ignored
+			->
+				Weight = ChildrenWeight + ChildrenExcess
+			;
+				Weight = OriginalWeight - 
+					ChildrenOriginalWeight + ChildrenWeight
+					+ ChildrenExcess
+			)
+		)
+	).
+
+	% Add the given weight to the ancestors of the given suspect
+	% (excluding the given suspect) until an erroneous node is encountered
+	% (the erroneous node is also updated).
+	%
+:- pred add_weight_to_ancestors(suspect_id::in, int::in,
+	search_space(T)::in, search_space(T)::out) is det.
+
+add_weight_to_ancestors(SuspectId, Weight, !SearchSpace) :-
+	(
+		% 
+		% Stop if the weight is 0, if the node is erroneous or
+		% if there is no parent.
+		%
+		Weight \= 0,
+		lookup_suspect(!.SearchSpace, SuspectId, Suspect),
+		Suspect ^ parent = yes(ParentId)
+	->
+		lookup_suspect(!.SearchSpace, ParentId, Parent),
+		map.set(!.SearchSpace ^ store, ParentId, 
+			Parent ^ weight := Parent ^ weight + Weight,
+			SuspectStore),
+		!:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+		excluded_complement(Parent ^ status, ExcludedComplement),
+		(
+			ExcludedComplement = yes
+		;
+			ExcludedComplement = no,
+			add_weight_to_ancestors(ParentId, Weight, !SearchSpace)
+		)
+	;
+		true
+	).
+
+:- pred add_original_weight(S::in, T::in, int::in, int::out, int::in, int::out) 
+	is det <= mercury_edt(S, T).
+
+add_original_weight(Store, Node, Prev, Prev + Weight, PrevExcess, 
+		PrevExcess + Excess) :-
+	edt_weight(Store, Node, Weight, Excess).
+
+:- pred add_existing_weight(suspect(T)::in, int::in, int::out) is det.
+
+add_existing_weight(Suspect, Prev, Prev + Suspect ^ weight).
+
+	% recalc_weights_upto_ancestor(Store, Ancestor, Suspects, !SearchSpace)
+	% Recalculate the weights of the suspects in Suspects and all their
+	% ancestors below Ancestor.  Ancestor must be a common ancestor
+	% of all the suspects in Suspects.
+	%
+:- pred recalc_weights_upto_ancestor(S::in, suspect_id::in,
+	list(suspect_id)::in, search_space(T)::in, search_space(T)::out) 
+	is det <= mercury_edt(S, T).
+
+recalc_weights_upto_ancestor(Store, Ancestor, SuspectIds, !SearchSpace) :-
+	recalc_weights_and_get_parents(Store, SuspectIds, [], Parents,
+		!SearchSpace),
+	list.filter(unify(Ancestor), Parents, _, FilteredParents),
+	(
+		FilteredParents = [_ | _],
+		list.sort_and_remove_dups(FilteredParents, SortedParents),
+		recalc_weights_upto_ancestor(Store, Ancestor, SortedParents,
+			!SearchSpace)
+	;
+		FilteredParents = [],
+		recalc_weights_and_get_parents(Store, [Ancestor], [], _,
+			!SearchSpace)
+	).
+
+:- pred recalc_weights_and_get_parents(S::in, list(suspect_id)::in,
+	list(suspect_id)::in, list(suspect_id)::out, 
+	search_space(T)::in, search_space(T)::out) is det <= mercury_edt(S, T).
+
+recalc_weights_and_get_parents(_, [], Parents, Parents, !SearchSpace).
+recalc_weights_and_get_parents(Store, [SuspectId | SuspectIds], PrevParents,
+		Parents, !SearchSpace) :-
+	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
+	calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children,
+		Suspect ^ status, !.SearchSpace, Weight, _),
+	map.set(!.SearchSpace ^ store, SuspectId, 
+		Suspect ^ weight := Weight, SuspectStore),
+	!:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+	(
+		Suspect ^ parent = yes(ParentId),
+		NewPrevParents = [ParentId | PrevParents]
+	;
+		Suspect ^ parent = no,
+		NewPrevParents = PrevParents
+	),
+	recalc_weights_and_get_parents(Store, SuspectIds, NewPrevParents,
+		Parents, !SearchSpace).
+
 	% Work out the number of unknown suspects in the search space.
 	% Used for assertion checking.
 :- func calc_num_unknown(search_space(T)) = int.
@@ -1179,7 +1371,7 @@ check_search_space_consistency(SearchSpace, Context) :-
 calc_num_unknown(SearchSpace) = NumUnknown :-
 	Suspects = map.values(SearchSpace ^ store),
 	list.filter(
-		( pred(suspect(_, _, Status, _, _)::in) is semidet :- 
+		( pred(suspect(_, _, Status, _, _, _)::in) is semidet :- 
 			questionable(Status, yes)
 		), Suspects, Questionable),
 	NumUnknown = list.length(Questionable).
@@ -1191,10 +1383,51 @@ calc_num_unknown(SearchSpace) = NumUnknown :-
 calc_num_unexplored(SearchSpace) = NumUnexplored :-
 	Suspects = map.values(SearchSpace ^ store),
 	list.filter(
-		( pred(suspect(_, _, Status, _, no)::in) is semidet :- 
+		( pred(suspect(_, _, Status, _, no, _)::in) is semidet :- 
 			in_buggy_subtree(Status, yes)
 		), Suspects, Unexplored),
 	NumUnexplored = list.length(Unexplored).
+
+	% Try to find an inconsistency in the weights of the suspects.  If one
+	% is found output an error message, otherwise fail.
+	%
+:- pred find_inconsistency_in_weights(S::in, search_space(T)::in, 
+	string::out) is semidet <= mercury_edt(S, T).
+
+find_inconsistency_in_weights(Store, SearchSpace, Message) :-
+	( root(SearchSpace, RootId) ->
+		find_inconsistency_in_weights_2(Store, SearchSpace, 
+			RootId, Message)
+	;
+		topmost_det(SearchSpace, TopMostId),
+		find_inconsistency_in_weights_2(Store, SearchSpace, 
+			TopMostId, Message)
+	).
+
+	% Check that the weights are correct from the given suspect down.
+	%
+:- pred find_inconsistency_in_weights_2(S::in, search_space(T)::in,
+	suspect_id::in, string::out) is semidet <= mercury_edt(S, T).
+
+find_inconsistency_in_weights_2(Store, SearchSpace, SuspectId, Message) :-
+	lookup_suspect(SearchSpace, SuspectId, Suspect),
+	calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children,
+		Suspect ^ status, SearchSpace, Weight, _),
+	(
+		Weight = Suspect ^ weight,
+		Weight >= 0
+	->
+		Suspect ^ children = yes(Children),
+		in_buggy_subtree(Suspect ^ status, yes),
+		list.filter_map(find_inconsistency_in_weights_2(Store, 
+			SearchSpace), Children, Messages),
+		Messages = [Message | _]
+	;
+		Message = "Weights not consistent for suspect id " ++
+			int_to_string(SuspectId) ++ ", Suspect = " ++ 
+			string(Suspect) ++ " Calculated weight = " ++
+			int_to_string(Weight)
+	).
 
 	% propagate_status_upwards(Status, StopStatusSet, SuspectId, Lowest, 
 	% 	!SearchSpace)
@@ -1273,42 +1506,68 @@ get_siblings(SearchSpace, SuspectId, Siblings) :-
 	% the given suspect.  The suspect_ids for the new suspects will
 	% also be returned.
 	%
-:- pred add_children(list(T)::in, suspect_id::in, suspect_status::in, 
+:- pred add_children(S::in, list(T)::in, suspect_id::in, suspect_status::in, 
 	search_space(T)::in, search_space(T)::out, list(suspect_id)::out) 
-	is det.
+	is det <= mercury_edt(S, T).
 
-add_children(EDTChildren, SuspectId, Status, !SearchSpace, Children) :-
+add_children(Store, EDTChildren, SuspectId, Status, !SearchSpace, Children) :-
 	Counter0 = !.SearchSpace ^ suspect_id_counter,
-	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-	add_children_2(EDTChildren, SuspectId, Status, Suspect ^ depth + 1, 
+	lookup_suspect(!.SearchSpace, SuspectId, Suspect0),
+	add_children_2(Store, EDTChildren, SuspectId, Status, 
+		Suspect0 ^ depth + 1, 
 		!SearchSpace, Counter0, Counter, Children),
 	!:SearchSpace = !.SearchSpace ^ suspect_id_counter := Counter,
-	map.set(!.SearchSpace ^ store, SuspectId, 
-		Suspect ^ children := yes(Children), Store),
-	!:SearchSpace = !.SearchSpace ^ store := Store,
+	% Lookup the suspect again, since it's weight may have changed.
+	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
+	%
+	% Recalc the weight if the suspect is ignored.  This wouldn't have
+	% been done by ignore_suspect/3 since the children wouldn't have been
+	% available.
+	%
+	(
+		Suspect ^ status = ignored
+	->
+		calc_suspect_weight(Store, Suspect ^ edt_node, yes(Children),
+			ignored, !.SearchSpace, Weight, _),
+		map.set(!.SearchSpace ^ store, SuspectId, 
+			(Suspect ^ weight := Weight) 
+				^ children := yes(Children), SuspectStore),
+		!:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+		add_weight_to_ancestors(SuspectId, Weight - Suspect ^ weight,
+			!SearchSpace)
+	;
+		map.set(!.SearchSpace ^ store, SuspectId, 
+			Suspect ^ children := yes(Children), SuspectStore),
+		!:SearchSpace = !.SearchSpace ^ store := SuspectStore
+	),
 	decrement_unexplored_leaves(Suspect ^ status, !SearchSpace).
 
-:- pred add_children_2(list(T)::in, suspect_id::in, suspect_status::in, 
+:- pred add_children_2(S::in, list(T)::in, suspect_id::in, suspect_status::in, 
 	int::in, search_space(T)::in, search_space(T)::out, counter::in,
-	counter::out, list(suspect_id)::out) is det.
+	counter::out, list(suspect_id)::out) is det <= mercury_edt(S, T).
 
-add_children_2([], _, _, _, SearchSpace, SearchSpace, Counter, Counter, []).
+add_children_2(_, [], _, _, _, SearchSpace, SearchSpace, Counter, Counter, []).
 
-add_children_2([EDTChild | EDTChildren], SuspectId, Status, Depth, 
+add_children_2(Store, [EDTChild | EDTChildren], SuspectId, Status, Depth, 
 		!SearchSpace, !Counter, Children) :-
 	allocate(NextId, !Counter),
+	calc_suspect_weight(Store, EDTChild, no, Status, !.SearchSpace, Weight,
+		ExcessWeight),
 	map.det_insert(!.SearchSpace ^ store, NextId, 
-		suspect(yes(SuspectId), EDTChild, Status, Depth, 
-			no), Store),
-	!:SearchSpace = !.SearchSpace ^ store := Store,
+		suspect(yes(SuspectId), EDTChild, Status, Depth, no, Weight), 
+		SuspectStore),
+	!:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+	add_weight_to_ancestors(NextId, ExcessWeight, !SearchSpace),
 	adjust_unknown_count(no, Status, !SearchSpace),
 	adjust_unexplored_leaves(no, Status, !SearchSpace),
-	add_children_2(EDTChildren, SuspectId, Status, Depth, 
+	add_children_2(Store, EDTChildren, SuspectId, Status, Depth, 
 		!SearchSpace, !Counter, OtherChildren),
 	Children = [NextId | OtherChildren].
 
-initialise_search_space(Node, SearchSpace) :-
-	map.set(init, 0, suspect(no, Node, unknown, 0, no), SuspectStore),
+initialise_search_space(Store, Node, SearchSpace) :-
+	edt_weight(Store, Node, Weight, _),
+	map.set(init, 0, suspect(no, Node, unknown, 0, no, Weight), 
+		SuspectStore),
 	SearchSpace = search_space(no, yes(0), counter.init(1), 
 		counter.init(0), SuspectStore, bimap.init, 1, 1).
 
@@ -1383,8 +1642,10 @@ insert_new_topmost_node(Store, NewTopMostEDTNode, !SearchSpace) :-
 			NewTopMostStatus = new_parent_status(
 				OldTopMost ^ status),
 			NewTopMostDepth = OldTopMost ^ depth - 1,
+			% We will update the weight below, so for now we
+			% just use 0.
 			NewTopMost = suspect(no, NewTopMostEDTNode, 
-				NewTopMostStatus, NewTopMostDepth, no),
+				NewTopMostStatus, NewTopMostDepth, no, 0),
 			some [!Counter, !SuspectStore] (
 				!:Counter = !.SearchSpace ^ suspect_id_counter,
 				counter.allocate(NewTopMostId, !Counter),
@@ -1398,13 +1659,15 @@ insert_new_topmost_node(Store, NewTopMostEDTNode, !SearchSpace) :-
 					!.SuspectStore
 			),
 			SiblingStatus = new_child_status(NewTopMostStatus),
-			add_children(append(LeftChildren, RightChildren), 
-				NewTopMostId, SiblingStatus, !SearchSpace,
-				ChildrenIds),
+			add_children(Store, 
+				append(LeftChildren, RightChildren), 
+				NewTopMostId, SiblingStatus,
+				!SearchSpace, ChildrenIds),
 			
 			% 
 			% Adjust the unexplored leaves count since the new top
-			% most node was added with no children.
+			% most node was added with no children (so add_children
+			% would have incorrectly subtracted 1 from the count).
 			%
 			adjust_unexplored_leaves(no, NewTopMostStatus, 
 				!SearchSpace),
@@ -1424,11 +1687,20 @@ insert_new_topmost_node(Store, NewTopMostEDTNode, !SearchSpace) :-
 				throw(internal_error("insert_new_topmost_node",
 					"invalid position"))
 			),
+
+			calc_suspect_weight(Store, NewTopMostEDTNode, 
+				yes(NewTopMostChildrenIds), NewTopMostStatus,
+				!.SearchSpace, Weight, _),
 			some [!SuspectStore] (
 				!:SuspectStore = !.SearchSpace ^ store,
-				map.set(!.SuspectStore, NewTopMostId, 
+				NewTopMostWithCorrectChildren = 
 					NewTopMost ^ children := 
 					yes(NewTopMostChildrenIds),
+				NewTopMostWithCorrectWeight =
+					NewTopMostWithCorrectChildren 
+						^ weight := Weight,
+				map.set(!.SuspectStore, NewTopMostId, 
+					NewTopMostWithCorrectWeight,
 					!:SuspectStore),
 				map.set(!.SuspectStore, OldTopMostId, 
 					OldTopMost ^ parent := 
@@ -1446,7 +1718,6 @@ insert_new_topmost_node(Store, NewTopMostEDTNode, !SearchSpace) :-
 			throw(internal_error("insert_new_topmost_node",
 				"couldn't find event number"))
 		)
-			
 	;
 		throw(internal_error("insert_new_topmost_node", 
 			"couldn't get new topmost node's children"))
@@ -1469,6 +1740,10 @@ get_edt_node(SearchSpace, SuspectId) = Node :-
 	lookup_suspect(SearchSpace, SuspectId, Suspect),
 	Node = Suspect ^ edt_node.
 
+get_weight(SearchSpace, SuspectId) = Weight :-
+	lookup_suspect(SearchSpace, SuspectId, Suspect),
+	Weight = Suspect ^ weight.
+
 	% Return the status of the suspect.
 :- func get_status(search_space(T), suspect_id) = suspect_status.
 
@@ -1488,7 +1763,7 @@ children(Store, SuspectId, !SearchSpace, Children) :-
 		Suspect ^ children = no,
 		edt_children(Store, Suspect ^ edt_node, EDTChildren),
 		NewStatus = new_child_status(Suspect ^ status),
-		add_children(EDTChildren, SuspectId, NewStatus,
+		add_children(Store, EDTChildren, SuspectId, NewStatus,
 			!SearchSpace, Children)
 	).
 

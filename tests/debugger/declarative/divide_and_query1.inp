@@ -1,0 +1,61 @@
+register --quiet
+context none
+echo on
+set format flat
+set size 100
+break to_b
+c -n
+f -n
+dd -s divide_and_query
+n
+n
+y
+y
+y
+y
+delete *
+break abba
+c
+f -n
+dd -s divide_and_query
+n
+y
+n
+n
+y
+y
+c
+c
+f
+dd -s divide_and_query
+n
+n
+y
+n
+n
+y
+y
+y
+c
+c
+f
+trust abba_delete
+dd -s divide_and_query
+n
+n
+n
+n
+y
+delete *
+break to_b2
+c
+f
+dd -s divide_and_query
+b 2
+cd 2/2
+mark
+n
+y
+n
+y
+quit -y

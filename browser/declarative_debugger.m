@@ -523,6 +523,38 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser) -->
 diagnoser_state_init_store(InStr, OutStr, Browser, Diagnoser) :-
 	diagnoser_state_init(map__init, InStr, OutStr, Browser, Diagnoser).
 
+:- pred set_fallback_search_mode(
+	mdb.declarative_analyser.search_mode::in,
+	diagnoser_state(trace_node_id)::in, 
+	diagnoser_state(trace_node_id)::out) is det.
+
+:- pragma export(
+	mdb.declarative_debugger.set_fallback_search_mode(in, in, out), 
+	"MR_DD_decl_set_fallback_search_mode").
+
+set_fallback_search_mode(SearchMode, !Diagnoser) :-
+	Analyser0 = !.Diagnoser ^ analyser_state,
+	mdb.declarative_analyser.set_fallback_search_mode(SearchMode,
+		Analyser0, Analyser),
+	!:Diagnoser = !.Diagnoser ^ analyser_state := Analyser.
+
+:- func top_down_search_mode = 
+	mdb.declarative_analyser.search_mode.
+
+top_down_search_mode = mdb.declarative_analyser.top_down_search_mode.
+
+:- pragma export(mdb.declarative_debugger.top_down_search_mode = out, 
+	"MR_DD_decl_top_down_search_mode").
+
+:- func divide_and_query_search_mode = 
+	mdb.declarative_analyser.search_mode.
+
+divide_and_query_search_mode = 
+	mdb.declarative_analyser.divide_and_query_search_mode.
+
+:- pragma export(mdb.declarative_debugger.divide_and_query_search_mode = out, 
+	"MR_DD_decl_divide_and_query_search_mode").
+
 	% Export a monomorphic version of diagnosis/10, to make it
 	% easier to call from C code.
 	%

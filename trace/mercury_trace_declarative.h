@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002, 2004 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -60,6 +60,35 @@ extern	void	MR_decl_add_trusted_module(const char *module_name);
 extern	void	MR_decl_add_trusted_pred_or_func(const MR_Proc_Layout *entry);
 extern	void	MR_decl_trust_standard_library(void);
 extern	MR_bool	MR_decl_remove_trusted(int n);
+
+/*
+** MR_trace_decl_set_default_search_mode sets the default search mode for 
+** the analyser.
+*/
+
+typedef MR_Word MR_Decl_Search_Mode;
+
+extern	void	MR_trace_decl_set_fallback_search_mode(
+			MR_Decl_Search_Mode search_mode);
+
+/*
+** This function checks to see if the supplied string is a valid
+** search mode.  If it is then it returns MR_TRUE and sets
+** the value at search_mode to the corresponding search mode.
+** If it isn't then it returns MR_FALSE and leaves the value at
+** search_mode unchanged.
+*/
+
+extern	MR_bool	MR_trace_is_valid_search_mode_string(
+			const char *search_mode_string,
+			MR_Decl_Search_Mode *search_mode);
+
+/*
+** Return the default search mode to use when then --search-mode option for the
+** `dd' command is not given.
+*/
+
+extern MR_Decl_Search_Mode MR_trace_get_default_search_mode(void);
 
 /*
 ** Prints a list of the trusted objects.  If mdb_command_format is true it

@@ -113,12 +113,9 @@ a(0)
 Is this a bug? n
 a(0)
 Valid? [no] y
+Found inadmissible call:
+Parent calc(10, _)
 Call divide2(10, 0, _)
-Throws "zero denominator"
-Expected? y
-Found unhandled exception:
-calc(10, _)
-"zero denominator"
 Is this a bug? n
 Call calc(10, _)
 Throws "zero denominator"
