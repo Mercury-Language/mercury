@@ -17,7 +17,7 @@ fi
 mkdir arena
 
 # copy the source files that make the best benchmark subjects into tha arena
-cp compiler/make_hlds.m compiler/typecheck.m compiler/llds_out.m arena
+cp compiler/make_hlds.m compiler/typecheck.m compiler/llds_out.m compiler/modules.m compiler/code_info.m compiler/polymorphism.m arena
 
 # copy the interface files and possibly optimization files they will need
 cp library/*.int* library/*.*opt compiler/*.int* arena
