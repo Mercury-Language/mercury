@@ -303,8 +303,7 @@ MR_trace_set_level(int ancestor_level)
 			MR_point.MR_point_vars[slot].MR_var_is_headvar = FALSE;
 		}
 
-		MR_point.MR_point_vars[slot].MR_var_is_headvar
-			= FALSE;
+		MR_point.MR_point_vars[slot].MR_var_is_ambiguous = FALSE;
 		slot++;
 	}
 
