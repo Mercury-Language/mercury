@@ -27,6 +27,10 @@ MCFLAGS-children =		--no-intermodule-optimization \
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
+MCFLAGS-exported_unify =	--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-exported_unify3 =	--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers --compile-only
 MCFLAGS-foreign_singleton =	--halt-at-warn
 MCFLAGS-foreign_type =		--compile-only
