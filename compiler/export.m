@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%)
-% Copyright (C) 1996-2004 The University of Melbourne.
+% Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -398,13 +398,7 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 		MaybeSucceed = "\treturn MR_TRUE;\n",
 		ArgInfoTypes2 = ArgInfoTypes0
 	; CodeModel = model_non,
-		% we should probably check this earlier, e.g. in make_hlds.m,
-		% but better we catch this error late than never...
-		C_RetType = "\n#error ""cannot export nondet procedure""\n",
-		MaybeDeclareRetval = "",
-		MaybeFail = "",
-		MaybeSucceed = "",
-		ArgInfoTypes2 = ArgInfoTypes0
+		unexpected(this_file, "Attempt to export model_non procedure.")
 	),
 	list__filter(export__include_arg, ArgInfoTypes2, ArgInfoTypes).
 

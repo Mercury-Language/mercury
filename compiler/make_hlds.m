@@ -1353,14 +1353,35 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context, !Module,
 			get_procedure_matching_declmodes(ExistingProcs, Modes,
 				!.Module, ProcId)
 		->
-			module_info_get_pragma_exported_procs(!.Module,
-				PragmaExportedProcs0),
-			NewExportedProc = pragma_exported_proc(PredId,
-				ProcId, C_Function, Context),
-			PragmaExportedProcs =
-				[NewExportedProc | PragmaExportedProcs0],
-			module_info_set_pragma_exported_procs(
-				PragmaExportedProcs, !Module)
+			map__lookup(Procs, ProcId, ProcInfo),
+			proc_info_declared_determinism(ProcInfo, MaybeDet),
+			% We cannot catch those multi or nondet procedures that
+			% don't have a determinism declaration until after 
+			% determinism analysis.
+			(
+				MaybeDet = yes(Det),
+				( Det = nondet ; Det = multidet )
+			->
+				Pieces = [words("Error: "),
+				    fixed("`:- pragma export' declaration"),
+				    words("for a procedure that has"),
+				    words("a declared determinism of"),
+				    fixed(hlds_out.determinism_to_string(Det)
+					++ ".")
+				],
+				error_util.write_error_pieces(Context, 0,
+					Pieces, !IO),
+				module_info_incr_errors(!Module)	
+			;	
+				module_info_get_pragma_exported_procs(!.Module,
+					PragmaExportedProcs0),
+				NewExportedProc = pragma_exported_proc(PredId,
+					ProcId, C_Function, Context),
+				PragmaExportedProcs =
+					[NewExportedProc | PragmaExportedProcs0],
+				module_info_set_pragma_exported_procs(
+					PragmaExportedProcs, !Module)
+			)
 		;
 			undefined_mode_error(Name, Arity, Context,
 				"`:- pragma export' declaration", !IO),

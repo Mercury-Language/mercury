@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -314,6 +314,26 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
 	proc_info_set_goal(Goal, Proc0, Proc1),
 	proc_info_set_inferred_determinism(Detism, Proc1, Proc),
 
+	% Check to make sure that if this procedure is exported to
+	% C via a pragma export declaration then the determinism
+	% is not multi or nondet - pragma exported procs that have
+	% been declared to have these determinisms should have been
+	% picked up in make_hlds, so this is just to catch those whose
+	% determinisms need to be inferred.
+	
+	module_info_get_pragma_exported_procs(!.ModuleInfo,
+		ExportedProcs),
+	(
+		list.member(pragma_exported_proc(PredId, ProcId, _, _),
+			ExportedProcs),
+		( Detism = multidet ; Detism = nondet )		
+	->
+		list.cons(export_model_non_proc(PredId, ProcId, Detism),
+			!Msgs)
+	;
+		true
+	),
+		
 		%  Put back the new proc_info structure.
 	map__det_update(Procs0, ProcId, Proc, Procs),
 	pred_info_set_procedures(Procs, Pred0, Pred),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2004 The University of Melbourne.
+% Copyright (C) 1995-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,7 +61,10 @@
 				hlds_goal_info, list(hlds_goal))
 		; 	pragma_c_code_without_det_decl(pred_id, proc_id)
 		;	has_io_state_but_not_det(pred_id, proc_id)
-		;	will_not_throw_with_erroneous(pred_id, proc_id).	
+		;	will_not_throw_with_erroneous(pred_id, proc_id)	
+		;	export_model_non_proc(pred_id, proc_id, determinism).
+				% Procedure with multi or nondet detism
+				% exported via :- pragma export ...
 
 :- type seen_call_id
 	--->	seen_call(pred_id, proc_id)
@@ -1059,6 +1062,7 @@ det_msg_get_type(par_conj_not_det(_, _, _, _, _), error).
 det_msg_get_type(pragma_c_code_without_det_decl(_, _), error).
 det_msg_get_type(has_io_state_but_not_det(_, _), error).
 det_msg_get_type(will_not_throw_with_erroneous(_, _), error).
+det_msg_get_type(export_model_non_proc(_, _, _), error).
 
 det_msg_is_any_mode_msg(multidet_disj(_, _), all_modes).
 det_msg_is_any_mode_msg(det_disj(_, _), all_modes).
@@ -1083,6 +1087,7 @@ det_msg_is_any_mode_msg(par_conj_not_det(_, _, _, _, _), any_mode).
 det_msg_is_any_mode_msg(pragma_c_code_without_det_decl(_, _), any_mode).
 det_msg_is_any_mode_msg(has_io_state_but_not_det(_, _), any_mode).
 det_msg_is_any_mode_msg(will_not_throw_with_erroneous(_, _), any_mode).
+det_msg_is_any_mode_msg(export_model_non_proc(_, _, _), any_mode).
 
 :- pred det_report_msg(det_msg::in, module_info::in, io::di, io::uo) is det.
 
@@ -1392,7 +1397,36 @@ det_report_msg(will_not_throw_with_erroneous(PredId, ProcId), ModuleInfo,
 		  words("to erroneous procedures.")
 		],
 	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(export_model_non_proc(PredId, ProcId, Detism), ModuleInfo,
+		!IO) :-
+	module_info_get_pragma_exported_procs(ModuleInfo, ExportedProcs),
+	(
+		get_exported_proc_context(ExportedProcs, PredId, ProcId,
+			Context)
+	->
+		Pieces = [words("Error: "),
+			  fixed(":- pragam export' declaration"),
+			  words("for a procedure that has"),
+			  words("a determinism of"),
+			  fixed(hlds_out.determinism_to_string(Detism)
+				++ ",")
+			],
+		error_util.write_error_pieces(Context, 0, Pieces, !IO)
+	;
+		unexpected(this_file, "Cannot find proc in table of "
+			++ "pragma exported procs")
+	).
 
+
+:- pred get_exported_proc_context(list(pragma_exported_proc)::in,
+	pred_id::in, proc_id::in, prog_context::out) is semidet.
+
+get_exported_proc_context([ Proc | Procs], PredId, ProcId, Context) :-
+	( Proc = pragma_exported_proc(PredId, ProcId, _, Context0) ->
+		Context = Context0
+	;
+		get_exported_proc_context(Procs, PredId, ProcId, Context)
+	).
 %-----------------------------------------------------------------------------%
 
 :- func det_report_seen_call_id(module_info, seen_call_id)
@@ -1450,5 +1484,11 @@ restore_det_warnings(OptionsToRestore, !IO) :-
 	list__foldl((pred((Option - Value)::in, di, uo) is det -->
 		globals__io_set_option(Option, Value)
 	), OptionsToRestore, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "det_report.m".
 
 %-----------------------------------------------------------------------------%

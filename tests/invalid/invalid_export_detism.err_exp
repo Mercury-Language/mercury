@@ -1,0 +1,4 @@
+invalid_export_detism.m:009: Error: `:- pragma export' declaration for a
+invalid_export_detism.m:009:   procedure that has a declared determinism of
+invalid_export_detism.m:009:   nondet.
+For more information, try recompiling with `-E'.
