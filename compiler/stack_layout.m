@@ -72,13 +72,13 @@
 %				layout structure of the call event
 %	module layout		(MR_Module_Layout *) - points to the layout
 %				struct of the containing module.
-%	maybe from full		(int_least16_t) - number of the stack slot of
+%	maybe from full		(int_least8_t) - number of the stack slot of
 %				the from_full flag, if the procedure is
 %				shallow traced
-%	maybe decl debug	(int_least16_t) - number of the first of two
+%	maybe decl debug	(int_least8_t) - number of the first of two
 %				stack slots used by the declarative debugger,
 %				if --trace-decl is set
-%	maybe trail		(int_least16_t) - number of the first of two
+%	maybe trail		(int_least8_t) - number of the first of two
 %				stack slots used for recording the state of
 %				the trail, if trailing is enabled
 %
@@ -741,7 +741,7 @@ stack_layout__construct_trace_layout(MaybeCallLabel, TraceSlotInfo,
 		),
 		Rvals = [CallRval, ModuleRval,
 			FromFullRval, DeclRval, TrailRval],
-		ArgTypes = initial([2 - yes(data_ptr), 3 - yes(int_least16)],
+		ArgTypes = initial([2 - yes(data_ptr), 3 - yes(int_least8)],
 			none)
 	;
 		% Indicate the absence of the trace layout fields.
