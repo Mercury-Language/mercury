@@ -109,13 +109,17 @@
 
 :- pred string__to_int(string, int).
 :- mode string__to_int(in, out) is semidet.
-%	Convert a string (of digits) to an int. If the string contains
-%	non-digit characters, string__to_int fails.
+% 	Convert a string to an int.  The string must contain only digits,
+% 	optionally preceded by a plus or minus sign.  If the string does
+% 	not match this syntax, string__to_int fails.
 
 :- pred string__base_string_to_int(int, string, int).
 :- mode string__base_string_to_int(in, in, out) is semidet.
-%	Convert a string of digits in the specified base (2-36) to an int.
-%	If the string contains invalid characters, the predicate fails.
+% 	Convert a string in the specified base (2-36) to an int.  The
+% 	string must contain only digits in the specified base, optionally
+% 	preceded by a plus or minus sign.  For bases > 10, digits 10 to 36
+% 	are repesented by the letters A-Z or a-z.  If the string does not
+% 	match this syntax, the predicate fails.
 
 :- pred string__to_float(string, float).
 :- mode string__to_float(in, out) is semidet.
@@ -308,8 +312,8 @@ string__replace(String, SubString0, SubString1, StringOut) :-
 
 string__replace_all(String, SubString0, SubString1, StringOut) :-
 	string__to_char_list(String, CharList),
-        string__to_char_list(SubString0, SubCharList0),
-        string__to_char_list(SubString1, SubCharList1),
+	string__to_char_list(SubString0, SubCharList0),
+	string__to_char_list(SubString1, SubCharList1),
        	find_all_sub_charlist(CharList, SubCharList0, SubCharList1, 
 		CharListOut),
        	string__from_char_list(CharListOut, StringOut).
@@ -386,7 +390,18 @@ string__to_int(String, Int) :-
 	string__base_string_to_int(10, String, Int).
 
 string__base_string_to_int(Base, String, Int) :-
-	string__base_string_to_int_2(Base, String, 0, Int).
+	( string__first_char(String, Char, String1) ->
+		( Char = ('-') ->
+			string__base_string_to_int_2(Base, String1, 0, Int1),
+			Int is 0 - Int1
+		; Char = ('+') ->
+			string__base_string_to_int_2(Base, String1, 0, Int)
+		;
+			string__base_string_to_int_2(Base, String, 0, Int)
+		)
+	;
+		Int = 0
+	).
 
 :- pred string__base_string_to_int_2(int, string, int, int).
 :- mode string__base_string_to_int_2(in, in, in, out) is semidet.
@@ -567,16 +582,16 @@ string__char_list_to_int_list([Char | Chars], [Code | Codes]) :-
 	string__char_list_to_int_list(Chars, Codes).
 
 string__to_upper(StrIn, StrOut) :-
-        string__to_char_list(StrIn, ListLow),
-        string__char_list_to_upper(ListLow, ListUpp),
-        string__from_char_list(ListUpp, StrOut).
+	string__to_char_list(StrIn, ListLow),
+	string__char_list_to_upper(ListLow, ListUpp),
+	string__from_char_list(ListUpp, StrOut).
 
 :- pred string__char_list_to_upper(list(char), list(char)).
 :- mode string__char_list_to_upper(in, out) is det.
 string__char_list_to_upper([], []).
 string__char_list_to_upper([X|Xs], [Y|Ys]) :-
-        char__to_upper(X,Y),
-        string__char_list_to_upper(Xs,Ys).
+	char__to_upper(X,Y),
+	string__char_list_to_upper(Xs,Ys).
 
 string__capitalize_first(S0, S) :-
 	( string__first_char(S0, C, S1) ->
