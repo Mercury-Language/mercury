@@ -718,7 +718,7 @@ find_type_info_index(Constraints, ClassTable, StartSlot, Tvar,
 	class_constraint::out, int::in, int::out, int::out) is det.
 
 first_matching_type_class_info([], _, _, _, _, _) :-
-	error("base_type_layout: constrained type info not found").
+	error("first_matching_type_class_info: not found").
 first_matching_type_class_info([C|Cs], Tvar, MatchingConstraint, N0, N,
 		TypeInfoIndex) :-
 	C = constraint(_, Ts),

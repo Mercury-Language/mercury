@@ -171,7 +171,7 @@ pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 				VarInt = ExistNum0 +
 				pseudo_type_info__pseudo_typeinfo_exist_var_base
 			;
-				error("base_type_layout: var not in list")
+				error("construct_pseudo_type_info: var not in list")
 			)
 		),
 		require(VarInt =< pseudo_type_info__pseudo_typeinfo_max_var,
