@@ -24,8 +24,10 @@ done
 if test "$failures" = ""
 then
 	echo "all tests have succeeded"
+	echo "gradeopt=$gflag, flagsopt=$fflag, cflagsopt=$cflag"
 	exit 0
 else
 	echo "some tests have failed in: $failures"
+	echo "gradeopt=$gflag, flagsopt=$fflag, cflagsopt=$cflag"
 	exit 1
 fi

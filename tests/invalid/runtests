@@ -13,10 +13,13 @@ cat *.err_res > .allres
 if test ! -s .allres -a "$checkstatus" = 0
 then
 	echo "the tests in the invalid directory succeeded"
+	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	mmake $jfactor realclean > /dev/null 2>&1
 	rm -f .allres
 	exit 0
 else
 	echo "the tests in the invalid directory failed"
+	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
 	echo "the differences are:"
 	cat .allres
 	exit 1

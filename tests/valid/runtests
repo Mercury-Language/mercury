@@ -22,8 +22,11 @@ done
 if test "$failed" = "" -a "$checkstatus" = 0
 then
 	echo "the tests in the valid directory succeeded"
+	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	mmake $gradeopt $jfactor realclean > /dev/null 2>&1
 	exit 0
 else
 	echo "some tests in the valid directory failed: $failed"
+	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
 	exit 1
 fi

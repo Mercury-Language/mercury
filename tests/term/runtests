@@ -14,10 +14,13 @@ cat *.trans_opt_res > .allres
 if test ! -s .allres -a "$checkstatus" = 0
 then
 	echo "the tests in the term directory succeeded"
+	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	mmake $jfactor clean > /dev/null 2>&1
 	rm -f .allres
 	exit 0
 else
 	echo "the tests in the term directory failed"
+	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
 	echo "the differences are:"
 	cat .allres
 	exit 1
