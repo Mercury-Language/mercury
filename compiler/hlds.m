@@ -209,8 +209,6 @@
 :- export_type follow_vars.
 :- type follow_vars	--->	map(var, register).
 
-:- type register	--->	r(int).
-
 :- export_type unification.
 :- type unification	--->	
 				% Y = f(X) where the top node of Y is output,

@@ -106,6 +106,11 @@
 %		replace all occurences of OldVar in Term0 with
 %		NewVar and put the result in Term.
 
+:- pred term__relabel_variables(list(term), variable, variable, list(term)).
+:- mode term__relabel_variables(input, input, input, output) is det.
+%	term__relabel_variables(Terms0, OldVar, NewVar, Terms) :
+%		same as term__relabel_variable but for a list of terms.
+
 %-----------------------------------------------------------------------------%
 
 	% To manage a supply of variables, use the following 2 predicates.
@@ -479,9 +484,6 @@ term__relabel_variable(term_variable(Var0), OldVar, NewVar,
 	else
 		Var = Var0
 	).
-
-:- pred term__relabel_variables(list(term), variable, variable, list(term)).
-:- mode term__relabel_variables(input, input, input, output) is det.
 
 term__relabel_variables([], _, _, []).
 term__relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
