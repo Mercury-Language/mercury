@@ -106,7 +106,7 @@ typedef const struct MR_TypeCtorInfo_Struct             *MR_TypeCtorInfo;
 typedef       struct MR_TypeInfo_Almost_Struct          *MR_TypeInfo;
 typedef const struct MR_PseudoTypeInfo_Almost_Struct    *MR_PseudoTypeInfo;
 typedef const void                                      *MR_ReservedAddr;
-typedef union MR_TrieNode                               *MR_TrieNodePtr;
+typedef MR_TrieNode                                     *MR_TrieNodePtr;
 
 #ifdef  MR_HIGHLEVEL_CODE
   typedef MR_Box                                        MR_BaseTypeclassInfo;
