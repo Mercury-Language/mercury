@@ -1,0 +1,151 @@
+
+<html>
+<head>
+<title>
+	How to upgrade to a new version of the boehm gc collector in Mercury.
+</title>
+</head>
+
+<body
+	bgcolor="#ffffff"
+	text="#000000"
+>
+<H1>
+	How to upgrade to a new version of the boehm gc collector in Mercury.
+</H1>
+
+<P>
+<B>WARNING:</B> This process is difficult and should not be undertaken lightly.
+Before attempting to upgrade one should definitely discuss it on the
+mercury-reviews mailing list first.
+</P>
+
+<P>
+Download the required version of the
+<A HREF="http://www.hpl.hp.com/personal/Hans_Boehm/gc/">
+boehm garbage collector</A> from the
+<A HREF="http://www.hpl.hp.com/personal/Hans_Boehm/gc/gc_source/">gc_source</A>
+directory.
+</P>
+
+<P>
+For the rest of this HOWTO we will assume that we download gc6.2alpha4.tar.gz.
+</P>
+
+<P>
+Untar the archive.
+<PRE>
+# zcat gc6.2alpha4.tar.gz | tar -xvf
+</PRE>
+</P>
+
+<P>
+Change into the directory.
+<PRE>
+# cd gc6.2alpha4
+</PRE>
+</P>
+
+<P>
+Import the new source on to the vendor branch.
+Note that gc_6_2alpha4 should be a tag which corresponds to
+the version of the collector that you are importing.<BR>
+<B>Warning:</B> this step can leave the repository in an inconsistent state.
+<PRE>
+# cvs import -I \! mercury/boehm_gc gc gc_6_2alpha4
+</PRE>
+</P>
+
+<P>
+Unfortunately the last step can leave the repository in an inconsistent state.
+What happens is that some files have never been modified by the Mercury team,
+but they have been modified by various upgrades to the collector.
+These files live on the vendor branch.
+For example, before upgrading the collector the file, BCC_MAKEFILE,
+had the version number, 1.1.1.6.
+However if the upgrade of the collector has requires a modification to
+BCC_MAKEFILE then the new version will be 1.1.1.7 on the vendor branch
+and when you update boehm_gc you will get version 1.1.1.7 of BCC_MAKEFILE,
+which is obviously inconsistent.
+</P>
+
+<P>
+How to fix this problem.
+Change into the boehm_gc directory of a clean check out of the Mercury system.
+Then issue the command
+<PRE>
+# cvs update .
+U BCC_MAKEFILE
+</PRE>
+Note all the files which have been updated.
+</P>
+
+<P>
+For each of the updated files, determine their revision number.
+Note it should be 1.1.1.x!
+<PRE>
+# cvs status BCC_MAKEFILE
+===================================================================
+File: BCC_MAKEFILE     Status: Up-to-date
+
+   Working revision:    1.1.1.7 Tue Mar  5 10:16:49 1996
+   Repository revision: 1.1.1.7 /home/mercury1/repository/mercury/boehm_gc/BCC_MAKEFILE,v
+   Sticky Tag:          (none)
+   Sticky Date:         (none)
+   Sticky Options:      (none)
+</PRE>
+</P>
+
+<P>
+We now need to undo the update.
+Repeat for all the other files.
+<PRE>
+# cvs update -j 1.1.1.7 -j 1.1.1.6 BCC_MAKEFILE
+</PRE>
+</P>
+
+<P>
+Check in the updates.
+The repository is now back in a consistent state.
+</P>
+
+<P>
+We can now merge the new version onto the main branch.
+This requires that we identify the tag which was used to tag the
+last import of the collector.
+<PRE>
+# cvs update -j gc_6_1alpha5 -j gc_6_2alpha4
+</PRE>
+</P>
+
+<P>
+<B>XXX</B>
+I think this step is unnecessary but I am not sure,
+so I will include it anyway.
+One may also have to bring the versions of the downgraded files back up to
+date.
+Note the reverse order of the -j flags from above.
+<PRE>
+# cvs update -j 1.1.1.6 -j 1.1.1.7 BCC_MAKEFILE
+</PRE>
+</P>
+
+<P>
+Now resolve any of the conflicts.
+Bootcheck the compiler in at least asm_fast.gc and hlc.gc.
+Then use the new system to do an install and test that the installed version
+can compile some test programs.
+This is because the update may have added some new files which may not be
+copied into the install directories.
+</P>
+
+<P>
+Now one can check it in!
+</P>
+
+<P>
+Last update was $Date: 2003-05-07 14:15:21 $ by $Author: petdr $@cs.mu.oz.au.
+</P>
+
+</body>
+</html>
