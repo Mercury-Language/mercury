@@ -149,7 +149,8 @@ globals__io_get_globals(Globals) -->
 		error("globals__io_get_globals: univ_to_type failed")
 	}.
 
-globals__io_set_globals(Globals) -->
+globals__io_set_globals(Globals0) -->
+	{ copy(Globals0, Globals) },
 	{ type_to_univ(Globals, UnivGlobals) },
 	io__set_globals(UnivGlobals).
 
