@@ -1728,22 +1728,11 @@ recompute_instmap_delta_disj(Atomic, [Goal0 | Goals0], [Goal | Goals],
 
 recompute_instmap_delta_cases(_, _, [], [], _, _, InstMapDelta) -->
 	{ instmap_delta_init_unreachable(InstMapDelta) }.
-recompute_instmap_delta_cases(Atomic, Var, [Case0], [Case],
-		InstMap0, _NonLocals, InstMapDelta) -->
-	{ Case0 = case(Functor, Goal0) },
-	instmap__bind_var_to_functor(Var, Functor, InstMap0, InstMap),
-	recompute_instmap_delta(Atomic, Goal0, Goal,
-		InstMap, InstMapDelta0),
-	instmap_delta_bind_var_to_functor(Var, Functor,
-		InstMap0, InstMapDelta0, InstMapDelta),
-	{ Case = case(Functor, Goal) }.
 recompute_instmap_delta_cases(Atomic, Var, [Case0 | Cases0], [Case | Cases],
 		InstMap0, NonLocals, InstMapDelta) -->
-	{ Cases0 = [_|_] },
 	{ Case0 = case(Functor, Goal0) },
 	instmap__bind_var_to_functor(Var, Functor, InstMap0, InstMap),
-	recompute_instmap_delta(Atomic, Goal0, Goal,
-		InstMap, InstMapDelta0),
+	recompute_instmap_delta(Atomic, Goal0, Goal, InstMap, InstMapDelta0),
 	instmap_delta_bind_var_to_functor(Var, Functor,
 		InstMap0, InstMapDelta0, InstMapDelta1),
 	{ Case = case(Functor, Goal) },

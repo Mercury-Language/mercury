@@ -387,17 +387,31 @@ instmap_delta_bind_var_to_functor(Var, ConsId, InstMap,
 		ModuleInfo = ModuleInfo0
 	;
 		InstmapDelta0 = reachable(InstmappingDelta0),
+
+		%
+		% Get the initial inst from the InstMap
+		%
 		instmap__lookup_var(InstMap, Var, OldInst),
-		( map__search(InstmappingDelta0, Var, Inst0) ->
-			Inst1 = Inst0
+
+		%
+		% Compute the new inst by taking the old inst,
+		% applying the instmap delta to it,
+		% and then unifying with bound(ConsId, ...)
+		%
+		( map__search(InstmappingDelta0, Var, NewInst0) ->
+			NewInst1 = NewInst0
 		;
-			Inst1 = OldInst
+			NewInst1 = OldInst
 		),
-		bind_inst_to_functor(Inst1, ConsId, Inst,
+		bind_inst_to_functor(NewInst1, ConsId, NewInst,
 			ModuleInfo0, ModuleInfo),
-		( Inst \= OldInst ->
-			instmap_delta_set(InstmapDelta0, Var,
-				Inst, InstmapDelta)
+
+		%
+		% add `Var :: OldInst -> NewInst' to the instmap delta
+		%
+		( NewInst \= OldInst ->
+			instmap_delta_set(InstmapDelta0, Var, NewInst,
+				InstmapDelta)
 		;
 			InstmapDelta = InstmapDelta0
 		)
