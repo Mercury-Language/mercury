@@ -181,8 +181,7 @@ about unbound type variables.
 
 :- import_module options, globals, hlds_out, prog_out, mode_util.
 :- import_module mercury_to_mercury.
-:- import_module varset.
-:- import_module int, map, tree234, require, string.
+:- import_module int, string, map, require, varset.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ True = lambda([_PredInfo::in] is semidet, true) },

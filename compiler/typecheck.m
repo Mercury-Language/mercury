@@ -163,7 +163,7 @@
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
 :- import_module passes_aux, clause_to_proc, special_pred, inst_match.
 
-:- import_module int, set, string, require, tree234, multi_map.
+:- import_module int, set, string, require, multi_map.
 :- import_module assoc_list, std_util, term, varset, term_io.
 
 %-----------------------------------------------------------------------------%
