@@ -102,6 +102,8 @@ static	bool	benchmark_all_solns = FALSE;
 static	bool	use_own_timer = FALSE;
 static	int	repeats = 1;
 
+static	int	MR_num_output_args = 0;
+
 unsigned	MR_num_threads = 1;
 
 /* timing */
@@ -737,7 +739,8 @@ enum MR_long_option {
 	MR_MDB_IN,
 	MR_MDB_OUT,
 	MR_MDB_ERR,
-	MR_MDB_IN_WINDOW
+	MR_MDB_IN_WINDOW,
+	MR_NUM_OUTPUT_ARGS
 };
 
 struct MR_option MR_long_opts[] = {
@@ -755,7 +758,8 @@ struct MR_option MR_long_opts[] = {
 	{ "mdb-in", 			1, 0, MR_MDB_IN },
 	{ "mdb-out", 			1, 0, MR_MDB_OUT },
 	{ "mdb-err", 			1, 0, MR_MDB_ERR },
-	{ "mdb-in-window",		0, 0, MR_MDB_IN_WINDOW }
+	{ "mdb-in-window",		0, 0, MR_MDB_IN_WINDOW },
+	{ "num-output-args", 		1, 0, MR_NUM_OUTPUT_ARGS }
 };
 
 static void
@@ -765,7 +769,7 @@ process_options(int argc, char **argv)
 	int		c;
 	int		long_index;
 
-	while ((c = MR_getopt_long(argc, argv, "acC:d:D:e:i:m:o:pP:r:sStT:x",
+	while ((c = MR_getopt_long(argc, argv, "acC:d:D:e:i:m:n:o:pP:r:sStT:x",
 		MR_long_opts, &long_index)) != EOF)
 	{
 		switch (c)
@@ -861,6 +865,14 @@ process_options(int argc, char **argv)
 			MR_mdb_in_filename = MR_copy_string(MR_optarg);
 			MR_mdb_out_filename = MR_copy_string(MR_optarg);
 			MR_mdb_err_filename = MR_copy_string(MR_optarg);
+			break;
+
+		case 'n':
+		case MR_NUM_OUTPUT_ARGS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			MR_num_output_args = size;
 			break;
 
 		case 'w':
@@ -1421,8 +1433,41 @@ MR_do_interpreter(void)
 	}
   #endif
 
-	/* call the Mercury predicate main/2 */
-	(*MR_program_entry_point)();
+	/* call the entry point (normally the Mercury predicate main/2) */
+	{ 
+		MR_Word outputs[4];
+		typedef void MR_CALL (*EntryPoint1)(MR_Word *);
+		typedef void MR_CALL (*EntryPoint2)(MR_Word *, MR_Word *);
+		typedef void MR_CALL (*EntryPoint3)(MR_Word *, MR_Word *,
+					MR_Word *);
+		typedef void MR_CALL (*EntryPoint4)(MR_Word *, MR_Word *,
+					MR_Word *, MR_Word *);
+		switch (MR_num_output_args) {
+			case 0:
+				(*MR_program_entry_point)();
+				break;
+			case 1:
+				(*(EntryPoint1)MR_program_entry_point)(
+					&outputs[0]);
+				break;
+			case 2:
+				(*(EntryPoint2)MR_program_entry_point)(
+					&outputs[0], &outputs[1]);
+				break;
+			case 3:
+				(*(EntryPoint3)MR_program_entry_point)(
+					&outputs[0], &outputs[1], &outputs[2]);
+				break;
+			case 4:
+				(*(EntryPoint4)MR_program_entry_point)(
+					&outputs[0], &outputs[1], &outputs[2],
+					&outputs[3]);
+				break;
+			default:
+				MR_fatal_error("sorry, not implemented: "
+					"--num-output-args > 4");
+		}
+	}
 
   #ifdef  MR_MPROF_PROFILE_TIME
 	if (MR_profiling)  {
