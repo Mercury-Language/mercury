@@ -206,9 +206,6 @@ polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
 					module_info, module_info).
 :- mode polymorphism__process_procs(in, in, in, out) is det.
 
-% XXX
-:- import_module debug.
-
 polymorphism__process_procs(_PredId, [], ModuleInfo, ModuleInfo).
 polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 		ModuleInfo) :-
@@ -216,10 +213,6 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
-
-	pred_info_name(PredInfo0, PredName),
-	proc_id_to_int(ProcId, ProcInt),
-	dump("Processing %s mode %i\n", [s(PredName), i(ProcInt)]),
 
 	polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 					ProcInfo, PredInfo1, ModuleInfo1),
@@ -486,11 +479,9 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		% lambda goal and then convert the lambda expression
 		% into a new predicate
 		{ LambdaGoal0 = _ - GoalInfo0 },
-		{ dump("processing lambda...") },
 		{ goal_info_get_nonlocals(GoalInfo0, OrigNonLocals) },
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal1),
 		polymorphism__fixup_quantification(LambdaGoal1, LambdaGoal),
-		{ dump("done\n") },
 		polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det,
 				OrigNonLocals, LambdaGoal, Unification,
 				Y1, Unification1),
