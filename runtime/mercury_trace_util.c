@@ -103,7 +103,7 @@ MR_trace_make_var_list(const MR_Stack_Layout_Label *layout)
 
 		/*
 		** XXX The printing of type_infos is buggy at the moment
-		** due to the fake arity of mercury_builtin:typeinfo/1.
+		** due to the fake arity of private_builtin:typeinfo/1.
 		**
 		** XXX The printing of large data structures is painful
 		** at the moment due to the lack of a true browser.

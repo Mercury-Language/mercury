@@ -141,7 +141,7 @@
 /*
 ** Code intended for defining type_layouts for handwritten code.
 **
-** See library/io.m or library/mercury_builtin.m for details.
+** See library/io.m or library/builtin.m for details.
 */
 #if TAGBITS >= 2
 	typedef const Word *TypeLayoutField;
@@ -281,7 +281,7 @@
 #define MR_TYPECTOR_GET_HOT_NAME(T)				\
 	((ConstString) ( ( ((Integer) (T)) % 2 ) ? "func" : "pred" ))
 #define MR_TYPECTOR_GET_HOT_MODULE_NAME(T)				\
-	((ConstString) "mercury_builtin")
+	((ConstString) "builtin")
 #define MR_TYPECTOR_GET_HOT_BASE_TYPE_INFO(T)			\
 	((Word) ( ( ((Integer) (T)) % 2 ) ?		\
 		(const Word *) &mercury_data___base_type_info_func_0 :	\
@@ -347,7 +347,7 @@
 
 /*
 ** Macros are provided here to initialize base_type_infos, both for
-** builtin types (such as in library/mercury_builtin.m) and user
+** builtin types (such as in library/builtin.m) and user
 ** defined C types (like library/array.m). Also, the automatically
 ** generated code uses these initializers.
 **

@@ -141,13 +141,12 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 	ArityArg = yes(const(int_const(TypeArity))),
 	( 	
 		( Status = exported ; Status = abstract_exported
-		; Status = imported 	% XXX this is a hack to make it work
-					% for `term__context', which is defined
-					% in mercury_builtin.m, but whose
-					% base_type_info is generated in
-					% term.m.  Apart from special cases
-					% in mercury_builtin.m, this should
-					% never happen.
+		; Status = imported 	% XXX this is an old hack to make it
+					% work for `term__context', which was
+					% once defined in mercury_builtin.m,
+					% but whose base_type_info was
+					% generated in term.m. 
+					% It's probably not needed anymore.
 		)
 	->
 		Exported = yes
@@ -205,7 +204,7 @@ base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, PredAddrArgs) :-
 		module_info_globals(ModuleInfo, Globals),
 		
 			% If eliminated, make procs point to
-			% mercury_builtin__unused.  (Or, if static code
+			% private_builtin__unused.  (Or, if static code
 			% addresses are not available, use NULL
 			% pointers).
 		(

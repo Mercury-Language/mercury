@@ -139,7 +139,7 @@
 %			<base_type_layout for int/0>,
 %			<base_type_functors for int/0>,
 %			"int",
-%			"mercury_builtin"),
+%			"builtin"),
 %		r(TypeInfoT3, 0).
 %
 % Note that base_type_infos are actually generated as references to a
@@ -392,7 +392,7 @@ polymorphism__no_type_info_builtin(MercuryBuiltin, "unsafe_type_cast", 2) :-
 	mercury_private_builtin_module(MercuryBuiltin).
 polymorphism__no_type_info_builtin(MercuryBuiltin,
 		"unsafe_promise_unique", 2) :-
-	mercury_private_builtin_module(MercuryBuiltin).
+	mercury_public_builtin_module(MercuryBuiltin).
 
 %---------------------------------------------------------------------------%
 
@@ -660,7 +660,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			->
 				PredId = CallPredId
 			;
-				error("polymorphism.m: can't find `mercury_builtin:unify/2'")
+				error("polymorphism.m: can't find `builtin:unify/2'")
 			},
 			% XXX Bug! - we should check that the mode is (in, in),
 			%     and report an error (e.g. "unification of
@@ -714,7 +714,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			->
 				PredId = PredId0
 			;
-				error("can't locate mercury_builtin:builtin_unify_pred/2")
+				error("can't locate private_builtin:builtin_unify_pred/2")
 			},
 			{ hlds_pred__in_in_unification_proc_id(ProcId) },
 			{ CallContext = call_unify_context(XVar, Y, Context) },
@@ -1382,7 +1382,7 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 				% We extract the superclass typeclass_info by
 				% inserting a call to
 				% superclass_from_typeclass_info in
-				% mercury_builtin.
+				% private_builtin.
 
 				% Make the goal for the call
 			varset__init(Empty),

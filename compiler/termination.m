@@ -459,8 +459,12 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 %----------------------------------------------------------------------------%
 
 % This predicate checks each ProcId in the list to see if it is a compiler
-% generated predicate, or a mercury_builtin predicate.  If it is, then the
-% compiler sets the termination property of the ProcIds accordingly.
+% generated predicate, or a predicate from builtin.m or private_builtin.m.
+% If it is, then the compiler sets the termination property of the ProcIds
+% accordingly.
+
+% XXX This does the wrong thing for calls to unify/2,
+% which might not terminate in the case of user-defined equality predicates.
 
 :- pred set_compiler_gen_terminates(pred_info, list(proc_id), pred_id,
 	module_info, proc_table, proc_table).

@@ -107,7 +107,7 @@
 	% check whether that type is a no_tag type
 	% (i.e. one with only one constructor, and
 	% whose one constructor has only one argument,
-	% and which is not mercury_builtin:type_info/1),
+	% and which is not private_builtin:type_info/1),
 	% and if so, return its constructor symbol and argument type.
 
 :- pred type_is_no_tag_type(list(constructor), sym_name, type).
@@ -378,9 +378,9 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	% The checks for type_info and base_type_info
 	% are needed because those types lie about their
 	% arity; it might be cleaner to change that in
-	% mercury_builtin.m, but that would cause some
+	% private_builtin.m, but that would cause some
 	% bootstrapping difficulties.
-	% It might be slightly better to check for mercury_builtin:type_info
+	% It might be slightly better to check for private_builtin:type_info
 	% etc. rather than just checking the unqualified type name,
 	% but I found it difficult to verify that the constructors
 	% would always be fully module-qualified at points where

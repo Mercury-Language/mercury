@@ -1,2 +1,2 @@
 :- module permutation.
-:- pragma termination_info(permutation:perm((mercury_builtin:in), (mercury_builtin:out)), finite(0, [no, yes, no]), cannot_loop).
+:- pragma termination_info(permutation:perm((builtin:in), (builtin:out)), finite(0, [no, yes, no]), cannot_loop).

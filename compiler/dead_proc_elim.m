@@ -692,8 +692,9 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			% polymorphism.
 			code_util__compiler_generated(PredInfo)
 		;
-			% Don't eliminate preds from mercury_builtin.m since
-			% polymorphism.m needs unify/2 and friends.
+			% Don't eliminate preds from builtin.m or
+			% private_builtin.m, since polymorphism.m
+			% needs unify/2 and friends.
 			mercury_public_builtin_module(PredModule)
 		;
 			mercury_private_builtin_module(PredModule)

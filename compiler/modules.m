@@ -918,7 +918,8 @@ grab_imported_modules(ModuleName, Items0, Module, Error) -->
 		% following this do not need module qualifiers.
 	{ append_pseudo_decl(Module1, imported, Module2) },
 
-		% Add `mercury_builtin' to the list of imported modules
+		% Add `builtin' and `private_builtin' to the
+		% list of imported modules
 	{ add_implicit_imports(ImportedModules1, UsedModules1,
 			ImportedModules2, UsedModules2) },
 
@@ -962,7 +963,7 @@ grab_unqual_imported_modules(ModuleName, Items0, Module, Error) -->
 	{ init_module_imports(ModuleName, Items0, [], [], Module0) },
 	{ append_pseudo_decl(Module0, imported, Module1) },
 
-		% Add `mercury_builtin' to the imported modules.
+		% Add `builtin' and `private_builtin' to the imported modules.
 	{ add_implicit_imports(ImportDeps0, UseDeps0, ImportDeps1, UseDeps1) },
 
 		%

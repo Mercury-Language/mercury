@@ -222,7 +222,7 @@
 	% type_name(Type) returns the name of the specified type
 	% (e.g. type_name(type_of([2,3])) = "list:list(int)").
 	% Any equivalence types will be fully expanded.
-	% Builtin types (those defined in mercury_builtin.m) will
+	% Builtin types (those defined in builtin.m) will
 	% not have a module qualifier.
 	%
 :- func type_name(type_info) = string.
@@ -267,8 +267,7 @@
 
 	% type_ctor_module_name(TypeCtor) returns the module name of specified
 	% type constructor.
-	% (e.g. type_ctor_module_name(type_ctor(type_of(2))) =
-	% 		"mercury_builtin").
+	% (e.g. type_ctor_module_name(type_ctor(type_of(2))) = "builtin").
 	%
 :- func type_ctor_module_name(type_ctor_info) = string.
 
@@ -1323,9 +1322,13 @@ type_name(Type) = TypeName :-
 	( Arity = 0 ->
 		UnqualifiedTypeName = Name
 	;
+		% XXX the test for mercury_builtin is for bootstrapping
+		% only; it should eventually be deleted.
 		( ModuleName = "mercury_builtin", Name = "func" -> 
 			IsFunc = yes 
-		 ; 
+		; ModuleName = "builtin", Name = "func" -> 
+			IsFunc = yes 
+		;
 		 	IsFunc = no 
 		),
 		(
@@ -1342,7 +1345,9 @@ type_name(Type) = TypeName :-
 				UnqualifiedTypeName)
 		)
 	),
-	( ModuleName = "mercury_builtin" ->
+		% XXX the test for mercury_builtin is for bootstrapping
+		% only; it should eventually be deleted.
+	( (ModuleName = "mercury_builtin" ; ModuleName = "builtin") ->
 		TypeName = UnqualifiedTypeName
 	;
 		string__append_list([ModuleName, ":", 

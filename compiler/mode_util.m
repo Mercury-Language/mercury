@@ -135,7 +135,7 @@
 :- mode get_arg_lives(in, in, out) is det.
 
 	% Predicates to make error messages more readable by stripping
-	% "mercury_builtin" module qualifiers from modes.
+	% "builtin:" module qualifiers from modes.
 
 :- pred strip_builtin_qualifier_from_cons_id(cons_id, cons_id).
 :- mode strip_builtin_qualifier_from_cons_id(in, out) is det.
@@ -1357,7 +1357,7 @@ get_arg_lives([Mode|Modes], ModuleInfo, [IsLive|IsLives]) :-
 
 	% 
 	% Predicates to make error messages more readable by stripping
-	% "mercury_builtin" module qualifiers from modes and insts.
+	% "builtin:" module qualifiers from modes and insts.
 	% The interesting part is strip_builtin_qualifier_from_sym_name;
 	% the rest is basically just recursive traversals.
 	%

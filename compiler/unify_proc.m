@@ -940,7 +940,16 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 	unify_proc__info_get_module_info(ModuleInfo),
 	{ module_info_get_predicate_table(ModuleInfo, PredicateTable) },
 	{ list__length(ArgVars, Arity) },
-	{ MercuryBuiltin = unqualified("mercury_builtin") },
+	%
+	% We assume that the special preds compare/3, index/2, and unify/2
+	% are the only public builtins called by code generated
+	% by this module.
+	%
+	{ special_pred_name_arity(_, Name, _, Arity) ->
+		mercury_public_builtin_module(MercuryBuiltin)
+	;
+		mercury_private_builtin_module(MercuryBuiltin)
+	},
 	{
 		predicate_table_search_pred_m_n_a(PredicateTable,
 			MercuryBuiltin, Name, Arity, [PredId])

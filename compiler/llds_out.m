@@ -2495,8 +2495,8 @@ get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 		)
 		% The conditions above define which labels are printed without
 		% module qualification.  XXX Changes to runtime/* are necessary
-		% to allow `mercury_builtin' labels to be qualified/
-		% overloaded.
+		% to allow `builtin' or `private_builtin' labels to be
+		% qualified.
 	->
 		LabelName0 = Name0
 	;

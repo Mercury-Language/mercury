@@ -367,6 +367,10 @@ term__try_term_to_univ_2(Term, Type, Context, Result) :-
 		term::in(bound(term__functor(ground, ground, ground))),
 		type_info::in, term_to_type_context::in,
 		term_to_type_result(univ)::out) is semidet.
+/*
+** XXX the following clauses for mercury_builtin:* are
+** for bootstrapping only, and should eventually be deleted
+*/
 term__term_to_univ_special_case("mercury_builtin", "character", [],
 		Term, _, _, ok(Univ)) :-
 	Term = term__functor(term__atom(FunctorName), [], _),
@@ -381,6 +385,24 @@ term__term_to_univ_special_case("mercury_builtin", "string", [],
 	Term = term__functor(term__string(String), [], _),
 	type_to_univ(String, Univ).
 term__term_to_univ_special_case("mercury_builtin", "float", [],
+		Term, _, _, ok(Univ)) :-
+	Term = term__functor(term__float(Float), [], _),
+	type_to_univ(Float, Univ).
+
+term__term_to_univ_special_case("builtin", "character", [],
+		Term, _, _, ok(Univ)) :-
+	Term = term__functor(term__atom(FunctorName), [], _),
+	string__first_char(FunctorName, Char, ""),
+	type_to_univ(Char, Univ).
+term__term_to_univ_special_case("builtin", "int", [],
+		Term, _, _, ok(Univ)) :-
+	Term = term__functor(term__integer(Int), [], _),
+	type_to_univ(Int, Univ).
+term__term_to_univ_special_case("builtin", "string", [],
+		Term, _, _, ok(Univ)) :-
+	Term = term__functor(term__string(String), [], _),
+	type_to_univ(String, Univ).
+term__term_to_univ_special_case("builtin", "float", [],
 		Term, _, _, ok(Univ)) :-
 	Term = term__functor(term__float(Float), [], _),
 	type_to_univ(Float, Univ).
@@ -425,7 +447,7 @@ term__term_to_univ_special_case("array", "array", [ElemType], Term, _Type,
 		ArgResult = error(Error),
 		Result = error(Error)
 	).
-term__term_to_univ_special_case("mercury_builtin", "c_pointer", _, _, _, 
+term__term_to_univ_special_case("builtin", "c_pointer", _, _, _, 
 		_, _) :-
 	fail.
 term__term_to_univ_special_case("std_util", "univ", _, _, _, _, _) :-
@@ -581,6 +603,10 @@ term__univ_to_term(Univ, Term) :-
 		list(type_info)::in, univ::in, term__context::in,
 		term::out) is semidet.
 
+/*
+** XXX the following clauses for mercury_builtin:* are
+** for bootstrapping only, and should eventually be deleted
+*/
 term__univ_to_term_special_case("mercury_builtin", "int", [], Univ, Context,
 		term__functor(term__integer(Int), [], Context)) :-
 	det_univ_to_type(Univ, Int).
@@ -592,6 +618,20 @@ term__univ_to_term_special_case("mercury_builtin", "character", [], Univ,
 	det_univ_to_type(Univ, Character),
 	string__char_to_string(Character, CharName).
 term__univ_to_term_special_case("mercury_builtin", "string", [], Univ, Context,
+		term__functor(term__string(String), [], Context)) :-
+	det_univ_to_type(Univ, String).
+
+term__univ_to_term_special_case("builtin", "int", [], Univ, Context,
+		term__functor(term__integer(Int), [], Context)) :-
+	det_univ_to_type(Univ, Int).
+term__univ_to_term_special_case("builtin", "float", [], Univ, Context,
+		term__functor(term__float(Float), [], Context)) :-
+	det_univ_to_type(Univ, Float).
+term__univ_to_term_special_case("builtin", "character", [], Univ, 
+		Context, term__functor(term__atom(CharName), [], Context)) :-
+	det_univ_to_type(Univ, Character),
+	string__char_to_string(Character, CharName).
+term__univ_to_term_special_case("builtin", "string", [], Univ, Context,
 		term__functor(term__string(String), [], Context)) :-
 	det_univ_to_type(Univ, String).
 term__univ_to_term_special_case("std_util", "type_info", [], Univ, Context,
@@ -652,10 +692,14 @@ type_info_to_term(Context, TypeInfo, Term) :-
 	ModuleName = type_ctor_name(TypeCtor),
 	list__map(type_info_to_term(Context), ArgTypes, ArgTerms),
 
-	( ModuleName = "mercury_builtin" ->
+	/*
+	** XXX the test for mercury_builtin is for bootstrapping only,
+	** and should eventually be deleted
+	*/
+	( (ModuleName = "mercury_builtin" ; ModuleName = "builtin") ->
 		Term = term__functor(term__atom(TypeName), ArgTerms, Context)
 	;
-		Term = term__functor(term__atom(":"), % TYPE_QUAL_OP
+		Term = term__functor(term__atom(":"),
 			[term__functor(term__atom(ModuleName), [], Context),
 			 term__functor(term__atom(TypeName), 
 			 	ArgTerms, Context)], Context)

@@ -4767,7 +4767,7 @@ identical_up_to_renaming(TypesList1, TypesList2) :-
 	type_list_subsumes(TypesList2, TypesList1, _).
 
 
-	% Make error messages more readable by removing "mercury_builtin"
+	% Make error messages more readable by removing "builtin:"
 	% qualifiers.
 
 :- pred strip_builtin_qualifiers_from_type((type), (type)).

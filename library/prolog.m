@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -21,7 +21,7 @@
 % if all your cuts are green cuts.
 
 /********
-cut is currently defined in mercury_builtin.m, for historical reasons.
+cut is currently defined in builtin.m, for historical reasons.
 
 :- pred ! is det.
 
@@ -97,7 +97,7 @@ is/2 is currently defined in int.m, for historical reasons.
 :- import_module require, int.
 
 /*********
-% !/0 and !/2 currently defined in mercury_builtin.m, for historical reasons.
+% !/0 and !/2 currently defined in builtin.m, for historical reasons.
 !.
 !(X, X).
 *********/

@@ -34,7 +34,7 @@
 	% special_pred_name_arity(SpecialPredType, GenericPredName,
 	%		TypeSpecificVersionPredName, Arity):
 	%	true iff there is a special predicate of category
-	%	SpecialPredType, called mercury_builtin:GenericPredName/Arity,
+	%	SpecialPredType, called builtin:GenericPredName/Arity,
 	%	for which the type-specific versions will be called
 	%	TypeSpecificVersionPredName.
 :- pred special_pred_name_arity(special_pred_id, string, string, int).

@@ -24,6 +24,10 @@ Options:
 		Copy the runtime directory instead of linking it.
 		This is necessary if one wants to bootcheck a grade
 		that is not compatible with the standard one.
+	-p, --copy-profiler
+		Copy the profiler directory instead of linking it.
+		This is sometimes necessary for bootstrapping
+		changes.
 	-s, --sicstus
 		As well as running the normal bootcheck, also build a SICStus
 		Prolog version of the compiler and check it against the
@@ -58,6 +62,7 @@ outfile=""
 runtests=true
 do_bootcheck=true
 copy_runtime=false
+copy_profiler=false
 keep_stage_2=false
 keep_stage_3=false
 keep_stage_2_sicstus=false
@@ -93,6 +98,9 @@ while [ $# -gt 0 ]; do
 		outfile="$2"; shift ;;
 	-o*)
 		outfile="` expr $1 : '-o\(.*\)' `"; ;;
+
+	-p|--copy-profiler)
+		copy_profiler=true ;;
 
 	-r|--copy-runtime)
 		copy_runtime=true ;;
@@ -241,7 +249,16 @@ then
 	ln -s $root/doc .
 	ln -s $root/scripts .
 	ln -s $root/util .
-	ln -s $root/profiler .
+	if test "$copy_profiler" = "true"
+	then
+		mkdir profiler
+		cd profiler
+		ln -s $root/profiler/*.m .
+		cp $root/profiler/Mmake* .
+		cd $root/stage2_sicstus
+	else
+		ln -s $root/profiler .
+	fi
 	ln -s $root/conf* .
 	ln -s $root/VERSION .
 	ln -s $root/.README.in .
@@ -259,7 +276,8 @@ then
 
 	if
 		cd stage2_sicstus &&
-		mmake $mmake_opts depend_library depend_compiler &&
+		mmake $mmake_opts depend_library depend_compiler \
+			depend_profiler &&
 		cd $root
 	then
 		echo "building of SICStus stage 2 dependencies successful"
@@ -343,6 +361,8 @@ then
 		mmake depend
 		cd $root/compiler;
 		mmake depend
+		cd $root/profiler;
+		mmake depend
 		cd $root
 		if mmake $mmake_opts MMAKEFLAGS=$jfactor all
 		then
@@ -417,7 +437,16 @@ then
 	ln -s $root/doc .
 	ln -s $root/scripts .
 	ln -s $root/util .
-	ln -s $root/profiler .
+	if test "$copy_profiler" = "true"
+	then
+		mkdir profiler
+		cd profiler
+		ln -s $root/profiler/*.m .
+		cp $root/profiler/Mmake* .
+		cd $root/stage2
+	else
+		ln -s $root/profiler .
+	fi
 	ln -s $root/conf* .
 	ln -s $root/VERSION .
 	ln -s $root/.README.in .
@@ -441,7 +470,8 @@ then
 		exit 1
 	fi
 
-	if (cd stage2 && mmake $mmake_opts depend_library depend_compiler)
+	if (cd stage2 && mmake $mmake_opts depend_library depend_compiler \
+		depend_profiler)
 	then
 		echo "building of stage 2 dependencies successful"
 	else

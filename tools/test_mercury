@@ -1,4 +1,9 @@
 #!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1996-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
 
 # This script is used to run the nightly tests.
 # It is invoked from the `run_test' script.
@@ -188,7 +193,7 @@ mmake depend $PARALLEL || { false; exit 1; }
 mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
 mmake depend $PARALLEL || { false; exit 1; }
-tools/bootcheck -r -t $PARALLEL || $install_anyway || { false; exit 1; }
+tools/bootcheck -r -p -t $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
 #-----------------------------------------------------------------------------#

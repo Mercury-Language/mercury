@@ -283,7 +283,7 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 
 	/*
 	** XXX The printing of type_infos is buggy at the moment
-	** due to the fake arity of the type mercury_builtin:typeinfo/1.
+	** due to the fake arity of the type private_builtin:typeinfo/1.
 	**
 	** XXX The printing of large data structures is painful
 	** at the moment due to the lack of a true browser.
