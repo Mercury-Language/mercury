@@ -991,6 +991,8 @@ output_pragma_decls([D|Decls]) -->
                 VarType = "Integer"
         ; Type = term__functor(term__atom("float"), [], _) ->
                 VarType = "Float"
+        ; Type = term__functor(term__atom("string"), [], _) ->
+                VarType = "String"
         ;
                 VarType = "Word"
         },
@@ -1013,6 +1015,11 @@ output_pragma_inputs([I|Inputs]) -->
 	io__write_string(VarName),
 	io__write_string(" = "),
 	(
+        	{ Type = term__functor(term__atom("string"), [], _) }
+	->
+		io__write_string("(String) "),
+		output_rval(Rval)
+	;
         	{ Type = term__functor(term__atom("float"), [], _) }
 	->
 		io__write_string("word_to_float("),
@@ -1036,6 +1043,11 @@ output_pragma_outputs([O|Outputs]) -->
 	output_lval(Lval),
 	io__write_string(" = "),
 	(
+        	{ Type = term__functor(term__atom("string"), [], _) }
+	->
+		io__write_string("(Word) "),
+		io__write_string(VarName)
+	;
         	{ Type = term__functor(term__atom("float"), [], _) }
 	->
 		io__write_string("float_to_word("),
