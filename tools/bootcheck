@@ -477,7 +477,7 @@ then
 		true
 	else
 		find $root/stage2/library -name "*.o" -print |
-		xargs /bin/rm -f < /dev/null
+		xargs /bin/rm -f
 	fi
 
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
@@ -594,8 +594,8 @@ then
 	then
 		true
 	else
-		find $root/stage2/compiler -name "*.o" |
-		xargs /bin/rm -f < /dev/null
+		find $root/stage2/compiler -name "*.o" -print |
+		xargs /bin/rm -f
 	fi
 
 	if (cd stage3/browser && $MMAKE $mmake_opts $jfactor cs)
