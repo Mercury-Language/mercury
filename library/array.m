@@ -95,7 +95,7 @@ array__init(Low, High, Init, Array) :-
 		Size = 1
 	->
 		Array = node(Init)
-	, empty;
+	;
 		Size = 2
 	->
 		Array = two(Low, High, node(Init), node(Init))
