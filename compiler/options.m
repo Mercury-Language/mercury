@@ -630,7 +630,7 @@ option_defaults_2(code_gen_option, [
 					% above default with a value determined
 					% at configuration time
 	max_jump_table_size	-	int(0),
-	compare_specialization	-	int(3),
+	compare_specialization	-	int(1),
 					% 0 indicates any size.
 	fact_table_max_array_size -	int(1024),
 	fact_table_hash_percent_full - 	int(90),
