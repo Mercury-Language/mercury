@@ -7,6 +7,10 @@
 // mercury_dotnet.cs - This file defines the system runtime types and
 // methods that are used when generating code for the .NET backend.
 
+// the following "using" declaration works around a bug in GNU Portable.NET's
+// C# compiler
+using System.Runtime.InteropServices;
+
 namespace mercury {
 
 namespace runtime {
@@ -151,10 +155,6 @@ public class LowLevelData
         return ((object[]) w[2]);
     }
 }
-
-// the following "using" declaration works around a bug in GNU Portable.NET's
-// C# compiler
-using System.Runtime.InteropServices;
 
 class PInvoke {
     [System.Runtime.InteropServices.DllImport("msvcrt.dll")]
