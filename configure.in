@@ -1982,8 +1982,11 @@ esac
 # DEFAULT_GRADE is the default grade used to compile applications.
 # This is the same as DEFAULT_BASE_GRADE except that we also want to
 # enable conservative garbage collection by default.
-
-DEFAULT_GRADE=$DEFAULT_BASE_GRADE.gc
+# We also allow users to override the default grade by setting
+# "DEFAULT_GRADE" in the environment before invoking configure.
+if test "$DEFAULT_GRADE" = ""; then                                             
+	DEFAULT_GRADE=$DEFAULT_BASE_GRADE.gc
+fi
 
 MERCURY_MSG("using grade \`$DEFAULT_GRADE' as the default grade for applications")
 AC_SUBST(DEFAULT_GRADE)
