@@ -389,7 +389,8 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 
 		{ gather_c_file_labels(Modules, Labels) },
 		{ decl_set_init(DeclSet0) },
-		output_c_label_decl_list(Labels, DeclSet0, DeclSet1),
+		output_c_label_decl_list(Labels, StackLayoutLabels,
+			DeclSet0, DeclSet1),
 		output_comp_gen_c_var_list(Vars, DeclSet1, DeclSet2),
 		output_c_data_def_list(Datas, DeclSet2, DeclSet3),
 		output_comp_gen_c_data_list(Datas, DeclSet3, DeclSet4),
@@ -875,19 +876,41 @@ output_exported_c_functions([F | Fs]) -->
 	io__write_string(F),
 	output_exported_c_functions(Fs).
 
-:- pred output_c_label_decl_list(list(label), decl_set, decl_set,
-	io__state, io__state).
-:- mode output_c_label_decl_list(in, in, out, di, uo) is det.
+:- pred output_c_label_decl_list(list(label), set_bbbtree(label),
+		decl_set, decl_set, io__state, io__state).
+:- mode output_c_label_decl_list(in, in, in, out, di, uo) is det.
 
-output_c_label_decl_list([], DeclSet, DeclSet) --> [].
-output_c_label_decl_list([Label | Labels], DeclSet0, DeclSet) -->
-	output_c_label_decl(Label, DeclSet0, DeclSet1),
-	output_c_label_decl_list(Labels, DeclSet1, DeclSet).
+output_c_label_decl_list([], _, DeclSet, DeclSet) --> [].
+output_c_label_decl_list([Label | Labels], StackLayoutLabels,
+		DeclSet0, DeclSet) -->
+	output_c_label_decl(Label, StackLayoutLabels, DeclSet0, DeclSet1),
+	output_c_label_decl_list(Labels, StackLayoutLabels, DeclSet1, DeclSet).
 
-:- pred output_c_label_decl(label, decl_set, decl_set, io__state, io__state).
-:- mode output_c_label_decl(in, in, out, di, uo) is det.
+:- pred output_c_label_decl(label, set_bbbtree(label), decl_set, decl_set,
+		io__state, io__state).
+:- mode output_c_label_decl(in, in, in, out, di, uo) is det.
 
-output_c_label_decl(Label, DeclSet0, DeclSet) -->
+output_c_label_decl(Label, StackLayoutLabels, DeclSet0, DeclSet) -->
+	%
+	% Declare the stack layout entry for this label, if needed.
+	%
+	( { set_bbbtree__member(Label, StackLayoutLabels) } ->
+		{ Label = local(_, _) ->
+			DataName = internal_layout(Label)
+		;
+			DataName = proc_layout(Label)
+		},
+		{ ProcLabel = get_proc_label(Label) },
+		{ ModuleName = get_defining_module_name(ProcLabel) },
+		{ DataAddr = data_addr(ModuleName, DataName) },
+		output_data_addr_decls(DataAddr, "", "", 0, _,
+			DeclSet0, DeclSet1)
+	;
+		{ DeclSet1 = DeclSet0 }
+	),
+	%
+	% Declare the label itself.
+	%
 	(
 		{ Label = exported(_) },
 		io__write_string("Define_extern_entry(")
@@ -912,9 +935,19 @@ output_c_label_decl(Label, DeclSet0, DeclSet) -->
 		{ Label = local(_, _) },
 		io__write_string("Declare_label(")
 	),
-	{ decl_set_insert(DeclSet0, code_addr(label(Label)), DeclSet) },
+	{ decl_set_insert(DeclSet1, code_addr(label(Label)), DeclSet) },
 	output_label(Label),
 	io__write_string(");\n").
+
+:- func get_proc_label(label) = proc_label.
+get_proc_label(exported(ProcLabel)) = ProcLabel.
+get_proc_label(local(ProcLabel)) = ProcLabel.
+get_proc_label(c_local(ProcLabel)) = ProcLabel.
+get_proc_label(local(ProcLabel, _)) = ProcLabel.
+
+:- func get_defining_module_name(proc_label) = module_name.
+get_defining_module_name(proc(ModuleName, _, _, _, _, _)) = ModuleName.
+get_defining_module_name(special_proc(ModuleName, _, _, _, _, _)) = ModuleName.
 
 :- pred output_c_label_init_list(list(label), set_bbbtree(label),
 	io__state, io__state).
@@ -1915,15 +1948,8 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 		output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent,
 			N0, N, DeclSet0, DeclSet)
 	; { Const = data_addr_const(DataAddr) } ->
-		( { decl_set_is_member(data_addr(DataAddr), DeclSet0) } ->
-			{ N = N0 },
-			{ DeclSet = DeclSet0 }
-		;
-			{ decl_set_insert(DeclSet0, data_addr(DataAddr),
-				DeclSet) },
-			output_data_addr_decls(DataAddr,
-				FirstIndent, LaterIndent, N0, N)
-		)
+		output_data_addr_decls(DataAddr,
+			FirstIndent, LaterIndent, N0, N, DeclSet0, DeclSet)
 	; { Const = float_const(FloatVal) } ->
 		%
 		% If floats are boxed, and the static ground terms
@@ -2689,10 +2715,26 @@ output_label_as_code_addr_decls(c_local(_)) --> [].
 output_label_as_code_addr_decls(local(_, _)) --> [].
 
 :- pred output_data_addr_decls(data_addr, string, string, int, int,
-	io__state, io__state).
-:- mode output_data_addr_decls(in, in, in, in, out, di, uo) is det.
+		decl_set, decl_set, io__state, io__state).
+:- mode output_data_addr_decls(in, in, in, in, out, in, out, di, uo) is det.
 
-output_data_addr_decls(data_addr(ModuleName, VarName),
+output_data_addr_decls(DataAddr, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	( { decl_set_is_member(data_addr(DataAddr), DeclSet0) } ->
+		{ N = N0 },
+		{ DeclSet = DeclSet0 }
+	;
+		{ decl_set_insert(DeclSet0, data_addr(DataAddr),
+			DeclSet) },
+		output_data_addr_decls_2(DataAddr,
+			FirstIndent, LaterIndent, N0, N)
+	).
+
+:- pred output_data_addr_decls_2(data_addr, string, string, int, int,
+	io__state, io__state).
+:- mode output_data_addr_decls_2(in, in, in, in, out, di, uo) is det.
+
+output_data_addr_decls_2(data_addr(ModuleName, VarName),
 		FirstIndent, LaterIndent, N0, N) -->
 	output_indent(FirstIndent, LaterIndent, N0),
 	{ N is N0 + 1 },
