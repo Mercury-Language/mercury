@@ -820,14 +820,14 @@ hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, Indent, Follow,
 			hlds_out__write_indent(Indent),
 			io__write_string("( % conjunction\n"),
 			hlds_out__write_conj(Goal, Goals, ModuleInfo, VarSet,
-				Indent1, "", TypeQual),
+				Indent1, "", Verbose, TypeQual),
 			hlds_out__write_indent(Indent),
 			io__write_string(")"),
 			io__write_string(Follow),
 			io__write_string("\n")
 		;
 			hlds_out__write_conj(Goal, Goals, ModuleInfo, VarSet,
-				Indent, Follow, TypeQual)
+				Indent, Follow, Verbose, TypeQual)
 		)
 	;
 		hlds_out__write_indent(Indent),
@@ -1134,18 +1134,30 @@ hlds_out__write_var_mode(Var, Mode, VarSet) -->
 	mercury_output_mode(Mode, VarSet).
 
 :- pred hlds_out__write_conj(hlds__goal, list(hlds__goal), module_info, varset,
-		int, string, vartypes, io__state, io__state).
-:- mode hlds_out__write_conj(in, in, in, in, in, in, in, di, uo) is det.
+		int, string, bool, vartypes, io__state, io__state).
+:- mode hlds_out__write_conj(in, in, in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_conj(Goal1, Goals1, ModuleInfo, VarSet, Indent, Follow,
-		TypeQual) -->
+		Verbose, TypeQual) -->
 	(
 		{ Goals1 = [Goal2 | Goals2] }
 	->
-		hlds_out__write_goal_a(Goal1, ModuleInfo, VarSet,
-					Indent, ",", TypeQual),
+		( { Verbose = yes } ->
+			% when generating verbose dumps,
+			% we want the comma on its own line,
+			% since that way it visually separates
+			% the lines after one goal
+			% and the lines before the next
+			hlds_out__write_goal_a(Goal1, ModuleInfo, VarSet,
+						Indent, "", TypeQual),
+			hlds_out__write_indent(Indent),
+			io__write_string(",\n")
+		;
+			hlds_out__write_goal_a(Goal1, ModuleInfo, VarSet,
+						Indent, ",", TypeQual)
+		),
 		hlds_out__write_conj(Goal2, Goals2, ModuleInfo, VarSet,
-					Indent, Follow, TypeQual)
+					Indent, Follow, Verbose, TypeQual)
 	;
 		hlds_out__write_goal_a(Goal1, ModuleInfo, VarSet,
 					Indent, Follow, TypeQual)
