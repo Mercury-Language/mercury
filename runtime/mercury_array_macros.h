@@ -172,8 +172,8 @@
 /*
 ** MR_prepare_insert_into_sorted(array[], int& next, int& element, COMPARE)
 **
-** Given a sorted array `items', this prepares for the insertion of a new
-** item into the array at the proper point. It find the index at which
+** Given a sorted array of `items', this prepares for the insertion of a
+** new item into the array at the proper point. It finds the index at which
 ** the new item should be inserted, and moves all items at and above that
 ** index one position to the right to make room for the new item.
 **
