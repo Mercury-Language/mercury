@@ -82,10 +82,14 @@ EOF
 	esac
 done
 
-if [ -f Mmake ]; then
-	mmake="Mmake"
+if [ -f Mmakefile ]; then
+	mmake="Mmakefile"
 else
-	mmake=""
+	if [ -f Mmake ]; then
+		mmake="Mmake"
+	else
+		mmake=""
+	fi
 fi
 if [ "`echo *.dep`" = "*.dep" ]; then
 	deps=""
