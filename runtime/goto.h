@@ -86,8 +86,8 @@
      macro are for.
   */
   #define BEGIN_MODULE(module_name)	\
-	MODULE_STATIC_OR_EXTERN \
-	void module_name(void) {	\
+	MODULE_STATIC_OR_EXTERN void module_name(void); \
+	MODULE_STATIC_OR_EXTERN void module_name(void) { \
 		PRETEND_ADDRESS_IS_USED(module_name); \
 		PRETEND_ADDRESS_IS_USED(&& paste(module_name, _dummy_label)); \
 		paste(module_name,_dummy_label): \
