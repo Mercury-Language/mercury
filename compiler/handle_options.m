@@ -321,6 +321,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
 
+	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+	globals__io_lookup_bool_option(automatic_intermodule_optimization,
+			AutoIntermodOptimization),
+
 	% Generating IL implies:
 	%   - gc_method `none' and no heap reclamation on failure
 	%	  Because GC is handled automatically by the .NET CLR
@@ -366,10 +370,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(unboxed_no_tag_types, bool(no)),
 		globals__io_set_option(static_ground_terms, bool(no)),
 
-		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
-		globals__io_lookup_bool_option(
-				automatic_intermodule_optimization,
-				AutoIntermodOptimization),
 		( { HighLevelData = yes, AutoIntermodOptimization = yes } ->
 			globals__io_set_option(intermodule_optimization,
 					bool(yes))
@@ -417,6 +417,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%         XXX Previously static ground terms used to not work with
 	%             --high-level-data.  But this has been (mostly?) fixed now.
 	%             So we should investigate re-enabling static ground terms.
+	%   - intermodule optimization
+	%	  This is only required for high-level data and is needed
+	%	  so that abstract equivalence types can be expanded.  They
+	%	  need to be expanded because Java requires that the structural
+	%	  representation of a type is known at all times.
 	( { Target = java } ->
 		globals__io_set_gc_method(none),
 		globals__io_set_option(reclaim_heap_on_nondet_failure,
@@ -430,7 +435,14 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(det_copy_out, bool(yes)),
 		globals__io_set_option(num_tag_bits, int(0)),
 		globals__io_set_option(static_ground_terms, bool(no)),
-		globals__io_set_option(put_nondet_env_on_heap, bool(yes))
+		globals__io_set_option(put_nondet_env_on_heap, bool(yes)),
+
+		( { HighLevelData = yes, AutoIntermodOptimization = yes } ->
+			globals__io_set_option(intermodule_optimization,
+					bool(yes))
+		;
+			[]
+		)
 	;
 		[]
 	),
