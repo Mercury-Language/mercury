@@ -38,7 +38,7 @@ TMPDIR=${TMPDIR=/tmp}
 # compiler, the default maximum stack size of 4Mb is too low for a
 # recursive language.
 # XXX at some stage this should become an option to ml
-LINK=/stack:10485760	# 10 Mb
+LINK=${LINK=/stack:10485760}   # 10 Mb
 export LINK
 
 # On some systems (Solaris for exemple), we need libraries to be able to 
