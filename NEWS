@@ -191,6 +191,10 @@ Changes to the Mercury implementation:
 	  extras/dynamic/dl.m in the mercury-extras distribution)
 	  for procedures with arguments of type `float' or `char'
 
+* The names of some of the `--enable-*' options to `configure' have changed.
+
+  See the output of `configure --help' for details.
+
 Changes to the development environment:
 
 * Several improvements have been made to `mtags' to make it easier to
