@@ -706,6 +706,23 @@ polymorphism__make_vars([Type | Types], ModuleInfo, TypeInfoMap,
 polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		VarSet0, VarTypes0, Var, ExtraGoals, VarSet, VarTypes) :-
 	(
+		type_is_higher_order(Type, _PredOrFunc, _TypeArgs)
+	->
+		% This occurs for code where a predicate calls a polymorphic
+		% predicate with a known (higher-order) value of the type
+		% variable.
+		% The transformation we perform is shown in the comment
+		% at the top of the module.
+		% We ignore the PredOrFunc and TypeArgs,
+		% and map all pred/func types to mercury_builtin:pred/0
+		% for the purposes of creating type_infos.
+		% XXX that probably causes type_to_term to give
+		% the wrong results
+		TypeId = qualified("mercury_builtin", "pred") - 0,
+		polymorphism__construct_type_info(Type, TypeId, [],
+			ModuleInfo, TypeInfoMap, VarSet0, VarTypes0,
+			Var, ExtraGoals, VarSet, VarTypes)
+	;
 		type_to_type_id(Type, TypeId, TypeArgs)
 	->
 		% This occurs for code where a predicate calls a polymorphic
