@@ -304,7 +304,8 @@ clean_local:
 	rm -f ../main.$O $(PREPROCESSED_M_FILES) $(PP_DATE_FILES)
 
 realclean_local:
-	rm -f tags $(MC_PROG).stats Mercury.modules
+	rm -f tags $(MC_PROG).stats Mercury.modules \
+		mercury_compile$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
