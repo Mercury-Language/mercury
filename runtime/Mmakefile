@@ -98,6 +98,7 @@ MACHHDRS	= 	machdeps/no_regs.h	\
 CFILES		= 	\
 			mercury_accurate_gc.c	\
 			mercury_agc_debug.c	\
+			mercury_bootstrap.c	\
 			mercury_context.c	\
 			mercury_deep_copy.c	\
 			mercury_dlist.c		\
