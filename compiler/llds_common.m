@@ -117,7 +117,7 @@ llds_common__process_create(Tag, MaybeArgs0, ArgTypes0, Rval, !Info) :-
 		!:Info = !.Info ^ cell_counter := CellNumCounter,
 
 		DataName = common(CellNum, TypeNum),
-		map__det_insert(MembersMap0, Args, DataName, MembersMap),
+		map__set(MembersMap0, Args, DataName, MembersMap),
 		CellGroup = CellGroup1 ^ cell_group_members := MembersMap,
 		map__set(CellGroupMap0, Types, CellGroup, CellGroupMap),
 		!:Info = !.Info ^ cell_group_map := CellGroupMap,
