@@ -470,8 +470,8 @@ lib%.install_split_library: %.split.a install_grade_dirs
 lib%.install_grades:
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.os) $($*.pic_os) \
-		*.a *.so tmp_dir || true; } && \
+	{ mv -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.c_dates) $($*.os) \
+		$($*.pic_os) *.a *.so tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
 			$(MMAKE) GRADE=$$grade $*.depend || \
@@ -480,12 +480,13 @@ lib%.install_grades:
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_library || \
 				exit 1; \
-			rm -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.os) \
-				$($*.pic_os) *.a *.so; \
+			rm -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) \
+				$($*.c_dates) $($*.os) $($*.pic_os) *.a *.so; \
 		fi; \
 	done && \
 	{ mv tmp_dir/*.c $(cs_subdir). ; \
 	  mv tmp_dir/*.$O $(os_subdir). ; \
+	  mv tmp_dir/*.c_date $(c_dates_subdir). ; \
 	  mv tmp_dir/*.pic_o $(os_subdir). ; \
 	  mv tmp_dir/*.dep $(deps_subdir). ; \
 	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
