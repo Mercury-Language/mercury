@@ -121,6 +121,11 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 	const MR_Stack_Layout_Label	*return_label_layout;
 	int				i;
 
+	if (ancestor_level < 0) {
+		*problem = "no such stack frame";
+		return NULL;
+	}
+
 	do_init_modules();
 	*problem = NULL;
 	for (i = 0; i < ancestor_level && label_layout != NULL; i++) {
