@@ -30,7 +30,7 @@ DVIPS=dvips
 	$(MAKEINFO) --no-headers -o $@ $<
 
 .dvi.ps:
-	$(DVIPS) $<
+	$(DVIPS) -o $@ $<
  
 %.html %_toc.html: %.texi
 	$(TEXI2HTML) $<
