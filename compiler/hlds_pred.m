@@ -643,8 +643,6 @@
 :- pred purity_to_markers(purity, pred_markers).
 :- mode purity_to_markers(in, out) is det.
 
-:- type pred_markers.
-
 :- pred pred_info_get_markers(pred_info, pred_markers).
 :- mode pred_info_get_markers(in, out) is det.
 
@@ -1147,6 +1145,7 @@ type_info_locn_set_var(type_info(_), Var, type_info(Var)).
 type_info_locn_set_var(typeclass_info(_, Num), Var, typeclass_info(Var, Num)).
 
 %-----------------------------------------------------------------------------%
+
 :- type pred_markers == list(marker).
 
 init_markers([]).
