@@ -337,15 +337,6 @@ move_follow_code_is_builtin(unify(_,_,_,Unification,_) - _GoalInfo) :-
 move_follow_code_is_builtin(call(_,_,_,Builtin, _, _, _) - _GoalInfo) :-
 	hlds__is_builtin_is_inline(Builtin).
 
-:- pred move_follow_code_is_call(hlds__goal).
-:- mode move_follow_code_is_call(in) is semidet.
-
-move_follow_code_is_call(unify(_,_,_,Unification, _) - _GoalInfo) :-
-	Unification = complicated_unify(_, _, _).
-move_follow_code_is_call(call(_,_,_,Builtin, _, _, _) - _GoalInfo) :-
-	\+ hlds__is_builtin_is_inline(Builtin).
-move_follow_code_is_call(higher_order_call(_,_,_,_,_,_) - _GoalInfo).
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

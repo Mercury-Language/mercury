@@ -50,7 +50,8 @@
 		;	debug_types
 		;	debug_modes
 		;	debug_detism
-		;	vndebug
+		;	debug_opt
+		;	debug_vn
 	% Output options
 		;	make_interface
 		;	generate_dependencies
@@ -64,6 +65,7 @@
 		;	line_numbers
 		;	auto_comments
 		;	show_dependency_graph
+		;	generate_bytecode
 		;	dump_hlds
 		;	verbose_dump_hlds
 	% Language semantics options
@@ -227,7 +229,8 @@ option_defaults_2(verbosity_option, [
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
 	debug_detism		- 	bool(no),
-	vndebug			- 	int(0)
+	debug_opt		- 	bool(no),
+	debug_vn		- 	int(0)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -243,6 +246,7 @@ option_defaults_2(output_option, [
 option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
 	show_dependency_graph	-	bool(no),
+	generate_bytecode	-	bool(no),
 	line_numbers		-	bool(no),
 	auto_comments		-	bool(no),
 	dump_hlds		-	accumulating([]),
@@ -459,7 +463,8 @@ long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
 long_option("debug-detism",		debug_detism).
-long_option("vndebug",			vndebug).
+long_option("debug-opt",		debug_opt).
+long_option("debug-vn",			debug_vn).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
@@ -479,6 +484,7 @@ long_option("compile-only",		compile_only).
 long_option("auto-comments",		auto_comments).
 long_option("line-numbers",		line_numbers).
 long_option("show-dependency-graph",	show_dependency_graph).
+long_option("generate-bytecode",	generate_bytecode).
 long_option("dump-hlds",		dump_hlds).
 long_option("verbose-dump-hlds",	verbose_dump_hlds).
 
@@ -789,7 +795,7 @@ opt_level(2, _, [
 opt_level(3, _, [
 %%%	optimize_copyprop	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
-	optimize_higher_order	-	bool(yes),	% it loops on prog_io
+	optimize_higher_order	-	bool(yes),
 	optimize_repeat		-	int(4),
 	optimize_vnrepeat	-	int(1)
 ]).
@@ -899,7 +905,9 @@ options_help_verbosity -->
 	io__write_string("\t\tOutput detailed debugging traces of the mode checking.\n"),
 	io__write_string("\t--debug-detism\n"),
 	io__write_string("\t\tOutput detailed debugging traces of determinism analysis.\n"),
-	io__write_string("\t--vndebug <n>\n"),
+	io__write_string("\t--debug-opt\n"),
+	io__write_string("\t\tOutput detailed debugging traces of the optimization process.\n"),
+	io__write_string("\t--debug-vn <n>\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the value numbering\n"),
 	io__write_string("\t\toptimization pass. The different bits in the number\n"),
 	io__write_string("\t\targument of this option control the printing of\n"),
@@ -942,6 +950,8 @@ options_help_output -->
 
 options_help_aux_output -->
 	io__write_string("\n Auxiliary Output Options:\n"),
+	io__write_string("\t--generate-bytecode"),
+	io__write_string("\t\tOutput a bytecode form of the module for debugging.\n"),
 	io__write_string("\t--auto-comments\n"),
 	io__write_string("\t\tOutput comments in the `<module>.c' file.\n"),
 	io__write_string("\t\t(The code may be easier to understand if you also\n"),
@@ -1133,7 +1143,8 @@ options_help_optimization -->
 	io__write_string("\t\tand turn off optimizations that significantly\n"),
 	io__write_string("\t\tincrease code size.\n").
 
-:- pred options_help_hlds_hlds_optimization(io__state::di, io__state::uo) is det.
+:- pred options_help_hlds_hlds_optimization(io__state::di, io__state::uo)
+	is det.
 
 options_help_hlds_hlds_optimization -->
 	io__write_string("\n    High-level (HLDS->HLDS) optimizations:\n"),

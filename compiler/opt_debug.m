@@ -14,10 +14,16 @@
 
 :- interface.
 
-:- import_module bool, int, list, assoc_list, std_util.
-
 :- import_module vn_type, vn_table, vn_util, livemap, opt_util.
 :- import_module llds, atsort.
+
+:- import_module io, bool, int, list, assoc_list, std_util.
+
+:- pred opt_debug__msg(bool, string, io__state, io__state).
+:- mode opt_debug__msg(in, in, di, uo) is det.
+
+:- pred opt_debug__dump_instrs(bool, list(instruction), io__state, io__state).
+:- mode opt_debug__dump_instrs(in, in, di, uo) is det.
 
 :- pred opt_debug__dump_node_relmap(relmap(vn_node), string).
 :- mode opt_debug__dump_node_relmap(in, out) is det.
@@ -175,6 +181,33 @@
 
 :- import_module llds_out.
 :- import_module set, map, string.
+
+opt_debug__msg(OptDebug, Msg) -->
+	(
+		{ OptDebug = yes },
+		io__write_string("\n"),
+		io__write_string(Msg),
+		io__write_string("\n")
+	;
+		{ OptDebug = no }
+	).
+
+opt_debug__dump_instrs(OptDebug, Instrs) -->
+	(
+		{ OptDebug = yes },
+		opt_debug__dump_instrs_2(Instrs)
+	;
+		{ OptDebug = no }
+	).
+
+:- pred opt_debug__dump_instrs_2(list(instruction), io__state, io__state).
+:- mode opt_debug__dump_instrs_2(in, di, uo) is det.
+
+opt_debug__dump_instrs_2([]) --> [].
+opt_debug__dump_instrs_2([Uinstr - _ | Instrs]) -->
+	output_instruction(Uinstr),
+	io__write_string("\n"),
+	opt_debug__dump_instrs_2(Instrs).
 
 opt_debug__dump_node_relmap(Relmap, Str) :-
 	map__to_assoc_list(Relmap, Nodemap),

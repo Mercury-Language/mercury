@@ -310,6 +310,8 @@ livemap__look_for_livevals(Instrs0, Instrs, Livevals0, Livevals,
 		Found = no
 	).
 
+	% What lval (if any) is consulted when we branch to a code address?
+
 :- pred livemap__special_code_addr(code_addr, maybe(lval)).
 :- mode livemap__special_code_addr(in, out) is det.
 

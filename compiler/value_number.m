@@ -961,7 +961,8 @@ value_number__push_livevals_back_2([Instr0 | Instrs0], Livevals, Instrs) :-
 	value_number__boundary_instr(Uinstr0, Boundary),
 	opt_util__can_instr_branch_away(Uinstr0, CanBranch),
 	( Boundary = yes, CanBranch = yes ->
-		Instrs = [livevals(Livevals) - "", Instr0 | Instrs0]
+		value_number__push_livevals_back([Instr0 | Instrs0], Instrs1),
+		Instrs = [livevals(Livevals) - "" | Instrs1]
 	;
 		value_number__push_livevals_back_2(Instrs0, Livevals, Instrs1),
 		Instrs = [Instr0 | Instrs1]

@@ -400,14 +400,7 @@ vn_debug__order_equals_msg(Msg, Order) -->
 
 vn_debug__cost_header_msg(Header) -->
 	vn_debug__cost_msg_flag(Flag),
-	(
-		{ Flag = yes },
-		io__write_string("\n"),
-		io__write_string(Header),
-		io__write_string("\n")
-	;
-		{ Flag = no }
-	).
+	opt_debug__msg(Flag, Header).
 
 vn_debug__cost_msg(OrigCost, VnCost) -->
 	vn_debug__cost_msg_flag(Flag),
@@ -491,17 +484,9 @@ vn_debug__flush_end_msg(Instrs, VnTables) -->
 		{ Flag = no }
 	).
 
-vn_debug__dump_instrs([]) --> [].
-vn_debug__dump_instrs([Uinstr - _ | Instrs]) -->
+vn_debug__dump_instrs(Instrs) -->
 	vn_debug__parallel_msg_flag(Flag),
-	(
-		{ Flag = yes },
-		output_instruction(Uinstr),
-		io__write_string("\n"),
-		vn_debug__dump_instrs(Instrs)
-	;
-		{ Flag = no }
-	).
+	opt_debug__dump_instrs(Flag, Instrs).
 
 %-----------------------------------------------------------------------------%
 
@@ -538,53 +523,53 @@ vn_debug__dump_instrs([Uinstr - _ | Instrs]) -->
 %-----------------------------------------------------------------------------%
 
 vn_debug__tuple_msg_flag(Flag) -->
-	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 512 },
+	globals__io_lookup_int_option(debug_vn, DebugVn),
+	{ Bit is DebugVn /\ 512 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn_debug__livemap_msg_flag(Flag) -->
-	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 256 },
+	globals__io_lookup_int_option(debug_vn, DebugVn),
+	{ Bit is DebugVn /\ 256 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn_debug__parallel_msg_flag(Flag) -->
-	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 128 },
+	globals__io_lookup_int_option(debug_vn, DebugVn),
+	{ Bit is DebugVn /\ 128 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn_debug__order_sink_msg_flag(Flag) -->
-	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 64 },
+	globals__io_lookup_int_option(debug_vn, DebugVn),
+	{ Bit is DebugVn /\ 64 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn_debug__order_msg_flag(Flag) -->
-	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 32 },
+	globals__io_lookup_int_option(debug_vn, DebugVn),
+	{ Bit is DebugVn /\ 32 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn_debug__order_map_msg_flag(Flag) -->
-	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 16 },
+	globals__io_lookup_int_option(debug_vn, DebugVn),
+	{ Bit is DebugVn /\ 16 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn_debug__cost_msg_flag(Flag) -->
-	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 8 },
+	globals__io_lookup_int_option(debug_vn, DebugVn),
+	{ Bit is DebugVn /\ 8 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn_debug__flush_msg_flag(Flag) -->
-	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 4 },
+	globals__io_lookup_int_option(debug_vn, DebugVn),
+	{ Bit is DebugVn /\ 4 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn_debug__start_msg_flag(Flag) -->
-	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 2 },
+	globals__io_lookup_int_option(debug_vn, DebugVn),
+	{ Bit is DebugVn /\ 2 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn_debug__failure_msg_flag(Flag) -->
-	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 1 },
+	globals__io_lookup_int_option(debug_vn, DebugVn),
+	{ Bit is DebugVn /\ 1 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 %-----------------------------------------------------------------------------%

@@ -327,11 +327,15 @@ peephole__match(incr_sp(N), _, _, _, Instrs0, Instrs) :-
 	% where the frame is already built.
 	%
 	%	succip = stackvar(N)
-	%	decr_sp(N)
+	%	decr_sp(N)			succip = stackvar(N)
 	%	<no uses of stackvars>	=>	<no uses of stackvars>
 	%	if_val (...) L1			if_val (...) already built L1
-	%					succip = stackvar(N)
 	%					decr_sp(N)
+	%
+	% The restore of succip from the stack must be before the jump,
+	% because the code at the parallel to L1 may refer to succip directly
+	% instead of via the stack variable. This may happen if that code
+	% has been subject to predicate-wide value numbering.
 	%
 	% This optimization makes sense only if the parallel label does not
 	% proceed discard the stack frame.
@@ -361,12 +365,12 @@ peephole__match(assign(Lval, Rval), Comment, TeardownMap, SetupMap,
 		map__search(SetupMap, Label, SetupLabel)
 	->
 		string__append(Comment4, " (bypassed setup)", Comment4prime),
+		Instr0 = assign(Lval, Rval) - Comment,
 		Instr4prime = if_val(TestRval, label(SetupLabel))
 			- Comment4prime,
-		Instr0 = assign(Lval, Rval) - Comment,
-		Instrs6 = [Instr4prime, Instr0, Instr1 | Instrs5],
+		Instrs6 = [Instr4prime, Instr1 | Instrs5],
 		list__append(Between, Instrs6, Instrs7),
-		peephole__opt_instr_list(Instrs7, Instrs,
+		peephole__opt_instr_list([Instr0 | Instrs7], Instrs,
 			TeardownMap, SetupMap, _)
 	;
 		fail
