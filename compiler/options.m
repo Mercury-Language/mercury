@@ -51,7 +51,7 @@
 		;	statistics
 		;	debug_types
 		;	debug_modes
-		;	debug_detism
+		;	debug_det
 		;	debug_opt
 		;	debug_vn
 	% Output options
@@ -78,7 +78,7 @@
 		;	strict_sequential
 		;	infer_types
 		;	infer_modes
-		;	infer_determinism
+		;	infer_det
 		;	infer_all
 	% Compilation Model options
 		;	grade
@@ -215,7 +215,7 @@ option_defaults(Option, Default) :-
 
 option_defaults_2(warning_option, [
 		% Warning Options
-	inhibit_warnings	-	bool(no),
+	inhibit_warnings	-	bool_special,
 	halt_at_warn		-	bool(no),
 	halt_at_syntax_errors	-	bool(no),
 	% if you add any new warn_xxx options, you will need
@@ -236,7 +236,7 @@ option_defaults_2(verbosity_option, [
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
-	debug_detism		- 	bool(no),
+	debug_det		- 	bool(no),
 	debug_opt		- 	bool(no),
 	debug_vn		- 	int(0)
 ]).
@@ -268,7 +268,7 @@ option_defaults_2(language_semantics_option, [
 	fully_strict		-	bool(yes),
 	infer_types		-	bool(no),
 	infer_modes		-	bool(no),
-	infer_determinism	-	bool(yes),
+	infer_det		-	bool(yes),
 	infer_all		-	bool_special
 ]).
 option_defaults_2(compilation_model_option, [
@@ -473,8 +473,8 @@ long_option("verbose-error-messages",	verbose_errors).
 long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
-long_option("debug-detism",		debug_detism).
-long_option("debug-determinism",	debug_detism).
+long_option("debug-determinism",	debug_det).
+long_option("debug-det",		debug_det).
 long_option("debug-opt",		debug_opt).
 long_option("debug-vn",			debug_vn).
 
@@ -509,9 +509,8 @@ long_option("strict-sequential",	strict_sequential).
 long_option("infer-all",		infer_all).
 long_option("infer-types",		infer_types).
 long_option("infer-modes",		infer_modes).
-long_option("infer-determinism",	infer_determinism).
-long_option("infer-detism",		infer_determinism).
-long_option("infer-det",		infer_determinism).
+long_option("infer-determinism",	infer_det).
+long_option("infer-det",		infer_det).
 
 % compilation model options
 long_option("grade",			grade).
@@ -678,11 +677,19 @@ special_handler(strict_sequential, none, OptionTable0, ok(OptionTable)) :-
 			reorder_disj 	-	bool(no),
 			fully_strict 	-	bool(yes)
 		], OptionTable0, OptionTable).
+special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
+		:-
+	override_options([
+			warn_singleton_vars	-	bool(Inhibit),
+			warn_overlapping_scopes	-	bool(Inhibit),
+			warn_missing_det_decls	-	bool(Inhibit),
+			warn_nothing_exported	-	bool(Inhibit)
+		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
 	override_options([
 			infer_types 		-	bool(Infer),
 			infer_modes 		-	bool(Infer),
-			infer_determinism 	-	bool(Infer)
+			infer_det	 	-	bool(Infer)
 		], OptionTable0, OptionTable).
 special_handler(opt_space, none, OptionTable0, ok(OptionTable)) :-
 	opt_space(OptionSettingsList),
@@ -920,7 +927,7 @@ options_help_verbosity -->
 	io__write_string("\t\tOutput detailed debugging traces of the type checking.\n"),
 	io__write_string("\t-N, --debug-modes\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the mode checking.\n"),
-	io__write_string("\t--debug-detism\n"),
+	io__write_string("\t--debug-det, --debug-determinism\n"),
 	io__write_string("\t\tOutput detailed debugging traces of determinism analysis.\n"),
 	io__write_string("\t--debug-opt\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the optimization process.\n"),

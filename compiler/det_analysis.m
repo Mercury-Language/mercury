@@ -106,7 +106,7 @@ determinism_pass(ModuleInfo0, ModuleInfo) -->
 	{ determinism_declarations(ModuleInfo0, DeclaredProcs,
 		UndeclaredProcs) },
 	globals__io_lookup_bool_option(verbose, Verbose),
-	globals__io_lookup_bool_option(debug_detism, Debug),
+	globals__io_lookup_bool_option(debug_det, Debug),
 	( { UndeclaredProcs = [] } ->
 		{ ModuleInfo1 = ModuleInfo0 }
 	;
@@ -121,7 +121,7 @@ determinism_pass(ModuleInfo0, ModuleInfo) -->
 	maybe_write_string(Verbose, "% done.\n").
 
 determinism_check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
-	globals__io_lookup_bool_option(debug_detism, Debug),
+	globals__io_lookup_bool_option(debug_det, Debug),
 	global_final_pass(ModuleInfo0, [proc(PredId, ProcId)], Debug,	
 		ModuleInfo).
 

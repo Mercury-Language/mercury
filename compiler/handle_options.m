@@ -217,17 +217,6 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod) -->
 		globals__io_set_option(trad_passes, bool(no))
 	;
 		[]
-	),
-
-	% -w (--inhibit-warnings) disables all warnings
-	globals__io_lookup_bool_option(inhibit_warnings, InhibitWarnings),
-	( { InhibitWarnings = yes } ->
-		globals__io_set_option(warn_singleton_vars, bool(no)),
-		globals__io_set_option(warn_overlapping_scopes, bool(no)),
-		globals__io_set_option(warn_det_decls_too_lax, bool(no)),
-		globals__io_set_option(warn_nothing_exported, bool(no))
-	;
-		[]
 	).
 
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)

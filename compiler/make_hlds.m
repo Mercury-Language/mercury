@@ -926,10 +926,9 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 			unspecified_det_for_exported(PredName, Arity,
 				PredOrFunc, MContext)
 		;
-			globals__io_lookup_bool_option(infer_determinism,
-				InferDeterminism),
+			globals__io_lookup_bool_option(infer_det, InferDet),
 			(
-				{ InferDeterminism = no }
+				{ InferDet = no }
 			->
 				unspecified_det_for_local(PredName, Arity,
 					PredOrFunc, MContext)
