@@ -408,6 +408,10 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
 traverse_goal(InstTable, ModuleInfo, conj(Goals), UseInf0, UseInf) :-
 	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf0, UseInf).
 
+% handle parallel conjunction
+traverse_goal(InstTable, ModuleInfo, par_conj(Goals, _SM), UseInf0, UseInf) :-
+	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf0, UseInf).
+
 % handle disjunction
 traverse_goal(InstTable, ModuleInfo, disj(Goals, _), UseInf0, UseInf) :-
 	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf0, UseInf).
@@ -472,43 +476,40 @@ traverse_goal(_, _, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
 	set_var_used(UseInf1, Var2, UseInf).
 		
 traverse_goal(_, _, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
-	(
-		map__contains(UseInf0, Var1)
-	->
-		add_aliases(UseInf0, Var2, [Var1], UseInf)
-	;
+	( local_var_is_used(UseInf0, Var1) ->
 		% if Var1 used to instantiate an output argument, Var2 used
 		set_var_used(UseInf0, Var2, UseInf)
+	;
+		add_aliases(UseInf0, Var2, [Var1], UseInf)
 	).
 
 traverse_goal(InstTable, ModuleInfo,
 		unify(Var1, _, _, deconstruct(_, _, Args, Modes, CanFail), _),
 		UseInf0, UseInf) :-
+	partition_deconstruct_args(InstTable, ModuleInfo, Args,
+		Modes, InputVars, OutputVars),
+		% The deconstructed variable is used if any of the
+		% variables, that the deconstruction binds are used.
+	add_aliases(UseInf0, Var1, OutputVars, UseInf1),
+		% Treat a deconstruction that further instantiates its
+		% left arg as a partial construction.
+	add_construction_aliases(UseInf1, Var1, InputVars, UseInf2),
 	(
 		CanFail = can_fail	
 	->
 		% a deconstruction that can_fail uses its left arg
-		set_var_used(UseInf0, Var1, UseInf)
+		set_var_used(UseInf2, Var1, UseInf)
 	;
-		get_instantiating_variables(InstTable, ModuleInfo, Args, Modes,
-				InputVars),
-		list__delete_elems(Args, InputVars, OutputVars),
-			% The deconstructed variable is used if any of the
-			% variables, that the deconstruction binds are used.
-		add_aliases(UseInf0, Var1, OutputVars, UseInf1),
-			% Treat a deconstruction that further instantiates its
-			% left arg as a partial construction.
-		add_construction_aliases(UseInf1, Var1, InputVars, UseInf)	
+		UseInf = UseInf2
+
 	).
 
 traverse_goal(_, _, unify(Var1, _, _, construct(_, _, Args, _), _),
 					UseInf0, UseInf) :-
-	(
-		map__contains(UseInf0, Var1)
-	->
-		add_construction_aliases(UseInf0, Var1, Args, UseInf)
-	;
+	( local_var_is_used(UseInf0, Var1) ->
 		set_list_vars_used(UseInf0, Args, UseInf)
+	;
+		add_construction_aliases(UseInf0, Var1, Args, UseInf)
 	).
 	
 	% These should be transformed into calls by polymorphism.m.
@@ -560,30 +561,50 @@ add_arg_dep(UseInf0, Var, PredProc, Arg, UseInf) :-
 	).
 			
 	% Returns variables which further instantiate a deconstructed variable.
-:- pred get_instantiating_variables(inst_table::in, module_info::in,
-		list(var)::in, list(uni_mode)::in, list(var)::out) is det.
+:- pred partition_deconstruct_args(inst_table::in, module_info::in,
+		list(var)::in, list(uni_mode)::in, list(var)::out,
+		list(var)::out) is det.
 
-get_instantiating_variables(InstTable, ModuleInfo, ArgVars, ArgModes,
-		InstVars) :-
+partition_deconstruct_args(InstTable, ModuleInfo, ArgVars, ArgModes,
+		InputVars, OutputVars) :-
 	(
-		ArgVars = [Var | Vars], ArgModes = [Mode | Modes]
+		ArgVars = [Var | Vars],
+		ArgModes = [Mode | Modes]
 	->
-		Mode = ((Inst1 - _) -> (Inst2 - _)),
+		partition_deconstruct_args(InstTable, ModuleInfo,
+			Vars, Modes, InputVars1, OutputVars1),
+		Mode = ((InitialInst1 - InitialInst2) ->
+			(FinalInst1 - FinalInst2)),
+
+		% If the inst of the argument of the LHS is changed,
+		% the argument is input.
 		(
-			inst_matches_binding(Inst1, Inst2, InstTable, ModuleInfo)
+			inst_matches_binding(InitialInst1, FinalInst1,
+				InstTable, ModuleInfo)
 		->
-			InstVars = InstVars1
+			InputVars = InputVars1
 		;
-			InstVars = [Var | InstVars1]
+			InputVars = [Var | InputVars1]
 		),
-		get_instantiating_variables(InstTable, ModuleInfo, Vars,
-			Modes, InstVars1)
+
+		% If the inst of the argument of the RHS is changed,
+		% the argument is output.
+		( 
+			inst_matches_binding(InitialInst2, FinalInst2,
+				InstTable, ModuleInfo)
+		->
+			OutputVars = OutputVars1
+		;
+			OutputVars = [Var | OutputVars1]
+		)
 	;
-		( ArgVars = [], ArgModes = [] )
+		ArgVars = [],
+		ArgModes = []
 	->
-		InstVars = []
+		InputVars = [],
+		OutputVars = []
 	;
-		error("get_instantiating_variables - invalid call")
+		error("partition_deconstruct_args - invalid call")
 	).
 
 		% add Alias as an alias for all of Vars
@@ -1212,6 +1233,12 @@ fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 						Changed, Goals0, Goals).
 
 fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
+		par_conj(Goals0, SM) - GoalInfo,
+		par_conj(Goals, SM) - GoalInfo) :-
+	fixup_conjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, no,
+						Changed, Goals0, Goals).
+
+fixup_goal_expr(InstTable, ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 		disj(Goals0, SM) - GoalInfo, disj(Goals, SM) - GoalInfo) :-
 	fixup_disjuncts(InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
 				no, Changed, Goals0, Goals).
@@ -1466,6 +1493,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 			{
 			pred_info_name(PredInfo, Name),
 			\+ pred_info_is_imported(PredInfo),
+			\+ pred_info_import_status(PredInfo, opt_imported),
 				% Don't warn about builtins
 				% that have unused arguments.
 			\+ code_util__predinfo_is_builtin(PredInfo),

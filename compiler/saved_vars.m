@@ -87,6 +87,13 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 			Goals, SlotInfo),
 		conj_list_to_goal(Goals, GoalInfo0, Goal)
 	;
+		GoalExpr0 = par_conj(Goals0, SM),
+			% saved_vars_in_disj treats its goal list as
+			% an independent list of goals, so we can use
+			% it to process the list of parallel conjuncts too.
+		saved_vars_in_disj(Goals0, SlotInfo0, Goals, SlotInfo),
+		Goal = par_conj(Goals, SM) - GoalInfo0
+	;
 		GoalExpr0 = disj(Goals0, SM),
 		saved_vars_in_disj(Goals0, SlotInfo0, Goals, SlotInfo),
 		Goal = disj(Goals, SM) - GoalInfo0
@@ -304,6 +311,11 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 			saved_vars_delay_goal(Goals1, Construct, Var,
 				IsNonLocal, SlotInfo0, Goals, SlotInfo)
 		;
+			Goal0Expr = par_conj(_ParConj, _SM),
+			saved_vars_delay_goal(Goals0, Construct, Var,
+				IsNonLocal, SlotInfo0, Goals1, SlotInfo),
+			Goals = [Goal0|Goals1]
+		;
 			Goal0Expr = some(SomeVars, SomeGoal0),
 			rename_var(SlotInfo0, Var, NewVar, Subst, SlotInfo1),
 			goal_util__rename_vars_in_goal(Construct, Subst,
@@ -440,6 +452,9 @@ push_into_cases_rename([case(ConsId, IMDelta, Goal0) | Cases0], Construct, Var,
 		Cases, SlotInfo).
 
 %-----------------------------------------------------------------------------%
+
+	% saved_vars_in_disj does a saved_vars_in_goal on an list of independent
+	% goals, and is used to process disjunctions and parallel conjunctions.
 
 :- pred saved_vars_in_disj(list(hlds_goal), slot_info,
 	list(hlds_goal), slot_info).

@@ -883,6 +883,28 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 	;
 		Uinstr0 = pragma_c(_, _, _, _, _),
 		Need = no
+	;
+		Uinstr0 = init_sync_term(Lval, _),
+		opt_util__lval_refers_stackvars(Lval, Need)
+	;
+		Uinstr0 = fork(_, _, _),
+		Need = no
+	;
+		Uinstr0 = join_and_terminate(Lval),
+		opt_util__lval_refers_stackvars(Lval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			opt_util__block_refers_stackvars(Instrs0, Need)
+		)
+	;
+		Uinstr0 = join_and_continue(Lval, _),
+		opt_util__lval_refers_stackvars(Lval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			opt_util__block_refers_stackvars(Instrs0, Need)
+		)
 	).
 
 opt_util__filter_out_labels([], []).
@@ -981,6 +1003,10 @@ opt_util__can_instr_branch_away(mark_ticket_stack(_), no).
 opt_util__can_instr_branch_away(discard_tickets_to(_), no).
 opt_util__can_instr_branch_away(incr_sp(_, _), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
+opt_util__can_instr_branch_away(init_sync_term(_, _), no).
+opt_util__can_instr_branch_away(fork(_, _, _), yes).
+opt_util__can_instr_branch_away(join_and_terminate(_), no).
+opt_util__can_instr_branch_away(join_and_continue(_, _), yes).
 opt_util__can_instr_branch_away(pragma_c(_, Comps, _, _, _), BranchAway) :-
 	opt_util__can_components_branch_away(Comps, BranchAway).
 
@@ -1040,6 +1066,10 @@ opt_util__can_instr_fall_through(mark_ticket_stack(_), yes).
 opt_util__can_instr_fall_through(discard_tickets_to(_), yes).
 opt_util__can_instr_fall_through(incr_sp(_, _), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
+opt_util__can_instr_fall_through(init_sync_term(_, _), yes).
+opt_util__can_instr_fall_through(fork(_, _, _), no).
+opt_util__can_instr_fall_through(join_and_terminate(_), no).
+opt_util__can_instr_fall_through(join_and_continue(_, _), no).
 opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _), yes).
 
 	% Check whether an instruction sequence can possibly fall through
@@ -1081,6 +1111,10 @@ opt_util__can_use_livevals(mark_ticket_stack(_), no).
 opt_util__can_use_livevals(discard_tickets_to(_), no).
 opt_util__can_use_livevals(incr_sp(_, _), no).
 opt_util__can_use_livevals(decr_sp(_), no).
+opt_util__can_use_livevals(init_sync_term(_, _), no).
+opt_util__can_use_livevals(fork(_, _, _), no).
+opt_util__can_use_livevals(join_and_terminate(_), no).
+opt_util__can_use_livevals(join_and_continue(_, _), no).
 opt_util__can_use_livevals(pragma_c(_, _, _, _, _), no).
 
 % determine all the labels and code_addresses that are referenced by Instr
@@ -1139,6 +1173,10 @@ opt_util__instr_labels_2(mark_ticket_stack(_), [], []).
 opt_util__instr_labels_2(discard_tickets_to(_), [], []).
 opt_util__instr_labels_2(incr_sp(_, _), [], []).
 opt_util__instr_labels_2(decr_sp(_), [], []).
+opt_util__instr_labels_2(init_sync_term(_, _), [], []).
+opt_util__instr_labels_2(fork(Child, Parent, _), [Child, Parent], []).
+opt_util__instr_labels_2(join_and_terminate(_), [], []).
+opt_util__instr_labels_2(join_and_continue(_, Label), [Label], []).
 opt_util__instr_labels_2(pragma_c(_, _, _, MaybeLabel, _), Labels, []) :-
 	( MaybeLabel = yes(Label) ->
 		Labels = [Label]
@@ -1174,6 +1212,10 @@ opt_util__instr_rvals_and_lvals(mark_ticket_stack(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(discard_tickets_to(Rval), [Rval], []).
 opt_util__instr_rvals_and_lvals(incr_sp(_, _), [], []).
 opt_util__instr_rvals_and_lvals(decr_sp(_), [], []).
+opt_util__instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
+opt_util__instr_rvals_and_lvals(fork(_, _, _), [], []).
+opt_util__instr_rvals_and_lvals(join_and_terminate(Lval), [], [Lval]).
+opt_util__instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
 opt_util__instr_rvals_and_lvals(pragma_c(_, Comps, _, _, _), Rvals, Lvals) :-
 	pragma_c_components_get_rvals_and_lvals(Comps, Rvals, Lvals).
 
@@ -1303,6 +1345,13 @@ opt_util__count_temps_instr(discard_tickets_to(Rval), R0, R, F0, F) :-
 	opt_util__count_temps_rval(Rval, R0, R, F0, F).
 opt_util__count_temps_instr(incr_sp(_, _), R, R, F, F).
 opt_util__count_temps_instr(decr_sp(_), R, R, F, F).
+opt_util__count_temps_instr(init_sync_term(Lval, _), R0, R, F0, F) :-
+	opt_util__count_temps_lval(Lval, R0, R, F0, F).
+opt_util__count_temps_instr(fork(_, _, _), R, R, F, F).
+opt_util__count_temps_instr(join_and_terminate(Lval), R0, R, F0, F) :-
+	opt_util__count_temps_lval(Lval, R0, R, F0, F).
+opt_util__count_temps_instr(join_and_continue(Lval, _), R0, R, F0, F) :-
+	opt_util__count_temps_lval(Lval, R0, R, F0, F).
 opt_util__count_temps_instr(pragma_c(_, _, _, _, _), R, R, F, F).
 
 :- pred opt_util__count_temps_lval(lval, int, int, int, int).

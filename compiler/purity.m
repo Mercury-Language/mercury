@@ -137,6 +137,8 @@
 :- import_module globals, options, mercury_to_mercury, hlds_out.
 :- import_module passes_aux, typecheck, module_qual, clause_to_proc.
 :- import_module modecheck_unify, modecheck_call, inst_util, prog_out.
+:- import_module post_typecheck.
+
 :- import_module list, map, varset, term, string, require, std_util.
 :- import_module assoc_list, bool, int, set.
 
@@ -256,184 +258,31 @@ check_preds_purity_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 		{ pred_info_is_imported(PredInfo0)
 		; pred_info_is_pseudo_imported(PredInfo0) }
 	->
-		{ ModuleInfo1 = ModuleInfo0 },
+		post_typecheck__finish_imported_pred(ModuleInfo0, PredId,
+				PredInfo0, PredInfo),
 		{ NumErrors1 = NumErrors0 }
 	;
 		write_pred_progress_message("% Purity-checking ", PredId,
 					    ModuleInfo0),
-		check_type_bindings(PredId, PredInfo0, PredInfo1, ModuleInfo0,
+		post_typecheck__check_type_bindings(PredId, PredInfo0,
+				PredInfo1, ModuleInfo0,
 				UnboundTypeErrsInThisPred),
 		puritycheck_pred(PredId, PredInfo1, PredInfo2, ModuleInfo0,
 				PurityErrsInThisPred),
-		{ map__det_update(Preds0, PredId, PredInfo2, Preds) },
-		{ module_info_get_predicate_table(ModuleInfo0, PredTable0) },
-		{ predicate_table_set_preds(PredTable0, Preds, PredTable) },
-		{ module_info_set_predicate_table(ModuleInfo0, PredTable,
-						  ModuleInfo1) },
+		post_typecheck__finish_pred(ModuleInfo0, PredId, PredInfo2,
+				PredInfo),
 		{ NumErrors1 is NumErrors0 + UnboundTypeErrsInThisPred
 					   + PurityErrsInThisPred }
 	),
+	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
+	{ module_info_get_predicate_table(ModuleInfo0, PredTable0) },
+	{ predicate_table_set_preds(PredTable0, Preds, PredTable) },
+	{ module_info_set_predicate_table(ModuleInfo0, PredTable,
+					  ModuleInfo1) },
 	check_preds_purity_2(PredIds, ModuleInfo1, ModuleInfo,
 				  NumErrors1, NumErrors).
 
 	% Purity-check the code for single predicate, reporting any errors.
-
-
-%-----------------------------------------------------------------------------%
-%			Check for unbound type variables
-%
-%  Check that the all of the types which have been inferred
-%  for the variables in the clause do not contain any unbound type
-%  variables other than those that occur in the types of head
-%  variables.
-
-:- pred check_type_bindings(pred_id, pred_info, pred_info,
-		module_info, int, io__state, io__state).
-:- mode check_type_bindings(in, in, out, in, out, di, uo) is det.
-
-check_type_bindings(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors,
-		IOState0, IOState) :-
-	pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	ClausesInfo0 = clauses_info(VarSet, B, VarTypesMap0, HeadVars, E),
-	map__apply_to_list(HeadVars, VarTypesMap0, HeadVarTypes),
-	term__vars_list(HeadVarTypes, HeadVarTypeParams),
-	map__to_assoc_list(VarTypesMap0, VarTypesList),
-	set__init(Set0),
-	check_type_bindings_2(VarTypesList, HeadVarTypeParams,
-			[], Errs, Set0, Set),
-	( Errs = [] ->
-		PredInfo = PredInfo0,
-		IOState = IOState0,
-		NumErrors = 0
-	;
-		%
-		% report the warning
-		%
-		report_unresolved_type_warning(Errs, PredId, PredInfo0,
-				ModuleInfo, VarSet, IOState0, IOState),
-		NumErrors = 0,
-
-		%
-		% bind all the type variables in `Set' to `void' ...
-		%
-		pred_info_context(PredInfo0, Context),
-		bind_type_vars_to_void(Set, Context, VarTypesMap0, VarTypesMap),
-		ClausesInfo = clauses_info(VarSet, B, VarTypesMap, HeadVars, E),
-		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo)
-	).
-
-:- pred check_type_bindings_2(assoc_list(var, (type)), list(var),
-			assoc_list(var, (type)), assoc_list(var, (type)),
-			set(tvar), set(tvar)).
-:- mode check_type_bindings_2(in, in, in, out, in, out) is det.
-
-check_type_bindings_2([], _, Errs, Errs, Set, Set).
-check_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
-			Errs0, Errs, Set0, Set) :-
-	term__vars(Type, TVars),
-	set__list_to_set(TVars, TVarsSet0),
-	set__delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
-	( \+ set__empty(TVarsSet1) ->
-		Errs1 = [Var - Type | Errs0],
-		set__union(Set0, TVarsSet1, Set1)
-	;
-		Errs1 = Errs0,
-		Set0 = Set1
-	),
-	check_type_bindings_2(VarTypes, HeadTypeParams,
-		Errs1, Errs, Set1, Set).
-
-%
-% bind all the type variables in `UnboundTypeVarsSet' to the type `void' ...
-%
-:- pred bind_type_vars_to_void(set(var), term__context,
-				map(var, type), map(var, type)).
-:- mode bind_type_vars_to_void(in, in, in, out) is det.
-
-bind_type_vars_to_void(UnboundTypeVarsSet, Context,
-		VarTypesMap0, VarTypesMap) :-
-	%
-	% first create a pair of corresponding lists (UnboundTypeVars, Voids)
-	% that map the unbound type variables to void
-	%
-	set__to_sorted_list(UnboundTypeVarsSet, UnboundTypeVars),
-	list__length(UnboundTypeVars, Length),
-	Void = term__functor(term__atom("void"), [], Context),
-	list__duplicate(Length, Void, Voids),
-
-	%
-	% then apply the substitution we just created to the variable types
-	%
-	map__keys(VarTypesMap0, Vars),
-	map__values(VarTypesMap0, Types0),
-	term__substitute_corresponding_list(UnboundTypeVars, Voids,
-		Types0, Types),
-	map__from_corresponding_lists(Vars, Types, VarTypesMap).
-
-%
-% report an error: uninstantiated type parameter
-%
-:- pred report_unresolved_type_warning(assoc_list(var, (type)), pred_id,
-			pred_info, module_info, varset, io__state, io__state).
-:- mode report_unresolved_type_warning(in, in, in, in, in, di, uo) is det.
-
-report_unresolved_type_warning(Errs, PredId, PredInfo, ModuleInfo, VarSet) -->
-	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
-	( { HaltAtWarn = yes } ->
-		 io__set_exit_status(1)
-	;
-		[]
-	),
-
-	{ pred_info_typevarset(PredInfo, TypeVarSet) },
-	{ pred_info_context(PredInfo, Context) },
-
-        prog_out__write_context(Context),
-	io__write_string("In "),
-	hlds_out__write_pred_id(ModuleInfo, PredId),
-	io__write_string(":\n"),
-
-        prog_out__write_context(Context),
-	io__write_string("  warning: unresolved polymorphism.\n"),
-	prog_out__write_context(Context),
-	( { Errs = [_] } ->
-		io__write_string("  The variable with an unbound type was:\n")
-	;
-		io__write_string("  The variables with unbound types were:\n")
-	),
-	write_type_var_list(Errs, Context, VarSet, TypeVarSet),
-	prog_out__write_context(Context),
-	io__write_string("  The unbound type variable(s) will be implicitly\n"),
-	prog_out__write_context(Context),
-	io__write_string("  bound to the builtin type `void'.\n"),
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
-		io__write_strings([
-"\tThe body of the clause contains a call to a polymorphic predicate,\n",
-"\tbut I can't determine which version should be called,\n",
-"\tbecause the type variables listed above didn't get bound.\n",
-% "\tYou may need to use an explicit type qualifier.\n",
-% XXX improve error message
-"\t(I ought to tell you which call caused the problem, but I'm afraid\n",
-"\tyou'll have to work it out yourself.  My apologies.)\n"
-			])
-	;
-		[]
-	).
-
-:- pred write_type_var_list(assoc_list(var, (type)), term__context,
-			varset, tvarset, io__state, io__state).
-:- mode write_type_var_list(in, in, in, in, di, uo) is det.
-
-write_type_var_list([], _, _, _) --> [].
-write_type_var_list([Var - Type | Rest], Context, VarSet, TVarSet) -->
-	prog_out__write_context(Context),
-	io__write_string("      "),
-	mercury_output_var(Var, VarSet, no),
-	io__write_string(" :: "),
-	mercury_output_term(Type, TVarSet, no),
-	io__write_string("\n"),
-	write_type_var_list(Rest, Context, VarSet, TVarSet).
 
 %-----------------------------------------------------------------------------%
 %			Check purity of a single predicate
@@ -523,12 +372,16 @@ compute_expr_purity(conj(Goals0), conj(Goals), _, PredInfo, ModuleInfo,
 		InClosure, Purity, NumErrors0, NumErrors) -->
 	compute_goals_purity(Goals0, Goals, PredInfo, ModuleInfo,
 			     InClosure, pure, Purity, NumErrors0, NumErrors).
+compute_expr_purity(par_conj(Goals0, SM), par_conj(Goals, SM), _, PredInfo,
+		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
+	compute_goals_purity(Goals0, Goals, PredInfo, ModuleInfo,
+			     InClosure, pure, Purity, NumErrors0, NumErrors).
 compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
 		call(PredId,ProcId,Vars,BIState,UContext,Name), GoalInfo,
 		PredInfo, ModuleInfo, InClosure, ActualPurity,
 		NumErrors0, NumErrors) -->
-	{ resolve_pred_overloading(PredId0, Vars, PredInfo, ModuleInfo,
-				   Name0, Name, PredId) },
+	{ post_typecheck__resolve_pred_overloading(PredId0, Vars, PredInfo,
+		ModuleInfo, Name0, Name, PredId) },
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, CalleePredInfo) },
 	{ pred_info_get_purity(CalleePredInfo, ActualPurity) },
@@ -835,35 +688,6 @@ write_context_and_pred_id(ModuleInfo, PredInfo, PredId) -->
 	io__write_string("In "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string(":\n").
-	
-
 
 
 %-----------------------------------------------------------------------------%
-%			resolve predicate overloading
-
-:- pred resolve_pred_overloading(pred_id, list(var), pred_info, module_info,
-	sym_name, sym_name, pred_id).
-:- mode resolve_pred_overloading(in, in, in, in, in, out, out)
-	is det.
-
-% In the case of a call to an overloaded predicate, typecheck.m
-% does not figure out the correct pred_id.  We must do that here.
-
-resolve_pred_overloading(PredId0, Args0, CallerPredInfo, ModuleInfo,
-		PredName0, PredName, PredId) :-
-        (   invalid_pred_id(PredId0) ->
-		%
-		% Find the set of candidate pred_ids for predicates which
-		% have the specified name and arity
-		% 
-		pred_info_typevarset(CallerPredInfo, TVarSet),
-		pred_info_clauses_info(CallerPredInfo, ClausesInfo),
-		ClausesInfo = clauses_info(_, _, VarTypes, _, _),
-		typecheck__resolve_pred_overloading(ModuleInfo, Args0,
-			VarTypes, TVarSet, PredName0, PredName, PredId)
-        ;
-                PredId = PredId0,
-                PredName = PredName0
-        ).
-

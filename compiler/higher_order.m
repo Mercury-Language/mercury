@@ -331,6 +331,13 @@ traverse_goal(conj(Goals0) - Info, conj(Goals) - Info,
 	traverse_conj(Goals0, Goals, PredProcId, unchanged, Changed,
 					0, GoalSize).
 
+traverse_goal(par_conj(Goals0, SM) - Info, par_conj(Goals, SM) - Info,
+			PredProcId, Changed, GoalSize) -->
+		% traverse_disj treats its list of goals as independent
+		% rather than specifically disjoint, so we can use it
+		% to process a list of independent parallel conjuncts.
+	traverse_disj(Goals0, Goals, PredProcId, Changed, GoalSize).
+
 traverse_goal(disj(Goals0, SM) - Info, disj(Goals, SM) - Info,
 				PredProcId, Changed, GoalSize) -->
 	traverse_disj(Goals0, Goals, PredProcId, Changed, GoalSize).
@@ -402,6 +409,10 @@ traverse_conj([Goal0 | Goals0], [Goal | Goals],
 		% specialization information before the goal, then merge the
 		% results to give the specialization information after the
 		% disjunction.
+		%
+		% This code is used both for disjunction and parallel
+		% conjunction.
+
 :- pred traverse_disj(hlds_goals::in, hlds_goals::out, pred_proc_id::in,
 		changed::out, int::out, higher_order_info::in,
 		higher_order_info::out) is det.
@@ -643,7 +654,8 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 	;	
 		pred_info_arg_types(PredInfo, _, ArgTypes),
 		find_higher_order_args(Module, Args0, ArgTypes, PredVars, 1,
-				[], HigherOrderArgs, Args0, Args1),
+				[], HigherOrderArgs0, Args0, Args1),
+		list__reverse(HigherOrderArgs0, HigherOrderArgs),
 		(
 			HigherOrderArgs = [] 
 		->
@@ -694,7 +706,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 	% a known value. Also update the argument list to now include
 	% curried arguments that need to be explicitly passed.
 	% The order of the argument list must match that generated
-	% by construct_higher_order terms.
+	% by construct_higher_order_terms.
 :- pred find_higher_order_args(module_info::in, list(var)::in, list(type)::in,
 		pred_vars::in, int::in, list(higher_order_arg)::in,
 		list(higher_order_arg)::out,
@@ -715,16 +727,19 @@ find_higher_order_args(ModuleInfo, [Arg | Args], [ArgType | ArgTypes],
 		type_is_higher_order(ArgType, _, _),
 		map__search(PredVars, Arg, yes(PredId, ProcId, CurriedArgs))
 	->
+		% Find any known higher-order arguments
+		% in the list of curried arguments.
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_arg_types(PredInfo, _, CurriedArgTypes),
 		find_higher_order_args(ModuleInfo, CurriedArgs,
-			CurriedArgTypes, PredVars, 1, [], HOCurriedArgs,
+			CurriedArgTypes, PredVars, 1, [], HOCurriedArgs0,
 			CurriedArgs, NewExtraArgs0),
+		list__reverse(HOCurriedArgs0, HOCurriedArgs),
 		list__length(CurriedArgs, NumArgs),
 		remove_listof_higher_order_args(NewExtraArgs0, 1, HOCurriedArgs,
 								NewExtraArgs),
 		HOArgs1 = [higher_order_arg(PredId, ProcId, ArgNo,
-					 NumArgs, HOCurriedArgs) | HOArgs0],
+				NumArgs, HOCurriedArgs) | HOArgs0],
 		list__append(NewArgs0, NewExtraArgs, NewArgs1)
 	;
 		HOArgs1 = HOArgs0,

@@ -58,7 +58,7 @@
 :- implementation.
 
 :- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
-:- import_module pragma_c_gen, trace, options, hlds_out.
+:- import_module par_conj_gen, pragma_c_gen, trace, options, hlds_out.
 :- import_module code_aux, middle_rec, passes_aux, llds_out.
 :- import_module code_util, type_util, mode_util.
 :- import_module prog_data, prog_out, instmap.
@@ -816,6 +816,8 @@ code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
 
 code_gen__generate_det_goal_2(conj(Goals), _GoalInfo, Instr) -->
 	code_gen__generate_goals(Goals, model_det, Instr).
+code_gen__generate_det_goal_2(par_conj(Goals, _StoreMap), GoalInfo, Instr) -->
+	par_conj_gen__generate_det_par_conj(Goals, GoalInfo, Instr).
 code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 	{ Goal = _ - InnerGoalInfo },
 	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
@@ -904,6 +906,10 @@ code_gen__generate_det_goal_2(pragma_c_code(MayCallMercury,
 
 code_gen__generate_semi_goal_2(conj(Goals), _GoalInfo, Code) -->
 	code_gen__generate_goals(Goals, model_semi, Code).
+code_gen__generate_semi_goal_2(par_conj(_Goals, _SM), _GoalInfo, _Code) -->
+	% Determinism analysis will report a determinism error if the
+	% parallel conj is not det.
+	{ error("sorry, semidet parallel conjunction not implemented") }.
 code_gen__generate_semi_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
 	{ Goal = _ - InnerGoalInfo },
 	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
@@ -1118,6 +1124,10 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 
 code_gen__generate_non_goal_2(conj(Goals), _GoalInfo, Code) -->
 	code_gen__generate_goals(Goals, model_non, Code).
+code_gen__generate_non_goal_2(par_conj(_Goals, _SM), _GoalInfo, _Code) -->
+		% Determinism analysis will report a determinism error if the
+		% parallel conj is not det.
+	{ error("sorry, nondet parallel conjunction not implemented") }.
 code_gen__generate_non_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
 	{ Goal = _ - InnerGoalInfo },
 	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },

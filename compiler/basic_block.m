@@ -187,6 +187,10 @@ possible_targets(mark_ticket_stack(_), []).
 possible_targets(discard_tickets_to(_), []).
 possible_targets(incr_sp(_, _), []).
 possible_targets(decr_sp(_), []).
+possible_targets(init_sync_term(_, _), []).
+possible_targets(fork(P, C, _), [P, C]).
+possible_targets(join_and_terminate(_), []).
+possible_targets(join_and_continue(_, L), [L]).
 possible_targets(pragma_c(_, _, _, _, _), []).
 
 %-----------------------------------------------------------------------------%

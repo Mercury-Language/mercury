@@ -21,7 +21,10 @@
 :- import_module set_bbbtree, bool, io.
 
 	% Given a 'c_file' structure, open the appropriate .c file
-	% and output the code into that file.
+	% and output the code into that file. The bool says whether
+	% this Mercury module was compiled with any flavor of execution
+	% tracing; the third argument gives the set of labels that have
+	% layout structures.
 
 :- pred output_c_file(c_file, set_bbbtree(label), io__state, io__state).
 :- mode output_c_file(in, in, di, uo) is det.
@@ -142,8 +145,8 @@ output_c_file(C_File, StackLayoutLabels) -->
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
 		output_c_file_init(ModuleName, C_Modules),
-		output_c_file_list(C_Modules, 1, ModuleName, C_HeaderInfo,
-			StackLayoutLabels)
+		output_c_file_list(C_Modules, 1, ModuleName,
+			C_HeaderInfo, StackLayoutLabels)
 	;
 		output_single_c_file(C_File, no, StackLayoutLabels)
 	).
@@ -194,7 +197,7 @@ output_c_file_init(ModuleName, C_Modules) -->
 		io__write_string("\n"),
 		io__write_string("ENDINIT\n"),
 		io__write_string("*/\n\n"),
-		io__write_string("#include ""mercury_imp.h""\n"),
+		output_c_file_mercury_headers,
 		io__write_string("\n"),
 		output_c_module_init_list(ModuleName, C_Modules),
 		io__told
@@ -206,6 +209,19 @@ output_c_file_init(ModuleName, C_Modules) -->
 		io__write_string(FileName),
 		io__write_string("' for output\n"),
 		io__set_exit_status(1)
+	).
+
+:- pred output_c_file_mercury_headers(io__state, io__state).
+:- mode output_c_file_mercury_headers(di, uo) is det.
+
+output_c_file_mercury_headers -->
+	globals__io_get_trace_level(TraceLevel),
+	( { TraceLevel = interface ; TraceLevel = full } ->
+		io__write_string("#define MR_STACK_TRACE_THIS_MODULE\n"),
+		io__write_string("#include ""mercury_imp.h""\n"),
+		io__write_string("#include ""mercury_trace.h""\n")
+	;
+		io__write_string("#include ""mercury_imp.h""\n")
 	).
 
 :- pred output_single_c_file(c_file, maybe(int), set_bbbtree(label),
@@ -243,7 +259,7 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
 			io__write_string("ENDINIT\n"),
 			io__write_string("*/\n\n")
 		),
-		io__write_string("#include ""mercury_imp.h""\n"),
+		output_c_file_mercury_headers,
 		output_c_header_include_lines(C_HeaderLines),
 		io__write_string("\n"),
 		{ gather_c_file_labels(Modules, Labels) },
@@ -275,7 +291,7 @@ output_c_module_init_list(ModuleName, Modules) -->
 
 		% Output initialization functions, bunched into groups
 		% of 40.
-	io__write_string("#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"),
+	io__write_string("#if defined(MR_MAY_NEED_INITIALIZATION)\n\n"),
 	io__write_string("static void "),
 	output_bunch_name(ModuleName, 0),
 	io__write_string("(void)\n"),
@@ -293,7 +309,7 @@ output_c_module_init_list(ModuleName, Modules) -->
 	output_init_name(ModuleName),
 	io__write_string("(void)\n"),
 	io__write_string("{\n"),
-	io__write_string("#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"),
+	io__write_string("#if defined(MR_MAY_NEED_INITIALIZATION)\n\n"),
 	io__write_string("\tstatic bool done = FALSE;\n"),
 	io__write_string("\tif (!done) {\n"),
 	io__write_string("\t\tdone = TRUE;\n"),
@@ -707,8 +723,8 @@ llds_out__find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
 		llds_out__find_caller_label(Instrs, CallerLabel)
 	).
 
-	% Locate all the labels which are the continutation labels for calls
-	% or nondet disjunctions, and store them in ContLabelSet.
+	% Locate all the labels which are the continuation labels for calls,
+	% nondet disjunctions, forks or joins, and store them in ContLabelSet.
 
 :- pred llds_out__find_cont_labels(list(instruction),
 	bintree_set(label), bintree_set(label)).
@@ -725,11 +741,18 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 		;
 			Instr = modframe(label(ContLabel))
 		;
+			Instr = join_and_continue(_, ContLabel)
+		;
 			Instr = assign(redoip(lval(maxfr)), 
 				const(code_addr_const(label(ContLabel))))
 		)
 	->
 		bintree_set__insert(ContLabelSet0, ContLabel, ContLabelSet1)
+	;
+		Instr = fork(Label1, Label2, _)
+	->
+		bintree_set__insert_list(ContLabelSet0, [Label1, Label2],
+			ContLabelSet1)
 	;
 		Instr = block(_, _, Block)
 	->
@@ -892,6 +915,16 @@ output_pragma_c_component_list_decls([Component | Components],
 		DeclSet0, DeclSet) -->
 	output_pragma_c_component_decls(Component, DeclSet0, DeclSet1),
 	output_pragma_c_component_list_decls(Components, DeclSet1, DeclSet).
+output_instruction_decls(init_sync_term(Lval, _), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(fork(Child, Parent, _), DeclSet0, DeclSet) -->
+	output_code_addr_decls(label(Child), "", "", 0, _, DeclSet0, DeclSet2),
+	output_code_addr_decls(label(Parent), "", "", 0, _, DeclSet2, DeclSet).
+output_instruction_decls(join_and_terminate(Lval), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(join_and_continue(Lval, Label), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
+	output_code_addr_decls(label(Label), "", "", 0, _, DeclSet1, DeclSet).
 
 :- pred output_pragma_c_component_decls(pragma_c_component,
 	decl_set, decl_set, io__state, io__state).
@@ -1185,6 +1218,34 @@ output_instruction(pragma_c(Decls, Components, _, _, _), _) -->
 	output_pragma_decls(Decls),
 	output_pragma_c_components(Components),
 	io__write_string("\n\t}\n").
+
+output_instruction(init_sync_term(Lval, N), _) -->
+	io__write_string("\tMR_init_sync_term("),
+	output_lval_as_word(Lval),
+	io__write_string(", "),
+	io__write_int(N),
+	io__write_string(");\n").
+
+output_instruction(fork(Child, Parent, Lval), _) -->
+	io__write_string("\tMR_fork_new_context("),
+	output_label_as_code_addr(Child),
+	io__write_string(", "),
+	output_label_as_code_addr(Parent),
+	io__write_string(", "),
+	io__write_int(Lval),
+	io__write_string(");\n").
+
+output_instruction(join_and_terminate(Lval), _) -->
+	io__write_string("\tMR_join_and_terminate("),
+	output_lval(Lval),
+	io__write_string(");\n").
+
+output_instruction(join_and_continue(Lval, Label), _) -->
+	io__write_string("\tMR_join_and_continue("),
+	output_lval(Lval),
+	io__write_string(", "),
+	output_label_as_code_addr(Label),
+	io__write_string(");\n").
 
 :- pred output_pragma_c_components(list(pragma_c_component),
 	io__state, io__state).
@@ -2246,7 +2307,7 @@ output_code_addr(imported(ProcLabel)) -->
 	output_proc_label(ProcLabel),
 	io__write_string(")").
 output_code_addr(succip) -->
-	io__write_string("succip").
+	io__write_string("MR_succip").
 output_code_addr(do_succeed(Last)) -->
 	(
 		{ Last = no },

@@ -253,6 +253,22 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = Instr0,
 		Info = Info0
 	;
+		Instr0 = init_sync_term(_, _),
+		Instr = Instr0,
+		Info = Info0
+	;
+		Instr0 = fork(_, _, _),
+		Instr = Instr0,
+		Info = Info0
+	;
+		Instr0 = join_and_terminate(_),
+		Instr = Instr0,
+		Info = Info0
+	;
+		Instr0 = join_and_continue(_, _),
+		Instr = Instr0,
+		Info = Info0
+	;
 		Instr0 = pragma_c(_, _, _, _, _),
 		Instr = Instr0,
 		Info = Info0

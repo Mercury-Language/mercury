@@ -110,6 +110,14 @@ find_follow_vars_in_goal_expr(conj(Goals0), FVInfo, FollowVars0,
 	find_follow_vars_in_conj(Goals0, FVInfo, FollowVars0,
 		no, Goals, FollowVars).
 
+find_follow_vars_in_goal_expr(par_conj(Goals0, SM), FVInfo,
+		FollowVars0, par_conj(Goals, SM), FollowVars) :-
+		% find_follow_vars_in_disj treats its list of goals as a
+		% series of independent goals, so we can use it to process
+		% independent parallel conjunction.
+	find_follow_vars_in_disj(Goals0, FVInfo, FollowVars0,
+		Goals, FollowVars).
+
 	% We record that at the end of each disjunct, live variables should
 	% be in the locations given by the initial follow_vars, which reflects
 	% the requirements of the code following the disjunction.
@@ -301,6 +309,8 @@ find_follow_vars_from_arginfo_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 	% they can only be entered with everything in stack slots; for
 	% model_det and model_semi disjunctions, they will never be
 	% entered at all.)
+	%
+	% This code is used both for disjunction and parallel conjunction.
 
 :- pred find_follow_vars_in_disj(list(hlds_goal), follow_vars_info,
 				follow_vars, list(hlds_goal), follow_vars).

@@ -1253,6 +1253,33 @@ mode_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 	mode_apply_substitution(A0, Subst, A),
 	mode_list_apply_substitution(As0, Subst, As).
 
+:- pred recompute_instmap_delta_par_conj(list(hlds_goal),
+		list(hlds_goal), instmap, set(var), instmap_delta,
+		recompute_info, recompute_info).
+:- mode recompute_instmap_delta_par_conj(in, out, in, in, out,
+		in, out) is det.
+
+recompute_instmap_delta_par_conj([], [], _, _, InstMapDelta) -->
+	{ instmap_delta_init_unreachable(InstMapDelta) }.
+recompute_instmap_delta_par_conj([Goal0], [Goal],
+		InstMap, _, InstMapDelta) -->
+	recompute_instmap_delta_2(Goal0, Goal, InstMap, _, InstMapDelta).
+recompute_instmap_delta_par_conj([Goal0 | Goals0], [Goal | Goals],
+		InstMap, NonLocals, InstMapDelta) -->
+	{ Goals0 = [_|_] },
+	recompute_instmap_delta_2(Goal0, Goal,
+		InstMap, _, InstMapDelta0),
+	recompute_instmap_delta_par_conj(Goals0, Goals,
+		InstMap, NonLocals, InstMapDelta1),
+	=(RI),
+	{ recompute_info_get_module_info(RI, ModuleInfo0) },
+	{ recompute_info_get_inst_table(RI, InstTable0) },
+	{ unify_instmap_delta(InstMap, NonLocals, InstMapDelta0,
+		InstMapDelta1, InstMapDelta, InstTable0, InstTable,
+		ModuleInfo0, ModuleInfo) },
+	recompute_info_set_module_info(ModuleInfo),
+	recompute_info_set_inst_table(InstTable).
+
 %-----------------------------------------------------------------------------%
 
 	% In case we later decided to change the representation
@@ -1447,6 +1474,12 @@ recompute_instmap_delta_3(conj(Goals0), GoalInfo, conj(Goals), GoalInfo,
 			recompute_info_add_live_vars(NonLocals, RI0, RI)
 		)), Goals0),
 	recompute_instmap_delta_conj(Goals0, Goals, InstMap, InstMapDelta).
+
+recompute_instmap_delta_3(par_conj(Goals0, SM), GoalInfo,
+		par_conj(Goals, SM), GoalInfo, InstMap, InstMapDelta) -->
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	recompute_instmap_delta_par_conj(Goals0, Goals,
+		InstMap, NonLocals, InstMapDelta).
 
 recompute_instmap_delta_3(disj(Goals0, SM), GoalInfo,
 		disj(Goals, SM), GoalInfo, InstMap, InstMapDelta) -->

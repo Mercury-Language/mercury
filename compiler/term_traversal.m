@@ -159,6 +159,10 @@ traverse_goal_2(conj(Goals), _, Params, Info0, Info) :-
 	list__reverse(Goals, RevGoals),
 	traverse_conj(RevGoals, Params, Info0, Info).
 
+traverse_goal_2(par_conj(Goals, _SM), _, Params, Info0, Info) :-
+	list__reverse(Goals, RevGoals),
+	traverse_conj(RevGoals, Params, Info0, Info).
+
 traverse_goal_2(switch(_, _, Cases, _), _, Params, Info0, Info) :-
 	traverse_switch(Cases, Params, Info0, Info).
 

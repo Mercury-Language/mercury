@@ -18,7 +18,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
 :- import_module prog_data, mode_errors, delay_info, (inst), mode_debug.
-:- import_module map, list, varset, set, bool, term, assoc_list.
+:- import_module map, list, varset, set, bool, term, assoc_list, std_util.
 
 :- interface.
 
@@ -59,8 +59,9 @@
 :- type var_lock_reason
 	--->	negation
 	;	if_then_else
-	;	lambda(pred_or_func).
-
+	;	lambda(pred_or_func)
+	;	par_conj
+	.
 
 	% Specify how to process goals - using either
 	% modes.m or unique_modes.m.
@@ -244,6 +245,14 @@
 :- pred mode_info_set_mode_debug_info(mode_debug_info, mode_info, mode_info).
 :- mode mode_info_set_mode_debug_info(in, mode_info_di, mode_info_uo) is det.
 
+:- pred mode_info_get_parallel_vars(list(pair(set(var))), mode_info,
+		mode_info).
+:- mode mode_info_get_parallel_vars(out, mode_info_di, mode_info_uo) is det.
+
+:- pred mode_info_set_parallel_vars(list(pair(set(var))), mode_info,
+		mode_info).
+:- mode mode_info_set_parallel_vars(in, mode_info_di, mode_info_uo) is det.
+
 :- pred mode_info_get_changed_flag(mode_info, bool).
 :- mode mode_info_get_changed_flag(mode_info_no_io, out) is det.
 
@@ -368,6 +377,14 @@
 	% This field will always be small if debug_modes is off,
 	% since its information is not needed then.
 
+			list(pair(set(var), set(var))),
+	% A stack of pairs of sets of variables used to mode-check
+	% parallel conjunctions. The first set is the nonlocals of
+	% the parallel conjunction. The second set is a subset of the
+	% first, and is the set of variables that have been [further]
+	% bound inside the current parallel conjunct - the stack is for
+	% the correct handling of nested parallel conjunctions.
+
 			bool,		% Changed flag
 					% If `yes', then we may need
 					% to repeat mode inference.
@@ -407,60 +424,60 @@ mode_info_init(IOState, ModuleInfo, IKT, PredId, ProcId, Context,
 		IOState, ModuleInfo, IKT, PredId, ProcId, VarSet, VarTypes,
 		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
 		ErrorList, LiveVarsList, NondetLiveVarsList,
-		ModeDebugInfo, Changed, HowToCheck
+		ModeDebugInfo, [], Changed, HowToCheck
 	).
 
 %-----------------------------------------------------------------------------%
 
 	% Lots of very boring access predicates.
 
-mode_info_get_io_state(mode_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
+mode_info_get_io_state(mode_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 		IOState) :-
 	% XXX
 	unsafe_promise_unique(IOState0, IOState).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_set_io_state( mode_info(_,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R),
-		IOState0, mode_info(IOState,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R))
-		:-
+mode_info_set_io_state( mode_info(_,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S),
+		IOState0, 
+		mode_info(IOState,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S)) :-
 	% XXX
 	unsafe_promise_unique(IOState0, IOState).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_get_module_info(
-	mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_), ModuleInfo).
+	mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_), ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_set_module_info(mode_info(A,_,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R),
+mode_info_set_module_info(mode_info(A,_,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S),
 		ModuleInfo,
-		mode_info(A,ModuleInfo,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R)).
+		mode_info(A,ModuleInfo,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S)).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_preds(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
+mode_info_get_preds(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 		Preds) :-
 	module_info_preds(ModuleInfo, Preds).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_modes(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
+mode_info_get_modes(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 		Modes) :-
 	module_info_modes(ModuleInfo, Modes).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_get_user_insts(
-		mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
+		mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 		UserInsts) :-
 	module_info_user_insts(ModuleInfo, UserInsts).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_get_inst_table(
-	mode_info(_,_,InstTable,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_), InstTable).
+	mode_info(_,_,InstTable,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_), InstTable).
 
 mode_info_dcg_get_inst_table(InstTable, ModeInfo, ModeInfo) :-
 	mode_info_get_inst_table(ModeInfo, InstTable).
@@ -468,60 +485,62 @@ mode_info_dcg_get_inst_table(InstTable, ModeInfo, ModeInfo) :-
 %-----------------------------------------------------------------------------%
 
 mode_info_set_inst_table(InstTable,
-			mode_info(A,B,_,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R),
-			mode_info(A,B,InstTable,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R)).
+		mode_info(A,B,_,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S),
+		mode_info(A,B,InstTable,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S)).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_predid(mode_info(_,_,_,PredId,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
+mode_info_get_predid(mode_info(_,_,_,PredId,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 		PredId).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_procid(mode_info(_,_,_,_,ProcId,_,_,_,_,_,_,_,_,_,_,_,_,_),
+mode_info_get_procid(mode_info(_,_,_,_,ProcId,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 		ProcId).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_varset(mode_info(_,_,_,_,_,VarSet,_,_,_,_,_,_,_,_,_,_,_,_),
+mode_info_get_varset(mode_info(_,_,_,_,_,VarSet,_,_,_,_,_,_,_,_,_,_,_,_,_),
 		VarSet).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_set_varset(VarSet, mode_info(A,B,C,D,E,_,G,H,I,J,K,L,M,N,O,P,Q,R),
-			mode_info(A,B,C,D,E,VarSet,G,H,I,J,K,L,M,N,O,P,Q,R)).
+mode_info_set_varset(VarSet, mode_info(A,B,C,D,E,_,G,H,I,J,K,L,M,N,O,P,Q,R,S),
+			mode_info(A,B,C,D,E,VarSet,G,H,I,J,K,L,M,N,O,P,Q,R,S)).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_var_types(mode_info(_,_,_,_,_,_,VarTypes,_,_,_,_,_,_,_,_,_,_,_),
+mode_info_get_var_types(mode_info(_,_,_,_,_,_,VarTypes,_,_,_,_,_,_,_,_,_,_,_,_),
 				VarTypes).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_set_var_types(VarTypes,
-		mode_info(A,B,C,D,E,F,_,H,I,J,K,L,M,N,O,P,Q,R),
-		mode_info(A,B,C,D,E,F,VarTypes,H,I,J,K,L,M,N,O,P,Q,R)).
+		mode_info(A,B,C,D,E,F,_,H,I,J,K,L,M,N,O,P,Q,R,S),
+		mode_info(A,B,C,D,E,F,VarTypes,H,I,J,K,L,M,N,O,P,Q,R,S)).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_context(mode_info(_,_,_,_,_,_,_,Context,_,_,_,_,_,_,_,_,_,_),
+mode_info_get_context(mode_info(_,_,_,_,_,_,_,Context,_,_,_,_,_,_,_,_,_,_,_),
 			Context).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_set_context(Context, mode_info(A,B,C,D,E,F,G,_,I,J,K,L,M,N,O,P,Q,R),
-			mode_info(A,B,C,D,E,F,G,Context,I,J,K,L,M,N,O,P,Q,R)).
+mode_info_set_context(Context, 
+		mode_info(A,B,C,D,E,F,G,_,I,J,K,L,M,N,O,P,Q,R,S),
+		mode_info(A,B,C,D,E,F,G,Context,I,J,K,L,M,N,O,P,Q,R,S)).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_get_mode_context(
-	mode_info(_,_,_,_,_,_,_,_,ModeContext,_,_,_,_,_,_,_,_,_), ModeContext).
+	mode_info(_,_,_,_,_,_,_,_,ModeContext,_,_,_,_,_,_,_,_,_,_),
+	ModeContext).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_set_mode_context(ModeContext,
-		mode_info(A,B,C,D,E,F,G,H,_,J,K,L,M,N,O,P,Q,R),
-		mode_info(A,B,C,D,E,F,G,H,ModeContext,J,K,L,M,N,O,P,Q,R)).
+		mode_info(A,B,C,D,E,F,G,H,_,J,K,L,M,N,O,P,Q,R,S),
+		mode_info(A,B,C,D,E,F,G,H,ModeContext,J,K,L,M,N,O,P,Q,R,S)).
 
 %-----------------------------------------------------------------------------%
 
@@ -550,7 +569,7 @@ mode_info_unset_call_context -->
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_instmap(mode_info(_,_,_,_,_,_,_,_,_,InstMap,_,_,_,_,_,_,_,_),
+mode_info_get_instmap(mode_info(_,_,_,_,_,_,_,_,_,InstMap,_,_,_,_,_,_,_,_,_),
 		InstMap).
 
 	% mode_info_dcg_get_instmap/3 is the same as mode_info_get_instmap/2
@@ -562,8 +581,8 @@ mode_info_dcg_get_instmap(InstMap, ModeInfo, ModeInfo) :-
 %-----------------------------------------------------------------------------%
 
 mode_info_set_instmap( InstMap,
-		mode_info(A,B,C,D,E,F,G,H,I,InstMap0,K,DelayInfo0,M,N,O,P,Q,R),
-		mode_info(A,B,C,D,E,F,G,H,I,InstMap,K,DelayInfo,M,N,O,P,Q,R)) :-
+	mode_info(A,B,C,D,E,F,G,H,I,InstMap0,K,DelayInfo0,M,N,O,P,Q,R,S),
+	mode_info(A,B,C,D,E,F,G,H,I,InstMap,K,DelayInfo,M,N,O,P,Q,R,S)) :-
 	( instmap__is_unreachable(InstMap), instmap__is_reachable(InstMap0) ->
 		delay_info__bind_all_vars(DelayInfo0, DelayInfo)
 	;
@@ -573,29 +592,29 @@ mode_info_set_instmap( InstMap,
 %-----------------------------------------------------------------------------%
 
 mode_info_get_locked_vars(
-	mode_info(_,_,_,_,_,_,_,_,_,_,LockedVars,_,_,_,_,_,_,_), LockedVars).
+	mode_info(_,_,_,_,_,_,_,_,_,_,LockedVars,_,_,_,_,_,_,_,_), LockedVars).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_set_locked_vars( mode_info(A,B,C,D,E,F,G,H,I,J,_,L,M,N,O,P,Q,R),
+mode_info_set_locked_vars( mode_info(A,B,C,D,E,F,G,H,I,J,_,L,M,N,O,P,Q,R,S),
 		LockedVars,
-		mode_info(A,B,C,D,E,F,G,H,I,J,LockedVars,L,M,N,O,P,Q,R)).
+		mode_info(A,B,C,D,E,F,G,H,I,J,LockedVars,L,M,N,O,P,Q,R,S)).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_errors(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,Errors,_,_,_,_,_),
+mode_info_get_errors(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,Errors,_,_,_,_,_,_),
 		Errors).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_num_errors(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,Errors,_,_,_,_,_),
+mode_info_get_num_errors(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,Errors,_,_,_,_,_,_),
 		NumErrors) :-
 	list__length(Errors, NumErrors).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_set_errors( Errors, mode_info(A,B,C,D,E,F,G,H,I,J,K,L,_,N,O,P,Q,R), 
-			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,Errors,N,O,P,Q,R)).
+mode_info_set_errors( Errors, mode_info(A,B,C,D,E,F,G,H,I,J,K,L,_,N,O,P,Q,R,S), 
+			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,Errors,N,O,P,Q,R,S)).
 
 %-----------------------------------------------------------------------------%
 
@@ -609,9 +628,9 @@ mode_info_set_errors( Errors, mode_info(A,B,C,D,E,F,G,H,I,J,K,L,_,N,O,P,Q,R),
 
 mode_info_add_live_vars(NewLiveVars,
 		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,
-			M,LiveVars0,NondetLiveVars0,P,Q,R),
+			M,LiveVars0,NondetLiveVars0,P,Q,R,S),
 		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,
-			M,LiveVars,NondetLiveVars,P,Q,R)) :-
+			M,LiveVars,NondetLiveVars,P,Q,R,S)) :-
 
 	LiveVars = [NewLiveVars | LiveVars0],
 	NondetLiveVars = [NewLiveVars | NondetLiveVars0].
@@ -621,9 +640,9 @@ mode_info_add_live_vars(NewLiveVars,
 
 mode_info_remove_live_vars(OldLiveVars, ModeInfo0, ModeInfo) :-
 	ModeInfo0 = mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,
-				LiveVars0, NondetLiveVars0,P,Q,R),
+				LiveVars0, NondetLiveVars0,P,Q,R,S),
 	ModeInfo1 = mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,
-				LiveVars, NondetLiveVars,P,Q,R),
+				LiveVars, NondetLiveVars,P,Q,R,S),
 	(
 		list__delete_first(LiveVars0, OldLiveVars, LiveVars1),
 		list__delete_first(NondetLiveVars0, OldLiveVars,
@@ -651,8 +670,8 @@ mode_info_var_list_is_live([Var | Vars], ModeInfo, [Live | Lives]) :-
 	% Check whether a variable is live or not
 
 mode_info_var_is_live(
-		mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,LiveVarsList,_,_,_,_), Var,
-		Result) :-
+		mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,LiveVarsList,_,_,_,_,_),
+		Var, Result) :-
 	(
 		% some [LiveVars] 
 		list__member(LiveVars, LiveVarsList),
@@ -666,7 +685,7 @@ mode_info_var_is_live(
 	% Check whether a variable is nondet_live or not.
 
 mode_info_var_is_nondet_live(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-		NondetLiveVarsList,_,_,_), Var, Result) :-
+		NondetLiveVarsList,_,_,_,_), Var, Result) :-
 	(
 		% some [LiveVars] 
 		list__member(LiveVars, NondetLiveVarsList),
@@ -678,7 +697,7 @@ mode_info_var_is_nondet_live(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 	).
 
 mode_info_get_liveness(
-		mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,LiveVarsList,_,_,_,_),
+		mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,LiveVarsList,_,_,_,_,_),
 		LiveVars) :-
 	set__init(LiveVars0),
 	mode_info_get_liveness_2(LiveVarsList, LiveVars0, LiveVars).
@@ -689,12 +708,12 @@ mode_info_get_liveness_2([LiveVarsSet | LiveVarsList], LiveVars0, LiveVars) :-
 	mode_info_get_liveness_2(LiveVarsList, LiveVars1, LiveVars).
 
 mode_info_get_live_vars(
-		mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,LiveVarsList,_,_,_,_),
+		mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,LiveVarsList,_,_,_,_,_),
 		LiveVarsList).
 
 mode_info_set_live_vars(LiveVarsList,
-		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,_,O,P,Q,R),
-		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,LiveVarsList,O,P,Q,R)).
+		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,_,O,P,Q,R,S),
+		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,LiveVarsList,O,P,Q,R,S)).
 
 %-----------------------------------------------------------------------------%
 
@@ -748,39 +767,47 @@ mode_info_var_is_locked_2([ThisReason - Set | Sets], Var, Reason) :-
 	).
 
 mode_info_get_delay_info(
-	mode_info(_,_,_,_,_,_,_,_,_,_,_,DelayInfo,_,_,_,_,_,_), DelayInfo).
+	mode_info(_,_,_,_,_,_,_,_,_,_,_,DelayInfo,_,_,_,_,_,_,_), DelayInfo).
 
 mode_info_set_delay_info(DelayInfo,
-			mode_info(A,B,C,D,E,F,G,H,I,J,K,_,M,N,O,P,Q,R),
-			mode_info(A,B,C,D,E,F,G,H,I,J,K,DelayInfo,M,N,O,P,Q,R)).
+		mode_info(A,B,C,D,E,F,G,H,I,J,K,_,M,N,O,P,Q,R,S),
+		mode_info(A,B,C,D,E,F,G,H,I,J,K,DelayInfo,M,N,O,P,Q,R,S)).
 
 mode_info_get_nondet_live_vars(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-			NondetLiveVars,_,_,_), NondetLiveVars).
+			NondetLiveVars,_,_,_,_), NondetLiveVars).
 
 mode_info_set_nondet_live_vars(NondetLiveVars,
-		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,_,P,Q,R),
-		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,NondetLiveVars,P,Q,R)).
+		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,_,P,Q,R,S),
+		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,NondetLiveVars,P,Q,R,S)).
 
 mode_info_get_mode_debug_info(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-		ModeDebugInfo,_,_), ModeDebugInfo).
+		ModeDebugInfo,_,_,_), ModeDebugInfo).
 
 mode_info_set_mode_debug_info(ModeDebugInfo,
-			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,_,Q,R),
+			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,_,Q,R,S),
 			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,
-				ModeDebugInfo,Q,R)).
+				ModeDebugInfo,Q,R,S)).
+
+mode_info_get_parallel_vars(PVars, ModeInfo, ModeInfo) :-
+	ModeInfo = mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,PVars,_,_).
+
+mode_info_set_parallel_vars(PVars,
+			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,_,R,S),
+			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,PVars,R,S)).
 
 mode_info_get_changed_flag(
-		mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,Changed,_), Changed).
+	mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,Changed,_), Changed).
 
 mode_info_set_changed_flag(Changed,
-			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,_,R),
-			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Changed,R)).
+		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,_,S),
+		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,Changed,S)).
 
 mode_info_get_how_to_check(
-		mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,How), How).
+		mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,How), How).
 
-mode_info_set_how_to_check(How, mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,_),
-			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,How)).
+mode_info_set_how_to_check(How,
+	mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,_),
+	mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,How)).
 
 %-----------------------------------------------------------------------------%
 

@@ -989,7 +989,7 @@ hlds_out__write_goal_2(conj(List), InstTable, ModuleInfo, VarSet, AppendVarnums,
 			io__write_string("( % conjunction\n"),
 			hlds_out__write_conj(Goal, Goals, InstTable, ModuleInfo,
 				VarSet, AppendVarnums, Indent1, "", Verbose,
-				TypeQual),
+				",\n", TypeQual),
 			hlds_out__write_indent(Indent),
 			io__write_string(")"),
 			io__write_string(Follow),
@@ -997,7 +997,7 @@ hlds_out__write_goal_2(conj(List), InstTable, ModuleInfo, VarSet, AppendVarnums,
 		;
 			hlds_out__write_conj(Goal, Goals, InstTable, ModuleInfo,
 				VarSet, AppendVarnums, Indent, Follow, Verbose,
-				TypeQual)
+				",\n", TypeQual)
 		)
 	;
 		hlds_out__write_indent(Indent),
@@ -1005,6 +1005,28 @@ hlds_out__write_goal_2(conj(List), InstTable, ModuleInfo, VarSet, AppendVarnums,
 		io__write_string(Follow),
 		io__write_string("\n")
 	).
+
+hlds_out__write_goal_2(par_conj(List, _), InstTable, ModuleInfo, VarSet,
+		AppendVarnums, Indent, Follow, TypeQual) -->
+	hlds_out__write_indent(Indent),
+	( { List = [Goal | Goals] } ->
+		io__write_string("( % parallel conjunction\n"),
+		{ Indent1 is Indent + 1 },
+		hlds_out__write_goal_a(Goal, InstTable, ModuleInfo, VarSet,
+			AppendVarnums, Indent1, "", TypeQual),
+			% See comments at hlds_out__write_goal_list.
+		hlds_out__write_goal_list(Goals, InstTable, ModuleInfo, VarSet,
+			AppendVarnums, Indent, "&", TypeQual),
+		hlds_out__write_indent(Indent),
+		io__write_string(")"),
+		io__write_string(Follow),
+		io__write_string("\n")
+	;
+		io__write_string("/* parallel */ true"),
+		io__write_string(Follow),
+		io__write_string("\n")
+	).
+
 
 hlds_out__write_goal_2(disj(List, _), InstTable, ModuleInfo, VarSet, AppendVarnums,
 		Indent, Follow, TypeQual) -->
@@ -1014,8 +1036,8 @@ hlds_out__write_goal_2(disj(List, _), InstTable, ModuleInfo, VarSet, AppendVarnu
 		{ Indent1 is Indent + 1 },
 		hlds_out__write_goal_a(Goal, InstTable, ModuleInfo, VarSet,
 			AppendVarnums, Indent1, "", TypeQual),
-		hlds_out__write_disj(Goals, InstTable, ModuleInfo, VarSet,
-			AppendVarnums, Indent, TypeQual),
+		hlds_out__write_goal_list(Goals, InstTable, ModuleInfo, VarSet,
+			AppendVarnums, Indent, ";", TypeQual),
 		hlds_out__write_indent(Indent),
 		io__write_string(")"),
 		io__write_string(Follow),
@@ -1538,13 +1560,13 @@ hlds_out__write_var_mode(Var, Mode, VarSet, AppendVarnums, InstTable) -->
 	mercury_output_mode(Mode, VarSet, InstTable).
 
 :- pred hlds_out__write_conj(hlds_goal, list(hlds_goal), inst_table,
-	module_info, varset, bool, int, string, string, vartypes,
+	module_info, varset, bool, int, string, string, string, vartypes,
 	io__state, io__state).
-:- mode hlds_out__write_conj(in, in, in, in, in, in, in, in, in, in,
+:- mode hlds_out__write_conj(in, in, in, in, in, in, in, in, in, in, in,
 	di, uo) is det.
 
-hlds_out__write_conj(Goal1, Goals1, InstTable, ModuleInfo, VarSet, AppendVarnums,
-		Indent, Follow, Verbose, TypeQual) -->
+hlds_out__write_conj(Goal1, Goals1, InstTable, ModuleInfo, VarSet,
+		AppendVarnums, Indent, Follow, Verbose, Separator, TypeQual) -->
 	(
 		{ Goals1 = [Goal2 | Goals2] }
 	->
@@ -1557,34 +1579,40 @@ hlds_out__write_conj(Goal1, Goals1, InstTable, ModuleInfo, VarSet, AppendVarnums
 			hlds_out__write_goal_a(Goal1, InstTable, ModuleInfo, VarSet,
 				AppendVarnums, Indent, "", TypeQual),
 			hlds_out__write_indent(Indent),
-			io__write_string(",\n")
+			io__write_string(Separator)
 		;
 			hlds_out__write_goal_a(Goal1, InstTable, ModuleInfo, VarSet,
 				AppendVarnums, Indent, ",", TypeQual)
 		),
-		hlds_out__write_conj(Goal2, Goals2, InstTable, ModuleInfo, VarSet,
-			AppendVarnums, Indent, Follow, Verbose, TypeQual)
+		hlds_out__write_conj(Goal2, Goals2, InstTable, ModuleInfo,
+			VarSet, AppendVarnums, Indent, Follow, Verbose,
+			Separator, TypeQual)
 	;
 		hlds_out__write_goal_a(Goal1, InstTable, ModuleInfo, VarSet,
 			AppendVarnums, Indent, Follow, TypeQual)
 	).
 
-:- pred hlds_out__write_disj(list(hlds_goal), inst_table, module_info,
-	varset, bool, int, vartypes, io__state, io__state).
-:- mode hlds_out__write_disj(in, in, in, in, in, in, in, di, uo) is det.
+ 	% hlds_out__write_goal_list is used to write both disjunctions and
+ 	% parallel conjunctions.
 
-hlds_out__write_disj(GoalList, InstTable, ModuleInfo, VarSet, AppendVarnums, Indent,
-		TypeQual) -->
+:- pred hlds_out__write_goal_list(list(hlds_goal), inst_table, module_info,
+	varset, bool, int, string, vartypes, io__state, io__state).
+:- mode hlds_out__write_goal_list(in, in, in, in, in, in, in, in, di, uo)
+	is det.
+
+hlds_out__write_goal_list(GoalList, InstTable, ModuleInfo, VarSet,
+		AppendVarnums, Indent, Separator, TypeQual) -->
 	(
 		{ GoalList = [Goal | Goals] }
 	->
 		hlds_out__write_indent(Indent),
-		io__write_string(";\n"),
+		io__write_string(Separator),
+		io__write_string("\n"),
 		{ Indent1 is Indent + 1 },
 		hlds_out__write_goal_a(Goal, InstTable, ModuleInfo, VarSet,
 			AppendVarnums, Indent1, "", TypeQual),
-		hlds_out__write_disj(Goals, InstTable, ModuleInfo, VarSet,
-			AppendVarnums, Indent, TypeQual)
+		hlds_out__write_goal_list(Goals, InstTable, ModuleInfo, VarSet,
+			AppendVarnums, Indent, Separator, TypeQual)
 	;
 		[]
 	).

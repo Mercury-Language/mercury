@@ -60,9 +60,9 @@ livemap__build(Instrs, MaybeLivemap) :-
 
 livemap__build_2(Backinstrs, Livemap0, MaybeLivemap) :-
 	set__init(Livevals0),
-	livemap__build_livemap(Backinstrs, Livevals0, no, Ccode1,
+	livemap__build_livemap(Backinstrs, Livevals0, no, DontValueNumber1,
 		Livemap0, Livemap1),
-	( Ccode1 = yes ->
+	( DontValueNumber1 = yes ->
 		MaybeLivemap = no
 	; livemap__equal_livemaps(Livemap0, Livemap1) ->
 		MaybeLivemap = yes(Livemap1)
@@ -105,13 +105,15 @@ livemap__equal_livemaps_keys([Label | Labels], Livemap1, Livemap2) :-
 	livemap, livemap).
 :- mode livemap__build_livemap(in, in, in, out, in, out) is det.
 
-livemap__build_livemap([], _, Ccode, Ccode, Livemap, Livemap).
-livemap__build_livemap([Instr0 | Instrs0], Livevals0, Ccode0, Ccode,
-		Livemap0, Livemap) :-
+livemap__build_livemap([], _, DontValueNumber, DontValueNumber,
+		Livemap, Livemap).
+livemap__build_livemap([Instr0 | Instrs0], Livevals0,
+		DontValueNumber0, DontValueNumber, Livemap0, Livemap) :-
 	livemap__build_livemap_instr(Instr0, Instrs0, Instrs1,
-		Livevals0, Livevals1, Ccode0, Ccode1, Livemap0, Livemap1),
+		Livevals0, Livevals1, DontValueNumber0, DontValueNumber1,
+		Livemap0, Livemap1),
 	livemap__build_livemap(Instrs1, Livevals1,
-		Ccode1, Ccode, Livemap1, Livemap).
+		DontValueNumber1, DontValueNumber, Livemap1, Livemap).
 
 :- pred livemap__build_livemap_instr(instruction, list(instruction),
 	list(instruction), lvalset, lvalset, bool, bool, livemap, livemap).
@@ -119,14 +121,15 @@ livemap__build_livemap([Instr0 | Instrs0], Livevals0, Ccode0, Ccode,
 	is det.
 
 livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
-		Livevals0, Livevals, Ccode0, Ccode, Livemap0, Livemap) :-
+		Livevals0, Livevals, DontValueNumber0, DontValueNumber,
+		Livemap0, Livemap) :-
 	Instr0 = Uinstr0 - _,
 	(
 		Uinstr0 = comment(_),
 		Livemap = Livemap0,
 		Livevals = Livevals0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = livevals(_),
 		error("livevals found in backward scan in build_livemap")
@@ -149,31 +152,31 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 			Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = call(_, _, _, _),
 		livemap__look_for_livevals(Instrs0, Instrs,
 			Livevals0, Livevals, "call", yes, _),
 		Livemap = Livemap0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = mkframe(_, _, _, _),
 		Livemap = Livemap0,
 		Livevals = Livevals0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = modframe(_),
 		Livemap = Livemap0,
 		Livevals = Livevals0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = label(Label),
 		map__set(Livemap0, Label, Livevals0, Livemap),
 		Livevals = Livevals0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = goto(CodeAddr),
 		opt_util__livevals_addr(CodeAddr, LivevalsNeeded),
@@ -202,7 +205,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 			Livevals = Livevals3
 		),
 		Livemap = Livemap0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = computed_goto(Rval, Labels),
 		set__init(Livevals1),
@@ -211,13 +214,13 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 			Livevals2, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = c_code(_),
 		Livemap = Livemap0,
 		Livevals = Livevals0,
 		Instrs = Instrs0,
-		Ccode = yes
+		DontValueNumber = yes
 	;
 		Uinstr0 = if_val(Rval, CodeAddr),
 		livemap__look_for_livevals(Instrs0, Instrs,
@@ -249,7 +252,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 			Livevals = Livevals3
 		),
 		Livemap = Livemap0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = incr_hp(Lval, _, Rval, _),
 
@@ -266,7 +269,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 			Livevals1, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = mark_hp(Lval),
 		set__delete(Livevals0, Lval, Livevals1),
@@ -274,13 +277,13 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		livemap__make_live_in_rvals(Rvals, Livevals1, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = restore_hp(Rval),
 		livemap__make_live_in_rvals([Rval], Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = store_ticket(Lval),
 		set__delete(Livevals0, Lval, Livevals1),
@@ -288,19 +291,19 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		livemap__make_live_in_rvals(Rvals, Livevals1, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = reset_ticket(Rval, _Reason),
 		livemap__make_live_in_rval(Rval, Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = discard_ticket,
 		Livevals = Livevals0,
 		Livemap = Livemap0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = mark_ticket_stack(Lval),
 		set__delete(Livevals0, Lval, Livevals1),
@@ -308,32 +311,62 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		livemap__make_live_in_rvals(Rvals, Livevals1, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = discard_tickets_to(Rval),
 		livemap__make_live_in_rval(Rval, Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = incr_sp(_, _),
-		Livevals = Livevals0,
 		Livemap = Livemap0,
+		Livevals = Livevals0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
 	;
 		Uinstr0 = decr_sp(_),
-		Livevals = Livevals0,
 		Livemap = Livemap0,
+		Livevals = Livevals0,
 		Instrs = Instrs0,
-		Ccode = Ccode0
+		DontValueNumber = DontValueNumber0
+	;
+		Uinstr0 = init_sync_term(_, _),
+		Livemap = Livemap0,
+		Livevals = Livevals0,
+		Instrs = Instrs0,
+		DontValueNumber = DontValueNumber0
+	;
+		% XXX Value numbering doesn't handle fork [yet] so
+		% set DontValueNumber to yes.
+		Uinstr0 = fork(_, _, _),
+		Livemap = Livemap0,
+		Livevals = Livevals0,
+		Instrs = Instrs0,
+		DontValueNumber = yes
+	;
+		% XXX Value numbering doesn't handle join_and_terminate [yet] so
+		% set DontValueNumber to yes.
+		Uinstr0 = join_and_terminate(_),
+		Livemap = Livemap0,
+		Livevals = Livevals0,
+		Instrs = Instrs0,
+		DontValueNumber = yes
+	;
+		% XXX Value numbering doesn't handle join_and_continue [yet] so
+		% set DontValueNumber to yes.
+		Uinstr0 = join_and_continue(_, _),
+		Livemap = Livemap0,
+		Livevals = Livevals0,
+		Instrs = Instrs0,
+		DontValueNumber = yes
 	;
 		% XXX we shouldn't just give up here
 		Uinstr0 = pragma_c(_, _, _, _, _),
 		Livemap = Livemap0,
 		Livevals = Livevals0,
 		Instrs = Instrs0,
-		Ccode = yes
+		DontValueNumber = yes
 	).
 
 :- pred livemap__look_for_livevals(list(instruction), list(instruction),

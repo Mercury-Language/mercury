@@ -354,6 +354,21 @@ standardize_instr(Instr1, Instr) :-
 		Instr1 = decr_sp(_),
 		Instr = Instr1
 	;
+		Instr1 = fork(_, _, _),
+		Instr = Instr1
+	;
+		Instr1 = init_sync_term(Lval1, N),
+		standardize_lval(Lval1, Lval),
+		Instr = init_sync_term(Lval, N)
+	;
+		Instr1 = join_and_terminate(Lval1),
+		standardize_lval(Lval1, Lval),
+		Instr = join_and_terminate(Lval)
+	;
+		Instr1 = join_and_continue(Lval1, N),
+		standardize_lval(Lval1, Lval),
+		Instr = join_and_continue(Lval, N)
+	;
 		Instr1 = pragma_c(_, _, _, _, _),
 		Instr = Instr1
 	).
@@ -823,6 +838,21 @@ dupelim__replace_labels_instr(discard_tickets_to(Rval0), ReplMap,
 	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
 dupelim__replace_labels_instr(incr_sp(Size, Msg), _, incr_sp(Size, Msg)).
 dupelim__replace_labels_instr(decr_sp(Size), _, decr_sp(Size)).
+dupelim__replace_labels_instr(init_sync_term(T, N), _, init_sync_term(T, N)).
+dupelim__replace_labels_instr(fork(Child0, Parent0, SlotCount), Replmap,
+		fork(Child, Parent, SlotCount)) :-
+	dupelim__replace_labels_label(Child0, Replmap, Child),
+	dupelim__replace_labels_label(Parent0, Replmap, Parent).
+dupelim__replace_labels_instr(join_and_terminate(Lval0), Replmap, join_and_terminate(Lval)) :-
+	dupelim__replace_labels_lval(Lval0, Replmap, Lval).
+dupelim__replace_labels_instr(join_and_continue(Lval0, Label0),
+		Replmap, join_and_continue(Lval, Label)) :-
+	dupelim__replace_labels_label(Label0, Replmap, Label),
+	dupelim__replace_labels_lval(Lval0, Replmap, Lval).
+
+:- pred dupelim__replace_labels_lval(lval, map(label, label), lval).
+:- mode dupelim__replace_labels_lval(in, in, out) is det.
+
 dupelim__replace_labels_instr(pragma_c(A,B,C,D,E), ReplMap,
 		pragma_c(A,B,C,D,E)) :-
 	(
@@ -834,9 +864,6 @@ dupelim__replace_labels_instr(pragma_c(A,B,C,D,E), ReplMap,
 			% itself.
 		require(unify(Label0, Label), "trying to replace Mercury label in C code")
 	).
-
-:- pred dupelim__replace_labels_lval(lval::in, map(label, label)::in,
-	lval::out) is det.
 
 dupelim__replace_labels_lval(reg(RegType, RegNum), _, reg(RegType, RegNum)).
 dupelim__replace_labels_lval(stackvar(N), _, stackvar(N)).

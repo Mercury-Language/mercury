@@ -40,6 +40,11 @@
 	--->	mode_error_disj(merge_context, merge_errors)
 			% different arms of a disjunction result in
 			% different insts for some non-local variables
+	;	mode_error_par_conj(merge_errors)
+			% different arms of a parallel conj result in
+			% mutually exclusive bindings - ie the process
+			% of unifying the instmaps from the end of each
+			% branch failed.
 	;	mode_error_higher_order_pred_var(pred_or_func, var, inst, arity)
 			% the predicate variable in a higher-order predicate
 			% or function call didn't have a higher-order
@@ -68,7 +73,8 @@
 			% instantiated variable (for preds with >1 mode)
 	;	mode_error_bind_var(var_lock_reason, var, inst, inst)
 			% attempt to bind a non-local variable inside
-			% a negated context
+			% a negated context, or attempt to re-bind a variable
+			% in a parallel conjunct
 	;	mode_error_non_local_lambda_var(var, inst)
 			% attempt to pass a live non-ground var as a
 			% non-local variable to a lambda goal
@@ -85,9 +91,10 @@
 			% a conjunction contains one or more unscheduleable
 			% goals; schedule_culprit gives the reason why
 			% they couldn't be scheduled.
-	;	mode_error_final_inst(int, var, inst, inst, final_inst_error).
+	;	mode_error_final_inst(int, var, inst, inst, final_inst_error)
 			% one of the head variables did not have the
 			% expected final inst on exit from the proc
+	.
 
 :- type schedule_culprit
 	--->	goal_itself_was_impure
@@ -176,6 +183,8 @@
 report_mode_error(mode_error_disj(MergeContext, ErrorList), InstTable,
 		ModeInfo) -->
 	report_mode_error_disj(InstTable, ModeInfo, MergeContext, ErrorList).
+ report_mode_error(mode_error_par_conj(ErrorList), InstTable, ModeInfo) -->
+ 	report_mode_error_par_conj(InstTable, ModeInfo, ErrorList).
 report_mode_error(mode_error_higher_order_pred_var(PredOrFunc, Var, Inst,
 		Arity), InstTable, ModeInfo) -->
 	report_mode_error_higher_order_pred_var(InstTable, ModeInfo, PredOrFunc,
@@ -362,6 +371,23 @@ report_mode_error_disj(InstTable, ModeInfo, MergeContext, ErrorList) -->
 	io__write_string(".\n"),
 	write_merge_error_list(ErrorList, InstTable, ModeInfo).
 
+:- pred report_mode_error_par_conj(inst_table, mode_info, merge_errors,
+				io__state, io__state).
+:- mode report_mode_error_par_conj(in, mode_info_no_io, in, di, uo) is det.
+
+report_mode_error_par_conj(InstTable, ModeInfo, ErrorList) -->
+	{ mode_info_get_context(ModeInfo, Context) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode error: mutually exclusive bindings in parallel conjunction.\n"),
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("              (The current implementation does not permit\n"),
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("              parallel conjunctions to fail.)\n"),
+	write_merge_error_list(ErrorList, InstTable, ModeInfo).
+
 :- pred write_merge_error_list(merge_errors, inst_table, mode_info,
 				io__state, io__state).
 :- mode write_merge_error_list(in, in, mode_info_no_io, di, uo) is det.
@@ -412,6 +438,10 @@ report_mode_error_bind_var(InstTable, ModeInfo, Reason, Var, VarInst, Inst) -->
 		io__write_string("attempt to bind a non-local variable inside\n"),
 		prog_out__write_context(Context),
 		io__write_strings(["  a ", PredOrFuncS, " lambda goal.\n"])
+	; { Reason = par_conj },
+		io__write_string("attempt to bind a non-local variable\n"),
+		prog_out__write_context(Context),
+		io__write_string("  inside more than one parallel conjunct.\n")
 	),
 	prog_out__write_context(Context),
 	io__write_string("  Variable `"),
@@ -436,6 +466,9 @@ report_mode_error_bind_var(InstTable, ModeInfo, Reason, Var, VarInst, Inst) -->
 		; { Reason = lambda(_) },
 			io__write_string("\tA lambda goal is only allowed to bind its arguments\n"),
 			io__write_string("\tand variables local to the lambda expression.\n")
+		; { Reason = par_conj },
+			io__write_string("\tA nonlocal variable of a parallel conjunction may be\n"),
+			io__write_string("\tbound in at most one conjunct.\n")
 		)
 	;
 		[]
@@ -824,7 +857,6 @@ report_mode_error_final_inst(InstTable, ModeInfo, ArgNum, Var, VarInst, Inst,
 	io__write_string("'.\n").
 
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 mode_context_init(uninitialized).

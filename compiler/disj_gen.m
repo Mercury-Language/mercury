@@ -359,13 +359,23 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			error("disj_gen__generate_non_disjuncts: last disjunct followed by others")
 		},
 
+		% Note that we can't release the temps used for the heap
+		% pointer and ticket, because those values may be required
+		% again after backtracking from goals that following
+		% the disjunction.
+		% If we were to reuse the same stack slot for something
+		% else when generating the code that follows this goal,
+		% then the values that earlier disjuncts need on
+		% backtracking would get clobbered.
+		% Thus we must not use the `_discard' versions of the two
+		% predicates below.
+
 			% Restore the heap pointer if necessary.
-		code_info__maybe_restore_and_discard_hp(MaybeHpSlot,
-			RestoreHPCode),
+		code_info__maybe_restore_hp(MaybeHpSlot, RestoreHPCode),
 
 			% Restore the solver state if necessary.
-		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot,
-			undo, RestorePopTicketCode),
+		code_info__maybe_reset_and_pop_ticket(
+			MaybeTicketSlot, undo, RestorePopTicketCode),
 
 		trace__maybe_generate_internal_event_code(Goal0, TraceCode),
 		code_gen__generate_goal(model_non, Goal0, GoalCode),

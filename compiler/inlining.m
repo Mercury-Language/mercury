@@ -417,6 +417,10 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 inlining__inlining_in_goal(conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo) -->
 	inlining__inlining_in_conj(Goals0, Goals).
 
+inlining__inlining_in_goal(par_conj(Goals0, SM) - GoalInfo,
+		par_conj(Goals, SM) - GoalInfo) -->
+	inlining__inlining_in_disj(Goals0, Goals).
+
 inlining__inlining_in_goal(disj(Goals0, SM) - GoalInfo,
 		disj(Goals, SM) - GoalInfo) -->
 	inlining__inlining_in_disj(Goals0, Goals).
@@ -577,6 +581,9 @@ inlining__do_inline_call(ArgVars, PredInfo, ProcInfo,
 		TypeInfoVarMap).
 
 %-----------------------------------------------------------------------------%
+
+	% inlining__inlining_in_disj is used for both disjunctions and
+	% parallel conjunctions.
 
 :- pred inlining__inlining_in_disj(list(hlds_goal), list(hlds_goal), 
 		inline_info, inline_info).

@@ -97,10 +97,6 @@
 			unify_rhs,	% whatever is on the right hand side
 					% of the unification
 			unify_mode,	% the mode of the unification
-					% (this field might not make a lot
-					% of sense for higher-order
-					% unifications, because polymorphism.m
-					% does not update it properly)
 			unification,	% this field says what category of
 					% unification it is, and contains
 					% information specific to each category
@@ -177,9 +173,19 @@
 					% (With inlining, the actual types may
 					% be instances of the original types.)
 			pragma_c_code_impl
-					% Info about the code that does the
-					% actual work.
-		).
+					% Extra information for model_non
+					% pragma_c_codes; none for others.
+              )
+  
+	;       par_conj(hlds_goals, store_map)
+					% parallel conjunction
+					% The store_map specifies the locations
+					% in which live variables should be
+					% stored at the start of the parallel
+					% conjunction.
+	.
+
+
 
 :- type pragma_c_code_arg_info
 	--->	pragma_c_code_arg_info(
@@ -283,10 +289,6 @@
 					% expression, this is the list of
 					% modes of the non-local variables
 					% of the lambda expression.
-					% (this field might not make a lot
-					% of sense for higher-order
-					% unifications, because polymorphism.m
-					% does not update it properly)
 		)
 
 		% A deconstruction unification is a unification with a functor
@@ -652,6 +654,13 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_to_conj_list(hlds_goal, list(hlds_goal)).
 :- mode goal_to_conj_list(in, out) is det.
 
+	% Convert a goal to a list of parallel conjuncts.
+	% If the goal is a parallel conjunction, then return its conjuncts,
+	% otherwise return the goal as a singleton list.
+
+:- pred goal_to_par_conj_list(hlds_goal, list(hlds_goal)).
+:- mode goal_to_par_conj_list(in, out) is det.
+
 	% Convert a goal to a list of disjuncts.
 	% If the goal is a disjunction, then return its disjuncts,
 	% otherwise return the goal as a singleton list.
@@ -666,6 +675,14 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 
 :- pred conj_list_to_goal(list(hlds_goal), hlds_goal_info, hlds_goal).
 :- mode conj_list_to_goal(in, in, out) is det.
+
+	% Convert a list of parallel conjuncts to a goal.
+	% If the list contains only one goal, then return that goal,
+	% otherwise return the parallel conjunction of the conjuncts,
+	% with the specified goal_info.
+
+:- pred par_conj_list_to_goal(list(hlds_goal), hlds_goal_info, hlds_goal).
+:- mode par_conj_list_to_goal(in, in, out) is det.
 
 	% Convert a list of disjuncts to a goal.
 	% If the list contains only one goal, then return that goal,
@@ -890,6 +907,17 @@ goal_to_conj_list(Goal, ConjList) :-
 		ConjList = [Goal]
 	).
 
+	% Convert a goal to a list of parallel conjuncts.
+	% If the goal is a conjunction, then return its conjuncts,
+	% otherwise return the goal as a singleton list.
+
+goal_to_par_conj_list(Goal, ConjList) :-
+	( Goal = (par_conj(List, _) - _) ->
+		ConjList = List
+	;
+		ConjList = [Goal]
+	).
+
 	% Convert a goal to a list of disjuncts.
 	% If the goal is a disjunction, then return its disjuncts
 	% otherwise return the goal as a singleton list.
@@ -911,6 +939,19 @@ conj_list_to_goal(ConjList, GoalInfo, Goal) :-
 		Goal = Goal0
 	;
 		Goal = conj(ConjList) - GoalInfo
+	).
+
+	% Convert a list of parallel conjuncts to a goal.
+	% If the list contains only one goal, then return that goal,
+	% otherwise return the parallel conjunction of the conjuncts,
+	% with the specified goal_info.
+
+par_conj_list_to_goal(ConjList, GoalInfo, Goal) :-
+	( ConjList = [Goal0] ->
+		Goal = Goal0
+	;
+		map__init(StoreMap),
+		Goal = par_conj(ConjList, StoreMap) - GoalInfo
 	).
 
 	% Convert a list of disjuncts to a goal.

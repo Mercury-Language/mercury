@@ -51,8 +51,9 @@
 
 	% Make sure that local preds which have been exported in the .opt
 	% file get an exported(_) label.
-:- pred intermod__adjust_pred_import_status(module_info, module_info).
-:- mode intermod__adjust_pred_import_status(in, out) is det.
+:- pred intermod__adjust_pred_import_status(module_info, module_info,
+		io__state, io__state).
+:- mode intermod__adjust_pred_import_status(in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -383,6 +384,10 @@ intermod__gather_abstract_exported_types -->
 intermod__traverse_goal(conj(Goals0) - Info, conj(Goals) - Info, DoWrite) -->
 	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).
 
+intermod__traverse_goal(par_conj(Goals0, SM) - Info, par_conj(Goals, SM) - Info,
+		DoWrite) -->
+	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).
+
 intermod__traverse_goal(disj(Goals0, SM) - Info, disj(Goals, SM) - Info,
 		DoWrite) -->
 	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).
@@ -412,16 +417,7 @@ intermod__traverse_goal(
 	%
 	% Ensure that the called predicate will be exported.
 	%
-	(
-		% We don't need to export complicated unification
-		% pred declarations, since they will be recreated when 
-		% mode analysis is run on the importing module.
-		{ MaybeUnifyContext = no }
-	->
-		intermod_info_add_proc(PredId, DoWrite)
-	;
-		{ DoWrite = yes }
-	).
+	intermod_info_add_proc(PredId, DoWrite).
 
 intermod__traverse_goal(higher_order_call(A,B,C,D,E,F) - Info,
 			higher_order_call(A,B,C,D,E,F) - Info, yes) --> [].
@@ -496,10 +492,18 @@ intermod_info_add_proc(PredId, DoWrite) -->
 	{ pred_info_import_status(PredInfo, Status) },
 	{ pred_info_procids(PredInfo, ProcIds) },
 	{ pred_info_get_markers(PredInfo, Markers) },
-	( { check_marker(Markers, infer_modes) } ->
+	(
+		{ check_marker(Markers, infer_modes) }
+	->
 		% Don't write this pred if it calls preds without mode decls.
 		{ DoWrite = no }
-	; 
+	;
+		% Don't output declarations for compiler generated procedures,
+		% since they will be recreated in the calling module.
+		{ code_util__compiler_generated(PredInfo) }
+	->
+		{ DoWrite = yes }
+	;
 		{
 		pred_info_procedures(PredInfo, Procs),
 		list__member(ProcId, ProcIds),
@@ -1218,7 +1222,12 @@ intermod_info_set_tvarset(TVarSet, info(A,B,C,D,E,F,G,H,I,_),
 	% Make sure the labels of local preds needed by predicates in 
 	% the .opt file are exported, and inhibit dead proc elimination
 	% on those preds.
-intermod__adjust_pred_import_status(Module0, Module) :-
+intermod__adjust_pred_import_status(Module0, Module, IO0, IO) :-
+	globals__io_lookup_bool_option(very_verbose, VVerbose, IO0, IO1),
+	maybe_write_string(VVerbose, 
+		"Adjusting import status of predicates in the `.opt' file...",
+		IO1, IO2),
+
 	init_intermod_info(Module0, Info0),
 	module_info_predids(Module0, PredIds),
 	module_info_globals(Module0, Globals),
@@ -1228,7 +1237,8 @@ intermod__adjust_pred_import_status(Module0, Module) :-
 	intermod__gather_preds(PredIds, yes, Threshold,
 		Deforestation, Info0, Info1),
 	intermod__gather_abstract_exported_types(Info1, Info),
-	do_adjust_pred_import_status(Info, Module0, Module).
+	do_adjust_pred_import_status(Info, Module0, Module),
+	maybe_write_string(VVerbose, "done\n", IO2, IO).
 
 :- pred do_adjust_pred_import_status(intermod_info::in,
 		module_info::in, module_info::out) is det.
@@ -1318,24 +1328,6 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	{ module_imports_set_items(Module0, Items1, Module1) },
 
 		%
-		% Figure out which .int files are needed by the .opt files
-		%
-	{ get_dependencies(OptItems, NewImportDeps0, NewUseDeps0) },
-	{ list__append(NewImportDeps0, NewUseDeps0, NewDeps0) },
-	{ set__list_to_set(NewDeps0, NewDepsSet0) },
-	{ set__delete_list(NewDepsSet0, [ModuleName | OptFiles], NewDepsSet) },
-	{ set__to_sorted_list(NewDepsSet, NewDeps) },
-
-		%
-		% Read in the .int, and .int2 files needed by the .opt files.
-		% (XXX do we also need to read in .int0 files here?)
-		%
-	process_module_long_interfaces(NewDeps, ".int", [], NewIndirectDeps,
-				Module1, Module2),
-	process_module_indirect_imports(NewIndirectDeps, ".int2",
-				Module2, Module3),
-
-		%
 		% Get the :- pragma unused_args(...) declarations created
 		% when writing the .opt file for the current module. These
 		% are needed because we can probably remove more arguments
@@ -1352,13 +1344,31 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 				)) },
 		{ list__filter(IsPragmaUnusedArgs, LocalItems, PragmaItems) },
 
-		{ module_imports_get_items(Module3, Items3) },
-		{ list__append(Items3, PragmaItems, Items) },
-		{ module_imports_set_items(Module3, Items, Module) }
+		{ module_imports_get_items(Module1, Items2) },
+		{ list__append(Items2, PragmaItems, Items) },
+		{ module_imports_set_items(Module1, Items, Module2) }
 	;
-		{ Module = Module3 },
+		{ Module2 = Module1 },
 		{ UAError = no }
 	),
+
+		%
+		% Figure out which .int files are needed by the .opt files
+		%
+	{ get_dependencies(OptItems, NewImportDeps0, NewUseDeps0) },
+	{ list__append(NewImportDeps0, NewUseDeps0, NewDeps0) },
+	{ set__list_to_set(NewDeps0, NewDepsSet0) },
+	{ set__delete_list(NewDepsSet0, [ModuleName | OptFiles], NewDepsSet) },
+	{ set__to_sorted_list(NewDepsSet, NewDeps) },
+
+		%
+		% Read in the .int, and .int2 files needed by the .opt files.
+		% (XXX do we also need to read in .int0 files here?)
+		%
+	process_module_long_interfaces(NewDeps, ".int", [], NewIndirectDeps,
+				Module2, Module3),
+	process_module_indirect_imports(NewIndirectDeps, ".int2",
+				Module3, Module),
 
 		%
 		% Figure out whether anything went wrong

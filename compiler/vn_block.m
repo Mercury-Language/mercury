@@ -357,6 +357,22 @@ vn_block__handle_instr(pragma_c(_, _, _, _, _),
 		_Livemap, _Params, VnTables, VnTables, Liveset, Liveset,
 		SeenIncr, SeenIncr, Tuple, Tuple) :-
 	error("value numbering not supported for pragma_c").
+vn_block__handle_instr(init_sync_term(_, _),
+		_Livemap, _Params, VnTables, VnTables, Liveset, Liveset,
+		SeenIncr, SeenIncr, Tuple, Tuple) :-
+	error("value numbering not supported for init_sync_term").
+vn_block__handle_instr(fork(_, _, _),
+		_Livemap, _Params, VnTables, VnTables, Liveset, Liveset,
+		SeenIncr, SeenIncr, Tuple, Tuple) :-
+	error("value numbering not supported for fork").
+vn_block__handle_instr(join_and_terminate(_),
+		_Livemap, _Params, VnTables, VnTables, Liveset, Liveset,
+		SeenIncr, SeenIncr, Tuple, Tuple) :-
+	error("value numbering not supported for join_and_terminate").
+vn_block__handle_instr(join_and_continue(_, _),
+		_Livemap, _Params, VnTables, VnTables, Liveset, Liveset,
+		SeenIncr, SeenIncr, Tuple, Tuple) :-
+	error("value numbering not supported for join_and_continue").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -891,6 +907,10 @@ vn_block__is_ctrl_instr(mark_ticket_stack(_), yes).
 vn_block__is_ctrl_instr(discard_tickets_to(_), yes).
 vn_block__is_ctrl_instr(incr_sp(_, _), yes).
 vn_block__is_ctrl_instr(decr_sp(_), yes).
+vn_block__is_ctrl_instr(init_sync_term(_, _), no).
+vn_block__is_ctrl_instr(fork(_, _, _), yes).
+vn_block__is_ctrl_instr(join_and_terminate(_), yes).
+vn_block__is_ctrl_instr(join_and_continue(_, _), yes).
 vn_block__is_ctrl_instr(pragma_c(_, _, _, _, _), no).
 
 %-----------------------------------------------------------------------------%

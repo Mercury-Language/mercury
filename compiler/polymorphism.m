@@ -280,12 +280,22 @@
 
 :- module polymorphism.
 :- interface.
-:- import_module hlds_module.
+
+:- import_module hlds_module, prog_data.
 :- import_module io.
 
 :- pred polymorphism__process_module(module_info, module_info,
 			io__state, io__state).
 :- mode polymorphism__process_module(in, out, di, uo) is det.
+
+	% unsafe_type_cast and unsafe_promise_unique are polymorphic
+	% builtins which do not need their type_infos. unsafe_type_cast
+	% can be introduced by common.m after polymorphism is run, so it
+	% is much simpler to avoid introducing type_info arguments for it.
+	% Since both of these are really just assignment unifications, it
+	% is desirable to generate them inline.
+:- pred polymorphism__no_type_info_builtin(module_name, string, int).
+:- mode polymorphism__no_type_info_builtin(in, in, out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -363,8 +373,11 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	write_proc_progress_message("% Transforming polymorphism for ",
-				PredId, ProcId, ModuleInfo0, IO0, IO1),
+%	It is misleading to output this message for predicates which are
+%	not defined in this module, and we get far too many of them anyway.
+%	write_proc_progress_message("% Transforming polymorphism for ",
+%				PredId, ProcId, ModuleInfo0, IO0, IO1),
+	IO1 = IO0,
 
 	polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 					ProcInfo, PredInfo1, ModuleInfo1),
@@ -378,15 +391,6 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 
 	polymorphism__process_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo,
 			IO1, IO).
-
-	% unsafe_type_cast and unsafe_promise_unique are polymorphic
-	% builtins which do not need their type_infos. unsafe_type_cast
-	% can be introduced by common.m after polymorphism is run, so it
-	% is much simpler to avoid introducing type_info arguments for it.
-	% Since both of these are really just assignment unifications, it
-	% is desirable to generate them inline.
-:- pred polymorphism__no_type_info_builtin(module_name, string, int).
-:- mode polymorphism__no_type_info_builtin(in, in, out) is semidet.
 
 polymorphism__no_type_info_builtin(MercuryBuiltin, "unsafe_type_cast", 2) :-
 	mercury_private_builtin_module(MercuryBuiltin).
@@ -774,6 +778,9 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 
 polymorphism__process_goal_expr(conj(Goals0), GoalInfo,
 		conj(Goals) - GoalInfo) -->
+	polymorphism__process_goal_list(Goals0, Goals).
+polymorphism__process_goal_expr(par_conj(Goals0, SM), GoalInfo,
+		par_conj(Goals, SM) - GoalInfo) -->
 	polymorphism__process_goal_list(Goals0, Goals).
 polymorphism__process_goal_expr(disj(Goals0, SM), GoalInfo,
 		disj(Goals, SM) - GoalInfo) -->

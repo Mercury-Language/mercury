@@ -189,8 +189,7 @@ postprocess_options(ok(OptionTable), Error) -->
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		PrologDialect, TermNorm, TraceLevel) -->
 	% work around for NU-Prolog problems
-	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
-	->
+	( { map__search(OptionTable, heap_space, int(HeapSpace)) } ->
 		io__preallocate_heap_space(HeapSpace)
 	;
 		[]
@@ -338,6 +337,16 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	option_implies(procid_stack_layout, basic_stack_layout, bool(yes)),
 	option_implies(agc_stack_layout, basic_stack_layout, bool(yes)),
 
+	% XXX higher_order.m does not update the typeinfo_varmap
+	% for specialised versions.
+	% This causes the compiler to abort in unused_args.m when compiling
+	% tests/valid/agc_ho_pred.m with `-O3 --intermodule-optimization'.
+	option_implies(typeinfo_liveness, optimize_higher_order, bool(no)),
+
+	% XXX deforestation does not perform folding on polymorphic
+	% predicates correctly with --typeinfo-liveness.
+	option_implies(typeinfo_liveness, deforestation, bool(no)),
+
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -433,6 +442,7 @@ compute_grade(Globals, Grade) :-
 	globals__lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
 */
 	globals__get_args_method(Globals, ArgsMethod),
+	globals__lookup_bool_option(Globals, parallel, Parallel),
 	globals__lookup_bool_option(Globals, stack_trace, StackTrace),
 	globals__lookup_bool_option(Globals, require_tracing, RequireTracing),
 /*
@@ -456,6 +466,9 @@ compute_grade(Globals, Grade) :-
 		;
 			Part2 = "none"
 		)
+	),
+	( Parallel = yes, Part2a = ".par"
+	; Parallel = no, Part2a = ""
 	),
 	( GC_Method = conservative, Part3 = ".gc"
 	; GC_Method = accurate, Part3 = ".agc"
@@ -547,7 +560,7 @@ compute_grade(Globals, Grade) :-
 *******/
 	Part10 = "",
 
-	string__append_list( [Part1, Part2, Part3, Part4, Part5,
+	string__append_list( [Part1, Part2, Part2a, Part3, Part4, Part5,
 				Part6, Part7, Part8, Part9, Part10], Grade).
 
 	% IMPORTANT: any changes here may require similar changes to
@@ -633,13 +646,13 @@ convert_grade_option(Grade0) -->
 	),
 	% part 3
 	( { string__remove_suffix(Grade14, ".gc", Grade15) } ->
-		{ Grade = Grade15 },
+		{ Grade16 = Grade15 },
 		{ GC = conservative }
 	; { string__remove_suffix(Grade14, ".agc", Grade15) } ->
-		{ Grade = Grade15 },
+		{ Grade16 = Grade15 },
 		{ GC = accurate }
 	;
-		{ Grade = Grade14 },
+		{ Grade16 = Grade14 },
 		{ GC = none }
 	),
 	% Set the type of gc that the grade option implies.
@@ -653,6 +666,12 @@ convert_grade_option(Grade0) -->
 	;
 		{ GC = none },
 		set_string_opt(gc, "none")
+	),
+	( { string__remove_suffix(Grade16, ".par", Grade17) } ->
+		{ Grade = Grade17 },
+		set_bool_opt(parallel, yes)
+	;
+		{ Grade = Grade16 }
 	),
 	% parts 2 & 1
 	convert_grade_option_2(Grade).

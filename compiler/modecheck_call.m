@@ -500,8 +500,11 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
 	% they are indistinguishable; that is, whether any valid call to
 	% one mode would also be a valid call to the other.
 	% (If so, it is a mode error.)
+	% Note that mode declarations which only have different final insts
+	% do not count as distinguishable.
 	%
-	% The code for this is similar to the code for compare_procs/5 below.
+	% The code for this is similar to the code for
+	% modes_are_indentical/4 and compare_proc/5 below.
 	%
 modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 	pred_info_procedures(PredInfo, Procs),

@@ -28,7 +28,7 @@
 :- implementation.
 
 :- import_module hlds_goal, passes_aux, hlds_out.
-:- import_module list, std_util.
+:- import_module list, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -62,6 +62,10 @@ lco_in_goal(Goal0 - GoalInfo, ModuleInfo, Goal - GoalInfo) :-
 lco_in_goal_2(conj(Goals0), ModuleInfo, conj(Goals)) :-
 	list__reverse(Goals0, RevGoals0),
 	lco_in_conj(RevGoals0, [], ModuleInfo, Goals).
+
+	% XXX Some execution algorithm issues here.
+lco_in_goal_2(par_conj(_Goals0, SM), _ModuleInfo, par_conj(_Goals, SM)) :-
+	error("sorry: lco of parallel conjunction not implemented").
 
 lco_in_goal_2(disj(Goals0, SM), ModuleInfo, disj(Goals, SM)) :-
 	lco_in_disj(Goals0, ModuleInfo, Goals).

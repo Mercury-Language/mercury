@@ -420,6 +420,13 @@ middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
 middle_rec__find_used_registers_instr(pragma_c(_, Components, _, _, _),
 		Used0, Used) :-
 	middle_rec__find_used_registers_components(Components, Used0, Used).
+middle_rec__find_used_registers_instr(init_sync_term(Lval, _), Used0, Used) :-
+	middle_rec__find_used_registers_lval(Lval, Used0, Used).
+middle_rec__find_used_registers_instr(fork(_, _, _), Used, Used).
+middle_rec__find_used_registers_instr(join_and_terminate(Lval), Used0, Used) :-
+	middle_rec__find_used_registers_lval(Lval, Used0, Used).
+middle_rec__find_used_registers_instr(join_and_continue(Lval,_), Used0, Used) :-
+	middle_rec__find_used_registers_lval(Lval, Used0, Used).
 
 :- pred middle_rec__find_used_registers_components(list(pragma_c_component),
 	set(int), set(int)).

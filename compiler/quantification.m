@@ -214,6 +214,9 @@ implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some([], Goal)) -->
 implicitly_quantify_goal_2(conj(List0), _, conj(List)) -->
 	implicitly_quantify_conj(List0, List).
 
+implicitly_quantify_goal_2(par_conj(List0, SM), _, par_conj(List, SM)) -->
+	implicitly_quantify_conj(List0, List).
+
 implicitly_quantify_goal_2(disj(Goals0, SM), _, disj(Goals, SM)) -->
 	implicitly_quantify_disj(Goals0, Goals).
 
@@ -624,6 +627,9 @@ quantification__goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, LambdaSet,
 	set__insert_list(Set0, ArgVars, Set).
 
 quantification__goal_vars_2(conj(Goals), Set0, LambdaSet0, Set, LambdaSet) :-
+	goal_list_vars_2(Goals, Set0, LambdaSet0, Set, LambdaSet).
+
+quantification__goal_vars_2(par_conj(Goals, _SM), Set0, LambdaSet0, Set, LambdaSet) :-
 	goal_list_vars_2(Goals, Set0, LambdaSet0, Set, LambdaSet).
 
 quantification__goal_vars_2(disj(Goals, _), Set0, LambdaSet0, Set, LambdaSet) :-

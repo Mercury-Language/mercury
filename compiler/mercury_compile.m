@@ -28,7 +28,7 @@
 :- import_module int, list, map, set, std_util, dir, require, string, bool.
 :- import_module library, getopt, term, set_bbbtree, varset.
 
-	% the main compiler passes (in order of execution)
+	% the main compiler passes (mostly in order of execution)
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
 :- import_module equiv_type, make_hlds, typecheck, purity, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
@@ -45,7 +45,7 @@
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
-:- import_module dependency_graph.
+:- import_module dependency_graph, prog_util.
 :- import_module options, globals, passes_aux.
 
 %-----------------------------------------------------------------------------%
@@ -225,17 +225,42 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 		{ ModulesToLink = [] }
 	;
 		{ split_into_submodules(ModuleName, Items, SubModuleList) },
-		list__foldl(compile(FileName), SubModuleList),
-		list__map_foldl(module_to_link, SubModuleList, ModulesToLink)
+		(
+			{ mercury_private_builtin_module(ModuleName)
+			; mercury_public_builtin_module(ModuleName)
+			}
+		->
+			% Some predicates in the builtin modules are missing
+			% typeinfo arguments, which means that execution
+			% tracing will not work on them. Predicates defined
+			% there should never be part of an execution trace
+			% anyway; they are effectively language primitives.
+			% (They may still be parts of stack traces.)
+			globals__io_lookup_bool_option(trace_stack_layout, TSL),
+			globals__io_get_trace_level(TraceLevel),
 
-		% XXX it would be better to do something like
-		%
-		%	list__map_foldl(compile_to_llds, SubModuleList,
-		%		LLDS_FragmentList),
-		%	merge_llds_fragments(LLDS_FragmentList, LLDS),
-		%	output_pass(LLDS_FragmentList)
-		%
-		% i.e. compile nested modules to a single C file.
+			globals__io_set_option(trace_stack_layout, bool(no)),
+			globals__io_set_trace_level(minimal),
+
+			% XXX it would be better to do something like
+			%
+			%	list__map_foldl(compile_to_llds, SubModuleList,
+			%		LLDS_FragmentList),
+			%	merge_llds_fragments(LLDS_FragmentList, LLDS),
+			%	output_pass(LLDS_FragmentList)
+			%
+			% i.e. compile nested modules to a single C file.
+			list__foldl(compile(FileName), SubModuleList),
+			list__map_foldl(module_to_link, SubModuleList,
+				ModulesToLink),
+
+			globals__io_set_option(trace_stack_layout, bool(TSL)),
+			globals__io_set_trace_level(TraceLevel)
+		;
+			list__foldl(compile(FileName), SubModuleList),
+			list__map_foldl(module_to_link, SubModuleList,
+				ModulesToLink)
+		)
 	).
 
 :- pred make_interface(file_name, pair(module_name, item_list),
@@ -321,8 +346,18 @@ mercury_compile(Module) -->
 	    ; { ErrorCheckOnly = yes } ->
 		% we may still want to run `unused_args' so that we get
 		% the appropriate warnings
-		globals__io_set_option(optimize_unused_args, bool(no)),
-		mercury_compile__maybe_unused_args(HLDS21, Verbose, Stats, _)
+		globals__io_lookup_bool_option(warn_unused_args, UnusedArgs),
+		( { UnusedArgs = yes } ->
+			% Run polymorphism so that the unused argument numbers
+			% read in from `.opt' files are correct.
+			mercury_compile__maybe_polymorphism(HLDS21,
+				Verbose, Stats, HLDS22), 
+			globals__io_set_option(optimize_unused_args, bool(no)),
+			mercury_compile__maybe_unused_args(HLDS22,
+				Verbose, Stats, _)
+	    	;
+			[]
+	    	)
 	    ; { MakeOptInt = yes } ->
 		% only run up to typechecking when making the .opt file
 	    	[]
@@ -407,17 +442,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile,
 	( { FoundError = yes ; IntermodError = yes } ->
 		{ module_info_incr_errors(HLDS0, HLDS1) }
 	;	
-		globals__io_lookup_bool_option(intermodule_optimization,
-			Intermod),
-		globals__io_lookup_bool_option(make_optimization_interface,
-			MakeOptInt),
-		( { Intermod = yes, MakeOptInt = no } ->
-			% Eliminate unnecessary clauses from `.opt' files,
-			% to speed up compilation.
-			{ dead_pred_elim(HLDS0, HLDS1) }
-		;
-			{ HLDS1 = HLDS0 }
-		)
+		{ HLDS1 = HLDS0 }
 	).
 
 :- pred mercury_compile__module_qualify_items(item_list, item_list,
@@ -561,6 +586,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	% typecheck would get internal errors
 	%
 	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_write_string(Verbose, "% Type-checking...\n"),
 	( { FoundUndefTypeError = yes } ->
 	    { HLDS = HLDS1 },
@@ -574,12 +600,27 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		"% Checking typeclass instances...\n"),
 	    check_typeclass__check_instance_decls(HLDS1, HLDS2,
 		FoundTypeclassError),
-	    mercury_compile__maybe_dump_hlds(HLDS2, "2", "typeclass"), !,
+	    mercury_compile__maybe_dump_hlds(HLDS2, "02", "typeclass"), !,
+
+	    globals__io_lookup_bool_option(intermodule_optimization, Intermod),
+	    globals__io_lookup_bool_option(make_optimization_interface,
+		MakeOptInt),
+	    ( { Intermod = yes, MakeOptInt = no } ->
+		% Eliminate unnecessary clauses from `.opt' files,
+		% to speed up compilation. This must be done after
+		% typeclass instances have been checked, since that
+		% fills in which pred_ids are needed by instance decls.
+		{ dead_pred_elim(HLDS2, HLDS2a) },
+		mercury_compile__maybe_dump_hlds(HLDS2a, "02a",
+				"dead_pred_elim"), !
+	    ;
+		{ HLDS2a = HLDS2 }
+	    ),
 
 	    %
 	    % Next typecheck the clauses.
 	    %
-	    typecheck(HLDS2, HLDS3, FoundUndefModeError, FoundTypeError), !,
+	    typecheck(HLDS2a, HLDS3, FoundTypeError), !,
 	    ( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
 			"% Program contains type error(s).\n"),
@@ -590,51 +631,59 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    mercury_compile__maybe_dump_hlds(HLDS3, "03", "typecheck"),
 
 	    %
-	    % Now continue, even if we got a type error,
-	    % unless `--typecheck-only' was specified.
+	    % We can't continue after an undefined inst/mode
+	    % error, since propagate_types_into_proc_modes
+	    % (in post_typecheck.m -- called by purity.m)
+	    % and mode analysis would get internal errors
 	    %
-	    globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
-	    ( { TypecheckOnly = yes } ->
+	    ( { FoundUndefModeError = yes } ->
+		{ FoundError = yes },
 		{ HLDS = HLDS3 },
-		{ bool__or(FoundTypeError, FoundTypeclassError, FoundError) }
+		maybe_write_string(Verbose,
+	"% Program contains undefined inst or undefined mode error(s).\n"),
+		io__set_exit_status(1)
 	    ;
-		% only write out the `.opt' file if there are no type errors
-		globals__io_lookup_bool_option(make_optimization_interface,
-			MakeOptInt),
-		( { FoundTypeError = no } ->
-			mercury_compile__maybe_write_optfile(MakeOptInt,
-		    		HLDS3, HLDS4), !
-		;
-			{ HLDS4 = HLDS3 }
-		),
-		% if our job was to write out the `.opt' file, then we're done
-		( { MakeOptInt = yes } ->
-		    	{ HLDS = HLDS4 },
-			{ bool__or(FoundTypeError, FoundTypeclassError,
-				FoundError) }
-		;
-			%
-			% We can't continue after an undefined inst/mode
-			% error, since mode analysis would get internal errors
-			%
-			( { FoundUndefModeError = yes } ->
-			    { FoundError = yes },
-			    { HLDS = HLDS4 },
-			    maybe_write_string(Verbose,
-		"% Program contains undefined inst or undefined mode error(s).\n"),
-			    io__set_exit_status(1)
-			;
+	        %
+	        % Run purity checking
+	        %
+		mercury_compile__puritycheck(HLDS3, Verbose, Stats, HLDS4),
+		mercury_compile__maybe_dump_hlds(HLDS4, "04", "puritycheck"),
+
+	        %
+	        % Stop here if `--typecheck-only' was specified.
+	        %
+	        globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
+	        ( { TypecheckOnly = yes } ->
+		    { HLDS = HLDS4 },
+		    { bool__or(FoundTypeError, FoundTypeclassError,
+		    	FoundError) }
+	        ;
+		    % only write out the `.opt' file if there are no type errors
+		    % or undefined modes
+		    ( { FoundTypeError = no, FoundUndefModeError = no } ->
+			    mercury_compile__maybe_write_optfile(MakeOptInt,
+		    		    HLDS4, HLDS5), !
+		    ;
+			    { HLDS5 = HLDS4 }
+		    ),
+		    % if our job was to write out the `.opt' file,
+		    % then we're done
+		    ( { MakeOptInt = yes } ->
+		    	    { HLDS = HLDS5 },
+			    { bool__or(FoundTypeError, FoundTypeclassError,
+				    FoundError) }
+		    ;
 			    %
 			    % Now go ahead and do the rest of mode checking and
 			    % determinism analysis
 			    %
-			    mercury_compile__frontend_pass_2_by_phases(HLDS4,
+			    mercury_compile__frontend_pass_2_by_phases(HLDS5,
 			    		HLDS, FoundModeOrDetError),
 			    { bool__or(FoundTypeError, FoundModeOrDetError,
 					FoundError0) },
 			    { bool__or(FoundError0, FoundTypeclassError,
 				FoundError) }
-			)
+		    )
 		)
 	    )
 	).
@@ -643,6 +692,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		module_info::out, io__state::di, io__state::uo) is det.
 
 mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
 	globals__io_lookup_bool_option(intermod_unused_args, IntermodArgs),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
@@ -685,6 +735,8 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 		module_name_to_file_name(ModuleName, ".opt", yes, OptName),
 		update_interface(OptName),
 		touch_interface_datestamp(ModuleName, ".optdate")
+	; { Intermod = yes } ->
+		intermod__adjust_pred_import_status(HLDS0, HLDS)
 	;
 		{ HLDS = HLDS0 }
 	).
@@ -727,12 +779,9 @@ mercury_compile__frontend_pass_2(HLDS0, HLDS, FoundError) -->
 % is det.
 :- mode mercury_compile__frontend_pass_2_by_phases(in, out, out, di, uo) is det.
 
-mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
+mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
-
-	mercury_compile__puritycheck(HLDS3, Verbose, Stats, HLDS4),
-	mercury_compile__maybe_dump_hlds(HLDS4, "04", "puritycheck"),
 
 	mercury_compile__modecheck(HLDS4, Verbose, Stats, HLDS5,
 		FoundModeError, UnsafeToContinue),
@@ -740,7 +789,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 
 	( { UnsafeToContinue = yes } ->
 		{ FoundError = yes },
-		{ HLDS13 = HLDS5 }
+		{ HLDS12 = HLDS5 }
 	;
 		mercury_compile__detect_switches(HLDS5, Verbose, Stats, HLDS6),
 		!,
@@ -783,24 +832,13 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 			% FoundModeError etc. aren't always correct.
 			{ ExitStatus = 0 }
 		->
-			{ FoundError = no },
-			globals__io_lookup_bool_option(intermodule_optimization,
-								Intermod),
-			globals__io_lookup_bool_option(
-				make_optimization_interface, MakeOptInt),
-			{ Intermod = yes, MakeOptInt = no ->
-				intermod__adjust_pred_import_status(HLDS12,
-					HLDS13), !
-			;
-				HLDS13 = HLDS12
-			}
+			{ FoundError = no }
 		;
-			{ FoundError = yes },
-			{ HLDS13 = HLDS12 }
+			{ FoundError = yes }
 		)
 	),
 
-	{ HLDS20 = HLDS13 },
+	{ HLDS20 = HLDS12 },
 	mercury_compile__maybe_dump_hlds(HLDS20, "20", "front_end").
 
 :- pred mercury_compile__frontend_pass_2_by_preds(module_info, module_info,
@@ -1062,14 +1100,15 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	),
 	write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
 		ModuleInfo3),
-	{ detect_liveness_proc(ProcInfo3, ModuleInfo3, ProcInfo4) },
+	{ detect_liveness_proc(ProcInfo3, PredId, ModuleInfo3, ProcInfo4) },
 	write_proc_progress_message("% Allocating stack slots in ", PredId,
 		                ProcId, ModuleInfo3),
-	{ allocate_stack_slots_in_proc(ProcInfo4, ModuleInfo3, ProcInfo5) },
+	{ allocate_stack_slots_in_proc(ProcInfo4, PredId, ModuleInfo3,
+		ProcInfo5) },
 	write_proc_progress_message(
 		"% Allocating storage locations for live vars in ",
 				PredId, ProcId, ModuleInfo3),
-	{ store_alloc_in_proc(ProcInfo5, ModuleInfo3, ProcInfo6) },
+	{ store_alloc_in_proc(ProcInfo5, PredId, ModuleInfo3, ProcInfo6) },
 	globals__io_get_trace_level(TraceLevel),
 	( { TraceLevel = interface ; TraceLevel = full } ->
 		write_proc_progress_message(
@@ -1673,7 +1712,7 @@ mercury_compile__maybe_followcode(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__compute_liveness(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Computing liveness...\n"),
 	maybe_flush_output(Verbose),
-	process_all_nonimported_procs(update_proc(detect_liveness_proc),
+	process_all_nonimported_procs(update_proc_predid(detect_liveness_proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
@@ -1685,7 +1724,8 @@ mercury_compile__compute_liveness(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__compute_stack_vars(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Computing stack vars..."),
 	maybe_flush_output(Verbose),
-	process_all_nonimported_procs(update_proc(allocate_stack_slots_in_proc),
+	process_all_nonimported_procs(
+		update_proc_predid(allocate_stack_slots_in_proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
@@ -1697,7 +1737,7 @@ mercury_compile__compute_stack_vars(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Allocating store map..."),
 	maybe_flush_output(Verbose),
-	process_all_nonimported_procs(update_proc(store_alloc_in_proc),
+	process_all_nonimported_procs(update_proc_predid(store_alloc_in_proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
@@ -1871,15 +1911,7 @@ mercury_compile__chunk_llds(C_InterfaceInfo, Procedures, BaseTypeData,
 			ProcModules) }
 	),
 	maybe_add_header_file_include(C_ExportDecls, ModuleName, C_HeaderCode0,
-		C_HeaderCode1),
-	globals__io_get_trace_level(TraceLevel),
-	( { TraceLevel = interface ; TraceLevel = full } ->
-		{ term__context_init(Context) },
-		{ TraceInclude = "#include ""mercury_trace.h""\n" - Context },
-		{ list__append(C_HeaderCode1, [TraceInclude], C_HeaderCode) }
-	;
-		{ C_HeaderCode = C_HeaderCode1 }
-	),
+		C_HeaderCode),
 	{ list__condense([C_BodyCode, BaseTypeData, CommonDataModules,
 		ProcModules, [c_export(C_ExportDefns)]], ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.

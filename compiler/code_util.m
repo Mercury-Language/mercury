@@ -811,6 +811,8 @@ code_util__count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),
 code_util__count_recursive_calls_2(conj(Goals), PredId, ProcId, Min, Max) :-
 	code_util__count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0,
 		Min, Max).
+code_util__count_recursive_calls_2(par_conj(Goals, _), PredId, ProcId, Min, Max) :-
+	code_util__count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0, Min, Max).
 code_util__count_recursive_calls_2(disj(Goals, _), PredId, ProcId, Min, Max) :-
 	code_util__count_recursive_calls_disj(Goals, PredId, ProcId, Min, Max).
 code_util__count_recursive_calls_2(switch(_, _, Cases, _), PredId, ProcId,

@@ -264,9 +264,19 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 		% Generate the entry to the else branch
 	code_info__slap_code_info(CodeInfo),
 	code_info__restore_failure_cont(RestoreContCode),
-	code_info__maybe_restore_and_discard_hp(MaybeHpSlot, RestoreHPCode),
-	code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, undo,
-		RestoreTicketCode),
+	( { NondetCond = yes } ->
+			% We cannot release the stack slots used for
+			% the trail ticket and heap pointer if the
+			% condition can be backtracked into.
+		code_info__maybe_restore_hp(MaybeHpSlot, RestoreHPCode),
+		code_info__maybe_reset_and_pop_ticket(MaybeTicketSlot,
+			undo, RestoreTicketCode)
+	;
+		code_info__maybe_restore_and_discard_hp(MaybeHpSlot,
+			RestoreHPCode),
+		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot,
+			undo, RestoreTicketCode)
+	),
 
 		% Generate the else branch
 	trace__maybe_generate_internal_event_code(ElseGoal, ElseTraceCode),

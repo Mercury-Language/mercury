@@ -352,22 +352,41 @@ simplify__goal_2(conj(Goals0), GoalInfo0, Goal, GoalInfo0, Info0, Info) :-
 		)
 	).
 
+simplify__goal_2(par_conj(Goals0, SM), GoalInfo, Goal, GoalInfo, Info0, Info) :-
+	(
+		Goals0 = []
+	->
+		Goal = conj([]),
+		Info = Info0
+	;
+		Goals0 = [Goal0]
+	->
+		simplify__goal(Goal0, Goal - _, Info0, Info)
+	;
+		simplify__par_conj(Goals0, Goals, Info0, Info0, Info),
+		Goal = par_conj(Goals, SM)
+	).
+
 simplify__goal_2(disj(Disjuncts0, SM), GoalInfo0,
 		Goal, GoalInfo, Info0, Info) :-
-	( Disjuncts0 = [] ->
+	simplify_info_get_instmap(Info0, InstMap0),
+	simplify__disj(Disjuncts0, [], Disjuncts, [], InstMaps,
+			Info0, Info0, Info1),
+	( Disjuncts = [] ->
 		Goal = disj([], SM),
 		GoalInfo = GoalInfo0,
-		Info = Info0
-	; Disjuncts0 = [SingleGoal0] ->
+		Info = Info1
+	; Disjuncts = [SingleGoal] ->
 		% a singleton disjunction is equivalent to the goal itself
-		simplify__goal(SingleGoal0, Goal1 - GoalInfo1, Info0, Info),
+		SingleGoal = Goal1 - GoalInfo1,
+		Info = Info1,
 		(
 			% If the determinisms are not the same, we really
 			% need to rerun determinism analysis on the
 			% procedure. I think this is a similar situation
 			% to inlining of erroneous goals. The safe thing
-			% to do is to disable the optimisation if the
-			% inner and outer determinisms are not the same.
+			% to do is to wrap a `some' around the inner goal if
+			% the inner and outer determinisms are not the same.
 			% It probably won't happen that often.
 			goal_info_get_determinism(GoalInfo0, Det),
 			goal_info_get_determinism(GoalInfo1, Det)
@@ -375,51 +394,19 @@ simplify__goal_2(disj(Disjuncts0, SM), GoalInfo0,
 			Goal = Goal1,
 			GoalInfo = GoalInfo1
 		;
-			Goal = disj([Goal1 - GoalInfo1], SM),
+			Goal = some([], Goal1 - GoalInfo1),
 			GoalInfo = GoalInfo0
 		)
 	;
-		simplify_info_get_instmap(Info0, InstMap0),
-		simplify__disj(Disjuncts0, [], Disjuncts, [], InstMaps,
-			Info0, Info0, Info1),
-		(
-	/****
-	XXX This optimization is not correct, see comment below
-	    at the definition of fixup_disj
-			goal_info_get_determinism(GoalInfo, Detism),
-			determinism_components(Detism, _CanFail, MaxSoln),
-			MaxSoln \= at_most_many
-		->
-			goal_info_get_instmap_delta(GoalInfo, DeltaInstMap),
-			goal_info_get_nonlocals(GoalInfo, NonLocalVars),
-			simplify_info_get_inst_table(Info0, InstTable0),
-			simplify_info_get_module_info(Info0, ModuleInfo0),
-			(
-				instmap__no_output_vars(InstMap0, DeltaInstMap,
-					NonLocalVars, InstTable0, ModuleInfo0),
-			->
-				OutputVars = no
-			;
-				OutputVars = yes
-			),
-			simplify__fixup_disj(Disjuncts, Detism, OutputVars,
-				GoalInfo, SM, InstMap0, DetInfo, Goal,
-				MsgsA, Msgs)
-		;
-	****/
-			Goal = disj(Disjuncts, SM),
-			simplify_info_get_module_info(Info1, ModuleInfo1),
-			simplify_info_get_inst_table(Info1, InstTable1),
-			goal_info_get_nonlocals(GoalInfo0, NonLocals),
-			merge_instmap_deltas(InstMap0, NonLocals, InstMaps,
-				NewDelta, InstTable1, InstTable2, ModuleInfo1,
-				ModuleInfo2),
-			simplify_info_set_module_info(Info1, ModuleInfo2,
-				Info2),
-			simplify_info_set_inst_table(Info2, InstTable2, Info),
-			goal_info_set_instmap_delta(GoalInfo0, NewDelta,
-				GoalInfo)
-		)
+		Goal = disj(Disjuncts, SM),
+		simplify_info_get_module_info(Info1, ModuleInfo1),
+		simplify_info_get_inst_table(Info1, InstTable1),
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		merge_instmap_deltas(InstMap0, NonLocals, InstMaps, NewDelta,
+			InstTable1, InstTable2, ModuleInfo1, ModuleInfo2),
+		simplify_info_set_module_info(Info1, ModuleInfo2, Info2),
+		simplify_info_set_inst_table(Info2, InstTable2, Info),
+		goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
 	).
 
 simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
@@ -1021,6 +1008,18 @@ simplify__conjoin_goal_and_rev_goal_list(Goal, RevGoals0, RevGoals) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred simplify__par_conj(list(hlds_goal), list(hlds_goal),
+		simplify_info, simplify_info, simplify_info).
+:- mode simplify__par_conj(in, out, in, in, out) is det.
+
+simplify__par_conj([], [], _, Info, Info).
+simplify__par_conj([Goal0 |Goals0], [Goal | Goals], Info0, Info1, Info) :-
+	simplify__goal(Goal0, Goal, Info1, Info2),
+	simplify_info_post_branch_update(Info0, Info2, Info3),
+	simplify__par_conj(Goals0, Goals, Info0, Info3, Info).
+
+%-----------------------------------------------------------------------------%
+
 :- pred simplify__excess_assigns(hlds_goal::in, hlds_goal_info::in,
 		hlds_goals::in, hlds_goals::out,
 		hlds_goals::in, hlds_goals::out, bool::out,
@@ -1228,14 +1227,34 @@ simplify__disj([Goal0 | Goals0], RevGoals0, Goals,  PostBranchInstMaps0,
 	% outside generally need some fixing up, and/or some warnings to be
 	% issued.
 
-	% Currently we just convert them all to if-then-elses.
-
-	% XXX converting disjs that have output variables but that
-	% nevertheless cannot succeed more than one
+	% We previously converted them all to if-then-elses using the code
+	% below, however converting disjs that have output variables but
+	% that nevertheless cannot succeed more than one
 	% (e.g. cc_nondet or cc_multi disjs) into if-then-elses
 	% may cause problems with other parts of the compiler that
 	% assume that an if-then-else is mode-correct, i.e. that
 	% the condition doesn't bind variables.
+
+	/****
+			goal_info_get_determinism(GoalInfo, Detism),
+			determinism_components(Detism, _CanFail, MaxSoln),
+			MaxSoln \= at_most_many
+		->
+			goal_info_get_instmap_delta(GoalInfo, DeltaInstMap),
+			goal_info_get_nonlocals(GoalInfo, NonLocalVars),
+			(
+				det_no_output_vars(NonLocalVars, InstMap0,
+					DeltaInstMap, DetInfo)
+			->
+				OutputVars = no
+			;
+				OutputVars = yes
+			),
+			simplify__fixup_disj(Disjuncts, Detism, OutputVars,
+				GoalInfo, SM, InstMap0, DetInfo, Goal,
+				MsgsA, Msgs)
+		;
+	****/
 
 :- pred simplify__fixup_disj(list(hlds_goal), determinism, bool,
 	hlds_goal_info, follow_vars, hlds_goal_expr,

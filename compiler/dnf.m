@@ -181,6 +181,9 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 			Goals, NewPredIds0, NewPredIds),
 		Goal = conj(Goals) - GoalInfo
 	;
+		GoalExpr0 = par_conj(_Goals0, _SM),
+		error("sorry, dnf of parallel conjunction not implemented")
+	;
 		GoalExpr0 = some(_, _),
 		dnf__transform_conj([Goal0], InstMap0, MaybeNonAtomic,
 			ModuleInfo0, ModuleInfo, Base, 0, _, DnfInfo,
@@ -427,6 +430,7 @@ dnf__is_considered_atomic_expr(GoalExpr, MaybeNonAtomic) :-
 :- pred dnf__is_atomic_expr(hlds_goal_expr::in, bool::out) is det.
 
 dnf__is_atomic_expr(conj(_), no).
+dnf__is_atomic_expr(par_conj(_, _), no).
 dnf__is_atomic_expr(higher_order_call(_, _, _, _, _, _), yes).
 dnf__is_atomic_expr(class_method_call(_, _, _, _, _, _), yes).
 dnf__is_atomic_expr(call(_, _, _, _, _, _), yes).

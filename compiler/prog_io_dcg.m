@@ -206,6 +206,11 @@ parse_dcg_goal_2(",", [A0, B0], Context, VarSet0, N0, Var0,
 	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet1, N1, Var1),
 	parse_dcg_goal(B0, VarSet1, N1, Var1, B, VarSet, N, Var).
 
+parse_dcg_goal_2("&", [A0, B0], Context, VarSet0, N0, Var0,
+		(A & B) - Context, VarSet, N, Var) :-
+	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet1, N1, Var1),
+	parse_dcg_goal(B0, VarSet1, N1, Var1, B, VarSet, N, Var).
+
 	% Disjunction or if-then-else (Prolog syntax).
 parse_dcg_goal_2(";", [A0, B0], Context, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-

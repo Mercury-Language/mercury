@@ -79,6 +79,9 @@
 :- pred globals__set_options(globals::in, option_table::in, globals::out)
 	is det.
 
+:- pred globals__set_trace_level(globals::in, trace_level::in, globals::out)
+	is det.
+
 :- pred globals__lookup_option(globals::in, option::in, option_data::out)
 	is det.
 
@@ -134,6 +137,9 @@
 	is det.
 
 :- pred globals__io_set_option(option::in, option_data::in,
+	io__state::di, io__state::uo) is det.
+
+:- pred globals__io_set_trace_level(trace_level::in,
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_lookup_option(option::in, option_data::out,
@@ -229,6 +235,9 @@ globals__get_trace_level(globals(_, _, _, _, _, _, TraceLevel), TraceLevel).
 
 globals__set_options(globals(_, B, C, D, E, F, G), Options,
 	globals(Options, B, C, D, E, F, G)).
+
+globals__set_trace_level(globals(A, B, C, D, E, F, _), TraceLevel,
+	globals(A, B, C, D, E, F, TraceLevel)).
 
 globals__lookup_option(Globals, Option, OptionData) :-
 	globals__get_options(Globals, OptionTable),
@@ -351,6 +360,14 @@ globals__io_set_option(Option, OptionData) -->
 		% XXX there is a bit of a design flaw with regard to
 		% uniqueness and io__set_globals
 	{ unsafe_promise_unique(Globals1, Globals) },
+	globals__io_set_globals(Globals).
+
+globals__io_set_trace_level(TraceLevel) -->
+	globals__io_get_globals(Globals0),
+	{ globals__set_trace_level(Globals0, TraceLevel, Globals1) },
+	{ unsafe_promise_unique(Globals1, Globals) },
+		% XXX there is a bit of a design flaw with regard to
+		% uniqueness and io__set_globals
 	globals__io_set_globals(Globals).
 
 %-----------------------------------------------------------------------------%

@@ -183,6 +183,18 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 	;
 		Uinstr = pragma_c(_, _, _, _, _),
 		error("pragma_c found in vn_block_cost")
+	;
+		Uinstr = init_sync_term(_, _),
+		error("init_sync_term found in vn_block_cost")
+	;
+		Uinstr = fork(_, _, _),
+		error("fork found in vn_block_cost")
+	;
+		Uinstr = join_and_terminate(_),
+		error("join_and_terminate found in vn_block_cost")
+	;
+		Uinstr = join_and_continue(_, _),
+		error("join_and_continue found in vn_block_cost")
 	).
 
 vn_cost__lval_cost(Lval, Params, Cost) :-
