@@ -206,6 +206,19 @@
                 handle_zero_arity_one_arg();                            \
             } while (0)
 
+/*
+** In hlc grades, closures have a closure_layout field but it is not filled in.
+** Since deconstructing closures is not possible without the information in
+** this field, we must canonicalize all closures in hlc grades. We do this by
+** overriding the test for canonicalization, so it always succeeds.
+*/
+
+#ifdef  MR_HIGHLEVEL_CODE
+  #define   higher_order_test(test)   (MR_TRUE)
+#else
+  #define   higher_order_test(test)   (test)
+#endif
+
 /***********************************************************************/
 
 void
@@ -692,7 +705,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
                 break;
-            } else if (noncanon == MR_NONCANON_ALLOW) {
+            } else if (higher_order_test(noncanon == MR_NONCANON_ALLOW)) {
                 handle_functor_name("<<function>>");
                 handle_zero_arity_args();
                 break;
@@ -706,7 +719,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
                 break;
-            } else if (noncanon == MR_NONCANON_ALLOW) {
+            } else if (higher_order_test(noncanon == MR_NONCANON_ALLOW)) {
                 handle_functor_name("<<predicate>>");
                 handle_zero_arity_args();
                 break;
@@ -1135,3 +1148,4 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #undef  handle_zero_arity_args
 #undef  handle_zero_arity_all_args
 #undef  handle_zero_arity_one_arg
+#undef  higher_order_test

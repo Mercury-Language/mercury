@@ -1,0 +1,340 @@
+std_util    functor: apple/1
+deconstruct functor: apple/1
+std_util    argument 0 of apple([]) is []
+deconstruct argument 0 of apple([]) is []
+std_util    argument 1 of apple([]) doesn't exist
+deconstruct argument 1 of apple([]) doesn't exist
+std_util    argument 2 of apple([]) doesn't exist
+deconstruct argument 2 of apple([]) doesn't exist
+std_util    deconstruct: functor apple arity 1
+[[]]
+deconstruct deconstruct: functor apple arity 1
+[[]]
+std_util    limited deconstruct 3 of apple([])
+functor apple arity 1 [[]]
+deconstruct limited deconstruct 3 of apple([])
+functor apple arity 1 [[]]
+
+std_util    functor: apple/1
+deconstruct functor: apple/1
+std_util    argument 0 of apple([9, 5, 1]) is [9, 5, 1]
+deconstruct argument 0 of apple([9, 5, 1]) is [9, 5, 1]
+std_util    argument 1 of apple([9, 5, 1]) doesn't exist
+deconstruct argument 1 of apple([9, 5, 1]) doesn't exist
+std_util    argument 2 of apple([9, 5, 1]) doesn't exist
+deconstruct argument 2 of apple([9, 5, 1]) doesn't exist
+std_util    deconstruct: functor apple arity 1
+[[9, 5, 1]]
+deconstruct deconstruct: functor apple arity 1
+[[9, 5, 1]]
+std_util    limited deconstruct 3 of apple([9, 5, 1])
+functor apple arity 1 [[9, 5, 1]]
+deconstruct limited deconstruct 3 of apple([9, 5, 1])
+functor apple arity 1 [[9, 5, 1]]
+
+std_util    functor: zop/2
+deconstruct functor: zop/2
+std_util    argument 0 of zop(3.30000000000000, 2.03000000000000) is 3.30000000000000
+deconstruct argument 0 of zop(3.30000000000000, 2.03000000000000) is 3.30000000000000
+std_util    argument 1 of zop(3.30000000000000, 2.03000000000000) is 2.03000000000000
+deconstruct argument 1 of zop(3.30000000000000, 2.03000000000000) is 2.03000000000000
+std_util    argument 2 of zop(3.30000000000000, 2.03000000000000) doesn't exist
+deconstruct argument 2 of zop(3.30000000000000, 2.03000000000000) doesn't exist
+std_util    deconstruct: functor zop arity 2
+[3.30000000000000, 2.03000000000000]
+deconstruct deconstruct: functor zop arity 2
+[3.30000000000000, 2.03000000000000]
+std_util    limited deconstruct 3 of zop(3.30000000000000, 2.03000000000000)
+functor zop arity 2 [3.30000000000000, 2.03000000000000]
+deconstruct limited deconstruct 3 of zop(3.30000000000000, 2.03000000000000)
+functor zop arity 2 [3.30000000000000, 2.03000000000000]
+
+std_util    functor: zap/3
+deconstruct functor: zap/3
+std_util    argument 0 of zap(50, 51.0000000000000, 52) is 50
+deconstruct argument 0 of zap(50, 51.0000000000000, 52) is 50
+std_util    argument 1 of zap(50, 51.0000000000000, 52) is 51.0000000000000
+deconstruct argument 1 of zap(50, 51.0000000000000, 52) is 51.0000000000000
+std_util    argument 2 of zap(50, 51.0000000000000, 52) is 52
+deconstruct argument 2 of zap(50, 51.0000000000000, 52) is 52
+std_util    deconstruct: functor zap arity 3
+[50, 51.0000000000000, 52]
+deconstruct deconstruct: functor zap arity 3
+[50, 51.0000000000000, 52]
+std_util    limited deconstruct 3 of zap(50, 51.0000000000000, 52)
+functor zap arity 3 [50, 51.0000000000000, 52]
+deconstruct limited deconstruct 3 of zap(50, 51.0000000000000, 52)
+functor zap arity 3 [50, 51.0000000000000, 52]
+
+std_util    functor: zip/4
+deconstruct functor: zip/4
+std_util    argument 0 of zip(50, 51, 52, 53) is 50
+deconstruct argument 0 of zip(50, 51, 52, 53) is 50
+std_util    argument 1 of zip(50, 51, 52, 53) is 51
+deconstruct argument 1 of zip(50, 51, 52, 53) is 51
+std_util    argument 2 of zip(50, 51, 52, 53) is 52
+deconstruct argument 2 of zip(50, 51, 52, 53) is 52
+std_util    deconstruct: functor zip arity 4
+[50, 51, 52, 53]
+deconstruct deconstruct: functor zip arity 4
+[50, 51, 52, 53]
+std_util    limited deconstruct 3 of zip(50, 51, 52, 53)
+failed
+deconstruct limited deconstruct 3 of zip(50, 51, 52, 53)
+failed
+
+std_util    functor: wombat/0
+deconstruct functor: wombat/0
+std_util    argument 0 of wombat doesn't exist
+deconstruct argument 0 of wombat doesn't exist
+std_util    argument 1 of wombat doesn't exist
+deconstruct argument 1 of wombat doesn't exist
+std_util    argument 2 of wombat doesn't exist
+deconstruct argument 2 of wombat doesn't exist
+std_util    deconstruct: functor wombat arity 0
+[]
+deconstruct deconstruct: functor wombat arity 0
+[]
+std_util    limited deconstruct 3 of wombat
+functor wombat arity 0 []
+deconstruct limited deconstruct 3 of wombat
+functor wombat arity 0 []
+
+std_util    functor: qwerty/1
+deconstruct functor: qwerty/1
+std_util    argument 0 of qwerty(5) is 5
+deconstruct argument 0 of qwerty(5) is 5
+std_util    argument 1 of qwerty(5) doesn't exist
+deconstruct argument 1 of qwerty(5) doesn't exist
+std_util    argument 2 of qwerty(5) doesn't exist
+deconstruct argument 2 of qwerty(5) doesn't exist
+std_util    deconstruct: functor qwerty arity 1
+[5]
+deconstruct deconstruct: functor qwerty arity 1
+[5]
+std_util    limited deconstruct 3 of qwerty(5)
+functor qwerty arity 1 [5]
+deconstruct limited deconstruct 3 of qwerty(5)
+functor qwerty arity 1 [5]
+
+std_util    functor: 'a'/0
+deconstruct functor: 'a'/0
+std_util    argument 0 of a doesn't exist
+deconstruct argument 0 of a doesn't exist
+std_util    argument 1 of a doesn't exist
+deconstruct argument 1 of a doesn't exist
+std_util    argument 2 of a doesn't exist
+deconstruct argument 2 of a doesn't exist
+std_util    deconstruct: functor 'a' arity 0
+[]
+deconstruct deconstruct: functor 'a' arity 0
+[]
+std_util    limited deconstruct 3 of a
+functor 'a' arity 0 []
+deconstruct limited deconstruct 3 of a
+functor 'a' arity 0 []
+
+std_util    functor: 3.14159000000000/0
+deconstruct functor: 3.14159000000000/0
+std_util    argument 0 of 3.14159000000000 doesn't exist
+deconstruct argument 0 of 3.14159000000000 doesn't exist
+std_util    argument 1 of 3.14159000000000 doesn't exist
+deconstruct argument 1 of 3.14159000000000 doesn't exist
+std_util    argument 2 of 3.14159000000000 doesn't exist
+deconstruct argument 2 of 3.14159000000000 doesn't exist
+std_util    deconstruct: functor 3.14159000000000 arity 0
+[]
+deconstruct deconstruct: functor 3.14159000000000 arity 0
+[]
+std_util    limited deconstruct 3 of 3.14159000000000
+functor 3.14159000000000 arity 0 []
+deconstruct limited deconstruct 3 of 3.14159000000000
+functor 3.14159000000000 arity 0 []
+
+std_util    functor: 4/0
+deconstruct functor: 4/0
+std_util    argument 0 of 4 doesn't exist
+deconstruct argument 0 of 4 doesn't exist
+std_util    argument 1 of 4 doesn't exist
+deconstruct argument 1 of 4 doesn't exist
+std_util    argument 2 of 4 doesn't exist
+deconstruct argument 2 of 4 doesn't exist
+std_util    deconstruct: functor 4 arity 0
+[]
+deconstruct deconstruct: functor 4 arity 0
+[]
+std_util    limited deconstruct 3 of 4
+functor 4 arity 0 []
+deconstruct limited deconstruct 3 of 4
+functor 4 arity 0 []
+
+std_util    functor: univ_cons/1
+deconstruct functor: univ_cons/1
+std_util    argument 0 of ["hi! I\'m a univ!"] is ["hi! I\'m a univ!"]
+deconstruct argument 0 of ["hi! I\'m a univ!"] is ["hi! I\'m a univ!"]
+std_util    argument 1 of ["hi! I\'m a univ!"] doesn't exist
+deconstruct argument 1 of ["hi! I\'m a univ!"] doesn't exist
+std_util    argument 2 of ["hi! I\'m a univ!"] doesn't exist
+deconstruct argument 2 of ["hi! I\'m a univ!"] doesn't exist
+std_util    deconstruct: functor univ_cons arity 1
+[["hi! I\'m a univ!"]]
+deconstruct deconstruct: functor univ_cons arity 1
+[["hi! I\'m a univ!"]]
+std_util    limited deconstruct 3 of ["hi! I\'m a univ!"]
+functor univ_cons arity 1 [["hi! I\'m a univ!"]]
+deconstruct limited deconstruct 3 of ["hi! I\'m a univ!"]
+functor univ_cons arity 1 [["hi! I\'m a univ!"]]
+
+std_util    functor: <<deconstruct_arg:set/1>>/0
+deconstruct functor: set_rep/1
+std_util    argument 0 of '<<deconstruct_arg:set/1>>' doesn't exist
+deconstruct argument 0 of '<<deconstruct_arg:set/1>>' is [1, 2, 3, 3]
+std_util    argument 1 of '<<deconstruct_arg:set/1>>' doesn't exist
+deconstruct argument 1 of '<<deconstruct_arg:set/1>>' doesn't exist
+std_util    argument 2 of '<<deconstruct_arg:set/1>>' doesn't exist
+deconstruct argument 2 of '<<deconstruct_arg:set/1>>' doesn't exist
+std_util    deconstruct: functor <<deconstruct_arg:set/1>> arity 0
+[]
+deconstruct deconstruct: functor set_rep arity 1
+[[1, 2, 3, 3]]
+std_util    limited deconstruct 3 of '<<deconstruct_arg:set/1>>'
+functor <<deconstruct_arg:set/1>> arity 0 []
+deconstruct limited deconstruct 3 of '<<deconstruct_arg:set/1>>'
+functor set_rep arity 1 [[1, 2, 3, 3]]
+
+std_util    functor: <<predicate>>/0
+deconstruct functor: <<predicate>>/0
+std_util    argument 0 of '<<predicate>>' doesn't exist
+deconstruct argument 0 of '<<predicate>>' doesn't exist
+std_util    argument 1 of '<<predicate>>' doesn't exist
+deconstruct argument 1 of '<<predicate>>' doesn't exist
+std_util    argument 2 of '<<predicate>>' doesn't exist
+deconstruct argument 2 of '<<predicate>>' doesn't exist
+std_util    deconstruct: functor <<predicate>> arity 0
+[]
+deconstruct deconstruct: functor <<predicate>> arity 0
+[]
+std_util    limited deconstruct 3 of '<<predicate>>'
+functor <<predicate>> arity 0 []
+deconstruct limited deconstruct 3 of '<<predicate>>'
+functor <<predicate>> arity 0 []
+
+std_util    functor: <<predicate>>/0
+deconstruct functor: <<predicate>>/0
+std_util    argument 0 of '<<predicate>>' doesn't exist
+deconstruct argument 0 of '<<predicate>>' doesn't exist
+std_util    argument 1 of '<<predicate>>' doesn't exist
+deconstruct argument 1 of '<<predicate>>' doesn't exist
+std_util    argument 2 of '<<predicate>>' doesn't exist
+deconstruct argument 2 of '<<predicate>>' doesn't exist
+std_util    deconstruct: functor <<predicate>> arity 0
+[]
+deconstruct deconstruct: functor <<predicate>> arity 0
+[]
+std_util    limited deconstruct 3 of '<<predicate>>'
+functor <<predicate>> arity 0 []
+deconstruct limited deconstruct 3 of '<<predicate>>'
+functor <<predicate>> arity 0 []
+
+std_util    functor: {}/2
+deconstruct functor: {}/2
+std_util    argument 0 of {1, 'b'} is 1
+deconstruct argument 0 of {1, 'b'} is 1
+std_util    argument 1 of {1, 'b'} is 'b'
+deconstruct argument 1 of {1, 'b'} is 'b'
+std_util    argument 2 of {1, 'b'} doesn't exist
+deconstruct argument 2 of {1, 'b'} doesn't exist
+std_util    deconstruct: functor {} arity 2
+[1, 'b']
+deconstruct deconstruct: functor {} arity 2
+[1, 'b']
+std_util    limited deconstruct 3 of {1, 'b'}
+functor {} arity 2 [1, 'b']
+deconstruct limited deconstruct 3 of {1, 'b'}
+functor {} arity 2 [1, 'b']
+
+std_util    functor: {}/3
+deconstruct functor: {}/3
+std_util    argument 0 of {1, 'b', "third"} is 1
+deconstruct argument 0 of {1, 'b', "third"} is 1
+std_util    argument 1 of {1, 'b', "third"} is 'b'
+deconstruct argument 1 of {1, 'b', "third"} is 'b'
+std_util    argument 2 of {1, 'b', "third"} is "third"
+deconstruct argument 2 of {1, 'b', "third"} is "third"
+std_util    deconstruct: functor {} arity 3
+[1, 'b', "third"]
+deconstruct deconstruct: functor {} arity 3
+[1, 'b', "third"]
+std_util    limited deconstruct 3 of {1, 'b', "third"}
+functor {} arity 3 [1, 'b', "third"]
+deconstruct limited deconstruct 3 of {1, 'b', "third"}
+functor {} arity 3 [1, 'b', "third"]
+
+std_util    functor: {}/4
+deconstruct functor: {}/4
+std_util    argument 0 of {1, 'b', "third", {1, 2, 3, 4}} is 1
+deconstruct argument 0 of {1, 'b', "third", {1, 2, 3, 4}} is 1
+std_util    argument 1 of {1, 'b', "third", {1, 2, 3, 4}} is 'b'
+deconstruct argument 1 of {1, 'b', "third", {1, 2, 3, 4}} is 'b'
+std_util    argument 2 of {1, 'b', "third", {1, 2, 3, 4}} is "third"
+deconstruct argument 2 of {1, 'b', "third", {1, 2, 3, 4}} is "third"
+std_util    deconstruct: functor {} arity 4
+[1, 'b', "third", {1, 2, 3, 4}]
+deconstruct deconstruct: functor {} arity 4
+[1, 'b', "third", {1, 2, 3, 4}]
+std_util    limited deconstruct 3 of {1, 'b', "third", {1, 2, 3, 4}}
+failed
+deconstruct limited deconstruct 3 of {1, 'b', "third", {1, 2, 3, 4}}
+failed
+
+std_util    functor: <<array>>/2
+deconstruct functor: <<array>>/2
+std_util    argument 0 of array([1000, 2000]) is 1000
+deconstruct argument 0 of array([1000, 2000]) is 1000
+std_util    argument 1 of array([1000, 2000]) is 2000
+deconstruct argument 1 of array([1000, 2000]) is 2000
+std_util    argument 2 of array([1000, 2000]) doesn't exist
+deconstruct argument 2 of array([1000, 2000]) doesn't exist
+std_util    deconstruct: functor <<array>> arity 2
+[1000, 2000]
+deconstruct deconstruct: functor <<array>> arity 2
+[1000, 2000]
+std_util    limited deconstruct 3 of array([1000, 2000])
+functor <<array>> arity 2 [1000, 2000]
+deconstruct limited deconstruct 3 of array([1000, 2000])
+functor <<array>> arity 2 [1000, 2000]
+
+std_util    functor: <<array>>/3
+deconstruct functor: <<array>>/3
+std_util    argument 0 of array([100, 200, 300]) is 100
+deconstruct argument 0 of array([100, 200, 300]) is 100
+std_util    argument 1 of array([100, 200, 300]) is 200
+deconstruct argument 1 of array([100, 200, 300]) is 200
+std_util    argument 2 of array([100, 200, 300]) is 300
+deconstruct argument 2 of array([100, 200, 300]) is 300
+std_util    deconstruct: functor <<array>> arity 3
+[100, 200, 300]
+deconstruct deconstruct: functor <<array>> arity 3
+[100, 200, 300]
+std_util    limited deconstruct 3 of array([100, 200, 300])
+functor <<array>> arity 3 [100, 200, 300]
+deconstruct limited deconstruct 3 of array([100, 200, 300])
+functor <<array>> arity 3 [100, 200, 300]
+
+std_util    functor: <<array>>/4
+deconstruct functor: <<array>>/4
+std_util    argument 0 of array([10, 20, 30, 40]) is 10
+deconstruct argument 0 of array([10, 20, 30, 40]) is 10
+std_util    argument 1 of array([10, 20, 30, 40]) is 20
+deconstruct argument 1 of array([10, 20, 30, 40]) is 20
+std_util    argument 2 of array([10, 20, 30, 40]) is 30
+deconstruct argument 2 of array([10, 20, 30, 40]) is 30
+std_util    deconstruct: functor <<array>> arity 4
+[10, 20, 30, 40]
+deconstruct deconstruct: functor <<array>> arity 4
+[10, 20, 30, 40]
+std_util    limited deconstruct 3 of array([10, 20, 30, 40])
+failed
+deconstruct limited deconstruct 3 of array([10, 20, 30, 40])
+failed
+

@@ -87,6 +87,13 @@
 	%	  arguments hidden in the closure.
 	%	- for tuples, the number of elements in the tuple.
 	%	- for arrays, the number of elements in the array.
+	%
+	% Note that in the current University of Melbourne implementation,
+	% the implementations of these predicates depart from the above
+	% specification in that with --high-level-code, they do not
+	% deconstruct predicate- and function-valued terms even with
+	% include_details_cc; instead, they return <<predicate>> or
+	% <<function>> (in both cases with arity zero) as appropriate.
 
 	% functor(Data, NonCanon, Functor, Arity)
 	%
