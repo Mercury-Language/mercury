@@ -54,6 +54,8 @@ prog_out__write_message(Msg - Term) -->
 		{ Term = term__functor(_Functor, _Args, Context) }
 	->
 		prog_out__write_context(Context)
+	;
+		[]
 	),
 	io__write_string(Msg),
 	(
