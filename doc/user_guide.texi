@@ -1371,6 +1371,7 @@ use @samp{mmc --help} to get the most up-to-date list.
 * Output options::
 * Auxiliary output options::
 * Language semantics options::
+* Termination analysis options::
 * Compilation model options::
 * Code generation options::
 * Optimization options::
@@ -1755,6 +1756,71 @@ Perform at most @var{n} passes of mode inference (default: 60).
 Perform at most @var{n} passes of mode inference (default: 30).
 @end table
 
+@node Termination analysis options
+@section Termination analysis options
+
+For detailed explanations, see the ``Termination analysis'' section
+in Mercury Language Reference Manual.  (It is listed under
+``Implementation dependent pragmas'' in the ``Pragmas'' chapter.)
+
+@table @code
+@item --enable-term
+@itemx --enable-termination
+Enable termination analysis.  Termination analysis analyses each mode of
+each predicate to see whether it terminates.  @samp{pragma terminates},
+@samp{pragma does_not_terminate} and @samp{pragma check_termination}
+pragmas have no effect unless termination analysis is enabled.  When
+using termination, @samp{--intermodule-optimization} should be enabled,
+as it greatly improves the accuracy of the analysis.
+
+@sp 1
+@item --chk-term
+@itemx --check-term
+@itemx --check-termination
+Enable termination analysis, and emit warnings for some predicates or
+functions that cannot be proved to terminate.  In many cases in which the
+compiler is unable to prove termination, the problem is either a lack of
+information about the termination properties of other predicates, or the
+fact that the program used language constructs (such as higher order
+calls) which cannot be analysed.  In these cases the compiler does
+not emit a warning of non-termination, as it is likely to be spurious.
+
+@sp 1
+@item --verb-chk-term
+@itemx --verb-check-term
+@itemx --verbose-check-termination
+Enable termination analysis, and emit warnings for all predicates or
+functions that cannot be proved to terminate.
+
+@sp 1
+@item --term-single-arg @var{limit}
+@itemx --termination-single-argument-analysis @var{limit}
+When performing termination analysis, try analyzing
+recursion on single arguments in strongly connected
+components of the call graph that have up to @var{limit} procedures.
+Setting this limit to zero disables single argument analysis.
+
+@sp 1
+@item --termination-norm @var{norm}
+The norm defines how termination analysis measures the size
+of a memory cell. The @samp{simple} norm says that size is always one.
+The @samp{total} norm says that it is the number of words in the cell.
+The @samp{num-data-elems} norm says that it is the number of words in
+the cell that contain something other than pointers to cells of
+the same type.
+
+@sp 1
+@item --term-err-limit @var{limit}
+@itemx --termination-error-limit @var{limit}
+Print at most @var{n} reasons for any single termination error.
+
+@sp 1
+@item --term-path-limit @var{limit}
+@itemx --termination-path-limit @var{limit}
+Perform termination analysis only on predicates with at most @var{n} paths.
+
+@end table
+
 @node Compilation model options
 @section Compilation model options
 
@@ -2127,62 +2193,6 @@ different to the @file{@var{module}.opt} as @file{@var{module}.trans_opt}
 files may depend on other @file{@var{module}.trans_opt} files.
 @file{@var{module}.opt} files may only depend on the
 @file{@var{module}.m} file.
-
-@sp 1
-@item --enable-term
-@itemx --enable-termination
-Enable termination analysis.  Termination analysis analyses each mode of
-each predicate to see whether it terminates.  @samp{pragma terminates},
-@samp{pragma does_not_terminate} and @samp{pragma check_termination}
-pragmas have no effect unless termination analysis is enabled.  When
-using termination, @samp{--intermodule-optimization} should be enabled,
-as it greatly improves the accuracy of the analysis.
-
-@sp 1
-@item --chk-term
-@itemx --check-term
-@itemx --check-termination
-Enable termination analysis, and emit warnings for some predicates or
-functions that cannot be proved to terminate.  In many cases in which the
-compiler is unable to prove termination, the problem is either a lack of
-information about the termination properties of other predicates, or the
-fact that the program used language constructs (such as higher order
-calls) which cannot be analysed.  In these cases the compiler does
-not emit a warning of non-termination, as it is likely to be spurious.
-
-@sp 1
-@item --verb-chk-term
-@itemx --verb-check-term
-@itemx --verbose-check-termination
-Enable termination analysis, and emit warnings for all predicates or
-functions that cannot be proved to terminate.
-
-@sp 1
-@item --term-single-arg @var{limit}
-@itemx --termination-single-argument-analysis @var{limit}
-When performing termination analysis, try analyzing
-recursion on single arguments in strongly connected
-components of the call graph that have up to @var{limit} procedures.
-Setting this limit to zero disables single argument analysis.
-
-@sp 1
-@item --termination-norm @var{norm}
-The norm defines how termination analysis measures the size
-of a memory cell. The @samp{simple} norm says that size is always one.
-The @samp{total} norm says that it is the number of words in the cell.
-The @samp{num-data-elems} norm says that it is the number of words in
-the cell that contain something other than pointers to cells of
-the same type.
-
-@sp 1
-@item --term-err-limit @var{limit}
-@itemx --termination-error-limit @var{limit}
-Print at most @var{n} reasons for any single termination error.
-
-@sp 1
-@item --term-path-limit @var{limit}
-@itemx --termination-path-limit @var{limit}
-Perform termination analysis only on predicates with at most @var{n} paths.
 
 @sp 1
 @item --split-c-files

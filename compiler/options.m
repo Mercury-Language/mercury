@@ -128,10 +128,10 @@
 		;	bytes_per_word
 		;	conf_low_tag_bits
 				% The undocumented conf_low_tag_bits option
-				% is used by the `mc' script to pass the
+				% is used by the `mmc' script to pass the
 				% default value for num_tag_bits
 				% assuming --tags low.
-				% The reason that `mc' doesn't just
+				% The reason that `mmc' doesn't just
 				% pass a default value for --num-tag-bits
 				% is that we want to be able to give an
 				% error message if the user specifies
@@ -365,7 +365,7 @@ option_defaults_2(compilation_model_option, [
 		% Compilation model options (ones that affect binary
 		% compatibility).
 	grade			-	string_special,
-					% the `mc' script will pass the
+					% the `mmc' script will pass the
 					% default grade determined
 					% at configuration time
 	gcc_non_local_gotos	-	bool(yes),
@@ -393,7 +393,7 @@ option_defaults_2(compilation_model_option, [
 					% A good default for the current
 					% generation of architectures.
 	conf_low_tag_bits	-	int(2),
-					% the `mc' script will override the
+					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
 	args			-	string("compact"),
@@ -411,28 +411,28 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
 	have_delay_slot		-	bool(no),
-					% the `mc' script may override the
+					% the `mmc' script may override the
 					% above default if configure says
 					% the machine has branch delay slots
 	num_real_r_regs		-	int(5),
 	num_real_f_regs		-	int(0),
 	num_real_r_temps	-	int(5),
 	num_real_f_temps	-	int(0),
-					% the `mc' script will override the
+					% the `mmc' script will override the
 					% above defaults with values determined
 					% at configuration time
 	cc			-	string("gcc"),
-					% the `mc' script will override the
+					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
 	cflags			-	accumulating([]),
 	cflags_for_regs		-	string(""),
 	cflags_for_gotos	-	string(""),
-					% the `mc' script will override the
+					% the `mmc' script will override the
 					% above two defaults with values
 					% determined at configuration time
 	c_include_directory	-	string(""),
-					% the `mc' script will override the
+					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
 	aditi			-	bool(no),
@@ -1112,6 +1112,7 @@ options_help -->
 	options_help_output,
 	options_help_aux_output,
 	options_help_semantics,
+	options_help_termination,
 	options_help_compilation_model,
 	options_help_code_generation,
 	options_help_optimization,
@@ -1323,6 +1324,44 @@ options_help_semantics -->
 	io__write_string("\t\tPerform at most <n> passes of mode inference (default: 30).\n").
 
 
+:- pred options_help_termination(io__state::di, io__state::uo) is det.
+
+options_help_termination -->
+	io__write_string("\nTermination Analysis Options:\n"),
+	io__write_string("\t--enable-term, --enable-termination\n"),
+	io__write_string("\t\tAnalyse each predicate to discover if it terminates.\n"),
+	io__write_string("\t--chk-term, --check-term, --check-termination\n"),
+	io__write_string("\t\tEnable termination analysis, and emit warnings for some\n"),
+	io__write_string("\t\tpredicates or functions that cannot be proved to terminate.  In\n"),
+	io__write_string("\t\tmany cases where the compiler is unable to prove termination\n"),
+	io__write_string("\t\tthe problem is either a lack of information about the\n"),
+	io__write_string("\t\ttermination properties of other predicates, or because language\n"),
+	io__write_string("\t\tconstructs (such as higher order calls) were used which could\n"),
+	io__write_string("\t\tnot be analysed.  In these cases the compiler does not emit a\n"),
+	io__write_string("\t\twarning of non-termination, as it is likely to be spurious.\n"),
+	io__write_string("\t--verb-chk-term, --verb-check-term, --verbose-check-termination\n"),
+	io__write_string("\t\tEnable termination analysis, and emit warnings for all\n"),
+	io__write_string("\t\tpredicates or functions that cannot be proved to terminate.\n"),
+	io__write_string("\t--term-single-arg <n>, --termination-single-argument-analysis <n>\n"),
+	io__write_string("\t\tWhen performing termination analysis, try analyzing\n"),
+	io__write_string("\t\trecursion on single arguments in strongly connected\n"),
+	io__write_string("\t\tcomponents of the call graph that have up to <n> procedures.\n"),
+	io__write_string("\t\tSetting this limit to zero disables single argument analysis.\n"),
+	io__write_string("\t--termination-norm {simple, total, num-data-elems}\n"),
+	io__write_string("\t\tThe norm defines how termination analysis measures the size\n"),
+	io__write_string("\t\tof a memory cell. The `simple' norm says that size is always\n"),
+	io__write_string("\t\tone.  The `total' norm says that it is the number of words\n"),
+	io__write_string("\t\tin the cell.  The `num-data-elems' norm says that it is the\n"),
+	io__write_string("\t\tnumber of words in the cell that contain something other\n"),
+	io__write_string("\t\tthan pointers to cells of the same type.\n"),
+	io__write_string("\t--term-err-limit <n>, --termination-error-limit <n>\n"),
+	io__write_string("\t\tPrint at most <n> reasons for any single termination error\n"),
+	io__write_string("\t\t(default: 3).\n"),
+	io__write_string("\t--term-path-limit <n>, --termination-path-limit <n>\n"),
+	io__write_string("\t\tPerform termination analysis only on predicates\n"),
+	io__write_string("\t\twith at most <n> paths (default: 256).\n").
+
+
 :- pred options_help_compilation_model(io__state::di, io__state::uo) is det.
 
 options_help_compilation_model -->
@@ -1371,13 +1410,13 @@ options_help_compilation_model -->
 	io__write_string("\t\tEnable use of a trail.\n"),
 	io__write_string("\t\tThis is necessary for interfacing with constraint solvers,\n"),
 	io__write_string("\t\tor for backtrackable destructive update.\n"),
-	io__write_string("\t-p, --profiling, --time-profiling\t\t"),
-	io__write_string("\t(grade modifier: `.prof')\n"),
+	io__write_string("\t-p, --profiling, --time-profiling\n"),
+	io__write_string("\t\t\t\t\t(grade modifier: `.prof')\n"),
 	io__write_string("\t\tEnable time and call profiling.  Insert profiling hooks in the\n"),
 	io__write_string("\t\tgenerated code, and also output some profiling\n"),
 	io__write_string("\t\tinformation (the static call graph) to the file\n"),
 	io__write_string("\t\t`<module>.prof'.\n"),
-	io__write_string("\t--memory-profiling\t\t"),
+	io__write_string("\t--memory-profiling\t"),
 	io__write_string("\t(grade modifier: `.memprof')\n"),
 	io__write_string("\t\tEnable memory and call profiling.\n"),
 /*****************
@@ -1428,13 +1467,13 @@ your program compiled with different options.
 	io__write_string("\t\tUse <n> tag bits.\n"),
 
 		% The --conf-low-tag-bits option is reserved for use
-		% by the `mc' script; it is deliberately not documented.
+		% by the `mmc' script; it is deliberately not documented.
 
 		% The --bits-per-word option is intended for use
-		% by the `mc' script; it is deliberately not documented.
+		% by the `mmc' script; it is deliberately not documented.
 
 		% The --bytes-per-word option is intended for use
-		% by the `mc' script; it is deliberately not documented.
+		% by the `mmc' script; it is deliberately not documented.
 
 	io__write_string("\t--branch-delay-slot\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
@@ -1544,38 +1583,6 @@ options_help_optimization -->
 	io__write_string("\t--transitive-intermodule-optimization\n"),
 	io__write_string("\t\tImport the transitive intermodule optimization data.\n"),
 	io__write_string("\t\tThis data is imported from `<module>.trans_opt' files.\n"),
-	io__write_string("\t--enable-term, --enable-termination\n"),
-	io__write_string("\t\tAnalyse each predicate to discover if it terminates.\n"),
-	io__write_string("\t--chk-term, --check-term, --check-termination\n"),
-	io__write_string("\t\tEnable termination analysis, and emit warnings for some\n"),
-	io__write_string("\t\tpredicates or functions that cannot be proved to terminate.  In\n"),
-	io__write_string("\t\tmany cases where the compiler is unable to prove termination\n"),
-	io__write_string("\t\tthe problem is either a lack of information about the\n"),
-	io__write_string("\t\ttermination properties of other predicates, or because language\n"),
-	io__write_string("\t\tconstructs (such as higher order calls) were used which could\n"),
-	io__write_string("\t\tnot be analysed.  In these cases the compiler does not emit a\n"),
-	io__write_string("\t\twarning of non-termination, as it is likely to be spurious.\n"),
-	io__write_string("\t--verb-chk-term, --verb-check-term, --verbose-check-termination\n"),
-	io__write_string("\t\tEnable termination analysis, and emit warnings for all\n"),
-	io__write_string("\t\tpredicates or functions that cannot be proved to terminate.\n"),
-	io__write_string("\t--term-single-arg <n>, --termination-single-argument-analysis <n>\n"),
-	io__write_string("\t\tWhen performing termination analysis, try analyzing\n"),
-	io__write_string("\t\trecursion on single arguments in strongly connected\n"),
-	io__write_string("\t\tcomponents of the call graph that have up to <n> procedures.\n"),
-	io__write_string("\t\tSetting this limit to zero disables single argument analysis.\n"),
-	io__write_string("\t--termination-norm {simple, total, num-data-elems}\n"),
-	io__write_string("\t\tThe norm defines how termination analysis measures the size\n"),
-	io__write_string("\t\tof a memory cell. The `simple' norm says that size is always one.\n"),
-	io__write_string("\t\tThe `total' norm says that it is the number of words in the cell.\n"),
-	io__write_string("\t\tThe `num-data-elems' norm says that it is the number of words in\n"),
-	io__write_string("\t\tthe cell that contain something other than pointers to cells of\n"),
-	io__write_string("\t\tthe same type.\n"),
-	io__write_string("\t--term-err-limit <n>, --termination-error-limit <n>\n"),
-	io__write_string("\t\tPrint at most <n> reasons for any single termination error\n"),
-	io__write_string("\t\t(default: 3).\n"),
-	io__write_string("\t--term-path-limit <n>, --termination-path-limit <n>\n"),
-	io__write_string("\t\tPerform termination analysis only on predicates\n"),
-	io__write_string("\t\twith at most <n> paths (default: 256).\n"),
 	io__write_string("\t--split-c-files\n"),
 	io__write_string("\t\tGenerate each C function in its own C file,\n"),
 	io__write_string("\t\tso that the linker will optimize away unused code.\n"),
