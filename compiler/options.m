@@ -221,7 +221,10 @@ option_defaults_2(code_gen_option, [
 	tags			-	string("low"),
 	polymorphism		-	bool(yes),
 	highlevel_c		-	bool(no),
-	excess_assign		-	bool(yes),
+	excess_assign		-	bool(no),
+		% excess_assign is disabled by default since it
+		% breaks the C interface (`pragma(c_code,...)').
+		% When that problem is fixed, it should be re-enabled.
 	prev_code		-	bool(no),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
