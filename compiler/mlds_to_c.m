@@ -70,7 +70,7 @@ mlds_output_to_file(FileName, Action) -->
 	%
 	% Generate the header file
 	%
-:- pred mlds_output_hdr_file(int, mlds, io__state, io__state).
+:- pred mlds_output_hdr_file(indent, mlds, io__state, io__state).
 :- mode mlds_output_hdr_file(in, in, di, uo) is det.
 
 mlds_output_hdr_file(Indent, MLDS) -->
@@ -98,19 +98,19 @@ defn_is_commit_type_var(Defn) :-
 	Body = mlds__data(Type, _),
 	Type = mlds__commit_type.
 
-:- pred mlds_output_hdr_imports(int, mlds__imports, io__state, io__state).
+:- pred mlds_output_hdr_imports(indent, mlds__imports, io__state, io__state).
 :- mode mlds_output_hdr_imports(in, in, di, uo) is det.
 
 mlds_output_hdr_imports(Indent, Imports) -->
 	list__foldl(mlds_output_hdr_import(Indent), Imports).
 
-:- pred mlds_output_src_imports(int, mlds__imports, io__state, io__state).
+:- pred mlds_output_src_imports(indent, mlds__imports, io__state, io__state).
 :- mode mlds_output_src_imports(in, in, di, uo) is det.
 
 % XXX currently we assume all imports are header imports
 mlds_output_src_imports(_Indent, _Imports) --> [].
 
-:- pred mlds_output_hdr_import(int, mlds__import, io__state, io__state).
+:- pred mlds_output_hdr_import(indent, mlds__import, io__state, io__state).
 :- mode mlds_output_hdr_import(in, in, di, uo) is det.
 
 mlds_output_hdr_import(_Indent, Import) -->
@@ -127,7 +127,7 @@ mlds_output_hdr_import(_Indent, Import) -->
 	% but there's no obvious alternative term to use which
 	% also has a clear and concise abbreviation, so never mind...)
 	%
-:- pred mlds_output_src_file(int, mlds, io__state, io__state).
+:- pred mlds_output_src_file(indent, mlds, io__state, io__state).
 :- mode mlds_output_src_file(in, in, di, uo) is det.
 
 mlds_output_src_file(Indent, MLDS) -->
@@ -142,7 +142,8 @@ mlds_output_src_file(Indent, MLDS) -->
 	mlds_output_defns(Indent, MLDS_ModuleName, Defns), io__nl,
 	mlds_output_src_end(Indent, ModuleName).
 
-:- pred mlds_output_hdr_start(int, mercury_module_name, io__state, io__state).
+:- pred mlds_output_hdr_start(indent, mercury_module_name,
+		io__state, io__state).
 :- mode mlds_output_hdr_start(in, in, di, uo) is det.
 
 mlds_output_hdr_start(Indent, ModuleName) -->
@@ -157,7 +158,8 @@ mlds_output_hdr_start(Indent, ModuleName) -->
 	mlds_indent(Indent),
 	io__write_string("#include ""mercury_imp.h""\n\n").
 
-:- pred mlds_output_src_start(int, mercury_module_name, io__state, io__state).
+:- pred mlds_output_src_start(indent, mercury_module_name,
+		io__state, io__state).
 :- mode mlds_output_src_start(in, in, di, uo) is det.
 
 mlds_output_src_start(Indent, ModuleName) -->
@@ -175,7 +177,8 @@ mlds_output_src_start(Indent, ModuleName) -->
 	io__write_string("""\n"),
 	io__nl.
 
-:- pred mlds_output_hdr_end(int, mercury_module_name, io__state, io__state).
+:- pred mlds_output_hdr_end(indent, mercury_module_name,
+		io__state, io__state).
 :- mode mlds_output_hdr_end(in, in, di, uo) is det.
 
 mlds_output_hdr_end(Indent, ModuleName) -->
@@ -184,7 +187,8 @@ mlds_output_hdr_end(Indent, ModuleName) -->
 	prog_out__write_sym_name(ModuleName),
 	io__write_string(". */\n").
 
-:- pred mlds_output_src_end(int, mercury_module_name, io__state, io__state).
+:- pred mlds_output_src_end(indent, mercury_module_name,
+		io__state, io__state).
 :- mode mlds_output_src_end(in, in, di, uo) is det.
 
 mlds_output_src_end(Indent, ModuleName) -->
@@ -198,19 +202,20 @@ mlds_output_src_end(Indent, ModuleName) -->
 % C interface stuff
 %
 
-:- pred mlds_output_c_hdr_decls(int, mlds__foreign_code, io__state, io__state).
+:- pred mlds_output_c_hdr_decls(indent, mlds__foreign_code,
+		io__state, io__state).
 :- mode mlds_output_c_hdr_decls(in, in, di, uo) is det.
 
 % XXX not yet implemented
 mlds_output_c_hdr_decls(_, _) --> [].
 
-:- pred mlds_output_c_decls(int, mlds__foreign_code, io__state, io__state).
+:- pred mlds_output_c_decls(indent, mlds__foreign_code, io__state, io__state).
 :- mode mlds_output_c_decls(in, in, di, uo) is det.
 
 % XXX not yet implemented
 mlds_output_c_decls(_, _) --> [].
 
-:- pred mlds_output_c_defns(int, mlds__foreign_code, io__state, io__state).
+:- pred mlds_output_c_defns(indent, mlds__foreign_code, io__state, io__state).
 :- mode mlds_output_c_defns(in, in, di, uo) is det.
 
 % XXX not yet implemented
@@ -222,14 +227,14 @@ mlds_output_c_defns(_, _) --> [].
 %
 
 
-:- pred mlds_output_decls(int, mlds_module_name, mlds__defns,
+:- pred mlds_output_decls(indent, mlds_module_name, mlds__defns,
 		io__state, io__state).
 :- mode mlds_output_decls(in, in, in, di, uo) is det.
 
 mlds_output_decls(Indent, ModuleName, Defns) -->
 	list__foldl(mlds_output_decl(Indent, ModuleName), Defns).
 
-:- pred mlds_output_defns(int, mlds_module_name, mlds__defns,
+:- pred mlds_output_defns(indent, mlds_module_name, mlds__defns,
 		io__state, io__state).
 :- mode mlds_output_defns(in, in, in, di, uo) is det.
 
@@ -250,18 +255,17 @@ mlds_output_defns(Indent, ModuleName, Defns) -->
 	).
 
 
-:- pred mlds_output_decl(int, mlds_module_name, mlds__defn,
+:- pred mlds_output_decl(indent, mlds_module_name, mlds__defn,
 		io__state, io__state).
 :- mode mlds_output_decl(in, in, in, di, uo) is det.
 
 mlds_output_decl(Indent, ModuleName, Defn) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
-	mlds_output_context(Context),
-	mlds_indent(Indent),
+	mlds_indent(Context, Indent),
 	mlds_output_decl_flags(Flags),
 	mlds_output_decl_body(Indent, qual(ModuleName, Name), DefnBody).
 
-:- pred mlds_output_defn(int, mlds_module_name, mlds__defn,
+:- pred mlds_output_defn(indent, mlds_module_name, mlds__defn,
 		io__state, io__state).
 :- mode mlds_output_defn(in, in, in, di, uo) is det.
 
@@ -272,13 +276,12 @@ mlds_output_defn(Indent, ModuleName, Defn) -->
 	;
 		[]
 	),
-	mlds_output_context(Context),
-	mlds_indent(Indent),
+	mlds_indent(Context, Indent),
 	mlds_output_decl_flags(Flags),
-	mlds_output_defn_body(Indent, qual(ModuleName, Name), DefnBody).
+	mlds_output_defn_body(Indent, qual(ModuleName, Name), Context,
+			DefnBody).
 
-
-:- pred mlds_output_decl_body(int, mlds__qualified_entity_name,
+:- pred mlds_output_decl_body(indent, mlds__qualified_entity_name,
 		mlds__entity_defn, io__state, io__state).
 :- mode mlds_output_decl_body(in, in, in, di, uo) is det.
 
@@ -297,11 +300,11 @@ mlds_output_decl_body(Indent, Name, DefnBody) -->
 	),
 	io__write_string(";\n").
 
-:- pred mlds_output_defn_body(int, mlds__qualified_entity_name,
-		mlds__entity_defn, io__state, io__state).
-:- mode mlds_output_defn_body(in, in, in, di, uo) is det.
+:- pred mlds_output_defn_body(indent, mlds__qualified_entity_name,
+		mlds__context, mlds__entity_defn, io__state, io__state).
+:- mode mlds_output_defn_body(in, in, in, in, di, uo) is det.
 
-mlds_output_defn_body(Indent, Name, DefnBody) -->
+mlds_output_defn_body(Indent, Name, Context, DefnBody) -->
 	(
 		{ DefnBody = mlds__data(Type, MaybeInitializer) },
 		mlds_output_data_defn(Name, Type, MaybeInitializer)
@@ -309,29 +312,20 @@ mlds_output_defn_body(Indent, Name, DefnBody) -->
 		{ DefnBody = mlds__function(MaybePredProcId, Signature,
 			MaybeBody) },
 		mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id),
-		mlds_output_func(Indent, Name, Signature, MaybeBody)
+		mlds_output_func(Indent, Name, Context, Signature, MaybeBody)
 	;
 		{ DefnBody = mlds__class(ClassDefn) },
-		mlds_output_class(Indent, Name, ClassDefn),
+		mlds_output_class(Indent, Name, Context, ClassDefn),
 		io__write_string(";\n")
 	).
 
-
-:- pred mlds_output_context(mlds__context, io__state, io__state).
-:- mode mlds_output_context(in, di, uo) is det.
-
-mlds_output_context(Context) -->
-	{ ProgContext = mlds__get_prog_context(Context) },
-	{ term__context_file(ProgContext, FileName) },
-	{ term__context_line(ProgContext, LineNumber) },
-	c_util__set_line_num(FileName, LineNumber).
 
 %-----------------------------------------------------------------------------%
 %
 % Code to output type declarations/definitions
 %
 
-:- pred mlds_output_class_decl(int, mlds__qualified_entity_name,
+:- pred mlds_output_class_decl(indent, mlds__qualified_entity_name,
 		mlds__class_defn, io__state, io__state).
 :- mode mlds_output_class_decl(in, in, in, di, uo) is det.
 
@@ -339,18 +333,18 @@ mlds_output_class_decl(_Indent, Name, _ClassDefn) -->
 	io__write_string("struct "),
 	mlds_output_fully_qualified_name(Name, mlds_output_name).
 
-:- pred mlds_output_class(int, mlds__qualified_entity_name, mlds__class_defn,
-		io__state, io__state).
-:- mode mlds_output_class(in, in, in, di, uo) is det.
+:- pred mlds_output_class(indent, mlds__qualified_entity_name, mlds__context,
+		mlds__class_defn, io__state, io__state).
+:- mode mlds_output_class(in, in, in, in, di, uo) is det.
 
-mlds_output_class(Indent, Name, ClassDefn) -->
+mlds_output_class(Indent, Name, Context, ClassDefn) -->
 	mlds_output_class_decl(Indent, Name, ClassDefn),
 	io__write_string(" {\n"),
 	{ ClassDefn = class_defn(_Kind, _Imports, _BaseClasses, _Implements,
 		Defns) },
 	{ Name = qual(ModuleName, _) },
 	mlds_output_defns(Indent + 1, ModuleName, Defns),
-	mlds_indent(Indent),
+	mlds_indent(Context, Indent),
 	io__write_string("}").
 
 %-----------------------------------------------------------------------------%
@@ -410,19 +404,24 @@ mlds_output_initializer(_Type, Initializer) -->
 :- mode mlds_output_pred_proc_id(in, di, uo) is det.
 
 mlds_output_pred_proc_id(proc(PredId, ProcId)) -->
-	io__write_string("/* pred_id: "),
-	{ pred_id_to_int(PredId, PredIdNum) },
-	io__write_int(PredIdNum),
-	io__write_string(", proc_id: "),
-	{ proc_id_to_int(ProcId, ProcIdNum) },
-	io__write_int(ProcIdNum),
-	io__write_string(" */\n").
+	globals__io_lookup_bool_option(auto_comments, AddComments),
+	( { AddComments = yes } ->
+		io__write_string("/* pred_id: "),
+		{ pred_id_to_int(PredId, PredIdNum) },
+		io__write_int(PredIdNum),
+		io__write_string(", proc_id: "),
+		{ proc_id_to_int(ProcId, ProcIdNum) },
+		io__write_int(ProcIdNum),
+		io__write_string(" */\n")
+	;
+		[]
+	).
 
-:- pred mlds_output_func(int, qualified_entity_name, func_params,
-		maybe(statement), io__state, io__state).
-:- mode mlds_output_func(in, in, in, in, di, uo) is det.
+:- pred mlds_output_func(indent, qualified_entity_name, mlds__context,
+		func_params, maybe(statement), io__state, io__state).
+:- mode mlds_output_func(in, in, in, in, in, di, uo) is det.
 
-mlds_output_func(Indent, Name, Signature, MaybeBody) -->
+mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
 	mlds_output_func_decl(Indent, Name, Signature),
 	(
 		{ MaybeBody = no },
@@ -431,7 +430,7 @@ mlds_output_func(Indent, Name, Signature, MaybeBody) -->
 		{ MaybeBody = yes(Body) },
 		io__write_string("\n"),
 
-		mlds_indent(Indent),
+		mlds_indent(Context, Indent),
 		io__write_string("{\n"),
 
 		%
@@ -440,9 +439,9 @@ mlds_output_func(Indent, Name, Signature, MaybeBody) -->
 		% to optimize tail recursive calls.
 		% XXX tail recursion optimization should be disable-able
 		%
-		mlds_indent(Indent + 1),
+		mlds_indent(Context, Indent + 1),
 		io__write_string("for(;;)\n"),
-		mlds_indent(Indent + 2),
+		mlds_indent(Context, Indent + 2),
 		io__write_string("{\n"),
 
 		{ FuncInfo = func_info(Name, Signature) },
@@ -457,20 +456,26 @@ mlds_output_func(Indent, Name, Signature, MaybeBody) -->
 		%
 		{ Signature = mlds__func_params(_Parameters, RetTypes) },
 		( { RetTypes = [] } ->
-			mlds_output_stmt(Indent + 3, FuncInfo, return([]))
+			mlds_output_stmt(Indent + 3, FuncInfo, return([]),
+				Context)
 		;
-			mlds_indent(Indent + 3),
-			io__write_string("/*NOTREACHED*/\n")
+			globals__io_lookup_bool_option(auto_comments, Comments),
+			( { Comments = yes } ->
+				mlds_indent(Context, Indent + 3),
+				io__write_string("/*NOTREACHED*/\n")
+			;
+				[]
+			)
 		),
 
-		mlds_indent(Indent + 2),
+		mlds_indent(Context, Indent + 2),
 		io__write_string("}\n"), % end the `for(;;)'
 
-		mlds_indent(Indent),
+		mlds_indent(Context, Indent),
 		io__write_string("}\n")	% end the function
 	).
 
-:- pred mlds_output_func_decl(int, qualified_entity_name, func_params, 
+:- pred mlds_output_func_decl(indent, qualified_entity_name, func_params, 
 			io__state, io__state).
 :- mode mlds_output_func_decl(in, in, in, di, uo) is det.
 
@@ -487,7 +492,7 @@ mlds_output_func_decl(Indent, Name, Signature) -->
 	mlds_output_fully_qualified_name(Name, mlds_output_name),
 	mlds_output_params(Indent, Name, Parameters).
 
-:- pred mlds_output_params(int, qualified_entity_name, mlds__arguments,
+:- pred mlds_output_params(indent, qualified_entity_name, mlds__arguments,
 		io__state, io__state).
 :- mode mlds_output_params(in, in, in, di, uo) is det.
 
@@ -501,7 +506,7 @@ mlds_output_params(Indent, FuncName, Parameters) -->
 	),
 	io__write_char(')').
 
-:- pred mlds_output_param(int, qualified_entity_name,
+:- pred mlds_output_param(indent, qualified_entity_name,
 		pair(mlds__entity_name, mlds__type), io__state, io__state).
 :- mode mlds_output_param(in, in, in, di, uo) is det.
 
@@ -679,10 +684,21 @@ mlds_output_decl_flags(Flags) -->
 :- pred mlds_output_access(access, io__state, io__state).
 :- mode mlds_output_access(in, di, uo) is det.
 
-mlds_output_access(public)    --> [].
-mlds_output_access(private)   --> io__write_string("/* private: */ ").
-mlds_output_access(protected) --> io__write_string("/* protected: */ ").
-mlds_output_access(default)   --> io__write_string("/* default access */ ").
+mlds_output_access(Access) -->
+	globals__io_lookup_bool_option(auto_comments, Comments),
+	( { Comments = yes } ->
+		mlds_output_access_2(Access)
+	;
+		[]
+	).
+
+:- pred mlds_output_access_2(access, io__state, io__state).
+:- mode mlds_output_access_2(in, di, uo) is det.
+
+mlds_output_access_2(public)    --> [].
+mlds_output_access_2(private)   --> io__write_string("/* private: */ ").
+mlds_output_access_2(protected) --> io__write_string("/* protected: */ ").
+mlds_output_access_2(default)   --> io__write_string("/* default access */ ").
 
 :- pred mlds_output_per_instance(per_instance, io__state, io__state).
 :- mode mlds_output_per_instance(in, di, uo) is det.
@@ -722,28 +738,29 @@ mlds_output_abstractness(concrete) --> [].
 :- type func_info
 	--->	func_info(mlds__qualified_entity_name, mlds__func_params).
 
-:- pred mlds_output_statements(int, func_info, list(mlds__statement),
+:- pred mlds_output_statements(indent, func_info, list(mlds__statement),
 		io__state, io__state).
 :- mode mlds_output_statements(in, in, in, di, uo) is det.
 
 mlds_output_statements(Indent, FuncInfo, Statements) -->
 	list__foldl(mlds_output_statement(Indent, FuncInfo), Statements).
 
-:- pred mlds_output_statement(int, func_info, mlds__statement,
+:- pred mlds_output_statement(indent, func_info, mlds__statement,
 		io__state, io__state).
 :- mode mlds_output_statement(in, in, in, di, uo) is det.
 
 mlds_output_statement(Indent, FuncInfo, mlds__statement(Statement, Context)) -->
 	mlds_output_context(Context),
-	mlds_output_stmt(Indent, FuncInfo, Statement).
+	mlds_output_stmt(Indent, FuncInfo, Statement, Context).
 
-:- pred mlds_output_stmt(int, func_info, mlds__stmt, io__state, io__state).
-:- mode mlds_output_stmt(in, in, in, di, uo) is det.
+:- pred mlds_output_stmt(indent, func_info, mlds__stmt, mlds__context,
+		io__state, io__state).
+:- mode mlds_output_stmt(in, in, in, in, di, uo) is det.
 
 	%
 	% sequence
 	%
-mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements)) -->
+mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements), Context) -->
 	mlds_indent(Indent),
 	io__write_string("{\n"),
 	( { Defns \= [] } ->
@@ -755,23 +772,23 @@ mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements)) -->
 		[]
 	),
 	mlds_output_statements(Indent + 1, FuncInfo, Statements),
-	mlds_indent(Indent),
+	mlds_indent(Context, Indent),
 	io__write_string("}\n").
 
 	%
 	% iteration
 	%
-mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, no)) -->
+mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, no), _) -->
 	mlds_indent(Indent),
 	io__write_string("while ("),
 	mlds_output_rval(Cond),
 	io__write_string(")\n"),
 	mlds_output_statement(Indent + 1, FuncInfo, Statement).
-mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, yes)) -->
+mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, yes), Context) -->
 	mlds_indent(Indent),
 	io__write_string("do\n"),
 	mlds_output_statement(Indent + 1, FuncInfo, Statement),
-	mlds_indent(Indent),
+	mlds_indent(Context, Indent),
 	io__write_string("while ("),
 	mlds_output_rval(Cond),
 	io__write_string(");\n").
@@ -779,7 +796,8 @@ mlds_output_stmt(Indent, FuncInfo, while(Cond, Statement, yes)) -->
 	%
 	% selection (see also computed_goto)
 	%
-mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse)) -->
+mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
+		Context) -->
 	%
 	% we need to take care to avoid problems caused by the
 	% dangling else ambiguity
@@ -798,7 +816,7 @@ mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse)) -->
 	io__write_string(")\n"),
 	mlds_output_statement(Indent + 1, FuncInfo, Then),
 	( { MaybeElse = yes(Else) } ->
-		mlds_indent(Indent),
+		mlds_indent(Context, Indent),
 		io__write_string("else\n"),
 		mlds_output_statement(Indent + 1, FuncInfo, Else)
 	;
@@ -808,7 +826,7 @@ mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse)) -->
 	%
 	% transfer of control
 	%
-mlds_output_stmt(Indent, _FuncInfo, label(LabelName)) -->
+mlds_output_stmt(Indent, _FuncInfo, label(LabelName), _) -->
 	%
 	% Note: MLDS allows labels at the end of blocks.
 	% C doesn't.  Hence we need to insert a semi-colon after the colon
@@ -817,12 +835,12 @@ mlds_output_stmt(Indent, _FuncInfo, label(LabelName)) -->
 	mlds_indent(Indent - 1),
 	mlds_output_label_name(LabelName),
 	io__write_string(":;\n").
-mlds_output_stmt(Indent, _FuncInfo, goto(LabelName)) -->
+mlds_output_stmt(Indent, _FuncInfo, goto(LabelName), _) -->
 	mlds_indent(Indent),
 	io__write_string("goto "),
 	mlds_output_label_name(LabelName),
 	io__write_string(";\n").
-mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels)) -->
+mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels), Context) -->
 	% XXX for GNU C, we could output potentially more efficient code
 	% by using an array of labels; this would tell the compiler that
 	% it didn't need to do any range check.
@@ -832,7 +850,7 @@ mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels)) -->
 	io__write_string(") {"),
 	{ OutputLabel =
 	    (pred(Label::in, Count0::in, Count::out, di, uo) is det -->
-		mlds_indent(Indent + 1),
+		mlds_indent(Context, Indent + 1),
 		io__write_string("case "),
 		io__write_int(Count0),
 		io__write_string(": goto "),
@@ -841,16 +859,17 @@ mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels)) -->
 		{ Count = Count0 + 1 }
 	) },
 	list__foldl2(OutputLabel, Labels, 0, _FinalCount),
-	mlds_indent(Indent + 1),
+	mlds_indent(Context, Indent + 1),
 	io__write_string("default: /*NOTREACHED*/ assert(0);\n"),
-	mlds_indent(Indent),
+	mlds_indent(Context, Indent),
 	io__write_string("}\n").
 
 	%
 	% function call/return
 	%
-mlds_output_stmt(Indent, CallerFuncInfo, call(_Signature, FuncRval,
-	 	MaybeObject, CallArgs, Results, IsTailCall)) -->
+mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
+	{ Call = call(_Signature, FuncRval, MaybeObject, CallArgs,
+		Results, IsTailCall) },
 	%
 	% Optimize directly-recursive tail calls
 	% XXX tail recursion optimization should be disable-able
@@ -890,14 +909,23 @@ mlds_output_stmt(Indent, CallerFuncInfo, call(_Signature, FuncRval,
 	->
 		mlds_indent(Indent),
 		io__write_string("{\n"),
-		mlds_indent(Indent + 1),
-		io__write_string("/* tail recursive call */\n"),
+		globals__io_lookup_bool_option(auto_comments, Comments),
+		( { Comments = yes } ->
+			mlds_indent(Context, Indent + 1),
+			io__write_string("/* tail recursive call */\n")
+		;
+			[]
+		),
 		{ Params = mlds__func_params(FuncArgs, _RetTypes) },
-		mlds_output_assign_args(Indent + 1, ModuleName, FuncArgs,
-			CallArgs),
-		mlds_indent(Indent + 1),
-		io__write_string("continue; /* go to start of function */\n"),
-		mlds_indent(Indent),
+		mlds_output_assign_args(Indent + 1, ModuleName, Context,
+			FuncArgs, CallArgs),
+		mlds_indent(Context, Indent + 1),
+		( { Comments = yes } ->
+			io__write_string("continue; /* go to start of function */\n")
+		;
+			io__write_string("continue;\n")
+		),
+		mlds_indent(Context, Indent),
 		io__write_string("}\n")
 	;
 		%
@@ -919,7 +947,7 @@ mlds_output_stmt(Indent, CallerFuncInfo, call(_Signature, FuncRval,
 				io__write_string("return ")
 			;
 				io__write_string("{\n"),
-				mlds_indent(Indent + 1)
+				mlds_indent(Context, Indent + 1)
 			)
 		;
 			[]
@@ -944,16 +972,16 @@ mlds_output_stmt(Indent, CallerFuncInfo, call(_Signature, FuncRval,
 		io__write_string(");\n"),
 
 		( { IsTailCall = tail_call, Results = [] } ->
-			mlds_indent(Indent + 1),
+			mlds_indent(Context, Indent + 1),
 			io__write_string("return;\n"),
-			mlds_indent(Indent),
+			mlds_indent(Context, Indent),
 			io__write_string("}\n")
 		;
 			[]
 		)
 	).
 
-mlds_output_stmt(Indent, _FuncInfo, return(Results)) -->
+mlds_output_stmt(Indent, _FuncInfo, return(Results), _) -->
 	mlds_indent(Indent),
 	io__write_string("return"),
 	( { Results = [] } ->
@@ -969,7 +997,7 @@ mlds_output_stmt(Indent, _FuncInfo, return(Results)) -->
 	%
 	% commits
 	%
-mlds_output_stmt(Indent, _FuncInfo, do_commit(Ref)) -->
+mlds_output_stmt(Indent, _FuncInfo, do_commit(Ref), _) -->
 	mlds_indent(Indent),
 	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
 	( { GCC_LocalLabels = yes } ->
@@ -983,7 +1011,7 @@ mlds_output_stmt(Indent, _FuncInfo, do_commit(Ref)) -->
 		io__write_string(", 1)")
 	),
 	io__write_string(";\n").
-mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler)) -->
+mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler), Context) -->
 	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
 	(
 		{ GCC_LocalLabels = yes },
@@ -1003,18 +1031,18 @@ mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler)) -->
 
 		mlds_output_statement(Indent, FuncInfo, Stmt0),
 
-		mlds_indent(Indent),
+		mlds_indent(Context, Indent),
 		io__write_string("goto "),
 		mlds_output_lval(Ref),
 		io__write_string("_done;\n"),
 
-		mlds_indent(Indent - 1),
+		mlds_indent(Context, Indent - 1),
 		mlds_output_lval(Ref),
 		io__write_string(":\n"),
 
 		mlds_output_statement(Indent, FuncInfo, Handler),
 
-		mlds_indent(Indent - 1),
+		mlds_indent(Context, Indent - 1),
 		mlds_output_lval(Ref),
 		io__write_string("_done:\t;\n")
 
@@ -1052,7 +1080,7 @@ mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler)) -->
 
 		mlds_output_statement(Indent + 1, FuncInfo, Stmt),
 
-		mlds_indent(Indent),
+		mlds_indent(Context, Indent),
 		io__write_string("else\n"),
 
 		mlds_output_statement(Indent + 1, FuncInfo, Handler)
@@ -1060,16 +1088,16 @@ mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler)) -->
 
 	% Assign the specified list of rvals to the arguments.
 	% This is used as part of tail recursion optimization (see above).
-:- pred mlds_output_assign_args(int, mlds_module_name, mlds__arguments,
-		list(mlds__rval), io__state, io__state).
-:- mode mlds_output_assign_args(in, in, in, in, di, uo) is det.
+:- pred mlds_output_assign_args(indent, mlds_module_name, mlds__context,
+		mlds__arguments, list(mlds__rval), io__state, io__state).
+:- mode mlds_output_assign_args(in, in, in, in, in, di, uo) is det.
 
-mlds_output_assign_args(_, _, [_|_], []) -->
+mlds_output_assign_args(_, _, _, [_|_], []) -->
 	{ error("mlds_output_assign_args: length mismatch") }.
-mlds_output_assign_args(_, _, [], [_|_]) -->
+mlds_output_assign_args(_, _, _, [], [_|_]) -->
 	{ error("mlds_output_assign_args: length mismatch") }.
-mlds_output_assign_args(_, _, [], []) --> [].
-mlds_output_assign_args(Indent, ModuleName,
+mlds_output_assign_args(_, _, _, [], []) --> [].
+mlds_output_assign_args(Indent, ModuleName, Context,
 		[Name - _Type | Rest], [Arg | Args]) -->
 	(
 		%
@@ -1081,14 +1109,14 @@ mlds_output_assign_args(Indent, ModuleName,
 	->
 		[]
 	;
-		mlds_indent(Indent),
+		mlds_indent(Context, Indent),
 		mlds_output_fully_qualified_name(qual(ModuleName, Name),
 			mlds_output_name),
 		io__write_string(" = "),
 		mlds_output_rval(Arg),
 		io__write_string(";\n")
 	),
-	mlds_output_assign_args(Indent, ModuleName, Rest, Args).
+	mlds_output_assign_args(Indent, ModuleName, Context, Rest, Args).
 
 	%
 	% exception handling
@@ -1100,8 +1128,8 @@ mlds_output_assign_args(Indent, ModuleName,
 	%
 	% atomic statements
 	%
-mlds_output_stmt(Indent, _FuncInfo, atomic(AtomicStatement)) -->
-	mlds_output_atomic_stmt(Indent, AtomicStatement).
+mlds_output_stmt(Indent, _FuncInfo, atomic(AtomicStatement), Context) -->
+	mlds_output_atomic_stmt(Indent, AtomicStatement, Context).
 
 :- pred mlds_output_label_name(mlds__label, io__state, io__state).
 :- mode mlds_output_label_name(in, di, uo) is det.
@@ -1109,14 +1137,14 @@ mlds_output_stmt(Indent, _FuncInfo, atomic(AtomicStatement)) -->
 mlds_output_label_name(LabelName) -->
 	io__write_string(LabelName).
 
-:- pred mlds_output_atomic_stmt(int, mlds__atomic_statement,
+:- pred mlds_output_atomic_stmt(indent, mlds__atomic_statement, mlds__context,
 				io__state, io__state).
-:- mode mlds_output_atomic_stmt(in, in, di, uo) is det.
+:- mode mlds_output_atomic_stmt(in, in, in, di, uo) is det.
 
 	%
 	% comments
 	%
-mlds_output_atomic_stmt(Indent, comment(Comment)) -->
+mlds_output_atomic_stmt(Indent, comment(Comment), _) -->
 	% XXX we should escape any "*/"'s in the Comment.
 	%     we should also split the comment into lines and indent
 	%     each line appropriately.
@@ -1128,7 +1156,7 @@ mlds_output_atomic_stmt(Indent, comment(Comment)) -->
 	%
 	% assignment
 	%
-mlds_output_atomic_stmt(Indent, assign(Lval, Rval)) -->
+mlds_output_atomic_stmt(Indent, assign(Lval, Rval), _) -->
 	mlds_indent(Indent),
 	mlds_output_lval(Lval),
 	io__write_string(" = "),
@@ -1138,8 +1166,9 @@ mlds_output_atomic_stmt(Indent, assign(Lval, Rval)) -->
 	%
 	% heap management
 	%
-mlds_output_atomic_stmt(Indent, new_object(Target,
-		MaybeTag, Type, MaybeSize, MaybeCtorName, Args, ArgTypes)) -->
+mlds_output_atomic_stmt(Indent, NewObject, Context) -->
+	{ NewObject = new_object(Target, MaybeTag, Type, MaybeSize,
+		MaybeCtorName, Args, ArgTypes) },
 	mlds_indent(Indent),
 	mlds_output_lval(Target),
 	io__write_string(" = "),
@@ -1173,15 +1202,15 @@ mlds_output_atomic_stmt(Indent, new_object(Target,
 	io__write_string(")"),
 	io__write_string(EndMkword),
 	io__write_string(";\n"),
-	mlds_output_init_args(Args, ArgTypes, 0, Target, Tag, Indent).
+	mlds_output_init_args(Args, ArgTypes, Context, 0, Target, Tag, Indent).
 
-mlds_output_atomic_stmt(Indent, mark_hp(Lval)) -->
+mlds_output_atomic_stmt(Indent, mark_hp(Lval), _) -->
 	mlds_indent(Indent),
 	io__write_string("MR_mark_hp("),
 	mlds_output_lval(Lval),
 	io__write_string(");\n").
 
-mlds_output_atomic_stmt(Indent, restore_hp(Rval)) -->
+mlds_output_atomic_stmt(Indent, restore_hp(Rval), _) -->
 	mlds_indent(Indent),
 	io__write_string("MR_mark_hp("),
 	mlds_output_rval(Rval),
@@ -1190,13 +1219,13 @@ mlds_output_atomic_stmt(Indent, restore_hp(Rval)) -->
 	%
 	% trail management
 	%
-mlds_output_atomic_stmt(_Indent, trail_op(_TrailOp)) -->
+mlds_output_atomic_stmt(_Indent, trail_op(_TrailOp), _) -->
 	{ error("mlds_to_c.m: sorry, trail_ops not implemented") }.
 
 	%
 	% foreign language interfacing
 	%
-mlds_output_atomic_stmt(_Indent, target_code(_TargetLang, _CodeString)) -->
+mlds_output_atomic_stmt(_Indent, target_code(_TargetLang, _CodeString), _) -->
 	{ error("mlds_to_c.m: sorry, target_code not implemented") }.
 /*
 		target_code(target_lang, string)
@@ -1206,18 +1235,18 @@ mlds_output_atomic_stmt(_Indent, target_code(_TargetLang, _CodeString)) -->
 			% that does not have any non-local flow of control.
 */
 
-:- pred mlds_output_init_args(list(rval), list(mlds__type), int, mlds__lval,
-		tag, int, io__state, io__state).
-:- mode mlds_output_init_args(in, in, in, in, in, in, di, uo) is det.
+:- pred mlds_output_init_args(list(rval), list(mlds__type), mlds__context,
+		int, mlds__lval, tag, indent, io__state, io__state).
+:- mode mlds_output_init_args(in, in, in, in, in, in, in, di, uo) is det.
 
-mlds_output_init_args([_|_], [], _, _, _, _) -->
+mlds_output_init_args([_|_], [], _, _, _, _, _) -->
 	{ error("mlds_output_init_args: length mismatch") }.
-mlds_output_init_args([], [_|_], _, _, _, _) -->
+mlds_output_init_args([], [_|_], _, _, _, _, _) -->
 	{ error("mlds_output_init_args: length mismatch") }.
-mlds_output_init_args([], [], _, _, _, _) --> [].
-mlds_output_init_args([Arg|Args], [_ArgType|ArgTypes], ArgNum, Target, Tag,
-		Indent) -->
-	mlds_indent(Indent),
+mlds_output_init_args([], [], _, _, _, _, _) --> [].
+mlds_output_init_args([Arg|Args], [_ArgType|ArgTypes], Context,
+		ArgNum, Target, Tag, Indent) -->
+	mlds_indent(Context, Indent),
 	io__write_string("MR_field("),
 	mlds_output_tag(Tag),
 	io__write_string(", "),
@@ -1227,7 +1256,8 @@ mlds_output_init_args([Arg|Args], [_ArgType|ArgTypes], ArgNum, Target, Tag,
 	io__write_string(") = "),
 	mlds_output_rval(Arg),
 	io__write_string(";\n"),
-	mlds_output_init_args(Args, ArgTypes, ArgNum + 1, Target, Tag, Indent).
+	mlds_output_init_args(Args, ArgTypes, Context,
+		ArgNum + 1, Target, Tag, Indent).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1524,10 +1554,32 @@ mlds_output_data_addr(data_addr(_ModuleName, DataName)) -->
 
 %-----------------------------------------------------------------------------%
 %
-% Miscellaneous
+% Miscellaneous stuff to handle indentation and generation of
+% source context annotations (#line directives).
 %
 
-:- pred mlds_indent(int, io__state, io__state).
+:- pred mlds_output_context(mlds__context, io__state, io__state).
+:- mode mlds_output_context(in, di, uo) is det.
+
+mlds_output_context(Context) -->
+	{ ProgContext = mlds__get_prog_context(Context) },
+	{ term__context_file(ProgContext, FileName) },
+	{ term__context_line(ProgContext, LineNumber) },
+	c_util__set_line_num(FileName, LineNumber).
+
+:- pred mlds_indent(mlds__context, indent, io__state, io__state).
+:- mode mlds_indent(in, in, di, uo) is det.
+
+mlds_indent(Context, N) -->
+	mlds_output_context(Context),
+	mlds_indent(N).
+
+% A value of type `indent' records the number of levels
+% of indentation to indent the next piece of code.
+% Currently we output two spaces for each level of indentation.
+:- type indent == int.
+
+:- pred mlds_indent(indent, io__state, io__state).
 :- mode mlds_indent(in, di, uo) is det.
 
 mlds_indent(N) -->
