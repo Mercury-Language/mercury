@@ -901,7 +901,7 @@ case $status in
     0)
 	: if we get this far, then it worked.
 	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
-	date >> $TESTDIR/logs/success."$TEST_ID" ;;
+	date >> $TESTDIR/logs/success."$TEST_ID"
 	case $HOST in murlibobo)
 	    cd $DIR &&
 		# Delete older stable versions that this one replaces
