@@ -2750,12 +2750,21 @@ limitations.
 
 @itemize @bullet
 @item
-if you mix an @samp{import_module} declaration for a parent module
+If you mix an @samp{import_module} declaration for a parent module
 with a @samp{use_module} declaration for the child, or vice versa,
 then the compiler may report some spurious errors.
 @item
-Using @samp{mmake} to do parallel makes (e.g. @samp{mmake --jobs 2})
-doesn't always work correctly in the case of nested sub-modules.
+The compiler sometimes reports spurious errors if you
+defining an equivalence type in a nested module and export it
+as abstract type.
+@item
+If you enable intermodule optimization, then the compiler
+often reports spurious errors about undeclared symbols in @samp{.opt} files.
+@item
+The Mercury build tool Mmake sometimes tries to build things in the
+wrong order and hence reports spurious errors about @samp{.int*} files
+not being found.  In these cases, simply typing @samp{mmake} again will
+usually solve the problem.
 @end itemize
 
 @node Type classes

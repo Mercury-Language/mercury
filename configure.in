@@ -1752,9 +1752,24 @@ case "$host" in
 		;;
 esac
 
+#
+# This sets the default value of RM_C, which should be either `rm' to
+# remove the intermediate C files, or `:' to keep them.
+#
+# If RM_C is set to `rm', then unfortunately Mmake needs to invoke
+# make recursively, and this causes several problems:
+#	(1) it causes performance problems, particularly on MS-Windows
+#	(2) it can break parallel makes, because there are race
+#           conditions involved when you invoke make recursively
+#	    in a parallel make
+#
+# Therefore by default we currently keep the intermediate C files.
+#
+DEFAULT_RM_C=:
+
 case $EXT_FOR_PIC_OBJECTS in
 	o)
-		LIBRARY_RM_C=rm
+		LIBRARY_RM_C=$DEFAULT_RM_C
 		;;
 	*)
 		# If we're going to be building both `.pic_o' files
@@ -1776,6 +1791,7 @@ AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
+AC_SUBST(DEFAULT_RM_C)
 AC_SUBST(LIBRARY_RM_C)
 if test $USE_DLLS = "yes"; then
 	AC_DEFINE(USE_DLLS)
