@@ -533,8 +533,18 @@ case $status in 0)
 
     [ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
     case $status in
-        0) date >> $TESTDIR/logs/install.$INSTALL_DIR_NAME.$HOST ;;
-        *) date >> $TESTDIR/logs/install-failed.$INSTALL_DIR_NAME.$HOST ;;
+        0) 
+	    case $C_COMPILER in
+	        gcc) date >> $TESTDIR/logs/install.$INSTALL_DIR_NAME.$HOST ;;
+	        *)   date >> $TESTDIR/logs/install.$INSTALL_DIR_NAME.$HOST-$C_COMPILER ;;
+	    esac
+	    ;;
+        *)
+	    case $C_COMPILER in
+	        gcc) date >> $TESTDIR/logs/install-failed.$INSTALL_DIR_NAME.$HOST ;;
+	        *)   date >> $TESTDIR/logs/install-failed.$INSTALL_DIR_NAME.$HOST-$C_COMPILER ;;
+	    esac
+	    ;;
     esac
 esac
 

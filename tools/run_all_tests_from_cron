@@ -77,23 +77,27 @@ cvs checkout mercury/tools/generate_index_html
 
 echo run_test $HOST
 
-mv -f $tm_dir/logs/old/test_mercury_$HOST.out $tm_dir/logs/old2 2>/dev/null
-mv -f $tm_dir/logs/test_mercury_$HOST.out $tm_dir/logs/old 2>/dev/null
+case "$C_COMPILER" in
+	gcc)	logname="test_mercury_$HOST.out" ;;
+	*)	logname="test_mercury_$HOST-$C_COMPILER.out" ;;
+esac
+
+mv -f $tm_dir/logs/old/$logname $tm_dir/logs/old2 2>/dev/null
+mv -f $tm_dir/logs/$logname $tm_dir/logs/old 2>/dev/null
+logfile="$tm_dir/logs/$logname"
 
 tmpfile=/tmp/run_test$$
 trap 'rm -f $tmpfile $tmpscript; exit 1' 1 2 3 13 15
 {
-echo Subject: Mercury auto-test on $HOST
+echo "Subject: Mercury auto-test on $HOST (with $C_COMPILER)"
 echo
-logfile=$tm_dir/logs/test_mercury_$HOST.out
-
 if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $C_COMPILER \
 		> $logfile 2>&1
 then
 	echo test passed
 	echo
-	echo last 10 lines of log file:
-	tail -10 $logfile
+	echo last 20 lines of log file:
+	tail -20 $logfile
 	echo
 	case $HOST in
 		hg) base=/home/hg ;;
@@ -112,8 +116,8 @@ else
 	echo test FAILED
 	echo log file in $tm_dir/logs/test_mercury_$HOST.out
 	echo
-	echo last 10 lines of log file:
-	tail -10 $logfile
+	echo last 20 lines of log file:
+	tail -20 $logfile
 fi
 } > $tmpfile 2>&1
 # NB we can't just pipe into $mail, because $mail times out while
