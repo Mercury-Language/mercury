@@ -23,9 +23,18 @@
 extern	int	MR_trace_call_seqno;
 extern	int	MR_trace_call_depth;
 
+/*
+** This enum should exactly match the definition of the `trace_port' type in
+** library/debugger_interface.
+*/
 typedef	enum {
-	MR_PORT_CALL, MR_PORT_EXIT, MR_PORT_FAIL,
-	MR_PORT_THEN, MR_PORT_ELSE, MR_PORT_DISJ, MR_PORT_SWITCH
+	MR_PORT_CALL,
+	MR_PORT_EXIT,
+	MR_PORT_FAIL,
+	MR_PORT_THEN,
+	MR_PORT_ELSE,
+	MR_PORT_DISJ,
+	MR_PORT_SWITCH
 } MR_trace_port;
 
 extern	void	MR_trace(
@@ -34,5 +43,14 @@ extern	void	MR_trace(
 	int,			/* call sequence number */
 	int,			/* call depth */
 	const char *);		/* path to event goal within procedure */
+
+/*
+** MR_trace_init() is called from mercury_runtime_init()
+** when the debuggee programs begins.
+** MR_trace_end() is called from mercury_runtime_terminate()
+** when the debuggee programs is exiting.
+*/
+extern	void	MR_trace_init(void);
+extern	void	MR_trace_end(void);
 
 #endif /* MERCURY_TRACE_H */

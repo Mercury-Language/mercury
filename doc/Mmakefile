@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1997 The University of Melbourne.
+# Copyright (C) 1996-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -94,30 +94,44 @@ mercury_library.info: library.texi
 
 # The following rules automatically build the library documentation
 # by extracting the module interfaces from the library source code.
+# Note that the debugger_interface.m module is just an implementation
+# detail of the library, so it is not documented.
 
 library-menu.texi: $(LIBRARY_DIR)/*.m
-	{ \
-	echo ""; \
-	for file in $(LIBRARY_DIR)/*.m; do \
-		echo "* `basename $$file .m`::"; \
-	done; \
+	{								\
+	echo "";							\
+	for filename in $(LIBRARY_DIR)/*.m; do				\
+		case $$filename in					\
+			$(LIBRARY_DIR)/debugger_interface.m)		\
+				;;					\
+			*)						\
+				echo "* `basename $$filename .m`::"; 	\
+				;;					\
+		esac;							\
+	done;								\
 	} > library-menu.texi
 
 library-chapters.texi: $(LIBRARY_DIR)/*.m
-	for filename in $(LIBRARY_DIR)/*.m; do \
-		file="`basename $$filename .m`"; \
-		echo "@node $$file"; \
-		echo "@chapter $$file"; \
-		echo "@example"; \
-		sed -n -e '/:- implementation/q' \
-			-e 's/^%----*----% *$$/%--------------------------------------------------%/' \
-			-e 's/@/@@/g' \
-			-e 's/{/@{/g' \
-			-e 's/}/@}/g' \
-			-e 'p' \
-			"$$filename"; \
-		echo "@end example"; \
-		echo ""; \
+	for filename in $(LIBRARY_DIR)/*.m; do 				\
+		case $$filename in					\
+			$(LIBRARY_DIR)/debugger_interface.m)		\
+				;;					\
+			*)						\
+				file="`basename $$filename .m`"; 	\
+				echo "@node $$file"; 			\
+				echo "@chapter $$file"; 		\
+				echo "@example"; 			\
+				sed -n -e '/:- implementation/q' 	\
+					-e 's/^%----*----% *$$/%--------------------------------------------------%/' 						\
+					-e 's/@/@@/g' 			\
+					-e 's/{/@{/g' 			\
+					-e 's/}/@}/g' 			\
+					-e 'p' 				\
+					"$$filename"; 			\
+				echo "@end example"; 			\
+				echo ""; 				\
+				;;					\
+		esac;							\
 	done > library-chapters.texi
 
 library.dvi library_toc.html mercury_library.info: \

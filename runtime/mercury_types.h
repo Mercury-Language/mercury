@@ -13,6 +13,7 @@
 #define MERCURY_TYPES_H
 
 #include "mercury_conf.h"
+#include <stdio.h>	/* for `FILE' */
 
 /* 
 ** Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*)
@@ -54,6 +55,12 @@ typedef void (*Cont) (void);
 
 /* spinlocks -- see mercury_spinlock.h */
 typedef Word	SpinLock;
+
+/* MercuryFile is used for the Mercury io__stream type in library/io.m */
+typedef struct mercury_file {
+	FILE *file;
+	int line_number;
+} MercuryFile;
 
 /*
 ** semidet predicates indicate success or failure by leaving nonzero or zero

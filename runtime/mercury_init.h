@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1997 The University of Melbourne.
+** Copyright (C) 1993-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -96,6 +96,16 @@ Declare_entry(mercury__main_2_0);		/* in the user's program */
 extern	void	mercury_init_io(void);		/* in the Mercury library */
 extern	void	ML_io_init_state(void);		/* in the Mercury library */
 extern	void	ML_io_finalize_state(void);	/* in the Mercury library */
+
+/* in library/debugger_interface.m */
+void	ML_DI_output_current(Integer, Integer, Integer, Word, String,
+		String, Integer, Integer, Integer, Word, String, Word, Word);
+		/* normally ML_DI_output_current (output_current/13) */
+bool	ML_DI_found_match(Integer, Integer, Integer, Word, String, String,
+		Integer, Integer, Integer, Word, String, Word);
+		/* normally ML_DI_found_match (found_match/12) */
+void	ML_DI_read_request_from_socket(Word, Word *, Integer *);
+
 
 #endif /* not MERCURY_INIT_H */
 

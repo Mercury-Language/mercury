@@ -37,6 +37,7 @@ ENDINIT
 #include	"mercury_getopt.h"
 #include	"mercury_init.h"
 #include	"mercury_dummy.h"
+#include	"mercury_trace.h"
 
 /* global variables concerned with testing (i.e. not with the engine) */
 
@@ -129,6 +130,13 @@ void	(*MR_library_finalizer)(void);
 		/* normally ML_io_finalize_state (io__finalize_state/2) */
 Code	*MR_library_trace_browser;
 		/* normally mercury__io__print_3_0 (io__print/3) */
+void	(*MR_DI_output_current_ptr)(Integer, Integer, Integer, Word, String,
+		String, Integer, Integer, Integer, Word, String, Word, Word);
+		/* normally ML_DI_output_current (output_current/13) */
+bool	(*MR_DI_found_match)(Integer, Integer, Integer, Word, String, String,
+		Integer, Integer, Integer, Word, String, Word);
+		/* normally ML_DI_found_match (output_current/12) */
+void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
@@ -236,6 +244,8 @@ mercury_runtime_init(int argc, char **argv)
 	*/
 	restore_transient_registers();
 	save_registers();
+
+	MR_trace_init();
 
 	/* initialize the Mercury library */
 	(*MR_library_initializer)();
@@ -959,6 +969,8 @@ mercury_runtime_terminate(void)
 	** and our caller may need them.
 	*/
 	save_regs_to_mem(c_regs);
+
+	MR_trace_end();
 
 	(*MR_library_finalizer)();
 

@@ -130,8 +130,8 @@ typedef enum {
 } MR_Lval_NonVar;
 
 typedef struct { 
-	Word	type;
-	Word	inst;
+	Word	type;	/* contains a type_info */
+	Word	inst;	/* not yet used; currently always -1 */
 } MR_Var_Shape_Info;
 
 #define MR_LIVE_TYPE_IS_VAR(T)         ( (Word) T > TYPELAYOUT_MAX_VARINT )
@@ -227,14 +227,9 @@ typedef struct {
 ** Structs and macros to support stack layouts.
 */
 
-typedef	struct MR_stack_layout_shape_struct {
-	Word			*MR_sls_type;
-	Word			MR_sls_inst;
-} MR_stack_layout_shape;
-
 typedef	struct MR_stack_layout_var_struct {
-	Integer			MR_slv_locn;
-	MR_stack_layout_shape	*MR_slv_shape;
+	MR_Live_Lval		MR_slv_locn;
+	MR_Live_Type		MR_slv_live_type;
 } MR_stack_layout_var;
 
 typedef	struct MR_stack_layout_vars_struct {

@@ -1598,7 +1598,7 @@ io__write_array(Array) -->
 
 io__write_c_pointer(_C_Pointer) -->
 	% XXX what should we do here?
-	io__write_string("<<c_pointer>>").
+	io__write_string("'<<c_pointer>>'").
 
 %-----------------------------------------------------------------------------%
 
@@ -2038,11 +2038,6 @@ io__set_op_table(_OpTable) --> [].
 ** Mercury files are not quite the same as C stdio FILEs,
 ** because we keep track of a little bit more information.
 */
-
-typedef struct mercury_file {
-	FILE *file;
-	int line_number;
-} MercuryFile;
 
 extern MercuryFile mercury_stdin;
 extern MercuryFile mercury_stdout;
