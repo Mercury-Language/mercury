@@ -512,6 +512,19 @@ intermod__traverse_cases([case(F, Goal0) | Cases0],
 		intermod_info::in, intermod_info::out) is det.
 
 intermod__add_proc(PredId, DoWrite) -->
+	( { invalid_pred_id(PredId) } ->
+		% This will happen for type class instance methods
+		% defined using the clause syntax.  Currently we
+		% can't handle intermodule-optimization of those.
+		{ DoWrite = no }
+	;
+		intermod__add_proc_2(PredId, DoWrite)
+	).
+
+:- pred intermod__add_proc_2(pred_id::in, bool::out,
+		intermod_info::in, intermod_info::out) is det.
+
+intermod__add_proc_2(PredId, DoWrite) -->
 	intermod_info_get_module_info(ModuleInfo),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_import_status(PredInfo, Status) },
@@ -907,8 +920,9 @@ intermod__qualify_instance_method(ModuleInfo,
 	pred_info_arg_types(MethodCallPredInfo, MethodCallTVarSet, _,
 		MethodCallArgTypes),
 	InstanceMethod0 = instance_method(PredOrFunc, MethodName,
-			InstanceMethodName0, MethodArity, MethodContext),
+			InstanceMethodDefn0, MethodArity, MethodContext),
 	(
+		InstanceMethodDefn0 = name(InstanceMethodName0),
 		PredOrFunc = function,
 		module_info_get_predicate_table(ModuleInfo, PredicateTable),
 		(
@@ -928,15 +942,31 @@ intermod__qualify_instance_method(ModuleInfo,
 			    "intermod__qualify_instance_method: undefined ",
 			    MethodStr, Msg),
 			error(Msg)
-		)
+		),
+		InstanceMethodDefn = name(InstanceMethodName)
 	;
+		InstanceMethodDefn0 = name(InstanceMethodName0),
 		PredOrFunc = predicate,
 		typecheck__resolve_pred_overloading(ModuleInfo,
 			MethodCallArgTypes, MethodCallTVarSet,
-			InstanceMethodName0, InstanceMethodName, PredId)
+			InstanceMethodName0, InstanceMethodName, PredId),
+		InstanceMethodDefn = name(InstanceMethodName)
+	;
+		InstanceMethodDefn0 = clauses(_ItemList),
+		%
+		% XXX for methods defined using this syntax
+		% it is a little tricky to write out the .opt files,
+		% so for now I've just disabled intermodule optimization
+		% for type class instance declarations using the new
+		% syntax.
+		%
+		% This will force intermod__add_proc to return DoWrite = no
+		invalid_pred_id(PredId),
+		% We can just leave the method definition unchanged
+		InstanceMethodDefn = InstanceMethodDefn0
 	),
 	InstanceMethod = instance_method(PredOrFunc, MethodName,
-			InstanceMethodName, MethodArity, MethodContext).
+			InstanceMethodDefn, MethodArity, MethodContext).
 
 %-----------------------------------------------------------------------------%
 
