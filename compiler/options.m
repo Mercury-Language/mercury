@@ -3779,10 +3779,13 @@ options_help_link -->
 
 		"--linkage {shared|static}",
 		"\tSpecify whether to use shared or static linking for",
-		"\texecutables.",
+		"\texecutables.  Shared libraries are always linked",
+		"\twith `--linkage shared'.",
 		"--mercury-linkage {shared|static}",
 		"\tSpecify whether to use shared or static linking when",
 		"\tlinking an executable with Mercury libraries.",
+		"\tShared libraries are always linked with",
+		"\t`--mercury-linkage shared'.",
 
 		"--init-file-directory <directory>",
 		"\tAppend <directory> to the list of directories to",

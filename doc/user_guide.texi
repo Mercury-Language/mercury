@@ -6575,12 +6575,14 @@ to be passed to @samp{c2init} when tracing is enabled.
 @item --linkage @{shared,static@}
 @findex --linkage
 Specify whether to use shared or static linking for executables.
+Shared libraries are always linked with @samp{--linkage shared}.
 
 @sp 1
 @item --mercury-linkage @{shared,static@}
 @findex --mercury-linkage
 Specify whether to use shared or static linking when
 linking an executable with Mercury libraries.
+Shared libraries are always linked with @samp{--mercury-linkage shared}.
 
 @end table
 
