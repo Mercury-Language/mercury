@@ -9,7 +9,7 @@ run_tests.
 
 test(TestNum, Name, String, Term, ExpectedTerm, Result) :-
 	get_test(TestNum, Name, String, ExpectedTerm),
-	my__sread(String, Term),
+	mercury__sread(String, Term),
 	( Term = ExpectedTerm ->
 		Result = succeeded
 	;
