@@ -4384,6 +4384,7 @@ The set of aspects and their alternatives are:
 @cindex .profdeep (grade modifier)
 @cindex .tr (grade modifier)
 @cindex .gc (grade modifier)
+@cindex .mps (grade modifier)
 @cindex .agc (grade modifier)
 @cindex .rt (grade modifier)
 @cindex .debug (grade modifier)

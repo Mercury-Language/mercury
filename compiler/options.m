@@ -2595,7 +2595,7 @@ options_help_compilation_model -->
 % and the --gcc-nested-functions option is not yet documented.
 %		"\t`hl', `hl_nest', `hlc_nest'",
 		"\tor one of those with one or more of the grade modifiers",
-		"\t`.gc', `.prof', `.memprof', `.tr', `.rt', `.debug', `.par'",
+		"\t`.gc', `.mps', `.prof', `.memprof', `.tr', `.rt', `.debug', `.par'",
 		"\tand/or `.pic_reg' appended.",
 		"\tDepending on your particular installation, only a subset",
 		"\tof these possible grades will have been installed.",
