@@ -118,162 +118,102 @@ try_again:
                 new_data = data;    /* just a copy of the actual item */
                 break;
 
+            /* case MR_SECTAG_REMOTE: */
+            /* case MR_SECTAG_NONE: */
                 /*
                 ** The code we want to execute for the MR_SECTAG_REMOTE
-                ** and MR_SECTAG_NONE cases is the following. However,
-                ** this code checks the secondary tag location several times
-                ** and also checks whether exist_info is NULL several times.
-                ** Since speed is important, we duplicate the code downstream
-                ** of the first test of each kind. To avoid double maintenance
-                ** problems, the stuff that is duplicated is macro invocations;
-                ** each macro is of course defined only once.
+                ** and MR_SECTAG_NONE cases is very similar.  However,
+                ** speed is important here, and we don't want to check
+                ** the secondary tag location multiple times at run-time.
+                ** So we define the code for thest two cases as a macro,
+                ** `MR_handle_sectag_remote_or_none(have_sectag)',
+                ** and invoke it twice below, with constant values for the
+                ** `have_sectag' argument.  This ensures that the C
+                ** preprocessor will duplicate the code and the C compiler
+                ** will then optimize away the tests at compile time.
+                **
+                ** Likewise, we are careful to avoid testing
+                ** `exist_info != NULL' multiple times at run-time.
+                ** This requres two copies of the MR_get_first_slot() code,
+                ** which is why we define that as a macro too.
                 */
 
-/*
-**          case MR_SECTAG_REMOTE:
-**          case MR_SECTAG_NONE:
-**
-**              data_value = (MR_Word *) MR_body(data, ptag);
-**              if (in_range(data_value)) {
-**                  const MR_DuFunctorDesc  *functor_desc;
-**                  const MR_DuExistInfo    *exist_info;
-**                  MR_bool                 have_sectag;
-**                  int                     sectag;
-**                  int                     cell_size;
-**                  int                     cur_slot;
-**                  int                     arity;
-**                  int                     num_ti_plain;
-**                  int                     num_tci;
-**                  int                     i;
-**
-**                  have_sectag =
-**                      (ptag_layout->MR_sectag_locn != MR_SECTAG_NONE);
-**                  if (!have_sectag) {
-**                      sectag = 0;
-**                  } else {
-**                      sectag = data_value[0];
-**                  }
-**
-**                  functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
-**                  arity = functor_desc->MR_du_functor_orig_arity;
-**                  exist_info = functor_desc->MR_du_functor_exist_info;
-**
-**                  if (!have_sectag) {
-**                      cell_size = arity;
-**                  } else {
-**                      cell_size = 1 + arity;
-**                  }
-**
-**                  if (exist_info == NULL) {
-**                      num_ti_plain = 0;
-**                      num_tci = 0;
-**                  } else {
-**                      num_ti_plain = exist_info->MR_exist_typeinfos_plain;
-**                      num_tci = exist_info->MR_exist_tcis;
-**                      cell_size += num_ti_plain + num_tci;
-**                  }
-**
-**                  MR_incr_saved_hp(new_data, cell_size);
-**
-**                  if (!have_sectag) {
-**                      cur_slot = 0;
-**                  } else {
-**                      MR_field(0, new_data, 0) = sectag;
-**                      cur_slot = 1;
-**                  }
-**
-**                  for (i = 0; i < num_ti_plain; i++) {
-**                      MR_field(0, new_data, cur_slot) = (MR_Word)
-**                          copy_type_info((MR_TypeInfo *)
-**                              &data_value[cur_slot],
-**                              lower_limit, upper_limit);
-**                      cur_slot++;
-**                  }
-**
-**                  for (i = 0; i < num_tci; i++) {
-**                      MR_field(0, new_data, cur_slot) = (MR_Word)
-**                          copy_typeclass_info(&data_value[cur_slot],
-**                              lower_limit, upper_limit);
-**                      cur_slot++;
-**                  }
-**
-**                  for (i = 0; i < arity; i++) {
-**                      if (MR_arg_type_may_contain_var(functor_desc, i)) {
-**                          MR_Word *parent_data = (MR_Word *) new_data;
-**                          if (have_sectag) {
-**                              // skip past the secondary tag
-**                              parent_data++;
-**                          }
-**                          MR_field(0, new_data, cur_slot) =
-**                              copy_arg(parent_data, &data_value[cur_slot],
-**                                  functor_desc,
-**                                  MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
-**                                      type_info),
-**                                  functor_desc->MR_du_functor_arg_types[i],
-**                                  lower_limit, upper_limit);
-**                      } else {
-**                          MR_field(0, new_data, cur_slot) =
-**                              copy(&data_value[cur_slot],
-**                                  MR_pseudo_type_info_is_ground(
-**                                  functor_desc->MR_du_functor_arg_types[i]),
-**                                  lower_limit, upper_limit);
-**                      }
-**                      cur_slot++;
-**                  }
-**
-**                  new_data = (MR_Word) MR_mkword(ptag, new_data);
-**                  leave_forwarding_pointer(data_ptr, new_data);
-**              } else {
-**                  new_data = data;
-**                  found_forwarding_pointer(data);
-**              }
-**              break;
-*/
-
-/*
-** IMPORTANT: the macros below should be kept in sync with the comment above.
-*/
-
-#define MR_DC_decl                                                      \
-                    const MR_DuFunctorDesc  *functor_desc;              \
-                    const MR_DuExistInfo    *exist_info;                \
-                    MR_bool                 have_sectag;                \
-                    int                     sectag;                     \
-                    int                     cell_size;                  \
-                    int                     cur_slot;                   \
-                    int                     arity;                      \
-                    int                     num_ti_plain;               \
-                    int                     num_tci;                    \
-                    int                     i;
-
-#define MR_DC_functor_desc                                              \
-                    functor_desc = ptag_layout->MR_sectag_alternatives  \
-                        [sectag];                                       \
-                    arity = functor_desc->MR_du_functor_orig_arity;     \
-                    exist_info = functor_desc->MR_du_functor_exist_info;
-
-#define MR_DC_setup_exist_info                                          \
-                        num_ti_plain = exist_info->MR_exist_typeinfos_plain;\
-                        num_tci = exist_info->MR_exist_tcis;            \
-                        cell_size += num_ti_plain + num_tci;
-
-#define MR_DC_copy_exist_info                                           \
-                    for (i = 0; i < num_ti_plain; i++) {                \
-                        MR_field(0, new_data, cur_slot) = (MR_Word)     \
-                            copy_type_info((MR_TypeInfo *)              \
-                                &data_value[cur_slot],                  \
-                                lower_limit, upper_limit);              \
-                        cur_slot++;                                     \
-                    }                                                   \
-                                                                        \
-                    for (i = 0; i < num_tci; i++) {                     \
-                        MR_field(0, new_data, cur_slot) = (MR_Word)     \
-                            copy_typeclass_info(&data_value[cur_slot],  \
-                                lower_limit, upper_limit);              \
-                        cur_slot++;                                     \
-                    }
-
-#define MR_DC_copy_plain_args                                               \
+#define MR_get_first_slot(have_sectag)                                      \
+        do {                                                                \
+                /* this `if' will get evaluated at compile time */          \
+                if (!have_sectag) {                                         \
+                    cur_slot = 0;                                           \
+                } else {                                                    \
+                    MR_field(0, new_data, 0) = sectag;                      \
+                    cur_slot = 1;                                           \
+                }                                                           \
+        } while(0)
+                                                                            \
+#define MR_handle_sectag_remote_or_none(have_sectag)                        \
+        do {                                                                \
+                data_value = (MR_Word *) MR_body(data, ptag);               \
+                if (in_range(data_value)) {                                 \
+                    const MR_DuFunctorDesc  *functor_desc;                  \
+                    const MR_DuExistInfo    *exist_info;                    \
+                    int                     sectag;                         \
+                    int                     cell_size;                      \
+                    int                     cur_slot;                       \
+                    int                     arity;                          \
+                    int                     i;                              \
+                                                                            \
+                    /* this `if' will get evaluated at compile time */      \
+                    if (!have_sectag) {                                     \
+                        sectag = 0;                                         \
+                    } else {                                                \
+                        sectag = data_value[0];                             \
+                    }                                                       \
+                                                                            \
+                    functor_desc = ptag_layout->MR_sectag_alternatives      \
+                        [sectag];                                           \
+                    arity = functor_desc->MR_du_functor_orig_arity;         \
+                    exist_info = functor_desc->MR_du_functor_exist_info;    \
+                                                                            \
+                    /* this `if' will get evaluated at compile time */      \
+                    if (!have_sectag) {                                     \
+                        cell_size = arity;                                  \
+                    } else {                                                \
+                        cell_size = 1 + arity;                              \
+                    }                                                       \
+                                                                            \
+                    if (exist_info == NULL) {                               \
+                                                                            \
+                        MR_incr_saved_hp(new_data, cell_size);              \
+                                                                            \
+                        MR_get_first_slot(have_sectag);                     \
+                                                                            \
+                    } else {                                                \
+                        int                 num_ti_plain;                   \
+                        int                 num_tci;                        \
+                                                                            \
+                        num_ti_plain = exist_info->MR_exist_typeinfos_plain; \
+                        num_tci = exist_info->MR_exist_tcis;                \
+                        cell_size += num_ti_plain + num_tci;                \
+                                                                            \
+                        MR_incr_saved_hp(new_data, cell_size);              \
+                                                                            \
+                        MR_get_first_slot(have_sectag);                     \
+                                                                            \
+                        for (i = 0; i < num_ti_plain; i++) {                \
+                            MR_field(0, new_data, cur_slot) = (MR_Word)     \
+                                copy_type_info((MR_TypeInfo *)              \
+                                    &data_value[cur_slot],                  \
+                                    lower_limit, upper_limit);              \
+                            cur_slot++;                                     \
+                        }                                                   \
+                                                                            \
+                        for (i = 0; i < num_tci; i++) {                     \
+                            MR_field(0, new_data, cur_slot) = (MR_Word)     \
+                                copy_typeclass_info(&data_value[cur_slot],  \
+                                    lower_limit, upper_limit);              \
+                            cur_slot++;                                     \
+                        }                                                   \
+                    }                                                       \
+                                                                            \
                     for (i = 0; i < arity; i++) {                           \
                         if (MR_arg_type_may_contain_var(functor_desc, i)) { \
                             MR_Word *parent_data = (MR_Word *) new_data;    \
@@ -282,86 +222,38 @@ try_again:
                                 parent_data++;                              \
                             }                                               \
                             MR_field(0, new_data, cur_slot) =               \
-                                copy_arg(parent_data, &data_value[cur_slot],\
+                                copy_arg(parent_data, &data_value[cur_slot], \
                                     functor_desc,                           \
                                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR( \
                                         type_info),                         \
-                                    functor_desc->MR_du_functor_arg_types[i],\
+                                    functor_desc->MR_du_functor_arg_types[i], \
                                     lower_limit, upper_limit);              \
                         } else {                                            \
                             MR_field(0, new_data, cur_slot) =               \
                                 copy(&data_value[cur_slot],                 \
                                     MR_pseudo_type_info_is_ground(          \
-                                    functor_desc->MR_du_functor_arg_types[i]),\
+                                    functor_desc->MR_du_functor_arg_types[i]), \
                                     lower_limit, upper_limit);              \
                         }                                                   \
                         cur_slot++;                                         \
-                    }
-
-            /*
-            ** IMPORTANT: the code below should be kept in sync
-            ** with the comment above.
-            */
+                    }                                                       \
+                                                                            \
+                    new_data = (MR_Word) MR_mkword(ptag, new_data);         \
+                    leave_forwarding_pointer(data_ptr, new_data);           \
+                } else {                                                    \
+                    new_data = data;                                        \
+                    found_forwarding_pointer(data);                         \
+                }                                                           \
+        } while(0)
 
             case MR_SECTAG_REMOTE:
-                data_value = (MR_Word *) MR_body(data, ptag);
-                if (in_range(data_value)) {
-                    MR_DC_decl
-                    have_sectag = MR_TRUE;
-                    sectag = data_value[0];
-                    MR_DC_functor_desc
-                    cell_size = 1 + arity;
-                    if (exist_info != NULL) {
-                        MR_DC_setup_exist_info
-                        MR_incr_saved_hp(new_data, cell_size);
-                        MR_field(0, new_data, 0) = sectag;
-                        cur_slot = 1;
-                        MR_DC_copy_exist_info
-                    } else {
-                        MR_incr_saved_hp(new_data, cell_size);
-                        MR_field(0, new_data, 0) = sectag;
-                        cur_slot = 1;
-                    }
-                    MR_DC_copy_plain_args
-
-                    new_data = (MR_Word) MR_mkword(ptag, new_data);
-                    leave_forwarding_pointer(data_ptr, new_data);
-                } else {
-                    new_data = data;
-                    found_forwarding_pointer(data);
-                }
+                /* see comments above */
+                MR_handle_sectag_remote_or_none(MR_TRUE);
                 break;
 
-            /*
-            ** IMPORTANT: the code below should be kept in sync
-            ** with the comment above.
-            */
-
             case MR_SECTAG_NONE:
-                data_value = (MR_Word *) MR_body(data, ptag);
-                if (in_range(data_value)) {
-                    MR_DC_decl
-                    have_sectag = MR_FALSE;
-                    sectag = 0;
-                    MR_DC_functor_desc
-                    cell_size = arity;
-                    if (exist_info != NULL) {
-                        MR_DC_setup_exist_info
-                        MR_incr_saved_hp(new_data, cell_size);
-                        cur_slot = 0;
-                        MR_DC_copy_exist_info
-                    } else {
-                        MR_incr_saved_hp(new_data, cell_size);
-                        cur_slot = 0;
-                    }
-                    MR_DC_copy_plain_args
-
-                    new_data = (MR_Word) MR_mkword(ptag, new_data);
-                    leave_forwarding_pointer(data_ptr, new_data);
-                } else {
-                    new_data = data;
-                    found_forwarding_pointer(data);
-                }
+                /* see comments above */
+                MR_handle_sectag_remote_or_none(MR_FALSE);
                 break;
 
             case MR_SECTAG_VARIABLE:
@@ -608,7 +500,7 @@ try_again:
                 old_array = (MR_ArrayType *) data_value;
                 array_size = old_array->size;
                 for (i = 0; i < array_size; i++) {
-                    copy_arg(NULL, 
+                    (void) copy_arg(NULL, 
                         &old_array->elements[i], NULL, 
                         MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                         (const MR_PseudoTypeInfo) 1, lower_limit, upper_limit);
