@@ -1075,6 +1075,16 @@ mlds_output_class(Indent, Name, Context, ClassDefn) -->
 	% Output the class declaration and the class members.
 	% We treat enumerations specially.
 	%
+	% Note that standard ANSI/ISO C does not allow empty structs.
+	% We could handle empty structs here, by adding a dummy member,
+	% but that would waste a lot of space, and would also
+	% cause incompatibilities between the data layout for
+	% --high-level-data and --no-high-level-data.  So instead,
+	% we make it is the responsibility of the MLDS code generator
+	% to not generate any.  (E.g. ml_type_gen.m checks whether
+	% `target_uses_empty_base_classes' before generating empty
+	% structs.)  Hence we don't need to check for empty structs here.
+	%
 	mlds_output_class_decl(Indent, Name, ClassDefn),
 	io__write_string(" {\n"),
 	( { Kind = mlds__enum } ->
@@ -1226,8 +1236,6 @@ mlds_needs_initialization(init_struct([])) = no.
 mlds_needs_initialization(init_struct([_|_])) = yes.
 mlds_needs_initialization(init_array(_)) = yes.
 
-	% XXX ANSI/ISO C does not allow empty arrays or empty structs;
-	% what we do for them here is probably not quite right.
 :- pred mlds_output_initializer_body(mlds__initializer, io__state, io__state).
 :- mode mlds_output_initializer_body(in, di, uo) is det.
 
@@ -1235,16 +1243,24 @@ mlds_output_initializer_body(no_initializer) --> [].
 mlds_output_initializer_body(init_obj(Rval)) -->
 	mlds_output_rval(Rval).
 mlds_output_initializer_body(init_struct(FieldInits)) -->
+	% Note that standard ANSI/ISO C does not allow empty structs.
+	% But it is the responsibility of the MLDS code generator
+	% to not generate any.  So we don't need to handle empty
+	% initializers specially here.
 	io__write_string("{\n\t\t"),
 	io__write_list(FieldInits, ",\n\t\t", mlds_output_initializer_body),
 	io__write_string("}").
 mlds_output_initializer_body(init_array(ElementInits)) -->
 	io__write_string("{\n\t\t"),
-	(
-		{ ElementInits = [] }
-	->
-			% The MS VC++ compiler only generates a symbol, if
-			% the array has a known size.
+	% Standard ANSI/ISO C does not allow empty arrays. But the MLDS does.
+	% To keep the C compiler happy, we therefore convert zero-element
+	% MLDS arrays into one-element C arrays.  (The extra element is
+	% a minor waste of space, but it will otherwise be ignored.)
+	% So if the initializer list here is empty, we need to output
+	% a single initializer.  We can initialize the extra element
+	% with any value; we use "0", since that is a valid initializer
+	% for any type.
+	( { ElementInits = [] } ->
 		io__write_string("0")
 	;
 		io__write_list(ElementInits,
@@ -1830,9 +1846,10 @@ mlds_output_type_suffix(mlds__unknown_type, _) -->
 mlds_output_array_type_suffix(no_size) -->
 	io__write_string("[]").
 mlds_output_array_type_suffix(array_size(Size0)) -->
-	%
-	% ANSI/ISO C forbids arrays of size 0.
-	%
+	% Standard ANSI/ISO C does not allow arrays of size 0.
+	% But the MLDS does.  To keep the C compiler happy,
+	% we therefore convert zero-element MLDS arrays into
+	% one-element C arrays.
 	{ int__max(Size0, 1, Size) },
 	io__format("[%d]", [i(Size)]).
 

@@ -546,6 +546,10 @@
 :- type mlds__class_name == string.
 :- type mlds__class == mlds__fully_qualified_name(mlds__class_name).
 
+	% Note that standard C doesn't support empty structs,
+	% so when targetting C, it is the MLDS code generator's
+	% responsibility to ensure that each generated MLDS class
+	% has at least one base class or non-static data member.
 :- type mlds__class_defn
 	---> mlds__class_defn(
 		kind	::	mlds__class_kind,
