@@ -48,6 +48,7 @@
 #include "mercury_trace_external.h"
 #include "mercury_trace_spy.h"
 #include "mercury_trace_util.h"
+#include "mercury_trace_vars.h"
 
 #include <stdio.h>
 
