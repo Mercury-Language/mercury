@@ -33,6 +33,13 @@
 :- pred parser__read_term(read_term, io__state, io__state).
 :- mode parser__read_term(out, di, uo) is det.
 
+	% The string is the filename to use for the current input stream;
+	% this is used in constructing the term__contexts in the read term.
+	% This interface is used to support the `:- pragma source_file'
+	% directive.
+:- pred parser__read_term(string, read_term, io__state, io__state).
+:- mode parser__read_term(in, out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -47,11 +54,15 @@
 %-----------------------------------------------------------------------------%
 
 parser__read_term(Result) -->
+	io__input_stream_name(FileName),
+	parser__read_term(FileName, Result).
+
+parser__read_term(FileName, Result) -->
 	lexer__get_token_list(Tokens),
 	( { Tokens = [] } ->
 		{ Result = eof }
 	;
-		parser__init_state(Tokens, ParserState0),
+		{ parser__init_state(FileName, Tokens, ParserState0) },
 		{ parser__parse_whole_term(Term, ParserState0, ParserState) },
 		{ parser__final_state(ParserState, VarSet, LeftOverTokens) },
 		{ parser__check_for_errors(Term, VarSet,
@@ -596,16 +607,14 @@ parser__could_start_term(eof, no).
 
 %-----------------------------------------------------------------------------%
 
-:- pred parser__init_state(token_list, parser__state, io__state, io__state).
-:- mode parser__init_state(in, out, di, uo) is det.
+:- pred parser__init_state(string, token_list, parser__state).
+:- mode parser__init_state(in, in, out) is det.
 
-parser__init_state(Tokens, ParserState) -->
-	{ ops__init_op_table(OpTable) },
-	{ varset__init(VarSet) },
-	{ map__init(Names) },
-	io__input_stream_name(FileName),
-	{ ParserState = parser__state(FileName, OpTable, VarSet,
-		Tokens, Names) }.
+parser__init_state(FileName, Tokens, ParserState) :-
+	ops__init_op_table(OpTable),
+	varset__init(VarSet),
+	map__init(Names),
+	ParserState = parser__state(FileName, OpTable, VarSet, Tokens, Names).
 
 :- pred parser__final_state(parser__state, varset, token_list).
 :- mode parser__final_state(in, out, out) is det.

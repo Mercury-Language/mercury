@@ -135,7 +135,7 @@ lexer__get_context(Context) -->
 :- mode lexer__get_token_1(out, di, uo) is det.
 
 	% We use a big switch on Char here for efficiency - obviously not
-	% for consiseness.
+	% for conciseness.
 lexer__get_token_1(Token) -->
 	io__read_char(Result),
 	( { Result = error(Error) }, !,
@@ -180,7 +180,7 @@ lexer__get_token_1(Token) -->
 		; { Char = ' ' }, lexer__get_token_2(Token)
 		; { Char = ('!') }, { Token = name("!") }
 		; { Char = '"' }, lexer__get_quoted_name(Char, [], Token)
-		; { Char = ('#') }, lexer__get_graphic([Char], Token)
+		; { Char = ('#') }, lexer__get_source_line_number([], Token)
 		; { Char = ('$') }, lexer__get_graphic([Char], Token)
 		; { Char = ('%') }, lexer__skip_to_eol(Token)
 		; { Char = ('&') }, lexer__get_graphic([Char], Token)
@@ -330,7 +330,7 @@ lexer__get_token_2(Token) -->
 		; { Char = ('!'),  Token = name("!") }
 		; { Char = '"' },
 			lexer__get_quoted_name(Char, [], Token)
-		; { Char = ('#') }, lexer__get_graphic([Char], Token)
+		; { Char = ('#') }, lexer__get_source_line_number([], Token)
 		; { Char = ('$') }, lexer__get_graphic([Char], Token)
 		; { Char = ('%') }, lexer__skip_to_eol(Token)
 		; { Char = ('&') }, lexer__get_graphic([Char], Token)
@@ -781,6 +781,54 @@ lexer__get_name(Chars, Token) -->
 			io__putback_char(Char),
 			{ lexer__rev_char_list_to_string(Chars, Name) },
 			{ Token = name(Name) }
+		)
+	).
+
+	%
+	% A line number directive token is `#' followed by an integer
+	% (specifying the line number) followed by a newline.
+	% Such a token sets the source line number for the next
+	% line, but it is otherwise ignored.  This means that line number
+	% directives may appear anywhere, including in the middle of terms.
+	% (The source file name can be set with a `:- pragma source_file' 
+	% declaration.)
+	%
+
+:- pred lexer__get_source_line_number(list(char), token, io__state, io__state).
+:- mode lexer__get_source_line_number(in, out, di, uo) is det.
+
+lexer__get_source_line_number(Chars, Token) -->
+	io__read_char(Result),
+	( { Result = error(Error) }, !,
+		{ Token = io_error(Error) }
+	; { Result = eof }, !,
+		{ Token = error(
+			"unexpected end-of-file in `#' line number directive") }
+	; { Result = ok(Char) },
+		( { char__is_digit(Char) } ->
+			lexer__get_source_line_number([Char | Chars], Token)
+		; { Char = '\n' } ->
+			{ lexer__rev_char_list_to_string(Chars, String) },
+			(
+				{ string__base_string_to_int(10, String, Int) },
+				{ Int > 0 }
+			->
+				io__set_line_number(Int),
+				lexer__get_token_1(Token)
+			;
+				{ string__append_list([
+					"invalid line number `", String,
+					"' in `#' line number directive"],
+					Message) },
+				{ Token = error(Message) }
+			)
+		;
+			{ string__from_char_list([Char], String) },
+			{ string__append_list([
+				"invalid character `", String,
+				"' in `#' line number directive"],
+				Message),
+			Token = error(Message) }
 		)
 	).
 

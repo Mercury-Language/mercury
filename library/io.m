@@ -304,6 +304,15 @@
 %	Return the line number of the current input stream.
 %	Lines are numbered starting at 1.
 
+:- pred io__set_line_number(int, io__state, io__state).
+:- mode io__set_line_number(in, di, uo) is det.
+
+:- pred io__set_line_number(io__input_stream, int, io__state, io__state).
+:- mode io__set_line_number(in, in, di, uo) is det.
+
+%	Return the line number of the current input stream.
+%	Lines are numbered starting at 1.
+
 %-----------------------------------------------------------------------------%
 
 % Output text stream predicates.
@@ -368,14 +377,14 @@
 %	Retrieves the human-readable name associated with the current
 %	output stream.
 %	For file streams, this is the filename.
-%	For stdout this is the string "<standard input>".
+%	For stdout this is the string "<standard output>".
 %	For stderr this is the string "<standard error>".
 
 :- pred io__output_stream_name(io__output_stream, string, io__state, io__state).
 :- mode io__output_stream_name(in, out, di, uo) is det.
 %	Retrieves the human-readable name associated with the specified stream.
 %	For file streams, this is the filename.
-%	For stdout this is the string "<standard input>".
+%	For stdout this is the string "<standard output>".
 %	For stderr this is the string "<standard error>".
 
 %-----------------------------------------------------------------------------%
@@ -1807,6 +1816,19 @@ void sys_init_io_stream_module(void) {
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	LineNum = stream->line_number;
+	update_io(IO0, IO);
+}").
+	
+:- pragma(c_code, io__set_line_number(LineNum::in, IO0::di, IO::uo), "
+	mercury_current_text_input->line_number = LineNum;
+	update_io(IO0, IO);
+").
+	
+:- pragma(c_code,
+	io__set_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
+"{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	stream->line_number = LineNum;
 	update_io(IO0, IO);
 }").
 	
