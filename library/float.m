@@ -37,6 +37,12 @@
 % XXX Here too the current Mercury implementation does not
 % implement the intended semantics correctly on all platforms.
 %
+% XXX On machines such as x86 which support extra precision
+% for intermediate results, the results may depend on the
+% level of optimization, in particular inlining and evaluation
+% of constant expressions.
+% For example, the goal `1.0/9.0 = std_util__id(1.0)/9.0' may fail.
+
 %---------------------------------------------------------------------------%
 
 :- module float.

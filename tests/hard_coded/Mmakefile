@@ -55,7 +55,6 @@ ORDINARY_PROGS=	\
 	factt \
 	failure_unify \
 	field_syntax \
-	float_consistency \
 	float_field \
 	float_map \
 	float_reg \
@@ -204,7 +203,11 @@ else
 endif
 
 # We do not pass the following tests at all:
-# 
+#
+# XXX float_consistency:
+#     floats in Mercury aren't consistent -- see the comments at the
+#     top of library/float.m.
+#
 # XXX loop_inv_test0, loop_inv_test1, loop_inv_test2:
 #     loop invariant optimization is not properly optimizing these cases.
 #
