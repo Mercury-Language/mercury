@@ -61,9 +61,9 @@
 %
 % The runtime system can figure out which form is present by testing
 % the value of the first slot. A value of 0 or 1 indicates the first form;
-% any higher value indicates the second form. A negative value indicates
-% that procid_stack_layout is not set, and that the later fields are not
-% present.
+% any higher value indicates the second form. The distinguished value -1
+% indicates that procid_stack_layout is not set, and that the later fields
+% are not present.
 %
 % The meanings of the fields in both forms are the same as in procedure labels.
 %

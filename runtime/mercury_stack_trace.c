@@ -310,25 +310,53 @@ MR_print_proc_id_for_debugger(const MR_Stack_Layout_Entry *entry_layout)
 }
 
 void
-MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
+MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 	const char *extra)
 {
-	/*
-	** The following should be a full identification of the procedure
-	** provided (a) there was no intermodule optimization and (b) we are
-	** not interested in the details of compiler-generated procedures.
-	**
-	** XXX We should make it work even if (a) and (b) are not true.
-	*/
+	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
+		fatal_error("cannot print procedure id without layout");
+	}
 
-	fprintf(fp, "%s %s:%s/%ld-%ld (%s)",
-		entry_layout->MR_sle_pred_or_func == MR_PREDICATE ?
-			"pred" : "func",
-		entry_layout->MR_sle_def_module,
-		entry_layout->MR_sle_name,
-		(long) entry_layout->MR_sle_arity,
-		(long) entry_layout->MR_sle_mode,
-		detism_names[entry_layout->MR_sle_detism]);
+	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+		fprintf(fp, "%s for %s:%s/%ld-%ld",
+			entry->MR_sle_comp.MR_comp_pred_name,
+			entry->MR_sle_comp.MR_comp_type_module,
+			entry->MR_sle_comp.MR_comp_type_name,
+			(long) entry->MR_sle_comp.MR_comp_arity,
+			(long) entry->MR_sle_comp.MR_comp_mode);
+
+		if (strcmp(entry->MR_sle_comp.MR_comp_type_module,
+				entry->MR_sle_comp.MR_comp_def_module) != 0)
+		{
+			fprintf(fp, " {%s}",
+				entry->MR_sle_comp.MR_comp_def_module);
+		}
+	} else {
+		if (entry->MR_sle_user.MR_user_pred_or_func == MR_PREDICATE) {
+			fprintf(fp, "pred");
+		} else if (entry->MR_sle_user.MR_user_pred_or_func ==
+				MR_FUNCTION)
+		{
+			fprintf(fp, "func");
+		} else {
+			fatal_error("procedure is not pred or func");
+		}
+
+		fprintf(fp, " %s:%s/%ld-%ld",
+			entry->MR_sle_user.MR_user_decl_module,
+			entry->MR_sle_user.MR_user_name,
+			(long) entry->MR_sle_user.MR_user_arity,
+			(long) entry->MR_sle_user.MR_user_mode);
+
+		if (strcmp(entry->MR_sle_user.MR_user_decl_module,
+				entry->MR_sle_user.MR_user_def_module) != 0)
+		{
+			fprintf(fp, " {%s}",
+				entry->MR_sle_user.MR_user_def_module);
+		}
+	}
+
+	fprintf(fp, " (%s)", detism_names[entry->MR_sle_detism]);
 
 	if (extra != NULL) {
 		fprintf(fp, " %s\n", extra);

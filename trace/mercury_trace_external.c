@@ -424,15 +424,23 @@ static void
 MR_output_current_slots(const MR_Stack_Layout_Label *layout,
 	MR_Trace_Port port, Unsigned seqno, Unsigned depth, const char *path)
 {
+	/*
+	** XXX This function and the Mercury predicates it calls
+	** ought to be generalized to handle inter-module inlining,
+	** and either further generalized to handle compiler-generated
+	** procedures or to explicitly discard events involving
+	** compiler-generated procedures.
+	*/
+
 	MR_DI_output_current_slots(
 		MR_trace_event_number,
 		seqno,
 		depth,
 		port,
-		layout->MR_sll_entry->MR_sle_def_module,
-		layout->MR_sll_entry->MR_sle_name,
-		layout->MR_sll_entry->MR_sle_arity,
-		layout->MR_sll_entry->MR_sle_mode,
+		layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+		layout->MR_sll_entry->MR_sle_user.MR_user_name,
+		layout->MR_sll_entry->MR_sle_user.MR_user_arity,
+		layout->MR_sll_entry->MR_sle_user.MR_user_mode,
 		layout->MR_sll_entry->MR_sle_detism,
 		(String) (Word) path,
 		(Word) &MR_debugger_socket_out);
@@ -485,6 +493,14 @@ MR_found_match(const MR_Stack_Layout_Label *layout,
 {
 	bool result;
 
+	/*
+	** XXX This function and the Mercury predicates it calls
+	** ought to be generalized to handle inter-module inlining,
+	** and either further generalized to handle compiler-generated
+	** procedures or to explicitly discard events involving
+	** compiler-generated procedures.
+	*/
+
 	/* XXX get live vars from registers */
 	Word arguments = /* XXX FIXME!!! */ 0;
 	result = MR_DI_found_match(
@@ -492,10 +508,10 @@ MR_found_match(const MR_Stack_Layout_Label *layout,
 		seqno,
 		depth,
 		port,
-		layout->MR_sll_entry->MR_sle_def_module,
-		layout->MR_sll_entry->MR_sle_name,
-		layout->MR_sll_entry->MR_sle_arity,
-		layout->MR_sll_entry->MR_sle_mode,
+		layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+		layout->MR_sll_entry->MR_sle_user.MR_user_name,
+		layout->MR_sll_entry->MR_sle_user.MR_user_arity,
+		layout->MR_sll_entry->MR_sle_user.MR_user_mode,
 		layout->MR_sll_entry->MR_sle_detism,
 		arguments,
 		(String) (Word) path,

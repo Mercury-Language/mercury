@@ -94,7 +94,7 @@ MR_register_from_internal_label(const void *info)
 			! MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry))
 	{
 		module = MR_ensure_module_info_is_present(
-				entry->MR_sle_def_module);
+				entry->MR_sle_user.MR_user_decl_module);
 		MR_ensure_proc_node_is_present(module, entry);
 	}
 }
@@ -343,16 +343,20 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 }
 
 #define	match_name(spec, cur)	(((spec)->MR_proc_name == NULL) ||	\
-				streq((spec)->MR_proc_name, cur->MR_sle_name))
+				streq((spec)->MR_proc_name,		\
+					cur->MR_sle_user.MR_user_name))
 
 #define	match_arity(spec, cur)	(((spec)->MR_proc_arity < 0) ||		\
-				(spec)->MR_proc_arity == cur->MR_sle_arity)
+				(spec)->MR_proc_arity ==		\
+					cur->MR_sle_user.MR_user_arity)
 
 #define	match_mode(spec, cur)	(((spec)->MR_proc_mode < 0) ||		\
-				(spec)->MR_proc_mode == cur->MR_sle_mode)
+				(spec)->MR_proc_mode ==			\
+					cur->MR_sle_user.MR_user_mode)
 
 #define	match_pf(spec, cur)	(((int) (spec)->MR_proc_pf < 0) ||	\
-				(spec)->MR_proc_pf == cur->MR_sle_pred_or_func)
+				(spec)->MR_proc_pf ==			\
+					cur->MR_sle_user.MR_user_pred_or_func)
 
 static void
 MR_process_matching_procedures_in_module(MR_Module_Info *module,

@@ -248,11 +248,35 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 ** if MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry) evaluates to true.
 **
 ** Group (2) fields have a different interpretation if the procedure is
-** compiler-generated. You can test for this via the macro
-** MR_ENTRY_LAYOUT_COMPILER_GENERATED.
+** compiler-generated. You can test whether this is the case by using the macro
+** MR_ENTRY_LAYOUT_COMPILER_GENERATED, but only after checking that
+** MR_ENTRY_LAYOUT_HAS_PROC_ID is true.
 **
 ** For further details on the semantics of the fields, see stack_layout.m.
 */
+
+typedef struct MR_Stack_Layout_User_Proc_Struct {
+	MR_PredFunc		MR_user_pred_or_func;
+	String			MR_user_decl_module;
+	String			MR_user_def_module;
+	String			MR_user_name;
+	Integer			MR_user_arity;
+	Integer			MR_user_mode;
+} MR_Stack_Layout_User_Proc;
+
+typedef struct MR_Stack_Layout_Compiler_Proc_Struct {
+	String			MR_comp_type_name;
+	String			MR_comp_type_module;
+	String			MR_comp_def_module;
+	String			MR_comp_pred_name;
+	Integer			MR_comp_arity;
+	Integer			MR_comp_mode;
+} MR_Stack_Layout_Compiler_Proc;
+
+typedef union MR_Stack_Layout_Proc_Id_Union {
+	MR_Stack_Layout_User_Proc	MR_proc_user;
+	MR_Stack_Layout_Compiler_Proc	MR_proc_comp;
+} MR_Stack_Layout_Proc_Id;
 
 typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* stack traversal group */
@@ -262,12 +286,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	MR_Live_Lval		MR_sle_succip_locn;
 
 	/* proc id group */
-	MR_PredFunc		MR_sle_pred_or_func;
-	String			MR_sle_decl_module;
-	String			MR_sle_def_module;
-	String			MR_sle_name;
-	Integer			MR_sle_arity;
-	Integer			MR_sle_mode;
+	MR_Stack_Layout_Proc_Id	MR_sle_proc_id;
 
 	/* exec trace group */
 	struct MR_Stack_Layout_Label_Struct
@@ -275,15 +294,19 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	int			MR_sle_maybe_from_full;
 } MR_Stack_Layout_Entry;
 
+#define	MR_sle_user	MR_sle_proc_id.MR_proc_user
+#define	MR_sle_comp	MR_sle_proc_id.MR_proc_comp
+
 #define	MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)			\
-		((Word) entry->MR_sle_pred_or_func != -1)
+		((Word) entry->MR_sle_user.MR_user_pred_or_func != -1)
 
 #define	MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)			\
 		(MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)		\
 		&& entry->MR_sle_call_label != NULL)
 
 #define	MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)		\
-		((Unsigned) entry->MR_sle_pred_or_func > MR_FUNCTION)
+		((Unsigned) entry->MR_sle_user.MR_user_pred_or_func \
+		> MR_FUNCTION)
 
 /*
 ** Define a stack layout for a label that you know very little about.
