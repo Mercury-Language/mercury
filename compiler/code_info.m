@@ -440,7 +440,6 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 	map__init(StoreMap),
 	stack__push(StoreMapStack0, StoreMap, StoreMapStack),
 	code_info__max_slot(CallInfo, SlotCount0),
-		% XXX HACK
 	(
 		Category = nondeterministic
 	->
@@ -1266,8 +1265,9 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 		{ Contents = vars(Vars) },
 		code_info__must_be_swapped(Vars, Args, reg(Reg))
 	->
-			% get a spare register
-			% XXX we should make a more intelligent choice
+			% We could make a smarter choice here,
+			% but value numbering should make the
+			% code good enough.
 		code_info__get_next_free_register(Reg, NewReg),
 			% Update the register info -
 			% remove the entry for the old register,
@@ -1626,13 +1626,8 @@ code_info__must_be_swapped(Vars, Args, Lval) -->
 		code_info__var_must_be_swapped(Vars, Args, Liveness,
 			Variables, Lval)
 		;
-		% XXX as a temporary hack, due to bugs elsewhere,
-		% we need to swap out *any* argument, even if it's
-		% not live.
-		% YYY this is not quite the case - it is possible
-		% for a value to be in a register, be needed, and
-		% NOT be live. Eg, a parameter to a call not yet
-		% positioned, etc.
+		% We also need to swap out variables if they might
+		% be an argument that we haven't positioned yet.
 			set__member(Var, Vars),
 			list__member(Var, Args)
 	}.
@@ -1902,7 +1897,7 @@ code_info__remake_with_store_map -->
 	{ map__to_assoc_list(StoreMap, StoreList) },
 	{ map__init(Variables0) },
 	code_info__set_variables(Variables0),
-	code_info__remake_with_store_map_2(StoreList), % XXX is this in the right place?
+	code_info__remake_with_store_map_2(StoreList),
 	code_info__get_variables(Variables1),
 	{ map__to_assoc_list(Variables1, VarList) },
 	{ map__init(Registers) },
@@ -2151,7 +2146,7 @@ code_info__reenter_registers(Var, [L|Ls]) -->
 	->
 		code_info__add_variable_to_register(Var, R)
 	;
-		% XXX
+		% XXX should this be transitive?
 		{ L = field(_, lval(reg(R1)), _) }
 	->
 		code_info__add_variable_to_register(Var, R1)
@@ -2596,8 +2591,6 @@ code_info__current_store_map(Map) -->
 	).
 
 %---------------------------------------------------------------------------%
-
-	% XXX generate_livevals is less broken than it used to be
 
 code_info__generate_stack_livevals(LiveVals) -->
 	code_info__get_live_variables(LiveVars),

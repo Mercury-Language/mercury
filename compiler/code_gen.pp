@@ -616,7 +616,8 @@ code_gen__generate_semi_epilog(Instr) -->
 	code_info__setup_call(Args, HeadVars, callee, CodeA),
 	code_info__get_total_stackslot_count(NS0),
 	code_info__failure_cont(FailCont),
-	{ code_gen__output_args(Args, LiveArgs) },
+	{ code_gen__output_args(Args, LiveArgs0) },
+	{ bintree_set__insert(LiveArgs0, reg(r(1)), LiveArgs) },
 	{ LiveValCode = node([
 		livevals(yes, LiveArgs) - ""
 	]) },
