@@ -861,8 +861,8 @@ tree234__insert(Tin, K, V, Tout) :-
 
 tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
 	(
-		T0 = empty,
-		T1 = empty
+		T0 = empty
+		% T1 = empty implied by T0 = empty
 	->
 		compare(Result, K, K0),
 		(
@@ -956,9 +956,9 @@ tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
 
 tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 	(
-		T0 = empty,
-		T1 = empty,
-		T2 = empty
+		T0 = empty
+		% T1 = empty implied by T0 = empty
+		% T2 = empty implied by T0 = empty
 	->
 		compare(Result0, K, K0),
 		(
@@ -1157,8 +1157,8 @@ tree234__set(Tin, K, V, Tout) :-
 
 tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
 	(
-		T0 = empty,
-		T1 = empty
+		T0 = empty
+		% T1 = empty implied by T0 = empty
 	->
 		compare(Result, K, K0),
 		(
@@ -1254,9 +1254,9 @@ tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
 
 tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 	(
-		T0 = empty,
-		T1 = empty,
-		T2 = empty
+		T0 = empty
+		% T1 = empty implied by T0 = empty
+		% T2 = empty implied by T0 = empty
 	->
 		compare(Result0, K, K0),
 		(
@@ -2579,4 +2579,3 @@ tree234__foldl(F, T, A) = B :-
 tree234__map_values(F, T1) = T2 :-
 	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
 	tree234__map_values(P, T1, T2).
-
