@@ -3615,7 +3615,7 @@ fi
 
 #-----------------------------------------------------------------------------#
 
-AC_ARG_ENABLE(msvcrt,
+AC_ARG_WITH(msvcrt,
 [  --with-msvcrt
                           use the MS Visual C runtime if using MS C compiler.],
 mercury_cv_msvcrt=yes,mercury_cv_msvcrt=no)
