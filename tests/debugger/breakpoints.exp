@@ -1,11 +1,11 @@
-       1:      1  1 CALL pred breakpoints:main/2-0 (cc_multi) 
+       1:      1  1 CALL pred breakpoints:main/2-0 (cc_multi) breakpoints.m:17
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break data
  0: + stop  interface pred breakpoints:data/1-0 (det)
 mdb> continue
-       2:      2  2 CALL pred breakpoints:data/1-0 (det) 
+       2:      2  2 CALL pred breakpoints:data/1-0 (det) breakpoints.m:39 (breakpoints.m:15)
 mdb> disable 0
  0: - stop  interface pred breakpoints:data/1-0 (det)
 mdb> break info
@@ -36,20 +36,20 @@ mdb> disable 3
 mdb> break nodiag
  0: + stop  interface pred breakpoints:nodiag/3-0 (semidet)
 mdb> continue
-       5:      4  3 CALL pred breakpoints:qperm/2-0 (nondet) 
+       5:      4  3 CALL pred breakpoints:qperm/2-0 (nondet) breakpoints.m:45 (breakpoints.m:42)
 mdb> continue
-       6:      4  3 SWTC pred breakpoints:qperm/2-0 (nondet) s1;
+       6:      4  3 SWTC pred breakpoints:qperm/2-0 (nondet) s1; breakpoints.m:47
 mdb> finish -N
-      10:      6  4 CALL pred breakpoints:qperm/2-0 (nondet) 
+      10:      6  4 CALL pred breakpoints:qperm/2-0 (nondet) breakpoints.m:45 (breakpoints.m:49)
 mdb> finish -n
-      36:      6  4 EXIT pred breakpoints:qperm/2-0 (nondet) 
+      36:      6  4 EXIT pred breakpoints:qperm/2-0 (nondet) breakpoints.m:45 (breakpoints.m:49)
 mdb> continue
-      37:      4  3 EXIT pred breakpoints:qperm/2-0 (nondet) 
+      37:      4  3 EXIT pred breakpoints:qperm/2-0 (nondet) breakpoints.m:45 (breakpoints.m:42)
 mdb> continue
-      38:     15  3 CALL pred breakpoints:safe/1-0 (semidet) 
+      38:     15  3 CALL pred breakpoints:safe/1-0 (semidet) breakpoints.m:55 (breakpoints.m:43)
 mdb> finish
-      40:     16  4 CALL pred breakpoints:nodiag/3-0 (semidet) 
-      44:     15  3 FAIL pred breakpoints:safe/1-0 (semidet) 
+      40:     16  4 CALL pred breakpoints:nodiag/3-0 (semidet) breakpoints.m:60 (breakpoints.m:57)
+      44:     15  3 FAIL pred breakpoints:safe/1-0 (semidet) breakpoints.m:55
 mdb> delete *
  0: E stop  interface pred breakpoints:nodiag/3-0 (semidet)
  1: E stop  interface pred breakpoints:qperm/2-0 (nondet)

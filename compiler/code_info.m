@@ -655,13 +655,9 @@ code_info__set_non_common_static_data(PG, CI0, CI) :-
 :- pred code_info__succip_is_used(code_info, code_info).
 :- mode code_info__succip_is_used(in, out) is det.
 
-:- pred code_info__add_trace_layout_for_label(label, layout_label_info,
-	code_info, code_info).
-:- mode code_info__add_trace_layout_for_label(in, in, in, out) is det.
-
-:- pred code_info__add_gc_layout_for_label(label, layout_label_info,
-	code_info, code_info).
-:- mode code_info__add_gc_layout_for_label(in, in, in, out) is det.
+:- pred code_info__add_trace_layout_for_label(label, term__context,
+	layout_label_info, code_info, code_info).
+:- mode code_info__add_trace_layout_for_label(in, in, in, in, out) is det.
 
 :- pred code_info__add_non_common_static_data(comp_gen_c_data,
 	code_info, code_info).
@@ -670,6 +666,10 @@ code_info__set_non_common_static_data(PG, CI0, CI) :-
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
+:- pred code_info__add_resume_layout_for_label(label, layout_label_info,
+	code_info, code_info).
+:- mode code_info__add_resume_layout_for_label(in, in, in, out) is det.
 
 code_info__get_stack_slots(StackSlots, CI, CI) :-
 	code_info__get_exprn_info(ExprnInfo, CI, _),
@@ -835,36 +835,38 @@ code_info__get_next_cell_number(N) -->
 code_info__succip_is_used -->
 	code_info__set_succip_used(yes).
 
-code_info__add_trace_layout_for_label(Label, LayoutInfo) -->
+code_info__add_trace_layout_for_label(Label, Context, LayoutInfo) -->
 	code_info__get_layout_info(Internals0),
+	{ Exec = yes(Context - LayoutInfo) },
 	{ map__search(Internals0, Label, Internal0) ->
-		Internal0 = internal_layout_info(Exec0, Agc),
+		Internal0 = internal_layout_info(Exec0, Resume, Return),
 		( Exec0 = no ->
 			true
 		;
 			error("adding trace layout for already known label")
 		),
-		Internal = internal_layout_info(yes(LayoutInfo), Agc),
+		Internal = internal_layout_info(Exec, Resume, Return),
 		map__set(Internals0, Label, Internal, Internals)
 	;
-		Internal = internal_layout_info(yes(LayoutInfo), no),
+		Internal = internal_layout_info(Exec, no, no),
 		map__det_insert(Internals0, Label, Internal, Internals)
 	},
 	code_info__set_layout_info(Internals).
 
-code_info__add_gc_layout_for_label(Label, LayoutInfo) -->
+code_info__add_resume_layout_for_label(Label, LayoutInfo) -->
 	code_info__get_layout_info(Internals0),
+	{ Resume = yes(LayoutInfo) },
 	{ map__search(Internals0, Label, Internal0) ->
-		Internal0 = internal_layout_info(Exec, Agc0),
-		( Agc0 = no ->
+		Internal0 = internal_layout_info(Exec, Resume0, Return),
+		( Resume0 = no ->
 			true
 		;
 			error("adding gc layout for already known label")
 		),
-		Internal = internal_layout_info(Exec, yes(LayoutInfo)),
+		Internal = internal_layout_info(Exec, Resume, Return),
 		map__set(Internals0, Label, Internal, Internals)
 	;
-		Internal = internal_layout_info(no, yes(LayoutInfo)),
+		Internal = internal_layout_info(no, Resume, no),
 		map__det_insert(Internals0, Label, Internal, Internals)
 	},
 	code_info__set_layout_info(Internals).
@@ -3269,7 +3271,7 @@ code_info__generate_resume_layout(Label, ResumeMap) -->
 		code_info__get_module_info(ModuleInfo),
 		{ continuation_info__generate_resume_layout(ResumeMap,
 			Temps, InstMap, ProcInfo, ModuleInfo, Layout) },
-		code_info__add_gc_layout_for_label(Label, Layout)
+		code_info__add_resume_layout_for_label(Label, Layout)
 	;
 		[]
 	).

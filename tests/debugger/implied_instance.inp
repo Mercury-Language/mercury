@@ -1,5 +1,6 @@
 echo on
 register --quiet
+context none
 alias P print *
 goto 2
 P

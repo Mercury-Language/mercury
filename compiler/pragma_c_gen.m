@@ -41,7 +41,7 @@
 :- import_module hlds_module, hlds_pred, call_gen, llds_out, trace, tree.
 :- import_module code_util.
 :- import_module options, globals.
-:- import_module bool, string, int, assoc_list, set, map, require.
+:- import_module bool, string, int, assoc_list, set, map, require, term.
 
 % The code we generate for an ordinary (model_det or model_semi) pragma_c_code
 % must be able to fit into the middle of a procedure, since such
@@ -626,10 +626,20 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot),
 	code_info__maybe_reset_ticket(MaybeTicketSlot, undo, RestoreTicketCode),
 
+	{ FirstContext = yes(FirstContextPrime) ->
+		ActualFirstContext = FirstContextPrime
+	;
+		term__context_init(ActualFirstContext)
+	},
 	trace__maybe_generate_pragma_event_code(nondet_pragma_first,
-		FirstTraceCode),
+		ActualFirstContext, FirstTraceCode),
+	{ LaterContext = yes(LaterContextPrime) ->
+		ActualLaterContext = LaterContextPrime
+	;
+		term__context_init(ActualLaterContext)
+	},
 	trace__maybe_generate_pragma_event_code(nondet_pragma_later,
-		LaterTraceCode),
+		ActualLaterContext, LaterTraceCode),
 
 	{ FirstDisjunctCode =
 		tree(SaveHeapCode,

@@ -1771,7 +1771,7 @@ if the call is to a procedure that is being execution traced.
 This command will report an error if there is no stack trace
 information available about any ancestor.
 @sp 1
-@item up [@var{num}]
+@item up [-d] [@var{num}]
 Sets the current environment to the stack frame
 of the @var{num}'th level ancestor of the current environment
 (the immediate caller is the first-level ancestor).
@@ -1784,7 +1784,12 @@ or if there is no execution trace information about the requested ancestor,
 or if there is no stack trace information about any of the ancestors
 between the current environment and the requested ancestor.
 @sp 1
-@item down [@var{num}]
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
+@sp 1
+@item down [-d] [@var{num}]
 Sets the current environment to the stack frame
 of the @var{num}'th level descendant of the current environment
 (the procedure called by the current environment
@@ -1795,7 +1800,12 @@ If @var{num} is not specified, the default value is one.
 This command will report an error
 if there is no execution trace information about the requested descendant.
 @sp 1
-@item level [@var{num}]
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
+@sp 1
+@item level [-d] [@var{num}]
 Sets the current environment to the stack frame of the @var{num}'th
 level ancestor of the call to which the current event belongs.
 The zero'th ancestor is the call of the event itself.
@@ -1805,6 +1815,11 @@ if the current environment doesn't have the required number of ancestors,
 or if there is no execution trace information about the requested ancestor,
 or if there is no stack trace information about any of the ancestors
 between the current environment and the requested ancestor.
+@sp 1
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
 @sp 1
 @item current
 Prints the current event.
@@ -1817,6 +1832,16 @@ have since scrolled off the screen.
 @subsection Breakpoint commands
 @sp 1
 @table @code
+@item break [-PS] @var{filename}:@var{linenumber}
+Puts a break point on the specified line of the specified source file,
+if there is an event or a call at that position.
+If the filename is omitted,
+it defaults to the filename from the context of the current event.
+@sp 1
+The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
+specify the action to be taken at the break point.
+@sp 1
+By default, the initial state of the break point is @samp{stop}.
 @item break [-PSaei] @var{proc-spec}
 @c <module name> <predicate name> [<arity> [<mode> [<predfunc>]]]
 Puts a break point on the specified procedure.
@@ -1936,6 +1961,39 @@ which should correspond to the number of lines available on the terminal.
 @sp 1
 @item scroll
 Reports whether user scroll control is enabled and what the window size is.
+@sp 1
+@item context none
+When reporting events or ancestor levels,
+does not print contexts (filename/line number pairs).
+@sp 1
+@item context before
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs)
+before the identification of the event or call to which they refer,
+on the same line.
+With long fully qualified predicate and function names,
+this may make the line wrap around.
+@sp 1
+@item context after
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs)
+after the identification of the event or call to which they refer,
+on the same line.
+With long fully qualified predicate and function names,
+this may make the line wrap around.
+@sp 1
+@item context prevline
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs) on a separate line
+before the identification of the event or call to which they refer.
+@sp 1
+@item context nextline
+When reporting events or ancestor levels,
+prints contexts (filename/line number pairs) on a separate line
+after the identification of the event or call to which they refer.
+@sp 1
+@item context
+Reports where contexts are being printed.
 @sp 1
 @item alias @var{name} @var{command} [@var{command-parameter} ...]
 Introduces @var{name} as an alias

@@ -532,7 +532,7 @@ block_needs_frame(Instrs, NeedsFrame) :-
 			list__member(Instr, Instrs),
 			Instr = Uinstr - _,
 			(
-				Uinstr = call(_, _, _, _)
+				Uinstr = call(_, _, _, _, _)
 			;
 				Uinstr = mkframe(_, _)
 			;
@@ -665,7 +665,7 @@ can_clobber_succip([Label | Labels], BlockMap, CanClobberSuccip) :-
 		list__member(Instr, Instrs),
 		Instr = Uinstr - _,
 		(
-			Uinstr = call(_, _, _, _)
+			Uinstr = call(_, _, _, _, _)
 		;
 			% Only may_call_mercury pragma_c's can clobber succip.
 			Uinstr = pragma_c(_, _, may_call_mercury, _, _, _)

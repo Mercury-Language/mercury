@@ -15,6 +15,13 @@ print *
 
 print *
 level 1
+level -d 1
+context nextline
+level 1
+level -d 1
+context prevline
+level 1
+level -d 1
 print *
 up 1
 vars
@@ -50,5 +57,18 @@ break info
 enable *
 step -aS 5
 disable 1
+retry 4
+break 49
+continue -n
+continue -n
+continue -n
+continue -n
+continue -n
+continue -n
+return
+continue -n
+continue -n
+forward
+continue -n
 continue -n
 continue -n -S

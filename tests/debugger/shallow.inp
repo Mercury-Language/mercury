@@ -1,2 +1,4 @@
 echo on
+context before
+context
 c -a

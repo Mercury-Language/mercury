@@ -7,39 +7,40 @@
 /*
 ** mercury_stack_trace.c - implements stack traces.
 **
-** Main author: Tyson Dowd (trd).
+** Main authors: Tyson Dowd (trd), Zoltan Somogyi (zs).
 */
 
 #include "mercury_imp.h"
 #include "mercury_stack_trace.h"
 #include <stdio.h>
 
-static	void	MR_dump_stack_record_init(void);
+static	void	MR_dump_stack_record_init(bool include_contexts);
 static	void	MR_dump_stack_record_frame(FILE *fp,
-			const MR_Stack_Layout_Entry *,
+			const MR_Stack_Layout_Label *,
 			Word *base_sp, Word *base_curfr, 
-			void (*print_stack_record)(
-				FILE *, const MR_Stack_Layout_Entry *, 
-				int, int, Word *, Word *));
+			MR_Print_Stack_Record print_stack_record);
 static	void	MR_dump_stack_record_flush(FILE *fp, 
-			void (*print_stack_record)(
-				FILE *, const MR_Stack_Layout_Entry *, 
-				int, int, Word *, Word *));
+			MR_Print_Stack_Record print_stack_record);
+
+static	void	MR_maybe_print_context(FILE *fp,
+			const char *filename, int lineno);
+static	void	MR_maybe_print_parent_context(FILE *fp, bool print_parent,
+			bool verbose, const char *filename, int lineno);
 
 /* see comments in mercury_stack_trace.h */
-Code *MR_stack_trace_bottom;
-Word *MR_nondet_stack_trace_bottom;
+Code	*MR_stack_trace_bottom;
+Word	*MR_nondet_stack_trace_bottom;
 
 void
 MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 	Word *current_frame, bool include_trace_data)
 {
-#ifndef MR_STACK_TRACE
+#ifndef	MR_STACK_TRACE
 	fprintf(stderr, "Stack dump not available in this grade.\n");
 #else
+
 	const MR_Internal		*label;
 	const MR_Stack_Layout_Label	*layout;
-	const MR_Stack_Layout_Entry	*entry_layout;
 	const char			*result;
 
 	fprintf(stderr, "Stack dump follows:\n");
@@ -50,10 +51,9 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 		fprintf(stderr, "internal label not found\n");
 	} else {
 		layout = label->i_layout;
-		entry_layout = layout->MR_sll_entry;
-		result = MR_dump_stack_from_layout(stderr, entry_layout,
+		result = MR_dump_stack_from_layout(stderr, layout,
 			det_stack_pointer, current_frame, include_trace_data,
-			&MR_dump_stack_record_print);
+			TRUE, &MR_dump_stack_record_print);
 
 		if (result != NULL) {
 			fprintf(stderr, "%s\n", result);
@@ -63,13 +63,14 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 }
 
 const char *
-MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
+MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Label *label_layout,
 	Word *det_stack_pointer, Word *current_frame, bool include_trace_data,
-	void (*print_stack_record)(FILE *, const MR_Stack_Layout_Entry *, 
-	int, int, Word *, Word *))
+	bool include_contexts, MR_Print_Stack_Record print_stack_record)
 {
 	MR_Stack_Walk_Step_Result	result;
-	const MR_Stack_Layout_Label	*return_label_layout;
+	const MR_Stack_Layout_Entry	*entry_layout;
+	const MR_Stack_Layout_Label	*cur_label_layout;
+	const MR_Stack_Layout_Label	*prev_label_layout;
 	const char			*problem;
 	Word				*stack_trace_sp;
 	Word				*stack_trace_curfr;
@@ -77,27 +78,34 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	Word				*old_trace_curfr;
 
 	do_init_modules();
-	MR_dump_stack_record_init();
+	MR_dump_stack_record_init(include_contexts);
 
 	stack_trace_sp = det_stack_pointer;
 	stack_trace_curfr = current_frame;
 
+	cur_label_layout = label_layout;
+
 	do {
+		entry_layout = cur_label_layout->MR_sll_entry;
+		prev_label_layout = cur_label_layout;
+
 		old_trace_sp    = stack_trace_sp;
 		old_trace_curfr = stack_trace_curfr;
 
-		result = MR_stack_walk_step(entry_layout, &return_label_layout,
+		result = MR_stack_walk_step(entry_layout, &cur_label_layout,
 				&stack_trace_sp, &stack_trace_curfr, &problem);
 		if (result == STEP_ERROR_BEFORE) {
 			MR_dump_stack_record_flush(fp, print_stack_record);
 			return problem;
 		} else if (result == STEP_ERROR_AFTER) {
 			if (include_trace_data) {
-				MR_dump_stack_record_frame(fp, entry_layout,
+				MR_dump_stack_record_frame(fp,
+					prev_label_layout,
 					old_trace_sp, old_trace_curfr, 
 					print_stack_record);
 			} else {
-				MR_dump_stack_record_frame(fp, entry_layout,
+				MR_dump_stack_record_frame(fp,
+					prev_label_layout,
 					NULL, NULL, print_stack_record);
 			}
 
@@ -105,21 +113,17 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 			return problem;
 		} else {
 			if (include_trace_data) {
-				MR_dump_stack_record_frame(fp, entry_layout,
+				MR_dump_stack_record_frame(fp,
+					prev_label_layout,
 					old_trace_sp, old_trace_curfr, 
 					print_stack_record);
 			} else {
-				MR_dump_stack_record_frame(fp, entry_layout,
+				MR_dump_stack_record_frame(fp,
+					prev_label_layout,
 					NULL, NULL, print_stack_record);
 			}
 		}
-
-		if (return_label_layout == NULL) {
-			break;
-		}
-
-		entry_layout = return_label_layout->MR_sll_entry;
-	} while (TRUE); 
+	} while (cur_label_layout != NULL);
 
 	MR_dump_stack_record_flush(fp, print_stack_record);
 	return NULL;
@@ -142,9 +146,15 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 	do_init_modules();
 	*problem = NULL;
 	for (i = 0; i < ancestor_level && label_layout != NULL; i++) {
-		(void) MR_stack_walk_step(label_layout->MR_sll_entry,
+		result = MR_stack_walk_step(label_layout->MR_sll_entry,
 				&return_label_layout,
 				stack_trace_sp, stack_trace_curfr, problem);
+
+		if (result != STEP_OK) {
+			/* *problem has already been filled in */
+			return NULL;
+		}
+
 		label_layout = return_label_layout;
 	}
 
@@ -154,7 +164,6 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 
 	return label_layout;
 }
-
 
 MR_Stack_Walk_Step_Result
 MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
@@ -281,23 +290,39 @@ static	int				prev_entry_layout_count;
 static	int				prev_entry_start_level;
 static	Word				*prev_entry_base_sp;
 static	Word				*prev_entry_base_curfr;
+static	const char			*prev_entry_filename;
+static	int				prev_entry_linenumber;
+static	bool				prev_entry_context_mismatch;
 static	int				current_level;
+static	bool				contexts_enabled;
 
 static void
-MR_dump_stack_record_init(void)
+MR_dump_stack_record_init(bool include_contexts)
 {
 	prev_entry_layout = NULL;
 	prev_entry_layout_count = 0;
 	prev_entry_start_level = 0;
 	current_level = 0;
+	contexts_enabled = include_contexts;
 }
 
 static void
-MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
-	Word *base_sp, Word *base_curfr, void (*print_stack_record)(
-		FILE *, const MR_Stack_Layout_Entry *, int, int, Word *, Word *))
+MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Label *label_layout,
+	Word *base_sp, Word *base_curfr,
+	MR_Print_Stack_Record print_stack_record)
 {
-	bool	must_flush;
+	const MR_Stack_Layout_Entry	*entry_layout;
+	const char			*filename;
+	int				linenumber;
+	bool				must_flush;
+
+	entry_layout = label_layout->MR_sll_entry;
+	if (! MR_find_context(label_layout, &filename, &linenumber)
+		|| ! contexts_enabled)
+	{
+		filename = "";
+		linenumber = 0;
+	}
 
 	must_flush = 
 		/*
@@ -328,28 +353,37 @@ MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 		prev_entry_start_level = current_level;
 		prev_entry_base_sp = base_sp;
 		prev_entry_base_curfr = base_curfr;
+		prev_entry_filename = filename;
+		prev_entry_linenumber = linenumber;
+		prev_entry_context_mismatch = FALSE;
 	} else {
 		prev_entry_layout_count++;
+		if (prev_entry_filename != filename
+			|| prev_entry_linenumber != linenumber)
+		{
+			prev_entry_context_mismatch = TRUE;
+		}
 	}
 
 	current_level++;
 }
 
 static void
-MR_dump_stack_record_flush(FILE *fp, void (*print_stack_record)(
-	FILE *, const MR_Stack_Layout_Entry *, int, int, Word *, Word *))
+MR_dump_stack_record_flush(FILE *fp, MR_Print_Stack_Record print_stack_record)
 {
 	if (prev_entry_layout != NULL) {
 		print_stack_record(fp, prev_entry_layout,
 			prev_entry_layout_count, prev_entry_start_level,
-			prev_entry_base_sp, prev_entry_base_curfr);
+			prev_entry_base_sp, prev_entry_base_curfr,
+			prev_entry_filename, prev_entry_linenumber,
+			prev_entry_context_mismatch);
 	}
 }
 
-
 void
 MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
-	int count, int start_level, Word *base_sp, Word *base_curfr)
+	int count, int start_level, Word *base_sp, Word *base_curfr,
+	const char *filename, int linenumber, bool context_mismatch)
 {
 	fprintf(fp, "%4d ", start_level);
 
@@ -365,25 +399,58 @@ MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 		*/
 	}
 
-	MR_print_proc_id(fp, entry_layout, NULL, base_sp, base_curfr);
+	MR_print_call_trace_info(fp, entry_layout, base_sp, base_curfr);
+	MR_print_proc_id(fp, entry_layout);
+	if (strdiff(filename, "") && linenumber > 0) {
+		fprintf(fp, " (%s:%d%s)", filename, linenumber,
+			context_mismatch ? " and others" : "");
+	}
+
+	fprintf(fp, "\n");
+}
+
+bool
+MR_find_context(const MR_Stack_Layout_Label *label, const char **fileptr,
+	int *lineptr)
+{
+	const MR_Stack_Layout_Entry	*proc;
+	const MR_Module_Layout		*module;
+	const MR_Module_File_Layout	*file_layout;
+	int				i, j;
+
+	proc = label->MR_sll_entry;
+	if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(proc)) {
+		return FALSE;
+	}
+
+	module = proc->MR_sle_module_layout;
+	for (i = 0; i < module->MR_ml_filename_count; i++) {
+		file_layout = module->MR_ml_module_file_layout[i];
+		for (j = 0; j < file_layout->MR_mfl_label_count; j++) {
+			if (file_layout->MR_mfl_label_layout[j] == label) {
+				*fileptr = file_layout->MR_mfl_filename;
+				*lineptr = file_layout->MR_mfl_label_lineno[j];
+				return TRUE;
+			}
+		}
+	}
+
+	return FALSE;
 }
 
 void
-MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
-	const char *extra, Word *base_sp, Word *base_curfr)
+MR_print_call_trace_info(FILE *fp, const MR_Stack_Layout_Entry *entry,
+	Word *base_sp, Word *base_curfr)
 {
-	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
-		fatal_error("cannot print procedure id without layout");
-	}
+	bool	print_details;
 
 	if (base_sp != NULL && base_curfr != NULL) {
-		bool print_details = FALSE;
 		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
 			Integer maybe_from_full =
 				entry->MR_sle_maybe_from_full;
 			if (maybe_from_full > 0) {
 				/*
-				** for procedures compiled with shallow
+				** For procedures compiled with shallow
 				** tracing, the details will be valid only
 				** if the value of MR_from_full saved in
 				** the appropriate stack slot was TRUE.
@@ -397,12 +464,15 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 				}
 			} else {
 				/*
-				** for procedures compiled with full tracing,
-				** always print out the details
+				** For procedures compiled with full tracing,
+				** we can always print out the details.
 				*/
 				print_details = TRUE;
 			}
+		} else {
+			print_details = FALSE;
 		}
+
 		if (print_details) {
 			if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
 				fprintf(fp, "%7lu %7lu %4lu ",
@@ -425,6 +495,14 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 			/* ensure that the remaining columns line up */
 			fprintf(fp, "%21s", "");
 		}
+	}
+}
+
+void
+MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry)
+{
+	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
+		fatal_error("cannot print procedure id without layout");
 	}
 
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
@@ -467,14 +545,109 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 	}
 
 	fprintf(fp, " (%s)", MR_detism_names[entry->MR_sle_detism]);
+}
 
-	if (extra != NULL) {
-		fprintf(fp, " %s\n", extra);
-	} else {
-		fprintf(fp, "\n");
+void
+MR_print_proc_id_trace_and_context(FILE *fp, MR_Context_Position pos,
+	const MR_Stack_Layout_Entry *entry, Word *base_sp, Word *base_curfr,
+	const char *path, const char *filename, int lineno, bool print_parent, 
+	const char *parent_filename, int parent_lineno, int indent)
+{
+
+	switch (pos) {
+		case MR_CONTEXT_NOWHERE:
+			fprintf(fp, " ");
+			MR_print_call_trace_info(fp, entry,
+				base_sp, base_curfr);
+			MR_print_proc_id(fp, entry);
+			if (strlen(path) > 0) {
+				fprintf(fp, " %s", path);
+			}
+			fprintf(fp, "\n");
+			break;
+
+		case MR_CONTEXT_BEFORE:
+			MR_maybe_print_context(fp, filename, lineno);
+			MR_maybe_print_parent_context(fp, print_parent,
+				FALSE, parent_filename, parent_lineno);
+			fprintf(fp, " ");
+			MR_print_call_trace_info(fp, entry,
+				base_sp, base_curfr);
+			MR_print_proc_id(fp, entry);
+			if (strlen(path) > 0) {
+				fprintf(fp, " %s", path);
+			}
+			fprintf(fp, "\n");
+			break;
+
+		case MR_CONTEXT_AFTER:
+			fprintf(fp, " ");
+			MR_print_call_trace_info(fp, entry,
+				base_sp, base_curfr);
+			MR_print_proc_id(fp, entry);
+			if (strlen(path) > 0) {
+				fprintf(fp, " %s", path);
+			}
+			MR_maybe_print_context(fp, filename, lineno);
+			MR_maybe_print_parent_context(fp, print_parent,
+				FALSE, parent_filename, parent_lineno);
+			fprintf(fp, "\n");
+			break;
+
+		case MR_CONTEXT_PREVLINE:
+			MR_maybe_print_context(fp, filename, lineno);
+			MR_maybe_print_parent_context(fp, print_parent,
+				TRUE, parent_filename, parent_lineno);
+			fprintf(fp, "\n%*s ", indent, "");
+			MR_print_call_trace_info(fp, entry,
+				base_sp, base_curfr);
+			MR_print_proc_id(fp, entry);
+			if (strlen(path) > 0) {
+				fprintf(fp, " %s", path);
+			}
+			fprintf(fp, "\n");
+			break;
+
+		case MR_CONTEXT_NEXTLINE:
+			fprintf(fp, " ");
+			MR_print_call_trace_info(fp, entry,
+				base_sp, base_curfr);
+			MR_print_proc_id(fp, entry);
+			if (strlen(path) > 0) {
+				fprintf(fp, " %s", path);
+			}
+			fprintf(fp, "\n%*s", indent, "");
+			MR_maybe_print_context(fp, filename, lineno);
+			MR_maybe_print_parent_context(fp, print_parent,
+				TRUE, parent_filename, parent_lineno);
+			fprintf(fp, "\n");
+			break;
+
+		default:
+			fatal_error("invalid MR_Context_Position");
 	}
 }
 
+static void
+MR_maybe_print_context(FILE *fp, const char *filename, int lineno)
+{
+	if (strdiff(filename, "") && lineno != 0) {
+		fprintf(fp, " %s:%d", filename, lineno);
+	}
+}
+
+static void
+MR_maybe_print_parent_context(FILE *fp, bool print_parent, bool verbose,
+	const char *filename, int lineno)
+{
+	if (print_parent && strdiff(filename, "") && lineno != 0) {
+		if (verbose) {
+			fprintf(fp, " (from %s:%d)", filename, lineno);
+		} else {
+			fprintf(fp, " (%s:%d)", filename, lineno);
+		}
+	}
+}
 
 /*
 ** The different Mercury determinisms are internally represented by integers. 

@@ -1,4 +1,5 @@
 echo on
+context none
 register --quiet
 10 step
 vars

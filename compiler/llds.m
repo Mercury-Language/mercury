@@ -248,11 +248,13 @@
 			% Assign the value specified by rval to the location
 			% specified by lval.
 
-	;	call(code_addr, code_addr, list(liveinfo), call_model)
-			% call(Target, Continuation, _, _) is the same as
+	;	call(code_addr, code_addr, list(liveinfo), term__context,
+				call_model)
+			% call(Target, Continuation, _, _, _) is the same as
 			% succip = Continuation; goto(Target).
 			% The third argument is the live value info for the
-			% values live on return. The last gives the model
+			% values live on return. The fourth argument gives
+			% the context of the call. The last gives the model
 			% of the called procedure, and if it is nondet,
 			% says whether tail recursion elimination is
 			% potentially applicable to the call.
@@ -926,14 +928,23 @@
 	% from `.opt' files, the defining module's name is added as a
 	% qualifier to the label.
 :- type proc_label
-	--->	proc(module_name, pred_or_func, module_name, string,
-								int, proc_id)
-			% defining module, predicate/function,
-			% declaring module, name, arity, mode #
-	;	special_proc(module_name, string, module_name, string, int,
-								proc_id).
-			% defining module, pred name, type module,
-			% type name, type arity, mode #
+	--->	proc(
+			module_name,	% defining module
+			pred_or_func,
+			module_name,	% declaring module
+			string,		% name
+			int,		% arity
+			proc_id		% mode number
+		)
+			
+	;	special_proc(
+			module_name,	% defining module
+			string,		% pred name
+			module_name,	% type module
+			string,		% type name
+			int,		% type arity
+			proc_id		% mode number
+		).
 
 	% A tag (used in mkword, create and field expressions
 	% and in incr_hp instructions) is a small integer.

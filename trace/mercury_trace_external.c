@@ -182,15 +182,19 @@ static int	MR_get_var_number(Word debugger_request);
 static void	MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
 			const char *extra, Word *base_sp, Word *base_curfr);
 static void	MR_dump_stack_record_print_to_socket(FILE *fp, 
-			const MR_Stack_Layout_Entry *entry_layout, int count, 
-			int start_level, Word *base_sp, Word *base_curfr);
+			const MR_Stack_Layout_Entry *entry_layout, int count,
+			int start_level, Word *base_sp, Word *base_curfr,
+			const char *filename, int linenumber,
+			bool context_mismatch);
 static void	MR_get_list_modules_to_import(Word debugger_request, 
-			Integer *modules_list_length_ptr, Word *modules_list_ptr);
+			Integer *modules_list_length_ptr,
+			Word *modules_list_ptr);
 static void	MR_get_mmc_options(Word debugger_request, 
 			String *mmc_options_ptr);
 static void	MR_get_object_file_name(Word debugger_request, 
 			String *object_file_name_ptr);
-static void	MR_get_variable_name(Word debugger_request, String *var_name_ptr);
+static void	MR_get_variable_name(Word debugger_request,
+			String *var_name_ptr);
 static void	MR_trace_browse_one_external(MR_Var_Spec which_var);
 static void	MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, 
 			Word, Word, String, String, String, Integer, Integer, 
@@ -476,7 +480,6 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	static bool    	collect_linked = FALSE;
 	bool    	stop_collecting = FALSE;
 	Integer		debugger_request_type;
-	Integer		live_var_number;
 	Word		debugger_request;
 	Word		var_list;
 	Word		var_names_list;
@@ -635,11 +638,10 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				}
 				do_init_modules();
 				message = MR_dump_stack_from_layout(
-					stdout,
-					layout->MR_sll_entry,
+					stdout, layout,
 					MR_saved_sp(saved_regs),
 					MR_saved_curfr(saved_regs),
-					include_trace_data,
+					include_trace_data, FALSE,
 					&MR_dump_stack_record_print_to_socket);
 				MR_send_message_to_socket("end_stack");
 				if (message != NULL) {
@@ -799,8 +801,6 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			  }
 			case MR_REQUEST_COLLECT:
 			  {
-				static char *MERCURY_OPTIONS;
-
 				if (MR_debug_socket) {
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_COLLECT\n");
@@ -1280,7 +1280,8 @@ MR_get_var_number(Word debugger_request)
 static void
 MR_dump_stack_record_print_to_socket(FILE *fp, 
 	const MR_Stack_Layout_Entry *entry_layout, int count, int start_level, 
-	Word *base_sp, Word *base_curfr)
+	Word *base_sp, Word *base_curfr, const char *filename, int linenumber,
+	bool context_mismatch)
 {
 	MR_send_message_to_socket_format("level(%d).\n", start_level);
 	MR_print_proc_id_to_socket(entry_layout, NULL, base_sp, base_curfr);

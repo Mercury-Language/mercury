@@ -292,7 +292,7 @@ standardize_instr(Instr1, Instr) :-
 		standardize_rval(Rval1, Rval),
 		Instr = assign(Lval, Rval)
 	;
-		Instr1 = call(_, _, _, _),
+		Instr1 = call(_, _, _, _, _),
 		Instr = Instr1
 	;
 		Instr1 = mkframe(_, _),
@@ -559,7 +559,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		most_specific_rval(Rval1, Rval2, Rval),
 		Instr = assign(Lval, Rval)
 	;
-		Instr1 = call(_, _, _, _),
+		Instr1 = call(_, _, _, _, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	;

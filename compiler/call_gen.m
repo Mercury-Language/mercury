@@ -112,8 +112,10 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
 	code_info__get_next_label(ReturnLabel),
 	{ call_gen__call_comment(CodeModel, CallComment) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	{ CallCode = node([
-		call(Address, label(ReturnLabel), ReturnLiveLvalues, CallModel)
+		call(Address, label(ReturnLabel), ReturnLiveLvalues, Context,
+			CallModel)
 			- CallComment,
 		label(ReturnLabel)
 			- "continuation label"
@@ -194,11 +196,12 @@ call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args,
 		ReturnLiveLvalues),
 
 	code_info__get_next_label(ReturnLabel),
+	{ goal_info_get_context(GoalInfo, Context) },
 	{ CallCode = node([
 		livevals(LiveVals)
 			- "",
 		call(CodeAddr, label(ReturnLabel), ReturnLiveLvalues,
-			CallModel)
+			Context, CallModel)
 			- "Setup and call",
 		label(ReturnLabel)
 			- "Continuation label"

@@ -58,6 +58,7 @@ extern	const char	*MR_trace_set_level(int ancestor_level);
 extern	int		MR_trace_current_level(void);
 extern	void		MR_trace_current_level_details(
 				const MR_Stack_Layout_Entry **entry_ptr,
+				const char **filename_ptr, int *linenumber_ptr,
 				Word **base_sp_ptr, Word **base_curfr_ptr);
 
 /*

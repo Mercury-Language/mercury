@@ -33,6 +33,9 @@ static	void	MR_process_matching_procedures_in_module(
 			const MR_Module_Layout *module, MR_Proc_Spec *spec,
 			void f(void *, const MR_Stack_Layout_Entry *),
 			void *);
+static	void	MR_process_line_layouts(MR_Module_File_Layout *file_layout,
+			int line, MR_file_line_callback callback_func,
+			int callback_arg);
 
 void
 MR_register_all_modules_and_procs(FILE *fp, bool verbose)
@@ -108,6 +111,58 @@ MR_insert_module_info(const MR_Module_Layout *module)
 
 	MR_module_infos[slot] = module;
 	MR_module_info_proc_count += module->MR_ml_proc_count;
+}
+
+void
+MR_process_file_line_layouts(const char *file, int line,
+	MR_file_line_callback callback_func, int callback_arg)
+{
+	int			i, j;
+	MR_Module_File_Layout	*file_layout;
+
+	for (i = 0; i < MR_module_info_next; i++) {
+		for (j = 0; j < MR_module_infos[i]->MR_ml_filename_count; j++)
+		{
+			file_layout = MR_module_infos[i]->
+					MR_ml_module_file_layout[j];
+			if (streq(file_layout->MR_mfl_filename, file)) {
+				MR_process_line_layouts(file_layout, line,
+					callback_func, callback_arg);
+			}
+		}
+	}
+}
+
+static void
+MR_process_line_layouts(MR_Module_File_Layout *file_layout, int line,
+	MR_file_line_callback callback_func, int callback_arg)
+{
+	int			k;
+	bool			found;
+
+	MR_bsearch(file_layout->MR_mfl_label_count, k, found,
+		file_layout->MR_mfl_label_lineno[k] - line);
+
+	if (found) {
+		/*
+		** The binary search found *one* label with the given
+		** linenumber; we now find the *first* such label.
+		*/
+
+		while (k > 0
+			&& file_layout->MR_mfl_label_lineno[k - 1] == line)
+		{
+			k--;
+		}
+
+		while (k < file_layout->MR_mfl_label_count
+			&& file_layout->MR_mfl_label_lineno[k] == line)
+		{
+			(*callback_func)(file_layout->MR_mfl_label_layout[k],
+				callback_arg);
+			k++;
+		}
+	}
 }
 
 void
@@ -223,7 +278,17 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 		*slash = '\0';
 	}
 
+	if (MR_isdigit(*str)) {
+		/* this looks to be a line number */
+		return FALSE;
+	}
+
 	for (s = str; *s != '\0'; s++) {
+		if (*s == ':' && MR_isdigit(*(s+1))) {
+			/* this looks to be filename:linenumber */
+			return FALSE;
+		}
+
 		if (*s == ':' || (*s == '_' && *(s+1) == '_')) {
 			if (*s == ':') {
 				spec->MR_proc_name = s+1;
@@ -336,6 +401,7 @@ void
 MR_print_proc_id_for_debugger(FILE *fp,
 	const MR_Stack_Layout_Entry *entry_layout)
 {
-	MR_print_proc_id(fp, entry_layout, NULL, NULL, NULL);
+	MR_print_proc_id(fp, entry_layout);
+	fprintf(fp, "\n");
 }
 

@@ -142,7 +142,6 @@ get_fallthrough_from_seq(LabelSeq, MaybeFallThrough) :-
 	).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 flatten_basic_blocks([], _, []).
 flatten_basic_blocks([Label | Labels], BlockMap, Instrs) :-

@@ -1080,7 +1080,7 @@ value_number__boundary_instr(assign(Lval,_), Boundary) :-
 	;
 		Boundary = no
 	).
-value_number__boundary_instr(call(_, _, _, _), yes).
+value_number__boundary_instr(call(_, _, _, _, _), yes).
 value_number__boundary_instr(mkframe(_, _), yes).
 value_number__boundary_instr(label(_), yes).
 value_number__boundary_instr(goto(_), yes).

@@ -171,7 +171,7 @@
 	% settings of other options)
 				% Stack layout information required to do
 				% a stack trace.
-		;	basic_stack_layout
+		;       basic_stack_layout
 				% Stack layout information required to do
 				% accurate GC.
 		;	agc_stack_layout
@@ -209,6 +209,9 @@
 				% the predicates deciding interface typeinfo
 				% liveness, should go through there.
 		;	body_typeinfo_liveness
+	% Options for internal use only
+	% (setting these options to non-default values can result in
+	% programs that do not link, or programs that dump core)
 				% Generate unify and compare preds.  For
 				% measurement only. Code generated with
 				% this set to `no' is unlikely to
@@ -229,6 +232,11 @@
 				% off, then you're unlikely to be able
 				% to link.
 		;	type_ctor_functors
+				% Generate line number information in the RTTI
+				% when debugging is enabled. For measurement
+				% only -- if you turn this off, then the
+				% debugger may dereference garbage pointers.
+		;	rtti_line_numbers
 	% Code generation options
 		;	low_level_debug
 		;	trad_passes
@@ -543,6 +551,7 @@ option_defaults_2(compilation_model_option, [
 	type_ctor_info		-	bool(yes),
 	type_ctor_layout	-	bool(yes),
 	type_ctor_functors	-	bool(yes),
+	rtti_line_numbers	-	bool(yes),
 	highlevel_c		-	bool(no),
 	gcc_nested_functions	-	bool(no),
 	unboxed_float		-	bool(no)
@@ -877,8 +886,8 @@ long_option("profile-deep",		profile_deep).
 long_option("debug",			debug).
 % The following options are not allowed, because they're
 % not very useful and would probably only confuse people.
-% long_option("stack-trace",		stack_trace).
-% long_option("require-tracing",	require_tracing).
+% long_option("stack-trace",           stack_trace).
+% long_option("require-tracing",       require_tracing).
 long_option("use-trail",		use_trail).
 long_option("use-minimal-model",	use_minimal_model).
 long_option("pic-reg",			pic_reg).
@@ -897,6 +906,7 @@ long_option("special-preds",		special_preds).
 long_option("type-ctor-info",		type_ctor_info).
 long_option("type-ctor-layout",		type_ctor_layout).
 long_option("type-ctor-functors",	type_ctor_functors).
+long_option("rtti-line-numbers",	rtti_line_numbers).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
@@ -1847,7 +1857,7 @@ your program compiled with different options.
 %		"(This option is not for general use.)",
 %		"\tGenerate the stack_layout structures required for",
 %		"\taccurate garbage collection.",
-%
+
 		% This is a developer only option.
 %		"--procid-stack-layout",
 %		"(This option is not for general use.)",

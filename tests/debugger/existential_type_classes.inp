@@ -1,6 +1,7 @@
 echo on
 alias P print *
 register --quiet
+context prevline
 break -i do_foo
 continue -a
 P

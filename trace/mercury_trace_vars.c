@@ -95,6 +95,8 @@ typedef struct {
 	const char			*MR_point_problem;
 	int				MR_point_level;
 	const MR_Stack_Layout_Entry	*MR_point_level_entry;
+	const char			*MR_point_level_filename;
+	int				MR_point_level_linenumber;
 	Word				*MR_point_level_base_sp;
 	Word				*MR_point_level_base_curfr;
 	int				MR_point_var_count;
@@ -227,6 +229,8 @@ MR_trace_set_level(int ancestor_level)
 	const char			*name;
 	const char			*string_table;
 	Integer				string_table_size;
+	const char			*filename;
+	int				linenumber;
 
 	problem = NULL;
 	top_layout = MR_point.MR_point_top_layout;
@@ -255,6 +259,11 @@ MR_trace_set_level(int ancestor_level)
 		return "there is no information about live variables";
 	}
 
+	if (! MR_find_context(level_layout, &filename, &linenumber)) {
+		filename = "";
+		linenumber = 0;
+	}
+
 	/*
 	** After this point, we cannot find any more problems
 	** that would prevent us from assembling an accurate picture
@@ -265,6 +274,8 @@ MR_trace_set_level(int ancestor_level)
 	MR_point.MR_point_problem = NULL;
 	MR_point.MR_point_level = ancestor_level;
 	MR_point.MR_point_level_entry = entry;
+	MR_point.MR_point_level_filename = filename;
+	MR_point.MR_point_level_linenumber = linenumber;
 	MR_point.MR_point_level_base_sp = base_sp;
 	MR_point.MR_point_level_base_curfr = base_curfr;
 
@@ -484,6 +495,7 @@ MR_trace_current_level(void)
 
 void
 MR_trace_current_level_details(const MR_Stack_Layout_Entry **entry_ptr,
+	const char **filename_ptr, int *linenumber_ptr,
 	Word **base_sp_ptr, Word **base_curfr_ptr)
 {
 	if (MR_point.MR_point_problem != NULL) {
@@ -492,6 +504,14 @@ MR_trace_current_level_details(const MR_Stack_Layout_Entry **entry_ptr,
 
 	if (entry_ptr != NULL) {
 		*entry_ptr = MR_point.MR_point_level_entry;
+	}
+
+	if (filename_ptr != NULL) {
+		*filename_ptr = MR_point.MR_point_level_filename;
+	}
+
+	if (linenumber_ptr != NULL) {
+		*linenumber_ptr = MR_point.MR_point_level_linenumber;
 	}
 
 	if (base_sp_ptr != NULL) {

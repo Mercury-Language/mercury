@@ -136,13 +136,14 @@
 	% If we are doing execution tracing, generate code for an trace event
 	% that represents leaving a negated goal (via success or failure).
 :- pred trace__maybe_generate_negated_event_code(hlds_goal::in,
-	negation_end_port::in, code_tree::out,
-	code_info::in, code_info::out) is det.
+	negation_end_port::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 	% If we are doing execution tracing, generate code for a nondet
 	% pragma C code trace event.
 :- pred trace__maybe_generate_pragma_event_code(nondet_pragma_trace_port::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+	prog_context::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 	% Generate code for an external trace event.
 	% Besides the trace code, we return the label on which we have hung
@@ -150,8 +151,9 @@
 	% liveness information, since some of our callers also need this
 	% information.
 :- pred trace__generate_external_event_code(external_trace_port::in,
-	trace_info::in, label::out, map(tvar, set(layout_locn))::out,
-	code_tree::out, code_info::in, code_info::out) is det.
+	trace_info::in, prog_context::in, label::out,
+	map(tvar, set(layout_locn))::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 	% If the trace level calls for redo events, generate code that pushes
 	% a temporary nondet stack frame whose redoip slot contains the
@@ -167,7 +169,7 @@
 
 :- import_module continuation_info, type_util, llds_out, tree, varset.
 :- import_module (inst), instmap, inst_match, mode_util, options.
-:- import_module list, bool, int, string, map, std_util, require.
+:- import_module list, bool, int, string, map, std_util, require, term.
 
 	% Information specific to a trace port.
 :- type trace_port_info
@@ -493,9 +495,10 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 			{ Code = empty }
 		;
 			{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
+			{ goal_info_get_context(GoalInfo, Context) },
 			trace__generate_event_code(Port,
 				internal(Path, PreDeaths), TraceInfo,
-				_, _, Code)
+				Context, _, _, Code)
 		)
 	;
 		{ Code = empty }
@@ -517,13 +520,14 @@ trace__maybe_generate_negated_event_code(Goal, NegPort, Code) -->
 		},
 		{ Goal = _ - GoalInfo },
 		{ goal_info_get_goal_path(GoalInfo, Path) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		trace__generate_event_code(Port, negation_end(Path),
-			TraceInfo, _, _, Code)
+			TraceInfo, Context, _, _, Code)
 	;
 		{ Code = empty }
 	).
 
-trace__maybe_generate_pragma_event_code(PragmaPort, Code) -->
+trace__maybe_generate_pragma_event_code(PragmaPort, Context, Code) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	(
 		{ MaybeTraceInfo = yes(TraceInfo) },
@@ -531,23 +535,24 @@ trace__maybe_generate_pragma_event_code(PragmaPort, Code) -->
 	->
 		{ trace__convert_nondet_pragma_port_type(PragmaPort, Port) },
 		trace__generate_event_code(Port, nondet_pragma, TraceInfo,
-			_, _, Code)
+			Context, _, _, Code)
 	;
 		{ Code = empty }
 	).
 
-trace__generate_external_event_code(ExternalPort, TraceInfo,
+trace__generate_external_event_code(ExternalPort, TraceInfo, Context,
 		Label, TvarDataMap, Code) -->
 	{ trace__convert_external_port_type(ExternalPort, Port) },
 	trace__generate_event_code(Port, external, TraceInfo,
-		Label, TvarDataMap, Code).
+		Context, Label, TvarDataMap, Code).
 
 :- pred trace__generate_event_code(trace_port::in, trace_port_info::in,
-	trace_info::in, label::out, map(tvar, set(layout_locn))::out,
-	code_tree::out, code_info::in, code_info::out) is det.
+	trace_info::in, prog_context::in, label::out,
+	map(tvar, set(layout_locn))::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
-		Code) -->
+trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
+		Label, TvarDataMap, Code) -->
 	(
 		{ Port = fail },
 		{ trace_info_get_maybe_redo_layout_slot(TraceInfo,
@@ -634,7 +639,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 			CallStmt)
 		}
 	),
-	code_info__add_trace_layout_for_label(Label, LayoutLabelInfo),
+	code_info__add_trace_layout_for_label(Label, Context, LayoutLabelInfo),
 	{
 	string__append_list([DeclStmt, SaveStmt, CallStmt, RestoreStmt,
 		GotoStmt], TraceStmt),

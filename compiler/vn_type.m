@@ -70,8 +70,8 @@
 			;	node_ctrl(int).
 
 :- type vn_instr	--->	vn_livevals(lvalset)
-			;	vn_call(code_addr, code_addr,
-					list(liveinfo), call_model)
+			;	vn_call(code_addr, code_addr, list(liveinfo),
+					term__context, call_model)
 			;	vn_mkframe(nondet_frame_info, code_addr)
 			;	vn_label(label)
 			;	vn_goto(code_addr)

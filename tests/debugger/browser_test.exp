@@ -1,8 +1,8 @@
-       1:      1  1 CALL pred browser_test:main/2-0 (det) 
+       1:      1  1 CALL pred browser_test:main/2-0 (det) browser_test.m:12
 mdb> echo on
 Command echo enabled.
 mdb> goto 3
-       3:      2  2 EXIT pred browser_test:big_data/1-0 (det) 
+       3:      2  2 EXIT pred browser_test:big_data/1-0 (det) browser_test.m:19 (browser_test.m:12)
 mdb> print *
        HeadVar__1             	big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
 mdb> browse 1
@@ -80,8 +80,8 @@ big
 
 browser> quit
 mdb> retry
-       2:      2  2 CALL pred browser_test:big_data/1-0 (det) 
+       2:      2  2 CALL pred browser_test:big_data/1-0 (det) browser_test.m:19 (browser_test.m:12)
 mdb> continue -a
-       3:      2  2 EXIT pred browser_test:big_data/1-0 (det) 
+       3:      2  2 EXIT pred browser_test:big_data/1-0 (det) browser_test.m:19 (browser_test.m:12)
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big(small, 5, small)), 6, small)).
-       4:      1  1 EXIT pred browser_test:main/2-0 (det) 
+       4:      1  1 EXIT pred browser_test:main/2-0 (det) browser_test.m:14

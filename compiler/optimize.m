@@ -144,7 +144,7 @@ optimize__repeated(Instrs0, DoVn, Final, LayoutLabelSet, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ jumpopt_main(Instrs1, FullJumpopt, Final,
+		{ jumpopt_main(Instrs1, LayoutLabelSet, FullJumpopt, Final,
 			CheckedNondetTailCalls, Instrs2, Mod1) },
 		( { Mod1 = yes } ->
 			opt_debug__msg(DebugOpt, "after jump optimization"),
@@ -261,8 +261,9 @@ optimize__middle(Instrs0, Final, LayoutLabelSet, Instrs) -->
 			;
 				[]
 			),
-			{ jumpopt_main(Instrs1, FullJumpopt, Final,
-				CheckedNondetTailCalls, Instrs2, Mod2) },
+			{ jumpopt_main(Instrs1, LayoutLabelSet, FullJumpopt,
+				Final, CheckedNondetTailCalls, Instrs2,
+				Mod2) },
 			( { Mod2 = yes } ->
 				opt_debug__msg(DebugOpt, "after jump optimization"),
 				opt_debug__dump_instrs(DebugOpt, Instrs2)
