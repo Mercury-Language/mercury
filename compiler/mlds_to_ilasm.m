@@ -55,38 +55,48 @@ output_mlds(MLDS) -->
 	module_name_to_file_name(ModuleName, ".il", yes, ILAsmFile),
 	output_to_file(ILAsmFile, output_assembler(MLDS), Result),
 
-		% Put the pragma C code into a C++ file.
-		% This is temporary, when we have pragma foreign
-		% we should just put managed C++ foreign code into
-		% this file.
 	( { Result = yes(ForeignLangs) } ->
-		( { set__member(managed_cplusplus, ForeignLangs) } ->
-			module_name_to_file_name(ModuleName,
-				"__c_code.cpp", yes, CPPFile),
-			output_to_file(CPPFile, output_mcpp_code(MLDS))
-		; { set__member(csharp, ForeignLangs) } ->
-			module_name_to_file_name(ModuleName,
-				"__csharp_code.cs", yes, CSFile),
-			output_to_file(CSFile, output_csharp_code(MLDS))
-		;
-			[]
-		)
+		% Output any outline foreign_code to the appropriate foreign
+		% language file.
+		list__foldl(output_foreign_file(MLDS),
+			set__to_sorted_list(ForeignLangs))
 	;
+		% An I/O error occurred; output_to_file has already reported
+		% an error message, so we don't need to do anything here.
 		[]
 	).
 
+:- pred output_foreign_file(mlds::in, foreign_language::in,
+		io__state::di, io__state::uo) is det.
+
+output_foreign_file(MLDS, ForeignLang) -->
+	{ ModuleName = mlds__get_module_name(MLDS) },
+	{ handle_foreign_lang(ForeignLang, Extension, CodeGenerator) },
+	module_name_to_file_name(ModuleName, Extension, yes, File),
+	output_to_file(File, (pred(di, uo) is det --> CodeGenerator(MLDS))).
+
+:- pred handle_foreign_lang(foreign_language::in, string::out,
+		pred(mlds, io__state, io__state)::out(pred(in, di, uo) is det))
+		is det.
+
+handle_foreign_lang(managed_cplusplus, "__c_code.cpp", output_mcpp_code).
+handle_foreign_lang(csharp, "__csharp_code.cpp", output_csharp_code).
+handle_foreign_lang(c, _, _) :-
+	sorry(this_file, "language C foreign code not supported").
+
 	%
-	% Generate the `.il' file
+	% Generate the `.il' file.
+	% Returns the set of foreign language
 	%
 :- pred output_assembler(mlds, set(foreign_language), io__state, io__state).
 :- mode output_assembler(in, out, di, uo) is det.
 
-output_assembler(MLDS, ContainsCCode) -->
+output_assembler(MLDS, ForeignLangs) -->
 	{ MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns) },
 	output_src_start(ModuleName), 
 	io__nl,
 
-	generate_il(MLDS, ILAsm0, ContainsCCode),
+	generate_il(MLDS, ILAsm0, ForeignLangs),
 
 		% Perform peephole optimization if requested.
 	globals__io_lookup_bool_option(optimize_peep, Peephole),

@@ -123,6 +123,8 @@ ORDINARY_PROGS=	\
 	write_reg1 \
 	write_reg2
 
+# XXX csharp_test doesn't work yet (not even in il* grades)
+#
 # XXX copy_pred does not work in the hl* grades (e.g. hlc.gc),
 # because the MLDS back-end doesn't generate the closure layout
 # information needed to copy closures.
