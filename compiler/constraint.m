@@ -369,8 +369,9 @@ mode_info_write_goal(Goal, Indent, ModeInfo0, ModeInfo) :-
 		mode_info_get_module_info(ModeInfo0, ModuleInfo),
 		mode_info_get_varset(ModeInfo0, VarSet),
 		mode_info_get_inst_table(ModeInfo0, InstTable),
-		hlds_out__write_goal(Goal, InstTable, ModuleInfo, VarSet, no,
-				Indent, "", IOState1, IOState)
+		mode_info_get_instmap(ModeInfo0, InstMap),
+		hlds_out__write_goal(Goal, InstMap, InstTable, ModuleInfo,
+			VarSet, no, Indent, "", IOState1, IOState)
 	;
 		IOState = IOState1
 	),

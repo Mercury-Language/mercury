@@ -264,6 +264,14 @@
 :- mode instmap__inst_key_table_lookup(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- pred instmap__get_inst_key_sub(instmap, inst_key_sub).
+:- mode instmap__get_inst_key_sub(in, out) is det.
+
+:- pred instmap_delta_get_inst_key_sub(instmap_delta, inst_key_sub).
+:- mode instmap_delta_get_inst_key_sub(in, out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1105,3 +1113,10 @@ instmap__inst_key_table_lookup(reachable(_, Alias), IKT, Key0, Inst) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+instmap__get_inst_key_sub(unreachable, Sub) :-
+	map__init(Sub).
+instmap__get_inst_key_sub(reachable(_, Sub), Sub).
+
+instmap_delta_get_inst_key_sub(IMD, Sub) :-
+	instmap__get_inst_key_sub(IMD, Sub).

@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module pd_term, hlds_module, hlds_pred, options, instmap.
-:- import_module hlds_goal, hlds_data, prog_data.
+:- import_module hlds_goal, prog_data.
 :- import_module bool, map, list, io, set, std_util, term, getopt.
 
 :- type pd_info 
