@@ -54,7 +54,7 @@ DRAFT NEWS for Mercury release 0.7
   recompile any existing Mercury object files or libraries when you
   install the new version.)
 
-  We handling floating point code a bit better.  We don't box floating
+  We handle floating point code a bit better.  We don't box floating
   point values on 64-bit architectures anymore, and on 32-bit
   architectures we do a better job of avoiding unnecessary box/unbox
   operations.  We also make some use of floating point registers for
