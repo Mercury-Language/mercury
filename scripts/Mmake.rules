@@ -303,13 +303,13 @@ endif
 # (Is that a bug in unix? In bash?)
 
 .m.err:
-	$(MCE) $(ALL_MCFLAGS) $(*F) $(ERR_REDIRECT)
+	$(MCE) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $(*F) $(ERR_REDIRECT)
 	@touch $@
 
 endif	# MMAKE_USE_MMC_MAKE == no
 
 .m.ugly:
-	$(MC) --convert-to-mercury $(ALL_MCFLAGS) $(*F)
+	$(MC) --convert-to-mercury $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $(*F)
 
 #-----------------------------------------------------------------------------#
 #
