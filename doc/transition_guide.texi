@@ -14,7 +14,7 @@
 @ifnottex
 This file is an aid for people porting Prolog programs to Mercury.
 
-Copyright (C) 1995-2004 The University of Melbourne.
+Copyright (C) 1995-2005 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -140,7 +140,7 @@ Therefore it cannot use Prolog's mechanism for doing
 input and output with side-effects.
 The mechanism that Mercury uses is the threading of an object
 that represents the state of the world through the computation.
-The type of this structure is @samp{io__state}.
+The type of this structure is @samp{io.state}.
 The modes of the two arguments that are added to calls are
 @samp{di} for ``destructive input'' and @samp{uo} for ``unique output''.
 The first means that the input variable
@@ -163,7 +163,7 @@ write_total(Total) :-
 in Mercury becomes
 
 @example
-:- pred write_total(int, io__state, io__state).
+:- pred write_total(int, io.state, io.state).
 :- mode write_total(in, di, uo) is det.
 
 write_total(Total, IO0, IO) :-
@@ -246,10 +246,10 @@ and output takes place outside it:
 
 @example
     ...
-    io__write_string("calling: ", IO6, IO7),
-    solve__write_goal(Goal, IO7, IO8),
+    io.write_string("calling: ", IO6, IO7),
+    solve.write_goal(Goal, IO7, IO8),
     ( solve(Goal) ->
-        io__write_string("succeeded\n", IO8, IO9),
+        io.write_string("succeeded\n", IO8, IO9),
         ...
     ;
         IO9 = IO8,
@@ -274,11 +274,11 @@ to be less clear and harder to maintain than those that do not.
 
 The use of assert and retract should be replaced with
 a collection data structure threaded through the relevant part of the program.
-Data which is truly global may be stored in the @samp{io__state} using
-the predicates @samp{io__get_globals} and @samp{io__set_globals}.
+Data which is truly global may be stored in the @samp{io.state} using
+the predicates @samp{io.get_globals} and @samp{io.set_globals}.
 These predicates take an argument of type @samp{univ}, the universal
 type, so that by using @samp{type_to_univ} and @samp{univ_to_type} it
-is possible to store data of any type in the @samp{io__state}.
+is possible to store data of any type in the @samp{io.state}.
 
 The standard library contains
 several abstract data types for storing collections,
@@ -420,7 +420,7 @@ is to transform the difference list into an accumulator.
 Instead of appending elements to the end of a difference list by
 binding the tail pointer, you simply insert elements onto the
 front of a list accumulator.  At the end of the loop, you can
-call @samp{list__reverse} to put the elements in the correct order
+call @samp{list.reverse} to put the elements in the correct order
 if necessary.  Although this may require two traversals of the list,
 it is still linear in complexity, and it probably still runs faster
 than the Prolog code using difference lists.
@@ -521,8 +521,8 @@ is
 
 @example
 intersect(List1, List2, Intersection) :-
-	solutions(lambda([X::out] is nondet,
-	    (list__member(X, List1), list__member(X, List2))), Intersection).
+	solutions((pred(X::out) is nondet :-
+	    (list.member(X, List1), list.member(X, List2))), Intersection).
 @end example
 
 Alternately, this could also be written as
@@ -533,7 +533,7 @@ intersect(List1, List2, Intersection) :-
 
 :- pred member_of_both(list(T)::in, list(T)::in, T::out) is nondet.
 member_of_both(List1, List2, X) :-
-	list__member(X, List1), list__member(X, List2).
+	list.member(X, List1), list.member(X, List2).
 @end example
 
 @noindent

@@ -745,17 +745,17 @@ intermediate values in a sequence.  That is, where in the plain syntax one
 might write
 @example
 	main(IO0, IO) :-
-		io__write_string("The answer is ", IO0, IO1),
-		io__write_int(calculate_answer(@dots{}), IO1, IO2),
-		io__nl(IO3, IO).
+		io.write_string("The answer is ", IO0, IO1),
+		io.write_int(calculate_answer(@dots{}), IO1, IO2),
+		io.nl(IO3, IO).
 @end example
 @noindent
 using state variable syntax one could write
 @example
 	main(!IO) :-
-		io__write_string("The answer is ", !IO),
-		io__write_int(calculate_answer(@dots{}), !IO),
-		io__nl(!IO).
+		io.write_string("The answer is ", !IO),
+		io.write_int(calculate_answer(@dots{}), !IO),
+		io.nl(!IO).
 @end example
 
 A state variable is written @samp{!.@var{X}} or @samp{!:@var{X}},
@@ -908,10 +908,10 @@ variable syntax.
 @item Threading the IO state
 @example
 main(!IO) :-
-	io__write_string("The 100th prime is ", !IO),
+	io.write_string("The 100th prime is ", !IO),
 	X = prime(100),
-	io__write_int(X, !IO),
-	io__nl(!IO).
+	io.write_int(X, !IO),
+	io.nl(!IO).
 @end example
 
 @item Handling accumulators (1)
@@ -1580,8 +1580,8 @@ and back again.
 The universal type is useful for situations
 where you need heterogeneous collections.
 
-@item The ``state-of-the-world'' type: @code{io__state}.
-The type @code{io__state} is defined in the standard library module @code{io},
+@item The ``state-of-the-world'' type: @code{io.state}.
+The type @code{io.state} is defined in the standard library module @code{io},
 and represents the state of the world.
 Predicates which perform I/O are passed the old state of the world
 and produce a new state of the world.
@@ -2012,11 +2012,11 @@ Field access syntax may be used at the top-level of @code{func} and
 @example
 :- func map(K, V) ^ elem(K) = V.
 :- mode in        ^ in      = out is semidet.
-Map ^ elem(Key) = map__lookup(Map, Key).
+Map ^ elem(Key) = map.lookup(Map, Key).
 
 :- func (map(K, V) ^ elem(K) := V)  = V.
 :- mode (in        ^ in      := in) = out is semidet.
-(Map ^ elem(Key) := Value) = map__set(Map, Key, Value).
+(Map ^ elem(Key) := Value) = map.set(Map, Key, Value).
 @end example
 
 The Mercury standard library modules @code{array} and @code{bt_array}
@@ -2754,10 +2754,10 @@ For this mode, it is better to use a completely different algorithm:
 
 @example
 	append(Prefix, Suffix, List) :-
-		list__length(List, ListLength),
-		list__length(Suffix, SuffixLength),
-		PrefixLength is ListLength - SuffixLength,
-		list__split_list(PrefixLength, List, Prefix, Suffix).
+		list.length(List, ListLength),
+		list.length(Suffix, SuffixLength),
+		PrefixLength = ListLength - SuffixLength,
+		list.split_list(PrefixLength, List, Prefix, Suffix).
 @end example
 
 @noindent
@@ -2793,10 +2793,10 @@ then you could implement it as
 	usual_append([X|Xs], Ys, [X|Zs]) :- usual_append(Xs, Ys, Zs).
 
 	other_append(Prefix, Suffix, List) :-
-		list__length(List, ListLength),
-		list__length(Suffix, SuffixLength),
-		PrefixLength is ListLength - SuffixLength,
-		list__split_list(PrefixLength, List, Prefix, Suffix).
+		list.length(List, ListLength),
+		list.length(Suffix, SuffixLength),
+		PrefixLength = ListLength - SuffixLength,
+		list.split_list(PrefixLength, List, Prefix, Suffix).
 @end example
 
 This language feature can be used to write ``impure'' code that
@@ -3008,7 +3008,7 @@ function can return to the caller, then that mode has a
 determinism of @code{erroneous}.
 
 The determinism annotation @code{erroneous} is used on the library
-predicates @samp{require__error/1} and @samp{exception__throw/1},
+predicates @samp{require.error/1} and @samp{exception.throw/1},
 but apart from that determinism annotations @code{erroneous} and
 @code{failure} are generally not needed.
 
@@ -3629,14 +3629,14 @@ A comparison predicate can also be supplied.
 :- type set(T) ---> set(list(T))
         where equality is set_equals, comparison is set_compare.
 
-:- pred set_compare(builtin__comparison_result::uo,
+:- pred set_compare(builtin.comparison_result::uo,
                 set(T)::in, set(T)::in) is det.
 set_compare(promise_only_solution(set_compare_2(Set1, Set2)), Set1, Set2).
 
 :- pred set_compare_2(set(T)::in, set(T)::in,
-                builtin__comparison_result::uo) is cc_multi.
+                builtin.comparison_result::uo) is cc_multi.
 set_compare_2(set(List1), set(List2), Result) :-
-        builtin__compare(Result, list__sort(List1), list__sort(List2)).
+        builtin.compare(Result, list.sort(List1), list.sort(List2)).
 @end example
 
 If a comparison predicate is supplied and the unification predicate
@@ -3651,7 +3651,7 @@ set_equals(S1, S2) :-
 
 If a unification predicate is supplied without a comparison predicate,
 the compiler will generate a comparison predicate which throws an
-exception of type @samp{require__software_error} when called.
+exception of type @samp{require.software_error} when called.
 
 A type declaration for a type @samp{foo(T1, @dots{}, TN)} may contain a
 @samp{where equality is @var{equalitypred}} specification only if it
@@ -3743,7 +3743,7 @@ following conditions are satisfied:
 @item
 @var{comparepred} must be the name of a predicate with signature
 @example
-:- pred @var{comparepred}(builtin__comparison_result::uo,
+:- pred @var{comparepred}(builtin.comparison_result::uo,
                 foo(T1, @dots{}, TN)::in, foo(T1, @dots{}, TN)::in) is det.
 @end example
 
@@ -3780,7 +3780,7 @@ reflexive and transitive.  The compiler is not required to check this.
 
 For each type for which the declaration has a
 @samp{where comparison is @var{comparepred}} specification,
-any calls to the standard library predicate @samp{builtin__compare/3}
+any calls to the standard library predicate @samp{builtin.compare/3}
 with arguments of that type are evaluated as if they were calls
 to @var{comparepred}.
 
@@ -3899,10 +3899,10 @@ goal of the expression.  For example,
 
 @example
 Pred = (pred(Strings::in, Num::out, di, uo) is det -->
-    io__write_string("The strings are: "),
-    @{ list__length(Strings, Num) @},
-    io__write_strings(Strings),
-    io__nl
+    io.write_string("The strings are: "),
+    @{ list.length(Strings, Num) @},
+    io.write_strings(Strings),
+    io.nl
 )
 @end example
 
@@ -3911,10 +3911,10 @@ is equivalent to
 
 @example
 Pred = (pred(Strings::in, Num::out, IO0::di, IO::uo) is det :-
-    io__write_string("The strings are: ", IO0, IO1),
-    list__length(Strings, Num),
-    io__write_strings(Strings, IO1, IO2),
-    io__nl(IO2, IO)
+    io.write_string("The strings are: ", IO0, IO1),
+    list.length(Strings, Num),
+    io.write_strings(Strings, IO1, IO2),
+    io.nl(IO2, IO)
 )
 @end example
 
@@ -3931,21 +3931,21 @@ or you must write a forwarding predicate or function.
 For example, instead of
 
 @example
-list__filter([1,2,3], \=(2), List)
+list.filter([1,2,3], \=(2), List)
 @end example
 
 @noindent
 you must write either
 
 @example
-list__filter([1,2,3], (pred(X::in) is semidet :- X \= 2), List)
+list.filter([1,2,3], (pred(X::in) is semidet :- X \= 2), List)
 @end example
 
 @noindent
 or
 
 @example
-list__filter([1,2,3], not_equal(2), List)
+list.filter([1,2,3], not_equal(2), List)
 @end example
 
 @noindent
@@ -4040,24 +4040,24 @@ of the arguments supplied (a closure).  The declarative semantics of
 
 @example
 solutions(Pred, List) is true iff
-        all [X] (call(Pred, X) <=> list__member(X, List))
+        all [X] (call(Pred, X) <=> list.member(X, List))
         and List is sorted.
 @end example
 
 @noindent
 where @samp{call(Pred, X)} invokes the higher-order predicate term
 @samp{Pred} with argument @samp{X},
-and where @samp{list__member/2} is the standard
+and where @samp{list.member/2} is the standard
 library predicate for list membership.  In other words,
 @samp{solutions(Pred, List)} finds all the values of @samp{X}
 for which @samp{call(Pred, X)} is true, collects these solutions
 in a list, sorts the list, and returns that list as its result.
 Here's an example: the standard library defines a predicate
-@samp{list__perm(List0, List)}
+@samp{list.perm(List0, List)}
 
 @example
-:- pred list__perm(list(T), list(T)).
-:- mode list__perm(in, out) is nondet.
+:- pred list.perm(list(T), list(T)).
+:- mode list.perm(in, out) is nondet.
 @end example
 
 @noindent
@@ -4065,7 +4065,7 @@ which succeeds iff List is a permutation of List0.
 Hence the following call to solutions
 
 @example
-solutions(list__perm([3,1,2]), L)
+solutions(list.perm([3,1,2]), L)
 @end example
 
 @noindent
@@ -4087,7 +4087,7 @@ In Mercury, the mode and determinism of a higher-order predicate or function
 term are part of that term's @emph{inst}, not its @emph{type}.
 This allows a single higher-order predicate to work on argument
 predicates of different modes and determinism, which is particularly
-useful for library predicates such as @samp{list__map} and @samp{list__foldl}.
+useful for library predicates such as @samp{list.map} and @samp{list.foldl}.
 
 The language contains builtin @samp{inst} values
 
@@ -4162,7 +4162,7 @@ the above goal could legally be written as
 
 Note that the compiler will only catch direct attempts at higher-order
 unifications; indirect attempts (via polymorphic predicates, for
-example @samp{(list__append([], [P], [Q])} may result in an error at
+example @samp{(list.append([], [P], [Q])} may result in an error at
 run-time rather than at compile-time.
 
 In order to call a higher-order term, the compiler must know its higher-order
@@ -4183,8 +4183,6 @@ argument mode is @samp{in}.
 
 @node Modules
 @chapter Modules
-@c XXX At some point in the future, change the rest of the documentation
-@c     to use `.' as the module separator rather than `__'.
 
 @menu
 * The module system::
@@ -4270,14 +4268,14 @@ One module must export a predicate @samp{main/2}, which
 must be declared as either
 
 @example
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io.state::di, io.state::uo) is det.
 @end example
 
 @noindent
 or
 
 @example
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io.state::di, io.state::uo) is cc_multi.
 @end example
 
 @noindent
@@ -4320,7 +4318,7 @@ simple module for managing queues:
 % Queues are implemented as lists. We need the `list' module
 % for the declaration of the type list(T), with its constructors
 % '[]'/0 % and '.'/2, and for the declaration of the predicate
-% list__append/3.
+% list.append/3.
 
 :- import_module list.
 
@@ -4333,7 +4331,7 @@ simple module for managing queues:
 empty_queue([]).
 
 put(Queue0, Elem, Queue) :-
-         list__append(Queue0, [Elem], Queue).
+         list.append(Queue0, [Elem], Queue).
 
 get([Elem | Queue], Elem, Queue).
 
@@ -4675,7 +4673,7 @@ of method definitions that it can contain:
 	func method1(T, T) = int,
 	func method2(T) = int,
 	pred method3(T::in, int::out) is det,
-	pred method4(T::in, io__state::di, io__state::uo) is det,
+	pred method4(T::in, io.state::di, io.state::uo) is det,
 	func method5(bool, T) = T
 ].
 
@@ -4690,7 +4688,7 @@ of method definitions that it can contain:
 	(method3(X, Y) :- Y = X + 2),
 
 	% method defined by a DCG rule
-	(method4(X) --> io__print(X), io__nl),
+	(method4(X) --> io.print(X), io.nl),
 
 	% method defined by multiple clauses
 	method5(no, _) = 0,
@@ -4842,8 +4840,8 @@ hash_int(X) = X.
 
 :- func hash_string(string) = int.
 hash_string(S) = H :-
-        % use the standard library predicate string__hash/2
-        string__hash(S, H).
+        % use the standard library predicate string.hash/2
+        string.hash(S, H).
 
 :- end_module hashable.
 @end example
@@ -4947,7 +4945,7 @@ may be printed:
 
 @example
 :- typeclass portrayable(T) where [
-        pred portray(T::in, io__state::di, io__state::uo) is det
+        pred portray(T::in, io.state::di, io.state::uo) is det
 ].
 @end example
 
@@ -4955,11 +4953,11 @@ The programmer could declare instances such as
 
 @example
 :- instance portrayable(int) where [
-        pred(portray/3) is io__write_int
+        pred(portray/3) is io.write_int
 ].
 
 :- instance portrayable(char) where [
-        pred(portray/3) is io__write_char
+        pred(portray/3) is io.write_char
 ].
 @end example
 
@@ -4974,14 +4972,14 @@ as in the following example:
         pred(portray/3) is portray_list
 ].
 
-:- pred portray_list(list(T), io__state, io__state) <= portrayable(T).
+:- pred portray_list(list(T), io.state, io.state) <= portrayable(T).
 :- mode portray_list(in, di, uo) is det.
 
 portray_list([]) --> 
         [].
 portray_list([X|Xs]) --> 
 	portray(X),
-	io__write_char(' '),
+	io.write_char(' '),
 	portray_list(Xs).
 @end example
 
@@ -5083,7 +5081,7 @@ expecting the same type, unify it with another value of the same
 type, put it in a polymorphic data structure, or pass it to a
 polymorphic procedure whose argument type is universally quantified.
 (Note, however, that the standard library includes some quite powerful
-procedures such as @samp{io__write} which can be useful in this context.)
+procedures such as @samp{io.write} which can be useful in this context.)
 
 A non-variable type (i.e.@: a type that is not a type variable)
 is considered @emph{more general} than an
@@ -5555,7 +5553,7 @@ different semantics, which can be selected with different
 combinations of the @samp{--no-reorder-conj}, @samp{--no-reorder-disj},
 and @samp{--fully-strict} options.  (The @samp{--fully-strict} option
 prevents the compiler from improving completeness by optimizing away infinite
-loops or calls to @code{require__error/1} or @code{exception__throw/1}.)
+loops or calls to @code{require.error/1} or @code{exception.throw/1}.)
 The default semantics are the commutative semantics.  Enabling all of these
 options gives you the strict sequential semantics.  Enabling just some
 of them gives you a semantics somewhere in between.
@@ -5833,7 +5831,7 @@ the Mercury type name (ignoring any type parameters) followed by
 an underscore and then the type arity,
 expressed as a decimal integer.
 Mercury module qualifiers are converted to CLR namespace qualifiers.
-For example the Mercury type @samp{foo__bar__baz/1} will be passed as the CLR
+For example the Mercury type @samp{foo.bar.baz/1} will be passed as the CLR
 type @samp{foo.bar.baz_1}.
 Note an extra namespace qualifier, @samp{mercury}, will be prepended to the
 beginning of names residing in the Mercury standard library.
@@ -5862,7 +5860,7 @@ If the Mercury procedure is a Mercury function that cannot fail,
 and the function result has an output mode,
 then the IL function should return the Mercury function result value.
 Otherwise the function result is appended as an extra argument.
-Arguments of type @samp{io__state} or @samp{store__store(_)} are not
+Arguments of type @samp{io.state} or @samp{store.store(_)} are not
 passed or returned at all.
 (The reason for this is that these types represent mutable state,
 and in IL modifications to mutable state are done via side effects,
@@ -5888,7 +5886,7 @@ the Mercury type name (ignoring any type parameters) followed by
 an underscore and then the type arity,
 expressed as a decimal integer.
 Mercury module qualifiers are converted to Java namespace qualifiers.
-For example the Mercury type @samp{foo__bar__baz/1} will be passed as the Java
+For example the Mercury type @samp{foo.bar.baz/1} will be passed as the Java
 type @samp{foo.bar.baz_1}.
 Note an extra namespace qualifier, @samp{mercury}, will be prepended to the
 beginning of names residing in the Mercury standard library.
@@ -5921,7 +5919,7 @@ Java function is the type of the item in question.
 Otherwise, the Java function will return an array of type
 @samp{java.lang.Object[]}.
                                                                                 
-Arguments of type @samp{io__state} or @samp{store__store(_)} are not
+Arguments of type @samp{io.state} or @samp{store.store(_)} are not
 passed or returned at all.
 (The reason for this is that these types represent mutable state,
 and in Java modifications to mutable state are done via side effects,
@@ -6196,11 +6194,11 @@ must assign a truth value to the macro @samp{SUCCESS_INDICATOR}.
 For example:
 
 @example
-:- pred string__contains_char(string, character).
-:- mode string__contains_char(in, in) is semidet.
+:- pred string.contains_char(string, character).
+:- mode string.contains_char(in, in) is semidet.
 
 :- pragma foreign_proc("C",
-	string__contains_char(Str::in, Ch::in),
+	string.contains_char(Str::in, Ch::in),
         [will_not_call_mercury, promise_pure],
         "SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);").
 @end example
@@ -6384,11 +6382,11 @@ must assign a value of type @samp{bool} to the variable
 @samp{SUCCESS_INDICATOR}.  For example:
 
 @example
-:- pred string__contains_char(string, character).
-:- mode string__contains_char(in, in) is semidet.
+:- pred string.contains_char(string, character).
+:- mode string.contains_char(in, in) is semidet.
 
 :- pragma foreign_proc("C#",
-	string__contains_char(Str::in, Ch::in),
+	string.contains_char(Str::in, Ch::in),
         [will_not_call_mercury, promise_pure],
         "SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);").
 @end example
@@ -6417,7 +6415,7 @@ For example:
 :- pragma foreign_decl("C#", "
 	using System;
 ").
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io.state::di, io.state::uo) is det.
 :- pragma foreign_proc("C#",
 	hello(_IO0::di, _IO::uo),
 	[will_not_call_mercury],
@@ -6645,11 +6643,11 @@ must assign a value of type @samp{boolean} to the variable
 @samp{succeeded}.  For example:
 
 @example
-:- pred string__contains_char(string, character).
-:- mode string__contains_char(in, in) is semidet.
+:- pred string.contains_char(string, character).
+:- mode string.contains_char(in, in) is semidet.
 
 :- pragma foreign_proc("Java",
-	string__contains_char(Str::in, Ch::in),
+	string.contains_char(Str::in, Ch::in),
         [will_not_call_mercury, promise_pure],
         "succeeded = (Str.IndexOf(Ch) != -1);").
 @end example
@@ -6691,7 +6689,7 @@ class MyApplet extends JApplet @{
     @}
 @}
 ").
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io.state::di, io.state::uo) is det.
 :- pragma foreign_proc("Java",
 	hello(_IO0::di, _IO::uo),
 	[will_not_call_mercury],
@@ -6772,10 +6770,10 @@ must assign a value of type @samp{bool} to the variable
 @samp{SUCCESS_INDICATOR}.  For example:
 
 @example
-:- pred string__contains_char(string, character).
-:- mode string__contains_char(in, in) is semidet.
+:- pred string.contains_char(string, character).
+:- mode string.contains_char(in, in) is semidet.
 
-:- pragma foreign_proc("MC++", string__contains_char(Str::in, Ch::in),
+:- pragma foreign_proc("MC++", string.contains_char(Str::in, Ch::in),
         [will_not_call_mercury, promise_pure],
         "SUCCESS_INDICATOR = (Str->IndexOf(Ch) != -1);").
 @end example
@@ -7016,10 +7014,10 @@ must assign a truth value to the macro @samp{SUCCESS_INDICATOR}.
 For example:
 
 @example
-:- pred string__contains_char(string, character).
-:- mode string__contains_char(in, in) is semidet.
+:- pred string.contains_char(string, character).
+:- mode string.contains_char(in, in) is semidet.
 
-:- pragma c_code(string__contains_char(Str::in, Ch::in),
+:- pragma c_code(string.contains_char(Str::in, Ch::in),
         [will_not_call_mercury],
         "SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);").
 @end example
@@ -7129,14 +7127,14 @@ keep track of the next alternative to return.
 @noindent
 The next example is a more realistic example;
 it shows how you could implement the reverse
-mode of @samp{string__append}, which returns
+mode of @samp{string.append}, which returns
 all possible ways of splitting a string into
 two pieces, using @samp{pragma c_code}.
 
 @example
-:- pred string__append(string, string, string).
-:- mode string__append(out, out, in) is multi.
-:- pragma c_code(string__append(S1::out, S2::out, S3::in),
+:- pred string.append(string, string, string).
+:- mode string.append(out, out, in) is multi.
+:- pragma c_code(string.append(S1::out, S2::out, S3::in),
                 [will_not_call_mercury, thread_safe],
         local_vars("
                 String s;
@@ -7223,7 +7221,7 @@ Impure predicates may perform destructive update on data pointed to by
 C pointer arguments, even without unique modes.  But they cannot
 destructively update the arguments themselves.
 Procedures may perform I/O only if their arguments
-include an @samp{io__state} pair (see the @samp{io} chapter
+include an @samp{io.state} pair (see the @samp{io} chapter
 of the Mercury Library Reference Manual), or if they are declared impure
 (@pxref{Impurity}).
 The Mercury implementation is allowed to assume that
@@ -7235,10 +7233,10 @@ undefined.
 
 For example, the following code defines a predicate
 @samp{c_write_string/3}, which has a similar effect to
-the Mercury library predicate @samp{io__write_string/3}:
+the Mercury library predicate @samp{io.write_string/3}:
 
 @example
-:- pred c_write_string(string, io__state, io__state).
+:- pred c_write_string(string, io.state, io.state).
 :- mode c_write_string(in, di, uo) is det.
 
 :- pragma c_code(c_write_string(S::in, IO0::di, IO::uo),
@@ -7248,9 +7246,9 @@ the Mercury library predicate @samp{io__write_string/3}:
 
 @noindent
 In this example, the I/O is done via side effects inside the C code,
-but the Mercury interface includes @samp{io__state} arguments
+but the Mercury interface includes @samp{io.state} arguments
 to ensure that the predicate has a proper declarative
-semantics.  If the @samp{io__state} arguments were
+semantics.  If the @samp{io.state} arguments were
 left off, then the Mercury implementation might apply
 undesirable optimizations (e.g.@: reordering, duplicate
 call elimination, tabling, lazy evaluation, @dots{})
@@ -7370,7 +7368,7 @@ If the Mercury procedure is a Mercury function that cannot fail, and
 the function result has an output mode, then the C interface
 function will return the Mercury function result value.
 Otherwise the function result is appended as an extra argument.
-Arguments of type @samp{io__state} or @samp{store__store(_)}
+Arguments of type @samp{io.state} or @samp{store.store(_)}
 are not passed at all.  (The reason for this is that these types
 represent mutable state, and in C modifications to mutable state
 are done via side effects, rather than argument passing.)
@@ -7496,7 +7494,7 @@ If the Mercury procedure is a Mercury function that cannot fail,
 and the function result has an output mode,
 then the C function should return the Mercury function result value.
 Otherwise the function result is appended as an extra argument.
-Arguments of type @samp{io__state} or @samp{store__store(_)} are not
+Arguments of type @samp{io.state} or @samp{store.store(_)} are not
 passed at all.
 (The reason for this is that these types represent mutable state,
 and in C modifications to mutable state are done via side effects,
@@ -8044,7 +8042,7 @@ Mercury distinguishes three ``levels'' of purity:
 For pure procedures, the set of solutions depends only on the
 values of the input arguments.
 They do not interact with the ``real'' world (i.e., do any
-input/output) without taking an io__state (@pxref{Types}) as input and
+input/output) without taking an io.state (@pxref{Types}) as input and
 returning one as output, and do not change the value of any data
 structure that will not be undone on backtracking (unless the data
 structure would be unreachable on backtracking).  Note that equality
@@ -8469,12 +8467,12 @@ The substitution is written as a conjunction of bindings of the form
 The declarations
 
 @example
-:- pred map__lookup(map(K, V), K, V).
-:- pragma type_spec(map__lookup/3, K = int).
+:- pred map.lookup(map(K, V), K, V).
+:- pragma type_spec(map.lookup/3, K = int).
 @end example
 
 @noindent
-give a hint to the compiler that a version of @samp{map__lookup/3} should
+give a hint to the compiler that a version of @samp{map.lookup/3} should
 be created for integer keys.
 
 Implementations are free to ignore @samp{pragma type_spec} declarations.
@@ -8893,14 +8891,14 @@ with predicates in other modules.
 
 Every predicate with a @samp{pragma aditi} or
 @samp{pragma base_relation} declaration must have an input
-argument of type @samp{aditi__state}. This ensures that Aditi predicates
+argument of type @samp{aditi.state}. This ensures that Aditi predicates
 are only called from within transactions and that updates and database
-calls are ordered correctly, in the same way that @samp{io__state} arguments
+calls are ordered correctly, in the same way that @samp{io.state} arguments
 are used to ensure ordering of I/O operations. Within the clauses for
 predicates with a @samp{pragma aditi} declaration variables with
-type @samp{aditi__state} may only be passed to other database predicates ---
+type @samp{aditi.state} may only be passed to other database predicates ---
 they may not be packaged into terms or passed to top-down Mercury predicates.
-This allows the compiler to remove all instances of @samp{aditi__state}
+This allows the compiler to remove all instances of @samp{aditi.state}
 variables from database predicates, and enforces the restriction that
 top-down Mercury code called from within the database cannot call bottom-up
 code, which is currently impossible for Aditi to handle.
@@ -8914,68 +8912,68 @@ predicates with @samp{pragma aditi} declarations.
 The following predicates and functions from the standard library
 can be called from Aditi: 
 
-@samp{builtin__compare/3},
+@samp{builtin.compare/3},
 
-@samp{int:'<'/2},
-@samp{int:'>'/2},
-@samp{int:'=<'/2},
-@samp{int:'>='/2},
-@samp{int__abs/2},
-@samp{int__max/3},
-@samp{int__min/3},
-@samp{int__to_float/2},
-@samp{int__pow/2},
-@samp{int__log2/2},
-@samp{int:'+'/2},
-@samp{int:'+'/1},
-@samp{int:'-'/2},
-@samp{int:'-'/1},
-@samp{int:'*'/2},
-@samp{int:'//'/2},
-@samp{int__rem/2},
+@samp{int.'<'/2},
+@samp{int.'>'/2},
+@samp{int.'=<'/2},
+@samp{int.'>='/2},
+@samp{int.abs/2},
+@samp{int.max/3},
+@samp{int.min/3},
+@samp{int.to_float/2},
+@samp{int.pow/2},
+@samp{int.log2/2},
+@samp{int.'+'/2},
+@samp{int.'+'/1},
+@samp{int.'-'/2},
+@samp{int.'-'/1},
+@samp{int.'*'/2},
+@samp{int.'//'/2},
+@samp{int.rem/2},
 
-@samp{float:'<'/2},
-@samp{float:'>'/2},
-@samp{float:'>='/2},
-@samp{float:'=<'/2},
-@samp{float__abs/1},
-@samp{float__abs/2},
-@samp{float__max/2},
-@samp{float__max/3},
-@samp{float__min/2},
-@samp{float__min/3},
-@samp{float__pow/2},
-@samp{float__log2/2},
-@samp{float__float/1},
-@samp{float__truncate_to_int/1},
-@samp{float__truncate_to_int/2},
-@samp{float:'+'/2},
-@samp{float:'+'/1},
-@samp{float:'-'/2},
-@samp{float:'-'/1},
-@samp{float:'*'/2},
-@samp{float:'/'/2},
+@samp{float.'<'/2},
+@samp{float.'>'/2},
+@samp{float.'>='/2},
+@samp{float.'=<'/2},
+@samp{float.abs/1},
+@samp{float.abs/2},
+@samp{float.max/2},
+@samp{float.max/3},
+@samp{float.min/2},
+@samp{float.min/3},
+@samp{float.pow/2},
+@samp{float.log2/2},
+@samp{float.float/1},
+@samp{float.truncate_to_int/1},
+@samp{float.truncate_to_int/2},
+@samp{float.'+'/2},
+@samp{float.'+'/1},
+@samp{float.'-'/2},
+@samp{float.'-'/1},
+@samp{float.'*'/2},
+@samp{float.'/'/2},
 
-@samp{math__ceiling/1},
-@samp{math__round/1},
-@samp{math__floor/1},
-@samp{math__sqrt/1},
-@samp{math__pow/2},
-@samp{math__exp/1},
-@samp{math__ln/1},
-@samp{math__log10/1},
-@samp{math__log2/1},
-@samp{math__sin/1},
-@samp{math__cos/1},
-@samp{math__tan/1},
-@samp{math__asin/1},
-@samp{math__acos/1},
-@samp{math__atan/1},
-@samp{math__sinh/1},
-@samp{math__cosh/1},
-@samp{math__tanh/1},
+@samp{math.ceiling/1},
+@samp{math.round/1},
+@samp{math.floor/1},
+@samp{math.sqrt/1},
+@samp{math.pow/2},
+@samp{math.exp/1},
+@samp{math.ln/1},
+@samp{math.log10/1},
+@samp{math.log2/1},
+@samp{math.sin/1},
+@samp{math.cos/1},
+@samp{math.tan/1},
+@samp{math.asin/1},
+@samp{math.acos/1},
+@samp{math.atan/1},
+@samp{math.sinh/1},
+@samp{math.cosh/1},
+@samp{math.tanh/1},
 
-@samp{string__length/2}.
+@samp{string.length/2}.
 
 @node Aditi pragma declarations
 @subsection Aditi pragma declarations
@@ -9090,13 +9088,13 @@ Predicate and function names in Aditi update goals may be module qualified.
 The examples make use of the following declarations:
 
 @example
-:- pred p(aditi__state::aditi_mui, int::out, int::out) is nondet.
+:- pred p(aditi.state::aditi_mui, int::out, int::out) is nondet.
 :- pragma base_relation(p/3).
 
-:- func f(aditi__state::aditi_mui, int::out) = (int::out) is nondet.
+:- func f(aditi.state::aditi_mui, int::out) = (int::out) is nondet.
 :- pragma base_relation(f/2).
 
-:- pred ancestor(aditi__state::aditi_mui, int::out, int::out) is nondet.
+:- pred ancestor(aditi.state::aditi_mui, int::out, int::out) is nondet.
 :- pragma aditi(ancestor/3).
 @end example
 
@@ -9140,12 +9138,12 @@ must be data-terms.
 
 The tuple to be inserted must have the same type signature as the relation
 being inserted into. All the arguments of the tuple (including the return value
-of a function) have mode @samp{in}, except the @samp{aditi__state} argument
+of a function) have mode @samp{in}, except the @samp{aditi.state} argument
 which has mode @samp{unused}.
 
 @item
 @samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
-@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@samp{aditi.state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
 @end itemize
 
 @sp 1
@@ -9226,7 +9224,7 @@ being updated.
 @samp{@var{Closure}} must be a data-term which has a higher-order type with
 the same type signature as the base relation being updated.
 
-The @samp{aditi__state} argument of @samp{@var{Closure}} must have
+The @samp{aditi.state} argument of @samp{@var{Closure}} must have
 mode @samp{aditi_mui}. All other arguments must have mode @samp{out}.
 The determinism of @samp{@var{Closure}} must be @samp{nondet}.
 
@@ -9238,7 +9236,7 @@ on the lambda expression.
 
 @item
 @samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
-@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@samp{aditi.state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
 @end itemize
 
 @sp 1
@@ -9333,7 +9331,7 @@ bulk_delete_example_4(DB0, DB) :-
 @end example
 
 The type of @samp{InsertP} is
-@w{@samp{aditi_bottom_up pred(aditi__state, int, int)}}.
+@w{@samp{aditi_bottom_up pred(aditi.state, int, int)}}.
 Its inst is @w{@samp{pred(aditi_mui, out, out) is nondet}},
 as for a normal lambda expression.
 
@@ -9394,9 +9392,9 @@ must be data-terms.
 
 The original tuple is given by the first set of arguments, which
 have mode @samp{out}. The updated tuple is given by the second set
-of arguments, which have mode @samp{out}. The @samp{aditi__state}
+of arguments, which have mode @samp{out}. The @samp{aditi.state}
 argument for the original tuple has mode @samp{aditi_mui}.
-The @samp{aditi__state} argument for the updated tuple has mode
+The @samp{aditi.state} argument for the updated tuple has mode
 @samp{unused}.
 
 The argument types of each tuple must match the argument types
@@ -9409,16 +9407,16 @@ of the base relation being modified.
 @samp{@var{Closure}} must be a data-term which has a higher-order type.
 
 When modifying a predicate with type declaration
-@w{@samp{:- pred p(aditi__state, @var{Type1}, @dots{})}}, @samp{@var{Closure}}
+@w{@samp{:- pred p(aditi.state, @var{Type1}, @dots{})}}, @samp{@var{Closure}}
 must have type
-@samp{aditi_bottom_up pred(aditi__state, @var{Type1}, @dots{}, aditi__state, @var{Type1}, @dots{})},
+@samp{aditi_bottom_up pred(aditi.state, @var{Type1}, @dots{}, aditi.state, @var{Type1}, @dots{})},
 and inst
 @w{@samp{pred(aditi_mui, out, @dots{}, unused, out, @dots{}) is nondet}}.
 
 When modifying a function with type declaration
-@w{@samp{:- func p(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
+@w{@samp{:- func p(aditi.state, @var{Type1}, @dots{}) = @var{Type2}}},
 @samp{@var{Closure}} must have type
-@samp{aditi_bottom_up pred(aditi__state, @var{Type1}, @dots{}, @var{Type2}, aditi__state, @var{Type1}, @dots{}, @var{Type2})},
+@samp{aditi_bottom_up pred(aditi.state, @var{Type1}, @dots{}, @var{Type2}, aditi.state, @var{Type1}, @dots{}, @var{Type2})},
 and inst
 @w{@samp{pred(aditi_mui, out, @dots{}, out, unused, out, @dots{}, out) is nondet}}.
 
@@ -9428,7 +9426,7 @@ being modified.
 
 @item
 @samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
-@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@samp{aditi.state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
 @end itemize
 
 @sp 2
@@ -9539,7 +9537,7 @@ the conjunction in the modification goal would be parsed as extra arguments
 of the @samp{aditi_bulk_modify} call, resulting in a syntax error.
 
 The type of @samp{ModifyP} is
-@w{@samp{aditi_bottom_up pred(aditi__state, int, int, aditi__state, int, int)}}.
+@w{@samp{aditi_bottom_up pred(aditi.state, int, int, aditi.state, int, int)}}.
 Its inst is @w{@samp{pred(aditi_mui, out, out, unused, out, out) is nondet}},
 as for a normal lambda expression.
 
@@ -9556,7 +9554,7 @@ The basic instructions in Aditi-RL are relational database operations such as
 @item aggregate
 Aggregates are used to compute a value such as a sum over all the solutions
 for a predicate. Aggregates can be computed over Aditi predicates using
-@samp{aditi__aggregate_compute_initial} defined in
+@samp{aditi.aggregate_compute_initial} defined in
 @file{$ADITI_HOME/doc/aditi.m} in the Aditi distribution.
 
 @item base relation

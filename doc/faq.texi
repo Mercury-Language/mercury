@@ -24,7 +24,7 @@
 This file is the Mercury Frequently Asked Questions List, version <VERSION>.
 It contains a list of frequently asked questions about Mercury, with answers.
 
-Copyright (C) 1995-1997,1999,2001-2004 The University of Melbourne.
+Copyright (C) 1995-1997,1999,2001-2005 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this FAQ list provided the copyright notice and this permission notice
@@ -129,19 +129,19 @@ I checked and both branches bind the same variables. What is the error?}
 
 This error generally happens if you attempt bind non-local variables
 in the @emph{condition} of the if-then-else.  For example, the following
-code attempts to bind @samp{Value} in the call to @samp{map__search},
+code attempts to bind @samp{Value} in the call to @samp{map.search},
 but @samp{Value} occurs outside of the if-then-else --- in particular,
 it occurs in the head of the clause.
 
 @example
-:- pred map__search(map(K, V), K, V).
-:- mode map__search(in, in, out) is semidet.
+:- pred map.search(map(K, V), K, V).
+:- mode map.search(in, in, out) is semidet.
 
 :- pred lookup(map(string, int), string, int).
 :- mode lookup(in, in, out) is det.
 
 lookup(Map, Key, Value) :-
-        (if map__search(Map, Key, Value) then
+        (if map.search(Map, Key, Value) then
                 true
         else
                 Value = -1
@@ -165,7 +165,7 @@ a new local variable, which we will call @samp{Value1}:
 @example
 lookup(Map, Key, Value) :-
         (if some [Value1]
-                map__search(Map, Key, Value1)
+                map.search(Map, Key, Value1)
         then
                 Value = Value1
         ;
@@ -179,7 +179,7 @@ prefer a slightly more succinct style you can write this as
 
 @example
 lookup(Map, Key, Value) :-
-        ( map__search(Map, Key, Value1) ->
+        ( map.search(Map, Key, Value1) ->
                 Value = Value1
         ;
                 Value = -1
