@@ -2736,10 +2736,10 @@ hlds_out__write_import_status(imported(ancestor_private_interface)) -->
 	io__write_string("imported from an ancestor's private interface").
 hlds_out__write_import_status(imported(ancestor)) -->
 	io__write_string("imported by an ancestor").
-hlds_out__write_import_status(external(interface)) -->
-	io__write_string("external (and exported)").
-hlds_out__write_import_status(external(implementation)) -->
-	io__write_string("external (and local)").
+hlds_out__write_import_status(external(Status)) -->
+	io__write_string("external (and "),
+	hlds_out__write_import_status(Status),
+	io__write_string(")").
 hlds_out__write_import_status(abstract_imported) -->
 	io__write_string("abstract_imported").
 hlds_out__write_import_status(opt_imported) -->

@@ -56,6 +56,7 @@ ORDINARY_PROGS=	\
 	expand \
 	export_test \
 	export_test2 \
+	external_unification_pred \
 	failure_unify \
 	field_syntax \
 	float_field \

@@ -690,7 +690,10 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		% calls a predicate which is exported, then we don't
 		% need to do anything special.
 		%
-		{ Status = exported ; Status = external(interface) }
+		{ Status = exported
+		; Status = external(ExternalStatus),
+			status_is_exported(ExternalStatus, yes)
+		}
 	->
 		{ DoWrite = yes }
 	;
@@ -2194,9 +2197,9 @@ set_list_of_preds_exported_2([PredId | PredIds], Preds0, Preds) :-
 		->
 			NewStatus = pseudo_exported
 		;
-			Status = external(implementation)
+			Status = external(_)
 		->
-			NewStatus = external(interface)
+			NewStatus = external(opt_exported)
 		;
 			NewStatus = opt_exported
 		),
@@ -2216,8 +2219,6 @@ import_status_to_write(Status) :-
 
 :- func import_status_to_write(import_status) = bool.
 
-import_status_to_write(external(interface)) = no.
-import_status_to_write(external(implementation)) = yes.
 import_status_to_write(imported(_)) = no.
 import_status_to_write(abstract_imported) = no.
 import_status_to_write(pseudo_imported) = no.
@@ -2228,6 +2229,12 @@ import_status_to_write(abstract_exported) = yes.
 import_status_to_write(pseudo_exported) = no.
 import_status_to_write(exported_to_submodules) = yes.
 import_status_to_write(local) = yes.
+import_status_to_write(external(Status)) = ToWrite :-
+	( status_is_exported(Status, yes) ->
+		ToWrite = no
+	;
+		ToWrite = yes
+	).
 
 %-----------------------------------------------------------------------------%
 	% Read in and process the optimization interfaces.

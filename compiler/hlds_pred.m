@@ -275,7 +275,7 @@
 	% Only types can have status abstract_exported or abstract_imported.
 
 :- type import_status
-	--->	external(section)
+	--->	external(import_status)
 				% Declared `:- external'.
 				% This means that the implementation
 				% for this procedure will be provided
@@ -1197,18 +1197,13 @@ procedure_is_exported(PredInfo, ProcId) :-
 		hlds_pred__in_in_unification_proc_id(ProcId)
 	;
 		pred_info_import_status(PredInfo, ImportStatus),
-		ImportStatus = external(interface)
+		ImportStatus = external(ExternalImportStatus),
+		status_is_exported(ExternalImportStatus, yes)
 	).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
-	status_is_exported(PredInfo0 ^ import_status, Exported),
-	(
-		Exported = yes,
-		PredInfo = PredInfo0 ^ import_status := external(interface)
-	;
-		Exported = no,
-		PredInfo = PredInfo0 ^ import_status := external(implementation)
-	).
+	PredInfo = PredInfo0 ^ import_status :=
+			external(PredInfo0 ^ import_status).
 
 pred_info_set_import_status(X, PredInfo, PredInfo ^ import_status := X).
 
