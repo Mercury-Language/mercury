@@ -12,8 +12,8 @@
 
 #ifdef NATIVE_GC
 
-#include "mercury_trace_util.h"
 #include "mercury_deep_copy.h"
+#include "mercury_layout_util.h"
 #include "mercury_agc_debug.h"
 
 /*
@@ -144,7 +144,7 @@ MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal)
 		/*
 		** Save the old succip and its location.
 		*/
-		saved_success_location = &based_detstackvar(sp_at_signal,
+		saved_success_location = &MR_based_stackvar(sp_at_signal,
 			number);
 		saved_success = (Code *) *saved_success_location;
 
@@ -292,8 +292,10 @@ garbage_collect(Code *success_ip, Word *stack_pointer, Word *current_frame)
 
         /* Get the type parameters from the stack frame. */
 
-        type_params = MR_trace_materialize_typeinfos_base(vars,
-            top_frame, stack_pointer, current_frame);
+	/* XXX We must pass NULL since the registers have not been saved */
+	/* XXX This is probably a bug; Tyson should look into it */
+        type_params = MR_materialize_typeinfos_base(vars,
+            NULL, stack_pointer, current_frame);
         
         /* Copy each live variable */
 
@@ -392,8 +394,8 @@ copy_value(MR_Live_Lval locn, Word *type_info, bool copy_regs,
 			break;
 
 		case MR_LVAL_TYPE_STACKVAR:
-			based_detstackvar(stack_pointer, locn_num) =
-				agc_deep_copy(&based_detstackvar(
+			MR_based_stackvar(stack_pointer, locn_num) =
+				agc_deep_copy(&MR_based_stackvar(
 						stack_pointer,locn_num),
 					type_info, MR_ENGINE(heap_zone2->min),
 					MR_ENGINE(heap_zone2->hardmax));

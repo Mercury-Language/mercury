@@ -63,18 +63,23 @@
 	%
 :- type proc_layout_info
 	--->	proc_layout_info(
-			label,		% the entry label
-			determinism,	% determines which stack is used
-			int,		% number of stack slots
-			maybe(int),	% location of succip on stack
-			maybe(label),	% if generate_trace is set,
+			label,		% The entry label.
+			determinism,	% Determines which stack is used.
+			int,		% Number of stack slots.
+			maybe(int),	% Location of succip on stack.
+			maybe(label),	% If the trace level is not none,
 					% this contains the label associated
 					% with the call event, whose stack
 					% layout says which variables were
-					% live and where on entry
+					% live and where on entry.
+			maybe(int),	% If the trace level is shallow,
+					% this contains the number of the
+					% stack slot containing the
+					% value of MR_trace_from_full
+					% at the time of the call.
 			proc_label_layout_info
-					% info for each internal label,
-					% needed for basic_stack_layouts
+					% Info for each internal label,
+					% needed for basic_stack_layouts.
 		).
 
 	%
@@ -159,8 +164,7 @@
 :- type var_info
 	--->	var_info(
 			lval,		% the location of the variable
-			live_value_type,% pseudo-typeinfo giving the var's type
-			string		% the var's name
+			live_value_type % info about the variable
 		).
 
 	% Return an initialized continuation info structure.
@@ -176,7 +180,7 @@
 	%
 :- pred continuation_info__add_proc_info(pred_proc_id::in, label::in,
 	int::in, determinism::in, maybe(int)::in, maybe(label)::in,
-	proc_label_layout_info::in, continuation_info::in,
+	maybe(int)::in, proc_label_layout_info::in, continuation_info::in,
 	continuation_info::out) is det.
 
 	%
@@ -227,13 +231,14 @@ continuation_info__init(ContInfo) :-
 	% continuation_info. 
 	%
 continuation_info__add_proc_info(PredProcId, EntryLabel, StackSize,
-		Detism, SuccipLocation, MaybeTraceCallLabel, InternalMap,
-		ContInfo0, ContInfo) :-
+		Detism, SuccipLocation, MaybeTraceCallLabel,
+		MaybeFromFullSlot, InternalMap, ContInfo0, ContInfo) :-
 	( map__contains(ContInfo0, PredProcId) ->
 		error("duplicate continuation_info for proc.")
 	;
 		LayoutInfo = proc_layout_info(EntryLabel, Detism, StackSize,
-			SuccipLocation, MaybeTraceCallLabel, InternalMap),
+			SuccipLocation, MaybeTraceCallLabel,
+			MaybeFromFullSlot, InternalMap),
 		map__det_insert(ContInfo0, PredProcId, LayoutInfo, ContInfo)
 	).
 
@@ -259,7 +264,7 @@ continuation_info__process_instructions(PredProcId, Instructions,
 
 		% Get all the continuation info from the call instructions.
 	map__lookup(ContInfo0, PredProcId, ProcLayoutInfo0),
-	ProcLayoutInfo0 = proc_layout_info(A, B, C, D, E, Internals0),
+	ProcLayoutInfo0 = proc_layout_info(A, B, C, D, E, F, Internals0),
 	GetCallLivevals = lambda([Instr::in, Pair::out] is semidet, (
 		Instr = call(_, label(Label), LiveInfo, _) - _Comment,
 		Pair = Label - LiveInfo
@@ -270,7 +275,7 @@ continuation_info__process_instructions(PredProcId, Instructions,
 	list__foldl(continuation_info__process_continuation(WantReturnInfo),
 		Calls, Internals0, Internals),
 
-	ProcLayoutInfo = proc_layout_info(A, B, C, D, E, Internals),
+	ProcLayoutInfo = proc_layout_info(A, B, C, D, E, F, Internals),
 	map__det_update(ContInfo0, PredProcId, ProcLayoutInfo, ContInfo).
 
 %-----------------------------------------------------------------------------%
@@ -320,12 +325,12 @@ continuation_info__process_continuation(WantReturnInfo, Label - LiveInfoList,
 
 continuation_info__convert_return_data(LiveInfos, VarInfoSet, TypeInfoSet) :-
 	GetVarInfo = lambda([LiveLval::in, VarInfo::out] is det, (
-		LiveLval = live_lvalue(Lval, LiveValueType, Name, _),
-		VarInfo = var_info(Lval, LiveValueType, Name)
+		LiveLval = live_lvalue(Lval, LiveValueType, _),
+		VarInfo = var_info(Lval, LiveValueType)
 	)),
 	list__map(GetVarInfo, LiveInfos, VarInfoList),
 	GetTypeInfo = lambda([LiveLval::in, TypeInfos::out] is det, (
-		LiveLval = live_lvalue(_, _, _, TypeInfos)
+		LiveLval = live_lvalue(_, _, TypeInfos)
 	)),
 	list__map(GetTypeInfo, LiveInfos, TypeInfoListList),
 	list__condense(TypeInfoListList, TypeInfoList),
@@ -340,7 +345,8 @@ continuation_info__filter_named_vars([], []).
 continuation_info__filter_named_vars([LiveInfo | LiveInfos], Filtered) :-
 	continuation_info__filter_named_vars(LiveInfos, Filtered1),
 	(
-		LiveInfo = live_lvalue(_, _, Name, _),
+		LiveInfo = live_lvalue(_, LiveType, _),
+		LiveType = var(_, Name, _, _),
 		Name \= ""
 	->
 		Filtered = [LiveInfo | Filtered1]

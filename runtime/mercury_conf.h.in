@@ -227,6 +227,12 @@
 */
 #undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
 
+/*
+** On some platforms, structure assignments can cause gcc to abort
+** with the message "fixed or forbidden register was spilled." in some grades.
+*/
+#undef MR_CANNOT_USE_STRUCTURE_ASSIGNMENT
+
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_conf_param.h"

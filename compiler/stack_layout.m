@@ -68,17 +68,26 @@
 % The meanings of the fields in both forms are the same as in procedure labels.
 %
 % If the option trace_stack_layout is set, i.e. if we are doing execution
-% tracing, the table will also include one extra field:
+% tracing, the table will also include two extra fields:
 %
 %	call trace info		(Word *) - pointer to label stack layout
+%	maybe from full		(Integer) - stack slot of the from_full
+%				flag, if the procedure is shallow traced
 %
-% This will point to the per-label layout info for the label associated
+% The first will point to the per-label layout info for the label associated
 % with the call event at the entry to the procedure. The purpose of this
 % information is to allow the runtime debugger to find out which variables
 % are where on entry, so it can reexecute the procedure if asked to do so
 % and if the values of the required variables are still available.
 % (If trace_stack_layout is not set, this field will be present,
 % but it will be set to NULL.)
+%
+% If the procedure is compiled with deep tracing, the last field will contain
+% a negative number. If it is compiled with shallow tracing, it will contain
+% the number of the stack slot that holds the flag that says whether this
+% incarnation of the procedure was called from deeply traced code or not.
+% (The determinism of the procedure decides whether the stack slot refers
+% to a stackvar or a framevar.)
 %
 % If the option basic_stack_layout is set, we generate stack layout tables
 % for some labels internal to the procedure. This table will be stored in the
@@ -222,9 +231,10 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, CModules,
 
 stack_layout__construct_layouts(ProcLayoutInfo) -->
 	{ ProcLayoutInfo = proc_layout_info(EntryLabel, Detism,
-		StackSlots, SuccipLoc, CallLabel, InternalMap) },
+		StackSlots, SuccipLoc, MaybeCallLabel, MaybeFromFullSlot,
+		InternalMap) },
 	stack_layout__construct_proc_layout(EntryLabel, Detism,
-		StackSlots, SuccipLoc, CallLabel),
+		StackSlots, SuccipLoc, MaybeCallLabel, MaybeFromFullSlot),
 	{ map__to_assoc_list(InternalMap, Internals) },
 	list__foldl(stack_layout__construct_internal_layout(EntryLabel),
 		Internals).
@@ -235,10 +245,10 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 
 :- pred stack_layout__construct_proc_layout(label::in,
 	determinism::in, int::in, maybe(int)::in, maybe(label)::in,
-	stack_layout_info::in, stack_layout_info::out) is det.
+	maybe(int)::in, stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
-		MaybeSuccipLoc, MaybeCallLabel) -->
+		MaybeSuccipLoc, MaybeCallLabel, MaybeFromFullSlot) -->
 	{
 		MaybeSuccipLoc = yes(Location0)
 	->
@@ -298,21 +308,27 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 
 	stack_layout__get_module_name(ModuleName),
 	stack_layout__get_trace_stack_layout(TraceLayout),
-	(
-		{ TraceLayout = yes }
+	{
+		TraceLayout = yes
 	->
-		( { MaybeCallLabel = yes(CallLabel) } ->
-			{ CallRval = yes(const(data_addr_const(
-				data_addr(ModuleName,
-					stack_layout(CallLabel))))) },
-			{ list__append(MaybeRvals1, [CallRval], MaybeRvals) }
+		( MaybeCallLabel = yes(CallLabel) ->
+			CallRval = yes(const(data_addr_const(
+					data_addr(ModuleName,
+						stack_layout(CallLabel)))))
 		;
-			{ error("stack_layout__construct_proc_layout: call label not present") }
-		)
+			error("stack_layout__construct_proc_layout: call label not present")
+		),
+		( MaybeFromFullSlot = yes(FromFullSlot) ->
+			FromFullRval = yes(const(int_const(FromFullSlot)))
+		;
+			FromFullRval = yes(const(int_const(-1)))
+		),
+		list__append(MaybeRvals1, [CallRval, FromFullRval],
+			MaybeRvals)
 	;
-		{ NoCallRval = yes(const(int_const(0))) },
-		{ list__append(MaybeRvals1, [NoCallRval], MaybeRvals) }
-	),
+		NoCallRval = yes(const(int_const(0))),
+		list__append(MaybeRvals1, [NoCallRval], MaybeRvals)
+	},
 
 	{ Exported = no },	% XXX With the new profiler, we will need to
 				% set this to `yes' if the profiling option
@@ -507,8 +523,8 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnSet, RvalList) -->
 
 stack_layout__select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
 	IsNamedReturnVar = lambda([LvalInfo::in] is semidet, (
-		LvalInfo = var_info(Lval, LvalType, Name),
-		LvalType = var(_, _),
+		LvalInfo = var_info(Lval, LvalType),
+		LvalType = var(_, Name, _, _),
 		Name \= "",
 		( Lval = stackvar(_) ; Lval = framevar(_) )
 	)),
@@ -529,14 +545,16 @@ stack_layout__select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
 
 stack_layout__sort_livevals(OrigInfos, FinalInfos) :-
 	IsNamedVar = lambda([LvalInfo::in] is semidet, (
-		LvalInfo = var_info(_Lval, LvalType, Name),
-		LvalType = var(_, _),
+		LvalInfo = var_info(_Lval, LvalType),
+		LvalType = var(_, Name, _, _),
 		Name \= ""
 	)),
 	list__filter(IsNamedVar, OrigInfos, NamedVarInfos0, OtherInfos0),
 	CompareVarInfos = lambda([Var1::in, Var2::in, Result::out] is det, (
-		Var1 = var_info(Lval1, _, Name1),
-		Var2 = var_info(Lval2, _, Name2),
+		Var1 = var_info(Lval1, LiveType1),
+		Var2 = var_info(Lval2, LiveType2),
+		stack_layout__get_name_from_live_value_type(LiveType1, Name1),
+		stack_layout__get_name_from_live_value_type(LiveType2, Name2),
 		compare(NameResult, Name1, Name2),
 		( NameResult = (=) ->
 			compare(Result, Lval1, Lval2)
@@ -547,6 +565,16 @@ stack_layout__sort_livevals(OrigInfos, FinalInfos) :-
 	list__sort(CompareVarInfos, NamedVarInfos0, NamedVarInfos),
 	list__sort(CompareVarInfos, OtherInfos0, OtherInfos),
 	list__append(NamedVarInfos, OtherInfos, FinalInfos).
+
+:- pred stack_layout__get_name_from_live_value_type(live_value_type::in,
+	string::out) is det.
+
+stack_layout__get_name_from_live_value_type(LiveType, Name) :-
+	( LiveType = var(_, NamePrime, _, _) ->
+		Name = NamePrime
+	;
+		Name = ""
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -605,7 +633,7 @@ stack_layout__construct_liveval_pairs(LiveLvals, LocnVector, NameVector) -->
 	list(maybe(rval))::out, stack_layout_info::in, stack_layout_info::out)
 	is det.
 
-stack_layout__construct_liveval_pair(var_info(Lval, LiveValueType, _),
+stack_layout__construct_liveval_pair(var_info(Lval, LiveValueType),
 		MaybeRvals) -->
 	{ stack_layout__represent_lval(Lval, Rval0) },
 	stack_layout__represent_live_value_type(LiveValueType, Rval1),
@@ -614,13 +642,26 @@ stack_layout__construct_liveval_pair(var_info(Lval, LiveValueType, _),
 :- pred stack_layout__construct_liveval_name(var_info::in, maybe(rval)::out)
 	is det.
 
-stack_layout__construct_liveval_name(var_info(_, _, Name), MaybeRval) :-
-	( Name = "" ->
+stack_layout__construct_liveval_name(var_info(_, VarInfo), MaybeRval) :-
+	(
+		VarInfo = var(Var, Name, _, _),
+		Name \= ""
+	->
+		% We include a representation of the variable number at the
+		% start of the variable name, because some functions of the
+		% debugger (e.g. restart) require it to be able to distinguish
+		% between distinct variables that happen to have the same name.
+		% We represent the number as a string, because most variable
+		% numbers are so small that this is a very compact
+		% representation.
+		term__var_to_int(Var, Int),
+		string__int_to_string(Int, IntStr),
+		string__append_list([IntStr, ":", Name], NumberedName),
+		Rval = const(string_const(NumberedName))
+	;
 		% We prefer a null pointer to a pointer to an empty string,
 		% since this way we don't need many copies of the empty string.
 		Rval = const(int_const(0))
-	;
-		Rval = const(string_const(Name))
 	),
 	MaybeRval = yes(Rval).
 
@@ -631,7 +672,7 @@ stack_layout__construct_liveval_name(var_info(_, _, Name), MaybeRval) :-
 	% 	mercury_stack_layout.h - contains macros to access these
 	%			 	constants.
 
-	% Construct a representation of a live_value_type.
+	% Construct a representation of a live_value_type without the name.
 	%
 	% Low integers for special values, a pointer for other values.
 	% (Remember to keep the low integers below the max varint value in
@@ -655,7 +696,7 @@ stack_layout__represent_live_value_type(redoip, Rval) -->
 	{ Rval = const(int_const(5)) }.
 stack_layout__represent_live_value_type(unwanted, Rval) -->
 	{ Rval = const(int_const(6)) }.
-stack_layout__represent_live_value_type(var(Type, _Inst), Rval) -->
+stack_layout__represent_live_value_type(var(_, _, Type, _Inst), Rval) -->
 	stack_layout__get_cell_number(CNum0),
 	{ base_type_layout__construct_pseudo_type_info(Type, Rval0,
 		CNum0, CNum1) },

@@ -187,6 +187,14 @@
 ** Enables profiling of memory usage.
 */
 
+/*
+** Experimental options:
+**
+** MR_TRACE_HISTOGRAM
+** Enable this if you want to count the number of execution tracing events
+** at various call depths.
+*/
+
 /*---------------------------------------------------------------------------*/
 /*
 ** Settings of configuration parameters which can be passed on

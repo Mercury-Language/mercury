@@ -9,7 +9,7 @@
 
 /*
 ** mercury_stack_layout.h -
-**	Definitions for the stack layout data structures. 
+**	Definitions for the stack layout data structures.
 **
 ** NOTE: The constants and data-structures used here need to be kept in
 ** sync with the ones generated in the compiler. If you change anything here,
@@ -70,7 +70,7 @@ typedef	Word MR_Determinism;
 ** 	- stack slots, registers, and special lvals such as succip, hp,
 ** 	  etc.
 **
-** MR_Live_Lval is encoded using an 8 bit low tag, the rest of the word is a 
+** MR_Live_Lval is encoded using an 8 bit low tag, the rest of the word is a
 ** data field describing which stack slot number or register number.
 **
 **  Lval		Tag	Rest
@@ -93,7 +93,7 @@ typedef	Word MR_Determinism;
 
 typedef Word MR_Live_Lval;
 
-typedef enum { 
+typedef enum {
 	MR_LVAL_TYPE_R,
 	MR_LVAL_TYPE_F,
 	MR_LVAL_TYPE_STACKVAR,
@@ -103,7 +103,7 @@ typedef enum {
 	MR_LVAL_TYPE_CURFR,
 	MR_LVAL_TYPE_HP,
 	MR_LVAL_TYPE_SP,
-	MR_LVAL_TYPE_UNKNOWN 
+	MR_LVAL_TYPE_UNKNOWN
 } MR_Lval_Type;
 
 #define MR_LIVE_LVAL_TAGBITS	8
@@ -126,7 +126,7 @@ typedef enum {
 **
 ** The data is encoded such that low values (less than
 ** TYPELAYOUT_MAX_VARINT) represent succip, hp, etc.  Higher values
-** represent data variables, and are pointers to a 2 word cell, 
+** represent data variables, and are pointers to a 2 word cell,
 ** containing a pseudo type_info and an instantiation represention.
 **
 ** This data is generated in compiler/stack_layout.m, which must be kept
@@ -135,16 +135,16 @@ typedef enum {
 
 typedef Word MR_Live_Type;
 
-typedef enum { 
+typedef enum {
 	MR_LIVE_TYPE_SUCCIP,
 	MR_LIVE_TYPE_HP,
 	MR_LIVE_TYPE_CURFR,
 	MR_LIVE_TYPE_MAXFR,
 	MR_LIVE_TYPE_REDOIP,
-	MR_LIVE_TYPE_UNWANTED 
+	MR_LIVE_TYPE_UNWANTED
 } MR_Lval_NonVar;
 
-typedef struct { 
+typedef struct {
 	Word	*pseudo_type_info;
 	Word	inst;	/* not yet used; currently always -1 */
 } MR_Var_Shape_Info;
@@ -189,10 +189,16 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 	MR_Live_Lval		*MR_slvs_tvars;
 } MR_Stack_Layout_Vars;
 
-#define	MR_name_if_present(vars, i)					\
-				((vars->MR_slvs_names != NULL		\
-				&& vars->MR_slvs_names[(i)] != NULL)	\
-				? vars->MR_slvs_names[(i)]		\
+#define	MR_name_if_present(vars, i)					    \
+				((vars->MR_slvs_names != NULL		    \
+				&& vars->MR_slvs_names[(i)] != NULL)	    \
+				? strchr(vars->MR_slvs_names[(i)], ':') + 1 \
+				: "")
+
+#define	MR_numbered_name_if_present(vars, i)				    \
+				((vars->MR_slvs_names != NULL	 	    \
+				&& vars->MR_slvs_names[(i)] != NULL)	    \
+				? vars->MR_slvs_names[(i)]		    \
 				: "")
 
 /*-------------------------------------------------------------------------*/
@@ -222,6 +228,12 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 ** if MR_ENTRY_LAYOUT_HAS_PROC_ID(entry) evaluates to true.
 ** Group (3) is present and meaningful
 ** if MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry) evaluates to true.
+**
+** Group (2) fields have a different interpretation if the procedure is
+** compiler-generated. You can test for this via the macro
+** MR_ENTRY_LAYOUT_COMPILER_GENERATED.
+**
+** For further details on the semantics of the fields, see stack_layout.m.
 */
 
 typedef	struct MR_Stack_Layout_Entry_Struct {
@@ -242,14 +254,18 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* exec trace group */
 	struct MR_Stack_Layout_Label_Struct
 				*MR_sle_call_label;
+	int			MR_sle_maybe_from_full;
 } MR_Stack_Layout_Entry;
 
 #define	MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)			\
-		((int) entry->MR_sle_pred_or_func >= 0)
+		((Word) entry->MR_sle_pred_or_func != -1)
 
 #define	MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)			\
 		(MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)		\
 		&& entry->MR_sle_call_label != NULL)
+
+#define	MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)		\
+		((Unsigned) entry->MR_sle_pred_or_func > MR_FUNCTION)
 
 /*
 ** Define a stack layout for a label that you know very little about.
@@ -275,6 +291,44 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 #else
   #define MR_MAKE_STACK_LAYOUT_ENTRY(l)        
 #endif	/* MR_USE_STACK_LAYOUTS */
+
+/*
+** In procedures compiled with execution tracing, three items are stored
+** in stack slots with fixed numbers. They are:
+**
+**	the event number of the call event,
+**	the call number, and
+**	the call depth.
+**
+** The following macros will access them. They can be used whenever
+** MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry) is true; which set you should use
+** depends on the determinism of the procedure.
+**
+** These macros have to be kept in sync with compiler/trace.m.
+*/
+
+#define MR_event_num_framevar(base_curfr)    MR_based_framevar(base_curfr, 1)
+#define MR_call_num_framevar(base_curfr)     MR_based_framevar(base_curfr, 2)
+#define MR_call_depth_framevar(base_curfr)   MR_based_framevar(base_curfr, 3)
+
+#define MR_event_num_stackvar(base_sp)	     MR_based_stackvar(base_sp, 1)
+#define MR_call_num_stackvar(base_sp)	     MR_based_stackvar(base_sp, 2)
+#define MR_call_depth_stackvar(base_sp)	     MR_based_stackvar(base_sp, 3)
+
+/*
+** In model_non procedures compiled with an execution trace options that
+** require REDO events, one other item is stored in a fixed stack slot.
+** This is
+**
+**	the address of the layout structure for the redo event
+**
+** The following macro will access it. This macro should be used only from
+** within the code that calls MR_trace for the REDO event.
+**
+** This macros have to be kept in sync with compiler/trace.m.
+*/
+
+#define MR_redo_layout_framevar(base_curfr)  MR_based_framevar(base_curfr, 4)
 
 /*-------------------------------------------------------------------------*/
 /*

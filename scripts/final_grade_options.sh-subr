@@ -1,0 +1,25 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# final_grade_options.sh-subr:
+#	An `sh' subroutine for handling implications between grade-related
+#	options. Used by the `ml' and `mgnuc' scripts.
+#
+#	The code here should be inserted after a script's option-parsing
+#	loop.
+#
+#---------------------------------------------------------------------------#
+
+#
+# .debug grade implies --use-trail
+#	(see comment in compiler/handle_options.m for rationale)
+#
+case $stack_trace,$require_tracing in
+	true,true)
+		use_trail=true ;;
+esac
+
+#---------------------------------------------------------------------------#

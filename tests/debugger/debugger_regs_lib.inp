@@ -1,4 +1,5 @@
+echo on
 
 
-p *
-c
+print *
+continue

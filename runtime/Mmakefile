@@ -25,6 +25,7 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 HDRS		=	\
 			mercury_accurate_gc.h	\
 			mercury_agc_debug.h	\
+			mercury_array_macros.h	\
 			mercury_calls.h		\
 			mercury_conf.h		\
 			mercury_conf_param.h	\
@@ -45,6 +46,7 @@ HDRS		=	\
 			mercury_imp.h		\
 			mercury_init.h		\
 			mercury_label.h		\
+			mercury_layout_util.h	\
 			mercury_library_types.h	\
 			mercury_memory.h	\
 			mercury_memory_zones.h	\
@@ -70,7 +72,6 @@ HDRS		=	\
 			mercury_thread.h	\
 			mercury_timing.h	\
 			mercury_trace_base.h	\
-			mercury_trace_util.h	\
 			mercury_trail.h		\
 			mercury_types.h		\
 			mercury_type_info.h	\
@@ -108,6 +109,7 @@ CFILES		= 	\
 			mercury_heap_profile.c	\
 			mercury_ho_call.c	\
 			mercury_label.c		\
+			mercury_layout_util.c	\
 			mercury_memory.c	\
 			mercury_memory_zones.c	\
 			mercury_memory_handlers.c	\
@@ -124,7 +126,6 @@ CFILES		= 	\
 			mercury_thread.c	\
 			mercury_timing.c	\
 			mercury_trace_base.c	\
-			mercury_trace_util.c	\
 			mercury_trail.c 	\
 			mercury_type_info.c	\
 			mercury_wrapper.c

@@ -632,38 +632,38 @@ call_gen__generate_return_livevals(OutArgs, OutputArgs, AfterCallInstMap,
 	code_info__generate_stack_livelvals(OutArgs, AfterCallInstMap, 
 		LiveVals0),
 	code_info__get_globals(Globals),
-	{ globals__get_gc_method(Globals, GC_Method) },
-	call_gen__insert_arg_livelvals(OutputArgs, GC_Method, AfterCallInstMap,
-		LiveVals0, LiveVals).
-	
+	{ globals__want_return_layouts(Globals, WantReturnLayout) },
+	call_gen__insert_arg_livelvals(OutputArgs, WantReturnLayout,
+		AfterCallInstMap, LiveVals0, LiveVals).
 
 % Maybe a varlist to type_id list would be a better way to do this...
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__insert_arg_livelvals(list(pair(var, arg_loc)), gc_method, 
+:- pred call_gen__insert_arg_livelvals(list(pair(var, arg_loc)), bool, 
 	instmap, list(liveinfo), list(liveinfo), code_info, code_info).
 :- mode call_gen__insert_arg_livelvals(in, in, in, in, out, in, out) is det.
 
 call_gen__insert_arg_livelvals([], _, _, LiveVals, LiveVals) --> [].
-call_gen__insert_arg_livelvals([Var - L | As], GC_Method, AfterCallInstMap, 
-		LiveVals0, LiveVals) -->
+call_gen__insert_arg_livelvals([Var - L | As], WantReturnLayout,
+		AfterCallInstMap, LiveVals0, LiveVals) -->
 	code_info__get_varset(VarSet),
 	{ varset__lookup_name(VarSet, Var, Name) },
 	(
-		{ GC_Method = accurate }
+		{ WantReturnLayout = yes }
 	->
 		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
 
 		code_info__variable_type(Var, Type),
 		{ type_util__vars(Type, TypeVars) },
 		code_info__find_type_infos(TypeVars, TypeParams),
-		{ LiveVal = live_lvalue(R, var(Type, Inst), Name, TypeParams) }
+		{ VarInfo = var(Var, Name, Type, Inst) },
+		{ LiveVal = live_lvalue(R, VarInfo, TypeParams) }
 	;
-		{ LiveVal = live_lvalue(R, unwanted, Name, []) }
+		{ LiveVal = live_lvalue(R, unwanted, []) }
 	),
 	{ code_util__arg_loc_to_register(L, R) },
-	call_gen__insert_arg_livelvals(As, GC_Method, AfterCallInstMap, 
+	call_gen__insert_arg_livelvals(As, WantReturnLayout, AfterCallInstMap, 
 		[LiveVal | LiveVals0], LiveVals).
 
 %---------------------------------------------------------------------------%

@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
+main_target:	check
 
 include ../Mmake.common
 
@@ -15,9 +15,9 @@ RM_C=:
 DEBUGGER_PROGS=	\
 	debugger_regs	\
 	interpreter	\
-#	queens
+	queens
 
-MCFLAGS = --trace all
+MCFLAGS = --trace deep
 C2INITFLAGS = -t
 
 # Base grades `jump' and `fast' cannot be used with
@@ -38,7 +38,7 @@ else
 endif
 
 LIBPROGS=	$(PROGS:%=%_lib)
-ALLPROGS=	$(PROGS) $(LIBPROGS)
+ALLPROGS=	$(PROGS)
 
 #-----------------------------------------------------------------------------#
 
@@ -60,14 +60,21 @@ interpreter_lib.out: interpreter_lib interpreter_lib.inp
 queens_lib.out: queens_lib queens_lib.inp
 	mdb ./queens_lib < queens_lib.inp > queens_lib.out
 
+# We ignore the result of this action because
+# the exit status of grep is not useful in this case
+mdb_command_test.out: queens mdb_command_test.inp
+	-mdb ./queens < mdb_command_test.inp \
+		| egrep "internal error in the trace help system" \
+		> mdb_command_test.out
+
 #-----------------------------------------------------------------------------#
 
 DEPS=		$(ALLPROGS:%=$(deps_subdir)%.dep)
 DEPENDS=	$(ALLPROGS:%=%.depend)
 OUTS=		$(PROGS:%=%.out)
 LIBOUTS=	$(LIBPROGS:%=%.out)
-RESS=		$(PROGS:%=%.res)
-LIBRESS=	$(LIBPROGS:%=%.res)
+RESS=		$(PROGS:%=%.res) mdb_command_test.res
+LIBRESS=	$(LIBPROGS:%=%.res) mdb_command_test.res
 
 #-----------------------------------------------------------------------------#
 

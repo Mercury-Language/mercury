@@ -13,31 +13,24 @@
 
 #include "mercury_imp.h"
 #include "mercury_stack_layout.h"
-#include "mercury_trace_util.h"
-
-Word	MR_saved_regs[MAX_FAKE_REG];
+#include "mercury_layout_util.h"
 
 void
-MR_copy_regs_to_saved_regs(int max_mr_num)
+MR_copy_regs_to_saved_regs(int max_mr_num, Word *saved_regs)
 {
 	/*
-	** In the process of browsing, we call Mercury code,
+	** In the process of browsing within the debugger, we call Mercury,
 	** which may clobber the contents of the virtual machine registers,
 	** both control and general purpose, and both real and virtual
 	** registers. We must therefore save and restore these.
-	** We store them in the MR_saved_regs array.
+	** We store them in the saved_regs array.
 	**
 	** The call to MR_trace will clobber the transient registers
 	** on architectures that have them. The compiler generated code
 	** will therefore call save_transient_registers to save the transient
 	** registers in the fake_reg array. We here restore them to the
 	** real registers, save them with the other registers back in
-	** fake_reg, and then copy all fake_reg entries to MR_saved_regs.
-	**
-	** If any code invoked by MR_trace is itself traced,
-	** MR_saved_regs will be overwritten, leading to a crash later on.
-	** This is one reason (but not the only one) why we turn off
-	** tracing when we call back Mercury code from this file.
+	** fake_reg, and then copy all fake_reg entries to saved_regs.
 	*/
 
 	int i;
@@ -46,12 +39,12 @@ MR_copy_regs_to_saved_regs(int max_mr_num)
 	save_registers();
 
 	for (i = 0; i <= max_mr_num; i++) {
-		MR_saved_regs[i] = MR_fake_reg[i];
+		saved_regs[i] = MR_fake_reg[i];
 	}
 }
 
 void
-MR_copy_saved_regs_to_regs(int max_mr_num)
+MR_copy_saved_regs_to_regs(int max_mr_num, Word *saved_regs)
 {
 	/*
 	** We execute the converse procedure to MR_copy_regs_to_saved_regs.
@@ -63,7 +56,7 @@ MR_copy_saved_regs_to_regs(int max_mr_num)
 	int i;
 
 	for (i = 0; i <= max_mr_num; i++) {
-		MR_fake_reg[i] = MR_saved_regs[i];
+		MR_fake_reg[i] = saved_regs[i];
 	}
 
 	restore_registers();
@@ -71,15 +64,16 @@ MR_copy_saved_regs_to_regs(int max_mr_num)
 }
 
 Word *
-MR_trace_materialize_typeinfos(const MR_Stack_Layout_Vars *vars)
+MR_materialize_typeinfos(const MR_Stack_Layout_Vars *vars,
+	Word *saved_regs)
 {
-	return MR_trace_materialize_typeinfos_base(vars, TRUE,
-		MR_saved_sp(MR_saved_regs), MR_saved_curfr(MR_saved_regs));
+	return MR_materialize_typeinfos_base(vars, saved_regs,
+		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs));
 }
 
 Word *
-MR_trace_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
-	bool saved_regs_valid, Word *base_sp, Word *base_curfr)
+MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
+	Word *saved_regs, Word *base_sp, Word *base_curfr)
 {
 	Word	*type_params;
 	bool	succeeded;
@@ -96,12 +90,12 @@ MR_trace_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 		*/
 		for (i = 1; i <= count; i++) {
 			if (vars->MR_slvs_tvars[i] != 0) {
-				type_params[i] = MR_trace_lookup_live_lval_base(
+				type_params[i] = MR_lookup_live_lval_base(
 					vars->MR_slvs_tvars[i],
-					saved_regs_valid, base_sp, base_curfr,
+					saved_regs, base_sp, base_curfr,
 					&succeeded);
-				if (!succeeded) {
-					fatal_error("missing type param in MR_trace_materialize_typeinfos_base");
+				if (! succeeded) {
+					fatal_error("missing type param in MR_materialize_typeinfos_base");
 				}
 			}
 		}
@@ -113,7 +107,7 @@ MR_trace_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 }
 
 Word
-MR_trace_make_var_list(const MR_Stack_Layout_Label *layout)
+MR_make_var_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 {
 	int 				var_count;
 	const MR_Stack_Layout_Vars 	*vars;
@@ -151,8 +145,8 @@ MR_trace_make_var_list(const MR_Stack_Layout_Label *layout)
 		** at the moment due to the lack of a true browser.
 		*/
 
-		if (!MR_trace_get_type_and_value_filtered(var, name, 
-							  &type_info, &value))
+		if (! MR_get_type_and_value_filtered(var, saved_regs,
+			name, &type_info, &value))
 		{
 			continue;
 		}
@@ -162,7 +156,7 @@ MR_trace_make_var_list(const MR_Stack_Layout_Label *layout)
 		** and cons it onto the list.
 		** Note that the calls to save/restore transient registers
 		** can't be hoisted out of the loop, because
-		** MR_trace_get_type_and_value() calls MR_create_type_info()
+		** MR_get_type_and_value() calls MR_create_type_info()
 		** which may allocate memory using incr_saved_hp.
 		*/
 
@@ -178,19 +172,29 @@ MR_trace_make_var_list(const MR_Stack_Layout_Label *layout)
 	return univ_list;
 }
 
+int
+MR_get_register_number(MR_Live_Lval locn)
+{
+	if (MR_LIVE_LVAL_TYPE(locn) == MR_LVAL_TYPE_R) {
+		return MR_LIVE_LVAL_NUMBER(locn);
+	} else {
+		return -1;
+	}
+}
+
 /* if you want to debug this code, you may want to set this var to TRUE */
-static	bool	MR_trace_print_locn = FALSE;
+static	bool	MR_print_locn = FALSE;
 
 Word
-MR_trace_lookup_live_lval(MR_Live_Lval locn, bool *succeeded)
+MR_lookup_live_lval(MR_Live_Lval locn, Word *saved_regs, bool *succeeded)
 {
-	return MR_trace_lookup_live_lval_base(locn, TRUE,
-		MR_saved_sp(MR_saved_regs), MR_saved_curfr(MR_saved_regs),
+	return MR_lookup_live_lval_base(locn, saved_regs,
+		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
 		succeeded);
 }
 
 Word
-MR_trace_lookup_live_lval_base(MR_Live_Lval locn, bool saved_regs_valid,
+MR_lookup_live_lval_base(MR_Live_Lval locn, Word *saved_regs,
 	Word *base_sp, Word *base_curfr, bool *succeeded)
 {
 	int	locn_num;
@@ -202,75 +206,75 @@ MR_trace_lookup_live_lval_base(MR_Live_Lval locn, bool saved_regs_valid,
 	locn_num = (int) MR_LIVE_LVAL_NUMBER(locn);
 	switch (MR_LIVE_LVAL_TYPE(locn)) {
 		case MR_LVAL_TYPE_R:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("r%d", locn_num);
 			}
-			if (saved_regs_valid) {
-				value = saved_reg(MR_saved_regs, locn_num);
+			if (saved_regs != NULL) {
+				value = saved_reg(saved_regs, locn_num);
 				*succeeded = TRUE;
 			}
 			break;
 
 		case MR_LVAL_TYPE_F:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("f%d", locn_num);
 			}
 			break;
 
 		case MR_LVAL_TYPE_STACKVAR:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("stackvar%d", locn_num);
 			}
-			value = based_detstackvar(base_sp, locn_num);
+			value = MR_based_stackvar(base_sp, locn_num);
 			*succeeded = TRUE;
 			break;
 
 		case MR_LVAL_TYPE_FRAMEVAR:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("framevar%d", locn_num);
 			}
-			value = based_framevar(base_curfr, locn_num);
+			value = MR_based_framevar(base_curfr, locn_num);
 			*succeeded = TRUE;
 			break;
 
 		case MR_LVAL_TYPE_SUCCIP:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("succip");
 			}
 			break;
 
 		case MR_LVAL_TYPE_MAXFR:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("maxfr");
 			}
 			break;
 
 		case MR_LVAL_TYPE_CURFR:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("curfr");
 			}
 			break;
 
 		case MR_LVAL_TYPE_HP:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("hp");
 			}
 			break;
 
 		case MR_LVAL_TYPE_SP:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("sp");
 			}
 			break;
 
 		case MR_LVAL_TYPE_UNKNOWN:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("unknown");
 			}
 			break;
 
 		default:
-			if (MR_trace_print_locn) {
+			if (MR_print_locn) {
 				printf("DEFAULT");
 			}
 			break;
@@ -280,17 +284,17 @@ MR_trace_lookup_live_lval_base(MR_Live_Lval locn, bool saved_regs_valid,
 }
 
 bool
-MR_trace_get_type_and_value(const MR_Stack_Layout_Var *var,
-	Word *type_params, Word *type_info, Word *value)
+MR_get_type_and_value(const MR_Stack_Layout_Var *var,
+	Word *saved_regs, Word *type_params, Word *type_info, Word *value)
 {
-	return MR_trace_get_type_and_value_base(var, TRUE,
-		MR_saved_sp(MR_saved_regs), MR_saved_curfr(MR_saved_regs),
+	return MR_get_type_and_value_base(var, saved_regs,
+		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
 		type_params, type_info, value);
 }
 
 bool
-MR_trace_get_type_and_value_base(const MR_Stack_Layout_Var *var,
-	bool saved_regs_valid, Word *base_sp, Word *base_curfr,
+MR_get_type_and_value_base(const MR_Stack_Layout_Var *var,
+	Word *saved_regs, Word *base_sp, Word *base_curfr,
 	Word *type_params, Word *type_info, Word *value)
 {
 	bool	succeeded;
@@ -303,23 +307,23 @@ MR_trace_get_type_and_value_base(const MR_Stack_Layout_Var *var,
 
 	pseudo_type_info = MR_LIVE_TYPE_GET_VAR_TYPE(var->MR_slv_live_type);
 	*type_info = (Word) MR_create_type_info(type_params, pseudo_type_info);
-	*value = MR_trace_lookup_live_lval_base(var->MR_slv_locn,
-		saved_regs_valid, base_sp, base_curfr, &succeeded);
+	*value = MR_lookup_live_lval_base(var->MR_slv_locn,
+		saved_regs, base_sp, base_curfr, &succeeded);
 	return succeeded;
 }
 
 bool
-MR_trace_get_type(const MR_Stack_Layout_Var *var,
+MR_get_type(const MR_Stack_Layout_Var *var, Word *saved_regs,
 	Word *type_params, Word *type_info)
 {
-	return MR_trace_get_type_base(var, TRUE,
-		MR_saved_sp(MR_saved_regs), MR_saved_curfr(MR_saved_regs),
+	return MR_get_type_base(var, saved_regs,
+		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
 		type_params, type_info);
 }
 
 bool
-MR_trace_get_type_base(const MR_Stack_Layout_Var *var,
-	bool saved_regs_valid, Word *base_sp, Word *base_curfr,
+MR_get_type_base(const MR_Stack_Layout_Var *var,
+	Word *saved_regs, Word *base_sp, Word *base_curfr,
 	Word *type_params, Word *type_info)
 {
 	bool	succeeded;
@@ -336,35 +340,6 @@ MR_trace_get_type_base(const MR_Stack_Layout_Var *var,
 	return TRUE;
 }
 
-void
-MR_trace_write_variable(Word type_info, Word value)
-{
-
-	/*
-	** XXX It would be nice if we could call an exported C function
-	** version of the browser predicate, and thus avoid going
-	** through call_engine, but for some unknown reason, that seemed
-	** to cause the Mercury code in the browser to clobber part of
-	** the C stack.
-	**
-	** Probably that was due to a bug which has since been fixed, so
-	** we should change the code below back again...
-	**
-	** call_engine() expects the transient registers to be in
-	** fake_reg, others in their normal homes.  That is the case on
-	** entry to this function.  But r1 or r2 may be transient, so we
-	** need to save/restore transient regs around the assignments to
-	** them.
-	*/
-
-	restore_transient_registers();
-	r1 = type_info;
-	r2 = value;
-	save_transient_registers();
-	call_engine(MR_library_trace_browser);
-}
-
-
 /*
 ** get_type_and_value() and get_type() will succeed to retrieve "variables"
 ** that we do not want to send to the user; "variables" beginning with
@@ -377,23 +352,32 @@ MR_trace_write_variable(Word type_info, Word value)
 */
 
 bool
-MR_trace_get_type_and_value_filtered(const MR_Stack_Layout_Var *var, 
-				     const char *name, 
-				     Word *type_info, Word *value)
+MR_get_type_and_value_filtered(const MR_Stack_Layout_Var *var, 
+	Word *saved_regs, const char *name, Word *type_info, Word *value)
 {
 	return ((strncmp(name, "TypeInfo", 8) != 0)
 	       && (strncmp(name, "ModuleInfo", 10) != 0)
 	       && (strncmp(name, "HLDS", 4) != 0)
-	       && MR_trace_get_type_and_value(var, NULL, type_info, value));
+	       && MR_get_type_and_value(var, saved_regs, NULL,
+			type_info, value));
 }
 
 
 bool
-MR_trace_get_type_filtered(const MR_Stack_Layout_Var *var, 
-			   const char *name, Word *type_info)
+MR_get_type_filtered(const MR_Stack_Layout_Var *var, Word *saved_regs,
+	const char *name, Word *type_info)
 {
 	return ((strncmp(name, "TypeInfo", 8) != 0)
 	       && (strncmp(name, "ModuleInfo", 10) != 0)
 	       && (strncmp(name, "HLDS", 4) != 0)
-	       && MR_trace_get_type(var, NULL, type_info));
+	       && MR_get_type(var, saved_regs, NULL, type_info));
+}
+
+void
+MR_write_variable(Word type_info, Word value)
+{
+	Word	stdout_stream;
+
+	(*MR_io_stdout_stream)(&stdout_stream);
+	(*MR_io_print_to_stream)(type_info, stdout_stream, value);
 }

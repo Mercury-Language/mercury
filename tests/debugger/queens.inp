@@ -1,87 +1,48 @@
-p *
+echo on
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
-l 1
-p *
-l 2
-v
-p *
+print *
+level 1
+print *
+up 1
+vars
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+goto -a 20
+print *
 
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-
-p *
-C
+retry
+print *
+finish -a
+register --quiet
+break print_list
+break qdelete
+continue -a
+step -aS 5
+disable 1
+continue -n
+continue -n -S

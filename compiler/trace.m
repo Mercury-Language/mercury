@@ -47,8 +47,12 @@
 
 :- import_module hlds_goal, hlds_pred, hlds_module.
 :- import_module globals, prog_data, llds, code_info.
-:- import_module assoc_list, set, term.
+:- import_module std_util, assoc_list, set, term.
 
+	% The kinds of external ports for which the code we generate will
+	% call MR_trace. The redo port is not on this list, because for that
+	% port the code that calls MR_trace is not in compiler-generated code,
+	% but in the runtime system.
 :- type external_trace_port
 	--->	call
 	;	exit
@@ -68,16 +72,27 @@
 	% layouts).
 :- pred trace__fail_vars(module_info::in, proc_info::in, set(var)::out) is det.
 
-	% Reserve the stack slots for the call number, call depth and
-	% (for interface tracing) for the flag that says whether this call
-	% should be traced. Return our (abstract) struct that says which
-	% slots these are, so that it can be made part of the code generator
-	% state.
-:- pred trace__setup(trace_level::in, trace_info::out,
+	% Return the number of slots reserved for tracing information.
+	% If there are N slots, the reserved slots will be 1 through N.
+:- pred trace__reserved_slots(proc_info::in, globals::in, int::out) is det.
+
+	% Reserve the non-fixed stack slots needed for tracing.
+	% The fixed slots for the event number, call number, call depth and
+	% (for trace levels that specify redo events) the stack layout of
+	% the redo event are reserved in live_vars.m; this predicate reserves
+	% only the slots that do not need to be in fixed slots. At the moment
+	% the only such slot is the flag that says whether this call should be
+	% traced, which is required only for shallow tracing.
+	%
+	% The predicate returns the number of this slot if it is used,
+	% and an abstract struct that represents the tracing-specific part
+	% of the code generator state.
+:- pred trace__setup(globals::in, maybe(int)::out, trace_info::out,
 	code_info::in, code_info::out) is det.
 
 	% Generate code to fill in the reserevd stack slots.
-:- pred trace__generate_slot_fill_code(trace_info::in, code_tree::out) is det.
+:- pred trace__generate_slot_fill_code(trace_info::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 	% If we are doing execution tracing, generate code to prepare for
 	% a call.
@@ -104,6 +119,12 @@
 	trace_info::in, label::out, assoc_list(tvar, lval)::out, code_tree::out,
 	code_info::in, code_info::out) is det.
 
+	% If the trace level calls for redo events, generate code that pushes
+	% a temporary nondet stack frame whose redoip slot contains the
+	% address of one of the labels in the runtime that calls MR_trace
+	% for a redo event. Otherwise, generate empty code.
+:- pred trace__maybe_setup_redo_event(trace_info::in, code_tree::out) is det.
+
 :- pred trace__path_to_string(goal_path::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -111,9 +132,11 @@
 :- implementation.
 
 :- import_module continuation_info, type_util, llds_out, tree.
-:- import_module (inst), instmap, inst_match, mode_util.
+:- import_module (inst), instmap, inst_match, mode_util, options.
 :- import_module list, bool, int, string, map, std_util, varset, require.
 
+	% The redo port is not included in this type; see the comment
+	% on the type external_trace_port above.
 :- type trace_port
 	--->	call
 	;	exit
@@ -136,8 +159,8 @@
 	;	nondet_pragma.
 
 :- type trace_type
-	--->	full_trace
-	;	interface_trace(lval).	% This holds the saved value of a bool
+	--->	deep_trace
+	;	shallow_trace(lval).	% This holds the saved value of a bool
 					% that is true iff we were called from
 					% code with full tracing.
 
@@ -145,9 +168,20 @@
 	% of a procedure.
 :- type trace_info
 	--->	trace_info(
-			lval,	% stack slot of call sequence number
-			lval,	% stack slot of call depth
-			trace_type
+			trace_type,	% The trace level (which cannot be
+					% none), and if it is shallow, the
+					% lval of the slot that holds the
+					% from-full flag.
+			bool,		% The value of --trace-internal.
+			bool,		% The value of --trace-return.
+			maybe(label)	% If we are generating redo events,
+					% this has the label associated with
+					% the fail event, which we then reserve
+					% in advance, so we can put the
+					% address of its layout struct
+					% into the slot which holds the
+					% layout for the redo event (the
+					% two events have identical layouts).
 		).
 
 trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
@@ -164,67 +198,151 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 		error("length mismatch in trace__fail_vars")
 	).
 
-trace__setup(TraceLevel, TraceInfo) -->
-	code_info__acquire_temp_slot(trace_data, CallNumSlot),
-	code_info__acquire_temp_slot(trace_data, CallDepthSlot),
-	( { trace_level_trace_ports(TraceLevel, yes) } ->
-		{ TraceType = full_trace }
+trace__reserved_slots(ProcInfo, Globals, ReservedSlots) :-
+	globals__get_trace_level(Globals, TraceLevel),
+	(
+		TraceLevel = none
+	->
+		ReservedSlots = 0
 	;
-		code_info__acquire_temp_slot(trace_data, CallFromFullSlot),
-		{ TraceType = interface_trace(CallFromFullSlot) }
-	),
-	{ TraceInfo = trace_info(CallNumSlot, CallDepthSlot, TraceType) }.
+		globals__lookup_bool_option(Globals, trace_redo, yes),
+		proc_info_interface_code_model(ProcInfo, model_non)
+	->
+		( TraceLevel = deep ->
+			% event#, call#, call depth, redo layout
+			ReservedSlots = 4
+		;
+			% event#, call#, call depth, redo layout, from full
+			ReservedSlots = 5
+		)
+	;
+		( TraceLevel = deep ->
+			% event#, call#, call depth
+			ReservedSlots = 3
+		;
+			% event#, call#, call depth, from full
+			ReservedSlots = 4
+		)
+	).
 
-trace__generate_slot_fill_code(TraceInfo, TraceCode) :-
-	TraceInfo = trace_info(CallNumLval, CallDepthLval, TraceType),
+trace__setup(Globals, MaybeFromFullSlot, TraceInfo) -->
+	% These slots were reserved by allocate_stack_slots in live_vars.m.
+	code_info__get_proc_model(CodeModel),
+	{ globals__lookup_bool_option(Globals, trace_return, TraceReturn) },
+	{ globals__lookup_bool_option(Globals, trace_redo, TraceRedo) },
+	(
+		{ TraceRedo = yes },
+		{ CodeModel = model_non }
+	->
+		code_info__get_next_label(RedoLayoutLabel),
+		{ MaybeRedoLayoutSlot = yes(RedoLayoutLabel) }
+	;
+		{ MaybeRedoLayoutSlot = no }
+	),
+	{ globals__get_trace_level(Globals, deep) ->
+		TraceType = deep_trace,
+		globals__lookup_bool_option(Globals, trace_internal,
+			TraceInternal),
+		MaybeFromFullSlot = no
+	;
+		% Trace level must be shallow.
+		%
+		% Debugger code in the runtime is not interested in the
+		% call-from-full flag, so does not have to be in a fixed slot.
+		% Even if we put in a fixed slot, the runtime won't know
+		% whether a procedure has interface or full tracing, and so it
+		% wouldn't know whether the slot was used for this purpose
+		% or not.
+		( CodeModel = model_non ->
+			( TraceRedo = yes ->
+				CallFromFullSlot = framevar(5),
+				MaybeFromFullSlot = yes(4)
+			;
+				CallFromFullSlot = framevar(4),
+				MaybeFromFullSlot = yes(4)
+			)
+		;
+			CallFromFullSlot = stackvar(4),
+			MaybeFromFullSlot = yes(4)
+		),
+		TraceType = shallow_trace(CallFromFullSlot),
+		% Shallow traced procs never generate internal events.
+		TraceInternal = no
+	},
+	{ TraceInfo = trace_info(TraceType, TraceInternal, TraceReturn,
+		MaybeRedoLayoutSlot) }.
+
+trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
+	code_info__get_proc_model(CodeModel),
+	{
+	TraceInfo = trace_info(TraceType, _, _, MaybeRedoLayoutSlot),
+	trace__event_num_slot(CodeModel, EventNumLval),
+	trace__call_num_slot(CodeModel, CallNumLval),
+	trace__call_depth_slot(CodeModel, CallDepthLval),
+	trace__stackref_to_string(EventNumLval, EventNumStr),
 	trace__stackref_to_string(CallNumLval, CallNumStr),
 	trace__stackref_to_string(CallDepthLval, CallDepthStr),
+	string__append_list([
+		"\t\t", EventNumStr, " = MR_trace_event_number;\n",
+		"\t\t", CallNumStr, " = MR_trace_incr_seq();\n",
+		"\t\t", CallDepthStr, " = MR_trace_incr_depth();"
+	], FillThreeSlots),
+	( MaybeRedoLayoutSlot = yes(RedoLayoutLabel) ->
+		trace__redo_layout_slot(CodeModel, RedoLayoutLval),
+		trace__stackref_to_string(RedoLayoutLval, RedoLayoutStr),
+		llds_out__make_stack_layout_name(RedoLayoutLabel,
+			LayoutAddrStr),
+		string__append_list([
+			FillThreeSlots, "\n",
+			"\t\t", RedoLayoutStr, " = (Word) (const Word *) &",
+			LayoutAddrStr, ";"
+		], FillFourSlots)
+	;
+		FillFourSlots = FillThreeSlots
+	),
 	(
-		TraceType = interface_trace(CallFromFullSlot),
+		TraceType = shallow_trace(CallFromFullSlot),
 		trace__stackref_to_string(CallFromFullSlot,
 			CallFromFullSlotStr),
 		string__append_list([
 			"\t\t", CallFromFullSlotStr, " = MR_trace_from_full;\n",
 			"\t\tif (MR_trace_from_full) {\n",
-			"\t\t\t", CallNumStr, " = MR_trace_incr_seq();\n",
-			"\t\t\t", CallDepthStr, " = MR_trace_incr_depth();\n",
+			FillFourSlots, "\n",
 			"\t\t}"
 		], TraceStmt)
 	;
-		TraceType = full_trace,
-		string__append_list([
-			"\t\t", CallNumStr, " = MR_trace_incr_seq();\n",
-			"\t\t", CallDepthStr, " = MR_trace_incr_depth();"
-		], TraceStmt)
+		TraceType = deep_trace,
+		TraceStmt = FillFourSlots
 	),
 	TraceCode = node([
 		pragma_c([], [pragma_c_raw_code(TraceStmt)],
 			will_not_call_mercury, no, yes) - ""
-	]).
+	])
+	}.
 
 trace__prepare_for_call(TraceCode) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	code_info__get_proc_model(CodeModel),
 	{
 		MaybeTraceInfo = yes(TraceInfo)
 	->
-		TraceInfo = trace_info(_CallNumLval, CallDepthLval, TraceType),
+		TraceInfo = trace_info(TraceType, _, _, _),
+		trace__call_depth_slot(CodeModel, CallDepthLval),
 		trace__stackref_to_string(CallDepthLval, CallDepthStr),
-		string__append_list(["MR_trace_reset_depth(", CallDepthStr,
-			");\n"],
-			ResetDepthStmt),
+		string__append_list([
+			"MR_trace_reset_depth(", CallDepthStr, ");\n"
+		], ResetDepthStmt),
 		(
-			TraceType = interface_trace(_),
-			TraceCode = node([
-				c_code("MR_trace_from_full = FALSE;\n") - "",
-				c_code(ResetDepthStmt) - ""
-			])
+			TraceType = shallow_trace(_),
+			ResetFromFullStmt = "MR_trace_from_full = FALSE;\n"
 		;
-			TraceType = full_trace,
-			TraceCode = node([
-				c_code("MR_trace_from_full = TRUE;\n") - "",
-				c_code(ResetDepthStmt) - ""
-			])
-		)
+			TraceType = deep_trace,
+			ResetFromFullStmt = "MR_trace_from_full = TRUE;\n"
+		),
+		TraceCode = node([
+			c_code(ResetFromFullStmt) - "",
+			c_code(ResetDepthStmt) - ""
+		])
 	;
 		TraceCode = empty
 	}.
@@ -233,7 +351,7 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	(
 		{ MaybeTraceInfo = yes(TraceInfo) },
-		{ TraceInfo = trace_info(_, _, full_trace) }
+		{ TraceInfo = trace_info(_, yes, _, _) }
 	->
 		{ Goal = _ - GoalInfo },
 		{ goal_info_get_goal_path(GoalInfo, Path) },
@@ -268,7 +386,7 @@ trace__maybe_generate_pragma_event_code(PragmaPort, Code) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	(
 		{ MaybeTraceInfo = yes(TraceInfo) },
-		{ TraceInfo = trace_info(_, _, full_trace) }
+		{ TraceInfo = trace_info(_, yes, _, _) }
 	->
 		{ trace__convert_nondet_pragma_port_type(PragmaPort, Port) },
 		trace__generate_event_code(Port, nondet_pragma, TraceInfo,
@@ -289,22 +407,41 @@ trace__generate_external_event_code(ExternalPort, TraceInfo,
 
 trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataList,
 		Code) -->
-	code_info__get_next_label(Label),
+	(
+		{ Port = fail },
+		{ TraceInfo = trace_info(_, _, _, yes(RedoLabel)) }
+	->
+		% The layout information for the redo event is the same as
+		% for the fail event; all the non-clobbered inputs in their
+		% stack slots. It is convenient to generate this common layout
+		% when the code generator state is set up for the fail event;
+		% generating it for the redo event would be much harder.
+		% On the other hand, the address of the layout structure
+		% for the redo event should be put into its fixed stack slot
+		% at procedure entry. Therefore trace__setup reserves a label
+		% whose layout structure serves for both the fail and redo
+		% events.
+		{ Label = RedoLabel }
+	;
+		code_info__get_next_label(Label)
+	),
 	code_info__get_known_variables(LiveVars0),
-	{
-		PortInfo = external,
-		LiveVars = LiveVars0,
-		PathStr = ""
+	(
+		{ PortInfo = external },
+		{ LiveVars = LiveVars0 },
+		{ PathStr = "" }
 	;
-		PortInfo = internal(Path, PreDeaths),
-		set__to_sorted_list(PreDeaths, PreDeathList),
-		list__delete_elems(LiveVars0, PreDeathList, LiveVars),
-		trace__path_to_string(Path, PathStr)
+		{ PortInfo = internal(Path, PreDeaths) },
+		code_info__current_resume_point_vars(ResumeVars),
+		{ set__difference(PreDeaths, ResumeVars, RealPreDeaths) },
+		{ set__to_sorted_list(RealPreDeaths, RealPreDeathList) },
+		{ list__delete_elems(LiveVars0, RealPreDeathList, LiveVars) },
+		{ trace__path_to_string(Path, PathStr) }
 	;
-		PortInfo = nondet_pragma,
-		LiveVars = [],
-		PathStr = ""
-	},
+		{ PortInfo = nondet_pragma },
+		{ LiveVars = [] },
+		{ PathStr = "" }
+	),
 	code_info__get_varset(VarSet),
 	code_info__get_instmap(InstMap),
 	{ set__init(TvarSet0) },
@@ -322,32 +459,23 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataList,
 	set__list_to_set(TvarDataList, TvarDataSet),
 	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataSet),
 	llds_out__get_label(Label, yes, LabelStr),
-	TraceInfo = trace_info(CallNumLval, CallDepthLval, TraceType),
-	trace__stackref_to_string(CallNumLval, CallNumStr),
-	trace__stackref_to_string(CallDepthLval, CallDepthStr),
 	Quote = """",
 	Comma = ", ",
 	trace__port_to_string(Port, PortStr),
-	(
-		TraceType = full_trace,
-		FlagStr = "TRUE"
-	;
-		TraceType = interface_trace(CallFromFullLval),
-		trace__stackref_to_string(CallFromFullLval, FlagStr)
-	),
+	DeclStmt = "\t\tCode *MR_jumpaddr;\n",
 	SaveStmt = "\t\tsave_transient_registers();\n",
-	RestoreStmt = "\t\trestore_transient_registers();",
+	RestoreStmt = "\t\trestore_transient_registers();\n",
 	string__int_to_string(MaxReg, MaxRegStr),
 	string__append_list([
-		"\t\tMR_trace((const MR_Stack_Layout_Label *)\n",
+		"\t\tMR_jumpaddr = MR_trace(\n",
+		"\t\t\t(const MR_Stack_Layout_Label *)\n",
 		"\t\t\t&mercury_data__layout__", LabelStr, Comma, "\n",
-		"\t\t\t", PortStr, Comma,
-		CallNumStr, Comma,
-		CallDepthStr, Comma, "\n",
-		"\t\t\t", Quote, PathStr, Quote, Comma,
-		MaxRegStr, Comma, FlagStr, ");\n"],
+		"\t\t\t", PortStr, Comma, Quote, PathStr, Quote, Comma,
+		MaxRegStr, ");\n"],
 		CallStmt),
-	string__append_list([SaveStmt, CallStmt, RestoreStmt], TraceStmt),
+	GotoStmt = "\t\tif (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);",
+	string__append_list([DeclStmt, SaveStmt, CallStmt, RestoreStmt,
+		GotoStmt], TraceStmt),
 	TraceCode =
 		node([
 			label(Label)
@@ -366,6 +494,18 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataList,
 	Code = tree(ProduceCode, TraceCode)
 	},
 	code_info__add_trace_layout_for_label(Label, LayoutLabelInfo).
+
+trace__maybe_setup_redo_event(TraceInfo, Code) :-
+	TraceInfo = trace_info(_, _, _, TraceRedo),
+	( TraceRedo = yes(_) ->
+		Code = node([
+			mkframe(temp_frame(nondet_stack_proc),
+				do_trace_redo_fail)
+				- "set up deep redo event"
+		])
+	;
+		Code = empty
+	).
 
 :- pred trace__produce_vars(list(var)::in, varset::in, instmap::in,
 	set(tvar)::in, set(tvar)::out, list(var_info)::out, code_tree::out,
@@ -388,8 +528,8 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 	),
 	varset__lookup_name(VarSet, Var, "V_", Name),
 	instmap__lookup_var(InstMap, Var, Inst),
-	LiveType = var(Type, Inst),
-	VarInfo = var_info(Lval, LiveType, Name),
+	LiveType = var(Var, Name, Type, Inst),
+	VarInfo = var_info(Lval, LiveType),
 	type_util__vars(Type, TypeVars),
 	set__insert_list(Tvars0, TypeVars, Tvars1)
 	},
@@ -469,8 +609,7 @@ trace__stackref_to_string(Lval, LvalStr) :-
 		string__int_to_string(Slot, SlotString),
 		string__append_list(["MR_stackvar(", SlotString, ")"], LvalStr)
 	; Lval = framevar(Slot) ->
-		Slot1 is Slot + 1,
-		string__int_to_string(Slot1, SlotString),
+		string__int_to_string(Slot, SlotString),
 		string__append_list(["MR_framevar(", SlotString, ")"], LvalStr)
 	;
 		error("non-stack lval in stackref_to_string")
@@ -521,3 +660,40 @@ trace__convert_nondet_pragma_port_type(nondet_pragma_first,
 	nondet_pragma_first).
 trace__convert_nondet_pragma_port_type(nondet_pragma_later,
 	nondet_pragma_later).
+
+%-----------------------------------------------------------------------------%
+
+:- pred trace__event_num_slot(code_model::in, lval::out) is det.
+:- pred trace__call_num_slot(code_model::in, lval::out) is det.
+:- pred trace__call_depth_slot(code_model::in, lval::out) is det.
+:- pred trace__redo_layout_slot(code_model::in, lval::out) is det.
+
+trace__event_num_slot(CodeModel, EventNumSlot) :-
+	( CodeModel = model_non ->
+		EventNumSlot  = framevar(1)
+	;
+		EventNumSlot  = stackvar(1)
+	).
+
+trace__call_num_slot(CodeModel, CallNumSlot) :-
+	( CodeModel = model_non ->
+		CallNumSlot   = framevar(2)
+	;
+		CallNumSlot   = stackvar(2)
+	).
+
+trace__call_depth_slot(CodeModel, CallDepthSlot) :-
+	( CodeModel = model_non ->
+		CallDepthSlot = framevar(3)
+	;
+		CallDepthSlot = stackvar(3)
+	).
+
+trace__redo_layout_slot(CodeModel, RedoLayoutSlot) :-
+	( CodeModel = model_non ->
+		RedoLayoutSlot = framevar(4)
+	;
+		error("attempt to access redo layout slot for det or semi procedure")
+	).
+
+%-----------------------------------------------------------------------------%
