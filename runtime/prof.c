@@ -99,7 +99,7 @@ static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 /* utility routines for opening and closing files */
 
 static FILE*
-checked_fopen(const char *filename, const char *mode, const char *message)
+checked_fopen(const char *filename, const char *message, const char *mode)
 {
 	FILE *file;
 
