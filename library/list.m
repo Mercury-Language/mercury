@@ -21,6 +21,8 @@
 :- pred append(list(T), list(T), list(T)).
 :- mode append(in, in, out) is det.
 :- mode append(out, out, in) is nondet.
+:- mode append(in, out, in) is semidet.
+:- mode append(out, in, in) is semidet.
 
 	% merge - see NU-Prolog documentation
 
