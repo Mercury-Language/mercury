@@ -1,0 +1,10 @@
+string.base_string_to_int(10, "123", 123).
+string.base_string_to_int(10, "+123", 123).
+string.base_string_to_int(10, "-123", -123).
+string.base_string_to_int(10, "", _) failed.
+string.base_string_to_int(10, "+", _) failed.
+string.base_string_to_int(10, "-", _) failed.
+string.base_string_to_int(10, "123abc", _) failed.
+string.base_string_to_int(10, "abc", _) failed.
+string.base_string_to_int(10, "+abc", _) failed.
+string.base_string_to_int(10, "-abc", _) failed.

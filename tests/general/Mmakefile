@@ -9,6 +9,7 @@ THIS_DIR = general
 ORDINARY_PROGS=	\
 		arithmetic \
 		array_test \
+		base_string_to_int_test \
 		commit_bug \
 		commit_bug_2 \
 		complex_failure \
