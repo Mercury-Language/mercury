@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-1999,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -296,6 +296,17 @@
 :- mode relation__rtc(in, out) is det.
 
 :- func relation__rtc(relation(T)) = relation(T).
+
+	% relation__traverse(R, ProcessNode, ProcessEdge) will
+	% traverse a relation calling ProcessNode for each node in the
+	% relation and ProcessEdge for each edge in the relation.
+	% Each node is processed followed by all the edges originating
+	% at that node, until all nodes have been processed.
+:- pred relation__traverse(relation(K), pred(K, T, T), pred(K, K, T, T), T, T).
+:- mode relation__traverse(in, pred(in, di, uo) is det,
+		pred(in, in, di, uo) is det, di, uo) is det.
+:- mode relation__traverse(in, pred(in, in, out) is det,
+		pred(in, in, in, out) is det, in, out) is det.
 
 %------------------------------------------------------------------------------%
 
@@ -1111,6 +1122,41 @@ relation__add_cartesian_product_2(_, [], RTC, RTC).
 relation__add_cartesian_product_2(K1, [K2 | Ks2], RTC0, RTC) :-
 	relation__add(RTC0, K1, K2, RTC1),
 	relation__add_cartesian_product_2(K1, Ks2, RTC1, RTC).
+
+%------------------------------------------------------------------------------%
+
+relation__traverse(Relation, ProcessNode, ProcessEdge) -->
+	{ Domain = to_sorted_list(relation__domain(Relation)) },
+	relation__traverse_nodes(Domain, Relation, ProcessNode, ProcessEdge).
+
+:- pred relation__traverse_nodes(list(K), relation(K), pred(K, T, T),
+		pred(K, K, T, T), T, T).
+:- mode relation__traverse_nodes(in, in, pred(in, di, uo) is det,
+		pred(in, in, di, uo) is det, di, uo) is det.
+:- mode relation__traverse_nodes(in, in, pred(in, in, out) is det,
+		pred(in, in, in, out) is det, in, out) is det.
+
+relation__traverse_nodes([], _, _, _) --> [].
+relation__traverse_nodes([Node | Nodes], Relation, ProcessNode, ProcessEdge) -->
+	{ Children = to_sorted_list(lookup_from(Relation,
+			lookup_element(Relation, Node))) },
+	ProcessNode(Node),
+	relation__traverse_children(Children, Node, Relation, ProcessEdge),
+	relation__traverse_nodes(Nodes, Relation, ProcessNode, ProcessEdge).
+
+:- pred relation__traverse_children(list(relation_key), K, relation(K),
+		pred(K, K, T, T), T, T).
+:- mode relation__traverse_children(in, in, in, pred(in, in, di, uo) is det,
+		di, uo) is det.
+:- mode relation__traverse_children(in, in, in, pred(in, in, in, out) is det,
+		in, out) is det.
+
+relation__traverse_children([], _, _, _) --> [].
+relation__traverse_children([ChildKey | Children], Parent,
+		Relation, ProcessEdge) -->
+	{ Child = lookup_key(Relation, ChildKey) },
+	ProcessEdge(Parent, Child),
+	relation__traverse_children(Children, Parent, Relation, ProcessEdge).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

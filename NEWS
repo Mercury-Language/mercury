@@ -344,7 +344,8 @@ Changes to the Mercury language:
 
 Changes to the standard library:
 
-* We've added new predicates map__foldl2, tree234__foldl2 and
+* We've added some new library predicates: assoc_list__keys_and_values,
+  list__map2, list__map3, map__foldl2, tree234__foldl2, relation__traverse,
   std_util__aggregate2, and builtin__promise_only_solution_io.
 
 * We've added function versions of std_util__solutions,
@@ -428,9 +429,6 @@ Changes to the standard library:
   to get the unwrapped value's functor, arity and arguments, then you can
   call "univ_value(Univ)" to extract the value before calling deconstruct.
   (Doing that also works in Mercury 0.9 and Mercury 0.10.)
-
-* We've addes some new library predicates: assoc_list__keys_and_values,
-  list__map2 and list__map3.
 
 * We've added func versions of the remaining preds in int.m that
   did not already have them.
