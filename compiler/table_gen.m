@@ -605,14 +605,12 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, ProcInfo0, PredInfo0,
 	hlds_goal::out, maybe(proc_table_info)::out) is det.
 
 table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
-		HeadVars, HeadVarModes, VarTypes0, VarTypes, VarSet0, VarSet,
-		TableInfo0, TableInfo, Goal, MaybeProcTableInfo) :-
+		HeadVars, HeadVarModes, !VarTypes, !VarSet, !TableInfo,
+		Goal, MaybeProcTableInfo) :-
 	OrigGoal = _ - OrigGoalInfo,
 	goal_info_get_nonlocals(OrigGoalInfo, OrigNonLocals),
 	goal_info_get_context(OrigGoalInfo, Context),
-
-	ModuleInfo = TableInfo0 ^ table_module_info,
-
+	ModuleInfo = !.TableInfo ^ table_module_info,
 	get_input_output_vars(HeadVars, HeadVarModes, ModuleInfo, InputVars,
 		OutputVars),
 	(
@@ -623,47 +621,42 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		SavedHeadVars = HeadVars
 	;
 		TableIoStates = no,
-		list__filter(table_gen__var_is_io_state(VarTypes0),
+		list__filter(table_gen__var_is_io_state(!.VarTypes),
 			OutputVars, IoStateAssignToVars, SavedOutputVars),
-		list__filter(table_gen__var_is_io_state(VarTypes0),
+		list__filter(table_gen__var_is_io_state(!.VarTypes),
 			InputVars, IoStateAssignFromVars, _SavedInputVars),
-		list__filter(table_gen__var_is_io_state(VarTypes0),
+		list__filter(table_gen__var_is_io_state(!.VarTypes),
 			HeadVars, _, SavedHeadVars)
 	),
-
-	generate_new_table_var("TableVar0", node_type, VarTypes0, VarTypes1,
-		VarSet0, VarSet1, TableVar0),
-	generate_new_table_var("CounterVar", int_type, VarTypes1, VarTypes2,
-		VarSet1, VarSet2, CounterVar),
-	generate_new_table_var("StartVar", int_type, VarTypes2, VarTypes3,
-		VarSet2, VarSet3, StartVar),
-	generate_call("table_io_in_range", [TableVar0, CounterVar, StartVar],
-		semidet, yes(impure), [TableVar0 - ground(shared, none),
+	generate_new_table_var("TableVar", trie_node_type, !VarTypes, !VarSet,
+		TableVar),
+	generate_new_table_var("CounterVar", int_type, !VarTypes, !VarSet,
+		CounterVar),
+	generate_new_table_var("StartVar", int_type, !VarTypes, !VarSet,
+		StartVar),
+	generate_call("table_io_in_range", [TableVar, CounterVar, StartVar],
+		semidet, yes(impure), [TableVar - ground(shared, none),
 		CounterVar - ground(shared, none),
 		StartVar - ground(shared, none)],
 		ModuleInfo, Context, InRangeGoal),
-
-	generate_new_table_var("TableVar", node_type, VarTypes3, VarTypes4,
-		VarSet3, VarSet4, TableVar),
+	generate_new_table_var("TipVar", trie_node_type, !VarTypes, !VarSet,
+		TipVar),
 	generate_call("table_lookup_insert_start_int",
-		[TableVar0, StartVar, CounterVar, TableVar],
-		det, yes(impure), [TableVar - ground(unique, none)],
+		[TableVar, StartVar, CounterVar, TipVar],
+		det, yes(impure), [TipVar - ground(unique, none)],
 		ModuleInfo, Context, LookupGoal),
-
-	generate_call("table_io_has_occurred", [TableVar],
-		semidet, yes(semipure), [], ModuleInfo, Context, OccurredGoal),
-
+	generate_call("table_io_has_occurred", [TipVar], semidet,
+		yes(semipure), [], ModuleInfo, Context, OccurredGoal),
 	(
 		TableDecl = table_io_decl,
-		PredId = TableInfo0 ^ table_cur_pred_id,
-		ProcId = TableInfo0 ^ table_cur_proc_id,
+		PredId = !.TableInfo ^ table_cur_pred_id,
+		ProcId = !.TableInfo ^ table_cur_proc_id,
 		RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo,
 			PredId, ProcId),
 		TableIoDeclConsId = table_io_decl(RttiProcLabel),
-		make_const_construction(TableIoDeclConsId, node_type,
+		make_const_construction(TableIoDeclConsId, c_pointer_type,
 			yes("TableIoDeclPtr"), TableIoDeclGoal,
-			TableIoDeclPtrVar, VarTypes4, VarTypes5,
-			VarSet4, VarSet5),
+			TableIoDeclPtrVar, !VarTypes, !VarSet),
 		allocate_slot_numbers(SavedHeadVars, 1, NumberedSavedHeadVars),
 		NumberedSaveVars = [TableIoDeclPtrVar - 0 |
 			NumberedSavedHeadVars],
@@ -671,15 +664,13 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 			NumberedSaveVars, NumberedSavedOutputVars),
 		NumberedRestoreVars = NumberedSavedOutputVars,
 
-		ProcInfo0 = TableInfo0 ^ table_cur_proc_info,
+		ProcInfo0 = !.TableInfo ^ table_cur_proc_info,
 		continuation_info__generate_table_arg_type_info(ProcInfo0,
 			NumberedSavedHeadVars, TableArgTypeInfo),
 		ProcTableInfo = table_io_decl_info(TableArgTypeInfo),
 		MaybeProcTableInfo = yes(ProcTableInfo)
 	;
 		TableDecl = table_io_proc,
-		VarTypes5 = VarTypes4,
-		VarSet5 = VarSet4,
 		true_goal(TableIoDeclGoal),
 		allocate_slot_numbers(SavedOutputVars, 0,
 			NumberedSavedOutputVars),
@@ -687,13 +678,9 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		NumberedSaveVars = NumberedSavedOutputVars,
 		MaybeProcTableInfo = no
 	),
-
 	list__length(NumberedSaveVars, BlockSize),
-
-	generate_restore_goal(NumberedRestoreVars, TableVar,
-		ModuleInfo, Context, VarTypes5, VarTypes6, VarSet5, VarSet6,
-		RestoreAnsGoal0),
-
+	generate_simple_restore_goal(NumberedRestoreVars, TipVar,
+		ModuleInfo, Context, !VarTypes, !VarSet, RestoreAnsGoal0),
 	(
 		TableIoStates = yes,
 		RestoreAnsGoal = RestoreAnsGoal0
@@ -711,13 +698,11 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 			% never get here.
 			error("create_new_io_goal: one in / one out violation")
 		),
-
 		generate_call("table_io_copy_io_state",
 			[IoStateAssignFromVar, IoStateAssignToVar], det, no,
 			[IoStateAssignFromVar - ground(clobbered, none),
 			IoStateAssignToVar - ground(unique, none)],
 			ModuleInfo, Context, IoStateAssignGoal),
-
 		RestoreAnsGoalEx = conj([RestoreAnsGoal0, IoStateAssignGoal]),
 		create_instmap_delta([RestoreAnsGoal0, IoStateAssignGoal],
 			RestoreAnsInstMapDelta0),
@@ -735,20 +720,15 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 			RestoreAnsGoalInfo),
 		RestoreAnsGoal = RestoreAnsGoalEx - RestoreAnsGoalInfo
 	),
-	generate_save_goal(NumberedSaveVars, TableVar, BlockSize,
-		Context, VarTypes6, VarTypes7, VarSet6, VarSet7,
-		TableInfo0, TableInfo, SaveAnsGoal),
-
+	generate_save_goal(NumberedSaveVars, TipVar, BlockSize,
+		Context, !VarTypes, !VarSet, !TableInfo, SaveAnsGoal),
 	(
 		Unitize = table_io_alone,
-		VarSet = VarSet7,
-		VarTypes = VarTypes7,
 		CallSaveAnsGoalList = [OrigGoal, TableIoDeclGoal, SaveAnsGoal]
 	;
 		Unitize = table_io_unitize,
 		generate_new_table_var("SavedTraceEnabled", int_type,
-			VarTypes7, VarTypes, VarSet7, VarSet,
-			SavedTraceEnabledVar),
+			!VarTypes, !VarSet, SavedTraceEnabledVar),
 		generate_call("table_io_left_bracket_unitized_goal",
 			[SavedTraceEnabledVar], det, yes(impure),
 			[SavedTraceEnabledVar - ground(unique, none)],
@@ -759,10 +739,9 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		CallSaveAnsGoalList = [LeftBracketGoal, OrigGoal,
 			RightBracketGoal, TableIoDeclGoal, SaveAnsGoal]
 	),
-
 	CallSaveAnsGoalEx = conj(CallSaveAnsGoalList),
 	create_instmap_delta(CallSaveAnsGoalList, CallSaveAnsInstMapDelta0),
-	set__insert(OrigNonLocals, TableVar, CallSaveAnsNonLocals),
+	set__insert(OrigNonLocals, TipVar, CallSaveAnsNonLocals),
 	instmap_delta_restrict(CallSaveAnsInstMapDelta0,
 		CallSaveAnsNonLocals, CallSaveAnsInstMapDelta),
 	goal_info_init(CallSaveAnsNonLocals, CallSaveAnsInstMapDelta, det,
@@ -775,7 +754,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		RestoreAnsGoal, CallSaveAnsGoal),
 	create_instmap_delta([OccurredGoal, RestoreAnsGoal,
 		CallSaveAnsGoal], GenIfNecInstMapDelta0),
-	set__insert(OrigNonLocals, TableVar, GenIfNecNonLocals),
+	set__insert(OrigNonLocals, TipVar, GenIfNecNonLocals),
 	instmap_delta_restrict(GenIfNecInstMapDelta0, GenIfNecNonLocals,
 		GenIfNecInstMapDelta),
 	goal_info_init(GenIfNecNonLocals, GenIfNecInstMapDelta, det, impure,
@@ -787,7 +766,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 	CheckAndGenAnsGoalEx = conj([LookupGoal, GenIfNecGoal]),
 	create_instmap_delta([LookupGoal, GenIfNecGoal],
 		CheckAndGenAnsInstMapDelta0),
-	set__insert_list(OrigNonLocals, [TableVar0, CounterVar, StartVar],
+	set__insert_list(OrigNonLocals, [TableVar, CounterVar, StartVar],
 		CheckAndGenAnsNonLocals),
 	instmap_delta_restrict(CheckAndGenAnsInstMapDelta0,
 		CheckAndGenAnsNonLocals, CheckAndGenAnsInstMapDelta),
@@ -842,7 +821,7 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	list__length(NumberedOutputVars, BlockSize),
 	generate_save_goal(NumberedOutputVars, TableVar, BlockSize,
 		Context, !VarTypes, !VarSet, !TableInfo, SaveAnsGoal0),
-	generate_restore_goal(NumberedOutputVars, TableVar,
+	generate_simple_restore_goal(NumberedOutputVars, TableVar,
 		ModuleInfo, Context, !VarTypes, !VarSet, RestoreAnsGoal0),
 	generate_call("table_simple_mark_as_inactive", [TableVar], det,
 		yes(impure), [], ModuleInfo, Context, MarkAsInactiveGoal),
@@ -952,7 +931,7 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	list__length(NumberedOutputVars, BlockSize),
 	generate_save_goal(NumberedOutputVars, TableVar, BlockSize,
 		Context, !VarTypes, !VarSet, !TableInfo, SaveAnsGoal0),
-	generate_restore_goal(NumberedOutputVars, TableVar,
+	generate_simple_restore_goal(NumberedOutputVars, TableVar,
 		ModuleInfo, Context, !VarTypes, !VarSet, RestoreTrueAnsGoal),
 	generate_loop_error_goal(!.TableInfo, Context, infinite_recursion_msg,
 		!VarTypes, !VarSet, LoopErrorGoal),
@@ -1011,15 +990,12 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		EvalMethod = eval_minimal
 	->
 		SaveAnsGoal = SaveAnsGoal0,
-
 		generate_call("table_simple_is_inactive", [TableVar], semidet,
 			yes(semipure), [], ModuleInfo, Context,
 			InactiveCheckGoal),
-
 		generate_call("table_simple_mark_as_active", [TableVar], det,
 			yes(impure), [], ModuleInfo, Context,
 			MarkAsActiveGoal),
-
 		GenTrueAnsGoalEx = conj([InactiveCheckGoal,
 			MarkAsActiveGoal, OrigGoal]),
 
@@ -1125,27 +1101,22 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		OutputVars),
 	allocate_slot_numbers(OutputVars, 0, NumberedOutputVars),
 	list__length(NumberedOutputVars, BlockSize),
-
 	generate_non_lookup_goal(InputVars, PredId, ProcId, Context,
 		!VarTypes, !VarSet, !TableInfo, TableVar, LookUpGoal, Steps),
-
 	generate_new_table_var("Status", status_type, !VarTypes, !VarSet,
 		StatusVar),
-
 	generate_call("table_subgoal_status", [TableVar, StatusVar], det,
 		yes(semipure), [StatusVar - ground(unique, none)],
 		ModuleInfo, Context, StatusGoal),
-	generate_non_save_goal(NumberedOutputVars, TableVar, BlockSize, Context,
-		!VarTypes, !VarSet, !TableInfo, SaveAnsGoal),
+	generate_non_save_goal(NumberedOutputVars, TableVar, BlockSize,
+		Context, !VarTypes, !VarSet, !TableInfo, SaveAnsGoal),
 	generate_restore_all_goal(Detism, NumberedOutputVars, TableVar,
 		ModuleInfo, Context, !VarTypes, !VarSet, RestoreAllAnsGoal),
 	generate_loop_error_goal(!.TableInfo, Context, infinite_recursion_msg,
 		!VarTypes, !VarSet, LoopErrorGoal),
 	generate_call("table_nondet_mark_as_active", [TableVar], det,
 		yes(impure), [], ModuleInfo, Context, MarkAsActiveGoal),
-
 	true_goal(TrueGoal),
-
 	(
 		EvalMethod = eval_memo,
 		AfterOrigGoal = SaveAnsGoal,
@@ -1173,7 +1144,6 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		EvalMethod = eval_normal,
 		error("table_gen__create_new_non_goal: normal")
 	),
-
 	MainEx = conj([MarkAsActiveGoal, OrigGoal, AfterOrigGoal]),
 	set__insert(OrigNonLocals, TableVar, MainNonLocals),
 	create_instmap_delta([MarkAsActiveGoal, OrigGoal, SaveAnsGoal],
@@ -1183,7 +1153,6 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		MainGoalInfo0),
 	goal_info_add_feature(MainGoalInfo0, hide_debug_event, MainGoalInfo),
 	MainGoal = MainEx - MainGoalInfo,
-
 	( EvalMethod = eval_minimal ->
 		generate_call("table_nondet_resume", [TableVar], det,
 			yes(impure), [], ModuleInfo, Context, ResumeGoal0),
@@ -1244,10 +1213,10 @@ generate_gen_proc_table_info(TableInfo, Steps, InputVars, OutputVars,
 	prog_varset::in, prog_varset::out,
 	prog_var::out, hlds_goal::out) is det.
 
-generate_get_table_goal(PredId, ProcId, VarTypes0, VarTypes, VarSet0, VarSet,
-		PredTableVar, Goal) :-
-	generate_new_table_var("PredTable", node_type, VarTypes0, VarTypes,
-		VarSet0, VarSet, PredTableVar),
+generate_get_table_goal(PredId, ProcId, !VarTypes, !VarSet, PredTableVar,
+		Goal) :-
+	generate_new_table_var("PredTable", trie_node_type,
+		!VarTypes, !VarSet, PredTableVar),
 	ConsId = tabling_pointer_const(PredId, ProcId),
 	make_const_construction(PredTableVar, ConsId, GoalExpr - GoalInfo0),
 	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
@@ -1261,14 +1230,12 @@ generate_get_table_goal(PredId, ProcId, VarTypes0, VarTypes, VarSet0, VarSet,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	prog_var::out, hlds_goal::out, list(table_trie_step)::out) is det.
 
-generate_simple_lookup_goal(Vars, PredId, ProcId, Context, VarTypes0, VarTypes,
-		VarSet0, VarSet, TableInfo0, TableInfo, TableVar, Goal,
-		Steps) :-
-	generate_get_table_goal(PredId, ProcId, VarTypes0, VarTypes1,
-		VarSet0, VarSet1, PredTableVar, GetTableGoal),
+generate_simple_lookup_goal(Vars, PredId, ProcId, Context, !VarTypes, !VarSet,
+		!TableInfo, TableVar, Goal, Steps) :-
+	generate_get_table_goal(PredId, ProcId, !VarTypes, !VarSet,
+		PredTableVar, GetTableGoal),
 	generate_lookup_goals(Vars, Context, PredTableVar, TableVar,
-		VarTypes1, VarTypes, VarSet1, VarSet, TableInfo0, TableInfo,
-		LookupGoals, Steps),
+		!VarTypes, !VarSet, !TableInfo, LookupGoals, Steps),
 	GoalEx = conj([GetTableGoal | LookupGoals]),
 	set__singleton_set(NonLocals0, TableVar),
 	set__insert_list(NonLocals0, Vars, NonLocals),
@@ -1290,17 +1257,15 @@ generate_simple_lookup_goal(Vars, PredId, ProcId, Context, VarTypes0, VarTypes,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	prog_var::out, hlds_goal::out, list(table_trie_step)::out) is det.
 
-generate_non_lookup_goal(Vars, PredId, ProcId, Context, VarTypes0, VarTypes,
-		VarSet0, VarSet, TableInfo0, TableInfo, SubgoalVar, Goal,
-		Steps) :-
-	ModuleInfo = TableInfo0 ^ table_module_info,
-	generate_get_table_goal(PredId, ProcId, VarTypes0, VarTypes1,
-		VarSet0, VarSet1, PredTableVar, GetTableGoal),
+generate_non_lookup_goal(Vars, PredId, ProcId, Context, !VarTypes, !VarSet,
+		!TableInfo, SubgoalVar, Goal, Steps) :-
+	ModuleInfo = !.TableInfo ^ table_module_info,
+	generate_get_table_goal(PredId, ProcId, !VarTypes,
+		!VarSet, PredTableVar, GetTableGoal),
 	generate_lookup_goals(Vars, Context, PredTableVar, TableNodeVar,
-		VarTypes1, VarTypes2, VarSet1, VarSet2, TableInfo0, TableInfo,
-		LookupGoals, Steps),
-	generate_new_table_var("SubgoalVar", node_type, VarTypes2, VarTypes,
-		VarSet2, VarSet, SubgoalVar),
+		!VarTypes, !VarSet, !TableInfo, LookupGoals, Steps),
+	generate_new_table_var("SubgoalVar", subgoal_type, !VarTypes, !VarSet,
+		SubgoalVar),
 	generate_call("table_nondet_setup", [TableNodeVar, SubgoalVar],
 		det, yes(impure), [SubgoalVar - ground(unique, none)],
 		ModuleInfo, Context, SetupGoal),
@@ -1329,20 +1294,17 @@ generate_non_lookup_goal(Vars, PredId, ProcId, Context, VarTypes0, VarTypes,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	list(hlds_goal)::out, list(table_trie_step)::out) is det.
 
-generate_lookup_goals([], _, TableVar, TableVar, VarTypes, VarTypes,
-		VarSet, VarSet, TableInfo, TableInfo, [], []).
-generate_lookup_goals([Var | Rest], Context, TableVar0, TableVar,
-		VarTypes0, VarTypes, VarSet0, VarSet, TableInfo0, TableInfo,
-		[Goal | RestGoals], [Step | Steps]) :-
-	ModuleInfo = TableInfo0 ^ table_module_info,
-	map__lookup(VarTypes0, Var, VarType),
+generate_lookup_goals([], _, TableVar, TableVar, !VarTypes, !VarSet,
+		!TableInfo, [], []).
+generate_lookup_goals([Var | Rest], Context, TableVar0, TableVar, !VarTypes,
+		!VarSet, !TableInfo, [Goal | RestGoals], [Step | Steps]) :-
+	ModuleInfo = !.TableInfo ^ table_module_info,
+	map__lookup(!.VarTypes, Var, VarType),
 	classify_type(VarType, ModuleInfo, TypeCat),
 	gen_lookup_call_for_type(TypeCat, VarType, TableVar0, Var, Context,
-		VarTypes0, VarTypes1, VarSet0, VarSet1, TableInfo0, TableInfo1,
-		TableVar1, Goal, Step),
+		!VarTypes, !VarSet, !TableInfo, TableVar1, Goal, Step),
 	generate_lookup_goals(Rest, Context, TableVar1, TableVar,
-		VarTypes1, VarTypes, VarSet1, VarSet, TableInfo1, TableInfo,
-		RestGoals, Steps).
+		!VarTypes, !VarSet, !TableInfo, RestGoals, Steps).
 
 :- pred gen_lookup_call_for_type(builtin_type::in, (type)::in,
 	prog_var::in, prog_var::in, term__context::in,
@@ -1351,9 +1313,8 @@ generate_lookup_goals([Var | Rest], Context, TableVar0, TableVar,
 	prog_var::out, hlds_goal::out, table_trie_step::out) is det.
 
 gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
-		VarTypes0, VarTypes, VarSet0, VarSet, TableInfo0, TableInfo,
-		NextTableVar, Goal, Step) :-
-	ModuleInfo = TableInfo0 ^ table_module_info,
+		!VarTypes, !VarSet, !TableInfo, NextTableVar, Goal, Step) :-
+	ModuleInfo = !.TableInfo ^ table_module_info,
 
 	( TypeCat = enum_type ->
 		( type_to_ctor_and_args(Type, TypeCtor, _) ->
@@ -1368,13 +1329,10 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 				error(
     "gen_lookup_call_for_type: enum type is not du_type?")
 			),
-			gen_int_construction("RangeVar", EnumRange, VarTypes0,
-				VarTypes1, VarSet0, VarSet1, RangeVar,
-				RangeUnifyGoal),
-
-			generate_new_table_var("TableNodeVar", node_type,
-				VarTypes1, VarTypes, VarSet1, VarSet,
-				NextTableVar),
+			gen_int_construction("RangeVar", EnumRange, !VarTypes,
+				!VarSet, RangeVar, RangeUnifyGoal),
+			generate_new_table_var("TableNodeVar", trie_node_type,
+				!VarTypes, !VarSet, NextTableVar),
 			generate_call("table_lookup_insert_enum",
 				[TableVar, RangeVar, ArgVar, NextTableVar],
 				det, yes(impure),
@@ -1387,14 +1345,13 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 			goal_info_init(NonLocals, InstMapDelta, det, impure,
 				Context, GoalInfo),
 			Goal = conj([RangeUnifyGoal, LookupGoal]) - GoalInfo,
-			Step = table_trie_step_enum(EnumRange),
-			TableInfo = TableInfo0
+			Step = table_trie_step_enum(EnumRange)
 		;
 			error("gen_lookup_call_for_type: unexpected enum type")
 		)
 	;
-		generate_new_table_var("TableNodeVar", node_type,
-			VarTypes0, VarTypes1, VarSet0, VarSet1, NextTableVar),
+		generate_new_table_var("TableNodeVar", trie_node_type,
+			!VarTypes, !VarSet, NextTableVar),
 		InstMapAL = [NextTableVar - ground(unique, none)],
 		(
 			( TypeCat = pred_type
@@ -1409,15 +1366,12 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 				LookupPredName = "table_lookup_insert_poly",
 				Step = table_trie_step_poly
 			),
-			make_type_info_var(Type, Context, VarTypes1, VarTypes,
-				VarSet1, VarSet, TableInfo0, TableInfo,
-				TypeInfoVar, ExtraGoals),
-
+			make_type_info_var(Type, Context, !VarTypes, !VarSet,
+				!TableInfo, TypeInfoVar, ExtraGoals),
 			generate_call(LookupPredName,
 				[TypeInfoVar, TableVar, ArgVar, NextTableVar],
 				det, yes(impure), InstMapAL, ModuleInfo,
 				Context, CallGoal),
-
 			list__append(ExtraGoals, [CallGoal], ConjList),
 			CallGoal = _ - GoalInfo,
 			conj_list_to_goal(ConjList, GoalInfo, Goal)
@@ -1428,10 +1382,7 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 			generate_call(LookupPredName,
 				[TableVar, ArgVar, NextTableVar],
 				det, yes(impure), InstMapAL, ModuleInfo,
-				Context, Goal),
-			VarTypes = VarTypes1,
-			VarSet = VarSet1,
-			TableInfo = TableInfo0
+				Context, Goal)
 		)
 	).
 
@@ -1444,26 +1395,19 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 	hlds_goal::out) is det.
 
 generate_save_goal(NumberedVars, TableVar, BlockSize, Context,
-		VarTypes0, VarTypes, VarSet0, VarSet, TableInfo0, TableInfo,
-		Goal) :-
-	ModuleInfo = TableInfo0 ^ table_module_info,
+		!VarTypes, !VarSet, !TableInfo, Goal) :-
+	ModuleInfo = !.TableInfo ^ table_module_info,
 	( BlockSize > 0 ->
-		gen_int_construction("BlockSize", BlockSize, VarTypes0,
-			VarTypes1, VarSet0, VarSet1, BlockSizeVar,
-			BlockSizeVarUnifyGoal),
-
-		generate_new_table_var("AnswerTableVar", node_type,
-			VarTypes1, VarTypes2, VarSet1, VarSet2, AnsTableVar),
-
+		gen_int_construction("BlockSize", BlockSize, !VarTypes,
+			!VarSet, BlockSizeVar, BlockSizeVarUnifyGoal),
+		generate_new_table_var("AnswerTableVar", answer_block_type,
+			!VarTypes, !VarSet, AnsTableVar),
 		generate_call("table_create_ans_block",
 			[TableVar, BlockSizeVar, AnsTableVar], det,
 			yes(impure), [AnsTableVar - ground(unique, none)],
 			ModuleInfo, Context, CreateAnsBlockGoal),
-
 		generate_save_goals(NumberedVars, AnsTableVar, Context,
-			VarTypes2, VarTypes, VarSet2, VarSet,
-			TableInfo0, TableInfo, SaveGoals),
-
+			!VarTypes, !VarSet, !TableInfo, SaveGoals),
 		GoalEx = conj([BlockSizeVarUnifyGoal, CreateAnsBlockGoal |
 			SaveGoals]),
 		set__singleton_set(NonLocals0, TableVar),
@@ -1476,11 +1420,8 @@ generate_save_goal(NumberedVars, TableVar, BlockSize, Context,
 			GoalInfo),
 		Goal = GoalEx - GoalInfo
 	;
-		VarTypes = VarTypes0,
-		VarSet = VarSet0,
-		generate_call("table_simple_mark_as_succeeded", [TableVar], det,
-			yes(impure), [], ModuleInfo, Context, Goal),
-		TableInfo = TableInfo0
+		generate_call("table_simple_mark_as_succeeded", [TableVar],
+			det, yes(impure), [], ModuleInfo, Context, Goal)
 	).
 
 :- pred generate_non_save_goal(assoc_list(prog_var, int)::in,
@@ -1490,46 +1431,38 @@ generate_save_goal(NumberedVars, TableVar, BlockSize, Context,
 	hlds_goal::out) is det.
 
 generate_non_save_goal(NumberedOutputVars, TableVar, BlockSize, Context,
-		VarTypes0, VarTypes, VarSet0, VarSet, TableInfo0, TableInfo,
-		Goal) :-
-	ModuleInfo = TableInfo0 ^ table_module_info,
-
-	generate_new_table_var("AnswerTableVar", node_type,
-		VarTypes0, VarTypes1, VarSet0, VarSet1, AnsTableVar0),
+		!VarTypes, !VarSet, !TableInfo, Goal) :-
+	ModuleInfo = !.TableInfo ^ table_module_info,
+	generate_new_table_var("AnswerTableVar", trie_node_type,
+		!VarTypes, !VarSet, AnsTableVar0),
 	generate_call("table_nondet_get_ans_table", [TableVar, AnsTableVar0],
 		det, yes(impure), [AnsTableVar0 - ground(unique, none)],
 		ModuleInfo, Context, GetAnsTableGoal),
 	assoc_list__keys(NumberedOutputVars, OutputVars),
 	generate_lookup_goals(OutputVars, Context,
-		AnsTableVar0, AnsTableVar1, VarTypes1, VarTypes2,
-		VarSet1, VarSet2, TableInfo0, TableInfo1, LookupAnsGoals, _),
+		AnsTableVar0, AnsTableVar1, !VarTypes, !VarSet, !TableInfo,
+		LookupAnsGoals, _),
 	generate_call("table_nondet_answer_is_not_duplicate", [AnsTableVar1],
 		semidet, yes(impure), [], ModuleInfo, Context,
 		DuplicateCheckGoal),
-
-	generate_new_table_var("AnswerSlotVar", node_type,
-		VarTypes2, VarTypes3, VarSet2, VarSet3, AnsSlotVar),
+	generate_new_table_var("AnswerSlotVar", trie_node_type,
+		!VarTypes, !VarSet, AnsSlotVar),
 	generate_call("table_nondet_new_ans_slot", [TableVar, AnsSlotVar], det,
 		yes(impure), [AnsSlotVar - ground(unique, none)],
 		ModuleInfo, Context, NewAnsSlotGoal),
-
-	gen_int_construction("BlockSize", BlockSize, VarTypes3, VarTypes4,
-		VarSet3, VarSet4, BlockSizeVar, BlockSizeVarUnifyGoal),
-	generate_new_table_var("AnswerBlock", node_type, VarTypes4, VarTypes5,
-		VarSet4, VarSet5, AnsBlockVar),
+	gen_int_construction("BlockSize", BlockSize, !VarTypes, !VarSet,
+		BlockSizeVar, BlockSizeVarUnifyGoal),
+	generate_new_table_var("AnswerBlock", answer_block_type,
+		!VarTypes, !VarSet, AnsBlockVar),
 	generate_call("table_create_ans_block",
 		[AnsSlotVar, BlockSizeVar, AnsBlockVar], det, yes(impure),
 		[AnsBlockVar - ground(unique, none)],
 		ModuleInfo, Context, CreateAnsBlockGoal),
-
 	generate_save_goals(NumberedOutputVars, AnsBlockVar, Context,
-		VarTypes5, VarTypes, VarSet5, VarSet, TableInfo1, TableInfo,
-		SaveGoals),
-
+		!VarTypes, !VarSet, !TableInfo, SaveGoals),
 	list__append([GetAnsTableGoal | LookupAnsGoals],
 		[DuplicateCheckGoal, NewAnsSlotGoal, BlockSizeVarUnifyGoal,
 		CreateAnsBlockGoal | SaveGoals], Goals),
-
 	GoalEx = conj(Goals),
 	set__singleton_set(NonLocals0, TableVar),
 	set__insert_list(NonLocals0, OutputVars, NonLocals),
@@ -1544,28 +1477,20 @@ generate_non_save_goal(NumberedOutputVars, TableVar, BlockSize, Context,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	list(hlds_goal)::out) is det.
 
-generate_save_goals([], _TableVar, _Context,
-		VarTypes, VarTypes, VarSet, VarSet, TableInfo, TableInfo, []).
+generate_save_goals([], _TableVar, _Context, !VarTypes, !VarSet, !TableInfo,
+		[]).
 generate_save_goals([NumberedVar | NumberedRest], TableVar, Context,
-		VarTypes0, VarTypes, VarSet0, VarSet, TableInfo0, TableInfo,
-		Goals) :-
-
+		!VarTypes, !VarSet, !TableInfo, Goals) :-
 	NumberedVar = Var - Offset,
-	gen_int_construction("OffsetVar", Offset, VarTypes0, VarTypes1,
-		VarSet0, VarSet1, OffsetVar, OffsetUnifyGoal),
-
-	ModuleInfo = TableInfo0 ^ table_module_info,
-	map__lookup(VarTypes1, Var, VarType),
+	gen_int_construction("OffsetVar", Offset, !VarTypes,
+		!VarSet, OffsetVar, OffsetUnifyGoal),
+	ModuleInfo = !.TableInfo ^ table_module_info,
+	map__lookup(!.VarTypes, Var, VarType),
 	classify_type(VarType, ModuleInfo, TypeCat),
-
 	gen_save_call_for_type(TypeCat, VarType, TableVar, Var, OffsetVar,
-		Context, VarTypes1, VarTypes2, VarSet1, VarSet2,
-		TableInfo0, TableInfo1, CallGoal),
-
+		Context, !VarTypes, !VarSet, !TableInfo, CallGoal),
 	generate_save_goals(NumberedRest, TableVar, Context,
-		VarTypes2, VarTypes, VarSet2, VarSet, TableInfo1, TableInfo,
-		RestGoals),
-
+		!VarTypes, !VarSet, !TableInfo, RestGoals),
 	Goals =	[OffsetUnifyGoal, CallGoal | RestGoals].
 
 :- pred gen_save_call_for_type(builtin_type::in, (type)::in,
@@ -1575,21 +1500,15 @@ generate_save_goals([NumberedVar | NumberedRest], TableVar, Context,
 	hlds_goal::out) is det.
 
 gen_save_call_for_type(TypeCat, Type, TableVar, Var, OffsetVar, Context,
-		VarTypes0, VarTypes, VarSet0, VarSet, TableInfo0, TableInfo,
-		Goal) :-
-	ModuleInfo = TableInfo0 ^ table_module_info,
+		!VarTypes, !VarSet, !TableInfo, Goal) :-
+	ModuleInfo = !.TableInfo ^ table_module_info,
 	( type_util__type_is_io_state(Type) ->
 		LookupPredName = "table_save_io_state_ans",
 		generate_call(LookupPredName, [TableVar, OffsetVar, Var],
-			det, yes(impure), [], ModuleInfo, Context, Goal),
-
-		VarTypes = VarTypes0,
-		VarSet = VarSet0,
-		TableInfo = TableInfo0
+			det, yes(impure), [], ModuleInfo, Context, Goal)
 	; not_builtin_type(TypeCat) ->
-		make_type_info_var(Type, Context, VarTypes0, VarTypes,
-			VarSet0, VarSet, TableInfo0, TableInfo,
-			TypeInfoVar, ExtraGoals),
+		make_type_info_var(Type, Context, !VarTypes, !VarSet,
+			!TableInfo, TypeInfoVar, ExtraGoals),
 
 		generate_call("table_save_any_ans",
 			[TypeInfoVar, TableVar, OffsetVar, Var],
@@ -1603,29 +1522,28 @@ gen_save_call_for_type(TypeCat, Type, TableVar, Var, OffsetVar, Context,
 		string__append_list(["table_save_", CatString, "_ans"],
 			LookupPredName),
 		generate_call(LookupPredName, [TableVar, OffsetVar, Var],
-			det, yes(impure), [], ModuleInfo, Context, Goal),
-
-		VarTypes = VarTypes0,
-		VarSet = VarSet0,
-		TableInfo = TableInfo0
+			det, yes(impure), [], ModuleInfo, Context, Goal)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_restore_goal(assoc_list(prog_var, int)::in, prog_var::in,
-	module_info::in, term__context::in,
+:- pred generate_simple_restore_goal(assoc_list(prog_var, int)::in,
+	prog_var::in, module_info::in, term__context::in,
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	prog_varset::in, prog_varset::out, hlds_goal::out) is det.
 
-generate_restore_goal(NumberedOutputVars, TableVar, ModuleInfo, Context,
-		VarTypes0, VarTypes, VarSet0, VarSet, Goal) :-
-
-	generate_restore_goals(NumberedOutputVars, TableVar,
-		ModuleInfo, Context, VarTypes0, VarTypes, VarSet0, VarSet,
-		RestoreGoals),
-
-	GoalEx = conj(RestoreGoals),
-	set__singleton_set(NonLocals0, TableVar),
+generate_simple_restore_goal(NumberedOutputVars, TipVar, ModuleInfo, Context,
+		!VarTypes, !VarSet, Goal) :-
+	generate_new_table_var("RestoreBlockVar", answer_block_type,
+		!VarTypes, !VarSet, RestoreBlockVar),
+	generate_call("table_simple_get_answer_block",
+		[TipVar, RestoreBlockVar], det, yes(semipure),
+		[RestoreBlockVar - ground(unique, none)],
+		ModuleInfo, Context, GetBlockGoal),
+	generate_restore_goals(NumberedOutputVars, RestoreBlockVar,
+		ModuleInfo, Context, !VarTypes, !VarSet, RestoreGoals),
+	GoalEx = conj([GetBlockGoal | RestoreGoals]),
+	set__singleton_set(NonLocals0, TipVar),
 	assoc_list__keys(NumberedOutputVars, OutputVars),
 	set__insert_list(NonLocals0, OutputVars, NonLocals),
 	create_instmap_delta(RestoreGoals, InstMapDelta0),
@@ -1640,12 +1558,10 @@ generate_restore_goal(NumberedOutputVars, TableVar, ModuleInfo, Context,
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	prog_varset::in, prog_varset::out, hlds_goal::out) is det.
 
-generate_restore_all_goal(Detism, NumberedOutputVars, TableVar,
-		ModuleInfo, Context, VarTypes0, VarTypes, VarSet0, VarSet,
-		Goal) :-
-
-	generate_new_table_var("AnswerTable", node_type, VarTypes0, VarTypes1,
-		VarSet0, VarSet1, AnsTableVar),
+generate_restore_all_goal(Detism, NumberedOutputVars, SubgoalVar,
+		ModuleInfo, Context, !VarTypes, !VarSet, Goal) :-
+	generate_new_table_var("AnswerTable", answer_block_type,
+		!VarTypes, !VarSet, AnsTableVar),
 	( Detism = multidet ->
 		ReturnAllAns = "table_multi_return_all_ans"
 	; Detism = nondet ->
@@ -1653,15 +1569,13 @@ generate_restore_all_goal(Detism, NumberedOutputVars, TableVar,
 	;
 		error("generate_restore_all_goal: invalid determinism")
 	),
-	generate_call(ReturnAllAns, [TableVar, AnsTableVar],
+	generate_call(ReturnAllAns, [SubgoalVar, AnsTableVar],
 		Detism, yes(semipure), [AnsTableVar - ground(unique, none)],
 		ModuleInfo, Context, ReturnAnsBlocksGoal),
-
 	generate_restore_goals(NumberedOutputVars, AnsTableVar, ModuleInfo,
-		Context, VarTypes1, VarTypes, VarSet1, VarSet, RestoreGoals),
-
+		Context, !VarTypes, !VarSet, RestoreGoals),
 	GoalEx = conj([ReturnAnsBlocksGoal | RestoreGoals]),
-	set__singleton_set(NonLocals0, TableVar),
+	set__singleton_set(NonLocals0, SubgoalVar),
 	assoc_list__keys(NumberedOutputVars, OutputVars),
 	set__insert_list(NonLocals0, OutputVars, NonLocals),
 	create_instmap_delta([ReturnAnsBlocksGoal | RestoreGoals],
@@ -1676,24 +1590,20 @@ generate_restore_all_goal(Detism, NumberedOutputVars, TableVar,
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	prog_varset::in, prog_varset::out, list(hlds_goal)::out) is det.
 
-generate_restore_goals([], _TableVar, _ModuleInfo, _Context,
-		VarTypes, VarTypes, VarSet, VarSet, []).
-generate_restore_goals([NumberedVar | NumberedRest], TableVar,
-		ModuleInfo, Context, VarTypes0, VarTypes, VarSet0, VarSet,
+generate_restore_goals([], _AnswerBlockVar, _ModuleInfo, _Context,
+		!VarTypes, !VarSet, []).
+generate_restore_goals([NumberedVar | NumberedRest], AnswerBlockVar,
+		ModuleInfo, Context, !VarTypes, !VarSet,
 		[OffsetUnifyGoal, CallGoal | RestGoals]) :-
-
 	NumberedVar = Var - Offset,
-	gen_int_construction("OffsetVar", Offset, VarTypes0, VarTypes1,
-		VarSet0, VarSet1, OffsetVar, OffsetUnifyGoal),
-
-	map__lookup(VarTypes1, Var, VarType),
+	gen_int_construction("OffsetVar", Offset, !VarTypes, !VarSet,
+		OffsetVar, OffsetUnifyGoal),
+	map__lookup(!.VarTypes, Var, VarType),
 	classify_type(VarType, ModuleInfo, TypeCat),
-
-	gen_restore_call_for_type(TypeCat, VarType, TableVar, Var, OffsetVar,
-		ModuleInfo, Context, CallGoal),
-
-	generate_restore_goals(NumberedRest, TableVar, ModuleInfo, Context,
-		VarTypes1, VarTypes, VarSet1, VarSet, RestGoals).
+	gen_restore_call_for_type(TypeCat, VarType, AnswerBlockVar, Var,
+		OffsetVar, ModuleInfo, Context, CallGoal),
+	generate_restore_goals(NumberedRest, AnswerBlockVar, ModuleInfo,
+		Context, !VarTypes, !VarSet, RestGoals).
 
 :- pred gen_restore_call_for_type(builtin_type::in, (type)::in,
 	prog_var::in, prog_var::in, prog_var::in, module_info::in,
@@ -1722,17 +1632,16 @@ gen_restore_call_for_type(TypeCat, Type, TableVar, Var, OffsetVar,
 	prog_varset::in, prog_varset::out, hlds_goal::out) is det.
 
 generate_suspend_goal(NumberedOutputVars, TableVar, ModuleInfo, Context,
-		VarTypes0, VarTypes, VarSet0, VarSet, Goal) :-
+		!VarTypes, !VarSet, Goal) :-
 
-	generate_new_table_var("AnswerTable", node_type, VarTypes0, VarTypes1,
-		VarSet0, VarSet1, AnsTableVar),
+	generate_new_table_var("AnswerTable", answer_block_type,
+		!VarTypes, !VarSet, AnsTableVar),
 	generate_call("table_nondet_suspend", [TableVar, AnsTableVar],
 		nondet, yes(semipure), [AnsTableVar - ground(unique, none)],
 		ModuleInfo, Context, ReturnAnsBlocksGoal),
 
 	generate_restore_goals(NumberedOutputVars, AnsTableVar,
-		ModuleInfo, Context, VarTypes1, VarTypes, VarSet1, VarSet,
-		RestoreGoals),
+		ModuleInfo, Context, !VarTypes, !VarSet, RestoreGoals),
 
 	GoalEx = conj([ReturnAnsBlocksGoal | RestoreGoals]),
 	set__singleton_set(NonLocals0, TableVar),
@@ -1788,10 +1697,9 @@ generate_loop_error_goal(TableInfo, Context, Msg, !VarTypes, !VarSet, Goal) :-
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	prog_varset::in, prog_varset::out, prog_var::out) is det.
 
-generate_new_table_var(Name, Type, VarTypes0, VarTypes, VarSet0, VarSet, Var)
-		:-
-	varset__new_named_var(VarSet0, Name, Var, VarSet),
-	map__set(VarTypes0, Var, Type, VarTypes).
+generate_new_table_var(Name, Type, !VarTypes, !VarSet, Var) :-
+	varset__new_named_var(!.VarSet, Name, Var, !:VarSet),
+	map__set(!.VarTypes, Var, Type, !:VarTypes).
 
 :- pred generate_call(string::in, list(prog_var)::in, determinism::in,
 	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
@@ -1821,24 +1729,36 @@ append_fail(Goal, GoalAndThenFail) :-
 	prog_varset::in, prog_varset::out,
 	prog_var::out, hlds_goal::out) is det.
 
-gen_int_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
-		Var, Goal) :-
+gen_int_construction(VarName, VarValue, !VarTypes, !VarSet, Var, Goal) :-
 	make_int_const_construction(VarValue, yes(VarName), Goal, Var,
-		VarTypes0, VarTypes, VarSet0, VarSet).
+		!VarTypes, !VarSet).
 
 :- pred gen_string_construction(string::in, string::in,
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	prog_varset::in, prog_varset::out,
 	prog_var::out, hlds_goal::out) is det.
 
-gen_string_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
-		Var, Goal) :-
+gen_string_construction(VarName, VarValue, !VarTypes, !VarSet, Var, Goal) :-
 	make_string_const_construction(VarValue, yes(VarName), Goal, Var,
-		VarTypes0, VarTypes, VarSet0, VarSet).
+		!VarTypes, !VarSet).
 
-:- func node_type = (type).
+:- func trie_node_type = (type).
 
-node_type = c_pointer_type.
+trie_node_type = Type :-
+	mercury_table_builtin_module(TB),
+	construct_type(qualified(TB, "ml_trie_node") - 0, [], Type).
+
+:- func subgoal_type = (type).
+
+subgoal_type = Type :-
+	mercury_table_builtin_module(TB),
+	construct_type(qualified(TB, "ml_subgoal") - 0, [], Type).
+
+:- func answer_block_type = (type).
+
+answer_block_type = Type :-
+	mercury_table_builtin_module(TB),
+	construct_type(qualified(TB, "ml_answer_block") - 0, [], Type).
 
 :- func status_type = (type).
 
@@ -1932,12 +1852,10 @@ type_save_category(user_type, 	 "any").
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	prog_var::out, list(hlds_goal)::out) is det.
 
-table_gen__make_type_info_var(Type, Context,
-		VarTypes0, VarTypes, VarSet0, VarSet, TableInfo0, TableInfo,
+table_gen__make_type_info_var(Type, Context, !VarTypes, !VarSet, !TableInfo,
 		TypeInfoVar, TypeInfoGoals) :-
-	table_gen__make_type_info_vars([Type], Context,
-		VarTypes0, VarTypes, VarSet0, VarSet, TableInfo0, TableInfo,
-		TypeInfoVars, TypeInfoGoals),
+	table_gen__make_type_info_vars([Type], Context, !VarTypes, !VarSet,
+		!TableInfo, TypeInfoVars, TypeInfoGoals),
 	( TypeInfoVars = [TypeInfoVar0] ->
 		TypeInfoVar = TypeInfoVar0
 	;
@@ -1949,21 +1867,20 @@ table_gen__make_type_info_var(Type, Context,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	list(prog_var)::out, list(hlds_goal)::out) is det.
 
-table_gen__make_type_info_vars(Types, Context,
-		VarTypes0, VarTypes, VarSet0, VarSet, TableInfo0, TableInfo,
+table_gen__make_type_info_vars(Types, Context, !VarTypes, !VarSet, !TableInfo,
 		TypeInfoVars, TypeInfoGoals) :-
 	%
 	% Extract the information from table_info
 	%
-	table_info_extract(TableInfo0, ModuleInfo0, PredId, ProcId,
+	table_info_extract(!.TableInfo, ModuleInfo0, PredId, ProcId,
 		PredInfo0, ProcInfo0),
 
 	%
 	% Put the varset and vartypes from the simplify_info
 	% back in the proc_info
 	%
-	proc_info_set_vartypes(ProcInfo0, VarTypes0, ProcInfo1),
-	proc_info_set_varset(ProcInfo1, VarSet0, ProcInfo2),
+	proc_info_set_vartypes(ProcInfo0, !.VarTypes, ProcInfo1),
+	proc_info_set_varset(ProcInfo1, !.VarSet, ProcInfo2),
 
 	%
 	% Call polymorphism.m to create the type_infos
@@ -1977,15 +1894,15 @@ table_gen__make_type_info_vars(Types, Context,
 	%
 	% Get the new varset and vartypes from the proc_info
 	%
-	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_varset(ProcInfo, VarSet),
+	proc_info_vartypes(ProcInfo, !:VarTypes),
+	proc_info_varset(ProcInfo, !:VarSet),
 
 	%
 	% Put the new module_info, pred_info, and proc_info back in the
 	% table_info.
 	%
 	table_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
-		TableInfo).
+		!:TableInfo).
 
 %-----------------------------------------------------------------------------%
 
