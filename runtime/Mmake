@@ -25,7 +25,7 @@ MODS		= engine.mod io.mod wrapper.mod call.mod
 OBJS		= engine.o io.o wrapper.o call.o \
 		  access.o aux.o dummy.o label.o \
 		  list.o memory.o table.o timing.o
-PIC_OBJS	= $(OBJS:.o=.pic_o)
+PIC_OBJS	= $(OBJS:.o=.$(PIC_O))
 
 #-----------------------------------------------------------------------------#
 
@@ -34,7 +34,7 @@ $(OBJS): $(HDRS) $(MACHHDRS)
 #-----------------------------------------------------------------------------#
 
 .PHONY: lib
-lib: libmer.a libmer.so
+lib: libmer.a libmer.$(SO)
 
 libmer.a: $(OBJS)
 	ar cr libmer.a $(OBJS)
@@ -66,9 +66,9 @@ install_mods:
 	done
 
 .PHONY: install_lib
-install_lib: libmer.a libmer.so
+install_lib: libmer.a libmer.$(SO)
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
-	cp `vpath_find libmer.a libmer.so` $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find libmer.a libmer.$(SO)` $(INSTALL_MERC_LIB_DIR)
 
 #-----------------------------------------------------------------------------#
 
