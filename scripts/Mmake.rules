@@ -136,13 +136,13 @@ endif	# MMAKE_USE_MMC_MAKE == no
 ifeq ($(MMAKE_USE_MMC_MAKE), no)
 
 $(date0s_subdir)%.date0 : %.m
-	$(MCPI) $(ALL_MCPIFLAGS) $(*F)
+	$(MCPI) $(ALL_GRADEFLAGS) $(ALL_MCPIFLAGS) $(*F)
 
 $(dates_subdir)%.date : %.m
-	$(MCI) $(ALL_MCIFLAGS) $(*F)
+	$(MCI) $(ALL_GRADEFLAGS) $(ALL_MCIFLAGS) $(*F)
 
 $(date3s_subdir)%.date3 : %.m
-	$(MCSI) $(ALL_MCSIFLAGS) $(*F)
+	$(MCSI) $(ALL_GRADEFLAGS) $(ALL_MCSIFLAGS) $(*F)
 
 $(optdates_subdir)%.optdate : %.m
 	$(MCOI) $(ALL_GRADEFLAGS) $(ALL_MCOIFLAGS) $(*F)
