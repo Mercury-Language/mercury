@@ -101,21 +101,21 @@ TESTING DISCRIMINATED UNIONS
 TESTING POLYMORPHISM
 4 functors in this type
 3 - poly_two/1 [_]
-2 - poly_three/3 [_, _, _]
+2 - poly_three/3 [_, poly3_field2, _]
 1 - poly_one/1 [_]
 0 - poly_four/2 [_, _]
 
 
 4 functors in this type
 3 - poly_two/1 [_]
-2 - poly_three/3 [_, _, _]
+2 - poly_three/3 [_, poly3_field2, _]
 1 - poly_one/1 [_]
 0 - poly_four/2 [_, _]
 
 
 4 functors in this type
 3 - poly_two/1 [_]
-2 - poly_three/3 [_, _, _]
+2 - poly_three/3 [_, poly3_field2, _]
 1 - poly_one/1 [_]
 0 - poly_four/2 [_, _]
 
