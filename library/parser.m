@@ -781,15 +781,59 @@ parser__parse_args(List) -->
 
 :- type parser__state(Ops, T)	% <= op_table(Ops)
 	--->	parser__state(
-			string,		% the name of the stream being parsed
-			Ops,		% the current set of operators
-			varset(T),	% the names of the variables in the
+			stream_name	:: string,
+					% the name of the stream being parsed
+			ops_table	:: Ops,
+					% the current set of operators
+			varset		:: varset(T),
+					% the names of the variables in the
 					% term being parsed
-			token_list,	% the remaining tokens
-			map(string, var(T))
+			tokens_left	:: token_list,
+					% the remaining tokens
+			var_names	:: map(string, var(T))
 					% a map from variable name to variable
 					% so we know when to make a fresh var
 		).
+
+:- func parser_state_get_stream_name(parser__state(Ops, T)) = string.
+:- func parser_state_get_ops_table(parser__state(Ops, T)) = Ops.
+:- func parser_state_get_varset(parser__state(Ops, T)) = varset(T).
+:- func parser_state_get_tokens_left(parser__state(Ops, T)) = token_list.
+:- func parser_state_get_var_names(parser__state(Ops, T)) =
+	map(string, var(T)).
+
+:- func parser_state_set_varset(parser__state(Ops, T), varset(T))
+	= parser__state(Ops, T).
+:- func parser_state_set_tokens_left(parser__state(Ops, T), token_list)
+	= parser__state(Ops, T).
+:- func parser_state_set_var_names(parser__state(Ops, T), map(string, var(T)))
+	= parser__state(Ops, T).
+
+% If you want profiling to tell you the frequencies of these operations,
+% change the inline pragmas to no_inline pragmas.
+
+:- pragma inline(parser_state_get_stream_name/1).
+:- pragma inline(parser_state_get_ops_table/1).
+:- pragma inline(parser_state_get_varset/1).
+:- pragma inline(parser_state_get_tokens_left/1).
+:- pragma inline(parser_state_get_var_names/1).
+
+:- pragma inline(parser_state_set_varset/2).
+:- pragma inline(parser_state_set_tokens_left/2).
+:- pragma inline(parser_state_set_var_names/2).
+
+parser_state_get_stream_name(ParserState) = ParserState ^ stream_name.
+parser_state_get_ops_table(ParserState) = ParserState ^ ops_table.
+parser_state_get_varset(ParserState) = ParserState ^ varset.
+parser_state_get_tokens_left(ParserState) = ParserState ^ tokens_left.
+parser_state_get_var_names(ParserState) = ParserState ^ var_names.
+
+parser_state_set_varset(ParserState0, VarSet) =
+	ParserState0 ^ varset := VarSet.
+parser_state_set_tokens_left(ParserState0, Tokens) =
+	ParserState0 ^ tokens_left := Tokens.
+parser_state_set_var_names(ParserState0, Names) =
+	ParserState0 ^ var_names := Names.
 
 %-----------------------------------------------------------------------------%
 
@@ -840,7 +884,7 @@ parser__unexpected_tok(Token, Context, UsualMessage, Error) -->
 :- mode parser__error(in, out, in, out) is det.
 
 parser__error(Message, error(Message, Tokens), ParserState, ParserState) :-
-	ParserState = parser__state(_, _, _, Tokens, _).
+	Tokens = parser_state_get_tokens_left(ParserState).
 
 %-----------------------------------------------------------------------------%
 
@@ -882,8 +926,9 @@ parser__init_state(Ops, FileName, Tokens, ParserState) :-
 :- pred parser__final_state(parser__state(Ops, T), varset(T), token_list).
 :- mode parser__final_state(in, out, out) is det.
 
-parser__final_state(parser__state(_FileName, _OpTable, VarSet, TokenList,
-		_Names), VarSet, TokenList).
+parser__final_state(ParserState, VarSet, TokenList) :-
+	VarSet = parser_state_get_varset(ParserState),
+	TokenList = parser_state_get_tokens_left(ParserState).
 
 %-----------------------------------------------------------------------------%
 
@@ -896,20 +941,22 @@ parser__get_token(Token) -->
 :- pred parser__get_token(token, token_context,
 		parser__state(Ops, T), parser__state(Ops, T)).
 :- mode parser__get_token(out, out, in, out) is semidet.
-:- mode parser__get_token(in, in, out, in) is det.
+% :- mode parser__get_token(in, in, out, in) is det.
 
-parser__get_token(Token, Context,
-		parser__state(FileName, OpTable, VarSet, Tokens0, Names),
-		parser__state(FileName, OpTable, VarSet, Tokens, Names)) :-
-	Tokens0 = token_cons(Token, Context, Tokens).
+parser__get_token(Token, Context, ParserState0, ParserState) :-
+	Tokens0 = parser_state_get_tokens_left(ParserState0),
+	Tokens0 = token_cons(Token, Context, Tokens),
+	ParserState = parser_state_set_tokens_left(ParserState0, Tokens).
 
 :- pred parser__unget_token(token, token_context,
 		parser__state(Ops, T), parser__state(Ops, T)).
 :- mode parser__unget_token(in, in, in, out) is det.
-:- mode parser__unget_token(out, out, out, in) is semidet.
+% :- mode parser__unget_token(out, out, out, in) is semidet.
 
-parser__unget_token(Token, Context, ParseState0, ParseState) :-
-	parser__get_token(Token, Context, ParseState, ParseState0).
+parser__unget_token(Token, Context, ParserState0, ParserState) :-
+	Tokens0 = parser_state_get_tokens_left(ParserState0),
+	Tokens = token_cons(Token, Context, Tokens0),
+	ParserState = parser_state_set_tokens_left(ParserState0, Tokens).
 
 :- pred parser__peek_token(token, parser__state(Ops, T), parser__state(Ops, T)).
 :- mode parser__peek_token(out, in, out) is semidet.
@@ -921,9 +968,9 @@ parser__peek_token(Token) -->
 		parser__state(Ops, T), parser__state(Ops, T)).
 :- mode parser__peek_token(out, out, in, out) is semidet.
 
-parser__peek_token(Token, Context) -->
-	=(parser__state(_, _, _, Tokens, _)),
-	{ Tokens = token_cons(Token, Context, _) }.
+parser__peek_token(Token, Context, ParserState, ParserState) :-
+	Tokens = parser_state_get_tokens_left(ParserState),
+	Tokens = token_cons(Token, Context, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -931,27 +978,33 @@ parser__peek_token(Token, Context) -->
 		parser__state(Ops, T)).
 :- mode parser__add_var(in, out, in, out) is det.
 
-parser__add_var(VarName, Var,
-		parser__state(FileName, OpTable, VarSet0, Tokens, Names0),
-		parser__state(FileName, OpTable, VarSet, Tokens, Names)) :-
+parser__add_var(VarName, Var, ParserState0, ParserState) :-
 	( VarName = "_" ->
+		VarSet0 = parser_state_get_varset(ParserState0),
 		varset__new_var(VarSet0, Var, VarSet),
-		Names = Names0
-	; map__search(Names0, VarName, Var0) ->
-		Var = Var0,
-		VarSet = VarSet0,
-		Names = Names0
+		ParserState = parser_state_set_varset(ParserState0, VarSet)
 	;
-		varset__new_named_var(VarSet0, VarName, Var, VarSet),
-		map__det_insert(Names0, VarName, Var, Names)
+		Names0 = parser_state_get_var_names(ParserState0),
+		( map__search(Names0, VarName, Var0) ->
+			Var = Var0,
+			ParserState = ParserState0
+		;
+			VarSet0 = parser_state_get_varset(ParserState0),
+			varset__new_named_var(VarSet0, VarName, Var, VarSet),
+			map__det_insert(Names0, VarName, Var, Names),
+			ParserState1 = parser_state_set_varset(ParserState0,
+				VarSet),
+			ParserState = parser_state_set_var_names(ParserState1,
+				Names)
+		)
 	).
 
 :- pred parser__get_ops_table(Ops, parser__state(Ops, T),
 		parser__state(Ops, T)) <= op_table(Ops).
 :- mode parser__get_ops_table(out, in, out) is det.
 
-parser__get_ops_table(OpTable) -->
-	=(parser__state(_, OpTable, _, _, _)).
+parser__get_ops_table(OpTable, ParserState, ParserState) :-
+	OpTable = parser_state_get_ops_table(ParserState).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -972,12 +1025,13 @@ parser__check_priority(x, MaxPriority, Priority) :-
 	Priority < MaxPriority.
 
 :- pred parser__get_term_context(token_context, term__context,
-				parser__state(Ops, T), parser__state(Ops, T)).
+	parser__state(Ops, T), parser__state(Ops, T)).
 :- mode parser__get_term_context(in, out, in, out) is det.
 
-parser__get_term_context(TokenContext, TermContext) -->
-	=(parser__state(FileName, _Ops, _VarSet, _Tokens, _Names)),
-	{ term__context_init(FileName, TokenContext, TermContext) }.
+parser__get_term_context(TokenContext, TermContext, ParserState, ParserState)
+		:-
+	FileName = parser_state_get_stream_name(ParserState),
+	term__context_init(FileName, TokenContext, TermContext).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
