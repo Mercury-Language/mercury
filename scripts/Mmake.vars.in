@@ -366,10 +366,10 @@ TARGET_GRADEFLAGS = \
   $(maybe-base-GRADEFLAGS-$(findstring undefined,\
 		$(origin GRADEFLAGS-$(patsubst %_init,%,$*)))) \
   $(maybe-target-GRADEFLAGS-$(findstring undefined,\
-  		$(origin GRADEFLAGS-$(patsubst %_init.c,%,$@))))
+  		$(origin GRADEFLAGS-$(patsubst $(cs_subdir)%_init.c,%,$@))))
 maybe-base-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst %_init,%,$*))
 maybe-base-GRADEFLAGS-undefined =
-maybe-target-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst %_init.c,%,$@))
+maybe-target-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst $(cs_subdir)%_init.c,%,$@))
 maybe-target-GRADEFLAGS-undefined =
 
 TARGET_MCFLAGS = \
@@ -379,18 +379,18 @@ maybe-base-MCFLAGS-undefined =
 
 TARGET_C2INITFLAGS = \
   $(maybe-target-C2INITFLAGS-$(findstring undefined,\
-		$(origin C2INITFLAGS-$(patsubst %_init.c,%,$@))))
-maybe-target-C2INITFLAGS- = $(C2INITFLAGS-$(patsubst %_init.c,%,$@))
+		$(origin C2INITFLAGS-$(patsubst $(cs_subdir)%_init.c,%,$@))))
+maybe-target-C2INITFLAGS- = $(C2INITFLAGS-$(patsubst $(cs_subdir)%_init.c,%,$@))
 maybe-target-C2INITFLAGS-undefined =
 
 TARGET_C2INITARGS = \
   $(maybe-base-C2INITARGS-$(findstring undefined,\
 		$(origin C2INITARGS-$*))) \
   $(maybe-target-C2INITARGS-$(findstring undefined,\
-		$(origin C2INITARGS-$(patsubst %_init.c,%,$@))))
+		$(origin C2INITARGS-$(patsubst $(cs_subdir)%_init.c,%,$@))))
 maybe-base-C2INITARGS- = $(C2INITARGS-$*)
 maybe-base-C2INITARGS-undefined =
-maybe-target-C2INITARGS- = $(C2INITARGS-$(patsubst %_init.c,%,$@))
+maybe-target-C2INITARGS- = $(C2INITARGS-$(patsubst $(cs_subdir)%_init.c,%,$@))
 maybe-target-C2INITARGS-undefined =
 
 TARGET_MGNUCFLAGS = \
@@ -411,8 +411,8 @@ maybe-target-CFLAGS-undefined =
 # an argument of a `c2init' rule or an `ml' rule.
 TARGET_MLFLAGS = \
   $(maybe-target-MLFLAGS-$(findstring undefined,\
-		$(origin MLFLAGS-$(patsubst %_init.c,%,$@))))
-maybe-target-MLFLAGS- = $(MLFLAGS-$(patsubst %_init.c,%,$@))
+		$(origin MLFLAGS-$(patsubst $(cs_subdir)%_init.c,%,$@))))
+maybe-target-MLFLAGS- = $(MLFLAGS-$(patsubst $(cs_subdir)%_init.c,%,$@))
 maybe-target-MLFLAGS-undefined =
 
 TARGET_LDFLAGS = \
@@ -450,8 +450,9 @@ maybe-target-RANLIBFLAGS-undefined =
 # an argument of a `c2init' rule or an `ml' rule.
 TARGET_EXTRA_LIBRARIES = \
   $(maybe-target-EXTRA_LIBRARIES-$(findstring undefined,\
-		$(origin EXTRA_LIBRARIES-$(patsubst %_init.c,%,$@))))
-maybe-target-EXTRA_LIBRARIES- = $(EXTRA_LIBRARIES-$(patsubst %_init.c,%,$@))
+	$(origin EXTRA_LIBRARIES-$(patsubst $(cs_subdir)%_init.c,%,$@))))
+maybe-target-EXTRA_LIBRARIES- = \
+  $(EXTRA_LIBRARIES-$(patsubst $(cs_subdir)%_init.c,%,$@))
 maybe-target-EXTRA_LIBRARIES-undefined =
 
 TARGET_LIBGRADES = \
