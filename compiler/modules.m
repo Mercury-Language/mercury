@@ -2012,11 +2012,13 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			% the same command that creates the .c files, so
 			% we just make them depend on the .c files.
 			%
+			module_name_to_file_name(ModuleName, ".c", no,
+							CFileName),
 			module_name_to_file_name(ModuleName, ".h", no,
 							HeaderFileName),
 			io__write_strings(DepStream, [
 					"\n\n", HeaderFileName, 
-					" : ", CDateFileName
+					" : ", CFileName
 			])
 		;
 			[]
