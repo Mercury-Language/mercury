@@ -175,6 +175,7 @@
 		;	dump_rl_bytecode
 		;	mode_constraints
 		;	simple_mode_constraints
+		;	prop_mode_constraints
 		;	benchmark_modes
 		;	benchmark_modes_repeat
 		;	sign_assembly
@@ -848,6 +849,7 @@ option_defaults_2(aux_output_option, [
 	dump_rl_bytecode	-	bool(no),
 	mode_constraints	-	bool(no),
 	simple_mode_constraints	-	bool(no),
+	prop_mode_constraints	-	bool(no),
 	benchmark_modes		-	bool(no),
 	benchmark_modes_repeat	-	int(1),
 	sign_assembly		-	bool(no),
@@ -1513,6 +1515,7 @@ long_option("separate-assemblies",	separate_assemblies).
 long_option("generate-schemas",		generate_schemas).
 long_option("mode-constraints",		mode_constraints).
 long_option("simple-mode-constraints",	simple_mode_constraints).
+long_option("prop-mode-constraints",	prop_mode_constraints).
 long_option("benchmark-modes",		benchmark_modes).
 long_option("benchmark-modes-repeat",	benchmark_modes_repeat).
 

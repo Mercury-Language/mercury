@@ -35,6 +35,8 @@
 
 % Mode analysis
 %:- module mode_analysis.
+   :- include_module abstract_mode_constraints.
+   :- include_module build_mode_constraints.
    :- include_module delay_info.
    :- include_module inst_match.
    :- include_module inst_util.
@@ -48,6 +50,7 @@
    :- include_module modecheck_call.
    :- include_module modecheck_unify.
    :- include_module modes.
+   :- include_module prop_mode_constraints.
    :- include_module unify_proc.
    :- include_module unique_modes.
 %:- end_module mode_analysis.

@@ -23,6 +23,10 @@
 
 :- implementation.
 
+:- import_module check_hlds.prop_mode_constraints.
+:- import_module check_hlds.abstract_mode_constraints.
+:- import_module check_hlds.build_mode_constraints.
+
 :- import_module check_hlds__goal_path.
 :- import_module check_hlds__mode_constraint_robdd.
 :- import_module check_hlds__mode_ordering.
@@ -42,10 +46,12 @@
 :- import_module mode_robdd__tfeirn.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.modules.
 :- import_module transform_hlds__dependency_graph.
 
 :- import_module list, map, std_util, bool, set, multi_map, require, int.
-:- import_module robdd, term, string, assoc_list, sparse_bitset.
+:- import_module robdd, term, string, assoc_list, sparse_bitset, bimap.
 :- import_module varset, term_io.
 :- import_module gc.
 
@@ -69,27 +75,68 @@
 mode_constraints__process_module(!ModuleInfo, !IO) :-
 	module_info_predids(!.ModuleInfo, PredIds),
 	globals__io_lookup_bool_option(simple_mode_constraints, Simple, !IO),
+	globals__io_lookup_bool_option(prop_mode_constraints, New, !IO),
 	list__foldl2(hhf__process_pred(Simple), PredIds, !ModuleInfo, !IO),
 
 	get_predicate_sccs(!.ModuleInfo, SCCs),
 
 	% Stage 1: Process SCCs bottom-up to determine variable producers.
-	list__foldl3(mode_constraints__process_scc(Simple), SCCs,
-		!ModuleInfo, map__init, PredConstraintMap, !IO),
-		
-	% Stage 2: Process SCCs top-down to determine execution order of
-	% conjuctions and which modes are needed for each predicate.
-	mode_ordering(PredConstraintMap, list__reverse(SCCs),
-		!ModuleInfo, !IO),
+	(
+		New = no,
+		list__foldl3(mode_constraints__process_scc(Simple), SCCs,
+			!ModuleInfo, map__init, PredConstraintMap, !IO),
 
-	% Stage 3, which would turn the results of the mode analysis into goal
-	% annotations that the rest of the compiler can understand, doesn't
-	% exist yet. The whole point of this way of doing mode analysis is
-	% to gain extra expressive power (e.g. partially instantiated data
-	% structures), and the rest of the compiler doesn't handle the extra
-	% expressive power yet.
+		% Stage 2: Process SCCs top-down to determine execution order of
+		% conjuctions and which modes are needed for each predicate.
+		mode_ordering(PredConstraintMap, list__reverse(SCCs),
+			!ModuleInfo, !IO),
+
+		% Stage 3, which would turn the results of the mode analysis
+		% into goal annotations that the rest of the compiler can
+		% understand, doesn't exist yet. The whole point of this way of
+		% doing mode analysis is to gain extra expressive power (e.g.
+		% partially instantiated data structures), and the rest of the
+		% compiler doesn't handle the extra expressive power yet.
+			
+		clear_caches(!IO)
+	;
+		New = yes,
+		list__foldl3(
+			prop_mode_constraints__process_scc(!.ModuleInfo),
+			SCCs,
+			varset.init, ConstraintVarset,
+			bimap.init, _ConstraintVarMap,
+			map.init, AbstractModeConstraints
+		),
 		
-	clear_caches(!IO).
+		hlds_module.module_info_name(!.ModuleInfo, ModuleName),
+
+		CreateDirectories = yes,
+		parse_tree.modules.module_name_to_file_name(
+			ModuleName, ".mode_constraints",
+			CreateDirectories,
+			FileName, !IO
+		),
+		OutputFile = FileName,
+
+		io.open_output(OutputFile, IOResult, !IO),
+		(
+			IOResult = ok(OutputStream),
+			io.set_output_stream(OutputStream, OldOutStream, !IO),
+			pretty_print_pred_constraints_map(
+				!.ModuleInfo,
+				ConstraintVarset,
+				AbstractModeConstraints,
+				!IO
+			),
+			io.set_output_stream(OldOutStream, _, !IO),
+			io.close_output(OutputStream, !IO)
+		;
+			IOResult = error(_),
+			error("mode_constraints.m: failed to open " ++
+				FileName ++ " for output.")
+		)
+	).
 
 :- pred mode_constraints__process_scc(bool::in, list(pred_id)::in,
 	module_info::in, module_info::out,
