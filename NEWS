@@ -39,7 +39,8 @@ Changes to the Mercury language:
 Changes to the Mercury standard library:
 ****************************************
 
-* We've added a new predicate to the Mercury standard library:
+* We've added some new predicates to the Mercury standard library:
+	array__map/3,
 	bag__count_value/3.
 
 * The following predicates have been replaced by functions with
