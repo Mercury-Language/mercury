@@ -1408,35 +1408,43 @@ XXX `ui' modes don't work yet
 	Ref[0] = X;
 ").
 
-:- pragma foreign_type(java, mutvar(T), "java.lang.Object[]").
+:- pragma foreign_code("Java",
+"
+	public static class Mutvar {
+		public Object object;
+
+		public Mutvar(Object init) {
+			object = init;
+		}
+	}
+").
+:- pragma foreign_type(java, mutvar(T), "mercury.std_util.Mutvar").
 
 :- pragma foreign_proc("Java",
 	new_mutvar(X::in, Ref::out),
 	[will_not_call_mercury, thread_safe],
 "
-	Ref = new java.lang.Object[1];
-	Ref[0] = X;
+	Ref = new mercury.std_util.Mutvar(X);
 ").
 :- pragma foreign_proc("Java",
 	new_mutvar(X::di, Ref::uo),
 	[will_not_call_mercury, thread_safe],
 "
-	Ref = new java.lang.Object[1];
-	Ref[0] = X;
+	Ref = new mercury.std_util.Mutvar(X);
 ").
 
 :- pragma foreign_proc("Java",
 	get_mutvar(Ref::in, X::uo),
 	[will_not_call_mercury, thread_safe],
 "
-	X = Ref[0];
+	X = Ref.object;
 ").
 
 :- pragma foreign_proc("Java",
 	set_mutvar(Ref::in, X::in),
 	[will_not_call_mercury, thread_safe],
 "
-	Ref[0] = X;
+	Ref.object = X;
 ").
 
 %%% end_module mutvar.
