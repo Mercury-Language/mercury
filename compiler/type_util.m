@@ -901,7 +901,12 @@ type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
 type_constructors_are_no_tag_type(Ctors, Ctor, ArgType) :-
 	type_is_single_ctor_single_arg(Ctors, Ctor, ArgType),
 	unqualify_name(Ctor, Name),
-	\+ name_is_type_info(Name).
+	\+ name_is_type_info(Name),
+
+	% We don't handle unary tuples as no_tag types --
+	% they are rare enough that it's not worth
+	% the implementation effort.
+	Name \= "{}".
 
 type_constructors_are_type_info(Ctors) :-
 	type_is_single_ctor_single_arg(Ctors, Ctor, _),
@@ -922,17 +927,7 @@ name_is_type_info("base_typeclass_info").
 type_is_single_ctor_single_arg(Ctors, Ctor, ArgType) :-
 	Ctors = [SingleCtor],
 	SingleCtor = ctor(ExistQVars, _Constraints, Ctor, [_FName - ArgType]),
-	ExistQVars = [],
-	unqualify_name(Ctor, Name),
-	Name \= "type_info",
-	Name \= "type_ctor_info",
-	Name \= "typeclass_info",
-	Name \= "base_typeclass_info",
-
-	% We don't handle unary tuples as no_tag types --
-	% they are rare enough that it's not worth
-	% the implementation effort.
-	Name \= "{}".
+	ExistQVars = [].
 
 %-----------------------------------------------------------------------------%
 
