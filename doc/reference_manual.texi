@@ -44,10 +44,11 @@ into another language, under the above conditions for modified versions.
 @titlepage
 @c @finalout
 @title The Mercury Language Reference Manual
-@subtitle BETA TEST version - July, 1995
+@subtitle January, 1996
 @author Fergus Henderson
 @author Thomas Conway
 @author Zoltan Somogyi
+@author David Jeffery
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995 University of Melbourne.
@@ -79,11 +80,11 @@ into another language, under the above conditions for modified versions.
 * Modes::             Modes allow you to specify the direction of data flow
 * Unique modes::      Unique modes allow you to specify when there is only one
                       reference to a particular value, so the compiler can
-                      safely use destructive update to modify that value.
+                      safely use destructive update to modify that value
 * Determinism::       Determinism declarations let you specify that a predicate
                       should never fail or should never succeed more than once
 * Higher-order::      Mercury supports higher-order predicates, closures,
-                      lambda expressions, and currying.
+                      lambda expressions, and currying
 * Modules::           Modules allow you to divide a program into smaller parts
 * Semantics::         An informal semantics for Mercury programs
 * Pragmas::           Pragma declarations give information to the Mercury 
@@ -257,12 +258,13 @@ The end of file.
 Terms in Mercury are exactly the same as in ISO Prolog, with two
 exceptions.  The first one is that double-quoted strings are atomic in
 Mercury, they are not abbreviations for lists of character codes.
-The second is that Mercury terms can contain lamdba expressions.
+The second is that Mercury terms can contain lambda expressions.
 
 A term is either a variable, a functor, or a lambda expression.
 
 A functor is an integer, a float, a string, a character literal
 (any single-character name), a name, or a compound term.
+
 A compound term is a name followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),
 a sequence of argument terms separated by commas, and a close
@@ -312,9 +314,9 @@ The allowed declarations are:
 
 The @samp{type} and @samp{pred} declarations are used for the type system,
 the @samp{inst} and @samp{mode} declarations are for the mode system,
-the @samp{pragma} declarations are for the C interface,
-and the remainder are for the module system.  They are described in
-more detail in their respective chapters.
+the @samp{pragma} declarations are for the C interface, and for
+compiler hints about inlining, and the remainder are for the module system. 
+They are described in more detail in their respective chapters.
 
 (The current implementation allows @samp{when/2} declarations,
 but ignores them.
@@ -1146,14 +1148,24 @@ We have not yet implemented unique modes fully, and the details are
 still in a state of flux.  So the following should be considered
 tentative.
 
+@menu
+* Destructive update::
+* Backtrackable destructive update::
+* Limitations of the current implementation::
+@end menu
+
+@node Destructive update
+@section Destructive update
+
 In addition to the insts mentioned above (@samp{free}, @samp{ground},
 and @samp{bound(@dots{})}), Mercury also provides ``unique'' insts
 @samp{unique} and @samp{unique(@dots{})} which are like @samp{ground}
 and @samp{bound(@dots{})} respectively, except that they carry the
 additional constraint that there can only be one reference to the
 corresponding value.  There is also an inst @samp{dead} which means
-that there are no references to the corresponding value.
-The following modes
+that there are no references to the corresponding value, so the compiler
+is free to generate code that reuses that value.
+There are three standard modes for manipulation unique values:
 
 @example
 % unique output
@@ -1166,11 +1178,79 @@ The following modes
 :- mode di :: unique -> dead.
 @end example
 
-are also provided.
+Mode @samp{uo} is used to create a unique value.
+Mode @samp{ui} is used to inspect a unique value without
+losing its uniqueness.
+Mode @samp{di} is used to deallocate or reuse the memory
+occupied by a value that will not be used.
+
+Note that a value is not considered @samp{unique} if it might be
+needed on backtracking.  This means that unique modes are generally
+only useful for code whose determinism is @samp{det} or @samp{cc_multidet}
+(@pxref{Determinism}).
+
+@node Backtrackable destructive update
+@section Backtrackable destructive update
+
+@quotation
+``Well it just so happens that your friend here is only @emph{mostly} dead.
+@*There's a big difference between mostly dead and all dead@dots{}
+@*Now, mostly dead is slightly alive.
+@*Now, all dead --- well, with all dead, there's usually only
+one thing that you can do.''
+
+``What's that?''
+
+``Go through his clothes and look for loose change!''
+
+--- from the movie ``The Princess Bride''.
+@end quotation
+
+To allow for backtrackable destructive updates --- that is, updates
+whose effect is undone on backtracking, perhaps by recording the
+overwritten values on a ``trail'' so that they can be restored
+after backtracking --- Mercury also provides ``mostly unique''
+modes.  The insts @samp{mostly_unique} and @samp{mostly_dead}
+are equivalent to @samp{unique} and @samp{dead},
+except that only references which will be encountered during 
+forward execution are counted - it is OK for @samp{mostly_unique} or
+@samp{mostly_dead} values to be needed again on backtracking.
+
+@node Limitations of the current implementation
+@section Limitations of the current implementation
+
+The implementation of the mode analysis algorithm is not quite complete;
+as a result, it is not possible to use nested unique modes, i.e.
+modes in which anything but the top level of a variable is unique.
+If you do, you will get unique mode errors when you try
+to get a unique field of a unique data structure.
+
+The Mercury compiler does not (yet) reuse @samp{dead}
+values.  The only destructive update in the current implementation occurs
+in the library modules for I/O and arrays.  We do however plan to
+implement structure reuse and compile-time garbage collection
+in the very near future.
+
+Reusing @samp{mostly_dead} values would require keeping a trail, which
+might negatively impact on the performance of code which didn't use
+backtrackable destructive update.  Furthermore, it wouldn't have such a
+big impact as reuse of @samp{dead} values; it really pays off only for
+large structures or arrays.  As a result, implementing reuse of
+@samp{mostly_dead} values is a much lower priority on our
+implementation schedule.
 
 @node Determinism
 @chapter Determinism
 
+@menu
+* Determinism categories::
+* Determinism checking and inference::
+* Replacing compile-time checking with run-time checking::
+* Interfacing nondeterministic code with the real world::
+* Committed choice nondeterminism::
+@end menu
+
+@node Determinism categories
 @section Determinism categories
 
 For each mode of a predicate,
@@ -1179,35 +1259,39 @@ and whether or not it can fail before producing its first solution.
 
 @itemize @bullet
 @item
-If all calls to a particular mode of a predicate
+If all possible calls to a particular mode of a predicate
 have exactly one solution,
 then that mode of the predicate is @dfn{deterministic} (@code{det}).
 
 @item
-If all calls to a particular mode of a predicate
+If all possible calls to a particular mode of a predicate
 either have no solutions or have one solution,
 then that mode of the predicate is @dfn{semideterministic} (@code{semidet}).
 
 @item
-If all calls to a particular mode of a predicate
+If all possible calls to a particular mode of a predicate
 have at least one solution but may have more,
 then that mode of the predicate is @dfn{multisolution} (@code{multi}).
 
 @item
-If some calls to a particular mode of a predicate have no solution
+If some possible calls to a particular mode of a predicate have no solution
 but other calls may have more than one solution,
 then that mode of the predicate is @dfn{nondeterministic} (@code{nondet}).
 
 @item
-If all calls to a particular mode of a predicate
+If all possible calls to a particular mode of a predicate
 fail without producing a solution,
 then that mode of the predicate has a determinism of @code{failure}.
 
 @item
-If all calls to a particular mode of a predicate
+If all possible calls to a particular mode of a predicate
 lead to a runtime error, i.e. neither succeed nor fail,
 then that mode of the predicate has a determinism of @code{erroneous}.
 @end itemize
+
+The determinism annotation @code{erroneous} is used on the library
+predicate @samp{error/1}, but apart from that those last two determinism
+annotations are generally not needed.
 
 To summarize:
 
@@ -1254,15 +1338,16 @@ The determinism categories form this lattice:
               /     \
           failure   det
              \     /   \
-             semidet    multi
-                  \     /
-                   nondet
+             semidet  multi
+                 \     /
+                  nondet
 @end example
 
 The higher up this lattice a determinism category is,
 the more the compiler knows about the number of solutions
 of predicates of that determinism.
 
+@node Determinism checking and inference
 @section Determinism checking and inference
 
 The determinism of goals
@@ -1434,7 +1519,8 @@ Otherwise, the determinism of the negation is @code{semidet}.
 
 @end table
 
-@subsection Replacing compile-time checking with run-time checking
+@node Replacing compile-time checking with run-time checking
+@section Replacing compile-time checking with run-time checking
 
 Note that ``perfect'' determinism inference is an undecidable problem,
 because it requires solving the halting problem.
@@ -1498,7 +1584,8 @@ not directly to the surrounding computation.
 to values generated in conditions,
 they might access them even if the condition failed.)
 
-@subsection Interfacing nondeterministic code with the real world
+@node Interfacing nondeterministic code with the real world
+@section Interfacing nondeterministic code with the real world
 
 Normally, attempting to call
 a @code{nondet} or @code{multi} mode of a predicate
@@ -1539,7 +1626,7 @@ so alternative solutions to @samp{main/2}
 (and hence also to @code{nondet} or @code{multi} predicates
 called directly or indirectly from @samp{main/2})
 are implicitly pruned away.
-This is one way to achieve ``don't care'' nondeterminism in Mercury.
+This is one way to achieve ``don't care'' style nondeterminism in Mercury.
 
 The other situation in which you may want pruning
 and committed choice style nondeterminism
@@ -1577,6 +1664,55 @@ might not be in the same order in every solution.
 
 However, the current implementation does not yet support
 either the @samp{unique} quantifier or user-defined equivalence relations.
+
+@node Committed choice nondeterminism
+@section Committed choice nondeterminism
+
+In addition to the determinism annotations described earlier, there are
+``committed choice'' versions of @code{multi}
+and @code{nondet}, called @code{cc_multi} and @code{cc_nondet}.
+These can be used instead of @code{multi} or @code{nondet} if all calls
+to that mode of the predicate occur in a context in which only one
+solution is needed.
+
+Such single-solution contexts are determined as follows.
+
+@itemize @bullet
+@item
+The program entry point @samp{main/2} is in a single-solution context.
+
+@item
+Any goal with no output variables is in a single-solution context.
+
+@item
+If a conjunction is in a single-solution context, then 
+the right-most conjunct is in a single-solution context,
+and if the right-most conjunct cannot fail,
+then rest of the conjunction is also in a single-solution
+context.
+
+@item
+If an if-then-else is in a single-solution context, then the
+``then'' part and the ``else'' part are in single-solution contexts,
+and if the ``then'' part cannot fail, then condition of the
+if-then-else is also in a single-solution context.
+
+@end itemize
+
+The compiler will check that all calls to a committed-choice
+mode of a predicate do indeed occur in a single-solution context.
+
+There are two reasons to use committed choice determinism annotations.
+One reason is for efficiency: committed choice annotations allow
+the compiler to generate much more efficient code.
+The other reason is for doing I/O, which is allowed only in @samp{det}
+or @samp{cc_multi} predicates, not in @samp{multi} predicates.
+
+It would be nice to be able to declare a mode of a predicate as
+both @samp{multi} and @samp{cc_multi}, and have the compiler call
+the appropriate one depending on whether the call comes from a
+single-solution context or not.  However, the current implementation
+does not yet support this.
 
 @node Higher-order
 @chapter Higher-order programming
@@ -1923,7 +2059,10 @@ Only one solution is sought, even if @samp{main/2} is declared as @code{multi}.
 @node Pragmas
 @chapter Pragmas
 
-There are two main uses for the @code{pragma} declarations:
+@ifinfo
+There are two main uses for @code{pragma} declarations:
+@end ifinfo
+
 @menu
 * C interface::                 The C interface allows C code to be called
                                 from Mercury code.
@@ -1937,77 +2076,137 @@ There are two main uses for the @code{pragma} declarations:
 @menu
 * Calling C code::                      How to call C code whenever there is
                                         a call to a Mercury predicate.
-* Including C headers::			Using functions with prototypes from a
-					non-standard header file.
-* Linking with C object files:: 	Linking with C object files and 
-					libraries.
-* Using C pointers::			Maintaining a reference to C data
-					structures in Mercury code.
+* Including C headers::                 Using functions with prototypes from a
+                                        non-standard header file.
+* Linking with C object files::         Linking with C object files and 
+                                        libraries.
+* Passing data to and from C::          Exchanging simple data types between
+                                        Mercury and C.
+* Using C pointers::                    Maintaining a reference to C data
+                                        structures in Mercury code.
 @end menu
 
 @node Calling C code
 @subsection Calling C code
 
 A declaration of the form
+
 @example
 :- pragma(c_code, Pred(Var1::Mode1, Var2::Mode2, ...), C_Code).
 @end example
-results in any calls to @var{Pred} with variables in modes (@var{Mode1}, 
-@var{Mode2}, ...) being replaced by a call to the C code given in @var{C_Code}.
 
-Any predicate which contains a @code{pragma(c_code, ...)} goal must be 
-deterministic, and must not contain any clauses (although there can be a 
-@code{pragma(c_code, ...)} goal for each mode of the predicate).
+results in any calls to @var{Pred} with variables in modes (@var{Mode1}, 
+@var{Mode2}, ...) being replaced by the C code given in @var{C_Code}.
+
+If there is a @code{pragma(c_code, ...)} declaration for a mode of a predicate,
+then that mode of the predicate must be deterministic, there must not be
+any clauses for that predicate, and there must be a
+@code{pragma(c_code, ...)} goal for every mode of the predicate.
 
 For example, the following piece of code gives a predicate, 
-@samp{c_write_string/3}, which has the same semantics as the Mercury library 
+@samp{c_write_string/3}, which has a similar effect to the Mercury library 
 predicate @samp{io__write_string/3}:
+
 @example
 :- pred c_write_string(string, io__state, io__state).
 :- mode c_write_string(in, di, uo) is det.
 
 :- pragma(c_code, c_write_string(String::in, IO0::di, IO::uo),
-	"puts(String); IO = IO0;").
+        "puts(String); IO = IO0;").
 @end example
 
 @node Including C headers
 @subsection Including C headers
 
-Mercury will automatically include the header files @file{stddef.h},
-@file{stdio.h}, @file{stdlib.h}, @file{string.h}, @file{assert.h}, and
-@file{sys/types.h}. Prototypes for any other functions must be included using
-a declaration of the form:
+Any macros, function prototypes, or other C declarations
+that are used in @samp{c_code} pragmas must be included using a
+@samp{c_header_code} declaration of the form
+
 @example
 :- pragma(c_header_code, HeaderCode).
 @end example
-where @var{HeaderCode} is a C @samp{#include} line. For example:
+
+@var{HeaderCode} can be a C @samp{#include} line, for example
+
 @example
 :- pragma(c_header_code, "#include <math.h>")
 @end example
+
 or
+
 @example
 :- pragma(c_header_code, "#include ""tcl.h""").
 @end example
 
+or it may contain any C declarations, for example
+
+@example
+:- pragma(c_header_code, "
+        extern int errno;
+        #define SIZE 200
+        struct Employee @{
+                char name[SIZE];
+        @}
+").
+@end example
+
+Mercury automatically includes certain headers such as @code{<stdio.h>},
+but you should not rely on this, as the set of headers which Mercury
+automatically includes is subject to change.
+
 @node Linking with C object files 
 @subsection Linking with C object files 
 
-To link an existing object file or library into the Mercury executable, give a
-value to the @samp{Mmake} variable @samp{MLLIBS} in the @samp{Mmake} file in 
-the directory in which you are working. For example add the following line to
-the @samp{Mmake} file:
+To link an existing object file or library into the Mercury executable,
+set the @samp{Mmake} variable @samp{MLLIBS} in the
+@samp{Mmake} file in the directory in which you are working.  For
+example add the following line to the @samp{Mmake} file:
+
 @example
-MLFLAGS= my_functions.o -L/usr/local/contrib/lib -lfancy_library
+MLLIBS = my_functions.o -L/usr/local/contrib/lib -lfancy_library
 @end example
 
-As illustrated by the example, the values for @samp{MLFLAGS} are similar to
+As illustrated by the example, the values for @samp{MLLIBS} are similar to
 those taken by the Unix linker.
+
+@node Passing data to and from C
+@subsection Passing data to and from C
+
+For each of the Mercury types @code{int}, @code{float}, @code{char},
+and @code{string}, there is a C typedef for the corresponding type in C:
+@code{Integer}, @code{Float}, @code{Char}, and @code{String} respectively.
+
+In the current implementation, @samp{Integer} is a typedef for an
+integral type whose size is the same size as a pointer; @samp{Float} is
+a typedef for @samp{double} (unless the program and the Mercury library
+was compiled with @samp{-DUSE_SINGLE_PREC_FLOAT}, in which case it is
+a typedef for @samp{float}); @samp{Char} is a typedef for @samp{char};
+and @samp{String} is a typedef for @samp{Char *}.
+
+Mercury variables of type @code{int}, @code{float}, @code{char}, or
+@code{string} are passed to and from C as C variables whose type is
+given by the corresponding typedef.  Mercury variables of any other
+type are passed as a @samp{Word}, which in the current implementation
+is a typedef for an unsigned type whose size is the same size as a
+pointer.
+
+Mercury lists can be manipulated by C code using the following macros,
+which are defined by the Mercury implementation.
+
+@example
+list_is_empty(list)     /* test if a list is empty */
+list_head(list)         /* get the head of a list */
+list_tail(list)         /* get the tail of a list */
+list_empty()            /* create an empty list */
+list_cons(head,tail)    /* construct a list with the given head and tail */
+@end example
 
 @node Using C pointers
 @subsection Using C pointers
 
 The inbuilt Mercury type @code{c_pointer} can be used to pass C pointers
 between C functions which are called from Mercury. For example:
+
 @example
 :- module pointer_example.
 
@@ -2020,32 +2219,43 @@ between C functions which are called from Mercury. For example:
 
 % Perform a calculation on the C structure.
 :- pred do_calculation(int::in, complicated_structure::di, 
-	complicated_structure::uo) is det.
+        complicated_structure::uo) is det.
 
 :- implementation.
 
 % Our C structure is implemented as a c_pointer.
-:- type complicated_c_structure	== c_pointer.
+:- type complicated_c_structure == c_pointer.
+
+:- pragma(c_header_code, "
+        extern struct foo *init_struct(void);
+        extern struct foo *perform_calculation(int, struct foo *);
+");
 
 :- pragma(c_code, initialise_complicated_structure(Structure::uo),
-	"perform_initialisation(&Structure);").
+        "Structure = init_struct();").
 
 :- pragma(c_code, do_calculation(Value::in, Structure0::di, Structure::uo,
-	"Structure = perform_calculation(Value, Structure0);") .
+        "Structure = perform_calculation(Value, Structure0);").
 @end example
 
 @node Inlining
 @section Inlining
 
-For the sake of efficiency, calls to predicates will be inlined by the Mercury
-compiler whenever a declaration of the form
-@example
-:- pragma(inline, Predname/Arity).
-@end example
-which results in call to the predicate Predname with arity Arity to be inlined.
+A declaration of the form
 
-@code{pragma(inline, ...)} declarations can only be made for predicates which
-are not imported to a module. ie. Cross module inlining is not yet supported.
+@example
+:- pragma(inline, @var{Predname}/@var{Arity}).
+@end example
+
+is a hint to the compiler that all calls to the predicate @var{Predname}
+with arity @var{Arity} should be inlined.
+
+The current Mercury implementation is smart enough to inline many
+simple predicates even without this hint.  However, in the current
+Mercury implementation, cross-module inlining is not yet supported, so
+if a predicate for which there is an @samp{inline} pragma is called
+from a module other than the one it is defined in, the compiler will
+ignore the hint.
 
 @contents
 @bye

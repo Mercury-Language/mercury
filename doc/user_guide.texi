@@ -1034,6 +1034,7 @@ Output comments in the @file{@var{module}.c} file.
 This is primarily useful for trying to understand
 how the generated C code relates to the source code,
 e.g. in order to debug the compiler.
+It works best if used in conjunction with the @samp{--no-optimize} option.
 
 @sp 1
 @item -l
@@ -1051,7 +1052,7 @@ Write out the dependency graph to @var{module}.dependency_graph.
 Dump the HLDS (intermediate representation) after
 the specified stage number or stage name to
 @file{@var{module}.hlds_dump.@var{num}-@var{name}}.
-Stage numbers range from 0 to 17.
+Stage numbers range from 1 to 19.
 Multiple dump options accumulate.
 
 @sp 1
