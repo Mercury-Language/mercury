@@ -818,7 +818,7 @@ some_vars(Vs) `insert` V = some_vars(Vs `insert` V).
 :- func tr(robdd(T)) = robdd(T).
 :- func fa(robdd(T)) = robdd(T).
 
-:- pragma inline(value/1).
+:- pragma no_inline(value/1).
 :- pragma foreign_proc("C",
 	value(F::in) = (Value::out),
 	[will_not_call_mercury, promise_pure],
@@ -826,7 +826,7 @@ some_vars(Vs) `insert` V = some_vars(Vs `insert` V).
 	Value = (MR_ROBDD_NODE_TYPE) ((MR_ROBDD_node *) F)->value;
 ").
 
-:- pragma inline(tr/1).
+:- pragma no_inline(tr/1).
 :- pragma foreign_proc("C",
 	tr(F::in) = (Tr::out),
 	[will_not_call_mercury, promise_pure],
@@ -834,7 +834,7 @@ some_vars(Vs) `insert` V = some_vars(Vs `insert` V).
 	Tr = (MR_ROBDD_NODE_TYPE) ((MR_ROBDD_node *) F)->tr;
 ").
 
-:- pragma inline(fa/1).
+:- pragma no_inline(fa/1).
 :- pragma foreign_proc("C",
 	fa(F::in) = (Fa::out),
 	[will_not_call_mercury, promise_pure],
@@ -927,6 +927,7 @@ print_robdd_2(F, Trues, Falses) -->
 		[]
 	).
 
+:- pragma no_inline(restrict/2).
 :- pragma foreign_proc("C",
 	restrict(V::in, F::in) = (R::out),
 	[will_not_call_mercury, promise_pure],
@@ -934,6 +935,7 @@ print_robdd_2(F, Trues, Falses) -->
 	R = (MR_ROBDD_NODE_TYPE) MR_ROBDD_restrict(V, (MR_ROBDD_node *) F);
 ").
 
+:- pragma no_inline(restrict_threshold/2).
 :- pragma foreign_proc("C",
 	restrict_threshold(V::in, F::in) = (R::out),
 	[will_not_call_mercury, promise_pure],
@@ -959,6 +961,7 @@ rename_vars(Subst, F) =
 % variables in both the Then and Else sub graphs are > Var.
 
 :- func make_node(var(T), robdd(T), robdd(T)) = robdd(T).
+:- pragma no_inline(make_node/3).
 :- pragma foreign_proc("C",
 	make_node(Var::in, Then::in, Else::in) = (Node::out),
 	[will_not_call_mercury, promise_pure],
