@@ -1,1 +1,4 @@
+*.out
+*.res
+*.ugly
 CLEAN

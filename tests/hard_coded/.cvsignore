@@ -1,3 +1,5 @@
+*.dep
+*.d
 *.c *.out *.res
 export_test.h pragma_import.h
 .allres

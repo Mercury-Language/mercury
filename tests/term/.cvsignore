@@ -1,6 +1,9 @@
+*.d
+*.dep
 *.trans_opt_err
 *.trans_opt_res
-*.trans_optdate
+*.trans_opt
+*.trans_opt_date
 *.c
 .allres
 ack

@@ -1,3 +1,5 @@
+*.dep
+*.d
 *.out
 *.res
 CLEAN

@@ -1,3 +1,8 @@
+*.dep
+*.d
+*.res
+*.out
+CLEAN
 constrained_lambda
 extract_typeinfo
 ho_map
