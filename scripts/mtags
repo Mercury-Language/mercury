@@ -185,9 +185,9 @@ sub output_name {
 		    # `nomagic' mode.
 		    $match_line =~ s/\[/\\\[/g;
 
-		    # Elvis allows only a single search pattern or line number
-		    # rather than an arbitrary sequence of colon-separated ex
-		    # commands.
+		    # Elvis allows only a single search pattern or line
+		    # number rather than an arbitrary sequence of
+		    # semicolon-separated ex commands.
 		    printf out "%s\t%s\t/^%s\$/;\"\tkind:%s%s%s\n",
 			$name, $file, $match_line, $kind, $static, $sfile;
 		} else {
@@ -263,6 +263,12 @@ while ($#ARGV >= 0)
 
 	($cmd, $decl, @rest) = split;
 	$body = join(' ', @rest);
+
+	# Remove `impure' and `semipure' declarations.
+	if ($decl eq "impure" || $decl eq "semipure") {
+		($decl, @rest) = split /\s+/, $body;
+		$body = join(' ', @rest);
+	}
 
 	# Is this an "interface" or "implementation" declaration?
 	# If so, change context.
