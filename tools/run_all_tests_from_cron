@@ -52,9 +52,6 @@ else
 fi
 export CVSROOT
 
-FULLARCH="`config.guess`"
-ARCH="`expr $FULLARCH : '\([^-]*\)-.*' `"
-
 #-----------------------------------------------------------------------------#
 
 # Redirect all output to $tmpfile to stop cron mailing
@@ -67,6 +64,10 @@ cvs checkout mercury/tools/test_mercury
 cp mercury/tools/test_mercury $tmpscript
 
 cvs checkout mercury/tools/generate_index_html
+cvs checkout mercury/config.guess
+
+FULLARCH="`./mercury/config.guess`"
+ARCH="`expr $FULLARCH : '\([^-]*\)-.*' `"
 
 #-----------------------------------------------------------------------------#
 
@@ -128,6 +129,9 @@ case "$C_COMPILER" in
 	*)	logname="test-$BRANCH-$HOST-$C_COMPILER" ;;
 esac
 
+[ -d $tm_dir/logs ] || mkdir -p $tm_dir/logs ]
+[ -d $tm_dir/logs/old ] || mkdir -p $tm_dir/logs/old ]
+[ -d $tm_dir/logs/old2 ] || mkdir -p $tm_dir/logs/old2 ]
 mv -f $tm_dir/logs/old/$logname.out $tm_dir/logs/old2 2>/dev/null
 mv -f $tm_dir/logs/old/$logname.out.errs $tm_dir/logs/old2 2>/dev/null
 mv -f $tm_dir/logs/old/$logname.test_errs $tm_dir/logs/old2 2>/dev/null
