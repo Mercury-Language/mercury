@@ -509,7 +509,6 @@ process_environment_options(void)
 		char		*arg_str, **argv;
 		char		*dummy_command_line;
 		int		argc;
-		int		c;
 
 		/*
 		** getopt() expects the options to start in argv[1],

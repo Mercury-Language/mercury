@@ -138,10 +138,6 @@ Code *
 MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 	const char *path, int max_r_num)
 {
-	Integer		maybe_from_full;
-	Unsigned	seqno;
-	Unsigned	depth;
-
 	if (! MR_trace_enabled) {
 		return NULL;
 	}

@@ -471,7 +471,6 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
     Word		*layout_vector_for_tag;
     Word		*data_value;
     int			data_tag;
-    int			entry_tag;
 
     data_tag = MR_tag(data);
     data_value = (Word *) MR_body(data, data_tag);
