@@ -399,8 +399,7 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 	module_info_set_predicate_table(ModuleInfo0, PredTable,
 		ModuleInfo),
 
-	hlds__is_builtin_make_builtin(no, no, IsBuiltin),
-	GoalExpr = call(PredId, ProcId, ArgVars, IsBuiltin, no, SymName),
+	GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
 	Goal = GoalExpr - GoalInfo.
 
 :- pred dnf__compute_arg_types_modes(list(var)::in, map(var, type)::in,

@@ -202,7 +202,7 @@ first_order_check_goal(pragma_c_code(_, _IsRec, CPred, CProc, _, _),
 	).
 first_order_check_goal(unify(_Var, _RHS, _Mode, _Uni, _Context), _GoalInfo,
 		_Negated, _WholeScc, _ThisPredProcId, _, Module, Module) --> [].
-first_order_check_goal(call(CPred, CProc, _Args, Builtin, _Contex, _Sym), 
+first_order_check_goal(call(CPred, CProc, _Args, BuiltinState, _Contex, _Sym), 
 		GInfo, Negated, WholeScc, ThisPredProcId, 
 		Error, Module0, Module) -->
 	{ Callee = proc(CPred, CProc) },
@@ -215,7 +215,7 @@ first_order_check_goal(call(CPred, CProc, _Args, Builtin, _Contex, _Sym),
 			"call introduces a non-stratified loop", 
 			Error, Module0, Module)	
 	;
-		{ \+ hlds__is_builtin_is_internal(Builtin) },
+		{ BuiltinState = not_builtin },
 		{ \+ local_proc(Module0, Callee) }
 	->
 		{ goal_info_get_context(GInfo, Context) },

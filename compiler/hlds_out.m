@@ -908,17 +908,16 @@ hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, Builtin, _, PredName),
 		% XXX we should print more info here
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	( { string__contains_char(Verbose, 'b') } ->
-		( { hlds__is_builtin_is_internal(Builtin) } ->
+		(
+			{ Builtin = inline_builtin },
 			hlds_out__write_indent(Indent),
-			io__write_string("% internal\n")
+			io__write_string("% inline builtin\n")
 		;
-			[]
-		),
-		( { hlds__is_builtin_is_inline(Builtin) } ->
+			{ Builtin = out_of_line_builtin },
 			hlds_out__write_indent(Indent),
-			io__write_string("% inline\n")
+			io__write_string("% out of line builtin\n")
 		;
-			[]
+			{ Builtin = not_builtin }
 		)
 	;
 		[]
@@ -1291,18 +1290,6 @@ hlds_out__write_cases(CasesList, Var, ModuleInfo, VarSet, Indent, VarTypes) -->
 	% quantification is all implicit by the time we get to the hlds.
 
 hlds_out__write_some(_Vars, _VarSet) --> [].
-
-:- pred hlds_out__write_builtin(is_builtin, io__state, io__state).
-:- mode hlds_out__write_builtin(in, di, uo) is det.
-
-hlds_out__write_builtin(Builtin) -->
-	(
-		{ hlds__is_builtin_is_inline(Builtin) }
-	->
-		io__write_string("is inline")
-	;
-		io__write_string("is not inline")
-	).
 
 :- pred hlds_out__write_instmap(instmap, varset, int, io__state, io__state).
 :- mode hlds_out__write_instmap(in, in, in, di, uo) is det.

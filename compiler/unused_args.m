@@ -664,12 +664,11 @@ create_new_preds([proc(PredId, ProcId) | PredProcs], UnusedArgInfo,
 			% the varset should probably be fixed up, but it
 			%	shouldn't make too much difference
 		proc_info_variables(OldProc0, Varset0),
-		hlds__is_builtin_make_builtin(no, no, IsBuiltin),
 		pred_info_module(PredInfo0, ModuleName),
 		pred_info_name(PredInfo0, Name),
 		remove_listof_elements(HeadVars, 1, UnusedArgs, NewHeadVars),
 		GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
-			      IsBuiltin, no, qualified(ModuleName, Name)),
+			      not_builtin, no, qualified(ModuleName, Name)),
 		Goal1 = GoalExpr - GoalInfo0,
 		implicitly_quantify_goal(Goal1, Varset0, VarTypes1, NonLocals, 
 				Goal, Varset, VarTypes, _),

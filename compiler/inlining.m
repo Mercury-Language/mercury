@@ -244,8 +244,8 @@ inlining__is_flat_simple_goal(not(Goal) - _) :-
 	inlining__is_flat_simple_goal(Goal).
 inlining__is_flat_simple_goal(some(_, Goal) - _) :-
 	inlining__is_flat_simple_goal(Goal).
-inlining__is_flat_simple_goal(call(_, _, _, Builtin, _, _) - _) :-
-	hlds__is_builtin_is_inline(Builtin).
+inlining__is_flat_simple_goal(call(_, _, _, BuiltinState, _, _) - _) :-
+	BuiltinState = inline_builtin.
 inlining__is_flat_simple_goal(unify(_, _, _, _, _) - _).
 
 :- pred inlining__is_flat_simple_goal_list(hlds__goals::in) is semidet.
@@ -527,16 +527,16 @@ inlining__inlining_in_conj([Goal0 | Goals0], Varset0, VarTypes0, TVarSet,
 	% indicating that it should be inlined, or if the goal
 	% is a conjunction of builtins.
 
-:- pred inlining__should_inline_proc(pred_id, proc_id, is_builtin,
+:- pred inlining__should_inline_proc(pred_id, proc_id, builtin_state,
 	set(pred_proc_id), module_info).
 :- mode inlining__should_inline_proc(in, in, in, in, in) is semidet.
 
-inlining__should_inline_proc(PredId, ProcId, Builtin, InlinedProcs,
+inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
 		ModuleInfo) :-
 
 	% don't inline builtins, the code generator will handle them
 
-	\+ hlds__is_builtin_is_internal(Builtin),
+	BuiltinState = not_builtin,
 
 	% don't try to inline imported predicates, since we don't
 	% have the code for them.

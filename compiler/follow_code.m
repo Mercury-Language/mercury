@@ -289,10 +289,10 @@ check_follow_code_detism([_ - GoalInfo | Goals], CanFail0, MaxSolns0) :-
 :- pred move_follow_code_is_builtin(hlds__goal).
 :- mode move_follow_code_is_builtin(in) is semidet.
 
-move_follow_code_is_builtin(unify(_,_,_,Unification,_) - _GoalInfo) :-
+move_follow_code_is_builtin(unify(_, _, _, Unification, _) - _GoalInfo) :-
 	Unification \= complicated_unify(_, _).
-move_follow_code_is_builtin(call(_,_,_,Builtin, _, _) - _GoalInfo) :-
-	hlds__is_builtin_is_inline(Builtin).
+move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
+	Builtin = inline_builtin.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

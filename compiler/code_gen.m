@@ -684,15 +684,15 @@ code_gen__generate_det_goal_2(higher_order_call(PredVar, Args, Types,
 		_CodeInfo, Instr) -->
 	call_gen__generate_higher_order_call(model_det, PredVar, Args,
 		Types, Modes, Det, Instr).
-code_gen__generate_det_goal_2(call(PredId, ProcId, Args, Builtin, _, _),
+code_gen__generate_det_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		_GoalInfo, Instr) -->
 	(
-		{ hlds__is_builtin_is_internal(Builtin) }
+		{ BuiltinState = not_builtin }
 	->
-		call_gen__generate_det_builtin(PredId, ProcId, Args, Instr)
-	;
 		code_info__succip_is_used,
 		call_gen__generate_det_call(PredId, ProcId, Args, Instr)
+	;
+		call_gen__generate_det_builtin(PredId, ProcId, Args, Instr)
 	).
 code_gen__generate_det_goal_2(switch(Var, CanFail, CaseList, StoreMap),
 		GoalInfo, Instr) -->
@@ -1053,15 +1053,15 @@ code_gen__generate_semi_goal_2(higher_order_call(PredVar, Args, Types, Modes,
 		Det), _CodeInfo, Code) -->
 	call_gen__generate_higher_order_call(model_semi, PredVar, Args,
 		Types, Modes, Det, Code).
-code_gen__generate_semi_goal_2(call(PredId, ProcId, Args, Builtin, _, _),
+code_gen__generate_semi_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 							_GoalInfo, Code) -->
 	(
-		{ hlds__is_builtin_is_internal(Builtin) }
+		{ BuiltinState = not_builtin }
 	->
-		call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code)
-	;
 		code_info__succip_is_used,
 		call_gen__generate_semidet_call(PredId, ProcId, Args, Code)
+	;
+		call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code)
 	).
 code_gen__generate_semi_goal_2(switch(Var, CanFail, CaseList, StoreMap),
 		GoalInfo, Instr) -->
@@ -1240,15 +1240,15 @@ code_gen__generate_non_goal_2(higher_order_call(PredVar, Args, Types, Modes,
 		_CodeInfo, Code) -->
 	call_gen__generate_higher_order_call(model_non, PredVar, Args, Types,
 		Modes, Det, Code).
-code_gen__generate_non_goal_2(call(PredId, ProcId, Args, Builtin, _, _),
+code_gen__generate_non_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 							_GoalInfo, Code) -->
 	(
-		{ hlds__is_builtin_is_internal(Builtin) }
+		{ BuiltinState = not_builtin }
 	->
-		call_gen__generate_nondet_builtin(PredId, ProcId, Args, Code)
-	;
 		code_info__succip_is_used,
 		call_gen__generate_nondet_call(PredId, ProcId, Args, Code)
+	;
+		call_gen__generate_nondet_builtin(PredId, ProcId, Args, Code)
 	).
 code_gen__generate_non_goal_2(switch(Var, CanFail, CaseList, StoreMap),
 		GoalInfo, Instr) -->

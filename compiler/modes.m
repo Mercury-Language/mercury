@@ -776,7 +776,7 @@ modecheck_goal_expr(call(PredId0, _, Args0, _, Context, PredName0),
 
 	=(ModeInfo),
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
-	{ code_util__is_builtin(ModuleInfo, PredId, Mode, Builtin) },
+	{ code_util__builtin_state(ModuleInfo, PredId, Mode, Builtin) },
 	{ Call = call(PredId, Mode, Args, Builtin, Context, PredName) },
 	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
 				InstMap0, ModeInfo, Goal) },

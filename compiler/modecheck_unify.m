@@ -188,10 +188,9 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		%
 		ProcId = 0,
 		list__append(ArgVars0, [X0], ArgVars),
-		hlds__is_builtin_make_builtin(no, no, Builtin),
 		FuncCallUnifyContext = call_unify_context(X0,
 					functor(Name, ArgVars0), UnifyContext),
-		FuncCall = call(PredId, ProcId, ArgVars, Builtin,
+		FuncCall = call(PredId, ProcId, ArgVars, not_builtin,
 			yes(FuncCallUnifyContext), QualifiedFuncName),
 		%
 		% now modecheck it
@@ -277,10 +276,9 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 			)
 		),
 
-		hlds__is_builtin_make_builtin(no, no, Builtin),
 		CallUnifyContext = call_unify_context(X0,
 					functor(Name, ArgVars0), UnifyContext),
-		LambdaGoalExpr = call(PredId, ProcId, Args, Builtin,
+		LambdaGoalExpr = call(PredId, ProcId, Args, not_builtin,
 				yes(CallUnifyContext), QualifiedPName),
 
 		%

@@ -38,7 +38,7 @@
 			pred_id,	% which predicate are we calling?
 			proc_id,	% which mode of the predicate?
 			list(var),	% the list of argument variables
-			is_builtin,	% is the predicate builtin, and
+			builtin_state,	% is the predicate builtin, and if yes,
 					% do we generate inline code for it?
 			maybe(call_unify_context),
 					% was this predicate call originally
@@ -161,10 +161,16 @@
 :- pred get_pragma_c_var_names(list(maybe(string)), list(string)).
 :- mode get_pragma_c_var_names(in, out) is det.
 
-	% Record whether a call should be inlined or not,
-	% and whether it is a builtin or not.
+	% Originally we classified predicates according to whether they
+	% were "builtin" or not.  But in fact there are two sorts of
+	% "builtin" predicates - those that we open-code using inline
+	% instructions (e.g. arithmetic predicates), and those which
+	% are still "internal", but for which we generate a call to an
+	% out-of-line procedure (e.g. call/N).
 
-:- type is_builtin.
+:- type builtin_state	--->	inline_builtin
+			;	out_of_line_builtin
+			;	not_builtin.
 
 :- type case		--->	case(cons_id, hlds__goal).
 			%	functor to match with,
@@ -762,31 +768,3 @@ goal_is_atomic(pragma_c_code(_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-:- interface.
-
-	% Originally we classified predicates according to whether they
-	% were "builtin" or not.  But in fact there are two sorts of
-	% "builtin" predicates - those that we open-code using inline
-	% instructions (e.g. arithmetic predicates), and those which
-	% are still "internal", but for which we generate a call to an
-	% out-of-line procedure (e.g. call/N).
-
-:- pred hlds__is_builtin_is_internal(is_builtin).
-:- mode hlds__is_builtin_is_internal(in) is semidet.
-
-:- pred hlds__is_builtin_is_inline(is_builtin).
-:- mode hlds__is_builtin_is_inline(in) is semidet.
-
-:- pred hlds__is_builtin_make_builtin(bool, bool, is_builtin).
-:- mode hlds__is_builtin_make_builtin(in, in, out) is det.
-
-:- implementation.
-
-:- type is_builtin	== pair(bool).
-
-hlds__is_builtin_is_internal(yes - _).
-
-hlds__is_builtin_is_inline(_ - yes).
-
-hlds__is_builtin_make_builtin(IsInternal, IsInline, IsInternal - IsInline).

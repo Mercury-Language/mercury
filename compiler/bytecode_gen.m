@@ -141,12 +141,12 @@ bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 		GoalExpr = higher_order_call(_, _, _, _, _),
 		error("we do not handle higher order calls yet")
 	;
-		GoalExpr = call(PredId, ProcId, Args, IsBuiltin, _, _),
-		( hlds__is_builtin_is_internal(IsBuiltin) ->
-			bytecode_gen__builtin(PredId, ProcId, Args, ByteInfo,
+		GoalExpr = call(PredId, ProcId, Args, BuiltinState, _, _),
+		( BuiltinState = not_builtin ->
+			bytecode_gen__call(PredId, ProcId, Args, ByteInfo,
 				Code)
 		;
-			bytecode_gen__call(PredId, ProcId, Args, ByteInfo,
+			bytecode_gen__builtin(PredId, ProcId, Args, ByteInfo,
 				Code)
 		),
 		N = N0

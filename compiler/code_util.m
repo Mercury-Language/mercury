@@ -89,12 +89,12 @@
 :- pred code_util__predinfo_is_builtin(module_info, pred_info).
 :- mode code_util__predinfo_is_builtin(in, in) is semidet.
 
-:- pred code_util__is_builtin(module_info, pred_id, proc_id, is_builtin).
-:- mode code_util__is_builtin(in, in, in, out) is det.
+:- pred code_util__builtin_state(module_info, pred_id, proc_id, builtin_state).
+:- mode code_util__builtin_state(in, in, in, out) is det.
 
 	% Given a module name, a predicate name, a proc_id and a list of
 	% variables as the arguments, find out if that procedure of that
-	% predicate is a builtin. If yes, the last two arguments
+	% predicate is an inline builtin. If yes, the last two arguments
 	% return two things:
 	%
 	% - an rval to execute as a test if the builtin is semidet; and
@@ -284,26 +284,24 @@ code_util__predinfo_is_builtin(_ModuleInfo, PredInfo) :-
 	pred_info_name(PredInfo, PredName),
 %	code_util__translate_builtin(ModuleName, PredName, _, _, _, _).
 	pred_info_arity(PredInfo, Arity),
-	( code_util__builtin(ModuleName, PredName, 0, Arity)
-	; code_util__builtin(ModuleName, PredName, 10000, Arity)
+	( code_util__inline_builtin(ModuleName, PredName, 0, Arity)
+	; code_util__inline_builtin(ModuleName, PredName, 10000, Arity)
 	).
 
-code_util__is_builtin(ModuleInfo, PredId0, ProcId, IsBuiltin) :-
+code_util__builtin_state(ModuleInfo, PredId0, ProcId, BuiltinState) :-
 	predicate_module(ModuleInfo, PredId0, ModuleName),
 	predicate_name(ModuleInfo, PredId0, PredName),
 	predicate_arity(ModuleInfo, PredId0, Arity),
-	(
-		code_util__builtin(ModuleName, PredName, ProcId, Arity)
-	->
-		hlds__is_builtin_make_builtin(yes, yes, IsBuiltin)
+	( code_util__inline_builtin(ModuleName, PredName, ProcId, Arity) ->
+		BuiltinState = inline_builtin
 	;
-		hlds__is_builtin_make_builtin(no, no, IsBuiltin)
+		BuiltinState = not_builtin
 	).
 
-:- pred code_util__builtin(string, string, proc_id, int).
-:- mode code_util__builtin(in, in, in, in) is semidet.
+:- pred code_util__inline_builtin(string, string, proc_id, int).
+:- mode code_util__inline_builtin(in, in, in, in) is semidet.
 
-code_util__builtin(ModuleName, PredName, ProcId, Arity) :-
+code_util__inline_builtin(ModuleName, PredName, ProcId, Arity) :-
 	Arity =< 3,
 	varset__init(VarSet),
 	varset__new_vars(VarSet, Arity, Args, _),
@@ -504,7 +502,7 @@ code_util__goal_may_allocate_heap(Goal - _GoalInfo) :-
 
 code_util__goal_may_allocate_heap_2(higher_order_call(_, _, _, _, _)).
 code_util__goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _)) :-
-	\+ hlds__is_builtin_is_inline(Builtin).
+	Builtin \= inline_builtin.
 code_util__goal_may_allocate_heap_2(unify(_, _, _, construct(_,_,Args,_), _)) :-
 	Args = [_|_].
 code_util__goal_may_allocate_heap_2(some(_Vars, Goal)) :-
@@ -690,9 +688,8 @@ code_util__cannot_stack_flush(GoalExpr - _) :-
 
 code_util__cannot_stack_flush_2(unify(_, _, _, Unify, _)) :-
 	Unify \= complicated_unify(_, _).
-code_util__cannot_stack_flush_2(call(_, _, _, IsBuiltin, _, _)) :-
-	hlds__is_builtin_is_internal(IsBuiltin),
-	hlds__is_builtin_is_inline(IsBuiltin).
+code_util__cannot_stack_flush_2(call(_, _, _, BuiltinState, _, _)) :-
+	BuiltinState = inline_builtin.
 code_util__cannot_stack_flush_2(conj(Goals)) :-
 	code_util__cannot_stack_flush_goals(Goals).
 code_util__cannot_stack_flush_2(switch(_, _, Cases, _)) :-
@@ -739,8 +736,8 @@ code_util__cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
 	Goal = GoalExpr - GoalInfo,
 	(
 		(
-			GoalExpr = call(_, _, _, IsBuiltin, _, _),
-			\+ hlds__is_builtin_is_inline(IsBuiltin)
+			GoalExpr = call(_, _, _, BuiltinState, _, _),
+			BuiltinState \= inline_builtin
 		;
 			GoalExpr = higher_order_call(_, _, _, _, _)
 		)

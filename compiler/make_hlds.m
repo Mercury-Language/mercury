@@ -1043,9 +1043,8 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 		%
 	SymName = qualified(Module, Name),
 	ModeId = 0, % mode checking will figure it out
-	hlds__is_builtin_make_builtin(yes, yes, IsBuiltin),
 	MaybeUnifyContext = no,
-	Call = call(PredId, ModeId, HeadVars, IsBuiltin, MaybeUnifyContext,
+	Call = call(PredId, ModeId, HeadVars, inline_builtin, MaybeUnifyContext,
 			SymName),
 
 		%
@@ -2397,9 +2396,8 @@ transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet,
 			% initialize some fields to junk
 			invalid_pred_id(PredId),
 			ModeId = 0,
-			hlds__is_builtin_make_builtin(no, no, Builtin),
 			MaybeUnifyContext = no,
-			Call = call(PredId, ModeId, HeadVars, Builtin,
+			Call = call(PredId, ModeId, HeadVars, not_builtin,
 					MaybeUnifyContext, Name)
 		},
 		{ goal_info_init(GoalInfo0) },

@@ -427,10 +427,10 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			{ map__lookup(TypeInfoMap, TypeVar, TypeInfoVar) },
 			{ SymName = unqualified("unify") },
 			{ ArgVars = [TypeInfoVar, XVar, YVar] },
-			{ code_util__is_builtin(ModuleInfo, PredId, ProcId,
-				IsBuiltin) },
+			{ code_util__builtin_state(ModuleInfo, PredId, ProcId,
+				BuiltinState) },
 			{ CallContext = call_unify_context(XVar, Y, Context) },
-			{ Goal = call(PredId, ProcId, ArgVars, IsBuiltin,
+			{ Goal = call(PredId, ProcId, ArgVars, BuiltinState,
 				yes(CallContext), SymName) - GoalInfo }
 
 		; { type_is_higher_order(Type, _, _) } ->
@@ -449,9 +449,8 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 				error("can't locate mercury_builtin:builtin_unify_pred/2")
 			},
 			{ ProcId = 0 },
-			{ hlds__is_builtin_make_builtin(no, no, IsBuiltin) },
 			{ CallContext = call_unify_context(XVar, Y, Context) },
-			{ Call = call(PredId, ProcId, ArgVars, IsBuiltin,
+			{ Call = call(PredId, ProcId, ArgVars, not_builtin,
 				yes(CallContext), SymName) },
 			polymorphism__process_goal_expr(Call, GoalInfo, Goal)
 			
@@ -470,9 +469,8 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 				UniMode, Det, ProcId) },
 			{ SymName = unqualified("__Unify__") },
 			{ ArgVars = [XVar, YVar] },
-			{ hlds__is_builtin_make_builtin(no, no, IsBuiltin) },
 			{ CallContext = call_unify_context(XVar, Y, Context) },
-			{ Call = call(PredId, ProcId, ArgVars, IsBuiltin,
+			{ Call = call(PredId, ProcId, ArgVars, not_builtin,
 				yes(CallContext), SymName) },
 			polymorphism__process_goal_expr(Call, GoalInfo, Goal)
 		;

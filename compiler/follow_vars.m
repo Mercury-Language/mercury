@@ -168,7 +168,7 @@ find_follow_vars_in_goal_2(
 find_follow_vars_in_goal_2(call(A,B,C,D,E,F), _ArgsMethod, ModuleInfo,
 		FollowVars0, call(A,B,C,D,E,F), FollowVars) :-
 	(
-		hlds__is_builtin_is_inline(D)
+		D = inline_builtin
 	->
 		FollowVars = FollowVars0
 	;
@@ -318,9 +318,8 @@ find_follow_vars_in_conj([Goal0 | Goals0], ArgsMethod, ModuleInfo, FollowVars0,
 	(
 		Goal0 = GoalExpr0 - _,
 		(
-			GoalExpr0 = call(_, _, _, Builtin, _, _),
-			hlds__is_builtin_is_internal(Builtin),
-			hlds__is_builtin_is_inline(Builtin)
+			GoalExpr0 = call(_, _, _, BuiltinState, _, _),
+			BuiltinState = inline_builtin
 		;
 			GoalExpr0 = unify(_, _, _, Unification, _),
 			Unification \= complicated_unify(_, _)

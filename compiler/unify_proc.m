@@ -1271,11 +1271,10 @@ unify_proc__build_call(Name, ArgVars, Goal) -->
 		error(ErrorMessage)
 	},
 	{ ModeId = 0 },
-	{ hlds__is_builtin_make_builtin(no, no, Builtin) },
 	% We cheat by not providing a context for the call.
 	% Since automatically generated procedures should not have errors,
 	% the absence of a context should not be a problem.
-	{ Call = call(IndexPredId, ModeId, ArgVars, Builtin,
+	{ Call = call(IndexPredId, ModeId, ArgVars, not_builtin,
 			no, unqualified(Name)) },
 	{ goal_info_init(GoalInfo) },
 	{ Goal = Call - GoalInfo }.

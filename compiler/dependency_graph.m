@@ -222,7 +222,7 @@ dependency_graph__add_arcs_in_goal_2(higher_order_call(_, _, _, _, _),
 dependency_graph__add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _),
 			Caller, DepGraph0, DepGraph) :-
 	(
-		hlds__is_builtin_is_inline(Builtin)
+		Builtin = inline_builtin
 	->
 		DepGraph = DepGraph0
 	;

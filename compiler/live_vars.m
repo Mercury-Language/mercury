@@ -250,12 +250,12 @@ build_live_sets_in_goal_2(higher_order_call(_, ArgVars, Types, Modes, Det),
 		ResumeVars = ResumeVars0
 	).
 
-build_live_sets_in_goal_2(call(PredId, ProcId, ArgVars, Builtin, _, _),
+build_live_sets_in_goal_2(call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 		Liveness, ResumeVars0, LiveSets0,
 		GoalInfo, ModuleInfo, ProcInfo,
 		Liveness, ResumeVars, LiveSets) :-
 	(
-		hlds__is_builtin_is_inline(Builtin)
+		BuiltinState = inline_builtin
 	->
 		ResumeVars = ResumeVars0,
 		LiveSets = LiveSets0
