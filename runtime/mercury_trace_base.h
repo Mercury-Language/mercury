@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -44,6 +44,8 @@ typedef	enum {
 	MR_PORT_PRAGMA_FIRST,
 	MR_PORT_PRAGMA_LATER
 } MR_Trace_Port;
+
+#define	MR_PORT_NUM_PORTS		((int) MR_PORT_PRAGMA_LATER + 1)
 
 extern	const char 			*MR_port_names[];
 
