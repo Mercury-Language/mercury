@@ -778,8 +778,8 @@ gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor,
 		Name = ResFunctor ^ res_name,
 		Init = init_struct([
 			gen_init_string(Name),
-			gen_init_int(0),
-			gen_init_builtin_const("MR_TRUE"),
+			gen_init_int(0),    % arity=0
+			gen_init_bool(yes), % is_reserved = true
 			gen_init_rtti_name(ModuleName, RttiTypeCtor,
 				maybe_res_functor_rtti_name(MaybeResFunctor))
 		])
@@ -789,7 +789,7 @@ gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor,
 		Init = init_struct([
 			gen_init_string(Name),
 			gen_init_int(DuFunctor ^ du_orig_arity),
-			gen_init_builtin_const("MR_TRUE"),
+			gen_init_bool(no), % is_reserved = false
 			gen_init_rtti_name(ModuleName, RttiTypeCtor,
 				maybe_res_functor_rtti_name(MaybeResFunctor))
 		])
@@ -1087,6 +1087,11 @@ gen_init_string(String) = init_obj(const(string_const(String))).
 :- func gen_init_int(int) = mlds__initializer.
 
 gen_init_int(Int) = init_obj(const(int_const(Int))).
+
+:- func gen_init_bool(bool) = mlds__initializer.
+
+gen_init_bool(no) = init_obj(const(false)).
+gen_init_bool(yes) = init_obj(const(true)).
 
 :- func gen_init_boxed_int(int) = mlds__initializer.
 
