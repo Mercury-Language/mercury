@@ -182,8 +182,8 @@ typedef Char *String;
 #define string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
 
 /*
-** Note that hash_string is also defined in compiler/string.m.
-** The two definitions here and the definition in string.m
+** Note that hash_string is also defined in library/string.m.
+** The definition here and the definition in string.m
 ** must be kept equivalent.
 */
 
@@ -199,22 +199,18 @@ typedef Char *String;
 	   hash ^= len;					\
 	}
 
-#ifdef __GNUC__
+extern	int	hash_string(Word);
 
+#ifdef __GNUC__
 #define hash_string(s)					\
 	({ int hash;					\
 	   do_hash_string(hash,s);			\
 	   hash;					\
 	})
-
-#else
-
-/* the actual definition of hash_string is in aux.c */
-/* it uses the macro below */
-
-extern	int	hash_string(Word);
-
 #endif
+
+/* if we're not using gcc, the actual definition of hash_string is in aux.c */
+/* it uses the macro HASH_STRING_FUNC_BODY below */
 
 #define HASH_STRING_FUNC_BODY				\
 	   int hash;					\
