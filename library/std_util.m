@@ -2177,9 +2177,10 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
     layout_for_tag = type_ctor_layout[data_tag];
     layout_vector_for_tag = MR_strip_tag(layout_for_tag);
 
-    switch(type_ctor_info->type_ctor_rep) {
+    switch(MR_get_new_type_ctor_rep(type_ctor_info)) {
 
         case MR_TYPECTOR_REP_ENUM:
+        case MR_TYPECTOR_REP_ENUM_USEREQ:
             info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
                 layout_vector_for_tag, data_word);
             info->arity = 0;
@@ -2188,6 +2189,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             break;
 
         case MR_TYPECTOR_REP_DU:
+        case MR_TYPECTOR_REP_DU_USEREQ:
             tag_rep = MR_get_tag_representation((Word) layout_for_tag);
             switch (tag_rep) {
             case MR_DISCUNIONTAG_SHARED_LOCAL:
@@ -2252,6 +2254,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 	break;
 
         case MR_TYPECTOR_REP_NOTAG:
+        case MR_TYPECTOR_REP_NOTAG_USEREQ:
         {
             int i;
 	    Word * functor_descriptor = (Word *) layout_vector_for_tag;

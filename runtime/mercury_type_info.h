@@ -36,8 +36,7 @@
 
 /*---------------------------------------------------------------------------*/
 
-#define MR_RTTI_VERSION 		MR_RTTI_VERSION__INITIAL
-#define MR_RTTI_VERSION__INITIAL 	2
+
 
 /* 
 ** The version of the RTTI data structures -- useful for bootstrapping.
@@ -51,6 +50,22 @@
 ** This number should be kept in sync with type_ctor_info_version in
 ** compiler/base_type_info.m.
 */
+
+#define MR_RTTI_VERSION 		MR_RTTI_VERSION__USEREQ
+#define MR_RTTI_VERSION__INITIAL 	2
+#define MR_RTTI_VERSION__USEREQ 	3
+
+/*
+** Check that the RTTI version is in a sensible range.
+** The lower bound should be the lowest currently supported version
+** number.  The upper bound is the current version number.
+** If you increase the lower bound you should also increase the binary
+** compatibility version number in runtime/mercury_grade.h (MR_GRADE_PART_0).
+*/
+
+#define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)	\
+	assert(MR_RTTI_VERSION__INITIAL <= typector->type_ctor_version \
+		&& typector->type_ctor_version <= MR_RTTI_VERSION__USEREQ)
 
 /*---------------------------------------------------------------------------*/
 
@@ -772,16 +787,20 @@ void MR_deallocate(MR_MemoryList allocated_memory_cells);
 
 /*
 ** MR_DataRepresentation is the representation for a particular type
-** constructor.  For the cases of MR_TYPE_CTOR_REP_DU the exact
-** representation depends on the tag value -- lookup the tag value in
-** type_ctor_layout to find out this information.
+** constructor.  For the cases of MR_TYPE_CTOR_REP_DU and
+** MR_TYPE_CTOR_REP_DU_USEREQ, the exact representation depends on the tag
+** value -- lookup the tag value in type_ctor_layout to find out this
+** information.
 **
 ** 
 */
 typedef enum MR_TypeCtorRepresentation {
 	MR_TYPECTOR_REP_ENUM,
+	MR_TYPECTOR_REP_ENUM_USEREQ,
 	MR_TYPECTOR_REP_DU,
+	MR_TYPECTOR_REP_DU_USEREQ,
 	MR_TYPECTOR_REP_NOTAG,
+	MR_TYPECTOR_REP_NOTAG_USEREQ,
 	MR_TYPECTOR_REP_EQUIV,
 	MR_TYPECTOR_REP_EQUIV_VAR,
 	MR_TYPECTOR_REP_INT,
@@ -893,6 +912,13 @@ typedef struct MR_TypeCtorInfo_struct *MR_TypeCtorInfo;
 
 #define MR_TYPE_CTOR_INFO_GET_TYPE_MODULE_NAME(TypeCtorInfo)		\
 	((TypeCtorInfo)->type_ctor_module_name)
+
+/*---------------------------------------------------------------------------*/
+
+	/* Functions for handling previous versions of the RTTI code */
+
+MR_TypeCtorRepresentation
+MR_get_new_type_ctor_rep(MR_TypeCtorInfo type_ctor_info);
 
 /*---------------------------------------------------------------------------*/
 #endif /* not MERCURY_TYPEINFO_H */

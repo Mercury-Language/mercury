@@ -135,8 +135,8 @@ base_type_info__gen_proc_list([Special | Specials], SpecMap, TypeId,
 	% runtime that uses RTTI to conform to whatever changes the new
 	% version introduces.
 
-:- func type_ctor_info_version = int.
-type_ctor_info_version = 2.
+:- func type_ctor_info_rtti_version = int.
+type_ctor_info_rtti_version = 3.
 
 base_type_info__generate_llds(ModuleInfo, CModules) :-
 	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
@@ -182,7 +182,8 @@ from the data_name, for use in forward declarations.
 		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
 		NameArg = yes(const(string_const(TypeName))),
 		ModuleArg = yes(const(string_const(ModuleNameString))),
-		VersionArg = yes(const(int_const(type_ctor_info_version))),
+		VersionArg = yes(const(int_const(
+			type_ctor_info_rtti_version))),
 		list__append(PredAddrArgs, [TypeCtorArg, FunctorsArg, LayoutArg,
 			ModuleArg, NameArg, VersionArg], FinalArgs)
 	;
@@ -258,8 +259,11 @@ base_type_info__construct_pred_addrs2([proc(PredId, ProcId) | Procs],
 
 :- type type_ctor_representation 
 	--->	enum
+	;	enum_usereq
 	;	du
+	;	du_usereq
 	;	notag
+	;	notag_usereq
 	;	equiv
 	;	equiv_var
 	;	int
@@ -277,23 +281,26 @@ base_type_info__construct_pred_addrs2([proc(PredId, ProcId) | Procs],
 
 :- pred base_type_info__type_ctor_rep_to_int(type_ctor_representation::in,
 	int::out) is det.
-base_type_info__type_ctor_rep_to_int(enum, 0).
-base_type_info__type_ctor_rep_to_int(du, 1).
-base_type_info__type_ctor_rep_to_int(notag, 2).
-base_type_info__type_ctor_rep_to_int(equiv, 3).
-base_type_info__type_ctor_rep_to_int(equiv_var, 4).
-base_type_info__type_ctor_rep_to_int(int, 5).
-base_type_info__type_ctor_rep_to_int(char, 6).
-base_type_info__type_ctor_rep_to_int(float, 7).
-base_type_info__type_ctor_rep_to_int(string, 8).
-base_type_info__type_ctor_rep_to_int(pred, 9).
-base_type_info__type_ctor_rep_to_int(univ, 10).
-base_type_info__type_ctor_rep_to_int(void, 11).
-base_type_info__type_ctor_rep_to_int(c_pointer, 12).
-base_type_info__type_ctor_rep_to_int(typeinfo, 13).
-base_type_info__type_ctor_rep_to_int(typeclassinfo, 14).
-base_type_info__type_ctor_rep_to_int(array, 15).
-base_type_info__type_ctor_rep_to_int(unknown, 16).
+base_type_info__type_ctor_rep_to_int(enum, 		0).
+base_type_info__type_ctor_rep_to_int(enum_usereq,	1).
+base_type_info__type_ctor_rep_to_int(du,		2).
+base_type_info__type_ctor_rep_to_int(du_usereq,		3).
+base_type_info__type_ctor_rep_to_int(notag,		4).
+base_type_info__type_ctor_rep_to_int(notag_usereq,	5).
+base_type_info__type_ctor_rep_to_int(equiv,		6).
+base_type_info__type_ctor_rep_to_int(equiv_var,		7).
+base_type_info__type_ctor_rep_to_int(int,		8).
+base_type_info__type_ctor_rep_to_int(char,		9).
+base_type_info__type_ctor_rep_to_int(float,	 	10).
+base_type_info__type_ctor_rep_to_int(string,		11).
+base_type_info__type_ctor_rep_to_int(pred,		12).
+base_type_info__type_ctor_rep_to_int(univ,		13).
+base_type_info__type_ctor_rep_to_int(void,		14).
+base_type_info__type_ctor_rep_to_int(c_pointer,		15).
+base_type_info__type_ctor_rep_to_int(typeinfo,		16).
+base_type_info__type_ctor_rep_to_int(typeclassinfo,	17).
+base_type_info__type_ctor_rep_to_int(array,		18).
+base_type_info__type_ctor_rep_to_int(unknown,		19).
 
 
 :- pred base_type_info__construct_type_ctor_representation(hlds_type_defn,
@@ -312,18 +319,36 @@ base_type_info__construct_type_ctor_representation(HldsType, Rvals) :-
 		TypeBody = abstract_type,
 		TypeCtorRep = unknown
 	;
-		TypeBody = du_type(Ctors, _ConsTagMap, Enum, _EqualityPred),
+		TypeBody = du_type(Ctors, _ConsTagMap, Enum, EqualityPred),
 		(
 			Enum = yes,
-			TypeCtorRep = enum
+			(
+				EqualityPred = yes(_),
+				TypeCtorRep = enum_usereq
+			;
+				EqualityPred = no,
+				TypeCtorRep = enum
+			)
 		;
 			Enum = no,
 			( 
 				type_is_no_tag_type(Ctors, _Name, _TypeArg)
 			->
-				TypeCtorRep = notag
+				(
+					EqualityPred = yes(_),
+					TypeCtorRep = notag_usereq
+				;
+					EqualityPred = no,
+					TypeCtorRep = notag
+				)
 			;
-				TypeCtorRep = du
+				(
+					EqualityPred = yes(_),
+					TypeCtorRep = du_usereq
+				;
+					EqualityPred = no,
+					TypeCtorRep = du
+				)
 			)
 		)
 	),

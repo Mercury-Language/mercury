@@ -279,10 +279,11 @@ unify_start:
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
 
 #ifdef	MR_CTOR_REP_STATS
-	MR_ctor_rep_unify[type_ctor_info->type_ctor_rep]++;
+	MR_ctor_rep_unify[MR_get_new_type_ctor_rep(
+				type_ctor_info->type_ctor_rep)]++;
 #endif
 
-	switch (type_ctor_info->type_ctor_rep) {
+	switch (MR_get_new_type_ctor_rep(type_ctor_info)) {
 
 			/*
 			** For notag and equiv types, we should probably
@@ -292,9 +293,12 @@ unify_start:
 			** improved.
 			*/
 
+		case MR_TYPECTOR_REP_ENUM_USEREQ:
 		case MR_TYPECTOR_REP_DU:
+		case MR_TYPECTOR_REP_DU_USEREQ:
 		case MR_TYPECTOR_REP_ARRAY:
 		case MR_TYPECTOR_REP_NOTAG:
+		case MR_TYPECTOR_REP_NOTAG_USEREQ:
 		case MR_TYPECTOR_REP_EQUIV:
 		case MR_TYPECTOR_REP_EQUIV_VAR:
 
@@ -509,10 +513,11 @@ Define_entry(mercury__index_2_0);
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
 
 #ifdef	MR_CTOR_REP_STATS
-	MR_ctor_rep_index[type_ctor_info->type_ctor_rep]++;
+	MR_ctor_rep_index[MR_get_new_type_ctor_rep(
+				type_ctor_info->type_ctor_rep)]++;
 #endif
 
-	switch (type_ctor_info->type_ctor_rep) {
+	switch (MR_get_new_type_ctor_rep(type_ctor_info)) {
 
 			/*
 			** For notag and equiv types, we should probably
@@ -522,8 +527,11 @@ Define_entry(mercury__index_2_0);
 			** improved.
 			*/
 
+		case MR_TYPECTOR_REP_ENUM_USEREQ:
 		case MR_TYPECTOR_REP_DU:
+		case MR_TYPECTOR_REP_DU_USEREQ:
 		case MR_TYPECTOR_REP_NOTAG:
+		case MR_TYPECTOR_REP_NOTAG_USEREQ:
 		case MR_TYPECTOR_REP_EQUIV:
 		case MR_TYPECTOR_REP_EQUIV_VAR:
 		case MR_TYPECTOR_REP_ARRAY:
@@ -704,10 +712,11 @@ compare_start:
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
 
 #ifdef	MR_CTOR_REP_STATS
-	MR_ctor_rep_compare[type_ctor_info->type_ctor_rep]++;
+	MR_ctor_rep_compare[MR_get_new_type_ctor_rep(
+				type_ctor_info->type_ctor_rep)]++;
 #endif
 
-	switch (type_ctor_info->type_ctor_rep) {
+	switch (MR_get_new_type_ctor_rep(type_ctor_info)) {
 
 			/*
 			** For notag and equiv types, we should probably
@@ -718,7 +727,10 @@ compare_start:
 			*/
 
 		case MR_TYPECTOR_REP_DU:
+		case MR_TYPECTOR_REP_ENUM_USEREQ:
+		case MR_TYPECTOR_REP_DU_USEREQ:
 		case MR_TYPECTOR_REP_NOTAG:
+		case MR_TYPECTOR_REP_NOTAG_USEREQ:
 		case MR_TYPECTOR_REP_EQUIV:
 		case MR_TYPECTOR_REP_EQUIV_VAR:
 		case MR_TYPECTOR_REP_ARRAY:

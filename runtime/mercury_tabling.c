@@ -487,18 +487,22 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
         printf("ENTRY %p %x, data rep: %d\n",
-            table, data, type_ctor_info->type_ctor_rep);
+            table, data, MR_get_new_type_ctor_rep(type_ctor_info));
     }
 #endif  /* MR_TABLE_DEBUG */
 
-    switch (type_ctor_info->type_ctor_rep) {
-        case MR_TYPECTOR_REP_ENUM: {
+    switch (MR_get_new_type_ctor_rep(type_ctor_info)) {
+        case MR_TYPECTOR_REP_ENUM: 
+        case MR_TYPECTOR_REP_ENUM_USEREQ: 
+	{
             int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
                                 layout_vector_for_tag);
             MR_DEBUG_TABLE_ENUM(table, functors, data);
             break;
         }
-        case MR_TYPECTOR_REP_DU: {
+        case MR_TYPECTOR_REP_DU: 
+        case MR_TYPECTOR_REP_DU_USEREQ: 
+	{
             tag_rep = MR_get_tag_representation((Word) layout_for_tag);
             switch(tag_rep) {
             case MR_DISCUNIONTAG_SHARED_LOCAL: {
@@ -567,7 +571,9 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             }
             break;
         }
-        case MR_TYPECTOR_REP_NOTAG: {
+        case MR_TYPECTOR_REP_NOTAG: 
+        case MR_TYPECTOR_REP_NOTAG_USEREQ:
+	{
             Word *new_type_info;
             new_type_info = MR_make_type_info(type_info,
                 (Word *) *MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(

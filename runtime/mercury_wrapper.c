@@ -923,10 +923,17 @@ mercury_runtime_main(void)
 		if (fp != NULL) {
 			fprintf(fp, "UNIFY ENUM %ld\n",
 				MR_ctor_rep_unify[MR_TYPECTOR_REP_ENUM]);
+			fprintf(fp, "UNIFY ENUM_USEREQ %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_ENUM_USEREQ]);
 			fprintf(fp, "UNIFY DU %ld\n",
 				MR_ctor_rep_unify[MR_TYPECTOR_REP_DU]);
+			fprintf(fp, "UNIFY DU_USEREQ %ld\n",
+				MR_ctor_rep_unify[MR_TYPECTOR_REP_DU_USEREQ]);
 			fprintf(fp, "UNIFY NOTAG %ld\n",
 				MR_ctor_rep_unify[MR_TYPECTOR_REP_NOTAG]);
+			fprintf(fp, "UNIFY NOTAG_USEREQ %ld\n",
+				MR_ctor_rep_unify[
+					MR_TYPECTOR_REP_NOTAG_USEREQ]);
 			fprintf(fp, "UNIFY EQUIV %ld\n",
 				MR_ctor_rep_unify[MR_TYPECTOR_REP_EQUIV]);
 			fprintf(fp, "UNIFY EQUIV_VAR %ld\n",
@@ -974,10 +981,16 @@ mercury_runtime_main(void)
 
 			fprintf(fp, "INDEX ENUM %ld\n",
 				MR_ctor_rep_index[MR_TYPECTOR_REP_ENUM]);
+			fprintf(fp, "INDEX ENUM_USEREQ %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_ENUM_USEREQ]);
 			fprintf(fp, "INDEX DU %ld\n",
 				MR_ctor_rep_index[MR_TYPECTOR_REP_DU]);
+			fprintf(fp, "INDEX DU_USEREQ %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_DU_USEREQ]);
 			fprintf(fp, "INDEX NOTAG %ld\n",
 				MR_ctor_rep_index[MR_TYPECTOR_REP_NOTAG]);
+			fprintf(fp, "INDEX NOTAG_USEREQ %ld\n",
+				MR_ctor_rep_index[MR_TYPECTOR_REP_NOTAG_USEREQ]);
 			fprintf(fp, "INDEX EQUIV %ld\n",
 				MR_ctor_rep_index[MR_TYPECTOR_REP_EQUIV]);
 			fprintf(fp, "INDEX EQUIV_VAR %ld\n",
@@ -1025,10 +1038,16 @@ mercury_runtime_main(void)
 
 			fprintf(fp, "COMPARE ENUM %ld\n",
 				MR_ctor_rep_compare[MR_TYPECTOR_REP_ENUM]);
+			fprintf(fp, "COMPARE ENUM_USEREQ %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_ENUM_USEREQ]);
 			fprintf(fp, "COMPARE DU %ld\n",
 				MR_ctor_rep_compare[MR_TYPECTOR_REP_DU]);
+			fprintf(fp, "COMPARE DU_USEREQ %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_DU_USEREQ]);
 			fprintf(fp, "COMPARE NOTAG %ld\n",
 				MR_ctor_rep_compare[MR_TYPECTOR_REP_NOTAG]);
+			fprintf(fp, "COMPARE NOTAG_USEREQ %ld\n",
+				MR_ctor_rep_compare[MR_TYPECTOR_REP_NOTAG_USEREQ]);
 			fprintf(fp, "COMPARE EQUIV %ld\n",
 				MR_ctor_rep_compare[MR_TYPECTOR_REP_EQUIV]);
 			fprintf(fp, "COMPARE EQUIV_VAR %ld\n",

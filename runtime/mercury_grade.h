@@ -49,7 +49,17 @@
 ** binary backwards compatibility.
 ** Note that the binary compatibility version number has no direct
 ** relationship with the source release number (which is in ../VERSION).
+**
+** Note: next time the binary compatibility version number is increased,
+** we should remove the MR_get_new_type_ctor_rep() function in
+** runtime/mercury_type_info.c.  
+**
+** It is a good idea to inspect all code for RTTI version number checks
+** and remove them when increasing the binary compatibility version number.   
+** Searching for MR_RTTI_VERSION__ should find all code related to the
+** RTTI version number.
 */
+
 #define MR_GRADE_PART_0		v1_
 
 #ifdef USE_ASM_LABELS

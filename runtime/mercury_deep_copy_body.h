@@ -31,7 +31,6 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
 
     Word functors_indicator;
     Word layout_entry, *entry_value, *data_value;
-    MR_TypeCtorRepresentation type_ctor_rep;
     MR_DiscUnionTagRepresentation tag_rep;
     int data_tag; 
     Word new_data, data;
@@ -45,12 +44,14 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
     layout_entry = type_ctor_info->type_ctor_layout[data_tag];
     entry_value = (Word *) MR_strip_tag(layout_entry);
 
-    switch (type_ctor_info->type_ctor_rep) {
+    switch (MR_get_new_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_ENUM:
+        case MR_TYPECTOR_REP_ENUM_USEREQ:
             new_data = data;    /* just a copy of the actual item */
             break;
 
         case MR_TYPECTOR_REP_DU:
+        case MR_TYPECTOR_REP_DU_USEREQ:
             tag_rep = MR_get_tag_representation(layout_entry);
             switch (tag_rep) {
 
@@ -135,6 +136,7 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
         }
         break;
         case MR_TYPECTOR_REP_NOTAG:
+        case MR_TYPECTOR_REP_NOTAG_USEREQ:
             new_data = copy_arg(data_ptr, type_info, 
                     (Word *) *MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(
                      entry_value), lower_limit, upper_limit);
