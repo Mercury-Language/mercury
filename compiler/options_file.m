@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -693,8 +693,13 @@ get_word_2(RevWord0, RevWord, [Char | Chars0], Chars) :-
 			Chars = []
 		;
 			Chars0 = [Char2 | Chars1],
-			get_word_2([Char2 | RevWord0], RevWord,
-				Chars1, Chars)
+			( ( Char2 = '"' ; Char2 = ('\\') ) ->
+				get_word_2([Char2 | RevWord0], RevWord,
+					Chars1, Chars)
+			;
+				get_word_2([Char2, Char | RevWord0], RevWord,
+					Chars1, Chars)
+			)
 		)
 	;
 		get_word_2([Char | RevWord0], RevWord, Chars0, Chars)
