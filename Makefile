@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne. 
+# Copyright (C) 1995-1998, 2000 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -27,6 +27,10 @@ MMAKE_SUBDIR=	MMAKE_DIR=`pwd`/../scripts ../scripts/mmake $(PARALLEL)
 .PHONY: all
 all:
 	$(MMAKE) MMAKEFLAGS=$(PARALLEL) all 2>&1 | tee make_all.log
+
+.PHONY: libmmc
+libmmc:
+	$(MMAKE) MMAKEFLAGS=$(PARALLEL) libmmc
 
 .PHONY: install
 install:

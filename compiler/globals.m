@@ -22,11 +22,15 @@
 :- type globals.
 
 :- type compilation_target
-	--->	c	% Generate C code
+	--->	c	% Generate C code (including GNU C)
 	;	il	% Generate IL assembler code
 			% IL is the Microsoft .NET Intermediate Language
-	;	java.	% Generate Java
+	;	java	% Generate Java
 			% (this target is not yet implemented)
+	;	asm. 	% Compile directly to assembler via the GCC back-end.
+			% Do not go via C, instead generate GCC's internal
+			% `tree' data structure.
+			% (Work in progress.)
 
 :- type gc_method
 	--->	none
@@ -186,6 +190,9 @@
 	% test against known strings.
 convert_target("java", java).
 convert_target("Java", java).
+convert_target("asm", asm).
+convert_target("Asm", asm).
+convert_target("ASM", asm).
 convert_target("il", il).
 convert_target("IL", il).
 convert_target("c", c).

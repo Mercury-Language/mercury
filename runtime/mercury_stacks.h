@@ -109,8 +109,8 @@
 
 #define	MR_mkframe(predname, numslots, redoip)				\
 			do {						\
-				reg	MR_Word	*prevfr;		\
-				reg	MR_Word	*succfr;		\
+				MR_Word	*prevfr;			\
+				MR_Word	*succfr;			\
 									\
 				prevfr = MR_maxfr;			\
 				succfr = MR_curfr;			\
@@ -132,8 +132,8 @@
 /* with the given tag at the bottom of the nondet stack frame  */
 #define	MR_mkpragmaframe(predname, numslots, structname, redoip)	\
 	do {								\
-		reg	MR_Word	*prevfr;				\
-		reg	MR_Word	*succfr;				\
+		MR_Word	*prevfr;					\
+		MR_Word	*succfr;					\
 									\
 		prevfr = MR_maxfr;					\
 		succfr = MR_curfr;					\
@@ -151,7 +151,7 @@
 
 #define	MR_mktempframe(redoip)						\
 			do {						\
-				reg	MR_Word	*prevfr;		\
+				MR_Word	*prevfr;			\
 									\
 				prevfr = MR_maxfr;			\
 				MR_maxfr += MR_NONDET_TEMP_SIZE;	\
@@ -163,7 +163,7 @@
 
 #define	MR_mkdettempframe(redoip)					\
 			do {						\
-				reg	MR_Word	*prevfr;		\
+				MR_Word	*prevfr;			\
 									\
 				prevfr = MR_maxfr;			\
 				MR_maxfr += MR_DET_TEMP_SIZE;		\
@@ -175,7 +175,7 @@
 			} while (0)
 
 #define	MR_succeed()	do {						\
-				reg	MR_Word	*childfr;		\
+				MR_Word	*childfr;			\
 									\
 				MR_debugsucceed();			\
 				childfr = MR_curfr;			\
@@ -185,7 +185,7 @@
 
 #define	MR_succeed_discard()						\
 			do {						\
-				reg	MR_Word	*childfr;		\
+				MR_Word	*childfr;			\
 									\
 				MR_debugsucceeddiscard();		\
 				childfr = MR_curfr;			\

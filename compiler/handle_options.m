@@ -294,10 +294,18 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 		[]
 	),
 
-	% Generating high-level C code requires putting each commit
+	% Generating assembler via the gcc back-end requires
+	% using high-level code.
+	( { Target = asm } ->
+		globals__io_set_option(highlevel_code, bool(yes))
+	;
+		[]
+	),
+
+	% Generating high-level C or asm code requires putting each commit
 	% in its own function, to avoid problems with setjmp() and
 	% non-volatile local variables.
-	( { Target = c } ->
+	( { Target = c ; Target = asm } ->
 		option_implies(highlevel_code, put_commit_in_own_func, bool(yes))
 	;
 		[]
@@ -587,6 +595,10 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 		{ Target = il },
 		{ BackendForeignLanguage =
 			foreign_language_string(managed_cplusplus) }
+	;
+		{ Target = asm },
+		% XXX This is wrong!  It should be asm.
+		{ BackendForeignLanguage = foreign_language_string(c) }
 	;
 		% XXX We don't generate java or handle it as a foreign
 		% language just yet, but if we did, we should fix this
@@ -878,32 +890,36 @@ grade_component_table("hl", gcc_ext, [
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(yes),
-		target			- string("c")]).
+		highlevel_data		- bool(yes)
+		% target can be either c or asm
+		]).
 grade_component_table("hlc", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no),
-		target			- string("c")]).
+		highlevel_data		- bool(no)
+		% target can be either c or asm
+		]).
 grade_component_table("hl_nest", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(yes),
-		highlevel_data		- bool(yes),
-		target			- string("c")]).
+		highlevel_data		- bool(yes)
+		% target can be either c or asm
+		]).
 grade_component_table("hlc_nest", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(yes),
-		highlevel_data		- bool(no),
-		target			- string("c")]).
+		highlevel_data		- bool(no)
+		% target can be either c or asm
+		]).
 grade_component_table("il", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),

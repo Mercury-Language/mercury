@@ -941,7 +941,10 @@ mercury__private_builtin__do_compare__base_typeclass_info_1_0(
 
 #ifdef __GNUC__
 
-/* provide definitions for functions declared `extern inline' */
+/*
+** Provide definitions for functions declared `extern inline'.
+** Note that this code duplicates the code in mercury.h/mercury_heap.h.
+*/
 
 MR_Word
 MR_create1(MR_Word w1) 
@@ -973,7 +976,26 @@ MR_create3(MR_Word w1, MR_Word w2, MR_Word w3)
 	return (MR_Word) p;
 }
 
-#endif
+#ifdef MR_AVOID_MACROS
+
+MR_Float *
+MR_box_float(MR_Float f)
+{
+	MR_Float *ptr = (MR_Float *)
+		MR_new_object(MR_Float, sizeof(MR_Float), "float");
+	*ptr = f;
+	return (MR_Box) ptr;
+}
+
+MR_Float
+MR_unbox_float(MR_Box b)
+{
+	return *(MR_Float *)b;
+}
+
+#endif /* MR_AVOID_MACROS */
+
+#endif /* __GNUC__ */
 
 /*---------------------------------------------------------------------------*/
 

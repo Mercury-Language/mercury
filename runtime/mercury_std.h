@@ -14,10 +14,23 @@
 
 #include <stdlib.h>	/* for size_t */
 #include <assert.h>	/* for assert() */
-#include <ctype.h>	/* for isalnum(), etc. */
+#ifndef IN_GCC
+  #include <ctype.h>	/* for isalnum(), etc. */
+#else
+  /*
+  ** When building compiler/gcc.m, we #include GCC back-end
+  ** header files that include libiberty's "safe-ctype.h",
+  ** and we can't include both safe-ctype.h and ctype.h,
+  ** since they conflict, so include safe-ctype.h
+  ** rather than ctype.h.
+  */
+  #include "safe-ctype.h"
+#endif
 
+#if 0
 #ifndef	reg
 #define	reg		register
+#endif
 #endif
 #ifndef	bool
 #define	bool		char

@@ -178,6 +178,10 @@
 
 #ifdef MR_HIGHLEVEL_CODE
 
+/*
+** Note that this code is also duplicated in mercury.c.
+*/
+
 MR_EXTERN_INLINE MR_Word MR_create1(MR_Word w1);
 MR_EXTERN_INLINE MR_Word MR_create2(MR_Word w1, MR_Word w2);
 MR_EXTERN_INLINE MR_Word MR_create3(MR_Word w1, MR_Word w2, MR_Word w3) ;

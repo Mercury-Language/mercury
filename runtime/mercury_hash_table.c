@@ -27,7 +27,7 @@
 void 
 MR_ht_init_table(MR_Hash_Table *table)
 {
-	reg	int	i;
+	int	i;
 
 	table->MR_ht_store = MR_GC_NEW_ARRAY(MR_Dlist *, table->MR_ht_size);
 
@@ -44,8 +44,8 @@ MR_ht_init_table(MR_Hash_Table *table)
 const void *
 MR_ht_lookup_table(const MR_Hash_Table *table, const void *key)
 {
-	reg	MR_Dlist	*ptr;
-	reg	int		h;
+	MR_Dlist	*ptr;
+	int		h;
 
 	h = MR_tablehash(table)(key);
 
@@ -76,9 +76,9 @@ MR_ht_lookup_table(const MR_Hash_Table *table, const void *key)
 bool 
 MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
 {
-	reg	MR_Dlist	*ptr;
-	reg	const void	*key;
-	reg	int		h;
+	MR_Dlist	*ptr;
+	const void	*key;
+	int		h;
 
 	key = MR_tablekey(table)(entry);
 	h   = MR_tablehash(table)(key);
@@ -110,8 +110,8 @@ MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
 MR_Dlist *
 MR_ht_get_all_entries(const MR_Hash_Table *table)
 {
-	reg	MR_Dlist	*list;
-	reg	int		i;
+	MR_Dlist	*list;
+	int		i;
 
 	list = MR_dlist_makelist0();
 	for (i = 0; i < table->MR_ht_size; i++) {
@@ -128,8 +128,8 @@ MR_ht_get_all_entries(const MR_Hash_Table *table)
 void
 MR_ht_process_all_entries(const MR_Hash_Table *table, void f(const void *))
 {
-	reg	MR_Dlist	*ptr;
-	reg	int		i;
+	MR_Dlist	*ptr;
+	int		i;
 
 	for (i = 0; i < table->MR_ht_size; i++) {
 		MR_for_dlist (ptr, table->MR_ht_store[i]) {
@@ -146,8 +146,8 @@ MR_ht_process_all_entries(const MR_Hash_Table *table, void f(const void *))
 int 
 MR_ht_str_to_int(const char *cs)
 {
-	reg	int		h;
-	reg	const char	*s;
+	int		h;
+	const char	*s;
 
 	s = cs;
 	for (h = 0; *s != '\0'; s++) {

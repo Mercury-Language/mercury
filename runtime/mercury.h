@@ -318,6 +318,7 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 /*
 ** Code to box/unbox floats
 **
+** Note that this code is also duplicated in mercury.c.
 ** XXX we should optimize the case where sizeof(MR_Float) == sizeof(MR_Box)
 */ 
 
