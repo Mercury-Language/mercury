@@ -201,10 +201,20 @@
 :- external(string__to_int_list/2).
 
 string__base_string_to_int(Base, String, Int) :-
-	( Base = 10 ->
-		string__to_int(String, Int)
+	string__base_string_to_int_2(Base, String, 0, Int).
+
+:- pred string__base_string_to_int_2(int, string, int, int).
+:- mode string__base_string_to_int_2(in, in, in, out) is semidet.
+	
+string__base_string_to_int_2(Base, String, Int0, Int) :-
+	( string__first_char(String, Char, String1) ->
+		char__to_upper(Char, UpperChar),
+		string__digit_to_char(Digit, UpperChar),
+		Int1 is Base * Int0,
+		Int2 is Int1 + Digit,
+		string__base_string_to_int_2(Base, String1, Int2, Int) 
 	;
-		error("string__base_string_to_int not implemented")
+		Int = Int0
 	).
 
 string__index(String, Int, Char) :-
@@ -306,66 +316,69 @@ string__int_to_base_string_2(N, Base, Str) :-
 	(
 		N < Base
 	->
-		string__digit_to_string_det(N, Str)
+		string__digit_to_char_det(N, DigitChar),
+		string__char_to_string(DigitChar, Str)
 	;
 		N10 is N mod Base,
 		N1 is N // Base,
-		string__digit_to_string_det(N10, Digit),
+		string__digit_to_char_det(N10, DigitChar),
+		string__char_to_string(DigitChar, DigitString),
 		string__int_to_base_string_2(N1, Base, Str1),
-		string__append(Str1, Digit, Str)
+		string__append(Str1, DigitString, Str)
 	).
 
-:- pred string__digit_to_string_det(int, string).
-:- mode string__digit_to_string_det(in, out) is det.
+:- pred string__digit_to_char_det(int, character).
+:- mode string__digit_to_char_det(in, out) is det.
 
-string__digit_to_string_det(Digit, String) :-
-	( string__digit_to_string(Digit, String0) ->
-		String = String0
+string__digit_to_char_det(Digit, Char) :-
+	( string__digit_to_char(Digit, Char0) ->
+		Char = Char0
 	;
-		error("string__digit_to_string failed")
+		error("string__digit_to_char failed")
 	).
 
 % Simple-minded, but extremely portable.
 
-:- pred string__digit_to_string(int, string).
-:- mode string__digit_to_string(in, out) is semidet.
+:- pred string__digit_to_char(int, character).
+:- mode string__digit_to_char(in, out) is semidet.
+:- mode string__digit_to_char(out, in) is semidet.
 
-string__digit_to_string(0, "0").
-string__digit_to_string(1, "1").
-string__digit_to_string(2, "2").
-string__digit_to_string(3, "3").
-string__digit_to_string(4, "4").
-string__digit_to_string(5, "5").
-string__digit_to_string(6, "6").
-string__digit_to_string(7, "7").
-string__digit_to_string(8, "8").
-string__digit_to_string(9, "9").
-string__digit_to_string(10, "A").
-string__digit_to_string(11, "B").
-string__digit_to_string(12, "C").
-string__digit_to_string(13, "D").
-string__digit_to_string(14, "E").
-string__digit_to_string(15, "F").
-string__digit_to_string(16, "G").
-string__digit_to_string(17, "H").
-string__digit_to_string(18, "I").
-string__digit_to_string(19, "J").
-string__digit_to_string(20, "K").
-string__digit_to_string(21, "L").
-string__digit_to_string(22, "M").
-string__digit_to_string(23, "N").
-string__digit_to_string(24, "O").
-string__digit_to_string(25, "P").
-string__digit_to_string(26, "Q").
-string__digit_to_string(27, "R").
-string__digit_to_string(28, "S").
-string__digit_to_string(29, "T").
-string__digit_to_string(30, "U").
-string__digit_to_string(31, "V").
-string__digit_to_string(32, "W").
-string__digit_to_string(33, "X").
-string__digit_to_string(34, "Y").
-string__digit_to_string(35, "Z").
+string__digit_to_char(0, '0').
+string__digit_to_char(1, '1').
+string__digit_to_char(2, '2').
+string__digit_to_char(3, '3').
+string__digit_to_char(4, '4').
+string__digit_to_char(5, '5').
+string__digit_to_char(6, '6').
+string__digit_to_char(7, '7').
+string__digit_to_char(8, '8').
+string__digit_to_char(9, '9').
+string__digit_to_char(10, 'A').
+string__digit_to_char(11, 'B').
+string__digit_to_char(12, 'C').
+string__digit_to_char(13, 'D').
+string__digit_to_char(14, 'E').
+string__digit_to_char(15, 'F').
+string__digit_to_char(16, 'G').
+string__digit_to_char(17, 'H').
+string__digit_to_char(18, 'I').
+string__digit_to_char(19, 'J').
+string__digit_to_char(20, 'K').
+string__digit_to_char(21, 'L').
+string__digit_to_char(22, 'M').
+string__digit_to_char(23, 'N').
+string__digit_to_char(24, 'O').
+string__digit_to_char(25, 'P').
+string__digit_to_char(26, 'Q').
+string__digit_to_char(27, 'R').
+string__digit_to_char(28, 'S').
+string__digit_to_char(29, 'T').
+string__digit_to_char(30, 'U').
+string__digit_to_char(31, 'V').
+string__digit_to_char(32, 'W').
+string__digit_to_char(33, 'X').
+string__digit_to_char(34, 'Y').
+string__digit_to_char(35, 'Z').
 
 string__first_char(String0, Char, String) :-
 	string__to_int_list(String0, List0),
