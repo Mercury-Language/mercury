@@ -567,11 +567,9 @@ print_time_node(FILE *fptr, prof_time_node *node)
 #ifdef PROFILE_MEMORY
 
 /*
-**	prof_output_addr_table:
-**		Writes the value of MR_CLOCK_TICKS_PER_SECOND and
-**		MR_CLOCK_TICKS_PER_PROF_SIG at the start of the file
-**		`Prof.Counts'.  Then outputs the addresses saved
-**		whenever PROF_SIG is received (also to `Prof.Counts').
+**	prof_output_mem_tables:
+**		Writes the by-procedure memory profiling counts to the files
+**		`Prof.MemoryWords' and `Prof.MemoryCells'.
 */
 
 static void
@@ -653,7 +651,7 @@ MR_prof_finish(void)
 	prof_output_addr_table();
 #endif
 
-#if defined(PROFILE_CALLS)
+#ifdef PROFILE_CALLS
 	if (decl_fptr) {
 		checked_fclose(decl_fptr, "Prof.Decl");
 	}
