@@ -223,7 +223,7 @@ read_nodes(InitDeep0, Res) -->
 
 read_call_site_static(Res) -->
 	% DEBUGSITE
-	% io__format("reading call_site_static.\n", []),
+	% io__write_string("reading call_site_static.\n"),
 	io_combinator__maybe_error_sequence_4(
 		read_ptr(css),
 		read_call_site_kind_and_callee,
@@ -241,6 +241,12 @@ read_call_site_static(Res) -->
 	(
 		{ Res1 = ok({CallSiteStatic, CSSI}) },
 		{ Res = ok2(CallSiteStatic, CSSI) }
+		% DEBUGSITE
+		% io__write_string("read call_site_static "),
+		% io__write_int(CSSI),
+		% io__write_string(": "),
+		% io__write(CallSiteStatic),
+		% io__write_string("\n")
 	;
 		{ Res1 = error(Err) },
 		{ Res = error2(Err) }
@@ -252,7 +258,7 @@ read_call_site_static(Res) -->
 
 read_proc_static(Res) -->
 	% DEBUGSITE
-	% io__format("reading proc_static.\n", []),
+	% io__write_string("reading proc_static.\n"),
 	io_combinator__maybe_error_sequence_6(
 		read_ptr(ps),
 		read_proc_id,
@@ -287,6 +293,12 @@ read_proc_static(Res) -->
 				RefinedStr, RawStr, FileName, LineNumber,
 				IsInInterface, array(CSSPtrs), not_zeroed) },
 			{ Res = ok2(ProcStatic, PSI) }
+			% DEBUGSITE
+			% io__write_string("read proc_static "),
+			% io__write_int(PSI),
+			% io__write_string(": "),
+			% io__write(ProcStatic),
+			% io__write_string("\n")
 		;
 			{ Res2 = error(Err) },
 			{ Res = error2(Err) }
@@ -505,7 +517,7 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
 
 read_proc_dynamic(Res) -->
 	% DEBUGSITE
-	% io__format("reading proc_dynamic.\n", []),
+	% io__write_string("reading proc_dynamic.\n"),
 	io_combinator__maybe_error_sequence_3(
 		read_ptr(pd),
 		read_ptr(ps),
@@ -516,12 +528,18 @@ read_proc_dynamic(Res) -->
 		Res1),
 	(
 		{ Res1 = ok({PDI, PSI, N}) },
-		read_n_things(N, read_call_site_ref, Res2),
+		read_n_things(N, read_call_site_slot, Res2),
 		(
 			{ Res2 = ok(Refs) },
 			{ PSPtr = make_psptr(PSI) },
 			{ ProcDynamic = proc_dynamic(PSPtr, array(Refs)) },
 			{ Res = ok2(ProcDynamic, PDI) }
+			% DEBUGSITE
+			% io__write_string("read proc_dynamic "),
+			% io__write_int(PDI),
+			% io__write_string(": "),
+			% io__write(ProcDynamic),
+			% io__write_string("\n")
 		;
 			{ Res2 = error(Err) },
 			{ Res = error2(Err) }
@@ -536,7 +554,7 @@ read_proc_dynamic(Res) -->
 
 read_call_site_dynamic(Res) -->
 	% DEBUGSITE
-	% io__format("reading call_site_dynamic.\n", []),
+	% io__write_string("reading call_site_dynamic.\n"),
 	read_ptr(csd, Res1),
 	(
 		{ Res1 = ok(CSDI) },
@@ -551,6 +569,12 @@ read_call_site_dynamic(Res) -->
 				{ CallSiteDynamic = call_site_dynamic(
 					CallerPDPtr, PDPtr, Profile) },
 				{ Res = ok2(CallSiteDynamic, CSDI) }
+				% DEBUGSITE
+				% io__write_string("read call_site_dynamic "),
+				% io__write_int(CSDI),
+				% io__write_string(": "),
+				% io__write(CallSiteDynamic),
+				% io__write_string("\n")
 			;
 				{ Res3 = error(Err) },
 				{ Res = error2(Err) }
@@ -651,12 +675,12 @@ maybe_read_num_handle_error(Value, MaybeError0, MaybeError) -->
 		{ MaybeError = yes(Error) }
 	).
 
-:- pred read_call_site_ref(maybe_error(call_site_array_slot)::out,
+:- pred read_call_site_slot(maybe_error(call_site_array_slot)::out,
 	io__state::di, io__state::uo) is det.
 
-read_call_site_ref(Res) -->
+read_call_site_slot(Res) -->
 	% DEBUGSITE
-	% io__format("reading call_site_ref.\n", []),
+	% io__write_string("reading call_site_slot.\n"),
 	read_call_site_kind(Res1),
 	(
 		{ Res1 = ok(Kind) },
@@ -666,6 +690,10 @@ read_call_site_ref(Res) -->
 				{ Res2 = ok(CSDI) },
 				{ CSDPtr = make_csdptr(CSDI) },
 				{ Res = ok(normal(CSDPtr)) }
+				% DEBUGSITE
+				% io__write_string("normal call_site slot "),
+				% io__write_int(CSDI),
+				% io__write_string("\n")
 			;
 				{ Res2 = error(Err) },
 				{ Res = error(Err) }
@@ -676,11 +704,15 @@ read_call_site_ref(Res) -->
 			;
 				Zeroed = not_zeroed
 			},
-			read_things(read_ptr(csd), Res2),
+			read_multi_call_site_csdis(Res2),
 			(
 				{ Res2 = ok(CSDIs) },
 				{ CSDPtrs = list__map(make_csdptr, CSDIs) },
 				{ Res = ok(multi(Zeroed, array(CSDPtrs))) }
+				% DEBUGSITE
+				% io__write_string("multi call_site slots "),
+				% io__write(CSDIs),
+				% io__write_string("\n")
 			;
 				{ Res2 = error(Err) },
 				{ Res = error(Err) }
@@ -688,6 +720,50 @@ read_call_site_ref(Res) -->
 		)
 	;
 		{ Res1 = error(Err) },
+		{ Res = error(Err) }
+	).
+
+:- pred read_multi_call_site_csdis(maybe_error(list(int))::out,
+	io__state::di, io__state::uo) is det.
+
+read_multi_call_site_csdis(Res) -->
+	read_multi_call_site_csdis_2([], Res).
+
+	% We keep reading CSD node numbers until we find a zero byte.
+	% The reason why a zero byte works as a sentinel is that a CSD node
+	% number in the list of CSD node numbers at a multi call site cannot be
+	% zero, and our encoding scheme ensures that non-zero node numbers
+	% cannot start with a zero byte.
+	%
+	% We return the list of CSD node numbers in the reversed order, but
+	% this is OK because our caller does not pay attention to the order
+	% anyway.
+
+:- pred read_multi_call_site_csdis_2(list(int)::in,
+	maybe_error(list(int))::out, io__state::di, io__state::uo) is det.
+
+read_multi_call_site_csdis_2(CSDIs0, Res) -->
+	% DEBUGSITE
+	% io__format("reading multi_call_site_csdi.\n", []),
+	read_deep_byte(Res0),
+	(
+		{ Res0 = ok(Byte) },
+		( { Byte = 0 } ->
+			{ Res = ok(CSDIs0) }
+		;
+			putback_byte(Byte),
+			read_ptr(csd, Res1),
+			(
+				{ Res1 = ok(CSDI) },
+				read_multi_call_site_csdis_2([CSDI | CSDIs0],
+					Res)
+			;
+				{ Res1 = error(Err) },
+				{ Res = error(Err) }
+			)
+		)
+	;
+		{ Res0 = error(Err) },
 		{ Res = error(Err) }
 	).
 
@@ -715,9 +791,7 @@ read_call_site_kind(Res) -->
 		)
 		% DEBUGSITE
 		% io__write_string("call_site_kind "),
-		% DEBUGSITE
 		% io__write(Res),
-		% DEBUGSITE
 		% io__write_string("\n")
 	;
 		{ Res0 = error(Err) },
@@ -766,9 +840,7 @@ read_call_site_kind_and_callee(Res) -->
 		)
 		% DEBUGSITE
 		% io__write_string("call_site_kind_and_callee "),
-		% DEBUGSITE
 		% io__write(Res),
-		% DEBUGSITE
 		% io__write_string("\n")
 	;
 		{ Res0 = error(Err) },
@@ -808,39 +880,6 @@ read_n_things(N, ThingReader, Things0, Res) -->
 			{ Res1 = error(Err) },
 			{ Res = error(Err) }
 		)
-	).
-
-:- pred read_things(pred(maybe_error(T), io__state, io__state),
-	maybe_error(list(T)), io__state, io__state).
-:- mode read_things(pred(out, di, uo) is det, out, di, uo) is det.
-
-read_things(ThingReader, Res) -->
-	read_things(ThingReader, [], Res).
-
-:- pred read_things(pred(maybe_error(T), io__state, io__state),
-	list(T), maybe_error(list(T)), io__state, io__state).
-:- mode read_things(pred(out, di, uo) is det, in, out, di, uo) is det.
-
-read_things(ThingReader, Things0, Res) -->
-	read_deep_byte(Res0),
-	(
-		{ Res0 = ok(Byte) },
-		( { Byte = 0 } ->
-			{ Res = ok(Things0) }
-		;
-			putback_byte(Byte),
-			call(ThingReader, Res1),
-			(
-				{ Res1 = ok(Thing) },
-				read_things(ThingReader, [Thing|Things0], Res)
-			;
-				{ Res1 = error(Err) },
-				{ Res = error(Err) }
-			)
-		)
-	;
-		{ Res0 = error(Err) },
-		{ Res = error(Err) }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -885,9 +924,7 @@ read_n_byte_string(Length, Res) -->
 	).
 	% DEBUGSITE
 	% io__write_string("string "),
-	% DEBUGSITE
 	% io__write(Res),
-	% DEBUGSITE
 	% io__write_string("\n").
 
 :- pred read_ptr(ptr_kind::in, maybe_error(int)::out,
@@ -897,9 +934,7 @@ read_ptr(_Kind, Res) -->
 	read_num1(0, Res).
 	% DEBUGSITE
 	% io__write_string("ptr "),
-	% DEBUGSITE
 	% io__write(Res),
-	% DEBUGSITE
 	% io__write_string("\n").
 
 :- pred read_num(maybe_error(int)::out, io__state::di, io__state::uo) is det.
@@ -908,9 +943,7 @@ read_num(Res) -->
 	read_num1(0, Res).
 	% DEBUGSITE
 	% io__write_string("num "),
-	% DEBUGSITE
 	% io__write(Res),
-	% DEBUGSITE
 	% io__write_string("\n").
 
 :- pred read_num1(int::in, maybe_error(int)::out,
@@ -1005,9 +1038,7 @@ read_deep_byte(Res) -->
 	read_byte(Res0),
 	% DEBUGSITE
 	% io__write_string("byte "),
-	% DEBUGSITE
 	% io__write(Res),
-	% DEBUGSITE
 	% io__write_string("\n"),
 	(
 		{ Res0 = ok(Byte) },
