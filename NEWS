@@ -262,3 +262,13 @@ NEWS for Mercury release 0.7
 	  particular element from the old bt_array.  The extra argument is
 	  the element to use to fill these slots instead.
 
+* There is a new `extras' directory in the distribution that contains
+  some additional libraries.  These provide support for the following
+  application areas:
+
+  - graphics using Tk and OpenGL
+
+  - arithmetic on complex and imaginary numbers
+
+  - processing HTML forms using the CGI interface.
+
