@@ -2126,6 +2126,8 @@ output_rval_as_type(Rval, DesiredType) -->
 		; { ActualType = float } ->
 			( { DesiredType = word } ->
 				output_float_rval_as_word(Rval)
+			; { DesiredType = data_ptr } ->
+				output_float_rval_as_data_ptr(Rval)
 			;
 				{ error("output_rval_as_type: type error") }
 			)
@@ -2154,6 +2156,32 @@ types_match(bool, integer).
 types_match(bool, unsigned).
 types_match(bool, word).
 types_match(integer, bool).
+
+	% output a float rval, converted to type `const Word *'
+	%
+:- pred output_float_rval_as_data_ptr(rval, io__state, io__state).
+:- mode output_float_rval_as_data_ptr(in, di, uo) is det.
+
+output_float_rval_as_data_ptr(Rval) -->
+	%
+	% for float constant expressions, if we're using boxed
+	% boxed floats and --static-ground-terms is enabled,
+	% we just refer to the static const which we declared
+	% earlier
+	%
+	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
+	globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms),
+	(
+		{ UnboxFloat = no, StaticGroundTerms = yes },
+		{ llds_out__float_const_expr_name(Rval, FloatName) }
+	->
+		io__write_string("(const Word *) &mercury_float_const_"),
+		io__write_string(FloatName)
+	;
+		io__write_string("(const Word *) float_to_word("),
+		output_rval(Rval),
+		io__write_string(")")
+	).
 
 	% output a float rval, converted to type `Word'
 	%
