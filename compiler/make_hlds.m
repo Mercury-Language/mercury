@@ -3861,7 +3861,14 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredOrFunc, PredName, Args, Body,
 			pred_info_set_goal_type(PredInfo3, promise(PromiseType),
 					PredInfo4)
 		;
-			pred_info_set_goal_type(PredInfo3, clauses, PredInfo4)
+			HaveForeignClauses = Clauses ^ have_foreign_clauses,
+			( HaveForeignClauses = yes,
+				NewGoalType = clauses_and_pragmas
+			; HaveForeignClauses = no,
+				NewGoalType = clauses
+			),
+			pred_info_set_goal_type(PredInfo3,
+					NewGoalType, PredInfo4)
 		),
 		pred_info_set_typevarset(PredInfo4, TVarSet, PredInfo5),
 		pred_info_arg_types(PredInfo5, _ArgTVarSet,
