@@ -7117,6 +7117,14 @@ Add @var{grade} to the list of compilation grades in
 which a library to be installed should be built.
 
 @sp 1
+@item --flags @var{file}
+@itemx --flags-file @var{file}
+@findex --flags
+@findex --flags-file
+Take options from the specified file, and handle them
+as if they were specified on the command line.
+
+@sp 1
 @item --options-file @var{file}
 @findex --options-file
 @cindex Options files

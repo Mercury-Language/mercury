@@ -25,19 +25,20 @@
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(option::out, option_data::out) is nondet.
 
+	% special_handler(Option, ValueForThatOption, OptionTableIn,
+	%	MaybeOptionTableOut):
+	% This predicate is invoked whenever getopt finds an option
+	% (long or short) designated as special, with special_data holding
+	% the argument of the option (if any). The predicate can change the
+	% option table in arbitrary ways in the course of handling the option,
+	% or it can return an error message.
+	% The canonical examples of special options are -O options in
+	% compilers, which set many other options at once.
+	% The MaybeOptionTableOut may either be ok(OptionTableOut), or it may
+	% be error(ErrorString).
+	%
 :- pred special_handler(option::in, special_data::in, option_table::in,
 	maybe_option_table::out) is semidet.
-%	special_handler(Option, ValueForThatOption, OptionTableIn,
-%			MaybeOptionTableOut).
-%	This predicate is invoked whenever getopt finds an option
-%	(long or short) designated as special, with special_data holding
-%	the argument of the option (if any). The predicate can change the
-%	option table in arbitrary ways in the course of handling the option,
-%	or it can return an error message.
-%	The canonical examples of special options are -O options in compilers,
-%	which set many other options at once.
-%	The MaybeOptionTableOut may either be ok(OptionTableOut), or it may
-%	be error(ErrorString).
 
 :- pred options_help(io::di, io::uo) is det.
 
@@ -676,6 +677,7 @@
 		;	mercury_configuration_directory_special
 		;	install_command
 		;	libgrades
+		;	flags_file
 		;	options_files
 		;	config_file
 		;	options_search_directories
@@ -1314,6 +1316,7 @@ option_defaults_2(build_system_option, [
 	mercury_configuration_directory - maybe_string(no),
 	install_command		-	string("cp"),
 	libgrades		-	accumulating([]),
+	flags_file		-	file_special,
 	options_files		-	accumulating(["Mercury.options"]),
 
 					% yes("") means unset.
@@ -1991,6 +1994,8 @@ long_option("install-command",		install_command).
 long_option("use-symlinks",		use_symlinks).
 long_option("library-grade",		libgrades).
 long_option("libgrade",			libgrades).
+long_option("flags",			flags_file).
+long_option("flags-file",		flags_file).
 long_option("options-file",		options_files).
 long_option("config-file",		config_file).
 long_option("options-search-directory", options_search_directories).
@@ -4134,6 +4139,10 @@ options_help_build_system -->
 		"--libgrade <grade>",
 		"\tAdd <grade> to the list of compilation grades in",
 		"\twhich a library to be installed should be built.",
+		"--flags <file>",
+		"--flags-file <file>",
+		"\tTake options from the specified file, and handle them",
+		"\tas if they were specified on the command line.",
 		"--options-file <file>",
 		"\tAdd <file> to the list of options files to be processed.",
 		"\tIf <file> is `-', an options file will be read from the",
