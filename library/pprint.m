@@ -28,7 +28,7 @@
 %    unless that is unavoidable; and
 % 3. the pretty printer is bounded in that it never needs to
 %    look more than k characters ahead to make a formatting
-%    decision (although see the XXX comment below).
+%    decision (although see the XXX comments below).
 %
 % I have made three small changes:
 %
@@ -51,6 +51,11 @@
 % of spaces.  This is useful for, e.g., multi-line compiler
 % errors and warnings that should be prefixed with the
 % offending source file and line number.
+%
+% Performance problems due to the current lack of support
+% for laziness in Mercury has meant that the formatting
+% decision procedure has had to be recoded to preserve
+% linear runtime behaviour in an eager language.
 %
 % I have also added several obvious general purpose
 % formatting functions.
@@ -212,7 +217,13 @@
 :- func braces(doc)                     = doc.
 
     % separated(PP, Sep, [X1,...,Xn]) =
-    %   PP(X1) `<>` Sep `<>` ... Sep `<>` PP(Xn)
+    %   PP(X1) `<>` (Sep `<>` ... (Sep `<>` PP(Xn)) ... )
+    %
+    % Note that if you want to pack as many things on one
+    % line as possible with some sort of separator, the
+    % following example illustrates a suitable idiom:
+    %
+    %   separated(PP, group(comma_space_line), Xs)
     %
 :- func separated(func(T) = doc, doc, list(T)) = doc.
 
@@ -252,7 +263,8 @@
     % object being converted.  The second version places a
     % maximum depth on terms which are otherwise truncated;
     % when the depth limit is reached, all arguments of a
-    % functor are replaced by `(...)'.
+    % functor are replaced by `/<arity>' where <arity> is
+    % the number of arguments.
     %
     % This may throw an exception or cause a runtime abort
     % if the term in question has user-defined equality.
@@ -291,9 +303,7 @@
     ;       'GROUP'(doc).
 
 :- type simple_doc
-    --->    nil
-    ;       string `text` simple_doc
-    ;       string `line` simple_doc.
+    ==      list(string).
 
 %------------------------------------------------------------------------------%
 
@@ -334,86 +344,117 @@ pretty(P, W, X)         --> layout(P, best(W, 0, X)).
 :- mode layout(pred(in, in, out) is det, in, in, out) is det.
 :- mode layout(pred(in, di, uo) is det, in, di, uo) is det.
 
-layout(_, nil)          --> [].
-layout(P, S `text` X)   --> P(S), layout(P, X).
-layout(P, S `line` X)   --> P("\n"), P(S), layout(P, X).
+layout(P, Strings)      --> list__foldl(P, Strings).
 
 %------------------------------------------------------------------------------%
 
 :- func best(int, int, doc) = simple_doc.
 
-best(W, K, X)           = be(W, K, ["" - X]).
+best(W, K, X)           = Best
+:-
+    be(W, K, ["" - X], Best, []).
 
 %------------------------------------------------------------------------------%
 
-:- func be(int, int, list(pair(string, doc))) = simple_doc.
+    % This predicate (and its children) is somewhat different to that
+    % described by Wadler.  In the first place, the decision procedure
+    % has been recoded (in flattening_works/3) to preserve linear
+    % running times under a strict language.  The second important
+    % change is that be/5 is now a predicate that accumulates its output
+    % as a list of strings, doing away with the need for a more elaborate
+    % simple_doc type.
 
-be(_, _, [])                      = nil.
-be(W, K, [_ - 'NIL'         | Z]) = be(W, K, Z).
-be(W, K, [I - 'SEQ'(X, Y)   | Z]) = be(W, K, [I - X, I - Y | Z]).
-be(W, K, [I - 'NEST'(J, X)  | Z]) = be(W, K, [extend(I, J) - X | Z]).
-be(W, K, [I - 'LABEL'(L, X) | Z]) = be(W, K, [string__append(I, L) - X | Z]).
-be(W, K, [_ - 'TEXT'(S)     | Z]) = S `text` be(W, (K + string__length(S)), Z).
-be(W, _, [I - 'LINE'        | Z]) = I `line` be(W, string__length(I), Z).
-be(W, K, [I - 'GROUP'(X)    | Z]) =
-    ( if
-        try_flatten(X, FlatX, W - K, _),
-        Flattened = be(W, K, [I - FlatX | Z]),
-        fits(W - K, Flattened)
-      then
-        Flattened
+:- pred be(int, int, list(pair(string, doc)), simple_doc, simple_doc).
+:- mode be(in, in, in, out, in) is det.
+
+be(_, _, [], Out, In)             :-  Out = list__reverse(In).
+be(W, K, [_ - 'NIL'         | Z]) --> be(W, K, Z).
+be(W, K, [I - 'SEQ'(X, Y)   | Z]) --> be(W, K, [I - X, I - Y | Z]).
+be(W, K, [I - 'NEST'(J, X)  | Z]) --> be(W, K, [extend(I, J) - X | Z]).
+be(W, K, [I - 'LABEL'(L, X) | Z]) --> be(W, K, [string__append(I, L) - X | Z]).
+be(W, K, [_ - 'TEXT'(S)     | Z]) --> [S], be(W, (K + string__length(S)), Z).
+be(W, _, [I - 'LINE'        | Z]) --> ["\n", I], be(W, string__length(I), Z).
+be(W, K, [I - 'GROUP'(X)    | Z]) -->
+    ( if { flattening_works(X, Z, W - K) } then
+        be(W, K, [I - flatten(X) | Z])
       else
         be(W, K, [I - X | Z])
     ).
+
+% ---------------------------------------------------------------------------- %
+
+    % Decide whether flattening a given doc will allow it and
+    % up to the next possible 'LINE' in the following docs to
+    % fit on the remainder of the line.
+    %
+    % XXX This solution is necessary to avoid crippling performance
+    % problems on large terms.  A spot of laziness would do away
+    % with the need for the next three predicates.
+    %
+:- pred flattening_works(doc, list(pair(string, doc)), int).
+:- mode flattening_works(in, in, in) is semidet.
+
+flattening_works(DocToFlatten, FollowingDocs, RemainingWidth) :-
+    fits_flattened([DocToFlatten], RemainingWidth, RemainingWidth0),
+    fits_on_rest(FollowingDocs, RemainingWidth0).
+
+% ---------------------------------------------------------------------------- %
+
+    % Decide if a flattened list of docs will fit on the remainder
+    % of the line.  Computes the space left over if so.
+    %
+:- pred fits_flattened(list(doc), int, int).
+:- mode fits_flattened(in, in, out) is semidet.
+
+fits_flattened([]                 ) --> [].
+fits_flattened(['NIL'         | Z]) --> fits_flattened(Z).
+fits_flattened(['SEQ'(X, Y)   | Z]) --> fits_flattened([X, Y | Z]).
+fits_flattened(['NEST'(_, X)  | Z]) --> fits_flattened([X | Z]).
+fits_flattened(['LABEL'(_, X) | Z]) --> fits_flattened([X | Z]).
+fits_flattened(['LINE'        | Z]) --> fits_flattened(Z).
+fits_flattened(['GROUP'(X)    | Z]) --> fits_flattened([X | Z]).
+fits_flattened(['TEXT'(S)     | Z], R0, R) :-
+    L = string__length(S),
+    R0 > L,
+    fits_flattened(Z, R0 - L, R).
+
+% ---------------------------------------------------------------------------- %
+
+    % Decide if a list of indent-doc pairs, up to the first 'LINE',
+    % will fit on the remainder of the line.
+    %
+:- pred fits_on_rest(list(pair(string, doc)), int).
+:- mode fits_on_rest(in, in) is semidet.
+
+fits_on_rest([]                     , _).
+fits_on_rest([_ - 'NIL'         | Z], R) :- fits_on_rest(Z, R).
+fits_on_rest([I - 'SEQ'(X, Y)   | Z], R) :- fits_on_rest([I - X, I - Y | Z], R).
+fits_on_rest([I - 'NEST'(_, X)  | Z], R) :- fits_on_rest([I - X | Z], R).
+fits_on_rest([I - 'LABEL'(_, X) | Z], R) :- fits_on_rest([I - X | Z], R).
+fits_on_rest([_ - 'LINE'        | _], _).
+fits_on_rest([I - 'GROUP'(X)    | Z], R) :- fits_on_rest([I - X | Z], R).
+fits_on_rest([_ - 'TEXT'(S)     | Z], R) :-
+    L = string__length(S),
+    R > L,
+    fits_on_rest(Z, R - L).
+
+%------------------------------------------------------------------------------%
+
+:- func flatten(doc) = doc.
+
+flatten('NIL')          = 'NIL'.
+flatten('SEQ'(X, Y))    = 'SEQ'(flatten(X), flatten(Y)).
+flatten('NEST'(_, X))   = flatten(X).
+flatten('LABEL'(_, X))  = flatten(X).
+flatten('TEXT'(S))      = 'TEXT'(S).
+flatten('LINE')         = 'NIL'.
+flatten('GROUP'(X))     = flatten(X).
 
 %------------------------------------------------------------------------------%
 
 :- func extend(string, int) = string.
 
 extend(I, J) = string__append(I, string__duplicate_char(' ', J)).
-
-%------------------------------------------------------------------------------%
-
-    % While flattening documents, we keep track of the amount of
-    % space available on the line.  This predicate fails if there
-    % is not enough space for the flattened term.
-    %
-:- pred try_flatten(doc, doc, int, int).
-:- mode try_flatten(in, out, in, out) is semidet.
-
-try_flatten('NIL', 'NIL') -->
-    [].
-try_flatten('SEQ'(X, Y), 'SEQ'(FX, FY)) -->
-    try_flatten(X, FX),
-    try_flatten(Y, FY).
-try_flatten('NEST'(_, X), FX) -->
-    try_flatten(X, FX).
-try_flatten('LABEL'(_, X), FX) -->
-    try_flatten(X, FX).
-try_flatten('TEXT'(S), 'TEXT'(S)) -->
-    =(W0),
-    { W = W0 - string__length(S) },
-    { W >= 0 },
-    :=(W).
-try_flatten('LINE', 'NIL') -->
-    [].
-try_flatten('GROUP'(X), FX) -->
-    try_flatten(X, FX).
-
-%------------------------------------------------------------------------------%
-
-:- pred fits(int, simple_doc).
-:- mode fits(in, in) is semidet.
-
-fits(W, X) :-
-    W >= 0,
-    (
-        X = nil
-    ;
-        X = S `text` Y, fits(W - string__length(S), Y)
-    ;
-        X = _ `line` _
-    ).
 
 %------------------------------------------------------------------------------%
 
@@ -434,7 +475,7 @@ separated(PP, Sep, [X | Xs]) =
     ( if Xs = [] then
         PP(X)
       else
-        PP(X) `<>` Sep `<>` separated(PP, Sep, Xs)
+        PP(X) `<>` (Sep `<>` separated(PP, Sep, Xs))
     ).
 
 %------------------------------------------------------------------------------%
@@ -468,7 +509,7 @@ to_doc(Depth, X) = Doc :-
     ( if Arity = 0 then
         Doc = text(Name)
       else if Depth =< 0 then
-        Doc = text(Name) `<>` text("(...)")
+        Doc = text(Name) `<>` text("/") `<>` poly(i(Arity))
       else
         Args = list__map(
             ( func(UnivArg) = to_doc(Depth - 1, univ_value(UnivArg)) ),
@@ -478,21 +519,19 @@ to_doc(Depth, X) = Doc :-
             parentheses(
                 group(
                     nest(2,
-		        line `<>` separated(id, comma_space_line, Args)
-		    ) `<>` line
+                        line `<>` separated(id, comma_space_line, Args)
+                    )
                 )
-            )
+        )
     ).
 
-%------------------------------------------------------------------------------%
+% ---------------------------------------------------------------------------- %
 
 word_wrapped(String) =
-    list__foldr(
-        ( func(Word, Sequel) =
-            group(line `<>` text(Word) `<>` space) `<>` Sequel
-        ),
-        string__words(char__is_whitespace, String),
-        nil
+    separated(
+        text,
+        group(space_line),
+        string__words(char__is_whitespace, String)
     ).
 
 %------------------------------------------------------------------------------%
