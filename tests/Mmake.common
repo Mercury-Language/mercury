@@ -13,11 +13,6 @@ HAVE_NUPROLOG=$(shell if grep `uname -n` ../NUPROLOG > /dev/null 2>&1 ; then ech
 %.out: %
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
 
-ifeq ($(HAVE_NUPROLOG),yes)
-%.exp: %.nu
-	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
-endif
-
 %.res: %.exp %.out
 	-rm -f $@
 	diff -u $*.exp $*.out > $@
