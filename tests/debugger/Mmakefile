@@ -13,7 +13,7 @@ DEBUGGER_PROGS=	\
 	interpreter	\
 	queens
 
-MCFLAGS = --trace full $(EXTRA_MCFLAGS)
+MCFLAGS = --trace all $(EXTRA_MCFLAGS)
 
 # Not all grades can be used with stack layouts
 #
