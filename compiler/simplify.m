@@ -886,12 +886,12 @@ simplify__conj([Goal0 | Goals0], RevGoals0, Goals, ConjInfo, Info0, Info) :-
 		simplify__conjoin_goal_and_rev_goal_list(Goal1,
 			RevGoals0, RevGoals1),
 
-		( (fail_goal(Goal1) ; Goals0 = []) ->
+		( (Goal1 = disj([], _) - _ ; Goals0 = []) ->
 			RevGoals = RevGoals1
 		;
 			% We insert an explicit failure at the end
 			% of the non-succeeding conjunction. This
-			% is necessary, since the unreachablility of
+			% is necessary, since the unreachability of
 			% the instmap could have been derived using
 			% inferred determinism information. Without the
 			% explicit fail goal, mode errors could result if mode
