@@ -738,7 +738,7 @@ det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, _Actual, MiscInfo) -->
 	->
 		{ goal_info_context(GoalInfo, Context) },
 		prog_out__write_context(Context),
-		io__write_string("disjunction has multiple clauses with solutions\n")
+		io__write_string("  Disjunction has multiple clauses with solutions.\n")
 	;
 		[]
 	).
@@ -765,15 +765,15 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
 			{ map__keys(ConsTable, ConsIds) },
 			{ det_diagnose_missing_consids(ConsIds, Cases,
 				Missing) },
-			io__write_string("the switch on "),
+			io__write_string("  The switch on "),
 			mercury_output_var(Var, Varset),
 			io__write_string(" does not cover "),
 			det_output_consid_list(Missing, yes),
-			io__write_string("\n")
+			io__write_string(".\n")
 		;
-			io__write_string("the switch on "),
+			io__write_string("  The switch on "),
 			mercury_output_var(Var, Varset),
-			io__write_string(" can fail\n")
+			io__write_string(" can fail.\n")
 		)
 	;
 		[]
@@ -794,24 +794,24 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, _, _), GoalInfo,
 	{ compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail) },
 	( { CmpCanFail = tighter } ->
 		prog_out__write_context(Context),
-		io__write_string("call to "),
+		io__write_string("  Call to `"),
 		det_report_pred_name_mode(PredName, ArgModes),
-		io__write_string(" can fail\n")
+		io__write_string("' can fail.\n")
 	;
 		[]
 	),
 	{ compare_solncounts(DesiredSolns, ActualSolns, CmpSolns) },
 	( { CmpSolns = tighter } ->
 		prog_out__write_context(Context),
-		io__write_string("call to "),
+		io__write_string("  Call to `"),
 		det_report_pred_name_mode(PredName, ArgModes),
-		io__write_string(" can succeed"),
+		io__write_string("' can succeed"),
 		( { DesiredSolns = at_most_one } ->
-			io__write_string(" more than once\n")
+			io__write_string(" more than once")
 		;
 			[]
 		),
-		io__write_string("\n")
+		io__write_string(".\n")
 	;
 		[]
 	).
@@ -821,22 +821,23 @@ det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 	{ goal_info_context(GoalInfo, Context) },
 	{ determinism_components(Desired, DesiredCanFail, _DesiredSolns) },
 	{ determinism_components(Actual, ActualCanFail, _ActualSolns) },
+	prog_out__write_context(Context),
+	io__write_string("  Cause:\n"),
+	hlds_out__write_unify_context(UnifyContext, Context),
+	prog_out__write_context(Context),
 	(
 		{ DesiredCanFail = cannot_fail },
 		{ ActualCanFail = can_fail }
 	->
 		{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
 		{ proc_info_variables(ProcInfo, Varset) },
-		hlds_out__write_unify_context(UnifyContext, Context),
-		prog_out__write_context(Context),
-		io__write_string("unification of "),
+		io__write_string("  unification of `"),
 		mercury_output_term(LT, Varset),
-		io__write_string(" and "),
+		io__write_string("' and `"),
 		mercury_output_term(RT, Varset),
-		io__write_string(" can fail\n")
+		io__write_string("' can fail.\n")
 	;
-		prog_out__write_context(Context),
-		io__write_string("unknown determinism failure involving a unification\n")
+		io__write_string("  unknown determinism failure involving a unification.\n")
 	).
 
 det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
@@ -862,9 +863,9 @@ det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
 det_diagnose_goal_2(not(_), GoalInfo, _, _, _) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("it should be impossible to get a determinism error\n"),
+	io__write_string("  It should be impossible to get a determinism error\n"),
 	prog_out__write_context(Context),
-	io__write_string("with a negated goal that stays a negation\n").
+	io__write_string("  with a negated goal that stays a negation.\n").
 
 det_diagnose_goal_2(some(_Vars, Goal), _, Desired, _, MiscInfo) -->
 	det_diagnose_goal(Goal, Desired, MiscInfo).
