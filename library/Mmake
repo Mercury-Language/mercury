@@ -18,6 +18,12 @@ MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" mnc
 MNL	=	MERCURY_LIB_DIR=. \
 	MERCURY_LIB_OBJS="`vpath_find $(LIBRARY_OBJS) $(NU_LIBRARY_OBJS)`" \
 		mnl
+
+MSC	=	MERCURY_SISCTUS_COMPILER=./sicstus_compile msc
+MSL	=	MERCURY_SP_LIB_DIR=. MERCURY_SICSTUS_PROLOG=sp \
+MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(LIBRARY_QLS) $(NU_LIBRARY_QLS)`" \
+		msl
+
 MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mc
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
 MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
@@ -31,15 +37,20 @@ MLFLAGS =	-- -static
 #-----------------------------------------------------------------------------#
 
 LIBRARY_SRCS = $(library.srcs)
-LIBRARY_OBJS = $(library.objs) $(library.nos)
+LIBRARY_OBJS = $(library.nos)
 LIBRARY_INTS = $(library.ints)
+library.qls=$(library.nos:.no=.ql)
+LIBRARY_QLS = $(library.qls)
 
 NU_LIBRARY_SRCS = \
 	io.nu.nl require.nu.nl std_util.nu.nl string.nu.nl term_io.nu.nl \
-	opt_debug.nu.nl mercury_builtin.nu.nl
+	mercury_builtin.nu.nl
 NU_LIBRARY_OBJS = \
 	io.nu.no require.nu.no std_util.nu.no string.nu.no term_io.nu.no \
-	opt_debug.nu.no
+	mercury_builtin.nu.no
+NU_LIBRARY_QLS = \
+	io.nu.ql require.nu.ql std_util.nu.ql string.nu.ql term_io.nu.ql \
+	mercury_builtin.nu.ql sp_lib.ql
 
 #-----------------------------------------------------------------------------#
 
@@ -102,7 +113,30 @@ libmercury.so : $(library.os)
 # automatic dependencies assume that the library
 # isn't part of the application, but in this case it is.
 
-library.nu : $(NU_LIBRARY_OBJS) $(library.nos)
+library.nu library.nu.debug: $(NU_LIBRARY_OBJS)
+library.sicstus library.sicstus.debug: $(NU_LIBRARY_QLS)
+
+library.nu.debug: error.no debug.no
+library.sicstus.debug: error.ql
+
+library.sicstus.link: $(library.qls)
+	$(MSL) -i -o library.sicstus.link $(library.qls)
+
+#-----------------------------------------------------------------------------#
+
+sicstus_compile: sp_builtin.pl
+	{ echo "on_exception(Error, (				"; \
+	  echo "  prolog_flag(compiling, _, fastcode),		"; \
+	  echo "  compile(sp_builtin),				"; \
+	  echo "  garbage_collect,				"; \
+	  echo "  save('$@', 1),				"; \
+	  echo "  unix(argv(Args)),				"; \
+	  echo "  ( Args = [CompileMode|Files] ->		"; \
+	  echo "      prolog_flag(compiling, _, CompileMode),	"; \
+	  echo "      fcompile(Files)				"; \
+	  echo "  ; true )					"; \
+	  echo "), print_message(error, Error)), halt ; halt.	"; \
+	} | $(SP)
 
 #-----------------------------------------------------------------------------#
 
@@ -112,7 +146,7 @@ CHMOD=go+w
 # Installation targets
 
 .PHONY: install
-install: install_ints install_library install_nuprolog
+install: install_ints install_library install_nuprolog install_sicstus
 	-chgrp -R $(CHGRP) $(INSTALL_LIBDIR) 2>/dev/null
 	-chmod -R $(CHMOD) $(INSTALL_LIBDIR) 2>/dev/null
 
@@ -147,9 +181,7 @@ install_library_nu: $(LIBRARY_OBJS) $(NU_LIBRARY_OBJS) \
 	mkdir -p $(INSTALL_NU_DIR)
 	cp `vpath_find nc_builtin.nl np_builtin.nl` $(INSTALL_NU_DIR)
 	mkdir -p $(INSTALL_NU_ARCH_DIR)
-	cp `vpath_find $(LIBRARY_OBJS)` $(INSTALL_NU_ARCH_DIR)
-	mkdir -p $(INSTALL_NU_ARCH_DIR)
-	cp `vpath_find $(NU_LIBRARY_OBJS)` \
+	cp `vpath_find $(LIBRARY_OBJS) $(NU_LIBRARY_OBJS)` \
 		$(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_interpreter_nu
@@ -158,6 +190,19 @@ install_interpreter_nu: library.nu
 	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find library.nu` \
 		> $(INSTALL_NU_ARCH_DIR)/library.nu
 	-chmod +x $(INSTALL_NU_ARCH_DIR)/library.nu
-	cp library.nu.save $(INSTALL_NU_ARCH_DIR)/library.nu.save
+	cp library.nu.save $(INSTALL_NU_ARCH_DIR)
+
+.PHONY: install_sicstus
+install_sicstus: install_interpreter_sicstus install_sicstus_compile
+
+.PHONY: install_interpreter_sicstus
+install_interpreter_sicstus: library.sicstus.debug
+	mkdir -p $(INSTALL_SP_ARCH_DIR)
+	cp library.sicstus.debug $(INSTALL_SP_ARCH_DIR)
+
+.PHONY: install_sicstus_compile
+install_sicstus_compile: sicstus_compile
+	mkdir -p $(INSTALL_SP_ARCH_DIR)
+	cp sicstus_compile $(INSTALL_SP_ARCH_DIR)
 
 #-----------------------------------------------------------------------------#
