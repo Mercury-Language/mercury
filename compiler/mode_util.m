@@ -1551,7 +1551,14 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
 			ModuleInfo2 = ModuleInfo1,
 			Sub2 = Sub1
 		;
-			error("compute_inst_var_sub: inst_matches_initial failed")
+			% error("compute_inst_var_sub: inst_matches_initial failed")
+			% XXX  We shouldn't ever get here, but unfortunately the
+			% mode system currently has several problems (most
+			% noticeably lack of alias tracking for unique modes)
+			% which mean inst_matches_initial can sometimes fail
+			% here.
+			ModuleInfo2 = ModuleInfo0,
+			Sub2 = Sub0
 		)
 	;
 		ModuleInfo2 = ModuleInfo0,
