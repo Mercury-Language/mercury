@@ -59,7 +59,7 @@
 	% `set_member(X, Set)' is true iff `X' is a member of `Set'.
 
 :- pred set__member(T, set(T)).
-:- mode set__member(in, in) is det.
+:- mode set__member(in, in) is semidet.
 :- mode set__member(out, in) is nondet.
 
 	% `set__insert(Set0, X, Set)' is true iff `Set' is the union of
