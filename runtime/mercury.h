@@ -26,6 +26,7 @@
 #include "mercury_thread.h"	/* for the MR_*_GLOBAL_LOCK() macros */
 #include "mercury_std.h"
 #include "mercury_type_info.h"
+#include "mercury_ho_call.h"	/* for the `MR_Closure' type */
 
 #ifdef CONSERVATIVE_GC
   #include "gc.h"
@@ -70,6 +71,11 @@ typedef ConstString MR_ConstString;
 ** The MR_Box type is used for representing polymorphic types.
 */
 typedef void 	*MR_Box;
+
+/*
+** The MR_ClosurePtr type is used for representing higher-order types.
+*/
+typedef const MR_Closure *MR_ClosurePtr;
 
 /*
 ** With the low-level data representation, the MR_Word type
@@ -243,13 +249,11 @@ extern	Word	mercury__private_builtin__dummy_var;
           })                                                            \
         : GC_MALLOC(bytes)                         			\
         )
-  /* XXX why do we need to cast to MR_Word here? */
   #define MR_new_object(type, size, name) \
-  		((MR_Word) (type *) MR_GC_MALLOC_INLINE(size))
+  		((type *) MR_GC_MALLOC_INLINE(size))
 #else
-  /* XXX why do we need to cast to MR_Word here? */
   #define MR_new_object(type, size, name) \
-  		((MR_Word) (type *) GC_MALLOC(size)) 
+  		((type *) GC_MALLOC(size)) 
 #endif
 
 /*

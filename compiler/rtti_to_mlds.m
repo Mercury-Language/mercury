@@ -182,17 +182,17 @@ gen_init_rtti_data_defn(du_ptag_ordered_table(RttiTypeId, PtagLayouts),
 gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		CtorRep, SolverProc, InitProc, Version, NumPtags, NumFunctors,
 		FunctorsInfo, LayoutInfo, _MaybeHashCons,
-		_PrettyprinterProc), ModuleName, _, Init, []) :-
+		_PrettyprinterProc), ModuleName, ModuleInfo, Init, []) :-
 	RttiTypeId = rtti_type_id(TypeModule, Type, TypeArity),
 	prog_out__sym_name_to_string(TypeModule, TypeModuleName),
 	Init = init_struct([
 		gen_init_int(TypeArity),
-		gen_init_maybe_proc_id(UnifyProc),
-		gen_init_maybe_proc_id(UnifyProc),
-		gen_init_maybe_proc_id(CompareProc),
+		gen_init_maybe_proc_id(ModuleInfo, UnifyProc),
+		gen_init_maybe_proc_id(ModuleInfo, UnifyProc),
+		gen_init_maybe_proc_id(ModuleInfo, CompareProc),
 		gen_init_type_ctor_rep(CtorRep),
-		gen_init_maybe_proc_id(SolverProc),
-		gen_init_maybe_proc_id(InitProc),
+		gen_init_maybe_proc_id(ModuleInfo, SolverProc),
+		gen_init_maybe_proc_id(ModuleInfo, InitProc),
 		gen_init_string(TypeModuleName),
 		gen_init_string(Type),
 		gen_init_int(Version),
@@ -213,7 +213,7 @@ gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 			% commented out.
 		% gen_init_maybe(gen_init_rtti_name(RttiTypeId),
 		%	MaybeHashCons),
-		% gen_init_maybe_proc_id(PrettyprinterProc)
+		% gen_init_maybe_proc_id(ModuleInfo, PrettyprinterProc)
 	]).
 gen_init_rtti_data_defn(base_typeclass_info(_ClassId, _InstanceStr,
 		BaseTypeClassInfo), _ModuleName, ModuleInfo,
@@ -269,10 +269,11 @@ gen_init_layout_info(equiv_layout(EquivTypeInfo), ModuleName, _RttiTypeId) =
 gen_init_layout_info(no_layout, _, _) =
 	gen_init_null_pointer.
 
-:- func gen_init_maybe_proc_id(maybe(rtti_proc_label)) = mlds__initializer.
+:- func gen_init_maybe_proc_id(module_info, maybe(rtti_proc_label)) =
+	mlds__initializer.
 
-gen_init_maybe_proc_id(MaybeProcLabel) =
-	gen_init_maybe(gen_init_proc_id, MaybeProcLabel).
+gen_init_maybe_proc_id(ModuleInfo, MaybeProcLabel) =
+	gen_init_maybe(gen_init_proc_id(ModuleInfo), MaybeProcLabel).
 
 :- func gen_init_pseudo_type_info_defn(pseudo_type_info, module_name) =
 	mlds__initializer.
@@ -493,8 +494,8 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init,
 	%
 	Init = init_obj(unop(box(WrapperFuncType), WrapperFuncRval)).
 
-:- func gen_init_proc_id(rtti_proc_label) = mlds__initializer.
-gen_init_proc_id(RttiProcId) = Init :-
+:- func gen_init_proc_id(module_info, rtti_proc_label) = mlds__initializer.
+gen_init_proc_id(ModuleInfo, RttiProcId) = Init :-
 	%
 	% construct an rval for the address of this procedure
 	% (this is similar to ml_gen_proc_addr_rval)
@@ -502,7 +503,7 @@ gen_init_proc_id(RttiProcId) = Init :-
         ml_gen_pred_label_from_rtti(RttiProcId, PredLabel, PredModule),
 	ProcId = RttiProcId^proc_id,
         QualifiedProcLabel = qual(PredModule, PredLabel - ProcId),
-	Params = ml_gen_proc_params_from_rtti(RttiProcId),
+	Params = ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId),
 	Signature = mlds__get_func_signature(Params),
 	ProcAddrRval = const(code_addr_const(proc(QualifiedProcLabel, 
 		Signature))),

@@ -157,7 +157,7 @@ ml_elim_nested_defns(ModuleName, OuterVars, Defn0) = FlatDefns :-
 			% XXX this should be optimized to generate 
 			% EnvTypeName from just EnvName
 		ml_create_env(EnvName, [], Context, ModuleName,
-			_EnvType, EnvTypeName, _EnvDecls, _InitEnv),
+			_EnvTypeDefn, EnvTypeName, _EnvDecls, _InitEnv),
 
 		%
 		% traverse the function body, finding (and removing)
@@ -186,8 +186,8 @@ ml_elim_nested_defns(ModuleName, OuterVars, Defn0) = FlatDefns :-
 			% functions
 			%
 			ml_create_env(EnvName, LocalVars, Context, ModuleName,
-				EnvType, _EnvTypeName, EnvDecls, InitEnv),
-			list__map(ml_insert_init_env(EnvName, ModuleName),
+				EnvTypeDefn, _EnvTypeName, EnvDecls, InitEnv),
+			list__map(ml_insert_init_env(EnvTypeName, ModuleName),
 				NestedFuncs0, NestedFuncs),
 
 			%
@@ -215,7 +215,7 @@ ml_elim_nested_defns(ModuleName, OuterVars, Defn0) = FlatDefns :-
 			% at the start of the list of definitions,
 			% followed by the new version of the top-level function
 			%
-			HoistedDefns = [EnvType | NestedFuncs]
+			HoistedDefns = [EnvTypeDefn | NestedFuncs]
 		),
 		DefnBody = mlds__function(PredProcId, Params, yes(FuncBody)),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody),
@@ -272,7 +272,8 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, Context,
 		%	env_ptr->foo = foo;
 		%
 		QualVarName = qual(ModuleName, VarName),
-		FieldName = named_field(QualVarName),
+		EnvModuleName = ml_env_module_name(ClassType),
+		FieldName = named_field(qual(EnvModuleName, VarName)),
 		Tag = yes(0),
 		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
 		EnvArgLval = field(Tag, EnvPtr, FieldName, FieldType, 
@@ -306,7 +307,7 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, Context,
 :- mode ml_create_env(in, in, in, in, out, out, out, out) is det.
 
 ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
-		EnvType, EnvTypeName, EnvDecls, InitEnv) :-
+		EnvTypeDefn, EnvTypeName, EnvDecls, InitEnv) :-
 	%
 	% generate the following type:
 	%
@@ -314,12 +315,14 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
 	%		<LocalVars>
 	%	};
 	%
+	EnvTypeKind = mlds__struct,
+	EnvTypeName = class_type(qual(ModuleName, EnvClassName), 0,
+		EnvTypeKind),
 	EnvTypeEntityName = type(EnvClassName, 0),
-	EnvTypeName = class_type(qual(ModuleName, EnvClassName), 0),
 	EnvTypeFlags = env_decl_flags,
-	EnvTypeDefnBody = mlds__class(mlds__class_defn(mlds__struct, [], 
+	EnvTypeDefnBody = mlds__class(mlds__class_defn(EnvTypeKind, [], 
 		[mlds__generic_env_ptr_type], [], LocalVars)),
-	EnvType = mlds__defn(EnvTypeEntityName, Context, EnvTypeFlags,
+	EnvTypeDefn = mlds__defn(EnvTypeEntityName, Context, EnvTypeFlags,
 		EnvTypeDefnBody),
 
 	%
@@ -329,9 +332,9 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
 	%
 	EnvVarName = data(var("env")),
 	EnvVarFlags = env_decl_flags,
-	EnvVarType = mlds__class_type(qual(ModuleName, EnvClassName), 0),
-	EnvVarDefnBody = mlds__data(EnvVarType, no_initializer),
-	EnvVarDecl = mlds__defn(EnvVarName, Context, EnvVarFlags, EnvVarDefnBody),
+	EnvVarDefnBody = mlds__data(EnvTypeName, no_initializer),
+	EnvVarDecl = mlds__defn(EnvVarName, Context, EnvVarFlags,
+		EnvVarDefnBody),
 
 	%
 	% declare the `env_ptr' var, and
@@ -339,7 +342,7 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
 	%
 	EnvVar = qual(ModuleName, "env"),
 	EnvVarAddr = mem_addr(var(EnvVar)),
-	ml_init_env(EnvClassName, EnvVarAddr, Context, ModuleName,
+	ml_init_env(EnvTypeName, EnvVarAddr, Context, ModuleName,
 		EnvPtrVarDecl, InitEnv),
 
 	% group those two declarations together
@@ -361,17 +364,17 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
 	%		<Body>
 	%	}
 	%
-:- pred ml_insert_init_env(mlds__class_name, mlds_module_name,
+:- pred ml_insert_init_env(mlds__type, mlds_module_name,
 		mlds__defn, mlds__defn).
 :- mode ml_insert_init_env(in, in, in, out) is det.
-ml_insert_init_env(ClassName, ModuleName, Defn0, Defn) :-
+ml_insert_init_env(TypeName, ModuleName, Defn0, Defn) :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
 		DefnBody0 = mlds__function(PredProcId, Params, yes(FuncBody0)),
 		statement_contains_var(FuncBody0, qual(ModuleName, "env_ptr"))
 	->
 		EnvPtrVal = lval(var(qual(ModuleName, "env_ptr_arg"))),
-		ml_init_env(ClassName, EnvPtrVal, Context, ModuleName,
+		ml_init_env(TypeName, EnvPtrVal, Context, ModuleName,
 			EnvPtrDecl, InitEnvPtr),
 		FuncBody = mlds__statement(block([EnvPtrDecl],
 				[InitEnvPtr, FuncBody0]), Context),
@@ -386,24 +389,20 @@ ml_insert_init_env(ClassName, ModuleName, Defn0, Defn) :-
 	%	struct <EnvClassName> *env_ptr;
 	%	env_ptr = <EnvPtrVal>;
 	%
-:- pred ml_init_env(mlds__class_name, mlds__rval,
+:- pred ml_init_env(mlds__type, mlds__rval,
 		mlds__context, mlds_module_name, mlds__defn, mlds__statement).
 :- mode ml_init_env(in, in, in, in, out, out) is det.
 
-ml_init_env(EnvClassName, EnvPtrVal, Context, ModuleName,
+ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName,
 		EnvPtrVarDecl, InitEnvPtr) :-
-
-	% compute the `struct <EnvClassName>' type
-	EnvVarType = mlds__class_type(qual(ModuleName, EnvClassName), 0),
-
 	%
 	% generate the following variable declaration:
 	%
-	%	struct <EnvClassName> *env_ptr;
+	%	<EnvTypeName> *env_ptr;
 	%
 	EnvPtrVarName = data(var("env_ptr")),
 	EnvPtrVarFlags = env_decl_flags,
-	EnvPtrVarType = mlds__ptr_type(EnvVarType),
+	EnvPtrVarType = mlds__ptr_type(EnvTypeName),
 	EnvPtrVarDefnBody = mlds__data(EnvPtrVarType, no_initializer),
 	EnvPtrVarDecl = mlds__defn(EnvPtrVarName, Context, EnvPtrVarFlags,
 		EnvPtrVarDefnBody),
@@ -874,7 +873,8 @@ fixup_var(ThisVar, Lval, ElimInfo, ElimInfo) :-
 		solutions(IsLocal, [FieldType])
 	->
 		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
-		FieldName = named_field(ThisVar),
+		EnvModuleName = ml_env_module_name(ClassType),
+		FieldName = named_field(qual(EnvModuleName, ThisVarName)),
 		Tag = yes(0),
 		Lval = field(Tag, EnvPtr, FieldName, FieldType, ClassType)
 	;
@@ -953,6 +953,15 @@ make_envptr_ref(Depth, CurEnvPtr, EnvPtrVar, Var) = Lval :-
 		Lval = make_envptr_ref(Depth - 1, NewEnvPtr, EnvPtrVar, Var)
 	).
 *********/
+
+:- func ml_env_module_name(mlds__type) = mlds_module_name.
+ml_env_module_name(ClassType) = EnvModuleName :-
+	( ClassType = class_type(qual(ClassModule, ClassName), Arity, _Kind) ->
+		EnvModuleName = mlds__append_class_qualifier(ClassModule,
+			ClassName, Arity)
+	;
+		error("ml_env_module_name: ClassType is not a class")
+	).
 
 %-----------------------------------------------------------------------------%
 %

@@ -262,8 +262,8 @@ ml_gen_static_const_arg(Var, static_cons(ConsId, ArgVars, StaticArgs), Rval) -->
 			% and then convert it to the appropriate type
 			ml_gen_static_const_arg(Arg, StaticArg, ArgRval),
 			ml_variable_type(Arg, ArgType),
-			{ ml_gen_box_or_unbox_rval(ArgType, VarType,
-				ArgRval, Rval) }
+			ml_gen_box_or_unbox_rval(ArgType, VarType,
+				ArgRval, Rval)
 		;
 			{ error("ml_code_gen: no_tag: arity != 1") }
 		)
@@ -287,7 +287,8 @@ ml_gen_static_const_arg(Var, static_cons(ConsId, ArgVars, StaticArgs), Rval) -->
 		;
 			TaggedRval = mkword(TagVal, ConstAddrRval)
 		},
-		{ Rval = unop(cast(mercury_type(VarType)), TaggedRval) }
+		ml_gen_type(VarType, MLDS_VarType),
+		{ Rval = unop(cast(MLDS_VarType), TaggedRval) }
 	;
 		%
 		% If this argument is just a constant,
@@ -320,6 +321,7 @@ ml_gen_constant(shared_local_tag(Bits1, Num1), _, Rval) -->
 
 ml_gen_constant(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
 		VarType, Rval) -->
+	ml_gen_type(VarType, MLDS_VarType),
 	%
 	% Although the builtin types `int', `float', etc. are treated as part
 	% of the `builtin' module, for historical reasons they don't have
@@ -335,25 +337,27 @@ ml_gen_constant(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
 	{ RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity) },
 	{ DataAddr = data_addr(MLDS_Module,
 		rtti(RttiTypeId, type_ctor_info)) },
-	{ Rval = unop(cast(mercury_type(VarType)),
+	{ Rval = unop(cast(MLDS_VarType),
 			const(data_addr_const(DataAddr))) }.
 
 ml_gen_constant(base_typeclass_info_constant(ModuleName, ClassId,
 			Instance), VarType, Rval) -->
+	ml_gen_type(VarType, MLDS_VarType),
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
 	{ DataAddr = data_addr(MLDS_Module,
 		base_typeclass_info(ClassId, Instance)) },
-	{ Rval = unop(cast(mercury_type(VarType)),
+	{ Rval = unop(cast(MLDS_VarType),
 			const(data_addr_const(DataAddr))) }.
 
 ml_gen_constant(tabling_pointer_constant(PredId, ProcId), VarType, Rval) -->
+	ml_gen_type(VarType, MLDS_VarType),
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	{ ml_gen_pred_label(ModuleInfo, PredId, ProcId,
 		PredLabel, PredModule) },
 	{ DataAddr = data_addr(PredModule,
 			tabling_pointer(PredLabel - ProcId)) },
-	{ Rval = unop(cast(mercury_type(VarType)),
+	{ Rval = unop(cast(MLDS_VarType),
 			const(data_addr_const(DataAddr))) }.
 
 ml_gen_constant(code_addr_constant(PredId, ProcId), _, ProcAddrRval) -->
@@ -409,7 +413,7 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	{ MLDS_PrivateBuiltinModule = mercury_module_name_to_mlds(
 		PrivateBuiltinModule) },
 	{ ClosureLayoutType = mlds__class_type(qual(MLDS_PrivateBuiltinModule,
-			"closure_layout"), 0) },
+			"closure_layout"), 0, mlds__struct) },
 
 	%
 	% Generate a wrapper function which just unboxes the
@@ -709,14 +713,14 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, Lvals) -->
 		ml_qualify_var(Name, VarLval),
 		=(Info),
 		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-		{ mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) ->
-			Lval = VarLval
+		( { mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) } ->
+			{ Lval = VarLval }
 		;
 			% output arguments are passed by reference,
 			% so we need to dereference them
-			MLDS_Type = mercury_type_to_mlds_type(Type),
-			Lval = mem_ref(lval(VarLval), MLDS_Type)
-		},
+			ml_gen_type(Type, MLDS_Type),
+			{ Lval = mem_ref(lval(VarLval), MLDS_Type) }
+		),
 		ml_gen_wrapper_arg_lvals(Names1, Types1, Modes1, Lvals1),
 		{ Lvals = [Lval|Lvals1] }
 	;
@@ -805,7 +809,7 @@ ml_gen_new_object(Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 	% the tag to use, and the types of the argument vars.
 	%
 	ml_variable_type(Var, Type),
-	{ MLDS_Type = mercury_type_to_mlds_type(Type) },
+	ml_gen_type(Type, MLDS_Type),
 	ml_gen_var(Var, VarLval),
 	{ Tag = 0 ->
 		MaybeTag = no
@@ -813,7 +817,7 @@ ml_gen_new_object(Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		MaybeTag = yes(Tag)
 	},
 	ml_variable_types(ArgVars, ArgTypes),
-	{ MLDS_ArgTypes0 = list__map(mercury_type_to_mlds_type, ArgTypes) },
+	list__map_foldl(ml_gen_type, ArgTypes, MLDS_ArgTypes0),
 
 	(
 		{ HowToConstruct = construct_dynamically },
@@ -896,7 +900,7 @@ ml_gen_new_object(Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		;
 			TaggedRval = mkword(Tag, ConstAddrRval)
 		},
-		{ Rval = unop(cast(mercury_type(Type)), TaggedRval) },
+		{ Rval = unop(cast(MLDS_Type), TaggedRval) },
 		{ AssignStatement = ml_gen_assign(VarLval, Rval, Context) },
 		{ MLDS_Decls = list__append(BoxConstDefns, [ConstDefn]) },
 		{ MLDS_Statements = [AssignStatement] }
@@ -928,7 +932,7 @@ ml_gen_box_const_rval_list([_|_], [], _, _, _) -->
 
 ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval) -->
 	(
-		{ Type = mercury_type(term__variable(_))
+		{ Type = mercury_type(term__variable(_), _)
 		; Type = mlds__generic_type
 		}
 	->
@@ -943,7 +947,7 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval) -->
 		% but calls to malloc() are not).
 		%
 		{ Type = mercury_type(term__functor(term__atom("float"),
-				[], _))
+				[], _), _)
 		; Type = mlds__native_float_type
 		}
 	->
@@ -1258,8 +1262,8 @@ ml_gen_unify_arg(Arg, Mode, ArgType, _FieldType, VarType, VarLval, ArgNum,
 	% Generate lvals for the LHS and the RHS
 	%
 	{ FieldId = offset(const(int_const(ArgNum))) },
-	{ MLDS_FieldType = mercury_type_to_mlds_type(BoxedFieldType) },
-	{ MLDS_VarType = mercury_type_to_mlds_type(VarType) },
+	ml_gen_type(BoxedFieldType, MLDS_FieldType),
+	ml_gen_type(VarType, MLDS_VarType),
 	{ FieldLval = field(yes(PrimaryTag), lval(VarLval), FieldId,
 		MLDS_FieldType, MLDS_VarType) },
 	ml_gen_var(Arg, ArgLval),
@@ -1306,8 +1310,8 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
 		{ LeftMode = top_in },
 		{ RightMode = top_out }
 	->
-		{ ml_gen_box_or_unbox_rval(FieldType, ArgType,
-			lval(FieldLval), FieldRval) },
+		ml_gen_box_or_unbox_rval(FieldType, ArgType,
+			lval(FieldLval), FieldRval),
 		{ MLDS_Statement = ml_gen_assign(ArgLval, FieldRval,
 			Context) },
 		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
@@ -1316,8 +1320,8 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
 		{ LeftMode = top_out },
 		{ RightMode = top_in }
 	->
-		{ ml_gen_box_or_unbox_rval(ArgType, FieldType,
-			lval(ArgLval), ArgRval) },
+		ml_gen_box_or_unbox_rval(ArgType, FieldType,
+			lval(ArgLval), ArgRval),
 		{ MLDS_Statement = ml_gen_assign(FieldLval, ArgRval,
 			Context) },
 		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
@@ -1444,7 +1448,7 @@ ml_gen_tag_test_rval(shared_remote_tag(PrimaryTag, SecondaryTag), VarType,
 			lval(field(yes(PrimaryTag), Rval,
 			offset(const(int_const(0))),
 			mlds__generic_type, 
-			mercury_type_to_mlds_type(VarType)))),
+			mercury_type_to_mlds_type(ModuleInfo, VarType)))),
 		const(int_const(SecondaryTag))),
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),

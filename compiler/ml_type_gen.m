@@ -1,0 +1,425 @@
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1999-2000 The University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+
+% File: ml_type_gen.m
+% Main author: fjh
+
+% MLDS type generation -- convert HLDS types to MLDS.
+
+% For enumerations, we use a Java-style emulation: we conver them
+% to classes with a single int member, plus a bunch of static const
+% members for the different enumerations consts.
+% 
+% For discriminated unions, we create an MLDS base class type
+% corresponding to the HLDS type, and we also create MLDS
+% derived class types corresponding to each of the constructors
+% which are defined from the base class type.
+
+%-----------------------------------------------------------------------------%
+
+:- module ml_type_gen.
+:- interface.
+:- import_module prog_data, hlds_module, hlds_data, mlds.
+:- import_module io.
+
+	% Generate MLDS definitions for all the types in the HLDS.
+	%
+:- pred ml_gen_types(module_info, mlds__defns, io__state, io__state).
+:- mode ml_gen_types(in, out, di, uo) is det.
+
+	% Given an HLDS type_id, generate the MLDS class name and arity
+	% for the corresponding MLDS type.
+	%
+:- pred ml_gen_type_name(type_id, mlds__class, arity).
+:- mode ml_gen_type_name(in, out, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module hlds_pred, prog_data, prog_util.
+:- import_module ml_code_util.
+:- import_module globals, options.
+
+:- import_module bool, int, string, list, map, std_util, require.
+
+ml_gen_types(ModuleInfo, MLDS_TypeDefns) -->
+	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+	( { HighLevelData = yes } ->
+		{ module_info_types(ModuleInfo, TypeTable) },
+		{ map__keys(TypeTable, TypeIds) },
+		{ list__foldl(ml_gen_type_defn(ModuleInfo, TypeTable),
+			TypeIds, [], MLDS_TypeDefns) }
+	;
+		{ MLDS_TypeDefns = [] }
+	).
+
+:- pred ml_gen_type_defn(module_info, type_table, type_id,
+		mlds__defns, mlds__defns).
+:- mode ml_gen_type_defn(in, in, in, in, out) is det.
+
+ml_gen_type_defn(ModuleInfo, TypeTable, TypeId, MLDS_Defns0, MLDS_Defns) :-
+	map__lookup(TypeTable, TypeId, TypeDefn),
+	hlds_data__get_type_defn_status(TypeDefn, Status),
+	( status_defined_in_this_module(Status, yes) ->
+		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+		ml_gen_type_2(TypeBody, ModuleInfo, TypeId, TypeDefn,
+			MLDS_Defns0, MLDS_Defns)
+	;
+		MLDS_Defns = MLDS_Defns0
+	).
+
+:- pred ml_gen_type_2(hlds_type_body, module_info, type_id, hlds_type_defn,
+		mlds__defns, mlds__defns).
+:- mode ml_gen_type_2(in, in, in, in, in, out) is det.
+
+ml_gen_type_2(abstract_type, _, _, _) --> [].
+ml_gen_type_2(eqv_type(_EqvType), _, _, _) --> []. % XXX Fixme!
+ml_gen_type_2(uu_type(_), _, _, _) -->
+	{ error("sorry, undiscriminated union types not implemented") }.
+ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred),
+		ModuleInfo, TypeId, TypeDefn) -->
+	{ ml_gen_equality_members(MaybeEqualityPred, MaybeEqualityMembers) },
+	( { IsEnum = yes } ->
+		ml_gen_enum_type(TypeId, TypeDefn, Ctors, TagValues,
+			MaybeEqualityMembers)
+	;
+		ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn,
+			Ctors, TagValues, MaybeEqualityMembers)
+	).
+
+%-----------------------------------------------------------------------------%
+%
+% Enumeration types.
+%
+
+	%
+	% For each enumeration, we generate an MLDS type of the following form:
+	%
+	%	struct <ClassName> {
+	%		static const int <ctor1> = 0;
+	%		static const int <ctor2> = 1;
+	%		...
+	%		int value;
+	%	};
+	%
+	% It is marked as an mlds__enum so that the MLDS -> target code
+	% generator can treat it specially if need be (e.g. generating
+	% a C enum rather than a class).
+	%
+:- pred ml_gen_enum_type(type_id, hlds_type_defn, list(constructor),
+		cons_tag_values, mlds__defns, mlds__defns, mlds__defns).
+:- mode ml_gen_enum_type(in, in, in, in, in, in, out) is det.
+
+ml_gen_enum_type(TypeId, TypeDefn, Ctors, TagValues,
+		MaybeEqualityMembers, MLDS_Defns0, MLDS_Defns) :-
+	hlds_data__get_type_defn_context(TypeDefn, Context),
+	MLDS_Context = mlds__make_context(Context),
+
+	% generate the class name
+	ml_gen_type_name(TypeId, qual(_, MLDS_ClassName), MLDS_ClassArity),
+
+	% generate the class members
+	ValueMember = ml_gen_enum_value_member(Context),
+	EnumConstMembers = list__map(ml_gen_enum_constant(Context, TagValues),
+		Ctors),
+	Members = list__append(MaybeEqualityMembers,
+		[ValueMember|EnumConstMembers]),
+
+	% enums don't import or inherit anything
+	Imports = [],
+	Inherits = [],
+	Implements = [],
+
+	% put it all together
+	MLDS_TypeName = type(MLDS_ClassName, MLDS_ClassArity),
+	MLDS_TypeFlags = ml_gen_type_decl_flags,
+	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__enum,
+		Imports, Inherits, Implements, Members)),
+	MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
+		MLDS_TypeDefnBody),
+	
+	MLDS_Defns = [MLDS_TypeDefn | MLDS_Defns0].
+
+:- func ml_gen_enum_value_member(prog_context) = mlds__defn.
+ml_gen_enum_value_member(Context) =
+	mlds__defn(data(var("value")),
+		mlds__make_context(Context),
+		ml_gen_member_decl_flags,
+		mlds__data(mlds__native_int_type, no_initializer)).
+
+:- func ml_gen_enum_constant(prog_context, cons_tag_values, constructor) =
+	mlds__defn.
+
+ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
+	%
+	% figure out the value of this enumeration constant
+	%
+	Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
+	list__length(Args, Arity),
+	map__lookup(ConsTagValues, cons(Name, Arity), TagVal),
+	( TagVal = int_constant(Int) ->
+		ConstValue = const(int_const(Int))
+	;
+		error("ml_gen_enum_constant: enum constant needs int tag")
+	),
+	% sanity check
+	require(unify(Arity, 0), "ml_gen_enum_constant: arity != []"),
+
+	%
+	% generate an MLDS definition for this enumeration constant.
+	%
+	unqualify_name(Name, UnqualifiedName),
+	MLDS_Defn = mlds__defn(data(var(UnqualifiedName)),
+		mlds__make_context(Context),
+		ml_gen_enum_constant_decl_flags,
+		mlds__data(mlds__native_int_type, init_obj(ConstValue))).
+
+%-----------------------------------------------------------------------------%
+%
+% Discriminated union types.
+%
+
+	%
+	% For each discriminated union type, we generate an MLDS type of the
+	% following form:
+	%
+	%	class <ClassName> {
+	%	public:
+	%		int data_tag;
+	%		/* constants used for data_tag */
+	%		static const int <ctor1> = 0;
+	%		static const int <ctor2> = 1;
+	%		...
+	%		/*
+	%		** Derived classes, one for each constructor;
+	%		** these are generated as nested classes to
+	%		** avoid name clashes.
+	%		*/
+	%		class <ctor1> : public <ClassName> {
+	%		public:
+	%			/*
+	%			** fields, one for each argument of this
+	%			** constructor
+	%			*/
+	%			MR_Word F1;
+	%			MR_Word F2;
+	%			...
+	%		};
+	%		class <ctor2> : public <ClassName> {
+	%		public:
+	%			...
+	%		};
+	%		...
+	%	};
+	%
+:- pred ml_gen_du_parent_type(module_info, type_id, hlds_type_defn,
+		list(constructor), cons_tag_values, mlds__defns,
+		mlds__defns, mlds__defns).
+:- mode ml_gen_du_parent_type(in, in, in, in, in, in, in, out) is det.
+
+ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, _TagValues,
+		MaybeEqualityMembers, MLDS_Defns0, MLDS_Defns) :-
+	hlds_data__get_type_defn_context(TypeDefn, Context),
+	MLDS_Context = mlds__make_context(Context),
+
+	% generate the class name
+	ml_gen_type_name(TypeId, qual(_, MLDS_ClassName), MLDS_ClassArity),
+
+	% generate the class members
+	TagMember = ml_gen_tag_member("data_tag", Context),
+	TagConstMembers = [],
+	% XXX we don't yet bother with these;
+	% mlds_to_c.m doesn't support static members.
+	%	TagConstMembers = list__condense(list__map(
+	% 		ml_gen_tag_constant(Context, TagValues), Ctors)),
+	Members0 = list__append(MaybeEqualityMembers,
+		[TagMember|TagConstMembers]),
+
+	% generate the nested derived classes
+	list__foldl(ml_gen_du_ctor_type(ModuleInfo, TypeId, TypeDefn), Ctors,
+		Members0, Members),
+
+	% the base class doesn't import or inherit anything
+	Imports = [],
+	Inherits = [],
+	Implements = [],
+
+	% put it all together
+	MLDS_TypeName = type(MLDS_ClassName, MLDS_ClassArity),
+	MLDS_TypeFlags = ml_gen_type_decl_flags,
+	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__class,
+		Imports, Inherits, Implements, Members)),
+	MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
+		MLDS_TypeDefnBody),
+	
+	MLDS_Defns = [MLDS_TypeDefn | MLDS_Defns0].
+
+:- func ml_gen_tag_member(mlds__var_name, prog_context) = mlds__defn.
+ml_gen_tag_member(Name, Context) =
+	mlds__defn(data(var(Name)),
+		mlds__make_context(Context),
+		ml_gen_member_decl_flags,
+		mlds__data(mlds__native_int_type, no_initializer)).
+
+:- func ml_gen_tag_constant(prog_context, cons_tag_values, constructor) =
+	mlds__defns.
+
+ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
+	%
+	% Check if this constructor uses a secondary tag.
+	%
+	Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
+	list__length(Args, Arity),
+	map__lookup(ConsTagValues, cons(Name, Arity), TagVal),
+	( TagVal = shared_remote_tag(_PrimaryTag, SecondaryTag) ->
+		%
+		% Generate an MLDS definition for this secondary
+		% tag constant.  We do this mainly for readability
+		% and interoperability.  Note that we don't do the
+		% same thing for primary tags, so this is most
+		% useful in the `--tags none' case, where there
+		% will be no primary tags.
+		%
+		unqualify_name(Name, UnqualifiedName),
+		ConstValue = const(int_const(SecondaryTag)),
+		MLDS_Defn = mlds__defn(data(var(UnqualifiedName)),
+			mlds__make_context(Context),
+			ml_gen_enum_constant_decl_flags,
+			mlds__data(mlds__native_int_type,
+				init_obj(ConstValue))),
+		MLDS_Defns = [MLDS_Defn]
+	;
+		MLDS_Defns = []
+	).
+
+:- pred ml_gen_du_ctor_type(module_info, type_id, hlds_type_defn, constructor,
+		mlds__defns, mlds__defns).
+:- mode ml_gen_du_ctor_type(in, in, in, in, in, out) is det.
+
+ml_gen_du_ctor_type(ModuleInfo, TypeId, TypeDefn, Ctor,
+		MLDS_Defns0, MLDS_Defns) :-
+	Ctor = ctor(_ExistQTVars, _Constraints, CtorName, Args),
+
+	% XXX we should keep a context for the constructor,
+	% but we don't, so we just use the context from the type.
+	hlds_data__get_type_defn_context(TypeDefn, Context),
+	MLDS_Context = mlds__make_context(Context),
+
+	% generate the base class name
+	ClassKind = mlds__class,
+	ml_gen_type_name(TypeId, BaseClassName, BaseClassArity),
+	BaseClassId = mlds__class_type(BaseClassName, BaseClassArity,
+		ClassKind),
+
+	% generate the class name for this constructor
+	unqualify_name(CtorName, CtorClassName),
+	list__length(Args, CtorArity),
+
+	% generate the class members,
+	% numbering any unnamed fields starting from 1
+	list__map_foldl(ml_gen_du_ctor_member(ModuleInfo, Context),
+		Args, Members, 1, _),
+
+	% we inherit the base class for this type
+	Imports = [],
+	Inherits = [BaseClassId],
+	Implements = [],
+
+	% put it all together
+	MLDS_TypeName = type(CtorClassName, CtorArity),
+	MLDS_TypeFlags = ml_gen_type_decl_flags,
+	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(ClassKind,
+		Imports, Inherits, Implements, Members)),
+	MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
+		MLDS_TypeDefnBody),
+	
+	MLDS_Defns = [MLDS_TypeDefn | MLDS_Defns0].
+
+:- pred ml_gen_du_ctor_member(module_info, prog_context,
+		constructor_arg, mlds__defn, int, int).
+:- mode ml_gen_du_ctor_member(in, in, in, out, in, out) is det.
+
+ml_gen_du_ctor_member(ModuleInfo, Context, MaybeFieldName - Type, MLDS_Defn,
+		ArgNum0, ArgNum) :-
+	(
+		MaybeFieldName = yes(QualifiedFieldName),
+		unqualify_name(QualifiedFieldName, FieldName)
+	;
+		MaybeFieldName = no,
+		FieldName = string__format("F%d", [i(ArgNum0)])
+	),
+	MLDS_Defn = ml_gen_var_decl(FieldName, Type,
+		mlds__make_context(Context), ModuleInfo),
+	ArgNum = ArgNum0 + 1.
+
+%-----------------------------------------------------------------------------%
+%
+% Miscellaneous helper routines.
+%
+
+ml_gen_type_name(Name - Arity, qual(MLDS_Module, TypeName), Arity) :-
+	(
+		Name = qualified(ModuleName, TypeName)
+	;
+		% builtin types like `int' may be still unqualified
+		% at this point
+		Name = unqualified(TypeName),
+		mercury_public_builtin_module(ModuleName)
+	),
+	MLDS_Module = mercury_module_name_to_mlds(ModuleName).
+
+	% For interoperability, we ought to generate an `==' member
+	% for types which have a user-defined equality, if the target
+	% language supports it (as do e.g. C++, Java).
+:- pred ml_gen_equality_members(maybe(sym_name), list(mlds__defn)).
+:- mode ml_gen_equality_members(in, out) is det.
+ml_gen_equality_members(_, []).  % XXX generation of `==' members
+				 % is not yet implemented.
+
+%-----------------------------------------------------------------------------%
+%
+% Routines for generating declaration flags.
+%
+
+	% Return the declaration flags appropriate for a type.
+:- func ml_gen_type_decl_flags = mlds__decl_flags.
+ml_gen_type_decl_flags = MLDS_DeclFlags :-
+	% XXX are these right?
+	Access = public,
+	PerInstance = per_instance,
+	Virtuality = non_virtual,
+	Finality = overridable,
+	Constness = modifiable,
+	Abstractness = concrete,
+	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+		Virtuality, Finality, Constness, Abstractness).
+
+	% Return the declaration flags appropriate for a member variable.
+:- func ml_gen_member_decl_flags = mlds__decl_flags.
+ml_gen_member_decl_flags = MLDS_DeclFlags :-
+	Access = public,
+	PerInstance = per_instance,
+	Virtuality = non_virtual,
+	Finality = overridable,
+	Constness = modifiable,
+	Abstractness = concrete,
+	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+		Virtuality, Finality, Constness, Abstractness).
+
+	% Return the declaration flags appropriate for an enumeration constant.
+:- func ml_gen_enum_constant_decl_flags = mlds__decl_flags.
+ml_gen_enum_constant_decl_flags = MLDS_DeclFlags :-
+	Access = public,
+	PerInstance = one_copy,
+	Virtuality = non_virtual,
+	Finality = overridable, % XXX should we use `final' instead?
+				% does it make any difference?
+	Constness = const,
+	Abstractness = concrete,
+	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+		Virtuality, Finality, Constness, Abstractness).
+
+%-----------------------------------------------------------------------------%

@@ -660,7 +660,7 @@
 
 :- implementation.
 
-:- import_module ml_call_gen, ml_unify_gen, ml_code_util.
+:- import_module ml_type_gen, ml_call_gen, ml_unify_gen, ml_code_util.
 :- import_module llds. % XXX needed for `code_model'.
 :- import_module export, llds_out. % XXX needed for pragma C code
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
@@ -713,19 +713,6 @@ ml_gen_defns(ModuleInfo, MLDS_Defns) -->
 	ml_gen_types(ModuleInfo, MLDS_TypeDefns),
 	ml_gen_preds(ModuleInfo, MLDS_PredDefns),
 	{ MLDS_Defns = list__append(MLDS_TypeDefns, MLDS_PredDefns) }.
-
-%-----------------------------------------------------------------------------%
-
-	% Generate MLDS definitions for all the types,
-	% typeclasses, and instances in the HLDS.
-	%
-:- pred ml_gen_types(module_info, mlds__defns, io__state, io__state).
-:- mode ml_gen_types(in, out, di, uo) is det.
-
-ml_gen_types(_ModuleInfo, MLDS_TypeDefns) -->
-	% XXX currently we use a low-level data representation,
-	% so we don't map Mercury types to MLDS types.
-	{ MLDS_TypeDefns = [] }.
 
 %-----------------------------------------------------------------------------%
 %
@@ -909,7 +896,7 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	%	proc_info_varset(ProcInfo, VarSet),
 	%	proc_info_vartypes(ProcInfo, VarTypes),
 	%	MLDS_LocalVars = ml_gen_all_local_var_decls(Goal, VarSet,
-	% 		VarTypes, HeadVars),
+	% 		VarTypes, HeadVars, ModuleInfo),
 	% But instead we now generate them locally for each goal.
 	% We just declare the `succeeded' var here.
 	MLDS_Context = mlds__make_context(Context),
@@ -932,8 +919,9 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	% each sub-goal.
 	%
 :- func ml_gen_all_local_var_decls(hlds_goal, prog_varset,
-		map(prog_var, prog_type), list(prog_var)) = mlds__defns.
-ml_gen_all_local_var_decls(Goal, VarSet, VarTypes, HeadVars) =
+		map(prog_var, prog_type), list(prog_var), module_info) =
+		mlds__defns.
+ml_gen_all_local_var_decls(Goal, VarSet, VarTypes, HeadVars, ModuleInfo) =
 		MLDS_LocalVars :-
 	Goal = _ - GoalInfo,
 	goal_info_get_context(GoalInfo, Context),
@@ -942,28 +930,29 @@ ml_gen_all_local_var_decls(Goal, VarSet, VarTypes, HeadVars) =
 	set__to_sorted_list(LocalVarsSet, LocalVars),
 	MLDS_Context = mlds__make_context(Context),
 	MLDS_LocalVars0 = ml_gen_local_var_decls(VarSet, VarTypes,
-				MLDS_Context, LocalVars),
+				MLDS_Context, ModuleInfo, LocalVars),
 	MLDS_SucceededVar = ml_gen_succeeded_var_decl(MLDS_Context),
 	MLDS_LocalVars = [MLDS_SucceededVar | MLDS_LocalVars0].
 
 	% Generate declarations for a list of local variables.
 	%
 :- func ml_gen_local_var_decls(prog_varset, map(prog_var, prog_type),
-		mlds__context, prog_vars) = mlds__defns.
-ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars) = LocalDecls :-
-	list__filter_map(ml_gen_local_var_decl(VarSet, VarTypes, Context), 
-		Vars, LocalDecls).
+		mlds__context, module_info, prog_vars) = mlds__defns.
+ml_gen_local_var_decls(VarSet, VarTypes, Context, ModuleInfo, Vars) =
+		LocalDecls :-
+	list__filter_map(ml_gen_local_var_decl(VarSet, VarTypes, Context,
+		ModuleInfo), Vars, LocalDecls).
 
 	% Generate a declaration for a local variable.
 	%
 :- pred ml_gen_local_var_decl(prog_varset, map(prog_var, prog_type),
-		mlds__context, prog_var, mlds__defn).
-:- mode ml_gen_local_var_decl(in, in, in, in, out) is semidet.
-ml_gen_local_var_decl(VarSet, VarTypes, Context, Var, MLDS_Defn) :-
+		mlds__context, module_info, prog_var, mlds__defn).
+:- mode ml_gen_local_var_decl(in, in, in, in, in, out) is semidet.
+ml_gen_local_var_decl(VarSet, VarTypes, Context, ModuleInfo, Var, MLDS_Defn) :-
 	map__lookup(VarTypes, Var, Type),
 	not type_util__is_dummy_argument_type(Type),
 	VarName = ml_gen_var_name(VarSet, Var),
-	MLDS_Defn = ml_gen_var_decl(VarName, Type, Context).
+	MLDS_Defn = ml_gen_var_decl(VarName, Type, Context, ModuleInfo).
 
 	% Generate the code for a procedure body.
 	%
@@ -1107,19 +1096,21 @@ ml_gen_box_existential_output_args([Var|Vars], [ArgType|ArgTypes],
 		;
 			% generate a declaration for the variable (which
 			% will now become a local rather than a parameter)
+			{ ml_gen_info_get_module_info(MLDSGenInfo,
+				ModuleInfo) },
 			{ VarDecl = ml_gen_var_decl(VarName, VarType,
-				mlds__make_context(Context)) },
+				mlds__make_context(Context), ModuleInfo) },
 			{ LocalVarDecls = [VarDecl] },
 
 			% generate the assignment of the boxed variable
 			% to the dereferenced headvar
 			ml_qualify_var(VarName, VarLval),
 			ml_qualify_var(HeadVarName, HeadVarLval),
-			{ BoxedVarRval = unop(box(mercury_type(VarType)),
+			ml_gen_type(VarType, MLDS_VarType),
+			{ BoxedVarRval = unop(box(MLDS_VarType),
 				lval(VarLval)) },
 			{ AssignStatement = ml_gen_assign(
-				mem_ref(lval(HeadVarLval),
-					mercury_type(ArgType)),
+				mem_ref(lval(HeadVarLval), MLDS_VarType),
 				BoxedVarRval, Context) },
 			{ ConvStatements = [AssignStatement] }
 		),
@@ -1200,8 +1191,9 @@ ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 	{ ml_gen_info_get_var_types(MLDSGenInfo, VarTypes) },
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ VarDecls = ml_gen_local_var_decls(VarSet, VarTypes,
-		mlds__make_context(Context), VarsList) },
+		mlds__make_context(Context), ModuleInfo, VarsList) },
 
 	%
 	% Generate code for the goal in its own code model.
@@ -1998,18 +1990,18 @@ ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 	->
 		ml_variable_type(Var, VarType),
 		ml_gen_var(Var, VarLval),
-		{ type_util__is_dummy_argument_type(VarType) ->
+		( { type_util__is_dummy_argument_type(VarType) } ->
 			% The variable may not have been declared,
 			% so we need to generate a dummy value for it.
 			% Using `0' here is more efficient than
 			% using private_builtin__dummy_var, which is
 			% what ml_gen_var will have generated for this
 			% variable.
-			ArgRval = const(int_const(0))
+			{ ArgRval = const(int_const(0)) }
 		;
-			ml_gen_box_or_unbox_rval(VarType, OrigType, lval(VarLval),
-				ArgRval)
-		},
+			ml_gen_box_or_unbox_rval(VarType, OrigType,
+				lval(VarLval), ArgRval)
+		),
 		{ type_util__var(VarType, _) ->
 			Cast = "(MR_Word) "
 		;

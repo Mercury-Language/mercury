@@ -261,9 +261,12 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_data, prog_data, builtin_ops, rtti.
+:- import_module hlds_module, hlds_pred, hlds_data.
+:- import_module prog_data, builtin_ops, rtti.
+:- import_module type_util.
 
-% To avoid duplication, we use a few things from the LLDS.
+% To avoid duplication, we use a few things from the LLDS
+% (specifically stuff for the C interface).
 % It would be nice to avoid this dependency...
 :- import_module llds.
 
@@ -314,6 +317,11 @@
 % MLDS package.
 :- func mlds_module_name_to_sym_name(mlds__package_name) = sym_name.
 
+% Given an MLDS module name (e.g. `foo.bar'), append another class qualifier
+% (e.g. for a class `baz'), and return the result (e.g. `foo.bar.baz').
+% The `arity' argument specifies the arity of the class.
+:- func mlds__append_class_qualifier(mlds_module_name, mlds__class_name, arity) =
+	mlds_module_name.
 
 :- type mlds__defns == list(mlds__defn).
 :- type mlds__defn
@@ -447,12 +455,14 @@
 
 :- type mlds__class_defn
 	---> mlds__class_defn(
-		mlds__class_kind,
-		mlds__imports,			% imports these classes (or
+		kind	::	mlds__class_kind,
+		imports	::	mlds__imports,	% imports these classes (or
 						% modules, packages, ...)
-		list(mlds__class_id),		% inherits these base classes
-		list(mlds__interface_id),	% implements these interfaces
-		mlds__defns			% contains these members
+		inherits ::	list(mlds__class_id),
+						% inherits these base classes
+		implements ::	list(mlds__interface_id),
+						% implements these interfaces
+		members ::	mlds__defns	% contains these members
 	).
 
 	% Note: the definition of the `mlds__type' type is subject to change.
@@ -460,7 +470,11 @@
 	% switching on this type.
 :- type mlds__type
 	--->	% Mercury data types
-		mercury_type(prog_data__type)
+		mercury_type(
+			prog_data__type,	% the exact Mercury type
+			builtin_type		% what kind of type it is:
+						% enum, float, etc.
+		)
 
 		% The type for the continuation functions used
 		% to handle nondeterminism
@@ -480,7 +494,11 @@
 	;	mlds__native_char_type
 
 		% MLDS types defined using mlds__class_defn
-	;	mlds__class_type(mlds__class, arity)	% name, arity
+	;	mlds__class_type(
+			mlds__class,		% name
+			arity,
+			mlds__class_kind
+		)
 
 		% MLDS array types.
 		% These are single-dimensional, and can be indexed
@@ -520,7 +538,7 @@
 
 :- type mercury_type == prog_data__type.
 
-:- func mercury_type_to_mlds_type(mercury_type) = mlds__type.
+:- func mercury_type_to_mlds_type(module_info, mercury_type) = mlds__type.
 
 % Hmm... this is tentative.
 :- type mlds__class_id == mlds__type.
@@ -1149,7 +1167,7 @@ XXX Full exception handling support is not yet implemented.
 
 :- implementation.
 :- import_module modules.
-:- import_module int, term, require.
+:- import_module int, term, string, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -1167,10 +1185,15 @@ mlds__get_prog_context(mlds__context(Context)) = Context.
 
 %-----------------------------------------------------------------------------%
 
-% Currently mlds__types are just the same as Mercury types.
-% XXX something more complicated may be needed here...
+% Currently we return mlds__types that are just the same as Mercury types,
+% except that we also store the type category, so that we
+% can tell if the type is an enumeration or not, without
+% needing to refer to the HLDS type_table.
+% XXX It might be a better idea to get rid of the mercury_type/2
+% MLDS type and instead fully convert all Mercury types to MLDS types.
 
-mercury_type_to_mlds_type(Type) = mercury_type(Type).
+mercury_type_to_mlds_type(ModuleInfo, Type) = mercury_type(Type, Category) :-
+	classify_type(Type, ModuleInfo, Category).
 
 %-----------------------------------------------------------------------------%
 
@@ -1198,6 +1221,11 @@ mercury_module_name_to_mlds(MercuryModule) = MLDS_Package :-
 	).
 
 mlds_module_name_to_sym_name(MLDS_Package) = MLDS_Package.
+
+mlds__append_class_qualifier(Package, ClassName, ClassArity) =
+		qualified(Package, ClassQualifier) :-
+	string__format("%s_%d", [s(ClassName), i(ClassArity)],
+		ClassQualifier).
 
 %-----------------------------------------------------------------------------%
 

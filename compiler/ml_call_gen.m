@@ -58,8 +58,9 @@
 	% and given an source rval holding a value of the source type,
 	% produce an rval that converts the source rval to the destination type.
 	%
-:- pred ml_gen_box_or_unbox_rval(prog_type, prog_type, mlds__rval, mlds__rval).
-:- mode ml_gen_box_or_unbox_rval(in, in, in, out) is det.
+:- pred ml_gen_box_or_unbox_rval(prog_type, prog_type, mlds__rval, mlds__rval,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_box_or_unbox_rval(in, in, in, out, in, out) is det.
 
 	% This is like `ml_gen_box_or_unbox_rval', except that it
 	% works on lvals rather than rvals.
@@ -462,8 +463,8 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, Context,
 			;
 				VarRval = lval(VarLval)
 			},
-			{ ml_gen_box_or_unbox_rval(CallerType, CalleeType,
-				VarRval, ArgRval) },
+			ml_gen_box_or_unbox_rval(CallerType, CalleeType,
+				VarRval, ArgRval),
 			{ InputRvals = [ArgRval | InputRvals1] },
 			{ OutputLvals = OutputLvals1 },
 			{ ConvDecls = ConvDecls1 },
@@ -513,25 +514,27 @@ ml_gen_mem_addr(Lval) =
 
 	% Convert VarRval, of type SourceType,
 	% to ArgRval, of type DestType.
-ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval) :-
+ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval) -->
 	(
 		%
 		% if converting from polymorphic type to concrete type,
 		% then unbox
 		%
-		SourceType = term__variable(_),
-		DestType = term__functor(_, _, _)
+		{ SourceType = term__variable(_) },
+		{ DestType = term__functor(_, _, _) }
 	->
-		ArgRval = unop(unbox(mercury_type(DestType)), VarRval)
+		ml_gen_type(DestType, MLDS_DestType),
+		{ ArgRval = unop(unbox(MLDS_DestType), VarRval) }
 	;
 		%
 		% if converting from concrete type to polymorphic type,
 		% then box
 		%
-		SourceType = term__functor(_, _, _),
-		DestType = term__variable(_)
+		{ SourceType = term__functor(_, _, _) },
+		{ DestType = term__variable(_) }
 	->
-		ArgRval = unop(box(mercury_type(SourceType)), VarRval)
+		ml_gen_type(SourceType, MLDS_SourceType),
+		{ ArgRval = unop(box(MLDS_SourceType), VarRval) }
 	;
 		%
 		% if converting from one concrete type to a different
@@ -540,15 +543,16 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval) :-
 		% This is needed to handle construction/deconstruction
 		% unifications for no_tag types.
 		%
-		\+ type_util__type_unify(SourceType, DestType,
-			[], map__init, _)
+		{ \+ type_util__type_unify(SourceType, DestType,
+			[], map__init, _) }
 	->
-		ArgRval = unop(cast(mercury_type(DestType)), VarRval)
+		ml_gen_type(DestType, MLDS_DestType),
+		{ ArgRval = unop(cast(MLDS_DestType), VarRval) }
 	;
 		%
 		% otherwise leave unchanged
 		%
-		ArgRval = VarRval
+		{ ArgRval = VarRval }
 	).
 	
 ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
@@ -558,9 +562,10 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 	% if no boxing/unboxing is required, then ml_box_or_unbox_rval
 	% will return its argument unchanged, and so we're done.
 	%
+	ml_gen_box_or_unbox_rval(CalleeType, CallerType, lval(VarLval),
+		BoxedRval),
 	(
-		{ ml_gen_box_or_unbox_rval(CalleeType, CallerType,
-			lval(VarLval), lval(VarLval)) }
+		{ BoxedRval = lval(VarLval) }
 	->
 		{ ArgLval = VarLval },
 		{ ConvDecls = [] },
@@ -577,8 +582,10 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 		ml_gen_info_new_conv_var(ConvVarNum),
 		{ string__format("conv%d_%s", [i(ConvVarNum), s(VarName)],
 			ArgVarName) },
+		=(Info),
+		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 		{ ArgVarDecl = ml_gen_var_decl(ArgVarName, CalleeType,
-			mlds__make_context(Context)) },
+			mlds__make_context(Context), ModuleInfo) },
 		{ ConvDecls = [ArgVarDecl] },
 
 		% create the lval for the variable and use it for the
@@ -596,8 +603,8 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 			% and the callee type, since this is an output not
 			% an input, so the callee type is the source type
 			% and the caller type is the destination type.
-			{ ml_gen_box_or_unbox_rval(CalleeType, CallerType,
-				lval(ArgLval), ConvertedArgRval) },
+			ml_gen_box_or_unbox_rval(CalleeType, CallerType,
+				lval(ArgLval), ConvertedArgRval),
 			{ AssignStatement = ml_gen_assign(VarLval,
 				ConvertedArgRval, Context) },
 			{ ConvStatements = [AssignStatement] }
