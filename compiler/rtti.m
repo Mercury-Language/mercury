@@ -359,27 +359,39 @@
 	;	self.
 
 	% The list of type constructors for types that are built into the
-	% Mercury language. The compiler never creates type_ctor_datas for
-	% these, but RTTI predicates implemented in Mercury will need to
-	% know about them.
+	% Mercury language or the Mercury standard library.
 :- type builtin_ctor
 	--->	int
 	;	float
 	;	char
 	;	string
-	;	univ
 	;	void
-	;	c_pointer.	% maybe more to come later
+	;	c_pointer
+	;	stable_c_pointer
+	;	pred_ctor
+	;	func_ctor
+	;	tuple
+	;	array
+	;	ref
+	;	type_desc
+	;	type_ctor_desc.
 
 	% The list of type constructors that are used behind the scenes by
-	% the Mercury implementation. The compiler never creates
-	% type_ctor_datas for these, but RTTI predicates implemented
-	% in Mercury will need to know about them.
+	% the Mercury implementation.
 :- type impl_ctor
-	--->	sp
-	;	hp
+	--->	hp
+	;	succip
 	;	maxfr
-	;	curfr.		% maybe more to come later
+	;	curfr
+	;	redofr
+	;	redoip
+	;	ticket
+	;	trail_ptr
+	;	type_info
+	;	type_ctor_info
+	;	typeclass_info
+	;	base_typeclass_info
+	;	subgoal.			% coming soon
 
 %-----------------------------------------------------------------------------%
 %
@@ -1094,15 +1106,50 @@ rtti__type_ctor_rep_to_string(TypeCtorData, RepStr) :-
 			RepStr = "MR_TYPECTOR_REP_EQUIV_GROUND"
 		)
 	;
-		TypeCtorDetails = builtin(_),
-		error("rtti__type_ctor_rep_to_string: builtin")
+		TypeCtorDetails = builtin(BuiltinCtor),
+		builtin_ctor_rep_to_string(BuiltinCtor, RepStr)
 	;
-		TypeCtorDetails = impl_artifact(_),
-		error("rtti__type_ctor_rep_to_string: impl_artifact")
+		TypeCtorDetails = impl_artifact(ImplCtor),
+		impl_ctor_rep_to_string(ImplCtor, RepStr)
 	;
 		TypeCtorDetails = foreign,
 		RepStr = "MR_TYPECTOR_REP_FOREIGN"
 	).
+
+:- pred builtin_ctor_rep_to_string(builtin_ctor::in, string::out) is det.
+
+builtin_ctor_rep_to_string(array, "MR_TYPECTOR_REP_ARRAY").
+builtin_ctor_rep_to_string(int, "MR_TYPECTOR_REP_INT").
+builtin_ctor_rep_to_string(string, "MR_TYPECTOR_REP_STRING").
+builtin_ctor_rep_to_string(float, "MR_TYPECTOR_REP_FLOAT").
+builtin_ctor_rep_to_string(char, "MR_TYPECTOR_REP_CHAR").
+builtin_ctor_rep_to_string(void, "MR_TYPECTOR_REP_VOID").
+builtin_ctor_rep_to_string(c_pointer, "MR_TYPECTOR_REP_C_POINTER").
+builtin_ctor_rep_to_string(stable_c_pointer,
+	"MR_TYPECTOR_REP_STABLE_C_POINTER").
+builtin_ctor_rep_to_string(pred_ctor, "MR_TYPECTOR_REP_PRED").
+builtin_ctor_rep_to_string(func_ctor, "MR_TYPECTOR_REP_FUNC").
+builtin_ctor_rep_to_string(tuple, "MR_TYPECTOR_REP_TUPLE").
+builtin_ctor_rep_to_string(ref, "MR_TYPECTOR_REP_REFERENCE").
+builtin_ctor_rep_to_string(type_ctor_desc, "MR_TYPECTOR_REP_TYPECTORDESC").
+builtin_ctor_rep_to_string(type_desc, "MR_TYPECTOR_REP_TYPEDESC").
+
+:- pred impl_ctor_rep_to_string(impl_ctor::in, string::out) is det.
+
+impl_ctor_rep_to_string(type_ctor_info, "MR_TYPECTOR_REP_TYPECTORINFO").
+impl_ctor_rep_to_string(type_info, "MR_TYPECTOR_REP_TYPEINFO").
+impl_ctor_rep_to_string(typeclass_info, "MR_TYPECTOR_REP_TYPECLASSINFO").
+impl_ctor_rep_to_string(base_typeclass_info,
+	"MR_TYPECTOR_REP_BASETYPECLASSINFO").
+impl_ctor_rep_to_string(hp, "MR_TYPECTOR_REP_HP").
+impl_ctor_rep_to_string(succip, "MR_TYPECTOR_REP_SUCCIP").
+impl_ctor_rep_to_string(curfr, "MR_TYPECTOR_REP_CURFR").
+impl_ctor_rep_to_string(maxfr, "MR_TYPECTOR_REP_MAXFR").
+impl_ctor_rep_to_string(redofr, "MR_TYPECTOR_REP_REDOFR").
+impl_ctor_rep_to_string(redoip, "MR_TYPECTOR_REP_REDOIP").
+impl_ctor_rep_to_string(trail_ptr, "MR_TYPECTOR_REP_TRAIL_PTR").
+impl_ctor_rep_to_string(ticket, "MR_TYPECTOR_REP_TICKET").
+impl_ctor_rep_to_string(subgoal, "MR_TYPECTOR_REP_SUBGOAL").
 
 type_info_to_rtti_data(TypeInfo) = type_info(TypeInfo).
 

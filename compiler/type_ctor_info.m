@@ -115,7 +115,7 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
 			TypeBody \= abstract_type,
 			\+ type_ctor_has_hand_defined_rtti(TypeCtor),
 			( are_equivalence_types_expanded(ModuleInfo)
-					=> TypeBody \= eqv_type(_) )
+				=> TypeBody \= eqv_type(_) )
 		->
 			type_ctor_info__gen_type_ctor_gen_info(TypeCtor,
 				TypeName, TypeArity, TypeDefn,
@@ -223,7 +223,21 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 		error("type_ctor_info__gen_type_ctor_data: abstract_type")
 	;
 		TypeBody = foreign_type(_),
-		Details = foreign
+		(
+			ModuleName = unqualified(ModuleStr),
+			builtin_type_ctor(ModuleStr, TypeName, TypeArity,
+				BuiltinCtor)
+		->
+			Details = builtin(BuiltinCtor)
+		;
+			ModuleName = unqualified(ModuleStr),
+			impl_type_ctor(ModuleStr, TypeName, TypeArity,
+				ImplCtor)
+		->
+			Details = impl_artifact(ImplCtor)
+		;
+			Details = foreign
+		)
 	;
 		TypeBody = eqv_type(Type),
 			% There can be no existentially typed args to an
@@ -278,6 +292,41 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 	TypeCtorData = type_ctor_data(Version, ModuleName, TypeName, TypeArity,
 		UnifyUniv, CompareUniv, Flags, Details),
 	RttiData = type_ctor_info(TypeCtorData).
+
+:- pred builtin_type_ctor(string::in, string::in, int::in, builtin_ctor::out)
+	is semidet.
+
+builtin_type_ctor("array", "array", 1, array).
+builtin_type_ctor("builtin", "int", 0, int).
+builtin_type_ctor("builtin", "string", 0, string).
+builtin_type_ctor("builtin", "float", 0, float).
+builtin_type_ctor("builtin", "character", 0, char).
+builtin_type_ctor("builtin", "void", 0, void).
+builtin_type_ctor("builtin", "c_pointer", 0, c_pointer).
+builtin_type_ctor("builtin", "stable_c_pointer", 0, stable_c_pointer).
+builtin_type_ctor("builtin", "pred", 0, pred_ctor).
+builtin_type_ctor("builtin", "func", 0, func_ctor).
+builtin_type_ctor("builtin", "tuple", 0, tuple).
+builtin_type_ctor("private_builtin", "ref", 1, ref).
+builtin_type_ctor("type_desc", "type_ctor_desc", 0, type_ctor_desc).
+builtin_type_ctor("type_desc", "type_desc", 0, type_desc).
+
+:- pred impl_type_ctor(string::in, string::in, int::in, impl_ctor::out)
+	is semidet.
+
+impl_type_ctor("private_builtin", "type_ctor_info", 1, type_ctor_info).
+impl_type_ctor("private_builtin", "type_info", 1, type_info).
+impl_type_ctor("private_builtin", "typeclass_info", 1, typeclass_info).
+impl_type_ctor("private_builtin", "base_typeclass_info", 1,
+	base_typeclass_info).
+impl_type_ctor("private_builtin", "heap_pointer", 0, hp).
+impl_type_ctor("private_builtin", "succip", 0, succip).
+impl_type_ctor("private_builtin", "curfr", 0, curfr).
+impl_type_ctor("private_builtin", "maxfr", 0, maxfr).
+impl_type_ctor("private_builtin", "redofr", 0, redofr).
+impl_type_ctor("private_builtin", "trail_ptr", 0, trail_ptr).
+impl_type_ctor("private_builtin", "ticket", 0, ticket).
+impl_type_ctor("table_builtin", "ml_subgoal", 0, subgoal).
 
 :- pred type_ctor_info__make_rtti_proc_label(pred_proc_id::in, module_info::in,
 	rtti_proc_label::out) is det.

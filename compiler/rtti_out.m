@@ -418,10 +418,12 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
 		MaybeFunctorsName = no
 	;
 		TypeCtorDetails = builtin(_),
-		error("output_type_ctor_details_defn: builtin")
+		MaybeLayoutName = no,
+		MaybeFunctorsName = no
 	;
 		TypeCtorDetails = impl_artifact(_),
-		error("output_type_ctor_details_defn: impl_artifact")
+		MaybeLayoutName = no,
+		MaybeFunctorsName = no
 	;
 		TypeCtorDetails = foreign,
 		MaybeLayoutName = no,

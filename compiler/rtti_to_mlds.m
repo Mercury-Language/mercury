@@ -358,10 +358,14 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
 		FunctorInit = gen_init_null_pointer(mlds__generic_type)
 	;
 		TypeCtorDetails = builtin(_),
-		error("gen_functors_layout_info: builtin")
+		Defns = [],
+		LayoutInit = gen_init_null_pointer(mlds__generic_type),
+		FunctorInit = gen_init_null_pointer(mlds__generic_type)
 	;
 		TypeCtorDetails = impl_artifact(_),
-		error("gen_functors_layout_info: impl_artifact")
+		Defns = [],
+		LayoutInit = gen_init_null_pointer(mlds__generic_type),
+		FunctorInit = gen_init_null_pointer(mlds__generic_type)
 	;
 		TypeCtorDetails = foreign,
 		Defns = [],
