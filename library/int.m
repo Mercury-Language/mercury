@@ -76,6 +76,7 @@
 			;	(int - int)
 			;	(int mod int)	% modulus
 			;	(int // int)	% integer division
+						% (should round towards zero)
 			;	(int << int)	% left shift
 			;	(int >> int)	% right shift
 			;	(int /\ int)	% bitwise and
