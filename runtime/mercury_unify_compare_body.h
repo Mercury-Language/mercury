@@ -24,7 +24,7 @@
 ** The reason why there is both a Mercury procedure and a C function for
 ** unifications and comparisons is that the Mercury procedure needs a
 ** mechanism that allows it to unify or compare each argument of a function
-** symbol, and doing it with a loop body that calls C function is
+** symbol, and doing it with a loop body that calls a C function is
 ** significantly easier to program, and probably more efficient, than
 ** using recursion in Mercury. The Mercury procedure and C function share code
 ** because they implement the same task.
