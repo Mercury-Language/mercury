@@ -1399,16 +1399,9 @@ output_instruction_decls(prune_tickets_to(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
 output_instruction_decls(decr_sp(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(pragma_c(_, Comps, _, MaybeFixedLabel, _, _),
+output_instruction_decls(pragma_c(_, Comps, _, _, MaybeLayoutLabel, _, _),
 		DeclSet0, DeclSet) -->
-	% For some reason, the pragma_c code that trace.m
-	% generates in procedure prologues when debugging
-	% is enabled may refer to the redo label layout info,
-	% even though the corresponding redo label does not
-	% exist.  In that case, we need declare the label
-	% layout info here, otherwise the generated code
-	% won't compile with --split-files.
-	( { MaybeFixedLabel = yes(Label) } ->
+	( { MaybeLayoutLabel = yes(Label) } ->
 		output_stack_layout_decl(Label, DeclSet0, DeclSet1)
 	;
 		{ DeclSet1 = DeclSet0 }
@@ -1745,7 +1738,7 @@ output_instruction(decr_sp(N), _) -->
 	io__write_int(N),
 	io__write_string(");\n").
 
-output_instruction(pragma_c(Decls, Components, _, _, _, _), _) -->
+output_instruction(pragma_c(Decls, Components, _, _, _, _, _), _) -->
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
 	output_pragma_c_components(Components),

@@ -385,10 +385,10 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 			"\t\t", RedoLayoutStr, " = (Word) (const Word *) &",
 			LayoutAddrStr, ";"
 		], FillFourSlots),
-		MaybeFixedLabel = yes(RedoLayoutLabel)
+		MaybeLayoutLabel = yes(RedoLayoutLabel)
 	;
 		FillFourSlots = FillThreeSlots,
-		MaybeFixedLabel = no
+		MaybeLayoutLabel = no
 	),
 	(
 		% This could be done by generating proper LLDS instead of C.
@@ -425,7 +425,8 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 	),
 	TraceCode = node([
 		pragma_c([], [pragma_c_raw_code(TraceStmt)],
-			will_not_call_mercury, MaybeFixedLabel, no, yes) - ""
+			will_not_call_mercury, no, MaybeLayoutLabel, no, yes)
+			- ""
 	])
 	}.
 
@@ -649,7 +650,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 				% by another label, and this way we can
 				% eliminate this other label.
 			pragma_c([], [pragma_c_raw_code(TraceStmt)],
-				may_call_mercury, yes(Label), no, yes)
+				may_call_mercury, no, yes(Label), no, yes)
 				- ""
 		]),
 	Code = tree(ProduceCode, TraceCode)

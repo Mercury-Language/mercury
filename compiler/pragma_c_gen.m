@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -485,7 +485,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 			CheckR1_Comp, RestoreRegsComp,
 			OutputComp, ProcLabelHashUndef] },
 	{ PragmaCCode = node([
-		pragma_c(Decls, Components, MayCallMercury, no,
+		pragma_c(Decls, Components, MayCallMercury, no, no,
 			MaybeFailLabel, no)
 			- "Pragma C inclusion"
 	]) },
@@ -543,8 +543,8 @@ make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
 		error("unexpected code_addr in make_proc_label_hash_define")
 	),
 	ProcLabelHashDef = pragma_c_raw_code(string__append_list([
-			"#define MR_PROC_LABEL ", ProcLabelString, "\n"])),
-	ProcLabelHashUndef = pragma_c_raw_code("#undef MR_PROC_LABEL\n").
+		"#define\tMR_PROC_LABEL\t", ProcLabelString, "\n"])),
+	ProcLabelHashUndef = pragma_c_raw_code("#undef\tMR_PROC_LABEL\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -752,7 +752,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		],
 		CallBlockCode = node([
 			pragma_c(CallDecls, CallComponents,
-				MayCallMercury, no, no, yes)
+				MayCallMercury, no, no, no, yes)
 				- "Call and shared pragma C inclusion"
 		]),
 
@@ -781,7 +781,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		],
 		RetryBlockCode = node([
 			pragma_c(RetryDecls, RetryComponents,
-				MayCallMercury, no, no, yes)
+				MayCallMercury, no, no, no, yes)
 				- "Retry and shared pragma C inclusion"
 		]),
 
@@ -838,7 +838,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		],
 		CallBlockCode = node([
 			pragma_c(CallDecls, CallComponents,
-				MayCallMercury, yes(SharedLabel), no, yes)
+				MayCallMercury, yes(SharedLabel), no, no, yes)
 				- "Call pragma C inclusion"
 		]),
 
@@ -867,7 +867,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		],
 		RetryBlockCode = node([
 			pragma_c(RetryDecls, RetryComponents,
-				MayCallMercury, yes(SharedLabel), no, yes)
+				MayCallMercury, yes(SharedLabel), no, no, yes)
 				- "Retry pragma C inclusion"
 		]),
 
@@ -895,7 +895,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		],
 		SharedBlockCode = node([
 			pragma_c(SharedDecls, SharedComponents,
-				MayCallMercury, no, no, yes)
+				MayCallMercury, no, no, no, yes)
 				- "Shared pragma C inclusion"
 		]),
 

@@ -400,7 +400,7 @@
 
 	;	pragma_c(list(pragma_c_decl), list(pragma_c_component),
 				may_call_mercury, maybe(label), maybe(label),
-				bool)
+				maybe(label), bool)
 			% The first argument says what local variable
 			% declarations are required for the following
 			% components, which in turn can specify how
@@ -424,12 +424,15 @@
 			% To make it known to labelopt, we mention it in
 			% the fourth or the fifth arg. The fourth argument
 			% may give the name of a label whose name is fixed
-			% (e.g. because it embedded in raw C code or because it
-			% has associated an label layout structure), while
-			% the fifth may give the name of a label that can
-			% be changed (because it is not mentioned in C code
-			% and has no associated layout structure, being
-			% mentioned only in pragma_c_fail_to components).
+			% because it embedded in raw C code, and which does
+			% not have a layout structure. The fifth argument
+			% may give the name of a label whose name is fixed
+			% because it does have an associated label layout
+			% structure (it may appear in C code as well).
+			% The sixth argument may give the name of a label
+			% that can be changed (because it is not mentioned
+			% in C code and has no associated layout structure,
+			% being mentioned only in pragma_c_fail_to components).
 			%
 			% The sixth argument says whether the contents
 			% of the pragma C code can refer to stack slots.

@@ -115,8 +115,20 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 	),
 	AddPragmaReferredLabels = lambda(
 		[Instr::in, FoldFixed0::in, FoldFixed::out] is det, (
-		( Instr = pragma_c(_, _, _, yes(FixedLabel), _, _) - _ ->
-			set__insert(FoldFixed0, FixedLabel, FoldFixed)
+		(
+			Instr = pragma_c(_, _, _,
+				MaybeFixedLabel, MaybeLayoutLabel, _, _) - _
+		->
+			( MaybeFixedLabel = yes(FixedLabel) ->
+				set__insert(FoldFixed0, FixedLabel, FoldFixed1)
+			;
+				FoldFixed1 = FoldFixed0
+			),
+			( MaybeLayoutLabel = yes(LayoutLabel) ->
+				set__insert(FoldFixed1, LayoutLabel, FoldFixed)
+			;
+				FoldFixed = FoldFixed1
+			)
 		;
 			FoldFixed = FoldFixed0
 		)
@@ -374,7 +386,7 @@ standardize_instr(Instr1, Instr) :-
 		standardize_lval(Lval1, Lval),
 		Instr = join_and_continue(Lval, N)
 	;
-		Instr1 = pragma_c(_, _, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _, _, _),
 		Instr = Instr1
 	).
 
@@ -652,7 +664,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = pragma_c(_, _, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _, _, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	).

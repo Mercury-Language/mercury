@@ -904,7 +904,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = decr_sp(_),
 		Need = no
 	;
-		Uinstr0 = pragma_c(_, _, _, _, _, _),
+		Uinstr0 = pragma_c(_, _, _, _, _, _, _),
 		Need = no
 	;
 		Uinstr0 = init_sync_term(Lval, _),
@@ -1031,7 +1031,8 @@ opt_util__can_instr_branch_away(init_sync_term(_, _), no).
 opt_util__can_instr_branch_away(fork(_, _, _), yes).
 opt_util__can_instr_branch_away(join_and_terminate(_), no).
 opt_util__can_instr_branch_away(join_and_continue(_, _), yes).
-opt_util__can_instr_branch_away(pragma_c(_, Comps, _, _, _, _), BranchAway) :-
+opt_util__can_instr_branch_away(pragma_c(_, Comps, _, _, _, _, _), BranchAway)
+		:-
 	opt_util__can_components_branch_away(Comps, BranchAway).
 
 :- pred opt_util__can_components_branch_away(list(pragma_c_component), bool).
@@ -1097,7 +1098,7 @@ opt_util__can_instr_fall_through(init_sync_term(_, _), yes).
 opt_util__can_instr_fall_through(fork(_, _, _), no).
 opt_util__can_instr_fall_through(join_and_terminate(_), no).
 opt_util__can_instr_fall_through(join_and_continue(_, _), no).
-opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _, _), yes).
+opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _, _, _), yes).
 
 	% Check whether an instruction sequence can possibly fall through
 	% to the next instruction without using its label.
@@ -1143,7 +1144,7 @@ opt_util__can_use_livevals(init_sync_term(_, _), no).
 opt_util__can_use_livevals(fork(_, _, _), no).
 opt_util__can_use_livevals(join_and_terminate(_), no).
 opt_util__can_use_livevals(join_and_continue(_, _), no).
-opt_util__can_use_livevals(pragma_c(_, _, _, _, _, _), no).
+opt_util__can_use_livevals(pragma_c(_, _, _, _, _, _, _), no).
 
 % determine all the labels and code_addresses that are referenced by Instr
 
@@ -1206,21 +1207,10 @@ opt_util__instr_labels_2(init_sync_term(_, _), [], []).
 opt_util__instr_labels_2(fork(Child, Parent, _), [Child, Parent], []).
 opt_util__instr_labels_2(join_and_terminate(_), [], []).
 opt_util__instr_labels_2(join_and_continue(_, Label), [Label], []).
-opt_util__instr_labels_2(pragma_c(_, _, _, MaybeFixLabel, MaybeSubLabel, _),
-		Labels, []) :-
-	( MaybeFixLabel = yes(FixLabel) ->
-		( MaybeSubLabel = yes(SubLabel) ->
-			Labels = [FixLabel, SubLabel]
-		;
-			Labels = [FixLabel]
-		)
-	;
-		( MaybeSubLabel = yes(SubLabel) ->
-			Labels = [SubLabel]
-		;
-			Labels = []
-		)
-	).
+opt_util__instr_labels_2(pragma_c(_, _, _, MaybeFixLabel, MaybeLayoutLabel,
+		MaybeSubLabel, _), Labels, []) :-
+	opt_util__pragma_c_labels(MaybeFixLabel, MaybeLayoutLabel,
+		MaybeSubLabel, Labels).
 
 opt_util__possible_targets(comment(_), []).
 opt_util__possible_targets(livevals(_), []).
@@ -1265,20 +1255,31 @@ opt_util__possible_targets(init_sync_term(_, _), []).
 opt_util__possible_targets(fork(Child, Parent, _), [Child, Parent]).
 opt_util__possible_targets(join_and_terminate(_), []).
 opt_util__possible_targets(join_and_continue(_, L), [L]).
-opt_util__possible_targets(pragma_c(_, _, _, MaybeFixLabel, MaybeSubLabel, _),
+opt_util__possible_targets(pragma_c(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
+		MaybeSubLabel, _), Labels) :-
+	opt_util__pragma_c_labels(MaybeFixedLabel, MaybeLayoutLabel,
+		MaybeSubLabel, Labels).
+
+:- pred opt_util__pragma_c_labels(maybe(label), maybe(label), maybe(label),
+	list(label)).
+:- mode opt_util__pragma_c_labels(in, in, in, out) is det.
+
+opt_util__pragma_c_labels(MaybeFixedLabel, MaybeLayoutLabel, MaybeSubLabel,
 		Labels) :-
-	( MaybeFixLabel = yes(FixLabel) ->
-		( MaybeSubLabel = yes(SubLabel) ->
-			Labels = [FixLabel, SubLabel]
-		;
-			Labels = [FixLabel]
-		)
+	( MaybeFixedLabel = yes(FixedLabel) ->
+		Labels0 = [FixedLabel]
 	;
-		( MaybeSubLabel = yes(SubLabel) ->
-			Labels = [SubLabel]
-		;
-			Labels = []
-		)
+		Labels0 = []
+	),
+	( MaybeLayoutLabel = yes(LayoutLabel) ->
+		Labels1 = [LayoutLabel | Labels0]
+	;
+		Labels1 = Labels0
+	),
+	( MaybeSubLabel = yes(SubLabel) ->
+		Labels = [SubLabel | Labels1]
+	;
+		Labels = Labels1
 	).
 
 :- pred opt_util__instr_rvals_and_lvals(instr, list(rval), list(lval)).
@@ -1314,7 +1315,8 @@ opt_util__instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
 opt_util__instr_rvals_and_lvals(fork(_, _, _), [], []).
 opt_util__instr_rvals_and_lvals(join_and_terminate(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
-opt_util__instr_rvals_and_lvals(pragma_c(_, Cs, _, _, _, _), Rvals, Lvals) :-
+opt_util__instr_rvals_and_lvals(pragma_c(_, Cs, _, _, _, _, _), Rvals, Lvals)
+		:-
 	pragma_c_components_get_rvals_and_lvals(Cs, Rvals, Lvals).
 
 	% extract the rvals and lvals from the pragma_c_components
@@ -1462,7 +1464,7 @@ opt_util__count_temps_instr(join_and_terminate(Lval), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R, F0, F).
 opt_util__count_temps_instr(join_and_continue(Lval, _), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R, F0, F).
-opt_util__count_temps_instr(pragma_c(_, _, _, _, _, _), R, R, F, F).
+opt_util__count_temps_instr(pragma_c(_, _, _, _, _, _, _), R, R, F, F).
 
 :- pred opt_util__count_temps_lval(lval, int, int, int, int).
 :- mode opt_util__count_temps_lval(in, in, out, in, out) is det.
@@ -1569,7 +1571,7 @@ opt_util__touches_nondet_ctrl_instr(Uinstr, Touch) :-
 		opt_util__touches_nondet_ctrl_lval(Lval, Touch)
 	; Uinstr = restore_hp(Rval) ->
 		opt_util__touches_nondet_ctrl_rval(Rval, Touch)
-	; Uinstr = pragma_c(_, Components, _, _, _, _) ->
+	; Uinstr = pragma_c(_, Components, _, _, _, _, _) ->
 		opt_util__touches_nondet_ctrl_components(Components, Touch)
 	;
 		Touch = yes
@@ -1915,8 +1917,9 @@ opt_util__replace_labels_instr(join_and_continue(Lval0, Label0),
 		Replmap, _, join_and_continue(Lval, Label)) :-
 	opt_util__replace_labels_label(Label0, Replmap, Label),
 	opt_util__replace_labels_lval(Lval0, Replmap, Lval).
-opt_util__replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeSub0, F),
-		ReplMap, _, pragma_c(A, Comps, C, MaybeFix, MaybeSub, F)) :-
+opt_util__replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
+		MaybeSub0, F), ReplMap, _,
+		pragma_c(A, Comps, C, MaybeFix, MaybeLayout, MaybeSub, F)) :-
 	(
 		MaybeFix = no
 	;
@@ -1926,6 +1929,17 @@ opt_util__replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeSub0, F),
 			% itself.
 		require(unify(FixLabel0, FixLabel),
 			"trying to replace Mercury label in C code")
+	),
+	(
+		MaybeLayout = no
+	;
+		MaybeLayout = yes(LayoutLabel0),
+		opt_util__replace_labels_label(LayoutLabel0, ReplMap,
+			LayoutLabel),
+			% We cannot replace the label that has a layout
+			% structure.
+		require(unify(LayoutLabel0, LayoutLabel),
+			"trying to replace Mercury label with layout")
 	),
 	(
 		MaybeSub0 = no,

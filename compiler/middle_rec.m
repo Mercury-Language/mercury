@@ -427,7 +427,7 @@ middle_rec__find_used_registers_instr(prune_tickets_to(Rval), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(incr_sp(_, _), Used, Used).
 middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
-middle_rec__find_used_registers_instr(pragma_c(_, Components, _, _, _, _),
+middle_rec__find_used_registers_instr(pragma_c(_, Components, _, _, _, _, _),
 		Used0, Used) :-
 	middle_rec__find_used_registers_components(Components, Used0, Used).
 middle_rec__find_used_registers_instr(init_sync_term(Lval, _), Used0, Used) :-
