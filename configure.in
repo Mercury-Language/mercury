@@ -68,7 +68,7 @@ fi
 AC_SUBST(INSTALL_NUPROLOG)
 #-----------------------------------------------------------------------------#
 AC_PROG_CC
-CFLAGS="-I runtime $CFLAGS"
+CFLAGS="-I runtime -I runtime/machdeps $CFLAGS"
 AC_PROG_CPP
 AC_C_CROSS
 AC_PROG_RANLIB
