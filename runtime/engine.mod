@@ -22,7 +22,6 @@
 
 #endif
 
-static	void	init_registers(void);
 static	void	call_engine_inner(Code *entry_point);
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
@@ -59,28 +58,6 @@ init_engine(void)
 	return;
 }
 
-/*
-** Initialize the virtual machine registers
-*/
-
-static void 
-init_registers(void)
-{
-#ifndef CONSERVATIVE_GC
-	hp = heap_zone->min;					
-#endif
-	sp = detstack_zone->min;
-	maxfr = curfr = nondetstack_zone->min;		
-							
-	/* set up a buffer zone */			
-	succip = ENTRY(do_not_reached);			
-	mkframe("buffer_zone", 0, ENTRY(do_not_reached));		
-	nondetstack_zone->min = maxfr;				
-
-	save_transient_registers();
-
-	return;
-}
 
 /*
 ** start_mercury_engine(Code *entry_point)
