@@ -461,7 +461,7 @@ det_infer_goal_2(call(PredId, ModeId0, A, B, C, N), GoalInfo, _, SolnContext,
 		->
 			ModeId = ModeId1,
 			Msgs = [],
-			Detism = Detism0
+			determinism_components(Detism, CanFail, at_most_many)
 		;
 			Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
 					PredId, ModeId0)],
