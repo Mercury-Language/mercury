@@ -1824,21 +1824,22 @@ code_info__modify_failure_cont(ModifyCode) -->
 	code_info__failure_cont(failure_cont(OldCont, MaybeRedo0, FailureMap)),
 	code_info__generate_failure_cont(FailureMap, FailureCode),
 	code_info__pop_failure_cont,
-	code_info__get_next_label(New0),
-	code_info__get_next_label(New1),
+	code_info__get_next_label(NewRegCont),
+	code_info__get_next_label(NewStackCont),
 	(
 		{ OldCont = unknown ; OldCont = known(yes) }
 	->
 		{ NewCont = known(yes) },
 		( { MaybeRedo0 = yes(_OldRedo) } ->
-			code_info__get_next_label(NewRedo),
-			{ MaybeRedo = yes(NewRedo) }
+			code_info__get_next_label(NewRedoCont),
+			{ MaybeRedo = yes(NewRedoCont) }
 		;
+			{ NewRedoCont = NewStackCont },
 			{ MaybeRedo = no }
 		),
 		{ ResetCode = node([
 			assign(redoip(lval(maxfr)),
-				const(address_const(label(New1)))) -
+				const(address_const(label(NewRedoCont)))) -
 				"modify failure cont"
 		]) }
 	;
@@ -1848,10 +1849,11 @@ code_info__modify_failure_cont(ModifyCode) -->
 		% { MaybeRedo = no }
 	),
 	(
-		{ FailureMap = [Map0 - _Lab0, Map1 - _Lab1] }
+		{ FailureMap = [RegMap - _RegCont, StackMap - _StackCont] }
 	->
 		code_info__push_failure_cont(failure_cont(NewCont, MaybeRedo,
-			[Map0 - label(New0), Map1 - label(New1)]))
+			[RegMap - label(NewRegCont),
+			StackMap - label(NewStackCont)]))
 	;
 		{ error("code_info__modify_failure_cont: bad failure map.") }
 	),
