@@ -2736,28 +2736,22 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	globals__io_lookup_accumulating_option(cflags, C_Flags_List),
 	{ join_string_list(C_Flags_List, "", "", " ", CFLAGS) },
 
+	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
+	globals__io_lookup_bool_option(split_c_files, SplitCFiles),
+	{ (UseSubdirs = yes ; SplitCFiles = yes) ->
+		% the source file (foo.c) will be compiled in a subdirectory
+		% (either Mercury/cs, foo.dir, or Mercury/dirs/foo.dir,
+		% depending on which of these two options is set)
+		% so we need to add `-I.' so it can
+		% include header files in the source directory.
+		SubDirInclOpt = "-I. "
+	;
+		SubDirInclOpt = ""
+	},
 	globals__io_lookup_accumulating_option(c_include_directory,
 	 	C_Incl_Dirs),
-
-	% The `-I-' option stops GCC searching the current directory
-	% first, so add it back here. 
-	% It's also needed for `--use-subdirs' and `--split-c-files'.
-	% The source file (foo.c) will be compiled in a subdirectory
-	% (either Mercury/cs, foo.dir, or Mercury/dirs/foo.dir,
-	% depending on which of these two options is set)
-	% so we need to add `-I.' so it can
-	% include header files in the source directory.
-	{ InclOpt = string__append_list(
-		["-I. " | list__condense(list__map(
-	 	    (func(C_INCL) = ["-I", C_INCL, " "]), C_Incl_Dirs))]) },
-
-	% `-I-' stops GCC searching in the user's include directories 
-	% for system header files. For example, it stops GCC finding
-	% library/math.h instead of /usr/include/math.h. C compilers
-	% which don't support `-I-' should harmlessly misinterpret this
-	% as a search directory `-'.
-	{ SystemInclOpt = " -I- " },
-
+	{ InclOpt = string__append_list(list__condense(list__map(
+	 	(func(C_INCL) = ["-I", C_INCL, " "]), C_Incl_Dirs))) },
 	globals__io_lookup_bool_option(split_c_files, Split_C_Files),
 	{ Split_C_Files = yes ->
 		SplitOpt = "-DSPLIT_C_FILES "
@@ -2940,7 +2934,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	% e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
 	% it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
 	% Also be careful that each option is separated by spaces.
-	{ string__append_list([CC, " ", InclOpt,
+	{ string__append_list([CC, " ", SubDirInclOpt, InclOpt,
 		SplitOpt, OptimizeOpt,
 		HighLevelCodeOpt, NestedFunctionsOpt, HighLevelDataOpt,
 		RegOpt, GotoOpt, AsmOpt,
@@ -2951,7 +2945,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		Target_DebugOpt, LL_DebugOpt,
 		StackTraceOpt, RequireTracingOpt,
 		UseTrailOpt, MinimalModelOpt, TypeLayoutOpt,
-		InlineAllocOpt, WarningOpt, CFLAGS, SystemInclOpt,
+		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " ", NameObjectFile, O_File], Command) },
 	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
