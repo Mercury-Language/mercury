@@ -131,7 +131,7 @@
 :- import_module pd_cost, hlds_data, instmap, mode_util.
 :- import_module unused_args, inst_match, (inst), quantification, mode_util.
 :- import_module code_aux, purity, mode_info, unique_modes, term.
-:- import_module type_util, det_util, options.
+:- import_module type_util, det_util, options, goal_util.
 :- import_module assoc_list, int, require, set.
 
 pd_util__goal_get_calls(Goal0, CalledPreds) :-
@@ -893,6 +893,9 @@ pd_util__collect_matching_arg_types([Arg | Args], [Type | Types],
 	pd_util__collect_matching_arg_types(Args, Types, 
 		Renaming, MatchingTypes1, MatchingTypes).
 
+	% Check that the shape of the goals matches, and that there 
+	% is a mapping from the variables in the old goal to the
+	% variables in the new goal.
 :- pred pd_util__goals_match_2(list(hlds_goal)::in,
 		list(hlds_goal)::in, map(prog_var, prog_var)::in,
 		map(prog_var, prog_var)::out) is semidet.
@@ -916,9 +919,9 @@ pd_util__goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
 				NewArgs = [NewVar1, NewVar2]
 			;
 				OldUnification = construct(OldVar, ConsId, 
-						OldArgs1, _),
+						OldArgs1, _, _, _, _),
 				NewUnification = construct(NewVar, ConsId, 
-						NewArgs1,_ ),
+						NewArgs1, _, _, _, _),
 				OldArgs = [OldVar | OldArgs1],
 				NewArgs = [NewVar | NewArgs1]
 			;
@@ -933,12 +936,21 @@ pd_util__goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
 			OldGoal = call(PredId, ProcId, OldArgs, _, _, _) - _,
 			NewGoal = call(PredId, ProcId, NewArgs, _, _, _) - _
 		;
-			OldGoal = higher_order_call(OldVar, OldArgs1, Types,
-					Modes, Det, PredOrFunc) - _,
-			NewGoal = higher_order_call(NewVar, NewArgs1, Types,
-					Modes, Det, PredOrFunc) - _,
-			OldArgs = [OldVar | OldArgs1],
-			NewArgs = [NewVar | NewArgs1]
+			% We don't need to check the modes here -
+			% if the goals match and the insts of the argument
+			% variables match, the modes of the call must
+			% be the same.
+			OldGoal = generic_call(OldGenericCall, OldArgs1,
+					_, Det) - _,
+			NewGoal = generic_call(NewGenericCall, NewArgs1,
+					_, Det) - _,
+			match_generic_call(OldGenericCall, NewGenericCall),
+			goal_util__generic_call_vars(OldGenericCall,
+				OldArgs0),
+			goal_util__generic_call_vars(NewGenericCall,
+				NewArgs0),
+			list__append(OldArgs0, OldArgs1, OldArgs),
+			list__append(NewArgs0, NewArgs1, NewArgs)
 		)
 	->
 		assoc_list__from_corresponding_lists(OldArgs, 
@@ -959,8 +971,8 @@ pd_util__goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
 			OldGoal = not(OldSubGoal) - _,
 			NewGoal = not(NewSubGoal) - _
 		;
-			OldGoal = some(_, OldSubGoal) - _,
-			NewGoal = some(_, NewSubGoal) - _
+			OldGoal = some(_, _, OldSubGoal) - _,
+			NewGoal = some(_, _, NewSubGoal) - _
 		)
 	->
 		goal_to_conj_list(OldSubGoal, OldSubGoalList),
@@ -972,6 +984,31 @@ pd_util__goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
 	),
 	pd_util__goals_match_2(OldGoals, NewGoals, 
 		ONRenaming1, ONRenaming).
+
+	% Check that two `generic_call' goals are equivalent.
+:- pred match_generic_call(generic_call::in, generic_call::in) is semidet.
+
+match_generic_call(higher_order(_, PredOrFunc, Arity),
+		higher_order(_, PredOrFunc, Arity)).
+match_generic_call(class_method(_, MethodNum, ClassId, CallId),
+		class_method(_, MethodNum, ClassId, CallId)).
+match_generic_call(aditi_builtin(Builtin1, CallId),
+		aditi_builtin(Builtin2, CallId)) :-
+	match_aditi_builtin(Builtin1, Builtin2).
+
+	% Check that two `aditi_builtin' goals are equivalent.
+:- pred match_aditi_builtin(aditi_builtin::in, aditi_builtin::in) is semidet.
+
+	% The other fields are all implied by the pred_proc_id.
+match_aditi_builtin(aditi_call(PredProcId, _, _, _),
+		aditi_call(PredProcId, _, _, _)).
+match_aditi_builtin(aditi_insert(PredId), aditi_insert(PredId)).
+	% The syntax used does not change the result of the call.
+match_aditi_builtin(aditi_delete(PredId, _), aditi_delete(PredId, _)).
+match_aditi_builtin(aditi_bulk_operation(Op, PredId),
+		aditi_bulk_operation(Op, PredId)).
+	% The syntax used does not change the result of the call.
+match_aditi_builtin(aditi_modify(PredId, _), aditi_modify(PredId, _)).
 
 %-----------------------------------------------------------------------------%
 

@@ -2626,6 +2626,11 @@ need_code_addr_decls(do_call_class_method, yes) --> [].
 need_code_addr_decls(do_det_aditi_call, yes) --> [].
 need_code_addr_decls(do_semidet_aditi_call, yes) --> [].
 need_code_addr_decls(do_nondet_aditi_call, yes) --> [].
+need_code_addr_decls(do_aditi_insert, yes) --> [].
+need_code_addr_decls(do_aditi_delete, yes) --> [].
+need_code_addr_decls(do_aditi_bulk_insert, yes) --> [].
+need_code_addr_decls(do_aditi_bulk_delete, yes) --> [].
+need_code_addr_decls(do_aditi_modify, yes) --> [].
 need_code_addr_decls(do_not_reached, yes) --> [].
 
 :- pred output_code_addr_decls(code_addr, io__state, io__state).
@@ -2671,6 +2676,16 @@ output_code_addr_decls(do_semidet_aditi_call) -->
 	io__write_string("Declare_entry(do_semidet_aditi_call);\n").
 output_code_addr_decls(do_nondet_aditi_call) -->
 	io__write_string("Declare_entry(do_nondet_aditi_call);\n").
+output_code_addr_decls(do_aditi_insert) -->
+	io__write_string("Declare_entry(do_aditi_insert);\n").
+output_code_addr_decls(do_aditi_delete) -->
+	io__write_string("Declare_entry(do_aditi_delete);\n").
+output_code_addr_decls(do_aditi_bulk_insert) -->
+	io__write_string("Declare_entry(do_aditi_bulk_insert);\n").
+output_code_addr_decls(do_aditi_bulk_delete) -->
+	io__write_string("Declare_entry(do_aditi_bulk_delete);\n").
+output_code_addr_decls(do_aditi_modify) -->
+	io__write_string("Declare_entry(do_aditi_modify);\n").
 output_code_addr_decls(do_not_reached) -->
 	io__write_string("Declare_entry(do_not_reached);\n").
 
@@ -2887,6 +2902,26 @@ output_goto(do_nondet_aditi_call, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_nondet_aditi_call),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
+output_goto(do_aditi_insert, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_aditi_insert),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
+output_goto(do_aditi_delete, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_aditi_delete),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
+output_goto(do_aditi_bulk_insert, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_aditi_bulk_insert),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
+output_goto(do_aditi_bulk_delete, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_aditi_bulk_delete),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
+output_goto(do_aditi_modify, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_aditi_modify),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
 output_goto(do_not_reached, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_not_reached),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -2963,6 +2998,16 @@ output_code_addr(do_semidet_aditi_call) -->
 	io__write_string("ENTRY(do_semidet_aditi_call)").
 output_code_addr(do_nondet_aditi_call) -->
 	io__write_string("ENTRY(do_nondet_aditi_call)").
+output_code_addr(do_aditi_insert) -->
+	io__write_string("ENTRY(do_aditi_insert)").
+output_code_addr(do_aditi_delete) -->
+	io__write_string("ENTRY(do_aditi_delete)").
+output_code_addr(do_aditi_bulk_insert) -->
+	io__write_string("ENTRY(do_aditi_bulk_insert)").
+output_code_addr(do_aditi_bulk_delete) -->
+	io__write_string("ENTRY(do_aditi_bulk_delete)").
+output_code_addr(do_aditi_modify) -->
+	io__write_string("ENTRY(do_aditi_modify)").
 output_code_addr(do_not_reached) -->
 	io__write_string("ENTRY(do_not_reached)").
 

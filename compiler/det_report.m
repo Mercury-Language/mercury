@@ -532,21 +532,12 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
 			PredId, ModeId),
 		Context).
 
-det_diagnose_goal_2(higher_order_call(_, _, _, _, _, _), GoalInfo,
+det_diagnose_goal_2(generic_call(GenericCall, _, _, _), GoalInfo,
 		Desired, Actual, _, _DetInfo, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	det_diagnose_atomic_goal(Desired, Actual,
-		report_higher_order_call_context(Context), Context).
-
-	% There's probably no point in this code being here: we only
-	% insert class_method_calls by hand, so they're gauranteed to be right,
-	% and in any case, we insert them after determinism analysis.
-	% Nonetheless, it's probably safer to include the code.
-det_diagnose_goal_2(class_method_call(_, _, _, _, _, _), GoalInfo,
-		Desired, Actual, _, _MiscInfo, yes) -->
-	{ goal_info_get_context(GoalInfo, Context) },
-	det_diagnose_atomic_goal(Desired, Actual,
-		report_higher_order_call_context(Context), Context).
+		report_generic_call_context(Context, GenericCall),
+		Context).
 
 det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 		Desired, Actual, _, DetInfo, yes) -->
@@ -602,7 +593,7 @@ det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed) -->
 		{ Diagnosed = no }
 	).
 
-det_diagnose_goal_2(some(_Vars, Goal), _, Desired, Actual,
+det_diagnose_goal_2(some(_Vars, _, Goal), _, Desired, Actual,
 		SwitchContext, DetInfo, Diagnosed) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_determinism(GoalInfo, Internal) },
@@ -632,11 +623,13 @@ det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _, _), GoalInfo, Desired,
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_higher_order_call_context(prog_context::in,
-		io__state::di, io__state::uo) is det.
-report_higher_order_call_context(Context) -->
+:- pred report_generic_call_context(prog_context::in,
+		generic_call::in, io__state::di, io__state::uo) is det.
+report_generic_call_context(Context, CallType) -->
 	prog_out__write_context(Context),
-	io__write_string("  Higher-order call").
+	io__write_string("  "),
+	{ hlds_goal__generic_call_id(CallType, CallId) },
+	hlds_out__write_call_id(CallId).
 
 %-----------------------------------------------------------------------------%
 
@@ -684,9 +677,6 @@ det_diagnose_atomic_goal(Desired, Actual, WriteContext, Context) -->
 		hlds_out__write_determinism(Actual),
 		io__write_string(".\n")
 	).
-
-	% det_diagnose_conj is used for both normal [sequential]
-	% conjunction and parallel conjunction.
 
 	% det_diagnose_conj is used for both normal [sequential]
 	% conjunction and parallel conjunction.

@@ -29,7 +29,8 @@
 			;	int_const(int)
 			;	string_const(string)
 			;	float_const(float)
-			;	pred_const(pred_id, proc_id)
+			;	pred_const(pred_id, proc_id,
+					lambda_eval_method)
 			;	code_addr_const(pred_id, proc_id)
 				% Used for constructing type_infos.
 				% Note that a pred_const is for a closure
@@ -124,7 +125,7 @@ cons_id_arity(cons(_, Arity), Arity).
 cons_id_arity(int_const(_), 0).
 cons_id_arity(string_const(_), 0).
 cons_id_arity(float_const(_), 0).
-cons_id_arity(pred_const(_, _), _) :-
+cons_id_arity(pred_const(_, _, _), _) :-
 	error("cons_id_arity: can't get arity of pred_const").
 cons_id_arity(code_addr_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of code_addr_const").
@@ -249,11 +250,12 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% a word containing the specified integer value.
 			% This is used for enumerations and character
 			% constants as well as for int constants.
-	;	pred_closure_tag(pred_id, proc_id)
+	;	pred_closure_tag(pred_id, proc_id, lambda_eval_method)
 			% Higher-order pred closures tags.
 			% These are represented as a pointer to
 			% an argument vector.
-			% The first two words of the argument vector
+			% For closures with lambda_eval_method `normal',
+			% the first two words of the argument vector
 			% hold the number of args and the address of
 			% the procedure respectively.
 			% The remaining words hold the arguments.

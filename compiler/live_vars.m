@@ -229,9 +229,9 @@ build_live_sets_in_goal_2(not(Goal0), Liveness0, ResumeVars0, LiveSets0,
 	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets0,
 		ModuleInfo, ProcInfo, Liveness, _, LiveSets).
 
-build_live_sets_in_goal_2(some(_Vs, Goal0), Liveness0, ResumeVars0, LiveSets0,
-		GoalInfo, ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets)
-		:-
+build_live_sets_in_goal_2(some(_Vs, _, Goal0), Liveness0, ResumeVars0,
+		LiveSets0, GoalInfo, ModuleInfo, ProcInfo,
+		Liveness, ResumeVars, LiveSets) :-
 	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets0,
 		ModuleInfo, ProcInfo, Liveness, ResumeVars1, LiveSets),
 
@@ -247,8 +247,8 @@ build_live_sets_in_goal_2(some(_Vs, Goal0), Liveness0, ResumeVars0, LiveSets0,
 		ResumeVars = ResumeVars0
 	).
 
-build_live_sets_in_goal_2(higher_order_call(_PredVar, ArgVars,
-				Types, Modes, Det, _IsPredOrFunc),
+build_live_sets_in_goal_2(
+		generic_call(_GenericCall, ArgVars, Modes, Det),
 		Liveness, ResumeVars0, LiveSets0,
 		GoalInfo, ModuleInfo, ProcInfo,
 		Liveness, ResumeVars, LiveSets) :-
@@ -259,41 +259,8 @@ build_live_sets_in_goal_2(higher_order_call(_PredVar, ArgVars,
 	% at an enclosing resumption point.
 
 	determinism_to_code_model(Det, CallModel),
-	make_arg_infos(Types, Modes, CallModel, ModuleInfo, ArgInfos),
-	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),
-	set__difference(Liveness, OutVars, InputLiveness),
-	set__union(InputLiveness, ResumeVars0, StackVars0),
-
-	% Might need to add more live variables with alternate liveness
-	% calculation.
-
-	maybe_add_alternate_liveness_typeinfos(ModuleInfo, ProcInfo,
-		OutVars, StackVars0, StackVars),
-
-	set__insert(LiveSets0, StackVars, LiveSets),
-
-	% If this is a nondet call, then all the stack slots we need
-	% must be protected against reuse in following code.
-
-	goal_info_get_code_model(GoalInfo, CodeModel),
-	( CodeModel = model_non ->
-		ResumeVars = StackVars		% includes ResumeVars0
-	;
-		ResumeVars = ResumeVars0
-	).
-
-	% Code duplication. Ulch.
-build_live_sets_in_goal_2(class_method_call(_, _, ArgVars, Types, Modes, Det),
-		Liveness, ResumeVars0, LiveSets0,
-		GoalInfo, ModuleInfo, ProcInfo,
-		Liveness, ResumeVars, LiveSets) :-
-	% The variables which need to be saved onto the stack
-	% before the call are all the variables that are live
-	% after the call, except for the output arguments produced
-	% by the call, plus all the variables that may be needed
-	% at an enclosing resumption point.
-
-	determinism_to_code_model(Det, CallModel),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	map__apply_to_list(ArgVars, VarTypes, Types),
 	make_arg_infos(Types, Modes, CallModel, ModuleInfo, ArgInfos),
 	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),
 	set__difference(Liveness, OutVars, InputLiveness),

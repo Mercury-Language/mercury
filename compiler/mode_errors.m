@@ -498,7 +498,6 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
-	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  mode error: arguments `"),
@@ -511,8 +510,8 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	prog_out__write_context(Context),
 	io__write_string("  which does not match any of the modes for "),
 	{ mode_info_get_mode_context(ModeInfo, ModeContext) },
-	( { ModeContext = call(PredId, _) } ->
-		hlds_out__write_pred_id(ModuleInfo, PredId)
+	( { ModeContext = call(CallId, _) } ->
+		hlds_out__write_call_id(CallId)
 	;
 		{ error("report_mode_error_no_matching_mode: invalid context") }
 	),
@@ -891,56 +890,10 @@ mode_context_init(uninitialized).
 write_mode_context(uninitialized, _Context, _ModuleInfo) -->
 	[].
 
-write_mode_context(higher_order_call(PredOrFunc, ArgNum), Context, _ModuleInfo)
-		-->
+write_mode_context(call(CallId, ArgNum), Context, _ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("  in "),
-	( { ArgNum = 0 } ->
-		io__write_string("higher-order "),
-		hlds_out__write_pred_or_func(PredOrFunc),
-		io__write_string(" call:\n")
-	;
-		io__write_string("argument "),
-		io__write_int(ArgNum),
-		io__write_string(" of higher-order "),
-		hlds_out__write_pred_or_func(PredOrFunc),
-		io__write_string(" call\n"),
-		prog_out__write_context(Context),
-		io__write_string("  (i.e. in "),
-		( { ArgNum = 1 } ->
-			io__write_string("the "),
-			hlds_out__write_pred_or_func(PredOrFunc),
-			io__write_string(" term")
-		;
-			io__write_string("argument "),
-			{ ArgNum1 is ArgNum - 1 },
-			io__write_int(ArgNum1),
-			io__write_string(" of the called "),
-			hlds_out__write_pred_or_func(PredOrFunc)
-		),
-		io__write_string("):\n")
-	).
-
-write_mode_context(call(PredId, ArgNum), Context, ModuleInfo) -->
-	prog_out__write_context(Context),
-	io__write_string("  in "),
-	( { ArgNum =< 0 } ->
-		% Argument numbers that are less than or equal to zero
-		% are used for the type_info and typeclass_info arguments
-		% that are introduced by polymorphism.m.
-		% I think argument number equal to zero might also be used
-		% in some other cases when we just don't have any information
-		% about which argument it is.
-		% For both of these, we just say "in call to"
-		% rather than "in argument N of call to".
-		[]
-	;
-		io__write_string("argument "),
-		io__write_int(ArgNum),
-		io__write_string(" of ")
-	),
-	io__write_string("call to "),
-	hlds_out__write_pred_id(ModuleInfo, PredId),
+	hlds_out__write_call_arg_id(CallId, ArgNum),
 	io__write_string(":\n").
 
 write_mode_context(unify(UnifyContext, _Side), Context, _ModuleInfo) -->

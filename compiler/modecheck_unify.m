@@ -106,6 +106,7 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_var_types(ModeInfo0, VarTypes0),
 	map__lookup(VarTypes0, X0, TypeOfX),
+
 	%
 	% We replace any unifications with higher-order pred constants
 	% by lambda expressions.  For example, we replace
@@ -124,12 +125,14 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 	%
 	(
 		% check if variable has a higher-order type
-		type_is_higher_order(TypeOfX, PredOrFunc, PredArgTypes),
+		type_is_higher_order(TypeOfX, PredOrFunc, EvalMethod,
+			PredArgTypes),
 		ConsId0 = cons(PName, _),
 		% but in case we are redoing mode analysis, make sure
 		% we don't mess with the address constants for type_info
 		% fields created by polymorphism.m
-		Unification0 \= construct(_, code_addr_const(_, _), _, _),
+		Unification0 \= construct(_, code_addr_const(_, _),
+			_, _, _, _, _),
 		Unification0 \= deconstruct(_, code_addr_const(_, _), _, _, _)
 	->
 		%
@@ -140,8 +143,8 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		mode_info_get_predid(ModeInfo0, ThisPredId),
 		module_info_pred_info(ModuleInfo0, ThisPredId, ThisPredInfo),
 		pred_info_typevarset(ThisPredInfo, TVarSet),
-		convert_pred_to_lambda_goal(PredOrFunc, X0, ConsId0, PName,
-			ArgVars0, PredArgTypes, TVarSet,
+		convert_pred_to_lambda_goal(PredOrFunc, EvalMethod,
+			X0, ConsId0, PName, ArgVars0, PredArgTypes, TVarSet,
 			Unification0, UnifyContext, GoalInfo0, Context,
 			ModuleInfo0, VarSet0, VarTypes0,
 			Functor0, VarSet, VarTypes),
@@ -150,7 +153,7 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		%
 		% modecheck this unification in its new form
 		%
-		modecheck_unification( X0, Functor0, Unification0, UnifyContext,
+		modecheck_unification(X0, Functor0, Unification0, UnifyContext,
 				GoalInfo0, Goal, ModeInfo2, ModeInfo)
 	;
 		%
@@ -163,7 +166,8 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 	).
 
 modecheck_unification(X, 
-		lambda_goal(PredOrFunc, ArgVars, Vars, Modes0, Det, Goal0),
+		lambda_goal(PredOrFunc, EvalMethod, _, ArgVars,
+			Vars, Modes0, Det, Goal0),
 		Unification0, UnifyContext, _GoalInfo, 
 		unify(X, RHS, Mode, Unification, UnifyContext),
 		ModeInfo0, ModeInfo) :-
@@ -311,7 +315,8 @@ modecheck_unification(X,
 		% Now modecheck the unification of X with the lambda-expression.
 		%
 
-		RHS0 = lambda_goal(PredOrFunc, ArgVars, Vars, Modes, Det, Goal),
+		RHS0 = lambda_goal(PredOrFunc, EvalMethod, modes_are_ok,
+				ArgVars, Vars, Modes, Det, Goal),
 		modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes,
 				Det, RHS0, Unification0, Mode,
 				RHS, Unification, ModeInfo12, ModeInfo)
@@ -332,8 +337,8 @@ modecheck_unification(X,
 			error("modecheck_unification(lambda): very strange var")
 		),
 			% return any old garbage
-		RHS = lambda_goal(PredOrFunc, ArgVars, Vars,
-				Modes0, Det, Goal0),
+		RHS = lambda_goal(PredOrFunc, EvalMethod, modes_are_ok,
+				ArgVars, Vars, Modes0, Det, Goal0),
 		Mode = (free -> free) - (free -> free),
 		Unification = Unification0
 	).
@@ -535,7 +540,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	% them with `fail'.
 	%
 	(
-		Unification = construct(ConstructTarget, _, _, _),
+		Unification = construct(ConstructTarget, _, _, _, _, _, _),
 		mode_info_var_is_live(ModeInfo, ConstructTarget, dead)
 	->
 		Goal = conj([]),
@@ -895,7 +900,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		%
 		% check that we're not trying to do a higher-order unification
 		%
-		type_is_higher_order(Type, PredOrFunc, _)
+		type_is_higher_order(Type, PredOrFunc, _, _)
 	->
 		% We do not want to report this as an error
 		% if it occurs in a compiler-generated
@@ -956,13 +961,16 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 		Unification, ModeInfo) :-
 	% if we are re-doing mode analysis, preserve the existing cons_id
 	list__length(ArgVars, Arity),
-	( Unification0 = construct(_, ConsId0, _, _) ->
+	( Unification0 = construct(_, ConsId0, _, _, _, _, AditiInfo0) ->
+		AditiInfo = AditiInfo0,
 		ConsId = ConsId0
 	; Unification0 = deconstruct(_, ConsId1, _, _, _) ->
+		AditiInfo = no,
 		ConsId = ConsId1
 	;
 		% the real cons_id will be computed by lambda.m;
 		% we just put in a dummy one for now
+		AditiInfo = no,
 		ConsId = cons(unqualified("__LambdaGoal__"), Arity)
 	),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
@@ -985,11 +993,12 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 			% converted back to a predicate constant, but
 			% that doesn't matter since the code will be
 			% pruned away later by simplify.m.
-			ConsId = pred_const(PredId, ProcId),
+			ConsId = pred_const(PredId, ProcId, EvalMethod),
 			instmap__is_reachable(InstMap)
 		->
 			( 
-				RHS0 = lambda_goal(_, _, _, _, _, Goal),
+				RHS0 = lambda_goal(_, EvalMethod, _,
+					_, _, _, _, Goal),
 				Goal = call(PredId, ProcId, _, _, _, _) - _
 			->
 				module_info_pred_info(ModuleInfo,
@@ -1007,7 +1016,8 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 		;
 			RHS = RHS0
 		),
-		Unification = construct(X, ConsId, ArgVars, ArgModes),
+		Unification = construct(X, ConsId, ArgVars, ArgModes,
+			no, cell_is_unique, AditiInfo),
 		ModeInfo = ModeInfo0
 	;
 		instmap__is_reachable(InstMap)
@@ -1049,7 +1059,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	map__lookup(VarTypes, X, TypeOfX),
 	% if we are re-doing mode analysis, preserve the existing cons_id
-	( Unification0 = construct(_, ConsId0, _, _) ->
+	( Unification0 = construct(_, ConsId0, _, _, _, _, _) ->
 		ConsId = ConsId0
 	; Unification0 = deconstruct(_, ConsId1, _, _, _) ->
 		ConsId = ConsId1
@@ -1062,7 +1072,10 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 		mode_is_output(ModuleInfo, ModeOfX)
 	->
 		% It's a construction.
-		Unification = construct(X, ConsId, ArgVars, ArgModes),
+		ReuseVar = no,
+		RLExprnId = no,
+		Unification = construct(X, ConsId, ArgVars, ArgModes,
+			ReuseVar, cell_is_unique, RLExprnId),
 
 		% For existentially quantified data types,
 		% check that any type_info or type_class_info variables in the
@@ -1101,7 +1114,8 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 			CanFail = can_fail,
 			mode_info_get_instmap(ModeInfo0, InstMap0),
 			( 
-				type_is_higher_order(TypeOfX, PredOrFunc, _),
+				type_is_higher_order(TypeOfX, PredOrFunc,
+					_, _),
 				instmap__is_reachable(InstMap0)
 			->
 				set__init(WaitingVars),

@@ -835,16 +835,13 @@ code_gen__generate_goal_2(switch(Var, CanFail, CaseList, StoreMap),
 		GoalInfo, CodeModel, Code) -->
 	switch_gen__generate_switch(CodeModel, Var, CanFail, CaseList,
 		StoreMap, GoalInfo, Code).
-code_gen__generate_goal_2(some(_Vars, Goal), _GoalInfo, CodeModel, Code) -->
+code_gen__generate_goal_2(some(_Vars, _, Goal), _GoalInfo, CodeModel, Code) -->
 	commit_gen__generate_commit(CodeModel, Goal, Code).
-code_gen__generate_goal_2(higher_order_call(PredVar, Args, Types,
-		Modes, Det, _PredOrFunc), GoalInfo, CodeModel, Code) -->
-	call_gen__generate_higher_order_call(CodeModel, PredVar, Args,
-		Types, Modes, Det, GoalInfo, Code).
-code_gen__generate_goal_2(class_method_call(TCVar, Num, Args, Types,
-		Modes, Det), GoalInfo, CodeModel, Code) -->
-	call_gen__generate_class_method_call(CodeModel, TCVar, Num, Args,
-		Types, Modes, Det, GoalInfo, Code).
+code_gen__generate_goal_2(generic_call(GenericCall, Args, Modes, Det),
+		GoalInfo, CodeModel, Code) -->
+	call_gen__generate_generic_call(CodeModel, GenericCall, Args,
+		Modes, Det, GoalInfo, Code).
+		
 code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		GoalInfo, CodeModel, Code) -->
 	(

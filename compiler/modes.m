@@ -1066,7 +1066,7 @@ modecheck_goal_expr(not(A0), GoalInfo0, not(A)) -->
 	mode_info_set_instmap(InstMap0),
 	mode_checkpoint(exit, "not").
 
-modecheck_goal_expr(some(Vs, G0), _, some(Vs, G)) -->
+modecheck_goal_expr(some(Vs, CanRemove, G0), _, some(Vs, CanRemove, G)) -->
 	mode_checkpoint(enter, "some"),
 	modecheck_goal(G0, G),
 	mode_checkpoint(exit, "some").
@@ -1076,10 +1076,12 @@ modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
 	{ prog_out__sym_name_to_string(PredName, PredNameString) },
 	{ string__append("call ", PredNameString, CallString) },
 	mode_checkpoint(enter, CallString),
-	mode_info_set_call_context(call(PredId)),
-	=(ModeInfo0),
-	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
 
+	=(ModeInfo0),
+	{ mode_info_get_call_id(ModeInfo0, PredId, CallId) },
+	mode_info_set_call_context(call(call(CallId))),
+
+	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
 	{ DeterminismKnown = no },
 	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
 				Mode, Args, ExtraGoals),
@@ -1094,16 +1096,40 @@ modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, CallString).
 
-modecheck_goal_expr(higher_order_call(PredVar, Args0, _, _, _, PredOrFunc),
+modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
 		GoalInfo0, Goal) -->
-	modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0,
-		Goal).
+	mode_checkpoint(enter, "generic_call"),
+	mode_info_dcg_get_instmap(InstMap0),
 
-	% XXX This should be fixed one day, in case we decide to re-run
-	% modechecking or something like that.
-modecheck_goal_expr(class_method_call(_, _, _, _, _, _),
-		_GoalInfo0, _Goal) -->
-	{ error("modecheck_goal_expr: class method exists at modecheck time") }.
+	{ hlds_goal__generic_call_id(GenericCall, CallId) },
+	mode_info_set_call_context(call(CallId)),
+	(
+		{ GenericCall = higher_order(PredVar, PredOrFunc, _) },
+		modecheck_higher_order_call(PredOrFunc, PredVar,
+			Args0, Modes, Det, Args, ExtraGoals),
+		{ AllArgs0 = [PredVar | Args0] },
+		{ AllArgs = [PredVar | Args] }
+	;
+		% Class method calls are added by polymorphism.m.
+		% XXX We should probably fill this in so that
+		% rerunning mode analysis works on code with typeclasses.
+		{ GenericCall = class_method(_, _, _, _) },
+		{ error("modecheck_goal_expr: class_method_call") }
+	;
+		{ GenericCall = aditi_builtin(AditiBuiltin, UpdatedCallId) },
+		modecheck_aditi_builtin(AditiBuiltin, UpdatedCallId,
+			Args0, Modes0, Det, Args, ExtraGoals),
+		{ Modes = Modes0 },
+		{ AllArgs0 = Args0 },
+		{ AllArgs = Args }
+	),
+
+	{ Goal1 = generic_call(GenericCall, Args, Modes, Det) },
+	handle_extra_goals(Goal1, ExtraGoals, GoalInfo0, AllArgs0, AllArgs,
+		InstMap0, Goal),
+		
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "generic_call").
 
 modecheck_goal_expr(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 		-->
@@ -1133,11 +1159,12 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 modecheck_goal_expr(pragma_c_code(IsRecursive, PredId, ProcId0, Args0,
 		ArgNameMap, OrigArgTypes, PragmaCode), GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_c_code"),
-	mode_info_set_call_context(call(PredId)),
-
 	=(ModeInfo0),
+	{ mode_info_get_call_id(ModeInfo0, PredId, CallId) },
+
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
 	{ DeterminismKnown = no },
+	mode_info_set_call_context(call(call(CallId))),
 	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
 				ProcId, Args, ExtraGoals),
 
@@ -1154,8 +1181,8 @@ modecheck_goal_expr(pragma_c_code(IsRecursive, PredId, ProcId0, Args0,
 
 unify_rhs_vars(var(Var), [Var]).
 unify_rhs_vars(functor(_Functor, Vars), Vars).
-unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaNonLocals, LambdaVars, 
-			_Modes, _Det, _Goal - GoalInfo), Vars) :-
+unify_rhs_vars(lambda_goal(_PredOrFunc, _EvalMethod, _Fix, LambdaNonLocals,
+		LambdaVars, _Modes, _Det, _Goal - GoalInfo), Vars) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
 	set__delete_list(NonLocals0, LambdaVars, NonLocals1),
 	set__insert_list(NonLocals1, LambdaNonLocals, NonLocals),
@@ -2039,17 +2066,8 @@ modes__build_call(Module, Name, ArgVars, Context, CallUnifyContext, ModuleInfo,
 %-----------------------------------------------------------------------------%
 
 mode_context_to_unify_context(unify(UnifyContext, _), _, UnifyContext).
-mode_context_to_unify_context(call(PredId, Arg), ModeInfo,
-		unify_context(call(PredCallId, Arg), [])) :-
-	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, Module),
-	pred_info_name(PredInfo, Name),
-	pred_info_arity(PredInfo, Arity),
-	PredCallId = qualified(Module, Name) / Arity.
-mode_context_to_unify_context(higher_order_call(_PredOrFunc, _Arg), _ModeInfo,
-		unify_context(explicit, [])).
-		% XXX could do better; it's not really explicit
+mode_context_to_unify_context(call(CallId, Arg), _ModeInfo,
+		unify_context(call(CallId, Arg), [])).
 mode_context_to_unify_context(uninitialized, _, _) :-
 	error("mode_context_to_unify_context: uninitialized context").
 
@@ -2204,7 +2222,6 @@ get_live_vars([Var|Vars], [IsLive|IsLives], LiveVars) :-
 
 check_circular_modes(Module0, Module) -->
 	{ Module = Module0 }.
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

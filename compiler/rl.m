@@ -452,6 +452,23 @@
 
 %-----------------------------------------------------------------------------%
 
+	% Find out the name of the RL procedure corresponding
+	% to the given Mercury procedure.
+:- pred rl__get_entry_proc_name(module_info, pred_proc_id, rl_proc_name).
+:- mode rl__get_entry_proc_name(in, in, out) is det.
+
+	% Work out the name for a permanent relation.
+:- pred rl__permanent_relation_name(module_info::in,
+		pred_id::in, string::out) is det.
+
+	% rl__get_permanent_relation_info(ModuleInfo, PredId,
+	% 	Owner, Module, Name, Arity, RelationName, SchemaString).
+:- pred rl__get_permanent_relation_info(module_info::in, pred_id::in,
+		string::out, string::out, string::out, int::out,
+		string::out, string::out) is det.
+
+%-----------------------------------------------------------------------------%
+
 :- pred rl__proc_name_to_string(rl_proc_name::in, string::out) is det.
 :- pred rl__label_id_to_string(label_id::in, string::out) is det.
 :- pred rl__relation_id_to_string(relation_id::in, string::out) is det.
@@ -486,7 +503,8 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module globals, options, prog_out, prog_util, type_util.
+:- import_module code_util, globals, llds_out, options, prog_out.
+:- import_module prog_util, type_util.
 :- import_module bool, int, require, string.
 
 rl__default_temporary_state(ModuleInfo, TmpState) :-
@@ -636,6 +654,36 @@ rl__swap_goal_inputs(RLGoal0, RLGoal) :-
 
 rl__goal_produces_tuple(RLGoal) :-
 	RLGoal = rl_goal(_, _, _, _, _, yes(_), _, _).
+
+%-----------------------------------------------------------------------------%
+
+rl__get_entry_proc_name(ModuleInfo, proc(PredId, ProcId), ProcName) :-
+	code_util__make_proc_label(ModuleInfo, PredId, ProcId, Label),
+	llds_out__get_proc_label(Label, no, ProcLabel),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_module(PredInfo, PredModule0),
+	pred_info_get_aditi_owner(PredInfo, Owner),
+	prog_out__sym_name_to_string(PredModule0, PredModule),
+	ProcName = rl_proc_name(Owner, PredModule, ProcLabel, 2).
+
+rl__permanent_relation_name(ModuleInfo, PredId, ProcName) :-
+	rl__get_permanent_relation_info(ModuleInfo, PredId, Owner,
+		Module, _, _, Name, _),
+	string__format("%s/%s/%s", [s(Owner), s(Module), s(Name)],
+		ProcName).
+
+rl__get_permanent_relation_info(ModuleInfo, PredId, Owner, PredModule,
+		PredName, PredArity, RelName, SchemaString) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_name(PredInfo, PredName),
+	pred_info_module(PredInfo, PredModule0),
+	prog_out__sym_name_to_string(PredModule0, PredModule),
+	pred_info_get_aditi_owner(PredInfo, Owner),
+	pred_info_arity(PredInfo, PredArity),
+	string__format("%s__%i", [s(PredName), i(PredArity)], RelName),
+	pred_info_arg_types(PredInfo, ArgTypes0),
+	type_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),
+	rl__schema_to_string(ModuleInfo, ArgTypes, SchemaString).
 
 %-----------------------------------------------------------------------------%
 

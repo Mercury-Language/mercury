@@ -134,6 +134,7 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 =               xfx             700
 =<              xfx             700
 ==              xfx             700
+==>             xfx             1175
 =>              xfy             920
 >               xfx             700
 >=              xfx             700
@@ -144,6 +145,8 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 \=              xfx             700
 ^               xfy             200
 ~               fy              900
+aditi_bottom_up fx              500
+aditi_top_down  fx              500
 all             fxy             950
 and             xfy             720
 div             yfx             400

@@ -637,19 +637,12 @@ qualify_type_list([Type0 | Types0], [Type | Types], Info0, Info) -->
 
 qualify_type(term__variable(Var), term__variable(Var), Info, Info) --> [].
 qualify_type(Type0, Type, Info0, Info) -->
-	{ Type0 = term__functor(F, As, _) },
-	( { is_builtin_func_type(F, As, ArgTypes0, RetType0) } ->
-		qualify_type_list(ArgTypes0, ArgTypes, Info0, Info1),
-		qualify_type(RetType0, RetType, Info1, Info2),
-		{ term__context_init(Context) },
-		{ Type = term__functor(term__atom("="),
-				[term__functor(term__atom("func"),
-				ArgTypes, Context), RetType], Context) }
-	; { type_to_type_id(Type0, TypeId0, Args0) } ->
+	{ Type0 = term__functor(_, _, _) },
+	( { type_to_type_id(Type0, TypeId0, Args0) } ->
 		( { is_builtin_atomic_type(TypeId0) } ->
 			{ TypeId = TypeId0 },
 			{ Info1 = Info0 }
-		; { is_builtin_pred_type(TypeId0) } ->
+		; { type_id_is_higher_order(TypeId0, _, _) } ->
 			{ TypeId = TypeId0 },
 			{ Info1 = Info0 }
 		;
@@ -658,8 +651,7 @@ qualify_type(Type0, Type, Info0, Info) -->
 						type_id, Info0, Info1)
 		),
 		qualify_type_list(Args0, Args, Info1, Info2),
-		{ TypeId = SymName - _ },
-		{ construct_qualified_term(SymName, Args, Type) }	
+		{ construct_type(TypeId, Args, Type) }	
 	;
 		{ mq_info_get_error_context(Info0, ErrorContext) },
 		report_invalid_type(Type0, ErrorContext),
@@ -1173,26 +1165,6 @@ is_builtin_atomic_type(unqualified("int") - 0).
 is_builtin_atomic_type(unqualified("float") - 0).
 is_builtin_atomic_type(unqualified("string") - 0).
 is_builtin_atomic_type(unqualified("character") - 0).
-
-	% is_builtin_pred_type(TypeId)
-	%	is true iff 'TypeId' is the type_id of a builtin higher-order
-	%	predicate type.
-
-:- pred is_builtin_pred_type(type_id).
-:- mode is_builtin_pred_type(in) is semidet.
-
-is_builtin_pred_type(unqualified("pred") - _Arity).
-
-	% is_builtin_func_type(Functor, Args)
-	%	is true iff `term__functor(Functor, Args, _)' is a builtin
-	%	higher-order function type.
-
-:- pred is_builtin_func_type(const, list(type), list(type), type).
-:- mode is_builtin_func_type(in, in, out, out) is semidet.
-
-is_builtin_func_type(term__atom("="),
-		[term__functor(term__atom("func"), ArgTypes, _), RetType],
-		ArgTypes, RetType).
 
 %-----------------------------------------------------------------------------%
 % Access and initialisation predicates.

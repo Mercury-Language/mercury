@@ -541,7 +541,7 @@ c_gen_goal_2(switch(Var, _CanFail, CasesList, _), Indent,
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-c_gen_goal_2(some(Vars, Goal), Indent, CGenInfo0, CGenInfo) -->
+c_gen_goal_2(some(Vars, _, Goal), Indent, CGenInfo0, CGenInfo) -->
 	{ sorry(8) },
 	io__write_string("some ["),
 	mercury_output_vars(Vars, _VarSet, no),
@@ -632,10 +632,9 @@ c_gen_goal_2(disj(List, _), Indent, CGenInfo0, CGenInfo) -->
 		c_gen_failure(Indent, CGenInfo0, CGenInfo)
 	).
 
-c_gen_goal_2(higher_order_call(_, _, _, _, _, _), _, _, _) -->
-	{ error("mercury_to_c: higher_order_call not implemented") }.
-c_gen_goal_2(class_method_call(_, _, _, _, _, _), _, _, _) -->
-	{ error("mercury_to_c: class_method_call not implemented") }.
+c_gen_goal_2(generic_call(_, _, _, _), _, _, _) -->
+	{ error(
+	"mercury_to_c: higher-order and class-method calls not implemented") }.
 c_gen_goal_2(call(PredId, ProcId, ArgVars, _, _, _PredName),
 					Indent, CGenInfo0, CGenInfo) -->
 	{ c_gen_info_get_module_info(CGenInfo0, ModuleInfo) },
@@ -722,7 +721,8 @@ c_gen_unification(simple_test(Var1, Var2), Indent, CGenInfo0, CGenInfo) -->
 	io__write_string(")\n"),
 	{ Indent1 is Indent + 1 },
 	c_gen_failure(Indent1, CGenInfo2, CGenInfo).
-c_gen_unification(construct(_, _, _, _), _Indent, CGenInfo, CGenInfo) -->
+c_gen_unification(construct(_, _, _, _, _, _, _),
+		_Indent, CGenInfo, CGenInfo) -->
 	{ sorry(1) },
 	io__write_string(" :=: ").
 c_gen_unification(deconstruct(_, _, _, _, _), _Indent, CGenInfo, CGenInfo) -->

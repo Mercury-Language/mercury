@@ -112,6 +112,10 @@ OTHER_SOURCES= \
 	unused_args_test2.m \
 	vn_float.m
 
+# Code generation is not yet implemented for Aditi updates,
+# so don't attempt to compile to C.
+#	aditi_update.m
+
 # The mode system can't handle the following test cases yet:
 #	assoc_list.m
 #	determinism.m
@@ -141,7 +145,7 @@ else
     SOURCES=$(SOURCES0) $(TRAIL_SOURCES)
 endif
 
-DEPS =	$(SOURCES:%.m=%.depend)
+DEPS =	$(SOURCES:%.m=%.depend) aditi_update.depend
 OBJS =	$(SOURCES:%.m=$(os_subdir)%.o)
 PROGS =	$(SOURCES:%.m=%)
 
@@ -159,6 +163,7 @@ GRADEFLAGS-agc_unused_in	= --gc accurate
 GRADEFLAGS-complex_failure	= --use-trail
 GRADEFLAGS-semi_fail_in_non_ite	= --use-trail
 
+MCFLAGS-aditi_update		= --aditi
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-deforest_loop		= -O3 --intermodule-optimization
 MCFLAGS-deforest_rerun_det	= -O3 --check-termination
@@ -166,6 +171,12 @@ MCFLAGS-double_vn		= -O4
 MCFLAGS-explicit_quant		= --halt-at-warn
 MCFLAGS-higher_order_implied_mode = -O-1
 MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
+MCFLAGS-intermod_lambda		= --intermodule-optimization
+MCFLAGS-intermod_lambda2	= --intermodule-optimization
+MCFLAGS-intermod_quote		= --intermodule-optimization
+MCFLAGS-intermod_quote2		= --intermodule-optimization
+MCFLAGS-intermod_test		= --intermodule-optimization
+MCFLAGS-intermod_test2		= --intermodule-optimization
 MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
@@ -176,26 +187,7 @@ MCFLAGS-type_inf_ambig_test	= --infer-all
 MCFLAGS-uniq_mode_inf_bug	= --infer-all
 MCFLAGS-vn_float		= -O5
 
-# intermod_lambda.m needs inter-module optimization
-$(cs_subdir)intermod_lambda.c:
-	$(MCI) $(GRADEFLAGS) $(MCIFLAGS) intermod_lambda2.m
-	$(MCOI) $(GRADEFLAGS) $(MCOIFLAGS) intermod_lambda2.m
-	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) --intermodule-optimization \
-		intermod_lambda.m
-
-$(cs_subdir)intermod_quote.c:
-	$(MCI) $(GRADEFLAGS) $(MCIFLAGS) intermod_quote2.m
-	$(MCOI) $(GRADEFLAGS) $(MCOIFLAGS) intermod_quote2.m
-	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) --intermodule-optimization \
-		intermod_quote.m
-
-$(cs_subdir)intermod_test.c:
-	$(MCI) $(GRADEFLAGS) $(MCIFLAGS) intermod_test2.m
-	$(MCOI) $(GRADEFLAGS) $(MCOIFLAGS) intermod_test2.m
-	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) --intermodule-optimization \
-		intermod_test.m
-
-check:	objs
+check:	objs aditi_update.err
 
 objs:	$(OBJS)
 

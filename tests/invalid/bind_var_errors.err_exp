@@ -8,7 +8,7 @@ bind_var_errors.m:039:   inside the condition of an if-then-else.
 bind_var_errors.m:039:   Variable `Y' has instantiatedness `free',
 bind_var_errors.m:039:   expected instantiatedness was `unique(42)'.
 bind_var_errors.m:048: In clause for `bind_var_in_lambda':
-bind_var_errors.m:048:   in argument 1 of call to predicate `call/1':
+bind_var_errors.m:048:   in argument 1 (i.e. the predicate term) of higher-order predicate call:
 bind_var_errors.m:048:   mode error: variable `Y' has instantiatedness `free',
 bind_var_errors.m:048:   expected instantiatedness for non-local variables
 bind_var_errors.m:048:   of lambda goals is `ground'.

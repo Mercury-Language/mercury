@@ -15,7 +15,7 @@ errors2.m:007: Error: no clauses for predicate `errors2:bind_type_param/2'
 errors2.m:023: Error: no clauses for predicate `errors2:produce_string/1'
 errors2.m:025: Error: no clauses for predicate `errors2:expect_int/1'
 errors2.m:031: In clause for predicate `errors2:type_error/0':
-errors2.m:031:   in argument 1 of call to pred `expect_int/1':
+errors2.m:031:   in argument 1 of call to predicate `expect_int/1':
 errors2.m:031:   type error: variable `X' has type `string',
 errors2.m:031:   expected type was `int'.
 errors2.m:037: In clause for predicate `errors2:type_error_2/0':
@@ -24,7 +24,7 @@ errors2.m:037:   and variable `Y'.
 errors2.m:037:   `X' has type `string',
 errors2.m:037:   `Y' has type `int'.
 errors2.m:043: In clause for predicate `errors2:type_error_3/0':
-errors2.m:043:   in argument 1 of call to pred `expect_int/1':
+errors2.m:043:   in argument 1 of call to predicate `expect_int/1':
 errors2.m:043:   type error: variable `Y' has type `string',
 errors2.m:043:   expected type was `int'.
 errors2.m:052: In clause for predicate `errors2:type_error_4/0':
@@ -46,7 +46,7 @@ errors2.m:065:   and constant `1.00000000000000'.
 errors2.m:065:   argument has type `string',
 errors2.m:065:   constant `1.00000000000000' has type `float'.
 errors2.m:072: In clause for predicate `errors2:type_error_7/0':
-errors2.m:072:   in argument 1 of call to pred `expect_int/1':
+errors2.m:072:   in argument 1 of call to predicate `expect_int/1':
 errors2.m:072:   type error: variable `C' has type `string',
 errors2.m:072:   expected type was `int'.
 errors2.m:078: In clause for predicate `errors2:type_error_8/0':

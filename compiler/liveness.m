@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -311,15 +311,12 @@ detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	add_liveness_after_goal(Then1, ResidueThen, Then),
 	add_liveness_after_goal(Else1, ResidueElse, Else).
 
-detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, _, LiveInfo,
-		Liveness, some(Vars, Goal)) :-
+detect_liveness_in_goal_2(some(Vars, CanRemove, Goal0), Liveness0, _, LiveInfo,
+		Liveness, some(Vars, CanRemove, Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo, Liveness, Goal).
 
-detect_liveness_in_goal_2(higher_order_call(_,_,_,_,_,_), _, _, _, _, _) :-
+detect_liveness_in_goal_2(generic_call(_,_,_,_), _, _, _, _, _) :-
 	error("higher-order-call in detect_liveness_in_goal_2").
-
-detect_liveness_in_goal_2(class_method_call(_,_,_,_,_,_), _, _, _, _, _) :-
-	error("class method call in detect_liveness_in_goal_2").
 
 detect_liveness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
 	error("call in detect_liveness_in_goal_2").
@@ -517,15 +514,12 @@ detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	add_deadness_before_goal(Cond1, ResidueCond, Cond),
 	add_deadness_before_goal(Else1, ResidueElse, Else).
 
-detect_deadness_in_goal_2(some(Vars, Goal0), _, Deadness0, LiveInfo,
-		Deadness, some(Vars, Goal)) :-
+detect_deadness_in_goal_2(some(Vars, CanRemove, Goal0), _, Deadness0, LiveInfo,
+		Deadness, some(Vars, CanRemove, Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness0, LiveInfo, Deadness, Goal).
 
-detect_deadness_in_goal_2(higher_order_call(_,_,_,_,_,_), _, _, _, _, _) :-
+detect_deadness_in_goal_2(generic_call(_,_,_,_), _, _, _, _, _) :-
 	error("higher-order-call in detect_deadness_in_goal_2").
-
-detect_deadness_in_goal_2(class_method_call(_,_,_,_,_,_), _, _, _, _, _) :-
-	error("class-method-call in detect_deadness_in_goal_2").
 
 detect_deadness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
 	error("call in detect_deadness_in_goal_2").
@@ -714,8 +708,9 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 
 	require_equal(LivenessThen, LivenessElse, "if-then-else", LiveInfo).
 
-detect_resume_points_in_goal_2(some(Vars, Goal0), _, Liveness0, LiveInfo,
-		ResumeVars0, some(Vars, Goal), Liveness) :-
+detect_resume_points_in_goal_2(some(Vars, CanRemove, Goal0), _, Liveness0,
+		LiveInfo, ResumeVars0, some(Vars, CanRemove, Goal),
+		Liveness) :-
 	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars0,
 					Goal, Liveness).
 
@@ -743,11 +738,8 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 	Resume = resume_point(ResumeVars1, ResumeLocs),
 	goal_set_resume_point(Goal1, Resume, Goal).
 
-detect_resume_points_in_goal_2(higher_order_call(A,B,C,D,E,F), _, Liveness,
-		_, _, higher_order_call(A,B,C,D,E,F), Liveness).
-
-detect_resume_points_in_goal_2(class_method_call(A,B,C,D,E,F), _, Liveness, _,
-		_, class_method_call(A,B,C,D,E,F), Liveness).
+detect_resume_points_in_goal_2(generic_call(A,B,C,D), _, Liveness,
+		_, _, generic_call(A,B,C,D), Liveness).
 
 detect_resume_points_in_goal_2(call(A,B,C,D,E,F), _, Liveness, _, _,
 		call(A,B,C,D,E,F), Liveness).

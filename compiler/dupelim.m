@@ -956,6 +956,13 @@ dupelim__replace_labels_code_addr(do_semidet_aditi_call, _,
 		do_semidet_aditi_call).
 dupelim__replace_labels_code_addr(do_nondet_aditi_call, _,
 		do_nondet_aditi_call).
+dupelim__replace_labels_code_addr(do_aditi_insert, _, do_aditi_insert).
+dupelim__replace_labels_code_addr(do_aditi_delete, _, do_aditi_delete).
+dupelim__replace_labels_code_addr(do_aditi_bulk_insert, _,
+		do_aditi_bulk_insert).
+dupelim__replace_labels_code_addr(do_aditi_bulk_delete, _,
+		do_aditi_bulk_delete).
+dupelim__replace_labels_code_addr(do_aditi_modify, _, do_aditi_modify).
 dupelim__replace_labels_code_addr(do_not_reached, _, do_not_reached).
 
 :- pred dupelim__replace_labels_label_list(list(label)::in,

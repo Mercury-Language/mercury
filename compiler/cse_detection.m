@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -206,11 +206,8 @@ detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, CseInfo0, CseInfo, Redo,
 detect_cse_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, _, CseInfo, CseInfo,
 	no, pragma_c_code(A,B,C,D,E,F,G)).
 
-detect_cse_in_goal_2(higher_order_call(A,B,C,D,E,F), _, _, CseInfo, CseInfo,
-	no, higher_order_call(A,B,C,D,E,F)).
-
-detect_cse_in_goal_2(class_method_call(A,B,C,D,E,F), _, _, CseInfo, CseInfo, 
-	no, class_method_call(A,B,C,D,E,F)).
+detect_cse_in_goal_2(generic_call(A,B,C,D), _, _, CseInfo, CseInfo,
+	no, generic_call(A,B,C,D)).
 
 detect_cse_in_goal_2(call(A,B,C,D,E,F), _, _, CseInfo, CseInfo, no,
 	call(A,B,C,D,E,F)).
@@ -218,16 +215,16 @@ detect_cse_in_goal_2(call(A,B,C,D,E,F), _, _, CseInfo, CseInfo, no,
 detect_cse_in_goal_2(unify(A,B0,C,D,E), _, InstMap0, CseInfo0, CseInfo, Redo,
 		unify(A,B,C,D,E)) :-
 	( 
-		B0 = lambda_goal(PredOrFunc, NonLocalVars,
-			Vars, Modes, Det, Goal0)
+		B0 = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+			NonLocalVars, Vars, Modes, Det, Goal0)
 	->
 		CseInfo0 = cse_info(_, _, ModuleInfo),
 		instmap__pre_lambda_update(ModuleInfo, 
 			Vars, Modes, InstMap0, InstMap),
 		detect_cse_in_goal(Goal0, InstMap, CseInfo0, CseInfo, Redo,
 			Goal),
-		B = lambda_goal(PredOrFunc, NonLocalVars, 
-			Vars, Modes, Det, Goal)
+		B = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+			NonLocalVars, Vars, Modes, Det, Goal)
 	;
 		B = B0,
 		CseInfo = CseInfo0,
@@ -238,8 +235,8 @@ detect_cse_in_goal_2(not(Goal0), _GoalInfo, InstMap, CseInfo0, CseInfo,
 		Redo, not(Goal)) :-
 	detect_cse_in_goal(Goal0, InstMap, CseInfo0, CseInfo, Redo, Goal).
 
-detect_cse_in_goal_2(some(Vars, Goal0), _GoalInfo, InstMap, CseInfo0, CseInfo,
-		Redo, some(Vars, Goal)) :-
+detect_cse_in_goal_2(some(Vars, CanRemove, Goal0), _GoalInfo, InstMap,
+		CseInfo0, CseInfo, Redo, some(Vars, CanRemove, Goal)) :-
 	detect_cse_in_goal(Goal0, InstMap, CseInfo0, CseInfo, Redo, Goal).
 
 detect_cse_in_goal_2(conj(Goals0), _GoalInfo, InstMap, CseInfo0, CseInfo,

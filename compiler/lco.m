@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,16 +79,13 @@ lco_in_goal_2(if_then_else(Vars, Cond, Then0, Else0, SM), ModuleInfo,
 	lco_in_goal(Then0, ModuleInfo, Then),
 	lco_in_goal(Else0, ModuleInfo, Else).
 
-lco_in_goal_2(some(Vars, Goal0), ModuleInfo, some(Vars, Goal)) :-
+lco_in_goal_2(some(Vars, CanRemove, Goal0), ModuleInfo,
+		some(Vars, CanRemove, Goal)) :-
 	lco_in_goal(Goal0, ModuleInfo, Goal).
 
 lco_in_goal_2(not(Goal), _ModuleInfo, not(Goal)).
 
-lco_in_goal_2(higher_order_call(A,B,C,D,E,F), _ModuleInfo,
-		higher_order_call(A,B,C,D,E,F)).
-
-lco_in_goal_2(class_method_call(A,B,C,D,E,F), _ModuleInfo,
-		class_method_call(A,B,C,D,E,F)).
+lco_in_goal_2(generic_call(A,B,C,D), _ModuleInfo, generic_call(A,B,C,D)).
 
 lco_in_goal_2(call(A,B,C,D,E,F), _ModuleInfo, call(A,B,C,D,E,F)).
 
@@ -147,7 +144,7 @@ lco_in_conj([Goal0 | Goals0], Unifies0, ModuleInfo, Goals) :-
 	Goal0 = GoalExpr0 - _,
 	(
 		GoalExpr0 = unify(_, _, _, Unif, _),
-		Unif = construct(_, _, _, _)
+		Unif = construct(_, _, _, _, _, _, _)
 	->
 		Unifies1 = [Goal0 | Unifies0],
 		lco_in_conj(Goals0, Unifies1, ModuleInfo, Goals)

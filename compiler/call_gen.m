@@ -21,17 +21,11 @@
 :- import_module prog_data, hlds_pred, hlds_goal, llds, code_info.
 :- import_module list, set, assoc_list.
 
-:- pred call_gen__generate_higher_order_call(code_model, prog_var,
-			list(prog_var), list(type), list(mode), determinism,
+:- pred call_gen__generate_generic_call(code_model, generic_call,
+			list(prog_var), list(mode), determinism,
 			hlds_goal_info, code_tree, code_info, code_info).
-:- mode call_gen__generate_higher_order_call(in, in, in, in, in, in, in, out,
-				in, out) is det.
-
-:- pred call_gen__generate_class_method_call(code_model, prog_var, int,
-			list(prog_var), list(type), list(mode), determinism,
-			hlds_goal_info, code_tree, code_info, code_info).
-:- mode call_gen__generate_class_method_call(in, in, in, in, in, in, in, in,
-				out, in, out) is det.
+:- mode call_gen__generate_generic_call(in, in, in, in, in, in,
+			out, in, out) is det.
 
 :- pred call_gen__generate_call(code_model, pred_id, proc_id, list(prog_var),
 			hlds_goal_info, code_tree, code_info, code_info).
@@ -61,11 +55,11 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, code_util.
+:- import_module hlds_module, hlds_data, code_util, rl.
 :- import_module arg_info, type_util, mode_util, unify_proc, instmap.
 :- import_module trace, globals, options.
 :- import_module std_util, bool, int, tree, map.
-:- import_module varset, require.
+:- import_module varset, require, string.
 
 %---------------------------------------------------------------------------%
 
@@ -115,26 +109,7 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 		% Make the call.
 	code_info__get_module_info(ModuleInfo),
 
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_get_markers(PredInfo, Markers) },
-	( { check_marker(Markers, aditi_interface) } ->
-		% For a call to an Aditi procedure, just pass all the
-		% arguments to do_*_aditi_call, which is defined in
-		% extras/aditi/aditi.m.
-		{
-			CodeModel = model_det,
-			Address = do_det_aditi_call
-		;
-			CodeModel = model_semi,
-			Address = do_semidet_aditi_call
-		;
-			CodeModel = model_non,
-			Address = do_nondet_aditi_call
-		}
-	;
-		code_info__make_entry_label(ModuleInfo,
-			PredId, ModeId, yes, Address)
-	),
+	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
 	code_info__get_next_label(ReturnLabel),
 	{ call_gen__call_comment(CodeModel, CallComment) },
 	{ CallCode = node([
@@ -159,21 +134,17 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 %---------------------------------------------------------------------------%
 
 	%
-	% For a higher-order call,
+	% For a generic_call,
 	% we split the arguments into inputs and outputs, put the inputs
 	% in the locations expected by mercury__do_call_closure in
 	% runtime/mercury_ho_call.c, generate the call to that code,
 	% and pick up the outputs from the locations that we know
 	% the runtime system leaves them in.
 	%
-	% Lambda.m transforms the generated lambda predicates to
-	% make sure that all inputs come before all outputs, so that
-	% the code in the runtime system doesn't have trouble figuring out
-	% which registers the arguments go in.
-	%
 
-call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
+call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args,
 		Modes, Det, GoalInfo, Code) -->
+	list__map_foldl(code_info__variable_type, Args, Types),
 	{ determinism_to_code_model(Det, CodeModel) },
 	code_info__get_module_info(ModuleInfo),
 	{ make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfos) },
@@ -184,45 +155,33 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 
 	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel),
 
-		% place the immediate input arguments in registers
-		% starting at r4.
-	call_gen__generate_immediate_args(InVars, 4, InLocs, ImmediateCode),
-	code_info__generate_call_stack_vn_livevals(OutArgs, LiveVals0),
-	{ set__insert_list(LiveVals0,
-		[reg(r, 1), reg(r, 2), reg(r, 3) | InLocs], LiveVals) },
-	(
-		{ CodeModel = model_semi }
-	->
-		{ FirstArg = 2 }
-	;
-		{ FirstArg = 1 }
-	),
+	{ call_gen__generic_call_info(CodeModel, GenericCall,
+		CodeAddr, FirstInput) },
 
-	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
+		% place the immediate input arguments in registers
+	call_gen__generate_immediate_args(InVars, FirstInput,
+		InLocs, ImmediateCode),
+	code_info__generate_call_stack_vn_livevals(OutArgs, LiveVals0),
+	{ call_gen__extra_livevals(FirstInput, ExtraLiveVals) },
+	{ set__insert_list(LiveVals0, ExtraLiveVals, LiveVals1) },
+	{ set__insert_list(LiveVals1, InLocs, LiveVals) },
+
+	{ CodeModel = model_semi ->
+		FirstOutput = 2
+	;
+		FirstOutput = 1
+	},
+	{ call_gen__outvars_to_outargs(OutVars, FirstOutput, OutArguments) },
 	{ call_gen__output_arg_locs(OutArguments, OutputArgLocs) },
+
 	code_info__get_instmap(InstMap),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	{ instmap__apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap) },
 
-	code_info__produce_variable(PredVar, PredVarCode, PredRVal),
-	(
-		{ PredRVal = lval(reg(r, 1)) }
-	->
-		{ CopyCode = empty }
-	;
-		{ CopyCode = node([
-			assign(reg(r, 1), PredRVal) - "Copy pred-term"
-		]) }
-	),
-
-	{ list__length(InVars, NInVars) },
-	{ list__length(OutVars, NOutVars) },
-	{ ArgNumCode = node([
-		assign(reg(r, 2), const(int_const(NInVars))) -
-			"Assign number of immediate input arguments",
-		assign(reg(r, 3), const(int_const(NOutVars))) -
-			"Assign number of output arguments"
-	]) },
+		% Doing this after generating the immediate input arguments,
+		% results in slightly more efficient code by not moving
+		% the immediate arguments twice.
+	call_gen__generic_call_setup(GenericCall, InVars, OutVars, SetupCode),
 
 	trace__prepare_for_call(TraceCode),
 
@@ -238,9 +197,9 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 	{ CallCode = node([
 		livevals(LiveVals)
 			- "",
-		call(do_call_closure, label(ReturnLabel), ReturnLiveLvalues,
+		call(CodeAddr, label(ReturnLabel), ReturnLiveLvalues,
 			CallModel)
-			- "Setup and call higher order pred",
+			- "Setup and call",
 		label(ReturnLabel)
 			- "Continuation label"
 	]) },
@@ -251,113 +210,171 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 		tree(SaveCode,
 		tree(FlushCode,
 		tree(ImmediateCode,
-		tree(PredVarCode,
-		tree(CopyCode,
-		tree(ArgNumCode,
+		tree(SetupCode,
 		tree(TraceCode,
 		tree(CallCode,
-		     FailHandlingCode))))))))
+		     FailHandlingCode))))))
 	}.
 
-%---------------------------------------------------------------------------%
+	% The registers before the first input argument are all live.
+:- pred call_gen__extra_livevals(int, list(lval)).
+:- mode call_gen__extra_livevals(in, out) is det.
 
-	%
-	% For a class method call,
-	% we split the arguments into inputs and outputs, put the inputs
-	% in the locations expected by mercury__do_call_class_method in
-	% runtime/mercury_ho_call.c, generate the call to that code,
-	% and pick up the outputs from the locations that we know
-	% the runtime system leaves them in.
-	%
+call_gen__extra_livevals(FirstInput, ExtraLiveVals) :-
+	call_gen__extra_livevals(1, FirstInput, ExtraLiveVals). 
 
-call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
-		Types, Modes, Det, GoalInfo, Code) -->
-	{ determinism_to_code_model(Det, CodeModel) },
-	code_info__get_module_info(ModuleInfo),
+:- pred call_gen__extra_livevals(int, int, list(lval)).
+:- mode call_gen__extra_livevals(in, in, out) is det.
 
-	{ make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfo) },
-	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgsAndArgInfo) },
-	{ call_gen__partition_args(ArgsAndArgInfo, InVars, OutVars) },
-	{ set__list_to_set(OutVars, OutArgs) },
-	call_gen__save_variables(OutArgs, SaveCode),
-	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel),
-
-		% place the immediate input arguments in registers
-		% starting at r5.
-	call_gen__generate_immediate_args(InVars, 5, InLocs, ImmediateCode),
-	code_info__generate_call_stack_vn_livevals(OutArgs, LiveVals0),
-	{ set__insert_list(LiveVals0,
-		[reg(r, 1), reg(r, 2), reg(r, 3), reg(r, 4) | InLocs], 
-			LiveVals) },
-	(
-		{ CodeModel = model_semi }
-	->
-		{ FirstArg = 2 }
+call_gen__extra_livevals(Reg, FirstInput, ExtraLiveVals) :-
+	( Reg < FirstInput ->
+		ExtraLiveVals = [reg(r, Reg) | ExtraLiveVals1],
+		NextReg is Reg + 1,
+		call_gen__extra_livevals(NextReg, FirstInput, ExtraLiveVals1)
 	;
-		{ FirstArg = 1 }
-	),
-	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
-	{ call_gen__output_arg_locs(OutArguments, OutputArgLocs) },
-	code_info__get_instmap(InstMap),
-	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-	{ instmap__apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap) },
+		ExtraLiveVals = []
+	).
 
-	code_info__produce_variable(TCVar, TCVarCode, TCVarRVal),
-	(
-		{ TCVarRVal = lval(reg(r, 1)) }
-	->
-		{ CopyCode = empty }
-	;
-		{ CopyCode = node([
-			assign(reg(r, 1), TCVarRVal)
-				- "Copy typeclass info"
-		]) }
+	% call_gen__generic_call_info(CodeModel, GenericCall,
+	% 	CodeAddr, FirstImmediateInputReg).
+:- pred call_gen__generic_call_info(code_model, generic_call, code_addr, int).
+:- mode call_gen__generic_call_info(in, in, out, out) is det.
+
+call_gen__generic_call_info(_, higher_order(_, _, _), do_call_closure, 4).
+call_gen__generic_call_info(_, class_method(_, _, _, _),
+		do_call_class_method, 5).
+call_gen__generic_call_info(CodeModel, aditi_builtin(aditi_call(_,_,_,_),_),
+		CodeAddr, 5) :-
+	( CodeModel = model_det, CodeAddr = do_det_aditi_call
+	; CodeModel = model_semi, CodeAddr = do_semidet_aditi_call
+	; CodeModel = model_non, CodeAddr = do_nondet_aditi_call
+	).
+call_gen__generic_call_info(CodeModel, aditi_builtin(aditi_insert(_), _),
+		do_aditi_insert, 3) :-
+	require(unify(CodeModel, model_det), "aditi_insert not model_det").
+call_gen__generic_call_info(CodeModel, aditi_builtin(aditi_delete(_,_), _),
+		do_aditi_delete, 2) :-
+	require(unify(CodeModel, model_det), "aditi_delete not model_det").
+call_gen__generic_call_info(CodeModel,
+		aditi_builtin(aditi_bulk_operation(BulkOp, _), _),
+		CodeAddr, 2) :-
+	( BulkOp = insert, CodeAddr = do_aditi_bulk_insert
+	; BulkOp = delete, CodeAddr = do_aditi_bulk_delete
 	),
+	require(unify(CodeModel, model_det),
+		"aditi_bulk_operation not model_det").
+call_gen__generic_call_info(CodeModel, aditi_builtin(aditi_modify(_,_), _),
+		do_aditi_modify, 2) :-
+	require(unify(CodeModel, model_det), "aditi_modify not model_det").
+
+	% Produce code to set up the arguments to a generic call
+	% that are always present, such as the closure for a higher-order call,
+	% the typeclass_info for a class method call or the relation
+	% name for an Aditi update operation.
+:- pred call_gen__generic_call_setup(generic_call, list(prog_var),
+	list(prog_var), code_tree, code_info, code_info).
+:- mode call_gen__generic_call_setup(in, in, in, out, in, out) is det.
+
+call_gen__generic_call_setup(higher_order(PredVar, _, _),
+		InVars, OutVars, SetupCode) -->
+	call_gen__place_generic_call_var(PredVar, "closure", PredVarCode),
 	{ list__length(InVars, NInVars) },
 	{ list__length(OutVars, NOutVars) },
-	{ SetupCode = node([
-		assign(reg(r, 2), const(int_const(MethodNum))) -
+	{ NumArgCode = node([
+		assign(reg(r, 2), const(int_const(NInVars))) -
+			"Assign number of immediate input arguments",
+		assign(reg(r, 3), const(int_const(NOutVars))) -
+			"Assign number of output arguments"
+	]) },
+	{ SetupCode = tree(PredVarCode, NumArgCode) }.
+call_gen__generic_call_setup(class_method(TCVar, Method, _, _),
+		InVars, OutVars, SetupCode) -->
+	call_gen__place_generic_call_var(TCVar, "typeclass_info", TCVarCode),
+	{ list__length(InVars, NInVars) },
+	{ list__length(OutVars, NOutVars) },
+	{ ArgsCode = node([
+		assign(reg(r, 2), const(int_const(Method))) -
 			"Index of class method in typeclass info",
 		assign(reg(r, 3), const(int_const(NInVars))) -
 			"Assign number of immediate input arguments",
 		assign(reg(r, 4), const(int_const(NOutVars))) -
 			"Assign number of output arguments"
 	]) },
+	{ SetupCode = tree(TCVarCode, ArgsCode) }.
+call_gen__generic_call_setup(aditi_builtin(Builtin, _),
+		InVars, OutVars, SetupCode) -->
+	call_gen__aditi_builtin_setup(Builtin, InVars, OutVars,
+		SetupCode).
 
-	trace__prepare_for_call(TraceCode),
+:- pred call_gen__place_generic_call_var(prog_var, string, code_tree,
+		code_info, code_info).
+:- mode call_gen__place_generic_call_var(in, in, out, in, out) is det.
 
-		% We must update the code generator state to reflect
-		% the situation after the call before building
-		% the return liveness info. No later code in this
-		% predicate depends on the old state.
-	call_gen__rebuild_registers(OutArguments),
-	code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
-		ReturnLiveLvalues),
+call_gen__place_generic_call_var(Var, Description, Code) -->
+	code_info__produce_variable(Var, VarCode, VarRVal),
+	{ VarRVal = lval(reg(r, 1)) ->
+               CopyCode = empty
+	;
+	       % We don't need to clear r1 first - the arguments
+	       % should have been moved into their proper positions and
+	       % all other variables should have been saved by now.
+	       string__append("Copy ", Description, Comment),
+               CopyCode = node([
+                       assign(reg(r, 1), VarRVal) - Comment
+               ])
+	},
+	{ Code = tree(VarCode, CopyCode) }.
 
-	code_info__get_next_label(ReturnLabel),
-	{ CallCode = node([
-		livevals(LiveVals)
-			- "",
-		call(do_call_class_method, label(ReturnLabel),
-			ReturnLiveLvalues, CallModel)
-			- "Setup and call class method",
-		label(ReturnLabel)
-			- "Continuation label"
-	]) },
+:- pred call_gen__aditi_builtin_setup(aditi_builtin,
+	list(prog_var), list(prog_var), code_tree, code_info, code_info).
+:- mode call_gen__aditi_builtin_setup(in, in, in, out, in, out) is det.
 
-	call_gen__handle_failure(CodeModel, FailHandlingCode),
+call_gen__aditi_builtin_setup(
+		aditi_call(PredProcId, NumInputs, InputTypes, NumOutputs),
+		_, _, SetupCode) -->
+	code_info__get_module_info(ModuleInfo),
+	{ rl__get_entry_proc_name(ModuleInfo, PredProcId, ProcName) },
+	{ rl__proc_name_to_string(ProcName, ProcStr) },
+	{ rl__schema_to_string(ModuleInfo, InputTypes, InputSchema) },
+	{ SetupCode = node([
+		assign(reg(r, 1), const(string_const(ProcStr))) -
+			"Assign name of procedure to call",
+		assign(reg(r, 2), const(int_const(NumInputs))) -
+			"Assign number of input arguments",
+		assign(reg(r, 3), const(string_const(InputSchema))) -
+			"Assign schema of input arguments",
+		assign(reg(r, 4), const(int_const(NumOutputs))) -
+			"Assign number of output arguments"
+	]) }.
+call_gen__aditi_builtin_setup(aditi_insert(PredId), Inputs, _, SetupCode) -->
+	call_gen__setup_base_relation_name(PredId, NameCode),
+	{ list__length(Inputs, NumInputs) },
+	{ SetupCode =
+		tree(NameCode,
+		node([
+			assign(reg(r, 2), const(int_const(NumInputs))) -
+				"Assign arity of relation to insert into"
+		])
+	) }.
+call_gen__aditi_builtin_setup(aditi_delete(PredId, _), _, _, SetupCode) -->
+	call_gen__setup_base_relation_name(PredId, SetupCode).
+call_gen__aditi_builtin_setup(aditi_bulk_operation(_, PredId), _, _,
+		SetupCode) -->
+	call_gen__setup_base_relation_name(PredId, SetupCode).
+call_gen__aditi_builtin_setup(aditi_modify(PredId, _), _, _, SetupCode) -->
+	call_gen__setup_base_relation_name(PredId, SetupCode).
 
-	{ Code =
-		tree(SaveCode,
-		tree(FlushCode,
-		tree(ImmediateCode,
-		tree(TCVarCode,
-		tree(CopyCode,
-		tree(SetupCode,
-		tree(TraceCode,
-		tree(CallCode,
-		     FailHandlingCode))))))))
-	}.
+:- pred call_gen__setup_base_relation_name(pred_id,
+		code_tree, code_info, code_info).
+:- mode call_gen__setup_base_relation_name(in, out, in, out) is det.
+
+call_gen__setup_base_relation_name(PredId, SetupCode) -->
+	code_info__get_module_info(ModuleInfo),
+	{ rl__permanent_relation_name(ModuleInfo, PredId, ProcStr) },
+	{ SetupCode = node([
+		assign(reg(r, 1), const(string_const(ProcStr))) -
+			"Assign name of base relation"
+	]) }.
 
 %---------------------------------------------------------------------------%
 

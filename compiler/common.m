@@ -123,7 +123,7 @@ common_info_clear_structs(common(VarEqv, StructMap, _, SeenCalls),
 common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
 		Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	(
-		Unification0 = construct(Var, ConsId, ArgVars, _),
+		Unification0 = construct(Var, ConsId, ArgVars, _, _, _, _),
 		(
 			% common__generate_assign assumes that the
 			% output variable is in the instmap_delta, which

@@ -520,6 +520,19 @@ The semantics are exactly the same as for the corresponding
 higher-order call using the @code{call/N} syntax, i.e.
 @samp{call(Var)}, @samp{call(Var, Arg1)}, etc.
 
+@ifset aditi
+
+@item @code{aditi_bulk_delete(@dots{})}
+@item @code{aditi_bulk_insert(@dots{})}
+@item @code{aditi_delete(@dots{})}
+@item @code{aditi_insert(@dots{})}
+@item @code{aditi_modify(@dots{})}
+These goal forms are used for the Aditi database interface.
+@xref{Aditi update syntax}.
+
+@end ifset
+@c aditi
+
 @item @code{@var{Call}}
 Any goal which does not match any of the above forms
 must be a predicate call.
@@ -5462,6 +5475,16 @@ function then the compiler will quit with an error message.
 @node Aditi deductive database interface
 @subsection Aditi deductive database interface
 
+@menu
+* Aditi overview::
+* Aditi pragma declarations::	Controlling Aditi compilation
+* Aditi update syntax::		Changing the contents of Aditi relations
+* Aditi glossary::		Glossary of Aditi terms
+@end menu
+
+@node Aditi overview
+@subsubsection Aditi overview
+
 The University of Melbourne Mercury implementation includes support for
 compiling Mercury predicates for bottom-up evaluation using the Aditi
 deductive database system. The Aditi system is not yet publicly available,
@@ -5477,10 +5500,6 @@ Bottom-up evaluation computes the answers to a predicate a set at a time,
 rather than a tuple at a time as in the normal top-down execution of a
 Mercury program.
 
-@menu
-* Aditi glossary::              Glossary of Aditi terms
-@end menu
-
 There are several restrictions on predicates to be evaluated using Aditi.
 Argument types may not include polymorphic, higher-order or abstract types.
 Type classes are not supported within database predicates. The argument
@@ -5488,13 +5507,13 @@ modes must not contain partially instantiated insts. Aditi predicates must
 be stratified (@pxref{Aditi glossary}) and must not be mutually recursive
 with predicates in other modules.
 
-Every predicate with a @samp{:- pragma aditi(...)} or
-@samp{:- pragma base_relation(...)} declaration must have an input
+Every predicate with a @samp{pragma aditi} or
+@samp{pragma base_relation} declaration must have an input
 argument of type @samp{aditi__state}. This ensures that Aditi predicates
 are only called from within transactions and that updates and database
 calls are ordered correctly, in the same way that @samp{io__state} arguments
 are used to ensure ordering of I/O operations. Within the clauses for
-predicates with a @samp{:- pragma aditi(...)} declaration variables with
+predicates with a @samp{pragma aditi} declaration variables with
 type @samp{aditi__state} may only be passed to other database predicates --
 they may not be packaged into terms or passed to top-down Mercury predicates.
 This allows the compiler to remove all instances of @samp{aditi__state}
@@ -5505,7 +5524,10 @@ code, which is currently impossible for Aditi to handle.
 Some useful predicates are defined in @file{extras/aditi/aditi.m} in the
 @samp{mercury-extras} distribution.
 
-The following pragma declarations control Aditi compilation.
+@node Aditi pragma declarations
+@subsubsection Aditi pragma declarations
+
+The following pragma declarations control compilation of Aditi predicates.
 
 @example
 :- pragma aditi(@var{Name}/@var{Arity}).
@@ -5560,7 +5582,7 @@ the type of memoing described in @ref{Tabled evaluation}.
 
 The predicate is owned by the named user. A predicate in the database
 is identified by owner, module name, predicate name and arity. The owner
-field is used for security checks. If no @samp{:- pragma owner(...)}
+field is used for security checks. If no @samp{pragma owner}
 declaration is given, the owner is taken from the @samp{--aditi-user}
 option, which defaults to the value of the environment variable @samp{USER},
 or ``guest'' if that is not set.
@@ -5578,6 +5600,415 @@ retrieval of a tuple or range of tuples from a base relation.
 @var{IndexType} must be one of @samp{unique_B_tree} or
 @samp{non_unique_B_tree}. @var{Attributes} is a list of argument
 numbers (argument numbers are counted from one).
+
+@node Aditi update syntax
+@subsubsection Aditi update syntax
+
+The Melbourne Mercury compiler provides special syntax to specify updates
+of Aditi base relations.
+
+Note: Only error checking is implemented for Aditi updates --- no code is
+generated yet.
+
+@c XXX texinfo doesn't have subsubsubsection.
+@ignore
+@menu 
+* Aditi update notes::
+* Insertion::
+* Deletion::
+* Bulk insertion and deletion::
+* Modification::
+@end menu
+@end ignore
+
+@c @node Aditi update notes::
+@subsubheading Aditi update notes
+
+All Aditi update goals have determinism @samp{det}.
+
+There must be a @w{@samp{pragma base_relation}} declaration for
+any relation to be updated. 
+
+It is currently up to the application to ensure that any modifications
+do not violate the determinism of a base relation. If any modification
+does violate the determinism of a base relation, then the behaviour
+is undefined. However, updates of relations with unique B-tree indexes
+are checked to ensure that a key is not given multiple values. The transaction
+will abort if this occurs.
+
+Predicate and function names in Aditi update goals may be module qualified.
+
+The examples make use of the following declarations:
+@example
+:- pred p(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pragma base_relation(p/3).
+
+:- func f(aditi__state::aditi_ui, int::out) = (int::out) is nondet.
+:- pragma base_relation(f/2).
+
+:- pred ancestor(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pragma aditi(ancestor/3).
+@end example
+
+@c @node Insertion
+@subsubheading Insertion
+
+@example
+aditi_insert(@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}), @var{DB0}, @var{DB}).
+
+aditi_insert(@var{FuncName}(@var{Arg1}, @var{Arg2}, @dots{}) = @var{RetVal}, @var{DB0}, @var{DB}).
+@end example
+
+Insert the specified tuple into a relation.
+
+@itemize @bullet
+@item
+@samp{@var{PredName}} must be the name of a predicate. 
+
+@item
+@samp{@var{FuncName}} must be the name of a function.
+
+@item
+@samp{@var{Arg1}}, @samp{@var{Arg2}}, @dots{} and @samp{@var{RetVal}}
+must be data-terms.
+
+The tuple to be inserted must have the same type signature as the relation
+being inserted into. All the arguments of the tuple (including the return value
+of a function) have mode @samp{in}, except the @samp{aditi__state} argument
+which has mode @samp{unused}.
+
+@item
+@samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
+@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@end itemize
+
+Note that @w{@samp{@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{})}}
+in an @samp{aditi_insert} goal is not a higher-order term.
+@w{@samp{Pred = p(DB0, X, Y), aditi_insert(Pred, DB0, DB)}}
+is a syntax error.
+
+Examples:
+@example
+insert_example_1(DB0, DB) :-
+        aditi_insert(p(_, 1, 2), DB0, DB).
+
+insert_example_2(DB0, DB) :-
+        aditi_insert(f(_, 1) = 2, DB0, DB).
+@end example
+
+@c @node Deletion
+@subsubheading Deletion
+
+@example
+aditi_delete((@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}) :- @var{Goal}), @var{DB0}, @var{DB}).
+
+aditi_delete((@var{FuncName}(@var{Arg1}, @var{Arg2}, @dots{}) = @var{RetVal} :- @var{Goal}), @var{DB0}, @var{DB}).
+
+aditi_delete(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
+@end example
+
+Delete all tuples for which @samp{@var{Goal}} or @samp{@var{Closure}} 
+succeeds from the named base relation. 
+
+@itemize @bullet
+@item
+@samp{@var{PredName}} must be the name of a predicate. 
+
+@item
+@samp{@var{FuncName}} must be the name of a function.
+
+@item
+@samp{@var{PredOrFunc}} must be either @samp{pred} or @samp{func}.
+If it is @samp{pred}, then @samp{@var{Name}} must be the name of
+a predicate, and if it is @samp{func}, then @samp{@var{Name}}
+must be the name of a function.
+
+@item
+@samp{@var{Arity}} must be the arity of the predicate or function
+being updated.
+
+@item
+@samp{@var{Arg1}}, @samp{@var{Arg2}}, @dots{} and @samp{@var{RetVal}}
+must be data-terms. The head of the deletion rule must have the same
+type signature as the relation being deleted from. The arguments
+(including the return value of a function) all have mode @samp{in},
+except for the @samp{aditi__state} argument, which has mode
+@samp{unused} --- it is not possible to call an Aditi relation
+from the deletion goal.
+
+@item
+@samp{@var{Goal}} must be a Mercury goal.
+
+@item
+@samp{@var{Closure}} must be a data-term which has a higher-order type.
+
+When deleting from a predicate with type declaration
+@w{@samp{:- pred p(aditi__state, @var{Type1}, @dots{})}},
+@samp{@var{Closure}} must have type
+@w{@samp{aditi_top_down pred(aditi__state, @var{Type1}, @dots{})}},
+and inst @w{@samp{pred(unused, in, @dots{}) is semidet}}.
+
+When deleting from a function with type declaration
+@w{@samp{:- func p(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
+@samp{@var{Closure}} must have type
+@w{@samp{aditi_top_down func(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
+and inst @w{@samp{func(unused, in, @dots{}) = in is semidet}}.
+
+The @samp{aditi_top_down} annotation on the lambda expression is needed to 
+tell the compiler to generate code for execution by the
+Aditi database using the normal Mercury execution algorithm.
+
+The @samp{aditi__state} argument of @samp{@var{Closure}} must have
+mode @samp{unused} --- it is not possible to call an Aditi
+relation from the deletion condition. All other arguments of
+@samp{@var{Closure}} must have mode @samp{in}.
+
+If the construction of @samp{@var{Closure}} is in the same conjunction
+as the @samp{aditi_delete} call, the compiler may be able to do a better
+job of optimizing the deletion using indexes.
+
+@item
+@samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
+@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@end itemize
+
+Examples:
+@example
+delete_example_1(DB0, DB) :-
+        aditi_delete((p(_, X, Y) :- X + Y = 2), DB0, DB).
+
+delete_example_2(DB0, DB) :-
+        aditi_delete(f(_, 2) = _Y, DB0, DB).
+
+delete_example_3(DB0, DB) :-
+        DeleteP = (aditi_top_down
+               pred(_::unused, X::in, Y::in) is semidet :-
+                        X = 2
+               ),
+        aditi_delete(pred p/3, DeleteP, DB0, DB).
+
+delete_example_4(DB0, DB) :-
+        DeleteQ = (aditi_top_down
+               func(_::unused, X::in) = (Y::in) is semidet :-
+                        X = 2
+               ),
+        aditi_delete(func f/2, DeleteQ, DB0, DB).
+
+delete_example_5 -->
+        aditi_delete((p(_, X, Y) :- X = 2, Y = 2)). 
+
+@end example
+
+The type of @samp{DeleteP} is
+@w{@samp{aditi_top_down pred(aditi__state, int, int)}}.
+Its inst is @w{@samp{pred(unused, in, in) is semidet}}, as for a normal
+lambda expression.
+
+Note that in @samp{delete_example_5} the extra set of parentheses around
+the goal are needed, otherwise the second goal in the conjunction
+in the deletion goal would be parsed as an extra argument of the
+@samp{aditi_delete} call, resulting in a syntax error.
+
+@c @node Bulk insertion and deletion
+@subsubheading Bulk insertion and deletion
+
+@example
+aditi_bulk_insert(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
+@end example
+
+Insert all solutions of @samp{@var{Closure}} into the named relation.
+
+@example
+aditi_bulk_delete(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
+@end example
+
+Delete all solutions of @samp{@var{Closure}} from the named relation.
+
+@itemize @bullet
+@item
+@samp{@var{PredOrFunc}} must be either @samp{pred} or @samp{func}.
+If it is @samp{pred}, then @samp{@var{Name}} must be the name of
+a predicate, and if it is @samp{func}, then @samp{@var{Name}}
+must be the name of a function.
+
+@item
+@samp{@var{Arity}} must be the arity of the predicate or function
+being updated.
+
+@item
+@samp{@var{Closure}} must be a data-term which has a higher-order type with
+the same type signature as the base relation being updated.
+
+The @samp{aditi__state} argument of @samp{@var{Closure}} must have
+mode @samp{aditi_ui}. All other arguments must have mode @samp{out}.
+The determinism of @samp{@var{Closure}} must be @samp{nondet}.
+
+@samp{@var{Closure}} must be evaluable bottom-up by the Aditi
+system --- the predicate or function passed must have a
+@w{@samp{pragma aditi}} declaration. Lambda expressions can be
+marked as evaluable by Aditi using an @samp{aditi_bottom_up} annotation
+on the lambda expression.
+
+@item
+@samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
+@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@end itemize
+
+Examples:
+@example
+bulk_insert_example_1(DB0, DB) :-
+        aditi_bulk_insert(pred p/3, ancestor, DB0, DB).
+
+bulk_delete_example_1(DB0, DB) :-
+        aditi_bulk_delete(pred p/3, ancestor, DB0, DB).
+
+bulk_insert_example_2(DB0, DB) :-
+        InsertP = (aditi_bottom_up
+                pred(DB1::aditi_ui, X::out, Y::out) is nondet :-
+                        ancestor(DB1, X, Y)
+                ),
+        aditi_bulk_insert(pred p/3, InsertP, DB0, DB).
+
+bulk_delete_example_2(DB0, DB) :-
+        DeleteQ = (aditi_bottom_up
+                func(DB1::aditi_ui, X::out) = (Y::out) is nondet :-
+                        ancestor(DB1, X, Y)
+                ),
+        aditi_bulk_delete(func f/2, DeleteQ, DB0, DB).
+@end example
+
+The type of @samp{InsertP} is
+@w{@samp{aditi_bottom_up pred(aditi__state, int, int)}}.
+Its inst is @w{@samp{pred(aditi_ui, out, out) is nondet}},
+as for a normal lambda expression.
+
+@c @node Modification
+@subsubheading Modification
+
+@example
+aditi_modify(
+        (@var{PredName}(@var{OldArg1}, @var{OldArg2}, @dots{}) ==>
+        @var{PredName}(@var{NewArg1}, @var{NewArg2}, @dots{}) :-
+                @var{Goal}
+        ),
+        @var{DB0}, @var{DB}).
+
+aditi_modify(
+        ((@var{FuncName}(@var{OldArg1}, @var{OldArg2}, @dots{}) = @var{OldRetVal}) ==>
+        (@var{FuncName}(@var{NewArg1}, @var{NewArg2}, @dots{}) = @var{NewRetVal}) :-
+                @var{Goal}
+        ),
+        @var{DB0}, @var{DB}).
+
+aditi_modify(@var{PredOrFunc} @var{PredName}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
+
+@end example
+
+Modify tuples for which @samp{@var{Goal}} or @samp{@var{Closure}} succeeds,
+leaving any other tuples unchanged.
+
+@itemize @bullet
+@item
+@samp{@var{PredName}} must be the name of a predicate. 
+
+@item
+@samp{@var{FuncName}} must be the name of a function.
+
+@item
+@samp{@var{PredOrFunc}} must be either @samp{pred} or @samp{func}.
+If it is @samp{pred}, then @samp{@var{Name}} must be the name of
+a predicate, and if it is @samp{func}, then @samp{@var{Name}}
+must be the name of a function.
+
+@item
+@samp{@var{Arity}} must be the arity of the predicate or function
+being updated.
+
+@item
+@samp{@var{OldArg1}}, @samp{@var{OldArg2}}, @dots{}, @samp{@var{OldRetVal}},
+@samp{@var{NewArg1}}, @samp{@var{NewArg2}}, @dots{}, and @samp{@var{NewRetVal}}
+must be data-terms.
+
+The original tuple is given by the first set of arguments, which
+have mode @samp{in}. The updated tuple is given by the second set
+of arguments, which have mode @samp{out}. The @samp{aditi__state}
+arguments for both tuples have mode @samp{unused} --- it is not possible
+to call an Aditi relation from the modification goal.
+
+The argument types of each tuple must match the argument types
+of the base relation being modified.
+
+@item
+@samp{@var{Goal}} must be a Mercury goal.
+
+@item
+@samp{@var{Closure}} must be a data-term which has a higher-order type.
+
+When modifying a predicate with type declaration
+@w{@samp{:- pred p(aditi__state, @var{Type1}, @dots{})}}, @samp{@var{Closure}}
+must have type
+@samp{aditi_top_down pred(aditi__state, @var{Type1}, @dots{}, aditi__state, @var{Type1}, @dots{})},
+and inst @w{@samp{pred(unused, in, @dots{}, unused, out, @dots{}) is semidet}}.
+
+When modifying a function with type declaration
+@w{@samp{:- func p(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
+@samp{@var{Closure}} must have type
+@samp{aditi_top_down pred(aditi__state, @var{Type1}, @dots{}, @var{Type2}, aditi__state, @var{Type1}, @dots{}, @var{Type2})},
+and inst
+@w{@samp{pred(unused, in, @dots{}, in, unused, out, @dots{}, out) is semidet}}.
+
+The @samp{aditi__state} arguments of @samp{@var{Closure}} must have
+mode @samp{unused} --- it is not possible to call an Aditi
+relation from the modification goal.
+
+If the construction of @samp{@var{Closure}} is in the same conjunction
+as the @samp{aditi_modify} call, the compiler may be able to do a better
+job of optimizing the modification using indexes.
+
+@item
+@samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
+@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@end itemize
+
+Examples:
+@example
+modify_example_1(DB0, DB) :-
+        aditi_modify(
+                (p(_DB0, X, Y0) ==> p(_DB, X, Y) :-
+                        X > 2, X < 5, Y = Y0 + 1
+                ), DB0, DB).
+
+modify_example_2(DB0, DB) :-
+        aditi_modify(
+                ((f(_DB0, X) = Y0) ==> (f(_DB, X) = Y) :-
+                        X > 2, X < 5, Y = Y0 + 1
+                ), DB0, DB).
+
+modify_example_3(DB0, DB) :-
+        ModifyP = (aditi_top_down pred(_::unused, X::in, Y0::in,
+                        _::unused, X::out, Y::out) is semidet :-
+                    X > 2, X < 5, Y = Y0 + 1
+                 ),
+        aditi_modify(pred p/3, ModifyP, DB0, DB).
+
+modify_example_4(DB0, DB) :-
+        ModifyQ = (aditi_top_down pred(_::unused, X::in, Y0::in,
+                        _::unused, X::out, Y::out) is semidet :-
+                    X > 2, X < 5, Y = Y0 + 1
+                 ),
+        aditi_modify(func f/2, ModifyQ, DB0, DB).
+
+modify_example_5 -->
+        aditi_modify(
+                (p(_DB0, X, Y0) ==> p(_DB, X, Y) :-
+                        X > 2, X < 5, Y = Y0 + 1
+                )).
+@end example
+
+Note that in @samp{modify_example_5} the extra set of parentheses around
+the goal are needed, otherwise the second and third goals in
+the conjunction in the modification goal would be parsed as extra arguments
+of the @samp{aditi_modify} call, resulting in a syntax error.
 
 @node Aditi glossary
 @subsubsection Aditi glossary

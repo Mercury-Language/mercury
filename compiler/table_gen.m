@@ -638,19 +638,8 @@ generate_get_table_goal(VarTypes0, VarTypes, VarSet0, VarSet,
 		PredId, ProcId, PredTableVar, Goal) :-
 	generate_new_table_var("PredTable", VarTypes0, VarTypes,
 		VarSet0, VarSet, PredTableVar),
-
 	ConsId = tabling_pointer_const(PredId, ProcId),
-	VarInst = ground(unique, no),
-	UnifyMode = (free -> VarInst) - (VarInst -> VarInst),
-	UnifyContext = unify_context(explicit, []),
-	GoalExpr = unify(PredTableVar, functor(ConsId, []), UnifyMode,
-			construct(PredTableVar, ConsId, [], []), UnifyContext),
-
-	set__singleton_set(NonLocals, PredTableVar),
-	instmap_delta_from_assoc_list([PredTableVar - VarInst],
-		InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, det,
-		GoalInfo0),
+	make_const_construction(PredTableVar, ConsId, GoalExpr - GoalInfo0),
 	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
 	Goal = GoalExpr - GoalInfo.
 
@@ -1235,23 +1224,9 @@ generate_call(PredName, Args, Detism0, Feature, InstMap, Module, Goal) :-
 
 gen_int_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
 		Var, Goal) :-
-
-	varset__new_named_var(VarSet0, VarName, Var, VarSet),
-	term__context_init(Context),
-	VarType = term__functor(term__atom("int"), [], Context),
-	map__set(VarTypes0, Var, VarType, VarTypes),
-
-	Inst = bound(unique, [functor(int_const(VarValue), [])]),
-	VarUnify = unify(Var, functor(int_const(VarValue), []),
-		(free -> Inst) - (Inst -> Inst),
-		construct(Var, int_const(VarValue), [], []),
-		unify_context(explicit, [])),
-	set__singleton_set(VarNonLocals, Var),
-	instmap_delta_from_assoc_list([Var - Inst],
-		VarInstMapDelta),
-	goal_info_init(VarNonLocals, VarInstMapDelta, det,
-		VarGoalInfo),
-	Goal = VarUnify - VarGoalInfo.
+	make_int_const_construction(VarValue, Goal, Var,
+		VarTypes0, VarTypes, VarSet0, VarSet1),
+	varset__name_var(VarSet1, Var, VarName, VarSet).
 
 :- pred gen_string_construction(string, string, map(prog_var, type),
 		map(prog_var, type), prog_varset, prog_varset, prog_var,
@@ -1260,23 +1235,9 @@ gen_int_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
 
 gen_string_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
 		Var, Goal) :-
-
-	varset__new_named_var(VarSet0, VarName, Var, VarSet),
-	term__context_init(Context),
-	VarType = term__functor(term__atom("string"), [], Context),
-	map__set(VarTypes0, Var, VarType, VarTypes),
-
-	Inst = bound(unique, [functor(string_const(VarValue), [])]),
-	VarUnify = unify(Var, functor(string_const(VarValue), []),
-		(free -> Inst) - (Inst -> Inst),
-		construct(Var, string_const(VarValue), [], []),
-		unify_context(explicit, [])),
-	set__singleton_set(VarNonLocals, Var),
-	instmap_delta_from_assoc_list([Var - Inst],
-		VarInstMapDelta),
-	goal_info_init(VarNonLocals, VarInstMapDelta, det,
-		VarGoalInfo),
-	Goal = VarUnify - VarGoalInfo.
+	make_string_const_construction(VarValue, Goal, Var,
+		VarTypes0, VarTypes, VarSet0, VarSet1),
+	varset__name_var(VarSet1, Var, VarName, VarSet).
 
 :- pred get_table_var_type(type).
 :- mode get_table_var_type(out) is det.

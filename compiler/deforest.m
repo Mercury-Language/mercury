@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -202,15 +202,13 @@ deforest__goal(Goal, Goal) -->
 	{ Goal = pragma_c_code(_, _, _, _, _, _, _) - _ }.
 
 deforest__goal(Goal, Goal) -->
-	{ Goal = higher_order_call(_, _, _, _, _, _) - _ }.
-
-deforest__goal(Goal, Goal) -->
-	{ Goal = class_method_call(_, _, _, _, _, _) - _ }.
+	{ Goal = generic_call(_, _, _, _) - _ }.
 
 deforest__goal(not(Goal0) - Info, not(Goal) - Info) -->
 	deforest__goal(Goal0, Goal).
 
-deforest__goal(some(Vs, Goal0) - Info, some(Vs, Goal) - Info) -->
+deforest__goal(some(Vs, CanRemove, Goal0) - Info,
+		some(Vs, CanRemove, Goal) - Info) -->
 	deforest__goal(Goal0, Goal).
 
 deforest__goal(Goal0, Goal) -->

@@ -380,55 +380,49 @@ unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
 	mode_info_set_instmap(InstMap0),
 	mode_checkpoint(exit, "not").
 
-unique_modes__check_goal_2(some(Vs, G0), _, some(Vs, G)) -->
+unique_modes__check_goal_2(some(Vs, CanRemove, G0), _,
+		some(Vs, CanRemove, G)) -->
 	mode_checkpoint(enter, "some"),
 	unique_modes__check_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
-		PredOrFunc), _GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "higher-order call"),
-	mode_info_set_call_context(higher_order_call(PredOrFunc)),
+unique_modes__check_goal_2(generic_call(GenericCall, Args, Modes, Det),
+		_GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "generic_call"),
+	{ hlds_goal__generic_call_id(GenericCall, CallId) },
+	mode_info_set_call_context(call(CallId)),
 	{ determinism_components(Det, _, at_most_zero) ->
 		NeverSucceeds = yes
 	;
 		NeverSucceeds = no
 	},
 	{ determinism_to_code_model(Det, CodeModel) },
-	unique_modes__check_call_modes(Args, Modes, 0,
-			CodeModel, NeverSucceeds),
-	{ Goal = higher_order_call(PredVar, Args, Types, Modes, Det,
-			PredOrFunc) },
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, "higher-order call").
 
-unique_modes__check_goal_2(class_method_call(TCVar, Num, Args, Types, Modes,
-		Det), _GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "class method call"),
-		% Setting the context to `higher_order_call(...)' is a little
-		% white lie.  However, since there can't really be a unique 
-		% mode error in a class_method_call, this lie will never be
-		% used. There can't be an error because the class_method_call 
-		% is introduced by the compiler as the body of a class method.
-	mode_info_set_call_context(higher_order_call(predicate)),
-	{ determinism_components(Det, _, at_most_zero) ->
-		NeverSucceeds = yes
+	% `aditi_insert' goals have type_info arguments for each
+	% of the arguments of the tuple to insert added to the
+	% start of the argument list by polymorphism.m.
+	{ GenericCall = aditi_builtin(aditi_insert(_), _ - _/Arity) ->
+		ArgOffset = -Arity
 	;
-		NeverSucceeds = no
+		ArgOffset = 0
 	},
-	{ determinism_to_code_model(Det, CodeModel) },
-	unique_modes__check_call_modes(Args, Modes, 0,
-			CodeModel, NeverSucceeds),
-	{ Goal = class_method_call(TCVar, Num, Args, Types, Modes, Det) },
+
+	unique_modes__check_call_modes(Args, Modes, ArgOffset,
+		CodeModel, NeverSucceeds),
+	{ Goal = generic_call(GenericCall, Args, Modes, Det) },
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "class method call").
+	mode_checkpoint(exit, "generic_call").
 
 unique_modes__check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
 		PredName), _GoalInfo0, Goal) -->
 	{ prog_out__sym_name_to_string(PredName, PredNameString) },
 	{ string__append("call ", PredNameString, CallString) },
 	mode_checkpoint(enter, CallString),
-	mode_info_set_call_context(call(PredId)),
+
+	=(ModeInfo),
+	{ mode_info_get_call_id(ModeInfo, PredId, CallId) },
+	mode_info_set_call_context(call(call(CallId))),
+
 	unique_modes__check_call(PredId, ProcId0, Args, ProcId),
 	{ Goal = call(PredId, ProcId, Args, Builtin, CallContext, PredName) },
 	mode_info_unset_call_context,
@@ -465,7 +459,9 @@ unique_modes__check_goal_2(pragma_c_code(IsRecursive, PredId, ProcId0,
 		Args, ArgNameMap, OrigArgTypes, PragmaCode),
 		_GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_c_code"),
-	mode_info_set_call_context(call(PredId)),
+	=(ModeInfo),
+	{ mode_info_get_call_id(ModeInfo, PredId, CallId) },
+	mode_info_set_call_context(call(call(CallId))),
 	unique_modes__check_call(PredId, ProcId0, Args, ProcId),
 	{ Goal = pragma_c_code(IsRecursive, PredId, ProcId, Args,
 			ArgNameMap, OrigArgTypes, PragmaCode) },

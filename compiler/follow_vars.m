@@ -29,14 +29,15 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal.
+:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
+:- import_module map.
 
 :- pred find_final_follow_vars(proc_info, follow_vars).
 :- mode find_final_follow_vars(in, out) is det.
 
-:- pred find_follow_vars_in_goal(hlds_goal, module_info,
+:- pred find_follow_vars_in_goal(hlds_goal, map(prog_var, type), module_info,
 				follow_vars, hlds_goal, follow_vars).
-:- mode find_follow_vars_in_goal(in, in, in, out, out) is det.
+:- mode find_follow_vars_in_goal(in, in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -79,51 +80,52 @@ find_final_follow_vars_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-find_follow_vars_in_goal(Goal0 - GoalInfo, ModuleInfo, FollowVars0,
+find_follow_vars_in_goal(Goal0 - GoalInfo, VarTypes, ModuleInfo, FollowVars0,
 					Goal - GoalInfo, FollowVars) :-
-	find_follow_vars_in_goal_2(Goal0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_goal_2(Goal0, VarTypes, ModuleInfo, FollowVars0,
 					Goal, FollowVars).
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_follow_vars_in_goal_2(hlds_goal_expr, module_info,
-		follow_vars, hlds_goal_expr, follow_vars).
-:- mode find_follow_vars_in_goal_2(in, in, in, out, out) is det.
+:- pred find_follow_vars_in_goal_2(hlds_goal_expr, map(prog_var, type),
+		module_info, follow_vars, hlds_goal_expr, follow_vars).
+:- mode find_follow_vars_in_goal_2(in, in, in, in, out, out) is det.
 
-find_follow_vars_in_goal_2(conj(Goals0), ModuleInfo, FollowVars0,
+find_follow_vars_in_goal_2(conj(Goals0), VarTypes, ModuleInfo, FollowVars0,
 		conj(Goals), FollowVars) :-
-	find_follow_vars_in_conj(Goals0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_conj(Goals0, VarTypes, ModuleInfo, FollowVars0,
 		no, Goals, FollowVars).
 
-find_follow_vars_in_goal_2(par_conj(Goals0, SM), ModuleInfo,
+find_follow_vars_in_goal_2(par_conj(Goals0, SM), VarTypes, ModuleInfo,
 		FollowVars0, par_conj(Goals, SM), FollowVars) :-
 		% find_follow_vars_in_disj treats its list of goals as a
 		% series of independent goals, so we can use it to process
 		% independent parallel conjunction.
-	find_follow_vars_in_disj(Goals0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_disj(Goals0, VarTypes, ModuleInfo, FollowVars0,
 		Goals, FollowVars).
 
 	% We record that at the end of each disjunct, live variables should
 	% be in the locations given by the initial follow_vars, which reflects
 	% the requirements of the code following the disjunction.
 
-find_follow_vars_in_goal_2(disj(Goals0, _), ModuleInfo, FollowVars0,
+find_follow_vars_in_goal_2(disj(Goals0, _), VarTypes, ModuleInfo, FollowVars0,
 		disj(Goals, FollowVars0), FollowVars) :-
-	find_follow_vars_in_disj(Goals0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_disj(Goals0, VarTypes, ModuleInfo, FollowVars0,
 		Goals, FollowVars).
 
-find_follow_vars_in_goal_2(not(Goal0), ModuleInfo, FollowVars0,
+find_follow_vars_in_goal_2(not(Goal0), VarTypes, ModuleInfo, FollowVars0,
 		not(Goal), FollowVars) :-
-	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_goal(Goal0, VarTypes, ModuleInfo, FollowVars0,
 		Goal, FollowVars).
 
 	% We record that at the end of each arm of the switch, live variables
 	% should be in the locations given by the initial follow_vars, which
 	% reflects the requirements of the code following the switch.
 
-find_follow_vars_in_goal_2(switch(Var, Det, Cases0, _), ModuleInfo, FollowVars0,
-		switch(Var, Det, Cases, FollowVars0), FollowVars) :-
-	find_follow_vars_in_cases(Cases0, ModuleInfo, FollowVars0,
+find_follow_vars_in_goal_2(switch(Var, Det, Cases0, _), VarTypes, ModuleInfo,
+		FollowVars0, switch(Var, Det, Cases, FollowVars0),
+		FollowVars) :-
+	find_follow_vars_in_cases(Cases0, VarTypes, ModuleInfo, FollowVars0,
 		Cases, FollowVars).
 
 	% Set the follow_vars field for the condition, the then-part and the
@@ -144,53 +146,38 @@ find_follow_vars_in_goal_2(switch(Var, Det, Cases0, _), ModuleInfo, FollowVars0,
 	% following the if-then-else.
 
 find_follow_vars_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, _),
-		ModuleInfo, FollowVars0,
+		VarTypes, ModuleInfo, FollowVars0,
 		if_then_else(Vars, Cond, Then, Else, FollowVars0),
 		FollowVarsCond) :-
-	find_follow_vars_in_goal(Then0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_goal(Then0, VarTypes, ModuleInfo, FollowVars0,
 		Then1, FollowVarsThen),
 	goal_set_follow_vars(Then1, yes(FollowVarsThen), Then),
-	find_follow_vars_in_goal(Cond0, ModuleInfo, FollowVarsThen,
+	find_follow_vars_in_goal(Cond0, VarTypes, ModuleInfo, FollowVarsThen,
 		Cond1, FollowVarsCond),
 	goal_set_follow_vars(Cond1, yes(FollowVarsCond), Cond),
-	find_follow_vars_in_goal(Else0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_goal(Else0, VarTypes, ModuleInfo, FollowVars0,
 		Else1, FollowVarsElse),
 	goal_set_follow_vars(Else1, yes(FollowVarsElse), Else).
 
-find_follow_vars_in_goal_2(some(Vars, Goal0), ModuleInfo,
-		FollowVars0, some(Vars, Goal), FollowVars) :-
-	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0,
+find_follow_vars_in_goal_2(some(Vars, CanRemove, Goal0), VarTypes, ModuleInfo,
+		FollowVars0, some(Vars, CanRemove, Goal), FollowVars) :-
+	find_follow_vars_in_goal(Goal0, VarTypes, ModuleInfo, FollowVars0,
 		Goal, FollowVars).
 
 	% XXX These follow-vars aren't correct since the desired positions for
 	% XXX the arguments are different from an ordinary call --- they are
-	% XXX as required by do_call_{det,semidet,nondet}_closure
+	% XXX as required by the builtin operation.
 find_follow_vars_in_goal_2(
-		higher_order_call(PredVar, Args, Types, Modes, Det,
-			IsPredOrFunc),
-		ModuleInfo, _FollowVars0,
-		higher_order_call(PredVar, Args, Types, Modes, Det,
-			IsPredOrFunc),
+		generic_call(GenericCall, Args, Modes, Det),
+		VarTypes, ModuleInfo, _FollowVars0,
+		generic_call(GenericCall, Args, Modes, Det),
 		FollowVars) :-
 	determinism_to_code_model(Det, CodeModel),
+	map__apply_to_list(Args, VarTypes, Types),
 	make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 
-	% XXX These follow-vars aren't correct since the desired positions for
-	% XXX the arguments are different from an ordinary call --- they are
-	% XXX as required by do_call_{det,semidet,nondet}_class_method
-find_follow_vars_in_goal_2(
-		class_method_call(TypeClassInfoVar, Num, Args, Types, Modes,
-			Det),
-		ModuleInfo, _FollowVars0,
-		class_method_call(TypeClassInfoVar, Num, Args, Types, Modes,
-			Det),
-		FollowVars) :-
-	determinism_to_code_model(Det, CodeModel),
-	make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfo),
-	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
-
-find_follow_vars_in_goal_2(call(A,B,C,D,E,F), ModuleInfo,
+find_follow_vars_in_goal_2(call(A,B,C,D,E,F), _, ModuleInfo,
 		FollowVars0, call(A,B,C,D,E,F), FollowVars) :-
 	(
 		D = inline_builtin
@@ -200,7 +187,7 @@ find_follow_vars_in_goal_2(call(A,B,C,D,E,F), ModuleInfo,
 		find_follow_vars_in_call(A, B, C, ModuleInfo, FollowVars)
 	).
 
-find_follow_vars_in_goal_2(unify(A,B,C,D,E), _ModuleInfo,
+find_follow_vars_in_goal_2(unify(A,B,C,D,E), _, _ModuleInfo,
 		FollowVars0, unify(A,B,C,D,E), FollowVars) :-
 	(
 		D = assign(LVar, RVar),
@@ -212,7 +199,7 @@ find_follow_vars_in_goal_2(unify(A,B,C,D,E), _ModuleInfo,
 	).
 
 find_follow_vars_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), 
-		_ModuleInfo, FollowVars,
+		_, _ModuleInfo, FollowVars,
 		pragma_c_code(A,B,C,D,E,F,G), FollowVars).
 
 %-----------------------------------------------------------------------------%
@@ -282,18 +269,18 @@ find_follow_vars_from_arginfo_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 	%
 	% This code is used both for disjunction and parallel conjunction.
 
-:- pred find_follow_vars_in_disj(list(hlds_goal), module_info,
-				follow_vars, list(hlds_goal), follow_vars).
-:- mode find_follow_vars_in_disj(in, in, in, out, out) is det.
+:- pred find_follow_vars_in_disj(list(hlds_goal), map(prog_var, type),
+		module_info, follow_vars, list(hlds_goal), follow_vars).
+:- mode find_follow_vars_in_disj(in, in, in, in, out, out) is det.
 
-find_follow_vars_in_disj([], _ModuleInfo, FollowVars,
+find_follow_vars_in_disj([], _, _ModuleInfo, FollowVars,
 			[], FollowVars).
-find_follow_vars_in_disj([Goal0 | Goals0], ModuleInfo, FollowVars0,
+find_follow_vars_in_disj([Goal0 | Goals0], VarTypes, ModuleInfo, FollowVars0,
 						[Goal | Goals], FollowVars) :-
-	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_goal(Goal0, VarTypes, ModuleInfo, FollowVars0,
 		Goal1, FollowVars),
 	goal_set_follow_vars(Goal1, yes(FollowVars), Goal),
-	find_follow_vars_in_disj(Goals0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_disj(Goals0, VarTypes, ModuleInfo, FollowVars0,
 		Goals, _FollowVars1).
 
 %-----------------------------------------------------------------------------%
@@ -309,17 +296,17 @@ find_follow_vars_in_disj([Goal0 | Goals0], ModuleInfo, FollowVars0,
 	% its follow_vars) and to let different branches "vote" on
 	% what should be in registers.
 
-:- pred find_follow_vars_in_cases(list(case), module_info,
+:- pred find_follow_vars_in_cases(list(case), map(prog_var, type), module_info,
 				follow_vars, list(case), follow_vars).
-:- mode find_follow_vars_in_cases(in, in, in, out, out) is det.
+:- mode find_follow_vars_in_cases(in, in, in, in, out, out) is det.
 
-find_follow_vars_in_cases([], _ModuleInfo, FollowVars, [], FollowVars).
-find_follow_vars_in_cases([case(Cons, Goal0) | Goals0], ModuleInfo,
+find_follow_vars_in_cases([], _, _ModuleInfo, FollowVars, [], FollowVars).
+find_follow_vars_in_cases([case(Cons, Goal0) | Goals0], VarTypes, ModuleInfo,
 			FollowVars0, [case(Cons, Goal) | Goals], FollowVars) :-
-	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_goal(Goal0, VarTypes, ModuleInfo, FollowVars0,
 		Goal1, FollowVars),
 	goal_set_follow_vars(Goal1, yes(FollowVars), Goal),
-	find_follow_vars_in_cases(Goals0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_cases(Goals0, VarTypes, ModuleInfo, FollowVars0,
 		Goals, _FollowVars1).
 
 %-----------------------------------------------------------------------------%
@@ -327,13 +314,13 @@ find_follow_vars_in_cases([case(Cons, Goal0) | Goals0], ModuleInfo,
 	% We attach the follow_vars to each goal that follows a goal
 	% that is not cachable by the code generator.
 
-:- pred find_follow_vars_in_conj(list(hlds_goal), module_info,
-			follow_vars, bool, list(hlds_goal), follow_vars).
-:- mode find_follow_vars_in_conj(in, in, in, in, out, out) is det.
+:- pred find_follow_vars_in_conj(list(hlds_goal), map(prog_var, type),
+		module_info, follow_vars, bool, list(hlds_goal), follow_vars).
+:- mode find_follow_vars_in_conj(in, in, in, in, in, out, out) is det.
 
-find_follow_vars_in_conj([], _ModuleInfo, FollowVars,
+find_follow_vars_in_conj([], _, _ModuleInfo, FollowVars,
 		_AttachToFirst, [], FollowVars).
-find_follow_vars_in_conj([Goal0 | Goals0], ModuleInfo, FollowVars0,
+find_follow_vars_in_conj([Goal0 | Goals0], VarTypes, ModuleInfo, FollowVars0,
 		AttachToFirst, [Goal | Goals], FollowVars) :-
 	(
 		Goal0 = GoalExpr0 - _,
@@ -349,9 +336,9 @@ find_follow_vars_in_conj([Goal0 | Goals0], ModuleInfo, FollowVars0,
 	;
 		AttachToNext = yes
 	),
-	find_follow_vars_in_conj(Goals0, ModuleInfo, FollowVars0,
+	find_follow_vars_in_conj(Goals0, VarTypes, ModuleInfo, FollowVars0,
 		AttachToNext, Goals, FollowVars1),
-	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars1,
+	find_follow_vars_in_goal(Goal0, VarTypes, ModuleInfo, FollowVars1,
 		Goal1, FollowVars),
 	(
 		AttachToFirst = yes,

@@ -116,6 +116,8 @@ ops__lookup_postfix_op(_OpTable, Name, Priority, LeftAssoc) :-
 ops__lookup_op(_OpTable, Name) :-
 	ops__op_table(Name, _, _, _).
 
+	% Changes here may require changes to compiler/mercury_to_mercury.m
+	% and doc/transition_guide.texi.
 :- pred ops__op_table(string, ops__category, ops__specifier, ops__priority).
 :- mode ops__op_table(in, in, out, out) is semidet.
 :- mode ops__op_table(in, out, out, out) is nondet.
@@ -149,6 +151,7 @@ ops__op_table("=..", after, xfx, 700).		% standard ISO Prolog
 ops__op_table("=:=", after, xfx, 700).		% standard ISO Prolog (*)
 ops__op_table("=<", after, xfx, 700).		% standard ISO Prolog
 ops__op_table("==", after, xfx, 700).		% standard ISO Prolog (*)
+ops__op_table("==>", after, xfx, 1175).		% Mercury extension
 ops__op_table("=>", after, xfy, 920).		% Mercury/NU-Prolog extension
 ops__op_table("=\\=", after, xfx, 700).		% standard ISO Prolog (*)
 ops__op_table(">", after, xfx, 700).		% standard ISO Prolog
@@ -165,6 +168,8 @@ ops__op_table("\\/", after, yfx, 500).		% standard ISO Prolog
 ops__op_table("\\=", after, xfx, 700).		% standard ISO Prolog
 ops__op_table("\\==", after, xfx, 700).		% standard ISO Prolog (*)
 ops__op_table("^", after, xfy, 200).		% standard ISO Prolog
+ops__op_table("aditi_bottom_up", before, fx, 500). % Mercury extension
+ops__op_table("aditi_top_down", before, fx, 500). % Mercury extension
 ops__op_table("all", before, fxy, 950).		% Mercury/NU-Prolog extension
 ops__op_table("and", after, xfy, 720).		% NU-Prolog extension
 ops__op_table("assertion", before, fx, 1199).	% Mercury extension

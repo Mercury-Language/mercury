@@ -1499,6 +1499,13 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepInfo0,
 				sym_name, arity, list(pred_id)) is semidet.
 :- mode predicate_table_search_pf_sym_arity(in, in, in, in, out) is semidet.
 
+	% Search the table for predicates or functions matching
+	% this pred_or_func category and sym_name.
+
+:- pred predicate_table_search_pf_sym(predicate_table, pred_or_func,
+				sym_name, list(pred_id)) is semidet.
+:- mode predicate_table_search_pf_sym(in, in, in, out) is semidet.
+
 	% predicate_table_insert(PredTable0, PredInfo, NeedQual, PredId,
 	% 		PredTable).
 	% 
@@ -1932,6 +1939,12 @@ predicate_table_search_pf_sym_arity(PredicateTable, PredOrFunc,
 		unqualified(Name), Arity, PredIdList) :-
 	predicate_table_search_pf_name_arity(PredicateTable, PredOrFunc,
 		Name, Arity, PredIdList).
+
+predicate_table_search_pf_sym(PredicateTable, predicate,
+		SymName, PredIdList) :-
+	predicate_table_search_pred_sym(PredicateTable, SymName, PredIdList).
+predicate_table_search_pf_sym(PredicateTable, function, SymName, PredIdList) :-
+	predicate_table_search_func_sym(PredicateTable, SymName, PredIdList).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -184,30 +184,30 @@ detect_switches_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	detect_switches_in_goal(Then0, InstMap1, VarTypes, ModuleInfo, Then),
 	detect_switches_in_goal(Else0, InstMap0, VarTypes, ModuleInfo, Else).
 
-detect_switches_in_goal_2(some(Vars, Goal0), _GoalInfo, InstMap0,
-		VarTypes, ModuleInfo, some(Vars, Goal)) :-
+detect_switches_in_goal_2(some(Vars, CanRemove, Goal0), _GoalInfo, InstMap0,
+		VarTypes, ModuleInfo, some(Vars, CanRemove, Goal)) :-
 	detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo, Goal).
 
-detect_switches_in_goal_2(higher_order_call(A,B,C,D,E,F), _, _, _, _,
-		higher_order_call(A,B,C,D,E,F)).
-
-detect_switches_in_goal_2(class_method_call(A,B,C,D,E,F), _, _, _, _,
-		class_method_call(A,B,C,D,E,F)).
+detect_switches_in_goal_2(generic_call(A,B,C,D), _, _, _, _,
+		generic_call(A,B,C,D)).
 
 detect_switches_in_goal_2(call(A,B,C,D,E,F), _, _, _, _,
 		call(A,B,C,D,E,F)).
 
 detect_switches_in_goal_2(unify(A,RHS0,C,D,E), __GoalInfo, InstMap0,
 		VarTypes, ModuleInfo, unify(A,RHS,C,D,E)) :-
-	( RHS0 = lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, Goal0) ->
+	(
+		RHS0 = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+			NonLocals, Vars, Modes, Det, Goal0)
+	->
 		% we need to insert the initial insts for the lambda
 		% variables in the instmap before processing the lambda goal
 		instmap__pre_lambda_update(ModuleInfo, 
 			Vars, Modes, InstMap0, InstMap1),
 		detect_switches_in_goal(Goal0, InstMap1, VarTypes, ModuleInfo,
 			Goal),
-		RHS = lambda_goal(PredOrFunc, NonLocals, 
-			Vars, Modes, Det, Goal)
+		RHS = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+			NonLocals, Vars, Modes, Det, Goal)
 	;
 		RHS = RHS0
 	).
@@ -462,11 +462,11 @@ find_bind_var(Var, ProcessUnify, Goal0, Goal,
 
 find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal, Substitution0,
 		Substitution, Result0, Result, Info0, Info, Continue) :-
-	( Goal0 = some(Vars, SubGoal0) ->
+	( Goal0 = some(Vars, CanRemove, SubGoal0) ->
 		find_bind_var(Var, ProcessUnify, SubGoal0, SubGoal,
 			Substitution0, Substitution, Result0, Result,
 			Info0, Info, Continue),
-		Goal = some(Vars, SubGoal) - GoalInfo
+		Goal = some(Vars, CanRemove, SubGoal) - GoalInfo
 	; Goal0 = conj(SubGoals0) ->
 		conj_find_bind_var(Var, ProcessUnify, SubGoals0, SubGoals,
 			Substitution0, Substitution, Result0, Result,

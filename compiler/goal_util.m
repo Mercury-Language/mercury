@@ -73,6 +73,10 @@
 		set(prog_var)).
 :- mode goal_util__goals_goal_vars(in, in, out) is det.
 
+	% Return all the variables in a generic call.
+:- pred goal_util__generic_call_vars(generic_call, list(prog_var)).
+:- mode goal_util__generic_call_vars(in, out) is det.
+
 	%
 	% goal_util__extra_nonlocal_typeinfos(TypeInfoMap, TypeClassInfoMap,
 	%		VarTypes, ExistQVars, NonLocals, NonLocalTypeInfos):
@@ -316,26 +320,16 @@ goal_util__name_apart_2(if_then_else(Vars0, Cond0, Then0, Else0, SM0),
 goal_util__name_apart_2(not(Goal0), Must, Subn, not(Goal)) :-
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
 
-goal_util__name_apart_2(some(Vars0, Goal0), Must, Subn, some(Vars, Goal)) :-
+goal_util__name_apart_2(some(Vars0, CanRemove, Goal0), Must, Subn,
+		some(Vars, CanRemove, Goal)) :-
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
 
 goal_util__name_apart_2(
-		higher_order_call(PredVar0, Args0, Types, Modes, Det,
-			IsPredOrFunc),
+		generic_call(GenericCall0, Args0, Modes, Det),
 		Must, Subn,
-		higher_order_call(PredVar, Args, Types, Modes, Det,
-			IsPredOrFunc)) :-
-	goal_util__rename_var(PredVar0, Must, Subn, PredVar),
-	goal_util__rename_var_list(Args0, Must, Subn, Args).
-
-goal_util__name_apart_2(
-		class_method_call(TypeClassInfoVar0, Num, Args0, Types, Modes,
-			Det),
-		Must, Subn,
-		class_method_call(TypeClassInfoVar, Num, Args, Types, Modes,
-			Det)) :-
-	goal_util__rename_var(TypeClassInfoVar0, Must, Subn, TypeClassInfoVar),
+		generic_call(GenericCall, Args, Modes, Det)) :-
+	goal_util__rename_generic_call(GenericCall0, Must, Subn, GenericCall),
 	goal_util__rename_var_list(Args0, Must, Subn, Args).
 
 goal_util__name_apart_2(
@@ -389,9 +383,11 @@ goal_util__rename_unify_rhs(functor(Functor, ArgVars0), Must, Subn,
 			functor(Functor, ArgVars)) :-
 	goal_util__rename_var_list(ArgVars0, Must, Subn, ArgVars).
 goal_util__rename_unify_rhs(
-	    lambda_goal(PredOrFunc, NonLocals0, Vars0, Modes, Det, Goal0),
+	    lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals0,
+	    		Vars0, Modes, Det, Goal0),
 	    Must, Subn, 
-	    lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, Goal)) :-
+	    lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals,
+	    		Vars, Modes, Det, Goal)) :-
 	goal_util__rename_var_list(NonLocals0, Must, Subn, NonLocals),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
@@ -400,10 +396,18 @@ goal_util__rename_unify_rhs(
 		unification).
 :- mode goal_util__rename_unify(in, in, in, out) is det.
 
-goal_util__rename_unify(construct(Var0, ConsId, Vars0, Modes), Must, Subn,
-			construct(Var, ConsId, Vars, Modes)) :-
+goal_util__rename_unify(
+		construct(Var0, ConsId, Vars0, Modes, Reuse0, Uniq, Aditi),
+		Must, Subn,
+		construct(Var, ConsId, Vars, Modes, Reuse, Uniq, Aditi)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var),
-	goal_util__rename_var_list(Vars0, Must, Subn, Vars).
+	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
+	( Reuse0 = yes(cell_to_reuse(ReuseVar0, B, C)) ->
+		goal_util__rename_var(ReuseVar0, Must, Subn, ReuseVar),
+		Reuse = yes(cell_to_reuse(ReuseVar, B, C))
+	;
+		Reuse = no
+	).
 goal_util__rename_unify(deconstruct(Var0, ConsId, Vars0, Modes, Cat),
 		Must, Subn, deconstruct(Var, ConsId, Vars, Modes, Cat)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var),
@@ -417,6 +421,21 @@ goal_util__rename_unify(simple_test(L0, R0), Must, Subn, simple_test(L, R)) :-
 goal_util__rename_unify(complicated_unify(Modes, Cat, TypeInfoVars),
 			_Must, _Subn,
 			complicated_unify(Modes, Cat, TypeInfoVars)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred goal_util__rename_generic_call(generic_call, bool,
+		map(prog_var, prog_var), generic_call).
+:- mode goal_util__rename_generic_call(in, in, in, out) is det.
+
+goal_util__rename_generic_call(higher_order(Var0, PredOrFunc, Arity),
+		Must, Subn, higher_order(Var, PredOrFunc, Arity)) :-
+	goal_util__rename_var(Var0, Must, Subn, Var).
+goal_util__rename_generic_call(class_method(Var0, Method, ClassId, MethodId),
+		Must, Subn, class_method(Var, Method, ClassId, MethodId)) :-
+	goal_util__rename_var(Var0, Must, Subn, Var).
+goal_util__rename_generic_call(aditi_builtin(Builtin, PredCallId),
+		_Must, _Subn, aditi_builtin(Builtin, PredCallId)).
 
 %-----------------------------------------------------------------------------%
 
@@ -500,17 +519,24 @@ goal_util__goal_vars(Goal - _GoalInfo, Set) :-
 :- pred goal_util__goal_vars_2(hlds_goal_expr, set(prog_var), set(prog_var)).
 :- mode goal_util__goal_vars_2(in, in, out) is det.
 
-goal_util__goal_vars_2(unify(Var, RHS, _, _, _), Set0, Set) :-
+goal_util__goal_vars_2(unify(Var, RHS, _, Unif, _), Set0, Set) :-
 	set__insert(Set0, Var, Set1),
-	goal_util__rhs_goal_vars(RHS, Set1, Set).
+	( Unif = construct(_, _, _, _, CellToReuse, _, _) ->
+		( CellToReuse = yes(cell_to_reuse(Var, _, _)) ->
+			set__insert(Set1, Var, Set2)
+		;
+			Set2 = Set1
+		)
+	;
+		Set2 = Set1
+	),	
+	goal_util__rhs_goal_vars(RHS, Set2, Set).
 
-goal_util__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _),
+goal_util__goal_vars_2(generic_call(GenericCall, ArgVars, _, _),
 		Set0, Set) :-
-	set__insert_list(Set0, [PredVar | ArgVars], Set).
-
-goal_util__goal_vars_2(class_method_call(PredVar, _, ArgVars, _, _, _),
-		Set0, Set) :-
-	set__insert_list(Set0, [PredVar | ArgVars], Set).
+	goal_util__generic_call_vars(GenericCall, Vars0),
+	set__insert_list(Set0, Vars0, Set1),
+	set__insert_list(Set1, ArgVars, Set).
 
 goal_util__goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
@@ -528,7 +554,7 @@ goal_util__goal_vars_2(switch(Var, _Det, Cases, _), Set0, Set) :-
 	set__insert(Set0, Var, Set1),
 	goal_util__cases_goal_vars(Cases, Set1, Set).
 
-goal_util__goal_vars_2(some(Vars, Goal - _), Set0, Set) :-
+goal_util__goal_vars_2(some(Vars, _, Goal - _), Set0, Set) :-
 	set__insert_list(Set0, Vars, Set1),
 	goal_util__goal_vars_2(Goal, Set1, Set).
 
@@ -566,11 +592,15 @@ goal_util__rhs_goal_vars(var(X), Set0, Set) :-
 goal_util__rhs_goal_vars(functor(_Functor, ArgVars), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 goal_util__rhs_goal_vars(
-		lambda_goal(_POrF, NonLocals, LambdaVars, _M, _D, Goal - _), 
+		lambda_goal(_, _, _, NonLocals, LambdaVars, _M, _D, Goal - _), 
 		Set0, Set) :-
 	set__insert_list(Set0, NonLocals, Set1),
 	set__insert_list(Set1, LambdaVars, Set2),
 	goal_util__goal_vars_2(Goal, Set2, Set).
+
+goal_util__generic_call_vars(higher_order(Var, _, _), [Var]).
+goal_util__generic_call_vars(class_method(Var, _, _, _), [Var]).
+goal_util__generic_call_vars(aditi_builtin(_, _), []).
 
 %-----------------------------------------------------------------------------%
 
@@ -656,12 +686,11 @@ goal_expr_size(if_then_else(_, Cond, Then, Else, _), Size) :-
 goal_expr_size(not(Goal), Size) :-
 	goal_size(Goal, Size1),
 	Size is Size1 + 1.
-goal_expr_size(some(_, Goal), Size) :-
+goal_expr_size(some(_, _, Goal), Size) :-
 	goal_size(Goal, Size1),
 	Size is Size1 + 1.
 goal_expr_size(call(_, _, _, _, _, _), 1).
-goal_expr_size(higher_order_call(_, _, _, _, _, _), 1).
-goal_expr_size(class_method_call(_, _, _, _, _, _), 1).
+goal_expr_size(generic_call(_, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
 goal_expr_size(pragma_c_code(_, _, _, _, _, _, _), 1).
 
@@ -712,7 +741,7 @@ goal_expr_calls(if_then_else(_, Cond, Then, Else, _), PredProcId) :-
 	).
 goal_expr_calls(not(Goal), PredProcId) :-
 	goal_calls(Goal, PredProcId).
-goal_expr_calls(some(_, Goal), PredProcId) :-
+goal_expr_calls(some(_, _, Goal), PredProcId) :-
 	goal_calls(Goal, PredProcId).
 goal_expr_calls(call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
 
@@ -760,7 +789,7 @@ goal_expr_calls_pred_id(if_then_else(_, Cond, Then, Else, _), PredId) :-
 	).
 goal_expr_calls_pred_id(not(Goal), PredId) :-
 	goal_calls_pred_id(Goal, PredId).
-goal_expr_calls_pred_id(some(_, Goal), PredId) :-
+goal_expr_calls_pred_id(some(_, _, Goal), PredId) :-
 	goal_calls_pred_id(Goal, PredId).
 goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
 

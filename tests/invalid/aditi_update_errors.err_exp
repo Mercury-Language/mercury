@@ -1,0 +1,152 @@
+aditi_update_errors.m:091: Error: wrong number of arguments (5; should be 3 or 4)
+aditi_update_errors.m:091:   in `aditi_modify'.
+aditi_update_errors.m:090: Error: expected
+aditi_update_errors.m:090:   `aditi_modify(
+aditi_update_errors.m:090:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
+aditi_update_errors.m:090:     DB0, DB)'
+aditi_update_errors.m:090:   or `aditi_modify(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:081: Error: wrong number of arguments (5; should be 3 or 4)
+aditi_update_errors.m:081:   in `aditi_modify'.
+aditi_update_errors.m:080: Error: expected
+aditi_update_errors.m:080:   `aditi_modify(
+aditi_update_errors.m:080:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
+aditi_update_errors.m:080:     DB0, DB)'
+aditi_update_errors.m:080:   or `aditi_modify(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:071: Error: expected
+aditi_update_errors.m:071:   `aditi_modify(
+aditi_update_errors.m:071:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
+aditi_update_errors.m:071:     DB0, DB)'
+aditi_update_errors.m:071:   or `aditi_modify(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:067: Error: wrong number of arguments (5; should be 4)
+aditi_update_errors.m:067:   in `aditi_bulk_delete'.
+aditi_update_errors.m:066: Error: expected `PredOrFunc Name/Arity' in `aditi_bulk_delete'.
+aditi_update_errors.m:057: Error: wrong number of arguments (5; should be 4)
+aditi_update_errors.m:057:   in `aditi_bulk_delete'.
+aditi_update_errors.m:056: Error: expected `PredOrFunc Name/Arity' in `aditi_bulk_insert'.
+aditi_update_errors.m:048: Error: expected `aditi_delete((p(<Args>) :- <Goal>), DB0, DB)'
+aditi_update_errors.m:048:   or `aditi_delete(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:043: Error: expected `aditi_delete((p(<Args>) :- <Goal>), DB0, DB)'
+aditi_update_errors.m:043:   or `aditi_delete(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:037: Error: expected `aditi_delete((p(<Args>) :- <Goal>), DB0, DB)'
+aditi_update_errors.m:037:   or `aditi_delete(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:036: Error: expected `aditi_delete((p(<Args>) :- <Goal>), DB0, DB)'
+aditi_update_errors.m:036:   or `aditi_delete(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:034: Error: wrong number of arguments (4; should be 3)
+aditi_update_errors.m:034:   in `aditi_insert'.
+aditi_update_errors.m:033: Error: wrong number of arguments (4; should be 3)
+aditi_update_errors.m:033:   in `aditi_insert'.
+aditi_update_errors.m:031: Error: expected tuple to insert in `aditi_insert'.
+aditi_update_errors.m:073: In clause for predicate `aditi_update_errors:aditi_update_syntax/2':
+aditi_update_errors.m:073:   warning: variable `X' has overlapping scopes.
+aditi_update_errors.m:083: In clause for predicate `aditi_update_errors:aditi_update_syntax/2':
+aditi_update_errors.m:083:   warning: variable `X' has overlapping scopes.
+aditi_update_errors.m:007: Error: no clauses for predicate `aditi_update_errors:aditi_update_syntax/2'
+aditi_update_errors.m:097: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:097:   error: wrong number of arguments (2; should be 3)
+aditi_update_errors.m:097:   in call to predicate `p'.
+aditi_update_errors.m:098: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:098:   error: undefined predicate `q/2'.
+aditi_update_errors.m:098:   (There is a *function* with that name, however.
+aditi_update_errors.m:098:   Perhaps you forgot to add ` = ...'?)
+aditi_update_errors.m:099: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:099:   error: wrong number of arguments (1; should be 2)
+aditi_update_errors.m:099:   in call to function `q'.
+aditi_update_errors.m:100: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:100:   in argument 2 of `aditi_insert' of predicate `p/3':
+aditi_update_errors.m:100:   type error: argument has type `int',
+aditi_update_errors.m:100:   expected type was `(aditi:state)'.
+aditi_update_errors.m:102: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:102:   in argument 2 of call to predicate `</2':
+aditi_update_errors.m:102:   type error: argument has type `float',
+aditi_update_errors.m:102:   expected type was `int'.
+aditi_update_errors.m:103: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:103:   in argument 2 of call to predicate `</2':
+aditi_update_errors.m:103:   type error: argument has type `float',
+aditi_update_errors.m:103:   expected type was `int'.
+aditi_update_errors.m:105: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:105:   in argument 2 of call to predicate `</2':
+aditi_update_errors.m:105:   type error: argument has type `float',
+aditi_update_errors.m:105:   expected type was `int'.
+aditi_update_errors.m:105: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:105:   error: wrong number of arguments (2; should be 3)
+aditi_update_errors.m:105:   in call to predicate `p'.
+aditi_update_errors.m:106: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:106:   error: wrong number of arguments (1; should be 2)
+aditi_update_errors.m:106:   in call to function `q'.
+aditi_update_errors.m:112: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:112:   in argument 2 of `aditi_delete' of predicate `p/3':
+aditi_update_errors.m:112:   type error: variable `DeleteP' has type `(aditi_top_down pred(V_10, int))',
+aditi_update_errors.m:112:   expected type was `(aditi_top_down pred((aditi:state), int, int))'.
+aditi_update_errors.m:113: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:113:   error: undefined predicate `q/2'.
+aditi_update_errors.m:113:   (There is a *function* with that name, however.
+aditi_update_errors.m:113:   Perhaps you forgot to add ` = ...'?)
+aditi_update_errors.m:118: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:118:   in argument 2 of `aditi_delete' of function `q/2':
+aditi_update_errors.m:118:   type error: variable `DeleteQ' has type `((aditi_top_down (func V_12)) = int)',
+aditi_update_errors.m:118:   expected type was `((aditi_top_down func((aditi:state), int)) = int)'.
+aditi_update_errors.m:119: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:119:   error: undefined function `p/3'.
+aditi_update_errors.m:119:   (There is a *predicate* with that name, however.)
+aditi_update_errors.m:124: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:124:   in argument 2 of `aditi_delete' of function `q/2':
+aditi_update_errors.m:124:   type error: variable `DeleteQ2' has type `((func V_14) = int)',
+aditi_update_errors.m:124:   expected type was `((aditi_top_down func((aditi:state), int)) = int)'.
+aditi_update_errors.m:132: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:132:   error: wrong number of arguments (4; should be 3)
+aditi_update_errors.m:132:   in call to predicate `p'.
+aditi_update_errors.m:133: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:133:   in argument 2 of `aditi_bulk_insert' of predicate `p/3':
+aditi_update_errors.m:133:   type error: variable `InsertP' has type `(aditi_bottom_up pred(V_16, int, float))',
+aditi_update_errors.m:133:   expected type was `(aditi_bottom_up pred((aditi:state), int, int))'.
+aditi_update_errors.m:134: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:134:   error: undefined predicate `q/2'.
+aditi_update_errors.m:134:   (There is a *function* with that name, however.
+aditi_update_errors.m:134:   Perhaps you forgot to add ` = ...'?)
+aditi_update_errors.m:142: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:142:   in argument 2 of `aditi_bulk_insert' of predicate `p/3':
+aditi_update_errors.m:142:   type error: variable `InsertP2' has type `pred(V_19, int, float)',
+aditi_update_errors.m:142:   expected type was `(aditi_bottom_up pred((aditi:state), int, int))'.
+aditi_update_errors.m:152: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:152:   error: undefined predicate `q/2'.
+aditi_update_errors.m:152:   (There is a *function* with that name, however.
+aditi_update_errors.m:152:   Perhaps you forgot to add ` = ...'?)
+aditi_update_errors.m:155: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:155:   in argument 1 of `aditi_modify' of predicate `p/3':
+aditi_update_errors.m:155:   type error: argument has type `(aditi_top_down pred(int, int, V_27, int, int, V_30))',
+aditi_update_errors.m:155:   expected type was `(aditi_top_down pred((aditi:state), int, int, (aditi:state), int, int))'.
+aditi_update_errors.m:156: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:156:   error: wrong number of arguments (1; should be 2)
+aditi_update_errors.m:156:   in call to function `q'.
+aditi_update_errors.m:157: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:157:   error: undefined predicate `q/3'.
+aditi_update_errors.m:157:   (There is a *function* with that name, however.
+aditi_update_errors.m:157:   Perhaps you forgot to add ` = ...'?)
+aditi_update_errors.m:163: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:163:   in unification of variable `X'
+aditi_update_errors.m:163:   and term `(X0 + Y0)':
+aditi_update_errors.m:163:   type error in argument(s) of functor `+/2'.
+aditi_update_errors.m:163:   Argument 1 (X0) has type `float',
+aditi_update_errors.m:163:   expected type was `int';
+aditi_update_errors.m:163:   argument 2 (Y0) has type `V_43',
+aditi_update_errors.m:163:   expected type was `int'.
+aditi_update_errors.m:164: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:164:   in unification of variable `Y'
+aditi_update_errors.m:164:   and term `(X0 - Y0)':
+aditi_update_errors.m:164:   type error in argument(s) of functor `-/2'.
+aditi_update_errors.m:164:   Argument 1 (X0) has type `float',
+aditi_update_errors.m:164:   expected type was `int';
+aditi_update_errors.m:164:   argument 2 (Y0) has type `V_43',
+aditi_update_errors.m:164:   expected type was `int'.
+aditi_update_errors.m:166: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:166:   in argument 2 of `aditi_modify' of predicate `p/3':
+aditi_update_errors.m:166:   type error: variable `ModifyP' has type `(aditi_top_down pred(V_41, float, V_43, V_44, V_45, V_46))',
+aditi_update_errors.m:166:   expected type was `(aditi_top_down pred((aditi:state), int, int, (aditi:state), int, int))'.
+aditi_update_errors.m:175: In clause for predicate `aditi_update_errors:aditi_update_types/2':
+aditi_update_errors.m:175:   in argument 2 of `aditi_modify' of function `q/2':
+aditi_update_errors.m:175:   type error: variable `ModifyQ' has type `((aditi_top_down func(V_47, int, int, V_50, int)) = int)',
+aditi_update_errors.m:175:   expected type was `(aditi_top_down pred((aditi:state), int, int, (aditi:state), int, int))'.
+aditi_update_errors.m:026: Error: no clauses for predicate `aditi_update_errors:anc/3'
+aditi_update_errors.m:094: In `aditi_insert' of predicate `anc/3':
+aditi_update_errors.m:094:   error: the modified predicate is not a base relation.
+For more information, try recompiling with `-E'.

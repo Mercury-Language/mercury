@@ -156,15 +156,20 @@ bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo0, ByteInfo, Code) :-
 
 bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 	(
-		GoalExpr = higher_order_call(PredVar, ArgVars, ArgTypes,
-			ArgModes, Detism, _IsPredOrFunc),
-		bytecode_gen__higher_order_call(PredVar, ArgVars,
-			ArgTypes, ArgModes, Detism, ByteInfo0, Code),
-		ByteInfo = ByteInfo0
-	;
+		GoalExpr = generic_call(GenericCallType, 
+			ArgVars, ArgModes, Detism),
+		( GenericCallType = higher_order(PredVar, _, _) ->
+			bytecode_gen__higher_order_call(PredVar, ArgVars,
+				ArgModes, Detism, ByteInfo0, Code),
+			ByteInfo = ByteInfo0
+		;
 			% XXX
-		GoalExpr = class_method_call(_, _, _, _, _, _),
-		error("sorry: bytecode not implemented yet for typeclasses")
+			functor(GenericCallType, GenericCallFunctor, _),
+			string__append_list([
+				"sorry: bytecode not yet implemented for ",
+				GenericCallFunctor, " calls"], Msg),
+			error(Msg)
+		)
 	;
 		GoalExpr = call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 		( BuiltinState = not_builtin ->
@@ -188,7 +193,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 		EndofCode = node([endof_negation, label(EndLabel)]),
 		Code = tree(EnterCode, tree(SomeCode, EndofCode))
 	;
-		GoalExpr = some(_, Goal),
+		GoalExpr = some(_, _, Goal),
 		bytecode_gen__goal(Goal, ByteInfo0, ByteInfo1, SomeCode),
 		bytecode_gen__get_next_temp(ByteInfo1, Temp, ByteInfo),
 		EnterCode = node([enter_commit(Temp)]),
@@ -274,13 +279,13 @@ bytecode_gen__gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
 	% Generate bytecode for a higher order call.
 
 :- pred bytecode_gen__higher_order_call(prog_var::in, list(prog_var)::in,
-	list(type)::in, list(mode)::in, determinism::in,
-	byte_info::in, byte_tree::out) is det.
+	list(mode)::in, determinism::in, byte_info::in, byte_tree::out) is det.
 
-bytecode_gen__higher_order_call(PredVar, ArgVars, ArgTypes, ArgModes, Detism,
+bytecode_gen__higher_order_call(PredVar, ArgVars, ArgModes, Detism,
 		ByteInfo, Code) :-
 	determinism_to_code_model(Detism, CodeModel),
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
+	list__map(bytecode_gen__get_var_type(ByteInfo), ArgVars, ArgTypes),
 	make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
@@ -418,8 +423,8 @@ bytecode_gen__map_arg(ByteInfo, Rval, ByteArg) :-
 :- pred bytecode_gen__unify(unification::in, prog_var::in, unify_rhs::in,
 	byte_info::in, byte_tree::out) is det.
 
-bytecode_gen__unify(construct(Var, ConsId, Args, UniModes), _, _, ByteInfo,
-		Code) :-
+bytecode_gen__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
+		_, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
@@ -610,10 +615,18 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ConsId = float_const(FloatVal),
 		ByteConsId = float_const(FloatVal)
 	;
-		ConsId = pred_const(PredId, ProcId),
-		predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
-		proc_id_to_int(ProcId, ProcInt),
-		ByteConsId = pred_const(ModuleName, PredName, Arity, ProcInt)
+		ConsId = pred_const(PredId, ProcId, EvalMethod),
+		( EvalMethod = normal ->
+			predicate_id(ModuleInfo, PredId,
+				ModuleName, PredName, Arity),
+			proc_id_to_int(ProcId, ProcInt),
+			ByteConsId = pred_const(ModuleName,
+				PredName, Arity, ProcInt)
+		;
+			% XXX
+			error(
+	"sorry: bytecode not yet implemented for Aditi lambda expressions")
+		)
 	;
 		ConsId = code_addr_const(PredId, ProcId),
 		predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
@@ -647,7 +660,7 @@ bytecode_gen__map_cons_tag(string_constant(_), _) :-
 bytecode_gen__map_cons_tag(int_constant(IntVal), enum_tag(IntVal)).
 bytecode_gen__map_cons_tag(float_constant(_), _) :-
 	error("float_constant cons tag for non-float_constant cons id").
-bytecode_gen__map_cons_tag(pred_closure_tag(_, _), _) :-
+bytecode_gen__map_cons_tag(pred_closure_tag(_, _, _), _) :-
 	error("pred_closure_tag cons tag for non-pred_const cons id").
 bytecode_gen__map_cons_tag(code_addr_constant(_, _), _) :-
 	error("code_addr_constant cons tag for non-address_const cons id").

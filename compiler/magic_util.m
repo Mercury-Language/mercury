@@ -98,10 +98,6 @@
 :- pred magic_util__mode_to_output_mode(module_info::in,
 		(mode)::in, (mode)::out) is det.
 
-	% Remove an `aditi:state' from the given list if one is present.
-:- pred magic_util__remove_aditi_state(list(type)::in,
-		list(T)::in, list(T)::out) is det.
-
 	% Adjust an index to account for the removal of the `aditi:state'
 	% from the argument list.
 :- pred magic_util__adjust_index(list(type)::in, index_spec::in,
@@ -190,7 +186,7 @@ magic_util__goal_is_aditi_call(ModuleInfo, PredMap,
 	% and multiple nested quantifications are not considered 
 	% atomic by dnf.m.
 	%
-	( Goal0 = some(_, Goal1) - _ -> 
+	( Goal0 = some(_, _, Goal1) - _ -> 
 		Goal2 = Goal1
 	;
 		Goal2 = Goal0
@@ -259,10 +255,10 @@ magic_util__neg_goal_is_aditi_call(ModuleInfo, PredMap,
 
 magic_util__check_aggregate_closure(Goal, Goal) :-
 	Goal = unify(_, _, _, Uni, _) - _,
-	Uni = construct(_, pred_const(_, _), _, _).	
+	Uni = construct(_, pred_const(_, _, _), _, _, _, _, _).	
 
-:- pred magic_util__construct_db_call(module_info::in, pred_id::in, proc_id::in,
-		list(prog_var)::in, hlds_goal::in, db_call::out) is det.
+:- pred magic_util__construct_db_call(module_info::in, pred_id::in,
+	proc_id::in, list(prog_var)::in, hlds_goal::in, db_call::out) is det.
 
 magic_util__construct_db_call(ModuleInfo, PredId, ProcId,
 		Args0, Goal0, Call) :-
@@ -270,26 +266,13 @@ magic_util__construct_db_call(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo),
 	pred_info_arg_types(PredInfo, ArgTypes),
 	proc_info_argmodes(ProcInfo, ArgModes0),
-	magic_util__remove_aditi_state(ArgTypes, ArgModes0, ArgModes),
-	magic_util__remove_aditi_state(ArgTypes, Args0, Args),
+	type_util__remove_aditi_state(ArgTypes, ArgModes0, ArgModes),
+	type_util__remove_aditi_state(ArgTypes, Args0, Args),
 	partition_args(ModuleInfo, ArgModes, Args, InputArgs, OutputArgs),
 	Call = db_call(no, Goal0, proc(PredId, ProcId), Args,
 		InputArgs, OutputArgs, no).
 
 %-----------------------------------------------------------------------------%
-
-magic_util__remove_aditi_state([], [], []).
-magic_util__remove_aditi_state([], [_|_], _) :-
-	error("magic_util__remove_aditi_state").
-magic_util__remove_aditi_state([_|_], [], _) :-
-	error("magic_util__remove_aditi_state").
-magic_util__remove_aditi_state([Type | Types], [Arg | Args0], Args) :-
-	( type_is_aditi_state(Type) ->
-		magic_util__remove_aditi_state(Types, Args0, Args)
-	;
-		magic_util__remove_aditi_state(Types, Args0, Args1),
-		Args = [Arg | Args1]
-	).
 
 magic_util__adjust_index(ArgTypes0, index_spec(IndexType, Attrs0),
 		index_spec(IndexType, Attrs)) :-
@@ -315,7 +298,7 @@ magic_util__restrict_nonlocals(NonLocals0, NonLocals) -->
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ set__to_sorted_list(NonLocals0, NonLocals1) },
 	{ map__apply_to_list(NonLocals1, VarTypes, NonLocalTypes) },
-	{ magic_util__remove_aditi_state(NonLocalTypes,
+	{ type_util__remove_aditi_state(NonLocalTypes,
 		NonLocals1, NonLocals2) },
 	{ set__sorted_list_to_set(NonLocals2, NonLocals) }.
 
@@ -447,15 +430,15 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 	magic_info_get_pred_map(PredMap),
 	(
 		{ Closure = unify(_, _, UniMode, Uni0, Context) - Info },
-		{ Uni0 = construct(Var, ConsId0, _, Modes) },
-		{ ConsId0 = pred_const(PredId0, ProcId0) },
+		{ Uni0 = construct(Var, ConsId0, _, Modes, _, _, _) },
+		{ ConsId0 = pred_const(PredId0, ProcId0, Method) },
 		%
 		% Replace the pred_proc_id of the procedure being aggregated
 		% over with its Aditi version.
 		%
 		{ map__search(PredMap, proc(PredId0, ProcId0), PredProcId) ->
 			PredProcId = proc(PredId, ProcId),
-			ConsId = pred_const(PredId, ProcId)
+			ConsId = pred_const(PredId, ProcId, Method)
 		;
 			PredId = PredId0,
 			ProcId = ProcId0,
@@ -487,7 +470,10 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 		{ Rhs = functor(cons(qualified(PredModule, PredName), Arity),
 				InputVars) },
 
-		{ Uni = construct(Var, ConsId, InputVars, Modes) },
+		{ VarToReuse = no },
+		{ RLExprnId = no },
+		{ Uni = construct(Var, ConsId, InputVars, Modes,
+			VarToReuse, cell_is_unique, RLExprnId) },
 		{ Goal1 = unify(Var, Rhs, UniMode, Uni, Context) - Info },
 
 		{ list__append(InputGoals, [Goal1], InputAndClosure) }
@@ -724,15 +710,18 @@ magic_util__create_input_closures([_ | MagicVars], InputArgs,
 magic_util__get_input_var(MagicTypes, CurrVar, InputVar, ArgTypes, 
 		ProcInfo0, ProcInfo) :-
 	list__index1_det(MagicTypes, CurrVar, MagicType),
-	( type_is_higher_order(MagicType, predicate, ArgTypes1) ->
-		ArgTypes = ArgTypes1
+	(
+		type_is_higher_order(MagicType, predicate,
+			(aditi_bottom_up), ArgTypes1)
+	->
+		ArgTypes = ArgTypes1,
+		construct_higher_order_type(predicate, (aditi_bottom_up),
+			ArgTypes, ClosureType),
+		proc_info_create_var_from_type(ProcInfo0, 
+			ClosureType, InputVar, ProcInfo)
 	;
 		error("magic_util__get_input_var")
-	),
-	term__context_init(Context),
-	ClosureType = term__functor(term__atom("pred"), ArgTypes, Context),
-	proc_info_create_var_from_type(ProcInfo0, 
-		ClosureType, InputVar, ProcInfo).
+	).
 
 magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal, 
 		LambdaInputs, LambdaVars, InputGoal) -->
@@ -815,9 +804,12 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 		{ Rhs = functor(cons(qualified(SuppModule, SuppName), 
 				SuppArity), LambdaInputs) },
 
+		{ VarToReuse = no },
+		{ RLExprnId = no },
 		{ Unify = construct(InputVar, 
-				pred_const(SuppPredId, SuppProcId), 
-				LambdaInputs, UniModes) },
+			pred_const(SuppPredId, SuppProcId, (aditi_bottom_up)), 
+			LambdaInputs, UniModes, VarToReuse,
+			cell_is_unique, RLExprnId) },
 		{ UnifyContext = unify_context(explicit, []) },
 
 		% Construct a goal_info.
@@ -1214,7 +1206,7 @@ magic_util__traverse_type(IsTopLevel, Parents, ArgType, Errors0, Errors) -->
 	magic_info_get_module_info(ModuleInfo),
 	( { type_is_atomic(ArgType, ModuleInfo) } ->
 		{ Errors = Errors0 }
-	; { type_is_higher_order(ArgType, _, _) } ->
+	; { type_is_higher_order(ArgType, _, _, _) } ->
 		% Higher-order types are not allowed.
 		{ set__insert(Errors0, higher_order, Errors) }
 	; { type_is_aditi_state(ArgType) } ->

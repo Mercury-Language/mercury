@@ -78,6 +78,16 @@
 	assoc_list(pred_proc_id, prog_context)::in,
 	list(format_component)::out) is det.
 
+	% report_error_num_args(MaybePredOrFunc, Arity, CorrectArities).
+	%
+	% Write
+	% "wrong number of arguments (<Arity>; should be <CorrectArities>)",
+	% adjusting `Arity' and `CorrectArities' if `MaybePredOrFunc' is
+	% `yes(function)'.
+:- pred report_error_num_args(maybe(pred_or_func), int, list(int),
+		io__state, io__state).
+:- mode report_error_num_args(in, in, in, di, uo) is det.
+
 :- implementation.
 
 :- import_module prog_out.
@@ -370,4 +380,42 @@ error_util__describe_one_call_site(Module, PPId - Context, Piece) :-
 error_util__describe_several_call_sites(Module, Sites, Pieces) :-
 	list__map(error_util__describe_one_call_site(Module), Sites, Pieces0),
 	error_util__list_to_pieces(Pieces0, Pieces).
+
+%-----------------------------------------------------------------------------%
+
+report_error_num_args(MaybePredOrFunc, Arity0, Arities0) -->
+	% Adjust arities for functions.
+	{ MaybePredOrFunc = yes(function) ->
+		adjust_func_arity(function, Arity, Arity0),
+		list__map(
+			(pred(OtherArity0::in, OtherArity::out) is det :-
+				adjust_func_arity(function,
+					OtherArity, OtherArity0)
+			),
+			Arities0, Arities)
+	;
+		Arity = Arity0,
+		Arities = Arities0
+	},
+
+	io__write_string("wrong number of arguments ("),
+	io__write_int(Arity),
+	io__write_string("; should be "),
+	report_error_right_num_args(Arities),
+	io__write_string(")").
+
+:- pred report_error_right_num_args(list(int), io__state, io__state).
+:- mode report_error_right_num_args(in, di, uo) is det.
+
+report_error_right_num_args([]) --> [].
+report_error_right_num_args([Arity | Arities]) -->
+	io__write_int(Arity),
+	( { Arities = [] } ->
+		[]
+	; { Arities = [_] } ->
+		io__write_string(" or ")
+	;
+		io__write_string(", ")
+	),
+	report_error_right_num_args(Arities).
 

@@ -176,16 +176,10 @@ constraint__propagate_goal_2(some(Vars, Goal0), some(Vars, Goal)) -->
 	mode_checkpoint(exit, "some").
 
 constraint__propagate_goal_2(
-		higher_order_call(A, B, C, D, E, F),
-		higher_order_call(A, B, C, D, E, F)) -->
-	mode_checkpoint(enter, "higher-order call"),
-	mode_checkpoint(exit, "higher-order call").
-
-constraint__propagate_goal_2(
-		class_method_call(A, B, C, D, E, F),
-		class_method_call(A, B, C, D, E, F)) -->
-	mode_checkpoint(enter, "class method call"),
-	mode_checkpoint(exit, "class method call").
+		generic_call(A, B, C, D),
+		generic_call(A, B, C, D)) -->
+	mode_checkpoint(enter, "generic call"),
+	mode_checkpoint(exit, "generic call").
 
 constraint__propagate_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context),

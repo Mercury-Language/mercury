@@ -109,15 +109,11 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 		saved_vars_in_goal(Else0, SlotInfo2, Else, SlotInfo),
 		Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo0
 	;
-		GoalExpr0 = some(Var, SubGoal0),
+		GoalExpr0 = some(Var, CanRemove, SubGoal0),
 		saved_vars_in_goal(SubGoal0, SlotInfo0, SubGoal, SlotInfo),
-		Goal = some(Var, SubGoal) - GoalInfo0
+		Goal = some(Var, CanRemove, SubGoal) - GoalInfo0
 	;
-		GoalExpr0 = higher_order_call(_, _, _, _, _, _),
-		Goal = GoalExpr0 - GoalInfo0,
-		SlotInfo = SlotInfo0
-	;
-		GoalExpr0 = class_method_call(_, _, _, _, _, _),
+		GoalExpr0 = generic_call(_, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		SlotInfo = SlotInfo0
 	;
@@ -156,7 +152,7 @@ saved_vars_in_conj([Goal0 | Goals0], NonLocals, SlotInfo0,
 		Goals, SlotInfo) :-
 	(
 		Goal0 = unify(_, _, _, Unif, _) - _,
-		Unif = construct(Var, _, [], _),
+		Unif = construct(Var, _, [], _, _, _, _),
 		skip_constant_constructs(Goals0, Constants, Others),
 		Others = [First | _Rest],
 		can_push(Var, First)
@@ -185,7 +181,7 @@ skip_constant_constructs([], [], []).
 skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
 	(
 		Goal0 = unify(_, _, _, Unif, _) - _,
-		Unif = construct(_, _, [], _)
+		Unif = construct(_, _, [], _, _, _, _)
 	->
 		skip_constant_constructs(Goals0, Constants1, Others),
 		Constants = [Goal0 | Constants1]
@@ -210,7 +206,7 @@ can_push(Var, First) :-
 		(
 			FirstExpr = conj(_)
 		;
-			FirstExpr = some(_, _)
+			FirstExpr = some(_, _, _)
 		;
 			FirstExpr = not(_)
 		;
@@ -276,16 +272,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
 			Goals = [NewConstruct, Goal1 | Goals1]
 		;
-			Goal0Expr = higher_order_call(_, _, _, _, _, _),
-			rename_var(SlotInfo0, Var, _NewVar, Subst, SlotInfo1),
-			goal_util__rename_vars_in_goal(Construct, Subst,
-				NewConstruct),
-			goal_util__rename_vars_in_goal(Goal0, Subst, Goal1),
-			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
-			Goals = [NewConstruct, Goal1 | Goals1]
-		;
-			Goal0Expr = class_method_call(_, _, _, _, _, _),
+			Goal0Expr = generic_call(_, _, _, _),
 			rename_var(SlotInfo0, Var, _NewVar, Subst, SlotInfo1),
 			goal_util__rename_vars_in_goal(Construct, Subst,
 				NewConstruct),
@@ -313,7 +300,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				IsNonLocal, SlotInfo0, Goals1, SlotInfo),
 			Goals = [Goal0|Goals1]
 		;
-			Goal0Expr = some(SomeVars, SomeGoal0),
+			Goal0Expr = some(SomeVars, CanRemove, SomeGoal0),
 			rename_var(SlotInfo0, Var, NewVar, Subst, SlotInfo1),
 			goal_util__rename_vars_in_goal(Construct, Subst,
 				NewConstruct),
@@ -321,7 +308,8 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				SomeGoal1),
 			push_into_goal(SomeGoal1, NewConstruct, NewVar,
 				SlotInfo1, SomeGoal, SlotInfo2),
-			Goal1 = some(SomeVars, SomeGoal) - Goal0Info,
+			Goal1 = some(SomeVars, CanRemove, SomeGoal)
+					- Goal0Info,
 			saved_vars_delay_goal(Goals0, Construct, Var,
 				IsNonLocal, SlotInfo2, Goals1, SlotInfo),
 			Goals = [Goal1 | Goals1]

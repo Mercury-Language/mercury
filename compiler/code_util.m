@@ -593,12 +593,13 @@ code_util__goal_may_allocate_heap(Goal - _GoalInfo) :-
 :- pred code_util__goal_may_allocate_heap_2(hlds_goal_expr).
 :- mode code_util__goal_may_allocate_heap_2(in) is semidet.
 
-code_util__goal_may_allocate_heap_2(higher_order_call(_, _, _, _, _, _)).
+code_util__goal_may_allocate_heap_2(generic_call(_, _, _, _)).
 code_util__goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _)) :-
 	Builtin \= inline_builtin.
-code_util__goal_may_allocate_heap_2(unify(_, _, _, construct(_,_,Args,_), _)) :-
+code_util__goal_may_allocate_heap_2(
+		unify(_, _, _, construct(_,_,Args,_,_,_,_), _)) :-
 	Args = [_|_].
-code_util__goal_may_allocate_heap_2(some(_Vars, Goal)) :-
+code_util__goal_may_allocate_heap_2(some(_Vars, _, Goal)) :-
 	code_util__goal_may_allocate_heap(Goal).
 code_util__goal_may_allocate_heap_2(not(Goal)) :-
 	code_util__goal_may_allocate_heap(Goal).
@@ -694,7 +695,7 @@ code_util__cons_id_to_tag(int_const(X), _, _, int_constant(X)).
 code_util__cons_id_to_tag(float_const(X), _, _, float_constant(X)).
 code_util__cons_id_to_tag(string_const(X), _, _, string_constant(X)).
 code_util__cons_id_to_tag(code_addr_const(P,M), _, _, code_addr_constant(P,M)).
-code_util__cons_id_to_tag(pred_const(P,M), _, _, pred_closure_tag(P,M)).
+code_util__cons_id_to_tag(pred_const(P,M,E), _, _, pred_closure_tag(P,M,E)).
 code_util__cons_id_to_tag(type_ctor_info_const(M,T,A), _, _,
 		type_ctor_info_constant(M,T,A)).
 code_util__cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _,
@@ -799,7 +800,7 @@ code_util__cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
 			GoalExpr = call(_, _, _, BuiltinState, _, _),
 			BuiltinState \= inline_builtin
 		;
-			GoalExpr = higher_order_call(_, _, _, _, _, _)
+			GoalExpr = generic_call(_, _, _, _)
 		)
 	->
 		true
@@ -823,12 +824,11 @@ code_util__count_recursive_calls(Goal - _, PredId, ProcId, Min, Max) :-
 
 code_util__count_recursive_calls_2(not(Goal), PredId, ProcId, Min, Max) :-
 	code_util__count_recursive_calls(Goal, PredId, ProcId, Min, Max).
-code_util__count_recursive_calls_2(some(_, Goal), PredId, ProcId, Min, Max) :-
+code_util__count_recursive_calls_2(some(_, _, Goal),
+		PredId, ProcId, Min, Max) :-
 	code_util__count_recursive_calls(Goal, PredId, ProcId, Min, Max).
 code_util__count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
-code_util__count_recursive_calls_2(higher_order_call(_, _,_, _, _, _), _, _,
-		0, 0).
-code_util__count_recursive_calls_2(class_method_call(_, _,_, _, _, _), _, _, 
+code_util__count_recursive_calls_2(generic_call(_, _, _, _), _, _,
 		0, 0).
 code_util__count_recursive_calls_2(pragma_c_code(_,_,_, _, _, _, _), _, _,
 		0, 0).
