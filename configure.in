@@ -11,6 +11,12 @@ else
 fi
 AC_SUBST(LIBDIR)
 #-----------------------------------------------------------------------------#
+case "$host" in
+	mips-sgi-irix5.*)
+		AC_MSG_WARN(*** Read README.IRIX-5 before proceeding!)
+		;;
+esac
+#-----------------------------------------------------------------------------#
 GNU_MAKE=
 echo looking for GNU Make...
 AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
@@ -68,6 +74,7 @@ fi
 AC_SUBST(INSTALL_NUPROLOG)
 #-----------------------------------------------------------------------------#
 AC_PROG_CC
+AC_SUBST(CC)
 CFLAGS="-I runtime -I runtime/machdeps $CFLAGS"
 AC_PROG_CPP
 AC_C_CROSS
@@ -337,16 +344,49 @@ AC_DEFINE_UNQUOTED(LOW_TAG_BITS, $mercury_cv_low_tag_bits)
 LOW_TAG_BITS=$mercury_cv_low_tag_bits
 AC_SUBST(LOW_TAG_BITS)
 #-----------------------------------------------------------------------------#
+#
+# For Irix 5, gcc labels don't work with shared libraries
+#
+save_CC="$CC"
+save_LIBRARY_PATH="$LIBRARY_PATH"
+case "$host" in
+	mips-sgi-irix5.*)
+		CC="$CC -non_shared -mno-abicalls"
+LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
+		export LIBRARY_PATH
+		;;
+esac
+#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether we can use gcc labels)
 AC_CACHE_VAL(mercury_cv_gcc_labels,
 	AC_TRY_RUN([
-	main() {
-		void *succip;
-
-		succip = &&last;
+	void *entry_foo_1;
+	void *entry_bar_1;
+	void *succip;
+	int global;
+	foo() {
+		entry_foo_1 = && foo_1;
+		return;
+	foo_1:
+		if (global != 42) exit(1);
+		goto *entry_bar_1;
+	}
+	bar() {
+		entry_bar_1 = && bar_1;
+		return;
+	bar_1:
+		if (global != 42) exit(1);
 		goto *succip;
+	}
+	main() {
+		global = 42;
+		foo();
+		bar();
+		succip = &&last;
+		goto *entry_foo_1;
 		exit(1);
 	last:
+		if (global != 42) exit(1);
 		exit(0);
 	}], [mercury_cv_gcc_labels=yes], [mercury_cv_gcc_labels=no],
 		[mercury_cv_gcc_labels=no])
@@ -378,10 +418,10 @@ if test $mercury_cv_gcc_labels = yes; then
 	}], [mercury_cv_asm_labels=yes], [mercury_cv_asm_labels=no],
 		[mercury_cv_asm_labels=no])
 	)
+	AC_MSG_RESULT($mercury_cv_asm_labels)
 else
 	mercury_cv_asm_labels=no
 fi
-AC_MSG_RESULT($mercury_cv_asm_labels)
 HAVE_ASM_LABELS=$mercury_cv_asm_labels
 AC_SUBST(HAVE_ASM_LABELS)
 if test $HAVE_ASM_LABELS = 1; then
@@ -411,6 +451,13 @@ else
 	mercury_cv_gcc_model_fast=no
 fi
 #-----------------------------------------------------------------------------#
+#
+# Restore env vars modified by Irix 5 hack above
+#
+CC="$save_CC"
+LIBRARY_PATH="$save_LIBRARY_PATH"
+#-----------------------------------------------------------------------------#
+
 AC_MSG_CHECKING(whether we can use global registers without gcc labels)
 AC_CACHE_VAL(mercury_cv_gcc_model_reg,
 AC_TRY_RUN([
@@ -450,10 +497,19 @@ else
 		GRADE=none.gc
 	fi
 fi
+
 echo "using GRADE=$GRADE to compile the compiler"
 AC_SUBST(GRADE)
+
 DEFAULT_GRADE=$GRADE
-echo "using DEFAULT_GRADE=$GRADE as the default grade for applications"
+# For Irix 5.x, shared libraries are incompatible with gcc non-local gotos
+# We prefer to use shared libraries by default
+case "$host" in
+	mips-sgi-irix5.*)
+		DEFAULT_GRADE=reg.gc
+		;;
+esac
+echo "using DEFAULT_GRADE=$DEFAULT_GRADE as the default grade for applications"
 AC_SUBST(DEFAULT_GRADE)
 
 LIBGRADES="debug none"
@@ -494,11 +550,18 @@ case "$host" in
 		SO=so
 		;;
 	mips-sgi-irix5.*)
-		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="ld -shared"
 		PIC=
 		PIC_O=o
-		SO=so
+		# shared libraries only work for reg.gc or none.gc
+		if test "$GRADE" = reg.gc; then
+			AC_MSG_RESULT(yes)
+			SO=so
+		else
+			SO=a
+			AC_MSG_RESULT(no)
+			AC_MSG_RESULT(Read README.IRIX-5)
+		fi
 		;;
 	*)
 		AC_MSG_RESULT(no)
