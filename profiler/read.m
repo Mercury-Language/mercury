@@ -197,15 +197,15 @@ label_demangle(CharList0, CharList) :-
 demangle_arity_and_mode(CharList0, CharList) :-
 	list__reverse(CharList0, CharList1),
 	CharList2 = [')' | CharList1],
-	replace(CharList2, '_', '(', CharList3),
-	replace(CharList3, '_', '/', CharList4),
+	read__replace(CharList2, '_', '(', CharList3),
+	read__replace(CharList3, '_', '/', CharList4),
 	list__reverse(CharList4, CharList).
 
 
-:- pred replace(list(char), char, char, list(char)).
-:- mode replace(in, in, in, out) is det.
+:- pred read__replace(list(char), char, char, list(char)).
+:- mode read__replace(in, in, in, out) is det.
 
-replace(L0, D, R, L) :-
+read__replace(L0, D, R, L) :-
 	(
 		list__replace_first(L0, D, R, L1)
 	->

@@ -79,7 +79,7 @@ propagate__counts(CallGraph, Prof0, Prof) -->
 propagate__identify_cycles(Rel, ATSort, CycleInfo) :-
 	relation__dfsrev(Rel, DfsRev),
 	relation__inverse(Rel, RelInv),
-	cycle_info__init(CycleInfo0),
+	cycle_info_init(CycleInfo0),
 	set_bbbtree__init(Visit0),
 	propagate__identify_cycles_2(DfsRev, 1, RelInv, Visit0, [], 
 						CycleInfo0, ATSort, CycleInfo).
@@ -129,13 +129,13 @@ propagate__identify_cycles_2([X | Xs0], CycleNum0, RelInv, Visit0, ATSort0,
 						CycleInfo1, ATSort, CycleInfo).
 
 
-% cycle_info__init:
+% cycle_info_init:
 %	Initialise the cycle_info structure.
 %
-:- pred cycle_info__init(cycle_info).
-:- mode cycle_info__init(out) is det.
+:- pred cycle_info_init(cycle_info).
+:- mode cycle_info_init(out) is det.
 
-cycle_info__init(M - MM) :-
+cycle_info_init(M - MM) :-
 	map__init(M),
 	multi_map__init(MM).
 
@@ -185,7 +185,7 @@ propagate__update_cycles_3([], _, _, ProfNodeMap, ProfNodeMap).
 propagate__update_cycles_3([P | Ps], CycleNum, AddrDecl, ProfNodeMap0, 
 								ProfNodeMap) :-
 	get_prof_node(P, AddrDecl, ProfNodeMap0, ProfNode0),
-	prof_node__set_cycle_num(CycleNum, ProfNode0, ProfNode),
+	prof_node_set_cycle_num(CycleNum, ProfNode0, ProfNode),
 	update_prof_node(P, ProfNode, AddrDecl, ProfNodeMap0, ProfNodeMap1),
 	propagate__update_cycles_3(Ps, CycleNum, AddrDecl, ProfNodeMap1,
 								ProfNodeMap).
@@ -286,7 +286,7 @@ propagate__process_cycle(Preds, Cycle, AddrMap, ProfNodeMap0, ProfNodeMap) :-
 
 	propagate__build_cycle_list(Preds, AddrMap, ProfNodeMap0, CycleList),
 
-	prof_node__init_cycle(NameStr, 0, SelfCounts, PropCounts, CycleList,
+	prof_node_init_cycle(NameStr, 0, SelfCounts, PropCounts, CycleList,
 				Total, Recursive, ProfNode),
 				
 		% NB we give the address of a cycle as being the negative of
@@ -347,7 +347,7 @@ propagate__sum_propagated_counts([P | Ps], ADMap, PNMap, X) :-
 propagate__build_cycle_list([], _, _, []).
 propagate__build_cycle_list([P | Ps], ADM, PNM, CycleList) :-
 	propagate__build_cycle_list(Ps, ADM, PNM, CycleList0),
-	pred_info__init(P, 0, PredInfo),
+	pred_info_init(P, 0, PredInfo),
 	CycleList = [ PredInfo | CycleList0].
 
 
@@ -358,7 +358,7 @@ propagate__build_cycle_list([P | Ps], ADM, PNM, CycleList) :-
 propagate__counts_3([], _, _, _, ProfNodeMap, ProfNodeMap).
 propagate__counts_3([ P | Ps], TotalCounts, TotalCalls, AddrMap, 
 						ProfNodeMap0, ProfNodeMap) :-
-	pred_info__get_entire(P, Pred, Calls),
+	pred_info_get_entire(P, Pred, Calls),
 
 		% Work out the number of counts to propagate.
 		% XXX Probably need to do a 0.0 check
@@ -484,5 +484,5 @@ add_to_parent_map([P | Ps], CliqueList, TotalCalls0, SelfCalls0, ParentMap0,
 assoc_list_to_pred_info_list([], []).
 assoc_list_to_pred_info_list([S - I | Xs], List) :-
 	assoc_list_to_pred_info_list(Xs, List0),
-	pred_info__init(S, I, PredInfo),
+	pred_info_init(S, I, PredInfo),
 	List = [ PredInfo | List0 ].

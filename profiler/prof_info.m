@@ -68,15 +68,15 @@
 :- pred prof_node_init(string, prof_node).
 :- mode prof_node_init(in, out) is det.
 
-:- pred prof_node__init_cycle(string, int, int, float, list(pred_info), int, 
+:- pred prof_node_init_cycle(string, int, int, float, list(pred_info), int, 
 							int, prof_node).
-:- mode prof_node__init_cycle(in, in, in, in, in, in, in, out) is det.
+:- mode prof_node_init_cycle(in, in, in, in, in, in, in, out) is det.
 
 
 	% *** Access prof predicates *** %
 
-:- pred prof__get_entire(prof, int,int,int, addrdecl, prof_node_map, cycle_map).
-:- mode prof__get_entire(in, out, out, out, out, out, out) is det.
+:- pred prof_get_entire(prof, int,int,int, addrdecl, prof_node_map, cycle_map).
+:- mode prof_get_entire(in, out, out, out, out, out, out) is det.
 
 :- pred prof_get_addrdeclmap(prof, addrdecl).
 :- mode prof_get_addrdeclmap(in, out) is det.
@@ -87,8 +87,8 @@
 
 	% *** Update prof predicates *** %
 
-:- pred prof__set_entire(int,int,int, addrdecl, prof_node_map, cycle_map, prof).
-:- mode prof__set_entire(in, in, in, in, in, in, out) is det.
+:- pred prof_set_entire(int,int,int, addrdecl, prof_node_map, cycle_map, prof).
+:- mode prof_set_entire(in, in, in, in, in, in, out) is det.
 
 :- pred prof_set_profnodemap(prof_node_map, prof, prof).
 :- mode prof_set_profnodemap(in, in, out) is det.
@@ -99,21 +99,21 @@
 
 	% *** Special prof_node predicates *** %
 
-:- pred prof_node__type(prof_node, prof_node_type).
-:- mode prof_node__type(in, out) is det.
+:- pred prof_node_type(prof_node, prof_node_type).
+:- mode prof_node_type(in, out) is det.
 
 
 	% *** Access Predicate for prof_node *** %
 
-:- pred prof_node__get_entire_pred(prof_node, string, int, int, float,
+:- pred prof_node_get_entire_pred(prof_node, string, int, int, float,
 					list(pred_info), list(pred_info),
 					int, int, list(string)).
-:- mode prof_node__get_entire_pred(in, out, out, out, out, out, out, out, out, 
+:- mode prof_node_get_entire_pred(in, out, out, out, out, out, out, out, out, 
 								out) is det.
 
-:- pred prof_node__get_entire_cycle(prof_node, string, int, int, float,
+:- pred prof_node_get_entire_cycle(prof_node, string, int, int, float,
 					list(pred_info), int, int).
-:- mode prof_node__get_entire_cycle(in,out,out,out,out,out,out,out) is det.
+:- mode prof_node_get_entire_cycle(in,out,out,out,out,out,out,out) is det.
 
 :- pred prof_node_get_pred_name(prof_node, string).
 :- mode prof_node_get_pred_name(in, out) is det.
@@ -142,8 +142,8 @@
 
 	% *** Update prof_node predicates *** %
 
-:- pred prof_node__set_cycle_num(int, prof_node, prof_node).
-:- mode prof_node__set_cycle_num(in, in, out) is det.
+:- pred prof_node_set_cycle_num(int, prof_node, prof_node).
+:- mode prof_node_set_cycle_num(in, in, out) is det.
 
 :- pred prof_node_set_initial_counts(int, prof_node, prof_node).
 :- mode prof_node_set_initial_counts(in, in, out) is det.
@@ -166,20 +166,20 @@
 :- pred prof_node_concat_to_name_list(string, prof_node, prof_node).
 :- mode prof_node_concat_to_name_list(in, in, out) is det.
 
-:- pred prof_node__concat_to_member(string, int, prof_node, prof_node).
-:- mode prof_node__concat_to_member(in, in, in, out) is det.
+:- pred prof_node_concat_to_member(string, int, prof_node, prof_node).
+:- mode prof_node_concat_to_member(in, in, in, out) is det.
 
 
 	% *** Init  predicates for pred_info *** %
 
-:- pred pred_info__init(string, int, pred_info).
-:- mode pred_info__init(in, in, out) is det.
+:- pred pred_info_init(string, int, pred_info).
+:- mode pred_info_init(in, in, out) is det.
 
 
 	% *** Access predicates for pred_info *** %
 
-:- pred pred_info__get_entire(pred_info, string, int).
-:- mode pred_info__get_entire(in, out, out) is det.
+:- pred pred_info_get_entire(pred_info, string, int).
+:- mode pred_info_get_entire(in, out, out) is det.
 
 :- pred pred_info_get_pred_name(pred_info, string).
 :- mode pred_info_get_pred_name(in, out) is det.
@@ -282,7 +282,7 @@ update_prof_node(Pred, ProfNode, AddrMap, ProfNodeMap0, ProfNodeMap) :-
 
 % *** Access prof predicates *** %
 
-prof__get_entire(prof(A, B, C, D, E, F), A, B, C, D, E, F).
+prof_get_entire(prof(A, B, C, D, E, F), A, B, C, D, E, F).
 
 prof_get_addrdeclmap(prof(_, _, _, AddrDeclMap, _, _), AddrDeclMap).
 
@@ -294,7 +294,7 @@ prof_get_profnodemap(prof(_, _, _, _, ProfNodeMap, _), ProfNodeMap).
 
 % *** Update prof predicates *** %
 
-prof__set_entire(A, B, C, D, E, F, prof(A, B, C, D, E, F)).
+prof_set_entire(A, B, C, D, E, F, prof(A, B, C, D, E, F)).
 
 prof_set_profnodemap(ProfNodeMap, prof(A, B, C, D, _, F), 
 					prof(A, B, C, D, ProfNodeMap, F)).
@@ -310,7 +310,7 @@ prof_set_cyclemap(CycleMap, prof(A, B, C, D, E, _),
 
 prof_node_init(PredName, pred_node(PredName, 0, 0, 0.0, [], [], 0, 0, [])).
 
-prof_node__init_cycle(A, B, C, D, E, F, G, cycle_node(A, B, C, D, E, F, G)).
+prof_node_init_cycle(A, B, C, D, E, F, G, cycle_node(A, B, C, D, E, F, G)).
 
 
 %-----------------------------------------------------------------------------%
@@ -318,8 +318,8 @@ prof_node__init_cycle(A, B, C, D, E, F, G, cycle_node(A, B, C, D, E, F, G)).
 
 % *** Special prof_node predicates *** %
 
-prof_node__type(pred_node(_,_,_,_,_,_,_,_,_), predicate).
-prof_node__type(cycle_node(_,_,_,_,_,_,_), cycle).
+prof_node_type(pred_node(_,_,_,_,_,_,_,_,_), predicate).
+prof_node_type(cycle_node(_,_,_,_,_,_,_), cycle).
 
 
 %-----------------------------------------------------------------------------%
@@ -327,13 +327,13 @@ prof_node__type(cycle_node(_,_,_,_,_,_,_), cycle).
 
 % *** Access prof_node predicates *** %
 
-prof_node__get_entire_pred(pred_node(A,B,C,D,E,F,G,H,I),A,B,C,D,E,F,G,H,I).
-prof_node__get_entire_pred(cycle_node(_,_,_,_,_,_,_),_,_,_,_,_,_,_,_,_) :-
-	error("prof_node__get_entire_pred: not a pred\n").
+prof_node_get_entire_pred(pred_node(A,B,C,D,E,F,G,H,I),A,B,C,D,E,F,G,H,I).
+prof_node_get_entire_pred(cycle_node(_,_,_,_,_,_,_),_,_,_,_,_,_,_,_,_) :-
+	error("prof_node_get_entire_pred: not a pred\n").
 
-prof_node__get_entire_cycle(cycle_node(A,B,C,D,E,F,G),A,B,C,D,E,F,G).
-prof_node__get_entire_cycle(pred_node(_,_,_,_,_,_,_,_,_),_,_,_,_,_,_,_) :-
-	error("prof_node__get_entire_cycle: not a cycle\n").
+prof_node_get_entire_cycle(cycle_node(A,B,C,D,E,F,G),A,B,C,D,E,F,G).
+prof_node_get_entire_cycle(pred_node(_,_,_,_,_,_,_,_,_),_,_,_,_,_,_,_) :-
+	error("prof_node_get_entire_cycle: not a cycle\n").
 
 prof_node_get_pred_name(pred_node(Name, _, _, _, _, _, _, _, _), Name).
 prof_node_get_pred_name(cycle_node(Name, _, _, _, _, _, _), Name).
@@ -368,9 +368,9 @@ prof_node_get_self_calls(cycle_node(_, _, _, _, _, _, Calls), Calls).
 
 % *** Update prof_node predicates *** %
 
-prof_node__set_cycle_num(Cycle, pred_node(A, _, C, D, E, F, G, H, I), 
+prof_node_set_cycle_num(Cycle, pred_node(A, _, C, D, E, F, G, H, I), 
 				pred_node(A, Cycle, C, D, E, F, G, H, I)).
-prof_node__set_cycle_num(Cycle, cycle_node(A, _, C, D, E, F, G), 
+prof_node_set_cycle_num(Cycle, cycle_node(A, _, C, D, E, F, G), 
 				cycle_node(A, Cycle, C, D, E, F, G)).
 
 prof_node_set_initial_counts(Count, pred_node(A, B, _, D, E, F, G, H, I), 
@@ -408,9 +408,9 @@ prof_node_concat_to_name_list(Name, pred_node(A, B, C, D, E, F, G, H, NL),
 prof_node_concat_to_name_list(_, cycle_node(_, _, _, _, _, _, _), _) :-
 	error("prof_node_concat_to_name_list: cycle_node has no namelist\n").
 
-prof_node__concat_to_member(Name, Count, cycle_node(A, B, C, D, CList, F, G),
+prof_node_concat_to_member(Name, Count, cycle_node(A, B, C, D, CList, F, G),
 		cycle_node(A, B, C, D, [pred_info(Name,Count) | CList], F, G)).
-prof_node__concat_to_member(_, _, pred_node(_, _, _, _, _, _, _, _, _), _) :-
+prof_node_concat_to_member(_, _, pred_node(_, _, _, _, _, _, _, _, _), _) :-
 		error("prof_node_concat_to_member: pred_node has no members\n").
 
 
@@ -419,7 +419,7 @@ prof_node__concat_to_member(_, _, pred_node(_, _, _, _, _, _, _, _, _), _) :-
 
 % *** Init predicates for pred_info *** %
 
-pred_info__init(Name, Count, pred_info(Name, Count)).
+pred_info_init(Name, Count, pred_info(Name, Count)).
 
 
 %-----------------------------------------------------------------------------%
@@ -427,7 +427,7 @@ pred_info__init(Name, Count, pred_info(Name, Count)).
 
 % *** Access predicates for pred_info *** %
 
-pred_info__get_entire(pred_info(A, B), A, B).
+pred_info_get_entire(pred_info(A, B), A, B).
 
 pred_info_get_pred_name(pred_info(Name, _), Name).
 

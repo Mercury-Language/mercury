@@ -52,7 +52,7 @@
 
 generate_output__main(Prof, IndexMap, Output) -->
 	% Get intitial values of use.
-	{ prof__get_entire(Prof, _, _, IntTotalCounts, _, ProfNodeMap, _) },
+	{ prof_get_entire(Prof, _, _, IntTotalCounts, _, ProfNodeMap, _) },
 	{ int__to_float(IntTotalCounts, _TotalCounts) },
 
 	{ map__values(ProfNodeMap, ProfNodeList) },
@@ -100,7 +100,7 @@ process_prof_node_list([PN | PNs], Prof, VVerbose, OutputProf0, OutputProf) -->
 :- mode process_prof_node(in, in, in, out) is det.
 
 process_prof_node(ProfNode, Prof, OutputProf0, OutputProf) :-
-	prof_node__type(ProfNode, ProfNodeType),
+	prof_node_type(ProfNode, ProfNodeType),
 	(
 		ProfNodeType = cycle,
 		OutputProf = OutputProf0
@@ -120,11 +120,11 @@ process_prof_node(ProfNode, Prof, OutputProf0, OutputProf) :-
 :- mode generate_output__cycle(in, in, in, out) is det.
 
 generate_output__cycle(ProfNode, Prof, OutputProf0, OutputProf) :-
-	prof__get_entire(Prof, Hertz, ClockTicks, IntTotalCounts, _, _,
+	prof_get_entire(Prof, Hertz, ClockTicks, IntTotalCounts, _, _,
 								_CycleMap),
 	int__to_float(IntTotalCounts, TotalCounts),
 
-	prof_node__get_entire_cycle(ProfNode, Name, CycleNum, Initial, Prop, 
+	prof_node_get_entire_cycle(ProfNode, Name, CycleNum, Initial, Prop, 
 					_CycleMembers, TotalCalls, SelfCalls),
 
 	OutputProf0 = profiling(InfoMap0, CallTree0, FreeTree),
@@ -176,11 +176,11 @@ generate_output__cycle(ProfNode, Prof, OutputProf0, OutputProf) :-
 :- mode generate_output__single_predicate(in, in, in, out) is det.
 
 generate_output__single_predicate(ProfNode, Prof, OutputProf0, OutputProf) :-
-	prof__get_entire(Prof, Hertz, ClockTicks, IntTotalCounts, _, _, 
+	prof_get_entire(Prof, Hertz, ClockTicks, IntTotalCounts, _, _, 
 								CycleMap),
 	int__to_float(IntTotalCounts, TotalCounts),
 
-	prof_node__get_entire_pred(ProfNode, LabelName, CycleNum, Initial, Prop,
+	prof_node_get_entire_pred(ProfNode, LabelName, CycleNum, Initial, Prop,
 					ParentList, ChildList, TotalCalls,
 					SelfCalls, NameList),	
 	
@@ -297,7 +297,7 @@ process_prof_node_parents(Parents0, Selftime, DescTime, TotalCalls0, CycleNum,
 remove_cycle_members([], TotalCalls, _, _, TotalCalls, [], []).
 remove_cycle_members([PN | PNs], TotalCalls0, CycleNum, CycleMap, TotalCalls,
 						List, OutputCycleParentList) :-
-	pred_info__get_entire(PN, LabelName, Calls),
+	pred_info_get_entire(PN, LabelName, Calls),
 	(
 		map__search(CycleMap, LabelName, ParentCycleNum)
 	->
@@ -346,7 +346,7 @@ process_prof_node_parents_2([P | Ps], Selftime, DescTime, TotalCalls,
 process_prof_node_parents_3([], _, _, _, _, Output, Output).
 process_prof_node_parents_3([PN | PNs], Selftime, DescTime, TotalCalls, 
 					CycleMap, Output0, Output) :-
-	pred_info__get_entire(PN, LabelName, Calls),
+	pred_info_get_entire(PN, LabelName, Calls),
 
 	(
 		        % if parent member of cycle
@@ -399,7 +399,7 @@ process_prof_node_children([C | Cs], CycleNum, CycleMap, Prof, OutputChildList,
 remove_child_cycle_members([], _, _, [], []).
 remove_child_cycle_members([PN | PNs], CycleNum, CycleMap, List, 
 							CycleChildList) :-
-	pred_info__get_entire(PN, LabelName, Calls),
+	pred_info_get_entire(PN, LabelName, Calls),
 	(
 		map__search(CycleMap, LabelName, ChildCycleNum)
 	->
@@ -432,8 +432,8 @@ remove_child_cycle_members([PN | PNs], CycleNum, CycleMap, List,
 
 process_prof_node_children_2([], _, Output, Output).
 process_prof_node_children_2([PN | PNs], Prof, Output0, Output) :-
-	pred_info__get_entire(PN, LabelName, Calls),
-	prof__get_entire(Prof, Hertz, ClockTicks, _, AddrMap, ProfNodeMap, 
+	pred_info_get_entire(PN, LabelName, Calls),
+	prof_get_entire(Prof, Hertz, ClockTicks, _, AddrMap, ProfNodeMap, 
 								CycleMap),
 
 	(

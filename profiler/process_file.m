@@ -67,7 +67,7 @@ process_file__main(Prof, DynamicCallGraph) -->
         maybe_write_string(VVerbose, " done.\n"),
 
 	{ map__init(CycleMap) },
-        { prof__set_entire(Hertz, ClockTicks, TotalCounts, AddrDeclMap, 
+        { prof_set_entire(Hertz, ClockTicks, TotalCounts, AddrDeclMap, 
 						ProfNodeMap, CycleMap, Prof) },
 	
 	(
