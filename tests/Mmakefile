@@ -1,6 +1,17 @@
 THIS_DIR=tests
 PROGS=
 TESTS=
-SUBDIRS = benchmarks debugger general hard_coded invalid misc_tests tabling term valid warnings
+SUBDIRS = \
+	benchmarks \
+	debugger \
+	general \
+	hard_coded \
+	invalid \
+	misc_tests \
+	tabling \
+	term \
+	typeclasses \
+	valid \
+	warnings
 TESTS_DIR=.
 include $(TESTS_DIR)/Mmake.common
