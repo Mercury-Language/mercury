@@ -47,7 +47,6 @@ SINGLEMODULE_PROGS= \
 	ext_type_bug \
 	exported_mode \
 	field_syntax_error \
-	foreign_decl_line_number \
 	foreign_singleton \
 	foreign_type_2 \
 	foreign_type_visibility \
