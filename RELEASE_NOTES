@@ -188,7 +188,7 @@ The Mercury distribution contains:
      o  the Mercury source for the compiler
      o  the Mercury source for the standard library
      o  the automatically generated C source for the compiler
-        and the stardard library
+        and the standard library
      o  the runtime system (written in C)
      o  Hans Boehm's conservative garbage collector for C
      o  a profiler
