@@ -663,20 +663,41 @@ else
 	fi
 fi
 #-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/types.h, HAVE_SYS_TYPES_H=1)
+AC_CHECK_HEADER(inttypes.h, HAVE_INTTYPES_H=1)
 AC_CHECK_HEADER(stdint.h, HAVE_STDINT_H=1)
+
+# On some systems, e.g. SGI IRIX 5.2, you can include
+# <inttypes.h>, or <sys/types.h>, but not both!
+
+if test "$HAVE_INTTYPES_H" = 1 && test "$HAVE_SYS_TYPES_H" = 1; then
+	AC_CACHE_VAL(mercury_cv_inttypes_compat,
+	AC_MSG_CHECKING(whether inttypes.h is compatible with sys/types.h)
+	AC_TRY_COMPILE([
+		#include <inttypes.h>
+		#include <sys/types.h>
+	],
+	[],
+	[mercury_cv_inttypes_compat=yes], [mercury_cv_inttypes_compat=no]))
+	AC_MSG_RESULT($mercury_cv_inttypes_compat)
+
+	# If <inttypes.h> is not compatible with <sys/types.h>, then
+	# don't use it.
+	if test "$mercury_cv_inttypes_compat" = no; then
+		HAVE_INTYPES_H=0
+	fi
+fi
+
+if test "$HAVE_SYS_TYPES_H" = 1; then
+	AC_DEFINE(HAVE_SYS_TYPES)
+fi
+if test "$HAVE_INTTYPES_H" = 1; then
+	AC_DEFINE(HAVE_INTTYPES)
+fi
 if test "$HAVE_STDINT_H" = 1; then
 	AC_DEFINE(HAVE_STDINT)
 fi
 
-AC_CHECK_HEADER(inttypes.h, HAVE_INTTYPES_H=1)
-if test "$HAVE_INTTYPES_H" = 1; then
-	AC_DEFINE(HAVE_INTTYPES)
-fi
-
-AC_CHECK_HEADER(sys/types.h, HAVE_SYS_TYPES_H=1)
-if test "$HAVE_SYS_TYPES_H" = 1; then
-	AC_DEFINE(HAVE_SYS_TYPES)
-fi
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for intptr_t)
 AC_CACHE_VAL(mercury_cv_have_intptr_t,
