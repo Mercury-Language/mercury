@@ -133,7 +133,7 @@ map__to_assoc_list(M, M).
 
 	% delete a key -value pair from a map
 
-:- pred map__delete(list(K,V), K, list(K,V)).
+:- pred map__delete(map(K,V), K, map(K,V)).
 :- mode map__delete(input, input, output).
 
 map__delete([K-V | Map0], Key, Map) :-
