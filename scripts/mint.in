@@ -21,7 +21,7 @@ then
 fi
 
 for arg in "$@"; do
-	module="`basename $arg .nl`"
+	module="`basename $arg .m`"
 	file="$INTDIR/$module.int"
 	if [ -r "$file" ]; then
 		${PAGER=more} "$file"
