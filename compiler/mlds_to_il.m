@@ -5,7 +5,7 @@
 %-----------------------------------------------------------------------------%
 %
 % mlds_to_il - Convert MLDS to IL.
-% Main author: trd.
+% Main author: trd, petdr
 %
 % This module generates IL from MLDS.  Currently it's pretty tuned
 % towards generating assembler -- to generate code using
@@ -121,11 +121,9 @@
 	maybe(mlds__func_sequence_num), ilds__class_name, ilds__id).
 :- mode mangle_mlds_proc_label(in, in, out, out) is det.
 
-	% Turn an MLDS module name into a class_name name, adding a
-	% "mercury_code" suffix if the bool is "yes".
-:- func mlds_module_name_to_class_name(mlds_module_name, bool) =
-	ilds__class_name.
-
+	% class_name(Module, Name) returns a class name representing
+	% Name in the module Module.
+:- func class_name(mlds_module_name, string) = ilds__class_name.
 
 	% Return the class_name for the generic class.
 :- func il_generic_class_name = ilds__class_name.
@@ -160,6 +158,7 @@
 	imports 	:: mlds__imports,	% the imports
 	file_foreign_langs :: set(foreign_language), % file foreign code
 	il_data_rep	:: il_data_rep,		% data representation.
+	debug_il_asm	:: bool,		% --debug-il-asm
 		% class-wide attributes (all accumulate)
 	alloc_instrs	:: instr_tree,		% .cctor allocation instructions
 	init_instrs	:: instr_tree,		% .cctor init instructions
@@ -183,369 +182,688 @@
 :- type arguments_map == assoc_list(ilds__id, mlds__type). 
 :- type mlds_vartypes == map(ilds__id, mlds__type).
 
-
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
-	MLDS = mlds(MercuryModuleName, _ForeignCode, Imports, Defns),
+generate_il(MLDS, AssemblyDecls ++ [assembly(IlInfo ^ assembly_name),
+		namespace(NamespaceName, ILDecls)], set__init, IO0, IO) :-
+	mlds(MercuryModuleName, _, Imports, Defns)= transform_mlds(MLDS),
+
 	ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
-	SymName = mlds_module_name_to_sym_name(ModuleName),
-	mlds_to_il__sym_name_to_string(SymName, AssemblyName),
-	globals__io_lookup_bool_option(highlevel_data, HighLevelData, IO0, IO),
-	Info0 = il_info_init(ModuleName, AssemblyName, Imports,
-		il_data_rep(HighLevelData)),
+	prog_out__sym_name_to_string(mlds_module_name_to_sym_name(ModuleName),
+			".", AssemblyName),
+	globals__io_lookup_bool_option(highlevel_data, HighLevelData, IO0, IO1),
+	globals__io_lookup_bool_option(debug_il_asm, DebugIlAsm, IO1, IO),
 
-		% Generate code for all the methods in this module.
-	list__foldl(generate_method_defn, Defns, Info0, Info1),
-	( Info1 ^ method_foreign_lang = yes(SomeLang) ->
-		Info2 = Info1 ^ file_foreign_langs :=
-			set__insert(Info1 ^ file_foreign_langs, SomeLang)
-	;
-		Info2 = Info1
-	),
-	ClassDecls = Info2 ^ classdecls,
-	InitInstrs = list__condense(tree__flatten(Info2 ^ init_instrs)),
-	AllocInstrs = list__condense(tree__flatten(Info2 ^ alloc_instrs)),
+	IlInfo = il_info_init(ModuleName, AssemblyName, Imports,
+			il_data_rep(HighLevelData), DebugIlAsm),
 
-		% Generate definitions for all the other things
-		% declared within this module.
-		% XXX we should do them at the same time as the methods
-	list__map_foldl(generate_other_decls, Defns, OtherDeclsList, Info2,
-		Info3),
-	list__condense(OtherDeclsList, OtherDecls),
+	ILDecls = list__map(mlds_defn_to_ilasm_decl(IlInfo), Defns),
 
-	ClassName = mlds_module_name_to_class_name(ModuleName, yes),
+	ClassName = mlds_module_name_to_class_name(ModuleName),
+	ClassName = structured_name(_, NamespaceName),
 
-		% Make this module an assembly unless it is in the standard
-		% library.  Standard library modules all go in the one
-		% assembly in a separate step during the build (using
-		% AL.EXE).  
+	generate_extern_assembly(Imports, AssemblyDecls).
 
-	Info3 ^ file_foreign_langs = ForeignLangs,
-	(
-		SymName = qualified(unqualified("mercury"), _)
-	->
-		ThisAssembly = [],
-		AssemblerRefs = Imports
-	;
-		ThisAssembly = [assembly(AssemblyName)],
-			% If not in the library, but we have C code,
-			% declare the foreign module as an assembly we
-			% reference
-		list__map(mangle_foreign_code_module(ModuleName),
-			set__to_sorted_list(ForeignLangs),
-			ForeignCodeAssemblerRefs),
-		AssemblerRefs = list__append(ForeignCodeAssemblerRefs, Imports)
-	),
 
-		% Turn the MLDS module names we import into a list of
-		% assembly declarations.
-	mlds_to_il__generate_extern_assembly(AssemblerRefs,
-		ExternAssemblies),
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-		% Generate a field that records whether we have finished
-		% RTTI initialization.
-	generate_rtti_initialization_field(ClassName, 
-		AllocDoneFieldRef, AllocDoneField),
+	% Move all the top level methods and data definitions into the
+	% mercury_code class, and then rename all the definitions as
+	% necessary to reflect this new hierachy.
+:- func transform_mlds(mlds) = mlds.
 
-		% Generate a class constructor.
-	make_class_constructor_classdecl(AllocDoneFieldRef,
-		Imports, AllocInstrs, InitInstrs, CCtor, Info3, _Info),
-
-		% The declarations in this class.
-	MethodDecls = [AllocDoneField, CCtor | ClassDecls],
-
-	SimpleClassName = get_class_suffix(ClassName),
-	NamespaceName = get_class_namespace(ClassName),
-
-		% The class that corresponds to this MLDS module.
-	MainClass = [class([public], SimpleClassName, extends_nothing,
-			implements([]), MethodDecls)],
-	MainNamespace = [namespace(NamespaceName, MainClass)],
-
-		% A namespace to contain all the other declarations that
-		% are created as a result of this MLDS code (currently
-		% this is not much).
-	OtherNamespace = [namespace([AssemblyName], OtherDecls)],
-	ILAsm = list__condense(
-		[ExternAssemblies, ThisAssembly, MainNamespace,
-			OtherNamespace]).
-
-%-----------------------------------------------------------------------------
-
-	% 
-	% Code for generating method definitions.
-	%
-
-:- pred generate_method_defn(mlds__defn, il_info, il_info).
-:- mode generate_method_defn(in, in, out) is det.
-
-generate_method_defn(defn(type(_, _), _, _, _)) --> [].
-	% XXX we don't handle export
-generate_method_defn(defn(export(_), _, _, _)) --> [].
-generate_method_defn(FunctionDefn) -->
-	{ FunctionDefn = defn(function(PredLabel, ProcId, MaybeSeqNum, PredId), 
-		Context, DeclsFlags, Entity) },
-	( { Entity = mlds__function(_PredProcId, Params, MaybeStatement) } ->
-
-		il_info_get_module_name(ModuleName),
-			% Generate a term (we use it to emit the complete
-			% method definition as a comment, which is nice
-			% for debugging).
-		{ term__type_to_term(defn(function(PredLabel, ProcId, 
-			MaybeSeqNum, PredId), Context, DeclsFlags, Entity),
-			MLDSDefnTerm) },
-
-			% Generate the signature
-		{ Params = mlds__func_params(Args, Returns) },
-		{ ILArgs = list__map(mlds_arg_to_il_arg, Args) },
-		DataRep =^ il_data_rep,
-		{ ILSignature = params_to_il_signature(DataRep, 
-			ModuleName, Params) },
-			
-			% Generate the name of the method.
-		{ predlabel_to_id(PredLabel, ProcId, MaybeSeqNum,
-			Id) },
-
-			% Initialize the IL info with this method info.
-		il_info_new_method(ILArgs, ILSignature, id(Id)),
-
-			% Start a new block, which we will use to wrap
-			% up the entire method.
-		il_info_get_next_block_id(BlockId),
-
-			% Generate the code of the statement.
-		( { MaybeStatement = yes(Statement) } -> 
-			statement_to_il(Statement, InstrsTree1)
-		;
-				% If there is no function body,
-				% generate forwarding code instead.
-				% This can happen with :- external
-			atomic_statement_to_il(inline_target_code(lang_C, []),
-				InstrsTree0),
-				% The code might reference locals...
-			il_info_add_locals(["succeeded" - 
-				mlds__native_bool_type]),
-			( { Returns = [_] } ->
-				% XXX Bug!
-				% We assume that if there is a return value,
-				% then it must be a semidet procedure, so
-				% we return `succeeded'.
-				% This is wrong for functions!
-				{ InstrsTree1 = tree__list([
-					InstrsTree0,
-					instr_node(ldloc(name("succeeded"))),
-					instr_node(ret)
-				]) }
-			;
-				{ InstrsTree1 = InstrsTree0 }
+transform_mlds(mlds(MercuryModuleName, ForeignCode, Imports, Defns))
+	= mlds(
+		MercuryModuleName,
+		ForeignCode,
+		Imports,
+		[mercury_code_class(list__map(rename_defn, Members)) | Others]
+	) :-
+	list__filter((pred(D::in) is semidet :-
+			( D = mlds__defn(_, _, _, mlds__function(_, _, _))
+				% XXX we need to place all the RTTI
+				% datastructures inside this class, so
+				% they are generated as fields.
+				% Maybe what we should do is make all
+				% the RTTI data structures nested
+				% classes.  I think that would work
+				% better.
+			; D = mlds__defn(_, _, _, mlds__data(_, _))
 			)
+		), Defns, Members, Others).
+
+:- func mercury_code_class(mlds__defns) = mlds__defn.
+
+mercury_code_class(Members)
+	= mlds__defn(
+		export("mercury_code"),
+		mlds__make_context(term__context_init),
+		init_decl_flags(public, per_instance, non_virtual,
+				final, const, concrete),
+		mlds__class(
+			mlds__class_defn(mlds__package, [], [], [], [], Members)
+		)
+	).
+
+:- func rename_defn(mlds__defn) = mlds__defn.
+
+rename_defn(defn(Name, Context, Flags, Entity0))
+	= defn(Name, Context, Flags, Entity) :-
+	( Entity0 = data(Type, Initializer),
+		Entity = data(Type, rename_initializer(Initializer))
+	; Entity0 = function(MaybePredProcId, Params, MaybeStmt0),
+		( MaybeStmt0 = yes(Stmt),
+			MaybeStmt = yes(rename_statement(Stmt))
+		; MaybeStmt0 = no,
+			MaybeStmt = no
 		),
+		Entity = function(MaybePredProcId, Params, MaybeStmt)
+	; Entity0 = class(_),
+		sorry(this_file, "renaming nested classes")
+	).
 
-			% If this is main, add the entrypoint, set a
-			% flag, and call the initialization instructions
-			% in the cctor of this module.
-		( { PredLabel = pred(predicate, no, "main", 2, model_det,
-			no) },
-		  { MaybeSeqNum = no }
-		->
-			{ EntryPoint = [entrypoint] },
-			il_info_add_init_instructions(
-				runtime_initialization_instrs),
-			^ has_main := yes
+:- func rename_statement(mlds__statement) = mlds__statement.
+
+rename_statement(statement(block(Defns, Stmts), Context))
+	= statement(block(list__map(rename_defn, Defns),
+			list__map(rename_statement, Stmts)), Context).
+rename_statement(statement(while(Rval, Loop, IterateOnce), Context))
+	= statement(while(rename_rval(Rval),
+			rename_statement(Loop), IterateOnce), Context).
+rename_statement(statement(if_then_else(Rval, Then, MaybeElse0), Context))
+	= statement(if_then_else(rename_rval(Rval),
+			rename_statement(Then), MaybeElse), Context) :-
+	( MaybeElse0 = no,
+		MaybeElse = no
+	; MaybeElse0 = yes(Else),
+		MaybeElse = yes(rename_statement(Else))
+	).
+rename_statement(statement(switch(Type, Rval, Range, Cases, Default0), Context))
+	= statement(switch(Type, rename_rval(Rval), Range,
+			list__map(rename_switch_case, Cases), Default),
+			Context) :-
+	( Default0 = default_is_unreachable,
+		Default = default_is_unreachable
+	; Default0 = default_do_nothing,
+		Default = default_do_nothing
+	; Default0 = default_case(Stmt),
+		Default = default_case(rename_statement(Stmt))
+	).
+rename_statement(statement(label(Label), Context))
+	= statement(label(Label), Context).
+rename_statement(statement(goto(Label), Context))
+	= statement(goto(Label), Context).
+rename_statement(statement(computed_goto(Rval, Labels), Context))
+	= statement(computed_goto(rename_rval(Rval), Labels), Context).
+
+rename_statement(statement(
+		call(Signature, Rval, MaybeThis0, Args, Results, TailCall),
+		Context))
+	= statement(call(Signature, rename_rval(Rval),
+			MaybeThis, list__map(rename_rval, Args),
+			list__map(rename_lval, Results), TailCall), Context) :-
+	( MaybeThis0 = yes(Self),
+		MaybeThis = yes(rename_rval(Self))
+	; MaybeThis0 = no,
+		MaybeThis = no
+	).
+
+rename_statement(statement(return(Vals), Context))
+	= statement(return(Vals), Context).
+rename_statement(statement(try_commit(Lval, Try, Handler), Context))
+	= statement(try_commit(rename_lval(Lval), rename_statement(Try),
+			rename_statement(Handler)), Context).
+rename_statement(statement(do_commit(Rval), Context))
+	= statement(do_commit(rename_rval(Rval)), Context).
+rename_statement(statement(atomic(Stmt), Context))
+	= statement(atomic(rename_atomic(Stmt)), Context).
+
+:- func rename_switch_case(switch_case) = switch_case.
+
+rename_switch_case(Conds - Stmt)
+	= list__map(rename_cond, Conds) - rename_statement(Stmt).
+
+:- func rename_cond(case_match_cond) = case_match_cond.
+
+rename_cond(match_value(Rval)) = match_value(rename_rval(Rval)).
+rename_cond(match_range(RvalA, RvalB))
+	= match_range(rename_rval(RvalA), rename_rval(RvalB)).
+
+:- func rename_atomic(atomic_statement) = atomic_statement.
+
+rename_atomic(comment(S)) = comment(S).
+rename_atomic(assign(L, R)) = assign(rename_lval(L), rename_rval(R)).
+rename_atomic(delete_object(O)) = delete_object(rename_lval(O)).
+rename_atomic(new_object(L, T, Type, MaybeSize, C, Args, Types))
+	= new_object(rename_lval(L), T, Type, MaybeSize,
+			C, list__map(rename_rval, Args), Types).
+rename_atomic(mark_hp(L)) = mark_hp(rename_lval(L)).
+rename_atomic(restore_hp(R)) = restore_hp(rename_rval(R)).
+rename_atomic(trail_op(T)) = trail_op(T).
+rename_atomic(inline_target_code(L, Cs)) = inline_target_code(L, Cs).
+rename_atomic(outline_foreign_proc(F, Ls, S)) = outline_foreign_proc(F, Ls, S).
+
+:- func rename_rval(mlds__rval) = mlds__rval.
+
+rename_rval(lval(Lval)) = lval(rename_lval(Lval)).
+rename_rval(mkword(Tag, Rval)) = mkword(Tag, rename_rval(Rval)).
+rename_rval(const(Const)) = const(rename_const(Const)).
+rename_rval(unop(Op, Rval)) = unop(Op, rename_rval(Rval)).
+rename_rval(binop(Op, RvalA, RvalB))
+	= binop(Op, rename_rval(RvalA), rename_rval(RvalB)).
+rename_rval(mem_addr(Lval)) = mem_addr(rename_lval(Lval)).
+rename_rval(self(Type)) = self(Type).
+
+:- func rename_const(mlds__rval_const) = mlds__rval_const.
+
+rename_const(true) = true.
+rename_const(false) = false.
+rename_const(int_const(I)) = int_const(I).
+rename_const(float_const(F)) = float_const(F).
+rename_const(string_const(S)) = string_const(S).
+rename_const(multi_string_const(I, S)) = multi_string_const(I, S).
+rename_const(code_addr_const(C)) = code_addr_const(rename_code_addr(C)).
+rename_const(data_addr_const(A)) = data_addr_const(rename_data_addr(A)).
+rename_const(null(T)) = null(T).
+
+:- func rename_code_addr(mlds__code_addr) = mlds__code_addr.
+
+rename_code_addr(proc(Label, Signature))
+	= proc(rename_label(Label), Signature).
+rename_code_addr(internal(Label, Seq, Signature))
+	= internal(rename_label(Label), Seq, Signature).
+
+:- func rename_data_addr(data_addr) = data_addr.
+
+rename_data_addr(data_addr(ModuleName, Name))
+	= data_addr(append_mercury_code(ModuleName), Name).
+
+:- func rename_label(mlds__qualified_proc_label) = mlds__qualified_proc_label.
+
+rename_label(qual(Module, Name)) = qual(append_mercury_code(Module), Name).
+
+:- func rename_lval(mlds__lval) = mlds__lval.
+
+rename_lval(field(Tag, Address, FieldName, FieldType, PtrType))
+	= field(Tag, rename_rval(Address),
+			rename_field_id(FieldName), FieldType, PtrType).
+rename_lval(mem_ref(Rval, Type)) = mem_ref(rename_rval(Rval), Type).
+rename_lval(var(Var, Type)) = var(rename_var(Var, Type), Type).
+
+:- func rename_field_id(field_id) = field_id.
+
+rename_field_id(offset(Rval)) = offset(rename_rval(Rval)).
+rename_field_id(named_field(Name, Type)) = named_field(Name, Type).
+
+:- func rename_var(mlds__var, mlds__type) = mlds__var.
+
+rename_var(qual(ModuleName, Name), _Type)
+	= qual(append_mercury_code(ModuleName), Name).
+
+:- func rename_initializer(mlds__initializer) = mlds__initializer.
+
+rename_initializer(init_obj(Rval)) = init_obj(rename_rval(Rval)).
+rename_initializer(init_struct(Inits))
+	= init_struct(list__map(rename_initializer, Inits)).
+rename_initializer(init_array(Inits))
+	= init_array(list__map(rename_initializer, Inits)).
+rename_initializer(no_initializer) = no_initializer.
+
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- func mlds_defn_to_ilasm_decl(il_info, mlds__defn) = ilasm__decl.
+
+mlds_defn_to_ilasm_decl(_, defn(_Name, _Context, _Flags, data(_Type, _Init)))
+	= _ :- sorry(this_file, "top level data definition!").
+mlds_defn_to_ilasm_decl(_, defn(_Name, _Context, _Flags,
+		function(_MaybePredProcId, _Params, _MaybeStmts)))
+	= _ :- sorry(this_file, "top level function definition!").
+mlds_defn_to_ilasm_decl(Info0, defn(Name, _Context, Flags, class(ClassDefn)))
+	= class(
+		decl_flags_to_classattrs(Flags),
+		EntityName,
+		Extends,
+		Interfaces,
+		MethodDecls
+	) :-
+	EntityName = entity_name_to_ilds_id(Name),
+	ClassDefn = class_defn(_Kind, _Imports, Inherits, Implements,
+			Ctors, Members),
+	( Inherits = [],
+		Extends = extends_nothing,
+		Parent = il_generic_class_name
+	; Inherits = [Parent0 | Rest],
+		( Rest = [] ->
+			Parent = mlds_type_to_ilds_class_name(
+					Info0 ^ il_data_rep, Parent0),
+			Extends = extends(Parent)
 		;
-			{ EntryPoint = [] }
-		),
+			error(this_file ++ 
+				": multiple inheritance not supported.")
+		)
+	),
 
-			% Need to insert a ret for functions returning
-			% void (MLDS doesn't).
-		{ Returns = [] ->
-			MaybeRet = instr_node(ret)
-		;
-			MaybeRet = empty
-		},
+	Interfaces = implements(
+			list__map(interface_id_to_class_name, Implements)),
 
-			% Retrieve the locals, put them in the enclosing
-			% scope.
-		il_info_get_locals_list(Locals),
-		{ InstrsTree = tree__list([
-			context_node(Context),
-			instr_node(start_block(scope(Locals), BlockId)),
-			InstrsTree1, 
-			MaybeRet,
-			instr_node(end_block(scope(Locals), BlockId))
-			])
-		},
+	ClassName = class_name(Info0 ^ module_name, EntityName),
+	list__map_foldl(generate_method(ClassName, no), Members,
+			MethodsAndFields, Info0, Info1),
+	list__map_foldl(generate_method(ClassName, yes(Parent)), Ctors,
+			IlCtors, Info1, Info),
+	MethodsAndFieldsAndCtors = IlCtors ++ MethodsAndFields,
 
-			% Generate the entire method contents.
-		{ MethodBody = make_method_defn(InstrsTree) },
-		{ list__append(EntryPoint, MethodBody, MethodContents) },
+		% XXX Maybe it would be better to just check to see
+		% whether or not there are any init instructions than
+		% explicitly checking for the name mercury_code.
+	( EntityName = "mercury_code" ->
+		Imports = Info ^ imports,
+		InitInstrs = list__condense(tree__flatten(Info ^ init_instrs)),
+		AllocInstrs = list__condense(
+				tree__flatten(Info ^ alloc_instrs)),
 
-			% Add this method and a comment to the class
-			% declarations.
-		{ ClassDecls = [
-			comment_term(MLDSDefnTerm),
-			ilasm__method(methodhead([public, static], id(Id), 
-				ILSignature, []), MethodContents)
-		] },
-		il_info_add_classdecls(ClassDecls)
+			% Generate a field that records whether we have
+			% finished RTTI initialization.
+		generate_rtti_initialization_field(ClassName, 
+				AllocDoneFieldRef, AllocDoneField),
+
+			% Generate a class constructor.
+		make_class_constructor_classdecl(AllocDoneFieldRef,
+				Imports, AllocInstrs, InitInstrs, CCtor,
+				Info, _InfoX),
+
+			% The declarations in this class.
+		MethodDecls = [AllocDoneField, CCtor | MethodsAndFieldsAndCtors]
 	;
-		{ error("entity not a function") }
+		MethodDecls = MethodsAndFieldsAndCtors
+	).
+
+class_name(Module, Name) = structured_name(Assembly, ClassName ++ [Name]) :-
+	ClassName = sym_name_to_list(mlds_module_name_to_sym_name(Module)),
+	( ClassName = ["mercury" | _] ->
+		Assembly = "mercury"
+	;
+		prog_out__sym_name_to_string(
+				mlds_module_name_to_package_name(Module),
+				".", Assembly)
+	).
+
+:- func sym_name_to_list(sym_name) = list(string).
+
+sym_name_to_list(unqualified(Name)) = [Name].
+sym_name_to_list(qualified(Module, Name))
+	= sym_name_to_list(Module) ++ [Name].
+
+
+:- func decl_flags_to_classattrs(mlds__decl_flags) = list(ilasm__classattr).
+
+decl_flags_to_classattrs(Flags)
+	= list__condense([Access, Finality, Abstractness]) :-
+	AccessFlag = access(Flags),
+	( AccessFlag = public,
+		Access = [public]
+	; AccessFlag = protected,
+		Access = []
+	; AccessFlag = private,
+		Access = []
+	; AccessFlag = default,
+		error("decl_flags_to_classattrs: default access flag")
+	; AccessFlag = local,
+		error("decl_flags_to_classattrs: local access flag")
+	),
+	FinalityFlag = finality(Flags),
+	( FinalityFlag = overridable,
+		Finality = []
+	; FinalityFlag = final,
+		Finality = [sealed]
+	),
+	AbstractnessFlag = abstractness(Flags),
+	( AbstractnessFlag = concrete,
+		Abstractness = []
+	; AbstractnessFlag = abstract,
+		Abstractness = [abstract]
+	).
+
+:- func decl_flags_to_methattrs(mlds__decl_flags) = list(ilasm__methattr).
+
+decl_flags_to_methattrs(Flags)
+	= list__condense([Access, PerInstance, Virtuality,
+			Finality, Abstractness]) :-
+	AccessFlag = access(Flags),
+	( AccessFlag = public,
+		Access = [public]
+	; AccessFlag = protected,
+		Access = [family]
+	; AccessFlag = private,
+		Access = [private]
+	; AccessFlag = default,
+		error("decl_flags_to_methattrs: default access flag")
+	; AccessFlag = local,
+		error("decl_flags_to_methattrs: local access flag")
+	),
+	PerInstanceFlag = per_instance(Flags),
+	( PerInstanceFlag = one_copy,
+		PerInstance = [static]
+	; PerInstanceFlag = per_instance,
+		PerInstance = []
+	),
+	VirtualityFlag = virtuality(Flags),
+	( VirtualityFlag = non_virtual,
+		Virtuality = []
+	; VirtualityFlag = virtual,
+		Virtuality = [virtual]
+	),
+	FinalityFlag = finality(Flags),
+	( FinalityFlag = overridable,
+		Finality = []
+	; FinalityFlag = final,
+		Finality = [final]
+	),
+	AbstractnessFlag = abstractness(Flags),
+	( AbstractnessFlag = concrete,
+		Abstractness = []
+	; AbstractnessFlag = abstract,
+		Abstractness = [abstract]
 	).
 
 
-generate_method_defn(DataDefn) --> 
-	{ DataDefn = defn(data(DataName), Context, _DeclsFlags, Entity) },
+:- func decl_flags_to_fieldattrs(mlds__decl_flags) = list(ilasm__fieldattr).
+
+decl_flags_to_fieldattrs(Flags)
+	= list__condense([Access, PerInstance, Constness]) :-
+	AccessFlag = access(Flags),
+	( AccessFlag = public,
+		Access = [public]
+	; AccessFlag = protected,
+		Access = [family]
+	; AccessFlag = private,
+		Access = [private]
+	; AccessFlag = default,
+		error("decl_flags_to_fieldattrs: default access flag")
+	; AccessFlag = local,
+		error("decl_flags_to_fieldattrs: local access flag")
+	),
+	PerInstanceFlag = per_instance(Flags),
+	( PerInstanceFlag = one_copy,
+		PerInstance = [static]
+	; PerInstanceFlag = per_instance,
+		PerInstance = []
+	),
+	ConstnessFlag = constness(Flags),
+	( ConstnessFlag = modifiable,
+		Constness = []
+	; ConstnessFlag = const,
+		Constness = [initonly]
+	).
+
+
+:- func entity_name_to_ilds_id(mlds__entity_name) = ilds__id.
+
+entity_name_to_ilds_id(export(Name)) = Name.
+entity_name_to_ilds_id(function(PredLabel, ProcId, MaybeSeqNum, _))
+	= Name :-
+	predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, Name).
+entity_name_to_ilds_id(type(Name, Arity))
+	= string__format("%s_%d", [s(Name), i(Arity)]).
+entity_name_to_ilds_id(data(DataName))
+	= mangle_dataname(DataName).
+
+:- func interface_id_to_class_name(mlds__interface_id) = ilds__class_name.
+
+interface_id_to_class_name(_) = Result :-
+		% XXX
+	( semidet_succeed ->
+		sorry(this_file, "interface_id_to_class_name NYI")
+	;
+		Result = structured_name("XXX", [])
+		
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred generate_method(ilds__class_name::in, maybe(ilds__class_name)::in,
+		mlds__defn::in, classdecl::out,
+		il_info::in, il_info::out) is det.
+
+generate_method(ClassName, _, defn(Name, Context, Flags, Entity), ClassDecl) -->
+	{ Entity = data(Type, DataInitializer) },
+
+	{ FieldName = entity_name_to_ilds_id(Name) },
+
+	{ Attrs = decl_flags_to_fieldattrs(Flags) },
+
+		% Generate instructions to initialize this data.
+		% There are two sorts of instructions,
+		% instructions to allocate the data structure,
+		% and instructions to initialize it.
+		% See the comments about class constructors to
+		% find out why we do this.
+	data_initializer_to_instrs(DataInitializer, AllocInstrsTree,
+			InitInstrTree),
+
+		% Make a field reference for the field
+	{ FieldRef = make_fieldref(il_array_type, ClassName, FieldName) },
+
+		% If we had to allocate memory, the code
+		% we generate looks like this:
+		%
+		%	// allocation for foo
+		%	... allocation instructions ...
+		%	stsfld thisclass::foo
+		%
+		%
+		%	// initializer for foo
+		%	ldsfld thisclass::foo
+		%	... initialization code ...
+		%	pop
+		%
+		% The final pop is necessary because the init
+		% code will leave the field on the stack, but we
+		% don't need it anymore (and we already set the
+		% field when we allocated it).
+		%
+		% If no memory had to be allocated, the code is
+		% a bit simpler.
+		%
+		%	// allocation for foo
+		%	nothing here! 
+		%	
+		%	// initializer for foo
+		%	... initialization code ...
+		%	stsfld thisclass::foo
+		%
+		% Note that here we have to set the field.
+
+	{ AllocInstrsTree = node([]) ->
+		StoreAllocTree = node([]),
+		StoreInitTree = node([stsfld(FieldRef)]),
+		LoadTree = node([])
+	;
+		StoreAllocTree = node([stsfld(FieldRef)]),
+		StoreInitTree = node([pop]),
+		LoadTree = node([ldsfld(FieldRef)])
+	},
+
+		% Add a store after the alloc instrs (if necessary)
+	{ AllocInstrs = list__condense(tree__flatten(
+		tree__list([
+			context_node(Context),
+			comment_node(string__append("allocation for ",
+				FieldName)),
+			AllocInstrsTree, 
+			StoreAllocTree]))) },
+
+		% Add a load before the init instrs (if necessary)
+	{ InitInstrs = list__condense(tree__flatten(
+		tree__list([
+			context_node(Context),
+			comment_node(string__append("initializer for ",
+				FieldName)),
+			LoadTree,
+			InitInstrTree,
+			StoreInitTree]))) },
+	
+		% Add these instructions to the lists of
+		% allocation/initialization instructions.
+		% They will be put into the class constructor
+		% later.
+	il_info_add_alloc_instructions(AllocInstrs),
+	il_info_add_init_instructions(InitInstrs),
+
+	DataRep =^ il_data_rep,
+	{ IlType = mlds_type_to_ilds_type(DataRep, Type) },
+	{ MaybeOffset = no },
+	{ Initializer = none },
+
+	{ ClassDecl = field(Attrs, IlType, FieldName,
+			MaybeOffset, Initializer) }.
+
+generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
+	{ Entity = function(_MaybePredProcId, Params, MaybeStatement) },
+
 	il_info_get_module_name(ModuleName),
-	{ ClassName = mlds_module_name_to_class_name(ModuleName, yes) },
+
+	/* XXX We formerly returned a list of definitions, so we could put
+	 * this term in a comment term, so we cannot currently do this.
 
 		% Generate a term (we use it to emit the complete
 		% method definition as a comment, which is nice
 		% for debugging).
-	{ term__type_to_term(DataDefn, MLDSDefnTerm) },
+	{ term__type_to_term(defn(Name, Context, Flags, Entity),
+			_MLDSDefnTerm) },
+	*/
 
-		% Generate the field name for this data.
-	{ mangle_dataname(DataName, FieldName) },
-		
-	( 
-		{ Entity = mlds__data(_DataType, DataInitializer) }
-	->
-			% Generate instructions to initialize this data.
-			% There are two sorts of instructions,
-			% instructions to allocate the data structure,
-			% and instructions to initialize it.
-			% See the comments about class constructors to
-			% find out why we do this.
-		data_initializer_to_instrs(DataInitializer, AllocInstrsTree,
-			InitInstrTree),
+		% Generate the signature
+	{ Params = mlds__func_params(Args, Returns) },
+	{ ILArgs = list__map(mlds_arg_to_il_arg, Args) },
+	DataRep =^ il_data_rep,
+	{ ILSignature = params_to_il_signature(DataRep, ModuleName, Params) },
 
-			% Make a field reference for the field
-		{ FieldRef = make_fieldref(il_array_type,
-			ClassName, FieldName) },
+		% Generate the name
+	{ IsCons = yes(ParentClass),
+		MemberName = ctor,
+		CtorInstrs = [load_this,
+			call(methoddef(call_conv(yes, default), void, 
+			class_member_name(ParentClass, ctor), []))]
+	; IsCons = no,
+		MemberName = id(entity_name_to_ilds_id(Name)),
+		CtorInstrs = []
+	},
 
-			% If we had to allocate memory, the code
-			% we generate looks like this:
-			%
-			%	// allocation for foo
-			%	... allocation instructions ...
-			%	stsfld thisclass::foo
-			%
-			%
-			%	// initializer for foo
-			%	ldsfld thisclass::foo
-			%	... initialization code ...
-			%	pop
-			%
-			% The final pop is necessary because the init
-			% code will leave the field on the stack, but we
-			% don't need it anymore (and we already set the
-			% field when we allocated it).
-			%
-			% If no memory had to be allocated, the code is
-			% a bit simpler.
-			%
-			%	// allocation for foo
-			%	nothing here! 
-			%	
-			%	// initializer for foo
-			%	... initialization code ...
-			%	stsfld thisclass::foo
-			%
-			% Note that here we have to set the field.
+	{ Attrs = decl_flags_to_methattrs(Flags) },
 
-		{ AllocInstrsTree = node([]) ->
-			StoreAllocTree = node([]),
-			StoreInitTree = node([stsfld(FieldRef)]),
-			LoadTree = node([])
-		;
-			StoreAllocTree = node([stsfld(FieldRef)]),
-			StoreInitTree = node([pop]),
-			LoadTree = node([ldsfld(FieldRef)])
-		},
+		% Initialize the IL info with this method info.
+	il_info_new_method(ILArgs, ILSignature, MemberName),
 
-			% Add a store after the alloc instrs (if necessary)
-		{ AllocInstrs = list__condense(tree__flatten(
-			tree__list([
-				context_node(Context),
-				comment_node(string__append("allocation for ",
-					FieldName)),
-				AllocInstrsTree, 
-				StoreAllocTree]))) },
+		% Start a new block, which we will use to wrap
+		% up the entire method.
+	il_info_get_next_block_id(BlockId),
 
-			% Add a load before the init instrs (if necessary)
-		{ InitInstrs = list__condense(tree__flatten(
-			tree__list([
-				context_node(Context),
-				comment_node(string__append("initializer for ",
-					FieldName)),
-				LoadTree,
-				InitInstrTree,
-				StoreInitTree]))) },
-		
-			% Add these instructions to the lists of
-			% allocation/initialization instructions.
-			% They will be put into the class constructor
-			% later.
-		il_info_add_alloc_instructions(AllocInstrs),
-		il_info_add_init_instructions(InitInstrs),
-
-			% Make a public static field and add the field
-			% and a comment term to the class decls.
-		{ Field = field([public, static], il_array_type,
-			FieldName, no, none) },
-		{ ClassDecls = [comment_term(MLDSDefnTerm), Field] }
+		% Generate the code of the statement.
+	( { MaybeStatement = yes(Statement) } -> 
+		statement_to_il(Statement, InstrsTree1)
 	;
-		{ error("entity not data") }
-	),
-	il_info_add_classdecls(ClassDecls).
-	
-	% Generate top level declarations for "other" things (e.g.
-	% anything that is not a method in the main class).
-	% XXX Really, this should be integrated with the other pass
-	% (generate_method_defn), and we can generate them all at once.
-	% This would involve adding the top-level decls list to il_info too.
-:- pred generate_other_decls(mlds__defn, list(ilasm__decl),
-		il_info, il_info).
-:- mode generate_other_decls(in, out, in, out) is det.
-generate_other_decls(MLDSDefn, Decls) -->
-	ModuleName =^ module_name,
-	{ ClassName = mlds_module_name_to_class_name(ModuleName, yes) },
-	{ MLDSDefn = mlds__defn(EntityName, _Context, _DeclFlags, Entity) }, 
-	{ term__type_to_term(MLDSDefn, MLDSDefnTerm) },
-	( { EntityName = type(TypeName0, Arity) },
-		{ TypeName = string__format("%s_%d",
-			[s(TypeName0), i(Arity)]) },
-		{ FullClassName = append_class_name(ClassName, [TypeName]) },
-		( 
-			{ Entity = mlds__class(ClassDefn) }
-		->
-			{ ClassDefn = mlds__class_defn(_ClassType, _Imports, 
-				Inherits, _Implements, Defns) },
-			DataRep =^ il_data_rep,
-			{ Extends = mlds_inherits_to_ilds_inherits(DataRep,
-				Inherits) },
-			list__map_foldl(defn_to_class_decl, Defns, ILDefns),
-			{ make_constructor(DataRep, FullClassName, ClassDefn, 
-				ConstructorILDefn) },
-			{ Decls = [comment_term(MLDSDefnTerm),
-				class([public], TypeName,
-				Extends, implements([]),
-				[ConstructorILDefn | ILDefns])] }
+			% If there is no function body, generate
+			% forwarding code instead.  This can happen with
+			% :- external
+		atomic_statement_to_il(inline_target_code(lang_C, []),
+				InstrsTree0),
+
+			% The code might reference locals...
+		il_info_add_locals(["succeeded" - mlds__native_bool_type]),
+		( { Returns = [_] } ->
+			% XXX Bug!
+			% We assume that if there is a return value,
+			% then it must be a semidet procedure, so
+			% we return `succeeded'.
+			% This is wrong for functions!
+			{ InstrsTree1 = tree__list([
+				InstrsTree0,
+				instr_node(ldloc(name("succeeded"))),
+				instr_node(ret)
+			]) }
 		;
-			{ Decls = [comment_term(MLDSDefnTerm),
-				comment("This type unimplemented.")] }
+			{ InstrsTree1 = InstrsTree0 }
 		)
-	; { EntityName = function(_PredLabel, _ProcId, _MaybeFn, _PredId) },
-		{ Decls = [] }
-	; { EntityName = export(_) },
-			% XXX we don't handle export
-		{ Decls = [] }
-	; { EntityName = data(_) },
-		{ Decls = [] }
-	).
+	),
 
+		% If this is main, add the entrypoint, set a flag, and
+		% call the initialization instructions in the cctor of
+		% this module.
+	(
+		{ Name = function(PredLabel, _ProcId, MaybeSeqNum, _PredId) },
+		{ PredLabel = pred(predicate, no, "main", 2, model_det, no) },
+		{ MaybeSeqNum = no }
+	->
+		{ EntryPoint = [entrypoint] },
+		il_info_add_init_instructions(runtime_initialization_instrs),
+		^ has_main := yes
+	;
+		{ EntryPoint = [] }
+	),
 
-%-----------------------------------------------------------------------------
+		% Need to insert a ret for functions returning
+		% void (MLDS doesn't).
+	{ Returns = [] ->
+		MaybeRet = instr_node(ret)
+	;
+		MaybeRet = empty
+	},
+
+		% Retrieve the locals, put them in the enclosing
+		% scope.
+	il_info_get_locals_list(Locals),
+	{ InstrsTree = tree__list([
+		context_node(Context),
+		node(CtorInstrs),
+		context_node(Context),
+		instr_node(start_block(scope(Locals), BlockId)),
+		InstrsTree1, 
+		MaybeRet,
+		instr_node(end_block(scope(Locals), BlockId))
+		])
+	},
+
+		% Generate the entire method contents.
+	DebugIlAsm =^ debug_il_asm,
+	{ MethodBody = make_method_defn(DebugIlAsm, InstrsTree) },
+	{ list__append(EntryPoint, MethodBody, MethodContents) },
+
+	{ ClassDecl = ilasm__method(methodhead(Attrs, MemberName,
+			ILSignature, []), MethodContents)}.
+
+generate_method(_, _, defn(_Name, _Context, _Flags, Entity), _ClassDecl) -->
+	{ Entity = class(_ClassDefn) },
+	{ sorry(this_file, "nested classes") }.
+
+%-----------------------------------------------------------------------------%
+
+:- func mangle_dataname(mlds__data_name) = string.
+
+mangle_dataname(var(MLDSVarName))
+	= mangle_mlds_var_name(MLDSVarName).
+mangle_dataname(common(Int))
+	= string__format("common_%s", [i(Int)]).
+mangle_dataname(rtti(RttiTypeId, RttiName)) = MangledName :-
+	rtti__addr_to_string(RttiTypeId, RttiName, MangledName).
+mangle_dataname(base_typeclass_info(ClassId, InstanceStr)) = MangledName :-
+        llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
+		MangledName).
+mangle_dataname(module_layout) = _MangledName :-
+	error("unimplemented: mangling module_layout").
+mangle_dataname(proc_layout(_)) = _MangledName :-
+	error("unimplemented: mangling proc_layout").
+mangle_dataname(internal_layout(_, _)) = _MangledName :-
+	error("unimplemented: mangling internal_layout").
+mangle_dataname(tabling_pointer(_)) = _MangledName :-
+	error("unimplemented: mangling tabling_pointer").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	%
 	% Code for generating initializers.
@@ -663,62 +981,6 @@ maybe_box_initializer(init_obj(Rval), init_obj(NewRval)) -->
 	rval_to_type(Rval, BoxType),
 	{ NewRval = unop(box(BoxType), Rval) }.
 
-
-%-----------------------------------------------------------------------------%
-%
-% Code to turn MLDS definitions into IL class declarations.
-%
-
-:- pred defn_to_class_decl(mlds__defn, ilasm__classdecl, il_info, il_info).
-:- mode defn_to_class_decl(in, out, in, out) is det.
-
-	% XXX shouldn't we re-use the code for creating fieldrefs here?
-	% IL doesn't allow byrefs in classes, so we don't use them.
-	% XXX really this should be a transformation done in advance
-defn_to_class_decl(mlds__defn(Name, _Context, _DeclFlags, 
-		mlds__data(Type, _Initializer)), ILClassDecl) -->
-	DataRep =^ il_data_rep,
-	{ ILType = remove_byrefs_from_type(
-			mlds_type_to_ilds_type(DataRep, Type)) },
-	{ Name = data(DataName) ->
-		mangle_dataname(DataName, MangledName),
-		ILClassDecl = field([], ILType, MangledName, no, none) 
-	;
-		error("definintion name was not data/1")
-	}.
-
-	% XXX this needs to be implemented
-defn_to_class_decl(mlds__defn(_Name, _Context, _DeclFlags,
-	mlds__function(_PredProcId, _Params, _MaybeStatements)),
-		ILClassDecl) -->
-	{ ILClassDecl = comment("unimplemented: functions in classes") }.
-
-defn_to_class_decl(mlds__defn(EntityName, _Context, _DeclFlags,
-		mlds__class(ClassDefn)), ILClassDecl) -->
-	DataRep =^ il_data_rep,
-	( { EntityName = type(TypeName0, Arity) } ->
-		{ TypeName = string__format("%s_%d",
-			[s(TypeName0), i(Arity)]) },
-		{ ClassDefn = mlds__class_defn(_ClassType, _Imports, 
-			Inherits, _Implements, Defns) },
-		{ FullClassName = structured_name("", [TypeName]) },
-		list__map_foldl(defn_to_class_decl, Defns, ILDefns),
-		{ make_constructor(DataRep, FullClassName, ClassDefn,
-			ConstructorILDefn) },
-		{ Extends = mlds_inherits_to_ilds_inherits(DataRep, Inherits) },
-		{ ILClassDecl = nested_class([public], TypeName, Extends,
-			implements([]), [ConstructorILDefn | ILDefns]) }
-	;
-		{ error("expected type entity name for a nested class") }
-	).
-
-:- func remove_byrefs_from_type(ilds__type) = ilds__type.
-remove_byrefs_from_type(ILType0) = ILType :-
-	( ILType0 = ilds__type(_, '&'(ILType1)) ->
-		ILType = ILType1
-	;
-		ILType = ILType0
-	).
 
 %-----------------------------------------------------------------------------%
 %
@@ -996,7 +1258,7 @@ atomic_statement_to_il(outline_foreign_proc(Lang, ReturnLvals, _Code),
 		{ mangle_foreign_code_module(ModuleName, Lang,
 			OutlineLangModuleName) },
 		{ ClassName = mlds_module_name_to_class_name(
-			OutlineLangModuleName, yes) },
+			OutlineLangModuleName) },
 		signature(_, RetType, Params) =^ signature, 
 
 		( { ReturnLvals = [] } ->
@@ -1043,8 +1305,7 @@ atomic_statement_to_il(inline_target_code(_Lang, _Code), node(Instrs)) -->
 			% XXX we hardcode managed C++ here
 		^ method_foreign_lang := yes(managed_cplusplus),
 		{ mangle_dataname_module(no, ModuleName, NewModuleName) },
-		{ ClassName = mlds_module_name_to_class_name(NewModuleName,
-				no) },
+		{ ClassName = mlds_module_name_to_class_name(NewModuleName) },
 		signature(_, RetType, Params) =^ signature, 
 			% If there is a return value, put it in succeeded.
 			% XXX this is incorrect for functions, which might
@@ -1111,6 +1372,8 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, _CtorName,
 			Type = mlds__generic_env_ptr_type 
 		; 
 			Type = mlds__class_type(_, _, _) 
+		;
+			Type = mlds__commit_type
 		; 
 			DataRep ^ highlevel_data = yes,
 			Type = mlds__mercury_type(_, user_type)
@@ -1785,7 +2048,7 @@ make_class_constructor_classdecl(DoneFieldRef, Imports, AllocInstrs,
 	test_rtti_initialization_field(DoneFieldRef, TestInstrs),
 	set_rtti_initialization_field(DoneFieldRef, SetInstrs),
 	{ CCtorCalls = list__map((func(X) = call_class_constructor(
-		mlds_module_name_to_class_name(X, yes))), Imports) },
+		class_name(X, "mercury_code"))), Imports) },
 	{ AllInstrs = list__condense([TestInstrs, AllocInstrs, SetInstrs,
 		CCtorCalls, InitInstrs, [ret]]) },
 	{ MethodDecls = [instrs(AllInstrs)] }.
@@ -1989,7 +2252,7 @@ mlds_class_name_to_ilds_class_name(
 		qual(MldsModuleName, MldsClassName0), Arity) = IldsClassName :-
 	MldsClassName = string__format("%s_%d", [s(MldsClassName0), i(Arity)]),
 	IldsClassName = append_class_name(
-		mlds_module_name_to_class_name(MldsModuleName, yes),
+		mlds_module_name_to_class_name(MldsModuleName),
 		[MldsClassName]).
 
 mlds_type_to_ilds_class_name(DataRep, MldsType) = 
@@ -2135,7 +2398,7 @@ make_fieldref_for_handdefined_var(DataRep, Var, VarType) = FieldRef :-
 	Var = qual(ModuleName, _),
 	mangle_mlds_var(Var, MangledVarStr),
 	mangle_dataname_module(no, ModuleName, NewModuleName),
-	ClassName = mlds_module_name_to_class_name(NewModuleName, yes),
+	ClassName = mlds_module_name_to_class_name(NewModuleName),
 	FieldRef = make_fieldref(
 		mlds_type_to_ilds_type(DataRep, VarType), ClassName,
 		MangledVarStr).
@@ -2147,16 +2410,21 @@ make_fieldref_for_handdefined_var(DataRep, Var, VarType) = FieldRef :-
 mangle_foreign_code_module(ModuleName0, Lang, ModuleName) :-
 	LangStr = globals__simple_foreign_language_string(Lang),
 	SymName0 = mlds_module_name_to_sym_name(ModuleName0),
-	( 
-		SymName0 = qualified(Q, M0),
-		M = string__format("%s__%s_code", [s(M0), s(LangStr)]),
-		SymName = qualified(Q, M)
-	; 
-		SymName0 = unqualified(M0),
-		M = string__format("%s__%s_code", [s(M0), s(LangStr)]),
-		SymName = unqualified(M)
-	),
-	ModuleName = mercury_module_name_to_mlds(SymName).
+	( SymName0 = qualified(SymName1, Name) ->
+		( 
+			SymName1 = qualified(Q, M0),
+			M = string__format("%s__%s_code", [s(M0), s(LangStr)]),
+			SymName = qualified(Q, M)
+		; 
+			SymName1 = unqualified(M0),
+			M = string__format("%s__%s_code", [s(M0), s(LangStr)]),
+			SymName = unqualified(M)
+		),
+		ModuleName = mercury_module_name_to_mlds(
+				qualified(SymName, Name))
+	;
+		error("should never occur.")
+	).
 
 	% When generating references to RTTI, we need to mangle the
 	% module name if the RTTI is defined in C code by hand.
@@ -2171,8 +2439,8 @@ mangle_dataname_module(no, ModuleName0, ModuleName) :-
 mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 	( 
 		SymName = mlds_module_name_to_sym_name(ModuleName0),
-		SymName = qualified(unqualified("mercury"),
-			LibModuleName0),
+		SymName = qualified(qualified(unqualified("mercury"),
+			LibModuleName0), "mercury_code"),
 		DataName = rtti(rtti_type_id(_, Name, Arity),
 			_RttiName),
 		( LibModuleName0 = "builtin",
@@ -2206,7 +2474,8 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 		string__append(LibModuleName0, "__cpp_code",
 			LibModuleName),
 		ModuleName = mercury_module_name_to_mlds(
-			qualified(unqualified("mercury"), LibModuleName))
+			qualified(qualified(unqualified("mercury"),
+			LibModuleName), "mercury_code"))
 	;
 		ModuleName = ModuleName0
 	).
@@ -2237,7 +2506,7 @@ mangle_dataname(tabling_pointer(_), _MangledName) :-
 	% We turn procedures into methods of classes.
 mangle_mlds_proc_label(qual(ModuleName, PredLabel - ProcId), MaybeSeqNum,
 		ClassName, PredStr) :-
-	ClassName = mlds_module_name_to_class_name(ModuleName, yes),
+	ClassName = mlds_module_name_to_class_name(ModuleName),
 	predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, PredStr).
 
 :- pred mangle_entity_name(mlds__entity_name, string).
@@ -2284,11 +2553,14 @@ mlds_to_il__sym_name_to_string_2(qualified(ModuleSpec,Name), Separator) -->
 mlds_to_il__sym_name_to_string_2(unqualified(Name), _) -->
         [Name].
 
-mlds_module_name_to_class_name(MldsModuleName, AddMercuryCode) = 
+	% Turn an MLDS module name into a class_name name.
+:- func mlds_module_name_to_class_name(mlds_module_name) = ilds__class_name.
+
+mlds_module_name_to_class_name(MldsModuleName) = 
 		structured_name(AssemblyName, ClassName) :-
 	SymName = mlds_module_name_to_sym_name(MldsModuleName),
 	PackageSymName = mlds_module_name_to_package_name(MldsModuleName),
-	sym_name_to_class_name(SymName, AddMercuryCode, ClassName),
+	sym_name_to_class_name(SymName, ClassName),
 	( 
 		ClassName = ["mercury" | _]
 	->
@@ -2297,18 +2569,11 @@ mlds_module_name_to_class_name(MldsModuleName, AddMercuryCode) =
 		mlds_to_il__sym_name_to_string(PackageSymName, AssemblyName)
 	).
 
-:- pred sym_name_to_class_name(sym_name, bool, list(ilds__id)).
-:- mode sym_name_to_class_name(in, in, out) is det.
-sym_name_to_class_name(SymName, AddMercuryCode, Ids) :-
+:- pred sym_name_to_class_name(sym_name, list(ilds__id)).
+:- mode sym_name_to_class_name(in, out) is det.
+sym_name_to_class_name(SymName, Ids) :-
 	sym_name_to_class_name_2(SymName, Ids0),
-	( 
-		AddMercuryCode = yes,
-		Ids1 = ["mercury_code" | Ids0]
-	;
-		AddMercuryCode = no,
-		Ids1 = Ids0
-	),
-	list__reverse(Ids1, Ids).
+	list__reverse(Ids0, Ids).
 
 :- pred sym_name_to_class_name_2(sym_name, list(ilds__id)).
 :- mode sym_name_to_class_name_2(in, out) is det.
@@ -2435,7 +2700,7 @@ code_addr_constant_to_methodref(DataRep,
 data_addr_constant_to_fieldref(data_addr(ModuleName, DataName), FieldRef) :-
 	mangle_dataname(DataName, FieldName),
 	mangle_dataname_module(yes(DataName), ModuleName, NewModuleName),
-	ClassName = mlds_module_name_to_class_name(NewModuleName, yes),
+	ClassName = mlds_module_name_to_class_name(NewModuleName),
 	FieldRef = make_fieldref(il_array_type, ClassName, FieldName).
 
 
@@ -2472,8 +2737,7 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType) = FieldRef :-
 		; 
 			FieldNum = named_field(qual(ModuleName, FieldId),
 				_Type),
-			ClassName = mlds_module_name_to_class_name(ModuleName,
-				no)
+			ClassName = mlds_module_name_to_class_name(ModuleName)
 		),
 		FieldRef = make_fieldref(FieldILType, ClassName, FieldId).
 
@@ -2592,7 +2856,8 @@ il_string_type = ilds__type([], il_string_simple_type).
 
 :- func mercury_string_class_name = ilds__class_name.
 mercury_string_class_name = mercury_library_name(StringClass) :-
-	sym_name_to_class_name(unqualified("string"), yes, StringClass).
+	sym_name_to_class_name(qualified(unqualified("string"), "mercury_code"),
+			StringClass).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2709,7 +2974,7 @@ il_system_namespace_name = "System".
 
 mlds_to_il__generate_extern_assembly(Imports, AllDecls) :-
 	Gen = (pred(Import::in, Decl::out) is semidet :-
-		ClassName = mlds_module_name_to_class_name(Import, yes),
+		ClassName = mlds_module_name_to_class_name(Import),
 		ClassName = structured_name(Assembly, _),
 		not (Assembly = "mercury"),
 		Decl = extern_assembly(Assembly, [])
@@ -2741,11 +3006,16 @@ mlds_to_il__generate_extern_assembly(Imports, AllDecls) :-
 
 %-----------------------------------------------------------------------------
 
-:- func make_method_defn(instr_tree) = method_defn.
-make_method_defn(InstrTree) = MethodDecls :-
+:- func make_method_defn(bool, instr_tree) = method_defn.
+make_method_defn(DebugIlAsm, InstrTree) = MethodDecls :-
+	( DebugIlAsm = yes,
+		Add = 1
+	; DebugIlAsm = no,
+		Add = 0
+	),
 	Instrs = list__condense(tree__flatten(InstrTree)),
 	MethodDecls = [
-		maxstack(int32(calculate_max_stack(Instrs))),
+		maxstack(int32(calculate_max_stack(Instrs) + Add)),
 			% note that we only need .zeroinit to ensure
 			% verifiability; for nonverifiable code,
 			% we could omit that (it ensures that all
@@ -2753,75 +3023,6 @@ make_method_defn(InstrTree) = MethodDecls :-
 		zeroinit,
 		instrs(Instrs)
 		].
-
-	% This is used to initialize nondet environments.
-	% When we move to high-level data it will need to be generalized
-	% to intialize any class.
-
-:- pred make_constructor(il_data_rep, ilds__class_name, mlds__class_defn,
-	ilasm__classdecl).
-:- mode make_constructor(in, in, in, out) is det.
-make_constructor(DataRep, ClassName, 
-		mlds__class_defn(_,  _Imports, Inherits, _Implements, Defns),
-		ILDecl) :-
-	Extends = mlds_inherits_to_ilds_inherits(DataRep, Inherits),
-	( Extends = extends_nothing,
-		CtorMemberName = il_generic_class_name
-	; Extends = extends(CtorMemberName0),
-		CtorMemberName = CtorMemberName0
-	),
-	list__map(call_field_constructor(DataRep, ClassName), Defns, 
-		FieldConstrInstrsLists),
-	list__condense(FieldConstrInstrsLists, FieldConstrInstrs),
-	Instrs = [load_this, call_constructor(CtorMemberName)],
-	MethodDecls = make_method_defn(tree__list(
-		[node(Instrs),
-		 node(FieldConstrInstrs),
-		 instr_node(ret)
-		 ])),
-	ILDecl = make_constructor_classdecl(MethodDecls).
-
-
-	% XXX This should really be generated at a higher level	
-	% XXX For now we only call the constructor if it is an env_ptr
-	%     or commit type.
-:- pred call_field_constructor(il_data_rep, ilds__class_name, mlds__defn,
-	list(instr)).
-:- mode call_field_constructor(in, in, in, out) is det.
-call_field_constructor(DataRep, ObjClassName, MLDSDefn, Instrs) :-
-	MLDSDefn = mlds__defn(EntityName, Context, _DeclFlags, Entity), 
-	( 
-		Entity = mlds__data(Type, _Initializer),
-		EntityName = data(DataName)
-	->
-		ILType = mlds_type_to_ilds_type(DataRep, Type),
-		mangle_dataname(DataName, MangledName),
-		FieldRef = make_fieldref(ILType, ObjClassName,
-			MangledName),
-		( 
-			ILType = il_envptr_type
-		->
-			ClassName = il_envptr_class_name,
-			Instrs = [
-				context_instr(Context),
-				ldarg(index(0)),
-				newobj_constructor(ClassName),
-				stfld(FieldRef)]
-		;
-			ILType = il_commit_type
-		->
-			ClassName = il_commit_class_name,
-			Instrs = [
-				context_instr(Context),
-				ldarg(index(0)),
-				newobj_constructor(ClassName),
-				stfld(FieldRef)]
-		;
-			Instrs = []
-		)
-	; 
-		Instrs = []
-	).
 
 %-----------------------------------------------------------------------------
 % Some useful functions for generating IL fragments.
@@ -2897,11 +3098,11 @@ runtime_init_method_name = id("init_runtime").
 %
 
 :- func il_info_init(mlds_module_name, assembly_name, mlds__imports,
-		il_data_rep) = il_info.
+		il_data_rep, bool) = il_info.
 
-il_info_init(ModuleName, AssemblyName, Imports, ILDataRep) =
+il_info_init(ModuleName, AssemblyName, Imports, ILDataRep, DebugIlAsm) =
 	il_info(ModuleName, AssemblyName, Imports, set__init, ILDataRep,
-		empty, empty, [], no, set__init,
+		DebugIlAsm, empty, empty, [], no, set__init,
 		map__init, empty, counter__init(1), counter__init(1), no,
 		Args, MethodName, DefaultSignature) :-
 	Args = [],

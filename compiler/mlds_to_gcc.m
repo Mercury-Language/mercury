@@ -1264,7 +1264,12 @@ gen_class(Name, Context, ClassDefn, GlobalInfo0, GlobalInfo) -->
 	% not when compiling to C++
 	%
 	{ ClassDefn = class_defn(Kind, _Imports, BaseClasses, _Implements,
-		AllMembers) },
+		Ctors, AllMembers) },
+	{ Ctors = [] ->
+		true
+	;
+		sorry(this_file, "constructors")
+	},
 	( { Kind = mlds__enum } ->
 		{ StaticMembers = [] },
 		{ StructMembers = AllMembers }

@@ -88,11 +88,13 @@ optimize_in_defn(ModuleName, Globals, Defn0) = Defn :-
 	;
 		DefnBody0 = mlds__class(ClassDefn0),
 		ClassDefn0 = class_defn(Kind, Imports, BaseClasses, Implements,
-		                MemberDefns0),
+		                CtorDefns0, MemberDefns0),
 		MemberDefns = optimize_in_defns(MemberDefns0, Globals,
 			ModuleName),
+		CtorDefns = optimize_in_defns(CtorDefns0, Globals,
+			ModuleName),
 		ClassDefn = class_defn(Kind, Imports, BaseClasses, Implements,
-		                MemberDefns),
+		                CtorDefns, MemberDefns),
 		DefnBody = mlds__class(ClassDefn),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody)
 	).

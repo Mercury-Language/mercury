@@ -344,6 +344,9 @@
 :- func mlds__append_class_qualifier(mlds_module_name, mlds__class_name, arity) =
 	mlds_module_name.
 
+:- func mlds__append_mercury_code(mlds_module_name) = mlds_module_name.
+:- func mlds__append_name(mlds_module_name, string) = mlds_module_name.
+
 :- type mlds__defns == list(mlds__defn).
 :- type mlds__defn
 	---> mlds__defn(
@@ -492,6 +495,7 @@
 						% inherits these base classes
 		implements ::	list(mlds__interface_id),
 						% implements these interfaces
+		ctors	::	mlds__defns,	% has these constructors
 		members ::	mlds__defns	% contains these members
 	).
 
@@ -1478,6 +1482,12 @@ mlds__append_class_qualifier(name(Package, Module), ClassName, ClassArity) =
 		name(Package, qualified(Module, ClassQualifier)) :-
 	string__format("%s_%d", [s(ClassName), i(ClassArity)],
 		ClassQualifier).
+
+mlds__append_mercury_code(name(Package, Module))
+	= name(Package, qualified(Module, "mercury_code")).
+
+mlds__append_name(name(Package, Module), Name)
+	= name(Package, qualified(Module, Name)).
 
 %-----------------------------------------------------------------------------%
 

@@ -399,11 +399,13 @@ generate_wrapper_class(ModuleName, Interface, MethodDefn, ClassDefn) :-
 		%
 		string__append(PredName0, Type, PredName),
 		ClassMembers  = [NewMethodDefn],
+		ClassCtors    = [],
 		ClassName     = type(PredName, Arity),
 		ClassContext  = Context,
 		ClassFlags    = ml_gen_type_decl_flags,
 		ClassBodyDefn = mlds__class_defn(mlds__class, ClassImports, 
-			ClassExtends, ClassImplements, ClassMembers),
+			ClassExtends, ClassImplements,
+			ClassCtors, ClassMembers),
 		ClassBody     = mlds__class(ClassBodyDefn)
 	;
 
@@ -649,7 +651,12 @@ output_class(Indent, Name, _Context, ClassDefn) -->
 		{ unexpected(this_file, "output_class") }
 	),
 	{ ClassDefn = class_defn(Kind, _Imports, BaseClasses, Implements,
-		AllMembers) },
+		Ctors, AllMembers) },
+	{ Ctors = [] ->
+		true
+	;
+		sorry(this_file, "constructors")
+	},
 	( { Kind = mlds__interface } -> 
 		io__write_string("interface ")
 	;

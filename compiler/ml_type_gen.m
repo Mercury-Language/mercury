@@ -155,7 +155,7 @@ ml_gen_enum_type(TypeId, TypeDefn, Ctors, TagValues,
 	MLDS_TypeName = type(MLDS_ClassName, MLDS_ClassArity),
 	MLDS_TypeFlags = ml_gen_type_decl_flags,
 	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__enum,
-		Imports, Inherits, Implements, Members)),
+		Imports, Inherits, Implements, [], Members)),
 	MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
 		MLDS_TypeDefnBody),
 	
@@ -337,7 +337,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
 	MLDS_TypeName = type(BaseClassName, BaseClassArity),
 	MLDS_TypeFlags = ml_gen_type_decl_flags,
 	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__class,
-		Imports, Inherits, Implements, Members)),
+		Imports, Inherits, Implements, [], Members)),
 	MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
 		MLDS_TypeDefnBody),
 	
@@ -420,12 +420,13 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId, Member
 	Imports = [],
 	Inherits = [BaseClassId],
 	Implements = [],
+	Ctors = [],
 
 	% put it all together
 	MLDS_TypeName = type(UnqualClassName, ClassArity),
 	MLDS_TypeFlags = ml_gen_type_decl_flags,
 	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__class,
-		Imports, Inherits, Implements, Members)),
+		Imports, Inherits, Implements, Ctors, Members)),
 	MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
 		MLDS_TypeDefnBody).
 	
@@ -494,12 +495,13 @@ ml_gen_du_ctor_type(ModuleInfo, BaseClassId, SecondaryTagClassId,
 	Imports = [],
 	Inherits = [ParentClassId],
 	Implements = [],
+	Ctors = [],
 
 	% put it all together
 	MLDS_TypeName = type(CtorClassName, CtorArity),
 	MLDS_TypeFlags = ml_gen_type_decl_flags,
 	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__class,
-		Imports, Inherits, Implements, Members)),
+		Imports, Inherits, Implements, Ctors, Members)),
 	MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
 		MLDS_TypeDefnBody),
 	

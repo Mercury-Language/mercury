@@ -135,10 +135,11 @@ mark_tailcalls_in_defn(Defn0) = Defn :-
 	;
 		DefnBody0 = mlds__class(ClassDefn0),
 		ClassDefn0 = class_defn(Kind, Imports, BaseClasses, Implements,
-		                MemberDefns0),
+		                CtorDefns0, MemberDefns0),
+		CtorDefns = mark_tailcalls_in_defns(CtorDefns0),
 		MemberDefns = mark_tailcalls_in_defns(MemberDefns0),
 		ClassDefn = class_defn(Kind, Imports, BaseClasses, Implements,
-		                MemberDefns),
+		                CtorDefns, MemberDefns),
 		DefnBody = mlds__class(ClassDefn),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody)
 	).

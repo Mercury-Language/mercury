@@ -104,7 +104,7 @@ rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
 	;
 		Access = private
 	),
-	PerInstance = per_instance,
+	PerInstance = one_copy,
 	Virtuality = non_virtual,
 	Finality = overridable,
 	Constness = const,
