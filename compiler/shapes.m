@@ -67,6 +67,9 @@
 :- pred shapes__init_shape_table(shape_table).
 :- mode shapes__init_shape_table(out) is det.
 
+	% Returns a corresponding shape number for a shape_id,
+	% adding it to the shape_table if it is not already there.
+	% Presently, we only handle ground shapes.
 :- pred shapes__request_shape_number(shape_id, type_table, shape_table, 
 			shape_table, int).
 :- mode shapes__request_shape_number(in, in, in, out, out) is det.
@@ -99,25 +102,27 @@
 % Note : still have to deal with succip etc.
 %-----------------------------------------------------------------------------%
 shapes__init_shape_table((S_Tab_Out - S_Num)) :-
-	map__init(S_Tab0),
 	Const = quad(constant, constant, constant, constant),
-	term__context_init(TermContext),
-	(
-		Ground = ground(shared, no),
-		map__insert(S_Tab0, term__functor(term__atom("string"), [],
-			TermContext) - Ground, num(0) - Const, S_Tab1),
-		map__insert(S_Tab1, term__functor(term__atom("float"), [],
-			TermContext) - Ground, num(1) - Const, S_Tab2),
-		map__insert(S_Tab2, term__functor(term__atom("int"), [],
-			TermContext) - Ground, num(2) - Const, S_Tab3),
-		map__insert(S_Tab3, term__functor(term__atom("character"), [],
-			TermContext) - Ground, num(3) - Const, S_Tab4) 
-	-> 
-		S_Num = 4,
-		S_Tab_Out = S_Tab4
-	;
-		error("shapes: init_shape_table: initialization failure") 
-	).
+	term__context_init(TC),
+	I = ground(shared, no),
+	Builtins = [ 
+	    (term__functor(term__atom("string"), [], TC) - I) - 
+		(num(0) - Const),
+	    (term__functor(term__atom("float"), [], TC) - I) - 
+		(num(1) - Const),
+	    (term__functor(term__atom("int"), [], TC) - I) - 
+		(num(2) - Const),
+	    (term__functor(term__atom("character"), [], TC) - I) - 
+		(num(3) - Const),
+	    (term__functor(term__atom("io__stream"), [], TC) - I) - 
+		(num(4) - Const),
+	    (term__functor(term__atom("univ"), [], TC) - I) - 
+		(num(5) - Const),
+	    (term__functor(term__atom("io__external_state"), [], TC) - I) - 
+		(num(6) - Const)
+	],
+	map__from_assoc_list(Builtins, S_Tab_Out),
+	S_Num = 6.
 
 %-----------------------------------------------------------------------------%
 % Creation of the shape table allows shapes to be uniquely numbered.

@@ -2079,11 +2079,12 @@ code_info__livevals_to_livelvals([L - V|Ls],
 			[live_lvalue(L, num(S_Num))|Lives]) --> 
 	code_info__get_module_info(Module),
 	code_info__get_shapes(S_Tab0),
-	{ module_info_types(Module, Type_Table) } ,
+	{ module_info_types(Module, Type_Table) },
 	code_info__variable_type(V, Type),
-		% XXX what does this do?  is `ground(shared, no)' right???
+		% We don't yet support partial insts when allocating
+		% shapes, so pass ground(shared, no) as a placeholder.
 	{ shapes__request_shape_number(Type - ground(shared, no), Type_Table, 
-					S_Tab0, S_Tab1, S_Num) } ,
+					S_Tab0, S_Tab1, S_Num) },
 	code_info__set_shapes(S_Tab1),
 	code_info__livevals_to_livelvals(Ls, Lives).
 
