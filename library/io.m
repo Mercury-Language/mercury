@@ -1129,8 +1129,8 @@
 	#endif
 ").
 
-:- type io__stream_names ==	map(io__stream, string).
-:- type io__stream_putback ==	map(io__stream, list(char)).
+:- type io__stream_names ==	map(io__stream_id, string).
+:- type io__stream_putback ==	map(io__stream_id, list(char)).
 
 :- type io__input_stream ==	io__stream.
 :- type io__output_stream ==	io__stream.
@@ -1138,6 +1138,11 @@
 :- type io__binary_stream ==	io__stream.
 
 :- type io__stream == c_pointer.
+
+	% a unique identifier for an IO stream
+:- type io__stream_id == int.
+
+:- func io__get_stream_id(io__stream) = io__stream_id.
 
 /*
  * In NU-Prolog: 
@@ -2470,7 +2475,7 @@ io__binary_output_stream_name(Stream, Name) -->
 
 io__stream_name(Stream, Name) -->
 	io__get_stream_names(StreamNames),
-	{ map__search(StreamNames, Stream, Name1) ->
+	{ map__search(StreamNames, get_stream_id(Stream), Name1) ->
 		Name = Name1
 	;
 		Name = "<stream name unavailable>"
@@ -2500,7 +2505,7 @@ io__stream_name(Stream, Name) -->
 
 io__delete_stream_name(Stream) -->
 	io__get_stream_names(StreamNames0),
-	{ map__delete(StreamNames0, Stream, StreamNames) },
+	{ map__delete(StreamNames0, get_stream_id(Stream), StreamNames) },
 	io__set_stream_names(StreamNames).
 
 :- pred io__insert_stream_name(io__stream, string, io__state, io__state).
@@ -2508,7 +2513,7 @@ io__delete_stream_name(Stream) -->
 
 io__insert_stream_name(Stream, Name) -->
 	io__get_stream_names(StreamNames0),
-	{ map__set(StreamNames0, Stream, Name, StreamNames) },
+	{ map__set(StreamNames0, get_stream_id(Stream), Name, StreamNames) },
 	io__set_stream_names(StreamNames).
 
 %-----------------------------------------------------------------------------%
@@ -2535,6 +2540,26 @@ io__insert_stream_name(Stream, Name) -->
 io__progname_base(DefaultName, PrognameBase) -->
 	io__progname(DefaultName, Progname),
 	{ dir__basename(Progname, PrognameBase) }.
+
+:- pragma c_code(io__get_stream_id(Stream::in) = (Id::out), 
+		will_not_call_mercury, "
+	/* 
+	** Most of the time, we can just use the pointer to the stream
+	** as a unique identifier.
+	*/
+	
+	Id = (MR_Word) Stream;
+
+#ifdef NATIVE_GC
+	/* 
+	** XXX for accurate GC we should embed an ID in the MercuryFile
+	** and retrieve it here.
+	*/
+	MR_fatal_error(""not implemented -- stream ids in native GC grades"");
+#endif
+").
+
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
