@@ -1174,26 +1174,6 @@ typecheck_unify_var_functor_get_ctors_2([ConsDefn | ConsDefns], TypeInfo,
 	typecheck_unify_var_functor_get_ctors_2(ConsDefns, TypeInfo,
 			TypeAssign0).
 
-	% typecheck_unify_var_functor_3b(ConsTypeAssigns, Var, Args, ...):
-	%
-	% For each possible constructor type and argument types in
-	% `ConsTypeAssigns', check that the types of `Var' and `Args'
-	% matches these types.
-
-:- pred typecheck_unify_var_functor_3b(cons_type_assign_set,
-				var, list(term), type_info,
-				type_assign_set, type_assign_set).
-:- mode typecheck_unify_var_functor_3b(in, in, in, type_info_ui, in, out)
-	is det.
-
-typecheck_unify_var_functor_3b([], _, _, _) --> [].
-typecheck_unify_var_functor_3b([TypeAssign - ConsType | ConsTypeAssigns],
-			Var, Args, TypeInfo) -->
-	{ ConsType = cons_type(Type, ArgTypes) },
-	type_assign_unify_var_functor_2(Type, ArgTypes,
-			Args, Var, TypeAssign, TypeInfo),
-	typecheck_unify_var_functor_3b(ConsTypeAssigns, Var, Args, TypeInfo).
-
 	% typecheck_unify_var_functor_4(ConsTypeAssignSet, Var, ...):
 	%
 	% For each possible cons type assignment in `ConsTypeAssignSet',
@@ -1226,7 +1206,7 @@ typecheck_unify_var_functor_4([TypeAssign - ConsType | ConsTypeAssigns],
 typecheck_unify_var_functor_5([], _, _) --> [].
 typecheck_unify_var_functor_5([TypeAssign - ArgTypes | ConsTypeAssigns],
 			Args, TypeInfo) -->
-	type_assign_term_has_type_list(ArgTypes, Args, TypeAssign, TypeInfo),
+	type_assign_term_has_type_list(Args, ArgTypes, TypeAssign, TypeInfo),
 	typecheck_unify_var_functor_5(ConsTypeAssigns, Args, TypeInfo).
 
 	% iterate over all the possible type assignments.
@@ -2067,14 +2047,14 @@ report_error_unif_var_var(TypeInfo, X, Y, TypeAssignSet) -->
 	prog_out__write_context(Context),
 	io__write_string("  `"),
 	mercury_output_var(X, VarSet),
-	io__write_string("' "),
+	io__write_string("'"),
 	write_type_of_var(TypeInfo, TypeAssignSet, X),
 	io__write_string(",\n"),
 
 	prog_out__write_context(Context),
 	io__write_string("  `"),
 	mercury_output_var(Y, VarSet),
-	io__write_string("' "),
+	io__write_string("'"),
 	write_type_of_var(TypeInfo, TypeAssignSet, Y),
 	io__write_string(".\n"),
 
@@ -2109,7 +2089,6 @@ report_error_unif_var_functor_4(TypeInfo, Var, ConsDefnList, Functor, Arity,
 	prog_out__write_context(Context),
 	io__write_string("  "),
 	write_argument_name(VarSet, Var),
-	io__write_string(" "),
 	write_type_of_var(TypeInfo, TypeAssignSet, Var),
 	io__write_string(",\n"),
 
@@ -2134,29 +2113,26 @@ report_error_unif_var_functor_5(TypeInfo, Var, ConsDefnList, Functor, Args,
 	{ type_info_get_context(TypeInfo, Context) },
 	{ type_info_get_varset(TypeInfo, VarSet) },
 	{ type_info_get_unify_context(TypeInfo, UnifyContext) },
+	{ list__length(Args, Arity) },
 
 	write_context_and_pred_id(TypeInfo),
 	hlds_out__write_unify_context(UnifyContext, Context),
 
 	prog_out__write_context(Context),
-	io__write_string("  type error in unification of "),
+	io__write_string("  in unification of "),
 	write_argument_name(VarSet, Var),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  and term `"),
 	mercury_output_term(term__functor(Functor, Args, Context), VarSet),
-	io__write_string("'.\n"),
+	io__write_string("':\n"),
+	prog_out__write_context(Context),
+	io__write_string("  type error in argument(s) of "),
+	write_functor_name(Functor, Arity),
+	io__write_string(".\n"),
 
 	prog_out__write_context(Context),
 	io__write_string("  "),
-	write_argument_name(VarSet, Var),
-	io__write_string(" "),
-	write_type_of_var(TypeInfo, TypeAssignSet, Var),
-	io__write_string(",\n"),
-
-	prog_out__write_context(Context),
-	io__write_string("  "),
-	{ list__length(Args, Arity) },
 	write_functor_name(Functor, Arity),
 	write_type_of_functor(Functor, Arity, Context, ConsDefnList),
 
