@@ -284,7 +284,7 @@ process_args( int argc, char ** argv)
 	 * has to work with both command-line options, and environmental 
 	 * options, for the time being.
 	 */
-	if (!strcmp(mercury_argv[0], "--")) {
+	if (mercury_argc > 0 && !strcmp(mercury_argv[0], "--")) {
 		mercury_argc--;
 		mercury_argv++;
 	}
