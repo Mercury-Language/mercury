@@ -52,7 +52,10 @@
 :- import_module std_util.
 
 :- solver type fd_var
-	---> fd_var(c_pointer).
+	where	representation is c_pointer,
+		initialisation is init_any,
+		ground         is ground,
+		any            is ground.
 
 print_labeling(Vars) -->
 	unsorted_aggregate(labeling(Vars), print_solution).

@@ -866,13 +866,19 @@ type_util__type_to_type_defn_body(ModuleInfo, Type, TypeBody) :-
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody).
 
 
-	% We assume that type variables may refer to solver types.
-type_util__is_solver_type(_ModuleInfo, term__variable(_)).
-
-type_util__is_solver_type( ModuleInfo, Type) :-
+	% XXX We can't assume that type variables refer to solver types
+	% because otherwise the compiler will try to construct initialisation
+	% forwarding predicates for exported abstract types defined to be
+	% equivalent to a type variable parameter.  This, of course, will
+	% lead to the compiler throwing an exception.  The correct solution
+	% is to introduce a solver typeclass, but that's something for
+	% another day.
+	%
+type_util__is_solver_type(ModuleInfo, Type) :-
 		% type_to_type_defn_body will fail for builtin types such
 		% as `int/0'.  Such types are not solver types so
-		% type_util__is_solver_type fails too.
+		% type_util__is_solver_type fails too.  type_to_type_defn_body
+		% also fails for type variables.
 	type_to_type_defn_body(ModuleInfo, Type, TypeBody),
 	type_body_is_solver_type(ModuleInfo, TypeBody).
 

@@ -2031,10 +2031,18 @@ make_maybe_where_details(
 			EqualityIsResult       = ok(MaybeEqPred),
 			ComparisonIsResult     = ok(MaybeCmpPred)
 		->
-			ok(yes(solver_type_details(RepnType, InitPred,
-					GroundInst, AnyInst)),
-			   yes(unify_compare(MaybeEqPred, MaybeCmpPred))
-			)
+			MaybeSolverTypeDetails = yes(solver_type_details(
+				RepnType, InitPred, GroundInst, AnyInst)),
+			(
+				MaybeEqPred = no,
+				MaybeCmpPred = no
+			->
+				MaybeUnifyCompare = no
+			;
+				MaybeUnifyCompare = yes(unify_compare(
+					MaybeEqPred, MaybeCmpPred))
+			),
+			ok(yes(MaybeSolverTypeDetails, MaybeUnifyCompare))
 		;
 			error("missing solver type attribute: " ++
 				"required solver type attributes are " ++

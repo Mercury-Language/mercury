@@ -14,7 +14,7 @@ main -->
 	{ test_any_free_unify([], Result1) },
 	io__print(Result1), io__nl.
 
-:- solver type foo ---> bar ; baz.
+:- solver type foo.
 
 :- pred test_any_free_unify(list(foo), bool).
 :- mode test_any_free_unify(in(list_skel(any)), out) is det.
