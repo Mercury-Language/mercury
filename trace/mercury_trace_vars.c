@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2004 The University of Melbourne.
+** Copyright (C) 1999-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -294,7 +294,7 @@ MR_trace_set_level(int ancestor_level, MR_bool print_optionals)
     base_sp = MR_saved_sp(MR_point.MR_point_top_saved_regs);
     base_curfr = MR_saved_curfr(MR_point.MR_point_top_saved_regs);
     level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
-            &base_sp, &base_curfr, &problem);
+        &base_sp, &base_curfr, &problem);
 
     if (level_layout != NULL) {
         return MR_trace_set_level_from_layout(level_layout,
@@ -302,7 +302,7 @@ MR_trace_set_level(int ancestor_level, MR_bool print_optionals)
     } else {
         if (problem == NULL) {
             MR_fatal_error("MR_find_nth_ancestor failed "
-                    "without reporting a problem");
+                "without reporting a problem");
         }
 
         return problem;
@@ -396,7 +396,7 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
     }
 
     type_params = MR_materialize_type_params_base(level_layout,
-                valid_saved_regs, base_sp, base_curfr);
+        valid_saved_regs, base_sp, base_curfr);
 
     MR_ensure_big_enough(var_count, MR_point.MR_point_var, 
         MR_Var_Details, MR_INIT_VAR_DETAIL_COUNT);
@@ -489,8 +489,8 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 
         MR_point.MR_point_vars[slot].MR_var_is_headvar = 0;
         for (head_var_num = num_added_args;
-                head_var_num < entry->MR_sle_num_head_vars;
-                head_var_num++)
+            head_var_num < entry->MR_sle_num_head_vars;
+            head_var_num++)
         {
             if (entry->MR_sle_head_var_nums[head_var_num] == var_num) {
                 MR_point.MR_point_vars[slot].MR_var_is_headvar =
@@ -872,8 +872,8 @@ MR_convert_goal_to_synthetic_term(const char **functor_ptr,
         arg_list = MR_list_empty();
         i = next - 1;
         for (headvar_num = arity; headvar_num > 0; headvar_num--) {
-            if (i >= 0 && vars[var_slot_array[i]].MR_var_is_headvar
-                == headvar_num)
+            if (i >= 0 &&
+                vars[var_slot_array[i]].MR_var_is_headvar == headvar_num)
             {
                 slot = var_slot_array[i];
                 i--;
@@ -921,8 +921,8 @@ MR_trace_browse_action(FILE *out, int action_number, MR_GoalBrowser browser,
     const char      *problem;
     MR_bool         saved_io_tabling_enabled;
 
-    problem = MR_trace_get_action(action_number, &proc_name,
-        &is_func, &arg_list);
+    problem = MR_trace_get_action(action_number, &proc_name, &is_func,
+        &arg_list);
     if (problem != NULL) {
         return problem;
     }
@@ -1036,7 +1036,8 @@ MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
             MR_point.MR_point_vars[i].MR_var_fullname));
 
         if (success_count == 0) {
-            return "the selected path does not exist in any of the variables with that name";
+            return "the selected path does not exist "
+                "in any of the variables with that name";
         }
     }
 
@@ -1466,8 +1467,8 @@ MR_trace_check_integrity_on_cur_level(void)
         ** most misconstructed terms.
         */
         (void) MR_trace_browse_var(stdout, MR_TRUE, &MR_point.MR_point_vars[i],
-                (MR_String) (MR_Integer) "", MR_trace_print,
-                MR_BROWSE_CALLER_PRINT, MR_BROWSE_DEFAULT_FORMAT);
+            (MR_String) (MR_Integer) "", MR_trace_print,
+            MR_BROWSE_CALLER_PRINT, MR_BROWSE_DEFAULT_FORMAT);
 
         /*
         ** Looking up the term size can lead to a crash if the term has a
