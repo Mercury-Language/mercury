@@ -215,6 +215,26 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, First, SetupFrame0,
 				First, SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
+			Uinstr0 = incr_hp(Lval, Rval),
+			opt_util__lval_refers_stackvars(Lval, Use1),
+			opt_util__rval_refers_stackvars(Rval, Use2),
+			bool__or(Use1, Use2, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__build_sets(Instrs0, FrameSize,
+				no, SetupFrame1, SetupSuccip1,
+				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
+		;
+			Uinstr0 = restore_hp(Rval),
+			opt_util__rval_refers_stackvars(Rval, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__build_sets(Instrs0, FrameSize,
+				no, SetupFrame1, SetupSuccip1,
+				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
+		;
 			Uinstr0 = incr_sp(_),
 			error("incr_sp in frameopt__build_sets")
 		;
@@ -506,6 +526,34 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 			frameopt__generate_if(Instr0, Instrs0, FrameSize, First,
 				SetupFrame0, SetupSuccip0, FrameSet, SuccipSet,
 				TeardownMap, ProcLabel, N0, N, Instrs)
+		;
+			Uinstr0 = incr_hp(Lval, Rval),
+			opt_util__lval_refers_stackvars(Lval, Use1),
+			opt_util__rval_refers_stackvars(Rval, Use2),
+			bool__or(Use1, Use2, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__generate_setup(SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1, FrameSize, SetupCode),
+			frameopt__doit(Instrs0, FrameSize,
+				no, SetupFrame1, SetupSuccip1,
+				FrameSet, SuccipSet, TeardownMap,
+				ProcLabel, N0, N, Instrs1),
+			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
+		;
+			Uinstr0 = restore_hp(Rval),
+			opt_util__rval_refers_stackvars(Rval, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__generate_setup(SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1, FrameSize, SetupCode),
+			frameopt__doit(Instrs0, FrameSize,
+				no, SetupFrame1, SetupSuccip1,
+				FrameSet, SuccipSet, TeardownMap,
+				ProcLabel, N0, N, Instrs1),
+			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = incr_sp(_),
 			error("incr_sp in frameopt__doit")

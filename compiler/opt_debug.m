@@ -205,15 +205,6 @@ opt_debug__dump_vnrval(vn_create(T, MA, L), Str) :-
 	string__int_to_string(L, L_str),
 	string__append_list(["vn_create(", T_str, ", ", MA_str, ", ",
 		L_str, ")"], Str).
-opt_debug__dump_vnrval(vn_heap_alloc(N), Str) :-
-	string__int_to_string(N, N_str),
-	string__append_list(["vn_heal_alloc(", N_str, ")"], Str).
-opt_debug__dump_vnrval(vn_field(T, N, F), Str) :-
-	string__int_to_string(T, T_str),
-	string__int_to_string(N, N_str),
-	string__int_to_string(F, F_str),
-	string__append_list(["vn_field(", T_str, ", ", N_str, ", ",
-		F_str, ")"], Str).
 opt_debug__dump_vnrval(vn_unop(O, N), Str) :-
 	opt_debug__dump_unop(O, O_str),
 	string__int_to_string(N, N_str),

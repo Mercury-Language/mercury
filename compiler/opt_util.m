@@ -502,8 +502,6 @@ opt_util__rval_refers_stackvars(var(_), _) :-
 	error("found var in rval_refers_stackvars").
 opt_util__rval_refers_stackvars(create(_, Rvals, _), Refers) :-
 	opt_util__rvals_refer_stackvars(Rvals, Refers).
-opt_util__rval_refers_stackvars(heap_alloc(Rval), Refers) :-
-	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__rval_refers_stackvars(mkword(_, Baserval), Refers) :-
 	opt_util__rval_refers_stackvars(Baserval, Refers).
 opt_util__rval_refers_stackvars(const(_), no).
@@ -600,6 +598,8 @@ opt_util__can_instr_branch_away(goto(_), yes).
 opt_util__can_instr_branch_away(computed_goto(_, _), yes).
 opt_util__can_instr_branch_away(c_code(_), no).
 opt_util__can_instr_branch_away(if_val(_, _), yes).
+opt_util__can_instr_branch_away(incr_hp(_, _), no).
+opt_util__can_instr_branch_away(restore_hp(_), no).
 opt_util__can_instr_branch_away(incr_sp(_), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
 
@@ -616,6 +616,8 @@ opt_util__can_instr_fall_through(goto(_), no).
 opt_util__can_instr_fall_through(computed_goto(_, _), no).
 opt_util__can_instr_fall_through(c_code(_), yes).
 opt_util__can_instr_fall_through(if_val(_, _), yes).
+opt_util__can_instr_fall_through(incr_hp(_, _), yes).
+opt_util__can_instr_fall_through(restore_hp(_), yes).
 opt_util__can_instr_fall_through(incr_sp(_), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
 
@@ -630,8 +632,10 @@ opt_util__instr_labels(modframe(Addr), [], [Addr]).
 opt_util__instr_labels(label(_), [], []).
 opt_util__instr_labels(goto(Addr), [], [Addr]).
 opt_util__instr_labels(computed_goto(_, Labels), Labels, []).
-opt_util__instr_labels(if_val(_, Addr), [], [Addr]).
 opt_util__instr_labels(c_code(_), [], []).
+opt_util__instr_labels(if_val(_, Addr), [], [Addr]).
+opt_util__instr_labels(incr_hp(_, _), [], []).
+opt_util__instr_labels(restore_hp(_), [], []).
 opt_util__instr_labels(incr_sp(_), [], []).
 opt_util__instr_labels(decr_sp(_), [], []).
 
@@ -672,6 +676,11 @@ opt_util__count_temps_instr(computed_goto(Rval, _), N0, N) :-
 opt_util__count_temps_instr(if_val(Rval, _), N0, N) :-
 	opt_util__count_temps_rval(Rval, N0, N).
 opt_util__count_temps_instr(c_code(_), N, N).
+opt_util__count_temps_instr(incr_hp(Lval, Rval), N0, N) :-
+	opt_util__count_temps_lval(Lval, N0, N1),
+	opt_util__count_temps_rval(Rval, N1, N).
+opt_util__count_temps_instr(restore_hp(Rval), N0, N) :-
+	opt_util__count_temps_rval(Rval, N0, N).
 opt_util__count_temps_instr(incr_sp(_), N, N).
 opt_util__count_temps_instr(decr_sp(_), N, N).
 

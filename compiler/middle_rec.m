@@ -294,6 +294,11 @@ middle_rec__find_used_registers_instr(computed_goto(Rval, _), Used0, Used) :-
 middle_rec__find_used_registers_instr(c_code(_), Used, Used).
 middle_rec__find_used_registers_instr(if_val(Rval, _), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
+middle_rec__find_used_registers_instr(incr_hp(Lval, Rval), Used0, Used) :-
+	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
+	middle_rec__find_used_registers_rval(Rval, Used1, Used).
+middle_rec__find_used_registers_instr(restore_hp(Rval), Used0, Used) :-
+	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(incr_sp(_), Used, Used).
 middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
 
@@ -332,10 +337,8 @@ middle_rec__find_used_registers_rval(Rval, Used0, Used) :-
 		error("var found in middle_rec__find_used_registers_rval")
 	;
 		Rval = create(_, MaybeRvals, _),
-		middle_rec__find_used_registers_maybe_rvals(MaybeRvals, Used0, Used)
-	;
-		Rval = heap_alloc(Rval1),
-		middle_rec__find_used_registers_rval(Rval1, Used0, Used)
+		middle_rec__find_used_registers_maybe_rvals(MaybeRvals,
+			Used0, Used)
 	;
 		Rval = mkword(_, Rval1),
 		middle_rec__find_used_registers_rval(Rval1, Used0, Used)
@@ -356,7 +359,8 @@ middle_rec__find_used_registers_rval(Rval, Used0, Used) :-
 :- mode middle_rec__find_used_registers_maybe_rvals(in, di, uo) is det.
 
 middle_rec__find_used_registers_maybe_rvals([], Used, Used).
-middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], Used0, Used) :-
+middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals],
+		Used0, Used) :-
 	(
 		MaybeRval = no,
 		Used1 = Used0

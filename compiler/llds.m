@@ -81,6 +81,14 @@
 	;	if_val(rval, code_addr)
 			% if rval is true, then goto code_addr.
 
+	;	incr_hp(lval, rval)
+			% get a memory block of a given size
+			% and put its address in the given lval.
+
+	;	restore_hp(rval)
+			% put the memory system back to the time just before
+			% it got allocated rval
+
 	;	incr_sp(int)
 			% increment the det stack pointer
 
@@ -114,7 +122,6 @@
 				% get output, others will get transformed
 				% to mkword(Tag, heap_alloc(Size)) plus
 				% assignments to the fields
-			;	heap_alloc(rval)
 			;	mkword(tag, rval)
 			;	const(rval_const)
 			;	unop(unary_op, rval)
@@ -422,6 +429,25 @@ output_instruction(if_val(Rval, Target)) -->
 	output_goto(Target),
 	io__write_string(" }").
 
+output_instruction(incr_hp(Lval, Rval)) -->
+	io__write_string("\t{ "),
+	output_lval_decls(Lval),
+	output_rval_decls(Rval),
+	io__write_string("incr_hp("),
+	output_lval(Lval),
+	io__write_string(", "),
+	output_rval(Rval),
+	io__write_string(") "),
+	io__write_string(" }").
+
+output_instruction(restore_hp(Rval)) -->
+	io__write_string("\t{ "),
+	output_rval_decls(Rval),
+	io__write_string("restore_hp("),
+	output_rval(Rval),
+	io__write_string(") "),
+	io__write_string(" }").
+
 output_instruction(incr_sp(N)) -->
 	io__write_string("\t"),
 	io__write_string("incr_sp("),
@@ -496,8 +522,6 @@ output_rval_decls(unop(_, Rval)) -->
 output_rval_decls(binop(_, Rval1, Rval2)) -->
 	output_rval_decls(Rval1),
 	output_rval_decls(Rval2).
-output_rval_decls(heap_alloc(Rval)) -->
-	output_rval_decls(Rval).
 output_rval_decls(create(_Tag, ArgVals, Label)) -->
 	output_cons_arg_decls(ArgVals),
 	io__write_string("static const Word mercury_const_"),
@@ -801,10 +825,6 @@ output_rval(mkword(Tag, Exprn)) -->
 	io__write_string(")").
 output_rval(lval(Lval)) -->
 	output_rval_lval(Lval).
-output_rval(heap_alloc(Exprn)) -->
-	io__write_string("heap_alloc("),
-	output_rval(Exprn),
-	io__write_string(")").
 output_rval(create(Tag, _Args, LabelNum)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
