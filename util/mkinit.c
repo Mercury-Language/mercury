@@ -567,6 +567,7 @@ process_c_file(const char *filename)
 {
 	char func_name[1000];
 	char *position;
+	int i;
 
 	/* remove the directory name, if any */
 	if ((position = strrchr(filename, '/')) != NULL) {
@@ -575,19 +576,44 @@ process_c_file(const char *filename)
 
 	/*
 	** The func name is "mercury__<modulename>__init",
-	** where <modulename> is the base filename with all
-	** `.'s replaced with `__'.
+	** where <modulename> is the base filename with
+	** all `.'s replaced with `__', and with each
+	** component of the module name mangled according
+	** to the algorithm in llds_out__name_mangle/2
+	** in compiler/llds_out.m. 
+	**
+	** XXX We don't handle the full name mangling algorithm here;
+	** instead we use a simplified version:
+	** - if there are no special charaters, but the
+	**   name starts with `f_', then replace the leading
+	**   `f_' with `f__'
+	** - if there are any special characters, give up
 	*/
+
+	/* check for special characters */
+	for (i = 0; filename[i] != '\0'; i++) {
+		if (filename[i] != '.' && !MR_isalnumunder(filename[i])) {
+			fprintf(stderr, "mkinit: sorry, file names containing "
+				"special characters are not supported.\n");
+			fprintf(stderr, "File name `%s' contains special "
+				"character `%c'.\n", filename, filename[i]);
+			exit(1);
+		}
+	}
 	strcpy(func_name, "mercury");
 	while ((position = strchr(filename, '.')) != NULL) {
 		strcat(func_name, "__");
+		/* replace `f_' with `f__' */
+		if (strncmp(filename, "f_", 2) == 0) {
+			strcat(func_name, "f__");
+			filename += 2;
+		}
 		strncat(func_name, filename, position - filename);
 		filename = position + 1;
 	}
 	/*
 	** The trailing stuff after the last `.' should just be the `c' suffix.
 	*/
-
 	strcat(func_name, "__init");
 
 	output_init_function(func_name);
