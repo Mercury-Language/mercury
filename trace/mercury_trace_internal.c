@@ -2379,7 +2379,7 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 	return NULL;
 }
 
-void
+static void
 MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 {
 	const MR_Stack_Layout_Label	*parent;
