@@ -5634,12 +5634,11 @@ replaced with the list of modules making up the library.
 Occurrences of @samp{@@@@} and @samp{%%} will be replaced
 with @samp{@@} and @samp{%} respectively.
 
-@item --make-init-file-command @var{command}
-@findex --make-init-file-command
-Specify an alternative command to produce the @file{.init} file
+@item --extra-init-command @var{command}
+@findex --extra-init-command
+Specify a command to produce extra entries in the @file{.init} file
 for a library. Occurrences of @samp{@@} and @samp{%} in the command
 are substituted as for the @samp{--pre-link-command} option.
-By default, @samp{mmc --make} creates the @samp{.init} file itself.
 
 @item -k
 @itemx --keep-going

@@ -246,23 +246,19 @@ lib_std: lib$(STD_LIB_NAME)
 
 ifeq ($(MMAKE_USE_MMC_MAKE),no)
 
-$(STD_LIB_NAME).init: $(deps_subdir)$(STD_LIB_NAME).dep
+EXTRA_INIT_COMMAND = \
 	for file in $($(STD_LIB_NAME).ms); do \
 		grep '^INIT ' $$file; \
-		echo "INIT mercury__`basename $$file .m`__init"; \
-	done > $(STD_LIB_NAME).init
-
+		true; \
+	done
 
 else
 
-# The command below is invoked as "command >& module.err". The braces
-# stop the output meant for the `.init' file being redirected to the
-# `.err' file.
-MCFLAGS += --make-init-file-command \
-		"{ for module in %; do \
+MCFLAGS += --extra-init-command \
+		"for module in %; do \
 			grep '^INIT ' $$$${module}.m; \
-			echo INIT mercury__$$$${module}__init; \
-		done > @.init; }"
+			true; \
+		done"
 endif
 
 endif	# GRADE != il

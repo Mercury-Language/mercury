@@ -282,6 +282,10 @@ C2INITARGS	=
 EXTRA_C2INITARGS =
 LIB_C2INITARGS	= $(patsubst %,%.init,$(ALL_EXTRA_LIBRARIES))
 
+# $(EXTRA_INIT_COMMAND) should expand to a command to generate extra entries
+# in the `.init' file for a library. It may expand to the empty string.
+EXTRA_INIT_COMMAND =
+
 # c2init and ml take the same arguments.
 C2INIT_AND_MLFLAGS = $(MLFLAGS) $(C2INITFLAGS) \
 			$(EXTRA_MLFLAGS) $(EXTRA_C2INITFLAGS) \

@@ -544,7 +544,7 @@
 		;	keep_going
 		;	rebuild
 		;	invoked_by_mmc_make
-		;	make_init_file_command
+		;	extra_init_command
 		;	pre_link_command
 		;	install_prefix
 		;	install_command
@@ -1086,7 +1086,7 @@ option_defaults_2(build_system_option, [
 	rebuild			-	bool(no),
 	invoked_by_mmc_make	-	bool(no),
 	pre_link_command	-	maybe_string(no),
-	make_init_file_command	-	maybe_string(no),
+	extra_init_command	-	maybe_string(no),
 	install_prefix		-	string("/usr/local/"),
 	install_command		-	string("cp"),
 	libgrades		-	accumulating([]),
@@ -1665,7 +1665,7 @@ long_option("keep-going",		keep_going).
 long_option("rebuild",			rebuild).
 long_option("invoked-by-mmc-make",	invoked_by_mmc_make).
 long_option("pre-link-command",		pre_link_command).
-long_option("make-init-file-command",	make_init_file_command).
+long_option("extra-init-command",	extra_init_command).
 long_option("install-prefix",		install_prefix).
 long_option("install-command",		install_command).
 long_option("library-grade",		libgrades).
@@ -3433,11 +3433,10 @@ options_help_build_system -->
 		"\treplaced with the list of modules making up the library.",
 		"\tOccurrences of `@@' and `%%' will be replaced with `@'",
 		"\tand `%' respectively.",
-		"--make-init-file-command <command>",
-		"\tSpecify an alternative command to produce the `.init' file",
-		"\tfor a library. Occurrences of `@' and `%' in the command",
+		"--extra-init-command <command>",
+		"\tSpecify a command to produce extra entries in the `.init'",
+		"\tfile for a library. Occurrences of `@' and `%' in the command",
 		"\tare substituted as for the `--pre-link-command' option.",
-		"\tBy default, `mmc --make' creates the `.init' file itself.",
 		"--install-prefix <dir>",
 		"\tThe directory under which to install Mercury libraries.",
 		"--install-command <command>",

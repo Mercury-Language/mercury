@@ -4047,6 +4047,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\techo > ", InitFileName, "\n"
 	]),
 	list__foldl(append_to_init_list(DepStream, InitFileName), Modules),
+
+	% $(EXTRA_INIT_COMMAND) should expand to a command to
+	% generate extra entries in the `.init' file for a library.
+	% It may expand to the empty string.
+	io__write_string(DepStream, "\t$(EXTRA_INIT_COMMAND) >> "),
+	io__write_string(DepStream, InitFileName),
 	io__write_string(DepStream, "\n"),
 
 	% The `force-module_init' dependency forces the commands for

@@ -639,16 +639,6 @@ assemble(ErrorStream, PIC, ModuleName, Succeeded) -->
 %-----------------------------------------------------------------------------%
 
 make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded) -->
-    globals__io_lookup_maybe_string_option(make_init_file_command,
-		MaybeInitFileCommand),
-    (
-	{ MaybeInitFileCommand = yes(InitFileCommand0) },
-	{ InitFileCommand = substitute_user_command(InitFileCommand0,
-		MainModuleName, AllModules) },
-	invoke_shell_command(ErrorStream, verbose_commands,
-		InitFileCommand, Succeeded)
-    ;
-	{ MaybeInitFileCommand = no },
 	module_name_to_file_name(MainModuleName, ".init.tmp",
 		yes, TmpInitFileName),
 	io__open_output(TmpInitFileName, InitFileRes),
@@ -674,10 +664,25 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded) -->
 				[]
 			)
 		    ), AllModules),
+		globals__io_lookup_maybe_string_option(extra_init_command,
+			MaybeInitFileCommand),
+		(
+			{ MaybeInitFileCommand = yes(InitFileCommand0) },
+			{ InitFileCommand = substitute_user_command(
+				InitFileCommand0, MainModuleName,
+				AllModules) },
+			invoke_shell_command(InitFileStream, verbose_commands,
+				InitFileCommand, Succeeded0)
+		;
+			{ MaybeInitFileCommand = no },
+			{ Succeeded0 = yes }
+		),
+
 		io__close_output(InitFileStream),
 		module_name_to_file_name(MainModuleName, ".init",
 			yes, InitFileName),
-		update_interface(InitFileName, Succeeded)
+		update_interface(InitFileName, Succeeded1),
+		{ Succeeded = Succeeded0 `and` Succeeded1 }
 	;
 		{ InitFileRes = error(Error) },
 		io__progname_base("mercury_compile", ProgName),
@@ -689,8 +694,7 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded) -->
 		io__write_string(ErrorStream, io__error_message(Error)),
 		io__nl(ErrorStream),
 		{ Succeeded = no }
-	)
-    ).
+	).
 
 %-----------------------------------------------------------------------------%
 
