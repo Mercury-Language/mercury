@@ -83,26 +83,26 @@
 :- type partial_qualifier_info.
 
 % Suppose we are processing a definition which defines the symbol
-% foo:bar:baz:quux/1.  Then we insert the following symbols
+% foo.bar.baz.quux/1.  Then we insert the following symbols
 % into the symbol table:
 %	- if the current value of the NeedQual flag at this point
 %		is `may_be_unqualified',
-%		i.e. module `foo:bar:baz' was imported
+%		i.e. module `foo.bar.baz' was imported
 %		then we insert the fully unqualified symbol quux/1;
-%	- if module `foo:bar:baz' occurs in the "imported" section,
-%		i.e. if module `foo:bar' was imported,
-%		then we insert the partially qualified symbol baz:quux/1;
-%	- if module `foo:bar' occurs in the "imported" section,
+%	- if module `foo.bar.baz' occurs in the "imported" section,
+%		i.e. if module `foo.bar' was imported,
+%		then we insert the partially qualified symbol baz.quux/1;
+%	- if module `foo.bar' occurs in the "imported" section,
 %		i.e. if module `foo' was imported,
-%		then we insert the partially qualified symbol bar:baz:quux/1;
-%	- we always insert the fully qualified symbol foo:bar:baz:quux/1.
+%		then we insert the partially qualified symbol bar.baz.quux/1;
+%	- we always insert the fully qualified symbol foo.bar.baz.quux/1.
 %
 % The predicate `get_partial_qualifiers' returns all of the
 % partial qualifiers for which we need to insert definitions,
 % i.e. all the ones which are visible.  For example,
-% given as input `foo:bar:baz', it returns a list containing
-%	(1) `baz', iff `foo:bar' is imported
-% and 	(2) `bar:baz', iff `foo' is imported.
+% given as input `foo.bar.baz', it returns a list containing
+%	(1) `baz', iff `foo.bar' is imported
+% and 	(2) `bar.baz', iff `foo' is imported.
 % Note that the caller will still need to handle the fully-qualified
 % and fully-unqualified versions separately.
 
@@ -1080,12 +1080,12 @@ add_module_qualifier(DefaultModule, qualified(SymModule, SymName),
 	;
 		% This case is an error.  The user must have written something
 		% like
-		%	:- instance foo:bar(some_type) where [
-		%		pred(baz:p/1) is q
+		%	:- instance foo.bar(some_type) where [
+		%		pred(baz.p/1) is q
 		%	].
 		% where the module qualifier on the pred or func in the
-		% instance (`baz:') does not match the qualifier for the 
-		% class name (`foo:').
+		% instance (`baz.') does not match the qualifier for the 
+		% class name (`foo.').
 		%
 		% We don't report the error here, we just leave the original
 		% module qualifier intact so that the error can be reported
@@ -1732,7 +1732,7 @@ parent_module_is_imported(ParentModule, ChildModule, ModuleIdSet) :-
 
 	% Given a module name, possibly module-qualified,
 	% return the name of the first module in the qualifier list.
-	% e.g. given `foo:bar:baz', this returns `foo',
+	% e.g. given `foo.bar.baz', this returns `foo',
 	% and given just `baz', it returns `baz'.
 	%
 :- pred get_first_module_name(module_name, string).
