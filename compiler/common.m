@@ -592,7 +592,7 @@ common__find_previous_call([SeenCall | SeenCalls], InputArgs,
 	simplify_info::out) is det.
 
 	% Create unifications to assign the vars in OutputArgs from
-	% the corresponding var in OutputArgs2.
+	% the corresponding var in OldOutputArgs.
 	% This needs to be done even if OutputArg is not a nonlocal in
 	% the original goal because later goals in the conjunction may
 	% match against the cell and need all the output arguments.
@@ -601,9 +601,9 @@ common__find_previous_call([SeenCall | SeenCalls], InputArgs,
 common__create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs,
 		UniModes, Goals, !Info) :-
 	(
-		OutputArgs = [OutputArg | OutputArgs1],
-		OldOutputArgs = [OldOutputArg | OldOutputArgs1],
-		UniModes = [UniMode | UniModes1]
+		OutputArgs = [OutputArg | OutputArgsTail],
+		OldOutputArgs = [OldOutputArg | OldOutputArgsTail],
+		UniModes = [UniMode | UniModesTail]
 	->
 		(
 			% This can happen if the first cell was created
@@ -613,13 +613,13 @@ common__create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs,
 			common__generate_assign(OutputArg, OldOutputArg,
 				UniMode, GoalInfo, Goal, !Info),
 			common__create_output_unifications(GoalInfo,
-				OutputArgs1, OldOutputArgs1, UniModes1,
-				Goals1, !Info),
-			Goals = [Goal | Goals1]
+				OutputArgsTail, OldOutputArgsTail,
+				UniModesTail, GoalsTail, !Info),
+			Goals = [Goal | GoalsTail]
 		;
 			common__create_output_unifications(GoalInfo,
-				OutputArgs1, OldOutputArgs1, UniModes1, Goals,
-				!Info)
+				OutputArgsTail, OldOutputArgsTail,
+				UniModesTail, Goals, !Info)
 		)
 	;
 		OutputArgs = [],
