@@ -1084,7 +1084,8 @@ library.
 To use a library, you need to set the Mmake variables @samp{VPATH},
 @samp{MCFLAGS}, @samp{MLFLAGS}, @samp{MLLIBS}, and @samp{C2INITFLAGS}
 to specify the name and location of the library or libraries that you
-wish to use.
+wish to use. If you are using @samp{--intermodule-optimization}, you
+may also need to set @samp{MGNUCFLAGS} if the library uses the C interface.
 For example, if you want to link in the libraries @samp{mypackage} and
 @samp{myotherlib}, which were built in the directories
 @samp{/some/directory/mypackage} and @samp{/some/directory/myotherlib}
@@ -1103,6 +1104,11 @@ MLFLAGS = -R$(MYPACKAGE_DIR) -R$(MYOTHERLIB_DIR) $(EXTRA_MLFLAGS) \
 MLLIBS = -lmypackage -lmyotherlib $(EXTRA_MLLIBS)
 C2INITFLAGS = $(MYPACKAGE_DIR)/mypackage.init \
               $(MYOTHERLIB_DIR)/myotherlib.init
+
+# This line may be needed if @samp{--intermodule-optimization}
+# is in @samp{MCFLAGS}. @samp{-I} options should be added for any other
+# directories containing header files that the libraries require.
+MGNUCFLAGS = -I$(MYPACKAGE_DIR) -I$(MYOTHERLIB_DIR) $(EXTRA_MGNUCFLAGS)
 @end example
 
 Here @samp{VPATH} is a colon-separated list of path names specifying
@@ -1113,13 +1119,15 @@ the loader where to find shared libraries, and the @samp{-L}
 options tell the linker where to find libraries.
 (Note that the @samp{-R} options must precede the @samp{-L} options.)
 The @samp{-l} options tell the linker which libraries to link with.
-The extras arguments to @samp{c2init} specified in the @samp{C2INITLFLAGS}
+The extra arguments to @samp{c2init} specified in the @samp{C2INITLFLAGS}
 variable tell @samp{c2init} where to find the @samp{.init} files for the
 libraries, so that it can generate appropriate initialization code.
+The @samp{-I} options in @samp{MGNUCFLAGS} tell the C preprocessor where
+to find the header files for the libraries.
 
 The example above assumes that the static object library,
-shared object library, interface files and initialization file are
-for each Mercury library being used all put in a single directory,
+shared object library, interface files and initialization file
+for each Mercury library being used are all put in a single directory,
 which is probably the simplest way of organizing things, but the
 Mercury implementation does not require that.
 
