@@ -166,6 +166,10 @@
 :- mode search(hash_table_ui, in) = out is semidet.
 %:- mode search(in, in, out) is semidet.
 
+:- pred search(hash_table(K, V), K, V).
+:- mode search(hash_table_ui, in, out) is semidet.
+%:- mode search(in, in, out) is semidet.
+
     % Convert a hash table into an association list.
     %
 :- func to_assoc_list(hash_table(K, V)) = assoc_list(K, V).
@@ -180,19 +184,6 @@
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-:- implementation.
-
-% Everything beyond here is not intended as part of the public interface,
-% and will not appear in the Mercury Library Reference Manual.
-
-:- interface.
-
-:- pred search(hash_table(K, V), K, V).
-:- mode search(hash_table_ui, in, out) is semidet.
-%:- mode search(in, in, out) is semidet.
-:- pragma obsolete(search/3).
-
 :- implementation.
 
 :- import_module math, bool, exception, list, require, std_util.
