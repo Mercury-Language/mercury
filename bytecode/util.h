@@ -4,7 +4,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: util.h,v 1.5 1997-03-25 03:10:28 aet Exp $
+** $Id: util.h,v 1.6 1997-03-25 03:53:19 aet Exp $
 */
 
 
@@ -43,7 +43,7 @@ typedef unsigned int
 #define	DOUBLE_SIZE	(sizeof(double))
 
 /*
- *	For debugging. E.g. XXXdebug("Bad integer value", "%d", value).
+ *	For debugging. E.g. XXXdebug("Bad integer value", d, some_var).
  *	XXX: We should implement some smarter tracing stuff that allows
  *	us to select a specific module or procedure to trace, or even
  *	a specific trace statement.
