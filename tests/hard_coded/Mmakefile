@@ -21,6 +21,7 @@ PROGS=	\
 	det_in_semidet_cntxt \
 	division_test \
 	elim_special_pred \
+	eqv_type_bug \
 	error_func \
 	erroneous_liveness \
 	expand \

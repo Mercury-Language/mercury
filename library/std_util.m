@@ -2655,25 +2655,28 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 {
 	int i, arity, extra_args;
 	Word *base_type_info;
+	Word *arg_type_info;
 	Word *type_info;
 
-		/* 
-		** The arg_pseudo_type_info might be a polymorphic variable,
-		** if so - substitute.
-		*/
-
+	/* 
+	** The arg_pseudo_type_info might be a polymorphic variable.
+	** If so, then substitute it's value, and then we're done.
+	*/
 	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-		arg_pseudo_type_info = (Word *) 
+		arg_type_info = (Word *) 
 			term_type_info[(Word) arg_pseudo_type_info];
-	}
 
-	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-		fatal_error(""ML_create_type_info: unbound type variable"");
+		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
+			fatal_error(""ML_create_type_info: ""
+					""unbound type variable"");
+		}
+
+		return arg_type_info;
 	}
 
 	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(arg_pseudo_type_info);
 
-		/* no arguments - optimise common case */
+	/* no arguments - optimise common case */
 	if (base_type_info == arg_pseudo_type_info) {
 		return arg_pseudo_type_info;
 	}
@@ -2686,52 +2689,39 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 		extra_args = 1;
 	}
 
-
-		/* 
-		** Check for type variables -- if there are none,
-		** we don't need to create a new type_info.
-		*/
-	for (i = arity + extra_args - 1; i >= extra_args; i--) {
-		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
-			break;
+	/*
+	** Iterate over the arguments, figuring out whether we
+	** need to make any substitutions.
+	** If so, copy the resulting argument type-infos into
+	** a new type_info.
+	*/
+	type_info = NULL;
+	for (i = extra_args; i < arity + extra_args; i++) {
+		arg_type_info = ML_create_type_info(term_type_info,
+				(Word *) arg_pseudo_type_info[i]);
+		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
+			fatal_error(""ML_create_type_info: ""
+				""unbound type variable"");
+		}
+		if (arg_type_info != (Word *) arg_pseudo_type_info[i]) {
+			/*
+			** We made a substitution.
+			** We need to allocate a new type_info,
+			** if we haven't done so already.
+			*/
+			if (type_info == NULL) {
+				incr_saved_hp(LVALUE_CAST(Word, type_info),
+					arity + extra_args);
+				memcpy(type_info, arg_pseudo_type_info,
+					(arity + extra_args) * sizeof(Word));
+			}
+			type_info[i] = (Word) arg_type_info;
 		}
 	}
-
-		/*
-		** Do we need to create a new type_info?
-		*/
-	if (i >= extra_args) {
-		incr_saved_hp(LVALUE_CAST(Word, type_info), arity + extra_args);
-
-			/* 
-			** Copy any preliminary arguments to the type_info 
-			** (this means the base_type_info and possibly
-			** arity for higher order terms).
-			*/ 
-		for (i = 0; i < extra_args; i++) {
-			type_info[i] = arg_pseudo_type_info[i];
-		}
-
-			/*
-			** Copy type arguments, substituting for any 
-			** type variables.
-			*/
-		for (i = extra_args; i < arity + extra_args; i++) {
-			if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
-				type_info[i] = term_type_info[
-					arg_pseudo_type_info[i]];
-				if (TYPEINFO_IS_VARIABLE(type_info[i])) {
-					fatal_error(""ML_create_type_info: ""
-						""unbound type variable"");
-				}
-
-			} else {
-				type_info[i] = arg_pseudo_type_info[i];
-			}
-		}
-		return type_info;
-	} else {
+	if (type_info == NULL) {
 		return arg_pseudo_type_info;
+	} else {
+		return type_info;
 	}
 }
 
