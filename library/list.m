@@ -321,7 +321,7 @@
 %-----------------------------------------------------------------------------%
 :- import_module std_util.
 
-	% list__map_det(T, L, M) uses the closure T
+	% list__map(T, L, M) uses the closure T
 	% to transform the elements of L into the elements of L.
 :- pred list__map(pred(X, Y), list(X), list(Y)).
 :- mode list__map(pred(in, out) is det, in, out) is det.
