@@ -30,11 +30,18 @@
 **	HAVE_MPROTECT		the machine has the mprotect() syscall.
 **	HAVE_STRERROR		the machine has the strerror() function.
 **	RETSIGTYPE		the return type of signal handlers.
-**	HAVE_SIGINFO		signal handlers are given siginfo arguments,
-**				and we have <sys/siginfo.h>
-**	HAVE_UCONTEXT		signal handlers are given ucontext arguments,
-**				and we have <ucontext.h>
+**	HAVE_SIGINFO		true if we can _somehow_ figure out the
+**				fault address for SIGSEGVs.
+**	HAVE_SIGINFO_T		true if we can figure out the
+**				fault address for SIGSEGVs using sigaction
+**				and siginfo_t.
+**	HAVE_SIGCONTEXT_STRUCT	true if normal signal handlers are given
+**				sigcontext_struct arguments that we can use to
+**				figure out the fault address for SIGSEGVs.
+**	HAVE_SYS_SIGINFO	we have <sys/siginfo.h>
+**	HAVE_UCONTEXT		we have <ucontext.h>
 **	HAVE_SYS_UCONTEXT	we have <sys/ucontext.h>
+**	HAVE_ASM_SIGCONTEXT	we have <asm/sigcontext.h> (e.g. i386 Linux)
 **	HAVE_SYS_TIME		we have <sys/time.h>
 **	HAVE_SYS_PARAM		we have <sys/param.h>
 **	HAVE_SETITIMER		we have setitimer()
@@ -56,8 +63,12 @@
 #undef	HAVE_STRERROR
 #undef	RETSIGTYPE
 #undef	HAVE_SIGINFO
+#undef	HAVE_SIGINFO_T
+#undef	HAVE_SIGCONTEXT_STRUCT
+#undef	HAVE_SYS_SIGINFO
 #undef	HAVE_UCONTEXT
 #undef	HAVE_SYS_UCONTEXT
+#undef	HAVE_ASM_SIGCONTEXT
 #undef	HAVE_SYS_TIME
 #undef	HAVE_SYS_PARAM
 #undef	HAVE_SETITIMER

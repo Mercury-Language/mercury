@@ -29,47 +29,63 @@
 
 /*---------------------------------------------------------------------------*/
 
-#include "imp.h"
-#include "conf.h"
+#include "regs.h"	/* must come first, due to gloabl register vars */
+#include "conf.h"	/* must come second */
+
+#ifdef HAVE_SIGCONTEXT_STRUCT
+  /*
+  ** On some systems (e.g. most versions of Linux) we need to #define
+  ** __KERNEL__ to get sigcontext_struct from <signal.h>.
+  ** This stuff must come before anything else that might include <signal.h>,
+  ** otherwise the #define __KERNEL__ may not work.
+  */
+  #define __KERNEL__
+  #include <signal.h>	/* must come third */
+  #undef __KERNEL__
+
+  #ifdef HAVE_ASM_SIGCONTEXT
+    #include <asm/sigcontext.h>
+  #endif 
+#else
+  #include <signal.h>
+#endif
 
 #include <unistd.h>
-
-#ifdef	HAVE_SIGINFO
-#include	<sys/siginfo.h>
-#endif 
-
 #include <stdio.h>
 #include <string.h>
 
-#ifdef	HAVE_MPROTECT
-#include <sys/mman.h>
-#endif
+#ifdef HAVE_SYS_SIGINFO
+  #include <sys/siginfo.h>
+#endif 
 
-#include <signal.h>
+#ifdef	HAVE_MPROTECT
+  #include <sys/mman.h>
+#endif
 
 #ifdef	HAVE_UCONTEXT
-#include <ucontext.h>
-#endif
-#ifdef	HAVE_SYS_UCONTEXT
-#include <sys/ucontext.h>
+  #include <ucontext.h>
 #endif
 
-#if defined(HAVE_SYSCONF) && defined(_SC_PAGESIZE)
-#define	getpagesize()	sysconf(_SC_PAGESIZE)
-#else
-#ifndef	HAVE_GETPAGESIZE
-#define	getpagesize()	8192
+#ifdef	HAVE_SYS_UCONTEXT
+  #include <sys/ucontext.h>
 #endif
+
+#include "imp.h"
+
+/*---------------------------------------------------------------------------*/
+
+#if defined(HAVE_SYSCONF) && defined(_SC_PAGESIZE)
+  #define	getpagesize()	sysconf(_SC_PAGESIZE)
+#elif !defined(HAVE_GETPAGESIZE)
+  #define	getpagesize()	8192
 #endif
 
 #ifdef	CONSERVATIVE_GC
-#define memalign(a,s)   GC_MALLOC_UNCOLLECTABLE(s)
+  #define	memalign(a,s)   GC_MALLOC_UNCOLLECTABLE(s)
+#elif defined(HAVE_MEMALIGN)
+  extern void	*memalign(size_t, size_t);
 #else
-#ifdef	HAVE_MEMALIGN
-extern	void	*memalign(size_t, size_t);
-#else
-#define	memalign(a,s)	malloc(s)
-#endif
+  #define	memalign(a,s)	malloc(s)
 #endif
 
 /*
@@ -87,33 +103,39 @@ extern	void	*memalign(size_t, size_t);
 */
 #ifdef  HAVE_MPROTECT
 
-#ifdef CONSERVATIVE_GC
-	/*
-	** The conservative garbage collectors scans through
-	** all these areas, so we need to allow reads.
-	** XXX This probably causes efficiency problems:
-	** too much memory for the GC to scan, and it probably
-	** all gets paged in.
-	*/
-#define MY_PROT PROT_READ
-#else
-#define MY_PROT PROT_NONE
-#endif
+  #ifdef CONSERVATIVE_GC
+    /*
+    ** The conservative garbage collectors scans through
+    ** all these areas, so we need to allow reads.
+    ** XXX This probably causes efficiency problems:
+    ** too much memory for the GC to scan, and it probably
+    ** all gets paged in.
+    */
+    #define MY_PROT PROT_READ
+  #else
+    #define MY_PROT PROT_NONE
+  #endif
 
-/* The BSDI BSD/386 1.1 headers don't define PROT_NONE */
-#ifndef PROT_NONE
-#define PROT_NONE 0
-#endif
+  /* The BSDI BSD/386 1.1 headers don't define PROT_NONE */
+  #ifndef PROT_NONE
+    #define PROT_NONE 0
+  #endif
 
-#endif
+#endif /* HAVE_MPROTECT */
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef	HAVE_SIGINFO
-static	void	complex_bushandler(int, siginfo_t *, void *);
-static	void	complex_segvhandler(int, siginfo_t *, void *);
+#ifdef HAVE_SIGINFO
+  #if defined(HAVE_SIGCONTEXT_STRUCT)
+    static	void	complex_sighandler(int, struct sigcontext_struct);
+  #elif defined(HAVE_SIGINFO_T)
+    static	void	complex_bushandler(int, siginfo_t *, void *);
+    static	void	complex_segvhandler(int, siginfo_t *, void *);
+  #else
+    #error "HAVE_SIGINFO defined but don't know how to get it"
+  #endif
 #else
-static	void	simple_sighandler(int);
+  static	void	simple_sighandler(int);
 #endif
 
 /*
@@ -124,10 +146,11 @@ static	void	simple_sighandler(int);
 #define round_up(amount, align) ((((amount) - 1) | ((align) - 1)) + 1)
 
 static	void	setup_mprotect(void);
+
 #ifdef	HAVE_SIGINFO
-static	bool	try_munprotect(void *, void *);
-static	char	*explain_context(ucontext_t *);
-#endif
+  static	bool	try_munprotect(void *address, void *context);
+  static	char	*explain_context(void *context);
+#endif /* HAVE_SIGINFO */
 
 static	void	setup_signal(void);
 
@@ -143,15 +166,15 @@ MemoryZone *used_memory_zones;
 MemoryZone *free_memory_zones;
 
 MemoryZone *detstack_zone;
-#ifndef	SPEED
-MemoryZone *dumpstack_zone;
-int	dumpindex;
-#endif
 MemoryZone *nondetstack_zone;
 #ifndef CONSERVATIVE_GC
-MemoryZone *heap_zone;
-MemoryZone *solutions_heap_zone;
-Word       *solutions_heap_pointer;
+  MemoryZone *heap_zone;
+  MemoryZone *solutions_heap_zone;
+  Word       *solutions_heap_pointer;
+#endif
+#ifndef	SPEED
+  MemoryZone *dumpstack_zone;
+  int	dumpindex;
 #endif
 
 static	size_t		unit;
@@ -247,7 +270,7 @@ static void
 init_memory_arena()
 {
 #ifdef	PARALLEL
-  #ifndef	CONSERVATIVE_GC
+  #ifndef CONSERVATIVE_GC
 	if (numprocs > 1) {
 		fatal_error("shared memory not implemented");
 	}
@@ -284,10 +307,10 @@ init_zones()
 #ifndef SPEED
 		zone_table[i].max = NULL;
 #endif
-#ifdef	HAVE_MPROTECT
-#ifdef	HAVE_SIGINFO
+#ifdef HAVE_MPROTECT
+  #ifdef HAVE_SIGINFO
 		zone_table[i].redzone = NULL;
-#endif
+  #endif
 		zone_table[i].hardmax = NULL;
 #endif
 		if (i+1 < MAX_ZONES) {
@@ -329,7 +352,7 @@ init_heap(void)
 	solutions_heap_pointer = solutions_heap_zone->min;
 
 #endif
-}
+} /* end init_heap() */
 
 MemoryZone *
 get_zone(void)
@@ -426,11 +449,11 @@ create_zone(const char *name, int id, size_t size,
 	total_size = size + unit;
 #endif
 
-  #ifdef	PARALLEL
+#ifdef	PARALLEL
 	if (numprocs > 1) {
 		fatal_error("shared memory not supported yet");
 	}
-  #endif
+#endif
 	base = memalign(unit, total_size);
 	if (base == NULL) {
 		char buf[2560];
@@ -439,12 +462,12 @@ create_zone(const char *name, int id, size_t size,
 	}
 
 	return construct_zone(name, id, base, size, offset, redsize, handler);
-}
+} /* end create_zone() */
 
 MemoryZone *
 construct_zone(const char *name, int id, Word *base,
 		size_t size, size_t offset, size_t redsize,
-		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
+		ZoneHandler handler)
 {
 	MemoryZone	*zone;
 	size_t		total_size;
@@ -480,7 +503,7 @@ construct_zone(const char *name, int id, Word *base,
 	** setup the redzone+hardzone
 	*/
 #ifdef	HAVE_MPROTECT
-#ifdef	HAVE_SIGINFO
+  #ifdef HAVE_SIGINFO
 	zone->redzone_base = zone->redzone = (Word *)
 			round_up((Unsigned)base + size - redsize, unit);
 	if (mprotect((char *)zone->redzone, redsize + unit, MY_PROT) < 0) {
@@ -490,7 +513,7 @@ construct_zone(const char *name, int id, Word *base,
 			zone->name, zone->id, zone->bottom, zone->redzone);
 		fatal_error(buf);
 	}
-#else	/* !HAVE_SIGINFO */
+  #else	/* not HAVE_SIGINFO */
 	zone->hardmax = (Word *) ((char *)zone->top-unit);
 	if (mprotect((char *)zone->hardmax, unit, MY_PROT) < 0) {
 		char buf[2560];
@@ -499,8 +522,8 @@ construct_zone(const char *name, int id, Word *base,
 			zone->name, zone->id, zone->bottom, zone->hardmax);
 		fatal_error(buf);
 	}
-#endif	/* HAVE_SIGINFO */
-#endif	/* HAVE_MPROTECT */
+  #endif /* not HAVE_SIGINFO */
+#endif	/* not HAVE_MPROTECT */
 
 	return zone;
 } /* end construct_zone() */
@@ -523,9 +546,6 @@ reset_zone(MemoryZone *zone)
 #endif
 }
 
-#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
-	/* try_munprotect is only useful if we have SIGINFO */
-
 #define STDERR 2
 
 #ifdef	SPEED
@@ -537,7 +557,7 @@ print_dump_stack(void)
 	write(STDERR, msg, strlen(msg));
 }
 
-#else /* !SPEED */
+#else /* not SPEED */
 
 static void 
 print_dump_stack(void)
@@ -573,14 +593,17 @@ print_dump_stack(void)
 		}
 
 		write(STDERR, buf, strlen(buf));
-	}
+	} /* end while */
 
 	strcpy(buf, "\nend of stack dump\n");
 	write(STDERR, buf, strlen(buf));
 
 } /* end print_dump_stack() */
 
-#endif /* SPEED */
+#endif /* not SPEED */
+
+#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
+	/* try_munprotect is only useful if we have SIGINFO */
 
 /*
 ** fatal_abort() prints an error message, possibly a stack dump, and then exits.
@@ -593,7 +616,7 @@ fatal_abort(void *context, const char *main_msg, int dump)
 {
 	char	*context_msg;
 
-	context_msg = explain_context((ucontext_t *) context);
+	context_msg = explain_context(context);
 	write(STDERR, main_msg, strlen(main_msg));
 	write(STDERR, context_msg, strlen(context_msg));
 
@@ -679,22 +702,16 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 		(void *) zone->top);
 	}
 	return TRUE;
-    }
-    else
-    {
+    } else {
+	char buf[2560];
 	if (memdebug) {
 	    fprintf(stderr, "can't unprotect last page of %s#%d\n",
 		zone->name, zone->id);
 	    fflush(stdout);
 	}
-
-	{
-	    char buf[2560];
-	    sprintf(buf,
-		    "\nMercury runtime: memory zone %s#%d overflowed\n",
-		    zone->name, zone->id);
-	    fatal_abort(context, buf, FALSE);
-	}
+	sprintf(buf, "\nMercury runtime: memory zone %s#%d overflowed\n",
+		zone->name, zone->id);
+	fatal_abort(context, buf, FALSE);
     }
 
     return FALSE;
@@ -729,7 +746,102 @@ null_handler(Word *fault_addr, MemoryZone *zone, void *context)
 
 #endif /* not HAVE_MPROTECT || not HAVE_SIGINFO */
 
-#ifdef	HAVE_SIGINFO
+#if defined(HAVE_SIGCONTEXT_STRUCT)
+
+static void
+setup_signal(void)
+{
+	if (signal(SIGBUS, (void(*)(int))complex_sighandler) == SIG_ERR)
+	{
+		perror("cannot set SIGBUS handler");
+		exit(1);
+	}
+
+	if (signal(SIGSEGV, (void(*)(int))complex_sighandler) == SIG_ERR)
+	{
+		perror("cannot set SIGSEGV handler");
+		exit(1);
+	}
+}
+
+static void
+complex_sighandler(int sig, struct sigcontext_struct sigcontext)
+{
+	void *address = (void *) sigcontext.cr2;
+  #ifdef PC_ACCESS
+	void *pc_at_signal = (void *) sigcontext.PC_ACCESS;
+  #endif
+
+	switch(sig) {
+		case SIGSEGV:
+			/*
+			** If we're debugging, print the segv explanation
+			** messages before we call try_munprotect.  But if
+			** we're not debugging, only print them if
+			** try_munprotect fails.
+			*/
+			if (memdebug) {
+				fflush(stdout);
+				fprintf(stderr, "\n*** Mercury runtime: "
+					"caught segmentation violation ***\n");
+			}
+			if (try_munprotect(address, &sigcontext)) {
+				if (memdebug) {
+					fprintf(stderr, "returning from "
+						"signal handler\n\n");
+				}
+				return;
+			}
+			if (!memdebug) {
+				fflush(stdout);
+				fprintf(stderr, "\n*** Mercury runtime: "
+					"caught segmentation violation ***\n");
+			}
+			break;
+
+		case SIGBUS:
+			fflush(stdout);
+			fprintf(stderr, "\n*** Mercury runtime: "
+					"caught bus error ***\n");
+			break;
+
+		default:
+			fflush(stdout);
+			fprintf(stderr, "\n*** Mercury runtime: "
+					"caught unknown signal %d ***\n", sig);
+			break;
+	}
+
+  #ifdef PC_ACCESS
+	fprintf(stderr, "PC at signal: %ld (%lx)\n",
+		(long) pc_at_signal, (long) pc_at_signal);
+  #endif
+	fprintf(stderr, "address involved: %p\n", address);
+
+	print_dump_stack();
+	dump_prev_locations();
+	fprintf(stderr, "exiting from signal handler\n");
+	exit(1);
+} /* end complex_sighandler() */
+
+static char *
+explain_context(void *the_context)
+{
+	static	char	buf[100];
+  #ifdef PC_ACCESS
+	struct sigcontext_struct *context = the_context;
+	void *pc_at_signal = (void *) context->PC_ACCESS;
+
+	sprintf(buf, "PC at signal: %ld (%lx)\n",
+		(long)pc_at_signal, (long)pc_at_signal);
+  #else
+	buf[0] = '\0';
+  #endif
+
+	return buf;
+}
+
+#elif defined(HAVE_SIGINFO_T)
 
 static void 
 setup_signal(void)
@@ -788,13 +900,15 @@ complex_bushandler(int sig, siginfo_t *info, void *context)
 		default:
 			fprintf(stderr, "unknown\n");
 			break;
-		}
 
-		fprintf(stderr, "%s", explain_context((ucontext_t *) context));
+		} /* end switch */
+
+		fprintf(stderr, "%s", explain_context(context));
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);
-	}
+	} /* end if */
 
+	print_dump_stack();
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
@@ -829,12 +943,12 @@ explain_segv(siginfo_t *info, void *context)
 			break;
 		}
 
-		fprintf(stderr, "%s", explain_context((ucontext_t *) context));
+		fprintf(stderr, "%s", explain_context(context));
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);
 
-	}
-}
+	} /* end if */
+} /* end explain_segv() */
 
 static void 
 complex_segvhandler(int sig, siginfo_t *info, void *context)
@@ -867,36 +981,43 @@ complex_segvhandler(int sig, siginfo_t *info, void *context)
 		explain_segv(info, context);
 	}
 
+	print_dump_stack();
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
-}
+} /* end complex_segvhandler */
 
 static char *
-explain_context(ucontext_t *context)
+explain_context(void *the_context)
 {
 	static	char	buf[100];
 
-#ifdef PC_ACCESS
-#ifdef PC_ACCESS_GREG
+  #ifdef PC_ACCESS
+
+	ucontext_t *context = the_context;
+
+    #ifdef PC_ACCESS_GREG
 	sprintf(buf, "PC at signal: %ld (%lx)\n",
 		(long) context->uc_mcontext.gregs[PC_ACCESS],
 		(long) context->uc_mcontext.gregs[PC_ACCESS]);
-#else
+    #else
 	sprintf(buf, "PC at signal: %ld (%lx)\n",
 		(long) context->uc_mcontext.PC_ACCESS,
 		(long) context->uc_mcontext.PC_ACCESS);
-#endif
-#else /* ! PC_ACCESS */
+    #endif
+
+  #else /* not PC_ACCESS */
+
 	/* if PC_ACCESS is not set, we don't know the context */
 	/* therefore we return an empty string to be printed  */
 	buf[0] = '\0';
-#endif /* ! PC_ACCESS */
+
+  #endif /* not PC_ACCESS */
 
 	return buf;
 }
 
-#else /* ! HAVE_SIGINFO */
+#else /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
 
 static void 
 setup_signal(void)
@@ -933,12 +1054,13 @@ simple_sighandler(int sig)
 		break;
 	}
 
+	print_dump_stack();
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
 }
 
-#endif /* ! HAVE_SIGINFO */
+#endif /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
 
 #ifdef	CONSERVATIVE_GC
 
@@ -962,7 +1084,11 @@ allocate_bytes(size_t numbytes)
 	return tmp;
 }
 
-#else
+#elif defined(PARALLEL)
+
+  #error "shared memory not implemented"
+
+#else /* not CONSERVATIVE_GC && not PARALLEL */
 
 void *
 allocate_bytes(size_t numbytes)
