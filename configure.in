@@ -2263,8 +2263,7 @@ fi
 # add .NET back-end grades
 if test $mercury_cv_microsoft_dotnet = yes -a "$enable_dotnet_grades" = yes
 then
-    # XXX we should be using `il' rather than `ilc'
-    LIBGRADES="$LIBGRADES ilc"
+    LIBGRADES="$LIBGRADES il"
 fi
 
 # Allow the user to override the default list of library grades
