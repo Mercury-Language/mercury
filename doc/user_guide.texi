@@ -1235,13 +1235,13 @@ Don't optimize the assignment of registers in branched goals.
 @item --args @{old, compact@}
 Use the specified argument passing convention
 in the generated low-level C code.
-With the `simple' convention,
-the @samp{n}th argument is passed in or out using register r@samp{n}.
-With the `compact' convention,
-the @samp{n}th input argument is passed using register r@samp{n}
-and the @samp{n}th output argument is returned using register r@samp{n}.
+With the @samp{simple} convention,
+the @var{n}th argument is passed in or out using register r@var{n}.
+With the @samp{compact} convention,
+the @var{n}th input argument is passed using register r@var{n}
+and the @var{n}th output argument is returned using register r@var{n}.
 This generally leads to more efficient code.
-However, currently only the `simple' convention is supported.
+However, currently only the @samp{simple} convention is supported.
 
 @sp 1
 @item --no-reclaim-heap-on-nondet-failure
