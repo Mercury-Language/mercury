@@ -229,8 +229,9 @@
 :- mode builtin_int_gt(in, in) is semidet.
 :- external(builtin_int_gt/2).
 
-% The types term and const should be defined in term.m, but we define them here
-% since they're need for implementation of term_to_type/2 and type_to_term/2.
+% The types term, const, var and var_supply should be defined in
+% term.m, but we define them here since they're need for implementation
+% of term_to_type/2 and type_to_term/2.
 
 :- type term		--->	term__functor(const, list(term), term__context)
 			;	term__variable(var).
@@ -239,6 +240,7 @@
 			;	term__string(string)
 			;	term__float(float).
 :- type var.
+:- type var_supply.
 
 % The type list should be defined in list.m, but we define it here since
 % it's need for the implementation of term_to_type/2 and type_to_term/2.
@@ -250,6 +252,35 @@
 
 :- type term__context	--->	term__context(string, int).
 				% file, line number.
+
+%-----------------------------------------------------------------------------%
+
+% The following three predicates should be defined in term.m, but
+% type var has to be defined here for term_to_type.
+
+% To manage a supply of variables, use the following 2 predicates.
+% (We might want to give these a unique mode later.)
+
+:- pred term__init_var_supply(var_supply).
+:- mode term__init_var_supply(out) is det.
+:- mode term__init_var_supply(in) is semidet. % implied
+%       term__init_var_supply(VarSupply) :
+%               returns a fresh var_supply for producing fresh variables.
+
+:- pred term__create_var(var_supply, var, var_supply).
+:- mode term__create_var(in, out, out) is det.
+%       term__create_var(VarSupply0, Variable, VarSupply) :
+%               create a fresh variable (var) and return the
+%               updated var_supply.
+
+:- pred term__var_to_int(var, int).
+:- mode term__var_to_int(in, out) is det.
+%               Convert a variable to an int.
+%               Different variables map to different ints.
+%               Other than that, the mapping is unspecified.
+
+%-----------------------------------------------------------------------------%
+
 
 :- pred term__context_init(term__context).
 :- mode term__context_init(out) is det.
@@ -374,6 +405,18 @@ compare_error :-
 	error("internal error in compare/3").
 
 term__context_init(term__context("", 0)).
+
+:- type var_supply == int.
+:- type var == int.
+
+% create a new supply of variables
+term__init_var_supply(0).
+
+% We number variables using sequential numbers.
+term__create_var(VarSupply0, VarSupply, VarSupply) :-
+		VarSupply is VarSupply0 + 1.
+
+term__var_to_int(Var, Var).
 
 %-----------------------------------------------------------------------------%
 

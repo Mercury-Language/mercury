@@ -12,6 +12,8 @@ include $(MERCURY_DIR)/Mmake.common
 
 MAIN_TARGET=mercury
 
+VPATH=.
+
 #-----------------------------------------------------------------------------#
 
 # Specify which compilers to use to compile the library.

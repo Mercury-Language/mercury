@@ -17,12 +17,12 @@
 
 :- interface.
 
-:- import_module array, bag, bimap, bintree, bintree_set, bool, char.
-:- import_module dir, eqvclass, float, math, getopt, graph, group, int, io.
-:- import_module list, map, multi_map, pqueue, queue, random, relation, require.
-:- import_module set, set_bbbtree, set_ordlist, set_unordlist, stack, std_util.
-:- import_module string, term, term_io, tree234, uniq_array, varset, store.
-:- import_module rbtree, parser, lexer, ops.
+:- import_module array, assoc_list, bag, bimap, bintree, bintree_set, bool.
+:- import_module char, dir, eqvclass, float, math, getopt, graph, group, int.
+:- import_module io, list, map, multi_map, pqueue, queue, random, relation.
+:- import_module require, set, set_bbbtree, set_ordlist, set_unordlist, stack.
+:- import_module std_util, string, term, term_io, tree234, uniq_array, varset.
+:- import_module store, rbtree, parser, lexer, ops.
 
 :- pred library__version(string::out) is det.
 

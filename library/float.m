@@ -17,8 +17,6 @@
 :- module float.
 :- interface.
 
-:- type float.
-
 	% less than
 :- pred <(float, float).
 :- mode <(in, in) is semidet.

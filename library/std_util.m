@@ -321,6 +321,7 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 
 :- pragma(c_code, "
 
+/* The following 6 lines are temporary for bootstrapping */
 Define_extern_entry(mercury____Unify___univ_0_0);
 Define_extern_entry(mercury____Compare___univ_0_0);
 Declare_label(mercury____Compare___univ_0_0_i1);
@@ -328,15 +329,32 @@ Define_extern_entry(mercury____Index___univ_0_0);
 Define_extern_entry(mercury____Type_To_Term___univ_0_0);
 Define_extern_entry(mercury____Term_To_Type___univ_0_0);
 
+Define_extern_entry(mercury____Unify___std_util__univ_0_0);
+Define_extern_entry(mercury____Compare___std_util__univ_0_0);
+Declare_label(mercury____Compare___std_util__univ_0_0_i1);
+Define_extern_entry(mercury____Index___std_util__univ_0_0);
+Define_extern_entry(mercury____Type_To_Term___std_util__univ_0_0);
+Define_extern_entry(mercury____Term_To_Type___std_util__univ_0_0);
+
 BEGIN_MODULE(unify_univ_module)
+	/* The following 6 lines are temporary for bootstrapping */
 	init_entry(mercury____Unify___univ_0_0);
 	init_entry(mercury____Compare___univ_0_0);
 	init_label(mercury____Compare___univ_0_0_i1);
 	init_entry(mercury____Index___univ_0_0);
 	init_entry(mercury____Type_To_Term___univ_0_0);
 	init_entry(mercury____Term_To_Type___univ_0_0);
+
+	init_entry(mercury____Unify___std_util__univ_0_0);
+	init_entry(mercury____Compare___std_util__univ_0_0);
+	init_label(mercury____Compare___std_util__univ_0_0_i1);
+	init_entry(mercury____Index___std_util__univ_0_0);
+	init_entry(mercury____Type_To_Term___std_util__univ_0_0);
+	init_entry(mercury____Term_To_Type___std_util__univ_0_0);
 BEGIN_CODE
+/* The next line is temporary for bootstrapping */
 Define_entry(mercury____Unify___univ_0_0);
+Define_entry(mercury____Unify___std_util__univ_0_0);
 {
 	/*
 	** Unification for univ.
@@ -367,10 +385,12 @@ Define_entry(mercury____Unify___univ_0_0);
 	mercury__unify__x = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
 	mercury__unify__y = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	mercury__unify__typeinfo = typeinfo1;
-	tailcall(ENTRY(mercury__unify_2_0), LABEL(mercury____Unify___univ_0_0));
+	tailcall(ENTRY(mercury__unify_2_0), LABEL(mercury____Unify___std_util__univ_0_0));
 }
 
+/* The following line is temporary for bootstrapping */
 Define_entry(mercury____Compare___univ_0_0);
+Define_entry(mercury____Compare___std_util__univ_0_0);
 {
 	/*
 	** Comparison for univ:
@@ -402,34 +422,42 @@ Define_entry(mercury____Compare___univ_0_0);
 	r3 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	r2 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
 	tailcall(ENTRY(mercury__compare_3_0),
-		LABEL(mercury____Compare___univ_0_0));
+		LABEL(mercury____Compare___std_util__univ_0_0));
 #else
 	r1 = typeinfo1;
 	r4 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	r3 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
 	call(ENTRY(mercury__compare_3_0),
-		LABEL(mercury____Compare___univ_0_0_i1),
-		LABEL(mercury____Compare___univ_0_0));
+		LABEL(mercury____Compare___std_util__univ_0_0_i1),
+		LABEL(mercury____Compare___std_util__univ_0_0));
 #endif
 }
+/* The following line is temporary for bootstrapping */
 Define_label(mercury____Compare___univ_0_0_i1);
+Define_label(mercury____Compare___std_util__univ_0_0_i1);
 #ifdef	COMPACT_ARGS
-	fatal_error(""mercury____Compare___univ_0_0_i1 reached in COMPACT_ARGS mode"");
+	fatal_error(""mercury____Compare___std_util__univ_0_0_i1 reached in COMPACT_ARGS mode"");
 #else
 	/* shuffle the return value into the right register */
 	r1 = r2;
 	proceed();
 #endif
 
+/* The following line is temporary for bootstrapping */
 Define_entry(mercury____Index___univ_0_0);
+Define_entry(mercury____Index___std_util__univ_0_0);
 	r2 = -1;
 	proceed();
 
+/* The following line is temporary for bootstrapping */
 Define_entry(mercury____Term_To_Type___univ_0_0);
+Define_entry(mercury____Term_To_Type___std_util__univ_0_0);
 	/* don't know what to put here. */
 	fatal_error(""cannot convert univ type to term"");
 
+/* The following line is temporary for bootstrapping */
 Define_entry(mercury____Type_To_Term___univ_0_0);
+Define_entry(mercury____Type_To_Term___std_util__univ_0_0);
 	/* don't know what to put here. */
 	fatal_error(""cannot convert type univ to term"");
 

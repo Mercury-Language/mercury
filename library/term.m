@@ -28,11 +28,11 @@
 			;	term__integer(int)
 			;	term__string(string)
 			;	term__float(float).
-*/
 
 :- type var.
 :- type var_supply.
 
+*/
 %-----------------------------------------------------------------------------%
 
 :- pred term__vars(term, list(var)).
@@ -175,6 +175,11 @@
 %		the bindings in Bindings).
 
 %-----------------------------------------------------------------------------%
+/*
+
+These are now in mercury_builtin.m to avoid module qualification
+conflicts with type var.
+
 
 	% To manage a supply of variables, use the following 2 predicates.
 	% (We might want to give these a unique mode later.)
@@ -196,6 +201,7 @@
 %		Convert a variable to an int.
 %		Different variables map to different ints.
 %		Other than that, the mapping is unspecified.
+*/
 	
 %-----------------------------------------------------------------------------%
 
@@ -244,10 +250,11 @@
 :- import_module std_util, require.
 
 %-----------------------------------------------------------------------------%
+/* In mercury_builtin.m 
 
 :- type var_supply	==	int.
 :- type var		==	int.
-
+*/
 %-----------------------------------------------------------------------------%
 
 	% term__vars(Term, Vars) is true if Vars is the list of variables
@@ -545,13 +552,12 @@ term__apply_substitution_to_list([Term0 | Terms0], Substitution,
 	term__apply_substitution_to_list(Terms0, Substitution, Terms).
 
 %-----------------------------------------------------------------------------%
+/* In mercury_builtin.m 
 
 	% create a new supply of variables
 term__init_var_supply(0).
 
-	% We number variables using bit-reversed sequential numbers,
-	% to ensure that our trees remain perfectly balanced.
-	% Hopefully the overhead of bit-reversal isn't too high.
+	% We number variables using sequential numbers,
 
 term__create_var(VarSupply0, VarSupply, VarSupply) :-
 	VarSupply is VarSupply0 + 1.
@@ -562,6 +568,7 @@ term__create_var(VarSupply0, VarSupply, VarSupply) :-
 
 term__var_to_int(Var, Var).
 
+*/
 %-----------------------------------------------------------------------------%
 
 	% substitute a variable name in a term.
