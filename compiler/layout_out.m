@@ -658,7 +658,7 @@ output_layout_exec_trace_decls(ProcLabel, ExecTrace, DeclSet0, DeclSet) -->
 
 output_layout_exec_trace_group(ProcLabel, ExecTrace) -->
 	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcBody,
-		MaybeTableIoDecl, _VarNames, HeadVarNums, MaxVarNum,
+		MaybeTableIoDecl, HeadVarNums, _VarNames, MaxVarNum,
 		MaxRegNum, MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
 		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
 		MaybeDeclDebugSlot) },
