@@ -102,6 +102,11 @@
 	MR_restore_transient_registers();
 }").
 
+num_functors(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("construct__num_functors").
+
 :- pragma foreign_proc("C",
 	get_functor(TypeDesc::in, FunctorNumber::in, FunctorName::out,
 		Arity::out, TypeInfoList::out),
@@ -155,6 +160,11 @@
     SUCCESS_INDICATOR = success;
 }").
 
+get_functor(_, _, _, _, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("construct__get_functor").
+
 get_functor(TypeDesc, I, Functor, Arity, TypeInfoList, ArgNameList) :-
     get_functor_2(TypeDesc, I, Functor, Arity, TypeInfoList, ArgNameList0),
     ArgNameList = map(null_to_no, ArgNameList0).
@@ -179,6 +189,11 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 "
     SUCCESS_INDICATOR = (S == NULL);
 ").
+
+null(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("construct__null").
 
 :- pred get_functor_2(type_desc__type_desc::in, int::in, string::out, int::out,
 	list(type_desc__type_desc)::out, list(string)::out) is semidet.
@@ -238,14 +253,10 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     SUCCESS_INDICATOR = success;
 }").
 
-:- pragma foreign_proc("MC++",
-	get_functor_2(_TypeDesc::in, _FunctorNumber::in, _FunctorName::out,
-		_Arity::out, _TypeInfoList::out, _ArgNameList::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for get_functor_2"");
-	SUCCESS_INDICATOR = MR_FALSE;
-").
+get_functor_2(_, _, _, _, _, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("construct__get_functor_2").
 
 :- pragma foreign_proc("C", 
 	get_functor_ordinal(TypeDesc::in, FunctorNumber::in, Ordinal::out),
@@ -300,6 +311,11 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     }
     SUCCESS_INDICATOR = success;
 }").
+
+get_functor_ordinal(_, _, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("construct__get_functor_ordinal").
 
 :- pragma foreign_proc("C", 
 	construct(TypeDesc::in, FunctorNumber::in, ArgList::in) = (Term::out),
@@ -507,40 +523,10 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     SUCCESS_INDICATOR = success;
 }").
 
-:- pragma foreign_proc("C#",
-	num_functors(_TypeInfo::in) = (Functors::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"{
-	mercury.runtime.Errors.SORRY(""foreign code for num_functors"");
-	// XXX keep the C# compiler quiet
-	Functors = 0;
-}").
-
-:- pragma foreign_proc("MC++",
-	get_functor(_TypeDesc::in, _FunctorNumber::in, _FunctorName::out,
-		_Arity::out, _TypeInfoList::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for get_functor"");
-").
-
-:- pragma foreign_proc("MC++", 
-	get_functor_ordinal(_TypeDesc::in, _FunctorNumber::in, _Ordinal::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for get_functor_ordinal"");
-").
-
-:- pragma foreign_proc("C#", 
-	construct(_TypeDesc::in, _FunctorNumber::in, _ArgList::in)
-		= (_Term::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"{
-	mercury.runtime.Errors.SORRY(""foreign code for construct"");
-	_Term = null;
-	// XXX this is required to keep the C# compiler quiet
-	SUCCESS_INDICATOR = false;
-}").
+construct(_, _, _) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("construct__construct").
 
 construct_tuple(Args) =
 	construct_tuple_2(Args,
@@ -589,10 +575,7 @@ construct_tuple(Args) =
 	MR_new_univ_on_hp(Term, type_info, new_data);
 }").
 
-:- pragma foreign_proc("C#", 
-	construct_tuple_2(_Args::in, _ArgTypes::in, _Arity::in) = (_Term::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"{
-	mercury.runtime.Errors.SORRY(""construct_tuple_2"");
-	_Term = null;
-}").
+construct_tuple_2(_, _, _) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("construct__construct_tuple_2").

@@ -76,30 +76,30 @@ extern void ML_report_full_memory_stats(void);
 "). % end pragma foreign_decl
 
 :- pragma foreign_proc("C", report_stats,
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury],
 "
 	ML_report_stats();
 ").
 
 :- pragma foreign_proc("C", report_full_memory_stats,
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury],
 "
 #ifdef	MR_MPROF_PROFILE_MEMORY
 	ML_report_full_memory_stats();
 #endif
 ").
 
-:- pragma foreign_proc("MC++", report_stats,
-	[will_not_call_mercury, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
+report_stats :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("report_stats").
 
-:- pragma foreign_proc("MC++", report_full_memory_stats,
-	[will_not_call_mercury, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
+report_full_memory_stats :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("report_full_memory_stats").
 
 %-----------------------------------------------------------------------------%
 
@@ -656,18 +656,23 @@ repeat(N) :-
 "
 	Time = MR_get_user_cpu_miliseconds();
 ").
+/* XXX Can't seem to get this to work -- perhaps Diagnostics isn't yet
+ * available in Beta 1 of the .NET framework.
 :- pragma foreign_proc("MC++",
 	get_user_cpu_miliseconds(_Time::out), [will_not_call_mercury],
 "
 	// This won't return the elapsed time since program start,
 	// as it begins timing after the first call.
 	// For computing time differences it should be fine.
-	// Time = (int) (1000 * System::Diagnostics::Counter::GetElapsed());
-	// XXX Can't seem to get this to work -- perhaps Diagnositcs isn't
-	// yet available in Beta 1 of the .NET frameworks.
-
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	Time = (int) (1000 * System::Diagnostics::Counter::GetElapsed());
 ").
+*/
+
+get_user_cpu_miliseconds(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("get_user_cpu_miliseconds").
 
 /*
 ** To prevent the C compiler from optimizing the benchmark code
@@ -691,14 +696,21 @@ repeat(N) :-
 ** away, we assign the benchmark output to a volatile static variable.
 ** XXX at least, we should do this but it doesn't seem to work.
 */
+/*
 :- pragma foreign_proc("MC++", 
 	do_nothing(X::in), [will_not_call_mercury, thread_safe],
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-/*	static volatile MR_Word ML_benchmarking_dummy_word;
+	static volatile MR_Word ML_benchmarking_dummy_word;
 	ML_benchmarking_dummy_word = (MR_Word) X;
-*/
 ").
+*/
+
+do_nothing(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("benchmaring__do_nothing").
 
 %-----------------------------------------------------------------------------%
 
@@ -715,12 +727,11 @@ repeat(N) :-
 	MR_incr_hp(Ref, 1);
 	* (MR_Integer *) Ref = X;
 ").
-:- pragma foreign_proc("MC++",
-	new_int_reference(_X::in, _Ref::out), [will_not_call_mercury], 
-"
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
-
+new_int_reference(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("benchmarking__new_int_reference").
 
 :- impure pred incr_ref(int_reference::in) is det.
 incr_ref(Ref) :-
@@ -729,16 +740,17 @@ incr_ref(Ref) :-
 
 :- semipure pred ref_value(int_reference::in, int::out) is det.
 :- pragma inline(ref_value/2).
+:- pragma promise_semipure(ref_value/2).
 :- pragma foreign_proc("C", ref_value(Ref::in, X::out),
-		[will_not_call_mercury, promise_semipure],
+		[will_not_call_mercury],
 "
 	X = * (MR_Integer *) Ref;
 ").
-:- pragma foreign_proc("MC++", ref_value(_Ref::in, _X::out),
-		[will_not_call_mercury, promise_semipure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
+ref_value(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("benchmarking__ref_value").
 
 :- impure pred update_ref(int_reference::in, T::in) is det.
 :- pragma inline(update_ref/2).
@@ -746,9 +758,10 @@ incr_ref(Ref) :-
 	update_ref(Ref::in, X::in), [will_not_call_mercury], "
 	* (MR_Integer *) Ref = X;
 ").
-:- pragma foreign_proc("MC++",
-	update_ref(_Ref::in, _X::in), [will_not_call_mercury], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
+update_ref(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("benchmarking__update_ref").
 
 %-----------------------------------------------------------------------------%

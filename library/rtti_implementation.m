@@ -140,6 +140,11 @@
 	TypeInfo = TypeInfo_for_T;
 ").
 
+get_type_info(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("get_type_info").
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1088,6 +1093,11 @@ pseudotypeinfo_max_var = 1024.
 		(MR_TypeInfo) TypeInfo);
 ").
 
+get_type_ctor_info(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("get_type_ctor_info").
+
 
 :- pred same_pointer_value(T::in, T::in) is semidet.
 :- pred same_pointer_value_untyped(T::in, U::in) is semidet.
@@ -1106,7 +1116,10 @@ same_pointer_value(X, Y) :- same_pointer_value_untyped(X, Y).
 "
 	SUCCESS_INDICATOR = (T1 == T2);
 ").
-
+same_pointer_value_untyped(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("same_pointer_value_untyped").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1395,6 +1408,10 @@ det_unimplemented(S) :-
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	Arity = tci->MR_type_ctor_arity;
 ").
+type_ctor_arity(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("type_ctor_arity").
 
 :- some [P] func type_ctor_unify_pred(type_ctor_info) = P.
 :- pragma foreign_proc("C#",
@@ -1411,6 +1428,10 @@ det_unimplemented(S) :-
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	UnifyPred = (MR_Integer) tci->MR_type_ctor_unify_pred;
 ").
+type_ctor_unify_pred(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("type_ctor_unify_pred").
 
 :- some [P] func type_ctor_compare_pred(type_ctor_info) = P.
 :- pragma foreign_proc("C#",
@@ -1427,6 +1448,10 @@ det_unimplemented(S) :-
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	UnifyPred = (MR_Integer) tci->MR_type_ctor_compare_pred;
 ").
+type_ctor_compare_pred(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("type_ctor_compare_pred").
 
 
 
@@ -1447,6 +1472,10 @@ det_unimplemented(S) :-
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
 	TypeCtorRep = MR_type_ctor_rep(tci);
 ").
+type_ctor_rep(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("type_ctor_rep").
 
 
 :- func type_ctor_module_name(type_ctor_info) = string.
@@ -1468,7 +1497,10 @@ det_unimplemented(S) :-
 	Name = (MR_String) MR_type_ctor_module_name(tci);
 ").
 
-
+type_ctor_module_name(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("type_ctor_module_name").
 
 :- func type_ctor_name(type_ctor_info) = string.
 
@@ -1487,6 +1519,10 @@ det_unimplemented(S) :-
 	Name = (MR_String) MR_type_ctor_name(tci);
 ").
 
+type_ctor_name(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("type_ctor_name").
 
 :- func type_layout(type_ctor_info) = type_layout.
 
@@ -1505,6 +1541,11 @@ det_unimplemented(S) :-
 	TypeLayout = (MR_Word) &(MR_type_ctor_layout(tci));
 ").
 
+type_layout(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("type_layout").
+
 :- pragma foreign_proc("C",
 	unsafe_cast(VarIn::in) = (VarOut::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
@@ -1517,6 +1558,11 @@ det_unimplemented(S) :-
 "
 	VarOut = VarIn;
 ").
+
+unsafe_cast(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("unsafe_cast").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -284,6 +284,11 @@ get_one_solution(CCPred) = OutVal :-
                         (Y :: out(pred(out) is semidet)),
                 [will_not_call_mercury, thread_safe],
                 "Y = X;").
+cc_cast(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("builtin__cc_cast").
 
 :- pragma promise_pure(promise_only_solution_io/4).
 promise_only_solution_io(Pred, X) -->
@@ -307,6 +312,11 @@ get_one_solution_io(Pred, X) -->
 		(Y :: out(pred(out, di, uo) is det)),
                 [will_not_call_mercury, thread_safe],
                 "Y = X;").
+cc_cast_io(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("builtin__cc_cast_io").
 
 %-----------------------------------------------------------------------------%
 

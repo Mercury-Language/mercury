@@ -76,5 +76,10 @@
 	Version = MR_VERSION "", configured for "" MR_FULLARCH;
 ").
 
+library__version(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("library__version").
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -409,10 +409,14 @@ limited_deconstruct(Term, NonCanon, MaxArity, Functor, Arity, Arguments) :-
 }").
 
 functor_dna(_Term::in, _Functor::out, _Arity::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstruct__functor_dna/3").
 functor_can(Term::in, Functor::out, Arity::out) :-
 	rtti_implementation__deconstruct(Term, Functor, Arity, _Arguments).
 functor_idcc(_Term::in, _Functor::out, _Arity::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstruct__functor_idcc/3").
 
 %-----------------------------------------------------------------------------%
@@ -550,18 +554,28 @@ functor_idcc(_Term::in, _Functor::out, _Arity::out) :-
 }").
 
 univ_arg_dna(_Term::in, _Index::in, _Arg::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstruct__univ_arg_dna/3").
 univ_arg_can(Term::in, Index::in, Arg::out) :-
 	rtti_implementation__deconstruct(Term, _Functor, _Arity, Arguments),
 	list__index0(Arguments, Index, Arg).
 univ_arg_idcc(_Term::in, _Index::in, _Arg::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstruct__univ_arg_idcc/3").
 
 univ_named_arg_dna(_Term::in, _Name::in, _Arg::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstruct__univ_named_arg_dna/3").
 univ_named_arg_can(_Term::in, _Name::in, _Arg::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstruct__univ_named_arg_can/3").
 univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstruct__univ_named_arg_idcc/3").
 
 %-----------------------------------------------------------------------------%
@@ -726,14 +740,20 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 }").
 
 deconstruct_dna(_Term::in, _Functor::out, _Arity::out, _Arguments::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstuct__deconstruct_dna/4").
 deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term, Functor, Arity, Arguments).
 deconstruct_idcc(_Term::in, _Functor::out, _Arity::out, _Arguments::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstuct__deconstruct_idcc/4").
 
 limited_deconstruct_dna(_Term::in, _MaxArity::in,
 		_Functor::out, _Arity::out, _Arguments::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstuct__limited_deconstruct_dna/5").
 limited_deconstruct_can(Term::in, MaxArity::in,
 		Functor::out, Arity::out, Arguments::out) :-
@@ -741,6 +761,8 @@ limited_deconstruct_can(Term::in, MaxArity::in,
 	Arity =< MaxArity.
 limited_deconstruct_idcc(_Term::in, _MaxArity::in,
 		_Functor::out, _Arity::out, _Arguments::out) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
 	private_builtin__sorry("deconstuct__limited_deconstruct_idcc/5").
 
 %-----------------------------------------------------------------------------%
@@ -816,12 +838,10 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_proc("MC++", 
-	get_notag_functor_info(_Univ::in, _ExpUniv::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for get_notag_functor_info"");
-").
+get_notag_functor_info(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("deconstruct__get_notag_functor_info").
 
     % Given a value of an arbitrary type, succeed if its type is defined
     % as an equivalence type, and return a univ which bundles up the value
@@ -862,12 +882,10 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_proc("MC++",
-	get_equiv_functor_info(_Univ::in, _ExpUniv::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for get_equiv_functor_info"");
-").
+get_equiv_functor_info(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("get_equiv_functor_info").
 
     % Given a value of an arbitrary type, succeed if it is an enum type,
     % and return the integer value corresponding to the value.
@@ -896,12 +914,10 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_proc("MC++",
-	get_enum_functor_info(_Univ::in, _Enum::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for get_enum_functor_info"");
-}").
+get_enum_functor_info(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("deconstruct__get_enum_functor_info").
 
     % Given a value of an arbitrary type, succeed if it is a general du type
     % (i.e. non-enum, non-notag du type), and return the top function symbol's
@@ -1001,10 +1017,7 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_proc("MC++",
-	get_du_functor_info(_Univ::in, _Where::out, _Ptag::out, _Sectag::out,
-		_Args::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for get_du_functor_info"");
-").
+get_du_functor_info(_, _, _, _, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("get_du_functor_info").

@@ -264,6 +264,12 @@
 #endif
 ").
 
+domain_checks :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	semidet_succeed,
+	private_builtin__sorry("domain_checks").
+
 %
 % Mathematical constants from math.m
 %
@@ -277,6 +283,10 @@
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Pi = System.Math.PI;
 ").
+math__pi = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__pi").
 
 	% Base of natural logarithms
 :- pragma foreign_proc("C", math__e = (E::out),
@@ -287,6 +297,10 @@
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	E = System.Math.E;
 ").
+math__e = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__e").
 
 %
 % math__ceiling(X) = Ceil is true if Ceil is the smallest integer
@@ -302,6 +316,10 @@
 "
 	Ceil = System.Math.Ceiling(Num);
 ").
+math__ceiling(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__ceiling").
 
 %
 % math__floor(X) = Floor is true if Floor is the largest integer
@@ -317,6 +335,10 @@
 "
 	Floor = System.Math.Floor(Num);
 ").
+math__floor(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__floor").
 
 %
 % math__round(X) = Round is true if Round is the integer
@@ -335,6 +357,10 @@
 	// Unfortunately they are better (round to nearest even number).
 	Rounded = System.Math.Floor(Num+0.5);
 ").
+math__round(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__round").
 
 %
 % math__truncate(X) = Trunc is true if Trunc is the integer
@@ -366,7 +392,10 @@ math__sqrt(X) = SquareRoot :-
 		[thread_safe, promise_pure], "
 	SquareRoot = System.Math.Sqrt(X);
 ").
-
+math__sqrt_2(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__sqrt_2").
 
 %
 % math__solve_quadratic(A, B, C) = Roots is true if Roots are
@@ -443,6 +472,10 @@ math__pow(X, Y) = Res :-
 		[thread_safe, promise_pure], "
 	Res = System.Math.Pow(X, Y);
 ").
+math__pow_2(_, _) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__pow_2").
 
 
 %
@@ -457,6 +490,10 @@ math__pow(X, Y) = Res :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Exp = System.Math.Exp(X);
 ").
+math__exp(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__exp").
 
 %
 % math__ln(X) = Log is true if Log is the natural logarithm
@@ -482,6 +519,10 @@ math__ln(X) = Log :-
 		[thread_safe, promise_pure], "
 	Log = System.Math.Log(X);
 ").
+math__ln_2(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__ln_2").
 
 %
 % math__log10(X) = Log is true if Log is the logarithm to
@@ -507,6 +548,10 @@ math__log10(X) = Log :-
 		[thread_safe, promise_pure], "
 	Log10 = System.Math.Log10(X);
 ").
+math__log10_2(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__log10_2").
 
 %
 % math__log2(X) = Log is true if Log is the logarithm to
@@ -532,6 +577,10 @@ math__log2(X) = Log :-
 		[thread_safe, promise_pure], "
 	Log2 = System.Math.Log(X) / ML_FLOAT_LN2;
 ").
+math__log2_2(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__log2_2").
 
 %
 % math__log(B, X) = Log is true if Log is the logarithm to
@@ -565,6 +614,10 @@ math__log(B, X) = Log :-
 		[thread_safe, promise_pure], "
 	Log = System.Math.Log(X,B);
 ").
+math__log_2(_, _) = _ -
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__log_2").
 
 
 %
@@ -578,6 +631,10 @@ math__log(B, X) = Log :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Sin = System.Math.Sin(X);
 ").
+math__sin(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__sin").
 
 
 %
@@ -591,6 +648,10 @@ math__log(B, X) = Log :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Cos = System.Math.Cos(X);
 ").
+math__cos(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__cos").
 
 %
 % math__tan(X) = Tan is true if Tan is the tangent of X.
@@ -603,6 +664,10 @@ math__log(B, X) = Log :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Tan = System.Math.Tan(X);
 ").
+math__tan(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__tan").
 
 %
 % math__asin(X) = ASin is true if ASin is the inverse
@@ -633,6 +698,10 @@ math__asin(X) = ASin :-
 		[thread_safe, promise_pure], "
 	ASin = System.Math.Asin(X);
 ").
+math__asin_2(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__asin_2").
 
 %
 % math__acos(X) = ACos is true if ACos is the inverse
@@ -663,6 +732,10 @@ math__acos(X) = ACos :-
 		[thread_safe, promise_pure], "
 	ACos = System.Math.Acos(X);
 ").
+math__acos_2(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__acos_2").
 
 
 %
@@ -677,6 +750,10 @@ math__acos(X) = ACos :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	ATan = System.Math.Atan(X);
 ").
+math__atan(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__atan").
 
 %
 % math__atan2(Y, X) = ATan is true if ATan is the inverse
@@ -690,6 +767,10 @@ math__acos(X) = ACos :-
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	ATan2 = System.Math.Atan2(Y, X);
 ").
+math__atan2(_, _) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__atan2").
 
 %
 % math__sinh(X) = Sinh is true if Sinh is the hyperbolic
@@ -703,6 +784,10 @@ math__acos(X) = ACos :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Sinh = System.Math.Sinh(X);
 ").
+math__sinh(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__sinh").
 
 %
 % math__cosh(X) = Cosh is true if Cosh is the hyperbolic
@@ -716,6 +801,10 @@ math__acos(X) = ACos :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Cosh = System.Math.Cosh(X);
 ").
+math__cosh(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__cosh").
 
 %
 % math__tanh(X) = Tanh is true if Tanh is the hyperbolic
@@ -729,6 +818,10 @@ math__acos(X) = ACos :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Tanh = System.Math.Tanh(X);
 ").
+math__tanh(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("math__tanh").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -194,12 +194,10 @@ time__clock(Result, IO0, IO) :-
 	Ret = (MR_Integer) clock();
 	update_io(IO0, IO);
 }").
-:- pragma foreign_proc("MC++", time__c_clock(_Ret::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
-
+time__c_clock(_) -->
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	{ private_builtin__sorry("time__c_clock") }.
 
 %-----------------------------------------------------------------------------%
 
@@ -216,11 +214,10 @@ time__clocks_per_sec = Val :-
 "{
 	Ret = (MR_Integer) CLOCKS_PER_SEC;
 }").
-:- pragma foreign_proc("MC++", time__c_clocks_per_sec(_Ret::out),
-	[will_not_call_mercury, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
+time__c_clocks_per_sec(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("time__c_clocks_per_sec").
 
 %-----------------------------------------------------------------------------%
 
@@ -258,13 +255,10 @@ time__times(Tms, Result, IO0, IO) :-
 #endif
 	update_io(IO0, IO);
 }").
-:- pragma foreign_proc("MC++",
-	time__c_times(_Ret::out, _Ut::out, _St::out, _CUt::out,
-                               _CSt::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
+time__c_times(_, _, _, _, _) -->
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	{ private_builtin__sorry("time__c_times") }.
 
 
 %-----------------------------------------------------------------------------%
@@ -290,12 +284,10 @@ time__time(Result, IO0, IO) :-
 	Ret = (MR_Integer) time(NULL);
 	update_io(IO0, IO);
 }").
-:- pragma foreign_proc("MC++",
-	time__c_time(_Ret::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
+time__c_time(_) -->
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	{ private_builtin__sorry("time__c_time") }.
 
 %-----------------------------------------------------------------------------%
 
@@ -313,12 +305,10 @@ time__difftime(T1, T0) = Diff :-
 "{
 	Diff = (MR_Float) difftime((time_t) T1, (time_t) T0);
 }").
-:- pragma foreign_proc("MC++",
-	time__c_difftime(_T1::in, _T0::in, _Diff::out),
-	[will_not_call_mercury, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
+time__c_difftime(_, _, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("time__c_difftime").
 
 %-----------------------------------------------------------------------------%
 
@@ -356,14 +346,10 @@ time__localtime(Time) = TM :-
 	YD = (MR_Integer) p->tm_yday;
 	N = (MR_Integer) p->tm_isdst;
 }").
-
-:- pragma foreign_proc("MC++",
-	time__c_localtime(_Time::in, _Yr::out, _Mnt::out, _MD::out, _Hrs::out,
-		_Min::out, _Sec::out, _YD::out, _WD::out, _N::out),
-	[will_not_call_mercury, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
+time__c_localtime(_, _, _, _, _, _, _, _, _, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("time__c_localtime").
 
 
 %:- func time__gmtime(time_t) = tm.
@@ -400,14 +386,10 @@ time__gmtime(Time) = TM :-
 	YD = (MR_Integer) p->tm_yday;
 	N = (MR_Integer) p->tm_isdst;
 }").
-
-:- pragma foreign_proc("MC++",
-	time__c_gmtime(_Time::in, _Yr::out, _Mnt::out, _MD::out, _Hrs::out,
-		_Min::out, _Sec::out, _YD::out, _WD::out, _N::out),
-	[will_not_call_mercury, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
+time__c_gmtime(_, _, _, _, _, _, _, _, _, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("time__c_gmtime").
 
 :- func int_to_maybe_dst(int) = maybe(dst).
 
@@ -451,14 +433,10 @@ time__mktime(TM) = Time :-
 
 	Time = (MR_Integer) mktime(&t);
 }").
-
-:- pragma foreign_proc("MC++",
-	time__c_mktime(_Yr::in, _Mnt::in, _MD::in, _Hrs::in,
-		_Min::in, _Sec::in, _YD::in, _WD::in, _N::in, _Time::out),
-	[will_not_call_mercury, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
+time__c_mktime(_, _, _, _, _, _, _, _, _, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("time__c_mktime").
 
 :- func maybe_dst_to_int(maybe(dst)) = int.
 
@@ -505,14 +483,10 @@ time__asctime(TM) = Str :-
 
 	MR_make_aligned_string_copy(Str, s);
 }").
-
-:- pragma foreign_proc("MC++",
-	time__c_asctime(_Yr::in, _Mnt::in, _MD::in, _Hrs::in,
-		_Min::in, _Sec::in, _YD::in, _WD::in, _N::in, _Str::out),
-	[will_not_call_mercury, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
+time__c_asctime(_, _, _, _, _, _, _, _, _, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("time__c_asctime").
 
 %-----------------------------------------------------------------------------%
 
@@ -537,13 +511,10 @@ time__ctime(Time) = Str :-
 
 	MR_make_aligned_string_copy(Str, s);
 }").
-
-:- pragma foreign_proc("MC++",
-	time__c_ctime(_Time::in, _Str::out),
-	[will_not_call_mercury, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
+time__c_ctime(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("time__c_ctime").
 
 %-----------------------------------------------------------------------------%
 :- end_module time.

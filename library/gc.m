@@ -53,9 +53,8 @@ garbage_collect -->
 	MR_garbage_collect();
 #endif
 ").
-:- pragma foreign_proc("MC++", garbage_collect, [will_not_call_mercury], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
+garbage_collect :-
+	true.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

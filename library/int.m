@@ -343,6 +343,11 @@ X rem Y = Rem :-
 #endif
 ").
 
+domain_checks :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("domain_checks").
+
 :- pragma inline(floor_to_multiple_of_bits_per_int/1).
 floor_to_multiple_of_bits_per_int(X) = Floor :-
 	Trunc = quot_bits_per_int(X),
@@ -504,6 +509,10 @@ is(X, X).
 "
 	FloatVal = (MR_Float) IntVal;
 ").
+int__to_float(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("int__to_float").
 
 %-----------------------------------------------------------------------------%
 
@@ -578,6 +587,21 @@ is(X, X).
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	Bits = ML_BITS_PER_INT;
 ").
+
+int__max_int(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("int__max_int").
+
+int__min_int(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("int__min_int").
+
+int__bits_per_int(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("int__bits_per_int").
 
 int__quot_bits_per_int(Int::in) = (Result::out) :-
 	Result = Int // int__bits_per_int.
