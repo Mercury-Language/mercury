@@ -167,8 +167,8 @@ store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, Follow, _ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_conj(list(hlds__goal), liveness_info, follow_vars, module_info,
-				list(hlds__goal), liveness_info, follow_vars).
+:- pred store_alloc_in_conj(list(hlds__goal), liveness_info, follow_vars,
+		module_info, list(hlds__goal), liveness_info, follow_vars).
 :- mode store_alloc_in_conj(in, in, in, in, out, out, out) is det.
 
 store_alloc_in_conj([], Liveness, Follow, _M, [], Liveness, Follow).
@@ -206,8 +206,7 @@ store_alloc_in_disj([Goal0|Goals0], Liveness0, Follow0, ModuleInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred store_alloc_in_cases(list(case), liveness_info, follow_vars,
-					module_info, list(case),
-						liveness_info, follow_vars).
+			module_info, list(case), liveness_info, follow_vars).
 :- mode store_alloc_in_cases(in, in, in, in, out, out, out) is det.
 
 store_alloc_in_cases([], Liveness, Follow, _ModuleInfo, [], Liveness, Follow).

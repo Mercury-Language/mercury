@@ -8,17 +8,27 @@
 :- pred report_stats.
 
 report_stats :-
-	statistics(L),
-	list__member(global=[Heap,_], L),
-	list__member(local=[Stack,_], L),
-	list__member(trail=[Trail,_], L),
-	list__member(program=[Prog,_], L),
-	list__member(memory=[Total,_], L),
-	list__member(time=[Time,_], L),
-	StackPlusTrail is Stack + Trail,
-	format(user_error,
-		"[Heap ~3dk, Stack+Trail ~3dk, Prog ~3dk, Tot ~3dk, Time ~3d]\n",
-		[Heap, StackPlusTrail, Prog, Total, Time]),
+	( nuprolog ->
+		statistics(L),
+		list__member(global=[Heap,_], L),
+		list__member(local=[Stack,_], L),
+		list__member(trail=[Trail,_], L),
+		list__member(program=[Prog,_], L),
+		list__member(memory=[Total,_], L),
+		list__member(time=[Time,_], L),
+		StackPlusTrail is Stack + Trail,
+		format(user_error,
+			"[Heap ~3dk, Stack+Trail ~3dk, Prog ~3dk, Tot ~3dk, Time ~3d]\n",
+			[Heap, StackPlusTrail, Prog, Total, Time])
+	;
+		statistics(globalused, Heap),
+		statistics(localused, Stack),
+		statistics(trailused, Trail),
+		statistics(cputime, Time),
+		format(user_error,
+			"[Heap ~3dk, Stack ~3dk, Trail ~3dk, Time ~3f]\n",
+			[Heap, Stack, Trail, Time])
+	),
 	fail ; true.
 
 %-----------------------------------------------------------------------------%

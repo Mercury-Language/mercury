@@ -146,7 +146,7 @@ io__set_input_stream(NewStream, OldStream) -->
 
 io__set_output_stream(NewStream, OldStream) -->
 	{ currentOutput(OldStream) },
-	{ tell(NewStream) },
+	{ setOutput(NewStream) },
 	io__update_state.
 
 %-----------------------------------------------------------------------------%

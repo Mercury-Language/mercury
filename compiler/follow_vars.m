@@ -4,6 +4,20 @@
 :- module follow_vars.
 % Main author: conway.
 
+% This module traverses the goal for every procedure, filling in the
+% follow_vars field for call(...) goals, and filling in the initial
+% follow_vars in the proc_info.  These follow_vars fields are
+% a map(var, lval) which constitute an advisory indication to the code
+% generator as to which register each variable should be placed in.
+%
+% They are computed by traversing the goal BACKWARDS.
+% At the end of the goal, we want the output variables to go into their
+% corresponding registers, so we initialize the follow_vars accordingly.
+% As we traverse throught the goal, at each call(...) we attach the 
+% follow_vars map we have computed, and start computing a new one to
+% be attatch to the preceding call.  When we finish traversing the goal,
+% we attatch the last computed follow_vars to the proc_info.
+
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -124,31 +138,39 @@ find_follow_vars_in_goal(Goal0 - GoalInfo, ModuleInfo, FollowVars0,
 
 find_follow_vars_in_goal_2(conj(Goals0), ModuleInfo, FollowVars0,
 						conj(Goals), FollowVars) :-
-	find_follow_vars_in_conj(Goals0, ModuleInfo, FollowVars0, Goals, FollowVars).
+	find_follow_vars_in_conj(Goals0, ModuleInfo, FollowVars0, Goals,
+			FollowVars).
 
 find_follow_vars_in_goal_2(disj(Goals0), ModuleInfo, FollowVars0,
 						disj(Goals), FollowVars) :-
-	find_follow_vars_in_disj(Goals0, ModuleInfo, FollowVars0, Goals, FollowVars).
+	find_follow_vars_in_disj(Goals0, ModuleInfo, FollowVars0, Goals,
+			FollowVars).
 
 find_follow_vars_in_goal_2(not(Vars, Goal0), ModuleInfo, FollowVars0,
 						not(Vars, Goal), FollowVars) :-
-	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal, FollowVars).
+	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal,
+			FollowVars).
 
 find_follow_vars_in_goal_2(switch(Var, Cases0), 
-				ModuleInfo, FollowVars0, switch(Var, Cases), FollowVars) :-
-	find_follow_vars_in_cases(Cases0, ModuleInfo, FollowVars0, Cases, FollowVars).
+		ModuleInfo, FollowVars0, switch(Var, Cases), FollowVars) :-
+	find_follow_vars_in_cases(Cases0, ModuleInfo, FollowVars0,
+			Cases, FollowVars).
 
-find_follow_vars_in_goal_2(
-		if_then_else(Vars, Cond0, Then0, Else0), ModuleInfo, FollowVars0,
+find_follow_vars_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
+			ModuleInfo, FollowVars0,
 			if_then_else(Vars, Cond, Then, Else), FollowVars) :-
-	find_follow_vars_in_goal(Then0, ModuleInfo, FollowVars0, Then, FollowVars1),
-	find_follow_vars_in_goal(Cond0, ModuleInfo, FollowVars1, Cond, FollowVars),
+	find_follow_vars_in_goal(Then0, ModuleInfo, FollowVars0, Then,
+			FollowVars1),
+	find_follow_vars_in_goal(Cond0, ModuleInfo, FollowVars1, Cond,
+			FollowVars),
 		% To a first approximation, ignore the else branch.
-	find_follow_vars_in_goal(Else0, ModuleInfo, FollowVars0, Else, _FollowVars1A).
+	find_follow_vars_in_goal(Else0, ModuleInfo, FollowVars0, Else,
+		_FollowVars1A).
 
 find_follow_vars_in_goal_2(some(Vars, Goal0), ModuleInfo, FollowVars0,
 						some(Vars, Goal), FollowVars) :-
-	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal, FollowVars).
+	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal,
+		FollowVars).
 
 find_follow_vars_in_goal_2(call(A,B,C,D,E,_F), ModuleInfo, FollowVars0,
 				call(A,B,C,D,E, FollowVars0), FollowVars) :-
@@ -211,8 +233,10 @@ find_follow_vars_in_call_2([arg_info(Loc, Mode)|Args], [Var|Vars],
 find_follow_vars_in_disj([], _ModuleInfo, FollowVars, [], FollowVars).
 find_follow_vars_in_disj([Goal0|Goals0], ModuleInfo, FollowVars0,
 						[Goal|Goals], FollowVars) :-
-	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal, FollowVars),
-	find_follow_vars_in_disj(Goals0, ModuleInfo, FollowVars0, Goals, _FollowVars1).
+	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal,
+		FollowVars),
+	find_follow_vars_in_disj(Goals0, ModuleInfo, FollowVars0,
+		Goals, _FollowVars1).
 
 %-----------------------------------------------------------------------------%
 
@@ -223,8 +247,10 @@ find_follow_vars_in_disj([Goal0|Goals0], ModuleInfo, FollowVars0,
 find_follow_vars_in_cases([], _ModuleInfo, FollowVars, [], FollowVars).
 find_follow_vars_in_cases([case(Cons, Goal0)|Goals0], ModuleInfo, FollowVars0,
 					[case(Cons, Goal)|Goals], FollowVars) :-
-	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal, FollowVars),
-	find_follow_vars_in_cases(Goals0, ModuleInfo, FollowVars0, Goals, _FollowVars1).
+	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal,
+		FollowVars),
+	find_follow_vars_in_cases(Goals0, ModuleInfo, FollowVars0, Goals,
+		_FollowVars1).
 
 %-----------------------------------------------------------------------------%
 
@@ -232,14 +258,13 @@ find_follow_vars_in_cases([case(Cons, Goal0)|Goals0], ModuleInfo, FollowVars0,
 						list(hlds__goal), follow_vars).
 :- mode find_follow_vars_in_conj(in, in, in, out, out) is det.
 
-	% find the first branched structure, and split the
-	% conj into those goals before and after it.
-
 find_follow_vars_in_conj([], _ModuleInfo, FollowVars, [], FollowVars).
 find_follow_vars_in_conj([Goal0 | Goals0], ModuleInfo, FollowVars0,
 						[Goal | Goals], FollowVars) :-
-	find_follow_vars_in_conj(Goals0, ModuleInfo, FollowVars0, Goals, FollowVars1),
-	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars1, Goal, FollowVars).
+	find_follow_vars_in_conj(Goals0, ModuleInfo, FollowVars0, Goals,
+		FollowVars1),
+	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars1, Goal,
+		FollowVars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -117,6 +117,9 @@ currentOutput(X) :-
 flushOutput(X) :-
 	flush_output(X).
 
+setOutput(X) :-
+	set_output(X).
+
 lineCount(X,Y) :-
 	line_count(X,Y).
 

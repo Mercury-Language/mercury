@@ -264,10 +264,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% Initially only the sym_name and arguments
 				% are filled in.  Type analysis fills in the
 				% pred_id.  Mode analysis fills in the
-				% proc_id.  Just before code generation,
-				% we do a pass over the hlds which recognizes
-				% the builtins and fills in the is_builtin
-				% field.
+				% proc_id.  `builtins.nl' fills in the
+				% is_builtin field.  `follow_vars.nl' fills in
+				% the follow_vars field.
 			;	call(pred_id, proc_id, list(term), is_builtin,
 					sym_name, follow_vars)
 
