@@ -225,6 +225,8 @@ unsigned char flags;  /* IGNORE_OFF_PAGE or 0 */
 	              struct hblk * limit = hbp + (hhdr->hb_sz/HBLKSIZE);
 	              struct hblk * h;
 	              
+		      GC_words_wasted += hhdr->hb_sz;
+	              
 	              phdr -> hb_next = hhdr -> hb_next;
 	              for (h = hbp; h < limit; h++) {
 	                if (h == hbp || GC_install_header(h)) {

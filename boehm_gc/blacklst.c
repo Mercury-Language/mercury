@@ -108,7 +108,7 @@ void GC_promote_black_lists()
     GC_incomplete_stack_bl = very_old_stack_bl;
     GC_total_black_listed = total_black_listed();
 #   ifdef PRINTSTATS
-  	GC_printf1("%ld blacklisted bytes in heap\n",
+  	GC_printf1("%ld stack-blacklisted bytes in heap\n",
   		   (unsigned long)GC_total_black_listed);
 #   endif
     if (GC_total_black_listed != 0) {

@@ -798,8 +798,9 @@ struct _GC_arrays {
   word _words_allocd;
   	/* Number of words allocated during this collection cycle */
   word _words_wasted;
-  	/* Number of words wasted due to internal fragmentation	 */
-  	/* in large objects allocated since last gc. Approximate.*/
+  	/* Number of words wasted due to internal fragmentation	*/
+  	/* in large objects, or due to dropping blacklisted     */
+	/* blocks, since last gc.  Approximate.                 */
   word _words_finalized;
   	/* Approximate number of words in objects (and headers)	*/
   	/* That became ready for finalization in the last 	*/
