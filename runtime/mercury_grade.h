@@ -61,25 +61,43 @@
 
 #define MR_GRADE_PART_0		v2_
 
-#ifdef USE_ASM_LABELS
-  #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, asm_)
-#else
-  #define MR_GRADE_PART_1	MR_GRADE_PART_0
-#endif
+#ifdef MR_HIGHLEVEL_CODE
 
-#ifdef USE_GCC_NONLOCAL_GOTOS
-  #ifdef USE_GCC_GLOBAL_REGISTERS
-    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, fast)
+  #ifdef MR_HIGHLEVEL_DATA
+    #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, hl)
   #else
-    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, jump)
+    #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, hlc)
   #endif
-#else
-  #ifdef USE_GCC_GLOBAL_REGISTERS
-    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, reg)
+
+  #ifdef MR_USE_GCC_NESTED_FUNCTIONS
+    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, _nest)
   #else
-    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, none)
+    #define MR_GRADE_PART_2	MR_GRADE_PART_1
   #endif
-#endif
+
+#else /* ! MR_HIGHLEVEL_CODE */
+
+  #ifdef USE_ASM_LABELS
+    #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, asm_)
+  #else
+    #define MR_GRADE_PART_1	MR_GRADE_PART_0
+  #endif
+
+  #ifdef USE_GCC_NONLOCAL_GOTOS
+    #ifdef USE_GCC_GLOBAL_REGISTERS
+      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, fast)
+    #else
+      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, jump)
+    #endif
+  #else
+    #ifdef USE_GCC_GLOBAL_REGISTERS
+      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, reg)
+    #else
+      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, none)
+    #endif
+  #endif
+
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 #ifdef MR_THREAD_SAFE
   #define MR_GRADE_PART_3	MR_PASTE2(MR_GRADE_PART_2, _par)

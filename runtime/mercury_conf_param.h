@@ -39,6 +39,9 @@
 /*
 ** Code generation options:
 **
+** MR_HIGHLEVEL_CODE
+** MR_HIGHLEVEL_DATA
+** MR_GCC_NESTED_FUNCTIONS
 ** USE_GCC_GLOBAL_REGISTERS
 ** USE_GCC_NONLOCAL_GOTOS
 ** USE_ASM_LABELS
@@ -49,6 +52,9 @@
 ** MR_USE_TRAIL
 ** MR_USE_MINIMAL_MODEL
 **	See the documentation for
+**		--high-level-code
+**		--high-level-data
+**		--gcc-nested-functions
 **		--gcc-global-registers
 **		--gcc-non-local-gotos
 **		--gcc-asm-labels
