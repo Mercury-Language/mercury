@@ -198,6 +198,7 @@ if test "$ac_cv_func_sigaction" = yes; then
 	AC_CACHE_VAL(mercury_cv_sigaction_field,
 	AC_TRY_RUN([
 	#include <signal.h>
+	#include <stdlib.h>
 	extern void handler(int signum, siginfo_t *info, void *context);
 	main() {
 		struct sigaction act;
