@@ -7,6 +7,9 @@
 % The job of this module is to delete dead procedures and base_gen_info
 % structures from the HLDS.
 %
+% It also computes the usage counts that inlining.m uses for the
+% `--inline-single-use' option.
+%
 % Main author: zs.
 %
 %-----------------------------------------------------------------------------%
@@ -350,6 +353,8 @@ dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 		CurrProc, Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, proc(PredId, ProcId), Queue),
 	( proc(PredId, ProcId) = CurrProc ->
+		% if it's reachable and recursive, then we can't
+		% eliminate or inline it
 		NewNotation = no
 	; map__search(Needed0, proc(PredId, ProcId), OldNotation) ->
 		(
