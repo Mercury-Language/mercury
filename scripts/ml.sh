@@ -8,12 +8,9 @@
 # Options:
 # 	-v, --verbose
 #		Echo gcc command line before executing it
-#	--shared
-#		Link with the shared version of the Mercury library
-#	--static (the default)
-#		Link with the static version of the Mercury library
 #	-s <grade>
-#		Specify which grade of the Mercury library to link with
+#		Specify which grade of the Mercury library to link with.
+#		Defaults to `asm_fast.gc'.
 #
 # Environment variables: MERCURY_C_LIB_DIR
 
@@ -48,33 +45,28 @@ done
 
 case "$GRADE" in
 	*.gc)
-		LIBGC=$LIBDIR/gc.a
+		LIBGC="-lgc"
 		;;
 	*)
 		LIBGC=
 		;;
 esac
 
-if $shared; then
-	LIBMER="libmer*.so"
-else
-	LIBMER="libmer*.a"
-fi
-
-LIBDIR_OPTS="$LIBDIR/$GRADE/@FULLARCH@/$LIBMER"
+LIBDIR_OPTS="
+-R @LIBDIR@/lib/@FULLARCH@ -L $LIBDIR/@FULLARCH@
+-R @LIBDIR@/lib/$GRADE/@FULLARCH@ -L $LIBDIR/$GRADE/@FULLARCH@
+"
 
 case "`hostname`" in
 	cadillac.dd.citri.edu.au)
 		GCC=/usr/local/bin/gcc ;;
 	kryten.cs.mu.OZ.AU)
 		GCC=/usr/local/bin/gcc ;;
-	kryten.cs.mu.OZ.AU)
-		GCC=/usr/local/gcc/bin/gcc ;;
 	*)
 		GCC=${GCC:-gcc}
 esac
 
 if $verbose; then
-	echo $GCC "$@" $LIBDIR_OPTS $LIBGC
+	exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury $LIBGC
 fi
-exec $GCC "$@" $LIBDIR_OPTS $LIBGC
+exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury $LIBGC
