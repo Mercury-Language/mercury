@@ -3228,7 +3228,8 @@ and prints the question @samp{Expected?} for the user to answer.
 @subsection Commands
 
 At the above mentioned prompts, the following commands may be given.
-Each command can also be abbreviated to just its first letter.
+Each command (with the exception of @samp{pd})
+can also be abbreviated to just its first letter.
 @sp 1
 @table @code
 @item yes
@@ -3246,6 +3247,10 @@ Ask the skipped questions again.
 @item browse @var{n}
 Browse the @var{n}th argument before answering.
 @sp 1
+@item pd
+Commence procedural debugging from the current point.
+This command is notionally the inverse of the @samp{dd} command
+in the procedural debugger.
 @item abort
 End the declarative debugging session and return to
 the event at which the @samp{dd} command was given.

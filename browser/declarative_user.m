@@ -20,6 +20,7 @@
 :- type user_response(T)
 	--->	user_answer(decl_question(T), decl_answer(T))
 	;	no_user_answer
+	;	exit_diagnosis(T)
 	;	abort_diagnosis.
 
 :- type user_state.
@@ -129,6 +130,10 @@ query_user_2([Question | Questions], Skipped, Response, User0, User) -->
 			User1, User2),
 		query_user_2([Question | Questions], Skipped, Response,
 			User2, User)
+	;
+		{ Command = pd },
+		{ Response = exit_diagnosis(Node) },
+		{ User = User1 }
 	;
 		{ Command = abort },
 		{ Response = abort_diagnosis },
@@ -269,6 +274,8 @@ reverse_and_append([A | As], Bs, Cs) :-
 					% answering.
 	;	browse_io(int)		% Browse the nth IO action before
 					% answering.
+	;	pd			% Commence procedural debugging from
+					% this point.
 	;	abort			% Abort this diagnosis session.
 	;	help			% Request help before answering.
 	;	illegal_command.	% None of the above.
@@ -286,6 +293,7 @@ user_help_message(User) -->
 		"\ts\tskip\t\tskip this question\n",
 		"\tr\trestart\t\task the skipped questions again\n",
 		"\tb <n>\tbrowse <n>\tbrowse the nth argument of the atom\n",
+		"\t\tpd\t\tcommence procedural debugging from this point\n",
 		"\ta\tabort\t\t",
 			"abort this diagnosis session and return to mdb\n",
 		"\th, ?\thelp\t\tthis help message\n"
@@ -348,6 +356,7 @@ cmd_handler("s",	one_word_cmd(skip)).
 cmd_handler("skip",	one_word_cmd(skip)).
 cmd_handler("r",	one_word_cmd(restart)).
 cmd_handler("restart",	one_word_cmd(restart)).
+cmd_handler("pd",	one_word_cmd(pd)).
 cmd_handler("a",	one_word_cmd(abort)).
 cmd_handler("abort",	one_word_cmd(abort)).
 cmd_handler("?",	one_word_cmd(help)).

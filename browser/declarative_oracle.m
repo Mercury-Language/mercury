@@ -33,6 +33,7 @@
 :- type oracle_response(T)
 	--->	oracle_answers(list(decl_answer(T)))
 	;	no_oracle_answers
+	;	exit_diagnosis(T)
 	;	abort_diagnosis.
 
 	% The oracle state.  This is threaded around the declarative
@@ -82,6 +83,10 @@ query_oracle(Questions, Response, Oracle0, Oracle) -->
 		;
 			UserResponse = no_user_answer,
 			Response = no_oracle_answers,
+			KB = KB0
+		;
+			UserResponse = exit_diagnosis(Node),
+			Response = exit_diagnosis(Node),
 			KB = KB0
 		;
 			UserResponse = abort_diagnosis,

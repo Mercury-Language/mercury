@@ -176,9 +176,16 @@
 			% There was a bug found and confirmed.  The
 			% event number is for a call port (inadmissible
 			% call), an exit port (incorrect contour),
-			% or a fail port (partially uncovered atom).
+			% a fail port (partially uncovered atom),
+			% or an exception port (unhandled exception).
 			%
 	--->	bug_found(event_number)
+
+			% There was another symptom of incorrect behaviour
+			% found; this symptom will be closer, in a sense,
+			% to the location of a bug.
+			%
+	;	symptom_found(event_number)
 
 			% There was no symptom found, or the diagnoser
 			% aborted before finding a bug.
@@ -375,6 +382,10 @@ handle_oracle_response(Store, oracle_answers(Answers), Response, Diagnoser0,
 handle_oracle_response(_, no_oracle_answers, no_bug_found, D, D) -->
 	[].
 
+handle_oracle_response(Store, exit_diagnosis(Node), Response, D, D) -->
+	{ edt_subtree_details(Store, Node, Event, _) },
+	{ Response = symptom_found(Event) }.
+
 handle_oracle_response(_, abort_diagnosis, no_bug_found, D, D) -->
 	io__write_string("Diagnosis aborted.\n").
 
@@ -397,6 +408,8 @@ confirm_bug(Bug, Response, Diagnoser0, Diagnoser) -->
 		Confirmation = abort_diagnosis,
 		Response = no_bug_found
 	}.
+
+%-----------------------------------------------------------------------------%
 
 	% Export a monomorphic version of diagnosis_state_init/4, to
 	% make it easier to call from C code.
@@ -437,6 +450,21 @@ diagnosis_store(Store, Node, UseOldIoActionMap, IoActionStart, IoActionEnd,
 :- pragma export(diagnoser_bug_found(in, out), "MR_DD_diagnoser_bug_found").
 
 diagnoser_bug_found(bug_found(Event), Event).
+
+:- pred diagnoser_symptom_found(diagnoser_response, event_number).
+:- mode diagnoser_symptom_found(in, out) is semidet.
+
+:- pragma export(diagnoser_symptom_found(in, out),
+	"MR_DD_diagnoser_symptom_found").
+
+diagnoser_symptom_found(symptom_found(Event), Event).
+
+:- pred diagnoser_no_bug_found(diagnoser_response).
+:- mode diagnoser_no_bug_found(in) is semidet.
+
+:- pragma export(diagnoser_no_bug_found(in), "MR_DD_diagnoser_no_bug_found").
+
+diagnoser_no_bug_found(no_bug_found).
 
 :- pred diagnoser_require_subtree(diagnoser_response, event_number,
 		sequence_number).

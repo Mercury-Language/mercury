@@ -29,6 +29,7 @@ DECLARATIVE_PROGS=		\
 	negation		\
 	oracle_db		\
 	output_term_dep		\
+	pd			\
 	propositional		\
 	queens			\
 	shallow			\
@@ -183,6 +184,9 @@ oracle_db.out: oracle_db oracle_db.inp
 output_term_dep.out: output_term_dep output_term_dep.inp
 	$(MDB) ./output_term_dep < output_term_dep.inp	\
 			> output_term_dep.out 2>&1
+
+pd.out: pd pd.inp
+	$(MDB) ./pd < pd.inp > pd.out 2>&1
 
 propositional.out: propositional propositional.inp
 	$(MDB) ./propositional < propositional.inp > propositional.out 2>&1

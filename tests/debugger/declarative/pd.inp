@@ -1,0 +1,20 @@
+echo on
+register --quiet
+break rev
+continue
+finish
+dd
+no
+pd
+retry
+step
+step
+finish
+dd
+no
+pd
+dd
+no
+no
+yes
+quit -y

@@ -217,7 +217,7 @@ static	MR_Code		*MR_decl_diagnosis(MR_Trace_Node root,
 				MR_Trace_Cmd_Info *cmd,
 				MR_Event_Info *event_info,
 				MR_Event_Details *event_details);
-static	MR_Code		*MR_decl_handle_bug_found(MR_Unsigned event,
+static	MR_Code		*MR_decl_go_to_selected_event(MR_Unsigned event,
 				MR_Trace_Cmd_Info *cmd,
 				MR_Event_Info *event_info,
 				MR_Event_Details *event_details);
@@ -1231,8 +1231,11 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 {
 	MR_Word			response;
 	MR_bool			bug_found;
+	MR_bool			symptom_found;
+	MR_bool			no_bug_found;
 	MR_bool			require_subtree;
 	MR_Unsigned		bug_event;
+	MR_Unsigned		symptom_event;
 	MR_Unsigned		final_event;
 	MR_Unsigned		topmost_seqno;
 	MercuryFile		stream;
@@ -1302,6 +1305,9 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 			);
 		bug_found = MR_DD_diagnoser_bug_found(response,
 				(MR_Word *) &bug_event);
+		symptom_found = MR_DD_diagnoser_symptom_found(response,
+				(MR_Word *) &symptom_event);
+		no_bug_found = MR_DD_diagnoser_no_bug_found(response);
 		require_subtree = MR_DD_diagnoser_require_subtree(response,
 				(MR_Word *) &final_event,
 				(MR_Word *) &topmost_seqno);
@@ -1312,8 +1318,23 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	MR_trace_event_number = event_details->MR_event_number;
 
 	if (bug_found) {
-		return MR_decl_handle_bug_found(bug_event, cmd,
+		return MR_decl_go_to_selected_event(bug_event, cmd,
 				event_info, event_details);
+	}
+
+	if (symptom_found) {
+		return MR_decl_go_to_selected_event(symptom_event, cmd,
+				event_info, event_details);
+	}
+
+	if (no_bug_found) {
+		/*
+		** No bug found.  Return to the procedural debugger at the
+		** current event, which was the event it was left from.
+		*/
+		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+		MR_trace_enabled = MR_TRUE;
+		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 	}
 
 	if (require_subtree) {
@@ -1326,17 +1347,12 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 				cmd, event_info, event_details);
 	}
 
-	/*
-	** No bug found.  Return to the procedural debugger at the
-	** current event, which was the event it was left from.
-	*/
-	MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-	MR_trace_enabled = MR_TRUE;
-	return MR_trace_event_internal(cmd, MR_TRUE, event_info);
+	/* We shouldn't ever get here. */
+	MR_fatal_error("unknown diagnoser response");
 }
 
 static	MR_Code *
-MR_decl_handle_bug_found(MR_Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
+MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details)
 {
 	const char		*problem;
@@ -1373,7 +1389,7 @@ MR_decl_handle_bug_found(MR_Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
 	}
 
 	cmd->MR_trace_cmd = MR_CMD_GOTO;
-	cmd->MR_trace_stop_event = bug_event;
+	cmd->MR_trace_stop_event = event;
 	cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_must_check = MR_FALSE;
