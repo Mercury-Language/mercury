@@ -219,21 +219,27 @@ mercury:	mlds_to_gcc.c gcc.c
 .PHONY: cs
 cs: 		mlds_to_gcc.c gcc.c
 
+
 #-----------------------------------------------------------------------------#
 
 # Add some additional dependencies, so that Mmake knows to remake the
 # compiler if one of the libraries changes.
 
+ifeq ($(findstring il,$(GRADE)),il)        
+# This line works around an Mmake bug: mmake doesn't record
+# dependencies properly with --transitive-intermodule-optimization
+%.il: opts
+else
 $(MC_PROG): ../main.$O
 $(MC_PROG): $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 $(MC_PROG): $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 $(MC_PROG): $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
 $(MC_PROG): $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A
 $(MC_PROG): $(ANALYSIS_DIR)/lib$(ANALYSIS_LIB_NAME).$A
-# Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
-# if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
-# so just leave it out.
+# XXX should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
+# if in .gc(.prof) grade
 $(MC_PROG): $(GCC_MAIN_LIBS)
+endif
 
 $(MC_PROG)_init.c: $(UTIL_DIR)/mkinit
 
@@ -268,10 +274,12 @@ ifeq ($(MMAKE_USE_MMC_MAKE),no)
 os: $($(MC_PROG).os)
 cs: $($(MC_PROG).cs)
 ss: $($(MC_PROG).ss)
+opts: $($(MC_PROG).opts)
 else
 os: $(MC_PROG).os
 cs: $(MC_PROG).cs
 ss: $(MC_PROG).ss
+opts: $(MC_PROG).opts
 endif
 
 #-----------------------------------------------------------------------------#

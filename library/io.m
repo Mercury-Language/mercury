@@ -2096,10 +2096,14 @@ io__file_modification_time(File, Result) -->
 
 }").
 
-io__file_modification_time_2(_, _, _, _) -->
+io__file_modification_time_2(_FileName, Status, Msg, Time) -->
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	{ private_builtin__sorry("io__file_modification_time_2") }.
+	{ Status = 0 },
+	{ Msg = "io__file_modification_time not implemented for this target "
+		++ "(or compiler back-end)" },
+	% This value will not be used
+	{ Time = rtti_implementation.unsafe_cast(0) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -4044,6 +4048,9 @@ mercury_getc(MR_MercuryFile mf)
 	if (mf->putback != -1) {
 		c = mf->putback;
 		mf->putback = -1;
+		if (c == '\\n') {
+			mf->line_number++;
+		}
 		return c;
 	}
 
@@ -4065,11 +4072,23 @@ mercury_getc(MR_MercuryFile mf)
 		// System::Environment::NewLine.
 		// We assume that System::Environment::NewLine is non-null
 		// and that System::Environment::NewLine->Length > 0.
-		if (c == System::Environment::NewLine->get_Chars(0)) {
+		if (c != System::Environment::NewLine->get_Chars(0)) {
+			if (c == '\\n') {
+				// the input file was ill-formed,
+				// e.g. it contained only raw
+				// LFs rather than CR-LF.
+				// Perhaps we should throw an exception?
+				// If not, we still need to treat
+				// this as a newline, and thus
+				// increment the line counter.
+				mf->line_number++;
+			}
+		} else /* c == NewLine->get_Chars(0) */ {
 			switch (System::Environment::NewLine->Length) {
 			case 1:
 				mf->line_number++;
 				c = '\\n';
+				break;
 			case 2:
 				if (mf->reader->Peek() == System::
 					Environment::NewLine->get_Chars(1))
@@ -4077,6 +4096,15 @@ mercury_getc(MR_MercuryFile mf)
 					(void) mf->reader->Read();
 					mf->line_number++;
 					c = '\\n';
+				} else if (c == '\\n') {
+					// the input file was ill-formed,
+					// e.g. it contained only raw
+					// CRs rather than CR-LF. Perhaps
+					// we should throw an exception?
+					// If not, we still need to treat
+					// this as a newline, and thus
+					// increment the line counter.
+					mf->line_number++;
 				}
 				break;
 			default:
@@ -6119,6 +6147,28 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 	ML_maybe_make_err_msg(RetVal != 0, ""rename failed: "",
 		MR_PROC_LABEL, RetStr);
 	MR_update_io(IO0, IO);
+}").
+
+:- pragma foreign_proc("C#",
+	io__rename_file_2(OldFileName::in, NewFileName::in,
+			RetVal::out, RetStr::out, _IO0::di, _IO::uo),
+		[will_not_call_mercury, promise_pure, tabled_for_io,
+			thread_safe],
+"{
+	try {
+		if (System.IO.File.Exists(OldFileName)) {
+			System.IO.File.Move(OldFileName, NewFileName);
+			RetVal = 0;
+			RetStr = """";
+		} else {
+			RetVal = -1;
+			RetStr = ""rename failed: No such file or directory"";
+		}
+	}
+	catch (System.Exception e) {
+		RetVal = -1;
+		RetStr = e.Message;
+	}
 }").
 
 io__rename_file_2(_, _, _, _) -->

@@ -126,6 +126,12 @@ CFLAGS +=	$(C_INCL_DIRS)
 MCFLAGS +=	$(C_INCL_DIRS:-I%=--c-include-directory %)
 
 #
+# Work out the .NET directories
+#
+MERC_C_INCL_DIR = $(RUNTIME_DIR)
+MERC_DLL_DIR = $(LIBRARY_DIR)
+
+#
 # Work out which libraries to link with.
 # The $(shell) here is needed to allow the variable values in
 # ECHO_MERCURY_OPTIONS in Mmake.vars to be single-quoted when

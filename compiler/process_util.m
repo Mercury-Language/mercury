@@ -73,7 +73,7 @@
 :- implementation.
 
 :- import_module libs__globals, libs__options.
-:- import_module std_util.
+:- import_module std_util, require.
 
 build_with_check_for_interrupt(Build, Cleanup, Succeeded, Info0, Info) -->
 	setup_signal_handlers(MaybeSigIntHandler),
@@ -225,7 +225,7 @@ sig_dfl = (signal_action::out).
 :- pred check_for_signal(int::out, int::out,
 		io__state::di, io__state::uo) is det.
 
-check_for_signal(0::out, 0::out, _::di, _::uo).
+check_for_signal(0::out, 0::out, IO::di, IO::uo).
 
 :- pragma foreign_proc("C",
 	check_for_signal(Signalled::out, Signal::out, IO0::di, IO::uo),

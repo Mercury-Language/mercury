@@ -80,6 +80,7 @@
 
 :- implementation.
 
+:- import_module hlds.error_util.
 :- import_module char, require.
 
 output_string(Val) -->
@@ -289,6 +290,12 @@ float_to_byte_list(Val, [B0, B1, B2, B3, B4, B5, B6, B7]) :-
 	
 	"
 ).
+float_to_float64_bytes(_FloatVal, _B0, _B1, _B2, _B3, _B4, _B5, _B6, _B7) :-
+	sorry(this_file, "float_to_float64_bytes for non-C target").
+
+:- func this_file = string.
+this_file = "bytecode_data.m".
+
+:- end_module bytecode_data.
 
 %---------------------------------------------------------------------------%
-

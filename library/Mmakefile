@@ -222,7 +222,8 @@ MS_CSCFLAGS=/t:module
 library_strong_name.sn:
 	sn -k library_strong_name.sn
 
-mercury.dll: copy_runtime_dlls lib$(STD_LIB_NAME) library_strong_name.sn
+mercury.dll: $($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
+		$(RUNTIME_DLLS) library_strong_name.sn
 	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll \
 		$($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
 		$(RUNTIME_DLLS) 
