@@ -166,9 +166,25 @@ builtin_compare_float(R, F1, F2) :-
 	[will_not_call_mercury, thread_safe],
 	"Res = strcmp(S1, S2);").
 
-:- external(builtin_unify_pred/2).
-:- external(builtin_compare_pred/3).
+:- pragma no_inline(builtin_unify_pred/2).
+builtin_unify_pred(_X, _Y) :-
+	( semidet_succeed ->
+		error("attempted higher-order unification")
+	;
+		% the following is never executed
+		semidet_succeed
+	).
 
+:- pragma no_inline(builtin_compare_pred/3).
+builtin_compare_pred(Result, _X, _Y) :-
+	( semidet_succeed ->
+		error("attempted higher-order comparison")
+	;
+		% the following is never executed
+		Result = (<)
+	).
+
+:- pragma no_inline(builtin_compare_non_canonical_type/3).
 builtin_compare_non_canonical_type(Res, X, _Y) :-
 	% suppress determinism warning
 	( semidet_succeed ->
@@ -184,6 +200,7 @@ builtin_compare_non_canonical_type(Res, X, _Y) :-
 	).
 
 	% This is used by the code that the compiler generates for compare/3.
+:- pragma no_inline(compare_error/0).
 compare_error :-
 	error("internal error in compare/3").
 

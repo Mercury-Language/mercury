@@ -181,8 +181,14 @@ void	(*MR_address_of_trace_final_external)(void);
 void	(*address_of_init_gc)(void);
 #endif
 
+#ifdef MR_HIGHLEVEL_CODE
+void	(*program_entry_point)(void);
+		/* normally main_2_p_0 (main/2) */
+#else
 Code	*program_entry_point;
 		/* normally mercury__main_2_0 (main/2) */
+#endif
+
 void	(*MR_library_initializer)(void);
 		/* normally ML_io_init_state (io__init_state/2)*/
 void	(*MR_library_finalizer)(void);
@@ -239,7 +245,11 @@ static	void	MR_print_one_type_ctor_stat(FILE *fp, const char *op,
 			MR_TypeStat *type_stat);
 #endif
 
-Declare_entry(do_interpreter);
+#ifdef MR_HIGHLEVEL_CODE
+  static void do_interpreter(void);
+#else
+  Declare_entry(do_interpreter);
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -901,9 +911,13 @@ mercury_runtime_main(void)
 	time_at_last_stat = time_at_start;
 
 	for (repcounter = 0; repcounter < repeats; repcounter++) {
+#ifdef MR_HIGHLEVEL_CODE
+		do_interpreter();
+#else
 		debugmsg0("About to call engine\n");
 		(void) MR_call_engine(ENTRY(do_interpreter), FALSE);
 		debugmsg0("Returning from MR_call_engine()\n");
+#endif
 	}
 
         if (use_own_timer) {
@@ -1128,6 +1142,25 @@ print_register_usage_counts(void)
 } /* end print_register_usage_counts() */
 #endif
 
+#ifdef MR_HIGHLEVEL_CODE
+
+void
+do_interpreter(void)
+{
+  #ifdef  PROFILE_TIME
+	if (MR_profiling) MR_prof_turn_on_time_profiling();
+  #endif
+
+	/* call the Mercury predicate main/2 */
+	(*program_entry_point)();
+
+  #ifdef  PROFILE_TIME
+	if (MR_profiling) MR_prof_turn_off_time_profiling();
+  #endif
+}
+
+#else /* ! MR_HIGHLEVEL_CODE */
+
 Define_extern_entry(do_interpreter);
 Declare_label(global_success);
 Declare_label(global_fail);
@@ -1213,6 +1246,8 @@ Define_label(all_done);
 #endif
 END_MODULE
 
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 int
@@ -1272,5 +1307,7 @@ MR_load_aditi_rl_code(void)
 /*---------------------------------------------------------------------------*/
 void mercury_sys_init_wrapper(void); /* suppress gcc warning */
 void mercury_sys_init_wrapper(void) {
+#ifndef MR_HIGHLEVEL_CODE
 	interpreter_module();
+#endif
 }

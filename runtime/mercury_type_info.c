@@ -10,8 +10,13 @@
 **	runtime system.
 */
 
-#include "mercury_imp.h"
+#include "mercury_conf.h"
+#ifndef MR_HIGHLEVEL_CODE
+  #include "mercury_imp.h"
+#endif
 #include "mercury_type_info.h"
+#include "mercury_misc.h"	/* for MR_fatal_error() */
+#include "mercury_heap.h"	/* for incr_saved_hp() */
 
 /*---------------------------------------------------------------------------*/
 

@@ -39,6 +39,20 @@
 
 /*---------------------------------------------------------------------------*/
 /*
+** XXX this is a hack to work-around the current lack of
+** support for `pragma export'.
+*/
+#define ML_report_uncaught_exception \
+		mercury__exception__report_uncaught_exception_3_p_0
+#define ML_throw_io_error		mercury__io__throw_io_error_1_p_0
+#define ML_io_finalize_state		mercury__io__finalize_state_2_p_0
+#define ML_io_init_state		mercury__io__init_state_2_p_0
+#define ML_io_stderr_stream		mercury__io__stderr_stream_3_p_0
+#define ML_io_stdin_stream		mercury__io__stdin_stream_3_p_0
+#define ML_io_stdout_stream		mercury__io__stdout_stream_3_p_0
+
+/*---------------------------------------------------------------------------*/
+/*
 ** Type definitions
 */
 
@@ -50,6 +64,7 @@ typedef Char	MR_Char;
 typedef Float	MR_Float;
 typedef Integer	MR_Integer;
 typedef String	MR_String;
+typedef ConstString MR_ConstString;
 
 /*
 ** The MR_Box type is used for representing polymorphic types.
@@ -180,6 +195,11 @@ extern const MR_TypeCtorInfo_Struct
 */
 extern const MR_TypeCtorInfo_Struct
 	mercury__tree234__tree234__type_ctor_info_tree234_2;
+bool mercury__tree234____Unify____tree234_2_0(
+	MR_Word key_type, MR_Word val_type, MR_Word x, MR_Word y); 
+void mercury__tree234____Compare____tree234_2_0(
+	MR_Word key_type, MR_Word val_type,
+	MR_Word *result, MR_Word x, MR_Word y); 
 
 /*
 ** XXX this is a bit of a hack: really we should change it so that
@@ -302,7 +322,7 @@ MR_box_float(MR_Float f) {
 	(*(dest) = (src))
 #endif
 
-/*-----------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
 /*
 ** Function declarations
 */
@@ -313,6 +333,68 @@ void mercury__builtin__compare_3_p_1(Word type_info, Word *, MR_Box, MR_Box);
 void mercury__builtin__compare_3_p_2(Word type_info, Word *, MR_Box, MR_Box);
 void mercury__builtin__compare_3_p_3(Word type_info, Word *, MR_Box, MR_Box);
 
-/*-----------------------------------------------------------------------------*/
+bool mercury__builtin____Unify____int_0_0(MR_Integer x, MR_Integer y); 
+bool mercury__builtin____Unify____string_0_0(MR_String x, MR_String y); 
+bool mercury__builtin____Unify____float_0_0(MR_Float x, MR_Float y); 
+bool mercury__builtin____Unify____character_0_0(MR_Char x, MR_Char); 
+bool mercury__builtin____Unify____void_0_0(MR_Word x, MR_Word y); 
+bool mercury__builtin____Unify____c_pointer_0_0(MR_Word x, MR_Word y); 
+bool mercury__builtin____Unify____func_0_0(MR_Word x, MR_Word y); 
+bool mercury__builtin____Unify____pred_0_0(MR_Word x, MR_Word y); 
+bool mercury__array____Unify____array_1_0(Word type_info, MR_Word x, MR_Word y);
+bool mercury__std_util____Unify____univ_0_0(MR_Word x, MR_Word y); 
+bool mercury__std_util____Unify____type_desc_0_0(MR_Word x, MR_Word y); 
+bool mercury__private_builtin____Unify____type_ctor_info_1_0(
+	MR_Word type_info, MR_Word x, MR_Word y); 
+bool mercury__private_builtin____Unify____type_info_1_0(
+	MR_Word type_info, MR_Word x, MR_Word y); 
+bool mercury__private_builtin____Unify____typeclass_info_1_0(
+	MR_Word type_info, MR_Word x, MR_Word y); 
+bool mercury__private_builtin____Unify____base_typeclass_info_1_0(
+	MR_Word type_info, MR_Word x, MR_Word y); 
+
+void mercury__builtin____Compare____int_0_0(
+	MR_Word *result, MR_Integer x, MR_Integer y);
+void mercury__builtin____Compare____string_0_0(MR_Word *result,
+	MR_String x, MR_String y);
+void mercury__builtin____Compare____float_0_0(
+	MR_Word *result, MR_Float x, MR_Float y);
+void mercury__builtin____Compare____character_0_0(
+	MR_Word *result, MR_Char x, MR_Char y);
+void mercury__builtin____Compare____void_0_0(
+	MR_Word *result, MR_Word x, MR_Word y);
+void mercury__builtin____Compare____c_pointer_0_0(
+	MR_Word *result, MR_Word x, MR_Word y);
+void mercury__builtin____Compare____func_0_0(
+	MR_Word *result, MR_Word x, MR_Word y);
+void mercury__builtin____Compare____pred_0_0(
+	MR_Word *result, MR_Word x, MR_Word y); 
+void mercury__array____Compare____array_1_0(
+	Word type_info, MR_Word *result, MR_Word x, MR_Word y);
+void mercury__std_util____Compare____univ_0_0(
+	MR_Word *result, MR_Word x, MR_Word y);
+void mercury__std_util____Compare____type_desc_0_0(
+	MR_Word *result, MR_Word x, MR_Word y);
+void mercury__private_builtin____Compare____type_ctor_info_1_0(
+	MR_Word type_info, MR_Word *result, MR_Word x, MR_Word y);
+void mercury__private_builtin____Compare____type_info_1_0(
+	MR_Word type_info, MR_Word *result, MR_Word x, MR_Word y);
+void mercury__private_builtin____Compare____typeclass_info_1_0(
+	MR_Word type_info, MR_Word *result, MR_Word x, MR_Word y);
+void mercury__private_builtin____Compare____base_typeclass_info_1_0(
+	MR_Word type_info, MR_Word *result, MR_Word x, MR_Word y);
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** XXX this is a hack to work-around the current lack of
+** support for `pragma export'.
+*/
+void ML_io_print_to_cur_stream(MR_Word ti, MR_Word x);
+void ML_io_print_to_stream(MR_Word ti, MR_Word stream, MR_Word x);
+void ML_report_uncaught_exception(MR_Word ti);
+void ML_throw_io_error(MR_String);
+
+/*---------------------------------------------------------------------------*/
 
 #endif /* not MERCURY_H */

@@ -90,6 +90,10 @@ extern	int	mercury_terminate(void);
   #include "gc.h"
 #endif
 
+#ifdef MR_HIGHLEVEL_CODE
+  #include "mercury.h"
+#endif
+
 /*
 ** mercury_main() takes the address of the following predicates/functions,
 ** which are defined elsewhere.
@@ -103,9 +107,6 @@ extern	int	mercury_terminate(void);
 ** in the trace directory, which is allowed to rely on the browser
 ** directory.
 */
-
-/* in the user's program */
-Declare_entry(mercury__main_2_0);
 
 /* in library/io.h */
 extern	void	mercury_init_io(void);

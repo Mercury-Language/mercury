@@ -47,6 +47,7 @@ static const char *progname = NULL;
 
 /* options and arguments, set by parse_options() */
 static const char *entry_point = "mercury__main_2_0";
+static const char *hl_entry_point = "main_2_p_0";
 static int maxcalls = MAXCALLS;
 static int num_files;
 static char **files;
@@ -113,10 +114,14 @@ static const char mercury_funcs[] =
 	"\n"
 	"#define MR_TRACE_ENABLED %d\n"
 	"\n"
-	"Declare_entry(%s);\n"
+	"#ifdef MR_HIGHLEVEL_CODE\n"
+	"  extern void %s(void);\n"
+	"#else\n"
+	"  Declare_entry(%s);\n"
+	"#endif\n"
 	"\n"
 	"#ifdef CONSERVATIVE_GC\n"
-	"extern char *GC_stackbottom;\n"
+	"  extern char *GC_stackbottom;\n"
 	"#endif\n"
 	"\n"
 	"#if defined(USE_DLLS)\n"
@@ -196,7 +201,11 @@ static const char mercury_funcs[] =
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
 	"	do_init_modules();\n"
 	"#endif\n"
+	"#ifdef MR_HIGHLEVEL_CODE\n"
+	"	program_entry_point = %s;\n"
+	"#else\n"
 	"	program_entry_point = ENTRY(%s);\n"
+	"#endif\n"
 	"\n"
 	"	mercury_runtime_init(argc, argv);\n"
 	"	return;\n"
@@ -367,7 +376,7 @@ parse_options(int argc, char *argv[])
 			break;
 
 		case 'w':
-			entry_point = optarg;
+			hl_entry_point = entry_point = optarg;
 			break;
 
 		case 'x':
@@ -550,8 +559,8 @@ output_main(void)
 		aditi_load_func = "NULL";
 	}
 	
-	printf(mercury_funcs, need_tracing, entry_point,
-		aditi_load_func, entry_point);
+	printf(mercury_funcs, need_tracing, hl_entry_point, entry_point,
+		aditi_load_func, hl_entry_point, entry_point);
 
 	if (output_main_func) {
 		fputs(main_func, stdout);

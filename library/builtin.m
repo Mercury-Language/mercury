@@ -294,24 +294,6 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(redoip, 0, MR_TYPECTOR_REP_REDOIP);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(trailptr, 0, MR_TYPECTOR_REP_TRAIL_PTR);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(ticket, 0, MR_TYPECTOR_REP_TICKET);
 
-Define_extern_entry(mercury__builtin_unify_pred_2_0);
-Define_extern_entry(mercury__builtin_compare_pred_3_0);
-
-BEGIN_MODULE(builtin_types_module)
-	init_entry_ai(mercury__builtin_unify_pred_2_0);
-	init_entry_ai(mercury__builtin_compare_pred_3_0);
-BEGIN_CODE
-/* code for predicate 'builtin_unify_pred'/2 in mode 0 */
-Define_entry(mercury__builtin_unify_pred_2_0);
-	MR_incr_sp_push_msg(2, ""private_builtin:builtin_unify_pred"");
-	MR_fatal_error(""attempted unification of higher-order terms"");
-
-/* code for predicate 'builtin_compare_pred'/3 in mode 0 */
-Define_entry(mercury__builtin_compare_pred_3_0);
-	MR_incr_sp_push_msg(2, ""private_builtin:builtin_compare_pred"");
-	MR_fatal_error(""attempted comparison of higher-order terms"");
-END_MODULE
-
 /*
 INIT sys_init_builtin_types_module
 */
@@ -320,8 +302,6 @@ extern void mercury__private_builtin__init(void);
 
 void sys_init_builtin_types_module(void); /* suppress gcc warning */
 void sys_init_builtin_types_module(void) {
-
-	builtin_types_module();
 
 	/* 
 	** We had better call this init() because we use the

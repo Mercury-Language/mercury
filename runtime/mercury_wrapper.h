@@ -63,7 +63,12 @@ extern	int	MR_load_aditi_rl_code(void);
 ** The address_of_foo pointers are set to the address of
 ** the corresponding foo.
 */
+
+#ifdef MR_HIGHLEVEL_CODE
+extern	void		(*program_entry_point)(void); /* normally main_2_p_0 */
+#else
 extern	Code 		*program_entry_point; /* normally mercury__main_2_0; */
+#endif
 
 extern	void		(*MR_library_initializer)(void);
 extern	void		(*MR_library_finalizer)(void);
