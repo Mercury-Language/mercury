@@ -12,6 +12,9 @@
 :- interface.
 :- import_module list, string, io.
 
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is det.
+
 :- pred main_predicate(list(string), io__state, io__state).
 :- mode main_predicate(in, di, uo) is det.
 
@@ -32,6 +35,11 @@
 
 
 %-----------------------------------------------------------------------------%
+
+main -->
+	io__progname("mc", ProgName),
+	io__command_line_arguments(Arguments),
+	main_predicate([ProgName | Arguments]).
 
 	% Validate command line arguments
 
