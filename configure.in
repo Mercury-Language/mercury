@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne. 
+# Copyright (C) 1995-1999 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -1195,7 +1195,12 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 save_CC="$CC"
 save_LIBRARY_PATH="$LIBRARY_PATH"
 CFLAGS_FOR_REGS=
-CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse -fno-gcse"
+case $ac_cv_prog_gcc in yes)
+    case "`$CC --version < /dev/null`" in
+	2.8*) CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse" ;;
+	*)    CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse -fno-gcse" ;;
+    esac ;;
+esac
 case "$host" in
 	mips-sgi-irix5.*)
 		CC="$CC -non_shared -mno-abicalls"
@@ -1227,12 +1232,14 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		mercury_cv_gcc_labels=no
 		;;
 	sparc*)
-		case "`$CC --version`" in
-		    gcc-2.8*)
+		case $ac_cv_prog_gcc in yes)
+		    case "`$CC --version < /dev/null`" in 2.8*)
 			AC_MSG_WARN(*** Mercury might not work with " \
 				"gcc 2.8 on sparc!)
 			AC_MSG_WARN(We advise using gcc 2.7.x or egcs.)
 			;;
+		    esac
+		    ;;
 		esac
 		;;
 esac
