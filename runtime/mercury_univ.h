@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2003 The University of Melbourne.
+** Copyright (C) 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,6 +14,7 @@
 #ifndef MERCURY_UNIV_H
 #define MERCURY_UNIV_H
 
+#include "mercury_regs.h"           /* must come first (see mercury_imp.h) */
 #include "mercury_conf_param.h"     /* for MR_RECORD_TERM_SIZES */
 #include "mercury_tags.h"           /* for MR_field */
 #include "mercury_heap.h"           /* for MR_tag_offset_incr_hp_msg */
