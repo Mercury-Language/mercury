@@ -29,6 +29,14 @@ DRAFT NEWS for Mercury release 0.7
   You can now write `P(X)' as an alternative to `call(P, X)'
   or `F(X)' as an alternative for `apply(F, X)'.
 
+* Module qualifiers are now optional.
+
+  You can use just plain `write_string' rather than `io__write_string'.
+
+  More changes to the module system are expected in the future,
+  including changing the module qualifier operator to `.'
+  (currently either `:' or `__' can be used as module qualifiers).
+
 * We've improved the C interface.
 
   The C interface now handles Mercury functions properly --
@@ -108,19 +116,38 @@ DRAFT NEWS for Mercury release 0.7
   The changes are listed here, but see the library reference manual for
   details such as documentation on the new predicates.
 
-  - We've finally implemented a generic `io__write' predicate.
-
   - The std_util.m module now contains functions and predicates for
-    traversing and constructing terms of arbitrary type. 
-    	For traversal: 
-    		predicates argument/3, det_argument/3, functor/3,
-		and expand/4.
-    	These are similar to Prolog's arg/3, functor/3, and '=..'.
+    traversing and constructing terms of arbitrary type, and for
+    accessing types at runtime.
 
-	For construction: 
-		functions type_of/1, num_functors/1, construct/3 and
+    	For traversing terms: 
+    		Predicates argument/3, det_argument/3, functor/3,
+		and expand/4.  These are similar to Prolog's arg/3,
+		functor/3, and '=..'.
+
+	For constructing terms:
+		Functions num_functors/1, construct/3 and
 		predicate get_functor/5.
+
+	For accessing and constructing types:
+		Functions type_of/1, type_ctor/1, type_args/1,
+		type_ctor_name/1, type_ctor_arity/1, make_type/2,
+		and predicates type_ctor_and_args/3 and
+		type_ctor_name_and_arity/3.
+
+    There are also some new functions for accessing values of the
+    universal type `univ', namely univ/2 and univ_type/1.
     
+  - We've finally implemented generic input-output predicates,
+    namely io__print/3, io__write/3, and io__read/3,
+    using the the functions and predicates described above.
+    We've also added io__nl/3 to print a newline.
+    Together with the change to make module qualifiers optional,
+    these changes make performing output quite a bit simpler;
+    it's nice that `print("Foo = "), print(Foo), nl' works now.
+
+  - term_to_type/2 and type_to_term/2 are now implemented.
+
   - We have a new module called time.m XXX to make benchmarking easier.
     The predicate report_stats, which used to be in std_util, is now
     in this module.
@@ -150,8 +177,10 @@ DRAFT NEWS for Mercury release 0.7
     with semantics similar to INT_MAX, INT_MIN, (CHAR_BIT * sizeof(int)),
     CHAR_MIN, and CHAR_MAX in ANSI C (respectively).
 
-  - Added list__merge_and_remove_dups/4 and list__sort_and_remove_dups/4
+  - We've added list__merge_and_remove_dups/4 and list__sort_and_remove_dups/4
     to complete the set of list__merge and list__sort operations.
 
-  - Added io__write_list/5 and io__write_list/6 which write lists, separating
-    the elements with a programmer-supplied string.
+  - We've added io__write_list/5 and io__write_list/6; these predicates write
+    lists using a user-specified procedure to write the elements and separating
+    the elements with a user-specified separator string.
+
