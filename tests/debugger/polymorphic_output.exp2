@@ -35,6 +35,22 @@ functor_names
 2-_
 
 mdb> set format flat
+mdb> browse goal
+browser> ^1
+browser> p
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+browser> ^..^2
+error: cannot change to subterm
+browser> p
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+browser> ^..^3
+error: cannot change to subterm
+browser> p
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+browser> ^..^r
+browser> p
+'_'
+browser> quit
 mdb> b std_util__det_arg
  0: + stop  interface func std_util:det_arg/3-0 (det)
 mdb> c
