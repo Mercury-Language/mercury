@@ -1,0 +1,44 @@
+This file contains various notes about the design of the compiler.
+The overall structure for the Prolog-syntax compiler is as follows:
+
+1. lexical analysis & stage 1 parsing - convert strings to terms
+   (io:read_term).
+
+2. stage 2 parsing - convert terms to declarations, clauses, etc.
+   result of this stage has a one-to-one correspondence with
+   the source code
+   (progio)
+
+3. simplify - convert parse tree to simplified high-level data structure
+   construct symbol tables, handle imports and exports
+
+4. type checking, overloading resolution & module name resolution
+   fully qualify all names
+
+5. mode checking, determinism checking, destructive assignment
+   analysis, etc.
+
+6. code generation.
+
+7. peephole optimization.
+
+8. output final code.
+
+middle recursion optimization: done in the code generator by recognizing
+the pattern of the hlds.
+
+structure reuse optimization : we have a pass after mode analysis (or at 
+the same time?) which annotates the hlds with reuse information.
+The code generator uses this reuse information to generate assignments
+instead of creating terms on the heap.
+
+debugging information: the compiler should output the liveness,
+instantiatedness and location of every variable at every label.
+
+mode analysis and reordering: the mode analysis only imposes a partial
+order on the execution of a clause body.  We allow later stages of
+the compilation to reorder things; the mode analysis places dependency
+information in the output specifying the exact ordering constraints,
+and later stages will reorder things only if the reordering satisfies those
+constraints.
+
