@@ -16,6 +16,7 @@
 %-----------------------------------------------------------------------------%
 
 :- module array.
+:- interface.
 :- import_module int, list.
 
 :- type array(T).
