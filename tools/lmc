@@ -52,8 +52,6 @@ fi
 
 DIR_FLAGS="--cflags -I$WORKSPACE/trace --cflags -I$WORKSPACE/runtime --cflags -I$WORKSPACE/boehm_gc --cflags -I$WORKSPACE/boehm_gc/include"
 
-set -x
-
 if test "$MMC_UNDER_GDB" = true
 then
 	MERCURY_COMPILER="$WORKSPACE/tools/gdbrun $MERCURY_COMPILER"
