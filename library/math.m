@@ -1,20 +1,17 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
 % File: math.m
 % Main author: bromage
-% Stability: high (but as yet no Prolog implementation)
+% Stability: high
 %
 % Higher mathematical operations.  (The basics are in float.m.)
-% The predicates in this module are not yet implemented in Prolog.
 %
 % By default, domain errors are currently handled by a program abort.
-% This is because Mercury currently does not have exceptions built in.
-% Exception-handling would be nice, but it's kind of low on the
-% priority scale.
+% This is because Mercury originally did not have exceptions built in.
 %
 % For better performance, it is possible to disable the Mercury domain
 % checking by compiling with `--intermodule-optimization' and the C macro

@@ -28,12 +28,6 @@
 % The universal type `univ'.
 % An object of type `univ' can hold the type and value of an object of any
 % other type.
-%
-% Note that the current NU-Prolog/SICStus Prolog implementation of
-% univ_to_type is buggy in that it always succeeds, even if the types didn't
-% match, so until this gets implemented correctly, don't use
-% univ_to_type unless you are sure that the types will definitely match,
-% or you don't care about debugging with Prolog.
 
 :- type univ.
 

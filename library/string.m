@@ -11,9 +11,6 @@
 
 % This modules provides basic string handling facilities.
 
-% Beware that char_to_string/2 won't work with NU-Prolog 1.5.33 because
-% of a NU-Prolog bug (fixed in NU-Prolog 1.5.35).
-
 %-----------------------------------------------------------------------------%
 
 :- interface.
