@@ -2389,7 +2389,7 @@ the following three unifications have the same effect:
 X = (func(Num, List) = NewList :- NewList = scalar_product(Num, List))
 Y = (func(Num::in, List::in) = (NewList::out) is det
         :- NewList = scalar_product(Num, List))
-Z = sum_func
+Z = scalar_product
 @end example
 
 In the above example, the type of @samp{X}, @samp{Y}, and @samp{Z} is
