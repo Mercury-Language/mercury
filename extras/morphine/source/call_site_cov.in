@@ -7,7 +7,7 @@
     
 :- type accumulator_type == list(call_site_crit).
 
-filter(Event, CSL0, CSL, continue) :-
+filter(Event, CSL0, CSL) :-
 	solutions(update_call_site_list(port(Event), def_module(Event), 
 		proc_name(Event), line_number(Event), CSL0), Sol),
 	( Sol = [CSL1|_] -> CSL = CSL1 ; CSL = CSL0 ).

@@ -7,7 +7,7 @@
     
 :- type accumulator_type == list(pred_crit).
 
-filter(Event, CSL0, CSL, continue) :-
+filter(Event, CSL0, CSL) :-
 	solutions(update_pred_list(port(Event), decl_module(Event), 
 		proc_name(Event), CSL0), Sol),
 	( Sol = [CSL1|_] -> CSL = CSL1 ; CSL = CSL0 ).
