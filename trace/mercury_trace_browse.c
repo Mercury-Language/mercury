@@ -142,9 +142,9 @@ MR_trace_print(MR_Word type_info, MR_Word value, MR_Browse_Caller_Type caller,
 }
 
 bool
-MR_trace_set_browser_param(MR_Bool print, MR_Bool browse, MR_Bool print_all,
-		MR_Bool flat, MR_Bool raw_pretty, MR_Bool verbose, 
-		MR_Bool pretty, const char *param, const char *value)
+MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
+		MR_Word flat, MR_Word raw_pretty, MR_Word verbose, 
+		MR_Word pretty, const char *param, const char *value)
 {
 	int			depth, size, width, lines;
 	MR_Browse_Format	new_format;

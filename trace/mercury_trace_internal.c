@@ -28,6 +28,7 @@
 #include "mercury_trace_readline.h"
 
 #include "mdb.browse.h"
+#include "mdb.browser_info.h"
 #include "mdb.program_representation.h"
 
 #include <stdio.h>
@@ -176,10 +177,10 @@ static	bool	MR_trace_options_confirmed(bool *confirmed, char ***words,
 static	bool	MR_trace_options_format(MR_Browse_Format *format,
 			char ***words, int *word_count, const char *cat,
 			const char *item);
-static	bool	MR_trace_options_param_set(MR_Bool *print_set,
-			MR_Bool *browse_set, MR_Bool *print_all_set,
-			MR_Bool *flat_format, MR_Bool *raw_pretty_format,
-			MR_Bool *verbose_format, MR_Bool *pretty_format, 
+static	bool	MR_trace_options_param_set(MR_Word *print_set,
+			MR_Word *browse_set, MR_Word *print_all_set,
+			MR_Word *flat_format, MR_Word *raw_pretty_format,
+			MR_Word *verbose_format, MR_Word *pretty_format, 
 			char ***words, int *word_count, const char *cat, 
 			const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
@@ -1087,13 +1088,13 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		}
 	} else if (streq(words[0], "set")) {
 		MR_Browse_Format	format;
-		MR_Bool			print_set;
-		MR_Bool			browse_set;
-		MR_Bool			print_all_set;
-		MR_Bool			flat_format;
-		MR_Bool			raw_pretty_format;
-		MR_Bool			verbose_format;
-		MR_Bool			pretty_format;
+		MR_Word			print_set;
+		MR_Word			browse_set;
+		MR_Word			print_all_set;
+		MR_Word			flat_format;
+		MR_Word			raw_pretty_format;
+		MR_Word			verbose_format;
+		MR_Word			pretty_format;
 
 		if (! MR_trace_options_param_set(&print_set, &browse_set,
 				&print_all_set, &flat_format, 
@@ -2464,21 +2465,28 @@ static struct MR_option MR_trace_param_set_opts[] =
 };
 
 static bool
-MR_trace_options_param_set(MR_Bool *print_set, MR_Bool *browse_set,
-	MR_Bool *print_all_set, MR_Bool *flat_format, 
-	MR_Bool *raw_pretty_format, MR_Bool *verbose_format, 
-	MR_Bool *pretty_format, char ***words, int *word_count, const char *cat,
+MR_trace_options_param_set(MR_Word *print_set, MR_Word *browse_set,
+	MR_Word *print_all_set, MR_Word *flat_format, 
+	MR_Word *raw_pretty_format, MR_Word *verbose_format, 
+	MR_Word *pretty_format, char ***words, int *word_count, const char *cat,
 	const char *item)
 {
 	int	c;
+	MR_Word	mercury_bool_yes;
+	MR_Word	mercury_bool_no;
 
-	*print_set = FALSE;
-	*browse_set = FALSE;
-	*print_all_set = FALSE;
-	*flat_format = FALSE;
-	*raw_pretty_format = FALSE;
-	*verbose_format = FALSE;
-	*pretty_format = FALSE;
+	MR_TRACE_CALL_MERCURY(
+			mercury_bool_yes = ML_BROWSE_mercury_bool_yes();
+			mercury_bool_no = ML_BROWSE_mercury_bool_no();
+	);
+
+	*print_set = mercury_bool_no;
+	*browse_set = mercury_bool_no;
+	*print_all_set = mercury_bool_no;
+	*flat_format = mercury_bool_no;
+	*raw_pretty_format = mercury_bool_no;
+	*verbose_format = mercury_bool_no;
+	*pretty_format = mercury_bool_no;
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "PBAfrvp",
@@ -2487,31 +2495,31 @@ MR_trace_options_param_set(MR_Bool *print_set, MR_Bool *browse_set,
 		switch (c) {
 
 			case 'f':
-				*flat_format = TRUE;
+				*flat_format = mercury_bool_yes;
 				break;
 
 			case 'r':
-				*raw_pretty_format = TRUE;
+				*raw_pretty_format = mercury_bool_yes;
 				break;
 
 			case 'v':
-				*verbose_format = TRUE;
+				*verbose_format = mercury_bool_yes;
 				break;
 
 			case 'p':
-				*pretty_format = TRUE;
+				*pretty_format = mercury_bool_yes;
 				break;
 
 			case 'P':
-				*print_set = TRUE;
+				*print_set = mercury_bool_yes;
 				break;
 
 			case 'B':
-				*browse_set = TRUE;
+				*browse_set = mercury_bool_yes;
 				break;
 
 			case 'A':
-				*print_all_set = TRUE;
+				*print_all_set = mercury_bool_yes;
 				break;
 
 			default:

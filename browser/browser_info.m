@@ -183,6 +183,19 @@ set_param_format(P, B, A, Format) -->
 	%
 	browser_info__set_param(P, B, A, no, no, no, no, format(Format)).
 
+	%
+	% The following exported functions allow C code to create
+	% Mercury values of type bool.
+	%
+
+:- func mercury_bool_yes = bool.
+:- pragma export(mercury_bool_yes = out, "ML_BROWSE_mercury_bool_yes").
+mercury_bool_yes = yes.
+
+:- func mercury_bool_no = bool.
+:- pragma export(mercury_bool_no = out, "ML_BROWSE_mercury_bool_no").
+mercury_bool_no = no.
+
 %---------------------------------------------------------------------------%
 
 browser_info__init(Term, MaybeFormat, State, Info) :-
