@@ -33,6 +33,8 @@ of the garbage collector source):
 
 A few files (config*) in the source and binary distributions are derived
 from code that is copyright by the Free Software Foundation, Inc.
+The `Togl' library in extras/graphics/Togl-1.2 is copyright by Brian
+Paul and Ben Bederson; see the file extras/graphics/Togl-1.2/LICENCE.
 
 THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.
@@ -46,6 +48,7 @@ of the Mercury documentation in the following default locations:
 /usr/local/mercury-<VERSION>/lib/mercury/doc.
 
 For some small example Mercury programs, see the `samples' directory.
+There are also some more libraries and programs in the `extras' directory.
 For examples of larger programs, download the Mercury source distribution -
 the Mercury compiler and the Mercury profiler are written in Mercury.
 
