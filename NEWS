@@ -17,7 +17,14 @@ DRAFT NEWS for Mercury release 0.7
     The predicate report_stats, which used to be in std_util, is now
     in this module.
 
-  - relation.m
+  - The interface to the relation module has been changed extensively.
+    Elements must now be explicitly added to the domain of the relation,
+    using relation__add_element/4, and relation operations such as
+    relation__add are now performed on relation_keys.  There are also
+    four new operations which convert elements to relation_keys and
+    vice versa:
+	relation__search_element/3, relation__lookup_element/3,
+	relation__search_key/3, and relation__lookup_key/3
 
 NEWS for Mercury release 0.6
 ----------------------------
