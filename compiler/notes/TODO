@@ -5,16 +5,22 @@ TODO LIST:
 
 For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
+type system
+-----------
+
+- handle predicate overloading in the case where predicates
+  with the same name and arity occur in different modules
+	  [will be done by fjh]
+
 mode analysis
 -------------
-
-- check that unique modes do not get used in a context that could require
-  backtracking
-	[being done by fjh]
 
 - extend the mode system to allow known aliasing.
   This is needed to make partially instantiated modes and unique modes work.
 	[will be done by fjh]
+
+- report an error if two mode declarations for a predicate
+  specify identical modes
 
 - detect incorrect usage of `bound(...)' insts.
   That is, make sure that all of the functors in a bound(...) inst
@@ -24,17 +30,29 @@ mode analysis
   "micro-unification" pieces when necessary.
   (When is it necessary?)
 
-mercury_to_goedel.m
--------------------
+determinism analysis
+--------------------
 
-- see comments at the start of that file
+- allow overloading of nondet/multidet and cc_nondet/cc_multidet
+  determinism for the same mode of a predicate.
 
-type system
------------
+unique modes
+------------
 
-- handle predicate overloading in the case where predicates
-  with the same name and arity occur in different modules
-	  [will be done by fjh]
+- handle unique mode overloading better -
+  don't depend on the order of the mode declarations.
+
+- handle overloading of unique and mostly_unique modes.
+  Currently in modes.m we always pick the unique version, and then in
+  unique_modes.m, if it turns out out to be mostly_unique, we report an
+  error.  We should changed unique_modes.m to also look for a
+  mostly_unique version before reporting an error.
+
+code generation
+---------------
+
+- take advantage of unique modes to do compile-time garbage collection
+  and structure reuse.
 
 module system
 -------------
@@ -43,8 +61,11 @@ module system
   independently of any declarations or imports in the implementation
   section
 
-- handle module qualifiers properly
-	  [being done by dylan]
+- implement a use_module directive
+  (like import_module, except that everything must be explicitly
+  module qualified).
+
+- handle module qualifiers on types, insts, and modes
 
 - imports should not be transitive
   (currently we get this right for predicates, constants, and functors,
@@ -92,7 +113,8 @@ higher-order preds:
 -------------------
 
 - implement single-use higher-order predicate modes.
-  Single-use higher-order predicates are allowed to bind
+  Single-use higher-order predicates would be allowed to bind curried
+  arguments, and to have unique modes for curried arguments.
  
 - allow taking the address of a predicate with multiple modes
   (This would require mode inference.)
@@ -139,6 +161,7 @@ low-level optimizations
 - other specializations, e.g. if argument is known to be bound to
   f(X,Y), then just pass X and Y in registers
 
+- trim stack frames before making recursive calls, to minimize stack usage
 
 compilation speed
 -----------------
@@ -187,7 +210,7 @@ better diagnostics
 - give better error messages for syntax errors in lambda expressions
 
 - issue a warning if the only use of an argument is in a recursive call
-
+	[being done by Simon Taylor]
 
 general
 -------

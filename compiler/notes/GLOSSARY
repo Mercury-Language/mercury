@@ -5,8 +5,12 @@ moduleinfo: Another name for the HLDS.
 
 LLDS: The "Low Level Data Structure".  See llds.m.
 
-inst: instantiatedness.  Indicates whether a variable is free, partially
-      bound, or ground.
+inst: instantiatedness.  An inst holds three different sorts of
+      information.  It indicates whether a variable is free, partially
+      bound, or ground.  If a variable is bound, it may indicate
+      which functor(s) the variable can be bound to.  Also,
+      an inst records whether a value is unique, or whether
+      it may be aliased.
 
 mode: this has two meanings:
 	(1) a mapping from one instantiatedness to another
