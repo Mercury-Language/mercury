@@ -3216,30 +3216,29 @@ data_addr_constant_to_fieldref(data_addr(ModuleName, DataName), FieldRef) :-
 	% the same thing when creating the fields.
 :- func get_fieldref(il_data_rep, field_id, mlds__type, mlds__type) = fieldref.
 get_fieldref(DataRep, FieldNum, FieldType, ClassType) = FieldRef :-
-		FieldILType0 = mlds_type_to_ilds_type(DataRep,
-			FieldType),
-		( FieldILType0 = ilds__type(_, '&'(FieldILType1)) ->
-			FieldILType = FieldILType1
+	FieldILType0 = mlds_type_to_ilds_type(DataRep,
+		FieldType),
+	( FieldILType0 = ilds__type(_, '&'(FieldILType1)) ->
+		FieldILType = FieldILType1
+	;
+		FieldILType = FieldILType0
+	),
+	( 
+		FieldNum = offset(OffsetRval),
+		ClassName = mlds_type_to_ilds_class_name(DataRep,
+			ClassType),
+		( OffsetRval = const(int_const(Num)) ->
+			string__format("f%d", [i(Num)], FieldId)
 		;
-			FieldILType = FieldILType0
-		),
-		( 
-			FieldNum = offset(OffsetRval),
-			ClassName = mlds_type_to_ilds_class_name(DataRep,
-				ClassType),
-			( OffsetRval = const(int_const(Num)) ->
-				string__format("f%d", [i(Num)], FieldId)
-			;
-				sorry(this_file, 
-					"offsets for non-int_const rvals")
-			)
-		; 
-			FieldNum = named_field(qual(ModuleName, FieldId),
-				_Type),
-			ClassName = mlds_module_name_to_class_name(ModuleName)
-		),
-		FieldRef = make_fieldref(FieldILType, ClassName, FieldId).
-
+			sorry(this_file, 
+				"offsets for non-int_const rvals")
+		)
+	; 
+		FieldNum = named_field(qual(ModuleName, FieldId),
+			_Type),
+		ClassName = mlds_module_name_to_class_name(ModuleName)
+	),
+	FieldRef = make_fieldref(FieldILType, ClassName, FieldId).
 
 %-----------------------------------------------------------------------------%
 
