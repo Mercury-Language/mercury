@@ -1,6 +1,7 @@
-% This ix a test for whether a change of genretors is correctly handled.
+% This is a test for whether a change of leaders is correctly handled.
 %
-% On 12 Macth 2004, this program did not work correctly (answers were missing).
+% On 12 Marth 2004, this program did not work correctly (some of p's
+% answers were missing) due to a bug in the completion implementation.
 
 :- module coup2.
 
@@ -43,7 +44,7 @@ q(X) :-
 	(
 		X = 1
 	;
-		p(Y),
+		p(Y), % here a coup takes place
 		X = 2 * Y,
 		X < 20
 	).
