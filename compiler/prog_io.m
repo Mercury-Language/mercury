@@ -608,8 +608,8 @@ read_all_items(ModuleName, Messages, Items, Error) -->
 :- mode read_items_loop(in, in, in, in, out, out, out, di, uo) is det.
 
 read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error) -->
-	io__gc_call(read_item(ModuleName, NewModuleName, MaybeItem)),
- 	read_items_loop_2(NewModuleName, MaybeItem, Msgs1, Items1, Error1, 
+	io__gc_call(read_item(ModuleName, MaybeItem)),
+ 	read_items_loop_2(ModuleName, MaybeItem, Msgs1, Items1, Error1, 
 				Msgs, Items, Error).
 
 %-----------------------------------------------------------------------------%
@@ -673,22 +673,22 @@ read_items_loop_2(ModuleName, ok(Item, Context), Msgs0, Items0, Error0,
 			;	error(string, term)
 			;	ok(item, term__context).
 
-:- pred read_item(string, string, maybe_item_or_eof, io__state, io__state).
-:- mode read_item(in, out, out, di, uo) is det.
+:- pred read_item(string, maybe_item_or_eof, io__state, io__state).
+:- mode read_item(in, out, di, uo) is det.
 
-read_item(ModuleName0, ModuleName, MaybeItem) -->
+read_item(ModuleName, MaybeItem) -->
 	term_io__read_term(MaybeTerm),
-	{ process_read_term(ModuleName0, MaybeTerm, ModuleName, MaybeItem) }.
+	{ process_read_term(ModuleName, MaybeTerm, MaybeItem) }.
 
-:- pred process_read_term(string, read_term, string, maybe_item_or_eof).
-:- mode process_read_term(in, in, out, out) is det.
+:- pred process_read_term(string, read_term, maybe_item_or_eof).
+:- mode process_read_term(in, in, out) is det.
 
-process_read_term(ModuleName, eof, ModuleName, eof).
-process_read_term(ModuleName, error(ErrorMsg, LineNumber), ModuleName,
+process_read_term(_ModuleName, eof, eof).
+process_read_term(_ModuleName, error(ErrorMsg, LineNumber),
 			syntax_error(ErrorMsg, LineNumber)).
-process_read_term(ModuleName0, term(VarSet, Term), ModuleName,
+process_read_term(ModuleName, term(VarSet, Term),
 			MaybeItemOrEof) :-
-	parse_item(ModuleName0, VarSet, Term, ModuleName, MaybeItem),
+	parse_item(ModuleName, VarSet, Term, MaybeItem),
 	convert_item(MaybeItem, MaybeItemOrEof).
 
 :- pred convert_item(maybe_item_and_context, maybe_item_or_eof).
@@ -697,27 +697,28 @@ process_read_term(ModuleName0, term(VarSet, Term), ModuleName,
 convert_item(ok(Item, Context), ok(Item, Context)).
 convert_item(error(M,T), error(M,T)).
 
-:- pred parse_item(string, varset, term, string, maybe_item_and_context). 
-:- mode parse_item(in, in, in, out, out) is det.
+:- pred parse_item(string, varset, term, maybe_item_and_context). 
+:- mode parse_item(in, in, in, out) is det.
 
-parse_item(ModuleName0, VarSet, Term, ModuleName, Result) :-
+parse_item(ModuleName, VarSet, Term, Result) :-
  	( %%% some [Decl, DeclContext]
 		Term = term__functor(term__atom(":-"), [Decl], DeclContext)
 	->
 		% It's a declaration
-		parse_decl(ModuleName0, VarSet, Decl, R, ModuleName),
+		parse_decl(ModuleName, VarSet, Decl, R),
 		add_context(R, DeclContext, Result)
 	; %%% some [DCG_H, DCG_B, DCG_Context]
 		% It's a DCG clause
 		Term = term__functor(term__atom("-->"), [DCG_H, DCG_B],
 			DCG_Context)
 	->
-		parse_dcg_clause(ModuleName0, VarSet, DCG_H, DCG_B, DCG_Context, Result),
-		ModuleName0 = ModuleName
+		parse_dcg_clause(ModuleName, VarSet, DCG_H, DCG_B,
+				DCG_Context, Result)
 	;
 		% It's either a fact or a rule
 		( %%% some [H, B, TermContext]
-			Term = term__functor(term__atom(":-"), [H,B], TermContext)
+			Term = term__functor(term__atom(":-"), [H,B],
+						TermContext)
 		->
 			% it's a rule
 			Head = H,
@@ -739,10 +740,9 @@ parse_item(ModuleName0, VarSet, Term, ModuleName, Result) :-
 			Body = term__functor(term__atom("true"), [], TheContext)
 		),
 		parse_goal(Body, VarSet, Body2, VarSet2),
-		parse_qualified_term(ModuleName0, Head, "clause head", R2),
+		parse_qualified_term(ModuleName, Head, "clause head", R2),
 		process_clause(R2, VarSet2, Body2, R3),
-		add_context(R3, TheContext, Result),
-		ModuleName0 = ModuleName
+		add_context(R3, TheContext, Result)
 	).
 
 :- pred add_context(maybe1(item), term__context, maybe_item_and_context).
@@ -846,11 +846,14 @@ parse_goal_2(";", [A0,B0], V0, R, V) :-
 		parse_goal(B0, V1, B, V),
 		R = (A;B)
 	).
+/****
+	For consistency we also disallow if-then
 parse_goal_2("if",
 		[term__functor(term__atom("then"),[A0,B0],_)], V0,
 		if_then(Vars,A,B), V) :-
 	parse_some_vars_goal(A0, V0, Vars, A, V1),
 	parse_goal(B0, V1, B, V).
+****/
 parse_goal_2("else",[
 		    term__functor(term__atom("if"),[
 			term__functor(term__atom("then"),[A0,B0],_)
@@ -1374,23 +1377,21 @@ process_dcg_clause(error(ErrMessage, Term), _, _, _, _,
 %-----------------------------------------------------------------------------%
 	% parse a declaration
 
-:- pred parse_decl(string, varset, term, maybe1(item), string).
-:- mode parse_decl(in, in, in, out, out) is det.
-parse_decl(ModuleName0, VarSet, F, Result, ModuleName) :-
+:- pred parse_decl(string, varset, term, maybe1(item)).
+:- mode parse_decl(in, in, in, out) is det.
+parse_decl(ModuleName, VarSet, F, Result) :-
 	( 
 		F = term__functor(term__atom(Atom), As, _Context)
 	->
 		(
-			process_decl(ModuleName0, VarSet, Atom, As, R)
+			process_decl(ModuleName, VarSet, Atom, As, R)
 		->
 			Result = R
 		;
 			Result = error("Unrecognized declaration", F)
-		),
-		update_module_name(Result, ModuleName0, ModuleName)
+		)
 	;
-		Result = error("Atom expected after `:-'", F),
-		ModuleName = ModuleName0
+		Result = error("Atom expected after `:-'", F)
 	).
 
 	% process_decl(VarSet, Atom, Args, Result) succeeds if Atom(Args)
@@ -1512,16 +1513,6 @@ process_decl(_ModuleName, _VarSet, "when", [_Goal, _Cond], Result) :-
 
 process_decl(_ModuleName, VarSet, "pragma", Pragma, Result):-
 	parse_pragma(VarSet, Pragma, Result).
-
-:- pred update_module_name(maybe1(item), string, string).
-:- mode update_module_name(in, in, out) is det.
-update_module_name(error(_, _), ModuleName, ModuleName).
-update_module_name(ok(Item), ModuleName0, ModuleName) :-
-	( Item = module_defn(_Varset, module(Name)) ->
-		ModuleName = Name
-	;
-		ModuleName = ModuleName0
-	).
 
 :- pred parse_type_decl(varset, term, maybe1(item)).
 :- mode parse_type_decl(in, in, out) is det.
@@ -3262,7 +3253,7 @@ report_warning(Stream, Message) -->
 
 report_warning(Module_name, Line_num, Message) -->
 	{ string__int_to_string(Line_num, Line_str) },
-	{ string__append_list([Module_name, ".m: ", Line_str, ": Warning: ",
+	{ string__append_list([Module_name, ".m:", Line_str, ": Warning: ",
 			Message, "\n"], Message_0) },
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, Message_0),
