@@ -150,6 +150,7 @@ ORDINARY_PROGS=	\
 	string_loop \
 	string_strip \
 	string_suffix_bug \
+	system_sort \
 	target_mlobjs \
 	term_io_test \
 	term_to_univ_test \
@@ -220,6 +221,7 @@ JAVA_PASS_PROGS= \
 	string_alignment \
 	string_loop \
 	string_suffix_bug \
+	system_sort \
 	target_mlobjs \
 	time_test
 
