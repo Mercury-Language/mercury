@@ -156,7 +156,7 @@ tar:
 	# clean up
 	cd scripts && mmake realclean
 	cd util && mmake realclean
-	cd doc && mmake clean
+	cd doc && mmake distclean
 	-rm -f errs errs2
 	-rm -f config.status config.log config.cache
 	-rm -f runtime/conf.h # XXX compiler/conf.m
