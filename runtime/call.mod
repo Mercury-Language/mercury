@@ -64,10 +64,10 @@ do_call_det_closure:
 
 	restore_registers();
 
-	call((Code *)field(0, closure, 1), LABEL(do_det_closure_return),
+	call((Code *)field(0, closure, 1), LABEL(det_closure_return),
 		LABEL(do_call_det_closure));
 }
-do_det_closure_return:
+det_closure_return:
 {
 	int i,num_in_args, num_out_args;
 
@@ -113,10 +113,10 @@ do_call_semidet_closure:
 	for(i=1; i <= num_in_args; i++) 
 		virtual_reg(i+1) = field(0, closure, i+1); /* copy args */
 	restore_registers();
-	call((Code *)field(0, closure, 1), LABEL(do_semidet_closure_return),
+	call((Code *)field(0, closure, 1), LABEL(semidet_closure_return),
 		LABEL(do_call_semidet_closure));
 }
-do_semidet_closure_return:
+semidet_closure_return:
 {
 	int i,num_in_args, num_out_args;
 
@@ -165,10 +165,10 @@ do_call_nondet_closure:
 
 	restore_registers();
 
-	call((Code *)field(0, closure, 1), LABEL(do_nondet_closure_return),
+	call((Code *)field(0, closure, 1), LABEL(nondet_closure_return),
 		LABEL(do_call_nondet_closure));
 }
-do_nondet_closure_return:
+nondet_closure_return:
 {
 	int i,num_in_args, num_out_args;
 
