@@ -5359,9 +5359,7 @@ report_error_var(TypeCheckInfo, VarId, Type, TypeAssignSet0) -->
 		write_argument_name(VarSet, VarId),
 		io__write_string(" has overloaded actual/expected types {\n"),
 
-		prog_out__write_context(Context),
-		io__write_string("    "),
-		write_var_type_stuff_list(TypeStuffList, Type),
+		write_var_type_stuff_list(Context, TypeStuffList, Type),
 		io__write_string("\n"),
 
 		prog_out__write_context(Context),
@@ -5407,9 +5405,7 @@ report_error_arg_var(TypeCheckInfo, VarId, ArgTypeAssignSet0) -->
 		write_argument_name(VarSet, VarId),
 		io__write_string(" has overloaded actual/expected types {\n"),
 
-		prog_out__write_context(Context),
-		io__write_string("    "),
-		write_arg_type_stuff_list(ArgTypeStuffList),
+		write_arg_type_stuff_list(Context, ArgTypeStuffList),
 		io__write_string("\n"),
 
 		prog_out__write_context(Context),
@@ -5445,32 +5441,42 @@ write_types_list(Context, [Type | Types]) -->
 write_type_stuff(type_stuff(T, TVarSet, TBinding, HeadTypeParams)) -->
 	write_type_b(T, TVarSet, TBinding, HeadTypeParams).
 
-:- pred write_var_type_stuff_list(list(type_stuff), type, io__state, io__state).
-:- mode write_var_type_stuff_list(in, in, di, uo) is det.
+:- pred write_var_type_stuff_list(prog_context, list(type_stuff), type, io, io).
+:- mode write_var_type_stuff_list(in, in, in, di, uo) is det.
 
-write_var_type_stuff_list(Ts, T) -->
-	io__write_list(Ts, ", ", write_var_type_stuff(T)).
+write_var_type_stuff_list(Context, Ts, T) -->
+	io__write_list(Ts, ",\n", write_var_type_stuff(Context, T)).
 
-:- pred write_var_type_stuff(type, type_stuff, io__state, io__state).
-:- mode write_var_type_stuff(in, in, di, uo) is det.
+:- pred write_var_type_stuff(prog_context, type, type_stuff, io, io).
+:- mode write_var_type_stuff(in, in, in, di, uo) is det.
 	
-write_var_type_stuff(T, type_stuff(VT, TVarSet, TBinding, HeadTypeParams)) -->
+write_var_type_stuff(Context, T, VarTypeStuff) -->
+	{ VarTypeStuff = type_stuff(VT, TVarSet, TBinding, HeadTypeParams) },
+	prog_out__write_context(Context),
+	io__write_string("    (inferred) "),
 	write_type_b(VT, TVarSet, TBinding, HeadTypeParams),
-	io__write_string("/"),
+	io__write_string(",\n"),
+	prog_out__write_context(Context),
+	io__write_string("    (expected) "),
 	write_type_b(T, TVarSet, TBinding, HeadTypeParams).
 
-:- pred write_arg_type_stuff_list(list(arg_type_stuff), io__state, io__state).
-:- mode write_arg_type_stuff_list(in, di, uo) is det.
+:- pred write_arg_type_stuff_list(prog_context, list(arg_type_stuff), io, io).
+:- mode write_arg_type_stuff_list(in, in, di, uo) is det.
 
-write_arg_type_stuff_list(Ts) -->
-	io__write_list(Ts, ", ", write_arg_type_stuff).
+write_arg_type_stuff_list(Context, Ts) -->
+	io__write_list(Ts, ",\n", write_arg_type_stuff(Context)).
 
-:- pred write_arg_type_stuff(arg_type_stuff, io__state, io__state).
-:- mode write_arg_type_stuff(in, di, uo) is det.
+:- pred write_arg_type_stuff(prog_context, arg_type_stuff, io, io).
+:- mode write_arg_type_stuff(in, in, di, uo) is det.
 
-write_arg_type_stuff(arg_type_stuff(T, VT, TVarSet, HeadTypeParams)) -->
+write_arg_type_stuff(Context, ArgTypeStuff) -->
+	{ ArgTypeStuff = arg_type_stuff(T, VT, TVarSet, HeadTypeParams) },
+	prog_out__write_context(Context),
+	io__write_string("    (inferred) "),
 	output_type(VT, TVarSet, HeadTypeParams),
-	io__write_string("/"),
+	io__write_string(",\n"),
+	prog_out__write_context(Context),
+	io__write_string("    (expected) "),
 	output_type(T, TVarSet, HeadTypeParams).
 
 %-----------------------------------------------------------------------------%
