@@ -33,6 +33,7 @@ PROGS=	\
 	intermod_typeclass_bug \
 	lambda_multi_constraint_same_tvar \
 	mode_decl_order_bug \
+	module_test \
 	multi_constraint_diff_tvar \
 	multi_constraint_same_tvar \
 	multi_moded \
@@ -74,6 +75,9 @@ MCFLAGS-unbound_tvar = --no-user-guided-type-specialisation
 MCFLAGS-unqualified_method = --intermodule-optimization
 MCFLAGS-unqualified_method2 = --intermodule-optimization
 MCFLAGS-unqualified_method3 = --intermodule-optimization
+MCFLAGS-module_test_m1 = --infer-all
+MCFLAGS-module_test_m2 = --infer-all
+MCFLAGS-module_test = --infer-all
 
 #-----------------------------------------------------------------------------#
 
