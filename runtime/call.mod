@@ -64,7 +64,7 @@ do_call_det_closure:
 	restore_registers();
 
 	call((Code *)field(0, closure, 1), LABEL(do_det_closure_return),
-		LABEL(do_det_call_closure));
+		LABEL(do_call_det_closure));
 }
 do_det_closure_return:
 {
@@ -165,7 +165,7 @@ do_call_nondet_closure:
 	restore_registers();
 
 	call((Code *)field(0, closure, 1), LABEL(do_nondet_closure_return),
-		LABEL(do_nondet_call_closure));
+		LABEL(do_call_nondet_closure));
 }
 do_nondet_closure_return:
 {
