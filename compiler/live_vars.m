@@ -108,7 +108,7 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, ExtraLives0, Liveness0,
 	goal_info_get_internal_determinism(GoalInfo, GoalCategory),
 	detect_live_vars_in_goal_2(Goal0, ExtraLives0, Liveness3, LiveSets0,
 				GoalCategory, ModuleInfo, ExtraLives1,
-							Liveness4, LiveSets),
+							Liveness4, LiveSets1),
 
 	(
 		(
@@ -122,7 +122,18 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, ExtraLives0, Liveness0,
 	;
 		ExtraLives = ExtraLives1
 	),
-        set__union(Liveness4, PostBirths, Liveness).
+        set__union(Liveness4, PostBirths, Liveness),
+
+		% Add extra interference for variables that become live
+		% and variables that be come dead in this goal.
+	(
+		goal_is_atomic(Goal0)
+	->
+		set__union(PreBirths, PostDeaths, ExtraInterference),
+		set__insert(LiveSets1, ExtraInterference, LiveSets)
+	;
+		LiveSets = LiveSets1
+	).
 
 %-----------------------------------------------------------------------------%
 	% Here we process each of the different sorts of goals.
