@@ -31,6 +31,13 @@
 		io__state, io__state).
 :- mode output_llds(in, in, in, di, uo) is det.
 
+	% output_c_file_intro_and_grade(SourceFileName, Version)
+	% outputs a comment which includes the settings used to generate
+	% the C file.  This is used by configure to check the any
+	% existing C files are consistent with the current
+	% configuration.  SourceFileName is the name of the file from
+	% which the C is generated, while Version is the version name
+	% of the mercury compiler.
 :- pred output_c_file_intro_and_grade(string, string, io__state, io__state).
 :- mode output_c_file_intro_and_grade(in, in, di, uo) is det.
 

@@ -366,8 +366,8 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		# about using possibly uninitialized variables;
 		# there's no easy way to supress them except by
 		# disabling the warning.
-		case "$CC" in
-	    		*gcc*)
+		case "$COMPILER" in
+	    		gcc)
 				CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
 			;;
 		esac

@@ -773,6 +773,8 @@ mlds_needs_initialization(init_struct([])) = no.
 mlds_needs_initialization(init_struct([_|_])) = yes.
 mlds_needs_initialization(init_array(_)) = yes.
 
+	% XXX ANSI/ISO C does not allow empty arrays or empty structs;
+	% what we do for them here is probably not quite right.
 :- pred mlds_output_initializer_body(mlds__initializer, io__state, io__state).
 :- mode mlds_output_initializer_body(in, di, uo) is det.
 
@@ -790,7 +792,7 @@ mlds_output_initializer_body(init_array(ElementInits)) -->
 	->
 			% The MS VC++ compiler only generates a symbol, if
 			% the array has a known size.
-		io__write_string("NULL")
+		io__write_string("0")
 	;
 		io__write_list(ElementInits,
 				",\n\t\t", mlds_output_initializer_body)

@@ -407,7 +407,7 @@ invoke_shell_command(Command0, Succeeded) -->
 	{
 		use_win32
 	->
-		string__append_list(["bash -c '", Command0, " '"], Command)
+		string__append_list(["sh -c '", Command0, " '"], Command)
 	;
 		Command = Command0
 	},
@@ -438,7 +438,7 @@ invoke_system_command(Command, Succeeded) -->
 	% Are we compiling in a win32 environment?
 :- pred use_win32 is semidet.
 :- pragma c_code(use_win32,
-	[will_not_call_mercury],
+	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_WIN32
 	SUCCESS_INDICATOR = 1;
