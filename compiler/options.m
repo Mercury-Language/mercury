@@ -941,7 +941,7 @@ option_defaults_2(link_option, [
 	mercury_library_special -	string_special,
 	mercury_libraries -		accumulating([]),
 					% The mmc script will set the default
-					% --mercury_standard_library_directory.
+					% standard library directory.
 	mercury_standard_library_directory - maybe_string(no),
 	init_file_directories -		accumulating([]),
 	init_files -			accumulating([]),
