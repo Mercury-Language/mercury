@@ -1056,7 +1056,7 @@ join_module_list([Module | Modules], Extension, Terminator,
 write_num_split_c_files(ModuleName, NumChunks, Succeeded) -->
 	module_name_to_file_name(ModuleName, ".num_split", yes,
 		NumChunksFileName),
-       io__open_output(NumChunksFileName, Res),
+	io__open_output(NumChunksFileName, Res),
 	( { Res = ok(OutputStream) } ->
 		io__write_int(OutputStream, NumChunks),
 		io__nl(OutputStream),
