@@ -323,7 +323,6 @@
 :- external(unify/2).
 :- external(index/2).
 :- external(compare/3).
-:- external(term_to_type/2).
 :- external(type_to_term/2).
 
 
