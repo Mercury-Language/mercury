@@ -23,6 +23,7 @@ Major improvements to the Mercury debugger, including:
 * Support for source-linked debugging using vim (rather than emacs).
 * Command-line completion.
 * Ability to display values of higher-order terms.
+* Declarative debugging.
 
 Numerous minor improvements to the Mercury standard library.
 
@@ -372,5 +373,9 @@ Changes to the Mercury debugger:
   the program.  The main advantage of the new behaviour is that
   redirection of the program's input and output works.  The old
   behaviour is still available with `mdb --program-in-window'.
+
+* The debugger now includes support for declarative debugging.  The `dd'
+  command starts diagnosis at any exit, fail or exception port in mdb.  See
+  the Mercury User's Guide for more details.
 
 For news about earlier versions, see the HISTORY file.

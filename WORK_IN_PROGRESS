@@ -43,8 +43,10 @@ at some time in the future:
 * Converting procedures to tail-recursive form via automatic
   accumulator introduction (--introduce-accumulators).
 
-* The Mercury debugger (mdb) now includes some support for declarative
-  debugging.
+* The Mercury debugger (mdb) now includes support for declarative
+  debugging.  There are still some limitations to be dealt with, and
+  some improvements are yet to be made.  See the Mercury User's guide
+  for further details.
 
 * There is a `--generate-bytecode' option, for a new back-end
   that generates bytecode.  The bytecode generator is basically
