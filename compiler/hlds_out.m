@@ -46,10 +46,15 @@
 
 %-----------------------------------------------------------------------------%
 
-	% print out an hlds structure.
+	% print out an entire hlds structure.
 
 :- pred hlds_out__write_hlds(int, module_info, io__state, io__state).
 :- mode hlds_out__write_hlds(in, in, in, out) is det.
+
+	% print out an hlds goal.
+
+:- pred hlds_out__write_goal(hlds__goal, varset, int, io__state, io__state).
+:- mode hlds_out__write_goal(in, in, in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -213,7 +218,7 @@ hlds_out__write_pred(Indent, PredId, PredInfo) -->
 
 	{ predicate_name(PredId, PredName) },
 	mercury_output_pred_type(TVarSet, unqualified(PredName), ArgTypes,
-		Context),
+		unspecified, Context),
 	{ pred_info_is_imported(PredInfo) ->
 		Imported = yes
 	;
@@ -318,9 +323,6 @@ hlds_out__write_clause_head(PredId, VarSet, HeadVars) -->
 		Term = term__functor(term__atom(PredName), HeadTerms, Context)
 	},
 	mercury_output_term(Term, VarSet).
-
-:- pred hlds_out__write_goal(hlds__goal, varset, int, io__state, io__state).
-:- mode hlds_out__write_goal(in, in, in, di, uo) is det.
 
 hlds_out__write_goal(Goal - GoalInfo, VarSet, Indent) -->
 	hlds_out__write_indent(Indent),
@@ -493,13 +495,10 @@ hlds_out__write_disj(GoalList, VarSet, Indent) -->
 				io__state, io__state).
 :- mode hlds_out__write_case(in, in, in, in, di, uo) is det.
 
-hlds_out__write_case(case(ConsId, ArgVars, Goal), Var, VarSet, Indent) -->
-	{ term_list_to_var_list(Args, ArgVars) },
-	{ cons_id_get_name(ConsId, Name) },
-	{ term__context_init(0, Context) },
+hlds_out__write_case(case(ConsId, Goal), Var, VarSet, Indent) -->
 	mercury_output_var(Var, VarSet),
-	io__write_string(" = "),
-	mercury_output_term(term__functor(Name, Args, Context), VarSet),
+	io__write_string(" has functor "),
+	hlds_out__write_cons_id(ConsId),
 	io__write_string(","),
 	mercury_output_newline(Indent),
 	hlds_out__write_goal(Goal, VarSet, Indent).

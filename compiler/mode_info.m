@@ -195,7 +195,7 @@ mode_info_get_procid(mode_info(_,_,_,ProcId,_,_,_,_,_,_,_), ProcId).
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_context(mode_info, term__context).
-:- mode mode_info_get_context(in, out).
+:- mode mode_info_get_context(in, out) is det.
 
 mode_info_get_context(mode_info(_,_,_,_,Context,_,_,_,_,_,_), Context).
 
@@ -324,7 +324,7 @@ mode_info_set_errors( Errors, mode_info(A,B,C,D,E,F,G,H,I,_,K),
 	% Add a set of vars to the bag of live vars.
 
 :- pred mode_info_add_live_vars(set(var), mode_info, mode_info).
-:- mode mode_info_add_live_vars(in, mode_info_di, mode_info_uo).
+:- mode mode_info_add_live_vars(in, mode_info_di, mode_info_uo) is det.
 
 mode_info_add_live_vars(NewLiveVars,
 			mode_info(A,B,C,D,E,F,G,H,I,J,LiveVars0),

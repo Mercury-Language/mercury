@@ -151,7 +151,7 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
 	( { VerboseErrors = yes } ->
 		io__write_string("\t\t"),
-		mercury_output_hlds_goal(Goal, VarSet, 2),
+		hlds_out__write_goal(Goal, VarSet, 2),
 		io__write_string(".\n")
 	;
 		[]

@@ -17,8 +17,8 @@
 :- mode convert_to_mercury(in, in, in, di, uo) is det.
 
 :- pred mercury_output_pred_type(varset, sym_name, list(type),
-		term__context, io__state, io__state).
-:- mode mercury_output_pred_type(in, in, in, in, di, uo) is det.
+		determinism, term__context, io__state, io__state).
+:- mode mercury_output_pred_type(in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_mode_decl(varset, sym_name, list(mode), determinism,
 			term__context, io__state, io__state).
@@ -423,16 +423,17 @@ mercury_output_ctors([Name - ArgTypes | Ctors], VarSet) -->
 
 mercury_output_pred_decl(VarSet, PredName, TypesAndModes, Det, Context) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
-	mercury_output_pred_type(VarSet, PredName, Types, Context),
+	mercury_output_pred_type(VarSet, PredName, Types, Det, Context),
 	(
-		{ MaybeModes = yes(Modes) }
+		{ MaybeModes = yes(Modes) },
+		{ Modes \= [] }
 	->
 		mercury_output_mode_decl(VarSet, PredName, Modes, Det, Context)
 	;
 		[]
 	).
 
-mercury_output_pred_type(VarSet, PredName, Types, _Context) -->
+mercury_output_pred_type(VarSet, PredName, Types, Det, _Context) -->
 	io__write_string(":- pred "),
 	(
 		{ Types = [Type | Rest] }
@@ -443,7 +444,8 @@ mercury_output_pred_type(VarSet, PredName, Types, _Context) -->
 		mercury_output_remaining_terms(Rest, VarSet),
 		io__write_string(")")
 	;
-		mercury_output_bracketed_sym_name(PredName)
+		mercury_output_bracketed_sym_name(PredName),
+		mercury_output_det_annotation(Det)
 	),
 
 	% We need to handle is/2 specially, because it's used for
@@ -459,7 +461,7 @@ mercury_output_pred_type(VarSet, PredName, Types, _Context) -->
 		{ PredName = unqualified("is") },
 		{ list__length(Types, 2) }
 	->
-		io__write_string(" is det")
+		mercury_output_det_annotation(Det)
 	;
 		[]
 	),
@@ -491,13 +493,19 @@ mercury_output_mode_decl(VarSet, PredName, Modes, Det, _Context) -->
 	;
 		mercury_output_bracketed_sym_name(PredName)
 	),
+	mercury_output_det_annotation(Det),
+	io__write_string(".\n").
+
+:- pred mercury_output_det_annotation(determinism, io__state, io__state).
+:- mode mercury_output_det_annotation(in, di, uo) is det.
+
+mercury_output_det_annotation(Det) -->
 	( { Det = unspecified } ->
 		[]
 	;
 		io__write_string(" is "),
 		mercury_output_det(Det)
-	),
-	io__write_string(".\n").
+	).
 
 :- pred mercury_output_det(determinism, io__state, io__state).
 :- mode mercury_output_det(in, di, uo) is det.
@@ -684,211 +692,6 @@ mercury_output_some(Vars, VarSet) -->
 		mercury_output_vars(Vars, VarSet),
 		io__write_string("]")
 	).
-
-%-----------------------------------------------------------------------------%
-
-mercury_output_hlds_goal(Goal - GoalInfo, VarSet, Indent) -->
-		% debugging aid
-	{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
-	{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
-	io__write_string("% nonlocals: "),
-	mercury_output_vars(NonLocalsList, VarSet),
-	mercury_output_newline(Indent),
-
-	mercury_output_hlds_goal_2(Goal, VarSet, Indent).
-
-:- pred mercury_output_hlds_goal_2(hlds__goal_expr, varset, int,
-					io__state, io__state).
-:- mode mercury_output_hlds_goal_2(in, in, in, di, uo) is det.
-
-mercury_output_hlds_goal_2(switch(Var, CasesList, _), VarSet, Indent) -->
-	io__write_string("( % switch on `"),
-	mercury_output_var(Var, VarSet),
-	io__write_string("'"),
-	{ Indent1 is Indent + 1 },
-	mercury_output_newline(Indent1),
-	( { CasesList = [Case | Cases] } ->
-		mercury_output_hlds_case(Case, Var, VarSet, Indent1),
-		mercury_output_hlds_cases(Cases, Var, VarSet, Indent1)
-	;
-		io__write_string("fail")
-	),
-	mercury_output_newline(Indent),
-	io__write_string(")").
-
-mercury_output_hlds_goal_2(some(Vars, Goal), VarSet, Indent) -->
-	( { Vars = [] } ->
-		mercury_output_hlds_goal(Goal, VarSet, Indent)
-	;
-		io__write_string("(some ["),
-		mercury_output_vars(Vars, VarSet),
-		io__write_string("] "),
-		{ Indent1 is Indent + 1 },
-		mercury_output_newline(Indent1),
-		mercury_output_hlds_goal(Goal, VarSet, Indent1),
-		mercury_output_newline(Indent),
-		io__write_string(")")
-	).
-
-mercury_output_hlds_goal_2(all(Vars, Goal), VarSet, Indent) -->
-	( { Vars = [] } ->
-		mercury_output_hlds_goal(Goal, VarSet, Indent)
-	;
-		io__write_string("(all ["),
-		mercury_output_vars(Vars, VarSet),
-		io__write_string("] "),
-		{ Indent1 is Indent + 1 },
-		mercury_output_newline(Indent1),
-		mercury_output_hlds_goal(Goal, VarSet, Indent1),
-		mercury_output_newline(Indent),
-		io__write_string(")")
-	).
-
-mercury_output_hlds_goal_2(if_then_else(Vars, A, B, C), VarSet, Indent) -->
-	io__write_string("(if"),
-	mercury_output_hlds_some(Vars, VarSet),
-	{ Indent1 is Indent + 1 },
-	mercury_output_newline(Indent1),
-	mercury_output_hlds_goal(A, VarSet, Indent1),
-	mercury_output_newline(Indent),
-	io__write_string("then"),
-	mercury_output_newline(Indent1),
-	mercury_output_hlds_goal(B, VarSet, Indent1),
-	mercury_output_newline(Indent),
-	io__write_string("else"),
-	mercury_output_newline(Indent1),
-	mercury_output_hlds_goal(C, VarSet, Indent1),
-	mercury_output_newline(Indent),
-	io__write_string(")").
-
-mercury_output_hlds_goal_2(not(Vars, Goal), VarSet, Indent) -->
-	io__write_string("(\+"),
-	mercury_output_hlds_some(Vars, VarSet),
-	{ Indent1 is Indent + 1 },
-	mercury_output_newline(Indent1),
-	mercury_output_hlds_goal(Goal, VarSet, Indent),
-	mercury_output_newline(Indent),
-	io__write_string(")").
-
-mercury_output_hlds_goal_2(conj(List), VarSet, Indent) -->
-	( { List = [Goal | Goals] } ->
-		io__write_string("("),
-		{ Indent1 is Indent + 1 },
-		mercury_output_newline(Indent1),
-		mercury_output_hlds_goal(Goal, VarSet, Indent1),
-		mercury_output_hlds_conj(Goals, VarSet, Indent),
-		mercury_output_newline(Indent),
-		io__write_string(")")
-	;
-		io__write_string("true")
-	).
-
-mercury_output_hlds_goal_2(disj(List), VarSet, Indent) -->
-	( { List = [Goal | Goals] } ->
-		io__write_string("("),
-		{ Indent1 is Indent + 1 },
-		mercury_output_newline(Indent1),
-		mercury_output_hlds_goal(Goal, VarSet, Indent1),
-		mercury_output_hlds_disj(Goals, VarSet, Indent),
-		mercury_output_newline(Indent),
-		io__write_string(")")
-	;
-		io__write_string("fail")
-	).
-
-mercury_output_hlds_goal_2(call(PredId, _ProcId, Args, _), VarSet, Indent) -->
-	mercury_output_hlds_call(PredId, Args, VarSet, Indent).
-
-mercury_output_hlds_goal_2(unify(A, B, _, _, _), VarSet, _Indent) -->
-	mercury_output_term(A, VarSet),
-	io__write_string(" = "),
-	mercury_output_term(B, VarSet).
-
-:- pred mercury_output_hlds_call(pred_id, list(term), varset, int,
-				io__state, io__state).
-:- mode mercury_output_hlds_call(in, in, in, in, di, uo) is det.
-
-mercury_output_hlds_call(PredId, Args, VarSet, _Indent) -->
-		% XXX module name
-	{ predicate_name(PredId, PredName) },
-	{ term__context_init(0, Context) },
-	mercury_output_term(term__functor(term__atom(PredName), Args, Context),
-				VarSet).
-
-:- pred mercury_output_hlds_conj(list(hlds__goal), varset, int,
-				io__state, io__state).
-:- mode mercury_output_hlds_conj(in, in, in, di, uo) is det.
-
-mercury_output_hlds_conj(GoalList, VarSet, Indent) -->
-	(
-		{ GoalList = [Goal | Goals] }
-	->
-		io__write_string(","),
-		{ Indent1 is Indent + 1 },
-		mercury_output_newline(Indent1),
-		mercury_output_hlds_goal(Goal, VarSet, Indent1),
-		mercury_output_hlds_conj(Goals, VarSet, Indent)
-	;
-		[]
-	).
-
-:- pred mercury_output_hlds_disj(list(hlds__goal), varset, int,
-				io__state, io__state).
-:- mode mercury_output_hlds_disj(in, in, in, di, uo) is det.
-
-mercury_output_hlds_disj(GoalList, VarSet, Indent) -->
-	(
-		{ GoalList = [Goal | Goals] }
-	->
-		mercury_output_newline(Indent),
-		io__write_string(";"),
-		{ Indent1 is Indent + 1 },
-		mercury_output_newline(Indent1),
-		mercury_output_hlds_goal(Goal, VarSet, Indent1),
-		mercury_output_hlds_disj(Goals, VarSet, Indent)
-	;
-		[]
-	).
-
-:- pred mercury_output_hlds_case(case, var, varset, int,
-				io__state, io__state).
-:- mode mercury_output_hlds_case(in, in, in, in, di, uo) is det.
-
-mercury_output_hlds_case(case(ConsId, ArgVars, Goal), Var, VarSet, Indent) -->
-	{ term_list_to_var_list(Args, ArgVars) },
-	{ cons_id_get_name(ConsId, Name) },
-	{ term__context_init(0, Context) },
-	mercury_output_var(Var, VarSet),
-	io__write_string(" = "),
-	mercury_output_term(term__functor(Name, Args, Context), VarSet),
-	io__write_string(","),
-	mercury_output_newline(Indent),
-	mercury_output_hlds_goal(Goal, VarSet, Indent).
-
-:- pred mercury_output_hlds_cases(list(case), var, varset, int,
-				io__state, io__state).
-:- mode mercury_output_hlds_cases(in, in, in, in, di, uo) is det.
-
-mercury_output_hlds_cases(CasesList, Var, VarSet, Indent) -->
-	(
-		{ CasesList = [Case | Cases] }
-	->
-		mercury_output_newline(Indent),
-		io__write_string(";"),
-		{ Indent1 is Indent + 1 },
-		mercury_output_newline(Indent1),
-		mercury_output_hlds_case(Case, Var, VarSet, Indent1),
-		mercury_output_hlds_cases(Cases, Var, VarSet, Indent)
-	;
-		[]
-	).
-
-:- pred mercury_output_hlds_some(list(var), varset, io__state, io__state).
-:- mode mercury_output_hlds_some(in, in, di, uo) is det.
-
-	% quantification is all implicit by the time we get to the hlds.
-
-mercury_output_hlds_some(_Vars, _VarSet) --> [].
 
 %-----------------------------------------------------------------------------%
 

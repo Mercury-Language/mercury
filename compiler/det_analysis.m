@@ -386,12 +386,6 @@ det_infer_goal_2(unify(LT, RT, M, U, C), MiscInfo, _, _,
 		unify(LT, RT, M, U, C), D) :-
 	det_infer_unify(U, MiscInfo, D).
 
-	% if_then_elses contain an implicit conjunction, so we
-	% need to pass NonLocals and DeltaInstMap in order to
-	% determine whether or not we can generate a commit after
-	% the "Then" part, which can make the if-then-else as a whole
-	% semi-deterministic rather than non-deterministic.
-
 det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), MiscInfo,
 		_NonLocals, _DeltaInstMap,
 		if_then_else(Vars, Cond, Then, Else), D) :-
@@ -511,10 +505,13 @@ det_infer_switch(Cases0, MiscInfo, Cases, Cons, D1) :-
 det_infer_switch_2([], _MiscInfo, [], Cons, Cons, D, D).
 det_infer_switch_2([Case0|Cases0], MiscInfo, [Case|Cases], Cons0, Cons,
 		D0, D) :-
-	Case0 = case(ConsId, Vars, Goal0),
+		% XXX we should update the instmap to reflect the
+		% knowledge that the var is bound to this particular
+		% constructor
+	Case0 = case(ConsId, Goal0),
 	det_infer_goal(Goal0, MiscInfo, Goal, D1),
 	max_category(D0, D1, D2),
-	Case = case(ConsId, Vars, Goal),
+	Case = case(ConsId, Goal),
 	det_infer_switch_2(Cases0, MiscInfo, Cases, [ConsId|Cons0], Cons,
 		D2, D).
 

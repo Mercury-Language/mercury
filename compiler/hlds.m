@@ -301,8 +301,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- type call_info	==	map(var, int).
 
 %%% :- export_type case.
-:- type case		--->	case(cons_id, list(var), hlds__goal).
-			%	functor to match with, arguments to extract,
+:- type case		--->	case(cons_id, hlds__goal).
+			%	functor(s) to match with,
 			%	goal to execute if match succeeds.
 
 	% Initially all unifications are represented as
@@ -361,7 +361,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 :- type hlds__goal_info
 	---> goal_info(
-		map(var, is_live),	% XXX this is O(N*N)
+		delta_liveness,	% the changes in liveness
 		determinism,	% the declared determinism
 				% (current always unspecified, since
 				% there's no way to declare the determinism
@@ -915,13 +915,20 @@ proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo) :-
 :- pred goal_info_init(hlds__goal_info).
 :- mode goal_info_init(out).
 
-:- type liveness == map(var, is_live).
+% Instead of recording the liveness of every variable at every
+% part of the goal, we just keep track of the initial liveness
+% and the changes in liveness.
 
-:- pred goal_info_liveness(hlds__goal_info, liveness).
-:- mode goal_info_liveness(in, out).
+:- type delta_life ---> birth ; death.
 
-:- pred goal_info_set_liveness(hlds__goal_info, liveness, hlds__goal_info).
-:- mode goal_info_set_liveness(in, in, out).
+:- type delta_liveness == map(var, delta_life).
+
+:- pred goal_info_delta_liveness(hlds__goal_info, delta_liveness).
+:- mode goal_info_delta_liveness(in, out).
+
+:- pred goal_info_set_delta_liveness(hlds__goal_info, delta_liveness,
+					hlds__goal_info).
+:- mode goal_info_set_delta_liveness(in, in, out).
 
 :- pred goal_info_determinism(hlds__goal_info, category).
 :- mode goal_info_determinism(in, out).
@@ -955,16 +962,17 @@ proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo) :-
 				hlds__goal_info).
 :- mode goal_info_set_instmap_delta(in, in, out).
 
-/***** currently not used and not implemented
-:- pred liveness_livevars(map(var, is_live), list(var)).
-:- mode liveness_livevars(in, out).
-*****/
-
 :- pred goal_info_context(hlds__goal_info, term__context).
 :- mode goal_info_context(in, out).
 
 :- pred goal_info_set_context(hlds__goal_info, term__context, hlds__goal_info).
 :- mode goal_info_set_context(in, in, out).
+
+:- pred goal_to_conj_list(hlds__goal, list(hlds__goal)).
+:- mode goal_to_conj_list(in, out).
+
+:- pred goal_to_disj_list(hlds__goal, list(hlds__goal)).
+:- mode goal_to_disj_list(in, out).
 
 %-----------------------------------------------------------------------------%
 
@@ -973,19 +981,19 @@ proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo) :-
 goal_info_init(GoalInfo) :-
 	DeclaredDet = unspecified,
 	InferredDet = nondeterministic, 
-	map__init(Liveness),
+	map__init(DeltaLiveness),
 	map__init(InstMapDelta),
 	set__init(NonLocals),
 	term__context_init("", 0, Context),
-	GoalInfo = goal_info(Liveness, DeclaredDet, InferredDet,
+	GoalInfo = goal_info(DeltaLiveness, DeclaredDet, InferredDet,
 				InstMapDelta, Context, NonLocals).
 
-goal_info_liveness(GoalInfo, Liveness) :-
-	GoalInfo = goal_info(Liveness, _, _, _, _, _).
+goal_info_delta_liveness(GoalInfo, DeltaLiveness) :-
+	GoalInfo = goal_info(DeltaLiveness, _, _, _, _, _).
 
-goal_info_set_liveness(GoalInfo0, Liveness, GoalInfo) :-
+goal_info_set_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
 	GoalInfo0 = goal_info(_, B, C, D, E, F),
-	GoalInfo = goal_info(Liveness, B, C, D, E, F).
+	GoalInfo = goal_info(DeltaLiveness, B, C, D, E, F).
 
 goal_info_determinism(GoalInfo, Determinism) :-
 	goal_info_inferred_determinism(GoalInfo, Determinism).
@@ -1007,12 +1015,6 @@ goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
 	GoalInfo0 = goal_info(A, B, C, _, E, F),
 	GoalInfo = goal_info(A, B, C, InstMapDelta, E, F).
 
-/*** This is a specification, not an implementation.
-     It's not mode-correct.
-liveness_livevars(Liveness, LiveVars) :-
-	solutions(X, map__search(Liveness, X, live), LiveVars).
-***/
-
 goal_info_context(GoalInfo, Context) :-
 	GoalInfo = goal_info(_, _, _, _, Context, _).
 
@@ -1026,6 +1028,21 @@ goal_info_get_nonlocals(GoalInfo, NonLocals) :-
 goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
 	GoalInfo0 = goal_info(A, B, C, D, E, _),
 	GoalInfo  = goal_info(A, B, C, D, E, NonLocals).
+
+
+goal_to_conj_list(Goal, ConjList) :-
+	( Goal = (conj(List) - _) ->
+		ConjList = List
+	;
+		ConjList = [Goal]
+	).
+
+goal_to_disj_list(Goal, DisjList) :-
+	( Goal = (disj(List) - _) ->
+		DisjList = List
+	;
+		DisjList = [Goal]
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

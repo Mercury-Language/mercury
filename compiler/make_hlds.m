@@ -513,6 +513,11 @@ module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context, Module)
 
 pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 		MContext, Preds) -->
+	( { Det = unspecified } ->
+		unspecified_det_warning(PredName, Arity, MContext)
+	;
+		[]
+	),
 	{ list__length(Modes, Arity),
 	  make_predid(ModuleName, PredName, Arity, PredId) },
 	(
@@ -1037,18 +1042,6 @@ make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_to_conj_list(hlds__goal, list(hlds__goal)).
-:- mode goal_to_conj_list(in, out).
-
-goal_to_conj_list(Goal, ConjList) :-
-	( Goal = (conj(List) - _) ->
-		ConjList = List
-	;
-		ConjList = [Goal]
-	).
-
-%-----------------------------------------------------------------------------%
-
 	% Make implicit quantification explicit.
 	% For the rules on implicit quantification, see the
 	% file compiler/notes/IMPLICIT_QUANTIFICATION.
@@ -1516,5 +1509,18 @@ undefined_pred_error(Name, Arity, Context, Description) -->
 	io__write_string("/"),
 	io__write_int(Arity),
 	io__write_string("' without preceding pred declaration\n").
+
+:- pred unspecified_det_warning(sym_name, int, term__context, 
+				io__state, io__state).
+:- mode unspecified_det_warning(in, in, in, di, uo).
+
+unspecified_det_warning(Name, Arity, Context) -->
+	prog_out__write_context(Context),
+	io__write_string("Warning: "),
+	io__write_string(" no determinism declaration for `"),
+	prog_out__write_sym_name(Name),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string("\n").
 
 %-----------------------------------------------------------------------------%

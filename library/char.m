@@ -24,49 +24,49 @@
 %-----------------------------------------------------------------------------%
 
 :- pred char_to_int(character, int).
-:- mode char_to_int(in, out).
-:- mode char_to_int(out, in).
+:- mode char_to_int(in, out) is det.
+:- mode char_to_int(out, in) is semidet.
 	% Convert a character to it's corresponding numerical code.
 
 :- pred char__to_upper(character, character).
-:- mode char__to_upper(in, out).
+:- mode char__to_upper(in, out) is det.
 	% Convert a character to uppercase.
 
 :- pred char__to_lower(character, character).
-:- mode char__to_lower(in, out).
+:- mode char__to_lower(in, out) is det.
 	% Convert a character to lowercase.
 
 :- pred char__is_upper(character).
-:- mode char__is_upper(in).
+:- mode char__is_upper(in) is semidet.
 	% True iff the character is an uppercase letter.
 
 :- pred char__is_alpha(character).
-:- mode char__is_alpha(in).
+:- mode char__is_alpha(in) is semidet.
 	% True iff the character is a letter.
 
 :- pred char__is_alnum(character).
-:- mode char__is_alnum(in).
+:- mode char__is_alnum(in) is semidet.
 	% True iff the character is a letter or digit.
 
 :- pred char__is_alpha_or_underscore(character).
-:- mode char__is_alpha_or_underscore(in).
+:- mode char__is_alpha_or_underscore(in) is semidet.
 	% True iff the character is a letter or an underscore.
 
 :- pred char__is_alnum_or_underscore(character).
-:- mode char__is_alnum_or_underscore(in).
+:- mode char__is_alnum_or_underscore(in) is semidet.
 	% True iff the character is a letter, a digit or an underscore.
 
 :- pred char__is_digit(character).
-:- mode char__is_digit(in).
+:- mode char__is_digit(in) is semidet.
 	% True iff the character is a decimal digit.
 
 :- pred char__is_lower(character).
-:- mode char__is_lower(in).
+:- mode char__is_lower(in) is semidet.
 	% True iff the character is a lowercase letter.
 
 :- pred char__lower_upper(character, character).
-:- mode char__lower_upper(in, out).
-:- mode char__lower_upper(out, in).
+:- mode char__lower_upper(in, out) is semidet.
+:- mode char__lower_upper(out, in) is semidet.
 	% char__lower_upper(Lower, Upper) is true iff
 	% Lower is a lower-case letter and Upper is the corresponding
 	% upper-case letter.

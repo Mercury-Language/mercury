@@ -23,7 +23,7 @@
 
 :- implementation.
 :- import_module list, map, set, std_util.
-:- import_module mode_util.
+:- import_module mode_util, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -120,8 +120,8 @@ detect_switches_in_goal_2(disj(Goals0), GoalInfo, InstMap0, InstMapDelta,
 	;
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		set__to_sorted_list(NonLocals, NonLocalsList),
-		detect_switches_in_disj(NonLocalsList, Goals0, InstMap0,
-			InstMapDelta, ModuleInfo, Goal)
+		detect_switches_in_disj(NonLocalsList, Goals0, GoalInfo, 
+			InstMap0, InstMapDelta, ModuleInfo, Goal)
 	).
 
 detect_switches_in_goal_2(not(Vars, Goal0), _GoalInfo, InstMap0, _InstMapDelta,
@@ -157,14 +157,14 @@ detect_switches_in_goal_2(unify(A,B,C,D,E), _, _, _, _, unify(A,B,C,D,E)).
 	% is bound to a different functor.  We check this by examining
 	% the instantiatedness of the variable after the disjunction.
 
-:- pred detect_switches_in_disj(list(var), list(hlds__goal), instmapping,
-				instmapping, module_info, hlds__goal_expr).
-:- mode detect_switches_in_disj(in, in, in, in, in, out).
+:- pred detect_switches_in_disj(list(var), list(hlds__goal), hlds__goal_info,
+		instmapping, instmapping, module_info, hlds__goal_expr).
+:- mode detect_switches_in_disj(in, in, in, in, in, in, out).
 
-detect_switches_in_disj([], Goals0, InstMap, _, ModuleInfo, disj(Goals)) :-
+detect_switches_in_disj([], Goals0, _, InstMap, _, ModuleInfo, disj(Goals)) :-
 	detect_switches_in_disj_2(Goals0, InstMap, ModuleInfo, Goals).
 	
-detect_switches_in_disj([Var | Vars], Goals0, InstMap, InstMapDelta,
+detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, InstMap, InstMapDelta,
 		ModuleInfo, Goal) :-
 	(
 		map__search(InstMap, Var, VarInst0),
@@ -174,9 +174,8 @@ detect_switches_in_disj([Var | Vars], Goals0, InstMap, InstMapDelta,
 		;
 			VarInst = VarInst0
 		),
-		inst_is_bound_to_functors(ModuleInfo, VarInst, Functors),
-		partition_disj(Goals0, Var, Functors, InstMapDelta, ModuleInfo,
-			Cases0)
+		inst_is_bound_to_functors(ModuleInfo, VarInst, _Functors),
+		partition_disj(Goals0, Var, GoalInfo, Cases0)
 	->
 		% XXX it might be a good idea to convert switches
 		% with only one case into something simpler
@@ -185,23 +184,77 @@ detect_switches_in_disj([Var | Vars], Goals0, InstMap, InstMapDelta,
 		map__init(FollowVars),
 		Goal = switch(Var, Cases, FollowVars)
 	;
-		detect_switches_in_disj(Vars, Goals0, InstMap, InstMapDelta,
-			ModuleInfo, Goal)
+		detect_switches_in_disj(Vars, Goals0, GoalInfo,
+			InstMap, InstMapDelta, ModuleInfo, Goal)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred partition_disj(list(hlds__goal), var, list(bound_inst), instmapping,
-			module_info, list(case)).
-:- mode partition_disj(in, in, in, in, in, out).
+:- type cases == map(cons_id, list(hlds__goal)).
 
-% XXX finish this!!
+:- pred partition_disj(list(hlds__goal), var, hlds__goal_info, list(case)).
+:- mode partition_disj(in, in, in, out) is semidet.
 
-/****
-partition_disj([], _, _, _, []).
-partition_disj([Goal0 - GoalInfo0 | Goals0], Var, Functors, InstMapDelta, _,
-	[case(Var,  ]).
-*****/
+partition_disj(Goals0, Var, GoalInfo, CaseList) :-
+	map__init(Cases0),
+	partition_disj_2(Goals0, Var, Cases0, Cases),
+	map__to_assoc_list(Cases, CasesAssocList),
+	fix_case_list(CasesAssocList, GoalInfo, CaseList).
+	
+:- pred partition_disj_2(list(hlds__goal), var, cases, cases).
+:- mode partition_disj_2(in, in, in, out) is semidet.
+
+partition_disj_2([], _Var, Cases, Cases).
+partition_disj_2([Goal | Goals], Var, Cases0, Cases) :-
+	goal_to_conj_list(Goal, ConjList),
+	find_unify_var_functor(ConjList, Var, Functor),	% may fail
+	( map__search(Cases0, Functor, DisjList0) ->
+		DisjList1 = [Goal | DisjList0]
+	;
+		DisjList1 = [Goal]
+	),
+	map__set(Cases0, Functor, DisjList1, Cases1),
+	partition_disj_2(Goals, Var, Cases1, Cases).
+
+:- pred find_unify_var_functor(list(hlds__goal), var, cons_id).
+:- mode find_unify_var_functor(in, in, out) is semidet.
+
+find_unify_var_functor([Goal - _GoalInfo | Goals], Var, Functor) :-
+	( Goal = unify(term__variable(Var0), term__functor(Name, Args, _),
+			_, _, _) ->
+		Var = Var0,
+		list__length(Args, Arity),
+		make_functor_cons_id(Name, Arity, Functor)
+	; Goal = unify(term__functor(Name, Args, _), term__variable(Var0),
+			_, _, _) ->
+		Var = Var0,
+		list__length(Args, Arity),
+		make_functor_cons_id(Name, Arity, Functor)
+	; Goal = unify(_, _, _, _, _) ->
+		find_unify_var_functor(Goals, Var, Functor)
+	;
+		fail
+	).
+
+:- pred fix_case_list(assoc_list(cons_id, list(hlds__goal)), hlds__goal_info,
+			list(case)).
+:- mode fix_case_list(in, in, out) is det.
+
+fix_case_list([], _, []).
+fix_case_list([Functor - DisjList | Cases0], GoalInfo,
+		[case(Functor, Goal) | Cases]) :-
+	disj_list_to_goal(DisjList, GoalInfo, Goal),
+	fix_case_list(Cases0, GoalInfo, Cases).
+
+:- pred disj_list_to_goal(list(hlds__goal), hlds__goal_info, hlds__goal).
+:- mode disj_list_to_goal(in, in, out) is det.
+
+disj_list_to_goal(DisjList, GoalInfo, Goal) :-
+	( DisjList = [SingleGoal] ->
+		Goal = SingleGoal
+	;
+		Goal = disj(DisjList) - GoalInfo
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -224,9 +277,9 @@ detect_switches_in_disj_2([Goal0 | Goals0], InstMap0, ModuleInfo,
 detect_switches_in_cases([], _InstMap, _ModuleInfo, []).
 detect_switches_in_cases([Case0 | Cases0], InstMap, ModuleInfo,
 		[Case | Cases]) :-
-	Case0 = case(Functor, ArgVars, Goal0),
+	Case0 = case(Functor, Goal0),
 	detect_switches_in_goal(Goal0, InstMap, ModuleInfo, Goal),
-	Case = case(Functor, ArgVars, Goal),
+	Case = case(Functor, Goal),
 	detect_switches_in_cases(Cases0, InstMap, ModuleInfo, Cases).
 
 %-----------------------------------------------------------------------------%
