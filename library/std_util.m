@@ -10,11 +10,6 @@
 
 % This file is intended for all the useful standard utilities
 % that don't belong elsewhere, like <stdlib.h> in C.
-%
-% It contains the predicates solutions/2, semidet_succeed/0,
-% semidet_fail/0, functor/3, arg/3, det_arg/3, expand/4; the types univ,
-% unit, maybe(T), pair(T1, T2); and some predicates which operate on
-% those types.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -323,16 +318,16 @@
 	%
 :- pred functor(T::in, string::out, int::out) is det.
 
-	% argument(Data, ArgumentIndex, Argument)
+	% argument(Data, ArgumentIndex) = Argument
 	% 
 	% Given a data item (Data) and an argument index
 	% (ArgumentIndex), starting at 0 for the first argument, binds
 	% Argument to that argument of the functor of the data item. If
 	% the argument index is out of range -- that is, greater than or
 	% equal to the arity of the functor or lower than 0 -- argument/3
-	% fails.  The argument has the type univ. 
+	% fails.  The argument returned has the type univ. 
 	%
-:- pred argument(T::in, int::in, univ::out) is semidet.
+:- func argument(T::in, int::in) = (univ::out) is semidet.
 
 	% det_argument(ArgumentIndex, Data, Argument)
 	% 
@@ -343,32 +338,7 @@
 	% equal to the arity of the functor or lower than 0 --
 	% det_argument/3 aborts. 
 	%
-:- pred det_argument(T::in, int::in, univ::out) is det.
-
-	% arg(ArgumentIndex, Data, Argument) 
-	% 
-	% Given a data item (Data) and an argument index
-	% (ArgumentIndex), starting at 1 for the first argument, binds
-	% Argument to that argument of the functor of the data item. If
-	% the argument index is out of range -- that is, higher than the
-	% arity of the functor or lower than 1 -- arg/3 fails.  The
-	% argument has the type univ. 
-	%
-	% NOTE: `arg' is provided for Prolog compatability - the order
-	% of parameters, and first argument number in `arg' are
-	% different from `argument'.
-	%
-:- pred arg(int::in, T::in, univ::out) is semidet.
-
-	% det_arg(ArgumentIndex, Data, Argument) 
-	% 
-	% Given a data item (Data) and an argument index
-	% (ArgumentIndex), starting at 1 for the first argument, binds
-	% Argument to that argument of the functor of the data item. If
-	% the argument index is out of range -- that is, higher than the
-	% arity of the functor or lower than 1 -- det_arg/3 aborts. 
-	%
-:- pred det_arg(int::in, T::in, univ::out) is det.
+:- func det_argument(T::in, int::in) = (univ::out) is det.
 
 	% expand(Data, Functor, Arity, Arguments) 
 	% 
@@ -2405,7 +2375,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 }").
 
-:- pragma c_code(argument(Type::in, ArgumentIndex::in, Argument::out),
+:- pragma c_code(argument(Type::in, ArgumentIndex::in) = (Argument::out),
 		will_not_call_mercury, " 
 {
 	ML_Expand_Info info;
@@ -2450,17 +2420,9 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 }").
 
-arg(ArgumentIndex, Type, Argument) :-
-	ArgumentIndex1 is ArgumentIndex - 1,
-	argument(Type, ArgumentIndex1, Argument).
-
-det_arg(ArgumentIndex, Type, Argument) :-
-	ArgumentIndex1 is ArgumentIndex - 1,
-	det_argument(Type, ArgumentIndex1, Argument).
-
-det_argument(Type, ArgumentIndex, Argument) :-
+det_argument(Type, ArgumentIndex) = Argument :-
 	(
-		argument(Type, ArgumentIndex, Argument0)
+		argument(Type, ArgumentIndex) = Argument0
 	->
 		Argument = Argument0
 	;
