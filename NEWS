@@ -149,3 +149,6 @@ DRAFT NEWS for Mercury release 0.7
 
   - Added list__merge_and_remove_dups/4 and list__sort_and_remove_dups/4
     to complete the set of list__merge and list__sort operations.
+
+  - Added io__write_list/5 and io__write_list/6 which write lists, separating
+    the elements with a programmer-supplied string.
