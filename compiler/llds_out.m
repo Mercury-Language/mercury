@@ -2784,62 +2784,6 @@ llds_out__binary_op_to_string(float_divide, "float_divide").
 
 %-----------------------------------------------------------------------------%
 
-:- pred clause_num_to_string(int::in, string::out) is det.
-
-clause_num_to_string(N, Str) :-
-	( clause_num_to_string_2(N, Str0) ->
-		Str = Str0
-	;
-		error("clause_num_to_string failed")
-	).
-
-:- pred clause_num_to_string_2(int::in, string::out) is semidet.
-
-clause_num_to_string_2(N, Str) :-
-	(
-		N < 26
-	->
-		int_to_letter(N, Str)
-	;
-		N_Low is N mod 26,
-		N_High is N // 26,
-		int_to_letter(N_Low, L),
-		clause_num_to_string(N_High, S),
-		string__append(S, L, Str)
-	).
-
-:- pred int_to_letter(int, string).
-:- mode int_to_letter(in, out) is semidet.
-
-	% This code is boring, but portable - it works even for EBCDIC ;-)
-
-int_to_letter(0, "a").
-int_to_letter(1, "b").
-int_to_letter(2, "c").
-int_to_letter(3, "d").
-int_to_letter(4, "e").
-int_to_letter(5, "f").
-int_to_letter(6, "g").
-int_to_letter(7, "h").
-int_to_letter(8, "i").
-int_to_letter(9, "j").
-int_to_letter(10, "k").
-int_to_letter(11, "l").
-int_to_letter(12, "m").
-int_to_letter(13, "n").
-int_to_letter(14, "o").
-int_to_letter(15, "p").
-int_to_letter(16, "q").
-int_to_letter(17, "r").
-int_to_letter(18, "s").
-int_to_letter(19, "t").
-int_to_letter(20, "u").
-int_to_letter(21, "v").
-int_to_letter(22, "w").
-int_to_letter(23, "x").
-int_to_letter(24, "y").
-int_to_letter(25, "z").
-
 llds_out__lval_to_string(framevar(N), Description) :-
 	string__int_to_string(N, N_String),
 	string__append("framevar(", N_String, Tmp),
