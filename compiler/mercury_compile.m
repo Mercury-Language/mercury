@@ -501,8 +501,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile,
 		% we cant be creating the .trans_opt file.
 		{ MaybeTransOptDeps = no }
 	;
-		maybe_read_dependency_file(Module, MaybeTransOptDeps),
-		write_dependency_file(ModuleImports0, MaybeTransOptDeps)
+		maybe_read_dependency_file(Module, MaybeTransOptDeps)
 	),
 
 	% Errors in .opt and .trans_opt files result in software errors.
@@ -524,6 +523,14 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile,
 	{ bool__or(UndefModes0, UndefModes2, UndefModes) },
 
 	mercury_compile__maybe_dump_hlds(HLDS0, "01", "initial"),
+
+	( { DontWriteDFile = yes } ->
+		[]
+	;
+		{ module_info_get_all_deps(HLDS0, AllDeps) },
+		write_dependency_file(ModuleImports0, AllDeps,
+			MaybeTransOptDeps)
+	),
 
 	% Only stop on syntax errors in .opt files.
 	( { FoundError = yes ; IntermodError = yes } ->

@@ -40,7 +40,7 @@
 :- interface.
 
 :- import_module prog_data, prog_io.
-:- import_module std_util, bool, list, io.
+:- import_module std_util, bool, list, set, io.
 
 %-----------------------------------------------------------------------------%
 
@@ -386,16 +386,21 @@
 
 %-----------------------------------------------------------------------------%
 
-	% write_dependency_file(Module, MaybeTransOptDeps):
+	% write_dependency_file(Module, AllDeps, MaybeTransOptDeps):
 	%	Write out the per-module makefile dependencies (`.d') file
 	%	for the specified module.
+	%	AllDeps is the set of all module names which the generated
+	%	code for this module might depend on, i.e. all that have been
+	%	used or imported, directly or indirectly, into this module,
+	%	including via .opt or .trans_opt files, and including
+	%	parent modules of nested modules.
 	%	MaybeTransOptDeps is a list of module names which the
 	%	`.trans_opt' file may depend on.  This is set to `no' if the
 	%	dependency list is not available.
 	%
-:- pred write_dependency_file(module_imports, maybe(list(module_name)),
-				io__state, io__state).
-:- mode write_dependency_file(in, in, di, uo) is det.
+:- pred write_dependency_file(module_imports, set(module_name),
+		maybe(list(module_name)), io__state, io__state).
+:- mode write_dependency_file(in, in, in, di, uo) is det.
 
 	%	maybe_read_dependency_file(ModuleName, MaybeTransOptDeps).
 	%	If transitive intermodule optimization has been enabled,
@@ -488,7 +493,7 @@
 :- import_module llds_out, passes_aux, prog_out, prog_util, mercury_to_mercury.
 :- import_module prog_io_util, globals, options, module_qual.
 
-:- import_module string, set, map, term, varset, dir, library.
+:- import_module string, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.
 :- import_module getopt, term, varset.
 
@@ -1215,7 +1220,7 @@ grab_imported_modules(SourceFileName, ModuleName, Items0, Module, Error) -->
 	process_module_long_interfaces(ImpUsedModules, ".int",
 		ImpIndirectImports1, ImpIndirectImports, Module9, Module10),
 
-		% Process the short interfaces for indireclty imported modules.
+		% Process the short interfaces for indirectly imported modules.
 		% The short interfaces are treated as if
 		% they are imported using `use_module'.
 	{ append_pseudo_decl(Module10, used(interface), Module11) },
@@ -1525,7 +1530,7 @@ warn_if_duplicate_use_import_decls(ModuleName,
 
 %-----------------------------------------------------------------------------%
 
-write_dependency_file(Module, MaybeTransOptDeps) -->
+write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 	{ Module = module_imports(SourceFileName, ModuleName, ParentDeps,
 			IntDeps, ImplDeps, IndirectDeps, _InclDeps, FactDeps0,
 			_Items, _Error) },
@@ -1558,14 +1563,11 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 	; { Result = ok(DepStream) },
 		{ list__append(IntDeps, ImplDeps, LongDeps0) },
 		{ ShortDeps0 = IndirectDeps },
-		{ set__list_to_set(ParentDeps, ParentDepsSet) },
 		{ set__list_to_set(LongDeps0, LongDepsSet0) },
 		{ set__delete(LongDepsSet0, ModuleName, LongDepsSet) },
 		{ set__list_to_set(ShortDeps0, ShortDepsSet0) },
 		{ set__difference(ShortDepsSet0, LongDepsSet, ShortDepsSet1) },
 		{ set__delete(ShortDepsSet1, ModuleName, ShortDepsSet) },
-		{ AllDepsSet = (ShortDepsSet `set__union` LongDepsSet)
-			`set__union` ParentDepsSet },
 		{ set__to_sorted_list(LongDepsSet, LongDeps) },
 		{ set__to_sorted_list(ShortDepsSet, ShortDeps) },
 		{ set__to_sorted_list(AllDepsSet, AllDeps) },
@@ -2182,9 +2184,21 @@ generate_dependencies(ModuleName, DepsMap0) -->
 		{ relation__compose(ImplDepsRel, TransIntDepsRel,
 			IndirectDepsRel) },
 
+		%
+		% Compute the indirect optimization dependencies: indirect
+		% dependencies including those via `.opt' or `.trans_opt' files.
+		% Actually we can't compute that, since we don't know
+		% which modules the `.opt' files will import!
+		% Instead, we need to make a conservative (over-)approximation,
+		% and assume that the each module's `.opt' file might import any
+		% of that module's implementation dependencies; in actual fact,
+		% it will be some subset of that.
+		%
+		{ relation__tc(ImplDepsRel, IndirectOptDepsRel) },
+
 		generate_dependencies_write_d_files(DepsList,
 			IntDepsRel, ImplDepsRel, IndirectDepsRel,
-			TransOptDepsOrdering, DepsMap)
+			IndirectOptDepsRel, TransOptDepsOrdering, DepsMap)
 	).
 
 :- pred maybe_output_module_order(module_name::in, list(set(module_name))::in,
@@ -2223,20 +2237,28 @@ write_module_scc(Stream, SCC0) -->
 	io__write_list(Stream, SCC, "\n", prog_out__write_sym_name).
 
 
-% generate_dependencies_write_d_files(Modules, IntDepsRel, TransOptOrder,
+% generate_dependencies_write_d_files(Modules, IntDepsRel, ImplDepsRel,
+%	IndirectDepsRel, IndirectOptDepsRel, TransOptOrder,
 %	DepsMap, IO0, IO):
 %		This predicate writes out the .d files for all the modules
 %		in the Modules list.  
-%		IntDepsRel gives the interface dependency relation
-%		(computed from the DepsMap).
+%		IntDepsRel gives the interface dependency relation.
+%		ImplDepsRel gives the implementation dependency relation
+%		IndirectDepsRel gives the indirect dependency relation
+%		(this includes dependencies on `*.int2' files).
+%		IndirectOptDepsRel gives the indirect optimization
+%		dependencies (this includes dependencies via `.opt'
+%		and `.trans_opt' files).
+%		These are all computed from the DepsMap.
 %		TransOptOrder gives the ordering that is used to determine
 %		which other modules the .trans_opt files may depend on.
 :- pred generate_dependencies_write_d_files(list(deps)::in, 
-	deps_rel::in, deps_rel::in, deps_rel::in, list(module_name)::in,
-	deps_map::in, io__state::di, io__state::uo) is det.
-generate_dependencies_write_d_files([], _, _, _, _, _) --> [].
+	deps_rel::in, deps_rel::in, deps_rel::in, deps_rel::in,
+	list(module_name)::in, deps_map::in,
+	io__state::di, io__state::uo) is det.
+generate_dependencies_write_d_files([], _, _, _, _, _, _) --> [].
 generate_dependencies_write_d_files([Dep | Deps],
-		IntDepsRel, ImplDepsRel, IndirectDepsRel,
+		IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
 		TransOptOrder, DepsMap) --> 
 	{ Dep = deps(_, Module0) },
 
@@ -2250,6 +2272,8 @@ generate_dependencies_write_d_files([Dep | Deps],
 	{ get_dependencies_from_relation(ImplDepsRel, ModuleName, ImplDeps) },
 	{ get_dependencies_from_relation(IndirectDepsRel, ModuleName,
 			IndirectDeps) },
+	{ get_dependencies_from_relation(IndirectOptDepsRel, ModuleName,
+			IndirectOptDeps) },
 	{ module_imports_set_int_deps(Module0, IntDeps, Module1) },
 	{ module_imports_set_impl_deps(Module1, ImplDeps, Module2) },
 	{ module_imports_set_indirect_deps(Module2, IndirectDeps, Module) },
@@ -2276,12 +2300,13 @@ generate_dependencies_write_d_files([Dep | Deps],
 	% though it probably contains incorrect information.
 	{ module_imports_get_error(Module, Error) },
 	( { Error \= fatal } ->
-		write_dependency_file(Module, yes(TransOptDeps))
+		write_dependency_file(Module,
+			set__list_to_set(IndirectOptDeps), yes(TransOptDeps))
 	;
 		[]
 	),
 	generate_dependencies_write_d_files(Deps,
-		IntDepsRel, ImplDepsRel, IndirectDepsRel,
+		IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
 		TransOptOrder, DepsMap).
 
 :- pred get_dependencies_from_relation(deps_rel, module_name,
