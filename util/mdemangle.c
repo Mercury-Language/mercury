@@ -52,9 +52,46 @@ static bool strip_leading_integer(char **start_ptr, int *num);
 #define memmove memcpy
 #endif
 
+/*
+** This option indicates whether we should output verbose
+** explanations of linker error messages.
+*/
+bool explain_link_errors = FALSE;
+
+/*
+** This variable gets set if the symbols MR_grade_* or MR_mercury_grade
+** were found.  If it gets set, then we print out the error message below.
+*/
+char *found_grade_symbol = NULL;
+const char probably_grade_error[] =
+  "Mercury Linker:\n"
+  "\tNote: the symbol `%s' was mentioned.\n"
+  "\tAny link errors are most likely due to linking together object\n"
+  "\tfiles compiled with different compilation model options.\n"
+  "\tTry doing `mmake clean' and then rebuilding.\n";
+
 int 
 main(int argc, char **argv)
 {
+	const char *progname = argv[0];
+
+	/* we should use getopt_long(), but for one option, that is overkill */
+	while (argc > 1 && argv[1][0] == '-') {
+		if (strcmp(argv[1], "-e") == 0 ||
+		    strcmp(argv[1], "--explain-link-errors") == 0)
+		{
+			explain_link_errors = TRUE;
+			argc--, argv++;
+		} else if (strcmp(argv[1], "--") == 0) {
+			argc--, argv++;
+			break;
+		} else {
+			fprintf(stderr, "%s: unknown option `%s'\n",
+				progname, argv[1]);
+			exit(1);
+		}
+	}
+
 	if (argc > 1) {
 		/*
 		** invoke demangle() on each command line argument
@@ -89,6 +126,12 @@ main(int argc, char **argv)
 			putchar(c);
 		}
 	}
+
+	if (explain_link_errors && found_grade_symbol) {
+		printf(probably_grade_error, found_grade_symbol);
+		free(found_grade_symbol);
+	}
+
 	return 0;
 }
 
@@ -127,6 +170,9 @@ demangle(const char *orig_name)
 	static const char common[] = "common";
 	static const char arity_string[] = "arity";
 	static const char underscores_arity_string[] = "__arity";
+
+	static const char MR_grade[] = "MR_grade_";
+	static const char MR_runtime_grade[] = "MR_runtime_grade";
 
 	static const char * trailing_context_1[] = {
 		introduced,
@@ -189,6 +235,21 @@ demangle(const char *orig_name)
 	*/
 	if (*start == '_' && strncmp(start, entry, strlen(entry)) != 0) {
 		start++;
+	}
+
+	/*
+	** check for `MR_grade_*' and `MR_runtime_grade'.
+	*/
+	if (strncmp(start, MR_grade, strlen(MR_grade)) == 0 ||
+	    strcmp(start, MR_runtime_grade) == 0)
+	{
+		if (found_grade_symbol == NULL) {
+			found_grade_symbol = malloc(strlen(start) + 1);
+			if (found_grade_symbol != NULL) {
+				strcpy(found_grade_symbol, start);
+			}
+		}
+		goto wrong_format;
 	}
 
 	/*

@@ -575,7 +575,7 @@ case $verbose in
 	    true)
 		echo $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT \
 			$ARCH_OPTS $LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS "|"
-		echo "$DEMANGLER"
+		echo "$DEMANGLER --explain-link-errors"
 		;;
 	esac
 	;;
@@ -605,7 +605,7 @@ case $demangle in
 	$MKFIFO $PIPE
 		# execute the demangler in the background, with stdin 
 		# coming from the pipe and with stdout redirected to stderr
-	exec $DEMANGLER 1>&2 < $PIPE &
+	exec $DEMANGLER --explain-link-errors 1>&2 < $PIPE &
 		# redirect our stdout and stderr into the pipe
 	exec >$PIPE 2>&1
 		# now we can remove the pipe; since is an open file, it will
