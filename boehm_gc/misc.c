@@ -42,7 +42,7 @@
 #          ifdef WIN32_THREADS
 	      GC_API CRITICAL_SECTION GC_allocate_ml;
 #          else
-#             ifdef IRIX_THREADS
+#             if defined(IRIX_THREADS) || defined(LINUX_THREADS)
 #		ifdef UNDEFINED
 		    pthread_mutex_t GC_allocate_ml = PTHREAD_MUTEX_INITIALIZER;
 #		endif
@@ -234,8 +234,6 @@ word limit;
 }
 #endif
 
-extern ptr_t GC_approx_sp();	/* in mark_rts.c */
-
 /* Clear some of the inaccessible part of the stack.  Returns its	*/
 /* argument, so it can be used in a tail call position, hence clearing  */
 /* another frame.							*/
@@ -397,10 +395,6 @@ size_t GC_get_bytes_since_gc GC_PROTO(())
 
 bool GC_is_initialized = FALSE;
 
-#if defined(SOLARIS_THREADS) || defined(IRIX_THREADS)
-    extern void GC_thr_init();
-#endif
-
 void GC_init()
 {
     DCL_LOCK_STATE;
@@ -439,10 +433,11 @@ void GC_init_inner()
 	/* We need dirty bits in order to find live stack sections.	*/
         GC_dirty_init();
 #   endif
-#   ifdef IRIX_THREADS
+#   if defined(IRIX_THREADS) || defined(LINUX_THREADS)
 	GC_thr_init();
 #   endif
-#   if !defined(THREADS) || defined(SOLARIS_THREADS) || defined(WIN32_THREADS) || defined(IRIX_THREADS)
+#   if !defined(THREADS) || defined(SOLARIS_THREADS) || defined(WIN32_THREADS) \
+		|| defined(IRIX_THREADS) || defined(LINUX_THREADS)
       if (GC_stackbottom == 0) {
 	GC_stackbottom = GC_get_stack_base();
       }
