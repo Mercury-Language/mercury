@@ -138,13 +138,28 @@
     ** Note that `0f' means the label `0:' following the current
     ** instruction, and `0b' means the label `0:' before the current
     ** instruction.
+    **
+    ** Note: this code clobbers `ebx', which is a callee-save
+    ** register.  That means that it is essential that call_engine()
+    ** save `ebx' before entering Mercury code, and restore it
+    ** before returning to C code.  However, gcc and/or
+    ** setjmp()/longjmp() will do that for us automatically,
+    ** precisely because it is a callee-save register.
     */
     #define INLINE_ASM_FIXUP_REGS     				\
     	"	call 0f\n"     					\
     	"0:\n"       						\
     	"	popl %%ebx\n"     				\
     	"	addl $_GLOBAL_OFFSET_TABLE_+[.-0b],%%ebx\n\t"	\
-    		: : : "memory"
+    		: :
+#if 0
+	/*
+	** The following doesn't seem to be necessary, and
+	** leaving it out might make gcc generate slightly better code.
+	*/
+		/* tell gcc we clobber ebx and memory */	\
+    		: : : "%ebx", "memory"
+#endif
 
     /*
     ** It is safe to fall through into INLINE_ASM_FIXUP_REGS,
@@ -169,6 +184,56 @@
 	"	.type entry_" stringify(label) ",@function\n"
 
 #elif defined (__sparc)
+
+  /*
+  ** If we're using position-independent code on the SPARC, then we need to
+  ** set up the correct value of the GOT register (l7).
+  */
+
+  #if (defined(__pic__) || defined(__PIC__)) && !defined(PIC)
+    #define PIC 1
+  #endif
+
+  #if PIC
+
+    /*
+    ** At each entry point, where we may have been jump to from
+    ** code in a difference C file, we need to set up `l7'. 
+    ** We do this by getting the value the of the IP register using a `call'
+    ** instruction whose target is the very next label; this will
+    ** put the address of the call instruction in register `o7'.
+    ** We then use the value obtained in register `o7' to compute the correct
+    ** value of register `l7' by doing something with _GLOBAL_OFFSET_TABLE_
+    ** (I don't understand the details exactly, this code is
+    ** basically copied from the output of `gcc -fpic -S'.)
+    ** Note that `1f' means the label `1:' following the current
+    ** instruction, and `0b' means the label `0:' before the current
+    ** instruction.
+    */
+    #define INLINE_ASM_FIXUP_REGS     				\
+    	"0:\n"     						\
+    	"	call 1f\n"     					\
+    	"	nop\n"     					\
+    	"1:\n"       						\
+	"	sethi %hi(_GLOBAL_OFFSET_TABLE_-(0b-.)),%l7\n"	\
+	"	or %l7,%lo(_GLOBAL_OFFSET_TABLE_-(0b-.)),%l7\n"	\
+	"	add %l7,%o7,%l7\n"				\
+		/* tell gcc we clobber l7, o7, and memory */	\
+    		: : : "%l7", "%o7", "memory"
+
+    /*
+    ** It is safe to fall through into INLINE_ASM_FIXUP_REGS,
+    ** but it might be more efficient to branch past it.
+    ** We should really measure both ways and find out which is
+    ** better... for the moment, we just fall through, since
+    ** that keeps the code smaller.
+    */
+    #if 0
+      #define ASM_FALLTHROUGH(label) \
+  	goto skip(label);
+    #endif
+
+  #endif /* PIC */
 
   /* For Solaris 5.5.1, we need to declare that the type of labels is
      #function (i.e. code, not data), otherwise the dynamic linker seems
