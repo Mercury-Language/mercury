@@ -149,7 +149,7 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 	% Predicates to gather stuff to output to .opt file.
 
 :- pred intermod__gather_preds(list(pred_id)::in, bool::in, int::in,
-			intermod_info::in, intermod_info::out) is det.
+		intermod_info::in, intermod_info::out) is det.
 
 intermod__gather_preds([], _CollectTypes, _) --> [].
 intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
@@ -166,6 +166,8 @@ intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
 			% Don't export builtins since they will be
 			% recreated in the importing module anyway.
 			{ \+ code_util__compiler_generated(PredInfo0) },
+			{ \+ code_util__predinfo_is_builtin(ModuleInfo0,
+					PredInfo0) },
 			(
 				{ inlining__simple_goal(Goal,
 						InlineThreshold) }

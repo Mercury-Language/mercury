@@ -404,8 +404,13 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 			% optimization works when the .opt files for the 
 			% library are unavailable. This is only necessary 
 			% because make doesn't allow conditional dependencies.
+			% The dependency on the current module's .opt file
+			% is to make sure the module gets type-checked without
+			% having the definitions of abstract types from other
+			% modules.
 			get_curr_dir_deps(LongDeps, [], OptDeps),
-			write_dependencies_list(OptDeps, ".opt", DepStream)
+			write_dependencies_list([ModuleName | OptDeps],
+				".opt", DepStream)
 		;
 			[]
 		),
