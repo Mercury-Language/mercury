@@ -17,6 +17,12 @@
 
 :- interface.
 
+:- pred library__version(string::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- implementation.
+
 :- import_module array, assoc_list, bag, bimap, bintree, bintree_set, bool.
 :- import_module char, dir, eqvclass, float, math, getopt, graph, group, int.
 :- import_module io, list, map, multi_map, pqueue, queue, random, relation.
@@ -24,13 +30,6 @@
 :- import_module std_util, string, term, term_io, tree234, uniq_array, varset.
 :- import_module store, rbtree, parser, lexer, ops, time.
 :- import_module prolog.
-
-:- pred library__version(string::out) is det.
-
-
-%---------------------------------------------------------------------------%
-
-:- implementation.
 
 library__version("0.6").
 
