@@ -27,8 +27,8 @@ main -->
 :- pragma c_code("MR_Integer counter = 0;").
 :- pragma c_code(get_counter(Y::in) = (X::out), will_not_call_mercury,
 	"X = counter + Y;").
+get_counter(X) = X.
 
 :- pragma c_code(some_pred(Y::in, X::out), will_not_call_mercury,
 	"X = counter + Y;").
-
-
+some_pred(X, X).
