@@ -104,7 +104,10 @@ letter -->
 %   | [#x212A-#x212B] | #x212E | [#x2180-#x2182] | [#x3041-#x3094]
 %   | [#x30A1-#x30FA] | [#x3105-#x312C] | [#xAC00-#xD7A3]
 
+:- type nil ---> nil.
+
 baseChar -->
+    return(nil),
     (0x0041-0x005A) or (0x0061-0x007A) or (0x00C0-0x00D6)
     or (0x00D8-0x00F6) or (0x00F8-0x00FF) or (0x0100-0x0131)
     or (0x0134-0x013E) or (0x0141-0x0148) or (0x014A-0x017E)
@@ -171,6 +174,7 @@ baseChar -->
 %   [86]  Ideographic ::= [#x4E00-#x9FA5] | #x3007 | [#x3021-#x3029]
 
 ideographic -->
+    return(nil),
     (0x4E00-0x9FA5) or lit1(0x3007) or (0x3021-0x3029).
 
 %   [87]  CombiningChar ::= [#x0300-#x0345] | [#x0360-#x0361]
@@ -201,6 +205,7 @@ ideographic -->
 %   | [#x302A-#x302F] | #x3099 | #x309A
 
 combiningChar -->
+    return(nil),
     (0x0300-0x0345) or (0x0360-0x0361)
     or (0x0483-0x0486) or (0x0591-0x05A1) or (0x05A3-0x05B9)
     or (0x05BB-0x05BD) or lit1(0x05BF) or (0x05C1-0x05C2) or lit1(0x05C4)
@@ -237,6 +242,7 @@ combiningChar -->
 %   | [#x0E50-#x0E59] | [#x0ED0-#x0ED9] | [#x0F20-#x0F29]
 
 digit -->
+    return(nil),
     (0x0030-0x0039) or (0x0660-0x0669) or (0x06f0-0x06f9)
     or (0x0966-0x096f) or (0x09e6-0x09ef) or (0x0a66-0x0a6f)
     or (0x0ae6-0x0aef) or (0x0b66-0x0b6f) or (0x0be7-0x0bef)
@@ -248,6 +254,7 @@ digit -->
 %   | [#x30fc-#x30fe]
 
 extender -->
+    return(nil),
     lit1(0x00b7) or lit1(0x02d0) or lit1(0x02d1) or lit1(0x0387)
     or lit1(0x0640) or lit1(0x0e46)
     or lit1(0x0ec6) or lit1(0x3005) or (0x3031-0x3035) or (0x309d-0x309e)
