@@ -4,6 +4,8 @@
 
 /*--------------------------------------------------------------------*/
 
+static void print_ordinary_regs(void);
+
 /* debugging messages */
 
 void mkframe_msg(void)
@@ -280,31 +282,14 @@ void printlabel(const Code *w)
 
 void printframe(const char *msg)
 {
-	reg	int	i;
-	reg	int	value;
-
 	printf("\n%s\n", msg);
 	dumpframe(curfr);
 
-	restore_transient_registers();
-
-	for (i = 0; i < 5; i++)
-	{
-		printf("r%d:      ", i + 1);
-		value = get_reg(i+1);
-
-		if ((int) heapmin <= value && value < (int) heapend)
-			printlist(value);
-		else
-			printint(value);
-	}
+	print_ordinary_regs();
 }
 
 void printregs(const char *msg)
 {
-	reg	int	i;
-	reg	int	value;
-
 	restore_transient_registers();
 
 	printf("\n%s\n", msg);
@@ -315,15 +300,24 @@ void printregs(const char *msg)
 	printf("%-9s", "hp:");      printheap(hp);
 	printf("%-9s", "sp:");      printdetstack(sp);
 
-	for (i = 0; i < 5; i++)
+	print_ordinary_regs();
+}
+
+static void print_ordinary_regs(void)
+{
+	int	i;
+	int	value;
+
+	restore_transient_registers();
+	for (i = 0; i < 8; i++)
 	{
 		printf("r%d:      ", i + 1);
 		value = get_reg(i+1);
 
 		if ((int) heapmin <= value && value < (int) heapend)
-			printlist(value);
-		else
-			printint(value);
+			printf("(heap) ");
+
+		printf("%d\n", value);
 	}
 }
 
