@@ -13,6 +13,8 @@
 #include "mercury_deep_copy.h"
 #include "mercury_agc_debug.h"
 
+#ifdef NATIVE_GC
+
 /*
 ** Function prototypes.
 */
@@ -241,4 +243,6 @@ dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
 		}
 	}
 }
+
+#endif /* NATIVE_GC */
 
