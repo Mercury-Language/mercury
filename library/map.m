@@ -116,7 +116,7 @@ map__set(Map0, K, V, Map) :-
 		map__insert(Map0, K, V, Map)
 	).
 
-:- pred map__keys(map(K, V), list(K)).
+:- pred map__keys(map(K, _V), list(K)).
 :- mode map__keys(input, output).
 map__keys(Map, KeyList) :-
 	findall(K, assoc_list_member(K - _, Map), KeyList).
