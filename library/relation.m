@@ -109,9 +109,34 @@
 :- pred relation__dfsrev(relation(T), T, list(T)).
 :- mode relation__dfsrev(in, in, out) is det.
 
+	% relation__dfs(Rel, X, Dfs) is true if Dfs is a
+	% depth-first sorting of Rel starting at X.  Providing we
+	% have a set of already visited nodes.
+:- pred relation__dfs(relation(T), T, set_bbbtree(T), set_bbbtree(T), list(T)).
+:- mode relation__dfs(in, in, in, out, out) is det.
+
+	% relation__dfsrev(Rel, X, Dfs) is true if Dfs is a
+	% depth-first sorting of Rel starting at X.  Providing we
+	% have a set of already visited nodes.
+:- pred relation__dfsrev(relation(T), T,  set_bbbtree(T), 
+						set_bbbtree(T), list(T)).
+:- mode relation__dfsrev(in, in, in, out, out) is det.
+
 	% relation__is_dag(R) is true iff R is a directed acyclic graph.
 :- pred relation__is_dag(relation(T)).
 :- mode relation__is_dag(in) is semidet.
+
+	% relation__dfs(Rel, Dfs) is true if Dfs is a depth-
+	% first sorting of Rel.  Where the nodes are in the
+	% order visited.
+:- pred relation__dfs(relation(T), list(T)).
+:- mode relation__dfs(in, out) is det.
+
+	% relation__dfsrev(Rel, Dfs) is true if Dfs is a depth-
+	% first sorting of Rel.  Where the nodes are in the reverse
+	% order visited.
+:- pred relation__dfsrev(relation(T), list(T)).
+:- mode relation__dfsrev(in, out) is det.
 
 	% relation__components(R, Comp) is true if Comp
 	% is the set of the connected components of R.
@@ -372,11 +397,25 @@ relation__dfsrev(Rel, X, DfsRev) :-
 	set_bbbtree__init(Vis0),
 	relation__dfs_3([X], Rel, Vis0, [], _, DfsRev).
 
+	% relation__dfs/5 performs a depth-first search of
+	% a relation.  It returns the elements in visited
+	% order.  Providing the nodes Visited0 have already been 
+	% visited.
+relation__dfs(Rel, X, Visited0, Visited, Dfs) :-
+	relation__dfsrev(Rel, X, Visited0, Visited, DfsRev),
+	list__reverse(DfsRev, Dfs).
+
+	% relation__dfsrev/5 performs a depth-first search of
+	% a relation.  It returns the elements in reverse visited
+	% order.  Providing the nodes Visited0 have already been
+	% visited.
+relation__dfsrev(Rel, X, Visited0, Visited, DfsRev) :-
+	relation__dfs_3([X], Rel, Visited0, [], Visited, DfsRev).
+
+
 	% relation__dfs(Rel, Dfs) is true if Dfs is a depth-
 	% first sorting of Rel.  Where the nodes are in the
 	% order visited.
-:- pred relation__dfs(relation(T), list(T)).
-:- mode relation__dfs(in, out) is det.
 relation__dfs(Rel, Dfs) :-
 	relation__dfsrev(Rel, DfsRev),
 	list__reverse(DfsRev, Dfs).
@@ -384,9 +423,6 @@ relation__dfs(Rel, Dfs) :-
 	% relation__dfsrev(Rel, Dfs) is true if Dfs is a depth-
 	% first sorting of Rel.  Where the nodes are in the reverse
 	% order visited.
-:- pred relation__dfsrev(relation(T), list(T)).
-:- mode relation__dfsrev(in, out) is det.
-
 relation__dfsrev(Rel, DfsRev) :-
 	relation__effective_domain(Rel, DomSet),
 	set__to_sorted_list(DomSet, DomList),
@@ -421,7 +457,7 @@ relation__dfs_3([Node | Nodes], Rel, Visit0, Dfs0, Visit, Dfs) :-
 			% Go and visit all a nodes children first
 		relation__dfs_3(AdjList, Rel, Visit1, Dfs0, Visit2, Dfs1),
 
-		Dfs2 = [ Node | Dfs1],
+		Dfs2 = [ Node | Dfs1 ],
 
 			% Go and visit the rest
 		relation__dfs_3(Nodes, Rel, Visit2, Dfs2, Visit, Dfs)
