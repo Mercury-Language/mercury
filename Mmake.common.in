@@ -44,12 +44,6 @@ RANLIB  		= @RANLIB@
 # Specify the name of the Sicstus Prolog interpreter.
 SP			= @SP@
 
-# Define `sicstus' for use in the construction of binary distributions
-SICSTUS			= @SICSTUS@
-
-# Define `nuprolog' for use in the construction of binary distributions
-NUPROLOG		= @NUPROLOG@
-
 # Specify EXT_FOR_SHARED_LIB as `so' if the operating system
 # supports `.so' shared libraries,
 # or as `a' if it doesn't.
@@ -77,14 +71,16 @@ LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
 
 SHARED_LIBS		= @SHARED_LIBS@
 
-# Set INSTALL_NUPROLOG to `install_nuprolog' if you have NU-Prolog
-# and want use it for debugging Mercury programs.
-# Otherwise, leave it blank.
+# Set NUPROLOG to `nuprolog' and set INSTALL_NUPROLOG to `install_nuprolog'
+# if you have NU-Prolog and want use it for debugging Mercury programs.
+# Otherwise, leave them blank.
+NUPROLOG		= @NUPROLOG@
 INSTALL_NUPROLOG	= @INSTALL_NUPROLOG@
 
-# Set INSTALL_SICSTUS to `install_sicstus' if you have SICStus Prolog
-# and want use it for debugging Mercury programs.
-# Otherwise, leave it blank.
+# Set SICSTUS to `sicstus' and set INSTALL_SICSTUS to `install_sicstus'
+# if you have SICStus Prolog and want use it for debugging Mercury programs.
+# Otherwise, leave them blank.
+SICSTUS			= @SICSTUS@
 INSTALL_SICSTUS		= @INSTALL_SICSTUS@
 
 # You should not need to modify anything below here
@@ -99,7 +95,6 @@ FULLARCH		= @FULLARCH@
 INSTALL_MERC_BIN_DIR	= $(INSTALL_LIBDIR)/bin/$(FULLARCH)
 INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(FULLARCH)
 INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
-INSTALL_NU_ARCH_DIR 	= $(INSTALL_LIBDIR)/nuprolog/$(FULLARCH)
 INSTALL_NU_DIR		= $(INSTALL_LIBDIR)/nuprolog
 INSTALL_NU_ARCH_DIR 	= $(INSTALL_LIBDIR)/nuprolog/$(FULLARCH)
 INSTALL_SP_DIR		= $(INSTALL_LIBDIR)/sicstus
