@@ -1,15 +1,15 @@
-       1:      1  1 CALL pred label_layout:main/2-0 (det) label_layout.m:18
+       1:      1  1 CALL pred label_layout.main/2-0 (det) label_layout.m:18
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break a
- 0: + stop  interface pred label_layout:a/2-0 (det)
+ 0: + stop  interface pred label_layout.a/2-0 (det)
 mdb> continue
-       4:      2  2 CALL pred label_layout:a/2-0 (det) label_layout.m:24 (label_layout.m:11)
+       4:      2  2 CALL pred label_layout.a/2-0 (det) label_layout.m:24 (label_layout.m:11)
 mdb> finish
-       5:      2  2 EXIT pred label_layout:a/2-0 (det) label_layout.m:24 (label_layout.m:11)
+       5:      2  2 EXIT pred label_layout.a/2-0 (det) label_layout.m:24 (label_layout.m:11)
 mdb> continue
-       7:      3  2 CALL pred label_layout:a/2-0 (det) label_layout.m:24 (label_layout.m:13)
+       7:      3  2 CALL pred label_layout.a/2-0 (det) label_layout.m:24 (label_layout.m:13)
 mdb> finish
-       8:      3  2 EXIT pred label_layout:a/2-0 (det) label_layout.m:24 (label_layout.m:13)
+       8:      3  2 EXIT pred label_layout.a/2-0 (det) label_layout.m:24 (label_layout.m:13)
 mdb> quit -y
