@@ -50,12 +50,12 @@
 :- mode is_lower(in).
 	% True iff the character is a lowercase letter.
 
-:- pred upper_lower(character, character).
-:- mode upper_lower(in, out).
-:- mode upper_lower(out, in).
-	% upper_lower(Upper, Lower) is true iff
-	% Upper is an upper-case letter and Lower is the corresponding
-	% lower-case letter.
+:- pred lower_upper(character, character).
+:- mode lower_upper(in, out).
+:- mode lower_upper(out, in).
+	% lower_upper(Lower, Upper) is true iff
+	% Lower is a lower-case letter and Upper is the corresponding
+	% upper-case letter.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -63,43 +63,41 @@
 :- implementation.
 
 is_alpha(Char) :-
-	some [] (
-		is_lower(Char) ;
-		is_upper(Char)
+	( is_lower(Char) ->
+		true
+	; is_upper(Char) ->
+		true
+	;
+		fail
 	).
 
-is_digit('0').
-is_digit('1').
-is_digit('2').
-is_digit('3').
-is_digit('4').
-is_digit('5').
-is_digit('6').
-is_digit('7').
-is_digit('8').
-is_digit('9').
-
 is_lower(Lower) :-
-	some [Upper] upper_lower(Lower, Upper).
+	lower_upper(Lower, _).
 
 is_upper(Upper) :-
-	some [Lower] upper_lower(Lower, Upper).
+	(
+		lower_upper(_, Upper)
+	->
+		true
+	;
+		fail
+	).
 
 to_lower(Char, Lower) :-
-	(if some [LowerChar]
-		upper_lower(LowerChar, Char)
-	then
+	(
+		lower_upper(LowerChar, Char)
+	->
 		Lower = LowerChar
-	else
+	;
 		Lower = Char
 	).
 
 to_upper(Char, Upper) :-
-	(if some [UpperChar]
-		upper_lower(Char, UpperChar)
-	then
+	(
+		lower_upper(Char, UpperChar)
+	->
 		Upper = UpperChar
-	else
+	;
 		Upper = Char
 	).
 
@@ -111,6 +109,17 @@ to_upper(Char, Upper) :-
 % but these versions are very portable.
 
 %-----------------------------------------------------------------------------%
+
+is_digit('0').
+is_digit('1').
+is_digit('2').
+is_digit('3').
+is_digit('4').
+is_digit('5').
+is_digit('6').
+is_digit('7').
+is_digit('8').
+is_digit('9').
 
 %%% char_to_int('\000', 0).	% not supported by NU-Prolog
 char_to_int('\001', 1).
@@ -377,31 +386,33 @@ char_to_int('\377', 255).
 
 %-----------------------------------------------------------------------------%
 
-upper_lower('a', 'A').
-upper_lower('b', 'B').
-upper_lower('c', 'C').
-upper_lower('d', 'D').
-upper_lower('e', 'E').
-upper_lower('f', 'F').
-upper_lower('g', 'G').
-upper_lower('h', 'H').
-upper_lower('i', 'I').
-upper_lower('j', 'J').
-upper_lower('k', 'K').
-upper_lower('l', 'L').
-upper_lower('m', 'M').
-upper_lower('n', 'N').
-upper_lower('o', 'O').
-upper_lower('p', 'P').
-upper_lower('q', 'Q').
-upper_lower('r', 'R').
-upper_lower('s', 'S').
-upper_lower('t', 'T').
-upper_lower('u', 'U').
-upper_lower('v', 'V').
-upper_lower('w', 'W').
-upper_lower('x', 'X').
-upper_lower('y', 'Y').
-upper_lower('z', 'Z').
+:- lower_upper(X, Y) when X or Y.
+
+lower_upper('a', 'A').
+lower_upper('b', 'B').
+lower_upper('c', 'C').
+lower_upper('d', 'D').
+lower_upper('e', 'E').
+lower_upper('f', 'F').
+lower_upper('g', 'G').
+lower_upper('h', 'H').
+lower_upper('i', 'I').
+lower_upper('j', 'J').
+lower_upper('k', 'K').
+lower_upper('l', 'L').
+lower_upper('m', 'M').
+lower_upper('n', 'N').
+lower_upper('o', 'O').
+lower_upper('p', 'P').
+lower_upper('q', 'Q').
+lower_upper('r', 'R').
+lower_upper('s', 'S').
+lower_upper('t', 'T').
+lower_upper('u', 'U').
+lower_upper('v', 'V').
+lower_upper('w', 'W').
+lower_upper('x', 'X').
+lower_upper('y', 'Y').
+lower_upper('z', 'Z').
 
 %-----------------------------------------------------------------------------%
