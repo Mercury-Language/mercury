@@ -108,10 +108,18 @@ export MERCURY_COMPILER
 MERCURY_INT_DIR=$root/stage2/library
 export MERCURY_INT_DIR
 
-# .pp files are not necessary
-
+# We try to do the removal of the 
 [ -d stage2 ] || mkdir stage2
-$keep_stage_2 || /bin/rm -fr stage2/*
+if $keep_stage_2
+then
+	echo keeping existing stage2
+else
+	/bin/rm -fr stage2/compiler &
+	/bin/rm -fr stage2/library &
+	wait
+	/bin/rm -fr stage2/*
+fi
+
 set +x
 echo linking stage 2... 1>&2
 cd stage2
@@ -119,6 +127,8 @@ mkdir compiler
 cd compiler
 # Break up the links into several chunks.
 # This is needed to cope with small limits on the size of argument vectors.
+# We do not need to link .pp files.
+
 ln -s $root/compiler/[a-h]*.m .
 ln -s $root/compiler/[i-s]*.m .
 ln -s $root/compiler/[t-z]*.m .
@@ -218,10 +228,17 @@ export MERCURY_COMPILER
 MERCURY_INT_DIR=$root/stage3/library
 export MERCURY_INT_DIR
 
-# .pp files are not necessary
-
 [ -d stage3 ] || mkdir stage3
-$keep_stage_3 || /bin/rm -fr stage3/*
+if $keep_stage_3
+then
+	echo keeping existing stage3
+else
+	/bin/rm -fr stage3/compiler &
+	/bin/rm -fr stage3/library &
+	wait
+	/bin/rm -fr stage3/*
+fi
+
 echo linking stage 3... 1>&2
 set +x
 cd stage3
@@ -229,6 +246,7 @@ mkdir compiler
 cd compiler
 # Break up the links into several chunks.
 # This is needed to cope with small limits on the size of argument vectors.
+# We do not need to link .pp files.
 ln -s $root/compiler/[a-h]*.m .
 ln -s $root/compiler/[i-s]*.m .
 ln -s $root/compiler/[t-z]*.m .
