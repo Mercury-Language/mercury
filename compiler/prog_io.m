@@ -325,10 +325,10 @@
 	;	yes	% some syntax errors
 	;	fatal.	% couldn't open the file
 
-:- pred prog_io__read_module(string, string,
+:- pred prog_io__read_module(string, string, bool,
 				module_error, message_list, item_list,
 				io__state, io__state).
-:- mode prog_io__read_module(in, in, out, out, out, di, uo) is det.
+:- mode prog_io__read_module(in, in, in, out, out, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -390,8 +390,14 @@
 % and then reverse them afterwards.  (Using difference lists would require
 % late-input modes.)
 
-prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
-	globals__io_lookup_accumulating_option(search_directories, Dirs),
+prog_io__read_module(FileName, ModuleName, Search, Error, Messages, Items) -->
+	( 
+		{ Search = yes }
+	->
+		globals__io_lookup_accumulating_option(search_directories, Dirs)
+	;
+		{ Dirs = ["."] }
+	),
 	search_for_file(Dirs, FileName, R),
 	( { R = yes } ->
 		read_all_items(RevMessages, RevItems0, Error0),
