@@ -1,0 +1,15 @@
+
+LIBRARY = libmercury_www
+
+MAIN_TARGET = $(LIBRARY)
+
+depend: mercury_www.depend
+
+distclean: realclean
+
+ALL_LIBGRADES=`mercury-config --installed-grades`
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
+
+install: libmercury_www.install
+
+

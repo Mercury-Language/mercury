@@ -1,0 +1,120 @@
+Moose is a parser generator for Mercury.
+It does the same sort of thing for Mercury that Yacc and Bison do for C.
+
+Please note that Moose is relatively immature.  It works quite well,
+however error handling could be greatly improved, and there is room for
+adding quite a few bells and whistles.  See the files BUGS and TODO for
+more information.
+
+
+
+Moose input files should be given a `.moo' suffix.
+Moose input files contain Mercury code plus some additional
+kinds of declarations and clauses that specify a grammar.
+The `moose' program takes a Moose input file and converts it into
+ordinary Mercury code.
+
+Each Moose input file should contain:
+
+- One Moose parser declaration, of the form
+
+	:- parse(<StartSymbol>, <EndToken>, <TokenType>, <Prefix>).
+
+  Here <StartSymbol> is the name of the starting symbol for the grammar,
+  <EndToken> is the token that signifies end-of-file,
+  <TokenType> is the name of the Mercury type for tokens in this grammar,
+  and <Prefix> is unused.  (<Prefix> is intended to be used as a prefix
+  to the generated predicate names, however it is currently
+  unimplemented).
+
+- One or more Moose rule declarations, of the form
+
+	:- rule <Name>(<ArgumentTypes>).
+
+  A `:- rule' declaration declares a non-terminal symbol in the grammar.
+  Here <Name> is the name of the non-terminal symbol, and
+  <ArgumentTypes> gives the types of the arguments (i.e. attributes)
+  of that non-terminal.
+
+- One or more Moose clauses.
+  The Moose clauses specify the productions for this grammar.
+  Each must be of the form
+
+	<NonTerminal> ---> <ProductionBody>.
+
+  Here <NonTerminal> is of the form <Name> or <Name>(<Arguments>),
+  where <Name> is the name of the non-terminal symbol, and
+  <Arguments> specify the arguments (i.e. attributes) for
+  that non-terminal.
+  <ProductionBody> must of one of the following forms:
+
+	[<TerminalList>]
+	<NonTerminal>
+	<ProductionBody> , <ProductionBody>
+	<ProductionBody> ; <ProductionBody>
+	{ <Action> }
+
+  [<TerminalList>] denotes a list of terminal symbols.
+  Each of the terminal symbols must be an element of the token type
+  specified in the `:- parse' declaration.  The list can be empty.
+  <NonTerminal> denotes a non-terminal.  Each non-terminal must be
+  declared with a `:- rule' declaration.
+  <Production> , <Production> denotes sequence.
+  <Production> ; <Production> denotes alternatives.
+  { <Action> } denotes a grammar action.  Here <Action> is an arbitrary
+  Mercury goal.  Grammar actions can be used to compute attributes.
+  
+- Zero or more Moose action declarations, of the form
+
+        :- action(<Name>/<Arity>, <PredicateName>).
+
+  Each action declaration will add a method called PredicateName
+  to the type class parser_state/1.  The method will have the same types
+  as the rule given by Name/Arity, plus a threaded in/out pair of
+  parser_state arguments.
+
+  For example
+        :- rule foo(int).
+        :- action(foo/1, process_foo).
+  will generate
+        :- typeclass parser_state(T) where [
+                ... get_token and any other action methods ...
+                pred process_foo(int, T, T),
+                mode process_foo(in, in, out) is det
+        ].
+
+  Whenever the parser reduces using a rule, it will invoke the associated
+  action method for that rule (if there is one).  Since the parser_state
+  is threaded through all action methods, it can be used to implement
+  inherited attributes.  Actions can also modify the token stream in the
+  parser_state (see below).
+
+
+In order to use the Moose parser, you need to provide a lexer, which
+generates tokens of the type <TokenType> given in the Moose parse
+declaration.  To allow flexibility in implementing the lexer, the parser
+requests tokens using a type class.
+
+The parser_state type class is the set of all operations that must be
+implemented in order to use the parser.  parser_state will contain at
+least one method, called get_token.
+
+        :- typeclass parser_state(T) where [
+                pred get_token(token, T, T),
+                mode get_token(out, in, out) is semidet
+        ].
+
+get_token returns the next token in the token stream.  The parser state
+typically contains a list of tokens, from which the next token is
+retrieved (although other implementations are possible).  get_token may
+fail if there are no more tokens available.
+
+The other methods in parser_state will be dictated by the Moose action
+declarations.  To use the Moose generated parser, simply call the
+generated parse predicate with an instance of the parser_state type
+class.
+
+
+The samples directory contains some simple grammars, lexers
+and implementations of the parser_state.  
+

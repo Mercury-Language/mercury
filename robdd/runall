@@ -1,0 +1,27 @@
+#!/bin/sh
+
+echo "Timing run on `hostname` begun `date`"
+
+run=1
+runs=10
+reps="naive old thresh rglb new"
+
+while [ $run -le $runs ] ; do
+  echo "beginning run $run of $runs"
+  for rep in $reps ; do
+    uptime
+    echo "testing $rep version..."
+    ${rep}tests/test_glb 24 26
+    ${rep}tests/test_iff 26 30
+    ${rep}tests/test_restrict 22 25
+    ${rep}tests/test_rglb 14 16
+    ${rep}tests/test_abunify 13 15
+    ${rep}tests/test_rename 8 9
+    ${rep}tests/test_abexit 8 9
+    ${rep}tests/test_var 30 32
+    ${rep}tests/test_vars 30 32
+  done
+  run=`expr $run + 1`
+done
+
+echo "Timing run completed `date`"
