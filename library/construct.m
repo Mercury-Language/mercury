@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -120,6 +120,13 @@ num_functors(_) = _ :-
     type_info = (MR_TypeInfo) TypeDesc;
 
         /*
+        ** If type_info is an equivalence type, expand it.
+        */
+    MR_save_transient_registers();
+    type_info = MR_collapse_equivalences(type_info);
+    MR_restore_transient_registers();
+
+        /*
         ** Get information for this functor number and
         ** store in construct_info. If this is a discriminated union
         ** type and if the functor number is in range, we
@@ -209,6 +216,13 @@ null(_) :-
     MR_bool             success;
 
     type_info = (MR_TypeInfo) TypeDesc;
+
+        /*
+        ** If type_info is an equivalence type, expand it.
+        */
+    MR_save_transient_registers();
+    type_info = MR_collapse_equivalences(type_info);
+    MR_restore_transient_registers();
 
         /*
         ** Get information for this functor number and
@@ -333,6 +347,13 @@ get_functor_ordinal(_, _, _) :-
     MR_bool             success;
 
     type_info = (MR_TypeInfo) TypeDesc;
+
+        /*
+        ** If type_info is an equivalence type, expand it.
+        */
+    MR_save_transient_registers();
+    type_info = MR_collapse_equivalences(type_info);
+    MR_restore_transient_registers();
 
         /*
         ** Check range of FunctorNum, get info for this
