@@ -26,8 +26,10 @@ VPATH		= $(MERCURY_DIR)/runtime
 
 #-----------------------------------------------------------------------------#
 
-HDRS		= bytecode.h disasm.h getopt.h mbi.h mem.h machine.h \
+MB_HDRS		= bytecode.h disasm.h mbi.h mem.h machine.h \
 		  mdis.h static_data.h template.h util.h
+
+HDRS		= $(MB_HDRS) getopt.h 
 
 ORIG_CS		= bytecode.c disasm.c machine.c mbi.c mbi_main.c mdis.c mem.c \
 		  static_data.c template.c util.c
@@ -68,7 +70,7 @@ libmbi.so: $(LIBMBI_OBJS)
 #-----------------------------------------------------------------------------#
 
 tags: $(ORIG_CS)
-	ctags $(ORIG_CS) $(HDR)
+	ctags $(ORIG_CS) $(MB_HDRS)
 
 .PHONY: check_headers
 check_headers:
