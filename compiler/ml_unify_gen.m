@@ -446,6 +446,7 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	{ MLDS_PrivateBuiltinModule = mercury_module_name_to_mlds(
 		PrivateBuiltinModule) },
 	{ ClosureLayoutType = mlds__class_type(qual(MLDS_PrivateBuiltinModule,
+			MLDS_PrivateBuiltinModule,
 			"closure_layout"), 0, mlds__class) },
 	{ ClosureLayoutRval = const(null(ClosureLayoutType)) },
 
@@ -475,7 +476,8 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	%
 	{ Tag = 0 },
 	{ CtorDefn = ctor_id("<closure>", 0) },
-	{ QualifiedCtorId = qual(MLDS_PrivateBuiltinModule, CtorDefn) },
+	{ QualifiedCtorId = qual(MLDS_PrivateBuiltinModule,
+			MLDS_PrivateBuiltinModule, CtorDefn) },
 
 	%
 	% put all the extra arguments of the closure together
@@ -1245,7 +1247,7 @@ ml_cons_name(HLDS_ConsId, QualifiedConsId) -->
 		{ ConsId = ctor_id(ConsName, 0) },
 		{ ModuleName = mercury_module_name_to_mlds(unqualified("")) }
 	),
-	{ QualifiedConsId = qual(ModuleName, ConsId) }.
+	{ QualifiedConsId = qual(ModuleName, ModuleName, ConsId) }.
 
 :- pred ml_gen_cons_args(list(mlds__lval), list(prog_type),
 		list(uni_mode), module_info, list(mlds__rval)).
@@ -1819,15 +1821,16 @@ ml_gen_field_id(Type, ClassName, ClassArity, FieldName) = FieldId :-
 		type_to_type_id(Type, TypeId, _)
 	->
 		ml_gen_type_name(TypeId,
-			qual(MLDS_Module, TypeName), TypeArity),
+			qual(_Package, MLDS_Module, TypeName), TypeArity),
 		ClassQualifier = mlds__append_class_qualifier(
 			MLDS_Module, TypeName, TypeArity),
-		QualClassName = qual(ClassQualifier, ClassName),
+		QualClassName = qual(ClassQualifier, ClassQualifier, ClassName),
 		ClassPtrType = mlds__ptr_type(mlds__class_type(
 			QualClassName, ClassArity, mlds__class)),
 		FieldQualifier = mlds__append_class_qualifier(
 			ClassQualifier, ClassName, ClassArity),
-		QualifiedFieldName = qual(FieldQualifier, FieldName),
+		QualifiedFieldName = qual(FieldQualifier,
+				FieldQualifier, FieldName),
 		FieldId = named_field(QualifiedFieldName, ClassPtrType)
 	;
 		error("ml_gen_field_id: invalid type")

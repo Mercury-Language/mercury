@@ -360,7 +360,18 @@
 % in identifiers, then it is the responsibility of the target language
 % generator to mangle these names accordingly.
 :- type mlds__fully_qualified_name(T)
-	---> 	qual(mlds_module_name, T).
+	---> 	qual(
+				% Package which contains this name.
+				% ie mscorlib
+			package		:: mlds__package_name,
+
+				% Qualifers for this name.
+				% ie 'System'
+			qualifiers	:: mlds_module_name,
+
+				% The name ie 'Object'
+			name		:: T
+		).
 :- type mlds__qualified_entity_name
 	==	mlds__fully_qualified_name(mlds__entity_name).
 

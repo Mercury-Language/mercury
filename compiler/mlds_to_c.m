@@ -458,7 +458,8 @@ mlds_output_calls_to_init_entry(_ModuleName, []) --> [].
 mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns]) --> 
 	{ FuncDefn = mlds__defn(EntityName, _, _, _) },
 	io__write_string("\tMR_init_entry("),
-	mlds_output_fully_qualified_name(qual(ModuleName, EntityName)),
+	mlds_output_fully_qualified_name(
+			qual(ModuleName, ModuleName, EntityName)),
 	io__write_string(");\n"),
 	mlds_output_calls_to_init_entry(ModuleName, FuncDefns).
 
@@ -473,7 +474,8 @@ mlds_output_calls_to_register_tci(ModuleName,
 		[TypeCtorInfoDefn | TypeCtorInfoDefns]) --> 
 	{ TypeCtorInfoDefn = mlds__defn(EntityName, _, _, _) },
 	io__write_string("\tMR_register_type_ctor_info(&"),
-	mlds_output_fully_qualified_name(qual(ModuleName, EntityName)),
+	mlds_output_fully_qualified_name(
+			qual(ModuleName, ModuleName, EntityName)),
 	io__write_string(");\n"),
 	mlds_output_calls_to_register_tci(ModuleName, TypeCtorInfoDefns).
 
@@ -570,7 +572,7 @@ mlds_output_pragma_export_defn(ModuleName, Indent, PragmaExport) -->
 
 mlds_output_pragma_export_func_name(ModuleName, Indent,
 		ml_pragma_export(C_name, _MLDS_Name, Signature, Context)) -->
-	{ Name = qual(ModuleName, export(C_name)) },
+	{ Name = qual(ModuleName, ModuleName, export(C_name)) },
 	mlds_indent(Context, Indent),
 	% For functions exported using `pragma export',
 	% we use the default C calling convention.
@@ -676,7 +678,7 @@ write_func_args(ModuleName, [Arg | Args]) -->
 
 mlds_output_name_with_cast(ModuleName, Name - Type) -->
 	mlds_output_cast(Type),
-	mlds_output_fully_qualified_name(qual(ModuleName, Name)).
+	mlds_output_fully_qualified_name(qual(ModuleName, ModuleName, Name)).
 
 	%
 	% Generates the signature for det functions in the forward mode.
@@ -789,8 +791,8 @@ mlds_output_decl(Indent, ModuleName, Defn) -->
 		%
 		mlds_indent(Context, Indent),
 		mlds_output_decl_flags(Flags, forward_decl, Name, DefnBody),
-		mlds_output_decl_body(Indent, qual(ModuleName, Name), Context,
-			DefnBody)
+		mlds_output_decl_body(Indent,
+			qual(ModuleName, ModuleName, Name), Context, DefnBody)
 	).
 
 :- pred mlds_output_type_forward_decls(indent, list(mlds__type),
@@ -869,8 +871,8 @@ mlds_output_defn(Indent, ModuleName, Defn) -->
 	),
 	mlds_indent(Context, Indent),
 	mlds_output_decl_flags(Flags, definition, Name, DefnBody),
-	mlds_output_defn_body(Indent, qual(ModuleName, Name), Context,
-			DefnBody).
+	mlds_output_defn_body(Indent, qual(ModuleName, ModuleName, Name),
+			Context, DefnBody).
 
 :- pred mlds_output_decl_body(indent, mlds__qualified_entity_name,
 		mlds__context, mlds__entity_defn, io__state, io__state).
@@ -943,7 +945,7 @@ mlds_output_class(Indent, Name, Context, ClassDefn) -->
 	% of discriminated union types.)
 	% Here we compute the appropriate qualifier.
 	%
-	{ Name = qual(ModuleName, UnqualName) },
+	{ Name = qual(_PackageName, ModuleName, UnqualName) },
 	{ UnqualName = type(ClassName, ClassArity) ->
 		ClassModuleName = mlds__append_class_qualifier(ModuleName,
 			ClassName, ClassArity)
@@ -1059,7 +1061,8 @@ mlds_output_enum_constant(Indent, EnumModuleName, Defn) -->
 		{ DefnBody = data(Type, Initializer) }
 	->
 		mlds_indent(Context, Indent),
-		mlds_output_fully_qualified_name(qual(EnumModuleName, Name)),
+		mlds_output_fully_qualified_name(
+				qual(EnumModuleName, EnumModuleName, Name)),
 		mlds_output_initializer(Type, Initializer)
 	;
 		{ error("mlds_output_enum_constant: constant is not data") }
@@ -1234,7 +1237,7 @@ mlds_output_func_decl_ho(Indent, QualifiedName, Context,
 	io__write_char(' '),
 	io__write_string(CallingConvention),
 	mlds_output_fully_qualified_name(QualifiedName),
-	{ QualifiedName = qual(ModuleName, _) },
+	{ QualifiedName = qual(_, ModuleName, _) },
 	mlds_output_params(OutputPrefix, OutputSuffix,
 			Indent, ModuleName, Context, Parameters),
 	( { RetTypes = [RetType2] } ->
@@ -1273,7 +1276,7 @@ mlds_output_param(OutputPrefix, OutputSuffix, Indent,
 		ModuleName, Context, Name - Type) -->
 	mlds_indent(Context, Indent),
 	mlds_output_data_decl_ho(OutputPrefix, OutputSuffix,
-			qual(ModuleName, Name), Type).
+			qual(ModuleName, ModuleName, Name), Type).
 
 :- pred mlds_output_func_type_prefix(func_params, io__state, io__state).
 :- mode mlds_output_func_type_prefix(in, di, uo) is det.
@@ -1329,7 +1332,7 @@ mlds_output_param_type(_Name - Type) -->
 :- mode mlds_output_fully_qualified_name(in, di, uo) is det.
 
 mlds_output_fully_qualified_name(QualifiedName) -->
-	{ QualifiedName = qual(_ModuleName, Name) },
+	{ QualifiedName = qual(_Package, _ModuleName, Name) },
 	(
 		(
 			%
@@ -1368,7 +1371,7 @@ mlds_output_fully_qualified_proc_label(QualifiedName) -->
 		%
 		% don't module-qualify main/2
 		%
-		{ QualifiedName = qual(_ModuleName, Name) },
+		{ QualifiedName = qual(_Package, _ModuleName, Name) },
 		{ Name = PredLabel - _ProcId },
 		{ PredLabel = pred(predicate, no, "main", 2, model_det, no) }
 	->
@@ -1383,7 +1386,7 @@ mlds_output_fully_qualified_proc_label(QualifiedName) -->
 :- mode mlds_output_fully_qualified(in, pred(in, di, uo) is det,
 		di, uo) is det.
 
-mlds_output_fully_qualified(qual(ModuleName, Name), OutputFunc) -->
+mlds_output_fully_qualified(qual(_Package, ModuleName, Name), OutputFunc) -->
 	{ SymName = mlds_module_name_to_sym_name(ModuleName) },
 	{ llds_out__sym_name_mangle(SymName, MangledModuleName) },
 	io__write_string(MangledModuleName),
@@ -1866,7 +1869,7 @@ mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements), Context) -->
 	io__write_string("{\n"),
 	( { Defns \= [] } ->
 		{ FuncInfo = func_info(FuncName, _) },
-		{ FuncName = qual(ModuleName, _) },
+		{ FuncName = qual(_, ModuleName, _) },
 		mlds_output_defns(Indent + 1, ModuleName, Defns),
 		io__write_string("\n")
 	;
@@ -2272,7 +2275,7 @@ mlds_maybe_output_heap_profile_instr(Context, Indent, Args, FuncName,
 		io__write_string(""", "),
 		( { MaybeCtorName = yes(CtorId) } ->
 			io__write_char('"'),
-			{ CtorId = qual(_ModuleName, CtorDefn) },
+			{ CtorId = qual(_Package, _ModuleName, CtorDefn) },
 			{ CtorDefn = ctor_id(CtorName, _CtorArity) },
 			c_util__output_quoted_string(CtorName),
 			io__write_char('"')
@@ -2426,7 +2429,7 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	io__write_string(", "),
 	( { MaybeCtorName = yes(QualifiedCtorId) } ->
 		io__write_char('"'),
-		{ QualifiedCtorId = qual(_ModuleName, CtorDefn) },
+		{ QualifiedCtorId = qual(_Package, _ModuleName, CtorDefn) },
 		{ CtorDefn = ctor_id(CtorName, _CtorArity) },
 		c_util__output_quoted_string(CtorName),
 		io__write_char('"')

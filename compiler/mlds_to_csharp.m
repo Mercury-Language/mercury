@@ -91,6 +91,7 @@ generate_csharp_code(MLDS) -->
 
 	{ MLDS = mlds(ModuleName, ForeignCode, _Imports, Defns) },
 	{ ClassName = mlds_module_name_to_class_name(
+		mercury_module_name_to_mlds(ModuleName),
 		mercury_module_name_to_mlds(ModuleName), yes) },
 
 	io__nl,
@@ -277,7 +278,7 @@ write_csharp_code_component(user_target_code(Code, _MaybeContext)) -->
 write_csharp_code_component(raw_target_code(Code)) -->
 	io__write_string(Code).
 		% XXX we don't handle name yet.
-write_csharp_code_component(name(_)) --> [].
+write_csharp_code_component(name(_ `with_type` qualified_entity_name)) --> [].
 write_csharp_code_component(target_code_input(Rval)) -->
 	write_csharp_rval(Rval).
 write_csharp_code_component(target_code_output(Lval)) -->
@@ -375,7 +376,7 @@ write_csharp_lval(field(_, Rval, named_field(FieldId, _Type), _, _)) -->
 	write_csharp_rval(Rval),
 	io__write_string(")"),
 	io__write_string("."),
-	{ FieldId = qual(_, FieldName) },
+	{ FieldId = qual(_, _, FieldName) },
 	io__write_string(FieldName).
 
 write_csharp_lval(field(_, Rval, offset(OffSet), _, _)) -->
@@ -390,7 +391,7 @@ write_csharp_lval(mem_ref(Rval, _)) -->
 	io__write_string("*"),
 	write_csharp_rval(Rval).
 write_csharp_lval(var(Var, _VarType)) -->
-	{ Var = qual(_, VarName) },
+	{ Var = qual(_, _, VarName) },
 	write_mlds_var_name_for_parameter(VarName).
 
 :- pred write_csharp_defn_decl(mlds__defn, io__state, io__state).
