@@ -1318,7 +1318,25 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ pred_info_get_purity(PredInfo, Purity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ pred_info_get_class_context(PredInfo, ClassContext) },
-	{ AppendVarNums = yes },
+	{ pred_info_get_goal_type(PredInfo, GoalType) },
+	{
+		GoalType = pragmas,
+		% For foreign code goals we can't append variable numbers
+		% to type variables in the predicate declaration
+		% because the foreign code may contain references to
+		% variables such as `TypeInfo_for_T' which will break
+		% if `T' is written as `T_1' in the pred declaration.
+		AppendVarNums = no
+	;
+		GoalType = clauses,
+		AppendVarNums = yes
+	;
+		GoalType = (assertion),
+		AppendVarNums = yes
+	;
+		GoalType = none,
+		AppendVarNums = yes
+	},
 	(
 		{ PredOrFunc = predicate },
 		mercury_output_pred_type(TVarSet, ExistQVars,

@@ -68,6 +68,7 @@ ORDINARY_PROGS=	\
 	impossible_unify \
 	impure_prune \
 	integer_test \
+	intermod_c_code \
 	merge_and_remove_dups \
 	minint_bug \
 	mode_choice \
@@ -175,6 +176,8 @@ MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-ho_order2	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
+MCFLAGS-intermod_c_code =	--intermodule-optimization
+MCFLAGS-intermod_c_code2 =	--intermodule-optimization
 MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
 MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
