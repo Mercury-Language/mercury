@@ -46,3 +46,4 @@ odbc		A Mercury interface to ODBC (Open Database Connectivity),
 references	A library package containing modules for manipulating
 		ML-style references (mutable state).
 
+stream		Generic IO interface using typeclasses.
