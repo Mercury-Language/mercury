@@ -9,8 +9,9 @@
 #define	NONDSTACKFLAG	5
 #define	FINALFLAG	6
 #define	MEMFLAG		7
-#define	DETAILFLAG	8
-#define	MAXFLAG		9
+#define	SREGFLAG	8
+#define	DETAILFLAG	9
+#define	MAXFLAG		10
 /* DETAILFLAG should be the last real flag */
 
 #define	progdebug	debugflag[PROGFLAG]
@@ -21,6 +22,7 @@
 #define	nondstackdebug	debugflag[NONDSTACKFLAG]
 #define	finaldebug	debugflag[FINALFLAG]
 #define	memdebug	debugflag[MEMFLAG]
+#define	sregdebug	debugflag[SREGFLAG]
 #define	detaildebug	debugflag[DETAILFLAG]
 
 extern	bool	debugflag[];

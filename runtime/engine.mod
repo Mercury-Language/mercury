@@ -278,6 +278,7 @@ void call_engine(Code *entry_point)
 #else
 	for(;;) {
 		debuggoto(fp);
+		debugsreg();
 		fp = (*fp)();
 	}
 #endif

@@ -18,6 +18,7 @@ extern	void	decr_sp_msg(Word val, const Word *addr);
 extern	void	push_msg(Word val, const Word *addr);
 extern	void	pop_msg(Word val, const Word *addr);
 extern	void	goto_msg(const Code *addr);
+extern	void	reg_msg(void);
 
 extern	void	printint(Word n);
 extern	void	printstring(const char *s);

@@ -40,12 +40,12 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 
   #define ENTRY(predname) 	paste(entry_,predname)
   #define LABEL(label)		(&&label)
-  #define GOTO(label)		do { debuggoto(label); goto *(label); } while(0)
+  #define GOTO(label)		do { debuggoto(label); debugsreg(); goto *(label); } while(0)
   /*
   ** GOTO_LABEL(label) is the same as GOTO(LABEL(label)) except
   ** that it may allow gcc to generate slightly better code
   */
-  #define GOTO_LABEL(label) 	do { debuggoto(&&label); goto label; } while(0)
+  #define GOTO_LABEL(label) 	do { debuggoto(&&label); debugsreg(); goto label; } while(0)
 
 #else
 
@@ -497,12 +497,16 @@ extern	int	hash_string(const char *);
 #if defined(SPEED) && !defined(DEBUG_GOTOS)
 
 #define	debuggoto(label)			((void)0)
+#define	debugsreg()				((void)0)
 
 #else
 
 #define	debuggoto(label) \
 	(assert(label), \
 	IF (gotodebug, (save_transient_registers(), goto_msg(label))))
+
+#define	debugsreg() \
+	IF (sregdebug, (save_transient_registers(), reg_msg()))
 
 #endif
 

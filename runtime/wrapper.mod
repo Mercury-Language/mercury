@@ -145,6 +145,7 @@ static void process_options(int argc, char **argv)
 				detstackdebug  = FALSE;
 				heapdebug      = FALSE;
 				gotodebug      = FALSE;
+				sregdebug      = FALSE;
 				finaldebug     = FALSE;
 
 		when 'd':	if (streq(optarg, "b"))
@@ -165,6 +166,8 @@ static void process_options(int argc, char **argv)
 					progdebug   = TRUE;
 				or (streq(optarg, "m"))
 					memdebug    = TRUE;
+				or (streq(optarg, "r"))
+					sregdebug    = TRUE;
 				or (streq(optarg, "a"))
 				{
 					calldebug      = TRUE;
@@ -172,6 +175,7 @@ static void process_options(int argc, char **argv)
 					detstackdebug  = TRUE;
 					heapdebug      = TRUE;
 					gotodebug      = TRUE;
+					sregdebug      = TRUE;
 					finaldebug     = TRUE;
 				}
 				else

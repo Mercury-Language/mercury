@@ -153,6 +153,16 @@ void goto_msg(const Code *addr)
 		printregs("registers at goto");
 }
 
+void reg_msg()
+{
+	int i;
+
+	for(i=1;i<=8;i++) {
+		printf("%8x ",virtual_reg(i));
+	}
+	printf("\n");
+}
+
 /*--------------------------------------------------------------------*/
 
 /* debugging printing tools */
