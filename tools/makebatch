@@ -153,6 +153,7 @@ maxn=`wc -l < batch/$batch.MCFLAGS`
 
 while test $n -le $maxn
 do
+	echo $n > batch/$batch.checkpoint
 	if $needmmake
 	then
 		cp batch/$batch.MMAKE Mmake.stage.params
@@ -283,7 +284,6 @@ do
 	fi
 
 	n=`expr $n + 1`
-	echo $n > batch/$batch.checkpoint
 done
 
 /bin/rm -f batch/$batch.checkpoint
