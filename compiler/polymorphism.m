@@ -671,8 +671,9 @@ polymorphism__setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
 	list__duplicate(NumUnconstrainedExistTVars, Out, ExistTypeInfoModes),
 	list__duplicate(NumUnivClassInfoVars, In, UnivTypeClassInfoModes),
 	list__duplicate(NumExistClassInfoVars, Out, ExistTypeClassInfoModes),
-	list__condense([UnivTypeClassInfoModes, ExistTypeClassInfoModes,
-		UnivTypeInfoModes, ExistTypeInfoModes], ExtraArgModes),
+	list__condense([UnivTypeInfoModes, ExistTypeInfoModes,
+		UnivTypeClassInfoModes, ExistTypeClassInfoModes],
+		ExtraArgModes),
 		
 	%
 	% Add the locations of the typeinfos

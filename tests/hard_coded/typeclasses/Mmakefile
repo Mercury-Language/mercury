@@ -39,6 +39,7 @@ PROGS=	\
 	superclass_call \
 	test_default_func_mode \
 	typeclass_exist_method \
+	typeclass_exist_method_2 \
 	typeclass_test_5 \
 	typeclass_test_6 \
 	type_spec \
@@ -61,7 +62,12 @@ MCFLAGS-abstract_instance = --infer-all
 MCFLAGS-unqualified_method = --intermodule-optimization
 MCFLAGS-unqualified_method2 = --intermodule-optimization
 MCFLAGS-unqualified_method3 = --intermodule-optimization
-MCFLAGS-instance_unconstrained_tvar = --no-user-guided-type-specialisation
+
+# XXX Type specialization does not yet work for these test cases.
+NO_TYPE_SPEC_FLAGS = --no-user-guided-type-specialisation \
+				--no-type-specialisation
+MCFLAGS-instance_unconstrained_tvar = $(NO_TYPE_SPEC_FLAGS)
+MCFLAGS-typeclass_exist_method_2 = $(NO_TYPE_SPEC_FLAGS)
 
 #-----------------------------------------------------------------------------#
 
