@@ -129,19 +129,16 @@ the @samp{.m} extension.
 
 Files ending in @file{.int}, @file{.int2} and @file{.int3} are interface files;
 these are generated automatically by the compiler,
-using the @samp{--make-interface} option. Files ending in @file{.opt} are 
-interface files used in inter-module optimization.
-
-(The @file{.int} files are for direct dependencies,
-while the @file{.int2} files are a shorter version
-used for indirect dependencies.)
+using the @samp{--make-interface} and @samp{--make-short-interface} options.
+Files ending in @file{.opt} are 
+interface files used in inter-module optimization,
+and are created using the @samp{--make-optimization-interface} option.
 
 Since the interface of a module changes less often than its implementation,
-the @file{.int}, @file{.int2} and @file{.int3} files will remain unchanged
-on many compilations.
+the @file{.int}, @file{.int2}, @file{.int3}, and @file{.opt}
+files will remain unchanged on many compilations.
 To avoid unnecessary recompilations of the clients of the module,
-the timestamps on the @file{.int}, @file{.int2} and @file{.int3} files
-are updated only if their contents change.
+the timestamps on the these files are updated only if their contents change.
 @file{.date}, @file{.date3} and @file{.optdate} files associated with the
 module are used as date stamps;
 they are used when deciding whether the interface files need to be regenerated.
@@ -154,10 +151,12 @@ which contain the rules for an entire program.
 In the source code for the Mercury runtime library,
 we use a few files ending in @file{.mod};
 these are preprocessed using the perl script @samp{mod2c} to produce C files.
-Originally the Mercury compiler also produced @file{.mod} files,
-but now we compile directly to C.
+(Originally the Mercury compiler also produced @file{.mod} files,
+but now we compile directly to C.)
 
-As usual, @file{.c} files are C source code, @file{.o} files are object code,
+As usual, @file{.c} files are C source code,
+@file{.h} files are C header files,
+@file{.o} files are object code,
 @file{.no} files are NU-Prolog object code, and
 @file{.ql} files are SICStus Prolog object code.
 
@@ -183,6 +182,12 @@ Unlike traditional Unix compilers, however,
 @samp{mc} will put the executable into a file called @file{@var{module}},
 not @file{a.out}.
 
+For programs that consist of more than one module, we recommend
+that you use Mmake (@pxref{Using Mmake}).  Mmake will perform
+all the steps listed below, using automatic dependency analysis
+to ensure that things are done in the right order, and that
+steps are not repeated unnecessarily.
+
 To compile a module to object code without creating an executable,
 use the command
 
@@ -197,10 +202,18 @@ It also will leave the intermediate C code in a file called
 Before you can compile a module,
 you must make the interface files
 for the modules that it imports (directly or indirectly).
-You can create the interface files for one or more modules using the command
+You can create the interface files for one or more modules using the commands
 
 @example
-mc -i @var{module1}.m @var{module2}.m ...
+mc --make-short-interface @var{module1}.m @var{module2}.m ...
+mc --make-interface @var{module1}.m @var{module2}.m ...
+@end example
+
+If you are going to compile with @samp{--intermodule-optimization} enabled,
+then you also need to create the optimization interface files.
+
+@example
+mc --make-optimization-interface @var{module1}.m @var{module2}.m ...
 @end example
 
 Given that you have made all the interface files,
@@ -251,8 +264,9 @@ ml -o @var{main_module} @var{module1}.o @var{module2}.o ... @var{main_module}_in
 that invokes a C compiler with options appropriate for Mercury,
 this time for linking.  @samp{ml} also pipes any error messages
 from the linker through @samp{mdemangle}, the Mercury symbol demangler,
-so that error messages refer to predicate names in the Mercury source
-code rather than to the names used in the intermediate C code.
+so that error messages refer to predicate and function names from
+the Mercury source code rather than to the names used in the intermediate
+C code.
 
 The above command puts the executable in the file @file{@var{main_module}}.
 The same command line without the @samp{-o} option
@@ -578,6 +592,7 @@ or its imported modules.
 Removes all the automatically generated files.
 In addition to the files removed by @var{main-module}.clean, this
 removes the @samp{.date}, @samp{.int}, @samp{.int2}, @samp{.int3},
+@samp{.opt},
 @samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
 and also the various possible executables for the program ---
 @samp{@var{main-module}}, 
@@ -603,6 +618,11 @@ directory.
 The variables used by the builtin rules are defined in
 @file{@var{prefix}/lib/mercury/mmake/Mmake.vars}.
 
+Note that since Mmake is built on top of Make or GNU Make,
+you can make use of the features supported by the underlying Make.
+In particular, GNU Make has support for running jobs in parallel,
+which is very useful if you have a machine with more than one CPU.
+
 @c ---------------------------------------------------------------------------
 
 @node Profiling
@@ -621,8 +641,8 @@ The variables used by the builtin rules are defined in
 
 The Mercury profiler @samp{mprof} is a tool which can be used to
 analyze a Mercury program's performance, so that the programmer can
-determine which predicates are taking up a disproportionate amount of
-the execution time.
+determine which predicates or functions are taking up a
+disproportionate amount of the execution time.
 
 To obtain the best trade-off between productivity and efficiency,
 programmers should not spend too much time optimizing their code
@@ -647,7 +667,7 @@ different grades.
 
 Enabling profiling has several effects.  Firstly, it causes the
 compiler to generate slightly modified code which counts the number
-of times each predicate is called, and for every predicate call,
+of times each predicate or function is called, and for every call,
 records the caller and callee.  Secondly, your program will be linked
 with versions of the library and runtime that were compiled with
 profiling enabled.  (It also has the effect for each source file the compiler
@@ -660,10 +680,10 @@ The next step is to run your program.  The profiling version of your
 program will collect profiling information during execution, and
 save this information in the files @samp{Prof.Counts}, @samp{Prof.Decls},
 and @samp{Prof.CallPair}.
-(@samp{Prof.Decl} contains the names of the predicates and their
+(@samp{Prof.Decl} contains the names of the procedures and their
 associated addresses, @samp{Prof.CallPair} records the number of times
-each predicate was called by each different caller, and @samp{Prof.Counts}
-records the number of times that execution was in each predicate
+each procedure was called by each different caller, and @samp{Prof.Counts}
+records the number of times that execution was in each procedure
 when a profiling interrupt occurred.)
 
 It would be nice if there was a way to combine profiling data from
@@ -695,35 +715,35 @@ The profile output consists of three major sections.  These are
 named the call graph profile, the flat profile and the alphabetic listing.
 
 The call graph profile presents the local call graph of each
-predicate.  For each predicate it shows the parents (callers) and
-children (callees) of that predicate, and shows the execution time and
+procedure.  For each procedure it shows the parents (callers) and
+children (callees) of that procedure, and shows the execution time and
 call counts for each parent and child.  It is sorted on the total
-amount of time spent in the predicate and all of its descendents (i.e.
-all of the predicates that it calls, directly or indirectly.)
+amount of time spent in the procedure and all of its descendents (i.e.
+all of the procedures that it calls, directly or indirectly.)
 
-The flat profile presents the just execution time spent in each predicate.
-It does not count the time spent in descendents of a predicate.
+The flat profile presents the just execution time spent in each procedure.
+It does not count the time spent in descendents of a procedure.
 
-The alphabetic listing just lists the predicates in alphabetical order,
+The alphabetic listing just lists the procedures in alphabetical order,
 along with their index number in the call graph profile, so that you can
-quickly find the entry for a particular predicate in the call graph profile.
+quickly find the entry for a particular procedure in the call graph profile.
 
 The profiler works by interrupting the program at frequent intervals,
-and each time recording the currently active predicate and its caller.
+and each time recording the currently active procedure and its caller.
 It uses these counts to determine the proportion of the total time spent in
-each predicate.  This means that the figures calculated for these times
+each procedure.  This means that the figures calculated for these times
 are only a statistical approximation to the real values, and so they
 should be treated with some caution.
 
-The time spent in a predicate and its descendents is calculated by
+The time spent in a procedure and its descendents is calculated by
 propagating the times up the call graph, assuming that each call to a
-predicate from a particular caller takes the same amount of time.
+procedure from a particular caller takes the same amount of time.
 This assumption is usually reasonable, but again the results should
 be treated with caution.
 
 Note that any time spent in a C function (e.g. time spent in
 @samp{GC_malloc()}, which does memory allocation and garbage collection) is
-credited to the predicate that called that C function.
+credited to the Mercury procedure that called that C function.
 
 Here is a small portion of the call graph profile from an example program.
 
@@ -809,53 +829,53 @@ and @samp{io__run/0} are all part of the Mercury runtime;
 @samp{main/2} is the entry point to the user's program.)
 
 Each entry of the call graph profile consists of three sections, the parent
-predicates, the current predicate and the children predicates.  
+procedures, the current procedure and the children procedures.  
 
-Reading across from the left, for the current predicate the fields are:
+Reading across from the left, for the current procedure the fields are:
 
 @itemize @bullet
 @item
-The unique index number for the current predicate. 
+The unique index number for the current procedure. 
 (The index numbers are used only to make it easier to find
 a particular entry in the call graph.)
 
 @item
-The percentage of total execution time spent in the current predicate
+The percentage of total execution time spent in the current procedure
 and all its descendents. 
 As noted above, this is only a statistical approximation.
 
 @item
 The ``self'' time: the time spent executing code that is 
-part of current predicate.  
+part of current procedure.  
 As noted above, this is only a statistical approximation.
 
 @item
 The descendent time: the time spent in the
-current predicate and all its descendents.  
+current procedure and all its descendents.  
 As noted above, this is only a statistical approximation.
 
 @item
-The number of times a predicate is called.
-If a predicate is (directly) recursive, this column
-will contain the number of calls from other predicates,
+The number of times a procedure is called.
+If a procedure is (directly) recursive, this column
+will contain the number of calls from other procedures,
 a plus sign, and then the number of recursive calls.
 These numbers are exact, not approximate.
 
 @item
-The name of the predicate followed by its index number. 
+The name of the procedure followed by its index number. 
 @end itemize
 
-The predicate names are not just followed by their arity but also by
-their mode in brackets.  A mode of zero corresponds to the first mode
+The predicate or function names are not just followed by their arity but
+also by their mode in brackets.  A mode of zero corresponds to the first mode
 declaration of that predicate in the source code.  For example,
 @samp{list__delete/3(3)} corresponds to the @samp{(out, out, in)} mode
 of @samp{list__delete/3}.
 
-Now for the parent and child predicates the self and descendent time have
-slightly different meanings.  For the parent predicates the self and descendent
-time represent the proportion of the current predicate's self and descendent 
+Now for the parent and child procedures the self and descendent time have
+slightly different meanings.  For the parent procedures the self and descendent
+time represent the proportion of the current procedure's self and descendent 
 time due to that parent.  These times are obtained using the assumption that
-each call contributes equally to the total time of the current predicate.
+each call contributes equally to the total time of the current procedure.
 @c XXX is that really true? Do we really make that assumption?
 
 @node Invocation
@@ -941,11 +961,11 @@ which could have been stricter.
 @sp 1
 @item --no-warn-nothing-exported
 Don't warn about modules whose interface sections have no
-exported predicates, modes or types.
+exported predicates, functions, insts, modes or types.
 
 @sp 1
 @item --warn-unused-args
-Warn about predicate arguments which are not used.
+Warn about predicate or function arguments which are not used.
 
 @sp 1
 @item --warn-interface-imports
@@ -1033,6 +1053,10 @@ Also write the short interface to @file{@var{module}.int2}.
 Write the unqualified version of the short interface to
 @file{@var{module}.int3}.
 
+@sp 1
+@item --make-optimization-interface
+Write information used for inter-module optimization to
+@file{@var{module}.opt}.
 
 @sp 1
 @item -G
@@ -1233,7 +1257,7 @@ None.
 @code{--gcc-global-registers --gcc-nonlocal_gotos --asm-labels}.
 
 @item Any of the above followed by @samp{.gc}
-As above, plus @code{--conservative-gc}.
+As above, plus @code{--gc conservative}.
 
 @item Any of the above followed by @samp{.prof}
 As above, plus @code{--profiling}.
@@ -1315,6 +1339,7 @@ generated code, and also output some profiling
 information (the static call graph) to the file
 @samp{@var{module}.prof}.  @xref{Profiling}.
 
+@sp 1
 @item @code{--debug} (grades: debug)
 Enable debugging.
 Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
@@ -1367,11 +1392,6 @@ Don't reclaim heap on backtracking in nondet code.
 Don't reclaim heap on backtracking in semidet code.
 
 @sp 1
-@item --use-macro-for-redo-fail
-Emit the fail or redo macro instead of a branch
-to the fail or redo code in the runtime system.
-
-@sp 1
 @item --cc @var{compiler-name}
 Specify which C compiler to use.
 
@@ -1389,32 +1409,75 @@ Specify options to be passed to the C compiler.
 @section Optimization options
 
 @menu
-* Selecting an optimization level::
+* Overall optimization options::
 * High-level (HLDS->HLDS) optimization options::
 * Medium-level (HLDS->LLDS) optimization options::
 * Low-level (LLDS->LLDS) optimization options::
 * Output-level (LLDS->C) optimization options::
 @end menu
 
-@node Selecting an optimization level
-@subsection Selecting an optimization level
+@node Overall optimization options
+@subsection Overall optimization options
 
 @table @code
 @item -O @var{n}
 @itemx --opt-level @var{n}
 @itemx --optimization-level @var{n}
 Set optimization level to @var{n}.
-Optimimization level 0 means no optimization
-while optimimization level 5 means full optimization.
+Optimization levels range from -1 to 6.
+Optimization level -1 disables all optimizations,
+while optimization level 6 enables all optimizations
+except for the cross-module optimizations listed below.
 
+In general, there is a trade-off between compilation speed and the
+speed of the generated code.  When developing, you should normally use
+optimization level 0, which aims to minimize compilation time.  It
+enables only those optimizations that in fact usually @emph{reduce}
+compilation time.  The default optimization level is level 2, which
+delivers reasonably good optimization in reasonable time.  Optimization
+levels higher than that give better optimization, but take longer,
+and are subject to the law of diminishing returns.  The difference in
+the quality of the generated code between optimization level 5 and
+optimization level 6 is very small, but using level 6 may increase
+compiation time and memory requirements dramatically.
+
+Note that if you want the compiler to perform cross-module
+optimizations, then you must enable them separately;
+the cross-module optimizations are not enabled by any @samp{-O}
+level, because they affect the compilation process in ways
+that require special treatment by @samp{mmake}.
+
+@sp 1
 @item --opt-space
 @item --optimize-space
 Turn on optimizations that reduce code size
 and turn off optimizations that significantly increase code size.
+@end table
 
+@table @code
 @item --intermodule-optimization
-Perform inlining and higher-order specialization of the code for predicates
-imported from other modules.
+Perform inlining and higher-order specialization of the code for
+predicates or functions imported from other modules.
+
+@sp 1
+@item --split-c-files
+Generate each C function in its own C file,
+so that the linker will optimize away unused code.
+This has the same effect as @samp{--optimize-dead-procs},
+except that it works globally at link time, rather than
+over a single module, so it does a much better job of
+eliminating unused procedures.
+This option significantly increases compilation time,
+link time, and intermediate disk space requirements,
+but in return reduces the size of the final
+executable, typically by about 10-20%.
+This option is only useful with @samp{--procs-per-c-function 1}.
+
+N.B.  When using @samp{mmake}, the @samp{--split-c-files} option should
+not be placed in the @samp{MCFLAGS} variable.  Instead, use the
+@samp{@var{MODULE}.split} target, i.e. type @samp{mmake foo.split}
+rather than @samp{mmake foo}.
+
 @end table
 
 @node High-level (HLDS->HLDS) optimization options
@@ -1603,7 +1666,7 @@ Perform value numbering on extended basic blocks.
 
 @c @sp 1
 @c @item --pred-value-number
-@c Extend value numbering to whole predicates, rather than just basic blocks.
+@c Extend value numbering to whole procedures, rather than just basic blocks.
 
 @sp 1
 @item --no-optimize-frames
@@ -1634,6 +1697,11 @@ C intermediate code from our low-level data structure.
 Use only gotos -- don't emit C loop constructs.
 
 @sp 1
+@item --use-macro-for-redo-fail
+Emit the fail or redo macro instead of a branch
+to the fail or redo code in the runtime system.
+
+@sp 1
 @item --procs-per-c-function @var{n}
 Don't put the code for more than @var{n} Mercury
 procedures in a single C function.  The default
@@ -1643,20 +1711,6 @@ Setting @var{n} to the special value zero has the effect of
 putting all the procedures in a single function,
 which produces the most efficient code
 but tends to severely stress the C compiler.
-
-@sp 1
-@item --split-c-files
-Generate each C function in its own C file,
-so that the linker will optimize away unused code.
-This has the same effect as @samp{--optimize-dead-procs},
-except that it works globally at link time, rather than
-over a single module, so it does a much better job of
-eliminating unused procedures.
-This option significantly increases compilation time,
-link time, and intermediate disk space requirements,
-but in return reduces the size of the final
-executable, typically by about 10-20%.
-This option is only useful with @samp{--procs-per-c-function 1}.
 
 @sp 1
 @item --no-c-optimize
