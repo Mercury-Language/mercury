@@ -349,10 +349,11 @@ check_stop_print:
             /*
             ** We ignore the print_list computed here, because we want to
             ** execute the print list of a matched spy point even if the event
-            ** is the end event of a command. In that case, the code above
-            ** invokes MR_trace_event directly without coming here. We
-            ** therefore invoke MR_event_matches_spy_point in MR_trace_event.
-            ** The invocation here is only to find out if we want to stop.
+            ** is the target event of a forward movement command such as
+            ** "goto". In that case, the code above invokes MR_trace_event
+            ** directly without coming here. We therefore invoke
+            ** MR_event_matches_spy_point in MR_trace_event. The invocation
+            ** here is only to find out if we want to stop.
             */
 
             MR_Spy_Print_List   print_list;
