@@ -102,15 +102,20 @@ OTHER_SOURCES= \
 #	mode_merge_insts.m
 
 
-# Not all grades can be used with accurate GC
+# Base grades `jump' and `fast'
+# cannot be used with accurate GC
 
-ifeq ($(GRADE),jump) 
-    SOURCES=$(OTHER_SOURCES)
+ifneq "$(findstring asm_,$(GRADE))" ""
+    SOURCES=$(AGC_SOURCES) $(OTHER_SOURCES)
 else
-    ifeq ($(GRADE),fast)
+    ifneq "$(findstring jump,$(GRADE))" ""
         SOURCES=$(OTHER_SOURCES)
     else
-        SOURCES=$(AGC_SOURCES) $(OTHER_SOURCES)
+        ifneq "$(findstring fast,$(GRADE))" ""
+            SOURCES=$(OTHER_SOURCES)
+        else
+            SOURCES=$(AGC_SOURCES) $(OTHER_SOURCES)
+        endif
     endif
 endif
 

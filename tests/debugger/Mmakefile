@@ -16,16 +16,21 @@ DEBUGGER_PROGS=	\
 MCFLAGS = --trace all $(EXTRA_MCFLAGS)
 EXTRA_C2INITFLAGS = -i
 
-# Not all grades can be used with stack layouts
-#
-ifeq ($(GRADE),jump) 
-	PROGS=
+# Base grades `jump' and `fast' cannot be used with
+# stack layouts (which are required for tracing).
+
+ifneq "$(findstring asm_,$(GRADE))" ""
+    PROGS=$(DEBUGGER_PROGS)
 else
-	ifeq ($(GRADE),fast)
-		PROGS=
+    ifneq "$(findstring jump,$(GRADE))" ""
+	PROGS=
+    else
+	ifneq "$(findstring fast,$(GRADE))" ""
+	    PROGS=
 	else
-		PROGS=$(DEBUGGER_PROGS)
+	    PROGS=$(DEBUGGER_PROGS)
 	endif
+    endif
 endif
 
 LIBPROGS=	$(PROGS:%=%_lib)
@@ -53,7 +58,7 @@ queens_lib.out: queens_lib queens_lib.inp
 
 #-----------------------------------------------------------------------------#
 
-DEPS=		$(ALLPROGS:%=%.dep)
+DEPS=		$(ALLPROGS:%=$(deps_subdir)%.dep)
 DEPENDS=	$(ALLPROGS:%=%.depend)
 OUTS=		$(PROGS:%=%.out)
 LIBOUTS=	$(LIBPROGS:%=%.out)
