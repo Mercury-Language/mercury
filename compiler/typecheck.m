@@ -4108,7 +4108,10 @@ apply_class_rules([C|Constraints0], AssumedConstraints, SuperClassTable,
 		TVarSet, Proofs0, Proofs, Constraints, Changed) :-
 	(
 		Parents = [],
-		eliminate_constraint_by_class_rules(C, AssumedConstraints,
+		C = constraint(_, CTypes),
+		term__vars_list(CTypes, CVars),
+		eliminate_constraint_by_class_rules(C, CVars, 
+			AssumedConstraints,
 			SuperClassTable, TVarSet, Parents, Proofs0, Proofs1)
 	->
 		apply_class_rules(Constraints0, AssumedConstraints,
@@ -4127,15 +4130,21 @@ apply_class_rules([C|Constraints0], AssumedConstraints, SuperClassTable,
 	% is also passed in --- these are the constraints that we are
 	% (recursively) in the process of checking, and is used to ensure that
 	% we don't get into a cycle in the relation.
-:- pred eliminate_constraint_by_class_rules(class_constraint,
+	%
+	% The list(tvar) argument contains all the variables from the
+	% original constraint that we are trying to prove. (These are the
+	% type variables that must not be bound as we search through the
+	% superclass relation).
+:- pred eliminate_constraint_by_class_rules(class_constraint, list(tvar),
 	list(class_constraint), superclass_table, tvarset,
 	list(class_constraint),
 	map(class_constraint, constraint_proof),
 	map(class_constraint, constraint_proof)).
-:- mode eliminate_constraint_by_class_rules(in, in, in, in, in, in, out) 
+:- mode eliminate_constraint_by_class_rules(in, in, in, in, in, in, in, out) 
 	is semidet.
 
-eliminate_constraint_by_class_rules(C, AssumedConstraints, SuperClassTable,
+eliminate_constraint_by_class_rules(C, ConstVars,
+		AssumedConstraints, SuperClassTable,
 		TVarSet, ParentConstraints, Proofs0, Proofs) :-
 
 		% Make sure we aren't in a cycle in the
@@ -4150,8 +4159,8 @@ eliminate_constraint_by_class_rules(C, AssumedConstraints, SuperClassTable,
 		% Convert all the subclass_details into class_constraints by
 		% doing the appropriate variable renaming and applying the
 		% type variable bindings.
-	SubDetailsToConstraint = lambda([SubClassDetails::in, SubC::out] 
-			is semidet, (
+	SubDetailsToConstraint = (pred(SubClassDetails::in, SubC::out) 
+			is det :-
 		SubClassDetails = subclass_details(SuperVars0, SubID,
 			SubVars0, SuperVarset),
 
@@ -4169,21 +4178,40 @@ eliminate_constraint_by_class_rules(C, AssumedConstraints, SuperClassTable,
 			% Work out what the (renamed) vars from the
 			% typeclass declaration are bound to here
 		map__init(Empty),
-		type_unify_list(SuperVars, SuperClassTypes, [],
-			Empty, Bindings),
-		SubID = class_id(SubName, _SubArity),
-		term__apply_substitution_to_list(SubVars, Bindings,
-			SubClassTypes),
-		SubC = constraint(SubName, SubClassTypes)
-	)),
+		(
+			type_unify_list(SuperVars, SuperClassTypes, [],
+				Empty, Bindings)
+		->
+			SubID = class_id(SubName, _SubArity),
+			term__apply_substitution_to_list(SubVars, Bindings,
+				SubClassTypes),
+			SubC = constraint(SubName, SubClassTypes)
+		;
+			error("eliminate_constraint_by_class_rules: type_unify_list failed")
+		)
+	),
 	list__map(SubDetailsToConstraint, SubClasses, SubClassConstraints),
 
 	(
-			% Do the first level of search
-		FindSub = lambda([TheConstraint::in] is semidet,(
-			list__member(TheConstraint, AssumedConstraints)
-		)),
-		list__filter(FindSub, SubClassConstraints, [Sub|_])
+			% Do the first level of search. We search for
+			% an assumed constraint which unifies with any
+			% of the subclass constraints.
+		FindSub = (pred(TheConstraint::in) is semidet :-
+			some [SubClassConstraint] (
+				TheConstraint = constraint(TheConstraintClass,
+					TheConstraintTypes),
+				list__member(SubClassConstraint, 
+					SubClassConstraints),
+				SubClassConstraint = 
+					constraint(TheConstraintClass, 
+					SubClassConstraintTypes),
+				map__init(EmptySub),
+				type_unify_list(SubClassConstraintTypes, 
+					TheConstraintTypes,
+					ConstVars, EmptySub, _)
+			)
+		),
+		find_first_match(FindSub, AssumedConstraints, Sub)
 	->
 		map__set(Proofs0, C, superclass(Sub), Proofs)
 	;
@@ -4191,14 +4219,14 @@ eliminate_constraint_by_class_rules(C, AssumedConstraints, SuperClassTable,
 
 			% Recursively search the rest of the superclass
 			% relation.
-		SubClassSearch = lambda([Constraint::in, CnstrtAndProof::out] 
-				is semidet, (
-			eliminate_constraint_by_class_rules(Constraint,
-				AssumedConstraints, SuperClassTable,
+		SubClassSearch = (pred(Constraint::in, CnstrtAndProof::out) 
+				is semidet :-
+			eliminate_constraint_by_class_rules(Constraint, 
+				ConstVars, AssumedConstraints, SuperClassTable,
 				TVarSet, NewParentConstraints,
 				Proofs0, SubProofs),
 			CnstrtAndProof = Constraint - SubProofs
-		)),
+		),
 			% XXX this could (and should) be more efficient. 
 			% (ie. by manually doing a "cut").
 		find_first(SubClassSearch, SubClassConstraints,
@@ -4209,7 +4237,7 @@ eliminate_constraint_by_class_rules(C, AssumedConstraints, SuperClassTable,
 	% XXX this should probably work its way into the library.
 	% This is just like list__filter_map except that it only returns
 	% the first match:
-	% 	first(X,Y,Z) <=> list__filter_map(X,Y,[Z|_])
+	% 	find_first(X,Y,Z) <=> list__filter_map(X,Y,[Z|_])
 	%
 :- pred find_first(pred(X, Y), list(X), Y).
 :- mode find_first(pred(in, out) is semidet, in, out) is semidet.
@@ -4221,6 +4249,19 @@ find_first(Pred, [X|Xs], Result) :-
 		Result = Result0
 	;
 		find_first(Pred, Xs, Result)
+	).
+
+	% 	find_first_match(X,Y,Z) <=> list__takewhile(not X,Y,_, [Z|_])
+:- pred find_first_match(pred(X), list(X), X).
+:- mode find_first_match(pred(in) is semidet, in, out) is semidet.
+
+find_first_match(Pred, [X|Xs], Result) :-
+	(
+		call(Pred, X)
+	->
+		Result = X
+	;
+		find_first_match(Pred, Xs, Result)
 	).
 
 	%
