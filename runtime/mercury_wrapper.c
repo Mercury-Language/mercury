@@ -842,8 +842,7 @@ enum MR_long_option {
 	MR_MDB_ERR,
 	MR_MDB_IN_WINDOW,
 	MR_FORCE_READLINE,
-	MR_NUM_OUTPUT_ARGS,
-	MR_DEBUG_THREADS_OPT
+	MR_NUM_OUTPUT_ARGS
 };
 
 struct MR_option MR_long_opts[] = {
@@ -864,8 +863,7 @@ struct MR_option MR_long_opts[] = {
 	{ "mdb-err", 			1, 0, MR_MDB_ERR },
 	{ "mdb-in-window",		0, 0, MR_MDB_IN_WINDOW },
 	{ "force-readline",		0, 0, MR_FORCE_READLINE },
-	{ "num-output-args", 		1, 0, MR_NUM_OUTPUT_ARGS },
-	{ "debug-threads",		0, 0, MR_DEBUG_THREADS_OPT }
+	{ "num-output-args", 		1, 0, MR_NUM_OUTPUT_ARGS }
 };
 
 static void
@@ -1003,10 +1001,6 @@ process_options(int argc, char **argv)
 			fflush(stdout);
 			exit(1);
 #endif
-			break;
-
-		case MR_DEBUG_THREADS_OPT:
-			MR_debug_threads = MR_TRUE;
 			break;
 
 		case 'a':
