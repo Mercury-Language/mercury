@@ -2503,7 +2503,7 @@ mercury_compile__link_module_list(Modules) -->
 	    ;
 		TraceOpt = ""
 	    },
-	    join_module_list(Modules, ".m", ["> ", InitCFileName], MkInitCmd0),
+	    join_module_list(Modules, ".c", ["> ", InitCFileName], MkInitCmd0),
 	    { string__append_list(["c2init ", TraceOpt | MkInitCmd0],
 	    	MkInitCmd) },
 	    invoke_system_command(MkInitCmd, MkInitOK),
