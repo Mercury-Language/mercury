@@ -9,7 +9,7 @@ ENDINIT
 */
 
 /*
-** The call.mod module provides much of the functionality for doing
+** This module provides much of the functionality for doing
 ** higher order calls. The rest is provided by code generation of the
 ** higher_order_call HLDS construct.
 **

@@ -607,8 +607,11 @@
   #define STATIC(label) 	(label)
   #define LOCAL(label)		(label)
   #define LABEL(label)		(label)
+  /*
+  ** The call to debuggoto() is in the driver function in mercury_engine.c,
+  ** which is why the following definitions have no debuggoto().
+  */
   #define GOTO(label)		return (label)
-				/* the call to debuggoto() is in engine.mod */
   #define GOTO_ENTRY(label) 	GOTO(ENTRY(label))
   #define GOTO_STATIC(label) 	GOTO(STATIC(label))
   #define GOTO_LOCAL(label) 	GOTO(LOCAL(label))

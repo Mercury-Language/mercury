@@ -8,7 +8,7 @@ ENDINIT
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* context.mod - handles multithreading stuff. */
+/* mercury_context.c - handles multithreading stuff. */
 
 #include "mercury_imp.h"
 

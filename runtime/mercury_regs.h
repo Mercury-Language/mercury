@@ -224,7 +224,7 @@ extern	Word	set_reg(int, Word);
 ** num_uses array used for counting register usage
 **
 ** any changes to these will also require changes to
-** print_register_usage_counts() in wrapper.mod.
+** print_register_usage_counts() in mercury_wrapper.c.
 */
 
 #define	MR_SI_RN		0
