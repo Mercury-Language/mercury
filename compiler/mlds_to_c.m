@@ -493,19 +493,20 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 
 mlds_output_pragma_export_func_defn_body(ModuleName, FuncName, Signature) -->
 	{ ExportedSignature = det_func_signature(Signature) },
-	{ ExportedSignature = mlds__func_params(Parameters, RetTypes) },
+	{ ExportedSignature = mlds__func_params(_ExpParameters, ExpRetTypes) },
+	{ Signature = mlds__func_params(Parameters, _RetTypes) },
 
-	( { RetTypes = [RetType0] } ->
-		{ RetType = RetType0 }
+	( { ExpRetTypes = [ExpRetType0] } ->
+		{ ExpRetType = ExpRetType0 }
 	;
 		{ error("mlds_output_pragma_export_func_defn_body") }
 	),
 
 		% Define a variable to hold the function result.
 	io__write_string("\t"),
-	mlds_output_type_prefix(RetType),
+	mlds_output_type_prefix(ExpRetType),
 	io__write_string(" arg"),
-	mlds_output_type_suffix(RetType),
+	mlds_output_type_suffix(ExpRetType),
 	io__write_string(";\n"),
 
 		% Call the MLDS function.
@@ -518,8 +519,8 @@ mlds_output_pragma_export_func_defn_body(ModuleName, FuncName, Signature) -->
 		% return the function result.
 	io__write_string("\t"),
 	io__write_string("return ("),
-	mlds_output_pragma_export_type(prefix, RetType),
-	mlds_output_pragma_export_type(suffix, RetType),
+	mlds_output_pragma_export_type(prefix, ExpRetType),
+	mlds_output_pragma_export_type(suffix, ExpRetType),
 	io__write_string(") arg;\n").
 
 	%
