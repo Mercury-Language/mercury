@@ -1108,7 +1108,7 @@ options_help_aux_output -->
 	io__write_string("\t\tby an experimental debugger.\n"),
 	io__write_string("\t--generate-prolog\n"),
 	io__write_string("\t\tConvert the program to Prolog. Output to file `<module>.pl'\n"),
-	io__write_string("\t\tor `<module>.nl' (depending the the dialect).\n"),
+	io__write_string("\t\tor `<module>.nl' (depending on the dialect).\n"),
 	io__write_string("\t--prolog-dialect {sicstus,nu}\n"),
 	io__write_string("\t\tTarget the named dialect if generating Prolog code.\n"),
 	io__write_string("\t-l, --line-numbers\n"),
