@@ -511,7 +511,7 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init,
 	% the base_typeclass_info; instead, we need to generate
 	% a wrapper function that extracts the NumExtra parameters
 	% it needs from the typeclass_info, and store the address
-	% of that wrapper function in the typeclass_info.
+	% of that wrapper function in the base_typeclass_info.
 	%
 	% Note that this means there are two levels of wrappers:
 	% the wrapper that we generate here calls the
