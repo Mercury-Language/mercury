@@ -208,8 +208,15 @@ BOEHMGC_MAKEFILE=@BOEHMGC_MAKEFILE@
 
 #-----------------------------------------------------------------------------#
 
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include $(MERCURY_DIR)/Mercury.options
+
 # The Mmake.params file can be used to override definitions in this file
 -include $(MERCURY_DIR)/Mmake.params
+
+# Avoid trying to make this file with `mmc --make' if it doesn't exist.
+$(MERCURY_DIR)/Mmake.params: ;
 
 #-----------------------------------------------------------------------------#
 

@@ -28,35 +28,6 @@ make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
 	{ Succeeded = no },
 	{ Info = Info1 }
     ;
-	globals__io_get_target(CompilationTarget),
-	( { CompilationTarget = asm } ->
-	    % An assembler file is only produced for the top-level
-	    % module in each source file.
-	    list__foldl3(
-		(pred(ModuleName::in, ObjModules0::in, ObjModules1::out,
-				MInfo0::in, MInfo::out, di, uo) is det -->
-			get_module_dependencies(ModuleName, MaybeImports,
-				MInfo0, MInfo),
-			{
-				MaybeImports = yes(Imports),
-				ModuleName = Imports ^ source_file_module_name
-			->
-				ObjModules1 = [ModuleName | ObjModules0]
-			;	
-				ObjModules1 = ObjModules0
-			}
-		),
-		set__to_sorted_list(AllModules), [],
-		ObjModules, Info1, Info4)
-	;
-		{ Info4 = Info1 },
-		{ ObjModules = set__to_sorted_list(AllModules) }
-	),
-
-	linked_target_file_name(MainModuleName, FileType, OutputFileName),
-	get_file_timestamp([dir__this_directory], OutputFileName,
-		MaybeTimestamp, Info4, Info5),
-
 	globals__io_lookup_string_option(pic_object_file_extension, PicObjExt),
 	globals__io_lookup_string_option(object_file_extension, ObjExt),
 	{ FileType = shared_library, PicObjExt \= ObjExt ->
@@ -71,6 +42,7 @@ make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
 	% Build the `.c' files first so that errors are
 	% reported as soon as possible.
 	%
+	globals__io_get_target(CompilationTarget),
 	{
 		CompilationTarget = c,
 		IntermediateTargetType = c_code,
@@ -90,13 +62,19 @@ make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
 		ObjectTargetType = object_code(non_pic)
 	},
 
+	get_target_modules(IntermediateTargetType,
+		set__to_sorted_list(AllModules), ObjModules, Info1, Info4),
 	{ IntermediateTargets = make_dependency_list(ObjModules,
 					IntermediateTargetType) },
 	{ ObjTargets = make_dependency_list(ObjModules, ObjectTargetType) },
 
 	foldl2_maybe_stop_at_error(KeepGoing,
 		foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
-		[IntermediateTargets, ObjTargets], _, Info5, Info6),
+		[IntermediateTargets, ObjTargets], _, Info4, Info5),
+
+	linked_target_file_name(MainModuleName, FileType, OutputFileName),
+	get_file_timestamp([dir__this_directory], OutputFileName,
+		MaybeTimestamp, Info5, Info6),
 	check_dependencies(OutputFileName, MaybeTimestamp,
 		ObjTargets, BuildDepsResult, Info6, Info7),
 
@@ -118,6 +96,44 @@ make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
     	    { Succeeded = no },
 	    { Info = Info7 }
 	)
+    ).
+
+:- pred get_target_modules(module_target_type::in, list(module_name)::in,
+	list(module_name)::out, make_info::in, make_info::out,
+	io__state::di, io__state::uo) is det.
+
+get_target_modules(TargetType, AllModules, TargetModules, Info0, Info) -->
+    globals__io_get_target(CompilationTarget),
+    ( 
+	{
+		TargetType = errors
+	;
+		CompilationTarget = asm,
+		( TargetType = asm_code(_)
+		; TargetType = object_code(_)
+		)
+	}
+    ->
+	% `.err' and `.s' files are only produced for the
+	% top-level module in each source file.
+	list__foldl3(
+	    (pred(ModuleName::in, TargetModules0::in, TargetModules1::out,
+			MInfo0::in, MInfo::out, di, uo) is det -->
+		get_module_dependencies(ModuleName, MaybeImports,
+			MInfo0, MInfo),
+		{
+			MaybeImports = yes(Imports),
+			ModuleName = Imports ^ source_file_module_name
+		->
+			TargetModules1 = [ModuleName | TargetModules0]
+		;	
+			TargetModules1 = TargetModules0
+		}
+	    ),
+	    AllModules, [], TargetModules, Info0, Info)
+    ;
+	{ Info = Info0 },
+	{ TargetModules = AllModules }
     ).
 
 :- pred build_linked_target(module_name::in, linked_target_type::in,
@@ -358,16 +374,19 @@ make_misc_target(MainModuleName - TargetType, Succeeded, Info0, Info) -->
 			[ExeExt, LibExt, SharedLibExt, "_init.c", "_init.o"],
 			Info4, Info)
 	;
-		{ TargetType = check },
+		{ TargetType = build_all(ModuleTargetType) },
+		get_target_modules(ModuleTargetType, AllModules,
+			TargetModules, Info3, Info4),
 		globals__io_lookup_bool_option(keep_going, KeepGoing),
 		( { Succeeded0 = no, KeepGoing = no } ->
-			{ Info = Info3 },
+			{ Info = Info4 },
 			{ Succeeded = no }
 		;
 			foldl2_maybe_stop_at_error(KeepGoing,
 				make_module_target,
-				make_dependency_list(AllModules, errors),
-				Succeeded1, Info3, Info),
+				make_dependency_list(TargetModules,
+					ModuleTargetType),
+				Succeeded1, Info4, Info),
 			{ Succeeded = Succeeded0 `and` Succeeded1 }
 		)
 	;

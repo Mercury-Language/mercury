@@ -12,15 +12,24 @@ MERCURY_DIR=..
 LINK_STATIC=yes
 include $(MERCURY_DIR)/Mmake.common
 
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
 ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
 	MAIN_TARGET=mdprof_cgi mdprof_server
+	MERCURY_MAIN_MODULES=mdprof_cgi mdprof_server
 	DEPEND=mdprof_cgi.depend mdprof_server.depend
 	INSTALL=install_deep
 else
 	MAIN_TARGET=nothing
+	MERCURY_MAIN_MODULES=
 	DEPEND=nothing
 	INSTALL=nothing
 endif
+
+# Avoid trying to make this file with `mmc --make' if it doesn't exist.
+Mmake.deep.params: ;
 
 #-----------------------------------------------------------------------------#
 

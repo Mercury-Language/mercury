@@ -77,6 +77,9 @@ Options:
 	--use-subdirs
 		Assume intermediate files are built in subdirectories.
 		(Same as the \`--use-subdirs' option to mmake and mmc.)
+	--use-mmc-make
+		Use \`mmc --make' to build the files.
+		(Same as the \`--use-mmc-make' option to mmake.)
 	--compile-times
 		Report information about compilation times in the stage 2
 		library and compiler directories.
@@ -134,6 +137,7 @@ if [ -d compiler/Mercury ]; then
 else
 	use_subdirs=${MMAKE_USE_SUBDIRS=no}
 fi
+use_mmc_make=no
 compile_times=false
 write_out_profile_data=false
 type_stats=""
@@ -236,6 +240,11 @@ while [ $# -gt 0 ]; do
 	--no-use-subdirs)
 		use_subdirs=no ;;
 
+	--use-mmc-make)
+		use_mmc_make=yes ;;
+	--no-use-mmc-make)
+		use_mmc_make=no ;;
+
 	--compile-times)
 		compile_times=true ;;
 	--no-compile-times)
@@ -309,6 +318,9 @@ fi
 
 MMAKE_USE_SUBDIRS=$use_subdirs
 export MMAKE_USE_SUBDIRS
+
+MMAKE_USE_MMC_MAKE=$use_mmc_make
+export MMAKE_USE_MMC_MAKE
 
 #-----------------------------------------------------------------------------#
 
@@ -428,20 +440,20 @@ then
 	$LN_S $root/compiler/[t-z]*.m .
 	$LN_S $root/compiler/*.pp .	
 
-	cp $root/compiler/Mmake* .
+	cp $root/compiler/Mmake* $root/compiler/Mercury.options .
 	cd $root/stage2
 	mkdir library
 	cd library
 	$LN_S $root/library/[a-l]*.m .
 	$LN_S $root/library/[m-z]*.m .
 	$LN_S $root/library/library_strong_name.sn .
-	cp $root/library/Mmake* .
+	cp $root/library/Mmake* $root/library/Mercury.options .
 	$LN_S $root/library/$STD_LIB_NAME.init .
 	cd $root/stage2
 	mkdir browser
 	cd browser
 	$LN_S $root/browser/*.m .
-	cp $root/browser/Mmake* .
+	cp $root/browser/Mmake* $root/browser/Mercury.options .
 	$LN_S $root/browser/$BROWSER_LIB_NAME.init .
 	cd $root/stage2
 	if $copy_runtime
@@ -506,12 +518,13 @@ then
 		mkdir profiler
 		cd profiler
 		$LN_S $root/profiler/*.m .
-		cp $root/profiler/Mmake* .
+		cp $root/profiler/Mmake* $root/profiler/Mercury.options .
 		cd $root/stage2
 		mkdir deep_profiler
 		cd deep_profiler
 		$LN_S $root/deep_profiler/*.m .
 		cp $root/deep_profiler/Mmake* .
+		cp $root/deep_profiler/Mercury.options .
 		cd $root/stage2
 	else
 		$LN_S $root/profiler .
@@ -522,11 +535,16 @@ then
 	$LN_S $root/VERSION .
 	$LN_S $root/.*.in .
 	rm -f config*.log
-	cp $root/Mmake* .
+	cp $root/Mmake* $root/Mercury.options .
 	if test -f $root/Mmake.stage.params
 	then
 		/bin/rm -f Mmake.params
 		cp $root/Mmake.stage.params Mmake.params
+	fi
+	if test -f $root/Mercury.stage.options
+	then
+		/bin/rm -f Mercury.options
+		cp $root/Mercury.stage.options Mercury.options
 	fi
 	if test "$grade" != ""
 	then
@@ -562,8 +580,6 @@ then
 		echo "building of stage 2 dependencies not successful"
 		exit 1
 	fi
-
-	# the `RM_C=:' ensures that the `.c' files do not get deleted
 
 	if (cd stage2/library && $MMAKE $mmake_opts $jfactor mercury)
 	then
@@ -662,20 +678,20 @@ then
 	$LN_S $root/compiler/[t-z]*.m .
 	$LN_S $root/compiler/*.pp .	
 
-	cp $root/compiler/Mmake* .
+	cp $root/compiler/Mmake* $root/compiler/Mercury.options .
 	cd $root/stage3
 	mkdir library
 	cd library
 	$LN_S $root/library/[a-l]*.m .
 	$LN_S $root/library/[m-z]*.m .
 	$LN_S $root/library/library_strong_name.sn .
-	cp $root/library/Mmake* .
+	cp $root/library/Mmake* $root/library/Mercury.options .
 	$LN_S $root/library/$STD_LIB_NAME.init .
 	cd $root/stage3
 	mkdir browser
 	cd browser
 	$LN_S $root/browser/*.m .
-	cp $root/browser/Mmake* .
+	cp $root/browser/Mmake* $root/browser/Mercury.options .
 	$LN_S $root/browser/$BROWSER_LIB_NAME.init .
 	cd $root/stage3
 	$LN_S $root/boehm_gc .
@@ -692,7 +708,7 @@ then
 	$LN_S $root/VERSION .
 	$LN_S $root/.*.in .
 	rm -f config*.log
-	cp $root/stage2/Mmake* .
+	cp $root/stage2/Mmake* $root/stage2/Mercury.options .
 	cd $root
 	set -x
 
@@ -807,8 +823,11 @@ then
 	fi
 
 	for dir in library browser compiler; do
-		for file in stage2/$dir/${target_subdir}*.${target_ext}; do
-		    diff -u $file stage3/$dir/${cs_subdir}`basename $file` ||
+		# `mmake cs' in the compiler directory doesn't build
+		# `top_level_init.c', so we only compare the `.c'
+		# files present in the stage3 directory.
+		for file in stage3/$dir/${target_subdir}*.${target_ext}; do
+		    diff -u stage2/$dir/${cs_subdir}`basename $file` $file ||
 			diff_status=1
 		done
 	done

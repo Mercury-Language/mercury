@@ -19,7 +19,12 @@ MERCURY_DIR=..
 LINK_STDLIB_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
 MAIN_TARGET=library
+MERCURY_MAIN_MODULES=$(BROWSER_LIB_NAME) browse_test declarative_test
 
 #-----------------------------------------------------------------------------#
 
@@ -32,8 +37,6 @@ MLFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
 		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 MLLIBS +=	$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)	\
 		$(READLINE_LIBRARIES)
-
-MCFLAGS-mer_browser = --no-warn-nothing-exported
 
 MTAGS	=	$(SCRIPTS_DIR)/mtags
 
@@ -107,9 +110,15 @@ dates		:
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs ss
+ifeq ($(MMAKE_USE_MMC_MAKE),no)
 os: $($(BROWSER_LIB_NAME).os)
 cs: $($(BROWSER_LIB_NAME).cs)
 ss: $($(BROWSER_LIB_NAME).ss)
+else
+os: $(BROWSER_LIB_NAME).os
+cs: $(BROWSER_LIB_NAME).cs
+ss: $(BROWSER_LIB_NAME).ss
+endif
 
 #-----------------------------------------------------------------------------#
 

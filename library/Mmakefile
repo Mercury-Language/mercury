@@ -18,6 +18,12 @@ MERCURY_DIR=..
 LINK_RUNTIME_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+MERCURY_MAIN_MODULES = mer_std
+
 MAIN_TARGET=mercury
 
 VPATH=.
@@ -68,21 +74,6 @@ endif
 MCFLAGS += --strict-sequential --trace minimum --generate-mmc-deps \
 		$(INTERMODULE_OPTS) $(ENABLE_TERM_OPTS) $(CHECK_TERM_OPTS)
 
-# Modules which use user-guided type specialization need to be
-# compiled with these flags to make sure all calls
-# to the builtin comparison routines are inlined.
-TYPE_SPEC_FLAGS = --inline-vars-threshold 10000
-MCFLAGS-list += $(TYPE_SPEC_FLAGS)
-MCFLAGS-map += $(TYPE_SPEC_FLAGS)
-MCFLAGS-tree234 += $(TYPE_SPEC_FLAGS)
-MCFLAGS-set += $(TYPE_SPEC_FLAGS)
-MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
-
-# Bug workarounds.
-MCFLAGS-std_util += --no-halt-at-warn
-
-MCFLAGS-mer_std = --no-warn-nothing-exported
-
 #-----------------------------------------------------------------------------#
 
 CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR)
@@ -110,11 +101,6 @@ DLL_DEF_LIB =
 
 endif
 
-# io.m uses library features that are supported by POSIX but which are not
-# part of ANSI C, such as `struct stat', fileno(), and putenv().
-# We need to pass --no-ansi to mgnuc to ensure that these are declared.
-MGNUCFLAGS-io =	--no-ansi
-
 #-----------------------------------------------------------------------------#
 
 # targets
@@ -123,7 +109,7 @@ MGNUCFLAGS-io =	--no-ansi
 all : mercury
 
 .PHONY: mercury
-mercury : all-ints lib_std
+mercury : lib_std
 
 #-----------------------------------------------------------------------------#
 
@@ -182,11 +168,19 @@ dates		:
 # So don't remove the pic_ss target here.
 
 .PHONY: os cs ss pic_ss ils 
+ifeq ($(MMAKE_USE_MMC_MAKE),no)
 os: $($(STD_LIB_NAME).os)
 cs: $($(STD_LIB_NAME).cs)
 ss: $($(STD_LIB_NAME).ss)
 pic_ss: $($(STD_LIB_NAME).pic_ss)
 ils: $($(STD_LIB_NAME).ils)
+else
+os: $(STD_LIB_NAME).os
+cs: $(STD_LIB_NAME).cs
+ss: $(STD_LIB_NAME).ss
+pic_ss: $(STD_LIB_NAME).pic_ss
+ils: $(STD_LIB_NAME).ils
+endif
 
 #-----------------------------------------------------------------------------#
 
@@ -220,8 +214,7 @@ MS_ILASMFLAGS=$(DEBUG_MS_ILASMFLAGS)
 library_strong_name.sn:
 	sn -k library_strong_name.sn
 
-mercury.dll: copy_runtime_dlls $($(STD_LIB_NAME).dlls) \
-			$($(STD_LIB_NAME).foreign_dlls) library_strong_name.sn
+mercury.dll: copy_runtime_dlls lib$(STD_LIB_NAME) library_strong_name.sn
 	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll \
 		$($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
 		$(RUNTIME_DLLS) 
@@ -237,14 +230,18 @@ mercury_il.dll: ../runtime/mercury_il.dll
 mercury_mcpp.dll: ../runtime/mercury_mcpp.dll
 	cp ../runtime/mercury_mcpp.dll .
 
-else
+else	# GRADE != il
 
-# the following dependency is just there to improve compilation speed;
+# The following dependency is just there to improve compilation speed;
 # making tree234.$O first improves effective parallelism with parallel makes.
+# `mmc --make' does not support parallel makes, so this dependency just
+# slows things down.
+ifeq ($(MMAKE_USE_MMC_MAKE),no)
 lib_std: $(os_subdir)tree234.$O
+endif
 lib_std: lib$(STD_LIB_NAME)
 
-endif
+ifeq ($(MMAKE_USE_MMC_MAKE),no)
 
 $(STD_LIB_NAME).init: $(deps_subdir)$(STD_LIB_NAME).dep
 	for file in $($(STD_LIB_NAME).ms); do \
@@ -252,6 +249,19 @@ $(STD_LIB_NAME).init: $(deps_subdir)$(STD_LIB_NAME).dep
 		echo "INIT mercury__`basename $$file .m`__init"; \
 	done > $(STD_LIB_NAME).init
 
+else
+
+# The command below is invoked as "command >& module.err". The braces
+# stop the output meant for the `.init' file being redirected to the
+# `.err' file.
+MCFLAGS += --make-init-file-command \
+		"{ for module in %; do \
+			grep '^INIT ' $$$${module}.m; \
+			echo INIT mercury__$$$${module}__init; \
+		done > @.init; }"
+endif
+
+endif	# GRADE != il
 #-----------------------------------------------------------------------------#
 
 # Ensure we recompile library__version if VERSION is changed.

@@ -1,0 +1,33 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2002 University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+# Mercury.options - module-specific flags for Mmake and `mmc --make'.
+#-----------------------------------------------------------------------------#
+
+# Compilation of rl_code.c is really slow (about 26 minutes on traveller with
+# --trace deep) at the default level of -O2, due to the C optimizer's use of
+# quadratic algorithms on a couple of 20,000-line functions (the automatically
+# generated index and compare routines on the bytecode type). The code in this
+# module can't really benefit from those algorithms anyway. With -O1, the 26
+# minutes drops to less than 26 seconds.
+CFLAGS-aditi_backend.rl_code=-O1
+
+# process_util.m uses `kill' and `struct sigaction' from <signal.h>,
+# which are not available with `--ansi'.
+MGNUCFLAGS-libs.process_util = --no-ansi
+
+# The c_code in the module gcc.m needs the header files from the GNU C
+# distribution.
+CFLAGS-gcc =	-DMR_NO_BACKWARDS_COMPAT \
+		-DIN_GCC -DHAVE_CONFIG_H \
+		-I. \
+		-I$(GCC_SRC_DIR)/gcc \
+		-I$(GCC_SRC_DIR)/gcc/mercury \
+		-I$(GCC_SRC_DIR)/gcc/config \
+		-I$(GCC_SRC_DIR)/include \
+		-I$(GCC_SRC_DIR)
+# Likewise for mlds_to_gcc.m
+CFLAGS-mlds_to_gcc = $(CFLAGS-gcc)
+

@@ -14,6 +14,9 @@ LINK_STDLIB_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 -include Mmake.trace.params
 
+# Avoid trying to make this file with `mmc --make' if it doesn't exist.
+Mmake.trace.params: ;
+
 #-----------------------------------------------------------------------------#
 
 CFLAGS		+= -I$(BROWSER_DIR) -g $(DLL_CFLAGS) \

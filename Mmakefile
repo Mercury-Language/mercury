@@ -233,6 +233,7 @@ config.status: configure VERSION
 
 Mmake.common: Mmake.common.in config.status
 	./config.status
+	touch Mercury.options
 
 README: .README.in VERSION
 	sed 's/@VERSION@/$(VERSION)/g' .README.in > README

@@ -13,6 +13,9 @@ LINK_BOEHM_GC_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 -include Mmake.runtime.params
 
+# Avoid trying to make this file with `mmc --make' if it doesn't exist.
+Mmake.runtime.params: ;
+
 #-----------------------------------------------------------------------------#
 
 CFLAGS	+= -g $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H

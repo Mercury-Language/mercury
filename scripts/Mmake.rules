@@ -83,6 +83,8 @@ endif
 # I have sent off a bug report to the GNU Make maintainers (19 March 1998).
 #	-fjh.
 
+ifeq ($(MMAKE_USE_MMC_MAKE),no)
+
 # beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
 $(deps_subdir)%.dep $(deps_subdir)%.dv:
 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
@@ -115,6 +117,8 @@ ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	-[ -d Mercury/s_dates ] || mkdir Mercury/s_dates
 	-[ -d Mercury/pic_s_dates ] || mkdir Mercury/pic_s_dates
 endif
+
+endif	# MMAKE_USE_MMC_MAKE == no
 
 #-----------------------------------------------------------------------------#
 #
@@ -300,10 +304,10 @@ $(dirs_subdir)%.dir/*.$O: %.m
 	$(MCE) $(ALL_MCFLAGS) $(*F) > $@ 2>&1
 	@touch $@
 
+endif	# MMAKE_USE_MMC_MAKE == no
+
 .m.ugly:
 	$(MC) --convert-to-mercury $(ALL_MCFLAGS) $(*F)
-
-endif	# MMAKE_USE_MMC_MAKE == no
 
 #-----------------------------------------------------------------------------#
 #

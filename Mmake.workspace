@@ -84,6 +84,10 @@ MTAGSFLAGS +=	$(EXTRA_MTAGSFLAGS)
 
 VPATH =		$(LIBRARY_DIR)
 
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+MCFLAGS +=	--options-file $(WORKSPACE)/Mercury.options
+endif
+
 MCFLAGS += 	--no-mercury-stdlib-dir -I$(LIBRARY_DIR)
 MGNUCFLAGS +=	--no-mercury-stdlib-dir
 C2INITFLAGS += 	--trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init

@@ -250,6 +250,7 @@ then
 	# Rebuild the stage3 library and compiler from scratch
 
 	/bin/rm -f stage3/library/*.c
+	/bin/rm -f stage3/library/*.c_date
 	/bin/rm -f stage3/library/*.d
 	/bin/rm -f stage3/library/*.optdate
 	/bin/rm -f stage3/library/*.trans_opt_date
@@ -261,6 +262,7 @@ then
 	/bin/rm -f stage3/library/*.int2
 	/bin/rm -f stage3/library/*.int
 	/bin/rm -f stage3/compiler/*.c
+	/bin/rm -f stage3/compiler/*.c_date
 	/bin/rm -f stage3/compiler/*.d
 	/bin/rm -f stage3/compiler/*.optdate
 	/bin/rm -f stage3/compiler/*.trans_opt_date
@@ -315,10 +317,13 @@ then
 		cat /dev/null > $outfile
 		for dir in library compiler
 		do
-			for file in stage2.$basis/$dir/*.c
+			# `mmake cs' in the compiler directory doesn't build
+			# `top_level_init.c', so we only compare the `.c'
+			# files present in the stage3 directory.
+			for stage3file in stage3/$dir/*.c
 			do
-				stage3file="stage3/$dir/`basename $file`"
-				diff -u $file $stage3file >> $outfile ||
+				stage2file="stage2.$basis/$dir/`basename $file`"
+				diff -u $stage2file $stage3file >> $outfile ||
 					founddiff=true
 			done
 		done

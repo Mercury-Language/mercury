@@ -3960,17 +3960,21 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_lib_file_name("lib", ModuleName,
 		".$(EXT_FOR_SHARED_LIB)", no, MaybeSharedLibFileName),
 
-	{ ILLibRule = [
-		LibTargetName, " : ", "$(", MakeVarName, ".dlls) ",
-			"$(", MakeVarName, ".foreign_dlls)\n"
-	] },
-	{ LibRule = [
-		LibTargetName, " : ", LibFileName, " ",
-		MaybeSharedLibFileName, " \\\n",
-		"\t\t$(", MakeVarName, ".ints) ",
+	{ AllInts = [
+		"$(", MakeVarName, ".ints) ",
 		"$(", MakeVarName, ".int3s) ",
 		MaybeOptsVar, MaybeTransOptsVar,
 		InitFileName, "\n\n"
+	] },
+	{ ILLibRule = [
+		LibTargetName, " : ", "$(", MakeVarName, ".dlls) ",
+			"$(", MakeVarName, ".foreign_dlls) \\\n\t\t"
+		| AllInts
+	] },
+	{ LibRule = [
+		LibTargetName, " : ", LibFileName, " ",
+		MaybeSharedLibFileName, " \\\n\t\t"
+		| AllInts
 	] },
 	{ Gmake = yes,
 		LibRules = If ++ ILLibRule ++ Else ++ LibRule ++ EndIf

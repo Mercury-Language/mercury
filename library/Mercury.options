@@ -1,0 +1,27 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2002 University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+# Mercury.options - module-specific flags for Mmake and `mmc --make'.
+#-----------------------------------------------------------------------------#
+
+# Modules which use user-guided type specialization need to be
+# compiled with these flags to make sure all calls
+# to the builtin comparison routines are inlined.
+TYPE_SPEC_FLAGS = --inline-vars-threshold 10000
+MCFLAGS-list += $(TYPE_SPEC_FLAGS)
+MCFLAGS-map += $(TYPE_SPEC_FLAGS)
+MCFLAGS-tree234 += $(TYPE_SPEC_FLAGS)
+MCFLAGS-set += $(TYPE_SPEC_FLAGS)
+MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
+
+# Bug workarounds.
+MCFLAGS-std_util += --no-halt-at-warn
+ 
+# io.m uses library features that are supported by POSIX but which are not
+# part of ANSI C, such as `struct stat', fileno(), and putenv().
+# We need to pass --no-ansi to mgnuc to ensure that these are declared.
+MGNUCFLAGS-io =	--no-ansi
+
+MCFLAGS-mer_std = --no-warn-nothing-exported

@@ -159,7 +159,7 @@
 :- type misc_target_type
 	--->	clean
 	;	realclean
-	;	check
+	;	build_all(module_target_type)
 	;	build_library
 	;	install_library
 	.
@@ -342,10 +342,22 @@ target_file(Globals, FileName, ModuleName, TargetType) :-
 			ModuleNameStr = ModuleNameStr0,
 			TargetType0 = linked_target(executable)
 		;
+			string__append(Suffix1, "s", Suffix),
+			Suffix1 = target_extension(Globals, ModuleTargetType),
+
+			% Not yet implemented. `build_all' targets
+			% are only used by tools/bootcheck, so it
+			% doesn't really matter.
+			ModuleTargetType \= c_header(_)
+		->
+			ModuleNameStr = ModuleNameStr0,
+			TargetType0 = misc_target(
+					build_all(ModuleTargetType))
+		;
 			Suffix = ".check"
 		->
 			ModuleNameStr = ModuleNameStr0,
-			TargetType0 = misc_target(check)
+			TargetType0 = misc_target(build_all(errors))
 		;
 			Suffix = ".clean"
 		->
