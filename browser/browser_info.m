@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2004 The University of Melbourne.
+% Copyright (C) 2000-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,11 +40,39 @@
 					% mdb command.
 			state		:: browser_persistent_state,
 					% Persistent settings.
-			maybe_mark	:: maybe(list(dir))
+			maybe_mark	:: maybe(list(dir)),
 					% Location of the marked term
 					% relative to the root, or `no'
 					% if there is no mark.
+			maybe_mode_func	:: maybe(browser_mode_func)
+					% An optional function to determine the
+					% mode of a particular sub-term should
+					% the user issue a `mode' query.
 		).
+
+	% A signature for functions that can be used by the browser to work
+	% out the mode of a sub-term.
+	%
+:- type browser_mode_func == (func(list(dir)) = browser_term_mode).
+
+	% The possible modes of a sub-term in the browser.  Note these do
+	% not correspond directly with the declared Mercury modes.
+	%
+:- type browser_term_mode
+			% The sub-term is bound at the call.  For example the
+			% Mercury builtin modes `in', `di' and `ui'.
+	--->	input
+			% The sub-term is unbound at the call.  The call 
+			% succeeded and bound the sub-term.  For example the
+			% Mercury builtin modes `out' and `uo'.
+	;	output
+			% The sub-term is unbound at the call and at the
+			% final EXIT, FAIL or EXCP event.
+	;	unbound
+			% If the user asks about the mode of an atom, this
+			% value should be returned by the browser term mode 
+			% function.
+	;	not_applicable.
 
 :- type dir
 	--->	parent
@@ -95,7 +123,8 @@
 	% overrides the default format.
 	%
 :- func browser_info__init(browser_term, browse_caller_type,
-	maybe(portray_format), browser_persistent_state) = browser_info.
+	maybe(portray_format), maybe(browser_mode_func), 
+	browser_persistent_state) = browser_info.
 
 	% Get the format to use for the given caller type.  The optional
 	% portray_format overrides the current default.
@@ -261,8 +290,10 @@ mercury_bool_no = no.
 
 %---------------------------------------------------------------------------%
 
-browser_info__init(BrowserTerm, CallerType, MaybeFormat, State) =
-	browser_info(BrowserTerm, [], CallerType, MaybeFormat, State, no).
+browser_info__init(BrowserTerm, CallerType, MaybeFormat, MaybeModeFunc, 
+		State) =
+	browser_info(BrowserTerm, [], CallerType, MaybeFormat, State, no, 
+		MaybeModeFunc).
 
 browser_info__get_format(Info, Caller, MaybeFormat, Format) :-
 	(

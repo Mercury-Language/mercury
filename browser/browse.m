@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2004 The University of Melbourne.
+% Copyright (C) 1998-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,10 +25,30 @@
 :- import_module io, std_util, list.
 
 	% The interactive term browser.  The caller type will be `browse', and
+	% the default format for the `browse' caller type will be used.  Since
+	% this predicate is exported to be used by C code, no browser term 
+	% mode function can be supplied.
+	%
+:- pred browse__browse_browser_term_no_modes(browser_term::in,
+	io__input_stream::in, io__output_stream::in, maybe(list(dir))::out,
+	browser_persistent_state::in, browser_persistent_state::out,
+	io::di, io::uo) is cc_multi.
+
+	% The interactive term browser.  The caller type will be `browse' and 
 	% the default format for the `browse' caller type will be used.
 	%
 :- pred browse__browse_browser_term(browser_term::in,
-	io__input_stream::in, io__output_stream::in, maybe(list(dir))::out,
+	io__input_stream::in, io__output_stream::in, 
+	maybe(browser_mode_func)::in, maybe(list(dir))::out,
+	browser_persistent_state::in, browser_persistent_state::out,
+	io::di, io::uo) is cc_multi.
+
+	% As above, except that the supplied format will override the default.
+	% Again, this is exported to C code, so the browser term mode function
+	% can't be supplied.
+	%
+:- pred browse__browse_browser_term_format_no_modes(browser_term::in,
+	io__input_stream::in, io__output_stream::in, portray_format::in,
 	browser_persistent_state::in, browser_persistent_state::out,
 	io::di, io::uo) is cc_multi.
 
@@ -36,6 +56,17 @@
 	%
 :- pred browse__browse_browser_term_format(browser_term::in,
 	io__input_stream::in, io__output_stream::in, portray_format::in,
+	maybe(browser_mode_func)::in,
+	browser_persistent_state::in, browser_persistent_state::out,
+	io::di, io::uo) is cc_multi.
+
+	% The browser interface for the external debugger.  The caller type
+	% will be `browse', and the default format will be used.
+	% This version is exported for use in C code, so no browser term mode
+	% function can be supplied.
+	%
+:- pred browse__browse_external_no_modes(T::in, io__input_stream::in,
+	io__output_stream::in,
 	browser_persistent_state::in, browser_persistent_state::out,
 	io::di, io::uo) is cc_multi.
 
@@ -43,7 +74,7 @@
 	% will be `browse', and the default format will be used.
 	%
 :- pred browse__browse_external(T::in, io__input_stream::in,
-	io__output_stream::in,
+	io__output_stream::in, maybe(browser_mode_func)::in,
 	browser_persistent_state::in, browser_persistent_state::out,
 	io::di, io::uo) is cc_multi.
 
@@ -119,11 +150,11 @@
 % they are used in trace/mercury_trace_browser.c.
 %
 
-:- pragma export(browse__browse_browser_term(in, in, in, out, in, out, di, uo),
-	"ML_BROWSE_browse_browser_term").
-:- pragma export(browse__browse_browser_term_format(in, in, in, in, in, out,
-	di, uo), "ML_BROWSE_browse_browser_term_format").
-:- pragma export(browse__browse_external(in, in, in, in, out, di, uo),
+:- pragma export(browse__browse_browser_term_no_modes(in, in, in, out, in, out, 
+	di, uo), "ML_BROWSE_browse_browser_term").
+:- pragma export(browse__browse_browser_term_format_no_modes(in, in, in, in, 
+	in, out, di, uo), "ML_BROWSE_browse_browser_term_format").
+:- pragma export(browse__browse_external_no_modes(in, in, in, in, out, di, uo),
 	"ML_BROWSE_browse_external").
 :- pragma export(browse__print_browser_term(in, in, in, in, di, uo),
 	"ML_BROWSE_print_browser_term").
@@ -330,7 +361,7 @@ browse__print_browser_term_format(Term, OutputStream, Caller, Format,
 
 browse__print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State,
 		!IO):-
-	Info = browser_info__init(BrowserTerm, Caller, MaybeFormat, State),
+	Info = browser_info__init(BrowserTerm, Caller, MaybeFormat, no, State),
 	io__set_output_stream(OutputStream, OldStream, !IO),
 	browser_info__get_format(Info, Caller, MaybeFormat, Format),
 	%
@@ -354,28 +385,46 @@ browse__print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State,
 % Interactive display
 %
 
-browse__browse_browser_term(Term, InputStream, OutputStream, MaybeMark,
-		!State, !IO) :-
-	browse_common(internal, Term, InputStream, OutputStream, no,
+browse__browse_browser_term_no_modes(Term, InputStream, OutputStream, 
+		MaybeMark, !State, !IO) :-
+	browse_common(internal, Term, InputStream, OutputStream, no, no,
 		MaybeMark, !State, !IO).
 
-browse__browse_browser_term_format(Term, InputStream, OutputStream, Format,
-		!State, !IO) :-
-	browse_common(internal, Term, InputStream, OutputStream, yes(Format),
-		_, !State, !IO).
+browse__browse_browser_term(Term, InputStream, OutputStream, MaybeModeFunc,
+		MaybeMark, !State, !IO) :-
+	browse_common(internal, Term, InputStream, OutputStream, no, 
+		MaybeModeFunc, MaybeMark, !State, !IO).
 
-browse__browse_external(Term, InputStream, OutputStream, !State, !IO) :-
+browse__browse_browser_term_format_no_modes(Term, InputStream, OutputStream,
+		Format, !State, !IO) :-
+	browse_common(internal, Term, InputStream, OutputStream, yes(Format),
+		no, _, !State, !IO).
+
+browse__browse_browser_term_format(Term, InputStream, OutputStream,
+		Format, MaybeModeFunc, !State, !IO) :-
+	browse_common(internal, Term, InputStream, OutputStream, yes(Format),
+		MaybeModeFunc, _, !State, !IO).
+
+browse__browse_external_no_modes(Term, InputStream, OutputStream, !State, !IO) 
+		:-
 	browse_common(external, plain_term(univ(Term)),
-		InputStream, OutputStream, no, _, !State, !IO).
+		InputStream, OutputStream, no, no, _, !State, !IO).
+
+browse__browse_external(Term, InputStream, OutputStream, MaybeModeFunc, !State,
+		!IO) :-
+	browse_common(external, plain_term(univ(Term)),
+		InputStream, OutputStream, no, MaybeModeFunc, _, !State, !IO).
 
 :- pred browse_common(debugger::in, browser_term::in, io__input_stream::in,
-	io__output_stream::in, maybe(portray_format)::in,
-	maybe(list(dir))::out, browser_persistent_state::in,
-	browser_persistent_state::out, io::di, io::uo) is cc_multi.
+	io__output_stream::in, maybe(portray_format)::in, 
+	maybe(browser_mode_func)::in, maybe(list(dir))::out, 
+	browser_persistent_state::in, browser_persistent_state::out, 
+	io::di, io::uo) is cc_multi.
 
 browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
-		MaybeMark, !State, !IO) :-
-	Info0 = browser_info__init(Object, browse, MaybeFormat, !.State),
+		MaybeModeFunc, MaybeMark, !State, !IO) :-
+	Info0 = browser_info__init(Object, browse, MaybeFormat, MaybeModeFunc,
+		!.State),
 	io__set_input_stream(InputStream, OldInputStream, !IO),
 	io__set_output_stream(OutputStream, OldOutputStream, !IO),
 	% startup_message,
@@ -502,6 +551,18 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
 			Quit = no
 		)
 	;
+		Command = mode_query,
+		MaybeModeFunc = !.Info ^ maybe_mode_func,
+		write_term_mode_debugger(Debugger, MaybeModeFunc, 
+			!.Info ^ dirs, !IO),
+		Quit = no
+	;
+		Command = mode_query(Path),
+		change_dir(!.Info ^ dirs, Path, NewPwd),
+		MaybeModeFunc = !.Info ^ maybe_mode_func,
+		write_term_mode_debugger(Debugger, MaybeModeFunc, NewPwd, !IO),
+		Quit = no
+	;
 		Command = quit,
 		Quit = yes
 	;
@@ -608,6 +669,7 @@ help(Debugger) -->
 "\t               -- set a parameter value\n",
 "\tset            -- show parameter values\n",
 "\tmark [path]    -- mark the given subterm (default is current) and quit\n",
+"\tmode [path]    -- show the mode of a subterm (default is current)\n",
 "\tquit           -- quit browser\n",
 "\thelp           -- show this help message\n",
 "SICStus Prolog style commands are:\n",
@@ -1571,6 +1633,28 @@ write_string_debugger(internal, String, !IO) :-
 	io__write_string(String, !IO).
 write_string_debugger(external, String, !IO) :-
 	send_term_to_socket(browser_str(String), !IO).
+
+:- pred write_term_mode_debugger(debugger::in, maybe(browser_mode_func)::in, 
+	list(dir)::in, io::di, io::uo) is det.
+
+write_term_mode_debugger(Debugger, MaybeModeFunc, Dirs, !IO) :-
+	(
+		MaybeModeFunc = yes(ModeFunc),
+		Mode = ModeFunc(Dirs),
+		ModeStr = browser_mode_to_string(Mode),
+		write_string_debugger(Debugger, ModeStr ++ "\n", !IO)
+	;
+		MaybeModeFunc = no,
+		write_string_debugger(Debugger, 
+			"Mode information not available.\n", !IO)
+	).
+
+:- func browser_mode_to_string(browser_term_mode) = string.
+
+browser_mode_to_string(input) = "Input".
+browser_mode_to_string(output) = "Output".
+browser_mode_to_string(not_applicable) = "Not Applicable".
+browser_mode_to_string(unbound) = "Unbound".
 
 :- pred nl_debugger(debugger::in, io::di, io::uo) is det.
 

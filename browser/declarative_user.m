@@ -70,6 +70,7 @@
 :- import_module mdb__io_action.
 :- import_module mdb__util.
 :- import_module mdb__declarative_execution.
+:- import_module mdb__declarative_tree.
 :- import_module mdbcomp__program_representation.
 :- import_module mdb.parse.
 
@@ -121,31 +122,25 @@ handle_command(skip, UserQuestion, Response, !User, !IO) :-
 handle_command(browse_arg(MaybeArgNum), UserQuestion, Response, 
 		!User, !IO) :-
 	Question = get_decl_question(UserQuestion),
-	edt_node_trace_atom(Question, TraceAtom),
+	edt_node_trace_atoms(Question, InitAtom, FinalAtom),
 	(
 		MaybeArgNum = yes(ArgNum),
-		browse_atom_argument(TraceAtom, ArgNum, MaybeMark, !User, !IO),
+		browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeMark, 
+			!User, !IO),
 		(
 			MaybeMark = no,
 			query_user(UserQuestion, Response, 
 				!User, !IO)
 		;
 			MaybeMark = yes(Mark),
-			Which = chosen_head_vars_presentation,
-			(
-				Which = only_user_headvars,
-				ArgPos = user_head_var(ArgNum)
-			;
-				Which = all_headvars,
-				ArgPos = any_head_var(ArgNum)
-			),
+			ArgPos = arg_num_to_arg_pos(ArgNum),
 			Node = get_decl_question_node(Question),
 			Answer = suspicious_subterm(Node, ArgPos, Mark),
 			Response = user_answer(Question, Answer)
 		)
 	;
 		MaybeArgNum = no,
-		browse_atom(TraceAtom, MaybeMark, !User, !IO),
+		browse_atom(InitAtom, FinalAtom, MaybeMark, !User, !IO),
 		(
 			MaybeMark = no,
 			query_user(UserQuestion, Response, 
@@ -159,14 +154,7 @@ handle_command(browse_arg(MaybeArgNum), UserQuestion, Response,
 			Response = user_answer(Question, Answer)
 		;
 			MaybeMark = yes([ArgNum | Mark]),
-			Which = chosen_head_vars_presentation,
-			(
-				Which = only_user_headvars,
-				ArgPos = user_head_var(ArgNum)
-			;
-				Which = all_headvars,
-				ArgPos = any_head_var(ArgNum)
-			),
+			ArgPos = arg_num_to_arg_pos(ArgNum),
 			Node = get_decl_question_node(Question),
 			Answer = suspicious_subterm(Node, ArgPos, Mark),
 			Response = user_answer(Question, Answer)
@@ -176,7 +164,7 @@ handle_command(browse_arg(MaybeArgNum), UserQuestion, Response,
 handle_command(print_arg(From, To), UserQuestion, Response, 
 		!User, !IO) :-
 	Question = get_decl_question(UserQuestion),
-	edt_node_trace_atom(Question, TraceAtom),
+	edt_node_trace_atoms(Question, _, TraceAtom),
 	print_atom_arguments(TraceAtom, From, To, !.User, !IO),
 	query_user(UserQuestion, Response, !User, !IO).
 
@@ -254,6 +242,18 @@ handle_command(illegal_command, UserQuestion, Response, !User,
 	io__write_string("Unknown command, 'h' for help.\n", !IO),
 	query_user(UserQuestion, Response, !User, !IO).
 
+:- func arg_num_to_arg_pos(int) = arg_pos.
+
+arg_num_to_arg_pos(ArgNum) = ArgPos :-
+	Which = chosen_head_vars_presentation,
+	(
+		Which = only_user_headvars,
+		ArgPos = user_head_var(ArgNum)
+	;
+		Which = all_headvars,
+		ArgPos = any_head_var(ArgNum)
+	).
+
 :- func get_decl_question(user_question(T)) = decl_question(T).
 
 get_decl_question(plain_question(Q)) = Q.
@@ -273,7 +273,7 @@ user_question_prompt(question_with_default(Question, DefaultTruth), Prompt) :-
 :- pred decl_question_prompt(decl_question(T), string).
 :- mode decl_question_prompt(in, out) is det.
 
-decl_question_prompt(wrong_answer(_, _), "Valid? ").
+decl_question_prompt(wrong_answer(_, _, _), "Valid? ").
 decl_question_prompt(missing_answer(_, _, _), "Complete? ").
 decl_question_prompt(unexpected_exception(_, _, _), "Expected? ").
 
@@ -284,36 +284,42 @@ default_prompt(correct, "[yes] ").
 default_prompt(erroneous, "[no] ").
 default_prompt(inadmissible, "[inadmissible] ").
 
-:- pred edt_node_trace_atom(decl_question(T)::in, trace_atom::out) is det.
+	% Find the initial and final atoms for a question.  For all 
+	% questions besides wrong answer questions the initial and
+	% final atoms will be the same.
+	%
+:- pred edt_node_trace_atoms(decl_question(T)::in, trace_atom::out,
+	trace_atom::out) is det.
 
-edt_node_trace_atom(wrong_answer(_, FinalDeclAtom),
-	FinalDeclAtom ^ final_atom).
-edt_node_trace_atom(missing_answer(_, InitDeclAtom, _),
-	InitDeclAtom ^ init_atom).
-edt_node_trace_atom(unexpected_exception(_, InitDeclAtom, _),
-	InitDeclAtom ^ init_atom).
+edt_node_trace_atoms(wrong_answer(_, InitDeclAtom, FinalDeclAtom),
+	InitDeclAtom ^ init_atom, FinalDeclAtom ^ final_atom).
+edt_node_trace_atoms(missing_answer(_, InitDeclAtom, _),
+	InitDeclAtom ^ init_atom, InitDeclAtom ^ init_atom).
+edt_node_trace_atoms(unexpected_exception(_, InitDeclAtom, _),
+	InitDeclAtom ^ init_atom, InitDeclAtom ^ init_atom).
 
 :- pred edt_node_io_actions(decl_question(T)::in, list(io_action)::out) is det.
 
-edt_node_io_actions(wrong_answer(_, FinalDeclAtom),
+edt_node_io_actions(wrong_answer(_, _, FinalDeclAtom),
 	FinalDeclAtom ^ final_io_actions).
 edt_node_io_actions(missing_answer(_, _, _), []).
 edt_node_io_actions(unexpected_exception(_, _, _), []).
 
-:- pred decl_bug_trace_atom(decl_bug::in, trace_atom::out) is det.
+:- pred decl_bug_trace_atom(decl_bug::in, trace_atom::out, trace_atom::out) 
+	is det.
 
-decl_bug_trace_atom(e_bug(incorrect_contour(FinalDeclAtom, _, _)),
-	FinalDeclAtom ^ final_atom).
+decl_bug_trace_atom(e_bug(incorrect_contour(InitDeclAtom, FinalDeclAtom, _, 
+	_)), InitDeclAtom ^ init_atom, FinalDeclAtom ^ final_atom).
 decl_bug_trace_atom(e_bug(partially_uncovered_atom(InitDeclAtom, _)),
-	InitDeclAtom ^ init_atom).
+	InitDeclAtom ^ init_atom, InitDeclAtom ^ init_atom).
 decl_bug_trace_atom(e_bug(unhandled_exception(InitDeclAtom, _, _)),
-	InitDeclAtom ^ init_atom).
+	InitDeclAtom ^ init_atom, InitDeclAtom ^ init_atom).
 decl_bug_trace_atom(i_bug(inadmissible_call(_, _, InitDeclAtom, _)),
-	InitDeclAtom ^ init_atom).
+	InitDeclAtom ^ init_atom, InitDeclAtom ^ init_atom).
 
 :- pred decl_bug_io_actions(decl_bug::in, list(io_action)::out) is det.
 
-decl_bug_io_actions(e_bug(incorrect_contour(FinalDeclAtom, _, _)),
+decl_bug_io_actions(e_bug(incorrect_contour(_, FinalDeclAtom, _, _)),
 	FinalDeclAtom ^ final_io_actions).
 decl_bug_io_actions(e_bug(partially_uncovered_atom(_, _)), []).
 decl_bug_io_actions(e_bug(unhandled_exception(_, _, _)), []).
@@ -361,8 +367,8 @@ print_chosen_io_action(IoActions, ActionNum, User0, OK) -->
 
 browse_io_action(IoAction, MaybeMark, !User, !IO) :-
 	Term = io_action_to_browser_term(IoAction),
-	browse_browser_term(Term, !.User ^ instr, !.User ^ outstr, MaybeDirs,
-		!.User ^ browser, Browser, !IO),
+	browse_browser_term(Term, !.User ^ instr, !.User ^ outstr, no,
+		MaybeDirs, !.User ^ browser, Browser, !IO),
 	maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
 	!:User = !.User ^ browser := Browser.
 
@@ -371,21 +377,22 @@ browse_io_action(IoAction, MaybeMark, !User, !IO) :-
 	is cc_multi.
 
 browse_decl_bug(Bug, MaybeArgNum, !User, !IO) :-
-	decl_bug_trace_atom(Bug, Atom),
+	decl_bug_trace_atom(Bug, InitAtom, FinalAtom),
 	(
 		MaybeArgNum = yes(ArgNum),
-		browse_atom_argument(Atom, ArgNum, _, !User, !IO)
+		browse_atom_argument(InitAtom, FinalAtom, ArgNum, _, !User, 
+			!IO)
 	;
 		MaybeArgNum = no,
-		browse_atom(Atom, _, !User, !IO)
+		browse_atom(InitAtom, FinalAtom, _, !User, !IO)
 	).
 
-:- pred browse_atom_argument(trace_atom::in, int::in, maybe(term_path)::out,
-	user_state::in, user_state::out, io__state::di, io__state::uo)
-	is cc_multi.
+:- pred browse_atom_argument(trace_atom::in, trace_atom::in, int::in, 
+	maybe(term_path)::out, user_state::in, user_state::out, 
+	io__state::di, io__state::uo) is cc_multi.
 
-browse_atom_argument(Atom, ArgNum, MaybeMark, !User, !IO) :-
-	Atom = atom(_, Args0),
+browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeMark, !User, !IO) :-
+	FinalAtom = atom(_, Args0),
 	maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args),
 	(
 		list__index1(Args, ArgNum, ArgInfo),
@@ -394,6 +401,8 @@ browse_atom_argument(Atom, ArgNum, MaybeMark, !User, !IO) :-
 	->
 		browse_browser_term(univ_to_browser_term(Arg),
 			!.User ^ instr, !.User ^ outstr,
+			yes(get_subterm_mode_from_atoms_for_arg(ArgNum, 
+				InitAtom, FinalAtom)),
 			MaybeDirs, !.User ^ browser, Browser, !IO),
 		maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
 		!:User = !.User ^ browser := Browser
@@ -403,12 +412,12 @@ browse_atom_argument(Atom, ArgNum, MaybeMark, !User, !IO) :-
 		MaybeMark = no
 	).
 
-:- pred browse_atom(trace_atom::in, maybe(term_path)::out,
+:- pred browse_atom(trace_atom::in, trace_atom::in, maybe(term_path)::out,
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
-browse_atom(Atom, MaybeMark, !User, !IO) :-
-	Atom = atom(ProcLayout, Args),
+browse_atom(InitAtom, FinalAtom, MaybeMark, !User, !IO) :-
+	FinalAtom = atom(ProcLayout, Args),
 	ProcId = get_proc_id_from_layout(ProcLayout),
 	get_user_arg_values(Args, ArgValues),
 	get_pred_attributes(ProcId, Module, Name, _, PredOrFunc),
@@ -416,12 +425,51 @@ browse_atom(Atom, MaybeMark, !User, !IO) :-
 	BrowserTerm = synthetic_term_to_browser_term(Module++"."++Name, 
 		ArgValues, Function),
 	browse_browser_term(BrowserTerm, !.User ^ instr, !.User ^ outstr,
+		yes(get_subterm_mode_from_atoms(InitAtom, FinalAtom)),
 		MaybeDirs, !.User ^ browser, Browser, !IO),
 	maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
 	!:User = !.User ^ browser := Browser.
 
+:- func get_subterm_mode_from_atoms(trace_atom, trace_atom, list(dir)) 
+	= browser_term_mode.
+
+get_subterm_mode_from_atoms(InitAtom, FinalAtom, Dirs) = Mode :-
+	convert_dirs_to_term_path(Dirs, Path),
+	(
+		Path = [ArgNum | TermPath],
+		ArgPos = arg_num_to_arg_pos(ArgNum),
+		Mode = get_subterm_mode_from_atoms_and_term_path(InitAtom, 
+			FinalAtom, ArgPos, TermPath)
+	;
+		Path = [],
+		Mode = not_applicable
+	).
+
+:- func get_subterm_mode_from_atoms_and_term_path(trace_atom, trace_atom, 
+	arg_pos, term_path) = browser_term_mode.
+
+get_subterm_mode_from_atoms_and_term_path(InitAtom, FinalAtom, ArgPos, 
+		TermPath) = Mode :-
+	( trace_atom_subterm_is_ground(InitAtom, ArgPos, TermPath) ->
+		Mode = input
+	; trace_atom_subterm_is_ground(FinalAtom, ArgPos, TermPath) ->
+		Mode = output
+	;
+		Mode = unbound
+	).
+
+:- func get_subterm_mode_from_atoms_for_arg(int, trace_atom, trace_atom, 
+	list(dir)) = browser_term_mode.
+
+get_subterm_mode_from_atoms_for_arg(ArgNum, InitAtom, FinalAtom, Dirs) 
+		= Mode :-
+	convert_dirs_to_term_path(Dirs, TermPath),
+	ArgPos = arg_num_to_arg_pos(ArgNum),
+	Mode = get_subterm_mode_from_atoms_and_term_path(InitAtom, FinalAtom,
+		ArgPos, TermPath).
+
 :- pred get_user_arg_values(list(trace_atom_arg)::in, list(univ)::out) is det.
-	
+
 get_user_arg_values([], []).
 get_user_arg_values([arg_info(UserVisible, _, MaybeValue) | Args], Values) :-
 	get_user_arg_values(Args, Values0),
@@ -725,7 +773,7 @@ decl_caller_type = print.
 :- pred write_decl_question(decl_question(T)::in, user_state::in,
 	io__state::di, io__state::uo) is cc_multi.
 
-write_decl_question(wrong_answer(_, Atom), User) -->
+write_decl_question(wrong_answer(_, _, Atom), User) -->
 	write_decl_final_atom(User, "", decl_caller_type, Atom).
 	
 write_decl_question(missing_answer(_, Call, Solns), User) -->
@@ -750,7 +798,7 @@ write_decl_question(unexpected_exception(_, Call, Exception), User) -->
 
 write_decl_bug(e_bug(EBug), User) -->
 	(
-		{ EBug = incorrect_contour(Atom, Contour, _) },
+		{ EBug = incorrect_contour(_, Atom, Contour, _) },
 		io__write_string(User ^ outstr, "Found incorrect contour:\n"),
 		io__write_list(Contour, "", write_decl_final_atom(User, "", 
 			decl_caller_type)),

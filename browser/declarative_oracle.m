@@ -512,7 +512,7 @@ trusted(ProcLayout, Oracle) :-
 	maybe(decl_answer(T))::out) is cc_multi.
 
 query_oracle_kb(KB, Question, Result) :-
-	Question = wrong_answer(Node, Atom),
+	Question = wrong_answer(Node, _, Atom),
 	get_kb_ground_map(KB, Map),
 	tree234_cc__search(Map, Atom, MaybeTruth),
 	(
@@ -585,7 +585,7 @@ assert_oracle_kb(_, ignore(_), KB, KB).
 
 assert_oracle_kb(_, skip(_), KB, KB).
 
-assert_oracle_kb(wrong_answer(_, Atom), truth_value(_, Truth), KB0, KB) :-
+assert_oracle_kb(wrong_answer(_, _, Atom), truth_value(_, Truth), KB0, KB) :-
 	get_kb_ground_map(KB0, Map0),
 	ProcLayout = Atom ^ final_atom ^ proc_layout,
 	%
@@ -647,7 +647,7 @@ assert_oracle_kb(unexpected_exception(_, Call, Exception),
 :- pred retract_oracle_kb(decl_question(T), oracle_kb, oracle_kb).
 :- mode retract_oracle_kb(in, in, out) is cc_multi.
 
-retract_oracle_kb(wrong_answer(_, Atom), KB0, KB) :-
+retract_oracle_kb(wrong_answer(_, _, Atom), KB0, KB) :-
 	Map0 = KB0 ^ kb_ground_map,
 	% delete all modes of the predicate/function
 	foldl(remove_atom_from_ground_map(Atom),

@@ -16,6 +16,7 @@
 
 :- import_module mdb.declarative_edt.
 :- import_module mdb__declarative_execution.
+:- import_module mdbcomp__program_representation.
 
 	% The type of nodes in our implementation of EDTs.  The parameter
 	% is meant to be the type of references to trace nodes.  In
@@ -37,13 +38,15 @@
 	<= annotated_trace(S, R).
 :- mode edt_subtree_details(in, in, out, out, out) is det.
 
+:- pred trace_atom_subterm_is_ground(trace_atom::in, arg_pos::in, 
+	term_path::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module mdb__declarative_debugger.
 :- import_module mdb__io_action.
-:- import_module mdbcomp__program_representation.
 :- import_module mdb__util.
 
 :- import_module assoc_list, bool, exception, int, list, map, std_util, string.
@@ -138,9 +141,10 @@ trace_question(IoActionMap, wrap(Store), dynamic(Ref), Root) :-
 		get_answers(IoActionMap, Store, RedoId, [], Answers),
 		Root = missing_answer(dynamic(Ref), DeclAtom, Answers)
 	;
-		Node = exit(_, _, _, _, _, _),
-		DeclAtom = exit_node_decl_atom(IoActionMap, Store, Node),
-		Root = wrong_answer(dynamic(Ref), DeclAtom)
+		Node = exit(_, CallId, _, _, _, _),
+		InitDeclAtom = call_node_decl_atom(Store, CallId),
+		FinalDeclAtom = exit_node_decl_atom(IoActionMap, Store, Node),
+		Root = wrong_answer(dynamic(Ref), InitDeclAtom, FinalDeclAtom)
 	;
 		Node = excp(_, CallId, _, Exception, _),
 		DeclAtom = call_node_decl_atom(Store, CallId),
@@ -170,10 +174,12 @@ get_answers(IoActionMap, Store, RedoId, DeclAtoms0, DeclAtoms) :-
 trace_get_e_bug(IoActionMap, wrap(Store), dynamic(Ref), Bug) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = exit(_, _, _, _, Event, _),
-		DeclAtom = exit_node_decl_atom(IoActionMap, Store, Node),
+		Node = exit(_, CallId, _, _, Event, _),
+		InitDeclAtom = call_node_decl_atom(Store, CallId),
+		FinalDeclAtom = exit_node_decl_atom(IoActionMap, Store, Node),
 		get_exit_atoms_in_contour(IoActionMap, Store, Node, Contour),
-		Bug = incorrect_contour(DeclAtom, Contour, Event)
+		Bug = incorrect_contour(InitDeclAtom, FinalDeclAtom, Contour, 
+			Event)
 	;
 		Node = fail(_, CallId, _, Event),
 		DeclAtom = call_node_decl_atom(Store, CallId),
@@ -1714,9 +1720,6 @@ get_edt_call_node(Store, Ref, CallId) :-
 	).
 
 %-----------------------------------------------------------------------------%
-
-:- pred trace_atom_subterm_is_ground(trace_atom, arg_pos, term_path).
-:- mode trace_atom_subterm_is_ground(in, in, in) is semidet.
 
 trace_atom_subterm_is_ground(atom(_, Args), ArgPos, _) :-
 	select_arg_at_pos(ArgPos, Args, ArgInfo),

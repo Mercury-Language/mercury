@@ -12,6 +12,7 @@ DECLARATIVE_PROGS=		\
 	backtrack		\
 	big			\
 	binary_search		\
+	browser_mode		\
 	browse_arg		\
 	catch			\
 	closure_dependency	\
@@ -196,6 +197,10 @@ binary_search.out: binary_search binary_search.$(DEBUG_INP)
 
 browse_arg.out: browse_arg browse_arg.inp
 	$(MDB) ./browse_arg < browse_arg.inp > browse_arg.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+browser_mode.out: browser_mode browser_mode.inp
+	$(MDB_STD) ./browser_mode < browser_mode.inp > browser_mode.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 builtin_call_rep.out: builtin_call_rep builtin_call_rep.inp

@@ -1,0 +1,59 @@
+      E1:     C1 CALL pred browser_mode.main/2-0 (det) browser_mode.m:11
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> break p
+ 0: + stop  interface pred browser_mode.p/2-0 (nondet)
+mdb> c
+      E2:     C2 CALL pred browser_mode.p/2-0 (nondet)
+mdb> f
+      E3:     C2 EXIT pred browser_mode.p/2-0 (nondet)
+mdb> dd
+p('a', 30)
+Valid? browse
+browser> mode
+Not Applicable
+browser> cd 1
+browser> mode
+Input
+browser> cd ../2
+browser> mode
+Output
+browser> quit
+p('a', 30)
+Valid? a
+Diagnosis aborted.
+      E3:     C2 EXIT pred browser_mode.p/2-0 (nondet)
+mdb> break r
+ 1: + stop  interface pred browser_mode.r/2-0 (semidet)
+mdb> c
+      E4:     C2 REDO pred browser_mode.p/2-0 (nondet)
+mdb> c
+      E5:     C2 EXIT pred browser_mode.p/2-0 (nondet)
+mdb> c
+      E6:     C2 REDO pred browser_mode.p/2-0 (nondet)
+mdb> c
+      E7:     C3 CALL pred browser_mode.r/2-0 (semidet)
+mdb> c
+      E8:     C3 FAIL pred browser_mode.r/2-0 (semidet)
+mdb> dd
+Call r('b', _)
+No solutions.
+Complete? b 1
+browser> mode
+Input
+browser> quit
+Call r('b', _)
+No solutions.
+Complete? b
+browser> mode 2
+Unbound
+browser> mode 1
+Input
+browser> quit
+Call r('b', _)
+No solutions.
+Complete? a
+Diagnosis aborted.
+      E8:     C3 FAIL pred browser_mode.r/2-0 (semidet)
+mdb> quit -y

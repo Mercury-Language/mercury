@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2004 The University of Melbourne.
+% Copyright (C) 1998-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -35,6 +35,7 @@
 %		"write"
 %		"set" [[setoptions] varvalue]
 %		"mark" [path]
+%		"mode" [path]
 %		"quit"
 %
 %	formatoptions:
@@ -117,6 +118,8 @@
 	;	cd
 	;	mark(path)
 	;	mark
+	;	mode_query(path)
+	;	mode_query
 	;	pwd
 	;	help
 	;	set(maybe_option_table(setting_option), setting)
@@ -370,6 +373,15 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
 		;
 			parse_path(ArgTokens, Path),
 			Command = mark(Path)
+		)
+	;
+		CmdToken = name("mode")
+	->
+		( ArgTokens = [] ->
+			Command = mode_query
+		;
+			parse_path(ArgTokens, Path),
+			Command = mode_query(Path)
 		)
 	;
 		CmdToken = name("set")

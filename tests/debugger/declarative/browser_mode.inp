@@ -1,0 +1,31 @@
+register --quiet
+context none
+echo on
+break p
+c
+f
+dd
+browse
+mode
+cd 1
+mode
+cd ../2
+mode
+quit
+a
+break r
+c
+c
+c
+c
+c
+dd
+b 1
+mode
+quit
+b
+mode 2
+mode 1
+quit
+a
+quit -y

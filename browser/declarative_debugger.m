@@ -97,6 +97,8 @@
 
 :- type decl_e_bug
 	--->	incorrect_contour(
+			init_decl_atom, % The head of the clause, in its
+					% inital state of instantiation.
 			final_decl_atom,% The head of the clause, in its
 					% final state of instantiation.
 			decl_contour,	% The path taken through the body.
@@ -145,7 +147,7 @@
 			% The second argument is the atom in its final
 			% state of instantiatedness (ie. at the EXIT event).
 			%
-	--->	wrong_answer(T, final_decl_atom)
+	--->	wrong_answer(T, init_decl_atom, final_decl_atom)
 
 			% The node is a suspected missing answer.  The
 			% first argument is the EDT node the question came
@@ -310,11 +312,11 @@ unravel_decl_atom(DeclAtom, TraceAtom, IoActions) :-
 		DeclAtom = final(final_decl_atom(TraceAtom, IoActions))
 	).
 
-get_decl_question_node(wrong_answer(Node, _)) = Node.
+get_decl_question_node(wrong_answer(Node, _, _)) = Node.
 get_decl_question_node(missing_answer(Node, _, _)) = Node.
 get_decl_question_node(unexpected_exception(Node, _, _)) = Node.
 
-get_decl_question_atom(wrong_answer(_, final_decl_atom(Atom, _))) = Atom.
+get_decl_question_atom(wrong_answer(_, _, final_decl_atom(Atom, _))) = Atom.
 get_decl_question_atom(missing_answer(_, init_decl_atom(Atom), _)) = Atom.
 get_decl_question_atom(unexpected_exception(_, init_decl_atom(Atom), _)) = 
 	Atom.
@@ -729,7 +731,7 @@ handle_diagnoser_exception(unimplemented_feature(Feature), Response,
 
 decl_bug_get_event_number(e_bug(EBug), Event) :-
 	(
-		EBug = incorrect_contour(_, _, Event)
+		EBug = incorrect_contour(_, _, _, Event)
 	;
 		EBug = partially_uncovered_atom(_, Event)
 	;
