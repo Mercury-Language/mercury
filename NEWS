@@ -95,6 +95,8 @@ Changes to the Mercury standard library:
 
 * We've added a predicate, expand_braces, to dir.m.
 
+* We've added a function, pred_to_bool, to bool.m.
+
 * We've added the three predicates, `is_nan/1', `is_inf/1' and
   `is_nan_or_inf/1' to float.m.  These predicates are for use only on
   systems which support IEEE floating point arithmetic.

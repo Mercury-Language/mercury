@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,2000,2002 The University of Melbourne.
+% Copyright (C) 1996-1997,2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,6 +49,10 @@
 :- func bool__not(bool) = bool.
 :- pred bool__not(bool, bool).
 :- mode bool__not(in, out) is det.
+
+	% pred_to_bool(P) = (if P then yes else no).
+:- func pred_to_bool((pred)) = bool.
+:- mode pred_to_bool((pred) is semidet) = out is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -108,5 +112,7 @@ bool__not(yes, no).
 
 bool__return_no = no.
 bool__return_yes = yes.
+
+pred_to_bool(P) = (if P then yes else no).
 
 %-----------------------------------------------------------------------------%
