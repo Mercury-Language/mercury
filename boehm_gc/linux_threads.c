@@ -19,15 +19,6 @@
  * This code relies on implementation details of LinuxThreads,
  * (i.e. properties not guaranteed by the Pthread standard):
  *
- *	- it uses `kill(SIGSTOP, getpid())' to suspend the
- *	  current thread.  According to POSIX, this should
- *	  stop the whole process, not just the thread.
- *	  (An alternative would be to use
- *	  `pthread_kill(SIGSTOP, pthread_self())' instead,
- *	  but we need to do it inside a signal handler,
- *	  and the pthread_kill() implementation in LinuxThreads
- *	  is not async-signal-safe.)
- *
  *	- the function GC_linux_thread_top_of_stack(void)
  *	  relies on the way LinuxThreads lays out thread stacks
  *	  in the address space.
@@ -114,7 +105,7 @@ GC_thread GC_lookup_thread(pthread_t id);
  */
 #define SIG_SUSPEND SIGPWR
 
-#define SIG_RESTART SIGCONT
+#define SIG_RESTART SIGXCPU
 
 sem_t GC_suspend_ack_sem;
 
@@ -174,9 +165,10 @@ void GC_suspend_handler(int sig)
 
     /* Wait until that thread tells us to restart by sending    */
     /* this thread a SIG_RESTART signal.			*/
+    /* SIG_RESTART should be masked at this point.  Thus there	*/
+    /* is no race.						*/
     if (sigfillset(&mask) != 0) ABORT("sigfillset() failed");
     if (sigdelset(&mask, SIG_RESTART) != 0) ABORT("sigdelset() failed");
-    if (sigdelset(&mask, SIG_SUSPEND) != 0) ABORT("sigdelset() failed");
     do {
 	    me->signal = 0;
 	    sigsuspend(&mask);             /* Wait for signal */
@@ -214,7 +206,7 @@ void GC_restart_handler(int sig)
 #endif
 }
 
-bool GC_thr_initialized = FALSE;
+GC_bool GC_thr_initialized = FALSE;
 
 # define THREAD_TABLE_SZ 128	/* Must be power of 2	*/
 volatile GC_thread GC_threads[THREAD_TABLE_SZ];
@@ -226,7 +218,7 @@ GC_thread GC_new_thread(pthread_t id)
     int hv = ((word)id) % THREAD_TABLE_SZ;
     GC_thread result;
     static struct GC_Thread_Rep first_thread;
-    static bool first_thread_used = FALSE;
+    static GC_bool first_thread_used = FALSE;
     
     if (!first_thread_used) {
     	result = &first_thread;
@@ -300,9 +292,6 @@ GC_thread GC_lookup_thread(pthread_t id)
     return(p);
 }
 
-volatile int volatile_counter;
-volatile int prev_counter;
-
 /* Caller holds allocation lock.	*/
 void GC_stop_world()
 {
@@ -312,16 +301,6 @@ void GC_stop_world()
     register int n_live_threads = 0;
     register int result;
 
-    /*
-     * It is important to ensure that any threads which were
-     * previously stopped and then woken get time to actually
-     * wake up before we stop then again.  Otherwise,
-     * we might try to suspend a process that is already
-     * stopped, and I think that might not work properly.
-     * Hence the following call to sched_yield().
-     */
-    sched_yield();
-    
     for (i = 0; i < THREAD_TABLE_SZ; i++) {
       for (p = GC_threads[i]; p != 0; p = p -> next) {
         if (p -> id != my_thread) {
@@ -350,7 +329,6 @@ void GC_stop_world()
     #if DEBUG_THREADS
     GC_printf1("World stopped 0x%x\n", pthread_self());
     #endif
-    prev_counter = volatile_counter;
 }
 
 /* Caller holds allocation lock.	*/
@@ -362,12 +340,9 @@ void GC_start_world()
     register int n_live_threads = 0;
     register int result;
     
-    if (volatile_counter != prev_counter) {
-	ABORT("GC_stop_world didn't stop everything");
-    }
-    #if DEBUG_THREADS
+#   if DEBUG_THREADS
       GC_printf0("World starting\n");
-    #endif
+#   endif
 
     for (i = 0; i < THREAD_TABLE_SZ; i++) {
       for (p = GC_threads[i]; p != 0; p = p -> next) {
@@ -453,21 +428,12 @@ void GC_thr_init()
     if (sigfillset(&act.sa_mask) != 0) {
     	ABORT("sigfillset() failed");
     }
-    if (sigdelset(&act.sa_mask, SIG_RESTART) != 0) {
-    	ABORT("sigdelset() failed");
-    }
+    /* SIG_RESTART is unmasked by the handler when necessary. 	*/
     act.sa_handler = GC_suspend_handler;
     if (sigaction(SIG_SUSPEND, &act, NULL) != 0) {
     	ABORT("Cannot set SIG_SUSPEND handler");
     }
 
-    act.sa_flags = SA_RESTART;
-    if (sigfillset(&act.sa_mask) != 0) {
-    	ABORT("sigfillset() failed");
-    }
-    if (sigdelset(&act.sa_mask, SIG_RESTART) != 0) {
-    	ABORT("sigdelset() failed");
-    }
     act.sa_handler = GC_restart_handler;
     if (sigaction(SIG_RESTART, &act, NULL) != 0) {
     	ABORT("Cannot set SIG_SUSPEND handler");
@@ -599,7 +565,8 @@ GC_pthread_create(pthread_t *new_thread,
     return(result);
 }
 
-bool GC_collecting = 0; /* A hint that we're in the collector and       */
+GC_bool GC_collecting = 0;
+			/* A hint that we're in the collector and       */
                         /* holding the allocation lock for an           */
                         /* extended period.                             */
 
@@ -609,6 +576,7 @@ bool GC_collecting = 0; /* A hint that we're in the collector and       */
 
 volatile unsigned int GC_allocate_lock = 0;
 
+
 void GC_lock()
 {
 #   define low_spin_max 30  /* spin cycles if we suspect uniprocessor */
@@ -617,13 +585,14 @@ void GC_lock()
     unsigned my_spin_max;
     static unsigned last_spins = 0;
     unsigned my_last_spins;
-    unsigned junk;
+    volatile unsigned junk;
 #   define PAUSE junk *= junk; junk *= junk; junk *= junk; junk *= junk
     int i;
 
     if (!GC_test_and_set(&GC_allocate_lock)) {
         return;
     }
+    junk = 0;
     my_spin_max = spin_max;
     my_last_spins = last_spins;
     for (i = 0; i < my_spin_max; i++) {
@@ -647,11 +616,25 @@ void GC_lock()
     /* We are probably being scheduled against the other process.  Sleep. */
     spin_max = low_spin_max;
 yield:
-    for (;;) {
+    for (i = 0;; ++i) {
         if (!GC_test_and_set(&GC_allocate_lock)) {
             return;
         }
-        sched_yield();
+#       define SLEEP_THRESHOLD 12
+		/* nanosleep(<= 2ms) just spins under Linux.  We	*/
+		/* want to be careful to avoid that behavior.		*/
+        if (i < SLEEP_THRESHOLD) {
+            sched_yield();
+	} else {
+	    struct timespec ts;
+	
+	    if (i > 26) i = 26;
+			/* Don't wait for more than about 60msecs, even	*/
+			/* under extreme contention.			*/
+	    ts.tv_sec = 0;
+	    ts.tv_nsec = 1 << i;
+	    nanosleep(&ts, 0);
+	}
     }
 }
 

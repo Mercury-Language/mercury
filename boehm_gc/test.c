@@ -24,7 +24,7 @@
 # include <assert.h>	/* Not normally used, but handy for debugging. */
 # include "gc.h"
 # include "gc_typed.h"
-# include "gc_priv.h"	/* For output and some statistics	*/
+# include "gc_priv.h"	/* For output, locking,  and some statistics	*/
 # include "config.h"
 
 # ifdef MSWIN32
@@ -386,7 +386,7 @@ VOLATILE int dropped_something = 0;
     static mutex_t incr_lock;
     mutex_lock(&incr_lock);
 # endif
-# if defined(IRIX_THREADS) || defined(LINUX_THREADS)
+# if  defined(IRIX_THREADS) || defined(LINUX_THREADS)
     static pthread_mutex_t incr_lock = PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_lock(&incr_lock);
 # endif
@@ -543,6 +543,9 @@ thread_key_t fl_key;
 
 void * alloc8bytes()
 {
+# ifdef SMALL_CONFIG
+    return(GC_malloc(8));
+# else
     void ** my_free_list_ptr;
     void * my_free_list;
     
@@ -568,6 +571,7 @@ void * alloc8bytes()
     *my_free_list_ptr = GC_NEXT(my_free_list);
     GC_NEXT(my_free_list) = 0;
     return(my_free_list);
+# endif
 }
 
 #else
@@ -922,8 +926,7 @@ void SetMinimumStack(long minSize)
 
 
 #if !defined(PCR) && !defined(SOLARIS_THREADS) && !defined(WIN32_THREADS) \
-	&& !defined(IRIX_THREADS) && !defined(LINUX_THREADS) \
-	|| defined(LINT)
+  && !defined(IRIX_THREADS) && !defined(LINUX_THREADS) || defined(LINT)
 #ifdef MSWIN32
   int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int n)
 #else
@@ -1109,15 +1112,17 @@ main()
 #   ifdef IRIX_THREADS
 	/* Force a larger stack to be preallocated      */
 	/* Since the initial cant always grow later.	*/
-	*((char *)&code - 1024*1024) = 0;      /* Require 1 Mb */
+	*((volatile char *)&code - 1024*1024) = 0;      /* Require 1 Mb */
 #   endif /* IRIX_THREADS */
     pthread_attr_init(&attr);
 #   ifdef IRIX_THREADS
-        pthread_attr_setstacksize(&attr, 1000000);
+    	pthread_attr_setstacksize(&attr, 1000000);
 #   endif
     n_tests = 0;
 #   ifdef MPROTECT_VDB
     	GC_enable_incremental();
+        (void) GC_printf0("Switched to incremental mode\n");
+	(void) GC_printf0("Emulating dirty bits with mprotect/signals\n");
 #   endif
     (void) GC_set_warn_proc(warn_proc);
     if ((code = pthread_create(&th1, &attr, thr_run_one_test, 0)) != 0) {

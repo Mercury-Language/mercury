@@ -21,6 +21,7 @@ include ../Mmake.common
 #      	 and runs some tests of collector and cords.  Does not add cords or
 #	 c++ interface to gc.a
 # cord/de - builds dumb editor based on cords.
+
 ABI_FLAG= 
 
 # CC=cc $(ABI_FLAG)
@@ -37,8 +38,8 @@ AS=../scripts/mgnuc --grade $(GRADE) --assemble
 #  Under Irix 6, you will have to specify the ABI for as if you specify
 #  it for the C compiler.
 
-# CFLAGS= -O -DNO_SIGNALS -DALL_INTERIOR_POINTERS -DNO_EXECUTE_PERMISSION
-#	-DSILENT
+# CFLAGS= -O -DATOMIC_UNCOLLECTABLE -DNO_SIGNALS -DALL_INTERIOR_POINTERS \
+#	-DNO_EXECUTE_PERMISSION -DSILENT
 CFLAGS= -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING -DNO_EXECUTE_PERMISSION \
 	$(CFLAGS_FOR_PIC) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 # Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
@@ -124,6 +125,16 @@ CFLAGS= -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING -DNO_EXECUTE_PERMISSION \
 #   Works for Solaris and Irix.
 # -DMMAP_STACKS (for Solaris threads) Use mmap from /dev/zero rather than
 #   GC_scratch_alloc() to get stack memory.
+# -DPRINT_BLACK_LIST Whenever a black list entry is added, i.e. whenever
+#   the garbage collector detects a value that looks almost, but not quite,
+#   like a pointer, print both the address containing the value, and the
+#   value of the near-bogus-pointer.  Can be used to identifiy regions of
+#   memory that are likely to contribute misidentified pointers.
+# -DOLD_BLOCK_ALLOC Use the old, possibly faster, large block
+#   allocation strategy.  The new strategy tries harder to minimize
+#   fragmentation, sometimes at the expense of spending more time in the
+#   large block allocator and/or collecting more frequently.
+#
 
 
 
