@@ -206,7 +206,8 @@ io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 	;
 		{ Term = term_functor(term_atom("[]"), [], _) }
 	->
-		[]
+		{ VarSet = VarSet0 },
+		{ N = N0 }
 	;
 		io__write_string(" | "),
 		io__write_term_2(Term, VarSet0, N0, VarSet, N)
