@@ -507,8 +507,7 @@ lexer__skip_to_eol(Token) -->
 	( { Result = error(Error) }, !,
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
-		% should be allow this?
-		{ Token = error("unterminated '%' comment") }
+		{ Token = eof }
 	; { Result = ok(Char) },
 		( { Char = '\n' } ->
 			lexer__get_token_2(Token)
