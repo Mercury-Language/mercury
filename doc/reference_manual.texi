@@ -3360,12 +3360,15 @@ to their Mercury types, as determined by the rules specified in
 @xref{Passing data to and from C}.
 
 The C code fragment may declare local variables, but it should not
-declare any static variables unless there is also a Mercury
+declare any labels or static variables unless there is also a Mercury
 @samp{pragma no_inline} declaration (@pxref{Inlining}) for the procedure.
 The reason for this is that otherwise the Mercury implementation may
-inline the procedure by duplicating the C code fragment for each call,
-which would result in the program having multiple instances of the
-static variable, rather than a single shared instance.
+inline the procedure by duplicating the C code fragment for each call.
+If the C code fragment declared a static variable, inlining it in this
+way could result in the program having multiple instances of the static
+variable, rather than a single shared instance.  If the C code fragment
+declared a label, inlining it in this way could result in an error due
+to the same label being defined twice inside a single C function.
 
 If there is a @code{pragma import} or @code{pragma c_code} declaration for a
 mode of a predicate or function, then there must not be any clauses for that

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -5099,10 +5099,19 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 	{
 		C_ExtraCode = ""
 	->
-		Module = Module1
+		Module2 = Module1
 	;
-		module_add_c_body_code(C_ExtraCode, Context, Module1, Module)
-	}.
+		module_add_c_body_code(C_ExtraCode, Context, Module1, Module2)
+	},
+	%
+	% The C code for fact tables includes C labels;
+	% we cannot inline this code, because if we try,
+	% the result may be duplicate labels in the generated code.
+	% So we must disable inlining for fact_table procedures.
+	%
+	add_pred_marker(Module2, "fact_table", SymName, Arity,
+		Status, Context, no_inline, [], Module).
+
 
 	% Create a list(pragma_var) that looks like the ones that are created
 	% for pragma c_code in prog_io.m.

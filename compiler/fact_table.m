@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,15 +67,15 @@
 	% C_ProcCode is the C code for the procedure,
 	% C_ExtraCode is extra C code that should be included in the module
 	%
-	% XXX   model_non pragma c is not completely supported by the compiler
-	% at the moment -- the programmer has no control over how the nondet
-	% stack frames are set up (e.g. how many framevars are used) or how
-	% many labels are declared.  To get around this, the C_ProcCode
+	% XXX   model_non pragma c was not supported by the compiler
+	% when this code was written.  To get around this, the C_ProcCode
 	% generated for model_non code pops off the stack frame that is
 	% automatically created by the compiler and jumps to the code contained
 	% in C_ExtraCode.  C_ExtraCode declares the required labels and creates
 	% a new stack frame with the required number of framevars.  It then 
 	% does all the work required to lookup the fact table.
+	% This should really be rewritten to work using model_non pragma c
+	% now that model_non pragma c is implemented.
 :- pred fact_table_generate_c_code(sym_name, list(pragma_var), proc_id,
 		proc_id, proc_info, list(type), module_info, string, string,
 		io__state, io__state).
@@ -2510,8 +2510,7 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 
 %---------------------------------------------------------------------------%
 
-	% XXX this should change to use the new model_non pragma c_code when
-	% it has been implemented.
+	% XXX this should be changed to use the new model_non pragma c_code
 :- pred generate_multidet_code(string, list(pragma_var), proc_id, 
 		list(type), args_method, module_info, int, string, string).
 :- mode generate_multidet_code(in, in, in, in, in, in, in, out, out) is det.
