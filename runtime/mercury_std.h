@@ -14,10 +14,10 @@
 
 #include <stdlib.h>	/* for size_t */
 #include <assert.h>	/* for assert() */
+#include <errno.h>	/* for EINTR */
 #ifndef IN_GCC
   #include <ctype.h>	/* for isalnum(), etc. */
 #else
-#include <errno.h>
   /*
   ** When building compiler/gcc.m, we #include GCC back-end
   ** header files that include libiberty's "safe-ctype.h",

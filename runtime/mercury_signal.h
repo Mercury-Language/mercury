@@ -78,6 +78,14 @@ extern void MR_setup_signal_no_restart(int sig, MR_Code *handler,
 	MR_bool need_info, const char * error_message);
 
 	/*
+	** As above, but initialize a signal action suitable to be
+	** passed to MR_set_signal_action rather than setting a
+	** signal handler for a signal.
+	*/
+extern void MR_init_signal_action(MR_signal_action* act, MR_Code *handler,
+	MR_bool need_info, MR_bool should_restart_system_call);
+
+	/*
 	** Get the current action for the given signal.
 	** If the action cannot be retrieved, it aborts with the given
 	** error message.

@@ -76,10 +76,17 @@ MR_do_setup_signal(int sig, MR_Code *handler, MR_bool need_info,
 		MR_bool restart, const char *error_message)
 {
 	MR_signal_action	act;
+	MR_init_signal_action(&act, handler, need_info, restart);
+	MR_set_signal_action(sig, &act, error_message);
+}
 
+void
+MR_init_signal_action(MR_signal_action *act, MR_Code *handler,
+		MR_bool need_info, MR_bool restart)
+{
 #if	defined(MR_HAVE_SIGACTION)
 
-	act.sa_flags = (restart ? SA_RESTART : 0);
+	act->sa_flags = (restart ? SA_RESTART : 0);
 
 	if (need_info) {
 	/*
@@ -89,23 +96,21 @@ MR_do_setup_signal(int sig, MR_Code *handler, MR_bool need_info,
 	** handler will not be of the right type.
 	*/
 #if	!defined(MR_HAVE_SIGCONTEXT_STRUCT)
-		act.sa_flags |= SA_SIGINFO;
+		act->sa_flags |= SA_SIGINFO;
 #endif
 	}
-	if (sigemptyset(&act.sa_mask) != 0) {
+	if (sigemptyset(&(act->sa_mask)) != 0) {
 		MR_perror("cannot set clear signal mask");
 		exit(1);
 	}
 	errno = 0;
 
-	act.MR_SIGACTION_FIELD = handler;
+	act->MR_SIGACTION_FIELD = handler;
 #else /* not MR_HAVE_SIGACTION */
 
 	act = handler;
 
 #endif /* not MR_HAVE_SIGACTION */
-
-	MR_set_signal_action(sig, &act, error_message);
 }
 
 void
