@@ -309,7 +309,7 @@ query_oracle_list(OS, [Q | Qs0], As) :-
 		% do we trust the correctness of the procedure?
 		ProcId = get_proc_id_from_layout(Atom ^ proc_layout),
 		ProcId = proc(Module, _, _, _, _, _),
-		member(Module, OS ^ trusted_modules)
+		set__member(Module, OS ^ trusted_modules)
 	->
 		As = [truth_value(get_decl_question_node(Q), yes) | As0]
 	;
