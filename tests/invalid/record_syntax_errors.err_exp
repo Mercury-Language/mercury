@@ -25,10 +25,11 @@ record_syntax_errors.m:014: Error: no clauses for predicate `dcg_syntax/2'.
 record_syntax_errors.m:016: Error: no clauses for predicate `dcg_syntax_2/2'.
 record_syntax_errors.m:042: In clause for predicate `record_syntax_errors.construct_exist_cons/1':
 record_syntax_errors.m:042:   error: undefined symbol `field2 :=/2'.
-record_syntax_errors.m:005:   Field `field2' cannot be updated because
-record_syntax_errors.m:005:   the existentially quantified type variable `T' occurs
-record_syntax_errors.m:005:   in the types of field `field2' and some other field
-record_syntax_errors.m:005:   in definition of constructor `record_syntax_errors.exist_cons/3 '.
+record_syntax_errors.m:005:   Field `field2' cannot be updated because the
+record_syntax_errors.m:005:   existentially quantified type variable `T' occurs
+record_syntax_errors.m:005:   in the types of field `field2' and some other
+record_syntax_errors.m:005:   field in definition of constructor
+record_syntax_errors.m:005:   `record_syntax_errors.exist_cons/3'.
 record_syntax_errors.m:046: In clause for predicate `record_syntax_errors.arg_type_error/1':
 record_syntax_errors.m:046:   in argument 2 of functor `field6 :=/2':
 record_syntax_errors.m:046:   in unification of argument
