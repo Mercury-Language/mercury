@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- import_module list, int, io, printlist.
+:- import_module list, int, io.
 
 :- pred main1(list(int)).
 :- mode main1(out) is det.
@@ -14,6 +14,8 @@
 :- mode main3(out, di, uo) is det.
 
 :- implementation.
+
+:- import_module printlist.
 
 main --> main3(_).
 

@@ -19,7 +19,7 @@
 
 :- interface.
 
-:- import_module list, int, io, printlist.
+:- import_module list, int, io.
 
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is cc_multi.
@@ -28,7 +28,7 @@
 :- mode main1(out) is nondet.
 
 :- implementation.
-:- import_module require.
+:- import_module require, printlist.
 
 main1(Out) :-	
 	crypt(Out).
