@@ -1282,6 +1282,29 @@ simplify__call_goal(PredId, ProcId, Args, IsBuiltin,
 		simplify__input_args_are_equiv(Args, HeadVars, ArgModes,
 			CommonInfo1, ModuleInfo1),
 
+		%
+		% Don't warn if the input arguments' modes initial insts
+		% contain `any' insts, since the arguments might have become
+		% more constrained before the recursive call, in which case
+		% the recursion might eventually terminate.
+		%
+		% XXX The following check will only warn if the inputs are
+		% all fully ground; i.e. we won't warn in the case of
+		% partially instantiated insts such as list_skel(free).
+		% Still, it is better to miss warnings in that rare and
+		% unsupported case rather than to issue spurious warnings
+		% in cases involving `any' insts.  We should only warn about
+		% definite nontermination here, not possible nontermination;
+		% warnings about possible nontermination should only be given
+		% if the termination analysis pass is enabled.
+		%
+		all [ArgMode] (
+			(list__member(ArgMode, ArgModes),
+			 mode_is_input(ModuleInfo1, ArgMode))
+		=>
+			mode_is_fully_input(ModuleInfo1, ArgMode)
+		),
+
 		% 
 		% Don't count procs using minimal evaluation as they 
 		% should always terminate if they have a finite number
