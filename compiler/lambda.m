@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -415,7 +415,8 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		proc_info_interface_code_model(Call_ProcInfo, Call_CodeModel),
 		determinism_to_code_model(Detism, CodeModel),
 		module_info_globals(ModuleInfo0, Globals),
-		globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+		globals__lookup_bool_option(Globals, highlevel_code,
+			HighLevelCode),
 		(
 			HighLevelCode = no,
 			( CodeModel = Call_CodeModel
@@ -423,7 +424,8 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 			)
 		;
 			HighLevelCode = yes,
-			pred_info_get_is_pred_or_func(Call_PredInfo, Call_PredOrFunc),
+			pred_info_get_is_pred_or_func(Call_PredInfo,
+				Call_PredOrFunc),
 			PredOrFunc = Call_PredOrFunc,
 			CodeModel = Call_CodeModel
 		),
@@ -549,7 +551,15 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 
 		proc_info_create(VarSet, VarTypes, AllArgVars, AllArgModes,
 			InstVarSet, Detism, LambdaGoal, LambdaContext,
-			TVarMap, TCVarMap, address_is_taken, ProcInfo),
+			TVarMap, TCVarMap, address_is_taken, ProcInfo0),
+		% If we previously already needed to recompute the nonlocals,
+		% then we'd better to that recomputation for the procedure
+		% that we just created.
+		( MustRecomputeNonLocals0 = yes ->
+			requantify_proc(ProcInfo0, ProcInfo)
+		;
+			ProcInfo = ProcInfo0
+		),
 
 		set__init(Assertions),
 
