@@ -185,7 +185,7 @@
 
 :- implementation.
 
-:- import_module llds_out, opt_util, vn_util, hlds_pred.
+:- import_module llds_out, opt_util, vn_util, hlds_pred, globals, options.
 :- import_module int, set, map, string.
 
 opt_debug__msg(OptDebug, Msg) -->
@@ -201,18 +201,19 @@ opt_debug__msg(OptDebug, Msg) -->
 opt_debug__dump_instrs(OptDebug, Instrs) -->
 	(
 		{ OptDebug = yes },
-		opt_debug__dump_instrs_2(Instrs)
+		globals__io_lookup_bool_option(auto_comments, PrintComments),
+		opt_debug__dump_instrs_2(Instrs, PrintComments)
 	;
 		{ OptDebug = no }
 	).
 
-:- pred opt_debug__dump_instrs_2(list(instruction), io__state, io__state).
-:- mode opt_debug__dump_instrs_2(in, di, uo) is det.
+:- pred opt_debug__dump_instrs_2(list(instruction), bool, io__state, io__state).
+:- mode opt_debug__dump_instrs_2(in, in, di, uo) is det.
 
-opt_debug__dump_instrs_2([]) --> [].
-opt_debug__dump_instrs_2([Uinstr - _ | Instrs]) -->
-	output_instruction(Uinstr),
-	opt_debug__dump_instrs_2(Instrs).
+opt_debug__dump_instrs_2([], _PrintComments) --> [].
+opt_debug__dump_instrs_2([Uinstr - Comment | Instrs], PrintComments) -->
+	output_instruction_and_comment(Uinstr, Comment, PrintComments),
+	opt_debug__dump_instrs_2(Instrs, PrintComments).
 
 opt_debug__dump_node_relmap(Relmap, Str) :-
 	map__to_assoc_list(Relmap, Nodemap),

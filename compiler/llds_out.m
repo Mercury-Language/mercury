@@ -37,7 +37,15 @@
 :- pred llds_out__binary_op_to_string(binary_op, string).
 :- mode llds_out__binary_op_to_string(in, out) is det.
 
-	% Output an instruction (used for debugging).
+	% Output an instruction and (if the third arg is yes) the comment.
+	% This predicate is provided for debugging use only.
+
+:- pred output_instruction_and_comment(instr, string, bool,
+	io__state, io__state).
+:- mode output_instruction_and_comment(in, in, in, di, uo) is det.
+
+	% Output an instruction.
+	% This predicate is provided for debugging use only.
 
 :- pred output_instruction(instr, io__state, io__state).
 :- mode output_instruction(in, di, uo) is det.
@@ -882,7 +890,17 @@ output_instruction_and_comment(Instr, Comment, PrintComments,
 		)
 	).
 
-	% output_instruction/2 is only for debugging.
+	% output_instruction_and_comment/5 is only for debugging.
+	% Normally we use output_instruction_and_comment/6.
+
+output_instruction_and_comment(Instr, Comment, PrintComments) -->
+	{ set__init(ContLabelSet) },
+	{ hlds_pred__initial_proc_id(ProcId) },
+	{ ProfInfo = local(proc("DEBUG", predicate, "DEBUG", "DEBUG", 0,
+			ProcId)) - ContLabelSet },
+	output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo).
+
+	% output_instruction/3 is only for debugging.
 	% Normally we use output_instruction/4.
 
 output_instruction(Instr) -->
