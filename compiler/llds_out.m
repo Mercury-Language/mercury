@@ -452,7 +452,9 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 		"** UNBOXED_FLOAT=", UnboxedFloatStr, "\n",
 		"**\n",
 		"** END_OF_C_GRADE_INFO\n",
-		"*/\n"
+		"*/\n",
+		"\n",
+		"\n#define MR_BOOTSTRAP_TYPE_CTOR_VERSION_NO\n"
 	]).
 
 :- pred convert_bool_to_string(bool, string).

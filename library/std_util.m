@@ -1893,7 +1893,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	type_ctor_desc = ML_make_type_ctor_desc(type_info, type_ctor_info);
 	*type_ctor_desc_ptr = type_ctor_desc;
 
-	if (MR_type_ctor_rep_is_variable_arity(type_ctor_info->type_ctor_rep))
+	if (MR_type_ctor_rep_is_variable_arity(MR_type_ctor_rep(type_ctor_info)))
 	{
 		arity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
 		*arg_type_info_list_ptr = ML_type_params_vector_to_list(arity,
@@ -2277,11 +2277,11 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 
         type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-        if (type_ctor_info->type_ctor_rep != construct_info.type_ctor_rep) {
+        if (MR_type_ctor_rep(type_ctor_info) != construct_info.type_ctor_rep) {
             MR_fatal_error(""std_util:construct: type_ctor_rep mismatch"");
         }
 
-        switch (type_ctor_info->type_ctor_rep) {
+        switch (MR_type_ctor_rep(type_ctor_info)) {
 
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
@@ -2591,9 +2591,9 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
     MR_TypeCtorInfo     type_ctor_info;
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    construct_info->type_ctor_rep = type_ctor_info->type_ctor_rep;
+    construct_info->type_ctor_rep = MR_type_ctor_rep(type_ctor_info);
 
-    switch(type_ctor_info->type_ctor_rep) {
+    switch(MR_type_ctor_rep(type_ctor_info)) {
 
     case MR_TYPECTOR_REP_RESERVED_ADDR:
     case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
@@ -3004,7 +3004,7 @@ ML_get_num_functors(MR_TypeInfo type_info)
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-    switch(type_ctor_info->type_ctor_rep) {
+    switch(MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
         case MR_TYPECTOR_REP_RESERVED_ADDR:
@@ -3379,7 +3379,7 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-    switch (type_ctor_info->type_ctor_rep) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         case MR_TYPECTOR_REP_RESERVED_ADDR:
 	    {
@@ -3787,7 +3787,7 @@ get_functor_info(Univ, FunctorInfo) :-
 
     MR_unravel_univ(Univ, type_info, value);
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    switch (type_ctor_info->type_ctor_rep) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
             functor_desc = type_ctor_info->type_functors.functors_notag;
@@ -3837,7 +3837,7 @@ get_functor_info(Univ, FunctorInfo) :-
 
     MR_unravel_univ(Univ, type_info, value);
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    switch (type_ctor_info->type_ctor_rep) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_EQUIV:
             exp_type_info = MR_pseudo_type_info_is_ground(
                 type_ctor_info->type_layout.layout_equiv);
@@ -3880,7 +3880,7 @@ get_functor_info(Univ, FunctorInfo) :-
 
     MR_unravel_univ(Univ, type_info, value);
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    switch (type_ctor_info->type_ctor_rep) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
             Enum = (MR_Integer) value;
@@ -3923,7 +3923,7 @@ get_functor_info(Univ, FunctorInfo) :-
 
     MR_unravel_univ(Univ, type_info, value);
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    switch (type_ctor_info->type_ctor_rep) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
             SUCCESS_INDICATOR = TRUE;

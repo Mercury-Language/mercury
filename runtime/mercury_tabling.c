@@ -578,7 +578,8 @@ MR_type_info_lookup_or_add(MR_TrieNode table, MR_TypeInfo type_info)
 	** sense. This is OK, because in that case it will never be used.
 	*/
 
-	if (MR_type_ctor_rep_is_variable_arity(type_ctor_info->type_ctor_rep))
+	if (MR_type_ctor_rep_is_variable_arity(
+		MR_type_ctor_rep(type_ctor_info)))
 	{
 		arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
 		arg_vector = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(
@@ -625,11 +626,11 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
         printf("ENTRY %p %x, data rep: %d\n",
-            table, data, type_ctor_info->type_ctor_rep);
+            table, data, MR_type_ctor_rep(type_ctor_info));
     }
 #endif  /* MR_TABLE_DEBUG */
 
-    switch (type_ctor_info->type_ctor_rep) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_ENUM: 
         case MR_TYPECTOR_REP_ENUM_USEREQ: 
             MR_DEBUG_TABLE_ENUM(table,

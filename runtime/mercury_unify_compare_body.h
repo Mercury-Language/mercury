@@ -48,7 +48,7 @@ start_label:
     MR_register_type_ctor_stat(&type_stat_struct, type_ctor_info);
 #endif
 
-    switch (type_ctor_info->type_ctor_rep) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
 
 #ifdef  MR_COMPARE_BY_RTTI
 

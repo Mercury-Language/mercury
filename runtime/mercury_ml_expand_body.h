@@ -220,7 +220,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
     expand_info->limit_reached = FALSE;
 #endif  /* EXPAND_APPLY_LIMIT */
 
-    switch(type_ctor_info->type_ctor_rep) {
+    switch(MR_type_ctor_rep(type_ctor_info)) {
 
         case MR_TYPECTOR_REP_ENUM_USEREQ:
             expand_info->non_canonical_type = TRUE;

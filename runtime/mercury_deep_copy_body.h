@@ -44,7 +44,7 @@ copy(maybeconst MR_Word *data_ptr, MR_TypeInfo type_info,
 try_again:
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-    switch (type_ctor_info->type_ctor_rep) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
 
     case MR_TYPECTOR_REP_ENUM:
     case MR_TYPECTOR_REP_ENUM_USEREQ:
@@ -753,7 +753,7 @@ copy_type_info(maybeconst MR_TypeInfo *type_info_ptr,
         }
 
         if (MR_type_ctor_rep_is_variable_arity(
-                type_ctor_info->type_ctor_rep))
+            MR_type_ctor_rep(type_ctor_info)))
         {
             arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
             type_info_args =

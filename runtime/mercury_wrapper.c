@@ -1234,7 +1234,7 @@ MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 {
 	int	i;
 
-	type_stat->type_ctor_reps[type_ctor_info->type_ctor_rep]++;
+	type_stat->type_ctor_reps[MR_type_ctor_rep(type_ctor_info)]++;
 
 	for (i = 0; i < type_stat->type_ctor_name_next; i++) {
 		/*
@@ -1264,7 +1264,7 @@ MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 	type_stat->type_ctor_names[i].type_stat_name =
 		type_ctor_info->type_ctor_name;
 	type_stat->type_ctor_names[i].type_stat_ctor_rep =
-		type_ctor_info->type_ctor_rep;
+		MR_type_ctor_rep(type_ctor_info);
 	type_stat->type_ctor_names[i].type_stat_count = 1;
 	type_stat->type_ctor_name_next++;
 }

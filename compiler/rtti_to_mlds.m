@@ -230,7 +230,9 @@ gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 	prog_out__sym_name_to_string(TypeModule, TypeModuleName),
 	Init = init_struct([
 		gen_init_int(TypeArity),
-		gen_init_maybe_proc_id(ModuleInfo, UnifyProc),
+		gen_init_int(Version),
+		gen_init_type_ctor_rep(CtorRep),
+		gen_init_int(NumPtags),
 		gen_init_maybe_proc_id(ModuleInfo, UnifyProc),
 		gen_init_maybe_proc_id(ModuleInfo, CompareProc),
 		gen_init_type_ctor_rep(CtorRep),
@@ -249,8 +251,7 @@ gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		init_struct([
 			gen_init_layout_info(LayoutInfo, ModuleName, RttiTypeId)
 		]),
-		gen_init_int(NumFunctors),
-		gen_init_int(NumPtags)
+		gen_init_int(NumFunctors)
 			% These two are commented out while the corresponding
 			% fields of the MR_TypeCtorInfo_Struct type are
 			% commented out.

@@ -1385,7 +1385,7 @@ det_unimplemented(S) :-
 :- pragma foreign_proc("C",
 	type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out), [], "
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
-	TypeCtorRep = tci->type_ctor_rep;
+	TypeCtorRep = MR_type_ctor_rep(tci);
 ").
 
 
