@@ -1,0 +1,64 @@
+#!/bin/sh
+#
+# A program to test different versions of the compiler.
+
+usage="Usage: speedtest [-c cmd] [-nN] batchname"
+limit=4
+cmd="mc -C -O2 tree234.m"
+
+while test $# -gt 0
+do
+	case $1 in
+
+	-c|--cmd)
+		cmd="$2" ; shift ;;
+	-c*)
+		cmd="` expr $1 : '-c\(.*\)' `" ;;
+
+	-n)
+		limit="$2" ; shift ;;
+	-n*)
+		limit="` expr $1 : '-n\(.*\)' `" ;;
+
+	-*)	echo "$0: unknown option \`$1'" 2>&1
+		echo $usage
+		exit 1 ;;
+
+	*)	break ;;
+
+	esac
+	shift
+done
+
+if test $# != 1
+then
+	echo $usage
+	exit 1
+fi
+
+batch=$1
+
+root=`/bin/pwd`
+files=`ls batch/$batch.mercury_compile.*.gz | sed 's:.gz::'`
+
+trap 'gzip $root/batch/$batch.mercury_compile.*[0-9] > /dev/null 2>&1; exit 0' 0 1 2 3 15 
+
+for file in $files
+do
+	cat `echo $file | sed 's/mercury_compile/params/'`
+	gunzip $file.gz
+	MERCURY_COMPILER=$root/$file
+	export MERCURY_COMPILER
+	cd trial
+	count=1
+	while test $count -le $limit
+	do
+		echo -n "$file "
+		$root/tools/dotime $cmd
+		count=`expr $count + 1`
+	done
+	cd $root
+	gzip $file
+done
+
+exit 0
