@@ -99,3 +99,7 @@ name(sartre	, "Sartre").
 #endif
 	IO =  IO0;
 }").
+:- pragma foreign_proc("C#", rand_sleep(Int::in, _IO0::di, _IO::uo),
+		[thread_safe, will_not_call_mercury, promise_pure], "{
+	System.Threading.Thread.Sleep((new System.Random()).Next(Int) * 1000);
+}").

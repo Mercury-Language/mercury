@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2001,2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -21,6 +21,9 @@
 :- import_module bool, io.
 
 :- type semaphore.
+:- pragma foreign_type(c,  semaphore, "ME_Semaphore *").
+:- pragma foreign_type(il, semaphore,
+		"class [semaphore__csharp_code]ME_Semaphore").
 
 	% new(Sem, IO0, IO) creates a new semaphore `Sem' with its counter
 	% initialized to 0.
@@ -51,8 +54,6 @@
 
 :- import_module std_util.
 
-:- type semaphore	== c_pointer.
-
 :- pragma c_header_code("
 	#include <stdio.h>
 	#include ""mercury_context.h""
@@ -71,6 +72,12 @@
 		MercuryLock	lock;
 #endif
 	} ME_Semaphore;
+").
+
+:- pragma foreign_decl("C#", "
+public class ME_Semaphore {
+	public int count;
+}
 ").
 
 :- pragma c_header_code("
@@ -107,8 +114,13 @@
 	GC_REGISTER_FINALIZER(sem, ME_finalize_semaphore, NULL, NULL, NULL);
 #endif
 
-	Semaphore = (MR_Word) sem;
+	Semaphore = sem;
 	IO = IO0;
+}").
+:- pragma foreign_proc("C#", semaphore__new(Semaphore::out, _IO0::di, _IO::uo),
+		[will_not_call_mercury, thread_safe, promise_pure], "{
+	Semaphore = new ME_Semaphore();
+	Semaphore.count = 0;
 }").
 
 :- pragma c_code("
@@ -179,6 +191,14 @@ signal_skip_to_the_end_2:
 #endif
 	IO = IO0;
 }").
+:- pragma foreign_proc("C#", signal(Semaphore::in, _IO0::di, _IO::uo),
+		[will_not_call_mercury, thread_safe, promise_pure], "{
+	System.Threading.Monitor.Enter(Semaphore);
+	Semaphore.count++;
+		// XXX I think we only need to do a Pulse.
+	System.Threading.Monitor.PulseAll(Semaphore);
+	System.Threading.Monitor.Exit(Semaphore);
+}").
 
 		% because semaphore__wait has a local label, we may get
 		% C compilation errors if inlining leads to multiple copies
@@ -221,6 +241,18 @@ wait_skip_to_the_end:
 #endif
 	IO = IO0;
 }").
+:- pragma foreign_proc("C#", wait(Semaphore::in, _IO0::di, _IO::uo),
+		[will_not_call_mercury, thread_safe, promise_pure], "{
+	System.Threading.Monitor.Enter(Semaphore);
+
+	while (Semaphore.count <= 0) {
+		System.Threading.Monitor.Wait(Semaphore);
+	}
+
+	Semaphore.count--;
+
+	System.Threading.Monitor.Exit(Semaphore);
+}").
 
 semaphore__try_wait(Sem, Res) -->
 	semaphore__try_wait0(Sem, Res0),
@@ -249,4 +281,18 @@ semaphore__try_wait(Sem, Res) -->
 		Res = 1;
 	}
 	IO = IO0;
+}").
+:- pragma foreign_proc("C#",
+		try_wait0(Semaphore::in, Res::out, _IO0::di, _IO::uo),
+		[will_not_call_mercury, thread_safe, promise_pure], "{
+	System.Threading.Monitor.Enter(Semaphore);
+
+	if (Semaphore.count > 0) {
+		Semaphore.count--;
+		System.Threading.Monitor.Exit(Semaphore);
+		Res = 0;
+	} else {
+		System.Threading.Monitor.Exit(Semaphore);
+		Res = 1;
+	}
 }").
