@@ -120,9 +120,14 @@
 :- pragma inline(builtin_compare_string/3).
 :- pragma inline(builtin_compare_float/3).
 
-:- pragma c_code(free_heap(Val::di),
+:- pragma foreign_code("C", free_heap(Val::di),
 	[will_not_call_mercury, thread_safe],
 	"MR_free_heap((void *) Val);").
+
+:- pragma foreign_code("MC++", free_heap(_Val::di),
+	[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
 
 builtin_unify_int(X, X).
 
@@ -795,7 +800,7 @@ static void init_runtime(void)
 
 :- implementation.
 
-:- pragma c_code(store_ticket(Ticket::out),
+:- pragma foreign_code("C", store_ticket(Ticket::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -805,7 +810,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma c_code(reset_ticket_undo(Ticket::in),
+:- pragma foreign_code("C", reset_ticket_undo(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -813,7 +818,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma c_code(reset_ticket_commit(Ticket::in),
+:- pragma foreign_code("C", reset_ticket_commit(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -821,7 +826,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma c_code(reset_ticket_solve(Ticket::in),
+:- pragma foreign_code("C", reset_ticket_solve(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -829,7 +834,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma c_code(discard_ticket,
+:- pragma foreign_code("C", discard_ticket,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -837,7 +842,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma c_code(prune_ticket,
+:- pragma foreign_code("C", prune_ticket,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -845,7 +850,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma c_code(mark_ticket_stack(TicketCounter::out),
+:- pragma foreign_code("C", mark_ticket_stack(TicketCounter::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -855,13 +860,90 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma c_code(prune_tickets_to(TicketCounter::in),
+:- pragma foreign_code("C", prune_tickets_to(TicketCounter::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
 	MR_prune_tickets_to(TicketCounter);
 #endif
 ").
+
+:- pragma foreign_code("MC++", store_ticket(Ticket::out),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	// MR_store_ticket(Ticket);
+#else
+	Ticket = 0;
+#endif
+").
+
+:- pragma foreign_code("MC++", reset_ticket_undo(Ticket::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	// MR_reset_ticket(Ticket, MR_undo);
+#endif
+").
+
+:- pragma foreign_code("MC++", reset_ticket_commit(Ticket::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	// MR_reset_ticket(Ticket, MR_commit);
+#endif
+").
+
+:- pragma foreign_code("MC++", reset_ticket_solve(Ticket::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	// MR_reset_ticket(Ticket, MR_solve);
+#endif
+").
+
+:- pragma foreign_code("MC++", discard_ticket,
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	// MR_discard_ticket();
+#endif
+").
+
+:- pragma foreign_code("MC++", prune_ticket,
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	// MR_prune_ticket();
+#endif
+").
+
+:- pragma foreign_code("MC++", mark_ticket_stack(TicketCounter::out),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	// MR_mark_ticket_stack(TicketCounter);
+#else
+	TicketCounter = 0;
+#endif
+").
+
+:- pragma foreign_code("MC++", prune_tickets_to(TicketCounter::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	// MR_prune_tickets_to(TicketCounter);
+#endif
+").
+
 
 trailed_nondet_pragma_foreign_code :-
 	Msg = string__append_list([
@@ -901,15 +983,6 @@ unused :-
 		% the following is never executed
 		true
 	).
-
-:- pragma foreign_code("MC++", "
-
-static void free_heap_1_p_0(MR_Box X) 
-{ 
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-}
-
-").
 
 %-----------------------------------------------------------------------------%
 
