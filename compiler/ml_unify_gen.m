@@ -1634,7 +1634,9 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
 	(
 		% skip dummy argument types, since they will not have
 		% been declared
-		{ type_util__is_dummy_argument_type(ArgType) }
+		{ type_util__is_dummy_argument_type(ArgType)
+		; type_util__is_dummy_argument_type(FieldType)
+		}
 	->
 		{ MLDS_Statements = MLDS_Statements0 }
 	;
