@@ -384,7 +384,7 @@ float(Int) = Float :-
 :- pragma foreign_proc("MC++", float__ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, thread_safe],
 "
-	Ceil = (MR_Integer) System::Math::Ceil(X);
+	Ceil = (MR_Integer) System::Math::Ceiling(X);
 ").
 
 float__ceiling_to_int(X, float__ceiling_to_int(X)).

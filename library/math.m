@@ -307,7 +307,7 @@ ML_math_domain_error(MR_String where)
 :- pragma foreign_proc("MC++", 
 	math__ceiling(Num::in) = (Ceil::out),
 		[will_not_call_mercury, thread_safe],"
-	Ceil = System::Math::Ceil(Num);
+	Ceil = System::Math::Ceiling(Num);
 ").
 
 %
@@ -360,7 +360,7 @@ ML_math_domain_error(MR_String where)
 	math__truncate(X::in) = (Trunc::out),
 		[will_not_call_mercury, thread_safe],"
 	if (X < 0.0) {
-		Trunc = System::Math::Ceil(X);
+		Trunc = System::Math::Ceiling(X);
 	} else {
 		Trunc = System::Math::Floor(X);
 	}

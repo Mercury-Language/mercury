@@ -1135,6 +1135,7 @@
 	static MR_Word		ML_io_stream_names;
 	static MR_Word		ML_io_user_globals;
 	static int next_id;
+	static System::Text::ASCIIEncoding *ascii_encoder;
 ").
 
 
@@ -2829,6 +2830,21 @@ io__finalize_state -->
 		io__gc_init(_StreamNamesType::in, _UserGlobalsType::in,
 		IO0::di, IO::uo), will_not_call_mercury, "
 	update_io(IO0, IO);
+	ascii_encoder =	new System::Text::ASCIIEncoding();
+").
+
+:- pred io__stream_init(io__state, io__state).
+:- mode io__stream_init(di, uo) is det.
+
+:- pragma foreign_proc("MC++", 
+		io__stream_init(IO0::di, IO::uo), will_not_call_mercury, "
+	ascii_encoder =	new System::Text::ASCIIEncoding();
+	update_io(IO0, IO);
+").
+
+:- pragma foreign_proc("C", 
+		io__stream_init(IO0::di, IO::uo), will_not_call_mercury, "
+	update_io(IO0, IO);
 ").
 
 :- pred io__insert_std_stream_names(io__state, io__state).
@@ -2956,14 +2972,19 @@ int		ML_fprintf(MercuryFile* mf, const char *format, ...);
 
 :- pragma foreign_decl("MC++", "
 
-	// XXX for efficiency we should re-use the same stream writer
-	// on a stream, perhaps we should store it with a stream.
+	// XXX currently we only handle text streams.
 
 __gc struct MR_MercuryFileStruct {
 public:
-	System::IO::Stream 	*stream;
+	// Note that stream reader and writer might be null, if they are
+	// currently unused.
+
+	System::IO::Stream 	*stream; // The stream itself
+	System::IO::TextReader 	*reader; // A stream reader for reading it
+	System::IO::TextWriter 	*writer; // A stream writer for writing it
 	int		line_number;
 	int		id;
+
 };
 
 typedef __gc struct MR_MercuryFileStruct *MR_MercuryFile;
@@ -3036,6 +3057,20 @@ static MR_MercuryFile new_mercury_file(System::IO::Stream *stream,
 		int line_number) {
 	MR_MercuryFile mf = new MR_MercuryFileStruct();
 	mf->stream = stream;
+	mf->reader = NULL;
+	mf->writer = NULL;
+	mf->line_number = line_number;
+	mf->id = next_id++;
+	return mf;
+}
+
+static MR_MercuryFile new_open_mercury_file(System::IO::Stream *stream,
+		System::IO::TextReader *reader, System::IO::TextWriter *writer,
+		int line_number) {
+	MR_MercuryFile mf = new MR_MercuryFileStruct();
+	mf->stream = stream;
+	mf->reader = reader;
+	mf->writer = writer;
 	mf->line_number = line_number;
 	mf->id = next_id++;
 	return mf;
@@ -3045,11 +3080,14 @@ static MR_MercuryFile new_mercury_file(System::IO::Stream *stream,
 	// consoles.
 
 static MR_MercuryFile mercury_stdin =
-	new_mercury_file(System::Console::OpenStandardInput(), 1);
+	new_open_mercury_file(System::Console::OpenStandardInput(),
+		System::Console::In, NULL, 1);
 static MR_MercuryFile mercury_stdout =
-	new_mercury_file(System::Console::OpenStandardOutput(), 1);
+	new_open_mercury_file(System::Console::OpenStandardOutput(),
+		NULL, System::Console::Out, 1);
 static MR_MercuryFile mercury_stderr =
-	new_mercury_file(System::Console::OpenStandardError(), 1);
+	new_open_mercury_file(System::Console::OpenStandardError(),
+		NULL, System::Console::Error, 1);
 
 static MR_MercuryFile mercury_stdin_binary =
 	new_mercury_file(0, 1);
@@ -3060,9 +3098,11 @@ static MR_MercuryFile mercury_stdout_binary =
 	// use the mercury_files above.
 
 static MR_MercuryFile mercury_current_text_input =
-	new_mercury_file(System::Console::OpenStandardInput(), 1);
+	new_open_mercury_file(System::Console::OpenStandardInput(),
+		System::Console::In, NULL, 1);
 static MR_MercuryFile mercury_current_text_output =
-	new_mercury_file(System::Console::OpenStandardOutput(), 1);
+	new_open_mercury_file(System::Console::OpenStandardOutput(),
+		NULL, System::Console::Out, 1);
 static MR_MercuryFile mercury_current_binary_input =
         new_mercury_file(0, 1);
 static MR_MercuryFile mercury_current_binary_output =
@@ -3184,10 +3224,10 @@ mercury_print_string(MercuryFile* mf, const char *s)
 static void
 mercury_print_string(MR_MercuryFile mf, MR_String s)
 {
-	// XXX we should re-use the same stream writer...
-        System::IO::StreamWriter *w = new System::IO::StreamWriter(mf->stream);
-        w->Write(s);
-        w->Flush();
+	unsigned char ByteArray __gc[] = ascii_encoder->GetBytes(s);
+	mf->stream->Write(ByteArray, 0, ByteArray->get_Length());
+	mf->stream->Flush();
+
         for (int i = 0; i < s->Length; i++) {
                 if (s->Chars[i] == '\\n') {
                         mf->line_number++;

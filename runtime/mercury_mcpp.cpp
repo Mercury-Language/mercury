@@ -30,7 +30,7 @@ __gc public class Exception : public System::Exception
 {
 public:
 	// XXX there should be a Mercury object here.
-    Exception(MR_String Msg) : Exception(Msg)
+    Exception(MR_String Msg) : System::Exception(Msg)
     { 
 	// XXX this should set the exception message
     }

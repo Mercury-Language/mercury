@@ -305,20 +305,20 @@
 #define ML_DETERMINISM_GUARD
 
 	/*
-	** The enumeration constants in this enum must be in the same
+	** The constants in these #defines must be in the same
 	** order as the functors in the Mercury type `determinism'
 	** defined above.
 	*/
-	typedef enum {
-		ML_DET,
-		ML_SEMIDET,
-		ML_CC_MULTI,
-		ML_CC_NONDET,
-		ML_MULTI,
-		ML_NONDET,
-		ML_ERRONEOUS,
-		ML_FAILURE
-	} ML_Determinism;
+
+#define ML_DET	0
+#define	ML_SEMIDET	1
+#define	ML_CC_MULTI	2
+#define	ML_CC_NONDET	3
+#define	ML_MULTI	4
+#define	ML_NONDET	5
+#define	ML_ERRONEOUS	6
+#define	ML_FAILURE	7
+
 #endif
 ").
 

@@ -802,13 +802,13 @@ array__slow_set(Array0, Index, Item, Array) :-
 		array__lookup(Array::array_ui, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-	Item = Array->GetValue(Index);
+	Item = dynamic_cast<MR_Word>(Array->GetValue(Index));
 }").
 :- pragma foreign_proc("MC++",
 		array__lookup(Array::in, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-	Item = Array->GetValue(Index);
+	Item = dynamic_cast<MR_Word>(Array->GetValue(Index));
 }").
 
 

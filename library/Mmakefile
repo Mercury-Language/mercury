@@ -86,7 +86,7 @@ MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)" \
 			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	$(DLL_CFLAGS)
-MS_CLFLAGS  =	-I$(RUNTIME_DIR) 
+MS_CLFLAGS  =	-AI$(RUNTIME_DIR) -I$(RUNTIME_DIR)
 MS_CL_NOASM=:noAssembly
 LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
 ALL_LDFLAGS =	$(LDFLAGS) $(EXTRA_LDFLAGS)
@@ -238,22 +238,42 @@ MODULES_CONTAINING_C_CODE=	\
 
 CPP_DLLS=$(MODULES_CONTAINING_C_CODE:%=%__c_code.dll)
 
-ALL_DLLS=$(library.dlls) $(CPP_DLLS) $(RUNTIME_DLLS) 
+ALL_DLLS=$(CPP_DLLS) $(library.dlls) $(RUNTIME_DLLS) 
 
 ALL_DLLS_BASE  = $(ALL_DLLS:%.dll=%)
 EMBED_ALL_DLLS = $(foreach dll_name,$(ALL_DLLS_BASE),$(EMBED_ONE_DLL))
-EMBED_ONE_DLL  = /embed:$(dll_name).dll,$(dll_name),Y
+EMBED_ONE_DLL  = /embed:$(dll_name).dll,$(dll_name)
+
+HACK_ALL_DLLS=$(CPP_DLLS) mercury_all.dll $(RUNTIME_DLLS)
+
+HACK_ALL_DLLS_BASE  = $(HACK_ALL_DLLS:%.dll=%)
+HACK_EMBED_ALL_DLLS = $(foreach dll_name,$(HACK_ALL_DLLS_BASE),$(EMBED_ONE_DLL))
+
+
+# Turn this on if you wish to enable .NET debugging.
+#MS_ILASMFLAGS = /debug
+
+
+# If you do generate a new strong name, you had better update the compiler
+# to generate references to it.  This is sub-optimal -- the compiler should
+# automatically find out what the strong name is.
+library_strong_name.sn:
+	sn -k library_strong_name.sn
+
+mercury_all.il: $(library.ils)
+	cat $(library.ils) > mercury_all.il	
+
+# For the moment we do this using one big DLL, as there are bugs in the
+# assembly cache installer (gacutil) that prevent us from installing large
+# numbers of assemblies.
+mercury.dll: $(HACK_ALL_DLLS) mercury_all.dll library_strong_name.sn
+	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll $(HACK_ALL_DLLS)
+
 
 # al is the assembly linker, it will create an assembly that references
 # all the modules (.dll files) in the library and runtime.
-mercury.dll: $(ALL_DLLS)
-	$(MS_AL) -out:mercury.dll $(ALL_DLLS)
-
-# This al command line will create a signed assembly that can be
-# installed into the assembly cache, but then you need to create a key
-# and actually start using the cache.  I haven't quite figured out how
-# this all works just yet.
-# al -v:1.0.0.0 -keyf:mercury.key -out:mercury.dll $(ALLDLLS)
+#mercury.dll: $(ALL_DLLS) library_strong_name.sn
+#	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll $(ALL_DLLS) $(EMBED_ALL_DLLS) 
 
 else
 
@@ -355,12 +375,24 @@ install_init: $(STD_LIB_NAME).init install_lib_dirs
 	rm -f $(INSTALL_MODULE_DIR)/library.init \
 		$(INSTALL_MODULE_DIR)/libmercury.init
 
+
+ifneq (,$(findstring il,$(GRADE)))
+
+.PHONY: install_library
+install_library: $(library.dlls) $(CPP_DLLS) install_grade_dirs
+	cp `vpath_find $(library.dlls) $(CPP_DLLS) mercury.dll` \
+		$(INSTALL_MERC_LIB_DIR)
+	
+else
+
 .PHONY: install_library
 install_library: lib$(STD_LIB_NAME).$A \
 		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_grade_dirs
 	cp `vpath_find lib$(STD_LIB_NAME).$A \
 		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
+
+endif	# non IL grades
 
 # library.split.$A is a version of lib$(STD_LIB_NAME).$A that has been compiled
 # with `--split-c-files'.
