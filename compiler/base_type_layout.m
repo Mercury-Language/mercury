@@ -1229,6 +1229,8 @@ base_type_layout__tag_type_and_value(base_type_info_constant(_, _, _), -1,
 	unused). 
 base_type_layout__tag_type_and_value(base_typeclass_info_constant(_, _, _), -1,
 	unused). 
+base_type_layout__tag_type_and_value(tabling_pointer_constant(_, _), -1,
+	unused). 
 
 	% Get the arguments of this constructor of the current type.
 	

@@ -210,9 +210,8 @@
 
 stack_layout__generate_llds(ModuleInfo0, ModuleInfo,
 		ProcLayouts, InternalLayouts, LayoutLabels) :-
-	module_info_get_continuation_info(ModuleInfo0, ContinuationInfo),
-	continuation_info__get_all_proc_layouts(ContinuationInfo,
-		ProcLayoutList),
+	module_info_get_global_data(ModuleInfo0, GlobalData),
+	global_data_get_all_proc_layouts(GlobalData, ProcLayoutList),
 
 	module_info_name(ModuleInfo0, ModuleName),
 	module_info_get_cell_count(ModuleInfo0, CellCount),
@@ -230,10 +229,8 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo,
 	list__foldl(stack_layout__construct_layouts, ProcLayoutList,
 		LayoutInfo0, LayoutInfo),
 
-	stack_layout__get_proc_layout_data(ProcLayouts, LayoutInfo, _),
-	stack_layout__get_internal_layout_data(InternalLayouts, LayoutInfo, _),
-	stack_layout__get_label_set(LayoutLabels, LayoutInfo, _),
-	stack_layout__get_cell_number(FinalCellCount, LayoutInfo, _),
+	LayoutInfo  = stack_layout_info(_, FinalCellCount, _,
+		_, _, _, ProcLayouts, InternalLayouts, LayoutLabels),
 	module_info_set_cell_count(ModuleInfo0, FinalCellCount, ModuleInfo).
 
 %---------------------------------------------------------------------------%

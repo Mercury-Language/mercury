@@ -220,6 +220,8 @@ hlds_out__cons_id_to_string(code_addr_const(_, _), "<code_addr>").
 hlds_out__cons_id_to_string(base_type_info_const(_, _, _), "<base_type_info>").
 hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _),
 	"<base_typeclass_info>").
+hlds_out__cons_id_to_string(tabling_pointer_const(_, _),
+	"<tabling_pointer>").
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
 	prog_out__write_sym_name(SymName),
@@ -241,6 +243,8 @@ hlds_out__write_cons_id(base_type_info_const(_, _, _)) -->
 	io__write_string("<base_type_info>").
 hlds_out__write_cons_id(base_typeclass_info_const(_, _, _, _)) -->
 	io__write_string("<base_typeclass_info>").
+hlds_out__write_cons_id(tabling_pointer_const(_, _)) -->
+	io__write_string("<tabling_pointer>").
 
 	% The code of this predicate duplicates the functionality of
 	% term_errors__describe_one_pred_name. Changes here should be made
@@ -1574,6 +1578,9 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 		io__write_string("), "),
 		io__write_string(Instance),
 		io__write_string(")")
+	;
+		{ ConsId = tabling_pointer_const(_, _) },
+		{ error("hlds_out__write_functor_cons_id: tabling_pointer_const") }
 	).
 
 hlds_out__write_var_modes([], [], _, _, _) --> [].

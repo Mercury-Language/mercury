@@ -326,6 +326,8 @@ dependency_graph__add_arcs_in_cons(base_type_info_const(_, _, _), _Caller,
 				DepGraph, DepGraph).
 dependency_graph__add_arcs_in_cons(base_typeclass_info_const(_, _, _, _),
 				_Caller, DepGraph, DepGraph).
+dependency_graph__add_arcs_in_cons(tabling_pointer_const(_, _),
+				_Caller, DepGraph, DepGraph).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

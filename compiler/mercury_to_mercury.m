@@ -1064,6 +1064,8 @@ mercury_output_cons_id(
 	io__write(Class),
 	io__write_strings([" from module ", ModuleString, ", instance number",
 		InstanceString]).
+mercury_output_cons_id(tabling_pointer_const(_, _), _) -->
+	io__write_string("<tabling pointer>").
 
 mercury_output_mode_defn(VarSet, eqv_mode(Name, Args, Mode), Context) -->
 	io__write_string(":- mode ("),

@@ -31,7 +31,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info.
-:- import_module continuation_info, globals.
+:- import_module globals.
 :- import_module list, io.
 
 		% Translate a HLDS module to LLDS.
@@ -46,7 +46,7 @@
 
 :- pred generate_proc_code(pred_info::in, proc_info::in,
 	proc_id::in, pred_id::in, module_info::in, globals::in,
-	continuation_info::in, continuation_info::out, int::in, int::out,
+	global_data::in, global_data::out, int::in, int::out,
 	c_procedure::out) is det.
 
 		% Translate a HLDS goal to LLDS.
@@ -61,7 +61,7 @@
 
 :- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
 :- import_module par_conj_gen, pragma_c_gen, commit_gen.
-:- import_module trace, options, hlds_out.
+:- import_module continuation_info, trace, options, hlds_out.
 :- import_module code_aux, middle_rec, passes_aux, llds_out.
 :- import_module code_util, type_util, mode_util.
 :- import_module prog_data, prog_out, instmap.
@@ -120,34 +120,35 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 	;
 		[]
 	),
-	{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
+	{ module_info_get_global_data(ModuleInfo0, GlobalData0) },
 	{ module_info_get_cell_count(ModuleInfo0, CellCount0) },
 	globals__io_get_globals(Globals),
 	{ generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		Globals, ContInfo0, ContInfo, CellCount0, CellCount,
+		Globals, GlobalData0, GlobalData, CellCount0, CellCount,
 		[], Code) },
 	{ module_info_set_cell_count(ModuleInfo0, CellCount, ModuleInfo1) },
-	{ module_info_set_continuation_info(ModuleInfo1, ContInfo, 
+	{ module_info_set_global_data(ModuleInfo1, GlobalData, 
 		ModuleInfo) }.
 
 	% Translate all the procedures of a HLDS predicate to LLDS.
 
 :- pred generate_proc_list_code(list(proc_id)::in, pred_id::in, pred_info::in,
-	module_info::in, globals::in,
-	continuation_info::in, continuation_info::out, int::in, int::out,
-	list(c_procedure)::in, list(c_procedure)::out) is det.
+	module_info::in, globals::in, global_data::in, global_data::out,
+	int::in, int::out, list(c_procedure)::in, list(c_procedure)::out)
+	is det.
 
 generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo, _Globals,
-		ContInfo, ContInfo, CellCount, CellCount, Procs, Procs).
+		GlobalData, GlobalData, CellCount, CellCount, Procs, Procs).
 generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
-		Globals, ContInfo0, ContInfo, CellCount0, CellCount,
+		Globals, GlobalData0, GlobalData, CellCount0, CellCount,
 		Procs0, Procs) :-
 	pred_info_procedures(PredInfo, ProcInfos),
 	map__lookup(ProcInfos, ProcId, ProcInfo),
 	generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo0,
-		Globals, ContInfo0, ContInfo1, CellCount0, CellCount1, Proc),
+		Globals, GlobalData0, GlobalData1, CellCount0, CellCount1,
+		Proc),
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		Globals, ContInfo1, ContInfo, CellCount1, CellCount,
+		Globals, GlobalData1, GlobalData, CellCount1, CellCount,
 		[Proc | Procs0], Procs).
 
 %---------------------------------------------------------------------------%
@@ -170,7 +171,7 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 %---------------------------------------------------------------------------%
 
 generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
-		ContInfo0, ContInfo, CellCount0, CellCount, Proc) :-
+		GlobalData0, GlobalData, CellCount0, CellCount, Proc) :-
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_goal(ProcInfo, Goal),
@@ -230,15 +231,16 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	),
 	( BasicStackLayout = yes ->
 			% Create the procedure layout structure.
-		code_info__get_layout_info(LayoutInfo, CodeInfo, _),
+		code_info__get_layout_info(InternalMap, CodeInfo, _),
 		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 			no, EntryLabel),
-		continuation_info__add_proc_info(proc(PredId, ProcId),
-			EntryLabel, TotalSlots, Detism, MaybeSuccipSlot,
-			MaybeTraceCallLabel, TraceSlotInfo,
-			ForceProcId, LayoutInfo, ContInfo0, ContInfo)
+		ProcLayout = proc_layout_info(EntryLabel, Detism, TotalSlots,
+			MaybeSuccipSlot, MaybeTraceCallLabel,
+			TraceSlotInfo, ForceProcId, InternalMap),
+		global_data_add_new_proc_layout(GlobalData0,
+			proc(PredId, ProcId), ProcLayout, GlobalData)
 	;
-		ContInfo = ContInfo0
+		GlobalData = GlobalData0
 	),
 
 	predicate_name(ModuleInfo, PredId, Name),

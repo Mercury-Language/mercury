@@ -45,6 +45,11 @@
 				% class instance, a string encoding the type
 				% names and arities of the arguments to the
 				% instance declaration 
+			;	tabling_pointer_const(pred_id, proc_id)
+				% The address of the static variable
+				% that points to the table that implements
+				% memoization, loop checking or the minimal
+				% model semantics for the given procedure.
 			.
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
@@ -127,6 +132,8 @@ cons_id_arity(base_type_info_const(_, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_type_info_const").
 cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
+cons_id_arity(tabling_pointer_const(_, _), _) :-
+	error("cons_id_arity: can't get arity of tabling_pointer_const").
 
 make_functor_cons_id(term__atom(Name), Arity,
 		cons(unqualified(Name), Arity)).
@@ -268,6 +275,11 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% third is the string which uniquely identifies the
 			% instance declaration (it is made from the type of
 			% the arguments to the instance decl).
+	;	tabling_pointer_constant(pred_id, proc_id)
+			% This is how we refer to tabling pointer variables
+			% represented as global data. The word just contains
+			% the address of the tabling pointer of the
+			% specified procedure.
 	;	simple_tag(tag_bits)
 			% This is for constants or functors which only
 			% require a simple tag.  (A "simple" tag is one

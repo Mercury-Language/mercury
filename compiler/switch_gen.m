@@ -213,6 +213,7 @@ switch_gen__priority(pred_closure_tag(_, _), 6).	% should never occur
 switch_gen__priority(code_addr_constant(_, _), 6).	% should never occur
 switch_gen__priority(base_type_info_constant(_, _, _), 6).% should never occur
 switch_gen__priority(base_typeclass_info_constant(_, _, _), 6).% shouldn't occur
+switch_gen__priority(tabling_pointer_constant(_, _), 6). % shouldn't occur
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

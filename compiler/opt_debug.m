@@ -712,6 +712,9 @@ opt_debug__dump_data_name(proc_layout(Label), Str) :-
 opt_debug__dump_data_name(internal_layout(Label), Str) :-
 	opt_debug__dump_label(Label, LabelStr),
 	string__append_list(["internal_layout(", LabelStr, ")"], Str).
+opt_debug__dump_data_name(tabling_pointer(ProcLabel), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["tabling_pointer(", ProcLabelStr, ")"], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

@@ -168,7 +168,7 @@ output_llds(C_File, StackLayoutLabels) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
 		{ C_File = c_file(ModuleName, C_HeaderInfo,
-			UserCCodes, Exports, Datas, Modules) },
+			UserCCodes, Exports, Vars, Datas, Modules) },
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
 		output_split_c_file_init(ModuleName, Modules, Datas,
@@ -177,10 +177,12 @@ output_llds(C_File, StackLayoutLabels) -->
 			C_HeaderInfo, StackLayoutLabels, 1, Num1),
 		output_split_c_exports(Exports, ModuleName,
 			C_HeaderInfo, StackLayoutLabels, Num1, Num2),
-		output_split_comp_gen_c_datas(Datas, ModuleName,
+		output_split_comp_gen_c_vars(Vars, ModuleName,
 			C_HeaderInfo, StackLayoutLabels, Num2, Num3),
+		output_split_comp_gen_c_datas(Datas, ModuleName,
+			C_HeaderInfo, StackLayoutLabels, Num3, Num4),
 		output_split_comp_gen_c_modules(Modules, ModuleName,
-			C_HeaderInfo, StackLayoutLabels, Num3, _Num)
+			C_HeaderInfo, StackLayoutLabels, Num4, _Num)
 	;
 		output_single_c_file(C_File, no, StackLayoutLabels)
 	).
@@ -192,7 +194,8 @@ output_llds(C_File, StackLayoutLabels) -->
 output_split_user_c_codes([], _, _, _, Num, Num) --> [].
 output_split_user_c_codes([UserCCode | UserCCodes], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
-	{ CFile = c_file(ModuleName, C_HeaderLines, [UserCCode], [], [], []) },
+	{ CFile = c_file(ModuleName, C_HeaderLines,
+		[UserCCode], [], [], [], []) },
 	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
 	{ Num1 is Num0 + 1 },
 	output_split_user_c_codes(UserCCodes, ModuleName, C_HeaderLines,
@@ -205,10 +208,24 @@ output_split_user_c_codes([UserCCode | UserCCodes], ModuleName, C_HeaderLines,
 output_split_c_exports([], _, _, _, Num, Num) --> [].
 output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
-	{ CFile = c_file(ModuleName, C_HeaderLines, [], [Export], [], []) },
+	{ CFile = c_file(ModuleName, C_HeaderLines,
+		[], [Export], [], [], []) },
 	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
 	{ Num1 is Num0 + 1 },
 	output_split_c_exports(Exports, ModuleName, C_HeaderLines,
+		StackLayoutLabels, Num1, Num).
+
+:- pred output_split_comp_gen_c_vars(list(comp_gen_c_var)::in,
+	module_name::in, list(c_header_code)::in, set_bbbtree(label)::in,
+	int::in, int::out, io__state::di, io__state::uo) is det.
+
+output_split_comp_gen_c_vars([], _, _, _, Num, Num) --> [].
+output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
+		StackLayoutLabels, Num0, Num) -->
+	{ CFile = c_file(ModuleName, C_HeaderLines, [], [], [Var], [], []) },
+	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
+	{ Num1 is Num0 + 1 },
+	output_split_comp_gen_c_vars(Vars, ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_comp_gen_c_datas(list(comp_gen_c_data)::in,
@@ -218,7 +235,7 @@ output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
 output_split_comp_gen_c_datas([], _, _, _, Num, Num) --> [].
 output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
-	{ CFile = c_file(ModuleName, C_HeaderLines, [], [], [Data], []) },
+	{ CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [Data], []) },
 	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
 	{ Num1 is Num0 + 1 },
 	output_split_comp_gen_c_datas(Datas, ModuleName, C_HeaderLines,
@@ -231,7 +248,8 @@ output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
 output_split_comp_gen_c_modules([], _, _, _, Num, Num) --> [].
 output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
-	{ CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [Module]) },
+	{ CFile = c_file(ModuleName, C_HeaderLines,
+		[], [], [], [], [Module]) },
 	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
 	{ Num1 is Num0 + 1 },
 	output_split_comp_gen_c_modules(Modules, ModuleName, C_HeaderLines,
@@ -296,7 +314,7 @@ output_c_file_mercury_headers -->
 
 output_single_c_file(CFile, SplitFiles, StackLayoutLabels) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines,
-		UserCCode, Exports, Datas, Modules) },
+		UserCCode, Exports, Vars, Datas, Modules) },
 	( { SplitFiles = yes(Num) } ->
 		module_name_to_split_c_file_name(ModuleName, Num, ".c",
 			FileName)
@@ -334,11 +352,11 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels) -->
 		{ gather_c_file_labels(Modules, Labels) },
 		{ decl_set_init(DeclSet0) },
 		output_c_label_decl_list(Labels, DeclSet0, DeclSet1),
-		output_c_data_def_list(Datas, DeclSet1, DeclSet2),
-
-		output_comp_gen_c_data_list(Datas, DeclSet2, DeclSet3),
+		output_comp_gen_c_var_list(Vars, DeclSet1, DeclSet2),
+		output_c_data_def_list(Datas, DeclSet2, DeclSet3),
+		output_comp_gen_c_data_list(Datas, DeclSet3, DeclSet4),
 		output_comp_gen_c_module_list(Modules, StackLayoutLabels,
-			DeclSet3, _DeclSet),
+			DeclSet4, _DeclSet),
 		output_user_c_code_list(UserCCode),
 		output_exported_c_functions(Exports),
 
@@ -619,6 +637,25 @@ output_comp_gen_c_module(comp_gen_c_module(ModuleName, Procedures),
 	globals__io_lookup_bool_option(emit_c_loops, EmitCLoops),
 	output_c_procedure_list(Procedures, PrintComments, EmitCLoops),
 	io__write_string("END_MODULE\n").
+
+:- pred output_comp_gen_c_var_list(list(comp_gen_c_var)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_comp_gen_c_var_list([], DeclSet, DeclSet) --> [].
+output_comp_gen_c_var_list([Var | Vars], DeclSet0, DeclSet) -->
+	output_comp_gen_c_var(Var, DeclSet0, DeclSet1),
+	output_comp_gen_c_var_list(Vars, DeclSet1, DeclSet).
+
+:- pred output_comp_gen_c_var(comp_gen_c_var::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
+		DeclSet0, DeclSet) -->
+	io__write_string("\nWord mercury_var__tabling__"),
+	output_proc_label(ProcLabel),
+	io__write_string(" = 0;\n"),
+	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
+	{ decl_set_insert(DeclSet0, data_addr(DataAddr), DeclSet) }.
 
 :- pred output_comp_gen_c_data_list(list(comp_gen_c_data)::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
@@ -2123,6 +2160,7 @@ data_name_would_include_code_address(base_type(functors, _, _), no).
 data_name_would_include_code_address(base_typeclass_info(_, _), yes).
 data_name_would_include_code_address(proc_layout(_), yes).
 data_name_would_include_code_address(internal_layout(_), no).
+data_name_would_include_code_address(tabling_pointer(_), no).
 
 :- pred output_decl_id(decl_id, io__state, io__state).
 :- mode output_decl_id(in, di, uo) is det.
@@ -2487,6 +2525,7 @@ linkage(base_type(functors, _, _), static).
 linkage(base_typeclass_info(_, _), extern).
 linkage(proc_layout(_),            static).
 linkage(internal_layout(_),        static).
+linkage(tabling_pointer(_),        static).
 
 %-----------------------------------------------------------------------------%
 
@@ -2711,15 +2750,17 @@ llds_out__make_stack_layout_name(Label, Name) :-
 :- mode output_data_addr(in, in, di, uo) is det.
 
 output_data_addr(ModuleName, VarName) -->
-	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
-	io__write_string("mercury_data_"),
 	(
+		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+		io__write_string("mercury_data_"),
 		{ VarName = common(N) },
 		io__write_string(MangledModuleName),
 		io__write_string("__common_"),
 		{ string__int_to_string(N, NStr) },
 		io__write_string(NStr)
 	;
+		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+		io__write_string("mercury_data_"),
 		{ VarName = base_type(BaseData, TypeName0, TypeArity) },
 		io__write_string(MangledModuleName),
 		{ llds_out__make_base_type_name(BaseData, TypeName0, TypeArity,
@@ -2735,18 +2776,22 @@ output_data_addr(ModuleName, VarName) -->
 		{ VarName = base_typeclass_info(ClassId, TypeNames) },
 		{ llds_out__make_base_typeclass_info_name(ClassId, TypeNames, 
 			Str) },
-		io__write_string("__"),
+		io__write_string("mercury_data___"),
 		io__write_string(Str)
 	;
 		% Keep this code in sync with make_stack_layout_name/3.
 		{ VarName = proc_layout(Label) },
-		io__write_string("_layout__"),
+		io__write_string("mercury_data__layout__"),
 		output_label(Label)
 	;
 		% Keep this code in sync with make_stack_layout_name/3.
 		{ VarName = internal_layout(Label) },
-		io__write_string("_layout__"),
+		io__write_string("mercury_data__layout__"),
 		output_label(Label)
+	;
+		{ VarName = tabling_pointer(ProcLabel) },
+		io__write_string("mercury_var__tabling__"),
+		output_proc_label(ProcLabel)
 	).
 
 :- pred output_label_as_code_addr(label, io__state, io__state).

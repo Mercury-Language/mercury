@@ -1159,13 +1159,11 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	write_proc_progress_message(
 		"% Generating low-level (LLDS) code for ",
 				PredId, ProcId, ModuleInfo3),
-	{ module_info_get_continuation_info(ModuleInfo3, ContInfo0) },
+	{ module_info_get_global_data(ModuleInfo3, GlobalData0) },
 	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
 	{ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo3,
-		Globals, ContInfo0, ContInfo1, CellCount0, CellCount, Proc0) },
-	{ module_info_set_continuation_info(ModuleInfo3, ContInfo1, 
-		ModuleInfo4) },
-	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo5) },
+		Globals, GlobalData0, GlobalData1, CellCount0, CellCount,
+		Proc0) },
 	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
 	( { Optimize = yes } ->
 		optimize__proc(Proc0, Proc)
@@ -1173,14 +1171,13 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 		{ Proc = Proc0 }
 	),
 	{ Proc = c_procedure(_, _, PredProcId, Instructions) },
-	{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
 	write_proc_progress_message(
 		"% Generating call continuation information for ",
-			PredId, ProcId, ModuleInfo5),
+			PredId, ProcId, ModuleInfo3),
 	{ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
-		ModuleInfo5, ContInfo2, ContInfo3) },
-	{ module_info_set_continuation_info(ModuleInfo5, ContInfo3, 
-		ModuleInfo) }.
+		ModuleInfo3, GlobalData1, GlobalData2) },
+	{ module_info_set_global_data(ModuleInfo3, GlobalData2, ModuleInfo4) },
+	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1831,11 +1828,10 @@ mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose,
 	maybe_write_string(Verbose,
 		"% Generating call continuation information..."),
 	maybe_flush_output(Verbose),
-	{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
+	{ module_info_get_global_data(ModuleInfo0, GlobalData0) },
 	{ continuation_info__maybe_process_llds(LLDS0, ModuleInfo0,
-		ContInfo0, ContInfo) },
-	{ module_info_set_continuation_info(ModuleInfo0, ContInfo,
-		ModuleInfo) },
+		GlobalData0, GlobalData) },
+	{ module_info_set_global_data(ModuleInfo0, GlobalData, ModuleInfo) },
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 
@@ -1875,6 +1871,7 @@ get_c_interface_info(HLDS, C_InterfaceInfo) :-
 mercury_compile__output_pass(HLDS0, Procs0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
+	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
 	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
 	{ base_type_layout__generate_llds(HLDS0, HLDS1, BaseTypeLayouts) },
 	{ stack_layout__generate_llds(HLDS1, HLDS,
@@ -1882,10 +1879,10 @@ mercury_compile__output_pass(HLDS0, Procs0, ModuleName, CompileErrors) -->
 	{ list__append(InternalLayouts, BaseTypeLayouts, StaticData0) },
 	{ llds_common(Procs0, StaticData0, ModuleName, Procs1, StaticData) },
 	{ list__condense([BaseTypeInfos, ProcLayouts, StaticData], AllData) },
-
-	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
-	mercury_compile__construct_c_file(C_InterfaceInfo, Procs1, AllData,
-		CFile, NumChunks),
+	{ module_info_get_global_data(HLDS1, GlobalData) },
+	{ global_data_get_all_proc_vars(GlobalData, GlobalVars) },
+	mercury_compile__construct_c_file(C_InterfaceInfo, Procs1, GlobalVars,
+		AllData, CFile, NumChunks),
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
 		Verbose, Stats),
 
@@ -1903,11 +1900,13 @@ mercury_compile__output_pass(HLDS0, Procs0, ModuleName, CompileErrors) -->
 	% Split the code up into bite-size chunks for the C compiler.
 
 :- pred mercury_compile__construct_c_file(c_interface_info, list(c_procedure),
-	list(comp_gen_c_data), c_file, int, io__state, io__state).
-:- mode mercury_compile__construct_c_file(in, in, in, out, out, di, uo) is det.
+	list(comp_gen_c_var), list(comp_gen_c_data), c_file, int,
+	io__state, io__state).
+:- mode mercury_compile__construct_c_file(in, in, in, in, out, out, di, uo)
+	is det.
 
-mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, AllData, CFile,
-		ComponentCount) -->
+mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
+		AllData, CFile, ComponentCount) -->
 	{ C_InterfaceInfo = c_interface_info(ModuleSymName,
 		C_HeaderCode0, C_BodyCode0, C_ExportDecls, C_ExportDefns) },
 	{ llds_out__sym_name_mangle(ModuleSymName, MangledModuleName) },
@@ -1926,14 +1925,15 @@ mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, AllData, CFile,
 	),
 	maybe_add_header_file_include(C_ExportDecls, ModuleSymName,
 		C_HeaderCode0, C_HeaderCode),
-	{ CFile = c_file(ModuleSymName, C_HeaderCode,
-		C_BodyCode, C_ExportDefns, AllData, ChunkedModules) },
+	{ CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode,
+		C_ExportDefns, GlobalVars, AllData, ChunkedModules) },
 	{ list__length(C_BodyCode, UserCCodeCount) },
 	{ list__length(C_ExportDefns, ExportCount) },
+	{ list__length(GlobalVars, CompGenVarCount) },
 	{ list__length(AllData, CompGenDataCount) },
 	{ list__length(ChunkedModules, CompGenCodeCount) },
 	{ ComponentCount is UserCCodeCount + ExportCount
-		+ CompGenDataCount + CompGenCodeCount }.
+		+ CompGenVarCount + CompGenDataCount + CompGenCodeCount }.
 
 :- pred maybe_add_header_file_include(c_export_decls, module_name,
 	c_header_info, c_header_info, io__state, io__state).

@@ -669,6 +669,8 @@ code_util__cons_id_to_tag(base_type_info_const(M,T,A), _, _,
 		base_type_info_constant(M,T,A)).
 code_util__cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _,
 		base_typeclass_info_constant(M,C,N)).
+code_util__cons_id_to_tag(tabling_pointer_const(PredId,ProcId), _, _,
+		tabling_pointer_constant(PredId,ProcId)).
 code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	(
 			% handle the `character' type specially
