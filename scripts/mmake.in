@@ -135,6 +135,6 @@ export MERCURY_INT_DIR
 export MERCURY_DEFAULT_GRADE
 cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} > $tmp
 case $# in
-	0) ${MMAKE_MAKE} -f $tmp -r ;;
-	*) ${MMAKE_MAKE} -f $tmp -r "$@" ;;
+	0) exec ${MMAKE_MAKE} -f $tmp -r ;;
+	*) exec ${MMAKE_MAKE} -f $tmp -r "$@" ;;
 esac
