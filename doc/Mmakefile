@@ -139,7 +139,8 @@ doc.ps.tar.gz: ps
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: install_info install_html install_dvi
+install: install_info install_html install_dvi install_manpages
+	# install_text install_ps
 
 .PHONY: install_info
 install_info: info
@@ -205,12 +206,16 @@ distclean:
 clean_texi:
 	rm -f library-menu.texi library-chapters.texi
 
-realclean: realclean_texi
+realclean: realclean_texi realclean_manpages
 
 .PHONY: realclean_texi
 realclean_texi:
 	rm -f library*.html user_guide*.html reference_manual*.html
 	rm -f faq*.html transition_guide*.html
 	rm -f mercury_*.info* *.dvi *.text *.ps
+
+.PHONY: realclean_manpages
+realclean_manpages:
+	rm -f *.1
 
 #-----------------------------------------------------------------------------#
