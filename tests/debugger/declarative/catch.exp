@@ -20,7 +20,7 @@ Valid? no
 Call q(1, _)
 Throws "q: bad input"
 Expected? no
-Found unhandled exception:
+Found unhandled or incorrect exception:
 q(1, _)
 "q: bad input"
 Is this a bug? yes

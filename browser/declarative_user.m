@@ -809,8 +809,8 @@ write_decl_bug(e_bug(EBug), User, !IO) :-
 		write_decl_init_atom(User, "", decl_caller_type, Atom, !IO)
 	;
 		EBug = unhandled_exception(Atom, ExceptionRep, _),
-		io.write_string(User ^ outstr, "Found unhandled exception:\n",
-			!IO),
+		io.write_string(User ^ outstr, 
+			"Found unhandled or incorrect exception:\n", !IO),
 		write_decl_init_atom(User, "", decl_caller_type, Atom, !IO),
 		term_rep.rep_to_univ(ExceptionRep, Exception),
 		io.write(User ^ outstr, include_details_cc,
