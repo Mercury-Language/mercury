@@ -717,7 +717,8 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 		ModuleName, " : $(", ModuleName, ".os) ",
 				ModuleName, "_init.o\n",
 		"\t$(ML) -s $(GRADE) $(MLFLAGS) -o ", ModuleName, " ",
-			ModuleName, "_init.o $(", ModuleName, ".os)\n\n",
+			ModuleName, "_init.o \\\n",
+			"\t$(", ModuleName, ".os) $(MLLIBS)\n\n",
 
 		ModuleName, "_init.c :\n",
 		"\t$(C2INIT) $(C2INITFLAGS) $(", ModuleName, ".ms) > ",
