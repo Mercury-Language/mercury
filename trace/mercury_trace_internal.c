@@ -3314,8 +3314,8 @@ MR_trace_cmd_print_optionals(char **words, int word_count,
 			MR_print_optionals);
 	} else if (word_count == 1)  {
 		fprintf(MR_mdb_out,
-			"optional values are %s being printed\n",
-			MR_print_optionals? "" : "not");
+			"optional values are %sbeing printed\n",
+			MR_print_optionals? "" : "not ");
 	} else {
 		MR_trace_usage("developer", "print_optionals");
 	}
