@@ -59,6 +59,7 @@ ORDINARY_PROGS=	\
 	foreign_import_module \
 	foreign_type \
 	foreign_type2 \
+	foreign_type3 \
 	frameopt_pragma_redirect \
 	free_free_mode \
 	func_and_pred \

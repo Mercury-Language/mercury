@@ -1,4 +1,6 @@
-:- module foreign_type.
+% This tests (not very well) the use of C enum and struct foreign types.
+
+:- module foreign_type3.
 
 :- interface.
 
