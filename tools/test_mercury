@@ -102,10 +102,14 @@ case $INSTALL_DIR_NAME in
 		RELEASE_VERSION_PATTERN=rotd-*
 		;;
 	mercury-0.10)
-		CHECKOUT_OPTS=-rversion-0_10_x
-		BASE_TAG_NAME=version-0_10_x
-		RELEASE_VERSION=0.10-beta-$DATE
-		RELEASE_VERSION_PATTERN=0.10-beta-*
+		#CHECKOUT_OPTS=-rversion-0_10
+		#BASE_TAG_NAME=version-0_10_y
+		#RELEASE_VERSION=0.10
+		#RELEASE_VERSION_PATTERN=0.10-*
+		CHECKOUT_OPTS=-rversion-0_10_y
+		BASE_TAG_NAME=version-0_10_y
+		RELEASE_VERSION=0.10.1-beta-$DATE
+		RELEASE_VERSION_PATTERN=0.10.1-beta-*
 		;;
 esac
 
@@ -718,13 +722,17 @@ cd ..
 : update the unstable release
 
 case $HOST in murlibobo)
-	# XXX should remove old files
 	rsh $BETA_FTPHOST \
-		"echo rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
+		"rm -f $BETA_FTPDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
+	rsh $BETA_FTPHOST \
+		"rm -f $BETA_FTPDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
+	rsh $BETA_FTPHOST \
+		"rm -f $BETA_FTPDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
 	rcp $INSTALL_DIR_NAME-unstable/mercury-*-$version-unstable.tar.gz \
 		$BETA_FTPHOST:$BETA_FTPDIR 
-	# XXX should remove old files
-	echo rm -f $BETA_WEBDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
+	rm -f $BETA_WEBDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
+	rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
+	rm -f $BETA_WEBDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	cp $INSTALL_DIR_NAME-unstable/mercury-*-$version-unstable.tar.gz \
 		$BETA_WEBDIR
 	;;
@@ -844,9 +852,9 @@ case $status in
 	    $LN $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-tests-$version.tar.gz" &&
 
-		# XXX should remove old files
-	    echo rm -f $BETA_WEBDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
-	    echo rm -f $BETA_WEBDIR/mercury-*-$version.tar.gz && 
+	    rm -f $BETA_WEBDIR/mercury-compiler-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    rm -f $BETA_WEBDIR/mercury-tests-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
 	    $LN $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_WEBDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
