@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,7 +102,7 @@ in the general case.
 
 :- implementation.
 :- import_module hlds_data, inst_match, mode_util, det_analysis.
-:- import_module bool, std_util, require, map, list, set.
+:- import_module bool, std_util, require, map, list, set, int.
 
 	% Abstractly unify two insts.
 
@@ -517,7 +517,7 @@ abstractly_unify_inst_functor_2(dead, ground(Uniq, _), ConsId, ArgInsts,
 abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, ModuleInfo0, L, Det,
 		ModuleInfo) :-
 	abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
-		ModuleInfo0, L, Det0, ModuleInfo),
+		ModuleInfo0, 0, L, Det0, ModuleInfo),
 	( L = [] ->
 		det_par_conjunction_detism(Det0, erroneous, Det)
 	;
@@ -525,24 +525,39 @@ abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, ModuleInfo0, L, Det,
 	).
 
 :- pred abstractly_unify_bound_inst_list_2(is_live, list(bound_inst),
-		list(bound_inst), unify_is_real, module_info,
+		list(bound_inst), unify_is_real, module_info, int,
 		list(bound_inst), determinism, module_info).
-:- mode abstractly_unify_bound_inst_list_2(in, in, in, in, in,
+:- mode abstractly_unify_bound_inst_list_2(in, in, in, in, in, in,
 		out, out, out) is semidet.
 
-abstractly_unify_bound_inst_list_2(_, [], [], _, ModuleInfo, [], det,
-		ModuleInfo).
-abstractly_unify_bound_inst_list_2(_, [], [_|_], _, M, [], semidet, M).
-abstractly_unify_bound_inst_list_2(_, [_|_], [], _, M, [], semidet, M).
+abstractly_unify_bound_inst_list_2(_, [], [], _, ModuleInfo, N, [], Det,
+		ModuleInfo) :-
+	(
+			% The only time an abstract unification should
+			% be det, is when both of the bound_inst lists
+			% are of length one and have the same cons_ids.
+			%
+			% If N=0, we need to make the determinism det
+			% so that determinism is inferred as erroneous
+			% rather then failure in 
+			% abstractly_unify_bound_inst_list
+		N =< 1
+	->
+		Det = det
+	;
+		Det = semidet
+	).
+abstractly_unify_bound_inst_list_2(_, [], [_|_], _, M, _, [], semidet, M).
+abstractly_unify_bound_inst_list_2(_, [_|_], [], _, M, _, [], semidet, M).
 abstractly_unify_bound_inst_list_2(Live, [X|Xs], [Y|Ys], Real, ModuleInfo0,
-		L, Det, ModuleInfo) :-
+		N, L, Det, ModuleInfo) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
 	( ConsIdX = ConsIdY ->
 		abstractly_unify_inst_list(ArgsX, ArgsY, Live, Real,
 			ModuleInfo0, Args, Det1, ModuleInfo1),
 		abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
-					ModuleInfo1, L1, Det2, ModuleInfo),
+					ModuleInfo1, N+1, L1, Det2, ModuleInfo),
 
 		% If the unification of the two cons_ids is guaranteed
 		% not to succeed, don't include it in the list.
@@ -556,10 +571,10 @@ abstractly_unify_bound_inst_list_2(Live, [X|Xs], [Y|Ys], Real, ModuleInfo0,
 	;
 		( compare(<, ConsIdX, ConsIdY) ->
 			abstractly_unify_bound_inst_list_2(Live, Xs, [Y|Ys],
-				Real, ModuleInfo0, L, Det1, ModuleInfo)
+				Real, ModuleInfo0, N+1, L, Det1, ModuleInfo)
 		;
 			abstractly_unify_bound_inst_list_2(Live, [X|Xs], Ys,
-				Real, ModuleInfo0, L, Det1, ModuleInfo)
+				Real, ModuleInfo0, N+1, L, Det1, ModuleInfo)
 		),
 		det_par_conjunction_detism(Det1, semidet, Det)
 	).
