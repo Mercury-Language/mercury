@@ -1255,6 +1255,8 @@ mlds_output_atomic_stmt(Indent, NewObject, Context) -->
 	{ NewObject = new_object(Target, MaybeTag, Type, MaybeSize,
 		MaybeCtorName, Args, ArgTypes) },
 	mlds_indent(Indent),
+	io__write_string("{\n"),
+	mlds_indent(Indent + 1),
 	mlds_output_lval(Target),
 	io__write_string(" = "),
 	( { MaybeTag = yes(Tag0) } ->
@@ -1287,7 +1289,10 @@ mlds_output_atomic_stmt(Indent, NewObject, Context) -->
 	io__write_string(")"),
 	io__write_string(EndMkword),
 	io__write_string(";\n"),
-	mlds_output_init_args(Args, ArgTypes, Context, 0, Target, Tag, Indent).
+	mlds_output_init_args(Args, ArgTypes, Context, 0, Target, Tag,
+		Indent + 1),
+	mlds_indent(Indent),
+	io__write_string("}\n").
 
 mlds_output_atomic_stmt(Indent, mark_hp(Lval), _) -->
 	mlds_indent(Indent),
