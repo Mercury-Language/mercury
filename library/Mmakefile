@@ -204,6 +204,7 @@ lib_std: mercury.dll
 RUNTIME_DLLS=mercury_mcpp.dll mercury_il.dll
 
 # Turn this on if you wish to enable .NET debugging.
+# But see the comments below about the install_debug_library target.
 DEBUG_MS_ILASMFLAGS=
 #DEBUG_MS_ILASMFLAGS=/debug
 #DEBUG_MS_CLFLAGS=/Zi
@@ -382,19 +383,19 @@ install_library: mercury.dll install_grade_dirs install_gac install_strong_name
 #
 # XXX Unfortunately, however, this is a problem with AL, which prohibits
 # linking debuggable C# code with IL or MC++ code.  The following
-# horrible hack avoids that problem.  After modify Mmake.params as
+# horrible hack avoids that problem.  After modifying Mmake.params as
 # described above, invoke `mmake install_debug_library'.
 
 .PHONY: install_debug_library
 install_debug_library:
-	-mmake library
-	mmake munge_dll_debug_info
-	mmake install_library
+	-$(MMAKE) $(MMAKEFLAGS)
+	$(MMAKE) $(MMAKEFLAGS) munge_dll_debug_info
+	$(MMAKE) $(MMAKEFLAGS) install_library
 
 .PHONY: munge_dll_debug_info
 munge_dll_debug_info:
 	for file in *csharp_code.dll; do \
-		ildasm /out:$$file.ild; \
+		ildasm /out:$$file.ild $$file; \
 		sed  's/01 00 00 01/01 00 01 01/' $$file.ild \
 			> $$file.ild.munged; \
 		ilasm /quiet /dll /debug /out:$$file $$file.ild.munged; \
