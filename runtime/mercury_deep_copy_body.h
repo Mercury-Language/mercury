@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -343,7 +343,7 @@ copy_type_info(maybeconst Word *type_info_ptr, const Word *lower_limit,
 		new_type_info[0] = type_info[0];
 		for (i = 1; i < arity + 1; i++) {
 			new_type_info[i] = (Word) copy_type_info(
-				(Word *) type_info[i],
+				&type_info[i],
 				lower_limit, upper_limit);
 		}
                 leave_forwarding_pointer(type_info_ptr, (Word) new_type_info);
