@@ -167,10 +167,8 @@ echo "current directory `pwd`" 1>&2
 case $status in 0)
     cd mercury/stage2 || { false; exit 1; }
     case $HOST in
-	muse)
+	muse|munta)
 		# see README.IRIX for an explanation of these contortions
-		# Note that we can't do this for $HOST = munta, because munta
-		# does not have the non-shared C library installed.
 		
 		mmake install LIBGRADES="asm_fast.gc.prof asm_fast" \
 			MMAKEFLAGS=$PARALLEL || status=1
