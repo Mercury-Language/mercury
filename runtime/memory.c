@@ -751,13 +751,13 @@ null_handler(Word *fault_addr, MemoryZone *zone, void *context)
 static void
 setup_signal(void)
 {
-	if (signal(SIGBUS, (void(*)(int))complex_sighandler) == SIG_ERR)
+	if (signal(SIGBUS, (void(*)(int)) complex_sighandler) == SIG_ERR)
 	{
 		perror("cannot set SIGBUS handler");
 		exit(1);
 	}
 
-	if (signal(SIGSEGV, (void(*)(int))complex_sighandler) == SIG_ERR)
+	if (signal(SIGSEGV, (void(*)(int)) complex_sighandler) == SIG_ERR)
 	{
 		perror("cannot set SIGSEGV handler");
 		exit(1);
