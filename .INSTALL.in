@@ -32,6 +32,15 @@
 #	   The output from this stage will be automatically saved in the
 #	   file `make_install.log'.
 #
+#	   BEWARE: if something goes wrong in this step, e.g. running
+#	   out of disk space, and the installation has already gotten
+#	   past installing the documentation, and started installing
+#	   the different grades of the libraries (in particular if
+#	   `grep install_text make_install.log' prints out something
+#	   like `# install_text install_ps') then in general it is NOT
+#	   sufficient to simply rerun `make install'.  Instead you
+#	   may need to start from scratch again.
+#
 # Step 4.  Check the permissions on the installed files.
 #	   Add /usr/local/mercury-@VERSION@/bin to your PATH, and
 #	   add /usr/local/mercury-@VERSION@/man to your MANPATH.
