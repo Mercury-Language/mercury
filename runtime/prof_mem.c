@@ -12,6 +12,8 @@
 */
 
 
+#include <stdio.h>
+
 #include "std.h"
 #include "prof_mem.h"
 
