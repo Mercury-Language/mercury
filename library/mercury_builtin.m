@@ -197,7 +197,11 @@
 	% compare(Res, X, Y) binds Res to =, <, or >
 	% depending on whether X is =, <, or > Y in the
 	% standard ordering.
-:- pred compare(comparison_result::out, T::in, T::in) is det.
+:- pred compare(comparison_result, T, T).
+:- mode compare(uo, ui, ui) is det.
+:- mode compare(uo, ui, in) is det.
+:- mode compare(uo, in, ui) is det.
+:- mode compare(uo, in, in) is det.
 
 	% The following three predicates can convert values of any
 	% type to the type `term' and back again.
