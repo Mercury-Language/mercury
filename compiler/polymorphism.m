@@ -170,19 +170,22 @@
 %	type_ctor_info).
 %
 %		The base_typeclass_info contains:
-%		  * the number of constraints on the instance decl.
-%		  * pointer to method #1
+%		  * the number of constraints on the instance decl. (`l')
+%		  * the number of constraints on the typeclass decl. (`m')
+%		  * the number of parameters (type variables) from 
+%		         the typeclass decl. (`n')
+%		  * pointer to first method
 %		    ...
-%		  * pointer to method #n
+%		  * pointer to last method
 %
 %		The typeclass_info contains:
 %		  * a pointer to the base typeclass info
 %		  * typeclass info #1 for constraint on instance decl
 %		  * ...
-%		  * typeclass info #n for constraint on instance decl
+%		  * typeclass info #l for constraint on instance decl
 %		  * typeclass info for superclass #1
 %		    ...
-%		  * typeclass info for superclass #n
+%		  * typeclass info for superclass #m
 %		  * type info #1 
 %		  * ...
 %		  * type info #n
