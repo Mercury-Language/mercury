@@ -5,19 +5,21 @@
 
 #ifdef	HIGHTAGS
 
-#define	mktag(t)	(t << 30)
-#define	tag(w)		(w & 0xc0000000)
-#define	body(w, t)	(w & ~0xc0000000)
-#define	mkword(t, p)	((uint) t | (uint) p)
-#define	field(t, p, i)	(* (Word *) (body(p) + i * WORDSIZE))
+#define	mktag(t)	((t) << 30)
+#define mkbody(i)	(i)
+#define	tag(w)		((w) & 0xc0000000)
+#define	body(w, t)	((w) & ~0xc0000000)
+#define	mkword(t, p)	((uint)(t) | (uint)(p))
+#define	field(t, p, i)	(* (Word *) (body((p), (t)) + (i) * WORDSIZE))
 
 #else
 
 #define	mktag(t)	(t)
-#define	tag(w)		(w & 0x3)
-#define	body(w, t)	(w - t)
-#define	mkword(t, p)	((uint) p | (uint) t)
-#define	field(t, p, i)	(* (Word *) (body(p, t) + i * WORDSIZE))
+#define mkbody(i)	((i) << 2)
+#define	tag(w)		((w) & 0x3)
+#define	body(w, t)	((w) - (t))
+#define	mkword(t, p)	((uint)(t) | (uint)(p))
+#define	field(t, p, i)	(* (Word *) (body((p), (t)) + (i) * WORDSIZE))
 
 #endif
 
