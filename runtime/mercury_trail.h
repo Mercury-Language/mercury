@@ -18,7 +18,10 @@
 
 /*---------------------------------------------------------------------------*/
 /*
-** The following macros that are used to interface with the code generator.
+** The following macros define how to store and retrieve a 'ticket' -
+** the information that we need to be able to backtrack. 
+** This is the interface with the code generator;
+** the macros here are used by the generated code.
 **
 ** MR_store_ticket()
 **	called when creating a choice point, or before a commit
@@ -34,16 +37,13 @@
 */
 /*---------------------------------------------------------------------------*/
 
-/*
-** The following macros define how to store and retrieve a 'ticket' -
-** the  information that we need to be able to backtrack. 
-*/
-
+/* void MR_mark_ticket_stack(Word &); */
 #define MR_mark_ticket_stack(save_ticket_counter)		\
 	do {							\
 		save_ticket_counter = MR_ticket_counter;	\
 	} while(0)
 
+/* void MR_discard_tickets_to(Word); */
 #define MR_discard_tickets_to(save_ticket_counter)		\
 	do {							\
 		MR_ticket_counter = save_ticket_counter;	\
@@ -53,6 +53,7 @@
 	** Called when we create a choice point
 	** (including semidet choice points).
 	*/
+/* void MR_store_ticket(Word &); */
 #define MR_store_ticket(save_trail_ptr)				\
 	do {							\
 		(save_trail_ptr) = (Word) MR_trail_ptr; 	\
@@ -63,6 +64,7 @@
 	  ** Unwind restoration info back to `old'.  `kind' indicates
 	  ** whether we are restoring or just discarding the info.
 	  */
+/* void MR_discard_tickets_to(Word, MR_trail_reason); */
 #define MR_reset_ticket(old, kind)				\
 	do {							\
 		MR_TrailEntry *old_trail_ptr =  		\
@@ -74,11 +76,19 @@
 		}						\
 	} while(0)
 
+/* void MR_discard_tickets_to(void); */
 #define MR_discard_ticket()					\
 	do {							\
 		--MR_ticket_counter;				\
 	} while(0)
 
+/*---------------------------------------------------------------------------*/
+/*
+** The following stuff defines the Mercury trail.
+** All of the stuff in the section below is implementation details.
+** Do not use it.  Instead, use the interface functions/macros
+** defined in the next section.
+*/
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -122,28 +132,53 @@ typedef struct {
 	} MR_union;
 } MR_TrailEntry;
 
-/* Macros for accessing these fields, taking tagging into account.
+/*
+** Macros for accessing these fields, taking tagging into account.
 ** DO NOT ACCESS THE FIELDS DIRECTLY.
 */
+
 #if MR_USE_TAGGED_TRAIL
   #define MR_func_trail_tag mktag(MR_func_entry)
   #define MR_value_trail_tag mktag(MR_val_entry)
+
+  /*
+  ** MR_trail_entry_kind MR_get_trail_entry_kind(const MR_trail_entry *);
+  */
   #define MR_get_trail_entry_kind(entry)				\
 	((MR_trail_entry_kind)						\
 	  (tag((Word) (entry)->MR_union.MR_val.MR_address)))
+
+  /*
+  ** Word * MR_get_trail_entry_address(const MR_trail_entry *);
+  */
   #define MR_get_trail_entry_address(entry) \
 	((Word *)							\
 	  body((entry)->MR_union.MR_val.MR_address, MR_value_trail_tag))
+
+  /*
+  ** MR_untrail_func_type *
+  ** MR_get_trail_entry_untrail_func(const MR_trail_entry *);
+  */
   #define MR_get_trail_entry_untrail_func(entry)			\
 	((MR_untrail_func_type *)					\
 	    body((Word) (entry)->MR_union.MR_func.MR_untrail_func,	\
 		     MR_func_trail_tag))
+
+  /*
+  ** void MR_store_value_trail_entry(
+  **		MR_trail_entry *entry, MR_untrail_func *func, Word datum);
+  */
   #define MR_store_value_trail_entry(entry, address, value)		\
 	  do {								\
 		(entry)->MR_union.MR_val.MR_address =			\
-			(Word) mkword(MR_value_trail_tag, (address));	\
+			(Word *) mkword(MR_value_trail_tag, (address));	\
 		(entry)->MR_union.MR_val.MR_value = (value);		\
 	  } while (0)
+
+  /*
+  ** void MR_store_function_trail_entry(
+  **		MR_trail_entry * func, MR_untrail_func entry, Word datum);
+  */
   #define MR_store_function_trail_entry(entry, func, datum)		\
 	  do {								\
 		(entry)->MR_union.MR_func.MR_untrail_func =		\
@@ -153,16 +188,28 @@ typedef struct {
 	  } while (0)
 #else /* !MR_USE_TAGGED_TRAIL */
   #define MR_get_trail_entry_kind(entry) ((entry)->MR_kind)
+
   #define MR_get_trail_entry_address(entry) \
 	((entry)->MR_union.MR_val.MR_address)
+
   #define MR_get_trail_entry_untrail_func(entry) \
 	((entry)->MR_union.MR_func.MR_untrail_func)
+
+  /*
+  ** void MR_store_value_trail_entry(
+  **		MR_trail_entry *entry, Word *address, Word value);
+  */
   #define MR_store_value_trail_entry(entry, address, value)		\
 	  do {								\
 		(entry)->MR_kind = MR_val_entry;			\
 		(entry)->MR_union.MR_val.MR_address = (address);	\
 		(entry)->MR_union.MR_val.MR_value = (value);		\
 	  } while (0)
+
+  /*
+  ** void MR_store_value_trail_entry_kind(
+  **		MR_trail_entry *entry, MR_untrail_func *func, Word datum);
+  */
   #define MR_store_function_trail_entry(entry, func, datum)		\
 	  do {								\
 		(entry)->MR_kind = MR_func_entry;			\
@@ -170,10 +217,20 @@ typedef struct {
 		(entry)->MR_union.MR_func.MR_datum = (datum);		\
 	  } while (0)
 #endif
+
+/*
+** Word MR_get_trail_entry_value(const MR_trail_entry *);
+*/
 #define MR_get_trail_entry_value(entry) \
 	((entry)->MR_union.MR_val.MR_value)
+
+/*
+** Word MR_get_trail_entry_datum(const MR_trail_entry *);
+*/
 #define MR_get_trail_entry_datum(entry) \
 	((entry)->MR_union.MR_func.MR_datum)
+
+/*---------------------------------------------------------------------------*/
 
 /* The Mercury trail */
 extern MemoryZone *MR_trail_zone;
