@@ -713,7 +713,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	        % Run purity checking
 	        %
 		mercury_compile__puritycheck(FoundTypeError, HLDS3,
-			Verbose, Stats, HLDS4),
+			Verbose, Stats, HLDS4, FoundPostTypecheckError),
 		mercury_compile__maybe_dump_hlds(HLDS4, "04", "puritycheck"),
 
 	        %
@@ -724,7 +724,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		    { HLDS = HLDS4 },
 		    { bool__or(FoundTypeError, FoundTypeclassError,
 		    	FoundError) }
-	        ; { FoundTypeError = yes } ->
+	        ; { FoundTypeError = yes ; FoundPostTypecheckError = yes } ->
 		    %
 		    % XXX it would be nice if we could go on and mode-check
 		    % the predicates which didn't have type errors, but
@@ -1284,12 +1284,13 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__puritycheck(bool, module_info, bool, bool,
-				module_info, io__state, io__state).
-:- mode mercury_compile__puritycheck(in, in, in, in, out, di, uo) is det.
+				module_info, bool, io__state, io__state).
+:- mode mercury_compile__puritycheck(in, in, in, in, out, out, di, uo) is det.
 
-mercury_compile__puritycheck(FoundTypeError, HLDS0, Verbose, Stats, HLDS) -->
+mercury_compile__puritycheck(FoundTypeError, HLDS0, Verbose, Stats,
+		HLDS, FoundPostTypecheckError) -->
 	{ module_info_num_errors(HLDS0, NumErrors0) },
-	puritycheck(FoundTypeError, HLDS0, HLDS),
+	puritycheck(FoundTypeError, HLDS0, FoundPostTypecheckError, HLDS),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors \= NumErrors0 } ->
 		maybe_write_string(Verbose,
