@@ -34,6 +34,7 @@ int		r2val = -1;
 int		r3val = -1;
 
 bool		check_space = FALSE;
+bool		benchmark_all_solns = FALSE;
 
 static	bool	use_own_timer = FALSE;
 static	int	repeats = 1;
@@ -149,39 +150,15 @@ static void process_options(int argc, char **argv)
 	if (default_entry != NULL)
 		which = default_entry;
 
-	while ((c = getopt(argc, argv, "xhcltp:d:r:w:s:z:1:2:3:")) != EOF)
+	while ((c = getopt(argc, argv, "acd:hlp:r:s:tw:xz:1:2:3:")) != EOF)
 	{
 		switch (c)
 		{
 
-		case 'h':	usage();
+		case 'a':	benchmark_all_solns = TRUE;
 				break;
 
 		case 'c':	check_space = TRUE;
-				break;
-
-		case 'l':	label_list = get_all_labels();
-				for_list (ptr, label_list)
-				{
-					Label	*label;
-					label = (Label *) ldata(ptr);
-					printf("%u %x %s\n",
-						(unsigned) label->e_addr,
-						(unsigned) label->e_addr,
-						label->e_name);
-				}
-
-				exit(0);
-
-		case 't':	use_own_timer = TRUE;
-
-				calldebug      = FALSE;
-				nondstackdebug = FALSE;
-				detstackdebug  = FALSE;
-				heapdebug      = FALSE;
-				gotodebug      = FALSE;
-				sregdebug      = FALSE;
-				finaldebug     = FALSE;
 				break;
 
 		case 'd':	if (streq(optarg, "b"))
@@ -229,6 +206,22 @@ static void process_options(int argc, char **argv)
 				use_own_timer = FALSE;
 				break;
 
+		case 'h':	usage();
+				break;
+
+		case 'l':	label_list = get_all_labels();
+				for_list (ptr, label_list)
+				{
+					Label	*label;
+					label = (Label *) ldata(ptr);
+					printf("%u %x %s\n",
+						(unsigned) label->e_addr,
+						(unsigned) label->e_addr,
+						label->e_name);
+				}
+
+				exit(0);
+
 		case 'p':	if (sscanf(optarg, "%d", &pcache_size) != 1)
 					usage();
 
@@ -239,22 +232,6 @@ static void process_options(int argc, char **argv)
 
 		case 'r':	if (sscanf(optarg, "%d", &repeats) != 1)
 					usage();
-
-				break;
-
-		case 'w':
-				{
-					Label *which_label;
-
-					which_label = lookup_label_name(optarg);
-					if (which_label == NULL)
-					{
-						fprintf(stderr, "predicate name %s unknown\n", optarg);
-						exit(1);
-					}
-
-					which = which_label->e_addr;
-				}
 
 				break;
 
@@ -275,6 +252,40 @@ static void process_options(int argc, char **argv)
 
 				break;
 
+		case 't':	use_own_timer = TRUE;
+
+				calldebug      = FALSE;
+				nondstackdebug = FALSE;
+				detstackdebug  = FALSE;
+				heapdebug      = FALSE;
+				gotodebug      = FALSE;
+				sregdebug      = FALSE;
+				finaldebug     = FALSE;
+				break;
+
+		case 'w':
+				{
+					Label *which_label;
+
+					which_label = lookup_label_name(optarg);
+					if (which_label == NULL)
+					{
+						fprintf(stderr, "predicate name %s unknown\n", optarg);
+						exit(1);
+					}
+
+					which = which_label->e_addr;
+				}
+
+				break;
+
+		case 'x':
+#ifdef CONSERVATIVE_GC
+				GC_dont_gc = 1;
+#endif
+
+				break;
+
 		case 'z':	if (sscanf(optarg+1, "%d", &val) != 1)
 					usage();
 
@@ -286,12 +297,6 @@ static void process_options(int argc, char **argv)
 					nondstack_zone_size = val;
 				else
 					usage();
-				break;
-		
-		case 'x':	
-#ifdef CONSERVATIVE_GC
-				GC_dont_gc = 1;
-#endif
 
 				break;
 
@@ -433,7 +438,7 @@ void run_code(void)
 
 #ifdef MEASURE_REGISTER_USAGE
 static void print_register_usage_counts(void)
-{	
+{
 	int	i;
 
 	printf("register usage counts:\n");
@@ -497,7 +502,10 @@ global_success:
 	}
 #endif
 
-	GOTO_LABEL(all_done);
+	if (benchmark_all_solns)
+		redo();
+	else
+		GOTO_LABEL(all_done);
 
 global_fail:
 #ifndef	SPEED
