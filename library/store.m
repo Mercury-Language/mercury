@@ -28,14 +28,19 @@
 
 :- module store.
 :- interface.
+:- import_module io.
 
-% Stores and keys are indexed by a type S that is used to distinguish
-% between different stores.  By using an existential type declaration
-% for store__new (see below), we use the type system to ensure at
-% compile time that you never attempt to use a key from one store
-% to access a different store.
+% Stores and keys are indexed by a type S of typeclass store(S) that
+% is used to distinguish between different stores.  By using an
+% existential type declaration for store__new (see below), we use the
+% type system to ensure at compile time that you never attempt to use
+% a key from one store to access a different store.
 
+:- typeclass store(S).
 :- type store(S).
+
+:- instance store(io__state).
+:- instance store(store(S)).
 
 	% initialize a new store
 :- some [S] pred store__new(store(S)).
@@ -46,21 +51,23 @@
 % mutvars
 %
 
-	% mutvar(T, S):
+	% generic_mutvar(T, S):
 	% a mutable variable holding a value of type T in store S
-:- type mutvar(T, S).
+:- type generic_mutvar(T, S).
+:- type io_mutvar(T) == generic_mutvar(T, io__state).
+:- type store_mutvar(T, S) == generic_mutvar(T, store(S)).
 
 	% create a new mutable variable,
 	% initialized with the specified value
-:- pred store__new_mutvar(T, mutvar(T, S), store(S), store(S)).
+:- pred store__new_mutvar(T, generic_mutvar(T, S), S, S) <= store(S).
 :- mode store__new_mutvar(in, out, di, uo) is det.
 
 	% lookup the value stored in a given mutable variable
-:- pred store__get_mutvar(mutvar(T, S), T, store(S), store(S)).
+:- pred store__get_mutvar(generic_mutvar(T, S), T, S, S) <= store(S).
 :- mode store__get_mutvar(in, out, di, uo) is det.
 
 	% replace the value stored in a given mutable variable
-:- pred store__set_mutvar(mutvar(T, S), T, store(S), store(S)).
+:- pred store__set_mutvar(generic_mutvar(T, S), T, S, S) <= store(S) .
 :- mode store__set_mutvar(in, in, di, uo) is det.
 
 	% new_cyclic_mutvar(Func, Mutvar):
@@ -80,8 +87,8 @@
 	%	init_cl(X, CList) -->
 	%	    store__new_cyclic_mutvar(func(CL) = node(X, CL), CList).
 	%
-:- pred store__new_cyclic_mutvar(func(mutvar(T, S)) = T, mutvar(T, S),
-		store(S), store(S)).
+:- pred store__new_cyclic_mutvar(func(generic_mutvar(T, S)) = T,
+		generic_mutvar(T, S), S, S) <= store(S).
 :- mode store__new_cyclic_mutvar(in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -89,9 +96,11 @@
 % references
 %
 
-	% ref(T, S):
+	% generic_ref(T, S):
 	% a reference to value of type T in store S
-:- type ref(T, S).
+:- type generic_ref(T, S).
+:- type io_ref(T, S) == generic_ref(T, io__state).
+:- type store_ref(T, S) == generic_ref(T, store(S)).
 
 	% new_ref(Val, Ref):	
 	%	/* In C: Ref = malloc(...); *Ref = Val; */
@@ -101,13 +110,14 @@
 	% of the representation of that value.
 	% It does however allocate one cell to hold the reference;
 	% you can use new_arg_ref to avoid that.)
-:- pred store__new_ref(T, ref(T, S), store(S), store(S)).
+:- pred store__new_ref(T, generic_ref(T, S), S, S) <= store(S).
 :- mode store__new_ref(di, out, di, uo) is det.
 
 	% ref_functor(Ref, Functor, Arity):
 	% Given a reference to a term, return the functor and arity
 	% of that term.
-:- pred store__ref_functor(ref(T, S), string, int, store(S), store(S)).
+:- pred store__ref_functor(generic_ref(T, S), string, int, S, S)
+		<= store(S).
 :- mode store__ref_functor(in, out, out, di, uo) is det.
 
 	% arg_ref(Ref, ArgNum, ArgRef):	     
@@ -117,7 +127,8 @@
 	% (argument numbers start from zero).
 	% It is an error if the argument number is out of range,
 	% or if the argument reference has the wrong type.
-:- pred store__arg_ref(ref(T, S), int, ref(ArgT, S), store(S), store(S)).
+:- pred store__arg_ref(generic_ref(T, S), int,
+		generic_ref(ArgT, S), S, S) <= store(S).
 :- mode store__arg_ref(in, in, out, di, uo) is det.
 
 	% new_arg_ref(Val, ArgNum, ArgRef):
@@ -126,7 +137,8 @@
 	% except that it is more efficient.
 	% It is an error if the argument number is out of range,
 	% or if the argument reference has the wrong type.
-:- pred store__new_arg_ref(T, int, ref(ArgT, S), store(S), store(S)).
+:- pred store__new_arg_ref(T, int, generic_ref(ArgT, S), S, S)
+		<= store(S).
 :- mode store__new_arg_ref(di, in, out, di, uo) is det.
 
 	% set_ref(Ref, ValueRef):
@@ -135,7 +147,8 @@
 	% a reference to another term (ValueRef),
 	% update the store so that the term referred to by Ref
 	% is replaced with the term referenced by ValueRef.
-:- pred store__set_ref(ref(T, S), ref(T, S), store(S), store(S)).
+:- pred store__set_ref(generic_ref(T, S), generic_ref(T, S), S, S)
+		<= store(S).
 :- mode store__set_ref(in, in, di, uo) is det.
 
 	% set_ref_value(Ref, Value):
@@ -143,7 +156,7 @@
 	% Given a reference to a term (Ref), and a value (Value),
 	% update the store so that the term referred to by Ref
 	% is replaced with Value.
-:- pred store__set_ref_value(ref(T, S), T, store(S), store(S)).
+:- pred store__set_ref_value(generic_ref(T, S), T, S, S) <= store(S).
 :- mode store__set_ref_value(in, di, di, uo) is det.
 
 	% Given a reference to a term, return that term.
@@ -151,12 +164,12 @@
 	% be inefficient if used to return large terms; it
 	% is most efficient with atomic terms.
 	% XXX current implementation buggy (does shallow copy)
-:- pred store__copy_ref_value(ref(T, S), T, store(S), store(S)).
+:- pred store__copy_ref_value(generic_ref(T, S), T, S, S) <= store(S).
 :- mode store__copy_ref_value(in, uo, di, uo) is det.
 
 	% Same as above, but without making a copy.
 	% Destroys the store.
-:- pred store__extract_ref_value(store(S), ref(T, S), T).
+:- pred store__extract_ref_value(S, generic_ref(T, S), T) <= store(S).
 :- mode store__extract_ref_value(di, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -181,16 +194,18 @@
 	% or if the argument is a `no_tag' type,
 	% then the behaviour is undefined, and probably harmful.
 
-:- pred store__unsafe_arg_ref(ref(T, S), int, ref(ArgT, S),
-				store(S), store(S)).
+:- pred store__unsafe_arg_ref(generic_ref(T, S), int, generic_ref(ArgT, S),
+		S, S) <= store(S).
 :- mode store__unsafe_arg_ref(in, in, out, di, uo) is det.
 
-:- pred store__unsafe_new_arg_ref(T, int, ref(ArgT, S), store(S), store(S)).
+:- pred store__unsafe_new_arg_ref(T, int, generic_ref(ArgT, S), S, S)
+		<= store(S).
 :- mode store__unsafe_new_arg_ref(di, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
-% Unsafe interfaces retained only for backwards compatibility
+% Interfaces retained only for backwards compatibility.
+% Some of these are unsafe.  All of them are deprecated.
 %
 
 	% OBSOLETE: use `S' or `some [S] ... S' instead.
@@ -202,19 +217,29 @@
 :- mode store__init(uo) is det.
 :- pragma obsolete(store__init/1).
 
+	% OBSOLETE: use store_mutvar/2 or generic_mutvar/2 instead.
+:- type mutvar(T, S) == store_mutvar(T, S).
+
+	% OBSOLETE: use store_mutvar/2 or generic_mutvar/2 instead.
+:- type ref(T, S) == store_ref(T, S).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module std_util.
 
+:- typeclass store(T) where [].
+:- instance store(store(S)) where []. 
+:- instance store(io__state) where [].
+
 :- type some_store_type ---> some_store_type. 
 
 :- type store(S) ---> store(c_pointer).
 
-:- type mutvar(T, S) ---> mutvar(c_pointer).
+:- type generic_mutvar(T, S) ---> mutvar(c_pointer).
 
-:- type ref(T, S) ---> ref(c_pointer).
+:- type generic_ref(T, S) ---> ref(c_pointer).
 
 store__new(S) :-
 	store__do_init(S).
@@ -266,8 +291,8 @@ I wonder whether it is worth it?  Hmm, probably not.
 	S = S0;
 ").
 
-:- pred store__unsafe_new_uninitialized_mutvar(mutvar(T, S),
-						store(S), store(S)).
+:- pred store__unsafe_new_uninitialized_mutvar(generic_mutvar(T, S),
+						S, S) <= store(S).
 :- mode store__unsafe_new_uninitialized_mutvar(out, di, uo) is det.
 
 :- pragma foreign_proc("C", unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
@@ -300,7 +325,7 @@ copy_ref_value(Ref, Val) -->
 	% refers to, without making a copy; it is unsafe because
 	% the store could later be modified, changing the returned
 	% value.
-:- pred store__unsafe_ref_value(ref(T, S), T, store(S), store(S)).
+:- pred store__unsafe_ref_value(generic_ref(T, S), T, S, S) <= store(S).
 :- mode store__unsafe_ref_value(in, uo, di, uo) is det.
 :- pragma foreign_proc("C", unsafe_ref_value(Ref::in, Val::uo, S0::di, S::uo),
 		will_not_call_mercury,
