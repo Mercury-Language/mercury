@@ -730,6 +730,10 @@ case "$host" in
 		# so subtract 5
 		NUM_REAL_R_REGS=5
 		;;
+	hppa-*)
+		# NUM_REAL_REGS=8
+		# but succip, sp, and hp are real regs, so subtract 3
+		NUM_REAL_R_REGS=5
 	*)
 		NUM_REAL_R_REGS=0
 		;;
@@ -766,7 +770,7 @@ case "$host" in
 		;;
 	mips-sgi-irix5.*)
 		LINK_SHARED_OBJ="ld -shared -update_registry ../so_locations\
-			-show_quickstart_info -rdata_shared"
+			-quickstart_info -rdata_shared -no_unresolved"
 		CFLAGS_FOR_PIC=
 		EXT_FOR_PIC_OBJECTS=o
 		# shared libraries only work for reg.gc or none.gc

@@ -77,6 +77,8 @@ PIC_O			= @PIC_O@
 # LINK_SHARED_OBJ  	= gcc -G	# for Solaris
 LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
 
+SHARED_LIBS		= `gcc -print-libgcc-file-name` -lm -lc
+
 # Set INSTALL_NUPROLOG to `install_nuprolog' if you have NU-Prolog
 # and want use it for debugging Mercury programs.
 # Otherwise, leave it blank.
