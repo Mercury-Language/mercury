@@ -465,13 +465,13 @@ compile_file(Options, Succeeded, !IO) :-
 	%		symbols defined in the program
 	%
 	string__append_list([
-		"echo mmc --infer-all --no-verbose-make -O0 --no-c-optimize ",
+		"mmc --infer-all --no-verbose-make -O0 --no-c-optimize ",
 		"--no-warn-simple-code --no-warn-det-decls-too-lax ",
 		"--output-compile-error-lines 10000 ",
 		"--allow-undefined ", Options,
 		" --grade ", grade_option,
 		" --pic-reg --compile-to-shared-lib ",
-		query_module_name, "> .xx"],
+		query_module_name],
 		Command),
 	invoke_system_command(Command, Succeeded, !IO).
 
