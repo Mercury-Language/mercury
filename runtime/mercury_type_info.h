@@ -532,14 +532,15 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 	MR_PASTE2(x, _dummy) = MR_PASTE2(x, _val)
 
 /*
-** MR_DataRepresentation is the representation for a particular type
-** constructor.  For the cases of MR_TYPE_CTOR_REP_DU and
-** MR_TYPE_CTOR_REP_DU_USEREQ, the exact representation depends on the tag
-** value -- lookup the tag value in type_ctor_layout to find out this
-** information.
+** MR_TypeCtorRep specifies the representation scheme for a particular type
+** constructor.
 **
-** Any changes in this definition might also require changes in
+** Any changes in this definition will also require changes in
+** MR_CTOR_REP_NAMES below, and may also require changes in
 ** library/rtti_implementation.m and runtime/mercury_mcpp.{h,cpp}
+** Additions to the end of this enum can be handled naturally,
+** but changes in the meanings of already assigned values
+** require bootstrapping with RTTI-version-dependent code.
 */
 
 typedef enum {
@@ -629,6 +630,8 @@ typedef	MR_int_least8_t		MR_TypeCtorRepInt;
     "NOTAG_GROUND_USEREQ",                      \
     "EQUIV_GROUND",                             \
     "TUPLE",                                    \
+    "RESERVED_ADDR",                            \
+    "RESERVED_ADDR_USEREQ",                     \
     "UNKNOWN"
 
 #define MR_type_ctor_rep_is_basically_du(rep)               \
@@ -748,7 +751,7 @@ typedef struct {
 **
 ** If the functor has any arguments whose types include existentially
 ** quantified type variables, the exist_info field will point to information
-** about those type variable; otherwise, the exist_info field will be NULL.
+** about those type variables; otherwise, the exist_info field will be NULL.
 */
 
 typedef enum {
