@@ -184,7 +184,7 @@ MMAKE_MAKE_CMD="${MMAKE_MAKE} -f $tmp -r"
 # cases the dependencies might not have been made yet, so there may be
 # lots of undefined variables.
 case "$@" in
-	dep*|' dep'*|*.dep*|*clean*)
+	dep*|*' dep'*|*.dep*|*clean*)
 		MMAKE_MAKE_OPTS=""
 		;;
 	*)
