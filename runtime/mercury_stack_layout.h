@@ -664,8 +664,8 @@ typedef struct MR_Stack_Traversal_Struct {
 	MR_Determinism		MR_trav_detism;
 } MR_Stack_Traversal;
 
-#define	MR_PROC_LAYOUT_COMPILER_GENERATED(entry)			\
-	MR_PROC_ID_COMPILER_GENERATED(entry->MR_sle_proc_id)
+#define	MR_PROC_LAYOUT_IS_UCI(entry)			\
+	MR_PROC_ID_IS_UCI(entry->MR_sle_proc_id)
 
 /*
 ** The MR_Exec_Trace structure contains the following fields.

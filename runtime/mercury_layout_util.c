@@ -862,7 +862,7 @@ void
 MR_generate_proc_name_from_layout(const MR_Proc_Layout *proc_layout,
 	MR_ConstString *proc_name_ptr, int *arity_ptr, MR_Word *is_func_ptr)
 {
-	if (MR_PROC_LAYOUT_COMPILER_GENERATED(proc_layout)) {
+	if (MR_PROC_LAYOUT_IS_UCI(proc_layout)) {
 		*proc_name_ptr = proc_layout->MR_sle_proc_id.
 			MR_proc_uci.MR_uci_pred_name;
 		if (MR_streq(*proc_name_ptr, "__Unify__")) {
@@ -895,7 +895,7 @@ void
 MR_proc_id_arity_addedargs_predfunc(const MR_Proc_Layout *proc, int *arity_ptr,
 	int *num_added_args_ptr, MR_PredFunc *pred_or_func_ptr)
 {
-	if (MR_PROC_LAYOUT_COMPILER_GENERATED(proc)) {
+	if (MR_PROC_LAYOUT_IS_UCI(proc)) {
 		/*
 		** MR_comp_type_arity is the arity of the type constructor.
 		** Each argument of the type constructor adds a typeinfo

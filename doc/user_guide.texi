@@ -1984,15 +1984,38 @@ changes the environment yet again or execution continues to another event.
 @cindex debugger procedure specification
 Some debugger commands, e.g.@: @samp{break},
 require a parameter that specifies a procedure.
-Such a procedure specification has
+The procedure may or may not be
+a compiler-generated unify, compare or index procedure.
+If it is, the procedure specification has
+the following components in the following order:
+@itemize @bullet
+@item
+An optional prefix of the form @samp{unif*}, @samp{comp*}, or @samp{indx*}
+that specifies whether the procedure belongs
+to an unify, compare or index predicate.
+@item
+An optional prefix of the form @samp{@var{module}:}, @samp{@var{module}.}
+or @samp{@var{module}__} that specifies the name of the module that defines
+the predicate or function to which the procedure belongs.
+@item
+The name of the type constructor.
+@item
+An optional suffix of the form @samp{/@var{arity}}
+that specifies the arity of the type constructor.
+@item
+An optional suffix of the form @samp{-@var{modenum}}
+that specifies the mode number of the procedure
+within the predicate or function to which the procedure belongs.
+@end itemize
+For other procedures, the procedure specification has
 the following components in the following order:
 @itemize @bullet
 @item
 An optional prefix of the form @samp{pred*} or @samp{func*}
 that specifies whether the procedure belongs to a predicate or a function.
 @item
-An optional prefix of the form @samp{@var{module}:} or @samp{@var{module}__}
-that specifies the name of the module that defines
+An optional prefix of the form @samp{@var{module}:}, @samp{@var{module}.}
+or @samp{@var{module}__} that specifies the name of the module that defines
 the predicate or function to which the procedure belongs.
 @item
 The name of the predicate or function to which the procedure belongs.

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -68,25 +68,40 @@ extern	void		MR_dump_module_list(FILE *fp);
 extern	void		MR_dump_module_procs(FILE *fp, const char *name);
 
 /*
-** A procedure specification gives some or all of
+** A procedure specification has several components, the meaning of which
+** depends on whether the procedure is from a user defined procedure (user)
+** or from a unify, compare or index procedure (uci).
+**
+** The meanings of the components are
 **
 **	the name of the module defining the procedure
-**	the name of the predicate or function
-**	the arity of the predicate or function
+**	the name of the predicate or function (user)
+**		or the name of the type (uci)
+**	the arity of the predicate or function (user)
+**		or the arity of the type constructor (uci)
 **	the mode of the predicate or function
-**	whether the procedure belongs to a predicate or function
+**	whether the procedure is from a predicate or function (user)
+**		or is a unify, compare or index procedure (uci)
 **
 ** A NULL pointer for the string fields, and a negative number for the other
 ** fields signifies the absence of information about that field, which should
 ** therefore be treated as a wildcard.
 */
 
+typedef enum {
+	MR_PREFIX_PRED,
+	MR_PREFIX_FUNC,
+	MR_PREFIX_UNIF,
+	MR_PREFIX_COMP,
+	MR_PREFIX_INDX
+} MR_Proc_Prefix;
+
 typedef	struct {
 	const char			*MR_proc_module;
 	const char			*MR_proc_name;
 	int				MR_proc_arity;
 	int				MR_proc_mode;
-	MR_PredFunc			MR_proc_pf;
+	MR_Proc_Prefix			MR_proc_prefix;
 } MR_Proc_Spec;
 
 /*

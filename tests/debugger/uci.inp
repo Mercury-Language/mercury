@@ -1,44 +1,47 @@
 echo on
 context none
 register --quiet
-goto 16
+break -A unif*uci.
+break -A comp*uci.
+c
 print goal
-goto 19
+c
 print goal
-goto 28
+c
 print goal
-goto 35
+c
 print goal
-goto 44
+c
 print goal
-goto 47
+c
 print goal
-goto 56
+c
 print goal
-goto 59
+c
 print goal
-goto 76
+c
 print goal
-goto 78
+c
 print goal
-goto 87
+c
 print goal
-goto 89
+c
 print goal
-goto 98
+c
 print goal
-goto 100
+c
 print goal
-goto 109
+c
 print goal
-goto 111
+c
 print goal
-goto 121
+c
 print goal
-goto 123
+c
 print goal
-goto 124
+c
 print goal
-goto 126
+c
 print goal
+disable *
 continue

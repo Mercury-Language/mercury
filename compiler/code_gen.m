@@ -146,8 +146,8 @@ generate_pred_list_code(ModuleInfo, !GlobalData, [PredId | PredIds],
 	% by mercury_compile__backend_pass_by_preds, so modifications here may
 	% also need to be repeated there.
 
-generate_maybe_pred_code(ModuleInfo0, !GlobalData, PredId, Predicates, !IO) :-
-	module_info_preds(ModuleInfo0, PredInfos),
+generate_maybe_pred_code(ModuleInfo, !GlobalData, PredId, Predicates, !IO) :-
+	module_info_preds(ModuleInfo, PredInfos),
 		% get the pred_info structure for this predicate
 	map__lookup(PredInfos, PredId, PredInfo),
 		% extract a list of all the procedure ids for this
@@ -160,39 +160,21 @@ generate_maybe_pred_code(ModuleInfo0, !GlobalData, PredId, Predicates, !IO) :-
 	->
 		Predicates = []
 	;
-		module_info_globals(ModuleInfo0, Globals0),
-		globals__lookup_bool_option(Globals0, very_verbose,
+		module_info_globals(ModuleInfo, Globals),
+		globals__lookup_bool_option(Globals, very_verbose,
 			VeryVerbose),
 		( VeryVerbose = yes ->
 			io__write_string("% Generating code for ", !IO),
-			hlds_out__write_pred_id(ModuleInfo0, PredId, !IO),
+			hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
 			io__write_string("\n", !IO),
-			globals__lookup_bool_option(Globals0,
+			globals__lookup_bool_option(Globals,
 				statistics, Statistics),
 			maybe_report_stats(Statistics, !IO)
 		;
 			true
 		),
-		(
-			PredModule = pred_info_module(PredInfo),
-			PredName = pred_info_name(PredInfo),
-			PredArity = pred_info_arity(PredInfo),
-			no_type_info_builtin(PredModule, PredName, PredArity)
-		->
-				% These predicates should never be traced,
-				% since they do not obey typeinfo_liveness.
-				% Since they may be opt_imported into other
-				% modules, we must switch off the tracing
-				% of such preds on a pred-by-pred basis.
-			globals__set_trace_level_none(Globals0, Globals1),
-			module_info_set_globals(Globals1,
-				ModuleInfo0, ModuleInfo1),
-			generate_pred_code(ModuleInfo1, !GlobalData,
-				PredId, PredInfo, ProcIds, Predicates)
-		;
-			generate_pred_code(ModuleInfo0, !GlobalData,
-				PredId, PredInfo, ProcIds, Predicates)
-		)
+		generate_pred_code(ModuleInfo, !GlobalData,
+			PredId, PredInfo, ProcIds, Predicates)
 	).
 
 	% Translate a HLDS predicate to LLDS.
@@ -242,8 +224,13 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 
 %---------------------------------------------------------------------------%
 
-generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
+generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo0,
 		!GlobalData, Proc) :-
+
+		% The module_info with a modified trace level is discarded
+		% on return from generate_proc_code.
+	maybe_set_trace_level(PredInfo, ModuleInfo0, ModuleInfo),
+
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_goal(ProcInfo, Goal),
@@ -423,6 +410,37 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
 			Instructions, ProcLabel, LabelCounter,
 			MayAlterRtti)
+	).
+
+:- pred maybe_set_trace_level(pred_info::in,
+	module_info::in, module_info::out) is det.
+
+maybe_set_trace_level(PredInfo, !ModuleInfo) :-
+	module_info_globals(!.ModuleInfo, Globals0),
+	(
+		PredModule = pred_info_module(PredInfo),
+		PredName = pred_info_name(PredInfo),
+		PredArity = pred_info_arity(PredInfo),
+		no_type_info_builtin(PredModule, PredName, PredArity)
+	->
+			% These predicates should never be traced,
+			% since they do not obey typeinfo_liveness.
+			% Since they may be opt_imported into other
+			% modules, we must switch off the tracing
+			% of such preds on a pred-by-pred basis.
+		globals__set_trace_level_none(Globals0, Globals1),
+		module_info_set_globals(Globals1, !ModuleInfo)
+	;
+		pred_info_get_maybe_special_pred(PredInfo, yes(_)),
+		globals__get_trace_level(Globals0, TraceLevel),
+		UC_TraceLevel =
+			trace_level_for_unify_compare(TraceLevel)
+	->
+		globals__set_trace_level(UC_TraceLevel,
+			Globals0, Globals1),
+		module_info_set_globals(Globals1, !ModuleInfo)
+	;
+		true
 	).
 
 :- func generate_deep_prof_info(proc_info, deep_profile_proc_info)
@@ -1404,20 +1422,19 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 		"\t\tMR_restore_registers();\n",
 		"\t\tMR_GOTO(return_addr);\n"
 		], BytecodeCall),
-
-	BytecodeInstructions = [
-		label(Entry) - "Procedure entry point",
-
-		pragma_c(
-		[],
-		[
+	
+	BytecodeInstructionsComponents = [
 		pragma_c_raw_code("\t{\n", live_lvals_info(set__init)),
 		pragma_c_raw_code(CallStruct, live_lvals_info(set__init)),
 		pragma_c_raw_code(BytecodeCall, no_live_lvals_info),
 		pragma_c_raw_code("\t}\n", live_lvals_info(set__init))
-		],
-		may_call_mercury, no, no, no, no, no
-		) - "Entry stub"
+	],
+
+	BytecodeInstructions = [
+		label(Entry) - "Procedure entry point",
+		pragma_c([], BytecodeInstructionsComponents,
+			may_call_mercury, no, no, no, no, no)
+			- "Entry stub"
 	].
 
 %---------------------------------------------------------------------------%

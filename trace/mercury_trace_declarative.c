@@ -294,7 +294,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		}
 	}
 
-	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
+	if (MR_PROC_LAYOUT_IS_UCI(entry)) {
 		/*
 		** Filter out events for compiler generated procedures.
 		*/
@@ -1005,7 +1005,7 @@ MR_decl_atom_name(const MR_Proc_Layout *entry)
 	MR_ConstString		name;
 
 	if (MR_PROC_LAYOUT_HAS_PROC_ID(entry)) {
-		if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
+		if (MR_PROC_LAYOUT_IS_UCI(entry)) {
 			MR_TRACE_USE_HP(
 				MR_make_aligned_string(name, "<<internal>>");
 			);
@@ -1071,7 +1071,7 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 		return MR_FALSE;
 	}
 
-	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
+	if (MR_PROC_LAYOUT_IS_UCI(entry)) {
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err,
 			"mdb: cannot start declarative debugging "

@@ -28,9 +28,8 @@ typedef	enum {
 ** procedures, while the other alternative identifies automatically generated
 ** unification, comparison and index procedures. The meanings of the fields
 ** in both forms are the same as in procedure labels. The runtime system
-** can figure out which form is present by using the macro
-** MR_PROC_LAYOUT_COMPILER_GENERATED, which will return true only if
-** the procedure is of the second type.
+** can figure out which form is present by using the macro MR_PROC_ID_IS_UCI,
+** which will return true only if the procedure is of the second type.
 **
 ** The compiler generates MR_User_Proc_Id and MR_UCI_Proc_Id structures
 ** in order to avoid having to initialize the MR_Proc_Id union through the
@@ -64,7 +63,7 @@ union MR_Proc_Id_Union {
 	MR_UCI_Proc_Id		MR_proc_uci;
 };
 
-#define	MR_PROC_ID_COMPILER_GENERATED(proc_id)				\
+#define	MR_PROC_ID_IS_UCI(proc_id)					\
 	((MR_Unsigned) (proc_id).MR_proc_user.MR_user_pred_or_func	\
 	 	> MR_FUNCTION)
 

@@ -404,9 +404,16 @@
 	;	decr_sp(int)
 			% Decrement the det stack pointer.
 
-	;	pragma_c(list(pragma_c_decl), list(pragma_c_component),
-				may_call_mercury, maybe(label), maybe(label),
-				maybe(label), maybe(label), bool)
+	;	pragma_c(
+			pragma_c_decls		:: list(pragma_c_decl),
+			pragma_c_components	:: list(pragma_c_component),
+			pragma_c_may_call_merc	:: may_call_mercury,
+			pragma_c_fix_nolayout	:: maybe(label),
+			pragma_c_fix_layout	:: maybe(label),
+			pragma_c_fix_onlylayout	:: maybe(label),
+			pragma_c_nofix		:: maybe(label),
+			pragma_c_stack_slot_ref	:: bool
+		)
 			% The first argument says what local variable
 			% declarations are required for the following
 			% components, which in turn can specify how

@@ -958,7 +958,7 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
 			ps = pl->MR_sle_proc_static;
 			fprintf(fp, ", pl: %p, ps: %p\n", pl, ps);
 			proc_id = &pl->MR_sle_proc_id;
-			if (MR_PROC_ID_COMPILER_GENERATED(*proc_id)) {
+			if (MR_PROC_ID_IS_UCI(*proc_id)) {
 				fprintf(fp, "  %s:%s %s/%d-%d\n  ",
 					proc_id->MR_proc_uci.
 						MR_uci_type_module,

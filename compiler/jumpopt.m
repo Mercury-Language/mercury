@@ -423,7 +423,8 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Instrmap, TargetLabel, TargetInstr),
 			jumpopt__final_dest(Instrmap, TargetLabel, DestLabel,
 				TargetInstr, _DestInstr),
-			map__search(Blockmap, DestLabel, Block)
+			map__search(Blockmap, DestLabel, Block),
+			block_may_be_duplicated(Block) = yes
 		->
 			opt_util__filter_out_labels(Block, FilteredBlock),
 			jumpopt__adjust_livevals(PrevInstr, FilteredBlock,
@@ -633,6 +634,33 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		Fulljumpopt, MayAlterRtti, !CheckedNondetTailCallInfo,
 		Instrs9),
 	list__append(NewInstrs, Instrs9, Instrs).
+
+:- func block_may_be_duplicated(list(instruction)) = bool.
+
+block_may_be_duplicated([]) =  yes.
+block_may_be_duplicated([Uinstr - _ | Instrs]) = BlockMayBeDuplicated :-
+	InstrMayBeDuplicated = instr_may_be_duplicated(Uinstr),
+	(
+		InstrMayBeDuplicated = no,
+		BlockMayBeDuplicated = no
+	;
+		InstrMayBeDuplicated = yes,
+		BlockMayBeDuplicated = block_may_be_duplicated(Instrs)
+	).
+
+:- func instr_may_be_duplicated(instr) = bool.
+
+instr_may_be_duplicated(Instr) = InstrMayBeDuplicated :-
+	( Instr ^ pragma_c_fix_onlylayout = yes(_) ->
+		% This instruction is a trace event. Duplicating it would
+		% increase code size, and may cost more in locality than
+		% the benefit represented by the elimination of the jump.
+		% When debugging is enabled, size is in any case more important
+		% than the last bit of speed.
+		InstrMayBeDuplicated = no
+	;
+		InstrMayBeDuplicated = yes
+	).
 
 :- func redirect_comment(string) = string.
 

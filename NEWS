@@ -39,6 +39,8 @@ Portability improvements:
 
 Changes to the Mercury debugger:
 * Users can now limit the output from stack traces.
+* Users can now put breakpoints on unify and compare predicates.
+* Users can now save runtime values to files.
 
 Changes to the compiler back-ends:
 * The .NET CLR back-end now bootstraps.
@@ -286,7 +288,20 @@ Portability improvements:
 
 Changes to the Mercury debugger:
 
-* Nothing yet.
+* Users can now limit the output from stack traces.
+
+  The mdb command `stack' now takes an optional integer argument that
+  specifies the maximum number of stack frames to be printed.
+
+* Users can now put breakpoints on unify and compare predicates.
+
+  The syntax for procedure specifications now has provision for specifying
+  unify and compare predicates.
+
+* Users can now save runtime values to files.
+
+  We've added a new mdb command, `save_to_file', that saves a specified term
+  to a specified file.
 
 Changes to the compiler back-ends:
 

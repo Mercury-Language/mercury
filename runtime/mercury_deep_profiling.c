@@ -665,7 +665,7 @@ MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *proc_layout)
 	MR_write_ptr(fp, kind_ps, ps_id);
 
 	procid = &proc_layout->MR_sle_proc_id;
-	if (MR_PROC_ID_COMPILER_GENERATED(*procid)) {
+	if (MR_PROC_ID_IS_UCI(*procid)) {
 #ifdef MR_DEEP_PROFILING_DEBUG
 		if (debug_fp != NULL) {
 			fprintf(debug_fp, "  compiler %s/%s/%s/%s/%d/%d\n",

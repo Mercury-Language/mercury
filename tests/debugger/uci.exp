@@ -4,87 +4,93 @@ Command echo enabled.
 mdb> context none
 Contexts will not be printed.
 mdb> register --quiet
-mdb> goto 16
+mdb> break -A unif*uci.
+ 0: + stop  interface __Unify__ for uci.t4/4-0 (semidet)
+ 1: + stop  interface __Unify__ for uci.t3/3-0 (semidet)
+ 2: + stop  interface __Unify__ for uci.t2/2-0 (semidet)
+ 3: + stop  interface __Unify__ for uci.t1/1-0 (semidet)
+ 4: + stop  interface __Unify__ for uci.t0/0-0 (semidet)
+ 5: + stop  interface __Unify__ for uci.i/3-0 (semidet)
+mdb> break -A comp*uci.
+ 6: + stop  interface __Compare__ for uci.t4/4-0 (det)
+ 7: + stop  interface __Compare__ for uci.t3/3-0 (det)
+ 8: + stop  interface __Compare__ for uci.t2/2-0 (det)
+ 9: + stop  interface __Compare__ for uci.t1/1-0 (det)
+10: + stop  interface __Compare__ for uci.t0/0-0 (det)
+11: + stop  interface __Compare__ for uci.i/3-0 (det)
+mdb> c
       16:      8  3 CALL __Compare__ for uci.t1/1-0 (det)
 mdb> print goal
 __Compare__(_, b1(11), a1(1))
-mdb> goto 19
-      19:      8  3 EXIT __Compare__ for uci.t1/1-0 (det)
+mdb> c
+      17:      8  3 EXIT __Compare__ for uci.t1/1-0 (det)
 mdb> print goal
 __Compare__('>', b1(11), a1(1))
-mdb> goto 28
-      28:     12  3 CALL __Compare__ for uci.t2/2-0 (det)
+mdb> c
+      26:     12  3 CALL __Compare__ for uci.t2/2-0 (det)
 mdb> print goal
 __Compare__(_, a2(1, 2), a2(1, 2))
-mdb> goto 35
-      35:     12  3 EXIT __Compare__ for uci.t2/2-0 (det)
+mdb> c
+      27:     12  3 EXIT __Compare__ for uci.t2/2-0 (det)
 mdb> print goal
 __Compare__('=', a2(1, 2), a2(1, 2))
-mdb> goto 44
-      44:     16  3 CALL __Compare__ for uci.t3/3-0 (det)
+mdb> c
+      36:     16  3 CALL __Compare__ for uci.t3/3-0 (det)
 mdb> print goal
 __Compare__(_, b3(11, 12, 13), a3(1, 2, 3))
-mdb> goto 47
-      47:     16  3 EXIT __Compare__ for uci.t3/3-0 (det)
+mdb> c
+      37:     16  3 EXIT __Compare__ for uci.t3/3-0 (det)
 mdb> print goal
 __Compare__('>', b3(11, 12, 13), a3(1, 2, 3))
-mdb> goto 56
-      56:     20  3 CALL __Compare__ for uci.t4/4-0 (det)
+mdb> c
+      46:     20  3 CALL __Compare__ for uci.t4/4-0 (det)
 mdb> print goal
 __Compare__(_, a4(1, 2, 3, 4), b4(11, 12, 13, 14))
-mdb> goto 59
-      59:     20  3 EXIT __Compare__ for uci.t4/4-0 (det)
+mdb> c
+      47:     20  3 EXIT __Compare__ for uci.t4/4-0 (det)
 mdb> print goal
 __Compare__('<', a4(1, 2, 3, 4), b4(11, 12, 13, 14))
-mdb> goto 76
-      76:     27  3 CALL __Unify__ for uci.t1/1-0 (semidet)
+mdb> c
+      64:     27  3 CALL __Unify__ for uci.t1/1-0 (semidet)
 mdb> print goal
 __Unify__(a1(1), a1(1))
-mdb> goto 78
-      78:     27  3 EXIT __Unify__ for uci.t1/1-0 (semidet)
+mdb> c
+      65:     27  3 EXIT __Unify__ for uci.t1/1-0 (semidet)
 mdb> print goal
 __Unify__(a1(1), a1(1))
-mdb> goto 87
-      87:     31  3 CALL __Unify__ for uci.t2/2-0 (semidet)
+mdb> c
+      74:     31  3 CALL __Unify__ for uci.t2/2-0 (semidet)
 mdb> print goal
 __Unify__(a2(1, 2), b2(11, 12))
-mdb> goto 89
-      89:     31  3 FAIL __Unify__ for uci.t2/2-0 (semidet)
+mdb> c
+      75:     31  3 FAIL __Unify__ for uci.t2/2-0 (semidet)
 mdb> print goal
 __Unify__(a2(1, 2), b2(11, 12))
-mdb> goto 98
-      98:     35  3 CALL __Unify__ for uci.t3/3-0 (semidet)
+mdb> c
+      84:     35  3 CALL __Unify__ for uci.t3/3-0 (semidet)
 mdb> print goal
 __Unify__(b3(11, 12, 13), b3(11, 12, 13))
-mdb> goto 100
-     100:     35  3 EXIT __Unify__ for uci.t3/3-0 (semidet)
+mdb> c
+      85:     35  3 EXIT __Unify__ for uci.t3/3-0 (semidet)
 mdb> print goal
 __Unify__(b3(11, 12, 13), b3(11, 12, 13))
-mdb> goto 109
-     109:     39  3 CALL __Unify__ for uci.t4/4-0 (semidet)
+mdb> c
+      94:     39  3 CALL __Unify__ for uci.t4/4-0 (semidet)
 mdb> print goal
 __Unify__(a4(1, 2, 3, 4), b4(11, 12, 13, 14))
-mdb> goto 111
-     111:     39  3 FAIL __Unify__ for uci.t4/4-0 (semidet)
+mdb> c
+      95:     39  3 FAIL __Unify__ for uci.t4/4-0 (semidet)
 mdb> print goal
 __Unify__(a4(1, 2, 3, 4), b4(11, 12, 13, 14))
-mdb> goto 121
-     121:     44  4 CALL __Index__ for uci.i/3-0 (det)
+mdb> c
+     104:     43  3 CALL __Compare__ for uci.i/3-0 (det)
 mdb> print goal
-__Index__(ai(1), _)
-mdb> goto 123
-     123:     44  4 EXIT __Index__ for uci.i/3-0 (det)
+__Compare__(_, ai(1), bi(11))
+mdb> c
+     105:     43  3 EXIT __Compare__ for uci.i/3-0 (det)
 mdb> print goal
-__Index__(ai(1), 0)
-mdb> goto 124
-     124:     45  4 CALL __Index__ for uci.i/3-0 (det)
-mdb> print goal
-__Index__(bi(11), _)
-mdb> goto 126
-     126:     45  4 EXIT __Index__ for uci.i/3-0 (det)
-mdb> print goal
-__Index__(bi(11), 1)
-mdb> continue
+__Compare__('<', ai(1), bi(11))
+mdb> c
 0 lt
 1 ge
 2 ge

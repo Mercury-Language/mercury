@@ -1251,32 +1251,52 @@ MR_print_proc_spec(FILE *fp, const MR_Proc_Layout *entry)
 static void
 MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec)
 {
+    const MR_User_Proc_Id *user;
+    const MR_UCI_Proc_Id  *uci;
+
     if (! MR_PROC_LAYOUT_HAS_PROC_ID(entry)) {
         MR_fatal_error("cannot print procedure id without layout");
     }
 
-    if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
+    if (MR_PROC_LAYOUT_IS_UCI(entry)) {
+        uci = &entry->MR_sle_uci;
+
         if (spec) {
-            MR_fatal_error("cannot generate specifications "
-                "for compiler generated procedures");
+            if (MR_streq(uci->MR_uci_pred_name, "__Unify__")) {
+                fprintf(fp, "unif*");
+            } else if (MR_streq(uci->MR_uci_pred_name, "__Compare__")) {
+                fprintf(fp, "comp*");
+            } else if (MR_streq(uci->MR_uci_pred_name, "__Index__")) {
+                fprintf(fp, "indx*");
+            } else {
+                MR_fatal_error("uci procedure is not unify, compare or index");
+            }
+
+            fprintf(fp, "%s.%s/%ld-%ld",
+                uci->MR_uci_type_module,
+                uci->MR_uci_type_name,
+                (long) uci->MR_uci_type_arity,
+                (long) uci->MR_uci_mode);
+        } else {
+            fprintf(fp, "%s for %s.%s/%ld-%ld",
+                uci->MR_uci_pred_name,
+                uci->MR_uci_type_module,
+                uci->MR_uci_type_name,
+                (long) uci->MR_uci_type_arity,
+                (long) uci->MR_uci_mode);
         }
 
-        fprintf(fp, "%s for %s.%s/%ld-%ld",
-            entry->MR_sle_uci.MR_uci_pred_name,
-            entry->MR_sle_uci.MR_uci_type_module,
-            entry->MR_sle_uci.MR_uci_type_name,
-            (long) entry->MR_sle_uci.MR_uci_type_arity,
-            (long) entry->MR_sle_uci.MR_uci_mode);
-
-        if (strcmp(entry->MR_sle_uci.MR_uci_type_module,
-            entry->MR_sle_uci.MR_uci_def_module) != 0)
+        if (strcmp(uci->MR_uci_type_module,
+            uci->MR_uci_def_module) != 0)
         {
-            fprintf(fp, " {%s}", entry->MR_sle_uci.MR_uci_def_module);
+            fprintf(fp, " {%s}", uci->MR_uci_def_module);
         }
     } else {
-        if (entry->MR_sle_user.MR_user_pred_or_func == MR_PREDICATE) {
+        user = &entry->MR_sle_user;
+
+        if (user->MR_user_pred_or_func == MR_PREDICATE) {
             fprintf(fp, "pred");
-        } else if (entry->MR_sle_user.MR_user_pred_or_func == MR_FUNCTION) {
+        } else if (user->MR_user_pred_or_func == MR_FUNCTION) {
             fprintf(fp, "func");
         } else {
             MR_fatal_error("procedure is not pred or func");
@@ -1289,15 +1309,15 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec)
         }
 
         fprintf(fp, "%s.%s/%ld-%ld",
-            entry->MR_sle_user.MR_user_decl_module,
-            entry->MR_sle_user.MR_user_name,
+            user->MR_user_decl_module,
+            user->MR_user_name,
             (long) MR_sle_user_adjusted_arity(entry),
-            (long) entry->MR_sle_user.MR_user_mode);
+            (long) user->MR_user_mode);
 
-        if (!spec && strcmp(entry->MR_sle_user.MR_user_decl_module,
-            entry->MR_sle_user.MR_user_def_module) != 0)
+        if (!spec && strcmp(user->MR_user_decl_module,
+            user->MR_user_def_module) != 0)
         {
-            fprintf(fp, " {%s}", entry->MR_sle_user.MR_user_def_module);
+            fprintf(fp, " {%s}", user->MR_user_def_module);
         }
     }
 

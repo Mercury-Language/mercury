@@ -850,7 +850,7 @@ MR_compare_closures(MR_Closure *x, MR_Closure *y)
 	y_proc_id = &y_layout->MR_closure_id->MR_closure_proc_id;
 
 	if (x_proc_id != y_proc_id) {
-		if (MR_PROC_ID_COMPILER_GENERATED(*x_proc_id)) {
+		if (MR_PROC_ID_IS_UCI(*x_proc_id)) {
 			x_module_name = x_proc_id->MR_proc_uci.
 						MR_uci_def_module;
 			x_pred_name = x_proc_id->MR_proc_uci.MR_uci_pred_name;
@@ -859,7 +859,7 @@ MR_compare_closures(MR_Closure *x, MR_Closure *y)
 						MR_user_decl_module;
 			x_pred_name = x_proc_id->MR_proc_user.MR_user_name;
 		}
-		if (MR_PROC_ID_COMPILER_GENERATED(*y_proc_id)) {
+		if (MR_PROC_ID_IS_UCI(*y_proc_id)) {
 			y_module_name = y_proc_id->MR_proc_uci.
 						MR_uci_def_module;
 			y_pred_name = y_proc_id->MR_proc_uci.MR_uci_pred_name;

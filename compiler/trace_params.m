@@ -111,12 +111,18 @@
 
 :- func trace_level_none = trace_level.
 
+	% Given a trace level for a module, return the trace level we should
+	% use for compiler-generated unify, index and compare predicates.
+:- func trace_level_for_unify_compare(trace_level) = trace_level.
+
 	% This is used to represent the trace level in the module layout.
 :- func trace_level_rep(trace_level) = string.
 
 :- func encode_suppressed_events(trace_suppress_items) = int.
 
 :- implementation.
+
+:- import_module hlds__special_pred.
 
 :- import_module int, char, string, list, set.
 
@@ -136,6 +142,11 @@
 
 trace_level_none = none.
 
+trace_level_for_unify_compare(none) = none.
+trace_level_for_unify_compare(shallow) = shallow.
+trace_level_for_unify_compare(deep) = shallow.
+trace_level_for_unify_compare(decl_rep) = shallow.
+
 convert_trace_level("minimum", no,  no,  yes(none)).
 convert_trace_level("minimum", yes, no,  yes(shallow)).
 convert_trace_level("minimum", _,   yes, yes(deep)).
@@ -154,7 +165,17 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 		TraceLevel = shallow,
 		pred_info_import_status(PredInfo, Status),
 		status_is_exported(Status, no),
-		proc_info_is_address_taken(ProcInfo, address_is_not_taken)
+		proc_info_is_address_taken(ProcInfo, address_is_not_taken),
+		pred_info_get_maybe_special_pred(PredInfo, MaybeSpecialPred),
+			% Unify and compare predicates can be called from
+			% the generic unify and compare predicates in
+			% builtin.m, so they can be called from outside this
+			% module even if they don't have their address taken.
+		(
+			MaybeSpecialPred = no
+		;
+			MaybeSpecialPred = yes(index - _)
+		)
 	->
 		EffTraceLevel = none
 	;

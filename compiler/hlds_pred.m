@@ -2022,7 +2022,7 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 		head_vars	:: list(prog_var),
 		actual_head_modes :: list(mode),
 		mode_errors	:: list(mode_error_info),
-		inst_varset :: inst_varset,
+		inst_varset	:: inst_varset,
 		head_var_caller_liveness :: maybe(list(is_live)),
 				% Liveness (in the mode analysis sense)
 				% of the arguments in the caller; says

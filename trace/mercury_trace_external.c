@@ -925,7 +925,7 @@ MR_output_current_slots(const MR_Label_Layout *layout,
 	MR_Trace_Port port, MR_Unsigned seqno, MR_Unsigned depth,
 	const char *path, int lineno)
 {
-	if (MR_PROC_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
+	if (MR_PROC_LAYOUT_IS_UCI(layout->MR_sll_entry)) {
 		MR_TRACE_CALL_MERCURY(
 		    ML_DI_output_current_slots_comp(
 			MR_trace_event_number,
@@ -1029,7 +1029,7 @@ MR_found_match(const MR_Label_Layout *layout,
 
 	/* XXX get live vars from registers */
 	MR_Word arguments = /* XXX FIXME!!! */ 0;
-	if (MR_PROC_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
+	if (MR_PROC_LAYOUT_IS_UCI(layout->MR_sll_entry)) {
 		MR_TRACE_CALL_MERCURY(
 		    result = ML_DI_found_match_comp(
 			MR_trace_event_number,
@@ -1369,7 +1369,7 @@ MR_print_proc_id_to_socket(const MR_Proc_Layout *entry,
 		} 
 	}
 
-	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
+	if (MR_PROC_LAYOUT_IS_UCI(entry)) {
 		MR_send_message_to_socket_format(
 			/* XXX Names with " may cause some problems here */
 			"proc(\"%s\",\"%s\",\"%s\",%ld,%ld).\n",

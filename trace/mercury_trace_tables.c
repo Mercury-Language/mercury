@@ -351,7 +351,7 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	spec->MR_proc_name   = NULL;
 	spec->MR_proc_arity  = -1;
 	spec->MR_proc_mode   = -1;
-	spec->MR_proc_pf     = (MR_PredFunc) -1;
+	spec->MR_proc_prefix = (MR_Proc_Prefix) -1;
 
 	len = strlen(str);
 
@@ -400,10 +400,19 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	}
 	
 	if (MR_strneq(str, "pred*", 5)) {
-		spec->MR_proc_pf = MR_PREDICATE;
+		spec->MR_proc_prefix = MR_PREFIX_PRED;
 		str += 5;
 	} else if (MR_strneq(str, "func*", 5)) {
-		spec->MR_proc_pf = MR_FUNCTION;
+		spec->MR_proc_prefix = MR_PREFIX_FUNC;
+		str += 5;
+	} else if (MR_strneq(str, "unif*", 5)) {
+		spec->MR_proc_prefix = MR_PREFIX_UNIF;
+		str += 5;
+	} else if (MR_strneq(str, "comp*", 5)) {
+		spec->MR_proc_prefix = MR_PREFIX_COMP;
+		str += 5;
+	} else if (MR_strneq(str, "indx*", 5)) {
+		spec->MR_proc_prefix = MR_PREFIX_INDX;
 		str += 5;
 	}
 
@@ -419,6 +428,10 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 				spec->MR_proc_name = end + 1;
 			} else {
 				spec->MR_proc_name = end + 2;
+			}
+
+			if (strlen(spec->MR_proc_name) == 0) {
+				spec->MR_proc_name = NULL;
 			}
 
 			/*
@@ -437,6 +450,9 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 
 	/* There was no module qualifier. */
 	spec->MR_proc_name = str;
+	if (strlen(spec->MR_proc_name) == 0) {
+		spec->MR_proc_name = NULL;
+	}
 	return MR_TRUE;
 }
 
@@ -565,7 +581,7 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 			MR_process_matching_procedures_in_module(
 				module, spec, f, data);
 		} else {
-			const MR_Dlist		*modules;
+			const MR_Dlist	*modules;
 			const MR_Dlist	*element_ptr;
 
 			modules = MR_search_module_info_by_nickname(
@@ -587,37 +603,79 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 	}
 }
 
-#define	match_name(spec, cur)	(((spec)->MR_proc_name == NULL) ||	\
-				MR_streq((spec)->MR_proc_name,		\
-					cur->MR_sle_user.MR_user_name))
+#define	match_user_proc_name(spec, cur)					\
+	(((spec)->MR_proc_name == NULL) ||				\
+	MR_streq((spec)->MR_proc_name,					\
+		cur->MR_sle_user.MR_user_name))
 
-#define	match_arity(spec, cur)	(((spec)->MR_proc_arity < 0) ||		\
-    				(spec)->MR_proc_arity ==		\
-					MR_sle_user_adjusted_arity(cur))
+#define	match_user_proc_arity(spec, cur)				\
+	(((spec)->MR_proc_arity < 0) ||					\
+	(spec)->MR_proc_arity ==					\
+		MR_sle_user_adjusted_arity(cur))
 
-#define	match_mode(spec, cur)	(((spec)->MR_proc_mode < 0) ||		\
-				(spec)->MR_proc_mode ==			\
-					cur->MR_sle_user.MR_user_mode)
+#define	match_user_proc_mode(spec, cur)					\
+	(((spec)->MR_proc_mode < 0) ||					\
+	(spec)->MR_proc_mode ==						\
+		cur->MR_sle_user.MR_user_mode)
 
-#define	match_pf(spec, cur)	(((int) (spec)->MR_proc_pf < 0) ||	\
-				(spec)->MR_proc_pf ==			\
-					cur->MR_sle_user.MR_user_pred_or_func)
+#define	match_user_proc_pf(spec, cur)					\
+	(((int) (spec)->MR_proc_prefix < 0) ||				\
+	( ( ((spec)->MR_proc_prefix == MR_PREFIX_PRED) &&		\
+		cur->MR_sle_user.MR_user_pred_or_func == MR_PREDICATE) || \
+	  ( ((spec)->MR_proc_prefix == MR_PREFIX_FUNC) &&		\
+		cur->MR_sle_user.MR_user_pred_or_func == MR_FUNCTION)	\
+	))
+
+#define	match_uci_type_name(spec, cur)					\
+	(((spec)->MR_proc_name == NULL) ||				\
+	MR_streq((spec)->MR_proc_name,					\
+		cur->MR_sle_uci.MR_uci_type_name))
+
+#define	match_uci_type_arity(spec, cur)					\
+	(((spec)->MR_proc_arity < 0) ||					\
+	(spec)->MR_proc_arity ==					\
+		cur->MR_sle_uci.MR_uci_type_arity)
+
+#define	match_uci_proc_mode(spec, cur)					\
+	(((spec)->MR_proc_mode < 0) ||					\
+	(spec)->MR_proc_mode ==						\
+		cur->MR_sle_uci.MR_uci_mode)
+
+#define	match_uci_pred_name(spec, cur)					\
+	(((int) (spec)->MR_proc_prefix < 0) ||				\
+	( ( ((spec)->MR_proc_prefix == MR_PREFIX_UNIF) &&		\
+		MR_streq(cur->MR_sle_uci.MR_uci_pred_name, "__Unify__")) || \
+	  ( ((spec)->MR_proc_prefix == MR_PREFIX_COMP) &&		\
+		MR_streq(cur->MR_sle_uci.MR_uci_pred_name, "__Compare__")) || \
+	  ( ((spec)->MR_proc_prefix == MR_PREFIX_INDX) &&		\
+		MR_streq(cur->MR_sle_uci.MR_uci_pred_name, "__Index__")) \
+	))
 
 static void
 MR_process_matching_procedures_in_module(const MR_Module_Layout *module,
 	MR_Proc_Spec *spec, void f(void *, const MR_Proc_Layout *), void *data)
 {
-	const MR_Proc_Layout	*cur_entry;
+	const MR_Proc_Layout	*proc;
 	int			j;
 
 	for (j = 0; j < module->MR_ml_proc_count; j++) {
-		cur_entry = module->MR_ml_procs[j];
-		if (match_name(spec, cur_entry) &&
-				match_arity(spec, cur_entry) &&
-				match_mode(spec, cur_entry) &&
-				match_pf(spec, cur_entry))
-		{
-			f(data, cur_entry);
+		proc = module->MR_ml_procs[j];
+		if (MR_PROC_LAYOUT_IS_UCI(proc)) {
+			if (match_uci_type_name(spec, proc) &&
+				match_uci_type_arity(spec, proc) &&
+				match_uci_proc_mode(spec, proc) &&
+				match_uci_pred_name(spec, proc))
+			{
+				f(data, proc);
+			}
+		} else {
+			if (match_user_proc_name(spec, proc) &&
+				match_user_proc_arity(spec, proc) &&
+				match_user_proc_mode(spec, proc) &&
+				match_user_proc_pf(spec, proc))
+			{
+				f(data, proc);
+			}
 		}
 	}
 }
@@ -856,7 +914,7 @@ MR_trace_complete_proc(MR_Proc_Completer_Data *data)
 		module_layout->MR_ml_procs[data->MR_complete_current_proc];
 
 	if (
-		! MR_PROC_LAYOUT_COMPILER_GENERATED(proc_layout) &&
+		! MR_PROC_LAYOUT_IS_UCI(proc_layout) &&
 		( data->MR_complete_pf == -1 ||
 		  proc_layout->MR_sle_user.MR_user_pred_or_func ==
 				data->MR_complete_pf
@@ -900,7 +958,7 @@ MR_trace_complete_proc(MR_Proc_Completer_Data *data)
 
 static char *
 MR_format_breakpoint_completion(MR_PredFunc pred_or_func,
-		const char *module, const char *name)
+	const char *module, const char *name)
 {
 	int	size;
 	int	module_len;
