@@ -3,7 +3,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2001 The University of Melbourne.
+** Copyright (C) 1994-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -208,6 +208,8 @@ void MR_CALL (*MR_program_entry_point)(void);
 MR_Code	*MR_program_entry_point;
 		/* normally mercury__main_2_0 (main/2) */
 #endif
+
+const char *MR_runtime_flags = "";
 
 void	(*MR_library_initializer)(void);
 		/* normally ML_io_init_state (io__init_state/2)*/
@@ -665,15 +667,21 @@ process_args(int argc, char **argv)
 static void
 process_environment_options(void)
 {
-	char*	options;
+	char*	env_options;
 
-	options = getenv("MERCURY_OPTIONS");
-	if (options != NULL) {
+	env_options = getenv("MERCURY_OPTIONS");
+	if (env_options == NULL) {
+		env_options = (char *) "";
+	}
+
+	if (env_options[0] != '\0' || MR_runtime_flags[0] != '\0') {
 		const char	*cmd;
 		char		*arg_str, **argv;
 		char		*dummy_command_line;
 		const char	*error_msg;
 		int		argc;
+		int		cmd_len;
+		int		runtime_flags_len;
 
 		/*
 		** getopt() expects the options to start in argv[1],
@@ -683,10 +691,16 @@ process_environment_options(void)
 		** to getopt().
 		*/
 		cmd = "mercury_runtime ";
+		cmd_len = strlen(cmd);
+		runtime_flags_len = strlen(MR_runtime_flags);
 		dummy_command_line = MR_GC_NEW_ARRAY(char,
-					strlen(options) + strlen(cmd) + 1);
+					cmd_len + runtime_flags_len + 1 +
+					strlen(env_options) + 1);
 		strcpy(dummy_command_line, cmd);
-		strcat(dummy_command_line, options);
+		strcpy(dummy_command_line + cmd_len, MR_runtime_flags);
+		dummy_command_line[cmd_len + runtime_flags_len] = ' ';
+		strcpy(dummy_command_line + cmd_len + runtime_flags_len + 1,
+				env_options);
 		
 		error_msg = MR_make_argv(dummy_command_line,
 			&arg_str, &argv, &argc);

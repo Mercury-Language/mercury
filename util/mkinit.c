@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -151,6 +151,9 @@ const char	*main_func_arg[] =
 
 static const char *MR_progname = NULL;
 
+	/* List of names of Aditi-RL code constants. */
+static String_List *rl_data = NULL;
+
 /* options and arguments, set by parse_options() */
 static const char *output_file_name = NULL;
 static const char *entry_point = "mercury__main_2_0";
@@ -167,14 +170,17 @@ static bool need_tracing = FALSE;
 
 static int num_errors = 0;
 
+	/* List of options to pass to the runtime */
+static String_List *runtime_flags = NULL;
+
+	/* Pointer to tail of the runtime_flags list */
+static String_List **runtime_flags_tail = &runtime_flags;
+
 	/* List of directories to search for init files */
 static String_List *init_file_dirs = NULL;
 
 	/* Pointer to tail of the init_file_dirs list */
 static String_List **init_file_dirs_tail = &init_file_dirs;
-
-	/* List of names of Aditi-RL code constants. */
-static String_List *rl_data = NULL;
 
 /* --- code fragments to put in the output file --- */
 static const char header1[] = 
@@ -323,6 +329,9 @@ static const char mercury_funcs[] =
 	"#else\n"
 	"	MR_program_entry_point = MR_ENTRY(%s);\n"
 	"#endif\n"
+	;
+
+static const char mercury_funcs2[] =
 	"\n"
 	"	mercury_runtime_init(argc, argv);\n"
 	"	return;\n"
@@ -478,7 +487,7 @@ parse_options(int argc, char *argv[])
 	int		i;
 	String_List	*tmp_slist;
 
-	while ((c = getopt(argc, argv, "ac:g:iI:lo:tw:x")) != EOF) {
+	while ((c = getopt(argc, argv, "ac:g:iI:lo:r:tw:x")) != EOF) {
 		switch (c) {
 		case 'a':
 			aditi = TRUE;
@@ -521,6 +530,23 @@ parse_options(int argc, char *argv[])
 				output_file_name = NULL; /* output to stdout */
 			} else {
 				output_file_name = optarg;
+			}
+			break;
+
+		case 'r':
+			/*
+			** Add the directory name to the end of the
+			** search path for `.init' files.
+			*/
+			if (optarg[0] != '\0') {
+				tmp_slist = (String_List *)
+					checked_malloc(sizeof(String_List));
+				tmp_slist->next = NULL;
+				tmp_slist->data = (char *)
+					checked_malloc(strlen(optarg) + 1);
+				strcpy(tmp_slist->data, optarg);
+				*runtime_flags_tail = tmp_slist;
+				runtime_flags_tail = &tmp_slist->next;
 			}
 			break;
 
@@ -762,6 +788,7 @@ static void
 output_main(void)
 {
 	const char *aditi_load_func;
+	String_List *list_tmp;
 
 	if (aditi) {
 		aditi_load_func = "MR_do_load_aditi_rl_code";
@@ -771,6 +798,16 @@ output_main(void)
 	
 	printf(mercury_funcs, hl_entry_point, entry_point,
 		aditi_load_func, hl_entry_point, entry_point);
+
+	printf("	MR_runtime_flags = \"");
+	for (list_tmp = runtime_flags;
+			list_tmp != NULL; list_tmp = list_tmp->next) {
+		fputs(list_tmp->data, stdout);
+		putchar(' ');
+	}
+	printf("\";\n");
+
+	fputs(mercury_funcs2, stdout);
 
 	if (output_main_func) {
 		fputs(main_func, stdout);

@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2001 The University of Melbourne.
+# Copyright (C) 2001-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -54,6 +54,7 @@ extra_inits_opt=""
 aditi_opt=""
 extra_init_dirs=""
 init_c_file="-"
+runtime_flags=""
 
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
@@ -137,10 +138,6 @@ Debugging options:
 		Do not strip C debugging information.
 
 Initialization options:
-	-a, --aditi
-		Generate a function to upload Aditi-RL data to a database.
-		This option is needed when interfacing with the Aditi
-		deductive database system.
 	--no-main, --library
 		Don't generate a \`main()' function.
 		Instead, generate a function
@@ -152,13 +149,24 @@ Initialization options:
 	-I <directory>, --init-file-directory <directory>
 		Include <directory> in the list of directories searched to
 		locate \`.init' files.
+	-w <label>, --entry-point <label>
+		Set entry point to <label>.
+		(Default value corresponds to main/2.)
+	--runtime-flags <flags>
+		Add <flags> to the list of flags to pass to the
+		Mercury runtime.  Flags can also be passed at runtime
+		in the MERCURY_OPTIONS environment variable.
+		For the list of available flags, see the documentation
+		for MERCURY_OPTIONS in the "Environment" chapter
+		of the Mercury User's Guide.
 	--init-c-file <filename>
 		Output the generated C initialization program to the
 		specified file, rather than sending it to the standard
 		output.
-	-w <label>, --entry-point <label>
-		Set entry point to <label>.
-		(Default value corresponds to main/2.)
+	-a, --aditi
+		Generate a function to upload Aditi-RL data to a database.
+		This option is needed when interfacing with the Aditi
+		deductive database system.
 	-x, --extra-inits
 		Search \`.c' files for extra initialization functions.
 		(This may be necessary if the C files contain
@@ -364,6 +372,9 @@ EOF
 	
 	--init-c-file)
 		init_c_file="$2"; shift;;
+
+	--runtime-flags)
+		runtime_flags="$runtime_flags $2"; shift;;
 
 	-w|--entry-point)
 		defentry_opt="-w$2"; shift;;

@@ -270,6 +270,13 @@ MLFLAGS-split-c-files		=	--trace
 
 MLFLAGS-needs_init		= 	--include-initialization-code --extra-inits
 
+# These tests run out of memory in non-GC grades
+# unless we increase the heap size from the default 4M.
+# The sizes specified here (70 Mb and 20 Mb respectively)
+# are sufficient for running these tests on 64-bit systems.
+MLFLAGS-integer_test = --runtime-flags "--heap-size 70000"
+MLFLAGS-rational_test = --runtime-flags "--heap-size 20000"
+
 # no_fully_strict is expected to fail (it calls error/1).
 # We also need to pipe the output through sed to avoid hard-coding
 # dependencies on particular line numbers in the standard library source code.
@@ -283,15 +290,6 @@ no_fully_strict.out: no_fully_strict
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
 	fi
-
-# These tests run out of memory in non-GC grades
-# unless we increase the heap size from the default 4M.
-# The sizes specified here (70 Mb and 20 Mb respectively)
-# are sufficient for running these tests on 64-bit systems.
-integer_test.out: integer_test
-	MERCURY_OPTIONS="--heap-size 70000" ./integer_test > $@ 2>&1
-rational_test.out: rational_test
-	MERCURY_OPTIONS="--heap-size 20000" ./rational_test > $@ 2>&1
 
 #-----------------------------------------------------------------------------#
 
