@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -10,7 +10,32 @@
 %
 % Floating point support.
 %
-% XXX - What should we do about unification of two Nan's?
+% Note that implementations which support IEEE floating point
+% should ensure that in cases where the only valid answer is a "NaN"
+% (the IEEE float representation for "not a number"), the det
+% functions here will halt with a runtime error (or throw an exception)
+% rather than returning a NaN.  Quiet (non-signalling) NaNs have a
+% semantics which is not valid in Mercury, since they don't obey the
+% axiom "all [X] X = X".
+%
+% XXX Unfortunately the current Mercury implementation does not
+% do that on all platforms, since neither ANSI C nor POSIX provide
+% any portable way of ensuring that floating point operations
+% whose result is not representable will raise a signal rather
+% than returning a NaN.  (Maybe C9X will help...?)
+% The behaviour is correct on Linux and Digital Unix,
+% but not on Solaris, for example.
+%
+% IEEE floating point also specifies that some functions should
+% return different results for +0.0 and -0.0, but that +0.0 and -0.0
+% should compare equal.  This semantics is not valid in Mercury,
+% since it doesn't obey the axiom `all [F, X, Y] X = Y => F(X) = F(Y)'.
+% Again, the resolution is that in Mercury, functions which would
+% return different results for +0.0 and -0.0 should instead halt
+% execution with a run-time error (or throw an exception).
+%
+% XXX Here too the current Mercury implementation does not
+% implement the intended semantics correctly on all platforms.
 %
 %---------------------------------------------------------------------------%
 
