@@ -20,7 +20,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module code_util, map, bintree_set, string, list, require, std_util.
+:- import_module value_number, code_util, map, bintree_set.
+:- import_module string, list, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -74,9 +75,15 @@ peephole__opt_proc(Options, c_procedure(Name, Arity, Mode, Instructions0),
 	),
 	options__lookup_bool_option(Options, peephole_label_elim, LabelElim),
 	( LabelElim = yes ->
-		peephole__label_elim(Instructions2, Instructions)
+		peephole__label_elim(Instructions2, Instructions3)
 	;
-		Instructions = Instructions2
+		Instructions3 = Instructions2
+	),
+	options__lookup_bool_option(Options, peephole_value_number, ValueNumber),
+	( ValueNumber = yes ->
+		value_number__optimize(Instructions3, Instructions)
+	;
+		Instructions = Instructions3
 	).
 
 %-----------------------------------------------------------------------------%
@@ -447,11 +454,11 @@ peephole__eliminate(Uinstr0 - Comment0, Label, Uinstr - Comment) :-
 			Label = yes(Follow)
 		->
 			(
-				Follow = no
+				Follow = yes
 			->
 				Uinstr = comment("eliminated label only")
 			;
-				% Follow = yes,
+				% Follow = no,
 				Uinstr = comment("eliminated label and block")
 			)
 		;

@@ -84,6 +84,7 @@
 		;	peephole_local
 		;	peephole_jump_opt
 		;	peephole_label_elim
+		;	peephole_value_number
 		;	optimize
 		;	debug
 		;	grade
@@ -143,6 +144,7 @@ option_defaults([
 	peephole_local		-	bool(yes),
 	peephole_jump_opt	-	bool(yes),
 	peephole_label_elim	-	bool(yes),
+	peephole_value_number	-	bool(no),
 		% Miscellaneous Options
 	builtin_module		-	string("mercury_builtin"),
 	heap_space		-	int(0),
@@ -227,6 +229,7 @@ long_option("peephole",			peephole).
 long_option("peephole-local",		peephole_local).
 long_option("peephole-jump-opt",	peephole_jump_opt).
 long_option("peephole-label-elim",	peephole_label_elim).
+long_option("peephole-value-number",	peephole_value_number).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -328,6 +331,8 @@ options_help -->
 	io__write_string("\t\tEliminate jumps to jumps.\n"),
 	io__write_string("\t--peephole-label-elim\n"),
 	io__write_string("\t\tEliminate useless labels\n"),
+	io__write_string("\t--peephole-value-number\n"),
+	io__write_string("\t\tPerform value numbering\n"),
 	io__write_string("\t--cc <compiler-name>\n"),
 	io__write_string("\t\tSpecify which C compiler to use.\n"),
 	io__write_string("\t--c-include-directory <dir>\n"),
