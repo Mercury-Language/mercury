@@ -2370,7 +2370,7 @@ mercury_compile__link_module_list(Modules) -->
 	    join_module_list(Modules, ".m", ["> ", InitCFileName], MkInitCmd0),
 	    globals__io_get_trace_level(TraceLevel),
 	    { trace_level_trace_interface(TraceLevel, yes) ->
-		CmdPrefix = "c2init -i "
+		CmdPrefix = "c2init -t "
 	    ;
 		CmdPrefix = "c2init "
 	    },

@@ -224,12 +224,24 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 	( { module_defn_update_import_status(ModuleDefn, Status1) } ->
 		{ Status = Status1 },
 		{ Module = Module0 }
-	; { ModuleDefn = import(module(_)) } ->
+	; { ModuleDefn = import(module(Specifiers)) } ->
 		{ Status = Status0 },
-		{ Module = Module0 }
-	; { ModuleDefn = use(module(_)) } ->
+		{ Status = item_status(IStat, _) },
+		( { IStat = local ; IStat = exported } ->
+			{ module_add_imported_module_specifiers(Specifiers,
+				Module0, Module) }
+		;
+			{ Module = Module0 }
+		)
+	; { ModuleDefn = use(module(Specifiers)) } ->
 		{ Status = Status0 },
-		{ Module = Module0 }
+		{ Status = item_status(IStat, _) },
+		( { IStat = local ; IStat = exported } ->
+			{ module_add_imported_module_specifiers(Specifiers,
+				Module0, Module) }
+		;
+			{ Module = Module0 }
+		)
 	; { ModuleDefn = include_module(_) } ->
 		{ Status = Status0 },
 		{ Module = Module0 }
@@ -1504,8 +1516,8 @@ module_add_instance_defn(Module0, Constraints, Name, Types, Interface, VarSet,
 		{ map__search(Classes, Key, _) }
 	->
 		{ map__init(Empty) },
-		{ NewValue = hlds_instance_defn(Status, Constraints, Types,
-			Interface, no, VarSet, Empty) },
+		{ NewValue = hlds_instance_defn(Status, Context, Constraints, 
+			Types, Interface, no, VarSet, Empty) },
 		{ map__lookup(Instances0, Key, Values) },
 		{ map__det_update(Instances0, Key, [NewValue|Values], 
 			Instances) },
@@ -1799,9 +1811,10 @@ adjust_special_pred_status(Status0, SpecialPredId, Status) :-
 add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives, 
 		MaybeDet, Context, ArgsMethod, PredInfo, ModeId) :-
 	pred_info_procedures(PredInfo0, Procs0),
+	pred_info_arg_types(PredInfo0, ArgTypes),
 	next_mode_id(Procs0, MaybeDet, ModeId),
-	proc_info_init(Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
-		MaybeDet, Context, ArgsMethod, NewProc),
+	proc_info_init(Arity, ArgTypes, ArgModes, MaybeDeclaredArgModes,
+		MaybeArgLives, MaybeDet, Context, ArgsMethod, NewProc),
 	map__det_insert(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 

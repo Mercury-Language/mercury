@@ -1737,7 +1737,7 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 			list__index1_det(InstanceList, InstanceNum,
 				ProofInstanceDefn),
 
-			ProofInstanceDefn = hlds_instance_defn(_,
+			ProofInstanceDefn = hlds_instance_defn(_, _,
 				InstanceConstraints0, InstanceTypes0, _, _, 
 				InstanceTVarset, SuperClassProofs0),
 

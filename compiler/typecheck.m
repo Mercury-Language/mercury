@@ -159,7 +159,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, prog_util, type_util, code_util.
+:- import_module hlds_goal, prog_util, type_util, modules, code_util.
 :- import_module prog_data, prog_io, prog_io_util, prog_out, hlds_out.
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
 :- import_module passes_aux, clause_to_proc, special_pred, inst_match.
@@ -392,10 +392,11 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				TypeCheckInfo3),
 		typecheck_check_for_ambiguity(whole_pred, HeadVars,
 				TypeCheckInfo3, TypeCheckInfo4),
-		typecheck_info_get_final_info(TypeCheckInfo4, ExistQVars0,
-				TypeVarSet, HeadTypeParams2, InferredVarTypes0,
-				InferredTypeConstraints0, ConstraintProofs,
-				TVarRenaming, ExistTypeRenaming),
+		typecheck_info_get_final_info(TypeCheckInfo4, HeadTypeParams1, 
+				ExistQVars0, TypeVarSet, HeadTypeParams2,
+				InferredVarTypes0, InferredTypeConstraints0,
+				ConstraintProofs, TVarRenaming,
+				ExistTypeRenaming),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
 		ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
 				InferredVarTypes, HeadVars, Clauses),
@@ -2813,10 +2814,13 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 
 %-----------------------------------------------------------------------------%
 
-% typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars,
+% typecheck_info_get_final_info(TypeCheckInfo, 
+% 		OldHeadTypeParams, OldExistQVars,
 %		NewTypeVarSet, New* ..., TypeRenaming, ExistTypeRenaming):
 %	extracts the final inferred types from TypeCheckInfo.
 %
+%	OldHeadTypeParams should be the type variables from the head of the
+%	predicate.
 %	OldExistQVars should be the declared existentially quantified
 %	type variables (if any).
 %	New* is the newly inferred types, in NewTypeVarSet.
@@ -2826,16 +2830,17 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 %	applying TypeRenaming) to rename existential type variables
 %	in OldExistQVars.
 
-:- pred typecheck_info_get_final_info(typecheck_info, existq_tvars,
+:- pred typecheck_info_get_final_info(typecheck_info, list(tvar), existq_tvars,
 		tvarset, existq_tvars, map(var, type),
 		class_constraints, map(class_constraint, constraint_proof),
 		map(tvar, tvar), map(tvar, tvar)).
-:- mode typecheck_info_get_final_info(in, in, out, out, out, out, out, out, out)
-		is det.
+:- mode typecheck_info_get_final_info(in, in, in, 
+		out, out, out, out, out, out, out) is det.
 
-typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
-		NewHeadTypeParams, NewVarTypes, NewTypeConstraints,
-		NewConstraintProofs, TSubst, ExistTypeRenaming) :-
+typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars, 
+		NewTypeVarSet, NewHeadTypeParams, NewVarTypes,
+		NewTypeConstraints, NewConstraintProofs, TSubst,
+		ExistTypeRenaming) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign | _] ->
 		type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
@@ -2851,11 +2856,11 @@ typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
 		expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
 
 		%
-		% figure out how we should renaming the existential types
+		% figure out how we should rename the existential types
 		% in the type declaration (if any)
 		%
-		get_existq_tvar_renaming(OldExistQVars, TypeBindings,
-			ExistTypeRenaming),
+		get_existq_tvar_renaming(OldHeadTypeParams, OldExistQVars,
+			TypeBindings, ExistTypeRenaming),
 
 		%
 		% We used to just use the OldTypeVarSet that we got
@@ -2875,12 +2880,21 @@ typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
 		% in the inferred types, plus any existentially typed
 		% variables that will remain in the declaration.
 		%
+		% There may also be some types in the HeadTypeParams
+		% which do not occur in the type of any variable (e.g. this
+		% can happen in the case of code containing type errors).
+		% We'd better keep those, too, to avoid errors
+		% when we apply the TSubst to the HeadTypeParams.
+		% (XXX should we do the same for TypeConstraints and
+		% ConstraintProofs too?)
+		%
 		map__values(VarTypes, Types),
 		term__vars_list(Types, TypeVars0),
 		map__keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
 		list__delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
 			ExistQVarsToRemain),
-		list__append(ExistQVarsToRemain, TypeVars0, TypeVars1),
+		list__condense([ExistQVarsToRemain, HeadTypeParams, TypeVars0],
+			TypeVars1),
 		list__sort_and_remove_dups(TypeVars1, TypeVars),
 		%
 		% Next, create a new typevarset with the same number of
@@ -2915,19 +2929,23 @@ typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
 
 %
 % We rename any existentially quantified type variables which
-% get mapped to other type variables.
+% get mapped to other type variables, unless they are mapped to 
+% universally quantified type variables from the head of the predicate.
 %
-:- pred get_existq_tvar_renaming(existq_tvars, tsubst, map(tvar, tvar)).
-:- mode get_existq_tvar_renaming(in, in, out) is det.
+:- pred get_existq_tvar_renaming(list(tvar), existq_tvars, tsubst, 
+	map(tvar, tvar)).
+:- mode get_existq_tvar_renaming(in, in, in, out) is det.
 
-get_existq_tvar_renaming(ExistQVars, TypeBindings, ExistTypeRenaming) :-
+get_existq_tvar_renaming(OldHeadTypeParams, ExistQVars, TypeBindings,
+		ExistTypeRenaming) :-
 	MaybeAddToMap = lambda([TVar::in, Renaming0::in, Renaming::out] is det,
 		(
 			term__apply_rec_substitution(term__variable(TVar),
 				TypeBindings, Result),
 			(
 				Result = term__variable(NewTVar),
-				NewTVar \= TVar
+				NewTVar \= TVar,
+				\+ list__member(NewTVar, OldHeadTypeParams)
 			->
 				map__det_insert(Renaming0, TVar, NewTVar,
 					Renaming)
@@ -3394,8 +3412,9 @@ find_matching_instance_rule(Instances, ClassName, Types, TVarSet,
 
 find_matching_instance_rule_2([I|Is], N0, ClassName, Types, TVarSet,
 		NewTVarSet, Proofs0, Proofs, NewConstraints) :-
-	I = hlds_instance_defn(_ModuleName, NewConstraints0, InstanceTypes0,
-		_Interface, _PredProcIds, InstanceNames, _SuperClassProofs),
+	I = hlds_instance_defn(_Status, _Context, NewConstraints0, 
+		InstanceTypes0, _Interface, _PredProcIds, InstanceNames,
+		_SuperClassProofs),
 	(
 		varset__merge_subst(TVarSet, InstanceNames, NewTVarSet0,
 			RenameSubst),
@@ -4680,7 +4699,39 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 	;
 		io__write_string("  error: undefined predicate `"),
 		hlds_out__write_pred_call_id(PredCallId),
-		io__write_string("'.\n")
+		io__write_string("'"),
+		( { PredName = qualified(ModQual, _) } ->
+			maybe_report_missing_import(TypeCheckInfo, ModQual)
+		;
+			io__write_string(".\n")
+		)
+	).
+
+:- pred maybe_report_missing_import(typecheck_info, module_specifier,
+		io__state, io__state).
+:- mode maybe_report_missing_import(typecheck_info_no_io, in, di, uo) is det.
+
+maybe_report_missing_import(TypeCheckInfo, ModuleQualifier) -->
+	{ typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo) },
+	{ module_info_name(ModuleInfo, ThisModule) },
+	{ module_info_get_imported_module_specifiers(ModuleInfo,
+		ImportedModules) },
+	(
+		% the visible modules are the current module, any
+		% imported modules, and any ancestor modules.
+		{ ModuleQualifier \= ThisModule },
+		{ \+ set__member(ModuleQualifier, ImportedModules) },
+		{ get_ancestors(ThisModule, ParentModules) },
+		{ \+ list__member(ModuleQualifier, ParentModules) }
+	->
+		io__write_string("\n"),
+		{ typecheck_info_get_context(TypeCheckInfo, Context) },
+		prog_out__write_context(Context),
+		io__write_string("  (the module `"),
+		mercury_output_bracketed_sym_name(ModuleQualifier),
+		io__write_string("' has not been imported).\n")
+	;
+		io__write_string(".\n")
 	).
 
 :- pred report_error_func_instead_of_pred(typecheck_info, pred_call_id,
@@ -4871,7 +4922,16 @@ report_error_undef_cons(TypeCheckInfo, Functor, Arity) -->
 			{ strip_builtin_qualifier_from_cons_id(Functor, 
 				Functor1) },
 			hlds_out__write_cons_id(Functor1),
-			io__write_string("'.\n")
+			io__write_string("'"),
+			(
+				{ Functor = cons(Constructor, _) },
+				{ Constructor = qualified(ModQual, _) }
+			->
+				maybe_report_missing_import(TypeCheckInfo,
+					ModQual)
+			;
+				io__write_string(".\n")
+			)
 		)
 	).
 
