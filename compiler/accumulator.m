@@ -601,6 +601,7 @@ store(Identifier, Goal, store_info(N, IM0, GS0), store_info(N+1, IM, GS)) :-
 identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
 	P = (pred(Key::out) is nondet :-
 		goal_store__member(GoalStore, Key, Goal - _InstMap),
+		Key = rec - _,
 		Goal = call(PredId, ProcId, _, _, _, _) - _
 	),
 	solutions(P, Ids).
