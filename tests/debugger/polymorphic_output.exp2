@@ -12,7 +12,7 @@ mdb> P
        HeadVar__1             	two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
        HeadVar__2             	3
 mdb> f
-      10:      6  4 EXCP func std_util:det_arg/3-0 (det)
+      10:      6  4 EXCP func std_util:det_arg/3-0 (det) e;t;c2;
 mdb> P
        HeadVar__1             	two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
        HeadVar__2             	3
