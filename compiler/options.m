@@ -977,9 +977,13 @@ long_option("vn-fudge",			vn_fudge).
 
 % RL optimizations
 long_option("optimize-rl",		optimize_rl).
+long_option("optimise-rl",		optimize_rl).
 long_option("optimize-rl-cse",		optimize_rl_cse).
+long_option("optimise-rl-cse",		optimize_rl_cse).
 long_option("optimize-rl-invariants",	optimize_rl_invariants).
+long_option("optimise-rl-invariants",	optimize_rl_invariants).
 long_option("optimize-rl-index",	optimize_rl_index).
+long_option("optimise-rl-index",	optimize_rl_index).
 long_option("detect-rl-streams", 	detect_rl_streams).
 
 % LLDS->C optimizations
