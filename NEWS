@@ -11,25 +11,36 @@ NEWS since Mercury release 0.7
   sin, cos, arcsin, and arccos).  The module `dump' provides I/O predicates
   for printing out constraints.
 
+  Note that since `cfloat' is a different type than `float', you
+  have to use the `==' operator provided in this package rather
+  than `=' if you want to unify a cfloat with a float.
+  
   To support constraint handling, we've made the mode system a bit
   more flexible.  There is a new inst `any' for variables whose value
   is unknown but which may have constraints on them. 
-  
-  The support for `any' insts is not quite complete, so there are
-  a couple of limitations.  We do not support unifying values of
-  inst `any', so you have to use `==' rather than `=' to unify values
-  of type `cfloat'.  Also we do not support passing values of
-  inst `free' where values of inst `any' are expected, so sometimes
-  you have to explicitly initialize variables by calling cfloat__init/1.
 
-  Also the CLP(R) constraint solver has not yet been ported to a 64-bit
-  architecture, so it won't work on DEC Alpha systems.
+  The support for `any' insts is not quite complete; in particular, we
+  do not support passing values of inst `free' where values of inst
+  `any' are expected, so sometimes you have to explicitly initialize
+  variables by calling cfloat__init/1.
+
+  Also we don't yet support any equivalent to SICStus Prolog's
+  call_residue/3 or the three-argument version of CLP(R)'s dump predicate.
 
   But apart from that, it all works nicely.  And even though we support
   equivalents to such nasty non-logical meta-programming constructs
   as CLPR's `dump' primitive, we still manage to preserve referential
   transparency -- the interface provided is a completely pure declarative
   interface.
+
+* We've added some support for Prolog-style variables and coroutining
+
+  The module extras/trailed_updated/var.m provides a type `var(T)'
+  which is a Prolog-style variable that holds a value of type T.
+  These variables can have the new inst `any' described above.
+  There's also an implementation of freeze/2, for coroutining
+  (dynamic scheduling).  The samples subdirectory has an example
+  of the use of freeze/2 to solve the N-queens problem.
 
 * We now provide generalized trailing support.
 
@@ -45,6 +56,8 @@ NEWS since Mercury release 0.7
 * We've added support for backtrackable destructive update on arrays.
 
   See the new module `tr_array' in the extras/trailed_update.
+
+  XXX Currently buggy -- see the "Trailing" documentation.
 
 * We've improved the C interface.
 
