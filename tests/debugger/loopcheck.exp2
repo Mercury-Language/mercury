@@ -17,9 +17,9 @@ mdb> continue -a
        7:      3  3 THEN pred loopcheck:loop/1-0 (erroneous) c2;e;t;
                          loopcheck.m:21
        8:      4  4 CALL pred require:error/1-0 (erroneous)
-                         require.m:89 (from loopcheck.m:21)
+                         require.m:NNNN (from loopcheck.m:21)
        9:      4  4 EXCP pred require:error/1-0 (erroneous)
-                         require.m:90 (from loopcheck.m:21)
+                         require.m:NNNN (from loopcheck.m:21)
       10:      3  3 EXCP pred loopcheck:loop/1-0 (erroneous)
                          loopcheck.m:21 (from loopcheck.m:21)
       11:      2  2 EXCP pred loopcheck:loop/1-0 (erroneous)
