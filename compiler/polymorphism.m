@@ -659,31 +659,31 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeVarMap,
 			ModuleInfo),
-	%
-	% A type-info variable may be non-local to a goal if any of
-	% the ordinary non-local variables for that goal are polymorphically
-	% typed with a type that depends on that type-info variable.
-	%
-	Goal0 = _ - GoalInfo0,
-	goal_info_get_nonlocals(GoalInfo0, NonLocals),
-	set__to_sorted_list(NonLocals, NonLocalsList),
-	map__apply_to_list(NonLocalsList, VarTypes0, NonLocalsTypes),
-	term__vars_list(NonLocalsTypes, NonLocalTypeVars),
-	solutions(lambda([TypeInfoVar::out] is nondet, (
-			list__member(Var, NonLocalTypeVars),
-			map__search(TypeVarMap, Var, TypeInfoVar)
-		)), ExtraNonLocals),
-	( ExtraNonLocals = [] ->
-		Goal = Goal0,
-		VarTypes = VarTypes0,
-		VarSet = VarSet0
+	( map__is_empty(TypeVarMap) ->
+		Info = Info0,
+		Goal = Goal0
 	;
-		set__sorted_list_to_set(ExtraNonLocals, NewOutsideVars),
+		%
+		% A type-info variable may be non-local to a goal if any of
+		% the ordinary non-local variables for that goal are
+		% polymorphically typed with a type that depends on that
+		% type-info variable.
+		%
+		Goal0 = _ - GoalInfo0,
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		set__to_sorted_list(NonLocals, NonLocalsList),
+		map__apply_to_list(NonLocalsList, VarTypes0, NonLocalsTypes),
+		term__vars_list(NonLocalsTypes, NonLocalTypeVars),
+		solutions_set(lambda([TypeInfoVar::out] is nondet, (
+				list__member(Var, NonLocalTypeVars),
+				map__search(TypeVarMap, Var, TypeInfoVar)
+			)), NewOutsideVars),
 		set__union(NewOutsideVars, NonLocals, OutsideVars),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
-			OutsideVars, Goal, VarSet, VarTypes, _Warnings)
-	),
-	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarMap, ModuleInfo).
+			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
+		Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarMap,
+				ModuleInfo)
+	).
 
 :- pred polymorphism__process_lambda(pred_or_func, list(var), list(mode),
 		determinism, set(var), hlds_goal, unification,
