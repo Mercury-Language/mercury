@@ -91,9 +91,14 @@ check:	$(ERRS) $(ERR_RESS)
 
 errs:	$(ERRS)
 
-# we only need to make the dependencies for test cases consisting of
-# multiple modules; currently the only such test case is test_nested.m
-depend:	test_nested.depend
+# We only need to make the dependencies for test cases consisting of
+# multiple modules; currently the following are the only such cases.
+depend:	test_nested.depend nested_impl_in_int.depend
+
+# The error in this file is actually reported even at make depend time,
+# so we need to ignore the return status.
+nested_impl_in_int.depend:
+	-$(MCD) $(ALL_MCDFLAGS) nested_impl_in_int
 
 clean:
 	rm -f *.err *.err_res
