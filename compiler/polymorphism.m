@@ -410,7 +410,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		{ Y = var(YVar) }
 	->
 		=(poly_info(_, VarTypes, _, TypeInfoMap, _PName, ModuleInfo,
-			_IKT)),
+			IKT)),
 		{ map__lookup(VarTypes, XVar, Type) },
 		( { Type = term__variable(TypeVar) } ->
 			% Convert polymorphic unifications into calls to
@@ -478,7 +478,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			% YYY Optimise UniMode0 in the case where there are
 			%     no shared inst_keys.
 			{ UniMode0 = UniMode },
-			{ unify_proc__lookup_mode_num(ModuleInfo, TypeId,
+			{ unify_proc__lookup_mode_num(IKT, ModuleInfo, TypeId,
 				UniMode, Det, ProcId) },
 			{ SymName = unqualified("__Unify__") },
 			{ ArgVars = [XVar, YVar] },

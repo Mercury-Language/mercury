@@ -59,8 +59,8 @@
 	% Add a new request to the unify_requests table.
 
 :- pred unify_proc__request_unify(unify_proc_id, determinism, term__context,
-				module_info, module_info).
-:- mode unify_proc__request_unify(in, in, in, in, out) is det.
+				inst_key_table, module_info, module_info).
+:- mode unify_proc__request_unify(in, in, in, in, in, out) is det.
 
 	% Modecheck the unification procedures which have been
 	% requested.  If the first argument is `unique_mode_check',
@@ -74,9 +74,9 @@
 	% Given the type and mode of a unification, look up the
 	% mode number for the unification proc.
 
-:- pred unify_proc__lookup_mode_num(module_info, type_id, uni_mode,
-					determinism, proc_id).
-:- mode unify_proc__lookup_mode_num(in, in, in, in, out) is det.
+:- pred unify_proc__lookup_mode_num(inst_key_table, module_info, type_id,
+					uni_mode, determinism, proc_id).
+:- mode unify_proc__lookup_mode_num(in, in, in, in, in, out) is det.
 
 	% Generate the clauses for one of the compiler-generated
 	% special predicates (compare/3, index/3, unify, etc.)
@@ -153,16 +153,19 @@ unify_proc__set_req_queue(unify_requests(A, _), ReqQueue,
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__lookup_mode_num(ModuleInfo, TypeId, UniMode, Det, Num) :-
-	( unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Det, Num1) ->
+unify_proc__lookup_mode_num(IKT, ModuleInfo, TypeId, UniMode, Det, Num) :-
+	(
+		unify_proc__search_mode_num(IKT, ModuleInfo, TypeId, UniMode,
+				Det, Num1)
+	->
 		Num = Num1
 	;
 		error("unify_proc.m: unify_proc__search_num failed")
 	).
 
-:- pred unify_proc__search_mode_num(module_info, type_id, uni_mode, determinism,
-					proc_id).
-:- mode unify_proc__search_mode_num(in, in, in, in, out) is semidet.
+:- pred unify_proc__search_mode_num(inst_key_table, module_info, type_id,
+				uni_mode, determinism, proc_id).
+:- mode unify_proc__search_mode_num(in, in, in, in, in, out) is semidet.
 
 	% Given the type, mode, and determinism of a unification, look up the
 	% mode number for the unification proc.
@@ -170,12 +173,11 @@ unify_proc__lookup_mode_num(ModuleInfo, TypeId, UniMode, Det, Num) :-
 	% are always mode zero.  For unreachable unifications,
 	% we also use mode zero.
 
-unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Determinism, ProcId) :-
+unify_proc__search_mode_num(IKT, ModuleInfo, TypeId, UniMode, Determinism,
+		ProcId) :-
 	UniMode = (XInitial - YInitial -> _Final),
 	(
 		Determinism = semidet,
-		% YYY Fix for local inst_key_tables
-		module_info_inst_key_table(ModuleInfo, IKT),
 		inst_is_ground(XInitial, IKT, ModuleInfo),
 		inst_is_ground(YInitial, IKT, ModuleInfo)
 	->
@@ -196,14 +198,14 @@ unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Determinism, ProcId) :-
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__request_unify(UnifyId, Determinism, Context, ModuleInfo0,
+unify_proc__request_unify(UnifyId, Determinism, Context, IKT, ModuleInfo0,
 		ModuleInfo) :-
 	%
 	% check if this unification has already been requested
 	%
 	UnifyId = TypeId - UnifyMode,
 	(
-		unify_proc__search_mode_num(ModuleInfo0, TypeId, UnifyMode,
+		unify_proc__search_mode_num(IKT, ModuleInfo0, TypeId, UnifyMode,
 			Determinism, _)
 	->
 		ModuleInfo = ModuleInfo0

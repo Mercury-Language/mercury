@@ -392,11 +392,12 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
 	%
 
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_info_get_inst_key_table(ModeInfo0, IKT0),
 
 	( HowToCheckGoal = check_modes ->
 		% This only needs to be done once.
 		mode_info_get_types_of_vars(ModeInfo0, Vars, VarTypes),
-		propagate_types_into_mode_list(VarTypes, ModuleInfo0,
+		propagate_types_into_mode_list(VarTypes, IKT0, ModuleInfo0,
 			Modes0, Modes)
  	;
 		Modes = Modes0
@@ -409,7 +410,6 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap__apply_instmap_delta(InstMap0, VarInstMapDelta, InstMap1),
 	mode_info_set_instmap(InstMap1, ModeInfo0, ModeInfo1),
-	mode_info_get_inst_key_table(ModeInfo1, IKT0),
  
 	% mark the non-clobbered lambda variables as live
 	get_arg_lives(Modes, IKT0, ModuleInfo0, ArgLives),
@@ -921,7 +921,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 				UniMode0 = UniMode,
 				mode_info_get_context(ModeInfo0, Context),
 				unify_proc__request_unify(TypeId - UniMode, Det,
-					Context, ModuleInfo0, ModuleInfo),
+					Context, IKT0, ModuleInfo0, ModuleInfo),
 				mode_info_set_module_info(ModeInfo0, ModuleInfo,
 					ModeInfo)
 			;

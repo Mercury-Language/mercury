@@ -46,8 +46,8 @@ insert explicit calls to initialize constraint variables.
 	% part of the inst is a defined inst or an alias, and if so
 	% replaces it with the definition.
 
-:- pred inst_expand_defined_inst(module_info, inst, inst).
-:- mode inst_expand_defined_inst(in, in, out) is det.
+:- pred inst_expand_defined_inst(inst_key_table, module_info, inst, inst).
+:- mode inst_expand_defined_inst(in, in, in, out) is det.
 
 	% inst_expand_defined_inst(ModuleInfo, Inst0, Inst) checks if the
 	% top-level part of the inst is a defined inst, and if so replaces
@@ -235,8 +235,8 @@ insert explicit calls to initialize constraint variables.
 	% Succeed iff the specified inst contains (directly or indirectly)
 	% the specified inst_name.
 
-:- pred inst_contains_instname(inst, module_info, inst_name).
-:- mode inst_contains_instname(in, in, in) is semidet.
+:- pred inst_contains_instname(inst, inst_key_table, module_info, inst_name).
+:- mode inst_contains_instname(in, in, in, in) is semidet.
 
 	% Given a list of insts, and a corresponding list of livenesses,
 	% return true iff for every element in the list of insts, either
@@ -506,7 +506,7 @@ inst_list_matches_initial([X|Xs], [Y|Ys], IKT, ModuleInfo, Expansions) :-
 
 inst_expand(IKT, ModuleInfo, Inst0, Inst) :-
 	( Inst0 = defined_inst(InstName) ->
-		inst_lookup(ModuleInfo, InstName, Inst1),
+		inst_lookup(IKT, ModuleInfo, InstName, Inst1),
 		inst_expand(IKT, ModuleInfo, Inst1, Inst)
 	; Inst0 = alias(InstKey) ->
 		inst_key_table_lookup(IKT, InstKey, Inst1),
@@ -515,10 +515,10 @@ inst_expand(IKT, ModuleInfo, Inst0, Inst) :-
 		Inst = Inst0
 	).
 
-inst_expand_defined_inst(ModuleInfo, Inst0, Inst) :-
+inst_expand_defined_inst(IKT, ModuleInfo, Inst0, Inst) :-
 	( Inst0 = defined_inst(InstName) ->
-		inst_lookup(ModuleInfo, InstName, Inst1),
-		inst_expand_defined_inst(ModuleInfo, Inst1, Inst)
+		inst_lookup(IKT, ModuleInfo, InstName, Inst1),
+		inst_expand_defined_inst(IKT, ModuleInfo, Inst1, Inst)
 	;
 		Inst = Inst0
 	).
@@ -771,7 +771,7 @@ inst_is_clobbered(bound(mostly_clobbered, _), _, _).
 inst_is_clobbered(inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
 inst_is_clobbered(defined_inst(InstName), IKT, ModuleInfo) :-
-        inst_lookup(ModuleInfo, InstName, Inst),
+        inst_lookup(IKT, ModuleInfo, InstName, Inst),
         inst_is_clobbered(Inst, IKT, ModuleInfo).
 inst_is_clobbered(alias(Key), IKT, ModuleInfo) :-
 	inst_key_table_lookup(IKT, Key, Inst),
@@ -787,7 +787,7 @@ inst_is_free(free(_Type), _, _).
 inst_is_free(inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
 inst_is_free(defined_inst(InstName), IKT, ModuleInfo) :-
-        inst_lookup(ModuleInfo, InstName, Inst),
+        inst_lookup(IKT, ModuleInfo, InstName, Inst),
         inst_is_free(Inst, IKT, ModuleInfo).
 inst_is_free(alias(Key), IKT, ModuleInfo) :-
 	inst_key_table_lookup(IKT, Key, Inst),
@@ -804,7 +804,7 @@ inst_is_bound(bound(_, _), _, _).
 inst_is_bound(inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
 inst_is_bound(defined_inst(InstName), IKT, ModuleInfo) :-
-        inst_lookup(ModuleInfo, InstName, Inst),
+        inst_lookup(IKT, ModuleInfo, InstName, Inst),
         inst_is_bound(Inst, IKT, ModuleInfo).
 inst_is_bound(abstract_inst(_, _), _, _).
 inst_is_bound(alias(Key), IKT, ModuleInfo) :-
@@ -819,7 +819,7 @@ inst_is_bound_to_functors(bound(_Uniq, Functors), _, _, Functors).
 inst_is_bound_to_functors(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
 inst_is_bound_to_functors(defined_inst(InstName), IKT, ModuleInfo, Functors) :-
-        inst_lookup(ModuleInfo, InstName, Inst),
+        inst_lookup(IKT, ModuleInfo, InstName, Inst),
         inst_is_bound_to_functors(Inst, IKT, ModuleInfo, Functors).
 inst_is_bound_to_functors(alias(Key), IKT, ModuleInfo, Functors) :-
 	inst_key_table_lookup(IKT, Key, Inst),
@@ -854,7 +854,7 @@ inst_is_ground_2(Inst, IKT, ModuleInfo, Expansions) :-
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
                 inst_is_ground_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_ground_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -889,7 +889,7 @@ inst_is_ground_or_any_2(Inst, IKT, ModuleInfo, Expansions) :-
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
                 inst_is_ground_or_any_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_ground_or_any_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -925,7 +925,7 @@ inst_is_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
                 inst_is_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -964,7 +964,7 @@ inst_is_mostly_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
                 inst_is_mostly_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_mostly_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -1002,7 +1002,7 @@ inst_is_not_partly_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
                 true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
                 inst_is_not_partly_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_not_partly_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -1046,7 +1046,7 @@ inst_is_not_fully_unique_2(Inst, IKT, ModuleInfo, Expansions) :-
 		true
         ;
                 set__insert(Expansions, Inst, Expansions2),
-                inst_lookup(ModuleInfo, InstName, Inst2),
+                inst_lookup(IKT, ModuleInfo, InstName, Inst2),
                 inst_is_not_fully_unique_2(Inst2, IKT, ModuleInfo, Expansions2)
         ).
 inst_is_not_fully_unique_2(alias(Key), IKT, ModuleInfo, Expansions) :-
@@ -1173,53 +1173,60 @@ inst_list_is_ground_or_any_or_dead([Inst | Insts], [Live | Lives],
 
 %-----------------------------------------------------------------------------%
 
-inst_contains_instname(Inst, ModuleInfo, InstName) :-
+inst_contains_instname(Inst, IKT, ModuleInfo, InstName) :-
 	set__init(Expansions),
-	inst_contains_instname_2(Inst, ModuleInfo, Expansions, InstName).
+	inst_contains_instname_2(Inst, IKT, ModuleInfo, Expansions, InstName).
 
-:- pred inst_contains_instname_2(inst, module_info, set(inst_name), inst_name).
-:- mode inst_contains_instname_2(in, in, in, in) is semidet.
+:- pred inst_contains_instname_2(inst, inst_key_table, module_info,
+		set(inst_name), inst_name).
+:- mode inst_contains_instname_2(in, in, in, in, in) is semidet.
 
-inst_contains_instname_2(defined_inst(InstName1), ModuleInfo, Expansions0,
+inst_contains_instname_2(defined_inst(InstName1), IKT, ModuleInfo, Expansions0,
 		InstName) :-
 	(
 		InstName = InstName1
 	;
 		not set__member(InstName1, Expansions0),
-		inst_lookup(ModuleInfo, InstName1, Inst1),
+		inst_lookup(IKT, ModuleInfo, InstName1, Inst1),
 		set__insert(Expansions0, InstName1, Expansions),
-		inst_contains_instname_2(Inst1, ModuleInfo, Expansions,
+		inst_contains_instname_2(Inst1, IKT, ModuleInfo, Expansions,
 			InstName)
 	).
-inst_contains_instname_2(bound(_Uniq, ArgInsts), ModuleInfo, Expansions,
+inst_contains_instname_2(bound(_Uniq, ArgInsts), IKT, ModuleInfo, Expansions,
 		InstName) :-
-	bound_inst_list_contains_instname(ArgInsts, ModuleInfo, Expansions,
+	bound_inst_list_contains_instname(ArgInsts, IKT, ModuleInfo, Expansions,
 		InstName).
+inst_contains_instname_2(alias(InstKey), IKT, ModuleInfo, Expansions,
+		InstName) :-
+	inst_key_table_lookup(IKT, InstKey, Inst),
+	inst_contains_instname_2(Inst, IKT, ModuleInfo, Expansions, InstName).
 
-:- pred bound_inst_list_contains_instname(list(bound_inst), module_info,
-						set(inst_name), inst_name).
-:- mode bound_inst_list_contains_instname(in, in, in, in) is semidet.
+:- pred bound_inst_list_contains_instname(list(bound_inst), inst_key_table,
+		module_info, set(inst_name), inst_name).
+:- mode bound_inst_list_contains_instname(in, in, in, in, in) is semidet.
 
-bound_inst_list_contains_instname([BoundInst|BoundInsts], ModuleInfo,
+bound_inst_list_contains_instname([BoundInst|BoundInsts], IKT, ModuleInfo,
 		Expansions, InstName) :-
 	BoundInst = functor(_Functor, ArgInsts),
 	(
-		inst_list_contains_instname(ArgInsts, ModuleInfo, Expansions,
-			InstName)
+		inst_list_contains_instname(ArgInsts, IKT, ModuleInfo,
+			Expansions, InstName)
 	;
-		bound_inst_list_contains_instname(BoundInsts, ModuleInfo,
+		bound_inst_list_contains_instname(BoundInsts, IKT, ModuleInfo,
 			Expansions, InstName)
 	).
 
-:- pred inst_list_contains_instname(list(inst), module_info, set(inst_name),
-					inst_name).
-:- mode inst_list_contains_instname(in, in, in, in) is semidet.
+:- pred inst_list_contains_instname(list(inst), inst_key_table, module_info,
+			set(inst_name), inst_name).
+:- mode inst_list_contains_instname(in, in, in, in, in) is semidet.
 
-inst_list_contains_instname([Inst|Insts], ModuleInfo, Expansions, InstName) :-
+inst_list_contains_instname([Inst|Insts], IKT, ModuleInfo, Expansions,
+		InstName) :-
 	(
-		inst_contains_instname_2(Inst, ModuleInfo, Expansions, InstName)
+		inst_contains_instname_2(Inst, IKT, ModuleInfo, Expansions,
+				InstName)
 	;
-		inst_list_contains_instname(Insts, ModuleInfo, Expansions,
+		inst_list_contains_instname(Insts, IKT, ModuleInfo, Expansions,
 			InstName)
 	).
 

@@ -217,9 +217,10 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, UI0, Inst, Det, UI) :-
 		UI = unify_inst_info(ModuleInfo3, IKT, Sub)
 	),
 	unify_inst_info_get_module_info(UI, ModuleInfo),
+	unify_inst_info_get_inst_key_table(UI, LastIKT),
 
 		% avoid expanding recursive insts
-	( inst_contains_instname(Inst1, ModuleInfo, ThisInstPair) ->
+	( inst_contains_instname(Inst1, LastIKT, ModuleInfo, ThisInstPair) ->
 		Inst = defined_inst(ThisInstPair)
 	;
 		Inst = Inst1
@@ -232,8 +233,9 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, UI0, Inst, Det, UI) :-
 abstractly_unify_inst_2(IsLive, Real, InstA, InstB, UnifyInstInfo0,
                 Inst, Det, UnifyInstInfo) :-
 	unify_inst_info_get_module_info(UnifyInstInfo0, ModuleInfo0),
-        inst_expand_defined_inst(ModuleInfo0, InstA, InstA2),
-        inst_expand_defined_inst(ModuleInfo0, InstB, InstB2),
+	unify_inst_info_get_inst_key_table(UnifyInstInfo0, IKT0),
+        inst_expand_defined_inst(IKT0, ModuleInfo0, InstA, InstA2),
+        inst_expand_defined_inst(IKT0, ModuleInfo0, InstB, InstB2),
         (
                 InstB2 = not_reached
         ->
@@ -245,8 +247,6 @@ abstractly_unify_inst_2(IsLive, Real, InstA, InstB, UnifyInstInfo0,
         ->
                 % Optimise common cases
 
-		unify_inst_info_get_module_info(UnifyInstInfo0, ModuleInfo0),
-		unify_inst_info_get_inst_key_table(UnifyInstInfo0, IKT0),
                 (
                         % free = alias(K)
 
@@ -1010,8 +1010,8 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, UI0,
 
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
-		inst_lookup(ModuleInfo1, InstName, Inst0),
 		unify_inst_info_get_inst_key_table(UI1, IKT1),
+		inst_lookup(IKT1, ModuleInfo1, InstName, Inst0),
 		inst_expand(IKT1, ModuleInfo1, Inst0, Inst1),
 		unify_inst_info_set_module_info(UI, ModuleInfo1, UI1),
 		make_ground_inst(Inst1, IsLive, Uniq, Real, UI1, 
@@ -1032,7 +1032,9 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, UI0,
 	),
 		% avoid expanding recursive insts
 	unify_inst_info_get_module_info(UI, ModuleInfo),
-	( inst_contains_instname(GroundInst, ModuleInfo, GroundInstKey) ->
+	unify_inst_info_get_inst_key_table(UI, LastIKT),
+	( inst_contains_instname(GroundInst, LastIKT, ModuleInfo,
+			GroundInstKey) ->
 		Inst = defined_inst(GroundInstKey)
 	;
 		Inst = GroundInst
@@ -1168,8 +1170,8 @@ make_shared_inst(defined_inst(InstName), UI0, Inst, UI) :-
 
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
-		inst_lookup(ModuleInfo1, InstName, Inst0),
 		unify_inst_info_get_inst_key_table(UI1, IKT1),
+		inst_lookup(IKT1, ModuleInfo1, InstName, Inst0),
 		inst_expand(IKT1, ModuleInfo1, Inst0, Inst1),
 		make_shared_inst(Inst1, UI1, SharedInst, UI2),
 		unify_inst_info_get_module_info(UI2, ModuleInfo2),
@@ -1187,7 +1189,8 @@ make_shared_inst(defined_inst(InstName), UI0, Inst, UI) :-
 		unify_inst_info_set_module_info(UI2, ModuleInfo1, UI)
 	),
 		% avoid expanding recursive insts
-	( inst_contains_instname(SharedInst, ModuleInfo, InstName) ->
+	unify_inst_info_get_inst_key_table(UI, LastIKT),
+	( inst_contains_instname(SharedInst, LastIKT, ModuleInfo, InstName) ->
 		Inst = defined_inst(InstName)
 	;
 		Inst = SharedInst
@@ -1271,8 +1274,8 @@ make_mostly_uniq_inst_2(defined_inst(InstName), UI0, Inst, UI) :-
 
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
-		inst_lookup(ModuleInfo1, InstName, Inst0),
 		unify_inst_info_get_inst_key_table(UI1, IKT1),
+		inst_lookup(IKT1, ModuleInfo1, InstName, Inst0),
 		inst_expand(IKT1, ModuleInfo1, Inst0, Inst1),
 		make_mostly_uniq_inst_2(Inst1, UI1, NondetLiveInst,
 			UI2),
@@ -1292,7 +1295,9 @@ make_mostly_uniq_inst_2(defined_inst(InstName), UI0, Inst, UI) :-
 	),
 		% avoid expanding recursive insts
 	unify_inst_info_get_module_info(UI, ModuleInfo),
-	( inst_contains_instname(NondetLiveInst, ModuleInfo, InstName) ->
+	unify_inst_info_get_inst_key_table(UI, LastIKT),
+	( inst_contains_instname(NondetLiveInst, LastIKT, ModuleInfo,
+			InstName) ->
 		Inst = defined_inst(InstName)
 	;
 		Inst = NondetLiveInst
@@ -1391,7 +1396,8 @@ inst_merge(InstA, InstB, IKT0, ModuleInfo0, Inst, IKT, ModuleInfo) :-
 		module_info_set_insts(ModuleInfo2, InstTable3, ModuleInfo)
 	),
 		% avoid expanding recursive insts
-	( inst_contains_instname(Inst0, ModuleInfo, merge_inst(InstA, InstB)) ->
+	( inst_contains_instname(Inst0, IKT, ModuleInfo,
+			merge_inst(InstA, InstB)) ->
 		Inst = defined_inst(merge_inst(InstA, InstB))
 	;
 		Inst = Inst0
@@ -1413,13 +1419,15 @@ inst_merge_2(InstA, InstB, IKT0, ModuleInfo0, Inst, IKT, ModuleInfo) :-
 	%     DO NOT merge this with the main branch without this
 	%     fixed!
 	inst_expand(IKT0, ModuleInfo0, InstA, InstA2),
+	inst_expand_fully(InstA2, IKT0, InstA3),
 	inst_expand(IKT0, ModuleInfo0, InstB, InstB2),
-	( InstB2 = not_reached ->
-		Inst = InstA2,
+	inst_expand_fully(InstB2, IKT0, InstB3),
+	( InstB3 = not_reached ->
+		Inst = InstA3,
 		ModuleInfo = ModuleInfo0,
 		IKT = IKT0
 	;
-		inst_merge_3(InstA2, InstB2, IKT0, ModuleInfo0, Inst, IKT,
+		inst_merge_3(InstA3, InstB3, IKT0, ModuleInfo0, Inst, IKT,
 			ModuleInfo)
 	).
 
@@ -1555,7 +1563,9 @@ merge_inst_uniq(defined_inst(InstName), UniqB, ModuleInfo, Expansions,
 		Uniq = UniqB
 	;
 		set__insert(Expansions, InstName, Expansions1),
-		inst_lookup(ModuleInfo, InstName, Inst),
+		% YYY Hack alert!
+		inst_key_table_init(IKT),
+		inst_lookup(IKT, ModuleInfo, InstName, Inst),
 		merge_inst_uniq(Inst, UniqB, ModuleInfo, Expansions1, Uniq)
 	).
 merge_inst_uniq(not_reached, Uniq, _, _, Uniq).

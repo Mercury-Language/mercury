@@ -459,26 +459,25 @@ instmap_delta_apply_instmap_delta(reachable(InstMappingDelta0, BwdMap0),
 %-----------------------------------------------------------------------------%
 
 instmap__restrict(unreachable, _, unreachable).
-instmap__restrict(reachable(InstMapping0, BwdMap0), Vars,
+instmap__restrict(reachable(InstMapping0, _), Vars,
 		reachable(InstMapping, BwdMap)) :-
 	map__select(InstMapping0, Vars, InstMapping),
-%	multi_map_select_values(BwdMap0, Vars, BwdMap),
-	%%% Delete vars from the BwdMap too?
-	BwdMap0 = BwdMap.
+	map__init(BwdMap0),
+	bwd_mapping_from_instmapping(InstMapping, BwdMap0, BwdMap).
 
 instmap_delta_restrict(unreachable, _, unreachable).
-instmap_delta_restrict(reachable(InstMapping0, BwdMap0), Vars,
+instmap_delta_restrict(reachable(InstMapping0, _), Vars,
 		reachable(InstMapping, BwdMap)) :-
 	map__select(InstMapping0, Vars, InstMapping),
-	%%% Delete vars from the BwdMap too?
-	BwdMap0 = BwdMap.
+	map__init(BwdMap0),
+	bwd_mapping_from_instmapping(InstMapping, BwdMap0, BwdMap).
 
 instmap_delta_delete_vars(unreachable, _, unreachable).
-instmap_delta_delete_vars(reachable(InstMapping0, BwdMap0), Vars,
+instmap_delta_delete_vars(reachable(InstMapping0, _), Vars,
 		reachable(InstMapping, BwdMap)) :-
 	map__delete_list(InstMapping0, Vars, InstMapping),
-	%%% Delete vars from the BwdMap too?
-	BwdMap0 = BwdMap.
+	map__init(BwdMap0),
+	bwd_mapping_from_instmapping(InstMapping, BwdMap0, BwdMap).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -492,18 +491,29 @@ instmap_delta_delete_vars(reachable(InstMapping0, BwdMap0), Vars,
 instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_info_get_inst_key_table(ModeInfo0, IKT0),
 	get_reachable_instmaps(InstMapList, InstMappingList),
-	( InstMappingList = [] ->
+	(
+		InstMappingList = []
+	->
 		InstMap = unreachable,
-		ModeInfo2 = ModeInfo0
-	; InstMap0 = reachable(InstMapping0, _BwdMap0) ->
-		% YYY Change for local inst_key_tables
-		module_info_inst_key_table(ModuleInfo0, IKT0),
+		ModeInfo2 = ModeInfo0,
+		IKT = IKT0
+	;
+%		InstMap0 = reachable(_, _),
+%		InstMappingList = [InstMapping]
+%	->
+%		map__init(BwdMap0),
+%		bwd_mapping_from_instmapping(InstMapping, BwdMap0, BwdMap),
+%		InstMap = reachable(InstMapping, BwdMap),
+%		ModeInfo2 = ModeInfo0,
+%		IKT = IKT0
+%	;
+		InstMap0 = reachable(InstMapping0, _BwdMap0)
+	->
 		set__to_sorted_list(NonLocals, NonLocalsList),
 		instmap__merge_2(NonLocalsList, InstMapList, IKT0, ModuleInfo0,
-			InstMapping0, IKT, ModuleInfo1, InstMapping, ErrorList),
-		% YYY Change for local inst_key_tables
-		module_info_set_inst_key_table(ModuleInfo1, IKT, ModuleInfo),
+			InstMapping0, IKT, ModuleInfo, InstMapping, ErrorList),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
 		( ErrorList = [FirstError | _] ->
 			FirstError = Var - _,
@@ -520,9 +530,14 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 		InstMap = reachable(InstMapping, BwdMap)
 	;
 		InstMap = unreachable,
-		ModeInfo2 = ModeInfo0
+		ModeInfo2 = ModeInfo0,
+		IKT = IKT0
 	),
-	mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo).
+	mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo3),
+	mode_info_set_inst_key_table(ModeInfo3, IKT, ModeInfo).
+
+:- pred breakpoint is det.
+breakpoint.
 
 :- pred get_reachable_instmaps(list(instmap), list(map(var,inst))).
 :- mode get_reachable_instmaps(in, out) is det.
@@ -556,6 +571,7 @@ instmap__merge_2([Var|Vars], InstMapList, IKT0, ModuleInfo0, InstMap0,
 	instmap__merge_var(InstMapList, Var, IKT1, ModuleInfo1,
 			Insts, Inst, IKT, ModuleInfo, Error),
 	( Error = yes ->
+		breakpoint,
 		ErrorList = [Var - Insts | ErrorList1],
 		map__set(InstMap1, Var, not_reached, InstMap)
 	;
@@ -579,9 +595,8 @@ instmap__merge_var([InstMap | InstMaps], Var, IKT0, ModuleInfo0,
 		InstList, Inst, IKT, ModuleInfo, Error) :-
 	instmap__merge_var(InstMaps, Var, IKT0, ModuleInfo0,
 		InstList0, Inst0, IKT1, ModuleInfo1, Error0),
-	module_info_inst_key_table(ModuleInfo0, InstKeyTable),
 	instmap__lookup_var(InstMap, Var, VarInst0),
-	inst_expand_fully(VarInst0, InstKeyTable, VarInst),
+	inst_expand_fully(VarInst0, IKT1, VarInst),
 	InstList = [VarInst | InstList0],
 	( inst_merge(Inst0, VarInst, IKT1, ModuleInfo1,
 			Inst1, IKT2, ModuleInfo2) ->

@@ -166,7 +166,7 @@
 :- import_module passes_aux, clause_to_proc, special_pred.
 
 :- import_module int, list, map, set, string, require, std_util, tree234.
-:- import_module assoc_list, varset, term, term_io.
+:- import_module assoc_list, varset, term, term_io, (inst).
 
 %-----------------------------------------------------------------------------%
 
@@ -320,7 +320,9 @@ typecheck_propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds],
 		ArgTypes, Procs0, Procs) :-
 	map__lookup(Procs0, ProcId, ProcInfo0),
 	proc_info_argmodes(ProcInfo0, ArgModes0),
-	propagate_types_into_mode_list(ArgTypes, ModuleInfo,
+	% YYY Hack alert!
+	inst_key_table_init(IKT),
+	propagate_types_into_mode_list(ArgTypes, IKT, ModuleInfo,
 		ArgModes0, ArgModes),
 	proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo),
 	map__det_update(Procs0, ProcId, ProcInfo, Procs1),
