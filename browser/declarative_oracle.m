@@ -533,7 +533,7 @@ query_oracle_kb(KB, Question, Answer) :-
 		->
 			Answer = truth_value(Node, erroneous)
 		;
-			member(Exception, Inadmissible),
+			set.member(Exception, Inadmissible),
 			Answer = truth_value(Node, inadmissible)
 		)
 	).
