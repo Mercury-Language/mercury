@@ -1,2 +1,2 @@
 Test passed
-Second remove failed, as expected: No such file or directory
+Second remove failed, as expected: remove failed: No such file or directory
