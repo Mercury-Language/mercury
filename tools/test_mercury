@@ -32,8 +32,8 @@ export TMPDIR
 case $HOST in
 	# test things at different optimization levels...
 	murlibobo)	OPTIMIZE=-O2 ;;
-	kryten) 	OPTIMIZE=-O4 ;;
-	mercury) 	OPTIMIZE=-O3 ;;
+	kryten) 	OPTIMIZE=-O2 ;; # -O4
+	mercury) 	OPTIMIZE=-O1 ;; # -O3
 	muse)		OPTIMIZE=-O0 ;;
 	munta)		OPTIMIZE=-O0 ;;
 esac
