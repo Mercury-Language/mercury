@@ -17,7 +17,7 @@
 :- pred value_number__post_main(list(instruction), list(instruction)).
 :- mode value_number__post_main(in, out) is det.
 
-% the rest are exported only for debugging.
+% the rest are exported only for vn_util and for debugging.
 
 :- type vn == int.
 
@@ -291,6 +291,13 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 	;
 		Uinstr = incr_hp(Lval, Rval),
 		vn__build_assign(Lval, Rval, Livevals0, Livevals2),
+		Livemap1 = Livemap0,
+		Moreinstrs2 = Moreinstrs,
+		Ccode1 = Ccode0
+	;
+		Uinstr = mark_hp(Lval),
+		vn__lval_access_rval(Lval, Rvals),
+		vn__make_live(Rvals, Livevals0, Livevals2),
 		Livemap1 = Livemap0,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
@@ -592,11 +599,12 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Templocs0, Livevals1, Incrsp, Decrsp,
 			Ctrlmap1, Flushmap1, Ctrl1, [Instr0 | Prev], Instrs)
 	;
-		% XXX
 		Uinstr0 = incr_hp(_Where, _Incr),
 		error("we do not handle incr_hp in value_number yet")
 	;
-		% XXX
+		Uinstr0 = mark_hp(_Dest),
+		error("we do not handle mark_hp in value_number yet")
+	;
 		Uinstr0 = restore_hp(_Value),
 		error("we do not handle restore_hp in value_number yet")
 	;
@@ -1174,6 +1182,9 @@ vn__flush_node(Node, Ctrlmap, Vn_tables0, Vn_tables, Templocs0, Templocs,
 	% opt_debug__write(" generated instrs:\n"),
 	% opt_debug__dump_fullinstrs(Instrs, I_str),
 	% opt_debug__write(I_str).
+	% opt_debug__write("new use info\n"),
+	% opt_debug__dump_useful_vns(Vn_tables, U_str),
+	% opt_debug__write(U_str).
 
 %-----------------------------------------------------------------------------%
 

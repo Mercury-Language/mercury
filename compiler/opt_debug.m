@@ -63,6 +63,9 @@
 :- pred opt_debug__dump_flush_entry(assoc_list(vnlval, int), string).
 :- mode opt_debug__dump_flush_entry(in, out) is det.
 
+:- pred opt_debug__dump_useful_vns(vn_tables, string).
+:- mode opt_debug__dump_useful_vns(in, out) is det.
+
 :- pred opt_debug__dump_tables(vn_tables, string).
 :- mode opt_debug__dump_tables(in, out) is det.
 
@@ -75,8 +78,8 @@
 :- pred opt_debug__dump_vn_to_rval(assoc_list(vn, vnrval), string).
 :- mode opt_debug__dump_vn_to_rval(in, out) is det.
 
-:- pred opt_debug__dump_vn_to_uses(assoc_list(vn, list(vn_src)), string).
-:- mode opt_debug__dump_vn_to_uses(in, out) is det.
+:- pred opt_debug__dump_vn_to_uses(assoc_list(vn, list(vn_src)), bool, string).
+:- mode opt_debug__dump_vn_to_uses(in, in, out) is det.
 
 :- pred opt_debug__dump_vn_to_locs(assoc_list(vn, list(vnlval)), string).
 :- mode opt_debug__dump_vn_to_locs(in, out) is det.
@@ -284,6 +287,14 @@ opt_debug__dump_flush_entry([Vnlval - Vn | FlushEntry], Str) :-
 	opt_debug__dump_flush_entry(FlushEntry, F_str),
 	string__append_list([" ", L_str, "/", Vn_str, F_str], Str).
 
+opt_debug__dump_useful_vns(Vn_tables, Str) :-
+	Vn_tables = vn_tables(_Next_vn,
+		_Lval_to_vn_table, _Rval_to_vn_table,
+		_Vn_to_rval_table, Vn_to_uses_table,
+		_Vn_to_locs_table, _Loc_to_vn_table),
+	map__to_assoc_list(Vn_to_uses_table, Vn_to_uses_list),
+	opt_debug__dump_vn_to_uses(Vn_to_uses_list, no, Str).
+
 opt_debug__dump_tables(Vn_tables, Str) :-
 	Vn_tables = vn_tables(Next_vn,
 		Lval_to_vn_table, Rval_to_vn_table,
@@ -299,7 +310,7 @@ opt_debug__dump_tables(Vn_tables, Str) :-
 	opt_debug__dump_lval_to_vn(Lval_to_vn_list, Lval_to_vn_str),
 	opt_debug__dump_rval_to_vn(Rval_to_vn_list, Rval_to_vn_str),
 	opt_debug__dump_vn_to_rval(Vn_to_rval_list, Vn_to_rval_str),
-	opt_debug__dump_vn_to_uses(Vn_to_uses_list, Vn_to_uses_str),
+	opt_debug__dump_vn_to_uses(Vn_to_uses_list, yes, Vn_to_uses_str),
 	opt_debug__dump_vn_to_locs(Vn_to_locs_list, Vn_to_locs_str),
 	opt_debug__dump_lval_to_vn(Loc_to_vn_list,  Loc_to_vn_str),
 	string__append_list([
@@ -332,12 +343,17 @@ opt_debug__dump_vn_to_rval([Vn - Vnrval | Vn_to_rval_list], Str) :-
 	opt_debug__dump_vnrval(Vnrval, Vnrval_str),
 	string__append_list([Vn_str, " -> ", Vnrval_str, "\n", Tail_str], Str).
 
-opt_debug__dump_vn_to_uses([], "").
-opt_debug__dump_vn_to_uses([Vn - Uses | Vn_to_uses_list], Str) :-
-	opt_debug__dump_vn_to_uses(Vn_to_uses_list, Tail_str),
-	opt_debug__dump_vn(Vn, Vn_str),
-	opt_debug__dump_uses_list(Uses, Uses_str),
-	string__append_list([Vn_str, " -> ", Uses_str, "\n", Tail_str], Str).
+opt_debug__dump_vn_to_uses([], _, "").
+opt_debug__dump_vn_to_uses([Vn - Uses | Vn_to_uses_list], PrintUnused, Str) :-
+	opt_debug__dump_vn_to_uses(Vn_to_uses_list, PrintUnused, Tail_str),
+	( Uses = [], PrintUnused = no ->
+		Str = Tail_str
+	;
+		opt_debug__dump_vn(Vn, Vn_str),
+		opt_debug__dump_uses_list(Uses, Uses_str),
+		string__append_list([Vn_str, " -> ", Uses_str, "\n", Tail_str],
+			Str)
+	).
 
 opt_debug__dump_vn_to_locs([], "").
 opt_debug__dump_vn_to_locs([Vn - Vn_locs | Vn_to_locs_list], Str) :-

@@ -93,22 +93,6 @@
 	list(instruction)).
 :- mode opt_util__is_forkproceed_next(in, in, out) is semidet.
 
-	% If the following code a setup of a det stack frame? If yes, return
-	% the size of the frame and the remaining instructions.
-
-:- pred opt_util__detstack_setup(list(instruction), int, list(instruction)).
-:- mode opt_util__detstack_setup(in, out, out) is semidet.
-
-	% If the following code a teardown of a det stack frame, including
-	% possibly a semidet assignment to r1 and a proceed or tailcall?
-	% Return the teardown instructions, the non-stack instructions
-	% (possible assignment to r1 and the branch away), and the instructions
-	% remaining after that.
-
-:- pred opt_util__detstack_teardown(list(instruction), int,
-	list(instruction), list(instruction), list(instruction)).
-:- mode opt_util__detstack_teardown(in, in, out, out, out) is semidet.
-
 	% Remove the assignment to r1 from the list returned by
 	% opt_util__is_sdproceed_next.
 
@@ -413,37 +397,6 @@ opt_util__is_forkproceed_next(Instrs0, Succmap, Between) :-
 		fail
 	).
 
-opt_util__detstack_setup(Instrs0, FrameSize, Instrs) :-
-	opt_util__skip_comments_livevals(Instrs0, Instrs1),
-	Instrs1 = [Instr1 | Instrs2],
-	Instr1 = incr_sp(FrameSize) - _,
-	opt_util__skip_comments_livevals(Instrs2, Instrs3),
-	Instrs3 = [Instr3 | Instrs4],
-	Instr3 = assign(stackvar(FrameSize), lval(succip)) - _,
-	opt_util__skip_comments_livevals(Instrs4, Instrs).
-
-opt_util__detstack_teardown(Instrs0, FrameSize, Teardown, Tail, Remain) :-
-	opt_util__gather_comments_livevals(Instrs0, Comments1, Instrs1),
-	Instrs1 = [Instr1 | Instrs2],
-	Instr1 = assign(succip, lval(stackvar(FrameSize))) - _,
-	opt_util__gather_comments_livevals(Instrs2, Comments2, Instrs3),
-	Instrs3 = [Instr3 | Instrs4],
-	Instr3 = decr_sp(FrameSize) - _,
-	opt_util__gather_comments_livevals(Instrs4, Comments3, Instrs5),
-	Instrs5 = [Instr5 | Instrs6],
-	( Instr5 = assign(reg(r(1)), const(_)) - _ ->
-		SemiDet = [Instr5],
-		opt_util__gather_comments_livevals(Instrs6, Comments4, Instrs7)
-	;
-		SemiDet = [],
-		Comments4 = [],
-		Instrs7 = Instrs5
-	),
-	Instrs7 = [Instr7 | Remain],
-	Instr7 = goto(_) - _,
-	list__condense([Comments1, [Instr1], Comments2, [Instr3]], Teardown),
-	list__condense([Comments3, SemiDet, Comments4, [Instr7]], Tail).
-
 :- pred opt_util__no_stack_straight_line(list(instruction),
 	list(instruction), list(instruction)).
 :- mode opt_util__no_stack_straight_line(in, out, out) is det.
@@ -466,10 +419,8 @@ opt_util__no_stack_straight_line_2([Instr0 | Instrs0], After0, After, Instrs) :-
 			Uinstr = livevals(_, _)
 		;
 			Uinstr = assign(Lval, Rval),
-			opt_util__lval_refers_stackvars(Lval, LvalRefer),
-			opt_util__rval_refers_stackvars(Rval, RvalRefer),
-			LvalRefer = no,
-			RvalRefer = no
+			opt_util__lval_refers_stackvars(Lval, no),
+			opt_util__rval_refers_stackvars(Rval, no)
 		)
 	->
 		After1 = [Instr0 | After0],

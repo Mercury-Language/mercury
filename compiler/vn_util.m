@@ -1198,6 +1198,12 @@ vn__set_desired_value(Vnlval, Vn, Vn_tables0, Vn_tables) :-
 			Vn_to_locs_table1, Loc_to_vn_table1)
 	).
 
+	% We put the newly generated vnlval at the end of the list of vnlvals
+	% containing this vn. This is because if there are several registers
+	% holding a vn, we pick the one at the front, and on superscalar
+	% machines it is better not to use a register immediately after
+	% its definition.
+
 vn__set_current_value(Vnlval, Vn, Vn_tables0, Vn_tables) :-
 	Vn_tables0 = vn_tables(NextVn0,
 		Lval_to_vn_table0,  Rval_to_vn_table0,
@@ -1214,8 +1220,8 @@ vn__set_current_value(Vnlval, Vn, Vn_tables0, Vn_tables) :-
 		map__set(Vn_to_locs_table0, OldVn, OldLocs1, Vn_to_locs_table1),
 
 		map__lookup(Vn_to_locs_table0, Vn, NewLocs0),
-		map__set(Vn_to_locs_table1, Vn, [Vnlval | NewLocs0],
-			Vn_to_locs_table2)
+		list__append(NewLocs0, [Vnlval], NewLocs1),
+		map__set(Vn_to_locs_table1, Vn, NewLocs1, Vn_to_locs_table2)
 	;
 		% The search can fail for newly introduced templocs
 
@@ -1224,8 +1230,8 @@ vn__set_current_value(Vnlval, Vn, Vn_tables0, Vn_tables) :-
 
 		% change the reverse mapping
 		map__lookup(Vn_to_locs_table0, Vn, NewLocs0),
-		map__set(Vn_to_locs_table0, Vn, [Vnlval | NewLocs0],
-			Vn_to_locs_table2)
+		list__append(NewLocs0, [Vnlval], NewLocs1),
+		map__set(Vn_to_locs_table0, Vn, NewLocs1, Vn_to_locs_table2)
 	),
 	Vn_tables = vn_tables(NextVn0,
 		Lval_to_vn_table0,  Rval_to_vn_table0,

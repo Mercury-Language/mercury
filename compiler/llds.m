@@ -431,7 +431,7 @@ output_instruction(if_val(Rval, Target)) -->
 	output_code_addr_decls(Target),
 	io__write_string("if ("),
 	output_rval(Rval),
-	io__write_string(") "),
+	io__write_string(")\n\t\t"),
 	output_goto(Target),
 	io__write_string(" }").
 
@@ -488,7 +488,7 @@ output_gc_livevals(LiveVals) -->
 	io__write_string("/*\n"),
 	io__write_string(" * Garbage collection livevals info\n"),
 	output_gc_livevals_2(LiveVals),
-	io__write_string(" */\n").
+	io__write_string(" */").
 
 :- pred output_gc_livevals_2(list(liveinfo), io__state, io__state).
 :- mode output_gc_livevals_2(in, di, uo) is det.
