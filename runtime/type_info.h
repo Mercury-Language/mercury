@@ -133,6 +133,21 @@
 **
 */
 
+/*
+** All code using type_layout structures should check to see if
+** USE_TYPE_LAYOUT is defined, and give a fatal error otherwise.
+** For USE_TYPE_LAYOUT to be defined, we need to be using
+** shared one-or-two cell type_infos (since the type_layouts refer
+** to base_type_layouts). USE_TYPE_LAYOUT can be explicitly turned
+** off with NO_TYPE_LAYOUT.
+**
+*/
+#if defined(SHARED_ONE_OR_TWO_CELL_TYPE_INFO) && !defined(NO_TYPE_LAYOUT)
+	#define USE_TYPE_LAYOUT
+#else
+	#undef USE_TYPE_LAYOUT
+#endif
+
 #if TAGBITS >= 2
 	#define make_typelayout(Tag, Value) \
 		((Word *) (Integer) mkword(mktag(Tag), Value))
