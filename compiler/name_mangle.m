@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2004 The University of Melbourne.
+% Copyright (C) 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,9 +20,8 @@
 :- module backend_libs__name_mangle.
 :- interface.
 
-:- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
-:- import_module parse_tree__prog_data.
+:- import_module mdbcomp__prim_data.
 
 :- import_module io, bool, string.
 
@@ -109,6 +108,7 @@
 
 :- import_module hlds__hlds_pred.
 :- import_module hlds__special_pred.
+:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
 
 :- import_module char, int, list, std_util.
@@ -123,7 +123,7 @@ output_proc_label(ProcLabel, AddPrefix, !IO) :-
 	io__write_string(ProcLabelString, !IO).
 
 proc_label_to_c_string(proc(DefiningModule, PredOrFunc, PredModule,
-		PredName, Arity, ModeNum0), AddPrefix) = ProcLabelString :-
+		PredName, Arity, ModeInt), AddPrefix) = ProcLabelString :-
 	LabelName = make_pred_or_func_name(DefiningModule, PredOrFunc,
 		PredModule, PredName, Arity, AddPrefix),
 	( PredOrFunc = function ->
@@ -132,7 +132,6 @@ proc_label_to_c_string(proc(DefiningModule, PredOrFunc, PredModule,
 		OrigArity = Arity
 	),
 	string__int_to_string(OrigArity, ArityString),
-	proc_id_to_int(ModeNum0, ModeInt),
 	string__int_to_string(ModeInt, ModeNumString),
 	string__append_list([LabelName, "_", ArityString, "_", ModeNumString],
 		ProcLabelString).
@@ -140,7 +139,7 @@ proc_label_to_c_string(proc(DefiningModule, PredOrFunc, PredModule,
 	% For a special proc, output a label of the form:
 	% mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
 proc_label_to_c_string(special_proc(Module, SpecialPredId, TypeModule,
-		TypeName, TypeArity, ModeNum0), AddPrefix) = ProcLabelString :-
+		TypeName, TypeArity, ModeInt), AddPrefix) = ProcLabelString :-
 	% figure out the LabelName
 	DummyArity = -1,	% not used by make_pred_or_func_name.
 	TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
@@ -150,7 +149,6 @@ proc_label_to_c_string(special_proc(Module, SpecialPredId, TypeModule,
 
 	% figure out the ModeNumString
 	string__int_to_string(TypeArity, TypeArityString),
-	proc_id_to_int(ModeNum0, ModeInt),
 	string__int_to_string(ModeInt, ModeNumString),
 
 	% mangle all the relevent names

@@ -121,6 +121,7 @@
 
 :- import_module mdb__declarative_user.
 :- import_module mdb__util.
+:- import_module mdbcomp__prim_data.
 
 :- import_module map, bool, std_util, set, int, bimap, counter, assoc_list,
 	exception, list.

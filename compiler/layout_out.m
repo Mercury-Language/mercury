@@ -21,11 +21,10 @@
 
 :- interface.
 
-:- import_module backend_libs__proc_label.
 :- import_module ll_backend__layout.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__llds_out.
-:- import_module parse_tree__prog_data.
+:- import_module mdbcomp__prim_data.
 
 :- import_module bool, io.
 
@@ -86,6 +85,7 @@
 
 :- import_module backend_libs__c_util.
 :- import_module backend_libs__name_mangle.
+:- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
@@ -94,6 +94,7 @@
 :- import_module libs__options.
 :- import_module libs__trace_params.
 :- import_module ll_backend__code_util.
+:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 
 :- import_module int, char, string, require, std_util, list.
@@ -1027,7 +1028,6 @@ output_proc_id(ProcLabel, !IO) :-
 			DefiningModuleStr),
 		prog_out__sym_name_to_string(DeclaringModule,
 			DeclaringModuleStr),
-		proc_id_to_int(Mode, ModeInt),
 		output_pred_or_func(PredOrFunc, !IO),
 		io__write_string(",\n", !IO),
 		quote_and_write_string(DeclaringModuleStr, !IO),
@@ -1038,7 +1038,7 @@ output_proc_id(ProcLabel, !IO) :-
 		io__write_string(",\n", !IO),
 		io__write_int(Arity, !IO),
 		io__write_string(",\n", !IO),
-		io__write_int(ModeInt, !IO),
+		io__write_int(Mode, !IO),
 		io__write_string("\n", !IO)
 	;
 		ProcLabel = special_proc(DefiningModule, SpecialPredId,
@@ -1046,7 +1046,6 @@ output_proc_id(ProcLabel, !IO) :-
 		prog_out__sym_name_to_string(DefiningModule,
 			DefiningModuleStr),
 		prog_out__sym_name_to_string(TypeModule, TypeModuleStr),
-		proc_id_to_int(Mode, ModeInt),
 		quote_and_write_string(TypeName, !IO),
 		io__write_string(",\n", !IO),
 		quote_and_write_string(TypeModuleStr, !IO),
@@ -1059,7 +1058,7 @@ output_proc_id(ProcLabel, !IO) :-
 		io__write_string(",\n", !IO),
 		io__write_int(TypeArity, !IO),
 		io__write_string(",\n", !IO),
-		io__write_int(ModeInt, !IO),
+		io__write_int(Mode, !IO),
 		io__write_string("\n", !IO)
 	).
 

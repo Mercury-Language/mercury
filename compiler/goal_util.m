@@ -18,6 +18,7 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module assoc_list, bool, list, set, map, term.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,6 +34,7 @@
 :- import_module list, bool, std_util.
 :- import_module mdb__interactive_query.
 :- import_module mdb__util.
+:- import_module mdbcomp__prim_data.
 
 :- import_module io, require.
 
@@ -83,7 +84,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			match(event_number),
 			match(call_number),
 			match(depth_number),
-			match(trace_port_type),
+			match(trace_port),
 			pred_match,
 			match(string),		% definition module name
 			match(string),		% pred name
@@ -191,7 +192,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			event_number,
 			call_number,
 			depth_number,
-			trace_port_type,
+			trace_port,
 			pred_or_func,
 			string,		% declaration module name
 			string,		% definition module name
@@ -207,7 +208,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			event_number,
 			call_number,
 			depth_number,
-			trace_port_type,
+			trace_port,
 			string,		% name type
 			string,		% module type
 			string,		% definition module
@@ -283,7 +284,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	in, in, in, in, in, in, di, uo), "ML_DI_output_current_slots_user").
 			
 :- pred output_current_slots_user(event_number, call_number, depth_number, 
-	trace_port_type, pred_or_func, /* declarated module name */ string,
+	trace_port, pred_or_func, /* declarated module name */ string,
 	/* definition module name */ string, /* pred name */ string, arity, 
 	/* mode num */ int, determinism, goal_path_string, line_number,
 	io__output_stream, io__state, io__state).
@@ -310,7 +311,7 @@ output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port,
 	in, in, in, in, in, in, in, di, uo), "ML_DI_output_current_slots_comp").
 			
 :- pred output_current_slots_comp(event_number, call_number, depth_number, 
-	trace_port_type, /* name type */ string, /* module type */ string,
+	trace_port, /* name type */ string, /* module type */ string,
 	/* definition module */ string, /* pred name */ string, arity, 
 	/* mode num */ int, determinism, goal_path_string, line_number,
 	io__output_stream, io__state, io__state).
@@ -407,7 +408,7 @@ get_var_number(DebuggerRequest) = VarNumber :-
 			in, in, in), "ML_DI_found_match_user").
 			
 :- pred found_match_user(event_number, call_number, depth_number, 
-	trace_port_type, pred_or_func, /* declarated module name */ string, 
+	trace_port, pred_or_func, /* declarated module name */ string, 
 	/* defined module name */ string, /* pred name */ string, arity, 
 	/* mode num */ int, determinism, /* the arguments */ list(univ),
 				% XXX we could provide better ways of
@@ -472,7 +473,7 @@ match(interval(Low, High), X) :-
 			in, in, in), "ML_DI_found_match_comp").
 			
 :- pred found_match_comp(event_number, call_number, depth_number, 
-	trace_port_type, /* name type */ string, /* module type */ string, 
+	trace_port, /* name type */ string, /* module type */ string, 
 	/* definition module name */ string, /* pred name */ string, arity, 
 	/* mode num */ int, determinism, /* the arguments */ list(univ),
 				% XXX we could provide better ways of

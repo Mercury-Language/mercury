@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2004 The University of Melbourne.
+% Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,6 +13,7 @@
 :- module parse_tree__equiv_type.
 :- interface.
 
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 :- import_module recompilation.
 

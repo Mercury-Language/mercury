@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002,2003-2004 The University of Melbourne.
+% Copyright (C) 2002,2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,6 +12,7 @@
 
 :- import_module aditi_backend.		% XXX for rl_file, used in llds_out.
 :- import_module hlds.
+:- import_module mdbcomp.
 :- import_module parse_tree.
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -645,7 +645,8 @@ is_mercury_source_char(Char) :-
 	% XXX should we just use is_printable(Char) instead?
 
 	% Note: the code here is similar to code in
-	% compiler/mercury_to_mercury.m; any changes here
+	% compiler/mercury_to_mercury.m and also
+	% runtime/mercury_trace_base.c; any changes here
 	% may require similar changes there.
 
 :- pred is_mercury_punctuation_char(char::in) is semidet.

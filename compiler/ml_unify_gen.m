@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 The University of Melbourne.
+% Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -93,6 +93,7 @@
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module mdbcomp__prim_data.
 :- import_module ml_backend__ml_call_gen.
 :- import_module ml_backend__ml_closure_gen.
 :- import_module ml_backend__ml_code_gen.

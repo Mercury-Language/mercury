@@ -158,6 +158,7 @@
 :- import_module check_hlds__mode_info.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.

@@ -21,7 +21,7 @@
 :- import_module backend_libs__builtin_ops.
 :- import_module libs__globals.
 :- import_module ll_backend__llds.
-:- import_module parse_tree__prog_data.
+:- import_module mdbcomp__prim_data.
 
 :- import_module bool, std_util, list, map, io.
 
@@ -179,6 +179,7 @@
 :- import_module ll_backend__rtti_out.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
+:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -1815,8 +1816,9 @@ output_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
 	bintree_set__init(ContLabelSet),
 	DummyModule = unqualified("DEBUG"),
 	DummyPredName = "DEBUG",
+	proc_id_to_int(hlds_pred__initial_proc_id, InitialProcIdInt),
 	ProcLabel = proc(DummyModule, predicate, DummyModule,
-		DummyPredName, 0, hlds_pred__initial_proc_id),
+		DummyPredName, 0, InitialProcIdInt),
 	ProfInfo = entry(local, ProcLabel) - ContLabelSet,
 	output_instruction_and_comment(Instr, Comment, PrintComments,
 		ProfInfo, !IO).
@@ -1828,8 +1830,9 @@ output_instruction(Instr, !IO) :-
 	bintree_set__init(ContLabelSet),
 	DummyModule = unqualified("DEBUG"),
 	DummyPredName = "DEBUG",
+	proc_id_to_int(hlds_pred__initial_proc_id, InitialProcIdInt),
 	ProcLabel = proc(DummyModule, predicate, DummyModule,
-		DummyPredName, 0, hlds_pred__initial_proc_id),
+		DummyPredName, 0, InitialProcIdInt),
 	ProfInfo = entry(local, ProcLabel) - ContLabelSet,
 	output_instruction(Instr, ProfInfo, !IO).
 

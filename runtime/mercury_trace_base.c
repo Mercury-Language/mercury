@@ -200,6 +200,9 @@ typedef enum {
 
 static MR_PathPort MR_named_count_port[MR_PORT_NONE + 1];
 
+static void
+MR_trace_write_quoted_atom(FILE *fp, const char *atom);
+
 void
 MR_trace_write_label_exec_counts(FILE *fp)
 {
@@ -252,11 +255,15 @@ MR_trace_write_label_exec_counts(FILE *fp)
                 {
                     id = &proc->MR_sle_user;
                     if (proc != prev_proc) {
-                        fprintf(fp, "proc %c %s %s %d %d\n",
+                        fprintf(fp, "proc %c ",
                             ( id->MR_user_pred_or_func == MR_PREDICATE
-                                ? 'p' : 'f'),
-                            id->MR_user_decl_module,
-                            id->MR_user_name,
+                                ? 'p' : 'f'));
+                        MR_trace_write_quoted_atom(fp,
+                            id->MR_user_decl_module);
+                        fputc(' ', fp);
+                        MR_trace_write_quoted_atom(fp,
+                            id->MR_user_name);
+                        fprintf(fp, " %d %d\n",
                             id->MR_user_arity,
                             id->MR_user_mode);
                     }
@@ -293,6 +300,56 @@ MR_trace_write_label_exec_counts(FILE *fp)
             }
         }
     }
+}
+
+/*
+** The output of this is supposed to be equivalent to term_io__quote_atom
+** except that it always uses quotes, even if not strictly necessary.
+*/
+static void
+MR_trace_write_quoted_atom(FILE *fp, const char *atom)
+{
+    const char *c;
+
+    fputc('\'', fp);
+    for (c = atom; *c != '\0'; c++) {
+        switch (*c) {
+            case '\'':
+                fputs("\\'", fp);
+                break;
+            case '"':
+                fputs("\\\"", fp);
+                break;
+            case '\\':
+                fputs("\\\\", fp);
+                break;
+            case '\n':
+                fputs("\\n", fp);
+                break;
+            case '\t':
+                fputs("\\t", fp);
+                break;
+            case '\b':
+                fputs("\\b", fp);
+                break;
+            default:
+                /* This assumes isalnum is the same as char__isalnum.
+                ** The line noise is the equivalent of 
+                ** is_mercury_punctuation_char in library/term_io.m
+                ** and compiler/mercury_to_mercury.m; any changes here
+                ** may require similar changes there.
+                */
+                if (isalnum(*c) ||
+                    strchr(" !@#$%^&*()-_+=`~{}[];:'\"<>.,/?\\|", *c))
+                {
+                    fputc(*c, fp);
+                } else {
+                    fprintf(fp, "\\%03o\\", *c);
+                }
+                break;
+        }
+    }
+    fputc('\'', fp);
 }
 
 #ifdef  MR_TABLE_DEBUG

@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module mdb__util.
+:- import_module mdbcomp__prim_data.
 :- import_module mdbcomp__program_representation.
 
 :- import_module list, std_util, io, bool, term_rep.
@@ -194,29 +195,24 @@
  
 	% A module name should consist of a base name and a list of the names
 	% of the enclosing modules. For now, we have them all in one string.
-:- type module_name	== string.
-
-:- type special_pred_id
-	--->	unify
-	;	index
-	;	compare.
+:- type flat_module_name == string.
 
 :- type proc_id
 	--->	proc(
-			module_name,	% defining module
+			flat_module_name,	% defining module
 			pred_or_func,
-			module_name,	% declaring module
-			string,		% name
-			int,		% arity
-			int		% mode number
+			flat_module_name,	% declaring module
+			string,			% name
+			int,			% arity
+			int			% mode number
 		)
 	;	uci_proc(
-			module_name,	% defining module
-			special_pred_id,% indirectly defines pred name
-			module_name,	% type module
-			string,		% type name
-			int,		% type arity
-			int		% mode number
+			flat_module_name,	% defining module
+			special_pred_id,	% indirectly defines pred name
+			flat_module_name,	% type module
+			string,			% type name
+			int,			% type arity
+			int			% mode number
 		).
 
 	% Should be a foreign type, MR_Proc_Layout *. This is a
@@ -582,12 +578,14 @@ get_proc_name(uci_proc(_, _, _, ProcName , _, _)) = ProcName.
 get_special_pred_id_name(unify) = "__Unify__".
 get_special_pred_id_name(index) = "__Index__".
 get_special_pred_id_name(compare) = "__Compare__".
+get_special_pred_id_name(initialise) = "__Initialise__".
 
 :- func get_special_pred_id_arity(special_pred_id) = int.
 
 get_special_pred_id_arity(unify) = 2.
 get_special_pred_id_arity(index) = 2.
 get_special_pred_id_arity(compare) = 3.
+get_special_pred_id_arity(initialise) = 1.
 
 get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
 	(
@@ -946,7 +944,7 @@ set_trace_node_arg(Node0, FieldNum, Val, Node) :-
 	store__set_ref_value(ArgRef, Val, S2, S),
 	store__extract_ref_value(S, Ref, Node).
 
-:- func trace_node_port(trace_node(trace_node_id)) = trace_port_type.
+:- func trace_node_port(trace_node(trace_node_id)) = trace_port.
 :- pragma export(trace_node_port(in) = out,
 		"MR_DD_trace_node_port").
 

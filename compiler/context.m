@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,6 +55,7 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module hlds__instmap.
+:- import_module mdbcomp__prim_data.
 
 :- import_module assoc_list, bool, map, require, set, std_util, term, varset.
 

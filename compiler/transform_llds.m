@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001,2003-2004 The University of Melbourne.
+% Copyright (C) 1998-2001,2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,6 +40,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ll_backend__opt_util.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, int, string, list, require, std_util, counter.
@@ -104,7 +105,7 @@ gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
 	PredId = hlds_pred__initial_pred_id,
 	PredName = "ACCURATE_GC_END_LABEL",
 	ProcLabel = proc(ModuleName, predicate, ModuleName, PredName,
-		Arity, ProcId),
+		Arity, proc_id_to_int(ProcId)),
 	Instrs = [label(entry(local, ProcLabel)) -
 		"label to indicate end of previous procedure"],
 	DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId),

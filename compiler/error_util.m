@@ -35,6 +35,7 @@
 
 :- interface.
 
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, char, io, list, std_util.

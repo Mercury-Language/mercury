@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999,2002-2004 University of Melbourne.
+% Copyright (C) 1998-1999,2002-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,6 +41,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module transform_hlds__dependency_graph.

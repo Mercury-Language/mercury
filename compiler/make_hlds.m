@@ -25,7 +25,7 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
-:- import_module hlds__special_pred.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__equiv_type.
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__prog_data.
@@ -115,6 +115,7 @@
 :- import_module hlds__make_tags.
 :- import_module hlds__passes_aux.
 :- import_module hlds__quantification.
+:- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ll_backend.

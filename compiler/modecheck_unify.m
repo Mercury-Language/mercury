@@ -61,6 +61,7 @@
 :- import_module hlds__instmap.
 :- import_module hlds__make_hlds.
 :- import_module hlds__quantification.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.

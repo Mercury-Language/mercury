@@ -168,6 +168,7 @@
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.

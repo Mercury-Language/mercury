@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 The University of Melbourne.
+% Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -336,13 +336,14 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, list, std_util, map.
 
 %-----------------------------------------------------------------------------%
 
-:- type mercury_module_name == prog_data__module_name.
+:- type mercury_module_name == prim_data__module_name.
 
 %
 % The type `mlds' is the actual MLDS.
@@ -1871,11 +1872,11 @@ mlds__get_arg_types(Parameters) = ArgTypes :-
 % prefix e.g. `mercury.builtin', `mercury.io', `mercury.std_util', etc.,
 % when mapped to MLDS package names.
 
-% :- type mlds_module_name == prog_data__module_name.
+% :- type mlds_module_name == prim_data__module_name.
 :- type mlds_module_name
 	---> name(
-		package_name	:: prog_data__module_name,
-		module_name	:: prog_data__module_name
+		package_name	:: prim_data__module_name,
+		module_name	:: prim_data__module_name
 	).
 
 mercury_module_and_package_name_to_mlds(MLDS_Package, MercuryModule)

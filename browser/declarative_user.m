@@ -71,6 +71,7 @@
 :- import_module mdb__util.
 :- import_module mdb__declarative_execution.
 :- import_module mdb__declarative_tree.
+:- import_module mdbcomp__prim_data.
 :- import_module mdbcomp__program_representation.
 :- import_module mdb.parse.
 

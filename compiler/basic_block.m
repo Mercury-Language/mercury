@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001,2003-2004 The University of Melbourne.
+% Copyright (C) 1997-2001,2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,8 +17,8 @@
 
 :- interface.
 
-:- import_module backend_libs__proc_label.
 :- import_module ll_backend__llds.
+:- import_module mdbcomp__prim_data.
 
 :- import_module list, map, std_util, counter.
 

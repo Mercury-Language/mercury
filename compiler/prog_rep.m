@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2004 University of Melbourne.
+% Copyright (C) 2000-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -47,6 +47,7 @@
 :- implementation.
 
 :- import_module hlds__hlds_data.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 

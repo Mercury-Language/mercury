@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2004 The University of Melbourne.
+% Copyright (C) 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,37 +20,10 @@
 
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
-:- import_module hlds__special_pred.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool.
-
-	% A proc_label is a data structure a backend can use to as the basis
-	% of the label used as the entry point of a procedure.
-	%
-	% The defining module is the module that provides the code for the
-	% predicate, the declaring module contains the `:- pred' declaration.
-	% When these are different, as for specialised versions of predicates
-	% from `.opt' files, the defining module's name may need to be added
-	% as a qualifier to the label.
-
-:- type proc_label
-	--->	proc(
-			module_name,	% defining module
-			pred_or_func,
-			module_name,	% declaring module
-			string,		% name
-			int,		% arity
-			proc_id		% mode number
-		)
-	;	special_proc(
-			module_name,	% defining module
-			special_pred_id,% indirectly defines pred name
-			module_name,	% type module
-			string,		% type name
-			int,		% type arity
-			proc_id		% mode number
-		).
 
 	% Return the id of the procedure specified by the rtti_proc_label.
 
@@ -113,8 +86,9 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
 			;
 				DefiningModule = TypeModule
 			),
+			proc_id_to_int(ProcId, ProcIdInt),
 			ProcLabel = special_proc(DefiningModule, SpecialPred,
-				TypeModule, TypeName, TypeArity, ProcId)
+				TypeModule, TypeName, TypeArity, ProcIdInt)
 		;
 			string__append_list(["make_proc_label:\n",
 				"cannot make label for special pred `",
@@ -144,8 +118,9 @@ make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
 	;
 		DefiningModule = PredModule
 	),
+	proc_id_to_int(ProcId, ProcIdInt),
 	ProcLabel = proc(DefiningModule, PredOrFunc,
-		PredModule, PredName, PredArity, ProcId).
+		PredModule, PredName, PredArity, ProcIdInt).
 
 make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
 	module_info_name(ModuleInfo, ModuleName),
@@ -155,8 +130,9 @@ make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
 		;
 			Module = ModuleName
 		),
+		proc_id_to_int(UniModeNum, UniModeNumInt),
 		ProcLabel = special_proc(Module, unify, TypeModule,
-			TypeName, Arity, UniModeNum)
+			TypeName, Arity, UniModeNumInt)
 	;
 		error("make_uni_label: unqualified type_ctor")
 	).

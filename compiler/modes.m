@@ -358,6 +358,7 @@
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__prog_mode.

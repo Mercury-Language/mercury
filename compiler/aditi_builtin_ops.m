@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2004 University of Melbourne.
+% Copyright (C) 2003-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,6 +41,7 @@
 :- import_module hlds__instmap.
 :- import_module hlds__passes_aux.
 :- import_module hlds__quantification.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.

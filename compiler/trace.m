@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2004 The University of Melbourne.
+% Copyright (C) 1997-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -225,6 +225,7 @@
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__layout_out.
 :- import_module ll_backend__llds_out.
+:- import_module mdbcomp__prim_data.
 
 :- import_module list, bool, int, string, map, std_util, require, term, varset.
 

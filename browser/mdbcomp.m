@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2003 The University of Melbourne.
+% Copyright (C) 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,7 +20,9 @@
 
 :- pred mdbcomp__version(string::out) is det.
 
+:- include_module prim_data.
 :- include_module program_representation.
+:- include_module trace_counts.
 
 :- implementation.
 

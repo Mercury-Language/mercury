@@ -22,7 +22,7 @@
 
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
+:- import_module mdbcomp__prim_data.
 
 :- import_module map, std_util, io.
 
@@ -69,6 +69,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__error_util.
+:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
 
 :- import_module int, string, list, set, queue, bool, require.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,12 +15,12 @@
 :- interface.
 
 :- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
 :- import_module hlds__code_model.
 :- import_module ll_backend__layout.
 :- import_module ll_backend__livemap.
 :- import_module ll_backend__llds.
+:- import_module mdbcomp__prim_data.
 
 :- import_module io, bool, list, assoc_list, std_util.
 
@@ -100,6 +100,7 @@
 :- implementation.
 
 :- import_module backend_libs__name_mangle.
+:- import_module backend_libs__proc_label.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
@@ -655,7 +656,7 @@ dump_rttiproclabel(RttiProcLabel, Str) :-
 	dump_proclabel(ProcLabel, Str).
 
 dump_proclabel(proc(Module, _PredOrFunc, PredModule,
-		PredName, Arity, ProcId), Str) :-
+		PredName, Arity, Mode), Str) :-
 	( Module = PredModule ->
 		ExtraModule = ""
 	;
@@ -664,17 +665,15 @@ dump_proclabel(proc(Module, _PredOrFunc, PredModule,
 	),
 	ModuleName = sym_name_mangle(Module),
 	string__int_to_string(Arity, A_str),
-	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, M_str),
 	string__append_list([ExtraModule, ModuleName, "_", PredName,
 		"_", A_str, "_", M_str], Str).
 dump_proclabel(special_proc(Module, SpecialPredId, TypeModule,
-		TypeName, TypeArity, ProcId), Str) :-
+		TypeName, TypeArity, Mode), Str) :-
 	ModuleName = sym_name_mangle(Module),
 	TypeModuleName = sym_name_mangle(TypeModule),
 	QualTypeName = qualify_name(TypeModuleName, TypeName),
 	string__int_to_string(TypeArity, A_str),
-	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, M_str),
 	TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
 	SpecialPredStr = special_pred_name(SpecialPredId, TypeCtor),

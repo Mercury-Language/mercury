@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2002, 2004 The University of Melbourne.
+% Copyright (C) 1998-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -8,42 +8,15 @@
 
 :- interface.
 
+:- import_module mdbcomp__prim_data.
+
 :- import_module list, string, io, bool.
-
-% The stuff defined below is similar to types goal_path and trace_port
-% defined in modules compiler/hlds_goal.m and compiler/trace.m.
-% This enumeration must be EXACTLY the same as the MR_trace_port enum in
-% runtime/mercury_trace_base.h, and in the same order, since the code
-% assumes the representation is the same.
-
-:- type trace_port_type
-	--->	call
-	;	exit
-	;	redo
-	;	fail
-	;	exception
-	;	ite_cond
-	;	ite_then
-	;	ite_else
-	;	neg_enter
-	;	neg_success
-	;	neg_failure
-	;	disj
-	;	switch
-	;	nondet_pragma_first
-	;	nondet_pragma_later
-	.
-
-% This enumeration must be EXACTLY the same as the MR_PredFunc enum in
-% runtime/mercury_stack_layout.h, and in the same order, since the code
-% assumes the representation is the same.
-
-:- type pred_or_func
-	--->	predicate
-	;	function.
 
 :- func util__is_predicate(pred_or_func) = bool.
 :- func util__is_function(pred_or_func) = bool.
+
+% This is similar to the type goal_path defined in the module
+% compiler/hlds_goal.m.
 
 :- type goal_path_string == string.
 

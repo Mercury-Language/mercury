@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2004 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,6 +13,7 @@
 
 :- interface.
 
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module std_util, list, varset, term.
@@ -93,13 +94,6 @@
 :- pred sym_name_get_module_name(sym_name::in, module_name::in,
 	module_name::out) is det.
 
-	% string_to_sym_name(String, Separator, SymName):
-	%	Convert a string, possibly prefixed with
-	%	module qualifiers (separated by Separator),
-	%	into a symbol name.
-	%
-:- pred string_to_sym_name(string::in, string::in, sym_name::out) is det.
-
 	% match_sym_name(PartialSymName, CompleteSymName):
 	%	succeeds iff there is some sequence of module qualifiers
 	%	which when prefixed to PartialSymName gives CompleteSymName.
@@ -138,12 +132,6 @@
 	%	and the unqualified part of SymName is the result of applying
 	%	TransformFunc to the unqualified part of SymName0.
 :- func transform_sym_base_name(func(string) = string, sym_name) = sym_name.
-
-	% insert_module_qualifier(ModuleName, SymName0, SymName):
-	%	prepend the specified ModuleName onto the module
-	%	qualifiers in SymName0, giving SymName.
-:- pred insert_module_qualifier(string::in, sym_name::in, sym_name::out)
-	is det.
 
 	% Given a possible module qualified sym_name and a list of
 	% argument types and a context, construct a term. This is
@@ -467,36 +455,6 @@ prog_util__rename_in_vars(OldVar, NewVar, [Var0 | Vars0], [Var | Vars]) :-
 		Var = Var0
 	),
 	prog_util__rename_in_vars(OldVar, NewVar, Vars0, Vars).
-
-%-----------------------------------------------------------------------------%
-
-% This would be simpler if we had a string__rev_sub_string_search/3 pred.
-% With that, we could search for underscores right-to-left,
-% and construct the resulting symbol directly.
-% Instead, we search for them left-to-right, and then call
-% insert_module_qualifier to fix things up.
-
-string_to_sym_name(String, ModuleSeparator, Result) :-
-	(
-		string__sub_string_search(String, ModuleSeparator, LeftLength),
-		LeftLength > 0
-	->
-		string__left(String, LeftLength, ModuleName),
-		string__length(String, StringLength),
-		string__length(ModuleSeparator, SeparatorLength),
-		RightLength = StringLength - LeftLength - SeparatorLength,
-		string__right(String, RightLength, Name),
-		string_to_sym_name(Name, ModuleSeparator, NameSym),
-		insert_module_qualifier(ModuleName, NameSym, Result)
-	;
-		Result = unqualified(String)
-	).
-
-insert_module_qualifier(ModuleName, unqualified(PlainName),
-		qualified(unqualified(ModuleName), PlainName)).
-insert_module_qualifier(ModuleName, qualified(ModuleQual0, PlainName),
-		qualified(ModuleQual, PlainName)) :-
-	insert_module_qualifier(ModuleName, ModuleQual0, ModuleQual).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2004 The University of Melbourne.
+% Copyright (C) 2000-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,31 +37,12 @@
 
 :- import_module hlds.
 :- import_module hlds__hlds_pred.
+:- import_module mdbcomp__prim_data.
 
 :- import_module bool, std_util.
 
 :- type trace_level.
 :- type trace_suppress_items.
-
-	% The kinds of events with which MR_trace may be called, either
-	% by compiler-generated code, or by code in the standard library
-	% referring to compiler-generated data structures.
-:- type trace_port
-	--->	call
-	;	exit
-	;	fail
-	;	redo
-	;	exception
-	;	ite_cond
-	;	ite_then
-	;	ite_else
-	;	neg_enter
-	;	neg_success
-	;	neg_failure
-	;	switch
-	;	disj
-	;	nondet_pragma_first
-	;	nondet_pragma_later.
 
 	% The string should be the value of the --trace-level option;
 	% two bools should be the values of the `--require-tracing' and
@@ -124,6 +105,8 @@
 :- implementation.
 
 :- import_module hlds__special_pred.
+:- import_module mdbcomp.
+:- import_module mdbcomp__prim_data.
 
 :- import_module int, char, string, list, set.
 

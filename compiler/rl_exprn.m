@@ -150,6 +150,7 @@
 :- import_module libs__tree.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__inlining.

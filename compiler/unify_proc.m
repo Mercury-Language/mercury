@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -52,7 +52,7 @@
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
-:- import_module hlds__special_pred.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, std_util, io, list.
@@ -147,9 +147,11 @@
 :- import_module hlds__instmap.
 :- import_module hlds__make_hlds.
 :- import_module hlds__quantification.
+:- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_mode.

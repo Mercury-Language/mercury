@@ -58,6 +58,7 @@
 
 :- import_module check_hlds__mode_util.
 :- import_module hlds__special_pred.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.

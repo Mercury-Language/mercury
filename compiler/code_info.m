@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,7 +29,6 @@
 
 :- interface.
 
-:- import_module backend_libs__proc_label.
 :- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
@@ -38,22 +37,24 @@
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
 :- import_module libs__globals.
-:- import_module libs__trace_params.
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__trace.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, set, list, map, std_util, assoc_list, counter, term.
 
 :- implementation.
 
+:- import_module backend_libs__proc_label.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__arg_info.
 :- import_module hlds__hlds_code_util.
 :- import_module libs__options.
+:- import_module libs__trace_params.
 :- import_module libs__tree.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__exprn_aux.

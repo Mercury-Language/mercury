@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -294,6 +294,7 @@
 :- import_module hlds__special_pred.
 :- import_module ll_backend__exprn_aux.
 :- import_module ll_backend__llds_out.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module int, string, set, require.
@@ -1438,15 +1439,13 @@ format_label(entry(_, ProcLabel), Str) :-
 
 :- pred format_proclabel(proc_label::in, string::out) is det.
 
-format_proclabel(proc(_Module, _PredOrFunc, _, Name, Arity, ProcId), Str) :-
+format_proclabel(proc(_Module, _PredOrFunc, _, Name, Arity, Mode), Str) :-
 	string__int_to_string(Arity, ArityStr),
-	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, ModeStr),
 	string__append_list([Name, "/", ArityStr, " mode ", ModeStr], Str).
 format_proclabel(special_proc(_Module, SpecialPredId, TypeModule,
-		TypeName, TypeArity, ProcId), Str) :-
+		TypeName, TypeArity, Mode), Str) :-
 	string__int_to_string(TypeArity, TypeArityStr),
-	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, ModeStr),
 	TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
 	PredName = special_pred_name(SpecialPredId, TypeCtor),

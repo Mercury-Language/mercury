@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -160,6 +160,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__trace_params.
+:- import_module mdbcomp__prim_data.
 
 % Standard library modules
 :- import_module bool, int, list, assoc_list, set, std_util, require.

@@ -107,6 +107,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__trace_params.
+:- import_module mdbcomp__prim_data.
 
 % Standard library modules
 :- import_module bool, char, int, string.

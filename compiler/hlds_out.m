@@ -42,6 +42,8 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
+% mdbcomp modules.
+:- import_module mdbcomp__prim_data.
 
 :- import_module io, bool, list, term.
 

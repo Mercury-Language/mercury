@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000,2002-2004 The University of Melbourne.
+% Copyright (C) 1995-2000,2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,6 +19,7 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
 :- import_module list, map, std_util.
@@ -26,12 +27,6 @@
 :- type special_pred_map	==	map(special_pred, pred_id).
 
 :- type special_pred		==	pair(special_pred_id, type_ctor).
-
-:- type special_pred_id
-	--->	unify
-	;	index
-	;	compare
-	;	initialise.
 
 	% Return the predicate name we should use for the given special_pred
 	% for the given type constructor.

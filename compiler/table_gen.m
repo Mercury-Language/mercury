@@ -72,6 +72,7 @@
 :- import_module libs__options.
 :- import_module ll_backend.
 :- import_module ll_backend__continuation_info.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.

@@ -47,6 +47,8 @@
 
 :- import_module mdb__declarative_debugger.
 :- import_module mdb__io_action.
+:- import_module mdbcomp__prim_data.
+:- import_module mdbcomp__program_representation.
 :- import_module mdb__util.
 
 :- import_module assoc_list, bool, exception, int, list, map, std_util, string.
@@ -1582,7 +1584,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 	--->	plain_call_info(
 			file_name	:: string,
 			line_number	:: int,
-			module_name	:: string,
+			flat_module_name:: string,
 			pred_name	:: string
 		).
 

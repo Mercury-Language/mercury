@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2004 The University of Melbourne.
+% Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,6 +20,7 @@
 
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module mdbcomp__prim_data.
 :- import_module recompilation.
 
 :- import_module bool, list, assoc_list, map, set, varset, term, std_util.
@@ -172,10 +173,6 @@
 :- type type_and_mode
 	--->	type_only(type)
 	;	type_and_mode(type, mode).
-
-:- type pred_or_func
-	--->	predicate
-	;	function.
 
 	% Purity indicates whether a goal can have side effects or can
 	% depend on global state.  See purity.m and the "Purity" section
@@ -1637,14 +1634,10 @@
 :- type sym_name_specifier
 	--->	name(sym_name)
 	;	name_arity(sym_name, arity).
-:- type sym_name
-	--->	unqualified(string)
-	;	qualified(module_specifier, string).
 :- type sym_name_and_arity
 	--->	sym_name / arity.
 
 :- type module_specifier ==	sym_name.
-:- type module_name 	== 	sym_name.
 :- type arity		==	int.
 
 	% Describes whether an item can be used without an
