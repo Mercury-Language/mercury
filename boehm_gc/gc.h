@@ -683,7 +683,7 @@ void * GC_malloc_many(size_t lb);
  * from the statically loaded program section.
  * This circumvents a Solaris 2.X (X<=4) linker bug.
  */
-#ifdef __sparc
+#if defined(sparc) || defined(__sparc)
 #   define GC_INIT() { extern end, etext; \
 		       extern void GC_noop(void *, ...); \
 		       GC_noop(&end, &etext); }
