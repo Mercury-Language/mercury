@@ -1127,7 +1127,7 @@ MR_init_call_table_array(void)
 
 static void
 MR_maybe_record_call_table(const MR_Stack_Layout_Entry *level_layout,
-	MR_Word *sp, MR_Word *curfr)
+	MR_Word *base_sp, MR_Word *base_curfr)
 {
 	MR_TrieNode	call_table;
 
@@ -1150,10 +1150,12 @@ MR_maybe_record_call_table(const MR_Stack_Layout_Entry *level_layout,
 	case MR_EVAL_METHOD_MEMO:
 	case MR_EVAL_METHOD_LOOP_CHECK:
 		if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
-			call_table = (MR_TrieNode) MR_based_stackvar(sp, 
+			call_table = (MR_TrieNode) MR_based_stackvar(
+				base_sp, 
 				level_layout->MR_sle_maybe_call_table);
 		} else {
-			call_table = (MR_TrieNode) MR_based_framevar(curfr, 
+			call_table = (MR_TrieNode) MR_based_framevar(
+				base_curfr, 
 				level_layout->MR_sle_maybe_call_table);
 		}
 
