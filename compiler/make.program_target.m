@@ -736,8 +736,8 @@ install_file(FileName, InstallDir, Succeeded) -->
 			io__nl
 		)),
 	globals__io_lookup_string_option(install_command, InstallCommand),
-	{ Command = string__join_list("	",
-		map(quote_arg, [InstallCommand, FileName, InstallDir])) },
+	{ Command = string__join_list("	", list__map(quote_arg,
+			[InstallCommand, FileName, InstallDir])) },
 	io__output_stream(OutputStream),
 	invoke_shell_command(OutputStream, verbose, Command, Succeeded).
 
