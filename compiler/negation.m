@@ -196,7 +196,7 @@ negation__transform_goal_2(not(Goal), Goal_Out) :-
 	% (P => Q) ----> ~(P /\ ~Q)
 negation__transform_goal_2(implies(P, Q), Goal_Out) :-
 	term__context_init(Context),
-	negation__transform_goal_2(not (P, (not Q) - Context) - Context,
+	negation__transform_goal_2(not((P, not(Q) - Context) - Context),
 		Goal_Out).
 
 	% Equivalence
@@ -211,7 +211,7 @@ negation__transform_goal_2(equivalent(P, Q), Goal_Out) :-
 negation__transform_goal_2(all(Vars, P), Goal_Out) :-
 	term__context_init(Context),
 	negation__transform_goal_2(
-		not some(Vars, (not P) - Context) - Context, Goal_Out).
+		not(some(Vars, not(P) - Context) - Context), Goal_Out).
 
 % These forms do not need to be transformed themselves, they
 % just continue to transform recursively...

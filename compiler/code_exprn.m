@@ -75,7 +75,7 @@
 
 :- type exprn_info.
 
-:- pred code_exprn__init_state(assoc_list(var, lval), varset, option_table, exprn_info).
+:- pred code_exprn__init_state(assoc_list(var, rval), varset, option_table, exprn_info).
 :- mode code_exprn__init_state(in, in, in, out) is det.
 
 :- pred code_exprn__clobber_regs(list(var), exprn_info, exprn_info).
@@ -99,6 +99,10 @@
 :- pred code_exprn__produce_var(var, rval, code_tree, exprn_info, exprn_info).
 :- mode code_exprn__produce_var(in, out, out, in, out) is det.
 
+:- pred code_exprn__produce_var_in_reg(var, rval, code_tree,
+						exprn_info, exprn_info).
+:- mode code_exprn__produce_var_in_reg(in, out, out, in, out) is det.
+
 :- pred code_exprn__acquire_reg(reg, exprn_info, exprn_info).
 :- mode code_exprn__acquire_reg(out, in, out) is det.
 
@@ -110,6 +114,9 @@
 
 :- pred code_exprn__unlock_reg(reg, exprn_info, exprn_info).
 :- mode code_exprn__unlock_reg(in, in, out) is det.
+
+:- pred code_exprn__get_varlocs(map(var, set(rval)), exprn_info, exprn_info).
+:- mode code_exprn__get_varlocs(out, in, out) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -143,7 +150,7 @@ code_exprn__init_state(Initializations, Varset, Opts, ExprnInfo) :-
 	set__init(Acqu),
 	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opts).
 
-:- pred code_exprn__init_state_2(assoc_list(var, lval), var_map, var_map,
+:- pred code_exprn__init_state_2(assoc_list(var, rval), var_map, var_map,
 							bag(reg), bag(reg)).
 :- mode code_exprn__init_state_2(in, in, out, in, out) is det.
 
@@ -152,13 +159,13 @@ code_exprn__init_state_2([V - L|Rest], Vars0, Vars, Regs0, Regs) :-
 	(
 		map__search(Vars0, V, evaled(Vals0))
 	->
-		set__insert(Vals0, lval(L), Vals)
+		set__insert(Vals0, L, Vals)
 	;
-		set__singleton_set(Vals, lval(L))
+		set__singleton_set(Vals, L)
 	),
 	map__set(Vars0, V, evaled(Vals), Vars1),
 	(
-		L = reg(R)
+		L = lval(reg(R))
 	->
 		bag__insert(Regs0, R, Regs1)
 	;
@@ -166,6 +173,29 @@ code_exprn__init_state_2([V - L|Rest], Vars0, Vars, Regs0, Regs) :-
 	),
 	code_exprn__init_state_2(Rest, Vars1, Vars, Regs1, Regs).
 	
+%------------------------------------------------------------------------------%
+
+code_exprn__get_varlocs(Locations) -->
+	code_exprn__get_vars(Vars),
+	{ map__to_assoc_list(Vars, VarList) },
+	{ map__init(Locations0) },
+	{ code_exprn__repackage_locations(VarList, Locations0, Locations) }.
+
+:- pred code_exprn__repackage_locations(assoc_list(var, var_stat),
+			map(var, set(rval)), map(var, set(rval))).
+:- mode code_exprn__repackage_locations(in, in, out) is det.
+
+code_exprn__repackage_locations([], Loc, Loc).
+code_exprn__repackage_locations([V - Locs|Rest], Loc0, Loc) :-
+	(
+		Locs = cached(Rval),
+		set__singleton_set(Rvals, Rval)
+	;
+		Locs = evaled(Rvals)
+	),
+	map__set(Loc0, V, Rvals, Loc1),
+	code_exprn__repackage_locations(Rest, Loc1, Loc).
+
 %------------------------------------------------------------------------------%
 
 code_exprn__clobber_regs(CriticalVars) -->
@@ -1069,7 +1099,15 @@ code_exprn__produce_var(Var, Rval, Code) -->
 	code_exprn__get_vars(Vars0),
 	{ map__lookup(Vars0, Var, Stat0) },
 	(
-		{ Stat0 = evaled(Rvals) }
+		{ Stat0 = evaled(Rvals) },
+		\+ (
+			{ set__member(RvalX, Rvals) },
+			{ RvalX = binop(_, _, _) ;
+			  RvalX = unop(_, _) ;
+			  RvalX = create(_, _, _) ;
+			  RvalX = mkword(_, _)
+			}
+		)
 	->
 		{ set__to_sorted_list(Rvals, RvalList) },
 		{ code_exprn__select_rval(RvalList, Rval) },
@@ -1079,6 +1117,23 @@ code_exprn__produce_var(Var, Rval, Code) -->
 		{ Lval = reg(Reg) },
 		{ Rval = lval(Lval) },
 		code_exprn__place_var(Var, Lval, Code)
+	).
+
+%------------------------------------------------------------------------------%
+
+code_exprn__produce_var_in_reg(Var, Rval, Code) -->
+	code_exprn__produce_var(Var, Rval0, Code0),
+	(
+		{ Rval0 = lval(reg(_)) }
+	->
+		{ Code = Code0 },
+		{ Rval = Rval0 }
+	;
+		code_exprn__get_spare_reg(Reg),
+		{ Lval = reg(Reg) },
+		{ Rval = lval(Lval) },
+		code_exprn__place_var(Var, Lval, Code1),
+		{ Code = tree(Code0, Code1) }
 	).
 
 %------------------------------------------------------------------------------%

@@ -148,9 +148,9 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 			"branch to semidet procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
-	code_info__get_next_label(ContLab, no),
 	call_gen__rebuild_registers(Args),
 	code_info__generate_failure(FailCode),
+	code_info__get_next_label(ContLab, no),
 	{ CodeD = tree(node([
 		if_val(lval(reg(r(1))), label(ContLab)) -
 			"Test for success"
@@ -187,8 +187,7 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 		% the nondet procedure may have created choice points,
 		% so we must set the current failure continuation to `unknown'
 		% which means `on failure, just do a redo()'.
-	code_info__pop_failure_cont,
-	code_info__push_failure_cont(unknown).
+	code_info__unset_failure_cont.
 
 %---------------------------------------------------------------------------%
 

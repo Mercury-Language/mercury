@@ -78,6 +78,10 @@
 :- pred code_gen__output_args(assoc_list(var, arg_info), set(lval)).
 :- mode code_gen__output_args(in, out) is det.
 
+:- pred code_gen__ensure_vars_are_saved(list(var), code_tree,
+						code_info, code_info).
+:- mode code_gen__ensure_vars_are_saved(in, out, in, out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -252,6 +256,11 @@ generate_category_code_2(model_det, Goal, Instrs, Used) -->
 		middle_rec__gen_det(Switch, Instrs),
 		{ Used = no }
 	;
+		% Make a new failure cont (not model_non)
+		% This continuation is never actually used,
+		% but is a place holder.
+		code_info__manufacture_failure_cont(no),
+
 		code_gen__generate_det_goal(Goal, Instr1),
 		code_info__get_instmap(InstMap),
 
@@ -282,28 +291,27 @@ generate_category_code_2(model_det, Goal, Instrs, Used) -->
 	).
 
 generate_category_code_2(model_semi, Goal, Instrs, Used) -->
-		% Create a label for fall through on failure.
-	code_info__get_next_label(FallThrough, no),
-	code_info__push_failure_cont(known(FallThrough)),
+		% Make a new failure cont (not model_non)
+	code_info__manufacture_failure_cont(no),
 
 		% generate the code for the body of the clause
 	code_gen__generate_semi_goal(Goal, Instr1),
 	code_gen__generate_semi_prolog(Instr0, Used),
 	code_gen__generate_semi_epilog(Instr2),
-	code_info__pop_failure_cont,
 
 		% combine the prolog, body and epilog
 	{ Instrs = tree(Instr0, tree(Instr1,Instr2)) }.
 
 generate_category_code_2(model_non, Goal, Instrs, Used) -->
-		% Ensure that on failure we do a `fail()'
-	code_info__push_failure_cont(do_fail),
+		% Make a failure continuation, we lie and
+		% say that it is nondet, and then unset it
+		% so that it points to do_fail
+	code_info__manufacture_failure_cont(yes),
 
 		% generate the code for the body of the clause
 	code_gen__generate_non_goal(Goal, Instr1),
 	code_gen__generate_non_prolog(Instr0, Used),
 	code_gen__generate_non_epilog(Instr2),
-	code_info__pop_failure_cont,	% just for symmetry ;-)
 
 		% combine the prolog, body and epilog
 	{ Instrs = tree(Instr0, tree(Instr1,Instr2)) }.
@@ -636,9 +644,9 @@ code_gen__generate_semi_epilog(Instr) -->
 	;
 		code_info__setup_call(Args, callee, CodeA)
 	),
+	code_info__restore_failure_cont(FailureCont),
 	code_info__get_succip_used(Used),
 	code_info__get_total_stackslot_count(NS0),
-	code_info__failure_cont(FailCont),
 	{ code_gen__output_args(Args, LiveArgs0) },
 	{ set__insert(LiveArgs0, reg(r(1)), LiveArgs) },
 	{ SLiveValCode = node([
@@ -648,11 +656,6 @@ code_gen__generate_semi_epilog(Instr) -->
 	{ FLiveValCode = node([
 		livevals(LiveArg) - ""
 	]) },
-	{ FailCont = known(FallThrough0) ->
-		FallThrough = FallThrough0
-	;
-		error("semi_epilogue: invalid failure cont")
-	},
 	(
 		{ Used = yes }
 	->
@@ -692,9 +695,7 @@ code_gen__generate_semi_epilog(Instr) -->
 				- "Return from procedure call" ])
 		),
 		tree(
-			node([
-				label(FallThrough) - "FallThrough"
-			]),
+			FailureCont,
 			tree(
 				tree(Failure, FLiveValCode),
 				node([ goto(succip, succip) -
@@ -784,9 +785,9 @@ code_gen__generate_semi_goal(Goal - GoalInfo, Instr) -->
 			code_gen__generate_semi_goal_2(Goal, GoalInfo, Instr0)
 		;
 			{ CodeModel = model_non },
-			code_info__generate_pre_commit(PreCommit, FailLabel),
+			code_info__generate_pre_commit(Label, PreCommit),
 			code_gen__generate_non_goal_2(Goal, GoalInfo, GoalCode),
-			code_info__generate_commit(FailLabel, Commit),
+			code_info__generate_commit(Label, Commit),
 			{ Instr0 = tree(PreCommit, tree(GoalCode, Commit)) }
 		),
 		code_info__set_instmap(InstMap),
@@ -928,6 +929,18 @@ code_gen__generate_semi_goals([Goal | Goals], Instr) -->
 
 code_gen__generate_negation(Goal, Code) -->
 	code_info__get_globals(Globals),
+	{ Goal = _NotGoal - GoalInfo },
+	{ goal_info_cont_lives(GoalInfo, Lives) },
+	{
+		Lives = yes(Vars0)
+	->
+		Vars = Vars0
+	;
+		error("code_gen__generate_negation: no cont_lives!")
+	},
+		% make the failure cont before saving the heap
+		% pointer because the cache gets flushed.
+	code_info__make_known_failure_cont(Vars, no, ModContCode),
 	{
 		globals__lookup_bool_option(Globals,
 			reclaim_heap_on_semidet_failure, yes),
@@ -937,23 +950,17 @@ code_gen__generate_negation(Goal, Code) -->
 	;
 		Reclaim = no
 	},
-	code_info__get_next_label(SuccLab, no),
-	code_info__push_failure_cont(known(SuccLab)),
 	code_info__maybe_save_hp(Reclaim, SaveHeapCode),
-	code_info__generate_nondet_saves(SaveCode),
 		% The contained goal cannot be nondet, because if it's
 		% mode-correct, it won't have any output vars, and so
 		% it will be semi-det.
 	code_gen__generate_semi_goal(Goal, GoalCode),
-	code_info__remake_with_call_info,
+	code_info__generate_under_failure(FailCode),
+	code_info__restore_failure_cont(RestoreContCode),
 	code_info__maybe_restore_hp(Reclaim, RestoreHeapCode),
-	code_info__pop_failure_cont,
-	code_info__generate_failure(FailCode),
-	{ SuccessCode = node([
-		label(SuccLab) - "negated goal failed, so proceed"
-	]) },
-	{ Code = tree(tree(tree(SaveHeapCode, SaveCode), GoalCode),
-			tree(FailCode, tree(SuccessCode, RestoreHeapCode))) }.
+	{ Code = tree(tree(tree(ModContCode, SaveHeapCode), GoalCode),
+			tree(FailCode, tree(RestoreContCode,
+						RestoreHeapCode))) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1115,6 +1122,16 @@ code_gen__add_saved_succip([I0-S|Is0], N, [I-S|Is]) :-
 		I = I0
 	),
 	code_gen__add_saved_succip(Is0, N, Is).
+
+%---------------------------------------------------------------------------%
+
+code_gen__ensure_vars_are_saved([], empty) --> [].
+code_gen__ensure_vars_are_saved([V|Vs], Code) -->
+	code_info__get_call_info(CallInfo),
+	{ map__lookup(CallInfo, V, Slot) },
+	code_info__place_var(V, Slot, Code0),
+	code_gen__ensure_vars_are_saved(Vs, Code1),
+	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

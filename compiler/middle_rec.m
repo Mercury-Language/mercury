@@ -86,10 +86,8 @@ middle_rec__gen_det(Goal, Instrs) -->
 
 		code_aux__pre_goal_update(SwitchGoalInfo),
 
-		code_info__get_next_label(BaseLabel, no),
-		code_info__push_failure_cont(known(BaseLabel)),
-		unify_gen__generate_tag_test(Var, NonrecConsId, NegTestCode),
-		code_info__pop_failure_cont,
+		unify_gen__generate_tag_test(Var, NonrecConsId, BaseLabel,
+								NegTestCode),
 		{ tree__flatten(NegTestCode, NegTestListList) },
 		{ list__condense(NegTestListList, NegTestList) },
 		{ code_util__negate_the_test(NegTestList, EntryTestList) },

@@ -562,18 +562,18 @@ opt_util__lval_refers_stackvars(framevar(_), _) :-
 opt_util__lval_refers_stackvars(succip, no).
 opt_util__lval_refers_stackvars(maxfr, no).
 opt_util__lval_refers_stackvars(curfr, no).
-opt_util__lval_refers_stackvars(succfr(_Rval), _Refers) :-
-	% I'm not 100% sure of what we should do here, so
-	% to be safe, just abort. I don't think this code
-	% is used anyway. -fjh.
-	error("found succfr in lval_refers_stackvars").
-	%%% opt_util__rval_refers_stackvars(Rval, Refers).
-opt_util__lval_refers_stackvars(prevfr(_Rval), _Refers) :-
-	% I'm not 100% sure of what we should do here, so
-	% to be safe, just abort. I don't think this code
-	% is used anyway. -fjh.
-	error("found prevfr in lval_refers_stackvars").
-	%%% opt_util__rval_refers_stackvars(Rval, Refers).
+opt_util__lval_refers_stackvars(succfr(Rval), Refers) :-
+	%% I'm not 100% sure of what we should do here, so
+	%% to be safe, just abort. I don't think this code
+	%% is used anyway. -fjh.
+	% error("found succfr in lval_refers_stackvars").
+	opt_util__rval_refers_stackvars(Rval, Refers).
+opt_util__lval_refers_stackvars(prevfr(Rval), Refers) :-
+	%% I'm not 100% sure of what we should do here, so
+	%% to be safe, just abort. I don't think this code
+	%% is used anyway. -fjh.
+	%error("found prevfr in lval_refers_stackvars").
+	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__lval_refers_stackvars(redoip(Rval), Refers) :-
 	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__lval_refers_stackvars(hp, no).
