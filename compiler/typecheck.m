@@ -2249,7 +2249,7 @@ write_type_of_functor(Functor, Arity, Context, ConsDefnList) -->
 			prog_out__write_context(Context),
 			io__write_string("  `")
 		;
-			io__write_string(" ")
+			io__write_string("`")
 		),
 		write_cons_type(SingleDefn, Functor, Context),
 		io__write_string("'")
