@@ -3316,8 +3316,18 @@ Prints the names of all the known variables in the current environment,
 together with an ordinal number for each variable.
 @sp 1
 @item print @var{num}
-Prints the value of the variable with the given ordinal number
-in the current environment.
+Prints the value of the variable
+with the given ordinal number in the current environment.
+@sp 1
+At the moment this command prints the entire value of the variable,
+even if this is very big. Later it will merely invoke a configurable
+dynamic term browser, which will eventually have its own sublanguage.
+@sp 1
+@item print @var{name}
+Prints the value of the variable
+with the given name in the current environment.
+Report an error if the name is ambiguous
+or if there is no information available about a variable with that name.
 @sp 1
 At the moment this command prints the entire value of the variable,
 even if this is very big. Later it will merely invoke a configurable

@@ -107,6 +107,17 @@ typedef enum {
 	STOP_INTERACTING
 } MR_Next;
 
+typedef	enum {
+	VAR_NUMBER,
+	VAR_NAME
+} MR_Var_Spec_Kind;
+
+typedef struct {
+	MR_Var_Spec_Kind	MR_var_spec_kind;
+	int			MR_var_spec_number; /* valid if VAR_NUMBER */
+	const char		*MR_var_spec_name;  /* valid if VAR_NAME   */
+} MR_Var_Spec;
+
 static	void	MR_trace_internal_ensure_init(void);
 static	bool	MR_trace_internal_init_from_env(const char *env_var);
 static	bool	MR_trace_internal_init_from_file(const char *filename);
@@ -145,13 +156,18 @@ static	void	MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout,
 static	const char *MR_trace_browse_check_level(const MR_Stack_Layout_Label
 			*top_layout, Word *saved_regs, int ancestor_level);
 static	void	MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
-			Word *saved_regs, int ancestor_level, int which_var);
+			Word *saved_regs, int ancestor_level,
+			MR_Var_Spec which_var);
 static	void	MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 			Word *saved_regs, int ancestor_level);
 static	void	MR_trace_browse_var(const char *name,
 			const MR_Stack_Layout_Var *var,
 			Word *saved_regs, Word *base_sp, Word *base_curfr,
 			Word *type_params);
+static	const char *MR_trace_validate_var_count(const MR_Stack_Layout_Label
+			*layout, int *var_count_ptr);
+static	const char *MR_trace_find_var(const MR_Stack_Layout_Label *layout,
+			MR_Var_Spec var_spec, int *which_var_ptr);
 
 static	const char *MR_trace_read_help_text(void);
 static	bool	MR_trace_is_number(char *word, int *value);
@@ -704,14 +720,21 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		}
 	} else if (streq(words[0], "print")) {
 		if (word_count == 2) {
-			if (MR_trace_is_number(words[1], &n)) {
-				MR_trace_browse_one(layout, saved_regs,
-					*ancestor_level, n);
-			} else if streq(words[1], "*") {
+			MR_Var_Spec	var_spec;
+
+			if streq(words[1], "*") {
 				MR_trace_browse_all(layout, saved_regs,
 					*ancestor_level);
+			} else if (MR_trace_is_number(words[1], &n)) {
+				var_spec.MR_var_spec_kind = VAR_NUMBER;
+				var_spec.MR_var_spec_number = n;
+				MR_trace_browse_one(layout, saved_regs,
+					*ancestor_level, var_spec);
 			} else {
-				MR_trace_help_cat_item("browsing", "print");
+				var_spec.MR_var_spec_kind = VAR_NAME;
+				var_spec.MR_var_spec_name = words[1];
+				MR_trace_browse_one(layout, saved_regs,
+					*ancestor_level, var_spec);
 			}
 		} else {
 			MR_trace_help_cat_item("browsing", "print");
@@ -1543,12 +1566,9 @@ MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout, Word *saved_regs,
 		return;
 	}
 
-	var_count = (int) level_layout->MR_sll_var_count;
-	if (var_count < 0) {
-		printf("mdb: there is no information about live variables\n");
-		return;
-	} else if (var_count == 0) {
-		printf("mdb: there are no live variables\n");
+	problem = MR_trace_validate_var_count(level_layout, &var_count);
+	if (problem != NULL) {
+		printf("mdb: %s.\n", problem);
 		return;
 	}
 
@@ -1579,14 +1599,14 @@ MR_trace_browse_check_level(const MR_Stack_Layout_Label *top_layout,
 
 static void
 MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
-	Word *saved_regs, int ancestor_level, int which_var)
+	Word *saved_regs, int ancestor_level, MR_Var_Spec var_spec)
 {
 	const MR_Stack_Layout_Label	*level_layout;
 	Word				*base_sp;
 	Word				*base_curfr;
 	Word				*type_params;
 	Word				*valid_saved_regs;
-	int				var_count;
+	int				which_var;
 	const MR_Stack_Layout_Vars	*vars;
 	const char 			*problem;
 
@@ -1596,26 +1616,23 @@ MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
 				&base_sp, &base_curfr, &problem);
 
 	if (level_layout == NULL) {
-		printf("%s\n", problem);
+		printf("mdb: %s.\n", problem);
 		return;
 	}
 
-	var_count = (int) level_layout->MR_sll_var_count;
-	if (var_count < 0) {
-		printf("mdb: there is no information about live variables\n");
-		return;
-	} else if (which_var >= var_count) {
-		printf("mdb: there is no such variable\n");
+	problem = MR_trace_find_var(level_layout, var_spec, &which_var);
+	if (problem != NULL) {
+		printf("mdb: %s.\n", problem);
 		return;
 	}
 
-	vars = &level_layout->MR_sll_var_info;
 	if (ancestor_level == 0) {
 		valid_saved_regs = saved_regs;
 	} else {
 		valid_saved_regs = NULL;
 	}
 
+	vars = &level_layout->MR_sll_var_info;
 	type_params = MR_materialize_typeinfos_base(vars,
 				valid_saved_regs, base_sp, base_curfr);
 	MR_trace_browse_var(MR_name_if_present(vars, which_var),
@@ -1644,16 +1661,13 @@ MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 				&base_sp, &base_curfr, &problem);
 
 	if (level_layout == NULL) {
-		printf("%s\n", problem);
+		printf("mdb: %s.\n", problem);
 		return;
 	}
 
-	var_count = (int) level_layout->MR_sll_var_count;
-	if (var_count < 0) {
-		printf("mdb: there is no information about live variables\n");
-		return;
-	} else if (var_count == 0) {
-		printf("mdb: there are no live variables\n");
+	problem = MR_trace_validate_var_count(level_layout, &var_count);
+	if (problem != NULL) {
+		printf("mdb: %s.\n", problem);
 		return;
 	}
 
@@ -1726,6 +1740,77 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	}
 
 	printf("\n");
+}
+
+static const char *
+MR_trace_validate_var_count(const MR_Stack_Layout_Label *layout,
+	int *var_count_ptr)
+{
+	*var_count_ptr = (int) layout->MR_sll_var_count;
+	if (*var_count_ptr < 0) {
+		return "there is no information about live variables";
+	} else if (*var_count_ptr == 0) {
+		return "there are no live variables";
+	} else {
+		return NULL;
+	}
+}
+
+/*
+** Find and validate the number of a variable given by a variable
+** specification in the given layout. If successful, return the
+** number of the variable in *which_var_ptr, and a NULL string;
+** otherwise a return a string containing an error message.
+*/
+
+static const char *
+MR_trace_find_var(const MR_Stack_Layout_Label *layout,
+	MR_Var_Spec var_spec, int *which_var_ptr)
+{
+	int		var_count;
+	const char 	*problem;
+
+	problem = MR_trace_validate_var_count(layout, &var_count);
+	if (problem != NULL) {
+		return problem;
+	}
+
+	if (var_spec.MR_var_spec_kind == VAR_NUMBER) {
+		*which_var_ptr = var_spec.MR_var_spec_number;
+		if (*which_var_ptr >= var_count) {
+			return "there is no such variable";
+		} else {
+			return NULL;	/* represents success */
+		}
+	} else if (var_spec.MR_var_spec_kind == VAR_NAME) {
+		const MR_Stack_Layout_Vars	*vars;
+		const char 			*name;
+		bool				collision = FALSE;
+		int				i;
+
+		vars = &layout->MR_sll_var_info;
+		*which_var_ptr = -1;
+		name = var_spec.MR_var_spec_name;
+		for (i = 0; i < var_count; i++) {
+			if (streq(name, MR_name_if_present(vars, i))) {
+				if (*which_var_ptr >= 0) {
+					collision = TRUE;
+				}
+
+				*which_var_ptr = i;
+			}
+		}
+
+		if (*which_var_ptr < 0) {
+			return "there is no variable with that name";
+		} else if (collision) {
+			return "variable name is not unique";
+		} else {
+			return NULL;	/* represents success */
+		}
+	} else {
+		return "internal error: bad var_spec kind";
+	}
 }
 
 /*

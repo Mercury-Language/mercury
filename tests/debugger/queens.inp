@@ -20,7 +20,9 @@ up 1
 vars
 print *
 
-print *
+print HeadVar__1
+print HeadVar__2
+print HeadVar__3
 
 print *
 
