@@ -572,6 +572,15 @@ type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type, TypeInfo,
 		TypeAssignSet = TypeAssignSet0
 	).
 
+%-----------------------------------------------------------------------------%
+
+	% type_assign_term_has_type_list(Terms, Types, TypeAssign, TypeInfo,
+	%		TypeAssignSet0, TypeAssignSet):
+	% 	Let TAs = { TA | TA is a an extension of TypeAssign
+	%		    	 for which the types of the Terms unify with
+	%		    	 their respective Types },
+	% 	append(TAs, TypeAssignSet0, TypeAssignSet).
+
 :- pred type_assign_term_has_type_list(list(term), list(type), type_assign,
 			type_info, type_assign_set, type_assign_set).
 :- mode type_assign_term_has_type_list(input, input, input,
@@ -585,6 +594,13 @@ type_assign_term_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
 		[], TypeAssignSet1),
 	type_assign_list_term_has_type_list(TypeAssignSet1,
 		Args, Types, TypeInfo, TypeAssignSet0, TypeAssignSet).
+
+	% type_assign_list_term_has_type_list(TAs, Terms, Types, 
+	%		TypeInfo, TypeAssignSet0, TypeAssignSet):
+	% 	Let TAs2 = { TA | TA is a an extension of a member of TAs
+	%		    	  for which the types of the Terms unify with
+	%		    	  their respective Types },
+	% 	append(TAs, TypeAssignSet0, TypeAssignSet).
 
 :- pred type_assign_list_term_has_type_list(type_assign_set, list(term),
 		list(type), type_info, type_assign_set, type_assign_set).
@@ -802,33 +818,31 @@ type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 			type_assign_unify_type(TypeAssign1, ConsType, TypeY,
 						TypeAssign2)
 		->
-			TypeAssignSet1 = [TypeAssign2 | TypeAssignSet0],
 			% check that the types of the arguments matches the
 			% specified arg types for this constructor
 			type_assign_term_has_type_list(Args, ArgTypes,
 				TypeAssign2, TypeInfo,
-				TypeAssignSet1, TypeAssignSet2)
+				TypeAssignSet0, TypeAssignSet1)
 		;
 			% the top-level types didn't unify - no need to
 			% check the types of the arguments, since this
 			% type-assignment has already been rules out
-			TypeAssignSet2 = TypeAssignSet0
+			TypeAssignSet1 = TypeAssignSet0
 		)
 	;
 		map__set(VarTypes0, Y, ConsType, VarTypes),
 		type_assign_set_var_types(TypeAssign1, VarTypes, TypeAssign3),
-		TypeAssignSet1 = [TypeAssign3 | TypeAssignSet0],
 
 			% check that the types of the arguments matches the
 			% specified arg types for this constructor
-		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign1,
-			TypeInfo, TypeAssignSet1, TypeAssignSet2)
+		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign3,
+			TypeInfo, TypeAssignSet0, TypeAssignSet1)
 	),
 
 		% recursively handle all the other possible constructors
 		% that match this functor.
 	type_assign_unify_var_functor(ConsDefns, Args, Y, TypeAssign0,
-		TypeInfo, TypeAssignSet2, TypeAssignSet).
+		TypeInfo, TypeAssignSet1, TypeAssignSet).
 
 %-----------------------------------------------------------------------------%
 

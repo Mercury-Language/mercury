@@ -80,6 +80,10 @@ varset__new_var(varset(MaxId0,Names,Vals), MaxId0, varset(MaxId,Names,Vals)) :-
 
 %-----------------------------------------------------------------------------%
 
+	% XXX efficiency problem: this is O(number of names in VarSet0),
+	% because of the map__inverse_search.  We could avoid this
+	% problem by storing both the map and the inverse map.
+
 varset__name_var(VarSet0, Id, Name, VarSet) :-
 	VarSet0 = varset(MaxId, Names0, Vals),
 	(if some []
@@ -109,6 +113,9 @@ varset__lookup_var(varset(_, _, Vals), Id, Val) :-
 	map__search(Vals, Id, Val).
 
 %-----------------------------------------------------------------------------%
+
+	% This also has the same efficiency problem because it
+	% calls varset__name_var.
 
 varset__merge(VarSet0, varset(MaxId, Names, Vals),
 		VarSet) :-
