@@ -23,7 +23,32 @@
 #define MERCURY_TYPES_H
 
 #include "mercury_conf.h"
-#include "mercury_std.h"    /* for MR_VARIABLE_SIZED */
+
+/*
+** MR_VARIABLE_SIZED -- what to put between the []s when declaring
+**			a variable length array at the end of a struct.
+**
+** The preferred values, if the compiler understands them, convey to the
+** implementation that the array has a variable length. The default value
+** is the maximum length of the variable-length arrays that we construct,
+** since giving too small a value may lead the compiler to use inappropriate
+** optimizations (e.g. using small offsets to index into the array).
+** At the moment, we use variable length arrays that are indexed by
+** closure argument numbers or by type parameter numbers. We therefore
+** use a default MR_VARIABLE_SIZED value that is at least as big as
+** both MR_MAX_VIRTUAL_REG and MR_PSEUDOTYPEINFO_MAX_VAR.
+*/
+
+#if __STDC_VERSION__ >= 199901	/* January 1999 */
+  /* Use C9X-style variable-length arrays. */
+  #define	MR_VARIABLE_SIZED	/* nothing */
+#elif defined(__GNUC__)
+  /* Use GNU-style variable-length arrays */
+  #define	MR_VARIABLE_SIZED	0
+#else
+  /* Just fake it by pretending that the array has a fixed size */
+  #define	MR_VARIABLE_SIZED	1024
+#endif
 
 /*
 ** This section defines types similar to C9X's <stdint.h> header.
