@@ -105,7 +105,7 @@ output_int(IntVal) -->
 	( { IntBits > bytecode_int_bits } ->
 		{ error("size of int is larger than size of bytecode integer.")}
 	;
-		output_int(io__write_byte, bytecode_int_bits, IntVal)
+		output_int(bytecode_int_bits, IntVal)
 	).
 
 int_to_byte_list(IntVal, Bytes) :-
@@ -113,7 +113,7 @@ int_to_byte_list(IntVal, Bytes) :-
 	( IntBits > bytecode_int_bits ->
 		error("size of int is larger than size of bytecode integer.")
 	;
-		int_to_byte_list(IntVal, bytecode_int_bits, Bytes)
+		int_to_byte_list(bytecode_int_bits, IntVal, Bytes)
 	).
 
 :- pred output_int(int, int, io__state, io__state).
