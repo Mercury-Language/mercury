@@ -584,6 +584,13 @@ then
 	MERCURY_GC_INCL_DIR="$root/stage2/boehm_gc"
 	export MERCURY_GC_INCL_DIR
 
+	MMAKE_DIR="$root/stage2/scripts"
+	export MMAKE_DIR
+
+	MERCURY_MOD_LIB_MODS="$root/stage2/runtime/runtime.init \
+				$root/stage2/library/libmercury.init"
+	export MERCURY_MOD_LIB_MODS
+
 		# for mkinit, mmc, mgnuc, ml etc
 	PATH=$root/stage2/util:$root/stage2/scripts:$PATH
 	export PATH
