@@ -1755,7 +1755,7 @@ AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 
 #-----------------------------------------------------------------------------#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof
-scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
+scripts/mercury_update_interface scripts/mgnuc scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
 scripts/mkfifo_using_mknod bindist/bindist.build_vars
