@@ -15,6 +15,7 @@
 #include "mercury_stack_layout.h"
 #include "mercury_timing.h"
 #include "mercury_prof_time.h"
+#include "mercury_runtime_util.h"	/* for strerror() on some systems */
 #include "mercury_deep_profiling.h"
 
 #ifdef MR_DEEP_PROFILING

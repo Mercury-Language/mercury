@@ -22,6 +22,7 @@ ENDINIT
 #include "mercury_engine.h"
 #include "mercury_wrapper.h"
 #include "mercury_misc.h"
+#include "mercury_runtime_util.h"	/* for strerror() on some systems */
 #include "mercury_signal.h"	/* for MR_setup_signal() */
 #include <signal.h>		/* for SIGINT */
 #include <stdio.h>

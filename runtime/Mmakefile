@@ -73,12 +73,12 @@ HDRS		=	\
 			mercury_reg_workarounds.h	\
 			mercury_regorder.h	\
 			mercury_regs.h		\
+			mercury_runtime_util.h	\
 			mercury_signal.h	\
 			mercury_std.h		\
 			mercury_stack_layout.h	\
 			mercury_stack_trace.h	\
 			mercury_stacks.h	\
-			mercury_strerror.h	\
 			mercury_string.h	\
 			mercury_tabling.h	\
 			mercury_tabling_macros.h	\
@@ -159,10 +159,10 @@ CFILES		= 	\
 			mercury_prof_time.c	\
 			mercury_reg_workarounds.c	\
 			mercury_regs.c		\
+			mercury_runtime_util.c	\
 			mercury_signal.c	\
 			mercury_stack_trace.c	\
 			mercury_stacks.c	\
-			mercury_strerror.c	\
 			mercury_string.c	\
 			mercury_tabling.c	\
 			mercury_thread.c	\
