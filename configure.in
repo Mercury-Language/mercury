@@ -2201,7 +2201,11 @@ AC_ARG_ENABLE(dotnet-grades,
 enable_dotnet_grades="$enableval",enable_dotnet_grades=yes)
 
 AC_ARG_ENABLE(libgrades,
-[  --enable-libgrades=...  install exactly the given versions of the library],
+[  --enable-libgrades=...
+                          install exactly the given versions of the library.
+			  The versions are specified using a comma-separated
+			  list.
+],
 enable_libgrades_given=yes;enable_libgrades="$enableval",enable_libgrades_given=no)
 
 if test "$enable_most_grades" = no; then
