@@ -542,6 +542,73 @@ MR_make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 
 /*---------------------------------------------------------------------------*/
 
+enum MR_DataRepresentation
+MR_categorize_data(Word functors_indicator, Word layout_entry)
+{
+	switch (functors_indicator) { 
+		case MR_TYPEFUNCTORS_ENUM: 
+			return MR_DATAREP_ENUM;
+		case MR_TYPEFUNCTORS_DU: 
+			switch (tag(layout_entry)) {
+				case TYPELAYOUT_SIMPLE_TAG:
+					return MR_DATAREP_SIMPLE;
+				case TYPELAYOUT_COMPLICATED_TAG:
+					return MR_DATAREP_COMPLICATED;
+				case TYPELAYOUT_CONST_TAG:
+					return MR_DATAREP_COMPLICATED_CONST;
+				default:
+					return MR_DATAREP_UNKNOWN;
+			}
+		case MR_TYPEFUNCTORS_NO_TAG:
+			return MR_DATAREP_NOTAG;
+		case MR_TYPEFUNCTORS_EQUIV:
+			if (TYPEINFO_IS_VARIABLE(strip_tag(layout_entry))) {
+				return MR_DATAREP_EQUIV_VAR;
+			} else {
+				return MR_DATAREP_EQUIV;
+			}
+		case MR_TYPEFUNCTORS_SPECIAL:
+		{
+			int builtin_type = unmkbody(strip_tag(layout_entry));
+
+			switch (builtin_type) {
+				case TYPELAYOUT_UNASSIGNED_VALUE:
+					return MR_DATAREP_UNKNOWN;
+				case TYPELAYOUT_UNUSED_VALUE:
+					return MR_DATAREP_UNKNOWN;
+				case TYPELAYOUT_STRING_VALUE:
+					return MR_DATAREP_STRING;
+				case TYPELAYOUT_FLOAT_VALUE:
+					return MR_DATAREP_FLOAT;
+				case TYPELAYOUT_INT_VALUE:
+					return MR_DATAREP_INT;
+				case TYPELAYOUT_CHARACTER_VALUE:
+					return MR_DATAREP_CHAR;
+				case TYPELAYOUT_PREDICATE_VALUE:
+					return MR_DATAREP_PRED;
+				case TYPELAYOUT_VOID_VALUE:
+					return MR_DATAREP_VOID;
+				case TYPELAYOUT_ARRAY_VALUE:
+					return MR_DATAREP_ARRAY;
+				case TYPELAYOUT_TYPEINFO_VALUE:
+					return MR_DATAREP_TYPEINFO;
+				case TYPELAYOUT_C_POINTER_VALUE:
+					return MR_DATAREP_C_POINTER;
+				default: 
+					return MR_DATAREP_UNKNOWN;
+			}
+		}
+		case MR_TYPEFUNCTORS_UNIV:
+			return MR_DATAREP_UNIV;
+		default:
+			return MR_DATAREP_UNKNOWN;
+	}
+}
+
+
+
+/*---------------------------------------------------------------------------*/
+
 void mercury_sys_init_type_info(void); /* suppress gcc warning */
 void mercury_sys_init_type_info(void) {
 	mercury__builtin_unify_pred_module();
