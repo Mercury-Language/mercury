@@ -46,7 +46,7 @@ link_to_file () {
 	prefix=$1
 	this_file=$2
 	this_file_descr=$3
-	this_file_size=`ls -l $this_file | awk '{ print $5; }'`
+	this_file_size=`ls -Ll $this_file | awk '{ print $5; }'`
 	this_file_sizekb=`expr $this_file_size / 1024`
 	handled_files="$this_file $handled_files"
 	echo "$prefix <a href=$this_file>$this_file_descr</a> ($this_file_sizekb kilobytes)" >> $INDEX 
@@ -121,8 +121,10 @@ do_handle_release () {
 
 	echo "<li> $release_name" >> $INDEX
 	echo '<ul>' >> $INDEX
-	link_to_existing_file NEWS-$release_id "NEWS"
-	link_to_existing_file INSTALL-$release_id "Installation instructions"
+	source_dist_news="mercury-NEWS-$release_id.txt"
+	link_to_existing_file "$source_dist_news" "News"
+	link_to_existing_file mercury-INSTALL-$release_id.txt \
+		"Installation instructions"
 	link_to_existing_file mercury-compiler-$release_id.tar.gz \
 		"Source distribution"
 	link_to_existing_file mercury-compiler-$release_id-1.src.rpm \
@@ -139,16 +141,43 @@ do_handle_release () {
 		echo "<ul>" >> $INDEX
 		for bindist in $bindists
 		do
-			bindist_name=`echo $bindist | \
-			    sed -e"s/mercury-$release_id.\(.*\).tar.gz/\1/"`
-			link_to_file "<li> " $bindist $bindist_name	
+		    bindist_name=`expr \
+		    	"$bindist" : "mercury-$release_id.\(.*\).tar.gz"`
+		    link_to_file "<li> " $bindist $bindist_name
+		    echo "<ul>" >> $INDEX
+		    bindist_news="mercury-NEWS-$release_id.txt"
+
+		    # If the news file for the source distribution
+		    # doesn't exist, or doesn't match the news file for
+		    # the binary distribution, generate a link to the
+		    # news file for the binary distribution.
+		    # XXX We should probably generate a separate release
+		    # entry if the news files for the source and binary
+		    # distributions don't match, but that should be rare.
+		    if cmp $bindist_news $source_dist_news >& /dev/null
+		    then
+		    	:
+		    else
+			link_to_existing_file \
+			    mercury-NEWS-$release_id.$bindist_name.txt \
+			    "News"
+		    fi
+
+		    link_to_existing_file \
+			mercury-INSTALL-$release_id.$bindist_name.txt \
+			"Installation instructions"
+		    link_to_existing_file \
+			mercury-test-failures-$release_id.$bindist_name.txt \
+			"Test failures"
+		    echo "</ul>" >> $INDEX
 		done
 		echo "</ul>" >> $INDEX
 		;;
 	esac
 	link_to_existing_file mercury-extras-$release_id.tar.gz "Extras"
 	link_to_existing_file mercury-tests-$release_id.tar.gz "Test suite"
-	link_to_existing_file test-failures-$release_id "Test failures"
+	link_to_existing_file mercury-test-failures-$release_id.txt \
+		"Test failures"
 	echo '</ul><p>' >> $INDEX
 }
 

@@ -50,6 +50,11 @@ ulimit -S -d 250000
 # Host to use to build the release of the day.
 ROTD_HOST=earth
 
+set_status () {
+	status=1;
+	echo '**' Error in $*
+}
+
 #-----------------------------------------------------------------------------#
 
 #
@@ -109,9 +114,13 @@ case $BRANCH in
 		;;
 esac
 case "$C_COMPILER" in
-	gcc)	TEST_ID=$BRANCH.$HOST ;;
-	*)	TEST_ID=$BRANCH.$HOST."$C_COMPILER" ;;
+	gcc)	TEST_ID=$BRANCH.$HOST
+        	TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST.test_errs" ;;
+	*)	TEST_ID=$BRANCH.$HOST."$C_COMPILER
+		TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST-$C_COMPILER.test_errs" ;;
 esac
+rm -f $TEST_ERROR_FILE
+touch $TEST_ERROR_FILE
 
 #-----------------------------------------------------------------------------#
 
@@ -484,7 +493,7 @@ case $HOST in
 		(cd gcc && 
 			contrib/gcc_update --touch &&
 			sh configure --enable-languages=mercury &&
-			make) || status=1
+			make) || set_status "gcc checkout"
 		date
 		;;
 esac
@@ -592,14 +601,17 @@ case $status in 0)
     # Note that we don't pass $target_opts when doing `mmake install_grades';
     # that wouldn't work, since many of the grades can only be built with
     # `--target c'.
-    mmake $target_opts install_main MMAKEFLAGS=$PARALLEL || status=1
-    mmake install_grades MMAKEFLAGS=$PARALLEL || status=1
+    mmake $target_opts install_main MMAKEFLAGS=$PARALLEL || \
+    		set_status "install_main"
+    mmake install_grades MMAKEFLAGS=$PARALLEL || \
+    		set_status "install_grades"
     case "$INSTALL_GRADE" in
 	hl*)
 	    	# --split-c-files is not supported for the hl* grades
 	    	;;
 	*)	mmake install_split_library \
-			LIBGRADES= MMAKEFLAGS=$PARALLEL || status=1
+			LIBGRADES= MMAKEFLAGS=$PARALLEL || \
+    			set_status "install_split_library"
 		;;
     esac
 
@@ -607,15 +619,16 @@ case $status in 0)
 	# do it here.  Any grade which is tested later, but which is not
 	# installed above, should be installed here.
     case $HOST in
-    	hg)	mmake install_grades LIBGRADES="asm_fast.par.gc" || status=1
+    	hg)	mmake install_grades LIBGRADES="asm_fast.par.gc" || \
+    			set_status "install asm_fast.par.gc"
 		;;
 	*)
 		;;
     esac
 
     case $install_anyway in
-        false)	cd ../.. || status=1 ;;
-        true)	cd .. || status=1 ;;
+        false)	cd ../.. || set_status "cd ../.." ;;
+        true)	cd .. || set_status "cd .." ;;
     esac
 
     [ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
@@ -680,7 +693,7 @@ do
 			mmake install LIBGRADES= \
 					$PARALLEL MMAKEFLAGS=$PARALLEL &&
 			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
-				status=1
+				set_status "clpr realclean"
 		echo "test trailed_update stuff for grade $grade" 1>&2
 		(cd mercury/extras/trailed_update &&
 			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
@@ -688,7 +701,7 @@ do
 			mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL &&
 			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
 			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
-				status=1
+			    set_status "trailed_update realclean"
 	fi
 done
 
@@ -720,13 +733,15 @@ case $HOST in $ROTD_HOST)
 	mmake MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space' $PARALLEL" tar &&
 	cd .. &&
 	rm -f $UNSTABLE/* &&
+	cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version-unstable.txt &&
+	cp mercury/INSTALL $UNSTABLE/mercury-INSTALL-$version-unstable.txt &&
 	mv mercury-compiler-$version.tar.gz	\
 	    $UNSTABLE/mercury-compiler-$version-unstable.tar.gz &&
 	mv mercury-extras-$version.tar.gz	\
 	    $UNSTABLE/mercury-extras-$version-unstable.tar.gz &&
 	mv mercury-tests-$version.tar.gz	\
 	    $UNSTABLE/mercury-tests-$version-unstable.tar.gz
-	} || status=1
+	} || set_status "making source distribution"
 	# later parts of this script assume that we've already run configure,
 	# so we need to redo that
 	cd $DIR/mercury && sh configure --prefix=$INSTALL_DIR
@@ -858,12 +873,6 @@ cd tests || { false; exit 1; }
 # esac
 
 echo "test_mercury running tests in grades $GRADES" 1>&2
-case "$C_COMPILER" in
-        gcc) test_error_file="$TESTDIR/logs/test-$BRANCH-$HOST.test_errs" ;;
-        *)   test_error_file=\
-		"$TESTDIR/logs/test-$BRANCH-$HOST-$C_COMPILER.test_errs" ;;
-esac
-rm -f $test_error_file
 for grade in $GRADES
 do
 	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
@@ -871,7 +880,7 @@ do
 	    0.10)
 		./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
 		       -m "$TEST_MGNUCFLAGS" -l "$TEST_MLFLAGS" \
-		       $PARALLEL || status=1
+		       $PARALLEL || set_status "tests in grade $grade"
 		;;
 	    *)
 		mmake GRADE="$grade" \
@@ -879,9 +888,10 @@ do
 			EXTRA_CFLAGS="$TEST_CFLAGS" \
 			EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
 			EXTRA_MLFLAGS="$TEST_MLFLAGS" \
-			$PARALLEL runtests || status=1
+			$PARALLEL runtests || \
+			set_status "tests in grade $grade"
 		if [ -f runtests.errs ]; then
-			cat runtest.errs >> $test_error_file
+			cat runtest.errs >> $TEST_ERROR_FILE
 		fi
 		;;
 	esac
@@ -917,7 +927,8 @@ do
 			cp Prof.CallPair poly.$grade.CallPair &&
 			cp Prof.MemoryWords poly.$grade.MemoryWords &&
 			cp Prof.MemoryCells poly.$grade.MemoryCells &&
-			cp Prof.Decl poly.$grade.Decl) || status=1
+			cp Prof.Decl poly.$grade.Decl) ||
+			set_status "benchmarks/poly in grade *.memprof*
 			;;
 	esac
 	echo "test_mercury finished tests for grade $grade at `date`" 1>&2
@@ -941,7 +952,7 @@ case $HOST in hg)
 			EXTRA_MLFLAGS="$TEST_MLFLAGS" \
 			$PARALLEL runtests
 		if [ -f runtests.errs ]; then
-			cat runtest.errs >> $test_error_file
+			cat runtest.errs >> $TEST_ERROR_FILE
 		fi
 		;;
 	esac
@@ -956,19 +967,27 @@ cd ..
 : update the unstable release
 
 case $HOST in $ROTD_HOST)
+	if [ -s $TEST_ERROR_FILE ]; then
+		cp $TEST_ERROR_FILE \
+			$UNSTABLE/mercury-test-failures-$version-unstable.txt
+	else 
+		rm -f $UNSTABLE/mercury-test-failures-$version-unstable.txt
+	fi &&
 	rsh $BETA_FTPHOST \
 		"rm -f $BETA_FTPDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
 	rsh $BETA_FTPHOST \
 		"rm -f $BETA_FTPDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
 	rsh $BETA_FTPHOST \
 		"rm -f $BETA_FTPDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
-	rcp $UNSTABLE/mercury-*-$version-unstable.tar.gz \
-		$BETA_FTPHOST:$BETA_FTPDIR 
+	rsh $BETA_FTPHOST \
+		"rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.txt" &&
+	rcp $UNSTABLE/mercury-*-$version-unstable.* \
+		$BETA_FTPHOST:$BETA_FTPDIR  &&
 	rm -f $BETA_WEBDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	rm -f $BETA_WEBDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
-	cp $UNSTABLE/mercury-*-$version-unstable.tar.gz \
-		$BETA_WEBDIR
+	rm -f $BETA_WEBDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.txt &&
+	cp $UNSTABLE/mercury-*-$version-unstable.* $BETA_WEBDIR
 	;;
 esac
 
@@ -1044,6 +1063,16 @@ ulimit -S -t unlimited
 	cd .. &&
 	{ [ -d $UNSTABLE ] || mkdir $UNSTABLE; } &&
 	rm -f $UNSTABLE/mercury-*.$fullname.tar.gz &&
+	rm -f $UNSTABLE/mercury-*.$fullname.txt &&
+	cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version.$fullname.txt &&
+	cp mercury/bindist/bindist.INSTALL \
+		$UNSTABLE/mercury-INSTALL-$version.$fullname.txt &&
+	if [ -s $TEST_ERROR_FILE ]; then
+		cp $TEST_ERROR_FILE \
+			$UNSTABLE/mercury-test-failures-$version.$fullname.txt
+	else 
+		rm $UNSTABLE/mercury-test-failures-$version.$fullname.txt
+	fi &&
 	mv mercury/mercury-$version.$fullarch.tar.gz \
 		$UNSTABLE/mercury-$version.$fullname.tar.gz &&
 	:
@@ -1051,23 +1080,29 @@ ulimit -S -t unlimited
 	cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
 	cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
 	echo "test_mercury tagging unstable $BASE_TAG_NAME, finished at `date`" 1>&2
-} || status=1
+} || set_status "creating binary distribution"
 
 case $status in
     0) {
     	cd $DIR &&
 	{ [ -d $STABLE ] || mkdir $STABLE; } &&
-	rm -f $STABLE/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz &&
+	rm -f $STABLE/mercury*-$RELEASE_VERSION_PATTERN.$fullname.tar.gz &&
+	rm -f $STABLE/mercury*-$RELEASE_VERSION_PATTERN.$fullname.txt &&
 	$LN $UNSTABLE/mercury-$version.$fullname.tar.gz \
 		$STABLE/mercury-$version.$fullname.tar.gz &&
-	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz" &&
-	rcp $STABLE/mercury-$version.$fullname.tar.gz \
-		$BETA_FTPHOST:$BETA_FTPDIR &&
+	$LN $UNSTABLE/mercury-NEWS-$version.$fullname.txt \
+		$STABLE/mercury-NEWS-$version.$fullname.txt &&
+	$LN $UNSTABLE/mercury-INSTALL-$version.$fullname.txt \
+		$STABLE/mercury-INSTALL-$version.$fullname.txt &&
+	rsh $BETA_FTPHOST "rm -f \
+		$BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz \
+		$BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.txt" &&
+	rcp $STABLE/mercury*-$version.$fullname.* $BETA_FTPHOST:$BETA_FTPDIR &&
 	echo "test_mercury tagging stable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
 	cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
 	cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
 	echo "test_mercury tagging stable $BASE_TAG_NAME, finished at `date`" 1>&2
-       } || status=1
+       } || set_status "copying binary distribution"
     ;;
 esac
 
@@ -1083,23 +1118,35 @@ case $status in
 	    cd $DIR &&
 		# Delete older stable versions that this one replaces
 	    rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].txt &&
 	    rm -f $STABLE/mercury-*-$version.tar.gz &&
+	    rm -f $STABLE/mercury-*-$version.txt &&
 	    $LN $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
 	        $STABLE/mercury-compiler-$version.tar.gz &&
 	    $LN $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
 	        $STABLE/mercury-extras-$version.tar.gz &&
 	    $LN $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
 	        $STABLE/mercury-tests-$version.tar.gz &&
+	    $LN $UNSTABLE/mercury-NEWS-$version-unstable.txt \
+	        $STABLE/mercury-NEWS-$version.txt &&
+	    $LN $UNSTABLE/mercury-INSTALL-$version-unstable.txt \
+	        $STABLE/mercury-INSTALL-$version.txt &&
 
 	    rsh $BETA_FTPHOST "\
 	    rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz && 
 	    rm -f $BETA_FTPDIR/mercury-*-$version.tar.gz && 
+	    rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].txt && 
+	    rm -f $BETA_FTPDIR/mercury-*-$version.txt && 
 	    $LN $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-extras-$version.tar.gz &&
 	    $LN $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
-	        $BETA_FTPDIR/mercury-tests-$version.tar.gz" &&
+	        $BETA_FTPDIR/mercury-tests-$version.tar.gz &&
+	    $LN $BETA_FTPDIR/mercury-NEWS-$version-unstable.txt \
+	        $BETA_FTPDIR/mercury-NEWS-$version.txt &&
+	    $LN $BETA_FTPDIR/mercury-INSTALL-$version-unstable.txt \
+	        $BETA_FTPDIR/mercury-INSTALL-$version.txt" &&
 
 	    rm -f $BETA_WEBDIR/mercury-compiler-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
 	    rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
@@ -1109,9 +1156,13 @@ case $status in
 	    $LN $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
 	        $BETA_WEBDIR/mercury-extras-$version.tar.gz &&
 	    $LN $BETA_WEBDIR/mercury-tests-$version-unstable.tar.gz \
-	        $BETA_WEBDIR/mercury-tests-$version.tar.gz 
+	        $BETA_WEBDIR/mercury-tests-$version.tar.gz &&
+	    $LN $BETA_WEBDIR/mercury-NEWS-$version-unstable.txt \
+	        $BETA_WEBDIR/mercury-NEWS-$version.tar.gz &&
+	    $LN $BETA_WEBDIR/mercury-INSTALL-$version-unstable.txt \
+	        $BETA_WEBDIR/mercury-INSTALL-$version.tar.gz 
 	    ;;
-	esac
+	esac || set_status "updating stable distribution"
 	;;
     *)
 	;;
