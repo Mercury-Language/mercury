@@ -230,6 +230,99 @@ if test "$ac_cv_func_sigaction" = yes; then
 	fi
 fi
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for an integer type with the same size as a pointer)
+AC_CACHE_VAL(mercury_cv_word_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(int) == sizeof(void *))
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
+
+		if (sizeof(long) == sizeof(void *))
+		{
+			fprintf(fp, "long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_word_type=`cat conftest.tags`],
+	[mercury_cv_word_type=unknown],
+	[mercury_cv_word_type=unknown])
+)
+if test "$mercury_cv_word_type" = unknown; then
+	AC_TRY_RUN([
+	#include <stdio.h>
+	main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(long long) == sizeof(void *))
+		{
+			fprintf(fp, "long long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_word_type=`cat conftest.tags`],
+	[mercury_cv_word_type=unknown],
+	[mercury_cv_word_type=unknown])
+fi
+AC_MSG_RESULT($mercury_cv_word_type)
+AC_DEFINE_UNQUOTED(WORD_TYPE, $mercury_cv_word_type)
+WORD_TYPE=$mercury_cv_word_type
+AC_SUBST(WORD_TYPE)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for the number of low tag bits)
+AC_CACHE_VAL(mercury_cv_low_tag_bits,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(void *) == 4)
+		{
+			fprintf(fp, "2\n");
+			exit(0);
+		}
+
+		if (sizeof(void *) == 8)
+		{
+			fprintf(fp, "3\n");
+			exit(0);
+		}
+
+		fprintf(fp, "0\n");
+		exit(1);
+	}],
+	[mercury_cv_low_tag_bits=`cat conftest.tags`],
+	[mercury_cv_low_tag_bits=0],
+	[mercury_cv_low_tag_bits=0])
+)
+AC_MSG_RESULT($mercury_cv_low_tag_bits)
+AC_DEFINE_UNQUOTED(LOW_TAG_BITS, $mercury_cv_low_tag_bits)
+LOW_TAG_BITS=$mercury_cv_low_tag_bits
+AC_SUBST(LOW_TAG_BITS)
+#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether we can use gcc labels)
 AC_CACHE_VAL(mercury_cv_gcc_labels,
 	AC_TRY_RUN([
@@ -245,7 +338,7 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 		[mercury_cv_gcc_labels=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_labels)
-if test $mercury_cv_gcc_labels = yes; then
+if test "$mercury_cv_gcc_labels" = yes; then
 	AC_DEFINE(HAVE_GCC_LABELS)
 fi
 #-----------------------------------------------------------------------------#
@@ -410,13 +503,14 @@ AC_SUBST(SO)
 AC_OUTPUT(Mmake.common scripts/mc scripts/mcn scripts/mcs
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
-scripts/msc scripts/msl scripts/msp scripts/sicstus_conv,
+scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
+compiler/conf.m,
 
 chmod a-w Mmake.common scripts/mc scripts/mcn scripts/mcs \
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml \
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init \
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv \
-runtime/conf.h
+compiler/conf.m runtime/conf.h
 
 chmod +x scripts/mc scripts/mcn scripts/mcs \
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml \
