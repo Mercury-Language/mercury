@@ -964,9 +964,14 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 	;
 		[]
 	),
-	io__write_string("% Language of implementation: "),
-	io__write(Lang),
-	io__nl,
+	(
+		{ Lang = mercury }
+	;
+		{ Lang = foreign_language(ForeignLang) },
+		io__write_string("% Language of implementation: "),
+		io__write(ForeignLang),
+		io__nl
+	),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_procids(PredInfo, ProcIds) },
 	( { Modes = [] ; Modes = ProcIds } ->
