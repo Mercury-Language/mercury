@@ -1411,7 +1411,7 @@ SIG_PF GC_old_segv_handler;	/* Also old MSWIN32 ACCESS_VIOLATION filter */
 {
     register unsigned i;
 #   ifdef IRIX5
-	char * addr = (char *) (scp -> sc_badvaddr);
+	char * addr = (char *) (size_t) (scp -> sc_badvaddr);
 #   endif
 #   if defined(OSF1) && defined(ALPHA)
 	char * addr = (char *) (scp -> sc_traparg_a0);
