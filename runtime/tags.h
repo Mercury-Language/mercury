@@ -15,6 +15,10 @@
 #define	TAGBITS		2
 #endif
 
+#if TAGBITS > 0 && defined(HIGHTAGS) && defined(CONSERVATIVE_GC)
+#error "Conservative GC does not work with high tag bits"
+#endif
+
 #ifdef	HIGHTAGS
 
 #define	mktag(t)	((t) << (WORDBITS - TAGBITS))
