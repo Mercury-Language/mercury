@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds, llds, code_info, code_util.
+:- import_module hlds_pred, hlds_goal, llds, code_info, code_util.
 
 :- pred call_gen__generate_det_call(pred_id, proc_id, list(var),
 					code_tree, code_info, code_info).
@@ -50,11 +50,12 @@
 	is det.
 
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
+:- import_module hlds_module, hlds_data.
+:- import_module prog_io, arg_info, type_util, mode_util, shapes, unify_proc.
 :- import_module bool, tree, list, map, std_util, require, set, int, assoc_list.
-:- import_module prog_io, arg_info, type_util, mode_util, unify_proc.
-:- import_module shapes.
 
 	% To generate a call to a deterministic predicate, first
 	% we get the arginfo for the callee.

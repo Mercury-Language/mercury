@@ -59,7 +59,7 @@
 :- interface.
 :- import_module string, int, list, varset, term, std_util, require.
 :- import_module globals, options.
-:- import_module hlds. % for cons_id
+:- import_module hlds_data. % for cons_id and determinism
 
 %-----------------------------------------------------------------------------%
 
@@ -116,15 +116,6 @@
 
 :- type type_and_mode	--->	type_only(type)
 			;	type_and_mode(type, mode).
-
-:- type determinism	--->	det
-			;	semidet
-			;	nondet
-			;	multidet
-			;	cc_nondet
-			;	cc_multidet
-			;	erroneous
-			;	failure.
 
 :- type pragma --->		c_header_code(string)
 			;	c_code(string)

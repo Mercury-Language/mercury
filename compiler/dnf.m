@@ -37,7 +37,7 @@
 
 :- interface.
 
-:- import_module hlds, set.
+:- import_module hlds_module, hlds_pred, set.
 
 :- pred dnf__transform_module(module_info::in, maybe(set(pred_proc_id))::in,
 	module_info::out) is det.
@@ -51,7 +51,7 @@
 
 :- implementation.
 
-:- import_module excess, make_hlds, mode_util, prog_io.
+:- import_module hlds_goal, hlds_data, excess, make_hlds, mode_util, prog_io.
 :- import_module require, map, list, string, int, bool, std_util.
 
 	% Traverse the module structure.
@@ -361,29 +361,16 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 	goal_info_context(GoalInfo, Context),
 	goal_info_get_determinism(GoalInfo, Detism),
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
-
 	set__to_sorted_list(NonLocals, ArgVars),
-	list__length(ArgVars, Arity),
 	dnf__compute_arg_types_modes(ArgVars, VarTypes, InstMap0, InstMap,
 		ArgTypes, ArgModes),
 
-	clauses_info_init(Arity, ClausesInfo),
 	module_info_name(ModuleInfo0, ModuleName),
 	SymName = qualified(ModuleName, PredName),
-	pred_info_init(ModuleName, SymName, Arity, TVarSet, ArgTypes, true,
-		Context, ClausesInfo, local, no, none, predicate, PredInfo0),
-
-	pred_info_procedures(PredInfo0, Procs0),
-	next_mode_id(Procs0, yes(Detism), ModeId),
-
-	proc_info_init(Arity, ArgModes, yes(Detism), Context, ProcInfo0),
-	proc_info_set_body(ProcInfo0, VarSet, VarTypes, ArgVars, Goal0,
-		ProcInfo1),
-	proc_info_set_inferred_determinism(ProcInfo1, Detism, ProcInfo),
-
-	map__set(Procs0, ModeId, ProcInfo, Procs),
-	pred_info_set_procedures(PredInfo0, Procs, PredInfo1),
-	pred_info_set_marker_list(PredInfo1, Markers, PredInfo),
+	proc_info_create(VarSet, VarTypes, ArgVars, ArgModes, Detism,
+		Goal0, Context, ProcInfo),
+	pred_info_create(ModuleName, SymName, TVarSet, ArgTypes, true,
+		Context, local, Markers, predicate, ProcInfo, ProcId, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_insert(PredTable0, PredInfo, PredId,
@@ -393,7 +380,7 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 
 	hlds__is_builtin_make_builtin(no, no, IsBuiltin),
 	map__init(Follow),
-	GoalExpr = call(PredId, ModeId, ArgVars, IsBuiltin,
+	GoalExpr = call(PredId, ProcId, ArgVars, IsBuiltin,
 		no, SymName, Follow),
 	Goal = GoalExpr - GoalInfo.
 

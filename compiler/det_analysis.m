@@ -52,7 +52,7 @@
 
 :- interface.
 
-:- import_module hlds, io.
+:- import_module hlds_module, hlds_pred, hlds_data, io.
 
 	% perform full determinism analysis and checking, including determinism
 	% inference for local predicates with no determinism declaration
@@ -76,6 +76,7 @@
 
 :- implementation.
 
+:- import_module hlds_goal.
 :- import_module bool, list, map, set, std_util, require.
 
 :- import_module det_report, prog_io, mode_util, globals, options, passes_aux.
@@ -241,6 +242,8 @@ global_final_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 	global_checking_pass(ProcList, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
+
+:- type soln_context	--->	all_solns ; first_soln.
 
 	% Infer the determinism of a procedure.
 

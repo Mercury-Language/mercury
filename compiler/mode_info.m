@@ -11,9 +11,13 @@
 % the information we need during mode analysis.
 
 %-----------------------------------------------------------------------------%
+
 :- module mode_info.
+
 :- interface.
-:- import_module hlds, map, list, varset, set.
+
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module map, list, varset, set.
 
 :- interface.
 
@@ -229,7 +233,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, delay_info, mode_errors, prog_io.
+:- import_module delay_info, mode_errors, prog_io.
+:- import_module require.
 
 :- type mode_info 
 	--->	mode_info(

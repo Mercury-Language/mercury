@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds, io.
+:- import_module hlds_module, hlds_pred, hlds_goal, io.
 
 	% Types used in both det_report and det_analysis.
 
@@ -83,10 +83,10 @@
 
 :- implementation.
 
-:- import_module bool, int, list, map, set, varset, std_util, term, require.
-
+:- import_module hlds_data, type_util, mode_util, inst_match.
 :- import_module globals, options, prog_out, hlds_out, mercury_to_mercury.
-:- import_module type_util, mode_util, inst_match.
+
+:- import_module bool, int, list, map, set, varset, std_util, term, require.
 
 %-----------------------------------------------------------------------------%
 

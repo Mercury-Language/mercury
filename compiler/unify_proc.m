@@ -45,9 +45,11 @@
 %-----------------------------------------------------------------------------%
 
 :- module unify_proc.
+
 :- interface.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module llds, modes, prog_io, special_pred.
 :- import_module bool, std_util, io, list.
-:- import_module prog_io, hlds, llds, special_pred, modes.
 
 :- type unify_requests.
 

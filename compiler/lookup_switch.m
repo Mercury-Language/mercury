@@ -45,7 +45,8 @@
 
 :- interface.
 
-:- import_module list, hlds, llds, switch_gen, code_info.
+:- import_module hlds_goal, hlds_data, llds, switch_gen, code_info.
+:- import_module list.
 
 :- type case_consts == list(pair(int, list(rval))).
 

@@ -23,7 +23,7 @@
 
 :- interface.
 
-:- import_module hlds, llds.
+:- import_module hlds_module, hlds_pred, llds.
 
 :- pred detect_liveness(module_info, module_info).
 :- mode detect_liveness(in, out) is det.
@@ -36,8 +36,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module hlds_goal, mode_util, term, quantification.
 :- import_module list, map, set, std_util, assoc_list.
-:- import_module mode_util, term, quantification.
 
 %-----------------------------------------------------------------------------%
 

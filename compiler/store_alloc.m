@@ -20,7 +20,7 @@
 
 :- interface.
 
-:- import_module hlds, llds.
+:- import_module hlds_module, hlds_pred, llds.
 
 :- pred store_alloc(module_info, module_info).
 :- mode store_alloc(in, out) is det.
@@ -34,8 +34,9 @@
 
 :- implementation.
 
+:- import_module hlds_goal, mode_util.
 :- import_module list, map, set, std_util, assoc_list.
-:- import_module mode_util, int, term, require.
+:- import_module int, term, require.
 
 %-----------------------------------------------------------------------------%
 

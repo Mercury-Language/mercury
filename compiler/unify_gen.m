@@ -19,7 +19,8 @@
 
 :- interface.
 
-:- import_module list, hlds, llds, code_info, code_util.
+:- import_module hlds_goal, hlds_data, llds, code_info, code_util.
+:- import_module list.
 
 	% Generate code for an assignment unification.
 	% (currently implemented as a cached assignment).
@@ -59,8 +60,8 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module code_aux, string, tree, int, map, require, std_util.
-:- import_module prog_io, mode_util, hlds_out, term.
+:- import_module hlds_module, hlds_pred, prog_io, mode_util, code_aux, hlds_out.
+:- import_module string, tree, int, map, term, require, std_util.
 
 :- type uni_val		--->	ref(var)
 			;	lval(lval).

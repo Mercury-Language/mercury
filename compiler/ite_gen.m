@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds, llds, code_gen, code_info, code_util.
+:- import_module hlds_goal, llds, code_gen, code_info, code_util.
 
 :- pred ite_gen__generate_det_ite(hlds__goal, hlds__goal, hlds__goal,
 					code_tree, code_info, code_info).

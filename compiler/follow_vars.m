@@ -26,7 +26,7 @@
 
 :- interface.
 
-:- import_module hlds, llds.
+:- import_module hlds_module, hlds_pred, llds.
 
 :- pred find_follow_vars(module_info, module_info).
 :- mode find_follow_vars(in, out) is det.
@@ -40,9 +40,9 @@
 
 :- implementation.
 
-:- import_module list, map, set, std_util.
-:- import_module mode_util, term, require.
+:- import_module hlds_goal, hlds_data, mode_util, term, require.
 :- import_module code_util, quantification, arg_info.
+:- import_module list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
 

@@ -93,9 +93,11 @@
 %-----------------------------------------------------------------------------%
 
 :- module typecheck.
+
 :- interface.
+
+:- import_module hlds_module, hlds_pred.
 :- import_module bool, io.
-:- import_module hlds, prog_io.
 
 :- pred typecheck(module_info, module_info, bool, io__state, io__state).
 :- mode typecheck(in, out, out, di, uo) is det.
@@ -130,11 +132,13 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, string, require, std_util, tree234.
-:- import_module varset, term, prog_util, type_util, code_util.
-:- import_module term_io, prog_out, hlds_out, mercury_to_mercury.
+
+:- import_module hlds_goal, hlds_data, prog_util, type_util, code_util.
+:- import_module prog_io, prog_out, hlds_out, mercury_to_mercury.
 :- import_module options, getopt, globals, passes_aux, clause_to_proc.
-:- import_module undef_types.
+
+:- import_module int, list, map, string, require, std_util, tree234.
+:- import_module varset, term, term_io.
 
 %-----------------------------------------------------------------------------%
 

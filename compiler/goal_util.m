@@ -1,10 +1,9 @@
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1995 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
-%-----------------------------------------------------------------------------%
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module goal_util.
 % Main author: conway.
 %
 % This module provides some functionality for renaming variables in goals.
@@ -23,10 +22,12 @@
 % (This interface will not easily admit uniqueness in the type map for this
 % reason - such is the sacrifice for generality.)
 
+:- module goal_util.
+
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds, llds.
+:- import_module hlds_goal, llds.
 
 :- pred goal_util__rename_vars_in_goals(list(hlds__goal), map(var, var),
 	list(hlds__goal)).
@@ -48,8 +49,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module hlds_data, mode_util, code_aux, prog_io.
 :- import_module list, map, set, std_util, assoc_list, term, require, varset.
-:- import_module mode_util, code_aux, prog_io.
 
 %-----------------------------------------------------------------------------%
 

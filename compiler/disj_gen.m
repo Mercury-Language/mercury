@@ -15,7 +15,7 @@
 
 :- interface.
 
-:- import_module hlds, llds, code_gen, code_info, code_util, std_util.
+:- import_module hlds_goal, llds, code_gen, code_info, code_util, std_util.
 
 :- pred disj_gen__generate_semi_disj(list(hlds__goal),
 					code_tree, code_info, code_info).

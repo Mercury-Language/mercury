@@ -26,7 +26,7 @@
 
 :- interface.
 
-:- import_module hlds, llds.
+:- import_module hlds_module, hlds_pred, llds.
 
 	% optimize away excess assignments for a whol module
 :- pred excess_assignments(module_info, module_info).
@@ -41,7 +41,7 @@
 
 :- implementation.
 
-:- import_module goal_util.
+:- import_module hlds_goal, goal_util.
 :- import_module varset, list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%

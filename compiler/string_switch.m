@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module list, hlds, llds, switch_gen, code_info.
+:- import_module hlds_goal, llds, switch_gen, code_info.
 
 :- pred string_switch__generate(cases_list, var, code_model,
 	can_fail, label, code_tree, code_info, code_info).
@@ -28,8 +28,8 @@
 
 :- implementation.
 
-:- import_module string, map, tree, std_util, assoc_list, int, require.
-:- import_module code_gen.
+:- import_module hlds_data, code_gen.
+:- import_module string, list, map, tree, std_util, assoc_list, int, require.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 	code_info__produce_variable(Var, VarCode, VarRval),

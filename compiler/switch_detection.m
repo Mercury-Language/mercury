@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds.
+:- import_module hlds_module, hlds_pred.
 
 :- pred detect_switches(module_info, module_info, io__state, io__state).
 :- mode detect_switches(in, out, di, uo) is det.
@@ -33,8 +33,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, set, std_util, assoc_list, require.
-:- import_module modes, mode_util, type_util, term, prog_io.
+
+:- import_module hlds_goal, hlds_data, modes, mode_util, type_util, prog_io.
+:- import_module list, assoc_list, map, set, std_util, term, require.
 
 %-----------------------------------------------------------------------------%
 

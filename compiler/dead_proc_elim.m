@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module hlds, io.
+:- import_module hlds_module, io.
 
 :- pred dead_proc_elim(module_info, module_info, io__state, io__state).
 :- mode dead_proc_elim(in, out, di, uo) is det.
@@ -23,7 +23,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module globals, options.
+:- import_module hlds_pred, hlds_goal, hlds_data, globals, options.
 :- import_module list, set, queue, map, bool, std_util.
 
 %-----------------------------------------------------------------------------%

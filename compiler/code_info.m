@@ -31,7 +31,8 @@
 
 :- interface.
 
-:- import_module tree, hlds, llds, code_util, globals, unify_proc.
+:- import_module hlds_pred, hlds_goal, llds.
+:- import_module code_util, tree, globals, unify_proc.
 :- import_module bool, set, std_util, assoc_list.
 
 :- type code_info.
@@ -422,11 +423,13 @@
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module string, require, char, list, map, bimap, tree, int.
+:- import_module hlds_module, hlds_data.
 :- import_module code_exprn, set, varset, term, stack, prog_io.
 :- import_module type_util, mode_util, options, shapes.
+:- import_module string, require, char, list, map, bimap, tree, int.
 
 :- pred code_info__get_label_count(int, code_info, code_info).
 :- mode code_info__get_label_count(out, in, out) is det.

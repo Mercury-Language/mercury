@@ -3,42 +3,41 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-/* unused_args.m
-/
-/  Main author - stayl, Jan 1996
-/
-/  Detects and removes unused input arguments in procedures, especially
-/  type_infos. Currently only does analysis within a module.
-/
-/  To disable the warnings use --no-warn-useless-args
-/  To disable the optimisation use --no-optimize-useless-args
-/
-/  An argument is used if it
-/	- it is in a predicate external to the current module
-/	- it or any of its aliases are used to instantiate an output variable
-/	- it is involved in a simple test, switch or a semidet deconstruction 
-/	- it is an argument to another predicate in this module which is used.
-/
-/  The first step is to determine which arguments of which predicates are
-/	used locally to their predicate. For each unused argument, a set of
-/	other arguments that it depends on is built up.
-/  The next step is to iterate over the this map, checking for each unused
-/	argument whether any of the arguments it depends on has become used
-/	in the last iteration. Iterations are repeated until a fixpoint is
-/	reached.
-/  Warnings are then output. The warning message indicates which arguments
-/	are used in none of the modes of a predicate. 
-/  The predicates are then fixed up. Unused variables and unifications are
-/	removed.
-/
-*/
+%
+%  unused_args.m
+%
+%  Main author - stayl, Jan 1996
+%
+%  Detects and removes unused input arguments in procedures, especially
+%  type_infos. Currently only does analysis within a module.
+%
+%  To disable the warnings use --no-warn-unused-args
+%  To disable the optimisation use --no-optimize-unused-args
+%
+%  An argument is used if it
+%	- it is in a predicate external to the current module
+%	- it or any of its aliases are used to instantiate an output variable
+%	- it is involved in a simple test, switch or a semidet deconstruction 
+%	- it is an argument to another predicate in this module which is used.
+%
+%  The first step is to determine which arguments of which predicates are
+%	used locally to their predicate. For each unused argument, a set of
+%	other arguments that it depends on is built up.
+%  The next step is to iterate over the this map, checking for each unused
+%	argument whether any of the arguments it depends on has become used
+%	in the last iteration. Iterations are repeated until a fixpoint is
+%	reached.
+%  Warnings are then output. The warning message indicates which arguments
+%	are used in none of the modes of a predicate. 
+%  The predicates are then fixed up. Unused variables and unifications are
+%	removed.
 
 :- module unused_args.
 
 %-------------------------------------------------------------------------------
 :- interface.
 
-:- import_module hlds.
+:- import_module hlds_module.
 :- import_module io.
 
 :- pred unused_args__process_module(module_info::in, module_info::out,
@@ -47,9 +46,9 @@
 %-------------------------------------------------------------------------------
 :- implementation.
 
+:- import_module hlds_pred, hlds_goal, hlds_data, type_util.
 :- import_module code_util, globals, make_hlds, mercury_to_mercury, mode_util.
 :- import_module options, prog_io, prog_out, quantification, special_pred.
-:- import_module type_util.
 
 :- import_module bool, char, int, list, map, require.
 :- import_module set, std_util, string, varset. 

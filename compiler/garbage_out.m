@@ -24,17 +24,23 @@
 :- module garbage_out.
 :- interface.
 
+:- import_module hlds_module, llds.
 :- import_module int, list, io.
-:- import_module hlds, llds.
 
-:- type garbage_output --->	garbage_output( cont_list, 
-						shape_table, 
-						abs_exports).
+:- type garbage_output --->	garbage_output(
+					cont_list, 
+					shape_table, 
+					abs_exports
+				).
 
 :- type cont_list	==	list(gc_label_info).
 
-:- type gc_label_info 	--->	gc_label_info(code_addr, det, num_slots, 
-					list(liveinfo)).
+:- type gc_label_info 	--->	gc_label_info(
+					code_addr,
+					det,
+					num_slots, 
+					list(liveinfo)
+				).
 
 :- type num_slots	==	int.
 

@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module hlds, llds.
+:- import_module hlds_module, hlds_pred, llds.
 
 :- pred detect_live_vars(module_info, module_info).
 :- mode detect_live_vars(in, out) is det.
@@ -31,9 +31,9 @@
 
 :- implementation.
 
+:- import_module hlds_goal, mode_util, graph_colour.
 :- import_module list, map, set, std_util, assoc_list.
-:- import_module mode_util, int, term, require.
-:- import_module graph_colour.
+:- import_module int, term, require.
 
 %-----------------------------------------------------------------------------%
 

@@ -57,7 +57,7 @@
 
 :- module polymorphism.
 :- interface. 
-:- import_module hlds.
+:- import_module hlds_module.
 
 :- pred polymorphism__process_module(module_info, module_info).
 :- mode polymorphism__process_module(in, out) is det.
@@ -67,12 +67,12 @@
 
 :- implementation.
 
-:- import_module bool, int, string, list, set, map.
-:- import_module term, varset, std_util, require.
-
+:- import_module hlds_pred, hlds_goal, hlds_data, llds, (lambda).
 :- import_module prog_io, type_util, mode_util, quantification.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
-:- import_module llds, (lambda).
+
+:- import_module bool, int, string, list, set, map.
+:- import_module term, varset, std_util, require.
 
 %-----------------------------------------------------------------------------%
 

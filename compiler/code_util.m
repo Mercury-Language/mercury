@@ -17,8 +17,8 @@
 
 :- interface.
 
+:- import_module hlds_module, hlds_pred, hlds_goal, llds.
 :- import_module list, string.
-:- import_module hlds, llds.
 
 :- pred code_util__make_local_entry_label(module_info, pred_id, proc_id, label).
 :- mode code_util__make_local_entry_label(in, in, in, out) is det.

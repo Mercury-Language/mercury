@@ -15,8 +15,8 @@
 
 :- interface.
 
-:- import_module list, code_info, hlds, llds.
-:- import_module map, varset, string.
+:- import_module code_info, hlds_goal, hlds_data, llds.
+:- import_module list, map, varset, string.
 
 	% code_aux__contains_only_builtins(G) is true if G is a leaf procedure,
 	% i.e. control does not leave G to call another procedure, even if
@@ -83,6 +83,7 @@
 
 :- implementation.
 
+:- import_module hlds_module.
 :- import_module bool, set, term, type_util, std_util, assoc_list, require.
 
 code_aux__contains_only_builtins(Goal - _GoalInfo) :-

@@ -29,7 +29,7 @@
 :- import_module library, getopt, term, varset.
 
 	% the main compiler passes (in order of execution)
-:- import_module handle_options, prog_io, modules, make_hlds, hlds.
+:- import_module handle_options, prog_io, modules, make_hlds.
 :- import_module undef_types, typecheck, undef_modes, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module (lambda), polymorphism, higher_order, inlining, common, dnf.
@@ -38,7 +38,7 @@
 :- import_module code_gen, optimize, llds.
 
 	% miscellaneous compiler modules
-:- import_module prog_util, hlds_out, dependency_graph.
+:- import_module hlds_module, hlds_pred, prog_util, hlds_out, dependency_graph.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
 :- import_module garbage_out, shapes.
 :- import_module options, globals, passes_aux.
@@ -1596,6 +1596,7 @@ mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName) -->
 	(
 		{ list__member(StageNum, DumpStages)
 		; list__member(StageName, DumpStages)
+		; list__member("all", DumpStages)
 		}
 	->
 		{ module_info_name(HLDS, ModuleName) },

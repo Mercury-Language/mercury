@@ -21,7 +21,7 @@
 
 :- module make_hlds.
 :- interface.
-:- import_module prog_io, hlds, io.
+:- import_module prog_io, hlds_module, hlds_pred, hlds_goal, hlds_data, io.
 
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
 :- mode parse_tree_to_hlds(in, out, di, uo) is det.

@@ -4,8 +4,6 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module undef_modes.
-
 % Detects undefined `inst's and `mode's and reports appropriate error
 % messages.
 
@@ -13,9 +11,12 @@
 
 %-----------------------------------------------------------------------------%
 
+:- module undef_modes.
+
 :- interface.
+
+:- import_module hlds_module.
 :- import_module bool, io, std_util.
-:- import_module hlds.
 
 :- pred check_undefined_modes(module_info, module_info, bool,
 				io__state, io__state).
@@ -24,8 +25,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module hlds_pred, hlds_data, prog_io, prog_out, hlds_out.
 :- import_module list, map, std_util, require.
-:- import_module prog_io, prog_out, hlds_out.
 
 	% Check for any possible undefined insts/modes.
 	% Should we add a definition for undefined insts/modes?

@@ -14,8 +14,9 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
+
+:- import_module hlds_module.
 :- import_module bool, io.
-:- import_module hlds.
 
 :- pred check_undefined_types(module_info, module_info, bool,
 				io__state, io__state).
@@ -24,9 +25,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module hlds_pred, hlds_data, prog_out, prog_util, hlds_out, type_util.
+:- import_module mercury_to_mercury, globals, options, passes_aux.
 :- import_module std_util, map, list, term, varset.
-:- import_module globals, options, passes_aux.
-:- import_module prog_out, prog_util, hlds_out, type_util, mercury_to_mercury.
 
 check_undefined_types(Module, Module, FoundError) -->
 	io__get_exit_status(ExitStatus0),

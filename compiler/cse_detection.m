@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds, io.
+:- import_module hlds_module, hlds_pred, io.
 
 :- pred detect_cse(module_info, module_info, io__state, io__state).
 :- mode detect_cse(in, out, di, uo) is det.
@@ -33,10 +33,10 @@
 
 :- implementation.
 
-:- import_module bool, list, map, set, std_util, require, term, varset.
-
-:- import_module options, globals, goal_util, hlds_out.
+:- import_module hlds_goal, hlds_data, options, globals, goal_util, hlds_out.
 :- import_module modes, mode_util, make_hlds, quantification, switch_detection.
+
+:- import_module bool, list, map, set, std_util, require, term, varset.
 
 %-----------------------------------------------------------------------------%
 

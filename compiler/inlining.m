@@ -10,7 +10,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds, llds.
+:- import_module hlds_module, llds.
 
 :- pred inlining(module_info, module_info).
 :- mode inlining(in, out) is det.
@@ -19,9 +19,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module hlds_pred, hlds_goal, mode_util, goal_util, code_aux, prog_io.
 :- import_module list, map, set, std_util, assoc_list.
-:- import_module mode_util, term, require.
-:- import_module varset, goal_util, code_aux, prog_io.
+:- import_module term, varset, require.
 
 %-----------------------------------------------------------------------------%
 

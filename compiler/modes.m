@@ -92,8 +92,11 @@ a variable live if its value will be used later on in the computation.
 %-----------------------------------------------------------------------------%
 
 :- module modes.
+
 :- interface.
-:- import_module bool, hlds, io.
+
+:- import_module hlds_module, hlds_pred.
+:- import_module bool, io.
 
 :- pred modecheck(module_info, module_info, io__state, io__state).
 :- mode modecheck(in, out, di, uo) is det.
@@ -217,13 +220,13 @@ a variable live if its value will be used later on in the computation.
 
 :- implementation.
 
+:- import_module hlds_goal, hlds_data, unique_modes.
 :- import_module mode_info, delay_info, mode_errors, inst_match.
-:- import_module list, map, varset, term, prog_out, string, require, std_util.
-:- import_module assoc_list.
 :- import_module type_util, mode_util, code_util, prog_io, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
 :- import_module passes_aux.
-:- import_module unique_modes.
+:- import_module list, map, varset, term, prog_out, string, require, std_util.
+:- import_module assoc_list.
 
 %-----------------------------------------------------------------------------%
 

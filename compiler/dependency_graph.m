@@ -17,7 +17,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds, io.
+:- import_module hlds_module, io.
 
 :- pred module_info_ensure_dependency_info(module_info, module_info).
 :- mode module_info_ensure_dependency_info(in, out) is det.
@@ -36,6 +36,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module hlds_pred, hlds_goal, hlds_data.
 :- import_module list, map, set, prog_io, std_util.
 :- import_module mode_util, int, term, require, string.
 :- import_module varset, mercury_to_mercury, relation.

@@ -25,7 +25,9 @@
 :- module code_gen.
 
 :- interface.
-:- import_module list, assoc_list, hlds, llds, code_info, shapes, io.
+
+:- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info, shapes.
+:- import_module list, assoc_list, io.
 
 		% Translate a HLDS structure into an LLDS
 

@@ -34,8 +34,10 @@ insert explicit calls to initialize constraint variables.
 %-----------------------------------------------------------------------------%
 
 :- module inst_match.
+
 :- interface.
-:- import_module prog_io, hlds.
+
+:- import_module hlds_module, prog_io.
 
 %-----------------------------------------------------------------------------%
 
@@ -152,7 +154,8 @@ insert explicit calls to initialize constraint variables.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, set, map, std_util, require, mode_util.
+:- import_module hlds_data, mode_util.
+:- import_module list, set, map, std_util, require.
 
 inst_matches_initial(InstA, InstB, ModuleInfo) :-
 	set__init(Expansions),

@@ -21,15 +21,16 @@
 
 :- interface.
 
-:- import_module hlds, io.
+:- import_module hlds_module, io.
 
 :- pred specialize_higher_order(module_info::in, module_info::out,
 			io__state::di, io__state::uo) is det.
 
-
 %-------------------------------------------------------------------------------
+
 :- implementation.
 
+:- import_module hlds_pred, hlds_goal, hlds_data.
 :- import_module code_util, globals, make_hlds, mode_util.
 :- import_module options, prog_io, quantification.
 

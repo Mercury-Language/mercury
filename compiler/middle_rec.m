@@ -13,7 +13,8 @@
 :- module middle_rec.
 
 :- interface.
-:- import_module hlds, llds, code_info.
+
+:- import_module hlds_goal, llds, code_info.
 
 :- pred middle_rec__match_and_generate(hlds__goal, code_tree,
 	code_info, code_info).
@@ -24,8 +25,8 @@
 
 :- implementation.
 
+:- import_module hlds_data, code_gen, unify_gen, code_util, code_aux, opt_util.
 :- import_module bool, set, int, std_util, tree, list, assoc_list, require.
-:- import_module code_gen, unify_gen, code_util, code_aux, opt_util.
 
 %---------------------------------------------------------------------------%
 

@@ -123,9 +123,9 @@
 			% If rval is true, then goto code_addr.
 
 	;	incr_hp(lval, maybe(tag), rval)
-			% Get a memory block of a given size
+			% Get a memory block of a size given by an rval
 			% and put its address in the given lval,
-			% possibly after tagging it with an rval.
+			% possibly after tagging it with a given tag.
 
 	;	mark_hp(lval)
 			% Tell the heap sub-system to store a marker
@@ -139,11 +139,11 @@
 
 	;	store_ticket(lval)
 			% Get a ticket from the constraint solver, and store it
-			% in the lval
+			% in the lval.
 
 	;	restore_ticket(rval)
 			% Restore the the constraint solver to the ticket given
-			% in the rval
+			% in the rval.
 
 	;	discard_ticket
 			% Decrement the ticket stack by the size of a solver
@@ -265,13 +265,12 @@
 			;	f(int).		% floating point regs
 
 	% local(proc_label)
-	%	local entry label
-	% local(proc_label, int, cont_type)
-	%	internal local label which can only be accessed externaly if
-	%	it is a continuation label.  The cont_type is if it is a cont
-	%	label, and whether the predicate is exported
+	%	Local entry label.
+	% local(proc_label, int)
+	%	Internal local label which can only be accessed externaly if
+	%	it is a continuation label.
 	% exported(proc_label)
-	%	entry label, which can be accessed from any where.
+	%	Entry label, which can be accessed from any where.
 
 :- type label
 	--->		local(proc_label)

@@ -13,8 +13,8 @@
 
 :- interface.
 
+:- import_module hlds_module, hlds_pred, llds.
 :- import_module bool, std_util.
-:- import_module hlds, llds.
 
 :- pred move_follow_code(module_info, pair(bool), module_info).
 :- mode move_follow_code(in, in, out) is det.
@@ -29,7 +29,7 @@
 
 :- implementation.
 
-:- import_module det_analysis, mode_util, quantification.
+:- import_module hlds_goal, hlds_data, det_analysis, mode_util, quantification.
 :- import_module list, map, set.
 :- import_module term, require.
 

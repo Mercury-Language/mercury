@@ -12,8 +12,11 @@
 %-----------------------------------------------------------------------------%
 
 :- module constraint.
+
 :- interface.
-:- import_module io, hlds, llds.
+
+:- import_module hlds_module, llds.
+:- import_module io.
 
 :- pred constraint_propagation(module_info, module_info, io__state, io__state).
 :- mode constraint_propagation(in, out, di, uo) is det.
@@ -23,13 +26,14 @@
 
 :- implementation.
 
-:- import_module bool, list, map, set, std_util, assoc_list, string.
-:- import_module varset, term, require.
-
+:- import_module hlds_pred, hlds_goal, hlds_data.
 :- import_module mode_util, passes_aux, code_aux, prog_io.
 :- import_module delay_info, mode_info, inst_match, modes.
 :- import_module transform, options, globals.
 :- import_module mercury_to_mercury, hlds_out, dependency_graph.
+
+:- import_module bool, list, map, set, std_util, assoc_list, string.
+:- import_module varset, term, require.
 
 :- type constraint == hlds__goal.
 

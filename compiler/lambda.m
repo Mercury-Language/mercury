@@ -32,11 +32,11 @@
 %-----------------------------------------------------------------------------%
 
 :- module (lambda).
+
 :- interface. 
-:- import_module hlds.
-:- import_module list, set, map.
-:- import_module varset, term.
-:- import_module prog_io.
+
+:- import_module hlds_module, hlds_pred, prog_io.
+:- import_module list, set, map, term, varset.
 
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
@@ -52,8 +52,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module hlds_goal, hlds_data, make_hlds.
 :- import_module bool, string, std_util, require.
-:- import_module make_hlds.
 
 :- type lambda_info --->
 		lambda_info(
@@ -207,7 +208,7 @@ lambda__process_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Functor, Unification, ModuleInfo),
 	LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet, ModuleInfo).
 
-lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
+lambda__transform_lambda(Vars, Modes, Detism, OrigNonLocals0, LambdaGoal,
 		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
 		Functor, Unification, ModuleInfo) :-
 	(
@@ -219,10 +220,9 @@ lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		error("polymorphism__transform_lambda: wierd unification")
 	),
 
-	%
 	% Optimize a special case: replace
-	%	`lambda([Y1, Y2, ...] is Det, p(X1, X2, ..., Y1, Y2, ...))'
-	% where `p' has determinism `Det' with
+	%	`lambda([Y1, Y2, ...] is Detism, p(X1, X2, ..., Y1, Y2, ...))'
+	% where `p' has determinism `Detism' with
 	%	`p(X1, X2, ...)'
 	%
 	% XXX This optimization is only valid if the modes of the Xi are
@@ -245,7 +245,7 @@ XXX this optimization temporarily disabled, see comment above
 		module_info_pred_proc_info(ModuleInfo0, PredId0, ModeId0, _,
 			Call_ProcInfo),
 		proc_info_interface_code_model(Call_ProcInfo, Call_CodeModel),
-		determinism_to_code_model(Det, CodeModel),
+		determinism_to_code_model(Detism, CodeModel),
 			% Check that the code models are compatible.
 			% Note that det is not compatible with semidet,
 			% and semidet is not compatible with nondet,
@@ -277,12 +277,8 @@ XXX this optimization temporarily disabled, see comment above
 		string__append("__LambdaGoal__", LambdaCountStr, PName0),
 		string__append(ModuleName, PName0, PName),
 		PredName = unqualified(PName),
-		list__length(AllArgVars, Arity),
 		map__apply_to_list(AllArgVars, VarTypes, ArgTypes),
-		Cond = true,
 		goal_info_context(LambdaGoalInfo, LambdaContext),
-		Status = local,
-		MaybeDet = yes(Det),
 		% the TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter
 		lambda__uni_modes_to_modes(UniModes, OrigArgModes),
@@ -309,31 +305,17 @@ XXX this optimization temporarily disabled, see comment above
 
 		list__append(ArgModes1, Modes, AllArgModes),
 
-		% 
-		% Now construct the pred_info for the new predicate, using
-		% the information computed above
-		%
-		clauses_info_init(Arity, ClausesInfo),
-		pred_info_init(ModuleName, PredName, Arity, TVarSet,
-			ArgTypes, Cond, LambdaContext, ClausesInfo, Status,
-			no, none, predicate, PredInfo0),
+		% Now construct the proc_info and pred_info for the new
+		% single-mode predicate, using the information computed above
 
-		%	
-		% Create a single mode for the new predicate, and insert
-		% the lambda goal as the body of that procedure.
-		%
-		pred_info_procedures(PredInfo0, Procs0),
-		next_mode_id(Procs0, MaybeDet, ModeId),
-		proc_info_init(Arity, AllArgModes, MaybeDet, LambdaContext,
-				ProcInfo0),
-		proc_info_set_body(ProcInfo0, VarSet, VarTypes, AllArgVars,
-				LambdaGoal, ProcInfo),
-		map__set(Procs0, ModeId, ProcInfo, Procs),
-		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
+		proc_info_create(VarSet, VarTypes, AllArgVars, AllArgModes,
+			Detism, LambdaGoal, LambdaContext, ProcInfo),
+		pred_info_create(ModuleName, PredName, TVarSet, ArgTypes,
+			true, LambdaContext, local, [], predicate, ProcInfo,
+			ProcId, PredInfo),
 
-		%
 		% save the new predicate in the predicate table
-		%
+
 		module_info_get_predicate_table(ModuleInfo1, PredicateTable0),
 		predicate_table_insert(PredicateTable0, PredInfo,
 			PredId, PredicateTable),
@@ -341,7 +323,7 @@ XXX this optimization temporarily disabled, see comment above
 			ModuleInfo)
 	),
 	Functor = functor(term__atom(PName), ArgVars),
-	ConsId = pred_const(PredId, ModeId),
+	ConsId = pred_const(PredId, ProcId),
 	Unification = construct(Var, ConsId, ArgVars, UniModes).
 
 :- pred lambda__uni_modes_to_modes(list(uni_mode), list(mode)).

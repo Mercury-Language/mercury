@@ -29,9 +29,11 @@
 %-----------------------------------------------------------------------------%
 
 :- module hlds_out.
+
 :- interface.
+
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, llds.
 :- import_module int, io.
-:- import_module hlds, llds.
 
 %-----------------------------------------------------------------------------%
 

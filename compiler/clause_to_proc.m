@@ -8,7 +8,7 @@
 
 :- interface.
 
-:- import_module hlds.
+:- import_module hlds_pred.
 
 	% In the hlds, we initially record the clauses for a predicate
 	% in the clauses_info data structure which is part of the
@@ -34,6 +34,7 @@
 
 :- implementation.
 
+:- import_module hlds_goal.
 :- import_module list, set, map, std_util.
 
 copy_clauses_to_procs(PredInfo0, PredInfo) :-
