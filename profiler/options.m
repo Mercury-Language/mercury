@@ -13,10 +13,6 @@
 % getopt.m should be rewritten to use them.
 % Currently the interface dependencies are very hairy.
 
-% IMPORTANT NOTE: any changes to the options should be
-% reflected in both the help message produced below,
-% and in the Mercury User's Guide (../doc/user_guide.texi).
-
 %-----------------------------------------------------------------------------%
 
 :- module options.

@@ -33,7 +33,7 @@
 
 :- import_module debug.
 :- import_module read.
-:- import_module string, set, list, map.
+:- import_module float, int, list, map, string, set.
 :- import_module getopt, options, globals.
 :- import_module std_util, require.
 :- import_module relation.
@@ -45,7 +45,7 @@
 			string, 		% current predicate (label)
 			int,			% index number
 			int, 			% self counts
-			int, 			% propogated counts
+			float, 			% propogated counts
 			list(pred_info), 	% Parent pred and the number
 						% of time's it call's this
 						% predicate
@@ -89,7 +89,17 @@ main -->
 :- mode postprocess_options(in, out, di, uo) is det.
 
 postprocess_options(error(ErrorMessage), yes(ErrorMessage)) --> [].
-postprocess_options(ok(OptionTable0), no) --> [].
+postprocess_options(ok(OptionTable), no) --> 
+	globals__io_init(OptionTable),
+	% --very-verbose implies --verbose
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+	(
+		{ VeryVerbose = yes }
+	->
+		 globals__io_set_option(verbose, bool(yes))
+	;
+		[]
+	).
 
 
         % Display error message and then usage message
@@ -138,22 +148,46 @@ long_usage -->
 main_2(yes(ErrorMessage), _) -->
         usage_error(ErrorMessage).
 main_2(no, Args) -->
-        % globals__io_lookup_bool_option(help, Help),
-        % (
-        %         { Help = yes }
-        % ->
-        %         long_usage
-        % ;
-                process_addr_decl(AddrDeclMap, ProfNodeMap0),
-		process_addr(ProfNodeMap0, ProfNodeMap1, Hertz),
-		process_addr_pair(ProfNodeMap1, ProfNodeMap),
+        globals__io_lookup_bool_option(help, Help),
+        (
+                { Help = yes }
+        ->
+                long_usage
+        ;
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose, "% Processing input files ..."),
+		process_addr_files(_Hertz, AddrDeclMap, ProfNodeMap0),
+		maybe_write_string(Verbose, " done\n% Building call graph..."),
 		build_static_call_graph(Args, StaticCallGraph),
 		{ relation__atsort(StaticCallGraph, Cliques) },
+		maybe_write_string(Verbose, " done\n% Propogating counts..."),
+		propogate_counts(Cliques, AddrDeclMap, ProfNodeMap0, 
+								ProfNodeMap),
+		maybe_write_string(Verbose, " done\n"),
 		% output_cliques(Cliques),
-                io__stdout_stream(StdOut),
 		{ map__values(ProfNodeMap, ProfNodeList) },
-		output_basic(ProfNodeList).
-        % ).
+		output_basic(ProfNodeList)
+        ).
+
+
+%-----------------------------------------------------------------------------%
+
+
+% process_addr_files:
+%	process's all the addr*out files.
+%
+:- pred process_addr_files(int, addrdecl, prof_node_map, io__state, io__state).
+:- mode process_addr_files(out, out, out, di, uo) is det.
+
+process_addr_files(Hertz, AddrDeclMap, ProfNodeMap) -->
+	globals__io_lookup_bool_option(very_verbose, VVerbose),
+	maybe_write_string(VVerbose, "\n\t% Processing addrdecl.out..."),
+	process_addr_decl(AddrDeclMap, ProfNodeMap0),
+	maybe_write_string(VVerbose, " done.\n\t% Processing addr.out..."),
+	process_addr(ProfNodeMap0, ProfNodeMap1, Hertz),
+	maybe_write_string(VVerbose, " done.\n\t% Processing addrpair.out..."),
+	process_addr_pair(ProfNodeMap1, ProfNodeMap),
+	maybe_write_string(VVerbose, " done.\n").
 
 
 %-----------------------------------------------------------------------------%
@@ -178,9 +212,10 @@ process_addr_decl(AddrDeclMap, ProfNodeMap) -->
 		{ map__init(AddrDeclMap0) },
 		{ map__init(ProfNodeMap0) },
 		process_addr_decl_2(AddrDeclMap0, ProfNodeMap0, AddrDeclMap, 
-								ProfNodeMap)
+								ProfNodeMap),
+		io__seen
 	;
-		{ error("get_addr_decl: Couldn't open 'addrdecl.out'\n") }
+		{ error("process_addr_decl: Couldn't open 'addrdecl.out'\n") }
 	).
 
 
@@ -220,7 +255,8 @@ process_addr(ProfNodeMap0, ProfNodeMap, Hertz) -->
 		{ Result = ok }
 	->
 		read_int(Hertz),
-		process_addr_2(ProfNodeMap0, ProfNodeMap)
+		process_addr_2(ProfNodeMap0, ProfNodeMap),
+		io__seen
 	;
 		{ error("process_addr: Couldn't open 'addr.out'\n") }
 	).
@@ -259,7 +295,8 @@ process_addr_pair(ProfNodeMap0, ProfNodeMap) -->
 	(
 		{ Result = ok }
 	->
-		process_addr_pair_2(ProfNodeMap0, ProfNodeMap)
+		process_addr_pair_2(ProfNodeMap0, ProfNodeMap),
+		io__seen
 	;
 		{ error("process_addr_pair: Couldn't open 'addrpair.out'\n") }
 	).
@@ -302,6 +339,8 @@ process_addr_pair_2(ProfNodeMap0, ProfNodeMap) -->
 
 % build_static_call_graph:
 % 	Build's the static call graph located in the *.prof files.
+%	XXX Should be changed so that it can build from the dynamic call
+%	graph if the *.prof files aren't available.
 %
 :- pred build_static_call_graph(list(string), relation(string), 
 							io__state, io__state).
@@ -324,6 +363,7 @@ build_static_call_graph_2([File | Files], StaticCallGraph0, StaticCallGraph) -->
 % process_prof_file:
 %	Put's all the Caller and Callee label pairs from File into the 
 %	static call graph relation.
+%
 :- pred process_prof_file(string, relation(string), relation(string),
 							io__state, io__state).
 :- mode process_prof_file(in, in, out, di, uo) is det.
@@ -364,10 +404,231 @@ process_prof_file_2(StaticCallGraph0, StaticCallGraph) -->
 
 %-----------------------------------------------------------------------------%
 
+
+% propogate_counts:
+%	propogate's the count's around the call_graph and assign's index 
+%	number's to the predicates.
+%	Assign's the index number's on the way down eg predicates to the top
+%	of the call graph get the low numbers.
+%	On the way back up it propgate's the count's.  eg start propogating 
+%	from the leaves of the call graph.
+%
+:- pred propogate_counts(list(set(string)), addrdecl, prof_node_map,
+					prof_node_map, io__state, io__state).
+:- mode propogate_counts(in, in, in, out, di, uo) is det.
+
+propogate_counts([], _, ProfNodeMap, ProfNodeMap) --> [].
+propogate_counts([Clique | Cliques], AddrDeclMap, ProfNodeMap0, ProfNodeMap) -->
+	{ set__to_sorted_list(Clique, CliqueList) },
+	assign_index_nums(CliqueList, AddrDeclMap, 1, ProfNodeMap0, N, 
+								ProfNodeMap1),
+	propogate_counts_2(Cliques, N, AddrDeclMap, ProfNodeMap1, ProfNodeMap).
+
+
+:- pred propogate_counts_2(list(set(string)), int, addrdecl, prof_node_map, 
+					prof_node_map, io__state, io__state).
+:- mode propogate_counts_2(in, in, in, in, out, di, uo) is det.
+
+propogate_counts_2([], _, _, ProfNodeMap, ProfNodeMap) --> [].
+propogate_counts_2([Clique | Cs], N0, AddrDecl, ProfNodeMap0, ProfNodeMap) -->
+	{ set__to_sorted_list(Clique, CliqueList) },
+	assign_index_nums(CliqueList, AddrDecl, N0, ProfNodeMap0, N, 
+								ProfNodeMap1),
+	propogate_counts_2(Cs, N, AddrDecl, ProfNodeMap1, ProfNodeMap2),
+	{ build_parent_map(CliqueList, AddrDecl, ProfNodeMap2, ParentMap) },
+	{ sum_counts(CliqueList, AddrDecl, ProfNodeMap2, TotalCounts) },
+	% io__write_string("Total counts: "),
+	% io__write_float(TotalCounts),
+	% io__write_string("\n"),
+	{ sum_calls(ParentMap, TotalCalls) },
+	% io__write_string("Total calls: "),
+	% io__write_int(TotalCalls),
+	% io__write_string("\n"),
+	{ map__to_assoc_list(ParentMap, ParentList) },
+	propogate_counts_3(ParentList, TotalCounts, TotalCalls, AddrDecl, 
+						ProfNodeMap2, ProfNodeMap).
+
+
+:- pred propogate_counts_3(assoc_list(string, int), float, int, addrdecl, 
+			prof_node_map, prof_node_map, io__state, io__state).
+:- mode propogate_counts_3(in, in, in, in, in, out, di, uo) is det.
+
+propogate_counts_3([], _, _, _, ProfNodeMap, ProfNodeMap) --> [].
+propogate_counts_3([ Pred - Calls | Ps], TotalCounts, TotalCalls, AddrMap, 
+						ProfNodeMap0, ProfNodeMap) -->
+	{ map__lookup(AddrMap, Pred, Key),
+	map__lookup(ProfNodeMap0, Key, ProfNode0),
+
+	% Work out the number of count's to propogate.
+	int__to_float(Calls, FloatCalls),
+	int__to_float(TotalCalls, FloatTotalCalls),
+	builtin_float_divide(FloatCalls, FloatTotalCalls, Percentage),
+	builtin_float_times(Percentage, TotalCounts, ToPropCount),
+
+	% Add new count's to current propogated counts
+	prof_node_get_propogated_counts(ProfNode0, PropCount0),
+	builtin_float_plus(PropCount0, ToPropCount, PropCount),
+	prof_node_set_propogated_counts(PropCount, ProfNode0, ProfNode),
+	map__det_update(ProfNodeMap0, Key, ProfNode, ProfNodeMap1) },
+
+	% io__write_string("++++ propogate_counts_3 ++++\n"),
+	% io__write_string("Percentage: "),
+	% io__write_float(Percentage),
+	% io__write_string("\n"),
+	% io__write_string("ToPropCount: "),
+	% io__write_float(ToPropCount),
+	% io__write_string("\n"),
+
+	% output_prof_info(ProfNode),
+	% io__write_string("+++++++++++++++++++++++++++\n"),
+	propogate_counts_3(Ps, TotalCounts, TotalCalls, AddrMap, ProfNodeMap1,
+								ProfNodeMap).
+
+
+% assign_index_nums:
+% 	Gives all the pred's index number's.  
+%	Assumes that a pred can only be a member of one clique.
+%
+:- pred assign_index_nums(list(string), addrdecl, int, prof_node_map, int, 
+					prof_node_map, io__state, io__state).
+:- mode assign_index_nums(in, in, in, in, out, out, di, uo) is det.
+
+assign_index_nums([], _, N, ProfNodeMap, N, ProfNodeMap) --> [].
+assign_index_nums([Pred | Preds], AddrMap, N0, ProfNodeMap0, N, ProfNodeMap) -->
+	{ map__lookup(AddrMap, Pred, Key) },
+	{ map__lookup(ProfNodeMap0, Key, ProfNode0) },
+	{ prof_node_set_index_num(N0, ProfNode0, ProfNode) },
+	{ N1 is N0 + 1 },
+	{ map__set(ProfNodeMap0, Key, ProfNode, ProfNodeMap1) },
+	% output_prof_info(ProfNode),
+	assign_index_nums(Preds, AddrMap, N1, ProfNodeMap1, N, ProfNodeMap).
+
+
+% build_parent_map:
+%	Build's a map which contains all the parent's of a clique, and the 
+%	total number of time's that parent is called.  Doesn't include the 
+%	clique members, and caller's which never call any of the member's of
+%	the clique.
+%
+:- pred build_parent_map(list(string), addrdecl, prof_node_map, 
+							map(string, int)).
+:- mode build_parent_map(in, in, in, out) is det.
+
+build_parent_map([], _AddrMap, _ProfNodeMap, _ParentMap) :-
+	error("build_parent_map: empty clique list\n").
+build_parent_map([C | Cs], AddrMap, ProfNodeMap, ParentMap) :-
+	map__init(ParentMap0),
+	build_parent_map_2([C | Cs], [C | Cs], AddrMap, ProfNodeMap, 
+						ParentMap0, ParentMap).
+
+
+:- pred build_parent_map_2(list(string), list(string), addrdecl, prof_node_map, 
+					map(string, int), map(string, int)). 
+:- mode build_parent_map_2(in, in, in, in, in, out) is det.
+
+build_parent_map_2([], _, _, _, ParentMap, ParentMap).
+build_parent_map_2([C | Cs], CliqueList, AddrMap, ProfNodeMap, ParentMap0, 	
+								ParentMap) :-
+	get_prof_node(C, AddrMap, ProfNodeMap, ProfNode),
+	prof_node_get_parent_list(ProfNode, ParentList),
+	add_to_parent_map(ParentList, CliqueList, ParentMap0, ParentMap1),
+	build_parent_map_2(Cs, CliqueList, AddrMap, ProfNodeMap, ParentMap1, 
+								ParentMap).
+
+
+% add_to_parent_map:
+% 	Add's list of parent's to parent map.  Ignore's clique member's and
+%	repeat's and caller's which never call current predicate.
+%	Also return's the total number of time's predicate is called.
+%
+:- pred add_to_parent_map(list(pred_info), list(string), map(string, int), 
+							map(string, int)).
+:- mode add_to_parent_map(in, in, in, out) is det.
+
+add_to_parent_map([], _CliqueList, ParentMap, ParentMap).
+add_to_parent_map([P | Ps], CliqueList, ParentMap0, ParentMap) :-
+	pred_info_get_pred_name(P, PredName),
+	pred_info_get_counts(P, Counts),
+	(
+		(
+			list__member(PredName, CliqueList)
+		%;
+		%	Counts \= 0
+		)
+	->
+		add_to_parent_map(Ps, CliqueList, ParentMap0, ParentMap)
+	;	
+		(
+			map__search(ParentMap0, PredName, CurrCount0)
+		->
+			CurrCount is CurrCount0 + Counts,
+			map__det_update(ParentMap0, PredName, CurrCount, 
+								ParentMap1)
+		;
+			map__det_insert(ParentMap0, PredName, Counts, 
+								ParentMap1)
+		),
+		add_to_parent_map(Ps, CliqueList, ParentMap1, ParentMap)
+	).
+
+
+% sum_counts:
+%	sum's the total number of count's in a clique list.
+%
+:- pred sum_counts(list(string), addrdecl, prof_node_map, float).
+:- mode sum_counts(in, in, in, out) is det.
+
+sum_counts([], _, _, 0.0).
+sum_counts([Pred | Preds], AddrMap, ProfNodeMap, TotalCount) :-
+	get_prof_node(Pred, AddrMap, ProfNodeMap, ProfNode),
+	prof_node_get_initial_counts(ProfNode, InitCount),
+	prof_node_get_propogated_counts(ProfNode, PropCounts),
+	sum_counts(Preds, AddrMap, ProfNodeMap, TotalCount0),
+	int__to_float(InitCount, InitCountFloat),
+	builtin_float_plus(PropCounts, InitCountFloat, PredCount),
+	builtin_float_plus(TotalCount0, PredCount, TotalCount).
+
+
+% sum_calls:
+%	sum's the total number of call's into the clique list.
+%
+:- pred sum_calls(map(string, int), int).
+:- mode sum_calls(in, out) is det.
+
+sum_calls(ParentMap, TotalCalls) :-
+	map__values(ParentMap, CallList),
+	sum_int_list(CallList, TotalCalls).
+
+:- pred sum_int_list(list(int), int).
+:- mode sum_int_list(in, out) is det.
+
+sum_int_list([], 0).
+sum_int_list([X | Xs], Total) :-
+	sum_int_list(Xs, Total0),
+	Total is X + Total0.
+	
+
+
+%-----------------------------------------------------------------------------%
+
+
+% get_prof_node:
+%  	Get's the prof_node given a label name.
+%
+:- pred get_prof_node(string, addrdecl, prof_node_map, prof_node).
+:- mode get_prof_node(in, in, in, out) is det.
+
+get_prof_node(Pred, AddrMap, ProfNodeMap, ProfNode) :-
+	map__lookup(AddrMap, Pred, Key),
+	map__lookup(ProfNodeMap, Key, ProfNode).
+
+
+%-----------------------------------------------------------------------------%
+
 :- pred prof_node_init(string, prof_node).
 :- mode prof_node_init(in, out) is det.
 
-prof_node_init(PredName, prof_node(PredName, 0, 0, 0, [], [], 0, 0, 0)).
+prof_node_init(PredName, prof_node(PredName, 0, 0, 0.0, [], [], 0, 0, 0)).
 
 % *** Access prof_node predicates *** %
 
@@ -386,7 +647,7 @@ prof_node_get_index_number(prof_node(_, Index, _, _, _, _, _, _, _), Index).
 
 prof_node_get_initial_counts(prof_node(_, _, Count, _, _, _, _, _, _), Count).
 
-:- pred prof_node_get_propogated_counts(prof_node, int).
+:- pred prof_node_get_propogated_counts(prof_node, float).
 :- mode prof_node_get_propogated_counts(in, out) is det.
 
 prof_node_get_propogated_counts(prof_node(_, _, _, Count, _, _, _, _, _), Count).
@@ -403,11 +664,23 @@ prof_node_get_child_list(prof_node(_, _, _, _, _, Clist, _, _, _), Clist).
 
 % *** Update prof_node predicates *** %
 
+:- pred prof_node_set_index_num(int, prof_node, prof_node).
+:- mode prof_node_set_index_num(in, in, out) is det.
+
+prof_node_set_index_num(Index, prof_node(A, _, C, D, E, F, G, H, I), 
+				prof_node(A, Index, C, D, E, F, G, H, I)).
+
 :- pred prof_node_set_initial_count(int, prof_node, prof_node).
 :- mode prof_node_set_initial_count(in, in, out) is det.
 
 prof_node_set_initial_count(Count, prof_node(A, B, _, D, E, F, G, H, I), 
 				prof_node(A, B, Count, D, E, F, G, H, I)).
+
+:- pred prof_node_set_propogated_counts(float, prof_node, prof_node).
+:- mode prof_node_set_propogated_counts(in, in, out) is det.
+
+prof_node_set_propogated_counts(Count, prof_node(A, B, C, _, E, F, G, H, I),
+				 prof_node(A, B, C, Count, E, F, G, H, I)).
 
 :- pred prof_node_concat_to_parent(pred_info, prof_node, prof_node).
 :- mode prof_node_concat_to_parent(in, in, out) is det.
@@ -461,7 +734,7 @@ output_prof_info(ProfNode) -->
         io__write_string("\nInitial:\t"),
         io__write_int(InitCounts),
         io__write_string("\nProp:\t"),
-        io__write_int(PropCounts),
+        io__write_float(PropCounts),
 	io__write_string("\nParent List ->\n"),
 	output_pred_info_list(ParentList),
 	io__write_string("\nChild List ->\n"),
